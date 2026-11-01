@@ -1591,42 +1591,60 @@ def _safe_dynamic_reply(row):
     rpid=str(row.get('rpid_str') or row.get('rpid') or '')
     if not re.fullmatch(r'[1-9][0-9]{0,29}',rpid): return None
     member=row.get('member') or {};body=row.get('content') or {}
-    return {'rpid':rpid,'root':str(row.get('root') or ''),'uid':str(member.get('mid') or ''),
+    return {'rpid':rpid,'root':str(row.get('root') or ''),'parent':str(row.get('parent') or ''),'uid':str(member.get('mid') or ''),
             'name':str(member.get('uname') or '')[:60], 'content':str(body.get('message') or '')[:320]}
 
 
 async def _find_dynamic_target(area,cred,rpid,root=0):
-    """Fail closed when the requested public comment cannot be independently found."""
+    """Independently verify target and, for nested replies, its actual direct parent.
+
+    Never infer a reply-to relationship from a notification's prose or from the
+    containing dynamic's author. A foreign dynamic is eligible only when the
+    direct parent comment is verified as belonging to this signed-in account.
+    """
     rpid=str(rpid or '');root=str(root or '')
-    if not re.fullmatch(r'[1-9][0-9]{0,29}',rpid): raise ValueError('目标评论 ID 非法')
-    if root not in ('','0') and not re.fullmatch(r'[1-9][0-9]{0,29}',root): raise ValueError('根评论 ID 非法')
-    # For root replies, verify the parent comment on this exact oid/type.
+    if not re.fullmatch(r'[1-9][0-9]{0,29}',rpid):raise ValueError('目标评论 ID 非法')
+    if root not in ('','0') and not re.fullmatch(r'[1-9][0-9]{0,29}',root):
+        raise ValueError('根评论 ID 非法')
     if root not in ('','0'):
         top=comment.Comment(oid=int(area['oid']),type_=area['resource_type'],rpid=int(root),credential=cred)
+        head=None;target=None;parents={}
         for pn in range(1,4):
             data=await top.get_sub_comments(page_index=pn,page_size=20)
-            head=_safe_dynamic_reply(data.get('root')) if isinstance(data,dict) else None
-            if not head or head['rpid']!=root: raise ValueError('没有确认该动态评论区的根评论')
-            if rpid==root: return {'root':root,'target':head}
-            for entry in (data.get('replies') or []):
+            row=_safe_dynamic_reply(data.get('root')) if isinstance(data,dict) else None
+            if not row or row['rpid']!=root:raise ValueError('没有确认该动态评论区的根评论')
+            head=row;parents[root]=row
+            if rpid==root:return {'root':root,'target':row,'replyToUid':'','replyToRpid':''}
+            replies=(data.get('replies') or []) if isinstance(data,dict) else []
+            for entry in replies:
                 item=_safe_dynamic_reply(entry)
-                if item and item['rpid']==rpid:return {'root':root,'target':item}
-            if not data.get('replies') or len(data['replies'])<20:break
+                if item:
+                    parents[item['rpid']]=item
+                    if item['rpid']==rpid:target=item
+            if target:
+                parent_id=target.get('parent','')
+                if parent_id and parent_id!='0' and parent_id!=rpid and parent_id in parents:
+                    parent=parents[parent_id]
+                    return {'root':root,'target':target,'replyToUid':parent['uid'],
+                            'replyToRpid':parent_id}
+            if not replies or len(replies)<20:break
+        if target:
+            # The target exists, but its *direct* parent is not verified.
+            # We may still reply inside our own dynamic; not a foreign one.
+            return {'root':root,'target':target,'replyToUid':'','replyToRpid':''}
         raise ValueError('目标回复不在已核验的动态楼中楼内，未发送')
-    # Try top-level pages, then an explicit root-lookup for recent notifications.
     for pn in range(1,4):
         data=await comment.get_comments(oid=int(area['oid']),type_=area['resource_type'],page_index=pn,
                                         order=comment.OrderType.TIME,credential=cred)
         rows=(data or {}).get('replies') or []
         for row in rows:
             item=_safe_dynamic_reply(row)
-            if item and item['rpid']==rpid:return {'root':rpid,'target':item}
+            if item and item['rpid']==rpid:return {'root':rpid,'target':item,'replyToUid':'','replyToRpid':''}
         if len(rows)<20:break
-    # A stale/old comment not on the first three pages: validate using the root endpoint.
     top=comment.Comment(oid=int(area['oid']),type_=area['resource_type'],rpid=int(rpid),credential=cred)
     data=await top.get_sub_comments(page_index=1,page_size=1)
     head=_safe_dynamic_reply(data.get('root')) if isinstance(data,dict) else None
-    if head and head['rpid']==rpid:return {'root':rpid,'target':head}
+    if head and head['rpid']==rpid:return {'root':rpid,'target':head,'replyToUid':'','replyToRpid':''}
     raise ValueError('无法核验动态下的目标评论；请先读取评论上下文并提供正确的 root/rpid')
 
 
@@ -1639,6 +1657,7 @@ async def bili_dynamic_comment_context(dynamic_id: str, target_rpid: str = '', r
             target=await _find_dynamic_target(area,get_cred(),target_rpid,root)
             return json.dumps({'ok':True,'dynamicId':area['dynamic_id'],'oid':area['oid'],
                 'commentType':area['comment_type'],'authorUid':area['author_uid'],'target':target['target'],'root':target['root'],
+                'replyToUid':target.get('replyToUid',''),'replyToRpid':target.get('replyToRpid',''),
                 'url':'https://t.bilibili.com/'+area['dynamic_id']},ensure_ascii=False)
         data=await comment.get_comments(oid=int(area['oid']),type_=area['resource_type'],page_index=1,
                                          order=comment.OrderType.TIME,credential=get_cred())
@@ -1671,10 +1690,12 @@ async def bili_dynamic_reply_inbox(dynamic_id: str, target_rpid: str, root: str 
         cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
         if not re.fullmatch(r'[1-9][0-9]{0,19}',uid):raise ValueError('登录 UID 未确认')
         area=await _get_dynamic_comment_area(did,cred)
-        if area['author_uid']!=uid and not is_at:raise ValueError('不是当前账号发布的独立动态，禁止后台回复')
+        if not area['author_uid'] and not is_at:raise ValueError('动态作者身份未核验，禁止后台回复')
         if is_at and os.environ.get('BILI_DYNAMIC_AT_REPLY_ENABLED')!='1':
             raise ValueError('动态 @ 回复未从宿主后台授权')
         target=await _find_dynamic_target(area,cred,rid,root)
+        if area['author_uid']!=uid and not is_at and target.get('replyToUid')!=uid:
+            raise ValueError('其他人动态下的评论未证实是在直接回复当前账号，禁止后台回复')
         if not re.fullmatch(r'[1-9][0-9]{0,19}',str(expected_uid or '')) or target['target']['uid']!=str(expected_uid):
             raise ValueError('通知发件人与已核验的动态评论作者不匹配')
         if str(expected_uid)==uid:raise ValueError('禁止后台回复自己')

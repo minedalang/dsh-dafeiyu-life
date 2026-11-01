@@ -674,7 +674,7 @@ function reportMeta() {
     for (const k of ['commentWatchReplies', 'commentWatchTop', 'commentAtEnabled', 'friendAtFeedbackEnabled', 'commentAllowGeneralTop']) if(k in p) p[k] = p[k] === true
     if ('commentAtMode' in p) p.commentAtMode = p.commentAtMode==='all'?'all':'whitelist'
     if ('commentAtWhitelist' in p) p.commentAtWhitelist = String(p.commentAtWhitelist||'').slice(0,2500)
-    for (const [k,min,max,def] of [['commentTopCount',1,20,5],['commentTopVideoCount',1,6,3],['commentReplyHotCount',1,30,12],['commentReplyPerPoll',1,5,1],['commentReplyPerDay',1,1000,5],['commentOwnTopPerUser',1,1000,5],['commentOwnNestedPerUser',1,1000,3]]) {
+    for (const [k,min,max,def] of [['commentTopCount',1,20,5],['commentTopVideoCount',1,6,3],['commentReplyHotCount',1,30,12],['commentReplyPerPoll',1,1000,1],['commentReplyPerDay',1,1000,5],['commentOwnTopPerUser',1,1000,5],['commentOwnNestedPerUser',1,1000,3]]) {
       if(k in p) p[k] = Math.max(min, Math.min(max, Math.floor(Number(p[k]) || def)))
     }
     if ('commentSyncDynamic' in p) p.commentSyncDynamic = p.commentSyncDynamic === true
@@ -3287,7 +3287,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
          String(raw.target?.uid||'')!==String(notice.uid||'')||
          (notificationOid&&notificationOid!==dynamicId&&String(raw.oid||'')!==notificationOid))return {usable:false};
       return {usable:true,dynamicId,targetUid:String(raw.target.uid),
-        authorUid:String(raw.authorUid||''),ownedLocal:ownPublishedDynamics(stateDir).includes(dynamicId),
+        authorUid:String(raw.authorUid||''),replyToUid:String(raw.replyToUid||''),
+        replyToRpid:String(raw.replyToRpid||''),ownedLocal:ownPublishedDynamics(stateDir).includes(dynamicId),
         root:String(raw.root||''),verifiedCommentText:String(raw.target.content||'').slice(0,320),
         summary:'已核验真实动态评论区与评论发送者'};
     },
@@ -3338,8 +3339,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
         refreshCfg()
         if(!(cfg.masterEnabled===true && (req.kind==='at'?cfg.commentAtEnabled===true:cfg.commentWatchReplies===true)))
           return {ok:false,error:'动态评论回复未授权'}
-        if(req.kind!=='at'&&!ownPublishedDynamics(stateDir).includes(String(req.dynamicId||'')))
-          return {ok:false,error:'动态不在当前账号已发布的本地账本，拒绝后台回复'}
+        // Actual publication / parent identity is checked against live B站 metadata
+        // again by bili_dynamic_reply_inbox. Local drafts are not an identity authority.
         const r=parseMaybeJson(await call('bili_dynamic_reply_inbox',{
           dynamic_id:String(req.dynamicId||''),target_rpid:String(req.rpid||''),
           root:String(req.root||''),text:String(req.text||'').slice(0,130),expected_uid:String(req.uid||''),
