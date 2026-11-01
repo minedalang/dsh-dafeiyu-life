@@ -4135,7 +4135,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     if (req.method === 'GET' && path === '/api/bili-duty/manage') {
       const body=readFileSync(join(pluginDir,'lib','management-console.html'),'utf8')
       res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
-        'x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"})
+        'x-dafeiyu-management':'1','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"})
       return res.end(body)
     }
     if (req.method === 'GET' && path === '/api/bili-duty/manage.js') {
@@ -5270,6 +5270,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
           if (!/^(?:127\.0\.0\.1|localhost|\[::1\])(?::\d{1,5})?$/i.test(host))
             return sendJson(res, 200, { ok: false, error: '管理中心只允许从本机 DSH 服务打开' })
           const tab=String(body?.tab||'');u = `http://${host}/api/bili-duty/manage${['firststart','models','home'].includes(tab)?'?tab='+encodeURIComponent(tab):''}`
+          // 安卓客户端可以仅获取地址并由 WebView 导航，避免尝试在宿主系统弹窗。
+          if (body?.resolveOnly === true) return sendJson(res, 200, { ok: true, url: u })
         } else {
           u = String(body?.u || '')
           if (!/^https?:\/\//i.test(u)) return sendJson(res, 200, { ok: false, error: '只接受 http(s) 链接' })
@@ -5540,6 +5542,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   const sameOriginOk = (req) => {
     try {
       const host = String(req.headers.host || '')
+      if (String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site') return false
       if (!host) return true   // 没有 Host 头 = 不是浏览器/不是外来的 HTTP 请求
       if (!/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(host)) return false
       const pick = String(req.headers.origin || req.headers.referer || '')

@@ -255,6 +255,7 @@ function WatchTab() {
       const [st, setSt, fails] = useStatus(5000)
       const [busy, setBusy] = React.useState('')
       const [msg, setMsg] = React.useState('')
+      const [manageError, setManageError] = React.useState('')
       const [msgTone, setMsgTone] = React.useState('')
       const [kws, setKws] = React.useState(null)
       const [favFolders, setFavFolders] = React.useState(null)   // 收藏夹列表（下拉用，null = 还没读）
@@ -383,6 +384,55 @@ function WatchTab() {
         setMsg(text); setMsgTone(tone || '')
         setRunNote(text ? { t: text, tone: tone || '' } : null)   // ⭐ 同时镜像到顶部，免得提示掉到页面最底下看不见
       }
+
+      // DSH Mobile 是手机上运行的已配对 HTTPS WebView，实际业务仍在电脑端。
+      // 后台调用系统浏览器只会在电脑上打开页面，不能作为手机的管理入口。
+      // 始终使用当前 WebView 的同源路径；不要从 Host 推断、拼接或返回本机地址。
+      const onOpenManage = async (tab = '') => {
+        setManageError('')
+        try {
+          const safeTab = ['firststart', 'models', 'home'].includes(tab) ? tab : ''
+          const ua = String(window.navigator?.userAgent || '')
+          const smallTouch = Number(window.navigator?.maxTouchPoints || 0) > 0 &&
+            Number(window.innerWidth || 1024) <= 900
+          const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || smallTouch
+          if (!isMobile) {
+            const result = await jpost('/open', {what: 'manage', tab: safeTab})
+            if (result?.ok !== true) throw new Error(result?.error || '宿主没有确认打开管理中心')
+            return
+          }
+
+          // 通过 DSH Mobile 同源 HTTPS 入口时，配对、TLS 和代理 CSRF 校验由网关执行。
+          // 非 HTTP(S)（例如不带已配对网关的私有 scheme）不可跳转 127.0.0.1。
+          if (!/^https?:$/i.test(String(window.location?.protocol || '')))
+            throw new Error('当前不是 DSH Mobile 的 HTTP(S) 配对页面；请在已配对设备内打开 DSH')
+          const path = '/api/bili-duty/manage' + (safeTab ? '?tab=' + encodeURIComponent(safeTab) : '')
+          const probe = await fetch(path, {credentials: 'same-origin', redirect: 'follow'})
+          if (!probe.ok) {
+            let reason = ''
+            try {const json = await probe.json();if (typeof json?.error === 'string') reason = json.error.slice(0, 120)} catch {}
+            throw new Error('HTTP ' + probe.status + (reason ? '：' + reason : '：管理页面被当前移动通道拒绝'))
+          }
+          if (!/text\/html/i.test(String(probe.headers?.get?.('content-type') || '')))
+            throw new Error('移动网关未返回管理中心 HTML 页面')
+          // 代理或认证层可能在返回 200 后显示通用登录页；必须确认响应来自本插件。
+          let isManage = probe.headers?.get?.('x-dafeiyu-management') === '1'
+          if (!isManage && typeof probe.text === 'function') {
+            const html = await probe.text()
+            isManage = html.includes('<meta name="dafeiyu-management" content="1">')
+          }
+          if (!isManage) throw new Error('移动访问通道返回的不是大肥鱼管理中心；请检查配对登录状态')
+          // 同一个已配对 HTTPS Origin 打开，不触发电脑浏览器、不暴露独立管理端口。
+          window.location.assign(path)
+        } catch (e) {
+          const detail = String(e?.message || e)
+          const message = '打开管理中心失败：' + detail +
+            '。请确认手机已通过 DSH Mobile 配对并连接到电脑；不要直接将电脑本机 DSH 端口暴露到公网。'
+          setManageError(message)
+          say(message, 'warn')
+        }
+      }
+
 
       const patch = async (p, what) => {
         setBusy(JSON.stringify(p))
@@ -623,8 +673,9 @@ function WatchTab() {
             h('div',{'data-bd-label':''},(steps.headlessVerified?'✓':'○')+' Headless 模型同步并验证'+(steps.headlessVerified?' · 已完成':'')),
             h('div',{'data-bd-row':''},
               !st.venvReady?h('button',{'data-bd-btn':'',onClick:onInstall,disabled:busy==='install'},'安装 B站运行依赖'):null,
-              h('button',{'data-bd-btn':'','data-primary':'',onClick:async()=>{try{const r=await jpost('/open',{what:'manage',tab:'firststart'});if(r?.ok!==true)throw Error(r?.error||'管理中心未打开')}catch(e){window.alert('管理中心打开失败：'+String(e.message||e))}}},'打开管理中心，开始配置 ↗')),
-            h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。')))
+              h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('firststart')},'打开管理中心，开始配置 ↗')),
+            h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。'),
+            manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null))
       }
 
       const sw = (k) => Boolean(cfg[k])
@@ -634,15 +685,8 @@ function WatchTab() {
           h('div',{'data-bd-row':'',style:{justifyContent:'space-between',alignItems:'center'}},
             h('div',{'data-bd-grow':''},h('div',{'data-bd-label':''},'🐳 大肥鱼 · DSH 生活系统'),
               h('div',{'data-bd-note':''},'她会自己去 B站、把重要经历带回主 Session、长期记住主人和朋友；精确档案、长期记忆、梗、好友关系与互动状态都保存在本地。')),
-            h('button',{type:'button','data-bd-btn':'',onClick:async()=>{
-              // 让宿主按实际 HTTP Host 构造绝对 URL；设置页可能运行在自定义 DSH scheme 下。
-              try {
-                const result = await jpost('/open', { what: 'manage' })
-                if (!result || result.ok !== true) throw new Error(result?.error || '宿主没有确认打开管理中心')
-              } catch (e) {
-                window.alert('打开管理中心失败：' + String(e?.message || e))
-              }
-            }},'打开管理中心 ↗'))),
+            h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage()},'打开管理中心 ↗')),
+          manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
 
         /* ── 大肥鱼总开关：永久展示，不隐藏设置，不清除历史 ── */
         h('div', { 'data-bd-sec': '', style: {padding:'12px',border:'1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.24))',borderRadius:'12px'} },
@@ -677,7 +721,7 @@ function WatchTab() {
           h('div',{'data-bd-h':''},'账号与运行环境'),
           h('div',{'data-bd-row':''},
             h('button',{'data-bd-btn':'',disabled:busy==='install',onClick:onInstall},st.venvReady?'重装主依赖':'安装主依赖'),
-            h('button',{'data-bd-btn':'',onClick:()=>jpost('/open',{what:'manage',tab:'firststart'})},'管理中心登录设置 ↗'),
+            h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},'管理中心登录设置 ↗'),
             h('button',{'data-bd-btn':'',disabled:busy==='check',onClick:onCheck},'检查账号'),
             h('button',{'data-bd-btn':'',disabled:busy==='selfcheck',onClick:onSelfCheck},'环境自检')),
           h('div',{'data-bd-note':''},'扫码登录统一由管理中心 → 首次设置管理。'),
@@ -754,10 +798,7 @@ function WatchTab() {
           h('div', { 'data-bd-h': '' }, '详细诊断已移至管理中心'),
           h('div', { 'data-bd-note': '' }, '今日 @ 诊断、表情包选取原因、每日报告、后台私信记录和最近评论集中在管理中心展示，避免设置页过长。'),
           h('div', { 'data-bd-row': '' },
-            h('button', { 'data-bd-btn': '', onClick: async () => {
-              try { const r = await jpost('/open', { what: 'manage' }); if (!r?.ok) throw new Error(r?.error || '打开失败') }
-              catch (e) { window.alert('打开管理中心失败：' + String(e?.message || e)) }
-            } }, '打开管理中心 ↗')),
+            h('button', { 'data-bd-btn': '', onClick: () => onOpenManage() }, '打开管理中心 ↗')),
           (dmMode && dmMode !== 'off') ? h('div', { 'data-bd-note': '' }, '私信内容 = 本轮每条的「标题 + 链接 + 一句话」，一轮合并成一条发。⚠️ 建议先让这个号和收件人互关：B站 对「陌生人私信」会限流，还可能不弹提醒。') : null,
 
           (dmMode === 'off' || dmMode === 'both') ? h('div', { 'data-bd-sep': '' }) : null,
@@ -804,10 +845,7 @@ function WatchTab() {
             onChange: v => patch({commentWatchReplies:v}, '后台回复评论通知'),
           }),
           h('div', { 'data-bd-note': '' }, '热评不再后台轮询：只有 AI 决定回复当前视频的评论后，才按需读取该视频其他热评。'),
-          h('div', { 'data-bd-row': '' }, h('button', { 'data-bd-btn': '', onClick: async () => {
-            try { const r = await jpost('/open', { what: 'manage' }); if (!r?.ok) throw new Error(r?.error || '打开失败') }
-            catch (e) { window.alert('打开管理中心失败：' + String(e?.message || e)) }
-          } }, '管理后台互动 ↗')),
+          h('div', { 'data-bd-row': '' }, h('button', { 'data-bd-btn': '', onClick: () => onOpenManage() }, '管理后台互动 ↗')),
           h('div', { 'data-bd-sep': '' }),
           h(ToggleRow, {
             label: '本地转写没字幕的视频',
@@ -834,10 +872,7 @@ function WatchTab() {
         h('div',{'data-bd-sec':'','data-bd-group':'taste','data-bd-away':tab==='taste'?undefined:''},
           h('div',{'data-bd-h':''},'🐳 大肥鱼 · 成长记忆'),
           h('div',{'data-bd-note':''},'添加反馈、审核行为与表达改进建议、撤销修改和预览提示词都集中在管理中心。兴趣趋势和长期经历请到「人生记忆」查看；核心人设仍由你控制。'),
-          h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'','data-primary':'',onClick:async()=>{
-            try { const r=await jpost('/open',{what:'manage'}); if(!r?.ok)throw new Error(r?.error||'打开失败') }
-            catch(e){window.alert('打开管理中心失败：'+String(e?.message||e))}
-          }},'管理成长记忆 ↗'))),
+          h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage()},'管理成长记忆 ↗'))),
 
         h('div',{'data-bd-sec':'','data-bd-group':'taste','data-bd-away':tab==='taste'?undefined:''},
           h('div',{'data-bd-h':''},'🧠 梗知识库 · 长期记忆'),
@@ -849,10 +884,7 @@ function WatchTab() {
           }),
           h('div',{'data-bd-note':''},'知识库最多保存条数在管理中心 → 次数与额度中设置。'),
           h('div',{'data-bd-note':''},'新学到的梗先待审核；管理中心可搜索、修改名称／别名／释义、批准或拒绝，并查看来源证据。'),
-          h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'','data-primary':'',onClick:async()=>{
-            try { const r=await jpost('/open',{what:'manage'}); if(!r?.ok)throw new Error(r?.error||'打开失败') }
-            catch(e){window.alert('打开管理中心失败：'+String(e?.message||e))}
-          }},'管理梗知识库 ↗'))),
+          h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage()},'管理梗知识库 ↗'))),
 
         /* ── 关注什么 / 在哪儿刷 ── */
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'taste', 'data-bd-away': tab === 'taste' ? undefined : '' },
@@ -993,7 +1025,7 @@ function WatchTab() {
             h('button', { 'data-bd-btn': '', disabled: busy === 'check', onClick: onCheck }, '测一下'),
             h('button', { 'data-bd-btn': '', disabled: busy === 'update', onClick: onCheckUpdate }, '检查更新'),
             newVer ? h('button', { 'data-bd-btn': '', 'data-primary': '', disabled: busy === 'upgrade', onClick: onUpgrade }, '一键升级到 v' + newVer) : null,
-            h('button', { 'data-bd-btn': '', onClick:()=>jpost('/open',{what:'manage',tab:'firststart'}) }, '管理中心登录设置 ↗'),
+            h('button', { 'data-bd-btn': '', onClick:()=>onOpenManage('firststart') }, '管理中心登录设置 ↗'),
             h('div', { 'data-bd-note': '' },
               !st.venvReady ? (st.installFailed ? '上次没装成 → 看下面日志' : '还没装 → 先点「装主依赖」')
                 : (st.loggedIn ? '已有 B站凭据，可在管理中心重新验证' : '环境好了 → 去管理中心登录 B站'))),
@@ -1014,10 +1046,7 @@ function WatchTab() {
             h('br'),
             `今天的报告：${st.report}`),
           h('div', { 'data-bd-row': '' },
-            h('button', { 'data-bd-btn': '', onClick: async () => {
-              try { const r = await jpost('/open', { what: 'manage' }); if (!r?.ok) throw new Error(r?.error || '打开失败') }
-              catch (e) { window.alert('打开管理中心失败：' + String(e?.message || e)) }
-            } }, '查看日报与最近评论 ↗'),
+            h('button', { 'data-bd-btn': '', onClick: () => onOpenManage() }, '查看日报与最近评论 ↗'),
             h('button', { 'data-bd-btn': '', onClick: () => onOpenFolder('out') }, '打开报告文件夹'),
             h('button', { 'data-bd-btn': '', onClick: () => onOpenFolder('home') }, '打开家目录'),
             h('button', { 'data-bd-btn': '', disabled: busy === 'verify', onClick: onVerify }, '复核评论'),
