@@ -360,14 +360,35 @@ box-shadow:0 5px 15px rgba(81,74,173,.28);transform:translateY(-1px)}
 /* First Start: calm welcome, mandatory steps, responsive layout */
 .fs-hero{padding:26px 29px;border:1px solid #9dc9df;border-radius:19px;background:linear-gradient(125deg,#e6f4ff,#e8f8ef 54%,#f3e9fc);margin:14px 0 18px;box-shadow:0 12px 29px rgba(34,74,117,.06)}
 .fs-hero h2{font-size:25px;margin:0 0 8px;color:#264369}.fs-hero p{margin:0;color:#42627b;line-height:1.8}.fs-pill{display:inline-flex;border-radius:99px;padding:5px 11px;background:#ffffffb5;font-size:12px;font-weight:750;color:#336b85;margin:0 0 12px}
-.fs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px}.fs-step{background:var(--panel);border:1px solid var(--stroke);border-top:4px solid #d44d54;border-radius:14px;padding:18px}.fs-step.optional{border-top-color:#8a99b3}.fs-step h3{font-size:16px;margin:0 0 8px}.fs-step p{font-size:13px;color:var(--muted);line-height:1.75;margin:8px 0}.fs-state{background:var(--tint);border-radius:9px;padding:10px;margin:12px 0;font-size:13px;font-weight:650}.fs-state.bad{background:#ffeded;color:#a22a35}.fs-state.good{background:#e6f7ed;color:#216944}.fs-step .actions{display:flex;gap:8px;flex-wrap:wrap}.fs-step button{font-size:13px}.fs-qr{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:10px}.fs-qr img{width:170px;height:170px;object-fit:contain;padding:6px;background:#fff;border-radius:10px}
+.fs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px}.fs-step{background:var(--panel);border:1px solid var(--stroke);border-top:4px solid #d44d54;border-radius:14px;padding:18px}.fs-step.optional{border-top-color:#8a99b3}.fs-step h3{font-size:16px;margin:0 0 8px}.fs-step p{font-size:13px;color:var(--muted);line-height:1.75;margin:8px 0}.fs-state{background:var(--tint);border-radius:9px;padding:10px;margin:12px 0;font-size:13px;font-weight:650}.fs-state.bad{background:#ffeded;color:#a22a35}.fs-state.good{background:#e6f7ed;color:#216944}.fs-step .actions{display:flex;gap:8px;flex-wrap:wrap}.fs-step button{font-size:13px}.fs-qr{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:10px}.fs-qr[hidden]{display:none!important}.fs-qr img{width:170px;height:170px;object-fit:contain;padding:6px;background:#fff;border-radius:10px}
 .fs-recommend-tip{border:1px solid #adaceb;border-left:5px solid #6754c3;
 background:linear-gradient(115deg,#f1eeff,#eef7ff);color:#374574;border-radius:10px;
 padding:11px 12px;margin:12px 0;font-size:13px;line-height:1.65;display:grid;gap:5px}
 .fs-recommend-tip strong{font-weight:750;color:#4b38a4}
+.fs-next-hint{border:1px solid #c4b5fd;border-left:4px solid #7756c3;border-radius:9px;background:linear-gradient(115deg,#f2edff,#eef6ff);padding:10px 12px!important;color:#453782!important;font-size:13px!important;font-weight:700}
+/* Headless onboarding: visually separate syncing from the required real probe. */
+.headless-journey{border:1px solid #bac8e9;border-radius:15px;background:linear-gradient(125deg,color-mix(in srgb,var(--ui-indigo) 9%,var(--panel)),var(--panel));padding:16px;margin:15px 0;display:grid;gap:12px}
+.headless-journey h5{margin:0;font-size:15px}.headless-journey p{margin:4px 0 0;font-size:13px;line-height:1.65}
+.headless-stages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.headless-stage{min-width:0;border:1px solid var(--stroke);background:var(--panel);border-radius:10px;padding:10px;font-size:12px;line-height:1.6;color:var(--muted)}
+.headless-stage strong{display:block;color:var(--ink);font-size:13px}
+.headless-stage[data-state="current"]{border-color:#7a5ac8;box-shadow:inset 0 0 0 1px #7a5ac8;background:color-mix(in srgb,#aa91ee 13%,var(--panel))}
+.headless-stage[data-state="done"]{border-color:#45a580;background:color-mix(in srgb,#4ec9a2 12%,var(--panel))}
+.headless-next{border:1px solid #d7a652;border-left:5px solid #dc9b2d;border-radius:11px;padding:13px 15px;background:color-mix(in srgb,#ffe0a0 32%,var(--panel));display:grid;gap:6px}
+.headless-next strong{font-size:15px}.headless-next p{color:var(--muted)}
+.headless-journey[data-stage="verified"] .headless-next{border-color:#36a47b;background:color-mix(in srgb,#49b58b 13%,var(--panel))}
+.headless-next-action{width:max-content;max-width:100%;font-weight:800;box-shadow:0 5px 15px rgba(70,86,155,.2)}
+.headless-verify-button.primary{background:linear-gradient(110deg,#7352bd,#426fd0);color:#fff;border-color:transparent;font-weight:800}
+.headless-verify-hint{display:block;color:var(--action);font-size:12px;font-weight:700;margin:5px 0}
+/* Android via DSH Mobile is currently a read-only remote console, not a local admin session. */
+.mobile-view-banner{border:1px solid #c0aedc;border-left:5px solid #7862bb;border-radius:12px;background:linear-gradient(110deg,color-mix(in srgb,#b6a1f0 19%,var(--panel)),var(--panel));padding:14px 17px;margin:15px 0;line-height:1.7}
+.mobile-view-banner strong{display:block;font-size:14px}.mobile-view-banner p{font-size:13px;margin:4px 0;color:var(--muted)}
+button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mobile-locked,textarea.mobile-locked{opacity:.56!important;filter:grayscale(.7);cursor:not-allowed!important;box-shadow:none!important;transform:none!important}
+.mobile-only-note{color:var(--muted);font-size:12px;line-height:1.6;margin:6px 0}
+@media(max-width:570px){.headless-stages{grid-template-columns:1fr}.headless-next-action{width:100%}}
 .fs-footer{padding:17px;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.fs-footer .actions{display:flex;gap:8px;flex-wrap:wrap}
 .fs-warning{border:1px solid #cc3546;border-left:6px solid #cc3546;background:#ffebee;color:#912536;border-radius:12px;padding:13px 15px;display:flex;gap:15px;align-items:center;justify-content:space-between;margin-bottom:15px;font-weight:700;flex-wrap:wrap}.fs-warning[hidden]{display:none!important}
-@media(prefers-color-scheme:dark){.fs-hero{background:linear-gradient(120deg,#253957,#1d4038,#392949);border-color:#416580}.fs-hero h2{color:#e0f3ff}.fs-hero p{color:#c1dce5}.fs-pill{background:#263e50;color:#b7e7ff}.fs-state.bad{background:#4a222b;color:#ffc3cc}.fs-state.good{background:#1d4335;color:#b5f1c8}.fs-warning{background:#44262e;color:#ffd1d9}.fs-recommend-tip{background:linear-gradient(115deg,#2b294c,#22364c);border-color:#6265b4;border-left-color:#a394ff;color:#dbe3ff}.fs-recommend-tip strong{color:#cabfff}}
+@media(prefers-color-scheme:dark){.fs-hero{background:linear-gradient(120deg,#253957,#1d4038,#392949);border-color:#416580}.fs-hero h2{color:#e0f3ff}.fs-hero p{color:#c1dce5}.fs-pill{background:#263e50;color:#b7e7ff}.fs-state.bad{background:#4a222b;color:#ffc3cc}.fs-state.good{background:#1d4335;color:#b5f1c8}.fs-warning{background:#44262e;color:#ffd1d9}.fs-recommend-tip{background:linear-gradient(115deg,#2b294c,#22364c);border-color:#6265b4;border-left-color:#a394ff;color:#dbe3ff}.fs-recommend-tip strong{color:#cabfff}.fs-next-hint{background:#30294c;color:#e4d8ff!important;border-color:#7568aa}}
 @media(max-width:570px){.fs-hero{padding:19px}.fs-hero h2{font-size:21px}.fs-footer button{flex:1}}
 
 /* First Start's Session editor uses the real settings form, without exposing
@@ -409,13 +430,14 @@ padding:11px 12px;margin:12px 0;font-size:13px;line-height:1.65;display:grid;gap
 <button data-tab="diagnostics" aria-selected="false">运行诊断</button>
 <button data-tab="backup" aria-selected="false">数据备份</button></div>
 </nav>
+<div id="mobile-view-banner" class="mobile-view-banner" role="note" hidden><strong>📱 手机端 · 查看模式</strong><p>DSH Mobile 通过远程网关查看管理中心。配置保存、B站登录、Headless 同步与验证、备份恢复等需要在运行 DSH 的电脑端完成；这里的相关按钮已置灰。你仍可切换页面、展开内容及刷新可访问的状态。</p></div>
 <p id="message" role="status" aria-live="polite"></p>
 <div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">首次设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开首次设置 ↗</button></div>
 <section id="panel-firststart" hidden>
   <div class="fs-hero"><span class="fs-pill">🐟 FIRST START · 大肥鱼首次使用引导</span><h2>欢迎来到大肥鱼</h2><p>让鱼鱼开始认识你，陪伴你慢慢成长。这里就是大肥鱼管理中心：第一次安装和老用户升级都会看到这页。<strong>B站登录和 Headless 模型验证是必须完成的两项</strong>，其他设置可以先跳过，之后随时回来修改。</p></div>
   <div class="fs-grid">
     <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div></section>
-    <section class="fs-step"><h3>02 · Headless 模型同步 <span class="pill pending">必须完成</span></h3><p>在 DSH 中配置好模型后，同步到 Headless 并进行真实连接验证。至少验证一个模型才能解锁，其他独立模型仍需逐项验证。</p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
+    <section class="fs-step"><h3>02 · Headless 模型同步 <span class="pill pending">必须完成</span></h3><p>在 DSH 中配置好模型后，同步到 Headless 并进行真实连接验证。至少验证一个模型才能解锁，其他独立模型仍需逐项验证。</p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
     <section class="fs-step optional"><h3>03 · 主 Session <span class="pill">可跳过</span></h3><p>指定鱼鱼和主人交谈的主要会话；以后可以在管理中心修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
     <section class="fs-step optional"><h3>04 · 人生记忆和反思 <span class="pill">可跳过</span></h3><p>以后可以调整记忆整理、反思批次和恢复推荐设置值。</p><div class="fs-recommend-tip" role="note"><strong>✨ 老用户升级建议：使用新版记忆与反思推荐值</strong><span>完成首次设置后，进入「人生记忆 → 记忆与检索设置」，展开「人生反思调度」「遗忘与召回质量」「可选 AI 检索与用量」，分别点击「使用推荐值」，最后点击「保存记忆与反思设置」才会生效。不会自动覆盖旧设置，也不会更改模型、开关或已有记忆。</span></div><div class="actions"><button type="button" id="fs-life-settings" data-open-tab="life" disabled title="先完成首次设置，之后可在管理中心修改记忆设置">完成引导后设置</button><button type="button" data-firststart-skip="life-memory">先跳过</button></div></section>
     <section class="fs-step optional"><h3>05 · 人格成长与社交偏好 <span class="pill">可跳过</span></h3><p>人格成长、自主聊天与对外社交权限始终可调整；引导不会自动开启任何发布权限。</p><div class="actions"><button type="button" id="fs-personality-settings" data-open-tab="personality" disabled title="先完成首次设置，之后可在管理中心修改人格设置">完成引导后设置</button><button type="button" data-firststart-skip="personality">先跳过</button></div></section>
@@ -429,6 +451,15 @@ padding:11px 12px;margin:12px 0;font-size:13px;line-height:1.65;display:grid;gap
 <h4>🔐 后台模型同步与检测（独立 Agent 必需）</h4>
 <p class="muted">首次启用或更换模型后，请先同步 DSH Desktop 的模型配置，再执行一次后台验证。<strong>未同步并验证成功时，独立视频 Agent、独立识图及需要 headless 的兼容路径不会运行。</strong> 人生反思、文字评论/私信、动态草稿、AI 记忆检索等纯文本功能在宿主模型服务可用时可以直接运行，不需要同步。宿主不可用且没有已验证的后台模型时，不会偷偷降级到其他模型。</p>
 <p class="muted">仅同步模型定义（Provider ID、协议、Base URL、模型、环境变量名），不复制 API Key、凭据或工具授权。不会自动开启任何 B站发布权限。连接验证会发送一条简短测试请求，可能产生少量模型费用。</p>
+<div id="headless-journey" class="headless-journey" data-stage="source" aria-label="Headless 三步设置进度">
+  <h5>Headless 配置进度 · 三步完成</h5>
+  <div class="headless-stages">
+    <div id="headless-stage-source" class="headless-stage" data-state="current"><strong>① 检测模型</strong><span>从 DSH 读取 Provider</span></div>
+    <div id="headless-stage-sync" class="headless-stage" data-state="pending"><strong>② 同步配置</strong><span>选择、预览并确认</span></div>
+    <div id="headless-stage-verify" class="headless-stage" data-state="pending"><strong>③ 真实连接验证</strong><span>必须点击验证模型</span></div>
+  </div>
+  <div class="headless-next" role="status" aria-live="polite"><strong id="headless-next-title">先检测可用模型</strong><p id="headless-next-description">选择模型来源后点击「重新检测」。</p><button id="headless-next-action" type="button" class="primary headless-next-action" hidden>下一步</button></div>
+</div>
 <div class="fields"><div><label for="headless-source-profile">模型来源</label><select id="headless-source-profile"><option value="desktop">DSH Desktop</option><option value="web">DSH Web（使用 Web 时选择）</option></select></div></div>
 <div id="headless-sync-status" role="status" aria-live="polite" class="muted">尚未检查后台模型。</div>
 <div id="headless-provider-list" class="settings-stack"></div>
