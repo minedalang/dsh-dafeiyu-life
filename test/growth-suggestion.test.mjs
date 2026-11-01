@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
@@ -74,9 +75,18 @@ function mockHost({modelExit=0,personaPrompt='',characterLore='',badFirst=false}
   const fakeResult = `<GROWTH_PROPOSAL_JSON>${JSON.stringify({suggestion:recommendation,reason:'视频原句与空泛评价不是角色观点'})}</GROWTH_PROPOSAL_JSON>`
   writeFileSync(fakeBin, `const fs=require('fs'),path=require('path'); const file=path.join(process.cwd(),'growth-prompt-capture.txt');fs.writeFileSync(file,process.argv.at(-1)||'');let counter=path.join(process.cwd(),'growth-prompt-calls.txt');let n=Number(fs.existsSync(counter)?fs.readFileSync(counter,'utf8'):0)+1;fs.writeFileSync(counter,String(n));if(process.env.FAKE_GROWTH_FAIL){console.error('provider unavailable');process.exit(4)}console.log(n===1&&${badFirst}?${JSON.stringify('<GROWTH_PROPOSAL_JSON>'+JSON.stringify({suggestion:'应先用自己的话概括视频内容，再紧接一句具体评价，让评论更加客观自然。',reason:'错误的老套建议'})+'</GROWTH_PROPOSAL_JSON>')}:${JSON.stringify(fakeResult)})`)
   mkdirSync(join(home,'bili-duty'),{recursive:true})
+  // Headless tasks now require an explicitly tested model. Seed the fixture
+  // with a corresponding verified route rather than bypassing the guard.
+  mkdirSync(join(home,'profiles','desktop'),{recursive:true})
+  mkdirSync(join(home,'profiles','headless'),{recursive:true})
+  const source='[]\n',target='[]\n'
+  writeFileSync(join(home,'profiles','desktop','cordis.patch.yml'),source)
+  writeFileSync(join(home,'profiles','headless','cordis.patch.yml'),target)
+  const fingerprint=createHash('sha256').update(JSON.stringify(['desktop',source,'',target])).digest('hex')
+  writeFileSync(join(home,'bili-duty','headless-model-verified.json'),JSON.stringify({version:1,verified:[{profile:'desktop',provider:'fixture',model:'fixture-model',fingerprint}]}))
   writeFileSync(join(home,'bili-duty','config.json'),JSON.stringify({dshBin:fakeBin,personaPrompt,characterLore}))
   let handler
-  const ctx={get:k=>k==='dshHomePath'?(...parts)=>join(home,...parts):undefined,
+  const ctx={get:k=>k==='dshHomePath'?(...parts)=>join(home,...parts):k==='agentDefaultModel'?{currentSelection:()=>({provider:'fixture',model:'fixture-model'})}:undefined,
     logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
   apply(ctx,{dshBin:fakeBin})
   async function call(action,body={}){

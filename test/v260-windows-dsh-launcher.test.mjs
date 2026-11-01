@@ -60,7 +60,7 @@ test('DSH launch calls share the resolved native route and carry its environment
   assert.ok(index.includes('makeSafeDshLaunch(onPath)'))
   assert.ok(index.includes('env: dsh.env || {}')) // updater
   const spawnCount=(index.match(/spawn\(dsh\.command,\s*args/g)||[]).length
-  assert.equal(spawnCount,5)
+  assert.equal(spawnCount,6) // new explicit headless provider verification also launches DSH
   const envCount=(index.match(/\.\.\.\(dsh\.env \|\| \{\}\)|\.\.\.\(dsh\.env\|\|\{\}\)/g)||[]).length
-  assert.equal(envCount,5)
+  assert.equal(envCount,6)
 })

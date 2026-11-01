@@ -61,6 +61,10 @@ dsh plugin --profile desktop add "github:minedalang/dsh-dafeiyu-life#dev"
 
 **默认不授权对外写入**：主动私信、公开评论、自动发布动态、点赞、收藏、关注等须分别授权；可选 AI 语义检索与人格成长默认关闭。升级不会强制重置已有权限或偏好。
 
+**后台模型首次使用提醒：** **如果要运行独立视频 Agent 或独立视觉 Agent，必须先到「设置 → 大肥鱼 → AI 模型 → 后台模型同步与检测」，选中 Provider、预览、确认同步，并用真实 Headless 请求验证对应模型。** 未验证时，这类独立功能不会启动；纯文本功能在宿主模型服务可用时仍然可以使用。切换独立模型或修改 Provider 后需重新验证。
+
+**模型使用体验**：人生反思、后台互动、私信回复、动态草稿、表情包规则优化和记忆检索等纯文本任务会优先使用当前 DSH 宿主已注册的模型，直接发送**无工具**请求，不要求用户单独配置 headless。AI 模型页的「测试连接」会实测当前选择的 Provider；如果 DSH Desktop 本身报 `NO_ADAPTER`，请先在 DSH「Models」中修复该 Provider。需要 B站 MCP 的视频 Agent 和只读视觉 Agent 仍采用隔离进程，老版本 DSH 也保留兼容路径。
+
 **DSH 0.2.1 兼容说明**：dev.4 已补齐主 Session 人生回忆、长期记忆和自主待办等 7 个工具的新版输出协议，修复旧版在部分 0.2.1 宿主下无法挂载的问题（[Issue #6](https://github.com/minedalang/dsh-dafeiyu-life/issues/6)）；仍建议首次启动后检查日志和工具读回执，详见[发布说明](RELEASE_NOTES_v2.6.0-dev.4.md)。
 
 ## ⚙️ 升级后：恢复推荐设置值

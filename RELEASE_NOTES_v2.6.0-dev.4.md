@@ -92,3 +92,17 @@
 2. 独立执行 `node --test`、Python 测试、`node selfcheck.mjs`、`npm pack --dry-run`，并在实际 DSH Desktop/B站账号完成关键功能验收。
 3. 按 README 的「升级后：恢复推荐设置值」步骤提醒旧安装用户手动选择恢复组、预览并保存；**自动外发权限不应随推荐值恢复而变动**。
 4. 核对 [Issue #6](https://github.com/minedalang/dsh-dafeiyu-life/issues/6)：运行 `node --test test/v260-main-session-tool-mount.test.mjs`；实机启动还需确认 7 个工具无 `undefined.render` 警告，并检查 `dafeiyu_todo_list` 回执不再出现 `content.some is not a function`。
+
+### 纯文本后台模型统一使用宿主路由（开发预览）
+
+- 人生反思、后台互动、主人私信 Agent、动态草稿、AI 记忆检索、表情包规则优化及模型测试优先通过 DSH 当前宿主已注册的 LLM Adapter 发送无工具请求，无需另行复制模型 Provider 配置到 headless。
+- 未注册的自定义 Provider 返回明确的 `NO_ADAPTER`，不自动改用其他付费模型；如果 Desktop 自身无法使用 GPT，仍须先排查宿主 Provider 注册。
+- 工具型视频与只读视觉任务继续使用安全隔离的 headless 进程。仅使用新版宿主服务可用时的直连路径，旧版兼容回退仍需实机验证。
+
+
+### 后台模型同步与检测（发布前开发改造）
+
+- 在管理中心 AI 模型页预览、确认同步 Desktop/Web 自定义 Provider 到 Headless；不复制 API Key，不覆盖无关工具或权限。
+- 写入成功后仍必须实际通过无工具 Headless 连接测试；未经验证的独立视频/视觉/兼容任务在后台阻止执行，宿主纯文本路径不受影响。
+- 对全局共享 Provider 仅做连接验证，不重复覆盖 Headless 配置。
+- 本改造与 Host Model Bridge 合并交付，旧版 `2.6.0-dev.4` 用户无需另行应用 Bridge 补丁。

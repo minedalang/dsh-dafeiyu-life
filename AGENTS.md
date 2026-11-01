@@ -109,7 +109,13 @@
 ## Life Memory 分域反思（dev.4 扩展）
 
 - `private-social` 只能通过 `preparePrivateLifeEvent` 的可信身份筛选产生，统一提交 `LifeMemoryCoordinator`；原始 DM 文本不可写入 archive、episodic、candidates、outbox 和模型反思提示。
-- `LifeReflection` 的每个 AI 批次只能涵盖一个隐私域：公开、主人私密或一位好友私密；私密反思只能写到受限 private-insights，不能注入公开 `LongTermMemory`、公开视频动态或全局人格变化。
+- `LifeReflection` 的每个 AI 批次只能涵盖一个隐私域：公开、主人私密或一位好友私密；私密反思只能写到受限 private-insights，不能注入公开 `LongTermMemory` 或公开视频动态；允许经严格匿名、低敏、多来源证据校验的抽象人格特质参加成长，但绝不可向公开场景泄露源事实。
 - 私密经历与长期认识不能绕过 `LifeMemoryGateway` 的遗忘和 `SocialPolicyGate` 的 UID 权限；收到陌生人评论的公开经历仍应通过同一生命反思候选路径。
 - 通用数据备份不得包含私密 DM 派生记录；明确的独立人生记忆备份具有更高敏感等级。新增功能必须复测私密备份、模型调用前后证据可见性和角色变更。
 - 根 README 只展示六层 Life Memory 简图；实现细节保留在 `docs/architecture`。
+
+## dev.4 后台模型同步与强制验证
+
+- 用户只有在「AI 模型 → 后台模型同步与检测」中明确预览和确认，才能把选定 Desktop/Web Provider 定义合并到 Headless；原始 YAML、明文密钥、工具权限及身份数据不得复制。
+- 所有独立 Headless Agent/模型及纯文本兼容 fallback 都必须事前通过对应 Provider + 模型的真实无工具连接验证；修改源、目标或全局配置须吊销原验证。
+- 宿主 `ctx.llm` 无工具纯文本调用不需要 Headless 同步；不允许静默改用其他 Provider。README 的「升级后恢复推荐值」不可删除。

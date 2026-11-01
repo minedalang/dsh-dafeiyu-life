@@ -98,6 +98,8 @@ import { DEFAULT_CHARACTER_LORE, normalizeCharacterLore, normalizeMentionProfile
 import { normalizeFriendDirectory, directoryToLegacy } from './lib/friend-directory.mjs'
 import { shouldRunWindow, parsePeakWindows, readPeakWindows, activePeakWindow, DEFAULT_PEAK_INTERVAL_MINUTES } from './lib/peak-schedule.mjs'
 import { effectiveModelSelection } from './lib/model-routing.mjs'
+import { createHeadlessModelSync } from './lib/headless-model-sync.mjs'
+import { hostLlmService, runHostModelText } from './lib/host-model-call.mjs'
 import { HEADLESS_DENY_TOOLS, writeSecureHeadlessOverlay, validateHeadlessOverlayFile, assertSafeHeadlessLaunch } from './lib/headless-security.mjs'
 import { mergeWatchedRows } from './lib/watched.mjs'
 import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
@@ -397,6 +399,7 @@ export function apply(ctx, config) {
     return myVer
   }
   const stateDir = stateDirOf(ctx)
+  const headlessSync=createHeadlessModelSync({home:dirname(stateDir),stateDir})
   /**
    * ⚠️ 2026-10-19（用户 `天文星球` 的截图）：装转写依赖时 uv 直接 exit 2 ——
    *   `error: Could not acquire lock / failed to open file C:\Users\AP\AppData\Local\uv\cache\.lock: 拒绝访问 (os error 5)`
@@ -1744,6 +1747,29 @@ function reportMeta() {
     return { missing: true, hint }
   }
 
+  // Every independently launched Agent or fallback model MUST pass the verified
+  // provider+model gate. Host-only text calls never pass through this gate.
+  function headlessSelection(task) {
+    const current=ctx.get('agentDefaultModel')?.currentSelection?.() ?? {}
+    const routes={
+      main:{provider:cfg.videoModelProvider,model:cfg.videoModelId},
+      vision:{provider:cfg.visionModelProvider||cfg.videoModelProvider,model:cfg.visionModelId||cfg.videoModelId},
+      memory:{provider:cfg.mainSessionMemoryModelProvider,model:cfg.mainSessionMemoryModelId},
+      reflection:{provider:cfg.mainSessionReflectionModelProvider,model:cfg.mainSessionReflectionModelId},
+      interaction:{provider:cfg.interactionModelProvider,model:cfg.interactionModelId},
+      dailyDynamic:{provider:cfg.dailyDynamicModelProvider||cfg.interactionModelProvider,model:cfg.dailyDynamicModelId||cfg.interactionModelId},
+      ownerDmAgent:{provider:cfg.ownerDmAgentModelProvider||cfg.interactionModelProvider,model:cfg.ownerDmAgentModelId||cfg.interactionModelId},
+      memeRules:{provider:cfg.memeRulesModelProvider,model:cfg.memeRulesModelId},
+    }
+    const selected=routes[task]||routes.interaction
+    return {provider:String(selected.provider||current.provider||current.providerId||''),
+      model:String(selected.model||current.model||current.modelId||'')}
+  }
+  function assertVerifiedHeadless(args,overlay,meta,task) {
+    headlessSync.assertReady(headlessSelection(task))
+    return assertSafeHeadlessLaunch(args,overlay,meta)
+  }
+
   // ⭐ 私信默认化（2026-10-21）：用户常常只填了「@ 谁」的昵称、没填 UID
   //    ⇒ 我们按昵称替他查一次 mid 并缓存；**查不到就降级回只发评论**（绝不能"默认私信"却一条都送不出去 ✗）
   let dmUidCache = 0
@@ -2091,7 +2117,7 @@ function reportMeta() {
         const visionOverlay=ensureVisionOverlay()
         if (!visionOverlay) throw new Error('独立视觉安全 overlay 生成失败')
         const visionArgs=[...vdsh.args,'--profile','headless','--patch',visionOverlay]
-        assertSafeHeadlessLaunch(visionArgs,visionOverlay,{kind:'vision',stateDir})
+        assertVerifiedHeadless(visionArgs,visionOverlay,{kind:'vision',stateDir},'vision')
         independentVisionArgv=JSON.stringify([vdsh.command,...visionArgs])
       } catch (e) {log('独立视觉 DSH 初始化失败：'+String(e?.message||e));}
     }
@@ -2104,7 +2130,7 @@ function reportMeta() {
         if(mDsh.missing||mDsh.shell)throw Error('没有可直接执行的 DSH CLI')
         const memOverlay=ensureMemoryOverlay()
         const memArgs=[...mDsh.args,'--profile','headless','--patch',memOverlay]
-        assertSafeHeadlessLaunch(memArgs,memOverlay,{kind:'memory',stateDir})
+        assertVerifiedHeadless(memArgs,memOverlay,{kind:'memory',stateDir},'memory')
         memoryModelArgv=JSON.stringify([mDsh.command,...memArgs])
       }catch(e){log('独立记忆检索路由不可用（视频侧退回本地）：'+String(e?.message||e).slice(0,140))}
     }
@@ -2271,7 +2297,7 @@ function reportMeta() {
     const args = [...dsh.args, '--profile', 'headless']
     if (!overlay) return { started:false, why, error:'安全隔离 overlay 创建失败，已拒绝启动刷视频 Agent' }
     args.push('--patch', overlay)
-    try { assertSafeHeadlessLaunch(args,overlay,{kind:'main',stateDir}) }
+    try { assertVerifiedHeadless(args,overlay,{kind:'main',stateDir},'main') }
     catch (e) { return {started:false,why,error:'安全隔离校验失败，已拒绝启动：'+String(e?.message||e)} }
     const watchedBeforeRun=new Set(parseSeenTable().filter(x=>x.picked).map(x=>x.bvid))
     const pickedBeforeRun = countPickedToday()
@@ -2682,6 +2708,14 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     rows.push(...effectiveModelSelection({}, {provider:cfg.mainSessionMemoryModelProvider,model:cfg.mainSessionMemoryModelId,reasoningEffort:cfg.mainSessionMemoryReasoningEffort},yq))
     return writeSecureHeadlessOverlay(file,rows.join('\n'),{kind:'memory',stateDir})
   }
+  // Prefer the active HOST's registered model adapters for tool-free tasks.
+  // The headless CLI remains a compatibility fallback only if this DSH version
+  // does not offer ctx.llm; it is never used to evade an unavailable adapter.
+  const hostModel = () => hostLlmService(ctx)
+  const hostSelection = () => ctx.get('agentDefaultModel')?.currentSelection?.() ?? null
+  const hostText = (llm, prompt, custom, maxChars, timeoutMs) => runHostModelText({
+    llm, prompt, selection:hostSelection(), custom, maxChars, timeoutMs,
+  })
   // UI model connection checks: deliberately do not mount Bilibili, filesystem, shell,
   // memory read, or ANY model-facing MCP tool; never write normal task telemetry.
   const modelTestNextAt = new Map()
@@ -2690,6 +2724,13 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
 
   async function invokeMemeRulesUpdatePrompt(promptText) {
     refreshCfg()
+    const native = hostModel()
+    if (native) {
+      const current = hostSelection()
+      const custom = { provider:cfg.memeRulesModelProvider, model:cfg.memeRulesModelId, reasoningEffort:cfg.memeRulesReasoningEffort }
+      recordModelTask(stateDir,'memeRules')
+      return hostText(native, promptText, custom, 120_000, 90_000)
+    }
     const dsh=resolveDsh()
     if(dsh.missing)throw Error('DSH 命令不可用：'+String(dsh.hint||''))
     const yq=v=>"'"+String(v).replace(/'/g,"''")+"'"
@@ -2704,7 +2745,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     rows.push(...effectiveModelSelection(current,customSelection,yq))
     const overlay=writeSecureHeadlessOverlay(join(stateDir,'headless-model-test-overlay.yml'),rows.join('\n'),{kind:'model-test',stateDir})
     const args=[...dsh.args,'--profile','headless','--patch',overlay,promptText]
-    assertSafeHeadlessLaunch(args,overlay,{kind:'model-test',stateDir})
+    assertVerifiedHeadless(args,overlay,{kind:'model-test',stateDir},'memeRules')
     recordModelTask(stateDir,'memeRules')
     return new Promise((resolve,reject)=>{
       const child=spawn(dsh.command,args,{cwd:stateDir,shell:dsh.shell,windowsHide:true,stdio:['ignore','pipe','pipe'],env:uvEnv({BILI_DUTY_HOME:stateDir,...(process.versions.electron?{ELECTRON_RUN_AS_NODE:'1'}:{}),...(dsh.env||{})})})
@@ -2727,6 +2768,21 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     const started = Date.now()
     try {
       refreshCfg()
+      const native = hostModel()
+      if (native) {
+        const prefix=task==='reflection'?'mainSessionReflection':task
+        let custom=task==='memory'
+          ? {provider:cfg.mainSessionMemoryModelProvider,model:cfg.mainSessionMemoryModelId,reasoningEffort:cfg.mainSessionMemoryReasoningEffort}
+          : {provider:cfg[prefix+'ModelProvider'] || (task==='vision'?cfg.videoModelProvider:''),
+             model:cfg[prefix+'ModelId'] || (task==='vision'?cfg.videoModelId:''),
+             reasoningEffort:cfg[prefix+'ReasoningEffort'] || (task==='vision'?cfg.videoReasoningEffort:'')}
+        if(task==='ownerDmAgent')custom={provider:cfg.ownerDmAgentModelProvider||cfg.interactionModelProvider,model:cfg.ownerDmAgentModelId||cfg.interactionModelId,reasoningEffort:cfg.ownerDmAgentReasoningEffort||cfg.interactionReasoningEffort}
+        if(task==='dailyDynamic')custom={provider:cfg.dailyDynamicModelProvider||cfg.interactionModelProvider,model:cfg.dailyDynamicModelId||cfg.interactionModelId,reasoningEffort:cfg.dailyDynamicReasoningEffort||cfg.interactionReasoningEffort}
+        const answer=await hostText(native,'这是一个只读模型连接自检。不要调用任何工具，不要讲解，只回复：DAFEIYU_MODEL_TEST_OK',custom,500,45_000)
+        if(!answer.includes('DAFEIYU_MODEL_TEST_OK'))throw Error('模型已响应，但没有返回预期连接标记')
+        return {ok:true,task,elapsedMs:Date.now()-started,checkedAt:new Date().toISOString(),
+          note:task==='vision'?'已验证宿主纯文本模型连接；独立 headless 的图片识别仍须另行验证':'已通过 DSH 当前宿主注册的 Provider 实际调用；未挂载任何工具'}
+      }
       const dsh=resolveDsh()
       if(dsh.missing)throw Error('DSH 命令不可用：'+String(dsh.hint||''))
       if(task==='memory' && (!cfg.mainSessionMemoryModelProvider || !cfg.mainSessionMemoryModelId))
@@ -2751,7 +2807,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       const overlay=writeSecureHeadlessOverlay(join(stateDir,'headless-model-test-overlay.yml'),rows.join('\n'),{kind:'model-test',stateDir})
       const prompt='这是一个只读模型连接自检。不要调用任何工具，不要讲解，只回复：DAFEIYU_MODEL_TEST_OK'
       const args=[...dsh.args,'--profile','headless','--patch',overlay,prompt]
-      assertSafeHeadlessLaunch(args,overlay,{kind:'model-test',stateDir})
+      assertVerifiedHeadless(args,overlay,{kind:'model-test',stateDir},task)
       const answer=await new Promise((resolve,reject)=>{
         const child=spawn(dsh.command,args,{cwd:stateDir,shell:dsh.shell,windowsHide:true,stdio:['ignore','pipe','pipe'],env:uvEnv({BILI_DUTY_HOME:stateDir,...(process.versions.electron?{ELECTRON_RUN_AS_NODE:'1'}:{}),...(dsh.env||{})})})
         let out='',err='',done=false
@@ -2771,11 +2827,18 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   async function invokeMemoryPrompt(promptText,maxChars=4200) {
     refreshCfg()
     if(cfg.mainSessionMemoryEnabled!==true||cfg.mainSessionMemorySemanticEnabled!==true)throw Error('独立记忆检索没有开启')
+    const native=hostModel()
+    if(native){
+      if(!cfg.mainSessionMemoryModelProvider||!cfg.mainSessionMemoryModelId)throw Error('请填写独立记忆检索模型的 Provider 与模型 ID')
+      recordModelTask(stateDir,'memory')
+      return hostText(native,String(promptText).slice(0,16500),{provider:cfg.mainSessionMemoryModelProvider,model:cfg.mainSessionMemoryModelId,reasoningEffort:cfg.mainSessionMemoryReasoningEffort},maxChars,35_000)
+    }
+    if(cfg.mainSessionMemoryEnabled!==true||cfg.mainSessionMemorySemanticEnabled!==true)throw Error('独立记忆检索没有开启')
     if(!cfg.mainSessionMemoryModelProvider||!cfg.mainSessionMemoryModelId)throw Error('请在管理中心填写专用检索模型的 Provider 与模型 ID')
     const dsh=resolveDsh();if(dsh.missing)throw Error('独立记忆检索 DSH 命令不可用')
     const overlay=ensureMemoryOverlay()
     const args=[...dsh.args,'--profile','headless','--patch',overlay,String(promptText).slice(0,16500)]
-    assertSafeHeadlessLaunch(args,overlay,{kind:'memory',stateDir})
+    assertVerifiedHeadless(args,overlay,{kind:'memory',stateDir},'memory')
     recordModelTask(stateDir,'memory')
     return new Promise((resolve,reject)=>{
       const child=spawn(dsh.command,args,{cwd:stateDir,shell:dsh.shell,windowsHide:true,stdio:['ignore','pipe','pipe'],env:uvEnv({BILI_DUTY_HOME:stateDir,...(process.versions.electron?{ELECTRON_RUN_AS_NODE:'1'}:{}),...(dsh.env||{})})})
@@ -2792,6 +2855,15 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   async function invokeInteractionPrompt(promptText, maxChars = 450, { requireMasterEnabled = true, modelRoute = 'interaction' } = {}) {
     refreshCfg()
     if (requireMasterEnabled && cfg.masterEnabled !== true) throw new Error('大肥鱼已暂停，不生成互动回复')
+    const native=hostModel()
+    if(native){
+      let custom={provider:cfg.interactionModelProvider,model:cfg.interactionModelId,reasoningEffort:cfg.interactionReasoningEffort}
+      if(modelRoute==='reflection')custom={provider:cfg.mainSessionReflectionModelProvider,model:cfg.mainSessionReflectionModelId,reasoningEffort:cfg.mainSessionReflectionReasoningEffort}
+      if(modelRoute==='dailyDynamic')custom={provider:cfg.dailyDynamicModelProvider||cfg.interactionModelProvider,model:cfg.dailyDynamicModelId||cfg.interactionModelId,reasoningEffort:cfg.dailyDynamicReasoningEffort||cfg.interactionReasoningEffort}
+      if(modelRoute==='ownerDmAgent')custom={provider:cfg.ownerDmAgentModelProvider||cfg.interactionModelProvider,model:cfg.ownerDmAgentModelId||cfg.interactionModelId,reasoningEffort:cfg.ownerDmAgentReasoningEffort||cfg.interactionReasoningEffort}
+      recordModelTask(stateDir,modelRoute)
+      return hostText(native,promptText,custom,maxChars,120_000)
+    }
     const dsh = resolveDsh()
     if (dsh.missing) throw new Error('DSH 命令不可用：' + dsh.hint)
     // 互动和人生反思使用各自的安全 headless overlay；两者都不挂载 B站 MCP、文件或 Shell 工具。
@@ -2802,7 +2874,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     const overlay = ensureOverlay(true, reflectionRoute ? 'reflection' : dynamicRoute ? 'dailyDynamic' : ownerAgentRoute ? 'ownerDmAgent' : 'interaction')
     if (!overlay) throw new Error(reflectionRoute ? '生成专用人生反思 DSH overlay 失败' : '生成私信专用 DSH overlay 失败')
     const args = [...dsh.args, '--profile', 'headless', '--patch', overlay, promptText]
-    assertSafeHeadlessLaunch(args,overlay,{kind:reflectionRoute?'reflection':dynamicRoute?'dailyDynamic':ownerAgentRoute?'ownerDmAgent':'dm',stateDir})
+    assertVerifiedHeadless(args,overlay,{kind:reflectionRoute?'reflection':dynamicRoute?'dailyDynamic':ownerAgentRoute?'ownerDmAgent':'dm',stateDir},modelRoute)
     recordModelTask(stateDir,reflectionRoute?'reflection':dynamicRoute?'dailyDynamic':ownerAgentRoute?'ownerDmAgent':'interaction')
     return new Promise((resolve, reject) => {
       const child = spawn(dsh.command, args, {
@@ -4897,6 +4969,55 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
         const rows=buildLifeTimeline({watched:parseSeenTable(),comments,emotionHistory:emotion.history,relationshipRows:relationships,days,limit:160})
         return sendJson(res,200,{ok:true,days,rows,privacy:'仅展示公开经历与情绪类别；不展示私信正文或私人画像内容'})
       }catch(e){return sendJson(res,400,{ok:false,error:'生活时间线读取失败：'+String(e?.message||e).slice(0,180)})}
+    }
+
+    // Explicit, same-origin model-configuration mutation. No user paths or YAML
+    // content are accepted. A preview token binds consent to current file hashes.
+    if (path.startsWith('/api/bili-duty/headless-model/')) {
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'只允许同源管理中心操作模型同步'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站模型配置请求'})
+      try {
+        const action=path.slice('/api/bili-duty/headless-model/'.length)
+        if(req.method==='GET'&&action==='status')return sendJson(res,200,await headlessSync.status(url.searchParams.get('profile')||'desktop'))
+        if(req.method!=='POST')return sendJson(res,405,{ok:false,error:'只允许 POST 模型同步操作'})
+        const body=await readBody(req)
+        if(action==='preview')return sendJson(res,200,await headlessSync.preview(body?.profile||'desktop',body?.selected))
+        if(action==='sync')return sendJson(res,200,await headlessSync.sync({profile:body?.profile||'desktop',selected:body?.selected,previewToken:body?.previewToken}))
+        if(action==='verify') {
+          const provider=String(body?.provider||''),model=String(body?.model||'')
+          if(modelTestBusy)return sendJson(res,409,{ok:false,error:'另一个模型连接测试正在进行'})
+          modelTestBusy=true
+          try {
+            const result=await headlessSync.verified({profile:body?.profile||'desktop',provider,model,probe:async(route)=>{
+              const dsh=resolveDsh()
+              if(dsh.missing||dsh.shell)throw Error('无法安全启动 DSH headless CLI：'+String(dsh.hint||''))
+              const yq=x=>"'"+String(x).replace(/'/g,"''")+"'"
+              const rows=[]
+              for(const id of HEADLESS_DENY_TOOLS)rows.push('- id: '+id,'  disabled: true','')
+              for(const id of ['credentials','authorization','deepseek-account'])rows.push('- id: '+id,'  disabled: false','')
+              rows.push(...effectiveModelSelection({},route,yq))
+              const overlay=writeSecureHeadlessOverlay(join(stateDir,'headless-provider-verify-overlay.yml'),rows.join('\n'),{kind:'model-test',stateDir})
+              const args=[...dsh.args,'--profile','headless','--patch',overlay,'只读模型连接验证，请仅输出 DAFEIYU_HEADLESS_OK，不执行工具。']
+              assertSafeHeadlessLaunch(args,overlay,{kind:'model-test',stateDir})
+              const response=await new Promise((resolve,reject)=>{
+                const child=spawn(dsh.command,args,{cwd:stateDir,shell:false,windowsHide:true,stdio:['ignore','pipe','pipe'],env:uvEnv({BILI_DUTY_HOME:stateDir,...(process.versions.electron?{ELECTRON_RUN_AS_NODE:'1'}:{}),...(dsh.env||{})})})
+                let out='',err='',done=false
+                const finish=(e,v)=>{if(done)return;done=true;clearTimeout(timer);if(e)reject(e);else resolve(v)}
+                const timer=setTimeout(()=>{try{child.kill()}catch{};finish(Error('headless 连接验证超时（45 秒）'))},45_000)
+                timer.unref?.()
+                child.stdout?.on('data',b=>{out=(out+String(b)).slice(-1800)})
+                child.stderr?.on('data',b=>{err=(err+String(b)).slice(-1200)})
+                child.on('error',e=>finish(Error('headless 启动失败：'+String(e.message||e).slice(0,170))))
+                child.on('close',code=>code===0?finish(null,out):finish(Error('headless 模型验证失败（exit='+code+'）：'+err.slice(-330))))
+              })
+              if(!response.includes('DAFEIYU_HEADLESS_OK'))throw Error('后台模型返回内容不符合验证标记')
+            }})
+            return sendJson(res,200,result)
+          } finally {modelTestBusy=false}
+        }
+        return sendJson(res,404,{ok:false,error:'未知后台模型操作'})
+      } catch(e) {return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,350)})}
     }
 
     if (req.method === 'GET' && path === '/api/bili-duty/model-usage') {

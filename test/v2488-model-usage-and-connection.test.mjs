@@ -79,7 +79,7 @@ test('页面每个模型都有调用统计和独立测试按钮，测试请求�
   const testing=server.slice(start,end)
   assert.doesNotMatch(testing,/recordModelTask\(/)
   assert.match(testing,/modelTestNextAt/)
-  assert.match(testing,/assertSafeHeadlessLaunch\(args,overlay,\{kind:'model-test',stateDir\}\)/)
+  assert.match(testing,/assertVerifiedHeadless\(args,overlay,\{kind:'model-test',stateDir\},task\)/)
   assert.match(testing,/DAFEIYU_MODEL_TEST_OK/)
   assert.match(html,/独立视觉的测试只验证文字连接/)
   assert.match(html,/测试连接不计入统计/)
