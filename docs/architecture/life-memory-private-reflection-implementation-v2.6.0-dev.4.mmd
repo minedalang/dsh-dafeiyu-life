@@ -1,0 +1,29 @@
+flowchart TD
+  subgraph IN[真实入口与来源验证]
+    S[主 Session: dafeiyu_remember 验证成功]
+    O[主人 B站私信: UID 验证与 Agent Claim]
+    F[好友 B站私信: friendDirectory 与 UID]
+    C[陌生人及其他公开评论: 真实 BV/RPID]
+  end
+  S --> P[PrivateLifePolicy: 只提炼安全交互经验]
+  O --> P
+  F --> P
+  C --> SC[SocialInteractionCoordinator: 公开经历入站]
+  P --> CO[LifeMemoryCoordinator: 可恢复事件 outbox]
+  SC --> CO
+  CO --> G[LifeMemoryGateway: 受控归档与可衰减副本]
+  CO --> Q[LifeReflection: 共享候选调度]
+  G -. 当前可见证据、不可查归档 .-> Q
+  Q --> PR[公开反思批次]
+  Q --> OR[主人私有反思批次]
+  Q --> FR[每位好友独立私有反思批次]
+  PR --> LM[LongTermMemory: 公共反思现有受控通道]
+  OR --> PI[PrivateInsights: owner-private]
+  FR --> PI2[PrivateInsights: friend-private / UID]
+  PR --> PE[公开人格与情绪候选]
+  PI --> R[MemoryRetriever / SocialContextAssembler 权限门]
+  PI2 --> R
+  LM --> R
+  R --> MAIN[认证主 Session / 主人 DM]
+  R --> DM[认证好友本人的 DM]
+  R --> PUBLIC[公开视频/评论/动态: 不可读取私密反思]

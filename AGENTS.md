@@ -105,3 +105,11 @@
 ## 当前 dev 分支安装约束
 
 用户的 Windows Desktop 发布工作流是：本地改源码 → 生成/审查 Git Patch → 分别执行 Node、Python、自检与打包测试 → `git commit` → `git push origin dev` → `dsh plugin --profile desktop add "github:minedalang/dsh-dafeiyu-life#dev"`。严禁建议恢复 `deploy-local.ps1`、本地 `dsh plugin add .`、Junction 或本地 tgz 安装。
+
+## Life Memory 分域反思（dev.4 扩展）
+
+- `private-social` 只能通过 `preparePrivateLifeEvent` 的可信身份筛选产生，统一提交 `LifeMemoryCoordinator`；原始 DM 文本不可写入 archive、episodic、candidates、outbox 和模型反思提示。
+- `LifeReflection` 的每个 AI 批次只能涵盖一个隐私域：公开、主人私密或一位好友私密；私密反思只能写到受限 private-insights，不能注入公开 `LongTermMemory`、公开视频动态或全局人格变化。
+- 私密经历与长期认识不能绕过 `LifeMemoryGateway` 的遗忘和 `SocialPolicyGate` 的 UID 权限；收到陌生人评论的公开经历仍应通过同一生命反思候选路径。
+- 通用数据备份不得包含私密 DM 派生记录；明确的独立人生记忆备份具有更高敏感等级。新增功能必须复测私密备份、模型调用前后证据可见性和角色变更。
+- 根 README 只展示六层 Life Memory 简图；实现细节保留在 `docs/architecture`。

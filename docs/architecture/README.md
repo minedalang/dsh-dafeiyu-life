@@ -2,6 +2,15 @@
 
 本目录面向维护者。根 README 只保留简要功能说明及本目录入口，不展示全部内部调用链。
 
+## Life Memory 高层设计与实现映射
+
+- [README 同款六层简图（SVG）](./life-memory-overview-v2.6.0-dev.4.svg)：面向读者，不包括底层 API 和具体实现。
+- [可编辑的 Mermaid 六层简图](./life-memory-overview-v2.6.0-dev.4.mmd)：与 README 展示图内容对应。
+- [分域反思权限、保留与备份契约](./life-memory-domain-reflection-v2.6.0-dev.4.md)：来源矩阵、分级记忆和剩余边界。
+- [私密经历与分域反思实现映射](./life-memory-private-reflection-implementation-v2.6.0-dev.4.mmd)：区分主人主 Session / 主人 DM / 各 UID 好友 DM、受限反思及公共评论路径。
+
+**关键边界：** 私密来源只形成经过确定性过滤的短摘要，不将原始 DM 原文作为反思证据；反思证据只来自当前尚未遗忘的经历副本；各私密域独立批次，私密领悟不可直接进入公开记忆、动态或公共人格投影。陌生人公开评论继续作为公开视频社交经历参与反思候选。
+
 ## 当前实现与开发依据
 
 - [dev.4 实际统一层接线图](./diagrams/implemented-unification-v2.6.0-dev.4.mmd)：依据源码核对的实现图；专用证据读取与共享策略层有明确边界。

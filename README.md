@@ -92,29 +92,9 @@ dsh-dafeiyu-life 已发布到 [DeepSeek Harness（DSH）](https://github.com/dee
 
 #### 一段经历，怎样成为鱼鱼的一部分？
 
-```mermaid
-flowchart TB
-    TODAY["🌊 经历生活<br/>看视频 · 聊天 · 相遇"]
-    RECALL["🫧 留下记忆<br/>清晰 → 模糊 → 遗忘"]
-    GROW["🌱 有所成长<br/>形成兴趣 · 体会 · 关系"]
-    CHOOSE["🐟 做出新选择<br/>影响以后的交流与探索"]
-    ARCHIVE["🔒 真实档案<br/>仅备份与管理"]
+![Life Memory：人生记忆与成长](docs/architecture/life-memory-overview-v2.6.0-dev.4.svg)
 
-    TODAY --> RECALL --> GROW --> CHOOSE
-    CHOOSE -. "新的生活" .-> TODAY
-    TODAY -. "独立保存" .-> ARCHIVE
-
-    classDef sea fill:#e7f4ff,stroke:#57a5d9,color:#164a6d,stroke-width:1.5px;
-    classDef memory fill:#f2eeff,stroke:#9b83d8,color:#493578,stroke-width:1.5px;
-    classDef leaf fill:#e7f8ee,stroke:#64b888,color:#215b39,stroke-width:1.5px;
-    classDef fish fill:#fff3de,stroke:#daa75a,color:#79501c,stroke-width:1.5px;
-    classDef archive fill:#f3f4f6,stroke:#b2bac3,color:#555c69,stroke-dasharray:4 3;
-    class TODAY sea;
-    class RECALL memory;
-    class GROW leaf;
-    class CHOOSE fish;
-    class ARCHIVE archive;
-```
+鱼鱼会从真实生活中积累经历、逐渐遗忘细节并形成自己的认识；公开和私密经历可以在各自权限范围内参与反思，但不会把私人交流带进公开评论或动态。[查看详细技术架构](docs/architecture/README.md)。
 
 完整历史由**永久事实档案（仅备份 / 管理审计）**独立保存，**日常 AI 不可直接回读**；鱼鱼实际能够想起的，只能是当前还没有忘记、且被允许访问的记忆。即使管理员留着原始记录，也不会让她假装自己还记得。
 

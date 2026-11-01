@@ -71,6 +71,7 @@ import { createSocialPolicyGate } from './lib/social-policy-gate.mjs'
 import { createSocialContextAssembler } from './lib/social-context-assembler.mjs'
 import { createSocialInteractionCoordinator } from './lib/social-interaction-coordinator.mjs'
 import { createLifeMemoryCoordinator } from './lib/life-memory-coordinator.mjs'
+import {preparePrivateLifeEvent} from './lib/life-private-policy.mjs'
 import { createMemoryConsolidator } from './lib/memory-consolidation.mjs'
 import { createOwnerCommentAgent } from './lib/owner-comment-agent.mjs'
 import { createEmotionRecall } from './lib/emotion-recall.mjs'
@@ -2526,6 +2527,10 @@ function reportMeta() {
     readMainContext:async(opt)=>mainSessionBridge?.ownerDmContext(opt)||{available:false,lines:[]},
     getPersona:()=>effectivePersonaPrompt(cfg.personaPrompt).slice(0,900)+' '+emotionalState.styleHint(),
     getContext:async({uid,text,history})=>socialContextAssembler?.ownerDm({uid,text,history})||{},
+    onPrivateExperience:async({uid,text,eventId,at})=>{
+      const event=preparePrivateLifeEvent({source:'owner-dm',role:socialPolicyGate.actor(uid).role,uid,eventId,text,at})
+      if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人私信私密经历待补偿：'+String(result.lastError||''))}
+    },
     decideAgency:({uid,messageId,text,intent,target})=>dualContextAgency.decide({source:'bili-dm',uid,messageId,text,intent,target}),
     writeMain:async(e)=>mainSessionBridge?.injectOwnerDmExperience(e)||{ok:false},
     executeRead:async(step)=>{
@@ -2868,7 +2873,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     recordCognition:data=>data?socialCognition.recordPrepared(data):{ok:true},
     recordInterest:data=>data?recordPreparedFriendInterest(stateDir,data,{friendDirectory:cfg.friendDirectory}):{ok:true},
     recordRelationship:data=>data?recordFriendInteraction(stateDir,{...data,now:data.at||Date.now(),friendDirectory:cfg.friendDirectory}):{ok:true},
-    recordLifeEvent:data=>data?lifeMemoryCoordinator.recordEvents([data],{reflect:false}):{ok:true},
+    recordLifeEvent:data=>data?lifeMemoryCoordinator.recordEvents([data],{reflect:true}):{ok:true},
     recordReply:async({uid,bvid,rpid,text,at})=>{
       const recorded=lifeMemory?.recordSocialReply({actorUid:uid,bvid,incomingRpid:rpid,text,at})
       if(recorded?.ok===false&&recorded.reason==='original-episode-unavailable')return {ok:true,skipped:'forgotten'}
@@ -2909,7 +2914,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       const role=socialPolicyGate.actor(uid).role
       const cognition=socialCognition.prepareObservation({uid,text,source:'dm',eventId:messageId,timestampMs:time})
       const interest=socialPolicyGate.canLearn({uid,kind:'dm'})?prepareFriendInterestObservation({uid,text,source:'dm',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory}):null
-      return socialInteractionCoordinator?.record({type:'incoming',source:'dm',eventKey:messageId,actorUid:uid,role,at:time,cognition,interest})
+      const lifeEvent=preparePrivateLifeEvent({source:role==='owner'?'owner-dm':'friend-dm',role,uid,eventId:messageId,text,at:time})
+      return socialInteractionCoordinator?.record({type:'incoming',source:'dm',eventKey:messageId,actorUid:uid,role,at:time,cognition,interest,lifeEvent})
     },
     generateReply: async (req) => {
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
@@ -2948,6 +2954,12 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     getPersona:batch=>buildInteractionPersona(batch),
     getIdentity:uid=>replyIdentityContext(uid),
     getRelationship:uid=>friendRelationshipContext(stateDir,uid,cfg.friendDirectory),
+    getPrivateLifeContext:({uid,role,query})=>{
+      // Only this authenticated private DM; public comments never call here.
+      const episodes=lifeMemory?.recall({query,domain:'bili-dm',role,actorUid:uid,kinds:['private-social'],maxItems:3,maxChars:650})||[]
+      const insights=lifeMemory?.privateInsights({query,domain:'bili-dm',role,actorUid:uid,maxItems:3})||[]
+      return [...episodes.map(x=>x.summary),...insights.map(x=>x.text)].filter(Boolean).map(x=>'- '+x).join('\n').slice(0,850)
+    },
     videoContext,logger:{warn:m=>log('社交上下文：'+m)},
   })
   const ownerCommentAgent=createOwnerCommentAgent({
@@ -3471,6 +3483,10 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     },
     getGrowthPrompt: ({query=''}) => [buildGrowthContext(stateDir,{scene:'chat',query,maxChars:1000}),personalityContext('chat',500)].filter(Boolean).join('\n'),
     getRetriever: () => memoryRetriever,
+    onOwnerMemorySaved:async({text,eventId,at})=>{
+      const event=preparePrivateLifeEvent({source:'owner-session',role:'owner',eventId,text,at,validated:true})
+      if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人主 Session 经历待补偿：'+String(result.lastError||result.reason||''))}
+    },
     getExperienceRecall: (query,limit) => lifeMemory?.recall({query,domain:'main-session',maxItems:limit,maxChars:3000}).map(x=>({kind:x.kind,time:x.at,summary:x.summary}))||[],
     getTodoEngine: () => ownerTodos,
     runTodo: (id) => ownerTodos.run(id,executeOwnerTodo),
@@ -3485,6 +3501,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     invokeModel:(prompt,maxChars)=>invokeMemoryPrompt(prompt,maxChars),
     getEpisodes:(query,options)=>lifeMemory?.recall({query,domain:options?.domain||'main-session',role:options?.role||'owner',actorUid:options?.actorUid||'',excludeEventKey:options?.excludeEventKey||'',kinds:options?.kinds||null,maxItems:options?.maxItems||6,maxChars:options?.maxChars||800})||[],
     getEpisodeCandidates:(options)=>lifeMemory?.semanticCandidates(options)||[],
+    getPrivateInsights:(opts)=>lifeMemory?.privateInsights(opts)||[],
     getDailyUsage:()=>{const usage=readModelTaskUsage(stateDir);return {day:usage.day,used:usage.tasks.memory.today}},
     logger:{warn:m=>log('⚠️ '+m)},
   })
