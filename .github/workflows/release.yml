@@ -30,6 +30,8 @@ jobs:
           node --check index.js
           node --check client.js
           node --check selfcheck.mjs
+      - name: Regression checks for DSH 0.2.1 main Session tools and local timestamps
+        run: node --test test/v260-main-session-tool-mount.test.mjs test/dev4-console-time-display.test.mjs
       - name: Pack installable npm archive
         run: npm pack --ignore-scripts
       - name: Detect version-specific release notes
@@ -49,4 +51,7 @@ jobs:
           files: dsh-dafeiyu-life-*.tgz
           body_path: ${{ steps.release_notes.outputs.body_path }}
           generate_release_notes: ${{ steps.release_notes.outputs.has_notes != 'true' }}
+          # A -dev/-rc Git tag is a preview: never overwrite stable Latest.
+          prerelease: ${{ contains(github.ref_name, '-dev.') || contains(github.ref_name, '-rc.') }}
+          make_latest: ${{ contains(github.ref_name, '-') && 'false' || 'true' }}
           fail_on_unmatched_files: true

@@ -1,6 +1,8 @@
 # 大肥鱼 2.6.0-dev.4（开发版）
 
-> 本文说明 dev.4 的开发与升级目标；实际发布以及 DSH Desktop/B站实机验收，以最终构建和测试报告为准。升级之前请先备份完整业务数据与重要人生记忆。
+> `v2.6.0-dev.4` 是开发预览版（Pre-release）。发布前建议先备份完整业务数据与重要人生记忆；真实 DSH Desktop/B站接口的兼容情况以安装后的验收为准。
+
+> **发布前验收状态**：[Issue #6](https://github.com/minedalang/dsh-dafeiyu-life/issues/6) 已按原始报告核对：dev.4 源码中 7 个主 Session 工具均声明 `output.schema` 和返回内容块数组的 `output.render`，并通过模拟 DSH 0.2.1 宿主的注册与回执回归测试；**尚未在真实 `0.2.1-rc.4` Desktop 现场验收**。发布时须明确此边界。
 
 ## 本轮核心方向
 
@@ -60,11 +62,33 @@
 新安装默认启用保守的主人聊天语义记忆凝练；已明确关闭的配置继续有效。统一默认配置、Schema 与管理面板保存路径均包含此字段，确保读取和保存一致。自动凝练仍要求至少 100 条可整理语义记忆、至少 3 条同主题，且每天最多运行一次；不会把原始 B站私信或主 Session 全部聊天自动写入 Life Memory。
 
 
-## 分域 Life Memory 反思增量（当前 dev.4 的后续补丁）
+## Life Memory 分域反思与分级记忆
 
 - 主人主 Session 经过确认并成功写入的语义事实、主人私信与白名单好友私信中的有意义交流，可形成受限的可衰减经历候选；不逐字归档普通对话。
 - 陌生人公开评论经 SocialInteractionCoordinator 正常提交公开反思候选，不将陌生人的私人 DM 建立为可识别长期个人档案。
 - 公开、主人、每位好友分域调度反思；私密认识单独存储，仅相应已认证私聊场景可读，不进入公开人格/动态。
 - 通用备份过滤私密派生内容；明确的独立人生记忆备份可包含敏感私密数据，应离线保管。
 - README 新增六层 Life Memory 简图；详细权限矩阵、Mermaid 实现映射及剩余边界参见架构文档。
-- 仍需真实 DSH 和 B站互动联调；本补丁不包含逐 UID 全量删除 UI 或私密认识的公开降级授权流程。
+- 仍需真实 DSH 和 B站互动联调；本版本不包含逐 UID 全量删除 UI 或私密认识的公开降级授权流程。
+
+
+## 管理页面时间显示一致性修正
+
+- 人生记忆「重要人生经历／长期认识」、待反思候选、人格成长的时间统一显示为**浏览器所在设备的本地时间**；不再把 UTC ISO 字符串的 `02:19` 当成未标注时区的本地时刻。
+- 对只有日期、没有具体时刻的历史记录仍只展示日期，避免捏造午夜时间。
+- 时间格式化属于展示层改动：**不修改已保存的时间戳、反思处理顺序和衰减计算**。
+
+## DSH 0.2.1 主 Session 工具兼容（Issue #6）
+
+旧版 `2.5.4` 在 DSH `0.2.1-rc.4` 上注册 `dafeiyu_life_recall`、`dafeiyu_memory_recall`、`dafeiyu_remember` 和四项自主待办工具时，因缺少 `output.schema` / `output.render` 而报 `undefined.render`，且旧渲染方式可能引起 `content.some is not a function`。
+
+本版已为**全部 7 个工具**添加符合 author-facing schema DSL 的输出声明和文本内容块数组渲染；主 Session 记忆写入工具的输出声明也允许返回 `id`、`replaced`、`queued` 等实际字段，不会因过窄的输出结构而拒绝成功结果。本地严格宿主模拟注册、执行、回执检查通过，测试文件：`test/v260-main-session-tool-mount.test.mjs`。
+
+**实机验收要求**：在 DSH 0.2.1-rc.4 上确认 7 个工具都可挂载，调用只读 `dafeiyu_todo_list`、`dafeiyu_life_recall` 后无上述启动及返回异常。测试通过不代表已经完成该版本实机测试。
+
+## Release 发布前检查
+
+1. 核对 Git Tag 与 `package.json` 版本严格一致，`v2.6.0-dev.4` 必须标记为 GitHub **Pre-release**，不设为稳定版 Latest。
+2. 独立执行 `node --test`、Python 测试、`node selfcheck.mjs`、`npm pack --dry-run`，并在实际 DSH Desktop/B站账号完成关键功能验收。
+3. 按 README 的「升级后：恢复推荐设置值」步骤提醒旧安装用户手动选择恢复组、预览并保存；**自动外发权限不应随推荐值恢复而变动**。
+4. 核对 [Issue #6](https://github.com/minedalang/dsh-dafeiyu-life/issues/6)：运行 `node --test test/v260-main-session-tool-mount.test.mjs`；实机启动还需确认 7 个工具无 `undefined.render` 警告，并检查 `dafeiyu_todo_list` 回执不再出现 `content.some is not a function`。

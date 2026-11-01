@@ -2,7 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {existsSync,mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
-import {join} from 'node:path'
+import {join,dirname,resolve} from 'node:path'
+import {fileURLToPath} from 'node:url'
 import {createLongTermMemory,__test} from '../lib/long-term-memory.mjs'
 
 const temp=()=>mkdtempSync(join(tmpdir(),'dafeiyu-v2479-'))
@@ -74,11 +75,21 @@ test('v2.4.78 的多个 Session 记忆文件首次升级自动合并，旧文件
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('README 与管理中心展示特色功能和双层人生记忆，不再堆积版本路线图',()=>{
+test('README 的架构图与推荐设置入口有效；管理中心核心功能可用',()=>{
   const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8'),js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8'),readme=readFileSync(new URL('../README.md',import.meta.url),'utf8'),pkg=readFileSync(new URL('../package.json',import.meta.url),'utf8')
   assert.match(html,/大肥鱼的家 · 生活总览/);assert.doesNotMatch(html,/把一个长期 DSH 会话当作“大肥鱼本人”/);assert.match(html,/一段经历，怎样变成鱼鱼的记忆/);assert.match(html,/id="memory-flow-recorded"/);assert.match(html,/id="memory-flow-remembered"/);assert.match(html,/id="memory-flow-learned"/);assert.match(html,/鱼鱼现在记得什么/);assert.match(html,/这些经历给她留下了什么/);assert.match(html,/原始记录独立封存/);assert.match(html,/<details class="memory-reflection-details"/)
   assert.match(html,/导出最新表情包名称 TXT/);assert.match(html,/导出当前规则 JSON/);assert.match(html,/一起交给 AI/)
   assert.match(js,/sticker-workflow-export-names/);assert.match(js,/sticker-workflow-export-rules/);assert.match(js,/renderLifeReflection/);assert.match(js,/main-session\/memory\/import-fish/)
-  assert.match(readme,/双层人生记忆/);assert.match(readme,/dafeiyu\.json/);assert.match(readme,/当前全部表情包名称 TXT \+ 当前规则 JSON/);assert.match(readme,/双域意愿/);assert.match(readme,/社交互动/);assert.doesNotMatch(readme,/2\.5\.0-dev\.|版本流水账|未来路线图/)
+  // README's marketing copy is intentionally free to evolve. Validate only
+  // meaningful user-facing contracts: referenced architecture asset exists,
+  // upgrade recommendations are discoverable, and the privacy explanation is present.
+  const image=readme.match(/!\[[^\]\n]*\]\((docs\/architecture\/[^)]+\.svg)\)/)
+  assert.ok(image,'README 应引用 Life Memory 高层 SVG 架构图')
+  const repoRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..')
+  assert.equal(existsSync(resolve(repoRoot,image[1])),true,'README 引用的架构图必须真实存在')
+  assert.match(readme,/恢复推荐设置值/)
+  assert.match(readme,/恢复最新推荐值/)
+  assert.match(readme,/保存记忆与反思设置/)
+  assert.match(readme,/隐私|私密/)
   assert.match(pkg,/"version": "2\.\d+\.\d+(?:-dev\.\d+)?"/)
 })
