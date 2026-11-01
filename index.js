@@ -84,6 +84,7 @@ import { createCommentInteract } from './lib/comment-interact.mjs'
 import { createCommentVideoContext } from './lib/comment-video-context.mjs'
 import { recentComments, migrateCommentReceipts, ownCommentTargets } from './lib/recent-comments.mjs'
 import { createInteractionBatcher } from './lib/interaction-batch.mjs'
+import {ownPublishedDynamics} from './lib/own-published-dynamics.mjs'
 import { createInteractionMemeLookup, readReplyMemeSnapshot } from './lib/interaction-meme-memory.mjs'
 import { createInteractionScheduler } from './lib/interaction-scheduler.mjs'
 import { listCommentMemes, getCommentMemePreview } from './lib/comment-meme-library.mjs'
@@ -974,7 +975,7 @@ function reportMeta() {
       cwd: stateDir,                     // 凭证落在家里 ✓
       // ⭐ 这个内置的 Python MCP 会往 stdout 打中文（ensure_ascii=False）；
       //    Windows 默认 GBK 的话，中文/emoji 一进管道就可能炸 ⇒ 钉死 UTF-8
-      env: uvEnv({ BILI_DUTY_HOME: stateDir, BILI_MCP_TOOLS: '', BILI_COMMENT_DAILY_LIMIT: String(cfg.commentDailyLimit),
+      env: uvEnv({ BILI_DUTY_HOME: stateDir, BILI_MCP_TOOLS: '', BILI_DYNAMIC_INBOX_REPLY_ENABLED:'1', BILI_DYNAMIC_AT_REPLY_ENABLED:'1', BILI_COMMENT_DAILY_LIMIT: String(cfg.commentDailyLimit),
         BILI_MENTION_DIAG_ENABLED: cfg.diagMentionEnabled?'1':'0', BILI_DYNAMIC_DIAG_ENABLED: cfg.diagDynamicEnabled?'1':'0',
         BILI_VISION_DIAG_ENABLED: cfg.diagVisionEnabled?'1':'0', BILI_MEME_DIAG_ENABLED: cfg.diagMemeEnabled?'1':'0',
         BILI_SESSION_MANUAL_LIKE_ENABLED: '1', BILI_SESSION_MANUAL_ACTIONS_ENABLED: '1', BILI_SESSION_MANUAL_RELATIONS_ENABLED: '1',
@@ -3254,19 +3255,60 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     getAtNotifications: () => call('bili_received_at_and_likes', {}),
     getVideoContext: (bvid,details) => videoContext.forReply(bvid,details),
     getOwnComments: () => ownCommentTargets(stateDir),
+    getOwnDynamics: () => ownPublishedDynamics(stateDir),
+    getDynamicContext: async (notice) => {
+      let dynamicId=String(notice?.dynamicId||'');
+      const targetRpid=String(notice?.rpid||'');
+      const notificationOid=String(notice?.aid||'');
+      if(!validCommentId(targetRpid))return {usable:false};
+      // Notifications sometimes provide only the comment-area oid rather than
+      // a public dynamic id. Match it to one of our published dynamics by
+      // querying verified B站 metadata; never treat the oid as a dynamic id.
+      if(!validDynamicId(dynamicId)){
+        if(!/^\d{1,20}$/.test(notificationOid))return {usable:false};
+        const matched=[];
+        for(const ownedId of ownPublishedDynamics(stateDir).slice(0,20)){
+          const info=parseMaybeJson(await call('bili_dynamic_comment_context',
+            {dynamic_id:ownedId,target_rpid:'',root:'',num:1}));
+          if(info?.ok===true&&
+            (String(info.oid||'')===notificationOid||ownedId===notificationOid)){
+            matched.push(ownedId);if(matched.length>1)break;
+          }
+        }
+        if(matched.length!==1)return {usable:false};
+        dynamicId=matched[0];
+      }
+      const raw=parseMaybeJson(await call('bili_dynamic_comment_context',
+        {dynamic_id:dynamicId,target_rpid:targetRpid,root:String(notice?.contextRoot||notice?.root||''),num:20}));
+      // All IDs and actual target author must match before AI, memory or write.
+      if(raw?.ok!==true||String(raw.dynamicId||'')!==dynamicId||
+         String(raw.target?.rpid||'')!==targetRpid||
+         String(raw.target?.uid||'')!==String(notice.uid||'')||
+         (notificationOid&&notificationOid!==dynamicId&&String(raw.oid||'')!==notificationOid))return {usable:false};
+      return {usable:true,dynamicId,targetUid:String(raw.target.uid),
+        authorUid:String(raw.authorUid||''),ownedLocal:ownPublishedDynamics(stateDir).includes(dynamicId),
+        root:String(raw.root||''),verifiedCommentText:String(raw.target.content||'').slice(0,320),
+        summary:'已核验真实动态评论区与评论发送者'};
+    },
     onIncoming:async req=>{
       if(!req.uid||!req.text)return {ok:true,skipped:'invalid'}
-      const {role}=socialPolicyGate.actor(req.uid),at=Number(req.timestampMs)||Date.now(),eventId=`${req.bvid||''}:${req.rpid||req.id||''}`
+      const {role}=socialPolicyGate.actor(req.uid),at=Number(req.timestampMs)||Date.now(),eventId=`${req.contentType==='dynamic'?'dynamic:'+req.dynamicId:req.bvid||''}:${req.rpid||req.id||''}`
       const consent=socialPolicyGate.canLearn({uid:req.uid,kind:req.kind})
       const cognition=socialCognition.prepareObservation({uid:req.uid,text:req.text,source:'comment',eventId,timestampMs:at,bvid:req.bvid})
       const interest=consent?prepareFriendInterestObservation({uid:req.uid,text:req.text,source:'comment',eventId,bvid:req.bvid,now:at,friendDirectory:cfg.friendDirectory}):null
-      const lifeEvent=/^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))?{kind:'social',key:`social:${req.uid}:${req.bvid}:${req.rpid}`,bvid:req.bvid,actorUid:req.uid,text:String(req.text).slice(0,230),socialTier:role,at}:null
+      const lifeEvent=req.contentType==='dynamic'&&req.dynamicVerified===true
+        ?{kind:'social',key:`social:${req.uid}:dynamic:${req.dynamicId}:${req.rpid}`,
+          contentType:'dynamic',dynamicId:req.dynamicId,actorUid:req.uid,
+          text:String(req.text).slice(0,230),socialTier:role,at}
+        :/^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))
+        ?{kind:'social',key:`social:${req.uid}:${req.bvid}:${req.rpid}`,bvid:req.bvid,
+          actorUid:req.uid,text:String(req.text).slice(0,230),socialTier:role,at}:null
       try{const sync=await socialInteractionCoordinator?.record({type:'incoming',source:'comment',role,actorUid:req.uid,eventKey:eventId,at,cognition,interest,lifeEvent})
         if(sync?.ok===false)log('公开评论事件待补偿：'+String(sync.lastError||sync.reason||''))}
       catch(e){log('公开评论事件登记失败：'+String(e?.message||e).slice(0,120))}
       const verifiedOwnerReply=req.kind==='notice'&&['self-top','self-nested'].includes(req.scope)
       const trusted=socialPolicyGate.canTrustComment({uid:req.uid,kind:req.kind})
-      if(trusted&&(req.kind==='at'||verifiedOwnerReply)&&!isFriendRecommendationFeedback(req.text)){
+      if(req.contentType!=='dynamic'&&trusted&&(req.kind==='at'||verifiedOwnerReply)&&!isFriendRecommendationFeedback(req.text)){
         try{const result=await ownerCommentAgent.accept(req)
           if(result?.reason!=='not-verified-owner-comment'&&result?.reason!=='disabled')return {consumed:true,reason:'trusted_social_ai'}
         }catch(e){log('可信评论 Agent 接收失败：'+String(e?.message||e).slice(0,120));return {consumed:true,reason:'trusted_social_error'}}
@@ -3291,6 +3333,26 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     socialTier:(uid)=>socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory),
     generateReply: (req) => interactionBatcher.generate({...req,identityContext:'',incomingRpid:req.rpid}),
     send: async (req) => {
+      if(req.contentType==='dynamic'){
+        refreshCfg()
+        if(!(cfg.masterEnabled===true && (req.kind==='at'?cfg.commentAtEnabled===true:cfg.commentWatchReplies===true)))
+          return {ok:false,error:'动态评论回复未授权'}
+        if(req.kind!=='at'&&!ownPublishedDynamics(stateDir).includes(String(req.dynamicId||'')))
+          return {ok:false,error:'动态不在当前账号已发布的本地账本，拒绝后台回复'}
+        const r=parseMaybeJson(await call('bili_dynamic_reply_inbox',{
+          dynamic_id:String(req.dynamicId||''),target_rpid:String(req.rpid||''),
+          root:String(req.root||''),text:String(req.text||'').slice(0,130),expected_uid:String(req.uid||''),
+          is_at:req.kind==='at'}))
+        if(r?.ok===true&&String(r.dynamicId)===String(req.dynamicId)&&validCommentId(r.rpid)){
+          try{await lifeMemoryCoordinator?.recordEvents([{kind:'comment',contentType:'dynamic',
+            dynamicId:String(req.dynamicId),reply:true,text:String(req.text).slice(0,130),
+            rpid:String(r.rpid),recipientName:'',time:new Date().toISOString(),
+            key:`comment:dynamic:${req.dynamicId}:${r.rpid}`}],{reflect:true})}
+          catch(e){log('动态回复记忆投影失败：'+String(e?.message||e).slice(0,110))}
+          return {ok:true,rpid:String(r.rpid)}
+        }
+        return {ok:false,error:String(r?.error||'动态评论未收到可信平台回执'),no_retry:r?.no_retry===true}
+      }
       // 后台独立发送，受评论互动专用开关保护，不使用 model 的 force 绕过公开评论安全闸。
       refreshCfg()
       if (!(cfg.masterEnabled && (req.manual===true || cfg.commentWatchReplies || cfg.commentAtEnabled))) return {ok:false,error:'后台评论回复已关闭'}

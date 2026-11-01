@@ -1574,7 +1574,10 @@ def _dynamic_comment_area(info, dynamic_id):
     raw_oid=str(basic.get('comment_id_str') or basic.get('rid_str') or '').strip()
     if not re.fullmatch(r'[1-9][0-9]{0,19}',raw_oid): raise ValueError('动态详情没有可信评论区 oid')
     typ=comment.CommentResourceType.DYNAMIC_DRAW if comment_type==11 else comment.CommentResourceType.DYNAMIC
-    return {'dynamic_id':dynamic_id,'oid':raw_oid,'comment_type':comment_type,'resource_type':typ}
+    author=((item.get('modules') or {}).get('module_author') or {}).get('mid')
+    author=str(author or '')
+    return {'dynamic_id':dynamic_id,'oid':raw_oid,'comment_type':comment_type,'resource_type':typ,
+            'author_uid':author if re.fullmatch(r'[1-9][0-9]{0,19}',author) else ''}
 
 
 async def _get_dynamic_comment_area(dynamic_id,cred):
@@ -1635,15 +1638,73 @@ async def bili_dynamic_comment_context(dynamic_id: str, target_rpid: str = '', r
         if target_rpid:
             target=await _find_dynamic_target(area,get_cred(),target_rpid,root)
             return json.dumps({'ok':True,'dynamicId':area['dynamic_id'],'oid':area['oid'],
-                'commentType':area['comment_type'],'target':target['target'],'root':target['root'],
+                'commentType':area['comment_type'],'authorUid':area['author_uid'],'target':target['target'],'root':target['root'],
                 'url':'https://t.bilibili.com/'+area['dynamic_id']},ensure_ascii=False)
         data=await comment.get_comments(oid=int(area['oid']),type_=area['resource_type'],page_index=1,
                                          order=comment.OrderType.TIME,credential=get_cred())
         replies=[x for x in (_safe_dynamic_reply(row) for row in ((data or {}).get('replies') or [])[:min(20,max(1,num))]) if x]
         return json.dumps({'ok':True,'dynamicId':area['dynamic_id'],'oid':area['oid'],
-            'commentType':area['comment_type'],'comments':replies,
+            'commentType':area['comment_type'],'authorUid':area['author_uid'],'comments':replies,
             'url':'https://t.bilibili.com/'+area['dynamic_id']},ensure_ascii=False)
     except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False)
+
+
+@tool()
+async def bili_dynamic_reply_inbox(dynamic_id: str, target_rpid: str, root: str = '',
+                                   text: str = '', expected_uid: str = '', is_at: bool = False) -> str:
+    """Restricted automatic inbox reply to this account's independently verified dynamic.
+
+    Host checks the user's comment-reply authorization, verified local publish
+    receipt, willingness, deduplication and quota. The MCP additionally checks
+    ownership, target identity, fresh comment context and the shared hard quota.
+    No first-party model or agent may use this as a generic dynamic publisher.
+    """
+    if (e:=_guard('bili_dynamic_reply_inbox')):return e
+    if os.environ.get('BILI_DYNAMIC_INBOX_REPLY_ENABLED')!='1':
+        return json.dumps({'ok':False,'error':'动态自动回复未从宿主后台授权'},ensure_ascii=False)
+    try:
+        did=_checked_dynamic_id(dynamic_id)
+        rid=str(target_rpid or '')
+        if not re.fullmatch(r'[1-9][0-9]{0,29}',rid):raise ValueError('目标动态评论 ID 无效')
+        body=str(text or '').strip()
+        if not body or len(body)>130:raise ValueError('回复正文不能为空或超过 130 字')
+        cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
+        if not re.fullmatch(r'[1-9][0-9]{0,19}',uid):raise ValueError('登录 UID 未确认')
+        area=await _get_dynamic_comment_area(did,cred)
+        if area['author_uid']!=uid and not is_at:raise ValueError('不是当前账号发布的独立动态，禁止后台回复')
+        if is_at and os.environ.get('BILI_DYNAMIC_AT_REPLY_ENABLED')!='1':
+            raise ValueError('动态 @ 回复未从宿主后台授权')
+        target=await _find_dynamic_target(area,cred,rid,root)
+        if not re.fullmatch(r'[1-9][0-9]{0,19}',str(expected_uid or '')) or target['target']['uid']!=str(expected_uid):
+            raise ValueError('通知发件人与已核验的动态评论作者不匹配')
+        if str(expected_uid)==uid:raise ValueError('禁止后台回复自己')
+        if (e:=_guard('bili_dynamic_reply_inbox')):return e
+        ready,reason=_comment_quota_preflight()
+        if not ready:return json.dumps({'ok':False,'error':reason,'blocked':True},ensure_ascii=False)
+        target_key='dynamic-notice:'+did+':'+area['oid']+':'+rid
+        claim=_claim_session_manual_action(uid,'auto-dynamic-reply',target_key,'once',1000000)
+        if not claim.get('ok'):return json.dumps(claim,ensure_ascii=False)
+        try:
+            ok,reason=_reserve_comment_quota()
+            if not ok:
+                _finish_session_manual_action(uid,'auto-dynamic-reply',target_key,claim['body_hash'],claim['day'],'blocked',reason)
+                return json.dumps({'ok':False,'error':reason,'blocked':True},ensure_ascii=False)
+            response=await comment.send_comment(text=body,oid=int(area['oid']),type_=area['resource_type'],
+                root=int(target['root']),
+                parent=int(rid) if target['root']!=rid else None,credential=cred)
+            data=response.get('data') if isinstance(response,dict) and isinstance(response.get('data'),dict) else {}
+            sent=str(data.get('rpid_str') or data.get('rpid') or
+                     (response.get('rpid_str') or response.get('rpid') if isinstance(response,dict) else '') or '')
+            if not isinstance(response,dict) or response.get('code',0)!=0 or not re.fullmatch(r'[1-9][0-9]{0,29}',sent):
+                raise ValueError('B站未返回可确认的回复 ID')
+            _finish_session_manual_action(uid,'auto-dynamic-reply',target_key,claim['body_hash'],claim['day'],'ok',sent)
+            return json.dumps({'ok':True,'rpid':sent,'dynamicId':did,'oid':area['oid']},ensure_ascii=False)
+        except Exception as exc:
+            _finish_session_manual_action(uid,'auto-dynamic-reply',target_key,claim['body_hash'],claim['day'],'uncertain',str(exc)[:160])
+            return json.dumps({'ok':False,'no_retry':True,'status':'uncertain',
+                               'error':'动态评论发布结果不确定，禁止自动重试：'+str(exc)[:140]},ensure_ascii=False)
+    except Exception as exc:
+        return json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False)
 
 
 @tool()
@@ -3077,6 +3138,28 @@ async def bili_unread_messages() -> str:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
 
+
+
+def _notification_string_ids(response):
+    if not isinstance(response,dict):return response
+    data=response.get('data') or {}
+    items=data.get('items') if isinstance(data,dict) else None
+    if not isinstance(items,list):return response
+    for row in items:
+        if not isinstance(row,dict):continue
+        if row.get('id') is not None:row['id']=str(row['id'])
+        user=row.get('user') or {}
+        if isinstance(user,dict):
+            for key in ('mid','uid'):
+                if user.get(key) is not None:user[key]=str(user[key])
+        item=row.get('item') or {}
+        if isinstance(item,dict):
+            for key in ('subject_id','source_id','root_id','target_id','aid'):
+                if item.get(key) is not None:item[key]=str(item[key])
+            for at in item.get('at_details') or []:
+                if isinstance(at,dict) and at.get('mid') is not None:at['mid']=str(at['mid'])
+    return response
+
 # ========== Tool 23: 最近收到的回复 ==========
 
 @tool()
@@ -3090,7 +3173,7 @@ async def bili_received_replies() -> str:
     cred = get_cred()
     try:
         result = await session.get_replies(credential=cred)
-        return json.dumps(result, ensure_ascii=False)
+        return json.dumps(_notification_string_ids(result), ensure_ascii=False)
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
@@ -3108,7 +3191,7 @@ async def bili_received_at_and_likes() -> str:
     cred = get_cred()
     result = {}
     try:
-        result["at"] = await session.get_at(credential=cred)
+        result["at"] = _notification_string_ids(await session.get_at(credential=cred))
     except Exception as e:
         result["at_error"] = str(e)
     try:
