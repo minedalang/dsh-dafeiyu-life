@@ -1230,13 +1230,37 @@ def _folder_title(topic):
     return '大肥鱼·'+name
 
 
-async def _ensure_ai_folder(cred,uid,topic):
-    title=_folder_title(topic)
+def _styled_auto_folder_title(topic):
+    """Only for autonomous creation, never rename owner's folders."""
+    base=_folder_title(topic)
+    style=os.environ.get('BILI_FISH_FAVORITE_STYLE','').strip()
+    suffix={'tsundere':'·才不是收藏','gentle':'·小小珍藏','playful':'·鱼鱼宝藏','calm':'·精选留存'}.get(style,'')
+    if not suffix:return base
+    # Only public/owner-curated topic names are passed by the plugin. An
+    # intersection with a known interest changes the flavor, never the topic.
+    prefix='大肥鱼·'
+    subject=base[len(prefix):]
+    known=[x.strip() for x in os.environ.get('BILI_FISH_FAVORITE_INTERESTS','')[:160].split('、')]
+    interested=any(len(x)>=2 and (x in subject or subject in x) for x in known)
+    if interested:
+        suffix={'tsundere':'·偷偷喜欢','gentle':'·心头珍藏','playful':'·快乐收藏','calm':'·常看精选'}.get(style,suffix)
+    max_subject=max(2,20-len(prefix)-len(suffix))
+    return prefix+subject[:max_subject]+suffix
+
+
+async def _ensure_ai_folder(cred,uid,topic,automatic=False):
+    title=_styled_auto_folder_title(topic) if automatic else _folder_title(topic)
     data=await favorite_list.get_video_favorite_list(int(uid),credential=cred)
     items=(data or {}).get('list') or []
     for item in items:
         if item.get('title')==title and int(item.get('id') or 0)>0:
             return int(item['id']),title,False
+    # Existing legacy topic folder wins over creating another stylistic duplicate.
+    if automatic:
+        legacy=_folder_title(topic)
+        for item in items:
+            if item.get('title')==legacy and int(item.get('id') or 0)>0:
+                return int(item['id']),legacy,False
     # 只计自动新建夹，并限制最终列表中的同前缀数量，防绕过重启／数据库丢失。
     owned=[x for x in items if str(x.get('title') or '').startswith('大肥鱼·')]
     if len(owned)>=12: raise ValueError('大肥鱼专属收藏夹已达到 12 个，不再建新夹')
@@ -1742,7 +1766,7 @@ async def bili_video_collect(bvid: str, folder_title: str, reason: str = '') -> 
         result=_claim_video_action(uid,bv,'collect',5)
         if result:return json.dumps(result,ensure_ascii=False)
         try:
-            fid,title,created=await _ensure_ai_folder(cred,uid,folder_title)
+            fid,title,created=await _ensure_ai_folder(cred,uid,folder_title,automatic=True)
             result=await video.Video(bvid=bv,credential=cred).set_favorite(add_media_ids=[fid])
             if isinstance(result,dict) and result.get('code',0) not in (0,None):raise ValueError(str(result.get('message') or result.get('code'))[:120])
             _finish_video_action(uid,bv,'collect',True,title+'：'+why)

@@ -400,11 +400,20 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-home[data-setup-only="true"] #main-session-backfill { display:none!important; }
 #panel-home[data-setup-only="true"] .feature-intro h2{font-size:19px}
 #fs-main-session-return {margin-bottom:15px}
+
+.activity-ticker{display:flex;gap:10px;align-items:center;padding:10px 13px;margin:10px 0 14px;border-radius:12px;background:var(--tint);border:1px solid var(--stroke);overflow:hidden;font-size:13px}
+.ticker-mark{flex:none;color:var(--action);font-weight:700;white-space:nowrap}.ticker-view{flex:1;overflow:hidden;min-width:0;white-space:nowrap}
+#activity-ticker-text{display:inline-block;min-width:100%;animation:fish-ticker 18s linear infinite;will-change:transform}
+#activity-ticker-clock{flex:none;font-size:11px}@keyframes fish-ticker{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+.activity-ticker:hover #activity-ticker-text{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){#activity-ticker-text{animation:none;white-space:normal}.ticker-view{white-space:normal}}
+@media(max-width:650px){.activity-ticker{gap:7px;padding:8px}.ticker-mark{font-size:12px}#activity-ticker-clock{display:none}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 </head>
 <body><main class="wrap">
 <header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><a class="button mobile-back" href="/" aria-label="返回 DSH Mobile">← 返回 DSH</a><button id="refresh">刷新当前页</button></div></header>
+<div class="activity-ticker" role="region" aria-label="鱼鱼近期活动" title="只显示系统事件类别，不显示评论正文或私密资料"><span class="ticker-mark">🐟 生活播报</span><div class="ticker-view"><span id="activity-ticker-text" aria-live="off">连接生活状态中…</span></div><span id="activity-ticker-clock" class="muted">自动更新</span></div>
 <nav class="tabs" aria-label="管理分类">
 <div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
 <button data-tab="home" aria-selected="false">大肥鱼的家</button>
@@ -742,7 +751,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="toolbar"><h2 style="margin:0">角色人设</h2><button id="persona-refresh">重新读取</button></div>
 <p class="muted">默认提示词是第一次安装的官方规则；此前保存的自定义提示词不会自动覆盖。恢复默认只清除这一项的自定义，不清理成长记忆、好友画像或历史。</p>
 <div class="settings-stack">
-<div class="settings-section"><h4>🐳 大肥鱼人设</h4><p class="muted">用于刷视频、公开评论和私信的角色语气。空配置使用内置默认；不在公开评论里发布提示词原文。</p><textarea id="persona-text" maxlength="8000" rows="13"></textarea><div class="toolbar"><button id="persona-save" class="primary">保存大肥鱼人设</button><button id="persona-reset">恢复默认</button><span id="persona-status" class="muted"></span></div></div>
+<div class="settings-section"><h4>🐳 大肥鱼人设</h4><p class="muted">用于刷视频、公开评论和私信的角色语气。空配置使用内置默认；不在公开评论里发布提示词原文。</p><p class="muted">可从 <a href="https://aigengtu.com/persona" rel="noopener noreferrer" target="_blank">大肥鱼提示词人设卡素材站 ↗</a> 自行选择卡片、复制并粘贴到下方。<strong>仅使用角色性格、说话方式</strong>：卡片中的 QQ 群聊工具（如 send_message、web_search）不代表本插件具有该工具权限，不能覆盖平台安全、真实记忆、权限和主人授权；请尊重原作者使用条款，勿把第三方卡片打包再分发。</p><textarea id="persona-text" maxlength="18000" rows="13"></textarea><p id="persona-compat-status" class="muted" role="status">粘贴后会检查长度、外部工具指令和实际提示词预算。</p><div class="toolbar"><button id="persona-save" class="primary">保存大肥鱼人设</button><button id="persona-reset">恢复默认</button><span id="persona-status" class="muted"></span></div></div>
 <div class="settings-section"><h4>AI 选图提示词</h4><p class="muted">决定什么时候给顶层评论配表情包；硬限额与真实文件校验不会被提示词修改。</p><textarea id="meme-prompt-text" maxlength="4000" rows="12"></textarea><div class="toolbar"><button id="meme-prompt-save" class="primary">保存选图提示词</button><button id="meme-prompt-reset">恢复默认</button><span id="meme-prompt-status" class="muted"></span></div></div>
 <div class="settings-section"><h4>视觉识图提示词</h4><p class="muted">判断何时需要识图和如何描述真实预览帧，不会绕过图片来源安全检查。</p><textarea id="vision-prompt-text" maxlength="4000" rows="10"></textarea><div class="toolbar"><button id="vision-prompt-save" class="primary">保存识图提示词</button><button id="vision-prompt-reset">恢复默认</button><span id="vision-prompt-status" class="muted"></span></div></div>
 <div class="settings-section"><h4>虚构角色背景与关系</h4><p class="muted">单独补充世界观；与主人自定义人设共同生效。</p><textarea id="lore-text" maxlength="4000" rows="8"></textarea><div class="toolbar"><button id="lore-save" class="primary">保存角色背景</button><button id="lore-reset">恢复默认</button><span id="lore-status" class="muted"></span></div></div>
@@ -900,9 +909,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </section>
 <section id="panel-personality" hidden>
 <div class="card" id="personality-evolution-card" style="margin-bottom:16px">
-<h3>🐟 人格成长路线图 · 2.6.0 开发预览</h3>
+<h3>🐟 人格成长路线图 · 2.6.0 实验版</h3>
 <p class="muted">主人设置的初始人设仍是起点；随着真实经历的积累，鱼鱼可以逐渐形成不同的交流倾向。这里展示的是有依据的<strong>性格变化假设</strong>，不表示真实心理测量，也不能修改安全、权限与隐私约束。</p>
-<label class="checkline"><input type="checkbox" id="personality-evolution-enabled"> 开启成长性人格（开发版默认关闭；关闭不删除已有成长记录）</label>
+<label class="checkline"><input type="checkbox" id="personality-evolution-enabled"> 开启成长性人格（实验功能，默认关闭；关闭不删除已有成长记录）</label>
 <div class="toolbar"><button id="personality-evolution-save" class="primary">保存人格成长开关</button><button id="personality-evolution-refresh">刷新真实成长轨迹</button><button id="personality-evolution-sandbox-run" type="button">🧪 播放模拟成长</button><button id="personality-evolution-sandbox-exit" type="button" hidden>退出沙盒，返回真实记录</button><span class="muted" id="personality-evolution-status" role="status">等待加载…</span></div>
 <div id="personality-evolution-sandbox-area" class="card" hidden style="border:1px dashed var(--border, #888);margin:10px 0"><strong>🧪 连续成长沙盒 · 纯虚构经历</strong>
 <div class="toolbar" style="margin-top:10px">
