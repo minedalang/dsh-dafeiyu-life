@@ -124,8 +124,16 @@
 ## dev.4 后台模型同步与强制验证
 
 - 用户只有在「AI 模型 → 后台模型同步与检测」中明确预览和确认，才能把选定 Desktop/Web Provider 定义合并到 Headless；原始 YAML、明文密钥、工具权限及身份数据不得复制。
-- 所有独立 Headless Agent/模型及纯文本兼容 fallback 都必须事前通过对应 Provider + 模型的真实无工具连接验证；修改源、目标或全局配置须吊销原验证。
+- 所有独立 Headless Agent/模型及纯文本兼容 fallback 都必须事前通过对应 Provider + 模型的真实无工具连接验证；旧版验证回执采用整文件校验，已在 dev.8 升级为按有效模型配置判定。
 - 宿主 `ctx.llm` 无工具纯文本调用不需要 Headless 同步；不允许静默改用其他 Provider。README 的「升级后恢复推荐值」不可删除。
+
+## 2.6.0-dev.8 官方模型直验与持久化
+
+- Headless 管理页应列出宿主实际注册的官方 Provider/模型；不得仅依赖 `llm-pi-ai.providers` 自定义 YAML，也不得凭名字猜测未注册的适配器。
+- 官方模型经真实独立 Headless 无工具探针验证后可使用；**无需同步自定义 Provider 配置**。不能据 `listProviders()` 名称本身冒充连接成功。
+- 自定义 Provider 保持预览、明确确认和最小化同步；新回执只绑定对应 Provider/模型的生效配置，其他插件/注释修改不应无故使之失效。真正路由变动仍必须重验。
+- 老版 `version:1` 验证回执只有在原有严格指纹仍有效、源和 Headless 当前配置一致时才能迁移；不能根据错误或过期回执绕过 First Start。
+- 不得复制凭据、模型密钥或任意宿主工具权限。`2.6.0-dev.8` 仍是预览版；正式版必须人工验证官方 DeepSeek 的真实 Headless CLI。
 
 ## First Start（2.6.0-dev.4）
 

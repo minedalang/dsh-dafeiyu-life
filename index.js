@@ -408,7 +408,40 @@ export function apply(ctx, config) {
     return myVer
   }
   const stateDir = stateDirOf(ctx)
-  const headlessSync=createHeadlessModelSync({home:dirname(stateDir),stateDir})
+  // Discover live adapters, including DSH's official built-in DeepSeek route.
+  // Never read API keys or copy their credentials into Headless.
+  const activeLlm=()=>{try{return ctx.get?.('llm')||ctx.llm}catch{return ctx.llm}}
+  const listLiveModels=async()=>{
+    const llm=activeLlm()
+    if(typeof llm?.listProviders!=='function')return []
+    const providers=llm.listProviders()
+    if(!Array.isArray(providers))return []
+    const current=ctx.get?.('agentDefaultModel')?.currentSelection?.()||{}
+    const rows=[]
+    for(const row of providers.slice(0,40)){
+      const id=typeof row==='string'?row:row?.id
+      if(typeof id!=='string')continue
+      let models=[]
+      try {
+        const found=typeof llm.listModels==='function' ? await llm.listModels(id) : []
+        if(Array.isArray(found))models=found.map(m=>typeof m==='string'?m:m?.id)
+      }catch{ /* Failure to load the catalog is not proof that a route works. */ }
+      // Catalog is advisory: DSH can use a selected, not-yet-catalogued model.
+      if((current.provider||current.providerId)===id){
+        const selected=current.model||current.modelId
+        if(typeof selected==='string')models.push(selected)
+      }
+      rows.push({id,models})
+    }
+    return rows
+  }
+  const headlessSync=createHeadlessModelSync({home:dirname(stateDir),stateDir,
+    registeredModels:listLiveModels,
+    isRegistered:id=>{
+      const llm=activeLlm()
+      return typeof llm?.listProviders==='function'&&
+        llm.listProviders().some(p=>(typeof p==='string'?p:p?.id)===id)
+    }})
   const firstStart=createFirstStart({stateDir,credentialPath:join(stateDir,'bili_credential.json'),headlessSync})
   /**
    * ⚠️ 2026-10-19（用户 `天文星球` 的截图）：装转写依赖时 uv 直接 exit 2 ——
