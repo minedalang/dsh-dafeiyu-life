@@ -348,6 +348,15 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 .recommended-reset:hover{border-color:var(--ui-teal)}
 .recommend-feedback{padding:7px 0;line-height:1.6}
 .recommended-pending{outline:2px solid var(--ui-teal)!important;outline-offset:1px}
+
+/* First Start: calm welcome, mandatory steps, responsive layout */
+.fs-hero{padding:26px 29px;border:1px solid #9dc9df;border-radius:19px;background:linear-gradient(125deg,#e6f4ff,#e8f8ef 54%,#f3e9fc);margin:14px 0 18px;box-shadow:0 12px 29px rgba(34,74,117,.06)}
+.fs-hero h2{font-size:25px;margin:0 0 8px;color:#264369}.fs-hero p{margin:0;color:#42627b;line-height:1.8}.fs-pill{display:inline-flex;border-radius:99px;padding:5px 11px;background:#ffffffb5;font-size:12px;font-weight:750;color:#336b85;margin:0 0 12px}
+.fs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px}.fs-step{background:var(--panel);border:1px solid var(--stroke);border-top:4px solid #d44d54;border-radius:14px;padding:18px}.fs-step.optional{border-top-color:#8a99b3}.fs-step h3{font-size:16px;margin:0 0 8px}.fs-step p{font-size:13px;color:var(--muted);line-height:1.75;margin:8px 0}.fs-state{background:var(--tint);border-radius:9px;padding:10px;margin:12px 0;font-size:13px;font-weight:650}.fs-state.bad{background:#ffeded;color:#a22a35}.fs-state.good{background:#e6f7ed;color:#216944}.fs-step .actions{display:flex;gap:8px;flex-wrap:wrap}.fs-step button{font-size:13px}.fs-qr{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:10px}.fs-qr img{width:170px;height:170px;object-fit:contain;padding:6px;background:#fff;border-radius:10px}
+.fs-footer{padding:17px;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.fs-footer .actions{display:flex;gap:8px;flex-wrap:wrap}
+.fs-warning{border:1px solid #cc3546;border-left:6px solid #cc3546;background:#ffebee;color:#912536;border-radius:12px;padding:13px 15px;display:flex;gap:15px;align-items:center;justify-content:space-between;margin-bottom:15px;font-weight:700;flex-wrap:wrap}.fs-warning[hidden]{display:none!important}
+@media(prefers-color-scheme:dark){.fs-hero{background:linear-gradient(120deg,#253957,#1d4038,#392949);border-color:#416580}.fs-hero h2{color:#e0f3ff}.fs-hero p{color:#c1dce5}.fs-pill{background:#263e50;color:#b7e7ff}.fs-state.bad{background:#4a222b;color:#ffc3cc}.fs-state.good{background:#1d4335;color:#b5f1c8}.fs-warning{background:#44262e;color:#ffd1d9}}
+@media(max-width:570px){.fs-hero{padding:19px}.fs-hero h2{font-size:21px}.fs-footer button{flex:1}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 </head>
@@ -365,6 +374,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <button data-tab="dm" aria-selected="false">后台私信 <span id="dm-count" class="queue-badge" hidden></span></button>
 <button data-tab="dynamic" aria-selected="false">动态创作</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">🎭 角色与系统</span>
+<button data-tab="firststart" aria-selected="false">🚀 首次设置</button>
 <button data-tab="persona" aria-selected="true">角色人设</button>
 <button data-tab="growth" aria-selected="false">行为与表达改进 <span id="growth-count" class="queue-badge" hidden></span></button>
 <button data-tab="models" aria-selected="false">AI 模型</button>
@@ -378,6 +388,18 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <button data-tab="backup" aria-selected="false">数据备份</button></div>
 </nav>
 <p id="message" role="status" aria-live="polite"></p>
+<div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">首次设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开首次设置 ↗</button></div>
+<section id="panel-firststart" hidden>
+  <div class="fs-hero"><span class="fs-pill">🐟 FIRST START · 大肥鱼首次使用引导</span><h2>欢迎来到大肥鱼</h2><p>让鱼鱼开始认识你，陪伴你慢慢成长。这里就是大肥鱼管理中心：第一次安装和老用户升级都会看到这页。<strong>B站登录和 Headless 模型验证是必须完成的两项</strong>，其他设置可以先跳过，之后随时回来修改。</p></div>
+  <div class="fs-grid">
+    <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div></section>
+    <section class="fs-step"><h3>02 · Headless 模型同步 <span class="pill pending">必须完成</span></h3><p>在 DSH 中配置好模型后，同步到 Headless 并进行真实连接验证。至少验证一个模型才能解锁，其他独立模型仍需逐项验证。</p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
+    <section class="fs-step optional"><h3>03 · 主 Session <span class="pill">可跳过</span></h3><p>指定鱼鱼和主人交谈的主要会话；以后可以在管理中心修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
+    <section class="fs-step optional"><h3>04 · 人生记忆和反思 <span class="pill">可跳过</span></h3><p>以后可以调整记忆整理、反思批次和恢复推荐设置值。</p><div class="actions"><button type="button" data-open-tab="life">查看记忆设置</button><button type="button" data-firststart-skip="life-memory">先跳过</button></div></section>
+    <section class="fs-step optional"><h3>05 · 人格成长与社交偏好 <span class="pill">可跳过</span></h3><p>人格成长、自主聊天与对外社交权限始终可调整；引导不会自动开启任何发布权限。</p><div class="actions"><button type="button" data-open-tab="personality">现在查看</button><button type="button" data-firststart-skip="personality">先跳过</button></div></section>
+  </div>
+  <div class="fs-footer"><div><strong id="fs-summary">请先完成两项必需配置</strong><p class="muted">完成后随时可以在管理中心重新打开首次设置，已有记忆、凭据和历史资料不会删除。</p></div><div class="actions"><button id="fs-complete" class="primary" type="button" disabled>完成首次设置</button><button id="fs-complete-skip" type="button" disabled>跳过可选项并完成</button></div></div>
+</section>
 <section id="panel-models" hidden>
 <div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>所有 AI 模型只在这里设置。Provider 和模型 ID 留空时继承 DSH 当前模型；不需要在插件重复填写 API Key。每日次数统计的是插件启动的模型任务，并非 Provider 实际 API 请求数；安装本版后开始记录，不补算历史。测试连接不计入统计，但会产生实际模型请求，可能消耗额度。请先保存模型配置再测试。独立视觉的测试只验证文字连接，不验证识图能力。表情包规则优化只在你手动点击时调用，日常评论仍使用本地零 Token 检索。</p></div></div>
 <div class="settings-stack">

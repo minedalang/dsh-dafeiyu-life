@@ -611,6 +611,22 @@ function WatchTab() {
             '%USERPROFILE%\\.dsh\\bili-duty\\duty.log 的最后几十行发给作者。') : null)
       }
 
+      // A first-start welcome is required even for existing users. B站 login
+      // and Headless verification take place only in the unified management UI.
+      if(st?.onboarding && !st.onboarding.completed){
+        const steps=st.onboarding;
+        return h('div',{'data-bd-page':''},
+          h('div',{'data-bd-sec':'',style:{padding:'20px',borderRadius:'16px',border:'2px solid #c74351',background:'rgba(218,61,73,.08)'}},
+            h('div',{'data-bd-label':'',style:{fontSize:'19px',fontWeight:800,color:'#c74351'}},'🐟 欢迎来到大肥鱼 · 首次配置'),
+            h('div',{'data-bd-note':''},'新用户和老用户都会看到一次这份向导；不会清除你的旧资料。B站账号与 Headless 模型是两项必需配置，未完成前所有业务功能锁定。'),
+            h('div',{'data-bd-label':''},(steps.biliVerified?'✓':'○')+' B站账号登录并验证'+(steps.biliVerified?' · 已完成':'')),
+            h('div',{'data-bd-label':''},(steps.headlessVerified?'✓':'○')+' Headless 模型同步并验证'+(steps.headlessVerified?' · 已完成':'')),
+            h('div',{'data-bd-row':''},
+              !st.venvReady?h('button',{'data-bd-btn':'',onClick:onInstall,disabled:busy==='install'},'安装 B站运行依赖'):null,
+              h('button',{'data-bd-btn':'','data-primary':'',onClick:async()=>{try{const r=await jpost('/open',{what:'manage',tab:'firststart'});if(r?.ok!==true)throw Error(r?.error||'管理中心未打开')}catch(e){window.alert('管理中心打开失败：'+String(e.message||e))}}},'打开管理中心，开始配置 ↗')),
+            h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。')))
+      }
+
       const sw = (k) => Boolean(cfg[k])
 
       return h('div', { 'data-bd-page': '' },
@@ -661,11 +677,10 @@ function WatchTab() {
           h('div',{'data-bd-h':''},'账号与运行环境'),
           h('div',{'data-bd-row':''},
             h('button',{'data-bd-btn':'',disabled:busy==='install',onClick:onInstall},st.venvReady?'重装主依赖':'安装主依赖'),
-            h('button',{'data-bd-btn':'',disabled:busy==='login',onClick:onLoginStart},'扫码登录 B站'),
+            h('button',{'data-bd-btn':'',onClick:()=>jpost('/open',{what:'manage',tab:'firststart'})},'管理中心登录设置 ↗'),
             h('button',{'data-bd-btn':'',disabled:busy==='check',onClick:onCheck},'检查账号'),
             h('button',{'data-bd-btn':'',disabled:busy==='selfcheck',onClick:onSelfCheck},'环境自检')),
-          loginState?h('div',{'data-bd-note':''},loginState):null,
-          login?.qr?h('div',{'data-bd-qr':''},h('img',{src:login.qr,alt:'B站登录二维码'}),h('div',{'data-bd-note':''},'手机 B站扫一扫，确认登录并选择长期保持。')):null,
+          h('div',{'data-bd-note':''},'扫码登录统一由管理中心 → 首次设置管理。'),
           st.installTail?h('pre',{'data-bd-pre':''},String(st.installTail).slice(-2500)):null),
 
         /* ── 定时 ── */
@@ -978,20 +993,15 @@ function WatchTab() {
             h('button', { 'data-bd-btn': '', disabled: busy === 'check', onClick: onCheck }, '测一下'),
             h('button', { 'data-bd-btn': '', disabled: busy === 'update', onClick: onCheckUpdate }, '检查更新'),
             newVer ? h('button', { 'data-bd-btn': '', 'data-primary': '', disabled: busy === 'upgrade', onClick: onUpgrade }, '一键升级到 v' + newVer) : null,
-            h('button', { 'data-bd-btn': '', disabled: busy === 'login', onClick: onLoginStart }, '扫码登录'),
+            h('button', { 'data-bd-btn': '', onClick:()=>jpost('/open',{what:'manage',tab:'firststart'}) }, '管理中心登录设置 ↗'),
             h('div', { 'data-bd-note': '' },
               !st.venvReady ? (st.installFailed ? '上次没装成 → 看下面日志' : '还没装 → 先点「装主依赖」')
-                : (st.loggedIn ? '装好了 → 下一步「扫码登录」' : '环境好了 → 点「扫码登录」'))),
-          loginState ? h('div', { 'data-bd-msg': '', 'data-good': loginTone === 'good' ? '' : undefined, 'data-warn': loginTone === 'warn' ? '' : undefined }, loginState) : null,
+                : (st.loggedIn ? '已有 B站凭据，可在管理中心重新验证' : '环境好了 → 去管理中心登录 B站'))),
+          h('div', { 'data-bd-note': '' }, 'B站账号登录已统一到管理中心；本页只保留环境安装。'),
           st.installTail ? h('div', null,
             h('div', { 'data-bd-note': '' }, st.installing ? '正在装主依赖（进度）：' : '主依赖的日志（B站 搜索 / 字幕 / 评论 用得到，末尾）：'),
             h('pre', { 'data-bd-pre': '' }, st.installTail)) : null,
-          login?.qr ? h('div', { 'data-bd-qr': '' },
-            h('img', { src: login.qr, alt: 'B站登录二维码' }),
-            h('div', { 'data-bd-note': '' },
-              '手机 B站 → 我的 → 扫一扫。',
-              h('br'),
-              '确认时选「记住我 / 长期」那张 —— 选 24 小时的话，明天就得重扫。')) : null),
+          h('div', { 'data-bd-note': '' }, '如需重新登录，请前往大肥鱼管理中心 → 首次设置。')),
           (Array.isArray(st.missingDeps) && st.missingDeps.length)
             ? h('div', { 'data-bd-note': '' }, '还缺这几项：' + st.missingDeps.join(' / ') + '（qrcode = 画登录二维码用的）—— 点一次「重装主依赖」就会补上')
             : null,

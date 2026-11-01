@@ -99,6 +99,7 @@ import { normalizeFriendDirectory, directoryToLegacy } from './lib/friend-direct
 import { shouldRunWindow, parsePeakWindows, readPeakWindows, activePeakWindow, DEFAULT_PEAK_INTERVAL_MINUTES } from './lib/peak-schedule.mjs'
 import { effectiveModelSelection } from './lib/model-routing.mjs'
 import { createHeadlessModelSync } from './lib/headless-model-sync.mjs'
+import { createFirstStart } from './lib/first-start.mjs'
 import { hostLlmService, runHostModelText } from './lib/host-model-call.mjs'
 import { HEADLESS_DENY_TOOLS, writeSecureHeadlessOverlay, validateHeadlessOverlayFile, assertSafeHeadlessLaunch } from './lib/headless-security.mjs'
 import { mergeWatchedRows } from './lib/watched.mjs'
@@ -400,6 +401,7 @@ export function apply(ctx, config) {
   }
   const stateDir = stateDirOf(ctx)
   const headlessSync=createHeadlessModelSync({home:dirname(stateDir),stateDir})
+  const firstStart=createFirstStart({stateDir,credentialPath:join(stateDir,'bili_credential.json'),headlessSync})
   /**
    * ⚠️ 2026-10-19（用户 `天文星球` 的截图）：装转写依赖时 uv 直接 exit 2 ——
    *   `error: Could not acquire lock / failed to open file C:\Users\AP\AppData\Local\uv\cache\.lock: 拒绝访问 (os error 5)`
@@ -821,7 +823,7 @@ function reportMeta() {
   let lastPauseState = null
   let cancelActiveDuty = () => {}
   const syncPauseState = (force = false) => {
-    const paused = cfg.masterEnabled !== true
+    const paused = cfg.masterEnabled !== true || !firstStart.isReady()
     if (!force && lastPauseState === paused) return
     // 同一目录中的 Python MCP 进程，每次对外发送前也检查这个文件。
     if (paused) writeFileSync(pauseFile, 'paused\n', 'utf8')
@@ -886,6 +888,7 @@ function reportMeta() {
       ? {...patch,...directoryToLegacy(patch.friendDirectory)}
       : patch
     const clean = clampPatch('mentionProfiles' in mergedPatch ? {...mergedPatch, mentionTargets: mergedPatch.mentionTargets ?? cfg.mentionTargets, friendDirectory: mergedPatch.friendDirectory ?? cfg.friendDirectory, mentionName: mergedPatch.mentionName ?? cfg.mentionName} : mergedPatch)
+    if (clean.masterEnabled===true && !firstStart.isReady())throw Error(firstStart.message())
     if ('masterEnabled' in clean) {
       // 先同步文件，再持久化；写入失败必须报错，不能出现界面显示已暂停而 Python 仍可外发。
       const previous = cfg.masterEnabled
@@ -984,6 +987,7 @@ function reportMeta() {
   }
 
   const call = async (toolName, args, opts) => {
+    if(!firstStart.isReady())throw Error(firstStart.message())
     refreshCfg()
     if (cfg.masterEnabled !== true) throw new Error('大肥鱼已暂停：请先开启总开关')
     const client = await ensureMcp()
@@ -1014,7 +1018,10 @@ function reportMeta() {
   const tool = (spec) => ctx.tools.register(defineTool({
     ...spec,
     output: textOutput,
-    async execute(args, exec) { return safe(await spec.execute(args, exec)) },
+    async execute(args, exec) {
+      if(!firstStart.isReady())return {ok:false,blocked:true,error:firstStart.message()};
+      return safe(await spec.execute(args, exec))
+    },
   }))
 
   tool({
@@ -1434,6 +1441,7 @@ function reportMeta() {
       //    ⇒ 这里只给一条**提示**（不自动改！），界面上让他一键确认 —— 自动把"私信对象"当主人等于把安全修复撤销 ✗
       ownerInfo: ownerInfo(),
       loggedIn: hasCredential(),
+      onboarding:firstStart.status(),
         home: stateDir,
         report: join(outDir, `${dayKey(now)}.md`),
       }
@@ -1766,6 +1774,7 @@ function reportMeta() {
       model:String(selected.model||current.model||current.modelId||'')}
   }
   function assertVerifiedHeadless(args,overlay,meta,task) {
+    if(!firstStart.isReady())throw Error(firstStart.message())
     headlessSync.assertReady(headlessSelection(task))
     return assertSafeHeadlessLaunch(args,overlay,meta)
   }
@@ -2284,6 +2293,7 @@ function reportMeta() {
         dutyChild = null
       }
     refreshCfg()          // ⭐ 设置页刚改过的值要立刻生效（config 是就地改的，快照会过期）
+    if(!firstStart.isReady())return {started:false,blocked:true,error:firstStart.message()}
     if (cfg.masterEnabled !== true) return { started: false, why, paused: true, error: '总开关已关闭，无法跑一轮' }
     const dsh = resolveDsh()
     // ⭐ 找不到 dsh 就别硬跑：以前会退化成裸 `dsh` ⇒ spawn 失败、只留 exit 1 + 一串乱码 ✗
@@ -2713,9 +2723,12 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   // does not offer ctx.llm; it is never used to evade an unavailable adapter.
   const hostModel = () => hostLlmService(ctx)
   const hostSelection = () => ctx.get('agentDefaultModel')?.currentSelection?.() ?? null
-  const hostText = (llm, prompt, custom, maxChars, timeoutMs) => runHostModelText({
+  const hostText = (llm, prompt, custom, maxChars, timeoutMs) => {
+    if(!firstStart.isReady())throw Error(firstStart.message())
+    return runHostModelText({
     llm, prompt, selection:hostSelection(), custom, maxChars, timeoutMs,
   })
+  }
   // UI model connection checks: deliberately do not mount Bilibili, filesystem, shell,
   // memory read, or ANY model-facing MCP tool; never write normal task telemetry.
   const modelTestNextAt = new Map()
@@ -2961,7 +2974,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     },logger:{warn:m=>log('社交同步：'+m)},
   })
   // Start recovery only after the Life Memory sink is fully constructed.
-  const socialCognitionTimer=setInterval(()=>{void socialCognition.tick().catch(e=>log('社会邀请检查失败：'+String(e?.message||e).slice(0,120)))},60*60_000)
+  const socialCognitionTimer=setInterval(()=>{if(!firstStart.isReady())return;void socialCognition.tick().catch(e=>log('社会邀请检查失败：'+String(e?.message||e).slice(0,120)))},60*60_000)
   socialCognitionTimer.unref?.()
   ctx.effect(()=>()=>clearInterval(socialCognitionTimer),'bili-duty: dev5 社会邀请只读审阅')
   const dmVideoRecommendationContext=createDmVideoRecommendationContext({stateDir})
@@ -3547,7 +3560,10 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     dshHome: dirname(stateDir),
     agents: ctx.agents,
     getConfig: () => cfg,
-    defineTool,
+    defineTool:(options)=>defineTool({...options,async execute(...args){
+      if(!firstStart.isReady())return {ok:false,blocked:true,error:firstStart.message()}
+      return options.execute(...args)
+    }}),
     getIdentityPrompt: () => {
       const persona = effectivePersonaPrompt(cfg.personaPrompt).slice(0, 6000)
       const lore = (normalizeCharacterLore(cfg.characterLore) || DEFAULT_CHARACTER_LORE).slice(0, 4000)
@@ -3602,7 +3618,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   ctx.effect(()=>()=>socialInteractionCoordinator?.stop(),'bili-duty: 社交事件协调器')
   memoryConsolidator=createMemoryConsolidator({dataDir:stateDir,getMemories:()=>longTermMemory.activeMemories(),commit:input=>longTermMemory.consolidate(input),
     invokeModel:(prompt,maxChars)=>invokeMemoryPrompt(prompt,maxChars),getConfig:()=>cfg,logger:{warn:m=>log('记忆凝练：'+m)}})
-  const consolidationTimer=setInterval(()=>void memoryConsolidator.run().catch(e=>log('记忆凝练评估失败：'+String(e?.message||e))),60*60_000)
+  const consolidationTimer=setInterval(()=>{if(!firstStart.isReady())return;void memoryConsolidator.run().catch(e=>log('记忆凝练评估失败：'+String(e?.message||e)))},60*60_000)
   consolidationTimer.unref?.();ctx.effect(()=>()=>clearInterval(consolidationTimer),'bili-duty: 主人聊天记忆整理')
 
   // Bounded independent agent decision. It never sends a main-Session follow-up,
@@ -3634,7 +3650,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   }
   // First scan is idempotent, doesn't need an online Session and doesn't send messages.
   try{void collectRealLife().catch(e=>log('本地经历初次同步失败：'+String(e?.message||e).slice(0,120)))}catch{}
-  const lifeCollectTimer=setInterval(()=>{try{void collectRealLife().catch(e=>log('本地经历定时同步失败：'+String(e?.message||e).slice(0,120)))}catch{}},10*60_000)
+  const lifeCollectTimer=setInterval(()=>{if(!firstStart.isReady())return;try{void collectRealLife().catch(e=>log('本地经历定时同步失败：'+String(e?.message||e).slice(0,120)))}catch{}},10*60_000)
   lifeCollectTimer.unref?.()
   ctx.effect(()=>()=>clearInterval(lifeCollectTimer),'bili-duty: 独立人生经历候选收集')
 
@@ -3692,7 +3708,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   // It only nudges the selected main Session to consider due tasks; the model may defer/skip.
   const ownerTodoReviewTick=async()=>{
     refreshCfg()
-    if(cfg.masterEnabled!==true||cfg.ownerTodoAutoReviewEnabled!==true)return
+    if(!firstStart.isReady()||cfg.masterEnabled!==true||cfg.ownerTodoAutoReviewEnabled!==true)return
     const rows=ownerTodos.context(8);if(!rows.length)return
     const interval=Math.max(15,Math.min(1440,Math.floor(Number(cfg.ownerTodoReviewMinutes)||60)))
     if(Date.now()-ownerTodos.lastAutoReviewAt()<interval*60_000)return
@@ -4026,6 +4042,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       lastRunAt: st.lastRunAt || null,
       lastWhy: st.lastWhy || null,
       loggedIn: hasCredential(),
+      onboarding:firstStart.status(),
       venvReady: venvReadyNow(),
       version: myVersion(),
       // 2026-10-22：缺哪个 Python 包装不上，得能一眼看出来（出不了二维码 =09 缺 qrcode）
@@ -4068,6 +4085,14 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   const handle = async (req, res, url) => {
     refreshCfg()
     const path = url.pathname
+    // Global fail-closed gate; setup/status/management stay accessible. Never
+    // unlock business APIs merely because the user can load the settings UI.
+    const setupAccess = path==='/api/bili-duty/status' || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
+      path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
+      path.startsWith('/api/bili-duty/login/') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' ||
+      path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/open' ||
+      path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check'
+    if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
     // ⭐ 2026-10-21：每条视频一份笔记 —— **宿主拆报告**，不让模型多写一个字（零 token、不会写错）
     const notesDir = join(stateDir, 'reports')
     let notesSig = ''
@@ -4219,8 +4244,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       } catch(e) {return sendJson(res,400,{ok:false,error:'数据备份操作失败：'+String(e?.message||e).slice(0,300)})}
     }
     if (req.method === 'GET' && path === '/api/bili-duty/status') {
-      try { rollSeen() } catch (e) { /* 归档失败不影响状态接口 */ }
-      try { syncNotes() } catch (e) { /* 笔记失败不影响状态接口 */ }
+      if(firstStart.isReady())try { rollSeen() } catch (e) { /* 归档失败不影响状态接口 */ }
+      if(firstStart.isReady())try { syncNotes() } catch (e) { /* 笔记失败不影响状态接口 */ }
       return sendJson(res, 200, status())
     }
     if (req.method === 'GET' && path === '/api/bili-duty/mention-diagnostics') {
@@ -4971,6 +4996,34 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       }catch(e){return sendJson(res,400,{ok:false,error:'生活时间线读取失败：'+String(e?.message||e).slice(0,180)})}
     }
 
+    if(req.method==='GET' && path==='/api/bili-duty/onboarding/status')
+      return sendJson(res,200,firstStart.status())
+    if(req.method==='POST' && path.startsWith('/api/bili-duty/onboarding/')){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin && (!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'拒绝非同源设置请求'})
+      if(String(req.headers['sec-fetch-site']||'')==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站设置'})
+      try{
+        if(path.endsWith('/welcome'))return sendJson(res,200,firstStart.markWelcome())
+        if(path.endsWith('/bili/verify')){
+          const client=await ensureMcp()
+          const raw=await client.call('bili_check_credential',{})
+          // MCP clients return either direct text, a wrapper or content blocks.
+          const unwrapped=typeof raw==='string'?raw:
+            (raw?.content?.find?.(b=>b.type==='text')?.text??raw?.result??raw)
+          const result=typeof unwrapped==='string'?JSON.parse(unwrapped):unwrapped
+          if(result?.logged_in!==true)throw Error(String(result?.message||'B站登录状态无效'))
+          const updated=firstStart.verifyBili();syncPauseState(true)
+          return sendJson(res,200,{...updated,username:String(result.username||'').slice(0,80)})
+        }
+        if(path.endsWith('/complete')){
+          const body=await readBody(req)
+          const updated=firstStart.complete(Array.isArray(body?.skipped)?body.skipped:[]);syncPauseState(true)
+          return sendJson(res,200,updated)
+        }
+        return sendJson(res,404,{ok:false,error:'未知的首次设置操作'})
+      }catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,240)})}
+    }
+
     // Explicit, same-origin model-configuration mutation. No user paths or YAML
     // content are accepted. A preview token binds consent to current file hashes.
     if (path.startsWith('/api/bili-duty/headless-model/')) {
@@ -4997,7 +5050,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
               for(const id of HEADLESS_DENY_TOOLS)rows.push('- id: '+id,'  disabled: true','')
               for(const id of ['credentials','authorization','deepseek-account'])rows.push('- id: '+id,'  disabled: false','')
               rows.push(...effectiveModelSelection({},route,yq))
-              const overlay=writeSecureHeadlessOverlay(join(stateDir,'headless-provider-verify-overlay.yml'),rows.join('\n'),{kind:'model-test',stateDir})
+              const overlay=writeSecureHeadlessOverlay(join(stateDir,'headless-model-test-overlay.yml'),rows.join('\n'),{kind:'model-test',stateDir})
               const args=[...dsh.args,'--profile','headless','--patch',overlay,'只读模型连接验证，请仅输出 DAFEIYU_HEADLESS_OK，不执行工具。']
               assertSafeHeadlessLaunch(args,overlay,{kind:'model-test',stateDir})
               const response=await new Promise((resolve,reject)=>{
@@ -5013,7 +5066,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
               })
               if(!response.includes('DAFEIYU_HEADLESS_OK'))throw Error('后台模型返回内容不符合验证标记')
             }})
-            return sendJson(res,200,result)
+            syncPauseState(true);return sendJson(res,200,result)
           } finally {modelTestBusy=false}
         }
         return sendJson(res,404,{ok:false,error:'未知后台模型操作'})
@@ -5207,6 +5260,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     if (req.method === 'POST' && path === '/api/bili-duty/open') {
       const body = await readBody(req)
       const what = String(body?.what || 'out')
+      if(!firstStart.isReady() && what!=='manage')return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
       // 管理中心必须由宿主构造绝对 HTTP URL：设置页所在的 DSH scheme 不是 http(s)，
       // 直接 new URL(..., window.location.href) 会把自定义 scheme 传进来而被拒绝。
       if (what === 'manage' || what === 'url') {
@@ -5215,7 +5269,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
           const host = String(req.headers?.host || '')
           if (!/^(?:127\.0\.0\.1|localhost|\[::1\])(?::\d{1,5})?$/i.test(host))
             return sendJson(res, 200, { ok: false, error: '管理中心只允许从本机 DSH 服务打开' })
-          u = `http://${host}/api/bili-duty/manage`
+          const tab=String(body?.tab||'');u = `http://${host}/api/bili-duty/manage${['firststart','models','home'].includes(tab)?'?tab='+encodeURIComponent(tab):''}`
         } else {
           u = String(body?.u || '')
           if (!/^https?:\/\//i.test(u)) return sendJson(res, 200, { ok: false, error: '只接受 http(s) 链接' })
