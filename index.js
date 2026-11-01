@@ -2798,6 +2798,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     const reflectionRoute = modelRoute === 'reflection'
     const dynamicRoute = modelRoute === 'dailyDynamic'
     const ownerAgentRoute = modelRoute === 'ownerDmAgent'
+    const modelLabel=reflectionRoute?'人生反思模型':dynamicRoute?'动态创作模型':ownerAgentRoute?'主人私信模型':'互动模型'
     const overlay = ensureOverlay(true, reflectionRoute ? 'reflection' : dynamicRoute ? 'dailyDynamic' : ownerAgentRoute ? 'ownerDmAgent' : 'interaction')
     if (!overlay) throw new Error(reflectionRoute ? '生成专用人生反思 DSH overlay 失败' : '生成私信专用 DSH overlay 失败')
     const args = [...dsh.args, '--profile', 'headless', '--patch', overlay, promptText]
@@ -2818,16 +2819,16 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       }
       const timeout = setTimeout(() => {
         try { child.kill() } catch { /* noop */ }
-        finish(new Error('生成私信回复超时（120秒）'))
+        finish(new Error(modelLabel+'超时（120秒）'))
       }, 120_000)
       timeout.unref?.()
       child.stdout?.on('data', (buf) => { out = (out + String(buf)).slice(0, 32_000) })
       child.stderr?.on('data', (buf) => { err = (err + String(buf)).slice(-1500) })
       child.on('error', (e) => finish(e))
       child.on('close', (code) => {
-        if (code !== 0) return finish(new Error('DSH 回复生成失败（exit=' + code + '）：' + err.slice(-250)))
+        if (code !== 0) return finish(new Error('DSH '+modelLabel+'调用失败（exit=' + code + '）：' + err.slice(-250)))
         const answer = out.trim().slice(0, maxChars)
-        if (!answer) return finish(new Error('DSH 返回空私信回复'))
+        if (!answer) return finish(new Error('DSH '+modelLabel+'返回空内容'))
         finish(null, answer)
       })
     })

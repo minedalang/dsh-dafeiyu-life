@@ -47,7 +47,7 @@ test('双层记忆隔离：主人与好友各自可回忆，公开评论/别的�
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('分域反思：私密批次不能与公开混合，也不能写入公开长期记忆或公开人格变化',async()=>{
+test('分域反思：私密批次不能与公开混合，不能写入公开长期认识；伪造人格候选不能生效',async()=>{
  const dir=mk();const prompts=[],publicWrites=[],personality=[]
  try{
   const memory=createLifeMemoryGateway({dataDir:dir,getConfig:config,now:()=>at})
