@@ -98,6 +98,8 @@ input[type=checkbox]{accent-color:#16865f}
 .life-jump a{border:1px solid var(--stroke);border-radius:999px;padding:8px 12px;color:var(--ink);text-decoration:none;background:var(--panel);font-weight:650;font-size:13px;}
 .life-jump a:hover,.life-jump a:focus-visible{border-color:#209a79;color:var(--accent-green);box-shadow:0 2px 9px rgba(19,131,95,.13)}
 #panel-life .life-section{scroll-margin-top:100px}
+#panel-life .life-quick-jump{margin:12px 0;position:relative}
+#panel-life .life-quick-jump a{border-radius:10px;font-weight:650}
 @media(max-width:620px){.top{padding:14px}.feature-intro{padding:13px}.tabs{gap:5px}.tabs button{font-size:12px;padding:8px 10px}.toolbar>input{width:100%}}
 .settings-section .checkline{margin:11px 0;gap:10px;font-size:14px;font-weight:550}.settings-section .checkline input{accent-color:#168b6d;width:18px;height:18px}
 #panel-models .settings-section{border-left:4px solid #4388c7}#panel-bili .settings-section{border-left:4px solid #289f76}
@@ -623,6 +625,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p id="main-memory-recommend-status" class="muted recommend-feedback" role="status" aria-live="polite">加载后会提示与最新推荐配置不同的参数组。</p><div class="toolbar"><button class="primary" id="main-memory-save">保存记忆与反思设置</button></div><p class="muted" id="main-memory-status" role="status">正在读取…</p></div></div>
 <div id="settings-model-link" class="settings-section"><h4>🤖 模型配置独立管理</h4><p class="muted">记忆语义检索、人生反思等模型的 Provider、模型 ID 和思考深度统一在「AI 模型」页设置。默认关闭的能力不会因为调整界面而被启用。</p><button type="button" data-open-tab="models">前往 AI 模型</button></div>
 </details>
+<nav class="context-jump life-quick-jump" aria-label="人生记忆快捷导航"><a href="#life-emotion-section">💗 当前心情</a><a href="#life-interest-section">🌱 最近兴趣</a><a href="#life-relationship-section">👥 熟悉的人</a><a href="#life-recall-section">🧠 经历与认识</a><a href="#life-timeline-section">📅 生活时间线</a><a href="#life-todo-section">📝 待办</a></nav>
 <div id="life-emotion-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">💗 鱼鱼现在的心情</h4><span id="emotion-status" class="live-badge">● 正在读取情绪状态</span></div>
 <p class="muted">情绪驱动的自主回忆与主动分享权限请到「社交互动」开启：当近期真实视频再次触及过去有证据的人生记忆时，大肥鱼可以决定保持沉默、在主 Session 主动开口或给主人发送 B站私信。原始经历始终是证据；整理回忆、反思或产生念头均不能自行改写原始事实。 这是大肥鱼的角色模拟状态，不是生理测量或真实意识证明。它只保存情绪类别、强度和粗粒度来源，不保存触发心情的私信正文、UID 或具体聊天原因。情绪会随时间衰减，不能成为泄露隐私、迁怒或强行社交的理由。</p>
 <label class="checkline"><input id="emotion-enabled" type="checkbox" checked>持续记录心情</label>
@@ -652,12 +655,16 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <details class="memory-legacy-details"><summary>旧版数据迁移（仅旧插件用户）</summary><p class="muted">仅从旧的 dsh-fish-memory 导入已有记录。全新安装不需要使用，不会自动读取旧数据。</p><button id="main-memory-import" class="life-action life-indigo">导入旧版 dsh-fish-memory</button></details>
 </details></div></div>
 
-<div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
-<p class="muted">展示有记录的视频探索（区分入选、未入选和主人指定查看）、公开评论、情绪变化和关系阶段。仅从已保存的观看／探索记录展示，不会把搜索结果当作观看经历；不展示好友私信正文或心情触发消息。部分视频来源只保存日期、不保存具体时刻，会明确标注「具体时刻未记录」，并排在同一天有准确时间的事件之后。</p><p id="life-timeline-summary" class="muted" role="status"></p><div id="life-timeline-list" class="records records-scroll tall"></div></div>
 <div id="life-interest-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">🌱 鱼鱼最近喜欢什么</h4><span id="interest-learning-status" class="live-badge">● 正在收集兴趣线索</span><span class="muted">根据真实入选视频积累，和主人设定的核心兴趣分开</span></div>
 <p class="muted">核心兴趣由主人明确设置，优先参与选片但会轮换；短期/成长/稳定兴趣则来自真实入选视频证据。至少 3 个不同视频、横跨 2 天才会形成短期兴趣，长期没有新证据会逐渐淡出。自动学习永远不会覆盖核心兴趣。</p>
 <div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div><details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
 </details></div>
+<div id="life-relationship-section" class="settings-section life-section"><h4>👥 逐渐熟悉的人</h4>
+<p class="muted">只展示已登记好友的互动熟悉度，不显示聊天正文。关系阶段只是互动频率的估计，不代表真实亲密程度。</p>
+<div class="toolbar"><button id="friend-relationships-refresh" class="life-action life-sky">刷新关系成长</button><span id="friend-relationships-status" class="muted">尚未读取</span></div><div id="friend-relationships-list" class="records"></div>
+</div>
+<div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
+<p class="muted">展示有记录的视频探索（区分入选、未入选和主人指定查看）、公开评论、情绪变化和关系阶段。仅从已保存的观看／探索记录展示，不会把搜索结果当作观看经历；不展示好友私信正文或心情触发消息。部分视频来源只保存日期、不保存具体时刻，会明确标注「具体时刻未记录」，并排在同一天有准确时间的事件之后。</p><p id="life-timeline-summary" class="muted" role="status"></p><div id="life-timeline-list" class="records records-scroll tall"></div></div>
 <div id="life-todo-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📝 鱼鱼想做的事</h4><span id="owner-todo-status" class="live-badge">● 正在整理待办</span><button id="owner-todo-refresh" class="life-action life-sky">刷新待办</button></div>
 <p class="muted">视频推荐、主人交代和鱼鱼想稍后考虑的事，都集中在这里。待办不代表已经答应执行；公开操作仍需主人授权。</p><div class="todo-overview" id="owner-todo-overview" aria-live="polite"><span>正在读取待办…</span></div>
 <div class="todo-filter" role="group" aria-label="查看待办状态"><button id="owner-todo-filter-active" type="button" aria-pressed="true" class="is-selected">进行中</button><button id="owner-todo-filter-all" type="button" aria-pressed="false">全部</button><button id="owner-todo-filter-finished" type="button" aria-pressed="false">已结束</button></div>
@@ -676,16 +683,12 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存待办与自主调度设置</button></div>
 </details>
 </div>
-<div id="life-relationship-section" class="settings-section life-section"><h4>👥 逐渐熟悉的人</h4>
-<p class="muted">只展示已登记好友的互动熟悉度，不显示聊天正文。关系阶段只是互动频率的估计，不代表真实亲密程度。</p>
-<div class="toolbar"><button id="friend-relationships-refresh" class="life-action life-sky">刷新关系成长</button><span id="friend-relationships-status" class="muted">尚未读取</span></div><div id="friend-relationships-list" class="records"></div>
-</div>
 <details class="life-subdetails life-sync-more" id="life-others"><summary>⚙️ 其他生活操作 · 主 Session 生活汇报</summary><div id="life-sync-section" class="settings-section life-section"><h4>将最近生活告诉主 Session</h4><div class="toolbar"><button id="main-session-sync" class="life-action life-green">现在把新经历告诉主 Session</button><button id="main-session-backfill" class="life-action life-sky">把过去 7 天遗漏的经历加入待汇报</button></div>
 <p class="muted">“过去 7 天”是<strong>从现在往回数 7 天</strong>，不是再等待 7 天。点击补充后只将尚未汇报的已选视频和已发评论放进本地待汇报队列，操作本身不会发送消息。启用主 Session 桥接和自动同步后，符合间隔与额度的定时检查会尝试非唤醒注入，不会自动触发模型回复；如宿主不支持则继续留在待汇报队列。需要立即让鱼鱼回应时，可点击“现在把新经历告诉主 Session”手动发送。目标会话不在线时仍留在本地。此操作只汇报上下文，不直接写入人生记忆；人生反思会独立读取待反思经历。</p>
 <p id="main-session-queue-status" class="muted" role="status">正在读取…</p>
 <p class="muted">这里仅控制是否把近期生活摘要主动发送给选定的主 Session；不影响上方“鱼鱼现在记得什么”的记忆搜索。</p></div></div></details>
 </div></section>
-<section id="panel-diagnostics" hidden>
+<section id="panel-diagnostics" hidden><div class="settings-section"><h4>🔒 Python MCP 安全版本检查</h4><p class="muted">如果日志提示 mcp_server.py 与当前插件版本不一致，系统会拒绝发送。这里可以先检查；确认修复时会在插件家目录备份旧文件，然后使用当前安装包内置的受审脚本。不会静默删除自定义修改。</p><div class="toolbar"><button id="mcp-integrity-check" type="button">检查 MCP 文件</button><button id="mcp-integrity-repair" type="button" class="primary" disabled>备份旧文件并修复</button></div><p id="mcp-integrity-status" class="muted" role="status">尚未检测</p></div>
 <div class="toolbar"><h2 style="margin:0">运行诊断</h2><button id="diag-refresh" class="primary">刷新诊断</button><button id="diag-save">保存诊断开关</button></div>
 <p class="muted">勾选后会记录后续诊断；关闭仅停止新日志，不影响评论、同步、取帧和选图的正常功能。已存在的历史诊断记录不会自动删除。诊断里的“要求 AI 回复这条”必须人工确认；不绕过回复额度、去重或上下文验证。</p>
 <div class="diag-grid">
@@ -911,7 +914,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="card" id="personality-evolution-card" style="margin-bottom:16px">
 <h3>🐟 人格成长路线图 · 2.6.0 实验版</h3>
 <p class="muted">主人设置的初始人设仍是起点；随着真实经历的积累，鱼鱼可以逐渐形成不同的交流倾向。这里展示的是有依据的<strong>性格变化假设</strong>，不表示真实心理测量，也不能修改安全、权限与隐私约束。</p>
-<label class="checkline"><input type="checkbox" id="personality-evolution-enabled"> 开启成长性人格（实验功能，默认关闭；关闭不删除已有成长记录）</label>
+<label class="checkline"><input type="checkbox" id="personality-evolution-enabled"> 开启成长性人格（新安装默认开启；仍需真实证据，关闭不会删除已有成长记录）</label>
 <div class="toolbar"><button id="personality-evolution-save" class="primary">保存人格成长开关</button><button id="personality-evolution-refresh">刷新真实成长轨迹</button><button id="personality-evolution-sandbox-run" type="button">🧪 播放模拟成长</button><button id="personality-evolution-sandbox-exit" type="button" hidden>退出沙盒，返回真实记录</button><span class="muted" id="personality-evolution-status" role="status">等待加载…</span></div>
 <div id="personality-evolution-sandbox-area" class="card" hidden style="border:1px dashed var(--border, #888);margin:10px 0"><strong>🧪 连续成长沙盒 · 纯虚构经历</strong>
 <div class="toolbar" style="margin-top:10px">
@@ -1024,7 +1027,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="feature-intro"><div><h2>✉️ 后台私信</h2><p>私信记录、陌生人申请、监听规则分别管理；默认不会自动回复陌生人。</p></div></div>
 <nav class="context-jump" aria-label="私信页分区"><a href="#dm-recent-conversations">最近会话</a><a href="#dm-requests">聊天申请</a><a href="#dm-settings-section">私信规则</a></nav>
 <div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-error" class="muted"></p><p class="muted">网络失败会显示接口主机与底层错误码；如果出现 ECONNRESET、ENETUNREACH、ETIMEDOUT 或 DNS 错误，需同时检查系统网络／代理与 B站连通性。</p></div>
-<div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">只显示本插件已经保存的对话片段；不从 B站 额外拉取完整历史。旧版心愿已停止自动处理，历史资料只随本地备份保留；新的陌生人探索灵感与好友观看邀请在「社交互动」查看。记录仅在本机展示。</p><div id="dm-recent-list" class="records"></div></div>
+<div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">只显示本插件已经保存的对话片段；不从 B站 额外拉取完整历史。旧版心愿已停止自动处理，历史资料只随本地备份保留；新的陌生人探索灵感与好友观看邀请在「社交互动」查看。记录仅在本机展示。</p><p class="muted">这里统计的是后台私信自动回复通道；主人专属 Agent、其他已授权途径的回复不计入陌生人额度。历史中出现多条来信也不代表已发送多次。</p><div id="dm-recent-list" class="records"></div></div>
 
 <div id="dm-requests" class="toolbar"><h2 style="margin:0">限额聊天申请</h2><select id="dm-filter"><option value="pending">只看待审批</option><option value="">全部申请</option><option value="approved">已通过</option><option value="rejected">已拒绝</option></select></div><p class="muted">这里只审核 B站 用户申请，不修改可信白名单。通过后仍受每日／累计额度控制。</p><div class="grid" id="dm-list"></div>
 

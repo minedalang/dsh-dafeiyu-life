@@ -663,7 +663,7 @@ function WatchTab() {
 
       // A first-start welcome is required even for existing users. B站 login
       // and Headless verification take place only in the unified management UI.
-      if(st?.onboarding && !st.onboarding.completed){
+      if(st?.onboarding && !(st.onboarding.welcomeCompleted??st.onboarding.completed)){
         const steps=st.onboarding;
         return h('div',{'data-bd-page':''},
           h('div',{'data-bd-sec':'',style:{padding:'20px',borderRadius:'16px',border:'2px solid #c74351',background:'rgba(218,61,73,.08)'}},

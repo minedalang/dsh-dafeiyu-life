@@ -31,6 +31,7 @@ const defineTool = hostDeps.defineTool
 import { spawn } from 'node:child_process'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
 import { randomUUID } from 'node:crypto'
+import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
 import { createBackup, validateBackup, restoreBackupFiles, createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup } from './lib/data-backup.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -958,7 +959,7 @@ function reportMeta() {
     try {
       if (readFileSync(actual, 'utf8') === readFileSync(shipped, 'utf8')) return true
     } catch { /* 文件未就绪也不启动 */ }
-    log('🔒 安全保护：当前插件家目录的 mcp_server.py 与 v2.4.0 已审版本不一致，拒绝执行。请备份自定义文件，核对 mcp_server.py.new 后人工升级。')
+    log('🔒 安全保护：家目录 Python MCP 与当前安装包的已审脚本不同，已拒绝执行。请到电脑管理中心「运行诊断」确认备份并修复；用户自定义代码不会被静默覆盖。')
     return false
   }
 
@@ -2498,7 +2499,7 @@ function reportMeta() {
       strangerMaxReplies: cfg.dmStrangerMaxReplies, strangerFirstFixed: cfg.dmStrangerFirstFixed,
       approvalEnabled:cfg.dmApprovalEnabled, approvalPhrase:cfg.dmApprovalPhrase,
       approvedTotalLimit:cfg.dmApprovedTotalLimit, approvedDailyLimit:cfg.dmApprovedDailyLimit,
-      whitelist: [...allow], strangerText: cfg.dmStrangerText,
+      whitelist: [...allow], ownerUid: String(owner||''), strangerText: cfg.dmStrangerText,
       intervalMinutes: cfg.dmWatchMinutes,
       maxPerPoll: 3, maxPerHour: 40,
       maxPerDay: cfg.dmReplyPerDay,
@@ -3687,6 +3688,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   lifeMemory=createLifeMemoryGateway({dataDir:stateDir,getConfig:()=>cfg,logger:{warn:m=>log('人生记忆：'+m)}})
   ctx.effect(()=>()=>lifeMemory?.close(),'bili-duty: 只读内存 FTS 关闭')
   personalityEvolution=createPersonalityEvolution({dataDir:stateDir,memoryGateway:lifeMemory,logger:{warn:m=>log('人格成长：'+m)}})
+  // Only NEW installations default to growth enabled. Explicit existing off remains off.
+  if(!existsSync(join(stateDir,'personality-evolution','v1.json')))try{personalityEvolution.setEnabled(true)}catch(e){log('初始化人格成长设置失败：'+String(e?.message||e))}
   let personalityAiDebugBusy=false,personalityAiDebugNextAt=0
   memoryRetriever=createMemoryRetriever({
     getMemories:()=>[...longTermMemory.activeMemories(),...listLegacyLifeFacts(stateDir),...interestMemoryRows(stateDir)],getConfig:()=>cfg,
@@ -4147,6 +4150,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       lastWhy: st.lastWhy || null,
       loggedIn: hasCredential(),
       onboarding:firstStart.status(),
+      activityFeed:activityFeed.list({limit:8}),
       venvReady: venvReadyNow(),
       version: myVersion(),
       // 2026-10-22：缺哪个 Python 包装不上，得能一眼看出来（出不了二维码 =09 缺 qrcode）
@@ -4195,7 +4199,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
       path.startsWith('/api/bili-duty/login/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' ||
       path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/open' ||
-      path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check'
+      path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity'
     if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
     // ⭐ 2026-10-21：每条视频一份笔记 —— **宿主拆报告**，不让模型多写一个字（零 token、不会写错）
     const notesDir = join(stateDir, 'reports')
@@ -4241,6 +4245,27 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
         'x-dafeiyu-management':'1','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"})
       return res.end(body)
+    }
+    // Deliberate MCP recovery: never auto-run unreviewed home copies or delete edits.
+    if (path === '/api/bili-duty/mcp-integrity') {
+      if(req.method === 'GET') {
+        try{return sendJson(res,200,mcpIntegrity({stateDir,pluginDir}))}
+        catch(e){return sendJson(res,409,{ok:false,error:String(e?.message||e)})}
+      }
+      if(req.method === 'POST') {
+        const host=String(req.headers.host||'')
+        const origin=String(req.headers.origin||'')
+        if(!host||!origin||!['http://'+host,'https://'+host].includes(origin)||
+          String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+          return sendJson(res,403,{ok:false,error:'只能由电脑本机管理中心同源确认 MCP 安全修复'})
+        try {
+          const body=await readBody(req,1024)
+          const result=repairReviewedMcp({stateDir,pluginDir,confirm:body?.confirm})
+          if(mcp){mcp.stop();mcp=null;mcpKey=''}
+          log('MCP 安全修复：用户已确认备份并替换为当前插件内置脚本；请重启插件')
+          return sendJson(res,200,result)
+        }catch(e){return sendJson(res,409,{ok:false,error:String(e?.message||e).slice(0,200)})}
+      }
     }
     if (req.method === 'GET' && path === '/api/bili-duty/activity-feed') {
       return sendJson(res,200,activityFeed.list({since:url.searchParams.get('since')||0,limit:url.searchParams.get('limit')||15}))
