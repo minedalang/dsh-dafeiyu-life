@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 import {watchedEvent} from '../lib/main-session-bridge.mjs'
 
 const BV='BV1pXHK6mE6z'

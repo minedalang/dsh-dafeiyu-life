@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
-import { apply } from '../index.js'
+import { apply } from './helpers/ready-host.mjs'
 import { growthSuggestionPrompt, parseGrowthSuggestion, growthSuggestionIssue } from '../lib/growth-suggestion.mjs'
 import { proposeGrowth, reviewGrowth, updateGrowthSuggestion, buildGrowthContext, listGrowth } from '../lib/persona-growth.mjs'
 

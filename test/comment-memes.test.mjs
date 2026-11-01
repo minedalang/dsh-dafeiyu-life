@@ -4,7 +4,7 @@ import {mkdtempSync, rmSync, readFileSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {Readable} from 'node:stream'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 
 const root = new URL('../',import.meta.url)
 test('评论附梗图的设置、host白名单与调度配置一致',async()=>{

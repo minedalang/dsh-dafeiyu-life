@@ -4,7 +4,7 @@ import {mkdtempSync, rmSync, readFileSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {Readable} from 'node:stream'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 
 function createHost(home) {
   let route

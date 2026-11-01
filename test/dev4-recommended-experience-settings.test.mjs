@@ -52,7 +52,9 @@ test('管理中心每组都有对应按钮和全部输入框；老用户必须�
   assert.doesNotMatch(js.match(/const stageRecommendedGroup=async group=>\{[\s\S]*?\n  \};/)?.[0]||'',/request\('\/config',\s*\{/)
   assert.match(js,/mainSessionMemoryDailyQuota:boundedInt\('main-memory-daily',1,100/)
   assert.match(html,/id="main-memory-daily" max="100"/)
-  assert.match(html,/恢复最新推荐值/)
+  assert.equal((html.match(/class="recommended-reset" data-recommend-group="[^"]+">使用推荐值<\/button>/g)||[]).length,5)
+  assert.match(html,/\.recommended-reset\{[^}]*linear-gradient/)
+  assert.doesNotMatch(html,/>恢复最新推荐值<\/button>/)
 })
 
 test('release 更新说明明确建议老用户主动恢复并说明隐私与保存边界',()=>{

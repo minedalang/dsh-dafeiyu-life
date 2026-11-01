@@ -4,7 +4,7 @@ import {readFileSync,mkdtempSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {Readable} from 'node:stream'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 import {DEFAULT_CHARACTER_LORE,normalizeMentionProfiles,buildMentionProfilePrompt} from '../lib/character-social.mjs'
 import {buildCommentMemePrompt} from '../lib/comment-meme-prompt.mjs'
 

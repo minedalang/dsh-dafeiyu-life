@@ -88,7 +88,7 @@ test('README 的架构图与推荐设置入口有效；管理中心核心功能�
   const repoRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..')
   assert.equal(existsSync(resolve(repoRoot,image[1])),true,'README 引用的架构图必须真实存在')
   assert.match(readme,/恢复推荐设置值/)
-  assert.match(readme,/恢复最新推荐值/)
+  assert.match(readme,/使用推荐值/)
   assert.match(readme,/保存记忆与反思设置/)
   assert.match(readme,/隐私|私密/)
   assert.match(pkg,/"version": "2\.\d+\.\d+(?:-dev\.\d+)?"/)

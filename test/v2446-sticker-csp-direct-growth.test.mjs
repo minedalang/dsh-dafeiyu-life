@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
-import { apply } from '../index.js'
+import { apply } from './helpers/ready-host.mjs'
 import { buildGrowthContext, listGrowth } from '../lib/persona-growth.mjs'
 
 function setup() {

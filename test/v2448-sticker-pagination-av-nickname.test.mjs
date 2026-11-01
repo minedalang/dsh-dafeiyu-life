@@ -72,7 +72,7 @@ test('插件真实 HTTP 预览路由对第 130 张图片返回 200，而不是 4
    const images=join(dir,'bili-duty','comment-memes','大肥鱼和其他大模型');
    mkdirSync(images,{recursive:true});
    for(let i=1;i<=130;i++)writeFileSync(join(images,`截图${String(i).padStart(3,'0')}.png`),Buffer.from('imagebytes'));
-   const {apply}=await import('../index.js');
+   const {apply}=await import('./helpers/ready-host.mjs');
    const ctx={get:key=>key==='dshHomePath'?(...paths)=>join(dir,...paths):undefined,
     logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(o){handler=o.handler;return {dispose(){}}}},
     effect:fn=>fn(),settings:{describe(){return []}}};

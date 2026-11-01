@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {Readable} from 'node:stream'
 import {recentComments,migrateCommentReceipts,commentUrlForRecord} from '../lib/recent-comments.mjs'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 
 function setup(){const dir=mkdtempSync(join(tmpdir(),'bili-recent-'));return {dir,close:()=>rmSync(dir,{recursive:true,force:true})}}
 function makeSources(dir){
