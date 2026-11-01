@@ -357,6 +357,16 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 .fs-warning{border:1px solid #cc3546;border-left:6px solid #cc3546;background:#ffebee;color:#912536;border-radius:12px;padding:13px 15px;display:flex;gap:15px;align-items:center;justify-content:space-between;margin-bottom:15px;font-weight:700;flex-wrap:wrap}.fs-warning[hidden]{display:none!important}
 @media(prefers-color-scheme:dark){.fs-hero{background:linear-gradient(120deg,#253957,#1d4038,#392949);border-color:#416580}.fs-hero h2{color:#e0f3ff}.fs-hero p{color:#c1dce5}.fs-pill{background:#263e50;color:#b7e7ff}.fs-state.bad{background:#4a222b;color:#ffc3cc}.fs-state.good{background:#1d4335;color:#b5f1c8}.fs-warning{background:#44262e;color:#ffd1d9}}
 @media(max-width:570px){.fs-hero{padding:19px}.fs-hero h2{font-size:21px}.fs-footer button{flex:1}}
+
+/* First Start's Session editor uses the real settings form, without exposing
+   unrelated business actions or the disabled main Session service. */
+#panel-home[data-setup-only="true"] .home-overview,
+#panel-home[data-setup-only="true"] .home-quicklinks { display:none!important; }
+#panel-home[data-setup-only="true"] #main-session-test,
+#panel-home[data-setup-only="true"] #main-session-sync,
+#panel-home[data-setup-only="true"] #main-session-backfill { display:none!important; }
+#panel-home[data-setup-only="true"] .feature-intro h2{font-size:19px}
+#fs-main-session-return {margin-bottom:15px}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 </head>
@@ -395,8 +405,8 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
     <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div></section>
     <section class="fs-step"><h3>02 · Headless 模型同步 <span class="pill pending">必须完成</span></h3><p>在 DSH 中配置好模型后，同步到 Headless 并进行真实连接验证。至少验证一个模型才能解锁，其他独立模型仍需逐项验证。</p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
     <section class="fs-step optional"><h3>03 · 主 Session <span class="pill">可跳过</span></h3><p>指定鱼鱼和主人交谈的主要会话；以后可以在管理中心修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
-    <section class="fs-step optional"><h3>04 · 人生记忆和反思 <span class="pill">可跳过</span></h3><p>以后可以调整记忆整理、反思批次和恢复推荐设置值。</p><div class="actions"><button type="button" data-open-tab="life">查看记忆设置</button><button type="button" data-firststart-skip="life-memory">先跳过</button></div></section>
-    <section class="fs-step optional"><h3>05 · 人格成长与社交偏好 <span class="pill">可跳过</span></h3><p>人格成长、自主聊天与对外社交权限始终可调整；引导不会自动开启任何发布权限。</p><div class="actions"><button type="button" data-open-tab="personality">现在查看</button><button type="button" data-firststart-skip="personality">先跳过</button></div></section>
+    <section class="fs-step optional"><h3>04 · 人生记忆和反思 <span class="pill">可跳过</span></h3><p>以后可以调整记忆整理、反思批次和恢复推荐设置值。</p><div class="actions"><button type="button" id="fs-life-settings" data-open-tab="life" disabled title="先完成首次设置，之后可在管理中心修改记忆设置">完成引导后设置</button><button type="button" data-firststart-skip="life-memory">先跳过</button></div></section>
+    <section class="fs-step optional"><h3>05 · 人格成长与社交偏好 <span class="pill">可跳过</span></h3><p>人格成长、自主聊天与对外社交权限始终可调整；引导不会自动开启任何发布权限。</p><div class="actions"><button type="button" id="fs-personality-settings" data-open-tab="personality" disabled title="先完成首次设置，之后可在管理中心修改人格设置">完成引导后设置</button><button type="button" data-firststart-skip="personality">先跳过</button></div></section>
   </div>
   <div class="fs-footer"><div><strong id="fs-summary">请先完成两项必需配置</strong><p class="muted">完成后随时可以在管理中心重新打开首次设置，已有记忆、凭据和历史资料不会删除。</p></div><div class="actions"><button id="fs-complete" class="primary" type="button" disabled>完成首次设置</button><button id="fs-complete-skip" type="button" disabled>跳过可选项并完成</button></div></div>
 </section>
@@ -504,6 +514,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 </div><p id="backup-progress" role="status" aria-live="polite" class="muted"></p>
 </section>
 <section id="panel-home" hidden>
+<div id="fs-main-session-return" class="fs-warning" hidden><span>首次设置期间可正常选择、保存主 Session 及同步频率；连接测试和发送经历在完成首次设置后开放。</span><button type="button" data-open-tab="firststart">← 返回首次设置</button></div>
 <div class="feature-intro"><div><h2>🏠 大肥鱼的家 · 生活总览</h2><p>这里看到鱼鱼此刻的生活、记忆与社交近况。回忆详情在「人生记忆」，行为授权在「社交互动」，相关设置在对应功能下方的折叠区。以下状态来自本地真实记录，不会自动触发对外发送。</p></div></div>
 <div class="home-overview grid" aria-label="生活概览">
 <a class="card home-summary" href="?tab=life" data-open-tab="life"><strong>🧠 鱼鱼的记忆</strong><span id="home-overview-memory" class="muted">正在读取记忆概况…</span><small>进入人生记忆 →</small></a>

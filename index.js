@@ -4089,7 +4089,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     // unlock business APIs merely because the user can load the settings UI.
     const setupAccess = path==='/api/bili-duty/status' || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
-      path.startsWith('/api/bili-duty/login/') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' ||
+      path.startsWith('/api/bili-duty/login/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' ||
       path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check'
     if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})

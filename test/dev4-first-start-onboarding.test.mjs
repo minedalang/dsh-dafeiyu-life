@@ -62,6 +62,15 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
   assert.equal((await call('GET','manage.js')).status,200)
   assert.equal((await call('GET','status')).status,200)
   assert.equal((await call('POST','login/poll',{key:'fake'})).status!==423,true)
+  // Config-only setup route is allowed before unlock. Executing anything
+  // from the target Session is still disallowed (no early business actions).
+  const mainSetup=await call('GET','main-session')
+  assert.equal(mainSetup.status,200)
+  assert.equal(typeof mainSetup.json().config,'object')
+  const sessionTest=await call('POST','main-session/test',{})
+  assert.equal(sessionTest.status,423)
+  const sessionSave=await call('POST','config',{mainSessionBridgeEnabled:false,mainSessionAutoSync:false})
+  assert.equal(sessionSave.status,200)
   const forbidden=await call('GET','life-memory/status')
   assert.equal(forbidden.status,423)
   assert.match(forbidden.json().error,/首次设置/)
@@ -121,4 +130,21 @@ test('验证 Overlay 使用 Headless 安全策略允许的文件名；重新同�
  assert.match(security,/'model-test': 'headless-model-test-overlay\.yml'/)
  assert.match(sync,/if\(t\.rows\[index\]\.config == null\)/)
  assert.match(sync,/t\.rows\[index\]\.config\.providers == null/)
+})
+
+
+test('首次设置主 Session 入口不跳回欢迎页：允许配置但隐藏实际执行业务按钮',()=>{
+  const page=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
+  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+  const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+  assert.match(page, /03 · 主 Session[\s\S]*?data-open-tab="home"/)
+  assert.match(page, /id="fs-main-session-return"/)
+  assert.match(page, /id="main-session-save"/)
+  assert.match(js,/!\['firststart','models','home'\]\.includes\(tab\)/)
+  assert.match(js,/const loadHome=async\(\)=>\{\s*if\(onboarding && !onboarding\.completed\)\{await loadMainSession\(\{setupOnly:true\}\)/)
+  assert.match(js,/if\(setupOnly\)return;/)
+  assert.match(page,/#panel-home\[data-setup-only="true"\] #main-session-test/)
+  assert.match(server,/req\.method==='GET' && path==='\/api\/bili-duty\/main-session'/)
+  assert.match(page,/id="fs-life-settings".*disabled/)
+  assert.match(page,/id="fs-personality-settings".*disabled/)
 })
