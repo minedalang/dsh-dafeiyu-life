@@ -108,7 +108,7 @@ test('A-04 评论读取根与发送根分离，不把父评论当楼层根',()=>
  assert.equal(uri.sendRoot,'456');assert.equal(uri.contextRoot,'456')
 })
 
-test('Memory Consolidation：默认不自动整理；来源不可靠时不能改变原记录',async()=>{
+test('Memory Consolidation：显式关闭不自动整理；来源不可靠时不能改变原记录',async()=>{
  const rows=[
   {id:'x1',source:'main-session-ai',category:'event',importance:.5,text:'主人很喜欢科技视频和 AI 科普',createdAt:'2026-10-01'},
   {id:'x2',source:'main-session-ai',category:'event',importance:.5,text:'主人很喜欢科技视频和 AI 科普，也喜欢知识分享',createdAt:'2026-10-02'},

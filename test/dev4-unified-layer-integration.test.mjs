@@ -84,7 +84,7 @@ test('A11: 默认每天30条，旧事实替换、重复强化不占新增额度'
  assert.equal(blocked.quotaExceeded,true)
 })
 
-test('Memory Consolidation: 默认 opt-in；无证据或模型输出不可信不能删除原始记忆',async()=>{
+test('Memory Consolidation: 显式关闭时不整理；无证据或模型输出不可信不能删除原始记忆',async()=>{
  const memories=[{id:'1',text:'主人经常看人工智能技术视频',source:'main-session-ai',importance:.6},{id:'2',text:'主人喜欢人工智能技术视频',source:'main-session-ai',importance:.6},{id:'3',text:'主人最近喜欢人工智能技术相关视频',source:'main-session-ai',importance:.6}]
  let commits=0
  const con=createMemoryConsolidator({getMemories:()=>memories,commit:()=>{commits++;return {ok:true}},invokeModel:async()=>JSON.stringify({text:'主人秘密账户是12345',skip:false}),getConfig:()=>({mainSessionMemoryConsolidationEnabled:false})})

@@ -44,7 +44,7 @@
 
 | 原始目标 | 生产入口 → 适用统一层 → 数据出路 | 本次源码验证 | 需要留到 DSH 实机的部分 |
 |---|---|---|---|
-| 1. Memory Consolidation | 主 Session `dafeiyu_remember` → `LongTermMemory` 先去重/事实键更新 → 每日新增配额/持久候选 → `MemoryConsolidator` (默认关闭、3–8 条同主题) → 带 `sourceIds/evidenceKeys` 的凝练记忆 | 验证 30 条默认、100 条配置范围、重复强化不占额度、原始事实仍可回溯、输出不被证据支持时不提交 | 真实模型输出质量和长期累积行为 |
+| 1. Memory Consolidation | 主 Session `dafeiyu_remember` → `LongTermMemory` 先去重/事实键更新 → 每日新增配额/持久候选 → `MemoryConsolidator` (新安装默认开启、尊重已有显式关闭、3–8 条同主题) → 带 `sourceIds/evidenceKeys` 的凝练记忆 | 验证 30 条默认、100 条配置范围、重复强化不占额度、原始事实仍可回溯、输出不被证据支持时不提交 | 真实模型输出质量和长期累积行为 |
 | 2. Life Memory 可靠协调 | 视频探索、评论真实事件 → `LifeMemoryCoordinator` 持久化 outbox → episode → reflection candidate → interest projection；反思再映射长期认识、情绪、人格 | 模拟 reflection sink 中断后重启恢复；重复事件不重复提交；永久档案不授权回读 | Windows 断电/文件系统 IO 失败的真实恢复 |
 | 3. Social Context & Event Coordination | 社交入站和确认外发回执 → `SocialInteractionCoordinator` 持久化、分别 checkpoint → socialCognition/friendLearning/friendRelationships/LifeMemory 子域 | 模拟单 sink 故障、重启后仅补失败 sink、无外部重发、拒绝写入原始陌生私信数据；检查风险记录格式 | B站远端回执不确定、自动重试前后的真机状态 |
 | 4. 评论、@、私信统一记忆与视频上下文 | 普通 DM/comment → `interactionBatcher.prepareContexts` → `SocialContextAssembler`；可信评论/owner DM 使用同一装配器的专用方法；memoryRetriever 由 UID+channel 决定读取视图；@ 首轮尝试热评 | 验证 owner DM 可以用私有记忆、公开 owner 评论不能，所有人的记忆不能跨 UID；@ 在首轮 AI 前请求热评；同 UID DM 历史参与检索 query | B站 API 是否确实返回主评论、字幕、热评内容 |
