@@ -33,9 +33,13 @@ test('Host schema 与运行时默认值逐字段保持一致（不只核对记�
 })
 
 test('dev.15 全新安装默认启用有限生活体验，但保持外部写入和额外检索模型关闭',()=>{
- for(const name of ['mainSessionMemorySemanticEnabled','socialAutoSend','ownerCommentSocialPublishEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicPublishEnabled']){
+ for(const name of ['mainSessionMemorySemanticEnabled','socialAutoSend','ownerCommentSocialPublishEnabled']){
   assert.match(host,new RegExp(`${name}: z\\.boolean\\(\\)\\.default\\(false\\)`),name+' schema must default off')
   assert.match(host,new RegExp(`${name}:\\s*false`),name+' runtime fallback must default off')
+ }
+ for(const name of ['ownerDmAgentEnabled','ownerDmActionsEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicPublishEnabled']){
+  assert.match(host,new RegExp(`${name}: z\\.boolean\\(\\)\\.default\\(true\\)`),name+' schema should enable the bounded owner Agent capability for fresh installs')
+  assert.match(host,new RegExp(`${name}:\\s*true`),name+' new-install default should be on')
  }
  for(const name of ['mainSessionMemoryEnabled','dailyDynamicEnabled','autonomousPlannerEnabled']){
   assert.match(host,new RegExp(`${name}: z\\.boolean\\(\\)\\.default\\(true\\)`),name+' schema must default on for fresh installs')

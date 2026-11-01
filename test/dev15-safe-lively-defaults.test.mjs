@@ -52,10 +52,13 @@ test('全新安装生动默认：开启本地记忆、限额只读计划和纯�
     assert.equal(c.dailyDynamicEnabled, true)
     assert.equal(c.dailyDynamicDraftOnly, true)
     assert.equal(c.dailyDynamicDailyLimit, 1)
+    assert.equal(c.ownerDmAgentEnabled,true,'已核验主人受限 Agent 的能力在新安装默认可用')
+    assert.equal(c.ownerDmActionsEnabled,true,'公开写入仍必须由本条主人消息明确授权')
+    assert.equal(c.ownerTodoCompletionFollowupEnabled,false,'主动任务进度回访必须单独开启')
     for (const key of [
       'ownerCommentAgentEnabled', 'ownerCommentSocialPublishEnabled', 'ownerCommentNaturalAckEnabled',
       'commentAtEnabled', 'socialOutreachEnabled', 'socialAutoSend', 'emotionRecallMainEnabled',
-      'emotionRecallDmEnabled', 'ownerDmActionsEnabled', 'autoComment', 'autoVideoLike',
+      'emotionRecallDmEnabled', 'autoComment', 'autoVideoLike',
       'autoVideoCollect', 'agentFollowEnabled', 'visionEnabled', 'commentMemesEnabled',
       'dmStrangerOnce', 'mainSessionBridgeEnabled', 'ownerTodoAutoReviewEnabled',
     ]) assert.equal(c[key], false, `未经授权的默认开关: ${key}`)
