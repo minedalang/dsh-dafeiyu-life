@@ -2987,7 +2987,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     }
   const interactionBatcher = createInteractionBatcher({
     prepareContexts:batch=>socialContextAssembler?.batch(batch)||batch.map(()=>({})),
-    onEmotion:({mood,intensity,source})=>{try{emotionalState.update({mood,intensity,source})}catch(e){log('情绪状态更新失败：'+String(e?.message||e).slice(0,100))}},
+    onEmotion:({mood,intensity,source})=>{try{return emotionalState.update({mood,intensity,source})}catch(e){log('情绪状态更新失败：'+String(e?.message||e).slice(0,100))}},
+    onEmotionContext:({at,source,incoming,generated})=>{try{emotionalState.attachContext({at,source,incoming,generated})}catch(e){log('情绪来源片段记录失败：'+String(e?.message||e).slice(0,100))}},
     invoke:prompt=>invokeInteractionPrompt(prompt,24000),
     getPersona:batch=>buildInteractionPersona(batch),
     logger:{warn:m=>log('互动 AI：'+m)},
@@ -3714,7 +3715,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     onResult:(event)=>{try{activityFeed.publish('reflection',{count:event.count});if(event.personalityAccepted)activityFeed.publish('personality',{count:event.personalityAccepted})}catch{}},
     invokeModel: (prompt,maxChars,opt={}) => invokeInteractionPrompt(prompt,maxChars,{...opt,modelRoute:'reflection'}),
     commitMemories: (items) => longTermMemory.addReflectedMemories(items),
-    onEmotion: ({mood,intensity,source='life-reflection'})=>{try{emotionalState.update({mood,intensity,source});if(emotionRecall){const wake=setTimeout(()=>void emotionRecall.tick(),8000);wake.unref?.()}}catch(e){log('人生反思情绪更新失败：'+String(e?.message||e).slice(0,100))}},
+    onEmotion: ({mood,intensity,source='life-reflection',summary=''})=>{try{emotionalState.update({mood,intensity,source,summary});if(emotionRecall){const wake=setTimeout(()=>void emotionRecall.tick(),8000);wake.unref?.()}}catch(e){log('人生反思情绪更新失败：'+String(e?.message||e).slice(0,100))}},
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
   })
   lifeReflection.start()
@@ -3766,7 +3767,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   // 大肥鱼主 Session 是“家/人格记忆”，现有插件仍是“后台身体/精确档案”。
   // 这里只枚举 DSH 当前活着的 agent；绝不扫描 ~/.dsh/sessions，也不读取其它会话历史。
   socialIntentEngine=createSocialIntentEngine({
-    dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},
+    dataDir:stateDir,paused:true,getConfig:()=>{refreshCfg();return cfg},
     getEmotionState:()=>emotionalState.snapshot(),
     invokeModel:(prompt,maxChars,opt)=>invokeInteractionPrompt(prompt,maxChars,opt),
     sendMessage:async({uid,text,eventId})=>{
@@ -5227,6 +5228,9 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
 
     if (req.method === 'POST' && path === '/api/bili-duty/config') {
       const body = await readBody(req)
+      // 2.6.0: the legacy outreach workflow is paused server-side, not just greyed out in UI.
+      if(['socialOutreachEnabled','socialLifeIntentEnabled','socialAutoSend'].some(k=>body?.[k]===true))
+        return sendJson(res,409,{ok:false,error:'2.6.0 暂停主动回访，预计 2.6.1 重构后重新开放'})
       const patch = {}
       for (const k of ['masterEnabled', 'perDay', 'pickPerRound', 'peakValley', 'peakWindows', 'peakIntervalMinutes', 'autoComment', 'transcribe', 'asrModel',
         'diagMentionEnabled','diagDynamicEnabled','diagVisionEnabled','diagMemeEnabled','diagAtInviteEnabled','diagReplyInboxEnabled','commentMemesEnabled','commentMemesDebug','commentMemesPerDay','commentMemesPerRound','commentMemePrompt','visionPrompt','memeMemoryEnabled', 'memeMemoryMaxEntries', 'visionEnabled', 'visionDebug', 'visionMode', 'visionModelProvider', 'visionModelId', 'visionReasoningEffort', 'visionEndpoint', 'visionFrames', 'visionDailyLimit', 'commentPerRound', 'mentionName', 'mentionTargets', 'mentionProfiles', 'friendDirectory', 'mentionMode', 'dmMode', 'dmUid', 'commentSyncDynamic', 'dynamicDailyLimit', 'commentDailyLimit',
