@@ -1,0 +1,76 @@
+flowchart TB
+  subgraph BIZ[真实业务入口]
+    SESSION[主 Session 工具与对话]
+    WATCH[视频探索 / duty 定时收集]
+    COMMENT[普通评论、@、楼中楼]
+    TRUSTED[主人/可信好友专用评论 Agent]
+    DM[普通私信]
+    OWNERDM[主人私信 Agent]
+    DAILY[每日动态、情绪回顾]
+    REFLECT[人生反思和人格成长]
+  end
+  subgraph COMMON[现有统一层 / 适用时使用]
+    DIRECTORY[friendDirectory + socialTier]
+    POLICY[SocialPolicyGate 身份与渠道边界]
+    ROOT[CommentRootResolver 读取 root / 发送 root]
+    VIDEOCTX[commentVideoContext 视频/字幕/主评论/楼中楼/热评]
+    SOCIALCTX[SocialContextAssembler 场景化证据装配]
+    MEMORY[memoryRetriever 主人/社交/公开视频权限视图]
+    MEME[interactionMemeLookup 公共梗知识]
+    PERSONA[persona-growth / personality / emotion]
+    PRIVACY[interactionPrivacy 公共隐私预检]
+  end
+  subgraph DECISION[模型、意愿与平台动作]
+    BATCH[interactionBatcher 普通社交批处理]
+    AGENT[ownerCommentAgent 独立意愿/限额]
+    OWNERAGENT[ownerDmAgent 工具规划及单步授权]
+    MODEL[invokeInteractionPrompt / invokeMemoryPrompt]
+    AUTH[外部动作权限/额度/目标再次检查]
+    PLATFORM[Bili MCP / Python _guard / 平台回执]
+  end
+  subgraph DATA[持久化事实与投影]
+    SOCIALSYNC[SocialInteractionCoordinator 社交事件 outbox]
+    LIFESYNC[LifeMemoryCoordinator 经历/候选/兴趣 outbox]
+    EPISODE[LifeMemoryGateway 可衰减经历]
+    REFLECTION[LifeReflection 有效证据反思]
+    LONG[LongTermMemory 事实键/日额/待处理]
+    CONSOLIDATE[MemoryConsolidator 私密聊天可选凝练]
+    FRIEND[friendLearning / friendRelationships / socialCognition]
+    CHARACTER[情绪/人格领域投影]
+  end
+  SESSION --> MEMORY
+  SESSION --> LONG
+  WATCH --> MEMORY
+  WATCH --> LIFESYNC
+  COMMENT --> ROOT --> VIDEOCTX
+  COMMENT --> DIRECTORY --> POLICY
+  TRUSTED --> DIRECTORY
+  TRUSTED --> ROOT
+  DM --> POLICY
+  OWNERDM --> POLICY
+  POLICY --> SOCIALCTX
+  SOCIALCTX --> MEMORY
+  SOCIALCTX --> VIDEOCTX
+  SOCIALCTX --> MEME
+  SOCIALCTX --> PERSONA
+  SOCIALCTX --> PRIVACY
+  SOCIALCTX --> BATCH
+  SOCIALCTX --> AGENT
+  SOCIALCTX --> OWNERAGENT
+  BATCH --> MODEL
+  AGENT --> MODEL
+  OWNERAGENT --> MODEL
+  MODEL --> AUTH --> PLATFORM
+  PLATFORM --> SOCIALSYNC
+  SOCIALSYNC --> FRIEND
+  SOCIALSYNC --> LIFESYNC
+  LIFESYNC --> EPISODE
+  LIFESYNC --> REFLECTION
+  REFLECTION --> LONG
+  REFLECTION --> CHARACTER
+  LONG --> CONSOLIDATE --> LONG
+  DAILY --> EPISODE
+  REFLECT --> EPISODE
+  REFLECT --> LONG
+  BORDER[安全原则：公开评论绝不读主人私记忆；原始 DM 正文不进 Life Memory；意愿不等于动作授权]
+  BORDER -.-> POLICY

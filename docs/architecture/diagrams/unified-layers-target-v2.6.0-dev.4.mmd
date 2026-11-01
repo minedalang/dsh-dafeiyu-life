@@ -1,0 +1,16 @@
+flowchart TB
+  Source[业务入口] --> Normalize[来源 ID / UID / channel / contextRoot / sendRoot]
+  Normalize --> Policy[统一身份与渠道权限]
+  Policy --> Context[统一上下文装配 ContextEnvelope]
+  Context --> Evidence[分域证据与记忆读取]
+  Evidence --> Privacy[隐私与指令隔离]
+  Privacy --> Model[统一模型路由与安全启动]
+  Model --> Intent[自主意愿：不等于授权]
+  Intent --> Action[动作允许清单 / 额度 / 最终复核]
+  Action --> Platform[平台调用及真实回执]
+  Platform --> Outbox[持久化领域事件与 per-sink 完成记录]
+  Outbox --> Life[人生记忆 / 反思 / 人格]
+  Outbox --> Social[可信好友关系 / 认知]
+  Life --> Inspect[管理诊断：缺失 / 已降级 / 失败待补偿]
+  Social --> Inspect
+  Inspect --> Audit[架构图与测试联动更新]

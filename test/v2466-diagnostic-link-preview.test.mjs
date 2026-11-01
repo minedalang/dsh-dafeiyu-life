@@ -15,7 +15,8 @@ test('优先使用 B站通知链接中的真正 root，而非直接父评论 tar
  assert.deepEqual(notificationCommentLocation(item,'1112759450'),{locationRoot:'70000111',locationSource:'bili-uri'});
  const rows=normalizeReplyNotifications({code:0,data:{items:[notice(item)]}},'900');
  assert.equal(rows.length,1);
- assert.equal(rows[0].root,'90000222','Existing backend root handling stays unchanged, only UI link uses confirmed root');
+ assert.equal(rows[0].root,'70000111','只能使用 B站 URI 验证的根 ID，不能用直接父评论 ID');
+ assert.equal(rows[0].targetId,'90000222','保留直接父评论坐标');
  assert.equal(rows[0].locationRoot,'70000111');
  assert.equal(rows[0].locationSource,'bili-uri');
 });

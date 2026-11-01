@@ -1,0 +1,61 @@
+flowchart TB
+  INPUT[业务输入：评论 / @ / DM / 主 Session / 视频事件]
+  NORMALIZE[统一事件与身份标准化：channel / actorUid / eventId / target / contextRoot]
+  IDENTITY[身份解析：owner / friend / stranger + friendDirectory]
+  CHANNEL[通道授权：DM / atInvite / recommend / public publish]
+  CONTEXT[SocialContextAssembler：构建带来源的 ContextEnvelope]
+  subgraph EVIDENCE[按权限获取上下文]
+    VIDEO[视频证据：标题 / 简介 / 字幕 / 目标楼层 / 热评]
+    MEMORY[memoryRetriever：按 scene 与 visibility 取记忆]
+    MEME[interactionMemeLookup：公开梗知识]
+    REL[好友关系与偏好：仅私信或授权好友场景]
+    PERSONA[persona / growth / personality / emotion]
+  end
+  PRIVACY[统一隐私与不可信输入策略：硬规则 + 场景白名单]
+  AGENCY[自主意愿：dualContextAgency；不能替代通道授权]
+  MODEL[统一模型路由：invokeInteractionPrompt / 专用 memory route]
+  DECIDE{模型决策}
+  ACTION[动作执行器：每个动作再次校验 UID / 开关 / 额度 / 目标]
+  PLATFORM[Bili MCP / 专用 Python adapter：最终 allowlist / pause / receipt]
+  RECEIPT[稳定回执与幂等键]
+  EVENTS[InteractionEventCoordinator：持久化 outbox / 每个 sink 独立完成标记]
+  subgraph PROJECTIONS[按事件类型与隐私分类投影]
+    LIFE[LifeMemoryCoordinator：公开真实经历 → episode / candidate / interest]
+    FRIEND[friendLearning / friendRelationships]
+    COG[socialCognition]
+    EMO[emotionalState：助手状态，不是用户心理诊断]
+    TASK[recommendations / ownerTodos]
+  end
+
+  INPUT --> NORMALIZE --> IDENTITY --> CHANNEL --> CONTEXT
+  CONTEXT --> VIDEO
+  CONTEXT --> MEMORY
+  CONTEXT --> MEME
+  CONTEXT --> REL
+  CONTEXT --> PERSONA
+  VIDEO --> PRIVACY
+  MEMORY --> PRIVACY
+  MEME --> PRIVACY
+  REL --> PRIVACY
+  PERSONA --> PRIVACY
+  PRIVACY --> AGENCY --> MODEL --> DECIDE
+  DECIDE -->|reply / action| ACTION --> PLATFORM --> RECEIPT --> EVENTS
+  DECIDE -->|skip| EVENTS
+  EVENTS --> LIFE
+  EVENTS --> FRIEND
+  EVENTS --> COG
+  EVENTS --> EMO
+  EVENTS --> TASK
+
+  subgraph OWNERONLY[主人私有通道例外]
+    OWNER[已验证 owner UID]
+    OWNERMEM[memoryRetriever.localContext(chat)：可读主人私有记忆]
+    OWNERAGENT[ownerDmAgent：命令规划与普通聊天分流]
+    OWNER --> OWNERAGENT --> OWNERMEM
+  end
+  INPUT --> OWNER
+
+  classDef shared fill:#e8f2ff,stroke:#4777b8,color:#17365d;
+  classDef policy fill:#fff1dc,stroke:#b27a27,color:#5a3b08;
+  class CONTEXT,VIDEO,MEMORY,MEME,REL,PERSONA,LIFE,FRIEND,COG,EMO,TASK shared;
+  class IDENTITY,CHANNEL,PRIVACY,AGENCY,ACTION,PLATFORM,RECEIPT,EVENTS policy;

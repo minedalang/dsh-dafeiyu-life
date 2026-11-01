@@ -1,0 +1,27 @@
+flowchart TB
+  Receive[评论 @ / 回复通知 / 私信] --> Parse[CommentRootResolver / DM 消息归一化]
+  Parse --> Policy[SocialPolicyGate 平台 UID / 通道权限]
+  Policy --> Select{业务分流}
+  Select -->|普通评论或 DM| Batch[interactionBatcher]
+  Select -->|可信主人或好友评论| Trusted[ownerCommentAgent]
+  Select -->|认证主人 DM| OwnerDM[ownerDmAgent]
+  Batch --> Assemble[SocialContextAssembler]
+  Trusted --> Assemble
+  OwnerDM --> Assemble
+  Assemble --> Memory{记忆可见性}
+  Memory -->|认证主人私信| Private[主人私有记忆]
+  Memory -->|公开评论及其他 DM| Social[memoryRetriever.socialContext UID 隔离]
+  Assemble --> Video[视频简介 / 字幕 / 验证根评论 / 楼中楼 / @ 首轮热评]
+  Assemble --> Meme[本地梗检索]
+  Assemble --> Persona[成长 / 人格 / 情绪 / 关系元数据]
+  Private --> Model[安全模型调用]
+  Social --> Model
+  Video --> Model
+  Meme --> Model
+  Persona --> Model
+  Model --> Decision{回复 / 沉默 / 行动}
+  Decision -->|动作| Guard[自主意愿与平台权限 / 二次授权]
+  Guard --> Send[Bili MCP / Python 最终校验]
+  Send --> Receipt[真实回执 / 不确定不重复发送]
+  Receipt --> Event[SocialInteractionCoordinator 幂等投影]
+  Decision -->|沉默| Event

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {__test as memoryRetrieverTest} from '../lib/memory-retriever.mjs'
 import {__test as reflectionTest} from '../lib/life-reflection.mjs'
+import {RECOMMENDED_EXPERIENCE_GROUPS} from '../lib/recommended-experience-settings.mjs'
 const source=(name)=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 const host=source('index.js')
 const ui=source('lib/management-console.html')
@@ -17,12 +18,15 @@ test('Host schema 与运行时默认值逐字段保持一致（不只核对记�
  assert.ok(start>0&&end>start)
  const block=host.slice(start,end)
  const schema=new Map([...host.matchAll(/([A-Za-z][\w]+)\s*:\s*z\.[a-zA-Z]+\(\)\.default\(([^)]+)\)/g)].map(m=>[m[1],m[2].trim()]))
- const runtime=new Map([...block.matchAll(/([A-Za-z][\w]+)\s*:\s*(true|false|\d+(?:\.\d+)?|'[^']*'|"[^"]*")(?=\s*[,}])/g)].map(m=>[m[1],m[2].trim()]))
+ const runtime=new Map([...block.matchAll(/([A-Za-z][\w]+)\s*:\s*(true|false|\d+(?:\.\d+)?|'[^']*'|"[^"]*"|RECOMMENDED_EXPERIENCE_GROUPS\.[A-Za-z]+\.[A-Za-z][\w]*)(?=\s*[,}])/g)].map(m=>[m[1],m[2].trim()]))
  assert.ok(runtime.size>=185,'too few runtime defaults inspected')
  for(const [key,value] of runtime){
   if(key==='dmStrangerText')continue
   if(!schema.has(key))continue
-  assert.equal(value.replaceAll('\"',"'"),schema.get(key).replaceAll('\"',"'"),key+' differs between schema and DEFAULTS')
+  const reference=value.match(/^RECOMMENDED_EXPERIENCE_GROUPS\.([A-Za-z]+)\.([A-Za-z][\w]*)$/)
+  const resolved=reference?String(RECOMMENDED_EXPERIENCE_GROUPS[reference[1]]?.[reference[2]]):value
+  assert.notEqual(resolved,'undefined',key+' refers to an unknown recommendation')
+  assert.equal(resolved.replaceAll('"',"'"),schema.get(key).replaceAll('"',"'"),key+' differs between schema and DEFAULTS')
  }
  assert.match(block,/personaPrompt:\s*DEFAULT_PERSONA_PROMPT/)
  assert.match(host,/personaPrompt: z\.string\(\)\.default\(DEFAULT_PERSONA_PROMPT\)/)

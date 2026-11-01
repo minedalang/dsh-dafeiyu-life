@@ -116,9 +116,13 @@ test('模型单次反思输出社交质量评价；未授权的候选 ID 或外�
 }))
 
 
-test('主入口只在成功出站回复后安排社交反思，而不是收到陌生人留言就加人格证据',()=>{
-  const file=readFileSync(new URL('../index.js',import.meta.url),'utf8')
-  assert.match(file,/lifeMemory\.recordEvents\(\[socialEvent\]\)/)
-  assert.match(file,/if\(recorded\?\.ok\)lifeReflection\?\.addEvents\(\[\{kind:'social'/)
-  assert.doesNotMatch(file,/recordEvents\(\[socialEvent\]\);lifeReflection\?\.addEvents/)
+test('实际回复后由持久协调器记录既有经历的回复状态，不把不完整事件伪造成新反思候选',()=>{
+ const src=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ const coord=readFileSync(new URL('../lib/social-interaction-coordinator.mjs',import.meta.url),'utf8')
+ assert.match(src,/type:'reply',source:'comment'/)
+ assert.match(src,/recordReply:async/)
+ assert.match(src,/lifeMemory\?\.recordSocialReply\(/)
+ assert.match(src,/original candidate reads updated life evidence/)
+ assert.match(coord,/await apply\('outcome'/)
+ assert.doesNotMatch(src,/recordEvents\(\[socialEvent\]\);lifeReflection\?\.addEvents/)
 })

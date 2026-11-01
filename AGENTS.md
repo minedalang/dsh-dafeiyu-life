@@ -83,3 +83,25 @@
 - `lib/memory-retriever.mjs` 的低成本模型只是**可选 ID 选择器**：先由本地实现隐私、衰减、UID 过滤并选候选，再交给模型，最终重新读取当前副本并验证 ID。不能根据模型自写叙述建记忆。
 - B站陌生人按平台真实 UID 召回自己的清晰公开共同经历，不能访问其他人或主 Session 的私有记录。普通社交仍本地召回；不要引入每次聊天自动多一次 AI 的回归。
 - 在「大肥鱼的家」开启身份记忆及语义检索，在「AI 模型配置」选择低成本记忆模型。旧版默认两个功能都关闭；dev.15 **仅全新安装**默认开启本地身份记忆，独立 AI 语义检索仍默认关闭。已有用户的原设置必须保留。用户修改过的值班章程不应被新版覆盖。
+
+
+## v2.6.0-dev.4 架构与推荐值维护
+
+- 修改任何跨业务记忆、社交、隐私或事件投影接口时，同步更新 `docs/architecture/` 的当前实现图、目标图、审计矩阵和源码级测试。
+- 不要让某个 Agent 绕过现有 `SocialContextAssembler`、`SocialPolicyGate`、`memoryRetriever` 或 Life/Social 事件协调层；有意采用专用领域读取必须明确权限范围。
+- 体验推荐配置以 `lib/recommended-experience-settings.mjs` 为单一真值源。禁止把主人 UID、账户、模型 Provider、自动发送开关、发送配额放进推荐恢复组。
+- 老安装参数必须原样保留；恢复推荐值只能由管理页明确点击、预览、再经现有保存按钮持久化。
+- README 仅保留用户可理解的简短说明；架构细节留在版本化技术档案。
+
+## dev.4 跨系统统一层与架构归档
+
+- 本仓库的架构真值文档：`docs/architecture/README.md` 与 `docs/architecture/system-architecture-audit-v2.6.0-dev.4.md`。业务入口或统一层改动后必须更新审计矩阵、实施图与相关测试；保留审计原始图作为历史，不能把旧图误称为最新实现。
+- 评论、@ 通知、DM 和主人专用 Agent 必须按通道调用身份/权限、视频证据、记忆检索、梗、人格、隐私、意愿、模型、动作授权和平台回执中的适用层。某项刻意不适用时，在审计矩阵说明原因和边界。
+- `SocialContextAssembler` 是上下文装配器，不是权限授权器；`SocialPolicyGate` 是身份/范围策略，不是大模型的意愿；`SocialInteractionCoordinator` 是跨社交投影 outbox；`LifeMemoryCoordinator` 只负责人生经历和反思领域的写入协调。
+- 外部写入确认后不允许自动重放平台请求；失败补偿只能恢复本地数据投影。确认回复的记忆更新不产生第二条伪造的独立经历。
+- `CommentRootResolver` 严格区分读取用 `contextRoot` 和发送用 `sendRoot`；没有可靠根 ID 时不要推断 `target_id` 就是根。
+- 技术图存档在 `docs/architecture/diagrams/`；用户 README 保持简短，不展示冗长内部调用图。
+
+## 当前 dev 分支安装约束
+
+用户的 Windows Desktop 发布工作流是：本地改源码 → 生成/审查 Git Patch → 分别执行 Node、Python、自检与打包测试 → `git commit` → `git push origin dev` → `dsh plugin --profile desktop add "github:minedalang/dsh-dafeiyu-life#dev"`。严禁建议恢复 `deploy-local.ps1`、本地 `dsh plugin add .`、Junction 或本地 tgz 安装。

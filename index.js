@@ -1,4 +1,5 @@
 import { judgeVideoHeat } from './lib/video-heat.mjs'
+import {RECOMMENDED_EXPERIENCE_SETTINGS,RECOMMENDED_EXPERIENCE_GROUPS} from './lib/recommended-experience-settings.mjs'
 import { createPersonalityEvolution } from './lib/personality-evolution.mjs'
 import { normalizeFictionalTurn, runFictionalAiDebug, MAX_FICTIONAL_TURNS } from './lib/personality-ai-debug.mjs'
 import { buildGrowthContext, syncReportsToGrowth, listGrowth, proposeGrowth, updateGrowthSuggestion, markGrowthDirectReview, reviewGrowth, deleteGrowth, updateGrowthPerson, undoGrowth, listLegacyLifeFacts } from './lib/persona-growth.mjs'
@@ -54,7 +55,7 @@ import { validateOwnerRosterUpdate } from './lib/owner-identity.mjs'
 import { formatLocalLogTimestamp } from './lib/log-time.mjs'
 import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
 import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
-import { observeFriendInterest, learnedFriendContext, listFriendLearning, clearFriendLearning, isFriendRecommendationFeedback, friendRecommendationGuard } from './lib/friend-learning.mjs'
+import {prepareFriendInterestObservation,recordPreparedFriendInterest, learnedFriendContext, listFriendLearning, clearFriendLearning, isFriendRecommendationFeedback, friendRecommendationGuard } from './lib/friend-learning.mjs'
 import {socialTier,hasExplicitVideoRecommendation} from './lib/social-tier.mjs'
 import { observeAuthenticatedOwnerDmPreferences } from './lib/owner-dm-preferences.mjs'
 import { generateOwnerCommentDraftFromVideo } from './lib/owner-comment-draft.mjs'
@@ -66,6 +67,11 @@ import { createSocialIntentEngine } from './lib/social-intentions.mjs'
 import { createEmotionalState } from './lib/emotional-state.mjs'
 import { createDualContextAgency, classifyBiliOwnerRequest, agencyDeclineMessage } from './lib/dual-context-agency.mjs'
 import { createSocialCognition } from './lib/social-cognition.mjs'
+import { createSocialPolicyGate } from './lib/social-policy-gate.mjs'
+import { createSocialContextAssembler } from './lib/social-context-assembler.mjs'
+import { createSocialInteractionCoordinator } from './lib/social-interaction-coordinator.mjs'
+import { createLifeMemoryCoordinator } from './lib/life-memory-coordinator.mjs'
+import { createMemoryConsolidator } from './lib/memory-consolidation.mjs'
 import { createOwnerCommentAgent } from './lib/owner-comment-agent.mjs'
 import { createEmotionRecall } from './lib/emotion-recall.mjs'
 import { recordFriendInteraction, listFriendRelationships, friendRelationshipContext, clearFriendRelationships } from './lib/friend-relationships.mjs'
@@ -350,7 +356,8 @@ export const Config = !z ? undefined : z.object({
   mainSessionMemoryThreshold: z.number().default(0.35).extra('volatile', true),
   mainSessionMemoryMaxItems: z.natural().default(8).extra('volatile', true),
   mainSessionMemoryMaxChars: z.natural().default(1200).extra('volatile', true),
-  mainSessionMemoryDailyQuota: z.natural().default(8).extra('volatile', true),
+  mainSessionMemoryDailyQuota: z.natural().default(30).extra('volatile', true),
+  mainSessionMemoryConsolidationEnabled: z.boolean().default(false).extra('volatile',true),
   mainSessionMemoryFactsMax: z.natural().default(2).extra('volatile', true),
   workspace: z.string().default('').extra('volatile', true),
   /** 日报形态：full=完整（现状）· brief=每条一两行 · off=不写报告（只发评论） */
@@ -516,7 +523,7 @@ function reportMeta() {
     commentWatchReplies: false, commentWatchTop: false, commentAtEnabled: false, friendAtFeedbackEnabled:false, strangerInspirationEnabled:false, socialInvitationEnabled:false, socialInvitationAutoInspectEnabled:false, ownerCommentAgentEnabled:false, ownerCommentLikeEnabled:false, ownerCommentDraftEnabled:false, ownerCommentPublishEnabled:false, ownerCommentSocialPublishEnabled:false, ownerCommentNaturalAckEnabled:false, commentAtMode:'whitelist', commentAtWhitelist:'', commentTopCount: 5, commentTopVideoCount: 3, commentReplyHotCount: 12, backupDirectory: '',
     commentAllowGeneralTop: false, commentReplyPerPoll: 1, commentReplyPerDay: 5, commentOwnTopPerUser: 5, commentOwnNestedPerUser: 3,
     mainSessionBridgeEnabled: false, mainSessionId: '', mainSessionAutoSync: true, mainSessionSyncMinutes: 60, mainSessionDailyBatches: 4, mainSessionBatchSize: 8, mainSessionIncludeComments: true,
-    mainSessionMemoryEnabled: true, mainSessionMemoryAutoBili: true, mainSessionMemorySemanticEnabled: false, mainSessionMemoryModelProvider: '', mainSessionMemoryModelId: '', mainSessionMemoryReasoningEffort: '', mainSessionMemoryCandidates: 48, mainSessionMemorySearchDailyLimit: 80, socialOutreachEnabled:false, socialLifeIntentEnabled:false, emotionSystemEnabled:true, socialAutoSend:false, socialOutreachDailyLimit:1, ownerTodoAutoReviewEnabled:false, ownerTodoReviewMinutes:60, autonomousPlannerEnabled:true, emotionRecallEnabled:false, emotionRecallMainEnabled:false, emotionRecallDmEnabled:false, emotionRecallUnlimited:false, emotionRecallDailyLimit:1, emotionRecallCooldownHours:24, emotionRecallStartHour:9, emotionRecallEndHour:22, ownerDmAgentEnabled:false, ownerDmAgentReadMainContext:false, ownerDmAgentSyncMain:false, ownerDmAgentContextTurns:6, ownerDmAgentContextChars:1500, ownerDmAgentModelProvider:'', ownerDmAgentModelId:'', ownerDmAgentReasoningEffort:'', ownerDmReadCommandsEnabled:false, ownerDmActionsEnabled:false, ownerDmLikeEnabled:false, ownerDmCollectEnabled:false, ownerDmFollowEnabled:false, ownerDmCommentDraftEnabled:false, ownerDmCommentPublishEnabled:false, ownerDmDynamicDraftEnabled:false, ownerDmDynamicPublishEnabled:false, ownerDmFriendMessageEnabled:false, emotionRecallCandidateLimit:12, emotionRecallHistoryLimit:300, emotionRecallRecentDays:3, emotionRecallMinAgeDays:2, emotionRecallEmotionMinIntensity:30, emotionRecallEmotionMaxAgeHours:12, autonomousPlannerMinutes:180, autonomousPlannerDailyLimit:4, autonomousPlannerStartHour:9, autonomousPlannerEndHour:23, mainSessionReflectionAuto: true, mainSessionReflectionModelProvider: '', mainSessionReflectionModelId: '', mainSessionReflectionReasoningEffort: '', mainSessionReflectionMinCandidates: 6, mainSessionReflectionBatchSize: 24, mainSessionReflectionIntervalHours: 1, mainSessionReflectionDailyBatches: 16, mainSessionMemoryHalfLifeDays: 30, mainSessionMemoryThreshold: 0.35, mainSessionMemoryMaxItems: 8, mainSessionMemoryMaxChars: 1200, mainSessionMemoryDailyQuota: 8, mainSessionMemoryFactsMax: 2,
+    mainSessionMemoryEnabled: true, mainSessionMemoryAutoBili: true, mainSessionMemorySemanticEnabled: false, mainSessionMemoryModelProvider: '', mainSessionMemoryModelId: '', mainSessionMemoryReasoningEffort: '', mainSessionMemoryCandidates: RECOMMENDED_EXPERIENCE_GROUPS.retrieval.mainSessionMemoryCandidates, mainSessionMemorySearchDailyLimit: RECOMMENDED_EXPERIENCE_GROUPS.retrieval.mainSessionMemorySearchDailyLimit, socialOutreachEnabled:false, socialLifeIntentEnabled:false, emotionSystemEnabled:true, socialAutoSend:false, socialOutreachDailyLimit:1, ownerTodoAutoReviewEnabled:false, ownerTodoReviewMinutes:60, autonomousPlannerEnabled:true, emotionRecallEnabled:false, emotionRecallMainEnabled:false, emotionRecallDmEnabled:false, emotionRecallUnlimited:false, emotionRecallDailyLimit:1, emotionRecallCooldownHours:24, emotionRecallStartHour:9, emotionRecallEndHour:22, ownerDmAgentEnabled:false, ownerDmAgentReadMainContext:false, ownerDmAgentSyncMain:false, ownerDmAgentContextTurns:6, ownerDmAgentContextChars:1500, ownerDmAgentModelProvider:'', ownerDmAgentModelId:'', ownerDmAgentReasoningEffort:'', ownerDmReadCommandsEnabled:false, ownerDmActionsEnabled:false, ownerDmLikeEnabled:false, ownerDmCollectEnabled:false, ownerDmFollowEnabled:false, ownerDmCommentDraftEnabled:false, ownerDmCommentPublishEnabled:false, ownerDmDynamicDraftEnabled:false, ownerDmDynamicPublishEnabled:false, ownerDmFriendMessageEnabled:false, emotionRecallCandidateLimit:12, emotionRecallHistoryLimit:300, emotionRecallRecentDays:3, emotionRecallMinAgeDays:2, emotionRecallEmotionMinIntensity:30, emotionRecallEmotionMaxAgeHours:12, autonomousPlannerMinutes:180, autonomousPlannerDailyLimit:4, autonomousPlannerStartHour:9, autonomousPlannerEndHour:23, mainSessionReflectionAuto: true, mainSessionReflectionModelProvider: '', mainSessionReflectionModelId: '', mainSessionReflectionReasoningEffort: '', mainSessionReflectionMinCandidates: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionMinCandidates, mainSessionReflectionBatchSize: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionBatchSize, mainSessionReflectionIntervalHours: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionIntervalHours, mainSessionReflectionDailyBatches: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionDailyBatches, mainSessionMemoryHalfLifeDays: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryHalfLifeDays, mainSessionMemoryThreshold: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryThreshold, mainSessionMemoryMaxItems: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryMaxItems, mainSessionMemoryMaxChars: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryMaxChars, mainSessionMemoryDailyQuota: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryDailyQuota, mainSessionMemoryFactsMax: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryFactsMax,
     dmStrangerText: '你好，我是这个账号的 AI 助手，已收到你的私信。陌生用户暂时只能收到这一条自动回复；请不要发送密码、验证码等敏感信息。',
     personaPrompt: DEFAULT_PERSONA_PROMPT, characterLore: '',
     perDay: 50, pickPerRound: 5, peakValley: false, peakWindows: '[]', peakIntervalMinutes: 30, autoComment: false, transcribe: false, asrModel: 'small',
@@ -630,7 +637,7 @@ function reportMeta() {
     if ('mainSessionMemoryThreshold' in p) p.mainSessionMemoryThreshold = Math.max(0.1,Math.min(0.8,Number(p.mainSessionMemoryThreshold)||0.35))
     if ('mainSessionMemoryMaxItems' in p) p.mainSessionMemoryMaxItems = Math.max(1,Math.min(12,Math.floor(Number(p.mainSessionMemoryMaxItems)||6)))
     if ('mainSessionMemoryMaxChars' in p) p.mainSessionMemoryMaxChars = Math.max(200,Math.min(3000,Math.floor(Number(p.mainSessionMemoryMaxChars)||800)))
-    if ('mainSessionMemoryDailyQuota' in p) p.mainSessionMemoryDailyQuota = Math.max(1,Math.min(30,Math.floor(Number(p.mainSessionMemoryDailyQuota)||8)))
+    if ('mainSessionMemoryDailyQuota' in p) p.mainSessionMemoryDailyQuota = Math.max(1,Math.min(100,Math.floor(Number(p.mainSessionMemoryDailyQuota)||30)))
     if ('mainSessionMemoryFactsMax' in p) { const n=Number(p.mainSessionMemoryFactsMax); p.mainSessionMemoryFactsMax=Number.isFinite(n)?Math.max(0,Math.min(6,Math.floor(n))):2 }
     if ('reportLevel' in p) p.reportLevel = ['full', 'brief', 'off'].includes(String(p.reportLevel)) ? String(p.reportLevel) : 'full'
     for (const k of ['dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','videoModelProvider','videoModelId','videoReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort']) if(k in p) p[k]=String(p[k]||'').trim().slice(0,160).replace(/[\r\n\0]/g,'')
@@ -777,6 +784,7 @@ function reportMeta() {
     return clampPatch(migrateLegacyReflectionDefaults(out,user))
   }
   const cfg = loadCfg()
+  const socialPolicyGate=createSocialPolicyGate({getConfig:()=>cfg})
   const ownerTodos = createOwnerTodoEngine({dataDir:stateDir})
   try{ownerTodos.syncRecommendations(readJson(join(stateDir,'video-recommendations.json'),{})?.entries||[])}catch(e){log('启动时同步视频推荐待办失败：'+String(e?.message||e).slice(0,100))}
   const emotionalState = createEmotionalState({dataDir:stateDir,isEnabled:()=>cfg.emotionSystemEnabled!==false})
@@ -788,6 +796,10 @@ function reportMeta() {
   let longTermMemory = null
   let memoryRetriever = null
   let lifeReflection = null
+  let lifeMemoryCoordinator = null
+  let socialInteractionCoordinator = null
+  let socialContextAssembler = null
+  let memoryConsolidator = null
   let lifeMemory = null
   let personalityEvolution = null
   const personalityContext=(scene,maxChars)=>{
@@ -1103,7 +1115,7 @@ function reportMeta() {
         subtitle:normalized(subtitle),comments:normalized(comments),
         danmaku:normalized(danmaku),visual:normalized(vision),
         source:args.record_session===false?'bili-life':'main-session',operationId:randomUUID()})
-      if(event){lifeMemory?.recordEvents([event]);lifeReflection?.addEvents([event])}
+      if(event){const synced=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(!synced)throw Error('人生记忆协调器尚未就绪');if(synced.ok===false)log('视频经历已进入待补偿队列：'+String(synced.lastError||synced.reason||'unknown').slice(0,100))}
       else log('视频探索没有可验证的标题/资料，不生成生活观看经历：'+bvid)
     }catch(e){log('视频探索经历写入失败（不影响只读查看）：'+String(e?.message||e).slice(0,120))}
     // Only explicit main-Session watches may create main-Session history.
@@ -2393,7 +2405,11 @@ function reportMeta() {
   // 独立于“跑一轮”；更改设置在下次轮询时生效。陌生人欢迎语必须手动开启。
   const dmConfig = () => {
     refreshCfg()
-    const allow = parseDmWhitelist(cfg.dmWhitelist)
+    let friends=[];try{friends=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory))}catch{}
+    const allow=new Set(friends.filter(f=>f.dm===true).map(f=>f.uid))
+    // Legacy UID list is migration-only when the canonical directory has never
+    // been touched. Never let stale compatibility mirrors reopen revoked access.
+    if(!touchedKeys.has('friendDirectory')&&!friends.length)for(const uid of parseDmWhitelist(cfg.dmWhitelist))allow.add(uid)
     // 兼容之前的“只回谁的私信”和“私信发给谁”设置：已有主人仍可继续对话。
     const owner = Number(cfg.dmOwnerUid) || Number(cfg.dmUid) || dmUidCache
     if (owner > 0) allow.add(String(owner))
@@ -2509,6 +2525,7 @@ function reportMeta() {
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'ownerDmAgent'}),
     readMainContext:async(opt)=>mainSessionBridge?.ownerDmContext(opt)||{available:false,lines:[]},
     getPersona:()=>effectivePersonaPrompt(cfg.personaPrompt).slice(0,900)+' '+emotionalState.styleHint(),
+    getContext:async({uid,text,history})=>socialContextAssembler?.ownerDm({uid,text,history})||{},
     decideAgency:({uid,messageId,text,intent,target})=>dualContextAgency.decide({source:'bili-dm',uid,messageId,text,intent,target}),
     writeMain:async(e)=>mainSessionBridge?.injectOwnerDmExperience(e)||{ok:false},
     executeRead:async(step)=>{
@@ -2821,25 +2838,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       script:join(pluginDir,'lib','meme-memory-admin.py'),dataDir:stateDir,env:pyEnv()}),
     logger:{warn:(msg)=>log('互动梗检索：'+msg),info:(msg)=>log('互动梗检索：'+msg)},
   })
-  const interactionBatcher = createInteractionBatcher({
-    // External B站 callers have NO access to identity/owner long-term memory,
-    // even if a memory was originally derived from public video text.
-    // Avoid model shortlist leaks and prompt injection via long-term memory retrieval.
-    // A public comment may use only this verified sender's still-clear joint
-    // episodes. Do not give DMs, owner-private memory, or another UID's history
-    // to the shared model. The batcher isolates users before assembling prompts.
-    prepareMemoryContexts: async(batch)=>batch.map(item=>{
-      // A DM can remember this same sender's PUBLIC comment encounters too;
-      // never load private DM transcripts or a different UID from the archive.
-      if(!['comment','dm'].includes(item.kind)||!/^[1-9]\d{0,19}$/.test(String(item.uid||'')))return ''
-      return safeSocialMemoryContext([item.text,item.context].filter(Boolean).join(' '),item.uid,
-        socialTier(item.uid,cfg.dmOwnerUid,cfg.friendDirectory),
-        item.incomingRpid&&item.bvid?`social:${item.uid}:${item.bvid}:${item.incomingRpid}`:'',item.bvid)
-    }),
-    prepareMemeContexts: (batch) => interactionMemeLookup.forBatch(batch),
-    onEmotion: ({mood,intensity,source})=>{try{emotionalState.update({mood,intensity,source})}catch(e){log('情绪状态更新失败：'+String(e?.message||e).slice(0,100))}},
-    invoke: (prompt) => invokeInteractionPrompt(prompt, 24000),
-    getPersona: (batch = []) => {
+  const buildInteractionPersona=(batch=[])=>{
       const scene=batch.some(x=>x.kind==='comment')?'comment':'dm'
       // 多人的批量互动互相隔离：只有独立请求才按文本检索经历／角色关系。
       const query=batch.length===1?(String(batch[0].text||'')+' '+String(batch[0].context||'')).slice(0,800):''
@@ -2851,8 +2850,13 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       const persona = effectivePersonaPrompt(cfg.personaPrompt).slice(0,scene==='comment'?1350:1600)
       const lore = (normalizeCharacterLore(cfg.characterLore) || DEFAULT_CHARACTER_LORE).slice(0,scene==='comment'?260:420)
       return [conciseStyle,growth,personalityContext(scene,430),emotionalState.styleHint(),persona,lore].filter(Boolean).join('\n')
-    },
-    logger: {warn: (msg) => log('互动 AI：' + msg)},
+    }
+  const interactionBatcher = createInteractionBatcher({
+    prepareContexts:batch=>socialContextAssembler?.batch(batch)||batch.map(()=>({})),
+    onEmotion:({mood,intensity,source})=>{try{emotionalState.update({mood,intensity,source})}catch(e){log('情绪状态更新失败：'+String(e?.message||e).slice(0,100))}},
+    invoke:prompt=>invokeInteractionPrompt(prompt,24000),
+    getPersona:batch=>buildInteractionPersona(batch),
+    logger:{warn:m=>log('互动 AI：'+m)},
   })
 
   const socialCognition=createSocialCognition({
@@ -2860,6 +2864,25 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     inspectVideo:async(bvid)=>executeOwnerTodo({type:'watch_video',bvid}),
     logger:{warn:m=>log('社会意愿：'+m)}
   })
+  socialInteractionCoordinator=createSocialInteractionCoordinator({dataDir:stateDir,
+    recordCognition:data=>data?socialCognition.recordPrepared(data):{ok:true},
+    recordInterest:data=>data?recordPreparedFriendInterest(stateDir,data,{friendDirectory:cfg.friendDirectory}):{ok:true},
+    recordRelationship:data=>data?recordFriendInteraction(stateDir,{...data,now:data.at||Date.now(),friendDirectory:cfg.friendDirectory}):{ok:true},
+    recordLifeEvent:data=>data?lifeMemoryCoordinator.recordEvents([data],{reflect:false}):{ok:true},
+    recordReply:async({uid,bvid,rpid,text,at})=>{
+      const recorded=lifeMemory?.recordSocialReply({actorUid:uid,bvid,incomingRpid:rpid,text,at})
+      if(recorded?.ok===false&&recorded.reason==='original-episode-unavailable')return {ok:true,skipped:'forgotten'}
+      if(!recorded?.ok)return {ok:false,reason:recorded?.reason||'reply-record-failed'}
+      return {ok:true} // original candidate reads updated life evidence; do not submit incomplete social event
+    },
+    recordDecline:async({uid,bvid,rpid,reason,at})=>{
+      const recorded=lifeMemory?.recordSocialDecline({actorUid:uid,bvid,incomingRpid:rpid,reason,at})
+      if(recorded?.ok===false&&['episode-unavailable-or-replied','decision-already-archived'].includes(recorded.reason))return {ok:true,skipped:'not-replayable'}
+      if(!recorded?.ok)return {ok:false,reason:recorded?.reason||'decline-record-failed'}
+      return {ok:true} // original candidate reads updated life evidence; do not submit incomplete social event
+    },logger:{warn:m=>log('社交同步：'+m)},
+  })
+  // Start recovery only after the Life Memory sink is fully constructed.
   const socialCognitionTimer=setInterval(()=>{void socialCognition.tick().catch(e=>log('社会邀请检查失败：'+String(e?.message||e).slice(0,120)))},60*60_000)
   socialCognitionTimer.unref?.()
   ctx.effect(()=>()=>clearInterval(socialCognitionTimer),'bili-duty: dev5 社会邀请只读审阅')
@@ -2882,22 +2905,27 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
         }catch{} }
       return ''
     },
-    onIncoming: ({uid,text,messageId,time})=>{try{socialCognition.observe({uid,text,source:'dm',eventId:messageId,timestampMs:time})}catch(e){log('社会意愿私信观察失败：'+String(e?.message||e).slice(0,90))}observeFriendInterest(stateDir,{uid,text,source:'dm',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory});recordFriendInteraction(stateDir,{uid,source:'dm',direction:'incoming',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory})},
+    onIncoming:async({uid,text,messageId,time})=>{
+      const role=socialPolicyGate.actor(uid).role
+      const cognition=socialCognition.prepareObservation({uid,text,source:'dm',eventId:messageId,timestampMs:time})
+      const interest=socialPolicyGate.canLearn({uid,kind:'dm'})?prepareFriendInterestObservation({uid,text,source:'dm',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory}):null
+      return socialInteractionCoordinator?.record({type:'incoming',source:'dm',eventKey:messageId,actorUid:uid,role,at:time,cognition,interest})
+    },
     generateReply: async (req) => {
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
       if(tier==='friend'){
         const will=dualContextAgency.decide({source:'bili-dm',uid:req.uid,messageId:req.messageId,text:req.text,intent:'chat'})
         if(will.decision!=='allow')return 'SKIP'
       }
-      return interactionBatcher.generate({kind:'dm', ...req,
+      return interactionBatcher.generate({kind:'dm',role:tier, ...req,
         recommendationContext:await dmVideoRecommendationContext.forReply(req),
         identityContext:replyIdentityContext(req.uid)})
     },
-    send: async ({ uid, text }) => {
+    send: async ({ uid, text, eventId }) => {
       refreshCfg()
       if (cfg.masterEnabled !== true) return {ok:false,error:'总开关已关闭，私信发送已暂停'}
       const result = await call('bili_send_message', { receiver_uid: Number(uid), text: String(text).slice(0, 450) })
-      if (result?.success === true) {recordFriendInteraction(stateDir,{uid,source:'dm',direction:'outgoing',eventId:'sent:'+Date.now()+':'+Math.random(),friendDirectory:cfg.friendDirectory});return { ok: true }}
+      if(result?.success===true){try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:'dm-reply:'+String(eventId||Date.now()),at:Date.now()})}catch(e){log('私信关系投影待补偿：'+String(e?.message||e))}return {ok:true}}
       return { ok: false, error: String(result?.error || result?.message || 'B站没有返回投递成功回执') }
     },
     logger: {
@@ -2914,32 +2942,27 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     getThread:(bvid,root,targetRpid)=>call('bili_comment_thread',{bvid,root:Number(root),target_rpid:Number(targetRpid)||0,num:20}),
     logger:{warn:(msg)=>log('评论上下文：'+msg)},
   })
-  const safeSocialMemoryContext=(query,actorUid,role,excludeEventKey='',currentBvid='')=>{
-    try{return memoryRetriever?.socialContext(String(query||'').slice(0,1100),{maxItems:5,maxChars:850,actorUid,role,excludeEventKey,currentBvid})||''}
-    catch(e){log('B站社交记忆只读召回失败（本轮仍正常对话）：'+String(e?.message||e).slice(0,100));return ''}
-  }
+  socialContextAssembler=createSocialContextAssembler({
+    policy:socialPolicyGate,memoryRetriever,
+    getMeme:async(item)=>(await interactionMemeLookup.forBatch([item]))?.[0]||'',
+    getPersona:batch=>buildInteractionPersona(batch),
+    getIdentity:uid=>replyIdentityContext(uid),
+    getRelationship:uid=>friendRelationshipContext(stateDir,uid,cfg.friendDirectory),
+    videoContext,logger:{warn:m=>log('社交上下文：'+m)},
+  })
   const ownerCommentAgent=createOwnerCommentAgent({
     dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},
     decideAgency:({uid,messageId,text,intent,bvid,thread})=>dualContextAgency.decide({source:'bili-comment',uid,messageId,text,intent,target:bvid,thread}),
-    getRole:(uid)=>socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory),
+    getRole:uid=>socialPolicyGate.actor(uid).role,
     interpretSocial:async(row)=>{
-      // onIncoming runs before the generic comment engine fetches context.
-      // Fetch public thread context here for first-time trusted conversations.
-      let enriched=row
-      try{
-        const context=await videoContext.forReply(row.bvid,{aid:row.aid,root:row.root,rpid:row.rpid,
-          targetId:row.targetId,text:row.text,context:row.context,kind:row.kind})
-        enriched={...row,threadPreview:context?.threadPreview||row.threadPreview,
-          rootPreview:context?.rootPreview||row.rootPreview,
-          context:[row.context,context?.text].filter(Boolean).join('\n').slice(0,1600)}
-      }catch(e){log('可信评论上下文读取失败：'+String(e?.message||e).slice(0,100))}
+      const ctx=await socialContextAssembler.comment(row)
+      if(!ctx.ok||!ctx.video?.usable)throw Error('可信评论缺少真实可用的视频/评论上下文')
       return interpretTrustedSocial({
-      row:enriched,role:row.role,emotion:emotionalState.snapshot(),style:emotionalState.styleHint(),
-      memoryContext:safeSocialMemoryContext([row.text,enriched.context,enriched.threadPreview].filter(Boolean).join(' '),row.uid,row.role,
-        row.rpid?`social:${row.uid}:${row.bvid}:${row.rpid}`:'',row.bvid),
-      relationship:(()=>{try{return listFriendRelationships(stateDir,cfg.friendDirectory).find(x=>String(x.uid)===String(row.uid))?.stage||''}catch{return ''}})(),
-      history:dualContextAgency.context({uid:row.uid,thread:row.thread,target:row.bvid}),
-      invoke:p=>invokeInteractionPrompt(p,2000,{modelRoute:'interaction'}),
+        row:{...row,context:ctx.context,threadPreview:ctx.video.threadPreview,rootPreview:ctx.video.rootPreview},
+        role:ctx.role,emotion:emotionalState.snapshot(),style:ctx.persona,
+        memoryContext:ctx.memoryContext,memeContext:ctx.memeContext,
+        relationship:ctx.relationshipContext,history:dualContextAgency.context({uid:row.uid,thread:row.thread,target:row.bvid}),
+        invoke:p=>invokeInteractionPrompt(p,2600,{modelRoute:'interaction'}),
       })
     },
     recordAgency:({uid,messageId,text,intent,action,bvid,thread,decision})=>dualContextAgency.recordAI({
@@ -2948,8 +2971,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     generateChat:async(row)=>interactionBatcher.generate({kind:'comment',mode:row.scope||'self-nested',uid:row.uid,bvid:row.bvid,incomingRpid:row.rpid,text:row.text,context:[row.context,row.threadPreview].filter(Boolean).join('\n').slice(0,1500),canSkip:true,identityContext:replyIdentityContext(row.uid)}),
     onDeliberateSilence:async({uid,bvid,rpid,text})=>{
       const reason=/(?:别来|别找|不要.*(?:联系|回复)|不想.*(?:聊天|说话)|别.*(?:联系|回复))/.test(String(text||''))?'respect-request':'general'
-      const result=lifeMemory?.recordSocialDecline({actorUid:uid,bvid,incomingRpid:rpid,reason})
-      if(result?.ok&&!result.duplicate)lifeReflection?.addEvents([{kind:'social',key:`social:${uid}:${bvid}:${rpid}`,bvid,at:Date.now()}])
+      const synced=await socialInteractionCoordinator?.record({type:'decline',source:'comment',eventKey:`${uid}:${bvid}:${rpid}:decline`,actorUid:uid,bvid,rpid,reason,at:Date.now()})
+      if(synced?.ok===false)log('社交主动沉默进入补偿队列：'+String(synced.lastError||synced.reason||''))
     },
     deferWatch:async({bvid,row})=>ownerTodos.add({type:'watch_video',bvid,sourceKey:'owner-comment-deferred:'+String(row.rpid),title:'大肥鱼想稍后看看 '+bvid,note:'B站生活域的即时邀请：大肥鱼自主选择推迟。',origin:{kind:'owner',uid:row.uid,messageId:row.id,quotedText:row.text,at:row.timestampMs}},{source:'owner'}),
     perform:async(action)=>{
@@ -3007,11 +3030,14 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
           return {ok:true,inspected:true,inspection:evidence.evidence.level,commentDecision:'blocked',
             ownerReplySuccess:'鱼鱼去了解了一下，但目前没有公开评论授权，就先不留言啦～🐟',
             summary:'已查看公开视频可用资料；未授权自主发表评论，未公开发布'}
+        const socialMessage=await socialContextAssembler.message({kind:'comment',uid:action.actorUid,
+          text:action.invitation||'',context:[evidence.video?.title,evidence.video?.description,evidence.context].filter(Boolean).join('\n'),bvid:action.bvid})
         const decision=await decideOwnerSocialComment({
           info:evidence.video,bvid:action.bvid,context:evidence.context,invitation:action.invitation||'',
-          style:emotionalState.styleHint(),willingness:action.willingness||{},commentRequested:action.commentRequested===true,
+          style:[buildInteractionPersona([{kind:'comment',uid:action.actorUid,text:action.invitation||''}]),emotionalState.styleHint()].join('\n'),
+          willingness:action.willingness||{},commentRequested:action.commentRequested===true,
           priorCommentOutcomes:action.priorCommentOutcomes||[],
-          memoryContext:safeSocialMemoryContext([action.invitation,evidence.video?.title,evidence.video?.description,evidence.context].filter(Boolean).join(' '),action.actorUid,actorTier,'',action.bvid),
+          memoryContext:socialMessage.memoryContext||'',memeContext:socialMessage.memeContext||'',
           canPublish:actorTier==='owner',requireReply:action.aiSocial===true,maxAttempts:action.aiSocial===true?1:2,
           invoke:p=>invokeInteractionPrompt(p,2200,{modelRoute:'interaction'}),
         })
@@ -3052,8 +3078,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       const r=parseMaybeJson(await call('bili_reply_manual',{bvid,rpid:Number(rpid),root:Number(root)||0,text,confirm:true}))
       const receipt=confirmedOwnerCommentReceipt(r,'reply')
       if(receipt?.ok===true)try{
-        const recorded=lifeMemory?.recordSocialReply({actorUid,bvid,incomingRpid:rpid,text})
-        if(recorded?.ok)lifeReflection?.addEvents([{kind:'social',key:`social:${actorUid}:${bvid}:${rpid}`,bvid,at:Date.now()}])
+        const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role:tier,eventKey:`${actorUid}:${bvid}:${rpid}:reply`,actorUid,bvid,rpid,text,at:Date.now()})
+        if(sync?.ok===false)log('可信评论回复投影待补偿：'+String(sync.lastError||sync.reason||''))
       }catch(e){log('可信社交回复经历写入失败：'+String(e?.message||e).slice(0,100))}
       return receipt
     },logger:{warn:m=>log('主人评论 Agent：'+m)}
@@ -3071,7 +3097,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
         replyAt: cfg.commentAtEnabled === true, ownerCommentAgent:cfg.ownerCommentAgentEnabled===true,ownerUid:String(cfg.dmOwnerUid||''),
         diagAtInviteEnabled:cfg.diagAtInviteEnabled!==false,
         diagReplyInboxEnabled:cfg.diagReplyInboxEnabled!==false,
-        atMode: cfg.commentAtMode, atWhitelist: cfg.commentAtWhitelist,
+        atMode:cfg.commentAtMode,atWhitelist:(()=>{try{const f=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory));return f.length||touchedKeys.has('friendDirectory')?f.filter(x=>x.atInvite===true).map(x=>x.uid).join('\n'):cfg.commentAtWhitelist}catch{return cfg.commentAtWhitelist}})(),
         topCount: cfg.commentTopCount, topVideoCount: cfg.commentTopVideoCount,
         replyPerPoll: cfg.commentReplyPerPoll, replyPerDay: cfg.commentReplyPerDay,
         globalDailyLimit: cfg.commentDailyLimit,
@@ -3082,78 +3108,34 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     onDeliberateSilence:async(req)=>{
       const uid=req.uid,bvid=req.bvid,rpid=req.rpid,text=req.text
       const reason=/(?:别来|别找|不要.*(?:联系|回复)|不想.*(?:聊天|说话)|别.*(?:联系|回复))/.test(String(text||''))?'respect-request':'general'
-      const result=lifeMemory?.recordSocialDecline({actorUid:uid,bvid,incomingRpid:rpid,reason})
-      if(result?.ok&&!result.duplicate)lifeReflection?.addEvents([{kind:'social',key:`social:${uid}:${bvid}:${rpid}`,bvid,at:Date.now()}])
+      const synced=await socialInteractionCoordinator?.record({type:'decline',source:'comment',eventKey:`${uid}:${bvid}:${rpid}:decline`,actorUid:uid,bvid,rpid,reason,at:Date.now()})
+      if(synced?.ok===false)log('社交主动沉默进入补偿队列：'+String(synced.lastError||synced.reason||''))
     },
     getNotifications: () => call('bili_received_replies', {}),
     getAtNotifications: () => call('bili_received_at_and_likes', {}),
     getVideoContext: (bvid,details) => videoContext.forReply(bvid,details),
     getOwnComments: () => ownCommentTargets(stateDir),
-    onIncoming: async (req) => {
-      // Verified public comment interaction is a new experience. It is not an
-      // instruction, and can only be recalled back to the SAME verified UID.
-      const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
-      try{if(lifeMemory&&/^BV[0-9A-Za-z]{10}$/.test(String(req?.bvid||''))&&/^\d{1,20}$/.test(String(req?.uid||''))){
-        const socialEvent={kind:'social',key:'social:'+String(req.uid)+':'+String(req.bvid)+':'+String(req.rpid||req.id||req.timestampMs),bvid:req.bvid,actorUid:String(req.uid),text:String(req.text||'').slice(0,230),socialTier:tier,at:req.timestampMs||Date.now()}
-        lifeMemory.recordEvents([socialEvent]) // 反思只收成功往来：不让陌生人的单条消息批量推动人格
-      }}catch(e){log('社交经历写入失败：'+String(e?.message||e).slice(0,100))}
-
-      if(!req.uid||!req.text)return
-      // A reply to an owned comment is a real first-class social event, even
-      // without @ or a previous invitation. Do not treat unverified notices
-      // from unrelated comment threads as authenticated owner follow-ups.
+    onIncoming:async req=>{
+      if(!req.uid||!req.text)return {ok:true,skipped:'invalid'}
+      const {role}=socialPolicyGate.actor(req.uid),at=Number(req.timestampMs)||Date.now(),eventId=`${req.bvid||''}:${req.rpid||req.id||''}`
+      const consent=socialPolicyGate.canLearn({uid:req.uid,kind:req.kind})
+      const cognition=socialCognition.prepareObservation({uid:req.uid,text:req.text,source:'comment',eventId,timestampMs:at,bvid:req.bvid})
+      const interest=consent?prepareFriendInterestObservation({uid:req.uid,text:req.text,source:'comment',eventId,bvid:req.bvid,now:at,friendDirectory:cfg.friendDirectory}):null
+      const lifeEvent=/^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))?{kind:'social',key:`social:${req.uid}:${req.bvid}:${req.rpid}`,bvid:req.bvid,actorUid:req.uid,text:String(req.text).slice(0,230),socialTier:role,at}:null
+      try{const sync=await socialInteractionCoordinator?.record({type:'incoming',source:'comment',role,actorUid:req.uid,eventKey:eventId,at,cognition,interest,lifeEvent})
+        if(sync?.ok===false)log('公开评论事件待补偿：'+String(sync.lastError||sync.reason||''))}
+      catch(e){log('公开评论事件登记失败：'+String(e?.message||e).slice(0,120))}
       const verifiedOwnerReply=req.kind==='notice'&&['self-top','self-nested'].includes(req.scope)
-      let friendAtAllowed=true
-      if(tier==='friend'&&req.kind==='at')try{
-        friendAtAllowed=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory))
-          .some(r=>r.uid===String(req.uid)&&r.atInvite===true)
-      }catch{friendAtAllowed=false}
-      const trustedSocial=tier==='owner'
-        ?cfg.ownerCommentAgentEnabled===true
-        :tier==='friend'&&(req.kind==='notice'?cfg.commentWatchReplies===true:cfg.commentAtEnabled===true)&&friendAtAllowed
-      if(trustedSocial&&(req.kind==='at'||verifiedOwnerReply)&&!isFriendRecommendationFeedback(req.text)){
-        try{
-          const result=await ownerCommentAgent.accept(req)
-          // The trusted AI owns the event on all results including refusals.
-          // Never allow the generic comment model to make a second reply.
-          if(result?.reason!=='not-verified-owner-comment'&&result?.reason!=='disabled'){
-            // Trusted events bypass the generic reply path; don't accidentally
-            // bypass interest learning and incoming relationship observations.
-            const at=req.timestampMs||Date.now(),eventId=(req.bvid||'')+':'+String(req.rpid||req.id||'unknown')
-            try{socialCognition.observe({uid:req.uid,text:req.text,source:'comment',eventId,timestampMs:at,bvid:req.bvid})}catch(e){log('可信评论社会观察失败：'+String(e?.message||e).slice(0,100))}
-            try{observeFriendInterest(stateDir,{uid:req.uid,text:req.text,source:'comment',eventId,bvid:req.bvid,now:at,friendDirectory:cfg.friendDirectory})}catch(e){log('可信评论兴趣观察失败：'+String(e?.message||e).slice(0,100))}
-            try{recordFriendInteraction(stateDir,{uid:req.uid,source:'comment',direction:'incoming',eventId,now:at,friendDirectory:cfg.friendDirectory})}catch(e){log('可信评论关系观察失败：'+String(e?.message||e).slice(0,100))}
-            if(tier==='friend'&&hasExplicitVideoRecommendation(req.text))try{
-              const reco=receiveRecommendations(stateDir,[{incoming:true,senderUid:req.uid,senderName:req.name||'',messageId:req.id,text:req.text,timestampMs:at,source:'B站评论分享'}])
-              ownerTodos.syncRecommendations(reco.entries)
-            }catch(e){log('可信好友推荐入队失败：'+String(e?.message||e).slice(0,100))}
-            return {consumed:true,reason:'trusted_social_ai'}
-          }
+      const trusted=socialPolicyGate.canTrustComment({uid:req.uid,kind:req.kind})
+      if(trusted&&(req.kind==='at'||verifiedOwnerReply)&&!isFriendRecommendationFeedback(req.text)){
+        try{const result=await ownerCommentAgent.accept(req)
+          if(result?.reason!=='not-verified-owner-comment'&&result?.reason!=='disabled')return {consumed:true,reason:'trusted_social_ai'}
         }catch(e){log('可信评论 Agent 接收失败：'+String(e?.message||e).slice(0,120));return {consumed:true,reason:'trusted_social_error'}}
       }
-      // Public BV recommendations are read-only suggestions, not instructions.
-      // Raw comment text is never used as a tool command or a permission grant.
-      if(tier!=='owner'&&hasExplicitVideoRecommendation(req.text))try{
-        const reco=receiveRecommendations(stateDir,[{incoming:true,senderUid:req.uid,senderName:req.name||'',messageId:req.id,text:req.text,timestampMs:req.timestampMs,source:'B站评论分享'}])
-        ownerTodos.syncRecommendations(reco.entries)
+      if(role!=='owner'&&hasExplicitVideoRecommendation(req.text))try{
+        const reco=receiveRecommendations(stateDir,[{incoming:true,senderUid:req.uid,senderName:req.name||'',messageId:req.id,text:req.text,timestampMs:at,source:'B站评论分享'}]);ownerTodos.syncRecommendations(reco.entries)
       }catch(e){log('评论视频推荐入队失败：'+String(e?.message||e).slice(0,100))}
-      const eventId=(req.bvid||'')+':'+String(req.rpid||req.id||'unknown')
-      let videoTitle=''
-      // Only fetch title metadata for plausible feedback; do not infer broad dislikes from a vague comment.
-      if(isFriendRecommendationFeedback(req.text)&&req.bvid){
-        try{const info=await call('bili_video_info',{bvid:req.bvid});videoTitle=String(info?.title||info?.data?.title||'').slice(0,180)}catch{}
-      }
-      // For @ notifications, prefer an explicitly trusted sender who opted into
-      // this channel. Existing reply notifications from trusted friends also count.
-      let allowedAt=true
-      if(req.kind==='at')try{
-        allowedAt=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory)).some(r=>r.uid===String(req.uid)&&r.atInvite===true)
-      }catch{allowedAt=false}
-      if(!allowedAt)return
-      try{socialCognition.observe({uid:req.uid,text:req.text,source:'comment',eventId,timestampMs:req.timestampMs||Date.now(),bvid:req.bvid})}catch(e){log('社会意愿@观察失败：'+String(e?.message||e).slice(0,100))}
-      observeFriendInterest(stateDir,{uid:req.uid,text:req.text,source:'comment',eventId,bvid:req.bvid,
-        videoTitle,now:req.timestampMs||Date.now(),friendDirectory:cfg.friendDirectory})
-      recordFriendInteraction(stateDir,{uid:req.uid,source:'comment',direction:'incoming',eventId,now:req.timestampMs||Date.now(),friendDirectory:cfg.friendDirectory})
+      return {ok:true,role}
     },
     getVideos: async () => {
       // 旧版兼容：调度器已永久禁止使用本接口发起逐视频热评扫描。
@@ -3176,11 +3158,10 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       const r = await call('bili_reply', {bvid: req.bvid || '', aid: Number(req.aid)||0,
         rpid: Number(req.rpid), root: Number(req.root)||0, text:String(req.text).slice(0,130)})
       if(r?.success===true){
-        if(req.uid)try{recordFriendInteraction(stateDir,{uid:req.uid,source:'comment',direction:'outgoing',eventId:'sent:'+String(req.bvid||'')+':'+Date.now()+':'+Math.random(),friendDirectory:cfg.friendDirectory})}catch{}
-        try{
-          const recorded=lifeMemory?.recordSocialReply({actorUid:req.uid,bvid:req.bvid,incomingRpid:req.rpid,text:req.text})
-          if(recorded?.ok)lifeReflection?.addEvents([{kind:'social',key:`social:${req.uid}:${req.bvid}:${req.rpid}`,bvid:req.bvid,at:Date.now()}])
-        }catch(e){log('社交回复经历写入失败：'+String(e?.message||e).slice(0,100))}
+        try{const role=socialPolicyGate.actor(req.uid).role
+          const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role,actorUid:req.uid,bvid:req.bvid,rpid:req.rpid,text:req.text,eventKey:`${req.uid}:${req.bvid}:${req.rpid}:reply`,at:Date.now()})
+          if(sync?.ok===false)log('评论回复投影待补偿：'+String(sync.lastError||sync.reason||''))
+        }catch(e){log('评论回复投影记录失败：'+String(e?.message||e).slice(0,110))}
         return {ok:true,rpid:String(r?.rpid_str||r?.rpid||'')}
       }
       return {ok:false,error:String(r?.error||r?.message||'评论未确认成功')}
@@ -3524,6 +3505,16 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   })
   lifeReflection.start()
   ctx.effect(() => () => lifeReflection.stop(), 'bili-duty: 人生记忆自主反思')
+  lifeMemoryCoordinator=createLifeMemoryCoordinator({dataDir:stateDir,memoryGateway:lifeMemory,lifeReflection,logger:{warn:m=>log('人生记忆协调：'+m)}})
+  lifeMemoryCoordinator.start()
+  ctx.effect(()=>()=>lifeMemoryCoordinator?.stop(),'bili-duty: Life Memory 协调器')
+  socialInteractionCoordinator.start()
+  ctx.effect(()=>()=>socialInteractionCoordinator?.stop(),'bili-duty: 社交事件协调器')
+  memoryConsolidator=createMemoryConsolidator({dataDir:stateDir,getMemories:()=>longTermMemory.activeMemories(),commit:input=>longTermMemory.consolidate(input),
+    invokeModel:(prompt,maxChars)=>invokeMemoryPrompt(prompt,maxChars),getConfig:()=>cfg,logger:{warn:m=>log('记忆凝练：'+m)}})
+  const consolidationTimer=setInterval(()=>void memoryConsolidator.run().catch(e=>log('记忆凝练评估失败：'+String(e?.message||e))),60*60_000)
+  consolidationTimer.unref?.();ctx.effect(()=>()=>clearInterval(consolidationTimer),'bili-duty: 主人聊天记忆整理')
+
   // Bounded independent agent decision. It never sends a main-Session follow-up,
   // never chooses write tools, and never treats the model's words as memory evidence.
   const autonomousPlanner=createAutonomousPlanner({
@@ -3548,12 +3539,12 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       const comments=recentComments(stateDir,{limit:200})?.rows||[]
       const meta=reportMeta()
       const watched=parseSeenTable().map(x=>({...x,...(meta.get(x.bvid)||{})}))
-      const events=collectLocalLifeEvents({watched,comments,days:14});lifeMemory.recordEvents(events);const found=lifeReflection.addEvents(events);if(found?.added>0&&emotionRecall){const wake=setTimeout(()=>void emotionRecall.tick(),8000);wake.unref?.()}return found
+      const events=collectLocalLifeEvents({watched,comments,days:14});return lifeMemoryCoordinator.recordEvents(events,{reflect:true})
     }catch(e){log('本地经历反思收集失败：'+String(e?.message||e).slice(0,120));return {added:0,error:String(e?.message||e)}}
   }
   // First scan is idempotent, doesn't need an online Session and doesn't send messages.
-  try{collectRealLife()}catch{}
-  const lifeCollectTimer=setInterval(()=>{try{collectRealLife()}catch{}},10*60_000)
+  try{void collectRealLife().catch(e=>log('本地经历初次同步失败：'+String(e?.message||e).slice(0,120)))}catch{}
+  const lifeCollectTimer=setInterval(()=>{try{void collectRealLife().catch(e=>log('本地经历定时同步失败：'+String(e?.message||e).slice(0,120)))}catch{}},10*60_000)
   lifeCollectTimer.unref?.()
   ctx.effect(()=>()=>clearInterval(lifeCollectTimer),'bili-duty: 独立人生经历候选收集')
 
@@ -3564,10 +3555,10 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},
     getEmotionState:()=>emotionalState.snapshot(),
     invokeModel:(prompt,maxChars,opt)=>invokeInteractionPrompt(prompt,maxChars,opt),
-    sendMessage:async({uid,text})=>{
+    sendMessage:async({uid,text,eventId})=>{
       refreshCfg();if(cfg.masterEnabled!==true)return {ok:false,error:'总开关关闭'}
       const r=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,230)})
-      if(r?.success===true){try{recordFriendInteraction(stateDir,{uid,source:'dm',direction:'outgoing',eventId:'social-sent:'+Date.now()+':'+Math.random(),friendDirectory:cfg.friendDirectory})}catch{};return {ok:true}}return {ok:false,error:String(r?.error||r?.message||'远端未确认成功')}
+      if(r?.success===true){try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:eventId||'social-outbound:'+Date.now(),at:Date.now()})}catch(e){log('主动私信投影待补偿：'+String(e?.message||e))}return {ok:true}}return {ok:false,error:String(r?.error||r?.message||'远端未确认成功')}
     },logger:{warn:m=>log('社交意图：'+m)}
   })
 
@@ -3580,7 +3571,10 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     getConfig: () => cfg,
     getWatched: () => { const meta=reportMeta(); return parseSeenTable().map(x=>({...x,...(meta.get(x.bvid)||{})})) },
     getComments: (opt) => recentComments(stateDir,opt),
-    onNewEvents: (_sid,events) => {lifeMemory?.recordEvents(events);lifeReflection?.addEvents(events);if(emotionRecall&&events.some(x=>['watch','comment'].includes(x.kind))){const wake=setTimeout(()=>void emotionRecall.tick(),8000);wake.unref?.()}},
+    onNewEvents: (_sid,events) => {
+      void lifeMemoryCoordinator?.recordEvents(events,{reflect:true}).catch(e=>log('主 Session 经历同步待补偿：'+String(e?.message||e).slice(0,130)));
+      if(emotionRecall&&events.some(x=>['watch','comment'].includes(x.kind))){const wake=setTimeout(()=>void emotionRecall.tick(),8000);wake.unref?.()}
+    },
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
   })
   mainSessionBridge.start()
@@ -4068,6 +4062,10 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
         })
         const snapshot = async () => {
           refreshCfg()
+          const socialPending=socialInteractionCoordinator?.status().pending||0
+          if(socialPending)throw Error('仍有 '+socialPending+' 条社交事件等待补偿；为避免备份恢复产生跨系统数据不一致，请先修复同步错误再备份或恢复')
+          const lifePending=lifeMemoryCoordinator?.status()?.pending||0
+          if(lifePending)throw Error('仍有 '+lifePending+' 条人生事件等待补偿；请先修复同步后备份或恢复')
           const sqlite = (await runSqlite('export')).sqlite
           // All effective settings, including relationships, prompts and quotas.
           const effective = Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, cfg[k]]))
@@ -4618,7 +4616,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     }
     // 本地自主待办：推荐可自动入队，实际动作仍由主 Session/主人权限执行。
     if (req.method === 'GET' && path === '/api/bili-duty/dev5-social') {
-      try{return sendJson(res,200,{ok:true,social:socialCognition.status(),ownerComment:ownerCommentAgent.status()})}
+      try{return sendJson(res,200,{ok:true,social:socialCognition.status(),ownerComment:ownerCommentAgent.status(),socialEvents:socialInteractionCoordinator?.status()||null})}
       catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,180)})}
     }
     if (req.method === 'POST' && path === '/api/bili-duty/dev5-social') {
@@ -4743,7 +4741,12 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     if (req.method === 'GET' && path === '/api/bili-duty/main-session/memory') {
       const q=String(url.searchParams.get('q')||'').trim().slice(0,120)
       const limit=Math.max(1,Math.min(300,Number(url.searchParams.get('limit'))||100))
-      return sendJson(res,200,{...longTermMemory.status(),retrieval:memoryRetriever?.status()||null,rows:longTermMemory.list(q,limit)})
+      return sendJson(res,200,{...longTermMemory.status(),retrieval:memoryRetriever?.status()||null,lifeCoordinator:lifeMemoryCoordinator?.status()||null,socialCoordinator:socialInteractionCoordinator?.status()||null,consolidation:memoryConsolidator?.status()||null,rows:longTermMemory.list(q,limit)})
+    }
+    if (req.method === 'POST' && path === '/api/bili-duty/main-session/memory/consolidate') {
+      const body=await readBody(req)
+      if(body?.confirm!=='CONSOLIDATE_OWNER_CHAT')return sendJson(res,400,{ok:false,error:'需确认主人聊天记忆整理操作'})
+      try{const r=await memoryConsolidator.run({force:true});return sendJson(res,r.ok?200:400,r)}catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,180)})}
     }
     if (req.method === 'POST' && path === '/api/bili-duty/main-session/memory/recall') {
       const body=await readBody(req)
@@ -4894,7 +4897,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     }
 
     if (req.method === 'GET' && path === '/api/bili-duty/config') {
-      return sendJson(res, 200, { ok: true, config: cfg, windows: readPeakWindows(cfg.peakWindows), home: stateDir })
+      return sendJson(res, 200, { ok: true, config: cfg, recommendedSettings:RECOMMENDED_EXPERIENCE_SETTINGS, windows: readPeakWindows(cfg.peakWindows), home: stateDir })
     }
 
     if (req.method === 'POST' && path === '/api/bili-duty/config') {
@@ -4904,7 +4907,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
         'diagMentionEnabled','diagDynamicEnabled','diagVisionEnabled','diagMemeEnabled','diagAtInviteEnabled','diagReplyInboxEnabled','commentMemesEnabled','commentMemesDebug','commentMemesPerDay','commentMemesPerRound','commentMemePrompt','visionPrompt','memeMemoryEnabled', 'memeMemoryMaxEntries', 'visionEnabled', 'visionDebug', 'visionMode', 'visionModelProvider', 'visionModelId', 'visionReasoningEffort', 'visionEndpoint', 'visionFrames', 'visionDailyLimit', 'commentPerRound', 'mentionName', 'mentionTargets', 'mentionProfiles', 'friendDirectory', 'mentionMode', 'dmMode', 'dmUid', 'commentSyncDynamic', 'dynamicDailyLimit', 'commentDailyLimit',
         'videoModelProvider','videoModelId','videoReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort','memeRulesPrompt',
         'keywords', 'coreInterestTopics', 'pythonPath', 'dshBin', 'headlessProfile', 'workspace', 'reportLevel', 'personaPrompt', 'characterLore', 'dmWatch', 'dmWatchMinutes', 'commentReplyWatchMinutes', 'commentAtWatchMinutes', 'commentTopWatchMinutes', 'dmReplyPerDay', 'dmContextMessages', 'dmOwnerUid', 'dmWhitelist', 'dmStrangerOnce', 'dmStrangerText', 'dmStrangerMaxReplies', 'dmStrangerFirstFixed', 'dmApprovalEnabled','dmApprovalPhrase','dmApprovedTotalLimit','dmApprovedDailyLimit',
-        'commentWatchReplies', 'commentWatchTop', 'commentAtEnabled', 'friendAtFeedbackEnabled', 'strangerInspirationEnabled','socialInvitationEnabled','socialInvitationAutoInspectEnabled','ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentDraftEnabled','ownerCommentPublishEnabled','ownerCommentSocialPublishEnabled','ownerCommentNaturalAckEnabled', 'commentAtMode', 'commentAtWhitelist', 'commentTopCount', 'commentTopVideoCount', 'commentReplyHotCount', 'commentAllowGeneralTop', 'commentReplyPerPoll', 'commentReplyPerDay', 'commentOwnTopPerUser', 'commentOwnNestedPerUser', 'mainSessionBridgeEnabled', 'mainSessionId', 'mainSessionAutoSync', 'mainSessionSyncMinutes', 'mainSessionDailyBatches', 'mainSessionBatchSize', 'mainSessionIncludeComments', 'mainSessionMemoryEnabled', 'mainSessionMemoryAutoBili', 'mainSessionMemorySemanticEnabled', 'mainSessionMemoryModelProvider', 'mainSessionMemoryModelId', 'mainSessionMemoryReasoningEffort', 'mainSessionMemoryCandidates', 'mainSessionMemorySearchDailyLimit', 'socialOutreachEnabled', 'socialLifeIntentEnabled', 'emotionSystemEnabled', 'socialAutoSend', 'socialOutreachDailyLimit', 'ownerTodoAutoReviewEnabled', 'ownerTodoReviewMinutes', 'autonomousPlannerEnabled','emotionRecallEnabled','emotionRecallMainEnabled','emotionRecallDmEnabled','emotionRecallUnlimited','emotionRecallDailyLimit','emotionRecallCooldownHours','emotionRecallStartHour','emotionRecallEndHour','emotionRecallCandidateLimit','emotionRecallHistoryLimit','emotionRecallRecentDays','emotionRecallMinAgeDays','emotionRecallEmotionMinIntensity','emotionRecallEmotionMaxAgeHours','ownerDmAgentEnabled','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','ownerDmAgentContextTurns','ownerDmAgentContextChars','ownerDmAgentModelProvider','ownerDmAgentModelId','ownerDmAgentReasoningEffort','ownerDmReadCommandsEnabled','ownerDmActionsEnabled','ownerDmLikeEnabled','ownerDmCollectEnabled','ownerDmFollowEnabled','ownerDmCommentDraftEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicDraftEnabled','ownerDmDynamicPublishEnabled','ownerDmFriendMessageEnabled','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour', 'mainSessionReflectionAuto', 'mainSessionReflectionModelProvider', 'mainSessionReflectionModelId', 'mainSessionReflectionReasoningEffort', 'mainSessionReflectionMinCandidates', 'mainSessionReflectionBatchSize', 'mainSessionReflectionIntervalHours', 'mainSessionReflectionDailyBatches', 'mainSessionMemoryHalfLifeDays', 'mainSessionMemoryThreshold', 'mainSessionMemoryMaxItems', 'mainSessionMemoryMaxChars', 'mainSessionMemoryDailyQuota', 'mainSessionMemoryFactsMax', 'favFolderId','autoVideoLike','autoVideoLikeDailyLimit','autoVideoCollect','agentFollowEnabled','dailyDynamicEnabled','dailyDynamicDailyLimit','dailyDynamicDraftOnly']) {
+        'commentWatchReplies', 'commentWatchTop', 'commentAtEnabled', 'friendAtFeedbackEnabled', 'strangerInspirationEnabled','socialInvitationEnabled','socialInvitationAutoInspectEnabled','ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentDraftEnabled','ownerCommentPublishEnabled','ownerCommentSocialPublishEnabled','ownerCommentNaturalAckEnabled', 'commentAtMode', 'commentAtWhitelist', 'commentTopCount', 'commentTopVideoCount', 'commentReplyHotCount', 'commentAllowGeneralTop', 'commentReplyPerPoll', 'commentReplyPerDay', 'commentOwnTopPerUser', 'commentOwnNestedPerUser', 'mainSessionBridgeEnabled', 'mainSessionId', 'mainSessionAutoSync', 'mainSessionSyncMinutes', 'mainSessionDailyBatches', 'mainSessionBatchSize', 'mainSessionIncludeComments', 'mainSessionMemoryEnabled', 'mainSessionMemoryAutoBili', 'mainSessionMemorySemanticEnabled', 'mainSessionMemoryModelProvider', 'mainSessionMemoryModelId', 'mainSessionMemoryReasoningEffort', 'mainSessionMemoryCandidates', 'mainSessionMemorySearchDailyLimit', 'socialOutreachEnabled', 'socialLifeIntentEnabled', 'emotionSystemEnabled', 'socialAutoSend', 'socialOutreachDailyLimit', 'ownerTodoAutoReviewEnabled', 'ownerTodoReviewMinutes', 'autonomousPlannerEnabled','emotionRecallEnabled','emotionRecallMainEnabled','emotionRecallDmEnabled','emotionRecallUnlimited','emotionRecallDailyLimit','emotionRecallCooldownHours','emotionRecallStartHour','emotionRecallEndHour','emotionRecallCandidateLimit','emotionRecallHistoryLimit','emotionRecallRecentDays','emotionRecallMinAgeDays','emotionRecallEmotionMinIntensity','emotionRecallEmotionMaxAgeHours','ownerDmAgentEnabled','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','ownerDmAgentContextTurns','ownerDmAgentContextChars','ownerDmAgentModelProvider','ownerDmAgentModelId','ownerDmAgentReasoningEffort','ownerDmReadCommandsEnabled','ownerDmActionsEnabled','ownerDmLikeEnabled','ownerDmCollectEnabled','ownerDmFollowEnabled','ownerDmCommentDraftEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicDraftEnabled','ownerDmDynamicPublishEnabled','ownerDmFriendMessageEnabled','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour', 'mainSessionReflectionAuto', 'mainSessionReflectionModelProvider', 'mainSessionReflectionModelId', 'mainSessionReflectionReasoningEffort', 'mainSessionReflectionMinCandidates', 'mainSessionReflectionBatchSize', 'mainSessionReflectionIntervalHours', 'mainSessionReflectionDailyBatches', 'mainSessionMemoryHalfLifeDays', 'mainSessionMemoryThreshold', 'mainSessionMemoryMaxItems', 'mainSessionMemoryMaxChars', 'mainSessionMemoryDailyQuota', 'mainSessionMemoryConsolidationEnabled', 'mainSessionMemoryFactsMax', 'favFolderId','autoVideoLike','autoVideoLikeDailyLimit','autoVideoCollect','agentFollowEnabled','dailyDynamicEnabled','dailyDynamicDailyLimit','dailyDynamicDraftOnly']) {
         if (k in body) patch[k] = body[k]
       }
       // ⭐⭐ 2.0.4（issue #83）：**服务端空值保护** —— 前端某次自动保存会把空字符串/空数组推上来，

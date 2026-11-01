@@ -77,11 +77,10 @@ test('2.5.3: 变模糊后既不能从标题/BV取回旧细节，也不能绕过�
  assert.equal(gate.recall({query:'',domain:'bili-life',actorUid:'101',role:'friend',kinds:['watch']}).length,0)
 }))
 
-test('2.5.3: 实际视频查看的生活写入与社交召回接线存在于插件入口',()=>{
- const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(source,/const event=buildVideoExplorationEvent\(/)
- assert.match(source,/lifeMemory\?\.recordEvents\(\[event\]\)/)
- assert.match(source,/lifeReflection\?\.addEvents\(\[event\]\)/)
- assert.match(source,/excludeEventKey,currentBvid/)
- assert.match(source,/item\.incomingRpid.*item\.bvid/)
+test('生产入口：视频经历只写入 Life Memory 协调器并使用统一社交召回',()=>{
+ const src=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ assert.match(src,/const event=buildVideoExplorationEvent\(/)
+ assert.match(src,/lifeMemoryCoordinator\?\.recordEvents\(\[event\],\{reflect:true\}\)/)
+ assert.match(src,/lifeMemoryCoordinator\.start\(\)/)
+ assert.match(src,/socialContextAssembler\?\.batch\(batch\)/)
 })
