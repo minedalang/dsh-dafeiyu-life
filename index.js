@@ -5241,7 +5241,14 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站模型配置请求'})
       try {
         const action=path.slice('/api/bili-duty/headless-model/'.length)
-        if(req.method==='GET'&&action==='status')return sendJson(res,200,await headlessSync.status(url.searchParams.get('profile')||'desktop'))
+        if(req.method==='GET'&&action==='status'){
+          const status=await headlessSync.status(url.searchParams.get('profile')||'desktop')
+          const current=ctx.get?.('agentDefaultModel')?.currentSelection?.()||{}
+          const provider=String(current.provider||current.providerId||'').trim()
+          const model=String(current.model||current.modelId||'').trim()
+          // Only public route identifiers; never expose credentials/keys or guess official models.
+          return sendJson(res,200,{...status,defaultModel:provider&&model?{provider,model}:null})
+        }
         if(req.method!=='POST')return sendJson(res,405,{ok:false,error:'只允许 POST 模型同步操作'})
         const body=await readBody(req)
         if(action==='preview')return sendJson(res,200,await headlessSync.preview(body?.profile||'desktop',body?.selected))
