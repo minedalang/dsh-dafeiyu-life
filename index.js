@@ -314,7 +314,7 @@ export const Config = !z ? undefined : z.object({
   emotionSystemEnabled: z.boolean().default(true).extra('volatile', true),
   socialAutoSend: z.boolean().default(false).extra('volatile', true),
   socialOutreachDailyLimit: z.natural().default(1).extra('volatile', true),
-  /** 主 Session 自主待办：独立于定时刷视频，默认关闭自动择机检查。 */
+  /** 已废弃的旧版主 Session 定时提醒配置：仅供旧配置和备份读取兼容；不再启动定时器。 */
   ownerTodoAutoReviewEnabled: z.boolean().default(false).extra('volatile', true),
   ownerTodoReviewMinutes: z.natural().default(60).extra('volatile', true),
   ownerTodoCompletionFollowupEnabled: z.boolean().default(false).extra('volatile',true),
@@ -3995,27 +3995,6 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   emotionRecall.start()
   ctx.effect(()=>()=>emotionRecall.stop(),'bili-duty: 情绪驱动自主回忆')
 
-  // Optional TODO review timer is independent from the optional auto-browse timer.
-  // It only nudges the selected main Session to consider due tasks; the model may defer/skip.
-  const ownerTodoReviewTick=async()=>{
-    refreshCfg()
-    if(!firstStart.isReady()||cfg.masterEnabled!==true||cfg.ownerTodoAutoReviewEnabled!==true)return
-    const rows=ownerTodos.context(8);if(!rows.length)return
-    const interval=Math.max(15,Math.min(1440,Math.floor(Number(cfg.ownerTodoReviewMinutes)||60)))
-    if(Date.now()-ownerTodos.lastAutoReviewAt()<interval*60_000)return
-    const st=mainSessionBridge.status();if(!st.targetLive||!st.config?.id)return
-    let agent=null
-    try{agent=ctx.agents?.get?.(st.config.id)||ctx.agents?.get?.('session-'+st.config.id)||null}catch{}
-    if(!agent){try{agent=(ctx.agents?.list?.()||[]).find(a=>String(a?.id||a?.sessionId||a?.key||'').replace(/^session-/,'')===st.config.id)||null}catch{}}
-    if(!agent||typeof agent.followup!=='function')return
-    ownerTodos.markAutoReview()
-    const message='【大肥鱼自主待办择机检查】这是可选计划器的提醒，不是主人当前的新指令。请读取 dafeiyu_todo_list，结合当前状态决定是否适合现在处理某一条；可以执行、延期或忽略，不必为了完成数量而行动。收到视频推荐只代表候选，不代表必须观看。只读任务可以择机执行；点赞/收藏/关注/取关/评论/私信只能执行任务记录中 ownerAuthorized=true 的具体目标，并继续遵守 B站权限、登录、额度和去重规则。若当前没有合适时机，请把相关待办延期或跳过，简短回复即可。'
-    try{await agent.followup({id:randomUUID(),role:'user',content:[{type:'text',text:message}],source:{kind:'dafeiyu-owner-todo-review'}})}catch(e){log('自主待办择机提醒失败：'+String(e?.message||e).slice(0,120))}
-  }
-  const ownerTodoReviewTimer=setInterval(()=>{void ownerTodoReviewTick().catch(e=>log('自主待办择机检查异常：'+String(e?.message||e).slice(0,120)))},60_000)
-  ownerTodoReviewTimer.unref?.()
-  ctx.effect(()=>()=>clearInterval(ownerTodoReviewTimer),'bili-duty: 可选自主待办择机检查')
-
   // 生活动态仅使用可衰减的公开经历证据：视频和鱼鱼本人已确认发表的公开文字。
   // 公开发布与模型生成严格分离：生成模型不挂 B站发送工具，实际发布由受限 Python 路径执行。
   dailyDynamic=createDailyDynamic({
@@ -5071,7 +5050,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
         note:'候选只来自今天确实入选的视频；是否想长期关注由视频 Agent 决定，最终还受 MCP 的登录、已有关系和每日额度保护。'})
     }
     if (req.method === 'GET' && path === '/api/bili-duty/owner-todos') {
-      return sendJson(res,200,{...ownerTodos.status(),followup:ownerTodoFollowup.status(),config:{completionFollowup:cfg.ownerTodoCompletionFollowupEnabled===true,autoReview:cfg.ownerTodoAutoReviewEnabled===true,reviewMinutes:cfg.ownerTodoReviewMinutes||60,planner:cfg.autonomousPlannerEnabled===true,ownerDmAgent:ownerDmAgent.status(),agentEnabled:cfg.ownerDmAgentEnabled===true,agentReadMain:cfg.ownerDmAgentReadMainContext===true,agentSyncMain:cfg.ownerDmAgentSyncMain===true,agentContextTurns:cfg.ownerDmAgentContextTurns||6,agentContextChars:cfg.ownerDmAgentContextChars||1500,agentModelProvider:cfg.ownerDmAgentModelProvider||'',agentModelId:cfg.ownerDmAgentModelId||'',agentReasoningEffort:cfg.ownerDmAgentReasoningEffort||'',ownerDmCommands:cfg.ownerDmReadCommandsEnabled===true,ownerDmActions:cfg.ownerDmActionsEnabled===true,ownerDmPerms:Object.fromEntries(Object.values(OWNER_DM_ACTION_FLAGS).map(k=>[k,cfg[k]===true])),plannerMinutes:cfg.autonomousPlannerMinutes??30,plannerDailyLimit:cfg.autonomousPlannerDailyLimit??24,plannerStartHour:cfg.autonomousPlannerStartHour??9,plannerEndHour:cfg.autonomousPlannerEndHour??23}})
+      return sendJson(res,200,{...ownerTodos.status(),followup:ownerTodoFollowup.status(),config:{completionFollowup:cfg.ownerTodoCompletionFollowupEnabled===true,autoReview:false,reviewMinutes:cfg.ownerTodoReviewMinutes||60,planner:cfg.autonomousPlannerEnabled===true,ownerDmAgent:ownerDmAgent.status(),agentEnabled:cfg.ownerDmAgentEnabled===true,agentReadMain:cfg.ownerDmAgentReadMainContext===true,agentSyncMain:cfg.ownerDmAgentSyncMain===true,agentContextTurns:cfg.ownerDmAgentContextTurns||6,agentContextChars:cfg.ownerDmAgentContextChars||1500,agentModelProvider:cfg.ownerDmAgentModelProvider||'',agentModelId:cfg.ownerDmAgentModelId||'',agentReasoningEffort:cfg.ownerDmAgentReasoningEffort||'',ownerDmCommands:cfg.ownerDmReadCommandsEnabled===true,ownerDmActions:cfg.ownerDmActionsEnabled===true,ownerDmPerms:Object.fromEntries(Object.values(OWNER_DM_ACTION_FLAGS).map(k=>[k,cfg[k]===true])),plannerMinutes:cfg.autonomousPlannerMinutes??30,plannerDailyLimit:cfg.autonomousPlannerDailyLimit??24,plannerStartHour:cfg.autonomousPlannerStartHour??9,plannerEndHour:cfg.autonomousPlannerEndHour??23}})
     }
     if (req.method === 'POST' && path === '/api/bili-duty/owner-todos') {
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
