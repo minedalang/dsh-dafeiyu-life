@@ -18,7 +18,7 @@ test('回访宽范围配置：默认1小时/12条/5分钟，明确允许0冷却�
 })
 test('同一人冷却与全局间隔均为0时可连续发送不同真实原请求，但仍去重',()=>inSpace(async dir=>{
  let sent=0
- const f=createOwnerTodoFollowup({dataDir:dir,getConfig:()=>({...conf(),ownerTodoFollowupCooldownMinutes:0,ownerTodoFollowupMinIntervalMinutes:0,ownerTodoFollowupQuietStartHour:0,ownerTodoFollowupQuietEndHour:0}),now:()=>T,hourOf:()=>12,send:async()=>{sent++;return {ok:true}}})
+ const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:()=>({...conf(),ownerTodoFollowupCooldownMinutes:0,ownerTodoFollowupMinIntervalMinutes:0,ownerTodoFollowupQuietStartHour:0,ownerTodoFollowupQuietEndHour:0}),now:()=>T,hourOf:()=>12,send:async()=>{sent++;return {ok:true}}})
  assert.equal(f.queue({...request('one'),sourceKey:'manual:one'},{ok:true}).queued,true)
  assert.equal(f.queue({...request('two','m02'),sourceKey:'manual:two'},{ok:true}).queued,true)
  assert.equal((await f.tick()).status,'sent');assert.equal((await f.tick()).status,'sent')
@@ -26,7 +26,7 @@ test('同一人冷却与全局间隔均为0时可连续发送不同真实原请�
 }) )
 test('待办冷却会给每条pending展示最近检查原因和下次可尝试时间',()=>inSpace(async dir=>{
  let at=T
- const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,now:()=>at,hourOf:()=>12,send:async()=>({ok:true})})
+ const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,now:()=>at,hourOf:()=>12,send:async()=>({ok:true})})
  f.queue({...request('one'),sourceKey:'manual:one'},{ok:true});await f.tick()
  f.queue({...request('two','m02'),sourceKey:'manual:two'},{ok:true})
  assert.equal((await f.tick()).skipped,'两次回访最小间隔未结束')
@@ -39,7 +39,7 @@ test('同一原始私信三个子待办先完成两项不发送，最后一项�
  const parent=todo.add({type:'search_videos',topic:'孙燕姿 歌曲',sourceKey:'owner-ai:'+owner+':m01',origin:{kind:'owner-dm',uid,messageId:'m01'}},{source:'owner'}).item
  const children=BV.map((bv,i)=>todo.add({type:'watch_video',bvid:bv,topic:'孙燕姿 歌曲',title:'孙燕姿歌 '+i,sourceKey:`owner-ai-watch:${parent.id}:${bv}`,origin:{kind:'owner-dm',uid,messageId:'m01'}},{source:'owner'}).item)
  let sent=[]
- const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>T,hourOf:()=>12,send:async x=>{sent.push(x);return {ok:true}}})
+ const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>T,hourOf:()=>12,send:async x=>{sent.push(x);return {ok:true}}})
  for(const [i,child] of children.slice(0,2).entries()){
    todo.update(child.id,'done');assert.equal(f.queue({...child},{ok:true,data:{info:{title:'孙燕姿现场歌曲'}}}).queued,i===0)
  }
@@ -49,7 +49,7 @@ test('同一原始私信三个子待办先完成两项不发送，最后一项�
  const queued=f.queue(children[2],{ok:true,data:{info:{title:'孙燕姿现场歌曲'}}})
  assert.equal(queued.queued,false);assert.equal(f.status().pending,1)
  assert.equal((await f.tick()).status,'sent');assert.equal(sent.length,1)
- assert.match(sent[0].text,/3 项/);assert.match(sent[0].text,/不代表实际听完/)
+ assert.equal(sent[0].text,'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。');assert.equal(f.status().recent.find(x=>x.status==='sent').groupTotal,3)
  assert.equal(f.queue(children[2],{ok:true}).queued,false)
 }))
 test('旧三个pending安全合并；已有uncertain或sent则不自动再汇总',()=>inSpace(async dir=>{
@@ -58,7 +58,7 @@ test('旧三个pending安全合并；已有uncertain或sent则不自动再汇总
  const legacy=todos.map((t,i)=>({...request(t.id),key:'old'+i,taskId:t.id,uid,channel:'dm',status:'pending',at:T,reason:'',topic:'孙燕姿'}))
  writeFileSync(join(dir,'owner-todo-followups.json'),JSON.stringify({version:1,items:legacy,sentHistory:[]}))
  let sends=0
- const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,getTodos:()=>todos,now:()=>T,hourOf:()=>12,send:async()=>{sends++;return {ok:true}}})
+ const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,getTodos:()=>todos,now:()=>T,hourOf:()=>12,send:async()=>{sends++;return {ok:true}}})
  assert.equal((await f.tick()).status,'sent');assert.equal(sends,1)
  assert.equal(f.status().recent.filter(x=>x.status==='merged').length,2)
  // If a prior attempt became uncertain, never replace it with a new aggregate send.
@@ -85,22 +85,22 @@ test('父任务后立即自主考虑最多3个子任务，独立计费且可决�
 test('末尾子待办自主放弃仍结束整组等待；只汇报真实完成的部分',()=>inSpace(async dir=>{
  const todo=createOwnerTodoEngine({dataDir:dir,now:()=>T}),parent=randomUUID()
  const origin={kind:'owner-dm',uid,messageId:'same-real-request'},rows=BV.map(bvid=>todo.add({type:'watch_video',bvid,sourceKey:`owner-ai-watch:${parent}:${bvid}`,origin,topic:'孙燕姿'},{}).item)
- let sent=[];const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>T,hourOf:()=>12,send:async x=>{sent.push(x);return {ok:true}}})
+ let sent=[];const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>T,hourOf:()=>12,send:async x=>{sent.push(x);return {ok:true}}})
  todo.update(rows[0].id,'done');assert.equal(f.queue(rows[0],{ok:true,data:{info:{title:'孙燕姿现场'}}}).queued,true)
  todo.update(rows[1].id,'dismiss');todo.update(rows[2].id,'dismiss')
- assert.equal((await f.tick()).status,'sent');assert.equal(sent.length,1);assert.match(sent[0].text,/1 项/);assert.match(sent[0].text,/2 项选择了不继续/)
+ assert.equal((await f.tick()).status,'sent');assert.equal(sent.length,1);assert.equal(sent[0].text,'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。');assert.equal(f.status().recent.find(x=>x.status==='sent').groupTotal,3)
 }))
 test('同父任务混入其他原消息来源绝不能合并，避免越权泄露',()=>inSpace(async dir=>{
  const todo=createOwnerTodoEngine({dataDir:dir,now:()=>T}),parent=randomUUID()
  const rows=BV.map((bvid,i)=>todo.add({type:'watch_video',bvid,sourceKey:`owner-ai-watch:${parent}:${bvid}`,origin:{kind:'owner-dm',uid,messageId:i===2?'other':'first'},topic:'孙燕姿'},{}).item)
  rows.forEach(x=>todo.update(x.id,'done'));let sends=0
- const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>T,hourOf:()=>12,send:async()=>{sends++;return {ok:true}}})
+ const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>T,hourOf:()=>12,send:async()=>{sends++;return {ok:true}}})
  assert.equal(f.queue(rows[0],{ok:true,data:{info:{title:'孙燕姿现场'}}}).queued,false)
  assert.equal((await f.tick()).skipped,'empty');assert.equal(sends,0)
 }))
 test('可独立关闭夜间静默，不需要将小时配置成相同值',()=>inSpace(async dir=>{
  let count=0
- const f=createOwnerTodoFollowup({dataDir:dir,getConfig:()=>({...conf(),ownerTodoFollowupQuietEnabled:false}),hourOf:()=>23,now:()=>T,send:async()=>{count++;return {ok:true}}})
+ const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:()=>({...conf(),ownerTodoFollowupQuietEnabled:false}),hourOf:()=>23,now:()=>T,send:async()=>{count++;return {ok:true}}})
  assert.equal(f.queue({...request('quiet'),sourceKey:'manual:quiet'},{ok:true}).queued,true)
  assert.equal((await f.tick()).status,'sent');assert.equal(count,1)
 }))

@@ -170,3 +170,10 @@ Windows Desktop 的常规安装命令为 `dsh plugin --profile desktop add dsh-d
 - 接受视频邀请和公开视频主题搜索必须复用 `DualContextAgency` 的可信来源结果；拒绝/推迟不是承诺，不在 `owner-todos.json` 里直接创建正式待办。`lib/social-todo-intake.mjs` 是严格的只读视频搜索解析入口，拒绝未知来源和私有/写入任务。
 - `lib/owner-todos.mjs` 仍是唯一已接受任务账本；`page()` 提供分页，`history` 只保留有界状态，`recoverInterrupted()` 拦截崩溃遗留动作。严禁因容量压力静默删除活跃任务。
 - 旧版 `RELEASE_NOTES` 已归档；dev.3 不授权开放陌生人主动私信、关注、评论或自主回访。
+
+## 2.6.1 RC2 · 连续人生经历开发约束
+
+- 视频探索、私人对话、公开评论、接受待办和自主回访的真实经历须沿用 `LifeMemoryCoordinator → LifeMemoryGateway`，不得建第二套永不遗忘的任务记忆。工作结果、鱼鱼自己的实际表达、得到纠正的过程要区分来源与证据。
+- 回访模型同一次调用选择 `decision/channel/text`；没有可用的当前清晰记忆或可信正文时应延期或沉默，不能用固定报告模板强制发送。只读视频资料不等于听到音频。
+- 回访确认送达后，主人 DM 的短期上下文可保留该 UID 最近 24 小时已发送的话；旧历史不许补回已遗忘的视频细节。私密个人感想仅存确定性生成的低敏类别摘要，不能存原始私信全文、跨 UID 或越权公开。
+- 主人日常私信、原评论已确认回复复用同一送达后经历投影准则；任何 uncertain、blocked、失败都不能写成“我说过”或重放对外动作。

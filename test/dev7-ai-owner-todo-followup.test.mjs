@@ -58,7 +58,7 @@ test('B站搜索仅能提取真实 BV 候选，不能把搜索冒充听过',()=>
 })
 
 test('回访只接受已验证的关联观看任务，搜索、他人、重复都不能触发',()=>withDir(async dir=>{
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:()=>({ownerTodoCompletionFollowupEnabled:true}),send:async()=>({ok:true}),now:()=>now,hourOf:()=>12})
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:()=>({ownerTodoCompletionFollowupEnabled:true}),send:async()=>({ok:true}),now:()=>now,hourOf:()=>12})
   const task={id:'one',type:'watch_video',sourceKey:'owner-ai-watch:parent:BV1abc234567',bvid:'BV1abc234567',origin:{kind:'owner-dm',uid,messageId:'m01'},topic:'孙燕姿 歌曲'}
   assert.equal(f.queue({...task,type:'search_videos'},{ok:true}).queued,false)
   assert.equal(f.queue(task,{ok:false}).queued,false)
@@ -71,7 +71,7 @@ test('回访只接受已验证的关联观看任务，搜索、他人、重复�
 test('完成回访需独立授权、安静时间及主人身份，默认1小时每人冷却',()=>withDir(async dir=>{
   let t=now,sends=[]
   const cfg={masterEnabled:true,dmWatch:true,ownerTodoCompletionFollowupEnabled:false,dmOwnerUid:uid}
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:()=>cfg,send:async(v)=>{sends.push(v);return {ok:true}},now:()=>t,hourOf:()=>12})
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:()=>cfg,send:async(v)=>{sends.push(v);return {ok:true}},now:()=>t,hourOf:()=>12})
   const task=(id,bv)=>({id,type:'watch_video',sourceKey:'owner-ai-watch:p:'+bv,bvid:bv,origin:{kind:'owner-dm',uid,messageId:'one'},topic:'孙燕姿 歌曲'})
   assert.equal(f.queue(task('A','BV1abc234567'),{ok:true,data:{info:{title:'孙燕姿歌曲'}}}).reason,'not-opted-in')
   cfg.ownerTodoCompletionFollowupEnabled=true
@@ -80,7 +80,7 @@ test('完成回访需独立授权、安静时间及主人身份，默认1小时�
   assert.equal((await f.tick()).skipped,'disabled');assert.equal(sends.length,0)
   cfg.ownerTodoCompletionFollowupEnabled=true
   assert.equal((await f.tick()).status,'sent');assert.equal(sends.length,1)
-  assert.match(sends[0].text,/还没真正听完/)
+  assert.equal(sends[0].text,'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。')
   f.queue(task('B','BV1abc234568'),{ok:true,data:{info:{title:'孙燕姿歌曲第二集'}}})
   assert.equal((await f.tick()).skipped,'两次回访最小间隔未结束')
   t+=3600000
@@ -91,7 +91,7 @@ test('拒绝联系、结果不确定、身份切换不发消息，也不自动�
   let calls=0
   const cfg={masterEnabled:true,dmWatch:true,ownerTodoCompletionFollowupEnabled:true,dmOwnerUid:uid}
   const task={id:'one',type:'watch_video',sourceKey:'owner-ai-watch:p:BV1abc234567',bvid:'BV1abc234567',origin:{kind:'owner-dm',uid,messageId:'m1'}}
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:()=>cfg,send:async()=>{calls++;return {ok:false}},now:()=>now,hourOf:()=>12})
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:()=>cfg,send:async()=>{calls++;return {ok:false}},now:()=>now,hourOf:()=>12})
   f.queue(task,{ok:true});cfg.dmOwnerUid='999900001'
   assert.equal((await f.tick()).skipped,'empty');assert.equal(calls,0)
   cfg.dmOwnerUid=uid
@@ -102,7 +102,7 @@ test('拒绝联系、结果不确定、身份切换不发消息，也不自动�
 test('退订和夜间都阻止任务完成回访',()=>withDir(async dir=>{
   let sends=0,block=true,hour=23
   const cfg={masterEnabled:true,dmWatch:true,ownerTodoCompletionFollowupEnabled:true,dmOwnerUid:uid}
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:()=>cfg,send:async()=>{sends++;return {ok:true}},canContact:()=>({blocked:block}),now:()=>now,hourOf:()=>hour})
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:()=>cfg,send:async()=>{sends++;return {ok:true}},canContact:()=>({blocked:block}),now:()=>now,hourOf:()=>hour})
   f.queue({id:'one',type:'watch_video',sourceKey:'owner-ai-watch:p:BV1abc234567',bvid:'BV1abc234567',origin:{uid,messageId:'m1'}},{ok:true})
   assert.equal((await f.tick()).skipped,'quiet-hours')
   hour=12;assert.equal((await f.tick()).skipped,'opted-out')

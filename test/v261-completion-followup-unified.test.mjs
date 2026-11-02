@@ -14,15 +14,15 @@ const task=(id,channel,uid=UID)=>({id,type:'watch_video',bvid:BV,title:'已核�
   origin:{kind:channel==='comment'?'bilibili-comment':'bilibili-dm',uid,messageId:uid+':req-'+id,
     commentBvid:channel==='comment'?BV:'',commentRpid:channel==='comment'?123456:0,commentRoot:0}})
 test('普通私信提出并被接受的视频任务：原私信回访，不能改到公开评论',()=>space(async dir=>{
-  const sent=[],f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,
-    chooseReply:()=>({decision:'reply',channel:'comment',familiar:true}),send:async r=>{sent.push(r);return {ok:true}}})
+  const sent=[],f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,
+    chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。',channel:'comment',familiar:true}),send:async r=>{sent.push(r);return {ok:true}}})
   assert.equal(f.queue(task('A','dm'),{ok:true}).queued,true)
   assert.equal((await f.tick()).status,'sent');assert.equal(sent.length,1);assert.equal(sent[0].channel,'dm')
   assert.equal((await f.tick()).skipped,'empty')
 }))
 test('评论请求在原楼层回复之前必须再次核实原作者UID',()=>space(async dir=>{
   let calls=0
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,
     verifyComment:async()=>false,send:async()=>{calls++;return {ok:true}}})
   f.queue(task('A','comment'),{ok:true})
   assert.equal((await f.tick()).skipped,'原评论核验失败');assert.equal(calls,0)
@@ -30,8 +30,8 @@ test('评论请求在原楼层回复之前必须再次核实原作者UID',()=>sp
 }))
 test('评论区请求保持原地回访；熟人仅获独立许可后才能转私信',()=>space(async dir=>{
   const send=[];let verified=0
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,
-    chooseReply:()=>({decision:'reply',channel:'dm',familiar:true}),
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,
+    chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。',channel:'dm',familiar:true}),
     canContact:r=>r.crossChannel?{blocked:true,reason:'没有私信许可'}:{blocked:false},
     verifyComment:async()=>{verified++;return true},send:async r=>{send.push(r);return {ok:true}}})
   f.queue(task('A','comment'),{ok:true})
@@ -39,8 +39,8 @@ test('评论区请求保持原地回访；熟人仅获独立许可后才能转�
   assert.equal(send[0].commentBvid,BV);assert.equal(send[0].commentRpid,123456);assert.equal(verified,1)
 }))
 test('评论区熟人已有独立私信授权，鱼鱼可自主选择私信',()=>space(async dir=>{
-  const sent=[],f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,
-    chooseReply:()=>({decision:'reply',channel:'dm',familiar:true}),
+  const sent=[],f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,
+    chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。',channel:'dm',familiar:true}),
     canContact:()=>({blocked:false}),verifyComment:()=>{throw Error('私信无须读评论发送，但不能失去原消息凭证')},
     send:async r=>{sent.push(r);return {ok:true}}})
   f.queue(task('A','comment'),{ok:true})
@@ -53,7 +53,7 @@ test('同一个公开视频由两位不同 UID 推荐：两个来源都保留，
   const item=e.list()[0]
   assert.equal(item.recommendationSources.length,2)
   let t=T
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,now:()=>t,hourOf:()=>12,send:async r=>{sent.push(r.uid);return {ok:true}}})
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,now:()=>t,hourOf:()=>12,send:async r=>{sent.push(r.uid);return {ok:true}}})
   assert.equal(f.queue(item,{ok:true}).added,2)
   await f.tick();t+=DAY;await f.tick()
   assert.deepEqual(new Set(sent),new Set([UID,UID2]))
@@ -68,27 +68,27 @@ test('公开视频搜索待办只有通过统一意愿接受才创建，并保�
   assert.equal(e.list()[0].origin.commentBvid,BV)
 }))
 test('评论缺少原评论ID时不得创建任意公开回访',()=>space(async dir=>{
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,send:()=>{throw Error('not sent')}})
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,send:()=>{throw Error('not sent')}})
   const original=task('A','comment');delete original.origin.commentRpid
   assert.equal(f.queue(original,{ok:true}).queued,false)
   assert.equal(f.status().pending,0)
 }))
 test('平台回执不确定必须冻结，不得自动重发',()=>space(async dir=>{
   let attempts=0
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,send:()=>{attempts++;return {ok:false}}})
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,send:()=>{attempts++;return {ok:false}}})
   f.queue(task('A','dm'),{ok:true})
   assert.equal((await f.tick()).status,'uncertain')
   assert.equal((await f.tick()).skipped,'empty');assert.equal(attempts,1)
 }))
 test('旧版本 pending 回访记录保持原始 UID，不猜测评论来源',()=>space(async dir=>{
   writeFileSync(join(dir,'owner-todo-followups.json'),JSON.stringify({version:1,items:[{taskId:'old',uid:'999888777',bvid:BV,title:'旧视频',topic:'',at:T,status:'pending',reason:''}],lastSentAt:0}))
-  let actual=[];const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,send:async r=>{actual.push(r);return {ok:true}}})
+  let actual=[];const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,now:()=>T,hourOf:()=>12,send:async r=>{actual.push(r);return {ok:true}}})
   assert.equal((await f.tick()).status,'sent');assert.equal(actual[0].channel,'dm')
   assert.equal(f.status().recent[0].status,'sent')
 }))
 test('鱼鱼有权延期或拒绝回访，任务成功不代表必须发送',()=>space(async dir=>{
   let attempts=0,t=T
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:conf,now:()=>t,hourOf:()=>12,
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,now:()=>t,hourOf:()=>12,
     chooseReply:()=>({decision:'defer'}),send:()=>{attempts++;return {ok:true}}})
   f.queue(task('A','dm'),{ok:true})
   assert.equal((await f.tick()).skipped,'鱼鱼选择延期')

@@ -13,14 +13,14 @@ const task=(id,mid='m01')=>({id,type:'watch_video',bvid:BVS[0],sourceKey:'manual
 
 test('完成回访独立授权：后台私信监听与视频报告都关闭也可处理同一主人真实请求',()=>scoped(async dir=>{
   let sent=0
-  const followup=createOwnerTodoFollowup({dataDir:dir,getConfig:cfg,now:()=>TIME,hourOf:()=>12,send:async()=>{sent++;return {ok:true}}})
+  const followup=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:cfg,now:()=>TIME,hourOf:()=>12,send:async()=>{sent++;return {ok:true}}})
   assert.equal(followup.queue(task('a'),{ok:true}).queued,true)
   assert.equal((await followup.tick()).status,'sent');assert.equal(sent,1)
 }))
 test('没有完成回访独立授权或联系许可时仍不能私信',()=>scoped(async dir=>{
   let sent=0,granted=false
   const settings={...cfg(),ownerTodoCompletionFollowupEnabled:true}
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:()=>settings,now:()=>TIME,hourOf:()=>12,
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:()=>settings,now:()=>TIME,hourOf:()=>12,
     canContact:()=>({blocked:!granted,reason:'明确退订'}),send:async()=>{sent++;return {ok:true}}})
   f.queue(task('a'),{ok:true})
   assert.equal((await f.tick()).skipped,'opted-out');assert.equal(sent,0)
@@ -34,7 +34,7 @@ test('旧版因私信开关误拦截且从未发送：人工核验来源后才�
   const todo=createOwnerTodoEngine({dataDir:dir,now:()=>TIME})
   const t=todo.add({...task('a'),sourceKey:'manual:a'},{source:'owner'}).item
   todo.update(t.id,'done')
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:cfg,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>TIME,hourOf:()=>12,send:async()=>{sent++;return {ok:true}}})
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:cfg,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>TIME,hourOf:()=>12,send:async()=>{sent++;return {ok:true}}})
   f.queue(t,{ok:true})
   const file=join(dir,'owner-todo-followups.json');const d=JSON.parse(readFileSync(file,'utf8'))
   d.items[0].status='blocked';d.items[0].reason='私信功能关闭';writeFileSync(file,JSON.stringify(d))
@@ -52,7 +52,7 @@ test('不同来源原消息混入同一父任务：旧 blocked 记录禁止重�
     origin:{kind:'owner-dm',uid:UID,messageId:i===2?'other':'first'}},{source:'owner'}).item)
   children.forEach(t=>todo.update(t.id,'done'))
   let sent=0
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:cfg,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>TIME,hourOf:()=>12,send:async()=>{sent++;return {ok:true}}})
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:cfg,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>TIME,hourOf:()=>12,send:async()=>{sent++;return {ok:true}}})
   const file=join(dir,'owner-todo-followups.json')
   writeFileSync(file,JSON.stringify({version:1,items:[{key:'root',taskId:children[0].id,uid:UID,channel:'dm',social:false,originalMessageId:'first',status:'blocked',reason:'私信功能关闭',groupRoot:parent,at:TIME,attempts:0}],sentHistory:[]}))
   const result=await f.retryBlocked('root');assert.equal(result.ok,false)
@@ -61,7 +61,7 @@ test('不同来源原消息混入同一父任务：旧 blocked 记录禁止重�
 test('发送中断或不确定的旧账本绝不通过显式重试复活',()=>scoped(async dir=>{
   const todo=createOwnerTodoEngine({dataDir:dir,now:()=>TIME})
   const t=todo.add({...task('a')},{source:'owner'}).item;todo.update(t.id,'done')
-  const f=createOwnerTodoFollowup({dataDir:dir,getConfig:cfg,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>TIME,hourOf:()=>12,send:async()=>({ok:true})})
+  const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:cfg,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>TIME,hourOf:()=>12,send:async()=>({ok:true})})
   f.queue(t,{ok:true});const file=join(dir,'owner-todo-followups.json');const d=JSON.parse(readFileSync(file,'utf8'))
   d.items[0].status='blocked';d.items[0].reason='私信功能关闭';d.items[0].startedAt=TIME
   writeFileSync(file,JSON.stringify(d));assert.equal((await f.retryBlocked(d.items[0].key)).ok,false)
