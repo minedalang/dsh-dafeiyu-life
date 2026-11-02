@@ -47,6 +47,7 @@ import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch } from
 import { ensureUv } from './lib/uvfetch.mjs'
 import { createDmAutoReply } from './lib/dm-autoreply.mjs'
 import { receiveRecommendations, listRecommendationCandidates } from './lib/video-recommendations.mjs'
+import { intakePublicReadProposal } from './lib/social-todo-intake.mjs'
 import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/owner-todos.mjs'
 import { createAutonomousPlanner } from './lib/autonomous-planner.mjs'
 import { queueOwnerDmReadTodo, parseOwnerDmTodo } from './lib/owner-dm-commands.mjs'
@@ -876,6 +877,7 @@ function reportMeta() {
     return `【自然关系熟悉度】与你互动的是${r.whitelisted?'白名单用户':r.socialFriend?'逐渐成为好友的人':'普通用户'}；阶段「${r.stageLabel}」。仅依据真实互动元数据估计，绝非真实感情，也不代表对方获得私信或工具权限。不要编造共同经历、提及后台分数或表现得过分亲密。`}
 
   const ownerTodos = createOwnerTodoEngine({dataDir:stateDir})
+  try{const recovered=ownerTodos.recoverInterrupted();if(recovered.recovered)log(`自主待办：重启后封存 ${recovered.recovered} 条未结束执行，等待人工核对`)}catch(e){log('自主待办异常恢复失败：'+String(e?.message||e).slice(0,100))}
   const ownerTodoFollowup=createOwnerTodoFollowup({dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},
     canContact:({uid,bvid,title})=>{
       if(String(cfg.dmOwnerUid||'')!==uid)return {blocked:true}
@@ -2816,6 +2818,8 @@ function reportMeta() {
     const remaining=incoming.filter(row=>!ownerRows.includes(row))
     incoming.length=0;incoming.push(...remaining)
     try{const received=receiveRecommendations(stateDir,incoming,{decide:intakeRecommendation});const synced=ownerTodos.syncRecommendations(received?.acceptedEntries||[],{requireAccepted:true});if(synced.added)log(`收到视频推荐并加入自主待办：新增 ${synced.added} 条`)}catch(e){log('B站私信视频候选/待办暂存失败：'+String(e?.message||e).slice(0,100))}
+    // Only already-received, platform-authenticated DM; never scan strangers' private archives.
+    for(const row of incoming.slice(0,100))try{intakePublicReadProposal({row,channel:'dm',decide:({uid,messageId,text,channel,intent,target})=>dualContextAgency.decide({source:'bili-dm',uid,messageId,text,intent,target}),todos:ownerTodos})}catch(e){log('私信公开视频搜索待办入队失败：'+String(e?.message||e).slice(0,100))}
     try{
       const queued=queueOwnerDmReadTodo({messages:incoming,ownerUid:cfg.dmOwnerUid,enabled:cfg.ownerDmReadCommandsEnabled===true,todos:ownerTodos})
       if(queued.added)log(`主人 B站私信只读任务入队：${queued.added} 条`)
@@ -3452,6 +3456,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
           if(result?.reason!=='not-verified-owner-comment'&&result?.reason!=='disabled')return {consumed:true,reason:'trusted_social_ai'}
         }catch(e){log('可信评论 Agent 接收失败：'+String(e?.message||e).slice(0,120));return {consumed:true,reason:'trusted_social_error'}}
       }
+      if(role!=='owner'&&['at','notice'].includes(req.kind))try{intakePublicReadProposal({row:{incoming:true,senderUid:req.uid,messageId:req.id,text:req.text,timestampMs:at},channel:'comment',decide:({uid,messageId,text,intent,target})=>dualContextAgency.decide({source:'bili-comment',uid,messageId,text,intent,target}),todos:ownerTodos})}catch(e){log('评论公开视频搜索待办入队失败：'+String(e?.message||e).slice(0,100))}
       if(role!=='owner'&&hasExplicitVideoRecommendation(req.text))try{
         const reco=receiveRecommendations(stateDir,[{incoming:true,senderUid:req.uid,senderName:req.name||'',messageId:req.id,text:req.text,timestampMs:at,source:'B站评论分享'}],{decide:intakeRecommendation});ownerTodos.syncRecommendations(reco.acceptedEntries,{requireAccepted:true})
       }catch(e){log('评论视频推荐入队失败：'+String(e?.message||e).slice(0,100))}
@@ -5015,6 +5020,11 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       const body=await readBody(req)
       if(body?.action!=='preview')return sendJson(res,400,{ok:false,error:'仅支持只读预览'})
       return sendJson(res,200,await socialCognition.tick({dryRun:true}))
+    }
+    // P4: the same accepted ledger exposes a small cursor page, not a second inbox.
+    if (req.method === 'GET' && path === '/api/bili-duty/owner-todos/page') {
+      try{const r=ownerTodos.page({filter:url.searchParams.get('filter')||'active',cursor:url.searchParams.get('cursor')||'',limit:url.searchParams.get('limit')||25});return sendJson(res,r.ok?200:400,r)}
+      catch(e){return sendJson(res,400,{ok:false,error:'待办分页失败：'+String(e?.message||e).slice(0,160)})}
     }
     if (req.method === 'GET' && path === '/api/bili-duty/owner-todos') {
       return sendJson(res,200,{...ownerTodos.status(),followup:ownerTodoFollowup.status(),config:{completionFollowup:cfg.ownerTodoCompletionFollowupEnabled===true,autoReview:cfg.ownerTodoAutoReviewEnabled===true,reviewMinutes:cfg.ownerTodoReviewMinutes||60,planner:cfg.autonomousPlannerEnabled===true,ownerDmAgent:ownerDmAgent.status(),agentEnabled:cfg.ownerDmAgentEnabled===true,agentReadMain:cfg.ownerDmAgentReadMainContext===true,agentSyncMain:cfg.ownerDmAgentSyncMain===true,agentContextTurns:cfg.ownerDmAgentContextTurns||6,agentContextChars:cfg.ownerDmAgentContextChars||1500,agentModelProvider:cfg.ownerDmAgentModelProvider||'',agentModelId:cfg.ownerDmAgentModelId||'',agentReasoningEffort:cfg.ownerDmAgentReasoningEffort||'',ownerDmCommands:cfg.ownerDmReadCommandsEnabled===true,ownerDmActions:cfg.ownerDmActionsEnabled===true,ownerDmPerms:Object.fromEntries(Object.values(OWNER_DM_ACTION_FLAGS).map(k=>[k,cfg[k]===true])),plannerMinutes:cfg.autonomousPlannerMinutes??30,plannerDailyLimit:cfg.autonomousPlannerDailyLimit??24,plannerStartHour:cfg.autonomousPlannerStartHour??9,plannerEndHour:cfg.autonomousPlannerEndHour??23}})

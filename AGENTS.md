@@ -164,3 +164,9 @@ Windows Desktop 的常规安装命令为 `dsh plugin --profile desktop add dsh-d
 - DSH Mobile 活动接口可经当前同源 `/status` 读取安全摘要，禁止将私信、评论原文、UID、密钥加进状态或播报。
 - 全新安装默认启用人格成长需持久化独立状态；老安装显式关闭保持关闭。不得降低真实证据或跨日期质量闸门。
 - 用户要求 AI 在自己后台测试时隔离超时，不代表授权修改仓库自检脚本、测试运行器或已有测试文件；仅在外部执行环境设置超时。
+
+## 2.6.1-dev.3 · P4 统一待办兼容接线
+
+- 接受视频邀请和公开视频主题搜索必须复用 `DualContextAgency` 的可信来源结果；拒绝/推迟不是承诺，不在 `owner-todos.json` 里直接创建正式待办。`lib/social-todo-intake.mjs` 是严格的只读视频搜索解析入口，拒绝未知来源和私有/写入任务。
+- `lib/owner-todos.mjs` 仍是唯一已接受任务账本；`page()` 提供分页，`history` 只保留有界状态，`recoverInterrupted()` 拦截崩溃遗留动作。严禁因容量压力静默删除活跃任务。
+- 旧版 `RELEASE_NOTES` 已归档；dev.3 不授权开放陌生人主动私信、关注、评论或自主回访。

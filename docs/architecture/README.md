@@ -42,3 +42,7 @@
 ## dev.9 社交关系与记忆增量
 
 - [自然发展关系、轻量 SQLite 索引与记忆衰减接线](dev9-social-relationship-memory.md)：`SocialInteractionCoordinator → SocialRelationshipIndex → SocialContextAssembler / LifeMemoryGateway`。关系阶段与授权角色分离，未扩大主动私信或对外操作权限。
+
+## 2.6.1-dev.3 · 统一待办增量
+
+- [P4 已接受待办生命周期、分页与恢复的真实接线](dev261-unified-accepted-todos-dev3.md)：继续沿用 `owner-todos` 和 `AutonomousPlanner`，未覆盖任意类型任务或自主回访。
