@@ -3911,6 +3911,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},
     getTodos:(limit)=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>READ_TODO_TYPES.has(x.type)&&(!x.dueAt||x.dueAt<=Date.now())).slice(0,limit),
     getRelationshipHint:uid=>{try{return existingRelationshipIndex()?.preferenceHint(uid,relationshipOptions())||null}catch{return null}},
+    getLifeState:()=>emotionalState.snapshot(),
+    recheckWillingness:task=>dualContextAgency.assessReadExecution({task}),
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars),
     executeRead:(id)=>{
       const current=ownerTodos.list({includeClosed:true,limit:500}).find(x=>x.id===id)
