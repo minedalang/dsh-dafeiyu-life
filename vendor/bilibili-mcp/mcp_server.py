@@ -1847,7 +1847,7 @@ async def bili_send_message_manual(receiver_uid: int, text: str, confirm: bool =
 
 
 @tool()
-async def bili_video_collect(bvid: str, folder_title: str, reason: str = '', visibility: str = 'private') -> str:
+async def bili_video_collect(bvid: str, folder_title: str, reason: str = '', visibility: str = 'private', motivation: str = 'other') -> str:
     # 只收藏需要未来回看的入选视频
     if (e:=_guard('bili_video_collect')): return e
     try:
@@ -1856,14 +1856,17 @@ async def bili_video_collect(bvid: str, folder_title: str, reason: str = '', vis
         if visibility not in ('private','public'): raise ValueError('新建收藏夹公开范围仅支持 public/private')
         why=_safe_line(reason,100)
         if len(why)<4:raise ValueError('收藏需要具体的未来重看理由')
+        # Self-reported choice metadata, not an independently verified memory fact.
+        if motivation not in ('interest','rewatch','curiosity','memory','social','other'):
+            raise ValueError('收藏动机只能选择既定类别')
         result=_claim_video_action(uid,bv,'collect',5)
         if result:return json.dumps(result,ensure_ascii=False)
         try:
             fid,title,created=await _ensure_ai_folder(cred,uid,folder_title,automatic=True,visibility=visibility)
             result=await video.Video(bvid=bv,credential=cred).set_favorite(add_media_ids=[fid])
             if isinstance(result,dict) and result.get('code',0) not in (0,None):raise ValueError(str(result.get('message') or result.get('code'))[:120])
-            _finish_video_action(uid,bv,'collect',True,title+'：'+why)
-            return json.dumps({'ok':True,'collected':True,'bvid':bv,'folder':title,'created':created,'new_folder_private':_favorite_new_private(visibility) if created else None},ensure_ascii=False)
+            _finish_video_action(uid,bv,'collect',True,title+'：[动机:'+motivation+']'+why)
+            return json.dumps({'ok':True,'collected':True,'bvid':bv,'folder':title,'created':created,'new_folder_private':_favorite_new_private(visibility) if created else None,'motivation':motivation},ensure_ascii=False)
         except Exception as error:
             _finish_video_action(uid,bv,'collect',False,str(error))
             return json.dumps({'ok':False,'error':'收藏失败：'+str(error)[:120]},ensure_ascii=False)

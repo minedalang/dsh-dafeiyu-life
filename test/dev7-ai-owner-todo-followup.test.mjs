@@ -6,6 +6,7 @@ import {join} from 'node:path'
 import {validateOwnerAiTodo} from '../lib/owner-ai-todo.mjs'
 import {createOwnerDmAgent,selectSearchVideos} from '../lib/owner-dm-agent.mjs'
 import {createOwnerTodoEngine} from '../lib/owner-todos.mjs'
+import {createDualContextAgency} from '../lib/dual-context-agency.mjs'
 import {createOwnerTodoFollowup} from '../lib/owner-todo-followup.mjs'
 const uid='210228238',now=Date.parse('2026-11-01T12:00:00Z')
 const msg='我也挺开心 给你更新了好几个版本 推荐你有时候听听孙燕姿的歌 好听的要死'
@@ -26,9 +27,11 @@ test('主人同一条私信的现有模型调用返回待办，不增加提取�
   const todos=createOwnerTodoEngine({dataDir:dir,now:()=>now})
   let models=0,sends=0
   const cfg={masterEnabled:true,dmWatch:true,ownerDmAgentEnabled:true,ownerDmReadCommandsEnabled:true,dmOwnerUid:uid}
+  const willing=createDualContextAgency({dataDir:dir,now:()=>now,getEmotion:()=>({energy:65,sociality:65,curiosity:75})})
   const agent=createOwnerDmAgent({dataDir:dir,getConfig:()=>cfg,now:()=>now,
     invokeModel:async()=>{models++;return JSON.stringify({action:'reply',text:'🐟 这个推荐我先记到待办里，以后有空找找。',suggestedTodo:candidate})},
     executeRead:async()=>({ok:true}),executeWrite:async()=>({ok:true}),send:async()=>{sends++;return {ok:true}},
+    decideAgency:({uid:actor,messageId,text,intent,target})=>willing.decide({source:'bili-dm',uid:actor,messageId,text,intent,target}),
     onTodoSuggested:async({uid:actor,messageId,at,task})=>todos.add({...task,sourceKey:`owner-ai:${actor}:${messageId}`,
       note:'主人建议的只读探索',origin:{kind:'owner-dm',uid:actor,messageId,quotedText:'',at}},{source:'owner'})})
   agent.primeInbox([])
