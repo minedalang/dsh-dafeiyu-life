@@ -49,7 +49,7 @@ import { createDmAutoReply } from './lib/dm-autoreply.mjs'
 import { receiveRecommendations, listRecommendationCandidates } from './lib/video-recommendations.mjs'
 import { intakeAiReadProposal } from './lib/social-todo-intake.mjs'
 import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/owner-todos.mjs'
-import { createAutonomousPlanner } from './lib/autonomous-planner.mjs'
+import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-planner.mjs'
 import { queueOwnerDmReadTodo, parseOwnerDmTodo } from './lib/owner-dm-commands.mjs'
 import { createOwnerTodoFollowup } from './lib/owner-todo-followup.mjs'
 import { selectSearchVideos } from './lib/owner-dm-agent.mjs'
@@ -1507,12 +1507,13 @@ function reportMeta() {
       if(result?.ok===false)return {ok:false,error:String(result.error||'搜索失败'),data:result}
       // Search is discovery, NOT having listened/watched. The autonomous planner
       // may later choose one of these bounded read-only video candidates.
-      if(task?.id&&String(task.sourceKey||'').startsWith('owner-ai:')&&String(task.origin?.kind||'')==='owner-dm'){
+      if(task?.id&&task.type==='search_videos'){
         const candidates=selectSearchVideos(result).slice(0,3)
         for(const v of candidates){try{ownerTodos.add({type:'watch_video',bvid:v.bvid,
-          title:`考虑了解：${v.title||v.bvid}`,topic,sourceKey:`owner-ai-watch:${task.id}:${v.bvid}`,
-          origin:{kind:'owner-dm',uid:task.origin.uid,messageId:task.origin.messageId,quotedText:'',at:task.origin.at},
-          note:'来自主人建议的搜索结果，待真正读取视频资料；不等同于已听过歌曲。',ownerAuthorized:false},{source:'owner'})}catch{}}
+          title:`考虑了解：${v.title||v.bvid}`,topic,parentTodoId:task.id,
+          sourceKey:String(task.sourceKey||'').startsWith('owner-ai:')?`owner-ai-watch:${task.id}:${v.bvid}`:`explore-watch:${task.id}:${v.bvid}`,
+          origin:{...(task.origin||{}),quotedText:''},
+          note:'同一次自主探索中的视频候选，待真正读取资料；不等同于已经听看。',ownerAuthorized:false},{source:task.source==='recommendation'?'recommendation':'owner'})}catch{}}
       }
       return {ok:true,summary:`已搜索「${topic}」，搜索结果尚不等于已实际听看。`,data:result}
     }
@@ -5208,7 +5209,16 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     }
     // P4: the same accepted ledger exposes a small cursor page, not a second inbox.
     if (req.method === 'GET' && path === '/api/bili-duty/owner-todos/page') {
-      try{const r=ownerTodos.page({filter:url.searchParams.get('filter')||'active',cursor:url.searchParams.get('cursor')||'',limit:url.searchParams.get('limit')||25});return sendJson(res,r.ok?200:400,r)}
+      try{const r=ownerTodos.page({filter:url.searchParams.get('filter')||'active',cursor:url.searchParams.get('cursor')||'',limit:url.searchParams.get('limit')||25});
+        if(r.ok&&Array.isArray(r.items)){
+          const byId=new Map(rankAcceptedTodos(r.items,{relationshipHint:uid=>{try{return existingRelationshipIndex()?.preferenceHint(uid,relationshipOptions())||null}catch{return null}},now:Date.now()}).map(x=>[x.id,x]));
+          r.items=r.items.map(x=>{const ranked=byId.get(x.id);return {...x,planningHint:ranked?{
+            relationshipScore:ranked.relationshipScore,relationshipStage:ranked.relationshipStage,
+            relationshipContribution:ranked.relationshipContribution,identityContribution:ranked.identityContribution,
+            recencyContribution:ranked.recencyContribution,waitingContribution:ranked.waitingContribution,
+            priorityHint:ranked.priorityHint}:null}})
+        }
+        return sendJson(res,r.ok?200:400,r)}
       catch(e){return sendJson(res,400,{ok:false,error:'待办分页失败：'+String(e?.message||e).slice(0,160)})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/follow-readiness'){

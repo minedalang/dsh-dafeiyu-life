@@ -421,6 +421,49 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .activity-ticker:hover #activity-ticker-text{animation-play-state:paused}
 @media(prefers-reduced-motion:reduce){#activity-ticker-text{animation:none;white-space:normal}.ticker-view{white-space:normal}}
 @media(max-width:650px){.activity-ticker{gap:7px;padding:8px}.ticker-mark{font-size:12px}#activity-ticker-clock{display:none}}
+
+/* RC2 · lively but accessible, shared UI rhythm; relationship data stays factual. */
+#panel-relationships .life-hero{padding:18px 22px;border:1px solid #b4dbe9;border-radius:17px;background:linear-gradient(115deg,#dff5ff,#eceaff 54%,#fff0e4);box-shadow:0 8px 25px rgba(48,85,164,.09)}
+#panel-relationships .life-hero h2{color:#224b8b}
+#panel-relationships #life-relationship-section{border-radius:16px;border-top:4px solid #439cd5}
+#panel-relationships #friend-relationships-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+#panel-relationships .relation-card{--rel-color:#3a9dc3;position:relative;min-width:0;padding:14px 15px;border-radius:15px;background:linear-gradient(145deg,var(--panel),color-mix(in srgb,var(--panel) 88%,var(--rel-color)));border:1px solid var(--stroke);border-left:4px solid var(--rel-color);box-shadow:0 3px 15px rgba(44,91,138,.07)}
+#panel-relationships .relation-card[data-stage="friend"]{--rel-color:#df7796}
+#panel-relationships .relation-card[data-stage="familiar"]{--rel-color:#9b78e3}
+#panel-relationships .relation-card[data-stage="known"]{--rel-color:#3fb39b}
+#panel-relationships .relation-card[data-stage="owner"]{--rel-color:#e2a33e}
+#panel-relationships .relation-card-head{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+#panel-relationships .relation-name{font-size:14px;overflow-wrap:anywhere}
+#panel-relationships .relation-stage{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;color:var(--ink);background:color-mix(in srgb,var(--panel) 65%,var(--rel-color))}
+#panel-relationships .relation-score-caption{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-top:11px;font-size:12px}
+#panel-relationships .relation-score-caption span{color:var(--muted)}
+#panel-relationships .relation-score-track{height:9px;margin:7px 0 8px;border-radius:999px;background:color-mix(in srgb,var(--panel) 65%,var(--rel-color));overflow:hidden}
+#panel-relationships .relation-score-fill{height:100%;background:var(--rel-color);border-radius:inherit;transition:width .2s}
+#panel-relationships .relation-brief{font-size:12px;color:var(--muted);margin:5px 0 0}
+#panel-relationships .relation-details{margin-top:10px;border-top:1px dashed var(--stroke);padding-top:8px}
+#panel-relationships .relation-details summary{cursor:pointer;color:var(--action);font-size:12px;font-weight:700;min-height:28px}
+#panel-relationships .relation-dimensions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}
+#panel-relationships .relation-dimension{display:grid;gap:3px;padding:9px;background:var(--panel);border:1px solid var(--stroke);border-radius:9px}
+#panel-relationships .relation-dimension small{font-size:11px;color:var(--muted)}
+#panel-relationships .relation-dimension b{font-size:12px;color:var(--ink)}
+#panel-relationships .relation-danger{background:#9e3e65;border-color:#9e3e65;color:#fff}
+/* Some shared life-action buttons had no assigned colour and inherited white-on-white. */
+#panel-life .life-action:not(.life-indigo):not(.life-sky):not(.life-green):not(.life-purple):not(.life-amber),
+#panel-relationships .life-action:not(.life-sky):not(.life-green):not(.life-indigo):not(.life-purple){background:#445dc4;border:1px solid #445dc4;color:#fff;font-weight:700}
+#panel-relationships .life-sky{background:#167ca9;border-color:#167ca9;color:#fff;font-weight:700}
+#panel-life #owner-todo-followup-check{background:#7960ca!important;border:1px solid #7960ca!important;color:#fff!important}
+#panel-life #owner-todo-prev,#panel-life #owner-todo-next{background:#4565ba!important;color:#fff!important;border:1px solid #4565ba!important}
+#panel-life .life-action:disabled,#panel-relationships .life-action:disabled{opacity:.50;cursor:not-allowed;transform:none;box-shadow:none}
+#panel-life .todo-planning-hint{margin:10px 0;border:1px solid #a9cfe8;border-radius:11px;padding:8px 11px;background:color-mix(in srgb,var(--panel) 86%,#8dcfeb)}
+#panel-life .todo-planning-hint summary{font-weight:750;color:var(--action);font-size:12px;cursor:pointer}
+#panel-life .todo-score-breakdown{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+#panel-life .todo-score-chip{font-size:11px;padding:5px 8px;border-radius:9px;background:var(--panel);border:1px solid var(--stroke);color:var(--ink)}
+/* Cohesive colour highlights across all management sections without changing data or layout. */
+.settings-section{border-top:3px solid color-mix(in srgb,var(--action) 45%,var(--stroke));}
+.settings-stack>.settings-section:nth-child(3n+2){border-top-color:#2ba992}
+.settings-stack>.settings-section:nth-child(3n){border-top-color:#bd7ac9}
+@media(max-width:730px){#panel-relationships #friend-relationships-list{grid-template-columns:minmax(0,1fr)}#panel-relationships .relation-card{padding:12px}}
+@media(prefers-color-scheme:dark){#panel-relationships .life-hero{background:linear-gradient(115deg,#1e3756,#30284f 55%,#483022);border-color:#3c5974}#panel-relationships .life-hero h2{color:#e0ecff}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 </head>
@@ -620,10 +663,10 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <section id="panel-relationships" hidden>
 <div class="life-hero"><div><h2>👥 逐渐熟悉的人</h2><p class="muted">每次相遇都可能让鱼鱼更熟悉一个人；关系会成长、会降温，也会影响公开社交经历能保留多久。</p></div><button type="button" data-open-tab="life" class="life-action life-sky">看看鱼鱼记得什么</button></div>
 <div id="life-relationship-section" class="settings-section life-section"><h4>👥 逐渐熟悉的人</h4>
-<p class="muted">🐟 <strong>鱼鱼可以自然认识所有真实互动过的人。</strong> 普通陌生人也能通过跨天、双向交流逐渐成为关系意义上的朋友。原「好友」名册是<strong>白名单用户</strong>，具有较高的初始关系分和额外授权；自然成为朋友并不会自动获得白名单权限或私信能力。只保留 UID、最小互动元数据，以及可选的短期公开昵称缓存（最多 7 天），不为陌生人建立性格画像，也不保存聊天正文。关系会降温，具体经历仍会遗忘。</p>
+<p class="muted">🐟 <strong>鱼鱼可以自然认识所有真实互动过的人。</strong> 普通陌生人也能通过跨天、双向交流逐渐成为关系意义上的朋友。原「好友」名册是<strong>白名单用户</strong>，具有较高的初始关系分和额外授权；自然成为朋友并不会自动获得白名单权限或私信能力。只保留 UID、最小互动元数据，以及可选的短期公开昵称缓存（最多 7 天），不凭少量互动推断陌生人的人格；展开卡片可查看互动方式、近期状态与谨慎的交往印象，不保存聊天正文。关系会降温，具体经历仍会遗忘。</p>
 <div class="toolbar"><input id="friend-relationships-query" type="search" maxlength="48" placeholder="按 UID 搜索；白名单可搜备注" aria-label="搜索关系 UID 或白名单备注"><button id="friend-relationships-refresh" class="life-action life-sky">搜索 / 刷新</button><a href="#unified-friends" data-nav-tab="social" class="life-action life-sky">管理白名单权限</a><span id="friend-relationships-status" class="muted">尚未读取</span></div>
 <div id="friend-relationships-list" class="records" aria-live="polite"></div>
-<div class="toolbar"><button id="friend-relationships-more" class="life-action life-sky" hidden>加载下一页</button><span class="muted">每页 30 人，按熟悉度排序；昵称按需读取 B站公开资料（每次最多 8 人，每小时最多 30 次），不调用 AI。参考半衰期仅适用于关系敏感的公开社交经历，不是精确遗忘倒计时。</span></div>
+<div class="toolbar"><button id="friend-relationships-more" class="life-action life-sky" hidden>加载下一页</button><span class="muted">每页 30 人，双列折叠展示；熟悉度与互动方式分开描述。昵称按需读取 B站公开资料（每次最多 8 人，每小时最多 30 次），不调用 AI。参考半衰期仅适用于关系敏感的公开社交经历，不是精确遗忘倒计时。</span></div>
 </div>
 <details class="contextual-settings" id="relationship-memory-settings"><summary>⚙️ 关系与公开社交记忆衰减 <span class="contextual-hint">按需调整 · 不影响私信或权限</span></summary>
 <p class="muted">各阶段数值是普通记忆半衰期为 30 天时的基准值。最终参考天数 = 此处基准 × 普通记忆半衰期 ÷ 30（范围 0.25–120 天）。只针对关系敏感的公开社交经历；不是明确的遗忘日期。调小数值不能复活已遗忘的细节。</p>
@@ -695,7 +738,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p id="owner-todo-intake-status" class="muted" role="status">社交 AI 待办识别：尚无本次运行记录（只显示判断结果，不保存聊天原话）。</p>
 <p class="muted" id="autonomous-planner-next" role="status">预计下次自动决策：读取中…</p><p class="muted">鱼鱼自己或不同人提出的建议，经过现有意愿判断且被接受后，才成为这里的待办。未接受的视频线索只在短期素材里保存；已接受的任务不会悄悄过期。点击「提醒鱼鱼考虑待办」只唤起一轮有额度的只读自主决策，鱼鱼可以执行、延期或保持沉默；不会强迫执行任何指定任务。这里仍只允许原有授权范围内的操作，回访需要单独许可。</p><div class="todo-overview" id="owner-todo-overview" aria-live="polite"><span>正在读取待办…</span></div>
 <div class="todo-filter" role="group" aria-label="查看待办状态"><button id="owner-todo-filter-active" type="button" aria-pressed="true" class="is-selected">进行中</button><button id="owner-todo-filter-all" type="button" aria-pressed="false">全部</button><button id="owner-todo-filter-finished" type="button" aria-pressed="false">已结束</button></div>
-<style>.todo-origin-quote{margin:8px 0;padding:10px 12px;border-left:3px solid #7b8ef9;background:var(--surface-2,rgba(107,129,228,.09));border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.92em}</style><div id="owner-todo-list" class="records records-scroll tall"></div><div class="toolbar" style="margin-top:10px"><button type="button" id="owner-todo-prev" class="life-action" disabled>上一页</button><span class="muted" id="owner-todo-page-info" aria-live="polite">第 1 页</span><button type="button" id="owner-todo-next" class="life-action" disabled>下一页</button></div>
+<style>.todo-origin-quote{margin:8px 0;padding:10px 12px;border-left:3px solid #7b8ef9;background:var(--surface-2,rgba(107,129,228,.09));border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.92em}</style><p class="muted">💞 已接受的只读待办会参考关系熟悉度、等待时间、来源和当前意愿排序；展开每条待办的彩色优先参考可查看依据。分数不是强制执行顺序，不会赋予新的社交权限。</p><div id="owner-todo-list" class="records records-scroll tall"></div><div class="toolbar" style="margin-top:10px"><button type="button" id="owner-todo-prev" class="life-action" disabled>上一页</button><span class="muted" id="owner-todo-page-info" aria-live="polite">第 1 页</span><button type="button" id="owner-todo-next" class="life-action" disabled>下一页</button></div>
 <details class="life-subdetails todo-create"><summary>＋ 手动添加一件事</summary><div class="inset"><h4>新增只读待办</h4><div class="fields"><div><label for="owner-todo-type">要做什么</label><select id="owner-todo-type"><option value="watch_video">看看指定视频</option><option value="inspect_my_space">看看我自己的空间投稿</option><option value="inspect_creator_videos">看看某位 UP 主的投稿</option><option value="search_videos">搜索视频主题</option><option value="check_notifications">检查 B站通知</option></select></div><div><label for="owner-todo-target">目标（BV 号 / UID / 关键词）</label><input id="owner-todo-target" maxlength="120" placeholder="根据任务类型填写"></div><div><label for="owner-todo-title">待办名称（可留空）</label><input id="owner-todo-title" maxlength="120" placeholder="例如：有空看看这个推荐"></div></div><div class="toolbar" style="margin-top:10px"><button id="owner-todo-add" class="life-action life-green">加入待办</button><span class="muted">点赞、收藏、关注等写入任务建议直接在主 Session 明确提出，由大肥鱼绑定准确目标与授权。</span></div></div>
 </details>
 <details class="life-subdetails todo-settings contextual-settings" id="settings-todo"><summary>⚙️ 自主待办调度设置</summary><p class="muted">只保留独立 AI 调度。开启后，鱼鱼会按间隔、时段和每日额度自己考虑已接受的只读待办；关闭后不会后台自动处理，但仍可点击「提醒鱼鱼考虑待办」。不会因此获得公开发送权限。</p>
