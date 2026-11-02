@@ -1023,6 +1023,7 @@ function reportMeta() {
   // All social channels consume the structured proposal from their EXISTING
   // reply/interpretation AI call. This bridge performs provenance, read-only
   // type, willingness and persistence checks; it never parses intent itself.
+  const socialTodoIntakeRecent=[] // bounded diagnostics; no message bodies or identity records
   const intakeAiSocialTodo=async({request={},channel,todoDisposition,suggestedTodo,decisionMode='agency'}={})=>{
     const messages=Array.isArray(request.messages)?request.messages.slice(-12).map(x=>String(x||'')):[String(request.text||'')]
     const messageIds=Array.isArray(request.messageIds)?request.messageIds.map(String):[]
@@ -1036,6 +1037,9 @@ function reportMeta() {
       :({uid,messageId,text,intent,target,thread})=>dualContextAgency.decide({source:channel==='comment'?'bili-comment':'bili-dm',uid,messageId,text,intent,target,thread})
     const result=intakeAiReadProposal({row,channel,todoDisposition,suggestedTodo,currentMessages:messages,
       history:request.history||[],recommendationContext:request.recommendationContext||'',decide,todos:ownerTodos})
+    socialTodoIntakeRecent.push({at:Date.now(),channel:channel==='comment'?'comment':'dm',
+      outcome:result?.created?'created':result?.duplicate?'duplicate':String(result?.skipped||result?.reason||result?.error||'unknown').slice(0,80)})
+    if(socialTodoIntakeRecent.length>30)socialTodoIntakeRecent.splice(0,socialTodoIntakeRecent.length-30)
     if(result?.created)log(`AI 社交意图已接受并加入只读待办：${channel==='comment'?'评论':'私信'} · ${String(result.item?.title||'探索建议').slice(0,80)}`)
     else if(todoDisposition==='accept'&&(result?.skipped||result?.accepted===false))log('AI 社交待办候选未入队：'+String(result.skipped||`${result.decision||'blocked'}:${result.reason||'意愿未通过'}`).slice(0,100))
     else if(result?.ok===false)log('AI 社交待办未保存：'+String(result.error||result.skipped||'未知原因').slice(0,100))
@@ -5215,7 +5219,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
         note:'候选只来自今天确实入选的视频；是否想长期关注由视频 Agent 决定，最终还受 MCP 的登录、已有关系和每日额度保护。'})
     }
     if (req.method === 'GET' && path === '/api/bili-duty/owner-todos') {
-      return sendJson(res,200,{...ownerTodos.status(),followup:ownerTodoFollowup.status(),config:{completionFollowup:cfg.ownerTodoCompletionFollowupEnabled===true,socialCompletionFollowup:cfg.socialTodoCompletionFollowupEnabled===true,
+      return sendJson(res,200,{...ownerTodos.status(),socialTodoIntakeRecent:socialTodoIntakeRecent.slice(-8),followup:ownerTodoFollowup.status(),config:{completionFollowup:cfg.ownerTodoCompletionFollowupEnabled===true,socialCompletionFollowup:cfg.socialTodoCompletionFollowupEnabled===true,
         followupCooldownMinutes:cfg.ownerTodoFollowupCooldownMinutes??60,
         followupDailyLimit:cfg.ownerTodoFollowupDailyLimit??12,
         followupMinIntervalMinutes:cfg.ownerTodoFollowupMinIntervalMinutes??5,

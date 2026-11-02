@@ -157,3 +157,30 @@ test('未承诺或明确不愿意时不得根据口头聊天和用户提议强�
   for(let j=0;j<messages.length;j++)await agent.processMessage(row('有空听听陶喆的歌',String(j)))
   assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list().length,0)
 }))
+
+test('主人只推荐歌手而没有歌曲或 BV，原同轮 AI 明确接受后可记入搜索待办',()=>withDir(async d=>{
+ let calls=0
+ const agent=createOwnerDmAgent(agentArgs(d,async prompt=>{
+  calls++
+  assert.match(prompt,/只给出明确的歌手或乐队名字/)
+  return {action:'reply',text:'这位歌手我还想多了解一下～',todoDisposition:'accept',
+   suggestedTodo:{type:'search_videos',topic:'方大同',evidence:'推荐你听方大同'}}
+ }))
+ agent.primeInbox([])
+ const result=await agent.processMessage(row('推荐你听方大同','artist-only'))
+ assert.equal(result.ok,true)
+ assert.equal(calls,1)
+ const todos=createOwnerTodoEngine({dataDir:d,now:()=>T}).list()
+ assert.equal(todos.length,1)
+ assert.equal(todos[0].type,'search_videos')
+ assert.equal(todos[0].topic,'方大同')
+ assert.equal(agent.status().recent.at(-1)?.todoIntake,'saved')
+}))
+
+test('主人只推荐艺人但鱼鱼明确拒绝时，不将建议强制入队',()=>withDir(async d=>{
+ const agent=createOwnerDmAgent(agentArgs(d,async()=>({action:'reply',text:'今天暂时不想找。',todoDisposition:'refuse',
+  suggestedTodo:{type:'search_videos',topic:'方大同',evidence:'推荐你听方大同'}})))
+ agent.primeInbox([])
+ await agent.processMessage(row('推荐你听方大同','artist-declined'))
+ assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list().length,0)
+}))
