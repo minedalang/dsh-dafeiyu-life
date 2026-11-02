@@ -714,11 +714,13 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div><label for="owner-todo-followup-cooldown">同一人回访冷却（分钟，0=无冷却）</label><input id="owner-todo-followup-cooldown" type="number" min="0" max="10080" value="60"/></div>
 <div><label for="owner-todo-followup-daily-limit">全局滚动24小时回访上限（1～1000）</label><input id="owner-todo-followup-daily-limit" type="number" min="1" max="1000" value="12"/></div>
 <div><label for="owner-todo-followup-min-interval">两次发送最小间隔（分钟，0=无间隔）</label><input id="owner-todo-followup-min-interval" type="number" min="0" max="1440" value="5"/></div>
+<div><label for="owner-todo-followup-poll">完成回访检查间隔（分钟，1～60）</label><input id="owner-todo-followup-poll" type="number" min="1" max="60" value="2"/></div>
 <div><label for="owner-todo-followup-quiet-enabled">夜间静默</label><select id="owner-todo-followup-quiet-enabled"><option value="true">启用（默认）</option><option value="false">关闭</option></select></div>
 <div><label for="owner-todo-followup-quiet-start">静默开始小时（0～23）</label><input id="owner-todo-followup-quiet-start" type="number" min="0" max="23" value="22"/></div>
 <div><label for="owner-todo-followup-quiet-end">静默结束小时（0～23；与开始相同=不设静默）</label><input id="owner-todo-followup-quiet-end" type="number" min="0" max="23" value="9"/></div>
 </div><p class="muted">即使将冷却与发送间隔设为 0，仍受真实授权、平台限制、去重、意愿和回执安全约束。</p>
-<p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
+<p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p>
+<div class="toolbar"><button class="life-action" type="button" id="owner-todo-followup-check">立即检查回访（可能发送）</button></div><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
 <div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存待办与自主调度设置</button></div>
 </details>
 </div>

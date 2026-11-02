@@ -1,31 +1,27 @@
-# 2.6.1 RC2 发布候选：完成回访与连续子任务修复
+# 2.6.1 RC2 补充修复 · 适用于已安装 RC2 审查版
 
-本补丁以 `dev` 分支提交 `4206ba6`（统一完成回访 RC1）为**唯一验证基线**。不需要先应用原始的 `RC2-FOLLOWUP-RETRY.patch`，两份补丁**不能重复应用**。当前代码尚待真实 B站验收，不代表已发布。
+本补丁 **不是** 上一轮 RC1 → RC2 的完整补丁；须先有 `dsh-v261-rc2-reviewed.patch` 对应的 RC2 审查版源码。此补丁不适用于纯 RC1 (`4206ba6`)，也不能在原始其他 AI 的 RC2 Patch 上盲目应用。
 
-## 应用（Git Bash）
+本次修复待办完成回访的私信许可错误耦合、增加可配置检查间隔与手动检查，并允许对旧版未发送的误拦截逐条复核。**不会自动补发历史 blocked 或结果不确定的私信。**
 
-先备份 `$DSH_HOME/bili-duty/owner-todos.json`、`owner-todo-followups.json` 和配置。将本补丁放在仓库上一级：
+## Git Bash
+
+先备份 `$DSH_HOME/bili-duty/owner-todos.json`、`owner-todo-followups.json`、`config.json`，并确认工作区没有未提交的相关改动：
 
 ```bash
 git switch dev
 git status --short
-git rev-parse --short HEAD
-git apply --check ../dsh-v261-rc2-reviewed.patch
-git apply ../dsh-v261-rc2-reviewed.patch
+git apply --check ../dsh-v261-rc2-followup-permission-hotfix.patch
+git apply ../dsh-v261-rc2-followup-permission-hotfix.patch
 node --test test/*.test.mjs
 node selfcheck.mjs
 ```
 
-确保提交基线正确且工作区干净。如果 `git apply --check` 失败，请停止，不要尝试 `--reject` 或强制合并；先确认是否已经包含部分 RC2 修改。补丁采用 LF 格式，不依赖 `core.whitespace=cr-at-eol`。
+运行 Windows 版完整回归仍使用 `cmd.exe /c run-tests.bat`，验证后可按附带 Commit 文档提交。工作区已应用补丁时不要再次执行 `git apply`。
 
-## 验收重点
+## 验收
 
-1. 回访同一 UID 冷却/发送间隔设为 0，确认已保存且平台授权、额度仍正常生效。
-2. 真实主人或公开留言的搜索待办产生子视频后，在同轮独立考虑最多三项，每项计入 AI 预算；拒绝或延期仍有效。
-3. 同一可信请求拆出的多子任务只在该组结束后汇总一条。旧账本已成功发送或结果不明时绝不重试。
-4. `pending` 显示最近检查、等待原因、可重试时间；重启和跨 UID 检查。
-5. 完成前不创建 GitHub Release、npm、DSHMarket 正式发行。
-
-## Git
-
-测试与真实环境验收通过后，按提交说明的具体文件 `git add`，使用 `fix(todos)` 类型提交，并推送 `dev`；不要将 Patch、ZIP 或运行数据提交到仓库。
+- 回访独立开关已开启，原请求来自同一个经过验证的私信 UID；后台私信监听和视频报告选择关闭，不应再误报“私信功能关闭”。
+- 旧 `blocked` 仅能经用户逐条明确点击复核，且所有来源和回执校验通过后恢复为待考虑。原消息来源不一致的另一组继续拦截。
+- 调整检查间隔后能看到下一次检查时间；点击“立即检查回访”不是强制发送，模型仍可保持沉默。
+- 先在真实 B站测试号验证平台接口回执与实际接收。仍未正式发布 2.6.1，不创建 Release / npm / 市场版本。
