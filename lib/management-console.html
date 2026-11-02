@@ -793,9 +793,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div>
 </section>
 <section id="panel-social" hidden>
-<div class="social-hero"><h2>🐳 社交互动</h2><p>白名单的特殊操作权限、社交意愿与主人远程授权在这里统一管理；主动回访在 2.6.0 暂停，计划 2.6.1 重构。读取、草稿与公开操作分别授权；关闭某个入口不会改变其他权限。</p>
+<div class="social-hero"><h2>🐳 社交互动</h2><p>白名单的特殊操作权限、社交意愿与主人远程授权在这里统一管理；<strong>真实选片匹配兴趣的私信推荐已恢复为独立功能</strong>，旧版完成待办回访与情绪主动联系仍留待 P6。读取、草稿和外发分别授权。</p>
 <p><strong>🐟 双域意愿系统（dev.9）</strong>：主 Session 是执行域；B站是生活域。即使是主人在 B站私信或 @ 提请求，大肥鱼也会先看自己的模拟情绪、活力、社交意愿与重复请求情况，可以答应、拖延或拒绝；温柔地再商量可能改变她的选择，但绝不能绕过权限、额度或安全检查。判定证据保存在本地 <code>dual-context-agency.json</code>，不保存私信正文。</p></div>
-<nav class="context-jump" aria-label="社交互动分区"><a href="#unified-friends">白名单权限</a><a href="#social-outreach-section">主动回访（暂停）</a><a href="#owner-dm-control-section">主人私信授权</a><a href="#social-owner-comment">主人公开评论</a><a href="#social-emotion-authorization">情绪主动分享</a></nav>
+<nav class="context-jump" aria-label="社交互动分区"><a href="#unified-friends">白名单权限</a><a href="#social-outreach-section">视频兴趣推荐</a><a href="#owner-dm-control-section">主人私信授权</a><a href="#social-owner-comment">主人公开评论</a><a href="#social-emotion-authorization">情绪主动分享</a></nav>
 <div class="settings-stack">
 <div class="settings-section" id="unified-friends">
 <h4>🐳 白名单用户权限 · 统一名册</h4>
@@ -812,7 +812,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p class="muted">开启后可记录他们通过 @ 提出的“别推这类”“多推某类”等明确反馈，<strong>不会因为收取意见而公开回复</strong>。公开回复仍需在「最近评论」页面单独开启，且遵守额度；首次读取只建立历史基线，不重放旧通知。</p></div>
 <details class="inset social-advanced"><summary>公开 @ 的额外策略（仅对选用公开 @ 渠道的好友生效）</summary>
 <label for="friends-mode">何时考虑公开 @</label><select id="friends-mode"><option value="off">关闭公开 @（推荐）</option><option value="ai_select">AI 根据真实内容选择个别好友</option><option value="ai">AI 判断是否 @ 所有允许的好友</option><option value="always">每次 @ 全部允许好友（容易打扰，不推荐）</option></select>
-<p class="muted">主动回访私信推荐在 2.6.0 暂停，计划 2.6.1 重构；此处的公开 @ 策略不会替代私信推荐，也不会直接发送消息。</p></details>
+<p class="muted">此处的公开 @ 策略只控制已有公开评论功能；本次修复的主动视频推荐仅支持私信，不会自动在评论区 @。</p></details>
 <div class="fields"><div><label for="friend-new-uid">B站 UID（必填）</label><input id="friend-new-uid" inputmode="numeric" placeholder="210228238"></div><div><label for="friend-new-name">昵称备注（可留空）</label><input id="friend-new-name" maxlength="40" placeholder="长条动物"></div></div>
 <div class="toolbar" style="margin-top:12px"><button type="button" id="friend-add">加入名册</button><span class="muted">添加后记得点击底部保存</span></div>
 <p id="friend-owner-status" class="muted">当前授权主人 UID：读取中…</p>
@@ -824,18 +824,18 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div id="friend-learning-list" class="records records-scroll"></div></details>
 <div class="toolbar" style="margin-top:12px"><button id="friend-save-all" class="primary">保存名册、权限及画像</button></div>
 </div>
-<div id="social-outreach-section" class="card outreach-paused"><h4>主动回访 · 2.6.0 暂停使用</h4>
-<p class="muted"><strong>暂不建议开启：</strong>现有主动回访功能正在重构，计划在 <strong>2.6.1</strong> 重新开放。目前开关已关闭并锁定，不再生成新草稿，也不会发送已有草稿；原有设置和历史记录会保留。</p>
-<details id="social-outreach-legacy" class="inset"><summary>查看已停用的旧版主动回访设置与草稿</summary>
-<fieldset disabled class="outreach-disabled"><legend>旧版权限（已禁用）</legend>
+<div id="social-outreach-section" class="card"><h4>🐟 主动视频兴趣推荐 · 私信</h4>
+<p class="muted">仅在鱼鱼<strong>真实入选</strong>公开视频且标题与已授权白名单好友（含主人）画像中的兴趣有依据的匹配时，才让鱼鱼自主判断是否分享。<strong>选了「私信优先」只是渠道许可</strong>，还需要下面的草稿、兴趣推荐和（如需自动推送）自动发送三个授权。旧暂停版本可能保存过开启状态，升级后请在此重新保存一次以确认；不会自动恢复旧版待办回访或情绪私信。</p>
+<details id="social-outreach-legacy" class="inset" open><summary>兴趣视频推荐授权、诊断和草稿</summary>
+<fieldset class="outreach-permissions"><legend>独立授权（默认关闭）</legend>
 <p class="muted">大肥鱼主要通过私信向已授权好友推荐真实入选的公开视频；公开 @ 是独立的可选方式，不会替代私信推荐。不会根据私人聊天内容生成公开信息；非白名单用户不建立长期兴趣画像。社交草稿默认不发送；主动私信请务必尊重对方拒绝和冷却期。</p>
-<label class="checkline"><input id="social-enabled" type="checkbox">允许自主判断要不要形成回访草稿（默认关闭）</label>
-<label class="checkline"><input id="social-life-intent-enabled" type="checkbox">允许大肥鱼根据真实经历，主动考虑通过私信向好友分享公开视频（默认关闭）</label><p class="muted">这是独立权限：只会在真实入选视频与好友初始兴趣/重复明确表达的兴趣有合理匹配时，生成“联系或跳过”的草稿；不会因为心情变化就盲目私信。需要先开启上面的自主社交草稿。非白名单用户不参与。</p>
-<label class="checkline"><input id="social-auto-send" type="checkbox">允许自动发送给白名单好友（高风险，默认关闭，建议先不开启）</label>
-<div class="fields"><div><label for="social-daily-limit">每日最多主动回访（0 表示禁止，不再限制为 3 次）</label><input id="social-daily-limit" type="number" min="0" step="1" value="1"></div></div>
-<div class="toolbar"><button id="social-save" class="primary">保存社交权限</button><button id="social-refresh" >刷新草稿</button></div>
+<label class="checkline"><input id="social-enabled" type="checkbox">允许鱼鱼根据真实选片自主形成推荐草稿（默认关闭）</label>
+<label class="checkline"><input id="social-life-intent-enabled" type="checkbox">允许结合好友画像和兴趣匹配考虑私信推荐（默认关闭）</label><p class="muted">这是独立权限：只会在真实入选视频与好友初始兴趣/重复明确表达的兴趣有合理匹配时，生成“联系或跳过”的草稿；不会因为心情变化就盲目私信。需要先开启上面的自主社交草稿。非白名单用户不参与。</p>
+<label class="checkline"><input id="social-auto-send" type="checkbox">允许自动发送鱼鱼已决定分享的视频私信（默认关闭，建议先审阅草稿）</label>
+<div class="fields"><div><label for="social-daily-limit">每日最多主动推荐私信（0 表示禁止）</label><input id="social-daily-limit" type="number" min="0" step="1" value="1"></div></div>
+<div class="toolbar"><button id="social-save" class="primary">保存推荐权限并确认授权</button><button id="social-refresh" >刷新草稿</button></div>
 <p id="social-status" class="muted" role="status">尚未读取草稿</p><div id="social-drafts" class="records records-scroll tall"></div>
-<p class="muted">旧版回访数据仅供查看，2.6.0 不允许发送。隐私与权限要求在重构后仍会保留。</p>
+<p class="muted">旧版“看完好友推荐视频后再回访”草稿仍不会被发送；本次仅允许本角色主动发现并愿意分享的公开视频。每天同一位好友最多收到受冷却限制的一条，已明确拒绝推荐的好友不会收到。</p>
 </fieldset></details>
 </div>
 <div class="card" id="owner-dm-control-section" style="margin-bottom:14px"><h3>🧠 主人私信 · 受限 Agent 与远程操作</h3>
