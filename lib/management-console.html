@@ -706,10 +706,18 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div><label for="autonomous-planner-start">每日开始时（宿主当地小时）</label><input id="autonomous-planner-start" max="23" min="0" type="number" value="9"/></div>
 <div><label for="autonomous-planner-end">每日结束时（宿主当地小时，24=午夜）</label><input id="autonomous-planner-end" max="24" min="1" type="number" value="23"/></div></div>
 <p class="muted" id="autonomous-planner-status" role="status">尚未读取自主调度状态</p></div>
-<div class="inset"><h4>🐟 完成待办后向主人回访 · 2.6.0</h4>
-<p class="muted">只针对主人在私信中明确提出、AI 记录后由鱼鱼实际读取了相关视频资料的待办，择机给已核验的主人发一条进度消息。默认关闭，最多每24小时一次，22:00–09:00 不发送；尊重退订。不会把“查到视频”说成“听过歌曲”，也不恢复旧版随机情绪主动回访。</p>
+<div class="inset"><h4>🐟 完成待办后择机回访原请求者</h4>
+<p class="muted">完成已接受的只读待办后，鱼鱼可以选择回访原请求者、延期或保持沉默；同一请求拆出的多个子任务合并为一次进度回访。默认不授权外发。频率设置仅是上限，不保证自动发送；始终尊重退订、原渠道权限、平台额度与回执。</p>
 <div class="fields"><div><label for="owner-todo-completion-followup">允许完成后回访主人（私信）</label><select id="owner-todo-completion-followup"><option value="false">关闭（默认）</option><option value="true">开启 · 仅已核验任务完成后</option></select></div></div>
 <div class="fields"><div><label for="social-todo-completion-followup">允许完成后回访原请求者（其他用户）</label><select id="social-todo-completion-followup"><option value="false">关闭（默认）</option><option value="true">开启 · 遵循原渠道和独立联系权限</option></select></div></div>
+<div class="fields">
+<div><label for="owner-todo-followup-cooldown">同一人回访冷却（分钟，0=无冷却）</label><input id="owner-todo-followup-cooldown" type="number" min="0" max="10080" value="60"/></div>
+<div><label for="owner-todo-followup-daily-limit">全局滚动24小时回访上限（1～1000）</label><input id="owner-todo-followup-daily-limit" type="number" min="1" max="1000" value="12"/></div>
+<div><label for="owner-todo-followup-min-interval">两次发送最小间隔（分钟，0=无间隔）</label><input id="owner-todo-followup-min-interval" type="number" min="0" max="1440" value="5"/></div>
+<div><label for="owner-todo-followup-quiet-enabled">夜间静默</label><select id="owner-todo-followup-quiet-enabled"><option value="true">启用（默认）</option><option value="false">关闭</option></select></div>
+<div><label for="owner-todo-followup-quiet-start">静默开始小时（0～23）</label><input id="owner-todo-followup-quiet-start" type="number" min="0" max="23" value="22"/></div>
+<div><label for="owner-todo-followup-quiet-end">静默结束小时（0～23；与开始相同=不设静默）</label><input id="owner-todo-followup-quiet-end" type="number" min="0" max="23" value="9"/></div>
+</div><p class="muted">即使将冷却与发送间隔设为 0，仍受真实授权、平台限制、去重、意愿和回执安全约束。</p>
 <p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
 <div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存待办与自主调度设置</button></div>
 </details>

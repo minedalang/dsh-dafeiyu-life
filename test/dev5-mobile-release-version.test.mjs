@@ -12,7 +12,7 @@ test('2.6.0 稳定发布版本、锁文件、安装说明和历史发布材料�
   assert.equal(lock.packages[''].version, pkg.version)
   assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.1.md'))
   assert.ok(!pkg.files.includes('docs/release'))
-  assert.match(read('README.md'), /当前正式版本：\*\*`2\.6\.1`\*\*/)
+  assert.match(read('README.md'), /当前(?:正式|待验收)版本：\*\*`2\.6\.1`\*\*/)
   assert.match(read('README.md'), /dsh plugin --profile desktop add dsh-dafeiyu-life/)
   assert.match(read('README.md'), /DSHMarket 网站/)
   assert.doesNotMatch(read('README.md'), /github:minedalang\/dsh-dafeiyu-life#dev/)

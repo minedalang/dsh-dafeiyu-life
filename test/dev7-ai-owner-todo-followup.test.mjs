@@ -68,7 +68,7 @@ test('回访只接受已验证的关联观看任务，搜索、他人、重复�
   assert.equal(f.status().pending,1)
 }))
 
-test('完成回访需独立授权、安静时间及主人身份，且24小时最多一次',()=>withDir(async dir=>{
+test('完成回访需独立授权、安静时间及主人身份，默认1小时每人冷却',()=>withDir(async dir=>{
   let t=now,sends=[]
   const cfg={masterEnabled:true,dmWatch:true,ownerTodoCompletionFollowupEnabled:false,dmOwnerUid:uid}
   const f=createOwnerTodoFollowup({dataDir:dir,getConfig:()=>cfg,send:async(v)=>{sends.push(v);return {ok:true}},now:()=>t,hourOf:()=>12})
@@ -82,8 +82,8 @@ test('完成回访需独立授权、安静时间及主人身份，且24小时最
   assert.equal((await f.tick()).status,'sent');assert.equal(sends.length,1)
   assert.match(sends[0].text,/还没真正听完/)
   f.queue(task('B','BV1abc234568'),{ok:true,data:{info:{title:'孙燕姿歌曲第二集'}}})
-  assert.equal((await f.tick()).skipped,'24h-cooldown')
-  t+=86400000
+  assert.equal((await f.tick()).skipped,'两次回访最小间隔未结束')
+  t+=3600000
   assert.equal((await f.tick()).status,'sent');assert.equal(sends.length,2)
 }))
 
