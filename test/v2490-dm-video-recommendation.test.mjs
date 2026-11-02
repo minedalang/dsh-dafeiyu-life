@@ -9,18 +9,18 @@ import {createInteractionBatcher} from '../lib/interaction-batch.mjs'
 const BV='BV19SJi6VEj1', OTHER='BV1pXHK6mE6z'
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8')
 const withDir=async fn=>{const dir=mkdtempSync(join(tmpdir(),'dafeiyu-v2490-'));try{return await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
-const inbox=(text,now=Date.now())=>[{incoming:true,timestampMs:now,text}]
+const inbox=(text,now=Date.now())=>[{incoming:true,senderUid:'1001',senderName:'推荐者',messageId:'dm-'+String(now),timestampMs:now,source:'B站私信分享',text}]
 
 test('用户截图的 BV 入队后，私信上下文明确说明可自主查看但尚未看过',()=>withDir(async dir=>{
  const now=Date.now()
  assert.equal(receiveRecommendations(dir,inbox('大肥鱼下午！你看看 '+BV+' 这个视频，回来报告！',now),{now}).added,1)
  let looked=[]
  const helper=createDmVideoRecommendationContext({stateDir:dir,now:()=>now,fetchInfo:async bv=>(looked.push(bv),{title:'测试视频标题',up:'测试UP'})})
- const context=await helper.forReply({text:'你看看 '+BV+' 这个视频',messages:['你看看 '+BV+' 这个视频'],history:[]})
+ const context=await helper.forReply({uid:'1001',text:'你看看 '+BV+' 这个视频',messages:['你看看 '+BV+' 这个视频'],history:[]})
  assert.match(context,new RegExp(BV));assert.match(context,/已收到并加入自主选片候选/)
  assert.match(context,/测试视频标题/);assert.match(context,/本次私信生成没有视频观看或字幕\/画面分析结果/)
  assert.match(context,/Agent 可以跳过/)
- assert.deepEqual(looked,[BV]);assert.equal(hasReceivedRecommendation(dir,BV,{now}),true)
+ assert.deepEqual(looked,[BV]);assert.equal(hasReceivedRecommendation(dir,BV,{now,uid:'1001'}),true);assert.equal(hasReceivedRecommendation(dir,BV,{now,uid:'2002'}),false)
  assert.equal((await helper.forReply({text:'今天天气不错'})), '')
 }))
 
@@ -36,19 +36,20 @@ test('元数据查询失败也不能把已收下的 BV 说成无法查看',()=>w
 test('未保存的 BV、非本人会话里的旧消息都不能当作已接收推荐',()=>withDir(async dir=>{
  receiveRecommendations(dir,inbox('推荐 '+BV))
  const helper=createDmVideoRecommendationContext({stateDir:dir,fetchInfo:async()=>({title:'标题'})})
- assert.equal(await helper.forReply({text:'请看看 '+OTHER}), '')
- assert.equal(await helper.forReply({text:'视频看了吗',history:[{role:'assistant',text:'推荐 '+BV}]}),'')
- assert.match(await helper.forReply({text:'那个视频看了吗',history:[{role:'user',text:'推荐 '+BV}]}),/自主选片候选/)
+ assert.equal(await helper.forReply({uid:'1001',text:'请看看 '+OTHER}), '')
+ assert.equal(await helper.forReply({uid:'1001',text:'视频看了吗',history:[{role:'assistant',text:'推荐 '+BV}]}),'')
+ assert.match(await helper.forReply({uid:'1001',text:'那个视频看了吗',history:[{role:'user',text:'推荐 '+BV}]}),/自主选片候选/)
+ assert.equal(await helper.forReply({uid:'2002',text:'看看 '+BV}), '')
 }))
 
 test('有 50 条候选时不只核对最新 10 条；同 BV 重复查询使用缓存',()=>withDir(async dir=>{
  const now=Date.now();let rows=[...inbox('推荐 '+BV,now)]
- for(let i=0;i<15;i++)rows.push({incoming:true,timestampMs:now,text:'推荐 BV'+String(i).padStart(10,'0')})
+ for(let i=0;i<15;i++)rows.push({incoming:true,senderUid:'1001',messageId:'extra-'+i,timestampMs:now,text:'推荐 BV'+String(i).padStart(10,'0')})
  receiveRecommendations(dir,rows,{now})
  let calls=0
  const helper=createDmVideoRecommendationContext({stateDir:dir,now:()=>now,fetchInfo:async()=>{calls++;return {title:'公开标题'}}})
- assert.match(await helper.forReply({text:'看看 '+BV}),/公开标题/)
- assert.match(await helper.forReply({text:'看看 '+BV}),/公开标题/)
+ assert.match(await helper.forReply({uid:'1001',text:'看看 '+BV}),/公开标题/)
+ assert.match(await helper.forReply({uid:'1001',text:'看看 '+BV}),/公开标题/)
  assert.equal(calls,1)
 }))
 
@@ -105,8 +106,36 @@ test('只纠正已入队 BV 的错误拒绝，不改正常闲聊、不影响评�
 test('宿主真正把推荐状态传给后台 DM 批处理，视频 Agent 仍自主决定是否观看',()=>{
  const server=read('index.js'),batch=read('lib/interaction-batch.mjs')
  assert.match(server,/createDmVideoRecommendationContext\(\{stateDir\}\)/)
- assert.match(server,/recommendationContext:await dmVideoRecommendationContext\.forReply\(req\)/)
+ assert.match(server,/const recommendationContext=await dmVideoRecommendationContext\.forReply\(req\)/)
+ assert.match(server,/onTodoProposal:proposal=>intakeAiSocialTodo/)
  assert.match(batch,/correctDmVideoRecommendationReply\(response,batch\[i\]\.recommendationContext\)/)
  assert.match(server,/你可以自主决定是否查视频详情、看内容或完全跳过/)
  assert.doesNotMatch(server,/generateReply: async \(req\) => .*bili_video_info/)
+})
+
+test('同一次互动 AI 调用同时生成回复和待办候选；聊天回复被意愿拦截时仍可处理待办',async()=>{
+ let calls=0,received=null,prompt=''
+ const batcher=createInteractionBatcher({delayMs:1,getPersona:()=>'',invoke:async p=>{
+  calls++;prompt=p
+  return JSON.stringify({items:[{id:'0',action:'reply',reply:'我想之后找找陶喆的歌',todoDisposition:'accept',
+   suggestedTodo:{type:'search_videos',topic:'陶喆的歌',evidence:'有空听听陶喆的歌'},mood:'curious',intensity:1}]})
+ }})
+ try{
+  const result=await batcher.generate({kind:'dm',uid:'1001',text:'有空听听陶喆的歌',messages:['有空听听陶喆的歌'],canReply:false,canSkip:true,allowTodoIntake:true,
+   onTodoProposal:async x=>{received=x}})
+  assert.equal(calls,1);assert.equal(result,'SKIP')
+  assert.equal(received.todoDisposition,'accept');assert.equal(received.suggestedTodo.topic,'陶喆的歌')
+  assert.match(prompt,/未来只读探索建议/);assert.match(prompt,/"currentMessages":\["有空听听陶喆的歌"\]/)
+ }finally{batcher.stop()}
+})
+
+test('同轮 AI 的 todo intake 不依赖回复是否发送，审批恢复 canSkip=false 仍保留必须回复',async()=>{
+ let callbacks=0,calls=0
+ const batcher=createInteractionBatcher({delayMs:1,getPersona:()=>'',invoke:async()=>{
+  calls++;return JSON.stringify({items:[{id:'0',action:'reply',reply:'好呀',todoDisposition:'none',suggestedTodo:null,mood:'neutral',intensity:0}]})
+ }})
+ try{
+  const reply=await batcher.generate({kind:'dm',uid:'1002',text:'申请恢复聊天',canReply:false,canSkip:false,allowTodoIntake:true,onTodoProposal:async()=>{callbacks++}})
+  assert.equal(reply,'好呀');assert.equal(calls,1);assert.equal(callbacks,1)
+ }finally{batcher.stop()}
 })

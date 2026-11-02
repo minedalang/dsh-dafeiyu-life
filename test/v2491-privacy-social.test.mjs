@@ -85,9 +85,9 @@ test('自主社交：只在白名单朋友推荐且真实入选视频后产生�
  const engine=createSocialIntentEngine({dataDir:home,now:()=>now,getConfig:()=>config,invokeModel:async()=>{modelCalls++;return JSON.stringify({action:'draft',message:'你推荐的那段视频我今天刷到了，想起你当时说它挺有意思。',reason:'确实想聊聊'})},sendMessage:async x=>{sent.push(x);return {ok:true}}})
  try{
    assert.equal((await engine.reflectOnWatched([{bvid:BV,title:'公开标题',picked:true}])).created,0)
-   receiveRecommendations(home,[{incoming:true,senderUid:'99999',timestampMs:now,text:'给你推荐 '+BV}],{now})
+   receiveRecommendations(home,[{incoming:true,senderUid:'99999',messageId:'dm-999',timestampMs:now,text:'给你推荐 '+BV}],{now})
    assert.equal((await engine.reflectOnWatched([{bvid:BV,title:'公开标题',picked:true}])).created,0)
-   receiveRecommendations(home,[{incoming:true,senderUid:'11111',timestampMs:now,text:'给你推荐 '+BV}],{now})
+   receiveRecommendations(home,[{incoming:true,senderUid:'11111',messageId:'dm-111',timestampMs:now,text:'给你推荐 '+BV}],{now})
    assert.equal((await engine.reflectOnWatched([{bvid:BV,title:'公开标题',picked:false}])).created,0)
    assert.equal((await engine.reflectOnWatched([{bvid:BV,title:'公开标题',picked:true}])).created,1)
    assert.equal(modelCalls,1);assert.equal(sent.length,0)

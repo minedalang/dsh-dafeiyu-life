@@ -47,7 +47,7 @@ import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch } from
 import { ensureUv } from './lib/uvfetch.mjs'
 import { createDmAutoReply } from './lib/dm-autoreply.mjs'
 import { receiveRecommendations, listRecommendationCandidates } from './lib/video-recommendations.mjs'
-import { intakePublicReadProposal } from './lib/social-todo-intake.mjs'
+import { intakeAiReadProposal } from './lib/social-todo-intake.mjs'
 import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/owner-todos.mjs'
 import { createAutonomousPlanner } from './lib/autonomous-planner.mjs'
 import { queueOwnerDmReadTodo, parseOwnerDmTodo } from './lib/owner-dm-commands.mjs'
@@ -61,7 +61,7 @@ import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
 import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
 import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-continuity.mjs'
 import {prepareFriendInterestObservation,recordPreparedFriendInterest, learnedFriendContext, listFriendLearning, clearFriendLearning, isFriendRecommendationFeedback, friendRecommendationGuard } from './lib/friend-learning.mjs'
-import {socialTier,hasExplicitVideoRecommendation} from './lib/social-tier.mjs'
+import {socialTier} from './lib/social-tier.mjs'
 import { observeAuthenticatedOwnerDmPreferences } from './lib/owner-dm-preferences.mjs'
 import { generateOwnerCommentDraftFromVideo } from './lib/owner-comment-draft.mjs'
 import { decideOwnerSocialComment } from './lib/owner-comment-social.mjs'
@@ -258,9 +258,9 @@ export const Config = !z ? undefined : z.object({
   dmWhitelist: z.string().default('').extra('volatile', true),
   /** 需要明确开启：非白名单首次私信只自动回复一条欢迎消息 */
   dmStrangerOnce: z.boolean().default(false).extra('volatile', true),
-  dmStrangerText: z.string().default('你好，我是这个账号的 AI 助手，已收到你的私信。陌生用户暂时只能收到这一条自动回复；请不要发送密码、验证码等敏感信息。').extra('volatile', true),
+  dmStrangerText: z.string().default('').extra('volatile', true), // deprecated: first DM now uses the existing AI reply call
   dmStrangerMaxReplies: z.natural().default(1).extra('volatile', true),
-  dmStrangerFirstFixed: z.boolean().default(true).extra('volatile', true),
+  dmStrangerFirstFixed: z.boolean().default(false).extra('volatile', true), // deprecated: all enabled DM tiers now use the same AI reply call
   dmApprovalEnabled: z.boolean().default(false).extra('volatile',true),
   dmApprovalPhrase: z.string().default('白饭🍚').extra('volatile',true),
   dmApprovedTotalLimit: z.natural().default(50).extra('volatile',true),
@@ -589,14 +589,14 @@ function reportMeta() {
   const DEFAULTS = {
     masterEnabled: true,
     dmWatch: true, dmWatchMinutes: 1, commentReplyWatchMinutes: 3, commentAtWatchMinutes: 3, commentTopWatchMinutes: 5, dmReplyPerDay: 0, dmContextMessages: 40, dmOwnerUid: 0,
-    dmWhitelist: '', dmStrangerOnce: false, dmStrangerMaxReplies: 1, dmStrangerFirstFixed: true,
+    dmWhitelist: '', dmStrangerOnce: false, dmStrangerMaxReplies: 1, dmStrangerFirstFixed: false,
     dmApprovalEnabled: false, dmApprovalPhrase: '白饭🍚', dmApprovedTotalLimit: 50, dmApprovedDailyLimit: 10,
     videoModelProvider: '', videoModelId: '', videoReasoningEffort: '', interactionModelProvider: '', interactionModelId: '', interactionReasoningEffort: '', memeRulesModelProvider:'', memeRulesModelId:'', memeRulesReasoningEffort:'', memeRulesPrompt:'',
     commentWatchReplies: false, commentWatchTop: false, commentAtEnabled: false, friendAtFeedbackEnabled:false, strangerInspirationEnabled:false, socialInvitationEnabled:false, socialInvitationAutoInspectEnabled:false, ownerCommentAgentEnabled:false, ownerCommentLikeEnabled:false, ownerCommentDraftEnabled:false, ownerCommentPublishEnabled:false, ownerCommentSocialPublishEnabled:false, ownerCommentNaturalAckEnabled:false, commentAtMode:'whitelist', commentAtWhitelist:'', commentTopCount: 5, commentTopVideoCount: 3, commentReplyHotCount: 12, backupDirectory: '',
     commentAllowGeneralTop: false, commentReplyPerPoll: 1, commentReplyPerDay: 5, commentOwnTopPerUser: 5, commentOwnNestedPerUser: 3,
     mainSessionBridgeEnabled: false, mainSessionId: '', mainSessionAutoSync: true, mainSessionSyncMinutes: 60, mainSessionDailyBatches: 4, mainSessionBatchSize: 8, mainSessionIncludeComments: true,
     mainSessionMemoryEnabled: true, mainSessionMemoryAutoBili: true, mainSessionMemorySemanticEnabled: false, mainSessionMemoryModelProvider: '', mainSessionMemoryModelId: '', mainSessionMemoryReasoningEffort: '', mainSessionMemoryCandidates: RECOMMENDED_EXPERIENCE_GROUPS.retrieval.mainSessionMemoryCandidates, mainSessionMemorySearchDailyLimit: RECOMMENDED_EXPERIENCE_GROUPS.retrieval.mainSessionMemorySearchDailyLimit, socialOutreachEnabled:false, socialLifeIntentEnabled:false, socialVideoRecommendationsAuthorizedV2:false, emotionSystemEnabled:true, socialAutoSend:false, socialOutreachDailyLimit:1, ownerTodoAutoReviewEnabled:false, ownerTodoReviewMinutes:60, ownerTodoCompletionFollowupEnabled:false, socialTodoCompletionFollowupEnabled:false, ownerTodoFollowupCooldownMinutes:60, ownerTodoFollowupDailyLimit:12, ownerTodoFollowupMinIntervalMinutes:5, ownerTodoFollowupPollMinutes:2, ownerTodoFollowupQuietEnabled:true, ownerTodoFollowupQuietStartHour:22, ownerTodoFollowupQuietEndHour:9, autonomousPlannerEnabled:true, emotionRecallEnabled:false, emotionRecallMainEnabled:false, emotionRecallDmEnabled:false, emotionRecallUnlimited:false, emotionRecallDailyLimit:1, emotionRecallCooldownHours:24, emotionRecallStartHour:9, emotionRecallEndHour:22, ownerDmAgentEnabled:true, ownerDmAgentReadMainContext:false, ownerDmAgentSyncMain:false, ownerDmAgentContextTurns:6, ownerDmAgentContextChars:1500, ownerDmAgentModelProvider:'', ownerDmAgentModelId:'', ownerDmAgentReasoningEffort:'', ownerDmReadCommandsEnabled:true, ownerDmActionsEnabled:true, ownerDmLikeEnabled:true, ownerDmCollectEnabled:true, ownerDmFollowEnabled:true, ownerDmCommentDraftEnabled:true, ownerDmCommentPublishEnabled:true, ownerDmDynamicDraftEnabled:true, ownerDmDynamicPublishEnabled:true, ownerDmFriendMessageEnabled:true, emotionRecallCandidateLimit:12, emotionRecallHistoryLimit:300, emotionRecallRecentDays:3, emotionRecallMinAgeDays:2, emotionRecallEmotionMinIntensity:30, emotionRecallEmotionMaxAgeHours:12, autonomousPlannerMinutes:180, autonomousPlannerDailyLimit:4, autonomousPlannerStartHour:9, autonomousPlannerEndHour:23, mainSessionReflectionAuto: true, mainSessionReflectionModelProvider: '', mainSessionReflectionModelId: '', mainSessionReflectionReasoningEffort: '', mainSessionReflectionMinCandidates: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionMinCandidates, mainSessionReflectionBatchSize: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionBatchSize, mainSessionReflectionIntervalHours: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionIntervalHours, mainSessionReflectionDailyBatches: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionDailyBatches, mainSessionMemoryHalfLifeDays: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryHalfLifeDays, socialMemoryHalfLifeNewDays:1.3, socialMemoryHalfLifeKnownDays:3, socialMemoryHalfLifeFamiliarDays:10, socialMemoryHalfLifeFriendDays:24, socialMemoryHalfLifeWhitelistDays:30, socialMemoryHalfLifeOwnerDays:50, mainSessionMemoryThreshold: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryThreshold, mainSessionMemoryMaxItems: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryMaxItems, mainSessionMemoryMaxChars: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryMaxChars, mainSessionMemoryDailyQuota: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryDailyQuota, mainSessionMemoryConsolidationEnabled:true, mainSessionMemoryFactsMax: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryFactsMax,
-    dmStrangerText: '你好，我是这个账号的 AI 助手，已收到你的私信。陌生用户暂时只能收到这一条自动回复；请不要发送密码、验证码等敏感信息。',
+    dmStrangerText: '',
     personaPrompt: DEFAULT_PERSONA_PROMPT, characterLore: '',
     perDay: 50, pickPerRound: 5, peakValley: false, peakWindows: '[]', peakIntervalMinutes: 30, autoComment: false, transcribe: false, asrModel: 'small',
     dmMode: 'only', dmUid: 0, commentSyncDynamic: false, dynamicDailyLimit: 3, commentDailyLimit: 10, memeMemoryEnabled: true, memeMemoryMaxEntries: 300, visionEnabled: false, diagMentionEnabled: true, diagDynamicEnabled: true, diagVisionEnabled: true, diagMemeEnabled: true, diagAtInviteEnabled: true, diagReplyInboxEnabled: true, visionMode: 'reuse_video_model', visionDebug: false, visionModelProvider: '', visionReasoningEffort: '', visionModelId: '', visionEndpoint: '', visionFrames: 2, visionDailyLimit: 30, visionPrompt: '', commentMemesEnabled: false, commentMemesDebug: false, commentMemesPerDay: 2, commentMemesPerRound: 1, commentMemePrompt: '',
@@ -1020,14 +1020,27 @@ function reportMeta() {
       try{const hint=existingRelationshipIndex()?.preferenceHint(uid,relationshipOptions());if(hint)return hint}catch{}
       try{return listFriendRelationships(stateDir,cfg.friendDirectory).find(x=>String(x.uid)===String(uid))?.stage||''}catch{return ''}
     }})
-  // P4: reuse the existing dual-domain willingness ledger, never a second
-  // model or a second authorization gate. A recommendation becomes a TODO
-  // only on an 'allow' decision; the raw share may remain a selection lead.
-  const intakeRecommendation=({uid,messageId,bvid,text,channel})=>dualContextAgency.decide({
-    source:channel==='comment'?'bili-comment':'bili-dm',uid,
-    messageId:'video-proposal:'+messageId+':'+bvid,text,intent:'explore',target:bvid,
-    hardAllowed:true,
-  })
+  // All social channels consume the structured proposal from their EXISTING
+  // reply/interpretation AI call. This bridge performs provenance, read-only
+  // type, willingness and persistence checks; it never parses intent itself.
+  const intakeAiSocialTodo=async({request={},channel,todoDisposition,suggestedTodo,decisionMode='agency'}={})=>{
+    const messages=Array.isArray(request.messages)?request.messages.slice(-12).map(x=>String(x||'')):[String(request.text||'')]
+    const messageIds=Array.isArray(request.messageIds)?request.messageIds.map(String):[]
+    const messageId=String(request.messageId||request.id||messageIds.at(-1)||request.rpid||'')
+    const row={incoming:true,senderUid:String(request.uid||request.senderUid||''),messageId,messageIds,
+      timestampMs:Number(request.timestampMs||request.messageTime||0),text:messages.join('\n'),
+      senderName:String(request.senderName||request.name||''),bvid:String(request.bvid||''),
+      rpid:request.rpid||request.incomingRpid||0,root:request.root||0,thread:String(request.thread||request.threadKey||'')}
+    const decide=decisionMode==='ai'
+      ?({uid,messageId,text,intent,target,thread})=>dualContextAgency.recordAI({source:'bili-comment',uid,messageId,text,intent,action:'read_todo',target,thread,decision:'allow'})
+      :({uid,messageId,text,intent,target,thread})=>dualContextAgency.decide({source:channel==='comment'?'bili-comment':'bili-dm',uid,messageId,text,intent,target,thread})
+    const result=intakeAiReadProposal({row,channel,todoDisposition,suggestedTodo,currentMessages:messages,
+      history:request.history||[],recommendationContext:request.recommendationContext||'',decide,todos:ownerTodos})
+    if(result?.created)log(`AI 社交意图已接受并加入只读待办：${channel==='comment'?'评论':'私信'} · ${String(result.item?.title||'探索建议').slice(0,80)}`)
+    else if(todoDisposition==='accept'&&(result?.skipped||result?.accepted===false))log('AI 社交待办候选未入队：'+String(result.skipped||`${result.decision||'blocked'}:${result.reason||'意愿未通过'}`).slice(0,100))
+    else if(result?.ok===false)log('AI 社交待办未保存：'+String(result.error||result.skipped||'未知原因').slice(0,100))
+    return result
+  }
   // v2.4.76: 运行时挂接长期主 Session 与内置长期记忆。工具先注册，桥在后面的本地账本初始化完成后赋值。
   let mainSessionBridge = null
   let longTermMemory = null
@@ -2722,7 +2735,7 @@ function reportMeta() {
   } catch (e) { log(`定时器没起来：${e?.message ?? e}`) }
 
   // 大肥鱼后台私信：统一的收发入口（原来的主人专用定时器已删除，避免重复回复）。
-  // 独立于“跑一轮”；更改设置在下次轮询时生效。陌生人欢迎语必须手动开启。
+  // 独立于“跑一轮”；更改设置在下次轮询时生效。陌生人 AI 回复仍须手动开启。
   const dmConfig = () => {
     refreshCfg()
     let friends=[];try{friends=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory))}catch{}
@@ -2736,10 +2749,10 @@ function reportMeta() {
     return {
       enabled: cfg.masterEnabled === true && cfg.dmWatch === true,
       strangerEnabled: cfg.dmStrangerOnce === true,
-      strangerMaxReplies: cfg.dmStrangerMaxReplies, strangerFirstFixed: cfg.dmStrangerFirstFixed,
+      strangerMaxReplies: cfg.dmStrangerMaxReplies,
       approvalEnabled:cfg.dmApprovalEnabled, approvalPhrase:cfg.dmApprovalPhrase,
       approvedTotalLimit:cfg.dmApprovedTotalLimit, approvedDailyLimit:cfg.dmApprovedDailyLimit,
-      whitelist: [...allow], ownerUid: String(owner||''), strangerText: cfg.dmStrangerText,
+      whitelist: [...allow], ownerUid: String(owner||''),
       intervalMinutes: cfg.dmWatchMinutes,
       maxPerPoll: 3, maxPerHour: 40,
       maxPerDay: cfg.dmReplyPerDay,
@@ -2947,9 +2960,7 @@ function reportMeta() {
     }
     const remaining=incoming.filter(row=>!ownerRows.includes(row))
     incoming.length=0;incoming.push(...remaining)
-    try{const received=receiveRecommendations(stateDir,incoming,{decide:intakeRecommendation});const synced=ownerTodos.syncRecommendations(received?.acceptedEntries||[],{requireAccepted:true});if(synced.added)log(`收到视频推荐并加入自主待办：新增 ${synced.added} 条`)}catch(e){log('B站私信视频候选/待办暂存失败：'+String(e?.message||e).slice(0,100))}
-    // Only already-received, platform-authenticated DM; never scan strangers' private archives.
-    for(const row of incoming.slice(0,100))try{intakePublicReadProposal({row,channel:'dm',decide:({uid,messageId,text,channel,intent,target})=>dualContextAgency.decide({source:'bili-dm',uid,messageId,text,intent,target}),todos:ownerTodos})}catch(e){log('私信公开视频搜索待办入队失败：'+String(e?.message||e).slice(0,100))}
+    try{const approvedUids=new Set((Array.isArray(cfg.dmWhitelist)?cfg.dmWhitelist:[]).map(String));const recommendationEligible=incoming.filter(row=>{const uid=String(row.senderUid||'');return socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory)!=='stranger'||approvedUids.has(uid)||cfg.dmStrangerOnce===true});const received=receiveRecommendations(stateDir,recommendationEligible);if(received?.added)log(`收到 B站视频链接候选：${received.added} 条；是否加入待办由同轮私信 AI 自主判断`)}catch(e){log('B站私信视频候选暂存失败：'+String(e?.message||e).slice(0,100))}
     try{
       const queued=queueOwnerDmReadTodo({messages:incoming,ownerUid:cfg.dmOwnerUid,enabled:cfg.ownerDmReadCommandsEnabled===true,todos:ownerTodos})
       if(queued.added)log(`主人 B站私信只读任务入队：${queued.added} 条`)
@@ -3325,13 +3336,16 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     },
     generateReply: async (req) => {
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
+      let canReply=true
       if(tier==='friend'){
         const will=dualContextAgency.decide({source:'bili-dm',uid:req.uid,messageId:req.messageId,text:req.text,intent:'chat'})
-        if(will.decision!=='allow')return 'SKIP'
+        canReply=will?.decision==='allow'||req.canSkip===false
       }
-      return interactionBatcher.generate({kind:'dm',role:tier, ...req,
-        recommendationContext:await dmVideoRecommendationContext.forReply(req),
-        identityContext:replyIdentityContext(req.uid)})
+      const recommendationContext=await dmVideoRecommendationContext.forReply(req)
+      return interactionBatcher.generate({kind:'dm',role:tier,...req,canReply,
+        allowTodoIntake:true,
+        onTodoProposal:proposal=>intakeAiSocialTodo({...proposal,request:{...req,recommendationContext},channel:'dm'}),
+        recommendationContext,identityContext:replyIdentityContext(req.uid)})
     },
     send: async ({ uid, text, eventId }) => {
       refreshCfg()
@@ -3388,7 +3402,17 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     recordAgency:({uid,messageId,text,intent,action,bvid,thread,decision})=>dualContextAgency.recordAI({
       source:'bili-comment',uid,messageId,text,intent,action,target:bvid,thread,decision,
     }),
-    generateChat:async(row)=>interactionBatcher.generate({kind:'comment',mode:row.scope||'self-nested',uid:row.uid,bvid:row.bvid,incomingRpid:row.rpid,text:row.text,context:[row.context,row.threadPreview].filter(Boolean).join('\n').slice(0,1500),canSkip:true,identityContext:replyIdentityContext(row.uid)}),
+    onTodoProposal:async({row,first})=>{
+      // watch_later/watch_now/social_invite already handle the current video;
+      // suppress only an identical watch_video proposal, not a separate topic.
+      if(first?.decision!=='allow')return {ok:true,skipped:'model-not-allow'}
+      if(['watch_later','watch_now','social_invite'].includes(first?.intent)&&first?.suggestedTodo?.type==='watch_video'&&String(first.suggestedTodo.bvid||'')===String(row.bvid||''))
+        return {ok:true,skipped:'handled-by-current-video-intent'}
+      return intakeAiSocialTodo({request:{uid:row.uid,messageId:row.id,timestampMs:row.timestampMs,text:row.text,
+        senderName:row.name,bvid:row.bvid,rpid:row.rpid,root:row.root,thread:row.thread,history:[]},
+        channel:'comment',todoDisposition:first.todoDisposition,suggestedTodo:first.suggestedTodo,decisionMode:'ai'})
+    },
+    generateChat:async(row)=>interactionBatcher.generate({kind:'comment',mode:row.scope||'self-nested',uid:row.uid,bvid:row.bvid,incomingRpid:row.rpid,text:row.text,context:[row.context,row.threadPreview].filter(Boolean).join('\n').slice(0,1500),canSkip:true,allowTodoIntake:false,identityContext:replyIdentityContext(row.uid)}),
     onDeliberateSilence:async({uid,bvid,rpid,text})=>{
       const reason=/(?:别来|别找|不要.*(?:联系|回复)|不想.*(?:聊天|说话)|别.*(?:联系|回复))/.test(String(text||''))?'respect-request':'general'
       const synced=await socialInteractionCoordinator?.record({type:'decline',source:'comment',eventKey:`${uid}:${bvid}:${rpid}:decline`,actorUid:uid,bvid,rpid,reason,at:Date.now()})
@@ -3595,10 +3619,6 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
           if(result?.reason!=='not-verified-owner-comment'&&result?.reason!=='disabled')return {consumed:true,reason:'trusted_social_ai'}
         }catch(e){log('可信评论 Agent 接收失败：'+String(e?.message||e).slice(0,120));return {consumed:true,reason:'trusted_social_error'}}
       }
-      if(role!=='owner'&&['at','notice'].includes(req.kind))try{intakePublicReadProposal({row:{incoming:true,senderUid:req.uid,messageId:req.id,text:req.text,timestampMs:at,bvid:req.bvid,rpid:req.rpid,root:req.root},channel:'comment',decide:({uid,messageId,text,intent,target})=>dualContextAgency.decide({source:'bili-comment',uid,messageId,text,intent,target}),todos:ownerTodos})}catch(e){log('评论公开视频搜索待办入队失败：'+String(e?.message||e).slice(0,100))}
-      if(role!=='owner'&&hasExplicitVideoRecommendation(req.text))try{
-        const reco=receiveRecommendations(stateDir,[{incoming:true,senderUid:req.uid,senderName:req.name||'',messageId:req.id,text:req.text,timestampMs:at,source:'B站评论分享',bvid:req.bvid,rpid:req.rpid,root:req.root}],{decide:intakeRecommendation});ownerTodos.syncRecommendations(reco.acceptedEntries,{requireAccepted:true})
-      }catch(e){log('评论视频推荐入队失败：'+String(e?.message||e).slice(0,100))}
       return {ok:true,role}
     },
     getVideos: async () => {
@@ -3614,7 +3634,9 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       return {...result,tier}
     },
     socialTier:(uid)=>socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory),
-    generateReply: (req) => interactionBatcher.generate({...req,identityContext:'',incomingRpid:req.rpid}),
+    generateReply: (req) => interactionBatcher.generate({...req,identityContext:'',incomingRpid:req.rpid,
+      allowTodoIntake:req.forceReply!==true&&req.todoIntake!==false,
+      onTodoProposal:req.forceReply===true||req.todoIntake===false?undefined:proposal=>intakeAiSocialTodo({...proposal,request:req,channel:'comment'})}),
     send: async (req) => {
       if(req.contentType==='dynamic'){
         refreshCfg()

@@ -1,26 +1,72 @@
-# 2.6.1-dev.2 · 实际社交意愿/自主待办接线（增量）
+# 2.6.1 RC2：全社交入口 AI 待办理解与统一入队
 
-本文件更新实际调用关系，dev.4 历史架构图不改写。dev.2 仅实现 P4 的视频提议路径和关系偏好；完整统一待办仍是分阶段工作。
+本文记录 RC2 全社交 AI 待办接入后的实际调用关系。它替换早期 dev.2 的“先用正则判断邀请，再进入意愿层”描述；历史设计不再代表当前实现。
 
-```mermaid
-flowchart TD
-  A[已核实 B站评论或私信事件] --> C[VideoRecommendation 接收与去重]
-  C --> D[现有 DualContextAgency 意愿判断]
-  B[SocialInteractionCoordinator 可信互动] --> R[SocialRelationshipIndex]
-  R --> D
-  D -->|allow| T[既有 OwnerTodoEngine 兼容任务存储]
-  D -->|defer/refuse| L[短期选片候选 非承诺]
-  T --> P[AutonomousPlanner 已接受任务候选排序]
-  R --> P
-  P --> W[只读视频处理 现有安全授权]
-  P --> X[推迟 放弃 跳过]
-  S[主人私信模型的已有建议] --> D
-  U[可信评论 watch_later] --> D
+## 目标
+
+主人、好友和普通 B站 用户在**已启用的私信与评论入口**提出未来的公开只读探索建议时，由该入口本来就要调用的 AI 同时完成自然回复、意图理解和结构化待办提议。不得为意图提取再单独调用一次模型，也不得用关键词/固定句式解析器代替 AI。
+
+## 当前入口
+
+| 来源 | 当前 AI 调用 | 待办提议接线 |
+|---|---|---|
+| 主人私信 | `OwnerDmAgent` 现有结构化决策 | 原有 `todoDisposition` / `suggestedTodo`，继续使用同一 `ownerTodos` |
+| 主人／好友可信评论与 @ | `OwnerCommentAgent → interpretTrustedSocial` | 同一输出解析 `todoDisposition` / `suggestedTodo`，由 `onTodoProposal` 投影入账 |
+| 普通用户私信（好友、陌生人） | `DmAutoReply → InteractionBatcher` | 同一回复 JSON 增加待办字段；首条陌生人消息不再走固定欢迎语旁路 |
+| 普通用户评论／通知／热门评论 | `CommentInteract → InteractionBatcher` | 同一回复 JSON 增加待办字段；不再在 AI 之前用正则入队 |
+
+入口总开关、陌生人私信启用状态、评论监听设置、回复额度与调度仍然生效。未启用或未进入现有 AI 互动流程的消息不会被后台额外扫描，也不会为了待办识别新增一轮模型请求。
+
+## 同轮输出
+
+`InteractionBatcher` 与可信评论 AI 使用同一结构：
+
+```json
+{
+  "action": "reply",
+  "reply": "自然聊天内容",
+  "todoDisposition": "accept|defer|refuse|none",
+  "suggestedTodo": null,
+  "mood": "curious",
+  "intensity": 1
+}
 ```
 
-- 实际生产：`index.js` 的 `intakeRecommendation` 和 `receiveRecommendations` 分别在 DM 收件及评论回调调用；`syncRecommendations` 在这两个入口要求 `accepted===true`。启动重启仅同步已明确接受的新增推荐，旧已有任务不清理。
-- 可信主人评论 `watch_later` 复用已有模型意愿，没模型时走既有本地决策；`defer` 不转为承诺。主人 DM 的模型建议在 `onTodoSuggested` 前独立复用已有本地意愿（不额外请求 LLM）。
-- 社会熟悉度：意愿只读 `SocialRelationshipIndex.preferenceHint()`，优先自然成长关系、兼容旧白名单观察回退。`permissionRole` 仍由 `SocialPolicyGate` 和既有身份模块给出。`AutonomousPlanner` 只将分数作为候选展示顺序的提示，不作为执行许可。
-- 存储：外部视频推荐的完整原文仍属于既有本地短期候选库，**新加入的正式任务不会复制陌生人的原始评论/DM 正文**。候选展示未接受项 48 小时失效；已接受任务不随此 TTL 遗忘。原候选文件的历史容量/保留仍由原有上限管控。
-- 模型自主收藏：视频 Agent 一轮已有 MCP 调用增加 `motivation` 结构化枚举，Python 层校验；动机不是实际回忆证据，无法绕过 MCP 的权限、配额或真实 B站回执。
-- 尚未实现：任意非视频待办的全渠道接受、通用候选数据库分页、所有非主人回访、可配置的各类别待办 TTL 及已接受任务的大规模排序优化。
+- `accept` 必须附带具体候选；`defer`、`refuse`、`none` 不创建待办。
+- 支持的候选仅为公开只读 `search_videos` 与 `watch_video`。
+- AI 可以理解自然表达、错别字、同轮分段消息，以及同一 UID 的近期上下文指代；没有明确当前提议或主题不清晰时不创建。
+- 普通聊天、引用/转述、否定、已完成事项、模糊兴趣不自动变成任务。
+- 模型不得告诉用户“已经记入待办”；真实入库结果由程序确认。
+
+## 统一入队与验证
+
+`lib/social-todo-intake.mjs` 现在只做结构化 AI 候选的来源与安全校验，不承担意图分类：
+
+1. 核验 B站平台事件提供的 UID、消息 ID、时间和来源渠道。
+2. 核验 `evidence` 确实来自当前用户消息；若使用 `contextEvidence`，必须来自同一 UID 最近 24 小时内的用户原话，且当前消息的上下文由 AI 语义判断为指向该原话；本地不使用固定指代词表。
+3. 核验主题由当前原话或受限同人上下文支持；`watch_video` 的 BV 必须来自当前用户消息、平台当前视频或本地已接收的链接候选。
+4. 只允许 `search_videos` / `watch_video`；拒绝点赞、收藏、关注、投币、私信、评论发布、登录、凭据或私人资料等任务。
+5. 再进入现有 `DualContextAgency` 意愿层（可信评论 Agent 使用同轮 AI 决策记录），通过后写入唯一的 `OwnerTodoEngine`。使用消息 ID 集合和候选摘要生成幂等 `sourceKey`。
+6. 新待办只保留来源 UID、消息定位和必要主题，不把陌生人私信或评论原文复制进待办正文。
+
+## 聊天意愿与探索意愿分离
+
+好友可能这轮不想继续聊天，但仍愿意把一个公开视频主题留待以后探索。评论/私信的 `chat` 意愿只控制是否发送聊天回复；同一轮 AI 仍可提出独立的 `explore` 候选，后者单独经过意愿判断。`DualContextAgency` 的幂等键按 `source + UID + messageId + intent` 区分，避免聊天决定覆盖探索决定。
+
+当 `canReply=false` 时，AI 仍完成同一轮待办理解，但回复被本地强制抑制；这不会放宽发送权限。主人/好友可信评论如果当前动作已经是 `watch_later` / `watch_now` / `social_invite`，只抑制与当前视频完全相同的重复 `watch_video` 候选，不抑制另一个独立主题。
+
+## 链接候选不是待办
+
+`lib/video-recommendations.mjs` 只把经过 UID、消息 ID 和时间核验的 BV 链接保存为 48 小时短期上下文候选，且不保存原始私信正文。链接出现本身不代表鱼鱼接受；只有同轮 AI 明确 `accept`，并通过统一意愿与来源校验后，才写入待办。
+
+## 首条陌生人私信
+
+如果管理员开启了陌生人私信入口，首条消息也由现有 AI 回复调用处理，同时输出待办提议；不再先发固定欢迎语而跳过 AI。陌生人启用开关、每人回复次数、每日额度、申请审批和发送安全边界保持不变。旧 `dmStrangerFirstFixed` / `dmStrangerText` 配置字段保留兼容但不再生效。
+
+## 不变的边界
+
+- 关系熟悉度不授予白名单或外部写权限。
+- 只读任务的接受不代表已经执行；执行前仍由自主计划器和实际工具权限复核。
+- 评论回访仍需原评论定位、原作者 UID、渠道权限与平台回执。
+- 不确定回执不自动重试；不同 UID、不同消息来源不合并。
+- 未启用的社交入口、被配额阻止的入口不会被额外调用模型来“补识别”。

@@ -35,7 +35,7 @@ test('限额→申请白饭→人工通过→每天限额与累计限额',async(
  x.add('100','第四句');assert.equal((await x.handler.poll()).sent,1);
  x.add('100','第五句');assert.equal((await x.handler.poll()).sent,0);
  assert.equal((await x.handler.listApprovals())[0].total,3);
- assert.equal(x.calls.length,3);
+ assert.equal(x.calls.length,4); // 首条陌生人私信现在也由同一轮 AI 回复/意图调用处理
 });
 test('老白名单无限额，不受审批配额和全局每日配额影响',async()=>{
  const x=await rig({approvedDailyLimit:1,approvedTotalLimit:1,maxPerDay:1});await x.handler.poll();

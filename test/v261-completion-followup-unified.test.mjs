@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createOwnerTodoEngine} from '../lib/owner-todos.mjs'
 import {createOwnerTodoFollowup} from '../lib/owner-todo-followup.mjs'
-import {intakePublicReadProposal} from '../lib/social-todo-intake.mjs'
+import {intakeAiReadProposal} from '../lib/social-todo-intake.mjs'
 import {receiveRecommendations} from '../lib/video-recommendations.mjs'
 const BV='BV1abc234567',UID='123456789',UID2='222333444',T=Date.parse('2026-11-02T12:00:00Z')
 const conf=()=>({masterEnabled:true,dmWatch:true,dmMode:'both',ownerTodoCompletionFollowupEnabled:true,socialTodoCompletionFollowupEnabled:true,dmOwnerUid:'999888777'})
@@ -58,12 +58,14 @@ test('同一个公开视频由两位不同 UID 推荐：两个来源都保留，
   await f.tick();t+=DAY;await f.tick()
   assert.deepEqual(new Set(sent),new Set([UID,UID2]))
 }))
-test('公开视频搜索待办只有通过统一意愿接受才创建，并保存评论原定位',()=>space(async dir=>{
+test('社交 AI 接受的公开视频搜索待办仍需统一意愿 gate，并保留评论原定位',()=>space(async dir=>{
   const e=createOwnerTodoEngine({dataDir:dir,now:()=>T})
-  const row={incoming:true,senderUid:UID,messageId:'123:c101',timestampMs:T,text:'鱼鱼，搜一下无人机的视频',bvid:BV,rpid:998877,root:0}
-  assert.equal(intakePublicReadProposal({row,channel:'comment',decide:()=>({decision:'refuse'}),todos:e,now:T}).accepted,false)
+  const text='我最近对无人机挺有兴趣，鱼鱼有空可以了解一下'
+  const row={incoming:true,senderUid:UID,messageId:'123:c101',timestampMs:T,text,bvid:BV,rpid:998877,root:0}
+  const suggestedTodo={type:'search_videos',topic:'无人机',evidence:text}
+  assert.equal(intakeAiReadProposal({row,channel:'comment',todoDisposition:'accept',suggestedTodo,currentMessages:[text],decide:()=>({decision:'refuse'}),todos:e,now:()=>T}).accepted,false)
   assert.equal(e.list().length,0)
-  assert.equal(intakePublicReadProposal({row,channel:'comment',decide:()=>({decision:'allow'}),todos:e,now:T}).accepted,true)
+  assert.equal(intakeAiReadProposal({row,channel:'comment',todoDisposition:'accept',suggestedTodo,currentMessages:[text],decide:()=>({decision:'allow'}),todos:e,now:()=>T}).accepted,true)
   assert.equal(e.list()[0].origin.commentRpid,998877)
   assert.equal(e.list()[0].origin.commentBvid,BV)
 }))
