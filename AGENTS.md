@@ -11,8 +11,7 @@
    · ⚠️ 若用户机器上的**杀软拦了这次下载**：让他把 `%USERPROFILE%\.dsh\bili-duty\bin\` 加白，或干脆自己装 uv / Python 3.10+ ✓
    · ⭐ **万一下载链路都不通**（有用户反馈"桌面版上这条链路经常不通"）：**手动放一份 `uv.exe` 到 `<家目录>\bin\` 就行**
      —— 插件会**用那一份、跳过下载** ✓（他 `PATH` 里本来就有 `uv` 的话，直接用那个 ✓）
-  2. `dsh plugin --profile web add github:minedalang/dsh-dafeiyu-life`（如果已在插件市场上架，请优先依照市场页面提供的安装来源；此处是 GitHub 安装示例）。
-   · 备选：`dsh plugin --profile web add github:c1overzz/dsh-bili-scroll`
+  2. 正式版 DSH Desktop：`dsh plugin --profile desktop add dsh-dafeiyu-life`；也可在 DSH 的 `dshmarket` 插件或 [DSHMarket 网站](https://dshmarket.com/zh/) 搜索同名包安装。**先核对市场显示的实际版本**。
    · ⚠️ **升级旧版**：如果用户在设置页看到的按钮叫「**重装依赖**」（不是「**重装主依赖**」），
      说明装的还是 **0.1.0** —— 那一版建 Python 环境时缺一个参数，**依赖装不上、二维码也画不出来**。
      让用户重跑一次上面那条 `add` 就是升级（然后再重启一次）。
@@ -102,9 +101,9 @@
 - `CommentRootResolver` 严格区分读取用 `contextRoot` 和发送用 `sendRoot`；没有可靠根 ID 时不要推断 `target_id` 就是根。
 - 技术图存档在 `docs/architecture/diagrams/`；用户 README 保持简短，不展示冗长内部调用图。
 
-## 当前 dev 分支安装约束
+## 2.6.0 正式版安装与发布约束
 
-用户的 Windows Desktop 发布工作流是：本地改源码 → 生成/审查 Git Patch → 分别执行 Node、Python、自检与打包测试 → `git commit` → `git push origin dev` → `dsh plugin --profile desktop add "github:minedalang/dsh-dafeiyu-life#dev"`。严禁建议恢复 `deploy-local.ps1`、本地 `dsh plugin add .`、Junction 或本地 tgz 安装。
+Windows Desktop 的常规安装命令为 `dsh plugin --profile desktop add dsh-dafeiyu-life`；亦可通过 DSH 的 `dshmarket` 插件搜索包名、或在 DSHMarket 网站选择安装。各渠道的实际版本必须独立核实；正式版推送开发分支并不会自动发布 npm 或市场。研发时仍采用本地改源码 → Git Patch 审查 → Node / Python / 自检 / npm pack 测试 → commit → 在准备发布的提交上创建经过检查的版本 tag；不要推荐本地 Junction、临时 tgz 或旧 deploy-local 脚本。
 
 ## Life Memory 分域反思（dev.4 扩展）
 

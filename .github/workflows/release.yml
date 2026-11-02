@@ -32,8 +32,11 @@ jobs:
           node --check selfcheck.mjs
       - name: Regression checks for DSH 0.2.1 main Session tools and local timestamps
         run: node --test test/v260-main-session-tool-mount.test.mjs test/dev4-console-time-display.test.mjs
-      - name: Pack installable npm archive
-        run: npm pack --ignore-scripts
+      - name: Pack installable npm archive and checksum
+        run: |
+          npm pack --ignore-scripts
+          sha256sum dsh-dafeiyu-life-*.tgz > SHA256SUMS.txt
+          cat SHA256SUMS.txt
       - name: Detect version-specific release notes
         id: release_notes
         shell: bash
@@ -48,7 +51,9 @@ jobs:
       - name: Publish Dafeiyu Life GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dsh-dafeiyu-life-*.tgz
+          files: |
+            dsh-dafeiyu-life-*.tgz
+            SHA256SUMS.txt
           body_path: ${{ steps.release_notes.outputs.body_path }}
           generate_release_notes: ${{ steps.release_notes.outputs.has_notes != 'true' }}
           # A -dev/-rc Git tag is a preview: never overwrite stable Latest.

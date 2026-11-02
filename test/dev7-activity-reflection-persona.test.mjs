@@ -85,11 +85,12 @@ test('dev.7 管理页面与工具入口保留沙盒隔离、安全权限和第�
 })
 
 
-test('dev.7 发行版本与正式版预备材料明确分离',()=>{
-  const pkg=JSON.parse(read('package.json'));assert.equal(pkg.version,'2.6.0-dev.9');
-  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.0-dev.7.md'));
-  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.0-dev.8.md'));
-  assert.ok(pkg.files.includes('docs/release'));
+test('2.6.0 正式源码保留历史发行归档，但发布包只带当前 Release Notes',()=>{
+  const pkg=JSON.parse(read('package.json'));assert.equal(pkg.version,'2.6.0');
+  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.0.md'));
+  assert.ok(!pkg.files.includes('docs/release'));
+  assert.ok(!pkg.files.includes('RELEASE_NOTES_v2.6.0-dev.7.md'));
+  assert.match(read('docs/release/archive/RELEASE_NOTES_v2.6.0-dev.7.md'),/2\.6\.0-dev\.7/);
   assert.match(read('README.md'),/aigengtu.com\/persona/);
   assert.match(read('docs/release/2.6.0-readiness.md'),/正式发布/);
   assert.match(read('docs/release/2.6.0-bilibili-pinned-post.md'),/【2.6.0 新增/);
