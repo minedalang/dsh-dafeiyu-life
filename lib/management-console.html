@@ -288,6 +288,9 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 #panel-life .todo-empty{padding:22px 14px;border:1px dashed var(--stroke);border-radius:12px;text-align:center;color:var(--muted)}
 #panel-life #life-interest-section .interest-grid{margin:12px 0}
 #panel-life #life-relationship-section #friend-relationships-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:10px}
+#life-relationship-section .relation-score-track{height:7px;background:var(--border-color,#e0e6ee);border-radius:999px;overflow:hidden;margin:6px 0}
+#life-relationship-section .relation-score-fill{height:100%;background:#4c9b8b;border-radius:999px;transition:width .25s ease}
+#life-relationship-section .relation-name{display:block;margin-bottom:5px}
 @media(prefers-reduced-motion:reduce){#panel-life .todo-item,#panel-life .life-subdetails{animation:none!important}}
 
 /* dev.15：生活概览与系统设置分开，所有旧控件仍保留原 ID / API。 */
@@ -427,7 +430,8 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <nav class="tabs" aria-label="管理分类">
 <div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
 <button data-tab="home" aria-selected="false">大肥鱼的家</button>
-<button data-tab="life" aria-selected="false">人生记忆</button>
+<button data-tab="life" aria-selected="false">记忆与回忆</button>
+<button data-tab="relationships" aria-selected="false">👥 逐渐熟悉的人</button>
 <button data-tab="personality" aria-selected="false">🌱 人格成长</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">📺 B站生活</span>
 <button data-tab="bili" aria-selected="false">视频探索</button>
@@ -486,7 +490,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button><button type="button" id="headless-sync-preview" class="primary" title="只查看准备同步的模型配置，不会立即修改 DSH 文件">查看待同步配置</button><button type="button" id="headless-sync-commit" hidden>确认同步到 Headless</button></div>
 <p class="muted">只有要使用的自定义 Provider 才需要勾选同步；DSH 官方已注册模型无需同步。<strong>首次设置只需任选一个模型通过验证</strong>，其他模型可以以后需要时再验证。</p>
 </div>
-<div class="settings-section model-default-panel"><h4>✨ 默认模型与快捷配置</h4><p id="models-default-summary" class="muted">正在从 DSH 读取默认模型…</p><p class="muted">各功能默认「自动继承」，无需逐项设置。需要指定时再从 Provider 和模型下拉框选择；仅「思考深度」允许自由填写。模型配置修改后仍须点击底部保存；模型验证与功能授权不会被自动跳过。</p><div class="toolbar"><button id="models-use-recommended" type="button" class="primary">一键使用已验证模型（可选）</button></div><small id="models-recommendation-note" class="setting-note">正在检测已验证模型…</small></div>
+<div class="settings-section model-default-panel"><h4>✨ 默认模型与快捷配置</h4><p id="models-default-summary" class="muted">正在从 DSH 读取默认模型…</p><p class="muted"><strong>自动继承不是选择第一个已验证模型。</strong>通常沿用 DSH 当前默认模型；「生活动态文案」和「主人私信 Agent」优先继承「后台互动」，「独立视觉」优先继承「视频理解」。只有选择具体 Provider/模型才是手动覆盖。验证通过仅代表连接测试成功，不代表它是默认模型、低成本或适合视觉。</p><div class="toolbar"><button id="models-reset-inheritance" type="button">将任务模型改回自动继承（仅预览）</button></div><small id="models-recommendation-note" class="setting-note">保存后才生效；连接测试针对已保存的模型配置。</small></div>
 <div class="settings-section"><h4>刷视频与内容理解</h4><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责搜索、阅读视频、选片、评论决策与点赞收藏决策。此项运行独立 Agent，须先在上方通过真实 Headless 验证；DSH 官方模型无需额外同步配置。</p><div class="fields" id="models-video"></div></div>
 <div class="settings-section"><h4>后台评论与私信</h4><div class="model-activity"><span id="models-interaction-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-interaction-test" class="model-test-button">测试连接</button><span id="models-interaction-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责后台评论与私信；B站动态草稿有独立模型配置，不使用人生反思模型。</p><div class="fields" id="models-interaction"></div></div>
 <div class="settings-section"><h4>生活动态文案 · 专用模型（默认继承后台互动）</h4><div class="model-activity"><span id="models-dailyDynamic-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-dailyDynamic-test" class="model-test-button">测试连接</button><span id="models-dailyDynamic-test-result" class="muted" role="status"></span></div><p class="muted">负责 B站公开生活动态的草稿构思，既不是人生反思，也不会读取私人聊天。留空时继承后台评论与私信模型；它也未配置时继承 DSH 默认模型。</p><div class="fields" id="models-dailyDynamic"></div></div>
@@ -581,7 +585,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div id="fs-main-session-return" class="fs-warning" hidden><span>首次设置期间可正常选择、保存主 Session 及同步频率；连接测试和发送经历在完成首次设置后开放。</span><button type="button" data-open-tab="firststart">← 返回首次设置</button></div>
 <div class="feature-intro"><div><h2>🏠 大肥鱼的家 · 生活总览</h2><p>这里看到鱼鱼此刻的生活、记忆与社交近况。回忆详情在「人生记忆」，行为授权在「社交互动」，相关设置在对应功能下方的折叠区。以下状态来自本地真实记录，不会自动触发对外发送。</p></div></div>
 <div class="home-overview grid" aria-label="生活概览">
-<a class="card home-summary" href="?tab=life" data-open-tab="life"><strong>🧠 鱼鱼的记忆</strong><span id="home-overview-memory" class="muted">正在读取记忆概况…</span><small>进入人生记忆 →</small></a>
+<a class="card home-summary" href="?tab=life" data-open-tab="life"><strong>🧠 鱼鱼的记忆</strong><span id="home-overview-memory" class="muted">正在读取记忆概况…</span><small>进入记忆与回忆 →</small></a>
 <a class="card home-summary" href="?tab=life#life-emotion-section" data-open-tab="life" data-open-anchor="life-emotion-section"><strong>💗 最近的心情</strong><span id="home-overview-mood" class="muted">正在读取心情…</span><small>查看情绪变化 →</small></a>
 <a class="card home-summary" href="?tab=social" data-open-tab="social"><strong>👥 熟悉的朋友</strong><span id="home-overview-social" class="muted">正在读取社交近况…</span><small>查看好友与社交授权 →</small></a>
 </div>
@@ -610,9 +614,22 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </details>
 <div class="home-quicklinks" aria-label="其他生活入口"><button type="button" data-open-tab="life">查看人生记忆</button><button type="button" data-open-tab="social">管理社交与授权</button><button type="button" data-open-settings="life-memory-settings" data-target-tab="life">调整记忆与检索</button></div>
 </section>
+<section id="panel-relationships" hidden>
+<div class="life-hero"><div><h2>👥 逐渐熟悉的人</h2><p class="muted">每次相遇都可能让鱼鱼更熟悉一个人；关系会成长、会降温，也会影响公开社交经历能保留多久。</p></div><button type="button" data-open-tab="life" class="life-action life-sky">看看鱼鱼记得什么</button></div>
+<div id="life-relationship-section" class="settings-section life-section"><h4>👥 逐渐熟悉的人</h4>
+<p class="muted">🐟 <strong>鱼鱼可以自然认识所有真实互动过的人。</strong> 普通陌生人也能通过跨天、双向交流逐渐成为关系意义上的朋友。原「好友」名册是<strong>白名单用户</strong>，具有较高的初始关系分和额外授权；自然成为朋友并不会自动获得白名单权限或私信能力。只保留 UID、最小互动元数据，以及可选的短期公开昵称缓存（最多 7 天），不为陌生人建立性格画像，也不保存聊天正文。关系会降温，具体经历仍会遗忘。</p>
+<div class="toolbar"><input id="friend-relationships-query" type="search" maxlength="48" placeholder="按 UID 搜索；白名单可搜备注" aria-label="搜索关系 UID 或白名单备注"><button id="friend-relationships-refresh" class="life-action life-sky">搜索 / 刷新</button><a href="#unified-friends" data-nav-tab="social" class="life-action life-sky">管理白名单权限</a><span id="friend-relationships-status" class="muted">尚未读取</span></div>
+<div id="friend-relationships-list" class="records" aria-live="polite"></div>
+<div class="toolbar"><button id="friend-relationships-more" class="life-action life-sky" hidden>加载下一页</button><span class="muted">每页 30 人，按熟悉度排序；昵称按需读取 B站公开资料（每次最多 8 人，每小时最多 30 次），不调用 AI。参考半衰期仅适用于关系敏感的公开社交经历，不是精确遗忘倒计时。</span></div>
+</div>
+<details class="contextual-settings" id="relationship-memory-settings"><summary>⚙️ 关系与公开社交记忆衰减 <span class="contextual-hint">按需调整 · 不影响私信或权限</span></summary>
+<p class="muted">各阶段数值是普通记忆半衰期为 30 天时的基准值。最终参考天数 = 此处基准 × 普通记忆半衰期 ÷ 30（范围 0.25–120 天）。只针对关系敏感的公开社交经历；不是明确的遗忘日期。调小数值不能复活已遗忘的细节。</p>
+<div class="fields"><div><label for="social-memory-half-new">刚认识 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-new" type="number" min="0.25" max="120" step="0.05" value="1.3" /></div><div><label for="social-memory-half-known">见过几次 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-known" type="number" min="0.25" max="120" step="0.05" value="3" /></div><div><label for="social-memory-half-familiar">逐渐熟悉 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-familiar" type="number" min="0.25" max="120" step="0.05" value="10" /></div><div><label for="social-memory-half-friend">自然好友 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-friend" type="number" min="0.25" max="120" step="0.05" value="24" /></div><div><label for="social-memory-half-whitelist">白名单用户 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-whitelist" type="number" min="0.25" max="120" step="0.05" value="30" /></div><div><label for="social-memory-half-owner">主人 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-owner" type="number" min="0.25" max="120" step="0.05" value="50" /></div></div><div class="toolbar"><button id="social-memory-policy-save" type="button" class="life-action life-green">保存关系记忆衰减设置</button><button id="social-memory-policy-restore" type="button" class="life-action life-sky">填入初始建议值（不保存）</button></div><p id="social-memory-policy-status" class="muted" role="status">读取中…</p></details>
+<p class="muted">昵称只从已认识 UID 的 B站公开资料按需查询，短期缓存，不影响关系评分或权限；不因为浏览列表就扫描所有 B站用户。</p>
+</section>
 <section id="panel-life" hidden>
 <div class="life-hero"><div><div class="status-line"><span id="life-learning-status" class="live-badge">● 正在整理真实经历</span></div><h2>🐟 鱼鱼的记忆</h2><p class="muted">她经历了什么、现在还记得什么，又从中留下了什么体会，都可以在这里看到。</p></div><button id="main-life-refresh" class="life-action life-indigo">↻ 刷新记忆</button></div>
-<nav class="life-jump" aria-label="人生记忆分区快捷跳转"><a href="#life-emotion-section">💗 当前心情</a><a href="#life-interest-section">🌱 最近兴趣</a><a href="#life-relationship-section">👥 逐渐熟悉的人</a><a href="#life-recall-section">🧠 经历与体会</a><a href="#life-timeline-section">📅 真实生活</a><a href="#life-todo-section">📝 自主待办</a></nav>
+<nav class="life-jump" aria-label="人生记忆分区快捷跳转"><a href="#life-emotion-section">💗 当前心情</a><a href="#life-interest-section">🌱 最近兴趣</a><a href="?tab=relationships" data-open-tab="relationships">👥 逐渐熟悉的人</a><a href="#life-recall-section">🧠 经历与体会</a><a href="#life-timeline-section">📅 真实生活</a><a href="#life-todo-section">📝 自主待办</a></nav>
 <details class="memory-flow-toggle life-subdetails"><summary>了解记忆如何形成与自然遗忘</summary><section class="memory-flow-panel" aria-label="记忆流向示意图">
   <div class="memory-flow-title"><strong>一段经历，怎样变成鱼鱼的记忆？</strong><span id="memory-flow-updated" class="muted" role="status">正在读取记忆状态…</span></div>
   <div class="memory-flow-steps" role="list">
@@ -650,12 +667,6 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p class="muted">核心兴趣由主人明确设置，优先参与选片但会轮换；短期/成长/稳定兴趣则来自真实入选视频证据。至少 3 个不同视频、横跨 2 天才会形成短期兴趣，长期没有新证据会逐渐淡出。自动学习永远不会覆盖核心兴趣。</p>
 <div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div><details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
 </details></div>
-<div id="life-relationship-section" class="settings-section life-section"><h4>👥 逐渐熟悉的人</h4>
-<p class="muted">🐟 <strong>鱼鱼可以自然认识所有真实互动过的人。</strong> 普通陌生人也能通过跨天、双向交流逐渐成为关系意义上的朋友。原「好友」名册是<strong>白名单用户</strong>，具有较高的初始关系分和额外授权；自然成为朋友并不会自动获得白名单权限或私信能力。只保存 UID 和最小互动元数据，不为陌生人建立性格画像，也不保存聊天正文。关系会降温，具体经历仍会遗忘。</p>
-<div class="toolbar"><input id="friend-relationships-query" type="search" maxlength="48" placeholder="按 UID 搜索；白名单可搜备注" aria-label="搜索关系 UID 或白名单备注"><button id="friend-relationships-refresh" class="life-action life-sky">搜索 / 刷新</button><a href="#unified-friends" data-nav-tab="social" class="life-action life-sky">管理白名单权限</a><span id="friend-relationships-status" class="muted">尚未读取</span></div>
-<div id="friend-relationships-list" class="records" aria-live="polite"></div>
-<div class="toolbar"><button id="friend-relationships-more" class="life-action life-sky" hidden>加载下一页</button><span class="muted">每页 30 人，按当前熟悉度排序。只有真实观测过的 UID 才会记录；白名单权限与自然关系分开。</span></div>
-</div>
 <div id="life-recall-section" class="settings-section life-section memory-home">
 <h4>🧠 鱼鱼现在记得什么？</h4><p class="muted">搜视频标题、BV 号或聊天关键词；留空看最近。开启已有的「低成本人生记忆检索」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p>
 <div class="toolbar memory-search-bar"><input id="main-session-history-query" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="输入视频标题 / BV号 / 聊天关键词，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div>
@@ -785,7 +796,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="settings-stack">
 <div class="settings-section" id="unified-friends">
 <h4>🐳 白名单用户权限 · 统一名册</h4>
-<p class="muted">这里只管理白名单用户的私信、主动推荐和 @ 特殊许可；自然产生的友情请前往「人生记忆 → 逐渐熟悉的人」查看，关系成长本身不取决于这份名册。<strong>默认推荐渠道为私信</strong>，公开 @ 仅在你为该好友选择后才有资格被考虑。原有的三套名单会兼容合并，不会自动替已有好友增加权限。昵称只是备注；勾选唯一授权主人会直接更改主人 UID，具体点赞与公开发布仍需单独开启权限。</p>
+<p class="muted">这里只管理白名单用户的私信、主动推荐和 @ 特殊许可；自然产生的友情请前往「生活与成长 → 逐渐熟悉的人」查看，关系成长本身不取决于这份名册。<strong>默认推荐渠道为私信</strong>，公开 @ 仅在你为该好友选择后才有资格被考虑。原有的三套名单会兼容合并，不会自动替已有好友增加权限。昵称只是备注；勾选唯一授权主人会直接更改主人 UID，具体点赞与公开发布仍需单独开启权限。</p>
 <details class="inset social-advanced"><summary>🌱 社会认知 · 候选灵感与好友邀请</summary>
 <p class="muted">陌生人的私信视频心愿只是短期探索灵感，不回信、不建陌生人画像、不产生任务或公开 @；好友分享 BV / 通过 @ 请求“有空看看”，会形成可到期的只读观看邀请。大肥鱼好奇心充足时可选择审阅，<strong>默认不自动查看，不保证已观看</strong>。</p>
 <label class="checkline"><input id="social-stranger-inspiration" type="checkbox">允许读取陌生人私信里的短期视频灵感（默认关闭）</label>

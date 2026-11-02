@@ -63,27 +63,43 @@ test('从实际模型目录生成 Provider 与模型下拉选项，展示继承�
   assert.equal(provider.value,'')
   assert.equal(model.value,'')
   assert.match($('models-default-summary').textContent,/DSH 当前默认模型：claude \/ sonnet/)
-  assert.equal($('models-use-recommended').disabled,false)
+  assert.match($('models-recommendation-note').textContent,/已验证模型/)
+  assert.match($('models-video-effective').textContent,/已保存配置/)
   provider.value='deepseek-official';provider.trigger('change')
   assert.deepEqual(model.children.map(x=>x.value),['','flash','v4-pro'])
   assert.equal(model.value,'flash')
   assert.match($('models-video-effective').textContent,/deepseek-official \/ flash/)
 })
 
-test('一键使用已验证模型只改本地待保存下拉值，不改独立视觉模式或思考深度',()=>{
+test('自动继承保持宿主默认，恢复继承不误选首个已验证的 Claude',()=>{
   const {$,controls,feedback}=ui()
-  controls.renderModelDropdowns({mainSessionReflectionModelProvider:'legacy',mainSessionReflectionModelId:'legacy-model'})
+  controls.renderModelDropdowns({mainSessionReflectionModelProvider:'legacy',mainSessionReflectionModelId:'legacy-model',interactionModelProvider:'claude',interactionModelId:'haiku'})
   assert.equal($('model-mainSessionReflectionModelProvider').value,'legacy')
-  assert.ok($('model-mainSessionReflectionModelProvider').children.some(x=>x.value==='legacy'))
-  $('models-use-recommended').trigger('click')
-  for(const group of ['video','interaction','dailyDynamic','ownerDmAgent','reflection','memeRules','memory']){
-    const keys=group==='memory'?['main-memory-model-provider','main-memory-model-id']:
-      group==='reflection'?['model-mainSessionReflectionModelProvider','model-mainSessionReflectionModelId']:
-      [`model-${group}ModelProvider`,`model-${group}ModelId`]
-    assert.equal($(keys[0]).value,'claude',group)
-    assert.equal($(keys[1]).value,'haiku',group)
+  assert.match($('models-dailyDynamic-effective').textContent,/claude \/ haiku/)
+  $('models-reset-inheritance').trigger('click')
+  for(const group of ['video','interaction','dailyDynamic','ownerDmAgent','reflection','vision','memeRules']){
+    const [provider,model]=group==='reflection'?['model-mainSessionReflectionModelProvider','model-mainSessionReflectionModelId']:[`model-${group}ModelProvider`,`model-${group}ModelId`]
+    assert.equal($(provider).value,'',group)
+    assert.equal($(model).value,'',group)
   }
-  assert.equal($('model-visionModelProvider').value,'')
-  assert.match($('models-vision-effective').textContent,/claude \/ haiku/)
-  assert.match(feedback(),/请检查后点击「保存全部模型配置」/)
+  // Semantic retrieval is not a runtime-inheritable model, so reset leaves it untouched.
+  assert.equal($('main-memory-model-provider').value,'')
+  assert.match($('models-dailyDynamic-effective').textContent,/claude \/ sonnet/)
+  assert.match(feedback(),/尚未保存/)
+})
+
+test('更改上游互动模型时，下游的继承下拉框与待保存预览一起刷新',()=>{
+ const {$,controls}=ui()
+ controls.renderModelDropdowns({})
+ const upstream=$('model-interactionModelProvider');upstream.value='claude';upstream.trigger('change')
+ const model=$('model-interactionModelId');model.value='haiku';model.trigger('change')
+ for(const target of ['dailyDynamic','ownerDmAgent']){
+   const select=$(`model-${target}ModelId`)
+   assert.match(select.children[0].textContent,/自动继承（claude \/ haiku）/)
+   assert.match($(`models-${target}-effective`).textContent,/待保存预览：claude \/ haiku/)
+ }
+ upstream.value='';upstream.trigger('change')
+ for(const target of ['dailyDynamic','ownerDmAgent']){
+   assert.match($(`model-${target}ModelId`).children[0].textContent,/自动继承（claude \/ sonnet）/)
+ }
 })

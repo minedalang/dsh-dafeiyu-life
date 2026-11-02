@@ -23,11 +23,11 @@ function fixture(home, {collectCleanup = false} = {}) {
     settings: {describe() {return []}},
   }
   const file = join(home, 'bili-duty', 'social-relationships', 'relationships.sqlite3')
-  async function get(path) {
+  async function get(path, extraHeaders = {}) {
     const req = Readable.from([])
     req.method = 'GET'
     req.url = path
-    req.headers = {host: '127.0.0.1:3080'}
+    req.headers = {host: '127.0.0.1:3080', ...extraHeaders}
     let status = 0, body = ''
     await handler(req, {
       writeHead(code) {status = code},
@@ -71,6 +71,31 @@ test('relationship index opens on first use and closes when the real host dispos
     renameSync(host.file, moved)
     renameSync(moved, host.file)
   } finally {
+    rmSync(home, {recursive: true, force: true})
+  }
+})
+
+
+test('公开昵称仅由同源的管理页查询；未登录时安全回退 UID 且不打开外部网络', async () => {
+  const home = mkdtempSync(join(tmpdir(), 'dafeiyu-dev9-nickname-'))
+  let host
+  try {
+    seedCompletedFirstStart(home)
+    host = fixture(home, {collectCleanup: true})
+    apply(host.ctx, {})
+    const blocked = await host.get('/api/bili-duty/relationships/nicknames?uids=522504190', {origin: 'https://other.example'})
+    assert.equal(blocked.status, 403)
+    const invalid = await host.get('/api/bili-duty/relationships/nicknames?uids=522504190,not-a-uid')
+    assert.equal(invalid.status, 400)
+    const safe = await host.get('/api/bili-duty/relationships/nicknames?uids=522504190')
+    assert.equal(safe.status, 200, safe.body.slice(0, 150))
+    const data = JSON.parse(safe.body)
+    assert.equal(data.ok, true)
+    assert.deepEqual(data.names, {})
+    assert.deepEqual(data.unknown, ['522504190'])
+    assert.match(data.note, /尚未登录/)
+  } finally {
+    host?.cleanup()
     rmSync(home, {recursive: true, force: true})
   }
 })

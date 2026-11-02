@@ -91,3 +91,41 @@ test('dev.9 README 使用自由成长叙事，而非主人选择名单叙事',()
  assert.doesNotMatch(s,/不是只有主人提前加入名单的人|不必先被主人加入白名单/)
  assert.match(s,/未来 2\.6\.1/)
 })
+
+test('关系昵称仅为短期展示缓存：旧库兼容、不能凭昵称新增用户或授予权限',()=>using(async({index,dir,clock})=>{
+ const uid='522504190'
+ assert.equal(index.cacheNickname(uid,'公开昵称').ok,false,'没有真实交互的 UID 不能凭名字成为熟人')
+ assert.equal(index.observe({uid,source:'comment',direction:'incoming',eventId:'real-encounter-5225',at:AT}).added,1)
+ const saved=index.cacheNickname(uid,'测试公开昵称 <script>',{at:AT})
+ assert.equal(saved.ok,true)
+ assert.equal(saved.nickname,'测试公开昵称  script ' .trim())
+ const a=index.list({query:uid}).rows[0]
+ assert.equal(a.nickname,'测试公开昵称  script')
+ assert.equal(a.stage,'new');assert.equal(a.whitelisted,false);assert.equal(a.permissionRole,'stranger')
+ assert.equal(a.count,1,'资料读取不会增加互动次数')
+ clock.at+=8*DAY
+ const expired=index.get(uid)
+ assert.equal(expired.nickname,'','昵称七天后不得当作实时资料展示')
+ assert.equal(expired.count,1,'昵称过期不删除关系记录')
+ index.close()
+ const reopened=createSocialRelationshipIndex({dataDir:dir,now:()=>clock.at})
+ try{assert.equal(reopened.get(uid).count,1,'旧关系数据可以重开'); assert.equal(reopened.get(uid).nickname,'')}
+ finally{reopened.close()}
+}))
+
+test('关系记忆参考半衰期与真实遗忘算法共享参数，不由昵称改动',async()=>{
+ const {relationshipMemoryHalfLifeDays}=await import('../lib/life-memory-gateway.mjs')
+ assert.equal(relationshipMemoryHalfLifeDays({stage:'new',permissionRole:'stranger'},30),1.3)
+ assert.equal(relationshipMemoryHalfLifeDays({stage:'known',permissionRole:'stranger'},30),3)
+ assert.equal(relationshipMemoryHalfLifeDays({stage:'familiar',permissionRole:'stranger'},30),10)
+ assert.equal(relationshipMemoryHalfLifeDays({stage:'friend',permissionRole:'stranger'},30),24)
+ assert.equal(relationshipMemoryHalfLifeDays({stage:'friend',permissionRole:'friend',whitelisted:true},30),30)
+ assert.equal(relationshipMemoryHalfLifeDays({stage:'new',permissionRole:'owner'},30),50)
+ assert.equal(relationshipMemoryHalfLifeDays({stage:'new',permissionRole:'stranger'},60),2.6)
+ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
+ assert.match(html,/公开社交经历/)
+ const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+ assert.match(js,/关系熟悉度/)
+ assert.match(js,/publicMemoryHalfLifeDays/)
+ assert.match(js,/relationships\/nicknames/)
+})
