@@ -708,8 +708,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p class="muted" id="autonomous-planner-status" role="status">尚未读取自主调度状态</p></div>
 <div class="inset"><h4>🐟 完成待办后向主人回访 · 2.6.0</h4>
 <p class="muted">只针对主人在私信中明确提出、AI 记录后由鱼鱼实际读取了相关视频资料的待办，择机给已核验的主人发一条进度消息。默认关闭，最多每24小时一次，22:00–09:00 不发送；尊重退订。不会把“查到视频”说成“听过歌曲”，也不恢复旧版随机情绪主动回访。</p>
-<div class="fields"><div><label for="owner-todo-completion-followup">允许完成后给主人私信回访</label><select id="owner-todo-completion-followup"><option value="false">关闭（默认）</option><option value="true">开启 · 仅已核验任务完成后</option></select></div></div>
-<p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p></div>
+<div class="fields"><div><label for="owner-todo-completion-followup">允许完成后回访主人（私信）</label><select id="owner-todo-completion-followup"><option value="false">关闭（默认）</option><option value="true">开启 · 仅已核验任务完成后</option></select></div></div>
+<div class="fields"><div><label for="social-todo-completion-followup">允许完成后回访原请求者（其他用户）</label><select id="social-todo-completion-followup"><option value="false">关闭（默认）</option><option value="true">开启 · 遵循原渠道和独立联系权限</option></select></div></div>
+<p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
 <div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存待办与自主调度设置</button></div>
 </details>
 </div>

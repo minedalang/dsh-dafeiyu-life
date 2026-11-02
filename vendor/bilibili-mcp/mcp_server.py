@@ -524,6 +524,7 @@ async def bili_comment_thread(bvid: str, root: int, num: int = 20, target_rpid: 
                 root_member = root_obj.get("member") or {}
                 root_content = root_obj.get("content") or {}
                 root_comment = {"rpid": str(root_obj.get("rpid") or root),
+                                "mid": str(root_member.get("mid") or ""),
                                 "name": str(root_member.get("uname") or "")[:60],
                                 "content": str(root_content.get("message") or "")[:300]}
             page_rows = [{"rpid": str(r.get("rpid") or ""),
