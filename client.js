@@ -950,8 +950,11 @@ function WatchTab() {
         h(ToggleRow, {label:'允许大肥鱼自己决定点赞', note:'看完并真心认可才点赞；每天最多 10 条，不为凑数自动点赞。初次升级默认关闭。',
           on:sw('autoVideoLike'),onChange:v=>patch({autoVideoLike:v},'自主点赞')}),
         h('div', { 'data-bd-note': '' }, '此开关只控制刷视频时由大肥鱼自主决定是否点赞。你在主 Session 明确要求给指定 BV 点赞时，可调用单条手动点赞工具；手动与自动点赞共用每日点赞上限，并受总开关、登录状态和防重复保护。'),
-        h(ToggleRow, {label:'允许大肥鱼自己建夹、选择性收藏', note:'只有值得以后重看的视频才收藏；自动复用或创建「大肥鱼·主题」私有收藏夹。每天最多 5 条收藏、2 个新建夹，总共最多 12 个自动创建的收藏夹；初次升级默认关闭。',
+        h(ToggleRow, {label:'允许大肥鱼自己建夹、选择性收藏', note:'只有值得重看的视频才收藏；新建夹公开状态由鱼鱼选择（可在管理中心强制隐藏/公开）。初次升级自主收藏仍默认关闭。',
           on:sw('autoVideoCollect'),onChange:v=>patch({autoVideoCollect:v},'自主收藏')}),
+        h(ToggleRow, {label:'允许鱼鱼删除自己创建的主题收藏夹（默认开）', note:'只限经本插件创建账本核对的收藏夹，最多每天一次；不会删除账号原有收藏夹。',
+          on:cfg.autoFavoriteDelete!==false,onChange:v=>patch({autoFavoriteDelete:v},'自主整理收藏夹')}),
+        h('div', { 'data-bd-note': '' }, '新建收藏夹的公开/隐藏策略可在管理中心 → 视频探索与自主行动设置；默认由鱼鱼自行决定。'),
         h('div', { 'data-bd-note': '' }, '旧版「全部挑中视频统一收藏」已停止执行。既有收藏夹和历史收藏不会被清空或移动。'),
 
           h('div', { 'data-bd-row': '' },

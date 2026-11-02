@@ -15,7 +15,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=(ROOT/'vendor/bilibili-mcp/mcp_server.py').read_text('utf8')
 FUNCTIONS={'_selected_for_reaction','_action_conn','_claim_video_action','_finish_video_action',
-           '_check_reaction','_folder_title','_styled_auto_folder_title','_ensure_ai_folder','bili_video_like','bili_video_collect'}
+           '_check_reaction','_folder_title','_styled_auto_folder_title','_favorite_new_private','_ensure_ai_folder','bili_video_like','bili_video_collect'}
 TREE=ast.parse(SOURCE)
 BODY=[]
 for node in TREE.body:

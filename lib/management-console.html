@@ -515,6 +515,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <label class="checkline"><input id="bili-auto-comment" type="checkbox">允许自主发表原创评论</label>
 <label class="checkline"><input id="bili-auto-like" type="checkbox">允许自主点赞（看完视频后自己判断）</label>
 <label class="checkline"><input id="bili-auto-collect" type="checkbox">允许自主创建主题收藏夹并选择性收藏</label>
+<div class="fields"><div><label for="bili-favorite-visibility">新建收藏夹的公开范围</label><select id="bili-favorite-visibility"><option value="auto">鱼鱼自主决定（默认）</option><option value="private">始终隐藏（私有）</option><option value="public">始终公开</option></select><small class="setting-note">只影响今后鱼鱼新建的主题夹；复用已有收藏夹时不修改其公开状态。</small></div></div>
+<label class="checkline"><input id="bili-favorite-delete" type="checkbox" checked>允许鱼鱼自主删除自己创建的主题收藏夹（默认开启）</label>
+<p class="muted">只允许删除本插件账本记录、且已核验为当前账号自己的收藏夹；每日最多 1 次，不会删除其他收藏夹或默认收藏夹。删除是不可逆的外部操作。</p>
 <label class="checkline"><input id="bili-agent-follow" type="checkbox">允许 B站 Agent 自主关注／取关 UP 主（默认关闭，严格限额）</label>
 <p class="muted">仅可关注当天真正入选的视频 UP；仅可取关由大肥鱼自己关注、至少 7 天前关注的人。每日最多关注 3 人、取关 1 人。未开放关注列表、批量关注、拉黑或其他账号管理权限。</p>
 </div>

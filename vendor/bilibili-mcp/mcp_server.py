@@ -1248,7 +1248,16 @@ def _styled_auto_folder_title(topic):
     return prefix+subject[:max_subject]+suffix
 
 
-async def _ensure_ai_folder(cred,uid,topic,automatic=False):
+def _favorite_new_private(visibility='private'):
+    """Apply admin policy to the fish's per-new-folder choice; uncertainty stays private."""
+    policy=os.environ.get('BILI_FISH_FOLDER_VISIBILITY','auto')
+    if policy=='private':return True
+    if policy=='public':return False
+    if policy!='auto':return True  # corrupted config must not accidentally expose folders
+    return visibility!='public'
+
+
+async def _ensure_ai_folder(cred,uid,topic,automatic=False,visibility='private'):
     title=_styled_auto_folder_title(topic) if automatic else _folder_title(topic)
     data=await favorite_list.get_video_favorite_list(int(uid),credential=cred)
     items=(data or {}).get('list') or []
@@ -1270,7 +1279,7 @@ async def _ensure_ai_folder(cred,uid,topic,automatic=False):
         new_today=con.execute('SELECT COUNT(*) FROM created_folders WHERE uid=? AND day=?',(uid,today)).fetchone()[0]
         if new_today>=2:raise ValueError('今日已经创建两个收藏夹，不再新建')
     finally: con.close()
-    result=await favorite_list.create_video_favorite_list(title=title,introduction='大肥鱼自主挑选的值得回看的视频',private=True,credential=cred)
+    result=await favorite_list.create_video_favorite_list(title=title,introduction='大肥鱼自主挑选的值得回看的视频',private=_favorite_new_private(visibility) if automatic else True,credential=cred)
     fid=int((result or {}).get('id') or (result or {}).get('fid') or (result or {}).get('data',{}).get('id') or 0)
     if fid<=0:
         # 若接口响应未带 ID，重新读取，且绝不凭空编造收藏夹编号。
@@ -1279,7 +1288,8 @@ async def _ensure_ai_folder(cred,uid,topic,automatic=False):
     if fid<=0:raise ValueError('B站可能已创建收藏夹但未返回 ID；请检查收藏夹，插件不会重复创建')
     con=_action_conn()
     try:
-        with con:con.execute('INSERT OR IGNORE INTO created_folders(uid,title,fid,day) VALUES(?,?,?,?)',(uid,title,fid,datetime.now().strftime('%Y-%m-%d')))
+        with con:con.execute('''INSERT INTO created_folders(uid,title,fid,day) VALUES(?,?,?,?)
+            ON CONFLICT(uid,title) DO UPDATE SET fid=excluded.fid,day=excluded.day''',(uid,title,fid,datetime.now().strftime('%Y-%m-%d')))
     finally:con.close()
     return fid,title,True
 
@@ -1837,27 +1847,114 @@ async def bili_send_message_manual(receiver_uid: int, text: str, confirm: bool =
 
 
 @tool()
-async def bili_video_collect(bvid: str, folder_title: str, reason: str = '') -> str:
+async def bili_video_collect(bvid: str, folder_title: str, reason: str = '', visibility: str = 'private') -> str:
     # 只收藏需要未来回看的入选视频
     if (e:=_guard('bili_video_collect')): return e
     try:
         bv,cred,uid=_check_reaction(bvid,'BILI_AUTO_VIDEO_COLLECT')
         _folder_title(folder_title)   # 先校验命名，再申请动作额度
+        if visibility not in ('private','public'): raise ValueError('新建收藏夹公开范围仅支持 public/private')
         why=_safe_line(reason,100)
         if len(why)<4:raise ValueError('收藏需要具体的未来重看理由')
         result=_claim_video_action(uid,bv,'collect',5)
         if result:return json.dumps(result,ensure_ascii=False)
         try:
-            fid,title,created=await _ensure_ai_folder(cred,uid,folder_title,automatic=True)
+            fid,title,created=await _ensure_ai_folder(cred,uid,folder_title,automatic=True,visibility=visibility)
             result=await video.Video(bvid=bv,credential=cred).set_favorite(add_media_ids=[fid])
             if isinstance(result,dict) and result.get('code',0) not in (0,None):raise ValueError(str(result.get('message') or result.get('code'))[:120])
             _finish_video_action(uid,bv,'collect',True,title+'：'+why)
-            return json.dumps({'ok':True,'collected':True,'bvid':bv,'folder':title,'created':created},ensure_ascii=False)
+            return json.dumps({'ok':True,'collected':True,'bvid':bv,'folder':title,'created':created,'new_folder_private':_favorite_new_private(visibility) if created else None},ensure_ascii=False)
         except Exception as error:
             _finish_video_action(uid,bv,'collect',False,str(error))
             return json.dumps({'ok':False,'error':'收藏失败：'+str(error)[:120]},ensure_ascii=False)
     except Exception as error:
         return json.dumps({'ok':False,'error':str(error)[:180]},ensure_ascii=False)
+
+
+@tool()
+async def bili_fish_created_folders() -> str:
+    """Only show folders whose exact id/title is recorded as created by this plugin."""
+    if (e:=_guard('bili_fish_created_folders')):return e
+    try:
+        if os.environ.get('BILI_FISH_FOLDER_DELETE')!='1':raise ValueError('自主删除收藏夹未授权')
+        cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
+        if not uid.isdigit() or int(uid)<=0:raise ValueError('无法核实登录账号 UID')
+        con=_action_conn()
+        try:known=con.execute('SELECT fid,title FROM created_folders WHERE uid=?',(uid,)).fetchall()
+        finally:con.close()
+        if not known:return json.dumps({'ok':True,'folders':[]},ensure_ascii=False)
+        data=await favorite_list.get_video_favorite_list(int(uid),credential=cred)
+        if not isinstance(data,dict) or not isinstance(data.get('list'),list):raise ValueError('无法核实收藏夹列表')
+        by_id={int(x['id']):x for x in data['list'] if isinstance(x,dict) and str(x.get('id') or '').isdigit()}
+        result=[]
+        for row in known:
+            item=by_id.get(int(row['fid']))
+            if not item or str(item.get('title') or '')!=row['title']:continue
+            if str(item.get('mid') or uid)!=uid:continue
+            if item.get('attr') is not None and (int(item['attr'])&1)==0:continue
+            result.append({'fid':int(row['fid']),'title':row['title'],'count':max(0,int(item.get('media_count') or 0))})
+        return json.dumps({'ok':True,'folders':result[:12]},ensure_ascii=False)
+    except Exception as e:return json.dumps({'ok':False,'error':str(e)[:180]},ensure_ascii=False)
+
+
+@tool()
+async def bili_favorite_folder_delete(fid: int, reason: str = '') -> str:
+    """One irreversible delete per day; only this plugin's exact, verified creations."""
+    if (e:=_guard('bili_favorite_folder_delete')):return e
+    try:
+        if os.environ.get('BILI_FISH_FOLDER_DELETE')!='1':raise ValueError('自主删除收藏夹权限已关闭')
+        if isinstance(fid,bool) or not str(fid).isdigit() or int(fid)<=0:raise ValueError('收藏夹 ID 不合法')
+        ident=int(fid)
+        why=_safe_line(reason,100)
+        if len(why)<8:raise ValueError('需具体说明为什么不再保留这个收藏夹')
+        cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
+        if not uid.isdigit() or int(uid)<=0:raise ValueError('无法确认登录账号 UID')
+        con=_action_conn()
+        try:record=con.execute('SELECT title FROM created_folders WHERE uid=? AND fid=?',(uid,ident)).fetchone()
+        finally:con.close()
+        if record is None:raise ValueError('不是有创建记录的鱼鱼收藏夹，拒绝删除')
+        title=str(record['title'])
+        if not title.startswith('大肥鱼·'):raise ValueError('不是大肥鱼主题收藏夹')
+        data=await favorite_list.get_video_favorite_list(int(uid),credential=cred)
+        if not isinstance(data,dict) or not isinstance(data.get('list'),list):raise ValueError('无法确认当前账号收藏夹列表')
+        existing=next((x for x in data['list'] if isinstance(x,dict) and int(x.get('id') or 0)==ident),None)
+        if not existing or str(existing.get('title') or '')!=title:raise ValueError('收藏夹不存在或名称不一致，拒绝删除')
+        if str(existing.get('mid') or uid)!=uid:raise ValueError('收藏夹不属于当前账号')
+        if existing.get('attr') is not None and (int(existing['attr'])&1)==0:raise ValueError('默认收藏夹不能删除')
+        day=datetime.now().strftime('%Y-%m-%d')
+        con=_action_conn()
+        try:
+            with con:
+                con.execute("""CREATE TABLE IF NOT EXISTS folder_deletions(
+                    uid TEXT NOT NULL,fid INTEGER NOT NULL,day TEXT NOT NULL,
+                    status TEXT NOT NULL, reason TEXT NOT NULL,
+                    PRIMARY KEY(uid,fid))""")
+                con.execute('BEGIN IMMEDIATE')
+                if con.execute('SELECT 1 FROM folder_deletions WHERE uid=? AND fid=?',(uid,ident)).fetchone():
+                    raise ValueError('此收藏夹已有删除操作记录，禁止重复尝试')
+                if con.execute('SELECT COUNT(*) FROM folder_deletions WHERE uid=? AND day=?',(uid,day)).fetchone()[0]>=1:
+                    raise ValueError('今天已经尝试删除一个收藏夹')
+                con.execute('INSERT INTO folder_deletions(uid,fid,day,status,reason) VALUES(?,?,?,?,?)',(uid,ident,day,'pending',why))
+        finally:con.close()
+        status='uncertain'
+        try:
+            outcome=await favorite_list.delete_video_favorite_list(media_ids=[ident],credential=cred)
+            if isinstance(outcome,dict) and outcome.get('code') not in (None,0):
+                raise ValueError(str(outcome.get('message') or 'B站未确认删除')[:120])
+            check=await favorite_list.get_video_favorite_list(int(uid),credential=cred)
+            if not isinstance(check,dict) or not isinstance(check.get('list'),list):raise ValueError('删除后无法复核收藏夹列表')
+            if any(int(x.get('id') or 0)==ident for x in check['list'] if isinstance(x,dict)):
+                raise ValueError('删除后收藏夹仍存在，回执不确定')
+            status='confirmed'
+            return json.dumps({'ok':True,'deleted':True,'fid':ident,'title':title,'note':'B站删除已确认，不能恢复'},ensure_ascii=False)
+        except Exception as error:
+            return json.dumps({'ok':False,'uncertain':True,'no_retry':True,'error':'删除结果未确认，不允许自动重试：'+str(error)[:120]},ensure_ascii=False)
+        finally:
+            con=_action_conn()
+            try:
+                with con:con.execute('UPDATE folder_deletions SET status=? WHERE uid=? AND fid=?',(status,uid,ident))
+            finally:con.close()
+    except Exception as e:return json.dumps({'ok':False,'blocked':True,'error':str(e)[:180]},ensure_ascii=False)
 
 
 @tool()
