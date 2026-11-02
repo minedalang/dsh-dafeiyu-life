@@ -50,3 +50,7 @@
 ## 2.6.1-dev.4 · 主 Session 和 B站私信的真实双向生活状态
 
 - [主 Session/主人 DM/好友 DM 的情绪、私密经历、成长人格接线及权限矩阵](dev261-main-dm-conversation-life-dev4.md)：说明真实信号、同轮反馈、源身份、哈希去重、隐私审查与仍未实现的 P5-B。
+
+## 2.6.1-dev.6 新增接线审计
+
+- [自主待办提醒、真实关注机会和人格弱证据](dev261-agency-growth-follow-todos-dev6.md)：管理 HTTP、双域意愿、平台写入边界与 Life Memory 证据约束。

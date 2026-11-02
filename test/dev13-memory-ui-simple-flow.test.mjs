@@ -79,5 +79,5 @@ test('人生记忆页面突出心情、兴趣、待办与关系；复杂权限�
  assert.match(script,/lastOwnerTodos=data/)
  assert.match(script,/renderTodoList\(data\)/)
  assert.match(script,/showTodoFilter\(filter\)/)
- assert.match(script,/if\(write&&!row.ownerAuthorized\)throw Error/)
+ assert.doesNotMatch(script,/btn\('现在执行'/);assert.match(script,/owner-todo-remind/)
 })
