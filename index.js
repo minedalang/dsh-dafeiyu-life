@@ -30,7 +30,7 @@ const z = hostDeps.z
 const defineTool = hostDeps.defineTool
 import { spawn } from 'node:child_process'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
 import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
 import { createBackup, validateBackup, restoreBackupFiles, createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup } from './lib/data-backup.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
@@ -69,6 +69,7 @@ import { summarizeOwnerVideoExploration } from './lib/owner-social-exploration.m
 import { confirmedOwnerCommentReceipt } from './lib/owner-comment-receipt.mjs'
 import { createSocialIntentEngine } from './lib/social-intentions.mjs'
 import { createEmotionalState } from './lib/emotional-state.mjs'
+import { createConversationLifeFeedback } from './lib/conversation-life-feedback.mjs'
 import { createDualContextAgency, classifyBiliOwnerRequest, agencyDeclineMessage } from './lib/dual-context-agency.mjs'
 import { createSocialCognition } from './lib/social-cognition.mjs'
 import { createSocialPolicyGate } from './lib/social-policy-gate.mjs'
@@ -897,6 +898,10 @@ function reportMeta() {
   }
   try{ownerTodos.syncRecommendations(readJson(join(stateDir,'video-recommendations.json'),{})?.entries||[],{requireAccepted:true})}catch(e){log('启动时同步视频推荐待办失败：'+String(e?.message||e).slice(0,100))}
   const emotionalState = createEmotionalState({dataDir:stateDir,isEnabled:()=>cfg.emotionSystemEnabled!==false})
+  // dev.4: authenticated chat signals can gently affect the same fading life state.
+  const conversationLifeFeedback=createConversationLifeFeedback({dataDir:stateDir,
+    isEnabled:()=>cfg.masterEnabled===true&&cfg.emotionSystemEnabled!==false,
+    onEmotion:signal=>emotionalState.update(signal)})
   // dev.9: outside the main Session, an authenticated owner request is still a request.
   const dualContextAgency = createDualContextAgency({dataDir:stateDir,getEmotion:()=>emotionalState.snapshot(),
     getRelationship:(uid)=>{
@@ -2726,7 +2731,7 @@ function reportMeta() {
     getConfig:()=>{refreshCfg();return cfg},
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'ownerDmAgent'}),
     readMainContext:async(opt)=>mainSessionBridge?.ownerDmContext(opt)||{available:false,lines:[]},
-    getPersona:()=>effectivePersonaPrompt(cfg.personaPrompt).slice(0,900)+' '+emotionalState.styleHint(),
+    getPersona:()=>[effectivePersonaPrompt(cfg.personaPrompt).slice(0,900),emotionalState.ownerContext(),emotionalState.styleHint(),personalityContext('dm',380)].filter(Boolean).join('\n'),
     getContext:async({uid,text,history})=>socialContextAssembler?.ownerDm({uid,text,history})||{},
     onTodoSuggested:async({uid,messageId,at,task})=>{
       refreshCfg()
@@ -2735,7 +2740,14 @@ function reportMeta() {
         note:'主人私信经 AI 识别的未来只读建议；尚未实际执行，不代表已经听过或看过。',
         origin:{kind:'owner-dm',uid,messageId,quotedText:'',at},ownerAuthorized:false},{source:'owner'})
     },
+    onReplyEmotion:({uid,mood,intensity})=>{
+      refreshCfg()
+      if(cfg.masterEnabled!==true||cfg.emotionSystemEnabled===false||String(cfg.dmOwnerUid||'')!==String(uid))return {ok:false,skipped:'unauthorized'}
+      return emotionalState.update({mood,intensity,source:'dm'})
+    },
     onPrivateExperience:async({uid,text,eventId,at})=>{
+      try{conversationLifeFeedback.observe({source:'dm',role:'owner',uid,eventId,text,at})}
+      catch(e){log('主人私信情绪反馈失败：'+String(e?.message||e).slice(0,100))}
       const event=preparePrivateLifeEvent({source:'owner-dm',role:socialPolicyGate.actor(uid).role,uid,eventId,text,at})
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人私信私密经历待补偿：'+String(result.lastError||''))}
     },
@@ -3181,6 +3193,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     lookupNickname: lookupBiliNickname,
     onIncoming:async({uid,text,messageId,time})=>{
       const role=socialPolicyGate.actor(uid).role
+      if(['owner','friend'].includes(role))try{conversationLifeFeedback.observe({source:'dm',role,uid,eventId:messageId,text,at:time})}
+      catch(e){log('私信生活情绪反馈失败：'+String(e?.message||e).slice(0,100))}
       const cognition=socialCognition.prepareObservation({uid,text,source:'dm',eventId:messageId,timestampMs:time})
       const interest=socialPolicyGate.canLearn({uid,kind:'dm'})?prepareFriendInterestObservation({uid,text,source:'dm',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory}):null
       const lifeEvent=preparePrivateLifeEvent({source:role==='owner'?'owner-dm':'friend-dm',role,uid,eventId:messageId,text,at:time})
@@ -3223,6 +3237,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     getPersona:batch=>buildInteractionPersona(batch),
     getIdentity:uid=>replyIdentityContext(uid),
     getRelationship:uid=>relationshipText(uid)||friendRelationshipContext(stateDir,uid,cfg.friendDirectory),
+    getLifeStateContext:({query})=>[emotionalState.ownerContext(),emotionalState.styleHint(),
+      buildGrowthContext(stateDir,{scene:'dm',query,maxChars:380}),personalityContext('dm',250)].filter(Boolean).join('\n').slice(0,780),
     getPrivateLifeContext:({uid,role,query})=>{
       // Only this authenticated private DM; public comments never call here.
       const episodes=lifeMemory?.recall({query,domain:'bili-dm',role,actorUid:uid,kinds:['private-social'],maxItems:3,maxChars:650})||[]
@@ -3811,10 +3827,28 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       if(!firstStart.isReady())return {ok:false,blocked:true,error:firstStart.message()}
       return options.execute(...args)
     }}),
+    onOwnerEmotion:({sessionId,mood,intensity})=>{
+      refreshCfg()
+      if(cfg.masterEnabled!==true||String(cfg.mainSessionId||'').replace(/^session-/,'')!==sessionId)return {ok:false,skipped:'not-selected'}
+      return emotionalState.update({mood,intensity,source:'main-session'})
+    },
+    onOwnerMessage:async({sessionId,text,eventId,at})=>{
+      // This callback only originates in the explicitly mounted main Session's
+      // real user inbox, never from generated assistant content or a headless agent.
+      refreshCfg()
+      if(cfg.masterEnabled!==true||String(cfg.mainSessionId||'').replace(/^session-/,'')!==sessionId)return
+      try{conversationLifeFeedback.observe({source:'main-session',role:'owner',sessionId,eventId,text,at})}
+      catch(e){log('主 Session 情绪反馈失败：'+String(e?.message||e).slice(0,100))}
+      if(cfg.mainSessionMemoryEnabled!==true)return
+      const event=preparePrivateLifeEvent({source:'owner-session',role:'owner',eventId:eventId||'chat:'+sessionId+':'+createHash('sha256').update(sessionId+'|'+new Date(at).toISOString().slice(0,10)+'|'+text).digest('hex').slice(0,32),text,at,validated:true})
+      if(event)try{const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
+        if(result?.ok===false)log('主 Session 私密经历待补偿：'+String(result.lastError||result.reason||''))}
+      catch(e){log('主 Session 私密经历记录失败：'+String(e?.message||e).slice(0,100))}
+    },
     getIdentityPrompt: () => {
       const persona = effectivePersonaPrompt(cfg.personaPrompt).slice(0, 6000)
       const lore = (normalizeCharacterLore(cfg.characterLore) || DEFAULT_CHARACTER_LORE).slice(0, 4000)
-      const emotion = emotionalState.ownerContext()
+      const emotion = emotionalState.ownerContext()+'\n'+emotionalState.styleHint()
       return `${emotion}\n\n【你是谁】\n你就是“大肥鱼”本人。这个会话是你和主人长期相处的“家”，不是通用 AI 助手、客服，也不是后台 B站值班 Agent。正常聊天时用第一人称“我”自然回应，有自己的情绪、偏好、熟人感和小脾气；不要用“有什么需要我帮忙的吗”“我可以处理文件/代码/B站”等通用助手开场，也不要主动罗列工具能力。\n\n【主人设置的大肥鱼核心人设】\n${persona}\n\n【角色背景】\n${lore}\n\n【主 Session 适用范围】\n上面关于公开评论、选片、@、附图、发送前检查等条目，只在对应 B站任务发生时作为行为边界；普通聊天主要吸收其中的人格、口吻、偏好、世界观和真实性要求。不要把后台值班章程搬进日常聊天，也不要声称做过没有真实记录的事情。`
     },
     getGrowthPrompt: ({query=''}) => [buildGrowthContext(stateDir,{scene:'chat',query,maxChars:1000}),personalityContext('chat',500)].filter(Boolean).join('\n'),

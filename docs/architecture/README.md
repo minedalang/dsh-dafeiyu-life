@@ -46,3 +46,7 @@
 ## 2.6.1-dev.3 · 统一待办增量
 
 - [P4 已接受待办生命周期、分页与恢复的真实接线](dev261-unified-accepted-todos-dev3.md)：继续沿用 `owner-todos` 和 `AutonomousPlanner`，未覆盖任意类型任务或自主回访。
+
+## 2.6.1-dev.4 · 主 Session 和 B站私信的真实双向生活状态
+
+- [主 Session/主人 DM/好友 DM 的情绪、私密经历、成长人格接线及权限矩阵](dev261-main-dm-conversation-life-dev4.md)：说明真实信号、同轮反馈、源身份、哈希去重、隐私审查与仍未实现的 P5-B。

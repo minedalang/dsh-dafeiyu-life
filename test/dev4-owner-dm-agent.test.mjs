@@ -78,3 +78,20 @@ test('专用模型 overlay 不可插入 MCP 工具',()=>withDir(dir=>{
   assertSafeHeadlessLaunch(['dsh','--profile','headless','--patch',f],f,{kind:'ownerDmAgent',stateDir:dir})
   assert.throws(()=>writeSecureHeadlessOverlay(f,content+'\n- insert:\n    - id: mcp-bili-duty\n',{kind:'ownerDmAgent',stateDir:dir}),/插入了非预期插件|不应挂载/)
 }))
+
+test('dev.4 主人私信的角色情绪只在 B站确认投递成功后回写，不给失败发送制造成功情绪',()=>withDir(async dir=>{
+  const emotions=[]
+  const make=(send)=>createOwnerDmAgent({dataDir:dir,getConfig:()=>config(),
+    invokeModel:async()=>JSON.stringify({action:'reply',text:'今天很高兴见到你',mood:'warm',intensity:1}),
+    executeRead:async()=>({ok:true}),executeWrite:async()=>({ok:true}),send,
+    onReplyEmotion:x=>{emotions.push(x);return {ok:true}}})
+  const success=make(async()=>({ok:true}));success.primeInbox([])
+  assert.equal((await success.processMessage(row('谢谢鱼鱼','w1'))).ok,true)
+  assert.deepEqual(emotions.map(x=>x.mood),['warm'])
+  assert.equal((await success.processMessage(row('谢谢鱼鱼','w1'))).skipped,'duplicate')
+  const failed=make(async()=>({ok:false,error:'transport unknown'}))
+  const result=await failed.processMessage(row('感谢你啦','w2'))
+  assert.equal(result.ok,false)
+  assert.deepEqual(emotions.map(x=>x.mood),['warm'])
+  assert.equal(parseAgentStep('{"action":"reply","text":"嗨","mood":"joyful","intensity":3}').intensity,0)
+}))
