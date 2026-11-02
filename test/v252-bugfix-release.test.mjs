@@ -26,7 +26,7 @@ test('Bug 01: 完整昵称不被误解为鱼鱼的情绪；@only 不触发回复
 test('Bug 02: archive 与 episodic 副本分别统计，提供最早记忆与预计衰减时间',()=>{
   const dir=home();let clock=Date.parse('2026-10-30T10:00:00Z')
   try{
-    const g=createLifeMemoryGateway({dataDir:dir,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
+    const g=createLifeMemoryGateway({dataDir:dir,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:15}),getRelationship:()=>({permissionRole:'stranger',whitelisted:true})})
     g.recordEvents([{kind:'social',key:'social:101:'+BV+':2000',bvid:BV,actorUid:'101',at:clock,text:'你好'}])
     g.recordSocialReply({actorUid:'101',bvid:BV,incomingRpid:'2000',text:'鱼鱼你好',at:clock})
     const st=g.status();assert.equal(st.archiveEvents,2);assert.equal(st.total,1);assert.equal(st.counts.clear,1)

@@ -79,6 +79,7 @@ import { createMemoryConsolidator } from './lib/memory-consolidation.mjs'
 import { createOwnerCommentAgent } from './lib/owner-comment-agent.mjs'
 import { createEmotionRecall } from './lib/emotion-recall.mjs'
 import { recordFriendInteraction, listFriendRelationships, friendRelationshipContext, clearFriendRelationships } from './lib/friend-relationships.mjs'
+import {createSocialRelationshipIndex} from './lib/social-relationship-index.mjs'
 import { buildLifeTimeline } from './lib/life-timeline.mjs'
 import { createDmVideoRecommendationContext } from './lib/dm-video-recommendation.mjs'
 import { collectDmInbox, parseDmWhitelist } from './lib/dm-inbox.mjs'
@@ -834,6 +835,23 @@ function reportMeta() {
   }
   const cfg = loadCfg()
   const socialPolicyGate=createSocialPolicyGate({getConfig:()=>cfg})
+  // Familiarity and authority are deliberately different: whitelist remains an
+  // authorization-only role; organic social friends never gain DM permissions.
+  // Open only on first relationship read/write. Most host integrations (including
+  // test fixtures) never touch this feature, and eager node:sqlite handles keep
+  // Windows TEMP directories locked when a host stops without invoking effects.
+  let socialRelationships=null,relationshipIndexFailed=false
+  const relationshipIndex=()=>{
+    if(socialRelationships||relationshipIndexFailed)return socialRelationships
+    try{socialRelationships=createSocialRelationshipIndex({dataDir:stateDir,logger:{warn:m=>log('社交关系：'+m)}})}
+    catch(e){relationshipIndexFailed=true;log('社交关系索引不可用：'+String(e?.message||e))}
+    return socialRelationships
+  }
+  ctx.effect(()=>()=>socialRelationships?.close(),'bili-duty: 关闭社交熟悉度索引')
+  const relationshipOptions=()=>({friendDirectory:cfg.friendDirectory,ownerUid:cfg.dmOwnerUid})
+  const relationshipText=uid=>{const r=relationshipIndex()?.get(uid,relationshipOptions());if(!r)return ''
+    return `【自然关系熟悉度】与你互动的是${r.whitelisted?'白名单用户':r.socialFriend?'逐渐成为好友的人':'普通用户'}；阶段「${r.stageLabel}」。仅依据真实互动元数据估计，绝非真实感情，也不代表对方获得私信或工具权限。不要编造共同经历、提及后台分数或表现得过分亲密。`}
+
   const ownerTodos = createOwnerTodoEngine({dataDir:stateDir})
   const ownerTodoFollowup=createOwnerTodoFollowup({dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},
     canContact:({uid,bvid,title})=>{
@@ -3075,6 +3093,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     recordCognition:data=>data?socialCognition.recordPrepared(data):{ok:true},
     recordInterest:data=>data?recordPreparedFriendInterest(stateDir,data,{friendDirectory:cfg.friendDirectory}):{ok:true},
     recordRelationship:data=>data?recordFriendInteraction(stateDir,{...data,now:data.at||Date.now(),friendDirectory:cfg.friendDirectory}):{ok:true},
+    recordPerson:data=>relationshipIndex()?.observe(data)??{ok:true,skipped:'index-unavailable'},
     recordLifeEvent:data=>data?lifeMemoryCoordinator.recordEvents([data],{reflect:true}):{ok:true},
     recordReply:async({uid,bvid,rpid,text,at})=>{
       const recorded=lifeMemory?.recordSocialReply({actorUid:uid,bvid,incomingRpid:rpid,text,at})
@@ -3155,7 +3174,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     getMeme:async(item)=>(await interactionMemeLookup.forBatch([item]))?.[0]||'',
     getPersona:batch=>buildInteractionPersona(batch),
     getIdentity:uid=>replyIdentityContext(uid),
-    getRelationship:uid=>friendRelationshipContext(stateDir,uid,cfg.friendDirectory),
+    getRelationship:uid=>relationshipText(uid)||friendRelationshipContext(stateDir,uid,cfg.friendDirectory),
     getPrivateLifeContext:({uid,role,query})=>{
       // Only this authenticated private DM; public comments never call here.
       const episodes=lifeMemory?.recall({query,domain:'bili-dm',role,actorUid:uid,kinds:['private-social'],maxItems:3,maxChars:650})||[]
@@ -3759,7 +3778,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     runTodo: (id) => runOwnerTodoWithFollowup(id),
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
   })
-  lifeMemory=createLifeMemoryGateway({dataDir:stateDir,getConfig:()=>cfg,logger:{warn:m=>log('人生记忆：'+m)}})
+  lifeMemory=createLifeMemoryGateway({dataDir:stateDir,getConfig:()=>cfg,getRelationship:uid=>relationshipIndex()?.get(uid,relationshipOptions()),logger:{warn:m=>log('人生记忆：'+m)}})
   ctx.effect(()=>()=>lifeMemory?.close(),'bili-duty: 只读内存 FTS 关闭')
   personalityEvolution=createPersonalityEvolution({dataDir:stateDir,memoryGateway:lifeMemory,logger:{warn:m=>log('人格成长：'+m)}})
   // Only NEW installations default to growth enabled. Explicit existing off remains off.
@@ -5180,6 +5199,22 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       if(body?.action!=='reset')return sendJson(res,400,{ok:false,error:'未知情绪状态操作'})
       try{return sendJson(res,200,{ok:true,state:emotionalState.reset()})}
       catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,180)})}
+    }
+    // dev.9: read-only, indexed, bounded page for all verified encounters.
+    if (req.method === 'GET' && path === '/api/bili-duty/relationships') {
+      try{const index=relationshipIndex();if(!index)return sendJson(res,503,{ok:false,error:'关系索引不可用，请检查 Node.js 版本和管理日志'})
+        return sendJson(res,200,index.list({...relationshipOptions(),query:url.searchParams.get('query')||'',cursor:url.searchParams.get('cursor')||'',limit:Number(url.searchParams.get('limit'))||30}))
+      }catch(e){return sendJson(res,400,{ok:false,error:'关系列表读取失败：'+String(e?.message||e).slice(0,160)})}
+    }
+    if (req.method === 'POST' && path === '/api/bili-duty/relationships/clear') {
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'仅允许同源清除关系索引'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站清除关系索引'})
+      const body=await readBody(req)
+      if(body?.confirm!=='CLEAR_RELATIONSHIP')return sendJson(res,400,{ok:false,error:'需要明确关系清除确认'})
+      try{const index=relationshipIndex();if(!index)return sendJson(res,503,{ok:false,error:'关系索引不可用'})
+        return sendJson(res,200,{ok:true,...index.clear(body.uid)})
+      }catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,160)})}
     }
     if (req.method === 'GET' && path === '/api/bili-duty/friend-relationships') {
       try{return sendJson(res,200,{ok:true,rows:listFriendRelationships(stateDir,cfg.friendDirectory)})}

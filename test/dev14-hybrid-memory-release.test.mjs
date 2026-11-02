@@ -82,7 +82,7 @@ test('检索前按已核实 UID 限权，混合 FTS 候选和 ID 二次校验不
 test('新收到互动不能当成旧记忆；好友/陌生人跨天再见可自然回忆，情绪和关系传给一次 AI',async()=>{
  const dir=home(),clock={at:START},uid='101',key=`social:${uid}:${BV}:2001`
  try{
-  const gate=createLifeMemoryGateway({dataDir:dir,now:()=>clock.at,getConfig:cfg})
+  const gate=createLifeMemoryGateway({dataDir:dir,now:()=>clock.at,getConfig:cfg,getRelationship:()=>({stage:'familiar',permissionRole:'stranger',whitelisted:false})})
   gate.recordEvents([social(uid,'2001','我昨天说鱼鱼像小星星，还约好明天回来')])
   clock.at+=DAY
   gate.recordEvents([social(uid,'2002','我又来啦')])

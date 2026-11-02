@@ -12,7 +12,8 @@ const cfg=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mai
 async function withStore(fn){
   const dataDir=mkdtempSync(join(tmpdir(),'fish-quality-'))
   const clock={at:NOW}
-  const gate=createLifeMemoryGateway({dataDir,getConfig:cfg,now:()=>clock.at})
+  // Established contacts in these cross-day evidence tests; still stranger permissions.
+  const gate=createLifeMemoryGateway({dataDir,getConfig:cfg,now:()=>clock.at,getRelationship:()=>({stage:'familiar',permissionRole:'stranger',whitelisted:false})})
   const growth=createPersonalityEvolution({dataDir,memoryGateway:gate,now:()=>clock.at})
   try{return await fn({dataDir,clock,gate,growth})}finally{gate.close();rmSync(dataDir,{recursive:true,force:true})}
 }

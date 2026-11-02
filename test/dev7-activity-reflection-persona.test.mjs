@@ -86,7 +86,7 @@ test('dev.7 管理页面与工具入口保留沙盒隔离、安全权限和第�
 
 
 test('dev.7 发行版本与正式版预备材料明确分离',()=>{
-  const pkg=JSON.parse(read('package.json'));assert.equal(pkg.version,'2.6.0-dev.8');
+  const pkg=JSON.parse(read('package.json'));assert.equal(pkg.version,'2.6.0-dev.9');
   assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.0-dev.7.md'));
   assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.0-dev.8.md'));
   assert.ok(pkg.files.includes('docs/release'));

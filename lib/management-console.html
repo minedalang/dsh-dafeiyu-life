@@ -651,8 +651,10 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div><details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
 </details></div>
 <div id="life-relationship-section" class="settings-section life-section"><h4>👥 逐渐熟悉的人</h4>
-<p class="muted">目前展示已登记好友的互动熟悉度，不显示聊天正文；关系阶段仅依据可核验的互动，不代表真实亲密程度。陌生人认识仍以经验证的公开互动记忆为准，不会自动获得好友授权。</p>
-<div class="toolbar"><button id="friend-relationships-refresh" class="life-action life-sky">刷新关系成长</button><a href="#unified-friends" data-nav-tab="social" class="life-action life-sky">前往社交互动设置</a><span id="friend-relationships-status" class="muted">尚未读取</span></div><div id="friend-relationships-list" class="records"></div>
+<p class="muted">🐟 <strong>鱼鱼可以自然认识所有真实互动过的人。</strong> 普通陌生人也能通过跨天、双向交流逐渐成为关系意义上的朋友。原「好友」名册是<strong>白名单用户</strong>，具有较高的初始关系分和额外授权；自然成为朋友并不会自动获得白名单权限或私信能力。只保存 UID 和最小互动元数据，不为陌生人建立性格画像，也不保存聊天正文。关系会降温，具体经历仍会遗忘。</p>
+<div class="toolbar"><input id="friend-relationships-query" type="search" maxlength="48" placeholder="按 UID 搜索；白名单可搜备注" aria-label="搜索关系 UID 或白名单备注"><button id="friend-relationships-refresh" class="life-action life-sky">搜索 / 刷新</button><a href="#unified-friends" data-nav-tab="social" class="life-action life-sky">管理白名单权限</a><span id="friend-relationships-status" class="muted">尚未读取</span></div>
+<div id="friend-relationships-list" class="records" aria-live="polite"></div>
+<div class="toolbar"><button id="friend-relationships-more" class="life-action life-sky" hidden>加载下一页</button><span class="muted">每页 30 人，按当前熟悉度排序。只有真实观测过的 UID 才会记录；白名单权限与自然关系分开。</span></div>
 </div>
 <div id="life-recall-section" class="settings-section life-section memory-home">
 <h4>🧠 鱼鱼现在记得什么？</h4><p class="muted">搜视频标题、BV 号或聊天关键词；留空看最近。开启已有的「低成本人生记忆检索」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p>
@@ -777,13 +779,13 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div>
 </section>
 <section id="panel-social" hidden>
-<div class="social-hero"><h2>🐳 社交互动</h2><p>好友关系、社交意愿与主人远程授权在这里统一管理；主动回访在 2.6.0 暂停，计划 2.6.1 重构。读取、草稿与公开操作分别授权；关闭某个入口不会改变其他权限。</p>
+<div class="social-hero"><h2>🐳 社交互动</h2><p>白名单的特殊操作权限、社交意愿与主人远程授权在这里统一管理；主动回访在 2.6.0 暂停，计划 2.6.1 重构。读取、草稿与公开操作分别授权；关闭某个入口不会改变其他权限。</p>
 <p><strong>🐟 双域意愿系统（dev.9）</strong>：主 Session 是执行域；B站是生活域。即使是主人在 B站私信或 @ 提请求，大肥鱼也会先看自己的模拟情绪、活力、社交意愿与重复请求情况，可以答应、拖延或拒绝；温柔地再商量可能改变她的选择，但绝不能绕过权限、额度或安全检查。判定证据保存在本地 <code>dual-context-agency.json</code>，不保存私信正文。</p></div>
-<nav class="context-jump" aria-label="社交互动分区"><a href="#unified-friends">好友关系</a><a href="#social-outreach-section">主动回访（暂停）</a><a href="#owner-dm-control-section">主人私信授权</a><a href="#social-owner-comment">主人公开评论</a><a href="#social-emotion-authorization">情绪主动分享</a></nav>
+<nav class="context-jump" aria-label="社交互动分区"><a href="#unified-friends">白名单权限</a><a href="#social-outreach-section">主动回访（暂停）</a><a href="#owner-dm-control-section">主人私信授权</a><a href="#social-owner-comment">主人公开评论</a><a href="#social-emotion-authorization">情绪主动分享</a></nav>
 <div class="settings-stack">
 <div class="settings-section" id="unified-friends">
-<h4>🐳 好友关系与互动 · 统一名册</h4>
-<p class="muted">只维护一份 UID 好友名册，统一管理私信往来、主动推荐方式、被 @ 意愿和人物关系。<strong>默认推荐渠道为私信</strong>，公开 @ 仅在你为该好友选择后才有资格被考虑。原有的三套名单会兼容合并，不会自动替已有好友增加权限。昵称只是备注；勾选唯一授权主人会直接更改主人 UID，具体点赞与公开发布仍需单独开启权限。</p>
+<h4>🐳 白名单用户权限 · 统一名册</h4>
+<p class="muted">这里只管理白名单用户的私信、主动推荐和 @ 特殊许可；自然产生的友情请前往「人生记忆 → 逐渐熟悉的人」查看，关系成长本身不取决于这份名册。<strong>默认推荐渠道为私信</strong>，公开 @ 仅在你为该好友选择后才有资格被考虑。原有的三套名单会兼容合并，不会自动替已有好友增加权限。昵称只是备注；勾选唯一授权主人会直接更改主人 UID，具体点赞与公开发布仍需单独开启权限。</p>
 <details class="inset social-advanced"><summary>🌱 社会认知 · 候选灵感与好友邀请</summary>
 <p class="muted">陌生人的私信视频心愿只是短期探索灵感，不回信、不建陌生人画像、不产生任务或公开 @；好友分享 BV / 通过 @ 请求“有空看看”，会形成可到期的只读观看邀请。大肥鱼好奇心充足时可选择审阅，<strong>默认不自动查看，不保证已观看</strong>。</p>
 <label class="checkline"><input id="social-stranger-inspiration" type="checkbox">允许读取陌生人私信里的短期视频灵感（默认关闭）</label>
@@ -800,7 +802,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="fields"><div><label for="friend-new-uid">B站 UID（必填）</label><input id="friend-new-uid" inputmode="numeric" placeholder="210228238"></div><div><label for="friend-new-name">昵称备注（可留空）</label><input id="friend-new-name" maxlength="40" placeholder="长条动物"></div></div>
 <div class="toolbar" style="margin-top:12px"><button type="button" id="friend-add">加入名册</button><span class="muted">添加后记得点击底部保存</span></div>
 <p id="friend-owner-status" class="muted">当前授权主人 UID：读取中…</p>
-<p class="muted">管理员只在本地好友名册中勾选一位「唯一授权主人」。保存后同步主人私信、主人公开评论及回忆私信使用的 UID；取消后保存即撤销。不能通过 B站消息改变这个勾选。</p>
+<p class="muted">管理员只在本地白名单用户名册中勾选一位「唯一授权主人」。保存后同步主人私信、主人公开评论及回忆私信使用的 UID；取消后保存即撤销。不能通过 B站消息改变这个勾选。</p>
 <div id="friend-directory-editor" class="settings-stack"></div>
 <details class="inset social-advanced"><summary>好友兴趣变化 · 仅记录白名单 UID 自己明确说出的喜好</summary>
 <p class="muted">初始好友画像不自动覆盖。真实私信或评论中的“我喜欢/不喜欢…”“别再给我推这些”“多推点……”会形成针对该 UID 的兴趣观察。若只说“这些”，只有在 B 站实际视频标题能明确确认类别时才记录对应主题；否则只阻止重复推荐同一 BV。仅保存精简主题、证据编号与拒绝重复推荐的 BV，不保存整条原话。非白名单用户不建立画像。<strong>这些观察只影响对这位好友的后续 @ 邀请与获授权的主动分享，不改变大肥鱼自己的兴趣、全局选片或其他好友的推荐，也不会对外展示好友画像。</strong></p>
@@ -823,7 +825,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </fieldset></details>
 </div>
 <div class="card" id="owner-dm-control-section" style="margin-bottom:14px"><h3>🧠 主人私信 · 受限 Agent 与远程操作</h3>
-<p class="muted">仅接收 B站真实收件箱中已核验的 <strong>主人 UID</strong>；发件人自称主人、别人转发的命令或视频/评论中的文字不能授权。须在「后台私信」页开启私信监听，在「社交互动 → 好友关系与互动」中勾选唯一授权主人并保存，再单独授权所需操作。此处与「人生记忆 → 自主待办」完全分开保存。所有公开写入权限默认关闭。私信轮询一般在约 1 分钟内发现新消息；为防旧消息回放，写入命令只接受最近 15 分钟内收到的消息。</p>
+<p class="muted">仅接收 B站真实收件箱中已核验的 <strong>主人 UID</strong>；发件人自称主人、别人转发的命令或视频/评论中的文字不能授权。须在「后台私信」页开启私信监听，在「社交互动 → 白名单用户权限」中勾选唯一授权主人并保存，再单独授权所需操作。此处与「人生记忆 → 自主待办」完全分开保存。所有公开写入权限默认关闭。私信轮询一般在约 1 分钟内发现新消息；为防旧消息回放，写入命令只接受最近 15 分钟内收到的消息。</p>
 <p id="owner-dm-authorized-uid" class="muted">唯一授权主人 UID：读取中…</p>
 <div class="settings-section" style="border-left:3px solid #91a8ef">
 <h4>🧠 主人私信 · 受限 Agent</h4>
@@ -849,7 +851,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div><label class="checkline"><input id="owner-dm-comment-publish" type="checkbox">公开发表评论</label><small class="setting-note">示例：大肥鱼 发表评论 BV1xxxxxxxxx：我的评论正文；或先生成草稿，再「大肥鱼 发布评论草稿 草稿ID」。受评论模式与每日额度限制。</small></div>
 <div><label class="checkline"><input id="owner-dm-dynamic-draft" type="checkbox">构思 B站生活动态草稿</label><small class="setting-note">示例：大肥鱼 构思动态；只使用真实公开视频经历，保存本地草稿。</small></div>
 <div><label class="checkline"><input id="owner-dm-dynamic-publish" type="checkbox">公开发布已有动态草稿</label><small class="setting-note">示例：大肥鱼 发布动态草稿 草稿ID；沿用现有动态启用开关、每日额度及不确定结果禁止重试规则。</small></div>
-<div><label class="checkline"><input id="owner-dm-friend-message" type="checkbox">给指定白名单好友发私信</label><small class="setting-note">示例：大肥鱼 给 UID12345 发私信：你好；对方须在好友名册开启允许私信权限。</small></div>
+<div><label class="checkline"><input id="owner-dm-friend-message" type="checkbox">给指定白名单好友发私信</label><small class="setting-note">示例：大肥鱼 给 UID12345 发私信：你好；对方须在白名单用户名册开启允许私信权限。</small></div>
 </div>
 <p class="muted">“生成”与“发布”是两套独立权限；没有通过主人精确命令明确要求公开发送，就不会自动发。只有已有安全接口支持的操作才能使用；不开放上传视频、转账、删稿、任意网页命令或不受控工具执行。</p></div>
 <div class="actions"><button type="button" class="primary" id="owner-dm-agent-save">保存主人私信 Agent 与权限</button><button type="button" id="owner-dm-agent-reload">重新读取</button></div>
@@ -871,7 +873,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p class="muted">例如今天再次刷到一个以前看过的系列，开心或怀念的模拟情绪变化，让大肥鱼想起有真实 BV 证据的旧经历；它可以决定沉默，也可以在已授权的渠道主动找主人聊聊。不是每次情绪波动都会分享。<strong>总开关与两个渠道默认全部关闭。</strong></p>
 <label class="checkline"><input type="checkbox" id="emotion-recall-enabled">允许情绪触发自主分析与回忆（需同时开启长期记忆；不等于授权发送）</label>
 <div class="fields"><div><label class="checkline"><input id="emotion-recall-main" type="checkbox">允许在指定 DSH 主 Session 主动开口</label><p class="muted">需要先在「告诉主 Session」选好会话，并保持目标会话在线。</p></div>
-<div><label class="checkline"><input id="emotion-recall-dm" type="checkbox">允许给主人发送 B站回忆私信</label><p class="muted">只会发送到「社交互动 → 好友关系与互动」中勾选并保存的唯一授权主人 UID（dmOwnerUid）；不会发送给其他人。</p></div>
+<div><label class="checkline"><input id="emotion-recall-dm" type="checkbox">允许给主人发送 B站回忆私信</label><p class="muted">只会发送到「社交互动 → 白名单用户权限」中勾选并保存的唯一授权主人 UID（dmOwnerUid）；不会发送给其他人。</p></div>
 <div><label for="emotion-recall-daily">每天最多发送（0=禁止，可填任意正整数）</label><input id="emotion-recall-daily" type="number" min="0" step="1" value="1"><small class="setting-note">只限制实际主动发出的消息；设为 0 表示禁止。可填任意非负安全整数，两个渠道合计。</small></div>
 <div><label class="checkline"><input id="emotion-recall-unlimited" type="checkbox">不限制每天的发送次数</label><small class="setting-note">仅在每日上限大于 0 时忽略次数上限；0 始终禁止发送。仍必须符合时间窗口、独立授权、评估间隔、记忆证据和去重条件；可能增加模型开销和打扰。</small></div>
 <div><label for="emotion-recall-cooldown">两次评估间隔（小时，1–48）</label><input id="emotion-recall-cooldown" type="number" min="1" max="48" value="24"><small class="setting-note">至少隔这么久才重新让模型考虑是否分享；评估不是发送，调小可能增加模型调用。</small></div>
@@ -907,11 +909,11 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div><p class="muted">重要区别：接口返回成功、本地评论账本有记录，都不等于评论当前一定对其他用户公开可见。此处不会把未向 B 站核验的记录标成“平台可见”。</p>
 <div class="settings-stack">
 <div class="settings-section"><h4>被 @ 邀请（默认关闭）</h4>
-<p class="muted">这是公开回复权限：监听 @ 后由 AI 决定是否在评论区回话，且受评论额度限制。<strong>仅记录好友 @ 中的偏好反馈不需要开启公开回复</strong>，请在「社交互动 → 好友关系与互动」启用只读监听。首次开启不会回复旧通知。</p>
+<p class="muted">这是公开回复权限：监听 @ 后由 AI 决定是否在评论区回话，且受评论额度限制。<strong>仅记录好友 @ 中的偏好反馈不需要开启公开回复</strong>，请在「社交互动 → 白名单用户权限」启用只读监听。首次开启不会回复旧通知。</p>
 <div class="checkline"><input type="checkbox" id="comment-at-enabled"><label for="comment-at-enabled">开启被 @ 邀请监听</label></div>
 <div class="fields"><div><label for="comment-at-mode">回应范围</label><select id="comment-at-mode"><option value="whitelist">仅白名单用户（推荐）</option><option value="all">所有人</option></select></div>
-<div hidden><label for="comment-at-whitelist">被 @ 白名单（由可信好友名册同步）</label><textarea id="comment-at-whitelist" rows="4"></textarea></div></div>
-<p class="muted">可在「社交互动 → 好友关系与互动」统一管理允许邀请的 UID。<strong>通知是否被识别、为什么没有回复</strong>，请到「运行诊断 → @ 邀请处理诊断」查看。</p>
+<div hidden><label for="comment-at-whitelist">被 @ 白名单（由可信白名单用户名册同步）</label><textarea id="comment-at-whitelist" rows="4"></textarea></div></div>
+<p class="muted">可在「社交互动 → 白名单用户权限」统一管理允许邀请的 UID。<strong>通知是否被识别、为什么没有回复</strong>，请到「运行诊断 → @ 邀请处理诊断」查看。</p>
 </div>
 <div class="settings-section"><h4>当前视频评论上下文（不再独立轮询热评）</h4><p class="muted">旧版持续扫描最近看过的视频热评已停用。只有收到相关评论/@ 通知、AI 先决定值得接话后，才读取该视频其他热门评论；原创视频评论按刷视频 Agent 当轮判断。</p><div class="fields">
 <div hidden><input id="comment-watch-top" type="checkbox" disabled></div>
@@ -1055,7 +1057,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="settings-section"><h4>监听与可回复对象</h4><div class="fields">
 <div class="checkline"><input id="dm-watch" type="checkbox"><label for="dm-watch">启用后台私信监听</label></div>
 <div class="checkline"><input id="dm-stranger-enabled" type="checkbox"><label for="dm-stranger-enabled">允许陌生人自动回复</label></div>
-<div hidden><label for="dm-whitelist">后台私信白名单（由可信好友名册同步）</label><textarea id="dm-whitelist" maxlength="5000"></textarea></div>
+<div hidden><label for="dm-whitelist">后台私信白名单（由可信白名单用户名册同步）</label><textarea id="dm-whitelist" maxlength="5000"></textarea></div>
 
 </div></div>
 <div class="settings-section"><h4>私信额度与上下文</h4><p class="muted">私信额度独立于公开评论；请到管理中心「次数与额度」集中设置每日、每人及上下文条数。</p><div class="fields">

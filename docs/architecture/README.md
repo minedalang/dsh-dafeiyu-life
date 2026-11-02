@@ -38,3 +38,7 @@
 ## dev.6 动态评论与跨系统适配
 
 - [动态评论、内容 ID、去重及人生记忆审计](dynamic-comment-integration-v2.6.0-dev.6.md)：新增文字/图文动态的人工回复、安全回执和可衰减记忆投影；dev.4 图示继续作为历史基线。
+
+## dev.9 社交关系与记忆增量
+
+- [自然发展关系、轻量 SQLite 索引与记忆衰减接线](dev9-social-relationship-memory.md)：`SocialInteractionCoordinator → SocialRelationshipIndex → SocialContextAssembler / LifeMemoryGateway`。关系阶段与授权角色分离，未扩大主动私信或对外操作权限。
