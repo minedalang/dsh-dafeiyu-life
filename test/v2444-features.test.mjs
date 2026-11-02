@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {Readable} from 'node:stream'
 import {deflateSync} from 'node:zlib'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 import {proposeGrowth,updateGrowthSuggestion,reviewGrowth,updateGrowthPerson,buildGrowthContext, listGrowth} from '../lib/persona-growth.mjs'
 
 const png=(w=32,h=32)=>{

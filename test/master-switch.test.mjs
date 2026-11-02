@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, existsSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
-import { apply } from '../index.js'
+import { apply } from './helpers/ready-host.mjs'
 
 // 真正通过假宿主 HTTP 路由保存配置；不是仅检验字符串是否存在。
 test('总开关可关闭/重启后保持/恢复：关闭时不能跑一轮，旧批量收藏已停用', async () => {

@@ -67,9 +67,10 @@ test('视频标题少一个汉字仍能搜索清晰经历，但不会误命中�
 
 test('人生记忆页面突出心情、兴趣、待办与关系；复杂权限和自主调度按需展开',()=>{
  const life=html.split('<section id="panel-life"')[1].split('<section id="panel-diagnostics"')[0]
- for(const id of ['life-emotion-section','life-interest-section','life-todo-section','life-relationship-section','owner-todo-overview','owner-todo-filter-active','owner-todo-filter-all','owner-todo-filter-finished']){
+ for(const id of ['life-emotion-section','life-interest-section','life-todo-section','owner-todo-overview','owner-todo-filter-active','owner-todo-filter-all','owner-todo-filter-finished']){
   assert.equal((life.match(new RegExp(`id="${id}"`,'g'))||[]).length,1,id)
  }
+ assert.match(html,/id="panel-relationships"/);assert.match(html,/id="life-relationship-section"/);assert.match(html,/data-tab="relationships"/);
  assert.match(life,/class="life-subdetails todo-settings contextual-settings"/)
  assert.match(life,/class="life-subdetails todo-create"/)
  assert.match(life,/class="life-subdetails life-sync-more"/)

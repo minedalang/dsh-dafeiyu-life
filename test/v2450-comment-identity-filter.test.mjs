@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {Readable} from 'node:stream';
 import {recentComments} from '../lib/recent-comments.mjs';
-import {apply} from '../index.js';
+import {apply} from './helpers/ready-host.mjs';
 import {createCommentInteract} from '../lib/comment-interact.mjs';
 
 function fixture(){const dir=mkdtempSync(join(tmpdir(),'v2450-'));mkdirSync(dir,{recursive:true});return {dir,close:()=>rmSync(dir,{recursive:true,force:true})}}

@@ -15,7 +15,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=(ROOT/'vendor/bilibili-mcp/mcp_server.py').read_text('utf8')
 FUNCTIONS={'_selected_for_reaction','_action_conn','_claim_video_action','_finish_video_action',
-           '_check_reaction','_folder_title','_ensure_ai_folder','bili_video_like','bili_video_collect'}
+           '_check_reaction','_folder_title','_styled_auto_folder_title','_ensure_ai_folder','bili_video_like','bili_video_collect'}
 TREE=ast.parse(SOURCE)
 BODY=[]
 for node in TREE.body:
@@ -90,6 +90,13 @@ class AutonomousTests(unittest.TestCase):
         self.assertEqual(DummyVideo.favs,[(BV,[444])]);self.assertEqual(DummyFolders.created,[])
         self.assertRaises(ValueError,self.scope['_folder_title'],'../../危险')
         self.assertRaises(ValueError,self.scope['_folder_title'],'x')
+
+    def test_auto_folder_name_reflects_public_persona_and_interests_not_manual(self):
+        with patch.dict(os.environ,{'BILI_FISH_FAVORITE_STYLE':'playful','BILI_FISH_FAVORITE_INTERESTS':'料理、游戏'},clear=False):
+            self.assertEqual(self.scope['_styled_auto_folder_title']('料理'),'大肥鱼·料理·快乐收藏')
+            self.assertEqual(self.scope['_styled_auto_folder_title']('AI模型娘'),'大肥鱼·AI模型娘·鱼鱼宝藏')
+            self.assertLessEqual(len(self.scope['_styled_auto_folder_title']('十二生肖周边收藏小铺')),20)
+            self.assertEqual(self.scope['_folder_title']('料理'),'大肥鱼·料理')
 
     def test_quota_maximum_and_report_fallback(self):
         # No ledger/report: no operation even when user explicitly turns on the feature.

@@ -26,7 +26,7 @@ test('Bug 01: 完整昵称不被误解为鱼鱼的情绪；@only 不触发回复
 test('Bug 02: archive 与 episodic 副本分别统计，提供最早记忆与预计衰减时间',()=>{
   const dir=home();let clock=Date.parse('2026-10-30T10:00:00Z')
   try{
-    const g=createLifeMemoryGateway({dataDir:dir,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
+    const g=createLifeMemoryGateway({dataDir:dir,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:15}),getRelationship:()=>({permissionRole:'stranger',whitelisted:true})})
     g.recordEvents([{kind:'social',key:'social:101:'+BV+':2000',bvid:BV,actorUid:'101',at:clock,text:'你好'}])
     g.recordSocialReply({actorUid:'101',bvid:BV,incomingRpid:'2000',text:'鱼鱼你好',at:clock})
     const st=g.status();assert.equal(st.archiveEvents,2);assert.equal(st.total,1);assert.equal(st.counts.clear,1)
@@ -74,8 +74,9 @@ test('Bug 03: 意愿只统计真实决策、不给 AI 伪造实际发送；不�
 test('管理页能展示状态快照和意愿决策；明确区别事件、回复、外发完成',()=>{
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
- assert.match(html,/emotion-agency-activity/);assert.match(html,/emotion-trend-metric/)
+ assert.match(html,/emotion-agency-activity/);assert.match(html,/emotion-trend/);assert.doesNotMatch(html,/emotion-trend-metric/)
  assert.match(js,/activity\.replaceChildren/);assert.match(js,/允许 ≠ 已执行/)
- assert.match(js,/x\.state&&Number\.isFinite/)
+ assert.match(js,/五项指标 · 真实事件快照/);assert.match(js,/trend-legend/);assert.match(js,/x\.state&&Number\.isFinite/)
+ for(const metric of ['sociality','intensity','energy','curiosity','valence'])assert.ok(js.includes(`key:'${metric}'`),metric)
  assert.match(js,/归档事件与可衰减记忆不是一一对应/)
 })

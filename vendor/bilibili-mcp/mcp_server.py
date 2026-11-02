@@ -1230,13 +1230,37 @@ def _folder_title(topic):
     return '大肥鱼·'+name
 
 
-async def _ensure_ai_folder(cred,uid,topic):
-    title=_folder_title(topic)
+def _styled_auto_folder_title(topic):
+    """Only for autonomous creation, never rename owner's folders."""
+    base=_folder_title(topic)
+    style=os.environ.get('BILI_FISH_FAVORITE_STYLE','').strip()
+    suffix={'tsundere':'·才不是收藏','gentle':'·小小珍藏','playful':'·鱼鱼宝藏','calm':'·精选留存'}.get(style,'')
+    if not suffix:return base
+    # Only public/owner-curated topic names are passed by the plugin. An
+    # intersection with a known interest changes the flavor, never the topic.
+    prefix='大肥鱼·'
+    subject=base[len(prefix):]
+    known=[x.strip() for x in os.environ.get('BILI_FISH_FAVORITE_INTERESTS','')[:160].split('、')]
+    interested=any(len(x)>=2 and (x in subject or subject in x) for x in known)
+    if interested:
+        suffix={'tsundere':'·偷偷喜欢','gentle':'·心头珍藏','playful':'·快乐收藏','calm':'·常看精选'}.get(style,suffix)
+    max_subject=max(2,20-len(prefix)-len(suffix))
+    return prefix+subject[:max_subject]+suffix
+
+
+async def _ensure_ai_folder(cred,uid,topic,automatic=False):
+    title=_styled_auto_folder_title(topic) if automatic else _folder_title(topic)
     data=await favorite_list.get_video_favorite_list(int(uid),credential=cred)
     items=(data or {}).get('list') or []
     for item in items:
         if item.get('title')==title and int(item.get('id') or 0)>0:
             return int(item['id']),title,False
+    # Existing legacy topic folder wins over creating another stylistic duplicate.
+    if automatic:
+        legacy=_folder_title(topic)
+        for item in items:
+            if item.get('title')==legacy and int(item.get('id') or 0)>0:
+                return int(item['id']),legacy,False
     # 只计自动新建夹，并限制最终列表中的同前缀数量，防绕过重启／数据库丢失。
     owned=[x for x in items if str(x.get('title') or '').startswith('大肥鱼·')]
     if len(owned)>=12: raise ValueError('大肥鱼专属收藏夹已达到 12 个，不再建新夹')
@@ -1521,6 +1545,235 @@ async def bili_unfollow_creator_manual(uid: int, reason: str = '', confirm: bool
     except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False)
 
 
+# Dynamic comment resources do NOT share the video's BV/AID address space.
+# The public dynamic ID is used only to fetch details; the platform-provided
+# basic.comment_type + basic.rid_str/comment_id_str identify the comment area.
+def _checked_dynamic_id(value):
+    value=str(value or '').strip()
+    if not re.fullmatch(r'[1-9][0-9]{5,19}',value): raise ValueError('动态 ID 必须为真实十进制字符串')
+    return value
+
+
+def _dynamic_comment_area(info, dynamic_id):
+    item=info.get('item') if isinstance(info,dict) else None
+    if item is None and isinstance(info,dict): item=(info.get('data') or {}).get('item')
+    if not isinstance(item,dict): raise ValueError('动态详情没有可信 item，无法确定评论区')
+    if str(item.get('id_str') or item.get('id') or '')!=dynamic_id:
+        raise ValueError('动态详情 ID 不匹配，拒绝跨内容区操作')
+    basic=item.get('basic') or {}
+    kind=str(item.get('type') or '')
+    if kind not in ('DYNAMIC_TYPE_WORD','DYNAMIC_TYPE_DRAW'):
+        raise ValueError('这条动态类型不是独立文字/图文评论区，不能当作普通动态发评论')
+    raw_type=basic.get('comment_type')
+    try: comment_type=int(raw_type)
+    except (TypeError,ValueError): raise ValueError('动态详情缺少评论区 type')
+    if comment_type not in (11,17): raise ValueError('仅支持文字动态(type=17)或图文动态(type=11)')
+    if kind=='DYNAMIC_TYPE_DRAW' and comment_type!=11: raise ValueError('图文动态评论区类型不一致')
+    if kind=='DYNAMIC_TYPE_WORD' and comment_type!=17:
+        raise ValueError('文字动态评论区类型不一致')
+    raw_oid=str(basic.get('comment_id_str') or basic.get('rid_str') or '').strip()
+    if not re.fullmatch(r'[1-9][0-9]{0,19}',raw_oid): raise ValueError('动态详情没有可信评论区 oid')
+    typ=comment.CommentResourceType.DYNAMIC_DRAW if comment_type==11 else comment.CommentResourceType.DYNAMIC
+    author=((item.get('modules') or {}).get('module_author') or {}).get('mid')
+    author=str(author or '')
+    return {'dynamic_id':dynamic_id,'oid':raw_oid,'comment_type':comment_type,'resource_type':typ,
+            'author_uid':author if re.fullmatch(r'[1-9][0-9]{0,19}',author) else ''}
+
+
+async def _get_dynamic_comment_area(dynamic_id,cred):
+    dynamic_id=_checked_dynamic_id(dynamic_id)
+    info=await dynamic.Dynamic(int(dynamic_id),credential=cred).get_info()
+    return _dynamic_comment_area(info,dynamic_id)
+
+
+def _safe_dynamic_reply(row):
+    if not isinstance(row,dict): return None
+    rpid=str(row.get('rpid_str') or row.get('rpid') or '')
+    if not re.fullmatch(r'[1-9][0-9]{0,29}',rpid): return None
+    member=row.get('member') or {};body=row.get('content') or {}
+    return {'rpid':rpid,'root':str(row.get('root') or ''),'parent':str(row.get('parent') or ''),'uid':str(member.get('mid') or ''),
+            'name':str(member.get('uname') or '')[:60], 'content':str(body.get('message') or '')[:320]}
+
+
+async def _find_dynamic_target(area,cred,rpid,root=0):
+    """Independently verify target and, for nested replies, its actual direct parent.
+
+    Never infer a reply-to relationship from a notification's prose or from the
+    containing dynamic's author. A foreign dynamic is eligible only when the
+    direct parent comment is verified as belonging to this signed-in account.
+    """
+    rpid=str(rpid or '');root=str(root or '')
+    if not re.fullmatch(r'[1-9][0-9]{0,29}',rpid):raise ValueError('目标评论 ID 非法')
+    if root not in ('','0') and not re.fullmatch(r'[1-9][0-9]{0,29}',root):
+        raise ValueError('根评论 ID 非法')
+    if root not in ('','0'):
+        top=comment.Comment(oid=int(area['oid']),type_=area['resource_type'],rpid=int(root),credential=cred)
+        head=None;target=None;parents={}
+        for pn in range(1,4):
+            data=await top.get_sub_comments(page_index=pn,page_size=20)
+            row=_safe_dynamic_reply(data.get('root')) if isinstance(data,dict) else None
+            if not row or row['rpid']!=root:raise ValueError('没有确认该动态评论区的根评论')
+            head=row;parents[root]=row
+            if rpid==root:return {'root':root,'target':row,'replyToUid':'','replyToRpid':''}
+            replies=(data.get('replies') or []) if isinstance(data,dict) else []
+            for entry in replies:
+                item=_safe_dynamic_reply(entry)
+                if item:
+                    parents[item['rpid']]=item
+                    if item['rpid']==rpid:target=item
+            if target:
+                parent_id=target.get('parent','')
+                if parent_id and parent_id!='0' and parent_id!=rpid and parent_id in parents:
+                    parent=parents[parent_id]
+                    return {'root':root,'target':target,'replyToUid':parent['uid'],
+                            'replyToRpid':parent_id}
+            if not replies or len(replies)<20:break
+        if target:
+            # The target exists, but its *direct* parent is not verified.
+            # We may still reply inside our own dynamic; not a foreign one.
+            return {'root':root,'target':target,'replyToUid':'','replyToRpid':''}
+        raise ValueError('目标回复不在已核验的动态楼中楼内，未发送')
+    for pn in range(1,4):
+        data=await comment.get_comments(oid=int(area['oid']),type_=area['resource_type'],page_index=pn,
+                                        order=comment.OrderType.TIME,credential=cred)
+        rows=(data or {}).get('replies') or []
+        for row in rows:
+            item=_safe_dynamic_reply(row)
+            if item and item['rpid']==rpid:return {'root':rpid,'target':item,'replyToUid':'','replyToRpid':''}
+        if len(rows)<20:break
+    top=comment.Comment(oid=int(area['oid']),type_=area['resource_type'],rpid=int(rpid),credential=cred)
+    data=await top.get_sub_comments(page_index=1,page_size=1)
+    head=_safe_dynamic_reply(data.get('root')) if isinstance(data,dict) else None
+    if head and head['rpid']==rpid:return {'root':rpid,'target':head,'replyToUid':'','replyToRpid':''}
+    raise ValueError('无法核验动态下的目标评论；请先读取评论上下文并提供正确的 root/rpid')
+
+
+@tool()
+async def bili_dynamic_comment_context(dynamic_id: str, target_rpid: str = '', root: str = '', num: int = 20) -> str:
+    """只读：定位文字/图文动态的真实评论区，读取评论并核实目标回复。"""
+    try:
+        area=await _get_dynamic_comment_area(dynamic_id,get_cred())
+        if target_rpid:
+            target=await _find_dynamic_target(area,get_cred(),target_rpid,root)
+            return json.dumps({'ok':True,'dynamicId':area['dynamic_id'],'oid':area['oid'],
+                'commentType':area['comment_type'],'authorUid':area['author_uid'],'target':target['target'],'root':target['root'],
+                'replyToUid':target.get('replyToUid',''),'replyToRpid':target.get('replyToRpid',''),
+                'url':'https://t.bilibili.com/'+area['dynamic_id']},ensure_ascii=False)
+        data=await comment.get_comments(oid=int(area['oid']),type_=area['resource_type'],page_index=1,
+                                         order=comment.OrderType.TIME,credential=get_cred())
+        replies=[x for x in (_safe_dynamic_reply(row) for row in ((data or {}).get('replies') or [])[:min(20,max(1,num))]) if x]
+        return json.dumps({'ok':True,'dynamicId':area['dynamic_id'],'oid':area['oid'],
+            'commentType':area['comment_type'],'authorUid':area['author_uid'],'comments':replies,
+            'url':'https://t.bilibili.com/'+area['dynamic_id']},ensure_ascii=False)
+    except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False)
+
+
+@tool()
+async def bili_dynamic_reply_inbox(dynamic_id: str, target_rpid: str, root: str = '',
+                                   text: str = '', expected_uid: str = '', is_at: bool = False) -> str:
+    """Restricted automatic inbox reply to this account's independently verified dynamic.
+
+    Host checks the user's comment-reply authorization, verified local publish
+    receipt, willingness, deduplication and quota. The MCP additionally checks
+    ownership, target identity, fresh comment context and the shared hard quota.
+    No first-party model or agent may use this as a generic dynamic publisher.
+    """
+    if (e:=_guard('bili_dynamic_reply_inbox')):return e
+    if os.environ.get('BILI_DYNAMIC_INBOX_REPLY_ENABLED')!='1':
+        return json.dumps({'ok':False,'error':'动态自动回复未从宿主后台授权'},ensure_ascii=False)
+    try:
+        did=_checked_dynamic_id(dynamic_id)
+        rid=str(target_rpid or '')
+        if not re.fullmatch(r'[1-9][0-9]{0,29}',rid):raise ValueError('目标动态评论 ID 无效')
+        body=str(text or '').strip()
+        if not body or len(body)>130:raise ValueError('回复正文不能为空或超过 130 字')
+        cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
+        if not re.fullmatch(r'[1-9][0-9]{0,19}',uid):raise ValueError('登录 UID 未确认')
+        area=await _get_dynamic_comment_area(did,cred)
+        if not area['author_uid'] and not is_at:raise ValueError('动态作者身份未核验，禁止后台回复')
+        if is_at and os.environ.get('BILI_DYNAMIC_AT_REPLY_ENABLED')!='1':
+            raise ValueError('动态 @ 回复未从宿主后台授权')
+        target=await _find_dynamic_target(area,cred,rid,root)
+        if area['author_uid']!=uid and not is_at and target.get('replyToUid')!=uid:
+            raise ValueError('其他人动态下的评论未证实是在直接回复当前账号，禁止后台回复')
+        if not re.fullmatch(r'[1-9][0-9]{0,19}',str(expected_uid or '')) or target['target']['uid']!=str(expected_uid):
+            raise ValueError('通知发件人与已核验的动态评论作者不匹配')
+        if str(expected_uid)==uid:raise ValueError('禁止后台回复自己')
+        if (e:=_guard('bili_dynamic_reply_inbox')):return e
+        ready,reason=_comment_quota_preflight()
+        if not ready:return json.dumps({'ok':False,'error':reason,'blocked':True},ensure_ascii=False)
+        target_key='dynamic-notice:'+did+':'+area['oid']+':'+rid
+        claim=_claim_session_manual_action(uid,'auto-dynamic-reply',target_key,'once',1000000)
+        if not claim.get('ok'):return json.dumps(claim,ensure_ascii=False)
+        try:
+            ok,reason=_reserve_comment_quota()
+            if not ok:
+                _finish_session_manual_action(uid,'auto-dynamic-reply',target_key,claim['body_hash'],claim['day'],'blocked',reason)
+                return json.dumps({'ok':False,'error':reason,'blocked':True},ensure_ascii=False)
+            response=await comment.send_comment(text=body,oid=int(area['oid']),type_=area['resource_type'],
+                root=int(target['root']),
+                parent=int(rid) if target['root']!=rid else None,credential=cred)
+            data=response.get('data') if isinstance(response,dict) and isinstance(response.get('data'),dict) else {}
+            sent=str(data.get('rpid_str') or data.get('rpid') or
+                     (response.get('rpid_str') or response.get('rpid') if isinstance(response,dict) else '') or '')
+            if not isinstance(response,dict) or response.get('code',0)!=0 or not re.fullmatch(r'[1-9][0-9]{0,29}',sent):
+                raise ValueError('B站未返回可确认的回复 ID')
+            _finish_session_manual_action(uid,'auto-dynamic-reply',target_key,claim['body_hash'],claim['day'],'ok',sent)
+            return json.dumps({'ok':True,'rpid':sent,'dynamicId':did,'oid':area['oid']},ensure_ascii=False)
+        except Exception as exc:
+            _finish_session_manual_action(uid,'auto-dynamic-reply',target_key,claim['body_hash'],claim['day'],'uncertain',str(exc)[:160])
+            return json.dumps({'ok':False,'no_retry':True,'status':'uncertain',
+                               'error':'动态评论发布结果不确定，禁止自动重试：'+str(exc)[:140]},ensure_ascii=False)
+    except Exception as exc:
+        return json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False)
+
+
+@tool()
+async def bili_dynamic_comment_manual(dynamic_id: str, text: str, target_rpid: str = '', root: str = '', confirm: bool = False) -> str:
+    """主人显式授权，发送独立动态评论/回复；平台回执不确定时不重试。"""
+    if (e:=_guard('bili_dynamic_comment_manual')):return e
+    try:
+        if os.environ.get('BILI_SESSION_MANUAL_ACTIONS_ENABLED')!='1':raise ValueError('主 Session 手动写入未授权')
+        if confirm is not True:raise ValueError('缺少主人当前会话的明确确认')
+        did=_checked_dynamic_id(dynamic_id);body=str(text or '').strip()
+        if not body or len(body)>2000:raise ValueError('评论正文需为 1–2000 字')
+        if target_rpid and not re.fullmatch(r'[1-9][0-9]{0,29}',str(target_rpid)):
+            raise ValueError('目标评论 ID 非法')
+        if root and not re.fullmatch(r'[1-9][0-9]{0,29}',str(root)):
+            raise ValueError('根评论 ID 非法')
+        cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
+        if not uid.isdigit() or int(uid)<=0:raise ValueError('无法确认 B站登录账号')
+        area=await _get_dynamic_comment_area(did,cred)
+        target=await _find_dynamic_target(area,cred,target_rpid,root) if target_rpid else None
+        if not target_rpid and root:raise ValueError('顶层评论不接受孤立 root 参数')
+        target_key='dynamic:'+did+':'+area['oid']+':'+str(target['target']['rpid'] if target else '0')
+        claim=_claim_session_manual_action(uid,'comment',target_key,body,
+                max(0,min(1000,int(os.environ.get('BILI_COMMENT_DAILY_LIMIT','10')))))
+        if not claim.get('ok'):return json.dumps(claim,ensure_ascii=False)
+        try:
+            response=await comment.send_comment(text=body,oid=int(area['oid']),type_=area['resource_type'],
+                root=int(target['root']) if target else None,
+                parent=int(target['target']['rpid']) if target and target['target']['rpid']!=target['root'] else None,credential=cred)
+            result=response if isinstance(response,dict) else {}
+            data=result.get('data') if isinstance(result.get('data'),dict) else {}
+            sent=str(data.get('rpid_str') or data.get('rpid') or result.get('rpid_str') or result.get('rpid') or '')
+            code=result.get('code',0)
+            if code!=0 or not re.fullmatch(r'[1-9][0-9]{0,29}',sent):
+                raise ValueError('平台未返回可确认的评论 ID（或发送被拒），不自动重试')
+            _finish_session_manual_action(uid,'comment',target_key,claim['body_hash'],claim['day'],'ok','动态评论回执 '+sent)
+            return json.dumps({'ok':True,'action':'dynamic-reply' if target else 'dynamic-comment',
+                'dynamicId':did,'oid':area['oid'],'commentType':area['comment_type'],
+                'sentRpid':sent,'targetRpid':target['target']['rpid'] if target else '',
+                'root':target['root'] if target else '',
+                'url':'https://t.bilibili.com/'+did,
+                'message':'B站接口返回评论 ID；公开显示仍以平台页面为准'},ensure_ascii=False)
+        except Exception as exc:
+            _finish_session_manual_action(uid,'comment',target_key,claim['body_hash'],claim['day'],'uncertain',str(exc)[:160])
+            return json.dumps({'ok':False,'no_retry':True,'status':'uncertain',
+                'error':'结果不确定，已保留额度且禁止自动重试：'+str(exc)[:130]},ensure_ascii=False)
+    except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False)
+
+
 @tool()
 async def bili_reply_manual(bvid: str, text: str, rpid: int = 0, root: int = 0, confirm: bool = False) -> str:
     """主 Session 中主人明确要求的单条评论或回复；默认不 @、不同步动态，重复请求防重。"""
@@ -1595,7 +1848,7 @@ async def bili_video_collect(bvid: str, folder_title: str, reason: str = '') -> 
         result=_claim_video_action(uid,bv,'collect',5)
         if result:return json.dumps(result,ensure_ascii=False)
         try:
-            fid,title,created=await _ensure_ai_folder(cred,uid,folder_title)
+            fid,title,created=await _ensure_ai_folder(cred,uid,folder_title,automatic=True)
             result=await video.Video(bvid=bv,credential=cred).set_favorite(add_media_ids=[fid])
             if isinstance(result,dict) and result.get('code',0) not in (0,None):raise ValueError(str(result.get('message') or result.get('code'))[:120])
             _finish_video_action(uid,bv,'collect',True,title+'：'+why)
@@ -2906,6 +3159,28 @@ async def bili_unread_messages() -> str:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
 
+
+
+def _notification_string_ids(response):
+    if not isinstance(response,dict):return response
+    data=response.get('data') or {}
+    items=data.get('items') if isinstance(data,dict) else None
+    if not isinstance(items,list):return response
+    for row in items:
+        if not isinstance(row,dict):continue
+        if row.get('id') is not None:row['id']=str(row['id'])
+        user=row.get('user') or {}
+        if isinstance(user,dict):
+            for key in ('mid','uid'):
+                if user.get(key) is not None:user[key]=str(user[key])
+        item=row.get('item') or {}
+        if isinstance(item,dict):
+            for key in ('subject_id','source_id','root_id','target_id','aid'):
+                if item.get(key) is not None:item[key]=str(item[key])
+            for at in item.get('at_details') or []:
+                if isinstance(at,dict) and at.get('mid') is not None:at['mid']=str(at['mid'])
+    return response
+
 # ========== Tool 23: 最近收到的回复 ==========
 
 @tool()
@@ -2919,7 +3194,7 @@ async def bili_received_replies() -> str:
     cred = get_cred()
     try:
         result = await session.get_replies(credential=cred)
-        return json.dumps(result, ensure_ascii=False)
+        return json.dumps(_notification_string_ids(result), ensure_ascii=False)
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
@@ -2937,7 +3212,7 @@ async def bili_received_at_and_likes() -> str:
     cred = get_cred()
     result = {}
     try:
-        result["at"] = await session.get_at(credential=cred)
+        result["at"] = _notification_string_ids(await session.get_at(credential=cred))
     except Exception as e:
         result["at_error"] = str(e)
     try:

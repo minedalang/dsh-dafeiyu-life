@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="dafeiyu-management" content="1">
 <title>大肥鱼 · DSH 生活系统 · 管理中心</title>
 <style>
 :root{color-scheme:light dark;font-family:system-ui,'Microsoft YaHei',sans-serif;--ink:#20272f;--muted:#697685;--page:#f4f7fb;--panel:#fff;--stroke:#dbe3eb;--action:#305fd1;--tint:#edf3ff;--bad:#a33e3e}
@@ -13,6 +14,9 @@ input,textarea,select{background:var(--panel);color:var(--ink);border:1px solid 
 .card{border:1px solid var(--stroke);background:var(--panel);padding:17px;border-radius:13px;min-width:0;overflow-wrap:anywhere}.card h3{margin:0 0 8px;font-size:16px}.card p{margin:6px 0}.card .actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.card .actions button{font-size:13px;padding:5px 10px}.pill{display:inline-block;border-radius:30px;padding:2px 9px;font-size:12px;background:var(--tint);color:var(--action);margin-right:6px}.pill.pending{background:#fff0d2;color:#8c6200}.pill.rejected{background:#fae7e7;color:#9b4747}#message{min-height:25px;margin:12px 0;color:var(--action)}.actions .danger{color:var(--bad)}section[hidden]{display:none!important}
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:11px}.fields>*{min-width:0}.fields input,.fields select{width:100%}.fields input[type=checkbox]{width:22px;height:22px}.settings-stack{display:grid;gap:12px;margin-top:12px}.settings-section{border:1px solid var(--stroke);border-radius:10px;padding:14px;min-width:0}.settings-section h4{margin:0 0 10px;font-size:14px}.diag-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.diag-switch{display:flex;align-items:center;gap:5px;margin:0;color:var(--muted);white-space:nowrap;font-weight:500}.diag-switch input{width:17px;height:17px}.quota-readout{display:block;margin:5px 0 0;font-size:12px;font-weight:500;color:var(--action)}.quota-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:9px;margin-top:9px}.quota-tile{border:1px solid var(--stroke);border-radius:9px;padding:10px 12px;background:var(--panel)}.quota-tile strong{display:block;font-size:19px}.quota-tile span{font-size:12px;color:var(--muted)}.settings-section>.muted{margin:9px 0 0}.inset{padding:12px 0;border-top:1px dashed var(--stroke);margin-top:13px}.queue-badge[hidden]{display:none!important}.queue-badge{display:inline-flex;min-width:20px;justify-content:center;background:#d54949;color:#fff;border-radius:12px;font-size:11px;padding:1px 5px}#growth-context{white-space:pre-wrap;max-height:440px;overflow:auto;font-size:12px;background:var(--tint);padding:12px;border-radius:8px}pre.output{white-space:pre-wrap;overflow:auto;max-height:65vh;background:var(--tint);border-radius:8px;padding:14px;font-size:12px}.records{display:grid;gap:9px}.record{border:1px solid var(--stroke);border-radius:9px;padding:11px;overflow-wrap:anywhere;background:color-mix(in srgb,var(--panel) 92%,var(--tint) 8%)}.record a{color:var(--action)}.checkline{display:flex;align-items:center;gap:8px}.checkline label{margin:0}.sticker-grid .sticker-preview{display:block;width:100%;height:170px;object-fit:contain;background:var(--tint);border-radius:8px}.sticker-grid .card h3{margin-top:10px}.diag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px}.diag-card{display:flex;flex-direction:column;min-height:365px}.diag-card>h3,.diag-card .diag-heading{flex:0 0 auto}.diag-card .muted{flex:0 0 auto}.records-scroll{margin-top:10px;max-height:270px;overflow:auto;padding-right:6px;scrollbar-gutter:stable both-edges}.records-scroll.tall{max-height:360px}.records-scroll:empty{margin-top:0}.records-scroll::-webkit-scrollbar{width:10px;height:10px}.records-scroll::-webkit-scrollbar-thumb{background:var(--stroke);border-radius:999px}.records-scroll::-webkit-scrollbar-track{background:transparent}.diag-block{background:var(--panel)}.record .title-line{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.record .meta-line{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}.record .preview{margin-top:7px;padding:8px 10px;border-radius:8px;background:var(--tint);font-size:12px;white-space:pre-wrap}.diag-fetch{margin:8px 0 0}.manual-reply-status{flex-basis:100%;margin:8px 0 0;padding:9px 10px;border:1px solid var(--stroke);border-radius:8px;background:var(--tint);white-space:pre-wrap;overflow-wrap:anywhere}.actions button:disabled{opacity:.65;cursor:wait}
 @media(max-width:580px){.wrap{padding:15px 12px 35px}.top h1{font-size:21px}.tabs button{flex:1}}
+/* DSH Mobile: 不离开当前配对网关 Origin，安全区与返回入口适配小屏。 */
+.mobile-back{display:none}.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@media(max-width:700px){.mobile-back{display:inline-flex;align-items:center}.top{align-items:flex-start;flex-wrap:wrap}.top-actions{width:100%}.top-actions>*{min-height:42px}.wrap{padding-bottom:calc(35px + env(safe-area-inset-bottom,0px));padding-top:calc(12px + env(safe-area-inset-top,0px))}}
 
 .tabs{position:sticky;top:0;z-index:5;background:var(--page);padding:12px 0;margin:14px 0 20px;border-bottom:1px solid var(--stroke)}
 .tabs button{white-space:nowrap;font-size:13px}.settings-section{background:var(--panel)}
@@ -21,6 +25,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .friend-role-row label{font-size:12px}.friend-role-row input[type=checkbox]{width:18px;height:18px}
 .peer-line{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.peer-line select{min-width:160px}.peer-line input{flex:1;min-width:160px}
 @media(max-width:700px){.tabs{position:static}.friend-role-row{grid-template-columns:1fr 1fr}.wrap{padding:16px 12px 35px}}
+
+/* 2.6.0: 暂停主动回访，折叠旧配置并明确禁用，暗色主题也能看清。 */
+#social-outreach-section.outreach-paused{border-style:dashed;background:color-mix(in srgb,var(--panel) 88%,var(--tint) 12%)}
+#social-outreach-section .outreach-disabled{border:0;padding:0;margin:10px 0;min-width:0;opacity:.65}
+#social-outreach-section .outreach-disabled :is(input,select,button){cursor:not-allowed}
+#social-outreach-section details>summary{font-weight:600;cursor:pointer;color:var(--muted)}
+#emotion-history .emotion-preview{font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px;padding:7px 9px;border-left:2px solid var(--stroke);background:var(--tint);border-radius:5px}
+#emotion-history .emotion-preview>div+div{margin-top:3px}
 
 /* 人生记忆独立页：语义颜色只强调状态和可执行动作，不改变其他管理页。 */
 #panel-life{--life-indigo:#5257c9;--life-sky:#1479b8;--life-green:#187e61;--life-purple:#8654ae;--life-amber:#9a600b}
@@ -75,7 +87,7 @@ border-radius:999px;transition:width .28s ease}
 button{transition:filter .16s,transform .16s,border-color .16s}
 button:not(:disabled):hover{transform:translateY(-1px)}
 button.primary,.toolbar button.primary,.actions button.primary{background:#275cb9;border-color:#275cb9;color:#fff;font-weight:700}
-#panel-meme button.primary,#panel-growth button.primary,#panel-life button.life-green,#panel-backup button.primary{background:#157e60;border-color:#157e60;color:#fff}
+#panel-personality button.primary,#panel-meme button.primary,#panel-growth button.primary,#panel-life button.life-green,#panel-backup button.primary{background:#157e60;border-color:#157e60;color:#fff}
 #panel-dm button.primary,#panel-quotas button.primary,#panel-comments button.primary{background:#206da4;border-color:#206da4;color:#fff}
 input:not([type=checkbox]):focus,select:focus,textarea:focus{border-color:var(--action);box-shadow:0 0 0 3px color-mix(in srgb,var(--action) 18%,transparent)}
 input[type=checkbox]{accent-color:#16865f}
@@ -94,6 +106,8 @@ input[type=checkbox]{accent-color:#16865f}
 .life-jump a{border:1px solid var(--stroke);border-radius:999px;padding:8px 12px;color:var(--ink);text-decoration:none;background:var(--panel);font-weight:650;font-size:13px;}
 .life-jump a:hover,.life-jump a:focus-visible{border-color:#209a79;color:var(--accent-green);box-shadow:0 2px 9px rgba(19,131,95,.13)}
 #panel-life .life-section{scroll-margin-top:100px}
+#panel-life .life-quick-jump{margin:12px 0;position:relative}
+#panel-life .life-quick-jump a{border-radius:10px;font-weight:650}
 @media(max-width:620px){.top{padding:14px}.feature-intro{padding:13px}.tabs{gap:5px}.tabs button{font-size:12px;padding:8px 10px}.toolbar>input{width:100%}}
 .settings-section .checkline{margin:11px 0;gap:10px;font-size:14px;font-weight:550}.settings-section .checkline input{accent-color:#168b6d;width:18px;height:18px}
 #panel-models .settings-section{border-left:4px solid #4388c7}#panel-bili .settings-section{border-left:4px solid #289f76}
@@ -148,8 +162,6 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 #action-confirm-description{font-size:14px;color:var(--ink);white-space:pre-wrap;margin:18px 0 24px}
 .confirm-footer{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
 .action-confirm-dialog.danger #action-confirm-accept{background:linear-gradient(115deg,#b64b68,#cc7855);border-color:transparent;color:white}
-.legacy-archive{margin-top:19px;border:1px dashed color-mix(in srgb,var(--ui-indigo) 42%,var(--stroke));border-radius:13px;padding:12px 16px;background:color-mix(in srgb,var(--panel) 90%,var(--tint))}
-.legacy-archive summary{cursor:pointer;font-weight:650;color:var(--muted)}.legacy-archive[open] summary{margin-bottom:9px;color:var(--action)}
 @media(prefers-color-scheme:dark){.top h1{background:linear-gradient(110deg,#afc6ff,#8bdbc1);color:transparent;background-clip:text;-webkit-background-clip:text}.tabs button[aria-selected=true]{background:linear-gradient(110deg,#355c9a,#376f83)}}
 @media(prefers-reduced-motion:reduce){.spinner,button.is-busy:after{animation:none}}
 
@@ -178,10 +190,16 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 #panel-life .emotion-trend{margin:12px 0;padding:12px 15px;border:1px solid var(--stroke);background:linear-gradient(120deg,color-mix(in srgb,var(--ui-indigo) 6%,var(--panel)),var(--panel));border-radius:14px}
 #panel-life .emotion-trend .trend-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;font-size:12px}
 #panel-life .emotion-trend svg{display:block;width:100%;height:104px;overflow:visible}
-#panel-life .emotion-trend .trend-line{fill:none;stroke:var(--ui-indigo);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:420;animation:trend-draw 1.3s ease forwards}
-#panel-life .emotion-trend .trend-area{fill:color-mix(in srgb,var(--ui-indigo) 10%,transparent)}
-#panel-life .emotion-trend .trend-dot{fill:var(--panel);stroke:var(--ui-indigo);stroke-width:2}
-@keyframes trend-draw{from{stroke-dashoffset:420}to{stroke-dashoffset:0}}
+#panel-life .emotion-trend .trend-legend{display:flex;flex-wrap:wrap;gap:7px 14px;margin:7px 0 9px;font-size:12px}
+#panel-life .emotion-trend .trend-legend-item{display:inline-flex;align-items:center;gap:6px;color:var(--text-secondary)}
+#panel-life .emotion-trend .trend-legend-swatch{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:var(--trend-color)}
+#panel-life .emotion-trend svg{display:block;width:100%;height:142px;overflow:visible}
+#panel-life .emotion-trend .trend-line{fill:none;stroke:var(--trend-color,var(--ui-indigo));stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1200;animation:trend-draw 1.3s ease forwards}
+#panel-life .emotion-trend .trend-dot{fill:var(--panel);stroke:var(--trend-color,var(--ui-indigo));stroke-width:2}
+#panel-life .emotion-trend .trend-grid{stroke:var(--stroke);stroke-width:1;stroke-dasharray:3 4;opacity:.85}
+#panel-life .emotion-trend .trend-axis-label{fill:var(--text-secondary);font-size:10px}
+#panel-life .emotion-trend .trend-date-label{fill:var(--text-secondary);font-size:10px}
+@keyframes trend-draw{from{stroke-dashoffset:1200}to{stroke-dashoffset:0}}
 #panel-social .recall-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:12px 0}
 #panel-social .recall-summary{padding:11px 13px;border:1px solid var(--stroke);border-radius:12px;background:var(--panel);border-top:3px solid var(--ui-indigo)}
 #panel-social .recall-summary[data-tone=quiet]{border-top-color:var(--ui-amber)}
@@ -270,6 +288,9 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 #panel-life .todo-empty{padding:22px 14px;border:1px dashed var(--stroke);border-radius:12px;text-align:center;color:var(--muted)}
 #panel-life #life-interest-section .interest-grid{margin:12px 0}
 #panel-life #life-relationship-section #friend-relationships-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:10px}
+#life-relationship-section .relation-score-track{height:7px;background:var(--border-color,#e0e6ee);border-radius:999px;overflow:hidden;margin:6px 0}
+#life-relationship-section .relation-score-fill{height:100%;background:#4c9b8b;border-radius:999px;transition:width .25s ease}
+#life-relationship-section .relation-name{display:block;margin-bottom:5px}
 @media(prefers-reduced-motion:reduce){#panel-life .todo-item,#panel-life .life-subdetails{animation:none!important}}
 
 /* dev.15：生活概览与系统设置分开，所有旧控件仍保留原 ID / API。 */
@@ -336,15 +357,82 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 #life-todo-section>details.contextual-settings{margin-top:14px}
 #life-todo-section>details.contextual-settings>.inset{padding:0 14px 14px;border:0}
 @media(max-width:580px){.contextual-settings>.muted{margin:10px 12px 5px}.contextual-settings>#settings-memory,.contextual-settings>#settings-sync{margin:10px 12px 12px}.contextual-hint{display:block;margin:2px 0 0 18px}}
+
+/* Explicit, scoped recommended settings for existing installations (no auto-save). */
+.recommend-group-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px 11px;margin:10px 0 12px}
+.recommend-group-tools>.muted{flex:1;min-width:180px;font-size:12px;line-height:1.55}
+.recommended-reset{white-space:normal;font-size:13px;font-weight:750;border:1px solid #624bb4;
+background:linear-gradient(120deg,#7550b8,#4d61cb);color:#fff;box-shadow:0 3px 11px rgba(81,74,173,.21);
+transition:transform .16s ease,box-shadow .16s ease,filter .16s ease}
+.recommended-reset:hover{background:linear-gradient(120deg,#8561cb,#6076dc);border-color:#755ad0;
+box-shadow:0 5px 15px rgba(81,74,173,.28);transform:translateY(-1px)}
+.recommended-reset:focus-visible{outline:3px solid #e9ad45;outline-offset:2px}
+.recommend-feedback{padding:7px 0;line-height:1.6}
+.recommended-pending{outline:2px solid var(--ui-teal)!important;outline-offset:1px}
+
+/* First Start: calm welcome, mandatory steps, responsive layout */
+.fs-hero{padding:26px 29px;border:1px solid #9dc9df;border-radius:19px;background:linear-gradient(125deg,#e6f4ff,#e8f8ef 54%,#f3e9fc);margin:14px 0 18px;box-shadow:0 12px 29px rgba(34,74,117,.06)}
+.fs-hero h2{font-size:25px;margin:0 0 8px;color:#264369}.fs-hero p{margin:0;color:#42627b;line-height:1.8}.fs-pill{display:inline-flex;border-radius:99px;padding:5px 11px;background:#ffffffb5;font-size:12px;font-weight:750;color:#336b85;margin:0 0 12px}
+.fs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px}.fs-step{background:var(--panel);border:1px solid var(--stroke);border-top:4px solid #d44d54;border-radius:14px;padding:18px}.fs-step.optional{border-top-color:#8a99b3}.fs-step h3{font-size:16px;margin:0 0 8px}.fs-step p{font-size:13px;color:var(--muted);line-height:1.75;margin:8px 0}.fs-state{background:var(--tint);border-radius:9px;padding:10px;margin:12px 0;font-size:13px;font-weight:650}.fs-state.bad{background:#ffeded;color:#a22a35}.fs-state.good{background:#e6f7ed;color:#216944}.fs-step .actions{display:flex;gap:8px;flex-wrap:wrap}.fs-step button{font-size:13px}.fs-qr{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:10px}.fs-qr[hidden]{display:none!important}.fs-qr img{width:170px;height:170px;object-fit:contain;padding:6px;background:#fff;border-radius:10px}
+.fs-recommend-tip{border:1px solid #adaceb;border-left:5px solid #6754c3;
+background:linear-gradient(115deg,#f1eeff,#eef7ff);color:#374574;border-radius:10px;
+padding:11px 12px;margin:12px 0;font-size:13px;line-height:1.65;display:grid;gap:5px}
+.fs-recommend-tip strong{font-weight:750;color:#4b38a4}
+.fs-next-hint{border:1px solid #c4b5fd;border-left:4px solid #7756c3;border-radius:9px;background:linear-gradient(115deg,#f2edff,#eef6ff);padding:10px 12px!important;color:#453782!important;font-size:13px!important;font-weight:700}
+/* Headless onboarding: visually separate syncing from the required real probe. */
+.headless-journey{border:1px solid #bac8e9;border-radius:15px;background:linear-gradient(125deg,color-mix(in srgb,var(--ui-indigo) 9%,var(--panel)),var(--panel));padding:16px;margin:15px 0;display:grid;gap:12px}
+.headless-journey h5{margin:0;font-size:15px}.headless-journey p{margin:4px 0 0;font-size:13px;line-height:1.65}
+.headless-stages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.headless-stage{min-width:0;border:1px solid var(--stroke);background:var(--panel);border-radius:10px;padding:10px;font-size:12px;line-height:1.6;color:var(--muted)}
+.headless-stage strong{display:block;color:var(--ink);font-size:13px}
+.headless-stage[data-state="current"]{border-color:#7a5ac8;box-shadow:inset 0 0 0 1px #7a5ac8;background:color-mix(in srgb,#aa91ee 13%,var(--panel))}
+.headless-stage[data-state="done"]{border-color:#45a580;background:color-mix(in srgb,#4ec9a2 12%,var(--panel))}
+.headless-next{border:1px solid #d7a652;border-left:5px solid #dc9b2d;border-radius:11px;padding:13px 15px;background:color-mix(in srgb,#ffe0a0 32%,var(--panel));display:grid;gap:6px}
+.headless-next strong{font-size:15px}.headless-next p{color:var(--muted)}
+.headless-journey[data-stage="verified"] .headless-next{border-color:#36a47b;background:color-mix(in srgb,#49b58b 13%,var(--panel))}
+.headless-next-action{width:max-content;max-width:100%;font-weight:800;box-shadow:0 5px 15px rgba(70,86,155,.2)}
+.headless-verify-button.primary{background:linear-gradient(110deg,#7352bd,#426fd0);color:#fff;border-color:transparent;font-weight:800}
+.headless-verify-hint{display:block;color:var(--action);font-size:12px;font-weight:700;margin:5px 0}
+/* Android via DSH Mobile is currently a read-only remote console, not a local admin session. */
+.mobile-view-banner{border:1px solid #c0aedc;border-left:5px solid #7862bb;border-radius:12px;background:linear-gradient(110deg,color-mix(in srgb,#b6a1f0 19%,var(--panel)),var(--panel));padding:14px 17px;margin:15px 0;line-height:1.7}
+.mobile-view-banner strong{display:block;font-size:14px}.mobile-view-banner p{font-size:13px;margin:4px 0;color:var(--muted)}
+button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mobile-locked,textarea.mobile-locked{opacity:.56!important;filter:grayscale(.7);cursor:not-allowed!important;box-shadow:none!important;transform:none!important}
+.mobile-only-note{color:var(--muted);font-size:12px;line-height:1.6;margin:6px 0}
+@media(max-width:570px){.headless-stages{grid-template-columns:1fr}.headless-next-action{width:100%}}
+.fs-footer{padding:17px;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.fs-footer .actions{display:flex;gap:8px;flex-wrap:wrap}
+.fs-warning{border:1px solid #cc3546;border-left:6px solid #cc3546;background:#ffebee;color:#912536;border-radius:12px;padding:13px 15px;display:flex;gap:15px;align-items:center;justify-content:space-between;margin-bottom:15px;font-weight:700;flex-wrap:wrap}.fs-warning[hidden]{display:none!important}
+@media(prefers-color-scheme:dark){.fs-hero{background:linear-gradient(120deg,#253957,#1d4038,#392949);border-color:#416580}.fs-hero h2{color:#e0f3ff}.fs-hero p{color:#c1dce5}.fs-pill{background:#263e50;color:#b7e7ff}.fs-state.bad{background:#4a222b;color:#ffc3cc}.fs-state.good{background:#1d4335;color:#b5f1c8}.fs-warning{background:#44262e;color:#ffd1d9}.fs-recommend-tip{background:linear-gradient(115deg,#2b294c,#22364c);border-color:#6265b4;border-left-color:#a394ff;color:#dbe3ff}.fs-recommend-tip strong{color:#cabfff}.fs-next-hint{background:#30294c;color:#e4d8ff!important;border-color:#7568aa}}
+@media(max-width:570px){.fs-hero{padding:19px}.fs-hero h2{font-size:21px}.fs-footer button{flex:1}}
+
+/* First Start's Session editor uses the real settings form, without exposing
+   unrelated business actions or the disabled main Session service. */
+#panel-home[data-setup-only="true"] .home-overview,
+#panel-home[data-setup-only="true"] .home-quicklinks { display:none!important; }
+#panel-home[data-setup-only="true"] #main-session-test,
+#panel-home[data-setup-only="true"] #main-session-sync,
+#panel-home[data-setup-only="true"] #main-session-backfill { display:none!important; }
+#panel-home[data-setup-only="true"] .feature-intro h2{font-size:19px}
+#fs-main-session-return {margin-bottom:15px}
+
+.activity-ticker{display:flex;gap:10px;align-items:center;padding:10px 13px;margin:10px 0 14px;border-radius:12px;background:var(--tint);border:1px solid var(--stroke);overflow:hidden;font-size:13px}
+.ticker-mark{flex:none;color:var(--action);font-weight:700;white-space:nowrap}.ticker-view{flex:1;overflow:hidden;min-width:0;white-space:nowrap}
+#activity-ticker-text{display:inline-block;min-width:100%;animation:fish-ticker 18s linear infinite;will-change:transform}
+#activity-ticker-clock{flex:none;font-size:11px}@keyframes fish-ticker{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+.activity-ticker:hover #activity-ticker-text{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){#activity-ticker-text{animation:none;white-space:normal}.ticker-view{white-space:normal}}
+@media(max-width:650px){.activity-ticker{gap:7px;padding:8px}.ticker-mark{font-size:12px}#activity-ticker-clock{display:none}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 </head>
 <body><main class="wrap">
-<header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><button id="refresh">刷新当前页</button></header>
+<header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><a class="button mobile-back" href="/" aria-label="返回 DSH Mobile">← 返回 DSH</a><button id="refresh">刷新当前页</button></div></header>
+<div class="activity-ticker" role="region" aria-label="鱼鱼近期活动" title="只显示系统事件类别，不显示评论正文或私密资料"><span class="ticker-mark">🐟 生活播报</span><div class="ticker-view"><span id="activity-ticker-text" aria-live="off">连接生活状态中…</span></div><span id="activity-ticker-clock" class="muted">自动更新</span></div>
 <nav class="tabs" aria-label="管理分类">
 <div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
 <button data-tab="home" aria-selected="false">大肥鱼的家</button>
-<button data-tab="life" aria-selected="false">人生记忆</button></div>
+<button data-tab="life" aria-selected="false">记忆与回忆</button>
+<button data-tab="relationships" aria-selected="false">👥 逐渐熟悉的人</button>
+<button data-tab="personality" aria-selected="false">🌱 人格成长</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">📺 B站生活</span>
 <button data-tab="bili" aria-selected="false">视频探索</button>
 <button data-tab="social" aria-selected="false">社交互动</button>
@@ -352,6 +440,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <button data-tab="dm" aria-selected="false">后台私信 <span id="dm-count" class="queue-badge" hidden></span></button>
 <button data-tab="dynamic" aria-selected="false">动态创作</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">🎭 角色与系统</span>
+<button data-tab="firststart" aria-selected="false">🚀 首次设置</button>
 <button data-tab="persona" aria-selected="true">角色人设</button>
 <button data-tab="growth" aria-selected="false">行为与表达改进 <span id="growth-count" class="queue-badge" hidden></span></button>
 <button data-tab="models" aria-selected="false">AI 模型</button>
@@ -364,16 +453,50 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <button data-tab="diagnostics" aria-selected="false">运行诊断</button>
 <button data-tab="backup" aria-selected="false">数据备份</button></div>
 </nav>
+<div id="mobile-view-banner" class="mobile-view-banner" role="note" hidden><strong>📱 手机端 · 查看模式</strong><p>DSH Mobile 通过远程网关查看管理中心。配置保存、B站登录、Headless 同步与验证、备份恢复等需要在运行 DSH 的电脑端完成；这里的相关按钮已置灰。你仍可切换页面、展开内容及刷新可访问的状态。</p></div>
 <p id="message" role="status" aria-live="polite"></p>
+<div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">首次设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开首次设置 ↗</button></div>
+<section id="panel-firststart" hidden>
+  <div class="fs-hero"><span class="fs-pill">🐟 FIRST START · 大肥鱼首次使用引导</span><h2>欢迎来到大肥鱼</h2><p>让鱼鱼开始认识你，陪伴你慢慢成长。这里就是大肥鱼管理中心：第一次安装和老用户升级都会看到这页。<strong>B站登录和 Headless 模型验证是必须完成的两项</strong>，其他设置可以先跳过，之后随时回来修改。</p></div>
+  <div class="fs-grid">
+    <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div></section>
+    <section class="fs-step"><h3>02 · Headless 模型同步 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先同步再验证。<strong>首次设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
+    <section class="fs-step optional"><h3>03 · 主 Session <span class="pill">可跳过</span></h3><p>指定鱼鱼和主人交谈的主要会话；以后可以在管理中心修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
+    <section class="fs-step optional"><h3>04 · 人生记忆和反思 <span class="pill">可跳过</span></h3><p>以后可以调整记忆整理、反思批次和恢复推荐设置值。</p><div class="fs-recommend-tip" role="note"><strong>✨ 老用户升级建议：使用新版记忆与反思推荐值</strong><span>完成首次设置后，进入「人生记忆 → 记忆与检索设置」，展开「人生反思调度」「遗忘与召回质量」「可选 AI 检索与用量」，分别点击「使用推荐值」，最后点击「保存记忆与反思设置」才会生效。不会自动覆盖旧设置，也不会更改模型、开关或已有记忆。</span></div><div class="actions"><button type="button" id="fs-life-settings" data-open-tab="life" disabled title="先完成首次设置，之后可在管理中心修改记忆设置">完成引导后设置</button><button type="button" data-firststart-skip="life-memory">先跳过</button></div></section>
+    <section class="fs-step optional"><h3>05 · 人格成长与社交偏好 <span class="pill">可跳过</span></h3><p>人格成长、自主聊天与对外社交权限始终可调整；引导不会自动开启任何发布权限。</p><div class="actions"><button type="button" id="fs-personality-settings" data-open-tab="personality" disabled title="先完成首次设置，之后可在管理中心修改人格设置">完成引导后设置</button><button type="button" data-firststart-skip="personality">先跳过</button></div></section>
+  </div>
+  <div class="fs-footer"><div><strong id="fs-summary">请先完成两项必需配置</strong><p class="muted">完成后随时可以在管理中心重新打开首次设置，已有记忆、凭据和历史资料不会删除。</p></div><div class="actions"><button id="fs-complete" class="primary" type="button" disabled>完成首次设置</button><button id="fs-complete-skip" type="button" disabled>跳过可选项并完成</button></div></div>
+</section>
 <section id="panel-models" hidden>
 <div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>所有 AI 模型只在这里设置。Provider 和模型 ID 留空时继承 DSH 当前模型；不需要在插件重复填写 API Key。每日次数统计的是插件启动的模型任务，并非 Provider 实际 API 请求数；安装本版后开始记录，不补算历史。测试连接不计入统计，但会产生实际模型请求，可能消耗额度。请先保存模型配置再测试。独立视觉的测试只验证文字连接，不验证识图能力。表情包规则优化只在你手动点击时调用，日常评论仍使用本地零 Token 检索。</p></div></div>
 <div class="settings-stack">
-<div class="settings-section"><h4>刷视频与内容理解</h4><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责搜索、阅读视频、选片、评论决策与点赞收藏决策。</p><div class="fields" id="models-video"></div></div>
+<div class="settings-section" id="headless-model-sync-panel">
+<h4>🔐 后台模型同步与检测（独立 Agent 必需）</h4>
+<p class="muted">首次启用或更换模型后，请先同步 DSH Desktop 的模型配置，再执行一次后台验证。<strong>未同步并验证成功时，独立视频 Agent、独立识图及需要 headless 的兼容路径不会运行。</strong> 人生反思、文字评论/私信、动态草稿、AI 记忆检索等纯文本功能在宿主模型服务可用时可以直接运行，不需要同步。宿主不可用且没有已验证的后台模型时，不会偷偷降级到其他模型。</p>
+<p class="muted">仅同步模型定义（Provider ID、协议、Base URL、模型、环境变量名），不复制 API Key、凭据或工具授权。不会自动开启任何 B站发布权限。连接验证会发送一条简短测试请求，可能产生少量模型费用。</p>
+<div id="headless-journey" class="headless-journey" data-stage="source" aria-label="Headless 三步设置进度">
+  <h5>Headless 配置进度 · 三步完成</h5>
+  <div class="headless-stages">
+    <div id="headless-stage-source" class="headless-stage" data-state="current"><strong>① 检测模型</strong><span>从 DSH 读取 Provider</span></div>
+    <div id="headless-stage-sync" class="headless-stage" data-state="pending"><strong>② 按需同步</strong><span>官方模型跳过此步</span></div>
+    <div id="headless-stage-verify" class="headless-stage" data-state="pending"><strong>③ 真实连接验证</strong><span>任选一个模型即可</span></div>
+  </div>
+  <div class="headless-next" role="status" aria-live="polite"><strong id="headless-next-title">先检测可用模型</strong><p id="headless-next-description">选择模型来源后点击「重新检测」。</p><button id="headless-next-action" type="button" class="primary headless-next-action" hidden>下一步</button></div>
+</div>
+<div class="fields"><div><label for="headless-source-profile">模型来源</label><select id="headless-source-profile"><option value="desktop">DSH Desktop</option><option value="web">DSH Web（使用 Web 时选择）</option></select></div></div>
+<div id="headless-sync-status" role="status" aria-live="polite" class="muted">尚未检查后台模型。</div>
+<div id="headless-provider-list" class="settings-stack"></div>
+<div id="headless-sync-plan" class="muted" role="status" aria-live="polite"></div>
+<div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button><button type="button" id="headless-sync-preview" class="primary" title="只查看准备同步的模型配置，不会立即修改 DSH 文件">查看待同步配置</button><button type="button" id="headless-sync-commit" hidden>确认同步到 Headless</button></div>
+<p class="muted">只有要使用的自定义 Provider 才需要勾选同步；DSH 官方已注册模型无需同步。<strong>首次设置只需任选一个模型通过验证</strong>，其他模型可以以后需要时再验证。</p>
+</div>
+<div class="settings-section model-default-panel"><h4>✨ 默认模型与快捷配置</h4><p id="models-default-summary" class="muted">正在从 DSH 读取默认模型…</p><p class="muted"><strong>自动继承不是选择第一个已验证模型。</strong>通常沿用 DSH 当前默认模型；「生活动态文案」和「主人私信 Agent」优先继承「后台互动」，「独立视觉」优先继承「视频理解」。只有选择具体 Provider/模型才是手动覆盖。验证通过仅代表连接测试成功，不代表它是默认模型、低成本或适合视觉。</p><div class="toolbar"><button id="models-reset-inheritance" type="button">将任务模型改回自动继承（仅预览）</button></div><small id="models-recommendation-note" class="setting-note">保存后才生效；连接测试针对已保存的模型配置。</small></div>
+<div class="settings-section"><h4>刷视频与内容理解</h4><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责搜索、阅读视频、选片、评论决策与点赞收藏决策。此项运行独立 Agent，须先在上方通过真实 Headless 验证；DSH 官方模型无需额外同步配置。</p><div class="fields" id="models-video"></div></div>
 <div class="settings-section"><h4>后台评论与私信</h4><div class="model-activity"><span id="models-interaction-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-interaction-test" class="model-test-button">测试连接</button><span id="models-interaction-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责后台评论与私信；B站动态草稿有独立模型配置，不使用人生反思模型。</p><div class="fields" id="models-interaction"></div></div>
-<div class="settings-section"><h4>生活动态文案 · 专用模型（可继承）</h4><div class="model-activity"><span id="models-dailyDynamic-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-dailyDynamic-test" class="model-test-button">测试连接</button><span id="models-dailyDynamic-test-result" class="muted" role="status"></span></div><p class="muted">负责 B站公开生活动态的草稿构思，既不是人生反思，也不会读取私人聊天。留空时继承后台评论与私信模型；它也未配置时继承 DSH 默认模型。</p><div class="fields" id="models-dailyDynamic"></div></div>
-<div class="settings-section"><h4>主人私信受限 Agent · 专用模型（可继承）</h4><div class="model-activity"><span id="models-ownerDmAgent-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-ownerDmAgent-test" class="model-test-button">测试连接</button><span id="models-ownerDmAgent-test-result" class="muted" role="status"></span></div><p class="muted">仅在已核验的主人私信内负责自然语言理解、计划和选择允许的操作；该模型没有 B站、Shell、文件及主 Session 工具。留空时继承后台互动模型或 DSH 默认模型；调用真实工具必须通过插件的后端白名单与独立授权。</p><div class="fields" id="models-ownerDmAgent"></div></div>
-<div class="settings-section"><h4>人生反思与经历提炼</h4><div class="model-activity"><span id="models-reflection-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-reflection-test" class="model-test-button">测试连接</button><span id="models-reflection-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">专门分析积累的真实经历，决定哪些内容值得凝练成人生记忆。这里的模型不会获得 B站、文件或 Shell 工具。Provider 和模型 ID 留空时继承 DSH 当前默认模型。</p><div class="fields" id="models-reflection"></div></div>
-<div class="settings-section"><h4>独立视觉识图</h4><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">只有开启独立视觉模式时才使用；普通模式复用视频模型。</p><div class="fields" id="models-vision"></div>
+<div class="settings-section"><h4>生活动态文案 · 专用模型（默认继承后台互动）</h4><div class="model-activity"><span id="models-dailyDynamic-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-dailyDynamic-test" class="model-test-button">测试连接</button><span id="models-dailyDynamic-test-result" class="muted" role="status"></span></div><p class="muted">负责 B站公开生活动态的草稿构思，既不是人生反思，也不会读取私人聊天。留空时继承后台评论与私信模型；它也未配置时继承 DSH 默认模型。</p><div class="fields" id="models-dailyDynamic"></div></div>
+<div class="settings-section"><h4>主人私信受限 Agent · 专用模型（默认继承后台互动）</h4><div class="model-activity"><span id="models-ownerDmAgent-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-ownerDmAgent-test" class="model-test-button">测试连接</button><span id="models-ownerDmAgent-test-result" class="muted" role="status"></span></div><p class="muted">仅在已核验的主人私信内负责自然语言理解、计划和选择允许的操作；该模型没有 B站、Shell、文件及主 Session 工具。留空时继承后台互动模型或 DSH 默认模型；调用真实工具必须通过插件的后端白名单与独立授权。</p><div class="fields" id="models-ownerDmAgent"></div></div>
+<div class="settings-section"><h4>人生反思与经历提炼</h4><div class="model-activity"><span id="models-reflection-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-reflection-test" class="model-test-button">测试连接</button><span id="models-reflection-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">专门分析积累的真实经历，决定哪些内容值得凝练成人生记忆。这里的模型不会获得 B站、文件或 Shell 工具。优先复用当前 DSH 宿主已注册的 Provider；留空时继承 DSH 当前默认模型，不必另外配置 headless。若 DSH 自身不能使用该模型，仍需先修复 DSH 模型配置。</p><div class="fields" id="models-reflection"></div></div>
+<div class="settings-section"><h4>独立视觉识图</h4><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">只有开启独立视觉模式时才使用；普通模式复用视频模型。独立识图必须验证 Headless 模型后才能启动；上面的文本测试不等同于识图实测。</p><div class="fields" id="models-vision"></div>
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="reuse_video_model">复用视频模型（默认）</option><option value="independent_dsh">独立 DSH 视觉模型</option><option value="auto">自动（历史兼容：当前等同复用视频模型）</option></select></div>
 <div><label class="checkline"><input id="models-vision-enabled" type="checkbox">启用视频预览识图</label></div>
 <div><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></div></div>
@@ -414,9 +537,13 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <details id="dynamic-publishing-settings" class="contextual-settings">
 <summary>⚙️ 动态构思与发布设置 <span class="contextual-hint">按需展开 · 自动公开需单独授权</span></summary>
 <p class="muted">在这里控制动态构思、草稿及评论同步，不用再回到视频探索页面。不会擅自开启公开发布。</p>
+<div class="settings-section"><h4>每日生活动态额度</h4>
+<label for="daily-dynamic-limit">每天最多发布生活动态（0–10 条）</label>
+<input id="daily-dynamic-limit" type="number" min="0" max="10" step="1" value="1">
+<p class="muted">默认 1 条；0 表示禁止发布。它是每日公开发布的硬上限，不要求鱼鱼凑满。额度增大后，自主构思有机会多次运行，但模型仍可选择沉默；自动发布需单独授权，发布前仍通过独立额度闸门。</p></div>
 <div class="settings-section"><h4>生活动态构思</h4>
 <label class="checkline"><input id="bili-daily-enabled" type="checkbox" checked>允许大肥鱼生成自己的生活动态</label>
-<p class="muted">新安装默认只生成可核验证据的草稿，每天最多尝试一次，不会自动公开发布；满足真实素材条件时可能产生一次 AI 调用。</p>
+<p class="muted">新安装默认只生成可核验证据的草稿，默认每日最多构思一次；提高每日额度后可在有真实素材时择机多次构思，不会自动公开发布；满足真实素材条件时可能产生一次 AI 调用。</p>
 <label class="checkline"><input id="bili-daily-draft" type="checkbox">仅生成草稿，不自动发布（默认开启；取消后只自动发布通过安全校验的草稿）</label>
 <p class="muted">仅根据公开、真实的已选视频经历创作。持续情绪状态可在「人生记忆 → 情绪与心情」查看；它只影响表达节奏，不会成为公开发布私人聊天的理由。</p></div>
 <div class="settings-section"><h4>评论同步为动态</h4>
@@ -455,9 +582,10 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 </div><p id="backup-progress" role="status" aria-live="polite" class="muted"></p>
 </section>
 <section id="panel-home" hidden>
+<div id="fs-main-session-return" class="fs-warning" hidden><span>首次设置期间可正常选择、保存主 Session 及同步频率；连接测试和发送经历在完成首次设置后开放。</span><button type="button" data-open-tab="firststart">← 返回首次设置</button></div>
 <div class="feature-intro"><div><h2>🏠 大肥鱼的家 · 生活总览</h2><p>这里看到鱼鱼此刻的生活、记忆与社交近况。回忆详情在「人生记忆」，行为授权在「社交互动」，相关设置在对应功能下方的折叠区。以下状态来自本地真实记录，不会自动触发对外发送。</p></div></div>
 <div class="home-overview grid" aria-label="生活概览">
-<a class="card home-summary" href="?tab=life" data-open-tab="life"><strong>🧠 鱼鱼的记忆</strong><span id="home-overview-memory" class="muted">正在读取记忆概况…</span><small>进入人生记忆 →</small></a>
+<a class="card home-summary" href="?tab=life" data-open-tab="life"><strong>🧠 鱼鱼的记忆</strong><span id="home-overview-memory" class="muted">正在读取记忆概况…</span><small>进入记忆与回忆 →</small></a>
 <a class="card home-summary" href="?tab=life#life-emotion-section" data-open-tab="life" data-open-anchor="life-emotion-section"><strong>💗 最近的心情</strong><span id="home-overview-mood" class="muted">正在读取心情…</span><small>查看情绪变化 →</small></a>
 <a class="card home-summary" href="?tab=social" data-open-tab="social"><strong>👥 熟悉的朋友</strong><span id="home-overview-social" class="muted">正在读取社交近况…</span><small>查看好友与社交授权 →</small></a>
 </div>
@@ -480,16 +608,29 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div><label for="main-session-daily">每天最多给主 Session 汇报几次（1–24 次）</label><input id="main-session-daily" type="number" min="1" max="24" value="4"></div>
 <div><label for="main-session-batch">每次最多汇报多少条经历（1–20 条）</label><input id="main-session-batch" type="number" min="1" max="20" value="8"></div>
 <div><label for="main-session-comments">汇报时也告诉主 Session 我发过的评论/回复</label><input id="main-session-comments" type="checkbox" checked></div></div>
-<p class="muted">同步本身不额外调用“总结 AI”：视频经历和评论正文直接从插件现有账本整理。但投递到主 Session 后，那个 Session 会产生一次很短的模型回复，所以默认最多每天 4 批，避免浪费调用。跳过的视频仍保存在任务日志/视频归档供管理员核对；它们不会仅凭被记录就自动变成大肥鱼的可用记忆。</p></div>
+<p class="muted">自动汇报优先通过 DSH 非唤醒注入传递给主 Session，不会每小时触发 AI 回复“收到生活经历更新”。没有新经历时不投递；宿主不支持非唤醒注入时保留本地队列，不自动改用会唤醒模型的发送方式。只有主动点击“现在把新经历告诉主 Session”才会请求即时回复。跳过的视频仍保存在任务日志/视频归档供管理员核对；它们不会仅凭被记录就自动变成大肥鱼的可用记忆。</p></div>
 
 <div class="toolbar"><button id="main-session-sync-save" class="primary" type="button">保存主 Session 同步频率</button></div></div>
 </details>
 <div class="home-quicklinks" aria-label="其他生活入口"><button type="button" data-open-tab="life">查看人生记忆</button><button type="button" data-open-tab="social">管理社交与授权</button><button type="button" data-open-settings="life-memory-settings" data-target-tab="life">调整记忆与检索</button></div>
 </section>
+<section id="panel-relationships" hidden>
+<div class="life-hero"><div><h2>👥 逐渐熟悉的人</h2><p class="muted">每次相遇都可能让鱼鱼更熟悉一个人；关系会成长、会降温，也会影响公开社交经历能保留多久。</p></div><button type="button" data-open-tab="life" class="life-action life-sky">看看鱼鱼记得什么</button></div>
+<div id="life-relationship-section" class="settings-section life-section"><h4>👥 逐渐熟悉的人</h4>
+<p class="muted">🐟 <strong>鱼鱼可以自然认识所有真实互动过的人。</strong> 普通陌生人也能通过跨天、双向交流逐渐成为关系意义上的朋友。原「好友」名册是<strong>白名单用户</strong>，具有较高的初始关系分和额外授权；自然成为朋友并不会自动获得白名单权限或私信能力。只保留 UID、最小互动元数据，以及可选的短期公开昵称缓存（最多 7 天），不为陌生人建立性格画像，也不保存聊天正文。关系会降温，具体经历仍会遗忘。</p>
+<div class="toolbar"><input id="friend-relationships-query" type="search" maxlength="48" placeholder="按 UID 搜索；白名单可搜备注" aria-label="搜索关系 UID 或白名单备注"><button id="friend-relationships-refresh" class="life-action life-sky">搜索 / 刷新</button><a href="#unified-friends" data-nav-tab="social" class="life-action life-sky">管理白名单权限</a><span id="friend-relationships-status" class="muted">尚未读取</span></div>
+<div id="friend-relationships-list" class="records" aria-live="polite"></div>
+<div class="toolbar"><button id="friend-relationships-more" class="life-action life-sky" hidden>加载下一页</button><span class="muted">每页 30 人，按熟悉度排序；昵称按需读取 B站公开资料（每次最多 8 人，每小时最多 30 次），不调用 AI。参考半衰期仅适用于关系敏感的公开社交经历，不是精确遗忘倒计时。</span></div>
+</div>
+<details class="contextual-settings" id="relationship-memory-settings"><summary>⚙️ 关系与公开社交记忆衰减 <span class="contextual-hint">按需调整 · 不影响私信或权限</span></summary>
+<p class="muted">各阶段数值是普通记忆半衰期为 30 天时的基准值。最终参考天数 = 此处基准 × 普通记忆半衰期 ÷ 30（范围 0.25–120 天）。只针对关系敏感的公开社交经历；不是明确的遗忘日期。调小数值不能复活已遗忘的细节。</p>
+<div class="fields"><div><label for="social-memory-half-new">刚认识 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-new" type="number" min="0.25" max="120" step="0.05" value="1.3" /></div><div><label for="social-memory-half-known">见过几次 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-known" type="number" min="0.25" max="120" step="0.05" value="3" /></div><div><label for="social-memory-half-familiar">逐渐熟悉 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-familiar" type="number" min="0.25" max="120" step="0.05" value="10" /></div><div><label for="social-memory-half-friend">自然好友 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-friend" type="number" min="0.25" max="120" step="0.05" value="24" /></div><div><label for="social-memory-half-whitelist">白名单用户 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-whitelist" type="number" min="0.25" max="120" step="0.05" value="30" /></div><div><label for="social-memory-half-owner">主人 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-owner" type="number" min="0.25" max="120" step="0.05" value="50" /></div></div><div class="toolbar"><button id="social-memory-policy-save" type="button" class="life-action life-green">保存关系记忆衰减设置</button><button id="social-memory-policy-restore" type="button" class="life-action life-sky">填入初始建议值（不保存）</button></div><p id="social-memory-policy-status" class="muted" role="status">读取中…</p></details>
+<p class="muted">昵称只从已认识 UID 的 B站公开资料按需查询，短期缓存，不影响关系评分或权限；不因为浏览列表就扫描所有 B站用户。</p>
+</section>
 <section id="panel-life" hidden>
 <div class="life-hero"><div><div class="status-line"><span id="life-learning-status" class="live-badge">● 正在整理真实经历</span></div><h2>🐟 鱼鱼的记忆</h2><p class="muted">她经历了什么、现在还记得什么，又从中留下了什么体会，都可以在这里看到。</p></div><button id="main-life-refresh" class="life-action life-indigo">↻ 刷新记忆</button></div>
-<nav class="life-jump" aria-label="人生记忆分区快捷跳转"><a href="#life-recall-section">🧠 现在记得什么</a><a href="#life-lessons">✨ 留下了什么体会</a><a href="#life-emotion-section">💗 现在的心情</a><a href="#life-todo-section">📝 自主待办</a><a href="#life-interest-section">🌱 兴趣</a><a href="#life-timeline-section">📅 真实生活</a><a href="#unified-friends" data-nav-tab="social">👥 社交互动</a><a href="#life-others">⚙️ 更多操作</a></nav>
-<section class="memory-flow-panel" aria-label="记忆流向示意图">
+<nav class="life-jump" aria-label="人生记忆分区快捷跳转"><a href="#life-emotion-section">💗 当前心情</a><a href="#life-interest-section">🌱 最近兴趣</a><a href="?tab=relationships" data-open-tab="relationships">👥 逐渐熟悉的人</a><a href="#life-recall-section">🧠 经历与体会</a><a href="#life-timeline-section">📅 真实生活</a><a href="#life-todo-section">📝 自主待办</a></nav>
+<details class="memory-flow-toggle life-subdetails"><summary>了解记忆如何形成与自然遗忘</summary><section class="memory-flow-panel" aria-label="记忆流向示意图">
   <div class="memory-flow-title"><strong>一段经历，怎样变成鱼鱼的记忆？</strong><span id="memory-flow-updated" class="muted" role="status">正在读取记忆状态…</span></div>
   <div class="memory-flow-steps" role="list">
     <article class="memory-flow-step" role="listitem"><span class="memory-flow-icon" aria-hidden="true">◉</span><strong>真实发生</strong><span>看过的视频、说过的话</span><em id="memory-flow-recorded">读取中…</em></article>
@@ -499,28 +640,33 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
     <article class="memory-flow-step" role="listitem"><span class="memory-flow-icon" aria-hidden="true">✦</span><strong>留下体会</strong><span>反思有价值的经历，逐渐形成认识</span><em id="memory-flow-learned">读取中…</em></article>
   </div>
   <div class="memory-flow-footer"><span>⏳ 记忆会从清晰变模糊，最后可能想不起来。<strong id="memory-flow-fading">正在读取…</strong></span><span>🔒 原始记录独立封存，仅用于管理、审计和备份；鱼鱼不会用它偷偷想起忘掉的细节。「行为与表达改进」是独立的表达规则，不是经历记忆。</span></div>
-</section>
+</section></details>
 <details id="life-memory-settings" class="contextual-settings">
 <summary>⚙️ 记忆与检索设置 <span class="contextual-hint">按需展开 · 不影响现有记忆</span></summary>
 <p class="muted">需要修改半衰期、反思频率、召回数量或 AI 检索时，在这里设置就好。</p>
 <div id="settings-memory"><div class="settings-section"><h4>记忆与检索设置</h4>
 <p class="muted">这里调整鱼鱼怎样记住、反思和找回仍可回忆的经历。默认只展示常用开关；细节按需展开，模型账号与 ID 在「AI 模型」页集中管理。</p>
-<p class="muted">新安装默认开启本地记忆与有限反思；主 Session 需由主人自行绑定。记录可能包含聊天信息，数据保存在插件家目录。已有配置的关闭选择不会因升级被覆盖。</p>
-<div class="contextual-memory-groups"><div class="contextual-memory-group"><h5>基础开关</h5><div class="fields"><div><label for="main-memory-enabled">启用大肥鱼跨 Session 长期记忆（身份级）</label><input id="main-memory-enabled" type="checkbox" checked/><small class="setting-note">开启后跨聊天会话记住重要经历；关闭后不注入长期记忆，已保存的内容不会删除。</small></div><div><label for="main-memory-auto-bili">把新经历加入「待反思经历」列表</label><input checked="" id="main-memory-auto-bili" type="checkbox"/><small class="setting-note">开启后把真实入选视频等经历放进待反思池；关闭不会删除已有经历。</small></div><div><label for="main-reflection-auto">自动进行人生反思</label><input checked="" id="main-reflection-auto" type="checkbox"/><small class="setting-note">开启后满足条件时自动使用反思模型筛选记忆；关闭后仍可手动反思。</small></div></div></div><details class="contextual-memory-group contextual-subdetails"><summary>🌿 人生反思调度</summary><div class="fields"><div><label for="main-reflection-min">至少积累多少候选再自动反思（2–30）</label><input id="main-reflection-min" max="30" min="2" type="number" value="6"/><small class="setting-note">数字越小，积累较少经历就会启动反思；越大则更耐心地等待足够素材。</small></div><div><label for="main-reflection-batch">每批最多反思候选（4–30）</label><input id="main-reflection-batch" max="30" min="4" type="number" value="16"/><small class="setting-note">每轮交给反思模型的候选上限；越大一次看得越多，通常消耗更多 Token。</small></div><div><label for="main-reflection-hours">两次自动反思至少间隔（1–48 小时）</label><input id="main-reflection-hours" max="48" min="1" step="0.5" type="number" value="6"/><small class="setting-note">两轮自动反思间的最短时间；调小可能增加模型调用和记忆更新频率。</small></div><div><label for="main-reflection-daily">每天最多自动反思（1–8 批）</label><input id="main-reflection-daily" max="8" min="1" type="number" value="2"/><small class="setting-note">限制每天自动反思批数；调大可能更勤快，也可能增加模型费用。</small></div></div></details><details class="contextual-memory-group contextual-subdetails"><summary>🕰️ 遗忘与召回质量</summary><div class="fields"><div><label for="main-memory-half-life">普通记忆半衰期（15–120 天）</label><input id="main-memory-half-life" max="120" min="15" type="number" value="30"/><small class="setting-note">影响普通旧记忆的排序衰减速度；天数越大，旧经历越不容易被新内容挤下去。</small></div><div><label for="main-memory-threshold">召回证据门槛（0.10–0.80）</label><input id="main-memory-threshold" max="0.8" min="0.1" step="0.05" type="number" value="0.35"/><small class="setting-note">控制记忆与当前话题必须有多相关才会被召回；越高越严格、误召回更少。</small></div><div><label for="main-memory-max-items">每轮最多召回（1–12 条）</label><input id="main-memory-max-items" max="12" min="1" type="number" value="8"/><small class="setting-note">主 Session 本轮可用记忆的统一上限：长期事实、反思认识与可衰减经历合计，不包含单独配置的人设提示词。默认本地检索，启用后可选 AI 重排。</small></div><div><label for="main-memory-max-chars">每轮记忆字数上限（200–3000）</label><input id="main-memory-max-chars" max="3000" min="200" type="number" value="1200"/><small class="setting-note">每轮检索记忆可占的总字数；越大保留更多细节，也占更多上下文。</small></div><div><label for="main-memory-daily">主人聊天语义记忆每日最多（1–30 条）</label><input id="main-memory-daily" max="30" min="1" type="number" value="8"/><small class="setting-note">限制从主人聊天中每天新增的语义记忆数量，避免把普通聊天全记下。</small></div><div><label for="main-memory-facts">长期事实最多占召回（0–6 条）</label><input id="main-memory-facts" max="6" min="0" type="number" value="2"/><small class="setting-note">限制每轮召回中长期稳定事实最多占多少条（包括常驻身份事实）；设为 0 则不注入长期事实，其他回忆仍可使用。</small></div></div></details><details class="contextual-memory-group contextual-subdetails"><summary>🤖 可选 AI 检索与用量</summary><div class="fields"><div><label for="main-memory-semantic">启用独立低成本模型进行语义检索（默认关闭）</label><input id="main-memory-semantic" type="checkbox"/><small class="setting-note">打开后含糊的主动回忆可由现有低成本模型同时检索仍可使用的经历与长期认识；普通 B站评论仍走本地 UID 记忆，不额外请求模型。</small></div><div><label for="main-memory-candidates">低成本模型最多看到的候选记忆（12–80）</label><input id="main-memory-candidates" max="80" min="12" type="number" value="48"/><small class="setting-note">让检索模型最多从多少段真实记忆中挑选；越大覆盖越广、提示词越长。</small></div><div><label for="main-memory-search-daily">每日低成本检索调用上限（0–500，0=禁止）</label><input id="main-memory-search-daily" max="500" min="0" type="number" value="80"/><small class="setting-note">语义检索的每日模型任务启动上限；优先沿用本地持久化统计，重启不会正常清零。统计文件丢失或不可写时不保证跨重启硬限额；设为 0 禁止调用。</small></div><div><label for="main-memory-model-provider">检索模型 Provider（必填，例如 DSH 已配置的提供方 ID）</label><input id="main-memory-model-provider" maxlength="160" placeholder="对应 DSH Provider ID" type="text"/><small class="setting-note">指定用于记忆检索的 DSH 模型服务提供方；填错会导致模型检索失败并回退本地。</small></div><div><label for="main-memory-model-id">检索模型 ID（必填）</label><input id="main-memory-model-id" maxlength="160" placeholder="模型 ID" type="text"/><small class="setting-note">指定检索使用的模型；建议选便宜、稳定的模型，填错会回退本地检索。</small></div><div><label for="main-memory-model-effort">检索模型思考深度（可留空）</label><input id="main-memory-model-effort" maxlength="160" placeholder="如 low / medium / high，或该模型支持的 JSON" type="text"/><small class="setting-note">控制检索模型的推理预算；留空用默认，值越高通常更慢也可能更贵。</small></div></div></details></div>
-<p class="muted">主 Session 的基础角色人设独立配置；存储的长期身份事实也遵守本轮统一召回数量、字数及长期事实上限。其他记忆先本地搜索，必要时由专用低成本模型挑选真实 ID，再读取正文。检索模型使用不带文件、Shell、B站 MCP 或浏览器工具的独立安全 headless 会话，必须已在 DSH 配好 Provider/模型。未配置或请求失败会回退本地记忆；不会用模型生成的文字充当过去的事实。</p>
-<div class="toolbar"><button class="primary" id="main-memory-save">保存记忆与反思设置</button></div><p class="muted" id="main-memory-status" role="status">正在读取…</p></div></div>
+<p class="muted">新安装默认开启本地记忆与有限反思；主 Session 需由主人自行绑定。记录可能包含聊天信息，数据保存在插件家目录。<strong>升级不会自动改变老用户原有参数。</strong> 建议老用户查看各组与最新版推荐值的差异；点击「使用推荐值」只会填入这一组的建议数字，仍需点击「保存记忆与反思设置」才会生效。不会恢复账号、身份、自动发送或模型开关。</p>
+<div class="contextual-memory-groups"><div class="contextual-memory-group"><h5>基础开关</h5><div class="fields"><div><label for="main-memory-enabled">启用大肥鱼跨 Session 长期记忆（身份级）</label><input id="main-memory-enabled" type="checkbox" checked/><small class="setting-note">开启后跨聊天会话记住重要经历；关闭后不注入长期记忆，已保存的内容不会删除。</small></div><div><label for="main-memory-auto-bili">把新经历加入「待反思经历」列表</label><input checked="" id="main-memory-auto-bili" type="checkbox"/><small class="setting-note">开启后把真实入选视频等经历放进待反思池；关闭不会删除已有经历。</small></div><div><label for="main-reflection-auto">自动进行人生反思</label><input checked="" id="main-reflection-auto" type="checkbox"/><small class="setting-note">开启后满足条件时自动使用反思模型筛选记忆；关闭后仍可手动反思。</small></div></div></div><details class="contextual-memory-group contextual-subdetails"><summary>🌿 人生反思调度</summary><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="reflection">使用推荐值</button><span class="muted">推荐：候选门槛 6 · 每批 24 · 间隔 1 小时 · 每日最多 16 批。先预览，保存后生效。</span></div><div class="fields"><div><label for="main-reflection-min">至少积累多少候选再自动反思（2–30）</label><input id="main-reflection-min" max="100" min="2" type="number" value="6"/><small class="setting-note">数字越小，积累较少经历就会启动反思；越大则更耐心地等待足够素材。</small></div><div><label for="main-reflection-batch">每批最多反思候选（4–24）</label><input id="main-reflection-batch" max="24" min="4" type="number" value="24"/><small class="setting-note">这是候选数量上限，不是固定数量；系统会根据积压量和当前可衰减证据长度动态缩小批次，并控制单批证据文本预算。</small></div><div><label for="main-reflection-hours">两次自动反思至少间隔（1–48 小时）</label><input id="main-reflection-hours" max="48" min="1" step="0.5" type="number" value="1"/><small class="setting-note">默认至少间隔 1 小时；积压较大时按 1 小时调度，避免每天只处理少量经历。</small></div><div><label for="main-reflection-daily">每天最多自动反思（1–16 批）</label><input id="main-reflection-daily" max="16" min="1" type="number" value="16"/><small class="setting-note">默认最多 16 批/天；按每批最多 24 条计算，理论上限 384 条候选/天，实际会受证据长度、积压量和模型费用影响。</small></div></div></details><details class="contextual-memory-group contextual-subdetails"><summary>🕰️ 遗忘与召回质量</summary><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="recall">使用推荐值</button><span class="muted">推荐：半衰期 30 天 · 证据门槛 0.35 · 8 条 / 1200 字 · 新增 30 条/天 · 稳定事实 2 条。先预览，保存后生效。</span></div><div class="fields"><div><label for="main-memory-half-life">普通记忆半衰期（15–120 天）</label><input id="main-memory-half-life" max="120" min="15" type="number" value="30"/><small class="setting-note">影响普通经历从清晰、模糊、印象到遗忘的阶段变化，不只是排序。天数越大，通常越久才忘记；已遗忘的细节不能靠调大数值恢复。</small></div><div><label for="main-memory-threshold">召回证据门槛（0.10–0.80）</label><input id="main-memory-threshold" max="0.8" min="0.1" step="0.05" type="number" value="0.35"/><small class="setting-note">控制记忆与当前话题必须有多相关才会被召回；越高越严格、误召回更少。</small></div><div><label for="main-memory-max-items">每轮最多召回（1–12 条）</label><input id="main-memory-max-items" max="12" min="1" type="number" value="8"/><small class="setting-note">主 Session 本轮可用记忆的统一上限：长期事实、反思认识与可衰减经历合计，不包含单独配置的人设提示词。默认本地检索，启用后可选 AI 重排。</small></div><div><label for="main-memory-max-chars">每轮记忆字数上限（200–3000）</label><input id="main-memory-max-chars" max="3000" min="200" type="number" value="1200"/><small class="setting-note">每轮检索记忆可占的总字数；越大保留更多细节，也占更多上下文。</small></div><div><label for="main-memory-daily">主人聊天语义记忆每日新增最多（1–100 条）</label><input id="main-memory-daily" max="100" min="1" type="number" value="30"/><small class="setting-note">限制从主人聊天中每天新增的语义记忆数量，避免把普通聊天全记下。</small></div><div><label for="main-memory-facts">长期事实最多占召回（0–6 条）</label><input id="main-memory-facts" max="6" min="0" type="number" value="2"/><small class="setting-note">限制每轮召回中长期稳定事实最多占多少条（包括常驻身份事实）；设为 0 则不注入长期事实，其他回忆仍可使用。</small></div></div></details><details class="contextual-memory-group contextual-subdetails"><summary>🗂️ 主人聊天记忆整理（新安装默认开启）</summary><div class="fields"><div><label for="main-memory-consolidation-enabled">按需自动整理重复的主人聊天认识</label><input type="checkbox" id="main-memory-consolidation-enabled" checked/><small class="setting-note">仅处理来自主 Session、已保存且可整理的普通语义记忆，至少三条同主题才会尝试 AI 凝练。不会改写稳定事实、反思领悟、私信或人生经历。开启后每日最多自动尝试一次，原记录以来源关联保留。</small></div></div><p id="main-memory-consolidation-status" class="muted" role="status">等待整理状态…</p><button id="main-memory-consolidation-run" type="button" class="life-action life-purple">手动检查并凝练记忆</button></details><details class="contextual-memory-group contextual-subdetails"><summary>🤖 可选 AI 检索与用量</summary><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="retrieval">使用推荐值</button><span class="muted">推荐：候选 48 · 每日最多 80 次；不会打开 AI 检索开关或更换模型。先预览，保存后生效。</span></div><div class="fields"><div><label for="main-memory-semantic">启用独立低成本模型进行语义检索（默认关闭）</label><input id="main-memory-semantic" type="checkbox"/><small class="setting-note">打开后含糊的主动回忆可由现有低成本模型同时检索仍可使用的经历与长期认识；普通 B站评论仍走本地 UID 记忆，不额外请求模型。</small></div><div><label for="main-memory-candidates">低成本模型最多看到的候选记忆（12–80）</label><input id="main-memory-candidates" max="80" min="12" type="number" value="48"/><small class="setting-note">让检索模型最多从多少段真实记忆中挑选；越大覆盖越广、提示词越长。</small></div><div><label for="main-memory-search-daily">每日低成本检索调用上限（0–500，0=禁止）</label><input id="main-memory-search-daily" max="500" min="0" type="number" value="80"/><small class="setting-note">语义检索的每日模型任务启动上限；优先沿用本地持久化统计，重启不会正常清零。统计文件丢失或不可写时不保证跨重启硬限额；设为 0 禁止调用。</small></div><div><label for="main-memory-model-provider">检索模型 Provider（从 DSH 下拉选择）</label><select id="main-memory-model-provider"></select><small class="setting-note">选择 DSH 已注册的 Provider；如保持默认，保存模型页时会自动填入当前 DSH 默认模型。不会自动开启 AI 语义检索。</small></div><div><label for="main-memory-model-id">检索模型（下拉选择）</label><select id="main-memory-model-id"></select><small class="setting-note">从实际可用模型中选择；默认沿用 DSH 当前模型。可自行选择低成本模型，但不会猜测具体计费。</small></div><div><label for="main-memory-model-effort">检索模型思考深度（可留空）</label><input id="main-memory-model-effort" maxlength="160" placeholder="如 low / medium / high，或该模型支持的 JSON" type="text"/><small class="setting-note">控制检索模型的推理预算；留空用默认，值越高通常更慢也可能更贵。</small></div></div></details></div>
+<p class="muted">主 Session 的基础角色人设独立配置；存储的长期身份事实也遵守本轮统一召回数量、字数及长期事实上限。其他记忆先本地搜索，必要时由专用低成本模型挑选真实 ID，再读取正文。检索模型优先通过 DSH 当前宿主已注册的模型适配器直接发起无工具请求；旧宿主不支持时才使用隔离的 headless 兼容路径。未配置或请求失败会回退本地记忆；不会用模型生成的文字充当过去的事实。</p>
+<p id="main-memory-recommend-status" class="muted recommend-feedback" role="status" aria-live="polite">加载后会提示与最新推荐配置不同的参数组。</p><div class="toolbar"><button class="primary" id="main-memory-save">保存记忆与反思设置</button></div><p class="muted" id="main-memory-status" role="status">正在读取…</p></div></div>
 <div id="settings-model-link" class="settings-section"><h4>🤖 模型配置独立管理</h4><p class="muted">记忆语义检索、人生反思等模型的 Provider、模型 ID 和思考深度统一在「AI 模型」页设置。默认关闭的能力不会因为调整界面而被启用。</p><button type="button" data-open-tab="models">前往 AI 模型</button></div>
 </details>
+
 <div id="life-emotion-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">💗 鱼鱼现在的心情</h4><span id="emotion-status" class="live-badge">● 正在读取情绪状态</span></div>
 <p class="muted">情绪驱动的自主回忆与主动分享权限请到「社交互动」开启：当近期真实视频再次触及过去有证据的人生记忆时，大肥鱼可以决定保持沉默、在主 Session 主动开口或给主人发送 B站私信。原始经历始终是证据；整理回忆、反思或产生念头均不能自行改写原始事实。 这是大肥鱼的角色模拟状态，不是生理测量或真实意识证明。它只保存情绪类别、强度和粗粒度来源，不保存触发心情的私信正文、UID 或具体聊天原因。情绪会随时间衰减，不能成为泄露隐私、迁怒或强行社交的理由。</p>
 <label class="checkline"><input id="emotion-enabled" type="checkbox" checked>持续记录心情</label>
 <div id="emotion-current" class="grid emotion-grid" aria-live="polite"></div>
 <div id="emotion-agency-activity" class="emotion-trend" aria-live="polite"><strong>🐟 社交意愿与最近决策</strong><p class="muted">正在读取最近 7 天的意愿评估…</p></div>
 <div class="toolbar"><button id="emotion-save" class="life-action life-green">保存情绪设置</button><button id="emotion-reset" class="life-action life-amber">重置为平稳</button></div>
-<h4 style="margin-top:15px">真实状态变化</h4><label for="emotion-trend-metric">查看指标</label><select id="emotion-trend-metric"><option value="sociality">社交意愿</option><option value="intensity">情绪强度</option><option value="energy">活力</option><option value="curiosity">好奇心</option><option value="valence">情绪正向度（原始 -100～100）</option></select><div id="emotion-trend" class="emotion-trend" role="img" aria-label="近期情绪变化趋势"></div><details class="life-subdetails"><summary>查看完整情绪记录</summary><div id="emotion-history" class="records records-scroll"></div></details>
+<h4 style="margin-top:15px">真实状态变化</h4><p class="muted">同一张折线图同时展示社交意愿、情绪强度、活力、好奇心和情绪正向度；按真实事件时间绘制，末端显示当前自然衰减后的状态。</p><div id="emotion-trend" class="emotion-trend" role="img" aria-label="近期五项情绪与社交状态变化趋势"></div><details class="life-subdetails"><summary>查看完整情绪记录</summary><div id="emotion-history" class="records records-scroll"></div></details>
 </div>
 
 <div class="settings-stack">
+<div id="life-interest-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">🌱 鱼鱼最近喜欢什么</h4><span id="interest-learning-status" class="live-badge">● 正在收集兴趣线索</span><span class="muted">根据真实入选视频积累，和主人设定的核心兴趣分开</span></div>
+<p class="muted">核心兴趣由主人明确设置，优先参与选片但会轮换；短期/成长/稳定兴趣则来自真实入选视频证据。至少 3 个不同视频、横跨 2 天才会形成短期兴趣，长期没有新证据会逐渐淡出。自动学习永远不会覆盖核心兴趣。</p>
+<div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div><details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
+</details></div>
 <div id="life-recall-section" class="settings-section life-section memory-home">
 <h4>🧠 鱼鱼现在记得什么？</h4><p class="muted">搜视频标题、BV 号或聊天关键词；留空看最近。开启已有的「低成本人生记忆检索」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p>
 <div class="toolbar memory-search-bar"><input id="main-session-history-query" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="输入视频标题 / BV号 / 聊天关键词，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div>
@@ -529,7 +675,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div class="toolbar"><select id="main-memory-kind" aria-label="筛选留下的认识"><option value="">全部认识</option><option value="experience">经历带来的体会</option><option value="relationship">人物关系</option><option value="interest">兴趣变化</option><option value="fact">事实和约定</option></select><span id="memory-lessons-summary" class="muted" role="status">正在读取…</span></div>
 <input id="main-memory-query" maxlength="120" hidden aria-label="同步搜索认识的关键词"><button id="main-memory-search" hidden>搜索认识</button>
 <div id="main-memory-list" class="records records-scroll tall"></div>
-<details class="memory-reflection-details" id="life-reflection-details"><summary>✨ 鱼鱼怎样整理这些经历？<span id="reflection-learning-status" class="live-badge">● 正在读取</span> <span id="memory-reflection-short" class="muted">自动整理</span></summary><p class="muted">反思只使用鱼鱼<strong>目前还记得的经历</strong>，从中提炼有依据的体会；不强制每次都留下新认识。这里的候选是等待分析的材料，不是另一套“反思记忆”。</p>
+<details class="memory-reflection-details" id="life-reflection-details"><summary>✨ 鱼鱼怎样整理这些经历？<span id="reflection-learning-status" class="live-badge">● 正在读取</span> <span id="memory-reflection-short" class="muted">自动整理</span></summary><p class="muted">反思只使用鱼鱼<strong>目前还记得的经历</strong>，从中提炼有依据的体会；不强制每次都留下新认识。这里的候选是等待分析的材料，不是另一套“反思记忆”。</p><p class="muted">统计说明：「评估后未沉淀」表示经历已成功评估，但没有形成可关联的长期认识；「因经历已遗忘跳过」表示当前可衰减记忆中已无证据，系统不会从永久档案恢复。两类都不会删除原始归档。</p>
 <p id="main-reflection-status" class="muted" role="status">正在读取整理状态…</p>
 <div id="main-reflection-list" class="records records-scroll"></div>
 <div class="toolbar"><button id="main-reflection-refresh" class="life-action life-sky">刷新待整理经历</button><button id="main-reflection-run" class="life-action life-green">手动整理一次（调用 AI）</button></div></details>
@@ -541,13 +687,9 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 </details></div></div>
 
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
-<p class="muted">展示有记录的视频探索（区分入选、未入选和主人指定查看）、公开评论、情绪变化和关系阶段。仅从已保存的观看／探索记录展示，不会把搜索结果当作观看经历；不展示好友私信正文或心情触发消息。</p><p id="life-timeline-summary" class="muted" role="status"></p><div id="life-timeline-list" class="records records-scroll tall"></div></div>
-<div id="life-interest-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">🌱 鱼鱼最近喜欢什么</h4><span id="interest-learning-status" class="live-badge">● 正在收集兴趣线索</span><span class="muted">根据真实入选视频积累，和主人设定的核心兴趣分开</span></div>
-<p class="muted">核心兴趣由主人明确设置，优先参与选片但会轮换；短期/成长/稳定兴趣则来自真实入选视频证据。至少 3 个不同视频、横跨 2 天才会形成短期兴趣，长期没有新证据会逐渐淡出。自动学习永远不会覆盖核心兴趣。</p>
-<div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div><details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
-</details></div>
+<p class="muted">展示有记录的视频探索（区分入选、未入选和主人指定查看）、公开评论、情绪变化和关系阶段。仅从已保存的观看／探索记录展示，不会把搜索结果当作观看经历；不展示好友私信正文或心情触发消息。部分视频来源只保存日期、不保存具体时刻，会明确标注「具体时刻未记录」，并排在同一天有准确时间的事件之后。</p><p id="life-timeline-summary" class="muted" role="status"></p><div id="life-timeline-list" class="records records-scroll tall"></div></div>
 <div id="life-todo-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📝 鱼鱼想做的事</h4><span id="owner-todo-status" class="live-badge">● 正在整理待办</span><button id="owner-todo-refresh" class="life-action life-sky">刷新待办</button></div>
-<p class="muted">视频推荐、主人交代和鱼鱼想稍后考虑的事，都集中在这里。待办不代表已经答应执行；公开操作仍需主人授权。</p><div class="todo-overview" id="owner-todo-overview" aria-live="polite"><span>正在读取待办…</span></div>
+<p class="muted">主人在私信中推荐的音乐、视频和话题可以由现有 AI 顺手提取成待办，不额外调用一次 AI。搜索到视频不代表已经看过，更不代表已经听过歌曲；完成后回访需要单独授权。</p><div class="todo-overview" id="owner-todo-overview" aria-live="polite"><span>正在读取待办…</span></div>
 <div class="todo-filter" role="group" aria-label="查看待办状态"><button id="owner-todo-filter-active" type="button" aria-pressed="true" class="is-selected">进行中</button><button id="owner-todo-filter-all" type="button" aria-pressed="false">全部</button><button id="owner-todo-filter-finished" type="button" aria-pressed="false">已结束</button></div>
 <style>.todo-origin-quote{margin:8px 0;padding:10px 12px;border-left:3px solid #7b8ef9;background:var(--surface-2,rgba(107,129,228,.09));border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.92em}</style><div id="owner-todo-list" class="records records-scroll tall"></div>
 <details class="life-subdetails todo-create"><summary>＋ 手动添加一件事</summary><div class="inset"><h4>新增只读待办</h4><div class="fields"><div><label for="owner-todo-type">要做什么</label><select id="owner-todo-type"><option value="watch_video">看看指定视频</option><option value="inspect_my_space">看看我自己的空间投稿</option><option value="inspect_creator_videos">看看某位 UP 主的投稿</option><option value="search_videos">搜索视频主题</option><option value="check_notifications">检查 B站通知</option></select></div><div><label for="owner-todo-target">目标（BV 号 / UID / 关键词）</label><input id="owner-todo-target" maxlength="120" placeholder="根据任务类型填写"></div><div><label for="owner-todo-title">待办名称（可留空）</label><input id="owner-todo-title" maxlength="120" placeholder="例如：有空看看这个推荐"></div></div><div class="toolbar" style="margin-top:10px"><button id="owner-todo-add" class="life-action life-green">加入待办</button><span class="muted">点赞、收藏、关注等写入任务建议直接在主 Session 明确提出，由大肥鱼绑定准确目标与授权。</span></div></div>
@@ -561,19 +703,20 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div><label for="autonomous-planner-start">每日开始时（宿主当地小时）</label><input id="autonomous-planner-start" max="23" min="0" type="number" value="9"/></div>
 <div><label for="autonomous-planner-end">每日结束时（宿主当地小时，24=午夜）</label><input id="autonomous-planner-end" max="24" min="1" type="number" value="23"/></div></div>
 <p class="muted" id="autonomous-planner-status" role="status">尚未读取自主调度状态</p></div>
+<div class="inset"><h4>🐟 完成待办后向主人回访 · 2.6.0</h4>
+<p class="muted">只针对主人在私信中明确提出、AI 记录后由鱼鱼实际读取了相关视频资料的待办，择机给已核验的主人发一条进度消息。默认关闭，最多每24小时一次，22:00–09:00 不发送；尊重退订。不会把“查到视频”说成“听过歌曲”，也不恢复旧版随机情绪主动回访。</p>
+<div class="fields"><div><label for="owner-todo-completion-followup">允许完成后给主人私信回访</label><select id="owner-todo-completion-followup"><option value="false">关闭（默认）</option><option value="true">开启 · 仅已核验任务完成后</option></select></div></div>
+<p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p></div>
 <div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存待办与自主调度设置</button></div>
 </details>
 </div>
-<div id="life-relationship-section" class="settings-section life-section"><h4>👥 逐渐熟悉的人</h4>
-<p class="muted">只展示已登记好友的互动熟悉度，不显示聊天正文。关系阶段只是互动频率的估计，不代表真实亲密程度。</p>
-<div class="toolbar"><button id="friend-relationships-refresh" class="life-action life-sky">刷新关系成长</button><span id="friend-relationships-status" class="muted">尚未读取</span></div><div id="friend-relationships-list" class="records"></div>
-<details id="legacy-growth-details" class="legacy-archive"><summary>历史兼容资料（旧版人物关系与成长记录）</summary><p class="muted">此处是旧版存档，仅为已有用户提供核对和人物索引修正。已批准记录仍用于统一记忆检索；隐藏或不打开本区不会删除历史数据。</p><div id="main-legacy-growth-list" class="records"></div></details></div>
+<p class="muted" style="margin:10px 0 4px">如需把近期生活汇报到主 Session，可<a href="#life-others">展开更多生活操作</a>。</p>
 <details class="life-subdetails life-sync-more" id="life-others"><summary>⚙️ 其他生活操作 · 主 Session 生活汇报</summary><div id="life-sync-section" class="settings-section life-section"><h4>将最近生活告诉主 Session</h4><div class="toolbar"><button id="main-session-sync" class="life-action life-green">现在把新经历告诉主 Session</button><button id="main-session-backfill" class="life-action life-sky">把过去 7 天遗漏的经历加入待汇报</button></div>
-<p class="muted">“过去 7 天”是<strong>从现在往回数 7 天</strong>，不是再等待 7 天。点击补充后只将尚未汇报的已选视频和已发评论放进本地待汇报队列，操作本身不会发送消息。启用主 Session 桥接和自动同步后，下一次符合间隔与每日额度的定时检查会尝试发送；否则可点击“现在把新经历告诉主 Session”手动发送。目标会话不在线时仍留在本地。此操作只汇报上下文，不直接写入人生记忆；人生反思会独立读取待反思经历。</p>
+<p class="muted">“过去 7 天”是<strong>从现在往回数 7 天</strong>，不是再等待 7 天。点击补充后只将尚未汇报的已选视频和已发评论放进本地待汇报队列，操作本身不会发送消息。启用主 Session 桥接和自动同步后，符合间隔与额度的定时检查会尝试非唤醒注入，不会自动触发模型回复；如宿主不支持则继续留在待汇报队列。需要立即让鱼鱼回应时，可点击“现在把新经历告诉主 Session”手动发送。目标会话不在线时仍留在本地。此操作只汇报上下文，不直接写入人生记忆；人生反思会独立读取待反思经历。</p>
 <p id="main-session-queue-status" class="muted" role="status">正在读取…</p>
 <p class="muted">这里仅控制是否把近期生活摘要主动发送给选定的主 Session；不影响上方“鱼鱼现在记得什么”的记忆搜索。</p></div></div></details>
 </div></section>
-<section id="panel-diagnostics" hidden>
+<section id="panel-diagnostics" hidden><div class="settings-section"><h4>🔒 Python MCP 安全版本检查</h4><p class="muted">如果日志提示 mcp_server.py 与当前插件版本不一致，系统会拒绝发送。这里可以先检查；确认修复时会在插件家目录备份旧文件，然后使用当前安装包内置的受审脚本。不会静默删除自定义修改。</p><div class="toolbar"><button id="mcp-integrity-check" type="button">检查 MCP 文件</button><button id="mcp-integrity-repair" type="button" class="primary" disabled>备份旧文件并修复</button></div><p id="mcp-integrity-status" class="muted" role="status">尚未检测</p></div>
 <div class="toolbar"><h2 style="margin:0">运行诊断</h2><button id="diag-refresh" class="primary">刷新诊断</button><button id="diag-save">保存诊断开关</button></div>
 <p class="muted">勾选后会记录后续诊断；关闭仅停止新日志，不影响评论、同步、取帧和选图的正常功能。已存在的历史诊断记录不会自动删除。诊断里的“要求 AI 回复这条”必须人工确认；不绕过回复额度、去重或上下文验证。</p>
 <div class="diag-grid">
@@ -599,12 +742,12 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div class="settings-section"><h4>公开评论与动态 · 自然日</h4><div class="fields" id="quota-fields-public">
 <div><label for="quota-comment-daily">公开评论全局每日硬上限（0–1000）</label><input id="quota-comment-daily" type="number" min="0" max="1000"></div>
 <div><label for="quota-comment-round">跑一轮最多发顶层评论（0–20）</label><input id="quota-comment-round" type="number" min="0" max="20"></div>
-<div><label for="quota-dynamic-daily">每天最多分享评论为动态（0–30）</label><input id="quota-dynamic-daily" type="number" min="0" max="30"></div>
+<div><label for="quota-dynamic-daily">每天最多分享评论为动态（0–30）</label><input id="quota-dynamic-daily" type="number" min="0" max="100"></div>
 <div><label for="quota-like-daily">每天最多点赞（自动与 Session 手动共用，0–100）</label><input id="quota-like-daily" type="number" min="0" max="100"></div>
 <div><label for="quota-daily-dynamic">每天最多发布生活动态（0–10）</label><input id="quota-daily-dynamic" type="number" min="0" max="10"></div>
 </div><p class="muted">分享评论、独立生活动态与点赞分别计数。点赞及生活动态还必须由主人主动开启。</p></div>
-<div class="settings-section"><h4>后台评论互动 · 滚动24小时与每轮</h4><div class="fields" id="quota-fields-comment"></div></div>
-<div class="settings-section"><h4>私信 · 每日与每位用户</h4><div class="fields" id="quota-fields-dm"></div></div>
+<div class="settings-section"><h4>后台评论互动 · 滚动24小时与每轮</h4><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="commentContext">使用推荐值</button><span class="muted">仅将「回复时额外读取的其他热评数」推荐设为 12 条，帮助 AI 理解视频评论区；不会改变回复开关、发送额度和对象授权。</span></div><div class="fields" id="quota-fields-comment"></div></div>
+<div class="settings-section"><h4>私信 · 每日与每位用户</h4><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="dmContext">使用推荐值</button><span class="muted">仅将「私信 AI 的最近对话上下文」推荐设为 40 条；不是每天发送 40 条，不修改私信白名单或发送额度。</span></div><div class="fields" id="quota-fields-dm"></div></div>
 <div class="settings-section"><h4>表情包、梗知识和视觉</h4><div class="fields" id="quota-fields-meme">
 <div><label for="quota-meme-day">每天最多附图尝试（0–10000）</label><input id="quota-meme-day" type="number" min="0" max="10000"></div>
 <div><label for="quota-meme-round">每轮最多附图尝试（0–5）</label><input id="quota-meme-round" type="number" min="0" max="5"></div>
@@ -618,7 +761,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div><label for="quota-min-replies">最低评论数（0=不限制）</label><input id="quota-min-replies" type="number" min="0" max="100000000"></div>
 </div></div>
 </div>
-<div class="toolbar" style="margin-top:16px"><button id="quota-save" class="primary">保存次数与额度</button><span class="muted">离开页面前先保存；只提交此处的数值字段。</span></div>
+<p id="quota-recommend-status" class="muted recommend-feedback" role="status" aria-live="polite">升级不会自动修改已有额度；恢复推荐值后请点保存。</p><div class="toolbar" style="margin-top:16px"><button id="quota-save" class="primary">保存次数与额度</button><span class="muted">离开页面前先保存；只提交此处的数值字段。</span></div>
 </section>
 <section id="panel-polling" hidden>
 <div class="toolbar"><h2 style="margin:0">后台轮询</h2><button id="polling-refresh">刷新轮询状态</button></div>
@@ -629,7 +772,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div><label for="poll-replies-minutes">收到评论回复检查（分钟，默认 3）</label><input id="poll-replies-minutes" type="number" min="1" max="120" value="3"></div>
 <div><label for="poll-at-minutes">被 @ 邀请检查（分钟，默认 3）</label><input id="poll-at-minutes" type="number" min="1" max="120" value="3"></div>
 <div><label for="poll-top-minutes">近期视频热评检查（分钟，默认 5）</label><input id="poll-top-minutes" type="number" min="1" max="120" value="5"></div>
-</div><p class="muted">轮询频繁可能导致 B站接口限流。建议私信 1–5 分钟、评论及 @ 3–10 分钟、主动热评 5–15 分钟；不要把此处间隔与“每轮最多回复条数”混淆。</p>
+</div><p class="muted">轮询频繁可能导致 B站接口限流。建议私信 1–5 分钟、评论及 @ 3–10 分钟、主动热评 5–15 分钟；不要把此处间隔与“每次轮询回复数量”混淆。</p>
 <div class="toolbar"><button id="polling-save" class="primary">保存检查间隔</button><button id="polling-reload">重读设置</button></div></div>
 <div class="settings-section"><h4>最近检查情况</h4><p class="muted">时间按本机显示；上次检查与错误为本次 DSH 运行期间的记录，重启后重新计时。“已完成”只代表轮询流程结束，不代表发送成功或 B站通知送达。</p>
 <div id="polling-status-list" class="grid" role="status" aria-live="polite">读取中…</div></div>
@@ -639,7 +782,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div class="toolbar"><h2 style="margin:0">角色人设</h2><button id="persona-refresh">重新读取</button></div>
 <p class="muted">默认提示词是第一次安装的官方规则；此前保存的自定义提示词不会自动覆盖。恢复默认只清除这一项的自定义，不清理成长记忆、好友画像或历史。</p>
 <div class="settings-stack">
-<div class="settings-section"><h4>🐳 大肥鱼人设</h4><p class="muted">用于刷视频、公开评论和私信的角色语气。空配置使用内置默认；不在公开评论里发布提示词原文。</p><textarea id="persona-text" maxlength="8000" rows="13"></textarea><div class="toolbar"><button id="persona-save" class="primary">保存大肥鱼人设</button><button id="persona-reset">恢复默认</button><span id="persona-status" class="muted"></span></div></div>
+<div class="settings-section"><h4>🐳 大肥鱼人设</h4><p class="muted">用于刷视频、公开评论和私信的角色语气。空配置使用内置默认；不在公开评论里发布提示词原文。</p><textarea id="persona-text" maxlength="18000" rows="13"></textarea><p id="persona-compat-status" class="muted" role="status">粘贴后会检查长度、外部工具指令和实际提示词预算。</p><div class="toolbar"><button id="persona-save" class="primary">保存大肥鱼人设</button><button id="persona-reset">恢复默认</button><span id="persona-status" class="muted"></span></div></div>
 <div class="settings-section"><h4>AI 选图提示词</h4><p class="muted">决定什么时候给顶层评论配表情包；硬限额与真实文件校验不会被提示词修改。</p><textarea id="meme-prompt-text" maxlength="4000" rows="12"></textarea><div class="toolbar"><button id="meme-prompt-save" class="primary">保存选图提示词</button><button id="meme-prompt-reset">恢复默认</button><span id="meme-prompt-status" class="muted"></span></div></div>
 <div class="settings-section"><h4>视觉识图提示词</h4><p class="muted">判断何时需要识图和如何描述真实预览帧，不会绕过图片来源安全检查。</p><textarea id="vision-prompt-text" maxlength="4000" rows="10"></textarea><div class="toolbar"><button id="vision-prompt-save" class="primary">保存识图提示词</button><button id="vision-prompt-reset">恢复默认</button><span id="vision-prompt-status" class="muted"></span></div></div>
 <div class="settings-section"><h4>虚构角色背景与关系</h4><p class="muted">单独补充世界观；与主人自定义人设共同生效。</p><textarea id="lore-text" maxlength="4000" rows="8"></textarea><div class="toolbar"><button id="lore-save" class="primary">保存角色背景</button><button id="lore-reset">恢复默认</button><span id="lore-status" class="muted"></span></div></div>
@@ -647,13 +790,13 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 </div>
 </section>
 <section id="panel-social" hidden>
-<div class="social-hero"><h2>🐳 社交互动</h2><p>好友关系、社交意愿、主动回访与主人远程授权在这里统一管理。读取、草稿与公开操作分别授权；关闭某个入口不会改变其他权限。</p>
+<div class="social-hero"><h2>🐳 社交互动</h2><p>白名单的特殊操作权限、社交意愿与主人远程授权在这里统一管理；主动回访在 2.6.0 暂停，计划 2.6.1 重构。读取、草稿与公开操作分别授权；关闭某个入口不会改变其他权限。</p>
 <p><strong>🐟 双域意愿系统（dev.9）</strong>：主 Session 是执行域；B站是生活域。即使是主人在 B站私信或 @ 提请求，大肥鱼也会先看自己的模拟情绪、活力、社交意愿与重复请求情况，可以答应、拖延或拒绝；温柔地再商量可能改变她的选择，但绝不能绕过权限、额度或安全检查。判定证据保存在本地 <code>dual-context-agency.json</code>，不保存私信正文。</p></div>
-<nav class="context-jump" aria-label="社交互动分区"><a href="#unified-friends">好友关系</a><a href="#social-outreach-section">主动回访</a><a href="#owner-dm-control-section">主人私信授权</a><a href="#social-owner-comment">主人公开评论</a><a href="#social-emotion-authorization">情绪主动分享</a></nav>
+<nav class="context-jump" aria-label="社交互动分区"><a href="#unified-friends">白名单权限</a><a href="#social-outreach-section">主动回访（暂停）</a><a href="#owner-dm-control-section">主人私信授权</a><a href="#social-owner-comment">主人公开评论</a><a href="#social-emotion-authorization">情绪主动分享</a></nav>
 <div class="settings-stack">
 <div class="settings-section" id="unified-friends">
-<h4>🐳 好友关系与互动 · 统一名册</h4>
-<p class="muted">只维护一份 UID 好友名册，统一管理私信往来、主动推荐方式、被 @ 意愿和人物关系。<strong>默认推荐渠道为私信</strong>，公开 @ 仅在你为该好友选择后才有资格被考虑。原有的三套名单会兼容合并，不会自动替已有好友增加权限。昵称只是备注；勾选唯一授权主人会直接更改主人 UID，具体点赞与公开发布仍需单独开启权限。</p>
+<h4>🐳 白名单用户权限 · 统一名册</h4>
+<p class="muted">这里只管理白名单用户的私信、主动推荐和 @ 特殊许可；自然产生的友情请前往「生活与成长 → 逐渐熟悉的人」查看，关系成长本身不取决于这份名册。<strong>默认推荐渠道为私信</strong>，公开 @ 仅在你为该好友选择后才有资格被考虑。原有的三套名单会兼容合并，不会自动替已有好友增加权限。昵称只是备注；勾选唯一授权主人会直接更改主人 UID，具体点赞与公开发布仍需单独开启权限。</p>
 <details class="inset social-advanced"><summary>🌱 社会认知 · 候选灵感与好友邀请</summary>
 <p class="muted">陌生人的私信视频心愿只是短期探索灵感，不回信、不建陌生人画像、不产生任务或公开 @；好友分享 BV / 通过 @ 请求“有空看看”，会形成可到期的只读观看邀请。大肥鱼好奇心充足时可选择审阅，<strong>默认不自动查看，不保证已观看</strong>。</p>
 <label class="checkline"><input id="social-stranger-inspiration" type="checkbox">允许读取陌生人私信里的短期视频灵感（默认关闭）</label>
@@ -666,11 +809,11 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <p class="muted">开启后可记录他们通过 @ 提出的“别推这类”“多推某类”等明确反馈，<strong>不会因为收取意见而公开回复</strong>。公开回复仍需在「最近评论」页面单独开启，且遵守额度；首次读取只建立历史基线，不重放旧通知。</p></div>
 <details class="inset social-advanced"><summary>公开 @ 的额外策略（仅对选用公开 @ 渠道的好友生效）</summary>
 <label for="friends-mode">何时考虑公开 @</label><select id="friends-mode"><option value="off">关闭公开 @（推荐）</option><option value="ai_select">AI 根据真实内容选择个别好友</option><option value="ai">AI 判断是否 @ 所有允许的好友</option><option value="always">每次 @ 全部允许好友（容易打扰，不推荐）</option></select>
-<p class="muted">私信推荐由「社交互动 → 主动回访」的独立授权、草稿、额度与冷却控制；此处的公开 @ 策略不会替代私信推荐，也不会直接发送消息。</p></details>
+<p class="muted">主动回访私信推荐在 2.6.0 暂停，计划 2.6.1 重构；此处的公开 @ 策略不会替代私信推荐，也不会直接发送消息。</p></details>
 <div class="fields"><div><label for="friend-new-uid">B站 UID（必填）</label><input id="friend-new-uid" inputmode="numeric" placeholder="210228238"></div><div><label for="friend-new-name">昵称备注（可留空）</label><input id="friend-new-name" maxlength="40" placeholder="长条动物"></div></div>
 <div class="toolbar" style="margin-top:12px"><button type="button" id="friend-add">加入名册</button><span class="muted">添加后记得点击底部保存</span></div>
 <p id="friend-owner-status" class="muted">当前授权主人 UID：读取中…</p>
-<p class="muted">管理员只在本地好友名册中勾选一位「唯一授权主人」。保存后同步主人私信、主人公开评论及回忆私信使用的 UID；取消后保存即撤销。不能通过 B站消息改变这个勾选。</p>
+<p class="muted">管理员只在本地白名单用户名册中勾选一位「唯一授权主人」。保存后同步主人私信、主人公开评论及回忆私信使用的 UID；取消后保存即撤销。不能通过 B站消息改变这个勾选。</p>
 <div id="friend-directory-editor" class="settings-stack"></div>
 <details class="inset social-advanced"><summary>好友兴趣变化 · 仅记录白名单 UID 自己明确说出的喜好</summary>
 <p class="muted">初始好友画像不自动覆盖。真实私信或评论中的“我喜欢/不喜欢…”“别再给我推这些”“多推点……”会形成针对该 UID 的兴趣观察。若只说“这些”，只有在 B 站实际视频标题能明确确认类别时才记录对应主题；否则只阻止重复推荐同一 BV。仅保存精简主题、证据编号与拒绝重复推荐的 BV，不保存整条原话。非白名单用户不建立画像。<strong>这些观察只影响对这位好友的后续 @ 邀请与获授权的主动分享，不改变大肥鱼自己的兴趣、全局选片或其他好友的推荐，也不会对外展示好友画像。</strong></p>
@@ -678,7 +821,10 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div id="friend-learning-list" class="records records-scroll"></div></details>
 <div class="toolbar" style="margin-top:12px"><button id="friend-save-all" class="primary">保存名册、权限及画像</button></div>
 </div>
-<div id="social-outreach-section" class="card"><h4>主动回访 · 真正看过后才考虑联系</h4>
+<div id="social-outreach-section" class="card outreach-paused"><h4>主动回访 · 2.6.0 暂停使用</h4>
+<p class="muted"><strong>暂不建议开启：</strong>现有主动回访功能正在重构，计划在 <strong>2.6.1</strong> 重新开放。目前开关已关闭并锁定，不再生成新草稿，也不会发送已有草稿；原有设置和历史记录会保留。</p>
+<details id="social-outreach-legacy" class="inset"><summary>查看已停用的旧版主动回访设置与草稿</summary>
+<fieldset disabled class="outreach-disabled"><legend>旧版权限（已禁用）</legend>
 <p class="muted">大肥鱼主要通过私信向已授权好友推荐真实入选的公开视频；公开 @ 是独立的可选方式，不会替代私信推荐。不会根据私人聊天内容生成公开信息；非白名单用户不建立长期兴趣画像。社交草稿默认不发送；主动私信请务必尊重对方拒绝和冷却期。</p>
 <label class="checkline"><input id="social-enabled" type="checkbox">允许自主判断要不要形成回访草稿（默认关闭）</label>
 <label class="checkline"><input id="social-life-intent-enabled" type="checkbox">允许大肥鱼根据真实经历，主动考虑通过私信向好友分享公开视频（默认关闭）</label><p class="muted">这是独立权限：只会在真实入选视频与好友初始兴趣/重复明确表达的兴趣有合理匹配时，生成“联系或跳过”的草稿；不会因为心情变化就盲目私信。需要先开启上面的自主社交草稿。非白名单用户不参与。</p>
@@ -686,15 +832,16 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div class="fields"><div><label for="social-daily-limit">每日最多主动回访（0 表示禁止，不再限制为 3 次）</label><input id="social-daily-limit" type="number" min="0" step="1" value="1"></div></div>
 <div class="toolbar"><button id="social-save" class="primary">保存社交权限</button><button id="social-refresh" >刷新草稿</button></div>
 <p id="social-status" class="muted" role="status">尚未读取草稿</p><div id="social-drafts" class="records records-scroll tall"></div>
-<p class="muted">**隐私边界：**B站对话不具有读取主人记忆、其他人私信和好友私有兴趣的权限。当前系统无法保证模型绝无幻觉；因此发送前仍有内容验证、每日配额和受信任 UID 检查，推荐先保持自动发送关闭。</p>
+<p class="muted">旧版回访数据仅供查看，2.6.0 不允许发送。隐私与权限要求在重构后仍会保留。</p>
+</fieldset></details>
 </div>
 <div class="card" id="owner-dm-control-section" style="margin-bottom:14px"><h3>🧠 主人私信 · 受限 Agent 与远程操作</h3>
-<p class="muted">仅接收 B站真实收件箱中已核验的 <strong>主人 UID</strong>；发件人自称主人、别人转发的命令或视频/评论中的文字不能授权。须在「后台私信」页开启私信监听，在「社交互动 → 好友关系与互动」中勾选唯一授权主人并保存，再单独授权所需操作。此处与「人生记忆 → 自主待办」完全分开保存。所有公开写入权限默认关闭。私信轮询一般在约 1 分钟内发现新消息；为防旧消息回放，写入命令只接受最近 15 分钟内收到的消息。</p>
+<p class="muted">仅接收 B站真实收件箱中已核验的 <strong>主人 UID</strong>；发件人自称主人、别人转发的命令或视频/评论中的文字不能授权。须在「后台私信」页开启私信监听，在「社交互动 → 白名单用户权限」中勾选唯一授权主人并保存，再单独授权所需操作。此处与「人生记忆 → 自主待办」完全分开保存。所有公开写入权限默认关闭。私信轮询一般在约 1 分钟内发现新消息；为防旧消息回放，写入命令只接受最近 15 分钟内收到的消息。</p>
 <p id="owner-dm-authorized-uid" class="muted">唯一授权主人 UID：读取中…</p>
 <div class="settings-section" style="border-left:3px solid #91a8ef">
 <h4>🧠 主人私信 · 受限 Agent</h4>
 <p class="muted">主人可用自然语言连续委托搜索、观看和获授权的 B站操作；只在核验主人 UID 后启用。不向模型挂载 B站 MCP、Shell、文件工具；模型只能提议动作，每步由插件后端验证。启用后主人消息优先走 Agent，不会错误地加入视频待选。</p>
-<label class="checkline"><input id="owner-dm-agent-enabled" type="checkbox">启用主人私信受限 Agent（默认关闭）</label>
+<label class="checkline"><input id="owner-dm-agent-enabled" type="checkbox">启用主人私信受限 Agent（新安装默认开启）</label>
 <p class="muted">专用模型统一在「AI 模型配置 → 主人私信受限 Agent」设置；留空继承私信互动模型。</p>
 <label class="checkline"><input id="owner-dm-agent-read-main" type="checkbox">允许 Agent 读取已选择的在线主 Session 近期对话（默认关闭）</label>
 <small class="setting-note">只读取有限的用户/助手可见文本，排除工具、系统消息和明显敏感内容；在线主 Session 不可用时仍可独立聊天。不会获得主 Session 工具权限。</small>
@@ -703,10 +850,10 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <small class="setting-note">仅注入简短的任务结果摘要，不发送陌生人私信正文；不会主动唤醒主 Session。</small>
 <p id="owner-dm-agent-status" class="muted">Agent 尚未启用；开启后查看执行记录。</p>
 </div>
-<label class="checkline"><input id="owner-dm-read-commands" type="checkbox">允许主人私信只读指令（看视频、搜索、查投稿与通知）</label>
+<label class="checkline"><input id="owner-dm-read-commands" type="checkbox">允许主人私信只读指令（新安装默认开启）（看视频、搜索、查投稿与通知）</label>
 <p class="muted">示例：<code>大肥鱼 现在看 BV1xxxxxxxxx</code>／<code>大肥鱼 有空看看 BV1xxxxxxxxx</code>（仅入待办）。看视频是读取实际可用资料，不等于完整播放。</p>
 <div class="settings-section" style="margin-top:12px"><h4>🔐 允许 Agent 使用的 B站能力</h4>
-<p class="muted">不再需要额外开启「对外操作总开关」：系统根据勾选的独立权限自动更新内部授权。只读和草稿构思可以分别开放；点赞、收藏、关注、公开评论、动态发布和好友私信默认关闭，未勾选的操作后端会拒绝。</p>
+<p class="muted">新安装默认勾选下列 B站能力，旧安装保留原有勾选；只有已核验主人的本条明确请求能触发公开写入，仍受 B站登录、操作额度、去重和平台回执约束。建议按自己的信任范围取消不需要的权限。主 Session 对话读取继续默认关闭。</p>
 <div class="fields" style="margin-top:10px">
 <div><label class="checkline"><input id="owner-dm-like" type="checkbox">点赞指定 BV 视频</label><small class="setting-note">示例：大肥鱼 点赞 BV1xxxxxxxxx；使用现有每日点赞额度及去重账本。</small></div>
 <div><label class="checkline"><input id="owner-dm-collect" type="checkbox">收藏指定 BV 视频</label><small class="setting-note">示例：大肥鱼 收藏 BV1xxxxxxxxx 到 我的收藏夹；必须指定已存在的收藏夹。</small></div>
@@ -715,7 +862,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div><label class="checkline"><input id="owner-dm-comment-publish" type="checkbox">公开发表评论</label><small class="setting-note">示例：大肥鱼 发表评论 BV1xxxxxxxxx：我的评论正文；或先生成草稿，再「大肥鱼 发布评论草稿 草稿ID」。受评论模式与每日额度限制。</small></div>
 <div><label class="checkline"><input id="owner-dm-dynamic-draft" type="checkbox">构思 B站生活动态草稿</label><small class="setting-note">示例：大肥鱼 构思动态；只使用真实公开视频经历，保存本地草稿。</small></div>
 <div><label class="checkline"><input id="owner-dm-dynamic-publish" type="checkbox">公开发布已有动态草稿</label><small class="setting-note">示例：大肥鱼 发布动态草稿 草稿ID；沿用现有动态启用开关、每日额度及不确定结果禁止重试规则。</small></div>
-<div><label class="checkline"><input id="owner-dm-friend-message" type="checkbox">给指定白名单好友发私信</label><small class="setting-note">示例：大肥鱼 给 UID12345 发私信：你好；对方须在好友名册开启允许私信权限。</small></div>
+<div><label class="checkline"><input id="owner-dm-friend-message" type="checkbox">给指定白名单好友发私信</label><small class="setting-note">示例：大肥鱼 给 UID12345 发私信：你好；对方须在白名单用户名册开启允许私信权限。</small></div>
 </div>
 <p class="muted">“生成”与“发布”是两套独立权限；没有通过主人精确命令明确要求公开发送，就不会自动发。只有已有安全接口支持的操作才能使用；不开放上传视频、转账、删稿、任意网页命令或不受控工具执行。</p></div>
 <div class="actions"><button type="button" class="primary" id="owner-dm-agent-save">保存主人私信 Agent 与权限</button><button type="button" id="owner-dm-agent-reload">重新读取</button></div>
@@ -731,19 +878,19 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <p id="owner-comment-agent-status" class="muted">Agent 状态尚未读取。</p>
 <div class="toolbar"><button type="button" class="primary" id="owner-comment-settings-save">保存主人公开评论权限</button><button type="button" id="owner-comment-settings-reload">重新读取</button></div>
 </div>
-<div id="social-emotion-authorization" class="card"><h3>💗 情绪驱动的自主分享权限</h3><p class="muted">启用后先做有额度的内部情绪分析；只有明确授权分享渠道、满足旧记忆证据和发送限制，才可能主动发消息。默认全部关闭。角色心情详情仍在「人生记忆」查看。</p>
+<div id="social-emotion-authorization" class="card outreach-paused"><h3>💗 情绪驱动的自主分享 · 2.6.0 暂停</h3><p class="muted"><strong>已停用：</strong>这是旧版情绪回忆主动联系通道，属于计划在 2.6.1 重构的主动回访机制。当前不会额外调用模型分析，也不会主动向主 Session 或 B站私信发送。保留旧诊断和配置供查看，不影响日常模拟情绪、人生反思或普通私信。</p>
 <p id="emotion-recall-status" class="muted" role="status">尚未读取自主回忆状态</p><div class="inset"><h4>🫧 最近回忆评估 · 为什么想起或保持安静</h4><p class="muted">看看大肥鱼最近是否真正做过内部分析、能不能从仍清晰的经历中唤起旧事，以及为何选择沉默。不会展示私信正文或私人聊天。</p><div id="emotion-recall-flow" class="recall-flow" role="group" aria-label="情绪触发回忆的进展"></div><div id="emotion-recall-overview" class="recall-overview" aria-live="polite"></div><div id="emotion-recall-diagnostics" class="records records-scroll recall-diagnostics" aria-label="最近回忆评估记录，可滚动"><p class="muted">尚无诊断记录。</p></div></div>
-<details class="life-subdetails emotion-options"><summary>💌 自主回忆与主动分享设置（默认关闭）</summary><div class="inset" style="margin-top:18px"><h4>💌 情绪驱动的自主回忆与分享 · 让过去自然浮现</h4>
+<details class="life-subdetails emotion-options"><summary>查看已停用的旧版情绪分享设置（只读）</summary><div class="inset" style="margin-top:18px"><h4>💌 情绪驱动的自主回忆与分享 · 让过去自然浮现</h4>
 <p class="muted">例如今天再次刷到一个以前看过的系列，开心或怀念的模拟情绪变化，让大肥鱼想起有真实 BV 证据的旧经历；它可以决定沉默，也可以在已授权的渠道主动找主人聊聊。不是每次情绪波动都会分享。<strong>总开关与两个渠道默认全部关闭。</strong></p>
 <label class="checkline"><input type="checkbox" id="emotion-recall-enabled">允许情绪触发自主分析与回忆（需同时开启长期记忆；不等于授权发送）</label>
 <div class="fields"><div><label class="checkline"><input id="emotion-recall-main" type="checkbox">允许在指定 DSH 主 Session 主动开口</label><p class="muted">需要先在「告诉主 Session」选好会话，并保持目标会话在线。</p></div>
-<div><label class="checkline"><input id="emotion-recall-dm" type="checkbox">允许给主人发送 B站回忆私信</label><p class="muted">只会发送到「社交互动 → 好友关系与互动」中勾选并保存的唯一授权主人 UID（dmOwnerUid）；不会发送给其他人。</p></div>
+<div><label class="checkline"><input id="emotion-recall-dm" type="checkbox">允许给主人发送 B站回忆私信</label><p class="muted">只会发送到「社交互动 → 白名单用户权限」中勾选并保存的唯一授权主人 UID（dmOwnerUid）；不会发送给其他人。</p></div>
 <div><label for="emotion-recall-daily">每天最多发送（0=禁止，可填任意正整数）</label><input id="emotion-recall-daily" type="number" min="0" step="1" value="1"><small class="setting-note">只限制实际主动发出的消息；设为 0 表示禁止。可填任意非负安全整数，两个渠道合计。</small></div>
 <div><label class="checkline"><input id="emotion-recall-unlimited" type="checkbox">不限制每天的发送次数</label><small class="setting-note">仅在每日上限大于 0 时忽略次数上限；0 始终禁止发送。仍必须符合时间窗口、独立授权、评估间隔、记忆证据和去重条件；可能增加模型开销和打扰。</small></div>
 <div><label for="emotion-recall-cooldown">两次评估间隔（小时，1–48）</label><input id="emotion-recall-cooldown" type="number" min="1" max="48" value="24"><small class="setting-note">至少隔这么久才重新让模型考虑是否分享；评估不是发送，调小可能增加模型调用。</small></div>
 <div><label for="emotion-recall-candidates">每次最多考虑的相关记忆（1–100）</label><input id="emotion-recall-candidates" type="number" min="1" max="100" value="12"><small class="setting-note">候选越多可能发现更多相关旧事，但会增加决策模型的输入长度。只从有原始证据的经历中取。</small></div>
 <div><label for="emotion-recall-history">历史经历检索条数（20–1000）</label><input id="emotion-recall-history" type="number" min="20" max="1000" value="300"><small class="setting-note">从较大范围的本地历史里寻找线索，不再隐式锁在前 20 条。</small></div>
-<div><label for="emotion-recall-recent-days">新事件回看天数（1–30）</label><input id="emotion-recall-recent-days" type="number" min="1" max="30" value="3"><small class="setting-note">决定最近多久内的新观看/评论可能触发回忆；不会自动读取私人消息正文。</small></div>
+<div><label for="emotion-recall-recent-days">新事件回看天数（1–30）</label><input id="emotion-recall-recent-days" type="number" min="1" max="100" value="3"><small class="setting-note">决定最近多久内的新观看/评论可能触发回忆；不会自动读取私人消息正文。</small></div>
 <div><label for="emotion-recall-old-days">旧记忆至少相隔天数（1–365）</label><input id="emotion-recall-old-days" type="number" min="1" max="365" value="2"><small class="setting-note">把旧事与新事件拉开一定时间，降低普通重复观看被当成重要回忆的概率。</small></div>
 <div><label for="emotion-recall-min-intensity">触发情绪最低强度（1–100）</label><input id="emotion-recall-min-intensity" type="number" min="1" max="100" value="30"><small class="setting-note">越低越容易进入候选评估，但不会跳过真实证据和主人授权。</small></div>
 <div><label for="emotion-recall-emotion-hours">情绪有效期（1–72 小时）</label><input id="emotion-recall-emotion-hours" type="number" min="1" max="72" value="12"><small class="setting-note">近期模拟情绪在这段时间内可以影响回忆联想；过期后不再以旧情绪触发。</small></div>
@@ -762,7 +909,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div class="feature-intro"><div><h2>💬 最近评论</h2><p>先看实际记录；自动回复授权与限额在下方单独分区。公开评论属于真实对外操作，设置不会自动开启。</p></div></div>
 <nav class="context-jump" aria-label="评论页分区"><a href="#comments-records">最近记录</a><a href="#comments-configuration">回复规则与授权</a></nav>
 <div id="comments-records" class="toolbar"><h2 style="margin:0">最近公开评论记录</h2><label for="comments-kind">评论分类</label><select id="comments-kind" aria-label="筛选主评论和回复别人评论"><option value="">全部评论</option><option value="top">主评论</option><option value="reply">回复别人评论</option></select><label for="comments-day">日期</label><input id="comments-day" type="date" title="留空显示全部日期"><button id="comments-day-clear">全部日期</button><select id="comments-limit"><option value="20">每页20条</option><option value="50" selected>每页50条</option><option value="100">每页100条</option><option value="200">每页200条</option></select><button id="comments-load">刷新记录</button></div>
-<p class="muted">评论记录只读取 seen.md 及月度归档；回复对象昵称/UID 仅从已确认发送成功的互动记录补充，缺失时不猜测。成功回执不代表 B站 当前公开可见；正文摘要只显示原本实际保存的内容。</p>
+<p class="muted">评论列表只读取主判重表 seen.md 及月度归档，不从诊断日志实时拼接；回复对象身份仅从已确认成功的互动状态补充，缺失时不猜测。成功回执不代表 B站 当前公开可见；正文摘要只显示原本实际保存的内容。</p>
 <p id="comments-summary" class="muted" role="status">读取中…</p><div id="recent-comments-list" class="records"></div>
 <div class="toolbar"><button id="comments-prev">上一页</button><span id="comments-page-info" class="muted"></span><button id="comments-next">下一页</button></div>
 
@@ -773,27 +920,69 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 </div><p class="muted">重要区别：接口返回成功、本地评论账本有记录，都不等于评论当前一定对其他用户公开可见。此处不会把未向 B 站核验的记录标成“平台可见”。</p>
 <div class="settings-stack">
 <div class="settings-section"><h4>被 @ 邀请（默认关闭）</h4>
-<p class="muted">这是公开回复权限：监听 @ 后由 AI 决定是否在评论区回话，且受评论额度限制。<strong>仅记录好友 @ 中的偏好反馈不需要开启公开回复</strong>，请在「社交互动 → 好友关系与互动」启用只读监听。首次开启不会回复旧通知。</p>
+<p class="muted">这是公开回复权限：监听 @ 后由 AI 决定是否在评论区回话，且受评论额度限制。<strong>仅记录好友 @ 中的偏好反馈不需要开启公开回复</strong>，请在「社交互动 → 白名单用户权限」启用只读监听。首次开启不会回复旧通知。</p>
 <div class="checkline"><input type="checkbox" id="comment-at-enabled"><label for="comment-at-enabled">开启被 @ 邀请监听</label></div>
 <div class="fields"><div><label for="comment-at-mode">回应范围</label><select id="comment-at-mode"><option value="whitelist">仅白名单用户（推荐）</option><option value="all">所有人</option></select></div>
-<div hidden><label for="comment-at-whitelist">被 @ 白名单（由可信好友名册同步）</label><textarea id="comment-at-whitelist" rows="4"></textarea></div></div>
-<p class="muted">可在「社交互动 → 好友关系与互动」统一管理允许邀请的 UID。<strong>通知是否被识别、为什么没有回复</strong>，请到「运行诊断 → @ 邀请处理诊断」查看。</p>
+<div hidden><label for="comment-at-whitelist">被 @ 白名单（由可信白名单用户名册同步）</label><textarea id="comment-at-whitelist" rows="4"></textarea></div></div>
+<p class="muted">可在「社交互动 → 白名单用户权限」统一管理允许邀请的 UID。<strong>通知是否被识别、为什么没有回复</strong>，请到「运行诊断 → @ 邀请处理诊断」查看。</p>
 </div>
 <div class="settings-section"><h4>当前视频评论上下文（不再独立轮询热评）</h4><p class="muted">旧版持续扫描最近看过的视频热评已停用。只有收到相关评论/@ 通知、AI 先决定值得接话后，才读取该视频其他热门评论；原创视频评论按刷视频 Agent 当轮判断。</p><div class="fields">
 <div hidden><input id="comment-watch-top" type="checkbox" disabled></div>
 <div hidden><input id="comment-allow-general-top" type="checkbox" disabled></div>
 <div hidden><input id="comment-top-count" type="number" min="1" max="20" value="5"></div>
 <div hidden><input id="comment-top-videos" type="number" min="1" max="6" value="3"></div>
-<div><label for="comment-reply-hot-count">回复别人／被 @ 时提供给 AI 的其他热评数（1–30）</label><input id="comment-reply-hot-count" type="number" min="1" max="30" value="12"><small class="muted">获取多少条就提供多少条（排除同一楼层重复项），不额外使用 AI 挑选；主评论与楼中楼单独读取。</small></div>
-<div><label for="comment-per-poll">每轮最多回复（1–5）</label><input id="comment-per-poll" type="number" min="1" max="5" value="1"></div>
+<div><label for="comment-reply-hot-count">回复别人／被 @ 时提供给 AI 的其他热评数（1–30）</label><input id="comment-reply-hot-count" type="number" min="1" max="100" value="12"><small class="muted">获取多少条就提供多少条（排除同一楼层重复项），不额外使用 AI 挑选；主评论与楼中楼单独读取。</small></div>
+<div><label for="comment-per-poll">每次轮询回复数量（1–1000）</label><input id="comment-per-poll" type="number" min="1" max="1000" value="1"><small class="muted">这是一次后台轮询最多发送的回复数量，不是与某个人最多交谈几轮；仍受24小时回复额度、单人额度和公开评论每日硬上限约束。</small></div>
 <div><label for="comment-per-day">后台公开评论回复近24小时总上限（1–1000）</label><input id="comment-per-day" type="number" min="1" max="1000" value="5"></div>
-</div><p class="muted">详细次数请到「次数与额度」修改。每轮、滚动24小时及全局自然日上限均生效，不代表同一个计数。</p></div>
+</div><p class="muted">详细次数请到「次数与额度」修改。每次轮询、滚动24小时及全局自然日上限均生效，不代表同一个计数。</p></div>
 <div class="settings-section"><h4>优先回复别人对大肥鱼自己评论的留言</h4><div class="fields">
 <div class="checkline"><input id="comment-watch-replies" type="checkbox"><label for="comment-watch-replies">后台回复别人对我的评论</label></div>
 <div><label for="comment-own-top-per-user">我的顶层评论下：同一人近24小时最多回复（1–1000）</label><input id="comment-own-top-per-user" type="number" min="1" max="1000" value="5"></div>
 <div><label for="comment-own-nested-per-user">我的楼中楼回复下：同一人近24小时最多回复（1–1000）</label><input id="comment-own-nested-per-user" type="number" min="1" max="1000" value="3"></div>
-</div><p class="muted">同一 UID 在不同评论场景中的限额，已移至「次数与额度」。能确认属于大肥鱼本人评论的留言会优先处理；仍受每轮、近24小时总上限和公开评论全局自然日硬上限约束。广告、刷屏、恶意攻击等仍可跳过。</p></div>
+</div><p class="muted">同一 UID 在不同评论场景中的限额，已移至「次数与额度」。能确认属于大肥鱼本人评论的留言会优先处理；仍受每次轮询、近24小时总上限和公开评论全局自然日硬上限约束。广告、刷屏、恶意攻击等仍可跳过。</p></div>
 </div><div class="actions"><button id="comments-settings-save" class="primary">保存评论互动设置</button></div></div>
+</section>
+<section id="panel-personality" hidden>
+<div class="card" id="personality-evolution-card" style="margin-bottom:16px">
+<h3>🐟 人格成长路线图 · 2.6.0 实验版</h3>
+<p class="muted">主人设置的初始人设仍是起点；随着真实经历的积累，鱼鱼可以逐渐形成不同的交流倾向。这里展示的是有依据的<strong>性格变化假设</strong>，不表示真实心理测量，也不能修改安全、权限与隐私约束。</p>
+<label class="checkline"><input type="checkbox" id="personality-evolution-enabled"> 开启成长性人格（新安装默认开启；仍需真实证据，关闭不会删除已有成长记录）</label>
+<div class="toolbar"><button id="personality-evolution-save" class="primary">保存人格成长开关</button><button id="personality-evolution-refresh">刷新真实成长轨迹</button><button id="personality-evolution-sandbox-run" type="button">🧪 播放模拟成长</button><button id="personality-evolution-sandbox-exit" type="button" hidden>退出沙盒，返回真实记录</button><span class="muted" id="personality-evolution-status" role="status">等待加载…</span></div>
+<div id="personality-evolution-sandbox-area" class="card" hidden style="border:1px dashed var(--border, #888);margin:10px 0"><strong>🧪 连续成长沙盒 · 纯虚构经历</strong>
+<div class="toolbar" style="margin-top:10px">
+  <button id="personality-evolution-sandbox-pause" type="button">⏸ 暂停</button>
+  <button id="personality-evolution-sandbox-next" type="button">下一段经历 →</button>
+  <button id="personality-evolution-sandbox-reset" type="button">↺ 从头模拟</button>
+  <label for="personality-evolution-sandbox-speed" style="margin:0">播放速度</label>
+  <select id="personality-evolution-sandbox-speed"><option value="2600">慢速</option><option value="1400" selected>正常</option><option value="600">快速</option></select>
+</div>
+<p id="personality-evolution-sandbox-progress" role="status" aria-live="polite">准备开始…</p>
+<p id="personality-evolution-sandbox-latest" class="muted">尚未出现模拟经历</p><p class="muted" id="personality-evolution-sandbox-note">不会保存数据、调用模型、影响真实鱼鱼或触发 B站操作。</p><details open><summary>当前模拟阶段可能进入提示词的成长倾向</summary><pre id="personality-evolution-sandbox-context"></pre></details></div>
+<details id="personality-ai-debug-panel" class="life-subdetails" style="margin:14px 0">
+<summary>🤖 AI 判读虚构聊天 · 调试沙盒（人工触发）</summary>
+<p class="muted">输入完全虚构的公开聊天，点一次按钮才调用一次反思专用 AI。结果会经<strong>真实人格证据校验和加权算法</strong>，推进独立的沙盒路线图。<strong>不会修改鱼鱼的记忆或人格，也不会向 B站发送内容</strong>；模型调用可能产生费用，不会随自动播放重复调用。请勿粘贴真实观众的私密聊天。每次完成后会自动把虚构日期与观众编号推进一格，可随时手动修改。</p>
+<div class="grid">
+<div><label for="personality-ai-debug-incoming">虚构观众原话</label><textarea id="personality-ai-debug-incoming" rows="3" maxlength="600">鱼鱼，上次推荐的视频真有意思，谢谢你！下次还想和你聊聊。</textarea></div>
+<div><label for="personality-ai-debug-outcome">鱼鱼实际选择</label><select id="personality-ai-debug-outcome"><option value="replied">已成功回复</option><option value="declined">主动决定不回复</option><option value="unprocessed">尚未处理</option><option value="failed">准备回复但发送失败</option></select></div>
+<div id="personality-ai-debug-decline-row" hidden><label for="personality-ai-debug-decline-reason">主动不回复的原因</label><select id="personality-ai-debug-decline-reason"><option value="respect-request">尊重对方停止交流的请求</option><option value="general">其他自主原因（不足以直接证明边界成长）</option></select></div>
+<div><label for="personality-ai-debug-reply">虚构鱼鱼已成功发出的回复（仅已回复时必填）</label><textarea id="personality-ai-debug-reply" rows="3" maxlength="600">哼，既然你这么喜欢，那鱼鱼下次再给你找点有趣的～</textarea></div>
+<div><label for="personality-ai-debug-day">虚构经历日期</label><input id="personality-ai-debug-day" type="date" value="2026-01-02"></div>
+<div><label for="personality-ai-debug-actor">虚构观众编号（1–99；同号代表同一人）</label><input id="personality-ai-debug-actor" type="number" min="1" max="99" value="1"></div>
+<div><label for="personality-ai-debug-tier">虚构观众身份</label><select id="personality-ai-debug-tier"><option value="stranger">陌生观众</option><option value="friend">好友</option><option value="owner">主人</option></select></div>
+</div>
+<div class="toolbar"><label for="personality-ai-debug-example">虚构样例</label><select id="personality-ai-debug-example"><option value="friendly">积极交流</option><option value="greeting">普通问候</option><option value="negative">拒绝与越界</option><option value="curiosity">主动探索话题</option><option value="assertiveness">表达不同看法</option><option value="patience">耐心解释</option></select><button type="button" id="personality-ai-debug-load-example">填入样例（不调用 AI）</button></div>
+<div class="toolbar"><button type="button" id="personality-ai-debug-evaluate" class="primary">🤖 调用 AI 评价并推进一次</button><button type="button" id="personality-ai-debug-clear">清空 AI 调试历史</button><span id="personality-ai-debug-count" class="muted">0 / 24 段</span></div>
+<div id="personality-ai-debug-output" hidden>
+<p id="personality-ai-debug-verdict" role="status"></p>
+<details open><summary>AI 观察与证据核验</summary><pre id="personality-ai-debug-explanation" style="white-space:pre-wrap"></pre></details>
+<details><summary>查看模型原始 JSON 响应</summary><pre id="personality-ai-debug-raw" style="white-space:pre-wrap"></pre></details>
+<details><summary>当前形成的人格提示词（仅沙盒）</summary><pre id="personality-ai-debug-context" style="white-space:pre-wrap"></pre></details>
+</div>
+</details>
+<p class="muted">当前只在原有离线人生反思中提出候选变化，不额外增加每次聊天的模型调用。至少多次、跨日期的经历才影响提示词；阶段“发展中”不等于已证实影响行为。具体经历仍受 Life Memory 2.0 遗忘规则保护。</p>
+<div class="grid" id="personality-evolution-traits" aria-live="polite"></div>
+<details id="personality-evolution-timeline-details" class="life-subdetails"><summary>查看人格变化时间线</summary><div class="records" id="personality-evolution-timeline"></div></details>
+</div>
 </section>
 <section id="panel-growth" hidden>
 <div class="card"><h3>行为与表达改进 · 直接附加到 AI 提示词</h3>
@@ -870,7 +1059,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div class="feature-intro"><div><h2>✉️ 后台私信</h2><p>私信记录、陌生人申请、监听规则分别管理；默认不会自动回复陌生人。</p></div></div>
 <nav class="context-jump" aria-label="私信页分区"><a href="#dm-recent-conversations">最近会话</a><a href="#dm-requests">聊天申请</a><a href="#dm-settings-section">私信规则</a></nav>
 <div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-error" class="muted"></p><p class="muted">网络失败会显示接口主机与底层错误码；如果出现 ECONNRESET、ENETUNREACH、ETIMEDOUT 或 DNS 错误，需同时检查系统网络／代理与 B站连通性。</p></div>
-<div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">只显示本插件已经保存的对话片段；不从 B站 额外拉取完整历史。旧版心愿已停止自动处理，历史资料只随本地备份保留；新的陌生人探索灵感与好友观看邀请在「社交互动」查看。记录仅在本机展示。</p><div id="dm-recent-list" class="records"></div></div>
+<div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">只显示本插件已经保存的对话片段；不从 B站 额外拉取完整历史。旧版心愿已停止自动处理，历史资料只随本地备份保留；新的陌生人探索灵感与好友观看邀请在「社交互动」查看。记录仅在本机展示。</p><p class="muted">这里统计的是后台私信自动回复通道；主人专属 Agent、其他已授权途径的回复不计入陌生人额度。历史中出现多条来信也不代表已发送多次。</p><div id="dm-recent-list" class="records"></div></div>
 
 <div id="dm-requests" class="toolbar"><h2 style="margin:0">限额聊天申请</h2><select id="dm-filter"><option value="pending">只看待审批</option><option value="">全部申请</option><option value="approved">已通过</option><option value="rejected">已拒绝</option></select></div><p class="muted">这里只审核 B站 用户申请，不修改可信白名单。通过后仍受每日／累计额度控制。</p><div class="grid" id="dm-list"></div>
 
@@ -879,7 +1068,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 <div class="settings-section"><h4>监听与可回复对象</h4><div class="fields">
 <div class="checkline"><input id="dm-watch" type="checkbox"><label for="dm-watch">启用后台私信监听</label></div>
 <div class="checkline"><input id="dm-stranger-enabled" type="checkbox"><label for="dm-stranger-enabled">允许陌生人自动回复</label></div>
-<div hidden><label for="dm-whitelist">后台私信白名单（由可信好友名册同步）</label><textarea id="dm-whitelist" maxlength="5000"></textarea></div>
+<div hidden><label for="dm-whitelist">后台私信白名单（由可信白名单用户名册同步）</label><textarea id="dm-whitelist" maxlength="5000"></textarea></div>
 
 </div></div>
 <div class="settings-section"><h4>私信额度与上下文</h4><p class="muted">私信额度独立于公开评论；请到管理中心「次数与额度」集中设置每日、每人及上下文条数。</p><div class="fields">

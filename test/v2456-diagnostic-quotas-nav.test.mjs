@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 import {Readable} from 'node:stream';
-import {apply} from '../index.js';
+import {apply} from './helpers/ready-host.mjs';
 import {createDmAutoReply} from '../lib/dm-autoreply.mjs';
 
 const home=()=>mkdtempSync(join(tmpdir(),'v2456-test-'));

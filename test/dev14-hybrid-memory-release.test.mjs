@@ -82,7 +82,7 @@ test('检索前按已核实 UID 限权，混合 FTS 候选和 ID 二次校验不
 test('新收到互动不能当成旧记忆；好友/陌生人跨天再见可自然回忆，情绪和关系传给一次 AI',async()=>{
  const dir=home(),clock={at:START},uid='101',key=`social:${uid}:${BV}:2001`
  try{
-  const gate=createLifeMemoryGateway({dataDir:dir,now:()=>clock.at,getConfig:cfg})
+  const gate=createLifeMemoryGateway({dataDir:dir,now:()=>clock.at,getConfig:cfg,getRelationship:()=>({stage:'familiar',permissionRole:'stranger',whitelisted:false})})
   gate.recordEvents([social(uid,'2001','我昨天说鱼鱼像小星星，还约好明天回来')])
   clock.at+=DAY
   gate.recordEvents([social(uid,'2002','我又来啦')])
@@ -130,13 +130,13 @@ test('互动批量回复：不同 UID 分开模型调用，回应情绪可更新
  }finally{batcher.stop()}
 })
 
-test('真实插件入口：评论/好友私信共用经 UID 限制的动态记忆，但旧私有画像不会进入公开评论',()=>{
- const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(source,/\['comment','dm'\]\.includes\(item.kind\)/)
- assert.match(source,/excludeEventKey:options\?\.excludeEventKey\|\|''/)
- assert.match(source,/interactionBatcher\.generate\(\{\.\.\.req,identityContext:'',incomingRpid:req\.rpid\}\)/)
- assert.match(source,/getEmotion:\(\)=>emotionalState\.snapshot\(\)/)
- assert.match(source,/memoryContext:safeSocialMemoryContext/)
+test('真实入口：普通互动复用 ContextAssembler 的 UID 安全记忆',()=>{
+ const src=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ const ctx=readFileSync(new URL('../lib/social-context-assembler.mjs',import.meta.url),'utf8')
+ assert.match(src,/prepareContexts:batch=>socialContextAssembler\?\.batch\(batch\)/)
+ assert.match(ctx,/excludeEventKey:input\.incomingRpid/)
+ assert.match(ctx,/policy\.memoryScope/)
+ assert.match(src,/getEmotion:\(\)=>emotionalState\.snapshot\(\)/)
 })
 
 test('精确日期仅能定位清晰经历，变模糊后不能利用隐藏时间字段推断旧事件',()=>withMemory(({gate,clock})=>{

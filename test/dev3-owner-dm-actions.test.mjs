@@ -52,7 +52,7 @@ test('配置入口、独立权限及按钮都要同步存在',()=>{
  const ui=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  for(const flag of [...new Set(Object.values(OWNER_DM_ACTION_FLAGS))]){
-  assert.match(host,new RegExp(flag+': z\\.boolean\\(\\)\\.default\\(false\\)'))
+  assert.match(host,new RegExp(flag+': z\\.boolean\\(\\)\\.default\\(true\\)'))
   assert.ok(host.includes(`'${flag}'`),flag+' route must save config')
   assert.ok(js.includes(flag),flag+' must have UI save')
  }

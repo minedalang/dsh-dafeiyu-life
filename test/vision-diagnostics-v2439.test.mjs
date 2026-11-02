@@ -4,7 +4,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {Readable} from 'node:stream'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 import {listCommentMemes} from '../lib/comment-meme-library.mjs'
 
 test('diagnostics reads actual preview receipts from fixed home directories',async()=>{

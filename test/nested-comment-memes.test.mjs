@@ -4,7 +4,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,symlinkSync,rmSync,readFileSync} fro
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {Readable} from 'node:stream'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 import {listCommentMemes} from '../lib/comment-meme-library.mjs'
 
 test('按分类递归扫描，完整名称区分不同文件夹里的同名梗图',async()=>{

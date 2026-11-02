@@ -4,7 +4,7 @@ import {mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {Readable} from 'node:stream'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 import {createEmotionRecall,__test as recallTest} from '../lib/emotion-recall.mjs'
 
 function apiFixture(){

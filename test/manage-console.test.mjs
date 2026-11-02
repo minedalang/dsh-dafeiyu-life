@@ -4,7 +4,7 @@ import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {Readable} from 'node:stream'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 
 function fixture(){
  const home=mkdtempSync(join(tmpdir(),'bili-console-'))
@@ -63,7 +63,8 @@ test('manage HTML and JS are served from same DSH route without extra port or pr
    assert.equal(dmNetwork.json().ok,false)
    assert.match(dmNetwork.json().error,/登录凭证/)
    const client=await import('node:fs').then(m=>m.readFileSync(new URL('../client.js',import.meta.url),'utf8'))
-   assert.match(client,/jpost\('\/open', \{ what: 'manage' \}\)/)
+   assert.match(client,/const onOpenManage = async/)
+   assert.match(client,/window\.location\.assign\(path\)/)
  }finally{fx.close()}
 })
 

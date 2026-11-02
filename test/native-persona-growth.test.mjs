@@ -4,7 +4,7 @@ import {mkdtempSync,readFileSync,existsSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {Readable} from 'node:stream'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 import {buildGrowthContext, listGrowth, updateGrowthSuggestion} from '../lib/persona-growth.mjs'
 
 const client=readFileSync(new URL('../client.js',import.meta.url),'utf8')

@@ -1,0 +1,27 @@
+flowchart TB
+  Explore[实际视频探索] --> LifeOutbox[LifeMemoryCoordinator 持久日志]
+  Comment[公开评论事件] --> SocialOutbox[SocialInteractionCoordinator 持久日志]
+  DM[私信事件 仅派生投影不保存正文] --> SocialOutbox
+  SocialOutbox --> Cognition[社会认知候选]
+  SocialOutbox --> FriendInterest[可信好友兴趣观察]
+  SocialOutbox --> Relationship[可信好友关系]
+  SocialOutbox --> LifeOutbox
+  LifeOutbox --> Gateway[lifeMemoryGateway 真实经历 / 遗忘]
+  LifeOutbox --> Candidates[lifeReflection 候选]
+  Candidates --> Interest[公开视频兴趣档案]
+  Candidates --> Review[模型反思 + 失败重试]
+  Review --> Long[longTermMemory 长期认识]
+  Review --> Emotion[情绪状态投影]
+  Review --> Personality[人格变化证据]
+  Owner[主人聊天新的语义记忆] --> Quota[去重 / 事实替换 / 新增30条额度]
+  Quota --> Queue[超额暂存与恢复]
+  Queue --> Long
+  Quota --> Long
+  Long --> Con[MemoryConsolidation 保守同主题整理]
+  Con -->|保留来源 ID 替换标记| Long
+  Long --> Reader[memoryRetriever 统一只读召回]
+  Gateway --> Reader
+  Reader --> Private[主 Session / 验证主人 DM]
+  Reader --> Public[公开社交 UID 隔离视图]
+  Gateway --> Daily[生活动态与情绪回忆证据专用视图]
+  Gateway --> Timeline[真实生活时间线只读投影]

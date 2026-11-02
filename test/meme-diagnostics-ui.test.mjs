@@ -4,7 +4,7 @@ import {readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {Readable} from 'node:stream'
-import {apply} from '../index.js'
+import {apply} from './helpers/ready-host.mjs'
 import {listCommentMemes} from '../lib/comment-meme-library.mjs'
 import {buildCommentMemePrompt} from '../lib/comment-meme-prompt.mjs'
 

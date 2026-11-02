@@ -1,0 +1,26 @@
+flowchart TB
+  Main[主 Session 聊天与记忆工具] --> OwnerMemory[主人私有长期记忆]
+  Video[视频探索与周期任务] --> LifeCoord[LifeMemoryCoordinator 事件日志]
+  Comments[评论与 @ 通知] --> Notify[CommentRootResolver 通知标准化]
+  DM[普通私信与主人私信] --> Identity[SocialPolicyGate UID 与渠道权限]
+  Notify --> Identity
+  Identity --> Context[SocialContextAssembler 场景上下文]
+  Context --> Recall[memoryRetriever 公开 / 主人私有视图]
+  Context --> VideoContext[commentVideoContext 视频 / 主评论 / 热评]
+  Context --> Meme[梗知识与角色人格 / 情绪]
+  Context --> DMOrch[interactionBatcher 或专用可信 Agent]
+  DMOrch --> Agency[自主意愿与动作授权]
+  Agency --> MCP[B 站工具适配器 / 平台回执]
+  MCP --> SocialCoord[SocialInteractionCoordinator 社交事件日志]
+  SocialCoord --> LifeCoord
+  SocialCoord --> Friend[好友兴趣 / 关系 / 社会认知]
+  LifeCoord --> Episode[可衰减人生经历]
+  LifeCoord --> Reflection[反思候选]
+  Reflection --> Insights[长期认识 / 情绪 / 人格]
+  OwnerMemory --> Consolidate[可选 MemoryConsolidation 来源凝练]
+  Consolidate --> OwnerMemory
+  UI[管理中心 / 真实时间线] --> Episode
+  UI --> OwnerMemory
+  Daily[生活动态] --> PublicReader[公开视频证据专用读取]
+  PublicReader --> Episode
+  Planner[自主待办] --> Agency
