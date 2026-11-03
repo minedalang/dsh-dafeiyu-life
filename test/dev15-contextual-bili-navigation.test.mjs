@@ -14,8 +14,9 @@ test('B站生活是导航分组，视频探索、好友、评论、私信和动�
 })
 
 test('人生记忆、主 Session 同步、自主待办在自己版块就地折叠，配置键不复制',()=>{
- const life=section('life'),home=section('home')
- for(const id of ['life-memory-settings','main-memory-enabled','main-memory-save','settings-todo','owner-todo-settings-save'])assert.ok(life.includes(`id="${id}"`),id)
+ const life=section('life'),home=section('home'),todos=section('todos')
+ for(const id of ['life-memory-settings','main-memory-enabled','main-memory-save'])assert.ok(life.includes(`id="${id}"`),id)
+ for(const id of ['settings-todo','owner-todo-settings-save']){assert.ok(todos.includes(`id="${id}"`),id);assert.ok(!life.includes(`id="${id}"`),id)}
  for(const id of ['home-sync-settings','settings-sync','main-session-sync-save','main-session-id'])assert.ok(home.includes(`id="${id}"`),id)
  assert.ok(life.indexOf('一段经历，怎样变成鱼鱼的记忆？')<life.indexOf('id="life-memory-settings"'))
  assert.match(js,/if\(saved==='settings'\)/,'旧版设置页书签应可兼容跳转')

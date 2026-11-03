@@ -96,6 +96,8 @@ import { createInteractionBatcher } from './lib/interaction-batch.mjs'
 import {ownPublishedDynamics} from './lib/own-published-dynamics.mjs'
 import { createInteractionMemeLookup, readReplyMemeSnapshot } from './lib/interaction-meme-memory.mjs'
 import { createInteractionScheduler } from './lib/interaction-scheduler.mjs'
+import { createBiliReadBudget } from './lib/bili-read-budget.mjs'
+import { createDmPollCursor } from './lib/dm-poll-cursor.mjs'
 import { listCommentMemes, getCommentMemePreview } from './lib/comment-meme-library.mjs'
 import {readCommentMemeRules,saveCommentMemeRules,validateCommentMemeRules} from './lib/comment-meme-rules.mjs'
 import {DEFAULT_MEME_RULE_AI_PROMPT,buildMemeRuleAIUpdatePrompt,computeMemeInventoryDelta,normalizeMemeRuleAIPrompt,parseMemeRuleAIOutput,readMemeRuleAIIndex,readPreviousMemeRules,saveMemeRuleAIIndex,savePreviousMemeRules,validateAIMemeRules} from './lib/comment-meme-ai-rules.mjs'
@@ -438,6 +440,8 @@ export function apply(ctx, config) {
   // Character identity is stable; B站 UID is a replaceable, verified transport identity.
   const accountBinding = createAccountBinding({dataDir:stateDir})
   const accountRuntimeDir = accountBinding.runtimeDir()
+  const biliReadBudget=createBiliReadBudget({dataDir:accountRuntimeDir,logger:{warn:msg=>console.warn(msg)}})
+  const dmPollCursor=createDmPollCursor({dataDir:accountRuntimeDir})
   accountBinding.acknowledgeRestart() // Startup boundary: no in-flight old-account operations survive.
   // Discover live adapters, including DSH's official built-in DeepSeek route.
   // Never read API keys or copy their credentials into Headless.
@@ -1247,6 +1251,12 @@ function reportMeta() {
     return mcp
   }
 
+  const monitoredReadTools=new Set([
+    'bili_video_info','bili_user_videos','bili_home_recommendations','bili_search',
+    'bili_comments','bili_comment_thread','bili_subtitle','bili_danmaku',
+    'bili_received_replies','bili_received_at_and_likes','bili_dynamic_reply_inbox',
+    'bili_dynamic_comment_context'
+  ])
   const call = async (toolName, args, opts) => {
     const release = toolName==='bili_check_credential'?()=>{}:accountBinding.enterPlatformOperation()
     try {
@@ -1256,7 +1266,9 @@ function reportMeta() {
     if (cfg.masterEnabled !== true) throw new Error('大肥鱼已暂停：请先开启总开关')
     const client = await ensureMcp()
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
-    return await client.call(toolName, args, opts)
+    return monitoredReadTools.has(toolName)
+      ? await biliReadBudget.guard('mcp:'+toolName,()=>client.call(toolName,args,opts))
+      : await client.call(toolName,args,opts)
     } finally {release()}
   }
 
@@ -2927,13 +2939,17 @@ function reportMeta() {
     try {
     const cred = dmCred(stateDir)
     if (!cred) throw new Error('尚未登录 B站，请先在设置页扫码登录')
-    const sessions = await dmList(cred)
+    dmPollCursor.discard()
+    const sessions = await dmList(cred,{readBudget:biliReadBudget})
     const whitelist = dmConfig().whitelist
     const incoming=await collectDmInbox({
       sessions, ownUid: Number(cred.dedeuserid), whitelist,
-      readConversation: (uid) => {accountBinding.assertReady();return dmFetch(cred, uid, 20)},
-      // 最多轮询 40 个近期会话，避免每分钟对 B站发出过量请求。
-      maxSessions: 40,
+      readConversation: (uid) => {accountBinding.assertReady();return dmFetch(cred, uid, 20,{readBudget:biliReadBudget})},
+      shouldRead: dmPollCursor.shouldRead,
+      onRead: dmPollCursor.observed,
+      // No more than twelve detailed conversations per round; unchanged sessions
+      // skip by account-scoped cursor (with a periodic safety rescan).
+      maxSessions: 12,
       logger: { warn: (msg) => log(msg) },
     })
     // Establish an inbox baseline before performing any first-run side effects.
@@ -3337,7 +3353,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     const headers={'User-Agent':'Mozilla/5.0','Referer':'https://www.bilibili.com/',Cookie:`SESSDATA=${cred.sessdata}`}
     // These are fixed Bilibili API hosts. UID is numeric and never becomes a URL.
     for(const endpoint of ['https://api.bilibili.com/x/space/acc/info?mid=','https://api.bilibili.com/x/web-interface/card?mid=']){
-      try{const res=await fetch(endpoint+uid,{headers,signal:AbortSignal.timeout(2500)})
+      try{biliReadBudget.acquire('public-nickname');const res=await fetch(endpoint+uid,{headers,signal:AbortSignal.timeout(2500)})
         if(!res.ok)continue
         const json=await res.json();if(json?.code!==0)continue
         const name=String(json.data?.name||json.data?.card?.name||'').replace(/[<>\r\n\x00-\x1f]/g,' ').trim().slice(0,60)
@@ -3352,6 +3368,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     getConfig: dmConfig,
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     fetchIncoming: getNewDmMessages,
+    onScanSettled:()=>dmPollCursor.commit(),
     lookupNickname: lookupBiliNickname,
     onIncoming:async({uid,text,messageId,time})=>{
       const role=socialPolicyGate.actor(uid).role
@@ -3703,7 +3720,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     logger: {warn: (msg) => log('评论互动警告：'+msg),error:(msg)=>log('评论互动错误：'+msg)},
   })
   const interactionScheduler = createInteractionScheduler({
-    dm: dmAutoreply, comments: commentInteract,
+    dm: dmAutoreply, comments: commentInteract, readBudget:biliReadBudget, dmCursor:dmPollCursor,
     getConfig: () => {refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     logger: {error:(msg)=>log(msg)},
   })

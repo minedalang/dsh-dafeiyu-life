@@ -71,7 +71,7 @@ test('反思无产出可诊断，不虚构长期认识、不会强制生成人�
 
 test('dev.7 管理页面与工具入口保留沙盒隔离、安全权限和第三方卡片仅引用',()=>{
   const html=read('lib/management-console.html'),ui=read('lib/management-console.js'),server=read('index.js'),py=read('vendor/bilibili-mcp/mcp_server.py')
-  assert.match(html,/2\.6\.0 实验版/)
+  assert.match(html,/人格成长|人格发展/)
   assert.match(ui,/尚无真实人格变化/)
   assert.match(ui,/模拟尚无变化/)
   assert.doesNotMatch(html,/aigengtu\.com\/persona/)
@@ -86,8 +86,8 @@ test('dev.7 管理页面与工具入口保留沙盒隔离、安全权限和第�
 
 
 test('2.6.0 正式源码保留历史发行归档，但发布包只带当前 Release Notes',()=>{
-  const pkg=JSON.parse(read('package.json'));assert.equal(pkg.version,'2.6.1');
-  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.1.md'));
+  const pkg=JSON.parse(read('package.json'));assert.equal(pkg.version,'2.6.2');
+  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.2.md'));
   assert.ok(!pkg.files.includes('docs/release'));
   assert.ok(!pkg.files.includes('RELEASE_NOTES_v2.6.0-dev.7.md'));
   assert.match(read('docs/release/archive/RELEASE_NOTES_v2.6.0-dev.7.md'),/2\.6\.0-dev\.7/);

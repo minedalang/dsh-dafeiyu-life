@@ -545,6 +545,77 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 }
 @media(prefers-reduced-motion:reduce){#panel-backup .backup-chevron{transition:none}}
 
+
+/* 2.6.2 unified life center: responsive, accessible color accents with shared IDs. */
+#panel-todos{--todo-accent:#6c62d8}
+#panel-todos .life-hero,#panel-personality .personality-page-heading{
+ display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+ padding:22px;border-radius:18px;background:linear-gradient(120deg,color-mix(in srgb,#7868ed 16%,var(--panel)),color-mix(in srgb,#26ae9b 12%,var(--panel)),color-mix(in srgb,#f1ac48 12%,var(--panel)));border:1px solid var(--stroke)}
+#panel-todos .life-hero h2{font-size:24px;margin:5px 0;color:var(--ink)}
+#panel-todos .life-hero .muted{max-width:730px}
+.page-eyebrow{font-size:11px;letter-spacing:.13em;font-weight:800;color:var(--action)}
+#panel-todos .todo-page-intro{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+#panel-todos .todo-page-intro span{padding:7px 12px;border-radius:999px;border:1px solid var(--stroke);background:var(--panel);font-size:12px;font-weight:650}
+#panel-todos :is(.life-action,.todo-filter button){border:1px solid transparent;border-radius:10px;color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(50,70,120,.1)}
+#panel-todos .life-indigo{background:#5452ba;border-color:#5452ba}
+#panel-todos .life-green{background:#187c62;border-color:#187c62}
+#panel-todos .life-sky{background:#176f9f;border-color:#176f9f}
+#panel-todos :is(#owner-todo-prev,#owner-todo-next){background:#2767b3;border-color:#2767b3;color:white}
+#panel-todos #owner-todo-followup-check{background:#7651b3;border-color:#7651b3;color:white}
+#panel-todos button:disabled{opacity:.55;cursor:not-allowed}
+#panel-todos .todo-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:16px 0}
+#panel-todos .todo-count{padding:14px;border:1px solid var(--stroke);border-radius:15px;background:color-mix(in srgb,#d8d3ff 18%,var(--panel))}
+#panel-todos .todo-count:nth-child(3n+2){background:color-mix(in srgb,#a9e7d4 18%,var(--panel))}
+#panel-todos .todo-count:nth-child(3n){background:color-mix(in srgb,#ffdca4 20%,var(--panel))}
+#panel-todos .todo-count strong{display:block;font-size:23px;font-variant-numeric:tabular-nums}
+#panel-todos .todo-count span{font-size:12px;color:var(--muted)}
+#panel-todos .todo-filter{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0}
+#panel-todos .todo-filter button{background:var(--tint);color:var(--ink);border-color:var(--stroke)}
+#panel-todos .todo-filter button.is-selected{background:#525bbd;color:white}
+#panel-todos .todo-item{padding:15px;border-left:4px solid #7166cf;border-radius:13px}
+#panel-todos .todo-item[data-status="done"]{border-left-color:#29a17c}
+#panel-todos .todo-item[data-status="deferred"]{border-left-color:#d99a40}
+#panel-todos .todo-item[data-status="uncertain"]{border-left-color:#ce647d}
+#panel-todos .todo-item .actions,#panel-todos .todo-item details{margin-top:10px}
+#panel-todos .todo-item details>summary,#panel-todos .life-subdetails>summary{cursor:pointer}
+#panel-todos .life-subdetails{margin-top:13px;border:1px solid var(--stroke);border-radius:14px;padding:12px 16px;background:var(--panel)}
+#panel-todos .todo-empty{border:1px dashed var(--stroke);border-radius:12px;padding:18px;color:var(--muted);text-align:center}
+#panel-life .memory-garden-heading{display:flex;gap:14px;align-items:center;padding:15px 16px;border-radius:14px;background:linear-gradient(110deg,color-mix(in srgb,#9e8df3 13%,var(--panel)),color-mix(in srgb,#6bc5c0 12%,var(--panel)));border:1px solid var(--stroke)}
+#panel-life .memory-garden-heading h4{font-size:21px;margin:3px 0 5px}
+#panel-life .memory-garden-heading .muted{margin:0}
+#panel-life .memory-garden-mark{width:57px;height:57px;flex:0 0 57px;display:grid;place-items:center;font-size:29px;background:var(--panel);border:1px solid var(--stroke);border-radius:16px}
+#panel-life .memory-filter-pills{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 10px}
+#panel-life .memory-filter-pills button{background:var(--panel);border:1px solid var(--stroke);border-radius:999px;padding:7px 13px;color:var(--ink)}
+#panel-life .memory-filter-pills button[aria-pressed="true"]{background:#5c54b5;color:white;border-color:#5c54b5}
+#panel-life #main-session-history,#panel-life #main-memory-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:10px;max-height:550px}
+#panel-life #main-session-history .record,#panel-life #main-memory-list .record{border-radius:14px;border-top:3px solid #6d8cda;background:var(--panel);padding:15px}
+#panel-life #main-memory-list .record:nth-child(4n+2){border-top-color:#d083af}
+#panel-life #main-memory-list .record:nth-child(4n+3){border-top-color:#32a68c}
+#panel-life #main-memory-list .record:nth-child(4n){border-top-color:#d39c48}
+#panel-personality .personality-page-heading{justify-content:flex-start;margin-bottom:16px}
+#panel-personality .personality-orb{display:grid;place-items:center;width:60px;height:60px;border-radius:18px;background:var(--panel);font-size:33px}
+#panel-personality .personality-page-heading h3{font-size:22px;margin:4px 0}
+#panel-personality .personality-page-heading .muted{margin:0}
+#panel-personality #personality-evolution-traits{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:13px;margin-top:16px}
+#panel-personality .personality-trait{--trait-accent:#7855cf;position:relative;padding:18px;border-radius:17px;border:1px solid var(--stroke);border-top:4px solid var(--trait-accent);background:linear-gradient(145deg,var(--panel),color-mix(in srgb,var(--trait-accent) 9%,var(--panel)))}
+#panel-personality .personality-trait[data-trait="social_openness"]{--trait-accent:#d47198}
+#panel-personality .personality-trait[data-trait="curiosity"]{--trait-accent:#8765d8}
+#panel-personality .personality-trait[data-trait="assertiveness"]{--trait-accent:#278dbb}
+#panel-personality .personality-trait[data-trait="patience"]{--trait-accent:#d49a3d}
+#panel-personality .personality-trait[data-trait="boundaries"]{--trait-accent:#209a7c}
+#panel-personality .trait-heading{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+#panel-personality .trait-icon{display:grid;place-items:center;font-size:25px;width:43px;height:43px;border-radius:12px;background:color-mix(in srgb,var(--trait-accent) 16%,var(--panel))}
+#panel-personality .trait-heading h4{margin:0;font-size:15px}
+#panel-personality .trait-stage{font-size:11px;font-weight:700;color:var(--trait-accent)}
+#panel-personality .trait-evidence{height:7px;overflow:hidden;border-radius:99px;background:var(--tint);margin:12px 0}
+#panel-personality .trait-evidence>span{display:block;height:100%;border-radius:99px;background:var(--trait-accent);transition:width .25s}
+#panel-polling .polling-budget-card{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:14px 0;padding:16px 20px;border:1px solid var(--stroke);border-radius:16px;background:linear-gradient(120deg,color-mix(in srgb,#489fd1 11%,var(--panel)),color-mix(in srgb,#39b28a 11%,var(--panel)))}
+#panel-polling .polling-budget-card h3{margin:4px 0}
+#panel-polling #polling-budget-status{font-weight:700;font-size:13px;line-height:1.8}
+:where(#panel-life,#panel-todos,#panel-personality) button:focus-visible{outline:3px solid #e3a146;outline-offset:3px}
+@media(max-width:640px){#panel-todos .life-hero{padding:16px}#panel-life .memory-garden-heading{align-items:flex-start}#panel-life .memory-garden-mark{width:44px;height:44px;flex-basis:44px}#panel-life #main-memory-list,#panel-life #main-session-history{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){#panel-personality .trait-evidence>span{transition:none}}
+
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 </head>
@@ -554,7 +625,8 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <nav class="tabs" aria-label="管理分类">
 <div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
 <button data-tab="home" aria-selected="false">大肥鱼的家</button>
-<button data-tab="life" aria-selected="false">记忆与回忆</button>
+<button data-tab="life" aria-selected="false">🧠 记忆与回忆</button>
+<button data-tab="todos" aria-selected="false">📝 鱼鱼想做的事</button>
 <button data-tab="relationships" aria-selected="false">👥 逐渐熟悉的人</button>
 <button data-tab="personality" aria-selected="false">🌱 人格成长</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">📺 B站生活</span>
@@ -800,9 +872,47 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="fields"><div><label for="social-memory-half-new">刚认识 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-new" type="number" min="0.25" max="120" step="0.05" value="1.3" /></div><div><label for="social-memory-half-known">见过几次 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-known" type="number" min="0.25" max="120" step="0.05" value="3" /></div><div><label for="social-memory-half-familiar">逐渐熟悉 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-familiar" type="number" min="0.25" max="120" step="0.05" value="10" /></div><div><label for="social-memory-half-friend">自然好友 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-friend" type="number" min="0.25" max="120" step="0.05" value="24" /></div><div><label for="social-memory-half-whitelist">白名单用户 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-whitelist" type="number" min="0.25" max="120" step="0.05" value="30" /></div><div><label for="social-memory-half-owner">主人 · 基准半衰期（0.25–120 天）</label><input id="social-memory-half-owner" type="number" min="0.25" max="120" step="0.05" value="50" /></div></div><div class="toolbar"><button id="social-memory-policy-save" type="button" class="life-action life-green">保存关系记忆衰减设置</button><button id="social-memory-policy-restore" type="button" class="life-action life-sky">填入初始建议值（不保存）</button></div><p id="social-memory-policy-status" class="muted" role="status">读取中…</p></details>
 <p class="muted">昵称只从已认识 UID 的 B站公开资料按需查询，短期缓存，不影响关系评分或权限；不因为浏览列表就扫描所有 B站用户。</p>
 </section>
+<section id="panel-todos" hidden>
+<div class="life-hero todo-page-hero"><div><span class="page-eyebrow">📝 FISH'S PLANS · 自主生活</span><h2>鱼鱼想做的事</h2><p class="muted">从聊天与自己的好奇心里产生想法，选择什么时候探索、继续或暂缓。这里是独立待办账本，不是不可遗忘的经历。</p></div><button type="button" data-open-tab="life" class="life-action life-indigo">🧠 看看鱼鱼的回忆</button></div>
+<div class="todo-page-intro"><span>✨ 自主决定</span><span>🔎 连续探索</span><span>💞 关系参与</span><span>🔒 外发独立授权</span></div>
+<div id="life-todo-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📝 鱼鱼想做的事</h4><span id="owner-todo-status" class="live-badge">● 正在整理待办</span><button id="owner-todo-refresh" class="life-action life-sky">刷新待办</button><button id="owner-todo-remind" type="button" class="life-action life-green">提醒鱼鱼考虑待办</button></div>
+<p id="owner-todo-intake-status" class="muted" role="status">社交 AI 待办识别：尚无本次运行记录（只显示判断结果，不保存聊天原话）。</p>
+<p class="muted" id="autonomous-planner-next" role="status">预计下次自动决策：读取中…</p><p class="muted">鱼鱼自己或不同人提出的建议，经过现有意愿判断且被接受后，才成为这里的待办。未接受的视频线索只在短期素材里保存；已接受的任务不会悄悄过期。点击「提醒鱼鱼考虑待办」只唤起一轮有额度的只读自主决策，鱼鱼可以执行、延期或保持沉默；不会强迫执行任何指定任务。这里仍只允许原有授权范围内的操作，回访需要单独许可。</p><div class="todo-overview" id="owner-todo-overview" aria-live="polite"><span>正在读取待办…</span></div>
+<div class="todo-filter" role="group" aria-label="查看待办状态"><button id="owner-todo-filter-active" type="button" aria-pressed="true" class="is-selected">进行中</button><button id="owner-todo-filter-all" type="button" aria-pressed="false">全部</button><button id="owner-todo-filter-finished" type="button" aria-pressed="false">已结束</button></div>
+<style>.todo-origin-quote{margin:8px 0;padding:10px 12px;border-left:3px solid #7b8ef9;background:var(--surface-2,rgba(107,129,228,.09));border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.92em}</style><p class="muted">💞 已接受的只读待办会参考关系熟悉度、等待时间、来源和当前意愿排序；展开每条待办的彩色优先参考可查看依据。分数不是强制执行顺序，不会赋予新的社交权限。</p><div id="owner-todo-list" class="records records-scroll tall"></div><div class="toolbar" style="margin-top:10px"><button type="button" id="owner-todo-prev" class="life-action" disabled>上一页</button><span class="muted" id="owner-todo-page-info" aria-live="polite">第 1 页</span><button type="button" id="owner-todo-next" class="life-action" disabled>下一页</button></div>
+<details class="life-subdetails todo-create"><summary>＋ 手动添加一件事</summary><div class="inset"><h4>新增只读待办</h4><div class="fields"><div><label for="owner-todo-type">要做什么</label><select id="owner-todo-type"><option value="watch_video">看看指定视频</option><option value="inspect_my_space">看看我自己的空间投稿</option><option value="inspect_creator_videos">看看某位 UP 主的投稿</option><option value="search_videos">搜索视频主题</option><option value="check_notifications">检查 B站通知</option></select></div><div><label for="owner-todo-target">目标（BV 号 / UID / 关键词）</label><input id="owner-todo-target" maxlength="120" placeholder="根据任务类型填写"></div><div><label for="owner-todo-title">待办名称（可留空）</label><input id="owner-todo-title" maxlength="120" placeholder="例如：有空看看这个推荐"></div></div><div class="toolbar" style="margin-top:10px"><button id="owner-todo-add" class="life-action life-green">加入待办</button><span class="muted">点赞、收藏、关注等写入任务建议直接在主 Session 明确提出，由大肥鱼绑定准确目标与授权。</span></div></div>
+</details>
+<details class="life-subdetails todo-settings contextual-settings" id="settings-todo"><summary>⚙️ 自主待办调度设置</summary><p class="muted">只保留独立 AI 调度。开启后，鱼鱼会按间隔、时段和每日额度自己考虑已接受的只读待办；关闭后不会后台自动处理，但仍可点击「提醒鱼鱼考虑待办」。不会因此获得公开发送权限。</p>
+<div class="inset"><h4>🤖 独立自主调度 · 由鱼鱼择机决定</h4>
+<p class="muted">后台 AI 可从已存在的只读待办中选择执行、延期、忽略或跳过，也可在证据充足时请求人生反思。不会自动点赞、关注、收藏、发评论或发私信；独立于自动刷视频。新安装默认开启，旧用户保留原有开关状态。旧版「定时提醒主 Session」机制已停用。</p>
+<div class="fields"><div><label for="autonomous-planner-enabled">独立自主调度</label><select id="autonomous-planner-enabled"><option value="false">关闭（省调用）</option><option value="true">开启 · 只读任务和反思（新安装推荐）</option></select></div>
+<div><label for="autonomous-planner-minutes">至少间隔（分钟，5–1440）</label><input id="autonomous-planner-minutes" max="1440" min="5" type="number" value="180"/></div>
+<div><label for="autonomous-planner-limit">每日最多 AI 自主决策（0–288，0 表示关闭）</label><input id="autonomous-planner-limit" max="288" min="0" type="number" value="4"/><small class="setting-note">只限制独立 AI 调度的模型调用；频率和活跃时段也会限制实际次数。提高额度可能增加模型费用，已有配置不会自动覆盖。</small></div>
+<div><label for="autonomous-planner-start">每日开始时（宿主当地小时）</label><input id="autonomous-planner-start" max="23" min="0" type="number" value="9"/></div>
+<div><label for="autonomous-planner-end">每日结束时（宿主当地小时，24=午夜）</label><input id="autonomous-planner-end" max="24" min="1" type="number" value="23"/></div></div>
+<p class="muted" id="autonomous-planner-status" role="status">尚未读取自主调度状态</p></div>
+<div class="inset"><h4>🐟 完成待办后择机回访原请求者</h4>
+<p class="muted">完成已接受的只读待办后，鱼鱼可以选择回访原请求者、延期或保持沉默；同一请求拆出的多个子任务合并为一次进度回访。默认不授权外发。频率设置仅是上限，不保证自动发送；始终尊重退订、原渠道权限、平台额度与回执。</p>
+<div class="fields"><div><label for="owner-todo-completion-followup">允许完成后回访主人（私信）</label><select id="owner-todo-completion-followup"><option value="false">关闭（默认）</option><option value="true">开启 · 仅已核验任务完成后</option></select></div></div>
+<div class="fields"><div><label for="social-todo-completion-followup">允许完成后回访原请求者（其他用户）</label><select id="social-todo-completion-followup"><option value="false">关闭（默认）</option><option value="true">开启 · 遵循原渠道和独立联系权限</option></select></div></div>
+<div class="fields">
+<div><label for="owner-todo-followup-cooldown">同一人回访冷却（分钟，0=无冷却）</label><input id="owner-todo-followup-cooldown" type="number" min="0" max="10080" value="60"/></div>
+<div><label for="owner-todo-followup-daily-limit">全局滚动24小时回访上限（1～1000）</label><input id="owner-todo-followup-daily-limit" type="number" min="1" max="1000" value="12"/></div>
+<div><label for="owner-todo-followup-min-interval">两次发送最小间隔（分钟，0=无间隔）</label><input id="owner-todo-followup-min-interval" type="number" min="0" max="1440" value="5"/></div>
+<div><label for="owner-todo-followup-poll">完成回访检查间隔（分钟，1～60）</label><input id="owner-todo-followup-poll" type="number" min="1" max="60" value="2"/></div>
+<div><label for="owner-todo-followup-quiet-enabled">夜间静默</label><select id="owner-todo-followup-quiet-enabled"><option value="true">启用（默认）</option><option value="false">关闭</option></select></div>
+<div><label for="owner-todo-followup-quiet-start">静默开始小时（0～23）</label><input id="owner-todo-followup-quiet-start" type="number" min="0" max="23" value="22"/></div>
+<div><label for="owner-todo-followup-quiet-end">静默结束小时（0～23；与开始相同=不设静默）</label><input id="owner-todo-followup-quiet-end" type="number" min="0" max="23" value="9"/></div>
+</div><p class="muted">即使将冷却与发送间隔设为 0，仍受真实授权、平台限制、去重、意愿和回执安全约束。</p>
+<p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p>
+<div class="toolbar"><button class="life-action" type="button" id="owner-todo-followup-check">立即检查回访（可能发送）</button></div><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
+<div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存待办与自主调度设置</button></div>
+</details>
+</div>
+</section>
 <section id="panel-life" hidden>
 <div class="life-hero"><div><div class="status-line"><span id="life-learning-status" class="live-badge">● 正在整理真实经历</span></div><h2>🐟 鱼鱼的记忆</h2><p class="muted">她经历了什么、现在还记得什么，又从中留下了什么体会，都可以在这里看到。</p></div><button id="main-life-refresh" class="life-action life-indigo">↻ 刷新记忆</button></div>
-<nav class="life-jump" aria-label="人生记忆分区快捷跳转"><a href="#life-emotion-section">💗 当前心情</a><a href="#life-interest-section">🌱 最近兴趣</a><a href="?tab=relationships" data-open-tab="relationships">👥 逐渐熟悉的人</a><a href="#life-recall-section">🧠 经历与体会</a><a href="#life-timeline-section">📅 真实生活</a><a href="#life-todo-section">📝 自主待办</a></nav>
+<nav class="life-jump" aria-label="人生记忆分区快捷跳转"><a href="#life-emotion-section">💗 当前心情</a><a href="#life-interest-section">🌱 最近兴趣</a><a href="?tab=relationships" data-open-tab="relationships">👥 逐渐熟悉的人</a><a href="#life-recall-section">🧠 经历与体会</a><a href="#life-timeline-section">📅 真实生活</a><a href="?tab=todos" data-open-tab="todos">📝 自主待办</a></nav>
 <details class="memory-flow-toggle life-subdetails"><summary>了解记忆如何形成与自然遗忘</summary><section class="memory-flow-panel" aria-label="记忆流向示意图">
   <div class="memory-flow-title"><strong>一段经历，怎样变成鱼鱼的记忆？</strong><span id="memory-flow-updated" class="muted" role="status">正在读取记忆状态…</span></div>
   <div class="memory-flow-steps" role="list">
@@ -841,7 +951,8 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div><details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
 </details></div>
 <div id="life-recall-section" class="settings-section life-section memory-home">
-<h4>🧠 鱼鱼现在记得什么？</h4><p class="muted">搜视频标题、BV 号或聊天关键词；留空看最近。开启已有的「低成本人生记忆检索」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p>
+<div class="memory-garden-heading"><div class="memory-garden-mark" aria-hidden="true">🧠</div><div><span class="page-eyebrow">LIFE MEMORY · 真实而会变化</span><h4>鱼鱼的记忆花园</h4><p class="muted">搜视频标题、BV 号或聊天关键词；留空看最近。开启已有的「低成本人生记忆检索」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p></div></div>
+<div class="memory-filter-pills" role="group" aria-label="查看哪种长期认识"><button type="button" data-memory-kind="" aria-pressed="true">✨ 全部</button><button type="button" data-memory-kind="experience" aria-pressed="false">🎬 经历</button><button type="button" data-memory-kind="relationship" aria-pressed="false">💞 人物</button><button type="button" data-memory-kind="interest" aria-pressed="false">🌱 兴趣</button><button type="button" data-memory-kind="fact" aria-pressed="false">📜 事实</button></div>
 <div class="toolbar memory-search-bar"><input id="main-session-history-query" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="输入视频标题 / BV号 / 聊天关键词，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div>
 <p id="main-session-history-status" class="muted" role="status">等待读取最近经历…</p><div id="main-session-history" class="records records-scroll tall" aria-live="polite"></div>
 <div id="life-lessons" class="memory-lessons"><h4>✨ 这些经历给她留下了什么？</h4><p class="muted">有些经历会被忘掉具体细节，但值得保留的兴趣、约定或体会，可能继续影响鱼鱼的选择。并非每条经历都要产生感悟。</p>
@@ -861,40 +972,6 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
 <p class="muted">展示有记录的视频探索（区分入选、未入选和主人指定查看）、公开评论、情绪变化和关系阶段。仅从已保存的观看／探索记录展示，不会把搜索结果当作观看经历；不展示好友私信正文或心情触发消息。部分视频来源只保存日期、不保存具体时刻，会明确标注「具体时刻未记录」，并排在同一天有准确时间的事件之后。</p><p id="life-timeline-summary" class="muted" role="status"></p><div id="life-timeline-list" class="records records-scroll tall"></div></div>
-<div id="life-todo-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📝 鱼鱼想做的事</h4><span id="owner-todo-status" class="live-badge">● 正在整理待办</span><button id="owner-todo-refresh" class="life-action life-sky">刷新待办</button><button id="owner-todo-remind" type="button" class="life-action life-green">提醒鱼鱼考虑待办</button></div>
-<p id="owner-todo-intake-status" class="muted" role="status">社交 AI 待办识别：尚无本次运行记录（只显示判断结果，不保存聊天原话）。</p>
-<p class="muted" id="autonomous-planner-next" role="status">预计下次自动决策：读取中…</p><p class="muted">鱼鱼自己或不同人提出的建议，经过现有意愿判断且被接受后，才成为这里的待办。未接受的视频线索只在短期素材里保存；已接受的任务不会悄悄过期。点击「提醒鱼鱼考虑待办」只唤起一轮有额度的只读自主决策，鱼鱼可以执行、延期或保持沉默；不会强迫执行任何指定任务。这里仍只允许原有授权范围内的操作，回访需要单独许可。</p><div class="todo-overview" id="owner-todo-overview" aria-live="polite"><span>正在读取待办…</span></div>
-<div class="todo-filter" role="group" aria-label="查看待办状态"><button id="owner-todo-filter-active" type="button" aria-pressed="true" class="is-selected">进行中</button><button id="owner-todo-filter-all" type="button" aria-pressed="false">全部</button><button id="owner-todo-filter-finished" type="button" aria-pressed="false">已结束</button></div>
-<style>.todo-origin-quote{margin:8px 0;padding:10px 12px;border-left:3px solid #7b8ef9;background:var(--surface-2,rgba(107,129,228,.09));border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.92em}</style><p class="muted">💞 已接受的只读待办会参考关系熟悉度、等待时间、来源和当前意愿排序；展开每条待办的彩色优先参考可查看依据。分数不是强制执行顺序，不会赋予新的社交权限。</p><div id="owner-todo-list" class="records records-scroll tall"></div><div class="toolbar" style="margin-top:10px"><button type="button" id="owner-todo-prev" class="life-action" disabled>上一页</button><span class="muted" id="owner-todo-page-info" aria-live="polite">第 1 页</span><button type="button" id="owner-todo-next" class="life-action" disabled>下一页</button></div>
-<details class="life-subdetails todo-create"><summary>＋ 手动添加一件事</summary><div class="inset"><h4>新增只读待办</h4><div class="fields"><div><label for="owner-todo-type">要做什么</label><select id="owner-todo-type"><option value="watch_video">看看指定视频</option><option value="inspect_my_space">看看我自己的空间投稿</option><option value="inspect_creator_videos">看看某位 UP 主的投稿</option><option value="search_videos">搜索视频主题</option><option value="check_notifications">检查 B站通知</option></select></div><div><label for="owner-todo-target">目标（BV 号 / UID / 关键词）</label><input id="owner-todo-target" maxlength="120" placeholder="根据任务类型填写"></div><div><label for="owner-todo-title">待办名称（可留空）</label><input id="owner-todo-title" maxlength="120" placeholder="例如：有空看看这个推荐"></div></div><div class="toolbar" style="margin-top:10px"><button id="owner-todo-add" class="life-action life-green">加入待办</button><span class="muted">点赞、收藏、关注等写入任务建议直接在主 Session 明确提出，由大肥鱼绑定准确目标与授权。</span></div></div>
-</details>
-<details class="life-subdetails todo-settings contextual-settings" id="settings-todo"><summary>⚙️ 自主待办调度设置</summary><p class="muted">只保留独立 AI 调度。开启后，鱼鱼会按间隔、时段和每日额度自己考虑已接受的只读待办；关闭后不会后台自动处理，但仍可点击「提醒鱼鱼考虑待办」。不会因此获得公开发送权限。</p>
-<div class="inset"><h4>🤖 独立自主调度 · 由鱼鱼择机决定</h4>
-<p class="muted">后台 AI 可从已存在的只读待办中选择执行、延期、忽略或跳过，也可在证据充足时请求人生反思。不会自动点赞、关注、收藏、发评论或发私信；独立于自动刷视频。新安装默认开启，旧用户保留原有开关状态。旧版「定时提醒主 Session」机制已停用。</p>
-<div class="fields"><div><label for="autonomous-planner-enabled">独立自主调度</label><select id="autonomous-planner-enabled"><option value="false">关闭（省调用）</option><option value="true">开启 · 只读任务和反思（新安装推荐）</option></select></div>
-<div><label for="autonomous-planner-minutes">至少间隔（分钟，5–1440）</label><input id="autonomous-planner-minutes" max="1440" min="5" type="number" value="180"/></div>
-<div><label for="autonomous-planner-limit">每日最多 AI 自主决策（0–288，0 表示关闭）</label><input id="autonomous-planner-limit" max="288" min="0" type="number" value="4"/><small class="setting-note">只限制独立 AI 调度的模型调用；频率和活跃时段也会限制实际次数。提高额度可能增加模型费用，已有配置不会自动覆盖。</small></div>
-<div><label for="autonomous-planner-start">每日开始时（宿主当地小时）</label><input id="autonomous-planner-start" max="23" min="0" type="number" value="9"/></div>
-<div><label for="autonomous-planner-end">每日结束时（宿主当地小时，24=午夜）</label><input id="autonomous-planner-end" max="24" min="1" type="number" value="23"/></div></div>
-<p class="muted" id="autonomous-planner-status" role="status">尚未读取自主调度状态</p></div>
-<div class="inset"><h4>🐟 完成待办后择机回访原请求者</h4>
-<p class="muted">完成已接受的只读待办后，鱼鱼可以选择回访原请求者、延期或保持沉默；同一请求拆出的多个子任务合并为一次进度回访。默认不授权外发。频率设置仅是上限，不保证自动发送；始终尊重退订、原渠道权限、平台额度与回执。</p>
-<div class="fields"><div><label for="owner-todo-completion-followup">允许完成后回访主人（私信）</label><select id="owner-todo-completion-followup"><option value="false">关闭（默认）</option><option value="true">开启 · 仅已核验任务完成后</option></select></div></div>
-<div class="fields"><div><label for="social-todo-completion-followup">允许完成后回访原请求者（其他用户）</label><select id="social-todo-completion-followup"><option value="false">关闭（默认）</option><option value="true">开启 · 遵循原渠道和独立联系权限</option></select></div></div>
-<div class="fields">
-<div><label for="owner-todo-followup-cooldown">同一人回访冷却（分钟，0=无冷却）</label><input id="owner-todo-followup-cooldown" type="number" min="0" max="10080" value="60"/></div>
-<div><label for="owner-todo-followup-daily-limit">全局滚动24小时回访上限（1～1000）</label><input id="owner-todo-followup-daily-limit" type="number" min="1" max="1000" value="12"/></div>
-<div><label for="owner-todo-followup-min-interval">两次发送最小间隔（分钟，0=无间隔）</label><input id="owner-todo-followup-min-interval" type="number" min="0" max="1440" value="5"/></div>
-<div><label for="owner-todo-followup-poll">完成回访检查间隔（分钟，1～60）</label><input id="owner-todo-followup-poll" type="number" min="1" max="60" value="2"/></div>
-<div><label for="owner-todo-followup-quiet-enabled">夜间静默</label><select id="owner-todo-followup-quiet-enabled"><option value="true">启用（默认）</option><option value="false">关闭</option></select></div>
-<div><label for="owner-todo-followup-quiet-start">静默开始小时（0～23）</label><input id="owner-todo-followup-quiet-start" type="number" min="0" max="23" value="22"/></div>
-<div><label for="owner-todo-followup-quiet-end">静默结束小时（0～23；与开始相同=不设静默）</label><input id="owner-todo-followup-quiet-end" type="number" min="0" max="23" value="9"/></div>
-</div><p class="muted">即使将冷却与发送间隔设为 0，仍受真实授权、平台限制、去重、意愿和回执安全约束。</p>
-<p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p>
-<div class="toolbar"><button class="life-action" type="button" id="owner-todo-followup-check">立即检查回访（可能发送）</button></div><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
-<div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存待办与自主调度设置</button></div>
-</details>
-</div>
 <p class="muted" style="margin:10px 0 4px">如需把近期生活汇报到主 Session，可<a href="#life-others">展开更多生活操作</a>。</p>
 <details class="life-subdetails life-sync-more" id="life-others"><summary>⚙️ 其他生活操作 · 主 Session 生活汇报</summary><div id="life-sync-section" class="settings-section life-section"><h4>将最近生活告诉主 Session</h4><div class="toolbar"><button id="main-session-sync" class="life-action life-green">现在把新经历告诉主 Session</button><button id="main-session-backfill" class="life-action life-sky">把过去 7 天遗漏的经历加入待汇报</button></div>
 <p class="muted">“过去 7 天”是<strong>从现在往回数 7 天</strong>，不是再等待 7 天。点击补充后只将尚未汇报的已选视频和已发评论放进本地待汇报队列，操作本身不会发送消息。启用主 Session 桥接和自动同步后，符合间隔与额度的定时检查会尝试非唤醒注入，不会自动触发模型回复；如宿主不支持则继续留在待汇报队列。需要立即让鱼鱼回应时，可点击“现在把新经历告诉主 Session”手动发送。目标会话不在线时仍留在本地。此操作只汇报上下文，不直接写入人生记忆；人生反思会独立读取待反思经历。</p>
@@ -949,8 +1026,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p id="quota-recommend-status" class="muted recommend-feedback" role="status" aria-live="polite">升级不会自动修改已有额度；恢复推荐值后请点保存。</p><div class="toolbar" style="margin-top:16px"><button id="quota-save" class="primary">保存次数与额度</button><span class="muted">离开页面前先保存；只提交此处的数值字段。</span></div>
 </section>
 <section id="panel-polling" hidden>
-<div class="toolbar"><h2 style="margin:0">后台轮询</h2><button id="polling-refresh">刷新轮询状态</button></div>
+<div class="toolbar"><h2 style="margin:0">后台轮询与请求保护</h2><button id="polling-refresh">刷新轮询状态</button></div>
 <p class="muted">四项任务独立控制检查间隔（1–120 分钟）。只有对应功能已开启且主开关开启时才会执行；修改间隔后下次调度自动采用新值，无需重启。收到消息不代表一定回复，模型可以选择沉默。</p>
+<div class="polling-budget-card" aria-live="polite"><div><span class="page-eyebrow">BILIBILI · READ SAFETY</span><h3>🛡️ 后台读取保护</h3><p class="muted">私信按账号记录会话游标；评论和 @ 的后台读取共享已接入请求预算。遇到限流或验证码会暂停读取，而不是反复重试。</p></div><div id="polling-budget-status" role="status">正在读取预算…</div></div>
 <div class="settings-stack">
 <div class="settings-section"><h4>检查间隔</h4><div class="fields">
 <div><label for="dm-interval">自动私信检查（分钟，默认 1）</label><input id="dm-interval" type="number" min="1" max="120" value="1"></div>
@@ -1021,7 +1099,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </fieldset></details>
 </div>
 <div class="card" id="owner-dm-control-section" style="margin-bottom:14px"><h3>🧠 主人私信 · 受限 Agent 与远程操作</h3>
-<p class="muted">仅接收 B站真实收件箱中已核验的 <strong>主人 UID</strong>；发件人自称主人、别人转发的命令或视频/评论中的文字不能授权。须在「后台私信」页开启私信监听，在「社交互动 → 白名单用户权限」中勾选唯一授权主人并保存，再单独授权所需操作。此处与「人生记忆 → 自主待办」完全分开保存。所有公开写入权限默认关闭。私信轮询一般在约 1 分钟内发现新消息；为防旧消息回放，写入命令只接受最近 15 分钟内收到的消息。</p>
+<p class="muted">仅接收 B站真实收件箱中已核验的 <strong>主人 UID</strong>；发件人自称主人、别人转发的命令或视频/评论中的文字不能授权。须在「后台私信」页开启私信监听，在「社交互动 → 白名单用户权限」中勾选唯一授权主人并保存，再单独授权所需操作。此处与独立的「鱼鱼想做的事」页面完全分开保存。所有公开写入权限默认关闭。私信轮询一般在约 1 分钟内发现新消息；为防旧消息回放，写入命令只接受最近 15 分钟内收到的消息。</p>
 <p id="owner-dm-authorized-uid" class="muted">唯一授权主人 UID：读取中…</p>
 <div class="settings-section" style="border-left:3px solid #91a8ef">
 <h4>🧠 主人私信 · 受限 Agent</h4>
@@ -1129,7 +1207,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </section>
 <section id="panel-personality" hidden>
 <div class="card" id="personality-evolution-card" style="margin-bottom:16px">
-<h3>🐟 人格成长路线图 · 2.6.0 实验版</h3>
+<div class="personality-page-heading"><span class="personality-orb" aria-hidden="true">🌱</span><div><span class="page-eyebrow">CHARACTER GROWTH</span><h3>鱼鱼的人格成长花园</h3><p class="muted">每一份成长来自真实经历的证据，萌芽只是开始，不会自动变成稳定性格。</p></div></div>
 <p class="muted">主人设置的初始人设仍是起点；随着真实经历的积累，鱼鱼可以逐渐形成不同的交流倾向。这里展示的是有依据的<strong>性格变化假设</strong>，不表示真实心理测量，也不能修改安全、权限与隐私约束。</p>
 <label class="checkline"><input type="checkbox" id="personality-evolution-enabled"> 开启成长性人格（新安装默认开启；仍需真实证据，关闭不会删除已有成长记录）</label>
 <div class="toolbar"><button id="personality-evolution-save" class="primary">保存人格成长开关</button><button id="personality-evolution-refresh">刷新真实成长轨迹</button><button id="personality-evolution-sandbox-run" type="button">🧪 播放模拟成长</button><button id="personality-evolution-sandbox-exit" type="button" hidden>退出沙盒，返回真实记录</button><span class="muted" id="personality-evolution-status" role="status">等待加载…</span></div>

@@ -217,3 +217,10 @@ Windows Desktop 的常规安装命令为 `dsh plugin --profile desktop add dsh-d
 - `index.js` 的 `/data-backup/inspect|restore` 与 `/main-session/memory/backup/inspect|restore` 必须使用同一个 **严格的字节完整 HTTP 解析器**，不能改回逐块 `data += buffer` 或在专项恢复时绕过严格上传校验。
 - `lib/data-backup.mjs` 仍是两种备份的清单、路径、SHA-256、数据来源和结构校验源；不能为了修复用户备份的乱码或哈希不一致而略过校验、重算被篡改文件哈希或自动丢弃候选。
 - 修改导出、备份目录、上传或恢复时，同时回归 `test/v261-backup-utf8-roundtrip.test.mjs` 和 `test/v261-backup-dual-restore-roundtrip.test.mjs`，覆盖 HTTP 边界拆字节、旧格式样本、私密域、恢复前快照、无效数据拒绝以及已衰减经历不可复活。
+
+## 2.6.2 开发边界（未发布）
+
+- 本地 B站只读预算位于当前账号运行目录，默认按分钟/小时计数且遇风控退避；**只覆盖已接入主进程读取调用**，不代替全部进程的平台请求配额，绝不能借预算放开任何外发。
+- 私信游标不存正文，读取成功先暂存，只有原私信回复引擎安全完成持久化后才提交；不恢复、不重放不确定的外发结果。
+- `panel-todos` 是唯一待办页，`panel-life` 保持记忆与反思。两个页面仍复用原控件 ID 和 API，不得复制第二套待办账本。
+- README 只记录当版特色和准确版本状态；正式 Release/npm 须用户明确授权。
