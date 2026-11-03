@@ -11,6 +11,10 @@ flowchart LR
   C --> G
   F --> G
   G --> W[独立授权 / 额度 / 去重 / 平台回执]
+  W --> RR[公开评论成功回执 seen.md]
+  RR --> RI[精确 BV + 出站 rpid / 已核验回复对象]
+  RI --> PANEL[最近公开评论记录]
+  ACR[当前账号 runtime 的回复身份索引] --> RI
   B --> E[LifeMemoryGateway 当前可衰减经历]
   W --> E
   E --> L[LongTermMemory 长期认识]

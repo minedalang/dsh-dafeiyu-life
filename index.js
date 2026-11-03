@@ -4296,7 +4296,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // never suppress real experiences from the long-term reflection candidate pool.
   const collectRealLife=()=>{
     try{
-      const comments=recentComments(stateDir,{limit:200})?.rows||[]
+      const comments=recentComments(stateDir,{limit:200,recipientMetadataDir:accountRuntimeDir})?.rows||[]
       const meta=reportMeta()
       const watched=parseSeenTable().map(x=>({...x,...(meta.get(x.bvid)||{})}))
       const events=collectLocalLifeEvents({watched,comments,days:14});return lifeMemoryCoordinator.recordEvents(events,{reflect:true})
@@ -4336,7 +4336,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     getConfig: () => cfg,
     getWatched: () => { const meta=reportMeta(); return parseSeenTable().map(x=>({...x,...(meta.get(x.bvid)||{})})) },
-    getComments: (opt) => recentComments(stateDir,opt),
+    getComments: (opt) => recentComments(stateDir,{...opt,recipientMetadataDir:accountRuntimeDir}),
     onNewEvents: (_sid,events) => {
       void lifeMemoryCoordinator?.recordEvents(events,{reflect:true}).catch(e=>log('主 Session 经历同步待补偿：'+String(e?.message||e).slice(0,130)));
       if(emotionRecall&&events.some(x=>['watch','comment'].includes(x.kind))){const wake=setTimeout(()=>void emotionRecall.tick(),8000);wake.unref?.()}
@@ -5780,7 +5780,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     if (req.method === 'GET' && path === '/api/bili-duty/life-timeline') {
       try{
         const days=Math.max(1,Math.min(90,Math.floor(Number(url.searchParams.get('days'))||30)))
-        const comments=recentComments(stateDir,{limit:200})?.rows||[]
+        const comments=recentComments(stateDir,{limit:200,recipientMetadataDir:accountRuntimeDir})?.rows||[]
         const relationships=listFriendRelationships(stateDir,cfg.friendDirectory)
         const emotion=emotionalState.snapshot()
         const rows=buildLifeTimeline({watched:parseSeenTable(),comments,emotionHistory:emotion.history,relationshipRows:relationships,days,limit:160})
@@ -6061,6 +6061,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         offset: url.searchParams.get('offset'),
         day: url.searchParams.get('day'),
         kind: url.searchParams.get('kind'),
+        recipientMetadataDir: accountRuntimeDir,
       }))
     }
 
