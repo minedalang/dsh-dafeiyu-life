@@ -611,7 +611,11 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-personality .trait-evidence>span{display:block;height:100%;border-radius:99px;background:var(--trait-accent);transition:width .25s}
 #panel-polling .polling-budget-card{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:14px 0;padding:16px 20px;border:1px solid var(--stroke);border-radius:16px;background:linear-gradient(120deg,color-mix(in srgb,#489fd1 11%,var(--panel)),color-mix(in srgb,#39b28a 11%,var(--panel)))}
 #panel-polling .polling-budget-card h3{margin:4px 0}
-#panel-polling #polling-budget-status{font-weight:700;font-size:13px;line-height:1.8}
+#panel-polling #polling-budget-status{font-weight:700;font-size:13px;line-height:1.8;white-space:pre-line}
+#panel-polling .polling-budget-details{flex:1 1 100%;min-width:0;margin-top:8px;border-top:1px solid var(--stroke);padding-top:9px}
+#panel-polling .polling-budget-details>summary{cursor:pointer;font-size:13px;font-weight:700}
+#panel-polling .polling-budget-breakdown{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:7px;margin-top:9px}
+#panel-polling .polling-budget-breakdown span{border:1px solid var(--stroke);border-radius:10px;background:var(--panel);padding:8px 10px;font-size:12px;color:var(--ink)}
 :where(#panel-life,#panel-todos,#panel-personality) button:focus-visible{outline:3px solid #e3a146;outline-offset:3px}
 @media(max-width:640px){#panel-todos .life-hero{padding:16px}#panel-life .memory-garden-heading{align-items:flex-start}#panel-life .memory-garden-mark{width:44px;height:44px;flex-basis:44px}#panel-life #main-memory-list,#panel-life #main-session-history{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){#panel-personality .trait-evidence>span{transition:none}}
@@ -1028,7 +1032,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <section id="panel-polling" hidden>
 <div class="toolbar"><h2 style="margin:0">后台轮询与请求保护</h2><button id="polling-refresh">刷新轮询状态</button></div>
 <p class="muted">四项任务独立控制检查间隔（1–120 分钟）。只有对应功能已开启且主开关开启时才会执行；修改间隔后下次调度自动采用新值，无需重启。收到消息不代表一定回复，模型可以选择沉默。</p>
-<div class="polling-budget-card" aria-live="polite"><div><span class="page-eyebrow">BILIBILI · READ SAFETY</span><h3>🛡️ 后台读取保护</h3><p class="muted">私信按账号记录会话游标；评论和 @ 的后台读取共享已接入请求预算。遇到限流或验证码会暂停读取，而不是反复重试。</p></div><div id="polling-budget-status" role="status">正在读取预算…</div></div>
+<div class="polling-budget-card" aria-live="polite"><div><span class="page-eyebrow">BILIBILI · READ SAFETY</span><h3>🛡️ 后台读取保护</h3><p class="muted">私信按账号记录会话游标；评论和 @ 的后台读取共享已接入请求预算。遇到限流或验证码会暂停读取，而不是反复重试。</p></div><div id="polling-budget-status" role="status">正在读取预算…</div><details class="polling-budget-details"><summary>查看各类读取次数</summary><div id="polling-budget-by-kind" class="polling-budget-breakdown" aria-live="polite">暂无数据</div></details></div>
 <div class="settings-stack">
 <div class="settings-section"><h4>检查间隔</h4><div class="fields">
 <div><label for="dm-interval">自动私信检查（分钟，默认 1）</label><input id="dm-interval" type="number" min="1" max="120" value="1"></div>

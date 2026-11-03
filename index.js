@@ -97,6 +97,7 @@ import {ownPublishedDynamics} from './lib/own-published-dynamics.mjs'
 import { createInteractionMemeLookup, readReplyMemeSnapshot } from './lib/interaction-meme-memory.mjs'
 import { createInteractionScheduler } from './lib/interaction-scheduler.mjs'
 import { createBiliReadBudget } from './lib/bili-read-budget.mjs'
+import { fetchBiliCover } from './lib/bili-cover-proxy.mjs'
 import { createDmPollCursor } from './lib/dm-poll-cursor.mjs'
 import { listCommentMemes, getCommentMemePreview } from './lib/comment-meme-library.mjs'
 import {readCommentMemeRules,saveCommentMemeRules,validateCommentMemeRules} from './lib/comment-meme-rules.mjs'
@@ -2109,7 +2110,7 @@ function reportMeta() {
     const name = String(cfg.mentionName || '').trim()
     if (!name) return 0
     try {
-      const mid = await resolveUid(stateDir, name, log)
+      const mid = await resolveUid(stateDir, name, log, {readBudget:biliReadBudget})
       if (mid > 0) { dmUidCache = mid; log(`私信对象：${name} → ${mid}`) }
       return mid
     } catch (e) { log('查私信 UID 出错：' + String(e?.message ?? e)); return 0 }
@@ -2944,7 +2945,7 @@ function reportMeta() {
     const whitelist = dmConfig().whitelist
     const incoming=await collectDmInbox({
       sessions, ownUid: Number(cred.dedeuserid), whitelist,
-      readConversation: (uid) => {accountBinding.assertReady();return dmFetch(cred, uid, 20,{readBudget:biliReadBudget})},
+      readConversation: (uid) => {accountBinding.assertReady();return dmFetch(cred, uid, 50,{readBudget:biliReadBudget})},
       shouldRead: dmPollCursor.shouldRead,
       onRead: dmPollCursor.observed,
       // No more than twelve detailed conversations per round; unchanged sessions
@@ -2955,7 +2956,16 @@ function reportMeta() {
     // Establish an inbox baseline before performing any first-run side effects.
     // Newly enabled agent must not execute messages already present before activation.
     let ownerAgentFirstBaseline=false
-    if(cfg.ownerDmAgentEnabled===true){try{ownerAgentFirstBaseline=ownerDmAgent.primeInbox(incoming)?.initialized===true}catch(e){log('主人私信 Agent 基线建立失败：'+String(e?.message||e));return []}}
+    if(cfg.ownerDmAgentEnabled===true){
+      try{ownerAgentFirstBaseline=ownerDmAgent.primeInbox(incoming)?.initialized===true}
+      catch(e){
+        // Never turn a failed owner inbox baseline into a successful empty
+        // scan: the ordinary DM engine would then persist the cursor and
+        // silently suppress owner messages until the next safety rescan.
+        dmPollCursor.discard()
+        throw new Error('主人私信 Agent 基线建立失败，本轮不确认私信游标：'+String(e?.message||e),{cause:e})
+      }
+    }
     // BUG-003: the owner DM Agent consumes owner messages before ordinary DM onIncoming.
     // Capture authenticated, recent recommendation preferences first. This is the
     // sender's contact choice, never an action command subject to willingness.
@@ -2999,7 +3009,10 @@ function reportMeta() {
       row?.incoming===true&&String(row.senderUid||'')===String(cfg.dmOwnerUid||'')):[]
     if(ownerRows.length){
       try{await ownerDmAgent.processMessages(ownerRows)}
-      catch(e){log('主人私信 Agent 批量接收失败：'+String(e?.message||e).slice(0,100))}
+      catch(e){
+        dmPollCursor.discard()
+        throw new Error('主人私信 Agent 批量接收失败，本轮不确认私信游标：'+String(e?.message||e).slice(0,100),{cause:e})
+      }
     }
     const remaining=incoming.filter(row=>!ownerRows.includes(row))
     incoming.length=0;incoming.push(...remaining)
@@ -3353,12 +3366,20 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     const headers={'User-Agent':'Mozilla/5.0','Referer':'https://www.bilibili.com/',Cookie:`SESSDATA=${cred.sessdata}`}
     // These are fixed Bilibili API hosts. UID is numeric and never becomes a URL.
     for(const endpoint of ['https://api.bilibili.com/x/space/acc/info?mid=','https://api.bilibili.com/x/web-interface/card?mid=']){
-      try{biliReadBudget.acquire('public-nickname');const res=await fetch(endpoint+uid,{headers,signal:AbortSignal.timeout(2500)})
-        if(!res.ok)continue
-        const json=await res.json();if(json?.code!==0)continue
-        const name=String(json.data?.name||json.data?.card?.name||'').replace(/[<>\r\n\x00-\x1f]/g,' ').trim().slice(0,60)
+      try{
+        // Count all attempts, including failures, and persist platform
+        // throttling signals. An unsuccessful lookup is never a valid name.
+        const result=await biliReadBudget.guard('public-nickname',async()=>{
+          const res=await fetch(endpoint+uid,{headers,signal:AbortSignal.timeout(2500)})
+          const json=await res.json().catch(()=>null)
+          return {status:res.status,code:json?.code,data:json?.data}
+        })
+        if(result.status!==200||result.code!==0)continue
+        const name=String(result.data?.name||result.data?.card?.name||'').replace(/[<>\r\n\x00-\x1f]/g,' ').trim().slice(0,60)
         if(name)return name
-      }catch{}
+      }catch(e){
+        if(e?.name==='BiliReadDeferredError')break
+      }
     }
     return ''
   }
@@ -4257,25 +4278,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
 
   /** 封面代理：浏览器不能直连 i0.hdslb.com（防盗链 403 + 等于把用户 IP 交出去）⇒ 宿主取回来再转发 */
   const coverFor = async (bv) => {
-    if (!/^BV[0-9A-Za-z]{10}$/.test(bv)) return null
-    try {
-      const r = await fetch('https://api.bilibili.com/x/web-interface/view?bvid=' + bv, {
-        signal: AbortSignal.timeout(8000),
-        headers: { 'user-agent': 'Mozilla/5.0', referer: 'https://www.bilibili.com/' },
-      })
-      if (!r.ok) return null
-      const j = await r.json()
-      const pic = String(j && j.data && j.data.pic || '')
-      if (!pic) return null
-      const img = await fetch(pic, {
-        signal: AbortSignal.timeout(10000),
-        headers: { 'user-agent': 'Mozilla/5.0', referer: 'https://www.bilibili.com/' },
-      })
-      if (!img.ok) return null
-      const buf = Buffer.from(await img.arrayBuffer())
-      const type = img.headers.get('content-type') || 'image/jpeg'
-      return { buf, type }
-    } catch (error) { log('取封面失败：' + String(error && error.message || error)); return null }
+    try{return await fetchBiliCover(bv,{readBudget:biliReadBudget})}
+    catch(error){log('取封面失败：'+String(error?.message||error).slice(0,180));return null}
   }
 
   const rotateLogIfBig = (limit = 2 * 1024 * 1024) => {
