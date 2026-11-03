@@ -3550,8 +3550,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getPersona:batch=>buildInteractionPersona(batch),
     getIdentity:uid=>replyIdentityContext(uid),
     getRelationship:uid=>relationshipText(uid)||friendRelationshipContext(stateDir,uid,cfg.friendDirectory),
-    getLifeStateContext:({query})=>[emotionalState.ownerContext(),emotionalState.styleHint(),
-      buildGrowthContext(stateDir,{scene:'dm',query,maxChars:380}),personalityContext('dm',250)].filter(Boolean).join('\n').slice(0,780),
+    // Life Voice is the sole model-facing source for current emotion and growth.
+    // Keep the assembler's older callback contract without injecting a second copy.
+    getLifeStateContext:()=>'',
     getPrivateLifeContext:({uid,role,query})=>{
       // Only this authenticated private DM; public comments never call here.
       const episodes=lifeMemory?.recall({query,domain:'bili-dm',role,actorUid:uid,kinds:['private-social'],maxItems:3,maxChars:650})||[]
@@ -3655,7 +3656,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           text:action.invitation||'',context:[evidence.video?.title,evidence.video?.description,evidence.context].filter(Boolean).join('\n'),bvid:action.bvid})
         const decision=await decideOwnerSocialComment({
           info:evidence.video,bvid:action.bvid,context:evidence.context,invitation:action.invitation||'',
-          style:[buildInteractionPersona([{kind:'comment',uid:action.actorUid,text:action.invitation||''}]),emotionalState.styleHint()].join('\n'),
+          // 统一人格已含当前情绪；不能再次追加独立 styleHint。
+          style:buildInteractionPersona([{kind:'comment',uid:action.actorUid,text:action.invitation||''}]),
           willingness:action.willingness||{},commentRequested:action.commentRequested===true,
           priorCommentOutcomes:action.priorCommentOutcomes||[],
           memoryContext:socialMessage.memoryContext||'',memeContext:socialMessage.memeContext||'',

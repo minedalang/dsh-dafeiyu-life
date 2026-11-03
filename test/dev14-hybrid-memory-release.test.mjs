@@ -7,6 +7,7 @@ import {createHybridIndex} from '../lib/hybrid-memory-search.mjs'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createMemoryRetriever} from '../lib/memory-retriever.mjs'
 import {buildTrustedSocialPrompt,interpretTrustedSocial} from '../lib/comment-social-ai.mjs'
+import {composeLifeVoiceContext} from '../lib/life-voice-context.mjs'
 import {createDualContextAgency} from '../lib/dual-context-agency.mjs'
 import {createInteractionBatcher} from '../lib/interaction-batch.mjs'
 
@@ -90,8 +91,10 @@ test('新收到互动不能当成旧记忆；好友/陌生人跨天再见可自�
   const memory=retriever.socialContext('我又来啦',{role:'friend',actorUid:uid,excludeEventKey:`social:${uid}:${BV}:2002`})
   assert.match(memory,/小星星/);assert.doesNotMatch(memory,/我又来啦|私人日记/)
   const emotion={energy:75,sociality:82,curiosity:60,valence:58,mood:'joyful'}
-  const prompt=buildTrustedSocialPrompt({row:{uid,bvid:BV,text:'鱼鱼，我又来了，你开心吗？'},role:'friend',emotion,style:'今天心情很好，语气轻快',relationship:'逐渐熟悉',memoryContext:memory})
-  assert.match(prompt,/小星星/);assert.match(prompt,/逐渐熟悉/);assert.match(prompt,/joyful/);assert.match(prompt,/75/)
+  const style=composeLifeVoiceContext({scene:'comment',persona:'鱼鱼有自己的连贯角色',emotion:'当前心情 joyful，语气轻快',maxChars:2700})
+  const prompt=buildTrustedSocialPrompt({row:{uid,bvid:BV,text:'鱼鱼，我又来了，你开心吗？'},role:'friend',emotion,style,relationship:'逐渐熟悉',memoryContext:memory})
+  assert.match(prompt,/小星星/);assert.match(prompt,/逐渐熟悉/);assert.match(prompt,/joyful/)
+  assert.doesNotMatch(prompt,/\"energy\":75|\"sociality\":82/,'情绪数值仅供本地决策，不能绕过 Life Voice 再注入模型提示')
   assert.doesNotMatch(prompt,/私人日记|珊瑚月亮/)
   let calls=0
   const decision=await interpretTrustedSocial({row:{uid,bvid:BV,text:'鱼鱼，我又来了，你开心吗？'},role:'friend',emotion,style:'轻快',relationship:'逐渐熟悉',memoryContext:memory,invoke:async input=>{calls++;assert.match(input,/小星星/);return JSON.stringify({intent:'chat',decision:'allow',reply:'记得呀，是昨天说我像小星星的你！今天也来啦～'})}})
