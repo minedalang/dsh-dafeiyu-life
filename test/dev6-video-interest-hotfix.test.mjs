@@ -72,6 +72,6 @@ test('管理中心与服务端只解除视频兴趣推荐锁，不恢复旧待�
  assert.match(index,/paused:true, \/\/ 2\.6\.0: outgoing emotion/)
  assert.match(html,/id="social-outreach-section" class="card"/)
  assert.doesNotMatch(html,/<fieldset disabled class="outreach-disabled">/)
- assert.match(js,/socialVideoRecommendationsAuthorizedV2:enabled&&lifeIntent/)
+ assert.match(js,/socialVideoRecommendationsAuthorizedV2:enabled,confirm:enabled/)
  assert.match(js,/row\.type==='interest-share'/)
 })

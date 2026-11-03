@@ -55,6 +55,7 @@ import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-pla
 import { queueOwnerDmReadTodo, parseOwnerDmTodo } from './lib/owner-dm-commands.mjs'
 import { createOwnerTodoFollowup } from './lib/owner-todo-followup.mjs'
 import { selectSearchVideos } from './lib/owner-dm-agent.mjs'
+import { selectRelevantSearchVideos } from './lib/todo-search-context.mjs'
 import { parseOwnerDmAction, createOwnerDmActionLedger, OWNER_DM_ACTION_FLAGS } from './lib/owner-dm-actions.mjs'
 import { createOwnerDmAgent } from './lib/owner-dm-agent.mjs'
 import { validateOwnerRosterUpdate } from './lib/owner-identity.mjs'
@@ -315,12 +316,12 @@ export const Config = !z ? undefined : z.object({
   mainSessionMemorySearchDailyLimit: z.natural().default(80).extra('volatile', true),
   /** B站经历先进入候选池，再由受限 AI 定期凝练成人生记忆。 */
   mainSessionReflectionAuto: z.boolean().default(true).extra('volatile', true),
-  socialOutreachEnabled: z.boolean().default(false).extra('volatile', true),
-  socialLifeIntentEnabled: z.boolean().default(false).extra('volatile', true),
-  /** 新修复版主动视频推荐需要用户重新明确授权，防止旧暂停配置突然外发。 */
-  socialVideoRecommendationsAuthorizedV2: z.boolean().default(false).extra('volatile', true),
+  socialOutreachEnabled: z.boolean().default(true).extra('volatile', true),
+  socialLifeIntentEnabled: z.boolean().default(true).extra('volatile', true),
+  /** 新安装启用视频推荐；老用户保留原授权，任何旧暂停配置不会在升级时自动外发。 */
+  socialVideoRecommendationsAuthorizedV2: z.boolean().default(true).extra('volatile', true),
   emotionSystemEnabled: z.boolean().default(true).extra('volatile', true),
-  socialAutoSend: z.boolean().default(false).extra('volatile', true),
+  socialAutoSend: z.boolean().default(true).extra('volatile', true),
   socialOutreachDailyLimit: z.natural().default(1).extra('volatile', true),
   /** 已废弃的旧版主 Session 定时提醒配置：仅供旧配置和备份读取兼容；不再启动定时器。 */
   ownerTodoAutoReviewEnabled: z.boolean().default(false).extra('volatile', true),
@@ -523,6 +524,10 @@ export function apply(ctx, config) {
   // 也必须延续旧版默认值，绝不因为插件升级自动开始后台模型任务。
   // 在 ensureHomeFiles 写任何运行文件之前判定，防止把新安装误认成升级。
   const legacyInstall = legacyInstallAtEntry
+  // New installations default to verified-video recommendations. Existing installations
+  // never inherit a new outgoing-message permission silently on upgrade.
+  const legacySocialRecommendationDefaults={socialOutreachEnabled:false,socialLifeIntentEnabled:false,
+    socialVideoRecommendationsAuthorizedV2:false,socialAutoSend:false};
   const legacyExperienceDefaults = {
     mainSessionMemoryEnabled: false, autonomousPlannerEnabled: false,
     autonomousPlannerMinutes: 30, autonomousPlannerDailyLimit: 24,
@@ -607,7 +612,7 @@ function reportMeta() {
     commentWatchReplies: false, commentWatchTop: false, commentAtEnabled: false, friendAtFeedbackEnabled:false, strangerInspirationEnabled:false, socialInvitationEnabled:false, socialInvitationAutoInspectEnabled:false, ownerCommentAgentEnabled:false, ownerCommentLikeEnabled:false, ownerCommentDraftEnabled:false, ownerCommentPublishEnabled:false, ownerCommentSocialPublishEnabled:false, ownerCommentNaturalAckEnabled:false, commentAtMode:'whitelist', commentAtWhitelist:'', commentTopCount: 5, commentTopVideoCount: 3, commentReplyHotCount: 12, backupDirectory: '',
     commentAllowGeneralTop: false, commentReplyPerPoll: 1, commentReplyPerDay: 5, commentOwnTopPerUser: 5, commentOwnNestedPerUser: 3,
     mainSessionBridgeEnabled: false, mainSessionId: '', mainSessionAutoSync: true, mainSessionSyncMinutes: 60, mainSessionDailyBatches: 4, mainSessionBatchSize: 8, mainSessionIncludeComments: true,
-    mainSessionMemoryEnabled: true, mainSessionMemoryAutoBili: true, mainSessionMemorySemanticEnabled: false, mainSessionMemoryModelProvider: '', mainSessionMemoryModelId: '', mainSessionMemoryReasoningEffort: '', mainSessionMemoryCandidates: RECOMMENDED_EXPERIENCE_GROUPS.retrieval.mainSessionMemoryCandidates, mainSessionMemorySearchDailyLimit: RECOMMENDED_EXPERIENCE_GROUPS.retrieval.mainSessionMemorySearchDailyLimit, socialOutreachEnabled:false, socialLifeIntentEnabled:false, socialVideoRecommendationsAuthorizedV2:false, emotionSystemEnabled:true, socialAutoSend:false, socialOutreachDailyLimit:1, ownerTodoAutoReviewEnabled:false, ownerTodoReviewMinutes:60, ownerTodoCompletionFollowupEnabled:false, socialTodoCompletionFollowupEnabled:false, ownerTodoFollowupCooldownMinutes:60, ownerTodoFollowupDailyLimit:12, ownerTodoFollowupMinIntervalMinutes:5, ownerTodoFollowupPollMinutes:2, ownerTodoFollowupQuietEnabled:true, ownerTodoFollowupQuietStartHour:22, ownerTodoFollowupQuietEndHour:9, autonomousPlannerEnabled:true, emotionRecallEnabled:false, emotionRecallMainEnabled:false, emotionRecallDmEnabled:false, emotionRecallUnlimited:false, emotionRecallDailyLimit:1, emotionRecallCooldownHours:24, emotionRecallStartHour:9, emotionRecallEndHour:22, ownerDmAgentEnabled:true, ownerDmAgentReadMainContext:false, ownerDmAgentSyncMain:false, ownerDmAgentContextTurns:6, ownerDmAgentContextChars:1500, ownerDmAgentModelProvider:'', ownerDmAgentModelId:'', ownerDmAgentReasoningEffort:'', ownerDmReadCommandsEnabled:true, ownerDmActionsEnabled:true, ownerDmLikeEnabled:true, ownerDmCollectEnabled:true, ownerDmFollowEnabled:true, ownerDmCommentDraftEnabled:true, ownerDmCommentPublishEnabled:true, ownerDmDynamicDraftEnabled:true, ownerDmDynamicPublishEnabled:true, ownerDmFriendMessageEnabled:true, emotionRecallCandidateLimit:12, emotionRecallHistoryLimit:300, emotionRecallRecentDays:3, emotionRecallMinAgeDays:2, emotionRecallEmotionMinIntensity:30, emotionRecallEmotionMaxAgeHours:12, autonomousPlannerMinutes:180, autonomousPlannerDailyLimit:4, autonomousPlannerStartHour:9, autonomousPlannerEndHour:23, mainSessionReflectionAuto: true, mainSessionReflectionModelProvider: '', mainSessionReflectionModelId: '', mainSessionReflectionReasoningEffort: '', mainSessionReflectionMinCandidates: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionMinCandidates, mainSessionReflectionBatchSize: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionBatchSize, mainSessionReflectionIntervalHours: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionIntervalHours, mainSessionReflectionDailyBatches: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionDailyBatches, mainSessionMemoryHalfLifeDays: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryHalfLifeDays, socialMemoryHalfLifeNewDays:1.3, socialMemoryHalfLifeKnownDays:3, socialMemoryHalfLifeFamiliarDays:10, socialMemoryHalfLifeFriendDays:24, socialMemoryHalfLifeWhitelistDays:30, socialMemoryHalfLifeOwnerDays:50, mainSessionMemoryThreshold: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryThreshold, mainSessionMemoryMaxItems: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryMaxItems, mainSessionMemoryMaxChars: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryMaxChars, mainSessionMemoryDailyQuota: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryDailyQuota, mainSessionMemoryConsolidationEnabled:true, mainSessionMemoryFactsMax: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryFactsMax,
+    mainSessionMemoryEnabled: true, mainSessionMemoryAutoBili: true, mainSessionMemorySemanticEnabled: false, mainSessionMemoryModelProvider: '', mainSessionMemoryModelId: '', mainSessionMemoryReasoningEffort: '', mainSessionMemoryCandidates: RECOMMENDED_EXPERIENCE_GROUPS.retrieval.mainSessionMemoryCandidates, mainSessionMemorySearchDailyLimit: RECOMMENDED_EXPERIENCE_GROUPS.retrieval.mainSessionMemorySearchDailyLimit, socialOutreachEnabled:true, socialLifeIntentEnabled:true, socialVideoRecommendationsAuthorizedV2:true, emotionSystemEnabled:true, socialAutoSend:true, socialOutreachDailyLimit:1, ownerTodoAutoReviewEnabled:false, ownerTodoReviewMinutes:60, ownerTodoCompletionFollowupEnabled:false, socialTodoCompletionFollowupEnabled:false, ownerTodoFollowupCooldownMinutes:60, ownerTodoFollowupDailyLimit:12, ownerTodoFollowupMinIntervalMinutes:5, ownerTodoFollowupPollMinutes:2, ownerTodoFollowupQuietEnabled:true, ownerTodoFollowupQuietStartHour:22, ownerTodoFollowupQuietEndHour:9, autonomousPlannerEnabled:true, emotionRecallEnabled:false, emotionRecallMainEnabled:false, emotionRecallDmEnabled:false, emotionRecallUnlimited:false, emotionRecallDailyLimit:1, emotionRecallCooldownHours:24, emotionRecallStartHour:9, emotionRecallEndHour:22, ownerDmAgentEnabled:true, ownerDmAgentReadMainContext:false, ownerDmAgentSyncMain:false, ownerDmAgentContextTurns:6, ownerDmAgentContextChars:1500, ownerDmAgentModelProvider:'', ownerDmAgentModelId:'', ownerDmAgentReasoningEffort:'', ownerDmReadCommandsEnabled:true, ownerDmActionsEnabled:true, ownerDmLikeEnabled:true, ownerDmCollectEnabled:true, ownerDmFollowEnabled:true, ownerDmCommentDraftEnabled:true, ownerDmCommentPublishEnabled:true, ownerDmDynamicDraftEnabled:true, ownerDmDynamicPublishEnabled:true, ownerDmFriendMessageEnabled:true, emotionRecallCandidateLimit:12, emotionRecallHistoryLimit:300, emotionRecallRecentDays:3, emotionRecallMinAgeDays:2, emotionRecallEmotionMinIntensity:30, emotionRecallEmotionMaxAgeHours:12, autonomousPlannerMinutes:180, autonomousPlannerDailyLimit:4, autonomousPlannerStartHour:9, autonomousPlannerEndHour:23, mainSessionReflectionAuto: true, mainSessionReflectionModelProvider: '', mainSessionReflectionModelId: '', mainSessionReflectionReasoningEffort: '', mainSessionReflectionMinCandidates: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionMinCandidates, mainSessionReflectionBatchSize: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionBatchSize, mainSessionReflectionIntervalHours: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionIntervalHours, mainSessionReflectionDailyBatches: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionDailyBatches, mainSessionMemoryHalfLifeDays: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryHalfLifeDays, socialMemoryHalfLifeNewDays:1.3, socialMemoryHalfLifeKnownDays:3, socialMemoryHalfLifeFamiliarDays:10, socialMemoryHalfLifeFriendDays:24, socialMemoryHalfLifeWhitelistDays:30, socialMemoryHalfLifeOwnerDays:50, mainSessionMemoryThreshold: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryThreshold, mainSessionMemoryMaxItems: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryMaxItems, mainSessionMemoryMaxChars: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryMaxChars, mainSessionMemoryDailyQuota: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryDailyQuota, mainSessionMemoryConsolidationEnabled:true, mainSessionMemoryFactsMax: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryFactsMax,
     dmStrangerText: '',
     personaPrompt: DEFAULT_PERSONA_PROMPT, characterLore: '',
     perDay: 50, pickPerRound: 5, peakValley: false, peakWindows: '[]', peakIntervalMinutes: 30, autoComment: false, transcribe: false, asrModel: 'small',
@@ -782,7 +787,7 @@ function reportMeta() {
 
   const hostCfg = () => normalize(config, { ...DEFAULTS })       // 宿主那份（schema 校验过、默认值已填）
   const savedCfg = () => normalize(readJson(cfgFile, {}), legacyInstall
-    ? { ...DEFAULTS, ...legacyExperienceDefaults } : { ...DEFAULTS })
+    ? { ...DEFAULTS, ...legacyExperienceDefaults, ...legacySocialRecommendationDefaults } : { ...DEFAULTS })
   /**
    * ⭐⭐ 0.1.11（2026-10-19 · 第三批用户报"开关还是回弹"之后改的）
    *   0.1.9 / 0.1.10 一直想"跟宿主对账"：宿主那边有值就以宿主为准 —— 但 DSH 0.2.1 的某些启动方式下
@@ -1535,14 +1540,14 @@ function reportMeta() {
       // Search is discovery, NOT having listened/watched. The autonomous planner
       // may later choose one of these bounded read-only video candidates.
       if(task?.id&&task.type==='search_videos'){
-        const candidates=selectSearchVideos(result).slice(0,3)
+        const candidates=selectRelevantSearchVideos(selectSearchVideos(result,{limit:20}),{topic,searchGoal:task.searchGoal||'general'})
         for(const v of candidates){try{ownerTodos.add({type:'watch_video',bvid:v.bvid,
-          title:`考虑了解：${v.title||v.bvid}`,topic,parentTodoId:task.id,
+          title:`考虑了解：${v.title||v.bvid}`,topic,searchGoal:task.searchGoal||'general',parentTodoId:task.id,
           sourceKey:String(task.sourceKey||'').startsWith('owner-ai:')?`owner-ai-watch:${task.id}:${v.bvid}`:`explore-watch:${task.id}:${v.bvid}`,
           origin:{...(task.origin||{}),quotedText:''},
-          note:'同一次自主探索中的视频候选，待真正读取资料；不等同于已经听看。',ownerAuthorized:false},{source:task.source==='recommendation'?'recommendation':'owner'})}catch{}}
+          note:'同一次自主探索中与原目标相关的视频候选；尚未实际看过画面或听过声音。',ownerAuthorized:false},{source:task.source==='recommendation'?'recommendation':'owner'})}catch{}}
       }
-      return {ok:true,summary:`已搜索「${topic}」，搜索结果尚不等于已实际听看。`,data:result}
+      return {ok:true,summary:`已搜索「${topic}」，${task.searchGoal==='music'&&task.id&&!selectRelevantSearchVideos(selectSearchVideos(result,{limit:20}),{topic,searchGoal:'music'}).length?'没有找到有足够音乐相关证据的视频，本轮不生成子待办。':'搜索结果尚不等于已实际听看。'}`,data:result}
     }
     if(task?.type==='check_notifications'){
       const [unread,replies,atLikes]=await Promise.allSettled([call('bili_unread_messages',{}),call('bili_received_replies',{}),call('bili_received_at_and_likes',{})])

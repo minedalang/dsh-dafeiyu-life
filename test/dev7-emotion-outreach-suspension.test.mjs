@@ -36,7 +36,7 @@ test('管理页恢复独立视频推荐授权，旧回访草稿仍不能被点�
   assert.match(html,/<details id="social-outreach-legacy"[^>]*\bopen\b/)
   assert.match(html,/<fieldset class="outreach-permissions">/)
   assert.match(html,/旧版完成待办回访与情绪主动联系仍留待 P6/)
-  assert.match(js,/\$\('social-enabled'\)\.checked=c\.socialOutreachEnabled===true/)
+  assert.doesNotMatch(html,/id="social-enabled"/);assert.match(js,/socialVideoRecommendationsAuthorizedV2:enabled,confirm:enabled/)
   assert.match(js,/socialVideoRecommendationsAuthorizedV2/)
   assert.match(js,/row\.status==='draft'&&!record\.paused&&row\.type==='interest-share'/)
 })

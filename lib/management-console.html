@@ -618,6 +618,8 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-polling .polling-budget-breakdown span{border:1px solid var(--stroke);border-radius:10px;background:var(--panel);padding:8px 10px;font-size:12px;color:var(--ink)}
 :where(#panel-life,#panel-todos,#panel-personality) button:focus-visible{outline:3px solid #e3a146;outline-offset:3px}
 @media(max-width:640px){#panel-todos .life-hero{padding:16px}#panel-life .memory-garden-heading{align-items:flex-start}#panel-life .memory-garden-mark{width:44px;height:44px;flex-basis:44px}#panel-life #main-memory-list,#panel-life #main-session-history{grid-template-columns:1fr}}
+#panel-life .memory-garden-insight{border-left:4px solid #8b79d8;background:color-mix(in srgb,var(--panel) 88%,#c3b4f8 12%)}
+#panel-life .memory-filter-pills button[aria-pressed="true"]{box-shadow:0 0 0 2px color-mix(in srgb,#866ee5 35%,transparent)}
 @media(prefers-reduced-motion:reduce){#panel-personality .trait-evidence>span{transition:none}}
 
 </style>
@@ -629,7 +631,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <nav class="tabs" aria-label="管理分类">
 <div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
 <button data-tab="home" aria-selected="false">大肥鱼的家</button>
-<button data-tab="life" aria-selected="false">🧠 记忆与回忆</button>
+<button data-tab="life" aria-selected="false">💗 心情与记忆</button>
 <button data-tab="todos" aria-selected="false">📝 鱼鱼想做的事</button>
 <button data-tab="relationships" aria-selected="false">👥 逐渐熟悉的人</button>
 <button data-tab="personality" aria-selected="false">🌱 人格成长</button></div>
@@ -834,7 +836,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div id="fs-main-session-return" class="fs-warning" hidden><span>首次设置期间可正常选择、保存主 Session 及同步频率；连接测试和发送经历在完成首次设置后开放。</span><button type="button" data-open-tab="firststart">← 返回首次设置</button></div>
 <div class="feature-intro"><div><h2>🏠 大肥鱼的家 · 生活总览</h2><p>这里看到鱼鱼此刻的生活、记忆与社交近况。回忆详情在「人生记忆」，行为授权在「社交互动」，相关设置在对应功能下方的折叠区。以下状态来自本地真实记录，不会自动触发对外发送。</p></div></div>
 <div class="home-overview grid" aria-label="生活概览">
-<a class="card home-summary" href="?tab=life" data-open-tab="life"><strong>🧠 鱼鱼的记忆</strong><span id="home-overview-memory" class="muted">正在读取记忆概况…</span><small>进入记忆与回忆 →</small></a>
+<a class="card home-summary" href="?tab=life" data-open-tab="life"><strong>🧠 鱼鱼的记忆</strong><span id="home-overview-memory" class="muted">正在读取记忆概况…</span><small>进入心情与记忆 →</small></a>
 <a class="card home-summary" href="?tab=life#life-emotion-section" data-open-tab="life" data-open-anchor="life-emotion-section"><strong>💗 最近的心情</strong><span id="home-overview-mood" class="muted">正在读取心情…</span><small>查看情绪变化 →</small></a>
 <a class="card home-summary" href="?tab=social" data-open-tab="social"><strong>👥 熟悉的朋友</strong><span id="home-overview-social" class="muted">正在读取社交近况…</span><small>查看好友与社交授权 →</small></a>
 </div>
@@ -955,10 +957,10 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div><details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
 </details></div>
 <div id="life-recall-section" class="settings-section life-section memory-home">
-<div class="memory-garden-heading"><div class="memory-garden-mark" aria-hidden="true">🧠</div><div><span class="page-eyebrow">LIFE MEMORY · 真实而会变化</span><h4>鱼鱼的记忆花园</h4><p class="muted">搜视频标题、BV 号或聊天关键词；留空看最近。开启已有的「低成本人生记忆检索」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p></div></div>
-<div class="memory-filter-pills" role="group" aria-label="查看哪种长期认识"><button type="button" data-memory-kind="" aria-pressed="true">✨ 全部</button><button type="button" data-memory-kind="experience" aria-pressed="false">🎬 经历</button><button type="button" data-memory-kind="relationship" aria-pressed="false">💞 人物</button><button type="button" data-memory-kind="interest" aria-pressed="false">🌱 兴趣</button><button type="button" data-memory-kind="fact" aria-pressed="false">📜 事实</button></div>
+<div class="memory-garden-heading"><div class="memory-garden-mark" aria-hidden="true">🧠</div><div><span class="page-eyebrow">LIFE MEMORY · 真实而会变化</span><h4>鱼鱼的记忆花园</h4><p class="muted">浏览真实经历与长期认识，按类别筛选；搜视频标题、BV 号或聊天关键词，留空看最近。开启已有的「低成本人生记忆检索」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p></div></div>
+<div class="memory-filter-pills" role="group" aria-label="筛选记忆花园中的经历和长期认识"><button type="button" data-memory-kind="" aria-pressed="true">✨ 全部</button><button type="button" data-memory-kind="experience" aria-pressed="false">🎬 经历</button><button type="button" data-memory-kind="relationship" aria-pressed="false">💞 人物</button><button type="button" data-memory-kind="interest" aria-pressed="false">🌱 兴趣</button><button type="button" data-memory-kind="fact" aria-pressed="false">📜 事实</button></div>
 <div class="toolbar memory-search-bar"><input id="main-session-history-query" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="输入视频标题 / BV号 / 聊天关键词，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div>
-<p id="main-session-history-status" class="muted" role="status">等待读取最近经历…</p><div id="main-session-history" class="records records-scroll tall" aria-live="polite"></div>
+<p id="main-session-history-status" class="muted" role="status">等待读取鱼鱼当前还能回忆的经历与认识…</p><div id="main-session-history" class="records records-scroll tall" aria-live="polite"></div>
 <div id="life-lessons" class="memory-lessons"><h4>✨ 这些经历给她留下了什么？</h4><p class="muted">有些经历会被忘掉具体细节，但值得保留的兴趣、约定或体会，可能继续影响鱼鱼的选择。并非每条经历都要产生感悟。</p>
 <div class="toolbar"><select id="main-memory-kind" aria-label="筛选留下的认识"><option value="">全部认识</option><option value="experience">经历带来的体会</option><option value="relationship">人物关系</option><option value="interest">兴趣变化</option><option value="fact">事实和约定</option></select><span id="memory-lessons-summary" class="muted" role="status">正在读取…</span></div>
 <input id="main-memory-query" maxlength="120" hidden aria-label="同步搜索认识的关键词"><button id="main-memory-search" hidden>搜索认识</button>
@@ -1089,17 +1091,17 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="toolbar" style="margin-top:12px"><button id="friend-save-all" class="primary">保存名册、权限及画像</button></div>
 </div>
 <div id="social-outreach-section" class="card"><h4>🐟 主动视频兴趣推荐 · 私信</h4>
-<p class="muted">仅在鱼鱼<strong>真实入选</strong>公开视频且标题与已授权白名单好友（含主人）画像中的兴趣有依据的匹配时，才让鱼鱼自主判断是否分享。<strong>选了「私信优先」只是渠道许可</strong>，还需要下面的草稿、兴趣推荐和（如需自动推送）自动发送三个授权。旧暂停版本可能保存过开启状态，升级后请在此重新保存一次以确认；不会自动恢复旧版待办回访或情绪私信。</p>
-<details id="social-outreach-legacy" class="inset" open><summary>兴趣视频推荐授权、诊断和草稿</summary>
-<fieldset class="outreach-permissions"><legend>独立授权（默认关闭）</legend>
-<p class="muted">大肥鱼主要通过私信向已授权好友推荐真实入选的公开视频；公开 @ 是独立的可选方式，不会替代私信推荐。不会根据私人聊天内容生成公开信息；非白名单用户不建立长期兴趣画像。社交草稿默认不发送；主动私信请务必尊重对方拒绝和冷却期。</p>
-<label class="checkline"><input id="social-enabled" type="checkbox">允许鱼鱼根据真实选片自主形成推荐草稿（默认关闭）</label>
-<label class="checkline"><input id="social-life-intent-enabled" type="checkbox">允许结合好友画像和兴趣匹配考虑私信推荐（默认关闭）</label><p class="muted">这是独立权限：只会在真实入选视频与好友初始兴趣/重复明确表达的兴趣有合理匹配时，生成“联系或跳过”的草稿；不会因为心情变化就盲目私信。需要先开启上面的自主社交草稿。非白名单用户不参与。</p>
-<label class="checkline"><input id="social-auto-send" type="checkbox">允许自动发送鱼鱼已决定分享的视频私信（默认关闭，建议先审阅草稿）</label>
+<p class="muted">鱼鱼可以在<strong>真实入选公开视频之后</strong>，自主判断是否把有意思的发现私信给主人；其他白名单好友仍要求可核对的兴趣匹配。没有合适的视频、她不想打扰对方，或者超过额度时，都可以保持沉默。<strong>新安装默认开启；老用户保留原来的授权选择</strong>，不会因升级擅自开启外发。选择好友的「私信推荐」渠道仍是独立的收件人许可。</p>
+<details id="social-outreach-legacy" class="inset" open><summary>视频推荐设置、判断记录与私信回执</summary>
+<fieldset class="outreach-permissions"><legend>🐟 鱼鱼的自主分享</legend>
+<p class="muted">默认面向已授予私信推荐权限的主人和白名单好友。主人不必另填兴趣关键词；其他好友需要有真实、可核查的兴趣线索。是否联系由鱼鱼判断；不发送私密记忆，不触发评论或 @，尊重拒绝与冷却期。</p>
+<label class="checkline"><input id="social-life-intent-enabled" type="checkbox">启用自主视频兴趣推荐（新安装默认开启）</label>
+<p class="muted">只在有新入选的真实视频后考虑推荐，模型可以选择不联系；已保存的旧开关状态保持不变。未启用时不会生成新草稿或私信。</p>
+<label class="checkline"><input id="social-auto-send" type="checkbox">允许把鱼鱼自主决定发送的推荐真正私信给已授权好友（新安装默认开启）</label>
 <div class="fields"><div><label for="social-daily-limit">每日最多主动推荐私信（0 表示禁止）</label><input id="social-daily-limit" type="number" min="0" step="1" value="1"></div></div>
 <div class="toolbar"><button id="social-save" class="primary">保存推荐权限并确认授权</button><button id="social-refresh" >刷新草稿</button></div>
 <p id="social-status" class="muted" role="status">尚未读取草稿</p><div id="social-drafts" class="records records-scroll tall"></div>
-<p class="muted">旧版“看完好友推荐视频后再回访”草稿仍不会被发送；本次仅允许本角色主动发现并愿意分享的公开视频。每天同一位好友最多收到受冷却限制的一条，已明确拒绝推荐的好友不会收到。</p>
+<p class="muted">不会自动发送旧版的任务回访或情绪联系。无新入选视频、没有合格收件人、模型决定沉默、达到每日额度或 14 天冷却，都不会私信；发送不确定时禁止自动重试。</p>
 </fieldset></details>
 </div>
 <div class="card" id="owner-dm-control-section" style="margin-bottom:14px"><h3>🧠 主人私信 · 受限 Agent 与远程操作</h3>

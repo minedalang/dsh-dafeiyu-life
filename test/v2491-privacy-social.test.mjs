@@ -106,7 +106,7 @@ test('人生经历来源与主 Session 独立；只有真实选片和已发评�
 
 test('隐私管理页有审阅删除；社交草稿需确认，私人画像不进入可携带备份',()=>{
  const html=src('lib/management-console.html'),js=src('lib/management-console.js'),backup=src('lib/data-backup.mjs')
- for(const id of ['friend-learning-list','social-enabled','social-auto-send','social-daily-limit','social-drafts'])assert.match(html,new RegExp('id="'+id+'"'))
+ for(const id of ['friend-learning-list','social-life-intent-enabled','social-auto-send','social-daily-limit','social-drafts'])assert.match(html,new RegExp('id="'+id+'"'))
  assert.match(js,/CLEAR_FRIEND_OBSERVATIONS/)
  assert.match(js,/SEND_SOCIAL_DRAFT/)
  assert.doesNotMatch(backup,/^\s*'friend-interest-observations\.json',/m)

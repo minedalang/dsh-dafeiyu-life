@@ -14,7 +14,7 @@ const candidate={type:'search_videos',topic:'孙燕姿 歌曲',title:'有空听�
 const withDir=async cb=>{const dir=mkdtempSync(join(tmpdir(),'df-ai-todo-'));try{return await cb(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
 
 test('AI 仅能从主人本次消息的真实推荐摘录生成只读待办',()=>{
-  assert.deepEqual(validateOwnerAiTodo(candidate,msg),candidate)
+  assert.deepEqual(validateOwnerAiTodo(candidate,msg),{...candidate,searchGoal:'music'})
   assert.equal(validateOwnerAiTodo({...candidate,evidence:'主人让我去听孙燕姿'},msg),null)
   assert.equal(validateOwnerAiTodo({...candidate,topic:'周杰伦 歌曲'},msg),null)
   assert.equal(validateOwnerAiTodo({...candidate,type:'dm_friend'},msg),null)
@@ -53,7 +53,7 @@ test('B站搜索仅能提取真实 BV 候选，不能把搜索冒充听过',()=>
   assert.equal(rows.length,1);assert.equal(rows[0].bvid,'BV1abc234567')
   const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   assert.match(source,/owner-ai-watch:/)
-  assert.match(source,/已搜索「\$\{topic\}」，搜索结果尚不等于已实际听看/)
+  assert.match(source,/已搜索「\$\{topic\}」，/);assert.match(source,/搜索结果尚不等于已实际听看/)
   assert.match(source,/runOwnerTodoWithFollowup/)
 })
 
