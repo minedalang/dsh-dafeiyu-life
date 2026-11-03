@@ -464,6 +464,87 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .settings-stack>.settings-section:nth-child(3n){border-top-color:#bd7ac9}
 @media(max-width:730px){#panel-relationships #friend-relationships-list{grid-template-columns:minmax(0,1fr)}#panel-relationships .relation-card{padding:12px}}
 @media(prefers-color-scheme:dark){#panel-relationships .life-hero{background:linear-gradient(115deg,#1e3756,#30284f 55%,#483022);border-color:#3c5974}#panel-relationships .life-hero h2{color:#e0ecff}}
+
+/* v2.6.1: backup-first UX. Recovery stays hidden until the user explicitly expands it. */
+#panel-backup{--backup-blue:#4c71d6;--backup-purple:#8c5cd1;--backup-green:#158b77}
+#panel-backup .backup-hero{padding:22px 24px;border-radius:20px;background:linear-gradient(115deg,#e6edff 0%,#e5f9f5 58%,#f9ecff 100%);border:1px solid #ccd7f7;margin-bottom:17px}
+#panel-backup .backup-hero-kicker{font-size:12px;font-weight:750;letter-spacing:.06em;color:#4f5aa8;margin-bottom:8px}
+#panel-backup .backup-hero-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+#panel-backup .backup-hero h2{margin:0 0 6px;font-size:25px;color:#283b81}
+#panel-backup .backup-hero p{margin:0;max-width:720px;color:#465a78;font-size:14px}
+#panel-backup .backup-hero-label{font-size:12px;flex-shrink:0;background:rgba(255,255,255,.8);color:#276e61;border:1px solid #a6d6ca;border-radius:999px;padding:6px 12px;font-weight:700}
+#panel-backup .backup-steps{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}
+#panel-backup .backup-steps span{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.78);border:1px solid #dae6ef;border-radius:999px;padding:6px 12px;color:#385370;font-size:12px;font-weight:650}
+#panel-backup .backup-steps b{color:#526bd1}
+#panel-backup .backup-layout{display:grid;gap:13px}
+#panel-backup .backup-main-card{padding:20px;border-radius:18px;border:1px solid var(--stroke);box-shadow:0 5px 23px rgba(47,73,115,.055)}
+#panel-backup .backup-card-title{display:flex;align-items:center;gap:12px;margin-bottom:15px}
+#panel-backup .backup-card-title h3{margin:0 0 3px;font-size:18px}
+#panel-backup .backup-card-title p{margin:0;color:var(--muted);font-size:13px}
+#panel-backup .backup-card-icon{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:14px;font-size:24px;flex-shrink:0}
+#panel-backup .backup-icon-blue{background:#e5ecff}
+#panel-backup .backup-icon-purple{background:#f1e8ff}
+#panel-backup .backup-icon-amber{background:#fff0d7}
+#panel-backup .backup-path-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+#panel-backup .backup-path-row input{flex:1;min-width:180px}
+#panel-backup .backup-path-row button{background:#325bb8;border-color:#325bb8;color:#fff;font-weight:650;min-height:42px}
+#panel-backup .backup-path-row button:hover{background:#234b9f}
+#panel-backup .backup-status{overflow-wrap:anywhere;margin:8px 0 0}
+#panel-backup .backup-primary-action{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:18px;border:1px solid #c3e7d8;border-radius:16px;background:linear-gradient(110deg,#e8faf2,#e6f6ff);padding:17px}
+#panel-backup .backup-primary-action strong{display:block;font-size:16px;color:#176c5d}
+#panel-backup .backup-primary-action span{display:block;color:#406778;font-size:13px;margin-top:4px}
+#panel-backup button#backup-export{background:#138b72;border:1px solid #138b72;color:#fff;font-weight:750;min-height:47px;padding:10px 23px;box-shadow:0 3px 12px rgba(20,121,100,.13)}
+#panel-backup button#backup-export:hover{background:#0d715d}
+#panel-backup .backup-result{background:var(--tint);border-radius:10px;padding:10px 12px;font-size:12px}
+#panel-backup .backup-footnote{color:var(--muted);font-size:12px;line-height:1.7;margin:11px 0 0}
+#panel-backup .backup-more-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:13px}
+#panel-backup .backup-fold{border:1px solid var(--stroke);border-radius:16px;background:var(--panel);overflow:hidden;min-width:0}
+#panel-backup .backup-fold>summary{display:flex;align-items:center;gap:11px;padding:15px;cursor:pointer;list-style:none;min-height:75px}
+#panel-backup .backup-fold>summary::-webkit-details-marker{display:none}
+#panel-backup .backup-summary-text{flex:1;display:grid;gap:3px}
+#panel-backup .backup-summary-text strong{font-size:15px}
+#panel-backup .backup-summary-text small{font-size:12px;color:var(--muted)}
+#panel-backup .backup-chevron{color:var(--muted);transition:transform .15s}
+#panel-backup .backup-fold[open] .backup-chevron{transform:rotate(180deg)}
+#panel-backup .backup-fold[open]>summary{background:var(--tint)}
+#panel-backup .backup-fold-body{padding:16px;border-top:1px solid var(--stroke)}
+#panel-backup .backup-fold-body>.muted{margin:0 0 13px}
+#panel-backup .backup-accent-btn{background:#7250b6;border:1px solid #7250b6;color:#fff;font-weight:650;min-height:41px}
+#panel-backup .backup-accent-btn:hover{background:#593c9c}
+#panel-backup .backup-divider{height:1px;background:var(--stroke);margin:18px 0}
+#panel-backup .backup-subheading{font-size:14px;font-weight:750}
+#panel-backup .backup-warning{font-size:13px;padding:12px;border:1px solid #e8bb63;border-radius:10px;background:color-mix(in srgb,var(--panel) 75%,#ffe2a9 25%);line-height:1.65}
+#panel-backup .backup-recovery-choice{border-top:1px solid var(--stroke);padding:15px 0}
+#panel-backup .backup-recovery-choice h4{margin:0 0 6px;font-size:14px}
+#panel-backup .backup-recovery-choice>p{margin:0 0 11px}
+#panel-backup .backup-recovery-choice input[type=file]{width:100%;max-width:100%;margin:5px 0}
+#panel-backup button.backup-danger-action{margin-top:12px;background:#ab4050;color:#fff;border:1px solid #ab4050;font-weight:700}
+#panel-backup button.backup-danger-action:disabled{background:var(--tint);color:var(--muted);border-color:var(--stroke);opacity:1;cursor:not-allowed}
+#panel-backup .backup-fold>summary:focus-visible{outline:3px solid var(--action);outline-offset:-4px}
+@media(prefers-color-scheme:dark){
+ #panel-backup .backup-hero{background:linear-gradient(115deg,#26365b,#17443d 58%,#362b4a);border-color:#445b7d}
+ #panel-backup .backup-hero-kicker,#panel-backup .backup-hero h2{color:#dce7ff}
+ #panel-backup .backup-hero p{color:#c3d6e7}
+ #panel-backup .backup-hero-label{background:#163d38;border-color:#376c62;color:#d0efe5}
+ #panel-backup .backup-steps span{background:#24374b;border-color:#496078;color:#dbe8f5}
+ #panel-backup .backup-steps b{color:#b6c8ff}
+ #panel-backup .backup-icon-blue{background:#30426b}
+ #panel-backup .backup-icon-purple{background:#4b3667}
+ #panel-backup .backup-icon-amber{background:#634829}
+ #panel-backup .backup-primary-action{background:linear-gradient(115deg,#193e39,#213e55);border-color:#356b68}
+ #panel-backup .backup-primary-action strong{color:#b9f4dc}
+ #panel-backup .backup-primary-action span{color:#bfd7e4}
+}
+@media(max-width:700px){
+ #panel-backup .backup-hero{padding:17px}
+ #panel-backup .backup-hero h2{font-size:21px}
+ #panel-backup .backup-hero-head{flex-wrap:wrap}
+ #panel-backup .backup-more-grid{grid-template-columns:1fr}
+ #panel-backup .backup-path-row{align-items:stretch}
+ #panel-backup .backup-path-row input,#panel-backup .backup-path-row button,#panel-backup button#backup-export{width:100%}
+}
+@media(prefers-reduced-motion:reduce){#panel-backup .backup-chevron{transition:none}}
+
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 </head>
@@ -616,28 +697,62 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 
 </section>
 <section id="panel-backup" hidden>
-<div class="toolbar"><h2 style="margin:0">数据备份与恢复</h2></div>
-<p class="muted">一键备份本机生效设置、业务账本、<strong>永久真实档案、可衰减记忆、反思候选及长期认识</strong>。备份只在本机创建，逐文件 SHA-256 校验，恢复前自动生成安全快照。全程在本机处理，无额外 AI 调用，也不会上传到网络。可以另行备份完整人生记忆；永久档案只供管理，不会提供给日常 AI。</p>
-<div class="settings-stack">
-<div class="settings-section"><h4>双层人生记忆健康状态</h4><p id="life-memory-health" class="muted" role="status" aria-live="polite">加载中…</p><div class="toolbar"><button id="life-memory-health-refresh">刷新记忆状态</button></div><p class="muted">清晰、模糊、印象与遗忘只是大肥鱼现在的记忆能力；永久档案不会向日常 AI 开放。管理备份可能包含私人记录，请妥善保存。</p></div>
-<div class="settings-section"><h4>本地备份目录（先设置）</h4>
-<p class="muted">请填写你有写入权限的本机文件夹完整路径，如 <code>D:\大肥鱼备份</code>。不存在时将尝试创建。备份将直接保存到这个文件夹，不使用系统 Temp，也不会触发浏览器下载。</p>
-<div class="fields"><div style="grid-column:1/-1"><label for="backup-directory">Windows 本机绝对路径</label><input id="backup-directory" type="text" placeholder="D:\大肥鱼备份" autocomplete="off" style="width:100%"></div></div>
-<div class="toolbar"><button id="backup-directory-save" class="primary">确认备份目录</button></div>
-<p id="backup-directory-status" class="muted" role="status" aria-live="polite">尚未设置备份目录</p></div>
-<div class="settings-section"><h4>完整业务数据备份 · SHA-256 完整性校验</h4><p class="muted">点击后将完整 JSON 备份文件保存在本机目录。<strong>包含表情包检索规则 <code>comment-meme-rules.json</code>、人设、模型设置、梗知识数据库、人生记忆和其他业务记录。</strong><br><strong>不包含表情包图片本体</strong>（请在「表情包管理」单独导出整库 ZIP），也不包含识图帧、缓存、日志、B站登录 Cookie、凭证和独立密钥。</p>
-<div class="toolbar"><button id="backup-export" class="primary">备份全部业务数据</button></div></div>
-<div class="settings-section"><h4>大肥鱼完整人生记忆 · 独立备份</h4>
-<p class="muted">这里独立备份<strong>永久真实档案 + 可衰减经历副本 + 反思候选 + 长期认识</strong>，包括只允许管理员接触的精确历史。建议将此文件妥善保管；恢复不会绕过已经发生的遗忘，也不会自动把永久档案送进 AI。</p>
-<div class="toolbar"><button id="memory-backup-export" class="primary">单独备份完整人生记忆</button><span id="memory-backup-export-status" class="muted"></span></div>
-<div class="inset"><label for="memory-backup-import-file">恢复双层人生记忆备份</label><input id="memory-backup-import-file" type="file" accept=".json,application/json" aria-label="选择大肥鱼长期记忆备份文件">
-<p id="memory-backup-inspect" class="muted" role="status" aria-live="polite">尚未选择记忆备份</p>
-<div class="toolbar"><button id="memory-backup-restore" class="danger" disabled>恢复选中的人生记忆</button></div></div></div>
-<div class="settings-section"><h4>从备份恢复</h4><p class="muted">仅接受新版（schema 2）备份，先核对 SHA-256 完整性、人生记忆与永久档案清单，再人工确认覆盖。恢复前会自动在上面配置的备份目录保存一份当前数据。恢复期间建议暂停自动任务；恢复完成后需要完全重启 DSH。</p>
-<input id="backup-import-file" type="file" accept=".json,application/json" aria-label="选择大肥鱼数据备份文件">
-<p id="backup-inspect" class="muted" role="status" aria-live="polite">尚未选择文件</p>
-<div class="toolbar"><button id="backup-restore" class="danger" disabled>校验并恢复选中的备份</button></div></div>
-</div><p id="backup-progress" role="status" aria-live="polite" class="muted"></p>
+<div class="backup-hero">
+  <div class="backup-hero-kicker">🛡️ 本地数据守护</div>
+  <div class="backup-hero-head"><div><h2>💾 数据备份</h2><p>给鱼鱼的记忆与生活留一份安全副本。日常只需设置保存位置，然后点击「创建备份」。</p></div><span class="backup-hero-label">🔒 仅存本机</span></div>
+  <div class="backup-steps" aria-label="日常备份步骤"><span><b>①</b> 选择目录</span><span><b>②</b> 创建备份</span><span><b>③</b> 妥善保存</span></div>
+</div>
+<div class="backup-layout">
+  <div class="settings-section backup-main-card">
+    <div class="backup-card-title"><span class="backup-card-icon backup-icon-blue">📁</span><div><h3>保存到哪里？</h3><p>选择当前电脑上有写入权限的文件夹，设好后下次直接备份。</p></div></div>
+    <label for="backup-directory">本地备份目录</label>
+    <div class="backup-path-row"><input id="backup-directory" type="text" placeholder="例如：D:\大肥鱼备份" autocomplete="off"><button id="backup-directory-save" type="button">确认备份目录</button></div>
+    <p id="backup-directory-status" class="muted backup-status" role="status" aria-live="polite">尚未设置备份目录</p>
+    <div class="backup-primary-action">
+      <div><strong>✨ 备份鱼鱼的生活数据</strong><span>包含设置、业务账本、人生记忆、成长、梗知识；包含表情包检索规则，使用 SHA-256 校验。</span></div>
+      <button id="backup-export" class="primary" type="button">备份全部业务数据</button>
+    </div>
+    <p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
+    <p class="backup-footnote">不包含 B站 Cookie、登录凭证、密钥、缓存与日志；不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。备份文件可能含私人记录，请妥善保管。</p>
+  </div>
+  <div class="backup-more-grid">
+    <details class="backup-fold" id="backup-memory-tools">
+      <summary><span class="backup-card-icon backup-icon-purple">🧠</span><span class="backup-summary-text"><strong>人生记忆专项备份</strong><small>仅需单独保存完整记忆时使用</small></span><span class="backup-chevron" aria-hidden="true">⌄</span></summary>
+      <div class="backup-fold-body">
+        <p class="muted">单独保存永久真实档案、可衰减经历、反思候选及长期认识，可能包含仅管理员可见的敏感历史。永久档案不会因此变成日常 AI 可读取的记忆。</p>
+        <button id="memory-backup-export" class="backup-accent-btn" type="button">单独备份完整人生记忆</button>
+        <p id="memory-backup-export-status" class="muted backup-status" role="status" aria-live="polite">尚未执行专项备份</p>
+        <div class="backup-divider"></div>
+        <div class="backup-subheading">🩺 记忆健康概览</div>
+        <p id="life-memory-health" class="muted" role="status" aria-live="polite">加载中…</p>
+        <button id="life-memory-health-refresh" type="button">刷新记忆状态</button>
+        <p class="backup-footnote">清晰、模糊和遗忘描述的是鱼鱼当前可用的记忆；历史档案不会绕过遗忘规则。</p>
+      </div>
+    </details>
+    <details class="backup-fold backup-restore-fold" id="backup-recovery-tools">
+      <summary><span class="backup-card-icon backup-icon-amber">🔄</span><span class="backup-summary-text"><strong>从备份恢复</strong><small>不常用 · 需要确认与重启</small></span><span class="backup-chevron" aria-hidden="true">⌄</span></summary>
+      <div class="backup-fold-body">
+        <p class="backup-warning">⚠️ 恢复会更改现有数据，请先暂停后台任务。系统会先在已配置的目录保存当前数据安全快照，验证校验值后才允许恢复；完成后必须完全重启 DSH。</p>
+        <div class="backup-recovery-choice">
+          <h4>恢复全部业务数据</h4>
+          <p class="muted">覆盖选定备份中包含的设置、账本、数据库及相关记忆文件。仅接受兼容的 schema 2 JSON 备份。</p>
+          <label for="backup-import-file">选择完整备份文件</label>
+          <input id="backup-import-file" type="file" accept=".json,application/json" aria-label="选择大肥鱼数据备份文件">
+          <p id="backup-inspect" class="muted backup-status" role="status" aria-live="polite">尚未选择文件</p>
+          <button id="backup-restore" class="danger backup-danger-action" type="button" disabled>确认恢复全部数据</button>
+        </div>
+        <div class="backup-recovery-choice">
+          <h4>仅恢复人生记忆</h4>
+          <p class="muted">不修改普通设置或登录凭证；恢复前会备份当前完整人生记忆。</p>
+          <label for="memory-backup-import-file">选择人生记忆备份文件</label>
+          <input id="memory-backup-import-file" type="file" accept=".json,application/json" aria-label="选择大肥鱼长期记忆备份文件">
+          <p id="memory-backup-inspect" class="muted backup-status" role="status" aria-live="polite">尚未选择记忆备份</p>
+          <button id="memory-backup-restore" class="danger backup-danger-action" type="button" disabled>确认恢复人生记忆</button>
+        </div>
+      </div>
+    </details>
+  </div>
+</div>
 </section>
 <section id="panel-home" hidden>
 <div id="fs-main-session-return" class="fs-warning" hidden><span>首次设置期间可正常选择、保存主 Session 及同步频率；连接测试和发送经历在完成首次设置后开放。</span><button type="button" data-open-tab="firststart">← 返回首次设置</button></div>

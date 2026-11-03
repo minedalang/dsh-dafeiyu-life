@@ -205,3 +205,9 @@ Windows Desktop 的常规安装命令为 `dsh plugin --profile desktop add dsh-d
 - 核心平台状态使用 `accounts/<UID>/runtime/`；首次升级旧数据只属于原账号。新增待办带 `accountUid`；旧账号任务绝不可在新账号自动执行、补发或混合回访。旧数据仅做保守归档，不清空。
 - `account-login-pending.json`、`accounts/<UID>/credential.json` 及私密运行状态绝不可进入通用备份、日志、模型上下文或公共 UI；账号凭据是敏感文件，Windows 须尽力收紧 ACL。
 - 发布前必须真实验证 Windows DSH Desktop 换号流程、失败回滚、跨 UID、旧 pending/uncertain、不跨账号外发；本地 mock 测试不视作平台实际成功。README 只写极简功能，不堆版本历史。
+
+## 2.6.1 发布前 · 备份动态评论与管理界面约束
+
+- `life-memory/candidates.json` 中公开动态评论可能只包含 `contentType:'dynamic'` 和字符串 `dynamicId`，其 `bvid` 正常为空；备份校验必须复用内容类型约束，视频与动态 ID 不得混用，不能为了备份强制伪造 BV 或删除候选。
+- 通用备份仍不得包含平台 Cookie、独立密钥、私密 DM 原文；完整性校验、恢复前快照和人工确认不可因 UI 简化而弱化。
+- 数据备份页保留管理中心原有按钮 ID 和请求路径；日常导出始终可见，独立记忆备份与恢复默认折叠；暗色模式、移动屏、键盘焦点必须可用。
