@@ -32,7 +32,7 @@ import { spawn } from 'node:child_process'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
 import { randomUUID, createHash } from 'node:crypto'
 import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
-import { createBackup, validateBackup, restoreBackupFiles, createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup } from './lib/data-backup.mjs'
+import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup } from './lib/data-backup.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -1247,13 +1247,16 @@ function reportMeta() {
   }
 
   const call = async (toolName, args, opts) => {
+    const release = toolName==='bili_check_credential'?()=>{}:accountBinding.enterPlatformOperation()
+    try {
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
     if(!firstStart.isReady())throw Error(firstStart.message())
     refreshCfg()
     if (cfg.masterEnabled !== true) throw new Error('大肥鱼已暂停：请先开启总开关')
     const client = await ensureMcp()
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
-    return client.call(toolName, args, opts)
+    return await client.call(toolName, args, opts)
+    } finally {release()}
   }
 
   const hasCredential = () => existsSync(join(stateDir, 'bili_credential.json'))
@@ -2604,9 +2607,9 @@ function reportMeta() {
         dutyChild = null
       }
     refreshCfg()          // ⭐ 设置页刚改过的值要立刻生效（config 是就地改的，快照会过期）
+    if (cfg.masterEnabled !== true) return { started: false, why, paused: true, error: '总开关已关闭，无法跑一轮' }
     if(!firstStart.isReady())return {started:false,blocked:true,error:firstStart.message()}
     if(accountBinding.status().blocked)return {started:false,blocked:true,error:'账号已冻结：需完成身份切换确认及权限复核'}
-    if (cfg.masterEnabled !== true) return { started: false, why, paused: true, error: '总开关已关闭，无法跑一轮' }
     const dsh = resolveDsh()
     // ⭐ 找不到 dsh 就别硬跑：以前会退化成裸 `dsh` ⇒ spawn 失败、只留 exit 1 + 一串乱码 ✗
     if (dsh.missing) {
@@ -2634,7 +2637,9 @@ function reportMeta() {
     const cwd = stateDir
     log(`刷B站开跑（${why}）：${dsh.command} ${args.slice(0, 3).join(' ')} …  cwd=${cwd}`)
     recordModelTask(stateDir,'video')
-    const child = spawn(dsh.command, args, {
+    const releaseDuty=accountBinding.enterPlatformOperation()
+    let child
+    try {child = spawn(dsh.command, args, {
       cwd,
       shell: dsh.shell,
       windowsHide: true,
@@ -2645,6 +2650,8 @@ function reportMeta() {
       //    否则它当成"再开一个 Electron 应用"、什么都不干就以 0 退出（issue #5：0.17 秒、code 0、什么都没做）
       env: uvEnv({ BILI_DUTY_HOME: stateDir, ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}), ...(dsh.env || {}) }),
     })
+    } catch(e) {releaseDuty();throw e}
+    child.once('close',releaseDuty)
     // ⚠️ 2026-10-16 issue #1（用户 `miaoxingyunduo` 贴了崩溃日志）：`duty.log` 被别的进程占着时
     //    (`EBUSY`) `appendFileSync` 会抛异常 —— 而这里是 **stream 的 data 回调**，没人接
     //    ⇒ **未捕获异常 ⇒ 整个 DSH 宿主被杀**（所有会话一起没）。跟 10-14 定时器那次是同一类 ✗
@@ -2915,7 +2922,8 @@ function reportMeta() {
     logger:{warn:m=>log('主人私信 Agent：'+m)},
   })
   async function getNewDmMessages() {
-    accountBinding.assertReady()
+    const releaseDmRead=accountBinding.enterPlatformOperation()
+    try {
     const cred = dmCred(stateDir)
     if (!cred) throw new Error('尚未登录 B站，请先在设置页扫码登录')
     const sessions = await dmList(cred)
@@ -3030,6 +3038,7 @@ function reportMeta() {
     return incoming.filter(row=>!(row?.incoming===true&&String(row?.senderUid||'')===String(cfg.dmOwnerUid||'')&&(
       (cfg.ownerDmReadCommandsEnabled===true&&parseOwnerDmTodo(row.text))||
       (cfg.ownerDmActionsEnabled===true&&parseOwnerDmAction(row.text))||claimedCommands.has(row.messageId))))
+    } finally {releaseDmRead()}
   }
 
   function dmChatPrompt({ uid, text, messages, history }) {
@@ -4033,6 +4042,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   let personalityAiDebugBusy=false,personalityAiDebugNextAt=0
   memoryRetriever=createMemoryRetriever({
     getMemories:()=>[...longTermMemory.activeMemories(),...listLegacyLifeFacts(stateDir),...interestMemoryRows(stateDir)],getConfig:()=>cfg,
+    getAccount:()=>accountBinding.status(),
     invokeModel:(prompt,maxChars)=>invokeMemoryPrompt(prompt,maxChars),
     getEpisodes:(query,options)=>lifeMemory?.recall({query,domain:options?.domain||'main-session',role:options?.role||'owner',actorUid:options?.actorUid||'',excludeEventKey:options?.excludeEventKey||'',kinds:options?.kinds||null,maxItems:options?.maxItems||6,maxChars:options?.maxChars||800})||[],
     getEpisodeCandidates:(options)=>lifeMemory?.semanticCandidates(options)||[],
@@ -4188,7 +4198,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     getInterests:()=>lifeReflection?.interests?.()||[],
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'dailyDynamic'}),
     publish:(text,limit)=>new Promise((resolve,reject)=>{
-      try{accountBinding.assertReady()}catch(e){return reject(e)}
+      let releasePublish
+      try{releasePublish=accountBinding.enterPlatformOperation()}catch(e){return reject(e)}
       const script=join(pluginDir,'lib','daily-dynamic-publish.py')
       const cred=join(stateDir,'bili_credential.json')
       const child=spawn(cfg.pythonPath||'python',[script,stateDir,cred,String(limit),'1'],{
@@ -4196,8 +4207,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       let out='',err='';const timeout=setTimeout(()=>{try{child.kill()}catch{}},20_000);timeout.unref?.()
       child.stdout.on('data',b=>{out=(out+String(b)).slice(0,4000)})
       child.stderr.on('data',b=>{err=(err+String(b)).slice(-500)})
-      child.on('error',e=>{clearTimeout(timeout);reject(e)})
-      child.on('close',code=>{clearTimeout(timeout);try{if(code!==0)throw Error('生活动态发布脚本异常：'+err);resolve(JSON.parse(out))}catch(e){reject(e)}})
+      child.on('error',e=>{clearTimeout(timeout);releasePublish();reject(e)})
+      child.on('close',code=>{clearTimeout(timeout);releasePublish();try{if(code!==0)throw Error('生活动态发布脚本异常：'+err);resolve(JSON.parse(out))}catch(e){reject(e)}})
       child.stdin.end(text)
     }),
     logger:{warn:m=>log('⚠️ '+m)},
@@ -4677,6 +4688,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
         const body = await readBody(req, 90_000_000)
         const data = body?.backup
         const summary = validateBackup(data)
+        if (action === 'restore') validateRestoreIdentity(stateDir,data)
         // Inspect must not write anything. The browser shows scope + a second confirmation.
         if (action === 'inspect') return sendJson(res, 200, {ok:true,summary})
         if (body.confirm !== 'RESTORE_VERIFIED_DATA') return sendJson(res, 400, {ok:false,error:'未完成恢复前人工确认'})
@@ -5735,6 +5747,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     if (req.method === 'POST' && path === '/api/bili-duty/dm-network-check') {
       const cred = dmCred(stateDir)
       if (!cred) return sendJson(res,200,{ok:false,error:'本机没有可用的 B站 登录凭证，请先扫码登录'})
+      try{accountBinding.assertReady()}catch(e){return sendJson(res,200,{ok:false,error:'账号状态未就绪：'+String(e?.message||e).slice(0,160)})}
       const started = Date.now()
       try {
         const sessions = await dmList(cred)

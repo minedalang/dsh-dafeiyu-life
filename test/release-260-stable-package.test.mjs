@@ -29,5 +29,6 @@ test('安装文案有三种市场路径，模型说明简洁且不再推荐使�
   assert.doesNotMatch(install,/#dev|一键使用已验证模型（可选）/)
   assert.match(install,/自动继承/)
   assert.ok(install.length<1200,'首次设置段落不应重新写成长篇 Provider 技术说明')
-  assert.match(read('RELEASE_NOTES_v2.6.1.md'),/2\.6\.1-dev\.1/)
+  assert.match(read('RELEASE_NOTES_v2.6.1.md'),/账号|身份|记忆/)
+  assert.match(read('docs/release/archive/RELEASE_NOTES_v2.6.1-dev.1.md'),/2\.6\.1-dev\.1/)
 })
