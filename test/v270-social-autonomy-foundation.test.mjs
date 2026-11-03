@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { composeSocialDecisionContext, interestEvidenceForTopic, validateSocialActionProposal } from '../lib/social-autonomy-contract.mjs'
@@ -122,12 +122,32 @@ test('已领取但未收到可信回执不能自动重复发送；退出时仍�
   assert.equal(rebooted.claim(r.id).ok, false)
 }))
 
-test('账本拒绝越界时间及符号链接', () => temp(dir => {
+test('账本拒绝越界时间', () => temp(dir => {
   const t = 1770000000000
   const ledger = createSocialContinuityLedger({ dataDir: dir, accountUid: '10001', now: () => t })
   assert.equal(ledger.schedule({ uid: '10010', channel: 'at', threadKey: 'a', sourceEventId: 'm', purpose: 'delayed-supplement',
     notBefore: t - 1000, expiresAt: t + DAY }).reason, 'invalid-intention-time')
+}))
+
+test('账本拒绝用普通文件冒充存储目录', () => temp(dir => {
+  const ledger = createSocialContinuityLedger({ dataDir: dir, accountUid: '10001' })
+  writeFileSync(join(dir, 'social-continuity'), 'not a directory')
+  assert.throws(() => ledger.status(), /unsafe-continuity-dir/)
+}))
+
+test('账本拒绝符号链接目录（Windows 使用无需提升权限的 junction）', t => temp(dir => {
+  const ledger = createSocialContinuityLedger({ dataDir: dir, accountUid: '10001' })
   const linked = join(dir, 'linked'); mkdirSync(linked)
-  symlinkSync(linked, join(dir, 'social-continuity'), 'dir')
-  assert.throws(() => ledger.status(), /ENOENT|unsafe|mismatch/)
+  try {
+    symlinkSync(linked, join(dir, 'social-continuity'), process.platform === 'win32' ? 'junction' : 'dir')
+  } catch (error) {
+    // A restricted Windows account / filesystem can forbid even directory junctions.
+    // Only skip link creation in that environment; time/path safety tests still run.
+    if (process.platform === 'win32' && ['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(error?.code)) {
+      t.skip(`当前 Windows 环境不允许创建目录联接：${error.code}`)
+      return
+    }
+    throw error
+  }
+  assert.throws(() => ledger.status(), /unsafe-continuity-dir/)
 }))
