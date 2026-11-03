@@ -6,7 +6,7 @@ test('dev.1 version and docs explicitly separate shipped actions from P4 design'
  const p=JSON.parse(read('package.json'))
  assert.match(p.version,/^2\.6\.2(?:-dev\.[1-9]\d*)?$/)
  assert.ok(p.files.includes('RELEASE_NOTES_v2.6.2.md'))
- assert.match(read('README.md'),/当前开发版本：\*\*`2\.6\.2(?:-dev\.[1-9]\d*)?`/)
+ assert.match(read('README.md'),/(?:当前开发版本|当前版本)：\*\*`2\.6\.2(?:-dev\.[1-9]\d*)?`/)
  assert.match(read('docs/release/archive/RELEASE_NOTES_v2.6.1-dev.1.md'),/P4 统一待办/)
 })
 test('backend, overlay and regular Python client enforce the independent default-on deletion gate',()=>{
