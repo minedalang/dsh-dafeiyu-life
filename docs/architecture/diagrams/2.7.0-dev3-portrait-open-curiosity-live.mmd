@@ -1,0 +1,47 @@
+flowchart TB
+  subgraph Inbound[核实的真实 B站入站场景]
+    DM[私信消息 UID / event ID]
+    PUB[公开评论或入站 @ UID / rpid]
+  end
+  FRIEND[SocialPolicyGate.actor / 当前名册 / 账号未冻结]
+  PORT[SocialPortraitGateway
+有证据、可撤回的交流偏好]
+  LEDGER[(当前账号 runtime
+social-portrait/evidence-v1.json)]
+  ADMIN[同源管理页
+查看 / 纠正 / 撤回 / 清空]
+  ASSEMBLY[SocialContextAssembler.getPortrait
+按 UID 及渠道读取]
+  CONTEXT[InteractionBatcher.portraitContext
+独立低敏证据字段、不参与人格]
+  MODEL[SocialAutonomyDecisionContract
+Life Voice 唯一人格 / 情绪]
+  GATE[SocialPolicyGate + P6/Rhythm + 额度 / 回执]
+  SEND[原有私信 / 评论发送器]
+  DM --> FRIEND
+  PUB --> FRIEND
+  FRIEND -->|仅白名单 UID、明确低敏表达| PORT
+  PORT <--> LEDGER
+  ADMIN -->|人工同源确认| PORT
+  LEDGER -->|DM 允许私信+公开证据
+公开评论只允许公开证据| ASSEMBLY
+  ASSEMBLY --> CONTEXT
+  CONTEXT --> MODEL
+  MODEL -->|回复意愿并非发送授权| GATE
+  GATE --> SEND
+  subgraph Interest[原有 LifeInterests 扩展，无新人格 / 发送系统]
+    WATCH[经证据验证的 selected watch/BV]
+    TOPICS[TOPICS 原有分类
+核心与学习兴趣维持原证据门槛]
+    CURIOSITY[(interests.json
+短期 curiosityCandidates)]
+    CHOOSE[selectionInterests
+每 3 天最多一槽，14 天过期]
+    DUTY[现有选片 promptFor
+仍需只读视频权限]
+    WATCH --> TOPICS
+    WATCH -->|未知但安全标题| CURIOSITY
+    TOPICS --> CHOOSE
+    CURIOSITY --> CHOOSE
+    CHOOSE --> DUTY
+  end

@@ -117,3 +117,8 @@ flowchart TB
 `commentInteract.onIncoming → friend-learning + socialCognition.observe`：对已授权好友的 @ 反馈，更新个人偏好、全局视频推荐退订或独立只读观看候选。非好友 @ 不建立画像。情绪只影响择机只读行为，不扩大权限。
 
 两项新 JSON 文件与旧记忆/主人私信账本分开，默认所有新开关关闭；此次未引入跨 Session 的社交隐私读取桥。
+
+
+## 当前 2.7.0-dev.3 开发接线
+
+好友交流证据不是大肥鱼自己的成长人格，也不能授予发言权限：`SocialPortraitGateway` 仅在当前账号、经验证的好友 DM/公开评论中提取有限的明确交流偏好，按 UID 和 public/friend-private 分域，180 天后停止读取；可经同源管理页撤回或清除。`LifeInterests` 仍是唯一兴趣档案，新增词表外可信选看标题的 14 天低权重好奇候选，不推断为“喜欢”。现行具体状态与 Mermaid 以 [`docs/architecture/2.7.0-dev3-portrait-open-curiosity.md`](architecture/2.7.0-dev3-portrait-open-curiosity.md) 为准。

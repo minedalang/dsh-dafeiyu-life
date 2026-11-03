@@ -67,6 +67,7 @@ import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-
 import {todoParentId} from './lib/todo-lineage.mjs'
 import {verifyLifeOutbound,lifeFactsFromCompletedTodos} from './lib/verified-life-facts.mjs'
 import {prepareFriendInterestObservation,recordPreparedFriendInterest, learnedFriendContext, listFriendLearning, clearFriendLearning, isFriendRecommendationFeedback, friendRecommendationGuard } from './lib/friend-learning.mjs'
+import {createSocialPortraitGateway} from './lib/social-portrait-gateway.mjs'
 import {socialTier} from './lib/social-tier.mjs'
 import { observeAuthenticatedOwnerDmPreferences } from './lib/owner-dm-preferences.mjs'
 import { generateOwnerCommentDraftFromVideo } from './lib/owner-comment-draft.mjs'
@@ -933,6 +934,8 @@ function reportMeta() {
   }
   ctx.effect(()=>()=>socialRelationships?.close(),'bili-duty: 关闭社交熟悉度索引')
   const relationshipOptions=()=>({friendDirectory:cfg.friendDirectory,ownerUid:cfg.dmOwnerUid})
+  // Account-scoped, opt-in-by-list evidence hints. Does not open a sender permission.
+  const socialPortrait=createSocialPortraitGateway({dataDir:accountRuntimeDir,getFriendDirectory:()=>cfg.friendDirectory})
   // Preserve dev.9's Windows lazy-SQLite lifetime: a pure agency test or a
   // planner tick must not create an empty, still-open DB in an ephemeral home.
   // Actual verified interaction recording initializes the index when needed.
@@ -3563,6 +3566,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(['owner','friend'].includes(role))try{conversationLifeFeedback.observe({source:'dm',role,uid,eventId:messageId,text,at:time})}
       catch(e){log('私信生活情绪反馈失败：'+String(e?.message||e).slice(0,100))}
       const cognition=socialCognition.prepareObservation({uid,text,source:'dm',eventId:messageId,timestampMs:time})
+      if(role==='friend'&&!accountBinding.status().blocked)try{socialPortrait.observe({uid,text,source:'dm',eventId:messageId,at:time})}
+      catch(e){log('私信好友交流画像未更新：'+String(e?.message||e).slice(0,110))}
       const interest=socialPolicyGate.canLearn({uid,kind:'dm'})?prepareFriendInterestObservation({uid,text,source:'dm',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory}):null
       const lifeEvent=preparePrivateLifeEvent({source:role==='owner'?'owner-dm':'friend-dm',role,uid,eventId:messageId,text,at:time})
       return socialInteractionCoordinator?.record({type:'incoming',source:'dm',eventKey:messageId,actorUid:uid,role,at:time,cognition,interest,lifeEvent})
@@ -3616,6 +3621,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getPersona:batch=>buildInteractionPersona(batch),
     getIdentity:uid=>replyIdentityContext(uid),
     getRelationship:uid=>relationshipText(uid)||friendRelationshipContext(stateDir,uid,cfg.friendDirectory),
+    getPortrait:(uid,kind)=>socialPortrait.context(uid,{channel:kind}),
     // Life Voice is the sole model-facing source for current emotion and growth.
     // Keep the assembler's older callback contract without injecting a second copy.
     getLifeStateContext:()=>'',
@@ -3875,6 +3881,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const {role}=socialPolicyGate.actor(req.uid),at=Number(req.timestampMs)||Date.now(),eventId=`${req.contentType==='dynamic'?'dynamic:'+req.dynamicId:req.bvid||''}:${req.rpid||req.id||''}`
       const consent=socialPolicyGate.canLearn({uid:req.uid,kind:req.kind})
       const cognition=socialCognition.prepareObservation({uid:req.uid,text:req.text,source:'comment',eventId,timestampMs:at,bvid:req.bvid})
+      if(role==='friend'&&consent&&!accountBinding.status().blocked)try{socialPortrait.observe({uid:req.uid,text:req.text,source:'comment',eventId,at})}
+      catch(e){log('公开评论好友交流画像未更新：'+String(e?.message||e).slice(0,110))}
       const interest=consent?prepareFriendInterestObservation({uid:req.uid,text:req.text,source:'comment',eventId,bvid:req.bvid,now:at,friendDirectory:cfg.friendDirectory}):null
       const lifeEvent=req.contentType==='dynamic'&&req.dynamicVerified===true
         ?{kind:'social',key:`social:${req.uid}:dynamic:${req.dynamicId}:${req.rpid}`,
@@ -5728,7 +5736,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
 
     // Sensitively scoped administrative data: never serve it to cross-site
     // requests. UI uses same-origin fetch with credentials.
-    if (['/api/bili-duty/friend-learning','/api/bili-duty/social-intentions','/api/bili-duty/emotion-state','/api/bili-duty/emotion-agency-activity','/api/bili-duty/friend-relationships','/api/bili-duty/life-timeline','/api/bili-duty/dev5-social','/api/bili-duty/friend-relationships/clear'].includes(path)) {
+    if (['/api/bili-duty/friend-learning','/api/bili-duty/friend-portrait','/api/bili-duty/social-intentions','/api/bili-duty/emotion-state','/api/bili-duty/emotion-agency-activity','/api/bili-duty/friend-relationships','/api/bili-duty/life-timeline','/api/bili-duty/dev5-social','/api/bili-duty/friend-relationships/clear'].includes(path)) {
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'私密社交数据仅限同源管理中心'})
       if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站访问私密社交数据'})
@@ -5738,11 +5746,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       try{return sendJson(res,200,{ok:true,rows:listFriendLearning(stateDir,cfg.friendDirectory)})}
       catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e)})}
     }
+    if(req.method==='GET'&&path==='/api/bili-duty/friend-portrait'){
+      try{
+        const rows=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory)).map(f=>({uid:f.uid,items:socialPortrait.list(f.uid)}))
+        return sendJson(res,200,{ok:true,rows})
+      }catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,160)})}
+    }
     if (req.method === 'GET' && path === '/api/bili-duty/social-intentions') {
       try{return sendJson(res,200,socialIntentEngine.status())}
       catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e)})}
     }
-    if (req.method === 'POST' && ['/api/bili-duty/social-intentions','/api/bili-duty/friend-learning/clear'].includes(path)) {
+    if (req.method === 'POST' && ['/api/bili-duty/social-intentions','/api/bili-duty/friend-learning/clear','/api/bili-duty/friend-portrait'].includes(path)) {
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'只允许同源管理中心操作'})
       if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站写入'})
@@ -5751,6 +5765,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         if(path.endsWith('friend-learning/clear')){
           if(body?.confirm!=='CLEAR_FRIEND_OBSERVATIONS')return sendJson(res,400,{ok:false,error:'需要明确删除确认'})
           return sendJson(res,200,{ok:true,...clearFriendLearning(stateDir,body.uid,cfg.friendDirectory)})
+        }
+        if(path==='/api/bili-duty/friend-portrait'){
+          if(!['retract','correct','clear'].includes(body?.action)||body?.confirm!=='REVIEW_FRIEND_PORTRAIT')return sendJson(res,400,{ok:false,error:'需明确确认画像修改'})
+          if(body.action==='retract')return sendJson(res,200,socialPortrait.retract(body.uid,body.evidenceId))
+          if(body.action==='correct')return sendJson(res,200,socialPortrait.correct(body.uid,body.code))
+          return sendJson(res,200,{ok:true,...socialPortrait.clear(body.uid)})
         }
         if(!socialIntentEngine)return sendJson(res,503,{ok:false,error:'社交系统尚未初始化'})
         if(body?.action==='dismiss')return sendJson(res,200,socialIntentEngine.dismiss(String(body.id||'')))
