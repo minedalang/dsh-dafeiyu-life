@@ -1,0 +1,33 @@
+flowchart TD
+  A[已验证的私信 / 评论 / 被 @ 新事件] --> B{原渠道总开关与用户显式授权}
+  B -->|未授权| X[只读 / 不发送]
+  B -->|允许考虑回复| C[SocialContextAssembler + 唯一 Life Voice]
+  C --> D[InteractionBatcher 统一社交意愿提案]
+  D --> E[SocialAutonomyDecisionContract 安全文本校验]
+  E -->|skip / close| Z[不发消息]
+  E -->|defer 且 P6 开启| F[SocialConversationContinuity 账号+UID+渠道+线程预约]
+  E -->|reply 且 P6 开启| G[最多配置条数的气泡]
+  E -->|未开启 P6| H[保留原有单条回复]
+  G --> I[发送前身份 / 授权 / 配额 / 事实再核验]
+  H --> I
+  I --> J[SocialInteractionRhythm 跨渠道同 UID 节奏预约]
+  J --> K[原 DM / 评论 / @ 平台发送器]
+  K -->|真实 msg_key 或 rpid| L[持久化回执和线程历史]
+  K -->|失败或未知| U[记为 uncertain 禁止自动重放]
+  L -->|可选稍后补充且 P6 开启| F
+  F --> M[按 dm 或 comment / at 领取到期意图]
+  M --> N[重新确认原会话 / 原评论作者 UID / 最新来信 / 当前开关]
+  N --> C
+  O[同 UID 同线程新消息] --> P[取消旧预约]
+  P --> A
+  Q[DM P6 默认开，但陌生人写许可默认关] -.独立门禁.-> B
+  R[公开评论及被 @ P6 默认关] -.独立门禁.-> B
+  S[可配置气泡上限 / 延期范围 / 跨渠道冷却 / 每人24小时次数] -.运行时读取.-> D
+  S -.硬性上限.-> F
+  S -.硬性上限.-> G
+  S -.硬性上限.-> J
+
+  classDef gate fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef live fill:#dcfce7,stroke:#16a34a,color:#14532d
+  class B,E,I,J,N,Q,R,S gate
+  class A,C,D,F,G,H,K,L,M,O,P live

@@ -1,14 +1,16 @@
-# 大肥鱼 · 当前技术架构（2.6.2）
+# 大肥鱼 · 当前技术架构
 
 > 本页是维护者的**当前架构入口**，不是版本流水账。任何涉及统一层、事实源、权限、事件流、渠道接线和存储的修改，必须同步更新本页、相应说明、Mermaid 图与回归测试。根 README 始终面向用户。
 
-## 2.7.0 开发进度（部分能力已接入）
+## 2.7.0-dev.2 当前生产接线（尚未正式发布）
 
-- [统一自主社交决策、P6-A/B 续聊、好友画像、私信自由与 @ 回复权限架构](./2.7.0-unified-social-agency-plan.md) · [目标 Mermaid](./diagrams/2.7.0-social-agency-target.mmd) · [入站 @ 实际接线](./diagrams/2.7.0-incoming-at-live.mmd) · [后台私信自主决策与 P6-A/B 实际接线](./diagrams/2.7.0-dm-autonomy-live.mmd)。**当前 `2.7.0-dev.1` 已接通入站 @ 白名单移除、主动 @ 拦截，以及后台私信统一决策、1–3 气泡、延迟补充和沉默后重新考虑；公开评论/@ 的 P6 接线和好友证据画像仍未完成**；下列 2.6.2 图仍是其余渠道的现行生产调用关系。
+- [统一自主社交决策、P6-A/B 续聊、好友画像、私信自由与 @ 回复权限架构](./2.7.0-unified-social-agency-plan.md) · [目标 Mermaid](./diagrams/2.7.0-social-agency-target.mmd) · [入站 @ 实际接线](./diagrams/2.7.0-incoming-at-live.mmd) · [后台私信自主决策与 P6-A/B 实际接线](./diagrams/2.7.0-dm-autonomy-live.mmd)。**当前 `2.7.0-dev.2` 已接通入站 @、后台私信和公开评论/@ P6-A/B（两个公开开关均默认关闭）、跨渠道自动回复节奏；深度好友证据画像和开放兴趣系统仍未实现**；下列 2.6.2 图仍是其余渠道的现行生产调用关系。
+
+- [公开评论/@ P6 与跨渠道发送节奏（实际生产接线、配置与风险矩阵）](./2.7.0-dev2-public-p6-rhythm.md) · [生产 Mermaid](./diagrams/2.7.0-dev2-public-p6-rhythm-live.mmd)。
 
 ## 管理中心的社交入口（2.7.0）
 
-- [社交互动／评论／私信的页面职责、唯一设置源与折叠导航](./2.7.0-social-management-navigation.md) · [可编辑导航 Mermaid](./diagrams/2.7.0-social-management-navigation.mmd)。**仅整理管理 UI，不改变互动权限、数据源或发送契约**。
+- [社交互动／评论／私信的页面职责、唯一设置源与折叠导航](./2.7.0-social-management-navigation.md) · [可编辑导航 Mermaid](./diagrams/2.7.0-social-management-navigation.mmd)。**本轮 UI 将评论与 DM 设置移动到记录上方并默认折叠；P6 功能与跨渠道节奏的业务行为由上述生产链路独立实现**。
 
 ## 修改任何功能之前
 

@@ -267,3 +267,21 @@ test('legacy one-shot consent does not allow multi-bubble sends, delayed supplem
   const {existsSync}=await import('node:fs');
   assert.equal(existsSync(join(m.path,'social-continuity','intentions.json')),false);
 });
+
+
+test('DM configurable P6 max bubbles is respected without changing stranger authorization',async()=>{
+  const m=await mk({config:{p6Enabled:true,p6MaxBubbles:1,whitelist:['200']}});
+  const agent=m.make({generateReply:async()=>({action:'reply',messages:['允许的一段','不允许的第二段'],followUpMinutes:0})});
+  await agent.poll();m.inbox.push(msg('200','p6cap-1','测试每轮限制'));
+  assert.equal((await agent.poll()).sent,1);
+  assert.equal(m.sent.length,1);assert.equal(m.sent[0].text,'允许的一段');
+});
+
+test('DM configured delay range rejects a too-soon defer without reserving a future send',async()=>{
+  const m=await mk({config:{p6Enabled:true,delayMinMinutes:30,delayMaxMinutes:60,whitelist:['200']}});
+  const agent=m.make({generateReply:async()=>({action:'defer',notBefore:m.params.now()+5*60_000})});
+  await agent.poll();m.inbox.push(msg('200','p6delay-1','时间尚未到'));
+  assert.equal((await agent.poll()).sent,0);
+  const {existsSync}=await import('node:fs');
+  assert.equal(existsSync(join(m.path,'social-continuity','intentions.json')),false);
+});

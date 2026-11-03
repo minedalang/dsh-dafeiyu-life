@@ -4,7 +4,7 @@
 
 ## 项目与代码入口
 
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前稳定版 `2.6.2`；开发起点为 `2.7.0-dev.1`；未经用户明确授权不得继续升级版本、合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前稳定版 `2.6.2`；当前开发阶段为 `2.7.0-dev.2`；未经用户明确授权不得继续升级版本、合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
@@ -37,8 +37,8 @@
 
 ## 2.7.0 社交自主统一职责（开发门禁）
 
-- 新的回复／延迟／续聊必须先走 `SocialAutonomyDecisionContract`，它**不得被当作已获发送权**；后台私信已接入统一决策与 P6-A/B，公开评论/@ 目前只复用文本安全校验，尚未接入多气泡／延期；情绪和人格只从 Life Voice 装配一次。
-- P6-A/B 共用 `SocialConversationContinuity` 的账号、UID、渠道与线程隔离意图，不另造私信和评论定时器；每条真实发送仍经原有 SocialPolicyGate、限额、退订、真实回执。
+- 新的回复／延迟／续聊必须先走 `SocialAutonomyDecisionContract`，它**不得被当作已获发送权**；后台私信与公开评论/@ 均已接入统一决策与 P6-A/B，但公开 P6 默认关闭、私信 P6 默认开启且不授予额外写权限；情绪和人格只从 Life Voice 装配一次。
+- P6-A/B 共用 `SocialConversationContinuity` 的账号、UID、渠道与线程隔离意图；`SocialInteractionRhythm` 统一约束三类后台自动发送（跨渠道冷却、滚动24小时每 UID 次数），配置项详见 `docs/architecture/2.7.0-dev2-public-p6-rhythm.md`，不另造私信和评论定时器；每条真实发送仍经原有 SocialPolicyGate、限额、退订、真实回执。
 - [2.7.0 统一自主社交架构设计](docs/architecture/2.7.0-unified-social-agency-plan.md) 明确区分已实现接口和未来生产接线；画像属于关系证据而非发言权限，兴趣缺席不等于不感兴趣。
 - 不能把允许回应入站 @ 理解成可主动 @ 他人；关闭暗号审核不会授予陌生人自动私信权限，陌生人外发仍须主人明确开启 `dmStrangerAutonomyEnabled`（独立、默认关闭的新授权）；旧版 `dmStrangerOnce` 只保留原有有限次数、单条即时回复权限，绝不能在升级时隐式扩为多条气泡或延迟续聊。
 
