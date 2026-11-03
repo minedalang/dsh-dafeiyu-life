@@ -24,7 +24,7 @@ test('正式版标识与 npm 发行清单一致，旧版说明只留历史归档
 
 test('安装文案有三种市场路径，模型说明简洁且不再推荐使用 dev 分支',()=>{
   const readme=read('README.md')
-  const install=readme.split('## 🚀 安装与首次设置')[1].split('### 老用户升级：')[0]
+  const install=readme.split('## 🚀 首次使用教程')[1].split('## 🌈 未来规划')[0]
   assert.match(install,/dsh plugin --profile desktop add dsh-dafeiyu-life/)
   assert.match(install,/在 `dshmarket` 插件中搜索/)
   assert.match(install,/https:\/\/dshmarket\.com\/zh\//)

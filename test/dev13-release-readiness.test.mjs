@@ -95,9 +95,11 @@ test('默认反思提示词不流水账、不凭空恢复、不虚构制作视�
 
 test('默认值班提示词与正式文档不允许从任务审计档案绕过遗忘',()=>{
  assert.match(charter,/不能直接读归档补回已遗忘细节/)
- assert.match(readme,/永久事实档案（仅备份 \/ 管理审计）/)
- assert.match(readme,/日常 AI 不可直接回读/)
- assert.match(readme,/AI 辅助回忆（可选，默认关闭）/)
+ // User-facing README stays short; audit details belong in architecture docs.
+ assert.match(readme,/会回忆，会遗忘，也会成长/)
+ assert.match(source('docs/architecture/life-memory-domain-reflection-v2.6.0-dev.4.md'),/永久事实档案.*仅管理端明确备份\/审计.*运行时不允许回读/)
+ assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/每日运行的 AI、自动反思与普通回忆工具不提供读取档案的 API/)
+ assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/可选 AI 辅助回忆/)
  assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/Release 前必做验收/)
  assert.match(packageInfo.version,/^(?:2\.5\.\d+|2\.6\.0|2\.6\.1|2\.6\.2)(?:-dev\.\d+)?$/)
  assert.ok(packageInfo.files.includes('RELEASE_NOTES_v2.6.2.md'))

@@ -89,7 +89,8 @@ test('dev.9 README 使用自由成长叙事，而非主人选择名单叙事',()
  const s=readFileSync(new URL('../README.md',import.meta.url),'utf8')
  assert.match(s,/自由结识世界里的每个人/)
  assert.doesNotMatch(s,/不是只有主人提前加入名单的人|不必先被主人加入白名单/)
- assert.match(s,/后续规划：P6/)
+ assert.match(s,/## 🌈 未来规划/)
+ assert.doesNotMatch(s,/后续规划：P6/)
 })
 
 test('关系昵称仅为短期展示缓存：旧库兼容、不能凭昵称新增用户或授予权限',()=>using(async({index,dir,clock})=>{

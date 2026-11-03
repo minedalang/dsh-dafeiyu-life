@@ -277,6 +277,15 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 #panel-life .todo-filter button{padding:7px 16px;font-size:13px}
 #panel-life .todo-filter button.is-selected{background:var(--action);border-color:var(--action);color:#fff}
 #panel-life #owner-todo-list{max-height:520px}
+/* 父待办在左、同源子待办在右。仅通过 parentTodoId / 已知 sourceKey 关联。 */
+.todo-parent-child-layout{display:grid;grid-template-columns:minmax(210px,34%) minmax(0,1fr);gap:12px;align-items:start}
+.todo-parent-pane,.todo-child-pane{min-width:0;display:grid;gap:8px;align-content:start}
+.todo-column-heading{font-size:13px;color:var(--muted);margin:0 0 5px}
+.todo-parent-choice{display:block;width:100%;text-align:left;white-space:normal;overflow-wrap:anywhere;padding:11px;border:1px solid var(--stroke);background:var(--panel);border-radius:10px;font-size:13px}
+.todo-parent-choice[aria-pressed="true"]{border-color:var(--action);background:var(--tint);box-shadow:inset 3px 0 var(--action)}
+.todo-child-pane .todo-item{margin:0}
+@media(max-width:730px){.todo-parent-child-layout{grid-template-columns:1fr}.todo-parent-pane{max-height:210px;overflow:auto;border-bottom:1px solid var(--stroke);padding-bottom:12px}}
+
 #panel-life .todo-item{border-left:4px solid var(--ui-indigo,#5257c9);padding:14px}
 #panel-life .todo-item[data-status="uncertain"]{border-left-color:var(--bad)}
 #panel-life .todo-item[data-status="deferred"]{border-left-color:var(--ui-amber,#b27e2a)}
@@ -893,7 +902,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p class="muted">后台 AI 可从已存在的只读待办中选择执行、延期、忽略或跳过，也可在证据充足时请求人生反思。不会自动点赞、关注、收藏、发评论或发私信；独立于自动刷视频。新安装默认开启，旧用户保留原有开关状态。旧版「定时提醒主 Session」机制已停用。</p>
 <div class="fields"><div><label for="autonomous-planner-enabled">独立自主调度</label><select id="autonomous-planner-enabled"><option value="false">关闭（省调用）</option><option value="true">开启 · 只读任务和反思（新安装推荐）</option></select></div>
 <div><label for="autonomous-planner-minutes">至少间隔（分钟，5–1440）</label><input id="autonomous-planner-minutes" max="1440" min="5" type="number" value="180"/></div>
-<div><label for="autonomous-planner-limit">每日最多 AI 自主决策（0–288，0 表示关闭）</label><input id="autonomous-planner-limit" max="288" min="0" type="number" value="4"/><small class="setting-note">只限制独立 AI 调度的模型调用；频率和活跃时段也会限制实际次数。提高额度可能增加模型费用，已有配置不会自动覆盖。</small></div>
+<div><label for="autonomous-planner-limit">每日最多 AI 自主决策（0–288，0 表示关闭）</label><input id="autonomous-planner-limit" max="288" min="0" type="number" value="4"/><small class="setting-note">只限制独立 AI 调度的模型调用；频率和活跃时段也会限制实际次数。提高额度可能增加模型费用，已有配置不会自动覆盖。</small></div><div><button id="autonomous-planner-recommended" type="button" class="life-action life-purple">使用较活跃的探索推荐值</button><small class="setting-note">填入开启、60 分钟间隔、每日 12 次自主决策；仍需点击下方「保存待办与自主调度设置」。只是增加考虑机会，不强制完成任务，也不自动打开私信回访。使用更多模型额度可能产生费用。</small></div>
 <div><label for="autonomous-planner-start">每日开始时（宿主当地小时）</label><input id="autonomous-planner-start" max="23" min="0" type="number" value="9"/></div>
 <div><label for="autonomous-planner-end">每日结束时（宿主当地小时，24=午夜）</label><input id="autonomous-planner-end" max="24" min="1" type="number" value="23"/></div></div>
 <p class="muted" id="autonomous-planner-status" role="status">尚未读取自主调度状态</p></div>
@@ -909,9 +918,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div><label for="owner-todo-followup-quiet-enabled">夜间静默</label><select id="owner-todo-followup-quiet-enabled"><option value="true">启用（默认）</option><option value="false">关闭</option></select></div>
 <div><label for="owner-todo-followup-quiet-start">静默开始小时（0～23）</label><input id="owner-todo-followup-quiet-start" type="number" min="0" max="23" value="22"/></div>
 <div><label for="owner-todo-followup-quiet-end">静默结束小时（0～23；与开始相同=不设静默）</label><input id="owner-todo-followup-quiet-end" type="number" min="0" max="23" value="9"/></div>
-</div><p class="muted">即使将冷却与发送间隔设为 0，仍受真实授权、平台限制、去重、意愿和回执安全约束。</p>
+</div><p class="muted">手动检查只处理已到重新考虑时间的回访，不会覆盖鱼鱼自主延期；即使将冷却与发送间隔设为 0，仍受真实授权、平台限制、去重、意愿和回执安全约束。</p>
 <p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p>
-<div class="toolbar"><button class="life-action" type="button" id="owner-todo-followup-check">立即检查回访（可能发送）</button></div><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
+<div class="toolbar"><button class="life-action" type="button" id="owner-todo-followup-check">检查到期回访（不跳过延期）</button></div><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
 <div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存待办与自主调度设置</button></div>
 </details>
 </div>
