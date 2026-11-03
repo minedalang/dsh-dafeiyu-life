@@ -32,10 +32,14 @@ test('Host schema 与运行时默认值逐字段保持一致（不只核对记�
  assert.match(host,/personaPrompt: z\.string\(\)\.default\(DEFAULT_PERSONA_PROMPT\)/)
 })
 
-test('dev.15 全新安装默认启用有限生活体验，但保持外部写入和额外检索模型关闭',()=>{
- for(const name of ['mainSessionMemorySemanticEnabled','socialAutoSend','ownerCommentSocialPublishEnabled']){
+test('2.6.2 全新安装只默认启用已授权好友视频私信推荐，公开写入及额外检索模型仍关闭',()=>{
+ for(const name of ['mainSessionMemorySemanticEnabled','ownerCommentSocialPublishEnabled']){
   assert.match(host,new RegExp(`${name}: z\\.boolean\\(\\)\\.default\\(false\\)`),name+' schema must default off')
   assert.match(host,new RegExp(`${name}:\\s*false`),name+' runtime fallback must default off')
+ }
+ for(const name of ['socialOutreachEnabled','socialLifeIntentEnabled','socialAutoSend']){
+  assert.match(host,new RegExp(`${name}: z\\.boolean\\(\\)\\.default\\(true\\)`),name+' schema enables bounded opt-in recipient sharing for new installs')
+  assert.match(host,new RegExp(`${name}:\\s*true`),name+' new-install recommendation default should be on')
  }
  for(const name of ['ownerDmAgentEnabled','ownerDmActionsEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicPublishEnabled']){
   assert.match(host,new RegExp(`${name}: z\\.boolean\\(\\)\\.default\\(true\\)`),name+' schema should enable the bounded owner Agent capability for fresh installs')
@@ -91,11 +95,13 @@ test('默认反思提示词不流水账、不凭空恢复、不虚构制作视�
 
 test('默认值班提示词与正式文档不允许从任务审计档案绕过遗忘',()=>{
  assert.match(charter,/不能直接读归档补回已遗忘细节/)
- assert.match(readme,/永久事实档案（仅备份 \/ 管理审计）/)
- assert.match(readme,/日常 AI 不可直接回读/)
- assert.match(readme,/AI 辅助回忆（可选，默认关闭）/)
+ // User-facing README stays short; audit details belong in architecture docs.
+ assert.match(readme,/会回忆，会遗忘，也会成长/)
+ assert.match(source('docs/architecture/life-memory-domain-reflection-v2.6.0-dev.4.md'),/永久事实档案.*仅管理端明确备份\/审计.*运行时不允许回读/)
+ assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/每日运行的 AI、自动反思与普通回忆工具不提供读取档案的 API/)
+ assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/可选 AI 辅助回忆/)
  assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/Release 前必做验收/)
- assert.match(packageInfo.version,/^(?:2\.5\.\d+|2\.6\.0|2\.6\.1)(?:-dev\.\d+)?$/)
- assert.ok(packageInfo.files.includes('RELEASE_NOTES_v2.6.1.md'))
+ assert.match(packageInfo.version,/^(?:2\.5\.\d+|2\.6\.0|2\.6\.1|2\.6\.2)(?:-dev\.\d+)?$/)
+ assert.ok(packageInfo.files.includes('RELEASE_NOTES_v2.6.2.md'))
  assert.ok(!packageInfo.files.includes('RELEASE_NOTES_v2.5.0.md'))
 })

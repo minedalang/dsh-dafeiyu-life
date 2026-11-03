@@ -548,15 +548,16 @@ async def bili_comment_thread(bvid: str, root: int, num: int = 20, target_rpid: 
 # ========== Tool 3: 获取字幕 ==========
 
 @tool()
-async def bili_subtitle(bvid: str) -> str:
+async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
     """
     获取B站视频的AI字幕（语音转文字）
 
     Args:
         bvid: 视频BV号，如"BV1uNk1YxEJQ"
-    
+        auto_vision_on_missing: 仅视频 Agent 可选，若无字幕且已授权识图则自动尝试预览帧，受原有额度约束
+
     Returns:
-        视频的完整字幕文本
+        字幕文本，或无字幕时的低清图片/受限视觉结果
     """
     cred = get_cred()
     v = video.Video(bvid=bvid, credential=cred)
@@ -573,6 +574,21 @@ async def bili_subtitle(bvid: str) -> str:
     subtitles = subtitle_list.get("subtitles", [])
 
     if not subtitles:
+        # Only the video Agent may opt in to this tool-level fallback. Ordinary
+        # DM/comment context fetches must never launch a visual model merely
+        # because the platform has no captions. The master vision switch,
+        # per-run limit and independent daily budget remain enforced inside
+        # bili_preview_vision.
+        if auto_vision_on_missing and os.environ.get('BILI_VISION_ENABLED') == '1':
+            observed = await bili_preview_vision(bvid)
+            marker = TextContent(type='text', text=json.dumps({
+                'bvid': bvid, 'message': '该视频没有字幕',
+                'visual_fallback': 'attempted',
+                'note': '低清图片不能证明看完视频，也不能证明听过音轨',
+            }, ensure_ascii=False))
+            if isinstance(observed, CallToolResult):
+                return CallToolResult(content=[marker, *observed.content])
+            return CallToolResult(content=[marker, TextContent(type='text',text=str(observed))])
         return json.dumps({"message": "该视频没有字幕"}, ensure_ascii=False)
 
     # 优先AI中文字幕
@@ -596,6 +612,18 @@ async def bili_subtitle(bvid: str) -> str:
 
     texts = [item.get("content", "") for item in sub_data.get("body", [])]
     full_text = "\n".join(texts)
+    # A subtitle track can exist while containing no meaningful language (empty
+    # body / attribution line). It is not proof that the video has no images.
+    if auto_vision_on_missing and os.environ.get('BILI_VISION_ENABLED') == '1' and (
+            not full_text.strip() or re.fullmatch(r'字幕\s*by.{0,40}', full_text.strip(), flags=re.I)):
+        observed = await bili_preview_vision(bvid)
+        marker = TextContent(type='text', text=json.dumps({
+            'bvid': bvid, 'message': '字幕轨内容不可用', 'visual_fallback': 'attempted',
+            'note': '只返回低清图片与可核验来源，不等于完整观看',
+        }, ensure_ascii=False))
+        if isinstance(observed, CallToolResult):
+            return CallToolResult(content=[marker, *observed.content])
+        return CallToolResult(content=[marker, TextContent(type='text',text=str(observed))])
 
     result = {
         "bvid": bvid,
@@ -2261,7 +2289,50 @@ def _record_meme_event(payload, bvid, target_rpid, chosen_name, chosen_reason, d
     except Exception as exc:
         print('梗图诊断写入失败：'+str(exc)[:100], file=sys.stderr)
 
-def _record_comment_in_ledger(payload, bvid, target_rpid, comment_text="", root=0):
+async def _verified_video_reply_recipient(aid, target_rpid, root, credential):
+    """Read-only verification of the exact comment being replied to.
+
+    For nested replies root identifies only the thread, NOT necessarily the
+    direct recipient. Never substitute the root author for the target author.
+    Errors only omit display metadata; they must not change send permissions.
+    """
+    target = str(target_rpid or '')
+    root_id = str(root or '')
+    if not re.fullmatch(r'[1-9]\d{5,29}', target): return None
+    if root_id not in ('', '0') and not re.fullmatch(r'[1-9]\d{5,29}', root_id): return None
+
+    def safe(row):
+        if not isinstance(row, dict) or str(row.get('rpid_str') or row.get('rpid') or '') != target:
+            return None
+        member = row.get('member') or {}
+        uid = str(member.get('mid') or '').strip()
+        if not re.fullmatch(r'[1-9]\d{0,18}', uid): return None
+        content = row.get('content') or {}
+        return {'uid': uid, 'name': _safe_line(member.get('uname'), 60),
+                'comment': _safe_line(content.get('message'), 180)}
+
+    thread_root = root_id if root_id not in ('', '0') else target
+    top = comment.Comment(oid=int(aid), type_=comment.CommentResourceType.VIDEO,
+                          rpid=int(thread_root), credential=credential)
+    # The root of a top-level reply is itself the exact target.
+    # A nested reply must be found by *target* rpid among the thread replies.
+    pages = 3 if thread_root != target else 1
+    for page in range(1, pages + 1):
+        data = await top.get_sub_comments(page_index=page, page_size=20)
+        if not isinstance(data, dict): return None
+        head = data.get('root')
+        if not isinstance(head, dict) or str(head.get('rpid_str') or head.get('rpid') or '') != thread_root:
+            return None
+        if thread_root == target: return safe(head)
+        replies = data.get('replies') or []
+        for item in replies:
+            found = safe(item)
+            if found: return found
+        if len(replies) < 20: break
+    return None
+
+
+def _record_comment_in_ledger(payload, bvid, target_rpid, comment_text="", root=0, recipient=None):
     """由实际发送回执直接记入 seen.md，禁止把记账职责交给 Agent 自觉执行。
 
     B站 接受提交 != 评论公开可见；这里只记已获 success 回执的事实。
@@ -2292,16 +2363,26 @@ def _record_comment_in_ledger(payload, bvid, target_rpid, comment_text="", root=
         head = "\n## 评论记录（发送工具自动写入；成功回执不代表公开可见）\n\n"
         if "## 评论记录（发送工具自动写入" in existing:
             head = ""  # 只有第一次落盘追加新分区
-        row = "| " + " | ".join([bv, rid, root_id, stamp, summary]) + " |\n"
+        cells = [bv, rid, root_id, stamp, summary]
+        # Keep recipient identity alongside the *same* platform-confirmed
+        # outgoing receipt, not in a second database that can drift or race.
+        # Legacy five-column rows remain supported.
+        if is_reply and rid != '?' and isinstance(recipient, dict):
+            uid = str(recipient.get('uid') or '')
+            if re.fullmatch(r'[1-9]\d{0,18}', uid):
+                cells.extend(['recipient_uid=' + uid,
+                              'recipient_name=' + _safe_line(recipient.get('name'), 60),
+                              'recipient_comment=' + _safe_line(recipient.get('comment'), 180)])
+        row = "| " + " | ".join(cells) + " |\n"
         _append_home("seen.md", head + row)
     except Exception as exc:
         # 不得把已经发出去的评论说成失败：可能引发 Agent 重复发送。
         print("评论判重记录写入失败：" + str(exc)[:120], file=sys.stderr)
 
 
-def _comment_result(payload, bvid, target_rpid, diagnostic=None, comment_text="", root=0, dynamic_ai_decision=False, dynamic_authorized=False, dynamic_reason=""):
+def _comment_result(payload, bvid, target_rpid, diagnostic=None, comment_text="", root=0, dynamic_ai_decision=False, dynamic_authorized=False, dynamic_reason="", recipient=None):
     """发送成功统一自动写判重表；动态决策诊断只存简短理由和回执状态。"""
-    _record_comment_in_ledger(payload, bvid, target_rpid, comment_text, root)
+    _record_comment_in_ledger(payload, bvid, target_rpid, comment_text, root, recipient)
     _record_mention_event(payload, bvid, target_rpid, diagnostic, dynamic_ai_decision, dynamic_authorized, dynamic_reason, root, comment_text)
     return json.dumps(payload, ensure_ascii=False)
 
@@ -2544,17 +2625,29 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
                            "error": "刷视频任务只能发布顶层评论；回复评论请使用后台互动"}, ensure_ascii=False)
     _deny = _guard("bili_reply")
     if _deny: return _deny
+    verified_recipient = None
     def _result(payload, posted_bvid, reply_to_rpid, mention_diag=None):
         _record_meme_event(payload, posted_bvid, reply_to_rpid, meme_image_name,
                            meme_image_reason, no_meme_image_reason, text)
-        return _comment_result(payload, posted_bvid, reply_to_rpid, mention_diag, text, root, sync_dynamic_ai_decision, sync_to_dynamic, sync_dynamic_reason)
+        return _comment_result(payload, posted_bvid, reply_to_rpid, mention_diag, text, root, sync_dynamic_ai_decision, sync_to_dynamic, sync_dynamic_reason, recipient=verified_recipient)
     cred = get_cred()
     if not aid:
         v = video.Video(bvid=bvid, credential=cred)
         info = await v.get_info()
-        aid = info["aid"]
+        aid = info['aid']
 
     try:
+        if int(rpid or 0) > 0:
+            try:
+                # A caller-provided AID is only a hint. Verify it really
+                # belongs to this BV before associating another user's UID.
+                # Failure must NOT turn a previously authorized send into a
+                # blocked or retryable send attempt: identity is display-only.
+                vinfo = await video.Video(bvid=bvid, credential=cred).get_info()
+                if int(vinfo.get('aid') or 0) == int(aid):
+                    verified_recipient = await _verified_video_reply_recipient(aid, rpid, root, cred)
+            except Exception:
+                verified_recipient = None
         mode, targets = _mention_settings(mention_mode, mention_targets)
         # 允许只填 UID 的 @ 好友；发出前向 B站核对真实昵称。
         # 未拿到真实昵称时不生成假的 @UID 字样，也不阻塞普通文字评论。

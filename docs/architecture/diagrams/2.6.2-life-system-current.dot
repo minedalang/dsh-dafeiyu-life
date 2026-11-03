@@ -1,0 +1,47 @@
+digraph DSH262 {
+  graph [rankdir=LR,bgcolor="#ffffff",fontname="Noto Sans CJK SC",pad="0.30",nodesep="0.42",ranksep="0.70",splines=polyline,label="大肥鱼 2.6.2 · 当前实现与事实边界（源码审计）",labelloc=t,fontsize=21,fontcolor="#23304a"];
+  node [shape=box,style="rounded,filled",fontname="Noto Sans CJK SC",fontsize=11,margin="0.15,0.11",color="#d1d8e6",fillcolor="#f5f7fc",fontcolor="#18283f"];
+  edge [color="#8b98ac",arrowsize=0.65,fontsize=9,fontname="Noto Sans CJK SC"];
+  subgraph cluster_entry {label="真实入口与数据来源";style="rounded,filled";color="#a9c0e9";fillcolor="#f1f5fc";
+    bilibili[label="B站只读查询 / 视频选择\n公开评论 / 已核验私信"];
+    main[label="主 Session\n主人明确指令和会话"];
+    receipts[label="真实执行 / 发送回执\n来源 ID、UID、时间"];
+  }
+  subgraph cluster_gate {label="权限、意愿与业务协调";style="rounded,filled";color="#cbbaf3";fillcolor="#f8f5fe";
+    social[label="SocialPolicyGate / ContextAssembler\n分域身份、权限与上下文"];
+    todo[label="OwnerTodos → AutonomousPlanner\n父子待办 / 有界自主探索"];
+    out[label="Owner DM / SocialIntent / Followup\n表达、延期、沉默"];
+    checks[label="VerifiedLifeFacts 统一核验\n精确 BV / 视听类型",fillcolor="#eee6fe",color="#b4a0e1"];
+  }
+  subgraph cluster_state {label="已有生活记录（不是一份无限记忆）";style="rounded,filled";color="#a0d6ca";fillcolor="#f1faf7";
+    life[label="LifeMemoryGateway\n可衰减 episodic 副本"];
+    memory[label="Identity LongTermMemory\n长期认识 / 约定"];
+    interests[label="life-memory/interests.json\n成熟后天兴趣"];
+    people[label="social-relationships/*.sqlite3\n真实互动元数据（非权限）"];
+    follow[label="OwnerTodos / Followup 账本\n状态、去重与发送回执"];
+  }
+  subgraph cluster_view {label="只读管理展示与实际发送";style="rounded,filled";color="#f1cd9e";fillcolor="#fff9f1";
+    garden[label="记忆花园 4 分类\n来源合并 · 不写新记忆",fillcolor="#fff1d9"];
+    send[label="独立写入许可与真实发送\n不确定回执禁止重放"];
+  }
+  bilibili -> social; main -> todo [label="主 Session 已授权待办"]; social -> todo; social -> out;
+  bilibili -> life [label="可验证经历"];
+  receipts -> life [label="确认后投影"];
+  receipts -> follow;
+  todo -> follow; todo -> out [label="候选/完成情况"];
+  life -> memory [label="反思后凝练"];
+  bilibili -> interests [label="真实入选 BV / 多日门槛"];
+  bilibili -> people [label="真实互动计数"];
+  life -> garden; memory -> garden; interests -> garden; people -> garden;
+  receipts -> checks [label="成功执行回执（BV / 感官类型）"];
+  out -> checks; checks -> send [label="通过后"];
+  follow -> out [label="当前完成凭证"];
+  lifevoice [label="Life Voice Context\n唯一人格 + 成长 + 连续情绪",fillcolor="#e4f3ff",color="#9ac6e0"];
+  lifevoice -> out [label="统一角色核心"];
+  lifevoice -> main [label="宿主人格上下文",style=dashed];
+  lifevoice -> social [style=dashed,label="当前关系表达"];
+  memory -> social [label="当前可召回范围",style=dashed,color="#d6a0cd"];
+  people -> social [label="仅熟悉度提示",style=dashed];
+  target [label="未来：通用语义判真与语境绑定\n（当前高置信规则不覆盖所有表达）",shape=box,style="dashed,rounded",color="#d08d8d",fontcolor="#994f4f",fillcolor="white"];
+  checks -> target [style=dashed,color="#d08d8d",label="尚未覆盖"];
+}

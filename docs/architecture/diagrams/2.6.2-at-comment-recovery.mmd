@@ -1,0 +1,16 @@
+flowchart TD
+    A[Authenticated B站 @ notice] --> B[Normalize UID, rpid, time, BV/AID]
+    B --> C{Official video locator and comment ID?}
+    C -- No --> D[Diagnostic: source location missing, no send]
+    C -- Yes --> E{Within 24h, enabled and authorized?}
+    E -- No --> F[Baseline / policy diagnostic, no send]
+    E -- Yes --> G{Meaningful notification body?}
+    G -- Yes --> H[Existing verified context and reply pipeline]
+    G -- No --> I[Read original comment via official B站 MCP]
+    I --> J{Exact BV + rpid + sender UID verified?}
+    J -- No --> K[Reject author mismatch or bounded retry for read errors]
+    J -- Yes --> L[Preserve comment text with safe mention parsing]
+    L --> H
+    H --> M[Video metadata, subtitles, comments under read budget]
+    M --> N[One fish persona + social willingness + model decision]
+    N --> O[Permission, quota, dedupe and confirmed send receipt]

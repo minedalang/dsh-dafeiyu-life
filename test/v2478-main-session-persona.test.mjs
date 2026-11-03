@@ -18,7 +18,7 @@ function fakeAgent(){
 }
 const defineTool=x=>x
 
-test('只要选为主 Session，即使关闭长期记忆也会挂载大肥鱼人格与审核成长记忆',()=>{
+test('只要选为主 Session，即使关闭长期记忆也只挂载一份带成长的人格',()=>{
   const dir=temp(),f=fakeAgent()
   try{
     const mem=createLongTermMemory({
@@ -26,8 +26,7 @@ test('只要选为主 Session，即使关闭长期记忆也会挂载大肥鱼人
       agents:{get:()=>f.agent,list:()=>[f.agent]},
       getConfig:()=>({mainSessionId:'abc',mainSessionMemoryEnabled:false}),
       defineTool,
-      getIdentityPrompt:()=> '你就是大肥鱼本人。不要用通用助手开场。主人叫浪哥。',
-      getGrowthPrompt:()=> '【成长】我现在更喜欢简短自然地聊天。',
+      getIdentityPrompt:()=> '你就是大肥鱼本人。不要用通用助手开场。主人叫浪哥。【成长】我现在更喜欢简短自然地聊天。',
     })
     mem.start()
     assert.equal(f.sections.length,2)
@@ -36,9 +35,8 @@ test('只要选为主 Session，即使关闭长期记忆也会挂载大肥鱼人
     assert.match(identity.text(),/大肥鱼本人/)
     assert.match(identity.text(),/不要用通用助手开场/)
     assert.ok(f.sections.some(x=>x.name==='dafeiyu-life-recall-hint'))
-    const growth=f.contexts.find(x=>x.name==='dafeiyu-growth')
-    assert.ok(growth)
-    assert.match(growth.text(),/简短自然/)
+    assert.match(identity.text(),/简短自然/)
+    assert.ok(!f.contexts.some(x=>x.name==='dafeiyu-growth'))
     assert.ok(f.contexts.some(x=>x.name==='dafeiyu-owner-todos'))
     assert.deepEqual(f.tools.map(x=>x.name),['dafeiyu_life_recall','dafeiyu_todo_list','dafeiyu_todo_add','dafeiyu_todo_update','dafeiyu_todo_execute'])
     assert.equal(mem.status().identityMounted,true)
@@ -47,7 +45,7 @@ test('只要选为主 Session，即使关闭长期记忆也会挂载大肥鱼人
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('开启长期记忆后人格、成长、召回和 remember 同时存在',()=>{
+test('开启长期记忆后成长仍由唯一人格提供，长期记忆召回及 remember 仍存在',()=>{
   const dir=temp(),f=fakeAgent()
   try{
     const mem=createLongTermMemory({
@@ -55,13 +53,13 @@ test('开启长期记忆后人格、成长、召回和 remember 同时存在',()
       agents:{get:()=>f.agent,list:()=>[f.agent]},
       getConfig:()=>({mainSessionId:'abc',mainSessionMemoryEnabled:true,mainSessionMemoryHalfLifeDays:30,mainSessionMemoryThreshold:.35,mainSessionMemoryMaxItems:6,mainSessionMemoryMaxChars:800,mainSessionMemoryDailyQuota:8,mainSessionMemoryFactsMax:2}),
       defineTool,
-      getIdentityPrompt:()=> '你就是大肥鱼本人。',
-      getGrowthPrompt:()=> '【成长】有一点嘴硬。',
+      getIdentityPrompt:()=> '你就是大肥鱼本人。【成长】有一点嘴硬。',
     })
     mem.start()
     assert.ok(f.sections.some(x=>x.name==='dafeiyu-main-identity'))
     assert.ok(f.sections.some(x=>x.name==='dafeiyu-memory-hint'))
-    assert.ok(f.contexts.some(x=>x.name==='dafeiyu-growth'))
+    assert.ok(!f.contexts.some(x=>x.name==='dafeiyu-growth'))
+    assert.match(f.sections.find(x=>x.name==='dafeiyu-main-identity').text(),/有一点嘴硬/)
     assert.ok(f.contexts.some(x=>x.name==='dafeiyu-memory'))
     assert.equal(f.tools[0]?.name,'dafeiyu_remember')
     assert.equal(mem.status().identityMounted,true)
@@ -87,7 +85,7 @@ test('主 Session 人格来源直接使用现有 personaPrompt、characterLore �
   assert.match(index,/getIdentityPrompt/)
   assert.match(index,/effectivePersonaPrompt\(cfg\.personaPrompt\)/)
   assert.match(index,/normalizeCharacterLore\(cfg\.characterLore\)/)
-  assert.match(index,/scene:'chat'/)
+  assert.match(index,/scene:'main'/)
   assert.match(index,/不是通用 AI 助手/)
   assert.match(index,/不要用“有什么需要我帮忙的吗”/)
 })

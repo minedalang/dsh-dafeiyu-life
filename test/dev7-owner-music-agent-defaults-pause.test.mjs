@@ -18,7 +18,7 @@ const row=(text,id='r1',extras={})=>({incoming:true,senderUid:owner,messageId:ow
 test('主人自然推荐要由现有 AI 生成有证据的只读待办，不再使用固定歌手正则',()=>{
   const input={type:'search_videos',topic:'孙燕姿 歌曲',title:'有空听听孙燕姿的歌（主人推荐）',evidence:'推荐你有时候听听孙燕姿的歌'}
   const text='我也挺开心 给你更新了好几个版本 推荐你有时候听听孙燕姿的歌 好听的要死'
-  assert.deepEqual(validateOwnerAiTodo(input,text),input)
+  assert.deepEqual(validateOwnerAiTodo(input,text),{...input,searchGoal:'music'})
   assert.equal(validateOwnerAiTodo({...input,topic:'周杰伦 歌曲'},text),null)
   assert.equal(validateOwnerAiTodo({...input,type:'dm_friend'},text),null)
   assert.doesNotMatch(source('index.js'),/queueOwnerDmMusicSuggestion/)
