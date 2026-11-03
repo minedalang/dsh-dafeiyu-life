@@ -1074,7 +1074,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="settings-stack">
 <div class="settings-section" id="unified-friends">
 <h4>🐳 白名单用户权限 · 统一名册</h4>
-<p class="muted">这里只管理白名单用户的私信、主动推荐和 @ 特殊许可；自然产生的友情请前往「生活与成长 → 逐渐熟悉的人」查看，关系成长本身不取决于这份名册。<strong>默认推荐渠道为私信</strong>，公开 @ 仅在你为该好友选择后才有资格被考虑。原有的三套名单会兼容合并，不会自动替已有好友增加权限。昵称只是备注；勾选唯一授权主人会直接更改主人 UID，具体点赞与公开发布仍需单独开启权限。</p>
+<p class="muted">这里只管理白名单用户的私信、主动推荐和 @ 特殊许可；自然产生的友情请前往「生活与成长 → 逐渐熟悉的人」查看，关系成长本身不取决于这份名册。<strong>默认推荐渠道为私信</strong>，主动 @ 视频推荐仍需该好友的独立授权；接收别人 @ 鱼鱼不看好友白名单。原有的三套名单会兼容合并，不会自动替已有好友增加权限。昵称只是备注；勾选唯一授权主人会直接更改主人 UID，具体点赞与公开发布仍需单独开启权限。</p>
 <details class="inset social-advanced"><summary>🌱 社会认知 · 候选灵感与好友邀请</summary>
 <p class="muted">陌生人的私信视频心愿只是短期探索灵感，不回信、不建陌生人画像、不产生任务或公开 @；好友分享 BV / 通过 @ 请求“有空看看”，会形成可到期的只读观看邀请。大肥鱼好奇心充足时可选择审阅，<strong>默认不自动查看，不保证已观看</strong>。</p>
 <label class="checkline"><input id="social-stranger-inspiration" type="checkbox">允许读取陌生人私信里的短期视频灵感（默认关闭）</label>
@@ -1198,11 +1198,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div><p class="muted">重要区别：接口返回成功、本地评论账本有记录，都不等于评论当前一定对其他用户公开可见。此处不会把未向 B 站核验的记录标成“平台可见”。</p>
 <div class="settings-stack">
 <div class="settings-section"><h4>被 @ 邀请（默认关闭）</h4>
-<p class="muted">这是公开回复权限：监听 @ 后由 AI 决定是否在评论区回话，且受评论额度限制。<strong>仅记录好友 @ 中的偏好反馈不需要开启公开回复</strong>，请在「社交互动 → 白名单用户权限」启用只读监听。首次开启不会回复旧通知。</p>
+<p class="muted">开启后，来自任何已核实 UID 的新 @ 都可以进入鱼鱼的自主回复判断；并不保证回复。仍遵守时效、上下文核验、评论额度及发送权限。<strong>只读收集授权好友的视频偏好不需要开启公开回复</strong>。首次开启不回复历史通知；鱼鱼不会因此获得主动 @ 别人的权限。</p>
 <div class="checkline"><input type="checkbox" id="comment-at-enabled"><label for="comment-at-enabled">开启被 @ 邀请监听</label></div>
-<div class="fields"><div><label for="comment-at-mode">回应范围</label><select id="comment-at-mode"><option value="whitelist">仅白名单用户（推荐）</option><option value="all">所有人</option></select></div>
-<div hidden><label for="comment-at-whitelist">被 @ 白名单（由可信白名单用户名册同步）</label><textarea id="comment-at-whitelist" rows="4"></textarea></div></div>
-<p class="muted">可在「社交互动 → 白名单用户权限」统一管理允许邀请的 UID。<strong>通知是否被识别、为什么没有回复</strong>，请到「运行诊断 → @ 邀请处理诊断」查看。</p>
+<p class="muted">回复对象不再需要白名单；好友名册中的 @ 意愿开关只控制已授权好友的只读偏好观察。<strong>通知是否被识别、为什么没有回复</strong>，请到「运行诊断 → @ 邀请处理诊断」查看。</p>
 </div>
 <div class="settings-section"><h4>当前视频评论上下文（不再独立轮询热评）</h4><p class="muted">旧版持续扫描最近看过的视频热评已停用。只有收到相关评论/@ 通知、AI 先决定值得接话后，才读取该视频其他热门评论；原创视频评论按刷视频 Agent 当轮判断。</p><div class="fields">
 <div hidden><input id="comment-watch-top" type="checkbox" disabled></div>

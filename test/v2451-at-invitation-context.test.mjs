@@ -14,15 +14,16 @@ test('@ 通知必须可定位、不是自己、提到当前账号且来自视频
  const all=normalizeAtNotifications({...raw([notice(1),notice(2,self),{...notice(3),item:{...notice(3).item,at_details:[{mid:'999'}]}}, {...notice(4),item:{...notice(4).item,business_id:11}}]),likes:{items:[notice(8)]}},self);
  assert.equal(all.length,1);assert.equal(all[0].uid,uid);assert.equal(all[0].kind,'at');assert.equal(all[0].root,'888');
 });
-test('白名单模式仅回复名单内的新@；首次开启将已有通知基线化',async()=>{
+test('旧白名单设置不再限制新@；首次开启仍基线化历史通知',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'v2451-at-'));let notifications=[notice(1)],sent=[],prompts=[];
  try {
  const cfg={watchReplies:false,watchTop:false,watchAt:true,atMode:'whitelist',atWhitelist:uid,replyPerPoll:3,replyPerDay:50,globalDailyLimit:1000};
  const runner=createCommentInteract({dataDir:dir,getConfig:()=>cfg,selfUid:async()=>self,getAtNotifications:async()=>raw(notifications),getOwnComments:async()=>({top:[],nested:[]}),getVideos:async()=>[],getComments:async()=>({comments:[]}),getVideoContext:async()=>({usable:true,text:'实际视频标题、热门评论和当前楼层'}),generateReply:async(x)=>{prompts.push(x);return '好耶，来看看！';},send:async x=>{sent.push(x);return {ok:true,rpid:'9999'}}});
  await runner.poll({mentions:true});assert.equal(sent.length,0);
  notifications=[notice(1),notice(2,'999'),notice(3)];
- await runner.poll({mentions:true});assert.equal(sent.length,1);assert.equal(prompts[0].mode,'at');assert.match(prompts[0].context,/实际视频标题/);
- await runner.poll({mentions:true});assert.equal(sent.length,1);
+ await runner.poll({mentions:true});assert.equal(sent.length,2);assert.equal(prompts[0].mode,'at');assert.match(prompts[0].context,/实际视频标题/);
+ assert.deepEqual(sent.map(x=>x.uid).sort(),['456','999']);
+ await runner.poll({mentions:true});assert.equal(sent.length,2);
  } finally {await rm(dir,{recursive:true,force:true})}
 });
 test('没有取得可信的视频和新评论时@不发送；AI沉默时也不发送',async()=>{

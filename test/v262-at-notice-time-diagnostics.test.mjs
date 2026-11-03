@@ -35,10 +35,10 @@ test('2026-10-26 @ fetched on 2026-11-03 is expired, never treated as a new whit
     assert.deepEqual([state.atLastFetch.rawCount,state.atLastFetch.recognized,state.atLastFetch.stale,state.atLastFetch.newlySeenRecent],[1,1,1,0]);
   });
 });
-test('new in-window @ with non-whitelisted UID is correctly rejected as non-whitelist',async()=>{
+test('旧白名单为空也不会过滤新 @；真实性/上下文验证仍必须进行',async()=>{
   await fixture(async({runner,setItems,read})=>{
     setItems([notice(14,now-60000)]);await runner.poll();
-    const state=await read();assert.equal(state.atDiagnostics.find(e=>e.id==='at:14').reason,'not_in_whitelist');
+    const state=await read();assert.equal(state.atDiagnostics.find(e=>e.id==='at:14').reason,'waiting_for_video_context');
     assert.equal(state.atLastFetch.newlySeenRecent,1);
   });
 });

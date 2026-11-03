@@ -37,7 +37,7 @@
 
 ## 2.7.0 社交自主统一职责（开发门禁）
 
-- 新的回复／延迟／续聊必须先走 `SocialAutonomyDecisionContract`，当前只有纯契约接口，**不得把它当作已获发送权**；情绪和人格只从 Life Voice 装配一次。
+- 新的回复／延迟／续聊必须先走 `SocialAutonomyDecisionContract`，它**不得被当作已获发送权**；公开评论已复用同一契约的文本安全校验，但 P6 多气泡／延期尚未接线；情绪和人格只从 Life Voice 装配一次。
 - P6-A/B 共用 `SocialConversationContinuity` 的账号、UID、渠道与线程隔离意图，不另造私信和评论定时器；每条真实发送仍经原有 SocialPolicyGate、限额、退订、真实回执。
 - [2.7.0 统一自主社交架构设计](docs/architecture/2.7.0-unified-social-agency-plan.md) 明确区分已实现接口和未来生产接线；画像属于关系证据而非发言权限，兴趣缺席不等于不感兴趣。
 - 不能把允许回应入站 @ 理解成可主动 @ 他人，也不能通过关闭暗号审核隐式打开陌生人自动外发。

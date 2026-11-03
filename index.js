@@ -290,6 +290,7 @@ export const Config = !z ? undefined : z.object({
   ownerCommentPublishEnabled: z.boolean().default(false).extra('volatile',true), // dev.7 legacy setting; never grants new autonomous posting
   ownerCommentSocialPublishEnabled: z.boolean().default(false).extra('volatile',true), // dev.8 requires fresh opt-in
   ownerCommentNaturalAckEnabled: z.boolean().default(false).extra('volatile',true),
+  // Backward-compatible only: legacy incoming @ reply list no longer gates responses.
   commentAtMode: z.string().default('whitelist').extra('volatile',true),
   commentAtWhitelist: z.string().default('').extra('volatile',true),
   commentTopCount: z.natural().default(5).extra('volatile', true),
@@ -3722,7 +3723,6 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         replyAt: cfg.commentAtEnabled === true, ownerCommentAgent:cfg.ownerCommentAgentEnabled===true,ownerUid:String(cfg.dmOwnerUid||''),
         diagAtInviteEnabled:cfg.diagAtInviteEnabled!==false,
         diagReplyInboxEnabled:cfg.diagReplyInboxEnabled!==false,
-        atMode:cfg.commentAtMode,atWhitelist:(()=>{try{const f=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory));return f.length||touchedKeys.has('friendDirectory')?f.filter(x=>x.atInvite===true).map(x=>x.uid).join('\n'):cfg.commentAtWhitelist}catch{return cfg.commentAtWhitelist}})(),
         topCount: cfg.commentTopCount, topVideoCount: cfg.commentTopVideoCount,
         replyPerPoll: cfg.commentReplyPerPoll, replyPerDay: cfg.commentReplyPerDay,
         globalDailyLimit: cfg.commentDailyLimit,
