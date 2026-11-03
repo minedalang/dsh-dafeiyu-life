@@ -105,6 +105,18 @@ test('新消息取消同一人同一线程的未执行续聊，其他人和线�
   assert.deepEqual(new Set(due.map(x => x.id)), new Set([b.id, c.id]))
 }))
 
+test('到期的续聊预约会被明确标记 expired，不会永久留在 scheduled', () => temp(dir => {
+  let clock=1770000000000
+  const ledger=createSocialContinuityLedger({dataDir:dir,accountUid:'10001',now:()=>clock})
+  const r=ledger.schedule({uid:'10010',channel:'dm',threadKey:'a',sourceEventId:'expired-1',purpose:'silence-reconsideration',
+    notBefore:clock+60000,expiresAt:clock+120000})
+  assert.equal(r.scheduled,true)
+  clock+=121000
+  assert.deepEqual(ledger.due(),[])
+  assert.equal(ledger.status().counts.expired,1)
+  assert.equal(ledger.status().counts.scheduled,0)
+}))
+
 const DAY = 86400000
 
 test('已领取但未收到可信回执不能自动重复发送；退出时仍显示 claimed', () => temp(dir => {

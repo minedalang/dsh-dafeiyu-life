@@ -32,7 +32,7 @@ test('manage HTML and JS are served from same DSH route without extra port or pr
    assert.match(h.headers['content-security-policy'],/img-src 'self'/,'same-origin image previews must be allowed by CSP')
    assert.match(h.text,/成长记忆/)
    assert.match(h.text,/梗知识库/)
-   assert.match(h.text,/限额聊天申请/)
+   assert.match(h.text,/严格暗号审核记录/)
    assert.match(h.text,/manage\.js/)
    assert.match(h.text,/运行诊断/)
    assert.match(h.text,/每日报告/)

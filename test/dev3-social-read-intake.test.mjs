@@ -88,7 +88,7 @@ test('生产入口从同一次社交 AI 输出 intake，不再在 AI 之前用�
  const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const batch=readFileSync(new URL('../lib/interaction-batch.mjs',import.meta.url),'utf8')
  assert.match(source,/intakeAiReadProposal/)
- assert.match(source,/allowTodoIntake:true/)
+ assert.match(source,/allowTodoIntake:req\.trigger!=='scheduled'/,'scheduled follow-ups must not duplicate a todo intake from the original DM')
  assert.match(batch,/onTodoProposal\(\{todoDisposition/)
  assert.doesNotMatch(source,/intakePublicReadProposal|parsePublicReadProposal|hasExplicitVideoRecommendation/)
  assert.match(source,/recommendationEligible=incoming\.filter/)

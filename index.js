@@ -48,6 +48,7 @@ import { resolveUid } from './lib/uid.mjs'
 import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch } from './lib/dm.mjs'
 import { ensureUv } from './lib/uvfetch.mjs'
 import { createDmAutoReply } from './lib/dm-autoreply.mjs'
+import { extractBiliDmReceiptId } from './lib/dm-send-receipt.mjs'
 import { receiveRecommendations, listRecommendationCandidates } from './lib/video-recommendations.mjs'
 import { intakeAiReadProposal } from './lib/social-todo-intake.mjs'
 import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/owner-todos.mjs'
@@ -268,12 +269,13 @@ export const Config = !z ? undefined : z.object({
   dmOwnerUid: z.natural().default(0).extra('volatile', true),
   /** 允许无限多轮 AI 对话的用户 UID，多行或逗号分隔；不设总轮数上限，但限速 */
   dmWhitelist: z.string().default('').extra('volatile', true),
-  /** 需要明确开启：非白名单首次私信只自动回复一条欢迎消息 */
-  dmStrangerOnce: z.boolean().default(false).extra('volatile', true),
+  /** 历史字段名保留兼容：需要主人明确开启，允许鱼鱼自主考虑并回复陌生人私信（不再是一条欢迎消息） */
+  dmStrangerOnce: z.boolean().default(false).extra('volatile', true), // legacy: previously consented to a bounded one-shot stranger DM, not ongoing conversations
+  dmStrangerAutonomyEnabled: z.boolean().default(false).extra('volatile', true), // new opt-in for ongoing autonomous stranger DM
   dmStrangerText: z.string().default('').extra('volatile', true), // deprecated: first DM now uses the existing AI reply call
-  dmStrangerMaxReplies: z.natural().default(1).extra('volatile', true),
+  dmStrangerMaxReplies: z.natural().default(1).extra('volatile', true), // only active when optional strict rice-code approval is enabled
   dmStrangerFirstFixed: z.boolean().default(false).extra('volatile', true), // deprecated: all enabled DM tiers now use the same AI reply call
-  dmApprovalEnabled: z.boolean().default(false).extra('volatile',true),
+  dmApprovalEnabled: z.boolean().default(false).extra('volatile',true), // optional strict approval mode; off by default
   dmApprovalPhrase: z.string().default('白饭🍚').extra('volatile',true),
   dmApprovedTotalLimit: z.natural().default(50).extra('volatile',true),
   dmApprovedDailyLimit: z.natural().default(10).extra('volatile',true),
@@ -613,7 +615,7 @@ function reportMeta() {
   const DEFAULTS = {
     masterEnabled: true,
     dmWatch: true, dmWatchMinutes: 1, commentReplyWatchMinutes: 3, commentAtWatchMinutes: 3, commentTopWatchMinutes: 5, dmReplyPerDay: 0, dmContextMessages: 40, dmOwnerUid: 0,
-    dmWhitelist: '', dmStrangerOnce: false, dmStrangerMaxReplies: 1, dmStrangerFirstFixed: false,
+    dmWhitelist: '', dmStrangerOnce: false, dmStrangerAutonomyEnabled: false, dmStrangerMaxReplies: 1, dmStrangerFirstFixed: false,
     dmApprovalEnabled: false, dmApprovalPhrase: '白饭🍚', dmApprovedTotalLimit: 50, dmApprovedDailyLimit: 10,
     videoModelProvider: '', videoModelId: '', videoReasoningEffort: '', interactionModelProvider: '', interactionModelId: '', interactionReasoningEffort: '', memeRulesModelProvider:'', memeRulesModelId:'', memeRulesReasoningEffort:'', memeRulesPrompt:'',
     commentWatchReplies: false, commentWatchTop: false, commentAtEnabled: false, friendAtFeedbackEnabled:false, strangerInspirationEnabled:false, socialInvitationEnabled:false, socialInvitationAutoInspectEnabled:false, ownerCommentAgentEnabled:false, ownerCommentLikeEnabled:false, ownerCommentDraftEnabled:false, ownerCommentPublishEnabled:false, ownerCommentSocialPublishEnabled:false, ownerCommentNaturalAckEnabled:false, commentAtMode:'whitelist', commentAtWhitelist:'', commentTopCount: 5, commentTopVideoCount: 3, commentReplyHotCount: 12, backupDirectory: '',
@@ -763,6 +765,7 @@ function reportMeta() {
     if ('dmOwnerUid' in p) p.dmOwnerUid = Math.max(0, Number(p.dmOwnerUid) || 0)
     if ('dmWhitelist' in p) p.dmWhitelist = String(p.dmWhitelist || '').slice(0, 2500)
     if ('dmStrangerOnce' in p) p.dmStrangerOnce = p.dmStrangerOnce === true
+    if ('dmStrangerAutonomyEnabled' in p) p.dmStrangerAutonomyEnabled = p.dmStrangerAutonomyEnabled === true
     if ('dmStrangerText' in p) p.dmStrangerText = String(p.dmStrangerText || '').slice(0, 450)
     if ('dmStrangerMaxReplies' in p) p.dmStrangerMaxReplies = Math.max(1, Math.min(20, Math.floor(Number(p.dmStrangerMaxReplies) || 1)))
     if ('dmStrangerFirstFixed' in p) p.dmStrangerFirstFixed = p.dmStrangerFirstFixed === true
@@ -2844,7 +2847,7 @@ function reportMeta() {
   } catch (e) { log(`定时器没起来：${e?.message ?? e}`) }
 
   // 大肥鱼后台私信：统一的收发入口（原来的主人专用定时器已删除，避免重复回复）。
-  // 独立于“跑一轮”；更改设置在下次轮询时生效。陌生人 AI 回复仍须手动开启。
+  // 陌生人私信仍须主人明确开启发送许可；开启后由唯一 Life Voice + 统一社交决策决定回不回。
   const dmConfig = () => {
     refreshCfg()
     let friends=[];try{friends=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory))}catch{}
@@ -2857,7 +2860,8 @@ function reportMeta() {
     if (owner > 0) allow.add(String(owner))
     return {
       enabled: cfg.masterEnabled === true && cfg.dmWatch === true && !accountBinding.status().blocked,
-      strangerEnabled: cfg.dmStrangerOnce === true,
+      strangerEnabled: cfg.dmStrangerAutonomyEnabled === true || cfg.dmStrangerOnce === true,
+      legacyStrangerOnce: cfg.dmStrangerOnce === true && cfg.dmStrangerAutonomyEnabled !== true,
       strangerMaxReplies: cfg.dmStrangerMaxReplies,
       approvalEnabled:cfg.dmApprovalEnabled, approvalPhrase:cfg.dmApprovalPhrase,
       approvedTotalLimit:cfg.dmApprovedTotalLimit, approvedDailyLimit:cfg.dmApprovedDailyLimit,
@@ -3007,14 +3011,28 @@ function reportMeta() {
     },
     logger:{warn:m=>log('主人私信 Agent：'+m)},
   })
-  async function getNewDmMessages() {
+  async function getNewDmMessages({probeOnly=false,forceUid=''}={}) {
     const releaseDmRead=accountBinding.enterPlatformOperation()
     try {
     const cred = dmCred(stateDir)
     if (!cred) throw new Error('尚未登录 B站，请先在设置页扫码登录')
+    if(probeOnly){
+      const target=String(forceUid||'')
+      if(!/^[1-9]\d{0,18}$/.test(target)||target===String(cred.dedeuserid||''))return []
+      accountBinding.assertReady()
+      const messages=await dmFetch(cred,target,50,{readBudget:biliReadBudget})
+      if(!Array.isArray(messages))throw new Error('私信定向复核没有返回消息数组')
+      return messages.filter(m=>m?.fromMe===false&&m.key&&Number(m.ts)>0&&String(m.text||'').trim()&&String(m.text)!=='[非文字消息]')
+        .map(m=>{const ts=Number(m.ts);return {senderUid:target,senderName:'',messageId:`${target}:${String(m.key).slice(0,100)}`,
+          timestampMs:ts<1e11?ts*1000:ts,text:String(m.text).slice(0,4000),incoming:true,system:![1,7,8].includes(Number(m.kind)||1)}})
+    }
+    // Probe-only reads are used between multi-bubble sends / at a delayed
+    // wakeup. They must not reset or advance the ordinary inbox cursor because
+    // the reply engine is only checking whether a newer message supersedes the
+    // pending intention; the next normal poll must still process that message.
     dmPollCursor.discard()
     const sessions = await dmList(cred,{readBudget:biliReadBudget})
-    const whitelist = dmConfig().whitelist
+    const whitelist = [...dmConfig().whitelist]
     const incoming=await collectDmInbox({
       sessions, ownUid: Number(cred.dedeuserid), whitelist,
       readConversation: (uid) => {accountBinding.assertReady();return dmFetch(cred, uid, 50,{readBudget:biliReadBudget})},
@@ -3088,7 +3106,7 @@ function reportMeta() {
     }
     const remaining=incoming.filter(row=>!ownerRows.includes(row))
     incoming.length=0;incoming.push(...remaining)
-    try{const approvedUids=new Set((Array.isArray(cfg.dmWhitelist)?cfg.dmWhitelist:[]).map(String));const recommendationEligible=incoming.filter(row=>{const uid=String(row.senderUid||'');return socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory)!=='stranger'||approvedUids.has(uid)||cfg.dmStrangerOnce===true});const received=receiveRecommendations(stateDir,recommendationEligible);if(received?.added)log(`收到 B站视频链接候选：${received.added} 条；是否加入待办由同轮私信 AI 自主判断`)}catch(e){log('B站私信视频候选暂存失败：'+String(e?.message||e).slice(0,100))}
+    try{const approvedUids=new Set((Array.isArray(cfg.dmWhitelist)?cfg.dmWhitelist:[]).map(String));const recommendationEligible=incoming.filter(row=>{const uid=String(row.senderUid||'');return socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory)!=='stranger'||approvedUids.has(uid)||cfg.dmStrangerOnce===true||cfg.dmStrangerAutonomyEnabled===true});const received=receiveRecommendations(stateDir,recommendationEligible);if(received?.added)log(`收到 B站视频链接候选：${received.added} 条；是否加入待办由同轮私信 AI 自主判断`)}catch(e){log('B站私信视频候选暂存失败：'+String(e?.message||e).slice(0,100))}
     try{
       const queued=queueOwnerDmReadTodo({messages:incoming,ownerUid:cfg.dmOwnerUid,enabled:cfg.ownerDmReadCommandsEnabled===true,todos:ownerTodos})
       if(queued.added)log(`主人 B站私信只读任务入队：${queued.added} 条`)
@@ -3460,6 +3478,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   const dmAutoreply = createDmAutoReply({
     dataDir: accountRuntimeDir,
     getConfig: dmConfig,
+    canSendDm: args=>socialPolicyGate.canSendDm(args),
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     fetchIncoming: getNewDmMessages,
     fetchApprovalHistory: async (uid='') => {
@@ -3510,15 +3529,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     generateReply: async (req) => {
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
-      let canReply=true
-      if(tier==='friend'){
-        const will=dualContextAgency.decide({source:'bili-dm',uid:req.uid,messageId:req.messageId,text:req.text,intent:'chat'})
-        canReply=will?.decision==='allow'||req.canSkip===false
-      }
+      let relationshipStage='new'
+      try{relationshipStage=relationshipIndex()?.get(req.uid,relationshipOptions())?.stage||'new'}catch{}
       const recommendationContext=await dmVideoRecommendationContext.forReply(req)
       const todoProgressContext=dmTodoProgressContext.forReply(req)
-      return interactionBatcher.generate({kind:'dm',role:tier,...req,canReply,
-        allowTodoIntake:true,
+      return interactionBatcher.generate({kind:'dm',role:tier,...req,socialAutonomy:true,
+        threadKey:`dm:${String(req.uid)}`,relationshipStage,
+        allowTodoIntake:req.trigger!=='scheduled',
         onTodoProposal:proposal=>intakeAiSocialTodo({...proposal,request:{...req,recommendationContext},channel:'dm'}),
         recommendationContext,todoProgressContext,identityContext:replyIdentityContext(req.uid)})
     },
@@ -3527,7 +3544,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       refreshCfg()
       if (cfg.masterEnabled !== true) return {ok:false,error:'总开关已关闭，私信发送已暂停'}
       const result = await call('bili_send_message', { receiver_uid: Number(uid), text: String(text).slice(0, 450) })
-      if(result?.success===true){try{activityFeed.publish('social',{count:1})}catch{};try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:'dm-reply:'+String(eventId||Date.now()),at:Date.now()})}catch(e){log('私信关系投影待补偿：'+String(e?.message||e))}return {ok:true}}
+      if(result?.success===true){
+        const receiptId=extractBiliDmReceiptId(result)
+        if(!receiptId)return {ok:false,error:'B站返回发送成功，但未能解析 msg_key；按结果不确定处理，不会自动重发'}
+        try{activityFeed.publish('social',{count:1})}catch{}
+        try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:'dm-reply:'+String(eventId||Date.now()),at:Date.now()})}catch(e){log('私信关系投影待补偿：'+String(e?.message||e))}
+        return {ok:true,receiptId}
+      }
       return { ok: false, error: String(result?.error || result?.message || 'B站没有返回投递成功回执') }
     },
     logger: {
@@ -5901,7 +5924,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       for (const k of ['masterEnabled', 'perDay', 'pickPerRound', 'peakValley', 'peakWindows', 'peakIntervalMinutes', 'autoComment', 'transcribe', 'asrModel',
         'diagMentionEnabled','diagDynamicEnabled','diagVisionEnabled','diagMemeEnabled','diagAtInviteEnabled','diagReplyInboxEnabled','commentMemesEnabled','commentMemesDebug','commentMemesPerDay','commentMemesPerRound','commentMemePrompt','visionPrompt','memeMemoryEnabled', 'memeMemoryMaxEntries', 'visionEnabled', 'visionDebug', 'visionMode', 'visionModelProvider', 'visionModelId', 'visionReasoningEffort', 'visionEndpoint', 'visionFrames', 'visionDailyLimit', 'commentPerRound', 'mentionName', 'mentionTargets', 'mentionProfiles', 'friendDirectory', 'mentionMode', 'dmMode', 'dmUid', 'commentSyncDynamic', 'dynamicDailyLimit', 'commentDailyLimit',
         'videoModelProvider','videoModelId','videoReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort','memeRulesPrompt',
-        'keywords', 'coreInterestTopics', 'pythonPath', 'dshBin', 'headlessProfile', 'workspace', 'reportLevel', 'personaPrompt', 'characterLore', 'dmWatch', 'dmWatchMinutes', 'commentReplyWatchMinutes', 'commentAtWatchMinutes', 'commentTopWatchMinutes', 'dmReplyPerDay', 'dmContextMessages', 'dmOwnerUid', 'dmWhitelist', 'dmStrangerOnce', 'dmStrangerText', 'dmStrangerMaxReplies', 'dmStrangerFirstFixed', 'dmApprovalEnabled','dmApprovalPhrase','dmApprovedTotalLimit','dmApprovedDailyLimit',
+        'keywords', 'coreInterestTopics', 'pythonPath', 'dshBin', 'headlessProfile', 'workspace', 'reportLevel', 'personaPrompt', 'characterLore', 'dmWatch', 'dmWatchMinutes', 'commentReplyWatchMinutes', 'commentAtWatchMinutes', 'commentTopWatchMinutes', 'dmReplyPerDay', 'dmContextMessages', 'dmOwnerUid', 'dmWhitelist', 'dmStrangerOnce', 'dmStrangerAutonomyEnabled', 'dmStrangerText', 'dmStrangerMaxReplies', 'dmStrangerFirstFixed', 'dmApprovalEnabled','dmApprovalPhrase','dmApprovedTotalLimit','dmApprovedDailyLimit',
         'commentWatchReplies', 'commentWatchTop', 'commentAtEnabled', 'friendAtFeedbackEnabled', 'strangerInspirationEnabled','socialInvitationEnabled','socialInvitationAutoInspectEnabled','ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentDraftEnabled','ownerCommentPublishEnabled','ownerCommentSocialPublishEnabled','ownerCommentNaturalAckEnabled', 'commentAtMode', 'commentAtWhitelist', 'commentTopCount', 'commentTopVideoCount', 'commentReplyHotCount', 'commentAllowGeneralTop', 'commentReplyPerPoll', 'commentReplyPerDay', 'commentOwnTopPerUser', 'commentOwnNestedPerUser', 'mainSessionBridgeEnabled', 'mainSessionId', 'mainSessionAutoSync', 'mainSessionSyncMinutes', 'mainSessionDailyBatches', 'mainSessionBatchSize', 'mainSessionIncludeComments', 'mainSessionMemoryEnabled', 'mainSessionMemoryAutoBili', 'mainSessionMemorySemanticEnabled', 'mainSessionMemoryModelProvider', 'mainSessionMemoryModelId', 'mainSessionMemoryReasoningEffort', 'mainSessionMemoryCandidates', 'mainSessionMemorySearchDailyLimit', 'socialOutreachEnabled', 'socialLifeIntentEnabled', 'socialVideoRecommendationsAuthorizedV2', 'emotionSystemEnabled', 'socialAutoSend', 'socialOutreachDailyLimit', 'ownerTodoAutoReviewEnabled','ownerTodoReviewMinutes','ownerTodoCompletionFollowupEnabled','socialTodoCompletionFollowupEnabled','ownerTodoFollowupCooldownMinutes','ownerTodoFollowupDailyLimit','ownerTodoFollowupMinIntervalMinutes','ownerTodoFollowupPollMinutes','ownerTodoFollowupQuietEnabled','ownerTodoFollowupQuietStartHour','ownerTodoFollowupQuietEndHour','autonomousPlannerEnabled','emotionRecallEnabled','emotionRecallMainEnabled','emotionRecallDmEnabled','emotionRecallUnlimited','emotionRecallDailyLimit','emotionRecallCooldownHours','emotionRecallStartHour','emotionRecallEndHour','emotionRecallCandidateLimit','emotionRecallHistoryLimit','emotionRecallRecentDays','emotionRecallMinAgeDays','emotionRecallEmotionMinIntensity','emotionRecallEmotionMaxAgeHours','ownerDmAgentEnabled','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','ownerDmAgentContextTurns','ownerDmAgentContextChars','ownerDmAgentModelProvider','ownerDmAgentModelId','ownerDmAgentReasoningEffort','ownerDmReadCommandsEnabled','ownerDmActionsEnabled','ownerDmLikeEnabled','ownerDmCollectEnabled','ownerDmFollowEnabled','ownerDmCommentDraftEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicDraftEnabled','ownerDmDynamicPublishEnabled','ownerDmFriendMessageEnabled','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour', 'mainSessionReflectionAuto', 'mainSessionReflectionModelProvider', 'mainSessionReflectionModelId', 'mainSessionReflectionReasoningEffort', 'mainSessionReflectionMinCandidates', 'mainSessionReflectionBatchSize', 'mainSessionReflectionIntervalHours', 'mainSessionReflectionDailyBatches', 'mainSessionMemoryHalfLifeDays', 'socialMemoryHalfLifeNewDays', 'socialMemoryHalfLifeKnownDays', 'socialMemoryHalfLifeFamiliarDays', 'socialMemoryHalfLifeFriendDays', 'socialMemoryHalfLifeWhitelistDays', 'socialMemoryHalfLifeOwnerDays', 'mainSessionMemoryThreshold', 'mainSessionMemoryMaxItems', 'mainSessionMemoryMaxChars', 'mainSessionMemoryDailyQuota', 'mainSessionMemoryConsolidationEnabled', 'mainSessionMemoryFactsMax', 'favFolderId','autoVideoLike','autoVideoLikeDailyLimit','autoVideoCollect','autoFavoriteVisibility','autoFavoriteDelete','agentFollowEnabled','dailyDynamicEnabled','dailyDynamicDailyLimit','dailyDynamicDraftOnly']) {
         if (k in body) patch[k] = body[k]
       }

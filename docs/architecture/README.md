@@ -4,7 +4,7 @@
 
 ## 2.7.0 开发进度（部分能力已接入）
 
-- [统一自主社交决策、P6-A/B 续聊、好友画像、私信自由与 @ 回复权限架构](./2.7.0-unified-social-agency-plan.md) · [目标 Mermaid](./diagrams/2.7.0-social-agency-target.mmd) · [已接通的入站 @ Mermaid](./diagrams/2.7.0-incoming-at-live.mmd)。**当前 `2.7.0-dev.1` 已将入站 @ 取消回复者白名单、公开回复禁止未经授权主动 @ 接入生产；DM 自主决策、P6-A/B 发送/唤醒和好友画像尚未完成**；下列 2.6.2 图仍是其余渠道的现行生产调用关系。
+- [统一自主社交决策、P6-A/B 续聊、好友画像、私信自由与 @ 回复权限架构](./2.7.0-unified-social-agency-plan.md) · [目标 Mermaid](./diagrams/2.7.0-social-agency-target.mmd) · [入站 @ 实际接线](./diagrams/2.7.0-incoming-at-live.mmd) · [后台私信自主决策与 P6-A/B 实际接线](./diagrams/2.7.0-dm-autonomy-live.mmd)。**当前 `2.7.0-dev.1` 已接通入站 @ 白名单移除、主动 @ 拦截，以及后台私信统一决策、1–3 气泡、延迟补充和沉默后重新考虑；公开评论/@ 的 P6 接线和好友证据画像仍未完成**；下列 2.6.2 图仍是其余渠道的现行生产调用关系。
 
 ## 管理中心的社交入口（2.7.0）
 
@@ -26,7 +26,7 @@
 | 自主任务、完成进度与回访 | 已接受任务账本、执行回执、意愿及发送层 | [父子探索](./2.6.1-unified-exploration-relationship-visualization.md) · [普通私信进度](./2.6.2-dm-todo-progress.md) |
 | 公开评论成功回执与接收人 | `seen.md` 主账本；平台已核验的目标作者与当前账号 runtime 的确认索引，按 BV + 出站 rpid 匹配 | [公开回复接收人契约](./2.6.2-comment-recipient-receipts.md) |
 | 评论/@ 的来源与时效 | 平台通知、原评论回查及接线诊断 | [原评论恢复](./2.6.2-at-original-comment-recovery.md) · [通知时间](./2.6.2-at-invitation-diagnostic-times.md) |
-| 陌生人私信申请 | 验证过的投喂记录、人工审核 | [漏识别申请补录](./2.6.2-dm-rice-history-recovery.md) |
+| 可选严格私信审核 | 仅在 `dmApprovalEnabled=true` 时识别投喂申请；默认关闭，不作为普通自主交流的前置条件 | [私信自主决策与 P6-A/B](./2.7.0-unified-social-agency-plan.md) |
 | 视频资料、情绪与意愿边界 | 字幕／视觉证据、当前情绪状态 | [视觉和情绪优化](./2.6.2-vision-emotion-willingness.md) |
 | 账号与数据可靠性 | 账号绑定、备份校验、只读预算 | [账号切换](./2.6.1-account-identity-switch.md) · [备份兼容](./2.6.1-backup-utf8-compatibility.md) · [轮询与管理 UI](./2.6.2-polling-memory-ui.md) |
 

@@ -1,0 +1,34 @@
+flowchart TD
+  A[已核验的 B 站入站私信] --> B[dm-autoreply 去重 / 同 UID 聚合]
+  B --> C[SocialPolicyGate.canSendDm]
+  C -->|没有明确发送许可| X[仅记录来信 / 不发送]
+  C -->|主人许可通过| D[SocialContextAssembler]
+  D --> E[Life Voice Context 唯一人格与当前情绪]
+  D --> F[SocialRelationshipIndex 关系阶段]
+  D --> G[同 UID 对话历史与当前话题]
+  E --> H[InteractionBatcher 单次模型调用]
+  F --> H
+  G --> H
+  H --> I[SocialAutonomyDecisionContract]
+  I -->|reply 1–3 条| J[逐条发送前检查]
+  I -->|defer| K[SocialConversationContinuity 意图账本]
+  I -->|skip / close| L[标记已读并保留上下文，不发送]
+  J --> M[文本 / 事实 / 主动@安全检查]
+  M --> N[SocialPolicyGate 再授权 + 额度 / 冷却复核]
+  N --> O[B 站私信发送适配器]
+  O --> P[平台 msg_key / 成功回执]
+  P --> Q[更新私信历史与关系投影]
+  K --> R[到期轮询 claim]
+  R --> S[重新读取收件箱、当前 Life Voice 与权限]
+  S --> H
+  T[同一 UID 新来信] --> U[取消旧续聊预约]
+  U --> B
+  V[dmStrangerOnce：主人明确发送许可，默认关闭] -.独立门禁.-> C
+  W[dmApprovalEnabled：可选严格暗号审核，默认关闭] -.仅开启时启用陌生人次数上限.-> C
+
+  classDef live fill:#dcfce7,stroke:#16a34a,color:#14532d
+  classDef policy fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef future fill:#e0e7ff,stroke:#6366f1,color:#312e81
+  class B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,U live
+  class V,W policy
+  class X future

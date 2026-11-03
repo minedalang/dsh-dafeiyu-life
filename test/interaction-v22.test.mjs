@@ -11,17 +11,17 @@ const tmp=()=>mkdtemp(join(tmpdir(),'dsh-plus22-'));
 const msg=(uid,id,text)=>({senderUid:uid,messageId:id,text,timestampMs:1790000000000,incoming:true});
 const silent={warn(){},error(){}};
 
-test('陌生人首条也使用同一次 AI 回复调用；最多2次，第三次静默且重启持久',async()=>{
+test('严格暗号审核模式下陌生人也使用同一次 AI 回复调用；最多2次，第三次静默且重启持久',async()=>{
   const dir=await tmp();const inbox=[],sent=[],generate=[];let time=1790000000000;
-  const config={enabled:true,strangerEnabled:true,strangerMaxReplies:2,strangerFirstFixed:true,strangerText:'欢迎鲸鱼',whitelist:[],whitelistCooldownSeconds:0};
+  const config={enabled:true,strangerEnabled:true,approvalEnabled:true,strangerMaxReplies:2,strangerFirstFixed:true,strangerText:'欢迎鲸鱼',whitelist:[],whitelistCooldownSeconds:0};
   const make=()=>createDmAutoReply({dataDir:dir,selfUid:'900',getConfig:()=>config,now:()=>time,
     fetchIncoming:async()=>inbox,send:async r=>(sent.push(r),{ok:true}),
     generateReply:async r=>(generate.push(r),'第二次是AI'),logger:silent});
   await make().poll();inbox.push(msg('123','m1','你好'));
-  assert.equal((await make().poll()).sent,1);assert.equal(sent[0].text,'第二次是AI');assert.equal(generate.length,1);
+  assert.equal((await make().poll()).sent,1);assert.match(sent[0].text,/第二次是AI/);assert.equal(generate.length,1);
   assert.deepEqual(generate[0].messages,['你好']);assert.deepEqual(generate[0].messageIds,['m1']);assert.equal(generate[0].timestampMs,time);
   time+=16000;inbox.push(msg('123','m2','还在吗'));
-  assert.equal((await make().poll()).sent,1);assert.equal(sent[1].text,'第二次是AI');assert.equal(generate.length,2);
+  assert.equal((await make().poll()).sent,1);assert.match(sent[1].text,/第二次是AI/);assert.equal(generate.length,2);
   time+=16000;inbox.push(msg('123','m3','第三次'));
   assert.equal((await make().poll()).sent,0);assert.equal(sent.length,2);
   const state=JSON.parse(await readFile(join(dir,'dm-autoreply-state.json'),'utf8'));
