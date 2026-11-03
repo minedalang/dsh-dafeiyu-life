@@ -972,12 +972,12 @@ function reportMeta() {
         (!originalMessageId||String(t.origin?.messageId||'')===String(originalMessageId))&&
         (groupRoot?todoParentId(t)===String(groupRoot):String(t.id)===String(taskId))&&
         ['search_videos','watch_video'].includes(t.type))
-      if(!evidence.length&&!verified.length)return {decision:'defer',channel}
+      if(!evidence.length&&!verified.length)return {decision:'defer',channel,modelInvoked:false,diagnosticReason:'缺少可核实的完成回执与可读经历；未调用模型'}
       let roster=[];try{roster=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory))}catch{}
       const dmGranted=roster.some(x=>x.uid===String(uid)&&x.dm===true)
       const stage=existingRelationshipIndex()?.get(uid,relationshipOptions())?.stage||''
       const familiar=['familiar','friend'].includes(stage),canSwitch=channel==='comment'&&familiar&&dmGranted
-      let parsed={decision:'defer',channel}
+      let parsed={decision:'defer',channel,modelInvoked:false,diagnosticReason:'模型尚未作出有效决定'}
       try{
         const state=emotionalState.snapshot()
         const prompt=['你是大肥鱼。你刚刚根据真实经历完成了一些公开视频资料查看，现在可以自主决定是否与原请求者说说自己的发现。',
@@ -995,9 +995,12 @@ function reportMeta() {
         const block=output.match(/\{[\s\S]*?\}/);const obj=JSON.parse(block?.[0]||'{}')
         if(['reply','defer','skip'].includes(obj.decision)){
           const body=naturalFollowupText(obj.text)
-          parsed=obj.decision==='reply'&&!body?{decision:'defer',channel}:{decision:obj.decision,channel:obj.channel==='dm'&&canSwitch?'dm':channel,text:body}
+          parsed=obj.decision==='reply'&&!body?{decision:'defer',channel,modelInvoked:true,diagnosticReason:'模型想发送，但未给出有依据的文字'}:{decision:obj.decision,channel:obj.channel==='dm'&&canSwitch?'dm':channel,text:body,modelInvoked:true}
         }
-      }catch(e){log('自然回访意愿/文案暂不可用，延期而非发送固定模板：'+String(e?.message||e).slice(0,100))}
+      }catch(e){
+        parsed={decision:'defer',channel,modelInvoked:false,diagnosticReason:'回访模型调用或解析失败'}
+        log('自然回访意愿/文案暂不可用，延期而非发送固定模板：'+String(e?.message||e).slice(0,100))
+      }
       return {...parsed,familiar}
     },
     onSent:async({uid,channel,text,social,sentRpid,commentBvid,commentRoot,at})=>{
@@ -5317,6 +5320,12 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
           if(!firstStart.isReady())return sendJson(res,409,{ok:false,error:'首次设置尚未完成'})
           const r=await ownerTodoFollowup.tick()
           return sendJson(res,200,r)
+        }
+        if(body?.action==='debug-reconsider'){
+          if(!firstStart.isReady())return sendJson(res,409,{ok:false,error:'首次设置尚未完成'})
+          if(body.key!=null&&(typeof body.key!=='string'||body.key.length>350))return sendJson(res,400,{ok:false,error:'无效的回访标识'})
+          const r=await ownerTodoFollowup.debugReconsider(body.key||'')
+          return sendJson(res,r.ok||r.skipped?200:409,r)
         }
         return sendJson(res,400,{ok:false,error:'不支持的回访操作'})
       }catch(e){return sendJson(res,400,{ok:false,error:'回访操作失败：'+String(e?.message||e).slice(0,150)})}

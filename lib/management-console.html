@@ -918,9 +918,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div><label for="owner-todo-followup-quiet-enabled">夜间静默</label><select id="owner-todo-followup-quiet-enabled"><option value="true">启用（默认）</option><option value="false">关闭</option></select></div>
 <div><label for="owner-todo-followup-quiet-start">静默开始小时（0～23）</label><input id="owner-todo-followup-quiet-start" type="number" min="0" max="23" value="22"/></div>
 <div><label for="owner-todo-followup-quiet-end">静默结束小时（0～23；与开始相同=不设静默）</label><input id="owner-todo-followup-quiet-end" type="number" min="0" max="23" value="9"/></div>
-</div><p class="muted">手动检查只处理已到重新考虑时间的回访，不会覆盖鱼鱼自主延期；即使将冷却与发送间隔设为 0，仍受真实授权、平台限制、去重、意愿和回执安全约束。</p>
+</div><p class="muted">普通检查只处理到期回访。DEBUG 可忽略鱼鱼先前设置的延期时间、立即重新问她一次，但不会强制发送，也不会绕过夜间静默、权限、限额、冷却、去重和回执核验；每次最多处理一条；如果有多条待回访，请使用每条记录旁的 DEBUG 按钮指定对象。可能产生模型费用。</p>
 <p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p>
-<div class="toolbar"><button class="life-action" type="button" id="owner-todo-followup-check">检查到期回访（不跳过延期）</button></div><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
+<div class="toolbar"><button class="life-action" type="button" id="owner-todo-followup-check">检查到期回访（不跳过延期）</button><button class="life-action" type="button" id="owner-todo-followup-debug">DEBUG：忽略延期，重新询问（多条时请指定）</button></div><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
 <div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存待办与自主调度设置</button></div>
 </details>
 </div>
