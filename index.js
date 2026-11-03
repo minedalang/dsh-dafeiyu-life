@@ -3410,6 +3410,41 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     getConfig: dmConfig,
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     fetchIncoming: getNewDmMessages,
+    fetchApprovalHistory: async (uid='') => {
+      const release=accountBinding.enterPlatformOperation();
+      try {
+        accountBinding.assertReady();
+        const cred=dmCred(stateDir);
+        if(!cred || !Number(cred.dedeuserid))throw new Error('B站登录失效，无法核验历史私信');
+        const own=String(cred.dedeuserid);
+        const target=String(uid||'').trim();
+        let sessions=[];
+        if(target) {
+          if(!/^[1-9]\d{0,18}$/.test(target)||target===own)throw new Error('目标 UID 不合法');
+          sessions=[{uid:target,nickname:''}];
+        } else {
+          const list=await dmList(cred,{readBudget:biliReadBudget});
+          const cutoff=Date.now()-72*3600_000;
+          sessions=list.filter(x=>String(x.uid)!==own&&(Number(x.unread)>0||
+            (Number(x.lastTs)>0 && (Number(x.lastTs)<1e11?Number(x.lastTs)*1000:Number(x.lastTs))>=cutoff)))
+            .sort((a,b)=>Number(b.lastTs||0)-Number(a.lastTs||0)).slice(0,16);
+        }
+        const rows=[];
+        for(const session of sessions){
+          accountBinding.assertReady();
+          // In targeted recovery, a failed read must not be misreported as no bait.
+          const messages=await dmFetch(cred,session.uid,50,{readBudget:biliReadBudget});
+          for(const m of messages){
+            if(m.fromMe!==false || !m.key || Number(m.kind)!==1 || !String(m.text||'').trim())continue;
+            const timestamp=Number(m.ts);
+            const time=timestamp<1e11?timestamp*1000:timestamp;
+            rows.push({incoming:true,senderUid:String(session.uid),senderName:String(session.nickname||''),
+              messageId:String(session.uid)+':'+String(m.key).slice(0,100),timestampMs:time,text:String(m.text).slice(0,4000)});
+          }
+        }
+        return rows;
+      } finally { release(); }
+    },
     onScanSettled:()=>dmPollCursor.commit(),
     lookupNickname: lookupBiliNickname,
     onIncoming:async({uid,text,messageId,time})=>{
@@ -5859,6 +5894,18 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
 
     if (req.method === 'GET' && path === '/api/bili-duty/dm-approvals') {
       return sendJson(res,200,{ok:true, approvals:await dmAutoreply.listApprovals()})
+    }
+    if (req.method === 'POST' && path === '/api/bili-duty/dm-approvals/recovery-preview') {
+      const body=await readBody(req);
+      try { const result=await dmAutoreply.previewHistoricalApprovals(String(body.uid||''));
+        return sendJson(res,result.ok?200:400,result) }
+      catch(e){return sendJson(res,400,{ok:false,error:'历史投喂读取失败：'+String(e?.message||e).slice(0,180)})}
+    }
+    if (req.method === 'POST' && path === '/api/bili-duty/dm-approvals/recover') {
+      const body=await readBody(req);
+      try { const result=await dmAutoreply.recoverHistoricalApproval(String(body.uid||''),String(body.messageId||''));
+        return sendJson(res,result.ok?200:400,result) }
+      catch(e){return sendJson(res,400,{ok:false,error:'历史投喂补录失败：'+String(e?.message||e).slice(0,180)})}
     }
     if (req.method === 'POST' && path === '/api/bili-duty/dm-approvals') {
       const body=await readBody(req)

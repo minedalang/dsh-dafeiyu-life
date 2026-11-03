@@ -1340,6 +1340,10 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">只显示本插件已经保存的对话片段；不从 B站 额外拉取完整历史。旧版心愿已停止自动处理，历史资料只随本地备份保留；新的陌生人探索灵感与好友观看邀请在「社交互动」查看。记录仅在本机展示。</p><p class="muted">这里统计的是后台私信自动回复通道；主人专属 Agent、其他已授权途径的回复不计入陌生人额度。历史中出现多条来信也不代表已发送多次。</p><div id="dm-recent-list" class="records"></div></div>
 
 <div id="dm-requests" class="toolbar"><h2 style="margin:0">限额聊天申请</h2><select id="dm-filter"><option value="pending">只看待审批</option><option value="">全部申请</option><option value="approved">已通过</option><option value="rejected">已拒绝</option></select></div><p class="muted">这里只审核 B站 用户申请，不修改可信白名单。通过后仍受每日／累计额度控制。</p><div class="grid" id="dm-list"></div>
+<div class="card" style="margin:14px 0" id="dm-history-recovery"><h3>找回旧版漏掉的米饭投喂</h3>
+<p class="muted">只在你主动操作时读取 B站 最近 72 小时内的真实私信（单个会话最多最近 50 条）。不会修改正常私信游标，不会自动通过、自动私信或重放旧消息。若没有找到，请输入对方 UID 定向检查。</p>
+<div class="row"><label for="dm-recovery-uid">对方 UID（可选）</label><input id="dm-recovery-uid" inputmode="numeric" maxlength="19" placeholder="留空扫描最近 16 个活跃会话"><button id="dm-recovery-search">查找漏掉的投喂</button></div>
+<p id="dm-recovery-status" class="muted" aria-live="polite"></p><div id="dm-recovery-results" class="grid"></div></div>
 
 <div id="dm-settings-section" class="card" style="margin-bottom:14px"><h3>后台私信规则</h3><p class="muted">修改后保存到 DSH 本机配置。陌生人自动回复默认关闭；开启前请确认你接受自动回复行为。</p>
 <div class="settings-stack">
