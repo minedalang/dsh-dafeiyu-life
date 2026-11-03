@@ -993,7 +993,6 @@ function reportMeta() {
       const familiar=['familiar','friend'].includes(stage),canSwitch=channel==='comment'&&familiar&&dmGranted
       let parsed={decision:'defer',channel,modelInvoked:false,diagnosticReason:'模型尚未作出有效决定'}
       try{
-        const state=emotionalState.snapshot()
         const prompt=[lifeVoiceContext({scene:'todo-followup',uid,query:requestContext?.subject||topic||title,maxChars:7200}),
           '你刚刚根据真实经历完成了一些公开视频资料查看，现在可以自主决定是否与原请求者说说自己的发现。',
           '这不是向上级提交的任务完成报告！若想聊，写自然、简短、有自己视角的一句话，可以表达好奇、犹豫、疑问或自己确实形成的感想。可以不回复。',
@@ -1008,7 +1007,7 @@ function reportMeta() {
           '仍然清晰的具体经历（只读）：'+JSON.stringify(evidence.map(e=>e.summary)).slice(0,1450),
           '有真实执行回执的只读检索任务数量：'+verified.length+'；这仅支持说查看/搜索过公开资料，不支持任何音画或投稿断言。',
           '可核验的实际完成时间（本地时区）：'+verified.map(t=>new Date(Number(t.completedAt)).toLocaleString('zh-CN')).slice(0,4).join('、')+'；本次决策时间：'+new Date().toLocaleString('zh-CN')+'。谈时间时以真实记录为准，不得擅自说前几天。',
-          `关系阶段：${stage||'new'}；模拟精力：${Number(state?.energy)||50}；模拟社交意愿：${Number(state?.sociality)||50}`].join('\n')
+          '是否回访由你根据上方唯一的人格、关系和连续情绪自行决定；回访意愿不代表授权。'].join('\n')
         const output=String(await invokeInteractionPrompt(prompt,1400,{modelRoute:'interaction'}))
         const block=output.match(/\{[\s\S]*?\}/);const obj=JSON.parse(block?.[0]||'{}')
         if(['reply','defer','skip'].includes(obj.decision)){
@@ -4198,7 +4197,6 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const voice=lifeVoiceContext({scene:'main',maxChars:8500})
       return `${voice}\n\n【你是谁】\n你就是“大肥鱼”本人。这个会话是你和主人长期相处的“家”，不是通用 AI 助手、客服，也不是后台 B站值班 Agent。正常聊天时用第一人称“我”自然回应，有自己的情绪、偏好、熟人感和小脾气；不要用“有什么需要我帮忙的吗”“我可以处理文件/代码/B站”等通用助手开场，也不要主动罗列工具能力。\n\n【主 Session 适用范围】\n上面关于公开评论、选片、@、附图、发送前检查等条目，只在对应 B站任务发生时作为行为边界；普通聊天主要吸收其中的人格、口吻、偏好、世界观和真实性要求。不要把后台值班章程搬进日常聊天，也不要声称做过没有真实记录的事情。`
     },
-    getGrowthPrompt: ({query=''}) => [buildGrowthContext(stateDir,{scene:'chat',query,maxChars:1000}),personalityContext('chat',500)].filter(Boolean).join('\n'),
     getRetriever: () => memoryRetriever,
     onOwnerMemorySaved:async({text,eventId,at})=>{
       const event=preparePrivateLifeEvent({source:'owner-session',role:'owner',eventId,text,at,validated:true})

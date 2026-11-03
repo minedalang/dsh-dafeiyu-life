@@ -11,7 +11,7 @@ digraph DSH262 {
     social[label="SocialPolicyGate / ContextAssembler\n分域身份、权限与上下文"];
     todo[label="OwnerTodos → AutonomousPlanner\n父子待办 / 有界自主探索"];
     out[label="Owner DM / SocialIntent / Followup\n表达、延期、沉默"];
-    checks[label="当前局部事实保护\n出处、主张与链接过滤",fillcolor="#eee6fe",color="#b4a0e1"];
+    checks[label="VerifiedLifeFacts 统一核验\n精确 BV / 视听类型",fillcolor="#eee6fe",color="#b4a0e1"];
   }
   subgraph cluster_state {label="已有生活记录（不是一份无限记忆）";style="rounded,filled";color="#a0d6ca";fillcolor="#f1faf7";
     life[label="LifeMemoryGateway\n可衰减 episodic 副本"];
@@ -24,7 +24,7 @@ digraph DSH262 {
     garden[label="记忆花园 4 分类\n来源合并 · 不写新记忆",fillcolor="#fff1d9"];
     send[label="独立写入许可与真实发送\n不确定回执禁止重放"];
   }
-  bilibili -> social; main -> social; social -> todo; social -> out;
+  bilibili -> social; main -> todo [label="主 Session 已授权待办"]; social -> todo; social -> out;
   bilibili -> life [label="可验证经历"];
   receipts -> life [label="确认后投影"];
   receipts -> follow;
@@ -33,10 +33,15 @@ digraph DSH262 {
   bilibili -> interests [label="真实入选 BV / 多日门槛"];
   bilibili -> people [label="真实互动计数"];
   life -> garden; memory -> garden; interests -> garden; people -> garden;
+  receipts -> checks [label="成功执行回执（BV / 感官类型）"];
   out -> checks; checks -> send [label="通过后"];
   follow -> out [label="当前完成凭证"];
+  lifevoice [label="Life Voice Context\n唯一人格 + 成长 + 连续情绪",fillcolor="#e4f3ff",color="#9ac6e0"];
+  lifevoice -> out [label="统一角色核心"];
+  lifevoice -> main [label="宿主人格上下文",style=dashed];
+  lifevoice -> social [style=dashed,label="当前关系表达"];
   memory -> social [label="当前可召回范围",style=dashed,color="#d6a0cd"];
   people -> social [label="仅熟悉度提示",style=dashed];
-  target [label="未来统一 EvidenceView + ClaimVerifier\n跨所有 Agent 尚未完成",shape=box,style="dashed,rounded",color="#d08d8d",fontcolor="#994f4f",fillcolor="white"];
-  checks -> target [style=dashed,color="#d08d8d",label="后续目标"];
+  target [label="未来：通用语义判真与语境绑定\n（当前高置信规则不覆盖所有表达）",shape=box,style="dashed,rounded",color="#d08d8d",fontcolor="#994f4f",fillcolor="white"];
+  checks -> target [style=dashed,color="#d08d8d",label="尚未覆盖"];
 }

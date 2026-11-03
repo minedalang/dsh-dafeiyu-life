@@ -9,9 +9,9 @@ digraph VerifiedLife {
     fading [label="当前可回忆的人生经历\n（不读封存档案）",fillcolor="#e0f1e9"];
   }
   subgraph cluster_layer {label="02 · 统一事实契约"; color="#bdd4d9"; style="rounded,filled"; fillcolor="#edf8f7";
-    typed [label="VerifiedLifeFact\n操作类型与来源 ID",fillcolor="#c8ece5",color="#68b7a7"];
+    typed [label="VerifiedLifeFact\n类型 + 同 BV + 来源 ID",fillcolor="#c8ece5",color="#68b7a7"];
     scope [label="Scoped Fact View\nUID + 渠道 + 时效",fillcolor="#c8ece5",color="#68b7a7"];
-    gate [label="verifyLifeOutbound\n事实主张 + BV 链接核验",fillcolor="#c8ece5",color="#68b7a7"];
+    gate [label="verifyLifeOutbound\n逐 BV / 视听类型匹配\n仅高置信主张 + 链接核验",fillcolor="#c8ece5",color="#68b7a7"];
   }
   subgraph cluster_channels {label="03 · 自然表达入口";color="#d6c8e8";style="rounded,filled";fillcolor="#f6f0fc";
     dm [label="普通 / 主人 B站私信",fillcolor="#eee1fd"];

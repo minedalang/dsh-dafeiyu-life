@@ -1,19 +1,29 @@
 flowchart LR
-  A[真实 B站互动和公开视频选择] --> S[SocialPolicyGate 与 SocialContextAssembler]
-  O[主 Session 主人授权] --> S
-  S --> T[OwnerTodos / AutonomousPlanner 有界自主探索]
-  T --> F[OwnerTodoFollowup 延期 / 决定 / 发送前许可]
-  S --> D[Owner DM 和 SocialIntent]
-  A --> E[LifeMemoryGateway 当前可衰减经历]
-  A --> I[life-memory/interests.json 成熟兴趣]
-  A --> R[relationships.sqlite3 真实互动索引]
-  E --> L[LongTermMemory 经反思形成的认识]
-  E --> G[记忆花园只读汇总]
-  I --> G
-  R --> G
-  L --> G
-  D --> C[局部主张与链接证据校验]
-  F --> C
-  C --> W[授权 / 限额 / 去重 / 真实发送回执]
+  B[真实 B站读取与互动] --> P[SocialPolicyGate / SocialContextAssembler]
+  H[主 Session 主人授权] --> M[宿主主 Session / LongTermMemory]
+  P --> T[OwnerTodos / AutonomousPlanner 有界自主探索]
+  T --> F[OwnerTodoFollowup 自主决定回访]
+  P --> C[普通私信 / 评论 / 自主分享 / 生活动态]
+  B --> V[VerifiedLifeFact 真实成功回执]
+  T --> V
+  V --> Q[Scoped Fact View UID / 渠道 / 24小时]
+  Q --> G[verifyLifeOutbound 按主张感官 + BV 核验]
+  C --> G
+  F --> G
+  G --> W[独立授权 / 额度 / 去重 / 平台回执]
+  B --> E[LifeMemoryGateway 当前可衰减经历]
   W --> E
-  C -. 未来尚未实现 .-> U[跨 Agent 统一 EvidenceView + ClaimVerifier]
+  E --> L[LongTermMemory 长期认识]
+  E --> I[后天兴趣档案]
+  B --> R[真实互动关系索引]
+  E --> J[记忆花园只读展示]
+  I --> J
+  R --> J
+  L --> J
+  V -. 仅证据，不代表全部视听 .-> E
+  H --> LM[Life Voice 唯一人格与连续情绪]
+  LM --> C
+  LM --> F
+  LM --> M
+  U[未来：更全面的自然语言语义判真 / 原始语境绑定]
+  G -. 仍未全部实现 .-> U
