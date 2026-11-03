@@ -15,5 +15,5 @@ test('仅注册启用的自主点赞和收藏工具',()=>{
   assert.match(js,/if \(cfg\.autoVideoCollect\) list\.push\('bili_video_collect'\)/)
   assert.match(py,/_selected_for_reaction/)
   assert.match(py,/create_video_favorite_list/)
-  assert.match(py,/private=True/)
+  assert.match(py,/private=_favorite_new_private\(visibility\) if automatic else True/)
 })

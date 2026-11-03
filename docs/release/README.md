@@ -1,8 +1,8 @@
-# 发布文档布局
+# 发布文档索引
 
-- 根目录 `RELEASE_NOTES_v2.6.0.md`：本次正式版 GitHub Release 正文；Git Tag `v2.6.0` 会自动读取。
-- `2.6.0-readiness.md`：发布前检查清单；真实 DSH Desktop / B站 / Mobile 与备份验证仍须由发布者执行。
-- `2.6.0-bilibili-pinned-post.md`：可选的手动 B站置顶文案草稿，不能自动发布。
-- `archive/`：此前 dev 版和历史 2.5 的发布说明、未发布旧草稿。它们保留在 Git 仓库作为开发史，**不再随 `2.6.0` npm 安装包分发**。
+- **当前 2.6.1：** [`2.6.1-publication-checklist.md`](2.6.1-publication-checklist.md) 为正式版发布前必须检查的项目；根目录 [`RELEASE_NOTES_v2.6.1.md`](../../RELEASE_NOTES_v2.6.1.md) 是同版本的公开发行说明。
+- **2.6.1 RC2 审计历史：** [`archive/RELEASE_NOTES_v2.6.1-RC2.md`](archive/RELEASE_NOTES_v2.6.1-RC2.md)，保留详细补丁、授权、回访和实机验收提醒。
+- **未来计划：** [`../FUTURE_ROADMAP_2.6.1_TO_2.9.1.md`](../FUTURE_ROADMAP_2.6.1_TO_2.9.1.md)。
+- **历史版本：** `archive/` 放置旧 dev/Release Notes；`2.6.0-readiness.md` 等仅用于历史追溯，不能作为 2.6.1 的发布依据。
 
-发行流程：先通过自动化与真实设备核验，再创建正确的 `v<package.json version>` Tag，核对 GitHub Release 附件及 SHA256；npm 和市场渠道另行更新与确认。推送 `dev` 本身不代表已正式发布。
+推荐顺序：自动化回归 → Windows DSH/B站实测 → dev 合并 main → 发布 Tag → GitHub Actions 附件校验 → npm 单独发布 → DSHMarket 版本核对。GitHub Source code ZIP 不等于可安装的 npm `.tgz`；推送开发分支也不等于正式发布。

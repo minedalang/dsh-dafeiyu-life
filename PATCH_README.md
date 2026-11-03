@@ -1,52 +1,46 @@
-# dsh-dafeiyu-life 2.6.0-dev.4：从 dev.3 直接升级
+# 2.6.1 RC2 · 全社交 AI 待办接入补丁
 
-该补丁**直接应用于用户提供的 `2.6.0-dev.3` 源码（Git 基线 `0b7fe62`）**，包含记忆压缩、Life Memory 和社交事件协调、评论/私信安全上下文、root 与热门评论修复、配置推荐和架构归档。不需要安装任何旧 dev.4，也不需要先应用过去的审计补丁。
+本补丁基于 **`dsh-bili-scroll-plus2-v2.6.1-RC2-natural-todo-source.zip`**（上一轮主人私信自然待办修复版）。不是 RC1 → RC2 完整补丁，也不能直接应用到 dev.6、原始 RC1 或其他 AI 的未核验 RC2 Patch。
 
-## 应用前
+## 本次范围
 
-1. 在 Windows 的本地项目中确认当前处于预期 dev 分支和 dev.3 提交，先备份业务数据。实际 `.git` 由你本地管理；本补丁不会包含或改动 `.git` 元数据。
-2. 确保工作树没有其他尚未提交的代码改动；如有，请先提交或备份，再应用补丁。
-3. 将下载的 dev.4 Git `.patch` 放到本地仓库根目录，运行：
+- 主人私信继续使用 Owner DM Agent；主人/好友可信评论使用现有 trusted-social AI；普通好友/陌生人私信、普通评论使用现有 InteractionBatcher。
+- 各入口在原有模型调用中同时生成自然回复和结构化只读待办提议，不增加第二次意图识别调用。
+- 普通用户不再依赖关键词或固定句式判断待办；支持自然表达、错别字、分段消息和同 UID 近期上下文。
+- 已启用陌生人私信时，首条也走现有 AI 回复调用；陌生人开关、回复次数、额度、审批不变。旧固定欢迎语设置保留兼容但停用。
+- BV 分享链接只作 48 小时候选上下文，不自动接受任务；只允许公开视频搜索/观看，不增加任何 B站写操作权限。
+- 聊天意愿和探索意愿分开；不想聊天不会阻断同轮 AI 理解独立只读探索提议，但仍会抑制聊天回复。
 
-```powershell
-git apply --check .\dsh-dafeiyu-life-2.6.0-dev.4-from-dev3.patch
-git apply .\dsh-dafeiyu-life-2.6.0-dev.4-from-dev3.patch
+## 应用方法（Git Bash）
+
+先备份 `$DSH_HOME/bili-duty/` 中的待办、回访、私信状态与配置文件，并确认工作区干净：
+
+```bash
+git switch dev
+git status --short
+
+git apply --check ../dsh-v261-rc2-all-social-ai-todo.patch
+git apply ../dsh-v261-rc2-all-social-ai-todo.patch
+
 git diff --check
-```
-
-## 逐项验收
-
-依次运行，每一条完成后再执行下一条；不要把多个长测试命令串在同一次执行里：
-
-```powershell
-node --test
-```
-
-```powershell
-python -m unittest discover -s test -p "test_*.py"
-```
-
-```powershell
+node --test test/*.test.mjs
 node selfcheck.mjs
 ```
 
-```powershell
-npm pack --dry-run
+Python 全量测试：
+
+```bash
+PYTHONUTF8=1 PYTHONIOENCODING=utf-8 python -m unittest discover -s test -p 'test*.py'
 ```
 
-该工作区的本地自动化基线：Node.js **821/821**，Python **126/126**，Host/Client selfcheck 和 `npm pack --dry-run` 均通过。详见 `docs/architecture/` 的审计和 Mermaids。真实 DSH Desktop、B站账号网络 API、Windows 文件系统异常等仍需要真实环境验收。
+Windows 可继续运行 `cmd.exe /c run-tests.bat`。补丁已应用后不要再次执行 `git apply`。
 
-## GitHub dev 更新流程
+## 验收重点
 
-核对源码和测试后，在自己的 Git 仓库中：
+1. 开启陌生人私信入口后，普通用户首条私信也由 AI 自然回复；同一输出可提出 `todoDisposition/suggestedTodo`。
+2. 普通好友/陌生人评论、私信提出“有空了解/看看/听听……”时，由 AI 语义理解；不是每条闲聊都创建待办。
+3. 好友本轮不想聊天时，聊天回复不发送，但同轮 AI 仍可接受独立只读探索建议。
+4. `defer/refuse/none`、证据不匹配、不同 UID 历史、超过 24 小时的旧上下文、无效 BV、写操作类型均不入队。
+5. 同一消息重复轮询或模型重试最多建立一条待办；候选链接不自动变成待办。
 
-```powershell
-git add .
-git commit -m "feat: dev.4 memory and social context coordination"
-git push origin dev
-dsh plugin --profile desktop add "github:minedalang/dsh-dafeiyu-life#dev"
-```
-
-**不要**使用 `deploy-local.ps1`、`dsh plugin add .`、Junction 或本地 tgz 安装。真实安装之后再在管理中心确认记忆配额与社交上下文诊断；默认不会擅自打开新的公开发送授权。旧用户已有设置不会被强行重置，最新推荐值需要自己选组恢复并保存。
-
-ZIP 增量包仅用于文件差异核对或人工覆盖；它不能自动移除根目录原先的 `.mmd` 审计图。推荐 Git Patch，因为 Git 能正确处理移动到 `docs/architecture/diagrams/` 的图纸。
+仍为 `2.6.1 RC2` 发布候选。真实 B站私信/评论送达和运行时行为待本机验收；不创建 Release、npm 或市场版本。

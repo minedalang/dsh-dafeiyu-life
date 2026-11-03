@@ -23,10 +23,10 @@ test('dev.4 current and target Mermaid diagrams are archived, not embedded in th
 
 test('dev.5 pack whitelist retains archived dev.4 diagrams and notes',()=>{
   const p=JSON.parse(read('package.json'))
-  assert.equal(p.version,'2.6.0')
+  assert.equal(p.version,'2.6.1')
   assert.ok(existsSync(path.join(root,'docs/release/archive/RELEASE_NOTES_v2.6.0-dev.4.md')))
   assert.ok(existsSync(path.join(root,'docs/release/archive/RELEASE_NOTES_v2.6.0-dev.5.md')))
-  assert.ok(p.files.includes('RELEASE_NOTES_v2.6.0.md'))
+  assert.ok(p.files.includes('RELEASE_NOTES_v2.6.1.md'))
   assert.ok(!p.files.some(x=>x.includes('RELEASE_NOTES_v2.6.0-dev.')))
   assert.ok(p.files.includes('docs/architecture'))
   assert.ok(p.files.includes('lib'))

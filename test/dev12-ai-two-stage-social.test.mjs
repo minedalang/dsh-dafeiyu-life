@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync,readFileSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {parseTrustedSocialDecision,interpretTrustedSocial} from '../lib/comment-social-ai.mjs'
+import {parseTrustedSocialDecision,interpretTrustedSocial,buildTrustedSocialPrompt} from '../lib/comment-social-ai.mjs'
 import {createDualContextAgency} from '../lib/dual-context-agency.mjs'
 import {createOwnerCommentAgent} from '../lib/owner-comment-agent.mjs'
 import {decideOwnerSocialComment} from '../lib/owner-comment-social.mjs'
@@ -142,4 +142,13 @@ test('好友新 AI 入口仍受每个用户的24小时评论回复额度限制',
   assert.equal((await t.agent.accept(row(FRIEND,'400015','还在吗'))).skipped,'friend-reply-quota')
   assert.deepEqual(t.aiCalls,['first']);assert.equal(t.outputs.length,1)
  }finally{t.close()}
+})
+
+test('可信评论 AI 同一 JSON 可返回独立只读待办字段',()=>{
+ const parsed=parseTrustedSocialDecision(JSON.stringify({intent:'chat',decision:'allow',commentRequested:false,
+  reply:'好呀，我也有点好奇～',todoDisposition:'accept',suggestedTodo:{type:'search_videos',topic:'陶喆',evidence:'有空听听陶喆的歌'}}))
+ assert.equal(parsed.ok,true);assert.equal(parsed.todoDisposition,'accept');assert.equal(parsed.suggestedTodo.topic,'陶喆')
+ const prompt=buildTrustedSocialPrompt({row:{text:'有空听听陶喆的歌',bvid:'BV1mzso6uEZh'},role:'friend'})
+ assert.match(prompt,/与本轮意图\/回复共用这一次 AI 调用/)
+ assert.match(prompt,/todoDisposition/)
 })

@@ -42,3 +42,34 @@
 ## dev.9 社交关系与记忆增量
 
 - [自然发展关系、轻量 SQLite 索引与记忆衰减接线](dev9-social-relationship-memory.md)：`SocialInteractionCoordinator → SocialRelationshipIndex → SocialContextAssembler / LifeMemoryGateway`。关系阶段与授权角色分离，未扩大主动私信或对外操作权限。
+
+## 2.6.1-dev.3 · 统一待办增量
+
+- [P4 已接受待办生命周期、分页与恢复的真实接线](dev261-unified-accepted-todos-dev3.md)：继续沿用 `owner-todos` 和 `AutonomousPlanner`，未覆盖任意类型任务或自主回访。
+
+## 2.6.1-dev.4 · 主 Session 和 B站私信的真实双向生活状态
+
+- [主 Session/主人 DM/好友 DM 的情绪、私密经历、成长人格接线及权限矩阵](dev261-main-dm-conversation-life-dev4.md)：说明真实信号、同轮反馈、源身份、哈希去重、隐私审查与仍未实现的 P5-B。
+
+## 2.6.1-dev.6 新增接线审计
+
+- [自主待办提醒、真实关注机会和人格弱证据](dev261-agency-growth-follow-todos-dev6.md)：管理 HTTP、双域意愿、平台写入边界与 Life Memory 证据约束。
+
+## 2.6.1 RC2 · 连续经历与自然回访（发布前）
+
+- [统一记忆、待办、自主回访与后续对话接线图和权限审计](./2.6.1-accepted-task-followup.md#rc2-连续人生经历补充接线当前实现)：只使用仍清晰的衰减记忆取证，确认发送后保留短期接话，纠错和个人感想按隐私域抽象保留。
+
+- [2.6.1 全社交 AI 待办接入](dev261-social-willingness-todo-wiring.md)：主人、好友与普通用户私信/评论复用同轮 AI 意图输出，统一来源核验与待办入账。
+
+## 2.6.1 RC2 · 连续探索与关系显示
+
+- [统一父子探索与关系优先展示](./2.6.1-unified-exploration-relationship-visualization.md)：生产调用、模型预算、历史兼容、关系只读投影、关系卡片与隐私边界。
+
+## 2.6.1 RC2 · 稳定角色身份和平台账号切换
+
+- [鱼鱼身份与 B站账号解绑：生产接线、迁移、冻结、回退与验收](./2.6.1-account-identity-switch.md)。
+- [2.6.1～2.9.1 详细未来路线](../FUTURE_ROADMAP_2.6.1_TO_2.9.1.md)：P6 原延期计划和自主学习/视频感知/人文反思的版本归属，非当前实施范围。
+
+## 2.6.1 · 完整与专项备份 UTF-8 兼容性修复
+
+- [双恢复入口、HTTP 分块、文件落盘、校验、老用户恢复与隐私边界](./2.6.1-backup-utf8-compatibility.md)。

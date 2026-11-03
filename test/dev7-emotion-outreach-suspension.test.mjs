@@ -25,19 +25,20 @@ test('主动回访即使旧配置仍开启，生产暂停模式不生成草稿�
   assert.equal((await e.reflectOnWatched([{bvid:BV,picked:true,title:'美食视频'}])).skipped,'paused-for-2.6.1')
   assert.match((await e.send('unknown',{confirm:true})).error,/暂停主动回访/)
   assert.equal(models,0);assert.equal(sends,0)
-  assert.match(src('index.js'),/createSocialIntentEngine\(\{\s*dataDir:stateDir,paused:true/)
-  assert.match(src('index.js'),/2\.6\.0 暂停主动回访/)
+  // Paused mode remains supported for legacy tests, but production now restores
+  // only the independent, explicit-consent video interest recommendation path.
+  assert.match(src('index.js'),/dataDir:stateDir,videoRecommendationsOnly:true/)
 }))
 
-test('管理页已折叠、禁用旧版回访开关，隐藏发送按钮但保留历史查看',()=>{
+test('管理页恢复独立视频推荐授权，旧回访草稿仍不能被点击发送',()=>{
   const html=src('lib/management-console.html'),js=src('lib/management-console.js')
   assert.match(html,/id="social-outreach-legacy"/)
-  assert.doesNotMatch(html,/<details id="social-outreach-legacy"[^>]*\bopen\b/)
-  assert.match(html,/<fieldset disabled class="outreach-disabled">/)
-  assert.match(html,/2\.6\.1/)
-  assert.match(js,/\$\('social-enabled'\)\.checked=false/)
-  assert.match(js,/\$\('social-auto-send'\)\.checked=false/)
-  assert.match(js,/row\.status==='draft'&&!record\.paused/)
+  assert.match(html,/<details id="social-outreach-legacy"[^>]*\bopen\b/)
+  assert.match(html,/<fieldset class="outreach-permissions">/)
+  assert.match(html,/旧版完成待办回访与情绪主动联系仍留待 P6/)
+  assert.match(js,/\$\('social-enabled'\)\.checked=c\.socialOutreachEnabled===true/)
+  assert.match(js,/socialVideoRecommendationsAuthorizedV2/)
+  assert.match(js,/row\.status==='draft'&&!record\.paused&&row\.type==='interest-share'/)
 })
 
 test('公开评论情绪只附上既有生成片段，不多一次 AI 请求，重启后仍可看灰字',()=>temp(async dir=>{

@@ -164,3 +164,56 @@ Windows Desktop 的常规安装命令为 `dsh plugin --profile desktop add dsh-d
 - DSH Mobile 活动接口可经当前同源 `/status` 读取安全摘要，禁止将私信、评论原文、UID、密钥加进状态或播报。
 - 全新安装默认启用人格成长需持久化独立状态；老安装显式关闭保持关闭。不得降低真实证据或跨日期质量闸门。
 - 用户要求 AI 在自己后台测试时隔离超时，不代表授权修改仓库自检脚本、测试运行器或已有测试文件；仅在外部执行环境设置超时。
+
+## 2.6.1-dev.3 · P4 统一待办兼容接线
+
+- 接受视频邀请和公开视频主题搜索必须复用 `DualContextAgency` 的可信来源结果；拒绝/推迟不是承诺，不在 `owner-todos.json` 里直接创建正式待办。`lib/social-todo-intake.mjs` 是严格的只读视频搜索解析入口，拒绝未知来源和私有/写入任务。
+- `lib/owner-todos.mjs` 仍是唯一已接受任务账本；`page()` 提供分页，`history` 只保留有界状态，`recoverInterrupted()` 拦截崩溃遗留动作。严禁因容量压力静默删除活跃任务。
+- 旧版 `RELEASE_NOTES` 已归档；dev.3 不授权开放陌生人主动私信、关注、评论或自主回访。
+
+## 2.6.1 RC2 · 连续人生经历开发约束
+
+- 视频探索、私人对话、公开评论、接受待办和自主回访的真实经历须沿用 `LifeMemoryCoordinator → LifeMemoryGateway`，不得建第二套永不遗忘的任务记忆。工作结果、鱼鱼自己的实际表达、得到纠正的过程要区分来源与证据。
+- 回访模型同一次调用选择 `decision/channel/text`；没有可用的当前清晰记忆或可信正文时应延期或沉默，不能用固定报告模板强制发送。只读视频资料不等于听到音频。
+- 回访确认送达后，主人 DM 的短期上下文可保留该 UID 最近 24 小时已发送的话；旧历史不许补回已遗忘的视频细节。私密个人感想仅存确定性生成的低敏类别摘要，不能存原始私信全文、跨 UID 或越权公开。
+- 主人日常私信、原评论已确认回复复用同一送达后经历投影准则；任何 uncertain、blocked、失败都不能写成“我说过”或重放对外动作。
+
+## 2.6.1 RC2 全社交 AI 待办接入（待验收）
+
+- `OwnerDmAgent`、`OwnerCommentAgent`、普通 `DmAutoReply/InteractionBatcher` 与 `CommentInteract/InteractionBatcher` 均在各自现有模型回包中表达待办意图；不能再在 AI 前用关键词规则创建普通用户任务。
+- 如果好友聊天意愿拒绝，只抑制聊天回复；同轮 AI 仍可提出独立只读探索待办，后者另经 `DualContextAgency` 判断。幂等键需按 intent 隔离。
+- 开启陌生人私信后，首条也走同一次 AI 回复/意图调用；陌生人启用开关、次数、额度和审批仍有效。旧固定欢迎语开关/文本仅兼容，不再生效。
+- `VideoRecommendations` 只保留 48 小时 BV 上下文候选，分享链接本身不代表接受。所有新候选统一写入唯一 `OwnerTodoEngine`，不创建第二套任务账本。
+
+## 2.6.1 RC2 自然待办接入（待验收）
+
+- 对话谈到某件事 ≠ 已接受待办。主人私信、主人/好友可信评论、普通好友/陌生人私信与普通评论都应在各自原有 AI 调用中输出 `todoDisposition/suggestedTodo`；不另加意图提取模型调用，也不以关键词/固定句式识别普通用户待办。
+- AI 明确 `accept`、提供具体候选后，必须核验真实 UID、消息 ID、时间、当前用户原话证据、主题支持和允许的只读任务类型，再经过统一意愿与待办持久化；`defer/refuse/none` 不创建。跨轮指代只允许使用同 UID、同评论串或同私信会话、24 小时内且带时间戳的近期用户原话，不能依赖助手自己的话、其他 UID 或永久任务档案。
+- README 不追加开发版本流水账，变更放 CHANGELOG 与 docs/architecture。
+
+## 2.6.1 RC2 · 统一探索增量
+
+- 所有**已接受的只读搜索任务**可通过 `parentTodoId` 追踪真实子待办；历史 `owner-ai-watch:` 仍需兼容。延续探索由同轮自主计划器决定，仍受每日决策预算、最多三轮、意愿与只读权限约束。
+- 不一致的来源 UID/原消息不可混合；任务历史和永久审计不能恢复已遗忘经历。
+- 关系优先分只读投影，不自动授权。陌生人只有最小互动元数据时不得为了可视化生成猜测人格，管理页可展示基于真实往来方向和日期的保守互动印象。
+- README 不增加长篇 RC 更新说明；发布前修复以 CHANGELOG/Release Notes/架构档案记载。
+
+## 2.6.1 RC2 · B站账号与鱼鱼角色身份解耦（发布前）
+
+- `character-identity.json` 是鱼鱼稳定 UUID，可随合法业务备份转移；`account-binding.json` 仅记录当前 B站账号绑定/代次，不含凭证；不得因 UID 改变重置人生记忆、人格、兴趣或共享待办。
+- 新扫码凭证必须暂存且核验 `api.bilibili.com/x/web-interface/nav` 所报告的真实 UID，再由管理中心用户明确确认切换；未确认/UID 不匹配/重启前/权限复核前不得执行平台业务。
+- 核心平台状态使用 `accounts/<UID>/runtime/`；首次升级旧数据只属于原账号。新增待办带 `accountUid`；旧账号任务绝不可在新账号自动执行、补发或混合回访。旧数据仅做保守归档，不清空。
+- `account-login-pending.json`、`accounts/<UID>/credential.json` 及私密运行状态绝不可进入通用备份、日志、模型上下文或公共 UI；账号凭据是敏感文件，Windows 须尽力收紧 ACL。
+- 发布前必须真实验证 Windows DSH Desktop 换号流程、失败回滚、跨 UID、旧 pending/uncertain、不跨账号外发；本地 mock 测试不视作平台实际成功。README 只写极简功能，不堆版本历史。
+
+## 2.6.1 发布前 · 备份动态评论与管理界面约束
+
+- `life-memory/candidates.json` 中公开动态评论可能只包含 `contentType:'dynamic'` 和字符串 `dynamicId`，其 `bvid` 正常为空；备份校验必须复用内容类型约束，视频与动态 ID 不得混用，不能为了备份强制伪造 BV 或删除候选。
+- 通用备份仍不得包含平台 Cookie、独立密钥、私密 DM 原文；完整性校验、恢复前快照和人工确认不可因 UI 简化而弱化。
+- 数据备份页保留管理中心原有按钮 ID 和请求路径；日常导出始终可见，独立记忆备份与恢复默认折叠；暗色模式、移动屏、键盘焦点必须可用。
+
+## 2.6.1 · 完整/专项备份上传一致性回归
+
+- `index.js` 的 `/data-backup/inspect|restore` 与 `/main-session/memory/backup/inspect|restore` 必须使用同一个 **严格的字节完整 HTTP 解析器**，不能改回逐块 `data += buffer` 或在专项恢复时绕过严格上传校验。
+- `lib/data-backup.mjs` 仍是两种备份的清单、路径、SHA-256、数据来源和结构校验源；不能为了修复用户备份的乱码或哈希不一致而略过校验、重算被篡改文件哈希或自动丢弃候选。
+- 修改导出、备份目录、上传或恢复时，同时回归 `test/v261-backup-utf8-roundtrip.test.mjs` 和 `test/v261-backup-dual-restore-roundtrip.test.mjs`，覆盖 HTTP 边界拆字节、旧格式样本、私密域、恢复前快照、无效数据拒绝以及已衰减经历不可复活。
