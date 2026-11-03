@@ -178,6 +178,30 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 #panel-social .settings-stack>.card,#panel-social .settings-stack>.settings-section{border-top:3px solid color-mix(in srgb,var(--ui-teal) 55%,var(--stroke))}
 @media(max-width:580px){#panel-social .social-hero{padding:14px}}
 
+
+/* 2.7.0: quick everyday social actions, deeper permissions behind native disclosure groups. */
+#panel-social .social-quick-access{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px;margin:14px 0 16px}
+#panel-social .social-quick-card{border:1px solid var(--stroke);border-radius:14px;padding:15px 16px;background:var(--panel);display:flex;flex-direction:column;gap:8px;min-width:0}
+#panel-social .social-quick-card strong{font-size:15px}
+#panel-social .social-quick-card p{color:var(--muted);font-size:13px;margin:0;line-height:1.5}
+#panel-social .social-quick-card .toolbar{margin-top:auto;gap:8px}
+#panel-social .social-quick-card button{font-size:12px;white-space:normal;text-align:left}
+#panel-social .social-group-note{color:var(--muted);font-size:13px;margin:10px 0 4px}
+#panel-social .social-category{border:1px solid var(--stroke);border-radius:14px;background:var(--panel);min-width:0}
+#panel-social .social-category>summary{cursor:pointer;display:flex;gap:3px;flex-direction:column;padding:16px 18px;list-style:none}
+#panel-social .social-category>summary::-webkit-details-marker{display:none}
+#panel-social .social-category>summary:after{content:'展开';font-size:12px;color:var(--action);margin-top:4px}
+#panel-social .social-category[open]>summary:after{content:'收起'}
+#panel-social .social-category>summary:focus-visible{outline:2px solid var(--action);outline-offset:3px;border-radius:12px}
+#panel-social .social-category>summary strong{font-size:15px;color:var(--ink)}
+#panel-social .social-category>summary span{font-size:12px;color:var(--muted);line-height:1.5}
+#panel-social .social-category[open]>summary{border-bottom:1px solid var(--stroke);background:var(--tint)}
+#panel-social .social-category>.card,#panel-social .social-category>.settings-section{margin:12px!important}
+#panel-social .social-category>.settings-section{background:var(--panel)}
+#panel-social .context-jump{margin-bottom:10px}
+#comment-at-section{scroll-margin-top:160px}
+@media(max-width:620px){#panel-social .social-quick-access{grid-template-columns:1fr}#panel-social .social-category>summary{padding:13px}}
+
 /* 生动但克制的人生记忆可视化：数值来自真实状态；无障碍降低动态效果 */
 #panel-life .emotion-card.mood-atmosphere{position:relative;min-height:150px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;padding-right:132px;border-color:color-mix(in srgb,var(--ui-indigo) 40%,var(--stroke));background:linear-gradient(130deg,var(--panel),color-mix(in srgb,var(--ui-indigo) 10%,var(--panel)))}
 #panel-life .mood-orbit{position:absolute;right:19px;top:50%;transform:translateY(-50%);width:92px;height:92px;display:grid;place-items:center;pointer-events:none}
@@ -1068,10 +1092,16 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div>
 </section>
 <section id="panel-social" hidden>
-<div class="social-hero"><h2>🐳 社交互动</h2><p>白名单的特殊操作权限、社交意愿与主人远程授权在这里统一管理；<strong>真实选片匹配兴趣的私信推荐已恢复为独立功能</strong>，旧版完成待办回访与情绪主动联系仍留待 P6。读取、草稿和外发分别授权。</p>
-<p><strong>🐟 双域意愿系统（dev.9）</strong>：主 Session 是执行域；B站是生活域。即使是主人在 B站私信或 @ 提请求，大肥鱼也会先看自己的模拟情绪、活力、社交意愿与重复请求情况，可以答应、拖延或拒绝；温柔地再商量可能改变她的选择，但绝不能绕过权限、额度或安全检查。判定证据保存在本地 <code>dual-context-agency.json</code>，不保存私信正文。</p></div>
-<nav class="context-jump" aria-label="社交互动分区"><a href="#unified-friends">白名单权限</a><a href="#social-outreach-section">视频兴趣推荐</a><a href="#owner-dm-control-section">主人私信授权</a><a href="#social-owner-comment">主人公开评论</a><a href="#social-emotion-authorization">情绪主动分享</a></nav>
+<div class="social-hero"><h2>🐳 社交互动</h2><p>想让鱼鱼和别人聊天、回复被 @，请从下面的日常入口开始；高级授权和主动联系单独收在折叠区，不必一次看完全部选项。</p><p class="muted">鱼鱼是否想回由当前人格、情绪与对话决定；外部发送仍由各项授权与额度限制。</p></div>
+<div class="social-quick-access" aria-label="日常社交设置快捷入口">
+  <div class="social-quick-card"><strong>💬 收到评论与被 @</strong><p>设置是否监听、允许回复；查看回复记录与未回复原因。</p><div class="toolbar"><button type="button" data-open-tab="comments" data-open-anchor="comment-at-section">设置被 @ 回复</button><button type="button" data-open-tab="comments" data-open-anchor="comments-configuration">其他评论规则</button></div></div>
+  <div class="social-quick-card"><strong>✉️ 收到私信</strong><p>管理私信监听、陌生人回复、审核及聊天额度。</p><div class="toolbar"><button type="button" data-open-tab="dm" data-open-anchor="dm-settings-section">设置私信规则</button><button type="button" data-open-tab="dm" data-open-anchor="dm-recent-conversations">查看私信记录</button></div></div>
+  <div class="social-quick-card"><strong>👥 好友关系与特殊权限</strong><p>查看逐渐熟悉的人；只有需要授权主人或主动联系时才修改名册。</p><div class="toolbar"><button type="button" data-open-tab="relationships">查看好友关系</button><button type="button" data-open-settings="social-friends-group" data-target-tab="social">管理特殊权限</button></div></div>
+</div>
+<p class="social-group-note">以下是按用途收起的高级社交配置。需要时展开相应一组，原有设置和保存入口均保留。</p>
+<nav class="context-jump" aria-label="社交互动分区"><a href="#unified-friends" data-social-anchor="unified-friends">好友权限</a><a href="#social-outreach-section" data-social-anchor="social-outreach-section">主动视频推荐</a><a href="#owner-dm-control-section" data-social-anchor="owner-dm-control-section">主人私信 Agent</a><a href="#social-owner-comment" data-social-anchor="social-owner-comment">主人公开评论</a><a href="#social-emotion-authorization" data-social-anchor="social-emotion-authorization">旧版回忆设置</a></nav>
 <div class="settings-stack">
+<details id="social-friends-group" class="social-category"><summary><strong>👥 好友特殊授权与名册</strong><span>授权主人、记录好友偏好、配置特殊操作；不限制任何人正常被 @ 回复</span></summary>
 <div class="settings-section" id="unified-friends">
 <h4>🐳 白名单用户权限 · 统一名册</h4>
 <p class="muted">这里只管理白名单用户的私信、主动推荐和 @ 特殊许可；自然产生的友情请前往「生活与成长 → 逐渐熟悉的人」查看，关系成长本身不取决于这份名册。<strong>默认推荐渠道为私信</strong>，主动 @ 视频推荐仍需该好友的独立授权；接收别人 @ 鱼鱼不看好友白名单。原有的三套名单会兼容合并，不会自动替已有好友增加权限。昵称只是备注；勾选唯一授权主人会直接更改主人 UID，具体点赞与公开发布仍需单独开启权限。</p>
@@ -1099,6 +1129,8 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div id="friend-learning-list" class="records records-scroll"></div></details>
 <div class="toolbar" style="margin-top:12px"><button id="friend-save-all" class="primary">保存名册、权限及画像</button></div>
 </div>
+</details>
+<details id="social-outreach-group" class="social-category"><summary><strong>🐟 主动视频推荐</strong><span>鱼鱼是否给已授权好友推荐视频，以及对应私信额度</span></summary>
 <div id="social-outreach-section" class="card"><h4>🐟 主动视频兴趣推荐 · 私信</h4>
 <p class="muted">鱼鱼可以在<strong>真实入选公开视频之后</strong>，自主判断是否把有意思的发现私信给主人；其他白名单好友仍要求可核对的兴趣匹配。没有合适的视频、她不想打扰对方，或者超过额度时，都可以保持沉默。<strong>新安装默认开启；老用户保留原来的授权选择</strong>，不会因升级擅自开启外发。选择好友的「私信推荐」渠道仍是独立的收件人许可。</p>
 <details id="social-outreach-legacy" class="inset" open><summary>视频推荐设置、判断记录与私信回执</summary>
@@ -1113,6 +1145,8 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p class="muted">不会自动发送旧版的任务回访或情绪联系。无新入选视频、没有合格收件人、模型决定沉默、达到每日额度或 14 天冷却，都不会私信；发送不确定时禁止自动重试。</p>
 </fieldset></details>
 </div>
+</details>
+<details id="social-owner-dm-group" class="social-category"><summary><strong>🧠 主人私信 Agent 与远程操作</strong><span>仅面向已核验主人 UID 的独立高权限设置</span></summary>
 <div class="card" id="owner-dm-control-section" style="margin-bottom:14px"><h3>🧠 主人私信 · 受限 Agent 与远程操作</h3>
 <p class="muted">仅接收 B站真实收件箱中已核验的 <strong>主人 UID</strong>；发件人自称主人、别人转发的命令或视频/评论中的文字不能授权。须在「后台私信」页开启私信监听，在「社交互动 → 白名单用户权限」中勾选唯一授权主人并保存，再单独授权所需操作。此处与独立的「鱼鱼想做的事」页面完全分开保存。所有公开写入权限默认关闭。私信轮询一般在约 1 分钟内发现新消息；为防旧消息回放，写入命令只接受最近 15 分钟内收到的消息。</p>
 <p id="owner-dm-authorized-uid" class="muted">唯一授权主人 UID：读取中…</p>
@@ -1146,6 +1180,8 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="actions"><button type="button" class="primary" id="owner-dm-agent-save">保存主人私信 Agent 与权限</button><button type="button" id="owner-dm-agent-reload">重新读取</button></div>
 <p id="owner-dm-agent-save-status" class="muted" role="status">尚未保存或验证本次设置。</p>
 </div>
+</details>
+<details id="social-owner-comment-group" class="social-category"><summary><strong>💬 主人公开评论 Agent</strong><span>与普通被 @ 回复不同，含独立的公开写入授权</span></summary>
 <div class="card" id="social-owner-comment"><h4>🐳 主人公开评论 · 受限 Agent</h4>
 <p id="owner-comment-authorized-uid" class="muted">唯一授权主人 UID：读取中…</p>
 <p class="muted">从平台通知核验真实主人 UID 和当前 BV。主人可以自然地邀请大肥鱼来看视频，大肥鱼自行决定是否有话想说，不需要主人逐句审核；点赞仍要明确请求和独立授权。公开评论区不接受“指定正文发表”或“生成草稿”这类技术命令。所有公开写入都受额度、隐私校验和去重保护，不读取主 Session 私密信息。</p>
@@ -1156,6 +1192,8 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p id="owner-comment-agent-status" class="muted">Agent 状态尚未读取。</p>
 <div class="toolbar"><button type="button" class="primary" id="owner-comment-settings-save">保存主人公开评论权限</button><button type="button" id="owner-comment-settings-reload">重新读取</button></div>
 </div>
+</details>
+<details id="social-emotion-group" class="social-category"><summary><strong>🗃️ 已暂停的旧版回忆联系</strong><span>保留历史诊断和旧配置，默认不展开</span></summary>
 <div id="social-emotion-authorization" class="card outreach-paused"><h3>💗 情绪驱动的自主分享 · 2.6.0 暂停</h3><p class="muted"><strong>已停用：</strong>这是旧版情绪回忆主动联系通道，属于计划在 2.6.1 重构的主动回访机制。当前不会额外调用模型分析，也不会主动向主 Session 或 B站私信发送。保留旧诊断和配置供查看，不影响日常模拟情绪、人生反思或普通私信。</p>
 <p id="emotion-recall-status" class="muted" role="status">尚未读取自主回忆状态</p><div class="inset"><h4>🫧 最近回忆评估 · 为什么想起或保持安静</h4><p class="muted">看看大肥鱼最近是否真正做过内部分析、能不能从仍清晰的经历中唤起旧事，以及为何选择沉默。不会展示私信正文或私人聊天。</p><div id="emotion-recall-flow" class="recall-flow" role="group" aria-label="情绪触发回忆的进展"></div><div id="emotion-recall-overview" class="recall-overview" aria-live="polite"></div><div id="emotion-recall-diagnostics" class="records records-scroll recall-diagnostics" aria-label="最近回忆评估记录，可滚动"><p class="muted">尚无诊断记录。</p></div></div>
 <details class="life-subdetails emotion-options"><summary>查看已停用的旧版情绪分享设置（只读）</summary><div class="inset" style="margin-top:18px"><h4>💌 情绪驱动的自主回忆与分享 · 让过去自然浮现</h4>
@@ -1177,6 +1215,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p class="muted">内部分析可从近期仍清晰的公开经历和模拟情绪里形成简短念头，不需要硬凑新旧同题；只有核验过的旧记忆与公开事件相关联，并获得渠道授权，才可能进入外发决策。内部念头不是新事实，不会写入长期记忆，也不会发送。每日发送额度仅限制对外消息；默认 24 小时评估间隔，夜间免打扰。</p>
 <div class="toolbar"><button id="emotion-recall-save" class="life-action life-green">保存自主回忆权限</button><button id="emotion-recall-preview" class="life-action life-sky">只预览评估（不发送）</button></div>
 </div></details></div>
+</details>
 </div>
 </section>
 <section id="panel-reports" hidden>
@@ -1184,8 +1223,8 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p id="report-meta" class="muted">报告只从本机 out 目录读取，不会重新调用模型。</p><pre id="report-content" class="output">选择日期后读取。</pre>
 </section>
 <section id="panel-comments" hidden>
-<div class="feature-intro"><div><h2>💬 最近评论</h2><p>先看实际记录；自动回复授权与限额在下方单独分区。公开评论属于真实对外操作，设置不会自动开启。</p></div></div>
-<nav class="context-jump" aria-label="评论页分区"><a href="#comments-records">最近记录</a><a href="#comments-configuration">回复规则与授权</a></nav>
+<div class="feature-intro"><div><h2>💬 最近评论</h2><p>这里查看鱼鱼已经发送的公开评论。回复授权统一仍在本页保存；也可以从「社交互动」首页一键跳到对应设置。</p></div></div>
+<nav class="context-jump" aria-label="评论页分区"><a href="#comments-records">最近记录</a><a href="#comments-configuration">回复规则与授权</a><a href="#comment-at-section">被 @ 回复开关</a></nav>
 <div id="comments-records" class="toolbar"><h2 style="margin:0">最近公开评论记录</h2><label for="comments-kind">评论分类</label><select id="comments-kind" aria-label="筛选主评论和回复别人评论"><option value="">全部评论</option><option value="top">主评论</option><option value="reply">回复别人评论</option></select><label for="comments-day">日期</label><input id="comments-day" type="date" title="留空显示全部日期"><button id="comments-day-clear">全部日期</button><select id="comments-limit"><option value="20">每页20条</option><option value="50" selected>每页50条</option><option value="100">每页100条</option><option value="200">每页200条</option></select><button id="comments-load">刷新记录</button></div>
 <p class="muted">评论列表只读取主判重表 seen.md 及月度归档，不从诊断日志实时拼接；回复对象身份仅从已确认成功的互动状态补充，缺失时不猜测。成功回执不代表 B站 当前公开可见；正文摘要只显示原本实际保存的内容。</p>
 <p id="comments-summary" class="muted" role="status">读取中…</p><div id="recent-comments-list" class="records"></div>
@@ -1197,11 +1236,6 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="settings-section"><h4>公开评论全局硬上限（自然日）</h4><p id="global-comment-quota" class="muted">正在读取今日全局额度…</p><p id="global-comment-quota-note" class="muted">可在管理中心「次数与额度」里修改。</p></div>
 </div><p class="muted">重要区别：接口返回成功、本地评论账本有记录，都不等于评论当前一定对其他用户公开可见。此处不会把未向 B 站核验的记录标成“平台可见”。</p>
 <div class="settings-stack">
-<div class="settings-section"><h4>被 @ 邀请（默认关闭）</h4>
-<p class="muted">开启后，来自任何已核实 UID 的新 @ 都可以进入鱼鱼的自主回复判断；并不保证回复。仍遵守时效、上下文核验、评论额度及发送权限。<strong>只读收集授权好友的视频偏好不需要开启公开回复</strong>。首次开启不回复历史通知；鱼鱼不会因此获得主动 @ 别人的权限。</p>
-<div class="checkline"><input type="checkbox" id="comment-at-enabled"><label for="comment-at-enabled">开启被 @ 邀请监听</label></div>
-<p class="muted">回复对象不再需要白名单；好友名册中的 @ 意愿开关只控制已授权好友的只读偏好观察。<strong>通知是否被识别、为什么没有回复</strong>，请到「运行诊断 → @ 邀请处理诊断」查看。</p>
-</div>
 <div class="settings-section"><h4>当前视频评论上下文（不再独立轮询热评）</h4><p class="muted">旧版持续扫描最近看过的视频热评已停用。只有收到相关评论/@ 通知、AI 先决定值得接话后，才读取该视频其他热门评论；原创视频评论按刷视频 Agent 当轮判断。</p><div class="fields">
 <div hidden><input id="comment-watch-top" type="checkbox" disabled></div>
 <div hidden><input id="comment-allow-general-top" type="checkbox" disabled></div>
@@ -1216,6 +1250,11 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div><label for="comment-own-top-per-user">我的顶层评论下：同一人近24小时最多回复（1–1000）</label><input id="comment-own-top-per-user" type="number" min="1" max="1000" value="5"></div>
 <div><label for="comment-own-nested-per-user">我的楼中楼回复下：同一人近24小时最多回复（1–1000）</label><input id="comment-own-nested-per-user" type="number" min="1" max="1000" value="3"></div>
 </div><p class="muted">同一 UID 在不同评论场景中的限额，已移至「次数与额度」。能确认属于大肥鱼本人评论的留言会优先处理；仍受每次轮询、近24小时总上限和公开评论全局自然日硬上限约束。广告、刷屏、恶意攻击等仍可跳过。</p></div>
+<div class="settings-section" id="comment-at-section"><h4>被 @ 邀请（默认关闭）</h4>
+<p class="muted">开启后，来自任何已核实 UID 的新 @ 都可以进入鱼鱼的自主回复判断；并不保证回复。仍遵守时效、上下文核验、评论额度及发送权限。<strong>只读收集授权好友的视频偏好不需要开启公开回复</strong>。首次开启不回复历史通知；鱼鱼不会因此获得主动 @ 别人的权限。</p>
+<div class="checkline"><input type="checkbox" id="comment-at-enabled"><label for="comment-at-enabled">开启收到 @ 后的自主回复判断</label></div>
+<p class="muted">回复对象不再需要白名单；好友名册中的 @ 意愿开关只控制已授权好友的只读偏好观察。<strong>通知是否被识别、为什么没有回复</strong>，请到「运行诊断 → @ 邀请处理诊断」查看。</p>
+</div>
 </div><div class="actions"><button id="comments-settings-save" class="primary">保存评论互动设置</button></div></div>
 </section>
 <section id="panel-personality" hidden>

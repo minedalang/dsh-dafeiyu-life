@@ -6,6 +6,10 @@
 
 - [统一自主社交决策、P6-A/B 续聊、好友画像、私信自由与 @ 回复权限架构](./2.7.0-unified-social-agency-plan.md) · [目标 Mermaid](./diagrams/2.7.0-social-agency-target.mmd) · [已接通的入站 @ Mermaid](./diagrams/2.7.0-incoming-at-live.mmd)。**当前 `2.7.0-dev.1` 已将入站 @ 取消回复者白名单、公开回复禁止未经授权主动 @ 接入生产；DM 自主决策、P6-A/B 发送/唤醒和好友画像尚未完成**；下列 2.6.2 图仍是其余渠道的现行生产调用关系。
 
+## 管理中心的社交入口（2.7.0）
+
+- [社交互动／评论／私信的页面职责、唯一设置源与折叠导航](./2.7.0-social-management-navigation.md) · [可编辑导航 Mermaid](./diagrams/2.7.0-social-management-navigation.mmd)。**仅整理管理 UI，不改变互动权限、数据源或发送契约**。
+
 ## 修改任何功能之前
 
 - [统一层归属、可以新增新层的条件与架构文档同步门禁](./2.6.2-unified-layer-change-gate.md)
