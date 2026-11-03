@@ -99,7 +99,7 @@ import { createCommentInteract } from './lib/comment-interact.mjs'
 import { createCommentVideoContext } from './lib/comment-video-context.mjs'
 import { recentComments, migrateCommentReceipts, ownCommentTargets } from './lib/recent-comments.mjs'
 import { createInteractionBatcher } from './lib/interaction-batch.mjs'
-import {ownPublishedDynamics} from './lib/own-published-dynamics.mjs'
+import {ownPublishedDynamics,ownPublishedDynamicText} from './lib/own-published-dynamics.mjs'
 import { createInteractionMemeLookup, readReplyMemeSnapshot } from './lib/interaction-meme-memory.mjs'
 import { createInteractionScheduler } from './lib/interaction-scheduler.mjs'
 import { createBiliReadBudget } from './lib/bili-read-budget.mjs'
@@ -3763,6 +3763,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     getVideoContext: (bvid,details) => videoContext.forReply(bvid,details),
     getOwnComments: () => ownCommentTargets(stateDir),
+    getEmotion:()=>emotionalState.snapshot(),
     getOwnDynamics: () => ownPublishedDynamics(stateDir),
     getDynamicContext: async (notice) => {
       let dynamicId=String(notice?.dynamicId||'');
@@ -3796,6 +3797,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return {usable:true,dynamicId,targetUid:String(raw.target.uid),
         authorUid:String(raw.authorUid||''),replyToUid:String(raw.replyToUid||''),
         replyToRpid:String(raw.replyToRpid||''),ownedLocal:ownPublishedDynamics(stateDir).includes(dynamicId),
+        ownDynamicText:String(raw.authorUid||'')===String(dmCred(stateDir)?.dedeuserid||'')
+          ?ownPublishedDynamicText(stateDir,dynamicId):'',
         root:String(raw.root||''),verifiedCommentText:String(raw.target.content||'').slice(0,320),
         summary:'已核验真实动态评论区与评论发送者'};
     },
