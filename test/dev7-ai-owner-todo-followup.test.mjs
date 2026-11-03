@@ -80,7 +80,7 @@ test('完成回访需独立授权、安静时间及主人身份，默认1小时�
   assert.equal((await f.tick()).skipped,'disabled');assert.equal(sends.length,0)
   cfg.ownerTodoCompletionFollowupEnabled=true
   assert.equal((await f.tick()).status,'sent');assert.equal(sends.length,1)
-  assert.equal(sends[0].text,'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。')
+  assert.match(sends[0].text,/孙燕姿/);assert.ok(sends[0].text.endsWith('我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'))
   f.queue(task('B','BV1abc234568'),{ok:true,data:{info:{title:'孙燕姿歌曲第二集'}}})
   assert.equal((await f.tick()).skipped,'两次回访最小间隔未结束')
   t+=3600000

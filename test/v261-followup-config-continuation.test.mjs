@@ -49,7 +49,7 @@ test('同一原始私信三个子待办先完成两项不发送，最后一项�
  const queued=f.queue(children[2],{ok:true,data:{info:{title:'孙燕姿现场歌曲'}}})
  assert.equal(queued.queued,false);assert.equal(f.status().pending,1)
  assert.equal((await f.tick()).status,'sent');assert.equal(sent.length,1)
- assert.equal(sent[0].text,'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。');assert.equal(f.status().recent.find(x=>x.status==='sent').groupTotal,3)
+ assert.match(sent[0].text,/孙燕姿/);assert.ok(sent[0].text.endsWith('我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'));assert.equal(f.status().recent.find(x=>x.status==='sent').groupTotal,3)
  assert.equal(f.queue(children[2],{ok:true}).queued,false)
 }))
 test('旧三个pending安全合并；已有uncertain或sent则不自动再汇总',()=>inSpace(async dir=>{
@@ -88,7 +88,7 @@ test('末尾子待办自主放弃仍结束整组等待；只汇报真实完成�
  let sent=[];const f=createOwnerTodoFollowup({chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),dataDir:dir,getConfig:conf,getTodos:()=>todo.list({includeClosed:true,limit:500}),now:()=>T,hourOf:()=>12,send:async x=>{sent.push(x);return {ok:true}}})
  todo.update(rows[0].id,'done');assert.equal(f.queue(rows[0],{ok:true,data:{info:{title:'孙燕姿现场'}}}).queued,true)
  todo.update(rows[1].id,'dismiss');todo.update(rows[2].id,'dismiss')
- assert.equal((await f.tick()).status,'sent');assert.equal(sent.length,1);assert.equal(sent[0].text,'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。');assert.equal(f.status().recent.find(x=>x.status==='sent').groupTotal,3)
+ assert.equal((await f.tick()).status,'sent');assert.equal(sent.length,1);assert.match(sent[0].text,/孙燕姿/);assert.ok(sent[0].text.endsWith('我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'));assert.equal(f.status().recent.find(x=>x.status==='sent').groupTotal,3)
 }))
 test('同父任务混入其他原消息来源绝不能合并，避免越权泄露',()=>inSpace(async dir=>{
  const todo=createOwnerTodoEngine({dataDir:dir,now:()=>T}),parent=randomUUID()

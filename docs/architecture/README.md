@@ -1,3 +1,5 @@
+> **2.6.2 当前事实架构实施**：[统一真实经历事实视图与可辨识待办回访](./2.6.2-unified-facts-and-followup-context.md)，配套图见 `diagrams/2.6.2-verified-facts-outbound.*`。
+
 # 大肥鱼技术架构档案（2.6.0-dev.4）
 
 本目录面向维护者。根 README 只保留简要功能说明及本目录入口，不展示全部内部调用链。

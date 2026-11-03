@@ -1,0 +1,28 @@
+flowchart LR
+ subgraph S[真实操作证据]
+  T[已接受待办成功回执]
+  R[本轮公开资料读取]
+  P[平台可信回执]
+ end
+ subgraph F[统一事实契约]
+  E[类型化事实 VerifiedLifeFact]
+  V[按 UID / 渠道 / 时间限定可见]
+  G[统一对外事实核验]
+ end
+ subgraph C[表达入口]
+  D[普通和主人私信]
+  C1[评论和 @]
+  S1[自主分享和生活动态]
+  F1[父子待办回访]
+  A[可辨识原请求主题]
+ end
+ subgraph O[独立安全出口]
+  W[鱼鱼自主意愿]
+  Q[授权 配额 去重 冷却]
+  B[平台发送和真实回执]
+ end
+ T & R & P --> E --> V --> G
+ D & C1 & S1 --> G
+ F1 --> A --> G
+ F1 --> W --> Q
+ G --> Q --> B

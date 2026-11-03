@@ -1,0 +1,34 @@
+digraph VerifiedLife {
+  graph [rankdir=LR, bgcolor="#f7f9fc", pad="0.3", nodesep="0.37", ranksep="0.68", label="大肥鱼 2.6.2 · 真实经历与对外表达统一链路", labelloc=t, fontsize=21, fontname="Noto Sans CJK SC", fontcolor="#1d2c42", splines=ortho];
+  node [shape=box, style="rounded,filled", fontname="Noto Sans CJK SC", fontsize=12, penwidth=1.3, color="#c5d4e2", fillcolor=white, fontcolor="#253247", margin="0.18,0.14"];
+  edge [color="#8b9eb8", penwidth=1.65, arrowsize=.72];
+  subgraph cluster_sources {label="01 · 已核验来源"; color="#d0dae6"; style="rounded,filled"; fillcolor="#edf4fb";
+    todo [label="已接受待办\n状态 + 成功回执",fillcolor="#dcecff"];
+    reads [label="本轮真实读取\n公开元数据 / 字幕",fillcolor="#dcecff"];
+    action [label="平台实际操作回执\n投稿 / 发言 / 播放证据",fillcolor="#dcecff"];
+    fading [label="当前可回忆的人生经历\n（不读封存档案）",fillcolor="#e0f1e9"];
+  }
+  subgraph cluster_layer {label="02 · 统一事实契约"; color="#bdd4d9"; style="rounded,filled"; fillcolor="#edf8f7";
+    typed [label="VerifiedLifeFact\n操作类型与来源 ID",fillcolor="#c8ece5",color="#68b7a7"];
+    scope [label="Scoped Fact View\nUID + 渠道 + 时效",fillcolor="#c8ece5",color="#68b7a7"];
+    gate [label="verifyLifeOutbound\n事实主张 + BV 链接核验",fillcolor="#c8ece5",color="#68b7a7"];
+  }
+  subgraph cluster_channels {label="03 · 自然表达入口";color="#d6c8e8";style="rounded,filled";fillcolor="#f6f0fc";
+    dm [label="普通 / 主人 B站私信",fillcolor="#eee1fd"];
+    comment [label="评论 / @ / 好友互动",fillcolor="#eee1fd"];
+    share [label="自主分享 / 生活动态",fillcolor="#eee1fd"];
+    follow [label="父子待办完成回访",fillcolor="#eee1fd"];
+    anchor [label="原始请求主题定位\n父待办 + 同源收件人",fillcolor="#fceaca",color="#dca96d"];
+  }
+  subgraph cluster_delivery {label="04 · 独立的意愿与安全执行";color="#e4d3bf";style="rounded,filled";fillcolor="#fff7ec";
+    willingness [label="鱼鱼决定：回复 / 延期 / 沉默",fillcolor="#ffedcf"];
+    policy [label="渠道授权 · 冷却 · 配额\n去重 / 回执安全",fillcolor="#ffedcf"];
+    platform [label="B站真实发送\n确认回执 → 人生经历投影",fillcolor="#dff4e6",color="#79c8a0"];
+  }
+  todo -> typed; reads -> typed; action -> typed;
+  fading -> scope [style=dashed,label="只提供仍可见的经历",fontname="Noto Sans CJK SC",fontsize=9];
+  typed -> scope; scope -> gate;
+  dm -> gate; comment -> gate; share -> gate; follow -> anchor; anchor -> gate;
+  follow -> willingness [style=dashed]; willingness -> policy [style=dashed];
+  gate -> policy; policy -> platform;
+}
