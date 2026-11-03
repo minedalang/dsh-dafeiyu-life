@@ -1359,7 +1359,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div><label for="dm-stranger-max">每个未获批陌生人最多自动回复次数（1–20）</label><input id="dm-stranger-max" type="number" min="1" max="20" value="1"><small class="setting-note">默认 1 次：首条私信由 AI 结合内容自然回复并理解只读探索建议；次数限制不变。想继续聊请设为 2–3 次或批准聊天申请。界面“sent”只表示上一条已发出，不代表仍有回复额度。</small></div>
 <p class="muted">陌生人首条私信也使用现有 AI 回复调用；同一调用同时理解自然语言中的未来只读探索建议，不会额外增加一次意图识别调用。</p>
 <div class="checkline"><input id="dm-approval-enabled" type="checkbox"><label for="dm-approval-enabled">允许陌生人申请继续聊天</label></div>
-<div><label for="dm-phrase">申请暗号</label><input id="dm-phrase" maxlength="60" placeholder="白饭🍚"></div>
+<div><label for="dm-phrase">申请暗号</label><input id="dm-phrase" maxlength="60" placeholder="白饭🍚"><small class="setting-note">默认「白饭🍚」可识别独立投喂的 🍚、🍚🍚🍚🍚 等；普通聊天提到米饭不算申请。自定义其他暗号仍按精确文本匹配。申请需要开启「后台私信监听」与「允许陌生人申请继续聊天」，不自动通过。</small></div>
 </div></div>
 </div><div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
 </section>
