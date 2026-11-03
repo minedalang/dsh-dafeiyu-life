@@ -1,3 +1,4 @@
+- [2.6.2 @ 通知正文误删及原评论只读核验恢复](./2.6.2-at-original-comment-recovery.md)：修复 @昵称连写导致有话被删；核验 UID/rpid/BV 后才进入 AI，动态显示重试与来源缺失。
 - [2.6.2 被 @ 邀请通知的双时间戳、24小时窗口及诊断修复](./2.6.2-at-invitation-diagnostic-times.md)：区分平台事件时间与本地处理时间，解释“接口 9 条／识别 5 条”不等于新邀请，并补全运行状态。
 
 > **2.6.2 当前统一人格装配**：[同一人格、分场景事实与权限](./2.6.2-life-voice-context.md)，[可编辑 Mermaid 图](./diagrams/2.6.2-life-voice-unified.mmd)。

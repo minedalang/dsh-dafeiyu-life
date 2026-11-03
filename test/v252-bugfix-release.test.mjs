@@ -14,7 +14,9 @@ const notice=(raw,detail=[{mid:self,uname:'大肥鱼怒了但不说话'}])=>({da
 
 test('Bug 01: 完整昵称不被误解为鱼鱼的情绪；@only 不触发回复',()=>{
   assert.equal(stripAccountMentions('@大肥鱼怒了但不说话', [{mid:self,uname:'大肥鱼怒了但不说话'}],self),'')
-  assert.equal(normalizeAtNotifications(notice('@大肥鱼怒了但不说话'),self).length,0)
+  const mentionOnly=normalizeAtNotifications(notice('@大肥鱼怒了但不说话'),self)
+  assert.equal(mentionOnly.length,1)
+  assert.equal(mentionOnly[0].sourceTextMissing,true) // stays pending until source comment is verified
   assert.equal(normalizeAtNotifications(notice('@大肥鱼怒了但不说话 你看看这个视频！'),self)[0].text,'你看看这个视频！')
   assert.equal(stripAccountMentions('@大肥鱼怒了但不说话', [{mid:self,uname:'大肥鱼'}],self),'')
   assert.equal(stripAccountMentions('@大肥鱼怒了但不说话，怎么啦',[],self),'，怎么啦')

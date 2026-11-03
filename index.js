@@ -3722,6 +3722,28 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     getNotifications: () => call('bili_received_replies', {}),
     getAtNotifications: () => call('bili_received_at_and_likes', {}),
+    getAtSource: async (entry) => {
+      // A missing notification body does not authorize composing a reply.
+      // Resolve the exact source comment from B站 with an author match.
+      const bvid=String(entry?.bvid||'');
+      const rpid=String(entry?.rpid||'');
+      const root=String(entry?.contextRoot||entry?.locationRoot||rpid);
+      if(!/^BV[0-9A-Za-z]{10}$/.test(bvid)||!/^\d{1,20}$/.test(root)||!/^\d{1,20}$/.test(rpid))
+        return {ok:false,reason:'缺少可信视频或评论定位'};
+      // This legacy MCP tool still expects numeric IDs. Refuse precision loss;
+      // never query or reply in a potentially different comment thread.
+      if(!Number.isSafeInteger(Number(root))||!Number.isSafeInteger(Number(rpid)))
+        return {ok:false,reason:'平台评论ID超过当前只读工具的安全整数范围'};
+      const result=parseMaybeJson(await call('bili_comment_thread',
+        {bvid,root:Number(root),target_rpid:Number(rpid),num:20}));
+      if(result?.error)return {ok:false,reason:String(result.error).slice(0,120)};
+      const comments=[result?.root_comment,...(Array.isArray(result?.replies)?result.replies:[])].filter(Boolean);
+      const exact=comments.find(c=>String(c.rpid||'')===rpid && String(c.mid||'')===String(entry.uid||''));
+      const text=String(exact?.content||'').trim();
+      if(!text)return {ok:false,reason:'未取得来源评论，或原评论作者与通知发送者不一致'};
+      return {ok:true,uid:String(exact.mid),rpid,bvid,text,
+        topLevel:String(result?.root_comment?.rpid||'')===rpid && String(exact.rpid)===rpid};
+    },
     getVideoContext: (bvid,details) => videoContext.forReply(bvid,details),
     getOwnComments: () => ownCommentTargets(stateDir),
     getOwnDynamics: () => ownPublishedDynamics(stateDir),
