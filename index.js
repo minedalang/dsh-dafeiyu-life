@@ -89,6 +89,7 @@ import { recordFriendInteraction, listFriendRelationships, friendRelationshipCon
 import {createSocialRelationshipIndex} from './lib/social-relationship-index.mjs'
 import { buildLifeTimeline } from './lib/life-timeline.mjs'
 import { createDmVideoRecommendationContext } from './lib/dm-video-recommendation.mjs'
+import { createDmTodoProgressContext } from './lib/dm-todo-progress.mjs'
 import { collectDmInbox, parseDmWhitelist } from './lib/dm-inbox.mjs'
 import { picksThisRound } from './lib/pick-quota.mjs'
 import { createCommentInteract } from './lib/comment-interact.mjs'
@@ -3380,6 +3381,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   socialCognitionTimer.unref?.()
   ctx.effect(()=>()=>clearInterval(socialCognitionTimer),'bili-duty: dev5 社会邀请只读审阅')
   const dmVideoRecommendationContext=createDmVideoRecommendationContext({stateDir})
+  const dmTodoProgressContext=createDmTodoProgressContext({todos:ownerTodos,taskAllowed:task=>accountBinding.taskAllowed(task)})
 
   const lookupBiliNickname=async(uid)=>{
     if(!/^[1-9]\d{0,18}$/.test(String(uid)))return ''
@@ -3464,10 +3466,11 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
         canReply=will?.decision==='allow'||req.canSkip===false
       }
       const recommendationContext=await dmVideoRecommendationContext.forReply(req)
+      const todoProgressContext=dmTodoProgressContext.forReply(req)
       return interactionBatcher.generate({kind:'dm',role:tier,...req,canReply,
         allowTodoIntake:true,
         onTodoProposal:proposal=>intakeAiSocialTodo({...proposal,request:{...req,recommendationContext},channel:'dm'}),
-        recommendationContext,identityContext:replyIdentityContext(req.uid)})
+        recommendationContext,todoProgressContext,identityContext:replyIdentityContext(req.uid)})
     },
     send: async ({ uid, text, eventId }) => {
       refreshCfg()
