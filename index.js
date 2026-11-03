@@ -33,6 +33,7 @@ import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
 import { randomUUID, createHash } from 'node:crypto'
 import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
 import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup } from './lib/data-backup.mjs'
+import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -3730,16 +3731,14 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     res.writeHead(code, { 'content-type': 'application/json; charset=utf-8' })
     res.end(JSON.stringify(obj))
   }
-  const readBody = (req, maxBytes=1_000_000) => new Promise((resolve) => {
-    let data = ''
-    let done = false
-    // ⚠️ 超过 1MB 得**先把 Promise 收掉**再掐断：只 destroy 的话它永远不 settle，
-    //    这个请求就挂在那儿（不回响应、也不释放）
-    const finish = (v) => { if (!done) { done = true; resolve(v) } }
-    req.on('data', (c) => { data += c; if (data.length > maxBytes) { data = ''; finish({}); req.destroy() } })
-    req.on('end', () => { try { finish(JSON.parse(data || '{}')) } catch { finish({}) } })
-    req.on('error', () => finish({}))
-  })
+  // Decode request JSON *after* joining the raw bytes. Converting each TCP
+  // chunk to a string independently can replace split UTF-8 characters with
+  // U+FFFD and silently invalidate the SHA-256 of a freshly exported backup.
+  const readBody = (req, maxBytes=1_000_000) => readJsonRequest(req, maxBytes)
+  // Both restore endpoints must fail closed on malformed or truncated uploads.
+  // The normal management APIs retain their historical permissive {} behavior.
+  const readBackupBody = (req, maxBytes) => readJsonRequest(req, maxBytes, {strict:true})
+
 
   const readRawBody = (req, maxBytes=128*1024*1024) => new Promise((resolve) => {
     const chunks=[];let total=0,overflow=false,done=false
@@ -4685,7 +4684,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
           log('用户数据已备份到：'+filePath)
           return sendJson(res, 200, {ok:true,filePath,summary:validateBackup(backup)})
         }
-        const body = await readBody(req, 90_000_000)
+        const body = await readBackupBody(req, 90_000_000)
         const data = body?.backup
         const summary = validateBackup(data)
         if (action === 'restore') validateRestoreIdentity(stateDir,data)
@@ -5442,7 +5441,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
           const backup=createLifeMemoryBackup(stateDir),filePath=saveBackupJson(folder,backup,'dafeiyu-memory')
           return sendJson(res,200,{ok:true,filePath,summary:inspectLifeMemoryBackup(backup)})
         }
-        const body=await readBody(req,65_000_000),backup=body?.backup
+        const body=await readBackupBody(req,65_000_000),backup=body?.backup
         const summary=inspectLifeMemoryBackup(backup)
         if(action==='inspect')return sendJson(res,200,{ok:true,summary})
         if(body?.confirm!=='RESTORE_DAFEIYU_MEMORY')return sendJson(res,400,{ok:false,error:'未完成记忆恢复前人工确认'})

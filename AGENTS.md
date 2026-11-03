@@ -211,3 +211,9 @@ Windows Desktop 的常规安装命令为 `dsh plugin --profile desktop add dsh-d
 - `life-memory/candidates.json` 中公开动态评论可能只包含 `contentType:'dynamic'` 和字符串 `dynamicId`，其 `bvid` 正常为空；备份校验必须复用内容类型约束，视频与动态 ID 不得混用，不能为了备份强制伪造 BV 或删除候选。
 - 通用备份仍不得包含平台 Cookie、独立密钥、私密 DM 原文；完整性校验、恢复前快照和人工确认不可因 UI 简化而弱化。
 - 数据备份页保留管理中心原有按钮 ID 和请求路径；日常导出始终可见，独立记忆备份与恢复默认折叠；暗色模式、移动屏、键盘焦点必须可用。
+
+## 2.6.1 · 完整/专项备份上传一致性回归
+
+- `index.js` 的 `/data-backup/inspect|restore` 与 `/main-session/memory/backup/inspect|restore` 必须使用同一个 **严格的字节完整 HTTP 解析器**，不能改回逐块 `data += buffer` 或在专项恢复时绕过严格上传校验。
+- `lib/data-backup.mjs` 仍是两种备份的清单、路径、SHA-256、数据来源和结构校验源；不能为了修复用户备份的乱码或哈希不一致而略过校验、重算被篡改文件哈希或自动丢弃候选。
+- 修改导出、备份目录、上传或恢复时，同时回归 `test/v261-backup-utf8-roundtrip.test.mjs` 和 `test/v261-backup-dual-restore-roundtrip.test.mjs`，覆盖 HTTP 边界拆字节、旧格式样本、私密域、恢复前快照、无效数据拒绝以及已衰减经历不可复活。
