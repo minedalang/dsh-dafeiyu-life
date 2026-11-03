@@ -548,15 +548,16 @@ async def bili_comment_thread(bvid: str, root: int, num: int = 20, target_rpid: 
 # ========== Tool 3: 获取字幕 ==========
 
 @tool()
-async def bili_subtitle(bvid: str) -> str:
+async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
     """
     获取B站视频的AI字幕（语音转文字）
 
     Args:
         bvid: 视频BV号，如"BV1uNk1YxEJQ"
-    
+        auto_vision_on_missing: 仅视频 Agent 可选，若无字幕且已授权识图则自动尝试预览帧，受原有额度约束
+
     Returns:
-        视频的完整字幕文本
+        字幕文本，或无字幕时的低清图片/受限视觉结果
     """
     cred = get_cred()
     v = video.Video(bvid=bvid, credential=cred)
@@ -573,6 +574,21 @@ async def bili_subtitle(bvid: str) -> str:
     subtitles = subtitle_list.get("subtitles", [])
 
     if not subtitles:
+        # Only the video Agent may opt in to this tool-level fallback. Ordinary
+        # DM/comment context fetches must never launch a visual model merely
+        # because the platform has no captions. The master vision switch,
+        # per-run limit and independent daily budget remain enforced inside
+        # bili_preview_vision.
+        if auto_vision_on_missing and os.environ.get('BILI_VISION_ENABLED') == '1':
+            observed = await bili_preview_vision(bvid)
+            marker = TextContent(type='text', text=json.dumps({
+                'bvid': bvid, 'message': '该视频没有字幕',
+                'visual_fallback': 'attempted',
+                'note': '低清图片不能证明看完视频，也不能证明听过音轨',
+            }, ensure_ascii=False))
+            if isinstance(observed, CallToolResult):
+                return CallToolResult(content=[marker, *observed.content])
+            return CallToolResult(content=[marker, TextContent(type='text',text=str(observed))])
         return json.dumps({"message": "该视频没有字幕"}, ensure_ascii=False)
 
     # 优先AI中文字幕
@@ -596,6 +612,18 @@ async def bili_subtitle(bvid: str) -> str:
 
     texts = [item.get("content", "") for item in sub_data.get("body", [])]
     full_text = "\n".join(texts)
+    # A subtitle track can exist while containing no meaningful language (empty
+    # body / attribution line). It is not proof that the video has no images.
+    if auto_vision_on_missing and os.environ.get('BILI_VISION_ENABLED') == '1' and (
+            not full_text.strip() or re.fullmatch(r'字幕\s*by.{0,40}', full_text.strip(), flags=re.I)):
+        observed = await bili_preview_vision(bvid)
+        marker = TextContent(type='text', text=json.dumps({
+            'bvid': bvid, 'message': '字幕轨内容不可用', 'visual_fallback': 'attempted',
+            'note': '只返回低清图片与可核验来源，不等于完整观看',
+        }, ensure_ascii=False))
+        if isinstance(observed, CallToolResult):
+            return CallToolResult(content=[marker, *observed.content])
+        return CallToolResult(content=[marker, TextContent(type='text',text=str(observed))])
 
     result = {
         "bvid": bvid,
