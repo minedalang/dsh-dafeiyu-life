@@ -1,3 +1,5 @@
+> **2.6.2 当前统一人格装配**：[同一人格、分场景事实与权限](./2.6.2-life-voice-context.md)，[可编辑 Mermaid 图](./diagrams/2.6.2-life-voice-unified.mmd)。
+
 > **2.6.2 当前事实架构实施**：[统一真实经历事实视图与可辨识待办回访](./2.6.2-unified-facts-and-followup-context.md)，配套图见 `diagrams/2.6.2-verified-facts-outbound.*`。
 
 # 大肥鱼技术架构档案（2.6.0-dev.4）
