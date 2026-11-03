@@ -1137,7 +1137,7 @@
 
 # 更新记录（CHANGELOG）
 
-本文件记录 `dsh-bili-scroll-plus` 的主要功能演进。**安装、配置和当前限制请以 [README.md](./README.md) 为准。** 更早的长篇开发过程保留在 [旧版 README 归档](./docs/README-legacy.md)，其中部分操作方式与现行版本不一致。
+本文件记录 `dsh-bili-scroll-plus` 的主要功能演进。**安装、配置和当前限制请以 [README.md](./README.md) 为准。** 更早的长篇开发过程可依据 [历史文档清理索引](./docs/archive/README.md) 从 Git 历史查回，其中部分操作方式与现行版本不一致。
 
 ## 2.4.30 — 单一评论主账本
 
@@ -1204,4 +1204,4 @@
 
 ---
 
-完整的早期变更说明和开发记录仅用于历史参考：[docs/README-legacy.md](./docs/README-legacy.md)。
+完整的早期变更说明仅用于历史参考，需要旧版长篇记录时可按 [历史文档清理索引](./docs/archive/README.md) 从 Git 历史查回。

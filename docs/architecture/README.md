@@ -1,101 +1,45 @@
-- [所有开发任务的统一层归属与变更门禁](./2.6.2-unified-layer-change-gate.md)：人设／情绪／事实／记忆／权限的唯一职责归属，编码前审计与模型提示去重规则。
-- [2.6.2 @ 通知正文误删及原评论只读核验恢复](./2.6.2-at-original-comment-recovery.md)：修复 @昵称连写导致有话被删；核验 UID/rpid/BV 后才进入 AI，动态显示重试与来源缺失。
-- [2.6.2 被 @ 邀请通知的双时间戳、24小时窗口及诊断修复](./2.6.2-at-invitation-diagnostic-times.md)：区分平台事件时间与本地处理时间，解释“接口 9 条／识别 5 条”不等于新邀请，并补全运行状态。
+# 大肥鱼 · 当前技术架构（2.6.2 dev）
 
-> **2.6.2 当前统一人格装配**：[同一人格、分场景事实与权限](./2.6.2-life-voice-context.md)，[可编辑 Mermaid 图](./diagrams/2.6.2-life-voice-unified.mmd)。
+> 本页是维护者的**当前架构入口**，不是版本流水账。任何涉及统一层、事实源、权限、事件流、渠道接线和存储的修改，必须同步更新本页、相应说明、Mermaid 图与回归测试。根 README 始终面向用户。
 
-> **2.6.2 当前事实架构实施**：[统一真实经历事实视图与可辨识待办回访](./2.6.2-unified-facts-and-followup-context.md)，配套图见 `diagrams/2.6.2-verified-facts-outbound.*`。
+## 修改任何功能之前
 
-# 大肥鱼技术架构档案（2.6.0-dev.4）
+- [统一层归属、可以新增新层的条件与架构文档同步门禁](./2.6.2-unified-layer-change-gate.md)
+- [当前系统静态审计及未完成的实机验收](./2.6.2-system-audit.md)：**审计基线是当时的开发快照**，其中标为“未实现”的能力可能在后续单独文档中已有更新；以最新代码及下方当前接线文档为准。
 
-本目录面向维护者。根 README 只保留简要功能说明及本目录入口，不展示全部内部调用链。
+## 当前公共层及业务接线
 
-## 2.6.2 dev · 最新静态审计与两套架构图
+| 主题 | 模块或真实状态来源 | 维护入口 |
+| --- | --- | --- |
+| 同一人格、成长人格、连续情绪 | `life-voice-context.mjs`、`emotional-state.mjs` | [人格上下文](./2.6.2-life-voice-context.md) · [跨渠道模拟](./2.6.2-one-fish-simulation.md) |
+| 可信经历与对外主张核验 | `verified-life-facts.mjs`、可信执行回执 | [统一事实、回访背景](./2.6.2-unified-facts-and-followup-context.md) |
+| 可衰减记忆、分域反思 | `LifeMemoryGateway`、`memoryRetriever` | [记忆与反思权限](./life-memory-domain-reflection-v2.6.0-dev.4.md) |
+| 社交身份、关系、对外权限 | `SocialContextAssembler`、`SocialPolicyGate` | [关系索引](./dev9-social-relationship-memory.md) |
+| 自主任务、完成进度与回访 | 已接受任务账本、执行回执、意愿及发送层 | [父子探索](./2.6.1-unified-exploration-relationship-visualization.md) · [普通私信进度](./2.6.2-dm-todo-progress.md) |
+| 评论/@ 的来源与时效 | 平台通知、原评论回查及接线诊断 | [原评论恢复](./2.6.2-at-original-comment-recovery.md) · [通知时间](./2.6.2-at-invitation-diagnostic-times.md) |
+| 陌生人私信申请 | 验证过的投喂记录、人工审核 | [漏识别申请补录](./2.6.2-dm-rice-history-recovery.md) |
+| 视频资料、情绪与意愿边界 | 字幕／视觉证据、当前情绪状态 | [视觉和情绪优化](./2.6.2-vision-emotion-willingness.md) |
+| 账号与数据可靠性 | 账号绑定、备份校验、只读预算 | [账号切换](./2.6.1-account-identity-switch.md) · [备份兼容](./2.6.1-backup-utf8-compatibility.md) · [轮询与管理 UI](./2.6.2-polling-memory-ui.md) |
 
-- [普通私信与已完成待办实时进度接线](./2.6.2-dm-todo-progress.md)：任务成功回执无需等待自主回访即可被同一发送者的私信使用；不把资料读取说成看过音视频。
+**事实 ≠ 意愿 ≠ 权限 ≠ 已发送。** 完成任务的成功回执可在合规渠道查询，不应等待回访发送；人格、情绪、事实和可衰减记忆必须使用现有统一层，不能在各聊天入口重复拼装。关系熟悉度不自动授予对外发送权限。
 
-- [旧版陌生人 🍚 投喂的人工历史补录与验证边界](./2.6.2-dm-rice-history-recovery.md)：管理端扫描、账号级只读取证、单条恢复、原审批及去重契约。
+## 当前图（编辑源优先）
 
-- [2.6.2 全系统代码审计与遗留风险、验收清单](./2.6.2-system-audit.md)：区分本轮已修、现有实现、仍待架构重构与真实设备测试。
-- [开发者技术架构图（SVG）](./diagrams/2.6.2-life-system-current.svg) · [可编辑 Mermaid](./diagrams/2.6.2-life-system-current.mmd)：真实模块、数据源、权限和待办回执；未来事实验证器明确为虚线目标。
-- [面向用户的生活体验架构图（SVG）](./diagrams/2.6.2-life-system-user.svg) · [可编辑 Mermaid](./diagrams/2.6.2-life-system-user.mmd)：双域意愿、探索交友、成长记忆与可靠性边界。
+- [开发者架构 Mermaid](./diagrams/2.6.2-life-system-current.mmd) · [SVG](./diagrams/2.6.2-life-system-current.svg)
+- [用户理解版 Mermaid](./diagrams/2.6.2-life-system-user.mmd) · [SVG](./diagrams/2.6.2-life-system-user.svg)
+- [统一人格 Mermaid](./diagrams/2.6.2-life-voice-unified.mmd)
+- [事实和外发 Mermaid](./diagrams/2.6.2-verified-facts-outbound.mmd) · [SVG](./diagrams/2.6.2-verified-facts-outbound.svg)
+- [@ 原评论恢复 Mermaid](./diagrams/2.6.2-at-comment-recovery.mmd)
+- [Life Memory 六层 Mermaid](./life-memory-overview-v2.6.0-dev.4.mmd) · [SVG](./life-memory-overview-v2.6.0-dev.4.svg)
 
-## Life Memory 高层设计与实现映射
+修改生产调用图时必须检查图中所称“当前已实现”与源码一致；不能仅更新图、不更新代码，也不能把计划图冒充实现图。
 
-- [README 同款六层简图（SVG）](./life-memory-overview-v2.6.0-dev.4.svg)：面向读者，不包括底层 API 和具体实现。
-- [可编辑的 Mermaid 六层简图](./life-memory-overview-v2.6.0-dev.4.mmd)：与 README 展示图内容对应。
-- [分域反思权限、保留与备份契约](./life-memory-domain-reflection-v2.6.0-dev.4.md)：来源矩阵、分级记忆和剩余边界。
-- [私密经历与分域反思实现映射](./life-memory-private-reflection-implementation-v2.6.0-dev.4.mmd)：区分主人主 Session / 主人 DM / 各 UID 好友 DM、受限反思及公共评论路径。
+## 历史基准（保留审计，不是最新运行图）
 
-**关键边界：** 私密来源只形成经过确定性过滤的短摘要，不将原始 DM 原文作为反思证据；反思证据只来自当前尚未遗忘的经历副本；各私密域独立批次，私密领悟不可直接进入公开记忆或动态；仅在成长人格已开启时，可由白名单、低敏证据产生匿名低权重人格倾向，公开输出只使用抽象特质，不得包含任何私密事实。陌生人公开评论继续作为公开视频社交经历参与反思候选。
+- [2.6.0-dev.4 全业务架构审计](./system-architecture-audit-v2.6.0-dev.4.md) · [补充审计](./AUDIT_v2.6.0-dev.4.md)
+- [业务入口](./diagrams/business-entrypoints-v2.6.0-dev.4.mmd) · [评论与私信](./diagrams/social-interaction-current-v2.6.0-dev.4.mmd) · [记忆同步](./diagrams/memory-event-sync-current-v2.6.0-dev.4.mmd)
+- [已实施统一层（当时）](./diagrams/implemented-unification-v2.6.0-dev.4.mmd) · [统一层目标（当时）](./diagrams/unified-layers-target-v2.6.0-dev.4.mmd)
+- [早期首次引导](./first-start-and-headless-gate-v2.6.0-dev.4.md) · [早期推荐设置](./recommended-settings-v2.6.0-dev.4.md)
+- [早期自主任务与回访](./2.6.1-accepted-task-followup.md) · [历史提案，不是现行真值](./2.6.2-verified-life-events-proposal.md)
 
-- [首次启动引导与全局锁定架构](./first-start-and-headless-gate-v2.6.0-dev.4.md)：老用户一次性引导、必需项状态、模型同步、操作解锁与登录验证。
-
-## 当前实现与开发依据
-
-- [dev.4 实际统一层接线图](./diagrams/implemented-unification-v2.6.0-dev.4.mmd)：依据源码核对的实现图；专用证据读取与共享策略层有明确边界。
-- [全业务与 A-01～A-11 复核报告](./system-architecture-audit-v2.6.0-dev.4.md)：七项原始开发目标、各业务生产入口、审计问题状态、测试与仍待实机验证的内容。
-- [进一步审计明细](./AUDIT_v2.6.0-dev.4.md)：补充检查事项与代码定位。
-- [老用户推荐配置与恢复入口](./recommended-settings-v2.6.0-dev.4.md)。
-
-## 原始审计图（历史基准，不等于最终实现）
-
-- [业务入口与各统一层](./diagrams/business-entrypoints-v2.6.0-dev.4.mmd)。
-- [评论、@ 和私信的审计时调用链](./diagrams/social-interaction-current-v2.6.0-dev.4.mmd)。
-- [人生记忆、社交事件及多域状态投影](./diagrams/memory-event-sync-current-v2.6.0-dev.4.mmd)。
-- [统一层目标契约](./diagrams/unified-layers-target-v2.6.0-dev.4.mmd)：目标图不表示所有边界已实施。
-
-## 图纸维护原则
-
-1. 跨模块行为改动必须同步修订实际调用图、目标图和覆盖矩阵，并保留版本历史。
-2. 只有追踪真实入口、数据来源、UID 隔离、权限与最终写入、回执及重启恢复后，才能宣称某条业务路径完成统一。
-3. Life Memory 与社交事件的 outbox 属于不同领域；不得把原始私信或陌生人真实 UID 写入公开人生记忆或便携备份。
-4. 不得从永久档案恢复已经淡化或遗忘的细节；视频、评论与热门评论未获取时不得向 AI 伪称已读取。
-5. 修改任何统一层，必须补足实际生产 wiring、故障注入、隐私与幂等性回归测试。
-
-## dev.6 动态评论与跨系统适配
-
-- [动态评论、内容 ID、去重及人生记忆审计](dynamic-comment-integration-v2.6.0-dev.6.md)：新增文字/图文动态的人工回复、安全回执和可衰减记忆投影；dev.4 图示继续作为历史基线。
-
-## dev.9 社交关系与记忆增量
-
-- [自然发展关系、轻量 SQLite 索引与记忆衰减接线](dev9-social-relationship-memory.md)：`SocialInteractionCoordinator → SocialRelationshipIndex → SocialContextAssembler / LifeMemoryGateway`。关系阶段与授权角色分离，未扩大主动私信或对外操作权限。
-
-## 2.6.1-dev.3 · 统一待办增量
-
-- [P4 已接受待办生命周期、分页与恢复的真实接线](dev261-unified-accepted-todos-dev3.md)：继续沿用 `owner-todos` 和 `AutonomousPlanner`，未覆盖任意类型任务或自主回访。
-
-## 2.6.1-dev.4 · 主 Session 和 B站私信的真实双向生活状态
-
-- [主 Session/主人 DM/好友 DM 的情绪、私密经历、成长人格接线及权限矩阵](dev261-main-dm-conversation-life-dev4.md)：说明真实信号、同轮反馈、源身份、哈希去重、隐私审查与仍未实现的 P5-B。
-
-## 2.6.1-dev.6 新增接线审计
-
-- [自主待办提醒、真实关注机会和人格弱证据](dev261-agency-growth-follow-todos-dev6.md)：管理 HTTP、双域意愿、平台写入边界与 Life Memory 证据约束。
-
-## 2.6.1 RC2 · 连续经历与自然回访（发布前）
-
-- [统一记忆、待办、自主回访与后续对话接线图和权限审计](./2.6.1-accepted-task-followup.md#rc2-连续人生经历补充接线当前实现)：只使用仍清晰的衰减记忆取证，确认发送后保留短期接话，纠错和个人感想按隐私域抽象保留。
-
-- [2.6.1 全社交 AI 待办接入](dev261-social-willingness-todo-wiring.md)：主人、好友与普通用户私信/评论复用同轮 AI 意图输出，统一来源核验与待办入账。
-
-## 2.6.1 RC2 · 连续探索与关系显示
-
-- [统一父子探索与关系优先展示](./2.6.1-unified-exploration-relationship-visualization.md)：生产调用、模型预算、历史兼容、关系只读投影、关系卡片与隐私边界。
-
-## 2.6.1 RC2 · 稳定角色身份和平台账号切换
-
-- [鱼鱼身份与 B站账号解绑：生产接线、迁移、冻结、回退与验收](./2.6.1-account-identity-switch.md)。
-- [2.6.1～2.9.1 详细未来路线](../FUTURE_ROADMAP_2.6.1_TO_2.9.1.md)：P6 原延期计划和自主学习/视频感知/人文反思的版本归属，非当前实施范围。
-
-## 2.6.1 · 完整与专项备份 UTF-8 兼容性修复
-
-- [双恢复入口、HTTP 分块、文件落盘、校验、老用户恢复与隐私边界](./2.6.1-backup-utf8-compatibility.md)。
-
-## 2.6.2 dev · 已接入后台只读预算和生活 UI 合并版
-
-- [私信增量游标、只读本地预算、独立待办页、记忆花园与人格卡](./2.6.2-polling-memory-ui.md)。原计划 2.6.3 UI 已并入 2.6.2。
-
-## 2.6.2 dev · 统一经历事实与回访 DEBUG 规划
-
-- [统一经历事件类型、证据视图、断言校验及纠错接线提案](./2.6.2-verified-life-events-proposal.md)：分清已实现的延期调试与未实施的跨 Agent 重构，保留真实回执、隐私域、记忆遗忘和意愿安全边界。
+旧版规划、重复说明和未使用草稿的清理清单参见 [历史文档索引](../archive/README.md)。正式版本说明参见 [发布文档](../release/README.md)。
