@@ -6,13 +6,18 @@ const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'
 const pkg = JSON.parse(read('package.json'))
 const lock = JSON.parse(read('package-lock.json'))
 
-test('2.6.2 开发版与正式版都遵循 SemVer 并与锁文件、README 同步', () => {
-  assert.match(pkg.version, /^2\.6\.2(?:-dev\.[1-9]\d*)?$/)
+test('正式版与后续 dev 开发版都遵循 SemVer 并与锁文件、README 同步', () => {
+  assert.match(pkg.version, /^(?:2\.6\.2(?:-dev\.[1-9]\d*)?|2\.7\.0-dev\.[1-9]\d*)$/)
   assert.equal(lock.version, pkg.version)
   assert.equal(lock.packages[''].version, pkg.version)
   const readme = read('README.md')
   assert.ok(readme.includes(`**\`${pkg.version}\`**`))
-  if (pkg.version.includes('-dev.')) {
+  if (pkg.version.startsWith('2.7.0-dev.')) {
+    assert.match(readme, /开发预览，尚未正式发布/)
+    assert.match(read('CHANGELOG.md'), new RegExp(`^## \\[${pkg.version.replaceAll('.', '\\.')}\\]`, 'm'))
+    assert.match(read('RELEASE_NOTES_v2.7.0.md'), /开发预览，尚未发布/)
+    assert.ok(pkg.files.includes('RELEASE_NOTES_v2.7.0.md'))
+  } else if (pkg.version.includes('-dev.')) {
     assert.match(readme, /尚未正式发布/)
     assert.match(read('CHANGELOG.md'), new RegExp(`^## \\[${pkg.version.replaceAll('.', '\\.')}\\]`, 'm'))
     assert.match(read('RELEASE_NOTES_v2.6.2.md'), /开发预览，尚未发布/)

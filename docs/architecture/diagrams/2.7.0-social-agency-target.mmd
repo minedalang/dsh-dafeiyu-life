@@ -1,0 +1,35 @@
+flowchart TB
+  classDef existing fill:#e7f4f2,stroke:#23867e,color:#163f3b
+  classDef foundation fill:#fff1d6,stroke:#b77724,color:#6f4518
+  classDef planned fill:#edf0fb,stroke:#5369a2,color:#283963
+  classDef gate fill:#fdecea,stroke:#bc4d43,color:#76322c
+
+  S["B站 DM / 评论 / 入站@ / 主 Session（现有入口）"]:::existing
+  L["Life Voice Context（现有、唯一人格情绪）"]:::existing
+  C["SocialContextAssembler（现有、来源与隐私）"]:::existing
+  R["RelationshipIndex（现有、熟悉度）"]:::existing
+  I["LifeInterests（现有、真实兴趣证据）"]:::existing
+  P["SocialPortraitGateway（计划：证据画像）"]:::planned
+  D["SocialAutonomyDecisionContract（dev.1 已有纯契约，未接生产）"]:::foundation
+  Q["SocialConversationContinuity（dev.1 已有预约账本，未接生产）"]:::foundation
+  A["模型自主管理：回复 1..3 / 延期 / 沉默 / 结束（计划接线）"]:::planned
+  G["SocialPolicyGate + 授权/冷却/退订/限额（现有）"]:::gate
+  W["各渠道真实发送适配 + 逐条回执（现有基础，P6 扩展计划）"]:::gate
+  F["VerifiedLifeFacts + 真实经历/关系记录（现有）"]:::existing
+
+  S --> C
+  C --> D
+  L --> D
+  R --> D
+  R --> P
+  P -. "分域证据" .-> D
+  I --> D
+  Q -. "同人同线程进展" .-> D
+  D --> A
+  A --> G
+  G --> W
+  W --> F
+  W -. "确定回执 / 不确定则停止" .-> Q
+  A -. "仅延期意图，无发送权" .-> Q
+
+  note["状态说明：绿=现有生产层；橙=dev.1 孤立底座；蓝=计划接线；红=现有授权/发送边界"]:::foundation
