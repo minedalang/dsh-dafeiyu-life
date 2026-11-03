@@ -9,7 +9,7 @@ const read=x=>readFileSync(join(root,x),'utf8')
 test('正式版标识与 npm 发行清单一致，旧版说明只留历史归档',()=>{
   const pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json'))
   assert.equal(pkg.name,'dsh-dafeiyu-life')
-  assert.equal(pkg.version,'2.6.2')
+  assert.match(pkg.version,/^2\.6\.2(?:-dev\.[1-9]\d*)?$/)
   assert.equal(lock.version,pkg.version)
   assert.equal(lock.packages[''].version,pkg.version)
   assert.ok(readdirSync(root).includes('RELEASE_NOTES_v2.6.1.md'),'保留已发布的上一版说明')

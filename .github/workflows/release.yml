@@ -13,10 +13,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependencies
+        run: |
+          npm ci --ignore-scripts
+          python -m pip install pillow
       - name: Verify tag matches package version
         shell: bash
         run: |
@@ -25,13 +34,39 @@ jobs:
             exit 1
           }
           test "$(node -p "require('./package.json').name")" = 'dsh-dafeiyu-life'
+          version="$(node -p "require('./package.json').version")"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-dev\.[1-9][0-9]*|-rc\.[1-9][0-9]*)?$ ]] || {
+            echo 'Tag version must be stable or supported dev/rc prerelease' >&2
+            exit 1
+          }
+          if [[ "$version" != *-* ]]; then
+            # A stable tag must point at a commit already merged into main.
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+              echo 'Stable release tag must reference a commit merged into main' >&2
+              exit 1
+            }
+            ! grep -Eq '当前开发版本：|尚未正式发布' <(grep -E '^当前开发版本：|^> .*当前仅供开发' README.md) || {
+              echo 'Stable release README still identifies a dev build' >&2
+              exit 1
+            }
+            ! grep -q '开发预览，尚未发布' "RELEASE_NOTES_${GITHUB_REF_NAME}.md" || {
+              echo 'Stable Release Notes still identify a dev build' >&2
+              exit 1
+            }
+          fi
       - name: Syntax checks
         run: |
           node --check index.js
           node --check client.js
           node --check selfcheck.mjs
-      - name: Regression checks for DSH 0.2.1 main Session tools and local timestamps
-        run: node --test test/v260-main-session-tool-mount.test.mjs test/dev4-console-time-display.test.mjs
+      - name: Full Node.js regression tests
+        run: node --test test/*.test.mjs
+      - name: Full Python regression tests
+        run: python -m unittest discover -s test -p 'test*.py'
+      - name: Plugin self-check and package manifest verification
+        run: |
+          node selfcheck.mjs
+          npm pack --dry-run --ignore-scripts > /dev/null
       - name: Pack installable npm archive and checksum
         run: |
           npm pack --ignore-scripts
@@ -42,6 +77,11 @@ jobs:
         shell: bash
         run: |
           note_file="RELEASE_NOTES_${GITHUB_REF_NAME}.md"
+          if ! test -f "$note_file"; then
+            # Prerelease tags use the upcoming stable version's notes during dev.
+            base_tag="${GITHUB_REF_NAME%%-*}"
+            note_file="RELEASE_NOTES_${base_tag}.md"
+          fi
           if test -f "$note_file"; then
             echo "body_path=$note_file" >> "$GITHUB_OUTPUT"
             echo 'has_notes=true' >> "$GITHUB_OUTPUT"
