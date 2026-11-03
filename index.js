@@ -41,7 +41,8 @@ import { fileURLToPath } from 'node:url'
 import { McpClient } from './lib/mcp.mjs'
 import { verifyRecent, appendVerifyToReport } from './lib/verify.mjs'
 import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charterPath, dayKey } from './lib/state.mjs'
-import { loginStart, loginPoll, saveCredential, renderQrPng } from './lib/login.mjs'
+import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
+import { createAccountBinding } from './lib/account-binding.mjs'
 import { resolveUid } from './lib/uid.mjs'
 import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch } from './lib/dm.mjs'
 import { ensureUv } from './lib/uvfetch.mjs'
@@ -432,6 +433,11 @@ export function apply(ctx, config) {
     return myVer
   }
   const stateDir = stateDirOf(ctx)
+  const legacyInstallAtEntry = existsSync(join(stateDir,'config.json')) || readdirSync(stateDir).length > 0
+  // Character identity is stable; B站 UID is a replaceable, verified transport identity.
+  const accountBinding = createAccountBinding({dataDir:stateDir})
+  const accountRuntimeDir = accountBinding.runtimeDir()
+  accountBinding.acknowledgeRestart() // Startup boundary: no in-flight old-account operations survive.
   // Discover live adapters, including DSH's official built-in DeepSeek route.
   // Never read API keys or copy their credentials into Headless.
   const activeLlm=()=>{try{return ctx.get?.('llm')||ctx.llm}catch{return ctx.llm}}
@@ -510,7 +516,7 @@ export function apply(ctx, config) {
   // dev.15 新安装采用更有生活感的默认值；已有用户即使旧 config.json 缺少这些键，
   // 也必须延续旧版默认值，绝不因为插件升级自动开始后台模型任务。
   // 在 ensureHomeFiles 写任何运行文件之前判定，防止把新安装误认成升级。
-  const legacyInstall = existsSync(cfgFile) || readdirSync(stateDir).length > 0
+  const legacyInstall = legacyInstallAtEntry
   const legacyExperienceDefaults = {
     mainSessionMemoryEnabled: false, autonomousPlannerEnabled: false,
     autonomousPlannerMinutes: 30, autonomousPlannerDailyLimit: 24,
@@ -895,7 +901,7 @@ function reportMeta() {
   const relationshipText=uid=>{const r=relationshipIndex()?.get(uid,relationshipOptions());if(!r)return ''
     return `【自然关系熟悉度】与你互动的是${r.whitelisted?'白名单用户':r.socialFriend?'逐渐成为好友的人':'普通用户'}；阶段「${r.stageLabel}」。仅依据真实互动元数据估计，绝非真实感情，也不代表对方获得私信或工具权限。不要编造共同经历、提及后台分数或表现得过分亲密。`}
 
-  const ownerTodos = createOwnerTodoEngine({dataDir:stateDir})
+  const ownerTodos = createOwnerTodoEngine({dataDir:stateDir,getAccountUid:()=>accountBinding.accountUid()})
   try{const recovered=ownerTodos.recoverInterrupted();if(recovered.recovered)log(`自主待办：重启后封存 ${recovered.recovered} 条未结束执行，等待人工核对`)}catch(e){log('自主待办异常恢复失败：'+String(e?.message||e).slice(0,100))}
   const todoFollowupContact=({uid,channel='dm',crossChannel=false,commentBvid='',commentRpid=0,bvid='',title='',social=false})=>{
     refreshCfg();const id=String(uid||'')
@@ -936,7 +942,7 @@ function reportMeta() {
       return json.target_found===true&&Array.isArray(json.replies)&&json.replies.some(x=>String(x.rpid)===String(rpid)&&String(x.mid)===String(uid))
     }catch(e){log('原评论回访核验未通过：'+String(e?.message||e).slice(0,90));return false}
   }
-  const ownerTodoFollowup=createOwnerTodoFollowup({dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},
+  const ownerTodoFollowup=createOwnerTodoFollowup({dataDir:accountRuntimeDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     getTodos:()=>ownerTodos.list({includeClosed:true,limit:500}),
     canContact:todoFollowupContact,verifyComment:verifyTodoComment,
     chooseReply:async({uid,channel,social,title,topic,type,groupTotal,groupDone,groupDismissed})=>{
@@ -1003,12 +1009,14 @@ function reportMeta() {
       return {ok:result?.success===true}
     },logger:{warn:m=>log('统一待办回访：'+m)}})
   const runOwnerTodoWithFollowup=async(id)=>{
+    accountBinding.assertReady()
     const task=ownerTodos.list({includeClosed:true,limit:500}).find(x=>x.id===id)
+    if(!accountBinding.taskAllowed(task))return {ok:false,blocked:true,error:'旧 B站账号的待办被冻结，不能用新账号执行'}
     const result=await ownerTodos.run(id,executeOwnerTodo)
     if(result?.ok===true&&['watch_video','search_videos'].includes(task?.type))try{ownerTodoFollowup.queue(task,result.result)}catch(e){log('待办完成后回访入队失败：'+String(e?.message||e).slice(0,100))}
     return result
   }
-  try{ownerTodos.syncRecommendations(readJson(join(stateDir,'video-recommendations.json'),{})?.entries||[],{requireAccepted:true})}catch(e){log('启动时同步视频推荐待办失败：'+String(e?.message||e).slice(0,100))}
+  try{if(accountBinding.generation()===1)ownerTodos.syncRecommendations(readJson(join(stateDir,'video-recommendations.json'),{})?.entries||[],{requireAccepted:true})}catch(e){log('启动时同步视频推荐待办失败：'+String(e?.message||e).slice(0,100))}
   const emotionalState = createEmotionalState({dataDir:stateDir,isEnabled:()=>cfg.emotionSystemEnabled!==false})
   // dev.4: authenticated chat signals can gently affect the same fading life state.
   const conversationLifeFeedback=createConversationLifeFeedback({dataDir:stateDir,
@@ -1239,10 +1247,12 @@ function reportMeta() {
   }
 
   const call = async (toolName, args, opts) => {
+    if(toolName!=='bili_check_credential')accountBinding.assertReady()
     if(!firstStart.isReady())throw Error(firstStart.message())
     refreshCfg()
     if (cfg.masterEnabled !== true) throw new Error('大肥鱼已暂停：请先开启总开关')
     const client = await ensureMcp()
+    if(toolName!=='bili_check_credential')accountBinding.assertReady()
     return client.call(toolName, args, opts)
   }
 
@@ -1768,14 +1778,15 @@ function reportMeta() {
   tool({
     name: 'bili_login_poll',
     description: '查扫码结果：waiting 还没扫 / scanned 扫了待确认 / ok 成功 / expired 过期。'
-      + '成功时会自动把凭证写进插件家目录的 `bili_credential.json`（MCP 认的那四个字段）。',
+      + '扫码成功只暂存凭证；须在管理中心在线核验 UID、明确确认并按提示重启复核，才会切换 `bili_credential.json`。',
     parameters: { key: { type: 'string', description: 'bili_login_start 给的那个 key' } },
     async execute(args) {
       const r = await loginPoll(String(args.key ?? ''))
       if (r.state === 'ok') {
-        const file = saveCredential(stateDir, r.credential)
-        log(`登录成功，凭证已写入 ${file}`)
-        return { ok: true, state: 'ok', file }
+        const staged=accountBinding.stage(r.credential)
+        cancelActiveDuty()
+        log('扫码身份已暂存，等待在线核验与显式确认')
+        return {ok:true,state:'staged',...staged}
       }
       return { ok: r.state !== 'unknown', state: r.state, code: r.code, message: r.message }
     },
@@ -2594,6 +2605,7 @@ function reportMeta() {
       }
     refreshCfg()          // ⭐ 设置页刚改过的值要立刻生效（config 是就地改的，快照会过期）
     if(!firstStart.isReady())return {started:false,blocked:true,error:firstStart.message()}
+    if(accountBinding.status().blocked)return {started:false,blocked:true,error:'账号已冻结：需完成身份切换确认及权限复核'}
     if (cfg.masterEnabled !== true) return { started: false, why, paused: true, error: '总开关已关闭，无法跑一轮' }
     const dsh = resolveDsh()
     // ⭐ 找不到 dsh 就别硬跑：以前会退化成裸 `dsh` ⇒ spawn 失败、只留 exit 1 + 一串乱码 ✗
@@ -2752,7 +2764,7 @@ function reportMeta() {
     const owner = Number(cfg.dmOwnerUid) || Number(cfg.dmUid) || dmUidCache
     if (owner > 0) allow.add(String(owner))
     return {
-      enabled: cfg.masterEnabled === true && cfg.dmWatch === true,
+      enabled: cfg.masterEnabled === true && cfg.dmWatch === true && !accountBinding.status().blocked,
       strangerEnabled: cfg.dmStrangerOnce === true,
       strangerMaxReplies: cfg.dmStrangerMaxReplies,
       approvalEnabled:cfg.dmApprovalEnabled, approvalPhrase:cfg.dmApprovalPhrase,
@@ -2765,7 +2777,7 @@ function reportMeta() {
       historyLimit: cfg.dmContextMessages,
     }
   }
-  const ownerDmActions=createOwnerDmActionLedger({dataDir:stateDir})
+  const ownerDmActions=createOwnerDmActionLedger({dataDir:accountRuntimeDir})
   const ownerInfo = () => {
     // Recipient UID / DM cache must never impersonate the privileged owner.
     const owner = Number(cfg.dmOwnerUid) || 0
@@ -2858,7 +2870,7 @@ function reportMeta() {
   // Owner Agent is initialized before the inbox poll, but executes only on authenticated
   // owner UID messages, after per-message durable claim and independently authorized tools.
   const ownerDmAgent=createOwnerDmAgent({
-    dataDir:stateDir,
+    dataDir:accountRuntimeDir,
     getConfig:()=>{refreshCfg();return cfg},
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'ownerDmAgent'}),
     readMainContext:async(opt)=>mainSessionBridge?.ownerDmContext(opt)||{available:false,lines:[]},
@@ -2903,13 +2915,14 @@ function reportMeta() {
     logger:{warn:m=>log('主人私信 Agent：'+m)},
   })
   async function getNewDmMessages() {
+    accountBinding.assertReady()
     const cred = dmCred(stateDir)
     if (!cred) throw new Error('尚未登录 B站，请先在设置页扫码登录')
     const sessions = await dmList(cred)
     const whitelist = dmConfig().whitelist
     const incoming=await collectDmInbox({
       sessions, ownUid: Number(cred.dedeuserid), whitelist,
-      readConversation: (uid) => dmFetch(cred, uid, 20),
+      readConversation: (uid) => {accountBinding.assertReady();return dmFetch(cred, uid, 20)},
       // 最多轮询 40 个近期会话，避免每分钟对 B站发出过量请求。
       maxSessions: 40,
       logger: { warn: (msg) => log(msg) },
@@ -3303,7 +3316,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     },logger:{warn:m=>log('社交同步：'+m)},
   })
   // Start recovery only after the Life Memory sink is fully constructed.
-  const socialCognitionTimer=setInterval(()=>{if(!firstStart.isReady())return;void socialCognition.tick().catch(e=>log('社会邀请检查失败：'+String(e?.message||e).slice(0,120)))},60*60_000)
+  const socialCognitionTimer=setInterval(()=>{if(!firstStart.isReady()||accountBinding.status().blocked)return;void socialCognition.tick().catch(e=>log('社会邀请检查失败：'+String(e?.message||e).slice(0,120)))},60*60_000)
   socialCognitionTimer.unref?.()
   ctx.effect(()=>()=>clearInterval(socialCognitionTimer),'bili-duty: dev5 社会邀请只读审阅')
   const dmVideoRecommendationContext=createDmVideoRecommendationContext({stateDir})
@@ -3325,7 +3338,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   }
   let nicknameLookupWindow=0,nicknameLookupCount=0
   const dmAutoreply = createDmAutoReply({
-    dataDir: stateDir,
+    dataDir: accountRuntimeDir,
     getConfig: dmConfig,
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     fetchIncoming: getNewDmMessages,
@@ -3390,7 +3403,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     videoContext,logger:{warn:m=>log('社交上下文：'+m)},
   })
   const ownerCommentAgent=createOwnerCommentAgent({
-    dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},
+    dataDir:accountRuntimeDir,getConfig:()=>{refreshCfg();return cfg},
     decideAgency:({uid,messageId,text,intent,bvid,thread})=>dualContextAgency.decide({source:'bili-comment',uid,messageId,text,intent,target:bvid,thread}),
     getRole:uid=>socialPolicyGate.actor(uid).role,
     interpretSocial:async(row)=>{
@@ -3535,7 +3548,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     },logger:{warn:m=>log('主人评论 Agent：'+m)}
   })
   const commentInteract = createCommentInteract({
-    dataDir: stateDir,
+    dataDir: accountRuntimeDir,
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     getConfig: () => {
       refreshCfg()
@@ -3681,7 +3694,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   })
   const interactionScheduler = createInteractionScheduler({
     dm: dmAutoreply, comments: commentInteract,
-    getConfig: () => {refreshCfg();return cfg},
+    getConfig: () => {refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     logger: {error:(msg)=>log(msg)},
   })
   try { MIG_200() } catch (e) { log('迁移没跑：' + String(e?.message ?? e)) }
@@ -4059,8 +4072,8 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   // Bounded independent agent decision. It never sends a main-Session follow-up,
   // never chooses write tools, and never treats the model's words as memory evidence.
   const autonomousPlanner=createAutonomousPlanner({
-    dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},
-    getTodos:(limit)=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>READ_TODO_TYPES.has(x.type)&&(!x.dueAt||x.dueAt<=Date.now())).slice(0,limit),
+    dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
+    getTodos:(limit)=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)&&READ_TODO_TYPES.has(x.type)&&(!x.dueAt||x.dueAt<=Date.now())).slice(0,limit),
     getRelationshipHint:uid=>{try{return existingRelationshipIndex()?.preferenceHint(uid,relationshipOptions())||null}catch{return null}},
     getLifeState:()=>emotionalState.snapshot(),
     recheckWillingness:task=>dualContextAgency.assessReadExecution({task}),
@@ -4088,7 +4101,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     ownerFollowupTimer=setTimeout(async()=>{
       if(ownerFollowupRunning){scheduleOwnerFollowup(followupPollMs());return}
       ownerFollowupRunning=true
-      try{if(firstStart.isReady())await ownerTodoFollowup.tick()}
+      try{if(firstStart.isReady()&&!accountBinding.status().blocked)await ownerTodoFollowup.tick()}
       catch(e){log('统一待办回访检查失败：'+String(e?.message||e).slice(0,100))}
       finally{ownerFollowupRunning=false;refreshCfg();scheduleOwnerFollowup(followupPollMs())}
     },ms)
@@ -4108,7 +4121,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   }
   // First scan is idempotent, doesn't need an online Session and doesn't send messages.
   try{void collectRealLife().catch(e=>log('本地经历初次同步失败：'+String(e?.message||e).slice(0,120)))}catch{}
-  const lifeCollectTimer=setInterval(()=>{if(!firstStart.isReady())return;try{void collectRealLife().catch(e=>log('本地经历定时同步失败：'+String(e?.message||e).slice(0,120)))}catch{}},10*60_000)
+  const lifeCollectTimer=setInterval(()=>{if(!firstStart.isReady()||accountBinding.status().blocked)return;try{void collectRealLife().catch(e=>log('本地经历定时同步失败：'+String(e?.message||e).slice(0,120)))}catch{}},10*60_000)
   lifeCollectTimer.unref?.()
   ctx.effect(()=>()=>clearInterval(lifeCollectTimer),'bili-duty: 独立人生经历候选收集')
 
@@ -4168,13 +4181,14 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
   // 生活动态仅使用可衰减的公开经历证据：视频和鱼鱼本人已确认发表的公开文字。
   // 公开发布与模型生成严格分离：生成模型不挂 B站发送工具，实际发布由受限 Python 路径执行。
   dailyDynamic=createDailyDynamic({
-    dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},
+    dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     getPublicVideos:()=>lifeMemory?.publicVideoEvidence(40)||[],
     getPublicSocial:()=>lifeMemory?.publicSocialEvidence(24)||[],
     getEmotion:()=>emotionalState.snapshot(),
     getInterests:()=>lifeReflection?.interests?.()||[],
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'dailyDynamic'}),
     publish:(text,limit)=>new Promise((resolve,reject)=>{
+      try{accountBinding.assertReady()}catch(e){return reject(e)}
       const script=join(pluginDir,'lib','daily-dynamic-publish.py')
       const cred=join(stateDir,'bili_credential.json')
       const child=spawn(cfg.pythonPath||'python',[script,stateDir,cred,String(limit),'1'],{
@@ -4466,6 +4480,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     return {
       ok: true,
       home: stateDir,
+      account: accountBinding.status(),
       config: cfg,
       masterEnabled: cfg.masterEnabled === true,
       windows: readPeakWindows(cfg.peakWindows),
@@ -4530,7 +4545,7 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     // unlock business APIs merely because the user can load the settings UI.
     const setupAccess = (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
-      path.startsWith('/api/bili-duty/login/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' ||
+      path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' ||
       path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity'
     if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
@@ -6095,6 +6110,24 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
     }
 
     // ── 扫码登录（设置页用）──
+    // Local management only; no credentials appear in responses.
+    if (req.method === 'GET' && path === '/api/bili-duty/account/status')
+      return sendJson(res,200,{ok:true,...accountBinding.status()})
+    if (req.method === 'POST' && path === '/api/bili-duty/account/confirm') {
+      cancelActiveDuty()
+      const body=await readBody(req)
+      const result=await accountBinding.activate({expectedUid:body.uid})
+      // Stop the old Python MCP immediately; no inherited session is reused.
+      try{mcp?.stop()}catch{};mcp=null
+      return sendJson(res,200,result)
+    }
+    if (req.method === 'POST' && path === '/api/bili-duty/account/cancel')
+      return sendJson(res,200,accountBinding.cancel())
+    if (req.method === 'POST' && path === '/api/bili-duty/account/resume') {
+      const body=await readBody(req)
+      return sendJson(res,200,{ok:true,...accountBinding.resume({expectedUid:body.uid})})
+    }
+
     if (req.method === 'POST' && path === '/api/bili-duty/login/start') {
       const { key, url } = await loginStart()
       const png = await renderQrPng(cfg.pythonPath, stateDir, url)
@@ -6108,9 +6141,10 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       const body = await readBody(req)
       const r = await loginPoll(String(body.key || ''))
       if (r.state === 'ok') {
-        const file = saveCredential(stateDir, r.credential)
-        log(`登录成功，凭证已写入 ${file}`)
-        return sendJson(res, 200, { ok: true, state: 'ok', file })
+        const staged=accountBinding.stage(r.credential)
+        cancelActiveDuty()
+        log('扫码身份已暂存，等待在线核验与显式确认')
+        return sendJson(res,200,{ok:true,state:'staged',...staged})
       }
       return sendJson(res, 200, { ok: r.state !== 'unknown', state: r.state, code: r.code, message: r.message })
     }

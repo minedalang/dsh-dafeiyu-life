@@ -502,7 +502,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <section id="panel-firststart" hidden>
   <div class="fs-hero"><span class="fs-pill">🐟 FIRST START · 大肥鱼首次使用引导</span><h2>欢迎来到大肥鱼</h2><p>让鱼鱼开始认识你，陪伴你慢慢成长。这里就是大肥鱼管理中心：第一次安装和老用户升级都会看到这页。<strong>B站登录和 Headless 模型验证是必须完成的两项</strong>，其他设置可以先跳过，之后随时回来修改。</p></div>
   <div class="fs-grid">
-    <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div></section>
+    <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>🔐 在线核验并确认当前扫码账号</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>✅ 重启后复核并恢复账号</button></div></section>
     <section class="fs-step"><h3>02 · Headless 模型同步 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先同步再验证。<strong>首次设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
     <section class="fs-step optional"><h3>03 · 主 Session <span class="pill">可跳过</span></h3><p>指定鱼鱼和主人交谈的主要会话；以后可以在管理中心修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
     <section class="fs-step optional"><h3>04 · 人生记忆和反思 <span class="pill">可跳过</span></h3><p>以后可以调整记忆整理、反思批次和恢复推荐设置值。</p><div class="fs-recommend-tip" role="note"><strong>✨ 老用户升级建议：使用新版记忆与反思推荐值</strong><span>完成首次设置后，进入「人生记忆 → 记忆与检索设置」，展开「人生反思调度」「遗忘与召回质量」「可选 AI 检索与用量」，分别点击「使用推荐值」，最后点击「保存记忆与反思设置」才会生效。不会自动覆盖旧设置，也不会更改模型、开关或已有记忆。</span></div><div class="actions"><button type="button" id="fs-life-settings" data-open-tab="life" disabled title="先完成首次设置，之后可在管理中心修改记忆设置">完成引导后设置</button><button type="button" data-firststart-skip="life-memory">先跳过</button></div></section>
@@ -551,6 +551,18 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <section id="panel-bili" hidden>
 <div class="feature-intro"><div><h2>🎬 视频探索与自主行动</h2><p>这里是鱼鱼怎样挑选视频、观看理解，以及观看后自主点赞、收藏和评论的设置。好友、私信、评论记录和动态创作都在上方「B站生活」分组中各自管理。</p></div></div>
 <div class="settings-stack">
+<div class="settings-section" id="bili-account-identity" style="border-left:5px solid #5d76d8;background:linear-gradient(115deg,var(--panel),var(--tint))">
+<h4>🐟 鱼鱼的身份与 B站账号</h4>
+<p class="muted">鱼鱼自己的记忆和人格不绑定 B站 UID。扫码新账号只会暂存凭证；必须在线核验 UID、明确确认、重启 DSH 并复核新账号授权，才会恢复后台活动。旧账号平台回执、私信去重与未完成任务不会在新账号自动执行。</p>
+<div id="bili-account-state" role="status" class="setting-note">正在读取账号状态…</div>
+<div class="actions" style="margin-top:10px;flex-wrap:wrap">
+<button id="bili-account-refresh" type="button">🔄 刷新绑定状态</button>
+<button id="bili-account-confirm" class="primary" type="button" hidden>🔐 核验并确认切换账号</button>
+<button id="bili-account-cancel" type="button" hidden>取消待确认扫码</button>
+<button id="bili-account-resume" class="primary" type="button" hidden>✅ 已复核新账号权限，恢复活动</button>
+</div>
+<small class="setting-note">切换后请重启 DSH；账号切换本身不会自动转移好友联系授权或旧账号未发送的回访。需要再次使用旧账号时仍请重新扫码核验。</small>
+</div>
 <div class="settings-section"><h4>选片方向</h4><p class="muted">大肥鱼的兴趣档案主导搜索；主人额外关键词只是补充关注，不会覆盖已形成的兴趣。</p>
 <label class="checkline"><input id="bili-home-recommend" type="checkbox">混合 B站首页推荐</label>
 <label for="bili-extra-keywords">主人额外指定的主题（每行一个）</label><textarea id="bili-extra-keywords" rows="4" placeholder="例如：白饭、AI拟人"></textarea></div>

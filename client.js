@@ -612,10 +612,9 @@ function WatchTab() {
             n += 1
             try {
               const p = await jpost('/login/poll', { key: r.key })
-              if (p?.state === 'ok') {
+              if (p?.state === 'staged') {
                 stop(); setLogin(null)
-                setLoginTone('good'); setLoginState('登录成功')
-                setSt((old) => ({ ...old, loggedIn: true }))
+                setLoginTone('warn'); setLoginState('扫码成功但尚未启用：请进入管理中心「B站视频探索 → 鱼鱼的身份与 B站账号」，确认 UID 并在线核验。换号后需重启 DSH。')
               } else if (p?.state === 'scanned') { setLoginTone(''); setLoginState('扫到了，请在手机上确认') }
               else if (p?.state === 'expired') { stop(); setLogin(null); setLoginTone('warn'); setLoginState('二维码过期了，再点一次「扫码登录」') }
               // ⚠️ 扫码成功但响应里没有 SESSDATA 时服务端回 state='unknown'：原来没这个分支

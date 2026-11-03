@@ -197,3 +197,11 @@ Windows Desktop 的常规安装命令为 `dsh plugin --profile desktop add dsh-d
 - 不一致的来源 UID/原消息不可混合；任务历史和永久审计不能恢复已遗忘经历。
 - 关系优先分只读投影，不自动授权。陌生人只有最小互动元数据时不得为了可视化生成猜测人格，管理页可展示基于真实往来方向和日期的保守互动印象。
 - README 不增加长篇 RC 更新说明；发布前修复以 CHANGELOG/Release Notes/架构档案记载。
+
+## 2.6.1 RC2 · B站账号与鱼鱼角色身份解耦（发布前）
+
+- `character-identity.json` 是鱼鱼稳定 UUID，可随合法业务备份转移；`account-binding.json` 仅记录当前 B站账号绑定/代次，不含凭证；不得因 UID 改变重置人生记忆、人格、兴趣或共享待办。
+- 新扫码凭证必须暂存且核验 `api.bilibili.com/x/web-interface/nav` 所报告的真实 UID，再由管理中心用户明确确认切换；未确认/UID 不匹配/重启前/权限复核前不得执行平台业务。
+- 核心平台状态使用 `accounts/<UID>/runtime/`；首次升级旧数据只属于原账号。新增待办带 `accountUid`；旧账号任务绝不可在新账号自动执行、补发或混合回访。旧数据仅做保守归档，不清空。
+- `account-login-pending.json`、`accounts/<UID>/credential.json` 及私密运行状态绝不可进入通用备份、日志、模型上下文或公共 UI；账号凭据是敏感文件，Windows 须尽力收紧 ACL。
+- 发布前必须真实验证 Windows DSH Desktop 换号流程、失败回滚、跨 UID、旧 pending/uncertain、不跨账号外发；本地 mock 测试不视作平台实际成功。README 只写极简功能，不堆版本历史。
