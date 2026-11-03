@@ -1,0 +1,19 @@
+digraph Life262 {
+ graph [rankdir=TB,bgcolor="#ffffff",pad="0.30",nodesep="0.55",ranksep="0.63",fontname="Noto Sans CJK SC",label="大肥鱼的生活体验 · 2.6.2 开发验收版",labelloc=t,fontsize=21,fontcolor="#27334b"];
+ node [shape=box,style="rounded,filled",fontname="Noto Sans CJK SC",fontsize=12,margin="0.22,0.15",color="#d6dfeb",fillcolor="#f7f9fd",fontcolor="#24324b"];
+ edge [arrowsize=0.70,color="#8a9ab3",fontname="Noto Sans CJK SC",fontsize=10];
+ fish [label="🐟 大肥鱼 · 持续发展的数字角色\n真实经历 · 有边界的自主选择",fillcolor="#e9e1ff",color="#b5a1ea",fontsize=15];
+ work [label="🧭 主 Session\n按授权完成工作任务",fillcolor="#e9f2fe",color="#a4c5ee"];
+ life [label="🌊 B站生活域\n可以探索、聊天或沉默",fillcolor="#e9f8f6",color="#a4d7c7"];
+ see [label="🎬 遇见视频与兴趣\n选中 ≠ 听完 ≠ 自己投稿"];
+ social [label="🤝 遇见世界里的每个人\n互动积累熟悉度，不自动授权"];
+ mood [label="💗 连续的模拟心情与人格倾向\n影响选择，但不是强迫按钮"];
+ todos [label="📝 自己的待办\n接受 → 分解 → 自主考虑 → 回访或沉默"];
+ memory [label="🧠 记忆花园\n经历、人物线索、兴趣、事实与约定\n有些内容会随时间淡化"];
+ safety [label="🛡️ 可靠性与尊重\n权限、去重、备份、可更换账号\n不假装看过、听过或成功发布",fillcolor="#fff4e3",color="#efc48e"];
+ fish -> work; fish -> life;
+ life -> see; life -> social; life -> mood; life -> todos;
+ see -> memory; social -> memory; mood -> memory; todos -> memory;
+ memory -> fish [label="当前还能回忆的生活影响下一次决定",color="#8f7dc6"];
+ work -> safety; life -> safety; todos -> safety;
+}

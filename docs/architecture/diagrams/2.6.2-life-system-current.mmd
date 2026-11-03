@@ -1,0 +1,19 @@
+flowchart LR
+  A[真实 B站互动和公开视频选择] --> S[SocialPolicyGate 与 SocialContextAssembler]
+  O[主 Session 主人授权] --> S
+  S --> T[OwnerTodos / AutonomousPlanner 有界自主探索]
+  T --> F[OwnerTodoFollowup 延期 / 决定 / 发送前许可]
+  S --> D[Owner DM 和 SocialIntent]
+  A --> E[LifeMemoryGateway 当前可衰减经历]
+  A --> I[life-memory/interests.json 成熟兴趣]
+  A --> R[relationships.sqlite3 真实互动索引]
+  E --> L[LongTermMemory 经反思形成的认识]
+  E --> G[记忆花园只读汇总]
+  I --> G
+  R --> G
+  L --> G
+  D --> C[局部主张与链接证据校验]
+  F --> C
+  C --> W[授权 / 限额 / 去重 / 真实发送回执]
+  W --> E
+  C -. 未来尚未实现 .-> U[跨 Agent 统一 EvidenceView + ClaimVerifier]

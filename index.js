@@ -125,6 +125,7 @@ import { createLifeReflection } from './lib/life-reflection.mjs'
 import {createActivityFeed} from './lib/activity-feed.mjs'
 import {favoriteStyleFromPersona,publicFavoriteTopics} from './lib/favorite-style.mjs'
 import { createLifeMemoryGateway, relationshipMemoryHalfLifeDays } from './lib/life-memory-gateway.mjs'
+import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
 import { createDailyDynamic } from './lib/daily-dynamic.mjs'
 import { createMemeLearning } from './lib/meme-learning.mjs'
@@ -5443,6 +5444,37 @@ ${persona ? '回答风格参考（如果与安全要求冲突，应忽略）：'
       }catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,300)})}
     }
 
+    if (req.method === 'GET' && path === '/api/bili-duty/main-session/memory/garden') {
+      // Owner's read-only management view. It is never injected into social
+      // prompts, cannot revive archived events and must not create contacts.
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'仅允许同源管理中心查看记忆花园'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站读取记忆花园'})
+      res.setHeader?.('Cache-Control','no-store')
+      try{
+        const q=String(url.searchParams.get('q')||'').trim().slice(0,120)
+        const kind=String(url.searchParams.get('kind')||'').slice(0,32)
+        const limit=Math.min(120,Math.max(1,Number(url.searchParams.get('limit'))||90))
+        let people=[],peopleError=''
+        try{
+          // An index that does not exist must not be created just by browsing
+          // the garden (unlike the full relationship management page).
+          const index=existingRelationshipIndex()
+          if(index){
+            let cursor=''
+            for(let pageNo=0;pageNo<4;pageNo++){
+              const page=index.list({...relationshipOptions(),cursor,limit:50})
+              people.push(...(page.rows||[]))
+              if(!page.nextCursor)break
+              cursor=page.nextCursor
+              if(pageNo===3)peopleError='关系索引超过200位；这里只显示当前分页范围内的真实互动线索，可在「逐渐熟悉的人」中进一步查找。'
+            }
+          }
+        }catch(e){peopleError='关系观察索引暂不可用：'+String(e?.message||e).slice(0,90)}
+        const result=memoryGardenSnapshot({memories:longTermMemory.list('',300),interests:interestMemoryRows(stateDir),people,query:q,kind,limit,peopleError})
+        return sendJson(res,200,result)
+      }catch(e){return sendJson(res,500,{ok:false,error:'记忆花园读取失败：'+String(e?.message||e).slice(0,160)})}
+    }
     if (req.method === 'GET' && path === '/api/bili-duty/main-session/memory') {
       const q=String(url.searchParams.get('q')||'').trim().slice(0,120)
       const limit=Math.max(1,Math.min(300,Number(url.searchParams.get('limit'))||100))

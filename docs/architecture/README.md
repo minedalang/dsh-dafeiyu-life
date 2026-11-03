@@ -2,6 +2,12 @@
 
 本目录面向维护者。根 README 只保留简要功能说明及本目录入口，不展示全部内部调用链。
 
+## 2.6.2 dev · 最新静态审计与两套架构图
+
+- [2.6.2 全系统代码审计与遗留风险、验收清单](./2.6.2-system-audit.md)：区分本轮已修、现有实现、仍待架构重构与真实设备测试。
+- [开发者技术架构图（SVG）](./diagrams/2.6.2-life-system-current.svg) · [可编辑 Mermaid](./diagrams/2.6.2-life-system-current.mmd)：真实模块、数据源、权限和待办回执；未来事实验证器明确为虚线目标。
+- [面向用户的生活体验架构图（SVG）](./diagrams/2.6.2-life-system-user.svg) · [可编辑 Mermaid](./diagrams/2.6.2-life-system-user.mmd)：双域意愿、探索交友、成长记忆与可靠性边界。
+
 ## Life Memory 高层设计与实现映射
 
 - [README 同款六层简图（SVG）](./life-memory-overview-v2.6.0-dev.4.svg)：面向读者，不包括底层 API 和具体实现。
