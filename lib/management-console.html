@@ -912,10 +912,10 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <section id="panel-relationships" hidden>
 <div class="life-hero"><div><h2>👥 逐渐熟悉的人</h2><p class="muted">每次相遇都可能让鱼鱼更熟悉一个人；关系会成长、会降温，也会影响公开社交经历能保留多久。</p></div><button type="button" data-open-tab="life" class="life-action life-sky">看看鱼鱼记得什么</button></div>
 <div id="life-relationship-section" class="settings-section life-section"><h4>👥 逐渐熟悉的人</h4>
-<p class="muted">🐟 <strong>鱼鱼可以自然认识所有真实互动过的人。</strong> 普通陌生人也能通过跨天、双向交流逐渐成为关系意义上的朋友。原「好友」名册是<strong>白名单用户</strong>，具有较高的初始关系分和额外授权；自然成为朋友并不会自动获得白名单权限或私信能力。只保留 UID、最小互动元数据，以及可选的短期公开昵称缓存（最多 7 天），不凭少量互动推断陌生人的人格；展开卡片可查看互动方式、近期状态与谨慎的交往印象，不保存聊天正文。关系会降温，具体经历仍会遗忘。</p>
-<div class="toolbar"><input id="friend-relationships-query" type="search" maxlength="48" placeholder="按 UID 搜索；白名单可搜备注" aria-label="搜索关系 UID 或白名单备注"><button id="friend-relationships-refresh" class="life-action life-sky">搜索 / 刷新</button><a href="#unified-friends" data-nav-tab="social" class="life-action life-sky">管理白名单权限</a><span id="friend-relationships-status" class="muted">尚未读取</span></div>
+<p class="muted">🐟 <strong>鱼鱼可以自然认识所有真实互动过的人。</strong> 普通陌生人也能通过跨天、双向交流逐渐成为关系意义上的朋友。原「好友」名册是<strong>白名单用户</strong>，具有较高的初始关系分和额外授权；自然成为朋友并不会自动获得白名单权限或私信能力。人物以「平台 + 平台内身份 ID」分别记录；当前接入 B站，不会自动猜测不同平台上的两个账号是不是同一人。只保留最小互动元数据与短期公开昵称；达到可信互动阶段后可记录对方明确表达的交流偏好，逐步呈现有证据的画像。展开某个人即可查看并撤回误记线索，不保存聊天原话。关系会降温，具体经历仍会遗忘。</p>
+<div class="toolbar"><input id="friend-relationships-query" type="search" maxlength="48" placeholder="按平台内 UID 搜索；白名单可搜备注" aria-label="搜索关系 UID 或白名单备注"><button id="friend-relationships-refresh" class="life-action life-sky">搜索 / 刷新</button><a href="#unified-friends" data-nav-tab="social" class="life-action life-sky">管理白名单权限</a><span id="friend-relationships-status" class="muted">尚未读取</span></div>
 <div id="friend-relationships-list" class="records" aria-live="polite"></div>
-<div class="toolbar"><button id="friend-relationships-more" class="life-action life-sky" hidden>加载下一页</button><span class="muted">每页 30 人，双列折叠展示；熟悉度与互动方式分开描述。昵称按需读取 B站公开资料（每次最多 8 人，每小时最多 30 次），不调用 AI。参考半衰期仅适用于关系敏感的公开社交经历，不是精确遗忘倒计时。</span></div>
+<div class="toolbar"><button id="friend-relationships-more" class="life-action life-sky" hidden>加载下一页</button><span class="muted">每页 30 人，双列折叠展示；画像就在每个人的详情中，平台身份相互隔离。昵称按需读取 B站公开资料（每次最多 8 人，每小时最多 30 次），不调用 AI。参考半衰期仅适用于关系敏感的公开社交经历，不是精确遗忘倒计时。</span></div>
 </div>
 <details class="contextual-settings" id="relationship-memory-settings"><summary>⚙️ 关系与公开社交记忆衰减 <span class="contextual-hint">按需调整 · 不影响私信或权限</span></summary>
 <p class="muted">各阶段数值是普通记忆半衰期为 30 天时的基准值。最终参考天数 = 此处基准 × 普通记忆半衰期 ÷ 30（范围 0.25–120 天）。只针对关系敏感的公开社交经历；不是明确的遗忘日期。调小数值不能复活已遗忘的细节。</p>
@@ -1143,10 +1143,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p class="muted">初始好友画像不自动覆盖。真实私信或评论中的“我喜欢/不喜欢…”“别再给我推这些”“多推点……”会形成针对该 UID 的兴趣观察。若只说“这些”，只有在 B 站实际视频标题能明确确认类别时才记录对应主题；否则只阻止重复推荐同一 BV。仅保存精简主题、证据编号与拒绝重复推荐的 BV，不保存整条原话。非白名单用户不建立画像。<strong>这些观察只影响对这位好友的后续 @ 邀请与获授权的主动分享，不改变大肥鱼自己的兴趣、全局选片或其他好友的推荐，也不会对外展示好友画像。</strong></p>
 <div class="toolbar"><button id="friend-learning-refresh" type="button">刷新兴趣观察</button><span id="friend-learning-status" class="muted">尚未读取</span></div>
 <div id="friend-learning-list" class="records records-scroll"></div></details>
-<details class="inset social-advanced"><summary>好友交流偏好与边界 · 证据可撤回</summary>
-<p class="muted">只有已核实、列入好友名册的来信会产生记录，且只依据对方明确提出的交流方式或联系边界。私信线索只用于本 UID 私信，公开评论不可读取私信线索；后台不保存完整聊天正文、健康或政治等敏感画像，也不会据此授予发送权限。可按条撤回、纠正或清空。</p>
-<div class="toolbar"><button id="friend-portrait-refresh" type="button">刷新交流画像</button><span id="friend-portrait-status" class="muted">尚未读取</span></div>
-<div id="friend-portrait-list" class="records records-scroll"></div></details>
+
 <div class="toolbar" style="margin-top:12px"><button id="friend-save-all" class="primary">保存名册、权限及画像</button></div>
 </div>
 </details>

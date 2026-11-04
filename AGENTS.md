@@ -4,7 +4,7 @@
 
 ## 项目与代码入口
 
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前稳定版 `2.6.2`；当前开发阶段为 `2.7.0-dev.4`；未经用户明确授权不得继续升级版本、合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前稳定版 `2.6.2`；当前开发阶段为 `2.7.0-dev.5`；未经用户明确授权不得继续升级版本、合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
@@ -41,6 +41,7 @@
 - P6-A/B 共用 `SocialConversationContinuity` 的账号、UID、渠道与线程隔离意图；`SocialInteractionRhythm` 统一约束三类后台自动发送（跨渠道冷却、滚动24小时每 UID 次数），配置项详见 `docs/architecture/2.7.0-dev2-public-p6-rhythm.md`，不另造私信和评论定时器；每条真实发送仍经原有 SocialPolicyGate、限额、退订、真实回执。
 - [2.7.0 统一自主社交架构设计](docs/architecture/2.7.0-unified-social-agency-plan.md) 明确区分已实现接口和未来生产接线；`SocialPortraitGateway` 在经核验的白名单好友私信/公开评论入口保存可撤回的明确交流证据，按账号/UID/私密域隔离、180天衰减；它不是熟悉度、发送权限或第二人格。`LifeInterests` 保留原有可信观看兴趣证据，新增不改变长期兴趣的短期陌生主题好奇候选；兴趣缺席不等于不感兴趣。现行图见 `docs/architecture/2.7.0-dev3-portrait-open-curiosity.md`。
 - `dev.4` 在同一 `SocialPortraitGateway` 中增加明确的先询问/防剧透/不主动追问证据；仅对 P6 延迟预约和到期唤醒施加可撤回的否决，不替代普通回复或外发权限。`LifeInterests` 的 `curiosityDismissed` 是主人可恢复的 30 天主题排除，不是长期不喜欢或第二份兴趣档案；现行接线见 `docs/architecture/2.7.0-dev4-portrait-curiosity-review.md`。
+- `dev.5` 在原关系索引提供分阶段的可信互动元数据，`SocialPortraitGateway` 继续是唯一的枚举化交流证据源；自然联系人从已核实的 `known` 阶段开始有限画像，白名单维持旧证据兼容。`social-person-identity.mjs` 仅提供平台隔离身份键（当前 B站生产接线），不得通过同 UID/昵称自动匹配其他平台。人物详情从「逐渐熟悉的人」懒加载；原社交权限页不再维护第二份画像控件。现行图见 `docs/architecture/2.7.0-dev5-person-portrait-multiplatform.md`。画像阶段、熟悉度永远不授予外发权限。
 - 不能把允许回应入站 @ 理解成可主动 @ 他人；关闭暗号审核不会授予陌生人自动私信权限，陌生人外发仍须主人明确开启 `dmStrangerAutonomyEnabled`（独立、默认关闭的新授权）；旧版 `dmStrangerOnce` 只保留原有有限次数、单条即时回复权限，绝不能在升级时隐式扩为多条气泡或延迟续聊。
 
 ## 任何架构变更必须同步更新文档（与代码同一次提交）

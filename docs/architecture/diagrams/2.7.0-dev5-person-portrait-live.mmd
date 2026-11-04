@@ -1,0 +1,21 @@
+flowchart TD
+  DM["B站经核实私信入站"] --> Policy["SocialPolicyGate 身份/授权（独立）"]
+  CM["B站经核实评论或入站@"] --> Policy
+  Policy --> Rel["SocialRelationshipIndex 真实互动摘要与 stage"]
+  Policy --> Portrait["SocialPortraitGateway 账号/UID/公私域证据账本"]
+  Rel -->|"known 以上或旧白名单"| Portrait
+  Portrait -->|"按 stage 读取明确证据；公开排除私信"| Assembler["SocialContextAssembler"]
+  Rel -->|"可信互动概要"| Assembler
+  Voice["Life Voice 人格与情绪唯一来源"] --> Batch["InteractionBatch 统一社交决策"]
+  Assembler --> Batch
+  Batch --> Gate["原权限、频控、退订、去重、回执门禁"]
+  Gate --> Sender["仅授权渠道的真实发送适配器"]
+  Portrait --> P6["P6 延迟预约/到期核验有效联系边界"]
+  P6 --> Gate
+  Rel --> API["GET /relationships · B站身份卡"]
+  Identity["socialPersonRef 平台+平台内ID；不自动关联"] --> API
+  API --> UI["逐渐熟悉的人：逐人展开"]
+  UI -->|"同源按需 GET /friend-portrait?uid"| Portrait
+  UI -->|"可选撤回/纠错/遗忘"| Portrait
+  UI -->|"清关系时忘掉本平台 UID 画像"| Rel
+  Other["未来其他平台：未接真实数据"] -.-> Identity
