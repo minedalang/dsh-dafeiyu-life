@@ -4,7 +4,7 @@
 
 ## 项目与代码入口
 
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前稳定版 `2.6.2`；当前开发阶段为 `2.7.0-dev.6`；未经用户明确授权不得继续升级版本、合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前稳定版 `2.6.2`；当前开发阶段为 `2.7.0-dev.7`；未经用户明确授权不得继续升级版本、合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
@@ -43,6 +43,7 @@
 - `dev.4` 在同一 `SocialPortraitGateway` 中增加明确的先询问/防剧透/不主动追问证据；仅对 P6 延迟预约和到期唤醒施加可撤回的否决，不替代普通回复或外发权限。`LifeInterests` 的 `curiosityDismissed` 是主人可恢复的 30 天主题排除，不是长期不喜欢或第二份兴趣档案；现行接线见 `docs/architecture/2.7.0-dev4-portrait-curiosity-review.md`。
 - `dev.5` 在原关系索引提供分阶段的可信互动元数据，`SocialPortraitGateway` 继续是唯一的枚举化交流证据源；自然联系人从已核实的 `known` 阶段开始有限画像，白名单维持旧证据兼容。`social-person-identity.mjs` 仅提供平台隔离身份键（当前 B站生产接线），不得通过同 UID/昵称自动匹配其他平台。人物详情从「逐渐熟悉的人」懒加载；原社交权限页不再维护第二份画像控件。现行图见 `docs/architecture/2.7.0-dev5-person-portrait-multiplatform.md`。画像阶段、熟悉度永远不授予外发权限。
 - `dev.6` 在原 B站动作账本中记录真正入选视频的创作者相遇线索，并为主 Session 提供单 BV 的只读关注当前态／历史回执查询；`VerifiedLifeFacts` 按当前登录账号校验并分离历史动作与实时状态。默认关闭的自主关注授权不变，绝不把旧「值得看/不值得看」主人推荐标签当作新关注契机。人格成长进度条与 B站关系互动计数只改准确说明，不制造经历或跨身份关系。旧视频推荐功能的重构或删除**延后**，现行接线见 `docs/architecture/2.7.0-dev6-creator-facts-and-growth-diagnostics.md`。
+- `dev.7` 私信 P6-B 增加“模型明确选定开放话题，回复后对方沉默时重新考虑”的一次性可选意图，使用原 `SocialAutonomyDecisionContract`、`SocialConversationContinuity` 和原私信发送门禁；只在已授权的入站私信线程发生，不提供无关话题的定时主动找人。到期读私信暂时失败时，只能在未尝试平台发送的前提下有限延期，未知发送不自动重试。管理页只显示不含聊天内容或对方 UID 的聚合预约状态。实际接线见 `docs/architecture/2.7.0-dev7-dm-silence-reconsideration.md`。
 - 不能把允许回应入站 @ 理解成可主动 @ 他人；关闭暗号审核不会授予陌生人自动私信权限，陌生人外发仍须主人明确开启 `dmStrangerAutonomyEnabled`（独立、默认关闭的新授权）；旧版 `dmStrangerOnce` 只保留原有有限次数、单条即时回复权限，绝不能在升级时隐式扩为多条气泡或延迟续聊。
 
 ## 任何架构变更必须同步更新文档（与代码同一次提交）

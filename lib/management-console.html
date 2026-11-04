@@ -1412,7 +1412,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div></div>
 <div class="settings-section"><h4>自主交流与可选严格审核</h4><div class="fields">
 <div><label for="dm-stranger-max">严格暗号审核模式下，暗号前最多自动回复次数（1–20）</label><input id="dm-stranger-max" type="number" min="1" max="20" value="1"><small class="setting-note">在严格暗号审核或旧版「陌生人首次回复」授权下仍保留原限制；明确开启新的陌生人多轮自主授权后，只有严格暗号审核会启用该次数限制。</small></div>
-<p class="muted">关闭严格审核时，不要求投喂暗号；只有明确开启新「多轮自主回复」授权，才不受旧版首次回复额度限制。鱼鱼仍可自然回复、沉默或预约稍后重新考虑。每次延迟唤醒都会重新核验权限与当前人格状态。</p>
+<p class="muted">关闭严格审核时，不要求投喂暗号；只有明确开启新「多轮自主回复」授权，才不受旧版首次回复额度限制。鱼鱼可以对尚未聊完的话题主动提出一次「对方沉默后再考虑」预约，也可能直接结束；不是任何私信都会定时催聊。每次延迟唤醒都会重新核验权限与当前人格状态。</p>
 <label class="checkline"><input id="dm-p6-enabled" type="checkbox" checked> 私信 P6 自然连发与延期复议（默认开启；不代表授权私信发送）</label>
 <div id="dm-p6-settings"><label for="dm-p6-max-bubbles">私信 P6 每轮最多自然消息条数（1–3）</label><input id="dm-p6-max-bubbles" type="number" min="1" max="3" value="3"></div>
 <div><label for="social-p6-min-delay">全渠道 P6 最短延迟（分钟，5–360）</label><input id="social-p6-min-delay" type="number" min="5" max="360" value="5"></div>
@@ -1424,7 +1424,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div></div>
 </div><div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
 </details>
-<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-error" class="muted"></p><p class="muted">网络失败会显示接口主机与底层错误码；如果出现 ECONNRESET、ENETUNREACH、ETIMEDOUT 或 DNS 错误，需同时检查系统网络／代理与 B站连通性。</p></div>
+<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">P6 续聊预约状态：尚未读取。</p><p id="dm-error" class="muted"></p><p class="muted">网络失败会显示接口主机与底层错误码；如果出现 ECONNRESET、ENETUNREACH、ETIMEDOUT 或 DNS 错误，需同时检查系统网络／代理与 B站连通性。</p></div>
 <div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">只显示本插件已经保存的对话片段；不从 B站 额外拉取完整历史。旧版心愿已停止自动处理，历史资料只随本地备份保留；新的陌生人探索灵感与好友观看邀请在「社交互动」查看。记录仅在本机展示。</p><p class="muted">这里统计的是后台私信自动回复通道；主人专属 Agent、其他已授权途径的回复不计入陌生人额度。历史中出现多条来信也不代表已发送多次。</p><div id="dm-recent-list" class="records"></div></div>
 
 <div id="dm-requests" class="toolbar"><h2 style="margin:0">严格暗号审核记录</h2><select id="dm-filter"><option value="pending">只看待审批</option><option value="">全部申请</option><option value="approved">已通过</option><option value="rejected">已拒绝</option></select></div><p class="muted">这里只审核 B站 用户申请，不修改可信白名单。严格暗号审核关闭时，历史待审记录不会拦截鱼鱼的自主交流；开启后才会按审核规则处理。通过后仍受每日／累计额度控制。</p><div class="grid" id="dm-list"></div>

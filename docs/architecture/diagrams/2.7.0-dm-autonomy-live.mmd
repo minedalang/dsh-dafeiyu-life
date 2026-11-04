@@ -18,9 +18,12 @@ flowchart TD
   N --> O[B 站私信发送适配器]
   O --> P[平台 msg_key / 成功回执]
   P --> Q[更新私信历史与关系投影]
+  Q -->|模型明确提出开放话题沉默复议| K
   K --> R[到期轮询 claim]
   R --> S[重新读取收件箱、当前 Life Voice 与权限]
-  S --> H
+  S -->|只读收件箱暂时失败：限次安全延期| K
+  S -->|核验通过重新考虑：可回复或沉默| H
+  Y[私信管理页显示不含对方身份的预约数/下次复议] -.只读状态.-> K
   T[同一 UID 新来信] --> U[取消旧续聊预约]
   U --> B
   V[dmStrangerOnce：主人明确发送许可，默认关闭] -.独立门禁.-> C
@@ -29,6 +32,6 @@ flowchart TD
   classDef live fill:#dcfce7,stroke:#16a34a,color:#14532d
   classDef policy fill:#fef3c7,stroke:#d97706,color:#78350f
   classDef future fill:#e0e7ff,stroke:#6366f1,color:#312e81
-  class B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,U live
+  class B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,U,Y live
   class V,W policy
   class X future

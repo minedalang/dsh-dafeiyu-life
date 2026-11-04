@@ -1,0 +1,32 @@
+flowchart TD
+  A[已核验 B站私信入站 msg_key] --> B[dm-autoreply 账号 + UID 去重]
+  B --> C{SocialPolicyGate 允许此次私信？}
+  C -->|否| X[只读记录 不产生外发意图]
+  C -->|是| D[SocialContextAssembler + 唯一 Life Voice]
+  D --> E[InteractionBatcher 一次模型决策]
+  E --> F{SocialAutonomyDecisionContract}
+  F -->|skip/close| Z[本轮沉默 不预约]
+  F -->|defer| L[SocialConversationContinuity 预约沉默复议]
+  F -->|reply| G[原事实核验 / 权限 / 配额 / 冷却 / 去重]
+  G --> H[B站私信适配器]
+  H -->|可信 msg_key| I[记录已发回执及历史]
+  H -->|失败或未知| U[uncertain 不自动重发]
+  I -->|仅显式 followUpMinutes| S[原延迟补充预约]
+  I -->|仅显式 idleReconsiderMinutes 且开放话题| L
+  L --> P[按当前账号与 dm 渠道 到期领取]
+  S --> P
+  P --> Q[只读复核新来信/边界/权限]
+  Q -->|有新来信| R[取消旧意图 新消息按新一轮处理]
+  Q -->|临时读取失败 且未写入| T[5分钟后最多2次安全延期]
+  T --> P
+  Q -->|通过| E
+  E -->|scheduled 可选择沉默/回复 不再预约| F
+  N[私信管理页匿名聚合统计] -.只读.-> L
+  V[同 UID 新消息] --> R
+  W[原陌生人显式许可 / 旧首回限制] -.强制门禁.-> C
+  Y[P6 开关 及主人最短最长延迟] -.边界.-> F
+  Y -.边界.-> L
+  classDef gate fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef data fill:#dcfce7,stroke:#16a34a,color:#14532d
+  class C,F,G,Q,W,Y gate
+  class A,B,D,E,H,I,L,P,R,S,T,N data
