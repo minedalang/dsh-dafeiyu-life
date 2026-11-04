@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 SOURCE = (Path(__file__).resolve().parents[1] / 'vendor/bilibili-mcp/mcp_server.py').read_text('utf-8')
 NAMES = {'_discussion_account_tag', '_discussion_receipt', '_discussion_prompt_note', '_discussion_note_rejection',
+         '_discussion_normalize_reaction',
          '_discussion_store_provisional', '_discussion_report_without_note_receipts', 'bili_report_append',
          'bili_comments', 'bili_comment_thread', 'bili_discussion_note'}
 TREE = ast.parse(SOURCE)
@@ -146,6 +147,37 @@ class DiscussionTests(unittest.TestCase):
         self.assertFalse(self.go(self.s['bili_discussion_note']('BV0000000000','curious','https://bad.example/'))['ok'])
         self.assertFalse(self.go(self.s['bili_discussion_note']('BV0000000000','curious','用户 123456789'))['ok'])
         self.assertFalse(self.go(self.s['bili_discussion_note']('BV0000000000','true', ''))['ok'])
+
+    def test_exact_chinese_reaction_is_normalized_without_losing_subjective_question(self):
+        self.go(self.s['bili_comments'](self.bv, 10))
+        note = self.go(self.s['bili_discussion_note'](self.bv, ' 好奇 ', '为什么大家理解不同？'))
+        self.assertTrue(note['ok'])
+        self.assertEqual(note['reaction'], 'curious')
+        events = [json.loads(raw) for _, raw in self.records if 'provisional_fish_reaction' in raw]
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]['reaction'], 'curious')
+        self.assertEqual(events[0]['question'], '为什么大家理解不同？')
+        self.assertNotIn(' 好奇 ', ''.join(raw for _, raw in self.records))
+
+    def test_report_alias_normalizes_to_existing_canonical_value(self):
+        self.go(self.s['bili_comments'](self.bv, 10))
+        result = self.go(self.s['bili_report_append']('日报', [
+            {'bvid': self.bv, 'reaction': '  SCEPTICAL  ', 'question': '这个来源真的可靠吗？'}]))
+        self.assertEqual(result['discussionNotes']['saved'], 1)
+        events = [json.loads(raw) for _, raw in self.records if 'provisional_fish_reaction' in raw]
+        self.assertEqual(events[0]['reaction'], 'skeptical')
+
+    def test_unknown_category_is_rejected_without_guessing_or_echoing_input(self):
+        self.go(self.s['bili_comments'](self.bv, 10))
+        raw_category = '特别感动但很难归类'
+        note = self.go(self.s['bili_discussion_note'](self.bv, raw_category, '我自己想继续了解吗？'))
+        self.assertFalse(note['ok'])
+        self.assertIn('curious', note['error'])
+        self.assertNotIn(raw_category, note['error'])
+        stored = '\n'.join(raw for _, raw in self.records)
+        self.assertIn('invalid_reaction', stored)
+        self.assertNotIn(raw_category, stored)
+        self.assertNotIn('我自己想继续了解吗', stored)
 
     def test_failed_note_diagnostics_only_expose_reason_not_private_arguments(self):
         self.go(self.s['bili_comments'](self.bv, 10))

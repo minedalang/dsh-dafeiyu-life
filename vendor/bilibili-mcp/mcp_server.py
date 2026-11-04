@@ -496,6 +496,27 @@ def _discussion_note_rejection(bvid: str, reason: str) -> None:
         pass
 
 
+def _discussion_normalize_reaction(reaction):
+    """Accept unambiguous localized labels, but never guess a free-form feeling.
+
+    All stored records keep the original five canonical enum values; this
+    applies to both the standalone note tool and report-attached notes.
+    """
+    if not isinstance(reaction, str):
+        return None
+    key = reaction.strip().casefold()
+    aliases = {
+        'curious': 'curious', '好奇': 'curious', '感到好奇': 'curious',
+        'amused': 'amused', '有趣': 'amused', '觉得有趣': 'amused', '好笑': 'amused',
+        'skeptical': 'skeptical', 'sceptical': 'skeptical', '存疑': 'skeptical',
+        '怀疑': 'skeptical', '质疑': 'skeptical',
+        'neutral': 'neutral', '平静': 'neutral', '平淡': 'neutral',
+        'none': 'none', '无反应': 'none', '无特别感受': 'none',
+        '没有特别感受': 'none', '无感': 'none',
+    }
+    return aliases.get(key)
+
+
 def _discussion_store_provisional(bvid: str, reaction: str, question: str) -> dict:
     """Single evidence-checked writer for both explicit and report-attached notes.
 
@@ -514,9 +535,12 @@ def _discussion_store_provisional(bvid: str, reaction: str, question: str) -> di
     if not read or read.get('error') or not read.get('read_evidence', {}).get('verified'):
         _discussion_note_rejection(bv, 'missing_read')
         return {'ok': False, 'error': '本轮没有成功读取该 BV 评论，不能生成经历'}
-    if not isinstance(reaction, str) or reaction not in {'curious', 'amused', 'skeptical', 'neutral', 'none'}:
+    canonical_reaction = _discussion_normalize_reaction(reaction)
+    if canonical_reaction is None:
         _discussion_note_rejection(bv, 'invalid_reaction')
-        return {'ok': False, 'error': '反应类型无效'}
+        # Return the valid closed vocabulary for the model to correct its own
+        # request. Never echo the rejected argument or any private question.
+        return {'ok': False, 'error': '反应类型无效；reaction 请用 curious(好奇)、amused(有趣)、skeptical(存疑)、neutral(平静)、none(无特别感受)；没有匹配的类别就不记录，不要强行归为 neutral 或伪造感受'}
     brief = _discussion_prompt_note(question)
     if brief is None:
         _discussion_note_rejection(bv, 'invalid_question')
@@ -524,7 +548,7 @@ def _discussion_store_provisional(bvid: str, reaction: str, question: str) -> di
     # Only enumerated reactions and a brief self-identified question are allowed.
     # The self-reported question is deliberately NOT injected into long-term memory.
     now = datetime.now().astimezone()
-    record = {'v': 1, 'at': now.isoformat(), 'bvid': bv, 'reaction': reaction,
+    record = {'v': 1, 'at': now.isoformat(), 'bvid': bv, 'reaction': canonical_reaction,
               'question': brief, 'kind': 'provisional_fish_reaction',
               'evidence': 'comment_list_read', 'count': read.get('count', 0),
               'externally_verified': False}
@@ -537,13 +561,20 @@ def _discussion_store_provisional(bvid: str, reaction: str, question: str) -> di
         return {'ok': False, 'error': '本地观察记录失败；未登记'}
     _DISCUSSION_NOTED.add(bv)
     return {'ok': True, 'kind': 'provisional_fish_reaction',
-            'bvid': bv, 'reaction': reaction, 'not_external_fact': True,
+            'bvid': bv, 'reaction': canonical_reaction, 'not_external_fact': True,
             'not_publicly_sent': True, 'not_task': True}
 
 
 @tool()
 async def bili_discussion_note(bvid: str, reaction: str = 'curious', question: str = '') -> str:
-    """Optional private note after verified comments. No external send or task."""
+    """Optional private note after verified comments. No external send or task.
+
+    Args:
+        bvid: BV already read successfully in the current video round.
+        reaction: One of curious/amused/skeptical/neutral/none; exact Chinese
+            labels 好奇/有趣/存疑/平静/无特别感受 are also accepted.
+        question: Optional short personal question, not a quoted comment.
+    """
     if (e := _guard('bili_discussion_note')): return e
     return json.dumps(_discussion_store_provisional(bvid, reaction, question), ensure_ascii=False)
 
@@ -653,7 +684,8 @@ async def bili_comments(bvid: str, num: int = 30) -> str:
         # rather than relying only on the very long video-Agent prompt.
         if fetch_error is None and out['count'] > 0:
             out['optional_reflection'] = ('如果你读后确实有自己的好奇、觉得有趣、存疑或平静的感受，'
-                                          '可以自愿调用 bili_discussion_note(bvid, reaction, question) '
+                                          '可以自愿调用 bili_discussion_note(bvid, reaction, question)，其中 reaction 请选择 '
+                                          'curious(好奇)/amused(有趣)/skeptical(存疑)/neutral(平静)/none(无特别感受)；'
                                           '留下本轮短暂感受；没有实际感受就直接继续，不要为记录而编造。')
         _DISCUSSION_LIST_CACHE[bvid] = out
         if fetch_error is None:
@@ -2395,8 +2427,9 @@ def _discussion_report_without_note_receipts():
 async def bili_report_append(text: str, discussion_notes: list[dict] | None = None) -> str:
     """追加当天 Markdown 日报。可选携带同轮真实读过评论的短暂主观反应。
 
-    discussion_notes: 可选最多 2 条 [{bvid, reaction, question}]。只有本轮
-    成功读取同 BV 评论后才存入独立诊断账本，不会变成外部事实/任务/长期偏好。
+    discussion_notes: 可选最多 2 条 [{bvid, reaction, question}]。reaction 请选择
+    curious/amused/skeptical/neutral/none（或对应中文好奇/有趣/存疑/平静/无特别感受）。
+    只有本轮成功读取同 BV 评论后才存入独立诊断账本，不会变成外部事实/任务/长期偏好。
     不想记录或并无感受时省略此参数；不应编造主观感受。
     """
     if (e := _guard("bili_report_append")): return e
