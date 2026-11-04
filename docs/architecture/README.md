@@ -4,6 +4,10 @@
 
 - [新功能可验收性契约：触发、选择、真实回执、隐私、费用与使用者验收步骤](./acceptance-observability-contract.md)。代码测试通过不能代替用户可观察的真实行为。
 
+## 当前开发预览：2.7.1-dev.3 自主生活意愿与跨场景只读探索（增量）
+
+- [真实来源、统一决策、模型自选探索目的、公开搜索、跨轮 BV 核实、短期意愿与管理中心验收](./2.7.1-dev3-unified-life-intentions.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev3-unified-life-intentions-live.mmd)。复用原 `LifeOpportunities` 状态文件、`AutonomousPlanner`、Life Voice 和只读 B站适配器。首批仅从**账号归属明确的跨日兴趣**形成模型自主意愿，可不依赖原候选/刷视频轮继续；未实现完整人物空间、自主关注、跨聊天和全能力组合。
+
 ## 当前开发预览：2.7.1-dev.3 评论感受实际工具调用链补充
 
 - 视频 Agent 的 `bili_report_append` 可顺带提交经过同一 BV 评论阅读证据验证的**可选**临时感受；单独 `bili_discussion_note` 保留。管理中心新增“日报后未附感受”匿名计数，区别于成功/拒绝，不冒充鱼鱼的内心判断；无额外模型调用、无外发或待办权限变化。见 [dev.3 当前生活契机说明](./2.7.1-dev3-life-opportunities.md) 和 [评论只读 Mermaid](./diagrams/2.7.1-dev1-video-discussion-live.mmd)。

@@ -4413,7 +4413,23 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getTodos:(limit)=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)&&READ_TODO_TYPES.has(x.type)&&(!x.dueAt||x.dueAt<=Date.now())).slice(0,limit),
     getRelationshipHint:uid=>{try{return existingRelationshipIndex()?.preferenceHint(uid,relationshipOptions())||null}catch{return null}},
     getLifeState:()=>emotionalState.snapshot(),
+    getLifeVoice:()=>lifeVoiceContext({scene:'main',maxChars:1900}),
     getLifeOpportunities:()=>lifeOpportunities.list({limit:4}),
+    getLifeIntentionCues:()=>lifeOpportunities.explorationCues({limit:4}),
+    getLifeIntentions:()=>lifeOpportunities.intentions({limit:3}),
+    beginLifeExploration:(id,goal,found)=>lifeOpportunities.beginExploration(id,goal,found),
+    completeLifeExploration:(id,bvid,receipt)=>lifeOpportunities.completeExploration(id,bvid,receipt),
+    failLifeExploration:(id,bvid)=>lifeOpportunities.failExplorationRead(id,bvid),
+    abandonLifeExploration:(id,reason)=>lifeOpportunities.abandonExploration(id,reason),
+    executeLifeSearch:async(topic)=>{
+      // The query comes solely from current-account verified LifeInterests,
+      // never from the model's free-form goal or untrusted comment contents.
+      const good=lifeOpportunities.list({includeClosed:true,limit:30}).some(x=>x.source==='interest-milestone'&&x.topic===topic)
+      if(!good)return {ok:false,error:'没有本账号可信的公开搜索主题'}
+      const data=parseMaybeJson(await call('bili_search',{keyword:topic,num:10,order:'totalrank'}))
+      if(data?.ok===false)return {ok:false,error:'公开搜索失败'}
+      return {ok:true,topic,videos:selectSearchVideos(data,{limit:5})}
+    },
     recordOpportunityDecision:(id,action,opts)=>lifeOpportunities.decide(id,action,opts),
     executeOpportunityRead:async(bvid)=>{
       if(!/^BV[0-9A-Za-z]{10}$/.test(String(bvid||'')))return {ok:false,error:'BV 证据无效'}

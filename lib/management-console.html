@@ -1006,8 +1006,8 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
 </details></div>
 <div id="life-opportunities-section" class="settings-section life-section">
-<div class="toolbar"><h4 style="margin:0">🧭 生活行动契机 · 真实选择与回执</h4><button id="life-opportunities-refresh" type="button" class="life-action life-sky">刷新契机记录</button><button id="life-opportunities-reconsider" type="button" class="life-action life-purple">提醒鱼鱼考虑一次（消耗 AI 额度）</button></div>
-<p class="muted">从当前 B站账号的<strong>真实评论区观察、有账号证据的跨日自主选片、公开评论中跨日明确的交流偏好</strong>形成有限契机。鱼鱼可自主核实对应 BV 的元数据、仅在本地复核公开证据、延期、放下或沉默；旧版没有可靠账号归属的兴趣不会触发。不会自动创建待办、评论、私信或关注，也不代表看过视频或听过音频。自动考虑复用现有「独立自主调度」的频率和每日模型额度；手动提醒同样扣额度，但不会强制行动。</p>
+<div class="toolbar"><h4 style="margin:0">🐟 自主生活 · 线索、意愿与真实回执</h4><button id="life-opportunities-refresh" type="button" class="life-action life-sky">刷新契机记录</button><button id="life-opportunities-reconsider" type="button" class="life-action life-purple">提醒鱼鱼考虑一次（消耗 AI 额度）</button></div>
+<p class="muted">鱼鱼可参考当前账号的<strong>评论观察、跨日自主选片兴趣、公开交流证据</strong>，自主决定只读探索或保持沉默。首批新增：可信兴趣经历即使原候选已关闭，仍可由鱼鱼自行产生“我想进一步探索”的目的，通过真实 B站公开搜索保留 BV；之后不必重进刷视频轮，也能自主选中实际搜索结果核实或放下。独立自主调度沿用原每日 AI 额度；单纯自由探索增加最长 6 小时的重复考虑冷却。不会自动创建待办、评论、私信、关注，也不代表已观看或听见音频。</p>
 <p id="life-opportunities-status" class="muted" role="status">尚未读取生活契机</p><div id="life-opportunities-list" class="records records-scroll" aria-live="polite"></div>
 </div>
 <div id="life-recall-section" class="settings-section life-section memory-home">
