@@ -20,7 +20,7 @@ import { buildGrowthContext, syncReportsToGrowth, listGrowth, proposeGrowth, upd
  * ============================================================================
  */
 import { growthSuggestionPrompt, parseGrowthSuggestion, growthSuggestionIssue } from './lib/growth-suggestion.mjs'
-import {readVideoDiscussionDiagnostics} from './lib/video-discussion-diagnostics.mjs'
+import {readVideoDiscussionDiagnostics,discussionAccountTag} from './lib/video-discussion-diagnostics.mjs'
 import {createLifeOpportunities} from './lib/life-opportunities.mjs'
 import { loadHostDeps } from './lib/hostdeps.mjs'
 
@@ -139,7 +139,7 @@ import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
 import { createDailyDynamic } from './lib/daily-dynamic.mjs'
 import { createMemeLearning } from './lib/meme-learning.mjs'
-import { interestMemoryRows, selectionInterests, listLifeInterests, listCuriosityReview, curiosityReview } from './lib/life-interests.mjs'
+import { interestMemoryRows, selectionInterests, listLifeInterests, scopedInterestOpportunityEvidence, listCuriosityReview, curiosityReview } from './lib/life-interests.mjs'
 import { readModelTaskUsage, recordModelTask, MODEL_TASKS } from './lib/model-task-usage.mjs'
 
 export const name = 'dafeiyu-life'
@@ -2238,7 +2238,13 @@ function reportMeta() {
 
   // A read-only opportunity source, never a second scheduler or task ledger.
   // Its observations are bound to the current Bilibili credential.
-  const lifeOpportunities=createLifeOpportunities({stateDir,getCredential:()=>dmCred(stateDir)})
+  // An unconfirmed account switch must not read the previous runtime's public
+  // portrait under the newly scanned credentials. Binding requires restart.
+  const lifeOpportunityAccountReady=()=>{try{return accountBinding.status().blocked!==true}catch{return false}}
+  const trustedLifeAccountTag=()=>lifeOpportunityAccountReady()?discussionAccountTag(dmCred(stateDir)):''
+  const lifeOpportunities=createLifeOpportunities({stateDir,getCredential:()=>lifeOpportunityAccountReady()?dmCred(stateDir):null,
+    getInterestEvidence:tag=>lifeOpportunityAccountReady()?scopedInterestOpportunityEvidence(stateDir,tag):[],
+    getPublicPersonEvidence:()=>lifeOpportunityAccountReady()?socialPortrait.publicOpportunitySignals():[]})
   const promptFor = () => {
     // ⭐ 章程取哪一份：家里那份优先（ensureCharter 保证铺好；他改过的话就是他那份，升级的事由 ensureCharter 记账处理）
     const duty = charterPath(pluginDir, stateDir)
@@ -2259,7 +2265,7 @@ function reportMeta() {
         if(!reads.length)return ''
         return '\n【此前真实只读核实的生活线索（完全可忽略）】\n'+reads.map(x=>
           'BV '+x.bvid+'：已核实公开视频元数据标题「'+String(x.title).replace(/[<>`{}\r\n]/g,' ').slice(0,90)+'」').join('；')+
-          '。这是过去一次评论观察触发的元数据读取，不代表看过视频、听过音频、形成兴趣或与评论者认识。可自己决定是否继续核查、换方向或不理会；不得把它当成必须行动的待办，也不得自动对外发送。\n'
+          '。这是此前只读生活契机的元数据核实，不代表看过视频、听过音频、喜欢某主题或认识评论者。可自主决定继续探索或忽略，不得自动发送。\n'
       }catch(e){log('生活契机提示读取失败：'+String(e?.message||e).slice(0,100));return ''}
     })()
     const videoSearchPlan='兴趣主导搜索：'+baseQueries.join('、')+'。'
@@ -4377,6 +4383,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     dataDir: stateDir,
     getConfig: () => cfg,
     memoryGateway:lifeMemory,
+    getAccountTag:trustedLifeAccountTag,
     getPersonalityEnabled:()=>{try{return personalityEvolution?.status().enabled===true}catch{return false}},
     onPersonalityProposals:(proposals,batch)=>personalityEvolution?.applyProposals(proposals,batch),
     onPersonalityObservations:(batch)=>personalityEvolution?.observeVerifiedExploration(batch),
@@ -4388,7 +4395,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   })
   lifeReflection.start()
   ctx.effect(() => () => lifeReflection.stop(), 'bili-duty: 人生记忆自主反思')
-  lifeMemoryCoordinator=createLifeMemoryCoordinator({dataDir:stateDir,memoryGateway:lifeMemory,lifeReflection,logger:{warn:m=>log('人生记忆协调：'+m)}})
+  lifeMemoryCoordinator=createLifeMemoryCoordinator({dataDir:stateDir,memoryGateway:lifeMemory,lifeReflection,getAccountTag:trustedLifeAccountTag,logger:{warn:m=>log('人生记忆协调：'+m)}})
   lifeMemoryCoordinator.start()
   ctx.effect(()=>()=>lifeMemoryCoordinator?.stop(),'bili-duty: Life Memory 协调器')
   socialInteractionCoordinator.start()
