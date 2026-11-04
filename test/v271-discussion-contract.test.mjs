@@ -32,3 +32,11 @@ test('2.7.1 development metadata retains dev1 implemented architecture links',()
  assert.match(read('docs/architecture/2.7.1-dev1-video-discussion-life.md'),/实际生产接线/)
  assert.match(read('docs/architecture/diagrams/2.7.1-dev1-video-discussion-live.mmd'),/bili_comments/)
 })
+
+test('optional follow-up note is visible on successful nonempty reads but is never mandatory',()=>{
+ const py=read('vendor/bilibili-mcp/mcp_server.py')
+ assert.match(py,/out\['optional_reflection'\]/)
+ assert.match(py,/provisional_note_rejected/)
+ const ui=read('lib/management-console.js')
+ assert.match(ui,/noteRejections/)
+})

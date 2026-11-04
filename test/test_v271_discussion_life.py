@@ -11,7 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 SOURCE = (Path(__file__).resolve().parents[1] / 'vendor/bilibili-mcp/mcp_server.py').read_text('utf-8')
-NAMES = {'_discussion_account_tag', '_discussion_receipt', '_discussion_prompt_note',
+NAMES = {'_discussion_account_tag', '_discussion_receipt', '_discussion_prompt_note', '_discussion_note_rejection',
          'bili_comments', 'bili_comment_thread', 'bili_discussion_note'}
 TREE = ast.parse(SOURCE)
 NODES = []
@@ -85,6 +85,8 @@ class DiscussionTests(unittest.TestCase):
         first = self.go(self.s['bili_comments'](self.bv, num=10))
         self.assertTrue(first['read_evidence']['verified'])
         self.assertEqual(first['count'], 10)
+        self.assertIn('bili_discussion_note', first['optional_reflection'])
+        self.assertIn('不要为记录而编造', first['optional_reflection'])
         self.assertEqual(len(self.calls), 1)
         again = self.go(self.s['bili_comments'](self.bv, num=10))
         self.assertEqual(again, first)
@@ -119,6 +121,7 @@ class DiscussionTests(unittest.TestCase):
         self.assertEqual(result['count'], 0)
         self.assertFalse(result['read_evidence']['verified'])
         self.assertFalse(self.go(self.s['bili_discussion_note'](self.bv, 'curious'))['ok'])
+        self.assertIn('missing_read', ''.join(x[1] for x in self.records))
         self.assertIn('partial_failure', ''.join(x[1] for x in self.records))
         self.assertEqual(self.go(self.s['bili_comment_thread'](self.bv, 1))['status'], 'unverified_root')
 
@@ -126,6 +129,7 @@ class DiscussionTests(unittest.TestCase):
         self.empty = True
         result = self.go(self.s['bili_comments'](self.bv, 10))
         self.assertEqual(result['count'], 0)
+        self.assertNotIn('optional_reflection', result)
         self.assertNotIn('error', result)
         self.assertTrue(result['read_evidence']['verified'])
         self.assertTrue(self.go(self.s['bili_discussion_note'](self.bv, 'none'))['ok'])
@@ -139,6 +143,26 @@ class DiscussionTests(unittest.TestCase):
         self.assertFalse(self.go(self.s['bili_discussion_note']('BV0000000000','curious','https://bad.example/'))['ok'])
         self.assertFalse(self.go(self.s['bili_discussion_note']('BV0000000000','curious','用户 123456789'))['ok'])
         self.assertFalse(self.go(self.s['bili_discussion_note']('BV0000000000','true', ''))['ok'])
+
+    def test_failed_note_diagnostics_only_expose_reason_not_private_arguments(self):
+        self.go(self.s['bili_comments'](self.bv, 10))
+        private = 'https://dont-store.example/?user=11223344'
+        result = self.go(self.s['bili_discussion_note'](self.bv, 'curious', private))
+        self.assertFalse(result['ok'])
+        result2 = self.go(self.s['bili_discussion_note'](self.bv, 'wrong', 'some feeling'))
+        self.assertFalse(result2['ok'])
+        serialized = ''.join(row[1] for row in self.records)
+        self.assertIn('provisional_note_rejected', serialized)
+        self.assertIn('invalid_question', serialized)
+        self.assertIn('invalid_reaction', serialized)
+        self.assertNotIn(private, serialized)
+        self.assertNotIn('some feeling', serialized)
+
+    def test_unselected_optional_note_does_not_generate_fake_event(self):
+        out = self.go(self.s['bili_comments'](self.bv, 10))
+        self.assertIn('optional_reflection', out)
+        self.assertEqual(len(self.records), 1)
+        self.assertNotIn('provisional_fish_reaction', self.records[0][1])
 
     def test_other_channels_keep_original_thread_behavior(self):
         self.s['_DISCUSSION_VIDEO_ROUND'] = False

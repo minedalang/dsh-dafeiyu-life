@@ -476,6 +476,25 @@ def _discussion_prompt_note(value):
     return txt
 
 
+def _discussion_note_rejection(bvid: str, reason: str) -> None:
+    """Count actual rejected note tool attempts, without storing argument text.
+
+    Absence of a rejection is NOT evidence that the model chose not to note.
+    """
+    if not _DISCUSSION_VIDEO_ROUND or not re.fullmatch(r'BV[0-9A-Za-z]{10}', str(bvid or '')):
+        return
+    if reason not in {'duplicate', 'missing_read', 'invalid_reaction', 'invalid_question', 'write_failed'}:
+        return
+    try:
+        now = datetime.now().astimezone()
+        row = {'v': 1, 'at': now.isoformat(), 'account': _discussion_account_tag(),
+               'kind': 'provisional_note_rejected', 'bvid': bvid, 'status': 'rejected', 'reason': reason}
+        _append_home('video-discussion-reads/' + now.strftime('%Y-%m-%d') + '.jsonl',
+                     json.dumps(row, ensure_ascii=True) + '\n')
+    except (OSError, ValueError, TypeError):
+        pass
+
+
 @tool()
 async def bili_discussion_note(bvid: str, reaction: str = 'curious', question: str = '') -> str:
     """Optional, bounded private reaction to ACTUALLY read public comments.
@@ -490,14 +509,18 @@ async def bili_discussion_note(bvid: str, reaction: str = 'curious', question: s
     if not re.fullmatch(r'BV[0-9A-Za-z]{10}', bv):
         return json.dumps({'ok': False, 'error': 'BV 格式错误'}, ensure_ascii=False)
     if bv in _DISCUSSION_NOTED:
+        _discussion_note_rejection(bv, 'duplicate')
         return json.dumps({'ok': False, 'error': '本轮该视频的观察已经记录'}, ensure_ascii=False)
     read = _DISCUSSION_LIST_CACHE.get(bv)
     if not read or read.get('error') or not read.get('read_evidence', {}).get('verified'):
+        _discussion_note_rejection(bv, 'missing_read')
         return json.dumps({'ok': False, 'error': '本轮没有成功读取该 BV 评论，不能生成经历'}, ensure_ascii=False)
     if reaction not in {'curious', 'amused', 'skeptical', 'neutral', 'none'}:
+        _discussion_note_rejection(bv, 'invalid_reaction')
         return json.dumps({'ok': False, 'error': '反应类型无效'}, ensure_ascii=False)
     brief = _discussion_prompt_note(question)
     if brief is None:
+        _discussion_note_rejection(bv, 'invalid_question')
         return json.dumps({'ok': False, 'error': '问题包含链接、识别符或敏感信息／超过长度限制'}, ensure_ascii=False)
     # Only enumerated reactions and a brief self-identified question are allowed.
     # The self-reported question is deliberately NOT injected into long-term memory.
@@ -511,6 +534,7 @@ async def bili_discussion_note(bvid: str, reaction: str = 'curious', question: s
         _append_home('video-discussion-reads/' + now.strftime('%Y-%m-%d') + '.jsonl',
                      json.dumps(record, ensure_ascii=True) + '\n')
     except (OSError, ValueError, TypeError):
+        _discussion_note_rejection(bv, 'write_failed')
         return json.dumps({'ok': False, 'error': '本地观察记录失败；未登记'}, ensure_ascii=False)
     _DISCUSSION_NOTED.add(bv)
     return json.dumps({'ok': True, 'kind': 'provisional_fish_reaction',
@@ -619,6 +643,12 @@ async def bili_comments(bvid: str, num: int = 30) -> str:
                                 'verified': fetch_error is None,
                                 'scope': 'public-comments',
                                 'count': out['count']}
+        # Place an optional, NON-mandatory next step next to the actual evidence,
+        # rather than relying only on the very long video-Agent prompt.
+        if fetch_error is None and out['count'] > 0:
+            out['optional_reflection'] = ('如果你读后确实有自己的好奇、觉得有趣、存疑或平静的感受，'
+                                          '可以自愿调用 bili_discussion_note(bvid, reaction, question) '
+                                          '留下本轮短暂感受；没有实际感受就直接继续，不要为记录而编造。')
         _DISCUSSION_LIST_CACHE[bvid] = out
         if fetch_error is None:
             _DISCUSSION_ROOTS[bvid] = {str(c.get('rpid')) for c in out['comments']

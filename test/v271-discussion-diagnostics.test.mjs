@@ -23,13 +23,26 @@ test('public read, valid thread, failure, and subjective note are visible with v
   assert.equal(discussionAccountTag(credential),tag)
   const r=readVideoDiscussionDiagnostics({stateDir:f.home,credential,now})
   assert.equal(r.ok,true);assert.equal(r.accountReady,true)
-  assert.deepEqual(r.summary,{readLists:1,emptyLists:0,failedLists:1,readThreads:1,failedThreads:0,provisionalNotes:1})
+  assert.deepEqual(r.summary,{readLists:1,emptyLists:0,failedLists:1,readThreads:1,failedThreads:0,provisionalNotes:1,noteRejections:0})
   const note=r.events.find(x=>x.kind==='provisional_fish_reaction')
   assert.equal(note.subjective,true);assert.equal(note.verified,false)
   assert.equal(r.events.find(x=>x.kind==='comment_thread_read').root,'123')
   assert.ok(r.events.every(x=>!Object.hasOwn(x,'account')))
   assert.ok(r.events.every(x=>!Object.hasOwn(x,'sessdata')))
  }finally{f.cleanup()}
+})
+test('rejected note requests expose only enum reason, and no success is invented',()=>{
+ const f=fixture([event('comment_list_read'),event('provisional_note_rejected',{status:'rejected',reason:'invalid_question',raw:'PRIVATE DO NOT SHOW'}),event('provisional_note_rejected',{status:'rejected',reason:'arbitrary_private_text'}),event('provisional_note_rejected',{status:'read',reason:'duplicate'})]);
+ try {
+  const r=readVideoDiscussionDiagnostics({stateDir:f.home,credential,now});
+  assert.equal(r.summary.readLists,1);
+  assert.equal(r.summary.noteRejections,1);
+  assert.equal(r.summary.provisionalNotes,0);
+  const failure=r.events.find(e=>e.kind==='provisional_note_rejected');
+  assert.equal(failure.reason,'invalid_question');
+  assert.equal(failure.status,'rejected');
+  assert.equal(JSON.stringify(r).includes('PRIVATE'),false);
+ } finally {f.cleanup()}
 })
 test('wrong account and no-login cannot inspect previous account receipts',()=>{
  const f=fixture([event('comment_list_read')]);
