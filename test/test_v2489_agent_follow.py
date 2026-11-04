@@ -44,7 +44,7 @@ class TestFollow(unittest.TestCase):
             c.row_factory=sqlite3.Row
             return c
         self.scope={'datetime':datetime,'sqlite3':sqlite3,'json':json,'os':os,'_action_conn':conn,
-            '_guard':lambda name:'', '_selected_for_reaction':lambda bv:self.source_selected,
+            '_guard':lambda name:'', '_selected_for_creator_encounter':lambda bv:self.source_selected,
             '_valid_bv':lambda bv:bv,'get_cred':lambda:credential,
             'video':SimpleNamespace(Video=FakeVideo),
             'user':SimpleNamespace(User=FakeUser,RelationType=SimpleNamespace(SUBSCRIBE='follow',UNSUBSCRIBE='unfollow')),

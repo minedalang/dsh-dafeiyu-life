@@ -44,7 +44,7 @@ test('评论上下文不主动读取热评；AI决定回复时才允许补充同
 test('关注/取关默认无权限；白名单只放两项及其只读个人信息而非关系列表',()=>{
  const js=read('index.js'),html=read('lib/management-console.html'),py=read('vendor/bilibili-mcp/mcp_server.py')
  assert.match(js,/agentFollowEnabled: z\.boolean\(\)\.default\(false\)/)
- assert.match(js,/if \(cfg\.agentFollowEnabled\) list\.push\('bili_user_info','bili_follow_creator','bili_unfollow_creator'\)/)
+ assert.match(js,/if \(cfg\.agentFollowEnabled\) list\.push\('bili_user_info','bili_creator_encounter','bili_creator_relation_status','bili_follow_creator','bili_unfollow_creator'\)/)
  assert.match(js,/BILI_AGENT_FOLLOW_ENABLED/)
  assert.match(py,/_guard\('bili_follow_creator'\)/)
  assert.match(py,/_guard\('bili_unfollow_creator'\)/)

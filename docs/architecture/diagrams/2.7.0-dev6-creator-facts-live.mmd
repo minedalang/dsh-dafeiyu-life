@@ -1,0 +1,21 @@
+flowchart TD
+  Video["视频 Agent：真实视频的自主选看"] --> Source["旧当日入选来源：seen.md 显式挑中 或当日日报 ### BV"]
+  Legacy["旧 值得看/不值得看 主人推荐：保留不重构"] -.->|"不是新关注契机"| Source
+  Source --> Selected["_selected_for_creator_encounter：仅可信入选"]
+  Selected --> Opportunity["bili_creator_encounter：真实 UP + BV + 当前 B站账号"]
+  Opportunity --> Ledger["video-actions.sqlite3：creator_encounters / actions / creator_relations"]
+  Opportunity --> Current["_single_creator_relation：单目标平台当前状态"]
+  Opportunity --> Choice["Life Voice/视频 Agent 自己考虑是否长期想看"]
+  Choice --> Gate["原 agentFollowEnabled/额度/去重/有效 UID/实时关系门禁"]
+  Selected --> Gate
+  Gate -->|"鱼鱼真正选择；不强制"| Follow["bili_follow_creator：平台成功回执"]
+  Follow --> Ledger
+  Owner["主 Session：只读指定 BV"] --> Status["bili_creator_relation_status"]
+  Status --> Current
+  Status --> Ledger
+  Status --> Facts["VerifiedLifeFacts：账号相符、owner-private、短期历史事实"]
+  Current -->|"仅本次实时查询"| Result["关注当前态 / unknown"]
+  Ledger -->|"仅成功动作"| Facts
+  Ledger -->|"历史收藏≠当前收藏"| Result
+  MainUI["人格成长管理页"] --> Explain["证据数量条 ≠ 人格/结识意愿强度"]
+  PeopleUI["逐渐熟悉的人"] --> Scope["仅 B站已核验 DM/评论；主 Session 不计数"]

@@ -23,7 +23,7 @@ import tempfile
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import re
 import subprocess
 import sqlite3
@@ -1165,7 +1165,34 @@ def _selected_for_reaction(bv: str) -> bool:
             for line in seen.read_text('utf8').splitlines():
                 if not line.startswith('|'): continue
                 parts=[part.strip() for part in line.strip('|').split('|')]
-                if len(parts)>=5 and parts[0].startswith(today) and parts[1]==bv and any(w in parts[4] for w in ('挑中','入选','值得看','可以看')):
+                if len(parts)>=5 and parts[0]==today and parts[1]==bv and parts[4].strip() in ('挑中','已挑中','选中','已选中','入选','已入选','值得看','可以看'):
+                    return True
+    except (OSError,UnicodeError):
+        pass
+    return False
+
+
+def _selected_for_creator_encounter(bv: str) -> bool:
+    """Own-life encounter only: never promote legacy owner recommendation labels.
+
+    Keep the existing recommendation ledger unchanged. An explicit same-day fish
+    selection or real daily report is provenance of meeting a creator, not liking.
+    """
+    today=datetime.now().strftime('%Y-%m-%d')
+    report=_DUTY_HOME / 'out' / (today+'.md')
+    try:
+        if report.is_file() and not report.is_symlink() and report.stat().st_size<=2_000_000:
+            if re.search(r'^#{2,3}[ \t]*'+re.escape(bv)+r'(?:[ \t]|$)',report.read_text('utf8'),re.M):
+                return True
+    except (OSError,UnicodeError):
+        pass
+    seen=_DUTY_HOME/'seen.md'
+    try:
+        if seen.is_file() and not seen.is_symlink() and seen.stat().st_size<=2_000_000:
+            for line in seen.read_text('utf8').splitlines():
+                if not line.startswith('|'):continue
+                parts=[part.strip() for part in line.strip('|').split('|')]
+                if len(parts)>=5 and parts[0]==today and parts[1]==bv and parts[4] in ('挑中','已挑中','选中','已选中','入选','已入选'):
                     return True
     except (OSError,UnicodeError):
         pass
@@ -1380,6 +1407,112 @@ def _relation_finish(account,target,kind,attempt,success,bvid=''):
     finally:con.close()
 
 
+# dev.6: creator opportunities share the existing account-scoped action ledger.
+# A verified selected video is an encounter, not evidence of liking the UP,
+# and historical follow/collect receipts never assert current platform state.
+def _creator_encounter_snapshot(account, target, bv, credential, track=False):
+    if not str(account).isdigit() or int(account)<=0 or int(target)<=0 or str(target)==str(account):
+        raise ValueError('不能核实账号与目标 UP 身份')
+    selected=_selected_for_creator_encounter(bv)
+    today=datetime.now().strftime('%Y-%m-%d')
+    # When querying status, do not create a ledger/database, delete old evidence,
+    # or record a new encounter. Read-only calls must remain genuinely read-only.
+    file=_DUTY_HOME / _ACTION_DB_NAME
+    if file.is_symlink(): raise ValueError('动作账本路径不安全')
+    if track:
+        con=_action_conn()
+    elif file.is_file():
+        con=sqlite3.connect(file.as_uri()+'?mode=ro',uri=True,timeout=8)
+        con.row_factory=sqlite3.Row
+    else:
+        con=None
+    videos=days=0;local=None;actions=[];confirmed=[]
+    if con is not None:
+        try:
+            if track:
+                with con:
+                    con.execute('''CREATE TABLE IF NOT EXISTS creator_encounters (
+                        account TEXT NOT NULL,target INTEGER NOT NULL,bvid TEXT NOT NULL,
+                        day TEXT NOT NULL,PRIMARY KEY(account,target,bvid))''')
+                    if selected:
+                        con.execute('INSERT OR IGNORE INTO creator_encounters(account,target,bvid,day) VALUES(?,?,?,?)',
+                                    (account,int(target),bv,today))
+                    con.execute('DELETE FROM creator_encounters WHERE day<?',
+                                ((datetime.now()-timedelta(days=90)).strftime('%Y-%m-%d'),))
+            if _creator_relation_table_exists(con):
+                local=con.execute('''SELECT status,followed_at,unfollowed_at FROM creator_relations
+                    WHERE account=? AND target=?''',(account,int(target))).fetchone()
+            if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='creator_relation_attempts'").fetchone():
+                confirmed=con.execute('''SELECT action FROM creator_relation_attempts
+                    WHERE account=? AND target=? AND status='ok' ORDER BY id DESC LIMIT 8''',
+                    (account,int(target))).fetchall()
+            if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='creator_encounters'").fetchone():
+                counts=con.execute('''SELECT COUNT(DISTINCT bvid) AS videos,COUNT(DISTINCT day) AS days
+                    FROM creator_encounters WHERE account=? AND target=? AND day>=?''',
+                    (account,int(target),(datetime.now()-timedelta(days=90)).strftime('%Y-%m-%d'))).fetchone()
+                videos=int(counts['videos'] or 0);days=int(counts['days'] or 0)
+            if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='actions'").fetchone():
+                actions=con.execute("SELECT kind,status,day FROM actions WHERE uid=? AND bvid=? AND kind IN ('like','collect')",
+                                    (account,bv)).fetchall()
+        finally: con.close()
+    current='unknown'
+    try:
+        relation=_single_creator_relation(credential,int(target))
+        current='following' if relation in (2,6) else 'not-following' if relation==0 else 'restricted-or-unknown'
+    except Exception:
+        pass  # Network failures must never be interpreted as an unfollow.
+    video_actions={r['kind']:'confirmed-once' if r['status']=='ok' else 'unverified' for r in actions}
+    last_confirmed=(confirmed[0]['action'] if confirmed else
+                    'follow' if local and local['status']=='following' else
+                    'unfollow' if local and local['status']=='unfollowed' else 'uncertain' if local else 'none')
+    has_follow=any(x['action']=='follow' for x in confirmed) or last_confirmed in ('follow','unfollow')
+    has_unfollow=any(x['action']=='unfollow' for x in confirmed) or last_confirmed=='unfollow'
+    return {'ok':True,'accountUid':str(account),'creatorUid':int(target),'bvid':bv,'selectedToday':selected,
+        'verifiedEncounters':{'videos':videos,'days':days,
+                              'meaning':'核验过的入选经历，不等于看完、喜欢或需要关注'},
+        'followOpportunity':bool(selected and current=='not-following' and
+                                  videos>=2 and days>=2),
+        'followCurrent':current,'followHistory':{
+            'recordedByPlugin':bool(local),
+            'lastConfirmedAction':last_confirmed,
+            'followedAt':local['followed_at'] if local and has_follow else '',
+            'unfollowedAt':local['unfollowed_at'] if local and has_unfollow else ''},
+        'videoActionHistory':video_actions,'videoActionDates':{r['kind']:r['day'] for r in actions if r['status']=='ok'},'collectCurrent':'not-verified',
+        'note':'关系当前态仅以这一次 B站单目标查询为准；本地关注/收藏只是历史回执。两天两条入选仅构成考虑关注的契机，不授予外发权限，也不要求执行。'}
+
+
+def _creator_relation_table_exists(con):
+    return con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='creator_relations'").fetchone() is not None
+
+
+@tool()
+async def bili_creator_encounter(bvid: str) -> str:
+    # 只登记真实入选，不外发
+    if (e:=_guard('bili_creator_encounter')):return e
+    try:
+        if os.environ.get('BILI_AGENT_FOLLOW_ENABLED')!='1':raise ValueError('自主关注权限未开启')
+        bv=_valid_bv(bvid)
+        if not _selected_for_creator_encounter(bv):raise ValueError('这条视频还未有今日鱼鱼明确入选记录，不登记创作者相遇')
+        cred=get_cred();account=str(getattr(cred,'dedeuserid','') or '')
+        details=await video.Video(bvid=bv,credential=cred).get_info()
+        target=int((details.get('owner') or {}).get('mid') or 0)
+        return json.dumps(_creator_encounter_snapshot(account,target,bv,cred,track=True),ensure_ascii=False)
+    except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:170]},ensure_ascii=False)
+
+
+@tool()
+async def bili_creator_relation_status(bvid: str) -> str:
+    # 单目标只读状态查询
+    if (e:=_guard('bili_creator_relation_status')):return e
+    try:
+        bv=_valid_bv(bvid);cred=get_cred()
+        account=str(getattr(cred,'dedeuserid','') or '')
+        details=await video.Video(bvid=bv,credential=cred).get_info()
+        target=int((details.get('owner') or {}).get('mid') or 0)
+        return json.dumps(_creator_encounter_snapshot(account,target,bv,cred,track=False),ensure_ascii=False)
+    except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:170]},ensure_ascii=False)
+
+
 @tool()
 async def bili_follow_creator(bvid: str, reason: str) -> str:
     # Follow only owner of real selected video
@@ -1387,7 +1520,7 @@ async def bili_follow_creator(bvid: str, reason: str) -> str:
     try:
         if os.environ.get('BILI_AGENT_FOLLOW_ENABLED')!='1':raise ValueError('主人未开启 B站自主关注权限')
         bv=_valid_bv(bvid)
-        if not _selected_for_reaction(bv):raise ValueError('只能关注今日确实入选的视频 UP 主')
+        if not _selected_for_creator_encounter(bv):raise ValueError('只能关注今日鱼鱼明确入选的视频 UP 主，旧推荐标签不是关注理由')
         why=str(reason or '').strip()
         if len(why)<8 or len(why)>160:raise ValueError('需要 8 至 160 字的具体关注理由')
         cred=get_cred();account=str(getattr(cred,'dedeuserid','') or '')

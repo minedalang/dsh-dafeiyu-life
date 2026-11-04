@@ -777,7 +777,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <label class="checkline"><input id="bili-favorite-delete" type="checkbox" checked>允许鱼鱼自主删除自己创建的主题收藏夹（默认开启）</label>
 <p class="muted">只允许删除本插件账本记录、且已核验为当前账号自己的收藏夹；每日最多 1 次，不会删除其他收藏夹或默认收藏夹。删除是不可逆的外部操作。</p>
 <label class="checkline"><input id="bili-agent-follow" type="checkbox">允许 B站 Agent 自主关注／取关 UP 主（默认关闭，严格限额）</label>
-<p class="muted" id="bili-agent-follow-explain">自主关注默认关闭。开启后只会在刷 B站、真正选中视频并了解 UP 创作时考虑是否长期关注；聊天推荐本身不直接触发关注，也不保证一定关注任何人。每日最多关注 3 人、取关 1 人，取关仅限鱼鱼自主关注满 7 天的 UP。</p><p class="muted" id="bili-agent-follow-readiness" role="status">自主关注状态：读取中…</p>
+<p class="muted" id="bili-agent-follow-explain">自主关注默认关闭。开启后，鱼鱼从当天真正入选的视频中挑有兴趣的 UP，记录经过核验的创作者相遇（同一 UP 不同视频、不同日期是更强契机），再自己决定是否值得长期关注。不会因关系分数自动关注，也不保证关注。已有关注会单独查平台当前状态；关注与收藏历史不能冒充永远生效。每日最多关注 3 人、取关 1 人；不会主动定期取关，且只能动自己关注满 7 天的 UP。</p><p class="muted" id="bili-agent-follow-readiness" role="status">自主关注状态：读取中…</p>
 </div>
 <details id="bili-video-advanced" class="contextual-settings">
 <summary>⚙️ 视频探索的报告与高级设置 <span class="contextual-hint">字幕转写 · 报告投递 · 表情包</span></summary>
@@ -1315,7 +1315,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <details><summary>当前形成的人格提示词（仅沙盒）</summary><pre id="personality-ai-debug-context" style="white-space:pre-wrap"></pre></details>
 </div>
 </details>
-<p class="muted">当前只在原有离线人生反思中提出候选变化，不额外增加每次聊天的模型调用。至少多次、跨日期的经历才影响提示词；阶段“发展中”不等于已证实影响行为。具体经历仍受 Life Memory 2.0 遗忘规则保护。</p>
+<p class="muted">横条仅是<strong>可用经历证据数量</strong>的展示，约 9 条就填满；<strong>不是人格倾向或结识新朋友的意愿强度</strong>。五项特质各自需要不同的可信行为，只有前两项有证据是正常的；不能根据「聊天多了」给耐心、边界或表达主见凭空加分。真实成长必须来自已有可衰减经历，不会因进度条满格自动执行关注／聊天。阶段“发展中”不等于已证实影响行为。</p>
 <div class="grid" id="personality-evolution-traits" aria-live="polite"></div>
 <details id="personality-evolution-timeline-details" class="life-subdetails"><summary>查看人格变化时间线</summary><div class="records" id="personality-evolution-timeline"></div></details>
 </div>
