@@ -2,6 +2,10 @@
 
 > 本页是维护者的**当前架构入口**，不是版本流水账。任何涉及统一层、事实源、权限、事件流、渠道接线和存储的修改，必须同步更新本页、相应说明、Mermaid 图与回归测试。根 README 始终面向用户。
 
+## 当前开发预览：2.7.1-dev.1 视频评论区只读生活体验
+
+- [真实评论区浏览、楼中楼只读预算、可信阅读回执与暂时主观反应](./2.7.1-dev1-video-discussion-life.md) · [实际生产接线 Mermaid](./diagrams/2.7.1-dev1-video-discussion-live.mmd)。自主视频轮独立决定是否阅读评论；复用现有 `bili_comments` / `bili_comment_thread`，在 Python 只读工具的实际接口结果上生成回执。`bili_discussion_note` 仅记录有本轮阅读证据的暂时问题/反应，不写兴趣档案、人物画像、长期记忆或待办；发送权限仍由原有闸门管理。**记忆分域治理与生活契机协调仍未实施。**
+
 ## 2.7.0 正式版封版架构（继承 dev.10 生产接线）
 
 - [统一自主社交决策、P6-A/B 续聊、好友画像、私信自由与 @ 回复权限架构](./2.7.0-unified-social-agency-plan.md) · [目标 Mermaid](./diagrams/2.7.0-social-agency-target.mmd) · [入站 @ 实际接线](./diagrams/2.7.0-incoming-at-live.mmd) · [后台私信自主决策与 P6-A/B 实际接线](./diagrams/2.7.0-dm-autonomy-live.mmd)。**`2.7.0` 封版继承入站 @、私信与公开评论/@ P6-A/B（两个公开 P6 开关默认关闭）和跨渠道互动节奏；好友证据画像已完成限定明确交流偏好与可撤回的跨 DM/评论首阶段，兴趣系统增加有限、低权重的短期开放探索。已经支持按关系阶段使用有限的明确交流画像；更丰富的长期叙事画像与兴趣自主探索仍未全部实现**；下列 2.6.2 图仍是其余渠道的现行生产调用关系。
@@ -45,6 +49,7 @@
 | 公开评论成功回执与接收人 | `seen.md` 主账本；平台已核验的目标作者与当前账号 runtime 的确认索引，按 BV + 出站 rpid 匹配 | [公开回复接收人契约](./2.6.2-comment-recipient-receipts.md) |
 | 评论/@ 的来源与时效 | 平台通知、原评论回查及接线诊断 | [原评论恢复](./2.6.2-at-original-comment-recovery.md) · [通知时间](./2.6.2-at-invitation-diagnostic-times.md) |
 | 可选严格私信审核 | 仅在 `dmApprovalEnabled=true` 时识别投喂申请；默认关闭，不作为普通自主交流的前置条件 | [私信自主决策与 P6-A/B](./2.7.0-unified-social-agency-plan.md) |
+| 自主视频轮评论区只读生活体验 | 原 Python `bili_comments`/`bili_comment_thread`，受本轮根评论关联与读预算约束；只读 `video-discussion-reads` 最小回执及可选临时反应 | [dev.1 实际生产契约](./2.7.1-dev1-video-discussion-life.md) |
 | 视频资料、情绪与意愿边界 | 字幕／视觉证据、当前情绪状态 | [视觉和情绪优化](./2.6.2-vision-emotion-willingness.md) |
 | 账号与数据可靠性 | 账号绑定、备份校验、只读预算 | [账号切换](./2.6.1-account-identity-switch.md) · [备份兼容](./2.6.1-backup-utf8-compatibility.md) · [轮询与管理 UI](./2.6.2-polling-memory-ui.md) |
 

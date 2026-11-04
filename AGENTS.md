@@ -4,7 +4,7 @@
 
 ## 项目与代码入口
 
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前封版版本 `2.7.0`（以 `2.7.0-dev.10` 为基线；仅在维护者完成真实环境验收并发布后才可对外宣称已发布）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.1`，稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
@@ -51,6 +51,12 @@
 - `dev.10` 行为审计修复：`dm-autoreply` 原已核验私信收件状态按登录账号+UID保存明确停止/恢复私信的消极同意事实，发送前硬门禁优先于熟悉度、P6 与白名单；恢复只撤销停联，不扩大授权。`InteractionBatcher`、公开评论私密询问与主人邀请评论继续使用**唯一 Life Voice 模型**自主决定措辞或沉默，程序不追加审核彩蛋与隐私固定拒绝；隐私问询必须去除私人上下文并核查拟发文字。已关闭会话不得进入 P6 续聊预约。`LifeInterests` 只采可信自主选看证据，`watched.mjs` 单独保留旧推荐 picked 字段而标记实际自主选看来源，不把旧「值得看」视为喜好。生产图及风险矩阵见 `docs/architecture/2.7.0-dev10-life-behavior-hardening.md`。自然语言承诺/停联识别并非全语义穷举，Windows/真实模型/B站仍需验收。
 - `dev.9` 发布门禁审计修正：`SocialTodoReplyContract` 对明确数量的入账声称、同条消息内先否定后肯定的承诺及“全部记下”与已核实多个 BV 不一致的情况，在发送前校验真实待办条数；失败仍只交同一模型自主修订，绝不拼接固定回复。与 `dev.8` 共用原账本和原发送门禁，架构接线未变，未完成 Windows／B站验收前不发布正式版。
 - `dev.8` 对已核实的陌生人/好友推荐复用原 `SocialAutonomyDecisionContract` 与 `owner-todos` 唯一账本；模型同一轮自主输出回复/结构化只读候选，可信验证成功才允许声称入账。回执不一致最多追加一次同一 Life Voice 模型修订，禁止程序生成固定对外回复；纠错再次失败则不外发。仅记录不含正文/UID/原始 JSON 的限量决策诊断。见 `docs/architecture/2.7.0-dev8-social-todo-commitment.md`。
+
+## 2.7.1-dev.1 真实视频评论区观察边界
+
+- 自主视频轮开放原只读 `bili_comments` 与 `bili_comment_thread`；不得因为浏览评论自动发言、创建待办或认识评论者。视频轮的 Python MCP 环境明确标记 `BILI_DISCUSSION_VIDEO_AGENT=1`，每轮最多读取 6 条不同 BV 的评论列表、2 条已出现在本轮对应 BV 列表里的真实楼层；其他主人查询与后台互动不被这些视频轮额度影响。
+- 实际读成功/失败生成最小只读回执（不含评论正文、评论者 UID、私信原文或模型隐私上下文）。`bili_discussion_note` 可在本轮确实读到评论后保存一次主观临时疑问；它不进入长期记忆、兴趣分数、关系索引、待办账本或外发口径。错误或风控不能伪装成“无评论”。见 `docs/architecture/2.7.1-dev1-video-discussion-life.md`。
+- `2.7.1` 后续记忆治理、契机协调及兴趣/关系反向影响生活的能力仍属于规划，不得在 dev.1 提前宣称完成。
 
 ## 任何架构变更必须同步更新文档（与代码同一次提交）
 

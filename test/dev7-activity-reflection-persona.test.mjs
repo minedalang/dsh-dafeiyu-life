@@ -86,7 +86,7 @@ test('dev.7 管理页面与工具入口保留沙盒隔离、安全权限和第�
 
 
 test('2.6.0 正式源码保留历史发行归档，但发布包只带当前 Release Notes',()=>{
-  const pkg=JSON.parse(read('package.json'));assert.match(pkg.version,/^(?:2\.6\.2(?:-dev\.[1-9]\d*)?|2\.7\.0(?:-dev\.[1-9]\d*)?)$/);
+  const pkg=JSON.parse(read('package.json'));assert.match(pkg.version,/^(?:2\.6\.2(?:-dev\.[1-9]\d*)?|2\.7\.0(?:-dev\.[1-9]\d*)?|2\.7\.1-dev\.[1-9]\d*)$/);
   assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.2.md'));
   assert.ok(!pkg.files.includes('docs/release'));
   assert.ok(!pkg.files.includes('RELEASE_NOTES_v2.6.0-dev.7.md'));

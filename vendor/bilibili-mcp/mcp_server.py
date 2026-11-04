@@ -29,6 +29,7 @@ import subprocess
 import sqlite3
 import uuid
 import hashlib
+import hmac
 from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent, ImageContent
 
@@ -421,6 +422,102 @@ def _remember_video_context(bvid: str, kind: str, payload: dict) -> None:
         pass  # Caching is best effort; it must never break normal video work.
 
 
+# 2.7.1-dev.1: video-life discussion exploration is a READ experience,
+# independent of deciding whether to publish a top-level comment.
+# These process-local bounds apply only to the autonomous VIDEO round; regular
+# owner lookups and notification/thread handling keep their existing behavior.
+_DISCUSSION_VIDEO_ROUND = os.environ.get("BILI_DISCUSSION_VIDEO_AGENT") == "1"
+_DISCUSSION_LIST_CACHE = {}     # BV -> returned, platform-backed list for this round
+_DISCUSSION_ROOTS = {}          # BV -> root IDs actually observed in that list
+_DISCUSSION_THREADS = {}        # (BV, root) -> returned, platform-backed thread
+_DISCUSSION_NOTED = set()
+_DISCUSSION_MAX_VIDEOS = 6
+_DISCUSSION_MAX_THREADS = 2
+
+
+def _discussion_account_tag():
+    """Diagnostic correlation only. HMAC key never leaves the credential object."""
+    try:
+        cred = load_credential()
+        uid = str(getattr(cred, 'dedeuserid', '') or '')
+        secret = str(getattr(cred, 'sessdata', '') or '')
+        if not uid or not secret:
+            return 'unknown'
+        return hmac.new(secret.encode('utf-8'), uid.encode('utf-8'), hashlib.sha256).hexdigest()[:16]
+    except (OSError, ValueError, TypeError, AttributeError):
+        return 'unknown'
+
+
+def _discussion_receipt(kind, bvid, *, count=0, root="", status="read"):
+    """Best-effort minimal read diagnostics, never store text, authors or UIDs."""
+    if not _DISCUSSION_VIDEO_ROUND:
+        return
+    try:
+        # Account pseudonym uses the local login secret as an HMAC key. Do
+        # not write the UID or credentials, even hashed with a public salt.
+        account = _discussion_account_tag()
+        now = datetime.now().astimezone()
+        row = {'v': 1, 'at': now.isoformat(), 'account': account,
+               'kind': kind, 'bvid': bvid, 'status': status,
+               'count': max(0, min(60, int(count)))}
+        if root and re.fullmatch(r'[1-9]\d{0,19}', str(root)):
+            row['root'] = str(root)
+        _append_home('video-discussion-reads/' + now.strftime('%Y-%m-%d') + '.jsonl',
+                     json.dumps(row, ensure_ascii=True) + '\n')
+    except (OSError, ValueError, TypeError):
+        pass  # Telemetry is not authority and must not interrupt real reads.
+
+
+def _discussion_prompt_note(value):
+    """Never persist a quoted third-party comment or an identifier as a thought."""
+    txt = re.sub(r'[\x00-\x1f\x7f-\x9f]+', ' ', str(value or '')).strip()
+    if len(txt) > 100 or re.search(r'https?://|www\.|@|\b\d{6,}\b|\bBV[A-Za-z0-9]{10}\b|(?:token|cookie|password|secret|sessdata|bili_jct|密码|密钥|凭证)', txt, re.I):
+        return None
+    return txt
+
+
+@tool()
+async def bili_discussion_note(bvid: str, reaction: str = 'curious', question: str = '') -> str:
+    """Optional, bounded private reaction to ACTUALLY read public comments.
+
+    This is NOT a fact about the video, stable interest, a social relationship,
+    a task acceptance, a public reply or proof that media was watched/listened.
+    """
+    if (e := _guard('bili_discussion_note')): return e
+    if not _DISCUSSION_VIDEO_ROUND:
+        return json.dumps({'ok': False, 'error': '仅视频自主生活轮可记录评论观察'}, ensure_ascii=False)
+    bv = str(bvid or '')
+    if not re.fullmatch(r'BV[0-9A-Za-z]{10}', bv):
+        return json.dumps({'ok': False, 'error': 'BV 格式错误'}, ensure_ascii=False)
+    if bv in _DISCUSSION_NOTED:
+        return json.dumps({'ok': False, 'error': '本轮该视频的观察已经记录'}, ensure_ascii=False)
+    read = _DISCUSSION_LIST_CACHE.get(bv)
+    if not read or read.get('error') or not read.get('read_evidence', {}).get('verified'):
+        return json.dumps({'ok': False, 'error': '本轮没有成功读取该 BV 评论，不能生成经历'}, ensure_ascii=False)
+    if reaction not in {'curious', 'amused', 'skeptical', 'neutral', 'none'}:
+        return json.dumps({'ok': False, 'error': '反应类型无效'}, ensure_ascii=False)
+    brief = _discussion_prompt_note(question)
+    if brief is None:
+        return json.dumps({'ok': False, 'error': '问题包含链接、识别符或敏感信息／超过长度限制'}, ensure_ascii=False)
+    # Only enumerated reactions and a brief self-identified question are allowed.
+    # The self-reported question is deliberately NOT injected into long-term memory.
+    now = datetime.now().astimezone()
+    record = {'v': 1, 'at': now.isoformat(), 'bvid': bv, 'reaction': reaction,
+              'question': brief, 'kind': 'provisional_fish_reaction',
+              'evidence': 'comment_list_read', 'count': read.get('count', 0),
+              'externally_verified': False}
+    try:
+        record['account'] = _discussion_account_tag()
+        _append_home('video-discussion-reads/' + now.strftime('%Y-%m-%d') + '.jsonl',
+                     json.dumps(record, ensure_ascii=True) + '\n')
+    except (OSError, ValueError, TypeError):
+        return json.dumps({'ok': False, 'error': '本地观察记录失败；未登记'}, ensure_ascii=False)
+    _DISCUSSION_NOTED.add(bv)
+    return json.dumps({'ok': True, 'kind': 'provisional_fish_reaction',
+                       'bvid': bv, 'reaction': reaction, 'not_external_fact': True,
+                       'not_publicly_sent': True, 'not_task': True}, ensure_ascii=False)
+
+
 # ========== Tool 2: 获取评论 ==========
 
 @tool()
@@ -435,10 +532,32 @@ async def bili_comments(bvid: str, num: int = 30) -> str:
     Returns:
         JSON格式的评论列表，包含用户名、评论内容、点赞数、回复数
     """
-    cred = get_cred()
-    v = video.Video(bvid=bvid, credential=cred)
-    info = await v.get_info()
-    aid = info["aid"]
+    # Video life round: bounded, independently readable public discussion;
+    # no need to plan a comment or obtain permission to publish.
+    if _DISCUSSION_VIDEO_ROUND:
+        if not re.fullmatch(r'BV[0-9A-Za-z]{10}', str(bvid or '')):
+            return json.dumps({'bvid': str(bvid)[:24], 'error': 'BV 格式错误'}, ensure_ascii=False)
+        if bvid in _DISCUSSION_LIST_CACHE:
+            return json.dumps(_DISCUSSION_LIST_CACHE[bvid], ensure_ascii=False)
+        if len(_DISCUSSION_LIST_CACHE) >= _DISCUSSION_MAX_VIDEOS:
+            return json.dumps({'bvid': bvid, 'error': '本轮评论区阅读额度已满',
+                               'status': 'budget_exhausted'}, ensure_ascii=False)
+        num = min(max(int(num), 1), 10)
+    try:
+        cred = get_cred()
+        v = video.Video(bvid=bvid, credential=cred)
+        info = await v.get_info()
+        aid = info["aid"]
+    except Exception as exc:
+        if not _DISCUSSION_VIDEO_ROUND:
+            raise  # Existing non-video read behavior unchanged.
+        out = {'bvid': bvid, 'count': 0, 'comments': [],
+               'error': '获取评论区视频信息失败：' + type(exc).__name__,
+               'read_evidence': {'type': 'comment_list_read', 'verified': False,
+                                 'scope': 'public-comments', 'count': 0}}
+        _DISCUSSION_LIST_CACHE[bvid] = out
+        _discussion_receipt('comment_list_read', bvid, status='failed')
+        return json.dumps(out, ensure_ascii=False)
 
     comments = []
     page = 1
@@ -493,6 +612,19 @@ async def bili_comments(bvid: str, num: int = 30) -> str:
         out["error"] = fetch_error
     else:
         _remember_video_context(bvid, "comments", out)
+    if _DISCUSSION_VIDEO_ROUND:
+        # Partial results remain available to inspect, but are NOT certified
+        # as a complete list read. Empty success is distinct from API failure.
+        out['read_evidence'] = {'type': 'comment_list_read',
+                                'verified': fetch_error is None,
+                                'scope': 'public-comments',
+                                'count': out['count']}
+        _DISCUSSION_LIST_CACHE[bvid] = out
+        if fetch_error is None:
+            _DISCUSSION_ROOTS[bvid] = {str(c.get('rpid')) for c in out['comments']
+                                       if str(c.get('rpid', '')).isdigit() and int(c.get('rpid')) > 0}
+        _discussion_receipt('comment_list_read', bvid, count=out['count'],
+                            status='partial_failure' if fetch_error else 'read')
     return json.dumps(out, ensure_ascii=False)
 
 
@@ -503,6 +635,21 @@ async def bili_comment_thread(bvid: str, root: int, num: int = 20, target_rpid: 
     """读取某条顶层评论下的楼中楼；优先翻页直到找到当前通知对应的回复，最多读取三页。"""
     if not re.fullmatch(r"BV[0-9A-Za-z]{10}", str(bvid)) or not str(root).isdigit() or int(root) <= 0:
         return json.dumps({"error": "视频或根评论 ID 无效"}, ensure_ascii=False)
+    # The video Agent may only open a root that this round actually got from
+    # this BV's public comment list. Notification tools are unaffected.
+    if _DISCUSSION_VIDEO_ROUND:
+        key = (bvid, str(root))
+        if key in _DISCUSSION_THREADS:
+            return json.dumps(_DISCUSSION_THREADS[key], ensure_ascii=False)
+        if str(root) not in _DISCUSSION_ROOTS.get(bvid, set()):
+            return json.dumps({'error': '本轮未在该视频评论列表中读到此楼层，不能跨视频猜楼层',
+                               'status': 'unverified_root'}, ensure_ascii=False)
+        if len(_DISCUSSION_THREADS) >= _DISCUSSION_MAX_THREADS:
+            return json.dumps({'error': '本轮楼中楼阅读额度已满',
+                               'status': 'budget_exhausted'}, ensure_ascii=False)
+        # Reserve the attempt before contacting the platform to avoid repeated
+        # network requests after failure. Do not store a fabricated success.
+        _DISCUSSION_THREADS[key] = {'error': '楼中楼读取尚未完成', 'status': 'failed'}
     try:
         cred = get_cred()
         video_info = await video.Video(bvid=bvid, credential=cred).get_info()
@@ -539,10 +686,20 @@ async def bili_comment_thread(bvid: str, root: int, num: int = 20, target_rpid: 
             if len(replies) < page_size:
                 break
             await asyncio.sleep(0.15)
-        return json.dumps({"bvid": bvid, "root": str(root), "root_comment": root_comment,
-                           "replies": rows[-60:], "pages_read": page_index,
-                           "target_found": found_target}, ensure_ascii=False)
+        out = {"bvid": bvid, "root": str(root), "root_comment": root_comment,
+               "replies": rows[-60:], "pages_read": page_index,
+               "target_found": found_target}
+        if _DISCUSSION_VIDEO_ROUND:
+            out['read_evidence'] = {'type': 'comment_thread_read', 'verified': True,
+                                    'root': str(root), 'count': len(out['replies'])}
+            _DISCUSSION_THREADS[(bvid, str(root))] = out
+            _discussion_receipt('comment_thread_read', bvid, root=root, count=len(out['replies']))
+        return json.dumps(out, ensure_ascii=False)
     except Exception as exc:
+        if _DISCUSSION_VIDEO_ROUND:
+            _DISCUSSION_THREADS[(bvid, str(root))] = {'error': '楼中楼读取失败：' + type(exc).__name__,
+                                                        'status': 'failed'}
+            _discussion_receipt('comment_thread_read', bvid, root=root, status='failed')
         return json.dumps({"error": f"读取楼中楼失败：{type(exc).__name__}"}, ensure_ascii=False)
 
 # ========== Tool 3: 获取字幕 ==========

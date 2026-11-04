@@ -1,0 +1,18 @@
+flowchart TD
+    A[现有自主视频 headless 模型] --> B{愿意看这条 BV 的评论吗?}
+    B -->|不看/没兴趣| X[结束本次探索/继续其他视频]
+    B -->|只读| C[bili_comments: 真实 B站 API]
+    C -->|成功含0条| D[本轮 BV 缓存及可信阅读回执]
+    C -->|失败/风控| E[明确失败/部分读取: 不伪装0条]
+    D --> F{有想深入的真实根楼层吗?}
+    F -->|没有| G[可选暂时主观反应或离开]
+    F -->|有且≤2次| H[bili_comment_thread: 验证 BV+根评论+预算]
+    H -->|读成功| G
+    H -->|失败/不匹配| E
+    G -->|可选| I[bili_discussion_note: 仅本轮读证据]
+    I --> J[本地最小诊断 JSONL: 非长期记忆]
+    D --> J
+    H --> J
+    G -. 想公开发表时需独立授权 .-> K[原 bili_reply + SocialPolicyGate + 真实发送回执]
+    classDef observe fill:#e8f4ff,stroke:#5b8bbb
+    class C,D,H,I,J observe
