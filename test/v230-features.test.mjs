@@ -22,7 +22,7 @@ async function rig(overrides={}) {
 test('限额→申请白饭→人工通过→每天限额与累计限额',async()=>{
  const x=await rig();await x.handler.poll();
  x.add('100','你好'); assert.equal((await x.handler.poll()).sent,1);
- assert.match(x.sent[0].text,/白饭🍚/);
+ assert.equal(x.sent[0].text,'AI: 你好'); // 只发送模型原文，审核暗号不再由程序拼接
  x.add('100','你在吗');assert.equal((await x.handler.poll()).sent,0);
  x.add('100','白饭🍚');assert.equal((await x.handler.poll()).sent,0);
  assert.equal((await x.handler.listApprovals())[0].status,'pending');

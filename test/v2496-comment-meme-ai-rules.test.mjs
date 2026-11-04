@@ -67,10 +67,10 @@ test('人生兴趣档案将奶娃和奶蛙作为不同的后天兴趣主题',()=
     const now=Date.now()
     const events=[]
     for(let i=0;i<3;i++){
-      events.push({kind:'watch',bvid:`BV00000000${String(i).padStart(2,'0')}`,title:'最近的奶娃内容挺有趣',tier:'值得看',time:new Date(now-i%2*86400000).toISOString()})
+      events.push({kind:'watch',bvid:`BV00000000${String(i).padStart(2,'0')}`,title:'最近的奶娃内容挺有趣',tier:'值得看',autonomousSelected:true,time:new Date(now-i%2*86400000).toISOString()})
     }
     for(let i=3;i<6;i++){
-      events.push({kind:'watch',bvid:`BV00000000${String(i).padStart(2,'0')}`,title:'奶蛙表情包真的很好笑',tier:'值得看',time:new Date(now-(i%2)*86400000).toISOString()})
+      events.push({kind:'watch',bvid:`BV00000000${String(i).padStart(2,'0')}`,title:'奶蛙表情包真的很好笑',tier:'值得看',autonomousSelected:true,time:new Date(now-(i%2)*86400000).toISOString()})
     }
     const saved=recordInterestEvents(dir,events,now)
     assert.ok(saved.added>=6)

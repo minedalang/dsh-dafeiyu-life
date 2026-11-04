@@ -25,26 +25,25 @@ async function setup({ phrase = '🍚', strangerMaxReplies = 1, approvalEnabled 
   return { add, handler, outgoing, config };
 }
 
-test('陌生人达到回复上限时以投喂暗号邀请，不泄露后台审核且不许诺继续回复', async () => {
+test('陌生人达到回复上限时不插入程序投喂邀请，保留模型自主措辞', async () => {
   const x = await setup();
   x.add('100', '星星眼是在夸我还是夸这题呀？');
   assert.equal((await x.handler.poll()).sent, 1);
-  assert.match(x.outgoing[0].text, /给本鱼投喂一口「🍚」试试嘛/);
-  assert.match(x.outgoing[0].text, /说不定/);
+  assert.equal(x.outgoing[0].text,'星星眼是在夸本鱼吗？本鱼的小尾巴已经翘起来啦🐳');
   assert.doesNotMatch(x.outgoing[0].text, /主人|审核|审批|批准|申请|等.*通过/);
   x.add('100', '🍚');
   assert.equal((await x.handler.poll()).sent, 0);
   assert.equal((await x.handler.listApprovals())[0].status, 'pending');
 });
 
-test('暗号可配置；只有最后一次陌生人免费回复加邀请', async () => {
+test('暗号可配置；任意陌生人回复都不由程序追加邀请', async () => {
   const x = await setup({ phrase: '大米🍙', strangerMaxReplies: 2 });
   x.add('100', '嗨');
   assert.equal((await x.handler.poll()).sent, 1);
   assert.doesNotMatch(x.outgoing[0].text, /投喂一口/);
   x.add('100', '还在吗');
   assert.equal((await x.handler.poll()).sent, 1);
-  assert.match(x.outgoing[1].text, /投喂一口「大米🍙」/);
+  assert.doesNotMatch(x.outgoing[1].text, /投喂一口/);
   x.add('100', '大米🍙');
   assert.equal((await x.handler.poll()).sent, 0);
   assert.equal((await x.handler.listApprovals())[0].status, 'pending');

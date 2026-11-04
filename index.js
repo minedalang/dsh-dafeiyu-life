@@ -4249,7 +4249,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const picked = !skipped && ['挑中','已挑中','选中','已选中','入选','已入选','值得看','可以看'].includes(status.trim())
       const commented = /评论/.test(status)
       const delivered = /评论|私信|已发|发给/.test(status) || deliveredBvs.has(bvid)
-      out.push({ day, bvid, title, up, status, picked, commented, delivered, url: 'https://www.bilibili.com/video/' + bvid })
+      out.push({ day, bvid, title, up, status, picked,
+        autonomousSelected:!skipped && ['挑中','已挑中','选中','已选中','入选','已入选','收下','已收下'].includes(status.trim()),
+        commented, delivered, url: 'https://www.bilibili.com/video/' + bvid })
     }
     // 主 Session 按主人要求查看的视频是独立经历；即使 BV 已在判重表里，也保留手动观看事实。
     try {

@@ -56,13 +56,25 @@ class CommentMemeCandidateSearch(unittest.TestCase):
         evidence=[]
         for i in range(3):
             at=now-timedelta(days=i%2)
-            evidence.append({'bvid':f'BV000000000{i}','at':at.isoformat(),'day':at.date().isoformat()})
+            evidence.append({'bvid':f'BV000000000{i}','at':at.isoformat(),'day':at.date().isoformat(),'source':'autonomous-selection'})
         (interest_dir/'interests.json').write_text(json.dumps({'schema':1,'entries':[{'topic':'奶娃','evidence':evidence}]},ensure_ascii=False),encoding='utf8')
         got=search_library(self.temp.name,'哈哈哈哈哈',limit=5)
         self.assertEqual(got['matches'][0]['name'],interested)
         self.assertTrue(any('兴趣优先:奶娃' in s for s in got['matches'][0]['signals']))
         # Interest is a ranking boost only; it must not create an unrelated result.
         self.assertEqual(search_library(self.temp.name,'今天天气真不错',limit=5)['matches'],[])
+
+    def test_old_unverified_interests_do_not_silently_influence_sticker_ranking(self):
+        target='奶娃/两只奶蛙大笑'
+        self.add(target)
+        folder=Path(self.temp.name)/'life-memory'
+        folder.mkdir(parents=True)
+        now=datetime.now(timezone.utc)
+        evidence=[{'bvid':f'BV000000000{i}','at':(now-timedelta(days=i%2)).isoformat(),
+                   'day':(now-timedelta(days=i%2)).date().isoformat()} for i in range(3)]
+        (folder/'interests.json').write_text(json.dumps({'schema':1,'entries':[{'topic':'奶娃','evidence':evidence}]},ensure_ascii=False),encoding='utf8')
+        got=search_library(self.temp.name,'哈哈哈哈哈',limit=5)
+        self.assertFalse(any('兴趣优先' in x for x in got['matches'][0]['signals']))
 
     def test_unknown_or_stale_interest_data_is_ignored(self):
         target='奶娃/两只奶蛙大笑'

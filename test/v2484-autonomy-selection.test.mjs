@@ -48,7 +48,7 @@ test('真实兴趣先于主人额外关键词，兴趣为空安全冷启动',()=
     assert.deepEqual(selectionInterests(tmp),[])
     const now=Date.parse('2026-10-27T12:00:00Z')
     const titles=['美食 料理教学','做饭料理新手','今天做饭下厨']
-    const events=titles.map((title,i)=>({kind:'watch',bvid:'BV'+String(i+1).padStart(10,'0'),title,tier:'值得看',time:new Date(now-(i===0?0:86400000)).toISOString()}))
+    const events=titles.map((title,i)=>({kind:'watch',bvid:'BV'+String(i+1).padStart(10,'0'),title,tier:'值得看',autonomousSelected:true,time:new Date(now-(i===0?0:86400000)).toISOString()}))
     assert.equal(recordInterestEvents(tmp,events,now).added,3)
     const selected=selectionInterests(tmp,now)
     assert.equal(selected[0].topic,'白饭与美食')

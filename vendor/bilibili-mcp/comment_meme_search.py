@@ -54,7 +54,7 @@ def _read_learned_interests(home):
                 continue
             seen_bv, dates = set(), set()
             for ev in evidence[-90:]:
-                if not isinstance(ev, dict):
+                if not isinstance(ev, dict) or ev.get('source') != 'autonomous-selection':
                     continue
                 raw = str(ev.get('at') or ev.get('day') or '')[:40]
                 try:

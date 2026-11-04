@@ -12,7 +12,7 @@ test('无判重表也能从日报的 ### BV 标题恢复挑中记录',t=>{
  const rows=mergeWatchedRows([],dir)
  assert.equal(rows.length,2)
  assert.deepEqual(rows.map(x=>x.bvid),[BV1,BV2])
- assert.ok(rows.every(x=>x.picked && x.day==='2026-10-24'))
+ assert.ok(rows.every(x=>x.picked && x.autonomousSelected && x.day==='2026-10-24'))
  assert.equal(rows[0].title,'架构讲解')
 })
 test('融合视频归档，未挑中视频不误标挑中',t=>{
@@ -41,6 +41,7 @@ test('判重表非表格写法也能识别；评论记录不算观看记录',t=>
  const rows=mergeWatchedRows([],dir)
  assert.equal(rows.length,2)
  assert.equal(rows.find(x=>x.bvid===BV1).picked,true)
+ assert.equal(rows.find(x=>x.bvid===BV1).autonomousSelected,true)
  assert.equal(rows.find(x=>x.bvid===BV2).picked,false)
 })
 test('忽略报告普通段落的 BV 和代码围栏里的 BV',t=>{
@@ -62,4 +63,18 @@ test('无文件时返回空列表，错误的 BV 不计入',t=>{
  const dir=fixture(t)
  writeFileSync(join(dir,'out','2026-10-24.md'),`### BV123\n`)
  assert.deepEqual(mergeWatchedRows([],dir),[])
+})
+
+test('旧主人推荐的「值得看」即使旧 picked=true，也不得成为兴趣自主选看证据',t=>{
+ const dir=fixture(t)
+ const rows=mergeWatchedRows([{day:'2026-10-24',bvid:BV1,title:'远古生物讲座',status:'值得看',picked:true}],dir)
+ assert.equal(rows[0].picked,true) // preserve legacy recommendation behaviour
+ assert.equal(rows[0].autonomousSelected,false)
+})
+test('日报中明确挑中才是独立兴趣证据，不把普通归档当自主选择',t=>{
+ const dir=fixture(t)
+ writeFileSync(join(dir,'out','2026-10-24.md'),`### ${BV2}\n标题：远古生物讲座\n`)
+ const rows=mergeWatchedRows([{day:'2026-10-24',bvid:BV1,title:'远古生物讲座',status:'可以看',picked:true}],dir)
+ assert.equal(rows.find(x=>x.bvid===BV1).autonomousSelected,false)
+ assert.equal(rows.find(x=>x.bvid===BV2).autonomousSelected,true)
 })

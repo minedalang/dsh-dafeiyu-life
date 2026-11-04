@@ -1,0 +1,31 @@
+flowchart TB
+  DM[B站认证私信收件] --> DMState[dm-autoreply state:账号与 UID 的停联事实]
+  DMState --> DMGate{停联或发送权限拒绝?}
+  DMGate -->|是| Silence[不外发; 更新去重和状态]
+  DMGate -->|否| Batcher[InteractionBatcher; 单一 Life Voice]
+  Comment[已核验公开评论或被 @] --> Batcher
+  Owner[主人主动邀请评论] --> OwnerSocial[owner-comment-social / comment-social-ai]
+  Batcher --> Privacy{隐私询问?}
+  Privacy -->|是| Scrub[去除私信历史及画像, 记忆]
+  Scrub --> Model[同一 Life Voice 决定拒绝或沉默]
+  Privacy -->|否| Model
+  OwnerSocial --> Model
+  Model --> PrivacyGate[保守出站隐私检查; 不代写句子]
+  PrivacyGate --> Todo[原社交待办引擎和保存回执]
+  Todo --> Match{结构化意愿与实际承诺一致?}
+  Match -->|否| Revise[同一模型有限重新决策; 失败即不发]
+  Revise --> PrivacyGate
+  Match -->|是| Autonomy[SocialAutonomyDecisionContract]
+  Autonomy --> SendGate[渠道原有授权/限额/去重/回执门禁]
+  DMState --> SendGate
+  SendGate --> Out[真实发送回执]
+  Autonomy --> Closed{已关闭话题?}
+  Closed -->|是| NoTimer[不允许 defer / followUp / idleReconsider]
+  Closed -->|否| Ledger[SocialConversationContinuity 原账号隔离账本]
+  Ledger --> DMGate
+  Legacy[seen.md 原旧主人推荐与判重字段 picked] --> Watched[mergeWatchedRows 独立自主选看标记]
+  Reports[日报明确挑中] --> Watched
+  Watched --> Bridge[watchedEvent:自主选看证据]
+  Bridge --> Interests[原 LifeInterests 单一兴趣档案]
+  Interests --> Curiosity[14天好奇候选/再次探索; 不等于喜欢]
+  Curiosity --> Selection[原选片搜索槽; 只读]
