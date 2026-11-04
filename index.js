@@ -6127,6 +6127,19 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       catch (e) { return sendJson(res,200,{ok:false,error:'读取最近私信记录失败：'+String(e?.message||e).slice(0,140),conversations:[]}) }
     }
 
+    // Only the local background-DM raw context is counted/cleaned here.
+    // No B站 requests, LLM calls, approvals, send permissions or dedup resets.
+    if (req.method === 'GET' && path === '/api/bili-duty/dm-memory-governance') {
+      try{const data=await dmAutoreply.contextGovernance();const owner=ownerDmAgent.status();return sendJson(res,200,{...data,ownerAgent:{contextEntries:owner.contextEntries||0,contextDays:owner.contextDays||14}})}
+      catch(e){return sendJson(res,500,{ok:false,error:'私信上下文治理状态读取失败：'+String(e?.message||e).slice(0,130)})}
+    }
+    if (req.method === 'POST' && path === '/api/bili-duty/dm-memory-prune') {
+      const body=await readBody(req);
+      if(body?.confirm!=='PRUNE_EXPIRED_DM_CONTEXT')return sendJson(res,400,{ok:false,error:'请明确确认仅清理过期私信聊天内容'});
+      try{const result=await dmAutoreply.pruneExpiredContext();return sendJson(res,result.ok?200:409,result)}
+      catch(e){return sendJson(res,500,{ok:false,error:'私信上下文清理失败：'+String(e?.message||e).slice(0,130)})}
+    }
+
     if (req.method === 'GET' && path === '/api/bili-duty/dm-approvals') {
       return sendJson(res,200,{ok:true, approvals:await dmAutoreply.listApprovals()})
     }

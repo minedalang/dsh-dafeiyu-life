@@ -1409,7 +1409,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div></div>
 <div class="settings-section"><h4>私信额度与上下文</h4><p class="muted">私信额度独立于公开评论；请到管理中心「次数与额度」集中设置每日、每人及上下文条数。</p><div class="fields">
 <div><label for="dm-reply-per-day">每日自动私信回复上限（0=不限，最大1000）</label><input id="dm-reply-per-day" type="number" min="0" max="1000" value="0"></div>
-<div><label for="dm-context-messages">每次回复读取的私信上下文条数（0–80，0=不读历史）</label><input id="dm-context-messages" type="number" min="0" max="80" value="40"></div>
+<div><label for="dm-context-messages">每次回复保留/读取的普通私信上下文条数（0–80，0=不保存、不读历史）</label><input id="dm-context-messages" type="number" min="0" max="80" value="40"></div>
 <div><label for="dm-total">获批用户累计私信回复上限（1–10000）</label><input id="dm-total" type="number" min="1" max="10000" value="50"></div>
 <div><label for="dm-daily">获批用户每日私信回复上限（1–1000）</label><input id="dm-daily" type="number" min="1" max="1000" value="10"></div>
 </div></div>
@@ -1428,6 +1428,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div><div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
 </details>
 <div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">P6 续聊预约状态：尚未读取。</p><p id="dm-error" class="muted"></p><p class="muted">网络失败会显示接口主机与底层错误码；如果出现 ECONNRESET、ENETUNREACH、ETIMEDOUT 或 DNS 错误，需同时检查系统网络／代理与 B站连通性。</p></div>
+<div id="dm-context-governance" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>私信上下文与记忆边界</h3><button id="dm-memory-prune" type="button">清理过期聊天内容</button></div><p class="muted">本区只治理「后台普通私信」的近期聊天原文与旧来信片段，和主 Session「主人聊天记忆整理」不是一回事。主人专属私信 Agent、人生记忆、好友画像各有独立来源与权限；本操作不会清理这些系统，也不会清除已读去重、拒联边界、审批、发送额度或平台回执。</p><p id="dm-memory-governance-status" class="muted" role="status">正在读取当前账号的本地上下文状态…</p></div>
 <div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">只显示本插件已经保存的对话片段；不从 B站 额外拉取完整历史。旧版心愿已停止自动处理，历史资料只随本地备份保留；新的陌生人探索灵感与好友观看邀请在「社交互动」查看。记录仅在本机展示。</p><p class="muted">这里统计的是后台私信自动回复通道；主人专属 Agent、其他已授权途径的回复不计入陌生人额度。历史中出现多条来信也不代表已发送多次。</p><div id="dm-recent-list" class="records"></div></div>
 
 <div id="dm-requests" class="toolbar"><h2 style="margin:0">严格暗号审核记录</h2><select id="dm-filter"><option value="pending">只看待审批</option><option value="">全部申请</option><option value="approved">已通过</option><option value="rejected">已拒绝</option></select></div><p class="muted">这里只审核 B站 用户申请，不修改可信白名单。严格暗号审核关闭时，历史待审记录不会拦截鱼鱼的自主交流；开启后才会按审核规则处理。通过后仍受每日／累计额度控制。</p><div class="grid" id="dm-list"></div>

@@ -13,8 +13,8 @@ test('正式版与后续 dev 开发版都遵循 SemVer 并与锁文件、README 
   const readme = read('README.md')
   assert.ok(readme.includes(`**\`${pkg.version}\`**`))
   if (pkg.version.startsWith('2.7.1-dev.')) {
-    assert.match(readme, /当前开发预览：\*\*`2\.7\.1-dev\.1`/)
-    assert.match(read('CHANGELOG.md'), /^## \[2\.7\.1-dev\.1\]/m)
+    assert.match(readme, /当前开发预览：\*\*`2\.7\.1-dev\.[1-9]\d*`/)
+    assert.match(read('CHANGELOG.md'), /^## \[2\.7\.1-dev\.[1-9]\d*\]/m)
     assert.match(read('RELEASE_NOTES_v2.7.1.md'), /开发预览，尚未发布/)
     assert.ok(pkg.files.includes('RELEASE_NOTES_v2.7.1.md'))
   } else if (pkg.version.startsWith('2.7.0-dev.')) {

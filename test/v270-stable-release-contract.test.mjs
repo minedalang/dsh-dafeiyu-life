@@ -10,7 +10,7 @@ test('2.7.0 正式版元信息、更新说明和发布流水线一致', () => {
   const notes = read('RELEASE_NOTES_v2.7.0.md')
   const changelog = read('CHANGELOG.md')
   const workflow = read('.github/workflows/release.yml')
-  assert.match(pkg.version, /^(?:2\.7\.0|2\.7\.1-dev\.1)$/)
+  assert.match(pkg.version, /^(?:2\.7\.0|2\.7\.1-dev\.[1-9]\d*)$/)
   assert.equal(lock.version, pkg.version)
   assert.equal(lock.packages[''].version, pkg.version)
   assert.match(readme, /当前稳定版：\*\*`2\.7\.0`\*\*/m)

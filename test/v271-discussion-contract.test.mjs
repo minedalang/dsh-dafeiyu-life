@@ -20,15 +20,15 @@ test('video Agent opens bounded independent read-only discussion tools, never wi
  assert.doesNotMatch(src,/bili_discussion_note.*(?:ownerTodos\.add|bili_send_message)/)
 })
 
-test('2.7.1-dev.1 uses consistent prerelease metadata and implemented-architecture links',()=>{
+test('2.7.1 development metadata retains dev1 implemented architecture links',()=>{
  const pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json'))
- assert.equal(pkg.version,'2.7.1-dev.1')
+ assert.match(pkg.version,/^2\.7\.1-dev\.[1-9]\d*$/)
  assert.equal(lock.version,pkg.version)
  assert.equal(lock.packages[''].version,pkg.version)
  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.7.1.md'))
- assert.match(read('README.md'),/当前稳定版：\*\*`2\.7\.0`\*\*；当前开发预览：\*\*`2\.7\.1-dev\.1`\*\*/)
- assert.match(read('CHANGELOG.md'),/^## \[2\.7\.1-dev\.1\]/)
- assert.match(read('docs/architecture/README.md'),/2\.7\.1-dev\.1/)
+ assert.match(read('README.md'),/当前稳定版：\*\*`2\.7\.0`\*\*；当前开发预览：\*\*`2\.7\.1-dev\.[1-9]\d*`\*\*/)
+ assert.match(read('CHANGELOG.md'),new RegExp('^## \\['+pkg.version.replaceAll('.', '\\.')+'\\]', 'm'))
+ assert.match(read('docs/architecture/README.md'),/2\.7\.1-dev\.[1-9]\d*/)
  assert.match(read('docs/architecture/2.7.1-dev1-video-discussion-life.md'),/实际生产接线/)
  assert.match(read('docs/architecture/diagrams/2.7.1-dev1-video-discussion-live.mmd'),/bili_comments/)
 })
