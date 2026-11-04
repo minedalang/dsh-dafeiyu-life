@@ -29,7 +29,7 @@ test('DM page separates private-message quotas and context from public comment q
   assert.match(html,/私信额度与上下文/)
   assert.match(html,/私信额度独立于公开评论/)
   assert.match(html,/每日自动私信回复上限（0=不限，最大1000）/)
-  assert.match(html,/每次回复读取的私信上下文条数（0–80/)
+  assert.match(html,/每次回复保留\/读取的普通私信上下文条数（0–80/)
 })
 test('dynamic decision diagnosis distinguishes AI choice from send receipt',()=>{
   assert.match(html,/今日动态同步诊断/)

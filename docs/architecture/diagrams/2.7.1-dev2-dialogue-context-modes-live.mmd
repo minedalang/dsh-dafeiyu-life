@@ -1,0 +1,19 @@
+flowchart TD
+    DM[普通后台私信] --> B[InteractionBatcher]
+    COMMENT[使用统一批处理器的评论与被 @] --> B
+    CONFIG[interactionContextMode 默认 compact] --> B
+    B -->|full| F[旧版完整 prompt / 已授权证据]
+    B -->|compact| C[Life Voice + 基础资料 + 不可绕过的规则]
+    C --> DEC{模型明确请求其它证据？}
+    DEC -->|否| OUT[结构化最终决定]
+    DEC -->|是| S[按当前 UID 和渠道的既有权限展开指定上下文]
+    S --> REPLY[最多一次模型续推]
+    REPLY -->|成功| OUT
+    REPLY -->|失败/再次请求| STOP[安全停止此项外发]
+    F --> OUT
+    OUT --> GATE[原有事实/待办承诺/发送权限校验]
+    GATE --> SEND[原有出站适配器及平台回执]
+    OUT --> STATS[仅聚合模式计数，无正文或 UID]
+    REPLY --> STATS
+    OWNER[主人私信受限 Agent] --> OWNERFLOW[独立最多四步行动管线，不受此选项控制]
+    MAIN[DSH 主 Session] --> HOST[宿主会话和桥接工具，不受此选项控制]

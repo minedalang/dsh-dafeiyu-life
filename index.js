@@ -229,6 +229,8 @@ export const Config = !z ? undefined : z.object({
   videoReasoningEffort: z.string().default('').extra('volatile',true),
   interactionModelProvider: z.string().default('').extra('volatile',true),
   interactionModelId: z.string().default('').extra('volatile',true),
+  /** Shared DM/comment model: compact evidence-on-request by default; full preserves legacy prompt. */
+  interactionContextMode: z.string().default('compact').extra('volatile',true),
   interactionReasoningEffort: z.string().default('').extra('volatile',true),
   /** 只在主人点击更新时维护本地表情包词法规则；不参与每次评论。 */
   memeRulesModelProvider: z.string().default('').extra('volatile',true),
@@ -630,7 +632,7 @@ function reportMeta() {
     dmWatch: true, dmWatchMinutes: 1, commentReplyWatchMinutes: 3, commentAtWatchMinutes: 3, commentTopWatchMinutes: 5, dmReplyPerDay: 0, dmContextMessages: 40, dmOwnerUid: 0,
     dmWhitelist: '', dmStrangerOnce: false, dmStrangerAutonomyEnabled: false, dmP6Enabled: true, dmP6MaxBubbles: 3, dmStrangerMaxReplies: 1, dmStrangerFirstFixed: false,
     dmApprovalEnabled: false, dmApprovalPhrase: '白饭🍚', dmApprovedTotalLimit: 50, dmApprovedDailyLimit: 10,
-    videoModelProvider: '', videoModelId: '', videoReasoningEffort: '', interactionModelProvider: '', interactionModelId: '', interactionReasoningEffort: '', memeRulesModelProvider:'', memeRulesModelId:'', memeRulesReasoningEffort:'', memeRulesPrompt:'',
+    videoModelProvider: '', videoModelId: '', videoReasoningEffort: '', interactionModelProvider: '', interactionModelId: '', interactionReasoningEffort: '', interactionContextMode: 'compact', memeRulesModelProvider:'', memeRulesModelId:'', memeRulesReasoningEffort:'', memeRulesPrompt:'',
     commentWatchReplies: false, commentWatchTop: false, commentAtEnabled: false, commentP6Enabled: false, commentAtP6Enabled: false, commentP6MaxBubbles: 2, socialP6MinDelayMinutes: 5, socialP6MaxDelayMinutes: 360, socialRhythmCrossChannelMinutes: 30, socialRhythmDailyPerPerson: 8, friendAtFeedbackEnabled:false, strangerInspirationEnabled:false, socialInvitationEnabled:false, socialInvitationAutoInspectEnabled:false, ownerCommentAgentEnabled:false, ownerCommentLikeEnabled:false, ownerCommentDraftEnabled:false, ownerCommentPublishEnabled:false, ownerCommentSocialPublishEnabled:false, ownerCommentNaturalAckEnabled:false, commentAtMode:'whitelist', commentAtWhitelist:'', commentTopCount: 5, commentTopVideoCount: 3, commentReplyHotCount: 12, backupDirectory: '',
     commentAllowGeneralTop: false, commentReplyPerPoll: 1, commentReplyPerDay: 5, commentOwnTopPerUser: 5, commentOwnNestedPerUser: 3,
     mainSessionBridgeEnabled: false, mainSessionId: '', mainSessionAutoSync: true, mainSessionSyncMinutes: 60, mainSessionDailyBatches: 4, mainSessionBatchSize: 8, mainSessionIncludeComments: true,
@@ -766,7 +768,7 @@ function reportMeta() {
     if ('mainSessionMemoryDailyQuota' in p) p.mainSessionMemoryDailyQuota = Math.max(1,Math.min(100,Math.floor(Number(p.mainSessionMemoryDailyQuota)||30)))
     if ('mainSessionMemoryFactsMax' in p) { const n=Number(p.mainSessionMemoryFactsMax); p.mainSessionMemoryFactsMax=Number.isFinite(n)?Math.max(0,Math.min(6,Math.floor(n))):2 }
     if ('reportLevel' in p) p.reportLevel = ['full', 'brief', 'off'].includes(String(p.reportLevel)) ? String(p.reportLevel) : 'full'
-    for (const k of ['dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','videoModelProvider','videoModelId','videoReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort']) if(k in p) p[k]=String(p[k]||'').trim().slice(0,160).replace(/[\r\n\0]/g,'')
+    for (const k of ['dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','videoModelProvider','videoModelId','videoReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','interactionContextMode','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort']) if(k in p) p[k]=String(p[k]||'').trim().slice(0,160).replace(/[\r\n\0]/g,'')
     if ('personaPrompt' in p) p.personaPrompt = String(p.personaPrompt || '').slice(0, 18000)
     if ('characterLore' in p) p.characterLore = normalizeCharacterLore(p.characterLore)
     if ('dmWatch' in p) p.dmWatch = Boolean(p.dmWatch)
@@ -779,6 +781,9 @@ function reportMeta() {
     if ('dmWhitelist' in p) p.dmWhitelist = String(p.dmWhitelist || '').slice(0, 2500)
     if ('dmStrangerOnce' in p) p.dmStrangerOnce = p.dmStrangerOnce === true
     if ('dmStrangerAutonomyEnabled' in p) p.dmStrangerAutonomyEnabled = p.dmStrangerAutonomyEnabled === true
+    if ('interactionContextMode' in p) {
+      if (!['compact','full'].includes(p.interactionContextMode)) throw Error('互动上下文模式必须是 compact 或 full');
+    }
     if ('dmP6Enabled' in p) p.dmP6Enabled = p.dmP6Enabled === true
     for(const [key,low,high,fallback] of [['dmP6MaxBubbles',1,3,3],['commentP6MaxBubbles',1,3,2],['socialP6MinDelayMinutes',5,360,5],['socialP6MaxDelayMinutes',5,360,360],['socialRhythmCrossChannelMinutes',0,1440,30],['socialRhythmDailyPerPerson',1,100,8]]){
       if(key in p){const v=Number(p[key]);if(!Number.isSafeInteger(v)||v<low||v>high)throw Error(key+' 应为 '+low+'–'+high+' 的整数');p[key]=v}
@@ -3474,7 +3479,20 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const uid=oneRecipient?String(batch[0].uid||''):''
       return [lifeVoiceContext({scene,uid,query,maxChars:scene==='comment'?2700:2900}),conciseStyle].filter(Boolean).join('\n')
     }
+  // Aggregate only; no user messages, UIDs, retrieved memories or model prompts.
+  const interactionContextStats={since:Date.now(),fullTurns:0,compactTurns:0,expandedTurns:0,
+    extraModelCalls:0,continuationFailures:0,lastAt:0,lastMode:''};
   const interactionBatcher = createInteractionBatcher({
+    getContextMode:()=>{refreshCfg();return cfg.interactionContextMode==='full'?'full':'compact'},
+    onContextUsage:({mode,items,requests,continuationFailed,at})=>{
+      if(mode==='full')interactionContextStats.fullTurns+=items;
+      else interactionContextStats.compactTurns+=items;
+      interactionContextStats.expandedTurns+=requests;
+      if(requests)interactionContextStats.extraModelCalls++;
+      if(continuationFailed)interactionContextStats.continuationFailures++;
+      interactionContextStats.lastAt=at;
+      interactionContextStats.lastMode=mode;
+    },
     prepareContexts:batch=>socialContextAssembler?.batch(batch)||batch.map(()=>({})),
     onEmotion:({mood,intensity,source})=>{try{return emotionalState.update({mood,intensity,source})}catch(e){log('情绪状态更新失败：'+String(e?.message||e).slice(0,100))}},
     onEmotionContext:({at,source,incoming,generated})=>{try{emotionalState.attachContext({at,source,incoming,generated})}catch(e){log('情绪来源片段记录失败：'+String(e?.message||e).slice(0,100))}},
@@ -6037,6 +6055,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       catch(e){return sendJson(res,200,{ok:false,error:String(e?.message||e).slice(0,240)})}
     }
 
+    if (req.method === 'GET' && path === '/api/bili-duty/interaction-context-status') {
+      return sendJson(res,200,{ok:true,mode:cfg.interactionContextMode==='full'?'full':'compact',
+        stats:{...interactionContextStats}})
+    }
     if (req.method === 'GET' && path === '/api/bili-duty/config') {
       return sendJson(res, 200, { ok: true, config: cfg, recommendedSettings:RECOMMENDED_EXPERIENCE_SETTINGS, windows: readPeakWindows(cfg.peakWindows), home: stateDir })
     }
@@ -6050,7 +6072,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const patch = {}
       for (const k of ['masterEnabled', 'perDay', 'pickPerRound', 'peakValley', 'peakWindows', 'peakIntervalMinutes', 'autoComment', 'transcribe', 'asrModel',
         'diagMentionEnabled','diagDynamicEnabled','diagVisionEnabled','diagMemeEnabled','diagAtInviteEnabled','diagReplyInboxEnabled','commentMemesEnabled','commentMemesDebug','commentMemesPerDay','commentMemesPerRound','commentMemePrompt','visionPrompt','memeMemoryEnabled', 'memeMemoryMaxEntries', 'visionEnabled', 'visionDebug', 'visionMode', 'visionModelProvider', 'visionModelId', 'visionReasoningEffort', 'visionEndpoint', 'visionFrames', 'visionDailyLimit', 'commentPerRound', 'mentionName', 'mentionTargets', 'mentionProfiles', 'friendDirectory', 'mentionMode', 'dmMode', 'dmUid', 'commentSyncDynamic', 'dynamicDailyLimit', 'commentDailyLimit',
-        'videoModelProvider','videoModelId','videoReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort','memeRulesPrompt',
+        'videoModelProvider','videoModelId','videoReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','interactionContextMode','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort','memeRulesPrompt',
         'keywords', 'coreInterestTopics', 'pythonPath', 'dshBin', 'headlessProfile', 'workspace', 'reportLevel', 'personaPrompt', 'characterLore', 'dmWatch', 'dmWatchMinutes', 'commentReplyWatchMinutes', 'commentAtWatchMinutes', 'commentTopWatchMinutes', 'dmReplyPerDay', 'dmContextMessages', 'dmOwnerUid', 'dmWhitelist', 'dmStrangerOnce', 'dmStrangerAutonomyEnabled', 'dmP6Enabled', 'dmP6MaxBubbles', 'dmStrangerText', 'dmStrangerMaxReplies', 'dmStrangerFirstFixed', 'dmApprovalEnabled','dmApprovalPhrase','dmApprovedTotalLimit','dmApprovedDailyLimit',
         'commentWatchReplies', 'commentWatchTop', 'commentAtEnabled', 'commentP6Enabled', 'commentAtP6Enabled', 'commentP6MaxBubbles', 'socialP6MinDelayMinutes', 'socialP6MaxDelayMinutes', 'socialRhythmCrossChannelMinutes', 'socialRhythmDailyPerPerson', 'friendAtFeedbackEnabled', 'strangerInspirationEnabled','socialInvitationEnabled','socialInvitationAutoInspectEnabled','ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentDraftEnabled','ownerCommentPublishEnabled','ownerCommentSocialPublishEnabled','ownerCommentNaturalAckEnabled', 'commentAtMode', 'commentAtWhitelist', 'commentTopCount', 'commentTopVideoCount', 'commentReplyHotCount', 'commentAllowGeneralTop', 'commentReplyPerPoll', 'commentReplyPerDay', 'commentOwnTopPerUser', 'commentOwnNestedPerUser', 'mainSessionBridgeEnabled', 'mainSessionId', 'mainSessionAutoSync', 'mainSessionSyncMinutes', 'mainSessionDailyBatches', 'mainSessionBatchSize', 'mainSessionIncludeComments', 'mainSessionMemoryEnabled', 'mainSessionMemoryAutoBili', 'mainSessionMemorySemanticEnabled', 'mainSessionMemoryModelProvider', 'mainSessionMemoryModelId', 'mainSessionMemoryReasoningEffort', 'mainSessionMemoryCandidates', 'mainSessionMemorySearchDailyLimit', 'socialOutreachEnabled', 'socialLifeIntentEnabled', 'socialVideoRecommendationsAuthorizedV2', 'emotionSystemEnabled', 'socialAutoSend', 'socialOutreachDailyLimit', 'ownerTodoAutoReviewEnabled','ownerTodoReviewMinutes','ownerTodoCompletionFollowupEnabled','socialTodoCompletionFollowupEnabled','ownerTodoFollowupCooldownMinutes','ownerTodoFollowupDailyLimit','ownerTodoFollowupMinIntervalMinutes','ownerTodoFollowupPollMinutes','ownerTodoFollowupQuietEnabled','ownerTodoFollowupQuietStartHour','ownerTodoFollowupQuietEndHour','autonomousPlannerEnabled','emotionRecallEnabled','emotionRecallMainEnabled','emotionRecallDmEnabled','emotionRecallUnlimited','emotionRecallDailyLimit','emotionRecallCooldownHours','emotionRecallStartHour','emotionRecallEndHour','emotionRecallCandidateLimit','emotionRecallHistoryLimit','emotionRecallRecentDays','emotionRecallMinAgeDays','emotionRecallEmotionMinIntensity','emotionRecallEmotionMaxAgeHours','ownerDmAgentEnabled','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','ownerDmAgentContextTurns','ownerDmAgentContextChars','ownerDmAgentModelProvider','ownerDmAgentModelId','ownerDmAgentReasoningEffort','ownerDmReadCommandsEnabled','ownerDmActionsEnabled','ownerDmLikeEnabled','ownerDmCollectEnabled','ownerDmFollowEnabled','ownerDmCommentDraftEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicDraftEnabled','ownerDmDynamicPublishEnabled','ownerDmFriendMessageEnabled','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour', 'mainSessionReflectionAuto', 'mainSessionReflectionModelProvider', 'mainSessionReflectionModelId', 'mainSessionReflectionReasoningEffort', 'mainSessionReflectionMinCandidates', 'mainSessionReflectionBatchSize', 'mainSessionReflectionIntervalHours', 'mainSessionReflectionDailyBatches', 'mainSessionMemoryHalfLifeDays', 'socialMemoryHalfLifeNewDays', 'socialMemoryHalfLifeKnownDays', 'socialMemoryHalfLifeFamiliarDays', 'socialMemoryHalfLifeFriendDays', 'socialMemoryHalfLifeWhitelistDays', 'socialMemoryHalfLifeOwnerDays', 'mainSessionMemoryThreshold', 'mainSessionMemoryMaxItems', 'mainSessionMemoryMaxChars', 'mainSessionMemoryDailyQuota', 'mainSessionMemoryConsolidationEnabled', 'mainSessionMemoryFactsMax', 'favFolderId','autoVideoLike','autoVideoLikeDailyLimit','autoVideoCollect','autoFavoriteVisibility','autoFavoriteDelete','agentFollowEnabled','dailyDynamicEnabled','dailyDynamicDailyLimit','dailyDynamicDraftOnly']) {
         if (k in body) patch[k] = body[k]

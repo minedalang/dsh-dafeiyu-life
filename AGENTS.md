@@ -87,3 +87,7 @@
 - DSH Desktop 通常执行 `dsh plugin --profile desktop add dsh-dafeiyu-life`，重启后在「设置 → 大肥鱼」安装依赖、扫码登录、完成所需 Headless 模型验证；安装入口与市场实际版本须单独确认。
 - 插件可自行安装 Python 运行依赖／uv；遇故障先用设置页自检和 `duty.log`，不要要求用户先全局安装任意工具或绕过安全门禁。
 - 新安装的明确可选功能、旧版既有设置、First Start 必需验证是不同状态；不能通过隐式改默认值打开外部写入。
+
+## 2.7.1-dev.2 增量 · 上下文模式约束
+
+后台普通 DM 与走 `interaction-batch.mjs` 的评论/@ 支持 `interactionContextMode=compact|full`（生产默认 `compact`）；原始完整提示词不能删除。精简模式的 `contextRequests` 只可释放当前 UID 及该渠道现有 `SocialContextAssembler` 已授权的资料，最多一轮续推；首次申请不得外发/接受待办。事实校验、已接受任务回执、平台发送权限、隐私和 P6 边界永远属于后端，不能被上下文模式覆盖。主人私信 Agent 和 DSH 主 Session 不经过该选择器，不能把它写作“全局四渠道切换”。参见 `docs/architecture/2.7.1-dev2-dialogue-context-modes.md`。
