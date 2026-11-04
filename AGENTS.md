@@ -4,7 +4,7 @@
 
 ## 项目与代码入口
 
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前稳定版 `2.6.2`；当前开发阶段为 `2.7.0-dev.8`；未经用户明确授权不得继续升级版本、合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前稳定版 `2.6.2`；当前开发阶段为 `2.7.0-dev.9`；未经用户明确授权不得继续升级版本、合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
@@ -48,6 +48,7 @@
 - `dev.7` 私信 P6-B 增加“模型明确选定开放话题，回复后对方沉默时重新考虑”的一次性可选意图，使用原 `SocialAutonomyDecisionContract`、`SocialConversationContinuity` 和原私信发送门禁；只在已授权的入站私信线程发生，不提供无关话题的定时主动找人。到期读私信暂时失败时，只能在未尝试平台发送的前提下有限延期，未知发送不自动重试。管理页只显示不含聊天内容或对方 UID 的聚合预约状态。实际接线见 `docs/architecture/2.7.0-dev7-dm-silence-reconsideration.md`。
 - 不能把允许回应入站 @ 理解成可主动 @ 他人；关闭暗号审核不会授予陌生人自动私信权限，陌生人外发仍须主人明确开启 `dmStrangerAutonomyEnabled`（独立、默认关闭的新授权）；旧版 `dmStrangerOnce` 只保留原有有限次数、单条即时回复权限，绝不能在升级时隐式扩为多条气泡或延迟续聊。
 
+- `dev.9` 发布门禁审计修正：`SocialTodoReplyContract` 对明确数量的入账声称、同条消息内先否定后肯定的承诺及“全部记下”与已核实多个 BV 不一致的情况，在发送前校验真实待办条数；失败仍只交同一模型自主修订，绝不拼接固定回复。与 `dev.8` 共用原账本和原发送门禁，架构接线未变，未完成 Windows／B站验收前不发布正式版。
 - `dev.8` 对已核实的陌生人/好友推荐复用原 `SocialAutonomyDecisionContract` 与 `owner-todos` 唯一账本；模型同一轮自主输出回复/结构化只读候选，可信验证成功才允许声称入账。回执不一致最多追加一次同一 Life Voice 模型修订，禁止程序生成固定对外回复；纠错再次失败则不外发。仅记录不含正文/UID/原始 JSON 的限量决策诊断。见 `docs/architecture/2.7.0-dev8-social-todo-commitment.md`。
 
 ## 任何架构变更必须同步更新文档（与代码同一次提交）
