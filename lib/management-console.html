@@ -998,7 +998,12 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="settings-stack">
 <div id="life-interest-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">🌱 鱼鱼最近喜欢什么</h4><span id="interest-learning-status" class="live-badge">● 正在收集兴趣线索</span><span class="muted">根据真实入选视频积累，和主人设定的核心兴趣分开</span></div>
 <p class="muted">核心兴趣由主人明确设置，优先参与选片但会轮换；短期/成长/稳定兴趣则来自真实入选视频证据。至少 3 个不同视频、横跨 2 天才会形成短期兴趣，长期没有新证据会逐渐淡出。自动学习永远不会覆盖核心兴趣。</p>
-<div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div><details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
+<div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div>
+<details class="life-subdetails" id="life-curiosity-review"><summary>短期好奇探索 · 查看候选与排除主题（默认折叠）</summary>
+<div class="inset"><p class="muted">只展示真实入选公开视频后产生的临时陌生主题。每约 3 天至多占用一个只读选片搜索位置，不代表鱼鱼已经喜欢；排除某主题后 30 天内不会再用同名主题探索。撤销排除只允许未来新证据重新形成候选，不会恢复已清除的历史记录。</p>
+<div class="toolbar"><button id="life-curiosity-refresh" type="button">刷新好奇候选</button><button id="life-curiosity-clear" type="button">清空当前候选</button><span id="life-curiosity-status" class="muted">尚未读取</span></div>
+<div id="life-curiosity-list" class="records records-scroll"></div></div></details>
+<details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
 </details></div>
 <div id="life-recall-section" class="settings-section life-section memory-home">
 <div class="memory-garden-heading"><div class="memory-garden-mark" aria-hidden="true">🧠</div><div><span class="page-eyebrow">LIFE MEMORY · 真实而会变化</span><h4>鱼鱼的记忆花园</h4><p class="muted">浏览真实经历与长期认识，按类别筛选；搜视频标题、BV 号或聊天关键词，留空看最近。开启已有的「低成本人生记忆检索」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p></div></div>

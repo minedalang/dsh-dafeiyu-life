@@ -136,7 +136,7 @@ import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
 import { createDailyDynamic } from './lib/daily-dynamic.mjs'
 import { createMemeLearning } from './lib/meme-learning.mjs'
-import { interestMemoryRows, selectionInterests, listLifeInterests } from './lib/life-interests.mjs'
+import { interestMemoryRows, selectionInterests, listLifeInterests, listCuriosityReview, curiosityReview } from './lib/life-interests.mjs'
 import { readModelTaskUsage, recordModelTask, MODEL_TASKS } from './lib/model-task-usage.mjs'
 
 export const name = 'dafeiyu-life'
@@ -3522,6 +3522,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     dataDir: accountRuntimeDir,
     getConfig: dmConfig,
     canSendDm: args=>socialPolicyGate.canSendDm(args),
+    canContinue:(uid,channel)=>socialPortrait.continuationAllowed(uid,{channel}),
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     fetchIncoming: getNewDmMessages,
     fetchApprovalHistory: async (uid='') => {
@@ -3916,6 +3917,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return {...result,tier}
     },
     socialTier:(uid)=>socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory),
+    canContinue:(uid,channel)=>socialPortrait.continuationAllowed(uid,{channel}),
     generateReply: (req) => interactionBatcher.generate({...req,identityContext:'',incomingRpid:req.rpid,
       p6MaxBubbles:cfg.commentP6MaxBubbles,p6MinDelayMinutes:cfg.socialP6MinDelayMinutes,p6MaxDelayMinutes:cfg.socialP6MaxDelayMinutes,
       allowTodoIntake:req.forceReply!==true&&req.todoIntake!==false,
@@ -5632,7 +5634,18 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     }
 
     if (req.method === 'GET' && path === '/api/bili-duty/main-session/interests') {
-      return sendJson(res,200,{ok:true,entries:lifeReflection.interests()})
+      try{return sendJson(res,200,{ok:true,entries:lifeReflection.interests(),curiosity:listCuriosityReview(stateDir)})}
+      catch(e){return sendJson(res,400,{ok:false,error:'兴趣候选读取失败：'+String(e?.message||e).slice(0,140)})}
+    }
+    if (req.method === 'POST' && path === '/api/bili-duty/main-session/interests/curiosity') {
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'只允许同源管理中心操作'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站修改好奇候选'})
+      try{
+        const body=await readBody(req)
+        if(body?.confirm!=='REVIEW_LIFE_CURIOSITY')return sendJson(res,400,{ok:false,error:'需要明确确认好奇候选修改'})
+        return sendJson(res,200,curiosityReview(stateDir,{action:body.action,bvid:body.bvid,id:body.id}))
+      }catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,160)})}
     }
     if (req.method === 'GET' && path === '/api/bili-duty/main-session/reflection') {
       const statusName=String(url.searchParams.get('status')||'pending').slice(0,20)

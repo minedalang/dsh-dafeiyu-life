@@ -1,0 +1,47 @@
+flowchart TB
+  subgraph Incoming[真实平台入站，已核验 UID]
+    DM[DM 来信]
+    PUB[公开评论 / 入站 @]
+  end
+  GATE[SocialPolicyGate.actor + 好友名册 + 当前账号]
+  PORTRAIT[SocialPortraitGateway.observe
+有限明确偏好与边界 / 180 天]
+  STORE[(accountRuntimeDir/social-portrait/evidence-v1.json)]
+  ASSEMBLER[SocialContextAssembler.getPortrait
+DM 私密+公开 / 公开只读公开]
+  MODEL[InteractionBatcher + 唯一 Life Voice
+SocialAutonomyDecisionContract]
+  P6DM[DM P6 预约 + 到期领取]
+  P6PUB[评论 / @ P6 预约 + 到期领取]
+  BOUNDARY[SocialPortraitGateway.continuationAllowed
+可撤回边界，读取失败拒绝延期]
+  SEND[原 SocialPolicyGate / Rhythm / 额度 / 去重
+平台核验回执 / 不确定不重发]
+  DM --> GATE
+  PUB --> GATE
+  GATE -->|仅列名好友明确自述| PORTRAIT
+  PORTRAIT <--> STORE
+  STORE --> ASSEMBLER
+  ASSEMBLER --> MODEL
+  MODEL --> P6DM
+  MODEL --> P6PUB
+  P6DM -->|预约前 + 到期前| BOUNDARY
+  P6PUB -->|预约前 + 到期前| BOUNDARY
+  STORE --> BOUNDARY
+  BOUNDARY -->|仅允许继续考虑，不授予发送权| SEND
+  MODEL -->|正常新来信回复，仍须许可| SEND
+  subgraph Curiosity[同一 LifeInterests，非新人格 / 不产生社交外发]
+    WATCH[真实 selected watch + 合法 BV]
+    STATE[(stateDir/life-memory/interests.json
+entries + curiosityCandidates + curiosityDismissed)]
+    REVIEW[同源管理页 GET/POST
+明确确认排除/撤销/清空]
+    SELECT[selectionInterests
+14 天候选 / 30 天排除 / 每三天最多一槽]
+    PROMPT[原 promptFor 选片搜索
+仍由现有只读权限控制]
+    WATCH -->|安全陌生主题| STATE
+    REVIEW -->|仅改变短期好奇状态| STATE
+    STATE --> SELECT
+    SELECT --> PROMPT
+  end
