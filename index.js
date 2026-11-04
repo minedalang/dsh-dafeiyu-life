@@ -20,6 +20,7 @@ import { buildGrowthContext, syncReportsToGrowth, listGrowth, proposeGrowth, upd
  * ============================================================================
  */
 import { growthSuggestionPrompt, parseGrowthSuggestion, growthSuggestionIssue } from './lib/growth-suggestion.mjs'
+import {readVideoDiscussionDiagnostics} from './lib/video-discussion-diagnostics.mjs'
 import { loadHostDeps } from './lib/hostdeps.mjs'
 
 // ⭐ 这两样从**宿主那棵树**里取（拿不到就退到自己的依赖；再拿不到，defineTool 用本地等价实现）。
@@ -5077,6 +5078,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         child.on('close',()=>{try{finish(JSON.parse(out.trim()))}catch{finish({ok:false,error:'梗库管理脚本读取失败'})}})
       })
       return sendJson(res,result.ok ? 200 : 400,result)
+    }
+    if (req.method === 'GET' && path === '/api/bili-duty/video-discussion-diagnostics') {
+      // Local read-only acceptance evidence. No Bilibili fetch or model call.
+      // The helper binds results to the CURRENT login (HMAC; no UID or cookie returned).
+      return sendJson(res,200,readVideoDiscussionDiagnostics({stateDir,credential:dmCred(stateDir)}))
     }
     if (req.method === 'GET' && path === '/api/bili-duty/vision-diagnostics') {
       // Fixed home-relative directories only; no client-supplied paths or BV parameters.
