@@ -22,6 +22,7 @@ import { buildGrowthContext, syncReportsToGrowth, listGrowth, proposeGrowth, upd
 import { growthSuggestionPrompt, parseGrowthSuggestion, growthSuggestionIssue } from './lib/growth-suggestion.mjs'
 import {readVideoDiscussionDiagnostics,discussionAccountTag} from './lib/video-discussion-diagnostics.mjs'
 import {createLifeOpportunities} from './lib/life-opportunities.mjs'
+import {readVerifiedCreatorPortfolio} from './lib/life-public-capabilities.mjs'
 import { loadHostDeps } from './lib/hostdeps.mjs'
 
 // ⭐ 这两样从**宿主那棵树**里取（拿不到就退到自己的依赖；再拿不到，defineTool 用本地等价实现）。
@@ -4416,11 +4417,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeVoice:()=>lifeVoiceContext({scene:'main',maxChars:1900}),
     getLifeOpportunities:()=>lifeOpportunities.list({limit:4}),
     getLifeIntentionCues:()=>lifeOpportunities.explorationCues({limit:4}),
-    getLifeIntentions:()=>lifeOpportunities.intentions({limit:3}),
-    beginLifeExploration:(id,goal,found)=>lifeOpportunities.beginExploration(id,goal,found),
-    completeLifeExploration:(id,bvid,receipt)=>lifeOpportunities.completeExploration(id,bvid,receipt),
-    failLifeExploration:(id,bvid)=>lifeOpportunities.failExplorationRead(id,bvid),
-    abandonLifeExploration:(id,reason)=>lifeOpportunities.abandonExploration(id,reason),
+    getLifeIntentions:()=>lifeOpportunities.continuations({limit:3}),
+    getLifeAccountTag:()=>trustedLifeAccountTag(),
+    beginLifeExploration:(id,goal,found,tag)=>lifeOpportunities.beginExploration(id,goal,found,tag),
+    beginLifeVideoExploration:(id,goal,found,tag)=>lifeOpportunities.beginVideoExploration(id,goal,found,tag),
+    completeLifeExploration:(id,bvid,receipt,tag)=>lifeOpportunities.completeExploration(id,bvid,receipt,tag),
+    failLifeExploration:(id,bvid,tag)=>lifeOpportunities.failExplorationRead(id,bvid,tag),
+    inspectLifeCreatorSpace:(id,proof,tag)=>lifeOpportunities.inspectCreatorSpace(id,proof,tag),
+    failLifeCreatorRead:(id,tag)=>lifeOpportunities.failCreatorRead(id,tag),
+    abandonLifeExploration:(id,reason,tag)=>lifeOpportunities.abandonExploration(id,reason,tag),
     executeLifeSearch:async(topic)=>{
       // The query comes solely from current-account verified LifeInterests,
       // never from the model's free-form goal or untrusted comment contents.
@@ -4429,6 +4434,20 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const data=parseMaybeJson(await call('bili_search',{keyword:topic,num:10,order:'totalrank'}))
       if(data?.ok===false)return {ok:false,error:'公开搜索失败'}
       return {ok:true,topic,videos:selectSearchVideos(data,{limit:5})}
+    },
+    executeCreatorSpace:async(bvid)=>{
+      // Never accept a model-generated UID. One verified BV resolves the actual
+      // author through existing guarded read-only Bilibili adapters.
+      if(!lifeOpportunityAccountReady())return {ok:false,error:'账号切换未完成'}
+      const getAccountUid=()=>lifeOpportunityAccountReady()?String(dmCred(stateDir)?.dedeuserid||''):''
+      const accountUid=getAccountUid()
+      const accountTag=trustedLifeAccountTag()
+      return readVerifiedCreatorPortfolio({bvid,accountUid,getAccountUid,accountTag,getAccountTag:trustedLifeAccountTag,
+        readRelation:async bv=>parseMaybeJson(await call('bili_creator_relation_status',{bvid:bv})),
+        readVideos:async uid=>{
+          if(!Number.isSafeInteger(Number(uid)))return {ok:false,error:'作者 UID 精度不可验证'}
+          return parseMaybeJson(await call('bili_user_videos',{uid:Number(uid),pn:1,ps:12,order:'pubdate'}))
+        }})
     },
     recordOpportunityDecision:(id,action,opts)=>lifeOpportunities.decide(id,action,opts),
     executeOpportunityRead:async(bvid)=>{
