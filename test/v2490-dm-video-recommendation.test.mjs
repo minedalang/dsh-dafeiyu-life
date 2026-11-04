@@ -72,9 +72,11 @@ test('固定只读 B站详情接口，限制请求 BV、响应大小，不信任
 test('真实互动批处理：私信模型看见已入队上下文；错误的“只有BV请你描述”回复会被纠正',()=>withDir(async dir=>{
  receiveRecommendations(dir,inbox('看看 '+BV))
  const helper=createDmVideoRecommendationContext({stateDir:dir,fetchInfo:async()=>({title:'实际标题',up:'UP'})})
- let prompt=''
+ let prompt='',calls=0
  const batcher=createInteractionBatcher({delayMs:1,invoke:async p=>{
-  prompt=p;return JSON.stringify({items:[{id:'0',action:'reply',reply:'我这边只拿到BV号，没有标题、字幕和画面，你把视频内容讲讲吧'}]})
+  prompt=p;calls++;return JSON.stringify({items:[{id:'0',action:'reply',reply:calls===1
+    ?'我这边只拿到BV号，没有标题、字幕和画面，你把视频内容讲讲吧'
+    :'我已经收下这条视频啦，之后刷到时再由我自己决定看不看。'}]})
  },getPersona:()=>''})
  try{
   const recommendationContext=await helper.forReply({text:'看看 '+BV})
@@ -82,8 +84,8 @@ test('真实互动批处理：私信模型看见已入队上下文；错误的�
   assert.match(prompt,/recommendationContext/)
   assert.match(prompt,/实际标题/)
   assert.match(prompt,/不要声称整个大肥鱼无法查看 B站视频/)
-  assert.match(response,/待选视频/)
-  assert.match(response,/自己决定要不要看/)
+  assert.equal(calls,2)
+  assert.match(response,/自己决定看不看/)
   assert.doesNotMatch(response,/你把视频内容讲讲|只有BV号/)
  }finally{batcher.stop()}
 }))
@@ -108,7 +110,7 @@ test('宿主真正把推荐状态传给后台 DM 批处理，视频 Agent 仍自
  assert.match(server,/createDmVideoRecommendationContext\(\{stateDir\}\)/)
  assert.match(server,/const recommendationContext=await dmVideoRecommendationContext\.forReply\(req\)/)
  assert.match(server,/onTodoProposal:proposal=>intakeAiSocialTodo/)
- assert.match(batch,/correctDmVideoRecommendationReply\(response,batch\[i\]\.recommendationContext\)/)
+ assert.match(batch,/hasDmVideoRecommendationFactConflict/)
  assert.match(server,/你可以自主决定是否查视频详情、看内容或完全跳过/)
  assert.doesNotMatch(server,/generateReply: async \(req\) => .*bili_video_info/)
 })

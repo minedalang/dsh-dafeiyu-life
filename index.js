@@ -50,7 +50,7 @@ import { ensureUv } from './lib/uvfetch.mjs'
 import { createDmAutoReply } from './lib/dm-autoreply.mjs'
 import { extractBiliDmReceiptId } from './lib/dm-send-receipt.mjs'
 import { receiveRecommendations, listRecommendationCandidates } from './lib/video-recommendations.mjs'
-import { intakeAiReadProposal } from './lib/social-todo-intake.mjs'
+import { intakeAiReadProposals } from './lib/social-todo-intake.mjs'
 import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/owner-todos.mjs'
 import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-planner.mjs'
 import { queueOwnerDmReadTodo, parseOwnerDmTodo } from './lib/owner-dm-commands.mjs'
@@ -1108,7 +1108,12 @@ function reportMeta() {
   // reply/interpretation AI call. This bridge performs provenance, read-only
   // type, willingness and persistence checks; it never parses intent itself.
   const socialTodoIntakeRecent=[] // bounded diagnostics; no message bodies or identity records
-  const intakeAiSocialTodo=async({request={},channel,todoDisposition,suggestedTodo,decisionMode='agency'}={})=>{
+  const onSocialTodoConsistency=({status,channel})=>{
+    if(!['review-requested','model-revised','unverified-still','model-revision-failed','suppressed-unverified'].includes(status))return
+    socialTodoIntakeRecent.push({at:Date.now(),channel:channel==='comment'?'comment':'dm',outcome:status,kind:'consistency'})
+    if(socialTodoIntakeRecent.length>30)socialTodoIntakeRecent.splice(0,socialTodoIntakeRecent.length-30)
+  }
+  const intakeAiSocialTodo=async({request={},channel,todoDisposition,suggestedTodo,suggestedTodos,decisionMode='agency'}={})=>{
     const messages=Array.isArray(request.messages)?request.messages.slice(-12).map(x=>String(x||'')):[String(request.text||'')]
     const messageIds=Array.isArray(request.messageIds)?request.messageIds.map(String):[]
     const messageId=String(request.messageId||request.id||messageIds.at(-1)||request.rpid||'')
@@ -1116,16 +1121,19 @@ function reportMeta() {
       timestampMs:Number(request.timestampMs||request.messageTime||0),text:messages.join('\n'),
       senderName:String(request.senderName||request.name||''),bvid:String(request.bvid||''),
       rpid:request.rpid||request.incomingRpid||0,root:request.root||0,thread:String(request.thread||request.threadKey||'')}
-    const decide=decisionMode==='ai'
-      ?({uid,messageId,text,intent,target,thread})=>dualContextAgency.recordAI({source:'bili-comment',uid,messageId,text,intent,action:'read_todo',target,thread,decision:'allow'})
-      :({uid,messageId,text,intent,target,thread})=>dualContextAgency.decide({source:channel==='comment'?'bili-comment':'bili-dm',uid,messageId,text,intent,target,thread})
-    const result=intakeAiReadProposal({row,channel,todoDisposition,suggestedTodo,currentMessages:messages,
+    const decide=({uid,messageId,text,intent,target,thread})=>dualContextAgency.recordAI({
+      source:channel==='comment'?'bili-comment':'bili-dm',uid,messageId,text,intent,action:'read_todo',target,thread,decision:'allow'})
+    const result=intakeAiReadProposals({row,channel,todoDisposition,suggestedTodo,suggestedTodos,currentMessages:messages,
       history:request.history||[],recommendationContext:request.recommendationContext||'',decide,todos:ownerTodos})
     socialTodoIntakeRecent.push({at:Date.now(),channel:channel==='comment'?'comment':'dm',
-      outcome:result?.created?'created':result?.duplicate?'duplicate':String(result?.skipped||result?.reason||result?.error||'unknown').slice(0,80)})
+      disposition:['accept','none','defer','refuse'].includes(todoDisposition)?todoDisposition:'none',
+      createdCount:Number(result?.createdCount)||0,duplicateCount:Number(result?.duplicateCount)||0,
+      complete:result?.complete===true,
+      outcome:result?.complete?(result?.created?'created':'duplicate'):
+        result?.created?'partial-created':String(result?.skipped||result?.reason||result?.error||'unknown').slice(0,80)})
     if(socialTodoIntakeRecent.length>30)socialTodoIntakeRecent.splice(0,socialTodoIntakeRecent.length-30)
-    if(result?.created)log(`AI 社交意图已接受并加入只读待办：${channel==='comment'?'评论':'私信'} · ${String(result.item?.title||'探索建议').slice(0,80)}`)
-    else if(todoDisposition==='accept'&&(result?.skipped||result?.accepted===false))log('AI 社交待办候选未入队：'+String(result.skipped||`${result.decision||'blocked'}:${result.reason||'意愿未通过'}`).slice(0,100))
+    if(result?.created)log(`AI 社交意图已接受并加入只读待办：${channel==='comment'?'评论':'私信'} · ${result.createdCount} 项${result.complete?'':'（部分候选未通过核验）'}`)
+    if(todoDisposition==='accept'&&!result?.complete)log('AI 社交待办候选未完整入队：'+String(result.skipped||result.error||'至少一项候选未通过核验').slice(0,100))
     else if(result?.ok===false)log('AI 社交待办未保存：'+String(result.error||result.skipped||'未知原因').slice(0,100))
     return result
   }
@@ -3593,6 +3601,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         threadKey:`dm:${String(req.uid)}`,relationshipStage,
         allowTodoIntake:req.trigger!=='scheduled',
         onTodoProposal:proposal=>intakeAiSocialTodo({...proposal,request:{...req,recommendationContext},channel:'dm'}),
+        onTodoConsistency:onSocialTodoConsistency,
         recommendationContext,todoProgressContext,identityContext:replyIdentityContext(req.uid)})
     },
     getVerifiedFacts:verifiedFactsFor,
@@ -3930,7 +3939,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     generateReply: (req) => interactionBatcher.generate({...req,identityContext:'',incomingRpid:req.rpid,
       p6MaxBubbles:cfg.commentP6MaxBubbles,p6MinDelayMinutes:cfg.socialP6MinDelayMinutes,p6MaxDelayMinutes:cfg.socialP6MaxDelayMinutes,
       allowTodoIntake:req.forceReply!==true&&req.todoIntake!==false,
-      onTodoProposal:req.forceReply===true||req.todoIntake===false?undefined:proposal=>intakeAiSocialTodo({...proposal,request:req,channel:'comment'})}),
+      onTodoProposal:req.forceReply===true||req.todoIntake===false?undefined:proposal=>intakeAiSocialTodo({...proposal,request:req,channel:'comment'}),
+      onTodoConsistency:onSocialTodoConsistency}),
     send: async (req) => {
       if(req.contentType==='dynamic'){
         refreshCfg()

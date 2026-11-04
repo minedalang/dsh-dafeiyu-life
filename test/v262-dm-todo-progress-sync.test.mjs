@@ -76,14 +76,16 @@ test('模型误称“还没看”时，已核验进度触发保守纠正但不�
  assert.match(correctDmTodoProgressReply(bad,todoProgressContext),/已经查过/)
  assert.match(correctDmTodoProgressReply(bad,todoProgressContext),/不等于我亲眼看过画面/)
  assert.equal(correctDmTodoProgressReply('资料已经查过啦，我还不能说自己看过完整画面',todoProgressContext),'资料已经查过啦，我还不能说自己看过完整画面')
- let prompt=''
+ let prompt='',calls=0
  const batcher=createInteractionBatcher({delayMs:1,getPersona:()=>'',invoke:async p=>{
-  prompt=p;return JSON.stringify({items:[{id:'0',action:'reply',reply:bad,mood:'neutral',intensity:0}]})
+  prompt=p;calls++;return JSON.stringify({items:[{id:'0',action:'reply',reply:calls===1?bad:
+    '刚才说得不准，我已经查过公开资料和字幕，但没亲眼看画面、也没听到音频。',mood:'neutral',intensity:0}]})
  }})
  try{
   const reply=await batcher.generate({kind:'dm',uid:'210228238',text:BV+' 看了吗',todoProgressContext})
   assert.match(prompt,/"todoProgressContext":/)
   assert.match(prompt,/待办已完成且具有成功执行回执/)
+  assert.equal(calls,2)
   assert.match(reply,/已经查过/)
   assert.doesNotMatch(reply,/以后再看看吧/)
  }finally{batcher.stop()}

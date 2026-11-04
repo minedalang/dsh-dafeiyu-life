@@ -1,0 +1,30 @@
+flowchart TD
+  C[已核验 B站评论或 @ 通知] --> K[原 comment-interact 账户与 UID / 来源/额度门禁]
+  D[已核验 B站私信入站] --> L[原 dm-autoreply 账户与授权门禁]
+  K --> B[InteractionBatcher: 一次 Life Voice 模型生成]
+  L --> B
+  B --> P{模型自主提出 accept 和 suggestedTodo/s?}
+  P -->|无| S[未接受推荐，不强制建单]
+  P -->|有| V[SocialTodoIntake 可信原话/BV/UID/时效/只读校验]
+  V -->|通过| W[DualContextAgency.recordAI 接受本次只读探索意愿]
+  W --> O[(原 owner-todos.json 同账户幂等任务账本)]
+  V -->|拒绝/写入失败| E[不等于已记下]
+  O --> R[返回创建或重复的可信账本回执]
+  S --> X{SocialTodoReplyContract + DM 事实冲突检测}
+  E --> X
+  R --> X
+  X -->|一致| Y[原社会行动决策 + 评论/DM 发送权限、额度、平台回执]
+  X -->|冲突| Q[相同 Life Voice 模型额外修订最多一次]
+  Q --> A{重新提案且可核验？}
+  A -->|是| V
+  A -->|无新提案| T{模型自己改口/沉默，仍有虚假事实？}
+  T -->|否| Y
+  T -->|是| F[本轮不外发，绝无程序固定回复]
+  A -->|不可信| F
+  X -.-> N[仅内存 30 条脱敏诊断，不存正文/原始 JSON/UID]
+  F -.-> N
+  Y --> Z[真实 B站送达与独立回执；非待办保存事实]
+  classDef gate fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef ledger fill:#dcfce7,stroke:#16a34a,color:#14532d
+  class K,L,P,V,X,A,T gate
+  class O,R,N ledger
