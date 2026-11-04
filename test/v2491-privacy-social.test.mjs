@@ -54,7 +54,7 @@ test('隐私：私密数据不进入模型，拒绝措辞仍由同一模型生�
 
 test('隐私：外部互动禁用身份长记忆读取，视频 Agent 的公开投影不信任自动反思',()=>{
  const index=src('index.js'),python=src('vendor/bilibili-mcp/mcp_server.py')
- assert.match(index,/prepareContexts:batch=>socialContextAssembler\?\.batch\(batch\)/)
+ assert.match(index,/prepareContexts:\(batch,\{mode\}=\{\}\)=>socialContextAssembler\?\.batch\(batch,\{mode\}\)/)
  assert.match(index,/const ctx=await socialContextAssembler\.comment\(row\)/)
  assert.match(python,/m\.get\('visibility'\) == 'public'/)
  assert.match(python,/m\.get\('publicApproved'\) is True/)

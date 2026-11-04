@@ -82,5 +82,5 @@ test('生产入口：视频经历只写入 Life Memory 协调器并使用统一�
  assert.match(src,/const event=buildVideoExplorationEvent\(/)
  assert.match(src,/lifeMemoryCoordinator\?\.recordEvents\(\[event\],\{reflect:true\}\)/)
  assert.match(src,/lifeMemoryCoordinator\.start\(\)/)
- assert.match(src,/socialContextAssembler\?\.batch\(batch\)/)
+ assert.match(src,/socialContextAssembler\?\.batch\(batch,\{mode\}\)/)
 })

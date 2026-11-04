@@ -3481,19 +3481,26 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     }
   // Aggregate only; no user messages, UIDs, retrieved memories or model prompts.
   const interactionContextStats={since:Date.now(),fullTurns:0,compactTurns:0,expandedTurns:0,
-    extraModelCalls:0,continuationFailures:0,lastAt:0,lastMode:''};
+    extraModelCalls:0,continuationFailures:0,lazyReadTurns:0,lastAt:0,lastMode:'',recent:[]};
   const interactionBatcher = createInteractionBatcher({
     getContextMode:()=>{refreshCfg();return cfg.interactionContextMode==='full'?'full':'compact'},
-    onContextUsage:({mode,items,requests,continuationFailed,at})=>{
+    onContextUsage:({mode,kind,items,requests,continued,continuationFailed,requestedKinds=[],foundKinds=[],missingKinds=[],actualLazyReads=0,at})=>{
       if(mode==='full')interactionContextStats.fullTurns+=items;
       else interactionContextStats.compactTurns+=items;
       interactionContextStats.expandedTurns+=requests;
       if(requests)interactionContextStats.extraModelCalls++;
       if(continuationFailed)interactionContextStats.continuationFailures++;
+      interactionContextStats.lazyReadTurns+=actualLazyReads;
+      // Short-lived diagnostics: no UID, messages, prompt, memory text or model output.
+      interactionContextStats.recent.unshift({at,kind:kind==='dm'?'dm':'comment',mode,items,requests,
+        requestedKinds,foundKinds,missingKinds,lazyReads:actualLazyReads,
+        result:continuationFailed?'failed':continued?'continued':'direct'});
+      interactionContextStats.recent.length=Math.min(interactionContextStats.recent.length,12);
       interactionContextStats.lastAt=at;
       interactionContextStats.lastMode=mode;
     },
-    prepareContexts:batch=>socialContextAssembler?.batch(batch)||batch.map(()=>({})),
+    prepareContexts:(batch,{mode}={})=>socialContextAssembler?.batch(batch,{mode})||batch.map(()=>({})),
+    loadRequestedContexts:(batch,requestedByIndex)=>socialContextAssembler?.batch(batch,{mode:'compact',requestedByIndex})||batch.map(()=>({})),
     onEmotion:({mood,intensity,source})=>{try{return emotionalState.update({mood,intensity,source})}catch(e){log('情绪状态更新失败：'+String(e?.message||e).slice(0,100))}},
     onEmotionContext:({at,source,incoming,generated})=>{try{emotionalState.attachContext({at,source,incoming,generated})}catch(e){log('情绪来源片段记录失败：'+String(e?.message||e).slice(0,100))}},
     invoke:prompt=>invokeInteractionPrompt(prompt,24000),

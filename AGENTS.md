@@ -88,6 +88,10 @@
 - 插件可自行安装 Python 运行依赖／uv；遇故障先用设置页自检和 `duty.log`，不要要求用户先全局安装任意工具或绕过安全门禁。
 - 新安装的明确可选功能、旧版既有设置、First Start 必需验证是不同状态；不能通过隐式改默认值打开外部写入。
 
+## 2.7.1-dev.2 补充 · 真实按需证据读取和可验收性
+
+精简模式首次请求不得执行长期记忆、梗或人物画像检索；这些读取只由本 UID 的 `contextRequests` 引发，检索无命中需显式返回 `not-found`，失败时不得发送请求中的草稿。完整模式仍保留原来的读取行为；原有待办/推荐事实回执、私密分域、发送权限不容为降低成本而绕开。运行诊断可显示最近 12 个 **匿名** 批次的请求类型与命中状态，严禁写入 UID、正文、提示词或记忆内容。参见 `docs/architecture/2.7.1-dev2-true-on-demand-retrieval.md`。
+
 ## 2.7.1-dev.2 增量 · 上下文模式约束
 
-后台普通 DM 与走 `interaction-batch.mjs` 的评论/@ 支持 `interactionContextMode=compact|full`（生产默认 `compact`）；原始完整提示词不能删除。精简模式的 `contextRequests` 只可释放当前 UID 及该渠道现有 `SocialContextAssembler` 已授权的资料，最多一轮续推；首次申请不得外发/接受待办。事实校验、已接受任务回执、平台发送权限、隐私和 P6 边界永远属于后端，不能被上下文模式覆盖。主人私信 Agent 和 DSH 主 Session 不经过该选择器，不能把它写作“全局四渠道切换”。参见 `docs/architecture/2.7.1-dev2-dialogue-context-modes.md`。
+后台普通 DM 与走 `interaction-batch.mjs` 的评论/@ 支持 `interactionContextMode=compact|full`（生产默认 `compact`）；原始完整提示词不能删除。精简模式的 `contextRequests` 只可请求当前 UID 及该渠道 `SocialContextAssembler` 已授权的资料；长期记忆、画像和梗在请求后才检索，最多一轮续推；首次申请不得外发/接受待办。事实校验、已接受任务回执、平台发送权限、隐私和 P6 边界永远属于后端，不能被上下文模式覆盖。主人私信 Agent 和 DSH 主 Session 不经过该选择器，不能把它写作“全局四渠道切换”。参见 `docs/architecture/2.7.1-dev2-dialogue-context-modes.md`。

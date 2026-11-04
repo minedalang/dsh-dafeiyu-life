@@ -4,6 +4,10 @@
 
 - [新功能可验收性契约：触发、选择、真实回执、隐私、费用与使用者验收步骤](./acceptance-observability-contract.md)。代码测试通过不能代替用户可观察的真实行为。
 
+## 当前开发预览：2.7.1-dev.2 补充：真实按需读取与匿名逐轮诊断
+
+- [生产接线、模型自主检索、UID 权限、失败保护及可观察性](./2.7.1-dev2-true-on-demand-retrieval.md) · [Mermaid 实际数据流](./diagrams/2.7.1-dev2-true-on-demand-live.mmd)。精简首轮不检索长期记忆、人物画像、梗；模型有需要才请求并由本 UID 的只读源返回。待办与推荐进度仍保留已有事实一致性守卫，不能将其写成全面动态检索。
+
 ## 当前开发预览：2.7.1-dev.2 增量：后台对话上下文可选模式
 
 - [精简按需与原始完整双模式：覆盖范围、模型主动扩展证据、原契约安全约束、真实调用计数](./2.7.1-dev2-dialogue-context-modes.md) · [实际生产接线 Mermaid](./diagrams/2.7.1-dev2-dialogue-context-modes-live.mmd)。新安装默认精简；普通私信和使用共用批处理器的评论/@ 生效，**不作用于独立主人私信 Agent 或 DSH 主 Session**。需要额外证据时模型可多续推一次，未使用真实 AI 的质量/成本尚未验证。
