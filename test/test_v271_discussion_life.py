@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 SOURCE = (Path(__file__).resolve().parents[1] / 'vendor/bilibili-mcp/mcp_server.py').read_text('utf-8')
 NAMES = {'_discussion_account_tag', '_discussion_receipt', '_discussion_prompt_note', '_discussion_note_rejection',
+         '_discussion_store_provisional', '_discussion_report_without_note_receipts', 'bili_report_append',
          'bili_comments', 'bili_comment_thread', 'bili_discussion_note'}
 TREE = ast.parse(SOURCE)
 NODES = []
@@ -64,7 +65,9 @@ class DiscussionTests(unittest.TestCase):
             'json': json, 're': re, 'hashlib': hashlib, 'hmac': hmac, 'datetime': datetime, 'asyncio': asyncio,
             '_DISCUSSION_VIDEO_ROUND': True, '_DISCUSSION_LIST_CACHE': {},
             '_DISCUSSION_ROOTS': {}, '_DISCUSSION_THREADS': {}, '_DISCUSSION_NOTED': set(),
+            '_DISCUSSION_REPORT_UNNOTED': set(),
             '_DISCUSSION_MAX_VIDEOS': 6, '_DISCUSSION_MAX_THREADS': 2,
+            '_ALLOWED': {'bili_discussion_note', 'bili_report_append'},
             'load_credential': lambda: SimpleNamespace(dedeuserid=self.account, sessdata='FAKE_TEST_SECRET'),
             'get_cred': lambda: 'fake', '_guard': lambda name: '',
             '_append_home': lambda filename, text: self.records.append((filename, text)),
@@ -157,6 +160,57 @@ class DiscussionTests(unittest.TestCase):
         self.assertIn('invalid_reaction', serialized)
         self.assertNotIn(private, serialized)
         self.assertNotIn('some feeling', serialized)
+
+    def test_report_can_attach_optional_real_note_without_extra_tool_call(self):
+        self.go(self.s['bili_comments'](self.bv, 10))
+        result = self.go(self.s['bili_report_append']('### 日报', [
+            {'bvid': self.bv, 'reaction': 'curious', 'question': '不同意见为什么这么多？'}]))
+        self.assertEqual(result['ok'], True)
+        self.assertEqual(result['discussionNotes']['saved'], 1)
+        self.assertEqual(sum('provisional_fish_reaction' in x[1] for x in self.records), 1)
+        self.assertTrue(any(x[0].startswith('out/') for x in self.records))
+        again = self.go(self.s['bili_discussion_note'](self.bv, 'curious'))
+        self.assertFalse(again['ok'], 'same BV should not double write through two paths')
+
+    def test_report_does_not_invent_or_bypass_optional_note_gate(self):
+        text = self.go(self.s['bili_report_append']('纯日报'))
+        self.assertTrue(text['ok'])
+        self.assertEqual(len(self.records), 1, 'no extra entry without model choice')
+        # Report still succeeds, but an unverified BV cannot produce a note.
+        out = self.go(self.s['bili_report_append']('日报', [
+            {'bvid': self.bv, 'reaction': 'curious', 'question': '无阅读不能记录'}]))
+        self.assertEqual(out['discussionNotes']['saved'], 0)
+        self.assertEqual(out['discussionNotes']['rejected'], 1)
+        self.assertFalse(any('provisional_fish_reaction' in x[1] for x in self.records))
+        self.go(self.s['bili_comments'](self.bv, 10))
+        self.s['_ALLOWED'] = {'bili_report_append'}
+        gated = self.go(self.s['bili_report_append']('日报', [
+            {'bvid': self.bv, 'reaction': 'curious'}]))
+        self.assertTrue(gated['discussionNotes']['blocked'])
+        self.assertEqual(sum('provisional_fish_reaction' in x[1] for x in self.records), 0)
+
+    def test_report_without_optional_note_emits_nonsubjective_diagnostic_once(self):
+        self.go(self.s['bili_comments'](self.bv, 10))
+        self.go(self.s['bili_report_append']('日报'))
+        self.go(self.s['bili_report_append']('第二次日报'))
+        rows = [json.loads(r[1]) for r in self.records if 'provisional_note_not_provided' in r[1]]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['bvid'], self.bv)
+        self.assertEqual(rows[0]['status'], 'not_provided')
+        self.assertNotIn('question', rows[0])
+        self.assertFalse(any('provisional_fish_reaction' in r[1] for r in self.records))
+
+    def test_report_rejects_private_payload_and_limits_attached_notes(self):
+        self.go(self.s['bili_comments'](self.bv, 10))
+        bad = 'https://dont-store.example/?uid=9999999999'
+        out = self.go(self.s['bili_report_append']('日报', [
+            {'bvid': self.bv, 'reaction': 'curious', 'question': bad},
+            {'bvid': self.bv, 'reaction': 'invalid', 'question': 'test'},
+            {'bvid': 'BV9999999999', 'reaction': 'curious', 'question': 'third'}]))
+        self.assertEqual(out['discussionNotes']['saved'], 0)
+        self.assertEqual(out['discussionNotes']['rejected'], 2)
+        self.assertNotIn(bad, '\n'.join(x[1] for x in self.records))
+        self.assertFalse(any('provisional_fish_reaction' in x[1] for x in self.records))
 
     def test_unselected_optional_note_does_not_generate_fake_event(self):
         out = self.go(self.s['bili_comments'](self.bv, 10))

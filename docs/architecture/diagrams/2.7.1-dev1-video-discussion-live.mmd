@@ -9,8 +9,13 @@ flowchart TD
     F -->|有且≤2次| H[bili_comment_thread: 验证 BV+根评论+预算]
     H -->|读成功| G
     H -->|失败/不匹配| E
-    G -->|可选| I[bili_discussion_note: 仅本轮读证据]
-    I --> J[本地最小诊断 JSONL: 非长期记忆]
+    G -->|可选独立保存| I[bili_discussion_note: 仅本轮读证据]
+    G -->|若本来就写日报| R[bili_report_append: 可选携带discussion_notes]
+    R -->|有真实BV阅读和自主感受| S[同一个只读证据验证与主观记录写入者]
+    I --> S
+    R -->|未附感受| N[匿名只读诊断: 日报未附感受]
+    N --> J
+    S --> J[本地最小诊断 JSONL: 非长期记忆]
     D --> J
     H --> J
     G -. 想公开发表时需独立授权 .-> K[原 bili_reply + SocialPolicyGate + 真实发送回执]

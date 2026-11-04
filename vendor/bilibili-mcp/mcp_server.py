@@ -431,6 +431,7 @@ _DISCUSSION_LIST_CACHE = {}     # BV -> returned, platform-backed list for this 
 _DISCUSSION_ROOTS = {}          # BV -> root IDs actually observed in that list
 _DISCUSSION_THREADS = {}        # (BV, root) -> returned, platform-backed thread
 _DISCUSSION_NOTED = set()
+_DISCUSSION_REPORT_UNNOTED = set()  # bounded, in-memory per video round
 _DISCUSSION_MAX_VIDEOS = 6
 _DISCUSSION_MAX_THREADS = 2
 
@@ -495,33 +496,31 @@ def _discussion_note_rejection(bvid: str, reason: str) -> None:
         pass
 
 
-@tool()
-async def bili_discussion_note(bvid: str, reaction: str = 'curious', question: str = '') -> str:
-    """Optional, bounded private reaction to ACTUALLY read public comments.
+def _discussion_store_provisional(bvid: str, reaction: str, question: str) -> dict:
+    """Single evidence-checked writer for both explicit and report-attached notes.
 
-    This is NOT a fact about the video, stable interest, a social relationship,
-    a task acceptance, a public reply or proof that media was watched/listened.
+    No input text is written on rejection. A model's subjective reaction is not
+    verified public information, a long-term preference or authorization.
     """
-    if (e := _guard('bili_discussion_note')): return e
     if not _DISCUSSION_VIDEO_ROUND:
-        return json.dumps({'ok': False, 'error': '仅视频自主生活轮可记录评论观察'}, ensure_ascii=False)
+        return {'ok': False, 'error': '仅视频自主生活轮可记录评论观察'}
     bv = str(bvid or '')
     if not re.fullmatch(r'BV[0-9A-Za-z]{10}', bv):
-        return json.dumps({'ok': False, 'error': 'BV 格式错误'}, ensure_ascii=False)
+        return {'ok': False, 'error': 'BV 格式错误'}
     if bv in _DISCUSSION_NOTED:
         _discussion_note_rejection(bv, 'duplicate')
-        return json.dumps({'ok': False, 'error': '本轮该视频的观察已经记录'}, ensure_ascii=False)
+        return {'ok': False, 'error': '本轮该视频的观察已经记录'}
     read = _DISCUSSION_LIST_CACHE.get(bv)
     if not read or read.get('error') or not read.get('read_evidence', {}).get('verified'):
         _discussion_note_rejection(bv, 'missing_read')
-        return json.dumps({'ok': False, 'error': '本轮没有成功读取该 BV 评论，不能生成经历'}, ensure_ascii=False)
-    if reaction not in {'curious', 'amused', 'skeptical', 'neutral', 'none'}:
+        return {'ok': False, 'error': '本轮没有成功读取该 BV 评论，不能生成经历'}
+    if not isinstance(reaction, str) or reaction not in {'curious', 'amused', 'skeptical', 'neutral', 'none'}:
         _discussion_note_rejection(bv, 'invalid_reaction')
-        return json.dumps({'ok': False, 'error': '反应类型无效'}, ensure_ascii=False)
+        return {'ok': False, 'error': '反应类型无效'}
     brief = _discussion_prompt_note(question)
     if brief is None:
         _discussion_note_rejection(bv, 'invalid_question')
-        return json.dumps({'ok': False, 'error': '问题包含链接、识别符或敏感信息／超过长度限制'}, ensure_ascii=False)
+        return {'ok': False, 'error': '问题包含链接、识别符或敏感信息／超过长度限制'}
     # Only enumerated reactions and a brief self-identified question are allowed.
     # The self-reported question is deliberately NOT injected into long-term memory.
     now = datetime.now().astimezone()
@@ -535,11 +534,18 @@ async def bili_discussion_note(bvid: str, reaction: str = 'curious', question: s
                      json.dumps(record, ensure_ascii=True) + '\n')
     except (OSError, ValueError, TypeError):
         _discussion_note_rejection(bv, 'write_failed')
-        return json.dumps({'ok': False, 'error': '本地观察记录失败；未登记'}, ensure_ascii=False)
+        return {'ok': False, 'error': '本地观察记录失败；未登记'}
     _DISCUSSION_NOTED.add(bv)
-    return json.dumps({'ok': True, 'kind': 'provisional_fish_reaction',
-                       'bvid': bv, 'reaction': reaction, 'not_external_fact': True,
-                       'not_publicly_sent': True, 'not_task': True}, ensure_ascii=False)
+    return {'ok': True, 'kind': 'provisional_fish_reaction',
+            'bvid': bv, 'reaction': reaction, 'not_external_fact': True,
+            'not_publicly_sent': True, 'not_task': True}
+
+
+@tool()
+async def bili_discussion_note(bvid: str, reaction: str = 'curious', question: str = '') -> str:
+    """Optional private note after verified comments. No external send or task."""
+    if (e := _guard('bili_discussion_note')): return e
+    return json.dumps(_discussion_store_provisional(bvid, reaction, question), ensure_ascii=False)
 
 
 # ========== Tool 2: 获取评论 ==========
@@ -2369,17 +2375,60 @@ async def bili_report_read() -> str:
     return _read_home("out/"+datetime.now().strftime("%Y-%m-%d")+".md", 14000) or "（今天还没有日报）"
 
 
+def _discussion_report_without_note_receipts():
+    """A written report without an attached note is observable, NOT a fish feeling.
+
+    It cannot prove the model had no idea or never used the separate note tool.
+    """
+    if not _DISCUSSION_VIDEO_ROUND:
+        return
+    for bv, record in list(_DISCUSSION_LIST_CACHE.items())[:_DISCUSSION_MAX_VIDEOS]:
+        if (bv in _DISCUSSION_REPORT_UNNOTED or bv in _DISCUSSION_NOTED or
+                record.get('error') or not record.get('read_evidence', {}).get('verified') or
+                int(record.get('count', 0)) <= 0):
+            continue
+        _DISCUSSION_REPORT_UNNOTED.add(bv)
+        _discussion_receipt('provisional_note_not_provided', bv, status='not_provided')
+
+
 @tool()
-async def bili_report_append(text: str) -> str:
-    """只追加当天 Markdown 日报；不能读写其他路径。内容由 Agent 组织。"""
+async def bili_report_append(text: str, discussion_notes: list[dict] | None = None) -> str:
+    """追加当天 Markdown 日报。可选携带同轮真实读过评论的短暂主观反应。
+
+    discussion_notes: 可选最多 2 条 [{bvid, reaction, question}]。只有本轮
+    成功读取同 BV 评论后才存入独立诊断账本，不会变成外部事实/任务/长期偏好。
+    不想记录或并无感受时省略此参数；不应编造主观感受。
+    """
     if (e := _guard("bili_report_append")): return e
     data = str(text or "").strip()[:18000]
     if not data: return json.dumps({"ok": False, "error": "报告不能为空"}, ensure_ascii=False)
     try:
         _append_home("out/"+datetime.now().strftime("%Y-%m-%d")+".md", data+"\n\n")
-        return json.dumps({"ok": True}, ensure_ascii=False)
     except Exception as exc:
         return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+    if discussion_notes is None:
+        _discussion_report_without_note_receipts()
+        return json.dumps({"ok": True}, ensure_ascii=False)
+    # Never use the report tool as an escape hatch from MCP tool permissions.
+    if not _DISCUSSION_VIDEO_ROUND or (_ALLOWED and 'bili_discussion_note' not in _ALLOWED):
+        _discussion_report_without_note_receipts()
+        return json.dumps({"ok": True, "discussionNotes": {"saved": 0, "blocked": True}}, ensure_ascii=False)
+    if not isinstance(discussion_notes, list):
+        _discussion_report_without_note_receipts()
+        return json.dumps({"ok": True, "discussionNotes": {"saved": 0, "invalid": True}}, ensure_ascii=False)
+    saved = rejected = 0
+    for item in discussion_notes[:2]:
+        if not isinstance(item, dict) or not re.fullmatch(r'BV[0-9A-Za-z]{10}', str(item.get('bvid', ''))):
+            rejected += 1
+            continue  # Invalid BV cannot be attached to any accountable read receipt.
+        outcome = _discussion_store_provisional(str(item['bvid']), item.get('reaction'), item.get('question', ''))
+        if outcome['ok']:
+            saved += 1
+        else:
+            rejected += 1
+    _discussion_report_without_note_receipts()
+    return json.dumps({"ok": True, "discussionNotes": {"saved": saved, "rejected": rejected,
+                                                         "maxItems": 2}}, ensure_ascii=False)
 
 
 @tool()

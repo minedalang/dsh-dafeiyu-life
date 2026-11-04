@@ -4,6 +4,10 @@
 
 - [新功能可验收性契约：触发、选择、真实回执、隐私、费用与使用者验收步骤](./acceptance-observability-contract.md)。代码测试通过不能代替用户可观察的真实行为。
 
+## 当前开发预览：2.7.1-dev.3 评论感受实际工具调用链补充
+
+- 视频 Agent 的 `bili_report_append` 可顺带提交经过同一 BV 评论阅读证据验证的**可选**临时感受；单独 `bili_discussion_note` 保留。管理中心新增“日报后未附感受”匿名计数，区别于成功/拒绝，不冒充鱼鱼的内心判断；无额外模型调用、无外发或待办权限变化。见 [dev.3 当前生活契机说明](./2.7.1-dev3-life-opportunities.md) 和 [评论只读 Mermaid](./diagrams/2.7.1-dev1-video-discussion-live.mmd)。
+
 ## 当前开发预览：2.7.1-dev.3 多来源生活契机（评论、兴趣、公开交流）
 
 - [生产链路、数据来源、选择回执、手动验收、账号隔离、剩余风险](./2.7.1-dev3-life-opportunities.md) · [现行 Mermaid 生产图](./diagrams/2.7.1-dev3-life-opportunities-live.mmd)。现支持本账号真实非空评论阅读后临时反应、有明确账号归属的跨日自主选片趋势、当前账号公开评论中跨日有证据的交流偏好；复用现有 `AutonomousPlanner`，不另设定时器或任务账本。仅可核实原有 BV 公开元数据或在本地复核公开交流，不增加社交发送权限。无账号归属的历史兴趣不迁移为行动契机；完整长期人物语义记忆和真实 Windows/B站仍待验收。

@@ -40,3 +40,13 @@ test('optional follow-up note is visible on successful nonempty reads but is nev
  const ui=read('lib/management-console.js')
  assert.match(ui,/noteRejections/)
 })
+
+test('existing report append can accept optional evidence-checked note without extra model invocation',()=>{
+ const src=read('index.js'),py=read('vendor/bilibili-mcp/mcp_server.py')
+ assert.match(src,/bili_report_append 写日报，也可在同一次调用中可选附带 discussion_notes/)
+ assert.match(py,/async def bili_report_append\(text: str, discussion_notes: list\[dict\] \| None = None\)/)
+ assert.match(py,/_discussion_store_provisional\(str\(item\['bvid'\]\)/)
+ assert.match(py,/_ALLOWED and 'bili_discussion_note' not in _ALLOWED/)
+ assert.match(py,/_discussion_report_without_note_receipts/)
+ assert.match(read('lib/management-console.js'),/noteNotProvided/)
+})

@@ -23,7 +23,7 @@ test('public read, valid thread, failure, and subjective note are visible with v
   assert.equal(discussionAccountTag(credential),tag)
   const r=readVideoDiscussionDiagnostics({stateDir:f.home,credential,now})
   assert.equal(r.ok,true);assert.equal(r.accountReady,true)
-  assert.deepEqual(r.summary,{readLists:1,emptyLists:0,failedLists:1,readThreads:1,failedThreads:0,provisionalNotes:1,noteRejections:0})
+  assert.deepEqual(r.summary,{readLists:1,emptyLists:0,failedLists:1,readThreads:1,failedThreads:0,provisionalNotes:1,noteRejections:0,noteNotProvided:0})
   const note=r.events.find(x=>x.kind==='provisional_fish_reaction')
   assert.equal(note.subjective,true);assert.equal(note.verified,false)
   assert.equal(r.events.find(x=>x.kind==='comment_thread_read').root,'123')
@@ -44,6 +44,19 @@ test('rejected note requests expose only enum reason, and no success is invented
   assert.equal(JSON.stringify(r).includes('PRIVATE'),false);
  } finally {f.cleanup()}
 })
+test('report without note is visible, but is never a subjective reaction or rejection',()=>{
+ const f=fixture([event('comment_list_read'),event('provisional_note_not_provided',{status:'not_provided',raw:'PRIVATE DO NOT SHOW'}),
+  event('provisional_note_not_provided',{status:'read'}),event('provisional_note_not_provided',{status:'not_provided',bvid:'invalid'})]);
+ try {
+  const result=readVideoDiscussionDiagnostics({stateDir:f.home,credential,now});
+  assert.equal(result.summary.noteNotProvided,1);
+  assert.equal(result.summary.provisionalNotes,0);
+  assert.equal(result.summary.noteRejections,0);
+  assert.equal(result.events.find(e=>e.kind==='provisional_note_not_provided').verified,false);
+  assert.equal(JSON.stringify(result).includes('PRIVATE'),false);
+ }finally{f.cleanup()}
+})
+
 test('wrong account and no-login cannot inspect previous account receipts',()=>{
  const f=fixture([event('comment_list_read')]);
  try{
