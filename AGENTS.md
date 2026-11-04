@@ -95,3 +95,7 @@
 ## 2.7.1-dev.2 增量 · 上下文模式约束
 
 后台普通 DM 与走 `interaction-batch.mjs` 的评论/@ 支持 `interactionContextMode=compact|full`（生产默认 `compact`）；原始完整提示词不能删除。精简模式的 `contextRequests` 只可请求当前 UID 及该渠道 `SocialContextAssembler` 已授权的资料；长期记忆、画像和梗在请求后才检索，最多一轮续推；首次申请不得外发/接受待办。事实校验、已接受任务回执、平台发送权限、隐私和 P6 边界永远属于后端，不能被上下文模式覆盖。主人私信 Agent 和 DSH 主 Session 不经过该选择器，不能把它写作“全局四渠道切换”。参见 `docs/architecture/2.7.1-dev2-dialogue-context-modes.md`。
+
+## 2.7.1-dev.2 补充 · 白名单好友兴趣纠错（局部）
+
+`friend-learning.mjs` 是当前帐号内白名单好友明确兴趣自述的唯一证据写入源，不等同于 `SocialPortraitGateway` 的交流偏好或完整人物记忆。时序自述只能在同一消息内以真实主题为依据，历史喜欢不得冒充当下；兴趣减弱记录为 `uncertain`，不等于讨厌；同 UID 的后续明确自述可以覆盖用于主动推荐的当前投影，但不能恢复全局退订、拒联或其它发送权限。管理中心「社交互动 → 好友兴趣变化」显示可复核状态。见 `docs/architecture/2.7.1-dev2-friend-interest-correction.md`。未实现跨来源全面语义纠错。
