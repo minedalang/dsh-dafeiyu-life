@@ -804,6 +804,7 @@ async def bili_comment_thread(bvid: str, root: int, num: int = 20, target_rpid: 
 # ========== Tool 3: 获取字幕 ==========
 
 @tool()
+@_gate_read('bili_subtitle')
 async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
     """
     获取B站视频的AI字幕（语音转文字）

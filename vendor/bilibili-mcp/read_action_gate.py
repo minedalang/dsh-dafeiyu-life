@@ -16,7 +16,7 @@ import uuid
 import unicodedata
 from pathlib import Path
 
-_ALLOWED = {'bili_search', 'bili_video_info', 'bili_user_videos', 'bili_creator_relation_status', 'bili_comments', 'bili_comment_thread', 'bili_danmaku'}
+_ALLOWED = {'bili_search', 'bili_video_info', 'bili_user_videos', 'bili_creator_relation_status', 'bili_comments', 'bili_comment_thread', 'bili_danmaku', 'bili_subtitle'}
 _BV = re.compile(r'^BV[0-9A-Za-z]{10}$')
 _UID = re.compile(r'^[1-9][0-9]{0,18}$')
 _HEX = re.compile(r'^[a-f0-9]{64}$')
@@ -57,6 +57,16 @@ def read_action(tool, args):
         if not _BV.fullmatch(bv):
             raise ValueError('只读动作缺少有效 BV')
         return tool, bv
+    if tool == 'bili_subtitle':
+        bvid = str(a.get('bvid', ''))
+        if not _BV.fullmatch(bvid):
+            raise ValueError('字幕只读动作缺少有效 BV')
+        # Same subtitle resource, regardless of a possible later vision
+        # fallback. The reservation never authorizes or counts vision calls.
+        fallback = a.get('auto_vision_on_missing', False)
+        if type(fallback) is not bool:
+            raise ValueError('字幕视觉回退参数必须是布尔值')
+        return tool, bvid
     if tool == 'bili_danmaku':
         bvid = str(a.get('bvid', ''))
         if not _BV.fullmatch(bvid):
