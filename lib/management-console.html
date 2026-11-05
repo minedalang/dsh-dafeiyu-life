@@ -1040,9 +1040,13 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div></section>
 <section id="panel-diagnostics" hidden><div id="read-action-executions-section" class="settings-section life-section">
 <div class="toolbar"><h4 style="margin:0">🔒 平台读取预约与中断核查</h4><button id="read-action-executions-refresh" type="button" class="life-action life-sky">刷新真实动作回执</button></div>
-<p class="muted">统计经统一 Node/Python 预约执行的公开视频详情、公开搜索、作者投稿及作者关系查询。独立 Python 视频 Agent 已接入同一只读预约协议；社交外发仍有独立安全机制。只读工具返回不等于已观看、关注或完成承诺；中断预约不会自动重试，需先核实原状态。</p>
+<p class="muted">统计经统一 Node/Python 预约执行的六类公开只读工具：视频信息、搜索、作者投稿、作者关系、评论列表、楼中楼。独立 Python 视频 Agent 已接入同一只读预约协议；社交外发仍有独立安全机制。只读工具返回不等于已观看、关注或完成承诺；中断预约不会自动重试，需先核实原状态。</p>
 <p id="read-action-executions-status" class="muted" role="status">尚未读取共享动作状态</p><div id="read-action-executions-list" class="records records-scroll" aria-live="polite"></div>
 </div>
+<div id="dev3-offline-acceptance" class="settings-section">
+<div class="toolbar"><h4 style="margin:0">🧪 自主行动基础能力 · 离线验收</h4><button type="button" id="dev3-offline-test">运行本地模拟验收</button></div>
+<p class="muted">使用临时虚拟账号和本地模拟数据，实际测试只读动作重复拦截、账号隔离、回执记录和待办旧尝试保护。不会连接 B站、调用 AI、修改真实待办、发送评论或私信。此项通过<strong>不代表</strong> Windows 跨进程和真实平台联调已通过。</p>
+<p id="dev3-offline-status" class="muted" role="status">尚未执行</p><div id="dev3-offline-results" class="records" aria-live="polite"></div></div>
 <div id="todo-transactions-section" class="settings-section"><div class="toolbar"><h4>📝 待办账本并发与恢复</h4><button id="todo-transactions-refresh" type="button">检查事务状态</button></div><p class="muted">只用于防止不同进程同时覆写待办状态。解除中断事务锁不会完成或重开任何待办。</p><p id="todo-transactions-status" role="status" class="muted">尚未检查</p></div>
 <div class="settings-section"><h4>🔒 Python MCP 安全版本检查</h4><p class="muted">如果日志提示 Python MCP 主脚本或共享读取预约模块与当前插件版本不一致，系统会拒绝发送。这里可以先检查；确认修复时会在插件家目录备份旧文件，然后使用当前安装包内置的受审脚本。不会静默删除自定义修改。</p><div class="toolbar"><button id="mcp-integrity-check" type="button">检查 MCP 文件</button><button id="mcp-integrity-repair" type="button" class="primary" disabled>备份旧文件并修复</button></div><p id="mcp-integrity-status" class="muted" role="status">尚未检测</p></div>
 <div class="toolbar"><h2 style="margin:0">运行诊断</h2><button id="diag-refresh" class="primary">刷新诊断</button><button id="diag-save">保存诊断开关</button></div>

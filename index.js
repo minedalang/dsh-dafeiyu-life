@@ -48,6 +48,7 @@ import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charte
 import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
 import { createAccountBinding } from './lib/account-binding.mjs'
 import { createReadActionExecutionGate,readToolAction } from './lib/read-action-execution-gate.mjs'
+import {runDev3OfflineAcceptance} from './lib/dev3-offline-acceptance.mjs'
 import {AsyncLocalStorage} from 'node:async_hooks'
 import { resolveUid } from './lib/uid.mjs'
 import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch } from './lib/dm.mjs'
@@ -5740,6 +5741,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站恢复'})
       try{const body=await readBody(req);const result=ownerTodos.recoverTransactionLock({confirm:body?.confirm===true});return sendJson(res,result.ok?200:409,result)}
       catch(e){return sendJson(res,500,{ok:false,error:'待办事务复核失败：'+String(e?.message||e).slice(0,100)})}
+    }
+    if(req.method==='POST'&&path==='/api/bili-duty/dev3/acceptance/local'){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'只允许管理中心同源进行本地验收'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站验收请求'})
+      try{return sendJson(res,200,await runDev3OfflineAcceptance())}
+      catch{return sendJson(res,500,{ok:false,error:'本地验收运行异常；未访问 B站或真实待办'})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/read-action-executions'){
       try{return sendJson(res,200,readActionGate.status())}

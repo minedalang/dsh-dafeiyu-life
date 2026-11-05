@@ -611,6 +611,7 @@ async def bili_discussion_note(bvid: str, reaction: str = 'curious', question: s
 # ========== Tool 2: 获取评论 ==========
 
 @tool()
+@_gate_read('bili_comments')
 async def bili_comments(bvid: str, num: int = 30) -> str:
     """
     获取B站视频的热门评论
@@ -728,6 +729,7 @@ async def bili_comments(bvid: str, num: int = 30) -> str:
 # ========== 只读：某条顶层评论的最新楼中楼回复（后台 @ / 通知上下文） ==========
 
 @tool()
+@_gate_read('bili_comment_thread')
 async def bili_comment_thread(bvid: str, root: int, num: int = 20, target_rpid: int = 0) -> str:
     """读取某条顶层评论下的楼中楼；优先翻页直到找到当前通知对应的回复，最多读取三页。"""
     if not re.fullmatch(r"BV[0-9A-Za-z]{10}", str(bvid)) or not str(root).isdigit() or int(root) <= 0:

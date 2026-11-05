@@ -1,0 +1,28 @@
+flowchart TB
+ subgraph Inputs[各真实入口 - 保留独立业务责任]
+  S[主 Session 与主人 DM]
+  L[自主待办 / 自主生活]
+  V[独立 Python 视频 Agent]
+  C[评论通知与互动决策]
+ end
+ S --> JS[共用 JS MCP 适配器]
+ L --> JS
+ C --> JS
+ V --> PY[Python MCP]
+ JS --> G[共享预约协议 / 账号作用域 / 六类公开只读]
+ PY --> G
+ G --> R{相同账号、动作和目标已预约?}
+ R -->|是| BLOCK[拒绝重复 / 未知等待人工核查]
+ R -->|否| API[B站只读工具]
+ API --> ACK[技术回执 - 不是业务完成证据]
+ ACK --> TODO[原承诺账本]
+ ACK --> LIFE[原生活意愿及人生经历]
+ C --> W[原社交写入执行器 - 独立授权与未知回执保护]
+ subgraph Check[管理中心 · 运行诊断]
+  N[本地离线模拟验收 5 项 - 不访问 B站]
+  P[共享读取技术回执 / 人工核查]
+  T[待办事务状态]
+ end
+ G -.-> P
+ TODO -.-> T
+ N -.-> G

@@ -16,7 +16,7 @@ import uuid
 import unicodedata
 from pathlib import Path
 
-_ALLOWED = {'bili_search', 'bili_video_info', 'bili_user_videos', 'bili_creator_relation_status'}
+_ALLOWED = {'bili_search', 'bili_video_info', 'bili_user_videos', 'bili_creator_relation_status', 'bili_comments', 'bili_comment_thread'}
 _BV = re.compile(r'^BV[0-9A-Za-z]{10}$')
 _UID = re.compile(r'^[1-9][0-9]{0,18}$')
 _HEX = re.compile(r'^[a-f0-9]{64}$')
@@ -39,6 +39,17 @@ def _bounded_int(value, default, ceiling):
         return default
 
 
+def _exact_int(value, default=None, minimum=0, maximum=9007199254740991):
+    if value is None:
+        return default
+    text = str(value)
+    if not re.fullmatch(r'(0|[1-9][0-9]*)', text):
+        raise ValueError('只读评论参数必须是有效整数')
+    number = int(text)
+    if not minimum <= number <= maximum:
+        raise ValueError('只读评论参数超出安全范围')
+    return number
+
 def read_action(tool, args):
     a = args or {}
     if tool in ('bili_video_info', 'bili_creator_relation_status'):
@@ -46,6 +57,19 @@ def read_action(tool, args):
         if not _BV.fullmatch(bv):
             raise ValueError('只读动作缺少有效 BV')
         return tool, bv
+    if tool in ('bili_comments', 'bili_comment_thread'):
+        bvid = str(a.get('bvid', ''))
+        if not _BV.fullmatch(bvid):
+            raise ValueError('评论区只读动作缺少有效 BV')
+        if tool == 'bili_comments':
+            num = _exact_int(a.get('num', 30), minimum=1, maximum=300)
+            return tool, json.dumps([bvid, num], ensure_ascii=False, separators=(',', ':'))
+        root = _exact_int(a.get('root'), minimum=1)
+        if root is None:
+            raise ValueError('楼中楼只读动作缺少根评论 ID')
+        num = _exact_int(a.get('num', 20), minimum=1, maximum=300)
+        target = _exact_int(a.get('target_rpid', 0))
+        return tool, json.dumps([bvid, str(root), num, str(target)], ensure_ascii=False, separators=(',', ':'))
     if tool == 'bili_search':
         kw = _clean(a.get('keyword', ''))
         if not kw or len(kw) > 300:

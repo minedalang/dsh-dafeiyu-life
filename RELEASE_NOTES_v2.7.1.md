@@ -40,3 +40,7 @@ Node 与独立 Python 视频 Agent 开始对齐四类公开读取的持久预约
 技术细节参见 `docs/architecture/2.7.1-dev1-video-discussion-life.md` 与 `docs/architecture/2.7.1-dev2-dm-memory-governance.md`、`docs/architecture/2.7.1-dev2-dialogue-context-modes.md`。
 
 **待实机验证：** Windows DSH Desktop、真实 B站评论风控、视频模型实际工具调用与跨轮选择。未创建 Tag、未发布 npm。
+
+### dev.3 续迭代：六类跨语言只读预约与可执行验收
+
+评论列表和楼中楼加入共享跨语言只读预约；管理中心可运行不接触 B站或私信的五项本地模拟验收，并提供真实 Node/Python 子进程测试。技术图与分节点验收参见 `docs/architecture/2.7.1-dev3-acceptance.md`。此项通过不代表真实平台联调，也不解除社交写操作的独立权限与未知回执限制。
