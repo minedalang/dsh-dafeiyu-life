@@ -31,7 +31,7 @@ test('phase2 legacy event ledger upgrades without losing pending social wakes',(
   assert.equal(timeline.length,1)
   assert.deepEqual(timeline[0].kinds,['dm-received'])
   assert.equal(timeline[0].action,'skip')
-  assert.equal(timeline[0].result,'no-action-receipt')
+  assert.equal(timeline[0].result,'voluntary-rest')
   const disk=readFileSync(join(root,'life-agent-events',A+'.json'),'utf8')
   assert.doesNotMatch(disk,/今天先休息|UID|私信正文/)
   assert.equal(JSON.parse(disk).version,1)

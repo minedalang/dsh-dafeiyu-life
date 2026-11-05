@@ -1,4 +1,5 @@
 import { judgeVideoHeat } from './lib/video-heat.mjs'
+import {projectLifeSettings} from './lib/life-settings-projection.mjs'
 import {RECOMMENDED_EXPERIENCE_SETTINGS,RECOMMENDED_EXPERIENCE_GROUPS} from './lib/recommended-experience-settings.mjs'
 import { createPersonalityEvolution } from './lib/personality-evolution.mjs'
 import { normalizeFictionalTurn, runFictionalAiDebug, MAX_FICTIONAL_TURNS } from './lib/personality-ai-debug.mjs'
@@ -5914,7 +5915,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       }catch(e){return sendJson(res,500,{ok:false,error:'自主生活唤醒失败：'+String(e?.message||e).slice(0,120)})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/autonomous-planner'){
-      try{return sendJson(res,200,{...autonomousPlanner.status(),socialDecisionOwnership:socialDecisionOwnership.status(),socialShadow:lifeSocialShadow.status()})}
+      try{return sendJson(res,200,{...autonomousPlanner.status(),lifeSettingsPreview:projectLifeSettings(cfg),socialDecisionOwnership:socialDecisionOwnership.status(),socialShadow:lifeSocialShadow.status()})}
       catch(e){return sendJson(res,500,{ok:false,error:'读取自主调度状态失败：'+String(e?.message||e).slice(0,120)})}
     }
     // 大肥鱼主 Session：只看当前 DSH 里活着的会话，不扫描磁盘上的 sessions 目录。

@@ -1,0 +1,25 @@
+flowchart TD
+  WAKE[管理中心手动唤醒 / 原定时检查] --> SCOPE[可信账号标签与原每日额度]
+  SCOPE --> CANDS[原 AutonomousPlanner 候选装配]
+  T[已接受的只读待办] --> CANDS
+  O[原 LifeOpportunities / 意愿] --> CANDS
+  E[Life Agent 账号匿名事件] --> CANDS
+  CAP[视频能力目录与原 180 分钟 / 日 2 次启动门禁] --> CANDS
+  CANDS --> HAS{存在可执行候选?}
+  HAS -->|否| NO[no-actionable-options 不调用模型]
+  HAS -->|是| MODEL[Life Voice + 原同一模型/额度]
+  MODEL --> PARSE{校验 JSON 与允许动作}
+  PARSE -->|合法 skip| REST[voluntary-rest]
+  PARSE -->|无效格式/目标| INVALID[invalid-decision]
+  PARSE -->|允许动作| SAFE[原只读执行与安全核验]
+  MODEL -->|调用失败| ERROR[明确失败 保留待考虑事件]
+  NO --> JOURNAL[七天匿名时间线：类别数量和诊断枚举]
+  REST --> JOURNAL
+  INVALID --> JOURNAL
+  SAFE --> JOURNAL
+  ERROR --> JOURNAL
+  JOURNAL --> UI[管理中心区分未执行原因]
+  CFG[现有宿主 config / 旧安全权限] --> PROJECTION[只读 projectLifeSettings v1]
+  PROJECTION --> UI
+  PROJECTION -. 不写配置 / 不迁移 .-> HOLD[Phase 6 正式迁移尚未实施]
+  LEGACY[原私信评论决策与发送者] --> GATE[原对外授权和发送回执]

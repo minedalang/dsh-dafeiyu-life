@@ -38,6 +38,7 @@
     "tools/dev4-phase4-offline-acceptance.mjs",
     "tools/dev4-phase5-offline-acceptance.mjs",
     "tools/dev4-manual-wake-offline-acceptance.mjs",
+    "tools/dev4-choice-diagnostics-offline-acceptance.mjs",
     "prompts",
     "vendor",
     "README.md",

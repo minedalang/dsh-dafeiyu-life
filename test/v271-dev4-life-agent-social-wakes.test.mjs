@@ -61,7 +61,7 @@ test('social signal cannot be used to forge a video capability or outbound socia
   r.events.offer({kind:'dm-received',platform:'bilibili',sourceKey:'a'})
   const result=await r.planner.tick({force:true})
   assert.equal(result.action,'skip')
-  assert.equal(result.result,'')
+  assert.equal(result.result,'invalid-decision')
   assert.equal(r.writes,0)
 }))
 
