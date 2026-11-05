@@ -2,20 +2,22 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
-import {join} from 'node:path'
+import {join,delimiter} from 'node:path'
+import {fileURLToPath} from 'node:url'
 import {spawnSync} from 'node:child_process'
 import {createHmac} from 'node:crypto'
 import {readToolAction,createReadActionExecutionGate,ReadActionHeldError} from '../lib/read-action-execution-gate.mjs'
 import {runDev3OfflineAcceptance} from '../lib/dev3-offline-acceptance.mjs'
 
 const BV='BV1abcde1234'
-const python=process.platform==='win32'?'python':'python3'
-const pyFolder=new URL('../vendor/bilibili-mcp/',import.meta.url)
-const pyBase=decodeURIComponent(pyFolder.pathname).replace(/^\/(?=[A-Za-z]:)/,'')
+const python=process.env.PYTHON||(process.platform==='win32'?'python':'python3')
+const pyBase=fileURLToPath(new URL('../vendor/bilibili-mcp/',import.meta.url))
+const pyEnv={...process.env,PYTHONPATH:[pyBase,process.env.PYTHONPATH].filter(Boolean).join(delimiter)}
+const isolatedChild={windowsHide:true,detached:process.platform==='win32'}
 const credential={dedeuserid:'12345',sessdata:'fake-local-test-cookie'}
 const scope=`12345:1:${createHmac('sha256',credential.sessdata).update('12345').digest('hex').slice(0,16)}`
 const home=async fn=>{const dir=mkdtempSync(join(tmpdir(),'dafeiyu-discussion-lock-'));try{return await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
-const py=(script,dir)=>spawnSync(python,['-c',script],{encoding:'utf8',timeout:7000,env:{...process.env,PYTHONPATH:pyBase,BILI_DUTY_HOME:dir}})
+const py=(script,dir)=>spawnSync(python,['-c',script],{encoding:'utf8',timeout:7000,env:{...pyEnv,BILI_DUTY_HOME:dir},...isolatedChild})
 const fixture=dir=>{
   writeFileSync(join(dir,'account-binding.json'),JSON.stringify({activeUid:'12345',generation:1,reviewRequired:false,restartRequired:false}))
   writeFileSync(join(dir,'bili_credential.json'),JSON.stringify(credential))
@@ -62,18 +64,32 @@ test('Node-held comments reservation blocks independent Python but not verified 
 test('Python-held thread lock blocks Node and preserves independent comment-list identity',()=>home(async dir=>{
   fixture(dir)
   const scopeGate=createReadActionExecutionGate({dataDir:dir,getAccountScope:()=>scope})
-  const script=`from read_action_gate import public_read_reservation\nwith public_read_reservation('bili_comment_thread',{'bvid':'${BV}','root':123,'num':20,'target_rpid':56},home=${JSON.stringify(dir)}):\n print('ENTERED',flush=True)\n import time;time.sleep(1.4)`
+  const script=`import sys\nfrom read_action_gate import public_read_reservation\nwith public_read_reservation('bili_comment_thread',{'bvid':'${BV}','root':123,'num':20,'target_rpid':56},home=${JSON.stringify(dir)}):\n print('ENTERED',flush=True)\n sys.stdin.readline()`
   // The independent process owns a real filesystem reservation, no B站 calls.
   const {spawn}=await import('node:child_process')
-  const child=spawn(python,['-c',script],{env:{...process.env,PYTHONPATH:pyBase},stdio:['ignore','pipe','pipe']})
+  const child=spawn(python,['-c',script],{env:pyEnv,stdio:['pipe','pipe','pipe'],...isolatedChild})
+  const finished=new Promise(resolve=>child.once('close',(code,signal)=>resolve({code,signal})))
   try{
-    await new Promise((resolve,reject)=>{let stdout='';const limit=setTimeout(()=>reject(Error('Python fixture did not start')),3000)
-      child.stdout.on('data',x=>{stdout+=x;if(stdout.includes('ENTERED')){clearTimeout(limit);resolve()}});child.once('error',reject)})
+    await new Promise((resolve,reject)=>{
+      let stdout='',stderr=''
+      child.stderr.on('data',x=>{stderr+=x.toString()})
+      const limit=setTimeout(()=>reject(Error(`Python fixture did not start in 3000ms; stderr: ${stderr}`)),3000)
+      child.stdout.on('data',x=>{stdout+=x.toString();if(stdout.includes('ENTERED')){clearTimeout(limit);resolve()}})
+      child.once('error',error=>{clearTimeout(limit);reject(error)})
+      child.once('close',(code,signal)=>{
+        if(!stdout.includes('ENTERED')){clearTimeout(limit);reject(Error(`Python exited before ENTERED (code=${code}, signal=${signal}); stderr: ${stderr}`))}
+      })
+    })
     const same=readToolAction('bili_comment_thread',{bvid:BV,root:123,target_rpid:56})
     await assert.rejects(scopeGate.run(same,async()=>({ok:true})),ReadActionHeldError)
     const other=readToolAction('bili_comments',{bvid:BV})
     assert.equal((await scopeGate.run(other,async()=>({ok:true}))).ok,true)
-  }finally{if(child.exitCode===null){child.kill('SIGKILL');await new Promise(resolve=>child.once('exit',resolve))}}
+    // Let the Python context manager release the lock itself, without a
+    // console-level kill signal that could interrupt Node's Windows test runner.
+    child.stdin.end('release\n')
+    const {code,signal}=await finished
+    assert.equal(code,0,`Python fixture must close normally (code=${code}, signal=${signal})`)
+  }finally{if(child.exitCode===null && !child.stdin.destroyed)child.stdin.end('release\n')}
 }))
 
 test('offline management acceptance uses synthetic state and reports actual checks',async()=>{

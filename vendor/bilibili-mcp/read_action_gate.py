@@ -120,15 +120,58 @@ def _sha(text):
     return hashlib.sha256(text.encode('utf8')).hexdigest()
 
 
-def _pid_alive(pid):
-    if not isinstance(pid, int) or pid <= 0:
+def _windows_pid_alive(pid, kernel32=None):
+    """Query a PID without sending a signal or trusting a stale lock.
+
+    Windows os.kill(pid, 0) is not a portable existence check: it can raise
+    WinError 6 even when the actual parent process is running. Fail closed if
+    the process cannot be opened or queried. The caller also verifies that
+    this PID is the direct parent recorded in the exact reservation.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    if kernel32 is None:
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    open_process = kernel32.OpenProcess
+    open_process.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    open_process.restype = wintypes.HANDLE
+    get_exit_code = kernel32.GetExitCodeProcess
+    get_exit_code.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+    get_exit_code.restype = wintypes.BOOL
+    close_handle = kernel32.CloseHandle
+    close_handle.argtypes = (wintypes.HANDLE,)
+    close_handle.restype = wintypes.BOOL
+
+    # PROCESS_QUERY_LIMITED_INFORMATION. No terminate or write rights.
+    handle = open_process(0x1000, False, pid)
+    if not handle:
         return False
+    try:
+        exit_code = wintypes.DWORD()
+        # 259 = STILL_ACTIVE, per Win32 GetExitCodeProcess.
+        return bool(get_exit_code(handle, ctypes.byref(exit_code))) and exit_code.value == 259
+    finally:
+        close_handle(handle)
+
+
+def _pid_alive(pid):
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    if os.name == 'nt':
+        try:
+            return _windows_pid_alive(pid)
+        except OSError:
+            # Never turn a failed process query into adapter authorization.
+            return False
     try:
         os.kill(pid, 0)
         return True
     except PermissionError:
         return True
     except ProcessLookupError:
+        return False
+    except OSError:
         return False
 
 
