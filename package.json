@@ -36,6 +36,7 @@
     "lib",
     "tools/dev4-cold-state-backup.mjs",
     "tools/dev4-phase4-offline-acceptance.mjs",
+    "tools/dev4-phase5-offline-acceptance.mjs",
     "prompts",
     "vendor",
     "README.md",

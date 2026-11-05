@@ -4,7 +4,7 @@
 
 ## 项目与代码入口
 
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.4`（Life Agent 第四阶段开发预览；社交旧决策独占、匿名唤醒及离线模拟已接线，Life Agent 社交接管尚未实现），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.4`（Life Agent 第五阶段只读影子预览；社交旧决策独占及离线模拟已接线，Life Agent 社交接管尚未实现），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
@@ -80,7 +80,8 @@
 - `SocialPortraitGateway` 的当前账号运行目录可提供从**公开评论**多日不同真实事件得到的脱敏交往偏好线索；需至少两次独立、跨日公开表达，既不访问私信正文也不产生联系人名单、模型可用 UID 或发送许可。撤回、清除、来源过期应立即使候选失效。
 - 原 `LifeOpportunities`、`AutonomousPlanner` 和管理页承接多来源，只能核实已知 BV 元数据或在本地复核公开交流证据，不能写入待办/记忆/社交关系，更不能私信、@、评论或关注。模型提交未知 ID、跨来源动作、当前数据源缺失都不能报告为真实意愿或成功回执；每日 AI 限额及发送门禁不变。见 `docs/architecture/2.7.1-dev3-life-opportunities.md`。
 
-- `2.7.1-dev.4 Phase 4`：Life Agent 在所有模式下均未接管社交；旧 DM/评论的所有权与切号检查见 [`dev.4 Phase 4 当前接线`](docs/architecture/2.7.1-dev4-life-agent-phase4-social-owner.md)。本地模拟不访问 B站、不替代真实平台验收。
+- `dev.4` Life Agent 社交仍由旧 DM／评论回复器唯一决策和发送；Phase 5 单独、默认关闭的 `lifeAgentSocialContextOptIn` 只允许核验好友普通 DM 与公开评论的 10 分钟／420 字进程内影子上下文，模型额外分类计入原每日额度，不授权外发；生产说明见 [`Phase 5`](docs/architecture/2.7.1-dev4-life-agent-phase5-social-shadow.md)，旧归属契约见 [`Phase 4`](docs/architecture/2.7.1-dev4-life-agent-phase4-social-owner.md)。
+
 ## 任何架构变更必须同步更新文档（与代码同一次提交）
 
 以下均属于架构变更：新增／撤销统一层、改变状态来源、事件与数据流、模型上下文装配、渠道接线、权限边界、数据存储、业务 API 或恢复流程。
@@ -92,7 +93,6 @@
 - 如果一轮修改确实**不改变架构**，在提交说明中写明“架构接线未变”；不能默默跳过判断。
 
 ## 研发、测试、提交和发布
-
 - 先定位真实生产入口及现有接口，再实现并添加定向测试；不要把脚本层 mock 当作真实 B站发送成功，也不要为了让测试变绿恢复错误的重复逻辑。
 - 检查 Node.js 全量测试、相关 Python 测试、`node selfcheck.mjs`、`npm pack --dry-run` 与 `git diff --check`；某项失败／超时应如实报告。
 - 交付注明基线、变更文件、复用的统一层、新增内容、未覆盖入口、实机待验收项，提供 Git Patch、中文 Conventional Commit 和适用于 `dev` 的 Git 命令。不得自动发布。

@@ -938,6 +938,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="fields"><div><label for="life-agent-mode">Life Agent 自主生活驱动</label><select id="life-agent-mode"><option value="off">关闭（默认） · 旧定时刷视频保持原样</option><option value="shadow">影子观察 · 收集匿名生活事件，不主动启动视频</option><option value="active">接管自动视频轮 · 同时感知私信/评论事件（回复仍由旧系统执行）</option></select></div></div>
 <div class="toolbar"><button type="button" id="life-agent-wake" class="life-action life-sky">让鱼鱼自主考虑一次（消耗额度）</button><span id="life-agent-status" class="muted" role="status">尚未读取 Life Agent 状态</span></div>
 <p id="life-social-ownership" class="muted" role="status">社交回复所有权：读取中…</p>
+<div class="fields"><div><label for="life-social-context-optin">Phase 5 · 社交上下文影子对照（单独授权）</label><select id="life-social-context-optin"><option value="false">关闭（默认） · 仅匿名事件，绝不读取私信正文</option><option value="true">允许只读影子对照 · 好友入站私信与已核验公开评论</option></select></div></div>
+<p class="muted">启用后，只有鱼鱼先选择关注该社交事件，才会在本进程内读取最长 420 字、最多保留 10 分钟的已核验内容；模型仅选择“倾向回复／延期／沉默”，不会生成外发草稿。每次影子对照额外消耗一次现有每日 AI 决策额度。关闭或切号后不得继续预览。不读取主人私信或陌生人私信，既有旧回复器仍独占真实回复。真正的 B站社交接管尚未开放。</p>
+<p id="life-social-shadow-status" class="muted" role="status">影子对照：读取中…</p>
 <div class="inset" aria-live="polite"><h4>📖 鱼鱼自主生活时间线 · 最近 7 天</h4><p class="muted">同账号、只读诊断：看见了什么契机 → 选择了什么 → 有无真实结果。只显示匿名类别，不保存私信正文、UID 或模型思考原文；影子观察不是已执行。这里不是长期记忆或真实平台回执。</p><div id="life-agent-timeline" class="todo-overview">读取自主生活记录中…</div></div>
 <h4>🤖 已有自主决策额度 · 与 Life Agent 共用</h4>
 <p class="muted">后台 AI 可从已存在的只读待办中选择执行、延期、忽略或跳过，也可在证据充足时请求人生反思。Life Agent 首阶段只能额外请求启动原视频 Agent，不直接调用点赞、关注、收藏、评论或私信工具；原视频 Agent 仍只在已有授权下行动。新安装默认开启，旧用户保留原有开关状态。旧版「定时提醒主 Session」机制已停用。</p>

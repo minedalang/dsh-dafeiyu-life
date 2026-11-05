@@ -1,0 +1,25 @@
+flowchart TD
+  DM[原普通好友 DM 核验收件] --> LOG[原 SocialInteractionCoordinator 成功记录]
+  CO[原公开评论/@ 核验收件] --> LOG
+  LOG --> WAKE[匿名账号作用域 Life Agent 事件]
+  LOG --> OPT{用户单独 opt-in 且账号有效?}
+  OPT -->|否| NO[不暂存正文]
+  OPT -->|是，仅好友 DM 与核验公开评论| RAM[进程内最多 420 字 / 10分钟 / 80条]
+  WAKE --> PLANNER[原 AutonomousPlanner 同一模型与每日额度]
+  PLANNER -->|skip| SKIP[继续原生活]
+  PLANNER -->|consider_social 有效 ID| CHECK{事件与临时授权仍有效?}
+  RAM --> CHECK
+  CHECK -->|否| ANON[只记录匿名注意]
+  CHECK -->|是，额度允许| SECOND[额外一次已计数模型调用：仅 reply/defer/silent]
+  SECOND --> REV{切号/撤权复核}
+  REV -->|失败| DROP[丢弃影子输出]
+  REV -->|通过| CLASS[匿名类别结果码，短期时间线]
+  LOG --> OLD[原 legacy 独占回复决策]
+  OLD --> POLICY[原发送授权、限额、冷却、未知回执保护]
+  POLICY --> SEND[原 B站发送及回执]
+  OLD -.临时决策枚举.-> COMPARE[本进程匿名对照计数]
+  CLASS -.临时决策枚举.-> COMPARE
+  COMPARE --> UI[管理中心短期诊断，不含 UID/正文]
+  OWNER[Phase4 决策所有权契约] -->|只允许 legacy| OLD
+  OWNER -.禁止社交接管.-> PLANNER
+  OFFLINE[Phase5 合成数据模拟] -.不连接 B站/模型.-> OPT

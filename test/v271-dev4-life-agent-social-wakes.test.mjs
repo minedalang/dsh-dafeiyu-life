@@ -114,8 +114,8 @@ test('off mode ignores social events; owner-only and opportunities-only triggers
 
 test('production paths only offer social wake after a verified incoming social record',()=>{
   const src=readFileSync(new URL('../index.js',import.meta.url),'utf8')
-  assert.match(src,/if\(recorded\?\.ok===true\)offerSocialLifeWake\(\{kind:'dm-received',uid,eventId:messageId,verified:true\}\)/)
-  assert.match(src,/if\(sync\?\.ok===true\)offerSocialLifeWake\(\{kind:'comment-received',uid:req.uid,eventId,/)
-  assert.match(src,/verified:req\.contentType==='dynamic'\?req\.dynamicVerified===true:/)
+  assert.match(src,/if\(recorded\?\.ok===true\)\{\s*const id=offerSocialLifeWake\(\{kind:'dm-received',uid,eventId:messageId,verified:true\}\)/)
+  assert.match(src,/if\(sync\?\.ok===true\)\{[\s\S]*?const id=offerSocialLifeWake\(\{kind:'comment-received',uid:req.uid,eventId,/)
+  assert.match(src,/const isVerified=req\.contentType==='dynamic'\?req\.dynamicVerified===true:/)
   assert.match(src,/const offerSocialLifeWake = \(\{kind,uid,eventId,verified=false\}\)/)
 })
