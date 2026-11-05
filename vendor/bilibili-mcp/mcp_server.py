@@ -34,6 +34,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent, ImageContent
 
 from read_action_gate import public_read_reservation, ReadReservationHeld
+from vision_fallback_evidence import classify_visual_fallback
 
 from bilibili_api import video, search, comment, Credential, dynamic, opus
 from bilibili_api import hot, rank, user, session, favorite_list
@@ -801,6 +802,31 @@ async def bili_comment_thread(bvid: str, root: int, num: int = 20, target_rpid: 
             _discussion_receipt('comment_thread_read', bvid, root=root, status='failed')
         return json.dumps({"error": f"读取楼中楼失败：{type(exc).__name__}"}, ensure_ascii=False)
 
+# The fallback may itself run a separate vision model or only hand image blocks
+# to the current video model. Never collapse these into “video watched”.
+async def _subtitle_visual_fallback(bvid, message):
+    observed = await bili_preview_vision(bvid)
+    evidence = classify_visual_fallback(observed)
+    marker = TextContent(type='text', text=json.dumps({
+        'bvid': bvid, 'message': message, 'subtitle_evidence': 'none',
+        **evidence,
+        'note': '仅低清预览证据；不等于看完视频、听过音乐或已核实完整剧情',
+    }, ensure_ascii=False))
+    if isinstance(observed, CallToolResult):
+        return CallToolResult(content=[marker, *observed.content], isError=observed.isError)
+    return CallToolResult(content=[marker, TextContent(type='text', text=str(observed))])
+
+
+def _subtitle_no_text(bvid, message, *, requested):
+    return json.dumps({
+        'bvid': bvid, 'message': message, 'subtitle_evidence': 'none',
+        'visual_fallback': 'not_attempted', 'visual_evidence': 'none',
+        'reason': 'not_requested' if not requested else 'vision_disabled',
+        'can_claim_full_video_watched': False,
+        'can_claim_audio_listened': False,
+    }, ensure_ascii=False)
+
+
 # ========== Tool 3: 获取字幕 ==========
 
 @tool()
@@ -837,16 +863,8 @@ async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
         # per-run limit and independent daily budget remain enforced inside
         # bili_preview_vision.
         if auto_vision_on_missing and os.environ.get('BILI_VISION_ENABLED') == '1':
-            observed = await bili_preview_vision(bvid)
-            marker = TextContent(type='text', text=json.dumps({
-                'bvid': bvid, 'message': '该视频没有字幕',
-                'visual_fallback': 'attempted',
-                'note': '低清图片不能证明看完视频，也不能证明听过音轨',
-            }, ensure_ascii=False))
-            if isinstance(observed, CallToolResult):
-                return CallToolResult(content=[marker, *observed.content])
-            return CallToolResult(content=[marker, TextContent(type='text',text=str(observed))])
-        return json.dumps({"message": "该视频没有字幕"}, ensure_ascii=False)
+            return await _subtitle_visual_fallback(bvid, '该视频没有字幕')
+        return _subtitle_no_text(bvid, '该视频没有字幕', requested=auto_vision_on_missing)
 
     # 优先AI中文字幕
     target = None
@@ -871,16 +889,10 @@ async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
     full_text = "\n".join(texts)
     # A subtitle track can exist while containing no meaningful language (empty
     # body / attribution line). It is not proof that the video has no images.
-    if auto_vision_on_missing and os.environ.get('BILI_VISION_ENABLED') == '1' and (
-            not full_text.strip() or re.fullmatch(r'字幕\s*by.{0,40}', full_text.strip(), flags=re.I)):
-        observed = await bili_preview_vision(bvid)
-        marker = TextContent(type='text', text=json.dumps({
-            'bvid': bvid, 'message': '字幕轨内容不可用', 'visual_fallback': 'attempted',
-            'note': '只返回低清图片与可核验来源，不等于完整观看',
-        }, ensure_ascii=False))
-        if isinstance(observed, CallToolResult):
-            return CallToolResult(content=[marker, *observed.content])
-        return CallToolResult(content=[marker, TextContent(type='text',text=str(observed))])
+    if not full_text.strip() or re.fullmatch(r'字幕\s*by.{0,40}', full_text.strip(), flags=re.I):
+        if auto_vision_on_missing and os.environ.get('BILI_VISION_ENABLED') == '1':
+            return await _subtitle_visual_fallback(bvid, '字幕轨内容不可用')
+        return _subtitle_no_text(bvid, '字幕轨内容不可用', requested=auto_vision_on_missing)
 
     result = {
         "bvid": bvid,
@@ -888,6 +900,10 @@ async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
         "language": target.get("lan_doc", ""),
         "segments": len(texts),
         "text": full_text,
+        "subtitle_evidence": "caption_text",
+        "visual_evidence": "none",
+        "can_claim_full_video_watched": False,
+        "can_claim_audio_listened": False,
     }
     _remember_video_context(bvid, "subtitle", result)
     return json.dumps(result, ensure_ascii=False)

@@ -155,6 +155,22 @@ if ($env:DAFEIYU_NODE_TEST_BATCH_SIZE) {
 }
 Write-Host "Node.js 每批最大测试文件数：$nodeTestBatchSize" -ForegroundColor Cyan
 
+# Fast, no-network evidence check before the long Node.js suite. This tests
+# the subtitle -> vision return contract without a real Bilibili account.
+if ($pythonPath) {
+    Invoke-NativeStep -Name "Python 字幕视觉证据专项（必须通过）" `
+        -FilePath $pythonPath `
+        -Arguments @($pythonArgsPrefix + @("-m", "unittest", "discover", "-s", "test", "-p", "test_v271_subtitle_visual_evidence.py", "-v"))
+    if ($script:Results[-1].Status -ne "PASS") {
+        Write-Host "字幕视觉证据专项失败：已提前停止，未运行全量测试。" -ForegroundColor Red
+        try { Stop-Transcript | Out-Null } catch {}
+        if ($env:DAFEIYU_TEST_COMPLETE_FLAG) {
+            try { Set-Content -LiteralPath $env:DAFEIYU_TEST_COMPLETE_FLAG -Value "FAIL" -Encoding ASCII } catch {}
+        }
+        exit 1
+    }
+}
+
 # 1. Focused regression test.
 Invoke-NativeStep -Name "白名单好友推荐偏好专项测试" `
     -FilePath $nodePath `

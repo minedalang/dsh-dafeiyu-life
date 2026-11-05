@@ -1344,9 +1344,10 @@ function reportMeta() {
     const actual = join(stateDir, 'mcp_server.py')
     const shipped = join(pluginDir, 'vendor', 'bilibili-mcp', 'mcp_server.py')
     try {
-      const helper = 'read_action_gate.py'
+      const helpers = ['read_action_gate.py','vision_fallback_evidence.py']
       if (readFileSync(actual, 'utf8') === readFileSync(shipped, 'utf8') &&
-          readFileSync(join(stateDir,helper),'utf8') === readFileSync(join(pluginDir,'vendor','bilibili-mcp',helper),'utf8')) return true
+          helpers.every(helper=>readFileSync(join(stateDir,helper),'utf8') ===
+            readFileSync(join(pluginDir,'vendor','bilibili-mcp',helper),'utf8'))) return true
     } catch { /* 任一脚本未就绪都禁止启动 */ }
     log('🔒 安全保护：家目录 Python MCP 与当前安装包的已审脚本不同，已拒绝执行。请到电脑管理中心「运行诊断」确认备份并修复；用户自定义代码不会被静默覆盖。')
     return false
