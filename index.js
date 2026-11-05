@@ -1,5 +1,6 @@
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
+import {lifeSettingsV2,planLifeSettingsV2} from './lib/life-settings-control.mjs'
 import {RECOMMENDED_EXPERIENCE_SETTINGS,RECOMMENDED_EXPERIENCE_GROUPS} from './lib/recommended-experience-settings.mjs'
 import { createPersonalityEvolution } from './lib/personality-evolution.mjs'
 import { normalizeFictionalTurn, runFictionalAiDebug, MAX_FICTIONAL_TURNS } from './lib/personality-ai-debug.mjs'
@@ -6363,6 +6364,30 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return sendJson(res,200,{ok:true,mode:cfg.interactionContextMode==='full'?'full':'compact',
         stats:{...interactionContextStats}})
     }
+    // Phase 6: explicit settings facade over EXISTING authoritative config.
+    // No second store, no permissions, no silent migration on GET.
+    if (req.method === 'GET' && path === '/api/bili-duty/life-agent/settings-v2') {
+      refreshCfg()
+      return sendJson(res,200,{ok:true,settings:lifeSettingsV2(cfg)})
+    }
+    if (req.method === 'POST' && path === '/api/bili-duty/life-agent/settings-v2') {
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'仅允许管理中心同源操作'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站配置修改请求'})
+      const body=await readBody(req)
+      refreshCfg()
+      let plan
+      try { plan=planLifeSettingsV2(cfg,body) }
+      catch(e){ return sendJson(res,400,{ok:false,error:String(e?.message||e)}) }
+      if(plan.preview)return sendJson(res,200,{ok:true,plan})
+      // A mode change never grants social send rights or forces a video start.
+      if(!Object.keys(plan.patch).length)return sendJson(res,200,{ok:true,unchanged:true,settings:lifeSettingsV2(cfg),plan})
+      const persisted=await persistCfg(plan.patch)
+      if(plan.patch.lifeAgentMode==='off')lifeSocialShadow.revoke()
+      return sendJson(res,200,{ok:true,settings:lifeSettingsV2(cfg),changed:plan.changed,host:persisted.host,
+        warning:persisted.host.ok?'':'原生 DSH 设置未同步；插件 config.json 已保存，建议重启后核对'})
+    }
+
     if (req.method === 'GET' && path === '/api/bili-duty/config') {
       return sendJson(res, 200, { ok: true, config: cfg, recommendedSettings:RECOMMENDED_EXPERIENCE_SETTINGS, windows: readPeakWindows(cfg.peakWindows), home: stateDir })
     }

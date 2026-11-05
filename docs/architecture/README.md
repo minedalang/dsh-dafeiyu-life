@@ -1,3 +1,7 @@
+## 当前开发增量：dev.4 · Phase 6 统一设置、Phase 7a 成长参考可见性（未完整验收）
+
+- [已接线的显式生活设置保存、旧视频定时器互斥、安全边界与匿名成长参考](./2.7.1-dev4-phase6-settings-phase7-evidence.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev4-phase6-phase7a-live.mmd)。仍写原 `persistCfg`，保留旧配置的高级兼容入口；**没有完成全部旧调度退役、社交决策接管或成长因果闭环**。Windows 与真实模型/B站待验收。
+
 ## 当前开发预览：Phase 5 决策诊断收尾 / Phase 6 只读设置预览
 
 - [真实决策结果分类、无候选免模型调用、历史兼容、设置只读映射与迁移安全条件](./2.7.1-dev4-choice-diagnostics-phase6-settings-preview.md) · [当前 Mermaid 接线](./diagrams/2.7.1-dev4-choice-diagnostics-settings-live.mmd)。本轮**没有**替换旧调度或社交回复者；Windows 和真实模型待验收。
