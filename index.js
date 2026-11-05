@@ -4420,6 +4420,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   const autonomousPlanner=createAutonomousPlanner({
     dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     getTodos:(limit)=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)&&READ_TODO_TYPES.has(x.type)&&(!x.dueAt||x.dueAt<=Date.now())).slice(0,limit),
+    // All accepted obligations reserve their read action, including future-due
+    // ones and those outside the bounded model candidate window.
+    getAcceptedActionReservations:()=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)&&READ_TODO_TYPES.has(x.type)),
     getRelationshipHint:uid=>{try{return existingRelationshipIndex()?.preferenceHint(uid,relationshipOptions())||null}catch{return null}},
     getLifeState:()=>emotionalState.snapshot(),
     getLifeVoice:()=>lifeVoiceContext({scene:'main',maxChars:1900}),
@@ -4427,6 +4430,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeIntentionCues:()=>lifeOpportunities.explorationCues({limit:4}),
     getPrivateLifeAffinity:cues=>privateLifeAffinity.forCues(cues),
     getLifeIntentions:()=>lifeOpportunities.continuations({limit:3}),
+    // Include temporarily cooled-down intentions for duplicate-read checks;
+    // they are NOT offered to the model until their scheduled time.
+    getActiveLifeIntentionReservations:()=>lifeOpportunities.intentions({includeClosed:true,limit:20}),
     getLifeAccountTag:()=>trustedLifeAccountTag(),
     beginLifeExploration:(id,goal,found,tag)=>lifeOpportunities.beginExploration(id,goal,found,tag),
     beginLifeVideoExploration:(id,goal,found,tag)=>lifeOpportunities.beginVideoExploration(id,goal,found,tag),

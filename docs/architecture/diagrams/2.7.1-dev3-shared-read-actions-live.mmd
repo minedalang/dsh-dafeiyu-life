@@ -1,0 +1,22 @@
+flowchart TB
+  OS["主 Session / 主人 DM"] --> Intake["现有核验/已接受待办入口"]
+  DM["普通 DM / 评论与 @"] --> Intake
+  Intake --> TODO["ownerTodos 唯一责任账本"]
+  LIFE["视频探索 / 评论感受 / 后天兴趣"] --> OBS["LifeOpportunities 当前账号生活意愿账本"]
+  REL["关系/人物画像/私密兴趣"] -. "匿名可信决策参考；不授权搜索或发送" .-> Planner
+  TODO --> Bind["AccountBinding 当前账号已接受只读动作保留"]
+  OBS --> Intents["当前账号可考虑线索 + 有效意愿保留"]
+  Bind --> Contract["共享只读动作身份与冲突协调 · 无新状态库"]
+  Intents --> Contract
+  Contract --> Planner["原 AutonomousPlanner / Life Voice / 原 AI 额度"]
+  Planner --> Recheck{"执行前再次核对责任与意愿"}
+  Recheck -- "重合" --> Diag["匿名暂缓诊断 · 不扣新 AI / 不冒称完成"]
+  Recheck -- "合法只读" --> Tools["原 B站只读适配器 / 原待办执行器"]
+  Tools --> Results["真实平台回执"]
+  Results --> Commit["按本次动作的原始归属单独提交回执；不跨账本冒认完成"]
+  Commit --> TODO
+  Commit --> OBS
+  Contract --> Diag
+  Diag --> UI["管理中心 · 自主生活与回执"]
+  Results --> UI
+  Permission["SocialPolicyGate / P6 / 拒联 / 写入幂等"] -. "独立保留；不授新权" .-> DM
