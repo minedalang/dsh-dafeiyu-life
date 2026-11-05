@@ -69,7 +69,8 @@ import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
 import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-continuity.mjs'
 import {todoParentId} from './lib/todo-lineage.mjs'
 import {verifyLifeOutbound,lifeFactsFromCompletedTodos,lifeFactsFromCreatorSnapshot} from './lib/verified-life-facts.mjs'
-import {prepareFriendInterestObservation,recordPreparedFriendInterest, learnedFriendContext, listFriendLearning, clearFriendLearning, isFriendRecommendationFeedback, friendRecommendationGuard } from './lib/friend-learning.mjs'
+import {prepareFriendInterestObservation,recordPreparedFriendInterest, friendInterestSummary, learnedFriendContext, listFriendLearning, clearFriendLearning, isFriendRecommendationFeedback, friendRecommendationGuard } from './lib/friend-learning.mjs'
+import {createPrivateLifeAffinity} from './lib/private-life-affinity.mjs'
 import {createSocialPortraitGateway} from './lib/social-portrait-gateway.mjs'
 import {bilibiliPerson,relationshipPortraitDepth} from './lib/social-person-identity.mjs'
 import {socialTier} from './lib/social-tier.mjs'
@@ -2246,6 +2247,13 @@ function reportMeta() {
   const lifeOpportunities=createLifeOpportunities({stateDir,getCredential:()=>lifeOpportunityAccountReady()?dmCred(stateDir):null,
     getInterestEvidence:tag=>lifeOpportunityAccountReady()?scopedInterestOpportunityEvidence(stateDir,tag):[],
     getPublicPersonEvidence:()=>lifeOpportunityAccountReady()?socialPortrait.publicOpportunitySignals():[]})
+  // Only current-account, fresh, explicit friend evidence may colour fish's own
+  // independent PUBLIC interests. No friend UID/DM text crosses into the public tool.
+  const privateLifeAffinity=createPrivateLifeAffinity({
+    getAccountTag:trustedLifeAccountTag,getFriendDirectory:()=>cfg.friendDirectory,
+    getRelationship:uid=>existingRelationshipIndex()?.get(uid,relationshipOptions())||null,
+    getFriendInterests:(uid,tag)=>friendInterestSummary(stateDir,uid,cfg.friendDirectory,{maxItems:40,accountTag:tag}),
+  })
   const promptFor = () => {
     // ⭐ 章程取哪一份：家里那份优先（ensureCharter 保证铺好；他改过的话就是他那份，升级的事由 ensureCharter 记账处理）
     const duty = charterPath(pluginDir, stateDir)
@@ -3635,7 +3643,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const cognition=socialCognition.prepareObservation({uid,text,source:'dm',eventId:messageId,timestampMs:time})
       if(['friend','stranger'].includes(role)&&!accountBinding.status().blocked)try{socialPortrait.observe({uid,text,source:'dm',eventId:messageId,at:time})}
       catch(e){log('私信好友交流画像未更新：'+String(e?.message||e).slice(0,110))}
-      const interest=socialPolicyGate.canLearn({uid,kind:'dm'})?prepareFriendInterestObservation({uid,text,source:'dm',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory}):null
+      const interest=socialPolicyGate.canLearn({uid,kind:'dm'})?prepareFriendInterestObservation({uid,text,source:'dm',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory,accountTag:trustedLifeAccountTag()}):null
       const lifeEvent=preparePrivateLifeEvent({source:role==='owner'?'owner-dm':'friend-dm',role,uid,eventId:messageId,text,at:time})
       return socialInteractionCoordinator?.record({type:'incoming',source:'dm',eventKey:messageId,actorUid:uid,role,at:time,cognition,interest,lifeEvent})
     },
@@ -3951,7 +3959,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const cognition=socialCognition.prepareObservation({uid:req.uid,text:req.text,source:'comment',eventId,timestampMs:at,bvid:req.bvid})
       if(['friend','stranger'].includes(role)&&!accountBinding.status().blocked)try{socialPortrait.observe({uid:req.uid,text:req.text,source:'comment',eventId,at})}
       catch(e){log('公开评论好友交流画像未更新：'+String(e?.message||e).slice(0,110))}
-      const interest=consent?prepareFriendInterestObservation({uid:req.uid,text:req.text,source:'comment',eventId,bvid:req.bvid,now:at,friendDirectory:cfg.friendDirectory}):null
+      const interest=consent?prepareFriendInterestObservation({uid:req.uid,text:req.text,source:'comment',eventId,bvid:req.bvid,now:at,friendDirectory:cfg.friendDirectory,accountTag:trustedLifeAccountTag()}):null
       const lifeEvent=req.contentType==='dynamic'&&req.dynamicVerified===true
         ?{kind:'social',key:`social:${req.uid}:dynamic:${req.dynamicId}:${req.rpid}`,
           contentType:'dynamic',dynamicId:req.dynamicId,actorUid:req.uid,
@@ -4417,6 +4425,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeVoice:()=>lifeVoiceContext({scene:'main',maxChars:1900}),
     getLifeOpportunities:()=>lifeOpportunities.list({limit:4}),
     getLifeIntentionCues:()=>lifeOpportunities.explorationCues({limit:4}),
+    getPrivateLifeAffinity:cues=>privateLifeAffinity.forCues(cues),
     getLifeIntentions:()=>lifeOpportunities.continuations({limit:3}),
     getLifeAccountTag:()=>trustedLifeAccountTag(),
     beginLifeExploration:(id,goal,found,tag)=>lifeOpportunities.beginExploration(id,goal,found,tag),
@@ -5683,7 +5692,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       }catch(e){return sendJson(res,500,{ok:false,error:'提醒自主决策失败：'+String(e?.message||e).slice(0,140)})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/life-opportunities'){
-      try{return sendJson(res,200,lifeOpportunities.status())}
+      try{const data=lifeOpportunities.status(),privateEvidence=privateLifeAffinity.inspect(lifeOpportunities.explorationCues({limit:4}));return sendJson(res,200,{...data,privateLifeAffinity:privateEvidence.signals,privateLifeAffinityDiagnostics:{checkedFriends:privateEvidence.checkedFriends,unavailable:privateEvidence.unavailable,reason:privateEvidence.reason}})}
       catch(e){return sendJson(res,500,{ok:false,error:'读取生活契机失败：'+String(e?.message||e).slice(0,120)})}
     }
     if(req.method==='POST'&&path==='/api/bili-duty/life-opportunities/reconsider'){

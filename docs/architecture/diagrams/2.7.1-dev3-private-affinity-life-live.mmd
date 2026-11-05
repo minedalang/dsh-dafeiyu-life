@@ -1,0 +1,18 @@
+flowchart TD
+  DM[本账号真实白名单私信 当前明确兴趣] --> PREP[prepareFriendInterestObservation 事件时固定账号标签]
+  PREP --> OUT[既有 SocialInteractionCoordinator 重试 outbox]
+  OUT --> FRIEND[既有 friend-learning 时序兴趣账本]
+  FRIEND --> GATE[PrivateLifeAffinity 只读精确匹配]
+  REL[既有 SocialRelationshipIndex 关系阶段与双向往来] --> GATE
+  PUBLIC[LifeInterests 本账号公开兴趣真实选片证据] --> CUES[LifeOpportunities explorationCues]
+  CUES --> GATE
+  GATE -->|仅公开候选ID和模糊阶段 无UID或私信原文| PLANNER[同一 AutonomousPlanner Life Voice 模型]
+  CUES --> PLANNER
+  PLANNER --> CHOOSE{鱼鱼自己决定}
+  CHOOSE -->|忽略或沉默| NONE[不联系也不生成任务]
+  CHOOSE -->|原有 begin_exploration| SEARCH[既有可信公开号主题 Bilibili 只读搜索]
+  SEARCH --> RECEIPT[真实 BV 搜索回执与同账号意愿]
+  RECEIPT --> UI[人生记忆 自主生活 状态展示]
+  GATE -->|只有匿名提供的参考组数| UI
+  SEND[主动私信 关注 评论] -.-> PERM[原社交发送许可 冷却 退订 回执]
+  PLANNER -.->|没有写动作| SEND
