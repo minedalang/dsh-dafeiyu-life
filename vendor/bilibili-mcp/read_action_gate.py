@@ -1,0 +1,165 @@
+"""Shared on-disk read reservation protocol used by Node and the independent video MCP.
+
+Only verified public read actions are coordinated. Existing JS-owned calls may
+enter through a *verified parent reservation*, but an independent Python process
+must first acquire its own reservation. Stale/unknown actions are never replayed.
+This module has no Bilibili/network imports so it is independently testable.
+"""
+import contextlib
+import hashlib
+import hmac
+import json
+import os
+import re
+import time
+import uuid
+import unicodedata
+from pathlib import Path
+
+_ALLOWED = {'bili_search', 'bili_video_info', 'bili_user_videos', 'bili_creator_relation_status'}
+_BV = re.compile(r'^BV[0-9A-Za-z]{10}$')
+_UID = re.compile(r'^[1-9][0-9]{0,18}$')
+_HEX = re.compile(r'^[a-f0-9]{64}$')
+
+class ReadReservationHeld(Exception):
+    pass
+
+
+def _clean(value):
+    return ' '.join(unicodedata.normalize('NFKC', str(value if value is not None else '')).split()).strip()
+
+
+def _bounded_int(value, default, ceiling):
+    try:
+        n = int(value)
+        if str(value).strip() != str(n) and not isinstance(value, int):
+            return default
+        return min(n, ceiling) if n > 0 else default
+    except (ValueError, TypeError):
+        return default
+
+
+def read_action(tool, args):
+    a = args or {}
+    if tool in ('bili_video_info', 'bili_creator_relation_status'):
+        bv = str(a.get('bvid', ''))
+        if not _BV.fullmatch(bv):
+            raise ValueError('只读动作缺少有效 BV')
+        return tool, bv
+    if tool == 'bili_search':
+        kw = _clean(a.get('keyword', ''))
+        if not kw or len(kw) > 300:
+            raise ValueError('只读搜索缺少有效主题')
+        return tool, json.dumps([kw.lower(), _bounded_int(a.get('num', 10), 10, 100), _clean(a.get('order', 'totalrank'))], ensure_ascii=False, separators=(',', ':'))
+    if tool == 'bili_user_videos':
+        uid = str(a.get('uid', ''))
+        if not _UID.fullmatch(uid):
+            raise ValueError('只读作者资料缺少有效 UID')
+        return tool, json.dumps([uid, _bounded_int(a.get('pn', 1), 1, 10000), _bounded_int(a.get('ps', 30), 30, 100), _clean(a.get('order', 'pubdate')), _clean(a.get('keyword', ''))], ensure_ascii=False, separators=(',', ':'))
+    return None
+
+
+def _safe_dir(path):
+    if path.is_symlink() or (path.exists() and not path.is_dir()):
+        raise ValueError('只读预约目录不安全')
+
+
+def _safe_read(path, max_size=16384):
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > max_size:
+        raise ValueError('只读预约记录不安全')
+    return json.loads(path.read_text(encoding='utf8'))
+
+
+def _write_once(path, item):
+    if path.is_symlink() or path.exists():
+        raise ValueError('只读预约记录已存在')
+    with path.open('x', encoding='utf8') as output:
+        json.dump(item, output, ensure_ascii=False, separators=(',', ':'))
+        output.write('\n')
+
+
+def _account_scope(home):
+    ledger = _safe_read(home / 'account-binding.json')
+    cred = _safe_read(home / 'bili_credential.json', 4096)
+    uid = str(cred.get('dedeuserid', ''))
+    secret = str(cred.get('sessdata', ''))
+    if not _UID.fullmatch(uid) or not secret or uid != str(ledger.get('activeUid', '')) or ledger.get('reviewRequired') or ledger.get('restartRequired') or (home / 'account-login-pending.json').exists():
+        raise ValueError('当前 B站账号或凭据作用域未完成核验')
+    generation = ledger.get('generation')
+    if not isinstance(generation, int) or generation < 1:
+        raise ValueError('账号代次无效')
+    tag = hmac.new(secret.encode('utf8'), uid.encode('utf8'), hashlib.sha256).hexdigest()[:16]
+    return f'{uid}:{generation}:{tag}'
+
+
+def _sha(text):
+    return hashlib.sha256(text.encode('utf8')).hexdigest()
+
+
+def _pid_alive(pid):
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except PermissionError:
+        return True
+    except ProcessLookupError:
+        return False
+
+
+@contextlib.contextmanager
+def public_read_reservation(tool, args, *, home=None, adapter=False):
+    """Fail closed on blocked reservation. `adapter` is only trusted for
+    an actual Node parent process holding this exact action's reservation.
+    """
+    action = read_action(tool, args)
+    if action is None or home is None:
+        yield
+        return
+    home = Path(home).resolve()
+    scope = _account_scope(home)
+    operation, target = action
+    key = _sha(json.dumps([scope, 'public', operation, target], separators=(',', ':'), ensure_ascii=False))
+    base = home / 'read-action-executions'
+    locks, receipts = base / 'locks', base / 'receipts'
+    for directory in (home, base, locks, receipts):
+        _safe_dir(directory)
+        directory.mkdir(mode=0o700, exist_ok=True)
+    folder = locks / key
+    acquired = False
+    try:
+        folder.mkdir(mode=0o700)
+        acquired = True
+    except FileExistsError:
+        entry = None
+        try:
+            entry = _safe_read(folder / 'entry.json', 4096)
+        except (OSError, ValueError, TypeError, KeyError):
+            pass
+        if not (adapter and entry and entry.get('id') == key and entry.get('operation') == operation and entry.get('scopeHash') == _sha(scope)[:20] and entry.get('state') == 'executing' and entry.get('pid') == os.getppid() and _pid_alive(entry.get('pid'))):
+            raise ReadReservationHeld('相同的只读动作正在执行或等待人工核查，未重复访问 B站')
+        # Node handles receipt and release after this nested in-process MCP call.
+        yield
+        return
+    at = int(time.time() * 1000)
+    record = dict(version=1, id=key, scopeHash=_sha(scope)[:20], operation=operation,
+                  source='python-video-agent', sourceHash='', obligationHash='', at=at,
+                  pid=os.getpid(), state='executing')
+    returned = False
+    try:
+        _write_once(folder / 'entry.json', record)
+        yield
+        if _account_scope(home) != scope:
+            raise ValueError('读取期间 B站账号作用域变化，拒绝旧账号数据')
+        returned = True
+    except Exception:
+        # Failed/unknown may already have hit the server. Keep the lock for review.
+        raise
+    finally:
+        if acquired and returned:
+            receipt = dict(record, state='tool-returned', finishedAt=int(time.time() * 1000))
+            path = receipts / (str(receipt['finishedAt']).zfill(15) + '-' + str(uuid.uuid4()) + '.json')
+            _write_once(path, receipt)
+            (folder / 'entry.json').unlink()
+            folder.rmdir()

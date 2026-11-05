@@ -33,6 +33,8 @@ import hmac
 from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent, ImageContent
 
+from read_action_gate import public_read_reservation, ReadReservationHeld
+
 from bilibili_api import video, search, comment, Credential, dynamic, opus
 from bilibili_api import hot, rank, user, session, favorite_list
 from bilibili_api.video_uploader import (
@@ -304,9 +306,36 @@ async def bili_check_credential() -> str:
         }, ensure_ascii=False)
 
 
+
+# Shared protocol for direct Headless MCP and the plugin-owned JS adapter.
+# The child may reuse an existing lock ONLY when its immediate parent process
+# actually holds that exact operation's executing reservation.
+def _gate_read(name):
+    import functools
+    def decorate(function):
+        @functools.wraps(function)
+        async def wrapped(*args, **kwargs):
+            import inspect
+            params = inspect.signature(function).bind(*args, **kwargs)
+            params.apply_defaults()
+            home = os.environ.get('BILI_DUTY_HOME')
+            try:
+                with public_read_reservation(name, params.arguments, home=home,
+                        adapter=os.environ.get('BILI_JS_MCP_ADAPTER') == '1'):
+                    return await function(*args, **kwargs)
+            except ReadReservationHeld as exc:
+                return json.dumps({'ok': False, 'blocked': True, 'status': 'reservation-held',
+                                  'error': str(exc)}, ensure_ascii=False)
+            except (ValueError, OSError) as exc:
+                return json.dumps({'ok': False, 'blocked': True, 'status': 'reservation-unavailable',
+                                  'error': str(exc)[:140]}, ensure_ascii=False)
+        return wrapped
+    return decorate
+
 # ========== Tool 1: 搜索视频 ==========
 
 @tool()
+@_gate_read('bili_search')
 async def bili_search(keyword: str, num: int = 10, order: str = "totalrank") -> str:
     """
     搜索B站视频
@@ -892,6 +921,7 @@ async def bili_danmaku(bvid: str, num: int = 100) -> str:
 # ========== Tool 5: 视频详情 ==========
 
 @tool()
+@_gate_read('bili_video_info')
 async def bili_video_info(bvid: str) -> str:
     """
     获取B站视频的详细信息
@@ -1726,6 +1756,7 @@ async def bili_creator_encounter(bvid: str) -> str:
 
 
 @tool()
+@_gate_read('bili_creator_relation_status')
 async def bili_creator_relation_status(bvid: str) -> str:
     # 单目标只读状态查询
     if (e:=_guard('bili_creator_relation_status')):return e
@@ -3554,6 +3585,7 @@ async def bili_user_info(uid: int) -> str:
 # ========== Tool 18: 用户视频列表 ==========
 
 @tool()
+@_gate_read('bili_user_videos')
 async def bili_user_videos(uid: int, pn: int = 1, ps: int = 30, order: str = "pubdate", keyword: str = "") -> str:
     """
     获取B站用户的投稿视频列表
