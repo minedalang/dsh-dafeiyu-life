@@ -1,6 +1,8 @@
 ## 当前开发预览：2.7.1-dev.3 自主待办与生活意愿的共享只读动作协调（增量）
 
-- [真实已接受待办、生活契机与跨轮意愿的共用动作身份、去重和执行前核验](./2.7.1-dev3-shared-action-arbitration.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev3-shared-read-actions-live.mmd)。只在原 `AutonomousPlanner` 内对**同一只读动作**协调候选；待办仍是履约账本，生活意愿仍可自然放下，外部发送权限不变。管理中心可查匿名去重而非虚假完成。未做跨进程全局去重、其它 Agent 的执行器迁移和真实 B站端到端验收。
+- [2.7.1-dev.3 · 共用 JS 只读执行预约与保守恢复](./2.7.1-dev3-durable-read-execution.md)：已实现跨 Node 进程只读互斥、同账号作用域、人工恢复；Python Headless 与社交写操作尚未接入。 [当前生产执行图](./diagrams/2.7.1-dev3-durable-read-execution-live.mmd)。
+
+- [真实已接受待办、生活契机与跨轮意愿的共用动作身份、去重和执行前核验](./2.7.1-dev3-shared-action-arbitration.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev3-shared-read-actions-live.mmd)。只在原 `AutonomousPlanner` 内对**同一只读动作**协调候选；待办仍是履约账本，生活意愿仍可自然放下，外部发送权限不变。管理中心可查匿名去重而非虚假完成。新增 JS 共享调用入口已实现部分跨进程预约；独立 Python 视频 Agent、其余工具及真实 B站端到端验收仍未覆盖。
 
 # 大肥鱼 · 当前技术架构
 

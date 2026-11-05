@@ -1005,6 +1005,11 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div id="life-curiosity-list" class="records records-scroll"></div></div></details>
 <details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
 </details></div>
+<div id="read-action-executions-section" class="settings-section life-section">
+<div class="toolbar"><h4 style="margin:0">🧩 共用只读动作 · 预约与恢复</h4><button id="read-action-executions-refresh" type="button" class="life-action life-sky">刷新真实动作回执</button></div>
+<p class="muted">仅统计经过插件 JavaScript 共用 B站调用适配器的公开视频详情、公开搜索、作者投稿及作者关系查询。独立 Python 视频 Agent 与社交外发暂不在此范围。只读工具返回不等于已观看、关注或完成承诺；中断预约不会自动重试，需先核实原状态。</p>
+<p id="read-action-executions-status" class="muted" role="status">尚未读取共享动作状态</p><div id="read-action-executions-list" class="records records-scroll" aria-live="polite"></div>
+</div>
 <div id="life-opportunities-section" class="settings-section life-section">
 <div class="toolbar"><h4 style="margin:0">🐟 自主生活 · 线索、意愿与真实回执</h4><button id="life-opportunities-refresh" type="button" class="life-action life-sky">刷新契机记录</button><button id="life-opportunities-reconsider" type="button" class="life-action life-purple">提醒鱼鱼考虑一次（消耗 AI 额度）</button></div>
 <p class="muted">鱼鱼可参考当前账号的<strong>评论观察、跨日自主选片兴趣、公开交流证据</strong>，自主决定只读探索或保持沉默。首批新增：可信兴趣经历即使原候选已关闭，仍可由鱼鱼自行产生“我想进一步探索”的目的，通过真实 B站公开搜索保留 BV；之后不必重进刷视频轮，也能自主选中实际搜索结果核实或放下。独立自主调度沿用原每日 AI 额度；单纯自由探索增加最长 6 小时的重复考虑冷却。不会自动创建待办、评论、私信、关注，也不代表已观看或听见音频。</p>

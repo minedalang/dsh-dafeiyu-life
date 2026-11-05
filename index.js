@@ -47,6 +47,8 @@ import { verifyRecent, appendVerifyToReport } from './lib/verify.mjs'
 import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charterPath, dayKey } from './lib/state.mjs'
 import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
 import { createAccountBinding } from './lib/account-binding.mjs'
+import { createReadActionExecutionGate,readToolAction } from './lib/read-action-execution-gate.mjs'
+import {AsyncLocalStorage} from 'node:async_hooks'
 import { resolveUid } from './lib/uid.mjs'
 import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch } from './lib/dm.mjs'
 import { ensureUv } from './lib/uvfetch.mjs'
@@ -469,6 +471,15 @@ export function apply(ctx, config) {
   // Character identity is stable; B站 UID is a replaceable, verified transport identity.
   const accountBinding = createAccountBinding({dataDir:stateDir})
   const accountRuntimeDir = accountBinding.runtimeDir()
+  // Cross-process gate for reads that pass the shared JS MCP adapter.
+  // Independent Python Headless MCP tools do not pass here yet.
+  const readActionContext=new AsyncLocalStorage()
+  const readActionGate=createReadActionExecutionGate({dataDir:stateDir,getAccountScope:()=>{
+    const bound=accountBinding.assertReady()
+    const credentialTag=discussionAccountTag(dmCred(stateDir))
+    if(!credentialTag)throw Error('无法验证只读动作的当前凭据作用域')
+    return `${bound.activeUid}:${bound.generation}:${credentialTag}`
+  },logger:{warn:m=>console.warn(m)}})
   const biliReadBudget=createBiliReadBudget({dataDir:accountRuntimeDir,logger:{warn:msg=>console.warn(msg)}})
   const dmPollCursor=createDmPollCursor({dataDir:accountRuntimeDir})
   accountBinding.acknowledgeRestart() // Startup boundary: no in-flight old-account operations survive.
@@ -1097,7 +1108,21 @@ function reportMeta() {
     accountBinding.assertReady()
     const task=ownerTodos.list({includeClosed:true,limit:500}).find(x=>x.id===id)
     if(!accountBinding.taskAllowed(task))return {ok:false,blocked:true,error:'旧 B站账号的待办被冻结，不能用新账号执行'}
-    const result=await ownerTodos.run(id,executeOwnerTodo)
+    // Reserve exact same-theme reads BEFORE entering ownerTodos.run(). Otherwise
+    // two Node processes could both begin the same TODO before the shared MCP
+    // adapter rejects the second platform request, racing to overwrite status.
+    // The inner bili_search call recognizes the same enclosing reservation.
+    const preAction=task?.type==='search_videos'
+      ?readToolAction('bili_search',{keyword:String(task.topic||'').trim().slice(0,100),num:10,order:'totalrank'})
+      :task?.type==='inspect_creator_videos'
+        ?readToolAction('bili_user_videos',{uid:Number(task.uid),pn:1,ps:20,order:'pubdate'})
+        :null
+    const context={source:'owner-todo',sourceId:task.id,obligationId:task.id,...(preAction?{preReservedAction:preAction}:{})}
+    let result
+    try{
+      const execute=()=>readActionContext.run(context,()=>ownerTodos.run(id,executeOwnerTodo))
+      result=preAction?await readActionGate.run({...preAction,source:'owner-todo',sourceId:task.id,obligationId:task.id},execute):await execute()
+    }catch(e){if(e?.code==='reservation-held')return {ok:false,blocked:true,error:'同一只读动作已有其它入口执行或待核查，未开始本次待办执行'};throw e}
     if(result?.ok===true&&['watch_video','search_videos'].includes(task?.type))try{ownerTodoFollowup.queue(task,result.result)}catch(e){log('待办完成后回访入队失败：'+String(e?.message||e).slice(0,100))}
     return result
   }
@@ -1371,9 +1396,13 @@ function reportMeta() {
     if (cfg.masterEnabled !== true) throw new Error('大肥鱼已暂停：请先开启总开关')
     const client = await ensureMcp()
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
-    return monitoredReadTools.has(toolName)
-      ? await biliReadBudget.guard('mcp:'+toolName,()=>client.call(toolName,args,opts))
-      : await client.call(toolName,args,opts)
+    const dispatch=()=>monitoredReadTools.has(toolName)
+      ? biliReadBudget.guard('mcp:'+toolName,()=>client.call(toolName,args,opts))
+      : client.call(toolName,args,opts)
+    const action=readToolAction(toolName,args)
+    const context=readActionContext.getStore()||{}
+    const alreadyReserved=action&&context.preReservedAction?.operation===action.operation&&context.preReservedAction?.target===action.target
+    return action&&!alreadyReserved?await readActionGate.run({...action,source:context.source,sourceId:context.sourceId,obligationId:context.obligationId},dispatch):await dispatch()
     } finally {release()}
   }
 
@@ -4441,7 +4470,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     inspectLifeCreatorSpace:(id,proof,tag)=>lifeOpportunities.inspectCreatorSpace(id,proof,tag),
     failLifeCreatorRead:(id,tag)=>lifeOpportunities.failCreatorRead(id,tag),
     abandonLifeExploration:(id,reason,tag)=>lifeOpportunities.abandonExploration(id,reason,tag),
-    executeLifeSearch:async(topic)=>{
+    executeLifeSearch:async(topic)=>readActionContext.run({source:'life-planner'},async()=>{
       // The query comes solely from current-account verified LifeInterests,
       // never from the model's free-form goal or untrusted comment contents.
       const good=lifeOpportunities.list({includeClosed:true,limit:30}).some(x=>x.source==='interest-milestone'&&x.topic===topic)
@@ -4449,8 +4478,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const data=parseMaybeJson(await call('bili_search',{keyword:topic,num:10,order:'totalrank'}))
       if(data?.ok===false)return {ok:false,error:'公开搜索失败'}
       return {ok:true,topic,videos:selectSearchVideos(data,{limit:5})}
-    },
-    executeCreatorSpace:async(bvid)=>{
+    }),
+    executeCreatorSpace:async(bvid)=>readActionContext.run({source:'life-planner'},async()=>{
       // Never accept a model-generated UID. One verified BV resolves the actual
       // author through existing guarded read-only Bilibili adapters.
       if(!lifeOpportunityAccountReady())return {ok:false,error:'账号切换未完成'}
@@ -4463,15 +4492,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           if(!Number.isSafeInteger(Number(uid)))return {ok:false,error:'作者 UID 精度不可验证'}
           return parseMaybeJson(await call('bili_user_videos',{uid:Number(uid),pn:1,ps:12,order:'pubdate'}))
         }})
-    },
+    }),
     recordOpportunityDecision:(id,action,opts)=>lifeOpportunities.decide(id,action,opts),
-    executeOpportunityRead:async(bvid)=>{
+    executeOpportunityRead:async(bvid)=>readActionContext.run({source:'life-planner'},async()=>{
       if(!/^BV[0-9A-Za-z]{10}$/.test(String(bvid||'')))return {ok:false,error:'BV 证据无效'}
       // Use the existing guarded read adapter and its per-account read budget.
       const info=parseMaybeJson(await call('bili_video_info',{bvid}))
       if(info?.bvid!==bvid||!String(info.title||'').trim())return {ok:false,error:'平台未返回匹配的视频元数据'}
       return {ok:true,bvid,title:String(info.title).slice(0,100)}
-    },
+    }),
     recheckWillingness:task=>dualContextAgency.assessReadExecution({task}),
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars),
     executeRead:(id)=>{
@@ -5696,6 +5725,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const result=await autonomousPlanner.tick({force:true,todosOnly:true})
         return sendJson(res,result.ok===false?409:200,result)
       }catch(e){return sendJson(res,500,{ok:false,error:'提醒自主决策失败：'+String(e?.message||e).slice(0,140)})}
+    }
+    if(req.method==='GET'&&path==='/api/bili-duty/read-action-executions'){
+      try{return sendJson(res,200,readActionGate.status())}
+      catch(e){return sendJson(res,500,{ok:false,error:'只读动作执行诊断不可用：'+String(e?.message||e).slice(0,100)})}
+    }
+    if(req.method==='POST'&&path==='/api/bili-duty/read-action-executions/acknowledge'){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'仅允许管理中心同源复核'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站复核'})
+      try{const body=await readBody(req);const r=readActionGate.acknowledge(String(body?.id||''),{confirm:body?.confirm===true});return sendJson(res,r.ok?200:409,r)}
+      catch(e){return sendJson(res,500,{ok:false,error:'中断动作复核失败：'+String(e?.message||e).slice(0,100)})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/life-opportunities'){
       try{const data=lifeOpportunities.status(),privateEvidence=privateLifeAffinity.inspect(lifeOpportunities.explorationCues({limit:4}));return sendJson(res,200,{...data,privateLifeAffinity:privateEvidence.signals,privateLifeAffinityDiagnostics:{checkedFriends:privateEvidence.checkedFriends,unavailable:privateEvidence.unavailable,reason:privateEvidence.reason}})}
