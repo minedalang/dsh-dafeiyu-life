@@ -40,6 +40,7 @@
     "tools/dev4-manual-wake-offline-acceptance.mjs",
     "tools/dev4-choice-diagnostics-offline-acceptance.mjs",
     "tools/dev4-phase6-phase7a-offline-acceptance.mjs",
+    "tools/dev4-phase6b-phase7b-offline-acceptance.mjs",
     "prompts",
     "vendor",
     "README.md",

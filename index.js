@@ -1,6 +1,6 @@
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
-import {lifeSettingsV2,planLifeSettingsV2} from './lib/life-settings-control.mjs'
+import {lifeSettingsV2,planLifeSettingsV2,legacyVideoTimerAllowed,assertLegacyVideoPatchCompatible} from './lib/life-settings-control.mjs'
 import {RECOMMENDED_EXPERIENCE_SETTINGS,RECOMMENDED_EXPERIENCE_GROUPS} from './lib/recommended-experience-settings.mjs'
 import { createPersonalityEvolution } from './lib/personality-evolution.mjs'
 import { normalizeFictionalTurn, runFictionalAiDebug, MAX_FICTIONAL_TURNS } from './lib/personality-ai-debug.mjs'
@@ -1296,6 +1296,7 @@ function reportMeta() {
       ? {...patch,...directoryToLegacy(patch.friendDirectory)}
       : patch
     const clean = clampPatch('mentionProfiles' in mergedPatch ? {...mergedPatch, mentionTargets: mergedPatch.mentionTargets ?? cfg.mentionTargets, friendDirectory: mergedPatch.friendDirectory ?? cfg.friendDirectory, mentionName: mergedPatch.mentionName ?? cfg.mentionName} : mergedPatch)
+    assertLegacyVideoPatchCompatible(cfg,clean)
     if (clean.masterEnabled===true && !firstStart.isReady())throw Error(firstStart.message())
     if ('masterEnabled' in clean) {
       // 先同步文件，再持久化；写入失败必须报错，不能出现界面显示已暂停而 Python 仍可外发。
@@ -2979,7 +2980,7 @@ function reportMeta() {
   const tick = () => {
     try {
       refreshCfg()                    // ⭐ 定时器活得比设置页久：每一跳都重新读一遍配置
-      if (cfg.masterEnabled !== true || !cfg.peakValley || cfg.lifeAgentMode==='active') return
+      if (!legacyVideoTimerAllowed(cfg)) return
       const now = new Date()
       const windows = readPeakWindows(cfg.peakWindows)
       const active = activePeakWindow(now, windows)
