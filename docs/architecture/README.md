@@ -1,6 +1,10 @@
-## dev.4 目标架构决策（设计已选型，尚未实现）
+## 当前开发预览：2.7.1-dev.4 Life Agent 第一阶段已接入；完整目标仍在实施
 
-- [统一 Life Agent：四方案比较、事件驱动选型、记忆成长与 Token 预算、旧流程重构/回滚/验收](./2.7.1-dev4-life-agent-decision-adr.md) · [目标 Mermaid](./diagrams/2.7.1-dev4-life-agent-target.mmd)。**这是目标图，不是生产接线图**；允许替换旧定时刷视频生活驱动，复用现有人格、记忆、关系、待办、权限和 dev.3 执行回执。
+- [统一 Life Agent 的正式架构决策与目标图](./2.7.1-dev4-life-agent-decision-adr.md) · [目标 Mermaid](./diagrams/2.7.1-dev4-life-agent-target.mmd)。选择 C：事件驱动、单主体、连续记忆成长，允许重构旧定时视频生活驱动；**目标图不等于已完成的生产接线**。
+
+- [第一阶段已实现接线与验收](./2.7.1-dev4-life-agent-phase1.md) · [本阶段实际生产图](./diagrams/2.7.1-dev4-life-agent-phase1-live.mmd)：同一自主规划器可选择视频探索或休息；管理中心可以关闭、影子观察或接管旧自动视频轮，默认关闭。社交决策仍由旧入口处理，Windows 和真实 B站待验收。
+
+- [后续重构与迁移细化方案](./2.7.1-dev4-unified-life-agent-refactor-plan.md)：复用原人格、记忆、关系、待办、权限和 dev.3 回执，逐步迁移社交、工具规划与成长反馈。
 
 - [2.7.1-dev.3 · 跨语言预约、待办事务与顺路热评](./2.7.1-dev3-cross-language-execution-and-comment-followup.md)：Node/Python 同一只读预约、待办短事务锁和独立的顺路热门评论回复链。[生产图](./diagrams/2.7.1-dev3-cross-language-execution-live.mmd)。
 ## 当前开发预览：2.7.1-dev.3 自主待办与生活意愿的共享只读动作协调（增量）
