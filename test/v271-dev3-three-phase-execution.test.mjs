@@ -7,6 +7,8 @@ import {spawnSync} from 'node:child_process'
 import {createHmac} from 'node:crypto'
 import {fileURLToPath} from 'node:url'
 import {readToolAction,createReadActionExecutionGate,ReadActionHeldError} from '../lib/read-action-execution-gate.mjs'
+import {createOutboundActionStatus} from '../lib/outbound-action-status.mjs'
+import {mkdirSync,readdirSync} from 'node:fs'
 
 const BV='BV1abcde1234', python=process.env.PYTHON||(process.platform==='win32'?'python':'python3')
 const pyDir=fileURLToPath(new URL('../vendor/bilibili-mcp/',import.meta.url))
@@ -81,3 +83,32 @@ test('all five outbound types pass through real network-edge reservation without
   assert.match(source,/marker\.rmdir\(\)/)
   assert.doesNotMatch(source,/asyncio\.sleep|auto_retry|retry_send/)
 })
+
+
+test('outbound diagnostics distinguish confirmed same-day locks from unresolved and stale marker after receipt',()=>home(async dir=>{
+  const source=`from outbound_action_gate import outbound_reservation
+with outbound_reservation('dm','701234','confirmed-body',home=${JSON.stringify(dir)}) as claim:
+ claim.confirm('12345678901')
+with outbound_reservation('comment','BV1abcde1234:12','unresolved-body',home=${JSON.stringify(dir)}):
+ pass`
+  const r=py(source);assert.equal(r.status,0,r.stderr||String(r.error))
+  const read=createOutboundActionStatus({dataDir:dir,getAccountScope:()=>scope})
+  const first=read()
+  assert.equal(first.locks,1,'confirmed same-day lock cannot be called pending')
+  assert.equal(first.recent.length,1)
+  assert.equal(first.pending[0].state,'outcome-unverified')
+  assert.equal(first.pending[0].kind,'comment')
+
+  // Simulate crash AFTER receipt write, BEFORE unresolved marker cleanup.
+  const all=readdirSync(join(dir,'outbound-action-executions','locks'))
+  const dm=all.map(id=>JSON.parse(readFileSync(join(dir,'outbound-action-executions','locks',id,'entry.json'),'utf8'))).find(x=>x.kind==='dm')
+  assert.match(dm.stableHash,/^[a-f0-9]{64}$/)
+  mkdirSync(join(dir,'outbound-action-executions','unresolved',dm.stableHash))
+  const second=read()
+  assert.equal(second.locks,2,'stale marker must stay visible until review')
+  assert.ok(second.pending.some(x=>x.kind==='dm'&&x.state==='receipt-recorded-marker-review'))
+  assert.equal(second.recent.length,1)
+  const other=createOutboundActionStatus({dataDir:dir,getAccountScope:()=>scope+'-other'})()
+  assert.equal(other.locks,0,'diagnostics may not leak another account')
+  assert.equal(other.recent.length,0)
+}))

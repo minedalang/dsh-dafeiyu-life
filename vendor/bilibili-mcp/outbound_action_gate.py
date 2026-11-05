@@ -85,7 +85,7 @@ def outbound_reservation(kind, target, content='', *, home=None):
         raise
     record = {'version': 1, 'id': key, 'scopeHash': _sha(scope)[:20],
               'kind': kind, 'targetHash': _sha(target)[:16],
-              'contentHash': _sha(content)[:16], 'day': day,
+              'contentHash': _sha(content)[:16], 'stableHash': stable, 'day': day,
               'pid': os.getpid(), 'at': int(time.time()*1000), 'state': 'executing'}
     claim = OutboundReservation(record, folder, receipts)
     try:
