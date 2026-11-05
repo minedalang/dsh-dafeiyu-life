@@ -895,6 +895,7 @@ async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
 # ========== Tool 4: 获取弹幕 ==========
 
 @tool()
+@_gate_read('bili_danmaku')
 async def bili_danmaku(bvid: str, num: int = 100) -> str:
     """
     获取B站视频的弹幕

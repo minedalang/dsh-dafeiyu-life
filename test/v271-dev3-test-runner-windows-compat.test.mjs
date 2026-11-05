@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs'
 const at=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8')
 
 test('cross-language test subprocesses use OS-native fileURLToPath and selected Python',()=>{
-  for(const name of ['v271-dev3-crosslang-todo-transaction.test.mjs','v271-dev3-discussion-shared-gate.test.mjs']){
+  for(const name of ['v271-dev3-crosslang-todo-transaction.test.mjs','v271-dev3-discussion-shared-gate.test.mjs','v271-dev3-danmaku-read-gate.test.mjs']){
     const source=at('test/'+name)
     assert.match(source,/fileURLToPath\(new URL\('\.\.\/vendor\/bilibili-mcp\/'/)
     assert.match(source,/process\.env\.PYTHON\|\|/)
@@ -34,7 +34,7 @@ test('Windows all-Node runner batches all files, isolates cross-language probes,
   assert.match(powershell,/--test-concurrency=\$nodeTestConcurrency/)
   assert.match(powershell,/--test-concurrency=1/)
   assert.match(powershell,/\$mainTestFiles\s*=\s*@\(\$testFiles\s*\|\s*Where-Object/)
-  for(const name of ['v271-dev3-crosslang-todo-transaction.test.mjs','v271-dev3-discussion-shared-gate.test.mjs']){
+  for(const name of ['v271-dev3-crosslang-todo-transaction.test.mjs','v271-dev3-discussion-shared-gate.test.mjs','v271-dev3-danmaku-read-gate.test.mjs']){
     assert.ok(powershell.includes(name),`missing independently-required ${name}`)
   }
   assert.match(powershell,/\$scheduledTestFiles -ne \$testFiles\.Count/)
@@ -52,7 +52,7 @@ test('cross-language subprocess fixture fails with a real error instead of unres
 
 
 test('cross-language Windows fixtures isolate console groups and do not send kill signals',()=>{
-  for(const file of ['v271-dev3-crosslang-todo-transaction.test.mjs','v271-dev3-discussion-shared-gate.test.mjs']){
+  for(const file of ['v271-dev3-crosslang-todo-transaction.test.mjs','v271-dev3-discussion-shared-gate.test.mjs','v271-dev3-danmaku-read-gate.test.mjs']){
     const source=at('test/'+file)
     assert.match(source,/windowsHide:true,detached:process\.platform==='win32'/)
     assert.match(source,/stdio:\['pipe','pipe','pipe'\]/)

@@ -9,7 +9,7 @@ console.log(`结果：${result.passed}/${result.total} 通过`)
 if(!result.ok){process.exitCode=1}
 if(process.argv.includes('--crosslang')||process.argv.includes('--all')){
  console.log('\n跨语言预约与待办并发专项：使用虚拟账号和真实子进程')
- const cmd=spawnSync(process.execPath,['--test','test/v271-dev3-discussion-shared-gate.test.mjs','test/v271-dev3-crosslang-todo-transaction.test.mjs'],{cwd:new URL('../',import.meta.url),stdio:'inherit',timeout:120000})
+ const cmd=spawnSync(process.execPath,['--test','--test-concurrency=1','test/v271-dev3-discussion-shared-gate.test.mjs','test/v271-dev3-crosslang-todo-transaction.test.mjs','test/v271-dev3-danmaku-read-gate.test.mjs'],{cwd:new URL('../',import.meta.url),stdio:'inherit',timeout:120000})
  if(cmd.error||cmd.status!==0)process.exitCode=1
 }
 
