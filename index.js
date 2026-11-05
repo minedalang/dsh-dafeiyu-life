@@ -61,6 +61,7 @@ import { intakeAiReadProposals } from './lib/social-todo-intake.mjs'
 import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/owner-todos.mjs'
 import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-planner.mjs'
 import { createLifeAgentEvents } from './lib/life-agent-events.mjs'
+import { createSocialDecisionOwnership } from './lib/social-decision-ownership.mjs'
 import { createLifeCapabilities } from './lib/life-capabilities.mjs'
 import { queueOwnerDmReadTodo, parseOwnerDmTodo } from './lib/owner-dm-commands.mjs'
 import { createOwnerTodoFollowup } from './lib/owner-todo-followup.mjs'
@@ -2797,6 +2798,9 @@ function reportMeta() {
   let dutyChild = null
   let dutyStartedAt = 0
   let lifeAgentEvents = null
+  const socialDecisionOwnership=createSocialDecisionOwnership({
+    getAccountTag:trustedLifeAccountTag,getLifeAgentMode:()=>cfg.lifeAgentMode
+  })
   // One account-scoped wake adapter for verified DM and public comment inputs.
   // Never persist the sender, message text, BV, conversation or thread ID.
   // It does not decide replies and cannot grant B站 write permissions.
@@ -2809,7 +2813,9 @@ function reportMeta() {
     if(!/^[a-f0-9]{16}$/.test(String(scope||'')))return
     try{
       if(trustedLifeAccountTag()!==scope||accountBinding.status().blocked)return
-      lifeAgentEvents.offer({kind,platform:'bilibili',sourceKey:String(uid)+':'+String(eventId).slice(0,110)})
+      const offered=lifeAgentEvents.offer({kind,platform:'bilibili',sourceKey:String(uid)+':'+String(eventId).slice(0,110)})
+      if(offered?.ok===true)socialDecisionOwnership.observe({channel:kind==='dm-received'?'dm':'comment',
+        eventKey:String(uid)+':'+String(eventId).slice(0,110),verified:true})
     }catch(e){log('Life Agent 社交唤醒未入队：'+String(e?.message||e).slice(0,90))}
   }
   cancelActiveDuty = () => {
@@ -3716,24 +3722,33 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return recorded
     },
     generateReply: async (req) => {
+      const owner=socialDecisionOwnership.route({channel:'dm'})
+      if(!owner.ok)throw Error('私信决策所有权检查失败：'+owner.reason)
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
       let relationshipStage='new'
       try{relationshipStage=relationshipIndex()?.get(req.uid,relationshipOptions())?.stage||'new'}catch{}
       const recommendationContext=await dmVideoRecommendationContext.forReply(req)
       const todoProgressContext=dmTodoProgressContext.forReply(req)
-      return interactionBatcher.generate({kind:'dm',role:tier,...req,socialAutonomy:true,
+      const generated=await interactionBatcher.generate({kind:'dm',role:tier,...req,socialAutonomy:true,
         p6MaxBubbles:cfg.dmP6MaxBubbles,p6MinDelayMinutes:cfg.socialP6MinDelayMinutes,p6MaxDelayMinutes:cfg.socialP6MaxDelayMinutes,
         threadKey:`dm:${String(req.uid)}`,relationshipStage,
         allowTodoIntake:req.trigger!=='scheduled',
         onTodoProposal:proposal=>intakeAiSocialTodo({...proposal,request:{...req,recommendationContext},channel:'dm'}),
         onTodoConsistency:onSocialTodoConsistency,
         recommendationContext,todoProgressContext,identityContext:replyIdentityContext(req.uid)})
+      const checked=socialDecisionOwnership.route({channel:'dm',expectedScope:owner.scope})
+      if(!checked.ok)throw Error('私信决策期间账号已变化：'+checked.reason)
+      return generated
     },
     getVerifiedFacts:verifiedFactsFor,
     send: async ({ uid, text, eventId }) => {
       refreshCfg()
+      const owner=socialDecisionOwnership.route({channel:'dm'})
+      if(!owner.ok)return {ok:false,error:'私信决策所有权检查失败：'+owner.reason}
       if (cfg.masterEnabled !== true) return {ok:false,error:'总开关已关闭，私信发送已暂停'}
       return cadenceSend({uid,channel:'dm'},async()=>{
+      const checked=socialDecisionOwnership.route({channel:'dm',expectedScope:owner.scope})
+      if(!checked.ok)return {ok:false,error:'私信发送前账号已变化：'+checked.reason}
       const result = await call('bili_send_message', { receiver_uid: Number(uid), text: String(text).slice(0, 450) })
       if(result?.success===true){
         const receiptId=extractBiliDmReceiptId(result)
@@ -4044,7 +4059,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const verifiedOwnerReply=req.kind==='notice'&&['self-top','self-nested'].includes(req.scope)
       const trusted=socialPolicyGate.canTrustComment({uid:req.uid,kind:req.kind})
       if(req.contentType!=='dynamic'&&trusted&&(req.kind==='at'||verifiedOwnerReply)&&!isFriendRecommendationFeedback(req.text)){
-        try{const result=await ownerCommentAgent.accept(req)
+        try{
+          const owner=socialDecisionOwnership.route({channel:'comment'})
+          if(!owner.ok)return {consumed:true,reason:'social-owner-unavailable'}
+          const result=await ownerCommentAgent.accept(req)
           if(result?.reason!=='not-verified-owner-comment'&&result?.reason!=='disabled')return {consumed:true,reason:'trusted_social_ai'}
         }catch(e){log('可信评论 Agent 接收失败：'+String(e?.message||e).slice(0,120));return {consumed:true,reason:'trusted_social_error'}}
       }
@@ -4064,12 +4082,21 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     socialTier:(uid)=>socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory),
     canContinue:(uid,channel)=>socialPortrait.continuationAllowed(uid,{channel}),
-    generateReply: (req) => interactionBatcher.generate({...req,identityContext:'',incomingRpid:req.rpid,
+    generateReply: async (req) => {
+      const owner=socialDecisionOwnership.route({channel:'comment'})
+      if(!owner.ok)throw Error('评论决策所有权检查失败：'+owner.reason)
+      const generated=await interactionBatcher.generate({...req,identityContext:'',incomingRpid:req.rpid,
       p6MaxBubbles:cfg.commentP6MaxBubbles,p6MinDelayMinutes:cfg.socialP6MinDelayMinutes,p6MaxDelayMinutes:cfg.socialP6MaxDelayMinutes,
       allowTodoIntake:req.forceReply!==true&&req.todoIntake!==false,
       onTodoProposal:req.forceReply===true||req.todoIntake===false?undefined:proposal=>intakeAiSocialTodo({...proposal,request:req,channel:'comment'}),
-      onTodoConsistency:onSocialTodoConsistency}),
+      onTodoConsistency:onSocialTodoConsistency})
+      const checked=socialDecisionOwnership.route({channel:'comment',expectedScope:owner.scope})
+      if(!checked.ok)throw Error('评论决策期间账号已变化：'+checked.reason)
+      return generated
+    },
     send: async (req) => {
+      const owner=socialDecisionOwnership.route({channel:'comment'})
+      if(!owner.ok)return {ok:false,error:'评论决策所有权检查失败：'+owner.reason}
       if(req.contentType==='dynamic'){
         refreshCfg()
         if(!(cfg.masterEnabled===true && (req.kind==='at'?cfg.commentAtEnabled===true:cfg.commentWatchReplies===true)))
@@ -4077,6 +4104,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         // Actual publication / parent identity is checked against live B站 metadata
         // again by bili_dynamic_reply_inbox. Local drafts are not an identity authority.
         return cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
+        const checked=socialDecisionOwnership.route({channel:'comment',expectedScope:owner.scope})
+        if(!checked.ok)return {ok:false,error:'动态评论发送前账号已变化：'+checked.reason}
         const r=parseMaybeJson(await call('bili_dynamic_reply_inbox',{
           dynamic_id:String(req.dynamicId||''),target_rpid:String(req.rpid||''),
           root:String(req.root||''),text:String(req.text||'').slice(0,130),expected_uid:String(req.uid||''),
@@ -4096,6 +4125,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       refreshCfg()
       if (!(cfg.masterEnabled && (req.manual===true || cfg.commentWatchReplies || cfg.commentAtEnabled))) return {ok:false,error:'后台评论回复已关闭'}
       return cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
+      const checked=socialDecisionOwnership.route({channel:'comment',expectedScope:owner.scope})
+      if(!checked.ok)return {ok:false,error:'评论发送前账号已变化：'+checked.reason}
       const r = await call('bili_reply', {bvid: req.bvid || '', aid: Number(req.aid)||0,
         rpid: Number(req.rpid), root: Number(req.root)||0, text:String(req.text).slice(0,130)})
       if(r?.success===true){
@@ -5857,7 +5888,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       }catch(e){return sendJson(res,500,{ok:false,error:'自主生活唤醒失败：'+String(e?.message||e).slice(0,120)})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/autonomous-planner'){
-      try{return sendJson(res,200,autonomousPlanner.status())}
+      try{return sendJson(res,200,{...autonomousPlanner.status(),socialDecisionOwnership:socialDecisionOwnership.status()})}
       catch(e){return sendJson(res,500,{ok:false,error:'读取自主调度状态失败：'+String(e?.message||e).slice(0,120)})}
     }
     // 大肥鱼主 Session：只看当前 DSH 里活着的会话，不扫描磁盘上的 sessions 目录。

@@ -1,3 +1,7 @@
+# 当前开发预览：2.7.1-dev.4 Phase 4 · 社交决策所有权明确化（未接管）
+
+- [生产入口、社交旧决策归属、账号切换保护与无 B站离线验收](./2.7.1-dev4-life-agent-phase4-social-owner.md) · [Phase 4 实际生产 Mermaid](./diagrams/2.7.1-dev4-life-agent-phase4-social-owner-live.mmd)。`off/shadow/active` 均未授予 Life Agent 社交发送权；旧 DM/评论代理仍是决策者。社交归属诊断只读、短期、不含 UID/原文。Windows 与真实 B站仍待验收。
+
 ## 当前开发预览：2.7.1-dev.4 Life Agent 第三阶段 · 生活时间线与冷备份恢复
 
 - [已实现的同账号匿名决策时间线、旧事件 schema 无损读取、完整本地快照/校验/回滚冻结与老用户验收边界](./2.7.1-dev4-life-agent-phase3.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev4-life-agent-phase3-journal-backup-live.mmd)。旧 UI 可替换，但旧数据备份/恢复是硬约束；现有便携业务备份**不是**完整账号和私密状态快照，新增冷快照需停机且含敏感凭证。Windows/真实平台仍待验收。
