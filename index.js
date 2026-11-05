@@ -1,6 +1,6 @@
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
-import {lifeSettingsV2,planLifeSettingsV2,legacyVideoTimerAllowed,assertLegacyVideoPatchCompatible} from './lib/life-settings-control.mjs'
+import {lifeSettingsV2,planLifeSettingsV2,legacyVideoTimerAllowed,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
 import {RECOMMENDED_EXPERIENCE_SETTINGS,RECOMMENDED_EXPERIENCE_GROUPS} from './lib/recommended-experience-settings.mjs'
 import { createPersonalityEvolution } from './lib/personality-evolution.mjs'
 import { normalizeFictionalTurn, runFictionalAiDebug, MAX_FICTIONAL_TURNS } from './lib/personality-ai-debug.mjs'
@@ -6437,6 +6437,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // 权限变更只能来自完整好友名册提交；防止角色标签与实际授权 UID 脱节。
       let validatedPatch
       try { validatedPatch=validateOwnerRosterUpdate(patch,cfg) }
+      catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e)})}
+      // Legacy form cannot bypass the versioned, explicitly confirmed life settings API.
+      try { assertLegacyLifeSettingsPatchCompatible(cfg,validatedPatch) }
       catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e)})}
       const { clean, host } = await persistCfg(validatedPatch)
       // An explicit revoke must destroy plaintext immediately, even if the

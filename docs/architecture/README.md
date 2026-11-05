@@ -1,3 +1,7 @@
+## 当前增量：dev.4 Phase 6c 旧设置控制权 + Phase 7c 成功只读经历跨轮参考（待实机验收）
+
+- [统一层归属、旧设置防覆盖、48h 匿名可信只读经历与真实限制](./2.7.1-dev4-phase6c-phase7c-legacy-ownership-continuity.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-phase6c-phase7c-live.mmd)。已完成的是旧入口互斥和短期决策参考，**不是全部旧模块删除或人格成长因果闭环**；上一 Phase 6b/7b 仍作为基线。
+
 ## 当前增量：dev.4 Phase 6b 排他视频时钟 + Phase 7b 关系排序对照（待实机验收）
 
 - [影子模式旧定时器运行门禁、旧配置冲突拦截和匿名关系排序反事实标记](./2.7.1-dev4-phase6b-phase7b-schedule-growth-proof.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-phase6b-phase7b-live.mmd)。旧数据不迁移、不授权外发；关系对照不等于模型因果成长。此前 Phase 6/7a 仍作为前置基线。
