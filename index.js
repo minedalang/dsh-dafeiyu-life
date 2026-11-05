@@ -65,6 +65,7 @@ import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-pla
 import { createLifeAgentEvents } from './lib/life-agent-events.mjs'
 import { createSocialDecisionOwnership } from './lib/social-decision-ownership.mjs'
 import { createLifeSocialShadow, classifyLegacySocialDecision } from './lib/life-social-shadow.mjs'
+import { runLifeExperienceOfflineDemo } from './lib/life-experience-demo.mjs'
 import { createLifeCapabilities } from './lib/life-capabilities.mjs'
 import { queueOwnerDmReadTodo, parseOwnerDmTodo } from './lib/owner-dm-commands.mjs'
 import { createOwnerTodoFollowup } from './lib/owner-todo-followup.mjs'
@@ -5900,6 +5901,18 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const result=await autonomousPlanner.tick({force:true,opportunitiesOnly:true})
         return sendJson(res,result.ok===false?409:200,result)
       }catch(e){return sendJson(res,500,{ok:false,error:'生活契机重新考虑失败：'+String(e?.message||e).slice(0,120)})}
+    }
+    // Explicit local-only synthetic acceptance. Does not read production
+    // account data, invoke a real model, call Bilibili, or change config.
+    if(req.method==='POST'&&path==='/api/bili-duty/life-agent/offline-demo'){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'仅允许管理中心同源操作'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站模拟请求'})
+      try{
+        await readBody(req)
+        const r=await runLifeExperienceOfflineDemo()
+        return sendJson(res,r.ok?200:500,r)
+      }catch(e){return sendJson(res,500,{ok:false,error:'离线演示运行失败：'+String(e?.message||e).slice(0,90)})}
     }
     if(req.method==='POST'&&path==='/api/bili-duty/life-agent/wake'){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')

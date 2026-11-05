@@ -50,6 +50,13 @@ background:linear-gradient(115deg,#e5eaff,#e7f7f6 55%,#f7edff);border:1px solid 
 #panel-life .life-amber{background:#9d621b;border-color:#9d621b}
 #panel-life .life-section{border-radius:14px;padding:18px;border-color:var(--stroke);box-shadow:0 2px 12px rgba(49,70,108,.035)}
 #panel-life .life-section h4{font-size:15px}
+/* Dev.4 acceptance: real decisions must be legible, not tiny dashboard columns. */
+#life-agent-timeline.life-decision-list{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+#life-agent-timeline .life-decision-record{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;
+  padding:12px 14px;border:1px solid var(--stroke);border-radius:10px;background:var(--panel);
+  color:var(--ink);line-height:1.65;white-space:normal;overflow-wrap:anywhere}
+#life-real-acceptance{border:1px solid var(--stroke);background:var(--panel);padding:14px 16px}
+#life-real-acceptance .toolbar{flex-wrap:wrap}
 #panel-life .interest-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));margin-top:14px}
 #panel-life .interest-card{--interest-color:#cf8b22;--interest-surface:#fff7e7;padding:17px;border-radius:14px;
 border:1px solid var(--stroke);border-top:3px solid var(--interest-color);background:var(--panel);min-width:0}
@@ -935,7 +942,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <details class="life-subdetails todo-settings contextual-settings" id="settings-todo"><summary>⚙️ 自主待办调度设置</summary><p class="muted">只保留独立 AI 调度。开启后，鱼鱼会按间隔、时段和每日额度自己考虑已接受的只读待办；关闭后不会后台自动处理，但仍可点击「提醒鱼鱼考虑待办」。不会因此获得公开发送权限。</p>
 <div class="inset" id="life-settings-v2-panel"><h4>🌿 统一生活设置 · Phase 6（明确保存才生效）</h4>
 <p class="muted">直接配置 Life Agent 的自主生活模式和模型决策节奏；实际值仍保存在原有 DSH 配置，不另建一套数据。保存到影子或自主模式会停止旧固定视频定时器，但不增加任何社交发送权限。原有活跃时段、账号限制和视频 180 分钟间隔继续生效。</p>
-<div class="fields"><div><label for="life-v2-mode">鱼鱼的生活方式</label><select id="life-v2-mode"><option value="legacy">传统模式 · 不改变旧调度</option><option value="shadow">影子观察 · 不启动视频</option><option value="active">自主生活 · 可按已有授权委派视频 Agent</option></select></div>
+<div class="fields"><div><label for="life-v2-mode">鱼鱼的生活方式</label><select id="life-v2-mode"><option value="legacy">传统模式 · 不改变旧调度</option><option value="shadow">影子观察 · 只模拟新自主视频决策，不启动真实视频 Agent</option><option value="active">自主生活 · 由 Life Agent 决定是否启动现有视频 Agent</option></select></div>
 <div><label for="life-v2-pace">自主考虑的活跃程度（模型费用可能变化）</label><select id="life-v2-pace"><option value="quiet">安静 · 180 分钟 / 每日 4 次</option><option value="natural">自然 · 60 分钟 / 每日 12 次</option><option value="lively">活跃 · 30 分钟 / 每日 20 次</option><option value="custom" disabled>旧版自定义 · 请先选择预设</option></select></div></div>
 <div class="toolbar"><button type="button" class="life-action life-sky" id="life-v2-preview-btn">预览配置变化</button><button type="button" class="life-action life-green" id="life-v2-save-btn">确认保存统一生活设置</button></div>
 <p id="life-v2-status" class="muted" role="status">正在读取现有配置（不会自动迁移）…</p>
@@ -944,6 +951,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="inset"><h4>🐟 Life Agent · 自主生活驱动（dev.4 · 社交决策仍旧版独占）</h4>
 <p class="muted">关闭：完全保留旧版行为；影子：鱼鱼独立考虑“今天想不想探索视频”，不真正启动视频轮；接管视频：固定谷时定时器不再指挥鱼鱼刷视频，而由同一个自主规划模型在匿名生活事件/生活空档出现时决定是否启动原视频 Agent，允许跳过/休息。已有视频 Agent 可能使用原本明确授权的写入功能；本开关不新增任何发送权限。每日最多 2 次 Life Agent 自主视频启动，至少间隔 180 分钟。切换需同时开启下方自主调度；仍受原时段、模型额度及视频挑选配额限制。私信和评论的统一决策尚未接管。</p>
 <details class="life-subdetails"><summary>旧版 Life Agent 模式单独设置（高级／兼容）</summary><div class="fields"><div><label for="life-agent-mode">Life Agent 自主生活驱动</label><select id="life-agent-mode"><option value="off">关闭（默认） · 旧定时刷视频保持原样</option><option value="shadow">影子观察 · 收集匿名生活事件，不主动启动视频</option><option value="active">接管自动视频轮 · 同时感知私信/评论事件（回复仍由旧系统执行）</option></select></div></div></details>
+<div class="inset" id="life-real-acceptance"><h4>🔍 当前自主生活是否真的生效？（真实状态）</h4><p id="life-readiness" class="muted" role="status">正在读取本机真实运行门禁…</p><p id="life-actual-proof" class="muted" role="status">正在核对本账号的真实委派记录…</p><div class="toolbar"><button type="button" class="life-action life-sky" id="life-readiness-refresh">重新核查真实状态（零模型调用）</button><button type="button" class="life-action life-green" id="life-offline-demo">演示四种选择（纯模拟，不访问 B站）</button></div><p id="life-offline-demo-result" class="muted" role="status">模拟使用虚构事件、假模型与假视频 Agent；不会改变真实状态、消耗 Token 或证明鱼鱼真实看过视频。</p></div>
 <div class="toolbar"><button type="button" id="life-agent-wake" class="life-action life-sky">让鱼鱼自主考虑一次（消耗额度）</button><span id="life-agent-status" class="muted" role="status">尚未读取 Life Agent 状态</span></div>
 <div class="toolbar"><button type="button" id="life-evidence-contrast" class="life-action">DEBUG · 比较有无近期经历时的模型倾向（2 次调用）</button><span id="life-evidence-contrast-status" class="muted" role="status">仅在当前账号近 48 小时内有成功只读回执时可比较；零实际行动</span></div>
 <p class="muted">这是一项明确手动启动的<strong>只读模型输出对照</strong>：同一匿名模拟场景分别不带、带上近期成功读取类别。会预先占用每日两次模型决策额度，不能用于证明实际行动或人格成长；不发消息、不启动视频、不写长期记忆。失败或中途切号也不退还已预留的额度。</p><p class="muted">手动唤醒会优先将本次匿名事件交给 Life Agent，并跳过普通决策间隔与仅兴趣线索的六小时自动防重复冷却；仍受每日模型额度、账号与平台权限保护。<strong>影子模式不启动真实视频</strong>，但已有授权的只读待办或探索可能读取 B站公开资料；鱼鱼也可以选择休息。这里调用配置的真实模型并可能产生费用；完全离线观察请使用交付包里的模拟工具。</p>
@@ -952,7 +960,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="fields"><div><label for="life-social-context-optin">Phase 5 · 社交上下文影子对照（单独授权）</label><select id="life-social-context-optin"><option value="false">关闭（默认） · 仅匿名事件，绝不读取私信正文</option><option value="true">允许只读影子对照 · 好友入站私信与已核验公开评论</option></select></div></div>
 <p class="muted">启用后，只有鱼鱼先选择关注该社交事件，才会在本进程内读取最长 420 字、最多保留 10 分钟的已核验内容；模型仅选择“倾向回复／延期／沉默”，不会生成外发草稿。每次影子对照额外消耗一次现有每日 AI 决策额度。关闭或切号后不得继续预览。不读取主人私信或陌生人私信，既有旧回复器仍独占真实回复。真正的 B站社交接管尚未开放。</p>
 <p id="life-social-shadow-status" class="muted" role="status">影子对照：读取中…</p>
-<div class="inset" aria-live="polite"><h4>📖 鱼鱼自主生活时间线 · 最近 7 天</h4><p class="muted">短期成功读取回执在 48 小时内可作为下轮匿名参考；这不是永久记忆或成长因果证明。同账号、只读诊断：现在区分模型自愿休息、模型输出无效，以及没有可选动作（不会消耗模型额度）；历史旧记录无法追溯当时的真实选择。看见了什么契机 → 选择了什么 → 有无真实结果。只显示匿名类别，不保存私信正文、UID 或模型思考原文；影子观察不是已执行。这里不是长期记忆或真实平台回执。</p><div id="life-agent-timeline" class="todo-overview">读取自主生活记录中…</div></div>
+<div class="inset" aria-live="polite"><h4>📖 鱼鱼自主生活时间线 · 最近 7 天</h4><p class="muted">短期成功读取回执在 48 小时内可作为下轮匿名参考；这不是永久记忆或成长因果证明。同账号、只读诊断：现在区分模型自愿休息、模型输出无效，以及没有可选动作（不会消耗模型额度）；历史旧记录无法追溯当时的真实选择。看见了什么契机 → 选择了什么 → 有无真实结果。只显示匿名类别，不保存私信正文、UID 或模型思考原文；影子观察不是已执行。这里不是长期记忆或真实平台回执。</p><div id="life-agent-timeline" class="life-decision-list">读取自主生活记录中…</div></div>
 <details class="life-subdetails" id="life-legacy-planner-advanced"><summary>⚙️ 旧版独立调度详细参数（兼容／高级）</summary><p class="muted" id="life-legacy-managed-note">旧设置归属：读取中…</p><h4>🤖 已有自主决策额度 · 与 Life Agent 共用</h4>
 <p class="muted">后台 AI 可从已存在的只读待办中选择执行、延期、忽略或跳过，也可在证据充足时请求人生反思。Life Agent 首阶段只能额外请求启动原视频 Agent，不直接调用点赞、关注、收藏、评论或私信工具；原视频 Agent 仍只在已有授权下行动。新安装默认开启，旧用户保留原有开关状态。旧版「定时提醒主 Session」机制已停用。</p>
 <div class="fields"><div><label for="autonomous-planner-enabled">独立自主调度</label><select id="autonomous-planner-enabled"><option value="false">关闭（省调用）</option><option value="true">开启 · 只读任务和反思（新安装推荐）</option></select></div>

@@ -1,3 +1,7 @@
+## 当前增量：dev.4 Phase 6e/7e 自主生活可见验收（待 Windows 实机）
+
+- [真实视频委派门禁、单列时间线与无 B站纯模拟工具](./2.7.1-dev4-life-experience-visible-acceptance.md)。明确：shadow 不通过新生活驱动启动现有视频 Agent；active 仅允许原条件下委派。模拟不能冒充真实观看或成长。
+
 ## 当前增量：dev.4 Phase 6d/7d 视频驱动归属与只读模型倾向对照（待 Windows／真实模型验收）
 
 - [Phase 6d/7d 实际生产接线、同一设置源、显式两次模型额度与安全限制](./2.7.1-dev4-phase6d-phase7d-driver-contrast.md) · [生产 Mermaid](./diagrams/2.7.1-dev4-phase6d-phase7d-live.mmd)。只做纯模型倾向对照，**不是实际行动或人格成长因果证明**；老回复器与所有外发门禁不变。
