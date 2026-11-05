@@ -4521,6 +4521,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeCapabilities:()=>lifeCapabilities.list(),
     runLifeCapability:id=>lifeCapabilities.run(id),
     recordVideoStart:()=>lifeAgentEvents.recordVideoStart(),
+    recordLifeDecision:row=>lifeAgentEvents.recordDecision(row),
     getLifeOpportunities:()=>lifeOpportunities.list({limit:4}),
     getLifeIntentionCues:()=>lifeOpportunities.explorationCues({limit:4}),
     getPrivateLifeAffinity:cues=>privateLifeAffinity.forCues(cues),

@@ -34,6 +34,7 @@
     "client.js",
     "cordis.patch.yml",
     "lib",
+    "tools/dev4-cold-state-backup.mjs",
     "prompts",
     "vendor",
     "README.md",
