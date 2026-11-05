@@ -42,6 +42,7 @@
     "tools/dev4-phase6-phase7a-offline-acceptance.mjs",
     "tools/dev4-phase6b-phase7b-offline-acceptance.mjs",
     "tools/dev4-phase6c-phase7c-offline-acceptance.mjs",
+    "tools/dev4-phase6d-phase7d-offline-acceptance.mjs",
     "prompts",
     "vendor",
     "README.md",

@@ -1,3 +1,7 @@
+## 当前增量：dev.4 Phase 6d/7d 视频驱动归属与只读模型倾向对照（待 Windows／真实模型验收）
+
+- [Phase 6d/7d 实际生产接线、同一设置源、显式两次模型额度与安全限制](./2.7.1-dev4-phase6d-phase7d-driver-contrast.md) · [生产 Mermaid](./diagrams/2.7.1-dev4-phase6d-phase7d-live.mmd)。只做纯模型倾向对照，**不是实际行动或人格成长因果证明**；老回复器与所有外发门禁不变。
+
 ## 当前增量：dev.4 Phase 6c 旧设置控制权 + Phase 7c 成功只读经历跨轮参考（待实机验收）
 
 - [统一层归属、旧设置防覆盖、48h 匿名可信只读经历与真实限制](./2.7.1-dev4-phase6c-phase7c-legacy-ownership-continuity.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-phase6c-phase7c-live.mmd)。已完成的是旧入口互斥和短期决策参考，**不是全部旧模块删除或人格成长因果闭环**；上一 Phase 6b/7b 仍作为基线。

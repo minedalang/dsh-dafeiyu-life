@@ -5916,6 +5916,30 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         return sendJson(res,result.ok===false?409:200,result)
       }catch(e){return sendJson(res,500,{ok:false,error:'自主生活唤醒失败：'+String(e?.message||e).slice(0,120)})}
     }
+    // Phase 7d: explicit no-action model comparison. This cannot dispatch B站
+    // tools, override old social owners, or create a growth/memory fact.
+    if(req.method==='POST'&&path==='/api/bili-duty/life-agent/evidence-contrast'){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'仅允许管理中心同源操作'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站模型对照请求'})
+      try{
+        await readBody(req)
+        refreshCfg()
+        if(!firstStart.isReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
+          return sendJson(res,409,{ok:false,skipped:'account-not-ready',error:'当前 B站账号尚未完成身份核验'})
+        const result=await autonomousPlanner.auditRecentEvidence()
+        if(result.ok===false){
+          const reasons={busy:'Life Agent 正忙，请稍后重试',disabled:'需先开启影子或自主模式以及自主决策调度',
+            'account-not-ready':'当前账号尚未准备好','ledger-unavailable':'可信经历账本读取失败',
+            'no-recent-verified-read':'当前账号最近48小时没有可信成功读取类别，不会调用模型',
+            'quota-two-calls':'剩余额度不足两次，本轮不会调用模型',
+            'authorization-changed':'对照过程中账号或生活授权发生变化，已终止（已预留额度不退还）',
+            'model-error':'模型调用失败；本次未执行任何工具（已预留额度不退还）'}
+          return sendJson(res,409,{...result,error:reasons[result.skipped]||'本次对照未完成'})
+        }
+        return sendJson(res,200,result)
+      }catch(e){return sendJson(res,500,{ok:false,error:'模型对照失败：'+String(e?.message||e).slice(0,120)})}
+    }
     if(req.method==='GET'&&path==='/api/bili-duty/autonomous-planner'){
       try{return sendJson(res,200,{...autonomousPlanner.status(),lifeSettingsPreview:projectLifeSettings(cfg),socialDecisionOwnership:socialDecisionOwnership.status(),socialShadow:lifeSocialShadow.status()})}
       catch(e){return sendJson(res,500,{ok:false,error:'读取自主调度状态失败：'+String(e?.message||e).slice(0,120)})}
