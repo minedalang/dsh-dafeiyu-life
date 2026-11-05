@@ -171,6 +171,20 @@ if ($pythonPath) {
     }
 }
 
+# First-principles three-phase regression: no network, no real outbound writes.
+if ($pythonPath) {
+    Invoke-NativeStep -Name "Python 对外写入预约专项（必须通过）" -FilePath $pythonPath `
+        -Arguments @($pythonArgsPrefix + @("-m", "unittest", "discover", "-s", "test", "-p", "test_v271_three_phase_outbound_gate.py", "-v"))
+    if ($script:Results[-1].Status -ne "PASS") {
+        Write-Host "写入预约安全专项失败：已提前停止。" -ForegroundColor Red
+        try { Stop-Transcript | Out-Null } catch {}
+        if ($env:DAFEIYU_TEST_COMPLETE_FLAG) {
+            try { Set-Content -LiteralPath $env:DAFEIYU_TEST_COMPLETE_FLAG -Value "FAIL" -Encoding ASCII } catch {}
+        }
+        exit 1
+    }
+}
+
 # 1. Focused regression test.
 Invoke-NativeStep -Name "白名单好友推荐偏好专项测试" `
     -FilePath $nodePath `
@@ -192,12 +206,14 @@ if ($testFiles.Count -gt 0) {
     $isolatedDiscussionFile = Join-Path $testDir "v271-dev3-discussion-shared-gate.test.mjs"
     $isolatedDanmakuFile = Join-Path $testDir "v271-dev3-danmaku-read-gate.test.mjs"
     $isolatedSubtitleFile = Join-Path $testDir "v271-dev3-subtitle-read-gate.test.mjs"
+    $isolatedThreePhaseFile = Join-Path $testDir "v271-dev3-three-phase-execution.test.mjs"
     $isolatedSpecs = @(
         [pscustomobject]@{ Name = "Node.js 按需上下文专项（必须通过）"; File = $isolatedContextFile },
         [pscustomobject]@{ Name = "Node.js 跨语言事务专项（必须通过）"; File = $isolatedCrosslangFile },
         [pscustomobject]@{ Name = "Node.js 讨论共享门禁专项（必须通过）"; File = $isolatedDiscussionFile },
         [pscustomobject]@{ Name = "Node.js 弹幕跨语言预约专项（必须通过）"; File = $isolatedDanmakuFile },
-        [pscustomobject]@{ Name = "Node.js 字幕跨语言预约专项（必须通过）"; File = $isolatedSubtitleFile }
+        [pscustomobject]@{ Name = "Node.js 字幕跨语言预约专项（必须通过）"; File = $isolatedSubtitleFile },
+        [pscustomobject]@{ Name = "Node.js 三阶段跨语言与外发保护专项（必须通过）"; File = $isolatedThreePhaseFile }
     )
     $isolatedTestFiles = @($isolatedSpecs | ForEach-Object { $_.File })
     $mainTestFiles = @($testFiles | Where-Object { $_ -notin $isolatedTestFiles })

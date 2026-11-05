@@ -7,13 +7,14 @@ import sqlite3
 import tempfile
 import unittest
 from datetime import datetime, timedelta
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=(ROOT/'vendor/bilibili-mcp/mcp_server.py').read_text('utf8')
-NAME={'_relation_claim','_relation_finish','bili_follow_creator','bili_unfollow_creator'}
+NAME={'_relation_claim','_relation_finish','_coordinated_relation','bili_follow_creator','bili_unfollow_creator'}
 NODES=[]
 for node in ast.parse(SOURCE).body:
     if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)) and node.name in NAME:
@@ -28,8 +29,11 @@ class FakeVideo:
 
 class FakeUser:
     writes=[]
+    on_change=None
     def __init__(self,uid,credential):self.uid=uid
-    async def modify_relation(self,relation):self.writes.append((self.uid,relation))
+    async def modify_relation(self,relation):
+        self.writes.append((self.uid,relation))
+        if self.on_change:self.on_change(relation)
 
 class TestFollow(unittest.TestCase):
     def setUp(self):
@@ -37,13 +41,20 @@ class TestFollow(unittest.TestCase):
         self.file=str(Path(self.dir.name)/'actions.sqlite3')
         self.env=patch.dict(os.environ,{'BILI_AGENT_FOLLOW_ENABLED':'1'});self.env.start();self.addCleanup(self.env.stop)
         FakeUser.writes=[]
+        FakeUser.on_change=staticmethod(lambda rel:setattr(self,'relation',2 if rel=='follow' else 0))
         self.source_selected=True;self.relation=0;self.actor=123
         credential=SimpleNamespace(dedeuserid='123')
         def conn():
             c=sqlite3.connect(self.file,timeout=8)
             c.row_factory=sqlite3.Row
             return c
-        self.scope={'datetime':datetime,'sqlite3':sqlite3,'json':json,'os':os,'_action_conn':conn,
+        @contextmanager
+        def verified_outbound(kind,target,content,home=None):
+            class Claim:
+                def confirm(self,receipt):
+                    if not receipt:raise ValueError('receipt required')
+            yield Claim()
+        self.scope={'_DUTY_HOME':self.dir.name,'outbound_reservation':verified_outbound,'datetime':datetime,'sqlite3':sqlite3,'json':json,'os':os,'_action_conn':conn,
             '_guard':lambda name:'', '_selected_for_creator_encounter':lambda bv:self.source_selected,
             '_valid_bv':lambda bv:bv,'get_cred':lambda:credential,
             'video':SimpleNamespace(Video=FakeVideo),

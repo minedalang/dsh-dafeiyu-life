@@ -5,12 +5,13 @@ import json
 import os
 import re
 import types
+from contextlib import contextmanager
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 SERVER = Path(__file__).resolve().parents[1] / 'vendor' / 'bilibili-mcp' / 'mcp_server.py'
-FUNC = {'_checked_dynamic_id', '_dynamic_comment_area', '_get_dynamic_comment_area',
+FUNC = {'_coordinated_send','_comment_platform_receipt','_checked_dynamic_id', '_dynamic_comment_area', '_get_dynamic_comment_area',
         '_safe_dynamic_reply','_find_dynamic_target','bili_dynamic_comment_context',
         'bili_dynamic_comment_manual'}
 
@@ -42,7 +43,13 @@ def make_env(info=None, rows=None, response=None):
         return {'ok':True,'body_hash':'hashed','day':'2026-11-01'}
     def finish(*args):finished.append(args)
     def tool():return lambda fn:fn
-    env={'__name__':'__isolated_dynamic_test__','re':re,'os':os,'json':json,'tool':tool,
+    @contextmanager
+    def mock_outbound(*args,**kwargs):
+        class Claim:
+            def confirm(self,proof):
+                assert proof
+        yield Claim()
+    env={'_DUTY_HOME':'/tmp/mock-dynamic', 'outbound_reservation':mock_outbound, '__name__':'__isolated_dynamic_test__','re':re,'os':os,'json':json,'tool':tool,
         'get_cred':lambda:types.SimpleNamespace(dedeuserid='12345'),
         'dynamic':types.SimpleNamespace(Dynamic=Dynamic),
         'comment':types.SimpleNamespace(Comment=Comment, get_comments=get_comments,

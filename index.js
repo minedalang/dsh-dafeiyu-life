@@ -48,6 +48,7 @@ import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charte
 import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
 import { createAccountBinding } from './lib/account-binding.mjs'
 import { createReadActionExecutionGate,readToolAction } from './lib/read-action-execution-gate.mjs'
+import { createOutboundActionStatus } from './lib/outbound-action-status.mjs'
 import {runDev3OfflineAcceptance} from './lib/dev3-offline-acceptance.mjs'
 import {AsyncLocalStorage} from 'node:async_hooks'
 import { resolveUid } from './lib/uid.mjs'
@@ -476,12 +477,14 @@ export function apply(ctx, config) {
   // Cross-process gate for reads that pass the shared JS MCP adapter.
   // Independent Python Headless MCP tools do not pass here yet.
   const readActionContext=new AsyncLocalStorage()
-  const readActionGate=createReadActionExecutionGate({dataDir:stateDir,getAccountScope:()=>{
+  const verifiedActionScope=()=>{
     const bound=accountBinding.assertReady()
     const credentialTag=discussionAccountTag(dmCred(stateDir))
-    if(!credentialTag)throw Error('无法验证只读动作的当前凭据作用域')
+    if(!credentialTag)throw Error('无法验证平台动作的当前凭据作用域')
     return `${bound.activeUid}:${bound.generation}:${credentialTag}`
-  },logger:{warn:m=>console.warn(m)}})
+  }
+  const readActionGate=createReadActionExecutionGate({dataDir:stateDir,getAccountScope:verifiedActionScope,logger:{warn:m=>console.warn(m)}})
+  const outboundActionStatus=createOutboundActionStatus({dataDir:stateDir,getAccountScope:verifiedActionScope})
   const biliReadBudget=createBiliReadBudget({dataDir:accountRuntimeDir,logger:{warn:msg=>console.warn(msg)}})
   const dmPollCursor=createDmPollCursor({dataDir:accountRuntimeDir})
   accountBinding.acknowledgeRestart() // Startup boundary: no in-flight old-account operations survive.
@@ -5749,6 +5752,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站验收请求'})
       try{return sendJson(res,200,await runDev3OfflineAcceptance())}
       catch{return sendJson(res,500,{ok:false,error:'本地验收运行异常；未访问 B站或真实待办'})}
+    }
+    if(req.method==='GET'&&path==='/api/bili-duty/outbound-action-executions'){
+      try{return sendJson(res,200,outboundActionStatus())}
+      catch{return sendJson(res,500,{ok:false,error:'当前账号外发状态不可用，请先检查账号绑定与执行账本'})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/read-action-executions'){
       try{return sendJson(res,200,readActionGate.status())}

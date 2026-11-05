@@ -34,6 +34,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent, ImageContent
 
 from read_action_gate import public_read_reservation, ReadReservationHeld
+from outbound_action_gate import outbound_reservation, OutboundHeld
 from vision_fallback_evidence import classify_visual_fallback
 
 from bilibili_api import video, search, comment, Credential, dynamic, opus
@@ -308,6 +309,47 @@ async def bili_check_credential() -> str:
 
 
 
+# Shared durable write execution guard. The existing privacy, authorization,
+# quota, send journal and content policy gates still run FIRST. This wrapper
+# performs no network replay, and only confirms platform-observed receipt IDs.
+def _comment_platform_receipt(raw):
+    if not isinstance(raw, dict) or raw.get('code', 0) not in (0, None):
+        return ''
+    data = raw.get('data') if isinstance(raw.get('data'), dict) else raw
+    receipt = str(data.get('rpid_str') or data.get('rpid') or '')
+    return receipt if re.fullmatch(r'[1-9][0-9]{0,29}', receipt) else ''
+
+
+def _dm_platform_receipt(raw):
+    if not isinstance(raw, dict) or raw.get('code', 0) not in (0, None):
+        return ''
+    data = raw.get('data') if isinstance(raw.get('data'), dict) else raw
+    receipt = str(raw.get('msg_key') or data.get('msg_key') or '')
+    return receipt if re.fullmatch(r'[1-9][0-9]{0,63}', receipt) else ''
+
+
+async def _coordinated_relation(kind, target, cred, send):
+    with outbound_reservation(kind, str(target), '', home=_DUTY_HOME) as claim:
+        await send()
+        # Real post-send relationship readback, not an invented receipt.
+        observed = _single_creator_relation(cred, target)
+        accepted = observed in (2, 6) if kind == 'follow' else observed == 0
+        if not accepted:
+            raise ValueError('关系状态无法核实；已冻结当前动作，禁止自动重试')
+        claim.confirm(f'relation-readback:{kind}:{target}:{observed}')
+
+
+async def _coordinated_send(kind, target, content, send, extract_receipt):
+    # The claim is made at the LAST possible point, immediately before send.
+    # A timeout/exception/absent receipt is unresolved, not a retry permit.
+    with outbound_reservation(kind, str(target), str(content), home=_DUTY_HOME) as claim:
+        raw = await send()
+        receipt = extract_receipt(raw)
+        if receipt:
+            claim.confirm(receipt)
+        return raw
+
+
 # Shared protocol for direct Headless MCP and the plugin-owned JS adapter.
 # The child may reuse an existing lock ONLY when its immediate parent process
 # actually holds that exact operation's executing reservation.
@@ -386,6 +428,7 @@ async def bili_search(keyword: str, num: int = 10, order: str = "totalrank") -> 
 _HOME_RECOMMEND_REQUESTED = False
 
 @tool()
+@_gate_read('bili_home_recommendations')
 async def bili_home_recommendations() -> str:
     """获取登录账号网页首页的普通视频推荐候选，与关键词搜索混合选片。
 
@@ -987,6 +1030,17 @@ async def bili_video_info(bvid: str) -> str:
 # 这道上限是实际后端闸，不只依赖 AI 遵守提示词。手动预览测试走单独的受限脚本。
 _VISION_BVS_PER_RUN = set()
 _VISION_PER_RUN_LIMIT = 2
+def _fetch_preview_frames_reserved(bvid):
+    """Reserve only frame acquisition, NEVER the outer/child DSH vision call.
+
+    The independent visual DSH subprocess may itself call bili_preview_vision.
+    Taking a lock around the parent orchestration would deadlock that child.
+    """
+    from preview_vision import analyze_preview
+    with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
+        return analyze_preview(bvid, _DUTY_HOME, enabled=False, return_frames=True)
+
+
 _VISION_FRAMES_SERVED = {}  # 单轮内实际经 MCP 返回图片的 BV 时间点；不含图片正文
 
 @tool()
@@ -1016,8 +1070,7 @@ async def bili_preview_vision(bvid: str):
         if mode in ('reuse_video_model','auto'):
             # MCP SDK translates real image blocks to the video model route through DSH's
             # attachment bridge. No independent vision API or DPAPI key is accessed here.
-            result = await asyncio.to_thread(analyze_preview, bvid, _DUTY_HOME,
-                                             enabled=False, return_frames=True)
+            result = await asyncio.to_thread(_fetch_preview_frames_reserved, bvid)
             if not result.get('ok'):
                 return json.dumps(result, ensure_ascii=False)
             frames = result.pop('frames', [])
@@ -1808,7 +1861,8 @@ async def bili_follow_creator(bvid: str, reason: str) -> str:
         if relation!=0:return json.dumps({'ok':False,'skipped':'already-followed-or-blocked','target':target},ensure_ascii=False)
         claim=_relation_claim(account,target,'follow',3)
         try:
-            await user.User(uid=target,credential=cred).modify_relation(user.RelationType.SUBSCRIBE)
+            await _coordinated_relation('follow', target, cred,
+                lambda: user.User(uid=target,credential=cred).modify_relation(user.RelationType.SUBSCRIBE))
         except Exception as exc:
             _relation_finish(account,target,'follow',claim,False,bv)
             return json.dumps({'ok':False,'status':'uncertain-no-retry','error':str(exc)[:140]},ensure_ascii=False)
@@ -1840,7 +1894,8 @@ async def bili_unfollow_creator(uid: int, reason: str) -> str:
         if _single_creator_relation(cred,target) not in (2,6):return json.dumps({'ok':False,'skipped':'not-currently-following'},ensure_ascii=False)
         claim=_relation_claim(account,target,'unfollow',1)
         try:
-            await user.User(uid=target,credential=cred).modify_relation(user.RelationType.UNSUBSCRIBE)
+            await _coordinated_relation('unfollow', target, cred,
+                lambda: user.User(uid=target,credential=cred).modify_relation(user.RelationType.UNSUBSCRIBE))
         except Exception as exc:
             _relation_finish(account,target,'unfollow',claim,False)
             return json.dumps({'ok':False,'status':'uncertain-no-retry','error':str(exc)[:140]},ensure_ascii=False)
@@ -1955,7 +2010,8 @@ async def bili_follow_creator_manual(bvid: str, reason: str = '', confirm: bool 
         why=_safe_line(reason,100) or '主人明确要求关注该视频 UP 主'
         claim=_relation_claim(account,target,'follow',max(0,min(10,int(os.environ.get('BILI_SESSION_FOLLOW_DAILY_LIMIT','3')))))
         try:
-            await user.User(uid=target,credential=cred).modify_relation(user.RelationType.SUBSCRIBE)
+            await _coordinated_relation('follow', target, cred,
+                lambda: user.User(uid=target,credential=cred).modify_relation(user.RelationType.SUBSCRIBE))
         except Exception as exc:
             _relation_finish(account,target,'follow',claim,False,bv)
             return json.dumps({'ok':False,'status':'uncertain-no-retry','error':str(exc)[:140]},ensure_ascii=False)
@@ -1984,7 +2040,8 @@ async def bili_unfollow_creator_manual(uid: int, reason: str = '', confirm: bool
         if _single_creator_relation(cred,target) not in (2,6): return json.dumps({'ok':False,'skipped':'not-currently-following','uid':target},ensure_ascii=False)
         why=_safe_line(reason,100) or '主人明确要求取关'
         claim=_relation_claim(account,target,'unfollow',max(0,min(5,int(os.environ.get('BILI_SESSION_UNFOLLOW_DAILY_LIMIT','1')))))
-        try: await user.User(uid=target,credential=cred).modify_relation(user.RelationType.UNSUBSCRIBE)
+        try: await _coordinated_relation('unfollow', target, cred,
+                lambda: user.User(uid=target,credential=cred).modify_relation(user.RelationType.UNSUBSCRIBE))
         except Exception as exc:
             _relation_finish(account,target,'unfollow',claim,False)
             return json.dumps({'ok':False,'status':'uncertain-no-retry','error':str(exc)[:140]},ensure_ascii=False)
@@ -2199,9 +2256,11 @@ async def bili_dynamic_comment_manual(dynamic_id: str, text: str, target_rpid: s
                 max(0,min(1000,int(os.environ.get('BILI_COMMENT_DAILY_LIMIT','10')))))
         if not claim.get('ok'):return json.dumps(claim,ensure_ascii=False)
         try:
-            response=await comment.send_comment(text=body,oid=int(area['oid']),type_=area['resource_type'],
+            response=await _coordinated_send('dynamic-comment', target_key, body,
+                lambda: comment.send_comment(text=body,oid=int(area['oid']),type_=area['resource_type'],
                 root=int(target['root']) if target else None,
-                parent=int(target['target']['rpid']) if target and target['target']['rpid']!=target['root'] else None,credential=cred)
+                parent=int(target['target']['rpid']) if target and target['target']['rpid']!=target['root'] else None,
+                credential=cred), _comment_platform_receipt)
             result=response if isinstance(response,dict) else {}
             data=result.get('data') if isinstance(result.get('data'),dict) else {}
             sent=str(data.get('rpid_str') or data.get('rpid') or result.get('rpid_str') or result.get('rpid') or '')
@@ -3190,8 +3249,9 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
                                     'meme_image':{'status':'not_posted_quota_blocked'}},bvid,rpid,mention_diagnostic)
                 # 有 UID 的 @ 和图同时带上；缺 UID 时仍可能只有文字 @，不保证通知。
                 use_uid_mapping = mentioned and all(item.get('uid') for item in mentioned)
-                raw = await asyncio.to_thread(send_with_image,bvid,aid,text,cred,uploaded,
-                                               mentioned if use_uid_mapping else None)
+                raw = await _coordinated_send('comment', f'{bvid}:{rpid}:{root}', text+'|image:'+meme_name,
+                    lambda: asyncio.to_thread(send_with_image,bvid,aid,text,cred,uploaded,
+                                               mentioned if use_uid_mapping else None), _comment_platform_receipt)
                 if raw.get('code') != 0:
                     _comment_meme_debug(bvid,meme_name,meme_reason,'comment_rejected')
                     return _result({'success':False,'error':'B站带图评论拒绝：'+str(raw.get('code'))[:24],
@@ -3220,7 +3280,8 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
             quota_ok, quota_error = _reserve_comment_quota()
             if not quota_ok:
                 return _result({"success": False, "blocked": True, "error": quota_error}, bvid, rpid, mention_diagnostic)
-            raw = await _send_video_comment_with_mentions(bvid, aid, text, cred, mentioned)
+            raw = await _coordinated_send('comment', f'{bvid}:{rpid}:{root}', text,
+                lambda: _send_video_comment_with_mentions(bvid, aid, text, cred, mentioned), _comment_platform_receipt)
             if raw.get("code") != 0:
                 return _result({"success": False, "error": str(raw.get("message") or raw.get("code")),
                                         "mention_delivery": "not_sent"}, bvid, rpid, mention_diagnostic)
@@ -3238,33 +3299,24 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
         quota_ok, quota_error = _reserve_comment_quota()
         if not quota_ok:
             return _result({"success": False, "blocked": True, "error": quota_error}, bvid, rpid, mention_diagnostic)
-        if rpid == 0:
-            # 发表新评论
-            result = await comment.send_comment(
-                text=text,
-                oid=aid,
-                type_=comment.CommentResourceType.VIDEO,
-                credential=cred,
-            )
-        else:
-            # 回复评论
-            # root=0 表示回复一级评论，root=rpid
-            # root!=0 表示回复楼中楼，root=根评论，parent=目标评论
+        async def send_plain_comment():
+            if rpid == 0:
+                return await comment.send_comment(
+                    text=text, oid=aid, type_=comment.CommentResourceType.VIDEO,
+                    credential=cred)
             actual_root = root if root != 0 else rpid
-            result = await comment.send_comment(
-                text=text,
-                oid=aid,
-                type_=comment.CommentResourceType.VIDEO,
-                root=actual_root,
-                parent=rpid,
-                credential=cred,
-            )
+            return await comment.send_comment(
+                text=text, oid=aid, type_=comment.CommentResourceType.VIDEO,
+                root=actual_root, parent=rpid, credential=cred)
+        result = await _coordinated_send('comment', f'{bvid}:{rpid}:{root}', text,
+                                         send_plain_comment, _comment_platform_receipt)
 
         # ⭐ 把回执里的 rpid 带回去：判重表要靠它记「我们发过哪条」，宿主的评论复核
         #    （lib/verify.mjs）也要拿它去 B站 查公开可见性。只回 success 的话那条链是断的。
         #（2026-10-16 审查修：原实现把上面的 result 丢掉了）
-        if isinstance(result,dict) and result.get("code", 0) != 0:
-            return _result({"success": False, "error": str(result.get("message") or result.get("code"))}, bvid, rpid, mention_diagnostic)
+        if not _comment_platform_receipt(result):
+            return _result({"success":False,"no_retry":True,
+                "error":"平台未返回明确的评论 ID，结果需要人工核验，禁止自动重试"},bvid,rpid,mention_diagnostic)
         out = {"success": True, "message": "评论发送成功",
                "mention_delivery": "text_only_unverified" if mentioned else "none"}
         if isinstance(result, dict):
@@ -3279,7 +3331,7 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
             out["dynamic_sync"] = {"status": "comment_receipt_unverified_no_publish"}
         return _result(out, bvid, rpid, mention_diagnostic)
     except Exception as e:
-        return _result({"success": False, "error": str(e)}, bvid, rpid, locals().get("mention_diagnostic"))
+        return _result({"success": False, "no_retry": True, "error": str(e)[:180]}, bvid, rpid, locals().get("mention_diagnostic"))
 
 
 # ========== Tool 7: 批量采集 ==========
@@ -3435,6 +3487,7 @@ async def bili_video_zones() -> str:
 # ========== Tool 13: 热门视频 ==========
 
 @tool()
+@_gate_read('bili_hot_videos')
 async def bili_hot_videos(pn: int = 1, ps: int = 20) -> str:
     """
     获取B站当前热门视频列表
@@ -3468,6 +3521,7 @@ async def bili_hot_videos(pn: int = 1, ps: int = 20) -> str:
 # ========== Tool 14: 热搜关键词 ==========
 
 @tool()
+@_gate_read('bili_hot_buzzwords')
 async def bili_hot_buzzwords(page_num: int = 1, page_size: int = 20) -> str:
     """
     获取B站热搜词/热门关键词
@@ -3486,6 +3540,7 @@ async def bili_hot_buzzwords(page_num: int = 1, page_size: int = 20) -> str:
 # ========== Tool 15: 每周必看 ==========
 
 @tool()
+@_gate_read('bili_weekly_hot')
 async def bili_weekly_hot(week: int = 0) -> str:
     """
     获取B站每周必看视频推荐
@@ -3507,6 +3562,7 @@ async def bili_weekly_hot(week: int = 0) -> str:
 # ========== Tool 16: 排行榜 ==========
 
 @tool()
+@_gate_read('bili_rank')
 async def bili_rank(category: str = "all", day: int = 3) -> str:
     """
     获取B站各分区排行榜
@@ -3559,6 +3615,7 @@ async def bili_rank(category: str = "all", day: int = 3) -> str:
 # ========== Tool 17: 用户信息 ==========
 
 @tool()
+@_gate_read('bili_user_info')
 async def bili_user_info(uid: int) -> str:
     """
     获取B站用户的详细信息
@@ -3654,6 +3711,7 @@ async def bili_user_videos(uid: int, pn: int = 1, ps: int = 30, order: str = "pu
 # ========== Tool 19: 收藏夹列表 ==========
 
 @tool()
+@_gate_read('bili_favorite_lists')
 async def bili_favorite_lists(uid: int = 0) -> str:
     """
     获取用户的收藏夹列表
@@ -3687,6 +3745,7 @@ async def bili_favorite_lists(uid: int = 0) -> str:
 # ========== Tool 20: 收藏夹内容 ==========
 
 @tool()
+@_gate_read('bili_favorite_content')
 async def bili_favorite_content(media_id: int, page: int = 1, keyword: str = "") -> str:
     """
     获取收藏夹内的视频列表
@@ -3755,12 +3814,9 @@ async def bili_send_message(receiver_uid: int, text: str) -> str:
     try:
         pause_deny = _guard("bili_send_message")
         if pause_deny: return pause_deny
-        result = await session.send_msg(
-            credential=cred,
-            receiver_id=receiver_uid,
-            msg_type=session.EventType.TEXT,
-            content=text.strip(),
-        )
+        result = await _coordinated_send('dm', str(receiver_uid), text.strip(),
+            lambda: session.send_msg(credential=cred, receiver_id=receiver_uid,
+                msg_type=session.EventType.TEXT, content=text.strip()), _dm_platform_receipt)
         # ⭐ 2.0.4（issue #35）：**接口没抛异常 ≠ 真的送到了** ——
         #    以前只要不抛就报 success: True，而 B站 可能出现 code=0 却没给投递回执（msg_key）的情况 ✗
         #    回执就在返回值里：有 msg_key 才算发出去；code 非 0 直接算失败 ✓
@@ -3792,6 +3848,7 @@ async def bili_send_message(receiver_uid: int, text: str) -> str:
 # ========== Tool 22: 未读消息 ==========
 
 @tool()
+@_gate_read('bili_unread_messages')
 async def bili_unread_messages() -> str:
     """
     获取B站未读消息数（私信、@、回复、点赞等）
@@ -3832,6 +3889,7 @@ def _notification_string_ids(response):
 # ========== Tool 23: 最近收到的回复 ==========
 
 @tool()
+@_gate_read('bili_received_replies')
 async def bili_received_replies() -> str:
     """
     获取最近收到的评论回复通知
@@ -3850,6 +3908,7 @@ async def bili_received_replies() -> str:
 # ========== Tool 24: 最近收到的@和点赞 ==========
 
 @tool()
+@_gate_read('bili_received_at_and_likes')
 async def bili_received_at_and_likes() -> str:
     """
     获取最近收到的@提及和点赞通知

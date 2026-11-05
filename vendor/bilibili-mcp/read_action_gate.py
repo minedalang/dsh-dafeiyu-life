@@ -16,7 +16,12 @@ import uuid
 import unicodedata
 from pathlib import Path
 
-_ALLOWED = {'bili_search', 'bili_video_info', 'bili_user_videos', 'bili_creator_relation_status', 'bili_comments', 'bili_comment_thread', 'bili_danmaku', 'bili_subtitle'}
+_ALLOWED = {'bili_search', 'bili_video_info', 'bili_user_videos', 'bili_creator_relation_status', 'bili_comments', 'bili_comment_thread', 'bili_danmaku', 'bili_subtitle', 'bili_preview_frames', 'bili_user_info',
+            'bili_hot_videos', 'bili_hot_buzzwords', 'bili_weekly_hot', 'bili_rank',
+            'bili_favorite_lists', 'bili_favorite_content', 'bili_home_recommendations',
+            'bili_unread_messages', 'bili_received_replies', 'bili_received_at_and_likes'}
+_ACCOUNT_READS = {'bili_favorite_lists', 'bili_favorite_content', 'bili_home_recommendations',
+                  'bili_unread_messages', 'bili_received_replies', 'bili_received_at_and_likes'}
 _BV = re.compile(r'^BV[0-9A-Za-z]{10}$')
 _UID = re.compile(r'^[1-9][0-9]{0,18}$')
 _HEX = re.compile(r'^[a-f0-9]{64}$')
@@ -86,6 +91,42 @@ def read_action(tool, args):
         num = _exact_int(a.get('num', 20), minimum=1, maximum=300)
         target = _exact_int(a.get('target_rpid', 0))
         return tool, json.dumps([bvid, str(root), num, str(target)], ensure_ascii=False, separators=(',', ':'))
+    if tool == 'bili_preview_frames':
+        bv = str(a.get('bvid', ''))
+        if not _BV.fullmatch(bv):
+            raise ValueError('预览帧读取缺少有效 BV')
+        return tool, bv
+    if tool == 'bili_user_info':
+        uid = str(a.get('uid', ''))
+        if not _UID.fullmatch(uid):
+            raise ValueError('UP 主资料缺少有效 UID')
+        return tool, uid
+    if tool in ('bili_hot_videos', 'bili_hot_buzzwords'):
+        pn = _exact_int(a.get('pn' if tool == 'bili_hot_videos' else 'page_num', 1), minimum=1, maximum=10000)
+        ps = _exact_int(a.get('ps' if tool == 'bili_hot_videos' else 'page_size', 20), minimum=1, maximum=50)
+        return tool, json.dumps([pn, ps], separators=(',', ':'))
+    if tool == 'bili_weekly_hot':
+        return tool, str(_exact_int(a.get('week', 0), minimum=0, maximum=99999))
+    if tool == 'bili_rank':
+        category = str(a.get('category', 'all')).lower()
+        allowed = {'all','original','rookie','douga','music','dance','game','knowledge',
+                   'technology','sports','car','life','food','animal','fashion','ent','cinephile'}
+        day = _exact_int(a.get('day', 3), minimum=3, maximum=7)
+        if category not in allowed or day not in (3, 7):
+            raise ValueError('排行榜参数无效')
+        return tool, json.dumps([category, day], separators=(',', ':'))
+    if tool == 'bili_favorite_lists':
+        uid = _exact_int(a.get('uid', 0), minimum=0)
+        return tool, str(uid)
+    if tool == 'bili_favorite_content':
+        mid = _exact_int(a.get('media_id'), minimum=1)
+        page = _exact_int(a.get('page', 1), minimum=1, maximum=10000)
+        kw = _clean(a.get('keyword', ''))
+        if mid is None or len(kw) > 80:
+            raise ValueError('收藏夹参数无效')
+        return tool, json.dumps([str(mid), page, kw], ensure_ascii=False, separators=(',', ':'))
+    if tool in ('bili_home_recommendations', 'bili_unread_messages', 'bili_received_replies', 'bili_received_at_and_likes'):
+        return tool, 'current-account'
     if tool == 'bili_search':
         kw = _clean(a.get('keyword', ''))
         if not kw or len(kw) > 300:
@@ -203,7 +244,8 @@ def public_read_reservation(tool, args, *, home=None, adapter=False):
     home = Path(home).resolve()
     scope = _account_scope(home)
     operation, target = action
-    key = _sha(json.dumps([scope, 'public', operation, target], separators=(',', ':'), ensure_ascii=False))
+    domain = 'account' if operation in _ACCOUNT_READS else 'public'
+    key = _sha(json.dumps([scope, domain, operation, target], separators=(',', ':'), ensure_ascii=False))
     base = home / 'read-action-executions'
     locks, receipts = base / 'locks', base / 'receipts'
     for directory in (home, base, locks, receipts):
