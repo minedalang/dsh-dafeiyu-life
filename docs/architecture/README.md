@@ -1,3 +1,7 @@
+## dev.4 目标架构决策（设计已选型，尚未实现）
+
+- [统一 Life Agent：四方案比较、事件驱动选型、记忆成长与 Token 预算、旧流程重构/回滚/验收](./2.7.1-dev4-life-agent-decision-adr.md) · [目标 Mermaid](./diagrams/2.7.1-dev4-life-agent-target.mmd)。**这是目标图，不是生产接线图**；允许替换旧定时刷视频生活驱动，复用现有人格、记忆、关系、待办、权限和 dev.3 执行回执。
+
 - [2.7.1-dev.3 · 跨语言预约、待办事务与顺路热评](./2.7.1-dev3-cross-language-execution-and-comment-followup.md)：Node/Python 同一只读预约、待办短事务锁和独立的顺路热门评论回复链。[生产图](./diagrams/2.7.1-dev3-cross-language-execution-live.mmd)。
 ## 当前开发预览：2.7.1-dev.3 自主待办与生活意愿的共享只读动作协调（增量）
 
