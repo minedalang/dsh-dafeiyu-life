@@ -129,7 +129,8 @@ test('changing accounts during model deliberation blocks execution and does not 
   let r
   r=rig(dir,{model:async()=>{r.switchAccount(B);return JSON.stringify({action:'use_capability',capability:'bilibili.video-explore',reason:'继续'})}})
   const out=await r.planner.tick({force:true})
-  assert.equal(out.result,'video-explore-blocked')
+  assert.equal(out.ok,false)
+  assert.match(out.error,/账号已变化/)
   assert.equal(r.launches,0)
   assert.equal(r.events.status().pending,0,'new account has no leaked wake')
   r.switchAccount(A)

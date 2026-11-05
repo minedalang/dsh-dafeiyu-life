@@ -1,3 +1,7 @@
+## 当前开发预览：2.7.1-dev.4 Life Agent 第二阶段 · 匿名社交唤醒接入
+
+- [第二阶段实际接线：私信/评论已核验入站事件 → 当前账号匿名生活唤醒 → 同一 Life Agent 的自主注意/沉默](./2.7.1-dev4-life-agent-phase2-social-wakes.md) · [第二阶段实际生产图](./diagrams/2.7.1-dev4-life-agent-phase2-social-wakes-live.mmd)。社交事件不再受视频启动额度限制；当前模型只看事件类型/ID/时间，**没有聊天原文，不接管原 DM/评论回复发送权，也不产生关系事实或发送许可**。仍待 Windows 和真实平台验收。
+
 ## 当前开发预览：2.7.1-dev.4 Life Agent 第一阶段已接入；完整目标仍在实施
 
 - [统一 Life Agent 的正式架构决策与目标图](./2.7.1-dev4-life-agent-decision-adr.md) · [目标 Mermaid](./diagrams/2.7.1-dev4-life-agent-target.mmd)。选择 C：事件驱动、单主体、连续记忆成长，允许重构旧定时视频生活驱动；**目标图不等于已完成的生产接线**。

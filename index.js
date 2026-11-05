@@ -2797,6 +2797,21 @@ function reportMeta() {
   let dutyChild = null
   let dutyStartedAt = 0
   let lifeAgentEvents = null
+  // One account-scoped wake adapter for verified DM and public comment inputs.
+  // Never persist the sender, message text, BV, conversation or thread ID.
+  // It does not decide replies and cannot grant B站 write permissions.
+  const offerSocialLifeWake = ({kind,uid,eventId,verified=false}) => {
+    if(!verified||!lifeAgentEvents||!['dm-received','comment-received'].includes(kind))return
+    refreshCfg()
+    if(cfg.lifeAgentMode==='off'||cfg.masterEnabled!==true||accountBinding.status().blocked)return
+    if(!/^[1-9]\d{0,18}$/.test(String(uid||''))||!String(eventId||'').trim())return
+    const scope=trustedLifeAccountTag()
+    if(!/^[a-f0-9]{16}$/.test(String(scope||'')))return
+    try{
+      if(trustedLifeAccountTag()!==scope||accountBinding.status().blocked)return
+      lifeAgentEvents.offer({kind,platform:'bilibili',sourceKey:String(uid)+':'+String(eventId).slice(0,110)})
+    }catch(e){log('Life Agent 社交唤醒未入队：'+String(e?.message||e).slice(0,90))}
+  }
   cancelActiveDuty = () => {
     if (dutyChild && dutyChild.exitCode === null && !dutyChild.killed) {
       log('总开关关闭：停止正在运行的刷视频 Agent')
@@ -3696,7 +3711,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       catch(e){log('私信好友交流画像未更新：'+String(e?.message||e).slice(0,110))}
       const interest=socialPolicyGate.canLearn({uid,kind:'dm'})?prepareFriendInterestObservation({uid,text,source:'dm',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory,accountTag:trustedLifeAccountTag()}):null
       const lifeEvent=preparePrivateLifeEvent({source:role==='owner'?'owner-dm':'friend-dm',role,uid,eventId:messageId,text,at:time})
-      return socialInteractionCoordinator?.record({type:'incoming',source:'dm',eventKey:messageId,actorUid:uid,role,at:time,cognition,interest,lifeEvent})
+      const recorded=await socialInteractionCoordinator?.record({type:'incoming',source:'dm',eventKey:messageId,actorUid:uid,role,at:time,cognition,interest,lifeEvent})
+      if(recorded?.ok===true)offerSocialLifeWake({kind:'dm-received',uid,eventId:messageId,verified:true})
+      return recorded
     },
     generateReply: async (req) => {
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
@@ -4020,7 +4037,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         ?{kind:'social',key:`social:${req.uid}:${req.bvid}:${req.rpid}`,bvid:req.bvid,
           actorUid:req.uid,text:String(req.text).slice(0,230),socialTier:role,at}:null
       try{const sync=await socialInteractionCoordinator?.record({type:'incoming',source:'comment',role,actorUid:req.uid,eventKey:eventId,at,cognition,interest,lifeEvent})
-        if(sync?.ok===false)log('公开评论事件待补偿：'+String(sync.lastError||sync.reason||''))}
+        if(sync?.ok===false)log('公开评论事件待补偿：'+String(sync.lastError||sync.reason||''))
+        if(sync?.ok===true)offerSocialLifeWake({kind:'comment-received',uid:req.uid,eventId,
+          verified:req.contentType==='dynamic'?req.dynamicVerified===true:/^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))})}
       catch(e){log('公开评论事件登记失败：'+String(e?.message||e).slice(0,120))}
       const verifiedOwnerReply=req.kind==='notice'&&['self-top','self-nested'].includes(req.scope)
       const trusted=socialPolicyGate.canTrustComment({uid:req.uid,kind:req.kind})

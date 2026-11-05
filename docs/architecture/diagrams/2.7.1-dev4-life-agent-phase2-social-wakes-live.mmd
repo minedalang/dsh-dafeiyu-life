@@ -1,0 +1,20 @@
+flowchart TD
+  DM[原后台 DM 收件/校验] --> DC[原社交事件 Coordinator]
+  CM[原评论和 AT 收件/来源核验] --> CC[原社交事件 Coordinator]
+  DC -->|成功/唯一观察| WAKE[匿名 offerSocialLifeWake]
+  CC -->|成功/唯一观察| WAKE
+  WAKE -->|当前账号 + 启用模式| Q[life-agent-events 短期按账号去重队列]
+  ROUND[原视频子进程结束] --> Q
+  QUIET[可选生活空档/手动唤醒] --> Q
+  Q -->|匿名类型 ID 相对时间| PLANNER[单一 AutonomousPlanner 模型决策]
+  MEMORY[原 Life Voice + 事实/意愿/待办] --> PLANNER
+  PLANNER -->|consider_social| NOTE[仅匿名 注意事件 决策回执]
+  PLANNER -->|skip/reflect/read| READ[既有只读/反思途径]
+  PLANNER -->|use_capability 且视频可用| CAP[平台能力注册表]
+  CAP -->|active + 二次账号/预算门禁| VIDEO[原视频 Agent]
+  VIDEO --> GATE[原平台权限/去重/真实回执]
+  DC -.->|独立旧回复流程 不由新 Agent 决定| DMREPLY[原 DM 模型/发送门禁]
+  CC -.->|独立旧回复流程 不由新 Agent 决定| COMREPLY[原评论模型/发送门禁]
+  DMREPLY --> GATE
+  COMREPLY --> GATE
+  NOTE -.->|不是回复 已读正文 关系记忆| NOP[无外部写入]

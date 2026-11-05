@@ -935,7 +935,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <details class="life-subdetails todo-settings contextual-settings" id="settings-todo"><summary>⚙️ 自主待办调度设置</summary><p class="muted">只保留独立 AI 调度。开启后，鱼鱼会按间隔、时段和每日额度自己考虑已接受的只读待办；关闭后不会后台自动处理，但仍可点击「提醒鱼鱼考虑待办」。不会因此获得公开发送权限。</p>
 <div class="inset"><h4>🐟 Life Agent · 自主生活驱动（dev.4 首阶段）</h4>
 <p class="muted">关闭：完全保留旧版行为；影子：鱼鱼独立考虑“今天想不想探索视频”，不真正启动视频轮；接管视频：固定谷时定时器不再指挥鱼鱼刷视频，而由同一个自主规划模型在匿名生活事件/生活空档出现时决定是否启动原视频 Agent，允许跳过/休息。已有视频 Agent 可能使用原本明确授权的写入功能；本开关不新增任何发送权限。每日最多 2 次 Life Agent 自主视频启动，至少间隔 180 分钟。切换需同时开启下方自主调度；仍受原时段、模型额度及视频挑选配额限制。私信和评论的统一决策尚未接管。</p>
-<div class="fields"><div><label for="life-agent-mode">Life Agent 视频生活驱动</label><select id="life-agent-mode"><option value="off">关闭（默认） · 旧定时刷视频保持原样</option><option value="shadow">影子观察 · 仅记录自主考虑结果</option><option value="active">接管自动视频轮 · 自主选择探索或休息</option></select></div></div>
+<div class="fields"><div><label for="life-agent-mode">Life Agent 自主生活驱动</label><select id="life-agent-mode"><option value="off">关闭（默认） · 旧定时刷视频保持原样</option><option value="shadow">影子观察 · 收集匿名生活事件，不主动启动视频</option><option value="active">接管自动视频轮 · 同时感知私信/评论事件（回复仍由旧系统执行）</option></select></div></div>
 <div class="toolbar"><button type="button" id="life-agent-wake" class="life-action life-sky">让鱼鱼自主考虑一次（消耗额度）</button><span id="life-agent-status" class="muted" role="status">尚未读取 Life Agent 状态</span></div>
 <h4>🤖 已有自主决策额度 · 与 Life Agent 共用</h4>
 <p class="muted">后台 AI 可从已存在的只读待办中选择执行、延期、忽略或跳过，也可在证据充足时请求人生反思。Life Agent 首阶段只能额外请求启动原视频 Agent，不直接调用点赞、关注、收藏、评论或私信工具；原视频 Agent 仍只在已有授权下行动。新安装默认开启，旧用户保留原有开关状态。旧版「定时提醒主 Session」机制已停用。</p>
