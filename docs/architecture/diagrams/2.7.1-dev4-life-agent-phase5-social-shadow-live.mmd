@@ -5,7 +5,11 @@ flowchart TD
   LOG --> OPT{用户单独 opt-in 且账号有效?}
   OPT -->|否| NO[不暂存正文]
   OPT -->|是，仅好友 DM 与核验公开评论| RAM[进程内最多 420 字 / 10分钟 / 80条]
-  WAKE --> PLANNER[原 AutonomousPlanner 同一模型与每日额度]
+  MANUAL[管理中心主动唤醒] --> WAKE
+  WAKE --> PICK[人工唤醒优先取样，其余真实事件按原到达顺序]
+  PICK --> PLANNER[原 AutonomousPlanner 同一模型与每日额度]
+  AUTO[仅兴趣线索的自动轮次：六小时防重复] --> PLANNER
+  MANUAL -.不受仅线索的六小时自动节流.-> PLANNER
   PLANNER -->|skip| SKIP[继续原生活]
   PLANNER -->|consider_social 有效 ID| CHECK{事件与临时授权仍有效?}
   RAM --> CHECK

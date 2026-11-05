@@ -1,3 +1,7 @@
+## 当前 dev.4 Phase 5 增量 · 手动唤醒与匿名队列诊断
+
+- [六小时自动防重复与手动请求区别、人工唤醒队列优先级、模拟验收、安全边界](./2.7.1-dev4-life-agent-manual-wake-hotfix.md)。本修复没有赋予 Life Agent 新的社交发送权，不改变原 Phase 5 影子上下文授权。
+
 # 当前开发预览：2.7.1-dev.4 Phase 5 · 授权社交上下文与只读影子对照（未接管）
 
 - [实际接线、安全边界、单独授权、匿名模型类别对照与无 B站模拟](./2.7.1-dev4-life-agent-phase5-social-shadow.md) · [Phase 5 Mermaid 生产图](./diagrams/2.7.1-dev4-life-agent-phase5-social-shadow-live.mmd)。默认不读取任何社交原文；需用户单独授权且原核验入站事件有效，才能短暂阅读好友私信或核验公开评论。二次模型调用消耗原每日额度，输出不授权外发；社交仍由原回复器独占。Windows/真实模型/真实 B站尚待验收。
