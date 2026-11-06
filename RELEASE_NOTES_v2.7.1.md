@@ -1,3 +1,5 @@
+> Phase 6 Final 集成候选（仍未正式封版）：跨进程旧社交操作先登记、后检查预约，预约先关闭通道再检查是否排空；可信评论回复进入共享逐消息事务，其他已接线旧发送路径增加在途保护。Life Agent 仍没有真实社交接管/外发权；需要 Windows 与 B站实测。参见 `docs/architecture/2.7.1-dev4-phase6-final-social-drain.md`。
+
 > 当前开发增量（不代表已正式发布）：Phase 6i/6j/6k 将旧 DM/公开评论的发送前状态接入账号隔离的逐消息事务；无可信回执或崩溃后的结果需人工核实，禁止自动重发。Life Agent 社交发送和灰度接管仍未开启。详细见 `docs/architecture/2.7.1-dev4-phase6ijk-social-send-transactions.md`。
 
 ## dev.4 Phase 6h · 社交交接排他基础（开发预览，未发布）

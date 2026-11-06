@@ -75,6 +75,10 @@
 
 - [新功能可验收性契约：触发、选择、真实回执、隐私、费用与使用者验收步骤](./acceptance-observability-contract.md)。代码测试通过不能代替用户可观察的真实行为。
 
+## 当前开发预览：2.7.1-dev.4 Phase 6 Final 集成候选（在途排空，未封版）
+
+- [跨进程旧决策/发送在途排空、可信评论共享事务、失败保守冻结与缺口矩阵](./2.7.1-dev4-phase6-final-social-drain.md) · [实际接线 Mermaid](./diagrams/2.7.1-dev4-phase6-final-social-drain-live.mmd)。仅完成交接前的可核验条件；**未开放 Life Agent 社交接管、未完成全域写入适配、未完成 Windows 和 B站验收**。旧 6h/6ijk 文档仍用于查单项来源和历史。
+
 ## 当前开发预览：2.7.1-dev.4 Phase 6i/6j/6k 社交外发逐消息安全基础
 
 - [旧 DM/评论发送适配器上的逐事件原子占位、可信回执、异常冻结与匿名管理诊断](./2.7.1-dev4-phase6ijk-social-send-transactions.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-phase6ijk-send-transactions-live.mmd)。只在旧 DM/评论外发路径接入；此时 **Life Agent 社交决策和外发仍未启用**，并非生产可用的双 owner 原子交接，也不覆盖自主分享/回访等其他发送入口。Windows/真实平台仍待验收。

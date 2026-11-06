@@ -108,7 +108,8 @@ test('production endpoints are gated with stable source and separate bubble iden
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   const comment=readFileSync(new URL('../lib/comment-interact.mjs',import.meta.url),'utf8')
   assert.match(index,/socialSendTransaction\.execute\(\{channel:'dm'/)
-  assert.equal((index.match(/socialSendTransaction\.execute\(\{channel:'comment'/g)||[]).length,2)
+  assert.equal((index.match(/socialSendTransaction\.execute\(\{channel:'comment'/g)||[]).length,3,
+    'dynamic, video and trusted comment agent share one cross-process send barrier')
   assert.match(index,/socialSendTransaction:socialSendTransaction\.inspect\(\)/)
   assert.match(comment,/replyIndex:i\+1/)
   assert.match(comment,/replyPurpose:`continuity:/)

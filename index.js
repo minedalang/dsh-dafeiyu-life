@@ -1116,12 +1116,14 @@ function reportMeta() {
       if(allowed.blocked)return {ok:false,error:allowed.reason}
       if(channel==='comment'){
         // No top-level fallback: exact original comment only, no automatic @.
-        const result=parseMaybeJson(await call('bili_reply',{bvid:commentBvid,text,rpid:Number(commentRpid),root:Number(commentRoot)||0,
-          should_mention:false,mention_mode:'off',mention_targets:[],mention_names:[],sync_to_dynamic:false}))
+        const result=parseMaybeJson(await legacySocialWrite('comment',()=>call('bili_reply',{
+          bvid:commentBvid,text,rpid:Number(commentRpid),root:Number(commentRoot)||0,
+          should_mention:false,mention_mode:'off',mention_targets:[],mention_names:[],sync_to_dynamic:false})))
         return {ok:result?.success===true&&!!(result?.rpid||result?.rpid_str||result?.data?.rpid),
           sentRpid:String(result?.rpid_str||result?.rpid||result?.data?.rpid||'')}
       }
-      const result=parseMaybeJson(await call('bili_send_message',{receiver_uid:Number(uid),text}))
+      const result=parseMaybeJson(await legacySocialWrite('dm',()=>call('bili_send_message',{
+        receiver_uid:Number(uid),text})))
       return {ok:result?.success===true}
     },logger:{warn:m=>log('统一待办回访：'+m)}})
   const runOwnerTodoWithFollowup=async(id)=>{
@@ -2814,6 +2816,34 @@ function reportMeta() {
     handoffFence:socialHandoffFence,
     getAccountTag:trustedLifeAccountTag,getLifeAgentMode:()=>cfg.lifeAgentMode
   })
+  // Phase 6 Final: register every legacy model/send activity before doing
+  // asynchronous work. A future cutover can reserve the lane, then prove it
+  // has drained; a model choice itself never grants another sender ownership.
+  const socialLegacyScope=new AsyncLocalStorage()
+  const boundLegacyScope=channel=>{
+    const captured=socialLegacyScope.getStore()
+    return captured?.channel===channel?captured.scope:trustedLifeAccountTag()
+  }
+  const runLegacySocialOperation=async({channel,expectedScope,phase},work)=>{
+    // Legacy off-mode may still construct a draft without a logged-in account;
+    // the actual send transaction will independently reject that scope.
+    if(!/^[a-f0-9]{16}$/.test(String(expectedScope||''))&&phase==='decision')return await work()
+    const claim=socialHandoffFence.beginLegacyOperation({channel,expectedScope,phase})
+    if(!claim.ok){
+      if(phase==='decision')throw Error('社交决策在途隔离失败：'+claim.reason)
+      return {ok:false,no_retry:true,reason:claim.reason,error:'社交发送在途隔离失败，未调用平台'}
+    }
+    try{return await socialLegacyScope.run({channel,scope:claim.scope},work)}
+    finally{
+      const released=socialHandoffFence.endLegacyOperation({token:claim.token})
+      if(!released.ok)log('社交在途状态需要人工复核：'+released.reason)
+    }
+  }
+  // This does not replace the original permission/receipt gates. It only
+  // prevents another decision owner being declared safe while a legacy write
+  // from a different (owner DM, follow-up, voluntary share) route is in flight.
+  const legacySocialWrite=(channel,write)=>runLegacySocialOperation({
+    channel,expectedScope:boundLegacyScope(channel),phase:'send'},write)
   const lifeSocialShadow=createLifeSocialShadow({
     getAccountTag:trustedLifeAccountTag,
     getConsent:()=>cfg.lifeAgentSocialContextOptIn===true&&cfg.masterEnabled===true&&
@@ -3145,6 +3175,7 @@ function reportMeta() {
     }catch(e){return {ok:false,uncertain:!['comment_draft','dynamic_draft'].includes(action.type),error:String(e?.message||e).slice(0,180)}}
   }
   async function runOwnerDmPublishComment(bvid,body){
+    return runLegacySocialOperation({channel:'comment',expectedScope:trustedLifeAccountTag(),phase:'send'},async()=>{
     if(String(cfg.dmMode||'')==='only'||Number(cfg.commentDailyLimit)<=0)return {ok:false,error:'目前为只私信模式，或公开评论额度为 0'}
     const text=String(body||'').trim()
     if(!/^BV[0-9A-Za-z]{10}$/.test(bvid)||text.length<1||text.length>600)return {ok:false,error:'BV 号或评论正文无效'}
@@ -3152,6 +3183,7 @@ function reportMeta() {
       const r=parseMaybeJson(await call('bili_reply_manual',{bvid,text,rpid:0,root:0,confirm:true}))
       return confirmedOwnerCommentReceipt(r,'comment').ok?{ok:true,summary:'B站已接受发表评论到 '+bvid}:{ok:false,uncertain:r?.no_retry===true||r?.uncertain===true||r?.status==='uncertain-no-retry',error:String(r?.error||'评论未获确认，勿自动重试')}
     }catch(e){return {ok:false,uncertain:true,error:String(e?.message||e).slice(0,180)}}
+    })
   }
 
   // Owner Agent is initialized before the inbox poll, but executes only on authenticated
@@ -3196,7 +3228,8 @@ function reportMeta() {
     executeWrite:async(step)=>runOwnerDmAction({type:step.action,bvid:step.bvid,uid:step.uid,text:step.text,folderTitle:step.folderTitle,draftId:step.draftId,actorUid:step.actorUid}),
     send:async({uid,text})=>{
       refreshCfg();if(cfg.masterEnabled!==true||cfg.dmWatch!==true||cfg.ownerDmAgentEnabled!==true||String(cfg.dmOwnerUid||'')!==String(uid))return {ok:false,error:'主人私信 Agent 未授权'}
-      const r=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)})
+      const r=await legacySocialWrite('dm',()=>call('bili_send_message',{
+        receiver_uid:Number(uid),text:String(text).slice(0,450)}))
       return {ok:r?.success===true,error:String(r?.error||r?.message||'B站回执未知')}
     },
     logger:{warn:m=>log('主人私信 Agent：'+m)},
@@ -3272,7 +3305,8 @@ function reportMeta() {
       declinedOwnerRequests.add(row)
       // A repeated poll must never send a second refusal or increase persuasion.
       if(r.newDecision===true){
-        try{const delivered=await call('bili_send_message',{receiver_uid:Number(row.senderUid),text:agencyDeclineMessage(r)})
+        try{const delivered=await legacySocialWrite('dm',()=>call('bili_send_message',{
+          receiver_uid:Number(row.senderUid),text:agencyDeclineMessage(r)}))
           if(delivered?.success!==true)log('双域意愿：拒绝回复未确认送达')}
         catch(e){log('双域意愿：拒绝回复失败 '+String(e?.message||e).slice(0,90))}
       }
@@ -3314,7 +3348,8 @@ function reportMeta() {
         try{
           refreshCfg()
           if(cfg.masterEnabled===true&&cfg.dmWatch===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===task.ownerUid){
-            const ack=await call('bili_send_message',{receiver_uid:Number(task.ownerUid),text:summary.slice(0,230)})
+            const ack=await legacySocialWrite('dm',()=>call('bili_send_message',{
+              receiver_uid:Number(task.ownerUid),text:summary.slice(0,230)}))
             if(ack?.success!==true)log('主人私信操作回执未确认送达（任务状态已留存在待办）：'+String(ack?.error||'').slice(0,80))
           }
         }catch(e){log('主人私信操作回执发送失败（任务状态已留存在待办）：'+String(e?.message||e).slice(0,100))}
@@ -3338,7 +3373,8 @@ function reportMeta() {
         try{
           refreshCfg()
           if(cfg.masterEnabled===true&&cfg.dmWatch===true&&cfg.ownerDmActionsEnabled===true&&String(cfg.dmOwnerUid||'')===String(row.senderUid)){
-            const ack=await call('bili_send_message',{receiver_uid:Number(row.senderUid),text:summary.slice(0,390)})
+            const ack=await legacySocialWrite('dm',()=>call('bili_send_message',{
+              receiver_uid:Number(row.senderUid),text:summary.slice(0,390)}))
             if(ack?.success!==true)log('主人私信动作回执未确认送达：'+String(ack?.error||'').slice(0,100))
           }
         }catch(e){log('主人私信动作回执失败：'+String(e?.message||e).slice(0,100))}
@@ -3748,6 +3784,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     generateReply: async (req) => {
       const owner=socialDecisionOwnership.route({channel:'dm'})
       if(!owner.ok)throw Error('私信决策所有权检查失败：'+owner.reason)
+      return runLegacySocialOperation({channel:'dm',expectedScope:owner.scope,phase:'decision'},async()=>{
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
       let relationshipStage='new'
       try{relationshipStage=relationshipIndex()?.get(req.uid,relationshipOptions())?.stage||'new'}catch{}
@@ -3765,14 +3802,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       lifeSocialShadow.noteLegacy({channel:'dm',uid:req.uid,sourceKey:String(req.messageId||'').slice(0,110),
         action:classifyLegacySocialDecision(generated)})
       return generated
+      })
     },
     getVerifiedFacts:verifiedFactsFor,
     send: async ({ uid, text, eventId }) => {
       refreshCfg()
       const owner=socialDecisionOwnership.route({channel:'dm'})
       if(!owner.ok)return {ok:false,error:'私信决策所有权检查失败：'+owner.reason}
+      return runLegacySocialOperation({channel:'dm',expectedScope:owner.scope,phase:'send'},async()=>{
       if (cfg.masterEnabled !== true) return {ok:false,error:'总开关已关闭，私信发送已暂停'}
-      return cadenceSend({uid,channel:'dm'},async()=>{
+      return await cadenceSend({uid,channel:'dm'},async()=>{
       const checked=socialDecisionOwnership.route({channel:'dm',expectedScope:owner.scope})
       if(!checked.ok)return {ok:false,error:'私信发送前账号已变化：'+checked.reason}
       const guarded=await socialSendTransaction.execute({channel:'dm',
@@ -3787,6 +3826,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:'dm-reply:'+String(eventId),at:Date.now()})}catch(e){log('私信关系投影待补偿：'+String(e?.message||e))}
       return guarded
       });
+      })
     },
     logger: {
       warn: (msg) => log('私信自动回复警告：' + String(msg)),
@@ -3959,8 +3999,21 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           if(cfg.ownerCommentSocialPublishEnabled!==true)return {ok:false}
         }else if(cfg.ownerCommentNaturalAckEnabled!==true)return {ok:false}
       }else if(!(channel==='notice'?cfg.commentWatchReplies===true:cfg.commentAtEnabled===true))return {ok:false}
-      const r=parseMaybeJson(await call('bili_reply_manual',{bvid,rpid:Number(rpid),root:Number(root)||0,text,confirm:true}))
-      const receipt=confirmedOwnerCommentReceipt(r,'reply')
+      // Trusted owner/friend comment replies previously bypassed the shared
+      // cross-process send transaction used by ordinary comment replies.
+      // Source and purpose are independently verified before touching B站.
+      const stableKey=/^BV[0-9A-Za-z]{10}$/.test(String(bvid||''))&&
+        /^[1-9]\d{0,19}$/.test(String(rpid||''))&&
+        /^[1-9]\d{0,18}$/.test(String(actorUid||''))&&
+        /^[a-z-]{3,35}$/.test(String(kind||''))
+        ?`trusted-comment:${bvid}:${rpid}:${actorUid}:${kind}`:''
+      const receipt=await socialSendTransaction.execute({channel:'comment',eventKey:stableKey,
+        expectedScope:boundLegacyScope('comment')},async()=>{
+        const r=parseMaybeJson(await call('bili_reply_manual',{
+          bvid,rpid:Number(rpid),root:Number(root)||0,text,confirm:true}))
+        const ack=confirmedOwnerCommentReceipt(r,'reply')
+        return ack.ok&&ack.rpid?{ok:true,rpid:ack.rpid}:{ok:false}
+      })
       if(receipt?.ok===true)try{
         const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role:tier,eventKey:`${actorUid}:${bvid}:${rpid}:reply`,actorUid,bvid,rpid,text,at:Date.now()})
         if(sync?.ok===false)log('可信评论回复投影待补偿：'+String(sync.lastError||sync.reason||''))
@@ -4094,7 +4147,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         try{
           const owner=socialDecisionOwnership.route({channel:'comment'})
           if(!owner.ok)return {consumed:true,reason:'social-owner-unavailable'}
-          const result=await ownerCommentAgent.accept(req)
+          const result=await runLegacySocialOperation({channel:'comment',expectedScope:owner.scope,
+            phase:'send'},()=>ownerCommentAgent.accept(req))
           if(result?.reason!=='not-verified-owner-comment'&&result?.reason!=='disabled')return {consumed:true,reason:'trusted_social_ai'}
         }catch(e){log('可信评论 Agent 接收失败：'+String(e?.message||e).slice(0,120));return {consumed:true,reason:'trusted_social_error'}}
       }
@@ -4117,6 +4171,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     generateReply: async (req) => {
       const owner=socialDecisionOwnership.route({channel:'comment'})
       if(!owner.ok)throw Error('评论决策所有权检查失败：'+owner.reason)
+      return runLegacySocialOperation({channel:'comment',expectedScope:owner.scope,phase:'decision'},async()=>{
       const generated=await interactionBatcher.generate({...req,identityContext:'',incomingRpid:req.rpid,
       p6MaxBubbles:cfg.commentP6MaxBubbles,p6MinDelayMinutes:cfg.socialP6MinDelayMinutes,p6MaxDelayMinutes:cfg.socialP6MaxDelayMinutes,
       allowTodoIntake:req.forceReply!==true&&req.todoIntake!==false,
@@ -4128,6 +4183,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         String(req.bvid||'')+':'+String(req.rpid||req.id||'')
       lifeSocialShadow.noteLegacy({channel:'comment',uid:req.uid,sourceKey,action:classifyLegacySocialDecision(generated)})
       return generated
+      })
     },
     send: async (req) => {
       // Stable source + bubble ordinal, not the generated text, identifies one
@@ -4139,13 +4195,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         ?`${source}:${req.rpid}:${req.uid||''}:${req.replyPurpose||'normal'}:${req.replyIndex??0}`:''
       const owner=socialDecisionOwnership.route({channel:'comment'})
       if(!owner.ok)return {ok:false,error:'评论决策所有权检查失败：'+owner.reason}
+      return runLegacySocialOperation({channel:'comment',expectedScope:owner.scope,phase:'send'},async()=>{
       if(req.contentType==='dynamic'){
         refreshCfg()
         if(!(cfg.masterEnabled===true && (req.kind==='at'?cfg.commentAtEnabled===true:cfg.commentWatchReplies===true)))
           return {ok:false,error:'动态评论回复未授权'}
         // Actual publication / parent identity is checked against live B站 metadata
         // again by bili_dynamic_reply_inbox. Local drafts are not an identity authority.
-        return cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
+        return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
         const checked=socialDecisionOwnership.route({channel:'comment',expectedScope:owner.scope})
         if(!checked.ok)return {ok:false,error:'动态评论发送前账号已变化：'+checked.reason}
         const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
@@ -4169,7 +4226,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // 后台独立发送，受评论互动专用开关保护，不使用 model 的 force 绕过公开评论安全闸。
       refreshCfg()
       if (!(cfg.masterEnabled && (req.manual===true || cfg.commentWatchReplies || cfg.commentAtEnabled))) return {ok:false,error:'后台评论回复已关闭'}
-      return cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
+      return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
       const checked=socialDecisionOwnership.route({channel:'comment',expectedScope:owner.scope})
       if(!checked.ok)return {ok:false,error:'评论发送前账号已变化：'+checked.reason}
       const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
@@ -4185,6 +4242,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       }catch(e){log('评论回复投影记录失败：'+String(e?.message||e).slice(0,110))}
       return ack
       });
+      })
     },
     logger: {warn: (msg) => log('评论互动警告：'+msg),error:(msg)=>log('评论互动错误：'+msg)},
   })
@@ -4712,7 +4770,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const factCheck=outboundFactCheck(text,{uid,channel:'dm'});
       if(!factCheck.ok)return {ok:false,error:'主动分享事实未经核实：'+factCheck.reason};
       refreshCfg();if(cfg.masterEnabled!==true)return {ok:false,error:'总开关关闭'}
-      const r=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,230)})
+      const r=await legacySocialWrite('dm',()=>call('bili_send_message',{
+        receiver_uid:Number(uid),text:String(text).slice(0,230)}))
       if(r?.success===true){try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:eventId||'social-outbound:'+Date.now(),at:Date.now()})}catch(e){log('主动私信投影待补偿：'+String(e?.message||e))}return {ok:true}}return {ok:false,error:String(r?.error||r?.message||'远端未确认成功')}
     },logger:{warn:m=>log('社交意图：'+m)}
   })
@@ -4747,7 +4806,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     sendMain:({text})=>mainSessionBridge.shareRecall(text),
     sendDm:async({uid,text})=>{
       refreshCfg();if(cfg.masterEnabled!==true||cfg.emotionRecallEnabled!==true||cfg.emotionRecallDmEnabled!==true||String(cfg.dmOwnerUid||'')!==String(uid))return {ok:false,error:'主人私信分享权限已关闭或目标 UID 不匹配'}
-      const r=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,230)})
+      const r=await legacySocialWrite('dm',()=>call('bili_send_message',{
+        receiver_uid:Number(uid),text:String(text).slice(0,230)}))
       return r?.success===true?{ok:true}:{ok:false,error:String(r?.error||r?.message||'B站没有确认私信发送成功')}
     },logger:{warn:m=>log('情绪回忆：'+m)}
   })
