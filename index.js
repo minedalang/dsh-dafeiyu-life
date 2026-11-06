@@ -4644,6 +4644,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeAccountTag:()=>trustedLifeAccountTag(),
     beginLifeExploration:(id,goal,found,tag)=>lifeOpportunities.beginExploration(id,goal,found,tag),
     beginLifeVideoExploration:(id,goal,found,tag)=>lifeOpportunities.beginVideoExploration(id,goal,found,tag),
+    recordExplorationCueFailure:(id,code,tag)=>lifeOpportunities.failExplorationCueRead(id,code,tag),
     completeLifeExploration:(id,bvid,receipt,tag)=>lifeOpportunities.completeExploration(id,bvid,receipt,tag),
     failLifeExploration:(id,bvid,tag,code)=>lifeOpportunities.failExplorationRead(id,bvid,tag,code),
     inspectLifeCreatorSpace:(id,proof,tag)=>lifeOpportunities.inspectCreatorSpace(id,proof,tag),

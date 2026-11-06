@@ -1,0 +1,19 @@
+flowchart TD
+  A[Life Agent 手动或自动考虑] --> B[AutonomousPlanner 当前账号动作菜单]
+  B --> C{模型选择}
+  C -->|begin_exploration| D[真实 BV 或可信兴趣只读源]
+  D --> E[原平台读取预约与 bili_video_info / bili_search]
+  E --> F{可信结果与当前账号一致?}
+  F -->|否| G[LifeOpportunities v1 cueFailures 独立冷却]
+  G --> H[LifeDecisionTrace read-result 与失败码]
+  F -->|是| I[LifeOpportunities v1 intentions 可信元数据回执]
+  I --> J[LifeAgentEvents verified video-metadata]
+  J --> K[offer exploration-ready 后续唤醒]
+  K --> L{下一轮模型可选 use_capability?}
+  L -->|选择休息| M[Life 事件正常结算]
+  L -->|明确选择| N[原视频 Agent 的全部权限/额度/账号门禁]
+  N --> O[原视频 Agent 真正执行及真实回执]
+  O --> P[可信事实/时间线按原规则读取]
+  C -->|skip| M
+  G --> Q[过期/三次失败后停止自动读取]
+  H --> R[管理中心 DEBUG 和脱敏失败分类]

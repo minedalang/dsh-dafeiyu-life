@@ -1,3 +1,7 @@
+## 当前增量：Life Agent 自主探索只读回执与后续生活选择（未开放社交外发）
+
+- [已结算生活契机与独立探索线索分账本语义、失败有界冷却、成功元数据后的后续自主考虑](./2.7.1-dev4-life-exploration-read-continuity.md) · [当前调用 Mermaid](./diagrams/2.7.1-dev4-life-exploration-read-continuity-live.mmd)。修复 `cues>0`、`opportunities=0` 时只读失败的错误结算；仅验证公开元数据，视频观看和社交接管仍需真实回执与独立授权。
+
 # 当前增量：Life Agent 决策全过程 DEBUG / B站只读拒绝分类 / 旧测试入口清理
 
 - [真实生活决策链脱敏追踪、平台拒绝分类及重复汇总、错误冻结收紧、Debug 入口和兼容说明](./2.7.1-dev4-life-decision-trace-and-read-diagnostics.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-life-decision-trace-live.mmd)。保留原生活事件、已授权只读动作及平台回执为事实源；调试记录不是第二份记忆或授权；Dev3 旧离线按钮退役。Life Agent 社交仍未接管。
