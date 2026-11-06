@@ -112,7 +112,6 @@ class DiscussionTests(unittest.TestCase):
         text = ''.join(r[1] for r in self.records)
         self.assertNotIn('READ-THIRD-PARTY-SECRET', text)
         self.assertNotIn('reply secret', text)
-        self.assertNotIn('999', text)
         # A raw substring check against the complete JSONL can match an ISO
         # timestamp's fractional seconds (e.g. ...611165), which is not a UID.
         # Verify instead that the real UID is not present in evidence fields,

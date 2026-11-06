@@ -75,6 +75,10 @@
 
 - [新功能可验收性契约：触发、选择、真实回执、隐私、费用与使用者验收步骤](./acceptance-observability-contract.md)。代码测试通过不能代替用户可观察的真实行为。
 
+## 当前界面：统一生活设置与开发诊断分层
+
+- [普通使用只需生活开关和活跃度；旧模式、影子对照与运行诊断折叠；模型 JSON/动作无效有安全分类](./2.7.1-dev4-unified-life-agent-lifestyle-migration.md)。该界面优化不等于已完成旧社交接管或真实模型验收。
+
 ## 当前开发增量：dev.4 · Phase 6/7/8 迁移验收状态与暂停门禁（非封版）
 
 - [基于原设置、Life Agent、跨进程交接与发送事务的只读迁移核验](./2.7.1-dev4-life-transition-readiness.md) · [生产 Mermaid](./diagrams/2.7.1-dev4-life-transition-readiness-live.mmd)。普通手动生活唤醒尊重暂停，旧社交决策者和 Phase 7/8 缺口会明确列为未完成；不会自动发送、迁移、发布或解除残留锁。
