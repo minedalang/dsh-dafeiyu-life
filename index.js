@@ -1,6 +1,7 @@
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
 import {lifeSettingsV2,planLifeSettingsV2,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
+import {lifeTransitionReadiness} from './lib/life-transition-readiness.mjs'
 import {RECOMMENDED_EXPERIENCE_SETTINGS,RECOMMENDED_EXPERIENCE_GROUPS} from './lib/recommended-experience-settings.mjs'
 import { createPersonalityEvolution } from './lib/personality-evolution.mjs'
 import { normalizeFictionalTurn, runFictionalAiDebug, MAX_FICTIONAL_TURNS } from './lib/personality-ai-debug.mjs'
@@ -6453,6 +6454,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     }
     // Phase 6: explicit settings facade over EXISTING authoritative config.
     // No second store, no permissions, no silent migration on GET.
+    if (req.method === 'GET' && path === '/api/bili-duty/life-agent/transition-readiness') {
+      refreshCfg()
+      // Fail closed on unavailable account-scoped ledgers; do not expose raw
+      // accounts, event keys, private text, credentials or per-person status.
+      const inspect=(fn)=>{try{return fn()}catch{return {ok:false}}}
+      return sendJson(res,200,lifeTransitionReadiness({config:cfg,
+        accountReady:/^[a-f0-9]{16}$/.test(String(trustedLifeAccountTag()||'')),
+        planner:inspect(()=>autonomousPlanner.status()),
+        handoff:inspect(()=>socialHandoffFence.inspect()),
+        transactions:inspect(()=>socialSendTransaction.inspect())}))
+    }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/settings-v2') {
       refreshCfg()
       return sendJson(res,200,{ok:true,settings:lifeSettingsV2(cfg)})

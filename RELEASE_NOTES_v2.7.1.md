@@ -1,3 +1,5 @@
+> dev.4 最新开发增量（迁移前安全验证，非发布）：已补普通 Life Agent 手动唤醒的暂停门禁；在生活设置中可展开只读迁移验收清单，区分旧视频时钟退役、社交旧决策者未接管、未知发送回执和 Windows/B站/成长闭环尚未验收。清单不授权发送、不会自动清理存档。完整交接与 Phase 8 尚未完成，详情参见 `docs/architecture/2.7.1-dev4-life-transition-readiness.md`。
+
 > Phase 6 Final 集成候选（仍未正式封版）：跨进程旧社交操作先登记、后检查预约，预约先关闭通道再检查是否排空；可信评论回复进入共享逐消息事务，其他已接线旧发送路径增加在途保护。Life Agent 仍没有真实社交接管/外发权；需要 Windows 与 B站实测。参见 `docs/architecture/2.7.1-dev4-phase6-final-social-drain.md`。
 
 > 当前开发增量（不代表已正式发布）：Phase 6i/6j/6k 将旧 DM/公开评论的发送前状态接入账号隔离的逐消息事务；无可信回执或崩溃后的结果需人工核实，禁止自动重发。Life Agent 社交发送和灰度接管仍未开启。详细见 `docs/architecture/2.7.1-dev4-phase6ijk-social-send-transactions.md`。
