@@ -1,0 +1,22 @@
+flowchart TD
+  A[当前账号核验的真实生活契机] --> B[原 life-opportunities v1 状态文件]
+  B --> L[跨进程原子 life-opportunities-ledger.lock]
+  L --> C[旧 AutonomousPlanner 同一决策额度和 Run Lease]
+  C --> M{模型 JSON 合法且目标仍有效?}
+  M -->|模型故障/非法| R[原匿名事件 retryable / 最多三次]
+  M -->|合法主动 skip| S[原匿名事件 considered / 自主休息]
+  M -->|选择行动| P{执行前核验}
+  P -->|失败 尚未尝试工具| R
+  P -->|通过| T[原只读工具 / 既有专业能力适配器]
+  T --> U{有明确可信结果?}
+  U -->|无成功回执的只读待办| V[原待办延期 + todo-read-failed]
+  U -->|结果未知或持久化异常| F[匿名事件 review / 人工核验]
+  U -->|同 BV 成功元数据| W[既有可信回执 / 不冒充观看]
+  U -->|可控失败的元数据| X[原契机 15m/1h/6h 退避]
+  F --> O[停机后仅可关闭 review 不重新执行]
+  F --> D[管理中心匿名待核验计数]
+  R --> D
+  V --> D
+  X --> D
+  E[旧 DM/评论唯一生产决策者] --> G[原权限/回执/逐消息发送事务]
+  E -.未授予 Life Agent 社交接管权限.-> C

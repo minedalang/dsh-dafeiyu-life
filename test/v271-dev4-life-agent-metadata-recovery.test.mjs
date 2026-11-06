@@ -127,7 +127,7 @@ test('comment-triggered metadata failure cools down the cue, not the whole fish'
 test('management panel preserves 409 Life diagnostic and distinguishes a paused failed read from a voluntary defer',()=>{
   const source=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   assert.match(source,/res\.status===409&&data\?\.ok===false/)
-  assert.match(source,/\['metadata-read-failed','invalid-decision','model-or-execution-error'\]/)
+  assert.match(source,/\['metadata-read-failed','invalid-decision','model-or-execution-error','failed'\]/)
   assert.match(source,/平台资料读取失败（并非主动延期）/)
   assert.match(source,/x\.status==='paused'\?'连续读取失败，已暂停等待排查'/)
   assert.match(source,/metadataFailures\[x\.metadataFailureCode\]/)
