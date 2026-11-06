@@ -1344,7 +1344,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 </div><div class="actions"><button id="comments-settings-save" class="primary">保存评论互动设置</button></div></div>
 </details>
 <div id="comments-records" class="toolbar"><h2 style="margin:0">最近公开评论记录</h2><label for="comments-kind">评论分类</label><select id="comments-kind" aria-label="筛选主评论和回复别人评论"><option value="">全部评论</option><option value="top">主评论</option><option value="reply">回复别人评论</option></select><label for="comments-day">日期</label><input id="comments-day" type="date" title="留空显示全部日期"><button id="comments-day-clear">全部日期</button><select id="comments-limit"><option value="20">每页20条</option><option value="50" selected>每页50条</option><option value="100">每页100条</option><option value="200">每页200条</option></select><button id="comments-load">刷新记录</button></div>
-<p class="muted">评论列表只读取主判重表 seen.md 及月度归档，不从诊断日志实时拼接；回复对象身份仅从已确认成功的互动状态补充，缺失时不猜测。成功回执不代表 B站 当前公开可见；正文摘要只显示原本实际保存的内容。</p>
+<p class="muted">评论列表只读取主判重表 seen.md 及月度归档，不从诊断日志实时拼接；回复对象身份仅从已确认成功的互动状态补充，缺失时不猜测。成功回执不代表 B站 当前公开可见；新评论正文按有界长度保存并展示；旧版已截断正文无法凭账本恢复。梗图为提交回执状态，不能证明平台公开显示。</p>
 <p id="comments-summary" class="muted" role="status">读取中…</p><div id="recent-comments-list" class="records"></div>
 <div class="toolbar"><button id="comments-prev">上一页</button><span id="comments-page-info" class="muted"></span><button id="comments-next">下一页</button></div>
 

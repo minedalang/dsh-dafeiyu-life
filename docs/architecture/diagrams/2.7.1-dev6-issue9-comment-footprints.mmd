@@ -1,0 +1,17 @@
+flowchart TD
+  S[既有评论入口 / 视频Agent / 后台互动] --> T[bili_reply 原权限/事务/额度闸门]
+  T --> U{明确成功回执?}
+  U -->|否、未知| X[原错误/未知冻结，不写成功评论]
+  U -->|是| W[写 seen.md 单条 BV + rpid 评论记录]
+  W --> A[有界实际正文 + 可选已提交梗图标记]
+  A --> C[recent-comments.mjs 单一读取/归档合并]
+  C --> API[GET /api/bili-duty/recent-comments]
+  API --> Admin[管理中心评论列表]
+  API --> Foot[会话标签·大肥鱼足迹/评论区]
+  Admin --> Preview[原 stickers/file 安全本地图片预览]
+  Foot --> Preview
+  T --> M{设置和 AI 允许主动@?}
+  M -->|否| N[去掉预写的配置别名 不查平台用户名]
+  M -->|是| UID[仅允许名单 UID 只读核验 B站用户名]
+  UID -->|成功| Resolved[使用平台真实用户名 @ / UID 映射尽力提交]
+  UID -->|失败| Omit[不生成未核验 @]

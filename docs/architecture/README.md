@@ -1,3 +1,7 @@
+## 当前 dev.6 增量：GitHub Issue #9 评论主账本与足迹修复
+
+- [评论完整有界正文、梗图回执、足迹与 UID 核验 @ 的实际调用及兼容边界](./2.7.1-dev6-github-issue9-comment-footprints.md) · [Mermaid](./diagrams/2.7.1-dev6-issue9-comment-footprints.mmd)。保持现有社交旧 owner，未进行正式 Life 发送接管，Windows 与真实 B站 待验收。
+
 ## 当前版本 2.7.1-dev.6：Life 社交交接前演练与安全核查（未接管真实社交）
 
 - [dev.6 真实生产接线、原社交路径盘点、跨进程排空、手动无发送演练、残留冻结及风险矩阵](./2.7.1-life-b-social-handoff.md) · [可编辑生产 Mermaid](./diagrams/2.7.1-life-b-social-handoff-live.mmd)。社交正式决策和发送仍由旧处理器独占，影子对照不能作为发送许可；本版未发布、未完成 Windows／B站验收。

@@ -111,6 +111,8 @@ window.__ModuleLoader__.load({
     [data-bd-item-n]{font-size:11px;line-height:15px;color:var(--dsw-alias-label-tertiary,inherit);margin:0;}
     [data-bd-item-why]{font-size:12px;line-height:17px;color:var(--dsw-alias-label-secondary,inherit);
       display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    [data-bd-comment-body]{display:block;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-line-clamp:unset;}
+    [data-bd-sticker-preview]{display:block;max-width:210px;max-height:160px;object-fit:contain;border-radius:8px;margin:6px 0;}
     [data-bd-clickable]{cursor:pointer;transition:border-color .12s,background .12s;}
     [data-bd-clickable]:hover{border-color:var(--dsw-alias-brand-primary,rgba(76,141,255,.5));
       background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));}
@@ -197,7 +199,52 @@ window.__ModuleLoader__.load({
 
     /* ────────────── 设置页正文 ────────────── */
 
-/* ────────────── 会话头那个 tab：它刷过的视频（最小实验版）────────────── */
+/* 「大肥鱼足迹」里的已确认评论，只读取 canonical seen.md 评论回执，
+ * 不把诊断、模型草稿或视频记录中的「发给你了」冒充已发布评论。 */
+function FootprintComments() {
+  const PAGE = 20
+  const [rows,setRows] = React.useState(null)
+  const [count,setCount] = React.useState(0)
+  const [offset,setOffset] = React.useState(0)
+  const [kind,setKind] = React.useState('')
+  const [error,setError] = React.useState('')
+  const open = url => jpost('/open',{what:'url',u:url}).catch(()=>{})
+  const load = (nextKind='',nextOffset=0) => {
+    setRows(null);setError('')
+    jget('/recent-comments?limit='+PAGE+'&offset='+nextOffset+(nextKind?'&kind='+nextKind:''))
+      .then(data=>{if(!data?.ok)throw Error('评论主账本读取失败');setRows(data.rows||[]);setCount(Number(data.total)||0)})
+      .catch(()=>{setRows([]);setError('评论主账本暂不可读，请稍后刷新')})
+  }
+  React.useEffect(()=>{load()},[])
+  const filter = v => {setKind(v);setOffset(0);load(v,0)}
+  const page = d => {const next=Math.max(0,offset+d*PAGE);setOffset(next);load(kind,next)}
+  return h('section',{'data-bd-sec':''},
+    h('strong',null,'💬 已发表的评论足迹'),
+    h('div',{'data-bd-note':''},'仅展示已收到成功发送回执的主评论及回复；平台是否公开可见仍未核验。图片预览来自本地原图库，不是 B站 截图。'),
+    h('div',{'data-bd-row':''},
+      ...[['','全部评论'],['top','主评论'],['reply','回复']].map(([v,label])=>h('button',{key:v||'all','data-bd-chip':'','aria-selected':kind===v?'true':'false',onClick:()=>filter(v)},label)),
+      h('button',{'data-bd-btn':'',onClick:()=>load(kind,offset)},'刷新'),
+      h('span',{'data-bd-note':''},rows===null?'读取中…':'共 '+count+' 条')),
+    error?h('div',{'data-bd-note':''},error):null,
+    rows?.length?h('div',{'data-bd-list':''},rows.map((c,i)=>h('article',{key:c.bvid+':'+c.rpid+':'+i,'data-bd-item':''},
+      h('div',{'data-bd-item-body':''},
+        h('div',{'data-bd-item-t':''},c.kind==='reply'?'↪ 已回复评论':'✍ 已发表主评论'),
+        h('div',{'data-bd-item-n':''},(c.time||'时间未知')+' · '+c.bvid),
+        h('div',{'data-bd-item-why':'','data-bd-comment-body':''},c.snippet||'（历史账本未保存正文）'),
+        c.memeImageName&&c.memeStatus==='submitted_unverified'
+          ?h('div',null,
+             h('div',{'data-bd-note':''},'附图：'+c.memeImageName+' · 已随评论提交，公开显示未核验'),
+             h('img',{'data-bd-sticker-preview':'',loading:'lazy',alt:'本地图库原图，非平台显示回执',src:API+'/stickers/file?name='+encodeURIComponent(c.memeImageName)}))
+          :null,
+        h('button',{'data-bd-btn':'',onClick:()=>open(c.url)},c.canJumpToComment?'打开对应评论':'打开视频查看')))))
+      : rows!==null&&!error?h('div',{'data-bd-note':''},'本范围暂无已确认发送的评论；历史截断正文不会被自动补造。'):null,
+    count>PAGE?h('div',{'data-bd-row':''},
+      h('button',{'data-bd-btn':'',disabled:offset<=0,onClick:()=>page(-1)},'上一页'),
+      h('span',{'data-bd-note':''},`${offset+1}–${Math.min(offset+PAGE,count)} / ${count}`),
+      h('button',{'data-bd-btn':'',disabled:offset+PAGE>=count,onClick:()=>page(1)},'下一页')):null)
+}
+
+/* ────────────── 会话头那个 tab：视频 + 已确认评论足迹 ────────────── */
 function WatchTab() {
   const PAGE = 30
   const onOpenUrl = (u) => { jpost('/open', { what: 'url', u }).catch(() => {}) }
@@ -248,7 +295,8 @@ function WatchTab() {
     total > PAGE ? h('div', { 'data-bd-row': '' },
       h('button', { 'data-bd-btn': '', disabled: offset <= 0, onClick: () => go(-PAGE) }, '上一页'),
       h('div', { 'data-bd-note': '' }, `${offset + 1}–${Math.min(offset + PAGE, total)} / ${total}`),
-      h('button', { 'data-bd-btn': '', disabled: offset + PAGE >= total, onClick: () => go(PAGE) }, '下一页')) : null)
+      h('button', { 'data-bd-btn': '', disabled: offset + PAGE >= total, onClick: () => go(PAGE) }, '下一页')) : null,
+    h(FootprintComments))
 }
 
     function Panel() {

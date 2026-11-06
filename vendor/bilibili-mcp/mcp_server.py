@@ -2864,7 +2864,9 @@ def _record_comment_in_ledger(payload, bvid, target_rpid, comment_text="", root=
         else:
             root_id = "0"
         stamp = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
-        summary = _safe_line(comment_text, 20) or "（未保存正文摘要）"
+        # Preserve the actual submitted public text, rather than truncating at 20 characters.
+        # A fixed bound and table-cell escaping protect seen.md against oversized input.
+        summary = _safe_line(comment_text, 4096) or "（未保存正文）"
         if rid == "?":
             summary = "[成功回执·无评论ID] " + summary
         existing = _read_home("seen.md", 2_000_000)
@@ -2884,6 +2886,14 @@ def _record_comment_in_ledger(payload, bvid, target_rpid, comment_text="", root=
                 cells.extend(['recipient_uid=' + uid,
                               'recipient_name=' + _safe_line(recipient.get('name'), 60),
                               'recipient_comment=' + _safe_line(recipient.get('comment'), 180)])
+        # The image is part of the *same* platform-accepted comment, not a
+        # separate diagnostic ledger. Uploaded != publicly rendered on B站.
+        meme = payload.get('meme_image') if isinstance(payload.get('meme_image'), dict) else {}
+        image_name = str(meme.get('name') or '').strip()
+        if meme.get('status') == 'submitted_unverified' and image_name and len(image_name) <= 180 \
+                and not re.search(r'(^[./\\]|\.\.|[\\\r\n\x00|:]|https?://)', image_name, re.I):
+            cells.extend(['meme_image_name=' + _safe_line(image_name, 180),
+                          'meme_status=submitted_unverified'])
         row = "| " + " | ".join(cells) + " |\n"
         _append_home("seen.md", head + row)
     except Exception as exc:
@@ -3017,6 +3027,31 @@ def _decorate_comment(text, targets, should_mention, position="end"):
             if char in "，。！？!?；;" and index >= 2 and index < len(content) - 3:
                 return (content[:index+1] + " " + tags + " " + content[index+1:].lstrip()).strip(), targets
     return (content + " " + tags).strip(), targets
+
+
+async def _resolve_verified_mention_names(targets, cred):
+    """Configured aliases select UID identities, never serve as the platform @ label.
+
+    UID lookup is read-only. Failure is fail-closed for that mention, not for
+    the ordinary comment. Nickname-only legacy targets remain text-only and
+    are never claimed as UID-backed notifications.
+    """
+    verified = []
+    for original in targets:
+        target = dict(original)
+        target['configuredName'] = target.get('name', '')
+        if target.get('uid'):
+            target['name'] = ''
+            try:
+                data = await user.User(uid=int(target['uid']), credential=cred).get_user_info()
+                found = str(data.get('name', '')).strip()
+                if found and len(found) <= 40 and not re.search(r'[<>\r\n@]', found):
+                    target['name'] = found
+            except Exception:
+                pass
+        if target.get('name'):
+            verified.append(target)
+    return verified
 
 
 async def _send_video_comment_with_mentions(bvid, aid, text, credential, mentioned):
@@ -3160,21 +3195,16 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
             except Exception:
                 verified_recipient = None
         mode, targets = _mention_settings(mention_mode, mention_targets)
-        # 允许只填 UID 的 @ 好友；发出前向 B站核对真实昵称。
-        # 未拿到真实昵称时不生成假的 @UID 字样，也不阻塞普通文字评论。
-        for target in targets:
-            target["configuredName"] = target.get("name", "")
-            if re.fullmatch(r"UID [1-9]\d{0,18}",target.get("name", "")) and target.get("uid"):
-                try:
-                    resolved = await user.User(uid=int(target["uid"]), credential=cred).get_user_info()
-                    found = str(resolved.get("name", "")).strip()
-                    if found and len(found) <= 40 and not re.search(r"[<>\r\n@]", found):
-                        target["name"] = found
-                    else:
-                        target["name"] = ""
-                except Exception:
-                    target["name"] = ""
-        targets = [x for x in targets if x.get("name")]
+        configured_targets = [dict(t) for t in targets]
+        # Do not hit the B站 user API on every comment when @ is disabled or
+        # the model declined it. The old alias still must be removed from text.
+        wants_mention = (rpid == 0 and mode != 'off' and
+                         (mode == 'always' or should_mention is True))
+        if wants_mention:
+            targets = await _resolve_verified_mention_names(targets, cred)
+        else:
+            targets = [{**t, 'configuredName':t.get('name', '')} for t in targets]
+        lookup_failed = (wants_mention and bool(configured_targets) and not targets)
 
         # 只有一级评论可对配置中好友群发 @，回复具体评论不会把整个好友名单拖进来。
         selected = targets
@@ -3188,6 +3218,8 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
             mention_reason = "reply_no_group_mentions"
         elif mode == "off":
             mention_reason = "mention_disabled"
+        elif lookup_failed:
+            mention_reason = "mention_uid_name_unverified"
         elif not targets:
             mention_reason = "no_mention_targets"
         elif mode == "ai_select" and not selected and should_mention is True:
@@ -3204,7 +3236,10 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
                               "selected_count": len(selected) if use_mentions else 0,
                               "ai_reason": no_mention_reason if mention_reason == "ai_declined" else ""}
         # 即使不@也必须移除模型偷加的名单昵称。
-        clean_text, _ = _decorate_comment(text, targets, False, mention_position)
+        # Remove aliases from untrusted model text even if UID lookup failed.
+        # Also strip the now-verified names when model pre-composed an @ tag.
+        clean_text, _ = _decorate_comment(text, configured_targets, False, mention_position)
+        clean_text, _ = _decorate_comment(clean_text, targets, False, mention_position)
         text, mentioned = _decorate_comment(clean_text, selected, use_mentions, mention_position)
         if not text:
             return _result({"success": False, "error": "评论内容不能为空"}, bvid, rpid, mention_diagnostic)
