@@ -995,6 +995,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="fields"><div><label for="life-v2-minutes">最短考虑间隔（分钟，5～1440）</label><input type="number" id="life-v2-minutes" min="5" max="1440" value="60"></div><div><label for="life-v2-limit">每日最多模型决策（1～288）</label><input type="number" id="life-v2-limit" min="1" max="288" value="12"></div><div><label for="life-v2-start">每日开始（0～23 时）</label><input type="number" id="life-v2-start" min="0" max="23" value="9"></div><div><label for="life-v2-end">每日结束（1～24 时）</label><input type="number" id="life-v2-end" min="1" max="24" value="23"></div></div><div class="toolbar"><button type="button" class="life-action life-sky" id="life-v2-preview-btn">预览详细变化</button></div>
 </details>
 <div class="toolbar"><button type="button" class="life-action life-green" id="life-v2-save-btn">保存生活设置</button><button type="button" id="life-agent-wake" class="life-action life-sky">现在让鱼鱼考虑一次</button></div>
+<p class="muted"><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看本轮决策全过程与错误回执</a>（只读取本机诊断，不触发模型或 B站请求）</p>
 <p id="life-agent-wake-result" class="muted" role="status" aria-live="polite">手动考虑会消耗一次模型额度；鱼鱼也可以自己选择休息。</p>
 <p id="life-v2-status" class="muted" role="status">正在读取生活设置…</p>
 <details class="life-subdetails" id="life-transition-checklist"><summary>🛠️ 开发者：系统迁移与验收诊断</summary><p class="muted">只读检查，不会发送消息、打开权限或修改数据；绿色配置状态不代表真实平台已验收。</p><div id="life-transition-status" class="muted" role="status">正在核对旧系统退出和新生活系统接管边界…</div></details>
@@ -1076,7 +1077,12 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p id="main-session-queue-status" class="muted" role="status">正在读取…</p>
 <p class="muted">这里仅控制是否把近期生活摘要主动发送给选定的主 Session；不影响上方“鱼鱼现在记得什么”的记忆搜索。</p></div></div></details>
 </div></section>
-<section id="panel-diagnostics" hidden><div id="read-action-executions-section" class="settings-section life-section">
+<section id="panel-diagnostics" hidden><div id="life-decision-traces-section" class="settings-section life-section">
+<div class="toolbar"><h4 style="margin:0">🧭 鱼鱼的决策全过程 · DEBUG</h4><button id="life-traces-refresh" type="button" class="life-action life-sky">刷新决策记录</button></div>
+<p class="muted">按每次 Life Agent 唤醒展示候选、模型校验、动作、回执和事件结算。最近 7 天最多 60 轮，当前 B站账号隔离；不存储完整模型提示、原始回复、私信正文、UID、视频 BV 或工具响应，以免调试日志造成隐私泄露。技术回执不代表鱼鱼真正看过或理解视频。</p>
+<p id="life-traces-status" class="muted" role="status">尚未加载本账号决策链</p><div id="life-traces-list" class="records records-scroll tall" aria-live="polite"></div>
+</div>
+<div id="read-action-executions-section" class="settings-section life-section">
 <div class="toolbar"><h4 style="margin:0">🔒 平台读取预约与中断核查</h4><button id="read-action-executions-refresh" type="button" class="life-action life-sky">刷新真实动作回执</button></div>
 <p class="muted">Node/Python 共享公开读取及账号读取预约；字幕、弹幕和低清预览帧均区分实际内容与模型理解。账号私有读取只在当前核验账号下进行，预览取帧预约不会自动授权模型调用。只读回执不证明完整观看、音频理解或对外发送成功。</p>
 <p id="read-action-executions-status" class="muted" role="status">尚未读取共享动作状态</p><div id="read-action-executions-list" class="records records-scroll" aria-live="polite"></div>
@@ -1086,10 +1092,6 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p class="muted">评论、私信、动态评论与关注关系在实际调用前进行账号级持久预约。不会自动重发中断或回执缺失的动作；原有授权、冷却和每日额度照旧生效。这里只显示脱敏状态，不提供危险的自动解锁或重发按钮。真实 B站发送与异常恢复须单独验收。</p>
 <p id="outbound-action-executions-status" class="muted" role="status">尚未检查外发状态</p><div id="outbound-action-executions-list" class="records records-scroll" aria-live="polite"></div>
 </div>
-<div id="dev3-offline-acceptance" class="settings-section">
-<div class="toolbar"><h4 style="margin:0">🧪 自主行动基础能力 · 离线验收</h4><button type="button" id="dev3-offline-test">运行本地模拟验收</button></div>
-<p class="muted">使用临时虚拟账号和本地模拟数据，实际测试只读动作重复拦截、账号隔离、回执记录和待办旧尝试保护。不会连接 B站、调用 AI、修改真实待办、发送评论或私信。此项通过<strong>不代表</strong> Windows 跨进程和真实平台联调已通过。</p>
-<p id="dev3-offline-status" class="muted" role="status">尚未执行</p><div id="dev3-offline-results" class="records" aria-live="polite"></div></div>
 <div id="todo-transactions-section" class="settings-section"><div class="toolbar"><h4>📝 待办账本并发与恢复</h4><button id="todo-transactions-refresh" type="button">检查事务状态</button></div><p class="muted">只用于防止不同进程同时覆写待办状态。解除中断事务锁不会完成或重开任何待办。</p><p id="todo-transactions-status" role="status" class="muted">尚未检查</p></div>
 <div class="settings-section"><h4>🔒 Python MCP 安全版本检查</h4><p class="muted">如果日志提示 Python MCP 主脚本、共享读取预约或对外写入预约模块与当前插件版本不一致，系统会拒绝发送。这里可以先检查；确认修复时会在插件家目录备份旧文件，然后使用当前安装包内置的受审脚本。不会静默删除自定义修改。</p><div class="toolbar"><button id="mcp-integrity-check" type="button">检查 MCP 文件</button><button id="mcp-integrity-repair" type="button" class="primary" disabled>备份旧文件并修复</button></div><p id="mcp-integrity-status" class="muted" role="status">尚未检测</p></div>
 <div class="toolbar"><h2 style="margin:0">运行诊断</h2><button id="diag-refresh" class="primary">刷新诊断</button><button id="diag-save">保存诊断开关</button></div>

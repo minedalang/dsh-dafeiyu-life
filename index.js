@@ -52,8 +52,8 @@ import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charte
 import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
 import { createAccountBinding } from './lib/account-binding.mjs'
 import { createReadActionExecutionGate,readToolAction } from './lib/read-action-execution-gate.mjs'
+import {createLifeDecisionTrace} from './lib/life-decision-trace.mjs'
 import { createOutboundActionStatus } from './lib/outbound-action-status.mjs'
-import {runDev3OfflineAcceptance} from './lib/dev3-offline-acceptance.mjs'
 import {AsyncLocalStorage} from 'node:async_hooks'
 import { resolveUid } from './lib/uid.mjs'
 import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch } from './lib/dm.mjs'
@@ -4613,7 +4613,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     execute:()=>runDuty('life-agent'),
   }])
+  const lifeDecisionTrace=createLifeDecisionTrace({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   const autonomousPlanner=createAutonomousPlanner({
+    beginDecisionTrace:({trigger,mode})=>lifeDecisionTrace.begin({trigger,mode}),
     dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     getTodos:(limit)=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)&&READ_TODO_TYPES.has(x.type)&&(!x.dueAt||x.dueAt<=Date.now())).slice(0,limit),
     // All accepted obligations reserve their read action, including future-due
@@ -5917,13 +5919,6 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       try{const body=await readBody(req);const result=ownerTodos.recoverTransactionLock({confirm:body?.confirm===true});return sendJson(res,result.ok?200:409,result)}
       catch(e){return sendJson(res,500,{ok:false,error:'待办事务复核失败：'+String(e?.message||e).slice(0,100)})}
     }
-    if(req.method==='POST'&&path==='/api/bili-duty/dev3/acceptance/local'){
-      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
-      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'只允许管理中心同源进行本地验收'})
-      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站验收请求'})
-      try{return sendJson(res,200,await runDev3OfflineAcceptance())}
-      catch{return sendJson(res,500,{ok:false,error:'本地验收运行异常；未访问 B站或真实待办'})}
-    }
     if(req.method==='GET'&&path==='/api/bili-duty/outbound-action-executions'){
       try{return sendJson(res,200,outboundActionStatus())}
       catch{return sendJson(res,500,{ok:false,error:'当前账号外发状态不可用，请先检查账号绑定与执行账本'})}
@@ -5965,6 +5960,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const r=await runLifeExperienceOfflineDemo()
         return sendJson(res,r.ok?200:500,r)
       }catch(e){return sendJson(res,500,{ok:false,error:'离线演示运行失败：'+String(e?.message||e).slice(0,90)})}
+    }
+    if(req.method==='GET'&&path==='/api/bili-duty/life-agent/decision-traces'){
+      try{return sendJson(res,200,lifeDecisionTrace.list({limit:30}))}
+      catch(e){return sendJson(res,409,{ok:false,error:'Life 决策诊断暂不可用：'+String(e?.message||e).slice(0,100)})}
     }
     if(req.method==='POST'&&path==='/api/bili-duty/life-agent/wake'){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')

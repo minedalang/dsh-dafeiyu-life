@@ -6,8 +6,8 @@
 import {mkdtempSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {createReadActionExecutionGate,readToolAction,ReadActionHeldError} from './read-action-execution-gate.mjs'
-import {createOwnerTodoEngine} from './owner-todos.mjs'
+import {createReadActionExecutionGate,readToolAction,ReadActionHeldError} from '../../lib/read-action-execution-gate.mjs'
+import {createOwnerTodoEngine} from '../../lib/owner-todos.mjs'
 
 const BV='BV1abcde1234'
 

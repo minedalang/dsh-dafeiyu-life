@@ -1,3 +1,7 @@
+# 当前增量：Life Agent 决策全过程 DEBUG / B站只读拒绝分类 / 旧测试入口清理
+
+- [真实生活决策链脱敏追踪、平台拒绝分类及重复汇总、错误冻结收紧、Debug 入口和兼容说明](./2.7.1-dev4-life-decision-trace-and-read-diagnostics.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-life-decision-trace-live.mmd)。保留原生活事件、已授权只读动作及平台回执为事实源；调试记录不是第二份记忆或授权；Dev3 旧离线按钮退役。Life Agent 社交仍未接管。
+
 ## 当前增量：Life Agent 事件公平结算与影子证据门禁（社交未接管）
 
 - [匿名生活事件逐项归属、未选中线索有界重考虑、可信只读证据仅证明“提供过”、旧社交影子短时样本诊断](./2.7.1-dev4-life-event-fairness-and-shadow-evidence.md) · [当前实际 Mermaid](./diagrams/2.7.1-dev4-life-event-fairness-shadow-live.mmd)。复用原 Life Agent／账号 v1 事件账本与原旧社交唯一 owner，未新增外发权限、社交切换开关或模型预算；Windows/真实平台待验收。

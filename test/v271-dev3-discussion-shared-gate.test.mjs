@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url'
 import {spawnSync} from 'node:child_process'
 import {createHmac} from 'node:crypto'
 import {readToolAction,createReadActionExecutionGate,ReadActionHeldError} from '../lib/read-action-execution-gate.mjs'
-import {runDev3OfflineAcceptance} from '../lib/dev3-offline-acceptance.mjs'
+import {runDev3OfflineAcceptance} from './helpers/dev3-offline-acceptance.mjs'
 
 const BV='BV1abcde1234'
 const python=process.env.PYTHON||(process.platform==='win32'?'python':'python3')
@@ -110,8 +110,8 @@ test('production includes real comment tool gates and an actionable diagnostic e
   const ui=readFileSync(new URL('lib/management-console.js',root),'utf8')
   assert.match(server,/@_gate_read\('bili_comments'\)/)
   assert.match(server,/@_gate_read\('bili_comment_thread'\)/)
-  assert.match(index,/path==='\/api\/bili-duty\/dev3\/acceptance\/local'/)
-  assert.match(ui,/request\('\/dev3\/acceptance\/local'/)
-  assert.match(html,/id="dev3-offline-test"/)
+  assert.doesNotMatch(index,/path==='\/api\/bili-duty\/dev3\/acceptance\/local'/)
+  assert.match(ui,/life-traces-refresh/)
+  assert.match(html,/id="life-decision-traces-section"/)
 })
 import {readFileSync as fsRead} from 'node:fs'
