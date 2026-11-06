@@ -106,7 +106,13 @@ def test_public_comment_quota_is_reserved_only_immediately_before_publish_paths(
     mention_reserve=body.index('_reserve_comment_quota()',mention_branch)
     assert mention_reserve < body.index('_send_video_comment_with_mentions(bvid, aid, text, cred, mentioned)',mention_reserve)
     regular_branch=body.index('quota_ok, quota_error = _reserve_comment_quota()',mention_reserve+1)
-    assert regular_branch < body.index('result = await comment.send_comment(',regular_branch)
+    # The modern production path wraps actual sends in the coordinated write
+    # gate. The reservation must precede both nested send paths AND the gate.
+    plain_helper=body.index('async def send_plain_comment():',regular_branch)
+    first_send=body.index('return await comment.send_comment(',plain_helper)
+    second_send=body.index('return await comment.send_comment(',first_send+1)
+    coordinated=body.index("result = await _coordinated_send('comment'",second_send)
+    assert regular_branch < plain_helper < first_send < second_send < coordinated
 
 
 def test_public_comment_quota_preflight_is_read_only_and_blocks_when_full():

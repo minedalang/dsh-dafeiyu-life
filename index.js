@@ -65,6 +65,7 @@ import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-pla
 import { createLifeAgentEvents } from './lib/life-agent-events.mjs'
 import { createSocialDecisionOwnership } from './lib/social-decision-ownership.mjs'
 import { createSocialHandoffFence } from './lib/social-handoff-fence.mjs'
+import { createSocialSendTransaction } from './lib/social-send-transaction.mjs'
 import { createLifeSocialShadow, classifyLegacySocialDecision } from './lib/life-social-shadow.mjs'
 import { runLifeExperienceOfflineDemo } from './lib/life-experience-demo.mjs'
 import { createLifeCapabilities } from './lib/life-capabilities.mjs'
@@ -2808,6 +2809,7 @@ function reportMeta() {
   let dutyStartedAt = 0
   let lifeAgentEvents = null
   const socialHandoffFence=createSocialHandoffFence({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
+  const socialSendTransaction=createSocialSendTransaction({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   const socialDecisionOwnership=createSocialDecisionOwnership({
     handoffFence:socialHandoffFence,
     getAccountTag:trustedLifeAccountTag,getLifeAgentMode:()=>cfg.lifeAgentMode
@@ -3773,15 +3775,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return cadenceSend({uid,channel:'dm'},async()=>{
       const checked=socialDecisionOwnership.route({channel:'dm',expectedScope:owner.scope})
       if(!checked.ok)return {ok:false,error:'私信发送前账号已变化：'+checked.reason}
-      const result = await call('bili_send_message', { receiver_uid: Number(uid), text: String(text).slice(0, 450) })
-      if(result?.success===true){
-        const receiptId=extractBiliDmReceiptId(result)
-        if(!receiptId)return {ok:false,error:'B站返回发送成功，但未能解析 msg_key；按结果不确定处理，不会自动重发'}
-        try{activityFeed.publish('social',{count:1})}catch{}
-        try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:'dm-reply:'+String(eventId||Date.now()),at:Date.now()})}catch(e){log('私信关系投影待补偿：'+String(e?.message||e))}
-        return {ok:true,receiptId}
-      }
-      return { ok: false, error: String(result?.error || result?.message || 'B站没有返回投递成功回执') }
+      const guarded=await socialSendTransaction.execute({channel:'dm',
+        eventKey:/^[1-9]\d{0,18}$/.test(String(uid))&&typeof eventId==='string'&&eventId.length>2
+          ?`dm:${uid}:${eventId}`:'',expectedScope:owner.scope},async()=>{
+        const result=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)})
+        const receiptId=result?.success===true?extractBiliDmReceiptId(result):''
+        return receiptId?{ok:true,receiptId}:{ok:false}
+      })
+      if(guarded?.ok!==true)return guarded
+      try{activityFeed.publish('social',{count:1})}catch{}
+      try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:'dm-reply:'+String(eventId),at:Date.now()})}catch(e){log('私信关系投影待补偿：'+String(e?.message||e))}
+      return guarded
       });
     },
     logger: {
@@ -4126,6 +4130,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return generated
     },
     send: async (req) => {
+      // Stable source + bubble ordinal, not the generated text, identifies one
+      // attempted public write. Continuation and manual replies remain distinct.
+      const source=req.contentType==='dynamic'?`dynamic:${String(req.dynamicId||'')}`:`video:${String(req.bvid||'')}`
+      const commentEventKey=/^\d{1,20}$/.test(String(req.rpid||''))&&
+        ((req.contentType==='dynamic'&&/^\d{1,30}$/.test(String(req.dynamicId||'')))||
+        (req.contentType!=='dynamic'&&/^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))))
+        ?`${source}:${req.rpid}:${req.uid||''}:${req.replyPurpose||'normal'}:${req.replyIndex??0}`:''
       const owner=socialDecisionOwnership.route({channel:'comment'})
       if(!owner.ok)return {ok:false,error:'评论决策所有权检查失败：'+owner.reason}
       if(req.contentType==='dynamic'){
@@ -4137,19 +4148,22 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         return cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
         const checked=socialDecisionOwnership.route({channel:'comment',expectedScope:owner.scope})
         if(!checked.ok)return {ok:false,error:'动态评论发送前账号已变化：'+checked.reason}
-        const r=parseMaybeJson(await call('bili_dynamic_reply_inbox',{
-          dynamic_id:String(req.dynamicId||''),target_rpid:String(req.rpid||''),
-          root:String(req.root||''),text:String(req.text||'').slice(0,130),expected_uid:String(req.uid||''),
-          is_at:req.kind==='at'}))
-        if(r?.ok===true&&String(r.dynamicId)===String(req.dynamicId)&&validCommentId(r.rpid)){
-          try{await lifeMemoryCoordinator?.recordEvents([{kind:'comment',contentType:'dynamic',
-            dynamicId:String(req.dynamicId),reply:true,text:String(req.text).slice(0,130),
-            rpid:String(r.rpid),recipientName:'',time:new Date().toISOString(),
-            key:`comment:dynamic:${req.dynamicId}:${r.rpid}`}],{reflect:true})}
-          catch(e){log('动态回复记忆投影失败：'+String(e?.message||e).slice(0,110))}
-          return {ok:true,rpid:String(r.rpid)}
-        }
-        return {ok:false,error:String(r?.error||'动态评论未收到可信平台回执'),no_retry:r?.no_retry===true}
+        const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
+          expectedScope:owner.scope},async()=>{
+          const r=parseMaybeJson(await call('bili_dynamic_reply_inbox',{
+            dynamic_id:String(req.dynamicId||''),target_rpid:String(req.rpid||''),
+            root:String(req.root||''),text:String(req.text||'').slice(0,130),expected_uid:String(req.uid||''),
+            is_at:req.kind==='at'}))
+          return r?.ok===true&&String(r.dynamicId)===String(req.dynamicId)&&validCommentId(r.rpid)
+            ?{ok:true,rpid:String(r.rpid)}:{ok:false}
+        })
+        if(ack?.ok!==true)return ack
+        try{await lifeMemoryCoordinator?.recordEvents([{kind:'comment',contentType:'dynamic',
+          dynamicId:String(req.dynamicId),reply:true,text:String(req.text).slice(0,130),
+          rpid:ack.rpid,recipientName:'',time:new Date().toISOString(),
+          key:`comment:dynamic:${req.dynamicId}:${ack.rpid}`}],{reflect:true})}
+        catch(e){log('动态回复记忆投影失败：'+String(e?.message||e).slice(0,110))}
+        return ack
         });
       }
       // 后台独立发送，受评论互动专用开关保护，不使用 model 的 force 绕过公开评论安全闸。
@@ -4158,16 +4172,18 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
       const checked=socialDecisionOwnership.route({channel:'comment',expectedScope:owner.scope})
       if(!checked.ok)return {ok:false,error:'评论发送前账号已变化：'+checked.reason}
-      const r = await call('bili_reply', {bvid: req.bvid || '', aid: Number(req.aid)||0,
-        rpid: Number(req.rpid), root: Number(req.root)||0, text:String(req.text).slice(0,130)})
-      if(r?.success===true){
-        try{const role=socialPolicyGate.actor(req.uid).role
-          const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role,actorUid:req.uid,bvid:req.bvid,rpid:req.rpid,text:req.text,eventKey:`${req.uid}:${req.bvid}:${req.rpid}:reply`,at:Date.now()})
-          if(sync?.ok===false)log('评论回复投影待补偿：'+String(sync.lastError||sync.reason||''))
-        }catch(e){log('评论回复投影记录失败：'+String(e?.message||e).slice(0,110))}
-        return {ok:true,rpid:String(r?.rpid_str||r?.rpid||'')}
-      }
-      return {ok:false,error:String(r?.error||r?.message||'评论未确认成功')}
+      const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
+        expectedScope:owner.scope},async()=>{
+        const r=await call('bili_reply',{bvid:req.bvid||'',aid:Number(req.aid)||0,
+          rpid:Number(req.rpid),root:Number(req.root)||0,text:String(req.text).slice(0,130)})
+        return r?.success===true?{ok:true,rpid:String(r?.rpid_str||r?.rpid||'')}:{ok:false}
+      })
+      if(ack?.ok!==true)return ack
+      try{const role=socialPolicyGate.actor(req.uid).role
+        const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role,actorUid:req.uid,bvid:req.bvid,rpid:req.rpid,text:req.text,eventKey:`${req.uid}:${req.bvid}:${req.rpid}:reply`,at:Date.now()})
+        if(sync?.ok===false)log('评论回复投影待补偿：'+String(sync.lastError||sync.reason||''))
+      }catch(e){log('评论回复投影记录失败：'+String(e?.message||e).slice(0,110))}
+      return ack
       });
     },
     logger: {warn: (msg) => log('评论互动警告：'+msg),error:(msg)=>log('评论互动错误：'+msg)},
@@ -5957,7 +5973,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       }catch(e){return sendJson(res,500,{ok:false,error:'模型对照失败：'+String(e?.message||e).slice(0,120)})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/autonomous-planner'){
-      try{return sendJson(res,200,{...autonomousPlanner.status(),lifeSettingsPreview:projectLifeSettings(cfg),socialDecisionOwnership:socialDecisionOwnership.status(),socialShadow:lifeSocialShadow.status()})}
+      try{return sendJson(res,200,{...autonomousPlanner.status(),lifeSettingsPreview:projectLifeSettings(cfg),socialDecisionOwnership:socialDecisionOwnership.status(),socialSendTransaction:socialSendTransaction.inspect(),socialShadow:lifeSocialShadow.status()})}
       catch(e){return sendJson(res,500,{ok:false,error:'读取自主调度状态失败：'+String(e?.message||e).slice(0,120)})}
     }
     // 大肥鱼主 Session：只看当前 DSH 里活着的会话，不扫描磁盘上的 sessions 目录。

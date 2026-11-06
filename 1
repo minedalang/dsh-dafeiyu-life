@@ -1,0 +1,28 @@
+feat(life-agent): 完善社交交接跨进程排他预检与崩溃冻结诊断
+
+- 复用社交所有权路由，在私信与评论生成和发送前读取账号/渠道的匿名持久预约
+- 新增仅限 legacy 的原子预备预约及不自动过期的残留冻结、明确未外发人工复核契约
+- 管理中心展示匿名交接阻塞，不暴露 UID、私信内容或改变模型/发送权限
+- 补充子进程五场景离线演练及专项、架构 Mermaid 和验收文档
+- 明确本阶段尚不覆盖检查到发送的原子事务，未启用 Life Agent 社交接管
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# On branch dev
+# Your branch is ahead of 'origin/dev' by 3 commits.
+#   (use "git push" to publish your local commits)
+#
+# Changes to be committed:
+#	modified:   CHANGELOG.md
+#	modified:   RELEASE_NOTES_v2.7.1.md
+#	new file:   docs/architecture/2.7.1-dev4-phase6h-social-handoff-fence.md
+#	modified:   docs/architecture/README.md
+#	new file:   docs/architecture/diagrams/2.7.1-dev4-phase6h-social-fence-live.mmd
+#	modified:   index.js
+#	modified:   lib/management-console.js
+#	modified:   lib/social-decision-ownership.mjs
+#	new file:   lib/social-handoff-fence.mjs
+#	modified:   package.json
+#	new file:   test/v271-dev4-life-agent-phase6h-handoff-fence.test.mjs
+#	new file:   tools/dev4-phase6h-social-fence-offline.mjs
+#

@@ -1,10 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,mkdirSync,readFileSync,readdirSync,rmSync,symlinkSync,writeFileSync} from 'node:fs'
+import {mkdtempSync,mkdirSync,readFileSync,readdirSync,rmSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createSocialHandoffFence} from '../lib/social-handoff-fence.mjs'
 import {createSocialDecisionOwnership} from '../lib/social-decision-ownership.mjs'
+import {createUnsafeDirectoryLinkOrSkip} from './helpers/unsafe-directory-link.mjs'
 
 const A='a'.repeat(16),B='b'.repeat(16)
 function fixture(t){
@@ -98,10 +99,16 @@ test('interrupted empty reservation is never freed by inspection, and unsafe fil
 test('symbolic links in the reservation path fail closed without modifying the target',t=>{
   const x=fixture(t),outside=mkdtempSync(join(tmpdir(),'dsh-fence-outside-'))
   t.after(()=>rmSync(outside,{recursive:true,force:true}))
-  symlinkSync(outside,join(x.dir,'social-handoff-fence'))
+  if(!createUnsafeDirectoryLinkOrSkip(t,outside,join(x.dir,'social-handoff-fence')))return
   assert.equal(x.fence.reserve({channel:'dm'}).reason,'handoff-fence-storage-unsafe')
   assert.equal(x.fence.check({channel:'dm'}).reason,'handoff-fence-storage-unsafe')
   assert.deepEqual(readdirSync(outside),[])
+})
+test('a regular file at the reservation directory fails closed without any link privileges',t=>{
+  const x=fixture(t)
+  writeFileSync(join(x.dir,'social-handoff-fence'),'not a directory')
+  assert.equal(x.fence.reserve({channel:'dm'}).reason,'handoff-fence-storage-unsafe')
+  assert.equal(x.fence.check({channel:'dm'}).reason,'handoff-fence-storage-unsafe')
 })
 test('status and claim never contain raw account, UID, private text, or target',t=>{
   const x=fixture(t),claim=x.fence.reserve({channel:'dm'})
