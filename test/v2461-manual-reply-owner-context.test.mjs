@@ -89,5 +89,5 @@ test('本地 HTTP 手动回复路由及每日诊断按钮存在',()=>{
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8');
  assert.match(idx,/POST' && path === '\/api\/bili-duty\/comment-force-reply'/);
  assert.match(js,/要求 AI 回复这条/);
- assert.match(js,/confirm\('/);
+ assert.match(js,/await confirmAction\(/);
 });

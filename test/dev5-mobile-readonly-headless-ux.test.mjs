@@ -59,7 +59,7 @@ test('Android 查看模式不提供验证主按钮，仍展示所需电脑端操
 
 function makeRequest({status,body=null,mobileViewOnly=true}={}){
   const start=js.indexOf('  const request=async(path,body)=>{')
-  const end=js.indexOf('  // 可访问的确认弹窗',start)
+  const end=js.indexOf('  // 统一样式的异步弹窗',start)
   assert.ok(start>=0&&end>start)
   const fetches=[]
   const request=runInNewContext(js.slice(start,end)+'\nrequest',{

@@ -104,5 +104,5 @@ test('管理中心有显式 DEBUG 路由、一次一条的按钮和反悔确认�
  assert.match(ui,/检查到期回访（不跳过延期）/)
  assert.match(js,/action:'debug-reconsider',key:row\.key/)
  assert.match(js,/action:'debug-reconsider'\}/)
- assert.match(js,/if\(!confirm\('DEBUG/)
+ assert.match(js,/if\(!await confirmAction\(\{title:'请确认操作',description:'DEBUG/)
 })

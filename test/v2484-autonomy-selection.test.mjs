@@ -10,7 +10,7 @@ import {recordInterestEvents,selectionInterests} from '../lib/life-interests.mjs
 const ROOT=new URL('../',import.meta.url)
 const source=p=>readFileSync(new URL(p,ROOT),'utf8')
 
-test('新视频互动默认关闭且设置路由真正保存、可撤销',async()=>{
+test('新安装视频互动默认允许，旧版关闭仍可恢复；设置路由真正保存、可撤销',async()=>{
   const tmp=mkdtempSync(join(tmpdir(),'dafeiyu-v2484-config-'))
   let handler
   const ctx={get:k=>k==='dshHomePath'?(...p)=>join(tmp,...p):undefined,
@@ -28,8 +28,8 @@ test('新视频互动默认关闭且设置路由真正保存、可撤销',async(
       return output.config
     }
     let c=await call('GET')
-    assert.equal(c.autoVideoLike,false)
-    assert.equal(c.autoVideoCollect,false)
+    assert.equal(c.autoVideoLike,true)
+    assert.equal(c.autoVideoCollect,true)
     c=await call('POST',{autoVideoLike:true,autoVideoCollect:true})
     assert.equal(c.autoVideoLike,true)
     assert.equal(c.autoVideoCollect,true)

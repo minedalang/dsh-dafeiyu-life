@@ -1,3 +1,7 @@
+## 2.7.1 RC 收口：一套生活与记忆配置、人格式证据、统一样式确认
+
+- [有机生活套餐、新安装与老用户权限差异、人格真实回复弱观察、旧诊断隐藏和社交推荐链路状态](./2.7.1-rc-organic-life-controls.md) · [可编辑当前接线 Mermaid](./diagrams/2.7.1-rc-organic-life-controls.mmd)。仍为 `2.7.1-dev.7`，正式社交 owner 未交接，不得以页面整合冒充统一发送权；Windows／B站待验收。
+
 ## 2.7.1 RC 准入自检（尚未达到封版条件）
 
 - [十三项自然行为与用户文案自检：实际生产链、已实现与未证实范围、RC 必须补证与验收脚本](./2.7.1-rc-preflight-13-questions.md) · [当前与目标交接示意](./diagrams/2.7.1-rc-preflight-boundaries.mmd)。未改变社交决策权或对外授权；当前 `releaseReady:false`，不应创建 RC 发布标签。

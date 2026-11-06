@@ -36,7 +36,7 @@ function harness({ existing = null } = {}) {
   return { root, config, cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
 
-test('2.6.2 新安装默认视频私信推荐，但不自动发布公开评论或动态', async () => {
+test('RC 新安装默认允许受限原创评论、点赞和收藏；动态仍只存草稿', async () => {
   const x = harness()
   try {
     const c = await x.config()
@@ -55,14 +55,14 @@ test('2.6.2 新安装默认视频私信推荐，但不自动发布公开评论�
     assert.equal(c.ownerDmAgentEnabled,true,'已核验主人受限 Agent 的能力在新安装默认可用')
     assert.equal(c.ownerDmActionsEnabled,true,'公开写入仍必须由本条主人消息明确授权')
     assert.equal(c.ownerTodoCompletionFollowupEnabled,false,'主动任务进度回访必须单独开启')
+    for(const key of ['autoComment','autoVideoLike','autoVideoCollect'])assert.equal(c[key],true,`新安装默认授权: ${key}`)
     assert.equal(c.socialOutreachEnabled,true)
     assert.equal(c.socialLifeIntentEnabled,true)
     assert.equal(c.socialAutoSend,true,'仅可给已授权的私信推荐收件人，仍受真实选片和冷却限制')
     for (const key of [
       'ownerCommentAgentEnabled', 'ownerCommentSocialPublishEnabled', 'ownerCommentNaturalAckEnabled',
       'commentAtEnabled', 'emotionRecallMainEnabled',
-      'emotionRecallDmEnabled', 'autoComment', 'autoVideoLike',
-      'autoVideoCollect', 'agentFollowEnabled', 'visionEnabled', 'commentMemesEnabled',
+      'emotionRecallDmEnabled', 'agentFollowEnabled', 'visionEnabled', 'commentMemesEnabled',
       'dmStrangerOnce', 'mainSessionBridgeEnabled', 'ownerTodoAutoReviewEnabled',
     ]) assert.equal(c[key], false, `未经授权的默认开关: ${key}`)
   } finally { x.cleanup() }
@@ -80,6 +80,7 @@ test('历史配置即使缺少新增字段，也不被新默认偷偷打开；�
     assert.equal(c.mainSessionMemoryMaxItems, 6)
     assert.equal(c.mainSessionMemoryMaxChars, 800)
     assert.equal(c.dmWatch, false)
+    for(const key of ['autoComment','autoVideoLike','autoVideoCollect'])assert.equal(c[key],false,`旧用户缺键不自动扩大权限: ${key}`)
     c = await x.config({ mainSessionMemoryEnabled: true, dailyDynamicEnabled: true })
     assert.equal(c.mainSessionMemoryEnabled, true)
     assert.equal(c.dailyDynamicEnabled, true)

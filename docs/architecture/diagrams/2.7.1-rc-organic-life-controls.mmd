@@ -1,0 +1,27 @@
+flowchart LR
+  UI[🌿 Life 生活方式搭配] --> PACE[Life settings-v2 现有配置]
+  UI --> EXISTING[原记忆与反思配置]
+  EXISTING --> GATE[LifeMemoryGateway / 遗忘隐私门禁]
+  PACE --> LIFE[同一 Life Planner]
+  GATE --> LIFE
+  VIDEO[核验成功的真实探索与公开回复] --> GATE
+  GATE --> EV[当前仍清晰的经历]
+  EV --> INTERESTS[原 LifeInterests 兴趣层]
+  EV --> PERSONALITY[原 PersonalityEvolution v1]
+  PERSONALITY --> VOICE[Life Voice Context]
+  INTERESTS --> LIFE
+  VOICE --> LIFE
+  LIFE --> CHOOSE{自主选择 / 休息}
+  CHOOSE --> TOOL[原视频与待办门禁 / 真实回执]
+  CHOOSE --> SHADOW[只读社交快速关注]
+  INPUT[原 DM / 评论 / @] --> LEGACY[legacy 当前唯一真实社交决策]
+  LEGACY --> SEND[原发送权限 / 额度 / 原子事务]
+  SHARE[原视频兴趣推荐私信] --> SEND
+  SHARE -.状态只读.-> UI
+  SEND --> RECEIPT[成功 / 失败 / 未知回执冻结]
+  RECEIPT --> GATE
+  SAFE[站内样式确认 / 反向权限 UI] --> PACE
+  SAFE --> EXISTING
+  SAFE --> PERMISSION[原授权键；旧用户不自动放开]
+  PERMISSION --> SEND
+  SHADOW -.未接管真实发送.-> LEGACY

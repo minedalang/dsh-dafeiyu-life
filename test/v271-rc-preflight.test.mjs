@@ -52,12 +52,13 @@ test('production wiring still has legacy owner and suspended proactive emotional
 
 test('normal Life management wording is clear; RC list uses textContent and preserves old option values',()=>{
   const html=src('lib/management-console.html'),js=src('lib/management-console.js')
-  for(const term of ['刷新生活状态','聊天与互动','开发者选项','已有设置（升级后原样保留）','RC 前需要回答的 13 个真实使用问题'])
+  for(const term of ['刷新生活状态','聊天与互动','开发者选项','保留你以前的活跃度设置','RC 前需要回答的 13 个真实使用问题'])
     assert.ok(html.includes(term),term)
   for(const id of ['life-rc-questions','life-transition-status','life-v2-mode','life-v2-pace'])
     assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id)
-  for(const val of ['off','active','shadow','quiet','natural','lively','legacy-quiet','legacy-natural','legacy-lively','custom'])
+  for(const val of ['off','active','shadow','quiet','natural','lively','custom'])
     assert.match(html,new RegExp('value="'+val+'"'),val)
+  assert.doesNotMatch(html,/value="legacy-(?:quiet|natural|lively)"/)
   assert.match(js,/rcList\.replaceChildren\(\)/)
   assert.match(js,/li\.textContent=/)
   assert.doesNotMatch(js,/rcList\.innerHTML/)
