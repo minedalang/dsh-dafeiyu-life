@@ -4,7 +4,7 @@
 
 ## 项目与代码入口
 
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.4`（含 Phase 6g 社交影子审计、Phase 6f 账号诊断隔离及 Phase 6e/7e 可见验收与纯模拟，社交仍由旧决策器独占，Phase 6/7 未完整验收），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.5`（已集成 Life 双节奏、社交快速只读关注、分类预算及 DEBUG 关联；正式社交回复仍由旧处理器独占，Life 统一接管与成长闭环尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限；dev.4 旧视频定时驱动已退役，明确保存暂停后普通手动生活唤醒也停止；当前旧社交仍为唯一发言决策者。Phase 6/7/8 迁移核验见 [只读迁移门禁](docs/architecture/2.7.1-dev4-life-transition-readiness.md)；设置及当前增量见 [Life 双节奏与预算架构](docs/architecture/2.7.1-life-a-dual-lane-budget.md)；旧社交真实发言权不变。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
