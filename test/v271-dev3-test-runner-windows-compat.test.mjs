@@ -5,12 +5,18 @@ import {readFileSync} from 'node:fs'
 const at=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8')
 
 test('cross-language test subprocesses use OS-native fileURLToPath and selected Python',()=>{
-  for(const name of ['v271-dev3-crosslang-todo-transaction.test.mjs','v271-dev3-discussion-shared-gate.test.mjs','v271-dev3-danmaku-read-gate.test.mjs','v271-dev3-subtitle-read-gate.test.mjs']){
+  for(const name of ['v271-dev3-crosslang-todo-transaction.test.mjs','v271-dev3-discussion-shared-gate.test.mjs','v271-dev3-danmaku-read-gate.test.mjs','v271-dev3-subtitle-read-gate.test.mjs','v271-dev4-life-nested-read-identity.test.mjs']){
     const source=at('test/'+name)
     assert.match(source,/fileURLToPath\(new URL\('\.\.\/vendor\/bilibili-mcp\/'/)
     assert.match(source,/process\.env\.PYTHON\|\|/)
     assert.doesNotMatch(source,/decodeURIComponent\((?:pyPath|pyFolder\.pathname)\)/)
+    assert.doesNotMatch(source,/new URL\([^\n]+\)\.pathname/)
   }
+})
+
+test('nested Python launcher retains existing environment PYTHONPATH',()=>{
+  const source=at('test/v271-dev4-life-nested-read-identity.test.mjs')
+  assert.match(source,/PYTHONPATH:\[vendor,process\.env\.PYTHONPATH\]\.filter\(Boolean\)\.join\(delimiter\)/)
 })
 
 test('Windows test launcher requires completed PASS marker; isolated Node test is mandatory',()=>{
@@ -34,7 +40,7 @@ test('Windows all-Node runner batches all files, isolates cross-language probes,
   assert.match(powershell,/--test-concurrency=\$nodeTestConcurrency/)
   assert.match(powershell,/--test-concurrency=1/)
   assert.match(powershell,/\$mainTestFiles\s*=\s*@\(\$testFiles\s*\|\s*Where-Object/)
-  for(const name of ['v271-dev3-crosslang-todo-transaction.test.mjs','v271-dev3-discussion-shared-gate.test.mjs','v271-dev3-danmaku-read-gate.test.mjs','v271-dev3-subtitle-read-gate.test.mjs']){
+  for(const name of ['v271-dev3-crosslang-todo-transaction.test.mjs','v271-dev3-discussion-shared-gate.test.mjs','v271-dev3-danmaku-read-gate.test.mjs','v271-dev3-subtitle-read-gate.test.mjs','v271-dev4-life-nested-read-identity.test.mjs']){
     assert.ok(powershell.includes(name),`missing independently-required ${name}`)
   }
   assert.match(powershell,/\$scheduledTestFiles -ne \$testFiles\.Count/)

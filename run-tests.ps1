@@ -207,13 +207,15 @@ if ($testFiles.Count -gt 0) {
     $isolatedDanmakuFile = Join-Path $testDir "v271-dev3-danmaku-read-gate.test.mjs"
     $isolatedSubtitleFile = Join-Path $testDir "v271-dev3-subtitle-read-gate.test.mjs"
     $isolatedThreePhaseFile = Join-Path $testDir "v271-dev3-three-phase-execution.test.mjs"
+    $isolatedNestedReadFile = Join-Path $testDir "v271-dev4-life-nested-read-identity.test.mjs"
     $isolatedSpecs = @(
         [pscustomobject]@{ Name = "Node.js 按需上下文专项（必须通过）"; File = $isolatedContextFile },
         [pscustomobject]@{ Name = "Node.js 跨语言事务专项（必须通过）"; File = $isolatedCrosslangFile },
         [pscustomobject]@{ Name = "Node.js 讨论共享门禁专项（必须通过）"; File = $isolatedDiscussionFile },
         [pscustomobject]@{ Name = "Node.js 弹幕跨语言预约专项（必须通过）"; File = $isolatedDanmakuFile },
         [pscustomobject]@{ Name = "Node.js 字幕跨语言预约专项（必须通过）"; File = $isolatedSubtitleFile },
-        [pscustomobject]@{ Name = "Node.js 三阶段跨语言与外发保护专项（必须通过）"; File = $isolatedThreePhaseFile }
+        [pscustomobject]@{ Name = "Node.js 三阶段跨语言与外发保护专项（必须通过）"; File = $isolatedThreePhaseFile },
+        [pscustomobject]@{ Name = "Node.js 嵌套 Python 读取预约专项（必须通过）"; File = $isolatedNestedReadFile }
     )
     $isolatedTestFiles = @($isolatedSpecs | ForEach-Object { $_.File })
     $mainTestFiles = @($testFiles | Where-Object { $_ -notin $isolatedTestFiles })

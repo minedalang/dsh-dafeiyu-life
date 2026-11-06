@@ -4,10 +4,12 @@ import {createHmac,randomBytes} from 'node:crypto'
 import {mkdtempSync,rmSync,writeFileSync,readFileSync} from 'node:fs'
 import {execFileSync,spawnSync} from 'node:child_process'
 import {tmpdir} from 'node:os'
-import {join} from 'node:path'
+import {join,delimiter} from 'node:path'
+import {fileURLToPath} from 'node:url'
 import {createReadActionExecutionGate} from '../lib/read-action-execution-gate.mjs'
 const BV='BV1abcde1234'
-const vendor=new URL('../vendor/bilibili-mcp/',import.meta.url).pathname
+// A file: URL pathname is /G:/... on Windows and cannot be used as PYTHONPATH.
+const vendor=fileURLToPath(new URL('../vendor/bilibili-mcp/',import.meta.url))
 const python=process.env.PYTHON|| (process.platform==='win32'?'python':'python3')
 const hasPython=spawnSync(python,['--version'],{stdio:'ignore'}).status===0
 const grandchild=`import os,sys\nfrom read_action_gate import public_read_reservation,ReadReservationHeld\ntry:\n with public_read_reservation('bili_video_info',{'bvid':'${BV}'},home=sys.argv[1],adapter=os.environ.get('BILI_JS_MCP_ADAPTER')=='1'):\n  print('ENTERED')\nexcept ReadReservationHeld as e:\n print('HELD:'+e.reason)`
@@ -23,7 +25,7 @@ test('verified nested MCP child may reuse exact Node reservation even behind a P
     writeFileSync(join(home,'bili_credential.json'),JSON.stringify({dedeuserid:uid,sessdata}))
     const gate=createReadActionExecutionGate({dataDir:home,getAccountScope:()=>scope,getAdapterToken:()=>token})
     const launch=(env={})=>execFileSync(python,['-c',shim,home,grandchild],{encoding:'utf8',timeout:10000,
-      env:{...process.env,PYTHONPATH:vendor,BILI_JS_MCP_ADAPTER:'1',BILI_JS_READ_GATE_TOKEN:token,...env}}).trim()
+      env:{...process.env,PYTHONPATH:[vendor,process.env.PYTHONPATH].filter(Boolean).join(delimiter),BILI_JS_MCP_ADAPTER:'1',BILI_JS_READ_GATE_TOKEN:token,...env}}).trim()
     const result=await gate.run({operation:'bili_video_info',target:BV,source:'life-planner'},async()=>{
       assert.equal(launch(),'ENTERED','grandchild must not be rejected by strict direct-parent PID check')
       assert.equal(launch({BILI_JS_READ_GATE_TOKEN:randomBytes(32).toString('hex')}),'HELD:adapter-proof-mismatch')
