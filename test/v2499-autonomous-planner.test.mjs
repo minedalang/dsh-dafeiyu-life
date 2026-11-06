@@ -17,7 +17,7 @@ test('自主调度允许已存在只读待办 ID，拒绝所有外部写入任�
   assert.equal(validatePlannerDecision(JSON.stringify({action:'execute_read',id:'write'}),xs).action,'skip')
   assert.equal(validatePlannerDecision(JSON.stringify({action:'execute_read',id:'fake'}),xs).action,'skip')
   assert.equal(validatePlannerDecision(JSON.stringify({action:'send_dm',id:'read'}),xs).action,'skip')
-  assert.equal(validatePlannerDecision('```json\n{"action":"execute_read","id":"read"}\n```',xs).action,'skip')
+  assert.equal(validatePlannerDecision('```json\n{"action":"execute_read","id":"read"}\n```',xs).action,'execute_read')
 })
 test('独立调度只执行只读任务；模型无法通过待办获取写入权限',async()=>{
   const dir=home();let now=tickTime,calls=0,ran=[]

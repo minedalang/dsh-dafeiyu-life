@@ -12,7 +12,7 @@ const ui=readFileSync(resolve(root,'lib/management-console.js'),'utf8')
 test('invalid model output has safe reason categories, without leaking model text or granting a write',()=>{
  const allowed=[{id:'read-1',type:'check_notifications'}]
  const cases=[
-  ['```json\n{"action":"skip"}\n```','model-json-invalid'],
+  ['```json invalid ```','model-json-invalid'],
   ['[]','model-response-shape'],
   ['{}','model-action-unknown'],
   ['{"action":"send_dm","id":"read-1"}','model-action-unknown'],
