@@ -1,0 +1,23 @@
+flowchart TD
+  DM[已核验普通好友私信] --> REC[原 SocialInteractionCoordinator 成功记录]
+  COMMENT[已核验公开评论或 @] --> REC
+  REC --> W[当前账号匿名 Life Agent 唤醒]
+  REC --> OLD[原 legacy 唯一社交决定者]
+  W --> CONSENT{独立只读授权 + 账号有效?}
+  CONSENT -->|否| NONE[仅匿名唤醒，不读取聊天原文]
+  CONSENT -->|是| MEM[life-social-shadow 10 分钟进程内缓存]
+  MEM --> KEY{同一可信源是否已登记?}
+  KEY -->|已登记| REJECT[拒绝第二匿名 ID 抢占配对]
+  KEY -->|新来源| LIFE[原 Planner 自主选中 consider_social 才进行影子分类]
+  LIFE --> IMM[第一次有效 reply/defer/silent 固定为对照观察]
+  OLD --> IMMOLD[旧方第一次有效分类固定为对照观察]
+  IMM --> AUDIT[同一缓存内按账号及渠道配对 / 一致 / 分歧 / 仅单方]
+  IMMOLD --> AUDIT
+  AUDIT --> UI[管理中心只读聚合，不包含 UID/正文/消息 ID]
+  OLD --> POLICY[原 SocialPolicyGate / 原权限及节奏、去重]
+  POLICY --> SEND[原发送器与平台回执]
+  REVOKE[撤权 / 切换账号 / TTL 到期] --> CLEAR[清空临时缓存与配对]
+  CLEAR --> MEM
+  GUARD[SocialDecisionOwnership] -->|仅 legacy| OLD
+  GUARD -.永不因影子配对解锁.-> UI
+  SIM[5 个纯模拟场景] -.验证不可变配对和隔离.-> AUDIT
