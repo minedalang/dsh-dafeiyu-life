@@ -150,6 +150,19 @@ test('active mode has two autonomous video launches/day, with a cross-wake coold
   assert.equal(r.launches,2)
 }))
 
+test('capability selection closes actual video wakes but leaves unrelated social input unselected',()=>withHome(async dir=>{
+  const r=rig(dir)
+  r.events.offer({kind:'dm-received',platform:'bilibili',sourceKey:'unrelated-dm-source'})
+  const result=await r.planner.tick({force:true})
+  assert.equal(result.result,'capability-launched')
+  const status=r.events.status()
+  assert.equal(r.launches,1)
+  assert.equal(status.unselectedWaiting,1)
+  assert.equal(status.recent.find(e=>e.kind==='dm-received').result,'not-selected-this-turn')
+  assert.equal(status.recent.filter(e=>e.kind==='quiet-window'&&e.state==='considered').length,1)
+  assert.equal(status.needsReview,0)
+}))
+
 test('video launch failure is not claimed as a verified video event',()=>withHome(async dir=>{
   const r=rig(dir,{onExplore:()=>({started:false,error:'headless not ready'})})
   const out=await r.planner.tick({force:true})

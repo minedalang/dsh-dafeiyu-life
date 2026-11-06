@@ -77,13 +77,15 @@ test('7c: verified first-round read enters next model prompt; no fake watch or s
  assert.equal(x.done,true)
  assert.equal(x.calls,2)
  assert.deepEqual(x.two.recentVerifiedReadEvidence,[{kind:'todo-read',hoursAgo:1}])
- assert.equal(x.entries[0].priorVerifiedReadReferenced,true)
+ assert.equal(x.entries[0].priorVerifiedReadOffered,true)
+ assert.equal(x.entries[0].priorVerifiedReadReferenced,false)
  assert.equal(x.entries[1].verifiedReadKind,'todo-read')
  assert.doesNotMatch(x.ledger,/todo-one|todo-two|1234567/)
 })
 test('7c: failed read never becomes evidence for next turn',async()=>{
  const x=await replay({success:false});assert.equal(x.first.result,'failed')
  assert.deepEqual(x.two.recentVerifiedReadEvidence,[])
+ assert.equal(x.entries[0].priorVerifiedReadOffered,false)
  assert.equal(x.entries[0].priorVerifiedReadReferenced,false)
 })
 test('7c: legacy ledger without evidence field remains readable and does not fake growth',async()=>inTemp(dir=>{

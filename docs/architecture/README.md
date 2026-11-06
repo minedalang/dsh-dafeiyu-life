@@ -1,3 +1,7 @@
+## 当前增量：Life Agent 事件公平结算与影子证据门禁（社交未接管）
+
+- [匿名生活事件逐项归属、未选中线索有界重考虑、可信只读证据仅证明“提供过”、旧社交影子短时样本诊断](./2.7.1-dev4-life-event-fairness-and-shadow-evidence.md) · [当前实际 Mermaid](./diagrams/2.7.1-dev4-life-event-fairness-shadow-live.mmd)。复用原 Life Agent／账号 v1 事件账本与原旧社交唯一 owner，未新增外发权限、社交切换开关或模型预算；Windows/真实平台待验收。
+
 ## 当前增量：Life Agent 回执边界与生活契机账本原子性（无社交接管）
 
 - [生活契机 v1 原子写入、生活事件在执行前失败时重试/结果未知时冻结、只读失败明确返回及停机离线审查](./2.7.1-dev4-life-receipt-boundary-hardening.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev4-life-receipt-boundary-live.mmd)。继续复用 `AutonomousPlanner`、`life-agent-events`、`life-opportunities`，不新建状态真值或扩大权限；原 DM/评论回复器仍独占真实社交决策。Windows 与真实平台待验收。

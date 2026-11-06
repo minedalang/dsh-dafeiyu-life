@@ -6465,7 +6465,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         accountReady:/^[a-f0-9]{16}$/.test(String(trustedLifeAccountTag()||'')),
         planner:inspect(()=>autonomousPlanner.status()),
         handoff:inspect(()=>socialHandoffFence.inspect()),
-        transactions:inspect(()=>socialSendTransaction.inspect())}))
+        transactions:inspect(()=>socialSendTransaction.inspect()),
+        shadow:inspect(()=>lifeSocialShadow.status())}))
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/settings-v2') {
       refreshCfg()
