@@ -1,4 +1,4 @@
-import {verifyLifePublicMetadata, classifyLifeMetadataFailure} from './lib/life-public-metadata.mjs'
+import {verifyLifePublicMetadata, classifyLifeMetadataFailure, lifeMetadataDiagnostics} from './lib/life-public-metadata.mjs'
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
 import {lifeSettingsV2,planLifeSettingsV2,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
@@ -1367,7 +1367,7 @@ function reportMeta() {
     const actual = join(stateDir, 'mcp_server.py')
     const shipped = join(pluginDir, 'vendor', 'bilibili-mcp', 'mcp_server.py')
     try {
-      const helpers = ['read_action_gate.py','vision_fallback_evidence.py']
+      const helpers = ['read_action_gate.py','vision_fallback_evidence.py','life_metadata_diagnostics.py']
       if (readFileSync(actual, 'utf8') === readFileSync(shipped, 'utf8') &&
           helpers.every(helper=>readFileSync(join(stateDir,helper),'utf8') ===
             readFileSync(join(pluginDir,'vendor','bilibili-mcp',helper),'utf8'))) return true
@@ -4614,6 +4614,18 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     execute:()=>runDuty('life-agent'),
   }])
   const lifeDecisionTrace=createLifeDecisionTrace({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
+  // Single evidence boundary shared by Life planning and explicit no-model diagnostics.
+  // Neither path bypasses account/read budgets or claims that metadata was watched.
+  const readLifeVideoMetadata=async bvid=>readActionContext.run({source:'life-planner'},async()=>{
+    if(!/^BV[0-9A-Za-z]{10}$/.test(String(bvid||'')))
+      return {ok:false,code:'metadata-response-invalid',diagnosticOrigin:'response-validation'}
+    try{
+      const info=parseMaybeJson(await call('bili_video_info',{bvid}))
+      return verifyLifePublicMetadata(bvid,info)
+    }catch(error){
+      return {ok:false,code:classifyLifeMetadataFailure(error),diagnosticOrigin:'mcp-adapter',failureLayer:'mcp-transport'}
+    }
+  })
   const autonomousPlanner=createAutonomousPlanner({
     beginDecisionTrace:({trigger,mode})=>lifeDecisionTrace.begin({trigger,mode}),
     dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
@@ -4674,14 +4686,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         }})
     }),
     recordOpportunityDecision:(id,action,opts)=>lifeOpportunities.decide(id,action,opts),
-    executeOpportunityRead:async(bvid)=>readActionContext.run({source:'life-planner'},async()=>{
-      if(!/^BV[0-9A-Za-z]{10}$/.test(String(bvid||'')))return {ok:false,error:'BV 证据无效'}
-      // Use the existing guarded read adapter and its per-account read budget.
-      try{
-        const info=parseMaybeJson(await call('bili_video_info',{bvid}))
-        return verifyLifePublicMetadata(bvid,info)
-      }catch(error){return {ok:false,code:classifyLifeMetadataFailure(error)}}
-    }),
+    executeOpportunityRead:readLifeVideoMetadata,
     recheckWillingness:task=>dualContextAgency.assessReadExecution({task}),
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars),
     executeRead:(id)=>{
@@ -5961,6 +5966,30 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const r=await runLifeExperienceOfflineDemo()
         return sendJson(res,r.ok?200:500,r)
       }catch(e){return sendJson(res,500,{ok:false,error:'离线演示运行失败：'+String(e?.message||e).slice(0,90)})}
+    }
+    // Explicit real read-only probe. Uses a CURRENT-ACCOUNT previously verified
+    // video observation; no arbitrary BV from HTTP, no model call, no Life
+    // event settlement, no journal mutation, no write tools or retry bypass.
+    if(req.method==='POST'&&path==='/api/bili-duty/life-agent/metadata-probe'){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'仅允许管理中心同源诊断'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站平台探测'})
+      try{
+        await readBody(req)
+        refreshCfg()
+        if(cfg.masterEnabled!==true||!firstStart.isReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
+          return sendJson(res,409,{ok:false,code:'metadata-account-unavailable',error:'当前账号或生活总开关未准备好'})
+        const evidence=[...lifeOpportunities.explorationCues({limit:6}),...lifeOpportunities.list({includeClosed:true,limit:12})]
+          .find(row=>/^BV[0-9A-Za-z]{10}$/.test(String(row?.bvid||'')))
+        if(!evidence)return sendJson(res,409,{ok:false,code:'no-verified-video-source',error:'本账号没有最近已核验的公开视频线索可供诊断；不能人工编造 BV'})
+        const result=await readLifeVideoMetadata(evidence.bvid)
+        // Do not return a BV, video title, account identifier or raw response.
+        if(result?.ok===true)return sendJson(res,200,{ok:true,state:'verified-metadata',code:'verified-metadata',modelCalled:false,lifeEventChanged:false})
+        return sendJson(res,200,{ok:true,state:'read-rejected',...lifeMetadataDiagnostics(result,evidence.bvid),modelCalled:false,lifeEventChanged:false})
+      }catch(error){
+        const result={ok:true,state:'read-rejected',...lifeMetadataDiagnostics({ok:false,code:classifyLifeMetadataFailure(error),diagnosticOrigin:'mcp-adapter',failureLayer:'mcp-transport'}),modelCalled:false,lifeEventChanged:false}
+        return sendJson(res,200,result)
+      }
     }
     if(req.method==='GET'&&path==='/api/bili-duty/life-agent/decision-traces'){
       try{return sendJson(res,200,lifeDecisionTrace.list({limit:30}))}

@@ -34,6 +34,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent, ImageContent
 
 from read_action_gate import public_read_reservation, ReadReservationHeld
+from life_metadata_diagnostics import public_metadata_failure
 from outbound_action_gate import outbound_reservation, OutboundHeld
 from vision_fallback_evidence import classify_visual_fallback
 
@@ -995,31 +996,29 @@ async def bili_video_info(bvid: str) -> str:
     Returns:
         视频标题、描述、UP主、播放量、评论数、收藏数等详细数据
     """
-    cred = get_cred()
-    v = video.Video(bvid=bvid, credential=cred)
-    info = await v.get_info()
-    stat = info.get("stat", {})
-
+    try:
+        cred = get_cred()
+        v = video.Video(bvid=bvid, credential=cred)
+        info = await v.get_info()
+    except Exception as exc:
+        # MCP otherwise turns this exception into unstructured isError text.
+        # Only bounded, non-sensitive error facts leave this boundary.
+        return json.dumps(public_metadata_failure(exc), ensure_ascii=False)
+    if not isinstance(info, dict) or not isinstance(info.get('bvid'), str) or not isinstance(info.get('title'), str):
+        return json.dumps({'ok': False, 'failureCode': 'metadata-response-invalid',
+                           'failureLayer': 'python-response', 'diagnosticOrigin': 'python-bili-video-info'}, ensure_ascii=False)
+    stat = info.get('stat') if isinstance(info.get('stat'), dict) else {}
+    owner = info.get('owner') if isinstance(info.get('owner'), dict) else {}
+    pages = info.get('pages') if isinstance(info.get('pages'), list) else []
+    tags = info.get('tag') if isinstance(info.get('tag'), list) else []
     result = {
-        "bvid": info.get("bvid"),
-        "aid": info.get("aid"),
-        "title": info.get("title"),
-        "description": info.get("desc"),
-        "author": info.get("owner", {}).get("name"),
-        "duration": info.get("duration"),
-        "pages": len(info.get("pages", [])),
-        "tags": [t.get("tag_name") for t in info.get("tag", []) if t.get("tag_name")],
-        "stat": {
-            "view": stat.get("view", 0),
-            "danmaku": stat.get("danmaku", 0),
-            "reply": stat.get("reply", 0),
-            "favorite": stat.get("favorite", 0),
-            "coin": stat.get("coin", 0),
-            "like": stat.get("like", 0),
-            "share": stat.get("share", 0),
-        },
+        'bvid': info.get('bvid'), 'aid': info.get('aid'), 'title': info.get('title'),
+        'description': info.get('desc'), 'author': owner.get('name'),
+        'duration': info.get('duration'), 'pages': len(pages),
+        'tags': [t.get('tag_name') for t in tags if isinstance(t, dict) and t.get('tag_name')],
+        'stat': {key: stat.get(key, 0) for key in ('view', 'danmaku', 'reply', 'favorite', 'coin', 'like', 'share')},
     }
-    _remember_video_context(bvid, "info", result)
+    _remember_video_context(bvid, 'info', result)
     return json.dumps(result, ensure_ascii=False)
 
 

@@ -1080,6 +1080,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <section id="panel-diagnostics" hidden><div id="life-decision-traces-section" class="settings-section life-section">
 <div class="toolbar"><h4 style="margin:0">🧭 鱼鱼的决策全过程 · DEBUG</h4><button id="life-traces-refresh" type="button" class="life-action life-sky">刷新决策记录</button></div>
 <p class="muted">按每次 Life Agent 唤醒展示候选、模型校验、动作、回执和事件结算。最近 7 天最多 60 轮，当前 B站账号隔离；不存储完整模型提示、原始回复、私信正文、UID、视频 BV 或工具响应，以免调试日志造成隐私泄露。技术回执不代表鱼鱼真正看过或理解视频。</p>
+<div class="toolbar"><button type="button" id="life-metadata-probe" class="life-action life-sky">诊断一次真实视频资料读取（不调用模型）</button></div>
+<p class="muted">仅从当前账号最近的真实公开观察中取一条已知 BV 进行只读测试；会使用一次 B站读取预算并可能触发平台风控，不会更改生活待办、模型额度、决策事件或外发任何内容。请勿频繁点击。</p>
+<p id="life-metadata-probe-status" class="muted" role="status">尚未发起资料读取诊断</p>
 <p id="life-traces-status" class="muted" role="status">尚未加载本账号决策链</p><div id="life-traces-list" class="records records-scroll tall" aria-live="polite"></div>
 </div>
 <div id="read-action-executions-section" class="settings-section life-section">
