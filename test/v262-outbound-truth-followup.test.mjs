@@ -91,8 +91,9 @@ test('回访模型不再以人生记忆检索为空作为唯一的永久延期�
  assert.match(ui,/parentTodoId/)
  assert.match(ui,/selectedTodoRoot/)
  assert.match(html,/grid-template-columns:minmax\(210px,34%\)/)
- assert.match(html,/id="autonomous-planner-recommended"/)
- assert.match(ui,/autonomous-planner-recommended/)
+ assert.match(html,/id="life-v2-pace"/)
+ assert.match(ui,/loadUnifiedLifeSettings/)
+ assert.doesNotMatch(html,/id="autonomous-planner-recommended"/)
  assert.match(ui,/今日模型决策额度耗尽/)
 })
 

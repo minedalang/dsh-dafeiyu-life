@@ -36,8 +36,9 @@ test('6c: management UI and production config POST both enforce new ownership',(
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  assert.match(index,/assertLegacyLifeSettingsPatchCompatible\(cfg,validatedPatch\)/)
- assert.match(html,/life-legacy-managed-note/)
- assert.match(js,/\$\(id\)\.disabled=true/)
+ assert.match(html,/id="panel-life-agent"/)
+ assert.doesNotMatch(html,/id="autonomous-planner-enabled"/)
+ assert.match(js,/life-social-shadow-save/)
  assert.match(js,/loadUnifiedLifeSettings/)
 })
 test('7c: only matching successful read pairs can become short-lived categories; no raw subject stored',async()=>inTemp(dir=>{

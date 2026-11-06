@@ -1,0 +1,25 @@
+flowchart TB
+    UI["🌿 Life 自主生活 · dev.7 总览"] -->|GET 只读| API["integration-status（独立故障汇总）"]
+    API --> PL["原 AutonomousPlanner 状态与额度"]
+    API --> MM["LifeMemoryGateway 现有存储"]
+    API --> TC["原 OwnerTodos 账本"]
+    API --> IN["原兴趣选择器"]
+    API --> EV["原 PersonalityEvolution + LifeReflection"]
+    API --> REL["原关系索引"]
+    PL -->|普通生活决策| PROMPT["Life Planner · 角色人格/情绪/待办/关系排序"]
+    TC --> PROMPT
+    REL --> PROMPT
+    IN -->|有界兴趣主题| WORLD["只读公开世界线索投影"]
+    MM -->|遗忘/隐私门禁 + 可回忆公开视频| WORLD
+    WORLD -->|普通生活轮次| PROMPT
+    PROMPT -->|决定只读探索/延期/休息| GUARD["原意愿检查、账号隔离、额度/视频门禁"]
+    GUARD -->|执行回执仅成功时入账| VIDEO["原视频 Agent/平台回执"]
+    VIDEO --> COORD["原 LifeMemoryCoordinator"]
+    COORD --> MM
+    COORD --> EV
+    COORD --> IN
+    ANON["私信/评论已核验匿名新事件"] -->|快速只读关注，不读取 WORLD| PL
+    LEGACY["legacy 真实社交决策/唯一发送者"] --> SEND["原跨进程事务与平台发送"]
+    PL -.->|dev.7 未交接外发权| LEGACY
+    UI -->|配置必须明确保存| CFG["原 Life Settings V2（保留老值）"]
+    CFG --> PL

@@ -27,11 +27,12 @@ test('invalid model output has safe reason categories, without leaking model tex
 })
 
 test('single everyday life setup is outside developer diagnostic; old fields remain compatible but hidden',()=>{
- assert.ok(html.indexOf('id="panel-life"')<html.indexOf('id="life-settings-v2-panel"'))
+ assert.ok(html.indexOf('id="panel-life-agent"')<html.indexOf('id="life-settings-v2-panel"'))
  assert.ok(html.indexOf('id="life-settings-v2-panel"')<html.indexOf('id="life-agent-wake"'))
  assert.ok(html.indexOf('id="life-developer-diagnostics"')<html.indexOf('id="life-social-context-optin"'))
  assert.ok(html.includes('<summary>🛠️ 开发者诊断与旧配置（普通使用无需打开）</summary>'))
- for(const id of ['life-v2-mode','life-v2-pace','life-v2-save-btn','life-agent-wake','life-agent-wake-result','life-social-context-optin','life-legacy-planner-advanced','autonomous-planner-enabled']){
+ for(const id of ['life-legacy-planner-advanced','autonomous-planner-enabled'])assert.ok(!html.includes('id="'+id+'"'),id)
+ for(const id of ['life-v2-mode','life-v2-pace','life-v2-save-btn','life-agent-wake','life-agent-wake-result','life-social-context-optin','life-integration-refresh','life-social-shadow-save']){
   assert.equal(html.split('id="'+id+'"').length-1,1,id)
  }
  assert.equal(html.includes('🐟 Life Agent · 自主生活驱动（dev.4'),false)

@@ -1,3 +1,7 @@
+## 当前版本 2.7.1-dev.7：新 Life 总览 UI 与可回忆世界接线（开发预览）
+
+- [dev.7 生产接线、迁移边界、跨系统读写归属、升级策略与验收缺口](./2.7.1-dev7-life-world-ui-integration.md) · [可编辑 Mermaid 生产图](./diagrams/2.7.1-dev7-life-world-live.mmd)。普通 Life 决策可读取现有兴趣和经隐私/遗忘门禁后的公开经历；管理中心新增统一总览，旧重复调度表单已退役。**社交真实发送仍为 legacy 独占**，不新增第二份状态账本，不声称已验证长程人格成长；Windows/真实 B站仍待验收。
+
 ## 当前 dev.6 增量：GitHub Issue #9 评论主账本与足迹修复
 
 - [评论完整有界正文、梗图回执、足迹与 UID 核验 @ 的实际调用及兼容边界](./2.7.1-dev6-github-issue9-comment-footprints.md) · [Mermaid](./diagrams/2.7.1-dev6-issue9-comment-footprints.mmd)。保持现有社交旧 owner，未进行正式 Life 发送接管，Windows 与真实 B站 待验收。

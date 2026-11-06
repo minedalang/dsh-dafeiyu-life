@@ -52,7 +52,9 @@ test('保存当前房间时不会越过页面边界覆盖同步频率；同步�
   for(const field of ['mainSessionSyncMinutes','mainSessionDailyBatches','mainSessionBatchSize','mainSessionIncludeComments'])assert.ok(syncSave.includes(field),field);
   assert.doesNotMatch(syncSave,/mainSessionId|mainSessionBridgeEnabled|mainSessionAutoSync/);
   assert.doesNotMatch(js,/settings:loadPluginSettings/);
-  assert.match(js,/home:loadHome,life:async\(\)=>\{await Promise\.all\(\[loadLifeMemory\(\),loadUnifiedLifeSettings\(\)\]\)\}/);
+  assert.match(js,/home:loadHome/);
+  assert.match(js,/['"]life-agent['"]:async/);
+  assert.match(js,/life:loadLifeMemory/);
   assert.match(js,/home:loadHome/);
 });
 

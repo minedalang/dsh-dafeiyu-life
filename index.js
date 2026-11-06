@@ -64,6 +64,7 @@ import { receiveRecommendations, listRecommendationCandidates } from './lib/vide
 import { intakeAiReadProposals } from './lib/social-todo-intake.mjs'
 import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/owner-todos.mjs'
 import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-planner.mjs'
+import { projectLifeIntegrationStatus } from './lib/life-system-integration.mjs'
 import { createLifeAgentEvents } from './lib/life-agent-events.mjs'
 import { createSocialDecisionOwnership } from './lib/social-decision-ownership.mjs'
 import { createSocialHandoffFence } from './lib/social-handoff-fence.mjs'
@@ -4678,6 +4679,20 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getRelationshipHint:uid=>{try{return existingRelationshipIndex()?.preferenceHint(uid,relationshipOptions())||null}catch{return null}},
     getLifeState:()=>emotionalState.snapshot(),
     getLifeVoice:()=>lifeVoiceContext({scene:'main',maxChars:1900}),
+    getLifeWorldEvidence:({query=''})=>{
+      // Public read-only memory gateway, after its current forgetting and
+      // domain-privacy gates; never query DM/private-social here.
+      const interests=selectionInterests(stateDir,Date.now(),4,cfg.coreInterestTopics)
+      // Interest-only days still have a relevant, bounded public-memory query.
+      // A memory backend failure must not erase independent interest signals.
+      const memoryQuery=query||interests[0]?.topic||''
+      let episodes=[]
+      if(memoryQuery&&cfg.mainSessionMemoryEnabled===true&&lifeMemory){
+        try{episodes=lifeMemory.recall({query:memoryQuery,domain:'bili-explore',
+          kinds:['watch'],maxItems:2,maxChars:420,reinforce:false})}catch{}
+      }
+      return {interests,episodes}
+    },
     getLifeEvents:()=>lifeAgentEvents.peek(4),
     offerLifeWake:event=>lifeAgentEvents.offer(event),
     settleLifeEvents:(ids,reason)=>lifeAgentEvents.settle(ids,reason),
@@ -6533,6 +6548,23 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     }
     // Phase 6: explicit settings facade over EXISTING authoritative config.
     // No second store, no permissions, no silent migration on GET.
+    if (req.method === 'GET' && path === '/api/bili-duty/life-agent/integration-status') {
+      refreshCfg()
+      // A health view, not another state writer. Each dependency is isolated:
+      // a corrupt store cannot hide other real statuses or grant permissions.
+      const read=(fn)=>{try{return fn()}catch{return {ok:false}}}
+      const interestRows=read(()=>selectionInterests(stateDir,Date.now(),4,cfg.coreInterestTopics))
+      const relationshipView=read(()=>existingRelationshipIndex())
+      return sendJson(res,200,projectLifeIntegrationStatus({config:cfg,
+        planner:read(()=>autonomousPlanner.status()),memory:read(()=>lifeMemory.status()),
+        coordinator:read(()=>lifeMemoryCoordinator.status()),
+        reflection:read(()=>lifeReflection.status()),
+        personality:read(()=>personalityEvolution.status()),
+        todos:read(()=>ownerTodos.status()),
+        interests:Array.isArray(interestRows)?interestRows:null,
+        relationshipsReady:Boolean(relationshipView&&relationshipView.ok!==false),
+        socialOwner:'legacy'}))
+    }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/transition-readiness') {
       refreshCfg()
       // Fail closed on unavailable account-scoped ledgers; do not expose raw
