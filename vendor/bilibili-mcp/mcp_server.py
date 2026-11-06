@@ -369,7 +369,7 @@ def _gate_read(name):
                     return await function(*args, **kwargs)
             except ReadReservationHeld as exc:
                 return json.dumps({'ok': False, 'blocked': True, 'status': 'reservation-held',
-                                  'error': str(exc)}, ensure_ascii=False)
+                                  'reservationReason': exc.reason, 'error': str(exc)}, ensure_ascii=False)
             except (ValueError, OSError) as exc:
                 return json.dumps({'ok': False, 'blocked': True, 'status': 'reservation-unavailable',
                                   'error': str(exc)[:140]}, ensure_ascii=False)

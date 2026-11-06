@@ -1,0 +1,16 @@
+flowchart TD
+    A[手动考虑或 Life 自动决策] --> B[Node 账号和原读取预算]
+    B --> C[Node readActionGate 按账号与动作建原预约]
+    C --> D[entry: id scopeHash PID state 与 HMAC 证明]
+    D --> E[内置 Python MCP 只读工具]
+    E --> F{Python 校验同账号 同动作 执行中 原 PID 存活}
+    F -->|不符合| X[明确预约拒绝 不读取平台]
+    F -->|符合| G{新锁验证 HMAC / 旧锁校验直接父 PID}
+    G -->|拒绝| X
+    G -->|通过| H[真实调用 bili_video_info]
+    H --> I[原跨语言工具返回与 Node 预约回执]
+    I --> J[Life 同 BV 与标题严格核验]
+    J --> K[只读核实结果 非观看或发送]
+    X --> L[有限 reservationReason 枚举]
+    L --> M[Life 决策全过程与管理中心]
+    K --> M

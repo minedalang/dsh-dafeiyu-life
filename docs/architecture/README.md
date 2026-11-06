@@ -1,3 +1,7 @@
+## 当前增量：Life Agent 内置 Python MCP 只读预约身份核验
+
+- [跨进程误判与嵌套工具 HMAC 核验、脱敏预约拒绝原因及迁移边界](./2.7.1-dev4-life-nested-mcp-read-identity.md) · [当前 Mermaid](./diagrams/2.7.1-dev4-life-nested-mcp-read-identity-live.mmd)。同账号、同 BV、活跃执行进程仍是硬门禁；不自动清锁，不新增平台调用或外发权；Windows/真实 B站待验收。
+
 ## 当前增量：Life Agent 平台元数据真实失败追踪与无模型探测
 
 - [跨 Python MCP 与 JS 的有界平台失败契约、同账号可信公开 BV 手动只读探测、脱敏平台错误来源](./2.7.1-dev4-life-metadata-platform-diagnostics.md) · [当前 Mermaid](./diagrams/2.7.1-dev4-life-metadata-platform-diagnostics-live.mmd)。不调用模型、不修改生活账本或发送社交内容；实际只读探测仍消耗平台请求额度，Windows/真实 B站待验收。

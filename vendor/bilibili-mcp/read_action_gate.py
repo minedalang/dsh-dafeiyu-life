@@ -27,7 +27,9 @@ _UID = re.compile(r'^[1-9][0-9]{0,18}$')
 _HEX = re.compile(r'^[a-f0-9]{64}$')
 
 class ReadReservationHeld(Exception):
-    pass
+    def __init__(self, message='只读预约被占用', reason='other-reservation'):
+        super().__init__(message)
+        self.reason = reason if reason in ('other-reservation', 'adapter-proof-mismatch', 'owner-not-running', 'record-invalid', 'legacy-parent-mismatch') else 'other-reservation'
 
 
 def _clean(value):
@@ -262,9 +264,35 @@ def public_read_reservation(tool, args, *, home=None, adapter=False):
             entry = _safe_read(folder / 'entry.json', 4096)
         except (OSError, ValueError, TypeError, KeyError):
             pass
-        if not (adapter and entry and entry.get('id') == key and entry.get('operation') == operation and entry.get('scopeHash') == _sha(scope)[:20] and entry.get('state') == 'executing' and entry.get('pid') == os.getppid() and _pid_alive(entry.get('pid'))):
-            raise ReadReservationHeld('相同的只读动作正在执行或等待人工核查，未重复访问 B站')
-        # Node handles receipt and release after this nested in-process MCP call.
+        # A Node-owned read and the nested Python call must share exactly one
+        # reservation. Some Windows Python launchers introduce an extra PID, so
+        # direct-parent equality alone can reject a legitimate nested tool.
+        # A per-MCP 256-bit secret proves that the child was spawned by this
+        # adapter; the lock stores only an HMAC keyed by that secret. Never
+        # accept the adapter environment flag alone as proof.
+        common = bool(adapter and entry and entry.get('id') == key and
+                      entry.get('operation') == operation and
+                      entry.get('scopeHash') == _sha(scope)[:20] and
+                      entry.get('state') == 'executing')
+        owner = entry.get('pid') if isinstance(entry, dict) else None
+        if not common:
+            raise ReadReservationHeld('相同的只读动作正在执行或等待人工核查，未重复访问 B站',
+                                      'record-invalid' if adapter and entry else 'other-reservation')
+        if not _pid_alive(owner):
+            raise ReadReservationHeld('原预约进程已退出或不可核验，必须停机人工复核', 'owner-not-running')
+        proof = entry.get('adapterProof')
+        if proof is not None:
+            token = os.environ.get('BILI_JS_READ_GATE_TOKEN', '')
+            expected = (hmac.new(bytes.fromhex(token), key.encode('ascii'), hashlib.sha256).hexdigest()
+                        if re.fullmatch(r'[0-9a-f]{64}', token) else '')
+            if not (isinstance(proof, str) and re.fullmatch(r'[0-9a-f]{64}', proof)
+                    and expected and hmac.compare_digest(proof, expected)):
+                raise ReadReservationHeld('内置 Python 读取器未通过本次预约身份核验', 'adapter-proof-mismatch')
+        elif owner != os.getppid():
+            # Older Node reservations without an adapter proof retain strict
+            # parent matching, never silently widening legacy permissions.
+            raise ReadReservationHeld('旧版嵌套读取无法核验直接父进程', 'legacy-parent-mismatch')
+        # Node handles receipt and release after this verified nested MCP call.
         yield
         return
     at = int(time.time() * 1000)

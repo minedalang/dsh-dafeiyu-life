@@ -37,7 +37,7 @@ const z = hostDeps.z
 const defineTool = hostDeps.defineTool
 import { spawn } from 'node:child_process'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
-import { randomUUID, createHash } from 'node:crypto'
+import { randomUUID, createHash, randomBytes } from 'node:crypto'
 import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
 import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup } from './lib/data-backup.mjs'
 import { readJsonRequest } from './lib/http-json-body.mjs'
@@ -492,13 +492,16 @@ export function apply(ctx, config) {
   // Cross-process gate for reads that pass the shared JS MCP adapter.
   // Independent Python Headless MCP tools do not pass here yet.
   const readActionContext=new AsyncLocalStorage()
+  // An ephemeral proof ties nested Python MCP reads to this exact Node adapter.
+  // The token is never stored on disk or sent back to the UI.
+  const readAdapterToken=randomBytes(32).toString('hex')
   const verifiedActionScope=()=>{
     const bound=accountBinding.assertReady()
     const credentialTag=discussionAccountTag(dmCred(stateDir))
     if(!credentialTag)throw Error('无法验证平台动作的当前凭据作用域')
     return `${bound.activeUid}:${bound.generation}:${credentialTag}`
   }
-  const readActionGate=createReadActionExecutionGate({dataDir:stateDir,getAccountScope:verifiedActionScope,logger:{warn:m=>console.warn(m)}})
+  const readActionGate=createReadActionExecutionGate({dataDir:stateDir,getAccountScope:verifiedActionScope,getAdapterToken:()=>readAdapterToken,logger:{warn:m=>console.warn(m)}})
   const outboundActionStatus=createOutboundActionStatus({dataDir:stateDir,getAccountScope:verifiedActionScope})
   const biliReadBudget=createBiliReadBudget({dataDir:accountRuntimeDir,logger:{warn:msg=>console.warn(msg)}})
   const dmPollCursor=createDmPollCursor({dataDir:accountRuntimeDir})
@@ -1389,7 +1392,7 @@ function reportMeta() {
       cwd: stateDir,                     // 凭证落在家里 ✓
       // ⭐ 这个内置的 Python MCP 会往 stdout 打中文（ensure_ascii=False）；
       //    Windows 默认 GBK 的话，中文/emoji 一进管道就可能炸 ⇒ 钉死 UTF-8
-      env: uvEnv({ BILI_DUTY_HOME: stateDir, BILI_JS_MCP_ADAPTER: '1', BILI_MCP_TOOLS: '', BILI_DYNAMIC_INBOX_REPLY_ENABLED:'1', BILI_DYNAMIC_AT_REPLY_ENABLED:'1', BILI_COMMENT_DAILY_LIMIT: String(cfg.commentDailyLimit),
+      env: uvEnv({ BILI_DUTY_HOME: stateDir, BILI_JS_MCP_ADAPTER: '1', BILI_JS_READ_GATE_TOKEN: readAdapterToken, BILI_MCP_TOOLS: '', BILI_DYNAMIC_INBOX_REPLY_ENABLED:'1', BILI_DYNAMIC_AT_REPLY_ENABLED:'1', BILI_COMMENT_DAILY_LIMIT: String(cfg.commentDailyLimit),
         BILI_MENTION_DIAG_ENABLED: cfg.diagMentionEnabled?'1':'0', BILI_DYNAMIC_DIAG_ENABLED: cfg.diagDynamicEnabled?'1':'0',
         BILI_VISION_DIAG_ENABLED: cfg.diagVisionEnabled?'1':'0', BILI_MEME_DIAG_ENABLED: cfg.diagMemeEnabled?'1':'0',
         BILI_SESSION_MANUAL_LIKE_ENABLED: '1', BILI_SESSION_MANUAL_ACTIONS_ENABLED: '1', BILI_SESSION_MANUAL_RELATIONS_ENABLED: '1',
