@@ -999,7 +999,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p id="life-agent-wake-result" class="muted" role="status" aria-live="polite">手动考虑会消耗一次模型额度；鱼鱼也可以自己选择休息。</p>
 <p class="muted">旧档位会原样保留，只有主动选择并保存新档才更换。视频 Agent 仍受每天 2 次、间隔至少 180 分钟的独立门禁限制。当前社交快速关注不表示已发送回复。</p>
 <p id="life-v2-status" class="muted" role="status">正在读取生活设置…</p>
-<details class="life-subdetails" id="life-transition-checklist"><summary>🛠️ 开发者：系统迁移与验收诊断</summary><p class="muted">只读检查，不会发送消息、打开权限或修改数据；绿色配置状态不代表真实平台已验收。</p><div id="life-transition-status" class="muted" role="status">正在核对旧系统退出和新生活系统接管边界…</div></details>
+<details class="life-subdetails" id="life-transition-checklist"><summary>🛠️ 开发者：系统迁移与验收诊断</summary><p class="muted">迁移状态清单只读；下方人工演练会短暂写入并释放交接预约（异常时可能保留冻结），但不会发送消息或打开权限。演练通过不代表真实平台已验收。</p><div id="life-transition-status" class="muted" role="status">正在核对旧系统退出和新生活系统接管边界…</div>
+<div class="toolbar"><button type="button" class="life-action life-sky" id="life-handoff-dry-dm">演练私信交接（不发送）</button><button type="button" class="life-action life-sky" id="life-handoff-dry-comment">演练评论交接（不发送）</button></div>
+<p id="life-handoff-dry-result" class="muted" role="status">先关闭 B站生活总开关，再人工点击短暂预约原社交通道、检查旧操作是否排空及发送事务是否存在异常；不会调用模型、读取消息或发送到 B站。崩溃／切号可能保留冻结记录，需停机复核。演练通过也不代表 Life 已接管。</p></details>
 <p class="muted">升级不会清空旧任务、记忆、好友关系或平台回执；旧「谷时刷视频」字段仅为历史兼容保留，无法重新启用。停止新生活决策<strong>不会撤销先前单独开启的社交自动发送授权</strong>，需要在社交页调整。</p>
 </div>
 <nav class="life-jump" aria-label="人生记忆分区快捷跳转"><a href="#life-emotion-section">💗 当前心情</a><a href="#life-interest-section">🌱 最近兴趣</a><a href="?tab=relationships" data-open-tab="relationships">👥 逐渐熟悉的人</a><a href="#life-recall-section">🧠 经历与体会</a><a href="#life-timeline-section">📅 真实生活</a><a href="?tab=todos" data-open-tab="todos">📝 自主待办</a></nav>

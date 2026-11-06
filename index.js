@@ -2834,7 +2834,9 @@ function reportMeta() {
   const socialSendTransaction=createSocialSendTransaction({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   const socialDecisionOwnership=createSocialDecisionOwnership({
     handoffFence:socialHandoffFence,
-    getAccountTag:trustedLifeAccountTag,getLifeAgentMode:()=>cfg.lifeAgentMode
+    getAccountTag:trustedLifeAccountTag,getLifeAgentMode:()=>cfg.lifeAgentMode,
+    getSendTransactionStatus:()=>socialSendTransaction.inspect(),
+    getSocialShadowStatus:()=>lifeSocialShadow?.status()
   })
   // Phase 6 Final: register every legacy model/send activity before doing
   // asynchronous work. A future cutover can reserve the lane, then prove it
@@ -6541,7 +6543,33 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         planner:inspect(()=>autonomousPlanner.status()),
         handoff:inspect(()=>socialHandoffFence.inspect()),
         transactions:inspect(()=>socialSendTransaction.inspect()),
-        shadow:inspect(()=>lifeSocialShadow.status())}))
+        shadow:inspect(()=>lifeSocialShadow.status()),version:JSON.parse(readFileSync(new URL('./package.json',import.meta.url),'utf8')).version}))
+    }
+    // Developer-only, explicit NO-SEND rehearsal. This is NOT a switch or a
+    // platform action: reserve the old channel, check its in-flight operations
+    // and existing transaction ledger, then release only the decision-only claim.
+    // A crash/account switch leaves the lane frozen for offline inspection.
+    if (req.method === 'POST' && path === '/api/bili-duty/life-agent/social-handoff-rehearsal') {
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))
+        return sendJson(res,403,{ok:false,error:'仅允许管理中心同源操作'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+        return sendJson(res,403,{ok:false,error:'拒绝跨站操作'})
+      const body=await readBody(req)
+      if(body?.confirm!=='DRY_RUN_SOCIAL_HANDOFF_NO_SEND'||!['dm','comment'].includes(body?.channel))
+        return sendJson(res,400,{ok:false,error:'需要明确选择渠道并确认仅进行无发送演练'})
+      refreshCfg()
+      // The reservation momentarily closes the channel. Never disrupt a live
+      // autonomous social session for a diagnostic click.
+      if(cfg.masterEnabled===true)return sendJson(res,409,{ok:false,error:'请先关闭 B站生活总开关并确认没有在途外发，再执行交接演练'})
+      if(accountBinding.status().blocked)return sendJson(res,409,{ok:false,error:'当前账号处于安全冻结状态，不能演练'})
+      const expectedScope=trustedLifeAccountTag()
+      const report=socialHandoffFence.rehearse({channel:body.channel,expectedScope,
+        inspectSendTransactions:()=>socialSendTransaction.inspect()})
+      // Always return only enum/aggregate results; never raw account, UID,
+      // source key, draft, credential or platform receipt.
+      return sendJson(res,200,{...report,ok:true,rehearsalPassed:report.ok===true,owner:'legacy',noPlatformCalls:true,
+        noModelCalls:true,permissionChanged:false,sendRightsGranted:false})
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/settings-v2') {
       refreshCfg()
