@@ -17,7 +17,8 @@ test('6c: legacy mode and managed budgets cannot drift through generic save',()=
   assert.throws(()=>assertLegacyLifeSettingsPatchCompatible(base,{[key]:key==='autonomousPlannerEnabled'?false:1}),/统一生活设置/)
   assert.equal(assertLegacyLifeSettingsPatchCompatible(base,{[key]:base[key]}),true)
  }
- assert.equal(assertLegacyLifeSettingsPatchCompatible(base,{dmStrangerAutonomyEnabled:false,autonomousPlannerStartHour:9}),true)
+ assert.throws(()=>assertLegacyLifeSettingsPatchCompatible(base,{autonomousPlannerStartHour:9}),/统一生活设置/)
+ assert.equal(assertLegacyLifeSettingsPatchCompatible(base,{dmStrangerAutonomyEnabled:false}),true)
  const legacy={...base,lifeAgentMode:'off'}
  assert.equal(assertLegacyLifeSettingsPatchCompatible(legacy,{autonomousPlannerMinutes:99}),true)
 })
@@ -28,7 +29,7 @@ test('6c: new versioned settings can still explicitly change budget and never en
  assert.equal(plan.patch.autonomousPlannerMinutes,180)
  assert.equal(plan.patch.autonomousPlannerDailyLimit,4)
  for(const k of ['socialAutoSend','dmStrangerAutonomyEnabled','masterEnabled'])assert.equal(Object.hasOwn(plan.patch,k),false)
- assert.deepEqual(lifeSettingsV2(base).legacyManagedFields,['lifeAgentMode','autonomousPlannerEnabled','autonomousPlannerMinutes','autonomousPlannerDailyLimit'])
+ assert.deepEqual(lifeSettingsV2(base).legacyManagedFields,['lifeAgentMode','autonomousPlannerEnabled','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour'])
 })
 test('6c: management UI and production config POST both enforce new ownership',()=>{
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
@@ -36,7 +37,8 @@ test('6c: management UI and production config POST both enforce new ownership',(
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  assert.match(index,/assertLegacyLifeSettingsPatchCompatible\(cfg,validatedPatch\)/)
  assert.match(html,/life-legacy-managed-note/)
- assert.match(js,/\$\(id\)\.disabled=id==='life-agent-mode'\|\|managed/)
+ assert.match(js,/\$\(id\)\.disabled=true/)
+ assert.match(js,/loadUnifiedLifeSettings/)
 })
 test('7c: only matching successful read pairs can become short-lived categories; no raw subject stored',async()=>inTemp(dir=>{
  let t=T,scope=A

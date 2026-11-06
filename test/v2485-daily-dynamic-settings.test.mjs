@@ -9,12 +9,12 @@ const read=(n)=>readFileSync(new URL('../'+n,import.meta.url),'utf8')
 const BV='BV1ab2345678'
 const content='今天刷到的料理视频让我突然好奇，为什么每次看到热腾腾的米饭，都忍不住多看两眼。'
 const valid={should_post:true,text:content,source_bvids:[BV],evidence_claims:[{type:'selected_video',bvid:BV}]}
-test('原生设置只有日常面板，刷视频间隔和多时段保持可编辑，底部含作者与开源致谢',()=>{
+test('原生设置只显示统一 Life Agent 入口，旧视频时段不再可编辑，底部仍保留作者与开源致谢',()=>{
   const source=read('client.js')
   assert.match(source,/const tab = 'daily'/)
-  assert.match(source,/刷视频间隔（分钟）/)
-  assert.match(source,/保存时间段/)
-  assert.match(source,/记忆、反思、情绪与主 Session 工具独立运行/);assert.match(source,/定时自主刷视频（可选）/)
+  assert.match(source,/鱼鱼的自主生活/)
+  assert.match(source,/onOpenManage\('life'\)/)
+  assert.doesNotMatch(source,/定时自主刷视频（可选）|保存时间段|刷视频间隔（分钟）/)
   assert.match(source,/href:'https:\/\/space\.bilibili\.com\/210228238'/)
   assert.match(source,/长条动物/)
   assert.match(source,/开源来源与致谢/)

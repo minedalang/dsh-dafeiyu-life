@@ -370,16 +370,6 @@ function WatchTab() {
         return () => {alive = false; clearInterval(timer)}
       }, [])
 
-      const scheduleRows = peakWindowsDraft || []
-      const updateSchedule = (idx, key, value) => setPeakWindowsDraft(rows => (rows || []).map((w, i) => i === idx ? {...w, [key]:value} : w))
-      const saveSchedule = () => {
-        const rows = peakWindowsDraft || []
-        if (rows.some(w => !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(w.start) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(w.end) || w.start === w.end)) {
-          say('时间段格式无效：请填完整 HH:MM，开始和结束不能相同', 'warn'); return
-        }
-        patch({peakWindows:JSON.stringify(rows)}, '自定义时间段')
-      }
-
       const say = (text, tone) => {
         setMsg(text); setMsgTone(tone || '')
         setRunNote(text ? { t: text, tone: tone || '' } : null)   // ⭐ 同时镜像到顶部，免得提示掉到页面最底下看不见
@@ -391,7 +381,7 @@ function WatchTab() {
       const onOpenManage = async (tab = '') => {
         setManageError('')
         try {
-          const safeTab = ['firststart', 'models', 'home'].includes(tab) ? tab : ''
+          const safeTab = ['firststart', 'models', 'home', 'life'].includes(tab) ? tab : ''
           const ua = String(window.navigator?.userAgent || '')
           const smallTouch = Number(window.navigator?.maxTouchPoints || 0) > 0 &&
             Number(window.innerWidth || 1024) <= 900
@@ -726,45 +716,12 @@ function WatchTab() {
           h('div',{'data-bd-note':''},'扫码登录统一由管理中心 → 首次设置管理。'),
           st.installTail?h('pre',{'data-bd-pre':''},String(st.installTail).slice(-2500)):null),
 
-        /* ── 定时 ── */
-        /* v2.4.86: 偏好、互动、高级的配置统一搬到管理中心；不再显示原生设置多标签。 */
-        h('div',{'data-bd-note':''},'日常页只负责启停、运行时间和立即运行；模型、选片、点赞、动态、记忆及额度都在管理中心统一设置。'),
-
-        h('div', { 'data-bd-sec': '', 'data-bd-group': 'daily', 'data-bd-away': tab === 'daily' ? undefined : '' },
-          h('div', { 'data-bd-h': '' }, '什么时候自己跑'),
-          h(ToggleRow, {
-            label: '定时自主刷视频（可选）',
-            note: '这是可选的后台活动计划，不是人生记忆或情绪系统的前提。关闭后大肥鱼仍可在主 Session 按你的要求看视频、回忆经历并处理待办；只有开启后才会按下方时段自动刷视频。',
-            on: sw('peakValley'),
-            onChange: (v) => patch({ peakValley: v }, '自定义时段自动刷'),
-          }),
-          h('div', { 'data-bd-sub': '' },
-            h('div', { 'data-bd-note': '' }, '记忆、反思、情绪与主 Session 工具独立运行，不需要开启定时刷视频。时段与间隔只控制后台自动浏览；关闭开关不会清除已保存时间段。跨午夜例如 23:00–02:00。'),
-            ...scheduleRows.map((w, i) => h('div', { key:i, 'data-bd-row': '' },
-              h('span', { 'data-bd-label': '' }, `时段 ${i + 1}`),
-              h('input', { 'data-bd-input':'', type:'time', style:{width:120}, value:w.start,
-                'aria-label':`时段 ${i + 1} 开始`, onChange:e=>updateSchedule(i,'start',e.target.value) }),
-              h('span', null, '至'),
-              h('input', { 'data-bd-input':'', type:'time', style:{width:120}, value:w.end,
-                'aria-label':`时段 ${i + 1} 结束`, onChange:e=>updateSchedule(i,'end',e.target.value) }),
-              h('button', { 'data-bd-btn':'', disabled:Boolean(busy), onClick:()=>setPeakWindowsDraft(rows=>(rows||[]).filter((_,j)=>j!==i)) }, '删除')
-            )),
-            h('div', { 'data-bd-row': '' },
-              h('button', { 'data-bd-btn':'', disabled:Boolean(busy)||scheduleRows.length>=16,
-                onClick:()=>setPeakWindowsDraft(rows=>[...(rows||[]),{start:'',end:''}]) }, '＋ 添加时间段'),
-              h('button', { 'data-bd-btn':'', 'data-primary':'', disabled:Boolean(busy), onClick:saveSchedule }, '保存时间段')),
-            scheduleRows.length===0 ? h('div', {'data-bd-msg':'','data-warn':''}, '尚未设置时段；开启自动刷后不会执行，先添加并保存一个时间段。') : null,
-            h('div', { 'data-bd-row': '' },
-              h('div', { 'data-bd-grow': '' },
-                h('div', { 'data-bd-label': '' }, '刷视频间隔（分钟）'),
-                h('div', { 'data-bd-note': '' }, '1～720 分钟；跨时段共用此间隔，受每日额度及总开关约束。')),
-              h('input', { 'data-bd-input': '', 'data-bd-num': '', type: 'number', min: 1, max: 720, step: 1,
-                value: peakIntervalDraft ?? '',
-                onChange: (e) => setPeakIntervalDraft(e.target.value),
-                onBlur: () => { const raw = Number(peakIntervalDraft); const n = Number.isFinite(raw) && raw>=1 ? Math.max(1,Math.min(720,Math.floor(raw))) : 30; setPeakIntervalDraft(String(n)); patch({ peakIntervalMinutes: n }, '自动运行间隔') },
-              })
-            ))),
-
+        /* Legacy time-window controls have been retired. Daily page is simple:
+         * the Life Agent is the only automatic video wake owner now. */
+        h('div',{'data-bd-sec':'','data-bd-group':'daily'},
+          h('div',{'data-bd-h':''},'🌿 鱼鱼的自主生活'),
+          h('div',{'data-bd-note':''},'不再按旧谷时定时器自动刷视频。让鱼鱼自己考虑待办、好奇心和休息；在管理中心只需设置生活状态和活跃程度。旧时段保留在存档里，不再控制启动。'),
+          h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('life')},'设置鱼鱼的生活 →')),
 
         /* 数量配额现在统一在管理中心，避免过期草稿覆盖编辑。 */
         h('div', { 'data-bd-sec':'', 'data-bd-group':'daily', 'data-bd-away':tab==='daily'?undefined:'' },

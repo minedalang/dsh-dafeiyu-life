@@ -72,9 +72,11 @@ test('HTTP 实际保存新时间段、间隔 1 分钟、拒绝无效数据且保
     assert.equal(initial.config.peakWindows,'[]')
     assert.equal(initial.config.peakIntervalMinutes,30)
     const slots=[{start:'07:00',end:'07:15'},{start:'23:00',end:'02:00'}]
-    const saved=await call('POST','config',{peakWindows:JSON.stringify(slots),peakIntervalMinutes:1,peakValley:true})
+    const saved=await call('POST','config',{peakWindows:JSON.stringify(slots),peakIntervalMinutes:1,peakValley:false})
     assert.equal(saved.status,200)
     assert.equal(saved.config.peakIntervalMinutes,1)
+    const retired=await call('POST','config',{peakValley:true})
+    assert.equal(retired.status,400);assert.match(retired.error,/已退役/)
     assert.deepEqual(JSON.parse(saved.config.peakWindows),slots)
     assert.deepEqual((await call('GET','config')).windows,slots) // config endpoint returns current windows
     const invalid=await call('POST','config',{peakWindows:'[{"start":"25:00","end":"02:00"}]'})
@@ -92,14 +94,14 @@ test('HTTP 实际保存新时间段、间隔 1 分钟、拒绝无效数据且保
   } finally { rmSync(home,{recursive:true,force:true}) }
 })
 
-test('前端/后端均无中午夜间模式和 30 分钟最低限制',()=>{
+test('旧峰谷时段仅保留兼容解析，前端不再提供旧定时启动',()=>{
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   const client=readFileSync(new URL('../client.js',import.meta.url),'utf8')
   assert.match(index,/peakWindows: z\.string\(\)\.default\('\[\]'\)/)
   assert.match(index,/readPeakWindows\(cfg\.peakWindows\)/)
   assert.doesNotMatch(index,/noon: z\.|night: z\.|\['noon', 'night'\]/)
-  assert.match(client,/保存时间段/)
-  assert.match(client,/type:'time'/)
-  assert.match(client,/min: 1, max: 720/)
+  assert.doesNotMatch(client,/定时自主刷视频（可选）/)
+  assert.match(client,/设置鱼鱼的生活/)
+  assert.doesNotMatch(client,/saveSchedule \}/)
   assert.doesNotMatch(client,/Math\.max\(30/)
 })

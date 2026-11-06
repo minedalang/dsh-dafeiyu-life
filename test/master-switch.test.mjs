@@ -60,9 +60,9 @@ test('总开关覆盖定时器、后台互动和 Python MCP 外发', () => {
   const sidecar=readFileSync(new URL('../lib/favops.py',import.meta.url),'utf8')
   // v2.7.1 dev: the legacy timer gate is centralized in life-settings-control.
   // Keep a behavioral assertion for the master switch and both Life Agent modes.
-  assert.match(index,/if \(!legacyVideoTimerAllowed\(cfg\)\) return/)
+  assert.doesNotMatch(index,/setInterval\(tick,\s*60_000\)/)
   assert.equal(legacyVideoTimerAllowed({masterEnabled:false,peakValley:true,lifeAgentMode:'off'}),false)
-  assert.equal(legacyVideoTimerAllowed({masterEnabled:true,peakValley:true,lifeAgentMode:'off'}),true)
+  assert.equal(legacyVideoTimerAllowed({masterEnabled:true,peakValley:true,lifeAgentMode:'off'}),false)
   assert.equal(legacyVideoTimerAllowed({masterEnabled:true,peakValley:true,lifeAgentMode:'shadow'}),false)
   assert.equal(legacyVideoTimerAllowed({masterEnabled:true,peakValley:true,lifeAgentMode:'active'}),false)
   assert.match(index,/enabled: cfg\.masterEnabled === true && cfg\.dmWatch/)

@@ -43,12 +43,12 @@ test('单个视频不足以形成跨视频梗知识',async()=>{
  const svc=createMemeLearning({getConfig:()=>({masterEnabled:true,memeMemoryEnabled:true}),read:async()=>({rows:[{id:1,name:'奶蛙',bvid:'BV1234567890'}]}),invokeModel:async()=>{called=true},commit:async()=>{throw Error('should not commit')}})
  const result=await svc.reflect({force:true});assert.equal(result.skipped,'insufficient-cross-video-evidence');assert.equal(called,false)
 })
-test('原生设置只显示日常，保留时段、间隔和作者致谢',()=>{
+test('原生设置只显示日常与统一生活入口，不再使用旧定时时段，保留作者致谢',()=>{
  const s=source('client.js')
  assert.match(s,/const tab = 'daily'/)
  assert.doesNotMatch(s,/\[\['daily', '日常'\], \['taste'/)
- assert.match(s,/刷视频间隔（分钟）/)
- assert.match(s,/自定义时段自动刷/)
+ assert.match(s,/鱼鱼的自主生活/)
+ assert.doesNotMatch(s,/刷视频间隔（分钟）|自定义时段自动刷/)
  assert.match(s,/开源来源与致谢/)
  assert.match(s,/space\.bilibili\.com\/210228238/)
 })

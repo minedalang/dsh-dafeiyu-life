@@ -13,7 +13,7 @@ const base={masterEnabled:true,peakValley:true,lifeAgentMode:'off',autonomousPla
  autonomousPlannerMinutes:30,autonomousPlannerDailyLimit:24,autonomousPlannerStartHour:0,autonomousPlannerEndHour:24,
  socialAutoSend:false,dmStrangerAutonomyEnabled:false,lifeAgentSocialContextOptIn:false}
 
-test('Phase 6b: old video timer is strictly limited to legacy mode, even for stale shadow config',()=>{
+test('Phase 6b: retired video timer never runs for old or new mode',()=>{
  for(const mode of ['shadow','active']){
   const cfg={...base,lifeAgentMode:mode}
   assert.equal(legacyVideoTimerAllowed(cfg),false)
@@ -22,17 +22,18 @@ test('Phase 6b: old video timer is strictly limited to legacy mode, even for sta
   assert.equal(projectLifeSettings(cfg).life.legacyVideoScheduleActive,false)
   assert.equal(projectLifeSettings(cfg).life.legacyTimerSuppressed,true)
  }
- assert.equal(legacyVideoTimerAllowed(base),true)
+ assert.equal(legacyVideoTimerAllowed(base),false)
  assert.equal(legacyVideoTimerAllowed({...base,masterEnabled:false}),false)
  assert.equal(legacyVideoTimerAllowed({...base,peakValley:false}),false)
 })
 test('Phase 6b: legacy config writers cannot reenable the timer under shadow/active',()=>{
  for(const mode of ['shadow','active']){
-  assert.throws(()=>assertLegacyVideoPatchCompatible({...base,lifeAgentMode:mode},{peakValley:true}),/不能重新开启/)
-  assert.throws(()=>assertLegacyVideoPatchCompatible(base,{lifeAgentMode:mode,peakValley:true}),/不能重新开启/)
+  assert.equal(assertLegacyVideoPatchCompatible({...base,lifeAgentMode:mode},{peakValley:true}),true) // existing saved value only
+  assert.throws(()=>assertLegacyVideoPatchCompatible({...base,peakValley:false,lifeAgentMode:mode},{peakValley:true}),/已退役/)
   assert.equal(assertLegacyVideoPatchCompatible({...base,lifeAgentMode:mode},{autonomousPlannerMinutes:30}),true)
  }
  assert.equal(assertLegacyVideoPatchCompatible(base,{peakValley:true}),true)
+ assert.throws(()=>assertLegacyVideoPatchCompatible({...base,peakValley:false},{peakValley:true}),/已退役/)
 })
 test('Phase 6b: mode change remains explicitly confirmed and permissions unchanged',()=>{
  const before=structuredClone(base),req={schemaVersion:2,revision:lifeSettingsV2(base).revision,mode:'shadow',pace:'quiet',previewOnly:true}
@@ -44,9 +45,11 @@ test('Phase 6b: mode change remains explicitly confirmed and permissions unchang
   assert.equal(Object.hasOwn(preview.patch,field),false)
  }
 })
-test('Phase 6b: production timer and generic save use the same helper',()=>{
+test('retired old video timer cannot be scheduled; manual capability and generic legacy gate remain',()=>{
  const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(source,/if \(!legacyVideoTimerAllowed\(cfg\)\) return/)
+ assert.doesNotMatch(source,/setInterval\(tick,\s*60_000\)/)
+ assert.doesNotMatch(source,/const tick = \(\) =>/)
+ assert.match(source,/runDuty\('life-agent'\)/)
  assert.match(source,/assertLegacyVideoPatchCompatible\(cfg,clean\)/)
 })
 

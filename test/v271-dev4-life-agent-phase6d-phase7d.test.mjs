@@ -22,14 +22,15 @@ test('6d: actual video driver ownership is single and old flags do not grant ext
   assert.equal(lifeSettingsV2({...defaults,lifeAgentMode:mode}).driverOwnership.videoWakeOwner,'life-agent')
   assert.equal(projectLifeSettings({...defaults,lifeAgentMode:mode}).driverOwnership.legacyTimerMayRun,false)
  }
- assert.equal(lifeDriverOwnership({...defaults,lifeAgentMode:'off'}).videoWakeOwner,'legacy-timer')
+ assert.equal(lifeDriverOwnership({...defaults,lifeAgentMode:'off'}).videoWakeOwner,'none')
  assert.equal(lifeDriverOwnership({...defaults,autonomousPlannerEnabled:false}).videoWakeOwner,'none')
  assert.equal(lifeDriverOwnership({...defaults,masterEnabled:false}).videoWakeOwner,'none')
 })
 test('6d: old UI saves unrelated settings without competing managed fields in life mode',()=>{
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const api=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(js,/delete oldSettingsPatch\[key\]/)
+ assert.doesNotMatch(js,/delete oldSettingsPatch\[key\]/)
+ assert.match(js,/Life Agent V2 is the only settings writer/)
  assert.match(js,/await request\('\/config',oldSettingsPatch\)/)
  assert.match(api,/assertLegacyLifeSettingsPatchCompatible\(cfg,validatedPatch\)/)
 })

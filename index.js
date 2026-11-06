@@ -1,6 +1,6 @@
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
-import {lifeSettingsV2,planLifeSettingsV2,legacyVideoTimerAllowed,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
+import {lifeSettingsV2,planLifeSettingsV2,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
 import {RECOMMENDED_EXPERIENCE_SETTINGS,RECOMMENDED_EXPERIENCE_GROUPS} from './lib/recommended-experience-settings.mjs'
 import { createPersonalityEvolution } from './lib/personality-evolution.mjs'
 import { normalizeFictionalTurn, runFictionalAiDebug, MAX_FICTIONAL_TURNS } from './lib/personality-ai-debug.mjs'
@@ -175,9 +175,9 @@ export const Config = !z ? undefined : z.object({
   pickPerRound: z.natural().default(5).extra('volatile', true),
   /** 一键暂停：关闭后停止新任务并拦截所有外发，保留全部配置与历史 */
   masterEnabled: z.boolean().default(true).extra('volatile', true),
-  /** 峰谷自动刷（总开关） */
+  /** 已退役：历史谷时视频调度标记，仅兼容旧数据，不再启动定时器。 */
   peakValley: z.boolean().default(false).extra('volatile', true),
-  /** dev.4: off=old driver; shadow=observe; active=Life Agent owns automatic video wake. */
+  /** off=暂停新生活自主调度；shadow=只观察；active=Life Agent 唯一自动生活驱动。 */
   lifeAgentMode: z.string().default('off').extra('volatile', true),
   /** Phase 5: independent opt-in for short-lived DM friend / public comment shadow reading. */
   lifeAgentSocialContextOptIn: z.boolean().default(false).extra('volatile', true),
@@ -1930,7 +1930,7 @@ function reportMeta() {
           ...w, opening: activePeakWindow(now, readPeakWindows(cfg.peakWindows)) === i,
         })),
         masterEnabled: cfg.masterEnabled,
-        peakValley: cfg.peakValley,
+        peakValley: cfg.peakValley, legacyVideoTimerRetired:true,lifeAgentMode:cfg.lifeAgentMode,
         autoComment: cfg.autoComment,
         dmMode: cfg.dmMode,
         dmUid: Number(cfg.dmUid) || 0,
@@ -1997,7 +1997,7 @@ function reportMeta() {
   tool({
     name: 'bili_config',
     description: '读 / 改「刷B站」的设置。不给 `patch` 就是读；给了就改（只认 schema 里的字段）。\n'
-      + '例：`{"perDay":20,"pickPerRound":5,"peakValley":true,"peakWindows":"[{\\"start\\":\\"09:00\\",\\"end\\":\\"11:00\\"}]","peakIntervalMinutes":5}`；'
+      + '例：`{"perDay":20,"pickPerRound":5}`；旧定时视频字段仅供历史兼容读取，生活节奏请在管理中心设置；' + '\n'
       + '私信投递：`{"dmMode":"only","dmUid":12345678}`（dmMode = off / only / both）。',
     parameters: { patch: { type: 'object', additionalProperties: true, description: '要改的字段（可省）' }, confirm:{type:'boolean',description:'主人明确要求修改设置时设 true'} },
     async execute(args) {
@@ -2005,6 +2005,9 @@ function reportMeta() {
       if (args?.patch && typeof args.patch === 'object' && !Array.isArray(args.patch)) {
         if (args?.confirm !== true) return {ok:false,blocked:true,needsConfirmation:true,error:'修改 B站设置需要主人在当前对话明确要求，并设置 confirm=true。'}
         if ('masterEnabled' in args.patch) return {ok:false, blocked:true, error:'总开关只能在「刷B站」设置页由用户手动修改'}
+        if (['lifeAgentMode','autonomousPlannerEnabled','autonomousPlannerMinutes',
+          'autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour'].some(k=>Object.hasOwn(args.patch,k)))
+          return {ok:false,blocked:true,error:'生活调度和模型额度须由主人在管理中心「鱼鱼的生活」统一预览并保存'}
         if ('commentMemePrompt' in args.patch) return {ok:false, blocked:true, error:'AI 选图提示词只能由用户在设置页编辑'}
         if ('visionPrompt' in args.patch) return {ok:false, blocked:true, error:'视觉识图提示词只能由用户在设置页编辑'}
         // Agent-facing configuration tool must not grant or revoke owner identity.
@@ -3007,43 +3010,10 @@ function reportMeta() {
    }
   }
 
-  /* ─────────────── 谷时定时器 ───────────────
-   * 🔴 2026-10-14 事故（使用者那边表现为"DSH 突然崩了、网页 Failed to fetch (gateway/internal)"）：
-   *    第一版是 `setInterval(tick, 60_000)`，回调里抛的 TypeError **没人接**，直接把整个宿主进程带走
-   *    （`dsh: fatal uncaught exception`）。⇒ **定时器回调必须自己兜住所有异常**：
-   *    插件再错也只该"这一轮没跑成"，绝不该杀宿主。
-   */
-  const tick = () => {
-    try {
-      refreshCfg()                    // ⭐ 定时器活得比设置页久：每一跳都重新读一遍配置
-      if (!legacyVideoTimerAllowed(cfg)) return
-      const now = new Date()
-      const windows = readPeakWindows(cfg.peakWindows)
-      const active = activePeakWindow(now, windows)
-      if (active === -1) return // 没配置 / 当前不在任何时间段内，就不运行
-      const st = readJson(dutyStateFile, {})
-      // ⭐ 闸门看的是「今天已经**挑到几条**」（从今天的报告里数出来），不是「跑了几轮」
-      if (countPickedToday(now) >= Number(cfg.perDay || 0)) return
-      // ⭐ 「不写日报」那档没有报告可数 ⇒ 数不出条数就保守一点：一天只跑一轮
-      if (String(cfg.reportLevel || 'full') === 'off' && roundsToday(now) >= 1) return
-      const decision = shouldRunWindow({ now, intervalMinutes: cfg.peakIntervalMinutes,
-        lastRunAt: st.lastRunAt })
-      if (!decision.allowed) return
-      const key = `custom-${active + 1}`
-      const started = runDuty(`window:${key}`)
-      // 🔒 只有成功拉起 Agent 才记录时间；忙碌/启动失败不会消耗间隔。
-      if (!started?.started) { log(`自定义时段任务未启动：${started?.error || started?.why || '忙碌'}`); return }
-      bumpState({ count: roundsToday(now) + 1, lastRunAt: now.toISOString(), lastWhy: key })
-    } catch (e) {
-      log(`定时器这一跳出错（已兜住，不影响宿主）：${e?.stack ?? e}`)
-    }
-  }
-
-  try {
-    const timer = setInterval(tick, 60_000)
-    timer.unref?.()                                    // 别因为这个定时器让进程不肯退出
-    ctx.effect(() => () => clearInterval(timer), 'bili-duty: 谷时定时器')
-  } catch (e) { log(`定时器没起来：${e?.message ?? e}`) }
+  // Unified Life Agent is now the sole automatic video wake owner.
+  // The retired peakValley/peakWindows/peakIntervalMinutes fields are retained
+  // for old backups and manual tools, but no legacy timer is registered.
+  // Manual video requests still use runDuty('manual') and the original gates.
 
   // 大肥鱼后台私信：统一的收发入口（原来的主人专用定时器已删除，避免重复回复）。
   // 陌生人私信仍须主人明确开启发送许可；开启后由唯一 Life Voice + 统一社交决策决定回不回。
@@ -6557,7 +6527,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // Legacy form cannot bypass the versioned, explicitly confirmed life settings API.
       try { assertLegacyLifeSettingsPatchCompatible(cfg,validatedPatch) }
       catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e)})}
-      const { clean, host } = await persistCfg(validatedPatch)
+      let clean,host
+      try { ({clean,host}=await persistCfg(validatedPatch)) }
+      catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,160)})}
       // An explicit revoke must destroy plaintext immediately, even if the
       // user enables it again before the next Life Agent scheduler tick.
       if(validatedPatch.lifeAgentSocialContextOptIn===false||validatedPatch.masterEnabled===false||validatedPatch.lifeAgentMode==='off')lifeSocialShadow.revoke()
@@ -6728,7 +6700,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           const host = String(req.headers?.host || '')
           if (!/^(?:127\.0\.0\.1|localhost|\[::1\])(?::\d{1,5})?$/i.test(host))
             return sendJson(res, 200, { ok: false, error: '管理中心只允许从本机 DSH 服务打开' })
-          const tab=String(body?.tab||'');u = `http://${host}/api/bili-duty/manage${['firststart','models','home'].includes(tab)?'?tab='+encodeURIComponent(tab):''}`
+          const tab=String(body?.tab||'');u = `http://${host}/api/bili-duty/manage${['firststart','models','home','life'].includes(tab)?'?tab='+encodeURIComponent(tab):''}`
           // 安卓客户端可以仅获取地址并由 WebView 导航，避免尝试在宿主系统弹窗。
           if (body?.resolveOnly === true) return sendJson(res, 200, { ok: true, url: u })
         } else {
@@ -7049,5 +7021,5 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   } catch (e) { log(`HTTP 路由没挂上：${e?.message ?? e}`) }
 
   ctx.effect(() => () => { try { mcp?.stop() } catch { /* 收摊 */ } }, 'bili-duty: 收 MCP 子进程')
-  log(`已挂载（家=${stateDir}，python=${cfg.pythonPath}，定时=${cfg.peakValley ? '开' : '关'}）`)
+  log(`已挂载（家=${stateDir}，python=${cfg.pythonPath}，生活调度=${cfg.lifeAgentMode==='active'?'自主':cfg.lifeAgentMode==='shadow'?'影子':'暂停'}；旧视频定时器已退役）`)
 }

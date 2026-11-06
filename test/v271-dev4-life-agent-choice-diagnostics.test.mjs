@@ -83,5 +83,5 @@ test('Phase 6 settings preview is read-only, no silent social permission escalat
  assert.equal(view.privacy.socialReplyOwner,'legacy')
  assert.equal(view.privacy.outboundPermissionsUnchanged,true)
  assert.equal(view.budget.decisionsPerDay,4)
- assert.equal(projectLifeSettings({...original,masterEnabled:true,lifeAgentMode:'shadow'}).life.videoOwner,'legacy-or-manual')
+ assert.equal(projectLifeSettings({...original,masterEnabled:true,lifeAgentMode:'shadow'}).life.videoOwner,'life-agent')
 })
