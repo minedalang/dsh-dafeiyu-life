@@ -73,13 +73,15 @@ test('planner autonomously verifies public metadata, never creates a task or sen
  assert.equal(op.status().opportunities[0].status,'inspect')
  assert.equal((await p.agent.tick({force:true,opportunitiesOnly:true})).skipped,'nothing-to-do')
 }))
-test('platform read mismatch cannot create verified experience; failure is deferred',async()=>withHome(async dir=>{
+test('platform read mismatch cannot create verified experience; technical failure is retryable rather than fish defer',async()=>withHome(async dir=>{
  seed(dir)
  const op=coordinator(dir),p=planner(dir,op,{read:async()=>({ok:true,bvid:BV2,title:'错误的视频'})})
  const result=await p.agent.tick({force:true,opportunitiesOnly:true})
- assert.equal(result.result,'failed')
+ assert.equal(result.result,'metadata-read-failed')
+ assert.equal(result.ok,false)
+ assert.equal(result.diagnosticCode,'metadata-bvid-mismatch')
  assert.equal(op.recentReads().length,0)
- assert.equal(op.status().opportunities[0].status,'defer')
+ assert.equal(op.status().opportunities[0].status,'error')
  assert.equal(op.list().length,0)
 }))
 test('defer and dismiss are real decisions; deferred cannot be reconsidered immediately',async()=>withHome(async dir=>{

@@ -1,3 +1,7 @@
+## 当前增量：Life Agent 可靠性集成（不包含社交接管）
+
+- [匿名生活事件的有界重试、跨进程共享模型额度/租约、公开视频元数据失败分类与短期恢复](./2.7.1-dev4-life-reliability-integration.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev4-life-reliability-live.mmd)。仅收紧既有 Life Agent 和既有只读契机路径，不改变旧私信/评论真实社交发送权；Windows/真实 B站 API 和 DSH Desktop 待验收。
+
 ## 当前生活决策：按本轮真实候选约束模型选择
 
 - [Life Agent JSON 解析兼容与逐轮准确动作菜单](./2.7.1-dev4-life-decision-contract.md) · [实际调用图](./diagrams/2.7.1-dev4-life-decision-contract-live.mmd)。复用自主规划器与既有可信候选、模型额度、账号和发送门禁；格式兼容只限单个完整 JSON 代码围栏，不开放任意文本提取或额外模型重试。未执行动作仍有匿名失败诊断。

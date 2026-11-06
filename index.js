@@ -1,3 +1,4 @@
+import {verifyLifePublicMetadata, classifyLifeMetadataFailure} from './lib/life-public-metadata.mjs'
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
 import {lifeSettingsV2,planLifeSettingsV2,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
@@ -4642,7 +4643,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     beginLifeExploration:(id,goal,found,tag)=>lifeOpportunities.beginExploration(id,goal,found,tag),
     beginLifeVideoExploration:(id,goal,found,tag)=>lifeOpportunities.beginVideoExploration(id,goal,found,tag),
     completeLifeExploration:(id,bvid,receipt,tag)=>lifeOpportunities.completeExploration(id,bvid,receipt,tag),
-    failLifeExploration:(id,bvid,tag)=>lifeOpportunities.failExplorationRead(id,bvid,tag),
+    failLifeExploration:(id,bvid,tag,code)=>lifeOpportunities.failExplorationRead(id,bvid,tag,code),
     inspectLifeCreatorSpace:(id,proof,tag)=>lifeOpportunities.inspectCreatorSpace(id,proof,tag),
     failLifeCreatorRead:(id,tag)=>lifeOpportunities.failCreatorRead(id,tag),
     abandonLifeExploration:(id,reason,tag)=>lifeOpportunities.abandonExploration(id,reason,tag),
@@ -4673,9 +4674,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     executeOpportunityRead:async(bvid)=>readActionContext.run({source:'life-planner'},async()=>{
       if(!/^BV[0-9A-Za-z]{10}$/.test(String(bvid||'')))return {ok:false,error:'BV 证据无效'}
       // Use the existing guarded read adapter and its per-account read budget.
-      const info=parseMaybeJson(await call('bili_video_info',{bvid}))
-      if(info?.bvid!==bvid||!String(info.title||'').trim())return {ok:false,error:'平台未返回匹配的视频元数据'}
-      return {ok:true,bvid,title:String(info.title).slice(0,100)}
+      try{
+        const info=parseMaybeJson(await call('bili_video_info',{bvid}))
+        return verifyLifePublicMetadata(bvid,info)
+      }catch(error){return {ok:false,code:classifyLifeMetadataFailure(error)}}
     }),
     recheckWillingness:task=>dualContextAgency.assessReadExecution({task}),
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars),

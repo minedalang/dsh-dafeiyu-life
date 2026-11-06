@@ -116,12 +116,14 @@ test('model failure preserves unprocessed event for bounded retry; malformed out
   const r=rig(dir,{model:async()=>{if(fail)throw Error('model offline');return '{nonsense}'}})
   const first=await r.planner.tick({force:true})
   assert.equal(first.ok,false)
-  assert.equal(r.events.status().pending,1)
+  assert.equal(r.events.status().retryable,1)
+  r.advance(5*60_000)
   fail=false
   const second=await r.planner.tick({force:true})
   assert.equal(second.action,'skip')
   assert.equal(r.launches,0)
-  assert.equal(r.events.status().pending,0)
+  assert.equal(r.events.status().retryable,1)
+  assert.equal(r.events.status().recent.find(e=>e.kind==='quiet-window')?.state,'retryable')
   assert.equal(r.planner.status().runs,2)
 }))
 

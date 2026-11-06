@@ -56,7 +56,7 @@ test('unparseable and unauthorized output cannot masquerade as voluntary rest',(
  const x=rig(dir,{response:'```json invalid ```'});x.wake()
  const first=await x.planner.tick({force:true})
  assert.equal(first.result,'invalid-decision');assert.equal(x.events.status().timeline[0].result,'invalid-decision')
- assert.equal(x.launches,0);assert.equal(x.events.status().pending,0)
+ assert.equal(x.launches,0);assert.equal(first.ok,false);assert.ok(x.events.status().retryable>=1)
 }))
 test('a JSON object without an action is invalid, never autonomous rest',()=>inTemp(async dir=>{
  const x=rig(dir,{response:'{}'});x.wake()
@@ -67,7 +67,7 @@ test('model fault remains a failure and preserves pending event for later review
  const out=await x.planner.tick({force:true})
  assert.equal(out.ok,false)
  assert.equal(out.result,'model-or-execution-error')
- assert.ok(x.events.status().recent.some(e=>e.kind==='manual-wake'&&e.state==='pending'))
+ assert.ok(x.events.status().recent.some(e=>e.kind==='manual-wake'&&e.state==='retryable'&&e.failures===1))
  assert.equal(x.events.status().timeline[0].failed,true)
  assert.equal(x.launches,0)
 }))

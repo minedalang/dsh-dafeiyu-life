@@ -35,6 +35,7 @@
     "cordis.patch.yml",
     "lib",
     "tools/dev4-cold-state-backup.mjs",
+    "tools/dev4-life-planner-offline-recovery.mjs",
     "tools/dev4-phase6g-social-audit-offline.mjs",
     "tools/dev4-phase6h-social-fence-offline.mjs",
     "tools/dev4-phase4-offline-acceptance.mjs",

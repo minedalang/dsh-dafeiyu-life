@@ -94,11 +94,12 @@ test('social event is isolated by Bilibili account and a model-time switch canno
   assert.equal(r.writes,0)
 }))
 
-test('model failure keeps the social wake pending and consumes only one existing planner budget',()=>withDir(async dir=>{
+test('model failure schedules a safe social wake retry and consumes only one existing planner budget',()=>withDir(async dir=>{
   const r=make(dir,{model:()=>{throw Error('model down')}})
   r.events.offer({kind:'dm-received',platform:'bilibili',sourceKey:'msg-3'})
   assert.equal((await r.planner.tick({force:true})).ok,false)
-  assert.equal(r.events.status().pendingSocial,1)
+  assert.equal(r.events.status().retryable,1)
+  assert.equal(r.events.status().recent[0].result,'model-call-failed')
   assert.equal(r.planner.status().runs,1)
 }))
 
