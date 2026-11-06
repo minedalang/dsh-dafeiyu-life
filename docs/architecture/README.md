@@ -1,3 +1,7 @@
+## 2.7.1 RC 准入自检（尚未达到封版条件）
+
+- [十三项自然行为与用户文案自检：实际生产链、已实现与未证实范围、RC 必须补证与验收脚本](./2.7.1-rc-preflight-13-questions.md) · [当前与目标交接示意](./diagrams/2.7.1-rc-preflight-boundaries.mmd)。未改变社交决策权或对外授权；当前 `releaseReady:false`，不应创建 RC 发布标签。
+
 ## 当前版本 2.7.1-dev.7：新 Life 总览 UI 与可回忆世界接线（开发预览）
 
 - [dev.7 生产接线、迁移边界、跨系统读写归属、升级策略与验收缺口](./2.7.1-dev7-life-world-ui-integration.md) · [可编辑 Mermaid 生产图](./diagrams/2.7.1-dev7-life-world-live.mmd)。普通 Life 决策可读取现有兴趣和经隐私/遗忘门禁后的公开经历；管理中心新增统一总览，旧重复调度表单已退役。**社交真实发送仍为 legacy 独占**，不新增第二份状态账本，不声称已验证长程人格成长；Windows/真实 B站仍待验收。

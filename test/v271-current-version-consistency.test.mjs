@@ -10,7 +10,7 @@ test('当前开发版本与 package lock、README、变更和架构文档一致'
   assert.match(pkg.version,/^2\.7\.1-dev\.[1-9]\d*$/)
   assert.equal(lock.version,pkg.version)
   assert.equal(lock.packages[''].version,pkg.version)
-  assert.match(read('README.md'),new RegExp('当前开发预览：\\*\\*`'+pkg.version.replaceAll('.','\\.')+'`'))
+  assert.match(read('README.md').slice(0,2200),new RegExp('当前开发预览：\\*\\*`'+pkg.version.replaceAll('.','\\.')+'`'))
   assert.match(read('AGENTS.md'),new RegExp('当前开发版本 `'+pkg.version.replaceAll('.','\\.')+'`'))
   assert.ok(read('CHANGELOG.md').startsWith('## ['+pkg.version+'] ·'))
   assert.ok(read('docs/architecture/README.md').includes('当前版本 '+pkg.version+'：'))

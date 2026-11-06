@@ -1,6 +1,6 @@
 # 大肥鱼 · DSH 生活系统：AI 开发约定
 
-> 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。
+> 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未验收（旧社交仍是唯一发送决策者，情绪驱动主动问候暂停，成长因果与 Windows／真实平台证据欠缺）；不通过不得封 RC，所有改动应同步架构图、文档与测试。
 
 ## 项目与代码入口
 

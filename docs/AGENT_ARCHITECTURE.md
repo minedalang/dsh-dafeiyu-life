@@ -1,4 +1,8 @@
-# dev.13 当前架构入口（以下 dev.4 图仅供历史参考）
+# 旧版 Agent 与记忆架构快照（当前入口已迁移）
+
+> **注意：本文件是历史示意，不再是 2.7.1 的当前系统入口。** 请读 [当前生产架构](./architecture/README.md)、[dev.7 一体化接线](./architecture/2.7.1-dev7-life-world-ui-integration.md) 和 [RC 十三项验收](./architecture/2.7.1-rc-preflight-13-questions.md)。
+
+## 历史快照：dev.13（以下 dev.4 图仅供历史参考）
 
 > 本文下面的 `dev.4` 流程图与开发状态记录是**历史快照**，不再作为当前记忆数据路径的实现依据。当前架构以 [dev.13 双层人生记忆](./DEV13_DUAL_LIFE_MEMORY.md) 与实际代码为准；请勿用下文 `Evidence → Reflection` 的旧箭头绕开遗忘副本。
 

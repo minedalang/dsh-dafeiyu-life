@@ -1,0 +1,78 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {readFileSync} from 'node:fs'
+import {lifeTransitionReadiness} from '../lib/life-transition-readiness.mjs'
+
+const src=file=>readFileSync(new URL('../'+file,import.meta.url),'utf8')
+const rc=()=>lifeTransitionReadiness({version:'2.7.1-dev.7',config:{masterEnabled:true,autonomousPlannerEnabled:true,lifeAgentMode:'active'},
+  accountReady:true,planner:{lifeEvents:{ok:true}},
+  handoff:{ok:true,accountReady:true,channels:{dm:{inFlight:0},comment:{inFlight:0}}},
+  transactions:{ok:true,accountReady:true,channels:{dm:{},comment:{}}}})
+
+test('RC thirteen questions are complete, unique and never automatically release the build',()=>{
+  const result=rc()
+  assert.equal(result.releaseReady,false)
+  assert.equal(result.rc.releaseCandidate,false)
+  assert.equal(result.rc.complete,0)
+  assert.equal(result.rc.questions.length,13)
+  assert.equal(new Set(result.rc.questions.map(x=>x.id)).size,13)
+  assert.deepEqual(result.rc.questions.map(x=>x.id),[
+    'connected-systems','owner-natural-care','natural-friend-dm','recent-social-voice','interest-activities','interest-friendship',
+    'proposal-to-completion','reply-cadence','social-growth','growth-feedback','normal-ui','whole-life-naturalness','legacy-upgrade-memory'])
+  assert.deepEqual(result.rc.questions.map(x=>x.status),[
+    'partial','partial','partial','partial','partial','partial','partial','partial','unproven','unproven','needs-review','unproven','needs-review'])
+  assert.equal(result.status.oldSocialOwner,true)
+  assert.equal(result.checks.find(x=>x.id==='legacy-social-owner').status,'pending')
+  assert.ok(result.remaining.includes('windows-real-model-bilibili'))
+})
+
+test('RC evidence diagnostics are bounded public categories, never raw identity or private text',()=>{
+  const uid='99110022334455',raw='private-secret-message'
+  const result=lifeTransitionReadiness({version:'2.7.1-dev.7'+raw,
+    config:{masterEnabled:true,lifeAgentMode:'off',personaPrompt:raw,dmOwnerUid:uid},accountReady:false,
+    shadow:{byChannel:{dm:{paired:0,rawText:raw,uid}},rawText:raw},
+    planner:{lifeEvents:{ok:false,rawText:raw}},transactions:null,handoff:null})
+  const json=JSON.stringify(result.rc)
+  assert.doesNotMatch(json,new RegExp(uid+'|'+raw+'|receiptId|rpid|accountHash'))
+  assert.equal(result.releaseReady,false)
+  assert.equal(result.rc.questions.length,13)
+  assert.ok(result.rc.questions.every(x=>['partial','unproven','needs-review'].includes(x.status)))
+})
+
+test('production wiring still has legacy owner and suspended proactive emotional recall; no RC claims otherwise',()=>{
+  const social=src('lib/social-decision-ownership.mjs')
+  const planner=src('lib/autonomous-planner.mjs')
+  const index=src('index.js')
+  assert.match(social,/socialDecisionOwner:'legacy'/)
+  assert.match(social,/if\(requester!=='legacy'\)/)
+  assert.match(planner,/不允许回复、发送、工具调用/)
+  assert.match(index,/emotionRecall=createEmotionRecall\(\{[\s\S]{0,100}paused:true/)
+  assert.match(index,/videoRecommendationsOnly:true/)
+})
+
+test('normal Life management wording is clear; RC list uses textContent and preserves old option values',()=>{
+  const html=src('lib/management-console.html'),js=src('lib/management-console.js')
+  for(const term of ['刷新生活状态','聊天与互动','开发者选项','已有设置（升级后原样保留）','RC 前需要回答的 13 个真实使用问题'])
+    assert.ok(html.includes(term),term)
+  for(const id of ['life-rc-questions','life-transition-status','life-v2-mode','life-v2-pace'])
+    assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id)
+  for(const val of ['off','active','shadow','quiet','natural','lively','legacy-quiet','legacy-natural','legacy-lively','custom'])
+    assert.match(html,new RegExp('value="'+val+'"'),val)
+  assert.match(js,/rcList\.replaceChildren\(\)/)
+  assert.match(js,/li\.textContent=/)
+  assert.doesNotMatch(js,/rcList\.innerHTML/)
+})
+
+test('README and developer navigation emphasize 2.7.1 reconstruction but never imply RC is released',()=>{
+  const readme=src('README.md'),doc=src('docs/README.md'),notes=src('RELEASE_NOTES_v2.7.1.md')
+  const opening=readme.slice(0,1900)
+  for(const term of ['2.7.1-dev.7','统一 Life','旧的定时刷视频','记忆、兴趣、人格、关系和待办','尚未发布','实际回复目前仍由原处理器负责'])
+    assert.ok(opening.includes(term),term)
+  assert.match(readme,/2\.7\.1-rc-preflight-13-questions\.md/)
+  assert.match(doc,/2\.7\.1-dev\.7/)
+  assert.match(doc,/2\.7\.1-rc-preflight-13-questions\.md/)
+  assert.match(notes,/RC 准入前行为自检/)
+  assert.match(src('docs/architecture/README.md'),/2\.7\.1-rc-preflight-13-questions\.md/)
+  assert.match(src('AGENTS.md'),/RC 十三项自然行为/)
+  assert.match(src('docs/AGENT_ARCHITECTURE.md'),/历史示意/)
+})
