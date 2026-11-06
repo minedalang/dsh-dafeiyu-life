@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { apply } from './helpers/ready-host.mjs'
+import { legacyVideoTimerAllowed } from '../lib/life-settings-control.mjs'
 
 // 真正通过假宿主 HTTP 路由保存配置；不是仅检验字符串是否存在。
 test('总开关可关闭/重启后保持/恢复：关闭时不能跑一轮，旧批量收藏已停用', async () => {
@@ -57,7 +58,13 @@ test('总开关覆盖定时器、后台互动和 Python MCP 外发', () => {
   const scheduler=readFileSync(new URL('../lib/interaction-scheduler.mjs',import.meta.url),'utf8')
   const mcp=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
   const sidecar=readFileSync(new URL('../lib/favops.py',import.meta.url),'utf8')
-  assert.match(index,/cfg\.masterEnabled !== true \|\| !cfg\.peakValley/)
+  // v2.7.1 dev: the legacy timer gate is centralized in life-settings-control.
+  // Keep a behavioral assertion for the master switch and both Life Agent modes.
+  assert.match(index,/if \(!legacyVideoTimerAllowed\(cfg\)\) return/)
+  assert.equal(legacyVideoTimerAllowed({masterEnabled:false,peakValley:true,lifeAgentMode:'off'}),false)
+  assert.equal(legacyVideoTimerAllowed({masterEnabled:true,peakValley:true,lifeAgentMode:'off'}),true)
+  assert.equal(legacyVideoTimerAllowed({masterEnabled:true,peakValley:true,lifeAgentMode:'shadow'}),false)
+  assert.equal(legacyVideoTimerAllowed({masterEnabled:true,peakValley:true,lifeAgentMode:'active'}),false)
   assert.match(index,/enabled: cfg\.masterEnabled === true && cfg\.dmWatch/)
   assert.match(index,/watchReplies: cfg\.masterEnabled === true && \(cfg\.commentWatchReplies === true \|\| cfg\.ownerCommentAgentEnabled === true\)/)
   assert.doesNotMatch(index,/favToday\('auto'\)/)

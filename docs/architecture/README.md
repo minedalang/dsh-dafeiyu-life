@@ -1,3 +1,7 @@
+## 当前增量：dev.4 Phase 6f 自主调度诊断跨账号隔离（待 Windows 实机）
+
+- [账号核验的最近决策显示、旧文件不迁移、共享模型额度不变](./2.7.1-dev4-phase6f-account-diagnostic-isolation.md) · [生产 Mermaid](./diagrams/2.7.1-dev4-phase6f-account-diagnostics-live.mmd)。未标注来源的旧历史保留在原数据/冷快照中，不误归属当前账号；不改变社交决策与外发权限。
+
 ## 当前增量：dev.4 Phase 6e/7e 自主生活可见验收（待 Windows 实机）
 
 - [真实视频委派门禁、单列时间线与无 B站纯模拟工具](./2.7.1-dev4-life-experience-visible-acceptance.md)。明确：shadow 不通过新生活驱动启动现有视频 Agent；active 仅允许原条件下委派。模拟不能冒充真实观看或成长。

@@ -1,0 +1,17 @@
+flowchart TD
+  AUTO[定时/手动/子待办/只读模型对照] --> P[原 AutonomousPlanner]
+  ID[可信当前 B站账号作用域] --> P
+  P --> GLOBAL[原 autonomous-planner.json 版本 1]
+  GLOBAL --> BUDGET[共享 day/runs/lastAt 与字符计数]
+  GLOBAL --> HISTORY[新写入 recent 含可选 accountTag]
+  GLOBAL --> LAST[lastResult/lastError 含 lastAccountTag]
+  ID --> FILTER{当前账号归属核验}
+  HISTORY --> FILTER
+  LAST --> FILTER
+  FILTER -->|本账号标记| VIEW[只读当前账号诊断]
+  FILTER -->|其他账号/旧记录来源不明| HIDE[不展示，不删除旧数据]
+  BUDGET --> VIEW
+  EVENT[原按账号隔离 life-agent-events] --> VIEW
+  VIEW --> API[管理中心原 Life Agent status API]
+  GLOBAL --> BACKUP[原完整停机冷快照]
+  HIDE -.不迁移长期记忆/不授权发送.-> SAFE[现有社交发送器与回执安全门禁不变]

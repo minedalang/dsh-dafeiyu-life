@@ -113,7 +113,20 @@ class DiscussionTests(unittest.TestCase):
         self.assertNotIn('READ-THIRD-PARTY-SECRET', text)
         self.assertNotIn('reply secret', text)
         self.assertNotIn('999', text)
-        self.assertNotIn('111', text)
+        # A raw substring check against the complete JSONL can match an ISO
+        # timestamp's fractional seconds (e.g. ...611165), which is not a UID.
+        # Verify instead that the real UID is not present in evidence fields,
+        # and that account identity is represented only by a 16-hex pseudonym.
+        records = [json.loads(payload) for _, payload in self.records]
+        for receipt in records:
+            if 'account' in receipt:
+                self.assertRegex(receipt['account'], r'^[a-f0-9]{16}$')
+                self.assertNotEqual(receipt['account'], self.account)
+            for key in ('uid', 'mid', 'user_uid', 'sender_uid', 'author_uid'):
+                self.assertNotIn(key, receipt)
+        evidence_only = json.dumps([{k: v for k, v in r.items() if k not in ('at', 'account')}
+                                    for r in records], ensure_ascii=False)
+        self.assertNotIn(self.account, evidence_only)
         self.assertNotIn('FAKE_TEST_SECRET', text)
         self.assertIn('comment_thread_read', text)
         self.assertIn('provisional_fish_reaction', text)
