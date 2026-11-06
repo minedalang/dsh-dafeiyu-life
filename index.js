@@ -64,6 +64,7 @@ import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/
 import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-planner.mjs'
 import { createLifeAgentEvents } from './lib/life-agent-events.mjs'
 import { createSocialDecisionOwnership } from './lib/social-decision-ownership.mjs'
+import { createSocialHandoffFence } from './lib/social-handoff-fence.mjs'
 import { createLifeSocialShadow, classifyLegacySocialDecision } from './lib/life-social-shadow.mjs'
 import { runLifeExperienceOfflineDemo } from './lib/life-experience-demo.mjs'
 import { createLifeCapabilities } from './lib/life-capabilities.mjs'
@@ -2806,7 +2807,9 @@ function reportMeta() {
   let dutyChild = null
   let dutyStartedAt = 0
   let lifeAgentEvents = null
+  const socialHandoffFence=createSocialHandoffFence({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   const socialDecisionOwnership=createSocialDecisionOwnership({
+    handoffFence:socialHandoffFence,
     getAccountTag:trustedLifeAccountTag,getLifeAgentMode:()=>cfg.lifeAgentMode
   })
   const lifeSocialShadow=createLifeSocialShadow({

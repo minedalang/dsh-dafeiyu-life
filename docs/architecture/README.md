@@ -1,3 +1,7 @@
+## 当前增量：dev.4 Phase 6h 社交交接排他基础（未开放真实接管）
+
+- [旧社交路由跨进程排他检查、异常残留冻结和匿名诊断；合成子进程故障演练](./2.7.1-dev4-phase6h-social-handoff-fence.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-phase6h-social-fence-live.mmd)。只在原旧 DM/评论路由**读取**持久预约；新预约 API 尚未由生产发起，也无 Life Agent 决策或真实发送权限。Windows/真实 B站待验收。
+
 ## 当前增量：dev.4 Phase 6g 只读社交影子配对审计（待 Windows 实机）
 
 - [同来源不可抢占、分类不可覆盖、私信/评论分渠道缺样本和分歧诊断](./2.7.1-dev4-phase6g-social-shadow-audit.md) · [生产 Mermaid](./diagrams/2.7.1-dev4-phase6g-social-audit-live.mmd)。这只是既有 Phase 5 可撤销内存影子的质量门禁，**没有**将真实社交决策权交给 Life Agent。

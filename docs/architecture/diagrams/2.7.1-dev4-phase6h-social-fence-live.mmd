@@ -1,0 +1,19 @@
+flowchart TD
+  IN[原私信或公开评论入口 已核验] --> ROUTE[SocialDecisionOwnership.route: only legacy]
+  SHADOW[Life Agent 匿名社交唤醒及影子对照] -.无生产交接权限.-> ROUTE
+  ROUTE --> SCOPE{可信账号有效?}
+  SCOPE -->|shadow/active 且无账号| STOP[停止该渠道本轮社交]
+  SCOPE -->|有效| CHECK[SocialHandoffFence.check 账号+渠道]
+  SCOPE -->|off 模式旧兼容| OLD[旧决策器]
+  CHECK -->|无持久预约| OLD
+  CHECK -->|预约/残留/存储不安全| STOP
+  OLD --> GATE[原权限/额度/冷却/去重]
+  GATE --> SEND[原 DM或评论发送器及真实平台回执]
+  TEST[离线合成子进程 Phase6h] --> RES[原子目录预约 legacy-only]
+  RES --> CHECK
+  RES -->|中断| FROZEN[残留保持冻结 不按超时自动删]
+  FROZEN --> REVIEW[仅离线人工明确核实未外发且进程已退出]
+  REVIEW -.仅模拟复核，未上线操作按钮.-> CHECK
+  CHECK --> UI[管理中心匿名通道阻塞状态]
+  SHADOW --> AUDIT[Phase6g 只读分类对照]
+  AUDIT --> UI
