@@ -1,0 +1,20 @@
+flowchart TD
+    DM[已核验私信 / 公开评论] --> OFFER[匿名按账号 offer + 原收件器]
+    OFFER --> FAST[一次性 1 秒通知 / 每分钟兜底]
+    DAILY[兴趣 / 承诺待办 / 只读契机 / 视频轮回执] --> CLOCK[自然生活时窗与间隔]
+    FAST --> MUX{同一个 AutonomousPlanner / 跨进程租约}
+    CLOCK --> MUX
+    MUX -->|仅社交事件| SOCIAL[只读关注：consider_social 或 skip]
+    MUX -->|普通生活| LIFE[受限的只读候选、反思与视频委派]
+    SOCIAL --> QUOTA[原自主计划账本：socialRuns 24 / runs 总上限]
+    LIFE --> QUOTA2[原自主计划账本：lifeRuns 配置额度 / runs 总上限]
+    QUOTA --> READ[原社交影子：不拥有发送权]
+    QUOTA2 --> GATES[原账号、授权、视频门禁 / 原任务约束]
+    GATES --> EXEC[原只读工具与视频 Agent]
+    EXEC --> RECEIPT[原真实回执与生活事件账本]
+    RECEIPT --> CLOCK
+    READ --> TRACE[脱敏事件 ref → Life DEBUG / 时间线]
+    RECEIPT --> TRACE
+    LEGACY[旧社交回复器：当前唯一正式发送决策者] --> TX[原发信事务、平台权限与回执]
+    DM --> LEGACY
+    NOTE[未实现：正式社交接管 / 全插件货币成本闸 / 真正视听感知 / 长期因果成长]

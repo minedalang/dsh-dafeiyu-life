@@ -1,3 +1,7 @@
+## 当前实施包 A：Life 双节奏与分类预算（未发布，未接管社交发送）
+
+- [当前真实接线、旧生活预设显式保留、社交快速只读关注、跨进程额度、DEBUG 事件关联及风险矩阵](./2.7.1-life-a-dual-lane-budget.md) · [可编辑当前 Mermaid](./diagrams/2.7.1-life-a-dual-lane-live.mmd)。这是上传 `2.7.1-dev.4` 上的开发中增量，不表示曾经的 Phase 6 / Phase 7 全部验收，也不启用正式社交外发。下方 `dev.4` 文件是原有实现的架构记录，涉及双节奏与额度的现行行为优先参照本页。
+
 ## 当前增量：Life Agent 视频轮结束后的自主反馈与冷却恢复
 
 - [可信视频轮结束回执如何进入同一生活决策、冷却期不误消费、忙碌诊断与安全边界](./2.7.1-dev4-life-post-video-continuity.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-life-post-video-continuity-live.mmd)。复用唯一 Life Agent、v1 事件账本及原视频 Agent，不新增发送权限；真实观看/听音、Windows/B站仍待验收。

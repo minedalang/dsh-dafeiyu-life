@@ -989,14 +989,15 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <h3>🌿 鱼鱼的生活</h3>
 <p class="muted">选择生活状态与活跃程度，保存后鱼鱼就会按自己的节奏探索、考虑待办，也可以选择休息。不会因为开启生活就自动获得评论或私信权限。</p>
 <div class="fields"><div><label for="life-v2-mode">自主生活</label><select id="life-v2-mode"><option value="off">暂停</option><option value="active">开启（推荐）</option><option value="shadow">仅观察（调试）</option></select></div>
-<div><label for="life-v2-pace">活跃程度</label><select id="life-v2-pace"><option value="quiet">安静</option><option value="natural">自然（推荐）</option><option value="lively">活跃</option><option value="custom">自定义（高级）</option></select></div></div>
+<div><label for="life-v2-pace">活跃程度</label><select id="life-v2-pace"><option value="quiet">安静（120 分钟 / 12 次）</option><option value="natural">自然（30 分钟 / 40 次）</option><option value="lively">活跃（10 分钟 / 100 次）</option><option value="legacy-quiet">保留旧安静（180 分钟 / 4 次）</option><option value="legacy-natural">保留旧自然（60 分钟 / 12 次）</option><option value="legacy-lively">保留旧活跃（30 分钟 / 20 次）</option><option value="custom">自定义（高级）</option></select></div></div>
 <details class="life-subdetails" id="life-settings-advanced"><summary>⚙️ 高级设置 · 模型次数与活动时间</summary>
-<p class="muted">仅选择「自定义」时，以下数字才会写入配置；选择预设不会覆盖原有时段。次数是<strong>模型决策上限</strong>，不是必须执行的任务或真实视频播放次数。对外发布／私信授权仍在相应页面单独设置。</p>
+<p class="muted">仅选择「自定义」时，以下数字才会写入配置；选择预设不会覆盖原有时段。次数是<strong>日常生活模型决策上限</strong>，不是必须执行的任务或真实视频播放次数；社交事件只读快速关注有独立额度，所有调用共享原子总上限。对外发布／私信授权仍在相应页面单独设置。</p>
 <div class="fields"><div><label for="life-v2-minutes">最短考虑间隔（分钟，5～1440）</label><input type="number" id="life-v2-minutes" min="5" max="1440" value="60"></div><div><label for="life-v2-limit">每日最多模型决策（1～288）</label><input type="number" id="life-v2-limit" min="1" max="288" value="12"></div><div><label for="life-v2-start">每日开始（0～23 时）</label><input type="number" id="life-v2-start" min="0" max="23" value="9"></div><div><label for="life-v2-end">每日结束（1～24 时）</label><input type="number" id="life-v2-end" min="1" max="24" value="23"></div></div><div class="toolbar"><button type="button" class="life-action life-sky" id="life-v2-preview-btn">预览详细变化</button></div>
 </details>
 <div class="toolbar"><button type="button" class="life-action life-green" id="life-v2-save-btn">保存生活设置</button><button type="button" id="life-agent-wake" class="life-action life-sky">现在让鱼鱼考虑一次</button></div>
 <p class="muted"><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看本轮决策全过程与错误回执</a>（只读取本机诊断，不触发模型或 B站请求）</p>
 <p id="life-agent-wake-result" class="muted" role="status" aria-live="polite">手动考虑会消耗一次模型额度；鱼鱼也可以自己选择休息。</p>
+<p class="muted">旧档位会原样保留，只有主动选择并保存新档才更换。视频 Agent 仍受每天 2 次、间隔至少 180 分钟的独立门禁限制。当前社交快速关注不表示已发送回复。</p>
 <p id="life-v2-status" class="muted" role="status">正在读取生活设置…</p>
 <details class="life-subdetails" id="life-transition-checklist"><summary>🛠️ 开发者：系统迁移与验收诊断</summary><p class="muted">只读检查，不会发送消息、打开权限或修改数据；绿色配置状态不代表真实平台已验收。</p><div id="life-transition-status" class="muted" role="status">正在核对旧系统退出和新生活系统接管边界…</div></details>
 <p class="muted">升级不会清空旧任务、记忆、好友关系或平台回执；旧「谷时刷视频」字段仅为历史兼容保留，无法重新启用。停止新生活决策<strong>不会撤销先前单独开启的社交自动发送授权</strong>，需要在社交页调整。</p>

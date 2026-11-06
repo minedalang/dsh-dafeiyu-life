@@ -2818,6 +2818,18 @@ function reportMeta() {
   let dutyChild = null
   let dutyStartedAt = 0
   let lifeAgentEvents = null
+  // A one-shot notifier for VERIFIED social signals. The normal Life timer
+  // remains the fallback; no independent social decision agent is introduced.
+  let wakeSocialLife = null, socialWakeTimer = null
+  const queueLifeSocialAttention = () => {
+    if(!wakeSocialLife||socialWakeTimer)return
+    socialWakeTimer=setTimeout(()=>{
+      socialWakeTimer=null
+      void wakeSocialLife().catch(e=>log('Life 社交快速考虑失败：'+String(e?.message||e).slice(0,75)))
+    },1000)
+    socialWakeTimer.unref?.()
+  }
+  ctx.effect(()=>()=>{if(socialWakeTimer)clearTimeout(socialWakeTimer)},'bili-duty: Life 社交快速通知清理')
   const socialHandoffFence=createSocialHandoffFence({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   const socialSendTransaction=createSocialSendTransaction({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   const socialDecisionOwnership=createSocialDecisionOwnership({
@@ -2873,6 +2885,7 @@ function reportMeta() {
       if(offered?.ok===true){
         socialDecisionOwnership.observe({channel:kind==='dm-received'?'dm':'comment',
           eventKey:String(uid)+':'+String(eventId).slice(0,110),verified:true})
+        if(offered.created===true)queueLifeSocialAttention()
         return offered.id
       }
     }catch(e){log('Life Agent 社交唤醒未入队：'+String(e?.message||e).slice(0,90))}
@@ -4726,8 +4739,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     reflectionStatus:()=>lifeReflection.status(),reflect:()=>lifeReflection.reflect({force:false}),
     logger:{warn:m=>log('⚠️ '+m)},
   })
+  wakeSocialLife=()=>autonomousPlanner.tick({socialWake:true})
   autonomousPlanner.start()
-  ctx.effect(()=>()=>autonomousPlanner.stop(),'bili-duty: 独立自主调度')
+  ctx.effect(()=>()=>{wakeSocialLife=null;autonomousPlanner.stop()},'bili-duty: 独立自主调度')
   // Independent, adjustable completion-review cadence. The initial inspection runs
   // after startup rather than silently waiting an entire interval. Re-schedule
   // after each run and after changing the setting; never overlap send attempts.

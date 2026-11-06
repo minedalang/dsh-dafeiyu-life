@@ -26,8 +26,8 @@ test('6c: new versioned settings can still explicitly change budget and never en
  const req={schemaVersion:2,revision:lifeSettingsV2(base).revision,mode:'active',pace:'quiet',confirm:'APPLY_LIFE_SETTINGS_V2'}
  const plan=planLifeSettingsV2(base,req)
  assert.equal(plan.patch.lifeAgentMode,'active')
- assert.equal(plan.patch.autonomousPlannerMinutes,180)
- assert.equal(plan.patch.autonomousPlannerDailyLimit,4)
+ assert.equal(plan.patch.autonomousPlannerMinutes,120)
+ assert.equal(plan.after.budget.dailyLimit,12)
  for(const k of ['socialAutoSend','dmStrangerAutonomyEnabled','masterEnabled'])assert.equal(Object.hasOwn(plan.patch,k),false)
  assert.deepEqual(lifeSettingsV2(base).legacyManagedFields,['lifeAgentMode','autonomousPlannerEnabled','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour'])
 })
