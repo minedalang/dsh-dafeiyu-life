@@ -1,3 +1,7 @@
+## 当前增量：Life Agent 视频 Agent 子进程真实轮次回执与时间线
+
+- [原视频轮次启动/退出/失败/未知的账号隔离回执、视频入选数事实来源、真实时间线与安全边界](./2.7.1-dev4-life-video-round-lifecycle.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev4-life-video-round-lifecycle-live.mmd)。这并不是证明作品观看/听音成功，也不开放社交发送；Windows 与真实平台仍待验收。
+
 ## 当前增量：Life Agent 内置 Python MCP 只读预约身份核验
 
 - [跨进程误判与嵌套工具 HMAC 核验、脱敏预约拒绝原因及迁移边界](./2.7.1-dev4-life-nested-mcp-read-identity.md) · [当前 Mermaid](./diagrams/2.7.1-dev4-life-nested-mcp-read-identity-live.mmd)。同账号、同 BV、活跃执行进程仍是硬门禁；不自动清锁，不新增平台调用或外发权；Windows/真实 B站待验收。

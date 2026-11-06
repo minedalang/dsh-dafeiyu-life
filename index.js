@@ -2914,6 +2914,7 @@ function reportMeta() {
     // Account-specific video wake is bound to the identity at launch, not at exit.
     const videoRoundLifeAccountTag=trustedLifeAccountTag()
     const videoRoundLifeEventKey=String(Date.now())
+    let videoRoundReceiptId=''
     const watchedBeforeRun=new Set(parseSeenTable().filter(x=>x.picked).map(x=>x.bvid))
     const pickedBeforeRun = countPickedToday()
     const roundLimitAtStart = picksThisRound(cfg.perDay, cfg.pickPerRound, pickedBeforeRun)
@@ -2942,6 +2943,11 @@ function reportMeta() {
     })
     } catch(e) {releaseDuty();throw e}
     child.once('close',releaseDuty)
+    if(videoRoundLifeAccountTag&&Number.isSafeInteger(child.pid)&&child.pid>0)try{
+      // A launch receipt is not a watching receipt. The account-scoped ledger
+      // will only record completion after the child actually exits.
+      videoRoundReceiptId=lifeAgentEvents?.recordVideoRoundStart({source:why==='life-agent'?'life-agent':'manual'})?.id||''
+    }catch(e){log('Life Agent 视频启动生命周期登记失败：'+String(e?.message||e).slice(0,100))}
     // ⚠️ 2026-10-16 issue #1（用户 `miaoxingyunduo` 贴了崩溃日志）：`duty.log` 被别的进程占着时
     //    (`EBUSY`) `appendFileSync` 会抛异常 —— 而这里是 **stream 的 data 回调**，没人接
     //    ⇒ **未捕获异常 ⇒ 整个 DSH 宿主被杀**（所有会话一起没）。跟 10-14 定时器那次是同一类 ✗
@@ -2964,6 +2970,13 @@ function reportMeta() {
     child.stderr?.on('data', pick)
     child.on('exit', (code) => {
       log(`刷B站结束（${why}，code=${code}）`)
+      if(videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
+        // Count only NEW picked records from the canonical ledger. If that
+        // ledger is unavailable, persist null rather than pretending zero.
+        let selected=null
+        if(code===0)try{selected=parseSeenTable().filter(x=>x.picked&&!watchedBeforeRun.has(x.bvid)).length}catch{}
+        lifeAgentEvents.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:code,pickedCount:selected})
+      }catch(e){log('Life Agent 视频结束回执登记失败：'+String(e?.message||e).slice(0,100))}
       // New and actually selected BV evidence only. Historic picks and merely queued
       // recommendations must never trigger social outreach.
       if(code===0)try{
@@ -2977,7 +2990,8 @@ function reportMeta() {
           videos:newlyWatched.slice(0,15).map(x=>({bvid:x.bvid,title:String(x.title||'').slice(0,200)})),
         }).catch(e=>log('跨视频文字线索收集失败：'+String(e?.message||e).slice(0,120)))
       }catch(e){log('新经历/社交观察失败：'+String(e?.message||e))}
-      if(lifeAgentEvents&&cfg.lifeAgentMode!=='off')try{
+      if(code===0&&videoRoundReceiptId&&lifeAgentEvents&&cfg.lifeAgentMode!=='off')try{
+        // Failed video processes are NOT successful video-round-ended wakes.
         // An account switch or credentials failure must neither cross-post nor crash this callback.
         if(videoRoundLifeAccountTag&&trustedLifeAccountTag()===videoRoundLifeAccountTag)
           lifeAgentEvents.offer({kind:'video-round-ended',platform:'bilibili',sourceKey:videoRoundLifeEventKey})
@@ -3003,12 +3017,19 @@ function reportMeta() {
       verifyTimer.unref?.()   // 别为了一次复核把宿主进程的退出拖住 90 秒
     })
     child.on('close', () => { if (dutyChild === child) dutyChild = null })
-    dutyChild = child
-    dutyStartedAt = Date.now()
-    child.on('error', (e) => log(`刷B站起不来：${e?.message ?? e}`))
+    const spawnConfirmed=Number.isSafeInteger(child.pid)&&child.pid>0
+    dutyChild = spawnConfirmed?child:null
+    dutyStartedAt = spawnConfirmed?Date.now():0
+    child.on('error', (e) => {
+      log(`刷B站起不来：${e?.message ?? e}`)
+      if(videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
+        lifeAgentEvents.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:null})
+      }catch(err){log('Life Agent 启动异常回执登记失败：'+String(err?.message||err).slice(0,80))}
+    })
     // ⭐ 起不来/被杀掉也要把锁放开，否则之后每一轮都会被判成'上一轮还没结束' ✗
     child.on('close', () => { if (dutyChild === child) dutyChild = null })
-    return { started: true, why, profile: 'headless', cwd, log: logFile }
+    return { started: spawnConfirmed, why, profile: 'headless', cwd, log: logFile,
+      ...(spawnConfirmed?{}:{error:'视频子进程未取得有效 PID，不能认定已启动'}) }
    } catch (e) {
     log(`刷B站开跑失败（${why}）：${e?.stack ?? e}`)
     return { started: false, why, error: String(e?.message ?? e) }
@@ -6378,7 +6399,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const comments=recentComments(stateDir,{limit:200,recipientMetadataDir:accountRuntimeDir})?.rows||[]
         const relationships=listFriendRelationships(stateDir,cfg.friendDirectory)
         const emotion=emotionalState.snapshot()
-        const rows=buildLifeTimeline({watched:parseSeenTable(),comments,emotionHistory:emotion.history,relationshipRows:relationships,days,limit:160})
+        // Current verified account only. A missing/unsafe lifecycle ledger
+        // must not block the original watched/comment timeline.
+        let videoRounds=[]
+        try{if(trustedLifeAccountTag())videoRounds=lifeAgentEvents?.status()?.recentVideoRounds||[]}catch(e){log('视频轮次诊断暂不可用：'+String(e?.message||e).slice(0,80))}
+        const rows=buildLifeTimeline({watched:parseSeenTable(),videoRounds,comments,emotionHistory:emotion.history,relationshipRows:relationships,days,limit:160})
         return sendJson(res,200,{ok:true,days,rows,privacy:'仅展示公开经历与情绪类别；不展示私信正文或私人画像内容'})
       }catch(e){return sendJson(res,400,{ok:false,error:'生活时间线读取失败：'+String(e?.message||e).slice(0,180)})}
     }
