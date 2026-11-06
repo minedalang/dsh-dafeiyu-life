@@ -2913,7 +2913,6 @@ function reportMeta() {
     catch (e) { return {started:false,why,error:'安全隔离校验失败，已拒绝启动：'+String(e?.message||e)} }
     // Account-specific video wake is bound to the identity at launch, not at exit.
     const videoRoundLifeAccountTag=trustedLifeAccountTag()
-    const videoRoundLifeEventKey=String(Date.now())
     let videoRoundReceiptId=''
     const watchedBeforeRun=new Set(parseSeenTable().filter(x=>x.picked).map(x=>x.bvid))
     const pickedBeforeRun = countPickedToday()
@@ -2970,12 +2969,16 @@ function reportMeta() {
     child.stderr?.on('data', pick)
     child.on('exit', (code) => {
       log(`刷B站结束（${why}，code=${code}）`)
+      let verifiedVideoRoundCompletion=false
       if(videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
         // Count only NEW picked records from the canonical ledger. If that
         // ledger is unavailable, persist null rather than pretending zero.
         let selected=null
         if(code===0)try{selected=parseSeenTable().filter(x=>x.picked&&!watchedBeforeRun.has(x.bvid)).length}catch{}
-        lifeAgentEvents.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:code,pickedCount:selected})
+        const completed=lifeAgentEvents.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:code,pickedCount:selected})
+        // Never queue a "completed round" life decision if the trusted
+        // account ledger did NOT persist a verified normal-exit receipt.
+        verifiedVideoRoundCompletion=completed?.ok===true&&completed?.updated===true&&completed?.state==='completed'
       }catch(e){log('Life Agent 视频结束回执登记失败：'+String(e?.message||e).slice(0,100))}
       // New and actually selected BV evidence only. Historic picks and merely queued
       // recommendations must never trigger social outreach.
@@ -2990,11 +2993,11 @@ function reportMeta() {
           videos:newlyWatched.slice(0,15).map(x=>({bvid:x.bvid,title:String(x.title||'').slice(0,200)})),
         }).catch(e=>log('跨视频文字线索收集失败：'+String(e?.message||e).slice(0,120)))
       }catch(e){log('新经历/社交观察失败：'+String(e?.message||e))}
-      if(code===0&&videoRoundReceiptId&&lifeAgentEvents&&cfg.lifeAgentMode!=='off')try{
+      if(code===0&&verifiedVideoRoundCompletion&&videoRoundReceiptId&&lifeAgentEvents&&cfg.lifeAgentMode!=='off')try{
         // Failed video processes are NOT successful video-round-ended wakes.
         // An account switch or credentials failure must neither cross-post nor crash this callback.
         if(videoRoundLifeAccountTag&&trustedLifeAccountTag()===videoRoundLifeAccountTag)
-          lifeAgentEvents.offer({kind:'video-round-ended',platform:'bilibili',sourceKey:videoRoundLifeEventKey})
+          lifeAgentEvents.offer({kind:'video-round-ended',platform:'bilibili',sourceKey:videoRoundReceiptId})
       }catch(e){log('Life Agent 视频事件未记录：'+String(e?.message||e).slice(0,100))}
       stubReportIfMissing(code)   // ⭐ 没写报告就补一份占位 —— 别让使用者什么都看不到
       // v2.4.84：不再调用整轮批量收藏；仅由视频 Agent 根据已入选视频决定。
@@ -4667,6 +4670,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeSocialPreview:params=>lifeSocialShadow.preview(params),
     noteLifeSocialShadow:params=>lifeSocialShadow.noteLife(params),
     getLifeCapabilities:()=>lifeCapabilities.list(),
+    getLifeCapabilityReadiness:()=>lifeCapabilities.inspect(),
     runLifeCapability:id=>lifeCapabilities.run(id),
     recordVideoStart:()=>lifeAgentEvents.recordVideoStart(),
     recordLifeDecision:row=>lifeAgentEvents.recordDecision(row),

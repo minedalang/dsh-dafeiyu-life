@@ -92,7 +92,7 @@ test('production video subprocess wires start, success/failed exit and account-b
   const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   assert.match(index,/lifeAgentEvents\?\.recordVideoRoundStart\(/)
   assert.match(index,/lifeAgentEvents\.recordVideoRoundFinish\(videoRoundReceiptId/)
-  assert.match(index,/if\(code===0&&videoRoundReceiptId&&lifeAgentEvents/,'nonzero exit must not produce a normal video-ended wake')
+  assert.match(index,/if\(code===0&&verifiedVideoRoundCompletion&&videoRoundReceiptId&&lifeAgentEvents/,'wake requires a persisted verified subprocess completion, not exit code alone')
   assert.match(index,/trustedLifeAccountTag\(\)===videoRoundLifeAccountTag/)
   assert.match(index,/videoRounds=lifeAgentEvents\?\.status\(\)\?\.recentVideoRounds/)
   assert.match(ui,/const rounds=\(data\.rows\|\|\[\]\)\.filter\(row=>row\.type==='video-round'\)/)
