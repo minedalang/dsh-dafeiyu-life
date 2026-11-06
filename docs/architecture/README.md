@@ -1,3 +1,7 @@
+## 2.7.1 RC 社交兴趣真实提示与发送事务加固（未接管）
+
+- [跨日公开视频自主兴趣进入私信/评论真实生成提示、各入口旧 owner 复核、视频兴趣推荐私信共享事务与未知回执冻结](./2.7.1-rc-social-interest-receipt-hardening.md) · [可编辑生产 Mermaid](./diagrams/2.7.1-rc-social-interest-receipt-hardening.mmd)。旧社交 owner 保持 `legacy`，Windows 和真实 B站未验收。
+
 ## 2.7.1 RC 收口：一套生活与记忆配置、人格式证据、统一样式确认
 
 - [有机生活套餐、新安装与老用户权限差异、人格真实回复弱观察、旧诊断隐藏和社交推荐链路状态](./2.7.1-rc-organic-life-controls.md) · [可编辑当前接线 Mermaid](./diagrams/2.7.1-rc-organic-life-controls.mmd)。仍为 `2.7.1-dev.7`，正式社交 owner 未交接，不得以页面整合冒充统一发送权；Windows／B站待验收。

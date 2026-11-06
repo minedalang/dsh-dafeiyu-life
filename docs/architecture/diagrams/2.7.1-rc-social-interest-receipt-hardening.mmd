@@ -1,0 +1,20 @@
+flowchart TD
+  A[既有公开视频自主选片记录] --> B[当前账号 scopedInterestOpportunityEvidence]
+  B --> C[有界 Life 社交兴趣投影]
+  P[已有 Life Voice 人格与情绪] --> S[原 SocialContextAssembler]
+  C --> S
+  U[原私信 / 评论 / @ 入站核验] --> S
+  S --> R[现有 InteractionBatcher 全量或精简]
+  R --> X{自主回复 / 沉默 / 延期}
+  X -->|回复意图| G[原社交权限、节奏、账号校验]
+  G --> H[原发送事务与平台工具]
+  V[已有视频选片与好友偏好] --> I[原 SocialIntentEngine 独立决定分享]
+  I --> J[原授权 / 好友偏好 / 草稿预约]
+  J --> L[legacySocialWrite 复核唯一旧 owner]
+  L --> T[共享 SocialSendTransaction 稳定来源]
+  T -->|已核验平台回执| K[原草稿状态 sent]
+  T -->|无回执 / 异常| Z[uncertain 不自动重试]
+  H --> Y[B站]
+  T --> Y
+  F[Life 自主 Planner 社交匿名只读轮] -.-> D[只读影子对照]
+  D -.-> E[RC 交接仍阻断: old owner = legacy]

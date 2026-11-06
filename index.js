@@ -2866,8 +2866,19 @@ function reportMeta() {
   // This does not replace the original permission/receipt gates. It only
   // prevents another decision owner being declared safe while a legacy write
   // from a different (owner DM, follow-up, voluntary share) route is in flight.
-  const legacySocialWrite=(channel,write)=>runLegacySocialOperation({
-    channel,expectedScope:boundLegacyScope(channel),phase:'send'},write)
+  const legacySocialWrite=async(channel,write)=>{
+    // Every production legacy DM/comment write, including owner commands,
+    // video recommendations and follow-ups, must pass the same ownership gate.
+    // A future cutover cannot be bypassed by a sender outside auto-reply.
+    const expectedScope=boundLegacyScope(channel)
+    const owner=socialDecisionOwnership.route({channel,expectedScope})
+    if(!owner.ok)return {ok:false,no_retry:true,reason:owner.reason,error:'社交外发所有权检查失败，未调用平台'}
+    return runLegacySocialOperation({channel,expectedScope,phase:'send'},async()=>{
+      const checked=socialDecisionOwnership.route({channel,expectedScope})
+      if(!checked.ok)return {ok:false,no_retry:true,reason:checked.reason,error:'社交外发前所有权已变化，未调用平台'}
+      return await write()
+    })
+  }
   const lifeSocialShadow=createLifeSocialShadow({
     getAccountTag:trustedLifeAccountTag,
     getConsent:()=>cfg.lifeAgentSocialContextOptIn===true&&cfg.masterEnabled===true&&
@@ -3865,6 +3876,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getIdentity:uid=>replyIdentityContext(uid),
     getRelationship:uid=>relationshipText(uid)||friendRelationshipContext(stateDir,uid,cfg.friendDirectory),
     getPortrait:(uid,kind)=>socialPortrait.context(uid,{channel:kind}),
+    // Existing verified account-scoped interest ledger; no new source of truth.
+    // Never use historical unbound evidence or owner-specified core topics as
+    // proof of the fish's naturally learned public interests.
+    getPublicInterests:()=>{
+      const bound=trustedLifeAccountTag()
+      if(!/^[a-f0-9]{16}$/.test(String(bound||''))||accountBinding.status().blocked)return []
+      try{const rows=scopedInterestOpportunityEvidence(stateDir,bound);return trustedLifeAccountTag()===bound?rows:[]}
+      catch(e){log('社交兴趣提示不可用：'+String(e?.message||e).slice(0,90));return []}
+    },
     // Life Voice is the sole model-facing source for current emotion and growth.
     // Keep the assembler's older callback contract without injecting a second copy.
     getLifeStateContext:()=>'',
@@ -4811,9 +4831,22 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const factCheck=outboundFactCheck(text,{uid,channel:'dm'});
       if(!factCheck.ok)return {ok:false,error:'主动分享事实未经核实：'+factCheck.reason};
       refreshCfg();if(cfg.masterEnabled!==true)return {ok:false,error:'总开关关闭'}
-      const r=await legacySocialWrite('dm',()=>call('bili_send_message',{
-        receiver_uid:Number(uid),text:String(text).slice(0,230)}))
-      if(r?.success===true){try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:eventId||'social-outbound:'+Date.now(),at:Date.now()})}catch(e){log('主动私信投影待补偿：'+String(e?.message||e))}return {ok:true}}return {ok:false,error:String(r?.error||r?.message||'远端未确认成功')}
+      // A voluntary video-share draft is not permission to replay a DM. The
+      // source ID stays stable across restarts and the shared opaque send ledger
+      // locks BEFORE entering B站. Missing platform receipts remain uncertain.
+      const scope=trustedLifeAccountTag()
+      if(!/^[a-f0-9]{16}$/.test(String(scope||''))||!/^[1-9]\d{0,18}$/.test(String(uid||''))||
+        typeof eventId!=='string'||!/^social-intent:[a-zA-Z0-9:_-]{3,160}$/.test(eventId))
+        return {ok:false,no_retry:true,error:'主动视频私信缺少可信账号或稳定来源，未发送'}
+      const sent=await legacySocialWrite('dm',()=>socialSendTransaction.execute({
+        channel:'dm',eventKey:`video-recommendation:${uid}:${eventId}`,expectedScope:scope
+      },async()=>{
+        const response=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,230)})
+        const receiptId=response?.success===true?extractBiliDmReceiptId(response):''
+        return receiptId?{ok:true,receiptId}:{ok:false}
+      }))
+      if(sent?.ok===true){try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:eventId,at:Date.now()})}catch(e){log('主动私信投影待补偿：'+String(e?.message||e))}return {ok:true}}
+      return {ok:false,no_retry:true,error:String(sent?.error||'主动视频私信结果不确定，不允许重试')}
     },logger:{warn:m=>log('社交意图：'+m)}
   })
 
