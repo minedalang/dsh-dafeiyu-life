@@ -1116,22 +1116,34 @@ function reportMeta() {
         }],{reflect:true})
       }
     },
-    send:async({uid,channel,text,commentBvid,commentRpid,commentRoot,social})=>{
+    send:async({uid,channel,text,commentBvid,commentRpid,commentRoot,social,eventId})=>{
       const factCheck=outboundFactCheck(text,{uid,channel});
       if(!factCheck.ok)return {ok:false,error:'回访未经统一事实核验：'+factCheck.reason};
       const allowed=todoFollowupContact({uid,channel,commentBvid,commentRpid,social:social===true,crossChannel:channel==='dm'&&!!commentBvid})
       if(allowed.blocked)return {ok:false,error:allowed.reason}
       if(channel==='comment'){
         // No top-level fallback: exact original comment only, no automatic @.
-        const result=parseMaybeJson(await legacySocialWrite('comment',()=>call('bili_reply',{
-          bvid:commentBvid,text,rpid:Number(commentRpid),root:Number(commentRoot)||0,
-          should_mention:false,mention_mode:'off',mention_targets:[],mention_names:[],sync_to_dynamic:false})))
-        return {ok:result?.success===true&&!!(result?.rpid||result?.rpid_str||result?.data?.rpid),
-          sentRpid:String(result?.rpid_str||result?.rpid||result?.data?.rpid||'')}
+        const scope=trustedLifeAccountTag()
+        if(!/^[a-f0-9]{16}$/.test(String(scope||''))||typeof eventId!=='string'||
+          eventId.length<3||eventId.length>600||/[\u0000-\u001f]/.test(eventId))
+          return {ok:false,no_retry:true,reason:'missing-stable-social-source'}
+        const sourceHash=createHash('sha256').update('todo-followup-v1\0'+eventId).digest('hex')
+        const result=await legacySocialWrite('comment',()=>socialSendTransaction.execute({
+          channel:'comment',eventKey:`todo-followup:${uid}:${sourceHash}`,expectedScope:scope
+        },async()=>{
+          const raw=parseMaybeJson(await call('bili_reply',{
+            bvid:commentBvid,text,rpid:Number(commentRpid),root:Number(commentRoot)||0,
+            should_mention:false,mention_mode:'off',mention_targets:[],mention_names:[],sync_to_dynamic:false}))
+          const rpid=String(raw?.rpid_str||raw?.rpid||raw?.data?.rpid||'')
+          return raw?.success===true&&/^[1-9]\d{0,19}$/.test(rpid)?{ok:true,rpid}:{ok:false}
+        }))
+        return {ok:result?.ok===true,sentRpid:String(result?.rpid||''),no_retry:result?.no_retry===true}
       }
-      const result=parseMaybeJson(await legacySocialWrite('dm',()=>call('bili_send_message',{
-        receiver_uid:Number(uid),text})))
-      return {ok:result?.success===true}
+      if(typeof eventId!=='string'||eventId.length<3||eventId.length>600||/[\u0000-\u001f]/.test(eventId))
+        return {ok:false,no_retry:true,reason:'missing-stable-social-source'}
+      const sourceHash=createHash('sha256').update('todo-followup-v1\0'+eventId).digest('hex')
+      const result=await legacyDmWithReceipt({uid,text,eventKey:`todo-followup:${sourceHash}`})
+      return {ok:result?.ok===true,no_retry:result?.no_retry===true}
     },logger:{warn:m=>log('统一待办回访：'+m)}})
   const runOwnerTodoWithFollowup=async(id)=>{
     accountBinding.assertReady()
@@ -1755,7 +1767,7 @@ function reportMeta() {
     if(task?.type==='comment_video'){
       if(!/^BV[0-9A-Za-z]{10}$/.test(bvid)||!String(task.text||'').trim())return {ok:false,error:'评论待办缺少 BV 号或明确正文'}
       if(String(cfg.dmMode||'')==='only'||Number(cfg.commentDailyLimit)<=0)return {ok:false,error:'当前评论模式/额度不允许公开评论'}
-      const result=parseMaybeJson(await call('bili_reply_manual',{bvid,text:String(task.text).slice(0,2000),rpid:Math.max(0,Math.floor(Number(task.rpid)||0)),root:Math.max(0,Math.floor(Number(task.root)||0)),confirm:true}))
+      const result=parseMaybeJson(await legacySocialWrite('comment',()=>call('bili_reply_manual',{bvid,text:String(task.text).slice(0,2000),rpid:Math.max(0,Math.floor(Number(task.rpid)||0)),root:Math.max(0,Math.floor(Number(task.root)||0)),confirm:true})))
       if(confirmedOwnerCommentReceipt(result, Number(task.rpid)>0?'reply':'comment').ok)return {ok:true,summary:`B站已接受 ${bvid} 的评论操作。`,data:result}
       return {ok:false,uncertain:result?.status==='uncertain-no-retry'||result?.uncertain===true,error:String(result?.error||'B站没有确认评论成功'),data:result}
     }
@@ -1763,7 +1775,7 @@ function reportMeta() {
       if(!/^[1-9]\d{0,18}$/.test(uid)||!String(task.text||'').trim())return {ok:false,error:'私信待办缺少 UID 或明确正文'}
       let friends=[];try{friends=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory))}catch{}
       if(!friends.some(x=>String(x.uid)===uid&&x.dm===true))return {ok:false,error:'接收者不在允许私信的白名单中'}
-      const result=parseMaybeJson(await call('bili_send_message_manual',{receiver_uid:Number(uid),text:String(task.text).slice(0,450),confirm:true}))
+      const result=parseMaybeJson(await legacySocialWrite('dm',()=>call('bili_send_message_manual',{receiver_uid:Number(uid),text:String(task.text).slice(0,450),confirm:true})))
       if(result?.ok===true&&result?.action==='dm')return {ok:true,summary:`已确认给白名单好友 UID ${uid} 发送私信。`,data:{ok:true,sent:true,action:'dm'}}
       return {ok:false,uncertain:result?.status==='uncertain-no-retry'||result?.uncertain===true,error:String(result?.error||'B站没有确认私信成功'),data:result}
     }
@@ -2879,6 +2891,25 @@ function reportMeta() {
       return await write()
     })
   }
+  // Account-scoped, event-bound outgoing DM receipt gate for owner-driven and
+  // scheduled legacy replies. The original human permissions still apply;
+  // this only prevents ambiguous/duplicate automatic status messages from
+  // bypassing the same opaque cross-process transaction as normal DM replies.
+  const legacyDmWithReceipt=async({uid,text,eventKey})=>{
+    const scope=trustedLifeAccountTag()
+    if(!/^[a-f0-9]{16}$/.test(String(scope||''))||
+      !/^[1-9]\d{0,18}$/.test(String(uid||''))||
+      typeof eventKey!=='string'||eventKey.length<3||eventKey.length>270||
+      /[\u0000-\u001f]/.test(eventKey))
+      return {ok:false,no_retry:true,reason:'missing-stable-social-source'}
+    return legacySocialWrite('dm',()=>socialSendTransaction.execute({
+      channel:'dm',eventKey:`legacy:${uid}:${eventKey}`,expectedScope:scope
+    },async()=>{
+      const result=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)})
+      const receiptId=result?.success===true?extractBiliDmReceiptId(result):''
+      return receiptId?{ok:true,receiptId}:{ok:false}
+    }))
+  }
   const lifeSocialShadow=createLifeSocialShadow({
     getAccountTag:trustedLifeAccountTag,
     getConsent:()=>cfg.lifeAgentSocialContextOptIn===true&&cfg.masterEnabled===true&&
@@ -3194,7 +3225,7 @@ function reportMeta() {
         case 'message': {
           let friends=[];try{friends=JSON.parse(normalizeFriendDirectory(cfg.friendDirectory))}catch{}
           if(!friends.some(x=>String(x.uid)===uid&&x.dm===true))return {ok:false,error:'目标 UID 未在好友名册中获得私信权限'}
-          result=parseMaybeJson(await call('bili_send_message_manual',{receiver_uid:Number(uid),text:action.text,confirm:true}))
+          result=parseMaybeJson(await legacySocialWrite('dm',()=>call('bili_send_message_manual',{receiver_uid:Number(uid),text:action.text,confirm:true})))
           return result?.ok===true&&result?.action==='dm'?{ok:true,summary:'已确认给白名单 UID '+uid+' 发私信'}:{ok:false,uncertain:result?.uncertain===true||result?.status==='uncertain-no-retry',error:String(result?.error||'私信未获确认')}
         }
         default:return {ok:false,error:'未知主人私信动作'}
@@ -3202,7 +3233,7 @@ function reportMeta() {
     }catch(e){return {ok:false,uncertain:!['comment_draft','dynamic_draft'].includes(action.type),error:String(e?.message||e).slice(0,180)}}
   }
   async function runOwnerDmPublishComment(bvid,body){
-    return runLegacySocialOperation({channel:'comment',expectedScope:trustedLifeAccountTag(),phase:'send'},async()=>{
+    return legacySocialWrite('comment',async()=>{
     if(String(cfg.dmMode||'')==='only'||Number(cfg.commentDailyLimit)<=0)return {ok:false,error:'目前为只私信模式，或公开评论额度为 0'}
     const text=String(body||'').trim()
     if(!/^BV[0-9A-Za-z]{10}$/.test(bvid)||text.length<1||text.length>600)return {ok:false,error:'BV 号或评论正文无效'}
@@ -3253,11 +3284,10 @@ function reportMeta() {
       return r
     },
     executeWrite:async(step)=>runOwnerDmAction({type:step.action,bvid:step.bvid,uid:step.uid,text:step.text,folderTitle:step.folderTitle,draftId:step.draftId,actorUid:step.actorUid}),
-    send:async({uid,text})=>{
+    send:async({uid,text,eventId})=>{
       refreshCfg();if(cfg.masterEnabled!==true||cfg.dmWatch!==true||cfg.ownerDmAgentEnabled!==true||String(cfg.dmOwnerUid||'')!==String(uid))return {ok:false,error:'主人私信 Agent 未授权'}
-      const r=await legacySocialWrite('dm',()=>call('bili_send_message',{
-        receiver_uid:Number(uid),text:String(text).slice(0,450)}))
-      return {ok:r?.success===true,error:String(r?.error||r?.message||'B站回执未知')}
+      const r=await legacyDmWithReceipt({uid,text,eventKey:eventId})
+      return {ok:r?.ok===true,error:String(r?.error||r?.reason||'B站回执未知')}
     },
     logger:{warn:m=>log('主人私信 Agent：'+m)},
   })
@@ -3332,9 +3362,9 @@ function reportMeta() {
       declinedOwnerRequests.add(row)
       // A repeated poll must never send a second refusal or increase persuasion.
       if(r.newDecision===true){
-        try{const delivered=await legacySocialWrite('dm',()=>call('bili_send_message',{
-          receiver_uid:Number(row.senderUid),text:agencyDeclineMessage(r)}))
-          if(delivered?.success!==true)log('双域意愿：拒绝回复未确认送达')}
+        try{const delivered=await legacyDmWithReceipt({uid:row.senderUid,
+          text:agencyDeclineMessage(r),eventKey:`agency-decline:${row.messageId}`})
+          if(delivered?.ok!==true)log('双域意愿：拒绝回复未确认送达')}
         catch(e){log('双域意愿：拒绝回复失败 '+String(e?.message||e).slice(0,90))}
       }
     }
@@ -3375,9 +3405,9 @@ function reportMeta() {
         try{
           refreshCfg()
           if(cfg.masterEnabled===true&&cfg.dmWatch===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===task.ownerUid){
-            const ack=await legacySocialWrite('dm',()=>call('bili_send_message',{
-              receiver_uid:Number(task.ownerUid),text:summary.slice(0,230)}))
-            if(ack?.success!==true)log('主人私信操作回执未确认送达（任务状态已留存在待办）：'+String(ack?.error||'').slice(0,80))
+            const ack=await legacyDmWithReceipt({uid:task.ownerUid,text:summary.slice(0,230),
+              eventKey:`owner-todo-immediate:${task.id}`})
+            if(ack?.ok!==true)log('主人私信操作回执未确认送达（任务状态已留存在待办）：'+String(ack?.error||'').slice(0,80))
           }
         }catch(e){log('主人私信操作回执发送失败（任务状态已留存在待办）：'+String(e?.message||e).slice(0,100))}
       }
@@ -3400,9 +3430,9 @@ function reportMeta() {
         try{
           refreshCfg()
           if(cfg.masterEnabled===true&&cfg.dmWatch===true&&cfg.ownerDmActionsEnabled===true&&String(cfg.dmOwnerUid||'')===String(row.senderUid)){
-            const ack=await legacySocialWrite('dm',()=>call('bili_send_message',{
-              receiver_uid:Number(row.senderUid),text:summary.slice(0,390)}))
-            if(ack?.success!==true)log('主人私信动作回执未确认送达：'+String(ack?.error||'').slice(0,100))
+            const ack=await legacyDmWithReceipt({uid:row.senderUid,text:summary.slice(0,390),
+              eventKey:`owner-action-ack:${row.messageId}`})
+            if(ack?.ok!==true)log('主人私信动作回执未确认送达：'+String(ack?.error||'').slice(0,100))
           }
         }catch(e){log('主人私信动作回执失败：'+String(e?.message||e).slice(0,100))}
       }

@@ -1,0 +1,19 @@
+flowchart TD
+  A[旧生产私信评论决策器] --> F{账号和渠道的 legacy owner?}
+  B[主人私信 Agent 和拒绝/动作回执] --> F
+  C[完成的待办回访 私信/评论] --> F
+  D[主人指令触发的平台写入待办] --> F
+  E[视频兴趣推荐私信] --> F
+  F -->|否| X[拒绝平台调用 无自动重试]
+  F -->|是| G[SocialHandoffFence 旧操作在途占位]
+  G --> H{发出前仍是 legacy owner?}
+  H -->|否| X
+  H -->|是: 自动回执| T[SocialSendTransaction 账号和稳定来源去重]
+  H -->|是: 手动适配器| M[原手动工具的权限和回执门禁]
+  T --> S[原 B站平台工具]
+  M --> S
+  S --> R{可信发送回执?}
+  R -->|是| K[确认成功 只存回执哈希]
+  R -->|未知/异常| U[uncertain 冻结 不自动重发]
+  L[Life Planner 社交只读选择] -.-> P[未来需实现生产决策和原子接管]
+  P -.-> Q[当前 releaseReady false owner legacy]

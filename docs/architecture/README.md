@@ -1,3 +1,7 @@
+## 2.7.1 RC 主人互动及回访外发门禁收口（未正式接管）
+
+- [主人私信 Agent、指令回执、写入型待办与回访的稳定来源、防重事务及既有所有权门禁](./2.7.1-rc-owner-outbound-gate-closure.md) · [Mermaid 生产路径](./diagrams/2.7.1-rc-owner-outbound-gate-closure.mmd)。Life 仍只读社交，owner 仍为 legacy；Windows/真实 B站待验收。
+
 ## 2.7.1 RC 社交兴趣真实提示与发送事务加固（未接管）
 
 - [跨日公开视频自主兴趣进入私信/评论真实生成提示、各入口旧 owner 复核、视频兴趣推荐私信共享事务与未知回执冻结](./2.7.1-rc-social-interest-receipt-hardening.md) · [可编辑生产 Mermaid](./diagrams/2.7.1-rc-social-interest-receipt-hardening.mmd)。旧社交 owner 保持 `legacy`，Windows 和真实 B站未验收。
