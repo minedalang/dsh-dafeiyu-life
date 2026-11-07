@@ -30,7 +30,7 @@ test('后台向管理中心提供与新安装默认值一致的版本化推荐�
   assert.match(index,/mainSessionMemoryMaxItems: RECOMMENDED_EXPERIENCE_GROUPS\.recall\.mainSessionMemoryMaxItems/)
   assert.match(index,/mainSessionMemoryMaxChars: RECOMMENDED_EXPERIENCE_GROUPS\.recall\.mainSessionMemoryMaxChars/)
   assert.match(index,/mainSessionReflectionBatchSize: RECOMMENDED_EXPERIENCE_GROUPS\.reflection\.mainSessionReflectionBatchSize/)
-  assert.match(index,/legacyExperienceDefaults\s*=\s*\{[\s\S]{0,330}mainSessionMemoryMaxItems:\s*6/)
+  assert.match(index,/legacyExperienceDefaults\s*=\s*\{[\s\S]{0,500}mainSessionMemoryMaxItems:\s*6/)
   assert.match(index,/mainSessionMemoryMaxChars:\s*800/)
 })
 

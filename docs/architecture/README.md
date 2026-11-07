@@ -1,3 +1,7 @@
+## 最新开发预览：2.7.1-dev.7 RC7 · 鱼鱼此刻与图片理解（未发布）
+
+- [真实进程内活动、图文生活方案、记忆页面划分、入站私信与评论图片的安全验证链路及实机验收](./2.7.1-rc7-life-now-vision.md) · [Mermaid 可编辑架构图](./diagrams/2.7.1-rc7-life-now-vision.mmd)。本轮不改变 Life 社交唯一归属，不复制旧记忆，`releaseReady:false`。
+
 ## 当前权威：2.7.1-dev.7 RC6 双渠道统一 Life 决策归属（未发布）
 
 - [老用户与新用户统一迁移 DM / 评论、主人技能、待办回访、视频兴趣分享及未知发送冻结](./2.7.1-rc-unified-life-social-migration.md) · [生产 Mermaid 架构图](./diagrams/2.7.1-rc-unified-life-social-migration.mmd)。旧独立社交决策权**不再用于生产兜底**，原授权、记忆与适配器保留；真实 Windows/B站/72 小时验收未通过，`releaseReady:false`。以下 RC1–RC5 owner 说明是**历史阶段**，不应视为当前行为。

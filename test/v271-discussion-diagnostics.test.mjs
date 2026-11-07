@@ -91,7 +91,7 @@ test('diagnostics endpoint and management view are read only',()=>{
  assert.match(index,/req\.method === 'GET' && path === '\/api\/bili-duty\/video-discussion-diagnostics'/)
  assert.match(index,/readVideoDiscussionDiagnostics\(\{stateDir,credential:dmCred\(stateDir\)\}\)/)
  assert.match(ui,/id="discussion-read-summary"/)
- assert.match(ui,/没有记录不代表鱼鱼决定不看/)
+ assert.match(ui,/暂无记录不代表鱼鱼不想探索/)
  assert.match(js,/request\('\/video-discussion-diagnostics'\)/)
  assert.doesNotMatch(js,/request\('\/video-discussion-diagnostics',\s*\{/)
 })

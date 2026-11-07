@@ -104,20 +104,20 @@ test('DM HTTP adapter charges each actual request through shared budget; limit n
   }finally{globalThis.fetch=original}
 })
 
-test('UI uses real independent TODO tab, memory filter, personality and polling read budget without duplicated IDs',()=>{
+test('UI unifies TODO in fish live tab, preserves memory and polling budgets without duplicated IDs',()=>{
   const html=readFileSync(join(root,'lib/management-console.html'),'utf8')
   const js=readFileSync(join(root,'lib/management-console.js'),'utf8')
   const index=readFileSync(join(root,'index.js'),'utf8')
-  assert.match(html,/data-tab="todos"[^>]*>📝 鱼鱼想做的事/)
-  assert.match(html,/<section id="panel-todos" hidden>/)
-  assert.match(html,/<section id="panel-todos" hidden>[\s\S]*?id="life-todo-section"/)
+  assert.doesNotMatch(html,/data-tab="todos"/);assert.match(html,/data-tab="life-agent"/)
+  assert.doesNotMatch(html,/<section id="panel-todos"/)
+  assert.match(html,/<section id="panel-life-agent" hidden>[\s\S]*?id="life-todo-section"/)
   const life=html.slice(html.indexOf('<section id="panel-life" hidden>'),html.indexOf('<section id="panel-diagnostics" hidden>'))
-  assert.ok(!life.includes('id="life-todo-section"'))
+  assert.ok(life.includes('id="life-todo-section"'))
   for(const id of ['owner-todo-list','owner-todo-next','owner-todo-prev','owner-todo-remind','owner-todo-followup-check','owner-todo-add','settings-todo','main-session-history-query','main-memory-kind','personality-evolution-traits']){
     assert.equal(html.split(`id="${id}"`).length-1,1,`unique ${id}`)
   }
   assert.match(html,/data-memory-kind="interest"/)
-  assert.match(js,/todos:\(\)=>loadOwnerTodos\(\)/)
+  assert.match(js,/if\(tab==='todos'\)tab='life-agent'/)
   assert.match(js,/document\.querySelectorAll\('\[data-memory-kind\]'\)/)
   assert.match(html,/id="polling-budget-status"/)
   assert.match(js,/scheduler\.readBudget/)
@@ -125,9 +125,9 @@ test('UI uses real independent TODO tab, memory filter, personality and polling 
   assert.match(index,/maxSessions: 12/)
 })
 
-test('legacy todo-settings bookmark opens the new TODO page, not the memory page',()=>{
+test('legacy todo-settings bookmark opens unified fish live page, not the memory page',()=>{
   const js=readFileSync(join(root,'lib/management-console.js'),'utf8')
-  assert.match(js,/legacySettingsTarget==='settings-todo'\?'todos':'life'/)
+  assert.match(js,/legacySettingsTarget==='settings-todo'\?'life-agent':'life'/)
 })
 
 test('DM cursor only commits after auto-reply dedupe safely persists and prevents duplicate messages',async()=>{

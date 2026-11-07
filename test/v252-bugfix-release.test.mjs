@@ -77,7 +77,7 @@ test('管理页能展示状态快照和意愿决策；明确区别事件、回�
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  assert.match(html,/emotion-agency-activity/);assert.match(html,/emotion-trend/);assert.doesNotMatch(html,/emotion-trend-metric/)
- assert.match(js,/activity\.replaceChildren/);assert.match(js,/允许 ≠ 已执行/)
+ assert.match(js,/activity\.replaceChildren/);assert.match(js,/愿意.*被拦截/);assert.match(js,/暂无记录；不意味着鱼鱼必须去社交/)
  assert.match(js,/五项指标 · 真实事件快照/);assert.match(js,/trend-legend/);assert.match(js,/x\.state&&Number\.isFinite/)
  for(const metric of ['sociality','intensity','energy','curiosity','valence'])assert.ok(js.includes(`key:'${metric}'`),metric)
  assert.match(js,/归档事件与可衰减记忆不是一一对应/)

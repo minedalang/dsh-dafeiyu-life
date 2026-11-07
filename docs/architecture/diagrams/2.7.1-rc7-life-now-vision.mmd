@@ -1,0 +1,40 @@
+flowchart TB
+  subgraph UI["管理中心 · 当前账号"]
+    NOW["🐟 鱼鱼此刻 · 4s 刷新"]
+    CHOICE["🌙 🍃 ✨ 🎛 生活方案 / 自定义"]
+    MEMORYUI["🧠 经历与记忆 · 兴趣"]
+  end
+  subgraph REAL["实际进程 / 统一 Life"]
+    P["Life Planner · 唯一社交归属"]
+    V["视频 Agent 子进程"]
+    DM["私信决策"]
+    COMMENT["评论决策"]
+    T["进程内短时真实运行标记"]
+  end
+  subgraph IMG["本次图片理解 · 默认开启，允许禁用"]
+    RAW["真实 B站私信图片或评论 rpid+UID 图片"]
+    SAFE["图片域名/尺寸/文件头/超时核验"]
+    LLM["无工具视觉模型 · 可失败"]
+  end
+  subgraph STORES["原有事实源，不复制账本"]
+    CONFIG["生活/记忆/反思配置"]
+    MEM["已验证经历、记忆、兴趣"]
+    SAFEWRITE["账号权限、模型预算、防重事务、平台回执"]
+  end
+  CHOICE -->|"用户预览并确认"| CONFIG
+  CONFIG --> P
+  MEM --> P
+  V --> T
+  DM --> T
+  COMMENT --> T
+  T -->|"按账号只读，非成功回执"| NOW
+  RAW --> SAFE --> LLM
+  LLM -->|"有结果才作为不可信图片观察"| DM
+  LLM -->|"有结果才作为不可信图片观察"| COMMENT
+  P --> DM
+  P --> COMMENT
+  P --> V
+  DM --> SAFEWRITE
+  COMMENT --> SAFEWRITE
+  MEM --> MEMORYUI
+  SAFE -.->|"失败即不描述画面"| NOW

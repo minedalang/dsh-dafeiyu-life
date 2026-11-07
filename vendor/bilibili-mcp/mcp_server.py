@@ -817,11 +817,15 @@ async def bili_comment_thread(bvid: str, root: int, num: int = 20, target_rpid: 
                 root_comment = {"rpid": str(root_obj.get("rpid") or root),
                                 "mid": str(root_member.get("mid") or ""),
                                 "name": str(root_member.get("uname") or "")[:60],
-                                "content": str(root_content.get("message") or "")[:300]}
+                                "content": str(root_content.get("message") or "")[:300],
+                                "pictures": [{"img_src": str(pic.get("img_src") or "")[:500]} for pic in
+                                             (root_content.get("pictures") or [])[:1] if isinstance(pic, dict)]}
             page_rows = [{"rpid": str(r.get("rpid") or ""),
                           "mid": str(r.get("member", {}).get("mid") or ""),
                           "name": str(r.get("member", {}).get("uname") or "")[:60],
-                          "content": str(r.get("content", {}).get("message") or "")[:300]}
+                          "content": str(r.get("content", {}).get("message") or "")[:300],
+                          "pictures": [{"img_src": str(pic.get("img_src") or "")[:500]} for pic in
+                                       (r.get("content", {}).get("pictures") or [])[:1] if isinstance(pic, dict)]}
                          for r in replies if isinstance(r, dict)]
             rows.extend(page_rows)
             if target_rpid and any(row["rpid"] == str(target_rpid) for row in page_rows):

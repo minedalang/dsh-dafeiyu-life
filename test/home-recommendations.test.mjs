@@ -12,7 +12,7 @@ test('homepage recommendations are independent opt-in source and enabled by defa
 })
 test('Agent freely chooses recommendation/search sources within shared quotas',()=>{
  const code=src('index.js')
- for (const txt of ['不强制同时使用全部来源','不强制按来源配比','共用每天','达到本轮上限','自行选择搜索词','自主决定是否查视频详情']) {
+ for (const txt of ['不强制同时使用全部来源','不强制按来源配比','不设每日或每轮选片数量','不设选片数量目标','自行选择搜索词','自主决定是否查视频详情']) {
   assert.ok(code.includes(txt),txt)
  }
 })

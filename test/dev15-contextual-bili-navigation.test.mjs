@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
 const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
-const section=(name)=>html.split(`<section id="panel-${name}" hidden>`)[1]?.split(/<section id="panel-[a-z]+" hidden>/)[0]||''
+const section=(name)=>html.split(`<section id="panel-${name}" hidden>`)[1]?.split(/<section id="panel-[a-z-]+" hidden>/)[0]||''
 
 test('B站生活是导航分组，视频探索、好友、评论、私信和动态创作在同一组',()=>{
  const group=html.match(/<div class="tab-cluster"><span class="tab-cluster-label">📺 B站生活<\/span>(.*?)<\/div>/s)?.[1]||''
@@ -13,13 +13,13 @@ test('B站生活是导航分组，视频探索、好友、评论、私信和动�
  assert.doesNotMatch(html,/data-tab="settings"/)
 })
 
-test('人生记忆、主 Session 同步、自主待办在自己版块就地折叠，配置键不复制',()=>{
- const life=section('life'),home=section('home'),todos=section('todos')
+test('人生记忆、主 Session 同步、自主待办在合并的鱼鱼此刻页就地折叠，配置键不复制',()=>{
+ const life=section('life'),home=section('home'),todos=section('life-agent')
  for(const id of ['life-memory-settings','main-memory-enabled','main-memory-save'])assert.ok(life.includes(`id="${id}"`),id)
  for(const id of ['settings-todo','owner-todo-settings-save']){assert.ok(todos.includes(`id="${id}"`),id);assert.ok(!life.includes(`id="${id}"`),id)}
  for(const id of ['home-sync-settings','settings-sync','main-session-sync-save','main-session-id'])assert.ok(home.includes(`id="${id}"`),id)
  assert.ok(life.indexOf('一段经历，怎样变成鱼鱼的记忆？')<life.indexOf('id="life-memory-settings"'))
- assert.match(js,/if\(saved==='settings'\)/,'旧版设置页书签应可兼容跳转')
+ assert.match(js,/if\(saved==='settings'\)/,'旧版设置页书签应可兼容跳转');assert.match(js,/if\(tab==='todos'\)tab='life-agent'/)
  for(const id of ['main-memory-enabled','main-session-sync-save','owner-todo-settings-save','bili-daily-draft']){
   assert.equal((html.match(new RegExp(`id="${id}"`,'g'))||[]).length,1,id)
  }

@@ -42,7 +42,8 @@ test('负向开关写回旧授权键只执行一次取反；已关闭的老用�
  }
  assert.match(js,/dataset\.invertedPermission==='true'\?c\[key\]!==true:c\[key\]===true/)
  assert.match(js,/dataset\.invertedPermission==='true'\?!\$\(id\)\.checked:\$\(id\)\.checked/)
- assert.match(html,/额外允许自主关注／取关 UP 主（默认不授权）/)
+ assert.match(html,/禁止自主关注／取关 UP 主/)
+ assert.match(read('index.js'),/agentFollowEnabled: z\.boolean\(\)\.default\(true\)/)
 })
 test('视频兴趣私信仍显示独立链路，旧四项内部调试卡不向普通用户显示',()=>{
  assert.match(js,/request\('\/social-intentions'\)/)

@@ -4,11 +4,11 @@ import {readFileSync} from 'node:fs';
 
 const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8');
 const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8');
-const panel=(name)=>html.split(`<section id="panel-${name}" hidden>`)[1]?.split(/<section id="panel-[a-z]+" hidden>/)[0]||'';
+const panel=(name)=>html.split(`<section id="panel-${name}" hidden>`)[1]?.split(/<section id="panel-[a-z-]+" hidden>/)[0]||'';
 
 test('dev.15 家 / 人生记忆就地设置，B站各功能归同一领域，全部配置 ID 唯一',()=>{
   for(const name of ['home','life','bili','dynamic','social','models','comments','dm'])assert.match(html,new RegExp(`data-tab="${name}"`));
-  const home=panel('home'),life=panel('life'),todos=panel('todos');
+  const home=panel('home'),life=panel('life'),todos=panel('life-agent');
   assert.ok(!html.includes('id="panel-settings"'),'no separate plugin settings page');
   for(const id of ['main-session-id','main-session-save','home-overview-memory','home-overview-mood','home-overview-social'])assert.ok(home.includes(`id="${id}"`),id);
   for(const id of ['main-memory-enabled','main-memory-semantic','main-memory-half-life','main-reflection-daily']){
@@ -21,9 +21,12 @@ test('dev.15 家 / 人生记忆就地设置，B站各功能归同一领域，全
   assert.match(life,/id="life-memory-settings" class="contextual-settings"/);
   assert.match(home,/id="home-sync-settings" class="contextual-settings"/);
   assert.match(todos,/id="settings-todo"/);
-  for(const id of ['main-session-history','main-memory-list','emotion-current','life-timeline-list'])assert.ok(life.includes(`id="${id}"`),id);
+  for(const id of ['main-session-history','main-memory-list'])assert.ok(life.includes(`id="${id}"`),id);
+  for(const id of ['emotion-current','life-timeline-list','owner-todo-list'])assert.ok(todos.includes(`id="${id}"`),id);
   assert.ok(todos.includes('id="owner-todo-list"'));
   assert.ok(!life.includes('id="owner-todo-list"'));
+  assert.ok(!life.includes('id="emotion-current"'));
+  assert.ok(!life.includes('id="life-timeline-list"'));
   const ids=[...html.matchAll(/\bid="([\w-]+)"/g)].map(m=>m[1]);
   assert.equal(new Set(ids).size,ids.length,'do not duplicate original DOM settings or access controls');
   assert.match(html,/tab-cluster-label">🏠 生活与成长/);

@@ -59,10 +59,12 @@ test('RC 新安装默认允许受限原创评论、点赞和收藏；动态仍�
     assert.equal(c.socialOutreachEnabled,true)
     assert.equal(c.socialLifeIntentEnabled,true)
     assert.equal(c.socialAutoSend,true,'仅可给已授权的私信推荐收件人，仍受真实选片和冷却限制')
+    assert.equal(c.agentFollowEnabled,true,'新安装自主关注/取关默认允许但仍经平台门禁')
+    assert.equal(c.incomingImageRecognitionEnabled,true,'新安装入站图片理解默认开启，可禁用')
     for (const key of [
       'ownerCommentAgentEnabled', 'ownerCommentSocialPublishEnabled', 'ownerCommentNaturalAckEnabled',
       'commentAtEnabled', 'emotionRecallMainEnabled',
-      'emotionRecallDmEnabled', 'agentFollowEnabled', 'visionEnabled', 'commentMemesEnabled',
+      'emotionRecallDmEnabled', 'visionEnabled', 'commentMemesEnabled',
       'dmStrangerOnce', 'mainSessionBridgeEnabled', 'ownerTodoAutoReviewEnabled',
     ]) assert.equal(c[key], false, `未经授权的默认开关: ${key}`)
   } finally { x.cleanup() }
@@ -81,6 +83,8 @@ test('历史配置即使缺少新增字段，也不被新默认偷偷打开；�
     assert.equal(c.mainSessionMemoryMaxChars, 800)
     assert.equal(c.dmWatch, false)
     for(const key of ['autoComment','autoVideoLike','autoVideoCollect'])assert.equal(c[key],false,`旧用户缺键不自动扩大权限: ${key}`)
+    c=await x.config({agentFollowEnabled:false,incomingImageRecognitionEnabled:false})
+    assert.equal(c.agentFollowEnabled,false);assert.equal(c.incomingImageRecognitionEnabled,false)
     c = await x.config({ mainSessionMemoryEnabled: true, dailyDynamicEnabled: true })
     assert.equal(c.mainSessionMemoryEnabled, true)
     assert.equal(c.dailyDynamicEnabled, true)
