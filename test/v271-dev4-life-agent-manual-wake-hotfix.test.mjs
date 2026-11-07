@@ -53,7 +53,7 @@ test('an explicit wake is not buried under 31 pending genuine events and repeate
   assert.equal((await r.planner.tick({force:true})).action,'skip')
   assert.equal(r.calls,1)
   assert.equal(r.launches,0,'shadow must never launch a video or write externally')
-  assert.equal(r.events.status().pendingSocial,28,'a real backlog remains and is not silently erased')
+  assert.equal(r.events.status().pendingSocial,29,'a real backlog remains while a verified non-social cue gets a fair consideration slot')
   assert.equal(r.events.status().timeline[0].kinds.includes('manual-wake'),true)
 }))
 test('a broken life-event inbox reports a diagnostic instead of a misleading exploration cooldown',()=>home(async dir=>{

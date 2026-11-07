@@ -1,3 +1,7 @@
+## 当前版本 2.7.1-dev.13：Life 公平调度、可信行动续行与时间线（未发布）
+
+[生产数据流、恢复及安全边界](./2.7.1-dev13-life-continuation-fairness.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev13-life-continuation-fairness.mmd)。沿用 dev.12 账号事件账本，不新增行动发送器。仅可信只读执行完成触发新考虑，分类候选轮换避免单一渠道遮蔽其他来源；从账本显示真实读取回执，不代表观看或发言。Windows／真实 B站及全渠道长期队列尚待验收。
+
 ## 当前版本 2.7.1-dev.12：Life 匿名候选续行与 firststart 统一流程（未发布）
 
 [当前接线、合同与限制](./2.7.1-dev12-life-cue-continuity-firststart.md) · [Mermaid 图](./diagrams/2.7.1-dev12-life-cue-continuity-firststart.mmd)。原账号事件账本可承载更多非视频契机并保留有界延期；firststart 合并成一个五步流程。仍非全渠道永久执行队列，真实平台与长时生活未验收。

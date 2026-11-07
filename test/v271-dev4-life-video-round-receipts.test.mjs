@@ -94,6 +94,7 @@ test('production video subprocess wires start, success/failed exit and account-b
   assert.match(index,/lifeAgentEvents\.recordVideoRoundFinish\(videoRoundReceiptId/)
   assert.match(index,/if\(code===0&&verifiedVideoRoundCompletion&&videoRoundReceiptId&&lifeAgentEvents/,'wake requires a persisted verified subprocess completion, not exit code alone')
   assert.match(index,/trustedLifeAccountTag\(\)===videoRoundLifeAccountTag/)
-  assert.match(index,/videoRounds=lifeAgentEvents\?\.status\(\)\?\.recentVideoRounds/)
+  assert.match(index,/videoRounds=ledger\?\.recentVideoRounds/)
+  assert.match(index,/ledger=lifeAgentEvents\?\.status\(\)/)
   assert.match(ui,/const rounds=\(data\.rows\|\|\[\]\)\.filter\(row=>row\.type==='video-round'\)/)
 })
