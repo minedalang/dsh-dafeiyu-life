@@ -707,14 +707,14 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 @media(max-width:480px){.choice-card{padding:11px;min-height:122px}.choice-card small{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.choice-card{transition:none}.choice-card:hover{transform:none}}
 #panel-life-agent .life-profile-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:13px 0}
-#panel-life-agent .life-profile-card{position:relative;display:flex;flex-direction:column;justify-content:center;gap:7px;min-height:155px;padding:15px 14px;border:2px solid var(--stroke);border-radius:17px;cursor:pointer;background:linear-gradient(140deg,var(--panel),color-mix(in srgb,var(--action) 6%,var(--panel)));transition:transform .18s,box-shadow .18s,border-color .18s}
-#panel-life-agent .life-profile-card:hover{transform:translateY(-3px);box-shadow:0 9px 23px rgba(47,88,140,.11)}
-#panel-life-agent .life-profile-card:has(input:checked){border-color:#258d78;background:linear-gradient(120deg,color-mix(in srgb,#55ccac 17%,var(--panel)),color-mix(in srgb,#a8a7ed 12%,var(--panel)));box-shadow:0 5px 18px rgba(26,132,107,.16)}
-#panel-life-agent .life-profile-card:has(input:focus-visible){outline:3px solid var(--action);outline-offset:3px}
-#panel-life-agent .life-profile-card input{position:absolute;right:13px;top:12px;accent-color:#258d78}
-#panel-life-agent .life-profile-card .profile-symbol{font-size:29px;display:inline-flex;width:47px;height:47px;align-items:center;justify-content:center;border-radius:16px;background:color-mix(in srgb,var(--action) 11%,var(--panel))}
-#panel-life-agent .life-profile-card strong{font-size:15px}
-#panel-life-agent .life-profile-card small{font-size:12px;color:var(--muted);line-height:1.4;font-weight:450}
+:is(#panel-life-agent,#panel-life) .life-profile-card{position:relative;display:flex;flex-direction:column;justify-content:center;gap:7px;min-height:155px;padding:15px 14px;border:2px solid var(--stroke);border-radius:17px;cursor:pointer;background:linear-gradient(140deg,var(--panel),color-mix(in srgb,var(--action) 6%,var(--panel)));transition:transform .18s,box-shadow .18s,border-color .18s}
+:is(#panel-life-agent,#panel-life) .life-profile-card:hover{transform:translateY(-3px);box-shadow:0 9px 23px rgba(47,88,140,.11)}
+:is(#panel-life-agent,#panel-life) .life-profile-card:has(input:checked){border-color:#258d78;background:linear-gradient(120deg,color-mix(in srgb,#55ccac 17%,var(--panel)),color-mix(in srgb,#a8a7ed 12%,var(--panel)));box-shadow:0 5px 18px rgba(26,132,107,.16)}
+:is(#panel-life-agent,#panel-life) .life-profile-card:has(input:focus-visible){outline:3px solid var(--action);outline-offset:3px}
+:is(#panel-life-agent,#panel-life) .life-profile-card input{position:absolute;right:13px;top:12px;accent-color:#258d78}
+:is(#panel-life-agent,#panel-life) .life-profile-card .profile-symbol{font-size:29px;display:inline-flex;width:47px;height:47px;align-items:center;justify-content:center;border-radius:16px;background:color-mix(in srgb,var(--action) 11%,var(--panel))}
+:is(#panel-life-agent,#panel-life) .life-profile-card strong{font-size:15px}
+:is(#panel-life-agent,#panel-life) .life-profile-card small{font-size:12px;color:var(--muted);line-height:1.4;font-weight:450}
 #panel-life .interest-card{padding:11px 12px;box-shadow:none}
 #panel-life .interest-head{margin-bottom:5px}
 #panel-life .interest-title{font-size:14px}
@@ -736,6 +736,24 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life-agent .emotion-meter span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#78a2ee,#39ad88)}
 #panel-life-agent .emotion-chip{display:inline-flex;border-radius:100px;padding:2px 8px;background:var(--tint);font-size:12px;font-weight:700}
 #panel-life-agent .mood-atmosphere{background:linear-gradient(125deg,color-mix(in srgb,#8ebada 18%,var(--panel)),var(--panel))}
+
+/* Quick Setup v2: navigation cards do not duplicate authoritative config fields. */
+.quick-settings-home{border-radius:23px;padding:22px;margin:18px 0;background:linear-gradient(125deg,color-mix(in srgb,var(--panel) 90%,#cbeeff),color-mix(in srgb,var(--panel) 87%,#e4dbff));border:1px solid var(--stroke)}
+.quick-settings-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}.quick-settings-heading h3{margin:0}.quick-settings-heading p{margin:7px 0 15px}
+.quick-settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:13px}
+.quick-setting-card{text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:9px;min-height:180px;padding:17px;border-radius:18px;border:1px solid color-mix(in srgb,#5d9fb6 28%,var(--stroke));background:var(--panel);color:var(--ink);box-shadow:0 6px 17px #2d638414}
+.quick-setting-card:hover{transform:translateY(-3px);border-color:#54a9c3}.quick-setting-card:focus-visible{outline:3px solid #4386bf}.quick-setting-card strong{font-size:16px}.quick-setting-card small{color:var(--muted);line-height:1.55;flex:1}.quick-setting-card em{font-style:normal;font-weight:700;color:var(--action);font-size:12px}
+.quick-card-icon{display:grid;place-items:center;width:39px;height:39px;border-radius:13px;background:color-mix(in srgb,#a5deec 50%,var(--panel));color:#276d99;font-size:24px}
+.quick-ack-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:17px}.quick-ack-row p{max-width:700px}
+#life-organic-presets{border:1px solid var(--stroke);border-radius:16px;background:color-mix(in srgb,var(--panel) 93%,#c5e8eb);padding:14px;margin:12px 0 20px}
+#life-organic-presets>summary{font-size:16px;font-weight:750;cursor:pointer}
+.preset-param-details{margin:13px 0}.preset-param-details>summary{cursor:pointer;font-size:13px;color:var(--action);font-weight:650}
+.preset-parameter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,225px),1fr));gap:9px;margin-top:12px}
+.preset-parameter-grid>div{background:var(--panel);padding:10px 13px;border:1px solid var(--stroke);border-radius:12px;display:flex;justify-content:space-between;gap:10px;font-size:12px}.preset-parameter-grid strong{font-variant-numeric:tabular-nums;color:var(--ink)}
+#panel-life #life-organic-presets .life-profile-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,155px),1fr));gap:10px}
+#panel-life #life-organic-presets .life-profile-card{min-height:120px;border-radius:16px}
+@media(max-width:600px){.quick-settings-home{padding:14px}.quick-setting-card{min-height:145px}}
+@media(prefers-reduced-motion:reduce){.quick-setting-card{transition:none}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -838,7 +856,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <button data-tab="dm" aria-selected="false">后台私信 <span id="dm-count" class="queue-badge" hidden></span></button>
 <button data-tab="dynamic" aria-selected="false">动态创作</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">🎭 角色与系统</span>
-<button data-tab="firststart" aria-selected="false">🚀 首次设置</button>
+<button data-tab="firststart" aria-selected="false">🚀 快速设置</button>
 <button data-tab="persona" aria-selected="true">角色人设</button>
 <button data-tab="growth" aria-selected="false">行为与表达改进 <span id="growth-count" class="queue-badge" hidden></span></button>
 <button data-tab="models" aria-selected="false">AI 模型</button>
@@ -853,17 +871,28 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </nav>
 <div id="mobile-view-banner" class="mobile-view-banner" role="note" hidden><strong>📱 手机端 · 查看模式</strong><p>DSH Mobile 通过远程网关查看管理中心。配置保存、B站登录、Headless 同步与验证、备份恢复等需要在运行 DSH 的电脑端完成；这里的相关按钮已置灰。你仍可切换页面、展开内容及刷新可访问的状态。</p></div>
 <p id="message" role="status" aria-live="polite"></p>
-<div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">首次设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开首次设置 ↗</button></div>
+<div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">快速设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开快速设置 ↗</button></div>
 <section id="panel-firststart" hidden>
-  <div class="fs-hero"><span class="fs-pill">🐟 FIRST START · 大肥鱼首次使用引导</span><h2>欢迎来到大肥鱼</h2><p>让鱼鱼开始认识你，陪伴你慢慢成长。这里就是大肥鱼管理中心：第一次安装和老用户升级都会看到这页。<strong>B站登录和 Headless 模型验证是必须完成的两项</strong>，其他设置可以先跳过，之后随时回来修改。</p></div>
+  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 新版本快速设置</span><h2>欢迎来到大肥鱼 · 快速设置</h2><p>让鱼鱼开始认识你，陪伴你慢慢成长。这里就是大肥鱼管理中心：每个新老用户首次打开此版都会看到这页。<strong>B站登录和 Headless 模型验证是必须完成的两项</strong>，其他设置可以先跳过，之后随时回来修改。</p></div>
+
+  <section class="quick-settings-home" aria-label="统一设置入口">
+    <div class="quick-settings-heading"><div><h3>快速找到鱼鱼的核心设置</h3><p class="muted">卡片直达真实设置，不会在此复制第二套参数。所有调整都要在所属设置页确认保存。</p></div><span class="pill">仅导览 · 不会自动启用</span></div>
+    <div class="quick-settings-grid">
+      <button type="button" class="quick-setting-card" data-open-tab="life-agent" data-open-anchor="life-settings-v2-panel"><span class="quick-card-icon">✦</span><strong>自主生活</strong><small>开关、活跃档位和实际每日额度</small><em>进入生活设置</em></button>
+      <button type="button" class="quick-setting-card" data-open-tab="life" data-open-anchor="life-memory-settings"><span class="quick-card-icon">❀</span><strong>记忆与反思</strong><small>生活方式方案、遗忘与检索参数</small><em>查看方案及具体参数</em></button>
+      <button type="button" class="quick-setting-card" data-open-tab="social"><span class="quick-card-icon">♡</span><strong>社交与权限</strong><small>自主社交边界、联系人和主动分享额度</small><em>进入权限设置</em></button>
+      <button type="button" class="quick-setting-card" data-open-tab="models"><span class="quick-card-icon">✧</span><strong>AI 模型</strong><small>后台模型验证、成本与连接配置</small><em>前往模型设置</em></button>
+    </div>
+    <div class="quick-ack-row"><p class="muted" id="fs-quick-ack-status">本版设置说明尚未确认。老用户的原配置与后台生活不会因此暂停。</p><button type="button" id="fs-quick-ack" class="primary">我已查看本版快速设置</button></div>
+  </section>
   <div class="fs-grid">
     <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>🔐 在线核验并确认当前扫码账号</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>✅ 重启后复核并恢复账号</button></div></section>
-    <section class="fs-step"><h3>02 · Headless 模型同步 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先同步再验证。<strong>首次设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
+    <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
     <section class="fs-step optional"><h3>03 · 主 Session <span class="pill">可跳过</span></h3><p>指定鱼鱼和主人交谈的主要会话；以后可以在管理中心修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
-    <section class="fs-step optional"><h3>04 · 人生记忆和反思 <span class="pill">可跳过</span></h3><p>以后可以调整记忆整理、反思批次和恢复推荐设置值。</p><div class="fs-recommend-tip" role="note"><strong>✨ 老用户升级建议：使用新版记忆与反思推荐值</strong><span>完成首次设置后，进入「人生记忆 → 记忆与检索设置」，展开「人生反思调度」「遗忘与召回质量」「可选 AI 检索与用量」，分别点击「使用推荐值」，最后点击「保存记忆与反思设置」才会生效。不会自动覆盖旧设置，也不会更改模型、开关或已有记忆。</span></div><div class="actions"><button type="button" id="fs-life-settings" data-open-tab="life" disabled title="先完成首次设置，之后可在管理中心修改记忆设置">完成引导后设置</button><button type="button" data-firststart-skip="life-memory">先跳过</button></div></section>
-    <section class="fs-step optional"><h3>05 · 人格成长与社交偏好 <span class="pill">可跳过</span></h3><p>人格成长、自主聊天与对外社交权限始终可调整；引导不会自动开启任何发布权限。</p><div class="actions"><button type="button" id="fs-personality-settings" data-open-tab="personality" disabled title="先完成首次设置，之后可在管理中心修改人格设置">完成引导后设置</button><button type="button" data-firststart-skip="personality">先跳过</button></div></section>
+    <section class="fs-step optional"><h3>04 · 人生记忆和反思 <span class="pill">可跳过</span></h3><p>以后可以调整记忆整理、反思批次和恢复推荐设置值。</p><div class="fs-recommend-tip" role="note"><strong>✨ 老用户升级建议：使用新版记忆与反思推荐值</strong><span>完成快速设置后，进入「人生记忆 → 记忆与检索设置」，展开「人生反思调度」「遗忘与召回质量」「可选 AI 检索与用量」，分别点击「使用推荐值」，最后点击「保存记忆与反思设置」才会生效。不会自动覆盖旧设置，也不会更改模型、开关或已有记忆。</span></div><div class="actions"><button type="button" id="fs-life-settings" data-open-tab="life" disabled title="先完成快速设置，之后可在管理中心修改记忆设置">完成必需项后设置</button><button type="button" data-firststart-skip="life-memory">先跳过</button></div></section>
+    <section class="fs-step optional"><h3>05 · 人格成长与社交偏好 <span class="pill">可跳过</span></h3><p>人格成长、自主聊天与对外社交权限始终可调整；引导不会自动开启任何发布权限。</p><div class="actions"><button type="button" id="fs-personality-settings" data-open-tab="personality" disabled title="先完成快速设置，之后可在管理中心修改人格设置">完成必需项后设置</button><button type="button" data-firststart-skip="personality">先跳过</button></div></section>
   </div>
-  <div class="fs-footer"><div><strong id="fs-summary">请先完成两项必需配置</strong><p class="muted">完成后随时可以在管理中心重新打开首次设置，已有记忆、凭据和历史资料不会删除。</p></div><div class="actions"><button id="fs-complete" class="primary" type="button" disabled>完成首次设置</button><button id="fs-complete-skip" type="button" disabled>跳过可选项并完成</button></div></div>
+  <div class="fs-footer"><div><strong id="fs-summary">请先完成两项必需配置</strong><p class="muted">完成后随时可以在管理中心重新打开快速设置，已有记忆、凭据和历史资料不会删除。</p></div><div class="actions"><button id="fs-complete" class="primary" type="button" disabled>完成快速设置</button><button id="fs-complete-skip" type="button" disabled>跳过可选项并完成</button></div></div>
 </section>
 <section id="panel-models" hidden>
 <div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>所有 AI 模型只在这里设置。Provider 和模型 ID 留空时继承 DSH 当前模型；不需要在插件重复填写 API Key。每日次数统计的是插件启动的模型任务，并非 Provider 实际 API 请求数；安装本版后开始记录，不补算历史。测试连接不计入统计，但会产生实际模型请求，可能消耗额度。请先保存模型配置再测试。独立视觉的测试只验证文字连接，不验证识图能力。表情包规则优化只在你手动点击时调用，日常评论仍使用本地零 Token 检索。</p></div></div>
@@ -886,7 +915,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div id="headless-provider-list" class="settings-stack"></div>
 <div id="headless-sync-plan" class="muted" role="status" aria-live="polite"></div>
 <div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button><button type="button" id="headless-sync-preview" class="primary" title="只查看准备同步的模型配置，不会立即修改 DSH 文件">查看待同步配置</button><button type="button" id="headless-sync-commit" hidden>确认同步到 Headless</button></div>
-<p class="muted">只有要使用的自定义 Provider 才需要勾选同步；DSH 官方已注册模型无需同步。<strong>首次设置只需任选一个模型通过验证</strong>，其他模型可以以后需要时再验证。</p>
+<p class="muted">只有要使用的自定义 Provider 才需要勾选同步；DSH 官方已注册模型无需同步。<strong>快速设置只需任选一个模型通过验证</strong>，其他模型可以以后需要时再验证。</p>
 </div>
 <div class="settings-section model-default-panel"><h4>✨ 默认模型与快捷配置</h4><p id="models-default-summary" class="muted">正在从 DSH 读取默认模型…</p><p class="muted"><strong>自动继承不是选择第一个已验证模型。</strong>通常沿用 DSH 当前默认模型；「生活动态文案」和「主人私信 Agent」优先继承「后台互动」，「独立视觉」优先继承「视频理解」。只有选择具体 Provider/模型才是手动覆盖。验证通过仅代表连接测试成功，不代表它是默认模型、低成本或适合视觉。</p><div class="toolbar"><button id="models-reset-inheritance" type="button">将任务模型改回自动继承（仅预览）</button></div><small id="models-recommendation-note" class="setting-note">保存后才生效；连接测试针对已保存的模型配置。</small></div>
 <div class="settings-section"><h4>刷视频与内容理解</h4><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责搜索、阅读视频、选片、评论决策与点赞收藏决策。此项运行独立 Agent，须先在上方通过真实 Headless 验证；DSH 官方模型无需额外同步配置。</p><div class="fields" id="models-video"></div></div>
@@ -1039,7 +1068,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </div>
 </section>
 <section id="panel-home" hidden>
-<div id="fs-main-session-return" class="fs-warning" hidden><span>首次设置期间可正常选择、保存主 Session 及同步频率；连接测试和发送经历在完成首次设置后开放。</span><button type="button" data-open-tab="firststart">← 返回首次设置</button></div>
+<div id="fs-main-session-return" class="fs-warning" hidden><span>快速设置期间可正常选择、保存主 Session 及同步频率；连接测试和发送经历在完成快速设置后开放。</span><button type="button" data-open-tab="firststart">← 返回快速设置</button></div>
 <div class="feature-intro"><div><h2>🏠 大肥鱼的家 · 生活总览</h2><p>这里看到鱼鱼此刻的生活、记忆与社交近况。回忆详情在「人生记忆」，行为授权在「社交互动」，相关设置在对应功能下方的折叠区。以下状态来自本地真实记录，不会自动触发对外发送。</p></div></div>
 <div class="home-overview grid" aria-label="生活概览">
 <a class="card home-summary" href="?tab=life" data-open-tab="life"><strong>🧠 鱼鱼的记忆</strong><span id="home-overview-memory" class="muted">正在读取记忆概况…</span><small>进入心情与记忆 →</small></a>
@@ -1102,6 +1131,17 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <details id="life-memory-settings" class="contextual-settings">
 <summary>⚙️ 记忆与检索设置 <span class="contextual-hint">按需展开 · 不影响现有记忆</span></summary>
 <p class="muted">需要修改半衰期、反思频率、召回数量或 AI 检索时，在这里设置就好。</p>
+<details id="life-organic-presets" class="life-subdetails contextual-settings"><summary>🌱 选择记忆与反思方案</summary>
+<p class="muted">这些方案同时影响生活活跃度、记忆召回与反思。先查看明确参数，再预览差异，确认后才写入。</p>
+<div class="life-profile-cards" role="radiogroup" aria-label="鱼鱼的生活方式">
+<label class="life-profile-card"><input type="radio" name="life-organic-choice" value="gentle"><span class="profile-symbol" aria-hidden="true">🌙</span><strong>慢慢生活</strong><small>安静一点，慢慢记住新鲜事</small></label>
+<label class="life-profile-card"><input type="radio" name="life-organic-choice" value="balanced" checked><span class="profile-symbol" aria-hidden="true">🍃</span><strong>自然生活</strong><small>有空探索，也留时间休息</small></label>
+<label class="life-profile-card"><input type="radio" name="life-organic-choice" value="curious"><span class="profile-symbol" aria-hidden="true">✨</span><strong>好奇探索</strong><small>更常尝试新事物，及时反思</small></label>
+<label class="life-profile-card"><input type="radio" name="life-organic-choice" value="custom"><span class="profile-symbol" aria-hidden="true">🎛️</span><strong>自己搭配</strong><small>手动设置生活与记忆参数</small></label>
+</div><input id="life-organic-profile" type="hidden" value="balanced"><div id="life-organic-custom" class="life-profile-custom" hidden><p class="muted">自定义时分别在生活页调整节奏、在本页调整记忆与反思；不会自动覆盖已有设置。</p><button type="button" id="life-organic-custom-open">打开生活高级设置 ↗</button><button type="button" data-open-tab="life" data-open-anchor="life-memory-settings">调整记忆</button></div>
+<details class="life-subdetails preset-param-details" id="life-organic-parameters-details"><summary>查看所选方案的具体参数</summary><div id="life-organic-parameters" class="preset-parameter-grid" aria-live="polite">正在读取方案…</div></details><div class="toolbar"><button id="life-organic-preview" type="button" class="life-action life-sky">预览搭配</button><button id="life-organic-apply" type="button" class="life-action life-green">应用到生活与记忆</button></div>
+<p id="life-organic-status" class="muted" role="status">老用户设置不会自动改动。</p></details>
+
 <div id="settings-memory"><div class="settings-section"><h4>记忆与检索设置</h4>
 <p class="muted">这里调整鱼鱼怎样记住、反思和找回仍可回忆的经历。默认只展示常用开关；细节按需展开，模型账号与 ID 在「AI 模型」页集中管理。</p>
 <p class="muted">新安装默认开启本地记忆与有限反思；主 Session 需由主人自行绑定。记录可能包含聊天信息，数据保存在插件家目录。<strong>升级不会自动改变老用户原有参数。</strong> 建议老用户查看各组与最新版推荐值的差异；点击「使用推荐值」只会填入这一组的建议数字，仍需点击「保存记忆与反思设置」才会生效。不会恢复账号、身份、自动发送或模型开关。</p>
@@ -1300,16 +1340,6 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p class="muted">仅选择「自定义」时，以下数字才会写入配置；选择预设不会覆盖原有时段。次数是<strong>日常生活模型决策上限</strong>，不是必须执行的任务或真实视频播放次数；社交事件只读快速关注有独立额度，所有调用共享原子总上限。对外发布／私信授权仍在相应页面单独设置。</p>
 <div class="fields"><div><label for="life-v2-minutes">最短考虑间隔（分钟，5～1440）</label><input type="number" id="life-v2-minutes" min="5" max="1440" value="60"></div><div><label for="life-v2-limit">每日最多模型决策（1～288）</label><input type="number" id="life-v2-limit" min="1" max="288" value="12"></div><div><label for="life-v2-start">每日开始（0～23 时）</label><input type="number" id="life-v2-start" min="0" max="23" value="9"></div><div><label for="life-v2-end">每日结束（1～24 时）</label><input type="number" id="life-v2-end" min="1" max="24" value="23"></div></div><div class="toolbar"><button type="button" class="life-action life-sky" id="life-v2-preview-btn">预览详细变化</button></div>
 </details>
-<details id="life-organic-presets" class="life-subdetails contextual-settings"><summary>🌱 选择鱼鱼的生活方式</summary>
-<p class="muted">选一种生活方式，或者自己搭配。确认后只调整今后的节奏。</p>
-<div class="life-profile-cards" role="radiogroup" aria-label="鱼鱼的生活方式">
-<label class="life-profile-card"><input type="radio" name="life-organic-choice" value="gentle"><span class="profile-symbol" aria-hidden="true">🌙</span><strong>慢慢生活</strong><small>安静一点，慢慢记住新鲜事</small></label>
-<label class="life-profile-card"><input type="radio" name="life-organic-choice" value="balanced" checked><span class="profile-symbol" aria-hidden="true">🍃</span><strong>自然生活</strong><small>有空探索，也留时间休息</small></label>
-<label class="life-profile-card"><input type="radio" name="life-organic-choice" value="curious"><span class="profile-symbol" aria-hidden="true">✨</span><strong>好奇探索</strong><small>更常尝试新事物，及时反思</small></label>
-<label class="life-profile-card"><input type="radio" name="life-organic-choice" value="custom"><span class="profile-symbol" aria-hidden="true">🎛️</span><strong>自己搭配</strong><small>手动设置生活与记忆参数</small></label>
-</div><input id="life-organic-profile" type="hidden" value="balanced"><div id="life-organic-custom" class="life-profile-custom" hidden><p class="muted">先在下方调节生活节奏，再去记忆页调整回忆与反思；不会自动覆盖已有设置。</p><button type="button" id="life-organic-custom-open">打开生活高级设置</button><button type="button" data-open-tab="life" data-open-anchor="life-memory-settings">调整记忆</button></div>
-<div class="toolbar"><button id="life-organic-preview" type="button" class="life-action life-sky">预览搭配</button><button id="life-organic-apply" type="button" class="life-action life-green">应用到生活与记忆</button></div>
-<p id="life-organic-status" class="muted" role="status">老用户设置不会自动改动。</p></details>
 <div class="toolbar"><button type="button" class="life-action life-green" id="life-v2-save-btn">保存生活设置</button><button type="button" id="life-agent-wake" class="life-action life-sky">现在让鱼鱼考虑一次</button></div>
 <p class="muted"><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看本轮决策全过程与错误回执</a>（只读取本机诊断，不触发模型或 B站请求）</p>
 <p id="life-agent-wake-result" class="muted" role="status" aria-live="polite">手动考虑会消耗一次模型额度；鱼鱼也可以自己选择休息。</p>

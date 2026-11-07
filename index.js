@@ -4903,23 +4903,38 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&firstStart.isReady()&&!accountBinding.status().blocked},
     beginTrace:params=>lifeDecisionTrace.begin(params),
     getContext:({scene,uid})=>{
-      const interests=selectionInterests(stateDir,Date.now(),4,cfg.coreInterestTopics)
+      // Optional world projections cannot suppress an entire voluntary Life turn.
+      // Only an unbuildable base identity remains fail-closed; degraded categories
+      // are recorded without private text, UIDs, or underlying file paths.
+      const degradedStages=[]
+      let interests=[]
+      try{interests=selectionInterests(stateDir,Date.now(),4,cfg.coreInterestTopics)}
+      catch{degradedStages.push('interests');log('Life 上下文：兴趣线索暂不可用，继续使用基础人格')}
       let publicMemory=[]
       try{const topic=interests[0]?.topic||''
         if(topic&&cfg.mainSessionMemoryEnabled&&lifeMemory)
           publicMemory=lifeMemory.recall({query:topic,domain:'bili-explore',kinds:['watch'],maxItems:2,maxChars:360,reinforce:false})||[]
-      }catch{}
+      }catch{degradedStages.push('public-memory');log('Life 上下文：可回忆视频线索暂不可用')}
       const world=projectLifeWorldEvidence({interests,episodes:publicMemory})
       try{
-        // Only the fish's own still-recallable PUBLIC replies from the existing
-        // fading memory gateway. Incoming messages, actors and private text
-        // never enter the global willingness world.
         const own=lifeMemory?.publicSocialEvidence(3)||[]
         world.recentConfirmedPublicSpeech=own.filter(row=>typeof row.ownText==='string')
           .slice(0,2).map(row=>({day:String(row.day||'').slice(0,10),
             ownText:String(row.ownText).slice(0,145),evidence:'confirmed-public-reply'}))
-      }catch{}
-      return {voice:lifeVoiceContext({scene,uid,maxChars:2900}),world}
+      }catch{degradedStages.push('public-speech');log('Life 上下文：公开回复证据暂不可用')}
+      let voice=''
+      try{voice=lifeVoiceContext({scene,uid,maxChars:2900})}
+      catch{
+        degradedStages.push('growth-or-emotion')
+        log('Life 上下文：成长或心情语境读取异常，尝试仅使用基础人设')
+        // No invented experiences, relationships, or social permission.
+        try{voice=composeLifeVoiceContext({scene,maxChars:2900,
+          persona:effectivePersonaPrompt(cfg.personaPrompt),
+          lore:normalizeCharacterLore(cfg.characterLore)||DEFAULT_CHARACTER_LORE})}
+        catch{throw Error('life-base-identity-unavailable')}
+      }
+      if(!voice.trim())throw Error('life-base-identity-unavailable')
+      return {voice,world,degradedStages}
     },
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'interaction'}),
     opportunityWindowMs:140,crossChannelCooldownMs:30_000,
@@ -6767,8 +6782,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         // must not block the original watched/comment timeline.
         let videoRounds=[]
         try{if(trustedLifeAccountTag())videoRounds=lifeAgentEvents?.status()?.recentVideoRounds||[]}catch(e){log('视频轮次诊断暂不可用：'+String(e?.message||e).slice(0,80))}
-        const rows=buildLifeTimeline({watched:parseSeenTable(),videoRounds,comments,emotionHistory:emotion.history,relationshipRows:relationships,days,limit:160})
-        return sendJson(res,200,{ok:true,days,rows,privacy:'仅展示公开经历与情绪类别；不展示私信正文或私人画像内容'})
+        const watched=parseSeenTable()
+        const rows=buildLifeTimeline({watched,videoRounds,comments,emotionHistory:emotion.history,relationshipRows:relationships,days,limit:160})
+        const counts=Object.fromEntries(['video','video-round','comment','emotion','relationship'].map(k=>[k,rows.filter(row=>row.type===k).length]))
+        return sendJson(res,200,{ok:true,days,rows,counts,privacy:'仅展示公开经历与情绪类别；不展示私信正文或私人画像内容。未出现的动作不能据此推断发生过。'})
       }catch(e){return sendJson(res,400,{ok:false,error:'生活时间线读取失败：'+String(e?.message||e).slice(0,180)})}
     }
 
@@ -6780,6 +6797,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(String(req.headers['sec-fetch-site']||'')==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站设置'})
       try{
         if(path.endsWith('/welcome'))return sendJson(res,200,firstStart.markWelcome())
+        if(path.endsWith('/quick/seen'))return sendJson(res,200,firstStart.acknowledgeQuickSetup())
         if(path.endsWith('/bili/verify')){
           const client=await ensureMcp()
           const raw=await client.call('bili_check_credential',{})

@@ -1,3 +1,7 @@
+## UI V3：快速设置、记忆方案与 Life 上下文容错（2.7.1-dev.8，未发布）
+
+[当前接线、诊断、兼容与发布限制](./2.7.1-dev8-quick-setup-life-context.md)。快速设置采用导航卡，不建立配置副本；已完成的老用户只要求看一遍，不重置运行授权。`life-context-unavailable` 是技术阻断而非自主休息，可选读取失败安全降级；真实时间线不能把视频轮次统计当作已评论/关注。
+
 ## 当前版本 2.7.1-dev.8：Life 同进程意愿排他（尚未发布）
 
 [实际接线、风险与验收](./2.7.1-dev8-life-local-admission.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev8-life-local-admission.mmd)。对 RC10 的 140 毫秒机会窗口加同账号未结算保护，并禁止 8 候选溢出拆成多次批准；跨进程、跨重启候选续行**仍缺失**，`releaseReady=false`。以下 RC10 / RC9 为历史开发增量，非当前完整事实清单。
