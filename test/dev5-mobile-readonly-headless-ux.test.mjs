@@ -11,7 +11,7 @@ test('Headless 同步与真实验证清楚分开，首次设置有可见的下�
     assert.match(html,new RegExp(`id="${id}"`))
   }
   assert.match(html,/③ 真实连接验证/)
-  assert.match(js,/已同步.*首次设置还需任选一个模型/)
+  assert.match(js,/已同步.*快速设置还需任选一个模型/)
   assert.match(js,/if\(p\.synced&&pendingModel&&!headlessNextButton&&!headlessGlobalVerified\)details\.open=true/)
   assert.match(js,/headlessNextButton\.click\(\)/)
   assert.match(html,/\.fs-qr\[hidden\]\{display:none!important\}/)

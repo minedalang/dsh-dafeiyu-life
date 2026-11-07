@@ -41,7 +41,7 @@ function ui(){
 }
 
 test('官方 Provider 不是必做清单：仅首次设置要求一个真实连接回执',()=>{
-  assert.match(html,/首次设置只需任选一个模型验证成功，不必验证全部 Provider/)
+  assert.match(html,/快速设置只需任选一个模型验证成功，不必验证全部 Provider/)
   assert.match(js,/headlessGlobalVerified=r\.anyVerified===true/)
   assert.match(js,/!headlessGlobalVerified\)details\.open=true/)
   assert.doesNotMatch(js,/必须点击验证，才能完成首次设置/)

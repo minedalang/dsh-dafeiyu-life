@@ -752,6 +752,36 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .preset-parameter-grid>div{background:var(--panel);padding:10px 13px;border:1px solid var(--stroke);border-radius:12px;display:flex;justify-content:space-between;gap:10px;font-size:12px}.preset-parameter-grid strong{font-variant-numeric:tabular-nums;color:var(--ink)}
 #panel-life #life-organic-presets .life-profile-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,155px),1fr));gap:10px}
 #panel-life #life-organic-presets .life-profile-card{min-height:120px;border-radius:16px}
+
+/* V4: real first-run controls, matching the Life cards without a second config store. */
+#panel-firststart .quick-setup-stack{display:grid;gap:15px;margin:16px 0 22px}
+#panel-firststart .quick-config-section{min-width:0;border:1px solid var(--stroke);border-radius:20px;background:var(--panel);padding:20px;box-shadow:0 8px 23px #39638b0b}
+#panel-firststart .quick-config-title{display:flex;align-items:center;gap:13px;margin-bottom:14px}
+#panel-firststart .quick-config-title .quick-card-icon{display:grid;place-items:center;width:49px;height:49px;flex:none;font-size:23px;border-radius:17px;background:#dff4ff;color:#397594}
+#panel-firststart .quick-config-title h4{margin:0 0 4px;font-size:19px}
+#panel-firststart .quick-config-title p{font-size:12px;color:var(--muted);margin:0;line-height:1.6}
+#panel-firststart .quick-config-section h5{font-size:13px;margin:19px 0 9px;color:var(--muted)}
+#panel-firststart .quick-choice-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#panel-firststart .quick-choice-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+#panel-firststart .quick-option{position:relative;display:flex;flex-direction:column;gap:8px;border:1.5px solid var(--stroke);border-radius:16px;padding:13px 13px 14px;background:linear-gradient(145deg,var(--panel),color-mix(in srgb,#c9edfc 20%,var(--panel)));cursor:pointer;min-width:0;transition:transform .2s,box-shadow .2s,border-color .2s}
+#panel-firststart .quick-option:hover{transform:translateY(-2px);box-shadow:0 8px 19px #37618d16}
+#panel-firststart .quick-option:has(input:checked){border-color:#4a9fb9;background:linear-gradient(135deg,color-mix(in srgb,#b8eafa 36%,var(--panel)),color-mix(in srgb,#dbd9fb 20%,var(--panel)));box-shadow:0 0 0 2px #4a9fb928}
+#panel-firststart .quick-option:has(input:focus-visible){outline:3px solid var(--action);outline-offset:3px}
+#panel-firststart .quick-option input{align-self:flex-end;accent-color:#3c8daa;margin:0;width:17px;height:17px}
+#panel-firststart .quick-option strong{font-size:13px;color:var(--ink);line-height:1.4}
+#panel-firststart .quick-option small{color:var(--muted);font-size:11px;line-height:1.5}
+#panel-firststart .quick-config-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:12px 0}
+#panel-firststart .quick-config-actions button{min-height:37px}
+#panel-firststart .quick-current{font-size:12px;color:var(--muted);background:color-mix(in srgb,#c9ecf3 25%,var(--panel));border:1px solid var(--stroke);padding:9px 11px;border-radius:11px;overflow-wrap:anywhere}
+#panel-firststart .quick-memory-toggles{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}#panel-firststart .quick-memory-toggles .checkline{border:1px solid var(--stroke);border-radius:13px;padding:9px 12px;background:color-mix(in srgb,#e1f4fc 20%,var(--panel))}
+#panel-firststart .quick-limit-label{display:flex;align-items:center;gap:13px;font-size:13px;font-weight:650;flex-wrap:wrap;margin:13px 0}
+#panel-firststart .quick-limit-label input{width:130px}
+#panel-firststart .quick-parameter-details{border:1px solid var(--stroke);border-radius:13px;margin:13px 0;padding:10px 13px;background:color-mix(in srgb,#dcf4fc 18%,var(--panel))}
+#panel-firststart .quick-parameter-details>summary{cursor:pointer;font-weight:700;font-size:12px}
+#panel-firststart .preset-parameter-grid{margin:11px 0}
+@media(max-width:870px){#panel-firststart .quick-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){#panel-firststart .quick-config-section{padding:13px}#panel-firststart .quick-choice-grid{gap:8px}#panel-firststart .quick-option{padding:9px;min-height:100px}#panel-firststart .quick-config-title h4{font-size:16px}#panel-firststart .quick-option strong{font-size:12px}}
+@media(prefers-reduced-motion:reduce){#panel-firststart .quick-option{transition:none}#panel-firststart .quick-option:hover{transform:none}}
 @media(max-width:600px){.quick-settings-home{padding:14px}.quick-setting-card{min-height:145px}}
 @media(prefers-reduced-motion:reduce){.quick-setting-card{transition:none}}
 </style>
@@ -875,22 +905,53 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <section id="panel-firststart" hidden>
   <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 新版本快速设置</span><h2>欢迎来到大肥鱼 · 快速设置</h2><p>让鱼鱼开始认识你，陪伴你慢慢成长。这里就是大肥鱼管理中心：每个新老用户首次打开此版都会看到这页。<strong>B站登录和 Headless 模型验证是必须完成的两项</strong>，其他设置可以先跳过，之后随时回来修改。</p></div>
 
-  <section class="quick-settings-home" aria-label="统一设置入口">
-    <div class="quick-settings-heading"><div><h3>快速找到鱼鱼的核心设置</h3><p class="muted">卡片直达真实设置，不会在此复制第二套参数。所有调整都要在所属设置页确认保存。</p></div><span class="pill">仅导览 · 不会自动启用</span></div>
-    <div class="quick-settings-grid">
-      <button type="button" class="quick-setting-card" data-open-tab="life-agent" data-open-anchor="life-settings-v2-panel"><span class="quick-card-icon">✦</span><strong>自主生活</strong><small>开关、活跃档位和实际每日额度</small><em>进入生活设置</em></button>
-      <button type="button" class="quick-setting-card" data-open-tab="life" data-open-anchor="life-memory-settings"><span class="quick-card-icon">❀</span><strong>记忆与反思</strong><small>生活方式方案、遗忘与检索参数</small><em>查看方案及具体参数</em></button>
-      <button type="button" class="quick-setting-card" data-open-tab="social"><span class="quick-card-icon">♡</span><strong>社交与权限</strong><small>自主社交边界、联系人和主动分享额度</small><em>进入权限设置</em></button>
-      <button type="button" class="quick-setting-card" data-open-tab="models"><span class="quick-card-icon">✧</span><strong>AI 模型</strong><small>后台模型验证、成本与连接配置</small><em>前往模型设置</em></button>
+  <section class="quick-settings-home" aria-label="快速设置卡片操作">
+    <div class="quick-settings-heading"><div><h3>先替鱼鱼选一种生活方式</h3><p class="muted">直接选择并保存，所有卡片都读取现有设置；未点击保存不会生效。已有设置不匹配预设时显示「自定义／保留原值」。</p></div><span class="pill">首次设置 · 可随时修改</span></div>
+    <div class="quick-setup-stack">
+      <section class="quick-config-section" id="quick-life-section"><div class="quick-config-title"><span class="quick-card-icon">✦</span><div><h4>自主生活</h4><p>鱼鱼是否主动探索，以及每天考虑生活的节奏</p></div></div>
+        <h5>生活开关</h5><div class="quick-choice-grid two" role="radiogroup" aria-label="快速设置自主生活开关">
+          <label class="quick-option"><input type="radio" name="quick-life-mode" value="active"><strong>✦ 开启自主生活</strong><small>通过必需验证后按所选节奏自主考虑，不代表强制评论或关注</small></label>
+          <label class="quick-option"><input type="radio" name="quick-life-mode" value="off"><strong>☾ 暂停自主探索</strong><small>暂停启动新的生活决策，不撤销其他已授权社交渠道</small></label></div>
+        <h5>生活活跃度</h5><div class="quick-choice-grid" role="radiogroup" aria-label="快速设置生活活跃程度">
+          <label class="quick-option"><input type="radio" name="quick-life-pace" value="quiet"><strong>🌙 安静</strong><small>120 分钟 / 每天 12 次</small></label>
+          <label class="quick-option"><input type="radio" name="quick-life-pace" value="natural"><strong>🍃 自然</strong><small>30 分钟 / 每天 40 次</small></label>
+          <label class="quick-option"><input type="radio" name="quick-life-pace" value="lively"><strong>✨ 活跃</strong><small>10 分钟 / 每天 100 次</small></label>
+          <label class="quick-option"><input type="radio" name="quick-life-pace" value="custom"><strong>🎛️ 自定义／旧设置</strong><small>保留当前参数，到生活页精细设置</small></label></div>
+        <p id="quick-life-current" class="quick-current" role="status">读取生活参数…</p><div class="quick-config-actions"><button type="button" class="primary" id="quick-life-save">确认保存生活设置</button><button type="button" data-open-tab="life-agent" data-open-anchor="life-settings-v2-panel">高级生活设置 ↗</button></div>
+      </section>
+      <section class="quick-config-section" id="quick-memory-section"><div class="quick-config-title"><span class="quick-card-icon">❀</span><div><h4>记忆与反思</h4><p>选择鱼鱼记忆衰减、召回和反思的方式；不会修改已有记忆内容</p></div></div>
+        <div class="quick-choice-grid" role="radiogroup" aria-label="快速设置记忆与反思方案">
+          <label class="quick-option"><input type="radio" name="quick-memory-choice" value="gentle"><strong>🌙 慢慢记住</strong><small>召回谨慎，反思间隔较长</small></label>
+          <label class="quick-option"><input type="radio" name="quick-memory-choice" value="balanced"><strong>🍃 自然记忆</strong><small>均衡保留、整理与遗忘</small></label>
+          <label class="quick-option"><input type="radio" name="quick-memory-choice" value="curious"><strong>✨ 好奇反思</strong><small>召回更广、反思更频繁</small></label>
+          <label class="quick-option"><input type="radio" name="quick-memory-choice" value="custom"><strong>🎛️ 保留自定义</strong><small>不覆盖旧版已保存的记忆值</small></label>
+        </div>
+        <div class="quick-memory-toggles"><label class="checkline"><input type="checkbox" id="quick-memory-enabled">启用跨 Session 长期记忆</label><label class="checkline"><input type="checkbox" id="quick-reflection-enabled">自动进行人生反思</label></div>
+        <details class="quick-parameter-details"><summary>查看此方案的具体参数</summary><div class="preset-parameter-grid" id="quick-memory-parameters">正在读取参数…</div></details>
+        <p id="quick-memory-current" class="quick-current" role="status">读取记忆设置…</p><div class="quick-config-actions"><button type="button" class="primary" id="quick-memory-save">确认保存记忆方案</button><button type="button" data-open-tab="life" data-open-anchor="life-memory-settings">全部记忆参数 ↗</button></div>
+      </section>
+      <section class="quick-config-section" id="quick-social-section"><div class="quick-config-title"><span class="quick-card-icon">♡</span><div><h4>社交自主与视频分享</h4><p>鱼鱼自行决定发不发；没有普通社交的主人逐条草稿审核</p></div></div>
+        <h5>私信交流范围</h5><div class="quick-choice-grid" role="radiogroup" aria-label="快速设置私信交流方式">
+          <label class="quick-option"><input type="radio" name="quick-dm-choice" value="paused"><strong>☾ 暂停后台私信</strong><small>不再主动处理新私信</small></label>
+          <label class="quick-option"><input type="radio" name="quick-dm-choice" value="friends"><strong>♡ 熟人优先</strong><small>不额外授予陌生人自主聊天权限</small></label>
+          <label class="quick-option"><input type="radio" name="quick-dm-choice" value="free"><strong>✦ 开放交流</strong><small>明确允许陌生人自主私信，需额外确认</small></label>
+          <label class="quick-option"><input type="radio" name="quick-dm-choice" value="custom"><strong>🎛️ 保留现有</strong><small>不匹配预设时保留原值</small></label></div>
+        <p id="quick-dm-current" class="quick-current" role="status">读取私信权限…</p><div class="quick-config-actions"><button type="button" class="primary" id="quick-dm-save">确认保存私信方案</button><button type="button" data-open-tab="dm">私信详细设置 ↗</button></div>
+        <h5>主动视频兴趣分享</h5><div class="quick-choice-grid two" role="radiogroup" aria-label="快速设置主动视频分享">
+          <label class="quick-option"><input type="radio" name="quick-share-choice" value="paused"><strong>☾ 暂不主动分享</strong><small>关闭新的自主兴趣推荐</small></label>
+          <label class="quick-option"><input type="radio" name="quick-share-choice" value="autonomous"><strong>🐟 鱼鱼自主分享</strong><small>仅向已授权收件人分享，仍由鱼鱼决定是否发送</small></label></div>
+        <label class="quick-limit-label" for="quick-share-limit">每日分享上限（50–1000 条）<input type="number" id="quick-share-limit" min="50" max="1000" value="100" step="1" /></label>
+        <p id="quick-share-current" class="quick-current" role="status">读取分享授权…</p><div class="quick-config-actions"><button type="button" class="primary" id="quick-share-save">确认保存自主分享</button><button type="button" data-open-tab="social" data-open-anchor="social-outreach-section">查看白名单与细节 ↗</button></div>
+        <p class="muted" style="font-size:12px">社交卡片只修改对应配置，不代鱼鱼批准消息。开启仍受账号验证、白名单、渠道授权、冷却、去重及真实平台回执约束；默认不主动扩大旧权限。</p>
+      </section>
+      <section class="quick-config-section quick-model-link"><div class="quick-config-title"><span class="quick-card-icon">✧</span><div><h4>AI 模型与其他高级功能</h4><p>Provider、模型测试和精细参数较复杂，保留独立管理页面</p></div></div><div class="quick-config-actions"><button type="button" data-open-tab="models">前往 AI 模型配置 ↗</button><button type="button" data-open-tab="personality">人格成长设置 ↗</button></div></section>
     </div>
-    <div class="quick-ack-row"><p class="muted" id="fs-quick-ack-status">本版设置说明尚未确认。老用户的原配置与后台生活不会因此暂停。</p><button type="button" id="fs-quick-ack" class="primary">我已查看本版快速设置</button></div>
+    <div class="quick-ack-row"><p class="muted" id="fs-quick-ack-status">请检查当前设置后继续。老用户的原配置与后台生活不会因此暂停。</p><button type="button" id="fs-quick-ack" class="primary">我已查看本版快速设置</button></div>
   </section>
   <div class="fs-grid">
     <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>🔐 在线核验并确认当前扫码账号</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>✅ 重启后复核并恢复账号</button></div></section>
     <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
     <section class="fs-step optional"><h3>03 · 主 Session <span class="pill">可跳过</span></h3><p>指定鱼鱼和主人交谈的主要会话；以后可以在管理中心修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
-    <section class="fs-step optional"><h3>04 · 人生记忆和反思 <span class="pill">可跳过</span></h3><p>以后可以调整记忆整理、反思批次和恢复推荐设置值。</p><div class="fs-recommend-tip" role="note"><strong>✨ 老用户升级建议：使用新版记忆与反思推荐值</strong><span>完成快速设置后，进入「人生记忆 → 记忆与检索设置」，展开「人生反思调度」「遗忘与召回质量」「可选 AI 检索与用量」，分别点击「使用推荐值」，最后点击「保存记忆与反思设置」才会生效。不会自动覆盖旧设置，也不会更改模型、开关或已有记忆。</span></div><div class="actions"><button type="button" id="fs-life-settings" data-open-tab="life" disabled title="先完成快速设置，之后可在管理中心修改记忆设置">完成必需项后设置</button><button type="button" data-firststart-skip="life-memory">先跳过</button></div></section>
-    <section class="fs-step optional"><h3>05 · 人格成长与社交偏好 <span class="pill">可跳过</span></h3><p>人格成长、自主聊天与对外社交权限始终可调整；引导不会自动开启任何发布权限。</p><div class="actions"><button type="button" id="fs-personality-settings" data-open-tab="personality" disabled title="先完成快速设置，之后可在管理中心修改人格设置">完成必需项后设置</button><button type="button" data-firststart-skip="personality">先跳过</button></div></section>
   </div>
   <div class="fs-footer"><div><strong id="fs-summary">请先完成两项必需配置</strong><p class="muted">完成后随时可以在管理中心重新打开快速设置，已有记忆、凭据和历史资料不会删除。</p></div><div class="actions"><button id="fs-complete" class="primary" type="button" disabled>完成快速设置</button><button id="fs-complete-skip" type="button" disabled>跳过可选项并完成</button></div></div>
 </section>

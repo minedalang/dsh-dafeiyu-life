@@ -2,17 +2,15 @@
 
 > 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 RC8 方案优先的 UI 接线见 [`管理卡片架构`](docs/architecture/2.7.1-rc8-choice-first-management.md)；管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
 
-- 当前 UI V3 快速设置及上下文容错边界见 [`快速设置与 Life 上下文技术审计`](docs/architecture/2.7.1-dev8-quick-setup-life-context.md)；新版导览不复制原配置或扩大社交权限。
+- 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 
 ## 项目与代码入口
-
 - 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.8`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限；dev.4 旧视频定时驱动已退役，明确保存暂停后普通手动生活唤醒也停止；社交旧独立决策器退役，新老用户均需迁移为 Life 归属；未知发送则冻结。Phase 6/7/8 迁移核验见 [只读迁移门禁](docs/architecture/2.7.1-dev4-life-transition-readiness.md)；设置及当前增量见 [Life 双节奏与预算架构](docs/architecture/2.7.1-life-a-dual-lane-budget.md)；旧发言授权仍按原门禁执行。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
 
 ## 产品原则和不可突破的边界
-
 - **对外品牌主张固定为「坚持鱼的自由发展」**：README 和对外宣传强调鱼鱼在持续生活、探索、社交中形成自己的喜恶与选择，而非仅执行命令；不得把愿景写成已验收能力，也不得暗示 AI 具有真实意识或绕过授权。
 
 1. **同一条鱼、双域意愿**：主 Session 按授权执行工作请求；B站生活域保留自主接受、延期、拒绝、沉默与自然成长。模拟情绪／人格不代表真实意识。

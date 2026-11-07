@@ -68,6 +68,7 @@ import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/
 import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-planner.mjs'
 import { projectLifeIntegrationStatus,projectLifeWorldEvidence } from './lib/life-system-integration.mjs'
 import { createLifeAgentEvents } from './lib/life-agent-events.mjs'
+import {quickMemoryState,quickSocialState,quickMemoryPlan,quickSocialPlan} from './lib/quick-setup-options.mjs'
 import { createSocialDecisionOwnership } from './lib/social-decision-ownership.mjs'
 import { createSocialHandoffFence } from './lib/social-handoff-fence.mjs'
 import { createSocialSendTransaction } from './lib/social-send-transaction.mjs'
@@ -6791,6 +6792,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
 
     if(req.method==='GET' && path==='/api/bili-duty/onboarding/status')
       return sendJson(res,200,firstStart.status())
+    if(req.method==='GET' && path==='/api/bili-duty/onboarding/quick/options'){
+      refreshCfg()
+      return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),memory:quickMemoryState(cfg),social:quickSocialState(cfg),requiredReady:firstStart.status().requiredReady})
+    }
     if(req.method==='POST' && path.startsWith('/api/bili-duty/onboarding/')){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(origin && (!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'拒绝非同源设置请求'})
@@ -6798,6 +6803,34 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       try{
         if(path.endsWith('/welcome'))return sendJson(res,200,firstStart.markWelcome())
         if(path.endsWith('/quick/seen'))return sendJson(res,200,firstStart.acknowledgeQuickSetup())
+        if(path.endsWith('/quick/save')){
+          const body=await readBody(req)
+          refreshCfg()
+          let plan
+          if(body?.kind==='life'){
+            const current=lifeSettingsV2(cfg)
+            if(body.revision!==current.revision)throw Error('生活设置已变化，请刷新后重新选择')
+            if(body.mode==='active'&&!firstStart.status().requiredReady)throw Error('先完成 B站登录与模型验证，才能开启自主生活')
+            const enableMaster=body.mode==='active'&&body.enableMaster===true
+            if(enableMaster&&!firstStart.status().requiredReady)throw Error('先完成 B站登录与模型验证，才能开启自主生活')
+            const effective=enableMaster?{...cfg,masterEnabled:true}:cfg
+            plan=planLifeSettingsV2(effective,{schemaVersion:2,mode:body.mode,pace:body.pace,
+              revision:lifeSettingsV2(effective).revision,previewOnly:body.previewOnly===true,
+              confirm:body.confirm==='APPLY_QUICK_LIFE'?'APPLY_LIFE_SETTINGS_V2':''})
+            const patch={...(enableMaster&&cfg.masterEnabled!==true?{masterEnabled:true}:{}),...plan.patch}
+            if(body.previewOnly===true)return sendJson(res,200,{ok:true,changed:{...plan.changed,...(enableMaster&&cfg.masterEnabled!==true?{masterEnabled:{before:false,after:true}}:{})},preview:true})
+            if(body.confirm!=='APPLY_QUICK_LIFE')throw Error('必须明确确认生活设置')
+            const result=Object.keys(patch).length?await persistCfg(patch):{host:{ok:true}}
+            if(patch.lifeAgentMode==='off')lifeSocialShadow.revoke()
+            return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),host:result.host})
+          }
+          if(body?.kind==='memory')plan=quickMemoryPlan(cfg,body)
+          else if(body?.kind==='social')plan=quickSocialPlan(cfg,body,{ready:firstStart.status().requiredReady})
+          else throw Error('未知的快速设置种类')
+          if(body.previewOnly===true)return sendJson(res,200,{ok:true,changed:plan.changed,preview:true})
+          const result=Object.keys(plan.patch).length?await persistCfg(plan.patch):{host:{ok:true}}
+          return sendJson(res,200,{ok:true,host:result.host})
+        }
         if(path.endsWith('/bili/verify')){
           const client=await ensureMcp()
           const raw=await client.call('bili_check_credential',{})

@@ -29,7 +29,7 @@ test('主 Session 注册单条手动点赞工具，并要求真实 BV、总开�
     // Losing credentials invalidates First Start, so no manually authorized action runs.
     rmSync(join(home,'bili-duty','bili_credential.json'))
     const noLogin=await spec.execute({bvid:'BV1pXHK6mE6z',confirm:true})
-    assert.equal(noLogin.ok,false);assert.match(noLogin.error,/首次设置|未登录/)
+    assert.equal(noLogin.ok,false);assert.match(noLogin.error,/快速设置|首次设置|未登录/)
     const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
     const py=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
     assert.match(index,/call\('bili_video_like_manual'/)

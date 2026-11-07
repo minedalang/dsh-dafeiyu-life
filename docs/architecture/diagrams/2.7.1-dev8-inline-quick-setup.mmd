@@ -1,0 +1,18 @@
+flowchart TD
+  UI[快速设置 · 原顶部横导航] -->|读取当前参数| GET[GET /onboarding/quick/options]
+  GET --> CFG[(原 DSH 配置 / config.json)]
+  UI -->|选择后预览与确认| POST[POST /onboarding/quick/save]
+  POST --> ORIGIN[同源及跨站请求校验]
+  ORIGIN --> KIND{卡片类型}
+  KIND -->|生活| LIFE[planLifeSettingsV2 统一生活设置契约]
+  KIND -->|记忆| MEM[QuickMemoryPlan · 固定记忆参数]
+  KIND -->|私信和分享| SOCIAL[QuickSocialPlan · 显式授权与账户验证]
+  LIFE --> SAVE[persistCfg 原有持久化]
+  MEM --> SAVE
+  SOCIAL --> SAVE
+  SAVE --> CFG
+  CFG --> RELOAD[重新读取并显示真实当前值]
+  RELOAD --> UI
+  SOCIAL -.-> GATE[原渠道授权、冷却、防重、回执]
+  GATE -.-> PLATFORM[真实平台；本轮不发消息]
+  UI -->|复杂配置| MODELS[独立 AI 模型设置]
