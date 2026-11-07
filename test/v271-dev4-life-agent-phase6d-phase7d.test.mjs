@@ -12,7 +12,7 @@ const defaults={masterEnabled:true,lifeAgentMode:'shadow',peakValley:true,autono
   autonomousPlannerMinutes:60,autonomousPlannerDailyLimit:12,autonomousPlannerStartHour:0,autonomousPlannerEndHour:24}
 const temp=async fn=>{const dir=mkdtempSync(join(tmpdir(),'life-contrast-'));try{return await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
 const setup=(dir,{cfg=()=>defaults,evidence=()=>[{kind:'todo-read',at:T-3_600_000}],scope=()=>A,invokeModel=async()=>'{"action":"pause"}',onRead=()=>{throw Error('Read must never execute')}}={})=>
- createAutonomousPlanner({dataDir:dir,getConfig:cfg,getLifeAccountTag:scope,getLifeEventStatus:()=>({recentVerifiedReads:evidence()}),
+ createAutonomousPlanner({dataDir:dir,now:()=>T,getConfig:cfg,getLifeAccountTag:scope,getLifeEventStatus:()=>({recentVerifiedReads:evidence()}),
   getTodos:()=>[],invokeModel,executeRead:onRead,updateTodo:async()=>{throw Error('No write')},reflect:async()=>{throw Error('No reflection')}})
 test('6d: actual video driver ownership is single and old flags do not grant extra owners',()=>{
  for(const mode of ['shadow','active']){

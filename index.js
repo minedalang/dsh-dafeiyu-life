@@ -126,7 +126,7 @@ import { collectDmInbox, parseDmWhitelist } from './lib/dm-inbox.mjs'
 import { createCommentInteract } from './lib/comment-interact.mjs'
 import { createSocialInteractionRhythm } from './lib/social-interaction-rhythm.mjs'
 import { createCommentVideoContext } from './lib/comment-video-context.mjs'
-import { recentComments, migrateCommentReceipts, ownCommentTargets } from './lib/recent-comments.mjs'
+import { recentComments, migrateCommentReceipts, ownCommentTargets, searchVerifiedPublicComments } from './lib/recent-comments.mjs'
 import { createInteractionBatcher } from './lib/interaction-batch.mjs'
 import {ownPublishedDynamics,ownPublishedDynamicText} from './lib/own-published-dynamics.mjs'
 import { createInteractionMemeLookup, readReplyMemeSnapshot } from './lib/interaction-meme-memory.mjs'
@@ -3351,6 +3351,17 @@ function reportMeta() {
 
   // Owner Agent is initialized before the inbox poll, but executes only on authenticated
   // owner UID messages, after per-message durable claim and independently authorized tools.
+  // dev.22: one verified public comment evidence source for owner DM and
+  // owner public comments; never reads owner-private life memory or a second
+  // comment archive. The account binding cutoff is a mandatory read fence.
+  const recallOwnerPublicComments=({uid,query='',bvid='',threadRoot='',beforeAt=Date.now()})=>{
+    refreshCfg()
+    const binding=accountBinding.status()
+    if(String(uid||'')!==String(cfg.dmOwnerUid||'')||!trustedLifeAccountTag()||binding.blocked)
+      return {ok:false,reason:'account-not-verified',items:[]}
+    return searchVerifiedPublicComments(stateDir,{query,bvid,threadRoot,beforeAt,
+      oldestAt:binding.generation>1?binding.cutoverAt:0,limit:6})
+  }
   const ownerDmAgent=createOwnerDmAgent({
     dataDir:accountRuntimeDir,
     getConfig:()=>{refreshCfg();return cfg},
@@ -3375,6 +3386,7 @@ function reportMeta() {
       refreshCfg()
       if(String(uid)!==String(cfg.dmOwnerUid||'')||cfg.ownerDmAgentEnabled!==true||!trustedLifeAccountTag()||accountBinding.status()?.blocked)
         return {ok:false,reason:'account-not-verified',items:[]}
+      if(action==='public_comments')return recallOwnerPublicComments({uid,query,beforeAt})
       if(action==='memory_search')return memoryRetriever?.ownerSearch(query,{history,limit:6,beforeAt})||{ok:false,reason:'memory-not-ready',items:[]}
       if(action==='memory_detail'){
         const item=memoryRetriever?.ownerDetail(id)
@@ -4131,6 +4143,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         role:ctx.role,emotion:emotionalState.snapshot(),style:ctx.persona,
         memoryContext:ctx.memoryContext,memeContext:ctx.memeContext,
         relationship:ctx.relationshipContext,history:dualContextAgency.context({uid:row.uid,thread:row.thread,target:row.bvid}),
+        // Caller identity is the platform-authenticated owner; a friend cannot
+        // request owner recall. Public results contain only confirmed self-posted
+        // comments, never the owner DM's memory_search or private insights.
+        recallPublic:ctx.role==='owner'?({query,scope})=>{
+          refreshCfg()
+          if(cfg.ownerCommentAgentEnabled!==true||cfg.masterEnabled!==true||socialPolicyGate.actor(row.uid).role!=='owner')
+            return {ok:false,reason:'comment-agent-disabled',items:[]}
+          return recallOwnerPublicComments({uid:row.uid,query,
+            bvid:scope==='current-video'?row.bvid:'',beforeAt:row.timestampMs})
+        }:null,
         invoke:p=>invokeInteractionPrompt(p,2600,{modelRoute:'interaction'}),
       })
     },

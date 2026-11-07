@@ -1,4 +1,8 @@
-## 当前开发版本 2.7.1-dev.21：主人私信主动回忆与自然事实修正（未发布）
+## 当前开发版本 2.7.1-dev.22：跨日公开评论回忆与统一层边界（未发布）
+
+[dev.22 当前生产接线、权限/失败边界和跨渠道矩阵](./2.7.1-dev22-public-recall-unified.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev22-public-recall.mmd)。主人私信 `public_comments` 和主人公开评论按需回忆使用同一个成功回执主账本；公开评论回忆第二轮只能修正 `chat` 内容，不能再授权社交动作。未做向量检索、不新建存储、不开放私密记忆；Windows/真实 B站/跨日成长仍待验收。
+
+## 历史版本 2.7.1-dev.21：主人私信主动回忆与自然事实修正（未发布）
 
 [生产接线、检索权限和兼容边界](./2.7.1-dev21-owner-active-recall.md) · [可编辑 Mermaid 架构图](./diagrams/2.7.1-dev21-owner-recall.mmd)。主 Session 记忆开关不再阻断已验证主人私信的主动只读回忆；分步搜索、详情和近期行动回查与原事实校验对接，普通聊天提示词精简。真实模型/B站和长时行为验收尚未完成。
 
@@ -74,11 +78,13 @@
 
 [架构与权限迁移说明](./2.7.1-rc8-choice-first-management.md) · [Mermaid 方案数据流](./diagrams/2.7.1-rc8-choice-first-management.mmd)。已完成：视频互动 / 私信 / 主动分享使用可选方案卡与自定义、现有配置单写源、站内外发确认；尚待 Windows 实机和真实 B站验收。
 
-## 最新开发预览：2.7.1-dev.7 RC7 · 鱼鱼此刻与图片理解（未发布）
+> 以下 dev.7 及更早的「当前」「最新」均指其撰写当时的阶段性成果；不代表 dev.22 的生产真值。现行入口与统一层契约请以上方 dev.22 总览为准。
+
+## 历史开发预览：2.7.1-dev.7 RC7 · 鱼鱼此刻与图片理解（未发布）
 
 - [真实进程内活动、图文生活方案、记忆页面划分、入站私信与评论图片的安全验证链路及实机验收](./2.7.1-rc7-life-now-vision.md) · [Mermaid 可编辑架构图](./diagrams/2.7.1-rc7-life-now-vision.mmd)。本轮不改变 Life 社交唯一归属，不复制旧记忆，`releaseReady:false`。
 
-## 当前权威：2.7.1-dev.7 RC6 双渠道统一 Life 决策归属（未发布）
+## 历史节点（当时权威）：2.7.1-dev.7 RC6 双渠道统一 Life 决策归属（未发布）
 
 - [老用户与新用户统一迁移 DM / 评论、主人技能、待办回访、视频兴趣分享及未知发送冻结](./2.7.1-rc-unified-life-social-migration.md) · [生产 Mermaid 架构图](./diagrams/2.7.1-rc-unified-life-social-migration.mmd)。旧独立社交决策权**不再用于生产兜底**，原授权、记忆与适配器保留；真实 Windows/B站/72 小时验收未通过，`releaseReady:false`。以下 RC1–RC5 owner 说明是**历史阶段**，不应视为当前行为。
 
@@ -102,15 +108,15 @@
 
 - [十三项自然行为与用户文案自检：实际生产链、已实现与未证实范围、RC 必须补证与验收脚本](./2.7.1-rc-preflight-13-questions.md) · [当前与目标交接示意](./diagrams/2.7.1-rc-preflight-boundaries.mmd)。未改变社交决策权或对外授权；当前 `releaseReady:false`，不应创建 RC 发布标签。
 
-## 当前版本 2.7.1-dev.7：新 Life 总览 UI 与可回忆世界接线（开发预览）
+## 历史版本 2.7.1-dev.7：新 Life 总览 UI 与可回忆世界接线（开发预览）
 
 - [dev.7 生产接线、迁移边界、跨系统读写归属、升级策略与验收缺口](./2.7.1-dev7-life-world-ui-integration.md) · [可编辑 Mermaid 生产图](./diagrams/2.7.1-dev7-life-world-live.mmd)。普通 Life 决策可读取现有兴趣和经隐私/遗忘门禁后的公开经历；管理中心新增统一总览，旧重复调度表单已退役。**社交真实发送仍为 legacy 独占**，不新增第二份状态账本，不声称已验证长程人格成长；Windows/真实 B站仍待验收。
 
-## 当前 dev.6 增量：GitHub Issue #9 评论主账本与足迹修复
+## 历史 dev.6 增量：GitHub Issue #9 评论主账本与足迹修复
 
 - [评论完整有界正文、梗图回执、足迹与 UID 核验 @ 的实际调用及兼容边界](./2.7.1-dev6-github-issue9-comment-footprints.md) · [Mermaid](./diagrams/2.7.1-dev6-issue9-comment-footprints.mmd)。保持现有社交旧 owner，未进行正式 Life 发送接管，Windows 与真实 B站 待验收。
 
-## 当前版本 2.7.1-dev.6：Life 社交交接前演练与安全核查（未接管真实社交）
+## 历史版本 2.7.1-dev.6：Life 社交交接前演练与安全核查（未接管真实社交）
 
 - [dev.6 真实生产接线、原社交路径盘点、跨进程排空、手动无发送演练、残留冻结及风险矩阵](./2.7.1-life-b-social-handoff.md) · [可编辑生产 Mermaid](./diagrams/2.7.1-life-b-social-handoff-live.mmd)。社交正式决策和发送仍由旧处理器独占，影子对照不能作为发送许可；本版未发布、未完成 Windows／B站验收。
 
@@ -118,23 +124,23 @@
 
 - [当前真实接线、旧生活预设显式保留、社交快速只读关注、跨进程额度、DEBUG 事件关联及风险矩阵](./2.7.1-life-a-dual-lane-budget.md) · [可编辑当前 Mermaid](./diagrams/2.7.1-life-a-dual-lane-live.mmd)。这是基于上传 `2.7.1-dev.4` 实施并标记为 `2.7.1-dev.5` 的开发增量，不表示 Phase 6 / Phase 7 全部验收，也不启用正式社交外发。下方 `dev.4` 文件是原有实现的架构记录，涉及双节奏与额度的现行行为优先参照本页。
 
-## 当前增量：Life Agent 视频轮结束后的自主反馈与冷却恢复
+## 历史增量：Life Agent 视频轮结束后的自主反馈与冷却恢复
 
 - [可信视频轮结束回执如何进入同一生活决策、冷却期不误消费、忙碌诊断与安全边界](./2.7.1-dev4-life-post-video-continuity.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-life-post-video-continuity-live.mmd)。复用唯一 Life Agent、v1 事件账本及原视频 Agent，不新增发送权限；真实观看/听音、Windows/B站仍待验收。
 
-## 当前增量：Life Agent 视频 Agent 子进程真实轮次回执与时间线
+## 历史增量：Life Agent 视频 Agent 子进程真实轮次回执与时间线
 
 - [原视频轮次启动/退出/失败/未知的账号隔离回执、视频入选数事实来源、真实时间线与安全边界](./2.7.1-dev4-life-video-round-lifecycle.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev4-life-video-round-lifecycle-live.mmd)。这并不是证明作品观看/听音成功，也不开放社交发送；Windows 与真实平台仍待验收。
 
-## 当前增量：Life Agent 内置 Python MCP 只读预约身份核验
+## 历史增量：Life Agent 内置 Python MCP 只读预约身份核验
 
 - [跨进程误判与嵌套工具 HMAC 核验、脱敏预约拒绝原因及迁移边界](./2.7.1-dev4-life-nested-mcp-read-identity.md) · [当前 Mermaid](./diagrams/2.7.1-dev4-life-nested-mcp-read-identity-live.mmd)。同账号、同 BV、活跃执行进程仍是硬门禁；不自动清锁，不新增平台调用或外发权；Windows/真实 B站待验收。
 
-## 当前增量：Life Agent 平台元数据真实失败追踪与无模型探测
+## 历史增量：Life Agent 平台元数据真实失败追踪与无模型探测
 
 - [跨 Python MCP 与 JS 的有界平台失败契约、同账号可信公开 BV 手动只读探测、脱敏平台错误来源](./2.7.1-dev4-life-metadata-platform-diagnostics.md) · [当前 Mermaid](./diagrams/2.7.1-dev4-life-metadata-platform-diagnostics-live.mmd)。不调用模型、不修改生活账本或发送社交内容；实际只读探测仍消耗平台请求额度，Windows/真实 B站待验收。
 
-## 当前增量：Life Agent 自主探索只读回执与后续生活选择（未开放社交外发）
+## 历史增量：Life Agent 自主探索只读回执与后续生活选择（未开放社交外发）
 
 - [已结算生活契机与独立探索线索分账本语义、失败有界冷却、成功元数据后的后续自主考虑](./2.7.1-dev4-life-exploration-read-continuity.md) · [当前调用 Mermaid](./diagrams/2.7.1-dev4-life-exploration-read-continuity-live.mmd)。修复 `cues>0`、`opportunities=0` 时只读失败的错误结算；仅验证公开元数据，视频观看和社交接管仍需真实回执与独立授权。
 
@@ -142,59 +148,59 @@
 
 - [真实生活决策链脱敏追踪、平台拒绝分类及重复汇总、错误冻结收紧、Debug 入口和兼容说明](./2.7.1-dev4-life-decision-trace-and-read-diagnostics.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-life-decision-trace-live.mmd)。保留原生活事件、已授权只读动作及平台回执为事实源；调试记录不是第二份记忆或授权；Dev3 旧离线按钮退役。Life Agent 社交仍未接管。
 
-## 当前增量：Life Agent 事件公平结算与影子证据门禁（社交未接管）
+## 历史增量：Life Agent 事件公平结算与影子证据门禁（社交未接管）
 
 - [匿名生活事件逐项归属、未选中线索有界重考虑、可信只读证据仅证明“提供过”、旧社交影子短时样本诊断](./2.7.1-dev4-life-event-fairness-and-shadow-evidence.md) · [当前实际 Mermaid](./diagrams/2.7.1-dev4-life-event-fairness-shadow-live.mmd)。复用原 Life Agent／账号 v1 事件账本与原旧社交唯一 owner，未新增外发权限、社交切换开关或模型预算；Windows/真实平台待验收。
 
-## 当前增量：Life Agent 回执边界与生活契机账本原子性（无社交接管）
+## 历史增量：Life Agent 回执边界与生活契机账本原子性（无社交接管）
 
 - [生活契机 v1 原子写入、生活事件在执行前失败时重试/结果未知时冻结、只读失败明确返回及停机离线审查](./2.7.1-dev4-life-receipt-boundary-hardening.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev4-life-receipt-boundary-live.mmd)。继续复用 `AutonomousPlanner`、`life-agent-events`、`life-opportunities`，不新建状态真值或扩大权限；原 DM/评论回复器仍独占真实社交决策。Windows 与真实平台待验收。
 
-## 当前增量：Life Agent 可靠性集成（不包含社交接管）
+## 历史增量：Life Agent 可靠性集成（不包含社交接管）
 
 - [匿名生活事件的有界重试、跨进程共享模型额度/租约、公开视频元数据失败分类与短期恢复](./2.7.1-dev4-life-reliability-integration.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev4-life-reliability-live.mmd)。仅收紧既有 Life Agent 和既有只读契机路径，不改变旧私信/评论真实社交发送权；Windows/真实 B站 API 和 DSH Desktop 待验收。
 
-## 当前生活决策：按本轮真实候选约束模型选择
+## 历史生活决策：按本轮真实候选约束模型选择
 
 - [Life Agent JSON 解析兼容与逐轮准确动作菜单](./2.7.1-dev4-life-decision-contract.md) · [实际调用图](./diagrams/2.7.1-dev4-life-decision-contract-live.mmd)。复用自主规划器与既有可信候选、模型额度、账号和发送门禁；格式兼容只限单个完整 JSON 代码围栏，不开放任意文本提取或额外模型重试。未执行动作仍有匿名失败诊断。
 
-## 当前增量：dev.4 Phase 6h 社交交接排他基础（未开放真实接管）
+## 历史增量：dev.4 Phase 6h 社交交接排他基础（未开放真实接管）
 
 - [旧社交路由跨进程排他检查、异常残留冻结和匿名诊断；合成子进程故障演练](./2.7.1-dev4-phase6h-social-handoff-fence.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-phase6h-social-fence-live.mmd)。只在原旧 DM/评论路由**读取**持久预约；新预约 API 尚未由生产发起，也无 Life Agent 决策或真实发送权限。Windows/真实 B站待验收。
 
-## 当前增量：dev.4 Phase 6g 只读社交影子配对审计（待 Windows 实机）
+## 历史增量：dev.4 Phase 6g 只读社交影子配对审计（待 Windows 实机）
 
 - [同来源不可抢占、分类不可覆盖、私信/评论分渠道缺样本和分歧诊断](./2.7.1-dev4-phase6g-social-shadow-audit.md) · [生产 Mermaid](./diagrams/2.7.1-dev4-phase6g-social-audit-live.mmd)。这只是既有 Phase 5 可撤销内存影子的质量门禁，**没有**将真实社交决策权交给 Life Agent。
 
-## 当前增量：dev.4 Phase 6f 自主调度诊断跨账号隔离（待 Windows 实机）
+## 历史增量：dev.4 Phase 6f 自主调度诊断跨账号隔离（待 Windows 实机）
 
 - [账号核验的最近决策显示、旧文件不迁移、共享模型额度不变](./2.7.1-dev4-phase6f-account-diagnostic-isolation.md) · [生产 Mermaid](./diagrams/2.7.1-dev4-phase6f-account-diagnostics-live.mmd)。未标注来源的旧历史保留在原数据/冷快照中，不误归属当前账号；不改变社交决策与外发权限。
 
-## 当前增量：dev.4 Phase 6e/7e 自主生活可见验收（待 Windows 实机）
+## 历史增量：dev.4 Phase 6e/7e 自主生活可见验收（待 Windows 实机）
 
 - [真实视频委派门禁、单列时间线与无 B站纯模拟工具](./2.7.1-dev4-life-experience-visible-acceptance.md)。明确：shadow 不通过新生活驱动启动现有视频 Agent；active 仅允许原条件下委派。模拟不能冒充真实观看或成长。
 
-## 当前增量：dev.4 Phase 6d/7d 视频驱动归属与只读模型倾向对照（待 Windows／真实模型验收）
+## 历史增量：dev.4 Phase 6d/7d 视频驱动归属与只读模型倾向对照（待 Windows／真实模型验收）
 
 - [Phase 6d/7d 实际生产接线、同一设置源、显式两次模型额度与安全限制](./2.7.1-dev4-phase6d-phase7d-driver-contrast.md) · [生产 Mermaid](./diagrams/2.7.1-dev4-phase6d-phase7d-live.mmd)。只做纯模型倾向对照，**不是实际行动或人格成长因果证明**；老回复器与所有外发门禁不变。
 
-## 当前增量：dev.4 Phase 6c 旧设置控制权 + Phase 7c 成功只读经历跨轮参考（待实机验收）
+## 历史增量：dev.4 Phase 6c 旧设置控制权 + Phase 7c 成功只读经历跨轮参考（待实机验收）
 
 - [统一层归属、旧设置防覆盖、48h 匿名可信只读经历与真实限制](./2.7.1-dev4-phase6c-phase7c-legacy-ownership-continuity.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-phase6c-phase7c-live.mmd)。已完成的是旧入口互斥和短期决策参考，**不是全部旧模块删除或人格成长因果闭环**；上一 Phase 6b/7b 仍作为基线。
 
-## 当前增量：dev.4 Phase 6b 排他视频时钟 + Phase 7b 关系排序对照（待实机验收）
+## 历史增量：dev.4 Phase 6b 排他视频时钟 + Phase 7b 关系排序对照（待实机验收）
 
 - [影子模式旧定时器运行门禁、旧配置冲突拦截和匿名关系排序反事实标记](./2.7.1-dev4-phase6b-phase7b-schedule-growth-proof.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-phase6b-phase7b-live.mmd)。旧数据不迁移、不授权外发；关系对照不等于模型因果成长。此前 Phase 6/7a 仍作为前置基线。
 
-## 当前开发增量：dev.4 · Phase 6 统一设置、Phase 7a 成长参考可见性（未完整验收）
+## 历史开发增量：dev.4 · Phase 6 统一设置、Phase 7a 成长参考可见性（未完整验收）
 
 - [已接线的显式生活设置保存、旧视频定时器互斥、安全边界与匿名成长参考](./2.7.1-dev4-phase6-settings-phase7-evidence.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev4-phase6-phase7a-live.mmd)。仍写原 `persistCfg`，保留旧配置的高级兼容入口；**没有完成全部旧调度退役、社交决策接管或成长因果闭环**。Windows 与真实模型/B站待验收。
 
-## 当前开发预览：Phase 5 决策诊断收尾 / Phase 6 只读设置预览
+## 历史开发预览：Phase 5 决策诊断收尾 / Phase 6 只读设置预览
 
 - [真实决策结果分类、无候选免模型调用、历史兼容、设置只读映射与迁移安全条件](./2.7.1-dev4-choice-diagnostics-phase6-settings-preview.md) · [当前 Mermaid 接线](./diagrams/2.7.1-dev4-choice-diagnostics-settings-live.mmd)。本轮**没有**替换旧调度或社交回复者；Windows 和真实模型待验收。
 
-## 当前 dev.4 Phase 5 增量 · 手动唤醒与匿名队列诊断
+## 历史 dev.4 Phase 5 增量 · 手动唤醒与匿名队列诊断
 
 - [六小时自动防重复与手动请求区别、人工唤醒队列优先级、模拟验收、安全边界](./2.7.1-dev4-life-agent-manual-wake-hotfix.md)。本修复没有赋予 Life Agent 新的社交发送权，不改变原 Phase 5 影子上下文授权。
 
@@ -202,19 +208,19 @@
 
 - [实际接线、安全边界、单独授权、匿名模型类别对照与无 B站模拟](./2.7.1-dev4-life-agent-phase5-social-shadow.md) · [Phase 5 Mermaid 生产图](./diagrams/2.7.1-dev4-life-agent-phase5-social-shadow-live.mmd)。默认不读取任何社交原文；需用户单独授权且原核验入站事件有效，才能短暂阅读好友私信或核验公开评论。二次模型调用消耗原每日额度，输出不授权外发；社交仍由原回复器独占。Windows/真实模型/真实 B站尚待验收。
 
-## 当前开发预览：2.7.1-dev.4 Phase 4 · 社交决策所有权明确化（未接管）
+## 历史开发预览：2.7.1-dev.4 Phase 4 · 社交决策所有权明确化（未接管）
 
 - [生产入口、社交旧决策归属、账号切换保护与无 B站离线验收](./2.7.1-dev4-life-agent-phase4-social-owner.md) · [Phase 4 实际生产 Mermaid](./diagrams/2.7.1-dev4-life-agent-phase4-social-owner-live.mmd)。`off/shadow/active` 均未授予 Life Agent 社交发送权；旧 DM/评论代理仍是决策者。社交归属诊断只读、短期、不含 UID/原文。Windows 与真实 B站仍待验收。
 
-## 当前开发预览：2.7.1-dev.4 Life Agent 第三阶段 · 生活时间线与冷备份恢复
+## 历史开发预览：2.7.1-dev.4 Life Agent 第三阶段 · 生活时间线与冷备份恢复
 
 - [已实现的同账号匿名决策时间线、旧事件 schema 无损读取、完整本地快照/校验/回滚冻结与老用户验收边界](./2.7.1-dev4-life-agent-phase3.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev4-life-agent-phase3-journal-backup-live.mmd)。旧 UI 可替换，但旧数据备份/恢复是硬约束；现有便携业务备份**不是**完整账号和私密状态快照，新增冷快照需停机且含敏感凭证。Windows/真实平台仍待验收。
 
-## 当前开发预览：2.7.1-dev.4 Life Agent 第二阶段 · 匿名社交唤醒接入
+## 历史开发预览：2.7.1-dev.4 Life Agent 第二阶段 · 匿名社交唤醒接入
 
 - [第二阶段实际接线：私信/评论已核验入站事件 → 当前账号匿名生活唤醒 → 同一 Life Agent 的自主注意/沉默](./2.7.1-dev4-life-agent-phase2-social-wakes.md) · [第二阶段实际生产图](./diagrams/2.7.1-dev4-life-agent-phase2-social-wakes-live.mmd)。社交事件不再受视频启动额度限制；当前模型只看事件类型/ID/时间，**没有聊天原文，不接管原 DM/评论回复发送权，也不产生关系事实或发送许可**。仍待 Windows 和真实平台验收。
 
-## 当前开发预览：2.7.1-dev.4 Life Agent 第一阶段已接入；完整目标仍在实施
+## 历史开发预览：2.7.1-dev.4 Life Agent 第一阶段已接入；完整目标仍在实施
 
 - [统一 Life Agent 的正式架构决策与目标图](./2.7.1-dev4-life-agent-decision-adr.md) · [目标 Mermaid](./diagrams/2.7.1-dev4-life-agent-target.mmd)。选择 C：事件驱动、单主体、连续记忆成长，允许重构旧定时视频生活驱动；**目标图不等于已完成的生产接线**。
 
@@ -223,7 +229,7 @@
 - [后续重构与迁移细化方案](./2.7.1-dev4-unified-life-agent-refactor-plan.md)：复用原人格、记忆、关系、待办、权限和 dev.3 回执，逐步迁移社交、工具规划与成长反馈。
 
 - [2.7.1-dev.3 · 跨语言预约、待办事务与顺路热评](./2.7.1-dev3-cross-language-execution-and-comment-followup.md)：Node/Python 同一只读预约、待办短事务锁和独立的顺路热门评论回复链。[生产图](./diagrams/2.7.1-dev3-cross-language-execution-live.mmd)。
-## 当前开发预览：2.7.1-dev.3 自主待办与生活意愿的共享只读动作协调（增量）
+## 历史开发预览：2.7.1-dev.3 自主待办与生活意愿的共享只读动作协调（增量）
 
 - [2.7.1-dev.3 · 先前：共用 JS 只读执行预约与保守恢复](./2.7.1-dev3-durable-read-execution.md)：已实现跨 Node 进程只读互斥、同账号作用域、人工恢复；Python Headless 与社交写操作尚未接入。 [当前生产执行图](./diagrams/2.7.1-dev3-durable-read-execution-live.mmd)。
 
@@ -235,59 +241,59 @@
 
 - [新功能可验收性契约：触发、选择、真实回执、隐私、费用与使用者验收步骤](./acceptance-observability-contract.md)。代码测试通过不能代替用户可观察的真实行为。
 
-## 当前界面：统一生活设置与开发诊断分层
+## 历史界面：统一生活设置与开发诊断分层
 
 - [普通使用只需生活开关和活跃度；旧模式、影子对照与运行诊断折叠；模型 JSON/动作无效有安全分类](./2.7.1-dev4-unified-life-agent-lifestyle-migration.md)。该界面优化不等于已完成旧社交接管或真实模型验收。
 
-## 当前开发增量：dev.4 · Phase 6/7/8 迁移验收状态与暂停门禁（非封版）
+## 历史开发增量：dev.4 · Phase 6/7/8 迁移验收状态与暂停门禁（非封版）
 
 - [基于原设置、Life Agent、跨进程交接与发送事务的只读迁移核验](./2.7.1-dev4-life-transition-readiness.md) · [生产 Mermaid](./diagrams/2.7.1-dev4-life-transition-readiness-live.mmd)。普通手动生活唤醒尊重暂停，旧社交决策者和 Phase 7/8 缺口会明确列为未完成；不会自动发送、迁移、发布或解除残留锁。
 
-## 当前开发预览：2.7.1-dev.4 统一生活驱动与简单设置（尚非全域社交接管）
+## 历史开发预览：2.7.1-dev.4 统一生活驱动与简单设置（尚非全域社交接管）
 
 - [旧视频定时器物理退出、Life Agent 单一自主视频驱动、活跃程度预设/高级配置、老用户手动迁移和权限边界](./2.7.1-dev4-unified-life-agent-lifestyle-migration.md) · [实际接线 Mermaid](./diagrams/2.7.1-dev4-unified-life-agent-lifestyle-live.mmd)。普通社交、回访仍维持现有独立控制和发送许可；Windows/真实 B站未验收。
 
-## 当前开发预览：2.7.1-dev.4 Phase 6 Final 集成候选（在途排空，未封版）
+## 历史开发预览：2.7.1-dev.4 Phase 6 Final 集成候选（在途排空，未封版）
 
 - [跨进程旧决策/发送在途排空、可信评论共享事务、失败保守冻结与缺口矩阵](./2.7.1-dev4-phase6-final-social-drain.md) · [实际接线 Mermaid](./diagrams/2.7.1-dev4-phase6-final-social-drain-live.mmd)。仅完成交接前的可核验条件；**未开放 Life Agent 社交接管、未完成全域写入适配、未完成 Windows 和 B站验收**。旧 6h/6ijk 文档仍用于查单项来源和历史。
 
-## 当前开发预览：2.7.1-dev.4 Phase 6i/6j/6k 社交外发逐消息安全基础
+## 历史开发预览：2.7.1-dev.4 Phase 6i/6j/6k 社交外发逐消息安全基础
 
 - [旧 DM/评论发送适配器上的逐事件原子占位、可信回执、异常冻结与匿名管理诊断](./2.7.1-dev4-phase6ijk-social-send-transactions.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-phase6ijk-send-transactions-live.mmd)。只在旧 DM/评论外发路径接入；此时 **Life Agent 社交决策和外发仍未启用**，并非生产可用的双 owner 原子交接，也不覆盖自主分享/回访等其他发送入口。Windows/真实平台仍待验收。
 
-## 当前开发预览：2.7.1-dev.3 私密关系对自主生活的最小可信影响（增量）
+## 历史开发预览：2.7.1-dev.3 私密关系对自主生活的最小可信影响（增量）
 
 - [账号绑定的好友明确兴趣与鱼鱼自己的公开兴趣交集、关系熟悉度门禁、原模型调用、只读行为与匿名验收](./2.7.1-dev3-private-affinity-life-bridge.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev3-private-affinity-life-live.mmd)。只提供最多三条**匿名共同兴趣参考**，不从私信创造搜索词、候选工单或主动联系。旧无来源账号标签的好友兴趣**不会**参与；尚未形成完整私人共同经历与主动社交机制，真实环境仍需验收。
 
-## 当前开发预览：2.7.1-dev.3 自主生活意愿与跨场景只读探索（增量）
+## 历史开发预览：2.7.1-dev.3 自主生活意愿与跨场景只读探索（增量）
 
 - [真实来源、统一决策、模型自选探索目的、公开搜索、跨轮 BV 核实、短期意愿与管理中心验收](./2.7.1-dev3-unified-life-intentions.md) · [实际生产 Mermaid](./diagrams/2.7.1-dev3-unified-life-intentions-live.mmd)。复用原 `LifeOpportunities` 状态文件、`AutonomousPlanner`、Life Voice 和只读 B站适配器。现可从**账号归属明确的跨日兴趣或真实评论疑问**形成模型自主意愿；支持继续核实 BV、按真实作者身份读取公开投稿并选另一部 BV 核实，不依赖回到刷视频轮。没有开放自主关注／私信、私人聊天意愿外传或任意工具组合。
 
-## 当前开发预览：2.7.1-dev.3 评论感受实际工具调用链补充
+## 历史开发预览：2.7.1-dev.3 评论感受实际工具调用链补充
 
 - 视频 Agent 的 `bili_report_append` 可顺带提交经过同一 BV 评论阅读证据验证的**可选**临时感受；单独 `bili_discussion_note` 保留。管理中心新增“日报后未附感受”匿名计数，区别于成功/拒绝，不冒充鱼鱼的内心判断；无额外模型调用、无外发或待办权限变化。见 [dev.3 当前生活契机说明](./2.7.1-dev3-life-opportunities.md) 和 [评论只读 Mermaid](./diagrams/2.7.1-dev1-video-discussion-live.mmd)。
 
-## 当前开发预览：2.7.1-dev.3 多来源生活契机（评论、兴趣、公开交流）
+## 历史开发预览：2.7.1-dev.3 多来源生活契机（评论、兴趣、公开交流）
 
 - [生产链路、数据来源、选择回执、手动验收、账号隔离、剩余风险](./2.7.1-dev3-life-opportunities.md) · [现行 Mermaid 生产图](./diagrams/2.7.1-dev3-life-opportunities-live.mmd)。现支持本账号真实非空评论阅读后临时反应、有明确账号归属的跨日自主选片趋势、当前账号公开评论中跨日有证据的交流偏好；复用现有 `AutonomousPlanner`，不另设定时器或任务账本。仅可核实原有 BV 公开元数据或在本地复核公开交流，不增加社交发送权限。无账号归属的历史兴趣不迁移为行动契机；完整长期人物语义记忆和真实 Windows/B站仍待验收。
 
-## 当前开发预览：2.7.1-dev.2 补充：好友兴趣的时序纠错
+## 历史开发预览：2.7.1-dev.2 补充：好友兴趣的时序纠错
 
 - [白名单好友明确兴趣的历史/当前区别、弱化态度、同 UID 后续修订及原推荐安全边界](./2.7.1-dev2-friend-interest-correction.md) · [现行数据流 Mermaid](./diagrams/2.7.1-dev2-friend-interest-correction-live.mmd)。复用既有 `friend-learning.mjs` 证据账本和管理中心「好友兴趣变化」入口，不建立第二套长期人物记忆；通用跨源记忆纠错仍待后续阶段。
 
-## 当前开发预览：2.7.1-dev.2 补充：真实按需读取与匿名逐轮诊断
+## 历史开发预览：2.7.1-dev.2 补充：真实按需读取与匿名逐轮诊断
 
 - [生产接线、模型自主检索、UID 权限、失败保护及可观察性](./2.7.1-dev2-true-on-demand-retrieval.md) · [Mermaid 实际数据流](./diagrams/2.7.1-dev2-true-on-demand-live.mmd)。精简首轮不检索长期记忆、人物画像、梗；模型有需要才请求并由本 UID 的只读源返回。待办与推荐进度仍保留已有事实一致性守卫，不能将其写成全面动态检索。
 
-## 当前开发预览：2.7.1-dev.2 增量：后台对话上下文可选模式
+## 历史开发预览：2.7.1-dev.2 增量：后台对话上下文可选模式
 
 - [精简按需与原始完整双模式：覆盖范围、模型主动扩展证据、原契约安全约束、真实调用计数](./2.7.1-dev2-dialogue-context-modes.md) · [实际生产接线 Mermaid](./diagrams/2.7.1-dev2-dialogue-context-modes-live.mmd)。新安装默认精简；普通私信和使用共用批处理器的评论/@ 生效，**不作用于独立主人私信 Agent 或 DSH 主 Session**。需要额外证据时模型可多续推一次，未使用真实 AI 的质量/成本尚未验证。
 
-## 当前开发预览：2.7.1-dev.2 私信短期上下文治理
+## 历史开发预览：2.7.1-dev.2 私信短期上下文治理
 
 - [短期原文来源、自动与人工清理、账号/UID/权限边界及当前生产接线](./2.7.1-dev2-dm-memory-governance.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev2-dm-memory-governance-live.mmd)。只处理后台普通私信和主人专属 Agent 的短期原文生命周期；主 Session 语义整理、Life Memory、好友画像仍是各自现有来源，**尚未实现跨来源的完整语义纠错或统一遗忘审计**。
 
-## 当前开发预览：2.7.1-dev.1 视频评论区只读生活体验
+## 历史开发预览：2.7.1-dev.1 视频评论区只读生活体验
 
 - [真实评论区浏览、楼中楼只读预算、可信阅读回执与暂时主观反应](./2.7.1-dev1-video-discussion-life.md) · [实际生产接线 Mermaid](./diagrams/2.7.1-dev1-video-discussion-live.mmd)。自主视频轮独立决定是否阅读评论；复用现有 `bili_comments` / `bili_comment_thread`，在 Python 只读工具的实际接口结果上生成回执。`bili_discussion_note` 仅记录有本轮阅读证据的暂时问题/反应，不写兴趣档案、人物画像、长期记忆或待办；发送权限仍由原有闸门管理。**更广泛的长期认识纠错与生活契机协调仍未实施。**
 
@@ -332,6 +338,7 @@
 | 社交只读推荐意愿与已保存待办 | `interaction-batch.mjs` 的同一社交模型输出；`social-todo-intake.mjs` 来源/只读/意愿核验；`owner-todos.json` 原唯一任务账本；`social-todo-reply-contract.mjs` 保守出站一致性检查 | [dev.8 生产契约](./2.7.0-dev8-social-todo-commitment.md) |
 | 自主任务、完成进度与回访 | 已接受任务账本、执行回执、意愿及发送层 | [父子探索](./2.6.1-unified-exploration-relationship-visualization.md) · [普通私信进度](./2.6.2-dm-todo-progress.md) |
 | 公开评论成功回执与接收人 | `seen.md` 主账本；平台已核验的目标作者与当前账号 runtime 的确认索引，按 BV + 出站 rpid 匹配 | [公开回复接收人契约](./2.6.2-comment-recipient-receipts.md) |
+| 主人公开评论回忆（dev.22） | `recent-comments.mjs` 仅只读 `seen.md` + `seen/YYYY-MM.md` 成功回执，宿主账号切换截断；非私有记忆、非实时平台可见性 | [现行双入口接线与证据边界](./2.7.1-dev22-public-recall-unified.md) · [Mermaid](./diagrams/2.7.1-dev22-public-recall.mmd) |
 | 评论/@ 的来源与时效 | 平台通知、原评论回查及接线诊断 | [原评论恢复](./2.6.2-at-original-comment-recovery.md) · [通知时间](./2.6.2-at-invitation-diagnostic-times.md) |
 | 可选严格私信审核 | 仅在 `dmApprovalEnabled=true` 时识别投喂申请；默认关闭，不作为普通自主交流的前置条件 | [私信自主决策与 P6-A/B](./2.7.0-unified-social-agency-plan.md) |
 | 后台普通私信与主人专属 Agent 的短期聊天原文保留 | `dm-context-retention.mjs` 控制普通私信的 14 天近期原文和 7 天旧来信片段，`owner-dm-agent.mjs` 控制主人专用短期会话；不会影响主 Session 语义记忆、Life Memory、好友画像、拒联及收件去重 | [2.7.1-dev.2 记忆治理接线](./2.7.1-dev2-dm-memory-governance.md) |
@@ -348,7 +355,7 @@
 
 `Life Voice Context` 是自动生成文字时的人格、成长与连续情绪的唯一装配层。各场景只追加任务事实、互动历史与授权相关数据，不能重新在模型提示中拼一份情绪／成长描述。主 Session 的长期记忆检索与稳定成长人设是不同职责。详情见 [人格上下文](./2.6.2-life-voice-context.md)。
 
-## 当前图（编辑源优先）
+## 历史系统基线图（2.6.2，非 dev.22 的最新接线）
 
 - [开发者架构 Mermaid](./diagrams/2.6.2-life-system-current.mmd) · [SVG](./diagrams/2.6.2-life-system-current.svg)
 - [用户理解版 Mermaid](./diagrams/2.6.2-life-system-user.mmd) · [SVG](./diagrams/2.6.2-life-system-user.svg)
