@@ -53,11 +53,11 @@ test('私信方案不改变好友列表、额度和主人独立工具授权',()=
  assert.match(js,/selectedChoice\('dm-conversation-choice'\)!=='custom'\|\|\$\('dm-stranger-enabled'\)\.checked \? \{dmStrangerOnce:false\}/)
  assert.match(js,/title:'确认开放陌生人私信'/)
 })
-test('视频分享卡只改变候选授权、发送授权及每日上限',()=>{
+test('视频分享卡只改变候选及发送授权，不保留默认每日次数硬上限',()=>{
  const p=objectFromSource('socialSharePlans')
- assert.deepEqual(Object.keys(p.free).sort(),['auto','enabled','max'])
+ assert.deepEqual(Object.keys(p.free).sort(),['auto','enabled'])
  assert.equal(p.free.auto,true)
- assert.equal(p.free.max,100)
+ assert.equal(p.free.max,undefined)
  assert.equal(p.draft,undefined)
  assert.equal(p.off.enabled,false)
  assert.match(js,/if\(enabled&&auto&&\(!previous\.socialAutoSend\|\|!previous\.socialVideoRecommendationsAuthorizedV2\)/)

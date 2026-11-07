@@ -31,13 +31,13 @@ test('memory and whitelist have illustrated, responsive cards without replacing 
   assert.match(html,/\.friend-directory-card/)
   assert.match(html,/@media\(max-width:590px\)/)
 })
-test('outreach is automatic-choice only, >=50 preset and no operator approval',()=>{
+test('outreach is automatic-choice only, no obsolete quota and no operator approval',()=>{
   assert.match(html,/name="social-share-choice" value="free"/)
   assert.match(html,/name="social-share-choice" value="off"/)
   assert.match(html,/name="social-share-choice" value="custom"/)
   assert.doesNotMatch(html,/name="social-share-choice" value="draft"/)
-  assert.match(js,/free:\{enabled:true,auto:true,max:100\}/)
-  assert.match(html,/id="social-daily-limit"[^>]+min="50"[^>]+max="1000"/)
+  assert.match(js,/free:\{enabled:true,auto:true\}/)
+  assert.doesNotMatch(html,/id="social-daily-limit"/)
   assert.match(server,/body\?\.action==='dismiss'\|\|body\?\.action==='send'/)
   assert.match(server,/human-approval-not-allowed/)
   assert.match(share,/videoRecommendationsOnly&&!automatic/)
@@ -46,7 +46,7 @@ test('outreach is automatic-choice only, >=50 preset and no operator approval',(
 })
 test('settings remain real native inputs; visual cards do not auto-save or override previous permissions',()=>{
   for(const id of ['life-v2-mode','life-v2-pace','life-v2-save-btn','social-save','dm-settings-save','owner-dm-agent-save','owner-comment-agent-enabled']) assert.match(html,new RegExp(`id="${id}"`))
-  assert.match(js,/socialOutreachDailyLimit/)
+  assert.doesNotMatch(js,/socialOutreachDailyLimit/)
   assert.match(js,/confirm:/)
   assert.match(server,/dmApprovalEnabled===true/)
 })

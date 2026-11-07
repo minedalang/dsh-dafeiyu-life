@@ -11,7 +11,7 @@ import {apply} from '../index.js'
 const read=file=>readFileSync(new URL('../'+file,import.meta.url),'utf8')
 test('快速设置实际可保存、原页参数保持同一配置键，模型仍独立配置',()=>{
   const html=read('lib/management-console.html'),js=read('lib/management-console.js'),server=read('index.js')
-  for(const id of ['quick-life-section','quick-memory-section','quick-social-section','quick-life-save','quick-memory-save','quick-dm-save','quick-share-save','quick-memory-enabled','quick-reflection-enabled','quick-share-limit'])
+  for(const id of ['quick-life-section','quick-memory-section','quick-social-section','quick-life-save','quick-memory-save','quick-dm-save','quick-share-save','quick-memory-enabled','quick-reflection-enabled'])
     assert.match(html,new RegExp('id="'+id+'"'))
   assert.match(js,/quickConfirmSave\('memory'/)
   assert.match(js,/quickConfirmSave\('life'/)
@@ -41,7 +41,7 @@ test('未验证安装不能增加社交许可；保存时必须有同版本快�
   const revision=quickSocialState(cfg).revision
   assert.throws(()=>quickSocialPlan(cfg,{channel:'dm',choice:'free',revision,previewOnly:true},{ready:false}),/先完成/)
   assert.throws(()=>quickSocialPlan(cfg,{channel:'share',choice:'autonomous',dailyLimit:100,revision,previewOnly:true},{ready:false}),/先完成/)
-  assert.throws(()=>quickSocialPlan(cfg,{channel:'share',choice:'autonomous',dailyLimit:3,revision,previewOnly:true},{ready:true}),/50–1000/)
+  assert.equal(quickSocialPlan(cfg,{channel:'share',choice:'autonomous',revision,previewOnly:true},{ready:true}).patch.socialOutreachDailyLimit,undefined)
   assert.throws(()=>quickSocialPlan(cfg,{channel:'dm',choice:'friends',revision:'stale',previewOnly:true},{ready:true}),/更新/)
   assert.throws(()=>quickSocialPlan(cfg,{channel:'dm',choice:'friends',revision,previewOnly:false},{ready:true}),/明确确认/)
   const safe=quickSocialPlan(cfg,{channel:'share',choice:'paused',revision,previewOnly:true},{ready:false})

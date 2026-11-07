@@ -1,4 +1,8 @@
-## 当前版本 2.7.1-dev.19：真实生活时间线面向用户的展示边界（未发布）
+## 当前开发版本 2.7.1-dev.20：共享 Life 状态契约、主人经历回忆及低额门禁退役（未发布）
+
+[当前唯一入口、数据流和风险边界](./2.7.1-dev20-life-contract-owner-recall.md) · [可编辑 Mermaid 架构图](./diagrams/2.7.1-dev20-life-contract-owner-recall.mmd)。Life 管全局生活协调，专业 Agent 保留授权内局部自主，状态来自原人格/情绪/兴趣/记忆/关系源；行动只由可信回执反向反馈。主人查询自己的公开经历优先读同账号记录，旧版两种低额计数门禁退役，真实平台及跨日验收待完成。历史各版图仍保留但不再标为当前。
+
+## 历史版本 2.7.1-dev.19：真实生活时间线面向用户的展示边界（未发布）
 
 [UI 投影原则、去重与回归](./2.7.1-dev19-owner-life-timeline.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev19-owner-life-timeline.mmd)。管理页只展示真实可读的生活事件，评论在正文已存在时不再显示第二条技术回执；可信事务和视频核验日志仍按原渠道保留，不改变外发许可或续行依据。
 
@@ -14,31 +18,31 @@
 
 [可信评论读回、动态异常恢复与证据展示](./2.7.1-dev16-comment-receipts-recovery.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev16-comment-receipts-recovery.mmd)。顶层视频评论由平台 ID、作者、视频和原文比对，读不到并非未发送；动态重启遗留的 `publishing` 不自动重试。Life 时间线按证据源展示，原权限与限额不改。真实 B站、Windows、72 小时验收尚未执行。
 
-## 当前版本 2.7.1-dev.15：独立视频状态／动态发布核验（未发布）
+## 历史版本 2.7.1-dev.15：独立视频状态／动态发布核验（未发布）
 
 [生产数据流、核验边界及旧记录兼容](./2.7.1-dev15-independent-platform-receipts.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev15-independent-platform-receipts.mmd)。视频 Agent 内部四类可查询动作由宿主单独只读回查，生活动态额外匹配作者、ID 和正文后才成为 Life 已核验经历；未知状态继续冻结，不重新发。旧社交事务、账号权限、动态通知线索、Life 公平调度均保留；Windows/B站真实接口与 72 小时验收尚未完成。
 
-## 当前版本 2.7.1-dev.14：统一可信行动续行（未发布）
+## 历史版本 2.7.1-dev.14：统一可信行动续行（未发布）
 
 [完成回执接线与安全边界](./2.7.1-dev14-unified-completion-continuation.md) · [Mermaid 架构图](./diagrams/2.7.1-dev14-unified-completion-continuation.mmd)。正式私信、评论等收到可靠平台回执后可触发独立 Life 再考虑；内部反思和熟人已发送回执也可触发。视频进程完成仍沿用原轮次链；动态仅 API 受理、Python 视频写入仅自报时不作完成认定。**原权限、回执及不可重发门禁不变，Windows/B站及 72 小时真实生活尚未验收。**
 
-## 当前版本 2.7.1-dev.13：Life 公平调度、可信行动续行与时间线（未发布）
+## 历史版本 2.7.1-dev.13：Life 公平调度、可信行动续行与时间线（未发布）
 
 [生产数据流、恢复及安全边界](./2.7.1-dev13-life-continuation-fairness.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev13-life-continuation-fairness.mmd)。沿用 dev.12 账号事件账本，不新增行动发送器。仅可信只读执行完成触发新考虑，分类候选轮换避免单一渠道遮蔽其他来源；从账本显示真实读取回执，不代表观看或发言。Windows／真实 B站及全渠道长期队列尚待验收。
 
-## 当前版本 2.7.1-dev.12：Life 匿名候选续行与 firststart 统一流程（未发布）
+## 历史版本 2.7.1-dev.12：Life 匿名候选续行与 firststart 统一流程（未发布）
 
 [当前接线、合同与限制](./2.7.1-dev12-life-cue-continuity-firststart.md) · [Mermaid 图](./diagrams/2.7.1-dev12-life-cue-continuity-firststart.mmd)。原账号事件账本可承载更多非视频契机并保留有界延期；firststart 合并成一个五步流程。仍非全渠道永久执行队列，真实平台与长时生活未验收。
 
-## 当前版本 2.7.1-dev.11：多源自主生活与统一评论容量（未发布）
+## 历史版本 2.7.1-dev.11：多源自主生活与统一评论容量（未发布）
 
 [实际生产架构、合同、风险和验收](./2.7.1-dev11-multi-origin-life-comments.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev11-multi-origin-life-comments.mmd)。Life 现在即使没有视频机会，也可基于**本账号有作用域的真实双向好友互动**自主考虑私信；外发需要独立启用且保留白名单、事实核验和原跨进程发送事务。所有公开评论尝试默认共用每日 1000 条上限，老用户不自动改已保存值。跨平台高频、持久统一候选池、Windows/B站实机及长程人格因果**未验收**。下方 dev.10 为历史阶段增量，任何 1/2/4 轮/天叙述均为已撤销设计。
 
-## 当前版本 2.7.1-dev.10：生活节奏真实调度（未发布）
+## 历史版本 2.7.1-dev.10：生活节奏真实调度（未发布）
 
 [档位、视频执行门禁、续行及测试](./2.7.1-dev10-life-pace-behavior.md) · [Mermaid 架构图](./diagrams/2.7.1-dev10-life-pace-behavior.mmd)。修正版安静/自然/活跃只区分生活考虑节奏；视频 Agent 的额外每日个位数轮次限制已撤销，保留 20 分钟最低启动间隔及原平台门禁。Life 仍可选择休息，不能凭“活跃”绕开平台授权。跨渠道持久候选池、Windows/B站/72小时真实验收尚未完成。
 
-## 当前版本 2.7.1-dev.9：跨进程 Life 决策准入与设置回读（开发阶段，未发布）
+## 历史版本 2.7.1-dev.9：跨进程 Life 决策准入与设置回读（开发阶段，未发布）
 
 [dev.9 设计与实现边界](./2.7.1-dev9-durable-life-admission.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev9-durable-life-admission.mmd)。同账号跨进程只允许一个尚未结算的 Life 意愿批准；异常中断需离线审查，不自动重试平台外发。设置本地保存新增回读验证，原生 DSH 写入失败仍可单独诊断。**持久候选池和重启后的自动续行尚未完成**，不得宣称 Life 1.0 正式验收通过。
 
@@ -50,7 +54,7 @@
 
 [当前接线、诊断、兼容与发布限制](./2.7.1-dev8-quick-setup-life-context.md)。快速设置采用导航卡，不建立配置副本；已完成的老用户只要求看一遍，不重置运行授权。`life-context-unavailable` 是技术阻断而非自主休息，可选读取失败安全降级；真实时间线不能把视频轮次统计当作已评论/关注。
 
-## 当前版本 2.7.1-dev.8：Life 同进程意愿排他（尚未发布）
+## 历史版本 2.7.1-dev.8：Life 同进程意愿排他（尚未发布）
 
 [实际接线、风险与验收](./2.7.1-dev8-life-local-admission.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev8-life-local-admission.mmd)。对 RC10 的 140 毫秒机会窗口加同账号未结算保护，并禁止 8 候选溢出拆成多次批准；跨进程、跨重启候选续行**仍缺失**，`releaseReady=false`。以下 RC10 / RC9 为历史开发增量，非当前完整事实清单。
 

@@ -161,9 +161,11 @@ test('cross-channel policy changes apply to subsequent reservations without rest
     policy.crossChannelMinutes=0;
     const b=rhythm.reserve({uid:PERSON,channel:'at'});assert.equal(b.ok,true);
     assert.equal(rhythm.settle(b.id,{outcome:'sent',receiptId:'at-2'}).ok,true);
-    assert.equal(rhythm.reserve({uid:PERSON,channel:'dm'}).reason,'cross-channel-person-limit');
+    const c=rhythm.reserve({uid:PERSON,channel:'dm'});assert.equal(c.ok,true,'retired per-person cap cannot block normal contact');
+    assert.equal(rhythm.settle(c.id,{outcome:'sent',receiptId:'dm-3'}).ok,true);
     policy.dailyPerPerson=3;
-    assert.equal(rhythm.reserve({uid:PERSON,channel:'dm'}).ok,true);
+    const d=rhythm.reserve({uid:PERSON,channel:'dm'});assert.equal(d.ok,true);
+    assert.equal(rhythm.settle(d.id,{outcome:'sent',receiptId:'dm-4'}).ok,true);
     policy.dailyPerPerson=1;
     assert.equal(rhythm.reserve({uid:'47723',channel:'dm'}).ok,true,'other UID must have an independent rolling cap');
   }finally{await rm(dataDir,{recursive:true,force:true})}
@@ -173,12 +175,15 @@ test('P6 settings are persisted through one config schema and used by all three 
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8');
   const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8');
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8');
-  for(const [key,defaultNumber] of [['dmP6MaxBubbles',3],['commentP6MaxBubbles',2],['socialP6MinDelayMinutes',5],['socialP6MaxDelayMinutes',360],['socialRhythmCrossChannelMinutes',30],['socialRhythmDailyPerPerson',8]]){
+  for(const [key,defaultNumber] of [['dmP6MaxBubbles',3],['commentP6MaxBubbles',2],['socialP6MinDelayMinutes',5],['socialP6MaxDelayMinutes',360],['socialRhythmCrossChannelMinutes',30]]){
     assert.match(index,new RegExp(key+':\\s*z\\.natural\\(\\)\\.default\\('+defaultNumber+'\\)'));
     assert.match(index,new RegExp('cfg\\.'+key));
     assert.match(js,new RegExp(key));
   }
-  for(const id of ['dm-p6-max-bubbles','comment-p6-max-bubbles','social-p6-min-delay','social-p6-max-delay','social-rhythm-cooldown','social-rhythm-daily'])
+  // Historical daily-person setting remains in schema but is retired from execution and UI.
+  assert.match(index,/socialRhythmDailyPerPerson: z\.natural\(\)\.default\(0\)/);
+  assert.doesNotMatch(html,/id="social-rhythm-daily"/);
+  for(const id of ['dm-p6-max-bubbles','comment-p6-max-bubbles','social-p6-min-delay','social-p6-max-delay','social-rhythm-cooldown'])
     assert.equal(html.split(`id="${id}"`).length-1,1);
   assert.match(html,/data-open-settings="dm-p6-settings"/);
   assert.match(html,/data-target-tab="dm"/);

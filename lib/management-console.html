@@ -980,7 +980,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
         <h5>主动视频兴趣分享</h5><div class="quick-choice-grid two" role="radiogroup" aria-label="快速设置主动视频分享">
           <label class="quick-option"><input type="radio" name="quick-share-choice" value="paused"><strong>☾ 暂不主动分享</strong><small>关闭新的自主兴趣推荐</small></label>
           <label class="quick-option"><input type="radio" name="quick-share-choice" value="autonomous"><strong>🐟 鱼鱼自主分享</strong><small>仅向已授权收件人分享，仍由鱼鱼决定是否发送</small></label></div>
-        <label class="quick-limit-label" for="quick-share-limit">每日分享上限（50–1000 条）<input type="number" id="quick-share-limit" min="50" max="1000" value="100" step="1" /></label>
+        <p class="muted">不设默认每日分享次数上限，由鱼鱼结合兴趣、情绪与关系自主决定；仍需已授权的收件人、真实选片和发送防重。</p>
         <p id="quick-share-current" class="quick-current" role="status">读取分享授权…</p><div class="quick-config-actions"><button type="button" class="primary" id="quick-share-save">确认保存自主分享</button><button type="button" data-open-tab="social" data-open-anchor="social-outreach-section">查看白名单与细节 ↗</button></div>
         <p class="muted" style="font-size:12px">社交卡片只修改对应配置，不代鱼鱼批准消息。开启仍受账号验证、白名单、渠道授权、冷却、去重及真实平台回执约束；默认不主动扩大旧权限。</p>
       </section>
@@ -1606,26 +1606,26 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="toolbar" style="margin-top:12px"><button id="friend-save-all" class="primary">保存名册、权限及画像</button></div>
 </div>
 </details>
-<details id="social-outreach-group" class="social-category"><summary><strong>🐟 主动视频推荐</strong><span>鱼鱼是否给已授权好友推荐视频，以及对应私信额度</span></summary>
+<details id="social-outreach-group" class="social-category"><summary><strong>🐟 主动视频推荐</strong><span>鱼鱼是否给已授权好友推荐视频，以及对应私信权限</span></summary>
 <div id="social-outreach-section" class="card"><h4>🐟 主动视频兴趣推荐 · 私信</h4>
 <p class="muted">鱼鱼可以在<strong>真实入选公开视频之后</strong>，自主判断是否把有意思的发现私信给主人；其他白名单好友仍要求可核对的兴趣匹配。没有合适的视频、她不想打扰对方，或者超过额度时，都可以保持沉默。<strong>新安装默认开启；老用户保留原来的授权选择</strong>，不会因升级擅自开启外发。选择好友的「私信推荐」渠道仍是独立的收件人许可。</p>
-<div class="social-share-layout"><div class="social-share-visual"><span class="social-share-kicker">FISH · SOCIAL CHOICE</span><strong>分享是一种意愿，不是待审批任务</strong><p>可配置权限与额度，但每条真实消息是否发送，由鱼鱼独立决定。</p></div><details id="social-outreach-legacy" class="inset" open><summary>视频推荐与自主发送</summary>
+<div class="social-share-layout"><div class="social-share-visual"><span class="social-share-kicker">FISH · SOCIAL CHOICE</span><strong>分享是一种意愿，不是待审批任务</strong><p>可配置权限，但每条真实消息是否发送，由鱼鱼独立决定。</p></div><details id="social-outreach-legacy" class="inset" open><summary>视频推荐与自主发送</summary>
 <div class="choice-presets" role="radiogroup" aria-label="主动分享方案">
-<label class="choice-card"><input type="radio" name="social-share-choice" value="free"><span class="choice-icon" aria-hidden="true">✦</span><strong>自主分享</strong><small>鱼鱼自己决定；预设每日上限 100 条</small></label>
+<label class="choice-card"><input type="radio" name="social-share-choice" value="free"><span class="choice-icon" aria-hidden="true">✦</span><strong>自主分享</strong><small>鱼鱼自己决定；不设默认日次数上限</small></label>
 <label class="choice-card"><input type="radio" name="social-share-choice" value="off"><span class="choice-icon" aria-hidden="true">🌙</span><strong>暂不主动分享</strong><small>不生成新的主动视频推荐</small></label>
-<label class="choice-card"><input type="radio" name="social-share-choice" value="custom"><span class="choice-icon" aria-hidden="true">⚙</span><strong>自定义上限</strong><small>设置 50–1000 条，不改变鱼鱼的选择权</small></label>
+<label class="choice-card"><input type="radio" name="social-share-choice" value="custom"><span class="choice-icon" aria-hidden="true">⚙</span><strong>保留现有授权</strong><small>不会恢复旧版低额每日限制</small></label>
 </div><p id="social-share-choice-status" class="choice-review" role="status">正在读取原有推荐权限…</p>
 <fieldset class="outreach-permissions"><legend>🐟 鱼鱼的自主分享</legend>
-<details id="social-share-advanced" class="choice-advanced"><summary>⚙️ 自定义推荐规则</summary><p class="muted">只发给已授权的主人和好友，仍受平台权限与 14 天冷却限制。</p>
+<details id="social-share-advanced" class="choice-advanced"><summary>⚙️ 自定义推荐规则</summary><p class="muted">只发给已授权的主人和好友，仍受权限、跨渠道冷却与防重保护。</p>
 <label class="checkline"><input id="social-life-intent-enabled" type="checkbox">启用自主视频兴趣推荐（新安装默认开启）</label>
 <p class="muted">只在有新入选的真实视频后考虑推荐，模型可以选择不联系；已保存的旧开关状态保持不变。未启用时不会生成新草稿或私信。</p>
 <input id="social-auto-send" type="checkbox" hidden aria-hidden="true" tabindex="-1">
 <p class="muted">没有逐条审核或人工代发。仅在鱼鱼自主决定、收件人允许且通过全部安全门禁时发送；关闭推荐即停止新推荐。历史仅草稿配置不会被自动升级为发送授权。</p>
-<div class="fields"><div><label for="social-daily-limit">每日主动推荐私信上限（50–1000）</label><input id="social-daily-limit" type="number" min="50" max="1000" step="1" value="100"><small class="setting-note">上限不代表发送目标；鱼鱼可以一条也不发。老用户既有低额度继续保留，调整并保存后才改变。</small></div></div>
+<p class="muted">已停用旧版每日分享次数硬上限和同好友 14 天统一冷却；同一视频不能重复推荐，接收授权与平台防刷屏仍有效。</p>
 </details>
 <div class="toolbar"><button id="social-save" class="primary">保存推荐权限并确认授权</button><button id="social-refresh" >刷新推荐记录</button></div>
 <p id="social-status" class="muted" role="status">尚未读取推荐记录</p><div id="social-drafts" class="records records-scroll tall"></div>
-<p class="muted">不会自动发送旧版的任务回访或情绪联系。无新入选视频、没有合格收件人、模型决定沉默、达到每日额度或 14 天冷却，都不会私信；发送不确定时禁止自动重试。</p>
+<p class="muted">不会自动发送旧版的任务回访或情绪联系。无新入选视频、没有合格收件人、模型决定沉默、失去发送授权或触发安全防重复保护，都不会私信；发送不确定时禁止自动重试。</p>
 </fieldset></details></div>
 </div>
 <div class="card" id="life-friend-outreach-card" style="margin-top:12px">
@@ -1898,7 +1898,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div><label for="social-p6-min-delay">全渠道自然续聊最短延迟（分钟，5–360）</label><input id="social-p6-min-delay" type="number" min="5" max="360" value="5"></div>
 <div><label for="social-p6-max-delay">全渠道自然续聊最长延迟（分钟，5–360）</label><input id="social-p6-max-delay" type="number" min="5" max="360" value="360"></div>
 <div><label for="social-rhythm-cooldown">不同渠道联系同一人后的冷却（分钟，0–1440）</label><input id="social-rhythm-cooldown" type="number" min="0" max="1440" value="30"></div>
-<div><label for="social-rhythm-daily">同一人跨私信、评论、@ 近24小时最大发送次数（1–100）</label><input id="social-rhythm-daily" type="number" min="1" max="100" value="8"><small class="setting-note">独立于每种渠道原有硬额度；尚未确认发送结果的气泡不会自动重发。此处调整的是全渠道共享节奏。</small></div>
+<p class="muted">跨私信／评论／@ 同一人每日 8 次旧硬上限已取消。保留跨渠道冷却、独立授权、平台限流与未知发送结果防重。</p>
 <div hidden><input id="dm-approval-enabled" type="checkbox" aria-hidden="true"></div>
 <div hidden><label for="dm-phrase">历史申请暗号（仅兼容读取）</label><input id="dm-phrase" maxlength="60"></div>
 </div></div>
