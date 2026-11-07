@@ -1,3 +1,7 @@
+## 当前版本 2.7.1-dev.14：统一可信行动续行（未发布）
+
+[完成回执接线与安全边界](./2.7.1-dev14-unified-completion-continuation.md) · [Mermaid 架构图](./diagrams/2.7.1-dev14-unified-completion-continuation.mmd)。正式私信、评论等收到可靠平台回执后可触发独立 Life 再考虑；内部反思和熟人已发送回执也可触发。视频进程完成仍沿用原轮次链；动态仅 API 受理、Python 视频写入仅自报时不作完成认定。**原权限、回执及不可重发门禁不变，Windows/B站及 72 小时真实生活尚未验收。**
+
 ## 当前版本 2.7.1-dev.13：Life 公平调度、可信行动续行与时间线（未发布）
 
 [生产数据流、恢复及安全边界](./2.7.1-dev13-life-continuation-fairness.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev13-life-continuation-fairness.mmd)。沿用 dev.12 账号事件账本，不新增行动发送器。仅可信只读执行完成触发新考虑，分类候选轮换避免单一渠道遮蔽其他来源；从账本显示真实读取回执，不代表观看或发言。Windows／真实 B站及全渠道长期队列尚待验收。

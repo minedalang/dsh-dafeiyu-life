@@ -1,0 +1,25 @@
+flowchart TD
+  S[Life 统一意愿: 自主选择 / 休息] --> A{已授权的原行动入口}
+  A --> DM[DM / 评论 / 视频分享 / 回访]
+  A --> FD[熟人主动联系]
+  A --> RO[只读待办 / 探索 / 反思]
+  A --> VI[视频 Agent 委派]
+  A --> DY[动态创作]
+  DM --> TX[原 B站事务与平台回执]
+  FD --> TX
+  RO --> RV[原只读或反思成功回执]
+  VI --> PC[视频进程轮次结束回执]
+  DY --> UV[仅 API accepted-unverified]
+  TX -->|confirmed| W[统一可信完成回调]
+  TX -->|unknown / failed| HOLD[冻结或停止 不自动重发]
+  RV -->|verified| W
+  PC -->|process finished| ROUND[原 video-round-ended 提醒]
+  UV --> HOLD
+  W --> J[(原 LifeAgentEvents v1 匿名账号账本)]
+  ROUND --> J
+  J --> E[experience-ready + 去重 / 退避 / 公平 / 跨重启]
+  E --> Q{生活节奏与权限重新核验}
+  Q -->|有真实候选| S
+  Q -->|没兴趣 / 休息| REST[正常休息或延期]
+  J --> UI[真实生活时间线: 回执级别区分]
+  style HOLD fill:#f4e3dc,stroke:#b2745c

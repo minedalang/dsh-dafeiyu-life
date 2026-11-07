@@ -4954,6 +4954,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return {voice,world,degradedStages}
     },
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'interaction'}),
+    // Completion notifications are non-executing, account-bound and de-duped
+    // in the same durable Life event ledger. Proofs originate only from the
+    // already verified original channel/transaction, never a model claim.
+    onVerifiedAction:({kind,sourceRef,scope})=>{
+      if(scope!==trustedLifeAccountTag())return
+      try{const r=lifeAgentEvents.recordVerifiedCompletion({kind,sourceRef})
+        if(r?.ok===false)log('Life 可信完成续行未登记：'+String(r.reason||'invalid-source').slice(0,70))
+      }catch(e){log('Life 可信完成续行待补偿：'+String(e?.message||e).slice(0,80))}
+    },
     opportunityWindowMs:140,crossChannelCooldownMs:30_000,
   })
   lifeVideoActionBridge=createLifeVideoActionBridge({
