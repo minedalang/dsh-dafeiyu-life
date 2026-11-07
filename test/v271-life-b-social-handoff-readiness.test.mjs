@@ -25,10 +25,10 @@ function make(t){
 const inspectEmpty=()=>({ok:true,accountReady:true,channels:{dm:{confirmed:0,attempted:0,uncertain:0,incomplete:0},
   comment:{confirmed:0,attempted:0,uncertain:0,incomplete:0}}})
 
-test('both channels diagnose missing Life sender even with verified account and no legacy work',t=>{
+test('both channels remain legacy even with a clean readiness report until explicitly switched',t=>{
   const x=make(t),status=x.ownership.status()
   for(const channel of ['dm','comment']){
-    assert.deepEqual(status.handoffReadiness.channels[channel].preflightBlockers,['life-social-sender-not-installed'])
+    assert.deepEqual(status.handoffReadiness.channels[channel].preflightBlockers,[])
     assert.equal(status.handoffReadiness.channels[channel].preflightReady,false)
     assert.equal(x.ownership.route({channel}).owner,'legacy')
   }
@@ -38,7 +38,7 @@ test('a held rehearsal remains a hard blocker on exactly one channel',t=>{
   const x=make(t),claim=x.fence.reserve({channel:'dm'})
   assert.equal(claim.ok,true)
   assert.ok(x.ownership.readiness().channels.dm.preflightBlockers.includes('handoff-reservation-held'))
-  assert.equal(x.ownership.readiness().channels.comment.preflightBlockers.length,1)
+  assert.equal(x.ownership.readiness().channels.comment.preflightBlockers.length,0)
   assert.equal(x.ownership.route({channel:'dm'}).reason,'handoff-fence-held')
   assert.equal(x.fence.releaseDecisionOnly({token:claim.token}).ok,true)
 })
@@ -118,12 +118,13 @@ test('readiness is privacy-preserving, fail-closed, account-scoped and not a cre
   assert.equal(JSON.stringify(status).includes(ACCOUNT),false)
   assert.equal(JSON.stringify(status).includes('123456789'),false)
 })
-test('source wiring preserves no live take-over or auto-rehearsal on ordinary wake',()=>{
+test('source wiring has no automatic cutover; only manual, paused maintenance may reserve',()=>{
   const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   assert.match(source,/getSendTransactionStatus:\(\)=>socialSendTransaction\.inspect\(\)/)
   assert.match(source,/getSocialShadowStatus:\(\)=>lifeSocialShadow\?\.status\(\)/)
   assert.equal((source.match(/socialHandoffFence\.rehearse\(/g)||[]).length,1,'only the explicit developer endpoint may run rehearsal')
-  assert.doesNotMatch(source,/socialHandoffFence\.reserve\(/)
+  assert.equal((source.match(/socialHandoffFence\.reserve\(/g)||[]).length,1)
+  assert.match(source,/body\?\.confirmation!==/)
   assert.doesNotMatch(source,/requester:'life-agent'/)
 })
 

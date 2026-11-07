@@ -1,12 +1,12 @@
 # 大肥鱼 · DSH 生活系统：AI 开发约定
 
-> 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未验收（旧社交仍是唯一发送决策者，情绪驱动主动问候暂停，成长因果与 Windows／真实平台证据欠缺）；不通过不得封 RC，所有改动应同步架构图、文档与测试。 管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
+> 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未验收（社交默认仍是旧决策器，评论可受控试点切换，情绪驱动主动问候暂停，成长因果与 Windows／真实平台证据欠缺）；不通过不得封 RC，所有改动应同步架构图、文档与测试。 管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
 
 ## 项目与代码入口
 
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.7`（新增 Life 总览 UI、统一可回忆公开经历与兴趣的只读世界视图、跨系统状态诊断；正式社交回复仍由旧处理器独占，完整成长因果与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.7`（新增 Life 总览 UI、统一可回忆公开经历与兴趣的只读世界视图、跨系统状态诊断；评论可受控试点切换，私信仍归旧处理器；成长因果与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
-- 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限；dev.4 旧视频定时驱动已退役，明确保存暂停后普通手动生活唤醒也停止；当前旧社交仍为唯一发言决策者。Phase 6/7/8 迁移核验见 [只读迁移门禁](docs/architecture/2.7.1-dev4-life-transition-readiness.md)；设置及当前增量见 [Life 双节奏与预算架构](docs/architecture/2.7.1-life-a-dual-lane-budget.md)；旧社交真实发言权不变。
+- 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限；dev.4 旧视频定时驱动已退役，明确保存暂停后普通手动生活唤醒也停止；社交默认归旧决策器，评论可受控切换。Phase 6/7/8 迁移核验见 [只读迁移门禁](docs/architecture/2.7.1-dev4-life-transition-readiness.md)；设置及当前增量见 [Life 双节奏与预算架构](docs/architecture/2.7.1-life-a-dual-lane-budget.md)；旧发言授权仍按原门禁执行。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
 
 ## 产品原则和不可突破的边界
@@ -52,6 +52,9 @@
 - `dev.9` 发布门禁审计修正：`SocialTodoReplyContract` 对明确数量的入账声称、同条消息内先否定后肯定的承诺及“全部记下”与已核实多个 BV 不一致的情况，在发送前校验真实待办条数；失败仍只交同一模型自主修订，绝不拼接固定回复。与 `dev.8` 共用原账本和原发送门禁，架构接线未变，未完成 Windows／B站验收前不发布正式版。
 - `dev.8` 对已核实的陌生人/好友推荐复用原 `SocialAutonomyDecisionContract` 与 `owner-todos` 唯一账本；模型同一轮自主输出回复/结构化只读候选，可信验证成功才允许声称入账。回执不一致最多追加一次同一 Life Voice 模型修订，禁止程序生成固定对外回复；纠错再次失败则不外发。仅记录不含正文/UID/原始 JSON 的限量决策诊断。见 `docs/architecture/2.7.0-dev8-social-todo-commitment.md`。
 
+## 2.7.1-dev.7 RC 评论渠道受控生产交接
+
+- 同一 `SocialHandoffFence` 持久化账号/渠道归属与 generation；默认 legacy，只有维护者明确停机确认、在途及未知发送清零后才能试点评论 Life owner，切换必须失效旧稿。私信、主人专属互动及主动推荐不得自动继承权限；真实 B站/Windows 验收前仍为 dev.7。见 `docs/architecture/2.7.1-rc-social-owner-controlled-cutover.md`。
 ## 2.7.1-dev.1 真实视频评论区观察边界
 
 - 自主视频轮开放原只读 `bili_comments` 与 `bili_comment_thread`；不得因为浏览评论自动发言、创建待办或认识评论者。视频轮的 Python MCP 环境明确标记 `BILI_DISCUSSION_VIDEO_AGENT=1`，每轮最多读取 6 条不同 BV 的评论列表、2 条已出现在本轮对应 BV 列表里的真实楼层；其他主人查询与后台互动不被这些视频轮额度影响。
@@ -63,7 +66,6 @@
 - `dm-context-retention.mjs` 只负责按 UID 清理后台普通私信中可给模型的短期原文：近期对话最长 14 天，旧来信片段最长 7 天，旧版无法证明日期的旧片段不得进入模型。`dmHistoryLimit=0` 不保留新的普通私信上下文。已读 ID、拒联、严格审批、未知发送结果和硬额度不是聊天原文，不因到期清理而重新开放发送。
 - 主人专属 Agent 保留自己的受限上下文，普通聊天最多 14 天，已成功确认的补充回复仍只保留 24 小时；与主 Session 语义记忆整理、好友交流偏好画像和可衰减 Life Memory 不合并原文。绝不能用过期私信正文生成新的事实或长期人物认识。
 - 管理中心「后台私信 → 私信上下文与记忆边界」提供当前账号的只读统计和显式清理按钮；清理只影响后台普通私信上下文，不能扩大任何外发授权，也不能清空安全去重或恢复已遗忘资料。详见 `docs/architecture/2.7.1-dev2-dm-memory-governance.md`。实际 Windows / B站环境仍需验收。
-
 
 ## 2.7.1-dev.3 生活行动契机首批接线
 
@@ -81,7 +83,6 @@
 - 原 `LifeOpportunities`、`AutonomousPlanner` 和管理页承接多来源，只能核实已知 BV 元数据或在本地复核公开交流证据，不能写入待办/记忆/社交关系，更不能私信、@、评论或关注。模型提交未知 ID、跨来源动作、当前数据源缺失都不能报告为真实意愿或成功回执；每日 AI 限额及发送门禁不变。见 `docs/architecture/2.7.1-dev3-life-opportunities.md`。
 
 - `dev.4` Life Agent 社交仍由旧 DM／评论回复器唯一决策和发送；Phase 6g 的只读影子审计限制同来源唯一配对和首次分类不可覆盖，不增加发送权（[`当前文档`](docs/architecture/2.7.1-dev4-phase6g-social-shadow-audit.md)）；Phase 5 单独、默认关闭的 `lifeAgentSocialContextOptIn` 只允许核验好友普通 DM 与公开评论的 10 分钟／420 字进程内影子上下文，模型额外分类计入原每日额度，不授权外发；生产说明见 [`Phase 5`](docs/architecture/2.7.1-dev4-life-agent-phase5-social-shadow.md)，旧归属契约见 [`Phase 4`](docs/architecture/2.7.1-dev4-life-agent-phase4-social-owner.md)。
-
 ## 任何架构变更必须同步更新文档（与代码同一次提交）
 
 以下均属于架构变更：新增／撤销统一层、改变状态来源、事件与数据流、模型上下文装配、渠道接线、权限边界、数据存储、业务 API 或恢复流程。
@@ -91,7 +92,6 @@
 - **必须补测试**：最终模型输入的唯一人格／情绪来源、跨 UID 与私密域隔离、可信事实与真实回执、权限和发送幂等、旧数据兼容。只有文档变更时验证文档索引与链接。
 - **必须交付可验收入口**：对新行为明确「怎样触发／在哪查看／真实执行回执／未执行与失败原因／隐私与成本边界」，不允许仅凭 UI 占位、提示词或单元测试宣称真实功能已验收；若无法观察，应明示缺口并优先补可见性。统一规范见 `docs/architecture/acceptance-observability-contract.md`。
 - 如果一轮修改确实**不改变架构**，在提交说明中写明“架构接线未变”；不能默默跳过判断。
-
 ## 研发、测试、提交和发布
 - 先定位真实生产入口及现有接口，再实现并添加定向测试；不要把脚本层 mock 当作真实 B站发送成功，也不要为了让测试变绿恢复错误的重复逻辑。
 - 检查 Node.js 全量测试、相关 Python 测试、`node selfcheck.mjs`、`npm pack --dry-run` 与 `git diff --check`；某项失败／超时应如实报告。

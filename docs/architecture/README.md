@@ -1,3 +1,7 @@
+## 2.7.1 RC 第五轮 · 评论渠道受控 Life 归属试点（尚未正式发布）
+
+- [社交生产所有权原子切换、旧稿失效、跨账号隔离和未知回执回滚边界](./2.7.1-rc-social-owner-controlled-cutover.md) · [Mermaid 可编辑架构图](./diagrams/2.7.1-rc-social-owner-controlled-cutover.mmd)。默认仍由旧处理器决定；维护接口仅允许评论试点，不开放 DM 交接。实际 B站、Windows 和长时间验收未完成。
+
 ## 2.7.1 RC 主人互动及回访外发门禁收口（未正式接管）
 
 - [主人私信 Agent、指令回执、写入型待办与回访的稳定来源、防重事务及既有所有权门禁](./2.7.1-rc-owner-outbound-gate-closure.md) · [Mermaid 生产路径](./diagrams/2.7.1-rc-owner-outbound-gate-closure.mmd)。Life 仍只读社交，owner 仍为 legacy；Windows/真实 B站待验收。

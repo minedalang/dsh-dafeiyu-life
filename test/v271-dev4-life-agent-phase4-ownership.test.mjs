@@ -65,12 +65,12 @@ test('no privilege escalation through unusual runtime mode or fake requester',()
 test('production DM + comment generation and sends recheck same account; read-only status is exposed',()=>{
   const src=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   assert.match(src,/createSocialDecisionOwnership\(\{[\s\S]*?getAccountTag:trustedLifeAccountTag/)
-  assert.match(src,/generateReply: async \(req\) => \{\s*const owner=socialDecisionOwnership\.route\(\{channel:'dm'\}\)/)
-  assert.match(src,/generateReply: async \(req\) => \{\s*const owner=socialDecisionOwnership\.route\(\{channel:'comment'\}\)/)
-  for(const channel of ['dm','comment'])assert.match(src,new RegExp("socialDecisionOwnership\\.route\\(\\{channel:'"+channel+"',expectedScope:owner\\.scope\\}\\)"))
+  assert.match(src,/generateReply: async \(req\) => \{\s*const owner=routedSocialOwner\('dm'\)/)
+  assert.match(src,/generateReply: async \(req\) => \{\s*const owner=routedSocialOwner\('comment'\)/)
+  for(const channel of ['dm','comment'])assert.match(src,new RegExp("socialDecisionOwnership\\.route\\(\\{channel:'"+channel+"',requester:owner\\.owner,expectedScope:owner\\.scope,expectedGeneration:owner\\.generation\\}\\)"))
   assert.match(src,/socialDecisionOwnership\.status\(\)/)
   const gate=readFileSync(new URL('../lib/social-decision-ownership.mjs',import.meta.url),'utf8')
-  assert.match(gate,/requester!=='legacy'/) // internal gate can never be model-controlled
+  assert.match(gate,/!\['legacy','life-agent'\]\.includes\(requester\)/) // only the durable gate, not a model, selects owner
 })
 test('offline acceptance runs with synthetic messages and fake snapshot; no B站, no model, no network',()=>{
   const r=runPhase4OfflineAcceptance()

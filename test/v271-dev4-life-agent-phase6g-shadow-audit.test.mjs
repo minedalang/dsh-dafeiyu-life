@@ -54,14 +54,14 @@ test('account change, expired TTL and opt-in revocation invalidate prior verdict
   x.time(10*60_000+1)
   assert.equal(s.status().paired,0)
 })
-test('real production wiring consumes only read-only metrics and leaves legacy owner unchanged',()=>{
+test('shadow metrics remain read-only; explicit maintenance owner switching is separate',()=>{
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   const consoleJs=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   const owner=readFileSync(new URL('../lib/social-decision-ownership.mjs',import.meta.url),'utf8')
   assert.match(index,/socialShadow:lifeSocialShadow\.status\(\)/)
   assert.match(consoleJs,/shadow\.byChannel\?\.\[key\]/)
   assert.match(consoleJs,/未配对不代表选择沉默/)
-  assert.match(owner,/requester!=='legacy'/)
+  assert.match(owner,/!\['legacy','life-agent'\]\.includes\(requester\)/)
   assert.doesNotMatch(index,/socialDecisionOwnership\.route\(\{channel:'dm',requester:'life-agent'/)
 })
 test('offline audit runs without model, B站 credentials, network or any outbound send',()=>{

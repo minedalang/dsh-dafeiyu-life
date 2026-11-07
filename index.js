@@ -2860,11 +2860,14 @@ function reportMeta() {
     const captured=socialLegacyScope.getStore()
     return captured?.channel===channel?captured.scope:trustedLifeAccountTag()
   }
-  const runLegacySocialOperation=async({channel,expectedScope,phase},work)=>{
+  // Both owners use the same durable in-flight lane and existing platform adapters.
+  // A Life decision reuses the verified social batcher + Life Voice context;
+  // the old automatic owner can no longer decide on that promoted channel.
+  const runLegacySocialOperation=async({channel,expectedScope,phase,requester='legacy',expectedGeneration},work)=>{
     // Legacy off-mode may still construct a draft without a logged-in account;
     // the actual send transaction will independently reject that scope.
     if(!/^[a-f0-9]{16}$/.test(String(expectedScope||''))&&phase==='decision')return await work()
-    const claim=socialHandoffFence.beginLegacyOperation({channel,expectedScope,phase})
+    const claim=socialHandoffFence.beginSocialOperation({channel,expectedScope,phase,requester,expectedGeneration})
     if(!claim.ok){
       if(phase==='decision')throw Error('社交决策在途隔离失败：'+claim.reason)
       return {ok:false,no_retry:true,reason:claim.reason,error:'社交发送在途隔离失败，未调用平台'}
@@ -2874,6 +2877,31 @@ function reportMeta() {
       const released=socialHandoffFence.endLegacyOperation({token:claim.token})
       if(!released.ok)log('社交在途状态需要人工复核：'+released.reason)
     }
+  }
+  const routedSocialOwner=channel=>{
+    const selected=socialDecisionOwnership.current({channel})
+    return selected.ok?socialDecisionOwnership.route({channel,requester:selected.owner,
+      expectedScope:selected.scope,expectedGeneration:selected.generation}):selected
+  }
+  // A proof is attached AFTER model generation, never sent as prompt content.
+  // It is ephemeral, account-bound and owner-generation-bound; it is not a
+  // permission token and cannot override original platform authorization.
+  const attachSocialProof=(decision,owner)=>{
+    const proof={owner:owner.owner,generation:owner.generation,scope:owner.scope}
+    if(decision&&typeof decision==='object')return {...decision,socialOwnerProof:proof}
+    return decision==='SKIP'?{action:'skip',messages:[],socialOwnerProof:proof}:
+      {action:'reply',messages:[String(decision||'')],socialOwnerProof:proof}
+  }
+  const socialSendOwner=(channel,proof)=>{
+    const owner=routedSocialOwner(channel)
+    if(!owner.ok)return owner
+    if(owner.owner==='life-agent'&&(proof?.owner!=='life-agent'||
+       proof.generation!==owner.generation||proof.scope!==owner.scope))
+      return {ok:false,reason:'life-decision-proof-required'}
+    if(proof&&(!['legacy','life-agent'].includes(proof.owner)||
+      proof.owner!==owner.owner||proof.generation!==owner.generation||proof.scope!==owner.scope))
+      return {ok:false,reason:'social-decision-stale-after-handoff'}
+    return owner
   }
   // This does not replace the original permission/receipt gates. It only
   // prevents another decision owner being declared safe while a legacy write
@@ -2931,7 +2959,7 @@ function reportMeta() {
       if(offered?.ok===true){
         socialDecisionOwnership.observe({channel:kind==='dm-received'?'dm':'comment',
           eventKey:String(uid)+':'+String(eventId).slice(0,110),verified:true})
-        if(offered.created===true)queueLifeSocialAttention()
+        if(offered.created===true&&socialDecisionOwnership.current({channel:kind==='dm-received'?'dm':'comment'}).owner!=='life-agent')queueLifeSocialAttention()
         return offered.id
       }
     }catch(e){log('Life Agent 社交唤醒未入队：'+String(e?.message||e).slice(0,90))}
@@ -3839,9 +3867,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return recorded
     },
     generateReply: async (req) => {
-      const owner=socialDecisionOwnership.route({channel:'dm'})
+      const owner=routedSocialOwner('dm')
       if(!owner.ok)throw Error('私信决策所有权检查失败：'+owner.reason)
-      return runLegacySocialOperation({channel:'dm',expectedScope:owner.scope,phase:'decision'},async()=>{
+      return runLegacySocialOperation({channel:'dm',expectedScope:owner.scope,phase:'decision',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
       let relationshipStage='new'
       try{relationshipStage=relationshipIndex()?.get(req.uid,relationshipOptions())?.stage||'new'}catch{}
@@ -3854,23 +3882,23 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         onTodoProposal:proposal=>intakeAiSocialTodo({...proposal,request:{...req,recommendationContext},channel:'dm'}),
         onTodoConsistency:onSocialTodoConsistency,
         recommendationContext,todoProgressContext,identityContext:replyIdentityContext(req.uid)})
-      const checked=socialDecisionOwnership.route({channel:'dm',expectedScope:owner.scope})
-      if(!checked.ok)throw Error('私信决策期间账号已变化：'+checked.reason)
-      lifeSocialShadow.noteLegacy({channel:'dm',uid:req.uid,sourceKey:String(req.messageId||'').slice(0,110),
+      const checked=socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
+      if(!checked.ok)throw Error('私信决策期间账号或归属已变化：'+checked.reason)
+      if(owner.owner==='legacy')lifeSocialShadow.noteLegacy({channel:'dm',uid:req.uid,sourceKey:String(req.messageId||'').slice(0,110),
         action:classifyLegacySocialDecision(generated)})
-      return generated
+      return attachSocialProof(generated,owner)
       })
     },
     getVerifiedFacts:verifiedFactsFor,
-    send: async ({ uid, text, eventId }) => {
+    send: async ({ uid, text, eventId, socialOwnerProof }) => {
       refreshCfg()
-      const owner=socialDecisionOwnership.route({channel:'dm'})
+      const owner=socialSendOwner('dm',socialOwnerProof)
       if(!owner.ok)return {ok:false,error:'私信决策所有权检查失败：'+owner.reason}
-      return runLegacySocialOperation({channel:'dm',expectedScope:owner.scope,phase:'send'},async()=>{
+      return runLegacySocialOperation({channel:'dm',expectedScope:owner.scope,phase:'send',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
       if (cfg.masterEnabled !== true) return {ok:false,error:'总开关已关闭，私信发送已暂停'}
       return await cadenceSend({uid,channel:'dm'},async()=>{
-      const checked=socialDecisionOwnership.route({channel:'dm',expectedScope:owner.scope})
-      if(!checked.ok)return {ok:false,error:'私信发送前账号已变化：'+checked.reason}
+      const checked=socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
+      if(!checked.ok)return {ok:false,error:'私信发送前账号或归属已变化：'+checked.reason}
       const guarded=await socialSendTransaction.execute({channel:'dm',
         eventKey:/^[1-9]\d{0,18}$/.test(String(uid))&&typeof eventId==='string'&&eventId.length>2
           ?`dm:${uid}:${eventId}`:'',expectedScope:owner.scope},async()=>{
@@ -4212,7 +4240,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(req.contentType!=='dynamic'&&trusted&&(req.kind==='at'||verifiedOwnerReply)&&!isFriendRecommendationFeedback(req.text)){
         try{
           const owner=socialDecisionOwnership.route({channel:'comment'})
-          if(!owner.ok)return {consumed:true,reason:'social-owner-unavailable'}
+          if(!owner.ok)return {consumed:owner.reason!=='social-owner-mismatch',reason:'social-owner-unavailable'}
           const result=await runLegacySocialOperation({channel:'comment',expectedScope:owner.scope,
             phase:'send'},()=>ownerCommentAgent.accept(req))
           if(result?.reason!=='not-verified-owner-comment'&&result?.reason!=='disabled')return {consumed:true,reason:'trusted_social_ai'}
@@ -4235,20 +4263,20 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     socialTier:(uid)=>socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory),
     canContinue:(uid,channel)=>socialPortrait.continuationAllowed(uid,{channel}),
     generateReply: async (req) => {
-      const owner=socialDecisionOwnership.route({channel:'comment'})
+      const owner=routedSocialOwner('comment')
       if(!owner.ok)throw Error('评论决策所有权检查失败：'+owner.reason)
-      return runLegacySocialOperation({channel:'comment',expectedScope:owner.scope,phase:'decision'},async()=>{
+      return runLegacySocialOperation({channel:'comment',expectedScope:owner.scope,phase:'decision',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
       const generated=await interactionBatcher.generate({...req,identityContext:'',incomingRpid:req.rpid,
       p6MaxBubbles:cfg.commentP6MaxBubbles,p6MinDelayMinutes:cfg.socialP6MinDelayMinutes,p6MaxDelayMinutes:cfg.socialP6MaxDelayMinutes,
       allowTodoIntake:req.forceReply!==true&&req.todoIntake!==false,
       onTodoProposal:req.forceReply===true||req.todoIntake===false?undefined:proposal=>intakeAiSocialTodo({...proposal,request:req,channel:'comment'}),
       onTodoConsistency:onSocialTodoConsistency})
-      const checked=socialDecisionOwnership.route({channel:'comment',expectedScope:owner.scope})
-      if(!checked.ok)throw Error('评论决策期间账号已变化：'+checked.reason)
+      const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
+      if(!checked.ok)throw Error('评论决策期间账号或归属已变化：'+checked.reason)
       const sourceKey=req.contentType==='dynamic'?'dynamic:'+String(req.dynamicId||'')+':'+String(req.rpid||''):
         String(req.bvid||'')+':'+String(req.rpid||req.id||'')
-      lifeSocialShadow.noteLegacy({channel:'comment',uid:req.uid,sourceKey,action:classifyLegacySocialDecision(generated)})
-      return generated
+      if(owner.owner==='legacy')lifeSocialShadow.noteLegacy({channel:'comment',uid:req.uid,sourceKey,action:classifyLegacySocialDecision(generated)})
+      return attachSocialProof(generated,owner)
       })
     },
     send: async (req) => {
@@ -4259,9 +4287,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         ((req.contentType==='dynamic'&&/^\d{1,30}$/.test(String(req.dynamicId||'')))||
         (req.contentType!=='dynamic'&&/^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))))
         ?`${source}:${req.rpid}:${req.uid||''}:${req.replyPurpose||'normal'}:${req.replyIndex??0}`:''
-      const owner=socialDecisionOwnership.route({channel:'comment'})
-      if(!owner.ok)return {ok:false,error:'评论决策所有权检查失败：'+owner.reason}
-      return runLegacySocialOperation({channel:'comment',expectedScope:owner.scope,phase:'send'},async()=>{
+      const owner=socialSendOwner('comment',req.socialOwnerProof)
+      if(!owner.ok)return {ok:false,no_retry:true,error:'评论决策所有权检查失败：'+owner.reason}
+      return runLegacySocialOperation({channel:'comment',expectedScope:owner.scope,phase:'send',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
       if(req.contentType==='dynamic'){
         refreshCfg()
         if(!(cfg.masterEnabled===true && (req.kind==='at'?cfg.commentAtEnabled===true:cfg.commentWatchReplies===true)))
@@ -4269,8 +4297,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         // Actual publication / parent identity is checked against live B站 metadata
         // again by bili_dynamic_reply_inbox. Local drafts are not an identity authority.
         return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
-        const checked=socialDecisionOwnership.route({channel:'comment',expectedScope:owner.scope})
-        if(!checked.ok)return {ok:false,error:'动态评论发送前账号已变化：'+checked.reason}
+        const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
+        if(!checked.ok)return {ok:false,error:'动态评论发送前账号或归属已变化：'+checked.reason}
         const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
           expectedScope:owner.scope},async()=>{
           const r=parseMaybeJson(await call('bili_dynamic_reply_inbox',{
@@ -4293,8 +4321,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       refreshCfg()
       if (!(cfg.masterEnabled && (req.manual===true || cfg.commentWatchReplies || cfg.commentAtEnabled))) return {ok:false,error:'后台评论回复已关闭'}
       return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
-      const checked=socialDecisionOwnership.route({channel:'comment',expectedScope:owner.scope})
-      if(!checked.ok)return {ok:false,error:'评论发送前账号已变化：'+checked.reason}
+      const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
+      if(!checked.ok)return {ok:false,error:'评论发送前账号或归属已变化：'+checked.reason}
       const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
         expectedScope:owner.scope},async()=>{
         const r=await call('bili_reply',{bvid:req.bvid||'',aid:Number(req.aid)||0,
@@ -6627,7 +6655,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         todos:read(()=>ownerTodos.status()),
         interests:Array.isArray(interestRows)?interestRows:null,
         relationshipsReady:Boolean(relationshipView&&relationshipView.ok!==false),
-        socialOwner:'legacy'}))
+        socialOwner:socialDecisionOwnership.status().socialDecisionOwner}))
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/transition-readiness') {
       refreshCfg()
@@ -6666,6 +6694,47 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // source key, draft, credential or platform receipt.
       return sendJson(res,200,{...report,ok:true,rehearsalPassed:report.ok===true,owner:'legacy',noPlatformCalls:true,
         noModelCalls:true,permissionChanged:false,sendRightsGranted:false})
+    }
+    // Explicit operator-only, PAUSED channel cutover. Not shown on the normal
+    // management page. The initial state is always legacy. At this stage only
+    // the normal public-comment lane can be piloted; owner DM agents and
+    // voluntary video DMs still need a reviewed Life adapter before DM switch.
+    if (req.method === 'POST' && path === '/api/bili-duty/life-agent/social-owner-maintenance') {
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))
+        return sendJson(res,403,{ok:false,error:'仅允许同源管理中心执行维护'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+        return sendJson(res,403,{ok:false,error:'拒绝跨站维护操作'})
+      const body=await readBody(req)
+      if(body?.channel!=='comment'||!['life-agent','legacy'].includes(body?.targetOwner)||
+         body?.confirmation!=='我已停机核实社交归属切换不会造成重复发送')
+        return sendJson(res,400,{ok:false,error:'仅接受公开评论渠道及明确的维护确认；私信尚不能切换'})
+      refreshCfg()
+      if(cfg.masterEnabled===true||cfg.lifeAgentMode!=='active'||
+        accountBinding.status().blocked||!firstStart.isReady())
+        return sendJson(res,409,{ok:false,error:'请先停用生活总开关，启用 Life active 并完成账号核验'})
+      if(cfg.ownerCommentAgentEnabled===true||cfg.socialTodoCompletionFollowupEnabled===true||
+        cfg.ownerTodoCompletionFollowupEnabled===true)
+        return sendJson(res,409,{ok:false,error:'请先关闭旧评论 Agent 和旧待办自动回访；避免交接后旁路发送'})
+      const expectedScope=trustedLifeAccountTag()
+      const booked=socialHandoffFence.reserve({channel:'comment',expectedScope,requester:'legacy'})
+      if(!booked.ok)return sendJson(res,409,{ok:false,reason:booked.reason})
+      let result
+      try{
+        if(booked.quiescent!==true)result={ok:false,reason:'social-operations-not-drained'}
+        else result=socialHandoffFence.switchOwner({token:booked.token,channel:'comment',expectedScope,
+          targetOwner:body.targetOwner,confirmation:body.confirmation,
+          masterDisabled:cfg.masterEnabled!==true,lifeReady:cfg.lifeAgentMode==='active'&&
+            !accountBinding.status().blocked&&firstStart.isReady(),
+          inspectSendTransactions:()=>socialSendTransaction.inspect()})
+      }finally{
+        const released=socialHandoffFence.releaseDecisionOnly({token:booked.token,expectedScope})
+        if(!released.ok)result={ok:false,reason:'owner-switch-reservation-needs-offline-review',held:true}
+      }
+      return sendJson(res,result?.ok===true?200:409,{ok:result?.ok===true,
+        reason:result?.ok===true?'owner-switched-under-paused-fence':result?.reason||'owner-switch-review-required',
+        owner:result?.ok===true?result.owner:undefined,
+        platformCalls:0,modelCalls:0,permissionsChanged:false,requiresRealPlatformAcceptance:true})
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/settings-v2') {
       refreshCfg()

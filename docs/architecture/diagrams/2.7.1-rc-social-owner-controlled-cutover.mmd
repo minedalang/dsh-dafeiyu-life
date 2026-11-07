@@ -1,0 +1,20 @@
+flowchart TD
+  IN[已核验 B站私信 / 评论 @] --> SCHED[现有统一社交调度器]
+  SCHED --> OWNER{账号 + 渠道唯一归属}
+  OWNER -->|默认 legacy| L[原统一社交决策入口]
+  OWNER -->|仅评论维护试点 life-agent| LIFE[Life 社交生产入口]
+  L --> BATCH[InteractionBatcher + Life Voice]
+  LIFE --> BATCH
+  BATCH --> PROOF[模型完成后附加归属 generation]
+  PROOF --> VERIFY{账号 / 渠道 / owner / generation / 权限再核验}
+  VERIFY -->|不通过| STOP[停止外发 / 保留状态]
+  VERIFY -->|通过| TX[既有 SocialSendTransaction]
+  TX --> PLATFORM[原 B站发送适配器与真实回执]
+  OP[人工维护: 总开关关闭+身份核验+明确确认] --> FENCE[SocialHandoffFence 原子预约]
+  FENCE --> DRAIN{旧/新在途为零 + 未知发送为零}
+  DRAIN -->|不满足| HOLD[阻断/待人工复核]
+  DRAIN -->|满足| STORE[同一 fence 持久化 owner+generation]
+  STORE --> OWNER
+  OLD[主人 Agent / 旧回访 / 视频分享] --> LEGACY[原 legacySocialWrite]
+  LEGACY --> OWNER
+  NOTE[DM 维护切换未开放, RC 未验收] -.-> OWNER

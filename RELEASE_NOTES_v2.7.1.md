@@ -1,5 +1,12 @@
 # 2.7.1-dev.7 · Life 自主生活总览与跨系统接线（开发中，未发布）
 
+
+### RC 第五轮：评论渠道 Life 归属受控切换（仍为 dev.7，未封 RC）
+
+- 新增同一跨进程 fence 下的持久 owner/generation 与停机人工评论交接；无法排空旧操作或未知发送时拒绝切换。
+- 回复草稿绑定生成时的 owner/generation，发送前重新核对；仍复用统一 Life Voice、原社交权限与可信平台回执。
+- **默认不切换、DM 不开放交接**；Windows/B站/长期验收未完成。 [架构图](docs/architecture/diagrams/2.7.1-rc-social-owner-controlled-cutover.mmd)。
+
 ### RC 主人互动与待办回访外发安全收口（仍为 dev.7）
 
 - 主人私信 Agent 的实际回复、意愿拒绝、指令回执和已完成待办回访均绑定原始核验事件，自动外发共用原跨进程发送事务；真实回执不确定时冻结，不自动重发。

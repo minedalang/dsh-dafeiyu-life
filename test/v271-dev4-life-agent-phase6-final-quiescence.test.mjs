@@ -106,12 +106,13 @@ test('trusted comment and additional owner/social-share senders join the pre-han
     "runOwnerDmPublishComment(bvid,body)"])
     assert.ok(source.includes(snippet),`missing live pre-handoff route: ${snippet}`)
 })
-test('new production callbacks participate in the quiescence protocol without enabling Life Agent sends',()=>{
+test('production callbacks stay under shared quiescence and Life promotion requires paused maintenance',()=>{
   const source=String((awaitReadIndex()))
   for(const channel of ['dm','comment'])for(const phase of ['decision','send'])
     assert.match(source,new RegExp(`runLegacySocialOperation\\(\\{channel:'${channel}',expectedScope:owner\\.scope,phase:'${phase}'`))
   assert.match(source,/phase:'send'},\(\)=>ownerCommentAgent\.accept\(req\)/)
-  assert.doesNotMatch(source,/socialHandoffFence\.reserve\(/)
+  assert.match(source,/socialHandoffFence\.reserve\(\{channel:'comment',expectedScope,requester:'legacy'\}\)/)
+  assert.match(source,/socialHandoffFence\.switchOwner\(\{/)
   assert.doesNotMatch(source,/socialDecisionOwnership\.route\(\{channel:'dm',requester:'life-agent'/)
 })
 function awaitReadIndex(){return readFileSync(new URL('../index.js',import.meta.url),'utf8')}

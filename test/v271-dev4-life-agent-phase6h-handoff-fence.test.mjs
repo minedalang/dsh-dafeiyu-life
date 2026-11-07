@@ -119,13 +119,15 @@ test('status and claim never contain raw account, UID, private text, or target',
   }
   assert.equal(x.fence.releaseDecisionOnly({token:claim.token}).ok,true)
 })
-test('source index integration is read-only and not a new platform sender',()=>{
+test('source handoff maintenance changes ownership but never sends via the fence',()=>{
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   const fence=readFileSync(new URL('../lib/social-handoff-fence.mjs',import.meta.url),'utf8')
   assert.match(index,/const socialHandoffFence=createSocialHandoffFence\(\{dataDir:stateDir,getAccountTag:trustedLifeAccountTag\}\)/)
   assert.match(index,/handoffFence:socialHandoffFence/)
   assert.doesNotMatch(fence,/bili_send_message|bili_reply|bili_dynamic_reply_inbox|fetch\(/)
-  assert.doesNotMatch(index,/socialHandoffFence\.reserve\(/)
+  assert.match(index,/socialHandoffFence\.reserve\(\{channel:'comment'/)
+  assert.match(index,/cfg\.masterEnabled===true/)
+  assert.match(index,/socialHandoffFence\.switchOwner\(\{/)
 })
 test('unreadable or modified lease phase cannot be cleared as a confirmed no-send decision',t=>{
   const x=fixture(t),claim=x.fence.reserve({channel:'dm'})
