@@ -79,10 +79,16 @@ test('真实 HTTP：首次设置可保存非外发配置，新增社交和自主
   assert.equal(before.data.requiredReady,false)
   assert.equal(before.data.social.values.dmStrangerAutonomyEnabled!==undefined,true)
   assert.equal(before.data.memory.profiles.balanced.mainSessionMemoryHalfLifeDays,30)
-  const memReq={kind:'memory',choice:'balanced',revision:before.data.memory.revision,memoryEnabled:true,reflectionEnabled:true}
+  const memReq={kind:'memory',choice:'balanced',revision:before.data.memory.revision,memoryEnabled:!before.data.memory.values.mainSessionMemoryEnabled,reflectionEnabled:!before.data.memory.values.mainSessionReflectionAuto}
   assert.equal((await call('POST','onboarding/quick/save',{...memReq,previewOnly:true})).status,200)
   assert.equal((await call('POST','onboarding/quick/save',{...memReq,previewOnly:false})).status,400)
-  assert.equal((await call('POST','onboarding/quick/save',{...memReq,previewOnly:false,confirm:'APPLY_QUICK_MEMORY'})).status,200)
+  const saved=await call('POST','onboarding/quick/save',{...memReq,previewOnly:false,confirm:'APPLY_QUICK_MEMORY'})
+  assert.equal(saved.status,200)
+  assert.equal(saved.data.localVerified,true)
+  // Mock DSH has no writable native settings form: local authoritative config
+  // must still read back correctly, without pretending native sync succeeded.
+  assert.equal(saved.data.host.ok,false)
+  assert.equal(saved.data.host.role,'optional-native-mirror')
   const after=await call('GET','onboarding/quick/options')
   assert.equal(after.data.memory.values.mainSessionMemoryHalfLifeDays,30)
   const socialReq={kind:'social',channel:'share',choice:'autonomous',dailyLimit:100,revision:after.data.social.revision,previewOnly:false,confirm:'APPLY_QUICK_SOCIAL'}

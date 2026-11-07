@@ -3,9 +3,8 @@
 > 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 RC8 方案优先的 UI 接线见 [`管理卡片架构`](docs/architecture/2.7.1-rc8-choice-first-management.md)；管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
 
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
-
 ## 项目与代码入口
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.8`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.9`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限；dev.4 旧视频定时驱动已退役，明确保存暂停后普通手动生活唤醒也停止；社交旧独立决策器退役，新老用户均需迁移为 Life 归属；未知发送则冻结。Phase 6/7/8 迁移核验见 [只读迁移门禁](docs/architecture/2.7.1-dev4-life-transition-readiness.md)；设置及当前增量见 [Life 双节奏与预算架构](docs/architecture/2.7.1-life-a-dual-lane-budget.md)；旧发言授权仍按原门禁执行。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
@@ -47,12 +46,13 @@
 - `dev.6` 在原 B站动作账本中记录真正入选视频的创作者相遇线索，并为主 Session 提供单 BV 的只读关注当前态／历史回执查询；`VerifiedLifeFacts` 按当前登录账号校验并分离历史动作与实时状态。默认关闭的自主关注授权不变，绝不把旧「值得看/不值得看」主人推荐标签当作新关注契机。人格成长进度条与 B站关系互动计数只改准确说明，不制造经历或跨身份关系。旧视频推荐功能的重构或删除**延后**，现行接线见 `docs/architecture/2.7.0-dev6-creator-facts-and-growth-diagnostics.md`。
 - `dev.7` 私信 P6-B 增加“模型明确选定开放话题，回复后对方沉默时重新考虑”的一次性可选意图，使用原 `SocialAutonomyDecisionContract`、`SocialConversationContinuity` 和原私信发送门禁；只在已授权的入站私信线程发生，不提供无关话题的定时主动找人。到期读私信暂时失败时，只能在未尝试平台发送的前提下有限延期，未知发送不自动重试。管理页只显示不含聊天内容或对方 UID 的聚合预约状态。实际接线见 `docs/architecture/2.7.0-dev7-dm-silence-reconsideration.md`。
 - 不能把允许回应入站 @ 理解成可主动 @ 他人；关闭暗号审核不会授予陌生人自动私信权限，陌生人外发仍须主人明确开启 `dmStrangerAutonomyEnabled`（独立、默认关闭的新授权）；旧版 `dmStrangerOnce` 只保留原有有限次数、单条即时回复权限，绝不能在升级时隐式扩为多条气泡或延迟续聊。
-## 2.7.1-dev.8 当前生产归属（RC6–RC10 为历史增量）
+## 2.7.1-dev.9 当前生产归属（RC6–RC10 为历史增量）
 
+- dev.9 增加跨 DSH 进程的持久 Life 决策准入；未结算或未知状态不自动释放，恢复需离线确认并检查平台事务。候选重建/自动续行仍未完成；原发言权限不变。见 `docs/architecture/2.7.1-dev9-durable-life-admission.md`。
+- DSH 原生设置镜像失败时，以插件自身 `config.json` 及生效配置双重回读作为保存判断；不可伪称宿主已经同步。
 - UI v2 继续使用顶部横导航及原数据接口；普通自主社交不能由主人逐条审核或代发，历史权限不自动扩张，动态草稿审核独立保留。详见 `docs/architecture/2.7.1-dev8-life-ui-v2.md`。
 
 - 新老用户均迁移到 Life 的 DM+comment 双渠道唯一决策归属，旧 `legacy` 不再作为生产发送兜底。原授权、记忆、待办、关系、跨进程工具和回执保留。迁移未核验/在途/未知发送时双渠道冻结；主人 Agent/回访受 Life 归属约束，自动视频分享需 Life 最终决定。当前架构与 Mermaid 见 `docs/architecture/2.7.1-rc-unified-life-social-migration.md`。仍为 dev.7，Windows/真实 B站/长时运行未验收。
-
 ## 2.7.1-dev.1 真实视频评论区观察边界
 
 - 自主视频轮开放原只读 `bili_comments` 与 `bili_comment_thread`；不得因为浏览评论自动发言、创建待办或认识评论者。视频轮的 Python MCP 环境明确标记 `BILI_DISCUSSION_VIDEO_AGENT=1`，每轮最多读取 6 条不同 BV 的评论列表、2 条已出现在本轮对应 BV 列表里的真实楼层；其他主人查询与后台互动不被这些视频轮额度影响。

@@ -1376,8 +1376,16 @@ function reportMeta() {
     //   ⇒ 不再指望 DSH 那边：只要是从**插件面板**保存的键，读配置时一律以插件自己那份为准 ✓
     //   ⚠️ 代价：同名的项若在 DSH 原生设置页改，以插件面板为准（我们的设置页才是"正式的家"）。
     markOverride(Object.keys(clean), true)
-    if (!host.ok) log('⚠️ 这几项没能同步到 DSH 原生设置，改为以插件自己的值为准：' + Object.keys(clean).join(', ') + '（' + host.error + '）')
-    return { clean, host }
+    // dev.9: distinguish optional native mirror failure from an actual failed
+    // plugin save. Re-read both the durable file and the effective runtime view.
+    // Never show a success banner unless both agree on every requested key.
+    const stored=savedCfg(),effective=loadCfg()
+    const mismatch=Object.keys(clean).filter(k=>
+      JSON.stringify(stored[k])!==JSON.stringify(clean[k])||
+      JSON.stringify(effective[k])!==JSON.stringify(clean[k]))
+    if(mismatch.length)throw Error('插件设置回读失败，请不要认为已保存：'+mismatch.slice(0,8).join(', '))
+    if (!host.ok) log('⚠️ 原生 DSH 设置镜像未同步，插件已核验本地生效：' + Object.keys(clean).join(', ') + '（' + host.error + '）')
+    return {clean,host:{...host,role:'optional-native-mirror'},localVerified:true}
   }
 
   // ⭐ 2026-10-21 一次性迁移：2.0 把「私信双向」改成默认开、间隔 1 分钟、去掉每日上限，
@@ -6820,16 +6828,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
             const patch={...(enableMaster&&cfg.masterEnabled!==true?{masterEnabled:true}:{}),...plan.patch}
             if(body.previewOnly===true)return sendJson(res,200,{ok:true,changed:{...plan.changed,...(enableMaster&&cfg.masterEnabled!==true?{masterEnabled:{before:false,after:true}}:{})},preview:true})
             if(body.confirm!=='APPLY_QUICK_LIFE')throw Error('必须明确确认生活设置')
-            const result=Object.keys(patch).length?await persistCfg(patch):{host:{ok:true}}
+            const result=Object.keys(patch).length?await persistCfg(patch):{host:{ok:true},localVerified:true}
             if(patch.lifeAgentMode==='off')lifeSocialShadow.revoke()
-            return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),host:result.host})
+            return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),localVerified:result.localVerified,host:result.host})
           }
           if(body?.kind==='memory')plan=quickMemoryPlan(cfg,body)
           else if(body?.kind==='social')plan=quickSocialPlan(cfg,body,{ready:firstStart.status().requiredReady})
           else throw Error('未知的快速设置种类')
           if(body.previewOnly===true)return sendJson(res,200,{ok:true,changed:plan.changed,preview:true})
-          const result=Object.keys(plan.patch).length?await persistCfg(plan.patch):{host:{ok:true}}
-          return sendJson(res,200,{ok:true,host:result.host})
+          const result=Object.keys(plan.patch).length?await persistCfg(plan.patch):{host:{ok:true},localVerified:true}
+          return sendJson(res,200,{ok:true,localVerified:result.localVerified,host:result.host})
         }
         if(path.endsWith('/bili/verify')){
           const client=await ensureMcp()
@@ -7093,7 +7101,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // 启用主 Session 桥的这一刻就建立基线，避免“保存后到下一次定时检查之间”的旧经历被误当成新经历。
       if (clean.mainSessionBridgeEnabled === true) { try { mainSessionBridge.collect() } catch (e) { log('主 Session 基线建立失败：'+String(e?.message||e)) } }
       log(`设置已更新：${JSON.stringify({...clean, ...('mentionProfiles' in clean ? {mentionProfiles:'[好友画像已更新]'} : {}), ...('personaPrompt' in clean ? {personaPrompt:'[人设提示词已更新]'} : {}), ...('characterLore' in clean ? {characterLore:'[角色关系设定已更新]'} : {}), ...('commentMemePrompt' in clean ? {commentMemePrompt: '[选图提示词已更新]'} : {}), ...('visionPrompt' in clean ? {visionPrompt: '[识图提示词已更新]'} : {}), ...('memeRulesPrompt' in clean ? {memeRulesPrompt: '[表情包规则维护提示词已更新]'} : {})})}（DSH 那边${host.ok ? '已同步' : '没写成：' + host.error}）`)
-      return sendJson(res, 200, { ok: true, config: cfg, host })
+      return sendJson(res, 200, { ok: true, config: cfg, localVerified:true, host })
     }
 
     // 管理中心的手动连通性检查：只读会话列表，不调用模型、不发送私信。

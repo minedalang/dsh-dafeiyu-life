@@ -67,7 +67,7 @@ test('normal Life management wording is clear; RC list uses textContent and pres
 test('README and developer navigation emphasize 2.7.1 reconstruction but never imply RC is released',()=>{
   const readme=src('README.md'),doc=src('docs/README.md'),notes=src('RELEASE_NOTES_v2.7.1.md')
   const opening=readme.slice(0,1900)
-  for(const term of ['2.7.1-dev.8','统一 Life','旧的定时刷视频','记忆、兴趣、人格、关系和待办','尚未发布','无论新用户还是老用户'])
+  for(const term of [JSON.parse(src('package.json')).version,'统一 Life','旧的定时刷视频','记忆、兴趣、人格、关系和待办','尚未发布','无论新用户还是老用户'])
     assert.ok(opening.includes(term),term)
   assert.match(readme,/2\.7\.1-rc-preflight-13-questions\.md/)
   assert.match(doc,/2\.7\.1-dev\.7/)
