@@ -121,14 +121,21 @@ async def _life_video_authorize(tool_name, args):
     if not uid.isdigit() or int(uid) <= 0:
         return {'ok': False, 'reason': '未核验的 B站账号'}
     reason = args.get('reason') or (args.get('text') or '')[:100]
-    return await asyncio.to_thread(_life_video_request, '/life-action',
-        {'uid': uid, 'tool': tool_name, 'target': str(target or ''), 'reason': str(reason)[:100]})
+    payload = {'uid': uid, 'tool': tool_name, 'target': str(target or ''), 'reason': str(reason)[:100]}
+    if tool_name == 'bili_reply':
+        # Ephemeral proof binding. Only the originating host uses the exact
+        # proposed text for a later independent platform GET; it is not logged.
+        payload['commentText'] = args.get('text')
+        payload['topLevel'] = args.get('rpid', 0) == 0 and args.get('root', 0) == 0
+    return await asyncio.to_thread(_life_video_request, '/life-action', payload)
 
 
-async def _life_video_result(grant, uid, success):
+async def _life_video_result(grant, uid, success, comment_receipt=''):
     if not isinstance(grant, str) or not grant: return
-    await asyncio.to_thread(_life_video_request, '/life-action-result',
-        {'grant': grant, 'uid': uid, 'ok': success})
+    payload = {'grant': grant, 'uid': uid, 'ok': success}
+    if isinstance(comment_receipt, str) and re.fullmatch(r'[1-9][0-9]{0,29}', comment_receipt):
+        payload['receiptId'] = comment_receipt
+    await asyncio.to_thread(_life_video_request, '/life-action-result', payload)
 
 
 def tool():
@@ -163,7 +170,10 @@ def tool():
                         reported = json.loads(result) if isinstance(result, str) else {}
                         success = (isinstance(reported, dict) and
                             (reported.get('ok') is True or reported.get('success') is True))
-                        await _life_video_result(approval.get('grant'), str(getattr(get_cred(), 'dedeuserid', '') or ''), success)
+                        rpid = ''
+                        if fn.__name__ == 'bili_reply' and success:
+                            rpid = str(reported.get('rpid_str') or reported.get('rpid') or '')
+                        await _life_video_result(approval.get('grant'), str(getattr(get_cred(), 'dedeuserid', '') or ''), success, rpid)
                     except Exception: pass  # Never turn an unknown receipt into a retry grant.
         return mcp.tool()(guarded)
     return deco

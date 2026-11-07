@@ -4974,18 +4974,20 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     receipt:(proof,result)=>lifeWillingness.receipt(proof,result),
     // The trusted Python verifier only performs authenticated single-target
     // GET requests. It is independent of the writing tool's claimed success.
-    verifyPlatformState:({kind,target,uid,scope})=>new Promise(resolve=>{
+    verifyPlatformState:({kind,target,uid,scope,receiptId='',commentText=''})=>new Promise(resolve=>{
       if(scope!==trustedLifeAccountTag()||accountBinding.status().blocked||
          String(accountBinding.status().activeUid)!==uid)return resolve(false)
       let child
       try{child=spawn(cfg.pythonPath||'python',[join(pluginDir,'lib','video-action-verify.py'),
-        join(stateDir,'bili_credential.json'),kind,target,uid],{
-        cwd:stateDir,env:pyEnv(),shell:false,windowsHide:true,stdio:['ignore','pipe','pipe']})}
+        join(stateDir,'bili_credential.json'),kind,target,uid,...(kind==='video_comment'?[receiptId]:[])],{
+        cwd:stateDir,env:pyEnv(),shell:false,windowsHide:true,
+        stdio:[kind==='video_comment'?'pipe':'ignore','pipe','pipe']})}
       catch{return resolve(false)}
       let out='',done=false
       const finish=value=>{if(done)return;done=true;clearTimeout(timeout);resolve(value)}
       const timeout=setTimeout(()=>{try{child.kill()}catch{};finish(false)},20_000)
       timeout.unref?.()
+      if(kind==='video_comment')try{child.stdin.end(commentText)}catch{finish(false)}
       child.stdout.on('data',b=>{out=(out+String(b)).slice(0,500)})
       child.on('error',()=>finish(false))
       child.on('close',code=>{

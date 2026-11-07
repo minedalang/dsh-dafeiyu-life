@@ -54,11 +54,15 @@ test('dev15 account changed while verifier awaits: result stays unverified',asyn
  assert.notEqual((await promise).status,'verified')
  assert.ok(x.results.every(r=>r[1]!=='verified'))
 })
-test('dev15 unverified comment and folder delete never claim post-state from write reply',async t=>{
+test('dev15 legacy self-reported comment without rpid and folder deletion remain unverified',async t=>{
  let reads=0;const x=create(t,async()=>{reads++;return true})
  await x.bridge.start()
- for(const [tool,target] of [['bili_reply',BV],['bili_favorite_folder_delete','456789']]){
-  const g=await x.post('/life-action',{tool,target,uid:UID})
+ const cases=[
+  {tool:'bili_reply',target:BV,uid:UID,commentText:'需要独立平台回查的评论',topLevel:true},
+  {tool:'bili_favorite_folder_delete',target:'456789',uid:UID}]
+ for(const request of cases){
+  const g=await x.post('/life-action',request)
+  assert.equal(g.ok,true)
   const outcome=await x.post('/life-action-result',{grant:g.grant,uid:UID,ok:true})
   assert.equal(outcome.status,'accepted-unverified')
  }

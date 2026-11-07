@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import json
 import os
+import re
 import unittest
 from functools import wraps
 from pathlib import Path
@@ -28,7 +29,7 @@ class ToolWrapperTest(unittest.IsolatedAsyncioTestCase):
         self.reports = []
         self.gateway_result = {'ok': True, 'grant': 'one-time'}
         fake_cred = lambda: SimpleNamespace(dedeuserid='23456')
-        self.ns = dict(asyncio=asyncio, json=json, os=os, wraps=wraps, inspect=inspect,
+        self.ns = dict(asyncio=asyncio, json=json, os=os, re=re, wraps=wraps, inspect=inspect,
                        _ALLOWED=set(),
                        _LIFE_VIDEO_WRITES={'bili_video_like', 'bili_video_collect',
                            'bili_follow_creator', 'bili_unfollow_creator',
@@ -96,6 +97,17 @@ class ToolWrapperTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(invoked, [('BV1abcde1234', '你好')])
         self.assertEqual(self.calls, [])
         self.assertEqual(self.reports, [])
+
+    async def test_autonomous_comment_platform_id_forwarded_without_self_verification(self):
+        async def bili_reply(bvid, text, rpid=0, root=0):
+            return json.dumps({'success': True, 'rpid_str': '12345678909876'})
+        fn = self.ns['tool']()(bili_reply)
+        with patch.dict(os.environ, {'BILI_JS_MCP_ADAPTER': '0'}):
+            self.assertTrue(json.loads(await fn('BV1abcde1234', '这次评论要由平台读回核实'))['success'])
+        self.assertEqual(self.calls[0][1]['commentText'], '这次评论要由平台读回核实')
+        self.assertIs(self.calls[0][1]['topLevel'], True)
+        self.assertEqual(self.reports[0]['receiptId'], '12345678909876')
+        self.assertTrue(self.reports[0]['ok'])
 
     async def test_autonomous_comment_path_requires_life(self):
         self.gateway_result = {'ok': False, 'reason': 'defer'}

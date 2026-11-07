@@ -1,3 +1,7 @@
+## 当前版本 2.7.1-dev.16：视频评论核验与动态恢复（未发布）
+
+[可信评论读回、动态异常恢复与证据展示](./2.7.1-dev16-comment-receipts-recovery.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev16-comment-receipts-recovery.mmd)。顶层视频评论由平台 ID、作者、视频和原文比对，读不到并非未发送；动态重启遗留的 `publishing` 不自动重试。Life 时间线按证据源展示，原权限与限额不改。真实 B站、Windows、72 小时验收尚未执行。
+
 ## 当前版本 2.7.1-dev.15：独立视频状态／动态发布核验（未发布）
 
 [生产数据流、核验边界及旧记录兼容](./2.7.1-dev15-independent-platform-receipts.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev15-independent-platform-receipts.mmd)。视频 Agent 内部四类可查询动作由宿主单独只读回查，生活动态额外匹配作者、ID 和正文后才成为 Life 已核验经历；未知状态继续冻结，不重新发。旧社交事务、账号权限、动态通知线索、Life 公平调度均保留；Windows/B站真实接口与 72 小时验收尚未完成。
