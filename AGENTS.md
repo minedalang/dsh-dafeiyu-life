@@ -4,8 +4,8 @@
 
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 ## 项目与代码入口
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.14`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
-- dev.14 在同一账号 Life 事件账本将可信社交写入、熟人联络、反思与原只读完成接入统一再考虑；未核验动态/视频动作不冒充完成。详见 `docs/architecture/2.7.1-dev14-unified-completion-continuation.md`；dev.13 公平轮换及 dev.12 首次设置五步流程保留。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.15`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- dev.15 由宿主独立单目标只读回查视频点赞/收藏/关注/取关和文本动态；已核实结果接 dev.14 Life 匿名续行，未核实仍不可称已完成。详见 `docs/architecture/2.7.1-dev15-independent-platform-receipts.md`；dev.12 首次设置和 dev.13 公平调度保留。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限；dev.4 旧视频定时驱动已退役，明确保存暂停后普通手动生活唤醒也停止；社交旧独立决策器退役，新老用户均需迁移为 Life 归属；未知发送则冻结。Phase 6/7/8 迁移核验见 [只读迁移门禁](docs/architecture/2.7.1-dev4-life-transition-readiness.md)；设置及当前增量见 [Life 双节奏与预算架构](docs/architecture/2.7.1-life-a-dual-lane-budget.md)；旧发言授权仍按原门禁执行。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。

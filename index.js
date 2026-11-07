@@ -1053,7 +1053,7 @@ function reportMeta() {
       return json.target_found===true&&Array.isArray(json.replies)&&json.replies.some(x=>String(x.rpid)===String(rpid)&&String(x.mid)===String(uid))
     }catch(e){log('原评论回访核验未通过：'+String(e?.message||e).slice(0,90));return false}
   }
-  const ownerTodoFollowup=createOwnerTodoFollowup({dataDir:accountRuntimeDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
+  const ownerTodoFollowup=createOwnerTodoFollowup({dataDir:accountRuntimeDir,getConfig:()=>{refreshCfg();return {...cfg,accountTag:trustedLifeAccountTag(),masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     getTodos:()=>ownerTodos.list({includeClosed:true,limit:500}),
     getVerifiedFacts:verifiedFactsFor,
     canContact:todoFollowupContact,verifyComment:verifyTodoComment,
@@ -4972,6 +4972,30 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     choose:params=>lifeWillingness.decide(params),
     verify:(proof,kind)=>lifeWillingness.verify(proof,kind),
     receipt:(proof,result)=>lifeWillingness.receipt(proof,result),
+    // The trusted Python verifier only performs authenticated single-target
+    // GET requests. It is independent of the writing tool's claimed success.
+    verifyPlatformState:({kind,target,uid,scope})=>new Promise(resolve=>{
+      if(scope!==trustedLifeAccountTag()||accountBinding.status().blocked||
+         String(accountBinding.status().activeUid)!==uid)return resolve(false)
+      let child
+      try{child=spawn(cfg.pythonPath||'python',[join(pluginDir,'lib','video-action-verify.py'),
+        join(stateDir,'bili_credential.json'),kind,target,uid],{
+        cwd:stateDir,env:pyEnv(),shell:false,windowsHide:true,stdio:['ignore','pipe','pipe']})}
+      catch{return resolve(false)}
+      let out='',done=false
+      const finish=value=>{if(done)return;done=true;clearTimeout(timeout);resolve(value)}
+      const timeout=setTimeout(()=>{try{child.kill()}catch{};finish(false)},20_000)
+      timeout.unref?.()
+      child.stdout.on('data',b=>{out=(out+String(b)).slice(0,500)})
+      child.on('error',()=>finish(false))
+      child.on('close',code=>{
+        let matched=false
+        try{const r=JSON.parse(out);matched=code===0&&r.verified===true&&
+          r.source==='platform-read-after-write'&&scope===trustedLifeAccountTag()&&
+          !accountBinding.status().blocked&&String(accountBinding.status().activeUid)===uid}catch{}
+        finish(matched)
+      })
+    }),
   })
   void lifeVideoActionBridge.start().catch(error=>log('Life 视频自主动作授权服务无法启动，将禁止自主写入：'+String(error?.message||error).slice(0,130)))
   ctx.effect(()=>()=>lifeVideoActionBridge?.stop(),'bili-duty: 视频 Agent Life 意愿写入网关')
@@ -5277,6 +5301,34 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     chooseLife:params=>lifeWillingness.decide({...params,scene:'dynamic'}),
     verifyLife:(proof,kind)=>lifeWillingness.verify(proof,kind),
     recordLife:(proof,row)=>lifeWillingness.receipt(proof,row),
+    verifyPublished:({dynamicId,text,accountTag})=>new Promise(resolve=>{
+      const scope=trustedLifeAccountTag(),identity=accountBinding.status()
+      if(!scope||accountTag!==scope||identity.blocked||!/^[1-9]\d{0,18}$/.test(String(identity.activeUid||'')))
+        return resolve({verified:false})
+      let child
+      try{child=spawn(cfg.pythonPath||'python',[join(pluginDir,'lib','daily-dynamic-verify.py'),
+        join(stateDir,'bili_credential.json'),dynamicId,String(identity.activeUid)],{
+        cwd:stateDir,env:pyEnv(),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']})}
+      catch{return resolve({verified:false})}
+      let out='',done=false
+      const finish=v=>{if(done)return;done=true;clearTimeout(timeout);resolve(v)}
+      const timeout=setTimeout(()=>{try{child.kill()}catch{};finish({verified:false})},12_000)
+      timeout.unref?.()
+      child.stdout.on('data',b=>{out=(out+String(b)).slice(0,500)})
+      child.on('error',()=>finish({verified:false}))
+      child.on('close',code=>{
+        let v={verified:false}
+        try{if(code===0&&accountTag===trustedLifeAccountTag()&&!accountBinding.status().blocked)
+          v=JSON.parse(out)}catch{}
+        finish(v)
+      })
+      child.stdin.end(text)
+    }),
+    onVerifiedPublished:({dynamicId,accountTag})=>{
+      if(!accountTag||accountTag!==trustedLifeAccountTag())return false
+      const sourceRef=createHash('sha256').update('life-dynamic-confirm\0'+accountTag+'\0'+dynamicId).digest('hex').slice(0,16)
+      return lifeAgentEvents.recordVerifiedCompletion({kind:'dynamic_post',sourceRef})?.ok===true
+    },
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'dailyDynamic'}),
     publish:(text,limit)=>new Promise((resolve,reject)=>{
       let releasePublish

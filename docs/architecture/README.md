@@ -1,3 +1,7 @@
+## 当前版本 2.7.1-dev.15：独立视频状态／动态发布核验（未发布）
+
+[生产数据流、核验边界及旧记录兼容](./2.7.1-dev15-independent-platform-receipts.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev15-independent-platform-receipts.mmd)。视频 Agent 内部四类可查询动作由宿主单独只读回查，生活动态额外匹配作者、ID 和正文后才成为 Life 已核验经历；未知状态继续冻结，不重新发。旧社交事务、账号权限、动态通知线索、Life 公平调度均保留；Windows/B站真实接口与 72 小时验收尚未完成。
+
 ## 当前版本 2.7.1-dev.14：统一可信行动续行（未发布）
 
 [完成回执接线与安全边界](./2.7.1-dev14-unified-completion-continuation.md) · [Mermaid 架构图](./diagrams/2.7.1-dev14-unified-completion-continuation.mmd)。正式私信、评论等收到可靠平台回执后可触发独立 Life 再考虑；内部反思和熟人已发送回执也可触发。视频进程完成仍沿用原轮次链；动态仅 API 受理、Python 视频写入仅自报时不作完成认定。**原权限、回执及不可重发门禁不变，Windows/B站及 72 小时真实生活尚未验收。**

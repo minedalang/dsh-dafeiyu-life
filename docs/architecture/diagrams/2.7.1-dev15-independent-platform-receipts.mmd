@@ -1,0 +1,20 @@
+flowchart TB
+  Life["Life 自主意愿"] --> Gate["原账户授权与原发送事务"]
+  Gate --> Choice{"原渠道写入动作"}
+  Choice --> Video["视频 Agent Python 点赞/收藏/关注/取关"]
+  Choice --> Dynamic["文本动态 Python 发布"]
+  Choice --> Other["视频评论/收藏夹删除等原写入"]
+  Video --> VResult{"写入结果 ok?"}
+  VResult -->|否或未知| Unknown["未核验 / 原冻结不可重发"]
+  VResult -->|是| VRead["Node 发起独立只读进程：当前账号+单目标状态"]
+  Dynamic --> DAck["API 受理 ID（不是完成）"]
+  DAck --> DRead["独立只读详情：当前账号+动态ID+全文"]
+  Other --> Unknown
+  VRead --> Evidence{"只读匹配?"}
+  DRead --> Evidence
+  Evidence -->|否/异常| Unknown
+  Evidence -->|是| Verified["可信完成回执"]
+  Verified --> Events["dev14 原 LifeAgentEvents 匿名、幂等 experience-ready"]
+  Events --> Planner["按当前生活节奏重新考虑，不自动发送"]
+  Unknown --> Retry["仅动态可于下一次 tick 重做只读验证；绝不重做写入"]
+  Retry -.-> DRead
