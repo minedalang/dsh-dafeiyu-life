@@ -3356,7 +3356,7 @@ function reportMeta() {
     getConfig:()=>{refreshCfg();return cfg},
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'ownerDmAgent'}),
     readMainContext:async(opt)=>mainSessionBridge?.ownerDmContext(opt)||{available:false,lines:[]},
-    getPersona:()=>lifeVoiceContext({scene:'owner-dm',uid:String(cfg.dmOwnerUid||''),maxChars:5200}),
+    getPersona:()=>lifeVoiceContext({scene:'owner-dm',uid:String(cfg.dmOwnerUid||''),maxChars:2600}),
     getRecentActivity:({uid,text,history})=>{
       // Only the authenticated owner of the currently verified B站 account may
       // ask for this account's recent PUBLIC activity. No third-party DM data.
@@ -3369,6 +3369,19 @@ function reportMeta() {
         oldestAt:binding.generation>1?binding.cutoverAt:0})
     },
     getContext:async({uid,text,history})=>socialContextAssembler?.ownerDm({uid,text,history})||{},
+    // Owner-private memory tools are read-only and bound to the currently
+    // authenticated account. No public DM or other UID may query these copies.
+    recallMemory:async({action,uid,query,id,history=[],beforeAt=0})=>{
+      refreshCfg()
+      if(String(uid)!==String(cfg.dmOwnerUid||'')||cfg.ownerDmAgentEnabled!==true||!trustedLifeAccountTag()||accountBinding.status()?.blocked)
+        return {ok:false,reason:'account-not-verified',items:[]}
+      if(action==='memory_search')return memoryRetriever?.ownerSearch(query,{history,limit:6,beforeAt})||{ok:false,reason:'memory-not-ready',items:[]}
+      if(action==='memory_detail'){
+        const item=memoryRetriever?.ownerDetail(id)
+        return {ok:true,items:item?[item]:[]}
+      }
+      return {ok:false,reason:'unsupported-read',items:[]}
+    },
     onTodoSuggested:async({uid,messageId,at,task})=>{
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.dmWatch!==true||cfg.ownerDmAgentEnabled!==true||cfg.ownerDmReadCommandsEnabled!==true||String(cfg.dmOwnerUid||'')!==String(uid))return {ok:false,error:'主人只读待办权限未启用'}

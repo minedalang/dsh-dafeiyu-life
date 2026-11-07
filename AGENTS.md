@@ -4,8 +4,8 @@
 
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 ## 项目与代码入口
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.20`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
-- dev.20 退休低额视频分享/跨渠道同人日硬限额，Life 协调全局、专业 Agent 保留授权内局部自主决策；主人查询本人公开经历优先读当前核验账号的真实记录，切号不混用。见 `docs/architecture/2.7.1-dev20-life-contract-owner-recall.md`。dev.19「大肥鱼的一天」只呈现生活行动；内核平台回执、诊断和防重仍保留，正文已展示的评论不再重复列事务卡片。见 `docs/architecture/2.7.1-dev19-owner-life-timeline.md`；dev.16 原可信证据边界不变。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.21`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- dev.21 主人私信新增独立只读回忆动作，当前账号核验后可查实时长期/情节记忆，不靠主 Session 记忆开关；拒绝归档复活、跨账号读取与整段固定检讨回退。见 `docs/architecture/2.7.1-dev21-owner-active-recall.md`。dev.20 退休低额视频分享/跨渠道同人日硬限额，Life 协调全局、专业 Agent 保留授权内局部自主决策；主人查询本人公开经历优先读当前核验账号的真实记录，切号不混用。见 `docs/architecture/2.7.1-dev20-life-contract-owner-recall.md`。dev.19「大肥鱼的一天」只呈现生活行动；内核平台回执、诊断和防重仍保留，正文已展示的评论不再重复列事务卡片。见 `docs/architecture/2.7.1-dev19-owner-life-timeline.md`；dev.16 原可信证据边界不变。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
 - 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限；dev.4 旧视频定时驱动已退役，明确保存暂停后普通手动生活唤醒也停止；社交旧独立决策器退役，新老用户均需迁移为 Life 归属；未知发送则冻结。Phase 6/7/8 迁移核验见 [只读迁移门禁](docs/architecture/2.7.1-dev4-life-transition-readiness.md)；设置及当前增量见 [Life 双节奏与预算架构](docs/architecture/2.7.1-life-a-dual-lane-budget.md)；旧发言授权仍按原门禁执行。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
