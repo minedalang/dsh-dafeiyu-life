@@ -38,7 +38,7 @@ function completedRound(x,{pickedCount=2,source='life-agent'}={}){
   return round.id
 }
 
-test('a video completion wake is NOT consumed inside the 180-minute start cooldown',()=>isolated(async dir=>{
+test('a video completion wake is NOT consumed inside the 20-minute start cooldown',()=>isolated(async dir=>{
   const x=scenario(dir),id=completedRound(x)
   const before=x.planner.status().runs
   const result=await x.planner.tick({force:true})
@@ -57,7 +57,7 @@ test('a video completion wake is NOT consumed inside the 180-minute start cooldo
 test('after cooldown the SAME event reaches the model with actual round proof and is settled once',()=>isolated(async dir=>{
   const x=scenario(dir),id=completedRound(x)
   assert.equal((await x.planner.tick({force:true})).skipped,'video-feedback-waiting')
-  x.time+=180*60_000
+  x.time+=20*60_000
   const result=await x.planner.tick({force:true})
   assert.equal(result.result,'voluntary-rest')
   assert.equal(x.modelCalls,1)
@@ -71,23 +71,21 @@ test('after cooldown the SAME event reaches the model with actual round proof an
   assert.equal(x.videoLaunches,0,'model chose to rest, not launch')
 }))
 
-test('daily video start limit delays feedback without charging a model, rather than dropping the event',()=>isolated(async dir=>{
+test('high video count never creates a synthetic daily start limit',()=>isolated(async dir=>{
   const x=scenario(dir)
   completedRound(x)
   x.events.recordVideoStart()
-  x.time+=180*60_000
+  x.time+=20*60_000
   const result=await x.planner.tick({force:true})
-  assert.equal(result.skipped,'video-feedback-waiting')
-  assert.equal(result.diagnosticCode,'video-daily-limit')
-  assert.equal(x.modelCalls,0)
-  assert.equal(x.events.status().pendingVideoFollowup,1)
-  assert.ok(result.nextAt>x.time)
+  assert.equal(result.result,'voluntary-rest')
+  assert.equal(x.modelCalls,1)
+  assert.equal(x.events.status().pendingVideoFollowup,0)
 }))
 
 test('shadow can inspect real round result but never delegates video or claims viewing',()=>isolated(async dir=>{
   const x=scenario(dir,{mode:'shadow',response:'{"action":"use_capability","capability":"bilibili.video-explore"}'})
   completedRound(x,{pickedCount:null})
-  x.time+=180*60_000
+  x.time+=20*60_000
   const result=await x.planner.tick({force:true})
   assert.equal(result.result,'shadow-would-explore')
   assert.equal(x.videoLaunches,0)
@@ -161,7 +159,7 @@ test('read-only status estimates earliest followup without granting capability, 
   let state=lifeExperienceReadiness({config,planner:{runs:1},events:ev,at:START+60_000,capabilities:[{id:'bilibili.video-explore'}]})
   assert.equal(state.pendingVideoFollowup,1)
   assert.equal(state.videoDelegationEligible,false)
-  assert.equal(state.videoFeedbackEarliestAt,START+180*60_000)
+  assert.equal(state.videoFeedbackEarliestAt,START+20*60_000)
   assert.equal(lifeExperienceReadiness({config,planner:{runs:1},events:{...ev,pendingVideoFollowup:0},at:START+60_000}).videoFeedbackEarliestAt,null)
   state=lifeExperienceReadiness({config,planner:{runs:1},events:{...ev,videoStartsToday:2},at:START+60_000,capabilityReadiness:{blocked:[{id:'bilibili.video-explore',platform:'bilibili',reason:'daily-video-quota'}]}})
   assert.ok(state.videoFeedbackEarliestAt>START+60_000)
@@ -181,7 +179,7 @@ test('manual wake during cooldown may be settled without discarding original vid
 test('busy video child preserves previous round feedback without burning model quota; free child can proceed',()=>isolated(async dir=>{
   const x=scenario(dir,{availability:{available:false,reason:'video-busy'}})
   completedRound(x)
-  x.time+=180*60_000
+  x.time+=20*60_000
   const skipped=await x.planner.tick({force:true})
   assert.equal(skipped.skipped,'video-feedback-waiting')
   assert.equal(skipped.diagnosticCode,'video-agent-busy')
@@ -228,7 +226,7 @@ test('followup timestamp never advertises a time earlier than BOTH daily gate an
   const event={ok:true,pending:1,pendingVideoFollowup:1,videoStartsToday:2,lastVideoAt:t}
   const inspected=lifeExperienceReadiness({config:cfg,planner:{runs:2},events:event,
     capabilities:[{id:'bilibili.video-explore'}],at:t})
-  assert.ok(inspected.videoFeedbackEarliestAt>=t+180*60_000)
+  assert.ok(inspected.videoFeedbackEarliestAt>=t+20*60_000)
   const exhausted=lifeExperienceReadiness({config:cfg,planner:{runs:10},events:{...event,videoStartsToday:0,lastVideoAt:0},
     capabilities:[{id:'bilibili.video-explore'}],at:t})
   assert.ok(exhausted.videoFeedbackEarliestAt>t)

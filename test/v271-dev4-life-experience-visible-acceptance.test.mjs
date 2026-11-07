@@ -15,10 +15,10 @@ test('status inspection differentiates active, shadow and legacy without claimin
  assert.ok(inspect({masterEnabled:false}).blockers.includes('master-off'))
  assert.ok(inspect({autonomousPlannerEnabled:false}).blockers.includes('planner-off'))
 })
-test('status explains quotas, actual missing video adapter and 180-minute cooldown',()=>{
- assert.deepEqual(inspect({}, {...events,videoStartsToday:2}).blockers,['video-day-limit'])
+test('status explains planner quota, missing video adapter and 20-minute cooldown',()=>{
+ assert.deepEqual(inspect({}, {...events,videoStartsToday:51}).blockers,[])
  assert.deepEqual(inspect({},events,[]).blockers,['no-video-capability'])
- assert.deepEqual(inspect({}, {...events,lastVideoAt:at-60*60_000}).blockers,['video-cooldown'])
+ assert.deepEqual(inspect({}, {...events,lastVideoAt:at-10*60_000}).blockers,['video-cooldown'])
  assert.equal(inspect({autonomousPlannerDailyLimit:3}).remainingDecisions,0)
  assert.ok(inspect({autonomousPlannerDailyLimit:3}).blockers.includes('model-quota'))
  assert.ok(inspect({}, {...events,ok:false}).blockers.includes('event-ledger-unavailable'))

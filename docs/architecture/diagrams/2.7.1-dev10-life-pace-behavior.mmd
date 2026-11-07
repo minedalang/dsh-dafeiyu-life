@@ -1,0 +1,15 @@
+flowchart TD
+  Config[原配置: 活跃/自然/安静, 旧自定义不迁移] --> Policy[Life 节奏策略唯一映射]
+  Events[原账号匿名事件账本: 视频轮结束 / 生活契机] --> Planner[AutonomousPlanner 分钟轮询]
+  Policy --> Planner
+  Planner --> Choices{Life 自由选择}
+  Choices -->|休息或无可核实候选| Rest[不执行任何外部动作]
+  Choices -->|视频探索| Gate{实时视频额度/冷却 + 原账号与平台门禁}
+  Policy --> Gate
+  Gate -->|不通过| Wait[保留真实结束信号 等到下一次合规考虑]
+  Gate -->|通过| Will[LifeWillingness 持久跨进程准入 + 新意愿核验]
+  Will -->|拒绝或未知| Rest
+  Will -->|批准| Video[原 video Agent 运行]
+  Video --> Receipts[原子进程与入选回执 不代表看完/听音]
+  Receipts --> Events
+  Events --> Audit[真实时间线/诊断状态]

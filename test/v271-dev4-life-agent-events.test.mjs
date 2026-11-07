@@ -139,15 +139,15 @@ test('changing accounts during model deliberation blocks execution and does not 
   assert.equal(r.events.status().pending,1,'old-account wake remains pending')
 }))
 
-test('active mode has two autonomous video launches/day, with a cross-wake cooldown',()=>withHome(async dir=>{
+test('active mode can continue video exploration beyond two launches/day',()=>withHome(async dir=>{
   const r=rig(dir)
   await r.planner.tick({force:true})
   r.advance(3*3600_000)
   await r.planner.tick({force:true})
   assert.equal(r.launches,2)
   r.advance(3*3600_000)
-  assert.equal((await r.planner.tick({force:true})).skipped,'nothing-to-do')
-  assert.equal(r.launches,2)
+  assert.equal((await r.planner.tick({force:true})).result,'capability-launched')
+  assert.equal(r.launches,3)
 }))
 
 test('capability selection closes actual video wakes but leaves unrelated social input unselected',()=>withHome(async dir=>{

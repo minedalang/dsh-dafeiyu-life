@@ -58,7 +58,7 @@ test('verified DM bypasses ordinary cooldown and exhausted LIFE quota, but uses 
   assert.equal(status.lifeRuns,1)
   assert.equal(status.socialRuns,1)
   assert.equal(status.runs,2)
-  assert.equal(status.dailyGlobalLimit,105) // life 1 + social 24 + bounded willingness 80
+  assert.equal(status.dailyGlobalLimit,25) // only optional planner + read-only social attention
   assert.equal(r.events.status().pendingSocial,0)
   const raw=readFileSync(join(dir,'autonomous-planner.json'),'utf8')
   assert.doesNotMatch(raw,/sensitive-uid|sensitive-private-id/)
