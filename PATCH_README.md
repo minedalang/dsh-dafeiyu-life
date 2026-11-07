@@ -1,46 +1,34 @@
-# 2.6.1 RC2 · 全社交 AI 待办接入补丁
+# DSH 2.7.1-dev.24 · 从 dev.23 升级说明
 
-本补丁基于 **`dsh-bili-scroll-plus2-v2.6.1-RC2-natural-todo-source.zip`**（上一轮主人私信自然待办修复版）。不是 RC1 → RC2 完整补丁，也不能直接应用到 dev.6、原始 RC1 或其他 AI 的未核验 RC2 Patch。
+> 开发预览，未发布；默认不开启 Embedding，不授权任何新 B站外发。
 
-## 本次范围
+本轮补丁唯一受支持的起点是已上传的 **`dsh-bili-scroll-plus2.zip`**（`package.json` 为 `2.7.1-dev.23`）。如果本地已经有未提交改动或 dev.24 其他来源的修改，不要直接叠加补丁；先将改动备份并核实差异。
 
-- 主人私信继续使用 Owner DM Agent；主人/好友可信评论使用现有 trusted-social AI；普通好友/陌生人私信、普通评论使用现有 InteractionBatcher。
-- 各入口在原有模型调用中同时生成自然回复和结构化只读待办提议，不增加第二次意图识别调用。
-- 普通用户不再依赖关键词或固定句式判断待办；支持自然表达、错别字、分段消息和同 UID 近期上下文。
-- 已启用陌生人私信时，首条也走现有 AI 回复调用；陌生人开关、回复次数、额度、审批不变。旧固定欢迎语设置保留兼容但停用。
-- BV 分享链接只作 48 小时候选上下文，不自动接受任务；只允许公开视频搜索/观看，不增加任何 B站写操作权限。
-- 聊天意愿和探索意愿分开；不想聊天不会阻断同轮 AI 理解独立只读探索提议，但仍会抑制聊天回复。
+## 用户会得到什么
 
-## 应用方法（Git Bash）
+新增本机 Qwen3 Embedding 语义候选检索、内置 llama.cpp Runtime 管理接口、本地向量索引与管理界面。安装或恢复不会自动下载模型；只有点击「启用并下载模型」后才开始下载、校验和启动。模型不可用时正常走旧版词法检索。
 
-先备份 `$DSH_HOME/bili-duty/` 中的待办、回访、私信状态与配置文件，并确认工作区干净：
+该能力复用原 `memoryRetriever` / `LifeMemoryGateway` 和权限/遗忘机制，不另建事实数据库，也不会因相似度命中而证明视频已看、评论已发或记忆仍有效。主 Session、主人私信与受 SocialContextAssembler 管理的社交路径已经接线；旧 `full` 模式与部分专业 Agent 仍未收口。
 
-```bash
+## Windows PowerShell 补丁应用
+
+请先**停止 DSH Desktop**，备份 `$DSH_HOME/bili-duty/` 业务数据，再到本地源码仓库执行：
+
+```powershell
 git switch dev
 git status --short
-
-git apply --check ../dsh-v261-rc2-all-social-ai-todo.patch
-git apply ../dsh-v261-rc2-all-social-ai-todo.patch
-
+git apply --check .\DSH-2.7.1-dev24-from-dev23-original-CRLF.patch
+git apply .\DSH-2.7.1-dev24-from-dev23-original-CRLF.patch
 git diff --check
-node --test test/*.test.mjs
-node selfcheck.mjs
+cmd.exe /c run-tests.bat
 ```
 
-Python 全量测试：
+若仓库文本已全部转换为 LF，请改用 `DSH-2.7.1-dev24-from-dev23-normalized-LF.patch`，**两种补丁只能使用一种**。已有其他代码变更时，优先使用交付的完整源码对比合并，不强行应用补丁。
 
-```bash
-PYTHONUTF8=1 PYTHONIOENCODING=utf-8 python -m unittest discover -s test -p 'test*.py'
-```
+不使用命令行的用户可以在备份业务数据后，按现有 DSH 插件安装/升级流程使用平台安装包；大模型不是升级依赖。当前交付是源码开发包，不是已签名的 Windows 安装程序。
 
-Windows 可继续运行 `cmd.exe /c run-tests.bat`。补丁已应用后不要再次执行 `git apply`。
+## 测试与发布边界
 
-## 验收重点
+离线 Node 1992/1992 通过；Python 222 通过、1 跳过；插件自检和 `npm pack --dry-run` 通过。Windows、真实 llama-server + 639 MB GGUF 推理、真实 B站与持续运行未验收。`releaseReady: false`；不要合并 main、创建 Tag 或对外发布。
 
-1. 开启陌生人私信入口后，普通用户首条私信也由 AI 自然回复；同一输出可提出 `todoDisposition/suggestedTodo`。
-2. 普通好友/陌生人评论、私信提出“有空了解/看看/听听……”时，由 AI 语义理解；不是每条闲聊都创建待办。
-3. 好友本轮不想聊天时，聊天回复不发送，但同轮 AI 仍可接受独立只读探索建议。
-4. `defer/refuse/none`、证据不匹配、不同 UID 历史、超过 24 小时的旧上下文、无效 BV、写操作类型均不入队。
-5. 同一消息重复轮询或模型重试最多建立一条待办；候选链接不自动变成待办。
-
-仍为 `2.6.1 RC2` 发布候选。真实 B站私信/评论送达和运行时行为待本机验收；不创建 Release、npm 或市场版本。
+详细架构：`docs/architecture/2.7.1-dev24-local-embedding-recall.md`。

@@ -9,7 +9,41 @@ permissions:
   contents: write
 
 jobs:
+  runtime-packages:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - win32-x64
+          - win32-arm64
+          - darwin-arm64
+          - darwin-x64
+          - linux-x64
+          - linux-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare platform-bundled llama.cpp Runtime (no model weights)
+        run: |
+          npm ci --ignore-scripts
+          node scripts/prepare-embedding-runtime.mjs --target=${{ matrix.target }}
+      - name: Package DSH with the matching platform Runtime
+        shell: bash
+        run: |
+          mkdir -p dist
+          npm pack --ignore-scripts --pack-destination dist
+          mv dist/dsh-dafeiyu-life-*.tgz "dist/dsh-dafeiyu-life-${{ matrix.target }}.tgz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-package-${{ matrix.target }}
+          path: dist/dsh-dafeiyu-life-${{ matrix.target }}.tgz
+          if-no-files-found: error
+
   release:
+    needs: runtime-packages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,10 +101,15 @@ jobs:
         run: |
           node selfcheck.mjs
           npm pack --dry-run --ignore-scripts > /dev/null
-      - name: Pack installable npm archive and checksum
+      - name: Download platform-specific install packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dsh-package-*
+          path: release-assets
+          merge-multiple: true
+      - name: Checksum platform-specific install packages
         run: |
-          npm pack --ignore-scripts
-          sha256sum dsh-dafeiyu-life-*.tgz > SHA256SUMS.txt
+          sha256sum release-assets/*.tgz > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Detect version-specific release notes
         id: release_notes
@@ -92,7 +131,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dsh-dafeiyu-life-*.tgz
+            release-assets/*.tgz
             SHA256SUMS.txt
           body_path: ${{ steps.release_notes.outputs.body_path }}
           generate_release_notes: ${{ steps.release_notes.outputs.has_notes != 'true' }}

@@ -1,4 +1,8 @@
-## 当前开发版本 2.7.1-dev.23：AI 主导的跨渠道主动回忆（未发布）
+## 当前开发版本 2.7.1-dev.24：本地 Embedding 语义回忆（未发布）
+
+[dev.24 本地语义回忆架构与安装边界](./2.7.1-dev24-local-embedding-recall.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev24-local-embedding-recall.mmd)。在 dev.23 的模型主动回忆契约上，增加本地 Qwen3 Embedding + llama.cpp CPU Runtime；向量只排序当前权限过滤后的候选 ID，之后必须回到实时记忆账本重新核验。默认关闭、用户确认后下载；模型未安装/索引未就绪/运行时不可用时退回词法检索。主人公开评论成功回执账本仍为独立只读来源。真实模型推理、Windows、B站及长期生活未验收。
+
+## 历史版本 2.7.1-dev.23：AI 主导的跨渠道主动回忆（未发布）
 
 [dev.23 当前统一回忆接口、生产接线与未覆盖边界](./2.7.1-dev23-active-recall-unified.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev23-active-recall.mmd)。主人私信移除规则式记忆预检索；普通私信/评论的 compact 首轮由模型给出 `recallQueries`，统一检索器依当前身份与渠道取仍可访问的长期/可衰减记忆；受信好友公开评论按需读取公开安全记忆。主人跨日公开评论仍读原成功回执账本。传统 `full` 模式及某些专业 Agent 仍有生成前装配逻辑（兼容保留），不宣称所有入口已统一或真实语义召回完善。Windows / B站 / 长期生活未验收。
 
@@ -82,7 +86,7 @@
 
 [架构与权限迁移说明](./2.7.1-rc8-choice-first-management.md) · [Mermaid 方案数据流](./diagrams/2.7.1-rc8-choice-first-management.mmd)。已完成：视频互动 / 私信 / 主动分享使用可选方案卡与自定义、现有配置单写源、站内外发确认；尚待 Windows 实机和真实 B站验收。
 
-> 以下 dev.7 及更早的「当前」「最新」均指其撰写当时的阶段性成果；不代表 dev.23 的生产真值。现行入口与统一层契约请以上方 dev.23 统一回忆说明为准。
+> 以下 dev.7 及更早的「当前」「最新」均指其撰写当时的阶段性成果；不代表 dev.24 的生产真值。现行入口与统一层契约请以上方 dev.24 本地语义回忆说明及 dev.23 主动回忆契约为准。
 
 ## 历史开发预览：2.7.1-dev.7 RC7 · 鱼鱼此刻与图片理解（未发布）
 
@@ -359,7 +363,7 @@
 
 `Life Voice Context` 是自动生成文字时的人格、成长与连续情绪的唯一装配层。各场景只追加任务事实、互动历史与授权相关数据，不能重新在模型提示中拼一份情绪／成长描述。主 Session 的长期记忆检索与稳定成长人设是不同职责。详情见 [人格上下文](./2.6.2-life-voice-context.md)。
 
-## 历史系统基线图（2.6.2，非 dev.23 的最新接线）
+## 历史系统基线图（2.6.2，非 dev.24 的最新接线）
 
 - [开发者架构 Mermaid](./diagrams/2.6.2-life-system-current.mmd) · [SVG](./diagrams/2.6.2-life-system-current.svg)
 - [用户理解版 Mermaid](./diagrams/2.6.2-life-system-user.mmd) · [SVG](./diagrams/2.6.2-life-system-user.svg)
