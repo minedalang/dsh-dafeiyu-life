@@ -1,3 +1,7 @@
+## 当前版本 2.7.1-dev.8：Life 同进程意愿排他（尚未发布）
+
+[实际接线、风险与验收](./2.7.1-dev8-life-local-admission.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev8-life-local-admission.mmd)。对 RC10 的 140 毫秒机会窗口加同账号未结算保护，并禁止 8 候选溢出拆成多次批准；跨进程、跨重启候选续行**仍缺失**，`releaseReady=false`。以下 RC10 / RC9 为历史开发增量，非当前完整事实清单。
+
 ## RC10 · Life 同进程机会竞争与视频自主逐动作意愿（未发布）
 
 [实际接线、边界与实机验收](./2.7.1-rc10-life-opportunity-video-action.md) · [可编辑 Mermaid](./diagrams/2.7.1-rc10-life-opportunity-video-action.mmd)。并发机会在同一 Life 意愿轮次中竞争；视频自主点赞/收藏/关注等每次必须得到 Life 的新批准，仍经过原安全门禁。**不是跨进程永久队列，也不意味着真实成长因果已经验收。**

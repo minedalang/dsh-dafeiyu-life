@@ -10,10 +10,17 @@ test('Life cross-channel defer never becomes silent SKIP without a valid P6 cont
   assert.match(index,/throw Error\('Life 延后评论：当前续行未启用，保留原消息/)
 })
 test('only a confirmed public reply queues a bounded Life dynamic opportunity, not direct platform publishing',()=>{
-  const confirmed=index.indexOf("if(ack?.ok!==true)return ack\n      try{const role=socialPolicyGate.actor(req.uid).role")
-  assert.ok(confirmed>0)
-  const wake=index.indexOf('wakeDynamicAfterConfirmedComment()',confirmed)
-  assert.ok(wake>confirmed&&wake-confirmed<1200)
+  // Locate the actual PUBLIC comment send branch, not an exact adjacent
+  // source-text substring: the Life receipt is deliberately recorded between
+  // the platform ack and the downstream memory projection.
+  const start=index.indexOf('// 后台独立发送，受评论互动专用开关保护')
+  const stop=index.indexOf('const interactionScheduler =',start)
+  assert.ok(start>0&&stop>start)
+  const send=index.slice(start,stop)
+  const confirmed=send.indexOf('if(ack?.ok!==true)return ack')
+  const wake=send.indexOf('wakeDynamicAfterConfirmedComment()',confirmed)
+  assert.ok(confirmed>0&&wake>confirmed)
+  assert.match(send,/lifeWillingness\?\.receipt\(req\.lifeWillingnessProof/)
   assert.match(index,/commentDynamicWakeTimer=setTimeout/)
   assert.match(index,/trustedLifeAccountTag\(\)!==scope/)
   assert.match(index,/cfg\.commentSyncDynamic!==true/)

@@ -59,3 +59,36 @@ test('changing account between batched offers never grants any proof',async t=>{
   assert.equal(result.ok,false)
   assert.equal(x.calls(),0)
 })
+
+test('nine same-window opportunities produce at most one model choice and one approval',async t=>{
+  const x=setup(t,{choose:'q1_reply_1'})
+  const offers=Array.from({length:9},(_,i)=>offer('reply_'+i,'dm_reply','verified-dm:burst:'+i))
+  const results=await Promise.all(offers.map(row=>x.will.decide(row)))
+  assert.equal(x.calls(),1)
+  assert.equal(results.filter(row=>row.ok).length,1)
+  assert.equal(results[8].action,'defer')
+  assert.equal(results[8].reason,'life-opportunity-window-full')
+})
+test('slow model keeps overlapping windows from producing a second Life approval',async t=>{
+  const dir=mkdtempSync(join(tmpdir(),'life-rc10-overlap-'))
+  t.after(()=>rmSync(dir,{force:true,recursive:true}))
+  let calls=0
+  const will=createLifeWillingness({dataDir:dir,getAccountTag:()=>S,enabled:()=>true,
+    beginTrace:()=>({step(){},finish(){}}),getContext:()=>({voice:'同一条鱼',world:{}}),
+    invokeModel:async()=>{calls++;await new Promise(resolve=>setTimeout(resolve,70))
+      return JSON.stringify({action:'act',candidateId:'reply_dm',reason:'有想法'})},
+    opportunityWindowMs:10,crossChannelCooldownMs:30000})
+  const first=will.decide(offer('reply_dm','dm_reply','verified-dm:first'))
+  await new Promise(resolve=>setTimeout(resolve,25))
+  const second=await will.decide(offer('reply_comment','comment_reply','verified-comment:second'))
+  const selected=await first
+  assert.equal(calls,1)
+  assert.equal(second.action,'defer')
+  assert.equal(second.reason,'life-choice-in-progress')
+  assert.equal(selected.ok,true)
+  assert.equal(will.verify(selected.proof,'dm_reply').ok,true)
+  assert.equal((await will.decide(offer('reply_comment','comment_reply','verified-comment:third'))).action,'defer')
+  will.receipt(selected.proof,{status:'uncertain'})
+  assert.equal((await will.decide(offer('reply_dm','dm_reply','verified-dm:fourth'))).ok,true)
+  assert.equal(calls,2)
+})

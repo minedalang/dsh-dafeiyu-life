@@ -148,7 +148,7 @@ test('manual rehearsal endpoint and management controls require deliberate no-se
 test('transition audit version is supplied by current package, not pinned to old dev4',async()=>{
   const {lifeTransitionReadiness}=await import('../lib/life-transition-readiness.mjs')
   const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
-  assert.equal(lifeTransitionReadiness({version:pkg.version}).version,'2.7.1-dev.7')
+  assert.equal(lifeTransitionReadiness({version:pkg.version}).version,'2.7.1-dev.8')
   assert.equal(lifeTransitionReadiness().version,'unknown')
 })
 
