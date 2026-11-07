@@ -1,4 +1,8 @@
-## 当前版本 2.7.1-dev.16：视频评论核验与动态恢复（未发布）
+## 当前版本 2.7.1-dev.17：Life 决策诊断错误分类与影子提示（未发布）
+
+[诊断修复与回执边界](./2.7.1-dev17-life-trace-correction.md) · [流程图](./diagrams/2.7.1-dev17-life-trace-correction.mmd)。修复未注册的视频轮次反馈误显示成「技术错误」；社交快速考虑不记录未被模型使用的视频上下文，`social-shadow-reply` 明确不表示已发送。此版未改变社交外发、模型额度、视频时钟、记忆或平台回执。
+
+## 历史版本 2.7.1-dev.16：视频评论核验与动态恢复（未发布）
 
 [可信评论读回、动态异常恢复与证据展示](./2.7.1-dev16-comment-receipts-recovery.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev16-comment-receipts-recovery.mmd)。顶层视频评论由平台 ID、作者、视频和原文比对，读不到并非未发送；动态重启遗留的 `publishing` 不自动重试。Life 时间线按证据源展示，原权限与限额不改。真实 B站、Windows、72 小时验收尚未执行。
 
