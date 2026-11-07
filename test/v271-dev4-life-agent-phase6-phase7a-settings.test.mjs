@@ -16,7 +16,7 @@ test('Phase 6 V2 projects old config without mutating or silently migrating it',
  const old=seed(),before=structuredClone(old)
  const result=lifeSettingsV2(old)
  assert.equal(result.schemaVersion,2);assert.equal(result.mode,'off');assert.equal(result.pace,'custom')
- assert.equal(result.socialReplyOwner,'legacy');assert.deepEqual(old,before)
+ assert.equal(result.socialReplyOwner,'life-agent');assert.deepEqual(old,before)
  assert.equal(result.budget.startHour,9);assert.equal(result.legacyVideoTimerEnabled,false)
 })
 test('preview and save use the same changes, no second authority or social permission',()=>{

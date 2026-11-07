@@ -62,7 +62,7 @@ test('shadow metrics remain read-only; explicit maintenance owner switching is s
   assert.match(consoleJs,/shadow\.byChannel\?\.\[key\]/)
   assert.match(consoleJs,/未配对不代表选择沉默/)
   assert.match(owner,/!\['legacy','life-agent'\]\.includes\(requester\)/)
-  assert.doesNotMatch(index,/socialDecisionOwnership\.route\(\{channel:'dm',requester:'life-agent'/)
+  assert.match(index,/socialDecisionOwnership\.route\(\{channel:'dm',requester:'life-agent'/)
 })
 test('offline audit runs without model, B站 credentials, network or any outbound send',()=>{
   const result=runPhase6gSocialAuditOffline()

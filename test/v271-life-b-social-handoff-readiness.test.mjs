@@ -118,14 +118,14 @@ test('readiness is privacy-preserving, fail-closed, account-scoped and not a cre
   assert.equal(JSON.stringify(status).includes(ACCOUNT),false)
   assert.equal(JSON.stringify(status).includes('123456789'),false)
 })
-test('source wiring has no automatic cutover; only manual, paused maintenance may reserve',()=>{
+test('source wiring migrates both channels under the fence and keeps dry-run manual',()=>{
   const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   assert.match(source,/getSendTransactionStatus:\(\)=>socialSendTransaction\.inspect\(\)/)
   assert.match(source,/getSocialShadowStatus:\(\)=>lifeSocialShadow\?\.status\(\)/)
   assert.equal((source.match(/socialHandoffFence\.rehearse\(/g)||[]).length,1,'only the explicit developer endpoint may run rehearsal')
-  assert.equal((source.match(/socialHandoffFence\.reserve\(/g)||[]).length,1)
+  assert.match(source,/socialHandoffFence\.migrateAllToLife\(\{expectedScope/)
   assert.match(source,/body\?\.confirmation!==/)
-  assert.doesNotMatch(source,/requester:'life-agent'/)
+  assert.match(source,/requester:'life-agent'/)
 })
 
 test('manual rehearsal endpoint and management controls require deliberate no-send action',()=>{

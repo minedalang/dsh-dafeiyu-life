@@ -1,3 +1,7 @@
+## 当前权威：2.7.1-dev.7 RC6 双渠道统一 Life 决策归属（未发布）
+
+- [老用户与新用户统一迁移 DM / 评论、主人技能、待办回访、视频兴趣分享及未知发送冻结](./2.7.1-rc-unified-life-social-migration.md) · [生产 Mermaid 架构图](./diagrams/2.7.1-rc-unified-life-social-migration.mmd)。旧独立社交决策权**不再用于生产兜底**，原授权、记忆与适配器保留；真实 Windows/B站/72 小时验收未通过，`releaseReady:false`。以下 RC1–RC5 owner 说明是**历史阶段**，不应视为当前行为。
+
 ## 2.7.1 RC 第五轮 · 评论渠道受控 Life 归属试点（尚未正式发布）
 
 - [社交生产所有权原子切换、旧稿失效、跨账号隔离和未知回执回滚边界](./2.7.1-rc-social-owner-controlled-cutover.md) · [Mermaid 可编辑架构图](./diagrams/2.7.1-rc-social-owner-controlled-cutover.mmd)。默认仍由旧处理器决定；维护接口仅允许评论试点，不开放 DM 交接。实际 B站、Windows 和长时间验收未完成。

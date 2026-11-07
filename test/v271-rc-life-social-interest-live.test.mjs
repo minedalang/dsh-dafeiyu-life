@@ -77,11 +77,11 @@ test('privacy guard leaves interests out of model prompt even when the source is
   }finally{batcher.stop()}
 })
 
-test('every legacy outbound helper also checks ownership, not only reply generators',()=>{
+test('every Life outbound skill also checks ownership, not only reply generators',()=>{
   const root=new URL('../index.js',import.meta.url)
   const text=readFileSync(fileURLToPath(root),'utf8')
-  const helper=text.slice(text.indexOf('const legacySocialWrite=async('),text.indexOf('const lifeSocialShadow=createLifeSocialShadow('))
-  assert.match(helper,/socialDecisionOwnership\.route\(\{channel,expectedScope\}\)/)
+  const helper=text.slice(text.indexOf('const lifeSocialWrite=async('),text.indexOf('const lifeSocialShadow=createLifeSocialShadow('))
+  assert.match(helper,/socialDecisionOwnership\.route\(\{channel,requester:'life-agent',/)
   assert.match(helper,/phase:'send'/)
   assert.match(helper,/if\(!checked\.ok\)return \{ok:false,no_retry:true/)
   assert.match(helper,/return await write\(\)/)
@@ -94,5 +94,5 @@ test('video-interest DM delivery is connected to existing opaque receipt transac
   assert.match(section,/video-recommendation:\$\{uid\}:\$\{eventId\}/)
   assert.match(section,/extractBiliDmReceiptId\(response\)/)
   assert.match(section,/return \{ok:false,no_retry:true/)
-  assert.match(section,/legacySocialWrite\('dm',/)
+  assert.match(section,/lifeSocialWrite\('dm',/)
 })

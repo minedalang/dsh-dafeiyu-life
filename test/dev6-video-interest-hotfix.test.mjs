@@ -15,7 +15,7 @@ const config=()=>({masterEnabled:true,socialOutreachEnabled:true,socialLifeInten
 const videos=[{picked:true,bvid:BV,title:'猫咪日常合集'}]
 const engine=(dir,cfg,callbacks={})=>createSocialIntentEngine({dataDir:dir,getConfig:()=>cfg,now:()=>now,videoRecommendationsOnly:true,
   invokeModel:async()=>JSON.stringify({action:'draft',message:'今天遇到一条猫咪的公开新视频，想跟你分享这份发现～',reason:'觉得猫咪题材有趣'}),
-  sendMessage:async()=>({ok:true}),...callbacks})
+  sendMessage:async()=>({ok:true}),authorizeDraft:async()=>({ok:true,reason:'tested-life-choice'}),...callbacks})
 
 test('旧暂停版配置没有新授权时，不进行模型调用或私信投递',async()=>{
  const dir=home(),cfg=config();cfg.socialAutoSend=true;let models=0,sends=0

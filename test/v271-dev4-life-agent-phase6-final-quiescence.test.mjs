@@ -102,17 +102,17 @@ test('trusted comment and additional owner/social-share senders join the pre-han
   const source=awaitReadIndex()
   assert.match(source,/trusted-comment:\$\{bvid\}:\$\{rpid\}:\$\{actorUid\}:\$\{kind\}/)
   assert.match(source,/const receipt=await socialSendTransaction\.execute\(\{channel:'comment'/)
-  for(const snippet of ["legacySocialWrite('dm'", "legacySocialWrite('comment'", "()=>ownerCommentAgent.accept(req)",
+  for(const snippet of ["lifeSocialWrite('dm'", "lifeSocialWrite('comment'", "authorizeDraft:async",
     "runOwnerDmPublishComment(bvid,body)"])
     assert.ok(source.includes(snippet),`missing live pre-handoff route: ${snippet}`)
 })
 test('production callbacks stay under shared quiescence and Life promotion requires paused maintenance',()=>{
   const source=String((awaitReadIndex()))
   for(const channel of ['dm','comment'])for(const phase of ['decision','send'])
-    assert.match(source,new RegExp(`runLegacySocialOperation\\(\\{channel:'${channel}',expectedScope:owner\\.scope,phase:'${phase}'`))
-  assert.match(source,/phase:'send'},\(\)=>ownerCommentAgent\.accept\(req\)/)
-  assert.match(source,/socialHandoffFence\.reserve\(\{channel:'comment',expectedScope,requester:'legacy'\}\)/)
-  assert.match(source,/socialHandoffFence\.switchOwner\(\{/)
-  assert.doesNotMatch(source,/socialDecisionOwnership\.route\(\{channel:'dm',requester:'life-agent'/)
+    assert.match(source,new RegExp(`runLifeSocialOperation\\(\\{channel:'${channel}',expectedScope:owner\\.scope,phase:'${phase}'`))
+  assert.doesNotMatch(source,/\(\)=>ownerCommentAgent\.accept\(req\)/)
+  assert.match(source,/socialHandoffFence\.migrateAllToLife\(\{/)
+  assert.match(source,/unifiedLifeOnly:true/)
+  assert.match(source,/socialDecisionOwnership\.route\(\{channel:'dm',requester:owner.owner/)
 })
 function awaitReadIndex(){return readFileSync(new URL('../index.js',import.meta.url),'utf8')}

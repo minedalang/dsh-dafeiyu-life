@@ -54,7 +54,7 @@ test('explicit pause disables the planner, but does not revoke independently aut
  const c={...old(),lifeAgentMode:'active',peakValley:false}
  const preview=plan(c,{mode:'off',pace:'custom'})
  assert.deepEqual(preview.patch,{lifeAgentMode:'off',autonomousPlannerEnabled:false})
- assert.equal(preview.after.socialReplyOwner,'legacy')
+ assert.equal(preview.after.socialReplyOwner,'life-agent')
  assert.equal(preview.after.driverOwnership.videoWakeOwner,'none')
  assert.equal(Object.hasOwn(preview.patch,'socialAutoSend'),false)
  assert.throws(()=>plan({...c,masterEnabled:false}),/总开关/)

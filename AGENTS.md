@@ -1,12 +1,12 @@
 # 大肥鱼 · DSH 生活系统：AI 开发约定
 
-> 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未验收（社交默认仍是旧决策器，评论可受控试点切换，情绪驱动主动问候暂停，成长因果与 Windows／真实平台证据欠缺）；不通过不得封 RC，所有改动应同步架构图、文档与测试。 管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
+> 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
 
 ## 项目与代码入口
 
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.7`（新增 Life 总览 UI、统一可回忆公开经历与兴趣的只读世界视图、跨系统状态诊断；评论可受控试点切换，私信仍归旧处理器；成长因果与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.7`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - `index.js`：宿主配置、工具与 HTTP 业务入口；`client.js` 和 `lib/management-console.*`：界面；`lib/`：业务与共享层；`prompts/duty.md`：用户可修改的章程；`vendor/bilibili-mcp/`：内置 Python MCP。
-- 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限；dev.4 旧视频定时驱动已退役，明确保存暂停后普通手动生活唤醒也停止；社交默认归旧决策器，评论可受控切换。Phase 6/7/8 迁移核验见 [只读迁移门禁](docs/architecture/2.7.1-dev4-life-transition-readiness.md)；设置及当前增量见 [Life 双节奏与预算架构](docs/architecture/2.7.1-life-a-dual-lane-budget.md)；旧发言授权仍按原门禁执行。
+- 运行数据保存在 `$DSH_HOME/bili-duty/`，不能写回插件包。不得自动覆盖用户修改的章程、配置、模型或权限；dev.4 旧视频定时驱动已退役，明确保存暂停后普通手动生活唤醒也停止；社交旧独立决策器退役，新老用户均需迁移为 Life 归属；未知发送则冻结。Phase 6/7/8 迁移核验见 [只读迁移门禁](docs/architecture/2.7.1-dev4-life-transition-readiness.md)；设置及当前增量见 [Life 双节奏与预算架构](docs/architecture/2.7.1-life-a-dual-lane-budget.md)；旧发言授权仍按原门禁执行。
 - 维护原作者与第三方署名；不得声称这是 DSH/B站官方产品。
 
 ## 产品原则和不可突破的边界
@@ -48,13 +48,10 @@
 - `dev.7` 私信 P6-B 增加“模型明确选定开放话题，回复后对方沉默时重新考虑”的一次性可选意图，使用原 `SocialAutonomyDecisionContract`、`SocialConversationContinuity` 和原私信发送门禁；只在已授权的入站私信线程发生，不提供无关话题的定时主动找人。到期读私信暂时失败时，只能在未尝试平台发送的前提下有限延期，未知发送不自动重试。管理页只显示不含聊天内容或对方 UID 的聚合预约状态。实际接线见 `docs/architecture/2.7.0-dev7-dm-silence-reconsideration.md`。
 - 不能把允许回应入站 @ 理解成可主动 @ 他人；关闭暗号审核不会授予陌生人自动私信权限，陌生人外发仍须主人明确开启 `dmStrangerAutonomyEnabled`（独立、默认关闭的新授权）；旧版 `dmStrangerOnce` 只保留原有有限次数、单条即时回复权限，绝不能在升级时隐式扩为多条气泡或延迟续聊。
 
-- `dev.10` 行为审计修复：`dm-autoreply` 原已核验私信收件状态按登录账号+UID保存明确停止/恢复私信的消极同意事实，发送前硬门禁优先于熟悉度、P6 与白名单；恢复只撤销停联，不扩大授权。`InteractionBatcher`、公开评论私密询问与主人邀请评论继续使用**唯一 Life Voice 模型**自主决定措辞或沉默，程序不追加审核彩蛋与隐私固定拒绝；隐私问询必须去除私人上下文并核查拟发文字。已关闭会话不得进入 P6 续聊预约。`LifeInterests` 只采可信自主选看证据，`watched.mjs` 单独保留旧推荐 picked 字段而标记实际自主选看来源，不把旧「值得看」视为喜好。生产图及风险矩阵见 `docs/architecture/2.7.0-dev10-life-behavior-hardening.md`。自然语言承诺/停联识别并非全语义穷举，Windows/真实模型/B站仍需验收。
-- `dev.9` 发布门禁审计修正：`SocialTodoReplyContract` 对明确数量的入账声称、同条消息内先否定后肯定的承诺及“全部记下”与已核实多个 BV 不一致的情况，在发送前校验真实待办条数；失败仍只交同一模型自主修订，绝不拼接固定回复。与 `dev.8` 共用原账本和原发送门禁，架构接线未变，未完成 Windows／B站验收前不发布正式版。
-- `dev.8` 对已核实的陌生人/好友推荐复用原 `SocialAutonomyDecisionContract` 与 `owner-todos` 唯一账本；模型同一轮自主输出回复/结构化只读候选，可信验证成功才允许声称入账。回执不一致最多追加一次同一 Life Voice 模型修订，禁止程序生成固定对外回复；纠错再次失败则不外发。仅记录不含正文/UID/原始 JSON 的限量决策诊断。见 `docs/architecture/2.7.0-dev8-social-todo-commitment.md`。
+## 2.7.1-dev.7 RC6 当前生产归属（旧 RC5 说明为历史）
 
-## 2.7.1-dev.7 RC 评论渠道受控生产交接
+- 新老用户均迁移到 Life 的 DM+comment 双渠道唯一决策归属，旧 `legacy` 不再作为生产发送兜底。原授权、记忆、待办、关系、跨进程工具和回执保留。迁移未核验/在途/未知发送时双渠道冻结；主人 Agent/回访受 Life 归属约束，自动视频分享需 Life 最终决定。当前架构与 Mermaid 见 `docs/architecture/2.7.1-rc-unified-life-social-migration.md`。仍为 dev.7，Windows/真实 B站/长时运行未验收。
 
-- 同一 `SocialHandoffFence` 持久化账号/渠道归属与 generation；默认 legacy，只有维护者明确停机确认、在途及未知发送清零后才能试点评论 Life owner，切换必须失效旧稿。私信、主人专属互动及主动推荐不得自动继承权限；真实 B站/Windows 验收前仍为 dev.7。见 `docs/architecture/2.7.1-rc-social-owner-controlled-cutover.md`。
 ## 2.7.1-dev.1 真实视频评论区观察边界
 
 - 自主视频轮开放原只读 `bili_comments` 与 `bili_comment_thread`；不得因为浏览评论自动发言、创建待办或认识评论者。视频轮的 Python MCP 环境明确标记 `BILI_DISCUSSION_VIDEO_AGENT=1`，每轮最多读取 6 条不同 BV 的评论列表、2 条已出现在本轮对应 BV 列表里的真实楼层；其他主人查询与后台互动不被这些视频轮额度影响。

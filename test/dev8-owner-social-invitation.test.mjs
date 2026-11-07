@@ -103,6 +103,6 @@ test('new consent is a single default-off visible switch and legacy explicit pub
  assert.equal((html.match(/id="owner-comment-publish"/g)||[]).length,1)
  assert.doesNotMatch(html,/id="owner-comment-draft"/)
  assert.match(html,/自主决定是否公开发表评论/)
- assert.match(index,/const verifiedOwnerReply=req\.kind==='notice'/)
- assert.match(index,/req\.kind==='at'\|\|verifiedOwnerReply/)
+ assert.match(index,/const routedSocialOwner=channel=>/)
+ assert.match(index,/const lifeSocialWrite=async\(channel,write\)=>/)
 })

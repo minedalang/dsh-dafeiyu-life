@@ -18,7 +18,7 @@ test('6d: actual video driver ownership is single and old flags do not grant ext
  for(const mode of ['shadow','active']){
   const x=lifeDriverOwnership({...defaults,lifeAgentMode:mode})
   assert.equal(x.videoWakeOwner,'life-agent');assert.equal(x.legacyTimerMayRun,false)
-  assert.equal(x.socialReplyOwner,'legacy')
+  assert.equal(x.socialReplyOwner,'life-agent')
   assert.equal(lifeSettingsV2({...defaults,lifeAgentMode:mode}).driverOwnership.videoWakeOwner,'life-agent')
   assert.equal(projectLifeSettings({...defaults,lifeAgentMode:mode}).driverOwnership.legacyTimerMayRun,false)
  }
