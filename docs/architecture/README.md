@@ -1,3 +1,7 @@
+## RC10 · Life 同进程机会竞争与视频自主逐动作意愿（未发布）
+
+[实际接线、边界与实机验收](./2.7.1-rc10-life-opportunity-video-action.md) · [可编辑 Mermaid](./diagrams/2.7.1-rc10-life-opportunity-video-action.mmd)。并发机会在同一 Life 意愿轮次中竞争；视频自主点赞/收藏/关注等每次必须得到 Life 的新批准，仍经过原安全门禁。**不是跨进程永久队列，也不意味着真实成长因果已经验收。**
+
 ## 2.7.1 RC9 · 统一 Life 意愿生产接线（未发布）
 
 [实际源码接线、回执和发布阻断清单](./2.7.1-rc9-unified-life-willingness.md) · [可编辑 Mermaid 总图](./diagrams/2.7.1-rc9-unified-life-willingness.mmd)。DM、评论、回访、动态、视频分享及视频委派已共用生命意愿模型契约；当前**尚缺全局机会池、视频技能内逐动作仲裁、主人主动关怀和跨天因果验收**，保持 `releaseReady:false`。

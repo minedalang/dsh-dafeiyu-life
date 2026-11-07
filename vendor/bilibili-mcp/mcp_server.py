@@ -30,6 +30,8 @@ import sqlite3
 import uuid
 import hashlib
 import hmac
+import inspect
+from functools import wraps
 from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent, ImageContent
 
@@ -80,12 +82,90 @@ mcp = FastMCP("bilibili-mcp")
 _ALLOWED = {t.strip() for t in os.environ.get("BILI_MCP_TOOLS", "").split(",") if t.strip()}
 
 
+# Only autonomous headless video writes need this extra Life approval. The
+# host's normal comment reply already has its own Life choice and owner proof.
+_LIFE_VIDEO_WRITES = frozenset((
+    'bili_video_like', 'bili_video_collect', 'bili_follow_creator',
+    'bili_unfollow_creator', 'bili_favorite_folder_delete', 'bili_reply'))
+
+
+def _life_video_request(route, payload):
+    endpoint = os.environ.get('BILI_LIFE_ACTION_URL', '')
+    token = os.environ.get('BILI_LIFE_ACTION_TOKEN', '')
+    if not re.fullmatch(r'http://127\.0\.0\.1:[0-9]{1,5}', endpoint) or not re.fullmatch(r'[a-f0-9]{64}', token):
+        return {'ok': False, 'reason': 'Life 视频写入授权服务未就绪'}
+    try:
+        req = urllib.request.Request(endpoint + route,
+            data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+            headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'},
+            method='POST')
+        # Proxies must never see an account-bound Life capability token.
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(req, timeout=42) as response:
+            body = response.read(2048)
+        result = json.loads(body)
+        return result if isinstance(result, dict) else {'ok': False}
+    except Exception:
+        return {'ok': False, 'reason': 'Life 授权不可核验'}
+
+
+async def _life_video_authorize(tool_name, args):
+    if tool_name == 'bili_reply' and os.environ.get('BILI_JS_MCP_ADAPTER') == '1':
+        # Host comment replies have already been checked by Life and routed
+        # through the existing host send transaction, not this video bridge.
+        return {'ok': True, 'host': True}
+    target = args.get('uid') if tool_name == 'bili_unfollow_creator' else (
+        args.get('fid') if tool_name == 'bili_favorite_folder_delete' else args.get('bvid'))
+    cred = get_cred()
+    uid = str(getattr(cred, 'dedeuserid', '') or '')
+    if not uid.isdigit() or int(uid) <= 0:
+        return {'ok': False, 'reason': '未核验的 B站账号'}
+    reason = args.get('reason') or (args.get('text') or '')[:100]
+    return await asyncio.to_thread(_life_video_request, '/life-action',
+        {'uid': uid, 'tool': tool_name, 'target': str(target or ''), 'reason': str(reason)[:100]})
+
+
+async def _life_video_result(grant, uid, success):
+    if not isinstance(grant, str) or not grant: return
+    await asyncio.to_thread(_life_video_request, '/life-action-result',
+        {'grant': grant, 'uid': uid, 'ok': success})
+
+
 def tool():
-    """@tool() 的替身：白名单里没有这个函数名，就原样返回、**不注册**。"""
+    """工具白名单 + 视频 Agent 逐动作 Life 授权（发送权限本身仍在原函数校验）。"""
     def deco(fn):
         if _ALLOWED and fn.__name__ not in _ALLOWED:
             return fn
-        return mcp.tool()(fn)
+        if fn.__name__ not in _LIFE_VIDEO_WRITES:
+            return mcp.tool()(fn)
+        @wraps(fn)
+        async def guarded(*args, **kwargs):
+            if (e := _guard(fn.__name__)): return e
+            try:
+                bound = inspect.signature(fn).bind(*args, **kwargs)
+                bound.apply_defaults()
+                values = bound.arguments
+                approval = await _life_video_authorize(fn.__name__, values)
+            except Exception:
+                approval = {'ok': False, 'reason': 'Life 行为来源未核验'}
+            if approval.get('ok') is not True:
+                return json.dumps({'ok': False, 'blocked': True,
+                    'error': str(approval.get('reason') or 'Life 尚未批准这个自主动作')[:130]}, ensure_ascii=False)
+            # Existing Python quotas, provenance checks, platform receipts and
+            # account-scoped ledgers remain authoritative after Life approval.
+            result = None
+            try:
+                result = await fn(*args, **kwargs)
+                return result
+            finally:
+                if not approval.get('host'):
+                    try:
+                        reported = json.loads(result) if isinstance(result, str) else {}
+                        success = (isinstance(reported, dict) and
+                            (reported.get('ok') is True or reported.get('success') is True))
+                        await _life_video_result(approval.get('grant'), str(getattr(get_cred(), 'dedeuserid', '') or ''), success)
+                    except Exception: pass  # Never turn an unknown receipt into a retry grant.
+        return mcp.tool()(guarded)
     return deco
 
 

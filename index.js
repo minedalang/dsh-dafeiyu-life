@@ -54,6 +54,7 @@ import { createAccountBinding } from './lib/account-binding.mjs'
 import { createReadActionExecutionGate,readToolAction } from './lib/read-action-execution-gate.mjs'
 import {createLifeDecisionTrace} from './lib/life-decision-trace.mjs'
 import {createLifeWillingness} from './lib/life-willingness.mjs'
+import {createLifeVideoActionBridge} from './lib/life-video-action-bridge.mjs'
 import { createOutboundActionStatus } from './lib/outbound-action-status.mjs'
 import {AsyncLocalStorage} from 'node:async_hooks'
 import { resolveUid } from './lib/uid.mjs'
@@ -1265,7 +1266,26 @@ function reportMeta() {
   }
   let socialIntentEngine = null
   let lifeWillingness = null
+  let lifeVideoActionBridge = null
   let dailyDynamic = null
+  // Successful PUBLIC replies only provide a new Life opportunity; they
+  // never themselves publish a dynamic or bypass the existing draft quota.
+  let commentDynamicWakeTimer=null
+  const wakeDynamicAfterConfirmedComment=()=>{
+    if(cfg.commentSyncDynamic!==true||commentDynamicWakeTimer)return
+    const scope=trustedLifeAccountTag()
+    if(!scope)return
+    commentDynamicWakeTimer=setTimeout(()=>{
+      commentDynamicWakeTimer=null
+      try{
+        refreshCfg()
+        if(trustedLifeAccountTag()!==scope||accountBinding.status().blocked||cfg.commentSyncDynamic!==true)return
+        void dailyDynamic?.tick({trigger:'confirmed-public-comment'}).catch(e=>log('公开回复触发生活动态候选失败：'+String(e?.message||e).slice(0,120)))
+      }catch{}
+    },45_000)
+    commentDynamicWakeTimer.unref?.()
+  }
+  ctx.effect(()=>()=>{if(commentDynamicWakeTimer)clearTimeout(commentDynamicWakeTimer)},'bili-duty: 公开回复 Life 动态契机')
   let memeLearning = null
   const pauseFile = join(stateDir, '.bili-duty-paused')
   let lastPauseState = null
@@ -2728,6 +2748,9 @@ function reportMeta() {
         '          BILI_DM_TARGET_UID: ' + yq(Number(cfg.dmUid) || dmUidCache || 0),
         '          BILI_COMMENT_DAILY_LIMIT: ' + yq(cfg.commentDailyLimit),
         '          BILI_DUTY_HOME: ' + yq(posix(stateDir)),
+        // Loopback Life approval for EACH video Agent external write.
+        // No bridge / no token => Python tool fails closed.
+        ...Object.entries(lifeVideoActionBridge?.env()||{}).map(([key,value])=>'          '+key+': '+yq(value)),
         '          BILI_MEME_MEMORY: ' + yq(cfg.memeMemoryEnabled ? '1' : '0'),
         '          BILI_MEME_MAX_ENTRIES: ' + yq(cfg.memeMemoryMaxEntries),
         '          BILI_AUTO_VIDEO_LIKE: ' + yq(cfg.autoVideoLike?'1':'0'),
@@ -3948,9 +3971,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         if(['skip','defer'].includes(lifeChoice?.action)&&lifeChoice?.invalid!==true){
           // Defer is a real existing P6 continuity reservation when enabled,
           // NOT a fabricated completed reply or a fresh platform send.
-          if(lifeChoice.action==='defer'&&req.socialAutonomy===true)
+          if(lifeChoice.action==='defer'){
+            // An older no-P6 adapter turns defer into SKIP and permanently
+            // consumes the incoming message. Keep it pending instead.
+            if(req.socialAutonomy!==true||cfg.dmP6Enabled===false)
+              throw Error('Life 延后私信：当前续行未启用，保留原消息待后续安全重试')
             return attachSocialProof({action:'defer',messages:[],
               notBefore:Date.now()+Math.max(5,Math.min(360,Number(cfg.socialP6MinDelayMinutes)||30))*60_000},owner)
+          }
           return attachSocialProof({action:'skip',messages:[]},owner)
         }
         throw Error('Life 意愿本轮不可核验，保留消息待下次安全检查')
@@ -4360,9 +4388,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         if(['skip','defer'].includes(lifeChoice?.action)&&lifeChoice?.invalid!==true){
           // Defer is a real existing P6 continuity reservation when enabled,
           // NOT a fabricated completed reply or a fresh platform send.
-          if(lifeChoice.action==='defer'&&req.socialAutonomy===true)
+          if(lifeChoice.action==='defer'){
+            // Without P6 the old comment adapter cannot retain an explicit
+            // defer and would mark it seen. Throw so the original event stays.
+            const hasContinuation=req.socialAutonomy===true&&
+              (req.kind==='at'?cfg.commentAtP6Enabled===true:cfg.commentP6Enabled===true)
+            if(!hasContinuation)
+              throw Error('Life 延后评论：当前续行未启用，保留原消息待后续安全重试')
             return attachSocialProof({action:'defer',messages:[],
               notBefore:Date.now()+Math.max(5,Math.min(360,Number(cfg.socialP6MinDelayMinutes)||30))*60_000},owner)
+          }
           return attachSocialProof({action:'skip',messages:[]},owner)
         }
         throw Error('Life 意愿本轮不可核验，保留消息待下次安全检查')
@@ -4443,6 +4478,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role,actorUid:req.uid,bvid:req.bvid,rpid:req.rpid,text:req.text,eventKey:`${req.uid}:${req.bvid}:${req.rpid}:reply`,at:Date.now()})
         if(sync?.ok===false)log('评论回复投影待补偿：'+String(sync.lastError||sync.reason||''))
       }catch(e){log('评论回复投影记录失败：'+String(e?.message||e).slice(0,110))}
+      // Give the original public-memory coordinator time to project the
+      // confirmed reply. Life must still independently choose and verify any
+      // dynamic; the Python comment tool is NEVER allowed to auto-sync.
+      wakeDynamicAfterConfirmedComment()
       return ack
       });
       })
@@ -4883,7 +4922,18 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return {voice:lifeVoiceContext({scene,uid,maxChars:2900}),world}
     },
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'interaction'}),
+    opportunityWindowMs:140,crossChannelCooldownMs:30_000,
   })
+  lifeVideoActionBridge=createLifeVideoActionBridge({
+    getAccountUid:()=>{try{const status=accountBinding.status();return status.blocked?'':status.activeUid}catch{return ''}},
+    getAccountTag:trustedLifeAccountTag,
+    enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&firstStart.isReady()&&!accountBinding.status().blocked},
+    choose:params=>lifeWillingness.decide(params),
+    verify:(proof,kind)=>lifeWillingness.verify(proof,kind),
+    receipt:(proof,result)=>lifeWillingness.receipt(proof,result),
+  })
+  void lifeVideoActionBridge.start().catch(error=>log('Life 视频自主动作授权服务无法启动，将禁止自主写入：'+String(error?.message||error).slice(0,130)))
+  ctx.effect(()=>()=>lifeVideoActionBridge?.stop(),'bili-duty: 视频 Agent Life 意愿写入网关')
   // Single evidence boundary shared by Life planning and explicit no-model diagnostics.
   // Neither path bypasses account/read budgets or claims that metadata was watched.
   const readLifeVideoMetadata=async bvid=>readActionContext.run({source:'life-planner'},async()=>{

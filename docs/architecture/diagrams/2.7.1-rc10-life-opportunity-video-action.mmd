@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph input[可信机会触发器]
+    DM[私信与评论事件]
+    DY[动态与分享]
+    EX[视频探索启动]
+  end
+  DM --> BAT[Life 并发机会合并 140ms]
+  DY --> BAT
+  EX --> BAT
+  BAT --> WILL[唯一 Life 意愿契约\n同账号最多八候选]
+  MEM[人格 情绪 关系 记忆 兴趣 待办] --> WILL
+  WILL -->|选中并产生短时证明| OLD[现有权限及账号归属检查]
+  WILL -->|未选中| DEFER[延期 保留原渠道续行边界]
+  OLD --> TX[原跨进程事务和发送器]
+  subgraph video[视频 Agent 逐次自主写入]
+    HEAD[视频模型工具调用] --> PY[Python MCP 自主工具包装器]
+    PY -->|localhost 随机 token\n账号 UID 校验| BRIDGE[Life 动作授权网关]
+    BRIDGE --> WILL
+    BRIDGE -->|同意一次| PY
+    PY --> GUARDS[原入选 权限 额度 去重]
+    GUARDS --> PLATFORM[B站 API]
+    PLATFORM --> REPORT[Python 原行动回执]
+    REPORT -.->|仅报告 未独立复核| BRIDGE
+  end
+  TX --> FACT[可信平台回执及原事实账本]
+  REPORT --> FACT
+  FACT --> MEM
+  WILL -.-> TRACE[匿名上下文指纹与决策轨迹]
