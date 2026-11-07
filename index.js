@@ -5525,7 +5525,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // unlock business APIs merely because the user can load the settings UI.
     const setupAccess = (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
-      path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' ||
+      path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' ||
       path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity'
     if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
@@ -5573,6 +5573,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
         'x-dafeiyu-management':'1','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"})
       return res.end(body)
+    }
+    // Bundled character art for management UI. Constant filename; no user path input.
+    if (req.method === 'GET' && path === '/api/bili-duty/life-character.png') {
+      const image=readFileSync(join(pluginDir,'lib','assets','deepseek-girl-front.png'))
+      res.writeHead(200,{'content-type':'image/png','cache-control':'public, max-age=86400',
+        'x-content-type-options':'nosniff'})
+      return res.end(image)
     }
     // Deliberate MCP recovery: never auto-run unreviewed home copies or delete edits.
     if (path === '/api/bili-duty/mcp-integrity') {

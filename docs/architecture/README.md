@@ -308,3 +308,5 @@
 - [早期自主任务与回访](./2.6.1-accepted-task-followup.md) · [历史提案，不是现行真值](./2.6.2-verified-life-events-proposal.md)
 
 旧版规划、重复说明和未使用草稿的清理清单参见 [历史文档索引](../archive/README.md)。正式版本说明参见 [发布文档](../release/README.md)。
+
+- [2.7.1-dev.8 顶部导航 Life UI 试行](./2.7.1-dev8-topnav-life-ui-trial.md)：保留四组横向页签，使用用户原设立绘、动画；修复时间线和心情 CSS；不涉及决策与外发。
