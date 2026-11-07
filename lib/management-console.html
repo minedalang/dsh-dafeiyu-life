@@ -1059,7 +1059,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <label class="choice-card"><input type="radio" name="bili-interaction-choice" value="balanced"><span class="choice-icon" aria-hidden="true">🍃</span><strong>适度互动</strong><small>可以点赞收藏，暂不主动评论或关注</small></label>
 <label class="choice-card"><input type="radio" name="bili-interaction-choice" value="observe"><span class="choice-icon" aria-hidden="true">🌙</span><strong>安静探索</strong><small>关闭本页视频互动；不改变私信授权</small></label>
 <label class="choice-card"><input type="radio" name="bili-interaction-choice" value="custom"><span class="choice-icon" aria-hidden="true">🎛️</span><strong>自己决定</strong><small>逐项开启或禁止各项互动</small></label>
-</div><p id="bili-interaction-choice-status" class="choice-review" role="status">正在读取原有权限…</p>
+</div><p id="bili-interaction-choice-status" class="choice-review" role="status">正在读取原有权限…</p><p id="bili-proactive-comment-status" class="setting-note" role="status">原创评论准入：正在检查本页权限与报告发送方式…</p>
 <details id="bili-interaction-advanced" class="choice-advanced"><summary>⚙️ 自定义行为与图片理解</summary>
 <label class="checkline"><input id="bili-auto-comment" type="checkbox" data-inverted-permission="true">禁止自主发表原创评论</label>
 <label class="checkline"><input id="bili-disable-incoming-vision" type="checkbox" data-inverted-permission="true">禁用评论和私信图片理解</label>
@@ -1304,7 +1304,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <nav class="life-day-shortcuts" aria-label="鱼鱼此刻快捷查看"><a href="#life-timeline-section">今天的经历</a><a href="#life-emotion-section">此刻心情</a><a href="#life-todo-section">想做的事</a><a href="#life-settings-v2-panel">生活设置</a></nav>
 <details class="life-now-timeline" open><summary>📅 大肥鱼的一天 · 真实生活时间线</summary>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
-<p class="muted">展示有来源的视频探索、已核验的只读生活行动、公开评论、情绪变化和关系阶段。仅从已保存的观看／探索记录展示，不会把搜索结果当作观看经历；不展示好友私信正文或心情触发消息。部分视频来源只保存日期、不保存具体时刻，会明确标注「具体时刻未记录」，并排在同一天有准确时间的事件之后。</p><p id="life-timeline-summary" class="muted" role="status"></p><div id="life-timeline-list" class="records records-scroll tall"></div></div>
+<p class="muted">按发生时间跨类型倒序展示有来源的视频探索、已核验行动、公开评论及情绪变化。只有日期的视频记录排在同一天精确时间的事件之后；不展示好友私信正文或心情触发消息。</p><p id="life-timeline-summary" class="muted" role="status"></p><p id="life-timeline-comment-status" class="setting-note" role="status">正在核对原创评论权限与本地记录…</p><div id="life-timeline-list" class="records records-scroll tall"></div></div>
 </details>
 <details class="life-now-emotion" open><summary>💗 现在的心情</summary>
 <div id="life-emotion-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">💗 鱼鱼现在的心情</h4><span id="emotion-status" class="live-badge">● 正在读取情绪状态</span></div>

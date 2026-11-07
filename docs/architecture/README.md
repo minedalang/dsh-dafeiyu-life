@@ -1,4 +1,8 @@
-## 当前版本 2.7.1-dev.17：Life 决策诊断错误分类与影子提示（未发布）
+## 当前版本 2.7.1-dev.18：生活时间线时序修正与原创评论诊断（未发布）
+
+[现行数据流与验收边界](./2.7.1-dev18-timeline-original-comment-diagnostics.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev18-timeline-original-comment-diagnostics.mmd)。修正毫秒时间戳排序、区分原创主评论与回复，并将报告「只发私信」和自主评论权限冲突显性化；不会隐式开启公开外发。**本轮尚未取得用户本机配置、真实视频 Agent 调用日志，不能断言无主动评论的最终原因。**
+
+## 历史版本 2.7.1-dev.17：Life 决策诊断错误分类与影子提示（未发布）
 
 [诊断修复与回执边界](./2.7.1-dev17-life-trace-correction.md) · [流程图](./diagrams/2.7.1-dev17-life-trace-correction.mmd)。修复未注册的视频轮次反馈误显示成「技术错误」；社交快速考虑不记录未被模型使用的视频上下文，`social-shadow-reply` 明确不表示已发送。此版未改变社交外发、模型额度、视频时钟、记忆或平台回执。
 

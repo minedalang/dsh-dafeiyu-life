@@ -118,6 +118,7 @@ import { createEmotionRecall } from './lib/emotion-recall.mjs'
 import { recordFriendInteraction, listFriendRelationships, friendRelationshipContext, clearFriendRelationships } from './lib/friend-relationships.mjs'
 import {createSocialRelationshipIndex} from './lib/social-relationship-index.mjs'
 import { buildLifeTimeline } from './lib/life-timeline.mjs'
+import { videoCommentReadiness } from './lib/video-comment-readiness.mjs'
 import { createDmVideoRecommendationContext } from './lib/dm-video-recommendation.mjs'
 import { createDmTodoProgressContext } from './lib/dm-todo-progress.mjs'
 import { collectDmInbox, parseDmWhitelist } from './lib/dm-inbox.mjs'
@@ -2459,8 +2460,10 @@ function reportMeta() {
     //    commentOn 是"这一轮到底能不能发公开评论"的唯一判据（工具层的闸用的是同一套逻辑）
     const dmUidEff = Number(cfg.dmUid) || dmUidCache
     const dmDegraded = cfg.dmMode === 'only' && !(dmUidEff > 0)
-    const dmModeEff = dmDegraded ? 'off' : cfg.dmMode
-    if (dmDegraded) log('⚠️ 选的是「只私信」，但不知道发给谁（没填 UID、也没填「@ 谁」，或查不到）⇒ 这一轮降级成只发评论')
+    // Missing a report recipient must not silently grant public-comment permission.
+    // The MCP whitelist excludes bili_reply whenever dmMode=only.
+    const dmModeEff = cfg.dmMode
+    if (dmDegraded) log('⚠️ 选择了「只发私信」，但报告收件人未确认：本轮不发送报告私信，也不自动改成公开评论')
     const commentOn = Boolean(cfg.autoComment && dmModeEff !== 'only')
     const dmOn = Boolean(dmModeEff !== "off" && dmUidEff > 0)
     return `你是这个账号的 B站 助手。`
@@ -6914,6 +6917,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       try{
         const days=Math.max(1,Math.min(90,Math.floor(Number(url.searchParams.get('days'))||30)))
         const comments=recentComments(stateDir,{limit:200,recipientMetadataDir:accountRuntimeDir})?.rows||[]
+        // Read-only, current-setting diagnosis; do not treat zero public top
+        // comments as proof that the model failed to act or that the platform
+        // rejected an attempt. No private identifiers are returned.
+        const today=dayKey(new Date())
+        const todayVisible=comments.filter(row=>String(row.time||'').slice(0,10)===today)
+        const commentReadiness={...videoCommentReadiness(cfg),day:today,
+          observedTop:todayVisible.filter(row=>row.kind==='top').length,
+          observedReplies:todayVisible.filter(row=>row.kind==='reply').length,
+          sampleLimit:200,sampleTruncated:comments.length>=200,
+          evidence:'本地公开评论账本最近 200 条；顶层原创评论与回复他人分开统计。没有记录不能证明平台上绝对没有发送。'}
         const relationships=listFriendRelationships(stateDir,cfg.friendDirectory)
         const emotion=emotionalState.snapshot()
         // Current verified account only. A missing/unsafe lifecycle ledger
@@ -6926,8 +6939,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         }}catch(e){log('Life 可信回执诊断暂不可用：'+String(e?.message||e).slice(0,80))}
         const watched=parseSeenTable()
         const rows=buildLifeTimeline({watched,videoRounds,lifeDecisions,comments,emotionHistory:emotion.history,relationshipRows:relationships,days,limit:160})
-        const counts=Object.fromEntries(['video','video-round','life-read','comment','emotion','relationship'].map(k=>[k,rows.filter(row=>row.type===k).length]))
-        return sendJson(res,200,{ok:true,days,rows,counts,privacy:'仅展示公开经历与情绪类别；不展示私信正文或私人画像内容。未出现的动作不能据此推断发生过。'})
+        const counts=Object.fromEntries(['video','video-round','life-read','life-write','life-reflection','comment','emotion','relationship'].map(k=>[k,rows.filter(row=>row.type===k).length]))
+        return sendJson(res,200,{ok:true,days,rows,counts,commentReadiness,privacy:'仅展示公开经历与情绪类别；不展示私信正文或私人画像内容。未出现的动作不能据此推断发生过。'})
       }catch(e){return sendJson(res,400,{ok:false,error:'生活时间线读取失败：'+String(e?.message||e).slice(0,180)})}
     }
 
