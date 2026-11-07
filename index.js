@@ -5101,7 +5101,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getSelectedVideos:()=>parseSeenTable().filter(x=>x.picked===true),
     invokeModel:(prompt,maxChars,opt)=>invokeInteractionPrompt(prompt,maxChars,opt),
     authorizeDraft:async ({uid,text,bvid,itemId,automatic})=>{
-      if(!automatic)return {ok:true,reason:'owner-reviewed-draft'}
+      if(!automatic)return {ok:false,reason:'human-approval-not-allowed'}
       const route=routedSocialOwner('dm')
       if(!route.ok)return {ok:false,reason:route.reason}
       return decideLifeVideoShare({uid,text,bvid,itemId,scope:route.scope,generation:route.generation})
@@ -6655,8 +6655,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           return sendJson(res,200,{ok:true,...socialPortrait.clear(body.uid)})
         }
         if(!socialIntentEngine)return sendJson(res,503,{ok:false,error:'社交系统尚未初始化'})
-        if(body?.action==='dismiss')return sendJson(res,200,socialIntentEngine.dismiss(String(body.id||'')))
-        if(body?.action==='send')return sendJson(res,200,await socialIntentEngine.send(String(body.id||''),{confirm:body.confirm==='SEND_SOCIAL_DRAFT'}))
+        if(body?.action==='dismiss'||body?.action==='send')return sendJson(res,403,{ok:false,error:'自主社交不允许逐条人工审核、代发或撤销；仅鱼鱼可自主决定是否发送'})
         return sendJson(res,400,{ok:false,error:'未知社交草稿操作'})
       }catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,220)})}
     }
@@ -6986,6 +6985,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
 
     if (req.method === 'POST' && path === '/api/bili-duty/config') {
       const body = await readBody(req)
+      if(body?.dmApprovalEnabled===true)return sendJson(res,409,{ok:false,error:'人工严格私信审批已停止；请选择自主交流权限，历史授权不会自动放开'})
       // A fresh, explicit management-console authorization is required after the
       // old paused version. Previously saved true values cannot silently restart DMs.
       if(body?.socialVideoRecommendationsAuthorizedV2===true && (body?.confirm!=='ENABLE_VIDEO_RECOMMENDATIONS'||body?.socialOutreachEnabled!==true||body?.socialLifeIntentEnabled!==true))
@@ -7104,15 +7104,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       catch(e){return sendJson(res,400,{ok:false,error:'历史投喂读取失败：'+String(e?.message||e).slice(0,180)})}
     }
     if (req.method === 'POST' && path === '/api/bili-duty/dm-approvals/recover') {
-      const body=await readBody(req);
-      try { const result=await dmAutoreply.recoverHistoricalApproval(String(body.uid||''),String(body.messageId||''));
-        return sendJson(res,result.ok?200:400,result) }
-      catch(e){return sendJson(res,400,{ok:false,error:'历史投喂补录失败：'+String(e?.message||e).slice(0,180)})}
+      await readBody(req);
+      return sendJson(res,403,{ok:false,error:'历史审批恢复已停用；不允许人工干预鱼鱼的社交'})
     }
     if (req.method === 'POST' && path === '/api/bili-duty/dm-approvals') {
-      const body=await readBody(req)
-      const result=await dmAutoreply.reviewApproval(String(body.uid||''),String(body.action||''))
-      return sendJson(res,result.ok?200:400,result)
+      await readBody(req)
+      return sendJson(res,403,{ok:false,error:'人工私信审批已停用；鱼鱼根据独立许可自主选择'})
     }
 
     if (req.method === 'POST' && path === '/api/bili-duty/run') {

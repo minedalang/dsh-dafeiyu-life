@@ -87,7 +87,7 @@ test('不主动联系的好友仍可私信互动，但不会进入主动视频�
 test('管理中心使用单一好友名册及推荐渠道选择，@ 反馈与公开回复分开',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
- assert.match(html,/白名单用户权限 · 统一名册/)
+ assert.match(html,/特别联系人的权限|白名单用户权限/)
  assert.match(html,/friend-at-feedback-enabled/)
  assert.equal((html.match(/id="friends-mode"/g)||[]).length,1)
  assert.match(html,/默认推荐渠道为私信/)

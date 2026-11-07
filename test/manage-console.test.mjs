@@ -32,7 +32,7 @@ test('manage HTML and JS are served from same DSH route without extra port or pr
    assert.match(h.headers['content-security-policy'],/img-src 'self'/,'same-origin image previews must be allowed by CSP')
    assert.match(h.text,/成长记忆/)
    assert.match(h.text,/梗知识库/)
-   assert.match(h.text,/严格暗号审核记录/)
+   assert.match(h.text,/历史严格审核记录（只读/)
    assert.match(h.text,/manage\.js/)
    assert.match(h.text,/运行诊断/)
    assert.match(h.text,/每日报告/)
@@ -113,15 +113,17 @@ test('meme moderation invalid writes are rejected; empty library is safe',async(
 })
 
 
-test('管理中心复用原生设置接口修改限额申请开关和额度',async()=>{
+test('管理中心拒绝开启旧版人工私信审批，历史旧配置只能显式关闭',async()=>{
  const fx=fixture();try{
   const initial=(await fx.call('GET','config')).json();
   assert.equal(initial.ok,true);
-  const change=await fx.call('POST','config',{dmApprovalEnabled:true,dmApprovalPhrase:'白饭🍚',dmApprovedDailyLimit:3,dmApprovedTotalLimit:12});
+  const rejected=await fx.call('POST','config',{dmApprovalEnabled:true,dmApprovalPhrase:'白饭🍚'});
+  assert.equal(rejected.code,409);
+  assert.match(rejected.json().error,/人工严格私信审批已停止/);
+  const change=await fx.call('POST','config',{dmApprovalEnabled:false,dmApprovedDailyLimit:3,dmApprovedTotalLimit:12});
   assert.equal(change.code,200);
-  assert.equal(change.json().ok,true);
   const saved=(await fx.call('GET','config')).json().config;
-  assert.equal(saved.dmApprovalEnabled,true);
+  assert.equal(saved.dmApprovalEnabled,false);
   assert.equal(saved.dmApprovedDailyLimit,3);
   assert.equal(saved.dmApprovedTotalLimit,12);
  }finally{fx.close()}

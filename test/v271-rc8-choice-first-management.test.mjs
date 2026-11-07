@@ -7,7 +7,7 @@ const html=read('lib/management-console.html'),js=read('lib/management-console.j
 const choiceNames={
  'bili-interaction-choice':['free','balanced','observe','custom'],
  'dm-conversation-choice':['free','friends','paused','custom'],
- 'social-share-choice':['free','draft','off','custom'],
+ 'social-share-choice':['free','off','custom'],
  'life-organic-choice':['gentle','balanced','curious','custom']
 }
 const objectFromSource=(name,after)=>{
@@ -15,7 +15,7 @@ const objectFromSource=(name,after)=>{
  assert.ok(match,`${name} config must be inspectable`)
  return runInNewContext('('+match[1]+')',{})
 }
-test('生活、视频互动、私信和主动分享都优先展示四张可选卡片',()=>{
+test('视频互动、私信与主动分享展示对应卡片，不再提供草稿审批',()=>{
  for(const [group,values] of Object.entries(choiceNames)){
   for(const value of values)assert.match(html,new RegExp('name="'+group+'" value="'+value+'"'))
   const i=html.indexOf('name="'+group+'"');assert.ok(i>0)
@@ -57,8 +57,8 @@ test('视频分享卡只改变候选授权、发送授权及每日上限',()=>{
  const p=objectFromSource('socialSharePlans')
  assert.deepEqual(Object.keys(p.free).sort(),['auto','enabled','max'])
  assert.equal(p.free.auto,true)
- assert.equal(p.draft.enabled,true)
- assert.equal(p.draft.auto,false)
+ assert.equal(p.free.max,100)
+ assert.equal(p.draft,undefined)
  assert.equal(p.off.enabled,false)
  assert.match(js,/if\(enabled&&auto&&\(!previous\.socialAutoSend\|\|!previous\.socialVideoRecommendationsAuthorizedV2\)/)
  assert.match(js,/confirm:enabled\?'ENABLE_VIDEO_RECOMMENDATIONS'/)

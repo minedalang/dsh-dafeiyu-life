@@ -39,7 +39,8 @@ test('管理页恢复独立视频推荐授权，旧回访草稿仍不能被点�
   assert.match(html,/旧版情绪回忆主动联系通道/)
   assert.doesNotMatch(html,/id="social-enabled"/);assert.match(js,/socialVideoRecommendationsAuthorizedV2:enabled,confirm:enabled/)
   assert.match(js,/socialVideoRecommendationsAuthorizedV2/)
-  assert.match(js,/row\.status==='draft'&&!record\.paused&&row\.type==='interest-share'/)
+  assert.doesNotMatch(js,/action:'send',id:row.id/)
+  assert.match(src('index.js'),/自主社交不允许逐条人工审核/)
 })
 
 test('公开评论情绪只附上既有生成片段，不多一次 AI 请求，重启后仍可看灰字',()=>temp(async dir=>{

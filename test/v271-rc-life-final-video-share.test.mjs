@@ -47,8 +47,9 @@ test('a verified Life choice still passes original source, friend, quota and rec
  assert.equal((await x.engine.send(x.id,{automatic:true})).ok,false)
  assert.equal(x.counts().sends,1)
 })
-test('explicit manual reviewed send is NOT silently upgraded to autonomy',async t=>{
+test('manual approval cannot send an autonomous video message',async t=>{
  const x=setup(t,{approved:false})
- assert.equal((await x.engine.send(x.id,{confirm:true,automatic:false})).ok,true)
- assert.deepEqual(x.counts(),{decisions:0,sends:1})
+ const result=await x.engine.send(x.id,{confirm:true,automatic:false})
+ assert.equal(result.ok,false);assert.match(result.error,/不允许人工代发/)
+ assert.deepEqual(x.counts(),{decisions:0,sends:0})
 })

@@ -39,8 +39,9 @@ test('白名单主人画像匹配真实入选视频，只生成本人私信草�
   assert.equal(e.status().items[0].status,'draft')
   assert.equal(e.status().lastScan.reason,'draft-created')
   assert.equal(sends,0)
-  assert.equal((await e.send(e.status().items[0].id,{confirm:true})).ok,true)
-  assert.equal(sends,1)
+  const manual=await e.send(e.status().items[0].id,{confirm:true})
+  assert.equal(manual.ok,false);assert.match(manual.error,/不允许人工代发/)
+  assert.equal(sends,0)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
@@ -59,7 +60,7 @@ test('旧版回访草稿即使已有记录、也不能被兴趣私信专用模�
  try{writeFileSync(join(dir,'social-intentions.json'),JSON.stringify({version:1,items:[{id:'recommend:11111:'+BV,uid:'11111',bvid:BV,title:'猫咪',status:'draft',type:'recommendation',text:'旧回访文字'}],sent:[],lastGenerationAt:0}))
   const e=engine(dir,cfg,{sendMessage:async()=>{sends++;return {ok:true}}})
   const r=await e.send('recommend:11111:'+BV,{confirm:true})
-  assert.equal(r.ok,false);assert.match(r.error,/仍暂停/);assert.equal(sends,0)
+  assert.equal(r.ok,false);assert.match(r.error,/不允许人工代发/);assert.equal(sends,0)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 

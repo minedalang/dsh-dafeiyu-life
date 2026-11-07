@@ -107,11 +107,12 @@ test('人生经历来源与主 Session 独立；只有真实选片和已发评�
  assert.equal(data.length,1);assert.equal(data[0].kind,'watch');assert.equal(data[0].bvid,BV)
 })
 
-test('隐私管理页有审阅删除；社交草稿需确认，私人画像不进入可携带备份',()=>{
+test('隐私管理页可撤回画像；自主社交不提供人工发草稿，私人画像不进入可携带备份',()=>{
  const html=src('lib/management-console.html'),js=src('lib/management-console.js'),backup=src('lib/data-backup.mjs')
  for(const id of ['friend-learning-list','social-life-intent-enabled','social-auto-send','social-daily-limit','social-drafts'])assert.match(html,new RegExp('id="'+id+'"'))
  assert.match(js,/CLEAR_FRIEND_OBSERVATIONS/)
- assert.match(js,/SEND_SOCIAL_DRAFT/)
+ assert.doesNotMatch(js,/SEND_SOCIAL_DRAFT/)
+ assert.match(js,/no human approval or dismissal/)
  assert.doesNotMatch(backup,/^\s*'friend-interest-observations\.json',/m)
  assert.doesNotMatch(backup,/^\s*'social-intentions\.json',/m)
 })

@@ -98,12 +98,13 @@ test('DM production adapter no longer runs the separate numeric dual-context wil
   assert.match(dmSource,/fetchIncoming\(\{probeOnly:true,forceUid:uid\}\)/);
 });
 
-test('DM UI labels the approval code as optional strict mode and autonomy as the reply policy',async()=>{
+test('DM UI keeps only historical approval fields while autonomy remains the reply policy',async()=>{
   const html=await readFile(new URL('../lib/management-console.html',import.meta.url),'utf8');
   const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
   assert.match(html,/允许鱼鱼自主考虑并多轮回复陌生人/);
-  assert.match(html,/启用严格暗号审核（可选，默认关闭）/);
-  assert.match(html,/关闭严格审核时，不要求投喂暗号/);
+  assert.doesNotMatch(html,/启用严格暗号审核（可选，默认关闭）/);
+  assert.match(html,/历史严格审核记录（只读/);
+  assert.match(source,/人工严格私信审批已停止/);
   assert.match(source,/dmStrangerOnce:\s*z\.boolean\(\)\.default\(false\)/);
   assert.match(source,/dmStrangerAutonomyEnabled:\s*z\.boolean\(\)\.default\(false\)/);
   assert.match(source,/dmApprovalEnabled:\s*z\.boolean\(\)\.default\(false\)/);
