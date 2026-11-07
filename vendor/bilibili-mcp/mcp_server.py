@@ -2336,8 +2336,12 @@ async def bili_dynamic_comment_manual(dynamic_id: str, text: str, target_rpid: s
         if not target_rpid and root:raise ValueError('顶层评论不接受孤立 root 参数')
         target_key='dynamic:'+did+':'+area['oid']+':'+str(target['target']['rpid'] if target else '0')
         claim=_claim_session_manual_action(uid,'comment',target_key,body,
-                max(0,min(1000,int(os.environ.get('BILI_COMMENT_DAILY_LIMIT','10')))))
+                max(0,min(1000,int(os.environ.get('BILI_COMMENT_DAILY_LIMIT','1000')))))
         if not claim.get('ok'):return json.dumps(claim,ensure_ascii=False)
+        quota_ok, quota_error = _reserve_comment_quota()
+        if not quota_ok:
+            _finish_session_manual_action(uid,'comment',target_key,claim['body_hash'],claim['day'],'blocked',quota_error)
+            return json.dumps({'ok':False,'limit':True,'error':quota_error},ensure_ascii=False)
         try:
             response=await _coordinated_send('dynamic-comment', target_key, body,
                 lambda: comment.send_comment(text=body,oid=int(area['oid']),type_=area['resource_type'],
@@ -2378,7 +2382,7 @@ async def bili_reply_manual(bvid: str, text: str, rpid: int = 0, root: int = 0, 
         cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
         if not uid.isdigit() or int(uid)<=0: raise ValueError('无法确定当前 B站账号 UID')
         target=f'{bv}:{target_rpid}:{root_id}'
-        claim=_claim_session_manual_action(uid,'comment',target,body,max(0,min(1000,int(os.environ.get('BILI_COMMENT_DAILY_LIMIT','10')))))
+        claim=_claim_session_manual_action(uid,'comment',target,body,max(0,min(1000,int(os.environ.get('BILI_COMMENT_DAILY_LIMIT','1000')))))
         if not claim.get('ok'): return json.dumps(claim,ensure_ascii=False)
         try:
             raw=await bili_reply(bvid=bv,text=body,rpid=target_rpid,root=root_id,should_mention=False,mention_position='end',mention_mode='off',mention_targets=[],mention_names=[],sync_to_dynamic=False,sync_dynamic_ai_decision=False)
@@ -2699,7 +2703,7 @@ def _reserve_comment_quota() -> tuple[bool, str]:
     限制基于尝试次数；网络异常也不自动返还额度，以防超时导致重复发布。
     """
     try:
-        limit = max(0, min(1000, int(os.environ.get("BILI_COMMENT_DAILY_LIMIT", "10"))))
+        limit = max(0, min(1000, int(os.environ.get("BILI_COMMENT_DAILY_LIMIT", "1000"))))
     except (ValueError, TypeError):
         limit = 10
     if limit == 0:
@@ -2724,7 +2728,7 @@ def _reserve_comment_quota() -> tuple[bool, str]:
 def _comment_quota_preflight() -> tuple[bool, str]:
     """只读预检全局额度；不占位。最终仍须在真实发布 API 前调用原子 reserve。"""
     try:
-        limit = max(0, min(1000, int(os.environ.get("BILI_COMMENT_DAILY_LIMIT", "10"))))
+        limit = max(0, min(1000, int(os.environ.get("BILI_COMMENT_DAILY_LIMIT", "1000"))))
     except (ValueError, TypeError):
         limit = 10
     if limit == 0:

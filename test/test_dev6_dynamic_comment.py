@@ -55,7 +55,7 @@ def make_env(info=None, rows=None, response=None):
         'comment':types.SimpleNamespace(Comment=Comment, get_comments=get_comments,
                  send_comment=send_comment,OrderType=types.SimpleNamespace(TIME='time'),
                  CommentResourceType=types.SimpleNamespace(DYNAMIC='dynamic',DYNAMIC_DRAW='draw')),
-        '_guard':lambda name:'','_claim_session_manual_action':claim,'_finish_session_manual_action':finish}
+        '_guard':lambda name:'','_reserve_comment_quota':lambda:(True,''),'_claim_session_manual_action':claim,'_finish_session_manual_action':finish}
     root=ast.parse(SERVER.read_text(encoding='utf8'))
     nodes=[n for n in root.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name in FUNC]
     code=compile(ast.fix_missing_locations(ast.Module(body=nodes,type_ignores=[])),str(SERVER),'exec')

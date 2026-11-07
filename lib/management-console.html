@@ -1470,10 +1470,11 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <section id="panel-quotas" hidden>
 <div class="toolbar"><h2 style="margin:0">次数与额度</h2><button id="quota-refresh">重新读取</button></div>
 <p class="muted">所有次数集中设置，各种时间窗口不会互相替代。只有点击「保存次数与额度」才会写入；读取不改变历史账本。公开评论每日额度和后台回复的滚动 24 小时额度彼此独立，生效时取更严格的限制。</p>
+<div class="card" style="margin-bottom:13px"><h3>公开评论 · 统一容量方案</h3><p class="muted">建议值：所有评论合计每天最多 1000 条发送尝试；后台回复上限同步 1000。只是容量，不是要鱼鱼刷屏。老用户的已保存低上限不会自动改动。</p><div class="toolbar"><button type="button" id="comment-quota-preset-1000">使用 1000 条评论容量方案（未保存）</button><span class="muted">选择后在页面下方点击「保存次数与额度」才生效</span></div></div>
 <div class="card" style="margin-bottom:13px"><h3>今日额度概览</h3><p id="quota-usage-summary" class="muted">正在读取…</p><div id="quota-usage-tiles" class="quota-tiles" aria-live="polite"></div><p class="muted">自然日按本机日期重置；后台评论额外使用滚动24小时窗口。用量来自真实本地账本，不可核实时显示“暂不可读”，不会猜测。</p></div>
 <div class="settings-stack">
 <div class="settings-section"><h4>公开评论与动态 · 自然日</h4><div class="fields" id="quota-fields-public">
-<div><label for="quota-comment-daily">公开评论全局每日硬上限（0–1000）</label><input id="quota-comment-daily" type="number" min="0" max="1000"></div>
+<div><label for="quota-comment-daily">公开评论全局每日硬上限（所有类型共用，0–1000，新用户默认 1000）</label><input id="quota-comment-daily" type="number" min="0" max="1000"><small class="setting-note">主评论、楼中楼、@ 回复、动态评论共用一份 Python 发布配额；1000 是可选容量，不是每日必须发送量。实际发送继续由鱼鱼意愿、对方边界及平台限制决定。</small></div>
 <div><label for="quota-comment-round">跑一轮最多发顶层评论（0–20）</label><input id="quota-comment-round" type="number" min="0" max="20"></div>
 <div><label for="quota-dynamic-daily">每天最多分享评论为动态（0–30）</label><input id="quota-dynamic-daily" type="number" min="0" max="100"></div>
 <div><label for="quota-like-daily">每天最多点赞（自动与 Session 手动共用，0–100）</label><input id="quota-like-daily" type="number" min="0" max="100"></div>
@@ -1584,6 +1585,12 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p id="social-status" class="muted" role="status">尚未读取推荐记录</p><div id="social-drafts" class="records records-scroll tall"></div>
 <p class="muted">不会自动发送旧版的任务回访或情绪联系。无新入选视频、没有合格收件人、模型决定沉默、达到每日额度或 14 天冷却，都不会私信；发送不确定时禁止自动重试。</p>
 </fieldset></details></div>
+</div>
+<div class="card" id="life-friend-outreach-card" style="margin-top:12px">
+<h4>熟人自主联系 · 不依赖视频</h4>
+<p class="muted">只从当前账号已记录的真实双向互动中考虑熟人；可由鱼鱼因心情、关系和生活节奏主动选择私信，不要求先看到视频。初次使用默认关闭，须单独授权。没有逐条主人审核；仍受白名单、冷却、事实核验、事务防重与平台规则约束。</p>
+<label class="checkline"><input type="checkbox" id="life-friend-dm-enabled">允许鱼鱼自主向有双向互动记录的白名单熟人发起自然聊天</label>
+<div class="toolbar"><button type="button" id="life-friend-dm-save" class="primary">保存熟人自主联系授权</button><span id="life-friend-dm-status" class="muted">尚未读取</span></div>
 </div>
 </details>
 <details id="social-owner-dm-group" class="social-category"><summary><strong>🧠 主人私信 Agent 与远程操作</strong><span>仅面向已核验主人 UID 的独立高权限设置</span></summary>
