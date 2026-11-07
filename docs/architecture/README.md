@@ -1,3 +1,7 @@
+## 当前版本 2.7.1-dev.12：Life 匿名候选续行与 firststart 统一流程（未发布）
+
+[当前接线、合同与限制](./2.7.1-dev12-life-cue-continuity-firststart.md) · [Mermaid 图](./diagrams/2.7.1-dev12-life-cue-continuity-firststart.mmd)。原账号事件账本可承载更多非视频契机并保留有界延期；firststart 合并成一个五步流程。仍非全渠道永久执行队列，真实平台与长时生活未验收。
+
 ## 当前版本 2.7.1-dev.11：多源自主生活与统一评论容量（未发布）
 
 [实际生产架构、合同、风险和验收](./2.7.1-dev11-multi-origin-life-comments.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev11-multi-origin-life-comments.mmd)。Life 现在即使没有视频机会，也可基于**本账号有作用域的真实双向好友互动**自主考虑私信；外发需要独立启用且保留白名单、事实核验和原跨进程发送事务。所有公开评论尝试默认共用每日 1000 条上限，老用户不自动改已保存值。跨平台高频、持久统一候选池、Windows/B站实机及长程人格因果**未验收**。下方 dev.10 为历史阶段增量，任何 1/2/4 轮/天叙述均为已撤销设计。

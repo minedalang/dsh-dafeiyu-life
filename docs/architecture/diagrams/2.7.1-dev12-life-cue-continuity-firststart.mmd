@@ -1,0 +1,19 @@
+flowchart TB
+  A[当前账号 Life 状态] --> B[AutonomousPlanner]
+  R[双向熟人关系] --> B
+  T[只读待办] --> B
+  C[兴趣与公开观察] --> B
+  M[反思契机] --> B
+  B --> Q[LifeAgentEvents v1 匿名持久提醒]
+  Q --> L[跨进程锁 / 有界延期 / 7天保留]
+  L --> B
+  B --> F{本轮重新核验事实和权限}
+  F -->|不符合| S[跳过 / 延后 / 冻结]
+  F -->|符合| D[唯一 Life 决策与原执行器]
+  D --> Z[原平台事务 / 可信回执]
+  subgraph Onboarding[统一快速设置 · 旧 API]
+    O1[B站验证] --> O2[模型验证]
+    O2 --> O3[生活 / 记忆 / 社交卡片]
+    O3 --> O4[主 Session 可选]
+    O4 --> O5[完成]
+  end

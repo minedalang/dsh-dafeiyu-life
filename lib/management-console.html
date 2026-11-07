@@ -445,6 +445,30 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 @media(prefers-color-scheme:dark){.fs-hero{background:linear-gradient(120deg,#253957,#1d4038,#392949);border-color:#416580}.fs-hero h2{color:#e0f3ff}.fs-hero p{color:#c1dce5}.fs-pill{background:#263e50;color:#b7e7ff}.fs-state.bad{background:#4a222b;color:#ffc3cc}.fs-state.good{background:#1d4335;color:#b5f1c8}.fs-warning{background:#44262e;color:#ffd1d9}.fs-recommend-tip{background:linear-gradient(115deg,#2b294c,#22364c);border-color:#6265b4;border-left-color:#a394ff;color:#dbe3ff}.fs-recommend-tip strong{color:#cabfff}.fs-next-hint{background:#30294c;color:#e4d8ff!important;border-color:#7568aa}}
 @media(max-width:570px){.fs-hero{padding:19px}.fs-hero h2{font-size:21px}.fs-footer button{flex:1}}
 
+/* dev.12: one first-start journey; the cards and required validation share a
+   single visual hierarchy rather than presenting two disconnected settings. */
+#panel-firststart .fs-journey{border:1px solid var(--stroke);border-radius:22px;background:color-mix(in srgb,var(--panel) 93%,#d9efff);padding:clamp(12px,2vw,24px);display:grid;gap:20px}
+#panel-firststart .fs-progress{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+#panel-firststart .fs-progress-step{text-decoration:none;min-width:0;padding:12px 11px;border:1px solid var(--stroke);border-radius:15px;background:var(--panel);display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:9px;row-gap:3px;color:var(--ink)}
+#panel-firststart .fs-progress-step span{width:32px;height:32px;border-radius:11px;background:color-mix(in srgb,#85b9e5 22%,var(--panel));color:var(--action);display:grid;place-items:center;font-weight:800;grid-row:span 2;font-size:12px}
+#panel-firststart .fs-progress-step strong{font-size:13px}#panel-firststart .fs-progress-step small{color:var(--muted);font-size:11px}
+#panel-firststart .fs-progress-step[data-state="done"]{border-color:#56a995;background:color-mix(in srgb,#8de5bf 15%,var(--panel))}
+#panel-firststart .fs-progress-step[data-state="done"] span{background:#277a65;color:white}
+#panel-firststart .fs-progress-step[data-state="attention"]{border-color:#d7a25b}
+#panel-firststart .fs-progress-step:focus-visible{outline:3px solid var(--action);outline-offset:2px}
+#panel-firststart .fs-progress-hint{margin:0;padding:9px 13px;border-radius:10px;background:color-mix(in srgb,#c0e8f7 27%,var(--panel));color:var(--muted);font-size:12px}
+#panel-firststart .fs-phase{display:grid;gap:13px;min-width:0;scroll-margin-top:85px}
+#panel-firststart .fs-phase-title{display:grid;gap:4px;border-bottom:1px solid var(--stroke);padding:0 0 11px}
+#panel-firststart .fs-phase-title strong{font-size:18px;color:var(--ink)}#panel-firststart .fs-phase-title span{font-size:12px;color:var(--muted)}
+#panel-firststart .fs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#panel-firststart .fs-step{border-top:0;border-left:4px solid #86b9e2;box-shadow:0 5px 18px #254b6c0b}
+#panel-firststart .fs-step.optional{border-left-color:#b7a8db}
+#panel-firststart .quick-settings-home{margin:0;padding:0;border:0;background:transparent;box-shadow:none}
+#panel-firststart .quick-setup-stack{margin-bottom:0}
+#panel-firststart .fs-footer{margin:0;padding:18px;border-color:#8ac9d7}
+@media(max-width:700px){#panel-firststart .fs-progress{grid-template-columns:repeat(2,minmax(0,1fr))}#panel-firststart .fs-grid{grid-template-columns:1fr}}
+@media(max-width:480px){#panel-firststart .fs-progress-step{padding:9px}#panel-firststart .fs-progress-step strong{font-size:12px}}
+
 /* First Start's Session editor uses the real settings form, without exposing
    unrelated business actions or the disabled main Session service. */
 #panel-home[data-setup-only="true"] .home-overview,
@@ -903,10 +927,26 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p id="message" role="status" aria-live="polite"></p>
 <div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">快速设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开快速设置 ↗</button></div>
 <section id="panel-firststart" hidden>
-  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 新版本快速设置</span><h2>欢迎来到大肥鱼 · 快速设置</h2><p>让鱼鱼开始认识你，陪伴你慢慢成长。这里就是大肥鱼管理中心：每个新老用户首次打开此版都会看到这页。<strong>B站登录和 Headless 模型验证是必须完成的两项</strong>，其他设置可以先跳过，之后随时回来修改。</p></div>
+  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 新版本快速设置</span><h2>快速设置 · 一次完成必要验证与生活选择</h2><p>新老用户首次打开本版都会看到这一条设置流程。<strong>B站登录和 Headless 模型验证是必须完成的两项</strong>，其他设置可以先跳过，之后随时回来修改。</p></div>
 
+  <div class="fs-journey" aria-label="统一快速设置流程">
+    <div class="fs-progress" id="fs-progress" aria-label="快速设置进度">
+      <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="account"><span>01</span><strong>登录 B站</strong><small>必须</small></a>
+      <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="model"><span>02</span><strong>模型验证</strong><small>必须</small></a>
+      <a class="fs-progress-step" href="#fs-choices-stage" data-fs-step="preferences"><span>03</span><strong>生活方案</strong><small>可跳过</small></a>
+      <a class="fs-progress-step" href="#fs-session-stage" data-fs-step="session"><span>04</span><strong>主会话</strong><small>可跳过</small></a>
+      <a class="fs-progress-step" href="#fs-final-stage" data-fs-step="finish"><span>05</span><strong>完成引导</strong><small>不重置设置</small></a>
+    </div>
+    <p class="fs-progress-hint" id="fs-progress-hint" role="status" aria-live="polite">正在读取快速设置状态…</p>
+    <div id="fs-verify-stage" class="fs-phase"><div class="fs-phase-title"><strong>连接鱼鱼的世界</strong><span>先完成两项必要验证；已有登录和模型不会自动重置</span></div>
+  <div class="fs-grid">
+    <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>🔐 在线核验并确认当前扫码账号</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>✅ 重启后复核并恢复账号</button></div></section>
+    <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
+  </div>
+    </div>
+    <div id="fs-choices-stage" class="fs-phase"><div class="fs-phase-title"><strong>定制鱼鱼的生活</strong><span>可直接选择、预览并保存；不保存就不会更改已有参数</span></div>
   <section class="quick-settings-home" aria-label="快速设置卡片操作">
-    <div class="quick-settings-heading"><div><h3>先替鱼鱼选一种生活方式</h3><p class="muted">直接选择并保存，所有卡片都读取现有设置；未点击保存不会生效。已有设置不匹配预设时显示「自定义／保留原值」。</p></div><span class="pill">首次设置 · 可随时修改</span></div>
+    <div class="quick-settings-heading"><div><h3>03 · 生活、记忆与社交</h3><p class="muted">直接选择并保存，所有卡片都读取现有设置；未点击保存不会生效。已有设置不匹配预设时显示「自定义／保留原值」。</p></div><span class="pill">可选 · 直接保存</span></div>
     <div class="quick-setup-stack">
       <section class="quick-config-section" id="quick-life-section"><div class="quick-config-title"><span class="quick-card-icon">✦</span><div><h4>自主生活</h4><p>鱼鱼是否主动探索，以及每天考虑生活的节奏</p></div></div>
         <h5>生活开关</h5><div class="quick-choice-grid two" role="radiogroup" aria-label="快速设置自主生活开关">
@@ -948,12 +988,14 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     </div>
     <div class="quick-ack-row"><p class="muted" id="fs-quick-ack-status">请检查当前设置后继续。老用户的原配置与后台生活不会因此暂停。</p><button type="button" id="fs-quick-ack" class="primary">我已查看本版快速设置</button></div>
   </section>
-  <div class="fs-grid">
-    <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>🔐 在线核验并确认当前扫码账号</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>✅ 重启后复核并恢复账号</button></div></section>
-    <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
-    <section class="fs-step optional"><h3>03 · 主 Session <span class="pill">可跳过</span></h3><p>指定鱼鱼和主人交谈的主要会话；以后可以在管理中心修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
-  </div>
+    </div>
+    <div id="fs-session-stage" class="fs-phase fs-optional"><div class="fs-phase-title"><strong>可选的会话设置</strong><span>这项可以留到以后，不阻塞首次设置完成</span></div>
+    <section class="fs-step optional"><h3>04 · 主 Session <span class="pill">可跳过</span></h3><p>指定鱼鱼和主人交谈的主要会话；以后可以在管理中心修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
+    </div>
+    <div id="fs-final-stage" class="fs-phase">
   <div class="fs-footer"><div><strong id="fs-summary">请先完成两项必需配置</strong><p class="muted">完成后随时可以在管理中心重新打开快速设置，已有记忆、凭据和历史资料不会删除。</p></div><div class="actions"><button id="fs-complete" class="primary" type="button" disabled>完成快速设置</button><button id="fs-complete-skip" type="button" disabled>跳过可选项并完成</button></div></div>
+    </div>
+  </div>
 </section>
 <section id="panel-models" hidden>
 <div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>所有 AI 模型只在这里设置。Provider 和模型 ID 留空时继承 DSH 当前模型；不需要在插件重复填写 API Key。每日次数统计的是插件启动的模型任务，并非 Provider 实际 API 请求数；安装本版后开始记录，不补算历史。测试连接不计入统计，但会产生实际模型请求，可能消耗额度。请先保存模型配置再测试。独立视觉的测试只验证文字连接，不验证识图能力。表情包规则优化只在你手动点击时调用，日常评论仍使用本地零 Token 检索。</p></div></div>

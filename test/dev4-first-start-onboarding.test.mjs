@@ -143,7 +143,7 @@ test('首次设置主 Session 入口不跳回欢迎页：允许配置但隐藏�
   const page=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
-  assert.match(page, /03 · 主 Session[\s\S]*?data-open-tab="home"/)
+  assert.match(page, /04 · 主 Session[\s\S]*?data-open-tab="home"/)
   assert.match(page, /id="fs-main-session-return"/)
   assert.match(page, /id="main-session-save"/)
   assert.match(js,/!\['firststart','models','home'\]\.includes\(tab\)/)

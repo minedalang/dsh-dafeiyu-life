@@ -55,7 +55,7 @@ test('新版快速设置提示升级仅一次，老用户运行和凭据不被�
   const stateDir=mkdtempSync(join(tmpdir(),'quick-v4-'))
   t.after(()=>rmSync(stateDir,{recursive:true,force:true}))
   const f=createFirstStart({stateDir,credentialPath:join(stateDir,'not-exists'),headlessSync:{hasAnyVerified:()=>false}})
-  assert.equal(f.status().quickSetupRevision,3)
+  assert.equal(f.status().quickSetupRevision,4)
   assert.equal(f.status().quickSetupSeen,false)
   f.acknowledgeQuickSetup()
   assert.equal(f.status().quickSetupSeen,true)
