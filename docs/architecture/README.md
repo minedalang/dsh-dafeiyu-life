@@ -1,3 +1,7 @@
+## RC8 · 方案优先的管理中心（仍为 2.7.1-dev.7）
+
+[架构与权限迁移说明](./2.7.1-rc8-choice-first-management.md) · [Mermaid 方案数据流](./diagrams/2.7.1-rc8-choice-first-management.mmd)。已完成：视频互动 / 私信 / 主动分享使用可选方案卡与自定义、现有配置单写源、站内外发确认；尚待 Windows 实机和真实 B站验收。
+
 ## 最新开发预览：2.7.1-dev.7 RC7 · 鱼鱼此刻与图片理解（未发布）
 
 - [真实进程内活动、图文生活方案、记忆页面划分、入站私信与评论图片的安全验证链路及实机验收](./2.7.1-rc7-life-now-vision.md) · [Mermaid 可编辑架构图](./diagrams/2.7.1-rc7-life-now-vision.mmd)。本轮不改变 Life 社交唯一归属，不复制旧记忆，`releaseReady:false`。

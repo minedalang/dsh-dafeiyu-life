@@ -691,6 +691,21 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life-agent .life-now-recent-item{font-size:12px;padding:7px 10px;border-radius:12px;background:var(--panel);border:1px solid var(--stroke);display:flex;gap:8px}
 #panel-life-agent .life-now-emotion,#panel-life-agent .life-now-todos,#panel-life-agent .life-now-settings,#panel-life-agent .life-now-timeline{margin:13px 0;border:1px solid var(--stroke);border-radius:17px;background:var(--panel);padding:12px 16px}
 #panel-life-agent :is(.life-now-emotion,.life-now-todos,.life-now-settings,.life-now-timeline)>summary{font-weight:750;cursor:pointer;font-size:16px;padding:5px 0}
+/* RC8：整体方案优先，单一旧配置源，自定义才展开参数。 */
+.choice-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}
+.choice-card{min-width:0;position:relative;display:flex;flex-direction:column;gap:6px;min-height:139px;padding:14px;border:2px solid var(--stroke);border-radius:16px;cursor:pointer;background:linear-gradient(135deg,var(--panel),color-mix(in srgb,var(--ui-teal) 6%,var(--panel)));transition:transform .18s,box-shadow .18s,border-color .18s}
+.choice-card:hover{transform:translateY(-2px);box-shadow:0 7px 18px rgba(28,80,110,.09)}
+.choice-card:has(input:checked){border-color:#258d78;background:linear-gradient(130deg,color-mix(in srgb,#71d9b6 18%,var(--panel)),color-mix(in srgb,#7b9cda 9%,var(--panel)));box-shadow:0 5px 18px rgba(31,123,95,.13)}
+.choice-card:has(input:focus-visible){outline:3px solid var(--action);outline-offset:3px}
+.choice-card input{position:absolute;right:12px;top:12px;accent-color:#258d78}
+.choice-card .choice-icon{display:inline-grid;place-items:center;width:42px;height:42px;border-radius:14px;background:color-mix(in srgb,var(--ui-teal) 13%,var(--panel));font-size:25px}
+.choice-card strong{font-size:14px}.choice-card small{font-size:12px;color:var(--muted);line-height:1.45;padding-right:3px}
+.choice-review{font-size:12px;color:var(--muted);margin:8px 0;min-height:18px}
+.choice-advanced{border:1px solid var(--stroke);border-radius:12px;margin:10px 0;padding:0 12px 12px}
+.choice-advanced>summary{padding:12px 2px;font-weight:700;font-size:13px;cursor:pointer}
+@media(max-width:850px){.choice-presets{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.choice-card{padding:11px;min-height:122px}.choice-card small{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.choice-card{transition:none}.choice-card:hover{transform:none}}
 #panel-life-agent .life-profile-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:13px 0}
 #panel-life-agent .life-profile-card{position:relative;display:flex;flex-direction:column;justify-content:center;gap:7px;min-height:155px;padding:15px 14px;border:2px solid var(--stroke);border-radius:17px;cursor:pointer;background:linear-gradient(140deg,var(--panel),color-mix(in srgb,var(--action) 6%,var(--panel)));transition:transform .18s,box-shadow .18s,border-color .18s}
 #panel-life-agent .life-profile-card:hover{transform:translateY(-3px);box-shadow:0 9px 23px rgba(47,88,140,.11)}
@@ -836,7 +851,14 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="settings-section"><h4>选片方向</h4><p class="muted">大肥鱼的兴趣档案主导搜索；主人额外关键词只是补充关注，不会覆盖已形成的兴趣。</p>
 <label class="checkline"><input id="bili-home-recommend" type="checkbox">混合 B站首页推荐</label>
 <label for="bili-extra-keywords">主人额外指定的主题（每行一个）</label><textarea id="bili-extra-keywords" rows="4" placeholder="例如：白饭、AI拟人"></textarea></div>
-<div class="settings-section"><h4>自主互动</h4><p class="muted">鱼鱼自由选择互动；勾选「禁止」才关闭。旧用户原有权限不被覆盖。</p>
+<div class="settings-section"><h4>🐟 鱼鱼怎样与视频互动</h4><p class="muted">选择一个方案，鱼鱼自己决定做不做。不会自动发布或改变你的旧授权。</p>
+<div class="choice-presets" role="radiogroup" aria-label="视频互动方案">
+<label class="choice-card"><input type="radio" name="bili-interaction-choice" value="free"><span class="choice-icon" aria-hidden="true">🕊️</span><strong>自由互动</strong><small>评论、点赞、关注及管理自建收藏夹</small></label>
+<label class="choice-card"><input type="radio" name="bili-interaction-choice" value="balanced"><span class="choice-icon" aria-hidden="true">🍃</span><strong>适度互动</strong><small>可以点赞收藏，暂不主动评论或关注</small></label>
+<label class="choice-card"><input type="radio" name="bili-interaction-choice" value="observe"><span class="choice-icon" aria-hidden="true">🌙</span><strong>安静探索</strong><small>关闭本页视频互动；不改变私信授权</small></label>
+<label class="choice-card"><input type="radio" name="bili-interaction-choice" value="custom"><span class="choice-icon" aria-hidden="true">🎛️</span><strong>自己决定</strong><small>逐项开启或禁止各项互动</small></label>
+</div><p id="bili-interaction-choice-status" class="choice-review" role="status">正在读取原有权限…</p>
+<details id="bili-interaction-advanced" class="choice-advanced"><summary>⚙️ 自定义行为与图片理解</summary>
 <label class="checkline"><input id="bili-auto-comment" type="checkbox" data-inverted-permission="true">禁止自主发表原创评论</label>
 <label class="checkline"><input id="bili-disable-incoming-vision" type="checkbox" data-inverted-permission="true">禁用评论和私信图片理解</label>
 <p class="muted">仅分析真实可取得的图片；不支持时会说明无法看图，不编造画面。</p>
@@ -847,6 +869,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <p class="muted">只允许删除本插件账本记录、且已核验为当前账号自己的收藏夹；每日最多 1 次，不会删除其他收藏夹或默认收藏夹。删除是不可逆的外部操作。</p>
 <label class="checkline"><input id="bili-agent-follow" type="checkbox" data-inverted-permission="true">禁止自主关注／取关 UP 主</label>
 <p class="muted" id="bili-agent-follow-explain">默认可自主关注或取关；仍须有真实相遇、鱼鱼自己愿意，并遵守平台确认及频率限制。</p><p class="muted" id="bili-agent-follow-readiness" role="status">自主关注状态：读取中…</p>
+</details>
 </div>
 <details id="bili-video-advanced" class="contextual-settings">
 <summary>⚙️ 视频探索的报告与高级设置 <span class="contextual-hint">字幕转写 · 报告投递 · 表情包</span></summary>
@@ -1314,13 +1337,20 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <details id="social-outreach-group" class="social-category"><summary><strong>🐟 主动视频推荐</strong><span>鱼鱼是否给已授权好友推荐视频，以及对应私信额度</span></summary>
 <div id="social-outreach-section" class="card"><h4>🐟 主动视频兴趣推荐 · 私信</h4>
 <p class="muted">鱼鱼可以在<strong>真实入选公开视频之后</strong>，自主判断是否把有意思的发现私信给主人；其他白名单好友仍要求可核对的兴趣匹配。没有合适的视频、她不想打扰对方，或者超过额度时，都可以保持沉默。<strong>新安装默认开启；老用户保留原来的授权选择</strong>，不会因升级擅自开启外发。选择好友的「私信推荐」渠道仍是独立的收件人许可。</p>
-<details id="social-outreach-legacy" class="inset" open><summary>视频推荐设置、判断记录与私信回执</summary>
+<details id="social-outreach-legacy" class="inset" open><summary>🐟 视频推荐与私信记录</summary>
+<div class="choice-presets" role="radiogroup" aria-label="主动分享方案">
+<label class="choice-card"><input type="radio" name="social-share-choice" value="free"><span class="choice-icon" aria-hidden="true">🎁</span><strong>自主分享</strong><small>鱼鱼决定是否发送，每天最多 3 条</small></label>
+<label class="choice-card"><input type="radio" name="social-share-choice" value="draft"><span class="choice-icon" aria-hidden="true">📮</span><strong>只准备草稿</strong><small>鱼鱼可以推荐，由主人决定是否发送</small></label>
+<label class="choice-card"><input type="radio" name="social-share-choice" value="off"><span class="choice-icon" aria-hidden="true">🌙</span><strong>暂不主动分享</strong><small>不生成新的主动视频推荐</small></label>
+<label class="choice-card"><input type="radio" name="social-share-choice" value="custom"><span class="choice-icon" aria-hidden="true">🎛️</span><strong>自己设定</strong><small>单独选择发送授权和每日上限</small></label>
+</div><p id="social-share-choice-status" class="choice-review" role="status">正在读取原有推荐权限…</p>
 <fieldset class="outreach-permissions"><legend>🐟 鱼鱼的自主分享</legend>
-<p class="muted">默认面向已授予私信推荐权限的主人和白名单好友。主人不必另填兴趣关键词；其他好友需要有真实、可核查的兴趣线索。是否联系由鱼鱼判断；不发送私密记忆，不触发评论或 @，尊重拒绝与冷却期。</p>
+<details id="social-share-advanced" class="choice-advanced"><summary>⚙️ 自定义推荐规则</summary><p class="muted">只发给已授权的主人和好友，仍受平台权限与 14 天冷却限制。</p>
 <label class="checkline"><input id="social-life-intent-enabled" type="checkbox">启用自主视频兴趣推荐（新安装默认开启）</label>
 <p class="muted">只在有新入选的真实视频后考虑推荐，模型可以选择不联系；已保存的旧开关状态保持不变。未启用时不会生成新草稿或私信。</p>
 <label class="checkline"><input id="social-auto-send" type="checkbox">允许把鱼鱼自主决定发送的推荐真正私信给已授权好友（新安装默认开启）</label>
 <div class="fields"><div><label for="social-daily-limit">每日最多主动推荐私信（0 表示禁止）</label><input id="social-daily-limit" type="number" min="0" step="1" value="1"></div></div>
+</details>
 <div class="toolbar"><button id="social-save" class="primary">保存推荐权限并确认授权</button><button id="social-refresh" >刷新草稿</button></div>
 <p id="social-status" class="muted" role="status">尚未读取草稿</p><div id="social-drafts" class="records records-scroll tall"></div>
 <p class="muted">不会自动发送旧版的任务回访或情绪联系。无新入选视频、没有合格收件人、模型决定沉默、达到每日额度或 14 天冷却，都不会私信；发送不确定时禁止自动重试。</p>
@@ -1560,9 +1590,15 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <section id="panel-dm" hidden>
 <div class="feature-intro"><div><h2>✉️ 后台私信</h2><p>私信记录、陌生人申请、监听规则分别管理；默认不会自动回复陌生人。</p></div></div>
 <nav class="context-jump" aria-label="私信页分区"><a href="#dm-recent-conversations">最近会话</a><a href="#dm-requests">聊天申请</a><a href="#dm-settings-section">私信规则</a></nav>
-<details id="dm-settings-collapse" class="settings-category"><summary><strong>⚙️ 后台私信规则</strong><span>展开修改自然续聊开关、陌生人授权、暗号审核</span></summary>
-<div id="dm-settings-section" class="card" style="margin-bottom:14px"><h3>后台私信规则</h3><p class="muted">修改后保存到 DSH 本机配置。陌生人自动回复许可默认关闭；开启后只是允许鱼鱼考虑回复，具体由统一人格、当前情绪、关系和对话上下文决定，不会强制每条都回复。</p>
-<div class="settings-stack">
+<details id="dm-settings-collapse" class="settings-category" open><summary><strong>⚙️ 后台私信规则</strong><span>展开修改自然续聊开关、陌生人授权、暗号审核</span></summary>
+<div id="dm-settings-section" class="card" style="margin-bottom:14px"><h3>鱼鱼如何与人私信</h3><p class="muted">先选一种交流方式，鱼鱼会自己决定何时回复；额外权限需要保存确认。</p>
+<div class="choice-presets" role="radiogroup" aria-label="私信交流方案">
+<label class="choice-card"><input type="radio" name="dm-conversation-choice" value="free"><span class="choice-icon" aria-hidden="true">💬</span><strong>自由交流</strong><small>允许考虑回复新朋友，也能自然续聊</small></label>
+<label class="choice-card"><input type="radio" name="dm-conversation-choice" value="friends"><span class="choice-icon" aria-hidden="true">🌿</span><strong>熟人优先</strong><small>监听私信，陌生人不自动多轮交谈</small></label>
+<label class="choice-card"><input type="radio" name="dm-conversation-choice" value="paused"><span class="choice-icon" aria-hidden="true">🌙</span><strong>暂停交流</strong><small>停止普通私信自动监听与回复</small></label>
+<label class="choice-card"><input type="radio" name="dm-conversation-choice" value="custom"><span class="choice-icon" aria-hidden="true">🎛️</span><strong>自己设定</strong><small>单独调整监听、审核与交流节奏</small></label>
+</div><p id="dm-conversation-choice-status" class="choice-review" role="status">正在读取原有私信设置…</p>
+<details id="dm-conversation-advanced" class="choice-advanced"><summary>⚙️ 自定义私信权限与节奏</summary><div class="settings-stack">
 <div class="settings-section"><h4>监听与可回复对象</h4><div class="fields">
 <div class="checkline"><input id="dm-watch" type="checkbox"><label for="dm-watch">启用后台私信监听</label></div>
 <div class="checkline"><input id="dm-stranger-enabled" type="checkbox"><label for="dm-stranger-enabled">允许鱼鱼自主考虑并多轮回复陌生人（新增授权，默认关闭）</label></div>
@@ -1588,7 +1624,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 <div class="checkline"><input id="dm-approval-enabled" type="checkbox"><label for="dm-approval-enabled">启用严格暗号审核（可选，默认关闭）</label></div>
 <div><label for="dm-phrase">严格审核申请暗号</label><input id="dm-phrase" maxlength="60" placeholder="白饭🍚"><small class="setting-note">只有开启严格审核时才生效。默认「白饭🍚」可识别独立投喂的 🍚、🍚🍚🍚🍚 等；普通聊天提到米饭不算申请。通过申请仍受获批用户每日／累计额度控制。</small></div>
 </div></div>
-</div><div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
+</div></details><div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
 </details>
 <div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然续聊预约状态：尚未读取。</p><p id="dm-error" class="muted"></p><p class="muted">网络失败会显示接口主机与底层错误码；如果出现 ECONNRESET、ENETUNREACH、ETIMEDOUT 或 DNS 错误，需同时检查系统网络／代理与 B站连通性。</p></div>
 <div id="dm-context-governance" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>私信上下文与记忆边界</h3><button id="dm-memory-prune" type="button">清理过期聊天内容</button></div><p class="muted">本区只治理「后台普通私信」的近期聊天原文与旧来信片段，和主 Session「主人聊天记忆整理」不是一回事。主人专属私信 Agent、人生记忆、好友画像各有独立来源与权限；本操作不会清理这些系统，也不会清除已读去重、拒联边界、审批、发送额度或平台回执。</p><p id="dm-memory-governance-status" class="muted" role="status">正在读取当前账号的本地上下文状态…</p></div>
