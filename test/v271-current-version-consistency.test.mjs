@@ -14,6 +14,6 @@ test('当前开发版本与 package lock、README、变更和架构文档一致'
   assert.match(read('AGENTS.md'),new RegExp('当前开发版本 `'+pkg.version.replaceAll('.','\\.')+'`'))
   assert.ok(read('CHANGELOG.md').startsWith('## ['+pkg.version+'] ·'))
   assert.ok(read('docs/architecture/README.md').includes('当前版本 '+pkg.version+'：'))
-  assert.ok(read('docs/architecture/2.7.1-dev18-timeline-original-comment-diagnostics.md').startsWith('# '+pkg.version+' '))
+  assert.ok(read('docs/architecture/2.7.1-dev19-owner-life-timeline.md').startsWith('# '+pkg.version+' '))
   assert.ok(read('RELEASE_NOTES_v2.7.1.md').startsWith('# '+pkg.version+' ·'))
 })

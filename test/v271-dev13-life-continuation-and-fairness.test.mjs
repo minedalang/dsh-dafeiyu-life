@@ -138,7 +138,8 @@ test('真实生活时间线新增已核验只读记录，不从模型意图伪�
   {...base,at:T-3000,verifiedReadKind:''},{...base,at:T-4000,action:'reach_out_friend',result:'done'}],now:T+1000})
  assert.equal(rows.length,1)
  assert.equal(rows[0].type,'life-read')
- assert.match(rows[0].detail,/不代表看完视频/)
+ assert.equal(rows[0].detail,'')
+ assert.equal(rows[0].title,'查看了待办的相关资料')
  assert.equal(Boolean(rows[0].url),false)
 })
 

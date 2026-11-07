@@ -65,7 +65,7 @@ test('dev16 stale account or unknown read result never promote comment',async t=
  assert.notEqual((await result).status,'verified')
  assert.ok(x.results.every(x=>x[1]!=='verified'))
 })
-test('dev16 action timeline differentiates independent platform GET from send transaction',()=>{
+test('dev16 evidence stays in ledger while owner diary uses ordinary action wording',()=>{
  const dir=mkdtempSync(join(tmpdir(),'dev16-action-evidence-'))
  try{
   let n=1700000000000
@@ -78,7 +78,8 @@ test('dev16 action timeline differentiates independent platform GET from send tr
   assert.equal(timeline[1].verifiedEvidence,'platform-read-after-write')
   assert.equal(timeline[0].verifiedEvidence,'platform-transaction-receipt')
   const rows=buildLifeTimeline({lifeDecisions:timeline,now:n+100,days:2})
-  assert.ok(rows.some(x=>x.type==='life-write'&&x.label==='发表了视频评论'&&x.title.includes('平台只读回查')))
-  assert.ok(rows.some(x=>x.type==='life-write'&&x.label==='回复了私信'&&x.title.includes('发送事务')))
+  assert.ok(rows.some(x=>x.type==='life-write'&&x.title==='在视频下留了言'))
+  assert.ok(rows.some(x=>x.type==='life-write'&&x.title==='回复了一条私信'))
+  assert.ok(rows.every(x=>!/(平台|回执|已核验|事务|只读回查)/.test(x.title+' '+x.detail)))
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
