@@ -1,6 +1,10 @@
-## 当前开发版本 2.7.1-dev.22：跨日公开评论回忆与统一层边界（未发布）
+## 当前开发版本 2.7.1-dev.23：AI 主导的跨渠道主动回忆（未发布）
 
-[dev.22 当前生产接线、权限/失败边界和跨渠道矩阵](./2.7.1-dev22-public-recall-unified.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev22-public-recall.mmd)。主人私信 `public_comments` 和主人公开评论按需回忆使用同一个成功回执主账本；公开评论回忆第二轮只能修正 `chat` 内容，不能再授权社交动作。未做向量检索、不新建存储、不开放私密记忆；Windows/真实 B站/跨日成长仍待验收。
+[dev.23 当前统一回忆接口、生产接线与未覆盖边界](./2.7.1-dev23-active-recall-unified.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev23-active-recall.mmd)。主人私信移除规则式记忆预检索；普通私信/评论的 compact 首轮由模型给出 `recallQueries`，统一检索器依当前身份与渠道取仍可访问的长期/可衰减记忆；受信好友公开评论按需读取公开安全记忆。主人跨日公开评论仍读原成功回执账本。传统 `full` 模式及某些专业 Agent 仍有生成前装配逻辑（兼容保留），不宣称所有入口已统一或真实语义召回完善。Windows / B站 / 长期生活未验收。
+
+## 历史版本 2.7.1-dev.22：跨日公开评论回忆与统一层边界（未发布）
+
+[dev.22 历史接线、权限/失败边界和跨渠道矩阵](./2.7.1-dev22-public-recall-unified.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev22-public-recall.mmd)。主人私信 `public_comments` 和主人公开评论按需回忆使用同一个成功回执主账本；公开评论回忆第二轮只能修正 `chat` 内容，不能再授权社交动作。未做向量检索、不新建存储、不开放私密记忆；Windows/真实 B站/跨日成长仍待验收。
 
 ## 历史版本 2.7.1-dev.21：主人私信主动回忆与自然事实修正（未发布）
 
@@ -78,7 +82,7 @@
 
 [架构与权限迁移说明](./2.7.1-rc8-choice-first-management.md) · [Mermaid 方案数据流](./diagrams/2.7.1-rc8-choice-first-management.mmd)。已完成：视频互动 / 私信 / 主动分享使用可选方案卡与自定义、现有配置单写源、站内外发确认；尚待 Windows 实机和真实 B站验收。
 
-> 以下 dev.7 及更早的「当前」「最新」均指其撰写当时的阶段性成果；不代表 dev.22 的生产真值。现行入口与统一层契约请以上方 dev.22 总览为准。
+> 以下 dev.7 及更早的「当前」「最新」均指其撰写当时的阶段性成果；不代表 dev.23 的生产真值。现行入口与统一层契约请以上方 dev.23 统一回忆说明为准。
 
 ## 历史开发预览：2.7.1-dev.7 RC7 · 鱼鱼此刻与图片理解（未发布）
 
@@ -355,7 +359,7 @@
 
 `Life Voice Context` 是自动生成文字时的人格、成长与连续情绪的唯一装配层。各场景只追加任务事实、互动历史与授权相关数据，不能重新在模型提示中拼一份情绪／成长描述。主 Session 的长期记忆检索与稳定成长人设是不同职责。详情见 [人格上下文](./2.6.2-life-voice-context.md)。
 
-## 历史系统基线图（2.6.2，非 dev.22 的最新接线）
+## 历史系统基线图（2.6.2，非 dev.23 的最新接线）
 
 - [开发者架构 Mermaid](./diagrams/2.6.2-life-system-current.mmd) · [SVG](./diagrams/2.6.2-life-system-current.svg)
 - [用户理解版 Mermaid](./diagrams/2.6.2-life-system-user.mmd) · [SVG](./diagrams/2.6.2-life-system-user.svg)

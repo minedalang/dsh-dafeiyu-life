@@ -4146,6 +4146,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         // Caller identity is the platform-authenticated owner; a friend cannot
         // request owner recall. Public results contain only confirmed self-posted
         // comments, never the owner DM's memory_search or private insights.
+        recallMemory:ctx.role==='friend'?async({queries})=>{
+          const read=await socialContextAssembler.message({kind:'comment',uid:row.uid,text:row.text,
+            context:ctx.context,bvid:row.bvid,incomingRpid:row.rpid,recallQueries:queries},
+            {mode:'compact',requested:['memory']})
+          if(!read.ok||read.loadErrors?.length)return {ok:false,reason:'memory-read-unavailable',items:[]}
+          return {ok:true,items:read.memoryContext?[{id:'social-public-memory',kind:'public-safe',
+            summary:read.memoryContext,source:'live-memory-only'}]:[]}
+        }:null,
         recallPublic:ctx.role==='owner'?({query,scope})=>{
           refreshCfg()
           if(cfg.ownerCommentAgentEnabled!==true||cfg.masterEnabled!==true||socialPolicyGate.actor(row.uid).role!=='owner')

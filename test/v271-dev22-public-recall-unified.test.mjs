@@ -50,7 +50,7 @@ test('公开评论只在主人模型主动要求时做一次只读查询，第�
  let calls=0,reads=0,finalPrompt=''
  const result=await interpretTrustedSocial({
   row:{text:'鱼鱼你之前说过那句星星落海的妙评吗？',bvid:BV,context:'',threadPreview:''},role:'owner',style:'统一 Life Voice 语气',
-  recallPublic:async req=>{reads++;assert.equal(req.query,'星星落海');assert.equal(req.scope,'current-account');return searchVerifiedPublicComments(dir,{...req,beforeAt:now})},
+  recallPublic:async req=>{reads++;assert.deepEqual(req.query,['星星落海']);assert.equal(req.scope,'current-account');return searchVerifiedPublicComments(dir,{...req,beforeAt:now})},
   invoke:async p=>{calls++;finalPrompt=p
    return JSON.stringify(calls===1?{intent:'chat',decision:'allow',reply:'我以前可能说过吧。',recallQuery:'星星落海',recallScope:'current-account'}
      :{intent:'chat',decision:'allow',reply:'我找到自己之前发的一句：“星星落海时，连桌宠都知道停下看看。”',todoDisposition:'none',suggestedTodo:null})
@@ -106,6 +106,6 @@ test('主人私信模型可按需查跨日公开评论，不能由只读回忆�
 test('回忆语义门禁不再把普通吃饭闲聊当作主人记忆搜索',()=>{
  assert.equal(ownerRecallQuestion('我们晚上吃点什么？'),false)
  assert.equal(ownerRecallQuestion('你之前那句妙评是什么？'),true)
- assert.match(buildTrustedSocialPrompt({role:'owner'}),/recallQuery/)
+ assert.match(buildTrustedSocialPrompt({role:'owner'}),/recallQueries/)
  assert.doesNotMatch(buildTrustedSocialPrompt({role:'friend'}),/宿主会查当前账号/)
 })

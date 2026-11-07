@@ -50,7 +50,7 @@ test('记忆工具分步查询，详情只能来自本轮检索到的 ID，无�
     return {ok:false,items:[]}},
   invokeModel:async p=>{prompt=p;return results[n++]},send:async x=>{sent=x.text;return {ok:true}}})
  const r=await agent.processMessage(msg('你之前夸过谁？'))
- assert.equal(r.ok,true);assert.equal(n,3);assert.equal(queryCalls,2);assert.equal(detailCalls,1)
+ assert.equal(r.ok,true);assert.equal(n,3);assert.equal(queryCalls,1);assert.equal(detailCalls,1)
  assert.match(prompt,/鱼鱼曾说过这桌宠有脾气/)
  assert.match(sent,/我想起来了/)
  assert.ok(!prompt.includes('判断本条主人消息是否提出了未来想让你'))
@@ -60,7 +60,7 @@ test('不允许未经搜索直接使用模型伪造的记忆 ID 读取详情',()
  const agent=factory(dir,{recallMemory:async x=>{calls++;if(x.action==='memory_detail')throw Error('unexpected unsafe detail read');return {ok:true,items:[]}},
   invokeModel:async()=>({action:'memory_detail',id:'memory:forged'}),send:async()=>({ok:true})})
  const r=await agent.processMessage(msg('你以前说过什么','x1'))
- assert.equal(r.ok,true);assert.equal(calls,1)
+ assert.equal(r.ok,true);assert.equal(calls,0)
  assert.match(r.reply,/没找到|线索/)
 }))
 test('没有证据时自然回答，不会反复自责或索要 BV 号',()=>run(async dir=>{
@@ -93,5 +93,5 @@ test('开发文档、服务端 owner 认证和版本一致',()=>{
  const index=readFileSync(new URL('index.js',base),'utf8')
  assert.match(index,/recallMemory:async/)
  assert.match(index,/trustedLifeAccountTag\(\)/)
- assert.match(readFileSync(new URL('package.json',base),'utf8'),/2\.7\.1-dev\.22/)
+ assert.match(readFileSync(new URL('package.json',base),'utf8'),/2\.7\.1-dev\.23/)
 })
