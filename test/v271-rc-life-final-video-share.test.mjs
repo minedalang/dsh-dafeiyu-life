@@ -22,7 +22,7 @@ function setup(t,{approved=true,throws=false,changed=false}={}){
       decisions++
       if(throws)throw Error('Life model offline')
       if(changed)cfg.socialAutoSend=false
-      return {ok:approved,reason:'life-chose-rest'}
+      return {ok:approved,reason:'life-chose-rest',proof:approved?{id:'fixture-life-proof'}:null}
     },sendMessage:async()=>{sends++;return {ok:true}}})
   return {dir,engine,cfg,counts:()=>({sends,decisions}),id:'life-share:'+uid+':'+bv}
 }

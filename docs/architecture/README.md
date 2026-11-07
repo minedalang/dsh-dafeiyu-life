@@ -1,3 +1,7 @@
+## 2.7.1 RC9 · 统一 Life 意愿生产接线（未发布）
+
+[实际源码接线、回执和发布阻断清单](./2.7.1-rc9-unified-life-willingness.md) · [可编辑 Mermaid 总图](./diagrams/2.7.1-rc9-unified-life-willingness.mmd)。DM、评论、回访、动态、视频分享及视频委派已共用生命意愿模型契约；当前**尚缺全局机会池、视频技能内逐动作仲裁、主人主动关怀和跨天因果验收**，保持 `releaseReady:false`。
+
 ## RC8 · 方案优先的管理中心（仍为 2.7.1-dev.7）
 
 [架构与权限迁移说明](./2.7.1-rc8-choice-first-management.md) · [Mermaid 方案数据流](./diagrams/2.7.1-rc8-choice-first-management.mmd)。已完成：视频互动 / 私信 / 主动分享使用可选方案卡与自定义、现有配置单写源、站内外发确认；尚待 Windows 实机和真实 B站验收。

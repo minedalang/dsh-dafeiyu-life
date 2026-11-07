@@ -15,7 +15,7 @@ const config=()=>({masterEnabled:true,socialOutreachEnabled:true,socialLifeInten
 const videos=[{picked:true,bvid:BV,title:'猫咪日常合集'}]
 const engine=(dir,cfg,callbacks={})=>createSocialIntentEngine({dataDir:dir,getConfig:()=>cfg,now:()=>now,videoRecommendationsOnly:true,
   invokeModel:async()=>JSON.stringify({action:'draft',message:'今天遇到一条猫咪的公开新视频，想跟你分享这份发现～',reason:'觉得猫咪题材有趣'}),
-  sendMessage:async()=>({ok:true}),authorizeDraft:async()=>({ok:true,reason:'tested-life-choice'}),...callbacks})
+  sendMessage:async()=>({ok:true}),authorizeDraft:async()=>({ok:true,reason:'tested-life-choice',proof:{id:'verified-life-candidate'}}),...callbacks})
 
 test('旧暂停版配置没有新授权时，不进行模型调用或私信投递',async()=>{
  const dir=home(),cfg=config();cfg.socialAutoSend=true;let models=0,sends=0
@@ -74,4 +74,13 @@ test('管理中心与服务端只解除视频兴趣推荐锁，不恢复旧待�
  assert.doesNotMatch(html,/<fieldset disabled class="outreach-disabled">/)
  assert.match(js,/socialVideoRecommendationsAuthorizedV2:enabled,confirm:enabled/)
  assert.match(js,/row\.type==='interest-share'/)
+})
+
+test('旧授权仍开启，但统一 Life 意愿拒绝时不得自动发送',async()=>{
+ const dir=home(),cfg=config();Object.assign(cfg,{socialVideoRecommendationsAuthorizedV2:true,socialAutoSend:true});let sends=0
+ try{
+  const e=engine(dir,cfg,{authorizeDraft:async()=>({ok:false,reason:'life-chose-rest'}),sendMessage:async()=>{sends++;return {ok:true}}})
+  assert.equal((await e.reflectOnWatched(videos)).created,1)
+  assert.equal(sends,0);assert.equal(e.status().items[0].status,'draft')
+ }finally{rmSync(dir,{recursive:true,force:true})}
 })

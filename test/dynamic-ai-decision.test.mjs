@@ -6,11 +6,12 @@ const client=readFileSync(new URL('../client.js', import.meta.url),'utf8')
 const charter=readFileSync(new URL('../prompts/duty.md',import.meta.url),'utf8')
 const python=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
 test('one AI decision per bili_reply, not unconditional auto sync',()=>{
-  assert.match(index,/sync_to_dynamic: cfg\.commentSyncDynamic === true && args\.sync_to_dynamic === true/)
+  assert.match(index,/sync_to_dynamic: false/)
   assert.match(index,/sync_to_dynamic: \{ type: 'boolean'/)
   assert.match(index,/dynamic_daily_limit: cfg\.dynamicDailyLimit/)
   assert.match(python,/return \(arg is True and/)
   assert.match(charter,/sync_to_dynamic: true\/false/)
+  assert.match(index,/BILI_SYNC_DYNAMIC: ' \+ yq\('0'\)/)
 })
 test('daily cap is part of settings, overlay, status and UI',()=>{
   for(const x of ['dynamicDailyLimit: z.natural().default(3)','BILI_DYNAMIC_DAILY_LIMIT','dynamicSyncUsage','dynamicDailyLimit']) assert.ok(index.includes(x),x)

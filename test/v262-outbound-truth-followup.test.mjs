@@ -85,7 +85,7 @@ test('回访模型不再以人生记忆检索为空作为唯一的永久延期�
  const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
- assert.match(host,/if\(!evidence\.length&&!verified\.length\)return/)
+ assert.match(host,/if\(!evidence\.length&&!verified\.length\)\{lifeWillingness\?\.receipt/)
  assert.match(host,/收到成功回执/)
  assert.match(ui,/todo-parent-child-layout/)
  assert.match(ui,/parentTodoId/)

@@ -9,7 +9,7 @@ test('comment decision has AI-facing short explanation field in SAME tool call',
   assert.match(index,/no_mention_reason: \{type:'string'/)
   assert.match(index,/no_mention_reason: args\.should_mention === false/)
   assert.match(index,/should_mention: args\.should_mention === true/)
-  assert.match(index,/sync_to_dynamic: cfg\.commentSyncDynamic === true && args\.sync_to_dynamic === true/)
+  assert.match(index,/sync_to_dynamic: false/)
   assert.match(charter,/no_mention_reason/)
   assert.match(index,/它只保存到用户本地诊断/)
 })
