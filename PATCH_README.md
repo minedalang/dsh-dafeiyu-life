@@ -1,7 +1,9 @@
-# dev.26 · 旧视频报告投递修复说明
+# dev.27 · 由 dev.26 修复版升级
 
-当前 hotfix **不改写**历史 `autoComment`。旧 only/off/both 报告选项已移除，评论独立受原授权与执行门禁控制。每轮报告清单私信已退役，常规 B站私信、Life 自主社交分享和回访保留。
+当前版本 `2.7.1-dev.27`（开发预览，未发布）。基线是 **dev.26 已退休旧视频报告模式的最终源码**，不是 dev.26 初版。
 
-从已交付的 dev.26（不是 dev.25）应用 `DSH-2.7.1-dev26-legacy-report-retirement-original.patch`；统一 LF 的仓库使用 `DSH-2.7.1-dev26-legacy-report-retirement-LF.patch`。两个只用一个。停止 Desktop、备份源码和用户数据后运行 `git apply --check`、`git apply` 和 `run-tests.bat`。
+使用交付的 `DSH-2.7.1-dev27-from-dev26-cleanup-original.patch` 或 `DSH-2.7.1-dev27-from-dev26-cleanup-LF.patch` 其中一种。使用 `git apply --check` 再 `git apply`，不要应用两遍；也可直接使用完整源码 ZIP。
 
-文档请看交付包 `DSH-2.7.1-dev26-legacy-report-retirement-WINDOWS-HOWTO.md`。版本号维持 dev.26，仍未正式发布。
+升级不会重置 `autoComment`、点赞/收藏/关注开关；关闭的行为仍关闭。首次运行建议先备份本机 `bili-duty/`，在单独测试账号/小额度下验证真实平台反应。写入结果未知严禁手动或程序自动重试。
+
+当前仍 `releaseReady:false`，不创建 Tag，不合并 main，不发布 npm。详见 `docs/architecture/2.7.1-dev27-life-continuation-writes.md`。

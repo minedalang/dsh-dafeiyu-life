@@ -130,12 +130,17 @@ async def _life_video_authorize(tool_name, args):
     return await asyncio.to_thread(_life_video_request, '/life-action', payload)
 
 
+_LIFE_WRITE_LAST_STATUS = ''  # only an ephemeral, per-process verification response
+
 async def _life_video_result(grant, uid, success, comment_receipt=''):
+    global _LIFE_WRITE_LAST_STATUS
     if not isinstance(grant, str) or not grant: return
     payload = {'grant': grant, 'uid': uid, 'ok': success}
     if isinstance(comment_receipt, str) and re.fullmatch(r'[1-9][0-9]{0,29}', comment_receipt):
         payload['receiptId'] = comment_receipt
-    await asyncio.to_thread(_life_video_request, '/life-action-result', payload)
+    response = await asyncio.to_thread(_life_video_request, '/life-action-result', payload)
+    _LIFE_WRITE_LAST_STATUS = response.get('status','') if isinstance(response,dict) else ''
+    return response
 
 
 def tool():

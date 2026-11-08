@@ -70,7 +70,7 @@ test('README and developer navigation emphasize 2.7.1 reconstruction but never i
   for(const term of [JSON.parse(src('package.json')).version,'统一 Life','旧的定时刷视频','记忆、兴趣、人格、关系和待办','尚未发布','无论新用户还是老用户'])
     assert.ok(opening.includes(term),term)
   assert.match(readme,/2\.7\.1-rc-preflight-13-questions\.md/)
-  assert.match(doc,/2\.7\.1-dev\.26/)
+  assert.ok(doc.includes(JSON.parse(src('package.json')).version))
   assert.match(doc,/2\.7\.1-rc-preflight-13-questions\.md/)
   assert.match(notes,/RC 准入前行为自检/)
   assert.match(src('docs/architecture/README.md'),/2\.7\.1-rc-preflight-13-questions\.md/)

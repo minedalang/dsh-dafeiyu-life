@@ -1,0 +1,22 @@
+flowchart TD
+  A[Life Auto Tick / 真实公开兴趣与交流契机] --> B[原 life-opportunities 意愿账本]
+  B --> C[原 read-only 搜索 / 视频元数据核实]
+  C -->|账号/BV/时间真实回执| D[当前受控意愿 selectedBvid metadataAt]
+  D --> E[新鲜公开视频证据与原热度门槛]
+  E --> F[continuationMenu：只读 + 当前允许的写入候选 + 停止]
+  F --> G{Life AI 自主选择}
+  G -->|停止/继续读| H[受限只读续行 / 退出]
+  G -->|提议 1 次写入| I[JS 二次核验目标/账号/开关/文本]
+  I -->|失败| H
+  I -->|通过| J[原 seen.md 挑中来源登记]
+  J --> K[一次性 Python 受限自主 MCP 工具]
+  K --> L[原 LifeVideoActionBridge 与 LifeWillingness 再审批]
+  L -->|不批准| N[拒绝并停止]
+  L -->|批准| M[Python 原配额/去重/身份/原子事务]
+  M -->|结果未知| O[冻结原事务 + life-opportunities uncertain]
+  M -->|成功回执| P[宿主独立平台 GET 验证]
+  P -->|无法验证| O
+  P -->|verified| Q[Life 原意愿仅记匿名动作类别和 verified]
+  Q --> R[本轮停止，日后另一次自主选择]
+  N --> R
+  O --> R

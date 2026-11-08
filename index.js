@@ -56,6 +56,8 @@ import { createReadActionExecutionGate,readToolAction } from './lib/read-action-
 import {createLifeDecisionTrace} from './lib/life-decision-trace.mjs'
 import {createLifeWillingness} from './lib/life-willingness.mjs'
 import {createLifeVideoActionBridge} from './lib/life-video-action-bridge.mjs'
+import {createLifeContinuationWriteExecutor} from './lib/life-continuation-write.mjs'
+import {CONTINUATION_WRITES} from './lib/life-continuation.mjs'
 import { createOutboundActionStatus } from './lib/outbound-action-status.mjs'
 import {AsyncLocalStorage} from 'node:async_hooks'
 import { resolveUid } from './lib/uid.mjs'
@@ -5056,6 +5058,100 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return {ok:false,code:classifyLifeMetadataFailure(error),diagnosticOrigin:'mcp-adapter',failureLayer:'mcp-transport'}
     }
   })
+  // dev.27: fresh public evidence for one Life-selected BV. Never construct
+  // a public write from the model's claimed URL, creator UID, or private DM.
+  const lifeContinuationEvidence=async(bvid,expectedScope)=>{
+    if(!/^BV[0-9A-Za-z]{10}$/.test(String(bvid||''))||trustedLifeAccountTag()!==expectedScope||
+       accountBinding.status().blocked)return {ok:false}
+    return readActionContext.run({source:'life-planner'},async()=>{
+      let raw
+      try{raw=parseMaybeJson(await call('bili_video_info',{bvid}))}catch{return {ok:false}}
+      const data=raw?.data&&typeof raw.data==='object'?raw.data:raw
+      if(!data||data.error||String(data.bvid||'')!==bvid||
+         typeof data.title!=='string'||!data.title.trim()||!data.stat||typeof data.stat!=='object')return {ok:false}
+      if((['view','like','reply']).some((key,i)=>{
+        const count=Number(data.stat[key]),min=Number([cfg.minVideoViews,cfg.minVideoLikes,cfg.minVideoReplies][i])||0
+        return !Number.isFinite(count)||count<min
+      }))return {ok:false}
+      if(trustedLifeAccountTag()!==expectedScope||accountBinding.status().blocked)return {ok:false}
+      const plain=value=>String(value||'').replace(/[\u0000-\u001f\u007f]/g,' ').trim()
+      const description=plain(data.description||data.desc).slice(0,400)
+      let comments=[]
+      // Only needed to judge whether a grounded ORIGINAL comment is possible.
+      // No comment text is ever persisted to the Life intention ledger.
+      if(cfg.autoComment===true&&description.length<60){
+        try{const discussion=parseMaybeJson(await call('bili_comments',{bvid,num:3}))
+          if(!discussion?.error&&String(discussion?.bvid||bvid)===bvid&&Array.isArray(discussion.comments))
+            comments=discussion.comments.slice(0,3).map(x=>plain(x?.content).slice(0,180)).filter(Boolean)
+        }catch{}
+      }
+      if(trustedLifeAccountTag()!==expectedScope||accountBinding.status().blocked)return {ok:false}
+      return {ok:true,bvid,title:plain(data.title).slice(0,100),description,comments,
+        commentReady:description.length>=30||comments.length>=2}
+    })
+  }
+  // A separate, short-lived Python process invokes the SAME autonomous MCP
+  // Python function, using a fresh Life approval bridge token per action. It
+  // cannot invoke any owner-manual or social-adapter tool.
+  const lifeContinuationPythonWrite=(proposal,{scope,accountUid})=>new Promise(resolve=>{
+    const current=()=>trustedLifeAccountTag()===scope&&
+      String(accountBinding.status().activeUid||'')===accountUid&&!accountBinding.status().blocked
+    const action=proposal.action,tool={like_video:'bili_video_like',collect_video:'bili_video_collect',
+      follow_creator:'bili_follow_creator',comment_video:'bili_reply'}[action]
+    if(!tool||!current()||lifeVideoActionBridge?.status().ready!==true)return resolve({ok:false,status:'unavailable',attempted:false})
+    const bridge=lifeVideoActionBridge.env()
+    if(!bridge.BILI_LIFE_ACTION_URL||!bridge.BILI_LIFE_ACTION_TOKEN)return resolve({ok:false,status:'unavailable',attempted:false})
+    const payload=JSON.stringify(proposal)
+    if(Buffer.byteLength(payload)>4096)return resolve({ok:false,status:'unavailable',attempted:false})
+    const permitted={
+      like_video:cfg.autoVideoLike===true&&Number(cfg.autoVideoLikeDailyLimit)>0,
+      collect_video:cfg.autoVideoCollect===true,
+      follow_creator:cfg.agentFollowEnabled===true,
+      comment_video:cfg.autoComment===true&&Number(cfg.commentPerRound)>0&&Number(cfg.commentDailyLimit)>0
+    }
+    if(!permitted[action]||cfg.masterEnabled!==true)return resolve({ok:false,status:'unavailable',attempted:false})
+    let child
+    try{child=spawn(cfg.pythonPath||'python',[join(pluginDir,'lib','life-continuation-write.py')],{
+      cwd:stateDir,windowsHide:true,shell:false,stdio:['pipe','pipe','ignore'],env:pyEnv({
+        BILI_DUTY_HOME:stateDir,BILI_MCP_TOOLS:tool,BILI_LIFE_CONTINUATION_RUNNER:'1',
+        BILI_LIFE_EXPECT_UID:accountUid,BILI_JS_MCP_ADAPTER:'0',BILI_DUTY_TOP_LEVEL_ONLY:'1',
+        BILI_SYNC_DYNAMIC:'0',BILI_MENTION_MODE:'off',BILI_DM_TARGET_UID:'0',
+        BILI_LIFE_ACTION_URL:bridge.BILI_LIFE_ACTION_URL,BILI_LIFE_ACTION_TOKEN:bridge.BILI_LIFE_ACTION_TOKEN,
+        BILI_AUTO_VIDEO_LIKE:cfg.autoVideoLike?'1':'0',BILI_AUTO_VIDEO_LIKE_DAILY_LIMIT:String(cfg.autoVideoLikeDailyLimit),
+        BILI_AUTO_VIDEO_COLLECT:cfg.autoVideoCollect?'1':'0',BILI_AGENT_FOLLOW_ENABLED:cfg.agentFollowEnabled?'1':'0',
+        BILI_COMMENT_DAILY_LIMIT:String(cfg.commentDailyLimit),BILI_FISH_FOLDER_VISIBILITY:'private'
+      })})}catch{return resolve({ok:false,status:'unavailable',attempted:false})}
+    let done=false,out='',timedOut=false
+    const finish=result=>{if(done)return;done=true;clearTimeout(timer);resolve(result)}
+    const timer=setTimeout(()=>{timedOut=true;try{child.kill()}catch{};finish({ok:false,status:'unconfirmed',attempted:true})},65_000)
+    timer.unref?.()
+    child.stdout.on('data',chunk=>{out=(out+String(chunk)).slice(0,600)})
+    child.on('error',()=>finish({ok:false,status:'unconfirmed',attempted:true}))
+    child.on('close',code=>{
+      if(done)return
+      let result=null
+      try{result=JSON.parse(out.trim())}catch{}
+      if(timedOut||code!==0||!current())return finish({ok:false,status:'unconfirmed',attempted:true})
+      if(result?.status==='verified'&&result?.ok===true)return finish({ok:true,status:'verified',attempted:true})
+      if(result?.status==='unavailable'&&result?.attempted===false)return finish({ok:false,status:'unavailable',attempted:false})
+      finish({ok:false,status:'unconfirmed',attempted:true})
+    })
+    try{child.stdin.end(payload)}catch{try{child.kill()}catch{};finish({ok:false,status:'unconfirmed',attempted:true})}
+  })
+  const lifeContinuationWrite=createLifeContinuationWriteExecutor({
+    getConfig:()=>{refreshCfg();return cfg},getAccountTag:trustedLifeAccountTag,
+    getAccountUid:()=>accountBinding.status().blocked?'':String(accountBinding.status().activeUid||''),
+    getIntention:id=>lifeOpportunities.continuations({limit:20}).find(x=>x.id===id),
+    getPublicEvidence:lifeContinuationEvidence,
+    markSelected:async({bvid,title,scope})=>{
+      if(trustedLifeAccountTag()!==scope)return {ok:false}
+      // Existing shared `seen.md` provenance: the Life model explicitly
+      // selected this verified video BEFORE requesting a public write.
+      const result=parseMaybeJson(await call('bili_ledger_mark',{bvid,title,up:'',status:'挑中'}))
+      return result?.ok===true?{ok:true}:{ok:false}
+    },runWriter:lifeContinuationPythonWrite,
+    bridgeReady:()=>lifeVideoActionBridge?.status().ready===true
+  })
   // A voluntary Life friend outreach starts ONLY after the single Planner has
   // selected a current, bidirectionally evidenced contact. The independent
   // opt-in is not derived from video sharing or from a model's invented UID.
@@ -5149,6 +5245,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeIntentionCues:()=>lifeOpportunities.explorationCues({limit:4}),
     getPrivateLifeAffinity:cues=>privateLifeAffinity.forCues(cues),
     getLifeIntentions:()=>lifeOpportunities.continuations({limit:3}),
+    getLifeWriteEvidence:lifeContinuationEvidence,executeLifeWrite:lifeContinuationWrite,
+    recordLifeExplorationWrite:(id,action,bvid,status,tag)=>lifeOpportunities.recordExplorationWrite(id,action,bvid,status,tag),
     // Include temporarily cooled-down intentions for duplicate-read checks;
     // they are NOT offered to the model until their scheduled time.
     getActiveLifeIntentionReservations:()=>lifeOpportunities.intentions({includeClosed:true,limit:20}),
