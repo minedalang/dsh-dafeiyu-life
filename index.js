@@ -116,6 +116,7 @@ import { createSocialContextAssembler } from './lib/social-context-assembler.mjs
 import { createSocialInteractionCoordinator } from './lib/social-interaction-coordinator.mjs'
 import { createLifeMemoryCoordinator } from './lib/life-memory-coordinator.mjs'
 import {createUniversalLifeEpisodes} from './lib/life-universal-episodes.mjs'
+import {eligibleLifeEpisodeSources} from './lib/life-episode-entrypoints.mjs'
 import {preparePrivateSelfExperience,preparePrivateLifeEvent} from './lib/life-private-policy.mjs'
 import { createMemoryConsolidator } from './lib/memory-consolidation.mjs'
 import { createOwnerCommentAgent } from './lib/owner-comment-agent.mjs'
@@ -5404,8 +5405,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // The planner can prioritize a real ongoing episode without granting any
     // additional tool. Model calls still use the existing daily Life budget.
     getLifeEpisodeContext:()=>universalLifeEpisodes.list({limit:3}),
-    isLifeEpisodeDue:()=>universalLifeEpisodes.due({eligibleSources:
-      lifeOpportunities.continuations({limit:20}).map(x=>'intention:'+x.id)}),
+    // Video is not a mandatory Episode first step. For early, *optional*
+    // reconsideration, match the SAME original source for an existing active
+    // verified Episode against CURRENTLY executable public intentions,
+    // accepted read-only TODOs and public opportunities. Each eventual
+    // action still passes the old menu, permissions, quota and source checks.
+    isLifeEpisodeDue:()=>universalLifeEpisodes.due({eligibleSources:eligibleLifeEpisodeSources({
+      intentions:lifeOpportunities.continuations({limit:20}),
+      todos:ownerTodos.list({limit:100,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)),
+      opportunities:lifeOpportunities.list({limit:20}),now:Date.now()})}),
     getLifeEpisodeSourceState:ref=>universalLifeEpisodes.sourceState(ref),
     onEpisodeAction:proof=>universalLifeEpisodes.record(proof),
     pauseLifeEpisode:opts=>universalLifeEpisodes.pauseLatest(opts),
@@ -6935,8 +6943,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     if(req.method==='GET'&&path==='/api/bili-duty/autonomous-planner'){
       try{return sendJson(res,200,{...autonomousPlanner.status(),
         lifeEpisodes:universalLifeEpisodes.list({limit:5,includeClosed:true}),
-        lifeEpisodeHealth:universalLifeEpisodes.health({eligibleSources:
-          lifeOpportunities.continuations({limit:20}).map(x=>'intention:'+x.id)}),
+        lifeEpisodeHealth:universalLifeEpisodes.health({eligibleSources:eligibleLifeEpisodeSources({
+          intentions:lifeOpportunities.continuations({limit:20}),
+          todos:ownerTodos.list({limit:100,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)),
+          opportunities:lifeOpportunities.list({limit:20}),now:Date.now()})}),
         lifeSettingsPreview:projectLifeSettings(cfg),socialDecisionOwnership:socialDecisionOwnership.status(),socialSendTransaction:socialSendTransaction.inspect(),socialShadow:lifeSocialShadow.status()})}
       catch(e){return sendJson(res,500,{ok:false,error:'读取自主调度状态失败：'+String(e?.message||e).slice(0,120)})}
     }

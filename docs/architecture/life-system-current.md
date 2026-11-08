@@ -108,3 +108,7 @@
 **验收证据**：`test/v271-dev36-universal-life-episodes.test.mjs` 包含从首页真实回执开始、下一轮主动 `resume_episode`、连续三个有平台读取回执的探索步骤和自愿休息的端到端离线模拟；还验证账号隔离、重复回执、暂停/未知、五步分段、无需有效意愿时不自动唤醒。
 
 **仍未完整覆盖的微观动作**：独立视频 Agent 内部每一次未发送的微小浏览/模型想法、尚未从原渠道产生可核验回执的陌生人互动，不应该伪造成已完成 Episode 步骤。并非所有后台 AI 模型调用都可自动变成真实生活经历。此项与真实 Windows/B站/72h 仍待实机确认。
+
+### dev.36 同版本维护：Life Episode 首步不限首页
+
+首页只是一个有真实回执的可能首步，已接受只读待办、反思、公开观察与社交活动都可以独立产生 Episode。`life-episode-entrypoints.mjs` 现在把有效非视频 TODO／公开契机加入原意愿之外的可续行来源，用于**重新考虑**而非自动执行；视频专属 `resume_episode` 与非视频常规菜单动作依旧分别由原权限、来源和执行器核验。生成图见 `diagrams/life-universal-episodes-current.mmd`。
