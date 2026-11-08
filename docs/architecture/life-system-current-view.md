@@ -36,6 +36,7 @@ flowchart TB
     video["video｜原视频能力及无兴趣也可选 browse_home"]
     reflection["reflection｜执行器真实就绪状态 canAutoReflect"]
     events["eventRefs｜匿名提示 / 公平重考虑，非操作授权"]
+    feedback["本账号真实视频完成反馈｜只读考虑，不受新视频启动冷却影响"]
   end
   canonical --> todos
   canonical --> intentions
@@ -43,6 +44,7 @@ flowchart TB
   adapter --> opportunities
   socialFacts --> friends
   eventLedger --> events
+  eventLedger --> feedback
   adapter --> video
   canonical --> reflection
   events -.->|仅提示重新查原来源| todos
@@ -55,6 +57,7 @@ flowchart TB
   video --> selection
   reflection --> selection
   events -.-> selection
+  feedback -.-> selection
 
   subgraph decision["唯一 Life 自主决策中心｜不给模型任意 UID / BV / 写权限"]
     selection["候选筛选 + 去重归属 + 账号/冷却/额度检查"]
@@ -189,6 +192,8 @@ flowchart TB
 
 %% @code resumeEpisode | lib/life-universal-episodes.mjs | const due=
 %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
+
+%% @code feedback | lib/autonomous-planner.mjs | const videoFeedbackPending=
 ```
 
 ## 二、八类候选细目
@@ -205,6 +210,7 @@ flowchart LR
     episodeState["Universal Episode｜已核验步骤 + 到期暂停恢复；不可代替原目标凭据"]
     sourceSocial["匿名 dm-received/comment-received 事件"]
     sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
+    sourceVideoFeedback["已核验视频子进程结束回执｜只读，与下次启动冷却独立"]
     sourceReflect["LifeReflection.status().canAutoReflect"]
   end
   subgraph candidates["本轮实际类型 / 内容边界"]
@@ -215,6 +221,7 @@ flowchart LR
     resume["resume_episode：优先旧片段，但仅重新选择原账号仍可执行的公开探索意愿"]
     social["social：入站关注信号 + 已核验熟人机会；非回复许可"]
     video["video：browse_home／use_capability；不是已观看数"]
+    reviewFeedback["review_video_feedback：读已完成轮次反馈；不会再启动或外发"]
     reflection["reflection：真实可执行反思；不是 pending 大于阈值"]
     eventRefs["eventRefs：匿名事件引用 + 公平重考虑；不代表成功回执"]
   end
@@ -229,6 +236,7 @@ flowchart LR
   intentions --> resume
   sourceSocial --> social
   sourceVideo --> video
+  sourceVideoFeedback --> reviewFeedback
   sourceReflect --> reflection
   sourceSocial --> eventRefs
   sourceVideo -.->|本轮读取证据，可唤醒但不授予权限| eventRefs
@@ -243,6 +251,7 @@ flowchart LR
   resume --> planner
   social --> planner
   video --> planner
+  reviewFeedback --> planner
   reflection --> planner
   eventRefs -.-> planner
   rest["skip：自愿休息；不能与技术失败混为一谈"]
@@ -269,6 +278,8 @@ flowchart LR
 %% @code resume | lib/autonomous-planner.mjs | action:'resume_episode'
 
 %% @code resume | lib/life-episode-entrypoints.mjs | export function prioritizeLifeContinuationCandidates
+
+%% @code reviewFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
 ```
 
 ## 三、可信回执与记忆闭环
@@ -308,6 +319,7 @@ flowchart TB
   growth["真实已选片证据可形成兴趣候选"]
   curiosity["当前账号、有真实 BV、未过期、未排除的开放式好奇"]
   planner["Life 自主决定是否核实同一 BV，或不做"]
+  videoFeedback["已完成轮次只读反馈：Life 可在新视频冷却期间 review_video_feedback"]
   commentReview -.->|自愿提出评论，仍需原外发门禁| source
   commentReview -.-> commentOutcome
   source --> receipt
@@ -327,6 +339,7 @@ flowchart TB
   episode --> growth
   growth --> curiosity
   curiosity --> planner
+  videoFeedback -.-> planner
   planner --> source
   classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
   classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
@@ -340,6 +353,8 @@ flowchart TB
 %% @code universalCausal | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
 
 %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
+
+%% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
 ```
 
 ## 四、统一 Life Episode 因果持续性
@@ -355,6 +370,7 @@ flowchart TB
   socialReceipt["社交 / 私信 / 评论多条平台回执：精确去重，不把一次意愿当成功"]
   todoReceipt["已完成只读待办 + 原任务回访：同一因果片段"]
   reflectionReceipt["反思批次真实处理回执：零条长期认识也算真实反思"]
+  videoFeedback["新视频启动冷却中：Life 仍可只读考虑已完成轮次反馈"]
   record["createUniversalLifeEpisodes｜只保存当前账号匿名摘要/因果步骤 + 允许的归属枚举"]
   context["当前片段最多五个已核验步骤；历史可跨段关联"]
   due["有原账号可执行目标且至少两分钟后才优先唤醒"]
@@ -369,6 +385,7 @@ flowchart TB
   todoReceipt --> attribution
   reflectionReceipt --> attribution
   firstOther -->|已有真实回执；无需经过首页| record
+  videoFeedback -.->|review_video_feedback 不产出平台新回执| menu
   record --> context --> eligible --> due --> menu
   menu -->|自主继续| read -->|成功并核验| record
   menu -->|自行考虑互动，单轮最多一次写| write -->|成功且平台核验| record
@@ -400,4 +417,6 @@ flowchart TB
 %% @code socialReceipt | lib/life-willingness.mjs | const exact=typeof receiptId
 %% @code todoReceipt | index.js | sourceRef:'todo:'+original.id
 %% @code reflectionReceipt | lib/life-reflection.mjs | result.receiptId=receiptId
+
+%% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
 ```

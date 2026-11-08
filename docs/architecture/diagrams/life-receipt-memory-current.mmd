@@ -32,6 +32,7 @@ flowchart TB
   growth["真实已选片证据可形成兴趣候选"]
   curiosity["当前账号、有真实 BV、未过期、未排除的开放式好奇"]
   planner["Life 自主决定是否核实同一 BV，或不做"]
+  videoFeedback["已完成轮次只读反馈：Life 可在新视频冷却期间 review_video_feedback"]
   commentReview -.->|自愿提出评论，仍需原外发门禁| source
   commentReview -.-> commentOutcome
   source --> receipt
@@ -51,6 +52,7 @@ flowchart TB
   episode --> growth
   growth --> curiosity
   curiosity --> planner
+  videoFeedback -.-> planner
   planner --> source
   classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
   classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
@@ -64,3 +66,5 @@ flowchart TB
 %% @code universalCausal | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
 
 %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
+
+%% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'

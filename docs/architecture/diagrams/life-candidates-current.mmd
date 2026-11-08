@@ -9,6 +9,7 @@ flowchart LR
     episodeState["Universal Episode｜已核验步骤 + 到期暂停恢复；不可代替原目标凭据"]
     sourceSocial["匿名 dm-received/comment-received 事件"]
     sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
+    sourceVideoFeedback["已核验视频子进程结束回执｜只读，与下次启动冷却独立"]
     sourceReflect["LifeReflection.status().canAutoReflect"]
   end
   subgraph candidates["本轮实际类型 / 内容边界"]
@@ -19,6 +20,7 @@ flowchart LR
     resume["resume_episode：优先旧片段，但仅重新选择原账号仍可执行的公开探索意愿"]
     social["social：入站关注信号 + 已核验熟人机会；非回复许可"]
     video["video：browse_home／use_capability；不是已观看数"]
+    reviewFeedback["review_video_feedback：读已完成轮次反馈；不会再启动或外发"]
     reflection["reflection：真实可执行反思；不是 pending 大于阈值"]
     eventRefs["eventRefs：匿名事件引用 + 公平重考虑；不代表成功回执"]
   end
@@ -33,6 +35,7 @@ flowchart LR
   intentions --> resume
   sourceSocial --> social
   sourceVideo --> video
+  sourceVideoFeedback --> reviewFeedback
   sourceReflect --> reflection
   sourceSocial --> eventRefs
   sourceVideo -.->|本轮读取证据，可唤醒但不授予权限| eventRefs
@@ -47,6 +50,7 @@ flowchart LR
   resume --> planner
   social --> planner
   video --> planner
+  reviewFeedback --> planner
   reflection --> planner
   eventRefs -.-> planner
   rest["skip：自愿休息；不能与技术失败混为一谈"]
@@ -73,3 +77,5 @@ flowchart LR
 %% @code resume | lib/autonomous-planner.mjs | action:'resume_episode'
 
 %% @code resume | lib/life-episode-entrypoints.mjs | export function prioritizeLifeContinuationCandidates
+
+%% @code reviewFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'

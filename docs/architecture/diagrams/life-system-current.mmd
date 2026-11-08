@@ -29,6 +29,7 @@ flowchart TB
     video["video｜原视频能力及无兴趣也可选 browse_home"]
     reflection["reflection｜执行器真实就绪状态 canAutoReflect"]
     events["eventRefs｜匿名提示 / 公平重考虑，非操作授权"]
+    feedback["本账号真实视频完成反馈｜只读考虑，不受新视频启动冷却影响"]
   end
   canonical --> todos
   canonical --> intentions
@@ -36,6 +37,7 @@ flowchart TB
   adapter --> opportunities
   socialFacts --> friends
   eventLedger --> events
+  eventLedger --> feedback
   adapter --> video
   canonical --> reflection
   events -.->|仅提示重新查原来源| todos
@@ -48,6 +50,7 @@ flowchart TB
   video --> selection
   reflection --> selection
   events -.-> selection
+  feedback -.-> selection
 
   subgraph decision["唯一 Life 自主决策中心｜不给模型任意 UID / BV / 写权限"]
     selection["候选筛选 + 去重归属 + 账号/冷却/额度检查"]
@@ -182,3 +185,5 @@ flowchart TB
 
 %% @code resumeEpisode | lib/life-universal-episodes.mjs | const due=
 %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
+
+%% @code feedback | lib/autonomous-planner.mjs | const videoFeedbackPending=

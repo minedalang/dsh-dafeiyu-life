@@ -99,15 +99,14 @@ test('真实视频轮次完成通知跨重启持久保存，活跃档到期后�
    invokeModel:async()=>{modelCalls++;return '{"action":"skip"}'},
    getLifeVoice:()=>'',executeRead:async()=>({ok:true}),updateTodo:async()=>{},reflect:async()=>({ok:true})})
  const early=await planner.tick({force:true})
- assert.equal(early.skipped,'video-feedback-waiting')
- assert.equal(modelCalls,0)
- assert.equal(events.status().pendingVideoFollowup,1)
+ assert.equal(early.result,'voluntary-rest')
+ assert.equal(modelCalls,1)
+ assert.equal(events.status().pendingVideoFollowup,0)
  clock+=20*60_000
  // Recreate the authoritative account ledger from disk as after a restart.
  const afterRestart=createLifeAgentEvents({stateDir:dir,getAccountTag:()=>A,now:()=>clock})
- assert.equal(afterRestart.status().pendingVideoFollowup,1)
- // Restart the planner too: it must read the original persisted event,
- // not a process-local replay or a cached model answer.
+ assert.equal(afterRestart.status().pendingVideoFollowup,0)
+ // Restart must not replay an already-considered round as a new video task.
  const afterPlanner=createAutonomousPlanner({dataDir:dir,now:()=>clock,getConfig:()=>config,getTodos:()=>[],
    getLifeAccountTag:()=>A,getLifeEvents:()=>afterRestart.peek(4),getLifeEventStatus:()=>afterRestart.status(),
    getLifeCapabilities:()=>[{id:'bilibili.video-explore'}],
@@ -117,8 +116,7 @@ test('真实视频轮次完成通知跨重启持久保存，活跃档到期后�
    invokeModel:async()=>{modelCalls++;return '{"action":"skip"}'},
    getLifeVoice:()=>'',executeRead:async()=>({ok:true}),updateTodo:async()=>{},reflect:async()=>({ok:true})})
  const next=await afterPlanner.tick({force:true})
- assert.equal(next.result,'voluntary-rest')
- assert.equal(modelCalls,1)
+ assert.notEqual(next.result,'capability-launched')
  assert.equal(launches,0)
  assert.equal(afterRestart.status().pendingVideoFollowup,0)
 })

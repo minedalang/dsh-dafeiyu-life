@@ -4,12 +4,12 @@ import {mkdtempSync,rmSync,readFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createLifeAgentEvents,projectVideoRoundFeedback} from '../lib/life-agent-events.mjs'
-import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
+import {createAutonomousPlanner,plannerActionMenu,validateOfferedLifeAction} from '../lib/autonomous-planner.mjs'
 
 const A='a'.repeat(16),B='b'.repeat(16)
 const START=Date.parse('2026-11-06T09:10:00Z')
 const isolated=async fn=>{const dir=mkdtempSync(join(tmpdir(),'life-postvideo-'));try{return await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
-function scenario(dir,{mode='active',response='{"action":"skip"}',availability=null}={}){
+function scenario(dir,{mode='active',response='{"action":"skip"}',availability=null,reflectReady=false}={}){
   let time=START,tag=A,modelCalls=0,videoLaunches=0
   const prompts=[],steps=[]
   const capabilityState={available:true,reason:'video-busy',...(availability||{})}
@@ -25,6 +25,7 @@ function scenario(dir,{mode='active',response='{"action":"skip"}',availability=n
     runLifeCapability:()=>{videoLaunches++;return {started:true}},getLifeVoice:()=>'',
     beginDecisionTrace:()=>({step:(s,x)=>steps.push({stage:s,...x}),finish:()=>{},discard:()=>{}}),
     invokeModel:async p=>{prompts.push(p);modelCalls++;return response},
+    reflectionStatus:()=>({canAutoReflect:reflectReady,pending:reflectReady?8:0}),
     executeRead:async()=>({ok:true}),updateTodo:async()=>{},reflect:async()=>({ok:true})})
   return {events,planner,prompts,steps,cfg,capabilityState,get time(){return time},set time(x){time=x},
     get tag(){return tag},set tag(x){tag=x},get modelCalls(){return modelCalls},get videoLaunches(){return videoLaunches}}
@@ -38,37 +39,48 @@ function completedRound(x,{pickedCount=2,source='life-agent'}={}){
   return round.id
 }
 
-test('a video completion wake is NOT consumed inside the 20-minute start cooldown',()=>isolated(async dir=>{
+test('completed video feedback can be considered without waiting for a new video launch',()=>isolated(async dir=>{
   const x=scenario(dir),id=completedRound(x)
-  const before=x.planner.status().runs
-  const result=await x.planner.tick({force:true})
-  assert.equal(result.skipped,'video-feedback-waiting')
-  assert.equal(result.diagnosticCode,'video-launch-cooldown')
-  assert.equal(result.modelCalled,false)
-  assert.ok(result.nextAt>x.time)
-  assert.equal(x.planner.status().runs,before)
-  assert.equal(x.modelCalls,0)
-  assert.equal(x.videoLaunches,0)
-  assert.equal(x.events.status().pendingVideoFollowup,1)
-  assert.ok(x.events.status().recent.some(e=>e.kind==='video-round-ended'&&e.state==='pending'))
-  assert.doesNotMatch(JSON.stringify(x.planner.status().lifeEvents),new RegExp(id))
-}))
-
-test('after cooldown the SAME event reaches the model with actual round proof and is settled once',()=>isolated(async dir=>{
-  const x=scenario(dir),id=completedRound(x)
-  assert.equal((await x.planner.tick({force:true})).skipped,'video-feedback-waiting')
-  x.time+=20*60_000
   const result=await x.planner.tick({force:true})
   assert.equal(result.result,'voluntary-rest')
   assert.equal(x.modelCalls,1)
+  assert.equal(x.videoLaunches,0)
   assert.equal(x.events.status().pendingVideoFollowup,0)
   assert.equal(x.events.status().timeline[0].videoRoundFeedbackOffered,true)
-  assert.ok(x.steps.some(s=>s.stage==='video-round-feedback'&&s.latestOutcome==='process-exited-zero'&&s.latestPickedKnown===true))
-  assert.match(x.prompts[0],/"outcome":"process-exited-zero"/)
+  assert.ok(x.steps.some(s=>s.stage==='video-round-feedback'&&s.latestPickedKnown===true))
   assert.match(x.prompts[0],/"pickedCount":2/)
   assert.match(x.prompts[0],/process-lifecycle-only-not-video-viewed-or-audio-heard/)
   assert.doesNotMatch(x.prompts[0],new RegExp(id))
-  assert.equal(x.videoLaunches,0,'model chose to rest, not launch')
+}))
+
+test('feedback review cannot be invented when the trusted completed-round receipt is absent',()=>{
+  const action={action:'review_video_feedback'}
+  assert.equal(validateOfferedLifeAction(action,plannerActionMenu({lifeEvents:[{kind:'video-round-ended'}]})),false)
+  assert.equal(validateOfferedLifeAction(action,plannerActionMenu({videoFeedbackPending:true})),true)
+  assert.equal(validateOfferedLifeAction({action:'use_capability',capability:'bilibili.video-explore'},
+    plannerActionMenu({videoFeedbackPending:true})),false)
+})
+
+test('read-only review_video_feedback settles exactly the true round event without any delegated write',()=>isolated(async dir=>{
+  const x=scenario(dir,{response:'{"action":"review_video_feedback"}'})
+  completedRound(x)
+  const result=await x.planner.tick({force:true})
+  assert.equal(result.result,'video-feedback-considered')
+  assert.equal(x.events.status().pendingVideoFollowup,0)
+  assert.equal(x.videoLaunches,0)
+  assert.equal(x.modelCalls,1)
+  assert.match(x.prompts[0],/"action":"review_video_feedback"/)
+  assert.equal(x.events.status().timeline[0].action,'review_video_feedback')
+}))
+
+test('non-video autonomous reflection can run while the video subprocess is cooling down',()=>isolated(async dir=>{
+  const x=scenario(dir,{reflectReady:true,response:'{"action":"reflect"}'})
+  completedRound(x)
+  const result=await x.planner.tick({force:true})
+  assert.equal(result.result,'completed')
+  assert.equal(result.action,'reflect')
+  assert.equal(x.videoLaunches,0)
+  assert.equal(x.modelCalls,1)
 }))
 
 test('high video count never creates a synthetic daily start limit',()=>isolated(async dir=>{
@@ -159,36 +171,31 @@ test('read-only status estimates earliest followup without granting capability, 
   let state=lifeExperienceReadiness({config,planner:{runs:1},events:ev,at:START+60_000,capabilities:[{id:'bilibili.video-explore'}]})
   assert.equal(state.pendingVideoFollowup,1)
   assert.equal(state.videoDelegationEligible,false)
-  assert.equal(state.videoFeedbackEarliestAt,START+20*60_000)
+  assert.equal(state.videoFeedbackEarliestAt,START+60_000)
   assert.equal(lifeExperienceReadiness({config,planner:{runs:1},events:{...ev,pendingVideoFollowup:0},at:START+60_000}).videoFeedbackEarliestAt,null)
   state=lifeExperienceReadiness({config,planner:{runs:1},events:{...ev,videoStartsToday:2},at:START+60_000,capabilityReadiness:{blocked:[{id:'bilibili.video-explore',platform:'bilibili',reason:'daily-video-quota'}]}})
-  assert.ok(state.videoFeedbackEarliestAt>START+60_000)
+  assert.equal(state.videoFeedbackEarliestAt,START+60_000)
   assert.equal(lifeExperienceReadiness({config:{...config,lifeAgentMode:'off'},planner:{runs:1},events:ev,at:START+60_000}).videoFeedbackEarliestAt,null)
 })
 
-test('manual wake during cooldown may be settled without discarding original video completion signal',()=>isolated(async dir=>{
+test('manual wake during cooldown considers the verified video feedback and settles both notices',()=>isolated(async dir=>{
   const x=scenario(dir)
   completedRound(x)
   x.events.offer({kind:'manual-wake',platform:'bilibili',sourceKey:'manual-videogate'})
-  assert.equal((await x.planner.tick({force:true})).skipped,'video-feedback-waiting')
+  assert.equal((await x.planner.tick({force:true})).result,'voluntary-rest')
   const rows=x.events.status().recent
   assert.equal(rows.find(e=>e.kind==='manual-wake')?.state,'considered')
-  assert.equal(rows.find(e=>e.kind==='video-round-ended')?.state,'pending')
+  assert.equal(rows.find(e=>e.kind==='video-round-ended')?.state,'considered')
+  assert.equal(x.videoLaunches,0)
 }))
 
-test('busy video child preserves previous round feedback without burning model quota; free child can proceed',()=>isolated(async dir=>{
-  const x=scenario(dir,{availability:{available:false,reason:'video-busy'}})
+test('busy video adapter cannot block independent read-only feedback review',()=>isolated(async dir=>{
+  const x=scenario(dir,{availability:{available:false,reason:'video-busy'},response:'{"action":"review_video_feedback"}'})
   completedRound(x)
-  x.time+=20*60_000
-  const skipped=await x.planner.tick({force:true})
-  assert.equal(skipped.skipped,'video-feedback-waiting')
-  assert.equal(skipped.diagnosticCode,'video-agent-busy')
-  assert.equal(x.modelCalls,0)
-  assert.equal(x.events.status().pendingVideoFollowup,1)
-  x.capabilityState.available=true
-  const resumed=await x.planner.tick({force:true})
-  assert.equal(resumed.result,'voluntary-rest')
+  const result=await x.planner.tick({force:true})
+  assert.equal(result.result,'video-feedback-considered')
   assert.equal(x.modelCalls,1)
+  assert.equal(x.videoLaunches,0)
   assert.equal(x.events.status().pendingVideoFollowup,0)
 }))
 
@@ -219,19 +226,21 @@ test('a zero exit alone cannot issue a life wake when persisted completion recei
   assert.doesNotMatch(index,/if\(code===0&&videoRoundReceiptId&&lifeAgentEvents/)
 })
 
-test('followup timestamp never advertises a time earlier than BOTH daily gate and launch cooldown',async()=>{
+test('read-only feedback availability is independent of video launch cooldown, adapter and video quota',async()=>{
   const {lifeExperienceReadiness}=await import('../lib/life-experience-readiness.mjs')
   const t=Date.parse('2026-11-06T23:50:00Z')
   const cfg={masterEnabled:true,autonomousPlannerEnabled:true,lifeAgentMode:'active',autonomousPlannerDailyLimit:10}
-  const event={ok:true,pending:1,pendingVideoFollowup:1,videoStartsToday:2,lastVideoAt:t}
-  const inspected=lifeExperienceReadiness({config:cfg,planner:{runs:2},events:event,
+  const ev={ok:true,pending:1,pendingVideoFollowup:1,videoStartsToday:2,lastVideoAt:t}
+  const first=lifeExperienceReadiness({config:cfg,planner:{runs:2},events:ev,
     capabilities:[{id:'bilibili.video-explore'}],at:t})
-  assert.ok(inspected.videoFeedbackEarliestAt>=t+20*60_000)
-  const exhausted=lifeExperienceReadiness({config:cfg,planner:{runs:10},events:{...event,videoStartsToday:0,lastVideoAt:0},
-    capabilities:[{id:'bilibili.video-explore'}],at:t})
-  assert.ok(exhausted.videoFeedbackEarliestAt>t)
-  const busy=lifeExperienceReadiness({config:cfg,planner:{runs:2},events:{...event,videoStartsToday:0,lastVideoAt:0},
+  assert.equal(first.videoFeedbackEarliestAt,t)
+  assert.equal(first.videoDelegationEligible,false)
+  const busy=lifeExperienceReadiness({config:cfg,planner:{runs:2},events:ev,
     capabilities:[],capabilityReadiness:{blocked:[{id:'bilibili.video-explore',platform:'bilibili',reason:'video-busy'}]},at:t})
-  assert.equal(busy.videoFeedbackEarliestAt,null)
-  assert.ok(busy.blockers.includes('video-agent-busy'))
+  assert.equal(busy.videoFeedbackEarliestAt,t)
+  const noQuota=lifeExperienceReadiness({config:cfg,planner:{runs:10},events:ev,
+    capabilities:[],at:t})
+  assert.ok(noQuota.videoFeedbackEarliestAt>t)
+  assert.equal(lifeExperienceReadiness({config:cfg,planner:{runs:2},
+    events:{...ev,ok:false},at:t}).videoFeedbackEarliestAt,null)
 })

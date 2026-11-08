@@ -8,6 +8,7 @@ flowchart TB
   socialReceipt["社交 / 私信 / 评论多条平台回执：精确去重，不把一次意愿当成功"]
   todoReceipt["已完成只读待办 + 原任务回访：同一因果片段"]
   reflectionReceipt["反思批次真实处理回执：零条长期认识也算真实反思"]
+  videoFeedback["新视频启动冷却中：Life 仍可只读考虑已完成轮次反馈"]
   record["createUniversalLifeEpisodes｜只保存当前账号匿名摘要/因果步骤 + 允许的归属枚举"]
   context["当前片段最多五个已核验步骤；历史可跨段关联"]
   due["有原账号可执行目标且至少两分钟后才优先唤醒"]
@@ -22,6 +23,7 @@ flowchart TB
   todoReceipt --> attribution
   reflectionReceipt --> attribution
   firstOther -->|已有真实回执；无需经过首页| record
+  videoFeedback -.->|review_video_feedback 不产出平台新回执| menu
   record --> context --> eligible --> due --> menu
   menu -->|自主继续| read -->|成功并核验| record
   menu -->|自行考虑互动，单轮最多一次写| write -->|成功且平台核验| record
@@ -53,3 +55,5 @@ flowchart TB
 %% @code socialReceipt | lib/life-willingness.mjs | const exact=typeof receiptId
 %% @code todoReceipt | index.js | sourceRef:'todo:'+original.id
 %% @code reflectionReceipt | lib/life-reflection.mjs | result.receiptId=receiptId
+
+%% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'

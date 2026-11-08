@@ -6,6 +6,8 @@
 >
 > **状态：`2.7.1-dev.37` / `releaseReady:false`**。未合并 main / Tag / 发布。图中“已接线”只指源码、相关离线契约存在，不代表 Windows、真实 B站、GGUF、72h 实机验收。
 
+**dev.37 同版冷却隔离维护：**`lifeVideoGate()` 的视频启动冷却仅对 `browse_home`/`use_capability` 视频委派生效，原有已核验非视频候选不受阻断。若同账号 `video-round-ended` 且存在可信已完成视频轮次匿名回执，`AutonomousPlanner` 可在冷却期提议 `review_video_feedback`，仅将模型本地考虑写入 Life 决策日志，不产生新的 Episode 已完成步骤或平台发送；无可信回执继续等待。`lifeExperienceReadiness.videoFeedbackEarliestAt` 不再错误地引用下次视频启动时间。相关内容是离线源码能力，不等于实机验收。
+
 ## 图例与术语纠偏
 
 - **蓝色 = 已存在可定位的代码实现**；**黄色 = 有代码但仍有渠道差异／有限接入**；**红色 = 不能宣称具备通用闭环／尚无实机验收**。不存在任何“图里有箭头就已验收”的含义。
