@@ -49,7 +49,7 @@ test('retired old video timer cannot be scheduled; manual capability and generic
  const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  assert.doesNotMatch(source,/setInterval\(tick,\s*60_000\)/)
  assert.doesNotMatch(source,/const tick = \(\) =>/)
- assert.match(source,/runDuty\('life-agent'\)/)
+ assert.match(source,/runDuty\('life-agent'(?:,|\))/)
  assert.match(source,/assertLegacyVideoPatchCompatible\(cfg,clean\)/)
 })
 

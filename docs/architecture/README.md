@@ -1,4 +1,9 @@
-## 当前开发版本 2.7.1-dev.30：真实读写行动的统一入记忆与本地模型状态修复
+## 当前开发版本 2.7.1-dev.31：Life 真实反思就绪 / 模型失败退避 / 自由逛首页
+
+[dev.31 生产代码接线、权限与实机验收](./2.7.1-dev31-life-idle-and-home-browse.md) · [Mermaid 决策图](./diagrams/2.7.1-dev31-life-activity-recovery.mmd)。针对真实 33 轮 DEBUG 中的空转：反思现在必须经过与执行器一致的有效性判定；模型失败自动退避不再在短周期里重复扣额；没有兴趣候选时鱼鱼依然可自主选择首页闲逛，由**原**视频 Agent 使用真实首页推荐。模型自己可选休息、不强制刷片；基础身份无法建立与原写入权限不放宽。该版本仍需 Windows／真实模型／B站／72小时验收；`releaseReady:false`。
+
+## 历史版本 2.7.1-dev.30：真实读写行动的统一入记忆与本地模型状态修复
+
 
 [dev.30 已核验行动／衰减／向量召回架构](./2.7.1-dev30-verified-life-action-memory.md) · [可编辑 Mermaid 数据流](./diagrams/2.7.1-dev30-verified-actions-recall.mmd)。Life 实际执行并经原平台/账本验证的读取、分享、互动进入原可衰减 Life 记忆与 Recall Service；旧已确认分享可安全补录。账号、UID/隐私、遗忘及未知回执边界不变。已安装模型重检改为只读状态刷新，无任务时隐藏安装/索引进度。仍需 Windows/真实模型/B站验收；`releaseReady:false`。
 

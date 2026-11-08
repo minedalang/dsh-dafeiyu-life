@@ -3019,7 +3019,7 @@ function reportMeta() {
       try { dutyChild.kill() } catch (e) { log('停止刷视频 Agent 失败：' + String(e?.message || e)) }
     }
   }
-  const runDuty = (why = 'window') => {
+  const runDuty = (why = 'window',entryMode = 'mixed') => {
    try {
       if (dutyChild) {
         const alive = dutyChild.exitCode === null && !dutyChild.killed
@@ -3052,7 +3052,9 @@ function reportMeta() {
     let videoRoundReceiptId=''
     const watchedBeforeRun=new Set(parseSeenTable().filter(x=>x.picked).map(x=>x.bvid))
     const pickedBeforeRun = countPickedToday()
-    args.push([promptFor(),emotionalState.agentContext()].filter(Boolean).join('\n\n'))
+    const homeFirst=entryMode==='home'&&why==='life-agent'&&cfg.homeRecommendationsEnabled===true
+    const homeGuidance=homeFirst?'【本轮 Life 自主选择：随便逛首页】优先从 bili_home_recommendations 获取当前账号首页真实候选（最多一次），不需要先有兴趣或搜索词；再由你自行决定是否读哪一条、深入了解或停止。接口不可用则按原安全规则停止或转普通探索，不要重试刷新、不要伪造观看，也不强迫评论。':''
+    args.push([homeGuidance,promptFor(),emotionalState.agentContext()].filter(Boolean).join('\n\n'))
     log(`本轮已选 ${pickedBeforeRun} 条；鱼鱼自主决定是否继续探索，不设强制选片数量`)
     // ⭐ 这一轮的工作目录 = 使用者（或别的用户）的**工作区** —— 只有这样它的 `AGENTS.md` 才会自动加载。
     // ⭐ 工作目录 = **插件家**：那一轮**被沙箱关着**，只写得了自己工作目录里的东西 ✗
@@ -4977,14 +4979,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(String(cfg.reportLevel||'full')==='off'&&roundsToday()>=1)return {ok:false,reason:'report-off-one-round'}
       return {ok:true}
     },
-    execute:async()=>{
+    execute:async({entryMode='mixed'}={})=>{
       const approved=await lifeWillingness?.decide({trigger:'video-exploration',scene:'main',
         sourceKey:'life-video-start:'+randomUUID(),
         candidates:[{id:'explore_video',kind:'explore_video',label:'此刻委派视频 Agent 继续公开探索（不保证看完或听到）'}]})
       if(approved?.ok!==true)return {started:false,reason:'life-declined-video'}
       if(lifeWillingness?.verify(approved.proof,'explore_video')?.ok!==true)
         return {started:false,reason:'life-video-choice-expired'}
-      const launched=runDuty('life-agent')
+      const launched=runDuty('life-agent',entryMode==='home'?'home':'mixed')
       // Delegation is NOT proof of observed frames/audio or a completed round.
       // The original child lifecycle remains the sole verified video receipt.
       lifeWillingness?.receipt(approved.proof,{status:launched?.started===true?'delegated':'not-sent'})
@@ -5010,7 +5012,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         if(topic&&cfg.mainSessionMemoryEnabled&&lifeMemory)
           publicMemory=lifeMemory.recall({query:topic,domain:'bili-explore',kinds:['watch'],maxItems:2,maxChars:360,reinforce:false})||[]
       }catch{degradedStages.push('public-memory');log('Life 上下文：可回忆视频线索暂不可用')}
-      const world=projectLifeWorldEvidence({interests,episodes:publicMemory})
+      let world={}
+      try{world=projectLifeWorldEvidence({interests,episodes:publicMemory})}
+      catch{degradedStages.push('public-memory');log('Life 上下文：公开记忆摘要暂不可用，使用基本人格继续')}
       try{
         const own=lifeMemory?.publicSocialEvidence(3)||[]
         world.recentConfirmedPublicSpeech=own.filter(row=>typeof row.ownText==='string')
@@ -5288,7 +5292,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     noteLifeSocialShadow:params=>lifeSocialShadow.noteLife(params),
     getLifeCapabilities:()=>lifeCapabilities.list(),
     getLifeCapabilityReadiness:()=>lifeCapabilities.inspect(),
-    runLifeCapability:id=>lifeCapabilities.run(id),
+    runLifeCapability:(id,options)=>lifeCapabilities.run(id,options),
     recordVideoStart:()=>lifeAgentEvents.recordVideoStart(),
     recordLifeDecision:row=>lifeAgentEvents.recordDecision(row),
     getLifeOpportunities:()=>lifeOpportunities.list({limit:4}),

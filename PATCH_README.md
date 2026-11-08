@@ -1,3 +1,9 @@
+# dev.31 · 从 dev.30 完整源码升级（未发布）
+
+本补丁必须以**dev.30 完整交付版**为基线（不是 dev.29 或仅装了部分补丁的工作树）。选择 Original 换行或 LF 规范化补丁**其中一种**应用；也可以备份后使用完整源码 ZIP。不会自动合并 `main`、建 Tag、发布或改变任何用户的 B站发送授权。
+
+本轮复用原 Life Planner、Life Reflection、Life Decision Trace、视频 Agent 和首页推荐 MCP；没有独立首页 Agent。模型失败退避由原 `autonomous-planner.json` 存储，无需用户配置迁移。`homeRecommendationsEnabled=false` 时不会提供首页闲逛动作。旧日志不自动修复，只对升级后新轮次生效。平台本身或模型服务故障需要实机核验。
+
 # dev.30 · 从完整 dev.29 源码升级（未发布）
 
 本补丁以 **dev.29 完整源码交付**为基线，升级为 `2.7.1-dev.30`，不会更新主分支、创建 Tag、发布 npm 或修改用户已存配置。只应用原始换行格式与 LF 规范化格式中的**一种**；建议 `git apply --check` 成功后再应用，或者备份后直接使用完整源码 ZIP。
