@@ -1,4 +1,5 @@
-## 当前开发版本 2.7.1-dev.36：统一自主生活 Episode（仍未发布）
+- [**dev.37 行动归属与原回执闭环**](./2.7.1-dev37-unified-action-ownership.md)：专业 Agent 保留执行权、统一来源和回执归属、待办/反思/社交跨片段去重；实机验证限制。
+## 当前开发版本 2.7.1-dev.37：统一自主生活 Episode（仍未发布）
 
 [可编辑 Universal Life Episode 源图](./diagrams/life-universal-episodes-current.mmd) · [源码与行为契约](./2.7.1-dev36-universal-life-episodes.md) · [自动渲染的四张全景图](./life-system-current-view.md)。只有当前账号真实行动/回执才能计入已核验 Episode；管理中心会提示首步超过 60 分钟未推进及缺少可执行原意愿的片段。Life 可在下一轮自主选择 `resume_episode`，也可休息；B站评论、关注等仍由原权限和平台核验控制，`releaseReady:false`。
 
@@ -6,7 +7,7 @@
 
 [Episode 写入后继续只读／休息、安全再写、额外首页、评论区只读与跨步记忆](./2.7.1-dev35-life-episode-p1p2.md)。已实现的功能与长期未实机验证的效果分开标注；主 Mermaid 图、候选图、回执记忆图均需保持同步，`releaseReady:false`。
 
-## 当前权威 Life 全景图与源码接线审计（已更新至 dev.36，未发布）
+## 当前权威 Life 全景图与源码接线审计（已更新至 dev.37，未发布）
 
 **优先阅读**：[GitHub 可直接渲染的完整 Life 图](./life-system-current-view.md) · [Life 完整源码关系与审计矩阵](./life-system-current.md) · [可编辑的 Mermaid 全景图](./diagrams/life-system-current.mmd) · [todos / cues / intentions / opportunities 等候选字典图](./diagrams/life-candidates-current.mmd) · [可信行动回执与记忆闭环图](./diagrams/life-receipt-memory-current.mmd)。这四张图用实际生产代码锚点校验；`npm run check:life-architecture` 和相关 Node 回归用于避免图与实现明显脱节。仍有未完全接通的渠道、模型实机及 72h 验收，`releaseReady:false`。
 

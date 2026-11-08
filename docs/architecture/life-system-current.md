@@ -1,10 +1,10 @@
-# Life 全景图与源码接线审计（当前 dev.36 Universal Life Episode + 同版本菜单门禁加固）
+# Life 全景图与源码接线审计（当前 dev.37 跨渠道行动归属 + Universal Life Episode）
 
 > **可直接在 GitHub 查看渲染结果：**[Life 全景与候选图](./life-system-current-view.md)。它是根据 `.mmd` 自动生成的只读展示，不应直接编辑。
 >
 > **唯一维护入口：**[完整 Life 生产代码全景 Mermaid](./diagrams/life-system-current.mmd) · [八类候选精确字典 Mermaid](./diagrams/life-candidates-current.mmd) · [回执与可衰减记忆闭环 Mermaid](./diagrams/life-receipt-memory-current.mmd) · [统一 Life Episode Mermaid](./diagrams/life-universal-episodes-current.mmd)。这四张 `.mmd` **是源文件**，可直接通过 GitHub Mermaid 或支持 Mermaid 的编辑器编辑、比较和渲染；此前的 PNG 仅为概念插画，不是程序运行证明。
 >
-> **状态：`2.7.1-dev.36` / `releaseReady:false`**。未合并 main / Tag / 发布。图中“已接线”只指源码、相关离线契约存在，不代表 Windows、真实 B站、GGUF、72h 实机验收。
+> **状态：`2.7.1-dev.37` / `releaseReady:false`**。未合并 main / Tag / 发布。图中“已接线”只指源码、相关离线契约存在，不代表 Windows、真实 B站、GGUF、72h 实机验收。
 
 ## 图例与术语纠偏
 
@@ -51,6 +51,17 @@
 - **可观测性**：管理中心展示 Episode 来源、进度 `n/5`、已核验 BV 数与最近回执；轮次评论诊断区分主动不评论与技术阻断。
 
 离线专项见 `test/v271-dev34-life-episode.test.mjs`。此版本仍未完成真实 Windows/B站/72h 实机验收，保持 `releaseReady:false`。
+
+## dev.37 · 统一行动归属、实际发送回执与因果关系
+
+这次不改变 Life 自主选择的权威，也不取消专业 Agent 内部的工具选择。新增 `lib/life-action-attribution.mjs`（**仅记录，不执行**），只在原成功回执明确后把 `owner/channel/sourceRef/receiptId/action` 关联到现有匿名 Episode；owner 只允许 `life`／`owner`／`reactive`，渠道为白名单枚举，原 UID/BV/评论/私信/标题只在原事实源中，Episode 继续保存脱敏哈希。
+
+- 私信/评论独立平台回执可使同一 Life 选择下的多条消息各自有可去重步骤；没有精确回执的社交写入不冒充已完成 Episode。原 Life 意愿批准不是第二次实体平台写入。
+- 已接受只读待办沿完成时间产生稳定回执； Life Planner 与原待办执行器共用，不双计。真实反思批次生成来源稳定的摘要回执。待办回访的发送结果归到**原待办**，不创建另一个无关社交片段。
+- 失败或被挡不算已完成，未知发送只允许冻结已经存在且同源的 Episode，绝不自行补发。
+- 单纯拥有 Episode ID 不代表获得原评论回复/陌生人主页或私信权限，仍保留各专业执行门禁。外部平台实际读取/账号切换/72 小时行为因果均待实机验收；独立调度器尚未整合为单一全局调度器。
+
+详见 [dev.37 设计与验收](./2.7.1-dev37-unified-action-ownership.md)。
 
 ## 尚未完全实现、后续优化顺序
 

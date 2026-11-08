@@ -5,7 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.36 · Universal Life Episode）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.37 · Universal Life Episode）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -338,13 +338,17 @@ flowchart TB
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
-%% dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
+%% dev.37 统一归属 + dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
 flowchart TB
   child["可选首步：真实 B站首页轮次完成 + 本轮新挑中 BV 精确匹配"]
   firstOther["其他可选首步：已核验的待办、反思、公开机会、社交、非首页视频探索"]
   eligible["当前可续行来源：原视频意愿／未完成已接受只读待办／尚有效的公开机会"]
   canonical["原有 LifeOpportunities 跨轮公开探索意愿｜唯一 BV 事实源"]
-  record["createUniversalLifeEpisodes｜只保存当前账号匿名摘要/因果步骤"]
+  attribution["LifeActionAttribution｜主人请求 / Life 自选 / 被动社交；只接原回执"]
+  socialReceipt["社交 / 私信 / 评论多条平台回执：精确去重，不把一次意愿当成功"]
+  todoReceipt["已完成只读待办 + 原任务回访：同一因果片段"]
+  reflectionReceipt["反思批次真实处理回执：零条长期认识也算真实反思"]
+  record["createUniversalLifeEpisodes｜只保存当前账号匿名摘要/因果步骤 + 允许的归属枚举"]
   context["当前片段最多五个已核验步骤；历史可跨段关联"]
   due["有原账号可执行目标且至少两分钟后才优先唤醒"]
   menu["鱼鱼仍可选择合法原动作/休息；视频意愿可选 resume_episode；不增加新权限"]
@@ -353,7 +357,10 @@ flowchart TB
   pause["自愿休息、预算不足、授权变化或未知结果：暂停/冻结"]
   other["其他已核验 Life 待办/反思/社交/人物行动也有关联 Episode"]
   memory["原 Life Memory 与各渠道真实回执仍为事实权威"]
-  child --> canonical --> record
+  child --> canonical --> attribution --> record
+  socialReceipt --> attribution
+  todoReceipt --> attribution
+  reflectionReceipt --> attribution
   firstOther -->|已有真实回执；无需经过首页| record
   record --> context --> eligible --> due --> menu
   menu -->|自主继续| read -->|成功并核验| record
@@ -365,7 +372,7 @@ flowchart TB
   pause -.->|之后仍需原目标有效、权限通过| menu
   classDef safe fill:#e8f4fd,stroke:#4689b6,color:#173d5c
   classDef caveat fill:#fff1e7,stroke:#d68a3c,color:#74421c
-  class record,context,menu,due safe
+  class record,context,menu,due,attribution,socialReceipt,todoReceipt,reflectionReceipt safe
   class pause,write caveat
 
 %% @code child | index.js | const episode=lifeOpportunities.beginHomeExploration
@@ -381,4 +388,9 @@ flowchart TB
 %% @code pause | lib/life-universal-episodes.mjs | const pauseLatest=(
 %% @code other | index.js | onEpisodeAction:proof=>universalLifeEpisodes.record(proof)
 %% @code memory | lib/life-memory-coordinator.mjs | createLifeMemoryCoordinator
+
+%% @code attribution | lib/life-action-attribution.mjs | export function createLifeActionAttribution
+%% @code socialReceipt | lib/life-willingness.mjs | const exact=typeof receiptId
+%% @code todoReceipt | index.js | sourceRef:'todo:'+original.id
+%% @code reflectionReceipt | lib/life-reflection.mjs | result.receiptId=receiptId
 ```

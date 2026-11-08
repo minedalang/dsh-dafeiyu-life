@@ -116,6 +116,7 @@ import { createSocialContextAssembler } from './lib/social-context-assembler.mjs
 import { createSocialInteractionCoordinator } from './lib/social-interaction-coordinator.mjs'
 import { createLifeMemoryCoordinator } from './lib/life-memory-coordinator.mjs'
 import {createUniversalLifeEpisodes} from './lib/life-universal-episodes.mjs'
+import {createLifeActionAttribution} from './lib/life-action-attribution.mjs'
 import {eligibleLifeEpisodeSources} from './lib/life-episode-entrypoints.mjs'
 import {preparePrivateSelfExperience,preparePrivateLifeEvent} from './lib/life-private-policy.mjs'
 import { createMemoryConsolidator } from './lib/memory-consolidation.mjs'
@@ -1137,8 +1138,21 @@ function reportMeta() {
       if(parsed.decision!=='reply')lifeWillingness?.receipt(lifeChoice.proof,{status:'not-sent'})
       return {...parsed,familiar,lifeWillingnessProof:parsed.decision==='reply'?lifeChoice.proof:null}
     },
-    onSent:async({uid,channel,text,social,sentRpid,commentBvid,commentRoot,at})=>{
+    onSent:async({uid,channel,text,social,sentRpid,sentReceiptId,commentBvid,commentRoot,eventId,taskId,at})=>{
       // This hook only runs AFTER a platform-confirmed receipt. It never sends.
+      // Only a canonical platform identifier may create a verified Episode
+      // step, and the source is the original accepted TODO, not a second
+      // independent 'followup' Episode or a model-generated promise.
+      const scope=trustedLifeAccountTag()
+      const original=ownerTodos.list({includeClosed:true,limit:500}).find(x=>x.id===taskId)
+      const receipt=channel==='comment'&&/^[1-9]\d{0,19}$/.test(String(sentRpid||''))
+        ?'bili-followup-comment:'+sentRpid:channel==='dm'&&String(sentReceiptId||'').length>2
+        ?'bili-followup-dm:'+sentReceiptId:''
+      if(original&&receipt){
+        const outcome=lifeActionAttribution.verified({accountTag:scope,channel:'todo-followup',owner:'life',
+          sourceRef:'todo:'+original.id,receiptId:receipt,action:'followup',kind:'social'})
+        if(outcome.ok!==true)log('回访已发但 Episode 因果投影待补偿：'+String(outcome.reason||'unavailable'))
+      }else log('回访有发送成功记录，但没有可核验的任务/平台回执；不制造 Episode 已完成步骤')
       if(channel==='dm'&&!social){
         refreshCfg()
         if(String(cfg.dmOwnerUid||'')!==String(uid))return // 主人身份切换后禁止向新的私密域投影旧会话
@@ -1155,7 +1169,7 @@ function reportMeta() {
         }],{reflect:true})
       }
     },
-    send:async({uid,channel,text,commentBvid,commentRpid,commentRoot,social,eventId,lifeWillingnessProof})=>{
+    send:async({uid,channel,text,commentBvid,commentRpid,commentRoot,social,eventId,taskId,lifeWillingnessProof})=>{
       const intention=lifeWillingness?.verify(lifeWillingnessProof,'followup')
       if(intention?.ok!==true)return {ok:false,no_retry:true,error:'Life 回访意愿已失效，未发送'}
       const factCheck=outboundFactCheck(text,{uid,channel});
@@ -1178,18 +1192,29 @@ function reportMeta() {
           const rpid=String(raw?.rpid_str||raw?.rpid||raw?.data?.rpid||'')
           return raw?.success===true&&/^[1-9]\d{0,19}$/.test(rpid)?{ok:true,rpid}:{ok:false}
         }))
-        lifeWillingness?.receipt(lifeWillingnessProof,{status:result?.ok===true?'verified':'uncertain'})
+        lifeWillingness?.receipt(lifeWillingnessProof,{status:result?.ok===true?'verified':'uncertain',
+          receiptId:result?.ok===true&&result?.rpid?'bili-followup-comment:'+result.rpid:
+            result?.ok===true&&result?.receiptId?'bili-followup-dm:'+result.receiptId:''})
+        if(result?.ok!==true&&result?.no_retry===true&&taskId)
+          lifeActionAttribution.unknown({accountTag:scope,channel:'todo-followup',owner:'life',
+            sourceRef:'todo:'+taskId,receiptId:'followup-unknown:'+eventId,action:'followup',kind:'social'})
         return {ok:result?.ok===true,sentRpid:String(result?.rpid||''),no_retry:result?.no_retry===true}
       }
       if(typeof eventId!=='string'||eventId.length<3||eventId.length>600||/[\u0000-\u001f]/.test(eventId))
         return {ok:false,no_retry:true,reason:'missing-stable-social-source'}
       const sourceHash=createHash('sha256').update('todo-followup-v1\0'+eventId).digest('hex')
       const result=await lifeDmWithReceipt({uid,text,eventKey:`todo-followup:${sourceHash}`})
-      lifeWillingness?.receipt(lifeWillingnessProof,{status:result?.ok===true?'verified':'uncertain'})
-      return {ok:result?.ok===true,no_retry:result?.no_retry===true}
+      lifeWillingness?.receipt(lifeWillingnessProof,{status:result?.ok===true?'verified':'uncertain',
+          receiptId:result?.ok===true&&result?.rpid?'bili-followup-comment:'+result.rpid:
+            result?.ok===true&&result?.receiptId?'bili-followup-dm:'+result.receiptId:''})
+      if(result?.ok!==true&&result?.no_retry===true&&taskId)
+        lifeActionAttribution.unknown({accountTag:trustedLifeAccountTag(),channel:'todo-followup',owner:'life',
+          sourceRef:'todo:'+taskId,receiptId:'followup-unknown:'+eventId,action:'followup',kind:'social'})
+      return {ok:result?.ok===true,no_retry:result?.no_retry===true,receiptId:result?.ok===true?String(result.receiptId||''):''}
     },logger:{warn:m=>log('统一待办回访：'+m)}})
-  const runOwnerTodoWithFollowup=async(id)=>{
+  const runOwnerTodoWithFollowup=async(id,{initiator='owner'}={})=>{
     accountBinding.assertReady()
+    const originalEpisodeAccount=trustedLifeAccountTag()
     const task=ownerTodos.list({includeClosed:true,limit:500}).find(x=>x.id===id)
     if(!accountBinding.taskAllowed(task))return {ok:false,blocked:true,error:'旧 B站账号的待办被冻结，不能用新账号执行'}
     // Reserve exact same-theme reads BEFORE entering ownerTodos.run(). Otherwise
@@ -1208,6 +1233,17 @@ function reportMeta() {
       result=preAction?await readActionGate.run({...preAction,source:'owner-todo',sourceId:task.id,obligationId:task.id},execute):await execute()
     }catch(e){if(e?.code==='reservation-held')return {ok:false,blocked:true,error:'同一只读动作已有其它入口执行或待核查，未开始本次待办执行'};throw e}
     if(result?.ok===true&&['watch_video','search_videos'].includes(task?.type))try{ownerTodoFollowup.queue(task,result.result)}catch(e){log('待办完成后回访入队失败：'+String(e?.message||e).slice(0,100))}
+    // Verified TODO completion is a first-class episode step even when the
+    // owner or an authorized social workflow triggered it outside Life Planner.
+    // Planner uses this same canonical completedAt receipt: no double counting.
+    if(result?.ok===true&&READ_TODO_TYPES.has(task?.type)&&result?.item?.status==='done'&&
+      Number.isSafeInteger(result.item.completedAt)&&result.item.completedAt>0){
+      const accepted=lifeActionAttribution.verified({accountTag:originalEpisodeAccount,
+        owner:initiator==='life'?'life':'owner',channel:'owner-todo',
+        sourceRef:'todo:'+task.id,receiptId:'todo-done:'+task.id+':'+result.item.completedAt,
+        action:'execute_read',kind:'todo'})
+      if(accepted.ok!==true)log('待办真实完成但 Episode 投影待补偿：'+String(accepted.reason||'unavailable'))
+    }
     return result
   }
   try{if(accountBinding.generation()===1)ownerTodos.syncRecommendations(readJson(join(stateDir,'video-recommendations.json'),{})?.entries||[],{requireAccepted:true})}catch(e){log('启动时同步视频推荐待办失败：'+String(e?.message||e).slice(0,100))}
@@ -2390,6 +2426,7 @@ function reportMeta() {
   // Cross-activity causal context; the existing memories and platform ledgers
   // remain authoritative. This does not introduce another scheduler or writer.
   const universalLifeEpisodes=createUniversalLifeEpisodes({stateDir,getAccountTag:trustedLifeAccountTag})
+  const lifeActionAttribution=createLifeActionAttribution({episodes:universalLifeEpisodes,getAccountTag:trustedLifeAccountTag,logger:{warn:log}})
   const lifeOpportunities=createLifeOpportunities({stateDir,getCredential:()=>lifeOpportunityAccountReady()?dmCred(stateDir):null,
     getInterestEvidence:tag=>lifeOpportunityAccountReady()?
       [...scopedInterestOpportunityEvidence(stateDir,tag),...scopedCuriosityOpportunityEvidence(stateDir,tag)]:[],
@@ -3202,7 +3239,7 @@ function reportMeta() {
           try{
             const attached=universalLifeEpisodes.record({accountTag:videoRoundLifeAccountTag,
               sourceRef:'intention:'+episode.id,receiptId:'video-round:'+videoRoundReceiptId,
-              action:'browse_home',kind:'video',outcome:'verified'})
+              action:'browse_home',kind:'video',outcome:'verified',owner:'life',channel:'video-agent'})
             if(attached?.ok!==true)log('统一 Life Episode 上下文未登记：'+String(attached?.reason||'unavailable'))
           }catch(e){log('统一 Life Episode 上下文不可用：'+String(e?.message||e).slice(0,80))}
           log(`Life Episode 已建立：首页浏览第 1/5 步，候选 ${episode.videoCount} 条；允许下轮自主续行`)
@@ -4137,7 +4174,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const receiptId=result?.success===true?extractBiliDmReceiptId(result):''
         return receiptId?{ok:true,receiptId}:{ok:false}
       })
-      lifeWillingness?.receipt(lifeWillingnessProof,{status:guarded?.ok===true?'verified':'uncertain'})
+      lifeWillingness?.receipt(lifeWillingnessProof,{status:guarded?.ok===true?'verified':'uncertain',
+        receiptId:guarded?.ok===true&&guarded?.receiptId?'bili-dm:'+guarded.receiptId:''})
       if(guarded?.ok!==true)return guarded
       try{activityFeed.publish('social',{count:1})}catch{}
       try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:'dm-reply:'+String(eventId),at:Date.now()})}catch(e){log('私信关系投影待补偿：'+String(e?.message||e))}
@@ -4581,7 +4619,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           return r?.ok===true&&String(r.dynamicId)===String(req.dynamicId)&&validCommentId(r.rpid)
             ?{ok:true,rpid:String(r.rpid)}:{ok:false}
         })
-        lifeWillingness?.receipt(req.lifeWillingnessProof,{status:ack?.ok===true?'verified':'uncertain'})
+        lifeWillingness?.receipt(req.lifeWillingnessProof,{status:ack?.ok===true?'verified':'uncertain',
+          receiptId:ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))?'bili-comment:'+ack.rpid:''})
         if(ack?.ok!==true)return ack
         try{await lifeMemoryCoordinator?.recordEvents([{kind:'comment',contentType:'dynamic',
           dynamicId:String(req.dynamicId),reply:true,text:String(req.text).slice(0,130),
@@ -4603,7 +4642,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           rpid:Number(req.rpid),root:Number(req.root)||0,text:String(req.text).slice(0,130)})
         return r?.success===true?{ok:true,rpid:String(r?.rpid_str||r?.rpid||'')}:{ok:false}
       })
-      lifeWillingness?.receipt(req.lifeWillingnessProof,{status:ack?.ok===true?'verified':'uncertain'})
+      lifeWillingness?.receipt(req.lifeWillingnessProof,{status:ack?.ok===true?'verified':'uncertain',
+          receiptId:ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))?'bili-comment:'+ack.rpid:''})
       if(ack?.ok!==true)return ack
       try{const role=socialPolicyGate.actor(req.uid).role
         const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role,actorUid:req.uid,bvid:req.bvid,rpid:req.rpid,text:req.text,eventKey:`${req.uid}:${req.bvid}:${req.rpid}:reply`,at:Date.now()})
@@ -4996,7 +5036,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getPersonalityEnabled:()=>{try{return personalityEvolution?.status().enabled===true}catch{return false}},
     onPersonalityProposals:(proposals,batch)=>personalityEvolution?.applyProposals(proposals,batch),
     onPersonalityObservations:(batch)=>personalityEvolution?.observeVerifiedExploration(batch),
-    onResult:(event)=>{try{activityFeed.publish('reflection',{count:event.count});if(event.personalityAccepted)activityFeed.publish('personality',{count:event.personalityAccepted})}catch{}},
+    onResult:(event)=>{
+      try{activityFeed.publish('reflection',{count:event.count});if(event.personalityAccepted)activityFeed.publish('personality',{count:event.personalityAccepted})}catch{}
+      // The reflection engine generated the exact receipt AFTER committing its
+      // original batch. No insight is invented when it reviewed but kept 0.
+      if(event?.count>0&&typeof event.receiptId==='string'&&event.receiptId.length>=3){
+        const accepted=lifeActionAttribution.verified({accountTag:event.accountTag,owner:event.origin==='life'?'life':event.automatic?'reactive':'owner',
+          channel:'reflection',sourceRef:'reflection:'+event.receiptId,
+          receiptId:event.receiptId,action:'reflect',kind:'reflection'})
+        if(accepted.ok!==true)log('反思完成回执的 Episode 归属待补偿：'+String(accepted.reason||'unavailable'))
+      }
+    },
     invokeModel: (prompt,maxChars,opt={}) => invokeInteractionPrompt(prompt,maxChars,{...opt,modelRoute:'reflection'}),
     commitMemories: (items) => longTermMemory.addReflectedMemories(items),
     onEmotion: ({mood,intensity,source='life-reflection',summary=''})=>{try{emotionalState.update({mood,intensity,source,summary});if(emotionRecall){const wake=setTimeout(()=>void emotionRecall.tick(),8000);wake.unref?.()}}catch(e){log('人生反思情绪更新失败：'+String(e?.message||e).slice(0,100))}},
@@ -5113,7 +5163,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // Completion notifications are non-executing, account-bound and de-duped
     // in the same durable Life event ledger. Proofs originate only from the
     // already verified original channel/transaction, never a model claim.
-    onVerifiedAction:({kind,sourceRef,scope})=>{
+    onVerifiedAction:({kind,sourceRef,scope,receiptId='',evidence=''})=>{
       if(scope!==trustedLifeAccountTag())return
       // Minimal verified operations without public targets still become Life
       // experiences. Video actions and shares use richer, separately verified
@@ -5121,9 +5171,23 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!['video_like','video_collect','video_follow','video_unfollow','video_folder_delete','video_comment','share_video'].includes(kind))
         void rememberVerifiedLifeAction({action:kind,accountTag:scope,sourceId:'life-receipt:'+sourceRef,
           at:Date.now(),verified:true}).catch(e=>log('Life 行动记忆待补偿：'+String(e?.message||e).slice(0,100)))
-      try{universalLifeEpisodes.record({accountTag:scope,sourceRef:'social-receipt:'+sourceRef,
-        receiptId:'verified-social:'+kind+':'+sourceRef,action:kind,kind:'social',outcome:'verified'})}
-      catch(e){log('社交经历 Episode 上下文未登记：'+String(e?.message||e).slice(0,70))}
+      // Precise social replies are counted only when the original platform
+      // transaction returned a stable receipt; the willingness proof itself
+      // is NOT a second physical send. Legacy producer-only events remain
+      // visible as confirmed Life events, never fabricated Episode sends.
+      // Followups are linked from onSent to the actual accepted TODO, not to
+      // an independent social-receipt Episode. This prevents two steps for
+      // one physical send and lets the fish remember the reason for contact.
+      const isFollowup=kind==='followup'
+      const isSocialSend=['dm_reply','comment_reply'].includes(kind)
+      if(isFollowup){/* onSent owns the exact task-linked platform receipt */}
+      else if(!isSocialSend||receiptId){
+        const accepted=lifeActionAttribution.verified({accountTag:scope,owner:'life',channel:
+          kind==='dm_reply'?'dm':kind==='comment_reply'?'comment':kind==='followup'?'todo-followup':'social-agent',
+          sourceRef:'social-receipt:'+sourceRef,receiptId:receiptId||'verified-social:'+kind+':'+sourceRef,
+          action:kind,kind:'social'})
+        if(accepted.ok!==true)log('社交 Episode 归属待核对：'+String(accepted.reason||'unavailable'))
+      }else lifeActionAttribution.notSent({accountTag:scope,channel:kind==='dm_reply'?'dm':kind==='comment_reply'?'comment':'todo-followup',code:'missing-platform-receipt'})
       try{const r=lifeAgentEvents.recordVerifiedCompletion({kind,sourceRef})
         if(r?.ok===false)log('Life 可信完成续行未登记：'+String(r.reason||'invalid-source').slice(0,70))
       }catch(e){log('Life 可信完成续行待补偿：'+String(e?.message||e).slice(0,80))}
@@ -5147,8 +5211,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // the most recent unrelated episode.
       try{const active=lifeOpportunities.continuations({limit:20}).find(x=>x.selectedBvid===target)
         const ref=active?'intention:'+active.id:'verified-video:'+target
-        universalLifeEpisodes.record({accountTag:scope,sourceRef:ref,
-          receiptId:'verified-video:'+sourceId,action:kind,kind:'video',outcome:'verified'})
+        lifeActionAttribution.verified({accountTag:scope,owner:'life',channel:'video-agent',
+          sourceRef:ref,receiptId:'verified-video:'+sourceId,action:kind,kind:'video'})
       }catch(e){log('视频写入 Episode 上下文未登记：'+String(e?.message||e).slice(0,70))}
       return rememberVerifiedLifeAction({action:kind,accountTag:scope,sourceId:'video-verified:'+sourceId,
         bvid:picked?.bvid||target,title:picked?.title||'',at,verified:true})
@@ -5508,10 +5572,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     executeRead:(id)=>{
       const current=ownerTodos.list({includeClosed:true,limit:500}).find(x=>x.id===id)
       if(!current||WRITE_TODO_TYPES.has(current.type))return {ok:false,error:'自主调度不允许写入型待办'}
-      return runOwnerTodoWithFollowup(id)
+      return runOwnerTodoWithFollowup(id,{initiator:'life'})
     },
     updateTodo:(id,action,opts)=>ownerTodos.update(id,action,opts),
-    reflectionStatus:()=>lifeReflection.status(),reflect:()=>lifeReflection.reflect({force:false}),
+    reflectionStatus:()=>lifeReflection.status(),reflect:()=>lifeReflection.reflect({force:false,origin:'life'}),
     logger:{warn:m=>log('⚠️ '+m)},
   })
   wakeSocialLife=()=>autonomousPlanner.tick({socialWake:true})
@@ -6943,6 +7007,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     if(req.method==='GET'&&path==='/api/bili-duty/autonomous-planner'){
       try{return sendJson(res,200,{...autonomousPlanner.status(),
         lifeEpisodes:universalLifeEpisodes.list({limit:5,includeClosed:true}),
+        lifeActionAttribution:lifeActionAttribution.status(),
         lifeEpisodeHealth:universalLifeEpisodes.health({eligibleSources:eligibleLifeEpisodeSources({
           intentions:lifeOpportunities.continuations({limit:20}),
           todos:ownerTodos.list({limit:100,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)),
