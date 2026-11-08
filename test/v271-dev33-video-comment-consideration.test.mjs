@@ -60,20 +60,22 @@ test('review 路由只存模型自述计数，不会产生 Life 审批或发送�
 test('视频轮次只持久化脱敏计数，DEBUG 单独记录视频结束，不把候选误认成发言',()=>runDir(async dir=>{
  const e=createLifeAgentEvents({stateDir:dir,getAccountTag:()=>TAG})
  const id=e.recordVideoRoundStart({commentGate:'configured'}).id
- e.recordVideoRoundFinish(id,{exitCode:0,pickedCount:2,commentDiagnostics:{reviewed:2,wanted:1,passed:1,insufficient:0,proposed:0,approved:0,verified:0,unverified:0,commentText:'private',bvid:BV}})
+ e.recordVideoRoundFinish(id,{exitCode:0,pickedCount:2,commentDiagnostics:{reviewed:2,wanted:1,passed:1,insufficient:0,proposed:0,approved:0,blocked:1,verified:0,unverified:0,commentText:'private',bvid:BV}})
  const row=e.status().recentVideoRounds[0]
  assert.equal(row.commentDiagnostics.reviewed,2)
  assert.equal(row.commentDiagnostics.wanted,1)
  assert.equal(row.commentDiagnostics.proposed,0)
+ assert.equal(row.commentDiagnostics.blocked,1)
  const trace=createLifeDecisionTrace({dataDir:dir,getAccountTag:()=>TAG})
  const entry=trace.begin({mode:'video-round',trigger:'video-agent-result'})
- entry.step('video-comment-summary',{code:'wanted-but-not-proposed',reviewed:2,wanted:1,passed:1,insufficient:0,proposed:0,picked:2,commentText:'private',bvid:BV})
+ entry.step('video-comment-summary',{code:'wanted-but-not-proposed',reviewed:2,wanted:1,passed:1,insufficient:0,proposed:0,approved:0,blocked:1,picked:2,commentText:'private',bvid:BV})
  entry.finish({action:'video_comment',result:'wanted-but-not-proposed'})
  const saved=JSON.stringify(trace.list().runs)+readFileSync(join(dir,'life-agent-events',TAG+'.json'),'utf8')
  assert.doesNotMatch(saved,/private|BV1abcde1234|commentText|12345678/)
  assert.match(saved,/wanted-but-not-proposed/)
  assert.match(saved,/\"wanted\":1/)
  assert.match(saved,/\"passed\":1/)
+ assert.match(saved,/\"blocked\":1/)
 }))
 
 test('源代码将考虑工具限定为已开启的原创评论视频 Agent，主 Session 仍须主人确认',()=>{

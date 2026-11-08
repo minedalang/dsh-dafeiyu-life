@@ -3077,7 +3077,7 @@ function reportMeta() {
         entryMode:homeFirst?'home':'mixed',commentGate:videoCommentGateCode(cfg,{bridgeReady:lifeVideoActionBridge?.status().ready===true})})?.id||''
       if(videoRoundReceiptId)currentVideoCommentDiagnostics={roundId:videoRoundReceiptId,scope:videoRoundLifeAccountTag,
         gate:videoCommentGateCode(cfg,{bridgeReady:lifeVideoActionBridge?.status().ready===true}),
-        proposed:0,approved:0,declined:0,verified:0,unverified:0,reviewed:0,wanted:0,passed:0,insufficient:0,reviewRejected:0,
+        proposed:0,approved:0,blocked:0,declined:0,verified:0,unverified:0,reviewed:0,wanted:0,passed:0,insufficient:0,reviewRejected:0,
         reviewBvids:new Set(),previouslyPickedBvids:watchedBeforeRun,lastReason:''}
     }catch(e){log('Life Agent 视频启动生命周期登记失败：'+String(e?.message||e).slice(0,100))}
     const homeGuidance=homeFirst?'【本轮 Life 自主选择：随便逛首页】优先从 bili_home_recommendations 获取当前账号首页真实候选（最多一次），不需要先有兴趣或搜索词；再由你自行决定是否读哪一条、深入了解或停止。接口不可用则按原安全规则停止或转普通探索，不要重试刷新、不要伪造观看，也不强迫评论。':''
@@ -3138,16 +3138,15 @@ function reportMeta() {
     child.stderr?.on('data', pick)
     child.on('exit', (code) => {
       log(`刷B站结束（${why}，code=${code}）`)
-      let verifiedVideoRoundCompletion=false
+      let verifiedVideoRoundCompletion=false,newlyPickedRows=null,homePickedBvids=null
+      if(code===0&&videoRoundLifeAccountTag&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
+        newlyPickedRows=parseSeenTable().filter(x=>x.picked&&!watchedBeforeRun.has(x.bvid))
+      }catch{}
       if(videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
         // Count only NEW picked records from the canonical ledger. If that
         // ledger is unavailable, persist null rather than pretending zero.
-        let selected=null,newlyPickedBvids=null
-        if(code===0)try{
-          const rows=parseSeenTable().filter(x=>x.picked&&!watchedBeforeRun.has(x.bvid))
-          selected=rows.length
-          newlyPickedBvids=rows.map(x=>String(x.bvid||'')).filter(x=>/^BV[0-9A-Za-z]{10}$/.test(x))
-        }catch{}
+        const selected=code===0&&Array.isArray(newlyPickedRows)?newlyPickedRows.length:null
+        const newlyPickedBvids=code===0&&Array.isArray(newlyPickedRows)?newlyPickedRows.map(x=>String(x.bvid||'')).filter(x=>/^BV[0-9A-Za-z]{10}$/.test(x)):null
         const commentDiagnostics=currentVideoCommentDiagnostics?.roundId===videoRoundReceiptId&&
           currentVideoCommentDiagnostics.scope===videoRoundLifeAccountTag?currentVideoCommentDiagnostics:null
         const completed=lifeAgentEvents.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:code,pickedCount:selected,pickedBvids:newlyPickedBvids,commentDiagnostics})
@@ -3160,22 +3159,23 @@ function reportMeta() {
           const trace=lifeDecisionTrace.begin({mode:'video-round',trigger:'video-agent-result'})
           trace.step('video-comment-summary',{code:diagnostic.code,picked:Number.isSafeInteger(selected)?selected:0,
             reviewed:diagnostic.reviewed,wanted:diagnostic.wanted,passed:diagnostic.passed,insufficient:diagnostic.insufficient,reviewRejected:diagnostic.reviewRejected,
-            proposed:diagnostic.proposed,approved:diagnostic.approved,
+            proposed:diagnostic.proposed,approved:diagnostic.approved,blocked:diagnostic.blocked,
             verified:diagnostic.verified,unverified:diagnostic.unverified})
           trace.finish({state:'finished',action:'video_comment',result:diagnostic.code})
           log('本轮原创主评论诊断：'+diagnostic.code+'；入选 '+(selected??'未知')+'，考虑 '+diagnostic.reviewed+
-            '，考虑回执拒绝 '+diagnostic.reviewRejected+'，模型提出 '+diagnostic.proposed+'，Life 批准 '+diagnostic.approved+'，平台核验 '+diagnostic.verified)
+            '，考虑回执拒绝 '+diagnostic.reviewRejected+'，模型提出 '+diagnostic.proposed+'，Life 批准 '+diagnostic.approved+'，技术阻断 '+diagnostic.blocked+'，平台核验 '+diagnostic.verified)
         }catch(e){log('原创评论诊断待补偿：'+String(e?.message||e).slice(0,100))}
         // Never queue a "completed round" life decision if the trusted
         // account ledger did NOT persist a verified normal-exit receipt.
         verifiedVideoRoundCompletion=completed?.ok===true&&completed?.updated===true&&completed?.state==='completed'
+        homePickedBvids=Array.isArray(completed?.homePickedBvids)?completed.homePickedBvids:null
       }catch(e){log('Life Agent 视频结束回执登记失败：'+String(e?.message||e).slice(0,100))}
       // New and actually selected BV evidence only. Historic picks and merely queued
       // recommendations must never trigger social outreach.
       if(code===0)try{
         activityFeed.publish('video',{count:Math.max(0,countPickedToday()-pickedBeforeRun)})
         collectRealLife?.()
-        const newlyWatched=parseSeenTable().filter(x=>x.picked&&!watchedBeforeRun.has(x.bvid))
+        const newlyWatched=Array.isArray(newlyPickedRows)?newlyPickedRows:parseSeenTable().filter(x=>x.picked&&!watchedBeforeRun.has(x.bvid))
         if(newlyWatched.length&&socialIntentEngine)void socialIntentEngine.reflectOnWatched(newlyWatched).catch(e=>log('社交反思失败：'+String(e?.message||e)))
         // Real picked BV + report title only. Automatically collect tentative culture
         // names (no invented meaning, no image/appearance claim, no private DM data).
@@ -3183,6 +3183,19 @@ function reportMeta() {
           videos:newlyWatched.slice(0,15).map(x=>({bvid:x.bvid,title:String(x.title||'').slice(0,200)})),
         }).catch(e=>log('跨视频文字线索收集失败：'+String(e?.message||e).slice(0,120)))
       }catch(e){log('新经历/社交观察失败：'+String(e?.message||e))}
+      const exactHomePickedRows=Array.isArray(newlyPickedRows)&&Array.isArray(homePickedBvids)?
+        newlyPickedRows.filter(x=>homePickedBvids.includes(String(x.bvid||''))):[]
+      if(code===0&&verifiedVideoRoundCompletion&&homeFirst&&why==='life-agent'&&exactHomePickedRows.length&&
+        videoRoundReceiptId&&videoRoundLifeAccountTag&&trustedLifeAccountTag()===videoRoundLifeAccountTag&&cfg.lifeAgentMode==='active')try{
+        // A Life-owned homepage round becomes step 1 of the SAME account-bound
+        // exploration intention. The picked ledger is only a candidate source;
+        // every subsequent BV is re-read from Bilibili before deeper actions.
+        const episode=lifeOpportunities.beginHomeExploration(videoRoundReceiptId,
+          exactHomePickedRows.slice(0,5).map(x=>({bvid:String(x.bvid||''),title:String(x.title||''),picked:x.picked===true})),
+          videoRoundLifeAccountTag)
+        if(episode?.ok===true)log(`Life Episode 已建立：首页浏览第 1/5 步，候选 ${episode.videoCount} 条；等待鱼鱼重新决定下一步`)
+        else log('Life Episode 未建立（不影响视频轮回执）：'+String(episode?.error||'home-episode-unavailable').slice(0,100))
+      }catch(e){log('Life Episode 首页续行登记失败（不影响视频轮结果）：'+String(e?.message||e).slice(0,100))}
       if(code===0&&verifiedVideoRoundCompletion&&videoRoundReceiptId&&lifeAgentEvents&&cfg.lifeAgentMode!=='off')try{
         // Failed video processes are NOT successful video-round-ended wakes.
         // An account switch or credentials failure must neither cross-post nor crash this callback.
@@ -5133,10 +5146,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     onCommentDiagnostic:({stage,code})=>{
       const row=currentVideoCommentDiagnostics
-      if(!row||row.scope!==trustedLifeAccountTag()||!['proposed','approved','declined','verified','unverified','review-rejected'].includes(stage))return
+      if(!row||row.scope!==trustedLifeAccountTag()||!['proposed','approved','blocked','declined','verified','unverified','review-rejected'].includes(stage))return
       if(stage==='review-rejected'){row.reviewRejected=Math.min(40,row.reviewRejected+1);row.lastReason=code;return}
       row[stage]=Math.min(40,row[stage]+1)
-      if(stage==='declined')row.lastReason=code
+      if(stage==='declined'||stage==='blocked')row.lastReason=code
     },
     // The trusted Python verifier only performs authenticated single-target
     // GET requests. It is independent of the writing tool's claimed success.
@@ -5381,6 +5394,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     failLifeExploration:(id,bvid,tag,code)=>lifeOpportunities.failExplorationRead(id,bvid,tag,code),
     inspectLifeCreatorSpace:(id,proof,tag)=>lifeOpportunities.inspectCreatorSpace(id,proof,tag),
     failLifeCreatorRead:(id,tag)=>lifeOpportunities.failCreatorRead(id,tag),
+    pauseLifeExploration:(id,delay,tag)=>lifeOpportunities.pauseExploration(id,delay,tag),
     abandonLifeExploration:(id,reason,tag)=>lifeOpportunities.abandonExploration(id,reason,tag),
     executeLifeSearch:async(topic)=>readActionContext.run({source:'life-planner'},async()=>{
       // The query comes solely from current-account verified LifeInterests,

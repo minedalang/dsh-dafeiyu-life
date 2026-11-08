@@ -1,10 +1,10 @@
-# Life 全景图与源码接线审计（当前 dev.33 @修复版 + 同版本菜单门禁加固）
+# Life 全景图与源码接线审计（当前 dev.34 @连续 Life Episode + 同版本菜单门禁加固）
 
 > **可直接在 GitHub 查看渲染结果：**[Life 全景与候选图](./life-system-current-view.md)。它是根据 `.mmd` 自动生成的只读展示，不应直接编辑。
 >
 > **唯一维护入口：**[完整 Life 生产代码全景 Mermaid](./diagrams/life-system-current.mmd) · [八类候选精确字典 Mermaid](./diagrams/life-candidates-current.mmd) · [回执与可衰减记忆闭环 Mermaid](./diagrams/life-receipt-memory-current.mmd)。这三张 `.mmd` **是源文件**，可直接通过 GitHub Mermaid 或支持 Mermaid 的编辑器编辑、比较和渲染；此前的 PNG 仅为概念插画，不是程序运行证明。
 >
-> **状态：`2.7.1-dev.33` / `releaseReady:false`**。未合并 main / Tag / 发布。图中“已接线”只指源码、相关离线契约存在，不代表 Windows、真实 B站、GGUF、72h 实机验收。
+> **状态：`2.7.1-dev.34` / `releaseReady:false`**。未合并 main / Tag / 发布。图中“已接线”只指源码、相关离线契约存在，不代表 Windows、真实 B站、GGUF、72h 实机验收。
 
 ## 图例与术语纠偏
 
@@ -25,7 +25,7 @@
 | 真实来源 → 候选 | 分别读取既有 TODO、兴趣、评论观察、人物证据与账号事件账本，之后做读动作归属协调 | **接线，但不是统一永久候选库** | `lib/life-opportunities.mjs`、`lib/autonomous-action-contract.mjs`、`lib/life-agent-events.mjs` |
 | cues → 探索意愿 → 元数据 | 有真实兴趣/同 BV 阅读证据才能从 cue 提出目标，平台结果必须核实 | **已接线，含短期可信选片好奇；来源仍受限** | `lib/autonomous-planner.mjs`、`lib/life-opportunities.mjs`；不能自由把任意话题转换成平台搜索词 |
 | opportunities → 公众人物探索 | 仅跨日有证据的交流对象可重核身份及公开投稿；撤销来源会失效 | **已接线，有限范围** | `lib/life-opportunities.mjs`；不包括刚遇到的任意陌生评论者，也不授权跨串回复 |
-| 无兴趣 → 首页 → 来源归因 | `browse_home` 不依赖 cue/event；视频 Agent 真实读取首页候选并按本轮 BV 匹配入选来源 | **代码已接线，实机待验** | `lib/autonomous-planner.mjs`、`lib/life-home-feed-evidence.mjs`、`lib/life-agent-events.mjs` |
+| 无兴趣 → 首页 → 来源归因 → Episode | `browse_home` 不依赖 cue/event；视频 Agent 真实读取首页候选并按本轮 BV 匹配入选来源，成功轮次将匹配候选接入同一 `life-opportunities` 意愿 Episode | **代码已接线，实机待验** | `lib/autonomous-planner.mjs`、`lib/life-home-feed-evidence.mjs`、`lib/life-agent-events.mjs` |
 | 反思候选 → 实际反思 | 状态已共享就绪判断；**旧解析器存在未提供 reflect 也可被接受的旁路** | **本维护补丁加固** | `lib/autonomous-planner.mjs` 新 `validateOfferedLifeAction` 严格对照本轮菜单；反思器仍执行前复核 |
 | Life → 写动作 | Life 连续视频写动作借用原视频意愿桥/平台工具；社交发送走原渠道的关系和策略门禁 | **多条受控执行路径，而非单个万能网关** | `lib/life-continuation-write.mjs`、`lib/life-video-action-bridge.mjs`、`index.js`；未形成所有写动作的通用单进程原子事务 |
 | 平台结果 → Life 事件 | 验证成功、失败、未知分开记录；脱敏决策轨迹只代表决策与结果分类 | **已有对应账本，不等于全场景 E2E 证据** | `lib/life-agent-events.mjs`、`lib/life-decision-trace.mjs`；真实 B站读回仍未验收 |
@@ -40,6 +40,17 @@
 **修复：**增加 `validateOfferedLifeAction(choice, actionMenu)`，在主 Life 回文完成解析、开始执行前，统一核对动作类型及其 `id` / `bvid` / `capability` 与**当轮实际提供的菜单**严格一致。未提供则返回 `skip / invalid-decision / model-action-not-offered`，不是鱼鱼自愿休息；不调用工具或外发，不制造成功事实。正常 `skip`、有效反思、原有待办/社交/首页/意愿路径不改变。原子账本及多渠道平台授权继续各自执行前核验。
 
 回归详见 `test/v271-dev33-life-menu-hardening.test.mjs`。
+
+## dev.34 · 连续 Life Episode 与原创评论 P0 门禁分类
+
+- **一次探索的生命周期**：复用账号隔离的 `life-opportunities` 意愿账本，不新建第二任务库。首页真实入选、可信搜索、同 BV 评论好奇、公开人物投稿读取均可作为 Episode 第 1 步；后续元数据核验、作者公开投稿读取、受控写入回执继续记录在同一条 intention。
+- **最多 5 个已核验步骤**：主决策之后每一步都重新调用 Life 模型选择，最多追加 4 次；鱼鱼可随时休息或结束。每个已核验 BV 持久去重；同一作者的公开投稿读取按当前 BV 记录；写入结果未知时 Episode 冻结等待人工复核，成功写入后结束。
+- **首页接线**：只有 Life 自主发起的 `browse_home` 进程正常结束、账号一致、视频轮次回执持久化成功，并且首页候选 BV 与本轮新增入选 BV 精确匹配后，才从匹配 BV 建立 `home-browse` Episode。匹配 BV 只从事件账本瞬时返回宿主，不长期存储；候选只代表真实入选，不代表完整观看；下一步必须重新读取同一 BV 的平台元数据。
+- **后续唤醒**：每个完成的 Episode 步骤使用意愿 ID + 步数生成独立匿名 `exploration-ready` 唤醒，避免第一步事件被结算后永久去重后续步骤。自愿休息将当前意愿延后 1 小时，不会立刻再次推送；达到 5 步、主动结束或写入未知均不自动续排。
+- **原创评论 P0**：评论 Life 审批遇到可精确识别的 `life-cross-channel-rest`，且仍属于同一账号时，可等待 `notBefore` 后最多重新进行一次 Life 意愿判断；不自动重发平台评论。`life-choice-in-progress`、账号变化、结果未知不会重试。技术阻断单独计数为 `blocked`，不再误记成鱼鱼自愿拒绝。
+- **可观测性**：管理中心展示 Episode 来源、进度 `n/5`、已核验 BV 数与最近回执；轮次评论诊断区分主动不评论与技术阻断。
+
+离线专项见 `test/v271-dev34-life-episode.test.mjs`。此版本仍未完成真实 Windows/B站/72h 实机验收，保持 `releaseReady:false`。
 
 ## 尚未完全实现、后续优化顺序
 

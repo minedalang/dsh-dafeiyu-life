@@ -5,7 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.33 + 同版本闭环加固补丁）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.34 · 连续 Life Episode）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -69,6 +69,10 @@ flowchart TB
     readTodo["原只读待办"]
     explore["公开搜索/视频元数据/作者作品/已证实人物"]
     home["browse_home → 原视频 Agent → 首页候选/选片归因"]
+    lifeEpisode["Life Episode · 账号绑定意愿账本 · 最多 5 个已核验步骤"]
+    homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
+    homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
+    episodeContinuation["每步重新交给 Life 选择 · 最多追加 4 次 · 可随时休息"]
   end
   menuGuard --> readTodo
   menuGuard --> explore
@@ -76,18 +80,26 @@ flowchart TB
   readTodo --> receipts
   explore --> receipts
   home --> receipts
+  home --> homeCandidateMatch -->|仅本轮精确匹配入选 BV；不等于观看| homeEpisode
+  homeEpisode --> lifeEpisode
+  explore -.->|搜索/人物作品/视频核验成功后进入同一意愿账本| lifeEpisode
+  lifeEpisode --> episodeContinuation -.->|下一步重新选择；到上限/休息/结束时停止| selection
 
   %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_comment_consideration
   %% @code commentDiagnosis | lib/video-comment-readiness.mjs | classifyVideoCommentRound
+%% @code commentAdmission | lib/life-video-action-bridge.mjs | const waitMs=choice.notBefore-now()
+  %% @code commentAdmission | lib/life-video-action-bridge.mjs | const waitMs=choice.notBefore-now()
   subgraph outgoing["写入委派｜不存在一把可绕开各渠道限制的万能发送钥匙"]
     videoWrite["视频续行提议 → Life 意愿与原视频写入桥 → Python 工具"]
     commentReview["已选真实 BV → 模型明确考虑主评论：想说／不想说／证据不足；仅匿名诊断"]
-    commentDiagnosis["轮次结束时枚举诊断：没考虑／想说未提议／Life 否决／回执未知"]
+    commentDiagnosis["轮次结束时枚举诊断：没考虑／想说未提议／自愿否决／技术阻断／回执未知"]
+    commentAdmission["已知跨渠道冷却：到 notBefore 后最多重考虑一次；在途/未知不重试"]
     socialWrite["私信/评论/分享 → 关系与渠道授权 → 原社交发送事务"]
   end
   menuGuard -.->|仅合规候选/委派；不直接写平台| videoWrite
   home -.->|已选片后可自主考虑；不强制发言| commentReview
-  commentReview -.->|有真实表达意愿才考虑原发送门禁| videoWrite
+  commentReview -.->|有真实表达意愿才考虑原发送门禁| commentAdmission
+  commentAdmission -.-> videoWrite
   commentReview -.-> commentDiagnosis
   videoWrite -.-> commentDiagnosis
   menuGuard -.->|仅好友/社交许可；不直接发送| socialWrite
@@ -125,7 +137,7 @@ flowchart TB
   classDef active fill:#e8f3ff,stroke:#3579c9,color:#17385f
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   classDef gap fill:#fff0f1,stroke:#d26975,color:#822f39
-  class planner,menuGuard,selection,readTodo,explore,home,verifiedActions,receipts,eventLedger active
+  class planner,menuGuard,selection,readTodo,explore,home,lifeEpisode,homeEpisode,homeCandidateMatch,episodeContinuation,verifiedActions,receipts,eventLedger active
   class friends,socialWrite,videoWrite,gateway,retriever,growth partial
   class gapSocial,gapRecall,gapGrowth gap
 
@@ -143,6 +155,10 @@ flowchart TB
 %% @code planner | lib/autonomous-planner.mjs | export function plannerActionMenu
 %% @code menuGuard | lib/autonomous-planner.mjs | export function validateOfferedLifeAction
 %% @code home | lib/life-agent-events.mjs | homePickedCount
+%% @code lifeEpisode | lib/life-opportunities.mjs | const beginHomeExploration=
+%% @code episodeContinuation | lib/autonomous-planner.mjs | const continueLifeRead=async intentionId=>
+%% @code homeEpisode | index.js | const episode=lifeOpportunities.beginHomeExploration
+%% @code homeCandidateMatch | lib/life-agent-events.mjs | let transientHomePickedBvids=null
 %% @code videoWrite | lib/life-continuation-write.mjs | export function createLifeContinuationWriteExecutor
 %% @code socialWrite | index.js | runFriendInitiative:
 %% @code receipts | lib/life-video-action-bridge.mjs | export function createLifeVideoActionBridge

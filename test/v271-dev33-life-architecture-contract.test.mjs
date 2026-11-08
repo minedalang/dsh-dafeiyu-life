@@ -22,7 +22,7 @@ test('renaming an implementation symbol causes architecture drift failure',()=>{
 })
 
 test('a diagram node cannot survive deletion by leaving an orphan source marker',()=>{
-  const swapped=source.replace('    menuGuard["后端再次核对：action/id/BV/capability 必须确在本轮菜单"]\n','')
+  const swapped=source.replace(/    menuGuard\[\"后端再次核对：action\/id\/BV\/capability 必须确在本轮菜单\"\]\r?\n/,'')
   const result=checkLifeArchitecture(root,{overrides:{[name]:swapped}})
   assert.equal(result.ok,false)
   assert.ok(result.errors.some(x=>x.includes('menuGuard')&&x.includes('Mermaid 节点定义')))

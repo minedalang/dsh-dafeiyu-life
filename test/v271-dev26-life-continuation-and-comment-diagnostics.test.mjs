@@ -28,7 +28,7 @@ function harness(dir,{answers=[],account=()=>cred,read=async bvid=>({ok:true,bvi
    getLifeIntentionCues:()=>life.explorationCues(),getLifeIntentions:()=>life.continuations(),
    beginLifeExploration:(...a)=>life.beginExploration(...a),completeLifeExploration:(...a)=>life.completeExploration(...a),
    failLifeExploration:(...a)=>life.failExplorationRead(...a),inspectLifeCreatorSpace:(...a)=>life.inspectCreatorSpace(...a),
-   failLifeCreatorRead:(...a)=>life.failCreatorRead(...a),abandonLifeExploration:(...a)=>life.abandonExploration(...a),
+   failLifeCreatorRead:(...a)=>life.failCreatorRead(...a),pauseLifeExploration:(...a)=>life.pauseExploration(...a),abandonLifeExploration:(...a)=>life.abandonExploration(...a),
    executeLifeSearch:async topic=>({ok:true,topic,videos:[{bvid:BV,title:'一段真实音乐'},{bvid:OTHER,title:'其他公开作品'}]}),
    executeOpportunityRead:async bvid=>{reads++;return read(bvid)},executeCreatorSpace:async bvid=>{creators++;return creator(bvid)},
    invokeModel:async()=>{const answer=answers[calls++];return JSON.stringify(typeof answer==='function'?answer(life):answer||{action:'skip'})},
@@ -57,13 +57,13 @@ test('a verified search can lead to a verified video and creator read in one Lif
  const result=await x.planner.tick()
  assert.equal(result.action,'begin_exploration')
  assert.equal(result.result,'verified-search-results')
- assert.deepEqual(result.continuation,{considered:2,executed:2,reason:'step-verified'})
- assert.equal(x.calls,3);assert.equal(x.reads,1);assert.equal(x.creators,1)
- assert.equal(x.life.continuations()[0].receipt,'verified-creator-videos')
+ assert.deepEqual(result.continuation,{considered:3,executed:2,reason:'fish-chose-rest'})
+ assert.equal(x.calls,4);assert.equal(x.reads,1);assert.equal(x.creators,1)
+ assert.equal(x.life.status().intentions.find(row=>row.source==='interest-milestone').receipt,'fish-chose-rest')
  const state=x.planner.status()
- assert.equal(state.lifeRuns,3)
- assert.match(state.lastResult,/连续考虑 2 次，核实 2 项/)
- assert.equal(state.recent.at(-1).continuationChoices,2)
+ assert.equal(state.lifeRuns,4)
+ assert.match(state.lastResult,/连续考虑 3 次，核实 2 项/)
+ assert.equal(state.recent.at(-1).continuationChoices,3)
 }))
 
 test('fish may stop freely; no second read occurs after skip',()=>home(async dir=>{
@@ -71,6 +71,7 @@ test('fish may stop freely; no second read occurs after skip',()=>home(async dir
  const result=await x.planner.tick()
  assert.equal(result.continuation.reason,'fish-chose-rest')
  assert.equal(result.continuation.executed,0)
+ assert.equal(x.life.continuations().length,0,'voluntary rest defers this episode rather than immediately re-offering it')
  assert.equal(x.reads,0)
  assert.equal(x.calls,2)
 }))
@@ -125,7 +126,7 @@ test('comment approval bridge reports proposal, approval and independently verif
  assert.ok(!JSON.stringify(events).includes(BV));assert.ok(!JSON.stringify(events).includes('临时测试评论'))
 })
 
-test('comment gateway only counts Life decline and does not treat it as lack of model interest',async t=>{
+test('comment gateway classifies a cross-channel cooldown as a technical block, not a voluntary decline',async t=>{
  const {createLifeVideoActionBridge}=await import('../lib/life-video-action-bridge.mjs')
  const events=[]
  const bridge=createLifeVideoActionBridge({getAccountUid:()=>cred.dedeuserid,getAccountTag:()=>discussionAccountTag(cred),
@@ -136,5 +137,5 @@ test('comment gateway only counts Life decline and does not treat it as lack of 
   headers:{authorization:'Bearer '+env.BILI_LIFE_ACTION_TOKEN,'content-type':'application/json'},
   body:JSON.stringify({tool:'bili_reply',target:BV,uid:cred.dedeuserid,topLevel:true,commentText:'临时测试评论'})})
  assert.equal(resp.status,409)
- assert.deepEqual(events,[{stage:'proposed',code:''},{stage:'declined',code:'life-cross-channel-rest'}])
+ assert.deepEqual(events,[{stage:'proposed',code:''},{stage:'blocked',code:'life-cross-channel-rest'}])
 })

@@ -101,7 +101,7 @@ def _life_video_request(route, payload):
             method='POST')
         # Proxies must never see an account-bound Life capability token.
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        with opener.open(req, timeout=5 if route == '/life-comment-review' else 42) as response:
+        with opener.open(req, timeout=5 if route == '/life-comment-review' else 60 if route == '/life-action' else 42) as response:
             body = response.read(2048)
         result = json.loads(body)
         return result if isinstance(result, dict) else {'ok': False}

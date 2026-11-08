@@ -1,6 +1,10 @@
-## 当前权威 Life 全景图与源码接线审计（dev.33 同版本加固，未发布）
+## 当前权威 Life 全景图与源码接线审计（dev.34 连续 Life Episode，未发布）
 
 **优先阅读**：[GitHub 可直接渲染的完整 Life 图](./life-system-current-view.md) · [Life 完整源码关系与审计矩阵](./life-system-current.md) · [可编辑的 Mermaid 全景图](./diagrams/life-system-current.mmd) · [todos / cues / intentions / opportunities 等候选字典图](./diagrams/life-candidates-current.mmd) · [可信行动回执与记忆闭环图](./diagrams/life-receipt-memory-current.mmd)。这三张图用实际生产代码锚点校验；`npm run check:life-architecture` 和相关 Node 回归用于避免图与实现明显脱节。仍有未完全接通的渠道、模型实机及 72h 验收，`releaseReady:false`。
+
+## 当前开发版本 2.7.1-dev.34：连续 Life Episode 与评论 P0 阻断分类（未发布）
+
+[Life Episode、首页候选续行与五步边界](./life-system-current.md#dev34--连续-life-episode-与原创评论-p0-门禁分类) · [完整 Mermaid 源图](./diagrams/life-system-current.mmd)。一次首页闲逛或可信探索可进入同一账号绑定意愿，最多五个已核验步骤；每步重新交由 Life 决策，排除重复 BV，允许自愿休息或结束。已知跨渠道评论冷却仅在同账号下重考虑一次，技术阻断不再伪装成主动拒绝。没有新增 Agent、任务库、评论授权或平台自动重发；真实 Windows/B站/72h 仍待验收，`releaseReady:false`。
 
 ## dev.33 同版本维护修复 · @ 提及边界与 Life 事实纠错（未发布）
 
