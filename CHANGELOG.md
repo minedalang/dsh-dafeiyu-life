@@ -1,3 +1,10 @@
+## [2.7.1-dev.32] · Life 首页闲逛实际读取回执与跨轮反馈（未发布）
+
+- 为 `browse_home` 所启动的原视频 Agent 增加账号绑定的**真实首页工具读取**诊断：`not-observed / candidates / empty / unavailable`，不再把 `capability-launched`、进程正常退出误当作首页已读取。
+- 视频轮次随机 ID 在 headless 启动前写入既有账号账本，由子进程环境变量传给 `bili_home_recommendations` 工具包装层；读取结果只保留脱敏状态和经过 BV 格式校验的候选数量，不保存视频名、BV、评论正文或 UID。
+- 下一轮 Life 模型和管理中心可区分“首页候选成功但鱼鱼没有入选视频”与“根本未读取到候选”；原热度/判重/内容证据、Life 意愿、额度和外发回执均不变。
+- 保持 `releaseReady:false`；不合并 main、不创建 Tag、不发布；真实 Windows、B站首页接口、72 小时仍待验收。
+
 ## [2.7.1-dev.31] · Life 反思假就绪、模型失败退避与自主首页闲逛（未发布）
 
 - 修复已确认的长期 Life 空转：Life 菜单改用 `LifeReflection.status().canAutoReflect`，与反思执行器共用分域候选、自动开关、每日尝试次数、最短间隔与技术退避判定；反思执行时再次检查，调试回执报告实际 `skipped` 原因。

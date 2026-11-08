@@ -1,4 +1,8 @@
-## 当前开发版本 2.7.1-dev.31：Life 真实反思就绪 / 模型失败退避 / 自由逛首页
+## 当前开发版本 2.7.1-dev.32：Life 首页候选真实读取回执（未发布）
+
+[dev.32 生产读回与账号绑定说明](./2.7.1-dev32-home-feed-receipts.md) · [Mermaid 可编辑流程](./diagrams/2.7.1-dev32-home-feed-observation.mmd)。Life `browse_home` 不等于实际调用首页推荐或观看成功；现可在原视频轮次里分别看到首页工具真实调用状态、有效 BV 候选数量和原选片账本新增数量。无新首页 Agent、无额外模型计费、无外发授权扩张；仍需 Windows/B站/72h 实机验收，`releaseReady:false`。
+
+## 历史开发版本 2.7.1-dev.31：Life 真实反思就绪 / 模型失败退避 / 自由逛首页
 
 [dev.31 生产代码接线、权限与实机验收](./2.7.1-dev31-life-idle-and-home-browse.md) · [Mermaid 决策图](./diagrams/2.7.1-dev31-life-activity-recovery.mmd)。针对真实 33 轮 DEBUG 中的空转：反思现在必须经过与执行器一致的有效性判定；模型失败自动退避不再在短周期里重复扣额；没有兴趣候选时鱼鱼依然可自主选择首页闲逛，由**原**视频 Agent 使用真实首页推荐。模型自己可选休息、不强制刷片；基础身份无法建立与原写入权限不放宽。该版本仍需 Windows／真实模型／B站／72小时验收；`releaseReady:false`。
 

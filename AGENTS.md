@@ -5,7 +5,8 @@
 
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 ## 项目与代码入口
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.31`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.32`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- dev.32：为 Life 自主首页闲逛补上**实际 MCP 首页读取**的匿名回执：由原视频 Agent 的随机轮次 ID 绑定 headless 工具调用，区分未观察到、无候选、失败、有候选；不把选片/观看与进程成功混淆，不复制 BV/UID/私密内容，也不调整视频发送门禁。见 `docs/architecture/2.7.1-dev32-home-feed-receipts.md`。
 - dev.31：`LifeReflection.status()` 提供与自动反思执行器共用的就绪判断，`AutonomousPlanner` 不再凭 pending 数量提供假可用 reflect；反思被跳过的枚举原因进入脱敏日志。主 Life 模型失败后的退避在原 planner 预算账本持久化，手动唤醒不自动打开新写权限；`browse_home` 只在已打开首页推荐且原视频能力可用时列入菜单，通过原视频 Agent 先看真实首页推荐。`life-willingness` 的可选语境读取失败尽量降级，基础身份不可用仍拒绝写入。见 `docs/architecture/2.7.1-dev31-life-idle-and-home-browse.md`。
 - dev.30：所有本轮已核验、具有可信来源的 Life 读写操作（包括搜索、公开作品核实、社交推荐、点赞、收藏、关注、评论、私信联络、已接受的只读待办）以 `kind:action` 投影到原 `life-memory-coordinator` → `LifeMemoryGateway`，由原有 `MemoryRetriever` 的词法＋本地向量统一召回；仅保留真实来源、账号范围与安全可公开的元数据，不录私信正文或评论原文。新事件始终受账号、权限、逐步衰减和遗忘门禁；原操作账本仅作事实证明，不从永久档案复活记忆。已安装模型“重新检查”只读状态，进度只在有进行中任务时显示。详见 `docs/architecture/2.7.1-dev30-verified-life-action-memory.md`。
 - dev.28：在现有跨日公开互动的匿名人物契机之上，允许 Life 自主读取经宿主重新核验 UID 的评论者公开投稿列表，存储仍沿原账号意愿账本，只写真实 BV/标题；随后沿用 dev.27 对选定作品的逐动作写入门禁，不开放任意陌生人漫游、跨串回复或新的私信许可。见 `docs/architecture/2.7.1-dev28-public-person-life-exploration.md`。

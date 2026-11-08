@@ -71,6 +71,7 @@ import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/
 import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-planner.mjs'
 import { projectLifeIntegrationStatus,projectLifeWorldEvidence } from './lib/life-system-integration.mjs'
 import { createLifeAgentEvents } from './lib/life-agent-events.mjs'
+import {summarizeHomeFeedResult} from './lib/life-home-feed-evidence.mjs'
 import {quickMemoryState,quickSocialState,quickMemoryPlan,quickSocialPlan} from './lib/quick-setup-options.mjs'
 import { createSocialDecisionOwnership } from './lib/social-decision-ownership.mjs'
 import { createSocialHandoffFence } from './lib/social-handoff-fence.mjs'
@@ -1903,7 +1904,18 @@ function reportMeta() {
     parameters: {},
     async execute() {
       if (!cfg.homeRecommendationsEnabled) return { ok: false, error: '首页推荐来源已关闭' }
-      return call('bili_home_recommendations', {})
+      let response
+      try { response=await call('bili_home_recommendations', {}) }
+      catch (e) {
+        // Only the exact parent-created round ID can add a read diagnostic.
+        try { if (process.env.BILI_DUTY_LIFE_ROUND_ID) lifeAgentEvents?.recordHomeFeedRead(process.env.BILI_DUTY_LIFE_ROUND_ID,{status:'unavailable'}) } catch {}
+        throw e
+      }
+      try {
+        const round=process.env.BILI_DUTY_LIFE_ROUND_ID
+        if (round) lifeAgentEvents?.recordHomeFeedRead(round,summarizeHomeFeedResult(response))
+      } catch { /* Optional evidence must not make a successful platform read fail. */ }
+      return response
     },
   })
 
@@ -3053,6 +3065,14 @@ function reportMeta() {
     const watchedBeforeRun=new Set(parseSeenTable().filter(x=>x.picked).map(x=>x.bvid))
     const pickedBeforeRun = countPickedToday()
     const homeFirst=entryMode==='home'&&why==='life-agent'&&cfg.homeRecommendationsEnabled===true
+    // Register the account-scoped round BEFORE spawning, so the headless tool
+    // can report an actual homepage read against this exact opaque round.
+    if(videoRoundLifeAccountTag)try{
+      videoRoundReceiptId=lifeAgentEvents?.recordVideoRoundStart({source:why==='life-agent'?'life-agent':'manual',
+        entryMode:homeFirst?'home':'mixed',commentGate:videoCommentGateCode(cfg)})?.id||''
+      if(videoRoundReceiptId)currentVideoCommentDiagnostics={roundId:videoRoundReceiptId,scope:videoRoundLifeAccountTag,
+        proposed:0,approved:0,declined:0,verified:0,unverified:0,lastReason:''}
+    }catch(e){log('Life Agent 视频启动生命周期登记失败：'+String(e?.message||e).slice(0,100))}
     const homeGuidance=homeFirst?'【本轮 Life 自主选择：随便逛首页】优先从 bili_home_recommendations 获取当前账号首页真实候选（最多一次），不需要先有兴趣或搜索词；再由你自行决定是否读哪一条、深入了解或停止。接口不可用则按原安全规则停止或转普通探索，不要重试刷新、不要伪造观看，也不强迫评论。':''
     args.push([homeGuidance,promptFor(),emotionalState.agentContext()].filter(Boolean).join('\n\n'))
     log(`本轮已选 ${pickedBeforeRun} 条；鱼鱼自主决定是否继续探索，不设强制选片数量`)
@@ -3075,21 +3095,20 @@ function reportMeta() {
       //    中文 / emoji 打进管道会炸（用户反馈过 UnicodeDecodeError），一律按 UTF-8 来
       // ⭐ ELECTRON_RUN_AS_NODE：**桌面版（Electron）里 spawn 出去的 node 必须带这个**，
       //    否则它当成"再开一个 Electron 应用"、什么都不干就以 0 退出（issue #5：0.17 秒、code 0、什么都没做）
-      env: uvEnv({ BILI_DUTY_HOME: stateDir, ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}), ...(dsh.env || {}) }),
+      env: uvEnv({ BILI_DUTY_HOME: stateDir, ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}), ...(dsh.env || {}),
+        ...(videoRoundReceiptId?{BILI_DUTY_LIFE_ROUND_ID:videoRoundReceiptId}:{}) }),
     })
-    } catch(e) {releaseDuty();throw e}
+    } catch(e) {
+      releaseDuty()
+      if(videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
+        lifeAgentEvents?.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:null})
+      }catch{}
+      throw e
+    }
     child.once('close',releaseDuty)
     const stopLiveVideo=liveLifeActivity.start('video',videoRoundLifeAccountTag)
     child.once('close',stopLiveVideo)
     child.once('error',stopLiveVideo)
-    if(videoRoundLifeAccountTag&&Number.isSafeInteger(child.pid)&&child.pid>0)try{
-      // A launch receipt is not a watching receipt. The account-scoped ledger
-      // will only record completion after the child actually exits.
-      videoRoundReceiptId=lifeAgentEvents?.recordVideoRoundStart({source:why==='life-agent'?'life-agent':'manual',
-        commentGate:videoCommentGateCode(cfg)})?.id||''
-      if(videoRoundReceiptId)currentVideoCommentDiagnostics={roundId:videoRoundReceiptId,scope:videoRoundLifeAccountTag,
-        proposed:0,approved:0,declined:0,verified:0,unverified:0,lastReason:''}
-    }catch(e){log('Life Agent 视频启动生命周期登记失败：'+String(e?.message||e).slice(0,100))}
     // ⚠️ 2026-10-16 issue #1（用户 `miaoxingyunduo` 贴了崩溃日志）：`duty.log` 被别的进程占着时
     //    (`EBUSY`) `appendFileSync` 会抛异常 —— 而这里是 **stream 的 data 回调**，没人接
     //    ⇒ **未捕获异常 ⇒ 整个 DSH 宿主被杀**（所有会话一起没）。跟 10-14 定时器那次是同一类 ✗
@@ -3165,6 +3184,9 @@ function reportMeta() {
     const spawnConfirmed=Number.isSafeInteger(child.pid)&&child.pid>0
     dutyChild = spawnConfirmed?child:null
     dutyStartedAt = spawnConfirmed?Date.now():0
+    if(!spawnConfirmed&&videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
+      lifeAgentEvents?.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:null})
+    }catch{}
     child.on('error', (e) => {
       log(`刷B站起不来：${e?.message ?? e}`)
       if(videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
