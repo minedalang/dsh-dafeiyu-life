@@ -117,6 +117,7 @@ import { createSocialContextAssembler } from './lib/social-context-assembler.mjs
 import { createSocialInteractionCoordinator } from './lib/social-interaction-coordinator.mjs'
 import { createLifeMemoryCoordinator } from './lib/life-memory-coordinator.mjs'
 import {createUniversalLifeEpisodes} from './lib/life-universal-episodes.mjs'
+import {lifeSubagentHandoff,dmContactFollowCandidates,validateSubagentNextAction} from './lib/life-subagent-continuity.mjs'
 import {lifeVideoGate} from './lib/life-pace-policy.mjs'
 import {createLifeActionAttribution} from './lib/life-action-attribution.mjs'
 import {eligibleLifeEpisodeSources,prioritizeLifeContinuationCandidates} from './lib/life-episode-entrypoints.mjs'
@@ -478,6 +479,7 @@ export const Config = !z ? undefined : z.object({
   /** 仅允许删除本插件有可信创建记录的收藏夹；与自主收藏开关独立。 */
   autoFavoriteDelete: z.boolean().default(true).extra('volatile',true),
   agentFollowEnabled: z.boolean().default(true).extra('volatile', true),
+  dmFollowAutonomyEnabled: z.boolean().default(false).extra('volatile', true),
   incomingImageRecognitionEnabled: z.boolean().default(true).extra('volatile', true),
 })
 
@@ -880,6 +882,7 @@ function reportMeta() {
     if ('dailyDynamicDailyLimit' in p) p.dailyDynamicDailyLimit = Math.max(0, Math.min(10, Math.floor(Number(p.dailyDynamicDailyLimit)||0)))
     if ('autoVideoCollect' in p) p.autoVideoCollect = p.autoVideoCollect === true
     if ('agentFollowEnabled' in p) p.agentFollowEnabled = p.agentFollowEnabled === true
+    if ('dmFollowAutonomyEnabled' in p) p.dmFollowAutonomyEnabled = p.dmFollowAutonomyEnabled === true
     if ('incomingImageRecognitionEnabled' in p) p.incomingImageRecognitionEnabled = p.incomingImageRecognitionEnabled === true
     if ('autoFavoriteVisibility' in p && !['auto','private','public'].includes(p.autoFavoriteVisibility)) delete p.autoFavoriteVisibility
     if ('favFolderId' in p) p.favFolderId = Math.max(0, Math.floor(Number(p.favFolderId) || 0))
@@ -1490,7 +1493,7 @@ function reportMeta() {
   let mcpKey = ''
   const favoriteStyle=()=>favoriteStyleFromPersona(effectivePersonaPrompt(cfg.personaPrompt))
   const favoriteTopics=()=>{try{return publicFavoriteTopics(cfg.coreInterestTopics,listLifeInterests(stateDir))}catch{return publicFavoriteTopics(cfg.coreInterestTopics)}}
-  const mcpKeyNow = () => `${cfg.pythonPath}|${join(stateDir, 'mcp_server.py')}|${favoriteStyle()}|${favoriteTopics()}|${cfg.commentDailyLimit}|${cfg.autoVideoLikeDailyLimit}|${cfg.diagMentionEnabled}|${cfg.diagDynamicEnabled}|${cfg.diagVisionEnabled}|${cfg.diagMemeEnabled}|${cfg.friendDirectory}|${cfg.visionEnabled}|${cfg.visionMode}|${cfg.visionFrames}|${cfg.visionDailyLimit}|${cfg.visionModelProvider}|${cfg.visionModelId}|${cfg.visionReasoningEffort}|${cfg.visionEndpoint}|${cfg.transcribe}|${cfg.autoFavoriteVisibility}|${cfg.autoFavoriteDelete}`
+  const mcpKeyNow = () => `${cfg.pythonPath}|${join(stateDir, 'mcp_server.py')}|${favoriteStyle()}|${favoriteTopics()}|${cfg.commentDailyLimit}|${cfg.autoVideoLikeDailyLimit}|${cfg.diagMentionEnabled}|${cfg.diagDynamicEnabled}|${cfg.diagVisionEnabled}|${cfg.diagMemeEnabled}|${cfg.friendDirectory}|${cfg.visionEnabled}|${cfg.visionMode}|${cfg.visionFrames}|${cfg.visionDailyLimit}|${cfg.visionModelProvider}|${cfg.visionModelId}|${cfg.visionReasoningEffort}|${cfg.visionEndpoint}|${cfg.transcribe}|${cfg.autoFavoriteVisibility}|${cfg.autoFavoriteDelete}|${cfg.dmFollowAutonomyEnabled}|${cfg.agentFollowEnabled}`
 
   const assertSecureMcp = () => {
     // 安全升级必须拒绝继续使用旧/用户自行修改但未经复核的 MCP 副本。
@@ -1524,6 +1527,7 @@ function reportMeta() {
         BILI_MENTION_DIAG_ENABLED: cfg.diagMentionEnabled?'1':'0', BILI_DYNAMIC_DIAG_ENABLED: cfg.diagDynamicEnabled?'1':'0',
         BILI_VISION_DIAG_ENABLED: cfg.diagVisionEnabled?'1':'0', BILI_MEME_DIAG_ENABLED: cfg.diagMemeEnabled?'1':'0',
         BILI_SESSION_MANUAL_LIKE_ENABLED: '1', BILI_SESSION_MANUAL_ACTIONS_ENABLED: '1', BILI_SESSION_MANUAL_RELATIONS_ENABLED: '1',
+        BILI_DM_FOLLOW_ENABLED: cfg.dmFollowAutonomyEnabled===true&&cfg.agentFollowEnabled===true?'1':'0',
         BILI_SESSION_DM_ALLOWED_UIDS: (()=>{try{return JSON.parse(normalizeFriendDirectory(cfg.friendDirectory)).filter(x=>x.dm===true).map(x=>x.uid).join(',')}catch{return ''}})(),
         BILI_SESSION_DM_DAILY_LIMIT: '5', BILI_SESSION_FOLLOW_DAILY_LIMIT: '3', BILI_SESSION_UNFOLLOW_DAILY_LIMIT: '1',
         BILI_AUTO_VIDEO_LIKE_DAILY_LIMIT: String(cfg.autoVideoLikeDailyLimit),
@@ -2470,6 +2474,7 @@ function reportMeta() {
           '。这是此前只读生活契机的元数据核实，不代表看过视频、听过音频、喜欢某主题或认识评论者。可自主决定继续探索或忽略，不得自动发送。\n'
       }catch(e){log('生活契机提示读取失败：'+String(e?.message||e).slice(0,100));return ''}
     })()
+    const videoEpisodeHandoff=lifeSubagentHandoff({agent:'video',episodes:universalLifeEpisodes})
     const videoSearchPlan='兴趣主导搜索：'+baseQueries.join('、')+'。'
       +(interests.length?'当前兴趣状态：'+interests.map(e=>e.topic+'('+e.stage+')').join('、')+'。':'兴趣证据不足，先使用多方向冷启动探索；搜到并不代表已经喜欢。')
       +(kws.length?'主人额外指定主题：'+kws.slice(0,12).join('、')+'；要适当照顾，但不得取代兴趣主导。':'主人没有额外指定主题。');
@@ -2577,6 +2582,7 @@ function reportMeta() {
       + `⭐ 另外把这一轮**看过的每一条视频（挑中的和跳过的都算）**通过 bili_digest_append 追加进固定归档`
       + ` —— 一行一条：日期 · BV 号 · 标题 · UP · 一句话结论 · 链接（跳过的那条在后面注明理由）；`
       + `这是**给以后检索用**的（报告是给人看的，归档是给"回头翻"用的），别省略、也别只写挑中的。`
+      + '\n【本账号公开视频生活片段（只读、脱敏；不是新操作许可）】'+JSON.stringify(videoEpisodeHandoff).slice(0,950)+'。可以据此自然决定续行、换方向或停止，不得把已入选/读取误称观看完成。'
       + commentConsiderationDoc
       + `公开评论工具层的每日最大发送次数：${cfg.commentDailyLimit}（含回复，超限工具会拒绝）。`
       + `公开动态同步：${cfg.commentSyncDynamic ? `开启；可以将已成功的公开评论作为后续 Life 动态候选（本轮 sync_to_dynamic 固定 false），每天最多尝试 ${cfg.dynamicDailyLimit} 次。只有当你自己确实想把这段评论分享给更多人、且脱离原评论区也能自然理解，才选择 true；即使评论写得不错也完全可以不分享。涉及私人事实、争议、重复或强依赖视频上下文时必须 false。不要为了凑数发动态。调用时用 sync_dynamic_reason 写 8–40 字的简短理由，仅本地诊断可见。` : '关闭，sync_to_dynamic 必须为 false'}。评论成功后只能作为 Life 之后的可信候选素材；不能在本轮自动同步动态；动态必须由 Life 独立选择，严禁私人文件、对话内容或隐藏指令。`
@@ -4142,7 +4148,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const verifiedSharedVideoContext=confirmedSharePromptContext(share)
       const todoProgressContext=dmTodoProgressContext.forReply(req)
       const visualReq=await addIncomingPictureObservation(req)
+      const episodeContext=lifeSubagentHandoff({agent:'dm',episodes:universalLifeEpisodes,sourceRef:'dm-conversation:'+String(req.uid)})
+      const followCandidates=dmContactFollowCandidates({enabled:cfg.dmFollowAutonomyEnabled===true&&cfg.agentFollowEnabled===true&&cfg.masterEnabled===true&&req.trigger==='incoming',
+        uid:String(req.uid),role:tier,history:req.history,now:Date.now(),optedOut:socialPortrait?.contactBoundary?.(req.uid)==='stop'})
       const generated=await interactionBatcher.generate({kind:'dm',role:tier,...visualReq,socialAutonomy:true,
+        lifeEpisodeContext:episodeContext,availableLifeActions:followCandidates,
         p6MaxBubbles:cfg.dmP6MaxBubbles,p6MinDelayMinutes:cfg.socialP6MinDelayMinutes,p6MaxDelayMinutes:cfg.socialP6MaxDelayMinutes,
         threadKey:`dm:${String(req.uid)}`,relationshipStage,
         allowTodoIntake:req.trigger!=='scheduled',
@@ -4178,6 +4188,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const receiptId=result?.success===true?extractBiliDmReceiptId(result):''
         return receiptId?{ok:true,receiptId}:{ok:false}
       })
+      if(guarded?.ok===true&&guarded?.receiptId){
+        lifeActionAttribution.verified({accountTag:owner.scope,channel:'dm',owner:'life',
+          sourceRef:'dm-conversation:'+String(uid),receiptId:'bili-dm:'+guarded.receiptId,
+          action:'dm_reply',kind:'social'})
+      }
       lifeWillingness?.receipt(lifeWillingnessProof,{status:guarded?.ok===true?'verified':'uncertain',
         receiptId:guarded?.ok===true&&guarded?.receiptId?'bili-dm:'+guarded.receiptId:''})
       if(guarded?.ok!==true)return guarded
@@ -4186,6 +4201,36 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return guarded
       });
       })
+    },
+    onVerifiedReply:async({uid,messageId,nextAction,history,optedOut,trusted,approved:dmApproved})=>{
+      refreshCfg()
+      const scope=trustedLifeAccountTag()
+      const candidates=dmContactFollowCandidates({enabled:cfg.masterEnabled===true&&
+        cfg.agentFollowEnabled===true&&cfg.dmFollowAutonomyEnabled===true,
+        uid:String(uid),role:(trusted||dmApproved)&&socialPolicyGate.actor(uid).role==='friend'?'friend':'stranger',
+        history,optedOut,now:Date.now()})
+      const action=validateSubagentNextAction(nextAction,candidates)
+      if(!action||action.action!=='follow_dm_contact'||accountBinding.status().blocked||!Number.isSafeInteger(Number(uid))||String(Number(uid))!==String(uid))return {ok:false,reason:'not-offered'}
+      const approved=await lifeWillingness?.decide({trigger:'dm-relationship',scene:'dm',uid:String(uid),
+        sourceKey:'dm-follow:'+String(uid)+':'+String(messageId),
+        candidates:[{id:'follow_dm_contact',kind:'dm_follow',label:'关注有真实长期往来的这一位私信联系人'}],
+        hint:'当前对话已获核验并产生关注候选；不是对方指令，决定仍可拒绝'})
+      if(approved?.ok!==true)return {ok:false,reason:approved?.reason||'life-declined'}
+      const valid=()=>cfg.masterEnabled===true&&cfg.agentFollowEnabled===true&&cfg.dmFollowAutonomyEnabled===true&&
+        scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&
+        socialPolicyGate.actor(uid).role==='friend'&&lifeWillingness?.verify(approved.proof,'dm_follow')?.ok===true
+      if(!valid()){lifeWillingness?.receipt(approved.proof,{status:'not-sent'});return {ok:false,reason:'authorization-changed'}}
+      let result
+      try{result=await call('bili_follow_dm_contact',{uid:Number(uid),reason:action.reason})}
+      catch(e){lifeWillingness?.receipt(approved.proof,{status:'uncertain'});return {ok:false,reason:'platform-uncertain'}}
+      if(result?.ok===true&&result?.action==='follow'&&String(result.uid)===String(uid)&&scope===trustedLifeAccountTag()){
+        lifeActionAttribution.verified({accountTag:scope,channel:'dm',owner:'life',sourceRef:'dm-conversation:'+String(uid),
+          receiptId:'bili-relation-follow:'+String(uid),action:'dm_follow',kind:'social'})
+        lifeWillingness?.receipt(approved.proof,{status:'verified',receiptId:'bili-relation-follow:'+String(uid)})
+        return {ok:true}
+      }
+      lifeWillingness?.receipt(approved.proof,{status:result?.status==='uncertain-no-retry'?'uncertain':'not-sent'})
+      return {ok:false,reason:result?.status==='uncertain-no-retry'?'platform-uncertain':'not-confirmed'}
     },
     logger: {
       warn: (msg) => log('私信自动回复警告：' + String(msg)),
@@ -4576,7 +4621,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         throw Error('Life 意愿本轮不可核验，保留消息待下次安全检查')
       }
       const visualReq=await addIncomingPictureObservation(req)
-      const generated=await interactionBatcher.generate({...visualReq,identityContext:'',incomingRpid:req.rpid,
+      const commentEpisodeContext=lifeSubagentHandoff({agent:'comment',episodes:universalLifeEpisodes,
+        sourceRef:'comment-thread:'+String(req.bvid||'')+':'+String(req.uid||'')});
+      const generated=await interactionBatcher.generate({...visualReq,lifeEpisodeContext:commentEpisodeContext,
+        identityContext:'',incomingRpid:req.rpid,
       p6MaxBubbles:cfg.commentP6MaxBubbles,p6MinDelayMinutes:cfg.socialP6MinDelayMinutes,p6MaxDelayMinutes:cfg.socialP6MaxDelayMinutes,
       allowTodoIntake:req.forceReply!==true&&req.todoIntake!==false,
       onTodoProposal:req.forceReply===true||req.todoIntake===false?undefined:proposal=>intakeAiSocialTodo({...proposal,request:req,channel:'comment'}),
@@ -4646,6 +4694,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           rpid:Number(req.rpid),root:Number(req.root)||0,text:String(req.text).slice(0,130)})
         return r?.success===true?{ok:true,rpid:String(r?.rpid_str||r?.rpid||'')}:{ok:false}
       })
+      // Canonical platform confirmation first enters the SAME UID/thread Episode;
+      // the Life willingness notification must not preempt attribution with a
+      // second hashed source using the identical platform receipt.
+      if(ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))&&
+          /^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))){
+        lifeActionAttribution.verified({accountTag:owner.scope,channel:'comment',owner:'life',
+          sourceRef:'comment-thread:'+String(req.bvid||'')+':'+String(req.uid),
+          receiptId:'bili-comment:'+String(ack.rpid),action:'comment_reply',kind:'social'})
+      }
       lifeWillingness?.receipt(req.lifeWillingnessProof,{status:ack?.ok===true?'verified':'uncertain',
           receiptId:ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))?'bili-comment:'+ack.rpid:''})
       if(ack?.ok!==true)return ack
@@ -7759,7 +7816,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         'diagMentionEnabled','diagDynamicEnabled','diagVisionEnabled','diagMemeEnabled','diagAtInviteEnabled','diagReplyInboxEnabled','commentMemesEnabled','commentMemesDebug','commentMemesPerDay','commentMemesPerRound','commentMemePrompt','visionPrompt','memeMemoryEnabled', 'memeMemoryMaxEntries', 'visionEnabled', 'visionDebug', 'visionMode', 'visionModelProvider', 'visionModelId', 'visionReasoningEffort', 'visionEndpoint', 'visionFrames', 'visionDailyLimit', 'commentPerRound', 'mentionName', 'mentionTargets', 'mentionProfiles', 'friendDirectory', 'mentionMode', 'commentSyncDynamic', 'dynamicDailyLimit', 'commentDailyLimit',
         'videoModelProvider','videoModelId','videoReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','interactionContextMode','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort','memeRulesPrompt',
         'keywords', 'coreInterestTopics', 'pythonPath', 'dshBin', 'headlessProfile', 'workspace', 'reportLevel', 'personaPrompt', 'characterLore', 'dmWatch', 'dmWatchMinutes', 'commentReplyWatchMinutes', 'commentAtWatchMinutes', 'commentTopWatchMinutes', 'dmReplyPerDay', 'dmContextMessages', 'dmOwnerUid', 'dmWhitelist', 'dmStrangerOnce', 'dmStrangerAutonomyEnabled', 'dmP6Enabled', 'dmP6MaxBubbles', 'dmStrangerText', 'dmStrangerMaxReplies', 'dmStrangerFirstFixed', 'dmApprovalEnabled','dmApprovalPhrase','dmApprovedTotalLimit','dmApprovedDailyLimit',
-        'commentWatchReplies', 'commentWatchTop', 'commentAtEnabled', 'commentP6Enabled', 'commentAtP6Enabled', 'commentP6MaxBubbles', 'socialP6MinDelayMinutes', 'socialP6MaxDelayMinutes', 'socialRhythmCrossChannelMinutes', 'socialRhythmDailyPerPerson', 'friendAtFeedbackEnabled', 'strangerInspirationEnabled','socialInvitationEnabled','socialInvitationAutoInspectEnabled','ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentDraftEnabled','ownerCommentPublishEnabled','ownerCommentSocialPublishEnabled','ownerCommentNaturalAckEnabled', 'commentAtMode', 'commentAtWhitelist', 'commentTopCount', 'commentTopVideoCount', 'commentReplyHotCount', 'commentAllowGeneralTop', 'commentSideHotEnabled', 'commentReplyPerPoll', 'commentReplyPerDay', 'commentOwnTopPerUser', 'commentOwnNestedPerUser', 'mainSessionBridgeEnabled', 'mainSessionId', 'mainSessionAutoSync', 'mainSessionSyncMinutes', 'mainSessionDailyBatches', 'mainSessionBatchSize', 'mainSessionIncludeComments', 'mainSessionMemoryEnabled', 'mainSessionMemoryAutoBili', 'mainSessionMemorySemanticEnabled', 'mainSessionMemoryEmbeddingEnabled', 'mainSessionMemoryModelProvider', 'mainSessionMemoryModelId', 'mainSessionMemoryReasoningEffort', 'mainSessionMemoryCandidates', 'mainSessionMemorySearchDailyLimit', 'socialOutreachEnabled', 'socialLifeIntentEnabled', 'lifeProactiveFriendDmEnabled', 'socialVideoRecommendationsAuthorizedV2', 'emotionSystemEnabled', 'socialAutoSend', 'socialOutreachDailyLimit', 'ownerTodoAutoReviewEnabled','ownerTodoReviewMinutes','ownerTodoCompletionFollowupEnabled','socialTodoCompletionFollowupEnabled','ownerTodoFollowupCooldownMinutes','ownerTodoFollowupDailyLimit','ownerTodoFollowupMinIntervalMinutes','ownerTodoFollowupPollMinutes','ownerTodoFollowupQuietEnabled','ownerTodoFollowupQuietStartHour','ownerTodoFollowupQuietEndHour','autonomousPlannerEnabled','emotionRecallEnabled','emotionRecallMainEnabled','emotionRecallDmEnabled','emotionRecallUnlimited','emotionRecallDailyLimit','emotionRecallCooldownHours','emotionRecallStartHour','emotionRecallEndHour','emotionRecallCandidateLimit','emotionRecallHistoryLimit','emotionRecallRecentDays','emotionRecallMinAgeDays','emotionRecallEmotionMinIntensity','emotionRecallEmotionMaxAgeHours','ownerDmAgentEnabled','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','ownerDmAgentContextTurns','ownerDmAgentContextChars','ownerDmAgentModelProvider','ownerDmAgentModelId','ownerDmAgentReasoningEffort','ownerDmReadCommandsEnabled','ownerDmActionsEnabled','ownerDmLikeEnabled','ownerDmCollectEnabled','ownerDmFollowEnabled','ownerDmCommentDraftEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicDraftEnabled','ownerDmDynamicPublishEnabled','ownerDmFriendMessageEnabled','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour', 'mainSessionReflectionAuto', 'mainSessionReflectionModelProvider', 'mainSessionReflectionModelId', 'mainSessionReflectionReasoningEffort', 'mainSessionReflectionMinCandidates', 'mainSessionReflectionBatchSize', 'mainSessionReflectionIntervalHours', 'mainSessionReflectionDailyBatches', 'mainSessionMemoryHalfLifeDays', 'socialMemoryHalfLifeNewDays', 'socialMemoryHalfLifeKnownDays', 'socialMemoryHalfLifeFamiliarDays', 'socialMemoryHalfLifeFriendDays', 'socialMemoryHalfLifeWhitelistDays', 'socialMemoryHalfLifeOwnerDays', 'mainSessionMemoryThreshold', 'mainSessionMemoryMaxItems', 'mainSessionMemoryMaxChars', 'mainSessionMemoryDailyQuota', 'mainSessionMemoryConsolidationEnabled', 'mainSessionMemoryFactsMax', 'favFolderId','autoVideoLike','autoVideoLikeDailyLimit','autoVideoCollect','autoFavoriteVisibility','autoFavoriteDelete','agentFollowEnabled','incomingImageRecognitionEnabled','dailyDynamicEnabled','dailyDynamicDailyLimit','dailyDynamicDraftOnly']) {
+        'commentWatchReplies', 'commentWatchTop', 'commentAtEnabled', 'commentP6Enabled', 'commentAtP6Enabled', 'commentP6MaxBubbles', 'socialP6MinDelayMinutes', 'socialP6MaxDelayMinutes', 'socialRhythmCrossChannelMinutes', 'socialRhythmDailyPerPerson', 'friendAtFeedbackEnabled', 'strangerInspirationEnabled','socialInvitationEnabled','socialInvitationAutoInspectEnabled','ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentDraftEnabled','ownerCommentPublishEnabled','ownerCommentSocialPublishEnabled','ownerCommentNaturalAckEnabled', 'commentAtMode', 'commentAtWhitelist', 'commentTopCount', 'commentTopVideoCount', 'commentReplyHotCount', 'commentAllowGeneralTop', 'commentSideHotEnabled', 'commentReplyPerPoll', 'commentReplyPerDay', 'commentOwnTopPerUser', 'commentOwnNestedPerUser', 'mainSessionBridgeEnabled', 'mainSessionId', 'mainSessionAutoSync', 'mainSessionSyncMinutes', 'mainSessionDailyBatches', 'mainSessionBatchSize', 'mainSessionIncludeComments', 'mainSessionMemoryEnabled', 'mainSessionMemoryAutoBili', 'mainSessionMemorySemanticEnabled', 'mainSessionMemoryEmbeddingEnabled', 'mainSessionMemoryModelProvider', 'mainSessionMemoryModelId', 'mainSessionMemoryReasoningEffort', 'mainSessionMemoryCandidates', 'mainSessionMemorySearchDailyLimit', 'socialOutreachEnabled', 'socialLifeIntentEnabled', 'lifeProactiveFriendDmEnabled', 'socialVideoRecommendationsAuthorizedV2', 'emotionSystemEnabled', 'socialAutoSend', 'socialOutreachDailyLimit', 'ownerTodoAutoReviewEnabled','ownerTodoReviewMinutes','ownerTodoCompletionFollowupEnabled','socialTodoCompletionFollowupEnabled','ownerTodoFollowupCooldownMinutes','ownerTodoFollowupDailyLimit','ownerTodoFollowupMinIntervalMinutes','ownerTodoFollowupPollMinutes','ownerTodoFollowupQuietEnabled','ownerTodoFollowupQuietStartHour','ownerTodoFollowupQuietEndHour','autonomousPlannerEnabled','emotionRecallEnabled','emotionRecallMainEnabled','emotionRecallDmEnabled','emotionRecallUnlimited','emotionRecallDailyLimit','emotionRecallCooldownHours','emotionRecallStartHour','emotionRecallEndHour','emotionRecallCandidateLimit','emotionRecallHistoryLimit','emotionRecallRecentDays','emotionRecallMinAgeDays','emotionRecallEmotionMinIntensity','emotionRecallEmotionMaxAgeHours','ownerDmAgentEnabled','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','ownerDmAgentContextTurns','ownerDmAgentContextChars','ownerDmAgentModelProvider','ownerDmAgentModelId','ownerDmAgentReasoningEffort','ownerDmReadCommandsEnabled','ownerDmActionsEnabled','ownerDmLikeEnabled','ownerDmCollectEnabled','ownerDmFollowEnabled','ownerDmCommentDraftEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicDraftEnabled','ownerDmDynamicPublishEnabled','ownerDmFriendMessageEnabled','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour', 'mainSessionReflectionAuto', 'mainSessionReflectionModelProvider', 'mainSessionReflectionModelId', 'mainSessionReflectionReasoningEffort', 'mainSessionReflectionMinCandidates', 'mainSessionReflectionBatchSize', 'mainSessionReflectionIntervalHours', 'mainSessionReflectionDailyBatches', 'mainSessionMemoryHalfLifeDays', 'socialMemoryHalfLifeNewDays', 'socialMemoryHalfLifeKnownDays', 'socialMemoryHalfLifeFamiliarDays', 'socialMemoryHalfLifeFriendDays', 'socialMemoryHalfLifeWhitelistDays', 'socialMemoryHalfLifeOwnerDays', 'mainSessionMemoryThreshold', 'mainSessionMemoryMaxItems', 'mainSessionMemoryMaxChars', 'mainSessionMemoryDailyQuota', 'mainSessionMemoryConsolidationEnabled', 'mainSessionMemoryFactsMax', 'favFolderId','autoVideoLike','autoVideoLikeDailyLimit','autoVideoCollect','autoFavoriteVisibility','autoFavoriteDelete','agentFollowEnabled','dmFollowAutonomyEnabled','incomingImageRecognitionEnabled','dailyDynamicEnabled','dailyDynamicDailyLimit','dailyDynamicDraftOnly']) {
         if (k in body) patch[k] = body[k]
       }
       if(body?.socialOutreachEnabled===false||body?.socialLifeIntentEnabled===false)patch.socialVideoRecommendationsAuthorizedV2=false

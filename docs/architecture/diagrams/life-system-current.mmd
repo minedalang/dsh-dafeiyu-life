@@ -1,4 +1,4 @@
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.37 · Universal Life Episode）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.38 · Universal Life Episode + 专业上下文交接）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -187,3 +187,21 @@ flowchart TB
 %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
 
 %% @code feedback | lib/autonomous-planner.mjs | const videoFeedbackPending=
+
+%% dev.38：专业 Agent 局部自主性——模型可以自主提议，但原职责/权限分开。
+subgraph subagentLoop["dev.38 专业 Agent 续行｜第一阶段，非全 Agent 通用循环"]
+  subagentContext["Subagent Handoff｜同账号、同来源、脱敏 Episode 摘要"]
+  dmChoice["私信 Agent｜本轮 reply/skip/defer + 可选 follow_dm_contact"]
+  dmPending["原私信状态 pendingLifeAction｜75s 后跨 poll 重新审批"]
+  dmFollow["已核验长期好友 UID｜独立关注开关 + Life 二次意愿 + B站关系读回"]
+end
+universalEpisode -.->|不授予权限| subagentContext
+subagentContext -.-> dmChoice
+socialFacts -.->|实名 UID 仅由原私信来源核验| dmChoice
+dmChoice -.->|私信已送达才保留可选意愿| dmPending
+dmPending -.->|重新核验、可以拒绝| dmFollow
+dmFollow -->|已核实后回执| receipts
+%% @code subagentContext | lib/life-subagent-continuity.mjs | export function lifeSubagentHandoff
+%% @code dmChoice | lib/interaction-batch.mjs | availableLifeActions
+%% @code dmPending | lib/dm-autoreply.mjs | person.pendingLifeAction=
+%% @code dmFollow | vendor/bilibili-mcp/mcp_server.py | async def bili_follow_dm_contact

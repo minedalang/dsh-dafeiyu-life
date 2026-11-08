@@ -1984,6 +1984,40 @@ async def bili_follow_creator(bvid: str, reason: str) -> str:
 
 
 @tool()
+async def bili_follow_dm_contact(uid: int, reason: str) -> str:
+    """Follow ONE verified DM partner on a host-only, separately opted-in Life decision.
+
+    This is not a video-agent tool. The JS host supplies the canonical UID
+    from its authenticated DM inbox; the model cannot select a different UID.
+    """
+    if (error := _guard('bili_follow_dm_contact')): return error
+    try:
+        if os.environ.get('BILI_JS_MCP_ADAPTER') != '1' or os.environ.get('BILI_DM_FOLLOW_ENABLED') != '1':
+            raise ValueError('私信联系人自主关注未获得单独授权')
+        target=int(uid)
+        why=str(reason or '').strip()
+        if target<=0 or target>=10**19 or len(why)<8 or len(why)>160:
+            raise ValueError('关注目标或自主理由无效')
+        cred=get_cred();account=str(getattr(cred,'dedeuserid','') or '')
+        if not account.isdigit() or int(account)<=0 or str(target)==account:
+            raise ValueError('不能核验当前账号或关注自己')
+        relation=_single_creator_relation(cred,target)
+        if relation!=0:
+            return json.dumps({'ok':False,'skipped':'already-followed-or-blocked'},ensure_ascii=False)
+        claim=_relation_claim(account,target,'follow',3)
+        try:
+            await _coordinated_relation('follow',target,cred,
+                lambda: user.User(uid=target,credential=cred).modify_relation(user.RelationType.SUBSCRIBE))
+        except Exception as exc:
+            _relation_finish(account,target,'follow',claim,False)
+            return json.dumps({'ok':False,'status':'uncertain-no-retry','error':str(exc)[:140]},ensure_ascii=False)
+        _relation_finish(account,target,'follow',claim,True)
+        return json.dumps({'ok':True,'action':'follow','uid':target,'mode':'verified-dm-contact'},ensure_ascii=False)
+    except Exception as exc:
+        return json.dumps({'ok':False,'error':str(exc)[:160]},ensure_ascii=False)
+
+
+@tool()
 async def bili_unfollow_creator(uid: int, reason: str) -> str:
     # Unfollow only self-followed creator after 7 days
     if (error:=_guard('bili_unfollow_creator')):return error

@@ -1,3 +1,12 @@
+## [2.7.1-dev.38] · 专业 Agent Episode 交接与私信关系自主关注（开发预览，未发布）
+
+- 新增统一只读 `life-subagent-continuity.mjs`，视频/DM/评论按账号和原动作源获取脱敏 Episode；不新建记忆源。
+- 私信 Agent 在原本回复模型调用中，可自主提出 `follow_dm_contact`；真实回复成功后保留最多 24h 的跨 poll 意愿，冷却后经 Life 意愿二次审批和 B站关系读回才关注。开关单独且默认关闭。
+- 真实 DM 回复/公开评论回复的确认回执按同 UID 归入 Episode；原写入权限和遗忘隔离继续生效。
+- 补充专项测试及 Mermaid 全景图，真实 Windows/B站/长期运行仍未验收，不发布。
+
+详见 `docs/architecture/2.7.1-dev38-subagent-action-continuity.md`。
+
 ## [2.7.1-dev.37] · 视频入选后评论意愿补记修复（同版本维护，未发布）
 
 - 修复视频 Agent 先写入真实入选 BV、随后使用同一 `bili_ledger_mark` 补填 `comment_decision` 时因旧 `already_seen` 快捷返回而错误拒绝的问题。已有行不重复写，只读考虑请求仍送原 Life 桥核验。

@@ -79,3 +79,11 @@ flowchart LR
 %% @code resume | lib/life-episode-entrypoints.mjs | export function prioritizeLifeContinuationCandidates
 
 %% @code reviewFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
+
+%% dev.38：以下私信跟进动作由私信 Agent 自主提议，不能在顶层直接凭 UID 触发。
+dmHistory["同 UID 真正长期双向私信证据 + 本轮独立自主关注授权"]
+dmFollowCandidate["follow_dm_contact｜可信好友；仅建议，绝不直接外发"]
+dmHistory --> dmFollowCandidate
+dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
+%% @code dmHistory | lib/life-subagent-continuity.mjs | export function dmContactFollowCandidates
+%% @code dmFollowCandidate | lib/life-subagent-continuity.mjs | action:'follow_dm_contact'

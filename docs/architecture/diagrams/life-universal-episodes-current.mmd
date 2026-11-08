@@ -57,3 +57,12 @@ flowchart TB
 %% @code reflectionReceipt | lib/life-reflection.mjs | result.receiptId=receiptId
 
 %% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
+
+%% dev.38 专业 Agent 局部决策复用同账号匿名因果摘要；Episode 没有发送权。
+subagentHandoff["Episode Handoff｜视频/私信/评论按自身可读范围裁剪"]
+subagentFollow["私信 Agent 可自选长期好友关注｜原 DM 状态跨轮延期，独立权限复核"]
+record -.->|只读匿名动作历史| subagentHandoff
+subagentHandoff -.-> subagentFollow
+subagentFollow -.->|成功的平台关系读回才算已完成| attribution
+%% @code subagentHandoff | lib/life-subagent-continuity.mjs | export function lifeSubagentHandoff
+%% @code subagentFollow | lib/dm-autoreply.mjs | pending.status='reserved'

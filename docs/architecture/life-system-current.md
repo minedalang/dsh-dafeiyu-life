@@ -1,10 +1,12 @@
+> dev.38 跨专业 Agent 局部 Episode Handoff、私信可信联系人自主关注候选（限明确授权并经二次审批/平台读回）见 [专项说明](./2.7.1-dev38-subagent-action-continuity.md)。它**尚不是**所有 Agent 的通用自由行动循环。
+
 # Life 全景图与源码接线审计（当前 dev.37 发布前检验／dev.37 跨渠道行动归属 + Universal Life Episode）
 
 > **可直接在 GitHub 查看渲染结果：**[Life 全景与候选图](./life-system-current-view.md)。它是根据 `.mmd` 自动生成的只读展示，不应直接编辑。
 >
 > **唯一维护入口：**[完整 Life 生产代码全景 Mermaid](./diagrams/life-system-current.mmd) · [八类候选精确字典 Mermaid](./diagrams/life-candidates-current.mmd) · [回执与可衰减记忆闭环 Mermaid](./diagrams/life-receipt-memory-current.mmd) · [统一 Life Episode Mermaid](./diagrams/life-universal-episodes-current.mmd)。这四张 `.mmd` **是源文件**，可直接通过 GitHub Mermaid 或支持 Mermaid 的编辑器编辑、比较和渲染；此前的 PNG 仅为概念插画，不是程序运行证明。
 >
-> **状态：`2.7.1-dev.37` / `releaseReady:false`**。未合并 main / Tag / 发布。图中“已接线”只指源码、相关离线契约存在，不代表 Windows、真实 B站、GGUF、72h 实机验收。
+> **状态：`2.7.1-dev.38` / `releaseReady:false`**。未合并 main / Tag / 发布。图中“已接线”只指源码、相关离线契约存在，不代表 Windows、真实 B站、GGUF、72h 实机验收。
 
 **dev.37 同版冷却隔离维护：**`lifeVideoGate()` 的视频启动冷却仅对 `browse_home`/`use_capability` 视频委派生效，原有已核验非视频候选不受阻断。若同账号 `video-round-ended` 且存在可信已完成视频轮次匿名回执，`AutonomousPlanner` 可在冷却期提议 `review_video_feedback`，仅将模型本地考虑写入 Life 决策日志，不产生新的 Episode 已完成步骤或平台发送；无可信回执继续等待。`lifeExperienceReadiness.videoFeedbackEarliestAt` 不再错误地引用下次视频启动时间。相关内容是离线源码能力，不等于实机验收。
 
@@ -31,7 +33,7 @@
 | 反思候选 → 实际反思 | 状态已共享就绪判断；**旧解析器存在未提供 reflect 也可被接受的旁路** | **本维护补丁加固** | `lib/autonomous-planner.mjs` 新 `validateOfferedLifeAction` 严格对照本轮菜单；反思器仍执行前复核 |
 | Life → 写动作 | Life 连续视频写动作借用原视频意愿桥/平台工具；社交发送走原渠道的关系和策略门禁 | **多条受控执行路径，而非单个万能网关** | `lib/life-continuation-write.mjs`、`lib/life-video-action-bridge.mjs`、`index.js`；未形成所有写动作的通用单进程原子事务 |
 | 平台结果 → Life 事件 | 验证成功、失败、未知分开记录；脱敏决策轨迹只代表决策与结果分类 | **已有对应账本，不等于全场景 E2E 证据** | `lib/life-agent-events.mjs`、`lib/life-decision-trace.mjs`；真实 B站读回仍未验收 |
-| 真正完成 → Life 记忆 | 现有 19 类可信只读/写入动作复用单一名称字典，并在合成成功回执、账号隔离、失败/未知、重复、隐私与 outbox 补偿专项通过；但各平台通路仍需真实逐项核验；原回执仍是细节事实源 | **离线契约覆盖，真实渠道仍需验收** | `lib/life-action-memory.mjs`、`lib/life-memory-coordinator.mjs`；不能宣传“所有 API 调用自动入记忆” |
+| 真正完成 → Life 记忆 | 现有 20 类可信只读/写入动作复用单一名称字典，并在合成成功回执、账号隔离、失败/未知、重复、隐私与 outbox 补偿专项通过；但各平台通路仍需真实逐项核验；原回执仍是细节事实源 | **离线契约覆盖，真实渠道仍需验收** | `lib/life-action-memory.mjs`、`lib/life-memory-coordinator.mjs`；不能宣传“所有 API 调用自动入记忆” |
 | 记忆 → 自主回忆 | 实时账号/授权/遗忘/时间过滤 → 词法 + 可选本地 Embedding 排序 → 回原可信记录 | **部分接线，legacy/full 与各入口不完全等价** | `lib/memory-retriever.mjs`、`lib/recall-request.mjs`；向量命中不是事实来源 |
 | 反思 → 兴趣/关系/人格 → 下一轮 | 基于已有证据的反思/兴趣等更新存在，但反向影响动作的可测长期因果未完全证明 | **部分接线且长期因果未验收** | `lib/life-reflection.mjs`、`lib/life-interests.mjs`、`lib/life-voice-context.mjs` |
 
@@ -67,7 +69,7 @@
 
 ## 尚未完全实现、后续优化顺序
 
-1. **P1 · 事实入记忆覆盖表**：把已有 19 类合成成功回执矩阵扩展为每个真实渠道的 `source → receipt → verifiedLifeActionEvent → episode → recall` 实机回归矩阵，检查忘记后的撤销与账号切换；不要把 `eventRefs` 或调试记录当作记忆。目前已统一白名单且有离线回执专项，但还不能证明每种真实工具调用均已完成平台读回。
+1. **P1 · 事实入记忆覆盖表**：把已有 20 类合成成功回执矩阵扩展为每个真实渠道的 `source → receipt → verifiedLifeActionEvent → episode → recall` 实机回归矩阵，检查忘记后的撤销与账号切换；不要把 `eventRefs` 或调试记录当作记忆。目前已统一白名单且有离线回执专项，但还不能证明每种真实工具调用均已完成平台读回。
 2. **P1 · 人物与评论线程可信目标**：有真实评论楼层 ID、BV、作者 UID、原文等一致证据，才考虑陌生评论者的公开作品与跨串回复；需反骚扰节奏/单独授权，不能由视频作者 UID 代替。
 3. **P1 · 真实 UI 与端到端闭环**：Windows/Desktop+B站双账号、首页推荐有效候选→真实入选→视频元数据→合法写入→独立平台核验→可召回经历，验证失败/未知、断网、重启与撤权路径。
 4. **P1 · 回忆入口一致性**：将 remaining legacy/full 和专业 Agent 的可访问记忆路径分别登记，验证“相关信息能召回”和“不可见/已忘信息绝不会返回”，本地 639MB GGUF CPU 实跑及失败词法回退。
@@ -87,7 +89,7 @@
 ## 同版本闭环加固：已落地与仍需实机验证
 
 - **真实选片好奇 → cues**：只有当前账号且来源于真实 `autonomous-selection`、明确精确时间和 BV 的短期好奇才能成为 `selection-curiosity`。主人明确排除、账号切换、来源未绑定或过期时不可进入 Life 菜单。下一步仅能核实**同一 BV 的公开元数据**，不能把标题当新搜索词，也不能由此增加任何写权限。之前来源不明的兴趣仍可在管理 UI 查看，不会伪造账号归属。
-- **行动种类一致**：`lib/life-action-memory.mjs` 的 `LIFE_ACTION_NAMES` 为 19 类可信经历的单一字典，`LIFE_VERIFIED_WRITE_ACTIONS` 为 13 类平台完成动作；`life-agent-events` 与 `life-memory-gateway` 复用同一集合。已确认事件进原 `life-memory-coordinator` outbox，异常由 outbox 补偿，不再用模型输出或匿名 `eventRefs` 补写记忆。
+- **行动种类一致**：`lib/life-action-memory.mjs` 的 `LIFE_ACTION_NAMES` 为 20 类可信经历的单一字典，`LIFE_VERIFIED_WRITE_ACTIONS` 为 14 类平台完成动作；`life-agent-events` 与 `life-memory-gateway` 复用同一集合。已确认事件进原 `life-memory-coordinator` outbox，异常由 outbox 补偿，不再用模型输出或匿名 `eventRefs` 补写记忆。
 - **执行成功与记忆结果分开**：视频写入桥在平台确认后等待记忆回调，返回 `memoryQueued`。失败/未知平台结果不会写成功经历；若**平台已经确认成功但记忆未能入队**，仍保持平台事实为成功、明确给出 `memoryQueued:false`，不得因此重复外发。后台原始协调器已接收后但下游尚未落库的状态属于可补偿。只读 Life 行为也等待原 outbox 入队，记忆异常不会触发二次平台读取。
 - **审计矩阵与实机真值**：新增 `life-receipt-memory-current.mmd` 及逐动作离线契约。它们证明源代码的匹配、失效、回忆隔离和冻结分支，不代表陌生评论者的任意跨串发言已获得合适的 B站独立回执，也不能证明 Windows / GGUF / 72h 真实验收。
 

@@ -1,3 +1,7 @@
+## 当前开发版本 2.7.1-dev.38：专业 Agent 持续性（未发布）
+
+[专业 Agent Episode 动作持续性与私信联系人关注（第一阶段）](./2.7.1-dev38-subagent-action-continuity.md)。视频、私信和公开评论读取按来源裁剪的 Life Episode 摘要；长期可信好友私信可在模型自主决策后提出关注候选，只有独立授权、原 Life 再决定和 B站关系读回均通过才执行并入账。待办、反思及自由社交尚未全量迁移成通用 Agent 内部多步决策循环，Windows/B站未实机验收；`releaseReady:false`。
+
 ## dev.37 同版本维护：评论意愿先选后补记（未发布）
 
 [实际 `picked=1 / reviewRejected=1` 的跨语言原因和修复](./2.7.1-dev37-episode-comment-recovery.md#2026-11-08-同版本-s0-修复已入选后补登记被误拒)。Python 入选工具即使看到本轮已经记过的 BV，也只跳过重复写文件，不再挡住本轮只读意愿补记；宿主继续查账号、轮次、真实新入选与一次性去重。真实评论发布仍待验收，`releaseReady:false`。
@@ -9,7 +13,7 @@
 - [**dev.37 同版本 Episode 续行与主评论考虑修复**](./2.7.1-dev37-episode-comment-recovery.md)：到期自愿暂停恢复优先候选；选片时可附带只读评论意愿；各写入门禁不变。
 - [**dev.37 发布验收代码修复与 S0/S1 现场执行**](./2.7.1-dev37-release-acceptance.md)：唤醒按钮修复、只读匿名证据导出、真实 Windows/B站/账号/72h/GGUF 验收步骤；未完成外部验收不能宣布发布。
 - [**dev.37 行动归属与原回执闭环**](./2.7.1-dev37-unified-action-ownership.md)：专业 Agent 保留执行权、统一来源和回执归属、待办/反思/社交跨片段去重；实机验证限制。
-## 当前开发版本 2.7.1-dev.37：统一自主生活 Episode（仍未发布）
+## 历史开发版本 2.7.1-dev.37：统一自主生活 Episode（未发布）
 
 [可编辑 Universal Life Episode 源图](./diagrams/life-universal-episodes-current.mmd) · [源码与行为契约](./2.7.1-dev36-universal-life-episodes.md) · [自动渲染的四张全景图](./life-system-current-view.md)。只有当前账号真实行动/回执才能计入已核验 Episode；管理中心会提示首步超过 60 分钟未推进及缺少可执行原意愿的片段。Life 可在下一轮自主选择 `resume_episode`，也可休息；B站评论、关注等仍由原权限和平台核验控制，`releaseReady:false`。
 

@@ -5,7 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.37 · Universal Life Episode）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.38 · Universal Life Episode + 专业上下文交接）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -194,6 +194,24 @@ flowchart TB
 %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
 
 %% @code feedback | lib/autonomous-planner.mjs | const videoFeedbackPending=
+
+%% dev.38：专业 Agent 局部自主性——模型可以自主提议，但原职责/权限分开。
+subgraph subagentLoop["dev.38 专业 Agent 续行｜第一阶段，非全 Agent 通用循环"]
+  subagentContext["Subagent Handoff｜同账号、同来源、脱敏 Episode 摘要"]
+  dmChoice["私信 Agent｜本轮 reply/skip/defer + 可选 follow_dm_contact"]
+  dmPending["原私信状态 pendingLifeAction｜75s 后跨 poll 重新审批"]
+  dmFollow["已核验长期好友 UID｜独立关注开关 + Life 二次意愿 + B站关系读回"]
+end
+universalEpisode -.->|不授予权限| subagentContext
+subagentContext -.-> dmChoice
+socialFacts -.->|实名 UID 仅由原私信来源核验| dmChoice
+dmChoice -.->|私信已送达才保留可选意愿| dmPending
+dmPending -.->|重新核验、可以拒绝| dmFollow
+dmFollow -->|已核实后回执| receipts
+%% @code subagentContext | lib/life-subagent-continuity.mjs | export function lifeSubagentHandoff
+%% @code dmChoice | lib/interaction-batch.mjs | availableLifeActions
+%% @code dmPending | lib/dm-autoreply.mjs | person.pendingLifeAction=
+%% @code dmFollow | vendor/bilibili-mcp/mcp_server.py | async def bili_follow_dm_contact
 ```
 
 ## 二、八类候选细目
@@ -280,6 +298,14 @@ flowchart LR
 %% @code resume | lib/life-episode-entrypoints.mjs | export function prioritizeLifeContinuationCandidates
 
 %% @code reviewFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
+
+%% dev.38：以下私信跟进动作由私信 Agent 自主提议，不能在顶层直接凭 UID 触发。
+dmHistory["同 UID 真正长期双向私信证据 + 本轮独立自主关注授权"]
+dmFollowCandidate["follow_dm_contact｜可信好友；仅建议，绝不直接外发"]
+dmHistory --> dmFollowCandidate
+dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
+%% @code dmHistory | lib/life-subagent-continuity.mjs | export function dmContactFollowCandidates
+%% @code dmFollowCandidate | lib/life-subagent-continuity.mjs | action:'follow_dm_contact'
 ```
 
 ## 三、可信回执与记忆闭环
@@ -309,7 +335,7 @@ flowchart TB
   receipt{"原渠道可信结果?"}
   verified["行动事件仅接受 verified=true 与当前账号"]
   unknown["冻结/失败｜不得写成成功，不自动重试"]
-  catalog["19 类 Life 行动统一字典｜含 13 类写操作"]
+  catalog["20 类 Life 行动统一字典｜含 14 类写操作"]
   wake["匿名 Life 事件引用｜仅提醒下轮考虑"]
   bridge["原进程回调 await 接收记忆入队｜不发送第二次"]
   outbox["原 Life Memory 协调器持久化补偿队列"]
@@ -355,6 +381,11 @@ flowchart TB
 %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
 
 %% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
+
+%% dev.38 真实平台关系读回后才入 Life Episode，原可衰减记忆可按动作类别描述。
+dmFollowReceipt["DM 联系人关注：模型提案 → 待续意愿 → 真实平台关系读回"]
+dmFollowReceipt -.->|只有成功回执| verified
+%% @code dmFollowReceipt | index.js | receiptId:'bili-relation-follow:'
 ```
 
 ## 四、统一 Life Episode 因果持续性
@@ -419,4 +450,13 @@ flowchart TB
 %% @code reflectionReceipt | lib/life-reflection.mjs | result.receiptId=receiptId
 
 %% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
+
+%% dev.38 专业 Agent 局部决策复用同账号匿名因果摘要；Episode 没有发送权。
+subagentHandoff["Episode Handoff｜视频/私信/评论按自身可读范围裁剪"]
+subagentFollow["私信 Agent 可自选长期好友关注｜原 DM 状态跨轮延期，独立权限复核"]
+record -.->|只读匿名动作历史| subagentHandoff
+subagentHandoff -.-> subagentFollow
+subagentFollow -.->|成功的平台关系读回才算已完成| attribution
+%% @code subagentHandoff | lib/life-subagent-continuity.mjs | export function lifeSubagentHandoff
+%% @code subagentFollow | lib/dm-autoreply.mjs | pending.status='reserved'
 ```

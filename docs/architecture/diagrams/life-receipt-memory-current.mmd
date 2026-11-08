@@ -22,7 +22,7 @@ flowchart TB
   receipt{"原渠道可信结果?"}
   verified["行动事件仅接受 verified=true 与当前账号"]
   unknown["冻结/失败｜不得写成成功，不自动重试"]
-  catalog["19 类 Life 行动统一字典｜含 13 类写操作"]
+  catalog["20 类 Life 行动统一字典｜含 14 类写操作"]
   wake["匿名 Life 事件引用｜仅提醒下轮考虑"]
   bridge["原进程回调 await 接收记忆入队｜不发送第二次"]
   outbox["原 Life Memory 协调器持久化补偿队列"]
@@ -68,3 +68,8 @@ flowchart TB
 %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
 
 %% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
+
+%% dev.38 真实平台关系读回后才入 Life Episode，原可衰减记忆可按动作类别描述。
+dmFollowReceipt["DM 联系人关注：模型提案 → 待续意愿 → 真实平台关系读回"]
+dmFollowReceipt -.->|只有成功回执| verified
+%% @code dmFollowReceipt | index.js | receiptId:'bili-relation-follow:'
