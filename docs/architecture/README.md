@@ -1,4 +1,8 @@
-## 当前开发版本 2.7.1-dev.25：带时间/意图约束的统一回忆（未发布）
+## 当前开发版本 2.7.1-dev.26：有界连续生活探索与主评论逐轮诊断（未发布）
+
+[dev.26 Life 自主续行和原创主评论诊断](./2.7.1-dev26-life-continuation-and-comment-diagnosis.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev26-life-continuation-comment.mmd)。复用原 `AutonomousPlanner`、Life 意愿和回执，只在已核验的只读探索完成后加入最多两次由鱼鱼选择的继续动作，停止/失败/额度耗尽不增加外发；管理页区分视频主评论工具是否开放以及生命周期中的提出、准入、核验。本地配置冲突不会自动更改用户授权。Windows、真实 B站和长时行为待验收。
+
+## 历史版本 2.7.1-dev.25：带时间/意图约束的统一回忆（未发布）
 
 [dev.25 日期、意图和权限约束架构](./2.7.1-dev25-temporal-intent-recall.md) · [可编辑 Mermaid 数据流](./diagrams/2.7.1-dev25-temporal-intent-recall.mmd)。Agent 仍自行判断是否回忆；原查询词可选补充可核验的日期、活动/交流类型。`RecallRequest` 由本机时区转换并且先经过真实数据源的账号/UID/遗忘限制，再按事件真实发生时间硬过滤，在这个子集内融合词法和可选本地 Embedding。宽泛时间线查询优先按事件发生时间排序。legacy full 和部分专用 Agent 尚未全量接线；Windows/真实模型/B站/长期运行仍未验收。
 

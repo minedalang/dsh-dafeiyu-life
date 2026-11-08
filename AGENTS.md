@@ -4,7 +4,8 @@
 
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 ## 项目与代码入口
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.25`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.26`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- dev.26：复用原 `AutonomousPlanner`、账号隔离的 `life-opportunities` 意愿/回执与现有模型额度，在自动 Life 轮已有真实公开读取成功后最多增加 2 次模型自主选择；只允许既有名单的 `inspect_exploration`、`inspect_creator_space` 与放下，执行前重新核验账号与候选，禁止新建第二任务账本或新增外发权限。原创主评论仍由视频 Agent 的 `bili_reply` 经 Life 意愿、公开评论授权及平台回执；新增原 `life-agent-events` 视频轮次脱敏诊断。`dmMode=only` 是真实的原创主评论工具阻断条件，不得静默修改。见 `docs/architecture/2.7.1-dev26-life-continuation-and-comment-diagnosis.md`。
 - dev.25：`lib/recall-request.mjs` 承担模型提出的回忆意图/查询词/日期/事件种类的结构化校验，宿主时区换算，日期与事件类型必须在当前已授权/未遗忘候选上执行硬过滤。`memoryRetriever` 只将过滤后的候选交给可选 Embedding；时间线回顾按真实发生时间排序，不能用长期记忆 `createdAt` 猜事件日期；模糊/痕迹记忆不提供精确日期。主人私信、普通 compact 社交、好友私密回忆、公开评论成功回执沿旧统一层接线，无新的事实源、权限或发送器。详见 `docs/architecture/2.7.1-dev25-temporal-intent-recall.md`。
 - dev.24：本地 Embedding 仅作为 `memoryRetriever` 的候选排序提供者；不建立第二事实账本、不绕过 `LifeMemoryGateway` 权限/遗忘过滤。向量命中必须按 ID 回到实时账本重新核验；llama.cpp 只绑定 `127.0.0.1`，使用随机 API Key、关闭 Web UI，默认不开启且只有用户明确点击才下载模型。详见 `docs/architecture/2.7.1-dev24-local-embedding-recall.md`；dev.23 主动回忆契约及 legacy full/专业 Agent 未统一边界见 `docs/architecture/2.7.1-dev23-active-recall-unified.md`。
 - dev.22 主人私信与主人公开评论按需共用当前账号的公开评论**成功回执**查询，无第二份账本；公开评论只可额外修正聊天回复，不能因此重做意愿或扩大外发权限。见 `docs/architecture/2.7.1-dev22-public-recall-unified.md`。dev.21 主人私信新增独立只读回忆动作，当前账号核验后可查实时长期/情节记忆，不靠主 Session 记忆开关；拒绝归档复活、跨账号读取与整段固定检讨回退。见 `docs/architecture/2.7.1-dev21-owner-active-recall.md`。dev.20 退休低额视频分享/跨渠道同人日硬限额，Life 协调全局、专业 Agent 保留授权内局部自主决策；主人查询本人公开经历优先读当前核验账号的真实记录，切号不混用。见 `docs/architecture/2.7.1-dev20-life-contract-owner-recall.md`。dev.19「大肥鱼的一天」只呈现生活行动；内核平台回执、诊断和防重仍保留，正文已展示的评论不再重复列事务卡片。见 `docs/architecture/2.7.1-dev19-owner-life-timeline.md`；dev.16 原可信证据边界不变。
@@ -105,15 +106,3 @@
 - DSH Desktop 通常执行 `dsh plugin --profile desktop add dsh-dafeiyu-life`，重启后在「设置 → 大肥鱼」安装依赖、扫码登录、完成所需 Headless 模型验证；安装入口与市场实际版本须单独确认。
 - 插件可自行安装 Python 运行依赖／uv；遇故障先用设置页自检和 `duty.log`，不要要求用户先全局安装任意工具或绕过安全门禁。
 - 新安装的明确可选功能、旧版既有设置、First Start 必需验证是不同状态；不能通过隐式改默认值打开外部写入。
-
-## 2.7.1-dev.2 补充 · 真实按需证据读取和可验收性
-
-精简模式首次请求不得执行长期记忆、梗或人物画像检索；这些读取只由本 UID 的 `contextRequests` 引发，检索无命中需显式返回 `not-found`，失败时不得发送请求中的草稿。完整模式仍保留原来的读取行为；原有待办/推荐事实回执、私密分域、发送权限不容为降低成本而绕开。运行诊断可显示最近 12 个 **匿名** 批次的请求类型与命中状态，严禁写入 UID、正文、提示词或记忆内容。参见 `docs/architecture/2.7.1-dev2-true-on-demand-retrieval.md`。
-
-## 2.7.1-dev.2 增量 · 上下文模式约束
-
-后台普通 DM 与走 `interaction-batch.mjs` 的评论/@ 支持 `interactionContextMode=compact|full`（生产默认 `compact`）；原始完整提示词不能删除。精简模式的 `contextRequests` 只可请求当前 UID 及该渠道 `SocialContextAssembler` 已授权的资料；长期记忆、画像和梗在请求后才检索，最多一轮续推；首次申请不得外发/接受待办。事实校验、已接受任务回执、平台发送权限、隐私和 P6 边界永远属于后端，不能被上下文模式覆盖。主人私信 Agent 和 DSH 主 Session 不经过该选择器，不能把它写作“全局四渠道切换”。参见 `docs/architecture/2.7.1-dev2-dialogue-context-modes.md`。
-
-## 2.7.1-dev.2 补充 · 白名单好友兴趣纠错（局部）
-
-`friend-learning.mjs` 是当前帐号内白名单好友明确兴趣自述的唯一证据写入源，不等同于 `SocialPortraitGateway` 的交流偏好或完整人物记忆。时序自述只能在同一消息内以真实主题为依据，历史喜欢不得冒充当下；兴趣减弱记录为 `uncertain`，不等于讨厌；同 UID 的后续明确自述可以覆盖用于主动推荐的当前投影，但不能恢复全局退订、拒联或其它发送权限。管理中心「社交互动 → 好友兴趣变化」显示可复核状态。见 `docs/architecture/2.7.1-dev2-friend-interest-correction.md`。未实现跨来源全面语义纠错。

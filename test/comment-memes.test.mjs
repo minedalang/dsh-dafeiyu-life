@@ -32,7 +32,7 @@ test('评论附梗图的设置、host白名单与调度配置一致',async()=>{
     assert.equal(files.status,200)
     assert.equal(files.value.ok,true)
     assert.deepEqual(files.value.names,[])
-  } finally {rmSync(home,{recursive:true,force:true})}
+  } finally {rmSync(home,{recursive:true,force:true,maxRetries:5,retryDelay:30})}
 })
 test('界面和Python MCP具备完整附图控制，默认关闭',()=>{
   const i=readFileSync(new URL('../index.js',import.meta.url),'utf8')
@@ -63,5 +63,5 @@ test('WebP 在本地梗图库 HTTP 列表中可见，并允许中文文件名',a
     assert.equal(status,200)
     assert.equal(value.ok,true)
     assert.ok(value.names.includes('奶龙大笑'))
-  }finally{rmSync(home,{recursive:true,force:true})}
+  }finally{rmSync(home,{recursive:true,force:true,maxRetries:5,retryDelay:30})}
 })

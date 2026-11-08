@@ -119,7 +119,7 @@ import { recordFriendInteraction, listFriendRelationships, friendRelationshipCon
 import {createSocialRelationshipIndex} from './lib/social-relationship-index.mjs'
 import { buildLifeTimeline } from './lib/life-timeline.mjs'
 import {isOwnerActivityQuestion,ownerRecentLifeSnapshot} from './lib/owner-recent-life.mjs'
-import { videoCommentReadiness } from './lib/video-comment-readiness.mjs'
+import { videoCommentReadiness,videoCommentGateCode } from './lib/video-comment-readiness.mjs'
 import { createDmVideoRecommendationContext } from './lib/dm-video-recommendation.mjs'
 import { createDmTodoProgressContext } from './lib/dm-todo-progress.mjs'
 import { collectDmInbox, parseDmWhitelist } from './lib/dm-inbox.mjs'
@@ -2890,6 +2890,9 @@ function reportMeta() {
   // ⭐⭐ 2.0.4（第三方体检第 2 条）：**同一时间只允许一轮在跑**，并且**登记这个子进程**，
   //    关页面/卸载插件时能把它一起收掉（以前它没有锁、也不归 ctx.effect 管 ✗）。
   let dutyChild = null
+  // One subprocess at a time: count only authenticated host-bridge events,
+  // not model prose or private comment text. Persist into existing round ledger.
+  let currentVideoCommentDiagnostics=null
   let dutyStartedAt = 0
   let lifeAgentEvents = null
   // A one-shot notifier for VERIFIED social signals. The normal Life timer
@@ -3119,7 +3122,10 @@ function reportMeta() {
     if(videoRoundLifeAccountTag&&Number.isSafeInteger(child.pid)&&child.pid>0)try{
       // A launch receipt is not a watching receipt. The account-scoped ledger
       // will only record completion after the child actually exits.
-      videoRoundReceiptId=lifeAgentEvents?.recordVideoRoundStart({source:why==='life-agent'?'life-agent':'manual'})?.id||''
+      videoRoundReceiptId=lifeAgentEvents?.recordVideoRoundStart({source:why==='life-agent'?'life-agent':'manual',
+        commentGate:videoCommentGateCode(cfg)})?.id||''
+      if(videoRoundReceiptId)currentVideoCommentDiagnostics={roundId:videoRoundReceiptId,scope:videoRoundLifeAccountTag,
+        proposed:0,approved:0,declined:0,verified:0,unverified:0,lastReason:''}
     }catch(e){log('Life Agent 视频启动生命周期登记失败：'+String(e?.message||e).slice(0,100))}
     // ⚠️ 2026-10-16 issue #1（用户 `miaoxingyunduo` 贴了崩溃日志）：`duty.log` 被别的进程占着时
     //    (`EBUSY`) `appendFileSync` 会抛异常 —— 而这里是 **stream 的 data 回调**，没人接
@@ -3149,7 +3155,9 @@ function reportMeta() {
         // ledger is unavailable, persist null rather than pretending zero.
         let selected=null
         if(code===0)try{selected=parseSeenTable().filter(x=>x.picked&&!watchedBeforeRun.has(x.bvid)).length}catch{}
-        const completed=lifeAgentEvents.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:code,pickedCount:selected})
+        const commentDiagnostics=currentVideoCommentDiagnostics?.roundId===videoRoundReceiptId&&
+          currentVideoCommentDiagnostics.scope===videoRoundLifeAccountTag?currentVideoCommentDiagnostics:null
+        const completed=lifeAgentEvents.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:code,pickedCount:selected,commentDiagnostics})
         // Never queue a "completed round" life decision if the trusted
         // account ledger did NOT persist a verified normal-exit receipt.
         verifiedVideoRoundCompletion=completed?.ok===true&&completed?.updated===true&&completed?.state==='completed'
@@ -3173,6 +3181,7 @@ function reportMeta() {
         if(videoRoundLifeAccountTag&&trustedLifeAccountTag()===videoRoundLifeAccountTag)
           lifeAgentEvents.offer({kind:'video-round-ended',platform:'bilibili',sourceKey:videoRoundReceiptId})
       }catch(e){log('Life Agent 视频事件未记录：'+String(e?.message||e).slice(0,100))}
+      if(currentVideoCommentDiagnostics?.roundId===videoRoundReceiptId)currentVideoCommentDiagnostics=null
       stubReportIfMissing(code)   // ⭐ 没写报告就补一份占位 —— 别让使用者什么都看不到
       // v2.4.84：不再调用整轮批量收藏；仅由视频 Agent 根据已入选视频决定。
       rotateLogIfBig()            // ⭐ 日志别无声地长（三天 797KB ⇒ 一年约 100MB）
@@ -5054,6 +5063,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     choose:params=>lifeWillingness.decide(params),
     verify:(proof,kind)=>lifeWillingness.verify(proof,kind),
     receipt:(proof,result)=>lifeWillingness.receipt(proof,result),
+    onCommentDiagnostic:({stage,code})=>{
+      const row=currentVideoCommentDiagnostics
+      if(!row||row.scope!==trustedLifeAccountTag()||!['proposed','approved','declined','verified','unverified'].includes(stage))return
+      row[stage]=Math.min(40,row[stage]+1)
+      if(stage==='declined')row.lastReason=code
+    },
     // The trusted Python verifier only performs authenticated single-target
     // GET requests. It is independent of the writing tool's claimed success.
     verifyPlatformState:({kind,target,uid,scope,receiptId='',commentText=''})=>new Promise(resolve=>{
@@ -7057,7 +7072,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         // rejected an attempt. No private identifiers are returned.
         const today=dayKey(new Date())
         const todayVisible=comments.filter(row=>String(row.time||'').slice(0,10)===today)
-        const commentReadiness={...videoCommentReadiness(cfg),day:today,
+        let recentRoundComments=[]
+        try{if(trustedLifeAccountTag())recentRoundComments=(lifeAgentEvents?.status()?.recentVideoRounds||[]).slice(0,8)
+          .map(({startedAt,state,commentGate,commentDiagnostics})=>({startedAt,state,commentGate,commentDiagnostics}))}catch{}
+        const commentReadiness={...videoCommentReadiness(cfg),day:today,recentRounds:recentRoundComments,
           observedTop:todayVisible.filter(row=>row.kind==='top').length,
           observedReplies:todayVisible.filter(row=>row.kind==='reply').length,
           sampleLimit:200,sampleTruncated:comments.length>=200,

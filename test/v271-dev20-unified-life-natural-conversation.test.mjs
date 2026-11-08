@@ -104,5 +104,5 @@ test('dev20 生产连线、版本与人格契约在同一份源码',()=>{
  const index=readFileSync(new URL('index.js',r),'utf8'),voice=readFileSync(new URL('lib/life-voice-context.mjs',r),'utf8')
  assert.match(index,/getRecentActivity:\(/)
  assert.match(voice,/Life 协调全局生活/)
- assert.match(readFileSync(new URL('package.json',r),'utf8'),/2\.7\.1-dev\.24/)
+ assert.match(readFileSync(new URL('package.json',r),'utf8'),/2\.7\.1-dev\.26/)
 })
