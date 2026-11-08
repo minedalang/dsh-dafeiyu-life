@@ -1,4 +1,8 @@
-## 当前开发版本 2.7.1-dev.29：Life 子系统关系、可选语义安装与视频推荐接续
+## 当前开发版本 2.7.1-dev.30：真实读写行动的统一入记忆与本地模型状态修复
+
+[dev.30 已核验行动／衰减／向量召回架构](./2.7.1-dev30-verified-life-action-memory.md) · [可编辑 Mermaid 数据流](./diagrams/2.7.1-dev30-verified-actions-recall.mmd)。Life 实际执行并经原平台/账本验证的读取、分享、互动进入原可衰减 Life 记忆与 Recall Service；旧已确认分享可安全补录。账号、UID/隐私、遗忘及未知回执边界不变。已安装模型重检改为只读状态刷新，无任务时隐藏安装/索引进度。仍需 Windows/真实模型/B站验收；`releaseReady:false`。
+
+## 历史版本 2.7.1-dev.29：Life 子系统关系、可选语义安装与视频推荐接续
 
 [系统关系、首次模型安装与推荐续聊修复](./2.7.1-dev29-life-subsystems-and-video-link-handoff.md) · [全系统图](./diagrams/2.7.1-dev29-life-subsystems-overview.mmd) · [推荐接续图](./diagrams/2.7.1-dev29-video-share-handoff.mmd)。单一 Life 协调专业系统；已发送的同账号同 UID 分享回执比模糊记忆优先，旧无标签记录不冒认。依然未发布，真实 Windows/B站/本地 GGUF 运行待验收。
 

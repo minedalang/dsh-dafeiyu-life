@@ -160,6 +160,8 @@ import { createLongTermMemory } from './lib/long-term-memory.mjs'
 import { createMemoryRetriever } from './lib/memory-retriever.mjs'
 import {createEmbeddingRuntimeManager} from './lib/embedding-runtime-manager.mjs'
 import {createEmbeddingMemoryIndex} from './lib/embedding-memory-index.mjs'
+import {verifiedLifeActionEvent} from './lib/life-action-memory.mjs'
+import {verifiedShareMemoryEvents} from './lib/confirmed-video-share.mjs'
 import { createLifeReflection } from './lib/life-reflection.mjs'
 import {createActivityFeed} from './lib/activity-feed.mjs'
 import {createLiveLifeActivity} from './lib/live-life-activity.mjs'
@@ -4873,7 +4875,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     runTodo: (id) => runOwnerTodoWithFollowup(id),
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
   })
-  lifeMemory=createLifeMemoryGateway({dataDir:stateDir,getConfig:()=>cfg,getRelationship:uid=>relationshipIndex()?.get(uid,relationshipOptions()),onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'episode:'+String(id)))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},logger:{warn:m=>log('人生记忆：'+m)}})
+  lifeMemory=createLifeMemoryGateway({dataDir:stateDir,getConfig:()=>cfg,getRelationship:uid=>relationshipIndex()?.get(uid,relationshipOptions()),getAccountTag:trustedLifeAccountTag,onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'episode:'+String(id)))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},logger:{warn:m=>log('人生记忆：'+m)}})
   ctx.effect(()=>()=>lifeMemory?.close(),'bili-duty: 只读内存 FTS 关闭')
   embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,logger:{warn:m=>log('本地语义运行时：'+m)}})
   embeddingIndex=createEmbeddingMemoryIndex({dataDir:stateDir,provider:embeddingRuntime,logger:{warn:m=>log('本地语义索引：'+m)}})
@@ -4927,6 +4929,29 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   lifeReflection.start()
   ctx.effect(() => () => lifeReflection.stop(), 'bili-duty: 人生记忆自主反思')
   lifeMemoryCoordinator=createLifeMemoryCoordinator({dataDir:stateDir,memoryGateway:lifeMemory,lifeReflection,getAccountTag:trustedLifeAccountTag,logger:{warn:m=>log('人生记忆协调：'+m)}})
+  // A trusted source's completion is an ordinary Life memory event.
+  // The coordinator performs durable deduplication; archives are NEVER queried
+  // to rebuild a forgotten episode. The embedding index follows live memory.
+  const rememberVerifiedLifeAction=async proof=>{
+    const event=verifiedLifeActionEvent(proof)
+    if(!event||event.accountTag!==trustedLifeAccountTag())return {ok:false,reason:'action-memory-scope-invalid'}
+    return lifeMemoryCoordinator.recordEvents([event],{reflect:false})
+  }
+  // One-time per bound account migration of previously verified dev.29 shares.
+  // Reuse their exact event keys; duplicates and forgotten copies stay closed.
+  const shareMemoryBackfilled=new Set()
+  const backfillVerifiedShares=()=>{
+    const tag=trustedLifeAccountTag()
+    if(!/^[a-f0-9]{16}$/.test(String(tag||''))||shareMemoryBackfilled.has(tag))return
+    const rows=verifiedShareMemoryEvents(stateDir,{accountTag:tag})
+    shareMemoryBackfilled.add(tag)
+    if(rows.length)void lifeMemoryCoordinator.recordEvents(rows,{reflect:false})
+      .catch(e=>{shareMemoryBackfilled.delete(tag);log('历史推荐经历补录待重试：'+String(e?.message||e).slice(0,100))})
+  }
+  backfillVerifiedShares()
+  const backfillTimer=setInterval(backfillVerifiedShares,5*60_000)
+  backfillTimer.unref?.()
+  ctx.effect(()=>()=>clearInterval(backfillTimer),'bili-duty: 历史推荐记忆补录检查')
   lifeMemoryCoordinator.start()
   ctx.effect(()=>()=>lifeMemoryCoordinator?.stop(),'bili-duty: Life Memory 协调器')
   socialInteractionCoordinator.start()
@@ -5012,6 +5037,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // already verified original channel/transaction, never a model claim.
     onVerifiedAction:({kind,sourceRef,scope})=>{
       if(scope!==trustedLifeAccountTag())return
+      // Minimal verified operations without public targets still become Life
+      // experiences. Video actions and shares use richer, separately verified
+      // callbacks so this path cannot duplicate or misdescribe their target.
+      if(!['video_like','video_collect','video_follow','video_unfollow','video_folder_delete','video_comment','share_video'].includes(kind))
+        void rememberVerifiedLifeAction({action:kind,accountTag:scope,sourceId:'life-receipt:'+sourceRef,
+          at:Date.now(),verified:true}).catch(e=>log('Life 行动记忆待补偿：'+String(e?.message||e).slice(0,100)))
       try{const r=lifeAgentEvents.recordVerifiedCompletion({kind,sourceRef})
         if(r?.ok===false)log('Life 可信完成续行未登记：'+String(r.reason||'invalid-source').slice(0,70))
       }catch(e){log('Life 可信完成续行待补偿：'+String(e?.message||e).slice(0,80))}
@@ -5025,6 +5056,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     choose:params=>lifeWillingness.decide(params),
     verify:(proof,kind)=>lifeWillingness.verify(proof,kind),
     receipt:(proof,result)=>lifeWillingness.receipt(proof,result),
+    onVerifiedAction:({kind,target,scope,sourceId,at})=>{
+      if(scope!==trustedLifeAccountTag())return
+      const picked=/^BV[0-9A-Za-z]{10}$/.test(String(target||''))
+        ?parseSeenTable().find(v=>v.picked===true&&v.bvid===target):null
+      void rememberVerifiedLifeAction({action:kind,accountTag:scope,sourceId:'video-verified:'+sourceId,
+        bvid:picked?.bvid||target,title:picked?.title||'',at,verified:true})
+        .catch(e=>log('视频行动记忆待补偿：'+String(e?.message||e).slice(0,100)))
+    },
     onCommentDiagnostic:({stage,code})=>{
       const row=currentVideoCommentDiagnostics
       if(!row||row.scope!==trustedLifeAccountTag()||!['proposed','approved','declined','verified','unverified'].includes(stage))return
@@ -5260,6 +5299,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeIntentionCues:()=>lifeOpportunities.explorationCues({limit:4}),
     getPrivateLifeAffinity:cues=>privateLifeAffinity.forCues(cues),
     getLifeIntentions:()=>lifeOpportunities.continuations({limit:3}),
+    onVerifiedRead:proof=>rememberVerifiedLifeAction(proof),
     getLifeWriteEvidence:lifeContinuationEvidence,executeLifeWrite:lifeContinuationWrite,
     recordLifeExplorationWrite:(id,action,bvid,status,tag)=>lifeOpportunities.recordExplorationWrite(id,action,bvid,status,tag),
     // Include temporarily cooled-down intentions for duplicate-read checks;
@@ -5388,6 +5428,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getSelectedVideos:()=>parseSeenTable().filter(x=>x.picked===true),
     getAccountScope:()=>trustedLifeAccountTag(),
     invokeModel:(prompt,maxChars,opt)=>invokeInteractionPrompt(prompt,maxChars,opt),
+    onConfirmedSend:proof=>rememberVerifiedLifeAction(proof),
     authorizeDraft:async ({uid,text,bvid,itemId,automatic})=>{
       if(!automatic)return {ok:false,reason:'human-approval-not-allowed'}
       const route=routedSocialOwner('dm')
