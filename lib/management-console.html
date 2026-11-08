@@ -1311,7 +1311,12 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <nav class="life-day-shortcuts" aria-label="鱼鱼此刻快捷查看"><a href="#life-timeline-section">今天的经历</a><a href="#life-emotion-section">此刻心情</a><a href="#life-todo-section">想做的事</a><a href="#life-settings-v2-panel">生活设置</a></nav>
 <details class="life-now-timeline" open><summary>📅 大肥鱼的一天 · 真实生活时间线</summary>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
-<p class="muted">按发生时间跨类型倒序展示有来源的视频探索、已核验行动、公开评论及情绪变化。只有日期的视频记录排在同一天精确时间的事件之后；不展示好友私信正文或心情触发消息。</p><p id="life-timeline-summary" class="muted" role="status"></p><p id="life-timeline-comment-status" class="setting-note" role="status">正在核对原创评论权限与本地记录…</p><div id="life-timeline-list" class="records records-scroll tall"></div></div>
+<p class="muted">按发生时间跨类型倒序展示有来源的视频探索、已核验行动、公开评论及情绪变化。只有日期的视频记录排在同一天精确时间的事件之后；不展示好友私信正文或心情触发消息。</p><p id="life-timeline-summary" class="muted" role="status"></p><div class="inset" id="life-comment-observability"><h4>🔎 原创主评论准入 · 最近视频轮次</h4>
+<p class="muted">显示当前授权、实际评论记录、最近视频轮次中的考虑／提议／审批／平台核验；没有评论不等于模型主动拒绝。旧日志不提供的证据不会补造。</p>
+<p id="life-timeline-comment-status" class="setting-note" role="status">正在核对原创评论权限与本地记录…</p>
+<div class="toolbar"><button type="button" id="life-release-evidence-export" class="life-action life-sky">导出 S0/S1 匿名验收快照（只读）</button><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看完整 Life DEBUG</a></div>
+<p class="muted" id="life-release-evidence-status" role="status">只读导出，不包含私信正文、账号 ID、视频 BV 或 Token；真实 B站行为仍需平台核验。</p></div>
+<div id="life-timeline-list" class="records records-scroll tall"></div></div>
 </details>
 <details class="life-now-emotion" open><summary>💗 现在的心情</summary>
 <div id="life-emotion-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">💗 鱼鱼现在的心情</h4><span id="emotion-status" class="live-badge">● 正在读取情绪状态</span></div>
@@ -1468,7 +1473,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p class="muted">历史设置只读：传统视频定时器已退役。影子模式仅观察，开启自主生活才可能在原有授权、配额及冷却允许时调用视频 Agent；是否行动仍由鱼鱼决定。请从「🌿 Life 自主生活 → 鱼鱼的生活」统一预览和保存。私信与评论已由新 Life 统一负责；旧影子模式仅供排障，不具备独立发送权。</p>
 <div class="inset" id="life-real-acceptance"><h4>🔍 当前自主生活是否真的生效？（真实状态）</h4><p id="life-readiness" class="muted" role="status">正在读取本机真实运行门禁…</p><p id="life-actual-proof" class="muted" role="status">正在核对本账号的真实委派记录…</p><div class="toolbar"><button type="button" class="life-action life-sky" id="life-readiness-refresh">重新核查真实状态（零模型调用）</button><button type="button" class="life-action life-green" id="life-offline-demo">演示四种选择（纯模拟，不访问 B站）</button></div><p id="life-offline-demo-result" class="muted" role="status">模拟使用虚构事件、假模型与假视频 Agent；不会改变真实状态、消耗 Token 或证明鱼鱼真实看过视频。</p></div>
 <p id="life-agent-status" class="muted" role="status">正在读取运行诊断…</p>
-<div class="toolbar"><button type="button" id="life-release-evidence-export" class="life-action life-sky">导出 S0/S1 匿名验收快照（只读）</button><span class="muted" id="life-release-evidence-status" role="status">不读取私信正文、账号 ID、视频 BV 或 Token；不会自动标记验收通过。</span></div>
+<p class="muted">匿名 S0/S1 快照与原创评论准入已移至上方「大肥鱼的一天」，无需打开开发者选项。</p>
 <div class="toolbar"><button type="button" id="life-evidence-contrast" class="life-action">DEBUG · 比较有无近期经历时的模型倾向（2 次调用）</button><span id="life-evidence-contrast-status" class="muted" role="status">仅在当前账号近 48 小时内有成功只读回执时可比较；零实际行动</span></div>
 <p class="muted">这是一项明确手动启动的<strong>只读模型输出对照</strong>：同一匿名模拟场景分别不带、带上近期成功读取类别。会预先占用每日两次模型决策额度，不能用于证明实际行动或人格成长；不发消息、不启动视频、不写长期记忆。失败或中途切号也不退还已预留的额度。</p><p class="muted">手动唤醒会优先将本次匿名事件交给 Life Agent，并跳过普通决策间隔与仅兴趣线索的六小时自动防重复冷却；仍受每日模型额度、账号与平台权限保护。<strong>影子模式不启动真实视频</strong>，但已有授权的只读待办或探索可能读取 B站公开资料；鱼鱼也可以选择休息。这里调用配置的真实模型并可能产生费用；完全离线观察请使用交付包里的模拟工具。</p>
 <p id="life-settings-preview" class="muted" role="status">设置兼容状态读取中…</p>
@@ -1519,12 +1524,12 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </section>
 <section id="panel-quotas" hidden>
 <div class="toolbar"><h2 style="margin:0">次数与额度</h2><button id="quota-refresh">重新读取</button></div>
-<p class="muted">所有次数集中设置，各种时间窗口不会互相替代。只有点击「保存次数与额度」才会写入；读取不改变历史账本。公开评论每日额度和后台回复的滚动 24 小时额度彼此独立，生效时取更严格的限制。</p>
-<div class="card" style="margin-bottom:13px"><h3>公开评论 · 统一容量方案</h3><p class="muted">建议值：所有评论合计每天最多 1000 条发送尝试；后台回复上限同步 1000。只是容量，不是要鱼鱼刷屏。老用户的已保存低上限不会自动改动。</p><div class="toolbar"><button type="button" id="comment-quota-preset-1000">使用 1000 条评论容量方案（未保存）</button><span class="muted">选择后在页面下方点击「保存次数与额度」才生效</span></div></div>
+<p class="muted">所有次数集中设置，各种时间窗口不会互相替代。只有点击「保存次数与额度」才会写入；读取不改变历史账本。公开评论全局每日硬上限和后台评论滚动 24 小时上限是两个不同的数值，不会自动联动；后台回复同时受两者约束。修改任意一个不会自动修改另一个。</p>
+
 <div class="card" style="margin-bottom:13px"><h3>今日额度概览</h3><p id="quota-usage-summary" class="muted">正在读取…</p><div id="quota-usage-tiles" class="quota-tiles" aria-live="polite"></div><p class="muted">自然日按本机日期重置；后台评论额外使用滚动24小时窗口。用量来自真实本地账本，不可核实时显示“暂不可读”，不会猜测。</p></div>
 <div class="settings-stack">
 <div class="settings-section"><h4>公开评论与动态 · 自然日</h4><div class="fields" id="quota-fields-public">
-<div><label for="quota-comment-daily">公开评论全局每日硬上限（所有类型共用，0–1000，新用户默认 1000）</label><input id="quota-comment-daily" type="number" min="0" max="1000"><small class="setting-note">主评论、楼中楼、@ 回复、动态评论共用一份 Python 发布配额；1000 是可选容量，不是每日必须发送量。实际发送继续由鱼鱼意愿、对方边界及平台限制决定。</small></div>
+<div><label for="quota-comment-daily">公开评论总量：每日发布尝试硬上限（主评与回复共用，0–1000）</label><input id="quota-comment-daily" type="number" min="0" max="1000"><small class="setting-note">这是整个插件所有公开评论的最终硬限制（0 表示关闭外发）。后台评论的滚动 24 小时上限是额外限制，并非同一个控件；1000 只是技术容量，不是建议每天发送的数量。</small></div>
 <div><label for="quota-comment-round">跑一轮最多发顶层评论（0–20）</label><input id="quota-comment-round" type="number" min="0" max="20"></div>
 <div><label for="quota-dynamic-daily">每天最多分享评论为动态（0–30）</label><input id="quota-dynamic-daily" type="number" min="0" max="100"></div>
 <div><label for="quota-like-daily">每天最多点赞（自动与 Session 手动共用，0–100）</label><input id="quota-like-daily" type="number" min="0" max="100"></div>
@@ -1734,7 +1739,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="checkline"><input id="comment-side-hot-enabled" type="checkbox"><label for="comment-side-hot-enabled">回复别人后，顺路看看同视频其他热门评论，并自主决定是否也回复（默认关闭）</label></div>
 <small class="setting-note">只有成功回复真实通知后才会提供少量热评作为下次判断的候选；不会恢复旧的全视频热门评论巡扫。仍计入原有公开回复配额和安全审核。</small>
 <div><label for="comment-per-poll">每轮公开回复总数（1–1000）</label><input id="comment-per-poll" type="number" min="1" max="1000" value="1"></div>
-<div><label for="comment-per-day">近24小时后台公开回复总数（1–1000）</label><input id="comment-per-day" type="number" min="1" max="1000" value="5"></div>
+<div><label for="comment-per-day">后台自动回复：滚动24小时已成功发送上限（1–1000，独立设置）</label><input id="comment-per-day" type="number" min="1" max="1000" value="5"></div>
 </div></div>
 <div class="settings-section" id="comment-p6-section"><h4>公开评论与被 @ 的自然续聊（均默认关闭）</h4><p class="muted">自然续聊表示鱼鱼可根据对话内容分成几条短回复，或隔一段时间再决定是否补充。此开关本身不会授权公开回复。开启后鱼鱼可以自然连发、稍后补充或重新考虑；仍会受真实来源核验、配额、跨渠道频率和平台回执约束，绝不因为被 @ 就主动 @ 别人。</p><div class="fields">
 <label class="checkline"><input id="comment-p6-enabled" type="checkbox"> 开启公开评论自然续聊</label>

@@ -1380,6 +1380,7 @@ function reportMeta() {
    * ⭐ 同时写一份到宿主：不写的话会出现死结 —— 某个键一旦在原生设置页设过就由宿主说了算，
    *    插件页再改那个键就成了"改了没反应" ✗。写失败不算致命（config.json 那份还在），把话带回给用户。
    */
+  let lastHostMirrorError = ''
   const saveCfgHost = async (patch) => {
     const attempt = async (fresh) => {
       const row = settingsDesc(fresh)
@@ -1407,7 +1408,7 @@ function reportMeta() {
       if (!e?.noForm) {   // revision 过期 / 回读不一致 ⇒ 重取一次再写
         try { return { ok: true, ns: await attempt(true), retried: true } } catch (e2) { e = e2 }
       }
-      log(`写 DSH 设置失败：${e?.message ?? e}`)
+      if(String(e?.message??e)!==lastHostMirrorError){lastHostMirrorError=String(e?.message??e);log(`DSH 原生设置镜像不可写（插件以本地配置为准）：${lastHostMirrorError}`)}
       return { ok: false, error: String(e?.message ?? e) }
     }
   }
@@ -1450,7 +1451,8 @@ function reportMeta() {
       JSON.stringify(stored[k])!==JSON.stringify(clean[k])||
       JSON.stringify(effective[k])!==JSON.stringify(clean[k]))
     if(mismatch.length)throw Error('插件设置回读失败，请不要认为已保存：'+mismatch.slice(0,8).join(', '))
-    if (!host.ok) log('⚠️ 原生 DSH 设置镜像未同步，插件已核验本地生效：' + Object.keys(clean).join(', ') + '（' + host.error + '）')
+    // The optional host mirror can be absent in Desktop. The local config
+    // already passed an independent readback; never flood the log each save.
     return {clean,host:{...host,role:'optional-native-mirror'},localVerified:true}
   }
 
@@ -7765,7 +7767,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(Object.hasOwn(validatedPatch,'ownerTodoFollowupPollMinutes'))scheduleOwnerFollowup(followupPollMs())
       // 启用主 Session 桥的这一刻就建立基线，避免“保存后到下一次定时检查之间”的旧经历被误当成新经历。
       if (clean.mainSessionBridgeEnabled === true) { try { mainSessionBridge.collect() } catch (e) { log('主 Session 基线建立失败：'+String(e?.message||e)) } }
-      log(`设置已更新：${JSON.stringify({...clean, ...('mentionProfiles' in clean ? {mentionProfiles:'[好友画像已更新]'} : {}), ...('personaPrompt' in clean ? {personaPrompt:'[人设提示词已更新]'} : {}), ...('characterLore' in clean ? {characterLore:'[角色关系设定已更新]'} : {}), ...('commentMemePrompt' in clean ? {commentMemePrompt: '[选图提示词已更新]'} : {}), ...('visionPrompt' in clean ? {visionPrompt: '[识图提示词已更新]'} : {}), ...('memeRulesPrompt' in clean ? {memeRulesPrompt: '[表情包规则维护提示词已更新]'} : {})})}（DSH 那边${host.ok ? '已同步' : '没写成：' + host.error}）`)
+      // Do not copy saved settings, private recipient lists or prompts into duty.log.
+      log(`设置已保存并本地核验（${Object.keys(clean).length} 项；DSH 原生镜像${host.ok?'已同步':'不可写'}）`)
       return sendJson(res, 200, { ok: true, config: cfg, localVerified:true, host })
     }
 
