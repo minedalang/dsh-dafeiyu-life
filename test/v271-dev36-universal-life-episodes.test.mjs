@@ -22,7 +22,7 @@ const tmp=async fn=>{const folder=mkdtempSync(join(tmpdir(),'dev36-episode-'));t
   assert.equal(x.list().length,1)
   assert.deepEqual(x.health({eligibleSources:['intention:BV1abcde1234']}),
     {active:1,firstStepOnly:1,staleFirstStep:0,firstStepWithoutEligibleSource:0,
-      eligibleToResume:0,paused:0,needsReview:0})
+      eligibleToResume:0,paused:0,pausedCooling:0,pausedWithoutEligibleSource:0,pausedDueWithSource:0,needsReview:0})
   assert.equal(x.due({eligibleSources:['intention:BV1abcde1234']}),false)
   time+=121_000
   assert.equal(x.due({eligibleSources:['intention:BV1abcde1234']}),true)

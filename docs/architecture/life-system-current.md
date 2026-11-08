@@ -123,3 +123,11 @@
 ### dev.36 同版本维护：Life Episode 首步不限首页
 
 首页只是一个有真实回执的可能首步，已接受只读待办、反思、公开观察与社交活动都可以独立产生 Episode。`life-episode-entrypoints.mjs` 现在把有效非视频 TODO／公开契机加入原意愿之外的可续行来源，用于**重新考虑**而非自动执行；视频专属 `resume_episode` 与非视频常规菜单动作依旧分别由原权限、来源和执行器核验。生成图见 `diagrams/life-universal-episodes-current.mmd`。
+
+## dev.37 同版本维护：Episode 可恢复与主评论只读考虑
+
+- **入口 → 统一层 → 事实源**：`AutonomousPlanner` 的原 `lifeOpportunities.continuations()` 输出是本轮候选的唯一可信来源；`prioritizeLifeContinuationCandidates()` 仅按该来源中已经存在的匿名 Episode 排序，不从 Episode 创造可执行 ID。`UniversalLifeEpisodes.due()` 现在把已过 `nextAt` 的 `paused` 和 `active` 一样纳入可考虑范围，但仍要求原意愿有效、已核验动作、同一账号和模型额度。`review` 状态绝不进入。
+- **评论选片与回执**：原 `bili_ledger_mark` 可选同次携带三个有限 `comment_decision` 值；必须先成功写入新入选行，才会向原 `/life-comment-review` 发送不含文本的当前轮只读意愿回执。旧视频、跳过、别的账号、额度关闭、模型没有明确提供意愿，均不能由工具伪装成成功考虑。直接 `bili_comment_consideration` 保留兼容，但模型应在真实标记之后调用；失败理由只返回四个安全枚举。
+- **权限边界**：read-only consideration 不调用 `/life-action`、不签发写入 grant，不构成内容阅读或实际发言证明；`bili_reply` 继续受独立 Life 选择、账号、平台额度、单轮写入及真实读回控制。未知结果冻结，不自动尝试第二次发送。
+- **可观测性**：匿名 S0/S1 快照增加 `pausedCooling`、`pausedWithoutEligibleSource`、`pausedDueWithSource`，区分自愿休息未到时、原意愿消失、已到时可自愿续行；此前导出的快照不能追溯补造当轮评论意愿。
+- **回归**：`test/v271-dev37-episode-comment-recovery.test.mjs`、`test/test_dev37_episode_comment_review.py`，另需既有 Episode、视频写入、发布审核全量回归。真实 Windows/B站及 72 小时未验收。

@@ -60,7 +60,7 @@ flowchart TB
     selection["候选筛选 + 去重归属 + 账号/冷却/额度检查"]
     planner["AutonomousPlanner + Life Voice + 当轮动作菜单"]
     universalEpisode["Universal Episode｜账号匿名因果片段：有真实回执才计入已完成动作"]
-    resumeEpisode["resume_episode｜鱼鱼自主选择复续；来源与权限每步重新核验"]
+    resumeEpisode["resume_episode｜暂停到期可复续；优先旧片段，来源与权限每步重新核验"]
     menuGuard["后端再次核对：action/id/BV/capability 必须确在本轮菜单"]
     rest["skip：鱼鱼自由休息；技术失败不得伪装休息"]
   end
@@ -101,7 +101,7 @@ flowchart TB
   %% @code commentAdmission | lib/life-video-action-bridge.mjs | const waitMs=choice.notBefore-now()
   subgraph outgoing["写入委派｜不存在一把可绕开各渠道限制的万能发送钥匙"]
     videoWrite["视频续行提议 → Life 意愿与原视频写入桥 → Python 工具"]
-    commentReview["已选真实 BV → 模型明确考虑主评论：想说／不想说／证据不足；仅匿名诊断"]
+    commentReview["bili_ledger_mark 入选时可附带只读意愿：想说／不想说／证据不足；仅匿名诊断"]
     commentDiagnosis["轮次结束时枚举诊断：没考虑／想说未提议／自愿否决／技术阻断／回执未知"]
     commentAdmission["已知跨渠道冷却：到 notBefore 后最多重考虑一次；在途/未知不重试"]
     socialWrite["私信/评论/分享 → 关系与渠道授权 → 原社交发送事务"]
@@ -186,6 +186,9 @@ flowchart TB
 
 %% @code universalEpisode | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
 %% @code resumeEpisode | lib/autonomous-planner.mjs | action:'resume_episode'
+
+%% @code resumeEpisode | lib/life-universal-episodes.mjs | const due=
+%% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
 ```
 
 ## 二、八类候选细目
@@ -199,7 +202,7 @@ flowchart LR
     sourceDiscussion["已有 BV 评论阅读 + 可核验主观疑问"]
     sourcePerson["SocialPortrait：跨日公开双向交流证据"]
     sourceLife["LifeOpportunities 意愿账本：ready/inspected、未过期"]
-    episodeState["Universal Episode｜已核验步骤上下文；不可代替原目标凭据"]
+    episodeState["Universal Episode｜已核验步骤 + 到期暂停恢复；不可代替原目标凭据"]
     sourceSocial["匿名 dm-received/comment-received 事件"]
     sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
     sourceReflect["LifeReflection.status().canAutoReflect"]
@@ -209,7 +212,7 @@ flowchart LR
     cues["cues：interest-milestone / discussion-read / selection-curiosity"]
     opportunities["opportunities：兴趣/评论/短期好奇的同 BV 核实；或 public-person-observation"]
     intentions["intentions：已有 BV / 作者/公开评论只读及一次额外首页；14 天有效窗"]
-    resume["resume_episode：仅重新选择原账号仍可执行的公开探索意愿"]
+    resume["resume_episode：优先旧片段，但仅重新选择原账号仍可执行的公开探索意愿"]
     social["social：入站关注信号 + 已核验熟人机会；非回复许可"]
     video["video：browse_home／use_capability；不是已观看数"]
     reflection["reflection：真实可执行反思；不是 pending 大于阈值"]
@@ -264,6 +267,8 @@ flowchart LR
 
 %% @code episodeState | lib/life-universal-episodes.mjs | const view=e=>
 %% @code resume | lib/autonomous-planner.mjs | action:'resume_episode'
+
+%% @code resume | lib/life-episode-entrypoints.mjs | export function prioritizeLifeContinuationCandidates
 ```
 
 ## 三、可信回执与记忆闭环
@@ -288,7 +293,7 @@ flowchart TB
   source["真实平台操作｜原视频/评论/DM 事务"]
   universalCausal["匿名因果 Episode｜账号隔离、分段延续、暂停与未知冻结；不是第二记忆库"]
   postWrite["同 Episode 的已核验写入：只计一步，下一写前只读或休息且每轮一写"]
-  commentReview["视频入选后主动考虑主评论：想说／不想说／证据不足；不等于发送"]
+  commentReview["入选标记可附带只读评论意愿：想说／不想说／证据不足；不等于发送"]
   commentOutcome["结束后的独立 DEBUG｜未考虑／未提议／Life 否决／平台未知"]
   receipt{"原渠道可信结果?"}
   verified["行动事件仅接受 verified=true 与当前账号"]
@@ -333,6 +338,8 @@ flowchart TB
 %% @code postWrite | lib/life-opportunities.mjs | entry.writeAftercare='read-or-rest'
 
 %% @code universalCausal | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
+
+%% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
 ```
 
 ## 四、统一 Life Episode 因果持续性

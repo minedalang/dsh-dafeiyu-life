@@ -105,11 +105,9 @@ B站 UID 是平台身份，不等于鱼鱼本人的稳定角色身份。切换�
 
 代码与第三方归属见 [LICENSE](LICENSE)、[NOTICE](NOTICE.md) 和 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)。欢迎通过 [GitHub Issues](https://github.com/minedalang/dsh-dafeiyu-life/issues) 反馈问题。🐟
 
-
 ### 当前 Life 源码全景图（可编辑）
 
 全局数据流、todos/cues/intentions/opportunities 等候选的真实来源、权限和回执边界及未完成链路请参阅 [`docs/architecture/life-system-current.md`](docs/architecture/life-system-current.md)。三张 Mermaid 源图位于 `docs/architecture/diagrams/life-system-current.mmd` 与 `docs/architecture/diagrams/life-candidates-current.mmd` 与 `docs/architecture/diagrams/life-receipt-memory-current.mmd`，运行 `npm run check:life-architecture` 检查主要节点与源码符号映射。本版仅修复当轮菜单校验，未完成 Windows/B站/GGUF/72 小时验收。
-
 开发维护补链：已自主选中的短期开放式好奇可在当前账号进入 Life cues；19 类行动在统一白名单上验证并通过原记忆 outbox 写入。平台成功/记忆入队分别判断，仍需实机验收。
 
 > dev.34 连续 Life Episode 与评论技术阻断维护；dev.33 主评论排查维护：视频 Agent 实际入选后可明确记录 `want/pass/insufficient` 的只读考虑结果；Life DEBUG 新增 `video-round` 完成记录，分离模型意愿、Life 批准、平台可见。不会自动开启 `autoComment`，不要求每轮发表。参见 `docs/architecture/life-system-current.md`。

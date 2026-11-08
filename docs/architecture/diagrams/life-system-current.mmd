@@ -53,7 +53,7 @@ flowchart TB
     selection["候选筛选 + 去重归属 + 账号/冷却/额度检查"]
     planner["AutonomousPlanner + Life Voice + 当轮动作菜单"]
     universalEpisode["Universal Episode｜账号匿名因果片段：有真实回执才计入已完成动作"]
-    resumeEpisode["resume_episode｜鱼鱼自主选择复续；来源与权限每步重新核验"]
+    resumeEpisode["resume_episode｜暂停到期可复续；优先旧片段，来源与权限每步重新核验"]
     menuGuard["后端再次核对：action/id/BV/capability 必须确在本轮菜单"]
     rest["skip：鱼鱼自由休息；技术失败不得伪装休息"]
   end
@@ -94,7 +94,7 @@ flowchart TB
   %% @code commentAdmission | lib/life-video-action-bridge.mjs | const waitMs=choice.notBefore-now()
   subgraph outgoing["写入委派｜不存在一把可绕开各渠道限制的万能发送钥匙"]
     videoWrite["视频续行提议 → Life 意愿与原视频写入桥 → Python 工具"]
-    commentReview["已选真实 BV → 模型明确考虑主评论：想说／不想说／证据不足；仅匿名诊断"]
+    commentReview["bili_ledger_mark 入选时可附带只读意愿：想说／不想说／证据不足；仅匿名诊断"]
     commentDiagnosis["轮次结束时枚举诊断：没考虑／想说未提议／自愿否决／技术阻断／回执未知"]
     commentAdmission["已知跨渠道冷却：到 notBefore 后最多重考虑一次；在途/未知不重试"]
     socialWrite["私信/评论/分享 → 关系与渠道授权 → 原社交发送事务"]
@@ -179,3 +179,6 @@ flowchart TB
 
 %% @code universalEpisode | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
 %% @code resumeEpisode | lib/autonomous-planner.mjs | action:'resume_episode'
+
+%% @code resumeEpisode | lib/life-universal-episodes.mjs | const due=
+%% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark

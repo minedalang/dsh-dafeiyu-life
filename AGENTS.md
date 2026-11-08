@@ -1,4 +1,4 @@
-## 当前开发目标（dev.38，未发布）
+## 当前开发目标（dev.37，未发布）
 
 Universal Life Episode 不是单独的视频刷片脚本：有可信回执的 Life 自主行动要归入当前账号的匿名连续性片段；下轮要重新向鱼鱼提供有效的 `resume_episode` 选择（不强制），而不是因为上次视频 Agent 结束就失去上下文。入口、步骤、账号隔离、暂停、未知冻结、写权限和评论意愿均以 `docs/architecture/2.7.1-dev36-universal-life-episodes.md` 和 4 张 Mermaid 图为准。后续每次修改 Life 调用链，运行 `npm run write:life-architecture-view`、`npm run check:life-architecture` 与 `test/v271-dev36-universal-life-episodes.test.mjs`。原实际平台回执和 Life Memory 仍是唯一事实来源，不将匿名 Episode 记录当成真实观看/发布证明。 dev.37 统一归属以 `lib/life-action-attribution.mjs` 为唯一接入契约；只有原专业执行器可信平台回执才可记已核验，未知冻结原片段，不在此执行写入；详见 `docs/architecture/2.7.1-dev37-unified-action-ownership.md`。
 

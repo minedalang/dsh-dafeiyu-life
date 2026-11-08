@@ -22,6 +22,7 @@ import sys
 import tempfile
 import urllib.parse
 import urllib.request
+import urllib.error
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import re
@@ -105,6 +106,19 @@ def _life_video_request(route, payload):
             body = response.read(2048)
         result = json.loads(body)
         return result if isinstance(result, dict) else {'ok': False}
+    except urllib.error.HTTPError as exc:
+        # Only the read-only consideration route may surface bounded host
+        # denial codes. No platform error, response body or token is relayed.
+        if route == '/life-comment-review' and exc.code == 409:
+            try:
+                body = json.loads(exc.read(512))
+                code = body.get('reason') if isinstance(body, dict) else ''
+                if code in ('comment-review-not-current', 'comment-selection-not-confirmed',
+                            'comment-review-already-recorded', 'comment-review-permission-unavailable'):
+                    return {'ok': False, 'reason': code}
+            except Exception:
+                pass
+        return {'ok': False, 'reason': 'Life 授权不可核验'}
     except Exception:
         return {'ok': False, 'reason': 'Life 授权不可核验'}
 
@@ -2595,21 +2609,41 @@ async def bili_ledger_read() -> str:
 
 
 @tool()
-async def bili_ledger_mark(bvid: str, title: str, up: str = "", status: str = "看过") -> str:
-    """将一个视频标记为挑中或跳过，写入固定 seen.md 表格。"""
+async def bili_ledger_mark(bvid: str, title: str, up: str = "", status: str = "看过",
+                           comment_decision: str = "") -> str:
+    """标记本轮实际入选或跳过；可选在同一次入选标记时记录只读原创评论意愿（不发送）。"""
     if (e := _guard("bili_ledger_mark")): return e
     try:
         bv = _valid_bv(bvid)
+        st = _safe_line(status, 80) or "看过"
+        selected = st in ("挑中", "已挑中", "选中", "已选中", "入选", "已入选", "值得看", "可以看")
+        if comment_decision and (comment_decision not in ("want", "pass", "insufficient") or not selected):
+            return json.dumps({"ok": False, "error": "comment_decision 仅适用于真实入选，值须为 want/pass/insufficient"}, ensure_ascii=False)
         now = datetime.now().strftime("%Y-%m-%d")
         src = _read_home("seen.md", 2_000_000)
         if re.search(r"\|\s*"+re.escape(bv)+r"\s*\|", src):
-            return json.dumps({"ok": True, "already_seen": True}, ensure_ascii=False)
-        st = _safe_line(status, 80)
-        if not st: st = "看过"
+            return json.dumps({"ok": True, "already_seen": True,
+                               **({"comment_review": {"ok": False, "reason": "comment-selection-not-confirmed"}} if comment_decision else {})}, ensure_ascii=False)
         _append_home("seen.md", "| " + " | ".join([now,bv,_safe_line(title),_safe_line(up),st]) + " |\n")
-        return json.dumps({"ok": True, "already_seen": False}, ensure_ascii=False)
+        result = {"ok": True, "already_seen": False}
+        # Only a genuine new selected row may enter the host's active-round
+        # read-only review. A marker result never authorizes a platform write.
+        if comment_decision:
+            round_id = os.environ.get('BILI_DUTY_LIFE_ROUND_ID', '')
+            if not re.fullmatch(r'[a-f0-9]{24}', round_id):
+                result['comment_review'] = {"ok": False, "reason": "comment-review-not-current"}
+            else:
+                try:
+                    uid = str(getattr(get_cred(), 'dedeuserid', '') or '')
+                    payload = {'uid': uid, 'roundId': round_id, 'bvid': bv, 'decision': comment_decision}
+                    response = await asyncio.to_thread(_life_video_request, '/life-comment-review', payload)
+                    result['comment_review'] = {"ok": response.get('ok') is True,
+                        "reason": response.get('reason', '') if response.get('ok') is not True else ''}
+                except Exception:
+                    result['comment_review'] = {"ok": False, "reason": "comment-review-not-current"}
+        return json.dumps(result, ensure_ascii=False)
     except Exception as exc:
-        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+        return json.dumps({"ok": False, "error": str(exc)[:160]}, ensure_ascii=False)
 
 
 @tool()
