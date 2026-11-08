@@ -2621,11 +2621,17 @@ async def bili_ledger_mark(bvid: str, title: str, up: str = "", status: str = "�
             return json.dumps({"ok": False, "error": "comment_decision 仅适用于真实入选，值须为 want/pass/insufficient"}, ensure_ascii=False)
         now = datetime.now().strftime("%Y-%m-%d")
         src = _read_home("seen.md", 2_000_000)
-        if re.search(r"\|\s*"+re.escape(bv)+r"\s*\|", src):
-            return json.dumps({"ok": True, "already_seen": True,
-                               **({"comment_review": {"ok": False, "reason": "comment-selection-not-confirmed"}} if comment_decision else {})}, ensure_ascii=False)
-        _append_home("seen.md", "| " + " | ".join([now,bv,_safe_line(title),_safe_line(up),st]) + " |\n")
-        result = {"ok": True, "already_seen": False}
+        already_seen = bool(re.search(r"\|\s*"+re.escape(bv)+r"\s*\|", src))
+        # Selection is written at most once. A model may first mark an
+        # interesting video and only afterwards decide whether to speak.
+        # A later read-only consideration must not be discarded merely
+        # because the canonical ledger now contains that selected BV.
+        # The host independently checks the exact current round, account,
+        # pre-round picked snapshot, and canonical *picked* row before
+        # accepting any consideration; old or skipped rows cannot qualify.
+        if not already_seen:
+            _append_home("seen.md", "| " + " | ".join([now,bv,_safe_line(title),_safe_line(up),st]) + " |\n")
+        result = {"ok": True, "already_seen": already_seen}
         # Only a genuine new selected row may enter the host's active-round
         # read-only review. A marker result never authorizes a platform write.
         if comment_decision:

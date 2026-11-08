@@ -21,6 +21,8 @@ class LedgerCommentReviewTests(unittest.TestCase):
     def setUp(self):
         self.lines = []
         self.requests = []
+        self.pre_round_picked = set()
+        self.recorded = set()
         self.ctx = {'asyncio': asyncio, 'json': json, 'os': os, 're': re, 'datetime': datetime,
             '_guard': lambda n: '', '_valid_bv': lambda v: v if re.fullmatch(r'BV[0-9A-Za-z]{10}', v) else (_ for _ in ()).throw(ValueError('bad-bv')),
             '_safe_line': lambda text, limit=80: str(text)[:limit],
@@ -32,6 +34,15 @@ class LedgerCommentReviewTests(unittest.TestCase):
 
     def request(self, route, payload):
         self.requests.append((route, payload))
+        bvid = payload['bvid']
+        if bvid in self.pre_round_picked or not any(
+            re.search(r'\|\s*'+re.escape(bvid)+r'\s*\|', line) and
+            re.search(r'\|\s*(?:挑中|值得看|可以看)\s*\|\s*$', line)
+            for line in self.lines):
+            return {'ok': False, 'reason': 'comment-selection-not-confirmed'}
+        if bvid in self.recorded:
+            return {'ok': False, 'reason': 'comment-review-already-recorded'}
+        self.recorded.add(bvid)
         return {'ok': True}
 
     def call(self, decision='', status='挑中', bvid='BV1abcde1234'):
@@ -46,8 +57,45 @@ class LedgerCommentReviewTests(unittest.TestCase):
         self.assertEqual(len(self.lines), 1)
         self.assertEqual(self.requests, [('/life-comment-review', {
             'uid': '1234567', 'roundId':'c'*24, 'bvid':'BV1abcde1234', 'decision':'pass'})])
-        self.assertEqual(self.call('want')['comment_review']['reason'], 'comment-selection-not-confirmed')
-        self.assertEqual(len(self.requests), 1, 'already-seen video cannot be reclassified')
+        with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
+            again = self.call('want')
+        self.assertTrue(again['already_seen'])
+        self.assertEqual(again['comment_review']['reason'], 'comment-review-already-recorded')
+        self.assertEqual(len(self.lines), 1, 'no duplicate canonical selection rows')
+        self.assertEqual(len(self.requests), 2, 'host must enforce exactly-once review')
+
+    def test_repeated_marker_can_attach_first_review_to_current_round_pick(self):
+        # Regression for the reported "picked=1, reviewRejected=1" trace:
+        # model first picks a video, then thinks about a comment.
+        with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
+            first = self.call('')
+            later = self.call('insufficient')
+        self.assertTrue(first['ok'])
+        self.assertFalse(first['already_seen'])
+        self.assertTrue(later['already_seen'])
+        self.assertTrue(later['comment_review']['ok'])
+        self.assertEqual(len(self.lines), 1)
+        self.assertEqual(len(self.requests), 1)
+
+    def test_previously_selected_video_cannot_fake_a_new_round_review(self):
+        self.lines.append('| 2026-11-07 | BV1abcde1234 | old video | uploader | 挑中 |\n')
+        self.pre_round_picked.add('BV1abcde1234')
+        with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
+            out = self.call('want')
+        self.assertTrue(out['already_seen'])
+        self.assertEqual(out['comment_review']['reason'], 'comment-selection-not-confirmed')
+        self.assertEqual(len(self.lines), 1)
+
+    def test_prior_skipped_or_comment_only_record_cannot_authorize_review(self):
+        for row in ('| 2026-11-08 | BV1abcde1234 | title | uploader | 跳过 |\n',
+                    '| BV1abcde1234 | 322469935296 | 0 | 2026-10-31 | comment |\n'):
+            self.lines[:] = [row]
+            self.requests.clear()
+            with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
+                out = self.call('want')
+            self.assertTrue(out['already_seen'])
+            self.assertEqual(out['comment_review']['reason'], 'comment-selection-not-confirmed')
+            self.assertEqual(len(self.lines), 1)
 
     def test_invalid_or_skipped_never_creates_review(self):
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):

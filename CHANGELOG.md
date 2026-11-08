@@ -1,3 +1,10 @@
+## [2.7.1-dev.37] · 视频入选后评论意愿补记修复（同版本维护，未发布）
+
+- 修复视频 Agent 先写入真实入选 BV、随后使用同一 `bili_ledger_mark` 补填 `comment_decision` 时因旧 `already_seen` 快捷返回而错误拒绝的问题。已有行不重复写，只读考虑请求仍送原 Life 桥核验。
+- 保留本轮新入选、账号隔离、每 BV 唯一意愿、原评论外发许可和独立平台读回；旧视频、跳过记录和评论记录不能借此绕过审批，未知外发不重试。
+- 更新视频 Agent 提示，明确先选后考虑和无需读评论区即可登记 `pass`/`insufficient`，不给模型强制评论指标。
+- 针对真实 `picked=1 / comment-review-rejected` 诊断补 Python 回归和架构说明；Windows/B站真实发布仍待复验，`releaseReady:false`。
+
 ## [2.7.1-dev.37] · Life / 专业 Agent 委派协调审计修复（同版本维护，未发布）
 
 - 普通 Life 选择休息不再误暂停最近的无关 Episode，明确暂停依原意愿目标；已有到期 Episode 在自愿休息后按正常考虑间隔醒来，避免无意义连续扣预算。
