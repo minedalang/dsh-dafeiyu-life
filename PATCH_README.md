@@ -1,34 +1,38 @@
-# DSH 2.7.1-dev.24 · 从 dev.23 升级说明
+# DSH 2.7.1-dev.25 · 从 dev.24 升级说明
 
-> 开发预览，未发布；默认不开启 Embedding，不授权任何新 B站外发。
+> 开发预览，未正式发布；不变更 B站发送权限；`releaseReady: false`。
 
-本轮补丁唯一受支持的起点是已上传的 **`dsh-bili-scroll-plus2.zip`**（`package.json` 为 `2.7.1-dev.23`）。如果本地已经有未提交改动或 dev.24 其他来源的修改，不要直接叠加补丁；先将改动备份并核实差异。
+本轮增量补丁的**准确基线**是上一轮交付的 `DSH-2.7.1-dev24-full-source.zip`（`package.json` 为 `2.7.1-dev.24`）。不同 dev.24 分支或已有未提交变更的源码不能保证可以直接应用。应先核实 `git status`、备份业务数据与本地变更。
 
-## 用户会得到什么
+## 核心变更
 
-新增本机 Qwen3 Embedding 语义候选检索、内置 llama.cpp Runtime 管理接口、本地向量索引与管理界面。安装或恢复不会自动下载模型；只有点击「启用并下载模型」后才开始下载、校验和启动。模型不可用时正常走旧版词法检索。
+- 在原主动回忆协议中新增 `lib/recall-request.mjs`，允许 Agent 自主提供回忆意图、专用查询词、时间条件、经历类型；**不额外发起一次聊天模型调用**。
+- 程序使用运行机器的 IANA 时区，将今天、昨天、前天及指定日期转换为本地自然日范围，支持夏令时边界。
+- 有明确时间约束的生活回顾**先检查可信事件发生时间**；无法确认具体日期的模糊或痕迹经历不能作为某天已发生的事实。长期记忆的创建时间不能替代事件发生时间。
+- 词法与可选本地 Embedding 只在原有权限、遗忘、UID 过滤后的有效候选上排序；语义服务不可用仍保留时间硬过滤与词法降级。主人、好友、公开评论等仍沿原有记忆与成功回执来源。
+- 原有没有结构化时间条件的纯文本回忆路径保持兼容；`full` 旧模式和部分专业 Agent 尚未全部统一。
 
-该能力复用原 `memoryRetriever` / `LifeMemoryGateway` 和权限/遗忘机制，不另建事实数据库，也不会因相似度命中而证明视频已看、评论已发或记忆仍有效。主 Session、主人私信与受 SocialContextAssembler 管理的社交路径已经接线；旧 `full` 模式与部分专业 Agent 仍未收口。
+技术说明见 `docs/architecture/2.7.1-dev25-temporal-intent-recall.md`；变更记录见 `CHANGELOG.md`。
 
-## Windows PowerShell 补丁应用
+## Windows PowerShell 应用说明
 
-请先**停止 DSH Desktop**，备份 `$DSH_HOME/bili-duty/` 业务数据，再到本地源码仓库执行：
+停止 DSH Desktop，备份 DSH 业务数据目录与未提交的源码改动，然后在从**准确 dev.24 基线**恢复的源码仓库中执行：
 
 ```powershell
 git switch dev
 git status --short
-git apply --check .\DSH-2.7.1-dev24-from-dev23-original-CRLF.patch
-git apply .\DSH-2.7.1-dev24-from-dev23-original-CRLF.patch
+git apply --check .\DSH-2.7.1-dev25-from-dev24-original-CRLF.patch
+git apply .\DSH-2.7.1-dev25-from-dev24-original-CRLF.patch
 git diff --check
 cmd.exe /c run-tests.bat
 ```
 
-若仓库文本已全部转换为 LF，请改用 `DSH-2.7.1-dev24-from-dev23-normalized-LF.patch`，**两种补丁只能使用一种**。已有其他代码变更时，优先使用交付的完整源码对比合并，不强行应用补丁。
+如果本地仓库把所有文本换行规范化为 LF，请改用 `DSH-2.7.1-dev25-from-dev24-normalized-LF.patch`。**两个补丁只选择其中一个**，不能叠加。现有业务数据不应被补丁覆盖；如应用检查失败，应对照完整源码检查，不要强行 `--reject` 或覆盖个人配置。
 
-不使用命令行的用户可以在备份业务数据后，按现有 DSH 插件安装/升级流程使用平台安装包；大模型不是升级依赖。当前交付是源码开发包，不是已签名的 Windows 安装程序。
+完整源码 ZIP 是开发源码而非已签名的 Windows 安装包。dev.24 可选 Embedding 能力默认关闭，dev.25 不会因安装或启动而强制下载模型。
 
 ## 测试与发布边界
 
-离线 Node 1992/1992 通过；Python 222 通过、1 跳过；插件自检和 `npm pack --dry-run` 通过。Windows、真实 llama-server + 639 MB GGUF 推理、真实 B站与持续运行未验收。`releaseReady: false`；不要合并 main、创建 Tag 或对外发布。
+离线 Node 全仓共 **2006** 项：**1999 通过，7 跳过，0 失败**；Python **222 通过，1 跳过**；dev.25 新增结构化回忆专项 **14/14 通过**（已计入全仓结果）。插件自检、`npm pack --dry-run`、补丁独立应用与内容哈希校验见交付测试报告。
 
-详细架构：`docs/architecture/2.7.1-dev24-local-embedding-recall.md`。
+**尚未验收**：真实 Windows DSH Desktop、llama.cpp GGUF 模型推理、B站账号、跨账号切换、长时间运行、真实生活回忆准确率；**不合并 `main`、不创建 Tag、不对外发布**。
