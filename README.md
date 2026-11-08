@@ -98,3 +98,8 @@ B站 UID 是平台身份，不等于鱼鱼本人的稳定角色身份。切换�
 先感谢这些开源项目及维护者：[c1overzz/dsh-bili-scroll](https://github.com/c1overzz/dsh-bili-scroll)、[adoresever/bilibili-mcp](https://github.com/adoresever/bilibili-mcp)、[Yuuyuko-uu/dsh-fish-memory](https://github.com/Yuuyuko-uu/dsh-fish-memory) 和 [Yuuyuko-uu/dsh-bili-subagent](https://github.com/Yuuyuko-uu/dsh-bili-subagent)。项目还可参考 [大肥鱼提示词人设卡素材站](https://aigengtu.com/persona) 的表达素材，请遵守原有授权。
 
 代码与第三方归属见 [LICENSE](LICENSE)、[NOTICE](NOTICE.md) 和 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)。欢迎通过 [GitHub Issues](https://github.com/minedalang/dsh-dafeiyu-life/issues) 反馈问题。🐟
+
+
+### 当前 Life 源码全景图（可编辑）
+
+全局数据流、todos/cues/intentions/opportunities 等候选的真实来源、权限和回执边界及未完成链路请参阅 [`docs/architecture/life-system-current.md`](docs/architecture/life-system-current.md)。两张 Mermaid 源图位于 `docs/architecture/diagrams/life-system-current.mmd` 与 `docs/architecture/diagrams/life-candidates-current.mmd`，运行 `npm run check:life-architecture` 检查主要节点与源码符号映射。本版仅修复当轮菜单校验，未完成 Windows/B站/GGUF/72 小时验收。

@@ -30,7 +30,9 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "prepare:embedding-runtime": "node scripts/prepare-embedding-runtime.mjs"
+    "prepare:embedding-runtime": "node scripts/prepare-embedding-runtime.mjs",
+    "check:life-architecture": "node scripts/check-life-architecture.mjs",
+    "write:life-architecture-view": "node scripts/check-life-architecture.mjs --write-preview"
   },
   "files": [
     "index.js",
@@ -38,6 +40,7 @@
     "cordis.patch.yml",
     "lib",
     "scripts/prepare-embedding-runtime.mjs",
+    "scripts/check-life-architecture.mjs",
     "tools/dev4-cold-state-backup.mjs",
     "tools/dev4-life-planner-offline-recovery.mjs",
     "tools/dev4-life-events-offline-review.mjs",

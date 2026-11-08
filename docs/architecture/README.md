@@ -1,3 +1,7 @@
+## 当前权威 Life 全景图与源码接线审计（dev.33 同版本加固，未发布）
+
+**优先阅读**：[GitHub 可直接渲染的完整 Life 图](./life-system-current-view.md) · [Life 完整源码关系与审计矩阵](./life-system-current.md) · [可编辑的 Mermaid 全景图](./diagrams/life-system-current.mmd) · [todos / cues / intentions / opportunities 等候选字典图](./diagrams/life-candidates-current.mmd)。这两张图用实际生产代码锚点校验；`npm run check:life-architecture` 和相关 Node 回归用于避免图与实现明显脱节。仍有未完全接通的渠道、模型实机及 72h 验收，`releaseReady:false`。
+
 ## dev.33 同版本维护修复 · @ 提及边界与 Life 事实纠错（未发布）
 
 [真实评论入口、历史记忆及后续续聊边界](./2.7.1-dev33-mention-memory-hotfix.md) · [Mermaid 处理图](./diagrams/2.7.1-dev33-mention-memory-hotfix.mmd)。解决“@大肥鱼怒了看看”昵称不可靠边界时，把内部诊断字样当成对方说话并污染人生记忆的 Bug；仍可回忆的经历校正为不能确认正文的 @ 提及，已完成回复事实保留。`releaseReady:false`。

@@ -1,0 +1,60 @@
+%% 生活候选细目字典：这是当前项目的真实 schema 类型/选择约束，不是泛化的 AI 心理推演。
+flowchart LR
+  subgraph inputs["有事实来源，才能构成候选"]
+    sourceTodo["原 accepted TODO：open/deferred 且到期"]
+    sourceInterest["LifeInterests：账号绑定、跨日自主选片兴趣"]
+    sourceDiscussion["已有 BV 评论阅读 + 可核验主观疑问"]
+    sourcePerson["SocialPortrait：跨日公开双向交流证据"]
+    sourceLife["LifeOpportunities 意愿账本：ready/inspected、未过期"]
+    sourceSocial["匿名 dm-received/comment-received 事件"]
+    sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
+    sourceReflect["LifeReflection.status().canAutoReflect"]
+  end
+  subgraph candidates["本轮实际类型 / 内容边界"]
+    todos["todos：只读已接受任务（执行前复核）"]
+    cues["cues：interest-milestone / discussion-read"]
+    opportunities["opportunities：discussion/interest 的同 BV 元数据；或 public-person-observation"]
+    intentions["intentions：已有 BV / 作品作者及续行目标，14 天有效窗"]
+    social["social：入站关注信号 + 已核验熟人机会；非回复许可"]
+    video["video：browse_home／use_capability；不是已观看数"]
+    reflection["reflection：真实可执行反思；不是 pending 大于阈值"]
+    eventRefs["eventRefs：匿名事件引用 + 公平重考虑；不代表成功回执"]
+  end
+  sourceTodo --> todos
+  sourceInterest --> cues
+  sourceDiscussion --> cues
+  sourceInterest --> opportunities
+  sourceDiscussion --> opportunities
+  sourcePerson --> opportunities
+  sourceLife --> intentions
+  sourceSocial --> social
+  sourceVideo --> video
+  sourceReflect --> reflection
+  sourceSocial --> eventRefs
+  sourceVideo -.->|本轮读取证据，可唤醒但不授予权限| eventRefs
+  sourceLife -.->|重考虑/过期后需重新查原账本| eventRefs
+  subgraph choice["Life 一次模型选择 + 后端当轮菜单验证"]
+    planner["AutonomousPlanner → validateOfferedLifeAction"]
+  end
+  todos --> planner
+  cues --> planner
+  opportunities --> planner
+  intentions --> planner
+  social --> planner
+  video --> planner
+  reflection --> planner
+  eventRefs -.-> planner
+  rest["skip：自愿休息；不能与技术失败混为一谈"]
+  planner --> rest
+  classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
+  class social,eventRefs partial
+
+%% @code todos | lib/owner-todos.mjs | export const READ_TODO_TYPES
+%% @code cues | lib/life-opportunities.mjs | const explorationCues=
+%% @code opportunities | lib/life-opportunities.mjs | export function deriveDiscussionOpportunities
+%% @code intentions | lib/life-opportunities.mjs | const intentions=
+%% @code social | lib/life-agent-events.mjs | const TYPES=new Set
+%% @code video | lib/autonomous-planner.mjs | if(homeEnabled&&lifeSkills.some
+%% @code reflection | lib/life-reflection.mjs | canAutoReflect
+%% @code eventRefs | lib/life-agent-events.mjs | export const lifeEventDebugRef
+%% @code planner | lib/autonomous-planner.mjs | export function validateOfferedLifeAction

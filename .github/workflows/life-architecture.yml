@@ -1,0 +1,22 @@
+name: Life architecture contract
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagram-and-admission:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check Mermaid node links against real source
+        run: npm run check:life-architecture
+      - name: Test Life menu admission and diagram drift detection
+        run: node --test test/v271-dev33-life-menu-hardening.test.mjs test/v271-dev33-life-architecture-contract.test.mjs
