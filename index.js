@@ -1913,7 +1913,7 @@ function reportMeta() {
       }
       try {
         const round=process.env.BILI_DUTY_LIFE_ROUND_ID
-        if (round) lifeAgentEvents?.recordHomeFeedRead(round,summarizeHomeFeedResult(response))
+        if (round) lifeAgentEvents?.recordHomeFeedRead(round,summarizeHomeFeedResult(response,{includeCandidateBvids:true}))
       } catch { /* Optional evidence must not make a successful platform read fail. */ }
       return response
     },
@@ -3135,11 +3135,15 @@ function reportMeta() {
       if(videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
         // Count only NEW picked records from the canonical ledger. If that
         // ledger is unavailable, persist null rather than pretending zero.
-        let selected=null
-        if(code===0)try{selected=parseSeenTable().filter(x=>x.picked&&!watchedBeforeRun.has(x.bvid)).length}catch{}
+        let selected=null,newlyPickedBvids=null
+        if(code===0)try{
+          const rows=parseSeenTable().filter(x=>x.picked&&!watchedBeforeRun.has(x.bvid))
+          selected=rows.length
+          newlyPickedBvids=rows.map(x=>String(x.bvid||'')).filter(x=>/^BV[0-9A-Za-z]{10}$/.test(x))
+        }catch{}
         const commentDiagnostics=currentVideoCommentDiagnostics?.roundId===videoRoundReceiptId&&
           currentVideoCommentDiagnostics.scope===videoRoundLifeAccountTag?currentVideoCommentDiagnostics:null
-        const completed=lifeAgentEvents.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:code,pickedCount:selected,commentDiagnostics})
+        const completed=lifeAgentEvents.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:code,pickedCount:selected,pickedBvids:newlyPickedBvids,commentDiagnostics})
         // Never queue a "completed round" life decision if the trusted
         // account ledger did NOT persist a verified normal-exit receipt.
         verifiedVideoRoundCompletion=completed?.ok===true&&completed?.updated===true&&completed?.state==='completed'

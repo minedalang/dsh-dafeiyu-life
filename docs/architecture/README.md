@@ -1,4 +1,8 @@
-## 当前开发版本 2.7.1-dev.32：Life 首页候选真实读取回执（未发布）
+## 当前开发版本 2.7.1-dev.33：首页闲逛独立决策与候选来源精确归因（未发布）
+
+[dev.33 生产接线、匿名来源归因与安全边界](./2.7.1-dev33-home-browse-attribution.md) · [Mermaid 可编辑流程](./diagrams/2.7.1-dev33-home-browse-attribution.mmd)。Life `browse_home` 不再依赖匿名事件或 `quiet-window` 成功入队；原账号、Life active、视频能力、20 分钟间隔与首页推荐开关仍是硬门禁。首页工具返回 BV 与本轮新增入选 BV 精确匹配，持久化只保留来源数量，轮次哈希在完成时清除。没有新 Agent、模型计费、定时器或写权限；仍需 Windows/B站/72h 实机验收，`releaseReady:false`。
+
+## 历史开发版本 2.7.1-dev.32：Life 首页候选真实读取回执（未发布）
 
 [dev.32 生产读回与账号绑定说明](./2.7.1-dev32-home-feed-receipts.md) · [Mermaid 可编辑流程](./diagrams/2.7.1-dev32-home-feed-observation.mmd)。Life `browse_home` 不等于实际调用首页推荐或观看成功；现可在原视频轮次里分别看到首页工具真实调用状态、有效 BV 候选数量和原选片账本新增数量。无新首页 Agent、无额外模型计费、无外发授权扩张；仍需 Windows/B站/72h 实机验收，`releaseReady:false`。
 

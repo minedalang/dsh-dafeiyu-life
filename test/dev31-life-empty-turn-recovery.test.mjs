@@ -18,13 +18,13 @@ const reflectionCfg=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBil
 const eventsFor=(t,n)=>Array.from({length:n},(_,i)=>({kind:'watch',key:`watch:dev31:${i}`,bvid:'BV'+String(i).padStart(10,'0'),title:`视频${i}`,day:'2026-11-08'}))
 const evidence={reflectionEvidence:keys=>keys.map(key=>({key,text:'这是真实仍有效的公开经历信息',importance:.5,stage:'clear',at:T}))}
 
-function planner(dir,{clock,model,reflectionStatus=()=>({pending:0}),onExplore=()=>({started:true}),homeEnabled=true}={}){
+function planner(dir,{clock,model,reflectionStatus=()=>({pending:0}),onExplore=()=>({started:true}),homeEnabled=true,enqueueQuietWake=true}={}){
  const cfg=config();cfg.homeRecommendationsEnabled=homeEnabled
  const agentEvents=createLifeAgentEvents({stateDir:dir,getAccountTag:()=>SCOPE,now:clock})
  const skills=createLifeCapabilities([{id:'bilibili.video-explore',risk:'delegated-existing-permissions',
    description:'公开探索',available:()=>({ok:true}),execute:opts=>onExplore(opts)}])
  const svc=createAutonomousPlanner({dataDir:dir,now:clock,getConfig:()=>cfg,getTodos:()=>[],getLifeAccountTag:()=>SCOPE,
-   getLifeEvents:()=>agentEvents.peek(),offerLifeWake:o=>agentEvents.offer(o),settleLifeEvents:(ids,reason)=>agentEvents.settle(ids,reason),
+   getLifeEvents:()=>agentEvents.peek(),offerLifeWake:o=>enqueueQuietWake?agentEvents.offer(o):{ok:true,created:false},settleLifeEvents:(ids,reason)=>agentEvents.settle(ids,reason),
    getLifeEventStatus:()=>agentEvents.status(),getLifeCapabilities:()=>skills.list(),getLifeCapabilityReadiness:()=>skills.inspect(),
    runLifeCapability:(id,opts)=>skills.run(id,opts),recordVideoStart:()=>agentEvents.recordVideoStart(),
    invokeModel:model,reflect:async()=>({ok:false,skipped:'interval'}),reflectionStatus,
@@ -69,6 +69,22 @@ test('首页闲逛显式独立候选，不新建视频 Agent，原能力执行�
  assert.equal(forbidden.some(x=>x.action==='browse_home'),false)
  const allowed=plannerActionMenu({videoEligible:true,lifeEvents:[{id:'e'}],lifeSkills:[{id:'bilibili.video-explore'}],homeEnabled:true})
  assert.equal(allowed.some(x=>x.action==='browse_home'),true)
+ const idle=plannerActionMenu({videoEligible:true,lifeEvents:[],lifeSkills:[{id:'bilibili.video-explore'}],homeEnabled:true})
+ assert.equal(idle.some(x=>x.action==='browse_home'),true,'homepage browsing is an idle activity, not an event-targeted task')
+ assert.equal(idle.some(x=>x.action==='use_capability'),false,'generic capability delegation still needs a concrete event')
+}))
+
+test('无匿名生活事件时仍可自主选择首页闲逛',()=>temp(async dir=>{
+ let received=[]
+ const x=planner(dir,{clock:()=>T,enqueueQuietWake:false,model:async prompt=>{
+   assert.match(prompt,/browse_home/)
+   return JSON.stringify({action:'browse_home',reason:'今天没什么特别想看的，去首页随便逛逛'})
+ },onExplore:opts=>{received.push(opts);return {started:true}}})
+ const run=await x.svc.tick({force:true})
+ assert.equal(run.action,'browse_home')
+ assert.equal(run.result,'capability-launched')
+ assert.deepEqual(received,[{entryMode:'home'}])
+ assert.equal(x.agentEvents.status().pending,0,'no synthetic event is required')
 }))
 
 test('模型失败退避能跨实例保留，未到期不再扣额度，成功后清零',()=>temp(async dir=>{

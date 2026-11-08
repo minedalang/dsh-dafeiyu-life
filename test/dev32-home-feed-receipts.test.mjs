@@ -13,6 +13,7 @@ const video=id=>({bvid:'BV'+String(id).padStart(10,'0'),title:'仅测试标题',
 test('首页结果只根据实际 BV 候选计数，绝不相信外层 count 或任意文本',()=>{
  const data={ok:true,count:10000,videos:[video(1),video(1),video(2),{bvid:'BV-malicious',cookie:'secret'},{}]}
  assert.deepEqual(summarizeHomeFeedResult(data),{status:'candidates',count:2})
+ assert.deepEqual(summarizeHomeFeedResult(data,{includeCandidateBvids:true}),{status:'candidates',count:2,candidateBvids:['BV0000000001','BV0000000002']})
  assert.deepEqual(summarizeHomeFeedResult(JSON.stringify({ok:true,videos:[]})),{status:'empty',count:0})
  assert.deepEqual(summarizeHomeFeedResult('{broken'),{status:'unavailable',count:0})
  assert.deepEqual(summarizeHomeFeedResult({ok:false,videos:[video(1)]}),{status:'unavailable',count:0})
@@ -42,6 +43,34 @@ test('首页启动与真实读取分开记账，Life 后续只见枚举状态和
  assert.match(feedback.proof,/not-video-viewed/)
  const raw=readFileSync(join(dir,'life-agent-events',A+'.json'),'utf8')
  assert.doesNotMatch(raw,/BV000|secret|仅测试标题|author|收件人|uid/i)
+}))
+
+
+test('精确关联首页候选与本轮新入选视频，只持久化匿名计数',()=>dirRun(dir=>{
+ const e=createLifeAgentEvents({stateDir:dir,getAccountTag:()=>A,now:()=>T})
+ const start=e.recordVideoRoundStart({source:'life-agent',entryMode:'home'})
+ const candidates=[video(11),video(12),video(13)]
+ const summary=summarizeHomeFeedResult({ok:true,videos:candidates},{includeCandidateBvids:true})
+ assert.deepEqual(e.recordHomeFeedRead(start.id,summary),{ok:true,updated:true})
+ e.recordVideoRoundFinish(start.id,{exitCode:0,pickedCount:2,pickedBvids:[candidates[1].bvid,'BV0000000099']})
+ const row=e.status().recentVideoRounds[0]
+ assert.equal(row.homeCandidates,3)
+ assert.equal(row.pickedCount,2,'总入选数包含所有来源')
+ assert.equal(row.homePickedCount,1,'只有精确命中首页候选的入选视频计入首页来源')
+ const projected=projectVideoRoundFeedback([row],{at:T+1})[0]
+ assert.equal(projected.homePickedCount,1)
+ const raw=readFileSync(join(dir,'life-agent-events',A+'.json'),'utf8')
+ assert.doesNotMatch(raw,/BV0000000011|BV0000000012|BV0000000013|仅测试标题/)
+ assert.deepEqual(JSON.parse(raw).videoRounds[0].homeCandidateRefs,[],'临时哈希在轮次结束后清除')
+}))
+
+test('无法读取本轮新入选账本时，首页来源入选数保持未知而不是零',()=>dirRun(dir=>{
+ const e=createLifeAgentEvents({stateDir:dir,getAccountTag:()=>A,now:()=>T})
+ const start=e.recordVideoRoundStart({entryMode:'home'})
+ const candidate=video(21)
+ e.recordHomeFeedRead(start.id,summarizeHomeFeedResult({ok:true,videos:[candidate]},{includeCandidateBvids:true}))
+ e.recordVideoRoundFinish(start.id,{exitCode:0,pickedCount:null,pickedBvids:null})
+ assert.equal(e.status().recentVideoRounds[0].homePickedCount,null)
 }))
 
 test('未实际访问首页时保留 not-observed；旧历史轮次兼容',()=>dirRun(dir=>{
@@ -86,8 +115,10 @@ test('生产链经同一个视频 Agent 传轮次 ID，不能只靠提示词声�
  const idx=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  assert.equal((idx.match(/BILI_DUTY_LIFE_ROUND_ID:videoRoundReceiptId/g)||[]).length,1,'only video Agent inherits the opaque round ID')
- assert.match(idx,/recordHomeFeedRead\(round,summarizeHomeFeedResult\(response\)\)/)
+ assert.match(idx,/recordHomeFeedRead\(round,summarizeHomeFeedResult\(response,\{includeCandidateBvids:true\}\)\)/)
+ assert.match(idx,/pickedBvids:newlyPickedBvids/)
  assert.match(idx,/recordVideoRoundStart\(\{source:why/)
  assert.match(idx,/recordVideoRoundFinish\(videoRoundReceiptId/)
- assert.match(ui,/首页闲逛：/)
+ assert.match(ui,/homeLabel=lastRound\?\.entryMode==='home'\?'首页闲逛'/)
+ assert.match(ui,/真正入选的首页视频/)
 })

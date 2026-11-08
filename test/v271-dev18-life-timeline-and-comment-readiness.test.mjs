@@ -27,6 +27,16 @@ test('生活时间线把同一天的全部类型按真实毫秒时间倒序，�
  assert.equal(rows.find(x=>x.type==='comment').label,'回复评论')
 })
 
+
+test('首页来源入选数在生活时间线中与总入选数分开表达',()=>{
+ const rows=buildLifeTimeline({now:at('23:50:00'),days:2,videoRounds:[{
+   source:'life-agent',ref:'cccc1234dddd',state:'completed',entryMode:'home',homeRead:'candidates',
+   homeCandidates:12,homePickedCount:2,pickedCount:4,endedAt:at('18:00:00')
+ }]})
+ assert.equal(rows.length,1)
+ assert.equal(rows[0].title,'这一轮挑中了 4 条视频，其中首页推荐 2 条')
+})
+
 test('当时间线同一天混合数字与字符串时间输入仍排序，确定性处理同秒数据',()=>{
  const now=at('20:00:00'),t=at('12:00:00')
  const result=buildLifeTimeline({now,days:2,
