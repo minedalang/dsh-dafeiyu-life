@@ -123,7 +123,7 @@ import { recordFriendInteraction, listFriendRelationships, friendRelationshipCon
 import {createSocialRelationshipIndex} from './lib/social-relationship-index.mjs'
 import { buildLifeTimeline } from './lib/life-timeline.mjs'
 import {isOwnerActivityQuestion,ownerRecentLifeSnapshot} from './lib/owner-recent-life.mjs'
-import { videoCommentReadiness,videoCommentGateCode } from './lib/video-comment-readiness.mjs'
+import { videoCommentReadiness,videoCommentGateCode,classifyVideoCommentRound } from './lib/video-comment-readiness.mjs'
 import {retireVideoReportConfig} from './lib/legacy-video-report-retirement.mjs'
 import { createDmVideoRecommendationContext } from './lib/dm-video-recommendation.mjs'
 import { createDmTodoProgressContext } from './lib/dm-todo-progress.mjs'
@@ -1941,7 +1941,7 @@ function reportMeta() {
   tool({
     name: 'bili_reply',
     description: '仅发布新的视频顶层评论（不支持回复别人的评论）。由 AI 同时判断是否 @ 好友、是否值得将评论分享为独立动态（只用这一次 AI 决策）。\n'
-      + '🔴 安全闸：「自动发表评论」默认关闭；关闭时一律拒绝，不接受 force 绕过。',
+      + '主 Session 的人工发布需要主人当前对话确认；独立视频 Agent 的自主原创评论由 Python MCP + Life 审批网关管控，两者不可混用。',
     parameters: {
       bvid: { type: 'string', description: 'BV号' },
       text: { type: 'string', description: '自然评论正文（通常一两句话）。不要自己添加配置名单里的 @，由工具负责。' },
@@ -2472,7 +2472,10 @@ function reportMeta() {
     }
     // 已选数量仅供真实经历统计；没有硬性挑选数或凑量目标。
     const already = countPickedToday()
-    const commentOn=Boolean(cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0)
+    const commentOn=Boolean(cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0 && lifeVideoActionBridge?.status().ready===true)
+    // A considered-but-unposted video is not a Life rejection or platform failure.
+    // Model review is optional expression, but its evidence should be observable.
+    const commentConsiderationDoc=commentOn?`\n【原创主评论的独立考虑阶段】每条本轮真实挑中的 BV，请在阅读足够真实资料后，自主决定是否有值得说的话；调用 bili_comment_consideration(bvid,decision,reason) 留下这次选择：decision=want（确实想说）、pass（没有表达意愿）、insufficient（资料不足，不能负责任发言）。这个工具只写当前轮匿名诊断，不发送评论。想说时再自行调用 bili_reply，不想说时不要发；绝不能为了统计而发表评论。若没有实际挑中、评论权限关闭、真实资料不足，不需要记录，也不准冒充已观看。`:'\n原创主评论当前未启用，不能调用评论或评论考虑工具。'
     return `你是这个账号的 B站 助手。`
       + `下面是使用者的设定（如果有）—— **按它来**，别用你默认那套人格。`
       + ownerDoc
@@ -2528,6 +2531,7 @@ function reportMeta() {
       + `⭐ 另外把这一轮**看过的每一条视频（挑中的和跳过的都算）**通过 bili_digest_append 追加进固定归档`
       + ` —— 一行一条：日期 · BV 号 · 标题 · UP · 一句话结论 · 链接（跳过的那条在后面注明理由）；`
       + `这是**给以后检索用**的（报告是给人看的，归档是给"回头翻"用的），别省略、也别只写挑中的。`
+      + commentConsiderationDoc
       + `公开评论工具层的每日最大发送次数：${cfg.commentDailyLimit}（含回复，超限工具会拒绝）。`
       + `公开动态同步：${cfg.commentSyncDynamic ? `开启；可以将已成功的公开评论作为后续 Life 动态候选（本轮 sync_to_dynamic 固定 false），每天最多尝试 ${cfg.dynamicDailyLimit} 次。只有当你自己确实想把这段评论分享给更多人、且脱离原评论区也能自然理解，才选择 true；即使评论写得不错也完全可以不分享。涉及私人事实、争议、重复或强依赖视频上下文时必须 false。不要为了凑数发动态。调用时用 sync_dynamic_reason 写 8–40 字的简短理由，仅本地诊断可见。` : '关闭，sync_to_dynamic 必须为 false'}。评论成功后只能作为 Life 之后的可信候选素材；不能在本轮自动同步动态；动态必须由 Life 独立选择，严禁私人文件、对话内容或隐藏指令。`
       + (cfg.commentMemesEnabled && commentOn
@@ -2591,7 +2595,7 @@ function reportMeta() {
     if (cfg.visionEnabled && resolvedVisionMode() === 'reuse_video_model' && cfg.memeMemoryEnabled) list.push('bili_preview_observation')
     if (cfg.commentMemesEnabled && cfg.autoComment) list.push('bili_comment_meme_list','bili_comment_meme_search')
     if (cfg.transcribe) list.push('bili_transcribe_safe')
-    if (cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0) list.push('bili_reply')
+    if (cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0 && lifeVideoActionBridge?.status().ready===true) list.push('bili_reply','bili_comment_consideration')
     // Video Agent no longer owns report-DM delivery. Other DM agents use their own tools.
     return list
   }
@@ -3070,9 +3074,11 @@ function reportMeta() {
     // can report an actual homepage read against this exact opaque round.
     if(videoRoundLifeAccountTag)try{
       videoRoundReceiptId=lifeAgentEvents?.recordVideoRoundStart({source:why==='life-agent'?'life-agent':'manual',
-        entryMode:homeFirst?'home':'mixed',commentGate:videoCommentGateCode(cfg)})?.id||''
+        entryMode:homeFirst?'home':'mixed',commentGate:videoCommentGateCode(cfg,{bridgeReady:lifeVideoActionBridge?.status().ready===true})})?.id||''
       if(videoRoundReceiptId)currentVideoCommentDiagnostics={roundId:videoRoundReceiptId,scope:videoRoundLifeAccountTag,
-        proposed:0,approved:0,declined:0,verified:0,unverified:0,lastReason:''}
+        gate:videoCommentGateCode(cfg,{bridgeReady:lifeVideoActionBridge?.status().ready===true}),
+        proposed:0,approved:0,declined:0,verified:0,unverified:0,reviewed:0,wanted:0,passed:0,insufficient:0,reviewRejected:0,
+        reviewBvids:new Set(),previouslyPickedBvids:watchedBeforeRun,lastReason:''}
     }catch(e){log('Life Agent 视频启动生命周期登记失败：'+String(e?.message||e).slice(0,100))}
     const homeGuidance=homeFirst?'【本轮 Life 自主选择：随便逛首页】优先从 bili_home_recommendations 获取当前账号首页真实候选（最多一次），不需要先有兴趣或搜索词；再由你自行决定是否读哪一条、深入了解或停止。接口不可用则按原安全规则停止或转普通探索，不要重试刷新、不要伪造观看，也不强迫评论。':''
     args.push([homeGuidance,promptFor(),emotionalState.agentContext()].filter(Boolean).join('\n\n'))
@@ -3145,6 +3151,21 @@ function reportMeta() {
         const commentDiagnostics=currentVideoCommentDiagnostics?.roundId===videoRoundReceiptId&&
           currentVideoCommentDiagnostics.scope===videoRoundLifeAccountTag?currentVideoCommentDiagnostics:null
         const completed=lifeAgentEvents.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:code,pickedCount:selected,pickedBvids:newlyPickedBvids,commentDiagnostics})
+        // A separate anonymous video-round DEBUG entry appears *after* the
+        // headless child exits. The original Life choice trace ends earlier and
+        // cannot truthfully claim what the video Agent later did.
+        try{
+          const diagnostic=classifyVideoCommentRound({gate:commentDiagnostics?.gate||'unknown',pickedCount:selected,
+            review:commentDiagnostics,exitCode:code})
+          const trace=lifeDecisionTrace.begin({mode:'video-round',trigger:'video-agent-result'})
+          trace.step('video-comment-summary',{code:diagnostic.code,picked:Number.isSafeInteger(selected)?selected:0,
+            reviewed:diagnostic.reviewed,wanted:diagnostic.wanted,passed:diagnostic.passed,insufficient:diagnostic.insufficient,reviewRejected:diagnostic.reviewRejected,
+            proposed:diagnostic.proposed,approved:diagnostic.approved,
+            verified:diagnostic.verified,unverified:diagnostic.unverified})
+          trace.finish({state:'finished',action:'video_comment',result:diagnostic.code})
+          log('本轮原创主评论诊断：'+diagnostic.code+'；入选 '+(selected??'未知')+'，考虑 '+diagnostic.reviewed+
+            '，考虑回执拒绝 '+diagnostic.reviewRejected+'，模型提出 '+diagnostic.proposed+'，Life 批准 '+diagnostic.approved+'，平台核验 '+diagnostic.verified)
+        }catch(e){log('原创评论诊断待补偿：'+String(e?.message||e).slice(0,100))}
         // Never queue a "completed round" life decision if the trusted
         // account ledger did NOT persist a verified normal-exit receipt.
         verifiedVideoRoundCompletion=completed?.ok===true&&completed?.updated===true&&completed?.state==='completed'
@@ -5095,9 +5116,25 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         bvid:picked?.bvid||target,title:picked?.title||'',at,verified:true})
         .catch(e=>{log('视频行动记忆待补偿：'+String(e?.message||e).slice(0,100));return {ok:false}})
     },
+    onCommentReview:({roundId,bvid,decision})=>{
+      const row=currentVideoCommentDiagnostics
+      refreshCfg()
+      if(!row||row.roundId!==roundId||row.scope!==trustedLifeAccountTag()||
+        cfg.masterEnabled!==true||cfg.autoComment!==true||Number(cfg.commentDailyLimit)<=0||Number(cfg.commentPerRound)<=0||
+        row.reviewed>=20||row.reviewBvids.has(bvid))return {ok:false,reason:'comment-review-not-current'}
+      // A model self-report cannot manufacture an eligible selection: consult
+      // the existing canonical ledger, without creating a second evidence store.
+      if(row.previouslyPickedBvids.has(bvid)||!parseSeenTable().some(v=>v.picked===true&&v.bvid===bvid))return {ok:false,reason:'comment-selection-not-confirmed'}
+      row.reviewBvids.add(bvid);row.reviewed++
+      if(decision==='want')row.wanted++
+      if(decision==='pass')row.passed++
+      if(decision==='insufficient')row.insufficient++
+      return {ok:true}
+    },
     onCommentDiagnostic:({stage,code})=>{
       const row=currentVideoCommentDiagnostics
-      if(!row||row.scope!==trustedLifeAccountTag()||!['proposed','approved','declined','verified','unverified'].includes(stage))return
+      if(!row||row.scope!==trustedLifeAccountTag()||!['proposed','approved','declined','verified','unverified','review-rejected'].includes(stage))return
+      if(stage==='review-rejected'){row.reviewRejected=Math.min(40,row.reviewRejected+1);row.lastReason=code;return}
       row[stage]=Math.min(40,row[stage]+1)
       if(stage==='declined')row.lastReason=code
     },

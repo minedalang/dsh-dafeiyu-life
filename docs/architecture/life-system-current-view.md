@@ -77,11 +77,19 @@ flowchart TB
   explore --> receipts
   home --> receipts
 
+  %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_comment_consideration
+  %% @code commentDiagnosis | lib/video-comment-readiness.mjs | classifyVideoCommentRound
   subgraph outgoing["写入委派｜不存在一把可绕开各渠道限制的万能发送钥匙"]
     videoWrite["视频续行提议 → Life 意愿与原视频写入桥 → Python 工具"]
+    commentReview["已选真实 BV → 模型明确考虑主评论：想说／不想说／证据不足；仅匿名诊断"]
+    commentDiagnosis["轮次结束时枚举诊断：没考虑／想说未提议／Life 否决／回执未知"]
     socialWrite["私信/评论/分享 → 关系与渠道授权 → 原社交发送事务"]
   end
   menuGuard -.->|仅合规候选/委派；不直接写平台| videoWrite
+  home -.->|已选片后可自主考虑；不强制发言| commentReview
+  commentReview -.->|有真实表达意愿才考虑原发送门禁| videoWrite
+  commentReview -.-> commentDiagnosis
+  videoWrite -.-> commentDiagnosis
   menuGuard -.->|仅好友/社交许可；不直接发送| socialWrite
   videoWrite --> receipts
   socialWrite --> receipts
@@ -218,6 +226,8 @@ flowchart LR
 ```mermaid
 %% 同版本 Life 补链维护：模型/菜单不是平台成功证据
 %% @code source | lib/life-video-action-bridge.mjs | createLifeVideoActionBridge
+%% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_comment_consideration
+%% @code commentOutcome | lib/video-comment-readiness.mjs | classifyVideoCommentRound
 %% @code catalog | lib/life-action-memory.mjs | LIFE_ACTION_NAMES
 %% @code verified | lib/life-action-memory.mjs | export function verifiedLifeActionEvent
 %% @code wake | lib/life-agent-events.mjs | VERIFIED_COMPLETION_KINDS
@@ -231,6 +241,8 @@ flowchart LR
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
   source["真实平台操作｜原视频/评论/DM 事务"]
+  commentReview["视频入选后主动考虑主评论：想说／不想说／证据不足；不等于发送"]
+  commentOutcome["结束后的独立 DEBUG｜未考虑／未提议／Life 否决／平台未知"]
   receipt{"原渠道可信结果?"}
   verified["行动事件仅接受 verified=true 与当前账号"]
   unknown["冻结/失败｜不得写成成功，不自动重试"]
@@ -244,7 +256,10 @@ flowchart TB
   growth["真实已选片证据可形成兴趣候选"]
   curiosity["当前账号、有真实 BV、未过期、未排除的开放式好奇"]
   planner["Life 自主决定是否核实同一 BV，或不做"]
+  commentReview -.->|自愿提出评论，仍需原外发门禁| source
+  commentReview -.-> commentOutcome
   source --> receipt
+  receipt -.-> commentOutcome
   receipt -->|独立确认成功| verified
   receipt -->|失败或未知| unknown
   verified --> catalog

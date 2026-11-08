@@ -101,7 +101,7 @@ def _life_video_request(route, payload):
             method='POST')
         # Proxies must never see an account-bound Life capability token.
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        with opener.open(req, timeout=42) as response:
+        with opener.open(req, timeout=5 if route == '/life-comment-review' else 42) as response:
             body = response.read(2048)
         result = json.loads(body)
         return result if isinstance(result, dict) else {'ok': False}
@@ -3231,6 +3231,27 @@ async def bili_comment_meme_search(query: str, limit: int = 12) -> str:
 
 
 # ========== Tool 6: 回复评论 ==========
+
+@tool()
+async def bili_comment_consideration(bvid: str, decision: str, reason: str = '') -> str:
+    """只读诊断：标记本轮已挑中视频是否有原创评论意愿，不发表评论。"""
+    if (deny := _guard('bili_comment_consideration')): return deny
+    round_id = os.environ.get('BILI_DUTY_LIFE_ROUND_ID', '')
+    if not re.fullmatch(r'[a-f0-9]{24}', round_id):
+        return json.dumps({'ok':False,'error':'视频轮次未绑定'},ensure_ascii=False)
+    if decision not in ('want','pass','insufficient'):
+        return json.dumps({'ok':False,'error':'无效考虑结果'},ensure_ascii=False)
+    if len(str(reason)) > 160:
+        return json.dumps({'ok':False,'error':'原因过长'},ensure_ascii=False)
+    try:
+        uid = str(getattr(get_cred(), 'dedeuserid','') or '')
+        payload = {'uid':uid,'roundId':round_id,'bvid':_valid_bv(bvid),'decision':decision}
+        receipt = await asyncio.to_thread(_life_video_request,'/life-comment-review',payload)
+        return json.dumps({'ok':receipt.get('ok') is True,'recorded':receipt.get('recorded') is True,
+                           'reason':receipt.get('reason','') if receipt.get('ok') is not True else ''},ensure_ascii=False)
+    except Exception:
+        return json.dumps({'ok':False,'error':'原创评论考虑回执不可用'},ensure_ascii=False)
+
 
 @tool()
 async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: int = 0,

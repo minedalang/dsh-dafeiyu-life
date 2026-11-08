@@ -4,6 +4,8 @@
  * GitHub rendering. Every @code annotation binds a *diagram node* to a real
  * production source file + recognizable implementation symbol. This is not
  * runtime proof or release acceptance; it detects stale/renamed/removed links.
+ * The single checked-in vendor/bilibili-mcp/mcp_server.py entrypoint may be
+ * anchored because its Python MCP exposes the actual video Agent tools.
  */
 import {readFileSync,existsSync,writeFileSync} from 'node:fs'
 import {resolve,join,relative,sep} from 'node:path'
@@ -37,7 +39,7 @@ export function checkLifeArchitecture(root,{overrides={}}={}){
     for(const [,node,pathRaw,markerRaw] of anchors){
       const path=pathRaw.trim(),marker=markerRaw.trim()
       const full=resolve(root,path),back=relative(root,full)
-      if(!back||back.startsWith('..'+sep)||back==='..'||path.startsWith('/')||!path.startsWith('lib/')&&!path.startsWith('index.') ){
+      if(!back||back.startsWith('..'+sep)||back==='..'||path.startsWith('/')||!path.startsWith('lib/')&&!path.startsWith('index.')&&path!=='vendor/bilibili-mcp/mcp_server.py' ){
         errors.push(`${rel}: @code ${node} 不允许访问项目外文件: ${path}`);continue
       }
       if(!new RegExp('(?:^|\\n)\\s*'+node+'\\[','m').test(diagram)){

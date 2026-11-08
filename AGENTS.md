@@ -1,4 +1,3 @@
-- dev.29：初次配置新增可选且推荐的本地 Embedding 安装，调用已有模型安装 API；不自动下载、不更改首次必需项。Life 已成功主动私信分享的 BV 链接属于同账号同接收 UID 的短期可信回执，不应由普通语义记忆和标题联想替代；原社交意图主账本仍为唯一来源，未知回执冻结。参见 `docs/architecture/2.7.1-dev29-life-subsystems-and-video-link-handoff.md`。
 # 大肥鱼 · DSH 生活系统：AI 开发约定
 
 > 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 RC8 方案优先的 UI 接线见 [`管理卡片架构`](docs/architecture/2.7.1-rc8-choice-first-management.md)；管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
@@ -115,3 +114,5 @@
 - DSH Desktop 通常执行 `dsh plugin --profile desktop add dsh-dafeiyu-life`，重启后在「设置 → 大肥鱼」安装依赖、扫码登录、完成所需 Headless 模型验证；安装入口与市场实际版本须单独确认。
 - 插件可自行安装 Python 运行依赖／uv；遇故障先用设置页自检和 `duty.log`，不要要求用户先全局安装任意工具或绕过安全门禁。
 - 新安装的明确可选功能、旧版既有设置、First Start 必需验证是不同状态；不能通过隐式改默认值打开外部写入。
+
+- **dev.33 原创主评论诊断维护**：原视频 Agent 的入选 BV 可以自愿向 `bili_comment_consideration` 提交匿名考虑结果，任何诊断都不能发评论；发送仍走原 `bili_reply`/Life 网关；桥未就绪应明确给出技术代码，不能说成鱼鱼不想说。新增 `video-round` DEBUG 仅聚合计数，不存 BV、UID、正文或模型推理。维护 `docs/architecture/diagrams/`，不得强迫发言或绕过额度。
