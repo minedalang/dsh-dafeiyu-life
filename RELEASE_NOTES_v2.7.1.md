@@ -1,3 +1,7 @@
+# 2.7.1-dev.37 · Life 跨专业 Agent 委派协调修复（同版本维护，未发布）
+
+Life 与专业 Agent 保持分工：统一生活判断提供方向，视频子 Agent 可以自行读取并在既有权限下考虑原创顶层评论，待办/反思和入站社交仍有专业调度与独立平台门禁。本轮修复普通休息误暂停其他 Episode、视频二次意愿后状态过期、人工与自主视频启动冷却未联动、失败原因被泛化等问题。不会强制发评论、创建虚假 Episode 步骤或放宽授权。详见 `docs/architecture/2.7.1-dev37-life-agent-coordination-audit.md`。仍需 Windows、真实 B站、模型与长期运行验收；`releaseReady:false`。
+
 # 2.7.1-dev.37 · 视频冷却不阻断独立 Life 决策（同版本维护，未发布）
 
 视频 Agent 的启动冷却仅限制再次启动，不再延后已完成视频轮次的只读 Life 反馈考虑；新增 `review_video_feedback` 自主选项。真实待办、反思及其他合法 Life 候选依旧独立决策；模型不能把反馈当成观看、评论授权或平台成功。账号、额度和未知冻结保持不变；需要 Windows/B站实测。`releaseReady:false`。

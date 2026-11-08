@@ -117,6 +117,7 @@ import { createSocialContextAssembler } from './lib/social-context-assembler.mjs
 import { createSocialInteractionCoordinator } from './lib/social-interaction-coordinator.mjs'
 import { createLifeMemoryCoordinator } from './lib/life-memory-coordinator.mjs'
 import {createUniversalLifeEpisodes} from './lib/life-universal-episodes.mjs'
+import {lifeVideoGate} from './lib/life-pace-policy.mjs'
 import {createLifeActionAttribution} from './lib/life-action-attribution.mjs'
 import {eligibleLifeEpisodeSources,prioritizeLifeContinuationCandidates} from './lib/life-episode-entrypoints.mjs'
 import {preparePrivateSelfExperience,preparePrivateLifeEvent} from './lib/life-private-policy.mjs'
@@ -5104,15 +5105,43 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(cfg.masterEnabled!==true||cfg.autonomousPlannerEnabled!==true)return {ok:false,reason:'disabled'}
       if(dutyChild&&dutyChild.exitCode===null&&!dutyChild.killed)return {ok:false,reason:'video-busy'}
       if(String(cfg.reportLevel||'full')==='off'&&roundsToday()>=1)return {ok:false,reason:'report-off-one-round'}
+      // Do not advertise a video delegation while its own 20-minute launch
+      // gate is closed. This does not prevent Life from considering non-video
+      // activities or reading a completed video-round feedback receipt.
+      let budget
+      try{budget=lifeAgentEvents.status()}catch{return {ok:false,reason:'account-not-ready'}}
+      if(!lifeVideoGate(cfg,budget,Date.now()).eligible)return {ok:false,reason:'video-launch-cooldown'}
       return {ok:true}
     },
     execute:async({entryMode='mixed'}={})=>{
-      const approved=await lifeWillingness?.decide({trigger:'video-exploration',scene:'main',
+      const scopeBefore=trustedLifeAccountTag()
+      let approved
+      try{approved=await lifeWillingness?.decide({trigger:'video-exploration',scene:'main',
         sourceKey:'life-video-start:'+randomUUID(),
-        candidates:[{id:'explore_video',kind:'explore_video',label:'此刻委派视频 Agent 继续公开探索（不保证看完或听到）'}]})
-      if(approved?.ok!==true)return {started:false,reason:'life-declined-video'}
+        candidates:[{id:'explore_video',kind:'explore_video',label:'此刻委派视频 Agent 继续公开探索（不保证看完或听到）'}]})}
+      catch{return {started:false,reason:'life-declined-video'}}
+      if(approved?.ok!==true){
+        const safe=new Set(['life-not-ready','life-context-unavailable','life-account-changed',
+          'life-willingness-unavailable','life-choice-in-progress','life-cross-channel-rest',
+          'life-admission-unavailable','planner-budget-incompatible'])
+        return {started:false,reason:safe.has(approved?.reason)?approved.reason:'life-declined-video'}
+      }
       if(lifeWillingness?.verify(approved.proof,'explore_video')?.ok!==true)
         return {started:false,reason:'life-video-choice-expired'}
+      // State can change during the second model call. Recheck the FINAL
+      // account, live adapter availability and launch cooldown immediately
+      // before the platform child is spawned; a stale planner menu is not a
+      // launch permission. Never auto-retry or reinterpret a veto as a send.
+      if(trustedLifeAccountTag()!==scopeBefore){
+        lifeWillingness?.receipt(approved.proof,{status:'not-sent'})
+        return {started:false,reason:'life-account-changed'}
+      }
+      const admission=lifeCapabilities.inspect()
+      const blocked=admission.blocked.find(x=>x.id==='bilibili.video-explore')
+      if(blocked){
+        lifeWillingness?.receipt(approved.proof,{status:'not-sent'})
+        return {started:false,reason:blocked.reason}
+      }
       const launched=runDuty('life-agent',entryMode==='home'?'home':'mixed')
       // Delegation is NOT proof of observed frames/audio or a completed round.
       // The original child lifecycle remains the sole verified video receipt.

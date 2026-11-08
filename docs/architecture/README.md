@@ -1,3 +1,7 @@
+## dev.37 同版本维护：Life 指挥专业 Agent 的源码审计与协调保护（未发布）
+
+[编排覆盖矩阵、四项缺陷修复、剩余架构边界与测试](./2.7.1-dev37-life-agent-coordination-audit.md)。普通 Life 休息不再随机暂停其他 Episode；视频 Agent 的二次意愿判定后重新核验账号和能力状态，人工视频启动与 Life 共享 20 分钟启动间隔（不阻断已完成反馈只读考虑）；失败原因保留安全枚举。实际统一能力注册表只有视频，待办/反思和私信/评论仍保留专业调度；`releaseReady:false`。
+
 - [**dev.37 同版本 Episode 续行与主评论考虑修复**](./2.7.1-dev37-episode-comment-recovery.md)：到期自愿暂停恢复优先候选；选片时可附带只读评论意愿；各写入门禁不变。
 - [**dev.37 发布验收代码修复与 S0/S1 现场执行**](./2.7.1-dev37-release-acceptance.md)：唤醒按钮修复、只读匿名证据导出、真实 Windows/B站/账号/72h/GGUF 验收步骤；未完成外部验收不能宣布发布。
 - [**dev.37 行动归属与原回执闭环**](./2.7.1-dev37-unified-action-ownership.md)：专业 Agent 保留执行权、统一来源和回执归属、待办/反思/社交跨片段去重；实机验证限制。
