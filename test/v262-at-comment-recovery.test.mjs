@@ -62,21 +62,38 @@ test('verified source recovers real comment text before social inbound and AI; n
   assert.equal(engine.status().atDiagnostics.find(x=>x.id==='at:21').reason,'sent');
 }));
 
-test('verified source with contiguous @ nickname does not claim there was no message',async()=>fixture(async dir=>{
-  let notices=[payload(30)];const inputs=[];
+test('verified contiguous @ nickname with unknown boundary is not an AI statement, memory or reply',async()=>fixture(async dir=>{
+  let notices=[payload(30)];const inputs=[],incoming=[];let sent=0,lookups=0;
   const engine=createCommentInteract({dataDir:dir,now:()=>clock,
     selfUid:()=>me,getConfig:()=>config,getAtNotifications:async()=>wrap(notices),
     getOwnComments:async()=>({top:[],nested:[]}),socialTier:()=> 'friend',
-    getAtSource:async x=>({ok:true,uid:x.uid,rpid:x.rpid,bvid:x.bvid,topLevel:true,text:'@大肥鱼你刚刚看了那个视频吗？'}),
+    getAtSource:async x=>{lookups++;return {ok:true,uid:x.uid,rpid:x.rpid,bvid:x.bvid,topLevel:true,text:'@大肥鱼怒了看看'}},
     getVideoContext:async()=>({usable:true,text:'视频标题已核实'}),
-    generateReply:async x=>{inputs.push(x.text);return '我得先弄清楚是哪一段啦'},
-    send:async()=>({ok:true,rpid:'80002'})});
+    onIncoming:async x=>{incoming.push(x.text);return {consumed:false}},
+    generateReply:async x=>{inputs.push(x.text);return '不能发送'},
+    send:async()=>{sent++;return {ok:true,rpid:'80002'}}});
   await engine.poll({notifications:false,top:false,mentions:true});
-  notices=[...notices,payload(31,{source_content:'@大肥鱼你刚刚看了那个视频吗？'})];
+  notices=[...notices,payload(31,{source_content:'@大肥鱼怒了看看'})];
   await engine.poll({notifications:false,top:false,mentions:true});
-  assert.equal(inputs.length,1);
-  assert.match(inputs[0],/原评论/);
-  assert.match(inputs[0],/你刚刚看了那个视频吗/);
+  assert.equal(lookups,1,'平台评论身份确实重新核验');
+  assert.deepEqual(inputs,[]);assert.deepEqual(incoming,[]);assert.equal(sent,0);
+  assert.equal(engine.status().atDiagnostics.find(x=>x.id==='at:31').reason,'mention_body_ambiguous');
+  await engine.poll({notifications:false,top:false,mentions:true});
+  assert.equal(lookups,1,'无法安全分句不应重复重试或补发');
+}));
+
+test('contiguous @ token with plausible attached question is not guessed from nickname suffix',async()=>fixture(async dir=>{
+  let notices=[payload(50)];let incoming=0,sent=0;
+  const engine=createCommentInteract({dataDir:dir,now:()=>clock,
+    selfUid:()=>me,getConfig:()=>config,getAtNotifications:async()=>wrap(notices),
+    getOwnComments:async()=>({top:[],nested:[]}),socialTier:()=> 'friend',
+    getAtSource:async x=>({ok:true,uid:x.uid,rpid:x.rpid,bvid:x.bvid,text:'@大肥鱼你刚刚看了那个视频吗？'}),
+    onIncoming:async()=>{incoming++},generateReply:async()=> '猜测',send:async()=>{sent++}});
+  await engine.poll({notifications:false,top:false,mentions:true});
+  notices.push(payload(51,{source_content:'@大肥鱼你刚刚看了那个视频吗？'}));
+  await engine.poll({notifications:false,top:false,mentions:true});
+  assert.equal(incoming,0);assert.equal(sent,0);
+  assert.equal(engine.status().atDiagnostics.find(x=>x.id==='at:51').reason,'mention_body_ambiguous');
 }));
 
 test('author mismatch never lets a notification impersonate a comment or enter AI',async()=>fixture(async dir=>{

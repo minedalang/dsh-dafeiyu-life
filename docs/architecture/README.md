@@ -1,3 +1,7 @@
+## dev.33 同版本维护修复 · @ 提及边界与 Life 事实纠错（未发布）
+
+[真实评论入口、历史记忆及后续续聊边界](./2.7.1-dev33-mention-memory-hotfix.md) · [Mermaid 处理图](./diagrams/2.7.1-dev33-mention-memory-hotfix.mmd)。解决“@大肥鱼怒了看看”昵称不可靠边界时，把内部诊断字样当成对方说话并污染人生记忆的 Bug；仍可回忆的经历校正为不能确认正文的 @ 提及，已完成回复事实保留。`releaseReady:false`。
+
 ## 当前开发版本 2.7.1-dev.33：首页闲逛独立决策与候选来源精确归因（未发布）
 
 [dev.33 生产接线、匿名来源归因与安全边界](./2.7.1-dev33-home-browse-attribution.md) · [Mermaid 可编辑流程](./diagrams/2.7.1-dev33-home-browse-attribution.mmd)。Life `browse_home` 不再依赖匿名事件或 `quiet-window` 成功入队；原账号、Life active、视频能力、20 分钟间隔与首页推荐开关仍是硬门禁。首页工具返回 BV 与本轮新增入选 BV 精确匹配，持久化只保留来源数量，轮次哈希在完成时清除。没有新 Agent、模型计费、定时器或写权限；仍需 Windows/B站/72h 实机验收，`releaseReady:false`。

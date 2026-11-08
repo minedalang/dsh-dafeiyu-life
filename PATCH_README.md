@@ -1,7 +1,12 @@
-# dev.32 · 从 dev.31 完整源码升级（未发布）
+# dev.33 同版本维护修复：B站 @ 提及与人生记忆事实纠错
 
-本轮只新增账号绑定的首页工具读取证据，不更改已保存的 `homeRecommendationsEnabled`、`autoComment`、Life 行为节奏或社交权限。运行程序文件版本 `2.7.1-dev.32`；数据文件继续复用原 Life Agent v1 账本并兼容旧轮次，无需迁移或重置记忆。
+仅可从**完整 `2.7.1-dev.33` 原始源码**应用本补丁；版本号仍为 dev.33，`releaseReady:false`。
 
-补丁必须以完整 dev.31 源码为基线。Original 和 LF 只选择一种；如本地代码有改动，先备份并执行 `git apply --check`。**不要覆盖 DSH 用户数据目录或凭据**。
+- 原始文件保留原换行时：选择 `*-original.patch`。
+- 基线源码全部规范化为 LF 时：选择 `*-LF.patch`。
+- **两种补丁只选一种。** 请先备份插件源码和用户数据，再在源码根目录运行 `git apply --check <补丁>`，通过才应用。
+- 修复不更改 `autoComment`、Life 使能、评论授权、B站登录、模型设置，不清空任何已有真实评论或记忆。
+- 首次查看「人生记忆」时修复仍清晰的旧解析器污染副本；不要将永久档案重新导入作为记忆。
+- 真实 Windows/B站评论及 72h 运行尚未验收，不可声称达到正式发布要求。
 
-本包未在用户的 Windows DSH Desktop、B站真实账号或 72 小时运行场景验收；保持 `releaseReady:false`。
+详细说明：`docs/architecture/2.7.1-dev33-mention-memory-hotfix.md`。
