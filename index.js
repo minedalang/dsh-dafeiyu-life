@@ -27,7 +27,7 @@ import { growthSuggestionPrompt, parseGrowthSuggestion, growthSuggestionIssue } 
 import {readVideoDiscussionDiagnostics,discussionAccountTag} from './lib/video-discussion-diagnostics.mjs'
 import {createLifeOpportunities} from './lib/life-opportunities.mjs'
 import {createLifeFriendInitiatives} from './lib/life-friend-initiatives.mjs'
-import {readVerifiedCreatorPortfolio} from './lib/life-public-capabilities.mjs'
+import {readVerifiedCreatorPortfolio,readVerifiedPublicPersonPortfolio} from './lib/life-public-capabilities.mjs'
 import { loadHostDeps } from './lib/hostdeps.mjs'
 
 // ⭐ 这两样从**宿主那棵树**里取（拿不到就退到自己的依赖；再拿不到，defineTool 用本地等价实现）。
@@ -5239,6 +5239,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     recordVideoStart:()=>lifeAgentEvents.recordVideoStart(),
     recordLifeDecision:row=>lifeAgentEvents.recordDecision(row),
     getLifeOpportunities:()=>lifeOpportunities.list({limit:4}),
+    beginPublicPersonExploration:(...args)=>lifeOpportunities.beginPublicPersonExploration(...args),
     getFriendInitiatives:()=>lifeFriendInitiatives.eligible(),
     recordFriendInitiative:(id,choice)=>lifeFriendInitiatives.mark(id,choice),
     runFriendInitiative:runProactiveFriendChat,
@@ -5267,6 +5268,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const data=parseMaybeJson(await call('bili_search',{keyword:topic,num:10,order:'totalrank'}))
       if(data?.ok===false)return {ok:false,error:'公开搜索失败'}
       return {ok:true,topic,videos:selectSearchVideos(data,{limit:5})}
+    }),
+    executePublicPersonPortfolio:async(personKey,expectedScope)=>readActionContext.run({source:'life-planner'},async()=>{
+      if(!lifeOpportunityAccountReady()||trustedLifeAccountTag()!==expectedScope)return {ok:false}
+      const getAccountUid=()=>lifeOpportunityAccountReady()?String(dmCred(stateDir)?.dedeuserid||''):''
+      const accountUid=getAccountUid()
+      return readVerifiedPublicPersonPortfolio({personKey,accountUid,getAccountUid,accountTag:expectedScope,
+        getAccountTag:trustedLifeAccountTag,
+        resolvePerson:key=>socialPortrait.resolvePublicOpportunity(key),
+        readVideos:async uid=>parseMaybeJson(await call('bili_user_videos',{
+          uid:Number(uid),pn:1,ps:12,order:'pubdate'}))})
     }),
     executeCreatorSpace:async(bvid)=>readActionContext.run({source:'life-planner'},async()=>{
       // Never accept a model-generated UID. One verified BV resolves the actual

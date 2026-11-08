@@ -4,7 +4,7 @@
 
 | 需要了解 | 唯一入口 | 适用范围 |
 | --- | --- | --- |
-| 当前系统结构与模块调用 | [架构首页](architecture/README.md) | 当前 `2.7.1-dev.27`，优先阅读连续探索、主评论诊断及统一回忆接线 |
+| 当前系统结构与模块调用 | [架构首页](architecture/README.md) | 当前 `2.7.1-dev.28`，优先阅读连续探索、主评论诊断及统一回忆接线 |
 | 统一层的归属、新层准入与文档同步规则 | [变更门禁](architecture/2.6.2-unified-layer-change-gate.md) | 每项代码需求修改前 |
 | 人格和情绪如何保持同一条鱼 | [统一人格](architecture/2.6.2-life-voice-context.md) | 当前接线与边界 |
 | 真实事实、回访与任务证据 | [统一事实与回访](architecture/2.6.2-unified-facts-and-followup-context.md) | 当前接线与边界 |

@@ -4,7 +4,8 @@
 
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 ## 项目与代码入口
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.27`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.28`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- dev.28：在现有跨日公开互动的匿名人物契机之上，允许 Life 自主读取经宿主重新核验 UID 的评论者公开投稿列表，存储仍沿原账号意愿账本，只写真实 BV/标题；随后沿用 dev.27 对选定作品的逐动作写入门禁，不开放任意陌生人漫游、跨串回复或新的私信许可。见 `docs/architecture/2.7.1-dev28-public-person-life-exploration.md`。
 - dev.27：Life 仅在原账号真实核验 BV 和公开内容证据后，把点赞/收藏/视频作者关注/原创顶层评论列为自主续行候选；新 `life-continuation-write.mjs` 与受控 Python 工具只协调原 `life-video-action-bridge.mjs` + Python 自主工具，不替代原 Life 再意愿、额度、身份、防重或读回核验。单轮最多一次写入，结果未知冻结；原账号意愿仅存匿名动作状态，不存评论正文。老用户授权不改动，不给评论者 UID/跨串回复权限。见 `docs/architecture/2.7.1-dev27-life-continuation-writes.md`。
 - dev.26：复用原 `AutonomousPlanner`、账号隔离的 `life-opportunities` 意愿/回执与现有模型额度，在自动 Life 轮已有真实公开读取成功后最多增加 2 次模型自主选择；只允许既有名单的 `inspect_exploration`、`inspect_creator_space` 与放下，执行前重新核验账号与候选，禁止新建第二任务账本或新增外发权限。原创主评论仍由视频 Agent 的 `bili_reply` 经 Life 意愿、公开评论授权及平台回执；新增原 `life-agent-events` 视频轮次脱敏诊断。旧 `dmMode` 报告投递已退役；迁移不修改 `autoComment` 原有开关，只移除旧报告字段和错误门禁。见 `docs/architecture/2.7.1-dev26-life-continuation-and-comment-diagnosis.md`。
 - dev.25：`lib/recall-request.mjs` 承担模型提出的回忆意图/查询词/日期/事件种类的结构化校验，宿主时区换算，日期与事件类型必须在当前已授权/未遗忘候选上执行硬过滤。`memoryRetriever` 只将过滤后的候选交给可选 Embedding；时间线回顾按真实发生时间排序，不能用长期记忆 `createdAt` 猜事件日期；模糊/痕迹记忆不提供精确日期。主人私信、普通 compact 社交、好友私密回忆、公开评论成功回执沿旧统一层接线，无新的事实源、权限或发送器。详见 `docs/architecture/2.7.1-dev25-temporal-intent-recall.md`。

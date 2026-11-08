@@ -1,4 +1,8 @@
-## 当前开发版本 2.7.1-dev.27：Life 安全读写连续行动（未发布）
+## 当前开发版本 2.7.1-dev.28：公开交流对象的自主作品探索（未发布）
+
+[dev.28 当前生产接线、人物身份与权限边界](./2.7.1-dev28-public-person-life-exploration.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev28-public-person-life.mmd)。鱼鱼可从跨日有证据的公开交流中自主提出了解对方公开投稿的愿望；后台重新解析匿名证据，确认账号/UID/公开视频一致，把已核实 BV 加入原 Life 意愿，之后可继续探索并按 dev.27 原写入门禁表达。没有新增任意陌生人漫游或跨评论串回复许可；真实 Windows/B站仍未验收。
+
+## 历史版本 2.7.1-dev.27：Life 安全读写连续行动（未发布）
 
 [dev.27 主动探索写入的唯一归属与执行门禁](./2.7.1-dev27-life-continuation-writes.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev27-life-continuation-writes.mmd)。已有公开探索的真实视频 BV 可由鱼鱼自愿选择点赞、收藏、关注作者或原创主评论，选择后同轮立即停止，绝不连续发多条；复用原平台工具、Life 意愿二次审批与回执。没有开放评论者主页、跨串回复或私信授权，仍需 Windows/B站真实验收。
 
