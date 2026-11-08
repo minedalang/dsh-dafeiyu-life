@@ -115,6 +115,7 @@ import { createSocialPolicyGate } from './lib/social-policy-gate.mjs'
 import { createSocialContextAssembler } from './lib/social-context-assembler.mjs'
 import { createSocialInteractionCoordinator } from './lib/social-interaction-coordinator.mjs'
 import { createLifeMemoryCoordinator } from './lib/life-memory-coordinator.mjs'
+import {createUniversalLifeEpisodes} from './lib/life-universal-episodes.mjs'
 import {preparePrivateSelfExperience,preparePrivateLifeEvent} from './lib/life-private-policy.mjs'
 import { createMemoryConsolidator } from './lib/memory-consolidation.mjs'
 import { createOwnerCommentAgent } from './lib/owner-comment-agent.mjs'
@@ -2385,6 +2386,9 @@ function reportMeta() {
   // portrait under the newly scanned credentials. Binding requires restart.
   const lifeOpportunityAccountReady=()=>{try{return accountBinding.status().blocked!==true}catch{return false}}
   const trustedLifeAccountTag=()=>lifeOpportunityAccountReady()?discussionAccountTag(dmCred(stateDir)):''
+  // Cross-activity causal context; the existing memories and platform ledgers
+  // remain authoritative. This does not introduce another scheduler or writer.
+  const universalLifeEpisodes=createUniversalLifeEpisodes({stateDir,getAccountTag:trustedLifeAccountTag})
   const lifeOpportunities=createLifeOpportunities({stateDir,getCredential:()=>lifeOpportunityAccountReady()?dmCred(stateDir):null,
     getInterestEvidence:tag=>lifeOpportunityAccountReady()?
       [...scopedInterestOpportunityEvidence(stateDir,tag),...scopedCuriosityOpportunityEvidence(stateDir,tag)]:[],
@@ -3193,7 +3197,15 @@ function reportMeta() {
         const episode=lifeOpportunities.beginHomeExploration(videoRoundReceiptId,
           exactHomePickedRows.slice(0,5).map(x=>({bvid:String(x.bvid||''),title:String(x.title||''),picked:x.picked===true})),
           videoRoundLifeAccountTag)
-        if(episode?.ok===true)log(`Life Episode 已建立：首页浏览第 1/5 步，候选 ${episode.videoCount} 条；等待鱼鱼重新决定下一步`)
+        if(episode?.ok===true){
+          try{
+            const attached=universalLifeEpisodes.record({accountTag:videoRoundLifeAccountTag,
+              sourceRef:'intention:'+episode.id,receiptId:'video-round:'+videoRoundReceiptId,
+              action:'browse_home',kind:'video',outcome:'verified'})
+            if(attached?.ok!==true)log('统一 Life Episode 上下文未登记：'+String(attached?.reason||'unavailable'))
+          }catch(e){log('统一 Life Episode 上下文不可用：'+String(e?.message||e).slice(0,80))}
+          log(`Life Episode 已建立：首页浏览第 1/5 步，候选 ${episode.videoCount} 条；允许下轮自主续行`)
+        }
         else log('Life Episode 未建立（不影响视频轮回执）：'+String(episode?.error||'home-episode-unavailable').slice(0,100))
       }catch(e){log('Life Episode 首页续行登记失败（不影响视频轮结果）：'+String(e?.message||e).slice(0,100))}
       if(code===0&&verifiedVideoRoundCompletion&&videoRoundReceiptId&&lifeAgentEvents&&cfg.lifeAgentMode!=='off')try{
@@ -5108,6 +5120,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!['video_like','video_collect','video_follow','video_unfollow','video_folder_delete','video_comment','share_video'].includes(kind))
         void rememberVerifiedLifeAction({action:kind,accountTag:scope,sourceId:'life-receipt:'+sourceRef,
           at:Date.now(),verified:true}).catch(e=>log('Life 行动记忆待补偿：'+String(e?.message||e).slice(0,100)))
+      try{universalLifeEpisodes.record({accountTag:scope,sourceRef:'social-receipt:'+sourceRef,
+        receiptId:'verified-social:'+kind+':'+sourceRef,action:kind,kind:'social',outcome:'verified'})}
+      catch(e){log('社交经历 Episode 上下文未登记：'+String(e?.message||e).slice(0,70))}
       try{const r=lifeAgentEvents.recordVerifiedCompletion({kind,sourceRef})
         if(r?.ok===false)log('Life 可信完成续行未登记：'+String(r.reason||'invalid-source').slice(0,70))
       }catch(e){log('Life 可信完成续行待补偿：'+String(e?.message||e).slice(0,80))}
@@ -5125,6 +5140,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(scope!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
       const picked=/^BV[0-9A-Za-z]{10}$/.test(String(target||''))
         ?parseSeenTable().find(v=>v.picked===true&&v.bvid===target):null
+      // The platform write is already independently verified here. Tie it to
+      // an active, exact-BV Life intention if one exists; never imply that a
+      // mere picked video caused a comment or that all video writes belong to
+      // the most recent unrelated episode.
+      try{const active=lifeOpportunities.continuations({limit:20}).find(x=>x.selectedBvid===target)
+        const ref=active?'intention:'+active.id:'verified-video:'+target
+        universalLifeEpisodes.record({accountTag:scope,sourceRef:ref,
+          receiptId:'verified-video:'+sourceId,action:kind,kind:'video',outcome:'verified'})
+      }catch(e){log('视频写入 Episode 上下文未登记：'+String(e?.message||e).slice(0,70))}
       return rememberVerifiedLifeAction({action:kind,accountTag:scope,sourceId:'video-verified:'+sourceId,
         bvid:picked?.bvid||target,title:picked?.title||'',at,verified:true})
         .catch(e=>{log('视频行动记忆待补偿：'+String(e?.message||e).slice(0,100));return {ok:false}})
@@ -5377,6 +5401,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getFriendInitiatives:()=>lifeFriendInitiatives.eligible(),
     recordFriendInitiative:(id,choice)=>lifeFriendInitiatives.mark(id,choice),
     runFriendInitiative:runProactiveFriendChat,
+    // The planner can prioritize a real ongoing episode without granting any
+    // additional tool. Model calls still use the existing daily Life budget.
+    getLifeEpisodeContext:()=>universalLifeEpisodes.list({limit:3}),
+    isLifeEpisodeDue:()=>universalLifeEpisodes.due({eligibleSources:
+      lifeOpportunities.continuations({limit:20}).map(x=>'intention:'+x.id)}),
+    getLifeEpisodeSourceState:ref=>universalLifeEpisodes.sourceState(ref),
+    onEpisodeAction:proof=>universalLifeEpisodes.record(proof),
+    pauseLifeEpisode:opts=>universalLifeEpisodes.pauseLatest(opts),
     getLifeIntentionCues:()=>lifeOpportunities.explorationCues({limit:4}),
     getPrivateLifeAffinity:cues=>privateLifeAffinity.forCues(cues),
     getLifeIntentions:()=>lifeOpportunities.continuations({limit:3}),
@@ -6901,7 +6933,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       }catch(e){return sendJson(res,500,{ok:false,error:'模型对照失败：'+String(e?.message||e).slice(0,120)})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/autonomous-planner'){
-      try{return sendJson(res,200,{...autonomousPlanner.status(),lifeSettingsPreview:projectLifeSettings(cfg),socialDecisionOwnership:socialDecisionOwnership.status(),socialSendTransaction:socialSendTransaction.inspect(),socialShadow:lifeSocialShadow.status()})}
+      try{return sendJson(res,200,{...autonomousPlanner.status(),
+        lifeEpisodes:universalLifeEpisodes.list({limit:5,includeClosed:true}),
+        lifeEpisodeHealth:universalLifeEpisodes.health({eligibleSources:
+          lifeOpportunities.continuations({limit:20}).map(x=>'intention:'+x.id)}),
+        lifeSettingsPreview:projectLifeSettings(cfg),socialDecisionOwnership:socialDecisionOwnership.status(),socialSendTransaction:socialSendTransaction.inspect(),socialShadow:lifeSocialShadow.status()})}
       catch(e){return sendJson(res,500,{ok:false,error:'读取自主调度状态失败：'+String(e?.message||e).slice(0,120)})}
     }
     // 大肥鱼主 Session：只看当前 DSH 里活着的会话，不扫描磁盘上的 sessions 目录。

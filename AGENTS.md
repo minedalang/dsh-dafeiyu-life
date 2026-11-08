@@ -1,3 +1,7 @@
+## 当前开发目标（dev.36，未发布）
+
+Universal Life Episode 不是单独的视频刷片脚本：有可信回执的 Life 自主行动要归入当前账号的匿名连续性片段；下轮要重新向鱼鱼提供有效的 `resume_episode` 选择（不强制），而不是因为上次视频 Agent 结束就失去上下文。入口、步骤、账号隔离、暂停、未知冻结、写权限和评论意愿均以 `docs/architecture/2.7.1-dev36-universal-life-episodes.md` 和 4 张 Mermaid 图为准。后续每次修改 Life 调用链，运行 `npm run write:life-architecture-view`、`npm run check:life-architecture` 与 `test/v271-dev36-universal-life-episodes.test.mjs`。原实际平台回执和 Life Memory 仍是唯一事实来源，不将匿名 Episode 记录当成真实观看/发布证明。
+
 # 大肥鱼 · DSH 生活系统：AI 开发约定
 
 > 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 RC8 方案优先的 UI 接线见 [`管理卡片架构`](docs/architecture/2.7.1-rc8-choice-first-management.md)；管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
@@ -6,7 +10,7 @@
 - **当前 Life 架构图的唯一维护入口**：`docs/architecture/life-system-current.md`、`docs/architecture/diagrams/life-system-current.mmd`、`docs/architecture/diagrams/life-candidates-current.mmd`、`docs/architecture/diagrams/life-receipt-memory-current.mmd`。每次修改 Life 候选、调度、权限或回执，须同时维护 Mermaid 代码锚点，先执行 `npm run write:life-architecture-view` 更新 GitHub 预览，再执行 `npm run check:life-architecture` 与 `test/v271-dev33-life-architecture-contract.test.mjs`；图中已接线不得宣称实机验收。
 - **dev.33 同版本菜单加固**：Life 每次输出须与当轮动作菜单中的 action/id/BV/capability 严格匹配；未提供的 reflect 不可从旧 parser 走漏。保持原账户、授权、回执/遗忘限制，详见 `docs/architecture/life-system-current.md`。
 - **dev.35 P1/P2 补充限制**：已核验写入后可继续阅读或休息，但第二次写入须先完成真实只读核实或实际休息至少 15 分钟并重新审批；点赞不意味着必须评论。新增评论区只读与一次首页换方向，禁推断陌生人 UID。见 `docs/architecture/2.7.1-dev35-life-episode-p1p2.md`。**历史 dev.34 连续 Life Episode**：首页成功轮次的新入选候选接入原 `life-opportunities` 意愿账本；每个 Episode 最多 5 个已核验步骤，每一步重新决策，已核验 BV 去重，休息有界延后，未知写入冻结。原创评论的已知跨渠道冷却最多重考虑一次，账号变化/在途/未知不重试；不扩大任何外发许可。详见 `docs/architecture/life-system-current.md`。
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.35`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.36`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - dev.33 同版本维护修复：@通知只有经 B站源评论/UID/rpid/BV 核验并能分清独立留言正文时才进入回复 AI 或社交记忆；旧内部昵称歧义提示不是观众说过的话，修正仍清晰的情节副本与旧评论缓存，但不抹除已确认外发、也不恢复已遗忘内容。详见 `docs/architecture/2.7.1-dev33-mention-memory-hotfix.md`。
 - dev.32：为 Life 自主首页闲逛补上**实际 MCP 首页读取**的匿名回执：由原视频 Agent 的随机轮次 ID 绑定 headless 工具调用，区分未观察到、无候选、失败、有候选；不把选片/观看与进程成功混淆，不复制 BV/UID/私密内容，也不调整视频发送门禁。见 `docs/architecture/2.7.1-dev32-home-feed-receipts.md`。
 - dev.31：`LifeReflection.status()` 提供与自动反思执行器共用的就绪判断，`AutonomousPlanner` 不再凭 pending 数量提供假可用 reflect；反思被跳过的枚举原因进入脱敏日志。主 Life 模型失败后的退避在原 planner 预算账本持久化，手动唤醒不自动打开新写权限；`browse_home` 只在已打开首页推荐且原视频能力可用时列入菜单，通过原视频 Agent 先看真实首页推荐。`life-willingness` 的可选语境读取失败尽量降级，基础身份不可用仍拒绝写入。见 `docs/architecture/2.7.1-dev31-life-idle-and-home-browse.md`。
@@ -47,7 +51,6 @@
 | 当前评论／私信连续话题 | 场景层只提供已核实的原文、同 UID 近期交互与线程线索，**不再造人格或情绪提示** |
 
 **现有统一层无法合理承载新功能时，允许新增统一层**，但必须先证明：① 现有层职责确实不匹配；② 新能力有跨入口复用需求或独立生命周期；③ 明确唯一写入源、读写接口、失败与迁移边界；④ 与旧层无重叠责任；⑤ 至少有两个入口的接线或清晰的后续接入计划。不得为单个 Bug 临时造一个“万能层”。审批标准及设计模板见变更门禁文档。
-
 ## 2.7.0 社交自主统一职责（正式版维护门禁）
 
 - 新的回复／延迟／续聊必须先走 `SocialAutonomyDecisionContract`，它**不得被当作已获发送权**；后台私信与公开评论/@ 均已接入统一决策与 P6-A/B，但公开 P6 默认关闭、私信 P6 默认开启且不授予额外写权限；情绪和人格只从 Life Voice 装配一次。
@@ -69,7 +72,6 @@
 
 - 自主视频轮开放原只读 `bili_comments` 与 `bili_comment_thread`；不得因为浏览评论自动发言、创建待办或认识评论者。视频轮的 Python MCP 环境明确标记 `BILI_DISCUSSION_VIDEO_AGENT=1`，每轮最多读取 6 条不同 BV 的评论列表、2 条已出现在本轮对应 BV 列表里的真实楼层；其他主人查询与后台互动不被这些视频轮额度影响。
 - 实际读成功/失败生成最小只读回执（不含评论正文、评论者 UID、私信原文或模型隐私上下文）。`bili_discussion_note` 可在本轮确实读到评论后保存一次主观临时疑问；原有日报工具 `bili_report_append` 也可在写日报的同次调用中可选附带真实阅读 BV 的主观反应，使用同一安全写入者；未提供感受时仅可记录匿名诊断，不得编造主观事实；它不进入长期记忆、兴趣分数、关系索引、待办账本或外发口径。错误或风控不能伪装成“无评论”。见 `docs/architecture/2.7.1-dev1-video-discussion-life.md`。
-- `2.7.1` 后续记忆治理、契机协调及兴趣/关系反向影响生活的能力仍属于规划，不得在 dev.1 提前宣称完成。
 
 ## 2.7.1-dev.2 私信短期上下文生命周期
 
@@ -92,7 +94,6 @@
 - 原 `LifeOpportunities`、`AutonomousPlanner` 和管理页承接多来源，只能核实已知 BV 元数据或在本地复核公开交流证据，不能写入待办/记忆/社交关系，更不能私信、@、评论或关注。模型提交未知 ID、跨来源动作、当前数据源缺失都不能报告为真实意愿或成功回执；每日 AI 限额及发送门禁不变。见 `docs/architecture/2.7.1-dev3-life-opportunities.md`。
 
 - `dev.4` Life Agent 社交仍由旧 DM／评论回复器唯一决策和发送；Phase 6g 的只读影子审计限制同来源唯一配对和首次分类不可覆盖，不增加发送权（[`当前文档`](docs/architecture/2.7.1-dev4-phase6g-social-shadow-audit.md)）；Phase 5 单独、默认关闭的 `lifeAgentSocialContextOptIn` 只允许核验好友普通 DM 与公开评论的 10 分钟／420 字进程内影子上下文，模型额外分类计入原每日额度，不授权外发；生产说明见 [`Phase 5`](docs/architecture/2.7.1-dev4-life-agent-phase5-social-shadow.md)，旧归属契约见 [`Phase 4`](docs/architecture/2.7.1-dev4-life-agent-phase4-social-owner.md)。
-- dev.8 同进程机会防重复见 [`开发架构与发布边界`](docs/architecture/2.7.1-dev8-life-local-admission.md)：每账号同一时段只有一个意愿模型选择/未结算批准；超过 8 个候选延期而非再开第二组。**跨进程持久续行仍未完成**，不得据此封 RC。
 
 ## 任何架构变更必须同步更新文档（与代码同一次提交）
 
@@ -115,4 +116,3 @@
 - 插件可自行安装 Python 运行依赖／uv；遇故障先用设置页自检和 `duty.log`，不要要求用户先全局安装任意工具或绕过安全门禁。
 - 新安装的明确可选功能、旧版既有设置、First Start 必需验证是不同状态；不能通过隐式改默认值打开外部写入。
 
-- **dev.33 原创主评论诊断维护**：原视频 Agent 的入选 BV 可以自愿向 `bili_comment_consideration` 提交匿名考虑结果，任何诊断都不能发评论；发送仍走原 `bili_reply`/Life 网关；桥未就绪应明确给出技术代码，不能说成鱼鱼不想说。新增 `video-round` DEBUG 仅聚合计数，不存 BV、UID、正文或模型推理。维护 `docs/architecture/diagrams/`，不得强迫发言或绕过额度。

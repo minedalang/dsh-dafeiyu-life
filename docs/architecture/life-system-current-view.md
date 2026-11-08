@@ -1,11 +1,11 @@
 # 大肥鱼 Life 源码全景（自动生成）
 
-> 不要直接编辑此页；修改 `diagrams/life-system-current.mmd` / `diagrams/life-candidates-current.mmd` / `diagrams/life-receipt-memory-current.mmd` 后运行 `npm run write:life-architecture-view`。架构状态及未实现部分见 [源码审计](./life-system-current.md)。
+> 不要直接编辑此页；修改 `diagrams/life-system-current.mmd` / `diagrams/life-candidates-current.mmd` / `diagrams/life-receipt-memory-current.mmd` / `diagrams/life-universal-episodes-current.mmd` 后运行 `npm run write:life-architecture-view`。架构状态及未实现部分见 [源码审计](./life-system-current.md)。
 
 ## 一、系统全景
 
 ```mermaid
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.35 · P1/P2 连续 Life Episode）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.36 · Universal Life Episode）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -59,10 +59,14 @@ flowchart TB
   subgraph decision["唯一 Life 自主决策中心｜不给模型任意 UID / BV / 写权限"]
     selection["候选筛选 + 去重归属 + 账号/冷却/额度检查"]
     planner["AutonomousPlanner + Life Voice + 当轮动作菜单"]
+    universalEpisode["Universal Episode｜账号匿名因果片段：有真实回执才计入已完成动作"]
+    resumeEpisode["resume_episode｜鱼鱼自主选择复续；来源与权限每步重新核验"]
     menuGuard["后端再次核对：action/id/BV/capability 必须确在本轮菜单"]
     rest["skip：鱼鱼自由休息；技术失败不得伪装休息"]
   end
   selection --> planner --> menuGuard
+  universalEpisode -.->|只提供历史/关联，不授予权限| planner
+  menuGuard --> resumeEpisode -.-> lifeEpisode
   menuGuard --> rest
 
   subgraph readlane["受控读取｜真实读取不等于完整观看"]
@@ -127,6 +131,8 @@ flowchart TB
     growth["兴趣、情绪、关系与反思：影响下一轮候选，不授予权限"]
   end
   verifiedActions --> gateway
+  verifiedActions --> universalEpisode
+  lifeEpisode --> universalEpisode
   gateway --> retriever
   gateway --> growth
   retriever -.->|仅当前可召回证据| planner
@@ -177,6 +183,9 @@ flowchart TB
 %% @code episodeDiscussion | lib/life-opportunities.mjs | const inspectVideoDiscussion=
 %% @code episodeHomeMore | lib/life-opportunities.mjs | const browseHomeMore=
 %% @code episodeAftercare | lib/life-opportunities.mjs | entry.writeAftercare='read-or-rest'
+
+%% @code universalEpisode | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
+%% @code resumeEpisode | lib/autonomous-planner.mjs | action:'resume_episode'
 ```
 
 ## 二、八类候选细目
@@ -190,6 +199,7 @@ flowchart LR
     sourceDiscussion["已有 BV 评论阅读 + 可核验主观疑问"]
     sourcePerson["SocialPortrait：跨日公开双向交流证据"]
     sourceLife["LifeOpportunities 意愿账本：ready/inspected、未过期"]
+    episodeState["Universal Episode｜已核验步骤上下文；不可代替原目标凭据"]
     sourceSocial["匿名 dm-received/comment-received 事件"]
     sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
     sourceReflect["LifeReflection.status().canAutoReflect"]
@@ -199,6 +209,7 @@ flowchart LR
     cues["cues：interest-milestone / discussion-read / selection-curiosity"]
     opportunities["opportunities：兴趣/评论/短期好奇的同 BV 核实；或 public-person-observation"]
     intentions["intentions：已有 BV / 作者/公开评论只读及一次额外首页；14 天有效窗"]
+    resume["resume_episode：仅重新选择原账号仍可执行的公开探索意愿"]
     social["social：入站关注信号 + 已核验熟人机会；非回复许可"]
     video["video：browse_home／use_capability；不是已观看数"]
     reflection["reflection：真实可执行反思；不是 pending 大于阈值"]
@@ -211,6 +222,8 @@ flowchart LR
   sourceDiscussion --> opportunities
   sourcePerson --> opportunities
   sourceLife --> intentions
+  episodeState -.->|持续性与优先考虑，并非新权限| resume
+  intentions --> resume
   sourceSocial --> social
   sourceVideo --> video
   sourceReflect --> reflection
@@ -224,6 +237,7 @@ flowchart LR
   cues --> planner
   opportunities --> planner
   intentions --> planner
+  resume --> planner
   social --> planner
   video --> planner
   reflection --> planner
@@ -247,6 +261,9 @@ flowchart LR
 %% no free-form title search, no automatic outbound approval.
 
 %% dev.35: Episode 的写入不是默认终点；需实际只读或主动休息 + 冷却后才能再写，仍无新权限。
+
+%% @code episodeState | lib/life-universal-episodes.mjs | const view=e=>
+%% @code resume | lib/autonomous-planner.mjs | action:'resume_episode'
 ```
 
 ## 三、可信回执与记忆闭环
@@ -269,6 +286,7 @@ flowchart LR
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
   source["真实平台操作｜原视频/评论/DM 事务"]
+  universalCausal["匿名因果 Episode｜账号隔离、分段延续、暂停与未知冻结；不是第二记忆库"]
   postWrite["同 Episode 的已核验写入：只计一步，下一写前只读或休息且每轮一写"]
   commentReview["视频入选后主动考虑主评论：想说／不想说／证据不足；不等于发送"]
   commentOutcome["结束后的独立 DEBUG｜未考虑／未提议／Life 否决／平台未知"]
@@ -293,12 +311,14 @@ flowchart TB
   receipt -->|独立确认成功| verified
   receipt -->|失败或未知| unknown
   verified --> catalog
+  verified --> universalCausal
   verified --> wake
   catalog --> bridge
   bridge --> outbox
   outbox --> episode
   outbox -->|已排队但投影暂失败| pending
   episode --> recall
+  universalCausal -.->|仅提供可信行为上下文| planner
   episode --> growth
   growth --> curiosity
   curiosity --> planner
@@ -311,4 +331,48 @@ flowchart TB
   class unknown red
 
 %% @code postWrite | lib/life-opportunities.mjs | entry.writeAftercare='read-or-rest'
+
+%% @code universalCausal | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
+```
+
+## 四、统一 Life Episode 因果持续性
+
+```mermaid
+%% dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
+flowchart TB
+  child["真实 B站首页轮次完成 + 原候选与新增挑选 BV 匹配"]
+  canonical["原有 LifeOpportunities 跨轮公开探索意愿｜唯一 BV 事实源"]
+  record["createUniversalLifeEpisodes｜只保存当前账号匿名摘要/因果步骤"]
+  context["当前片段最多五个已核验步骤；历史可跨段关联"]
+  due["有原账号可执行目标且至少两分钟后才优先唤醒"]
+  menu["resume_episode｜当轮正式动作菜单；鱼鱼可选择休息/别的方向"]
+  read["查看视频元数据／评论区／作者作品／一次额外首页｜真实只读回执"]
+  write["原 Life 意愿审批 → 原专业平台发送 → 独立核验｜不强制主评论"]
+  pause["自愿休息、预算不足、授权变化或未知结果：暂停/冻结"]
+  other["其他已核验 Life 待办/反思/社交/人物行动也有关联 Episode"]
+  memory["原 Life Memory 与各渠道真实回执仍为事实权威"]
+  child --> canonical --> record --> context --> due --> menu
+  menu -->|自主继续| read -->|成功并核验| record
+  menu -->|自行考虑互动，单轮最多一次写| write -->|成功且平台核验| record
+  menu -->|放下或暂不继续| pause
+  write -->|结果未知| pause
+  other --> record
+  record -.->|因果索引，不可冒充事实| memory
+  pause -.->|之后仍需原目标有效、权限通过| menu
+  classDef safe fill:#e8f4fd,stroke:#4689b6,color:#173d5c
+  classDef caveat fill:#fff1e7,stroke:#d68a3c,color:#74421c
+  class record,context,menu,due safe
+  class pause,write caveat
+
+%% @code child | index.js | const episode=lifeOpportunities.beginHomeExploration
+%% @code canonical | lib/life-opportunities.mjs | const continuations=
+%% @code record | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
+%% @code context | lib/life-universal-episodes.mjs | const view=e=>
+%% @code due | lib/life-universal-episodes.mjs | const due=(
+%% @code menu | lib/autonomous-planner.mjs | action:'resume_episode'
+%% @code read | lib/autonomous-planner.mjs | const continueLifeRead=async
+%% @code write | lib/life-video-action-bridge.mjs | createLifeVideoActionBridge
+%% @code pause | lib/life-universal-episodes.mjs | const pauseLatest=(
+%% @code other | index.js | onEpisodeAction:proof=>universalLifeEpisodes.record(proof)
+%% @code memory | lib/life-memory-coordinator.mjs | createLifeMemoryCoordinator
 ```

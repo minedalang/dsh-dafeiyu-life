@@ -15,6 +15,7 @@
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
   source["真实平台操作｜原视频/评论/DM 事务"]
+  universalCausal["匿名因果 Episode｜账号隔离、分段延续、暂停与未知冻结；不是第二记忆库"]
   postWrite["同 Episode 的已核验写入：只计一步，下一写前只读或休息且每轮一写"]
   commentReview["视频入选后主动考虑主评论：想说／不想说／证据不足；不等于发送"]
   commentOutcome["结束后的独立 DEBUG｜未考虑／未提议／Life 否决／平台未知"]
@@ -39,12 +40,14 @@ flowchart TB
   receipt -->|独立确认成功| verified
   receipt -->|失败或未知| unknown
   verified --> catalog
+  verified --> universalCausal
   verified --> wake
   catalog --> bridge
   bridge --> outbox
   outbox --> episode
   outbox -->|已排队但投影暂失败| pending
   episode --> recall
+  universalCausal -.->|仅提供可信行为上下文| planner
   episode --> growth
   growth --> curiosity
   curiosity --> planner
@@ -57,3 +60,5 @@ flowchart TB
   class unknown red
 
 %% @code postWrite | lib/life-opportunities.mjs | entry.writeAftercare='read-or-rest'
+
+%% @code universalCausal | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes

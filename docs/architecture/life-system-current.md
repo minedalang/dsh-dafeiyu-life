@@ -1,10 +1,10 @@
-# Life 全景图与源码接线审计（当前 dev.34 @连续 Life Episode + 同版本菜单门禁加固）
+# Life 全景图与源码接线审计（当前 dev.36 Universal Life Episode + 同版本菜单门禁加固）
 
 > **可直接在 GitHub 查看渲染结果：**[Life 全景与候选图](./life-system-current-view.md)。它是根据 `.mmd` 自动生成的只读展示，不应直接编辑。
 >
-> **唯一维护入口：**[完整 Life 生产代码全景 Mermaid](./diagrams/life-system-current.mmd) · [八类候选精确字典 Mermaid](./diagrams/life-candidates-current.mmd) · [回执与可衰减记忆闭环 Mermaid](./diagrams/life-receipt-memory-current.mmd)。这三张 `.mmd` **是源文件**，可直接通过 GitHub Mermaid 或支持 Mermaid 的编辑器编辑、比较和渲染；此前的 PNG 仅为概念插画，不是程序运行证明。
+> **唯一维护入口：**[完整 Life 生产代码全景 Mermaid](./diagrams/life-system-current.mmd) · [八类候选精确字典 Mermaid](./diagrams/life-candidates-current.mmd) · [回执与可衰减记忆闭环 Mermaid](./diagrams/life-receipt-memory-current.mmd) · [统一 Life Episode Mermaid](./diagrams/life-universal-episodes-current.mmd)。这四张 `.mmd` **是源文件**，可直接通过 GitHub Mermaid 或支持 Mermaid 的编辑器编辑、比较和渲染；此前的 PNG 仅为概念插画，不是程序运行证明。
 >
-> **状态：`2.7.1-dev.34` / `releaseReady:false`**。未合并 main / Tag / 发布。图中“已接线”只指源码、相关离线契约存在，不代表 Windows、真实 B站、GGUF、72h 实机验收。
+> **状态：`2.7.1-dev.36` / `releaseReady:false`**。未合并 main / Tag / 发布。图中“已接线”只指源码、相关离线契约存在，不代表 Windows、真实 B站、GGUF、72h 实机验收。
 
 ## 图例与术语纠偏
 
@@ -98,3 +98,13 @@
 本轮把 Episode 已核验写操作改成**非终结步骤**；等待 `read-or-rest` → `read-verified` 或真实休息 `resting` 以后，且满最短冷却，才允许下一 Life tick 考虑另一种合法写操作；同一 tick 永不连发两次。可独立读取当前已核实 BV 的 10 条公开评论、最多额外读取一次首页推荐。仅保存已核验动作种类／BV／时间，交给本 Episode 后续自主选择，不将点赞推断为评论意愿。
 
 实现文档：[dev.35 P1/P2](./2.7.1-dev35-life-episode-p1p2.md)；真实 Windows/B站、陌生人跨串社交与跨日人格因果仍需单独验收。
+
+## dev.36 · 统一 Life Episode 核验状态（未发布）
+
+**本版本新增跨活动因果层，不替换原 Life Memory 或机会账本。** 已确认的自主首页视频轮次、继续公开阅读、只读待办、反思、部分已确认的主动社交和原平台核验写入，会在当前账号的 `life-episodes/<accountTag>.json` 中保存匿名来源摘要与完成步骤。所有 BV、UID、评论、标题、模型原因留在原受权事实源中。只读模型历史不再依赖随机抽样；优先考虑同一账号仍开放的原意愿，可以 `resume_episode` 也可以休息。
+
+每个片段最多 5 个核验步骤，达到上限不强迫外发；当将来同一来源又有新的真实行动时，新建关联的下一段。未知发送结果在片段中冻结；暂停后复活必须重新检查当前账号、原机会、原额度。`resume_episode` 既不是直接网络调用，也不是新评论许可。全部模型调用共用原 Life 日额度与原 Agent 单轮规则。
+
+**验收证据**：`test/v271-dev36-universal-life-episodes.test.mjs` 包含从首页真实回执开始、下一轮主动 `resume_episode`、连续三个有平台读取回执的探索步骤和自愿休息的端到端离线模拟；还验证账号隔离、重复回执、暂停/未知、五步分段、无需有效意愿时不自动唤醒。
+
+**仍未完整覆盖的微观动作**：独立视频 Agent 内部每一次未发送的微小浏览/模型想法、尚未从原渠道产生可核验回执的陌生人互动，不应该伪造成已完成 Episode 步骤。并非所有后台 AI 模型调用都可自动变成真实生活经历。此项与真实 Windows/B站/72h 仍待实机确认。

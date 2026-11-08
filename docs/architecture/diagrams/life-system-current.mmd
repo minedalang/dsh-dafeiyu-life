@@ -1,4 +1,4 @@
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.35 · P1/P2 连续 Life Episode）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.36 · Universal Life Episode）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -52,10 +52,14 @@ flowchart TB
   subgraph decision["唯一 Life 自主决策中心｜不给模型任意 UID / BV / 写权限"]
     selection["候选筛选 + 去重归属 + 账号/冷却/额度检查"]
     planner["AutonomousPlanner + Life Voice + 当轮动作菜单"]
+    universalEpisode["Universal Episode｜账号匿名因果片段：有真实回执才计入已完成动作"]
+    resumeEpisode["resume_episode｜鱼鱼自主选择复续；来源与权限每步重新核验"]
     menuGuard["后端再次核对：action/id/BV/capability 必须确在本轮菜单"]
     rest["skip：鱼鱼自由休息；技术失败不得伪装休息"]
   end
   selection --> planner --> menuGuard
+  universalEpisode -.->|只提供历史/关联，不授予权限| planner
+  menuGuard --> resumeEpisode -.-> lifeEpisode
   menuGuard --> rest
 
   subgraph readlane["受控读取｜真实读取不等于完整观看"]
@@ -120,6 +124,8 @@ flowchart TB
     growth["兴趣、情绪、关系与反思：影响下一轮候选，不授予权限"]
   end
   verifiedActions --> gateway
+  verifiedActions --> universalEpisode
+  lifeEpisode --> universalEpisode
   gateway --> retriever
   gateway --> growth
   retriever -.->|仅当前可召回证据| planner
@@ -170,3 +176,6 @@ flowchart TB
 %% @code episodeDiscussion | lib/life-opportunities.mjs | const inspectVideoDiscussion=
 %% @code episodeHomeMore | lib/life-opportunities.mjs | const browseHomeMore=
 %% @code episodeAftercare | lib/life-opportunities.mjs | entry.writeAftercare='read-or-rest'
+
+%% @code universalEpisode | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
+%% @code resumeEpisode | lib/autonomous-planner.mjs | action:'resume_episode'

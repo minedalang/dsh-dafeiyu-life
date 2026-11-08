@@ -6,6 +6,7 @@ flowchart LR
     sourceDiscussion["已有 BV 评论阅读 + 可核验主观疑问"]
     sourcePerson["SocialPortrait：跨日公开双向交流证据"]
     sourceLife["LifeOpportunities 意愿账本：ready/inspected、未过期"]
+    episodeState["Universal Episode｜已核验步骤上下文；不可代替原目标凭据"]
     sourceSocial["匿名 dm-received/comment-received 事件"]
     sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
     sourceReflect["LifeReflection.status().canAutoReflect"]
@@ -15,6 +16,7 @@ flowchart LR
     cues["cues：interest-milestone / discussion-read / selection-curiosity"]
     opportunities["opportunities：兴趣/评论/短期好奇的同 BV 核实；或 public-person-observation"]
     intentions["intentions：已有 BV / 作者/公开评论只读及一次额外首页；14 天有效窗"]
+    resume["resume_episode：仅重新选择原账号仍可执行的公开探索意愿"]
     social["social：入站关注信号 + 已核验熟人机会；非回复许可"]
     video["video：browse_home／use_capability；不是已观看数"]
     reflection["reflection：真实可执行反思；不是 pending 大于阈值"]
@@ -27,6 +29,8 @@ flowchart LR
   sourceDiscussion --> opportunities
   sourcePerson --> opportunities
   sourceLife --> intentions
+  episodeState -.->|持续性与优先考虑，并非新权限| resume
+  intentions --> resume
   sourceSocial --> social
   sourceVideo --> video
   sourceReflect --> reflection
@@ -40,6 +44,7 @@ flowchart LR
   cues --> planner
   opportunities --> planner
   intentions --> planner
+  resume --> planner
   social --> planner
   video --> planner
   reflection --> planner
@@ -63,3 +68,6 @@ flowchart LR
 %% no free-form title search, no automatic outbound approval.
 
 %% dev.35: Episode 的写入不是默认终点；需实际只读或主动休息 + 冷却后才能再写，仍无新权限。
+
+%% @code episodeState | lib/life-universal-episodes.mjs | const view=e=>
+%% @code resume | lib/autonomous-planner.mjs | action:'resume_episode'

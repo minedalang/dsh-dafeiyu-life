@@ -1,0 +1,37 @@
+%% dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
+flowchart TB
+  child["真实 B站首页轮次完成 + 原候选与新增挑选 BV 匹配"]
+  canonical["原有 LifeOpportunities 跨轮公开探索意愿｜唯一 BV 事实源"]
+  record["createUniversalLifeEpisodes｜只保存当前账号匿名摘要/因果步骤"]
+  context["当前片段最多五个已核验步骤；历史可跨段关联"]
+  due["有原账号可执行目标且至少两分钟后才优先唤醒"]
+  menu["resume_episode｜当轮正式动作菜单；鱼鱼可选择休息/别的方向"]
+  read["查看视频元数据／评论区／作者作品／一次额外首页｜真实只读回执"]
+  write["原 Life 意愿审批 → 原专业平台发送 → 独立核验｜不强制主评论"]
+  pause["自愿休息、预算不足、授权变化或未知结果：暂停/冻结"]
+  other["其他已核验 Life 待办/反思/社交/人物行动也有关联 Episode"]
+  memory["原 Life Memory 与各渠道真实回执仍为事实权威"]
+  child --> canonical --> record --> context --> due --> menu
+  menu -->|自主继续| read -->|成功并核验| record
+  menu -->|自行考虑互动，单轮最多一次写| write -->|成功且平台核验| record
+  menu -->|放下或暂不继续| pause
+  write -->|结果未知| pause
+  other --> record
+  record -.->|因果索引，不可冒充事实| memory
+  pause -.->|之后仍需原目标有效、权限通过| menu
+  classDef safe fill:#e8f4fd,stroke:#4689b6,color:#173d5c
+  classDef caveat fill:#fff1e7,stroke:#d68a3c,color:#74421c
+  class record,context,menu,due safe
+  class pause,write caveat
+
+%% @code child | index.js | const episode=lifeOpportunities.beginHomeExploration
+%% @code canonical | lib/life-opportunities.mjs | const continuations=
+%% @code record | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
+%% @code context | lib/life-universal-episodes.mjs | const view=e=>
+%% @code due | lib/life-universal-episodes.mjs | const due=(
+%% @code menu | lib/autonomous-planner.mjs | action:'resume_episode'
+%% @code read | lib/autonomous-planner.mjs | const continueLifeRead=async
+%% @code write | lib/life-video-action-bridge.mjs | createLifeVideoActionBridge
+%% @code pause | lib/life-universal-episodes.mjs | const pauseLatest=(
+%% @code other | index.js | onEpisodeAction:proof=>universalLifeEpisodes.record(proof)
+%% @code memory | lib/life-memory-coordinator.mjs | createLifeMemoryCoordinator
