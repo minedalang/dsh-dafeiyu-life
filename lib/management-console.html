@@ -984,6 +984,13 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
         <p id="quick-share-current" class="quick-current" role="status">读取分享授权…</p><div class="quick-config-actions"><button type="button" class="primary" id="quick-share-save">确认保存自主分享</button><button type="button" data-open-tab="social" data-open-anchor="social-outreach-section">查看白名单与细节 ↗</button></div>
         <p class="muted" style="font-size:12px">社交卡片只修改对应配置，不代鱼鱼批准消息。开启仍受账号验证、白名单、渠道授权、冷却、去重及真实平台回执约束；默认不主动扩大旧权限。</p>
       </section>
+      <section class="quick-config-section" id="quick-embedding-section" aria-label="可选本地语义回忆安装">
+        <div class="quick-config-title"><span class="quick-card-icon">🧠</span><div><h4>本地语义回忆 <span class="pill">推荐安装 · 可选</span></h4><p>更容易想起不同说法指向的同一段经历，不需另外安装 Ollama 或 Python。</p></div></div>
+        <p class="muted">下载 Qwen3-Embedding-0.6B Q8_0 模型（约 639 MB）及匹配系统的 llama.cpp CPU 运行时。全部在本机运行，原始记忆不上传。建议设备有充足磁盘空间与内存；不安装也能正常使用词法回忆，随时可再安装。</p>
+        <p class="quick-current" id="quick-embedding-status" role="status" aria-live="polite">正在检查本地模型…</p>
+        <progress id="quick-embedding-progress" max="100" value="0" style="width:100%" aria-label="本地语义模型安装进度"></progress>
+        <div class="quick-config-actions"><button type="button" class="primary" id="quick-embedding-install">推荐 · 启用并安装本地语义回忆</button><button type="button" id="quick-embedding-later">暂不安装，使用默认词法回忆</button><button type="button" data-open-tab="life" data-open-anchor="life-memory-settings">查看本地模型高级设置 ↗</button></div>
+      </section>
       <section class="quick-config-section quick-model-link"><div class="quick-config-title"><span class="quick-card-icon">✧</span><div><h4>AI 模型与其他高级功能</h4><p>Provider、模型测试和精细参数较复杂，保留独立管理页面</p></div></div><div class="quick-config-actions"><button type="button" data-open-tab="models">前往 AI 模型配置 ↗</button><button type="button" data-open-tab="personality">人格成长设置 ↗</button></div></section>
     </div>
     <div class="quick-ack-row"><p class="muted" id="fs-quick-ack-status">请检查当前设置后继续。老用户的原配置与后台生活不会因此暂停。</p><button type="button" id="fs-quick-ack" class="primary">我已查看本版快速设置</button></div>

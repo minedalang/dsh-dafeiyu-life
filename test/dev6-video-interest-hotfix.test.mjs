@@ -14,6 +14,7 @@ const config=()=>({masterEnabled:true,socialOutreachEnabled:true,socialLifeInten
   mentionProfiles:JSON.stringify({'11111':{personalityInterests:'猫咪'},'22222':{personalityInterests:'猫咪'}})})
 const videos=[{picked:true,bvid:BV,title:'猫咪日常合集'}]
 const engine=(dir,cfg,callbacks={})=>createSocialIntentEngine({dataDir:dir,getConfig:()=>cfg,now:()=>now,videoRecommendationsOnly:true,
+  getSelectedVideos:()=>[{...videos[0],day:'2026-11-02'}],
   invokeModel:async()=>JSON.stringify({action:'draft',message:'今天遇到一条猫咪的公开新视频，想跟你分享这份发现～',reason:'觉得猫咪题材有趣'}),
   sendMessage:async()=>({ok:true}),authorizeDraft:async()=>({ok:true,reason:'tested-life-choice',proof:{id:'verified-life-candidate'}}),...callbacks})
 

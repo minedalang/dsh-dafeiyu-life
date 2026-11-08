@@ -1,0 +1,18 @@
+flowchart TB
+  World[真实 B站事件和本地经历] --> Life[🐟 Life Agent 单一决策主体]
+  Life <--> Voice[统一 Life Voice \n人格 / 情绪 / 关系成长]
+  Life --> Video[🎞 视频探索 / 连续行动]
+  Life --> Social[💬 私信 / 评论 / 主动分享]
+  Life --> Recall[🧠 Recall Service\n词法 + 可选本地 Embedding]
+  Life --> Todo[🗓 待办 / 生活契机 / 意愿]
+  World --> Memory[统一记忆 / 关系 / 兴趣 / 反思]
+  Memory --> Recall
+  Memory --> Voice
+  Video --> Gate[统一权限及能力执行层\n身份 / 目标 / 额度 / 去重 / 未知回执冻结]
+  Social --> Gate
+  Todo --> Gate
+  Gate --> Tools[真实 B站读写工具 / 本地账本]
+  Tools --> World
+  Tools --> Memory
+  Tools --> Life
+  Recall --> Life

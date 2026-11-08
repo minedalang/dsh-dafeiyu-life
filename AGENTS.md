@@ -1,10 +1,11 @@
+- dev.29：初次配置新增可选且推荐的本地 Embedding 安装，调用已有模型安装 API；不自动下载、不更改首次必需项。Life 已成功主动私信分享的 BV 链接属于同账号同接收 UID 的短期可信回执，不应由普通语义记忆和标题联想替代；原社交意图主账本仍为唯一来源，未知回执冻结。参见 `docs/architecture/2.7.1-dev29-life-subsystems-and-video-link-handoff.md`。
 # 大肥鱼 · DSH 生活系统：AI 开发约定
 
 > 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 RC8 方案优先的 UI 接线见 [`管理卡片架构`](docs/architecture/2.7.1-rc8-choice-first-management.md)；管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
 
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 ## 项目与代码入口
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.28`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.29`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - dev.28：在现有跨日公开互动的匿名人物契机之上，允许 Life 自主读取经宿主重新核验 UID 的评论者公开投稿列表，存储仍沿原账号意愿账本，只写真实 BV/标题；随后沿用 dev.27 对选定作品的逐动作写入门禁，不开放任意陌生人漫游、跨串回复或新的私信许可。见 `docs/architecture/2.7.1-dev28-public-person-life-exploration.md`。
 - dev.27：Life 仅在原账号真实核验 BV 和公开内容证据后，把点赞/收藏/视频作者关注/原创顶层评论列为自主续行候选；新 `life-continuation-write.mjs` 与受控 Python 工具只协调原 `life-video-action-bridge.mjs` + Python 自主工具，不替代原 Life 再意愿、额度、身份、防重或读回核验。单轮最多一次写入，结果未知冻结；原账号意愿仅存匿名动作状态，不存评论正文。老用户授权不改动，不给评论者 UID/跨串回复权限。见 `docs/architecture/2.7.1-dev27-life-continuation-writes.md`。
 - dev.26：复用原 `AutonomousPlanner`、账号隔离的 `life-opportunities` 意愿/回执与现有模型额度，在自动 Life 轮已有真实公开读取成功后最多增加 2 次模型自主选择；只允许既有名单的 `inspect_exploration`、`inspect_creator_space` 与放下，执行前重新核验账号与候选，禁止新建第二任务账本或新增外发权限。原创主评论仍由视频 Agent 的 `bili_reply` 经 Life 意愿、公开评论授权及平台回执；新增原 `life-agent-events` 视频轮次脱敏诊断。旧 `dmMode` 报告投递已退役；迁移不修改 `autoComment` 原有开关，只移除旧报告字段和错误门禁。见 `docs/architecture/2.7.1-dev26-life-continuation-and-comment-diagnosis.md`。

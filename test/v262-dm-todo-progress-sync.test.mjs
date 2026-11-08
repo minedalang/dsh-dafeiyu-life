@@ -95,5 +95,5 @@ test('宿主真正把同一人待办进度传入普通私信，而非只用于�
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  assert.match(index,/const dmTodoProgressContext=createDmTodoProgressContext/)
  assert.match(index,/const todoProgressContext=dmTodoProgressContext\.forReply\(req\)/)
- assert.match(index,/recommendationContext,todoProgressContext,identityContext/)
+ assert.match(index,/recommendationContext,verifiedSharedVideoContext,sharedVideoEvidence:share,todoProgressContext,identityContext/)
 })

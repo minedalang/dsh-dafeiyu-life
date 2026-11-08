@@ -90,7 +90,8 @@ import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
 import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
 import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-continuity.mjs'
 import {todoParentId} from './lib/todo-lineage.mjs'
-import {verifyLifeOutbound,lifeFactsFromCompletedTodos,lifeFactsFromCreatorSnapshot} from './lib/verified-life-facts.mjs'
+import {verifyLifeOutbound,lifeFactsFromCompletedTodos,lifeFactsFromCreatorSnapshot,lifeFactFromReceipt} from './lib/verified-life-facts.mjs'
+import {confirmedSharePromptContext} from './lib/confirmed-video-share.mjs'
 import {prepareFriendInterestObservation,recordPreparedFriendInterest, friendInterestSummary, learnedFriendContext, listFriendLearning, clearFriendLearning, isFriendRecommendationFeedback, friendRecommendationGuard } from './lib/friend-learning.mjs'
 import {createPrivateLifeAffinity} from './lib/private-life-affinity.mjs'
 import {createSocialPortraitGateway} from './lib/social-portrait-gateway.mjs'
@@ -1014,9 +1015,19 @@ function reportMeta() {
   const ownerTodos = createOwnerTodoEngine({dataDir:stateDir,getAccountUid:()=>accountBinding.accountUid()})
   // One read-only, recipient-scoped fact view for all generated outbound chat.
   // This is NOT a separate immortal memory store or a grant to contact anyone.
-  const verifiedFactsFor=({uid,channel='dm'}={})=>lifeFactsFromCompletedTodos(
-    ownerTodos.list({includeClosed:true,limit:500}),{uid,at:Date.now()})
-    .filter(e=>e.channel===channel)
+  const verifiedFactsFor=({uid,channel='dm'}={})=>{
+    const facts=lifeFactsFromCompletedTodos(ownerTodos.list({includeClosed:true,limit:500}),{uid,at:Date.now()})
+      .filter(e=>e.channel===channel)
+    if(channel==='dm'){
+      const shared=socialIntentEngine?.recentSharedVideo({uid,text:'把刚才推荐视频的链接给我'})
+      if(shared&&!shared.ambiguous){
+        const fact=lifeFactFromReceipt({type:'video_selected',operation:'public-video-selection',ok:true,
+          sourceId:'shared:'+shared.sourceId,at:Date.now(),bvid:shared.bvid,scope:'public',channel:'dm'})
+        if(fact)facts.push(fact)
+      }
+    }
+    return facts
+  }
   const outboundFactCheck=(text,{uid,channel='dm',ownerText='',extraEvents=[]}={})=>verifyLifeOutbound(text,{
     channel,uid,ownerText,events:[...verifiedFactsFor({uid,channel}),...extraEvents],at:Date.now()})
 
@@ -3343,6 +3354,7 @@ function reportMeta() {
         oldestAt:binding.generation>1?binding.cutoverAt:0})
     },
     getContext:async({uid,text,history})=>socialContextAssembler?.ownerDm({uid,text,history})||{},
+    getSharedVideo:({uid,text})=>socialIntentEngine?.recentSharedVideo({uid,text})||null,
     // Owner-private memory tools are read-only and bound to the currently
     // authenticated account. No public DM or other UID may query these copies.
     recallMemory:async({action,uid,query,id,history=[],beforeAt=0})=>{
@@ -4007,6 +4019,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
       try{relationshipStage=relationshipIndex()?.get(req.uid,relationshipOptions())?.stage||'new'}catch{}
       const recommendationContext=await dmVideoRecommendationContext.forReply(req)
+      const share= socialIntentEngine?.recentSharedVideo({uid:String(req.uid),text:String(req.text||'')}) || null
+      const verifiedSharedVideoContext=confirmedSharePromptContext(share)
       const todoProgressContext=dmTodoProgressContext.forReply(req)
       const visualReq=await addIncomingPictureObservation(req)
       const generated=await interactionBatcher.generate({kind:'dm',role:tier,...visualReq,socialAutonomy:true,
@@ -4015,7 +4029,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         allowTodoIntake:req.trigger!=='scheduled',
         onTodoProposal:proposal=>intakeAiSocialTodo({...proposal,request:{...req,recommendationContext},channel:'dm'}),
         onTodoConsistency:onSocialTodoConsistency,
-        recommendationContext,todoProgressContext,identityContext:replyIdentityContext(req.uid)})
+        recommendationContext,verifiedSharedVideoContext,sharedVideoEvidence:share,todoProgressContext,identityContext:replyIdentityContext(req.uid)})
       const checked=socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
       if(!checked.ok)throw Error('私信决策期间账号或归属已变化：'+checked.reason)
       if(false)lifeSocialShadow.noteLegacy({channel:'dm',uid:req.uid,sourceKey:String(req.messageId||'').slice(0,110),
@@ -5372,6 +5386,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getEmotionState:()=>emotionalState.snapshot(),
     getVoiceContext:({uid,query})=>lifeVoiceContext({scene:'social-share',uid,query,maxChars:6500}),
     getSelectedVideos:()=>parseSeenTable().filter(x=>x.picked===true),
+    getAccountScope:()=>trustedLifeAccountTag(),
     invokeModel:(prompt,maxChars,opt)=>invokeInteractionPrompt(prompt,maxChars,opt),
     authorizeDraft:async ({uid,text,bvid,itemId,automatic})=>{
       if(!automatic)return {ok:false,reason:'human-approval-not-allowed'}
@@ -5379,8 +5394,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!route.ok)return {ok:false,reason:route.reason}
       return decideLifeVideoShare({uid,text,bvid,itemId,scope:route.scope,generation:route.generation})
     },
-    sendMessage:async({uid,text,eventId,automatic,lifeWillingnessProof})=>{
-      const factCheck=outboundFactCheck(text,{uid,channel:'dm'});
+    sendMessage:async({uid,text,bvid,accountTag,eventId,automatic,lifeWillingnessProof})=>{
+      if(!/^[a-f0-9]{16}$/.test(String(accountTag||''))||accountTag!==trustedLifeAccountTag()||accountBinding.status().blocked)
+        return {ok:false,no_retry:true,error:'主动推荐执行前账号身份已发生变化'}
+      // Bind the link to the CURRENT account's real picked BV, not a model URL.
+      const picked=typeof bvid==='string'&&/^BV[0-9A-Za-z]{10}$/.test(bvid)&&
+        parseSeenTable().some(x=>x.picked===true&&x.bvid===bvid)
+      const shareFact=picked?lifeFactFromReceipt({type:'video_selected',operation:'public-video-selection',ok:true,
+        sourceId:'current-share:'+bvid,at:Date.now(),bvid,scope:'public',channel:'dm'}):null
+      const factCheck=outboundFactCheck(text,{uid,channel:'dm',extraEvents:shareFact?[shareFact]:[]});
       if(!factCheck.ok)return {ok:false,error:'主动分享事实未经核实：'+factCheck.reason};
       refreshCfg();if(cfg.masterEnabled!==true)return {ok:false,error:'总开关关闭'}
       if(automatic&&lifeWillingness?.verify(lifeWillingnessProof,'share_video')?.ok!==true)

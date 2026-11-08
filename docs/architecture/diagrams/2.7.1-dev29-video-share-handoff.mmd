@@ -1,0 +1,16 @@
+flowchart TB
+  A[真实入选公开视频 BV] --> B[Social Intent 准备分享草稿]
+  B --> C{Life 真想向此人分享?}
+  C -->|否| Stop[结束本轮]
+  C -->|是| Gate[账号和 UID / 好友授权 / 目标 / 防重]
+  Gate --> D[附本 BV 标准 B站 URL]
+  D --> E[已有 DM 发送事务先预约]
+  E --> F{是否有确认回执?}
+  F -->|未知| Freeze[冻结 不重发 不作为分享证据]
+  F -->|已确认| Ledger[原 social-intentions.json\n绑定帐号 UID BV 与 sentAt]
+  Ledger --> G[同一收件人请求刚推荐的视频链接]
+  G --> Check[核对帐号 / 收件人 / 时效 / 成功回执]
+  Check --> H{唯一匹配?}
+  H -->|是| Reply[提供标准 URL 给原对话模型\n一次必要修订 + 外发核验]
+  H -->|多条| Clarify[澄清具体是哪一条]
+  H -->|没有| Unknown[诚实说明没有当前可信回执]

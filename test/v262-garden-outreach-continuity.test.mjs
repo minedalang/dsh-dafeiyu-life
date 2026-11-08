@@ -14,6 +14,7 @@ const cfg=()=>({masterEnabled:true,dmOwnerUid:11111,socialOutreachEnabled:true,s
   friendDirectory:JSON.stringify([{uid:'11111',dm:true,recommend:'dm'},{uid:'22222',dm:true,recommend:'dm'}]),mentionProfiles:'{}'})
 const video=[{picked:true,bvid:BV,title:'一个没被任何好友画像提及的公开视频'}]
 const engine=(dir,config,callbacks={})=>createSocialIntentEngine({dataDir:dir,videoRecommendationsOnly:true,getConfig:()=>config,now:()=>epoch,
+  getSelectedVideos:()=>[{...video[0],day:'2026-11-03'}],
   invokeModel:async()=>JSON.stringify({action:'draft',message:'今天刚遇到一条蛮有趣的公开视频，想分享给你看～',reason:'有自己的分享理由'}),
   sendMessage:async()=>({ok:true}),authorizeDraft:async()=>({ok:true,reason:'tested-life-choice',proof:{id:'verified-life-candidate'}}),...callbacks})
 

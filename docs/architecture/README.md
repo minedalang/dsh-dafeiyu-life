@@ -1,4 +1,9 @@
-## 当前开发版本 2.7.1-dev.28：公开交流对象的自主作品探索（未发布）
+## 当前开发版本 2.7.1-dev.29：Life 子系统关系、可选语义安装与视频推荐接续
+
+[系统关系、首次模型安装与推荐续聊修复](./2.7.1-dev29-life-subsystems-and-video-link-handoff.md) · [全系统图](./diagrams/2.7.1-dev29-life-subsystems-overview.mmd) · [推荐接续图](./diagrams/2.7.1-dev29-video-share-handoff.mmd)。单一 Life 协调专业系统；已发送的同账号同 UID 分享回执比模糊记忆优先，旧无标签记录不冒认。依然未发布，真实 Windows/B站/本地 GGUF 运行待验收。
+
+
+## 历史版本 2.7.1-dev.28：公开交流对象的自主作品探索（未发布）
 
 [dev.28 当前生产接线、人物身份与权限边界](./2.7.1-dev28-public-person-life-exploration.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev28-public-person-life.mmd)。鱼鱼可从跨日有证据的公开交流中自主提出了解对方公开投稿的愿望；后台重新解析匿名证据，确认账号/UID/公开视频一致，把已核实 BV 加入原 Life 意愿，之后可继续探索并按 dev.27 原写入门禁表达。没有新增任意陌生人漫游或跨评论串回复许可；真实 Windows/B站仍未验收。
 
