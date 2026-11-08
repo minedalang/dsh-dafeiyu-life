@@ -9,19 +9,19 @@ import {readFileSync,existsSync,writeFileSync} from 'node:fs'
 import {resolve,join,relative,sep} from 'node:path'
 import {fileURLToPath} from 'node:url'
 
-const diagrams=['life-system-current.mmd','life-candidates-current.mmd']
-const required=['todos','cues','opportunities','intentions','social','video','reflection','eventRefs','planner']
+const diagrams=['life-system-current.mmd','life-candidates-current.mmd','life-receipt-memory-current.mmd']
+const required=['todos','cues','opportunities','intentions','social','video','reflection','eventRefs','planner','catalog','verified','outbox','episode','recall']
 const anchor=/^%% @code\s+([A-Za-z][A-Za-z0-9_]*)\s*\|\s*([^|\r\n]+?)\s*\|\s*(\S[^\r\n]*?)\s*$/gm
 const diagramDir='docs/architecture/diagrams'
 const canonicalDoc='docs/architecture/life-system-current.md'
 const previewDoc='docs/architecture/life-system-current-view.md'
 
-/** A GitHub-renderable preview derived from the two canonical .mmd files. */
+/** A GitHub-renderable preview derived from the three canonical .mmd files. */
 export function renderLifeArchitectureView(root,{overrides={}}={}){
   const read=name=>Object.hasOwn(overrides,name)?overrides[name]:readFileSync(join(root,name),'utf8')
   return '# 大肥鱼 Life 源码全景（自动生成）\n\n'+
-    '> 不要直接编辑此页；修改 `diagrams/life-system-current.mmd` / `diagrams/life-candidates-current.mmd` 后运行 `npm run write:life-architecture-view`。架构状态及未实现部分见 [源码审计](./life-system-current.md)。\n\n'+
-    diagrams.map((name,i)=>'## '+(i===0?'一、系统全景':'二、八类候选细目')+'\n\n```mermaid\n'+read(join(diagramDir,name)).trimEnd()+'\n```\n').join('\n')
+    '> 不要直接编辑此页；修改 `diagrams/life-system-current.mmd` / `diagrams/life-candidates-current.mmd` / `diagrams/life-receipt-memory-current.mmd` 后运行 `npm run write:life-architecture-view`。架构状态及未实现部分见 [源码审计](./life-system-current.md)。\n\n'+
+    diagrams.map((name,i)=>'## '+(['一、系统全景','二、八类候选细目','三、可信回执与记忆闭环'][i])+'\n\n```mermaid\n'+read(join(diagramDir,name)).trimEnd()+'\n```\n').join('\n')
 }
 
 export function checkLifeArchitecture(root,{overrides={}}={}){
@@ -65,7 +65,7 @@ if(invoked){
   const root=resolve(fileURLToPath(new URL('..',import.meta.url)))
   if(process.argv.includes('--write-preview')){
     writeFileSync(join(root,previewDoc),renderLifeArchitectureView(root),'utf8')
-    console.log('已从两张 Mermaid 源图刷新 GitHub 可视化预览')
+    console.log('已从三张 Mermaid 源图刷新 GitHub 可视化预览')
   }
   const result=checkLifeArchitecture(root)
   if(result.ok)console.log(`Life 架构契约检查通过：${result.checkedDiagrams} 张 Mermaid，${result.anchoredNodes} 个唯一代码节点`)

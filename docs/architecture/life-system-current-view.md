@@ -1,11 +1,11 @@
 # 大肥鱼 Life 源码全景（自动生成）
 
-> 不要直接编辑此页；修改 `diagrams/life-system-current.mmd` / `diagrams/life-candidates-current.mmd` 后运行 `npm run write:life-architecture-view`。架构状态及未实现部分见 [源码审计](./life-system-current.md)。
+> 不要直接编辑此页；修改 `diagrams/life-system-current.mmd` / `diagrams/life-candidates-current.mmd` / `diagrams/life-receipt-memory-current.mmd` 后运行 `npm run write:life-architecture-view`。架构状态及未实现部分见 [源码审计](./life-system-current.md)。
 
 ## 一、系统全景
 
 ```mermaid
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.33 + 同版本审计补丁）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.33 + 同版本闭环加固补丁）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -29,7 +29,7 @@ flowchart TB
 
   subgraph options["Life 本轮候选｜来源不同、生命周期不同，不能互相替代"]
     todos["todos｜已接受待办中可执行的只读类型"]
-    cues["cues｜跨日兴趣／真实评论阅读后的好奇"]
+    cues["cues｜跨日兴趣／真实评论阅读／本账号已选片的开放式好奇"]
     intentions["intentions｜经核验的跨轮公开探索意愿"]
     opportunities["opportunities｜明确 BV 或公开人物证据的具体机会"]
     friends["friends/social｜已证实的好友机会与匿名入站社交唤醒"]
@@ -152,7 +152,7 @@ flowchart TB
 flowchart LR
   subgraph inputs["有事实来源，才能构成候选"]
     sourceTodo["原 accepted TODO：open/deferred 且到期"]
-    sourceInterest["LifeInterests：账号绑定、跨日自主选片兴趣"]
+    sourceInterest["LifeInterests：账号绑定、跨日自主选片兴趣及有时效的开放式好奇"]
     sourceDiscussion["已有 BV 评论阅读 + 可核验主观疑问"]
     sourcePerson["SocialPortrait：跨日公开双向交流证据"]
     sourceLife["LifeOpportunities 意愿账本：ready/inspected、未过期"]
@@ -162,8 +162,8 @@ flowchart LR
   end
   subgraph candidates["本轮实际类型 / 内容边界"]
     todos["todos：只读已接受任务（执行前复核）"]
-    cues["cues：interest-milestone / discussion-read"]
-    opportunities["opportunities：discussion/interest 的同 BV 元数据；或 public-person-observation"]
+    cues["cues：interest-milestone / discussion-read / selection-curiosity"]
+    opportunities["opportunities：兴趣/评论/短期好奇的同 BV 核实；或 public-person-observation"]
     intentions["intentions：已有 BV / 作品作者及续行目标，14 天有效窗"]
     social["social：入站关注信号 + 已核验熟人机会；非回复许可"]
     video["video：browse_home／use_capability；不是已观看数"]
@@ -208,4 +208,60 @@ flowchart LR
 %% @code reflection | lib/life-reflection.mjs | canAutoReflect
 %% @code eventRefs | lib/life-agent-events.mjs | export const lifeEventDebugRef
 %% @code planner | lib/autonomous-planner.mjs | export function validateOfferedLifeAction
+
+%% dev.33 maintenance: selection-curiosity from account-tagged verified selected BV only;
+%% no free-form title search, no automatic outbound approval.
+```
+
+## 三、可信回执与记忆闭环
+
+```mermaid
+%% 同版本 Life 补链维护：模型/菜单不是平台成功证据
+%% @code source | lib/life-video-action-bridge.mjs | createLifeVideoActionBridge
+%% @code catalog | lib/life-action-memory.mjs | LIFE_ACTION_NAMES
+%% @code verified | lib/life-action-memory.mjs | export function verifiedLifeActionEvent
+%% @code wake | lib/life-agent-events.mjs | VERIFIED_COMPLETION_KINDS
+%% @code outbox | lib/life-memory-coordinator.mjs | createLifeMemoryCoordinator
+%% @code episode | lib/life-memory-gateway.mjs | function asEpisode
+%% @code recall | lib/life-memory-gateway.mjs | function recall
+%% @code growth | lib/life-interests.mjs | recordInterestEvents
+%% @code curiosity | lib/life-interests.mjs | scopedCuriosityOpportunityEvidence
+%% @code planner | lib/autonomous-planner.mjs | export function plannerActionMenu
+%% @code bridge | index.js | const rememberVerifiedLifeAction
+%% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
+flowchart TB
+  source["真实平台操作｜原视频/评论/DM 事务"]
+  receipt{"原渠道可信结果?"}
+  verified["行动事件仅接受 verified=true 与当前账号"]
+  unknown["冻结/失败｜不得写成成功，不自动重试"]
+  catalog["19 类 Life 行动统一字典｜含 13 类写操作"]
+  wake["匿名 Life 事件引用｜仅提醒下轮考虑"]
+  bridge["原进程回调 await 接收记忆入队｜不发送第二次"]
+  outbox["原 Life Memory 协调器持久化补偿队列"]
+  episode["可衰减情节｜有账号/私密/删除边界"]
+  pending["可补偿；诊断不伪装已写入"]
+  recall["实时账号/权限/遗忘过滤，再词法/向量检索"]
+  growth["真实已选片证据可形成兴趣候选"]
+  curiosity["当前账号、有真实 BV、未过期、未排除的开放式好奇"]
+  planner["Life 自主决定是否核实同一 BV，或不做"]
+  source --> receipt
+  receipt -->|独立确认成功| verified
+  receipt -->|失败或未知| unknown
+  verified --> catalog
+  verified --> wake
+  catalog --> bridge
+  bridge --> outbox
+  outbox --> episode
+  outbox -->|已排队但投影暂失败| pending
+  episode --> recall
+  episode --> growth
+  growth --> curiosity
+  curiosity --> planner
+  planner --> source
+  classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
+  classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
+  classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b
+  class verified,catalog,wake,bridge,outbox,episode,recall,curiosity,planner green
+  class pending yellow
+  class unknown red
 ```

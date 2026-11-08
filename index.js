@@ -173,7 +173,7 @@ import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
 import { createDailyDynamic } from './lib/daily-dynamic.mjs'
 import { createMemeLearning } from './lib/meme-learning.mjs'
-import { interestMemoryRows, selectionInterests, listLifeInterests, scopedInterestOpportunityEvidence, listCuriosityReview, curiosityReview } from './lib/life-interests.mjs'
+import { interestMemoryRows, selectionInterests, listLifeInterests, scopedInterestOpportunityEvidence, scopedCuriosityOpportunityEvidence, listCuriosityReview, curiosityReview } from './lib/life-interests.mjs'
 import { readModelTaskUsage, recordModelTask, MODEL_TASKS } from './lib/model-task-usage.mjs'
 
 export const name = 'dafeiyu-life'
@@ -2386,7 +2386,8 @@ function reportMeta() {
   const lifeOpportunityAccountReady=()=>{try{return accountBinding.status().blocked!==true}catch{return false}}
   const trustedLifeAccountTag=()=>lifeOpportunityAccountReady()?discussionAccountTag(dmCred(stateDir)):''
   const lifeOpportunities=createLifeOpportunities({stateDir,getCredential:()=>lifeOpportunityAccountReady()?dmCred(stateDir):null,
-    getInterestEvidence:tag=>lifeOpportunityAccountReady()?scopedInterestOpportunityEvidence(stateDir,tag):[],
+    getInterestEvidence:tag=>lifeOpportunityAccountReady()?
+      [...scopedInterestOpportunityEvidence(stateDir,tag),...scopedCuriosityOpportunityEvidence(stateDir,tag)]:[],
     getPublicPersonEvidence:()=>lifeOpportunityAccountReady()?socialPortrait.publicOpportunitySignals():[]})
   // Independent relationship-originated Life opportunities. No video receipts are
   // required, and no contact UID or text enters this persistent ledger.
@@ -5087,12 +5088,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     verify:(proof,kind)=>lifeWillingness.verify(proof,kind),
     receipt:(proof,result)=>lifeWillingness.receipt(proof,result),
     onVerifiedAction:({kind,target,scope,sourceId,at})=>{
-      if(scope!==trustedLifeAccountTag())return
+      if(scope!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
       const picked=/^BV[0-9A-Za-z]{10}$/.test(String(target||''))
         ?parseSeenTable().find(v=>v.picked===true&&v.bvid===target):null
-      void rememberVerifiedLifeAction({action:kind,accountTag:scope,sourceId:'video-verified:'+sourceId,
+      return rememberVerifiedLifeAction({action:kind,accountTag:scope,sourceId:'video-verified:'+sourceId,
         bvid:picked?.bvid||target,title:picked?.title||'',at,verified:true})
-        .catch(e=>log('视频行动记忆待补偿：'+String(e?.message||e).slice(0,100)))
+        .catch(e=>{log('视频行动记忆待补偿：'+String(e?.message||e).slice(0,100));return {ok:false}})
     },
     onCommentDiagnostic:({stage,code})=>{
       const row=currentVideoCommentDiagnostics

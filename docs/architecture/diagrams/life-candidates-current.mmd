@@ -2,7 +2,7 @@
 flowchart LR
   subgraph inputs["有事实来源，才能构成候选"]
     sourceTodo["原 accepted TODO：open/deferred 且到期"]
-    sourceInterest["LifeInterests：账号绑定、跨日自主选片兴趣"]
+    sourceInterest["LifeInterests：账号绑定、跨日自主选片兴趣及有时效的开放式好奇"]
     sourceDiscussion["已有 BV 评论阅读 + 可核验主观疑问"]
     sourcePerson["SocialPortrait：跨日公开双向交流证据"]
     sourceLife["LifeOpportunities 意愿账本：ready/inspected、未过期"]
@@ -12,8 +12,8 @@ flowchart LR
   end
   subgraph candidates["本轮实际类型 / 内容边界"]
     todos["todos：只读已接受任务（执行前复核）"]
-    cues["cues：interest-milestone / discussion-read"]
-    opportunities["opportunities：discussion/interest 的同 BV 元数据；或 public-person-observation"]
+    cues["cues：interest-milestone / discussion-read / selection-curiosity"]
+    opportunities["opportunities：兴趣/评论/短期好奇的同 BV 核实；或 public-person-observation"]
     intentions["intentions：已有 BV / 作品作者及续行目标，14 天有效窗"]
     social["social：入站关注信号 + 已核验熟人机会；非回复许可"]
     video["video：browse_home／use_capability；不是已观看数"]
@@ -58,3 +58,6 @@ flowchart LR
 %% @code reflection | lib/life-reflection.mjs | canAutoReflect
 %% @code eventRefs | lib/life-agent-events.mjs | export const lifeEventDebugRef
 %% @code planner | lib/autonomous-planner.mjs | export function validateOfferedLifeAction
+
+%% dev.33 maintenance: selection-curiosity from account-tagged verified selected BV only;
+%% no free-form title search, no automatic outbound approval.

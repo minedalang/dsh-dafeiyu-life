@@ -1,0 +1,48 @@
+%% 同版本 Life 补链维护：模型/菜单不是平台成功证据
+%% @code source | lib/life-video-action-bridge.mjs | createLifeVideoActionBridge
+%% @code catalog | lib/life-action-memory.mjs | LIFE_ACTION_NAMES
+%% @code verified | lib/life-action-memory.mjs | export function verifiedLifeActionEvent
+%% @code wake | lib/life-agent-events.mjs | VERIFIED_COMPLETION_KINDS
+%% @code outbox | lib/life-memory-coordinator.mjs | createLifeMemoryCoordinator
+%% @code episode | lib/life-memory-gateway.mjs | function asEpisode
+%% @code recall | lib/life-memory-gateway.mjs | function recall
+%% @code growth | lib/life-interests.mjs | recordInterestEvents
+%% @code curiosity | lib/life-interests.mjs | scopedCuriosityOpportunityEvidence
+%% @code planner | lib/autonomous-planner.mjs | export function plannerActionMenu
+%% @code bridge | index.js | const rememberVerifiedLifeAction
+%% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
+flowchart TB
+  source["真实平台操作｜原视频/评论/DM 事务"]
+  receipt{"原渠道可信结果?"}
+  verified["行动事件仅接受 verified=true 与当前账号"]
+  unknown["冻结/失败｜不得写成成功，不自动重试"]
+  catalog["19 类 Life 行动统一字典｜含 13 类写操作"]
+  wake["匿名 Life 事件引用｜仅提醒下轮考虑"]
+  bridge["原进程回调 await 接收记忆入队｜不发送第二次"]
+  outbox["原 Life Memory 协调器持久化补偿队列"]
+  episode["可衰减情节｜有账号/私密/删除边界"]
+  pending["可补偿；诊断不伪装已写入"]
+  recall["实时账号/权限/遗忘过滤，再词法/向量检索"]
+  growth["真实已选片证据可形成兴趣候选"]
+  curiosity["当前账号、有真实 BV、未过期、未排除的开放式好奇"]
+  planner["Life 自主决定是否核实同一 BV，或不做"]
+  source --> receipt
+  receipt -->|独立确认成功| verified
+  receipt -->|失败或未知| unknown
+  verified --> catalog
+  verified --> wake
+  catalog --> bridge
+  bridge --> outbox
+  outbox --> episode
+  outbox -->|已排队但投影暂失败| pending
+  episode --> recall
+  episode --> growth
+  growth --> curiosity
+  curiosity --> planner
+  planner --> source
+  classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
+  classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
+  classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b
+  class verified,catalog,wake,bridge,outbox,episode,recall,curiosity,planner green
+  class pending yellow
+  class unknown red

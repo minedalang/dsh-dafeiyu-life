@@ -5,7 +5,7 @@
 
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 ## 项目与代码入口
-- **当前 Life 架构图的唯一维护入口**：`docs/architecture/life-system-current.md`、`docs/architecture/diagrams/life-system-current.mmd`、`docs/architecture/diagrams/life-candidates-current.mmd`。每次修改 Life 候选、调度、权限或回执，须同时维护 Mermaid 代码锚点，先执行 `npm run write:life-architecture-view` 更新 GitHub 预览，再执行 `npm run check:life-architecture` 与 `test/v271-dev33-life-architecture-contract.test.mjs`；图中已接线不得宣称实机验收。
+- **当前 Life 架构图的唯一维护入口**：`docs/architecture/life-system-current.md`、`docs/architecture/diagrams/life-system-current.mmd`、`docs/architecture/diagrams/life-candidates-current.mmd`、`docs/architecture/diagrams/life-receipt-memory-current.mmd`。每次修改 Life 候选、调度、权限或回执，须同时维护 Mermaid 代码锚点，先执行 `npm run write:life-architecture-view` 更新 GitHub 预览，再执行 `npm run check:life-architecture` 与 `test/v271-dev33-life-architecture-contract.test.mjs`；图中已接线不得宣称实机验收。
 - **dev.33 同版本菜单加固**：Life 每次输出须与当轮动作菜单中的 action/id/BV/capability 严格匹配；未提供的 reflect 不可从旧 parser 走漏。保持原账户、授权、回执/遗忘限制，详见 `docs/architecture/life-system-current.md`。
 - 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.33`（新 Life 统管生活、私信/评论生产归属，原权限不变；跨日成长与实机验收尚未完成），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - dev.33 同版本维护修复：@通知只有经 B站源评论/UID/rpid/BV 核验并能分清独立留言正文时才进入回复 AI 或社交记忆；旧内部昵称歧义提示不是观众说过的话，修正仍清晰的情节副本与旧评论缓存，但不抹除已确认外发、也不恢复已遗忘内容。详见 `docs/architecture/2.7.1-dev33-mention-memory-hotfix.md`。
