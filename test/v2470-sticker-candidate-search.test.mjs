@@ -19,7 +19,7 @@ test('新版只追加一个只读MCP工具，不越过图片发送授权和额�
   const index=read('index.js')
   const mcp=read('vendor/bilibili-mcp/mcp_server.py')
   const py=read('vendor/bilibili-mcp/comment_meme_search.py')
-  assert.match(index,/cfg\.commentMemesEnabled && cfg\.autoComment && cfg\.dmMode !== 'only'\) list\.push\('bili_comment_meme_list','bili_comment_meme_search'\)/)
+  assert.match(index,/cfg\.commentMemesEnabled && cfg\.autoComment\) list\.push\('bili_comment_meme_list','bili_comment_meme_search'\)/)
   assert.match(mcp,/async def bili_comment_meme_search\(query:/)
   assert.match(mcp,/if \(deny := _guard\('bili_comment_meme_search'\)\)/)
   assert.match(py,/def search_library\(/)

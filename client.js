@@ -318,7 +318,6 @@ function WatchTab() {
       const [peakIntervalDraft, setPeakIntervalDraft] = React.useState(null)
       const [peakWindowsDraft, setPeakWindowsDraft] = React.useState(null)
       const [perRound, setPerRound] = React.useState(null)
-      const [dmUid, setDmUid] = React.useState(null)        // 私信收件人 UID（本地草稿）
       const [dmWatch, setDmWatch] = React.useState(null)          // 后台私信总开关
       const [dailyPublicCommentLimit, setDailyPublicCommentLimit] = React.useState(null)
       const [dynamicDailyLimitDraft, setDynamicDailyLimitDraft] = React.useState(null)
@@ -339,7 +338,6 @@ function WatchTab() {
       const [visionTest,setVisionTest] = React.useState(null)
       const [visionBusy,setVisionBusy] = React.useState(false)
       const [visionDraft,setVisionDraft] = React.useState(null)
-      const [dmMode, setDmMode] = React.useState(null)      // 投递方式：off / only / both
       const [mentionTargets, setMentionTargets] = React.useState(null)
       const [mentionMode, setMentionMode] = React.useState(null)
       const [friendProfiles,setFriendProfiles] = React.useState(null)
@@ -394,8 +392,6 @@ function WatchTab() {
         if (cfg && mentionMode === null) setMentionMode(cfg.mentionMode || 'ai')
         if (cfg && friendProfiles === null) {try {setFriendProfiles(JSON.parse(cfg.mentionProfiles||'{}'))} catch {setFriendProfiles({})}}
         if (cfg && loreDraft === null) setLoreDraft(cfg.characterLore || '')
-        if (cfg && dmUid === null) setDmUid(cfg.dmUid ? String(cfg.dmUid) : '')
-        if (cfg && dmMode === null) setDmMode(cfg.dmMode || 'only')
         if (cfg && dmWatch === null) setDmWatch(cfg.dmWatch !== false)
         if(cfg && visionDraft===null) setVisionDraft(Object.fromEntries(['visionModelProvider','visionModelId','visionReasoningEffort','visionFrames'].map(k=>[k,cfg[k]??''])))
         if(cfg && modelDraft===null) setModelDraft(Object.fromEntries(['videoModelProvider','videoModelId','videoReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort'].map(k=>[k,cfg[k]||''])))
@@ -778,23 +774,8 @@ function WatchTab() {
 
         /* ── 发言与转写 ── */
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'social', 'data-bd-away': tab === 'social' ? undefined : '' },
-          h('div', { 'data-bd-h': '' }, '它怎么把结果给你'),
-          h('div', { 'data-bd-label': '' }, '投递方式'),
-          h('select', {
-            'data-bd-input': '', value: dmMode ?? 'only',
-            onChange: (e) => { setDmMode(e.target.value); patch({ dmMode: e.target.value }, '投递方式') },
-          },
-            h('option', { value: 'only' }, '只发私信 —— 一条公开评论都不发（默认，最不打扰别人）'),
-            h('option', { value: 'off' }, '只发评论 —— @ 可选（公开，别人能看见）'),
-            h('option', { value: 'both' }, '私信 + 评论 —— 两边都发')),
-          (dmMode && dmMode !== 'off') ? h('div', { 'data-bd-label': '' }, '私信推荐收件人 UID（与评论 @ 名单独立）') : null,
-          (dmMode && dmMode !== 'off') ? h('input', {
-            'data-bd-input': '', value: dmUid ?? '', type: 'number', min: 0,
-            placeholder: '输入用于接收刷视频报告的数字 UID',
-            onChange: (e) => setDmUid(e.target.value),
-            onBlur: () => patch({dmUid: Math.max(0, Math.floor(Number(dmUid)||0))}, '私信收件人 UID'),
-          }) : null,
-          (dmMode && dmMode !== 'off') ? h('div', { 'data-bd-note': '' }, '这里的 UID 只控制刷视频报告发给谁，不是白名单，也不是公开评论 @ 对象。') : null,
+          h('div', { 'data-bd-h': '' }, '原创评论与互动'),
+          h('div', { 'data-bd-note': '' }, '旧视频报告清单私信投递已退役；本地日报保留，Life 自主视频分享不受影响。'),
           h('div', { 'data-bd-sep': '' }),
           h('div', { 'data-bd-note': '' }, '公开评论 @ 名单及每位好友的画像（关系、兴趣、邀请偏好），现统一在管理中心 → 人设与好友中编辑。'),
           h('div', { 'data-bd-note': '' }, '公开评论 @ 策略：'+({ai_select:'AI 选择部分好友',ai:'AI 判断是否 @ 全部好友',off:'永不 @',always:'每次 @ 全部好友'}[cfg.mentionMode]||'AI 决定')+'；在管理中心「人设与好友」里调整。'),
@@ -803,25 +784,24 @@ function WatchTab() {
           h('div', { 'data-bd-note': '' }, '今日 @ 诊断、表情包选取原因、每日报告、后台私信记录和最近评论集中在管理中心展示，避免设置页过长。'),
           h('div', { 'data-bd-row': '' },
             h('button', { 'data-bd-btn': '', onClick: () => onOpenManage() }, '打开管理中心 ↗')),
-          (dmMode && dmMode !== 'off') ? h('div', { 'data-bd-note': '' }, '私信内容 = 本轮每条的「标题 + 链接 + 一句话」，一轮合并成一条发。⚠️ 建议先让这个号和收件人互关：B站 对「陌生人私信」会限流，还可能不弹提醒。') : null,
 
-          (dmMode === 'off' || dmMode === 'both') ? h('div', { 'data-bd-sep': '' }) : null,
-          (dmMode === 'off' || dmMode === 'both') ? h(ToggleRow, {
+          h('div', { 'data-bd-sep': '' }),
+          h(ToggleRow, {
             label: '自动发表评论（@ 可选）',
             note: '大肥鱼可根据视频内容决定是否 @；不需要每条 @',
             on: sw('autoComment'),
             onChange: (v) => patch({ autoComment: v }, '自动评论'),
-          }) : null,
+          }),
           h('div', { 'data-bd-note': '' }, commentQuota?.ok
             ? `公开评论今日全局已占用 ${commentQuota.used} / ${commentQuota.limit} 次；次数请到管理中心 → 次数与额度编辑。`
             : '公开评论全局额度及每轮上限已移至管理中心 → 次数与额度。'),
-          (dmMode === 'off' || dmMode === 'both') && sw('autoComment') ? h(ToggleRow, {
+          sw('autoComment') ? h(ToggleRow, {
             label: 'AI 决定是否将评论同步到动态',
             note: '默认关闭。开启后 AI 会逐条认真判断：有鲜明笑点、反差、实用发现或共鸣点且单独发动态也自然时，应积极考虑同步；不是每条必发，也不是默认不发。动态正文=评论原文+视频链接，不增加模型调用。',
             on: sw('commentSyncDynamic'),
             onChange: (v) => patch({ commentSyncDynamic: v }, '评论同步动态'),
           }) : null,
-          (dmMode === 'off' || dmMode === 'both') && sw('autoComment') && sw('commentSyncDynamic')
+          sw('autoComment') && sw('commentSyncDynamic')
             ? h('div',{'data-bd-note':''},`动态今日已尝试 ${st?.dynamicSyncUsage?.used??0} 次；每日额度在管理中心调整。`):null,
           h('div', { 'data-bd-sep': '' }),
           h(ToggleRow, {label:'AI 自主给顶层评论附表情包（试验）',

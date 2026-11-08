@@ -98,8 +98,8 @@ test('video comment diagnostics preserve no text/BV/UID and never claim zero pro
  assert.equal(row.commentDiagnostics.proposed,0)
  assert.equal(row.commentDiagnostics.lastReason,'')
  assert.ok(!JSON.stringify(row).includes(BV))
- assert.equal(videoCommentGateCode({...active,autoComment:false,dmMode:'both',commentPerRound:5,commentDailyLimit:10}),'auto-comment-disabled')
- assert.equal(videoCommentGateCode({...active,autoComment:true,dmMode:'only',commentPerRound:5,commentDailyLimit:10}),'dm-only')
+ assert.equal(videoCommentGateCode({...active,autoComment:false,commentPerRound:5,commentDailyLimit:10}),'auto-comment-disabled')
+ assert.equal(videoCommentGateCode({...active,autoComment:true,dmMode:'only',commentPerRound:5,commentDailyLimit:10}),'configured','retired report flag cannot affect comment gate')
 }))
 
 // The real localhost approval bridge must emit diagnostic phases, never text or target.

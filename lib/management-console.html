@@ -1059,7 +1059,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <label class="choice-card"><input type="radio" name="bili-interaction-choice" value="balanced"><span class="choice-icon" aria-hidden="true">🍃</span><strong>适度互动</strong><small>可以点赞收藏，暂不主动评论或关注</small></label>
 <label class="choice-card"><input type="radio" name="bili-interaction-choice" value="observe"><span class="choice-icon" aria-hidden="true">🌙</span><strong>安静探索</strong><small>关闭本页视频互动；不改变私信授权</small></label>
 <label class="choice-card"><input type="radio" name="bili-interaction-choice" value="custom"><span class="choice-icon" aria-hidden="true">🎛️</span><strong>自己决定</strong><small>逐项开启或禁止各项互动</small></label>
-</div><p id="bili-interaction-choice-status" class="choice-review" role="status">正在读取原有权限…</p><p id="bili-proactive-comment-status" class="setting-note" role="status">原创评论准入：正在检查本页权限与报告发送方式…</p>
+</div><p id="bili-interaction-choice-status" class="choice-review" role="status">正在读取原有权限…</p><p id="bili-proactive-comment-status" class="setting-note" role="status">原创评论准入：正在检查独立权限与额度…</p>
 <details id="bili-interaction-advanced" class="choice-advanced"><summary>⚙️ 自定义行为与图片理解</summary>
 <label class="checkline"><input id="bili-auto-comment" type="checkbox" data-inverted-permission="true">禁止自主发表原创评论</label>
 <label class="checkline"><input id="bili-disable-incoming-vision" type="checkbox" data-inverted-permission="true">禁用评论和私信图片理解</label>
@@ -1074,10 +1074,10 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </details>
 </div>
 <details id="bili-video-advanced" class="contextual-settings">
-<summary>⚙️ 视频探索的报告与高级设置 <span class="contextual-hint">字幕转写 · 报告投递 · 表情包</span></summary>
-<div class="settings-section"><h4>刷视频报告与私信投递</h4>
-<div class="fields"><div><label for="bili-dm-mode">本轮视频报告发送方式</label><select id="bili-dm-mode"><option value="only">只发报告私信，不公开评论</option><option value="off">只发公开评论（不发送报告私信）</option><option value="both">报告私信 + 公开评论</option></select></div><div><label for="bili-dm-uid">报告私信接收人 UID</label><input id="bili-dm-uid" type="number" min="0" placeholder="B站数字 UID（不填则不发送报告私信）"></div><div><label for="bili-report-level">本地日报内容</label><select id="bili-report-level"><option value="full">详细</option><option value="brief">简短</option><option value="off">不写日报</option></select></div></div>
-<p class="muted">报告私信收件人不同于自动回复私信的白名单；公开评论仍受独立开关与额度控制。</p></div>
+<summary>⚙️ 视频探索的报告与高级设置 <span class="contextual-hint">字幕转写 · 本地日报 · 表情包</span></summary>
+<div class="settings-section"><h4>本地探索日报</h4>
+<div class="fields"><div><label for="bili-report-level">本地日报内容</label><select id="bili-report-level"><option value="full">详细</option><option value="brief">简短</option><option value="off">不写日报</option></select></div></div>
+<p class="muted">旧版每轮视频清单自动私信已退役；日报仍保存在本地。原创评论和 Life 自主好友视频分享分别授权。</p></div>
 <div class="settings-section"><h4>字幕、梗图及其他辅助能力</h4>
 <label class="checkline"><input id="bili-transcribe" type="checkbox">无字幕时尝试转写视频语音（需转写依赖）</label>
 <div class="fields"><div><label for="bili-asr-model">Whisper 转写模型</label><select id="bili-asr-model"><option value="tiny">tiny</option><option value="base">base</option><option value="small">small</option><option value="medium">medium</option><option value="large-v3">large-v3</option></select></div></div>

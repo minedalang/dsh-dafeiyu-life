@@ -37,13 +37,10 @@ test('当时间线同一天混合数字与字符串时间输入仍排序，确�
  assert.equal(result.find(x=>x.type==='comment').label,'发了评论')
 })
 
-test('主动视频评论准入分别判断工具授权、报告模式、单轮额度和日额度',()=>{
- const good={masterEnabled:true,autoComment:true,dmMode:'both',commentPerRound:5,commentDailyLimit:1000}
+test('主动视频评论准入独立于退役报告模式，只看授权、单轮额度和日额度',()=>{
+ const good={masterEnabled:true,autoComment:true,commentPerRound:5,commentDailyLimit:1000}
  assert.equal(videoCommentReadiness(good).enabled,true)
- assert.equal(videoCommentReadiness({...good,dmMode:'off'}).enabled,true)
- const disabled=videoCommentReadiness({...good,dmMode:'only'})
- assert.equal(disabled.enabled,false)
- assert.match(disabled.blockers.join(' '),/只发私信/)
+ assert.equal(videoCommentReadiness({...good,dmMode:'only'}).enabled,true,'legacy mode must no longer block comments')
  assert.match(videoCommentReadiness({...good,autoComment:false}).blockers.join(' '),/原创评论权限关闭/)
  assert.match(videoCommentReadiness({...good,commentPerRound:0}).blockers.join(' '),/每轮原创评论额度为 0/)
  assert.match(videoCommentReadiness({...good,commentDailyLimit:0}).blockers.join(' '),/每日总额度为 0/)
@@ -51,7 +48,7 @@ test('主动视频评论准入分别判断工具授权、报告模式、单轮�
  assert.equal(videoCommentReadiness(good).note.includes('不代表历史轮次'),true)
 })
 
-test('控制台公开区分顶层评论与回复，且报告只私信模式不能与自由互动误认为同一权限',()=>{
+test('控制台公开区分顶层评论与回复，旧报告投递选项已退役',()=>{
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
@@ -60,10 +57,10 @@ test('控制台公开区分顶层评论与回复，且报告只私信模式不�
  assert.match(index,/observedReplies:todayVisible\.filter\(row=>row\.kind==='reply'\)/)
  assert.match(index,/\['video','video-round','life-read','life-write','life-reflection','comment'/)
  assert.doesNotMatch(index,/dmModeEff = dmDegraded \? 'off' : cfg.dmMode/)
- assert.match(index,/const dmModeEff = cfg.dmMode/)
+ assert.doesNotMatch(index,/const dmModeEff = cfg.dmMode/)
  assert.match(html,/id="life-timeline-comment-status"/)
  assert.match(html,/id="bili-proactive-comment-status"/)
  assert.match(js,/原创顶层评论/)
- assert.match(js,/虽然允许原创评论，但报告发送方式为「只发私信」/)
- assert.match(js,/\$\('bili-dm-mode'\)\.addEventListener\('change',renderBiliPlan\)/)
+ assert.match(js,/视频 Agent 可以自主考虑原创评论|可自主考虑原创评论/)
+ assert.doesNotMatch(html,/id="bili-dm-mode"|id="bili-dm-uid"/)
 })

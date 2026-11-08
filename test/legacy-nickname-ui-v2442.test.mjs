@@ -9,7 +9,7 @@ test('removed the legacy nickname field and its unsaved React state', () => {
   assert.doesNotMatch(ui, /旧版昵称（保留兼容，可不改）/)
   assert.doesNotMatch(ui, /setMention\(/)
   assert.doesNotMatch(ui, /value:\s*mention\s*\?\?/)
-  assert.match(ui, /私信推荐收件人 UID/)
+  assert.doesNotMatch(ui, /私信推荐收件人 UID|setDmMode|setDmUid/)
   assert.match(ui, /打开管理中心/)
 })
 
