@@ -1,4 +1,6 @@
-**当前 dev.37（未发布）：**统一 Life 行动归属与 Episode 因果层将主人请求、主动 Life 行动与被动社交回复分开记录；已核验回执关联原有待办与生活片段，不会因为批准意愿就冒充平台成功。此前的 Universal Life Episode Engine 把 Life 顶层自主行动、真实完成的视频轮次、已核验社交和写操作链接到当前账号的匿名因果片段。首页真实选中后的原探索意愿可在下一轮**主动选择 `resume_episode`**，无需先另外执行一个新动作；原来的平台门禁、预算、休息、未知结果冻结不变。详见 [dev.37 跨系统归属与边界](docs/architecture/2.7.1-dev37-unified-action-ownership.md)。
+**当前 dev.37 发布前维护（尚未发布）：**统一 Life 连接记忆、兴趣、人格、关系和待办；无论新用户还是老用户，旧的定时刷视频不再驱动新生活。已修复管理中心「让鱼鱼考虑一次」的 `sched is not defined`；新增 S0/S1 匿名验收快照，并修正社交归属的假绿色状态。**这些仅是发布前代码修复，不代表真实环境验收完成。** 详见 [发布验收步骤](docs/architecture/2.7.1-dev37-release-acceptance.md)。
+
+**dev.37 统一行动归属（未发布）：**统一 Life 行动归属与 Episode 因果层将主人请求、主动 Life 行动与被动社交回复分开记录；已核验回执关联原有待办与生活片段，不会因为批准意愿就冒充平台成功。此前的 Universal Life Episode Engine 把 Life 顶层自主行动、真实完成的视频轮次、已核验社交和写操作链接到当前账号的匿名因果片段。首页真实选中后的原探索意愿可在下一轮**主动选择 `resume_episode`**，无需先另外执行一个新动作；原来的平台门禁、预算、休息、未知结果冻结不变。详见 [dev.37 跨系统归属与边界](docs/architecture/2.7.1-dev37-unified-action-ownership.md)。
 
 **历史 dev.35（仍未发布）：** Life Episode 一次已核验写入后不会强制结束，但再写之前必须真实读取或明确休息；最多一次额外首页推荐、已核实 BV 的评论区可独立只读；每轮最多写一次，点赞不代表会发表评论。[详细设计与安全边界](docs/architecture/2.7.1-dev35-life-episode-p1p2.md)。
 

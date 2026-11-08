@@ -1,3 +1,4 @@
+- [**dev.37 发布验收代码修复与 S0/S1 现场执行**](./2.7.1-dev37-release-acceptance.md)：唤醒按钮修复、只读匿名证据导出、真实 Windows/B站/账号/72h/GGUF 验收步骤；未完成外部验收不能宣布发布。
 - [**dev.37 行动归属与原回执闭环**](./2.7.1-dev37-unified-action-ownership.md)：专业 Agent 保留执行权、统一来源和回执归属、待办/反思/社交跨片段去重；实机验证限制。
 ## 当前开发版本 2.7.1-dev.37：统一自主生活 Episode（仍未发布）
 
@@ -7,7 +8,7 @@
 
 [Episode 写入后继续只读／休息、安全再写、额外首页、评论区只读与跨步记忆](./2.7.1-dev35-life-episode-p1p2.md)。已实现的功能与长期未实机验证的效果分开标注；主 Mermaid 图、候选图、回执记忆图均需保持同步，`releaseReady:false`。
 
-## 当前权威 Life 全景图与源码接线审计（已更新至 dev.37，未发布）
+## 当前权威 Life 全景图与源码接线审计（已更新至 dev.38，未发布）
 
 **优先阅读**：[GitHub 可直接渲染的完整 Life 图](./life-system-current-view.md) · [Life 完整源码关系与审计矩阵](./life-system-current.md) · [可编辑的 Mermaid 全景图](./diagrams/life-system-current.mmd) · [todos / cues / intentions / opportunities 等候选字典图](./diagrams/life-candidates-current.mmd) · [可信行动回执与记忆闭环图](./diagrams/life-receipt-memory-current.mmd)。这四张图用实际生产代码锚点校验；`npm run check:life-architecture` 和相关 Node 回归用于避免图与实现明显脱节。仍有未完全接通的渠道、模型实机及 72h 验收，`releaseReady:false`。
 

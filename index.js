@@ -3,6 +3,7 @@ import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
 import {lifeSettingsV2,planLifeSettingsV2,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
 import {lifeTransitionReadiness} from './lib/life-transition-readiness.mjs'
+import {releaseAcceptanceEvidence} from './lib/release-acceptance-evidence.mjs'
 import {RECOMMENDED_EXPERIENCE_SETTINGS,RECOMMENDED_EXPERIENCE_GROUPS} from './lib/recommended-experience-settings.mjs'
 import { createPersonalityEvolution } from './lib/personality-evolution.mjs'
 import { normalizeFictionalTurn, runFictionalAiDebug, MAX_FICTIONAL_TURNS } from './lib/personality-ai-debug.mjs'
@@ -7605,6 +7606,27 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         handoff:inspect(()=>socialHandoffFence.inspect()),
         transactions:inspect(()=>socialSendTransaction.inspect()),
         shadow:inspect(()=>lifeSocialShadow.status()),version:JSON.parse(readFileSync(new URL('./package.json',import.meta.url),'utf8')).version}))
+    }
+    // S0/S1 anonymous acceptance snapshot. Read-only and authenticated like
+    // other management GETs; no model call, live tool, user data or credential.
+    if (req.method === 'GET' && path === '/api/bili-duty/life-agent/release-acceptance-evidence') {
+      refreshCfg()
+      const inspect=fn=>{try{return fn()}catch{return {ok:false}}}
+      const planner=inspect(()=>autonomousPlanner.status())
+      const lifeEpisodeHealth=inspect(()=>universalLifeEpisodes.health({eligibleSources:eligibleLifeEpisodeSources({
+        intentions:lifeOpportunities.continuations({limit:20}),
+        todos:ownerTodos.list({limit:100,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)),
+        opportunities:lifeOpportunities.list({limit:20}),now:Date.now()})}))
+      const transition=lifeTransitionReadiness({config:cfg,
+        accountReady:/^[a-f0-9]{16}$/.test(String(trustedLifeAccountTag()||'')),planner,
+        handoff:inspect(()=>socialHandoffFence.inspect()),
+        transactions:inspect(()=>socialSendTransaction.inspect()),
+        shadow:inspect(()=>lifeSocialShadow.status())})
+      const embedding=await embeddingRuntime.inspect().then(status=>({...status,
+        enabled:cfg.mainSessionMemoryEmbeddingEnabled===true,index:embeddingIndex.status()})).catch(()=>({ok:false}))
+      return sendJson(res,200,releaseAcceptanceEvidence({config:cfg,planner,lifeEpisodeHealth,transition,
+        embedding,bridgeReady:lifeVideoActionBridge?.status().ready===true,
+        hostPlatform:process.platform,now:Date.now()}))
     }
     // Developer-only, explicit NO-SEND rehearsal. This is NOT a switch or a
     // platform action: reserve the old channel, check its in-flight operations

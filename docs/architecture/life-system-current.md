@@ -1,4 +1,4 @@
-# Life 全景图与源码接线审计（当前 dev.37 跨渠道行动归属 + Universal Life Episode）
+# Life 全景图与源码接线审计（当前 dev.37 发布前检验／dev.37 跨渠道行动归属 + Universal Life Episode）
 
 > **可直接在 GitHub 查看渲染结果：**[Life 全景与候选图](./life-system-current-view.md)。它是根据 `.mmd` 自动生成的只读展示，不应直接编辑。
 >
