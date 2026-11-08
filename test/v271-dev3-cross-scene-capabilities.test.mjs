@@ -74,7 +74,8 @@ test('an exploration can compose search -> verified BV -> public creator works -
  const follow=planner(()=>({action:'inspect_exploration',id,bvid:OTHER}))
  assert.equal((await follow.p.tick({force:true,opportunitiesOnly:true})).result,'verified-metadata')
  assert.equal(follow.readCalls,1)
- assert.equal(life.continuations().length,0)
+ assert.equal(life.continuations().length,1,'a four-step episode remains eligible for one more voluntary step')
+ assert.equal(life.continuations()[0].episodeSteps,4)
  assert.equal(life.status().intentions[0].selectedBvid,OTHER)
 }))
 

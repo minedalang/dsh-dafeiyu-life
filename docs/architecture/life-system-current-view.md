@@ -5,7 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.34 · 连续 Life Episode）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.35 · P1/P2 连续 Life Episode）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -73,6 +73,9 @@ flowchart TB
     homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     episodeContinuation["每步重新交给 Life 选择 · 最多追加 4 次 · 可随时休息"]
+    episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
+    episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
+    episodeAftercare["已核验写入计一步 · 下一写前必须真只读或实际休息；每 tick 最多一写"]
   end
   menuGuard --> readTodo
   menuGuard --> explore
@@ -83,6 +86,9 @@ flowchart TB
   home --> homeCandidateMatch -->|仅本轮精确匹配入选 BV；不等于观看| homeEpisode
   homeEpisode --> lifeEpisode
   explore -.->|搜索/人物作品/视频核验成功后进入同一意愿账本| lifeEpisode
+  lifeEpisode --> episodeDiscussion --> episodeContinuation
+  lifeEpisode --> episodeHomeMore --> episodeContinuation
+  lifeEpisode --> episodeAftercare -.->|只读／休息后再次选择，非自动外发| episodeContinuation
   lifeEpisode --> episodeContinuation -.->|下一步重新选择；到上限/休息/结束时停止| selection
 
   %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_comment_consideration
@@ -137,7 +143,7 @@ flowchart TB
   classDef active fill:#e8f3ff,stroke:#3579c9,color:#17385f
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   classDef gap fill:#fff0f1,stroke:#d26975,color:#822f39
-  class planner,menuGuard,selection,readTodo,explore,home,lifeEpisode,homeEpisode,homeCandidateMatch,episodeContinuation,verifiedActions,receipts,eventLedger active
+  class planner,menuGuard,selection,readTodo,explore,home,lifeEpisode,homeEpisode,homeCandidateMatch,episodeContinuation,episodeDiscussion,episodeHomeMore,episodeAftercare,verifiedActions,receipts,eventLedger active
   class friends,socialWrite,videoWrite,gateway,retriever,growth partial
   class gapSocial,gapRecall,gapGrowth gap
 
@@ -167,6 +173,10 @@ flowchart TB
 %% @code gateway | lib/life-memory-coordinator.mjs | export function createLifeMemoryCoordinator
 %% @code retriever | lib/memory-retriever.mjs | export function createMemoryRetriever
 %% @code growth | lib/life-interests.mjs | export function recordInterestEvents
+
+%% @code episodeDiscussion | lib/life-opportunities.mjs | const inspectVideoDiscussion=
+%% @code episodeHomeMore | lib/life-opportunities.mjs | const browseHomeMore=
+%% @code episodeAftercare | lib/life-opportunities.mjs | entry.writeAftercare='read-or-rest'
 ```
 
 ## 二、八类候选细目
@@ -188,7 +198,7 @@ flowchart LR
     todos["todos：只读已接受任务（执行前复核）"]
     cues["cues：interest-milestone / discussion-read / selection-curiosity"]
     opportunities["opportunities：兴趣/评论/短期好奇的同 BV 核实；或 public-person-observation"]
-    intentions["intentions：已有 BV / 作品作者及续行目标，14 天有效窗"]
+    intentions["intentions：已有 BV / 作者/公开评论只读及一次额外首页；14 天有效窗"]
     social["social：入站关注信号 + 已核验熟人机会；非回复许可"]
     video["video：browse_home／use_capability；不是已观看数"]
     reflection["reflection：真实可执行反思；不是 pending 大于阈值"]
@@ -235,6 +245,8 @@ flowchart LR
 
 %% dev.33 maintenance: selection-curiosity from account-tagged verified selected BV only;
 %% no free-form title search, no automatic outbound approval.
+
+%% dev.35: Episode 的写入不是默认终点；需实际只读或主动休息 + 冷却后才能再写，仍无新权限。
 ```
 
 ## 三、可信回执与记忆闭环
@@ -257,6 +269,7 @@ flowchart LR
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
   source["真实平台操作｜原视频/评论/DM 事务"]
+  postWrite["同 Episode 的已核验写入：只计一步，下一写前只读或休息且每轮一写"]
   commentReview["视频入选后主动考虑主评论：想说／不想说／证据不足；不等于发送"]
   commentOutcome["结束后的独立 DEBUG｜未考虑／未提议／Life 否决／平台未知"]
   receipt{"原渠道可信结果?"}
@@ -275,6 +288,7 @@ flowchart TB
   commentReview -.->|自愿提出评论，仍需原外发门禁| source
   commentReview -.-> commentOutcome
   source --> receipt
+  verified -.-> postWrite -.->|安全限制，不是写授权| planner
   receipt -.-> commentOutcome
   receipt -->|独立确认成功| verified
   receipt -->|失败或未知| unknown
@@ -292,7 +306,9 @@ flowchart TB
   classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
   classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
   classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b
-  class verified,catalog,wake,bridge,outbox,episode,recall,curiosity,planner green
+  class verified,catalog,wake,bridge,outbox,episode,recall,curiosity,planner,postWrite green
   class pending yellow
   class unknown red
+
+%% @code postWrite | lib/life-opportunities.mjs | entry.writeAftercare='read-or-rest'
 ```

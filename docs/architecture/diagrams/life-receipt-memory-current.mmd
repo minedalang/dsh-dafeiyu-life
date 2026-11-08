@@ -15,6 +15,7 @@
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
   source["真实平台操作｜原视频/评论/DM 事务"]
+  postWrite["同 Episode 的已核验写入：只计一步，下一写前只读或休息且每轮一写"]
   commentReview["视频入选后主动考虑主评论：想说／不想说／证据不足；不等于发送"]
   commentOutcome["结束后的独立 DEBUG｜未考虑／未提议／Life 否决／平台未知"]
   receipt{"原渠道可信结果?"}
@@ -33,6 +34,7 @@ flowchart TB
   commentReview -.->|自愿提出评论，仍需原外发门禁| source
   commentReview -.-> commentOutcome
   source --> receipt
+  verified -.-> postWrite -.->|安全限制，不是写授权| planner
   receipt -.-> commentOutcome
   receipt -->|独立确认成功| verified
   receipt -->|失败或未知| unknown
@@ -50,6 +52,8 @@ flowchart TB
   classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
   classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
   classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b
-  class verified,catalog,wake,bridge,outbox,episode,recall,curiosity,planner green
+  class verified,catalog,wake,bridge,outbox,episode,recall,curiosity,planner,postWrite green
   class pending yellow
   class unknown red
+
+%% @code postWrite | lib/life-opportunities.mjs | entry.writeAftercare='read-or-rest'

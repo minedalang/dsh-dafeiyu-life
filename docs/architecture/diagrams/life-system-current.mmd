@@ -1,4 +1,4 @@
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.34 · 连续 Life Episode）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.35 · P1/P2 连续 Life Episode）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -66,6 +66,9 @@ flowchart TB
     homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     episodeContinuation["每步重新交给 Life 选择 · 最多追加 4 次 · 可随时休息"]
+    episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
+    episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
+    episodeAftercare["已核验写入计一步 · 下一写前必须真只读或实际休息；每 tick 最多一写"]
   end
   menuGuard --> readTodo
   menuGuard --> explore
@@ -76,6 +79,9 @@ flowchart TB
   home --> homeCandidateMatch -->|仅本轮精确匹配入选 BV；不等于观看| homeEpisode
   homeEpisode --> lifeEpisode
   explore -.->|搜索/人物作品/视频核验成功后进入同一意愿账本| lifeEpisode
+  lifeEpisode --> episodeDiscussion --> episodeContinuation
+  lifeEpisode --> episodeHomeMore --> episodeContinuation
+  lifeEpisode --> episodeAftercare -.->|只读／休息后再次选择，非自动外发| episodeContinuation
   lifeEpisode --> episodeContinuation -.->|下一步重新选择；到上限/休息/结束时停止| selection
 
   %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_comment_consideration
@@ -130,7 +136,7 @@ flowchart TB
   classDef active fill:#e8f3ff,stroke:#3579c9,color:#17385f
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   classDef gap fill:#fff0f1,stroke:#d26975,color:#822f39
-  class planner,menuGuard,selection,readTodo,explore,home,lifeEpisode,homeEpisode,homeCandidateMatch,episodeContinuation,verifiedActions,receipts,eventLedger active
+  class planner,menuGuard,selection,readTodo,explore,home,lifeEpisode,homeEpisode,homeCandidateMatch,episodeContinuation,episodeDiscussion,episodeHomeMore,episodeAftercare,verifiedActions,receipts,eventLedger active
   class friends,socialWrite,videoWrite,gateway,retriever,growth partial
   class gapSocial,gapRecall,gapGrowth gap
 
@@ -160,3 +166,7 @@ flowchart TB
 %% @code gateway | lib/life-memory-coordinator.mjs | export function createLifeMemoryCoordinator
 %% @code retriever | lib/memory-retriever.mjs | export function createMemoryRetriever
 %% @code growth | lib/life-interests.mjs | export function recordInterestEvents
+
+%% @code episodeDiscussion | lib/life-opportunities.mjs | const inspectVideoDiscussion=
+%% @code episodeHomeMore | lib/life-opportunities.mjs | const browseHomeMore=
+%% @code episodeAftercare | lib/life-opportunities.mjs | entry.writeAftercare='read-or-rest'

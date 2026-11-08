@@ -5430,6 +5430,38 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         }})
     }),
     recordOpportunityDecision:(id,action,opts)=>lifeOpportunities.decide(id,action,opts),
+    executeLifeHomeMore:async(expectedScope)=>readActionContext.run({source:'life-planner'},async()=>{
+      refreshCfg()
+      if(cfg.homeRecommendationsEnabled!==true||!lifeOpportunityAccountReady()||
+        trustedLifeAccountTag()!==expectedScope)return {ok:false}
+      let data
+      try{data=parseMaybeJson(await call('bili_home_recommendations',{}))}catch{return {ok:false}}
+      if(trustedLifeAccountTag()!==expectedScope||cfg.homeRecommendationsEnabled!==true||
+        data?.ok!==true||!Array.isArray(data.videos))return {ok:false}
+      // Only Bilibili-supplied public video identifiers and bounded titles.
+      const seen=new Set(),videos=[]
+      for(const row of data.videos.slice(0,12)){
+        const bvid=String(row?.bvid||''),title=String(row?.title||'').replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,85)
+        if(!/^BV[0-9A-Za-z]{10}$/.test(bvid)||!title||seen.has(bvid))continue
+        seen.add(bvid);videos.push({bvid,title});if(videos.length>=5)break
+      }
+      return {ok:true,verified:true,videos}
+    }),
+    recordLifeHomeMore:(id,proof,scope)=>lifeOpportunities.browseHomeMore(id,proof,scope),
+    executeVideoDiscussion:async(bvid,expectedScope)=>readActionContext.run({source:'life-planner'},async()=>{
+      // The Bilibili adapter's public comment list is READ-ONLY. The result
+      // must have the same verified BV and a fully successful list read.
+      if(!/^BV[0-9A-Za-z]{10}$/.test(String(bvid||''))||
+         trustedLifeAccountTag()!==expectedScope||!lifeOpportunityAccountReady())return {ok:false}
+      let result
+      try{result=parseMaybeJson(await call('bili_comments',{bvid,num:10}))}catch{return {ok:false}}
+      if(trustedLifeAccountTag()!==expectedScope||!lifeOpportunityAccountReady()||
+        result?.error||result?.status==='partial_failure'||result?.bvid!==bvid||
+        !Array.isArray(result?.comments)||!Number.isSafeInteger(result?.count)||
+        result.count!==result.comments.length||result.count<0||result.count>10)return {ok:false}
+      return {ok:true,verified:true,bvid,count:result.count}
+    }),
+    inspectLifeVideoDiscussion:(id,proof,scope)=>lifeOpportunities.inspectVideoDiscussion(id,proof,scope),
     executeOpportunityRead:readLifeVideoMetadata,
     recheckWillingness:task=>dualContextAgency.assessReadExecution({task}),
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars),

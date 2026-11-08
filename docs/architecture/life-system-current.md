@@ -92,3 +92,9 @@
 - 没有本机视频 Agent 逐工具日志，就不能追溯升级前那几轮模型实际如何考虑；无法凭选片数重建不存在的评论决策。
 
 详见 `test/v271-dev33-video-comment-consideration.test.mjs`。以上是离线逻辑和诊断接线，Windows / 真实 B站仍需验收。
+
+## dev.35 · Episode 自然连贯与安全互动状态
+
+本轮把 Episode 已核验写操作改成**非终结步骤**；等待 `read-or-rest` → `read-verified` 或真实休息 `resting` 以后，且满最短冷却，才允许下一 Life tick 考虑另一种合法写操作；同一 tick 永不连发两次。可独立读取当前已核实 BV 的 10 条公开评论、最多额外读取一次首页推荐。仅保存已核验动作种类／BV／时间，交给本 Episode 后续自主选择，不将点赞推断为评论意愿。
+
+实现文档：[dev.35 P1/P2](./2.7.1-dev35-life-episode-p1p2.md)；真实 Windows/B站、陌生人跨串社交与跨日人格因果仍需单独验收。

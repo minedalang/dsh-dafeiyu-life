@@ -95,7 +95,7 @@ test('search and public-person entry points also initialize the same five-step e
  assert.equal(continuationMenu(row,{at:T}).some(x=>x.action==='inspect_exploration'),false)
 }))
 
-test('a voluntary stop pauses only this episode; unknown writes freeze it; verified writes close it',()=>home(async dir=>{
+test('a voluntary stop pauses only this episode; unknown writes freeze it; verified writes keep the episode eligible for reads',()=>home(async dir=>{
  const life=makeLife(dir),seed=life.beginHomeExploration(ROUND,picked,scope)
  assert.equal(life.pauseExploration(seed.id,60*60_000,scope).ok,true)
  assert.equal(life.continuations().some(x=>x.id===seed.id),false)
@@ -108,7 +108,7 @@ test('a voluntary stop pauses only this episode; unknown writes freeze it; verif
  const third=life.beginHomeExploration('e'.repeat(24),picked,scope)
  assert.equal(life.completeExploration(third.id,BV,{ok:true,bvid:BV,title:'真实标题'},scope).ok,true)
  assert.equal(life.recordExplorationWrite(third.id,'like_video',BV,'verified',scope).ok,true)
- const done=life.status().intentions.find(x=>x.id===third.id);assert.equal(done.status,'completed');assert.equal(done.receipt,'verified-platform-write')
+ const done=life.status().intentions.find(x=>x.id===third.id);assert.equal(done.status,'inspected');assert.equal(done.receipt,'verified-platform-write');assert.equal(done.writeAftercare,'read-or-rest');assert.equal(done.episodeSteps,3)
 }))
 
 test('the video round seeds an Episode only after a verified Life-owned homepage completion',()=>{

@@ -20,7 +20,7 @@ const home=async fn=>{const dir=mkdtempSync(join(tmpdir(),'dev27-safe-writes-'))
 test('write menu requires current verified selected BV, trusted metadata time and enabled flag',()=>{
  assert.deepEqual(lifeWriteKinds(cfg,evidence),['like_video','collect_video','follow_creator','comment_video'])
  assert.deepEqual(continuationMenu(selected,{at:T,writeActions:lifeWriteKinds(cfg,evidence)}).map(x=>x.action),
-   ['inspect_creator_space','like_video','collect_video','follow_creator','comment_video','abandon_exploration'])
+   ['inspect_creator_space','inspect_video_discussion','like_video','collect_video','follow_creator','comment_video','abandon_exploration'])
  assert.equal(continuationMenu({...selected,selectedBvid:''},{at:T,writeActions:['comment_video']}).some(x=>x.action==='comment_video'),false)
  assert.equal(continuationMenu({...selected,metadataAt:T-2*86400_000},{at:T,writeActions:['comment_video']}).some(x=>x.action==='comment_video'),false)
  assert.equal(continuationMenu({...selected,writeOutcomes:[{action:'comment_video',bvid:BV,status:'uncertain'}]},{at:T,writeActions:['comment_video']}).some(x=>x.action==='comment_video'),false)
@@ -90,6 +90,7 @@ function makeLife(dir,answers,writer=async()=>({ok:true,status:'verified'})){
   getLifeIntentionCues:()=>life.explorationCues(),getLifeIntentions:()=>life.continuations(),
   beginLifeExploration:(...args)=>life.beginExploration(...args),completeLifeExploration:(...args)=>life.completeExploration(...args),
   failLifeExploration:(...args)=>life.failExplorationRead(...args),abandonLifeExploration:(...args)=>life.abandonExploration(...args),
+  pauseLifeExploration:(...args)=>life.pauseExploration(...args),
   executeLifeSearch:async topic=>({ok:true,topic,videos:[{bvid:BV,title:'公开视频标题'}]}),
   executeOpportunityRead:async bvid=>({ok:true,bvid,title:'公开视频标题'}),
   getLifeWriteEvidence:async()=>evidence,executeLifeWrite:async(...args)=>{writeCalls++;return writer(...args)},
@@ -99,19 +100,20 @@ function makeLife(dir,answers,writer=async()=>({ok:true,status:'verified'})){
  return {planner,life,get calls(){return modelCalls},get writes(){return writeCalls}}
 }
 
-test('real planner can choose a guarded write after a verified video inspection, then STOP this turn',()=>home(async dir=>{
+test('real planner can choose a guarded write, then voluntarily rest without auto chaining more writes',()=>home(async dir=>{
  const x=makeLife(dir,[
   life=>({action:'begin_exploration',id:life.explorationCues()[0].id,goal:'想了解真实公开作品'}),
   life=>({action:'inspect_exploration',id:life.continuations()[0].id,bvid:BV,reason:'愿意核实作品'}),
   life=>({action:'comment_video',id:life.continuations()[0].id,bvid:BV,reason:'想对已核实作品留下原创短评',text:'公开简介中的创作方向值得讨论'})])
  const result=await x.planner.tick()
  assert.equal(result.action,'begin_exploration')
- assert.equal(result.continuation.considered,2)
+ assert.equal(result.continuation.considered,3)
  assert.equal(result.continuation.executed,2)
- assert.equal(result.continuation.reason,'write-verified')
- assert.equal(x.writes,1);assert.equal(x.calls,3)
- const entry=x.life.continuations()[0]
+ assert.equal(result.continuation.reason,'fish-chose-rest')
+ assert.equal(x.writes,1);assert.equal(x.calls,4)
+ const entry=x.life.status().intentions.find(x=>x.source==='interest-milestone')
  assert.equal(entry.writeOutcomes[0].status,'verified')
+ assert.equal(entry.writeAftercare,'resting')
  assert.equal(continuationMenu(entry,{at:T,writeActions:['comment_video']}).some(x=>x.action==='comment_video'),false)
  assert.ok(!JSON.stringify(entry).includes('公开简介中的创作方向值得讨论'),'comment body never enters intention ledger')
 }))
@@ -125,7 +127,8 @@ test('uncertain platform status blocks the same action on later Life ticks, no h
  const result=await x.planner.tick()
  assert.equal(result.continuation.reason,'write-unverified')
  assert.equal(x.writes,1)
- const entry=x.life.continuations()[0]
+ const entry=x.life.status().intentions.find(x=>x.source==='interest-milestone')
+ assert.equal(entry.episodeStatus,'review')
  assert.equal(entry.writeOutcomes[0].status,'uncertain')
  assert.equal(continuationMenu(entry,{at:T,writeActions:['like_video']}).some(x=>x.action==='like_video'),false)
 }))
