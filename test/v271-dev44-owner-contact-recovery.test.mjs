@@ -11,7 +11,7 @@ const tag='1234567890abcdef'
 const date=(hour,min=0)=>new Date(2026,10,9,hour,min,0,0).getTime()
 const withDir=async callback=>{const dir=mkdtempSync(join(tmpdir(),'dsh-dev44-'));try{await callback(dir)}finally{rmSync(dir,{force:true,recursive:true})}}
 test('contact preset cards express access limits, not compulsory personality',()=>{
- assert.deepEqual(ownerContactPolicy({ownerContactPreset:'quiet'}),{preset:'quiet',startHour:10,endHour:20,cooldownMinutes:720,dailyLimit:1,silenceMinutes:120})
+ assert.deepEqual(ownerContactPolicy({ownerContactPreset:'quiet'}),{preset:'quiet',startHour:10,endHour:20,cooldownMinutes:480,dailyLimit:1,silenceMinutes:120})
  assert.equal(ownerContactPolicy({ownerContactPreset:'lively'}).dailyLimit,4)
  assert.equal(ownerContactPolicy({ownerContactPreset:'custom',ownerContactStartHour:21,ownerContactEndHour:6,ownerContactSilenceMinutes:70}).silenceMinutes,70)
  assert.equal(checkOwnerContact({config:{ownerContactPreset:'natural'},now:date(23)}).reason,'quiet-hours')

@@ -72,7 +72,7 @@ test('main session spontaneous communication does not override EmotionRecall sus
   const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   assert.match(src,/paused:true, \/\/ 2\.6\.0:/)
   assert.match(src,/runOwnerChat:async/)
-  assert.match(src,/ownerSpontaneousChatEnabled: z\.boolean\(\)\.default\(false\)/)
+  assert.match(src,/ownerSpontaneousChatEnabled: z\.boolean\(\)\.default\(true\)/)
   assert.match(html,/owner-spontaneous-chat-enabled/)
   assert.doesNotMatch(html,/俏皮碎碎念|温柔日常/)
   assert.match(bridge,/agent\.followup/)
@@ -87,10 +87,10 @@ test('Life may chat without an event, but cannot reuse idle opportunity on resta
     assert.equal(h.make().ownerChatReadiness({sourceKey:source}).reason,'source-used')
   }finally{h.cleanup()}
 })
-test('8h safety spacing and two-attempt daily limit remain durable',async()=>{
+test('4h natural contact spacing and two-attempt daily limit remain durable',async()=>{
   const h=harness();try{
     assert.equal((await h.make().initiateOwnerChat({sourceKey:key,eventKind:'experience-ready'})).ok,true)
-    h.setTime(new Date('2026-11-09T16:00:00').getTime())
+    h.setTime(new Date('2026-11-09T15:59:00').getTime())
     const second=scope+':'+'e'.repeat(24)
     assert.equal(h.make().ownerChatReadiness({sourceKey:second}).reason,'cooldown')
     h.setTime(new Date('2026-11-09T21:00:00').getTime())

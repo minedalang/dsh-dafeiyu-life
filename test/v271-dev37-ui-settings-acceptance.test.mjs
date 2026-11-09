@@ -35,7 +35,7 @@ test('删除同时改动两种公开评论额度的旧预设，保留两个独�
 test('所有容量保存须有本地 readback；原生 DSH 镜像缺失不得伪装保存失败',()=>{
  assert.match(script,/const localSaveNotice=\(result,label\)=>/)
  assert.match(script,/if\(result\?\.localVerified!==true\)throw Error/)
- assert.match(script,/插件已核验本地生效（DSH 原生设置页不支持写入，仅镜像未同步）/)
+ assert.match(script,/已核验插件配置生效（当前 DSH 无可写原生设置表单，无需同步）/)
  assert.match(script,/message\(localSaveNotice\(saved,'全部次数与额度已保存'\)\)/)
  assert.match(script,/message\(localSaveNotice\(saved,'后台评论互动设置已保存'\)\)/)
  assert.match(script,/message\(localSaveNotice\(r,'记忆与反思设置已保存'\)\)/)
