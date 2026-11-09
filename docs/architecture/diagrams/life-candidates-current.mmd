@@ -11,7 +11,7 @@ flowchart LR
     sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
     sourceVideoFeedback["已核验视频子进程结束回执｜只读，与下次启动冷却独立"]
     sourceReflect["LifeReflection.status().canAutoReflect"]
-    sourceOwner["主人主动聊天独立授权 + 明确绑定且在线的主 Session + 8h冷却与静默"]
+    sourceOwner["主人联系卡片/自定义额度 + 明确绑定且在线的主 Session + 可选沉默续聊"]
   end
   subgraph candidates["本轮实际类型 / 内容边界"]
     todos["todos：只读已接受任务（执行前复核）"]
@@ -95,3 +95,6 @@ dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
 %% dev.42: Life-selected owner contact is opt-in and not delivery-confirmed.
 %% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=
 %% @code ownerChat | lib/autonomous-planner.mjs | action:'talk_to_owner'
+
+%% dev.44 shared owner contact settings and silence consideration.
+%% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=

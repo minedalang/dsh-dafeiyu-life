@@ -484,8 +484,8 @@ function WatchTab() {
           }
           if (r.config) setSt((old) => ({ ...old, config: r.config }))
           // ⭐ DSH 原生设置页里显式设过的键由宿主说了算 ⇒ 我们这份也得写进去；写失败要说出来，别假装"已保存"
-          if (r?.host && r.host.ok === false) say(`${what || '设置'}：插件自己那份存了，但 DSH 设置页那份没写进去（${r.host.error}）`, 'warn')
-          else say(what ? `${what}：已保存` : '已保存', 'good')
+          if (r?.host?.ok === false && r.host?.skipped !== true) say(`${what || '设置'}已保存并通过插件配置回读；DSH 原生设置镜像未同步（${r.host.error}）`, 'good')
+          else say(what ? `${what}：已保存并生效` : '已保存并生效', 'good')
         } catch (e) { say(String(e?.message ?? e), 'warn') }
         finally { setBusy('') }
       }
@@ -744,8 +744,7 @@ function WatchTab() {
           h('span', { 'data-bd-badge': '' }, '环境' + (st.venvReady ? '已就绪' : (st.installing ? '正在装' : '未装'))),
           h('span', { 'data-bd-badge': '' }, st.loggedIn ? 'B站已登录' : 'B站未登录'),
             h('span', { 'data-bd-badge': '' }, 'v' + (st.version || '?')),
-          h('div', { 'data-bd-grow': '' }),
-          h('button', { 'data-bd-btn': '', disabled: busy === 'run' || cfg.masterEnabled === false, onClick: onRun }, '现在跑一轮')),
+          h('div', { 'data-bd-grow': '' })),
           runNote ? h('div', { 'data-bd-msg': '', 'data-good': runNote.tone === 'good' ? '' : undefined,
             'data-warn': runNote.tone === 'warn' ? '' : undefined }, runNote.t) : null,
 

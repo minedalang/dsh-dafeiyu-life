@@ -37,7 +37,9 @@ flowchart TB
     reflection["reflection｜执行器真实就绪状态 canAutoReflect"]
     events["eventRefs｜匿名提示 / 公平重考虑，非操作授权"]
     feedback["本账号真实视频完成反馈｜只读考虑，不受新视频启动冷却影响"]
-    ownerChat["talk_to_owner｜主人授权+主 Session 在线；真实事件或独立聊天意愿；可以 skip"]
+    ownerChat["talk_to_owner｜可配置联系时间/额度+主 Session 在线；真实经历/闲聊/沉默；可 skip"]
+    ownerContactPolicy["主人联系策略｜卡片/自定义窗口和冷却，主 Session 与主人私信共用"]
+    networkPollBackoff["B站私信/评论只读轮询｜-509/DNS 持久退避"]
   end
   canonical --> todos
   canonical --> intentions
@@ -59,6 +61,8 @@ flowchart TB
   reflection --> selection
   events -.-> selection
   feedback -.-> selection
+  ownerContactPolicy -.-> ownerChat
+  networkPollBackoff -.-> socialFacts
   ownerChat -.-> selection
 
   subgraph decision["唯一 Life 自主决策中心｜不给模型任意 UID / BV / 写权限"]
@@ -221,6 +225,10 @@ dmFollow -->|已核实后回执| receipts
 %% dev.42: owner opt-in and verified lifecycle; not a platform delivery receipt.
 %% @code ownerChat | lib/autonomous-planner.mjs | action:'talk_to_owner'
 %% @code ownerBridge | lib/main-session-bridge.mjs | const initiateOwnerChat=
+
+%% dev.44: opt-in owner policy and rate-limit recovery.
+%% @code ownerContactPolicy | lib/owner-contact-policy.mjs | export function ownerContactPolicy
+%% @code networkPollBackoff | lib/network-poll-backoff.mjs | export function createNetworkPollBackoff
 ```
 
 ## 二、八类候选细目
@@ -239,7 +247,7 @@ flowchart LR
     sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
     sourceVideoFeedback["已核验视频子进程结束回执｜只读，与下次启动冷却独立"]
     sourceReflect["LifeReflection.status().canAutoReflect"]
-    sourceOwner["主人主动聊天独立授权 + 明确绑定且在线的主 Session + 8h冷却与静默"]
+    sourceOwner["主人联系卡片/自定义额度 + 明确绑定且在线的主 Session + 可选沉默续聊"]
   end
   subgraph candidates["本轮实际类型 / 内容边界"]
     todos["todos：只读已接受任务（执行前复核）"]
@@ -323,6 +331,9 @@ dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
 %% dev.42: Life-selected owner contact is opt-in and not delivery-confirmed.
 %% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=
 %% @code ownerChat | lib/autonomous-planner.mjs | action:'talk_to_owner'
+
+%% dev.44 shared owner contact settings and silence consideration.
+%% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=
 ```
 
 ## 三、可信回执与记忆闭环
@@ -386,6 +397,11 @@ flowchart TB
   planner --> source
   ownerFollowup["Life talk_to_owner → 现有主 Session followup；成功只等于入队，不能当成平台发送回执"]
   planner -.->|独立同意才可选择，允许休息| ownerFollowup
+  ownerDmSilence["主人私信沉默续聊｜原账号/真实新来信确认 + 共用额度 + 逐气泡回执"]
+  ownerContactQuota["主人联系唯一额度池｜主 Session 与主人 B站私信共用本地尝试账本"]
+  ownerContactQuota -.-> ownerFollowup
+  ownerContactQuota -.-> ownerDmSilence
+  ownerDmSilence -.-> receipt
   classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
   classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
   classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b
@@ -408,6 +424,10 @@ dmFollowReceipt -.->|只有成功回执| verified
 
 %% dev.42: host followup != independently confirmed platform delivery.
 %% @code ownerFollowup | lib/main-session-bridge.mjs | const initiateOwnerChat=
+
+%% dev.44: no new memory store or channel; one quota ledger.
+%% @code ownerDmSilence | lib/owner-dm-agent.mjs | const considerSilence=async()=>
+%% @code ownerContactQuota | lib/main-session-bridge.mjs | const reserveOwnerContact=
 ```
 
 ## 四、统一 Life Episode 因果持续性

@@ -56,6 +56,11 @@ flowchart TB
   planner --> source
   ownerFollowup["Life talk_to_owner → 现有主 Session followup；成功只等于入队，不能当成平台发送回执"]
   planner -.->|独立同意才可选择，允许休息| ownerFollowup
+  ownerDmSilence["主人私信沉默续聊｜原账号/真实新来信确认 + 共用额度 + 逐气泡回执"]
+  ownerContactQuota["主人联系唯一额度池｜主 Session 与主人 B站私信共用本地尝试账本"]
+  ownerContactQuota -.-> ownerFollowup
+  ownerContactQuota -.-> ownerDmSilence
+  ownerDmSilence -.-> receipt
   classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
   classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
   classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b
@@ -78,3 +83,7 @@ dmFollowReceipt -.->|只有成功回执| verified
 
 %% dev.42: host followup != independently confirmed platform delivery.
 %% @code ownerFollowup | lib/main-session-bridge.mjs | const initiateOwnerChat=
+
+%% dev.44: no new memory store or channel; one quota ledger.
+%% @code ownerDmSilence | lib/owner-dm-agent.mjs | const considerSilence=async()=>
+%% @code ownerContactQuota | lib/main-session-bridge.mjs | const reserveOwnerContact=
