@@ -1095,6 +1095,7 @@ function reportMeta() {
         hint:'来自已有完成待办与可信回执；可以不联系对方。'})
       if(lifeChoice?.ok!==true)return {decision:lifeChoice?.action==='skip'?'skip':'defer',
         channel,modelInvoked:lifeChoice?.action==='skip',diagnosticReason:'Life 意愿决定不联系或稍后再考虑'}
+      const todoEpisode=lifeSubagentHandoff({agent:'todo',episodes:universalLifeEpisodes,sourceRef:'todo:'+String(taskId||'')})
       const role=socialPolicyGate.actor(uid)?.role||'stranger'
       const evidence=liveExperienceEvidence({gateway:lifeMemory,uid,role,topic,title,maxItems:4})
       // An incomplete life-memory index must not permanently veto the fish's
@@ -3480,6 +3481,9 @@ function reportMeta() {
     },
     getContext:async({uid,text,history})=>socialContextAssembler?.ownerDm({uid,text,history})||{},
     getSharedVideo:({uid,text})=>socialIntentEngine?.recentSharedVideo({uid,text})||null,
+    getEpisodeContext:({uid})=>String(uid)===String(cfg.dmOwnerUid||'')&&!accountBinding.status().blocked
+      ?lifeSubagentHandoff({agent:'owner-dm',episodes:universalLifeEpisodes,sourceRef:'owner-dm-conversation:'+String(uid)})
+      :{agent:'owner-dm',source:null,recent:[]},
     // Owner-private memory tools are read-only and bound to the currently
     // authenticated account. No public DM or other UID may query these copies.
     recallMemory:async({action,uid,query,id,history=[],beforeAt=0})=>{
@@ -3501,7 +3505,14 @@ function reportMeta() {
         note:'主人私信经 AI 识别的未来只读建议；尚未实际执行，不代表已经听过或看过。',
         origin:{kind:'owner-dm',uid,messageId,quotedText:'',at},ownerAuthorized:false},{source:'owner'})
     },
-    onConfirmedReply:async({uid,text,eventId,at})=>{
+    onConfirmedReply:async({uid,text,eventId,at,receiptId=''})=>{
+      // Never treat a model reply or a transport ACK as an Episode. The DM
+      // channel must return a real Bilibili message receipt, same owner/scope.
+      if(receiptId&&String(uid)===String(cfg.dmOwnerUid||'')&&!accountBinding.status().blocked){
+        const scope=trustedLifeAccountTag()
+        if(scope)lifeActionAttribution.verified({accountTag:scope,channel:'owner-dm',owner:'owner',
+          sourceRef:'owner-dm-conversation:'+String(uid),receiptId:'bili-owner-dm:'+receiptId,action:'owner_dm_reply',kind:'social'})
+      }
       const event=preparePrivateSelfExperience({source:'owner-dm',role:'owner',uid,eventId,text,at})
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
         if(result?.ok===false)log('主人已确认私信的自主感想等待记忆补偿：'+String(result.lastError||''))}
@@ -3528,7 +3539,7 @@ function reportMeta() {
     send:async({uid,text,eventId})=>{
       refreshCfg();if(cfg.masterEnabled!==true||cfg.dmWatch!==true||cfg.ownerDmAgentEnabled!==true||String(cfg.dmOwnerUid||'')!==String(uid))return {ok:false,error:'主人私信 Agent 未授权'}
       const r=await lifeDmWithReceipt({uid,text,eventKey:eventId})
-      return {ok:r?.ok===true,error:String(r?.error||r?.reason||'B站回执未知')}
+      return {ok:r?.ok===true,receiptId:r?.ok===true?String(r.receiptId||''):'',error:String(r?.error||r?.reason||'B站回执未知')}
     },
     logger:{warn:m=>log('主人私信 Agent：'+m)},
   })
@@ -5094,6 +5105,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getConfig: () => cfg,
     memoryGateway:lifeMemory,
     getAccountTag:trustedLifeAccountTag,
+    getPublicEpisodeContext:()=>lifeSubagentHandoff({agent:'reflection',episodes:universalLifeEpisodes}),
     getPersonalityEnabled:()=>{try{return personalityEvolution?.status().enabled===true}catch{return false}},
     onPersonalityProposals:(proposals,batch)=>personalityEvolution?.applyProposals(proposals,batch),
     onPersonalityObservations:(batch)=>personalityEvolution?.observeVerifiedExploration(batch),
@@ -5101,9 +5113,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       try{activityFeed.publish('reflection',{count:event.count});if(event.personalityAccepted)activityFeed.publish('personality',{count:event.personalityAccepted})}catch{}
       // The reflection engine generated the exact receipt AFTER committing its
       // original batch. No insight is invented when it reviewed but kept 0.
-      if(event?.count>0&&typeof event.receiptId==='string'&&event.receiptId.length>=3){
+      if(event?.domain==='public-event'&&event?.count>0&&typeof event.receiptId==='string'&&event.receiptId.length>=3){
         const accepted=lifeActionAttribution.verified({accountTag:event.accountTag,owner:event.origin==='life'?'life':event.automatic?'reactive':'owner',
-          channel:'reflection',sourceRef:'reflection:'+event.receiptId,
+          channel:'reflection-public',sourceRef:'reflection:'+event.receiptId,
           receiptId:event.receiptId,action:'reflect',kind:'reflection'})
         if(accepted.ok!==true)log('反思完成回执的 Episode 归属待补偿：'+String(accepted.reason||'unavailable'))
       }
@@ -5527,6 +5539,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getAcceptedActionReservations:()=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)&&READ_TODO_TYPES.has(x.type)),
     getRelationshipHint:uid=>{try{return existingRelationshipIndex()?.preferenceHint(uid,relationshipOptions())||null}catch{return null}},
     getLifeState:()=>emotionalState.snapshot(),
+    getSubagentEpisodeContext:(agent,sourceRef='')=>lifeSubagentHandoff({agent,episodes:universalLifeEpisodes,sourceRef}),
     getLifeVoice:()=>lifeVoiceContext({scene:'main',maxChars:1900}),
     getLifeWorldEvidence:({query=''})=>{
       // Public read-only memory gateway, after its current forgetting and

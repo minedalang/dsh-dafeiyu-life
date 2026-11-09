@@ -1,3 +1,9 @@
+# 2.7.1-dev.39 · Life 多专业入口 Episode 交接与边界核验（开发预览，尚未发布）
+
+- 本版在 dev.38 基础上让主人私信、待办及其完成回访、自主社交快速唤醒、公开反思获得按账号及来源过滤的匿名 Episode 上下文。模型仅获得当前授权工具，不因 Episode 获得额外权限。
+- 主人私信保留原有限多步工具循环及原已确认发送回执；待办按任务继续已有步骤；公开反思仍是证据批处理，**不是**开放式外发行为 Agent。
+- 必须阅读 `docs/architecture/2.7.1-dev39-cross-agent-continuity-audit.md` 的覆盖矩阵：仍不满足全部专业 Agent 的自由多步决策和跨轮续行目标。Windows、真实 B站、长期生活与账号切换未验收。`releaseReady:false`。
+
 # 2.7.1-dev.38 · 子 Agent 行动连续性与私信可信好友自主关注候选（开发预览，未发布）
 
 本版为专业 Agent 的 Episode 上下文交接、私信原模型自主提议关注、独立意愿二次决定、联系人的真实 UID 核验与平台读回提供第一阶段源码接线，另含管理开关及自动化回归。仍未覆盖所有 Agent 的通用多步行动循环，Windows/真实 B站未经实机验收；`releaseReady:false`。详见 `docs/architecture/2.7.1-dev38-subagent-action-continuity.md`。

@@ -1,3 +1,7 @@
+## 当前开发版本 2.7.1-dev.39：专业 Agent 续行交接扩展（未发布）
+
+[dev.39 各入口源码覆盖矩阵、自主程度与未达标事项](./2.7.1-dev39-cross-agent-continuity-audit.md)。主人私信、待办、回访、社交快速唤醒和公开反思获得不同权限范围的 Episode 上下文；不是新增万能工具或全部 Agent 开放式持续循环。源码离线测试不能代替 Windows/B站验收；`releaseReady:false`。
+
 ## 当前开发版本 2.7.1-dev.38：专业 Agent 持续性（未发布）
 
 [专业 Agent Episode 动作持续性与私信联系人关注（第一阶段）](./2.7.1-dev38-subagent-action-continuity.md)。视频、私信和公开评论读取按来源裁剪的 Life Episode 摘要；长期可信好友私信可在模型自主决策后提出关注候选，只有独立授权、原 Life 再决定和 B站关系读回均通过才执行并入账。待办、反思及自由社交尚未全量迁移成通用 Agent 内部多步决策循环，Windows/B站未实机验收；`releaseReady:false`。

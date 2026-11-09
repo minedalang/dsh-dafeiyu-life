@@ -1,3 +1,4 @@
+**当前 2.7.1-dev.39 开发预览（未发布）；当前开发预览：**`2.7.1-dev.39`**。**统一扩展 Episode 交接至主人私信、待办、社交快速唤醒及公开反思；主人私信保留最多四步真实工具结果再决策，待办保留已有有限决策链；本版不宣称全部专业 Agent 已有开放式跨 Agent 自由行动。无论新用户还是老用户，新 Life 统一连接记忆、兴趣、人格、关系和待办，取代旧的定时刷视频驱动。详见 [dev.39 跨 Agent 持续性自查](docs/architecture/2.7.1-dev39-cross-agent-continuity-audit.md)。
 **当前 2.7.1-dev.38 开发预览（未发布）：**新增视频／私信／评论专业 Agent 的脱敏 Episode 行动上下文，以及私信 Agent 自主考虑关注长期可信联系人（需单独授权和 B站真实读回）的首阶段接线；其他专业 Agent 的自由连续动作仍未全部完成。[技术说明与未覆盖范围](docs/architecture/2.7.1-dev38-subagent-action-continuity.md)。
 **当前 dev.37 发布前维护（尚未发布）：**统一 Life 连接记忆、兴趣、人格、关系和待办；无论新用户还是老用户，旧的定时刷视频不再驱动新生活。已修复管理中心「让鱼鱼考虑一次」的 `sched is not defined`；新增 S0/S1 匿名验收快照，并修正社交归属的假绿色状态。**这些仅是发布前代码修复，不代表真实环境验收完成。** 详见 [发布验收步骤](docs/architecture/2.7.1-dev37-release-acceptance.md)。
 **dev.37 统一行动归属（未发布）：**统一 Life 行动归属与 Episode 因果层将主人请求、主动 Life 行动与被动社交回复分开记录；已核验回执关联原有待办与生活片段，不会因为批准意愿就冒充平台成功。此前的 Universal Life Episode Engine 把 Life 顶层自主行动、真实完成的视频轮次、已核验社交和写操作链接到当前账号的匿名因果片段。首页真实选中后的原探索意愿可在下一轮**主动选择 `resume_episode`**，无需先另外执行一个新动作；原来的平台门禁、预算、休息、未知结果冻结不变。详见 [dev.37 跨系统归属与边界](docs/architecture/2.7.1-dev37-unified-action-ownership.md)。
@@ -23,7 +24,7 @@
 
 大肥鱼（鱼鱼）是运行于 DeepSeek Harness（DSH）的开源 AI 角色生活系统。她能陪主人完成主 Session 中的正常任务，也能在得到授权的 B站生活里认识人、探索兴趣、积累经历，逐渐形成自己的表达方式。**她可以接受建议，也可以延期或拒绝；会记得一些事，也会自然遗忘。**
 
-当前稳定版：**`2.7.0`**；当前开发预览：**`2.7.1-dev.38`**。[dev.33 评论 @ 提及与记忆纠错维护说明](docs/architecture/2.7.1-dev33-mention-memory-hotfix.md)。新 Life 重构正在接受 RC 准入检查，尚未发布。
+当前稳定版：**`2.7.0`**；当前开发预览：**`2.7.1-dev.39`**。[dev.33 评论 @ 提及与记忆纠错维护说明](docs/architecture/2.7.1-dev33-mention-memory-hotfix.md)。新 Life 重构正在接受 RC 准入检查，尚未发布。
 
 **2.7.1 的主要变化：**无论新用户还是老用户，均可通过统一 Life 自主生活决策逐步取代旧的定时刷视频模式；新版「🌿 Life 自主生活」集中管理生活节奏，并连接鱼鱼原有的**记忆、兴趣、人格、关系和待办**。她可以根据目前可回忆的公开经历与兴趣线索选择探索，也可以休息或延期。旧重复设置入口已清理；旧数据、备份与发送安全机制继续保留。
 
@@ -35,7 +36,7 @@
 
 **其他重构：**Life 已支持不依赖视频的熟人联系、探索、反思及多来源候选续行；所有公开评论默认共用每日 1000 条容量（旧已保存额度不自动覆盖），视频最短间隔 20 分钟。快速设置是统一流程，管理页的一天只展示可读的真实生活事件。具体的逐版变更见 [CHANGELOG](CHANGELOG.md)，现行 [架构与未验收边界](docs/architecture/README.md)。
 
-**尚待 RC 验收：** Windows、真实 B站及模型、旧用户冷备份升级、双账号切换、72 小时稳定运行和跨日成长因果仍需现场证明，因此当前仍为 `2.7.1-dev.38`，并非可发布 RC。详见 [RC 十三项行为自检](docs/architecture/2.7.1-rc-preflight-13-questions.md)。
+**尚待 RC 验收：** Windows、真实 B站及模型、旧用户冷备份升级、双账号切换、72 小时稳定运行和跨日成长因果仍需现场证明，因此当前仍为 `2.7.1-dev.39`，并非可发布 RC。详见 [RC 十三项行为自检](docs/architecture/2.7.1-rc-preflight-13-questions.md)。
 
 **现有稳定版 2.7.0** 已支持受权限控制的私信、评论互动、关系认识、兴趣探索与待办记录；详情见 [2.7.0 版本说明](RELEASE_NOTES_v2.7.0.md)。升级不会自动放宽社交授权：陌生人多轮私信、评论续聊、@ 和主动外发仍遵守各自开关、额度与真实回执。
 
@@ -104,7 +105,6 @@ B站 UID 是平台身份，不等于鱼鱼本人的稳定角色身份。切换�
 先感谢这些开源项目及维护者：[c1overzz/dsh-bili-scroll](https://github.com/c1overzz/dsh-bili-scroll)、[adoresever/bilibili-mcp](https://github.com/adoresever/bilibili-mcp)、[Yuuyuko-uu/dsh-fish-memory](https://github.com/Yuuyuko-uu/dsh-fish-memory) 和 [Yuuyuko-uu/dsh-bili-subagent](https://github.com/Yuuyuko-uu/dsh-bili-subagent)。项目还可参考 [大肥鱼提示词人设卡素材站](https://aigengtu.com/persona) 的表达素材，请遵守原有授权。
 
 代码与第三方归属见 [LICENSE](LICENSE)、[NOTICE](NOTICE.md) 和 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)。欢迎通过 [GitHub Issues](https://github.com/minedalang/dsh-dafeiyu-life/issues) 反馈问题。🐟
-
 ### 当前 Life 源码全景图（可编辑）
 
 全局数据流、todos/cues/intentions/opportunities 等候选的真实来源、权限和回执边界及未完成链路请参阅 [`docs/architecture/life-system-current.md`](docs/architecture/life-system-current.md)。三张 Mermaid 源图位于 `docs/architecture/diagrams/life-system-current.mmd` 与 `docs/architecture/diagrams/life-candidates-current.mmd` 与 `docs/architecture/diagrams/life-receipt-memory-current.mmd`，运行 `npm run check:life-architecture` 检查主要节点与源码符号映射。本版仅修复当轮菜单校验，未完成 Windows/B站/GGUF/72 小时验收。
