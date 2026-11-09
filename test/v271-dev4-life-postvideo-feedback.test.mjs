@@ -142,8 +142,8 @@ test('production and UI reference the existing account-scoped lifecycle and neve
   assert.match(source,/getLifeEventStatus:\(\)=>lifeAgentEvents.status\(\)/)
   assert.match(planner,/projectVideoRoundFeedback\(budget\?\.recentVideoRounds/)
   assert.match(planner,/settleLifeEvents\(others.map\(e=>e.id\),'considered'\)/)
-  assert.match(ui,/videoFeedbackNote/)
-  assert.match(ui,/videoRoundFeedbackOffered/)
+  assert.match(ui,/readiness\.videoCooldownMinutes/)
+  assert.match(ui,/video-round-feedback/)
   assert.doesNotMatch(planner,/sendBiliDm|bili_send_comment|autoFollowUser/)
 })
 

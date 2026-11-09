@@ -1,3 +1,7 @@
+## 当前开发版本 2.7.1-dev.41：视频 Agent 启动间隔可配置
+
+[配置契约、启动门禁、旧设置保护与离线验收](./2.7.1-dev41-video-agent-configurable-interval.md)：默认 20 分钟、最短不可低于 20 分钟，用户可设为 20～1440 分钟；自动与手动启动共用同一账号级真实启动冷却，且独立于 Life 模型考虑频率。`releaseReady:false`，Windows／真实 B站尚待验收。
+
 ## dev.40 同版本维护：Life 管理页旧开发选项清理
 
 [管理界面清理与兼容边界](./2.7.1-dev40-closure-fix06-life-settings-cleanup.md)：移除普通 Life 页的开发者折叠、影子对照、模拟演示和迁移演练；保留真实视频 Agent 手动入口，并把评论者公开投稿只读授权放回评论设置。仅 UI 调整，架构接线未变；旧配置不重置，`releaseReady:false`。

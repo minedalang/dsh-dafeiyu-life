@@ -94,7 +94,7 @@ test('回访模型不再以人生记忆检索为空作为唯一的永久延期�
  assert.match(html,/id="life-v2-pace"/)
  assert.match(ui,/loadUnifiedLifeSettings/)
  assert.doesNotMatch(html,/id="autonomous-planner-recommended"/)
- assert.match(ui,/今日模型决策额度耗尽/)
+ assert.match(ui,/每日自主模型决策额度不足/)
 })
 
 test('README 是面向用户的特色体验说明，详细版本信息移出首页',()=>{

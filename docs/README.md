@@ -1,4 +1,4 @@
-**当前开发版：`2.7.1-dev.40`（尚未发布）。** [专业 Agent 自主连续决策源码审计](architecture/2.7.1-dev40-autonomy-and-continuity-audit.md)。
+**当前开发版：`2.7.1-dev.41`（尚未发布）。** [视频 Agent 最短启动间隔可配置](architecture/2.7.1-dev41-video-agent-configurable-interval.md) · [专业 Agent 自主连续决策源码审计](architecture/2.7.1-dev40-autonomy-and-continuity-audit.md)。
 
 # 文档导航
 
