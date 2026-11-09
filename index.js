@@ -3125,7 +3125,7 @@ function reportMeta() {
     let videoRoundReceiptId=''
     const watchedBeforeRun=new Set(parseSeenTable().filter(x=>x.picked).map(x=>x.bvid))
     const pickedBeforeRun = countPickedToday()
-    const homeFirst=entryMode==='home'&&why==='life-agent'&&cfg.homeRecommendationsEnabled===true
+    const homeFirst=entryMode==='home'&&['life-agent','manual-video-agent'].includes(why)&&cfg.homeRecommendationsEnabled===true
     // Register the account-scoped round BEFORE spawning, so the headless tool
     // can report an actual homepage read against this exact opaque round.
     if(videoRoundLifeAccountTag)try{
@@ -3136,7 +3136,7 @@ function reportMeta() {
         proposed:0,approved:0,blocked:0,declined:0,verified:0,unverified:0,reviewed:0,wanted:0,passed:0,insufficient:0,reviewRejected:0,
         reviewBvids:new Set(),previouslyPickedBvids:watchedBeforeRun,lastReason:''}
     }catch(e){log('Life Agent 视频启动生命周期登记失败：'+String(e?.message||e).slice(0,100))}
-    const homeGuidance=homeFirst?'【本轮 Life 自主选择：随便逛首页】优先从 bili_home_recommendations 获取当前账号首页真实候选（最多一次），不需要先有兴趣或搜索词；再由你自行决定是否读哪一条、深入了解或停止。接口不可用则按原安全规则停止或转普通探索，不要重试刷新、不要伪造观看，也不强迫评论。':''
+    const homeGuidance=homeFirst?'【本轮已由 Life 或主人明确触发：随便逛首页】优先从 bili_home_recommendations 获取当前账号首页真实候选（最多一次），不需要先有兴趣或搜索词；再由你自行决定是否读哪一条、深入了解或停止。接口不可用则按原安全规则停止或转普通探索，不要重试刷新、不要伪造观看，也不强迫评论。':''
     args.push([homeGuidance,promptFor(),emotionalState.agentContext()].filter(Boolean).join('\n\n'))
     log(`本轮已选 ${pickedBeforeRun} 条；鱼鱼自主决定是否继续探索，不设强制选片数量`)
     // ⭐ 这一轮的工作目录 = 使用者（或别的用户）的**工作区** —— 只有这样它的 `AGENTS.md` 才会自动加载。
@@ -5209,7 +5209,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!lifeVideoGate(cfg,budget,Date.now()).eligible)return {ok:false,reason:'video-launch-cooldown'}
       return {ok:true}
     },
-    execute:async({entryMode='mixed'}={})=>{
+    execute:async({entryMode='mixed',manualTrigger=false}={})=>{
       // The Life Planner has already made the single AI willingness choice
       // and validated this exact capability in its offered action menu. Do not
       // ask a second AI to approve the same activity. This layer performs only
@@ -5235,6 +5235,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(trustedLifeAccountTag()!==scopeBefore)return {started:false,reason:'life-account-changed'}
       // Delegation is a technical execution of the already-approved Life
       // choice, not a second willingness decision or proof of watched media.
+      if(manualTrigger===true)return runDuty('manual-video-agent',entryMode==='home'?'home':'mixed')
       return runDuty('life-agent',entryMode==='home'?'home':'mixed')
     },
 
@@ -7127,6 +7128,32 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const result=await autonomousPlanner.tick({force:true})
         return sendJson(res,result.ok===false?409:200,result)
       }catch(e){return sendJson(res,500,{ok:false,error:'自主生活唤醒失败：'+String(e?.message||e).slice(0,120)})}
+    }
+    // Owner-triggered, single real video-agent diagnostic round. The click is
+    // an explicit human request to launch this existing capability; it does
+    // not force a comment. Every outbound write inside the child still passes
+    // the existing single Life willingness approval and platform transaction.
+    if(req.method==='POST'&&path==='/api/bili-duty/life-agent/video-agent-test-run'){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'仅允许管理中心同源操作'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站视频 Agent 启动请求'})
+      try{
+        const body=await readBody(req)
+        if(body?.confirm!=='START_ONE_REAL_VIDEO_AGENT_ROUND')return sendJson(res,400,{ok:false,error:'缺少单轮真实视频 Agent 启动确认'})
+        refreshCfg()
+        if(cfg.lifeAgentMode!=='active'||cfg.masterEnabled!==true||cfg.autonomousPlannerEnabled!==true)
+          return sendJson(res,409,{ok:false,error:'需要开启 Life 自主生活与自主调度，影子模式和暂停模式不能启动真实视频 Agent'})
+        if(cfg.homeRecommendationsEnabled!==true)
+          return sendJson(res,409,{ok:false,reason:'home-recommendations-disabled',error:'首页推荐读取未开启；为避免测试入口与实际探索模式不一致，本轮未启动'})
+        if(!firstStart.isReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
+          return sendJson(res,409,{ok:false,error:'当前 B站账号或首次设置尚未通过核验'})
+        const result=await lifeCapabilities.run('bilibili.video-explore',{entryMode:'home',manualTrigger:true})
+        const started=result?.started===true
+        const reason=result?.reason||(result?.busy?'video-busy':result?.paused?'disabled':result?.blocked?'account-not-ready':started?'':'spawn-failed')
+        return sendJson(res,started?200:409,{ok:started,diagnostic:true,started,source:'manual-video-agent',
+          reason,error:result?.error||'',
+          note:started?'已启动一轮真实视频 Agent；不强制选片或发表评论，所有外发仍经过原 Life 意愿审批和平台核验。':'本轮未启动；请检查返回的技术门禁原因。'})
+      }catch(e){return sendJson(res,500,{ok:false,error:'视频 Agent 单轮诊断启动失败：'+String(e?.message||e).slice(0,120)})}
     }
     // Phase 7d: explicit no-action model comparison. This cannot dispatch B站
     // tools, override old social owners, or create a growth/memory fact.
