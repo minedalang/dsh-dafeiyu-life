@@ -37,6 +37,7 @@ flowchart TB
     reflection["reflection｜执行器真实就绪状态 canAutoReflect"]
     events["eventRefs｜匿名提示 / 公平重考虑，非操作授权"]
     feedback["本账号真实视频完成反馈｜只读考虑，不受新视频启动冷却影响"]
+    ownerChat["talk_to_owner｜主人授权+主 Session 在线；真实事件或独立聊天意愿；可以 skip"]
   end
   canonical --> todos
   canonical --> intentions
@@ -58,6 +59,7 @@ flowchart TB
   reflection --> selection
   events -.-> selection
   feedback -.-> selection
+  ownerChat -.-> selection
 
   subgraph decision["唯一 Life 自主决策中心｜不给模型任意 UID / BV / 写权限"]
     selection["候选筛选 + 去重归属 + 账号/冷却/额度检查"]
@@ -71,6 +73,9 @@ flowchart TB
   universalEpisode -.->|只提供历史/关联，不授予权限| planner
   menuGuard --> resumeEpisode -.-> lifeEpisode
   menuGuard --> rest
+  ownerBridge["主 Session Bridge｜选中后 followup 到已绑定主 Session"]
+  ownerQueue["宿主接收排队或未知｜非实际聊天送达，不计已完成平台回执"]
+  menuGuard --> ownerBridge --> ownerQueue
 
   subgraph readlane["受控读取｜真实读取不等于完整观看"]
     readTodo["原只读待办"]
@@ -212,6 +217,10 @@ dmFollow -->|已核实后回执| receipts
 %% @code dmChoice | lib/interaction-batch.mjs | availableLifeActions
 %% @code dmPending | lib/dm-autoreply.mjs | person.pendingLifeAction=
 %% @code dmFollow | vendor/bilibili-mcp/mcp_server.py | async def bili_follow_dm_contact
+
+%% dev.42: owner opt-in and verified lifecycle; not a platform delivery receipt.
+%% @code ownerChat | lib/autonomous-planner.mjs | action:'talk_to_owner'
+%% @code ownerBridge | lib/main-session-bridge.mjs | const initiateOwnerChat=
 ```
 
 ## 二、八类候选细目
@@ -230,6 +239,7 @@ flowchart LR
     sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
     sourceVideoFeedback["已核验视频子进程结束回执｜只读，与下次启动冷却独立"]
     sourceReflect["LifeReflection.status().canAutoReflect"]
+    sourceOwner["主人主动聊天独立授权 + 明确绑定且在线的主 Session + 8h冷却与静默"]
   end
   subgraph candidates["本轮实际类型 / 内容边界"]
     todos["todos：只读已接受任务（执行前复核）"]
@@ -241,6 +251,7 @@ flowchart LR
     video["video：browse_home／use_capability；不是已观看数"]
     reviewFeedback["review_video_feedback：读已完成轮次反馈；不会再启动或外发"]
     reflection["reflection：真实可执行反思；不是 pending 大于阈值"]
+    ownerChat["talk_to_owner：已核验经历或自发谈话意愿；允许跳过、不保证送达"]
     eventRefs["eventRefs：匿名事件引用 + 公平重考虑；不代表成功回执"]
   end
   sourceTodo --> todos
@@ -256,6 +267,7 @@ flowchart LR
   sourceVideo --> video
   sourceVideoFeedback --> reviewFeedback
   sourceReflect --> reflection
+  sourceOwner --> ownerChat
   sourceSocial --> eventRefs
   sourceVideo -.->|本轮读取证据，可唤醒但不授予权限| eventRefs
   sourceLife -.->|重考虑/过期后需重新查原账本| eventRefs
@@ -271,6 +283,7 @@ flowchart LR
   video --> planner
   reviewFeedback --> planner
   reflection --> planner
+  ownerChat --> planner
   eventRefs -.-> planner
   rest["skip：自愿休息；不能与技术失败混为一谈"]
   planner --> rest
@@ -306,6 +319,10 @@ dmHistory --> dmFollowCandidate
 dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
 %% @code dmHistory | lib/life-subagent-continuity.mjs | export function dmContactFollowCandidates
 %% @code dmFollowCandidate | lib/life-subagent-continuity.mjs | action:'follow_dm_contact'
+
+%% dev.42: Life-selected owner contact is opt-in and not delivery-confirmed.
+%% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=
+%% @code ownerChat | lib/autonomous-planner.mjs | action:'talk_to_owner'
 ```
 
 ## 三、可信回执与记忆闭环
@@ -367,6 +384,8 @@ flowchart TB
   curiosity --> planner
   videoFeedback -.-> planner
   planner --> source
+  ownerFollowup["Life talk_to_owner → 现有主 Session followup；成功只等于入队，不能当成平台发送回执"]
+  planner -.->|独立同意才可选择，允许休息| ownerFollowup
   classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
   classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
   classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b
@@ -386,6 +405,9 @@ flowchart TB
 dmFollowReceipt["DM 联系人关注：模型提案 → 待续意愿 → 真实平台关系读回"]
 dmFollowReceipt -.->|只有成功回执| verified
 %% @code dmFollowReceipt | index.js | receiptId:'bili-relation-follow:'
+
+%% dev.42: host followup != independently confirmed platform delivery.
+%% @code ownerFollowup | lib/main-session-bridge.mjs | const initiateOwnerChat=
 ```
 
 ## 四、统一 Life Episode 因果持续性

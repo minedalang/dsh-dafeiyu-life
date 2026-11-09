@@ -54,6 +54,8 @@ flowchart TB
   curiosity --> planner
   videoFeedback -.-> planner
   planner --> source
+  ownerFollowup["Life talk_to_owner → 现有主 Session followup；成功只等于入队，不能当成平台发送回执"]
+  planner -.->|独立同意才可选择，允许休息| ownerFollowup
   classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
   classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
   classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b
@@ -73,3 +75,6 @@ flowchart TB
 dmFollowReceipt["DM 联系人关注：模型提案 → 待续意愿 → 真实平台关系读回"]
 dmFollowReceipt -.->|只有成功回执| verified
 %% @code dmFollowReceipt | index.js | receiptId:'bili-relation-follow:'
+
+%% dev.42: host followup != independently confirmed platform delivery.
+%% @code ownerFollowup | lib/main-session-bridge.mjs | const initiateOwnerChat=

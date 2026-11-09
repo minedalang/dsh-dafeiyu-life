@@ -1,3 +1,7 @@
+## 当前开发版本 2.7.1-dev.42：主 Session 可选自主联系（未发布）
+
+[Owner chat architecture, opt-in, evidence, cooldown, session delivery boundary](./2.7.1-dev42-main-session-self-initiated-chat.md) and [P6-A DM diagnostics and living Life Voice](./2.7.1-dev42-main-chat-style-p6-diagnostics.md). Host followup is **not** a verified outgoing chat bubble; no WeChat adapter was added.
+
 ## 当前开发版本 2.7.1-dev.41：视频 Agent 启动间隔可配置
 
 [配置契约、启动门禁、旧设置保护与离线验收](./2.7.1-dev41-video-agent-configurable-interval.md)：默认 20 分钟、最短不可低于 20 分钟，用户可设为 20～1440 分钟；自动与手动启动共用同一账号级真实启动冷却，且独立于 Life 模型考虑频率。`releaseReady:false`，Windows／真实 B站尚待验收。

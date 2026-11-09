@@ -1,4 +1,4 @@
-**当前开发版：`2.7.1-dev.41`（尚未发布）。** [视频 Agent 最短启动间隔可配置](architecture/2.7.1-dev41-video-agent-configurable-interval.md) · [专业 Agent 自主连续决策源码审计](architecture/2.7.1-dev40-autonomy-and-continuity-audit.md)。
+**当前开发版：`2.7.1-dev.42`（尚未发布）。** [Life 主 Session 自主交谈接线及宿主输出限制](architecture/2.7.1-dev42-main-session-self-initiated-chat.md) · [dev.42 P6-A 诊断](architecture/2.7.1-dev42-main-chat-style-p6-diagnostics.md) · [dev.41 视频间隔](architecture/2.7.1-dev41-video-agent-configurable-interval.md) · [专业 Agent 自主连续决策源码审计](architecture/2.7.1-dev40-autonomy-and-continuity-audit.md)。
 
 # 文档导航
 

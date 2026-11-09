@@ -11,6 +11,7 @@ flowchart LR
     sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
     sourceVideoFeedback["已核验视频子进程结束回执｜只读，与下次启动冷却独立"]
     sourceReflect["LifeReflection.status().canAutoReflect"]
+    sourceOwner["主人主动聊天独立授权 + 明确绑定且在线的主 Session + 8h冷却与静默"]
   end
   subgraph candidates["本轮实际类型 / 内容边界"]
     todos["todos：只读已接受任务（执行前复核）"]
@@ -22,6 +23,7 @@ flowchart LR
     video["video：browse_home／use_capability；不是已观看数"]
     reviewFeedback["review_video_feedback：读已完成轮次反馈；不会再启动或外发"]
     reflection["reflection：真实可执行反思；不是 pending 大于阈值"]
+    ownerChat["talk_to_owner：已核验经历或自发谈话意愿；允许跳过、不保证送达"]
     eventRefs["eventRefs：匿名事件引用 + 公平重考虑；不代表成功回执"]
   end
   sourceTodo --> todos
@@ -37,6 +39,7 @@ flowchart LR
   sourceVideo --> video
   sourceVideoFeedback --> reviewFeedback
   sourceReflect --> reflection
+  sourceOwner --> ownerChat
   sourceSocial --> eventRefs
   sourceVideo -.->|本轮读取证据，可唤醒但不授予权限| eventRefs
   sourceLife -.->|重考虑/过期后需重新查原账本| eventRefs
@@ -52,6 +55,7 @@ flowchart LR
   video --> planner
   reviewFeedback --> planner
   reflection --> planner
+  ownerChat --> planner
   eventRefs -.-> planner
   rest["skip：自愿休息；不能与技术失败混为一谈"]
   planner --> rest
@@ -87,3 +91,7 @@ dmHistory --> dmFollowCandidate
 dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
 %% @code dmHistory | lib/life-subagent-continuity.mjs | export function dmContactFollowCandidates
 %% @code dmFollowCandidate | lib/life-subagent-continuity.mjs | action:'follow_dm_contact'
+
+%% dev.42: Life-selected owner contact is opt-in and not delivery-confirmed.
+%% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=
+%% @code ownerChat | lib/autonomous-planner.mjs | action:'talk_to_owner'

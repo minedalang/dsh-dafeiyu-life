@@ -1194,7 +1194,9 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="settings-section"><h4>1. 选择大肥鱼当前的聊天房间（主 Session）</h4>
 <div class="fields"><div><label for="main-session-enabled">启用当前房间的经历同步桥</label><input id="main-session-enabled" type="checkbox"></div>
 <div style="grid-column:span 2"><label for="main-session-id">当前在线的 DSH 会话</label><select id="main-session-id"><option value="">尚未选择</option></select></div>
-<div><label for="main-session-auto">有新经历时自动同步</label><input id="main-session-auto" type="checkbox" checked></div></div>
+<div><label for="main-session-auto">有新经历时自动同步</label><input id="main-session-auto" type="checkbox" checked></div>
+<div><label for="owner-spontaneous-chat-enabled">允许肥鱼自主找主人聊天</label><input id="owner-spontaneous-chat-enabled" type="checkbox"></div></div>
+<p class="muted">默认关闭。仅在 Life active、当前账号状态有效、绑定的主 Session 在线且鱼鱼自己选择聊天时才尝试唤醒；可以是生活经历引发，也可以是无特定事件的自然交流意愿。9:00–22:00，每 8 小时至多一次、每天最多两次。只记录投递到主 Session 的请求是否接纳，不能当作主人已经收到的证明。不会强制发言、限制她的性格，也不自动发微信。</p>
 <p class="muted">这里只列出当前 DSH 中活着的会话，不从硬盘猜“最近会话”。请先在 DSH 里打开你准备作为当前聊天房间的会话，再回来刷新选择。以后换房间不会清空大肥鱼的身份级长期记忆。</p>
 <div class="toolbar"><button id="main-session-save" class="primary">保存主 Session 设置</button><button id="main-session-test">发送连接测试</button></div>
 <p id="main-session-target-status" class="muted" role="status">尚未读取</p></div>
@@ -1553,6 +1555,11 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="toolbar"><h2 style="margin:0">角色人设</h2><button id="persona-refresh">重新读取</button></div>
 <p class="muted">默认提示词是第一次安装的官方规则；此前保存的自定义提示词不会自动覆盖。恢复默认只清除这一项的自定义，不清理成长记忆、好友画像或历史。</p>
 <div class="settings-stack">
+<div class="settings-section" id="main-expression-evidence-section"><h4>💬 肥鱼的表达是怎样形成的</h4>
+<p class="muted">主 Session 的表达由原有角色基础、真实经历、记忆、当前情绪和成长人格共同影响。这里不提供主人指定「俏皮／温柔」的性格开关，也不强制分成多条消息。</p>
+<div class="toolbar"><a href="?tab=life#life-emotion-section" data-open-tab="life" data-open-anchor="life-emotion-section">查看当前情绪 →</a><a href="?tab=personality" data-open-tab="personality">查看人格成长证据 →</a></div>
+<p class="muted">注意：状态记录与提示词接入不等于实际表达已经改变；需要结合真实对话和对照验收。微信多条消息仍取决于通道发送能力。</p>
+</div>
 <div class="settings-section"><h4>🐳 大肥鱼人设</h4><p class="muted">用于刷视频、公开评论和私信的角色语气。空配置使用内置默认；不在公开评论里发布提示词原文。</p><textarea id="persona-text" maxlength="18000" rows="13"></textarea><p id="persona-compat-status" class="muted" role="status">粘贴后会检查长度、外部工具指令和实际提示词预算。</p><div class="toolbar"><button id="persona-save" class="primary">保存大肥鱼人设</button><button id="persona-reset">恢复默认</button><span id="persona-status" class="muted"></span></div></div>
 <div class="settings-section"><h4>AI 选图提示词</h4><p class="muted">决定什么时候给顶层评论配表情包；硬限额与真实文件校验不会被提示词修改。</p><textarea id="meme-prompt-text" maxlength="4000" rows="12"></textarea><div class="toolbar"><button id="meme-prompt-save" class="primary">保存选图提示词</button><button id="meme-prompt-reset">恢复默认</button><span id="meme-prompt-status" class="muted"></span></div></div>
 <div class="settings-section"><h4>视觉识图提示词</h4><p class="muted">判断何时需要识图和如何描述真实预览帧，不会绕过图片来源安全检查。</p><textarea id="vision-prompt-text" maxlength="4000" rows="10"></textarea><div class="toolbar"><button id="vision-prompt-save" class="primary">保存识图提示词</button><button id="vision-prompt-reset">恢复默认</button><span id="vision-prompt-status" class="muted"></span></div></div>
@@ -1899,7 +1906,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </div></div>
 </div></details><div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
 </details>
-<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然续聊预约状态：尚未读取。</p><p id="dm-error" class="muted"></p><p class="muted">网络失败会显示接口主机与底层错误码；如果出现 ECONNRESET、ENETUNREACH、ETIMEDOUT 或 DNS 错误，需同时检查系统网络／代理与 B站连通性。</p></div>
+<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然续聊预约状态：尚未读取。</p><p id="dm-p6-last-turn" class="muted" role="status">普通私信 P6-A 最近一轮的生成与发送统计：暂无记录。</p><p class="muted">注意：已核验主人的 B站私信优先交给「主人私信 Agent」，并不经过这里的普通私信 P6-A 多气泡发送器。普通私信 1–3 条仅为上限，模型可自由只说一条。</p><p id="dm-error" class="muted"></p><p class="muted">网络失败会显示接口主机与底层错误码；如果出现 ECONNRESET、ENETUNREACH、ETIMEDOUT 或 DNS 错误，需同时检查系统网络／代理与 B站连通性。</p></div>
 <div id="dm-context-governance" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>私信上下文与记忆边界</h3><button id="dm-memory-prune" type="button">清理过期聊天内容</button></div><p class="muted">本区只治理「后台普通私信」的近期聊天原文与旧来信片段，和主 Session「主人聊天记忆整理」不是一回事。主人专属私信 Agent、人生记忆、好友画像各有独立来源与权限；本操作不会清理这些系统，也不会清除已读去重、拒联边界、审批、发送额度或平台回执。</p><p id="dm-memory-governance-status" class="muted" role="status">正在读取当前账号的本地上下文状态…</p></div>
 <div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">只显示本插件已经保存的对话片段；不从 B站 额外拉取完整历史。旧版心愿已停止自动处理，历史资料只随本地备份保留；新的陌生人探索灵感与好友观看邀请在「社交互动」查看。记录仅在本机展示。</p><p class="muted">这里统计的是后台私信自动回复通道；主人专属 Agent、其他已授权途径的回复不计入陌生人额度。历史中出现多条来信也不代表已发送多次。</p><div id="dm-recent-list" class="records"></div></div>
 

@@ -30,6 +30,7 @@ flowchart TB
     reflection["reflection｜执行器真实就绪状态 canAutoReflect"]
     events["eventRefs｜匿名提示 / 公平重考虑，非操作授权"]
     feedback["本账号真实视频完成反馈｜只读考虑，不受新视频启动冷却影响"]
+    ownerChat["talk_to_owner｜主人授权+主 Session 在线；真实事件或独立聊天意愿；可以 skip"]
   end
   canonical --> todos
   canonical --> intentions
@@ -51,6 +52,7 @@ flowchart TB
   reflection --> selection
   events -.-> selection
   feedback -.-> selection
+  ownerChat -.-> selection
 
   subgraph decision["唯一 Life 自主决策中心｜不给模型任意 UID / BV / 写权限"]
     selection["候选筛选 + 去重归属 + 账号/冷却/额度检查"]
@@ -64,6 +66,9 @@ flowchart TB
   universalEpisode -.->|只提供历史/关联，不授予权限| planner
   menuGuard --> resumeEpisode -.-> lifeEpisode
   menuGuard --> rest
+  ownerBridge["主 Session Bridge｜选中后 followup 到已绑定主 Session"]
+  ownerQueue["宿主接收排队或未知｜非实际聊天送达，不计已完成平台回执"]
+  menuGuard --> ownerBridge --> ownerQueue
 
   subgraph readlane["受控读取｜真实读取不等于完整观看"]
     readTodo["原只读待办"]
@@ -205,3 +210,7 @@ dmFollow -->|已核实后回执| receipts
 %% @code dmChoice | lib/interaction-batch.mjs | availableLifeActions
 %% @code dmPending | lib/dm-autoreply.mjs | person.pendingLifeAction=
 %% @code dmFollow | vendor/bilibili-mcp/mcp_server.py | async def bili_follow_dm_contact
+
+%% dev.42: owner opt-in and verified lifecycle; not a platform delivery receipt.
+%% @code ownerChat | lib/autonomous-planner.mjs | action:'talk_to_owner'
+%% @code ownerBridge | lib/main-session-bridge.mjs | const initiateOwnerChat=

@@ -1,3 +1,11 @@
+# 2.7.1-dev.42 · Life owner chat (development preview)
+
+- Life optional `talk_to_owner` to explicitly bound live main Session via `followup`; opt-in default off, 09:00-22:00 local window, >=8h cooldown, <=2 attempts/day, durable no-repeat and unknown no retry.
+- Preserve Life Voice and original memory/compaction. Do not enable old paused EmotionRecall or impose owner-selected personality.
+- P6-A ordinary DM diagnostic counters (model vs send confirmation) remain separate from owner DM and main Session.
+- DSH host plugin has no verified multi-assistant-bubble output path; independent physical main Session bubbles and actual owner delivery remain unimplemented / unverified.
+- `releaseReady:false`; Windows/real model/72h validation pending.
+
 # 2.7.1-dev.41 · 视频 Agent 最短启动间隔可配置（开发预览，尚未发布）
 
 管理中心「Life 自主生活 → 鱼鱼的生活」现在可以设置视频 Agent 最短启动间隔：默认 20 分钟，可设为 20～1440 分钟。此值独立于 Life 模型考虑间隔；自动委派与手动启动共用同一个账号级冷却，按真实启动时间计算。设置经 Life 设置预览与确认后保存；旧配置和 Agent-facing 设置工具不能绕过门禁。它只限制两次启动之间的最短时间，不会按时强制启动，也不改变视频选择、原创评论及点赞／收藏／关注等现有授权。Node 全量测试 2190 项：2183 通过、7 跳过、0 失败；Life 架构检查、Selfcheck、语法检查及 npm 打包预检通过。Windows／真实 B站运行仍待验收。`releaseReady:false`。
