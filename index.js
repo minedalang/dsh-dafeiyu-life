@@ -3216,7 +3216,10 @@ function reportMeta() {
           trace.step('video-comment-summary',{code:diagnostic.code,picked:Number.isSafeInteger(selected)?selected:0,
             reviewed:diagnostic.reviewed,wanted:diagnostic.wanted,passed:diagnostic.passed,insufficient:diagnostic.insufficient,reviewRejected:diagnostic.reviewRejected,
             proposed:diagnostic.proposed,approved:diagnostic.approved,blocked:diagnostic.blocked,
-            verified:diagnostic.verified,unverified:diagnostic.unverified})
+            verified:diagnostic.verified,unverified:diagnostic.unverified,
+            // Only a bounded gate code, never a draft or platform error body.
+            ...(diagnostic.blocked>0&&commentDiagnostics?.lastReason?
+              {reason:commentDiagnostics.lastReason}:{})})
           trace.finish({state:'finished',action:'video_comment',result:diagnostic.code})
           log('本轮原创主评论诊断：'+diagnostic.code+'；入选 '+(selected??'未知')+'，考虑 '+diagnostic.reviewed+
             '，考虑回执拒绝 '+diagnostic.reviewRejected+(diagnostic.reviewRejected>0?'（'+String(commentDiagnostics?.lastReason||'unknown').slice(0,50)+'）':'')+'，模型提出 '+diagnostic.proposed+'，Life 批准 '+diagnostic.approved+'，技术阻断 '+diagnostic.blocked+'，平台核验 '+diagnostic.verified)
