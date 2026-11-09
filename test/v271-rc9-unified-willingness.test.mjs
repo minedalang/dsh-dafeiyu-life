@@ -23,7 +23,7 @@ test('strict JSON: no invented action, wrong candidate, or extra fields',()=>{
  for(const raw of ['anything',JSON.stringify({action:'act',candidateId:'write_dynamic',reason:'x'}),
   JSON.stringify({action:'act',candidateId:'reply_dm',reason:'x',permission:true}),
   JSON.stringify({action:'act',candidateId:'reply_dm',reason:'x',style:'magic'})])
-  assert.equal(parseLifeWillingnessDecision(raw,[{id:'reply_dm'}]).action,'skip')
+  assert.equal(parseLifeWillingnessDecision(raw,[{id:'reply_dm'}]).action,'blocked')
  assert.equal(parseLifeWillingnessDecision('```json\n{"action":"defer","reason":"稍后"}\n```').action,'defer')
 })
 test('Life choice produces a short lived account-bound proof and anonymous trace',async t=>{
@@ -45,7 +45,7 @@ test('time expiry, revoked settings and unknown receipt fail closed',async t=>{
 })
 test('model outage never grants a send or changes an already validated account scope',async t=>{
  const x=fixture(t,{response:()=>{throw Error('offline')}})
- const a=await x.decide();assert.equal(a.ok,false);assert.equal(x.calls(),1)
+ const a=await x.decide();assert.equal(a.ok,false);assert.equal(a.action,'blocked');assert.equal(a.outcome,'unavailable');assert.equal(x.calls(),1)
  assert.equal(x.actor.verify(a.proof,'dm_reply').ok,false)
 })
 test('independent candidate triggers share one model contract and existing planner budget',async t=>{
@@ -130,4 +130,18 @@ test('legacy shared counter is migrated once, preserving planner and social acco
  assert.equal(row.willingnessRuns,82)
  assert.equal(row.lifeRuns,7)
  assert.equal(row.socialRuns,5)
+})
+
+test('统一意愿模型接收受信任的结构化 Episode/关系证据，但决策 trace 不保存证据正文',async t=>{
+ let prompt=''
+ const x=fixture(t,{response:p=>{prompt=p;return JSON.stringify({action:'skip',reason:'现在想休息'})}})
+ const actor=createLifeWillingness({dataDir:x.dir,getAccountTag:()=>A,enabled:()=>true,
+  getContext:async({evidence})=>({voice:'自然',world:{mood:'calm'},experience:evidence}),
+  invokeModel:async p=>{prompt=p;return JSON.stringify({action:'skip',reason:'现在想休息'})}})
+ await actor.decide({sourceKey:'verified-evidence:123',scene:'dm',candidates:[{id:'reply_dm',kind:'dm_reply',label:'回复'}],
+  evidence:{episode:{status:'active',history:[{action:'dm_reply',outcome:'verified',channel:'dm'}]},relationship:{tier:'friend',stage:'familiar'}}})
+ assert.match(prompt,/dm_reply/)
+ assert.match(prompt,/familiar/)
+ assert.match(prompt,/verified/)
+ assert.doesNotMatch(JSON.stringify(x.trace.list()),/familiar|dm_reply/)
 })

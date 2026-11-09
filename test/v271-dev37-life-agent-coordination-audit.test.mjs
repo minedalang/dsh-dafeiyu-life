@@ -85,14 +85,17 @@ test('a second willingness veto is distinguishable from executor outage in Life 
  assert.equal(events.status().videoStartsToday,0)
 }))
 
-test('production video adapter performs final account/availability check AFTER its async willingness vote',()=>{
+test('production video adapter does not repeat the Planner willingness vote; it performs technical checks before spawn',()=>{
  const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- const inspect=source.indexOf('const admission=lifeCapabilities.inspect()')
- const vote=source.indexOf("lifeWillingness?.verify(approved.proof,'explore_video')")
- const spawn=source.indexOf("const launched=runDuty('life-agent'")
- assert.ok(vote>0&&inspect>vote&&spawn>inspect)
- assert.match(source,/trustedLifeAccountTag\(\)!==scopeBefore/)
- assert.match(source,/lifeWillingness\?\.receipt\(approved\.proof,\{status:'not-sent'\}\)/)
+ const start=source.indexOf("const lifeCapabilities=createLifeCapabilities")
+ const end=source.indexOf("const lifeDecisionTrace=createLifeDecisionTrace",start)
+ const block=source.slice(start,end)
+ const inspect=block.indexOf('const admission=lifeCapabilities.inspect()')
+ const spawn=block.indexOf("return runDuty('life-agent'")
+ assert.ok(start>=0&&end>start&&inspect>0&&spawn>inspect)
+ assert.doesNotMatch(block,/lifeWillingness\?\.decide\(/)
+ assert.doesNotMatch(block,/lifeWillingness\?\.verify\(/)
+ assert.match(block,/trustedLifeAccountTag\(\)!==scopeBefore/)
 })
 
 test('a voluntary rest delays repeated due-Episode wakeups without pausing an unrelated Episode',()=>withDir(async dir=>{
@@ -117,3 +120,16 @@ test('a voluntary rest delays repeated due-Episode wakeups without pausing an un
  assert.equal((await planner.tick()).result,'voluntary-rest')
  assert.equal(modelCalls,2,'normal Life interval preserves the chance to reconsider later')
 }))
+
+test('DM/评论先完成真实上下文读取与专业提议，再调用唯一 Life 意愿审批',()=>{
+ const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ for(const marker of ["trigger:'dm-received'","trigger:'comment-received'"]){
+  const pos=source.indexOf(marker)
+  const start=source.lastIndexOf('generateReply: async (req) => {',pos)
+  const end=source.indexOf('return attachSocialProof(generated,owner,lifeChoice.proof)',pos)
+  const block=source.slice(start,end)
+  assert.ok(start>=0&&end>pos)
+  assert.ok(block.indexOf('interactionBatcher.generate')<block.indexOf('lifeWillingness?.decide'))
+  assert.match(block,/lifeEpisodeContext|evidence:\{episode:/)
+ }
+})

@@ -65,7 +65,7 @@ test('控制台公开区分顶层评论与回复，旧报告投递选项已退�
  assert.match(index,/const commentReadiness=\{\.\.\.videoCommentReadiness\(cfg\)/)
  assert.match(index,/observedTop:todayVisible\.filter\(row=>row\.kind==='top'\)/)
  assert.match(index,/observedReplies:todayVisible\.filter\(row=>row\.kind==='reply'\)/)
- assert.match(index,/\['video','video-round','life-read','life-write','life-reflection','comment'/)
+ assert.match(index,/\['video','video-round','life-read','life-write','life-reflection','life-rest','life-action','comment'/)
  assert.doesNotMatch(index,/dmModeEff = dmDegraded \? 'off' : cfg.dmMode/)
  assert.doesNotMatch(index,/const dmModeEff = cfg.dmMode/)
  assert.match(html,/id="life-timeline-comment-status"/)

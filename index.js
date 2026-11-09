@@ -4158,26 +4158,6 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const owner=routedSocialOwner('dm')
       if(!owner.ok)throw Error('私信决策所有权检查失败：'+owner.reason)
       return runLifeSocialOperation({channel:'dm',expectedScope:owner.scope,phase:'decision',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
-      const lifeChoice=await lifeWillingness?.decide({trigger:'dm-received',scene:'dm',uid:req.uid,
-        sourceKey:'dm:'+String(req.uid)+':'+String(req.messageId||''),
-        candidates:[{id:'reply_dm',kind:'dm_reply',label:'现在自然回复这位来信者'}],
-        hint:String(req.text||'').slice(0,170)})
-      if(lifeChoice?.ok!==true){
-        if(['skip','defer'].includes(lifeChoice?.action)&&lifeChoice?.invalid!==true){
-          // Defer is a real existing P6 continuity reservation when enabled,
-          // NOT a fabricated completed reply or a fresh platform send.
-          if(lifeChoice.action==='defer'){
-            // An older no-P6 adapter turns defer into SKIP and permanently
-            // consumes the incoming message. Keep it pending instead.
-            if(req.socialAutonomy!==true||cfg.dmP6Enabled===false)
-              throw Error('Life 延后私信：当前续行未启用，保留原消息待后续安全重试')
-            return attachSocialProof({action:'defer',messages:[],
-              notBefore:Date.now()+Math.max(5,Math.min(360,Number(cfg.socialP6MinDelayMinutes)||30))*60_000},owner)
-          }
-          return attachSocialProof({action:'skip',messages:[]},owner)
-        }
-        throw Error('Life 意愿本轮不可核验，保留消息待下次安全检查')
-      }
       let relationshipStage='new'
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
       try{relationshipStage=relationshipIndex()?.get(req.uid,relationshipOptions())?.stage||'new'}catch{}
@@ -4201,8 +4181,24 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!checked.ok)throw Error('私信决策期间账号或归属已变化：'+checked.reason)
       if(false)lifeSocialShadow.noteLegacy({channel:'dm',uid:req.uid,sourceKey:String(req.messageId||'').slice(0,110),
         action:classifyLegacySocialDecision(generated)})
+      // The specialist has now read the real thread, relationship and Episode
+      // context and produced a proposal. Its draft/skip is not a second approval.
+      // The unified Life willingness model is called exactly once, only for a
+      // proposed outbound reply, with the evidence already collected above.
       if(generated==='SKIP'||generated?.action==='skip'||generated?.action==='defer')
-        lifeWillingness?.receipt(lifeChoice.proof,{status:'not-sent'})
+        return attachSocialProof(generated,owner)
+      const lifeChoice=await lifeWillingness?.decide({trigger:'dm-received',scene:'dm',uid:req.uid,
+        sourceKey:'dm:'+String(req.uid)+':'+String(req.messageId||''),
+        candidates:[{id:'reply_dm',kind:'dm_reply',label:'现在自然回复这位来信者'}],
+        hint:'对方当前消息：'+String(req.text||'').slice(0,150)+'；拟回复：'+String(generated?.messages?.[0]||generated?.reply||'').slice(0,180),evidence:{episode:episodeContext,relationship:{tier,stage:relationshipStage},recentTurns:(Array.isArray(req.history)?req.history:[]).slice(-6).map(x=>({role:['user','assistant'].includes(x?.role)?x.role:'other',text:String(x?.text||x?.content||'').slice(0,110)})),sharedVideo:verifiedSharedVideoContext?{verified:true}:null,todoProgress:todoProgressContext?{available:true}:null}})
+      if(lifeChoice?.ok!==true){
+        if(lifeChoice?.action==='skip'&&lifeChoice?.invalid!==true)return attachSocialProof({action:'skip',messages:[]},owner)
+        if(lifeChoice?.action==='defer'&&lifeChoice?.invalid!==true){
+          if(req.socialAutonomy!==true||cfg.dmP6Enabled===false)throw Error('Life 延后私信：当前续行未启用，保留原消息待后续安全重试')
+          return attachSocialProof({action:'defer',messages:[],notBefore:Date.now()+Math.max(5,Math.min(360,Number(cfg.socialP6MinDelayMinutes)||30))*60_000},owner)
+        }
+        throw Error('Life 意愿审批暂不可用，保留原消息待安全重试')
+      }
       return attachSocialProof(generated,owner,lifeChoice.proof)
       })
       } finally {stopLiveDm()}
@@ -4636,28 +4632,6 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const owner=routedSocialOwner('comment')
       if(!owner.ok)throw Error('评论决策所有权检查失败：'+owner.reason)
       return runLifeSocialOperation({channel:'comment',expectedScope:owner.scope,phase:'decision',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
-      const lifeChoice=await lifeWillingness?.decide({trigger:'comment-received',scene:'comment',uid:req.uid,
-        sourceKey:'comment:'+createHash('sha256').update(String(req.contentType||'video')+':'+String(req.bvid||req.dynamicId||'')+':'+String(req.messageId||req.rpid||'')).digest('hex'),
-        candidates:[{id:'reply_comment',kind:'comment_reply',label:'现在自然回复这条公开评论或@'}],
-        hint:String(req.text||'').slice(0,170)})
-      if(lifeChoice?.ok!==true){
-        if(['skip','defer'].includes(lifeChoice?.action)&&lifeChoice?.invalid!==true){
-          // Defer is a real existing P6 continuity reservation when enabled,
-          // NOT a fabricated completed reply or a fresh platform send.
-          if(lifeChoice.action==='defer'){
-            // Without P6 the old comment adapter cannot retain an explicit
-            // defer and would mark it seen. Throw so the original event stays.
-            const hasContinuation=req.socialAutonomy===true&&
-              (req.kind==='at'?cfg.commentAtP6Enabled===true:cfg.commentP6Enabled===true)
-            if(!hasContinuation)
-              throw Error('Life 延后评论：当前续行未启用，保留原消息待后续安全重试')
-            return attachSocialProof({action:'defer',messages:[],
-              notBefore:Date.now()+Math.max(5,Math.min(360,Number(cfg.socialP6MinDelayMinutes)||30))*60_000},owner)
-          }
-          return attachSocialProof({action:'skip',messages:[]},owner)
-        }
-        throw Error('Life 意愿本轮不可核验，保留消息待下次安全检查')
-      }
       const visualReq=await addIncomingPictureObservation(req)
       const commentEpisodeContext=lifeSubagentHandoff({agent:'comment',episodes:universalLifeEpisodes,
         sourceRef:'comment-thread:'+String(req.bvid||'')+':'+String(req.uid||''),
@@ -4674,8 +4648,25 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const sourceKey=req.contentType==='dynamic'?'dynamic:'+String(req.dynamicId||'')+':'+String(req.rpid||''):
         String(req.bvid||'')+':'+String(req.rpid||req.id||'')
       if(false)lifeSocialShadow.noteLegacy({channel:'comment',uid:req.uid,sourceKey,action:classifyLegacySocialDecision(generated)})
+      // Read/understand the actual comment thread first. The specialist's
+      // result is a proposal; only the unified Life willingness layer grants
+      // the one outbound intention proof. No upstream AI veto is repeated.
       if(generated==='SKIP'||generated?.action==='skip'||generated?.action==='defer')
-        lifeWillingness?.receipt(lifeChoice.proof,{status:'not-sent'})
+        return attachSocialProof(generated,owner)
+      const lifeChoice=await lifeWillingness?.decide({trigger:'comment-received',scene:'comment',uid:req.uid,
+        sourceKey:'comment:'+createHash('sha256').update(String(req.contentType||'video')+':'+String(req.bvid||req.dynamicId||'')+':'+String(req.messageId||req.rpid||'')).digest('hex'),
+        candidates:[{id:'reply_comment',kind:'comment_reply',label:'现在自然回复这条公开评论或@'}],
+        hint:'原评论：'+String(req.text||'').slice(0,150)+'；拟回复：'+String(generated?.messages?.[0]||generated?.reply||'').slice(0,180)+'；当前线程：'+sourceKey.slice(0,70),
+        evidence:{episode:commentEpisodeContext,relationship:{tier:socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)},contentType:req.contentType==='dynamic'?'dynamic':'video'}})
+      if(lifeChoice?.ok!==true){
+        if(lifeChoice?.action==='skip'&&lifeChoice?.invalid!==true)return attachSocialProof({action:'skip',messages:[]},owner)
+        if(lifeChoice?.action==='defer'&&lifeChoice?.invalid!==true){
+          const hasContinuation=req.socialAutonomy===true&&(req.kind==='at'?cfg.commentAtP6Enabled===true:cfg.commentP6Enabled===true)
+          if(!hasContinuation)throw Error('Life 延后评论：当前续行未启用，保留原消息待后续安全重试')
+          return attachSocialProof({action:'defer',messages:[],notBefore:Date.now()+Math.max(5,Math.min(360,Number(cfg.socialP6MinDelayMinutes)||30))*60_000},owner)
+        }
+        throw Error('Life 意愿审批暂不可用，保留原评论事件待安全重试')
+      }
       return attachSocialProof(generated,owner,lifeChoice.proof)
       })
       } finally {stopLiveComment()}
@@ -5219,40 +5210,34 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return {ok:true}
     },
     execute:async({entryMode='mixed'}={})=>{
+      // The Life Planner has already made the single AI willingness choice
+      // and validated this exact capability in its offered action menu. Do not
+      // ask a second AI to approve the same activity. This layer performs only
+      // technical/privacy checks: account, configuration, live capability,
+      // process state and launch cooldown.
       const scopeBefore=trustedLifeAccountTag()
-      let approved
-      try{approved=await lifeWillingness?.decide({trigger:'video-exploration',scene:'main',
-        sourceKey:'life-video-start:'+randomUUID(),
-        candidates:[{id:'explore_video',kind:'explore_video',label:'此刻委派视频 Agent 继续公开探索（不保证看完或听到）'}]})}
-      catch{return {started:false,reason:'life-declined-video'}}
-      if(approved?.ok!==true){
-        const safe=new Set(['life-not-ready','life-context-unavailable','life-account-changed',
-          'life-willingness-unavailable','life-choice-in-progress','life-cross-channel-rest',
-          'life-admission-unavailable','planner-budget-incompatible'])
-        return {started:false,reason:safe.has(approved?.reason)?approved.reason:'life-declined-video'}
-      }
-      if(lifeWillingness?.verify(approved.proof,'explore_video')?.ok!==true)
-        return {started:false,reason:'life-video-choice-expired'}
-      // State can change during the second model call. Recheck the FINAL
-      // account, live adapter availability and launch cooldown immediately
-      // before the platform child is spawned; a stale planner menu is not a
-      // launch permission. Never auto-retry or reinterpret a veto as a send.
-      if(trustedLifeAccountTag()!==scopeBefore){
-        lifeWillingness?.receipt(approved.proof,{status:'not-sent'})
-        return {started:false,reason:'life-account-changed'}
-      }
+      if(!scopeBefore||!firstStart.isReady()||accountBinding.status().blocked)
+        return {started:false,reason:'account-not-ready'}
+      refreshCfg()
+      if(cfg.masterEnabled!==true||cfg.autonomousPlannerEnabled!==true)
+        return {started:false,reason:'disabled'}
+      if(dutyChild&&dutyChild.exitCode===null&&!dutyChild.killed)
+        return {started:false,reason:'video-busy'}
+      if(String(cfg.reportLevel||'full')==='off'&&roundsToday()>=1)
+        return {started:false,reason:'report-off-one-round'}
+      let budget
+      try{budget=lifeAgentEvents.status()}catch{return {started:false,reason:'account-not-ready'}}
+      if(!lifeVideoGate(cfg,budget,Date.now()).eligible)
+        return {started:false,reason:'video-launch-cooldown'}
       const admission=lifeCapabilities.inspect()
       const blocked=admission.blocked.find(x=>x.id==='bilibili.video-explore')
-      if(blocked){
-        lifeWillingness?.receipt(approved.proof,{status:'not-sent'})
-        return {started:false,reason:blocked.reason}
-      }
-      const launched=runDuty('life-agent',entryMode==='home'?'home':'mixed')
-      // Delegation is NOT proof of observed frames/audio or a completed round.
-      // The original child lifecycle remains the sole verified video receipt.
-      lifeWillingness?.receipt(approved.proof,{status:launched?.started===true?'delegated':'not-sent'})
-      return launched
+      if(blocked)return {started:false,reason:blocked.reason}
+      if(trustedLifeAccountTag()!==scopeBefore)return {started:false,reason:'life-account-changed'}
+      // Delegation is a technical execution of the already-approved Life
+      // choice, not a second willingness decision or proof of watched media.
+      return runDuty('life-agent',entryMode==='home'?'home':'mixed')
     },
+
   }])
   const lifeDecisionTrace=createLifeDecisionTrace({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   lifeWillingness=createLifeWillingness({
@@ -5260,7 +5245,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getAccountTag:trustedLifeAccountTag,
     enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&firstStart.isReady()&&!accountBinding.status().blocked},
     beginTrace:params=>lifeDecisionTrace.begin(params),
-    getContext:({scene,uid})=>{
+    getContext:({scene,uid,evidence})=>{
       // Optional world projections cannot suppress an entire voluntary Life turn.
       // Only an unbuildable base identity remains fail-closed; degraded categories
       // are recorded without private text, UIDs, or underlying file paths.
@@ -5282,6 +5267,22 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           .slice(0,2).map(row=>({day:String(row.day||'').slice(0,10),
             ownText:String(row.ownText).slice(0,145),evidence:'confirmed-public-reply'}))
       }catch{degradedStages.push('public-speech');log('Life 上下文：公开回复证据暂不可用')}
+      let experience=evidence&&typeof evidence==='object'&&!Array.isArray(evidence)?evidence:{}
+      try{
+        const numericUid=/^[1-9]\d{0,18}$/.test(String(uid||''))?String(uid):''
+        if(scene==='dm'&&numericUid){
+          experience={...experience,episode:lifeSubagentHandoff({agent:'dm',episodes:universalLifeEpisodes,sourceRef:'dm-conversation:'+numericUid})}
+        }else if(scene==='owner-dm'&&numericUid){
+          experience={...experience,episode:lifeSubagentHandoff({agent:'owner-dm',episodes:universalLifeEpisodes,sourceRef:'owner-dm-conversation:'+numericUid})}
+        }else if(['main','video-agent'].includes(scene)){
+          experience={...experience,episode:lifeSubagentHandoff({agent:'video',episodes:universalLifeEpisodes,limit:3})}
+        }
+        if(numericUid&&['dm','comment'].includes(scene)){
+          const tier=socialTier(numericUid,cfg.dmOwnerUid,cfg.friendDirectory)
+          let stage='new';try{stage=relationshipIndex()?.get(numericUid,relationshipOptions())?.stage||'new'}catch{}
+          experience={...experience,relationship:{tier,stage}}
+        }
+      }catch{degradedStages.push('episode-context');log('Life 上下文：相关经历暂不可用，保留基础人格与当前事件')}
       let voice=''
       try{voice=lifeVoiceContext({scene,uid,maxChars:2900})}
       catch{
@@ -5294,7 +5295,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         catch{throw Error('life-base-identity-unavailable')}
       }
       if(!voice.trim())throw Error('life-base-identity-unavailable')
-      return {voice,world,degradedStages}
+      return {voice,world,experience,degradedStages}
     },
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'interaction'}),
     // Completion notifications are non-executing, account-bound and de-duped
@@ -5904,7 +5905,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     onVerifiedPublished:({dynamicId,accountTag})=>{
       if(!accountTag||accountTag!==trustedLifeAccountTag())return false
       const sourceRef=createHash('sha256').update('life-dynamic-confirm\0'+accountTag+'\0'+dynamicId).digest('hex').slice(0,16)
-      return lifeAgentEvents.recordVerifiedCompletion({kind:'dynamic_post',sourceRef})?.ok===true
+      const completion=lifeAgentEvents.recordVerifiedCompletion({kind:'dynamic_post',sourceRef})
+      const attributed=lifeActionAttribution.verified({accountTag,owner:'life',channel:'dynamic',
+        sourceRef:'dynamic:'+sourceRef,receiptId:'bili-dynamic:'+String(dynamicId),
+        action:'dynamic_post',kind:'social'})
+      if(attributed?.ok!==true)log('已核验生活动态但 Episode 归属待补偿：'+String(attributed?.reason||'unavailable'))
+      return completion?.ok===true
     },
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'dailyDynamic'}),
     publish:(text,limit)=>new Promise((resolve,reject)=>{
@@ -7568,15 +7574,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const emotion=emotionalState.snapshot()
         // Current verified account only. A missing/unsafe lifecycle ledger
         // must not block the original watched/comment timeline.
-        let videoRounds=[],lifeDecisions=[]
+        let videoRounds=[],lifeDecisions=[],episodeRows=[]
         try{if(trustedLifeAccountTag()){
           const ledger=lifeAgentEvents?.status()
           videoRounds=ledger?.recentVideoRounds||[]
           lifeDecisions=ledger?.timeline||[]
+          episodeRows=universalLifeEpisodes?.list({limit:20,includeClosed:true})||[]
         }}catch(e){log('Life 可信回执诊断暂不可用：'+String(e?.message||e).slice(0,80))}
         const watched=parseSeenTable()
-        const rows=buildLifeTimeline({watched,videoRounds,lifeDecisions,comments,emotionHistory:emotion.history,relationshipRows:relationships,days,limit:160})
-        const counts=Object.fromEntries(['video','video-round','life-read','life-write','life-reflection','comment','emotion','relationship'].map(k=>[k,rows.filter(row=>row.type===k).length]))
+        const rows=buildLifeTimeline({watched,videoRounds,lifeDecisions,comments,emotionHistory:emotion.history,relationshipRows:relationships,episodes:episodeRows,days,limit:160})
+        const counts=Object.fromEntries(['video','video-round','life-read','life-write','life-reflection','life-rest','life-action','comment','emotion','relationship'].map(k=>[k,rows.filter(row=>row.type===k).length]))
         return sendJson(res,200,{ok:true,days,rows,counts,commentReadiness,privacy:'仅展示公开经历与情绪类别；不展示私信正文或私人画像内容。未出现的动作不能据此推断发生过。'})
       }catch(e){return sendJson(res,400,{ok:false,error:'生活时间线读取失败：'+String(e?.message||e).slice(0,180)})}
     }

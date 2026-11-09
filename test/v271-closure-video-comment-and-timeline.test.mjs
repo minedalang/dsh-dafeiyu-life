@@ -116,3 +116,47 @@ test('视频评论调试回执包含安全的阻断原因码，而非只有总�
  assert.match(index,/diagnostic\.blocked>0&&commentDiagnostics\?\.lastReason/)
  assert.match(index,/reason:commentDiagnostics\.lastReason/)
 })
+
+test('Life 时间线明确展示自主休息，但不把休息伪装成已执行动作',()=>{
+ const rows=buildLifeTimeline({now:T+100,days:7,lifeDecisions:[
+  {at:T,mode:'active',action:'skip',result:'voluntary-rest',failed:false,eventRefs:['a'.repeat(16)]},
+  {at:T-1000,mode:'active',action:'skip',result:'model-or-execution-error',failed:true,eventRefs:['b'.repeat(16)]}
+ ]})
+ assert.equal(rows.length,1)
+ assert.equal(rows[0].type,'life-rest')
+ assert.equal(rows[0].label,'自主休息')
+ assert.match(rows[0].title,/决定暂时休息/)
+ assert.match(rows[0].detail,/没有执行外部动作/)
+})
+
+test('Life Planner 已作出 browse_home 意愿选择后，执行层不再发起第二次 AI 意愿审批',()=>{
+ const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ const start=index.indexOf("const lifeCapabilities=createLifeCapabilities")
+ const end=index.indexOf("const lifeDecisionTrace=createLifeDecisionTrace",start)
+ const block=index.slice(start,end)
+ assert.ok(start>=0&&end>start)
+ assert.doesNotMatch(block,/lifeWillingness\?\.decide\(/)
+ assert.match(block,/technical\/privacy checks/)
+ assert.match(block,/return runDuty\('life-agent'/)
+})
+
+test('Life timeline includes verified Episode actions that have no legacy event row, without exposing private targets',()=>{
+ const rows=buildLifeTimeline({now:T+100,days:7,episodes:[{id:'a'.repeat(24),seriesId:'b'.repeat(24),history:[
+  {action:'dm_reply',outcome:'verified',channel:'dm',at:T-3000},
+  {action:'dynamic_post',outcome:'verified',channel:'dynamic',at:T-2000},
+  {action:'video_like',outcome:'verified',channel:'video-agent',at:T-1000},
+  {action:'dm_reply',outcome:'unknown',channel:'dm',at:T}
+ ]}]})
+ assert.equal(rows.length,3)
+ assert.deepEqual(rows.map(x=>x.title).sort(),['发布了一条动态','回复了一条私信','给一条视频点了赞'].sort())
+ assert.doesNotMatch(JSON.stringify(rows),/b{24}|uid|BV1/)
+})
+
+test('视频 Agent 时间线同时显示真实进程启动和结束，不把启动说成观看',()=>{
+ const start=T-60_000,end=T
+ const rows=buildLifeTimeline({now:T+100,days:7,videoRounds:[{source:'life-agent',ref:'d'.repeat(12),state:'completed',startedAt:start,endedAt:end,pickedCount:2}]})
+ assert.equal(rows.length,2)
+ assert.equal(rows.find(x=>x.type==='video-round-start')?.at,new Date(start).toISOString())
+ assert.match(rows.find(x=>x.type==='video-round-start').detail,/不代表视频已经观看/)
+ assert.equal(rows.find(x=>x.type==='video-round')?.at,new Date(end).toISOString())
+})
