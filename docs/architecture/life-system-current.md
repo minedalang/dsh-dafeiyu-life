@@ -1,3 +1,7 @@
+## dev.40 新增专业行为动态菜单与逐动作跨 Agent 公开因果桥
+
+查看 [dev.40 自由决策与持续性源码自查](./2.7.1-dev40-autonomy-and-continuity-audit.md)。动态候选只来自当前真实工具与配置；私信／评论可最多两次请求只读证据并重新决定；视频和评论可沿同 BV 的每条真实回执共享匿名因果。其他未实现的跨 Agent 意愿事务和真实环境验收不得夸大。
+
 > dev.38 跨专业 Agent 局部 Episode Handoff、私信可信联系人自主关注候选（限明确授权并经二次审批/平台读回）见 [专项说明](./2.7.1-dev38-subagent-action-continuity.md)。它**尚不是**所有 Agent 的通用自由行动循环。
 
 # Life 全景图与源码接线审计（当前 dev.37 发布前检验／dev.37 跨渠道行动归属 + Universal Life Episode）

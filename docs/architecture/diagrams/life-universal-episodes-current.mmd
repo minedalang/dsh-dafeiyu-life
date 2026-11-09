@@ -66,3 +66,17 @@ subagentHandoff -.-> subagentFollow
 subagentFollow -.->|成功的平台关系读回才算已完成| attribution
 %% @code subagentHandoff | lib/life-subagent-continuity.mjs | export function lifeSubagentHandoff
 %% @code subagentFollow | lib/dm-autoreply.mjs | pending.status='reserved'
+
+%% dev.40: every verified BV public action is anchored on ITS OWN step, never the whole episode.
+publicStepBridge["同 BV 公开行为因果桥：每条回执自带 BV 哈希，无跨视频串线"]
+professionalMenu["各专业 Agent 当前真实行为菜单：宿主工具/授权决定候选"]
+commentObservation["评论/私信按需观察→最多两次只读取证→再决策"]
+commentPublicPerson["评论者公开投稿：独立授权 + 核验 UID/rpid/BV + 只读"]
+record -.-> publicStepBridge -.-> subagentHandoff
+subagentHandoff --> professionalMenu
+commentPublicPerson -.->|只读候选| professionalMenu
+professionalMenu -.-> commentObservation
+%% @code publicStepBridge | lib/life-universal-episodes.mjs | const publicVideoState=bvid=>
+%% @code professionalMenu | lib/life-subagent-continuity.mjs | export function subagentActionMenu
+%% @code commentObservation | lib/interaction-batch.mjs | for(let pass=0;pass<2;pass++){
+%% @code commentPublicPerson | lib/life-public-capabilities.mjs | export async function readVerifiedCommenterPublicVideos

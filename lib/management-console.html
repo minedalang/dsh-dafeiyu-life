@@ -1482,6 +1482,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p id="life-social-ownership" class="muted" role="status">社交回复所有权：读取中…</p>
 <div class="fields"><div><label for="life-social-context-optin">社交影子对照（仅开发者测试，独立授权）</label><select id="life-social-context-optin"><option value="false">关闭（默认） · 仅匿名事件，绝不读取私信正文</option><option value="true">允许只读影子对照 · 好友入站私信与已核验公开评论</option></select></div></div>
 <p class="muted">启用后，只有鱼鱼先选择关注该社交事件，才会在本进程内读取最长 420 字、最多保留 10 分钟的已核验内容；模型仅选择“倾向回复／延期／沉默”，不会生成外发草稿。每次影子对照额外消耗一次现有每日 AI 决策额度。关闭或切号后不得继续预览。不读取主人私信或陌生人私信，真实回复遵循 Life 唯一归属与原发送门禁；影子对照不会直接发送。</p>
+<div class="fields"><div><label for="life-comment-public-person-read">评论 Agent 读取当前评论者的公开投稿（独立只读授权）</label><select id="life-comment-public-person-read"><option value="false">关闭（默认）</option><option value="true">允许模型按需读取当前已核验评论者的公开作品；不允许私信、关注或跨串回复</option></select></div></div>
 <div class="toolbar"><button type="button" class="life-action life-sky" id="life-social-shadow-save">单独保存社交影子读取授权</button></div>
 <p id="life-social-shadow-status" class="muted" role="status">影子对照：读取中…</p>
 <div class="inset" aria-live="polite"><h4>📖 鱼鱼自主生活时间线 · 最近 7 天</h4><p class="muted">短期成功读取回执在 48 小时内可作为下轮匿名参考；这不是永久记忆或成长因果证明。同账号、只读诊断：现在区分模型自愿休息、模型输出无效，以及没有可选动作（不会消耗模型额度）；历史旧记录无法追溯当时的真实选择。看见了什么契机 → 选择了什么 → 有无真实结果。只显示匿名类别，不保存私信正文、UID 或模型思考原文；影子观察不是已执行。这里不是长期记忆或真实平台回执。</p><div id="life-agent-timeline" class="life-decision-list">读取自主生活记录中…</div></div>

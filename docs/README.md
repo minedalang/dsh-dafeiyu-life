@@ -1,3 +1,5 @@
+**当前开发版：`2.7.1-dev.40`（尚未发布）。** [专业 Agent 自主连续决策源码审计](architecture/2.7.1-dev40-autonomy-and-continuity-audit.md)。
+
 # 文档导航
 
 本目录给维护者使用；普通用户从根目录 [README](../README.md) 和 [首次使用教程](../README.md#-首次使用教程) 开始。

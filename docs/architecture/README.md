@@ -1,3 +1,7 @@
+## 当前开发版本 2.7.1-dev.40：动态候选、子 Agent 连续取证与跨 Agent 公开 Episode 桥
+
+[dev.40 各入口自由决策／连续性详细审计](./2.7.1-dev40-autonomy-and-continuity-audit.md)：视频／私信／评论／主人私信／待办／自主社交／反思均按当前实际能力决定下一步，且共享受权限裁剪的 Episode；评论和私信有界连续只读取证；视频与评论可沿同 BV 的真实回执关联。**尚不代表全部 Agent 具备无限或完整开放式跨轮行动**。发布未获批准，Windows 与真实 B站未验收。
+
 ## 当前开发版本 2.7.1-dev.39：专业 Agent 续行交接扩展（未发布）
 
 [dev.39 各入口源码覆盖矩阵、自主程度与未达标事项](./2.7.1-dev39-cross-agent-continuity-audit.md)。主人私信、待办、回访、社交快速唤醒和公开反思获得不同权限范围的 Episode 上下文；不是新增万能工具或全部 Agent 开放式持续循环。源码离线测试不能代替 Windows/B站验收；`releaseReady:false`。
