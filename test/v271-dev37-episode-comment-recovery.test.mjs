@@ -81,7 +81,7 @@ test('视频标记的附带只读意愿与评论写入仍是独立工具，当�
  assert.match(py,/if comment_decision and \(comment_decision not in/)
  assert.match(py,/result\['comment_review'\]/)
  assert.match(py,/round_id = os\.environ\.get\('BILI_DUTY_LIFE_ROUND_ID'/)
- assert.match(py,/if route == '\/life-comment-review' and exc\.code == 409/)
+ assert.match(py,/if route in \('\/life-comment-review', '\/life-action'\) and exc\.code == 409/)
 })
 
 test('上次真实探索排在新首页兴趣之前，且暂停/未知不得冒充可续行',()=>{

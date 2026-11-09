@@ -109,12 +109,20 @@ def _life_video_request(route, payload):
     except urllib.error.HTTPError as exc:
         # Only the read-only consideration route may surface bounded host
         # denial codes. No platform error, response body or token is relayed.
-        if route == '/life-comment-review' and exc.code == 409:
+        if route in ('/life-comment-review', '/life-action') and exc.code == 409:
             try:
                 body = json.loads(exc.read(512))
                 code = body.get('reason') if isinstance(body, dict) else ''
-                if code in ('comment-review-not-current', 'comment-selection-not-confirmed',
-                            'comment-review-already-recorded', 'comment-review-permission-unavailable'):
+                # Only known, non-sensitive gate codes cross the bridge. An
+                # actual model decline must not masquerade as a network error.
+                safe_review = ('comment-review-not-current', 'comment-selection-not-confirmed',
+                               'comment-review-already-recorded', 'comment-review-permission-unavailable')
+                safe_action = ('life-declined-video-action', 'life-not-ready', 'life-context-unavailable',
+                               'life-choice-in-progress', 'life-cross-channel-rest',
+                               'life-admission-unavailable', 'life-choice-review-required',
+                               'life-account-unavailable', 'account-not-ready',
+                               'account-changed', 'life-video-gateway-unavailable')
+                if code in (safe_review if route == '/life-comment-review' else safe_action):
                     return {'ok': False, 'reason': code}
             except Exception:
                 pass
@@ -2651,21 +2659,41 @@ async def bili_ledger_mark(bvid: str, title: str, up: str = "", status: str = "�
         bv = _valid_bv(bvid)
         st = _safe_line(status, 80) or "看过"
         selected = st in ("挑中", "已挑中", "选中", "已选中", "入选", "已入选", "值得看", "可以看")
+        # Do not silently store an apparently positive but noncanonical status
+        # like "挑中·值得看" as an unpicked video. Give the model a chance to
+        # correct its marker before considering a public comment.
+        if not selected and re.match(r'^(?:挑中|已挑中|选中|已选中|入选|已入选|值得看|可以看)[·：:（(\s-]', st):
+            return json.dumps({"ok": False, "error": "入选状态必须填写精确的「挑中」，本次未写入；可以修正状态后再标记"}, ensure_ascii=False)
         if comment_decision and (comment_decision not in ("want", "pass", "insufficient") or not selected):
             return json.dumps({"ok": False, "error": "comment_decision 仅适用于真实入选，值须为 want/pass/insufficient"}, ensure_ascii=False)
         now = datetime.now().strftime("%Y-%m-%d")
         src = _read_home("seen.md", 2_000_000)
         already_seen = bool(re.search(r"\|\s*"+re.escape(bv)+r"\s*\|", src))
-        # Selection is written at most once. A model may first mark an
-        # interesting video and only afterwards decide whether to speak.
-        # A later read-only consideration must not be discarded merely
-        # because the canonical ledger now contains that selected BV.
-        # The host independently checks the exact current round, account,
-        # pre-round picked snapshot, and canonical *picked* row before
-        # accepting any consideration; old or skipped rows cannot qualify.
-        if not already_seen:
+        # A BV can appear earlier only as a watch/skip record or as a COMMENT
+        # receipt. Neither is proof of a picked video. The old global BV
+        # duplicate check silently discarded a genuine later selection, then
+        # the host correctly rejected its comment consideration as unpicked.
+        # Only explicit selection rows count, never free text or comment IDs.
+        picked_statuses = {'挑中','已挑中','选中','已选中','入选','已入选','值得看','可以看'}
+        prior_picked = False
+        for line in src.splitlines():
+            if not line.startswith('|'): continue
+            cells = [c.strip() for c in line.strip('|').split('|')]
+            if (len(cells) >= 5 and re.fullmatch(r'20\d{2}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?', cells[0])
+                    and cells[1] == bv and cells[-1] in picked_statuses):
+                prior_picked = True
+                break
+        # A prior confirmed comment receipt is also a do-not-revisit guard:
+        # correcting a watch/skip -> picked transition must never open a
+        # shortcut to commenting again on a video already publicly addressed.
+        prior_comment = bool(re.search(r'^\|\s*'+re.escape(bv)+r'\s*\|\s*\d{6,30}\s*\|',src,re.M))
+        # Preserve prior picks (including an earlier day) and posted videos.
+        # A new explicit pick after an earlier non-picked VIDEO row is a new
+        # canonical status transition, not a repeat of the same selection.
+        recorded_selection = selected and not prior_picked and not prior_comment
+        if not already_seen or recorded_selection:
             _append_home("seen.md", "| " + " | ".join([now,bv,_safe_line(title),_safe_line(up),st]) + " |\n")
-        result = {"ok": True, "already_seen": already_seen}
+        result = {"ok": True, "already_seen": already_seen, "recorded_selection": bool(recorded_selection)}
         # Only a genuine new selected row may enter the host's active-round
         # read-only review. A marker result never authorizes a platform write.
         if comment_decision:

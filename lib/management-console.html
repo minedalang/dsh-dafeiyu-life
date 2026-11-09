@@ -862,6 +862,10 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-life-agent #life-timeline-list{margin-top:15px;padding-left:21px;border-left:2px solid #c6e6ec;display:flex;flex-direction:column;gap:13px;min-height:60px}
 #panel-life-agent #life-timeline-list .record{position:relative;border:1px solid var(--life-ui-line);border-radius:17px;background:color-mix(in srgb,var(--panel) 92%,#eaf9fb);box-shadow:0 6px 19px #254f7010;padding:15px 17px;animation:life-card-reveal .4s ease both}
 #panel-life-agent #life-timeline-list .record:before{position:absolute;content:"";left:-29px;top:22px;width:11px;height:11px;border-radius:50%;background:#48b8b3;border:3px solid var(--panel);box-shadow:0 0 0 2px #9ed8dc}
+#panel-life-agent #life-timeline-list .life-timeline-day{font-weight:800;font-size:14px;margin-top:11px;color:var(--ink);padding:5px 0}
+#panel-life-agent #life-timeline-list .life-timeline-date-only{border:1px dashed var(--life-ui-line);border-radius:14px;padding:10px 13px;background:color-mix(in srgb,var(--panel) 93%,#e4f4f8)}
+#panel-life-agent #life-timeline-list .life-timeline-date-only summary{font-size:12px;font-weight:700;cursor:pointer;color:var(--ink);padding:3px 0}
+#panel-life-agent #life-timeline-list .life-timeline-date-only .record{margin-top:10px;box-shadow:none}
 #panel-life-agent #life-timeline-list .record .title-line{font-size:12px;color:#598aaa;font-weight:750}
 #panel-life-agent #life-timeline-list .record strong{font-size:14px;line-height:1.7;color:var(--ink)}
 #panel-life-agent :is(.life-profile-card,.todo-item){transition:transform .22s,box-shadow .22s}
@@ -1313,7 +1317,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <nav class="life-day-shortcuts" aria-label="鱼鱼此刻快捷查看"><a href="#life-timeline-section">今天的经历</a><a href="#life-emotion-section">此刻心情</a><a href="#life-todo-section">想做的事</a><a href="#life-settings-v2-panel">生活设置</a></nav>
 <details class="life-now-timeline" open><summary>📅 大肥鱼的一天 · 真实生活时间线</summary>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
-<p class="muted">按发生时间跨类型倒序展示有来源的视频探索、已核验行动、公开评论及情绪变化。只有日期的视频记录排在同一天精确时间的事件之后；不展示好友私信正文或心情触发消息。</p><p id="life-timeline-summary" class="muted" role="status"></p><div class="inset" id="life-comment-observability"><h4>🔎 原创主评论准入 · 最近视频轮次</h4>
+<p class="muted">按天展示实际视频探索、评论决定和公开发送结果：有准确时间的活动按时序排列；旧判重表只有日期的视频折叠在当日记录中，不冒充某次探索的逐条观看时间。原创评论正文只来自真实公开评论账本；未发出与平台未核验的评论绝不写成成功发布。</p><p id="life-timeline-summary" class="muted" role="status"></p><div class="inset" id="life-comment-observability"><h4>🔎 原创主评论准入 · 最近视频轮次</h4>
 <p class="muted">显示当前授权、实际评论记录、最近视频轮次中的考虑／提议／审批／平台核验；没有评论不等于模型主动拒绝。旧日志不提供的证据不会补造。</p>
 <p id="life-timeline-comment-status" class="setting-note" role="status">正在核对原创评论权限与本地记录…</p>
 <div class="toolbar"><button type="button" id="life-release-evidence-export" class="life-action life-sky">导出 S0/S1 匿名验收快照（只读）</button><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看完整 Life DEBUG</a></div>

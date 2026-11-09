@@ -86,16 +86,49 @@ class LedgerCommentReviewTests(unittest.TestCase):
         self.assertEqual(out['comment_review']['reason'], 'comment-selection-not-confirmed')
         self.assertEqual(len(self.lines), 1)
 
-    def test_prior_skipped_or_comment_only_record_cannot_authorize_review(self):
-        for row in ('| 2026-11-08 | BV1abcde1234 | title | uploader | 跳过 |\n',
-                    '| BV1abcde1234 | 322469935296 | 0 | 2026-10-31 | comment |\n'):
+    def test_previously_watched_or_skipped_may_be_explicitly_selected_in_current_round(self):
+        # A prior non-pick must not hide a new explicit selection.
+        # explicit selection. The host still requires active round, account,
+        # fresh canonical pick and independent Life write permission.
+        for row in ('| 2026-11-08 | BV1abcde1234 | title | uploader | 看过 |\n',
+                    '| 2026-11-08 | BV1abcde1234 | title | uploader | 跳过 |\n'):
             self.lines[:] = [row]
             self.requests.clear()
+            self.recorded.clear()
             with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
                 out = self.call('want')
             self.assertTrue(out['already_seen'])
-            self.assertEqual(out['comment_review']['reason'], 'comment-selection-not-confirmed')
-            self.assertEqual(len(self.lines), 1)
+            self.assertTrue(out['recorded_selection'])
+            self.assertTrue(out['comment_review']['ok'])
+            self.assertEqual(len(self.lines), 2)
+            self.assertTrue(self.lines[-1].strip().endswith('| 挑中 |'))
+
+    def test_prior_published_comment_remains_duplicate_protected(self):
+        self.lines[:] = ['| BV1abcde1234 | 322469935296 | 0 | 2026-10-31 | comment |\n']
+        with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
+            out = self.call('want')
+        self.assertTrue(out['already_seen'])
+        self.assertFalse(out['recorded_selection'])
+        self.assertEqual(out['comment_review']['reason'], 'comment-selection-not-confirmed')
+        self.assertEqual(len(self.lines), 1)
+
+    def test_old_pick_never_becomes_new_round_review(self):
+        self.lines[:] = ['| 2026-10-30 | BV1abcde1234 | old | uploader | 挑中 |\n']
+        self.pre_round_picked.add('BV1abcde1234')
+        with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
+            out = self.call('want')
+        self.assertTrue(out['already_seen'])
+        self.assertFalse(out['recorded_selection'])
+        self.assertEqual(out['comment_review']['reason'], 'comment-selection-not-confirmed')
+        self.assertEqual(len(self.lines), 1)
+
+    def test_ambiguous_positive_selection_marker_fails_loudly(self):
+        with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
+            out = self.call('', '挑中·值得看')
+        self.assertFalse(out['ok'])
+        self.assertIn('精确', out['error'])
+        self.assertEqual(self.lines, [])
+        self.assertEqual(self.requests, [])
 
     def test_invalid_or_skipped_never_creates_review(self):
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):

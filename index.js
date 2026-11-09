@@ -2529,7 +2529,7 @@ function reportMeta() {
     const commentOn=Boolean(cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0 && lifeVideoActionBridge?.status().ready===true)
     // A considered-but-unposted video is not a Life rejection or platform failure.
     // Model review is optional expression, but its evidence should be observable.
-    const commentConsiderationDoc=commentOn?`\n【原创主评论的独立考虑阶段】请在真实阅读视频资料、核对入选条件后，自主决定是否有值得公开说的话。真正要挑中视频时，优先通过 bili_ledger_mark(bvid,title,up,status="挑中",comment_decision="want" 或 "pass" 或 "insufficient") 一次完成入选标记和只读意愿回执（其中三个值只能选一个；不确定就选 insufficient）；该参数不会发送评论，也不影响选片决定，不想发表时明确选 pass。工具返回 comment_review.ok=false 时按 reason 识别原因，不能当作已记录；尤其不能在标记成功之前单独调用 bili_comment_consideration。已标记入选但没有意愿回执时，直接调用 bili_comment_consideration(bvid,decision,reason)；或者重新调用 bili_ledger_mark(bvid,title,up,status="挑中",comment_decision=...)，已存在的行不会重复写，只有宿主确认本轮首次真实入选后才可能记下意愿。若曾在入选前错误调用考虑工具，必须先完成入选标记、再补登记，不能把拒绝当成已记录。仅填 pass 或 insufficient 无需先读评论区；想公开交流时仍需足够的真实内容证据，每个本轮新入选 BV 最多成功登记一次。想说时再自行调用 bili_reply，不想说时不要发；不得为了统计而发表评论。非本轮入选、评论权限关闭或资料不足以负责发言时绝不发布；工具拒绝后不能绕过授权。`:'\n原创主评论当前未启用，不能调用评论或评论考虑工具。'
+    const commentConsiderationDoc=commentOn?`\n【原创主评论的独立考虑阶段】请在真实阅读视频资料、核对入选条件后，自主决定是否有值得公开说的话。不要把「不强制评论」理解成「默认不评论」：真正读懂内容后，若自然想吐槽一句、追问作者或回应某个具体细节，证据足够且授权通过就可以主动发；不要求每轮有评论，也不要为了统计而发。真正要挑中视频时，优先通过 bili_ledger_mark(bvid,title,up,status="挑中",comment_decision="want" 或 "pass" 或 "insufficient") 一次完成入选标记和只读意愿回执（其中三个值只能选一个；不确定就选 insufficient）；该参数不会发送评论，也不影响选片决定，不想发表时明确选 pass。工具返回 comment_review.ok=false 时按 reason 识别原因，不能当作已记录；尤其不能在标记成功之前单独调用 bili_comment_consideration。已标记入选但没有意愿回执时，直接调用 bili_comment_consideration(bvid,decision,reason)；或者重新调用 bili_ledger_mark(bvid,title,up,status="挑中",comment_decision=...)，已存在的行不会重复写，只有宿主确认本轮首次真实入选后才可能记下意愿。若曾在入选前错误调用考虑工具，必须先完成入选标记、再补登记，不能把拒绝当成已记录。仅填 pass 或 insufficient 无需先读评论区；想公开交流时仍需足够的真实内容证据，每个本轮新入选 BV 最多成功登记一次。想说时再自行调用 bili_reply，不想说时不要发；不得为了统计而发表评论。非本轮入选、评论权限关闭或资料不足以负责发言时绝不发布；工具拒绝后不能绕过授权。`:'\n原创主评论当前未启用，不能调用评论或评论考虑工具。'
     return `你是这个账号的 B站 助手。`
       + `下面是使用者的设定（如果有）—— **按它来**，别用你默认那套人格。`
       + ownerDoc
@@ -4994,7 +4994,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     let text = ''
     try { text = readFileSync(file, 'utf8') } catch { return [] }
     const out = []
-    const seen = new Set()
+    const seen = new Map()
     // 评论记录表里的 rpid（形如 `| BVxxxx | 317831597441 | ...`）⇒ 这些视频**确实发出去过**
     const deliveredBvs = new Set()
     for (const raw of text.split(/\r?\n/)) {
@@ -5020,15 +5020,22 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const up = c[bvIdx + 2] || ''
       const status = c[c.length - 1] || ''
       const key = bvid + '@' + day
-      if (seen.has(key)) continue
-      seen.add(key)
       const skipped = /跳过|跳了|没挑/.test(status)
       const picked = !skipped && ['挑中','已挑中','选中','已选中','入选','已入选','值得看','可以看'].includes(status.trim())
       const commented = /评论/.test(status)
       const delivered = /评论|私信|已发|发给/.test(status) || deliveredBvs.has(bvid)
-      out.push({ day, bvid, title, up, status, picked,
+      const row={ day, bvid, title, up, status, picked,
         autonomousSelected:!skipped && ['挑中','已挑中','选中','已选中','入选','已入选','收下','已收下'].includes(status.trim()),
-        commented, delivered, url: 'https://www.bilibili.com/video/' + bvid })
+        commented, delivered, url: 'https://www.bilibili.com/video/' + bvid }
+      // An earlier "watched / skipped" record may precede an explicit pick.
+      // Retain one video per day, but never conceal its later real selection.
+      if (seen.has(key)) {
+        const pos=seen.get(key)
+        if (picked&&!out[pos].picked)out[pos]=row
+        continue
+      }
+      seen.set(key,out.length)
+      out.push(row)
     }
     // 主 Session 按主人要求查看的视频是独立经历；即使 BV 已在判重表里，也保留手动观看事实。
     try {
