@@ -94,7 +94,7 @@ test('UI has one Life V2 editor, retires duplicate legacy controls and keeps dis
  const html=read('lib/management-console.html'),js=read('lib/management-console.js'),server=read('index.js')
  assert.equal((html.match(/id="life-settings-v2-panel"/g)||[]).length,1)
  for(const id of ['panel-life-agent','life-link-planner','life-link-memory','life-link-todos','life-link-interests',
-   'life-link-personality','life-link-social','life-integration-refresh','life-social-shadow-save'])assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id)
+   'life-link-personality','life-link-social','life-integration-refresh','comment-public-person-read'])assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id)
  assert.ok(html.indexOf('id="panel-life-agent"')<html.indexOf('id="life-settings-v2-panel"'))
  for(const id of ['autonomous-planner-enabled','autonomous-planner-limit','autonomous-planner-minutes',
   'autonomous-planner-recommended','life-agent-mode','life-legacy-planner-advanced'])assert.doesNotMatch(html,new RegExp('id="'+id+'"'))
@@ -107,7 +107,9 @@ test('UI has one Life V2 editor, retires duplicate legacy controls and keeps dis
  const start=js.indexOf("$('owner-todo-settings-save').addEventListener"),end=js.indexOf("$('owner-todo-add').addEventListener",start)
  assert.ok(start>0&&end>start)
  assert.doesNotMatch(js.slice(start,end),/lifeAgentSocialContextOptIn|lifeSocialShadowConfirm/)
- assert.match(js,/\$\('life-social-shadow-save'\)\.addEventListener/)
+ assert.match(js,/\$\('comment-public-person-read'\)\.dataset\.loaded/)
+ assert.match(js,/commentProfileReadConfirm:'ENABLE_PUBLIC_COMMENTER_READ'/)
+ assert.doesNotMatch(html,/life-social-shadow-save|life-social-context-optin/)
 })
 
 test('dev.7 still preserves previously saved legacy V2 values without implicit migration',()=>{

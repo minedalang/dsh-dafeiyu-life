@@ -128,7 +128,7 @@ test('source wiring migrates both channels under the fence and keeps dry-run man
   assert.match(source,/requester:'life-agent'/)
 })
 
-test('manual rehearsal endpoint and management controls require deliberate no-send action',()=>{
+test('manual rehearsal remains backend-gated and is absent from ordinary management UI',()=>{
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
@@ -138,10 +138,8 @@ test('manual rehearsal endpoint and management controls require deliberate no-se
   assert.match(index,/noPlatformCalls:true/)
   assert.match(index,/cfg\.masterEnabled===true.*关闭 B站生活总开关/)
   assert.match(index,/rehearsalPassed:report\.ok===true/)
-  assert.match(js,/confirmAction\(\{title:'只读交接演练/)
-  assert.match(js,/request\('\/life-agent\/social-handoff-rehearsal'/)
-  assert.match(html,/id="life-handoff-dry-dm"/)
-  assert.match(html,/id="life-handoff-dry-comment"/)
+  assert.doesNotMatch(js,/只读交接演练|request\('\/life-agent\/social-handoff-rehearsal'/)
+  assert.doesNotMatch(html,/life-handoff-dry-dm|life-handoff-dry-comment|life-transition-checklist/)
   assert.doesNotMatch(index,/socialHandoffFence\.rehearse\(\{channel:'dm'/)
 })
 

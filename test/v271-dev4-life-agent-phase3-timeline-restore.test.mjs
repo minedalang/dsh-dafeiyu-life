@@ -122,8 +122,9 @@ test('management center exposes anonymous life timeline with no raw model reason
   const {readFileSync}=requireFilesystem()
   const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
-  assert.match(html,/id="life-agent-timeline"/)
-  assert.match(js,/life\.timeline/)
-  assert.match(js,/life-agent-timeline/)
+  assert.match(html,/id="life-timeline-list"/)
+  assert.match(js,/const loadLifeNowTimeline=/)
+  assert.match(js,/life-timeline-list/)
+  assert.doesNotMatch(html,/life-agent-timeline/)
 })
 function requireFilesystem(){return {readFileSync}}

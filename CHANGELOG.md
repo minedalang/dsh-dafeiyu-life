@@ -1,3 +1,17 @@
+## [2.7.1-dev.40] · 同版本维护：Life 管理页清理旧开发选项
+
+- 删除 Life 页旧的双层开发者折叠、影子对照、模拟演示、迁移验收和交接演练控件；保留真实运行状态、状态刷新和手动启动原视频 Agent。
+- 将评论者公开投稿只读许可移至「最近评论 → 后台评论互动设置」，继续默认关闭并使用原服务端独立确认。
+- 仅清理 UI，架构接线、旧数据和平台权限不变；自动化回归覆盖入口与授权边界，`releaseReady:false`。
+- 详见 `docs/architecture/2.7.1-dev40-closure-fix06-life-settings-cleanup.md`。
+
+## [2.7.1-dev.40] · 同版本维护：真实视频 Agent 手动入口可见性
+
+- 将「真实运行状态」及「手动触发一轮真实视频 Agent」从两层折叠的开发者诊断区移入 Life 自主生活常规设置面板。
+- 保留原站内二次确认、原视频 Agent 能力委派、active 模式/账号/首页推荐/冷却/额度等后端门禁；不强制选片、发表评论或点赞，不增加任何写入权限。
+- 新增 UI 结构回归，确保入口不会再次藏入开发者诊断；Windows/B站实机验收仍待完成，`releaseReady:false`。
+- 详见 `docs/architecture/2.7.1-dev40-closure-fix05-video-agent-button-visibility.md`。
+
 ## [2.7.1-dev.40] · 专业 Agent 动态候选与跨 Agent 公共 Episode 桥（开发预览，未发布）
 
 - `life-subagent-continuity` 统一从**当前真实授权工具**导出每个专业 Agent 的候选菜单；不创建新平台写入工具，想做不等于允许做。

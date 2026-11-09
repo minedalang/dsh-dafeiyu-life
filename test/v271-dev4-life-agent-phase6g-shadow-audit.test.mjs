@@ -54,13 +54,15 @@ test('account change, expired TTL and opt-in revocation invalidate prior verdict
   x.time(10*60_000+1)
   assert.equal(s.status().paired,0)
 })
-test('shadow metrics remain read-only; explicit maintenance owner switching is separate',()=>{
+test('shadow metrics remain server-side read-only; retired developer UI no longer exposes them',()=>{
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   const consoleJs=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+  const consoleHtml=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   const owner=readFileSync(new URL('../lib/social-decision-ownership.mjs',import.meta.url),'utf8')
   assert.match(index,/socialShadow:lifeSocialShadow\.status\(\)/)
-  assert.match(consoleJs,/shadow\.byChannel\?\.\[key\]/)
-  assert.match(consoleJs,/未配对不代表选择沉默/)
+  assert.doesNotMatch(consoleJs,/shadow\.byChannel\?\.\[key\]/)
+  assert.doesNotMatch(consoleJs,/未配对不代表选择沉默/)
+  assert.doesNotMatch(consoleHtml,/life-social-shadow-status|life-social-context-optin|life-social-shadow-save/)
   assert.match(owner,/!\['legacy','life-agent'\]\.includes\(requester\)/)
   assert.match(index,/socialDecisionOwnership\.route\(\{channel:'dm',requester:'life-agent'/)
 })

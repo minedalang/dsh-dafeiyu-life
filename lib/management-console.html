@@ -51,8 +51,6 @@ background:linear-gradient(115deg,#e5eaff,#e7f7f6 55%,#f7edff);border:1px solid 
 #panel-life .life-section{border-radius:14px;padding:18px;border-color:var(--stroke);box-shadow:0 2px 12px rgba(49,70,108,.035)}
 #panel-life .life-section h4{font-size:15px}
 /* Dev.4 acceptance: real decisions must be legible, not tiny dashboard columns. */
-#life-agent-timeline.life-decision-list{display:flex;flex-direction:column;gap:8px;margin:12px 0}
-#life-agent-timeline .life-decision-record{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;
   padding:12px 14px;border:1px solid var(--stroke);border-radius:10px;background:var(--panel);
   color:var(--ink);line-height:1.65;white-space:normal;overflow-wrap:anywhere}
 #life-real-acceptance{border:1px solid var(--stroke);background:var(--panel);padding:14px 16px}
@@ -697,7 +695,6 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life-agent .life-command-links{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0 20px}
 #panel-life-agent .life-command-links a{padding:9px 12px;border:1px solid var(--stroke);background:var(--panel);border-radius:11px;font-size:13px;text-decoration:none}
 #panel-life-agent #life-settings-v2-panel{margin:16px 0}
-#panel-life-agent #life-agent-expert-settings{margin:16px 0}
 @media(max-width:560px){#panel-life-agent .life-command-state{grid-template-columns:1fr 1fr;gap:8px}#panel-life-agent .life-command-card{padding:11px}#panel-life-agent .life-command-links a{flex:1 1 40%}}
 
 /* 2.7.1 RC: interactive Life cards & verified activity, responsive, reduced motion. */
@@ -1320,7 +1317,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p class="muted">按天展示实际视频探索、评论决定和公开发送结果：有准确时间的活动按时序排列；旧判重表只有日期的视频折叠在当日记录中，不冒充某次探索的逐条观看时间。原创评论正文只来自真实公开评论账本；未发出与平台未核验的评论绝不写成成功发布。</p><p id="life-timeline-summary" class="muted" role="status"></p><div class="inset" id="life-comment-observability"><h4>🔎 原创主评论准入 · 最近视频轮次</h4>
 <p class="muted">显示当前授权、实际评论记录、最近视频轮次中的考虑／提议／审批／平台核验；没有评论不等于模型主动拒绝。旧日志不提供的证据不会补造。</p>
 <p id="life-timeline-comment-status" class="setting-note" role="status">正在核对原创评论权限与本地记录…</p>
-<div class="toolbar"><button type="button" id="life-release-evidence-export" class="life-action life-sky">导出 S0/S1 匿名验收快照（只读）</button><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看完整 Life DEBUG</a></div>
+<div class="toolbar"><button type="button" id="life-release-evidence-export" class="life-action life-sky">导出 S0/S1 匿名验收快照（只读）</button><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看完整 Life 决策记录</a></div>
 <p class="muted" id="life-release-evidence-status" role="status">只读导出，不包含私信正文、账号 ID、视频 BV 或 Token；真实 B站行为仍需平台核验。</p></div>
 <div id="life-timeline-list" class="records records-scroll tall"></div></div>
 </details>
@@ -1381,7 +1378,6 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-life-agent .life-select-card input{width:18px;height:18px;accent-color:#347ca4;flex-shrink:0;margin:0}
 #panel-life-agent .life-select-card .life-select-icon{display:grid;place-items:center;min-width:35px;height:35px;border-radius:12px;background:color-mix(in srgb,#a9dbed 38%,var(--panel));color:#4779a4;font-size:20px}
 #panel-life-agent .life-select-card span:last-child{min-width:0}#panel-life-agent .life-select-card strong{font-size:14px;display:block}#panel-life-agent .life-select-card small{display:block;margin-top:4px;color:var(--muted);font-size:11px;line-height:1.55}
-#panel-life-agent .life-shadow-choice{margin:12px 0;border:0;background:transparent}#panel-life-agent .life-shadow-choice>summary{color:var(--muted);font-size:12px}
 #panel-life .life-memory-hero{position:relative;isolation:isolate;min-height:225px;padding:28px 33px;overflow:hidden;background:linear-gradient(115deg,#2c4d7b,#4b8eab 65%,#82bab9);border:0;border-radius:26px;box-shadow:0 20px 34px #365a8822}
 #panel-life .life-memory-hero:after{content:"";position:absolute;inset:auto -6% -80px;height:125px;background:#cae5ff30;border-radius:50% 50% 0 0;animation:life-sea-wave 7s ease-in-out infinite alternate}
 #panel-life .life-memory-hero-copy{position:relative;z-index:2;width:70%}#panel-life .life-memory-hero :is(h2,.muted,.page-eyebrow){color:#fff}#panel-life .life-memory-hero h2{font-size:clamp(24px,3vw,34px);margin:8px 0}
@@ -1442,21 +1438,20 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div><label for="owner-todo-followup-quiet-enabled">夜间静默</label><select id="owner-todo-followup-quiet-enabled"><option value="true">启用（默认）</option><option value="false">关闭</option></select></div>
 <div><label for="owner-todo-followup-quiet-start">静默开始小时（0～23）</label><input id="owner-todo-followup-quiet-start" type="number" min="0" max="23" value="22"/></div>
 <div><label for="owner-todo-followup-quiet-end">静默结束小时（0～23；与开始相同=不设静默）</label><input id="owner-todo-followup-quiet-end" type="number" min="0" max="23" value="9"/></div>
-</div><p class="muted">普通检查只处理到期回访。DEBUG 可忽略鱼鱼先前设置的延期时间、立即重新问她一次，但不会强制发送，也不会绕过夜间静默、权限、限额、冷却、去重和回执核验；每次最多处理一条；如果有多条待回访，请使用每条记录旁的 DEBUG 按钮指定对象。可能产生模型费用。</p>
+</div><p class="muted">普通检查只处理到期回访。手动重新考虑可忽略鱼鱼先前设置的延期时间、立即重新问她一次，但不会强制发送，也不会绕过夜间静默、权限、限额、冷却、去重和回执核验；每次最多处理一条；如果有多条待回访，请使用每条记录旁的「重新考虑」按钮指定对象。可能产生模型费用。</p>
 <p class="muted" id="owner-todo-followup-status" role="status">正在读取回访状态…</p>
-<div class="toolbar"><button class="life-action" type="button" id="owner-todo-followup-check">检查到期回访（不跳过延期）</button><button class="life-action" type="button" id="owner-todo-followup-debug">DEBUG：忽略延期，重新询问（多条时请指定）</button></div><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
-<div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存回访与开发诊断设置</button></div>
+<div class="toolbar"><button class="life-action" type="button" id="owner-todo-followup-check">检查到期回访（不跳过延期）</button><button class="life-action" type="button" id="owner-todo-followup-reconsider">立即重新考虑（忽略延期）</button></div><div id="owner-todo-followup-detail" class="muted" role="status"></div></div>
+<div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存回访设置</button></div>
 </details>
 </div>
 </details>
 <details id="life-now-settings" class="life-now-settings" open><summary>⚙️ 生活节奏与整体方案</summary><div class="settings-section" id="life-settings-v2-panel" style="border-left:4px solid #5d9b88">
 <h3>🌿 鱼鱼的生活</h3>
 <p class="muted">鱼鱼自己选择何时探索、聊天或休息；对外互动仍遵守你的授权。</p>
-<div class="life-native-settings"><div><label for="life-v2-mode">自主生活</label><select id="life-v2-mode"><option value="off">暂停</option><option value="active">开启生活探索</option><optgroup label="开发者选项"><option value="shadow">只观察决策（不自动探索）</option></optgroup></select></div>
+<div class="life-native-settings"><div><label for="life-v2-mode">自主生活</label><select id="life-v2-mode"><option value="off">暂停</option><option value="active">开启生活探索</option><option value="shadow" hidden>历史观察模式（兼容旧配置）</option></select></div>
 <div><label for="life-v2-pace">活跃程度</label><select id="life-v2-pace"><option value="quiet">安静（120 分钟 / 12 次）</option><option value="natural">自然（30 分钟 / 40 次）</option><option value="lively">活跃（10 分钟 / 100 次）</option><option value="custom">自定义（高级）</option></select></div></div><small id="life-legacy-pace-note" class="setting-note" hidden>正在保留你以前的活跃度设置；需要改动时再选安静、自然或活跃。</small>
 <div class="life-mode-switch" role="radiogroup" aria-label="自主生活开关"><label class="life-select-card"><input type="radio" name="life-mode-card" value="active"><span class="life-select-icon">✦</span><span><strong>开启自主生活</strong><small>鱼鱼自行决定探索、互动或休息</small></span></label><label class="life-select-card"><input type="radio" name="life-mode-card" value="off"><span class="life-select-icon">☾</span><span><strong>暂停自主探索</strong><small>不再启动新生活决策</small></span></label></div>
 <div class="life-pace-heading"><h4>活跃程度</h4><p class="muted">只是考虑机会的上限，不是每天必须执行的次数。</p></div><div class="life-pace-cards" role="radiogroup" aria-label="生活活跃程度"><label class="life-select-card"><input type="radio" name="life-pace-card" value="quiet"><span class="life-select-icon">☾</span><span><strong>安静</strong><small>120 分 / 12 次思考，视频最多 1 轮/天</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="natural"><span class="life-select-icon">❀</span><span><strong>自然</strong><small>30 分 / 40 次思考，视频最多 2 轮/天</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="lively"><span class="life-select-icon">✧</span><span><strong>活跃</strong><small>10 分 / 100 次思考，视频最多 4 轮/天</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="custom"><span class="life-select-icon">⚙</span><span><strong>自定义</strong><small>单独调整间隔和额度</small></span></label></div>
-<details class="life-subdetails life-shadow-choice"><summary>进阶：只观察 Life 决策，不自动探索</summary><label class="checkline"><input type="radio" name="life-mode-card" value="shadow">观察模式（仅用于调试）</label></details>
 <details class="life-subdetails" id="life-settings-advanced"><summary>⚙️ 高级设置 · 模型次数与活动时间</summary>
 <p class="muted">仅选择「自定义」时，以下数字才会写入配置；选择预设不会覆盖原有时段。次数是<strong>日常生活模型决策上限</strong>，不是必须执行的任务或真实视频播放次数；社交事件只读快速关注有独立额度，所有调用共享原子总上限。对外发布／私信授权仍在相应页面单独设置。</p>
 <div class="fields"><div><label for="life-v2-minutes">最短考虑间隔（分钟，5～1440）</label><input type="number" id="life-v2-minutes" min="5" max="1440" value="60"></div><div><label for="life-v2-limit">每日最多模型决策（1～288）</label><input type="number" id="life-v2-limit" min="1" max="288" value="12"></div><div><label for="life-v2-start">每日开始（0～23 时）</label><input type="number" id="life-v2-start" min="0" max="23" value="9"></div><div><label for="life-v2-end">每日结束（1～24 时）</label><input type="number" id="life-v2-end" min="1" max="24" value="23"></div></div><div class="toolbar"><button type="button" class="life-action life-sky" id="life-v2-preview-btn">预览详细变化</button></div>
@@ -1466,35 +1461,13 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p id="life-agent-wake-result" class="muted" role="status" aria-live="polite">手动考虑会消耗一次模型额度；鱼鱼也可以自己选择休息。</p>
 <p class="muted">已有旧档位会在后台保持原值，不会让新版选择框继续出现旧选项。视频 Agent 仍有独立的启动和成本门禁。当前社交快速关注不表示已发送回复。</p>
 <p id="life-v2-status" class="muted" role="status">正在读取生活设置…</p>
-<details class="life-subdetails" id="life-transition-checklist"><summary>🛠️ 开发者：系统迁移与验收诊断</summary><p class="muted">迁移状态清单只读；下方人工演练会短暂写入并释放交接预约（异常时可能保留冻结），但不会发送消息或打开权限。演练通过不代表真实平台已验收。</p><div id="life-transition-status" class="muted" role="status">正在核对旧系统退出和新生活系统接管边界…</div>
-<h4>RC 前需要回答的 13 个真实使用问题</h4><p class="muted">以下是代码证据分级，不是运行表现评分；只有真实场景验收后才能放行。</p><ol id="life-rc-questions" class="muted"><li>正在读取 RC 自检…</li></ol>
-<div class="toolbar"><button type="button" class="life-action life-sky" id="life-handoff-dry-dm">演练私信交接（不发送）</button><button type="button" class="life-action life-sky" id="life-handoff-dry-comment">演练评论交接（不发送）</button></div>
-<p id="life-handoff-dry-result" class="muted" role="status">先关闭 B站生活总开关，再人工点击短暂预约原社交通道、检查旧操作是否排空及发送事务是否存在异常；不会调用模型、读取消息或发送到 B站。崩溃／切号可能保留冻结记录，需停机复核。演练通过也不代表 Life 已接管。</p></details>
+<div class="inset" id="life-real-acceptance"><h4>🔍 真实运行状态</h4><p class="muted">查看当前账号的实际运行门禁与最近委派记录。可在这里手动启动一轮原视频 Agent；启动后由视频 Agent 自主决定看什么、是否继续或结束，不会强迫选片、发表评论或点赞。任何写操作仍受原有授权、Life 意愿审批、平台核验、额度与冷却限制。</p><p id="life-readiness" class="muted" role="status">正在读取本机真实运行门禁…</p><p id="life-actual-proof" class="muted" role="status">正在核对本账号的真实委派记录…</p><div class="toolbar"><button type="button" class="life-action life-sky" id="life-readiness-refresh">重新核查真实状态（零模型调用）</button><button type="button" class="life-action life-purple" id="life-video-agent-test-run">手动触发一轮真实视频 Agent</button></div><p id="life-video-agent-test-result" class="muted" role="status" aria-live="polite">单轮真实诊断：启动原视频 Agent，不强制选片或发表评论；评论、点赞、收藏等写操作仍须通过原 Life 意愿审批及平台核验，并受原冷却限制。</p></div>
 <p class="muted">升级不会清空旧任务、记忆、好友关系或平台回执；旧「谷时刷视频」字段仅为历史兼容保留，无法重新启用。停止新生活决策<strong>不会撤销先前单独开启的社交自动发送授权</strong>，需要在社交页调整。</p>
 </div>
 </details>
-<details class="life-subdetails" id="life-agent-expert-settings"><summary>🛠️ 开发者诊断（普通使用无需打开）</summary>
-<details class="life-subdetails" id="life-developer-diagnostics"><summary>🛠️ 开发者诊断与旧配置（普通使用无需打开）</summary>
-<div class="inset"><h4>旧版自主调度兼容与诊断</h4>
-<p class="muted">历史设置只读：传统视频定时器已退役。影子模式仅观察，开启自主生活才可能在原有授权、配额及冷却允许时调用视频 Agent；是否行动仍由鱼鱼决定。请从「🌿 Life 自主生活 → 鱼鱼的生活」统一预览和保存。私信与评论已由新 Life 统一负责；旧影子模式仅供排障，不具备独立发送权。</p>
-<div class="inset" id="life-real-acceptance"><h4>🔍 当前自主生活是否真的生效？（真实状态）</h4><p id="life-readiness" class="muted" role="status">正在读取本机真实运行门禁…</p><p id="life-actual-proof" class="muted" role="status">正在核对本账号的真实委派记录…</p><div class="toolbar"><button type="button" class="life-action life-sky" id="life-readiness-refresh">重新核查真实状态（零模型调用）</button><button type="button" class="life-action life-green" id="life-offline-demo">演示四种选择（纯模拟，不访问 B站）</button><button type="button" class="life-action life-purple" id="life-video-agent-test-run">手动触发一轮真实视频 Agent</button></div><p id="life-video-agent-test-result" class="muted" role="status" aria-live="polite">单轮真实诊断：启动原视频 Agent，不强制选片或发表评论；评论、点赞、收藏等写操作仍须通过原 Life 意愿审批及平台核验，并受原冷却限制。</p><p id="life-offline-demo-result" class="muted" role="status">模拟使用虚构事件、假模型与假视频 Agent；不会改变真实状态、消耗 Token 或证明鱼鱼真实看过视频。</p></div>
-<p id="life-agent-status" class="muted" role="status">正在读取运行诊断…</p>
-<p class="muted">匿名 S0/S1 快照与原创评论准入已移至上方「大肥鱼的一天」，无需打开开发者选项。</p>
-<div class="toolbar"><button type="button" id="life-evidence-contrast" class="life-action">DEBUG · 比较有无近期经历时的模型倾向（2 次调用）</button><span id="life-evidence-contrast-status" class="muted" role="status">仅在当前账号近 48 小时内有成功只读回执时可比较；零实际行动</span></div>
-<p class="muted">这是一项明确手动启动的<strong>只读模型输出对照</strong>：同一匿名模拟场景分别不带、带上近期成功读取类别。会预先占用每日两次模型决策额度，不能用于证明实际行动或人格成长；不发消息、不启动视频、不写长期记忆。失败或中途切号也不退还已预留的额度。</p><p class="muted">手动唤醒会优先将本次匿名事件交给 Life Agent，并跳过普通决策间隔与仅兴趣线索的六小时自动防重复冷却；仍受每日模型额度、账号与平台权限保护。<strong>影子模式不启动真实视频</strong>，但已有授权的只读待办或探索可能读取 B站公开资料；鱼鱼也可以选择休息。这里调用配置的真实模型并可能产生费用；完全离线观察请使用交付包里的模拟工具。</p>
-<p id="life-settings-preview" class="muted" role="status">设置兼容状态读取中…</p>
-<p id="life-social-ownership" class="muted" role="status">社交回复所有权：读取中…</p>
-<div class="fields"><div><label for="life-social-context-optin">社交影子对照（仅开发者测试，独立授权）</label><select id="life-social-context-optin"><option value="false">关闭（默认） · 仅匿名事件，绝不读取私信正文</option><option value="true">允许只读影子对照 · 好友入站私信与已核验公开评论</option></select></div></div>
-<p class="muted">启用后，只有鱼鱼先选择关注该社交事件，才会在本进程内读取最长 420 字、最多保留 10 分钟的已核验内容；模型仅选择“倾向回复／延期／沉默”，不会生成外发草稿。每次影子对照额外消耗一次现有每日 AI 决策额度。关闭或切号后不得继续预览。不读取主人私信或陌生人私信，真实回复遵循 Life 唯一归属与原发送门禁；影子对照不会直接发送。</p>
-<div class="fields"><div><label for="life-comment-public-person-read">评论 Agent 读取当前评论者的公开投稿（独立只读授权）</label><select id="life-comment-public-person-read"><option value="false">关闭（默认）</option><option value="true">允许模型按需读取当前已核验评论者的公开作品；不允许私信、关注或跨串回复</option></select></div></div>
-<div class="toolbar"><button type="button" class="life-action life-sky" id="life-social-shadow-save">单独保存社交影子读取授权</button></div>
-<p id="life-social-shadow-status" class="muted" role="status">影子对照：读取中…</p>
-<div class="inset" aria-live="polite"><h4>📖 鱼鱼自主生活时间线 · 最近 7 天</h4><p class="muted">短期成功读取回执在 48 小时内可作为下轮匿名参考；这不是永久记忆或成长因果证明。同账号、只读诊断：现在区分模型自愿休息、模型输出无效，以及没有可选动作（不会消耗模型额度）；历史旧记录无法追溯当时的真实选择。看见了什么契机 → 选择了什么 → 有无真实结果。只显示匿名类别，不保存私信正文、UID 或模型思考原文；影子观察不是已执行。这里不是长期记忆或真实平台回执。</p><div id="life-agent-timeline" class="life-decision-list">读取自主生活记录中…</div></div>
-<p id="autonomous-planner-status" class="muted" role="status">正在核对统一 Life 决策预算…</p></div>
-</details></details>
 </section>
 <section id="panel-diagnostics" hidden><div id="life-decision-traces-section" class="settings-section life-section">
-<div class="toolbar"><h4 style="margin:0">🧭 鱼鱼的决策全过程 · DEBUG</h4><button id="life-traces-refresh" type="button" class="life-action life-sky">刷新决策记录</button></div>
+<div class="toolbar"><h4 style="margin:0">🧭 鱼鱼的决策全过程</h4><button id="life-traces-refresh" type="button" class="life-action life-sky">刷新决策记录</button></div>
 <p class="muted">按每次 Life Agent 唤醒展示候选、模型校验、动作、回执和事件结算。最近 7 天最多 60 轮，当前 B站账号隔离；不存储完整模型提示、原始回复、私信正文、UID、视频 BV 或工具响应，以免调试日志造成隐私泄露。技术回执不代表鱼鱼真正看过或理解视频。</p>
 <div class="toolbar"><button type="button" id="life-metadata-probe" class="life-action life-sky">诊断一次真实视频资料读取（不调用模型）</button></div>
 <p class="muted">仅从当前账号最近的真实公开观察中取一条已知 BV 进行只读测试；会使用一次 B站读取预算并可能触发平台风控，不会更改生活待办、模型额度、决策事件或外发任何内容。请勿频繁点击。</p>
@@ -1748,6 +1721,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div><label for="comment-per-poll">每轮公开回复总数（1–1000）</label><input id="comment-per-poll" type="number" min="1" max="1000" value="1"></div>
 <div><label for="comment-per-day">后台自动回复：滚动24小时已成功发送上限（1–1000，独立设置）</label><input id="comment-per-day" type="number" min="1" max="1000" value="5"></div>
 </div></div>
+<div class="settings-section" id="comment-public-person-read-section"><h4>评论对象的公开作品探索（只读授权）</h4><p class="muted">当评论 Agent 已从当前真实评论核验出对方身份后，鱼鱼可以自主决定是否查看对方公开投稿。仅读取公开作品标题与 BV，不允许关注、私信或跨评论串回复；首次开启需要单独确认，也可能增加 B站读取请求。</p><div class="fields"><div><label for="comment-public-person-read">允许评论 Agent 按需查看当前评论者的公开投稿</label><select id="comment-public-person-read"><option value="false">关闭（默认）</option><option value="true">开启 · 仅限当前已核验评论者，只读公开投稿</option></select></div></div></div>
 <div class="settings-section" id="comment-p6-section"><h4>公开评论与被 @ 的自然续聊（均默认关闭）</h4><p class="muted">自然续聊表示鱼鱼可根据对话内容分成几条短回复，或隔一段时间再决定是否补充。此开关本身不会授权公开回复。开启后鱼鱼可以自然连发、稍后补充或重新考虑；仍会受真实来源核验、配额、跨渠道频率和平台回执约束，绝不因为被 @ 就主动 @ 别人。</p><div class="fields">
 <label class="checkline"><input id="comment-p6-enabled" type="checkbox"> 开启公开评论自然续聊</label>
 <label class="checkline"><input id="comment-at-p6-enabled" type="checkbox"> 开启被 @ 后的自然续聊</label>

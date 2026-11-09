@@ -40,19 +40,19 @@ test('four synthetic life paths run the real planner without accessing user serv
  assert.equal(r.networkCalls,0)
  assert.equal(r.outboundMessages,0)
 })
-test('management offers distinct visible REAL evidence and SYNTHETIC demo controls',()=>{
+test('management exposes real status and manual Agent run, without synthetic developer demo',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  assert.match(html,/id="life-readiness"/)
  assert.match(html,/id="life-actual-proof"/)
- assert.match(html,/id="life-offline-demo"/)
+ assert.match(html,/id="life-video-agent-test-run"/)
  assert.match(html,/id="life-readiness-refresh"/)
+ assert.doesNotMatch(html,/life-offline-demo|演示四种选择/)
  assert.match(js,/sched\.experienceReadiness/)
  assert.match(js,/life\.videoStartsToday/)
- assert.match(js,/request\('\/life-agent\/offline-demo'/)
- assert.match(js,/纯模拟/)
+ assert.doesNotMatch(js,/request\('\/life-agent\/offline-demo'/)
 })
-test('live status and local demo are mounted without changing outbound ownership',()=>{
+test('offline demo remains a backend-only fixture and cannot change outbound ownership',()=>{
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const planner=readFileSync(new URL('../lib/autonomous-planner.mjs',import.meta.url),'utf8')
  assert.match(planner,/experienceReadiness=lifeExperienceReadiness/)

@@ -26,15 +26,18 @@ test('invalid model output has safe reason categories, without leaking model tex
  assert.equal(validatePlannerDecision('{"action":"skip"}',allowed).invalid,undefined)
 })
 
-test('single everyday life setup is outside developer diagnostic; old fields remain compatible but hidden',()=>{
+test('Life 常规设置移除旧开发选项，真实运行入口保留；评论只读授权归入评论设置',()=>{
  assert.ok(html.indexOf('id="panel-life-agent"')<html.indexOf('id="life-settings-v2-panel"'))
  assert.ok(html.indexOf('id="life-settings-v2-panel"')<html.indexOf('id="life-agent-wake"'))
- assert.ok(html.indexOf('id="life-developer-diagnostics"')<html.indexOf('id="life-social-context-optin"'))
- assert.ok(html.includes('<summary>🛠️ 开发者诊断与旧配置（普通使用无需打开）</summary>'))
+ for(const id of ['life-agent-expert-settings','life-developer-diagnostics','life-social-context-optin','life-social-shadow-save',
+   'life-transition-checklist','life-handoff-dry-dm','life-handoff-dry-comment','life-offline-demo','life-evidence-contrast'])
+  assert.doesNotMatch(html,new RegExp('id="'+id+'"'),id)
  for(const id of ['life-legacy-planner-advanced','autonomous-planner-enabled'])assert.ok(!html.includes('id="'+id+'"'),id)
- for(const id of ['life-v2-mode','life-v2-pace','life-v2-save-btn','life-agent-wake','life-agent-wake-result','life-social-context-optin','life-integration-refresh','life-social-shadow-save']){
+ for(const id of ['life-v2-mode','life-v2-pace','life-v2-save-btn','life-agent-wake','life-agent-wake-result','life-integration-refresh','life-video-agent-test-run']){
   assert.equal(html.split('id="'+id+'"').length-1,1,id)
  }
+ const comments=html.indexOf('id="panel-comments"'),publicRead=html.indexOf('id="comment-public-person-read"')
+ assert.ok(comments>=0&&publicRead>comments,'评论者公开投稿只读授权应放在评论设置页')
  assert.equal(html.includes('🐟 Life Agent · 自主生活驱动（dev.4'),false)
  assert.equal(html.includes('Phase 5/6g · 社交上下文影子对照'),false)
 })

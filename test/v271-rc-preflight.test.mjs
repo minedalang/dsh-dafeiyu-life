@@ -50,18 +50,18 @@ test('no automatic ownership promotion and paused emotion recall remains explici
   assert.match(index,/videoRecommendationsOnly:true/)
 })
 
-test('normal Life management wording is clear; RC list uses textContent and preserves old option values',()=>{
+test('normal Life management wording is clear; developer-only controls are not exposed',()=>{
   const html=src('lib/management-console.html'),js=src('lib/management-console.js')
-  for(const term of ['刷新生活状态','聊天与互动','开发者选项','保留你以前的活跃度设置','RC 前需要回答的 13 个真实使用问题'])
+  for(const term of ['刷新生活状态','聊天与互动','保留你以前的活跃度设置'])
     assert.ok(html.includes(term),term)
-  for(const id of ['life-rc-questions','life-transition-status','life-v2-mode','life-v2-pace'])
+  for(const term of ['开发者选项','RC 前需要回答的 13 个真实使用问题'])assert.doesNotMatch(html,new RegExp(term))
+  for(const id of ['life-v2-mode','life-v2-pace'])
     assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id)
+  assert.doesNotMatch(html,/life-rc-questions|life-transition-status|life-transition-checklist/)
   for(const val of ['off','active','shadow','quiet','natural','lively','custom'])
     assert.match(html,new RegExp('value="'+val+'"'),val)
   assert.doesNotMatch(html,/value="legacy-(?:quiet|natural|lively)"/)
-  assert.match(js,/rcList\.replaceChildren\(\)/)
-  assert.match(js,/li\.textContent=/)
-  assert.doesNotMatch(js,/rcList\.innerHTML/)
+  assert.doesNotMatch(js,/request\('\/life-agent\/transition-readiness'\)/)
 })
 
 test('README and developer navigation emphasize 2.7.1 reconstruction but never imply RC is released',()=>{
