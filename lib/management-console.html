@@ -1895,8 +1895,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="settings-section"><h4>自主交流与节奏控制</h4><div class="fields">
 <div><label for="dm-stranger-max">严格暗号审核模式下，暗号前最多自动回复次数（1–20）</label><input id="dm-stranger-max" type="number" min="1" max="20" value="1"><small class="setting-note">在严格暗号审核或旧版「陌生人首次回复」授权下仍保留原限制；明确开启新的陌生人多轮自主授权后，只有严格暗号审核会启用该次数限制。</small></div>
 <p class="muted">普通社交不设主人逐条审批。鱼鱼可以选择继续聊、延期或保持沉默，仍受联系人授权、额度和防重发保护。历史严格审核配置不会自动变成陌生人自主发送权限，请选择上方的交流方案并保存后迁移。</p>
-<label class="checkline"><input id="dm-p6-enabled" type="checkbox" checked> 私信自然续聊：分条回复与稍后考虑补充（默认开启；不代表授权私信发送）</label>
-<div id="dm-p6-settings"><label for="dm-p6-max-bubbles">私信续聊每轮最多自然消息条数（1–3）</label><input id="dm-p6-max-bubbles" type="number" min="1" max="3" value="3"></div>
+<label class="checkline"><input id="dm-p6-enabled" type="checkbox" checked> 自然多气泡（P6-A）：普通私信、主人私信与主 Session 共用 1–3 条消息协议（默认开启；不代表授权外发）</label>
+<div id="dm-p6-settings"><label for="dm-p6-max-bubbles">每轮最多独立聊天气泡数（1–3；普通私信、主人私信、主 Session 共用）</label><input id="dm-p6-max-bubbles" type="number" min="1" max="3" value="3"></div>
 <div><label for="social-p6-min-delay">全渠道自然续聊最短延迟（分钟，5–360）</label><input id="social-p6-min-delay" type="number" min="5" max="360" value="5"></div>
 <div><label for="social-p6-max-delay">全渠道自然续聊最长延迟（分钟，5–360）</label><input id="social-p6-max-delay" type="number" min="5" max="360" value="360"></div>
 <div><label for="social-rhythm-cooldown">不同渠道联系同一人后的冷却（分钟，0–1440）</label><input id="social-rhythm-cooldown" type="number" min="0" max="1440" value="30"></div>

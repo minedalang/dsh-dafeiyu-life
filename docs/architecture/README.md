@@ -1,3 +1,10 @@
+## 当前开发版本 2.7.1-dev.43：统一自然多气泡输出（未发布）
+
+- 普通私信、主人私信、主 Session 共用 `message-burst` 协议和 P6-A 条数设置。
+- 主 Session 的多气泡属于一个逻辑回复批次，后续消息用连续续步 Turn 保证 DSH Chat 紧凑视图逐条显示。
+- B站逐气泡回执未知时停止，不自动重发；真实 Windows/B站验收待完成。
+- 详见 [dev.43 统一自然多气泡架构](2.7.1-dev43-shared-message-burst.md)。
+
 ## 当前开发版本 2.7.1-dev.42：主 Session 可选自主联系（未发布）
 
 [Owner chat architecture, opt-in, evidence, cooldown, session delivery boundary](./2.7.1-dev42-main-session-self-initiated-chat.md) and [P6-A DM diagnostics and living Life Voice](./2.7.1-dev42-main-chat-style-p6-diagnostics.md). Host followup is **not** a verified outgoing chat bubble; no WeChat adapter was added.

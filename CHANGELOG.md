@@ -1,3 +1,13 @@
+## [2.7.1-dev.43] · 统一自然多气泡输出（开发预览）
+
+- 抽出 `lib/message-burst.mjs` 作为跨渠道公共层：统一 1～3 条消息归一化、提示词协议、顺序发送、逐条确认、部分成功与未知结果冻结；不把未确认发送自动重试。
+- 普通 B站私信 P6-A、主人 B站私信和主 Session 共用同一消息协议与 `dmP6Enabled` / `dmP6MaxBubbles` 配置，不增加第二套主人专用开关。各平台保留自己的账号、权限、额度、目标和真实回执校验。
+- 主人私信 Agent 现在可返回 1～3 条独立消息；每条使用独立 eventId 和平台回执。中途结果未知时停止后续气泡并记录已确认数量，不重发。
+- 主 Session 新增 `dafeiyu_chat_burst`：只有肥鱼确实想表达多条时才调用；第一条接在主人原始回复后，后续气泡用同一 Session 的紧接续步轮次分别显示。新主人消息到达时取消未发气泡并中断过时续步。默认仍可只发一条。
+- 使用连续可见续步而非同一技术 Turn 的多步输出，是为了兼容 DSH Chat 紧凑视图只呈现每个 Turn 最终 Assistant 答复的规则；因此它们属于同一逻辑回复批次，但后续气泡是独立技术 Turn。
+- 不新增人格风格控制，不重建记忆或压缩；不改 Life 意愿与主动联系授权。B站/Windows 实机多气泡验收仍待完成，`releaseReady:false`。
+- 定向测试覆盖共享归一化、逐条回执、未知结果停止、主人私信 P6-A、主 Session 连续可见气泡、新来信中断。
+
 ## [2.7.1-dev.42] · Life owner chat (development preview)
 
 - Life optional `talk_to_owner` to explicitly bound live main Session via `followup`; opt-in default off, 09:00-22:00 local window, >=8h cooldown, <=2 attempts/day, durable no-repeat and unknown no retry.

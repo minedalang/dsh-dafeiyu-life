@@ -317,8 +317,8 @@ export const Config = !z ? undefined : z.object({
   /** 历史字段名保留兼容：需要主人明确开启，允许鱼鱼自主考虑并回复陌生人私信（不再是一条欢迎消息） */
   dmStrangerOnce: z.boolean().default(false).extra('volatile', true), // legacy: previously consented to a bounded one-shot stranger DM, not ongoing conversations
   dmStrangerAutonomyEnabled: z.boolean().default(false).extra('volatile', true),
-  dmP6Enabled: z.boolean().default(true).extra('volatile',true), // behavioral P6 only; NEVER grants DM sending authority
-  dmP6MaxBubbles: z.natural().default(3).extra('volatile',true), // 1–3 per incoming DM turn
+  dmP6Enabled: z.boolean().default(true).extra('volatile',true), // shared natural multi-bubble behavior for ordinary DM, owner DM and main Session; NEVER grants sending authority
+  dmP6MaxBubbles: z.natural().default(3).extra('volatile',true), // shared 1–3 bubble cap; each transport keeps its own permission/receipt checks
   dmStrangerText: z.string().default('').extra('volatile', true), // deprecated: first DM now uses the existing AI reply call
   dmStrangerMaxReplies: z.natural().default(1).extra('volatile', true), // only active when optional strict rice-code approval is enabled
   dmStrangerFirstFixed: z.boolean().default(false).extra('volatile', true), // deprecated: all enabled DM tiers now use the same AI reply call

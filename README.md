@@ -1,4 +1,4 @@
-**当前开发预览：**`2.7.1-dev.42`**（尚未发布）。** 肥鱼在原 Life 决策中可以自主考虑是否联系主人，并将可选交流意愿交给已绑定的原 DSH 主 Session；默认不主动联系，保留独立许可、静默和防重。**主 Session 的独立多气泡显示与微信渠道发送仍未接通**；宿主 `followup` 入队不等于聊天消息已送达。此前 dev.41 已支持视频 Agent 20～1440 分钟最短间隔，普通 B站私信多气泡仍需现场核实。统一 Life 继续连接记忆、兴趣、人格、关系和待办；无论新用户还是老用户，旧的定时刷视频不再驱动新生活。[dev.42 主 Session 说明](docs/architecture/2.7.1-dev42-main-session-self-initiated-chat.md) · [dev.41 视频间隔](docs/architecture/2.7.1-dev41-video-agent-configurable-interval.md)。
+**当前开发预览：**`2.7.1-dev.43`**（尚未发布）。** 肥鱼在原 Life 决策中可以自主考虑是否联系主人，并将可选交流意愿交给已绑定的原 DSH 主 Session；默认不主动联系，保留独立许可、静默和防重。**dev.43 抽出统一自然多气泡协议**，普通私信、主人私信与主 Session 共用；主 Session 以同一逻辑回复中的连续独立消息显示，主人私信逐气泡记录 B站回执。Windows/DSH Chat UI 与真实 B站多气泡仍需实机验收。此前 dev.42 保留 Life 自主联系主人能力，dev.41 支持视频 Agent 20～1440 分钟最短间隔。统一 Life 继续连接记忆、兴趣、人格、关系和待办；无论新用户还是老用户，旧的定时刷视频不再驱动新生活。[dev.42 主 Session 说明](docs/architecture/2.7.1-dev42-main-session-self-initiated-chat.md) · [dev.41 视频间隔](docs/architecture/2.7.1-dev41-video-agent-configurable-interval.md)。
 **当前 2.7.1-dev.38 开发预览（未发布）：**新增视频／私信／评论专业 Agent 的脱敏 Episode 行动上下文，以及私信 Agent 自主考虑关注长期可信联系人（需单独授权和 B站真实读回）的首阶段接线；其他专业 Agent 的自由连续动作仍未全部完成。[技术说明与未覆盖范围](docs/architecture/2.7.1-dev38-subagent-action-continuity.md)。
 **当前 dev.37 发布前维护（尚未发布）：**统一 Life 连接记忆、兴趣、人格、关系和待办；无论新用户还是老用户，旧的定时刷视频不再驱动新生活。已修复管理中心「让鱼鱼考虑一次」的 `sched is not defined`；新增 S0/S1 匿名验收快照，并修正社交归属的假绿色状态。**这些仅是发布前代码修复，不代表真实环境验收完成。** 详见 [发布验收步骤](docs/architecture/2.7.1-dev37-release-acceptance.md)。
 **dev.37 统一行动归属（未发布）：**统一 Life 行动归属与 Episode 因果层将主人请求、主动 Life 行动与被动社交回复分开记录；已核验回执关联原有待办与生活片段，不会因为批准意愿就冒充平台成功。此前的 Universal Life Episode Engine 把 Life 顶层自主行动、真实完成的视频轮次、已核验社交和写操作链接到当前账号的匿名因果片段。首页真实选中后的原探索意愿可在下一轮**主动选择 `resume_episode`**，无需先另外执行一个新动作；原来的平台门禁、预算、休息、未知结果冻结不变。详见 [dev.37 跨系统归属与边界](docs/architecture/2.7.1-dev37-unified-action-ownership.md)。
@@ -24,7 +24,7 @@
 
 大肥鱼（鱼鱼）是运行于 DeepSeek Harness（DSH）的开源 AI 角色生活系统。她能陪主人完成主 Session 中的正常任务，也能在得到授权的 B站生活里认识人、探索兴趣、积累经历，逐渐形成自己的表达方式。**她可以接受建议，也可以延期或拒绝；会记得一些事，也会自然遗忘。**
 
-当前稳定版：**`2.7.0`**；当前开发预览：**`2.7.1-dev.42`**。[dev.33 评论 @ 提及与记忆纠错维护说明](docs/architecture/2.7.1-dev33-mention-memory-hotfix.md)。新 Life 重构正在接受 RC 准入检查，尚未发布。
+当前稳定版：**`2.7.0`**；当前开发预览：**`2.7.1-dev.43`**。 [dev.43 统一自然多气泡说明](docs/architecture/2.7.1-dev43-shared-message-burst.md)。[dev.33 评论 @ 提及与记忆纠错维护说明](docs/architecture/2.7.1-dev33-mention-memory-hotfix.md)。新 Life 重构正在接受 RC 准入检查，尚未发布。
 
 **2.7.1 的主要变化：**无论新用户还是老用户，均可通过统一 Life 自主生活决策逐步取代旧的定时刷视频模式；新版「🌿 Life 自主生活」集中管理生活节奏，并连接鱼鱼原有的**记忆、兴趣、人格、关系和待办**。她可以根据目前可回忆的公开经历与兴趣线索选择探索，也可以休息或延期。旧重复设置入口已清理；旧数据、备份与发送安全机制继续保留。
 
@@ -36,7 +36,7 @@
 
 **其他重构：**Life 已支持不依赖视频的熟人联系、探索、反思及多来源候选续行；所有公开评论默认共用每日 1000 条容量（旧已保存额度不自动覆盖），视频最短间隔 20 分钟。快速设置是统一流程，管理页的一天只展示可读的真实生活事件。具体的逐版变更见 [CHANGELOG](CHANGELOG.md)，现行 [架构与未验收边界](docs/architecture/README.md)。
 
-**尚待 RC 验收：** Windows、真实 B站及模型、旧用户冷备份升级、双账号切换、72 小时稳定运行和跨日成长因果仍需现场证明，因此当前仍为 `2.7.1-dev.42`，并非可发布 RC。详见 [RC 十三项行为自检](docs/architecture/2.7.1-rc-preflight-13-questions.md)。
+**尚待 RC 验收：** Windows、真实 B站及模型、旧用户冷备份升级、双账号切换、72 小时稳定运行和跨日成长因果仍需现场证明，因此当前仍为 `2.7.1-dev.43`，并非可发布 RC。详见 [RC 十三项行为自检](docs/architecture/2.7.1-rc-preflight-13-questions.md)。
 
 **现有稳定版 2.7.0** 已支持受权限控制的私信、评论互动、关系认识、兴趣探索与待办记录；详情见 [2.7.0 版本说明](RELEASE_NOTES_v2.7.0.md)。升级不会自动放宽社交授权：陌生人多轮私信、评论续聊、@ 和主动外发仍遵守各自开关、额度与真实回执。
 

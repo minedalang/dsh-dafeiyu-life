@@ -1,3 +1,34 @@
+# 2.7.1-dev.43 · 统一自然多气泡输出（开发预览，未发布）
+
+## 目标
+
+把原 P6-A 多气泡能力从普通私信专用流程抽象成公共消息输出层，并接入主人私信和主 Session；不为每个 Agent 复制一套分段协议。
+
+## 主要变更
+
+- 新增 `lib/message-burst.mjs`：公共消息归一化、1～3 条协议、自然多气泡提示词、顺序发送及逐条回执状态。未知结果不自动重试；本地回执持久化失败时停止剩余发送。
+- 普通 B站私信、主人 B站私信、主 Session 读取同一 `dmP6Enabled` 和 `dmP6MaxBubbles`。管理页文案明确覆盖范围，没有新增主人专用开关。
+- 主人私信 Agent 支持 `messages` 数组，逐条发送并记录每条确认结果；只把已确认消息写入助手历史和 Life 回执。
+- 主 Session 可通过 `dafeiyu_chat_burst` 自主选择 2～3 条独立气泡；一条消息仍走普通单条回复。后续气泡由原主 Session 的 `followup()` 续步，保持同一逻辑回复但分别形成可见 Assistant 消息。
+- 新主人消息到达会取消未执行的气泡续步；若旧续步正在生成则中断并保留新主人输入。
+- P6-A 普通私信和主人私信共用顺序发送器；评论链路复用同一归一化协议，但保留其特有的评论根、rpid 与平台校验。
+
+## 重要实现边界
+
+DSH Chat 紧凑视图以每个技术 Turn 的最终 Assistant 答复作为可见答复。若把多条消息放在同一个技术 Turn 的多个 assistant step 中，前面的答复可能折叠进过程区。因此本版把它们实现为一个逻辑回复批次中的连续独立 Turn：第一条属于主人原始输入的回复，第二、第三条是紧接的内部续步 Turn。内部续步输入使用插件来源并由 Chat 作为折叠上下文显示，不伪造 Assistant Session 事件。
+
+## 安全与回执
+
+- 每个 B站气泡独立 eventId，逐条检查配置、授权和发送回执。
+- 中途发送未知时冻结剩余气泡，不盲目重发。
+- 主 Session 新来信优先，旧批次未发内容取消。
+- 消息条数是上限，不要求凑满；模型可自然选择只说一条。
+- 不改变人格、情绪、记忆、Session 压缩、Life 自主意愿或外发授权。
+
+`releaseReady:false`。真实 Windows/DSH Chat UI 和 B站账号的 2～3 气泡实机验收仍需完成。
+
+---
+
 # 2.7.1-dev.42 · Life owner chat (development preview)
 
 - Life optional `talk_to_owner` to explicitly bound live main Session via `followup`; opt-in default off, 09:00-22:00 local window, >=8h cooldown, <=2 attempts/day, durable no-repeat and unknown no retry.
