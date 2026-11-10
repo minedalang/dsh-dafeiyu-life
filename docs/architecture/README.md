@@ -1,3 +1,7 @@
+## 当前开发版本 2.7.1-dev.48：Life 自主选择公开补读、神经回忆与后台技术健康（未发布）
+
+[dev.48 生产接线、真实证据约束与已知未完成范围](2.7.1-dev48-neural-recall-and-social-reads.md)。不新增 Life 数据库、子 Agent 或私信发送渠道，旧许可不迁移开启；系统状态取已有本地快照。Windows/B站实机未验收，`releaseReady:false`。
+
 ## 当前开发版本 2.7.1-dev.47：Life 可读生活时间线（未发布）
 
 [社交快速考虑与子 Agent 调度关系、生活时间线安全原因类别、可信回执边界](2.7.1-dev47-owner-readable-life-timeline.md)。这是从原 LifeAgentEvents 投影的只读用户卡片，不新增社交所有权或发送权限，`releaseReady:false`。

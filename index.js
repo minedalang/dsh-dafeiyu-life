@@ -176,6 +176,8 @@ import {describeIncomingBiliImage,verifiedBiliImageUrl} from './lib/incoming-ima
 import {favoriteStyleFromPersona,publicFavoriteTopics} from './lib/favorite-style.mjs'
 import { createLifeMemoryGateway, relationshipMemoryHalfLifeDays } from './lib/life-memory-gateway.mjs'
 import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
+import { memoryNeuralProjection } from './lib/memory-neural-projection.mjs'
+import { systemHealthSnapshot } from './lib/system-health-projection.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
 import { createDailyDynamic } from './lib/daily-dynamic.mjs'
 import { createMemeLearning } from './lib/meme-learning.mjs'
@@ -4003,11 +4005,56 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       contexts.map((row,i)=>({...row,availableContexts:[...(row.availableContexts||[]),
         ...(batch[i]?.kind==='comment'&&batch[i]?.verifiedCommentSource===true&&
           cfg.commentPublicProfileReadEnabled===true&&cfg.lifeAgentMode==='active'&&
-          cfg.masterEnabled===true&&!accountBinding.status().blocked?['public_person']:[])]}))),
+          cfg.masterEnabled===true&&!accountBinding.status().blocked?['public_person']:[]),
+          ...(batch[i]?.kind==='comment'&&batch[i]?.verifiedCommentSource===true&&
+            cfg.masterEnabled===true&&cfg.lifeAgentMode==='active'&&
+            !accountBinding.status().blocked?['hot_comments']:[])]}))),
+    authorizeContextRead:async({row,readKinds})=>{
+      refreshCfg()
+      if(row?.kind!=='comment'||row?.verifiedCommentSource!==true||
+        cfg.masterEnabled!==true||cfg.lifeAgentMode!=='active'||
+        accountBinding.status().blocked||
+        !/^[a-f0-9]{16}$/.test(String(trustedLifeAccountTag()||''))||
+        !Array.isArray(readKinds)||
+        !readKinds.some(k=>['public_person','hot_comments'].includes(k)))return {ok:false,reason:'not-offered'}
+      const bvid=String(row.bvid||''),rpid=String(row.incomingRpid||row.rpid||'')
+      if(!/^BV[0-9A-Za-z]{10}$/.test(bvid)||!/^[1-9]\d{0,19}$/.test(rpid))return {ok:false,reason:'invalid-source'}
+      const before=trustedLifeAccountTag(),uid=String(accountBinding.status().activeUid||'')
+      // Propose only a capability bound to the current verified public comment.
+      // No model-supplied UID, private text or unverified target is used as authority.
+      const offerings=[
+        ...(readKinds.includes('hot_comments')?[{id:'read_hot_comments',kind:'social_read',label:'可选查看原 BV 其他公开热门评论'}]:[]),
+        ...(readKinds.includes('public_person')&&cfg.commentPublicProfileReadEnabled===true?
+          [{id:'read_public_person',kind:'social_read',label:'可选查看这位已核验评论者的公开投稿标题与 BV'}]:[])]
+      if(!offerings.length)return {ok:false,reason:'read-permission-disabled'}
+      const choice=await lifeWillingness?.decide({trigger:'comment-context',scene:'comment',uid:String(row.uid||''),
+        sourceKey:'comment-read:'+createHash('sha256').update(bvid+':'+rpid+':'+offerings.map(x=>x.id).join(',')).digest('hex'),
+        candidates:offerings,
+        evidence:{publicComment:true,availableReadKinds:offerings.map(x=>x.id)}})
+      if(choice?.ok!==true||!offerings.some(x=>x.id===choice.candidateId))return {ok:false,reason:choice?.reason||'life-declined'}
+      const valid=trustedLifeAccountTag()===before&&String(accountBinding.status().activeUid||'')===uid&&
+        (choice.candidateId!=='read_public_person'||cfg.commentPublicProfileReadEnabled===true)&&cfg.lifeAgentMode==='active'
+      // This is a READ willingness. Never pass its proof as a write grant.
+      if(choice.proof)lifeWillingness.receipt(choice.proof,{status:valid?'delegated':'not-sent'})
+      return {ok:valid,allowedReadKinds:valid?[choice.candidateId==='read_hot_comments'?'hot_comments':'public_person']:[],reason:valid?'life-selected':'account-or-permission-changed'}
+    },
     loadRequestedContexts:async(batch,requestedByIndex)=>{
       const base=await (socialContextAssembler?.batch(batch,{mode:'compact',requestedByIndex})||Promise.resolve(batch.map(()=>({}))))
       return Promise.all(base.map(async(row,i)=>{
-        if(!requestedByIndex?.[i]?.includes('public_person'))return row
+        const wantsHot=requestedByIndex?.[i]?.includes('hot_comments')
+        const wantsPerson=requestedByIndex?.[i]?.includes('public_person')
+        if(!wantsPerson&&!wantsHot)return row
+        if(wantsHot){
+          const before=trustedLifeAccountTag(),uid=String(accountBinding.status().activeUid||'')
+          if(!/^[a-f0-9]{16}$/.test(String(before||''))||!/^BV[0-9A-Za-z]{10}$/.test(String(batch[i]?.bvid||''))||
+            batch[i]?.verifiedCommentSource!==true||accountBinding.status().blocked)
+            return {...row,loadErrors:[...(row.loadErrors||[]),'hot_comments']}
+          const hot=await videoContext.forHotComments(batch[i].bvid)
+          if(!hot?.ok||trustedLifeAccountTag()!==before||String(accountBinding.status().activeUid||'')!==uid)
+            return {...row,loadErrors:[...(row.loadErrors||[]),'hot_comments']}
+          row={...row,hotCommentsContext:String(hot.text||'').slice(0,1300)}
+        }
+        if(!wantsPerson)return row
         refreshCfg()
         const input=batch[i],tag=trustedLifeAccountTag(),activeUid=String(accountBinding.status().activeUid||'')
         const enabled=cfg.masterEnabled===true&&cfg.lifeAgentMode==='active'&&
@@ -7331,7 +7378,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       }catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,300)})}
     }
 
-    if (req.method === 'GET' && path === '/api/bili-duty/main-session/memory/garden') {
+    if (req.method === 'GET' && (path === '/api/bili-duty/main-session/memory/garden' || path === '/api/bili-duty/main-session/memory/neural')) {
       // Owner's read-only management view. It is never injected into social
       // prompts, cannot revive archived events and must not create contacts.
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
@@ -7359,6 +7406,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           }
         }catch(e){peopleError='关系观察索引暂不可用：'+String(e?.message||e).slice(0,90)}
         const result=memoryGardenSnapshot({memories:longTermMemory.list('',300),interests:interestMemoryRows(stateDir),people,query:q,kind,limit,peopleError})
+        if(path.endsWith('/neural')){
+          const episodes=lifeMemory?.recall({query:q,domain:'main-session',kinds:['watch','comment','social'],maxItems:Math.min(35,limit),maxChars:4500})||[]
+          return sendJson(res,200,{...memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit}),warning:result.warning})
+        }
         return sendJson(res,200,result)
       }catch(e){return sendJson(res,500,{ok:false,error:'记忆花园读取失败：'+String(e?.message||e).slice(0,160)})}
     }
@@ -7817,6 +7868,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         interests:Array.isArray(interestRows)?interestRows:null,
         relationshipsReady:Boolean(relationshipView&&relationshipView.ok!==false),
         socialOwner:socialDecisionOwnership.status().socialDecisionOwner}),willingness:lifeWillingness?.status()||{ok:false}})
+    }
+    if (req.method === 'GET' && path === '/api/bili-duty/life-agent/system-health') {
+      // Local snapshots only: no additional model/network calls or account identifiers.
+      try{return sendJson(res,200,systemHealthSnapshot({planner:autonomousPlanner.status(),
+        scheduler:interactionScheduler.status(),send:socialSendTransaction.inspect(),
+        schedulerExpected:cfg.masterEnabled===true&&(cfg.dmWatch===true||cfg.commentWatchReplies===true||cfg.commentAtEnabled===true),
+        now:Date.now()}))}
+      catch{return sendJson(res,200,{ok:true,state:'unavailable',issues:[{id:'diagnostics',severity:'warning',
+        title:'运行诊断暂不可用',detail:'无法读取本地状态；请查看后台日志。',code:'health-snapshot-unavailable'}]})}
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/transition-readiness') {
       refreshCfg()

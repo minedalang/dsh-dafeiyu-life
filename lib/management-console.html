@@ -805,6 +805,45 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 @media(prefers-reduced-motion:reduce){#panel-firststart .quick-option{transition:none}#panel-firststart .quick-option:hover{transform:none}}
 @media(max-width:600px){.quick-settings-home{padding:14px}.quick-setting-card{min-height:145px}}
 @media(prefers-reduced-motion:reduce){.quick-setting-card{transition:none}}
+
+/* dev48: owner-readable, evidence-grounded neural recall and technical health */
+#panel-life .neural-recall-board{margin:17px 0;padding:20px;border-radius:22px;background:radial-gradient(ellipse at 47% 0%,rgba(126,112,204,.2),transparent 65%),linear-gradient(150deg,#1c253a,#111a2b);color:#eff3ff;border:1px solid #475474;box-shadow:0 15px 36px #101b3630}
+#panel-life .neural-recall-board .muted{color:#b9c7da}
+#panel-life .neural-recall-head{display:flex;justify-content:space-between;align-items:center;gap:15px}
+#panel-life .neural-recall-head h4{font-size:21px;margin:4px 0}
+#panel-life .neural-counter{background:#3b3860;border:1px solid #7c77b7;padding:5px 11px;border-radius:50px;font-size:12px}
+#panel-life .neural-recall-controls{display:flex;flex-wrap:wrap;gap:16px;margin:14px 0;font-size:12px}
+#panel-life .neural-recall-controls label{display:flex;align-items:center;gap:6px;cursor:pointer}
+#panel-life .neural-recall-controls input{accent-color:#a9e2ce}
+#panel-life .neural-recall-layout{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(245px,1fr);gap:15px}
+#panel-life .neural-recall-field{border-radius:16px;background:#101929;border:1px solid #3b4b65;overflow:hidden}
+#panel-life #neural-memory-svg{display:block;width:100%;height:auto;min-height:260px;max-height:500px;touch-action:pan-y}
+#panel-life .neural-recall-field>p{padding:0 15px 12px;margin:0}
+#panel-life .neural-recall-side{border-radius:16px;padding:15px;background:#171f32;border:1px solid #394762;min-width:0}
+#panel-life .neural-recall-side h5{margin:0 0 12px;font-size:15px}
+#panel-life .neural-memory-results{display:flex;flex-direction:column;gap:9px;max-height:350px;overflow-y:auto}
+#panel-life .neural-memory-result{display:block;width:100%;text-align:left;padding:11px 12px;color:#f1f4fa;border:1px solid #475574;border-radius:11px;background:#25314a;white-space:normal;transition:border-color .25s,transform .25s,background .25s;animation:neural-item-enter .4s both}
+#panel-life .neural-memory-result:hover,#panel-life .neural-memory-result[aria-pressed="true"]{border-color:#9acfd4;background:#303c5a;transform:translateY(-1px)}
+#panel-life .neural-memory-result small{display:block;color:#c1cada;margin-top:4px}
+#panel-life .neural-memory-detail{border-top:1px solid #3c4964;margin-top:14px;padding-top:12px;white-space:pre-line;line-height:1.7;font-size:12px;color:#d2def0}
+#panel-life .neural-node{cursor:pointer;outline:none}
+#panel-life .neural-node circle{stroke:#d7e4ff;stroke-width:1.5;filter:drop-shadow(0 0 9px #938afa99);transition:r .22s,opacity .25s}
+#panel-life .neural-node:focus-visible circle,#panel-life .neural-node:hover circle,#panel-life .neural-node[data-active="true"] circle{stroke:#fff;stroke-width:3;filter:drop-shadow(0 0 14px #b6bcff)}
+#panel-life .neural-node text{font-size:11px;fill:#dce6f5;text-anchor:middle;pointer-events:none}
+#panel-life .neural-edge{fill:none;stroke:#82e0d0;stroke-width:1.4;stroke-opacity:.52;stroke-dasharray:5 7;animation:neural-flow 12s linear infinite}
+#panel-life .neural-edge[data-type="relationship"]{stroke:#f7a7d6}
+#panel-life .neural-edge[data-type="source"]{stroke:#a5b8d7}
+#panel-life .neural-signal{fill:#c9f1eb;filter:drop-shadow(0 0 7px #a3edea)}
+#panel-life .neural-emotion-link{stroke:#ffbdcc;stroke-width:1.6;stroke-opacity:.85;stroke-dasharray:3 5;animation:neural-flow 12s linear infinite}
+#panel-life .neural-emotion-echo{fill:#ffb4cc;stroke:#fff4f8;stroke-width:1.2;filter:drop-shadow(0 0 7px #ff93c5);pointer-events:none}
+#panel-life .neural-emotion-note{fill:#ffdbe8;font-size:10px;text-anchor:middle;pointer-events:none}
+@media(prefers-reduced-motion:reduce){#panel-life .neural-emotion-link{animation:none}}
+.life-health-banner{position:sticky;top:7px;z-index:70;margin:0 auto 18px;max-width:1060px;background:#332831;color:#ffeded;border:1px solid #ee9f9f;border-left:5px solid #ee8e8e;padding:13px 16px;border-radius:12px;box-shadow:0 10px 24px #0002}
+.life-health-banner strong{font-size:15px}.life-health-banner p{margin:4px 0;font-size:13px}.life-health-banner small{opacity:.87}.life-health-banner button{float:right;background:#fff2;color:#fff;border:1px solid #fff5;border-radius:9px;padding:5px 10px}
+@keyframes neural-flow{to{stroke-dashoffset:-120}}
+@keyframes neural-item-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:810px){#panel-life .neural-recall-layout{grid-template-columns:1fr}#panel-life .neural-memory-results{max-height:270px}}
+@media(prefers-reduced-motion:reduce){#panel-life .neural-edge,#panel-life .neural-memory-result{animation:none}#panel-life .neural-memory-result,#panel-life .neural-node circle{transition:none}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -893,7 +932,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 @media(prefers-reduced-motion:reduce){#panel-life-agent :is(.life-hero-character,.life-hero-bubble,.life-command-hero:before,.life-command-hero:after,.fish-avatar,.fish-bubble,.trend-line,.record){animation:none!important}#panel-life-agent :is(.life-profile-card,.todo-item){transition:none!important}}
 </style>
 </head>
-<body><main class="wrap">
+<body><aside id="life-system-health" class="life-health-banner" role="status" aria-live="polite" hidden><strong id="life-health-title">技术状态</strong><p id="life-health-detail"></p><small id="life-health-retry"></small><button id="life-health-details" type="button">查看诊断</button></aside><main class="wrap">
 <header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><a class="button mobile-back" href="/" aria-label="返回 DSH Mobile">← 返回 DSH</a><button id="refresh">刷新当前页</button></div></header>
 <div class="activity-ticker" role="region" aria-label="鱼鱼近期活动" title="只显示系统事件类别，不显示评论正文或私密资料"><span class="ticker-mark">🐟 生活播报</span><div class="ticker-view"><span id="activity-ticker-text" aria-live="off">连接生活状态中…</span></div><span id="activity-ticker-clock" class="muted">自动更新</span></div>
 <nav class="tabs" aria-label="管理分类">
@@ -1305,6 +1344,15 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="memory-garden-heading"><div class="memory-garden-mark" aria-hidden="true">🧠</div><div><span class="page-eyebrow">LIFE MEMORY · 真实而会变化</span><h4>此刻还记得的事</h4><p class="muted">浏览真实经历与长期认识，按类别筛选；搜视频标题、BV 号或聊天关键词，留空看最近。开启已有的「低成本人生记忆检索」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p></div></div>
 <div class="memory-filter-pills" role="group" aria-label="筛选记忆花园中的经历和长期认识"><button type="button" data-memory-kind="" aria-pressed="true">✨ 全部</button><button type="button" data-memory-kind="experience" aria-pressed="false">🎬 经历</button><button type="button" data-memory-kind="relationship" aria-pressed="false">💞 人物</button><button type="button" data-memory-kind="interest" aria-pressed="false">🌱 兴趣</button><button type="button" data-memory-kind="fact" aria-pressed="false">📜 事实</button></div>
 <div class="toolbar memory-search-bar"><input id="main-session-history-query" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="输入视频标题 / BV号 / 聊天关键词，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div>
+<section class="neural-recall-board" aria-label="神经回忆场：只读的真实记忆关系">
+  <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 证据网络</span><h4>神经回忆场</h4></div><span id="neural-memory-count" class="neural-counter">等待检索</span></div>
+  <p class="muted">每个亮点都是当前还能检索的真实记忆。信号表示索引检索而非读心；连线只在两条记录共享已核验证据时出现。</p>
+  <div class="neural-recall-controls"><label><input id="neural-show-interest" type="checkbox" checked> 兴趣证据连线</label><label><input id="neural-show-relationship" type="checkbox" checked> 互动证据连线</label><label><input id="neural-show-source" type="checkbox" checked> 共享来源连线</label><label><input id="neural-show-emotion" type="checkbox" checked> 当时情绪回声（有原始证据时）</label></div>
+  <div class="neural-recall-layout">
+    <div class="neural-recall-field"><svg id="neural-memory-svg" viewBox="0 0 740 465" role="img" aria-label="记忆节点和有证据的连接，可使用结果列表查看详情"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a9a3f7" stop-opacity=".33"/><stop offset="1" stop-color="#a9a3f7" stop-opacity="0"/></radialGradient></defs><circle cx="370" cy="232" r="180" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g><circle cx="370" cy="232" r="42" fill="#665b9f" stroke="#c7b4ff" stroke-width="2"/><text x="370" y="231" text-anchor="middle" fill="white" font-size="14" font-weight="700">鱼鱼的</text><text x="370" y="249" text-anchor="middle" fill="white" font-size="11">记忆索引</text></svg><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
+    <div class="neural-recall-side"><h5>被唤起的记忆</h5><div id="neural-memory-results" class="neural-memory-results"><p class="muted">输入关键词并搜索，或留空查看最近。</p></div><div id="neural-memory-detail" class="neural-memory-detail" aria-live="polite">点击节点或结果卡片查看真实来源和清晰程度。</div></div>
+  </div>
+</section>
 <p id="main-session-history-status" class="muted" role="status">等待读取鱼鱼当前还能回忆的经历与认识…</p><div id="main-session-history" class="records records-scroll tall" aria-live="polite"></div>
 <div id="life-lessons" class="memory-lessons"><h4>✨ 这些经历给她留下了什么？</h4><p class="muted">有些经历会被忘掉具体细节，但值得保留的兴趣、约定或体会，可能继续影响鱼鱼的选择。并非每条经历都要产生感悟。</p>
 <div class="toolbar"><select id="main-memory-kind" aria-label="筛选留下的认识"><option value="">全部认识</option><option value="experience">经历带来的体会</option><option value="relationship">人物关系</option><option value="interest">兴趣变化</option><option value="fact">事实和约定</option></select><span id="memory-lessons-summary" class="muted" role="status">正在读取…</span></div>
@@ -1748,7 +1796,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div><label for="comment-per-poll">每轮公开回复总数（1–1000）</label><input id="comment-per-poll" type="number" min="1" max="1000" value="1"></div>
 <div><label for="comment-per-day">后台自动回复：滚动24小时已成功发送上限（1–1000，独立设置）</label><input id="comment-per-day" type="number" min="1" max="1000" value="5"></div>
 </div></div>
-<div class="settings-section" id="comment-public-person-read-section"><h4>评论对象的公开作品探索（只读授权）</h4><p class="muted">当评论 Agent 已从当前真实评论核验出对方身份后，鱼鱼可以自主决定是否查看对方公开投稿。仅读取公开作品标题与 BV，不允许关注、私信或跨评论串回复；首次开启需要单独确认，也可能增加 B站读取请求。</p><div class="fields"><div><label for="comment-public-person-read">允许评论 Agent 按需查看当前评论者的公开投稿</label><select id="comment-public-person-read"><option value="false">关闭（默认）</option><option value="true">开启 · 仅限当前已核验评论者，只读公开投稿</option></select></div></div></div>
+<div class="settings-section" id="comment-public-person-read-section"><h4>统一公开资料读取权限（不是行为偏好）</h4><p class="muted">这里仅规定对已核验评论者公开作品列表的外部读取许可，<strong>不决定肥鱼每次是否探索</strong>。评论子 Agent 可以提出查看公开作品或原视频其他热评的建议，由 Life 独立选择；只有选中的读取才会执行并核验来源、账号与请求预算。仅读取公开作品标题与 BV，不授权关注、私信或跨评论串回复。旧用户关闭的权限继续保留；首次开启需单独确认。</p><div class="fields"><div><label for="comment-public-person-read">授权读取当前已核验评论者的公开投稿（Life 自主选择是否使用）</label><select id="comment-public-person-read"><option value="false">关闭（默认）</option><option value="true">开启 · 仅限当前已核验评论者，只读公开投稿</option></select></div></div></div>
 <div class="settings-section" id="comment-p6-section"><h4>公开评论与被 @ 的自然续聊（均默认关闭）</h4><p class="muted">自然续聊表示鱼鱼可根据对话内容分成几条短回复，或隔一段时间再决定是否补充。此开关本身不会授权公开回复。开启后鱼鱼可以自然连发、稍后补充或重新考虑；仍会受真实来源核验、配额、跨渠道频率和平台回执约束，绝不因为被 @ 就主动 @ 别人。</p><div class="fields">
 <label class="checkline"><input id="comment-p6-enabled" type="checkbox"> 开启公开评论自然续聊</label>
 <label class="checkline"><input id="comment-at-p6-enabled" type="checkbox"> 开启被 @ 后的自然续聊</label>
