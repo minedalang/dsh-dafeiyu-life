@@ -76,7 +76,7 @@ test('dev.7 管理页面与工具入口保留沙盒隔离、安全权限和第�
   assert.match(ui,/模拟尚无变化/)
   assert.doesNotMatch(html,/aigengtu\.com\/persona/)
   assert.match(ui,/外部平台\/工具指令/)
-  assert.match(html,/activity-ticker-text/)
+  assert.doesNotMatch(html,/activity-ticker-text/)
   assert.match(server,/activity-feed/)
   assert.match(server,/BILI_FISH_FAVORITE_STYLE/)
   assert.match(py,/automatic=True/)

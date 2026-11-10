@@ -176,7 +176,7 @@ import {describeIncomingBiliImage,verifiedBiliImageUrl} from './lib/incoming-ima
 import {favoriteStyleFromPersona,publicFavoriteTopics} from './lib/favorite-style.mjs'
 import { createLifeMemoryGateway, relationshipMemoryHalfLifeDays } from './lib/life-memory-gateway.mjs'
 import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
-import { memoryNeuralProjection } from './lib/memory-neural-projection.mjs'
+import { memoryNeuralProjection, neuralProjectionKey } from './lib/memory-neural-projection.mjs'
 import { systemHealthSnapshot } from './lib/system-health-projection.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
 import { createDailyDynamic } from './lib/daily-dynamic.mjs'
@@ -7408,7 +7408,26 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const result=memoryGardenSnapshot({memories:longTermMemory.list('',300),interests:interestMemoryRows(stateDir),people,query:q,kind,limit,peopleError})
         if(path.endsWith('/neural')){
           const episodes=lifeMemory?.recall({query:q,domain:'main-session',kinds:['watch','comment','social'],maxItems:Math.min(35,limit),maxChars:4500})||[]
-          return sendJson(res,200,{...memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit}),warning:result.warning})
+          const projection=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit})
+          // Only the existing embedding index can supply semantic coordinates.
+          // Identifiers used for matching never leave this owner-only endpoint.
+          const rows=[...result.rows,...episodes.map(m=>({...m,gardenKind:'experience',gardenEvidence:'fading-life-episode'}))]
+          const visible=new Set(projection.nodes.map(n=>n.id))
+          const candidates=rows.filter(m=>visible.has(neuralProjectionKey(m))).map(m=>({
+            nodeId:neuralProjectionKey(m),
+            corpusId:m.gardenEvidence==='fading-life-episode'?'episode:'+String(m.id):
+              m.gardenEvidence==='identity-memory'?'memory:'+String(m.id):
+              m.gardenEvidence==='selected-video-trend'?'interest:'+String(m.id):'',
+            text:m.text||m.summary||''
+          }))
+          const layout=cfg.mainSessionMemoryEmbeddingEnabled===true
+            ?embeddingIndex?.projectPoints(candidates)
+            :null
+          const positions=layout?.coordinates||{}
+          return sendJson(res,200,{...projection,
+            nodes:projection.nodes.map(node=>({...node,position:positions[node.id]||null})),
+            layout:{mode:layout?.mode||'structured',matched:layout?.matched||0},
+            warning:result.warning})
         }
         return sendJson(res,200,result)
       }catch(e){return sendJson(res,500,{ok:false,error:'记忆花园读取失败：'+String(e?.message||e).slice(0,160)})}

@@ -1,3 +1,7 @@
+## 当前开发版本 2.7.1-dev.49：三维神经回忆场与逐渠道后台状态（未发布）
+
+[dev.49 三维视图、Embedding PCA 只读空间投影、点击选中与健康状态实现边界](2.7.1-dev49-neural-3d-and-channel-health.md)。不重新生成 embedding、不显示内部向量、不引入另一套记忆。行为/权限不变；`releaseReady:false`。
+
 ## 当前开发版本 2.7.1-dev.48：Life 自主选择公开补读、神经回忆与后台技术健康（未发布）
 
 [dev.48 生产接线、真实证据约束与已知未完成范围](2.7.1-dev48-neural-recall-and-social-reads.md)。不新增 Life 数据库、子 Agent 或私信发送渠道，旧许可不迁移开启；系统状态取已有本地快照。Windows/B站实机未验收，`releaseReady:false`。
