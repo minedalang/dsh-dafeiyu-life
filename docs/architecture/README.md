@@ -1,3 +1,6 @@
+## 当前开发版本 2.7.1-dev.50：视频节奏、主人 UID、主 Session 工具和记忆衰减
+
+- [dev.50 视频节奏、主人 UID、主 Session 工具和记忆衰减](./2.7.1-dev50-owner-video-memory.md)：视频最短启动间隔可配置为 1～1440 分钟（旧值保留），每轮阅读／挑选为软参考目标，首次设置可明确保存唯一主人，移除 DSH 工具不支持的 `minItems/maxItems`，3D 节点明暗反映已记录记忆阶段；未增加外发授权。
 ## 当前开发版本 2.7.1-dev.49：三维神经回忆场与逐渠道后台状态（未发布）
 
 [dev.49 三维视图、Embedding PCA 只读空间投影、点击选中与健康状态实现边界](2.7.1-dev49-neural-3d-and-channel-health.md)。不重新生成 embedding、不显示内部向量、不引入另一套记忆。行为/权限不变；`releaseReady:false`。
@@ -35,7 +38,7 @@
 
 ## 当前开发版本 2.7.1-dev.41：视频 Agent 启动间隔可配置
 
-[配置契约、启动门禁、旧设置保护与离线验收](./2.7.1-dev41-video-agent-configurable-interval.md)：默认 20 分钟、最短不可低于 20 分钟，用户可设为 20～1440 分钟；自动与手动启动共用同一账号级真实启动冷却，且独立于 Life 模型考虑频率。`releaseReady:false`，Windows／真实 B站尚待验收。
+[配置契约、启动门禁、旧设置保护与离线验收](./2.7.1-dev41-video-agent-configurable-interval.md)：dev.41 当时默认 20 分钟、允许 20～1440 分钟；dev.50 已放开到 1～1440 分钟，旧值保留；自动与手动启动共用同一账号级真实启动冷却，且独立于 Life 模型考虑频率。`releaseReady:false`，Windows／真实 B站尚待验收。
 
 ## dev.40 同版本维护：Life 管理页旧开发选项清理
 

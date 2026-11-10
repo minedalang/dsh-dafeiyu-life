@@ -15,7 +15,7 @@ const request=(cfg,interval,extra={})=>({schemaVersion:2,revision:lifeSettingsV2
   mode:'active',pace:'natural',videoAgentMinIntervalMinutes:interval,previewOnly:true,...extra})
 
 test('video Agent interval defaults to 20 minutes and is independent of Life decision pace',()=>{
-  assert.equal(MIN_VIDEO_AGENT_INTERVAL_MINUTES,20)
+  assert.equal(MIN_VIDEO_AGENT_INTERVAL_MINUTES,1)
   assert.equal(MAX_VIDEO_AGENT_INTERVAL_MINUTES,1440)
   assert.equal(lifeSettingsV2({...config,videoAgentMinIntervalMinutes:undefined}).budget.videoAgentMinIntervalMinutes,20)
   assert.equal(lifePacePolicy({...config,autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:100}).videoCooldownMinutes,20)
@@ -23,14 +23,16 @@ test('video Agent interval defaults to 20 minutes and is independent of Life dec
   assert.equal(projectLifeSettings({...config,videoAgentMinIntervalMinutes:75}).budget.videoAgentMinIntervalMinutes,75)
 })
 
-test('confirmed Life settings preview accepts 20 through 1440 and rejects a shorter or invalid interval',()=>{
+test('confirmed Life settings preview accepts 1 through 1440, preserving existing 20-minute default',()=>{
   const atMinimum=planLifeSettingsV2(config,request(config,20))
   assert.equal(atMinimum.patch.videoAgentMinIntervalMinutes,undefined,'unchanged 20-minute default is omitted from the diff')
   const atMaximum=planLifeSettingsV2(config,request(config,1440))
   assert.equal(atMaximum.patch.videoAgentMinIntervalMinutes,1440)
   assert.equal(atMaximum.changed.videoAgentMinIntervalMinutes.after,1440)
-  assert.throws(()=>planLifeSettingsV2(config,request(config,19)),/20～1440/)
-  assert.throws(()=>planLifeSettingsV2(config,request(config,1441)),/20～1440/)
+  const oneMinute=planLifeSettingsV2(config,request(config,1))
+  assert.equal(oneMinute.patch.videoAgentMinIntervalMinutes,1)
+  assert.throws(()=>planLifeSettingsV2(config,request(config,0)),/1～1440/)
+  assert.throws(()=>planLifeSettingsV2(config,request(config,1441)),/1～1440/)
   assert.throws(()=>planLifeSettingsV2(config,request(config,20.5)),/整数/)
 })
 
@@ -67,8 +69,8 @@ test('legacy config writes and the agent-facing config tool cannot bypass the ve
   assert.equal(assertLegacyLifeSettingsPatchCompatible(config,{videoAgentMinIntervalMinutes:20}),true)
   const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   assert.match(source,/videoAgentMinIntervalMinutes: z\.natural\(\)\.default\(20\)/)
-  assert.match(source,/videoAgentMinIntervalMinutes',\s*'emotionRecallEnabled/)
-  assert.match(source,/videoAgentMinIntervalMinutes',\s*'autonomousPlannerDailyLimit'/)
+  assert.match(source,/videoAgentMinIntervalMinutes','videoAgentReadTargetPerRound','videoAgentPickTargetPerRound','emotionRecallEnabled/)
+  assert.match(source,/videoAgentMinIntervalMinutes','videoAgentReadTargetPerRound','videoAgentPickTargetPerRound'/)
   const gateCalls=(source.match(/lifeVideoGate\(cfg,budget,Date\.now\(\)\)\.eligible/g)||[]).length
   assert.ok(gateCalls>=2,'automatic capability admission and manual start both use the same configured gate')
 })
@@ -77,8 +79,8 @@ test('normal Life management UI exposes and saves the interval without making it
   const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   assert.match(html,/id="life-video-agent-interval-setting"/)
-  assert.match(html,/id="life-v2-video-min-interval" min="20" max="1440"/)
-  assert.match(js,/videoAgentMinIntervalMinutes:boundedInt\('life-v2-video-min-interval',20,1440/)
+  assert.match(html,/id="life-v2-video-min-interval" min="1" max="1440"/)
+  assert.match(js,/videoAgentMinIntervalMinutes:boundedInt\('life-v2-video-min-interval',1,1440/)
   assert.match(js,/budget\.videoAgentMinIntervalMinutes\?\?20/)
   assert.match(html,/视频启动间隔独立设置/)
 })
