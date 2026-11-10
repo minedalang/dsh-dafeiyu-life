@@ -3161,7 +3161,7 @@ function reportMeta() {
         entryMode:homeFirst?'home':'mixed',commentGate:videoCommentGateCode(cfg,{bridgeReady:lifeVideoActionBridge?.status().ready===true})})?.id||''
       if(videoRoundReceiptId)currentVideoCommentDiagnostics={roundId:videoRoundReceiptId,scope:videoRoundLifeAccountTag,
         gate:videoCommentGateCode(cfg,{bridgeReady:lifeVideoActionBridge?.status().ready===true}),
-        proposed:0,approved:0,blocked:0,declined:0,verified:0,unverified:0,reviewed:0,wanted:0,passed:0,insufficient:0,reviewRejected:0,
+        proposed:0,approved:0,blocked:0,declined:0,deferred:0,verified:0,unverified:0,reviewed:0,wanted:0,passed:0,insufficient:0,reviewRejected:0,
         reviewBvids:new Set(),previouslyPickedBvids:watchedBeforeRun,lastReason:''}
     }catch(e){log('Life Agent 视频启动生命周期登记失败：'+String(e?.message||e).slice(0,100))}
     const homeGuidance=homeFirst?'【本轮已由 Life 或主人明确触发：随便逛首页】优先从 bili_home_recommendations 获取当前账号首页真实候选（最多一次），不需要先有兴趣或搜索词；再由你自行决定是否读哪一条、深入了解或停止。接口不可用则按原安全规则停止或转普通探索，不要重试刷新、不要伪造观看，也不强迫评论。':''
@@ -3247,11 +3247,12 @@ function reportMeta() {
             proposed:diagnostic.proposed,approved:diagnostic.approved,blocked:diagnostic.blocked,
             verified:diagnostic.verified,unverified:diagnostic.unverified,
             // Only a bounded gate code, never a draft or platform error body.
-            ...(diagnostic.blocked>0&&commentDiagnostics?.lastReason?
+            ...((diagnostic.blocked>0||diagnostic.proposed>0&&diagnostic.approved===0)&&commentDiagnostics?.lastReason?
               {reason:commentDiagnostics.lastReason}:{})})
           trace.finish({state:'finished',action:'video_comment',result:diagnostic.code})
           log('本轮原创主评论诊断：'+diagnostic.code+'；入选 '+(selected??'未知')+'，考虑 '+diagnostic.reviewed+
-            '，考虑回执拒绝 '+diagnostic.reviewRejected+(diagnostic.reviewRejected>0?'（'+String(commentDiagnostics?.lastReason||'unknown').slice(0,50)+'）':'')+'，模型提出 '+diagnostic.proposed+'，Life 批准 '+diagnostic.approved+'，技术阻断 '+diagnostic.blocked+'，平台核验 '+diagnostic.verified)
+            '，考虑回执拒绝 '+diagnostic.reviewRejected+(diagnostic.reviewRejected>0?'（'+String(commentDiagnostics?.lastReason||'unknown').slice(0,50)+'）':'')+'，模型提出 '+diagnostic.proposed+'，Life 批准 '+diagnostic.approved+'，技术阻断 '+diagnostic.blocked+'，平台核验 '+diagnostic.verified+
+            (diagnostic.proposed>0&&diagnostic.approved===0?'，未批准原因 '+String(commentDiagnostics?.lastReason||'本轮未保存具体原因').slice(0,65):''))
         }catch(e){log('原创评论诊断待补偿：'+String(e?.message||e).slice(0,100))}
         // Never queue a "completed round" life decision if the trusted
         // account ledger did NOT persist a verified normal-exit receipt.
@@ -5483,10 +5484,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     onCommentDiagnostic:({stage,code})=>{
       const row=currentVideoCommentDiagnostics
-      if(!row||row.scope!==trustedLifeAccountTag()||!['proposed','approved','blocked','declined','verified','unverified','review-rejected'].includes(stage))return
+      if(!row||row.scope!==trustedLifeAccountTag()||!['proposed','approved','blocked','declined','deferred','verified','unverified','review-rejected'].includes(stage))return
       if(stage==='review-rejected'){row.reviewRejected=Math.min(40,row.reviewRejected+1);row.lastReason=code;return}
       row[stage]=Math.min(40,row[stage]+1)
-      if(stage==='declined'||stage==='blocked')row.lastReason=code
+      if(stage==='declined'||stage==='blocked'||stage==='deferred')row.lastReason=code
     },
     // The trusted Python verifier only performs authenticated single-target
     // GET requests. It is independent of the writing tool's claimed success.
@@ -7464,29 +7465,44 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           const allRows=[...result.rows,...episodes.map(m=>({...m,gardenKind:'experience',gardenEvidence:'fading-life-episode'}))]
           const pre=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true})
           const allowedIds=new Set(pre.nodes.map(m=>m.id))
-          const corpus=allRows.filter(m=>allowedIds.has(neuralProjectionKey(m))).map(m=>({
-            nodeId:neuralProjectionKey(m),
-            corpusId:m.gardenEvidence==='fading-life-episode'?'episode:'+String(m.id):
+          // Only CURRENT owner-visible rows become graph nodes. Retrieve the
+          // canonical indexed text for a matching corpus key: the interest
+          // index intentionally uses privacy-filtered wording, not the
+          // display label; hashing the display text made ALL those vectors
+          // appear missing even when the local model was ready.
+          const indexedText=new Map(memoryRetriever.embeddingCorpus().map(row=>[row.id,row.text]))
+          const corpus=allRows.filter(m=>allowedIds.has(neuralProjectionKey(m))).map(m=>{
+            const corpusId=m.gardenEvidence==='fading-life-episode'?'episode:'+String(m.id):
               m.gardenEvidence==='identity-memory'?'memory:'+String(m.id):
-              m.gardenEvidence==='selected-video-trend'?'interest:'+String(m.id):'',
-            text:m.text||m.summary||''
-          })).filter(x=>x.corpusId)
+              m.gardenEvidence==='selected-video-trend'?'interest:'+String(m.id):''
+            return {nodeId:neuralProjectionKey(m),corpusId,text:indexedText.get(corpusId)||''}
+          }).filter(x=>x.corpusId&&x.text)
           // Query-time vector lookup is deliberately read-only: no implicit
           // index writes, no Bilibili request, no network probe on this page.
-          let semanticMatches=[],semanticWarning=''
+          let semanticMatches=[],semanticScores={},semanticWarning='',semanticReady=false
+          const corpusNodeIds=new Map(corpus.map(row=>[row.corpusId,row.nodeId]))
           if(q&&cfg.mainSessionMemoryEmbeddingEnabled===true&&embeddingIndex?.status()?.ready===true){
             try{
-              const ranking=await embeddingIndex.search(q,corpus,{limit,minScore:.30,readOnly:true})
-              if(ranking?.ready)semanticMatches=ranking.items.map(row=>row.id)
-              else semanticWarning='向量查询没有可用索引，本次只使用关键词命中。'
+              const ranking=await embeddingIndex.search(q,corpus.map(row=>({id:row.corpusId,text:row.text})),{limit,minScore:.30,readOnly:true})
+              if(ranking?.ready){
+                semanticReady=true
+                for(const item of ranking.items||[]){
+                  const nodeId=corpusNodeIds.get(item.id)
+                  if(!nodeId||!Number.isFinite(item.score))continue
+                  semanticMatches.push(nodeId)
+                  semanticScores[nodeId]=item.score
+                }
+              }else semanticWarning='向量查询没有可用索引，本次只使用关键词命中。'
             }catch(error){semanticWarning='向量查询暂不可用，本次退回关键词命中。'}
           }
-          const projection=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true,semanticMatchIds:semanticMatches})
-          const layout=cfg.mainSessionMemoryEmbeddingEnabled===true?embeddingIndex?.projectPoints(corpus):null
+          const projection=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true,semanticMatchIds:semanticMatches,semanticScores})
+          const layout=cfg.mainSessionMemoryEmbeddingEnabled===true?embeddingIndex?.projectPoints(corpus,{query:semanticReady?q:''}):null
           const positions=layout?.coordinates||{}
           return sendJson(res,200,{...projection,
             nodes:projection.nodes.map(node=>({...node,position:positions[node.id]||null})),
-            layout:{mode:layout?.mode||'structured',matched:layout?.matched||0},
+            layout:{mode:layout?.mode||'structured',matched:layout?.matched||0,queryPosition:semanticReady?layout?.queryPosition||null:null},
+            semanticSearch:{ready:semanticReady,queryEmbedded:semanticReady&&!!layout?.queryPosition,
+              scoredMatches:semanticMatches.length,threshold:.30},
             warning:[result.warning,semanticWarning].filter(Boolean).join(' · '),
             sourceCounts:{...result.sources,recallableEpisodes:episodes.length}})
         }
@@ -7954,6 +7970,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       try{return sendJson(res,200,systemHealthSnapshot({planner:autonomousPlanner.status(),
         scheduler:interactionScheduler.status(),send:socialSendTransaction.inspect(),
         schedulerExpected:cfg.masterEnabled===true&&(cfg.dmWatch===true||cfg.commentWatchReplies===true||cfg.commentAtEnabled===true),
+        lifeExpected:cfg.masterEnabled===true&&cfg.autonomousPlannerEnabled===true&&cfg.lifeAgentMode==='active',
         now:Date.now()}))}
       catch{return sendJson(res,200,{ok:true,state:'unavailable',issues:[{id:'diagnostics',severity:'warning',
         title:'运行诊断暂不可用',detail:'无法读取本地状态；请查看后台日志。',code:'health-snapshot-unavailable'}]})}

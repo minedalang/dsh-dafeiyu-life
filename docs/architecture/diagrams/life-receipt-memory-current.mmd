@@ -66,6 +66,19 @@ flowchart TB
   ownerContactQuota -.-> ownerFollowup
   ownerContactQuota -.-> ownerDmSilence
   ownerDmSilence -.-> receipt
+  neuralView["神经回忆场：仅显示当前可回忆节点、全屏搜索、真实语义余弦连线"]
+  embeddingLookup["可选本地 Embedding 索引：查询向量→当前语义排名；不是长期事实源"]
+  healthView["健康横幅：本地模型／网络／Life 心跳异常，用户暂停除外"]
+  lifeHeartbeat["Life 60秒检查：已用日额度、下次预计、心跳；没新决策≠故障"]
+  recall -.->|受原遗忘/权限约束| neuralView
+  embeddingLookup -.->|只读 PCA 和高维 cosine，不授权发言| neuralView
+  lifeHeartbeat -.-> healthView
+  planner -.-> lifeHeartbeat
+  commentOutcome -.->|对否决／延期／技术错误显式区分，不推断历史原因| healthView
+  %% @code neuralView | lib/memory-neural-projection.mjs | export function memoryNeuralProjection
+  %% @code embeddingLookup | lib/embedding-memory-index.mjs | async function search(query
+  %% @code lifeHeartbeat | lib/autonomous-planner.mjs | schedulerPulse:{...schedulerPulse
+  %% @code healthView | lib/system-health-projection.mjs | export function systemHealthSnapshot
   classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
   classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
   classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b

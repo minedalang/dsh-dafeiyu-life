@@ -139,3 +139,8 @@
 - **权限边界**：read-only consideration 不调用 `/life-action`、不签发写入 grant，不构成内容阅读或实际发言证明；`bili_reply` 继续受独立 Life 选择、账号、平台额度、单轮写入及真实读回控制。未知结果冻结，不自动尝试第二次发送。
 - **可观测性**：匿名 S0/S1 快照增加 `pausedCooling`、`pausedWithoutEligibleSource`、`pausedDueWithSource`，区分自愿休息未到时、原意愿消失、已到时可自愿续行；此前导出的快照不能追溯补造当轮评论意愿。
 - **回归**：`test/v271-dev37-episode-comment-recovery.test.mjs`、`test/test_dev37_episode_comment_review.py`，另需既有 Episode、视频写入、发布审核全量回归。真实 Windows/B站及 72 小时未验收。
+
+
+## dev.53 · 当前回忆投影、Life 调度和主评论诊断（未发布）
+
+`LifeMemoryGateway → MemoryRetriever（原当前允许集合）→ 可选 EmbeddingMemoryIndex → memoryNeuralProjection → 神经管理 UI`；仅在该管理 UI 使用真正查询向量 cosine 与匿名节点 ID 映射，不影响聊天主 Session 的实际检索时序。`AutonomousPlanner.status → systemHealthSnapshot → 健康横幅/额度卡片`；不新增 Life 定时器。`LifeVideoActionBridge → VideoCommentReadiness` 将 Life 延期/拒绝/技术异常作为不同证据；平台验证/授权不变。当前关联图：`diagrams/life-receipt-memory-current.mmd`。完整边界和回归参见 [dev.53 实现说明](./2.7.1-dev53-semantic-recall-comment-health.md)。真实环境未验收，`releaseReady:false`。

@@ -907,6 +907,24 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life .neural-recall-board:fullscreen .neural-memory-viewport,#panel-life .neural-recall-board.is-expanded .neural-memory-viewport{min-height:70vh}
 @media(max-width:850px){#panel-life .neural-memory-viewport{min-height:380px}}
 
+#panel-life-agent .life-runtime-meter{margin:12px 0;padding:13px 16px;border-radius:14px;border:1px solid var(--stroke);background:var(--tint)}
+#panel-life-agent .life-runtime-meter .toolbar{justify-content:space-between;gap:10px}
+#panel-life-agent .life-runtime-meter progress{width:100%;height:11px;accent-color:var(--action);margin:8px 0 2px}
+#panel-life-agent .life-runtime-meter p{font-size:12px;line-height:1.5;white-space:pre-wrap;margin:7px 0 3px}
+
+/* dev53: fullscreen-search and similarity overlay are separate from verified evidence. */
+#panel-life .neural-query-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:12px 0 5px}
+#panel-life .neural-query-toolbar label{font-size:12px;font-weight:700;white-space:nowrap}
+#panel-life .neural-query-toolbar input{flex:1 1 220px;min-width:130px;padding:10px 12px;border-radius:12px;background:var(--panel);color:var(--ink);border:1px solid var(--stroke)}
+#panel-life #neural-query-stage{flex:0 1 100%;font-size:12px;color:var(--action);min-height:1.4em}
+#panel-life .neural-search-boundary{font-size:11px;line-height:1.65}
+#panel-life #neural-semantic-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:2;opacity:1}
+#panel-life .neural-semantic-beam{stroke:#26bcd3;stroke-linecap:round;filter:drop-shadow(0 0 3px #30dfe380)}
+#panel-life .neural-query-anchor{fill:#1bc6d8;stroke:#ffffff;stroke-width:2;filter:drop-shadow(0 0 10px #0cb4cb)}
+#panel-life .neural-recall-board:fullscreen .neural-query-toolbar,#panel-life .neural-recall-board.is-expanded .neural-query-toolbar{position:sticky;top:0;z-index:5;background:var(--panel);padding:8px;border-radius:10px}
+#panel-life .neural-recall-board:fullscreen .neural-search-boundary,#panel-life .neural-recall-board.is-expanded .neural-search-boundary{margin:3px 0}
+@media(prefers-reduced-motion:reduce){#panel-life .neural-semantic-beam{filter:none}}
+
 /* dev49: quiet, per-channel status replaces top alert and animated ticker */
 .life-health-banner{position:static;z-index:auto;max-width:none;margin:11px 0 15px;background:var(--panel);color:var(--ink);border:1px solid var(--stroke);border-left:4px solid #c28a47;padding:10px 14px;border-radius:14px;box-shadow:var(--lift)}
 .life-health-banner[data-level="critical"]{border-left-color:#cf6262}
@@ -1461,7 +1479,9 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="toolbar memory-search-bar"><input id="main-session-history-query" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="输入视频标题 / BV号 / 聊天关键词，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div>
 <section class="neural-recall-board" aria-label="神经回忆场：只读的真实记忆关系">
   <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4></div><span id="neural-memory-count" class="neural-counter">等待读取</span></div>
-  <p class="muted">鼠标拖动可自由旋转，滚轮缩放；点击节点定位右侧记忆详情。使用现有 embedding 时按语义空间聚集，否则明确显示结构布局；连线仅表示可信共享来源。</p>
+  <p class="muted">拖动旋转、滚轮缩放。彩色证据线＝已核验共享来源；搜索后由「查询向量」发出的青色线＝高维余弦相似度，不是 3D 距离。</p>
+  <div class="neural-query-toolbar" role="search"><label for="neural-search-input">在回忆场内搜索</label><input id="neural-search-input" maxlength="120" placeholder="例如：游戏、绘画、朋友…" autocomplete="off"><button type="button" id="neural-search-apply" class="life-action life-sky">唤起回忆</button><span id="neural-query-stage" role="status" aria-live="polite">等待输入关键词</span></div>
+  <p class="muted neural-search-boundary">仅在启用并成功连接<strong>本地 Embedding 模型</strong>时，这是语义搜索；否则只是明确标记的关键词匹配，不会假装生成向量。真实肥鱼的回忆流程不同：<strong>场景理解 → 回忆意图 → 权限／遗忘过滤 → 候选召回 → （可选向量排序／模型甄别）→ 读取真实记忆 → 自主组织回应</strong>。此图仅演示可视化检索，不是模型内部思考的录像。</p>
   <div class="neural-recall-controls"><label><input id="neural-show-all" type="checkbox" checked> 显示全部可回忆节点（未命中变灰）</label><label for="neural-node-limit">最多显示</label><select id="neural-node-limit" aria-label="最多绘制的记忆节点数"><option value="500">500</option><option value="1000" selected>1000</option><option value="2000">2000</option><option value="10000">10000（高负载）</option></select></div>
   <div class="neural-recall-controls"><label title="仅显示真实共享证据，数量为 0 时不会凭空画线"><input id="neural-show-interest" type="checkbox" checked> 兴趣证据连线 <small id="neural-interest-edge-count">(0)</small></label><label><input id="neural-show-relationship" type="checkbox" checked> 互动证据连线 <small id="neural-relationship-edge-count">(0)</small></label><label><input id="neural-show-source" type="checkbox" checked> 共享来源连线 <small id="neural-source-edge-count">(0)</small></label><label><input id="neural-show-emotion" type="checkbox" checked> 当时情绪回声（有证据时）</label></div>
   <p class="muted" id="neural-evidence-explanation">连线必须由两个节点共享已核验的来源证据；若显示 (0)，开关不会改变画面，绝不伪造关联。</p>
@@ -1472,7 +1492,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </div>
   <p class="muted neural-clarity-key" aria-label="记忆衰减亮度图例">节点深浅代表已记录的记忆清晰程度：<strong>清晰</strong>（明亮） · <strong>模糊</strong>（中等） · <strong>印象</strong>（较淡）；未标注不凭日期推算衰减。类别由颜色区分，衰减由明暗区分。</p>
 <div class="neural-recall-layout">
-    <div class="neural-recall-field"><div id="neural-memory-viewport" class="neural-memory-viewport"><div class="neural-viewport-actions"><button id="neural-memory-reset" type="button" title="回到初始视角">⟲ 重置视角</button><button id="neural-memory-fullscreen" type="button" aria-pressed="false" aria-label="全屏打开神经回忆场">⛶ 全屏</button></div><canvas id="neural-memory-canvas" aria-hidden="true"></canvas><svg id="neural-memory-svg" viewBox="0 0 1000 570" role="group" aria-label="可旋转的三维记忆节点空间，拖动旋转，滚轮缩放，点击节点查看详情" tabindex="0"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a6dfe3" stop-opacity=".16"/><stop offset="1" stop-color="#a6dfe3" stop-opacity="0"/></radialGradient></defs><circle cx="500" cy="285" r="255" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g></svg></div><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
+    <div class="neural-recall-field"><div id="neural-memory-viewport" class="neural-memory-viewport"><div class="neural-viewport-actions"><button id="neural-memory-reset" type="button" title="回到初始视角">⟲ 重置视角</button><button id="neural-memory-fullscreen" type="button" aria-pressed="false" aria-label="全屏打开神经回忆场">⛶ 全屏</button></div><canvas id="neural-memory-canvas" aria-hidden="true"></canvas><svg id="neural-semantic-overlay" viewBox="0 0 1000 570" aria-hidden="true"><g id="neural-semantic-beams"></g></svg><svg id="neural-memory-svg" viewBox="0 0 1000 570" role="group" aria-label="可旋转的三维记忆节点空间，拖动旋转，滚轮缩放，点击节点查看详情" tabindex="0"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a6dfe3" stop-opacity=".16"/><stop offset="1" stop-color="#a6dfe3" stop-opacity="0"/></radialGradient></defs><circle cx="500" cy="285" r="255" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g></svg></div><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
     <div class="neural-recall-side"><h5>被唤起的记忆</h5><div id="neural-memory-results" class="neural-memory-results"><p class="muted">输入关键词并搜索，或留空查看最近。</p></div><div id="neural-memory-detail" class="neural-memory-detail" tabindex="-1" aria-live="polite">点击节点或结果卡片查看真实来源和清晰程度。</div></div>
   </div>
 </section>
@@ -1639,6 +1659,9 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="life-native-settings"><div><label for="life-v2-mode">自主生活</label><select id="life-v2-mode"><option value="off">暂停</option><option value="active">开启生活探索</option><option value="shadow" hidden>历史观察模式（兼容旧配置）</option></select></div>
 <div><label for="life-v2-pace">活跃程度</label><select id="life-v2-pace"><option value="quiet">安静（120 分钟 / 12 次）</option><option value="natural">自然（30 分钟 / 40 次）</option><option value="lively">活跃（10 分钟 / 100 次）</option><option value="custom">自定义（高级）</option></select></div></div><small id="life-legacy-pace-note" class="setting-note" hidden>正在保留你以前的活跃度设置；需要改动时再选安静、自然或活跃。</small>
 <div class="life-mode-switch" role="radiogroup" aria-label="自主生活开关"><label class="life-select-card"><input type="radio" name="life-mode-card" value="active"><span class="life-select-icon">✦</span><span><strong>开启自主生活</strong><small>鱼鱼自行决定探索、互动或休息</small></span></label><label class="life-select-card"><input type="radio" name="life-mode-card" value="off"><span class="life-select-icon">☾</span><span><strong>暂停自主探索</strong><small>不再启动新生活决策</small></span></label></div>
+<div class="life-runtime-meter" aria-live="polite"><div class="toolbar"><strong>🧭 今日 Life 模型决策</strong><b id="life-decision-usage">读取中…</b><button type="button" id="life-decision-refresh" class="life-action life-sky">刷新状态（不调用模型）</button></div>
+  <progress id="life-decision-progress" max="100" value="0" aria-label="本日自主生活模型决策额度使用百分比"></progress>
+  <p id="life-decision-next" class="muted" role="status">正在读取调度心跳…</p><p class="muted">每日额度限制 Life 日常模型考虑机会，不直接限制评论／私信发送次数，也不是视频 Agent 的轮次数。子 Agent 还有自己的独立准入和发送限制。网络故障、冷却、无候选或自主休息均不应显示为“已经发表”。</p></div>
 <div class="life-pace-heading"><h4>活跃程度</h4><p class="muted">只是考虑机会的上限，不是每天必须执行的次数。</p></div><div class="life-pace-cards" role="radiogroup" aria-label="生活活跃程度"><label class="life-select-card"><input type="radio" name="life-pace-card" value="quiet"><span class="life-select-icon">☾</span><span><strong>安静</strong><small>120 分 / 12 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="natural"><span class="life-select-icon">❀</span><span><strong>自然</strong><small>30 分 / 40 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="lively"><span class="life-select-icon">✧</span><span><strong>活跃</strong><small>10 分 / 100 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="custom"><span class="life-select-icon">⚙</span><span><strong>自定义</strong><small>单独调整间隔和额度</small></span></label></div>
 <details class="life-subdetails" id="life-settings-advanced"><summary>⚙️ 高级设置 · 模型次数与活动时间</summary>
 <p class="muted">仅选择「自定义」时，以下数字才会写入配置；选择预设不会覆盖原有时段。次数是<strong>日常生活模型决策上限</strong>，不是必须执行的任务或真实视频播放次数；社交事件只读快速关注有独立额度，所有调用共享原子总上限。对外发布／私信授权仍在相应页面单独设置。</p>
