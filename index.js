@@ -179,6 +179,8 @@ import { createLifeMemoryGateway, relationshipMemoryHalfLifeDays } from './lib/l
 import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import { memoryNeuralProjection, neuralProjectionKey } from './lib/memory-neural-projection.mjs'
 import { systemHealthSnapshot } from './lib/system-health-projection.mjs'
+import {modelTestFailure} from './lib/model-failure-diagnostics.mjs'
+import {providerIds,modelIds} from './lib/model-catalog.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
 import { createDailyDynamic } from './lib/daily-dynamic.mjs'
 import { createMemeLearning } from './lib/meme-learning.mjs'
@@ -556,25 +558,22 @@ export function apply(ctx, config) {
   // Discover live adapters, including DSH's official built-in DeepSeek route.
   // Never read API keys or copy their credentials into Headless.
   const activeLlm=()=>{try{return ctx.get?.('llm')||ctx.llm}catch{return ctx.llm}}
+  let lastRegisteredProviderIds=[]
   const listLiveModels=async()=>{
     const llm=activeLlm()
     if(typeof llm?.listProviders!=='function')return []
-    const providers=llm.listProviders()
-    if(!Array.isArray(providers))return []
+    let providers=[]
+    try{providers=providerIds(await llm.listProviders())}catch{return []}
+    lastRegisteredProviderIds=providers
     const current=ctx.get?.('agentDefaultModel')?.currentSelection?.()||{}
     const rows=[]
-    for(const row of providers.slice(0,40)){
-      const id=typeof row==='string'?row:row?.id
-      if(typeof id!=='string')continue
+    for(const id of providers){
       let models=[]
-      try {
-        const found=typeof llm.listModels==='function' ? await llm.listModels(id) : []
-        if(Array.isArray(found))models=found.map(m=>typeof m==='string'?m:m?.id)
-      }catch{ /* Failure to load the catalog is not proof that a route works. */ }
-      // Catalog is advisory: DSH can use a selected, not-yet-catalogued model.
+      try{models=typeof llm.listModels==='function'?modelIds(await llm.listModels(id)):[]}catch{}
+      // This is only a catalog hint, not evidence that a model call succeeds.
       if((current.provider||current.providerId)===id){
         const selected=current.model||current.modelId
-        if(typeof selected==='string')models.push(selected)
+        if(typeof selected==='string'&&!models.includes(selected))models.push(selected)
       }
       rows.push({id,models})
     }
@@ -584,8 +583,9 @@ export function apply(ctx, config) {
     registeredModels:listLiveModels,
     isRegistered:id=>{
       const llm=activeLlm()
-      return typeof llm?.listProviders==='function'&&
-        llm.listProviders().some(p=>(typeof p==='string'?p:p?.id)===id)
+      return lastRegisteredProviderIds.includes(id)||
+        (typeof llm?.listProviders==='function'&&
+        providerIds(llm.listProviders()).includes(id))
     }})
   const firstStart=createFirstStart({stateDir,credentialPath:join(stateDir,'bili_credential.json'),headlessSync})
   /**
@@ -7901,7 +7901,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           const provider=String(current.provider||current.providerId||'').trim()
           const model=String(current.model||current.modelId||'').trim()
           // Only public route identifiers; never expose credentials/keys or guess official models.
-          return sendJson(res,200,{...status,defaultModel:provider&&model?{provider,model}:null})
+          return sendJson(res,200,{...status,defaultModel:provider&&model?{provider,model}:null,
+            observedHostModel:provider&&model?{provider,model,source:'host-current-selection'}:null})
         }
         if(req.method!=='POST')return sendJson(res,405,{ok:false,error:'只允许 POST 模型同步操作'})
         const body=await readBody(req)
@@ -7955,7 +7956,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const body=await readBody(req)
       if(!MODEL_TASKS.includes(body?.task))return sendJson(res,400,{ok:false,error:'不支持的模型测试任务'})
       try {return sendJson(res,200,await testConfiguredModel(body.task))}
-      catch(e){return sendJson(res,200,{ok:false,error:String(e?.message||e).slice(0,240)})}
+      catch(e){return sendJson(res,200,{ok:false,...modelTestFailure(e)})}
     }
 
     if (req.method === 'GET' && path === '/api/bili-duty/interaction-context-status') {
@@ -7980,6 +7981,18 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         interests:Array.isArray(interestRows)?interestRows:null,
         relationshipsReady:Boolean(relationshipView&&relationshipView.ok!==false),
         socialOwner:socialDecisionOwnership.status().socialDecisionOwner}),willingness:lifeWillingness?.status()||{ok:false}})
+    }
+    if (req.method === 'POST' && path === '/api/bili-duty/life-agent/model-backoff/clear') {
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))
+        return sendJson(res,403,{ok:false,error:'仅允许同源管理中心清除 Life 模型失败退避'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+        return sendJson(res,403,{ok:false,error:'拒绝跨站操作'})
+      const body=await readBody(req)
+      if(body?.confirm!==true)return sendJson(res,400,{ok:false,error:'请明确确认仅清除 Life 模型错误退避'})
+      const result=autonomousPlanner.clearModelBackoff({expectedRetryAt:body.expectedRetryAt})
+      if(result?.ok===true)log('主人手动清除 Life 模型错误退避；未调用模型、未清除其他冷却与权限。')
+      return sendJson(res,result?.ok===true?200:409,result)
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/system-health') {
       // Local snapshots only: no additional model/network calls or account identifiers.

@@ -1,4 +1,4 @@
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.56 · Life 意愿唯一归属 + 真实连续经历）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.57 · 统一意愿 + 模型故障退避诊断）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -241,3 +241,15 @@ receipts -->|只有来源可证实时关联| journeyGroups
 %% @code professionalDraft | index.js | socialReply:{incoming:
 %% @code shadowRetired | lib/autonomous-planner.mjs | outcome.result='social-signal-considered'
 %% @code journeyGroups | lib/life-timeline.mjs | export function groupLifeTimeline
+
+%% dev.57: local model failure evidence is neither Life intention nor permission.
+modelFailureLedger["Life 模型退避账本｜失败分类/次数/下一次允许尝试"]
+modelHealthUi["管理中心｜安全错误证据、请求 ID、恢复时间"]
+modelBackoffClear["主人确认解除｜只清理 Life 模型失败计时"]
+planner -->|模型调用失败才记录| modelFailureLedger
+modelFailureLedger -.->|只读投影| modelHealthUi
+modelHealthUi -.->|主人确认，状态匹配| modelBackoffClear
+modelBackoffClear -.->|不调用模型/不增加发送权限| modelFailureLedger
+%% @code modelFailureLedger | lib/autonomous-planner.mjs | s.modelFailureEvidence={
+%% @code modelHealthUi | lib/system-health-projection.mjs | title:'Life 模型失败 · 正在自动退避'
+%% @code modelBackoffClear | lib/autonomous-planner.mjs | const clearModelBackoff=
