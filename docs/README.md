@@ -1,3 +1,5 @@
+**当前开发预览：2.7.1-dev.52（未发布）。** [评论回复恢复和生活证据脉络](architecture/2.7.1-dev52-life-evidence-and-reply-recovery.md)。平台真实回执与 Windows DSH 仍待现场验收。
+
 **当前开发预览：2.7.1-dev.51（未发布）。** [全景神经记忆与主 Session 短暂停顿续接](architecture/2.7.1-dev51-neural-atlas-short-pause.md)，不新增 B站自动发送授权；真实 Windows 宿主需现场验证。
 
 **当前开发版本：2.7.1-dev.49（未发布）**。三维神经回忆场、已有向量的本地 PCA 投影、后台监听逐渠道诊断。详情见 [dev.49 架构](architecture/2.7.1-dev49-neural-3d-and-channel-health.md)。

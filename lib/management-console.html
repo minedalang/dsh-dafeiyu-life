@@ -923,6 +923,25 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .life-health-banner .health-channel-chip{display:flex;align-items:center;gap:7px;font-size:12px;border-radius:10px;padding:6px 9px;background:var(--tint);border:1px solid var(--stroke);color:var(--ink)}
 .life-health-banner .health-channel-chip small{color:var(--muted);font-size:11px}
 
+
+/* Life evidence atlas – shared management palette; no second memory store. */
+.life-evidence-atlas{position:relative;overflow:hidden;border:1px solid var(--stroke);border-radius:22px;padding:20px;background:linear-gradient(140deg,color-mix(in srgb,var(--panel) 92%,#daf0ee),var(--panel));margin:14px 0 20px}
+.life-evidence-atlas h3{margin:4px 0 6px;font-size:19px;color:var(--ink)}
+.life-atlas-legend{display:flex;gap:15px;flex-wrap:wrap;margin:10px 0 15px;color:var(--ink);font-size:12px}
+.life-atlas-legend span{display:flex;align-items:center;gap:6px}
+.life-atlas-dot{display:inline-block;width:10px;height:10px;border-radius:50%}.life-atlas-dot.source{background:#4398ae}.life-atlas-dot.cue{background:#d2a149}.life-atlas-dot.interest{background:#54a586}.life-atlas-dot.action{background:#9878ce}
+.life-atlas-graph{position:relative;overflow-x:auto;min-height:250px;border:1px solid var(--stroke);border-radius:16px;background:color-mix(in srgb,var(--panel) 96%,#d4f1ec)}
+.life-atlas-columns{display:grid;grid-template-columns:repeat(4,minmax(168px,1fr));gap:19px;position:relative;min-width:735px;padding:15px;z-index:1}
+.life-atlas-col{display:flex;flex-direction:column;gap:9px;min-width:0}
+.life-atlas-col h4{margin:0 0 4px;font-size:13px;color:var(--ink)}
+.life-atlas-card{position:relative;min-height:69px;border-radius:13px;border:1px solid var(--stroke);border-left:4px solid var(--stroke);padding:10px 9px;text-align:left;background:var(--panel);color:var(--ink);font:inherit;font-size:12px;cursor:pointer;box-shadow:0 5px 14px #103a3f0a;transition:border-color .2s,box-shadow .2s,opacity .2s}
+.life-atlas-card:hover,.life-atlas-card:focus-visible,.life-atlas-card.active{outline:2px solid color-mix(in srgb,var(--ui-indigo) 52%,transparent);outline-offset:1px;box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-indigo) 11%,transparent)}
+.life-atlas-card strong{display:block;overflow-wrap:anywhere;font-size:12px;line-height:1.5}.life-atlas-card small{display:block;color:var(--muted);line-height:1.45;margin-top:4px}
+.life-atlas-card[data-kind="source"]{border-left-color:#4398ae}.life-atlas-card[data-kind="cue"]{border-left-color:#d2a149}.life-atlas-card[data-kind="interest"]{border-left-color:#54a586}.life-atlas-card[data-kind="action"]{border-left-color:#9878ce}
+.life-atlas-card.unlinked{opacity:.64}.life-atlas-lines{position:absolute;inset:0;overflow:visible;pointer-events:none;z-index:2}
+.life-atlas-lines path{fill:none;stroke:#56aaa4;stroke-width:2;stroke-linecap:round;opacity:.7;vector-effect:non-scaling-stroke;transition:opacity .25s}
+.life-atlas-lines path.dim{opacity:.13}.life-atlas-empty{font-size:12px;color:var(--muted);padding:16px 10px;border:1px dashed var(--stroke);border-radius:12px}
+@media (prefers-reduced-motion:reduce){.life-atlas-card,.life-atlas-lines path{transition:none}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1415,6 +1434,13 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 
 
 <div class="settings-stack">
+<section id="life-evidence-atlas" class="life-evidence-atlas settings-section life-section" aria-labelledby="life-atlas-title">
+  <div class="toolbar"><div><span class="page-eyebrow">LIFE · EVIDENCE CONNECTIONS</span><h3 id="life-atlas-title">鱼鱼的生活脉络</h3><p class="muted">把真实经历、生活线索、后天兴趣与已记录的行动放到一起。实线只代表同一个可信 BV 来源，不代表因果或已发送。没有来源证明的关系不会被画出来。</p></div><button id="life-atlas-refresh" type="button" class="life-action life-sky">刷新脉络</button></div>
+  <div class="life-atlas-legend" aria-label="生活脉络图例"><span><i class="life-atlas-dot source"></i>真实经历</span><span><i class="life-atlas-dot cue"></i>生活线索</span><span><i class="life-atlas-dot interest"></i>后天兴趣证据</span><span><i class="life-atlas-dot action"></i>已记录行动</span></div>
+  <div class="toolbar"><label for="life-atlas-filter">查看</label><select id="life-atlas-filter"><option value="all">完整生活脉络</option><option value="linked">仅有直接来源关联</option><option value="opportunities">优先看生活线索</option><option value="interests">优先看兴趣证据</option></select><span id="life-atlas-status" class="muted" role="status">正在加载可信来源…</span></div>
+  <div id="life-atlas-graph" class="life-atlas-graph" role="group" aria-label="真实经历、线索、兴趣与行动之间的证据图"><svg id="life-atlas-lines" class="life-atlas-lines" aria-hidden="true"></svg><div id="life-atlas-columns" class="life-atlas-columns"></div></div>
+  <p id="life-atlas-explanation" class="muted" role="status">只有当两个记录共享实际核验的 BV 时，才绘制明确来源连线；其他联系仍可通过各栏查看，但不臆测因果。</p>
+</section>
 <div id="life-interest-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">🌱 鱼鱼最近喜欢什么</h4><span id="interest-learning-status" class="live-badge">● 正在收集兴趣线索</span><span class="muted">根据真实入选视频积累，和主人设定的核心兴趣分开</span></div>
 <p class="muted">核心兴趣由主人明确设置，优先参与选片但会轮换；短期/成长/稳定兴趣则来自真实入选视频证据。至少 3 个不同视频、横跨 2 天才会形成短期兴趣，长期没有新证据会逐渐淡出。自动学习永远不会覆盖核心兴趣。</p>
 <div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div>
@@ -1480,11 +1506,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <nav class="life-day-shortcuts" aria-label="鱼鱼此刻快捷查看"><a href="#life-timeline-section">今天的经历</a><a href="#life-emotion-section">此刻心情</a><a href="#life-todo-section">想做的事</a><a href="#life-settings-v2-panel">生活设置</a></nav>
 <details class="life-now-timeline" open><summary>📅 大肥鱼的一天 · 真实生活时间线</summary>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
-<p class="muted">按天展示鱼鱼真实的探索、社交关注、自己决定的休息以及已确认的外部行为。每次自主休息会说明本轮有哪些候选、鱼鱼是否给出可公开展示的原因；未提供原因时不会替她猜测。社交快速考虑只是关注提醒，不代表回复；私信/评论专业 Agent 仍有独立处理流程。原始平台发送必须有可信回执才能写成已发出。旧判重表只有日期的视频折叠在当日记录中，不伪造具体时刻。</p><p id="life-timeline-summary" class="muted" role="status"></p><div class="inset" id="life-comment-observability"><h4>🔎 原创主评论准入 · 最近视频轮次</h4>
-<p class="muted">显示当前授权、实际评论记录、最近视频轮次中的考虑／提议／审批／平台核验；没有评论不等于模型主动拒绝。旧日志不提供的证据不会补造。</p>
-<p id="life-timeline-comment-status" class="setting-note" role="status">正在核对原创评论权限与本地记录…</p>
-<div class="toolbar"><button type="button" id="life-release-evidence-export" class="life-action life-sky">导出 S0/S1 匿名验收快照（只读）</button><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看完整 Life 决策记录</a></div>
-<p class="muted" id="life-release-evidence-status" role="status">只读导出，不包含私信正文、账号 ID、视频 BV 或 Token；真实 B站行为仍需平台核验。</p></div>
+<p class="muted">只展示有记录的真实经历、行动与自主选择。评论与模型诊断已移至「诊断」页；待确认发送不会显示成成功。</p><p id="life-timeline-summary" class="muted" role="status"></p>
 <div id="life-timeline-list" class="records records-scroll tall"></div></div>
 </details>
 <details class="life-now-emotion" open><summary>💗 现在的心情</summary>
@@ -1641,6 +1663,11 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p id="life-metadata-probe-status" class="muted" role="status">尚未发起资料读取诊断</p>
 <p id="life-traces-status" class="muted" role="status">尚未加载本账号决策链</p><div id="life-traces-list" class="records records-scroll tall" aria-live="polite"></div>
 </div>
+<details class="settings-section life-section" id="life-comment-diagnostics" ><summary>原创评论准入与视频轮次 · 高级诊断</summary><div class="inset" id="life-comment-observability"><h4>🔎 原创主评论准入 · 最近视频轮次</h4>
+<p class="muted">显示当前授权、实际评论记录、最近视频轮次中的考虑／提议／审批／平台核验；没有评论不等于模型主动拒绝。旧日志不提供的证据不会补造。</p>
+<p id="life-timeline-comment-status" class="setting-note" role="status">正在核对原创评论权限与本地记录…</p>
+<div class="toolbar"><button type="button" id="life-release-evidence-export" class="life-action life-sky">导出 S0/S1 匿名验收快照（只读）</button><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看完整 Life 决策记录</a></div>
+<p class="muted" id="life-release-evidence-status" role="status">只读导出，不包含私信正文、账号 ID、视频 BV 或 Token；真实 B站行为仍需平台核验。</p></div></details>
 <div id="read-action-executions-section" hidden data-retired-internal="true" class="settings-section life-section">
 <div class="toolbar"><h4 style="margin:0">🔒 平台读取预约与中断核查</h4><button id="read-action-executions-refresh" type="button" class="life-action life-sky">刷新真实动作回执</button></div>
 <p class="muted">Node/Python 共享公开读取及账号读取预约；字幕、弹幕和低清预览帧均区分实际内容与模型理解。账号私有读取只在当前核验账号下进行，预览取帧预约不会自动授权模型调用。只读回执不证明完整观看、音频理解或对外发送成功。</p>

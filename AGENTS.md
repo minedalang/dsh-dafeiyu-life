@@ -10,7 +10,7 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 - **当前 Life 架构图的唯一维护入口**：`docs/architecture/life-system-current.md`、`docs/architecture/diagrams/life-system-current.mmd`、`docs/architecture/diagrams/life-candidates-current.mmd`、`docs/architecture/diagrams/life-receipt-memory-current.mmd`。每次修改 Life 候选、调度、权限或回执，须同时维护 Mermaid 代码锚点，先执行 `npm run write:life-architecture-view` 更新 GitHub 预览，再执行 `npm run check:life-architecture` 与 `test/v271-dev33-life-architecture-contract.test.mjs`；图中已接线不得宣称实机验收。
 - **dev.33 同版本菜单加固**：Life 每次输出须与当轮动作菜单中的 action/id/BV/capability 严格匹配；未提供的 reflect 不可从旧 parser 走漏。保持原账户、授权、回执/遗忘限制，详见 `docs/architecture/life-system-current.md`。
 - **dev.35 P1/P2 补充限制**：已核验写入后可继续阅读或休息，但第二次写入须先完成真实只读核实或实际休息至少 15 分钟并重新审批；点赞不意味着必须评论。新增评论区只读与一次首页换方向，禁推断陌生人 UID。见 `docs/architecture/2.7.1-dev35-life-episode-p1p2.md`。**历史 dev.34 连续 Life Episode**：首页成功轮次的新入选候选接入原 `life-opportunities` 意愿账本；每个 Episode 最多 5 个已核验步骤，每一步重新决策，已核验 BV 去重，休息有界延后，未知写入冻结。原创评论的已知跨渠道冷却最多重考虑一次，账号变化/在途/未知不重试；不扩大任何外发许可。详见 `docs/architecture/life-system-current.md`。
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.51`（抽出统一 message-burst 协议；P6-A 共用于普通私信、主人私信和主 Session；主 Session 多气泡以一个逻辑回复、连续可见消息呈现；B站逐气泡回执与 DSH 实机 UI 仍待验收；dev.42 Life 主人主动聊天与 dev.41 视频间隔保留），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.52`（抽出统一 message-burst 协议；P6-A 共用于普通私信、主人私信和主 Session；主 Session 多气泡以一个逻辑回复、连续可见消息呈现；B站逐气泡回执与 DSH 实机 UI 仍待验收；dev.42 Life 主人主动聊天与 dev.41 视频间隔保留），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - dev.33 同版本维护修复：@通知只有经 B站源评论/UID/rpid/BV 核验并能分清独立留言正文时才进入回复 AI 或社交记忆；旧内部昵称歧义提示不是观众说过的话，修正仍清晰的情节副本与旧评论缓存，但不抹除已确认外发、也不恢复已遗忘内容。详见 `docs/architecture/2.7.1-dev33-mention-memory-hotfix.md`。
 - dev.32：为 Life 自主首页闲逛补上**实际 MCP 首页读取**的匿名回执：由原视频 Agent 的随机轮次 ID 绑定 headless 工具调用，区分未观察到、无候选、失败、有候选；不把选片/观看与进程成功混淆，不复制 BV/UID/私密内容，也不调整视频发送门禁。见 `docs/architecture/2.7.1-dev32-home-feed-receipts.md`。
 - dev.31：`LifeReflection.status()` 提供与自动反思执行器共用的就绪判断，`AutonomousPlanner` 不再凭 pending 数量提供假可用 reflect；反思被跳过的枚举原因进入脱敏日志。主 Life 模型失败后的退避在原 planner 预算账本持久化，手动唤醒不自动打开新写权限；`browse_home` 只在已打开首页推荐且原视频能力可用时列入菜单，通过原视频 Agent 先看真实首页推荐。`life-willingness` 的可选语境读取失败尽量降级，基础身份不可用仍拒绝写入。见 `docs/architecture/2.7.1-dev31-life-idle-and-home-browse.md`。
@@ -115,3 +115,13 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 - DSH Desktop 通常执行 `dsh plugin --profile desktop add dsh-dafeiyu-life`，重启后在「设置 → 大肥鱼」安装依赖、扫码登录、完成所需 Headless 模型验证；安装入口与市场实际版本须单独确认。
 - 插件可自行安装 Python 运行依赖／uv；遇故障先用设置页自检和 `duty.log`，不要要求用户先全局安装任意工具或绕过安全门禁。
 - 新安装的明确可选功能、旧版既有设置、First Start 必需验证是不同状态；不能通过隐式改默认值打开外部写入。
+
+
+## README 是用户首页，不是开发版本日志（dev.52 起强制执行）
+
+- 根目录 `README.md` 必须当作**最终发布页的简洁用户介绍**维护：价值主张、最重要的 2.7.1 新功能（自主 Life、原主 Session 自然对话、真实记忆／兴趣脉络、社交与安全）、安装／配置、权限及诚实的验收状态优先。
+- 禁止在 README 顶部不断追加 `dev.xx` 小版本逐条通告、长篇技术实现、完整补丁清单和流水账。每次新开发版只更新一个当前版本标识，并仅在影响用户功能时修改相关的一两句话。
+- 每一个开发版本的详细变更、故障原因、测试、约束与代码锚点应写在 `CHANGELOG.md`、`RELEASE_NOTES_v2.7.1.md`、`docs/architecture/` 和交付包的 `TEST-RESULTS.md`；不要重复抄进 README。
+- 不得为了推广声称未真实验收的功能已在 Windows、B站或 DSH 各宿主全部通过；模型选择、发送提议、提交工具、平台确认严格区分。
+- 社交行为回归时以主人权限、账号隔离、入站核验、Life 自主意愿、未知回执禁止自动重试为硬边界。不要用强制最低评论数取代自主表达；先解释有证据的行为诊断和技术拒绝原因。
+- 可视化链接只能依赖已核实的同源 ID；相似词、同日和相近话题不构成因果。兴趣的累计证据不能伪装成某条具体 BV 的关联。

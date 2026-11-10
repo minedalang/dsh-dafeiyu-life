@@ -542,7 +542,13 @@ export function apply(ctx, config) {
   const readActionGate=createReadActionExecutionGate({dataDir:stateDir,getAccountScope:verifiedActionScope,getAdapterToken:()=>readAdapterToken,logger:{warn:m=>console.warn(m)}})
   const outboundActionStatus=createOutboundActionStatus({dataDir:stateDir,getAccountScope:verifiedActionScope})
   const biliReadBudget=createBiliReadBudget({dataDir:accountRuntimeDir,logger:{warn:msg=>console.warn(msg)}})
-  const dmPollCursor=createDmPollCursor({dataDir:accountRuntimeDir})
+  const dmPollCursor=createDmPollCursor({dataDir:accountRuntimeDir,
+    getPriority:uid=>{
+      // This is a read-scheduling preference, never a new social permission.
+      if(String(uid)===String(cfg.dmOwnerUid||''))return 'owner'
+      const tier=socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory)
+      return tier==='friend'?'friend':tier==='familiar'?'familiar':'other'
+    }})
   accountBinding.acknowledgeRestart() // Startup boundary: no in-flight old-account operations survive.
   // Discover live adapters, including DSH's official built-in DeepSeek route.
   // Never read API keys or copy their credentials into Headless.
@@ -2551,7 +2557,7 @@ function reportMeta() {
     const commentOn=Boolean(cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0 && lifeVideoActionBridge?.status().ready===true)
     // A considered-but-unposted video is not a Life rejection or platform failure.
     // Model review is optional expression, but its evidence should be observable.
-    const commentConsiderationDoc=commentOn?`\n【原创主评论的独立考虑阶段】请在真实阅读视频资料、核对入选条件后，自主决定是否有值得公开说的话。不要把「不强制评论」理解成「默认不评论」：真正读懂内容后，若自然想吐槽一句、追问作者或回应某个具体细节，证据足够且授权通过就可以主动发；不要求每轮有评论，也不要为了统计而发。真正要挑中视频时，优先通过 bili_ledger_mark(bvid,title,up,status="挑中",comment_decision="want" 或 "pass" 或 "insufficient") 一次完成入选标记和只读意愿回执（其中三个值只能选一个；不确定就选 insufficient）；该参数不会发送评论，也不影响选片决定，不想发表时明确选 pass。工具返回 comment_review.ok=false 时按 reason 识别原因，不能当作已记录；尤其不能在标记成功之前单独调用 bili_comment_consideration。已标记入选但没有意愿回执时，直接调用 bili_comment_consideration(bvid,decision,reason)；或者重新调用 bili_ledger_mark(bvid,title,up,status="挑中",comment_decision=...)，已存在的行不会重复写，只有宿主确认本轮首次真实入选后才可能记下意愿。若曾在入选前错误调用考虑工具，必须先完成入选标记、再补登记，不能把拒绝当成已记录。仅填 pass 或 insufficient 无需先读评论区；想公开交流时仍需足够的真实内容证据，每个本轮新入选 BV 最多成功登记一次。想说时再自行调用 bili_reply，不想说时不要发；不得为了统计而发表评论。非本轮入选、评论权限关闭或资料不足以负责发言时绝不发布；工具拒绝后不能绕过授权。`:'\n原创主评论当前未启用，不能调用评论或评论考虑工具。'
+    const commentConsiderationDoc=commentOn?`\n【原创主评论的独立考虑阶段】请在真实阅读视频资料、核对入选条件后，自主决定是否有值得公开说的话。每轮如果有多条真实入选视频，至少认真检查其中一条是否存在具体可交流的话题（不是强迫发送）：可以针对明确的细节提出自己的观察、补充或真诚的疑问，而非自动选 pass。不要把「不强制评论」理解成「默认不评论」：读懂内容后，若自然想吐槽一句、追问作者或回应某个具体细节，证据足够且授权通过就可以主动发；若没有真实话题、证据不足或自主不愿表达，必须允许保持沉默，不能为了统计而发。真正要挑中视频时，优先通过 bili_ledger_mark(bvid,title,up,status="挑中",comment_decision="want" 或 "pass" 或 "insufficient") 一次完成入选标记和只读意愿回执（其中三个值只能选一个；不确定就选 insufficient）；该参数不会发送评论，也不影响选片决定，不想发表时明确选 pass。工具返回 comment_review.ok=false 时按 reason 识别原因，不能当作已记录；尤其不能在标记成功之前单独调用 bili_comment_consideration。已标记入选但没有意愿回执时，直接调用 bili_comment_consideration(bvid,decision,reason)；或者重新调用 bili_ledger_mark(bvid,title,up,status="挑中",comment_decision=...)，已存在的行不会重复写，只有宿主确认本轮首次真实入选后才可能记下意愿。若曾在入选前错误调用考虑工具，必须先完成入选标记、再补登记，不能把拒绝当成已记录。仅填 pass 或 insufficient 无需先读评论区；想公开交流时仍需足够的真实内容证据，每个本轮新入选 BV 最多成功登记一次。想说时再自行调用 bili_reply，不想说时不要发；不得为了统计而发表评论。非本轮入选、评论权限关闭或资料不足以负责发言时绝不发布；工具拒绝后不能绕过授权。`:'\n原创主评论当前未启用，不能调用评论或评论考虑工具。'
     return `你是这个账号的 B站 助手。`
       + `下面是使用者的设定（如果有）—— **按它来**，别用你默认那套人格。`
       + ownerDoc
@@ -3371,14 +3377,20 @@ function reportMeta() {
     getPolicy:()=>({crossChannelMinutes:cfg.socialRhythmCrossChannelMinutes})});
   // One real-send cadence for DM, received comments and received @. This is
   // additional to (never a replacement for) each channel's authorization.
-  const cadenceSend=async({uid,channel},run)=>{
-    let held;try{held=socialRhythm.reserve({uid:String(uid||''),channel});}
-    catch(e){return {ok:false,error:'社交发送节奏账本暂不可用：'+String(e?.message||e).slice(0,100)}}
-    if(!held?.ok)return {ok:false,error:'跨渠道互动节奏暂停：'+String(held?.reason||'unknown')};
+  const cadenceSend=async({uid,channel,verifiedReply=false},run)=>{
+    let held;try{held=socialRhythm.reserve({uid:String(uid||''),channel,verifiedReply});}
+    catch(e){return {ok:false,notAttempted:true,reason:'social-cadence-ledger-unavailable',error:'社交发送节奏账本暂不可用，未向平台请求：'+String(e?.message||e).slice(0,100)}}
+    if(!held?.ok)return {ok:false,notAttempted:true,reason:held?.reason||'social-cadence-blocked',
+      retryAt:Number(held?.retryAt)||Date.now()+15*60_000,
+      error:'社交节奏核验未通过，未向 B站发送：'+String(held?.reason||'unknown')};
     try{
       const result=await run();
       const receipt=channel==='dm'?String(result?.receiptId||''):String(result?.rpid||result?.rpid_str||'');
       // A true but receipt-less response is NOT confirmation. Fail closed.
+      if(result?.notAttempted===true){
+        socialRhythm.settle(held.id,{outcome:'aborted'});
+        return {...result,ok:false,notAttempted:true};
+      }
       const verified=result?.ok===true&&receipt.length>0;
       socialRhythm.settle(held.id,{outcome:verified?'sent':'uncertain',receiptId:receipt});
       return verified?result:{ok:false,error:String(result?.error||'缺少可靠的平台投递回执，停止自动续发')};
@@ -3603,7 +3615,7 @@ function reportMeta() {
       sessions, ownUid: Number(cred.dedeuserid), whitelist,
       readConversation: (uid) => {accountBinding.assertReady();return dmFetch(cred, uid, 50,{readBudget:biliReadBudget})},
       shouldRead: dmPollCursor.shouldRead,
-      onRead: dmPollCursor.observed,
+      onRead: dmPollCursor.observed,priorityUid:String(cfg.dmOwnerUid||''),
       // No more than twelve detailed conversations per round; unchanged sessions
       // skip by account-scoped cursor (with a periodic safety rescan).
       maxSessions: 12,
@@ -4733,9 +4745,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(lifeChoice?.ok!==true){
         if(lifeChoice?.action==='skip'&&lifeChoice?.invalid!==true)return attachSocialProof({action:'skip',messages:[]},owner)
         if(lifeChoice?.action==='defer'&&lifeChoice?.invalid!==true){
-          const hasContinuation=req.socialAutonomy===true&&(req.kind==='at'?cfg.commentAtP6Enabled===true:cfg.commentP6Enabled===true)
-          if(!hasContinuation)throw Error('Life 延后评论：当前续行未启用，保留原消息待后续安全重试')
-          return attachSocialProof({action:'defer',messages:[],notBefore:Date.now()+Math.max(5,Math.min(360,Number(cfg.socialP6MinDelayMinutes)||30))*60_000},owner)
+          // Defer is a valid Life choice independent of the optional P6
+          // continuation feature. Never turn a voluntary pause into an AI error.
+          return attachSocialProof({action:'defer',messages:[],notBefore:Date.now()+
+            Math.max(5,Math.min(360,Number(cfg.socialP6MinDelayMinutes)||30))*60_000},owner)
         }
         throw Error('Life 意愿审批暂不可用，保留原评论事件待安全重试')
       }
@@ -4751,10 +4764,20 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         ((req.contentType==='dynamic'&&/^\d{1,30}$/.test(String(req.dynamicId||'')))||
         (req.contentType!=='dynamic'&&/^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))))
         ?`${source}:${req.rpid}:${req.uid||''}:${req.replyPurpose||'normal'}:${req.replyIndex??0}`:''
-      const owner=socialSendOwner('comment',req.socialOwnerProof)
-      if(!owner.ok)return {ok:false,no_retry:true,error:'评论决策所有权检查失败：'+owner.reason}
-      const intention=req.manual===true?{ok:true}:lifeWillingness?.verify(req.lifeWillingnessProof,'comment_reply')
-      if(intention?.ok!==true)return {ok:false,no_retry:true,error:'Life 评论意愿已失效：'+(intention?.reason||'missing')}
+      // A human-verified resend of an unchanged local draft is a separate,
+      // explicit operation. The old transient Life proof is intentionally not
+      // reconstructed. Only the local comment worker can produce these flags
+      // after checking its durable failed-send ledger and retry cap.
+      const humanVerifiedRetry=req.manual===true&&req.manualVerifiedRetry===true&&
+        req.reusedDraft===true&&req.replyPurpose==='manual'&&
+        /^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))&&
+        /^[1-9]\d{0,19}$/.test(String(req.rpid||''))&&
+        /^[1-9]\d{0,18}$/.test(String(req.uid||''));
+      const owner=humanVerifiedRetry?routedSocialOwner('comment'):socialSendOwner('comment',req.socialOwnerProof)
+      if(!owner.ok)return {ok:false,notAttempted:true,no_retry:true,reason:owner.reason,
+        error:'评论决策所有权检查失败：'+owner.reason}
+      const intention=humanVerifiedRetry?{ok:true}:lifeWillingness?.verify(req.lifeWillingnessProof,'comment_reply')
+      if(intention?.ok!==true)return {ok:false,notAttempted:true,no_retry:true,error:'Life 评论意愿已失效：'+(intention?.reason||'missing')}
       return runLifeSocialOperation({channel:'comment',expectedScope:owner.scope,phase:'send',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
       if(req.contentType==='dynamic'){
         refreshCfg()
@@ -4762,7 +4785,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           return {ok:false,error:'动态评论回复未授权'}
         // Actual publication / parent identity is checked against live B站 metadata
         // again by bili_dynamic_reply_inbox. Local drafts are not an identity authority.
-        return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
+        return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment',
+          verifiedReply:((intention?.ok===true&&!req.manual)||humanVerifiedRetry)&&
+            /^[1-9]\d{0,19}$/.test(String(req.rpid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))},async()=>{
         const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
         if(!checked.ok)return {ok:false,error:'动态评论发送前账号或归属已变化：'+checked.reason}
         const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
@@ -4788,7 +4813,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // 后台独立发送，受评论互动专用开关保护，不使用 model 的 force 绕过公开评论安全闸。
       refreshCfg()
       if (!(cfg.masterEnabled && (req.manual===true || cfg.commentWatchReplies || cfg.commentAtEnabled))) return {ok:false,error:'后台评论回复已关闭'}
-      return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment'},async()=>{
+      return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment',
+          verifiedReply:((intention?.ok===true&&!req.manual)||humanVerifiedRetry)&&
+            /^[1-9]\d{0,19}$/.test(String(req.rpid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))},async()=>{
       const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
       if(!checked.ok)return {ok:false,error:'评论发送前账号或归属已变化：'+checked.reason}
       const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
