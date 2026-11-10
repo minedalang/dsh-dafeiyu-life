@@ -60,16 +60,16 @@ test('video feedback persists as verified diagnostic stage, not anonymous techni
   assert.equal(row.steps[i+1].type,'model-call')
 }))
 
-test('social shadow cycle must not log unused video feedback or pretend to send',()=>isolated(async dir=>{
+test('social attention cycle uses one model; no old shadow comparator and no pretend send',()=>isolated(async dir=>{
   const x=scenario(dir,{social:true})
   const result=await x.planner.tick({socialWake:true})
   assert.equal(result.action,'consider_social')
-  assert.equal(result.result,'social-shadow-reply')
-  assert.equal(x.modelCalls(),2)
+  assert.equal(result.result,'social-signal-considered')
+  assert.equal(x.modelCalls(),1)
   const row=x.trace.list().runs[0]
   assert.equal(row.state,'finished')
   assert.equal(row.trigger,'social')
-  assert.ok(row.steps.some(s=>s.type==='action-result'&&s.result==='social-shadow-reply'))
+  assert.ok(row.steps.some(s=>s.type==='action-result'&&s.result==='social-signal-considered'))
   assert.equal(row.steps.some(s=>s.type==='video-round-feedback'),false)
   assert.equal(row.steps.some(s=>s.type==='error'),false)
 }))
@@ -104,7 +104,7 @@ test('feedback fields are bounded and never accept private IDs or arbitrary outp
 test('UI distinguishes historical malformed traces, video feedback and shadow no-send',()=>{
   const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   assert.match(ui,/视频轮次回执（非观看证明）/)
-  assert.match(ui,/仅影子判断（未发送）/)
+  assert.match(ui,/历史影子记录（旧版、未发送）/)
   assert.match(ui,/旧版未识别诊断步骤（不能作为技术错误证据）/)
   assert.match(ui,/只读影子倾向回复，实际没有发送/)
   assert.match(ui,/item\.state==='failed'\?'本轮失败'/)

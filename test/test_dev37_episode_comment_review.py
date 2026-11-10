@@ -58,7 +58,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
         self.assertEqual(self.requests, [('/life-comment-review', {
             'uid': '1234567', 'roundId':'c'*24, 'bvid':'BV1abcde1234', 'decision':'pass'})])
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
-            again = self.call('want')
+            again = self.call('pass')
         self.assertTrue(again['already_seen'])
         self.assertEqual(again['comment_review']['reason'], 'comment-review-already-recorded')
         self.assertEqual(len(self.lines), 1, 'no duplicate canonical selection rows')
@@ -81,7 +81,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
         self.lines.append('| 2026-11-07 | BV1abcde1234 | old video | uploader | 挑中 |\n')
         self.pre_round_picked.add('BV1abcde1234')
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
-            out = self.call('want')
+            out = self.call('pass')
         self.assertTrue(out['already_seen'])
         self.assertEqual(out['comment_review']['reason'], 'comment-selection-not-confirmed')
         self.assertEqual(len(self.lines), 1)
@@ -96,7 +96,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
             self.requests.clear()
             self.recorded.clear()
             with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
-                out = self.call('want')
+                out = self.call('pass')
             self.assertTrue(out['already_seen'])
             self.assertTrue(out['recorded_selection'])
             self.assertTrue(out['comment_review']['ok'])
@@ -106,7 +106,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
     def test_prior_published_comment_remains_duplicate_protected(self):
         self.lines[:] = ['| BV1abcde1234 | 322469935296 | 0 | 2026-10-31 | comment |\n']
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
-            out = self.call('want')
+            out = self.call('pass')
         self.assertTrue(out['already_seen'])
         self.assertFalse(out['recorded_selection'])
         self.assertEqual(out['comment_review']['reason'], 'comment-selection-not-confirmed')
@@ -116,7 +116,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
         self.lines[:] = ['| 2026-10-30 | BV1abcde1234 | old | uploader | 挑中 |\n']
         self.pre_round_picked.add('BV1abcde1234')
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
-            out = self.call('want')
+            out = self.call('pass')
         self.assertTrue(out['already_seen'])
         self.assertFalse(out['recorded_selection'])
         self.assertEqual(out['comment_review']['reason'], 'comment-selection-not-confirmed')
@@ -132,11 +132,18 @@ class LedgerCommentReviewTests(unittest.TestCase):
 
     def test_invalid_or_skipped_never_creates_review(self):
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
-            self.assertFalse(self.call('want', '跳过')['ok'])
+            self.assertFalse(self.call('pass', '跳过')['ok'])
             self.assertFalse(self.call('unknown')['ok'])
             self.assertTrue(self.call('', '跳过')['ok'])
         self.assertEqual(self.requests, [])
         self.assertEqual(len(self.lines), 1)
+
+    def test_specialist_cannot_issue_want_anymore(self):
+        with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
+            out=self.call('want')
+        self.assertFalse(out['ok'])
+        self.assertIn('pass/insufficient', out['error'])
+        self.assertEqual(self.requests, [])
 
     def test_no_round_keeps_pick_and_reports_review_failure_without_send(self):
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': ''}):

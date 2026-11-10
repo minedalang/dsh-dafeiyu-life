@@ -16,33 +16,30 @@ const post=async(bridge)=>{
  return {status:r.status,body:await r.json()}
 }
 
-test('Life 自主拒绝与技术暂不可用要区分，二者都不给可执行发送 grant',async t=>{
- for(const [decision,expected,stage] of [
-   [{ok:false,reason:'life-declined-video-action'},'life-declined-video-action','declined'],
-   [{ok:false,reason:'life-not-ready'},'life-not-ready','blocked'],
-   [{ok:false,reason:'life-cross-channel-rest',notBefore:T+60_000},'life-cross-channel-rest','blocked']
- ]){
-  const diagnostics=[]
+test('未经 Life 评论意愿决策的顶层直接写入必须拒绝，不能触发模型或发送',async t=>{
+ for(const reason of ['主观想评论','草稿已准备']){
+  let callCount=0
   const bridge=createLifeVideoActionBridge({getAccountUid:()=>UID,getAccountTag:()=>TAG,
-   choose:async()=>decision,verify:()=>({ok:false}),receipt:()=>assert.fail('must not consume receipt'),
-   onCommentDiagnostic:x=>diagnostics.push(x),now:()=>T})
+   choose:async()=>{callCount++;return {ok:true}},verify:()=>({ok:false}),receipt:()=>assert.fail('no receipt')})
   await bridge.start();t.after(()=>bridge.stop())
-  const result=await post(bridge)
-  assert.equal(result.status,409)
-  assert.deepEqual(result.body,{ok:false,reason:expected})
+  const outcome=await post(bridge)
+  assert.equal(outcome.status,409)
+  assert.equal(outcome.body.reason,'comment-review-not-current')
+  assert.equal(callCount,0)
   assert.equal(bridge.status().pending,0)
-  assert.equal(diagnostics.find(x=>x.stage===stage)?.code,expected)
  }
 })
 
-test('意愿同意但 proof 复核失败时不放宽发送，只报告 proof 异常',async t=>{
+test('旧式直接发送不允许借用意愿模型审批；必须由视频入选后的考虑接口先决定',async t=>{
+ let calls=0
  const bridge=createLifeVideoActionBridge({getAccountUid:()=>UID,getAccountTag:()=>TAG,
-  choose:async()=>({ok:true,proof:{id:'test'}}),verify:()=>({ok:false}),receipt:()=>assert.fail('no grant')})
+  choose:async()=>{calls++;return {ok:true,proof:{id:'test'}}},verify:()=>({ok:true}),receipt:()=>assert.fail('no grant')})
  t.after(()=>bridge.stop());await bridge.start()
  const result=await post(bridge)
  assert.equal(result.status,409)
- assert.equal(result.body.reason,'life-choice-review-required')
+ assert.equal(result.body.reason,'comment-review-not-current')
  assert.equal(bridge.status().pending,0)
+ assert.equal(calls,0)
 })
 
 test('生活时间线如实显示评论意愿与阻断，不把未发出的草稿写成公开评论',()=>{
@@ -67,16 +64,15 @@ test('生活时间线如实显示评论意愿与阻断，不把未发出的草�
 test('管理中心把只有日期的看过视频按天归组，不凭空给每条视频安上具体时间',()=>{
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
- assert.match(js,/life-timeline-date-only/)
- assert.match(js,/原始账本没有逐条时间/)
+ assert.match(js,/life-independent/)
+ assert.match(js,/日期记录（时间未知）/)
  assert.match(js,/row\.detail/)
- assert.match(html,/旧判重表只有日期的视频折叠在当日记录中/)
+ assert.match(html,/life-continuity-layout/)
 })
 
 
 test('视频写入审批必须使用受支持的 Life 人格场景；评论使用 comment，其他写操作使用 main',async t=>{
  const cases=[
-  ['bili_reply',BV,'comment'],
   ['bili_video_like',BV,'main'],
   ['bili_video_collect',BV,'main'],
   ['bili_follow_creator',BV,'main'],
@@ -97,14 +93,12 @@ test('视频写入审批必须使用受支持的 Life 人格场景；评论使�
   await bridge.start();t.after(()=>bridge.stop())
   const env=bridge.env()
   const payload={uid:UID,tool,target,reason:'明确需要先核验 Life 意愿'}
-  if(tool==='bili_reply')Object.assign(payload,{topLevel:true,commentText:'这条内容我有一个具体问题。'})
   const response=await fetch(env.BILI_LIFE_ACTION_URL+'/life-action',{
    method:'POST',headers:{authorization:'Bearer '+env.BILI_LIFE_ACTION_TOKEN,'content-type':'application/json'},
    body:JSON.stringify(payload)})
   assert.equal(response.status,409)
   assert.deepEqual(await response.json(),{ok:false,reason:'life-declined-video-action'})
-  assert.equal(chosen?.candidates[0].kind,tool==='bili_reply'?'video_comment':
-   ({bili_video_like:'video_like',bili_video_collect:'video_collect',bili_follow_creator:'video_follow',
+  assert.equal(chosen?.candidates[0].kind,({bili_video_like:'video_like',bili_video_collect:'video_collect',bili_follow_creator:'video_follow',
      bili_unfollow_creator:'video_unfollow',bili_favorite_folder_delete:'video_folder_delete'})[tool])
   assert.equal(bridge.status().pending,0,'a model decline never grants a send')
  }
@@ -113,7 +107,7 @@ test('视频写入审批必须使用受支持的 Life 人格场景；评论使�
 
 test('视频评论调试回执包含安全的阻断原因码，而非只有总括性 technically-blocked',()=>{
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(index,/diagnostic\.blocked>0&&commentDiagnostics\?\.lastReason/)
+ assert.match(index,/diagnostic\.blocked>0\|\|diagnostic\.proposed>0/)
  assert.match(index,/reason:commentDiagnostics\.lastReason/)
 })
 

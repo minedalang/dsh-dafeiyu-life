@@ -87,7 +87,7 @@ test('源代码将考虑工具限定为已开启的原创评论视频 Agent，�
  assert.match(idx,/onCommentReview:/)
  assert.match(idx,/BILI_DUTY_LIFE_ROUND_ID:videoRoundReceiptId/)
  assert.match(idx,/if \(args\?\.confirm !== true\) return \{ok:false,blocked:true,needsConfirmation:true,error:'需要主人在当前对话明确要求发送评论/)
- assert.match(py,/async def bili_comment_consideration\(bvid: str, decision: str, reason: str = ''\)/)
+ assert.match(py,/async def bili_comment_consideration\(bvid: str, decision: str = 'consider', reason: str = ''/)
  assert.match(py,/_life_video_request,'\/life-comment-review'/)
  assert.match(ui,/明确考虑/)
 })

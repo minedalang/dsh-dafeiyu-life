@@ -102,7 +102,7 @@ def _life_video_request(route, payload):
             method='POST')
         # Proxies must never see an account-bound Life capability token.
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        with opener.open(req, timeout=5 if route == '/life-comment-review' else 60 if route == '/life-action' else 42) as response:
+        with opener.open(req, timeout=90 if route == '/life-comment-review' else 60 if route == '/life-action' else 42) as response:
             body = response.read(2048)
         result = json.loads(body)
         return result if isinstance(result, dict) else {'ok': False}
@@ -116,12 +116,19 @@ def _life_video_request(route, payload):
                 # Only known, non-sensitive gate codes cross the bridge. An
                 # actual model decline must not masquerade as a network error.
                 safe_review = ('comment-review-not-current', 'comment-selection-not-confirmed',
-                               'comment-review-already-recorded', 'comment-review-permission-unavailable')
+                               'comment-review-already-recorded', 'comment-review-permission-unavailable',
+                               'comment-evidence-required', 'life-choice-deferred',
+                               'life-willingness-unavailable', 'life-choice-review-required',
+                               'life-choice-in-progress', 'life-cross-channel-rest',
+                               'life-admission-unavailable', 'life-willingness-quota',
+                               'life-opportunity-window-full', 'account-changed')
                 safe_action = ('life-declined-video-action', 'life-not-ready', 'life-context-unavailable',
                                'life-choice-in-progress', 'life-cross-channel-rest',
                                'life-admission-unavailable', 'life-choice-review-required',
                                'life-account-unavailable', 'account-not-ready',
-                               'account-changed', 'life-video-gateway-unavailable')
+                               'account-changed', 'life-video-gateway-unavailable',
+                               'comment-life-intent-missing', 'comment-draft-mismatch',
+                               'comment-life-intent-expired', 'comment-review-not-current')
                 if code in (safe_review if route == '/life-comment-review' else safe_action):
                     return {'ok': False, 'reason': code}
             except Exception:
@@ -149,6 +156,7 @@ async def _life_video_authorize(tool_name, args):
         # proposed text for a later independent platform GET; it is not logged.
         payload['commentText'] = args.get('text')
         payload['topLevel'] = args.get('rpid', 0) == 0 and args.get('root', 0) == 0
+        payload['roundId'] = os.environ.get('BILI_DUTY_LIFE_ROUND_ID', '')
     return await asyncio.to_thread(_life_video_request, '/life-action', payload)
 
 
@@ -2684,8 +2692,8 @@ async def bili_ledger_mark(bvid: str, title: str, up: str = "", status: str = "�
         # correct its marker before considering a public comment.
         if not selected and re.match(r'^(?:挑中|已挑中|选中|已选中|入选|已入选|值得看|可以看)[·：:（(\s-]', st):
             return json.dumps({"ok": False, "error": "入选状态必须填写精确的「挑中」，本次未写入；可以修正状态后再标记"}, ensure_ascii=False)
-        if comment_decision and (comment_decision not in ("want", "pass", "insufficient") or not selected):
-            return json.dumps({"ok": False, "error": "comment_decision 仅适用于真实入选，值须为 want/pass/insufficient"}, ensure_ascii=False)
+        if comment_decision and (comment_decision not in ("pass", "insufficient") or not selected):
+            return json.dumps({"ok": False, "error": "comment_decision 只允许 pass/insufficient；想评论请先标记入选，再用 bili_comment_consideration(...,decision=consider,draft=...,evidence=...) 让 Life 直接决定"}, ensure_ascii=False)
         now = datetime.now().strftime("%Y-%m-%d")
         src = _read_home("seen.md", 2_000_000)
         already_seen = bool(re.search(r"\|\s*"+re.escape(bv)+r"\s*\|", src))
@@ -3355,21 +3363,26 @@ async def bili_comment_meme_search(query: str, limit: int = 12) -> str:
 # ========== Tool 6: 回复评论 ==========
 
 @tool()
-async def bili_comment_consideration(bvid: str, decision: str, reason: str = '') -> str:
-    """只读诊断：标记本轮已挑中视频是否有原创评论意愿，不发表评论。"""
+async def bili_comment_consideration(bvid: str, decision: str = 'consider', reason: str = '',
+                                    draft: str = '', evidence: str = '') -> str:
+    """对本轮已入选视频提交短评草稿及阅读依据，由 Life 一次决定 want/pass/defer；此工具不发送评论。"""
     if (deny := _guard('bili_comment_consideration')): return deny
     round_id = os.environ.get('BILI_DUTY_LIFE_ROUND_ID', '')
     if not re.fullmatch(r'[a-f0-9]{24}', round_id):
         return json.dumps({'ok':False,'error':'视频轮次未绑定'},ensure_ascii=False)
-    if decision not in ('want','pass','insufficient'):
+    if decision not in ('consider','pass','insufficient'):
         return json.dumps({'ok':False,'error':'无效考虑结果'},ensure_ascii=False)
     if len(str(reason)) > 160:
         return json.dumps({'ok':False,'error':'原因过长'},ensure_ascii=False)
     try:
         uid = str(getattr(get_cred(), 'dedeuserid','') or '')
-        payload = {'uid':uid,'roundId':round_id,'bvid':_valid_bv(bvid),'decision':decision}
+        payload = {'uid':uid,'roundId':round_id,'bvid':_valid_bv(bvid),'decision':decision,
+                   'draft':draft if decision == 'consider' else '',
+                   'evidence':evidence if decision == 'consider' else ''}
         receipt = await asyncio.to_thread(_life_video_request,'/life-comment-review',payload)
         return json.dumps({'ok':receipt.get('ok') is True,'recorded':receipt.get('recorded') is True,
+                           'decision':receipt.get('decision',''), 'canPost':receipt.get('canPost') is True,
+                           'publicCommentText':receipt.get('publicCommentText','') if receipt.get('canPost') is True else '',
                            'reason':receipt.get('reason','') if receipt.get('ok') is not True else ''},ensure_ascii=False)
     except Exception:
         return json.dumps({'ok':False,'error':'原创评论考虑回执不可用'},ensure_ascii=False)
@@ -3417,6 +3430,11 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
                            "error": "刷视频任务只能发布顶层评论；回复评论请使用后台互动"}, ensure_ascii=False)
     _deny = _guard("bili_reply")
     if _deny: return _deny
+    # For an autonomous video comment Life reviewed this exact draft. Keep the
+    # expected text in process memory; no second model decision at send time.
+    life_approved_comment_text = text if os.environ.get('BILI_DUTY_LIFE_ROUND_ID') else None
+    if life_approved_comment_text is not None and (sync_to_dynamic or should_mention or meme_image_name):
+        return json.dumps({'success':False,'blocked':True,'error':'Life 原创评论不允许顺带动态同步、@ 好友或附图；请只发送已批准的文字'},ensure_ascii=False)
     verified_recipient = None
     def _result(payload, posted_bvid, reply_to_rpid, mention_diag=None):
         _record_meme_event(payload, posted_bvid, reply_to_rpid, meme_image_name,
@@ -3487,6 +3505,11 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
         clean_text, _ = _decorate_comment(text, configured_targets, False, mention_position)
         clean_text, _ = _decorate_comment(clean_text, targets, False, mention_position)
         text, mentioned = _decorate_comment(clean_text, selected, use_mentions, mention_position)
+        # The post-processed text (including optional @) must be byte-exact
+        # relative to Life's approved draft. If a mention policy changes it,
+        # no send occurs. Never turn a modified draft into a new grant.
+        if life_approved_comment_text is not None and text != life_approved_comment_text:
+            return json.dumps({'success':False,'blocked':True,'error':'待发送评论正文与 Life 已批准草稿不一致（含自动 @ 变更）；未发送'},ensure_ascii=False)
         if not text:
             return _result({"success": False, "error": "评论内容不能为空"}, bvid, rpid, mention_diagnostic)
         pause_deny = _guard("bili_reply")

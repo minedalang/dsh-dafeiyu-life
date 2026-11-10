@@ -76,29 +76,28 @@ async function plannerScenario(dir,{optIn=true,maxRuns=5,modelDuringSecond=()=>{
   const result=await planner.tick({force:true})
   return {v,result,events,planner,calls,sends,prompts}
 }
-test('planner makes one opt-in second model call, charges same budget and saves no raw private text',()=>withDir(async dir=>{
+test('retired social shadow: planner considers social event once; no second private model call or send',()=>withDir(async dir=>{
   const r=await plannerScenario(dir)
   assert.equal(r.result.action,'consider_social')
-  assert.equal(r.result.result,'social-shadow-defer')
-  assert.equal(r.calls,2);assert.equal(r.sends,0)
-  assert.match(r.prompts[1],/合成好友私信/)
-  assert.doesNotMatch(r.prompts[0],/合成好友私信/)
-  assert.equal(r.planner.status().runs,2)
-  assert.equal(r.v.shadow.status().lifeChoices,1)
+  assert.equal(r.result.result,'social-signal-considered')
+  assert.equal(r.calls,1);assert.equal(r.sends,0)
+  assert.equal(r.prompts.length,1);assert.doesNotMatch(r.prompts[0],/合成好友私信/)
+  assert.equal(r.planner.status().runs,1)
+  assert.equal(r.v.shadow.status().lifeChoices,0)
   const ledger=readFileSync(join(dir,'life-agent-events',A+'.json'),'utf8')
   assert.doesNotMatch(ledger,/合成好友私信|123|msg/)
-  assert.match(ledger,/social-shadow-defer/)
+  assert.match(ledger,/social-signal-considered/)
 }))
 test('without opt-in or daily budget the planner never requests private content',()=>withDir(async dir=>{
   const r=await plannerScenario(dir,{optIn:false})
   assert.equal(r.result.result,'social-signal-considered');assert.equal(r.calls,1)
   const other=await plannerScenario(join(dir,'other'),{optIn:true,maxRuns:1})
-  assert.equal(other.result.result,'social-shadow-quota');assert.equal(other.calls,1)
+  assert.equal(other.result.result,'social-signal-considered');assert.equal(other.calls,1)
 }))
-test('revoking consent during model call discards shadow decision and leaves legacy ownership',()=>withDir(async dir=>{
+test('revoking legacy shadow consent does not change active social attention ownership',()=>withDir(async dir=>{
   const r=await plannerScenario(dir,{modelDuringSecond:v=>v.disable()})
-  assert.equal(r.result.result,'social-shadow-revoked')
-  assert.equal(r.calls,2);assert.equal(r.v.shadow.status().lifeChoices,0)
+  assert.equal(r.result.result,'social-signal-considered')
+  assert.equal(r.calls,1);assert.equal(r.v.shadow.status().lifeChoices,0)
   assert.equal(r.sends,0)
 }))
 test('production wiring uses opt-in, verified callbacks, no send API and exposes bounded status',()=>{
@@ -106,8 +105,8 @@ test('production wiring uses opt-in, verified callbacks, no send API and exposes
   assert.match(src,/lifeAgentSocialContextOptIn: z\.boolean\(\)\.default\(false\)/)
   assert.match(src,/lifeSocialShadowConfirm!=='ENABLE_READ_ONLY_SHADOW'/)
   assert.match(src,/lifeSocialShadow\.revoke\(\)/)
-  assert.match(src,/lifeSocialShadow\.capture\(\{eventId:id,channel:'dm'/)
-  assert.match(src,/lifeSocialShadow\.capture\(\{eventId:id,channel:'comment'/)
+  assert.doesNotMatch(src,/lifeSocialShadow\.capture\(\{eventId:id,channel:'dm'/)
+  assert.doesNotMatch(src,/lifeSocialShadow\.capture\(\{eventId:id,channel:'comment'/)
   assert.match(src,/getLifeSocialPreview:params=>lifeSocialShadow\.preview\(params\)/)
   assert.match(src,/socialShadow:lifeSocialShadow\.status\(\)/)
   assert.doesNotMatch(readFileSync(new URL('../lib/life-social-shadow.mjs',import.meta.url),'utf8'),/bili_send_message|bili_reply/)

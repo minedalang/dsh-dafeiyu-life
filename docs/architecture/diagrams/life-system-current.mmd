@@ -1,4 +1,4 @@
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.38 · Universal Life Episode + 专业上下文交接）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.56 · Life 意愿唯一归属 + 真实连续经历）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -102,18 +102,18 @@ flowchart TB
 
   %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_comment_consideration
   %% @code commentDiagnosis | lib/video-comment-readiness.mjs | classifyVideoCommentRound
-%% @code commentAdmission | lib/life-video-action-bridge.mjs | const waitMs=choice.notBefore-now()
-  %% @code commentAdmission | lib/life-video-action-bridge.mjs | const waitMs=choice.notBefore-now()
-  subgraph outgoing["写入委派｜不存在一把可绕开各渠道限制的万能发送钥匙"]
-    videoWrite["视频续行提议 → Life 意愿与原视频写入桥 → Python 工具"]
-    commentReview["bili_ledger_mark 入选时可附带只读意愿：想说／不想说／证据不足；仅匿名诊断"]
+%% @code commentAdmission | lib/life-video-action-bridge.mjs | reviewApprovals.set(key,
+  %% @code commentAdmission | lib/life-video-action-bridge.mjs | reviewApprovals.set(key,
+  subgraph outgoing["Life 意愿驱动写入｜无法绕开各渠道技术权限"]
+    videoWrite["Life 独立意愿 → 原技术写入桥 → Python MCP 工具"]
+    commentReview["Video Agent 提供入选 BV、候选草稿及依据；Life 决定 want/pass/defer 和最终正文"]
     commentDiagnosis["轮次结束时枚举诊断：没考虑／想说未提议／自愿否决／技术阻断／回执未知"]
-    commentAdmission["已知跨渠道冷却：到 notBefore 后最多重考虑一次；在途/未知不重试"]
+    commentAdmission["唯一 Life 意愿 proof：账号／轮次／BV／最终正文绑定，一次消费；不二次考虑"]
     socialWrite["私信/评论/分享 → 关系与渠道授权 → 原社交发送事务"]
   end
   menuGuard -.->|仅合规候选/委派；不直接写平台| videoWrite
   home -.->|已选片后可自主考虑；不强制发言| commentReview
-  commentReview -.->|有真实表达意愿才考虑原发送门禁| commentAdmission
+  commentReview -.->|Life 独立决定的唯一表达意愿| commentAdmission
   commentAdmission -.-> videoWrite
   commentReview -.-> commentDiagnosis
   videoWrite -.-> commentDiagnosis
@@ -228,3 +228,16 @@ dmFollow -->|已核实后回执| receipts
 %% dev.44: opt-in owner policy and rate-limit recovery.
 %% @code ownerContactPolicy | lib/owner-contact-policy.mjs | export function ownerContactPolicy
 %% @code networkPollBackoff | lib/network-poll-backoff.mjs | export function createNetworkPollBackoff
+
+%% dev.56: actual social shadow comparator is retired, legacy snapshots remain read-only.
+lifeOwnsSpeech["LifeWillingness｜普通私信与评论回复可产生最终 lifeSpeech"]
+professionalDraft["DM / Comment 专业 Agent｜真实上下文、候选草稿（不拥有最终意愿）"]
+shadowRetired["历史 social-shadow 样本｜active 模式不再调用第二模型；只读留痕"]
+journeyGroups["鱼的记忆｜以同轮 video-round / Episode 精确回执分组，独立事件不硬连"]
+professionalDraft --> lifeOwnsSpeech --> socialWrite
+shadowRetired -.->|不参与发送| journeyGroups
+receipts -->|只有来源可证实时关联| journeyGroups
+%% @code lifeOwnsSpeech | lib/life-willingness.mjs | lifeSpeech
+%% @code professionalDraft | index.js | socialReply:{incoming:
+%% @code shadowRetired | lib/autonomous-planner.mjs | outcome.result='social-signal-considered'
+%% @code journeyGroups | lib/life-timeline.mjs | export function groupLifeTimeline

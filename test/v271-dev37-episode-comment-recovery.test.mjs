@@ -74,7 +74,7 @@ test('匿名 S0 快照把暂停冷却、失去原来源与可恢复分开，仍�
 test('视频标记的附带只读意愿与评论写入仍是独立工具，当前轮未入选则拒绝',()=>{
  const idx=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const py=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
- assert.match(idx,/comment_decision="want" 或 "pass" 或 "insufficient"/)
+ assert.match(idx,/comment_decision=pass\/insufficient/)
  assert.match(idx,/comment-review-permission-unavailable/)
  assert.match(idx,/row\.previouslyPickedBvids\.has\(bvid\)/)
  assert.match(py,/comment_decision: str = ""/)

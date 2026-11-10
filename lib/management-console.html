@@ -964,6 +964,27 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .model-task{padding:0!important;overflow:hidden}.model-task>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;cursor:pointer;list-style:none}.model-task>summary::-webkit-details-marker{display:none}.model-task>summary:before{content:"＋";margin-right:4px;color:var(--muted)}.model-task[open]>summary:before{content:"－"}.model-task-body{padding:0 16px 16px}.help-tip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid currentColor;border-radius:50%;font-size:11px;opacity:.7;cursor:help;vertical-align:middle}
 
 #panel-life .memory-home{margin:14px 0 20px}#panel-life-agent #life-timeline-list .life-timeline-links{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px}#panel-life-agent #life-timeline-list .life-timeline-links a{text-decoration:underline;text-underline-offset:2px}#panel-stickers .card>p.muted{font-size:12px;line-height:1.45}#panel-stickers details{margin:10px 0}#panel-stickers details>summary{cursor:pointer;font-weight:600}
+
+/* dev.56: source-backed Life journeys; connector means the SAME canonical round/Episode. */
+#panel-life-agent #life-timeline-list{border-left:0;padding-left:0;gap:16px}
+#panel-life-agent #life-timeline-list.life-continuity-layout{border-left:0;padding-left:0;gap:16px}
+#panel-life-agent #life-timeline-list .life-journey{border:1px solid color-mix(in srgb,#56b7bf 45%,var(--stroke));border-radius:19px;background:color-mix(in srgb,var(--panel) 91%,#e2f7fa);overflow:hidden;box-shadow:0 7px 21px #31528212}
+#panel-life-agent #life-timeline-list .life-journey>summary{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:15px 18px;cursor:pointer;font-size:14px;font-weight:750;list-style:none}
+#panel-life-agent #life-timeline-list .life-journey>summary::-webkit-details-marker{display:none}
+#panel-life-agent #life-timeline-list .life-journey>summary:before{content:'▸';transition:transform .2s;color:#2495a3}
+#panel-life-agent #life-timeline-list .life-journey[open]>summary:before{transform:rotate(90deg)}
+#panel-life-agent #life-timeline-list .life-journey-summary{flex:1}
+#panel-life-agent #life-timeline-list .life-journey-label{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-top:5px}
+#panel-life-agent #life-timeline-list .life-journey-steps{position:relative;padding:7px 15px 17px 37px;margin:0 12px 12px;border-left:2px solid #55b8c3;display:flex;flex-direction:column;gap:11px}
+#panel-life-agent #life-timeline-list .life-journey-steps>.record{margin:0;animation:life-card-reveal .35s ease both}
+#panel-life-agent #life-timeline-list .life-journey-steps>.record:before{left:-28px;background:#56b8c3;box-shadow:0 0 0 3px var(--panel);animation:life-journey-pulse 3s ease-in-out infinite}
+#panel-life-agent #life-timeline-list .life-independent{margin-top:13px;display:flex;flex-direction:column;gap:10px}
+#panel-life-agent #life-timeline-list .life-independent>.record{margin:0}
+#panel-life-agent #life-timeline-list .life-independent>.record:before{display:none}
+#panel-life-agent #life-timeline-list .life-independent-heading{font-size:13px;font-weight:700;margin-top:17px;padding:5px 0;color:var(--ink)}
+#panel-life-agent #life-timeline-list .life-independent-note{font-size:11px;color:var(--muted)}
+@keyframes life-journey-pulse{0%,100%{box-shadow:0 0 0 3px var(--panel)}50%{box-shadow:0 0 0 7px color-mix(in srgb,#55b8c3 20%,transparent)}}
+@media(prefers-reduced-motion:reduce){#panel-life-agent #life-timeline-list .life-journey-steps>.record,#panel-life-agent #life-timeline-list .life-journey-steps>.record:before{animation:none}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1063,10 +1084,10 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
 <button data-tab="home" aria-selected="false">大肥鱼的家</button>
 <button data-tab="life-agent" aria-selected="false">🐟 鱼鱼此刻</button>
-<button data-tab="life" aria-selected="false">🧠 经历与记忆</button>
+<button data-tab="life" aria-selected="false">🧠 鱼的记忆</button>
 
 <button data-tab="relationships" aria-selected="false">👥 逐渐熟悉的人</button>
-<button data-tab="personality" aria-selected="false">🌱 人格成长</button></div>
+<button data-tab="personality" aria-selected="false">🌱 人格成长（实验性）</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">📺 B站生活</span>
 <button data-tab="bili" aria-selected="false">视频探索</button>
 <button data-tab="social" aria-selected="false">社交互动</button>
@@ -1525,7 +1546,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <nav class="life-day-shortcuts" aria-label="鱼鱼此刻快捷查看"><a href="#life-timeline-section">今天的经历</a><a href="#life-emotion-section">此刻心情</a><a href="#life-todo-section">想做的事</a><a href="#life-settings-v2-panel">生活设置</a></nav>
 <details class="life-now-timeline" open><summary>📅 大肥鱼的一天 · 真实生活时间线</summary>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
-<p class="muted">只展示有记录的真实经历、行动与自主选择。评论与模型诊断已移至「诊断」页；待确认发送不会显示成成功。</p><p id="life-timeline-summary" class="muted" role="status"></p>
+<p class="muted">按真实来源串起连续经历：同一视频轮次／已核验 Life Episode 用连线展示；没有明确关联的行为独立陈列，不因为发生时间接近而硬连。点击经历可展开具体步骤。旧账本只有日期的条目不会伪造时刻。</p><p id="life-timeline-summary" class="muted" role="status"></p>
 <div id="life-timeline-list" class="records records-scroll tall"></div></div>
 </details>
 <details class="life-now-emotion" open><summary>💗 现在的心情</summary>
@@ -1550,7 +1571,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </div>
 <p id="life-integration-warning" class="muted" role="status" aria-live="polite">各系统独立读取；失败不会被伪装为成长完成。</p>
 <nav class="life-command-links" aria-label="查看生活详情">
-<a href="?tab=life" data-open-tab="life">🧠 经历与记忆</a>
+<a href="?tab=life" data-open-tab="life">🧠 鱼的记忆</a>
 <a href="#life-todo-section" data-open-tab="life-agent" data-open-anchor="life-todo-section">📝 鱼鱼的计划</a>
 <a href="?tab=life" data-open-tab="life" data-open-anchor="life-interest-section">🌿 兴趣趋势</a>
 <a href="?tab=personality" data-open-tab="personality">🪴 人格成长证据</a>
