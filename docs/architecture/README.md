@@ -1,4 +1,8 @@
-## 当前开发版本 2.7.1-dev.57：Life 模型故障归因与 Provider 发现（未发布）
+## 当前开发版本 2.7.1-dev.58：模型配置页 Provider 下拉渲染修复（未发布）
+
+- [dev.58 DOM 选项节点复用缺陷与测试](2.7.1-dev58-provider-dom-options.md)：修复默认及八项任务 Provider 下拉因跨 select 重用同一批 option 节点而被浏览器搬空；没有改变 DSH 模型发现、Life 意愿、发送权限或记忆数据流。
+
+## 历史开发版本 2.7.1-dev.57：Life 模型故障归因与 Provider 发现（未发布）
 
 - [dev.57 模型失败退避与主人管理](2.7.1-dev57-life-model-backoff-and-catalog.md)：退避倒计时、连续失败次数、故障类别、HTTP 状态与请求 ID 仅安全只读显示；确认后可清理仅 Life 规划模型的失败退避，绝不直接重试或解除发送权限；Provider 下拉恢复 DSH 当前模型与保存历史标识（标识不代表连接可用）。`duty.md` 继续作为可定制视频工作章程，但每日入选额度以代码规则为准。
 

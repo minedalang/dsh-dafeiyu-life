@@ -8,9 +8,21 @@ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url
 const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
 
 class FakeElement {
-  constructor(){this.value='';this.textContent='';this.children=[];this.events=new Map();this.disabled=false}
-  appendChild(child){this.children.push(child);return child}
-  replaceChildren(...children){this.children=children}
+  constructor(){this.value='';this.textContent='';this.children=[];this.events=new Map();this.disabled=false;this.parentNode=null}
+  appendChild(child){
+    // Real DOM re-parents existing <option> nodes instead of copying them.
+    if(child.parentNode){
+      const siblings=child.parentNode.children;
+      const index=siblings.indexOf(child);
+      if(index>=0)siblings.splice(index,1);
+    }
+    child.parentNode=this;this.children.push(child);return child;
+  }
+  replaceChildren(...children){
+    for(const child of this.children)child.parentNode=null;
+    this.children=[];
+    for(const child of children)this.appendChild(child);
+  }
   addEventListener(name,handler){this.events.set(name,handler)}
   trigger(name){this.events.get(name)?.()}
 }
@@ -56,7 +68,35 @@ test('实际模型目录生成明确的默认模型与独立任务下拉框',()=
  assert.equal($('models-default-model').value,'sonnet')
  assert.equal($('model-videoModelProvider').value,'claude')
  assert.equal($('model-videoModelId').value,'sonnet')
- assert.deepEqual($('model-videoModelProvider').children.map(x=>x.value),['','claude','deepseek-official'])
+ const ids=['models-default-provider','model-videoModelProvider','model-interactionModelProvider',
+   'model-dailyDynamicModelProvider','model-ownerDmAgentModelProvider',
+   'model-mainSessionReflectionModelProvider','model-visionModelProvider',
+   'model-memeRulesModelProvider','main-memory-model-provider'];
+ for(const id of ids){
+   assert.deepEqual($(id).children.map(x=>x.value),['','claude','deepseek-official'],id+' should retain its own Provider option nodes');
+   assert.equal($(id).children.length,3,id);
+   assert.equal($(id).children.every(x=>x.parentNode===$(id)),true,id+' nodes should belong to this select');
+ }
+ // Shared option DOM nodes would end up only in the last select.
+ assert.equal(new Set(ids.flatMap(id=>$(id).children)).size,ids.length*3);
+})
+
+test('历史 Provider 回填在默认及全部任务下拉中均保持可见，不冒充已验证',()=>{
+ const {$,controls}=ui();controls.renderModelDropdowns({
+   pluginDefaultModelProvider:'old-gateway',pluginDefaultModelId:'old-model',
+   interactionModelProvider:'backup-gateway',interactionModelId:'backup-model',
+ });
+ const ids=['models-default-provider','model-videoModelProvider','model-interactionModelProvider',
+   'model-dailyDynamicModelProvider','model-ownerDmAgentModelProvider',
+   'model-mainSessionReflectionModelProvider','model-visionModelProvider',
+   'model-memeRulesModelProvider','main-memory-model-provider'];
+ for(const id of ids){
+   assert.deepEqual($(id).children.map(x=>x.value),['','claude','deepseek-official','old-gateway','backup-gateway'],id);
+   assert.match($(id).children.find(x=>x.value==='old-gateway').textContent,/未验证/,id);
+ }
+ assert.equal($('models-default-provider').value,'old-gateway');
+ assert.equal($('model-interactionModelProvider').value,'backup-gateway');
+ assert.equal($('model-interactionModelId').value,'backup-model');
 })
 test('一键同步全部八项任务，同时重置思考深度',()=>{
  const {$,controls}=ui();controls.renderModelDropdowns({})
