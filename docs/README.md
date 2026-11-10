@@ -1,3 +1,5 @@
+**当前开发预览：2.7.1-dev.51（未发布）。** [全景神经记忆与主 Session 短暂停顿续接](architecture/2.7.1-dev51-neural-atlas-short-pause.md)，不新增 B站自动发送授权；真实 Windows 宿主需现场验证。
+
 **当前开发版本：2.7.1-dev.49（未发布）**。三维神经回忆场、已有向量的本地 PCA 投影、后台监听逐渠道诊断。详情见 [dev.49 架构](architecture/2.7.1-dev49-neural-3d-and-channel-health.md)。
 
 **当前开发版：`2.7.1-dev.48`（尚未发布）。** [dev.48 Life 自主按需社交只读、神经回忆与技术状态](architecture/2.7.1-dev48-neural-recall-and-social-reads.md) · [Life 日志与使用者可读的生活时间线](architecture/2.7.1-dev47-owner-readable-life-timeline.md) ·  [dev.46 Life 执行动作细节与脱敏模型调用诊断](architecture/2.7.1-dev46-life-decision-explain.md) · [dev.45 统一读取限流和主人交流预设](architecture/2.7.1-dev45-dm-read-budget-and-owner-defaults.md) · [dev.44 主人联系与断网恢复](architecture/2.7.1-dev44-contact-and-recovery.md) · [Life 主 Session 自主交谈接线及宿主输出限制](architecture/2.7.1-dev42-main-session-self-initiated-chat.md) · [dev.42 P6-A 诊断](architecture/2.7.1-dev42-main-chat-style-p6-diagnostics.md) · [dev.41 视频间隔](architecture/2.7.1-dev41-video-agent-configurable-interval.md) · [专业 Agent 自主连续决策源码审计](architecture/2.7.1-dev40-autonomy-and-continuity-audit.md)。

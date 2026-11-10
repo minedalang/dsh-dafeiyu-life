@@ -886,6 +886,27 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 @media(prefers-color-scheme:dark){#panel-life .neural-recall-field{background:radial-gradient(circle at 50% 45%,#233f53,var(--panel) 70%)}}
 @media(prefers-reduced-motion:reduce){#panel-life .neural-memory-detail{transition:none}#panel-life .neural-edge{animation:none}}
 
+
+/* dev51: whole-memory atlas, readable link counters and high-density canvas */
+#panel-life .neural-recall-controls{align-items:center;gap:10px 18px}
+#panel-life .neural-recall-controls select{min-width:145px;border-radius:9px;padding:6px 9px;background:var(--panel);border:1px solid var(--stroke);color:var(--ink)}
+#panel-life .neural-recall-controls small{font-size:11px;color:var(--muted)}
+#panel-life .neural-recall-controls input:disabled+small{opacity:.55}
+#panel-life #neural-evidence-explanation{margin:0 0 11px;font-size:11px}
+#panel-life .neural-recall-field{position:relative;display:flex;flex-direction:column;min-height:500px}
+#panel-life .neural-memory-viewport{position:relative;flex:1;min-height:520px;overflow:hidden;touch-action:none;cursor:grab}
+#panel-life .neural-memory-viewport.is-dragging{cursor:grabbing}
+#panel-life #neural-memory-svg{display:block;min-height:520px;width:100%;height:100%;aspect-ratio:auto;pointer-events:auto}
+#panel-life #neural-memory-canvas{display:none;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#panel-life .neural-memory-viewport.is-canvas #neural-memory-svg{visibility:hidden}
+#panel-life .neural-memory-viewport.is-canvas #neural-memory-canvas{display:block}
+#panel-life .neural-viewport-actions{position:absolute;z-index:4;right:10px;top:10px;display:flex;gap:6px}
+#panel-life .neural-viewport-actions button{background:var(--panel);border:1px solid var(--stroke);color:var(--ink);border-radius:9px;padding:6px 10px;box-shadow:0 2px 8px #0000000d}
+#panel-life .neural-node[data-matched="false"] text{display:none}
+#panel-life .neural-memory-viewport.is-focusing{transition:box-shadow .7s;box-shadow:inset 0 0 55px #75b6e031}
+#panel-life .neural-recall-board:fullscreen .neural-memory-viewport,#panel-life .neural-recall-board.is-expanded .neural-memory-viewport{min-height:70vh}
+@media(max-width:850px){#panel-life .neural-memory-viewport{min-height:380px}}
+
 /* dev49: quiet, per-channel status replaces top alert and animated ticker */
 .life-health-banner{position:static;z-index:auto;max-width:none;margin:11px 0 15px;background:var(--panel);color:var(--ink);border:1px solid var(--stroke);border-left:4px solid #c28a47;padding:10px 14px;border-radius:14px;box-shadow:var(--lift)}
 .life-health-banner[data-level="critical"]{border-left-color:#cf6262}
@@ -1313,10 +1334,15 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div><label for="owner-contact-daily">每日最多联系（1–24 次）</label><input id="owner-contact-daily" type="number" min="1" max="24" value="2"></div>
 <div><label for="owner-contact-silence">主人沉默达到（5–1440 分钟）</label><input id="owner-contact-silence" type="number" min="5" max="1440" value="45"></div>
 </div></div>
-<div class="fields"><div><label for="main-session-silence-enabled">主 Session：主人沉默达到所选分钟数后，可自主考虑续聊</label><input id="main-session-silence-enabled" type="checkbox" checked></div>
-<div><label for="owner-dm-silence-enabled">主人 B站私信：主人沉默达到所选分钟数后，可自主考虑续聊</label><input id="owner-dm-silence-enabled" type="checkbox" checked></div></div>
-<p class="muted">“沉默 120 分钟”是满 120 分钟以后<strong>才允许考虑</strong>，不是立刻接话；同一轮连续发 1～3 条自然气泡不需要等待沉默阈值。以上仅为允许联系的边界，肥鱼仍可选择不说话；必须有已连接的主 Session / 授权的主人私信才能实际发送。</p>
+<div class="fields"><div><label for="main-session-silence-enabled">主 Session：较长时间没有新对话时，Life 可考虑重新联系</label><input id="main-session-silence-enabled" type="checkbox" checked></div>
+<div><label for="owner-dm-silence-enabled">主人 B站私信：较长时间沉默后，Life 可考虑重新联系</label><input id="owner-dm-silence-enabled" type="checkbox" checked></div></div>
+<p class="muted">上方 20／45／120 分钟属于<strong>长时间主动联系</strong>；聊天内 90 秒短暂停顿续聊单独配置，和同一轮连续发 1～3 条气泡也是不同机制。以上仅为允许联系的边界，肥鱼仍可选择不说话；必须有已连接的主 Session / 授权的主人私信才能实际发送。</p>
 <p id="owner-contact-status" class="muted" role="status">当前交流边界未读取。关闭上方总开关时，下方方案与两个续聊权限都不能编辑或生效。</p></fieldset>
+<div class="settings-section short-pause-settings" id="main-session-short-pause-plan"><h4>💭 聊天内短暂停顿 · 与主动找主人独立</h4>
+<p class="muted">肥鱼刚回答完，主人约 1～2 分钟没有发来新消息时，可由<strong>原主 Session</strong> 决定是否自然接上一句。不是强制追问，不占上方长时主动联系额度；主人发来新消息后旧机会立即作废。</p>
+<div class="fields"><div><label for="main-session-short-pause-enabled">允许主 Session 在短暂停顿后自己考虑接话</label><input id="main-session-short-pause-enabled" type="checkbox" checked></div>
+<div><label for="main-session-short-pause-seconds">考虑等待秒数（60～180，默认 90）</label><input id="main-session-short-pause-seconds" type="number" min="60" max="180" value="90"></div></div>
+<p class="muted" id="main-short-pause-status" role="status">等待主 Session 对话观察；不按固定时间强制发消息。</p></div>
 </div>
 <p class="muted">这里只列出当前 DSH 中活着的会话，不从硬盘猜“最近会话”。请先在 DSH 里打开你准备作为当前聊天房间的会话，再回来刷新选择。以后换房间不会清空大肥鱼的身份级长期记忆。</p>
 <div class="toolbar"><button id="main-session-save" class="primary">保存主 Session 设置</button><button id="main-session-test">发送连接测试</button></div>
@@ -1408,9 +1434,11 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="memory-filter-pills" role="group" aria-label="筛选记忆花园中的经历和长期认识"><button type="button" data-memory-kind="" aria-pressed="true">✨ 全部</button><button type="button" data-memory-kind="experience" aria-pressed="false">🎬 经历</button><button type="button" data-memory-kind="relationship" aria-pressed="false">💞 人物</button><button type="button" data-memory-kind="interest" aria-pressed="false">🌱 兴趣</button><button type="button" data-memory-kind="fact" aria-pressed="false">📜 事实</button></div>
 <div class="toolbar memory-search-bar"><input id="main-session-history-query" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="输入视频标题 / BV号 / 聊天关键词，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div>
 <section class="neural-recall-board" aria-label="神经回忆场：只读的真实记忆关系">
-  <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4></div><div class="neural-recall-actions"><span id="neural-memory-count" class="neural-counter">等待检索</span><button id="neural-memory-reset" type="button" title="回到初始视角">重置视角</button><button id="neural-memory-fullscreen" type="button" aria-pressed="false" aria-label="全屏打开神经回忆场">⛶ 全屏展开</button></div></div>
+  <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4></div><span id="neural-memory-count" class="neural-counter">等待读取</span></div>
   <p class="muted">鼠标拖动可自由旋转，滚轮缩放；点击节点定位右侧记忆详情。使用现有 embedding 时按语义空间聚集，否则明确显示结构布局；连线仅表示可信共享来源。</p>
-  <div class="neural-recall-controls"><label><input id="neural-show-interest" type="checkbox" checked> 兴趣证据连线</label><label><input id="neural-show-relationship" type="checkbox" checked> 互动证据连线</label><label><input id="neural-show-source" type="checkbox" checked> 共享来源连线</label><label><input id="neural-show-emotion" type="checkbox" checked> 当时情绪回声（有原始证据时）</label></div>
+  <div class="neural-recall-controls"><label><input id="neural-show-all" type="checkbox" checked> 显示全部可回忆节点（未命中变灰）</label><label for="neural-node-limit">最多显示</label><select id="neural-node-limit" aria-label="最多绘制的记忆节点数"><option value="500">500</option><option value="1000" selected>1000</option><option value="2000">2000</option><option value="10000">10000（高负载）</option></select></div>
+  <div class="neural-recall-controls"><label title="仅显示真实共享证据，数量为 0 时不会凭空画线"><input id="neural-show-interest" type="checkbox" checked> 兴趣证据连线 <small id="neural-interest-edge-count">(0)</small></label><label><input id="neural-show-relationship" type="checkbox" checked> 互动证据连线 <small id="neural-relationship-edge-count">(0)</small></label><label><input id="neural-show-source" type="checkbox" checked> 共享来源连线 <small id="neural-source-edge-count">(0)</small></label><label><input id="neural-show-emotion" type="checkbox" checked> 当时情绪回声（有证据时）</label></div>
+  <p class="muted" id="neural-evidence-explanation">连线必须由两个节点共享已核验的来源证据；若显示 (0)，开关不会改变画面，绝不伪造关联。</p>
   <div class="neural-legend" aria-label="记忆节点颜色图例">
   <span><i class="neural-swatch experience"></i>蓝 · 生活经历</span><span><i class="neural-swatch relationship"></i>粉 · 人物互动</span><span><i class="neural-swatch interest"></i>绿 · 后天兴趣</span><span><i class="neural-swatch fact"></i>金 · 事实认识</span>
   <span><i class="neural-swatch emotion"></i>紫 · 当时情绪（仅有证据时）</span>
@@ -1418,7 +1446,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </div>
   <p class="muted neural-clarity-key" aria-label="记忆衰减亮度图例">节点深浅代表已记录的记忆清晰程度：<strong>清晰</strong>（明亮） · <strong>模糊</strong>（中等） · <strong>印象</strong>（较淡）；未标注不凭日期推算衰减。类别由颜色区分，衰减由明暗区分。</p>
 <div class="neural-recall-layout">
-    <div class="neural-recall-field"><svg id="neural-memory-svg" viewBox="0 0 1000 570" role="group" aria-label="可旋转的三维记忆节点空间，拖动旋转，滚轮缩放，点击节点查看详情" tabindex="0"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a6dfe3" stop-opacity=".16"/><stop offset="1" stop-color="#a6dfe3" stop-opacity="0"/></radialGradient></defs><circle cx="500" cy="285" r="255" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g></svg><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
+    <div class="neural-recall-field"><div id="neural-memory-viewport" class="neural-memory-viewport"><div class="neural-viewport-actions"><button id="neural-memory-reset" type="button" title="回到初始视角">⟲ 重置视角</button><button id="neural-memory-fullscreen" type="button" aria-pressed="false" aria-label="全屏打开神经回忆场">⛶ 全屏</button></div><canvas id="neural-memory-canvas" aria-hidden="true"></canvas><svg id="neural-memory-svg" viewBox="0 0 1000 570" role="group" aria-label="可旋转的三维记忆节点空间，拖动旋转，滚轮缩放，点击节点查看详情" tabindex="0"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a6dfe3" stop-opacity=".16"/><stop offset="1" stop-color="#a6dfe3" stop-opacity="0"/></radialGradient></defs><circle cx="500" cy="285" r="255" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g></svg></div><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
     <div class="neural-recall-side"><h5>被唤起的记忆</h5><div id="neural-memory-results" class="neural-memory-results"><p class="muted">输入关键词并搜索，或留空查看最近。</p></div><div id="neural-memory-detail" class="neural-memory-detail" tabindex="-1" aria-live="polite">点击节点或结果卡片查看真实来源和清晰程度。</div></div>
   </div>
 </section>

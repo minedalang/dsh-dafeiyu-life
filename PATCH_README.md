@@ -1,18 +1,16 @@
-# DSH 2.7.1-dev.49 → 2.7.1-dev.50（开发预览）
+# DSH 2.7.1-dev.50 → 2.7.1-dev.51（开发预览）
 
-**精确基线为 dev.49 完整源码。** 不适用于 dev.48 或更早版本。只选择 LF 或 CRLF 其中一份补丁，不要叠加。
+**只能用于完整 dev.50 基线。** 不适用于 dev.49 或更早源码；只应用 LF 或 CRLF 其中一个，切勿叠加。Windows 请优先选 CRLF 版本，并先确保工作区干净。
 
 ```powershell
 git status --short
-git -c core.whitespace=cr-at-eol apply --check .\patches\DSH-2.7.1-dev49-to-dev50-owner-video-memory-CRLF.patch
-# 仅当 --check 通过时再执行
-git -c core.whitespace=cr-at-eol apply .\patches\DSH-2.7.1-dev49-to-dev50-owner-video-memory-CRLF.patch
+git -c core.whitespace=cr-at-eol apply --check .\patches\DSH-2.7.1-dev50-to-dev51-neural-atlas-short-pause-CRLF.patch
+# --check 通过后才正式应用
+git -c core.whitespace=cr-at-eol apply .\patches\DSH-2.7.1-dev50-to-dev51-neural-atlas-short-pause-CRLF.patch
 git diff --check
-node --test test/v271-dev50-owner-video-memory.test.mjs
+node --test test/v271-dev51-neural-atlas-short-pause.test.mjs
 npm run check:life-architecture
 node selfcheck.mjs
 ```
 
-新版：视频 Agent 最短启动间隔 1～1440 分钟（旧配置仍保留 20 分钟默认）；每轮参考阅读 1～30／挑选 0～12 但不强制选片或评论；首次设置直接登记主人 UID，沿用原唯一主人名册校验；修复多气泡工具在 DSH 下不支持的 `minItems/maxItems` 参数；记忆节点根据已有清晰／模糊／印象阶段显示明暗，未标注不推测。
-
-**`releaseReady:false`**，尚未在用户 Windows DSH、真实 B站与模型服务上验收。
+本版给原主 Session 添加不占长时联系配额的 90 秒可选短暂停顿续聊；Life 可选择跳过，宿主返回只代表请求已入队，不能认为独立气泡已送达。新增神经图谱非命中灰底、可选 1000/2000/10000 节点、Canvas 密图/真实来源连线计数/三维聚焦。旧版记忆和 Life 授权不自动更改。`releaseReady:false`；真实 Windows、DSH UI、B站与 72h 运行尚待现场验收。
