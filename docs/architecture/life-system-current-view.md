@@ -84,7 +84,7 @@ flowchart TB
   subgraph readlane["受控读取｜真实读取不等于完整观看"]
     readTodo["原只读待办"]
     explore["公开搜索/视频元数据/作者作品/已证实人物"]
-    home["browse_home → 原视频 Agent → 首页候选/选片归因"]
+    home["browse_home → 原视频 Agent → 首页候选/选片归因；无每日入选数限额"]
     lifeEpisode["Life Episode · 账号绑定意愿账本 · 最多 5 个已核验步骤"]
     homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
