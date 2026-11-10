@@ -960,6 +960,10 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .life-atlas-lines path{fill:none;stroke:#56aaa4;stroke-width:2;stroke-linecap:round;opacity:.7;vector-effect:non-scaling-stroke;transition:opacity .25s}
 .life-atlas-lines path.dim{opacity:.13}.life-atlas-empty{font-size:12px;color:var(--muted);padding:16px 10px;border:1px dashed var(--stroke);border-radius:12px}
 @media (prefers-reduced-motion:reduce){.life-atlas-card,.life-atlas-lines path{transition:none}}
+
+.model-task{padding:0!important;overflow:hidden}.model-task>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;cursor:pointer;list-style:none}.model-task>summary::-webkit-details-marker{display:none}.model-task>summary:before{content:"＋";margin-right:4px;color:var(--muted)}.model-task[open]>summary:before{content:"－"}.model-task-body{padding:0 16px 16px}.help-tip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid currentColor;border-radius:50%;font-size:11px;opacity:.7;cursor:help;vertical-align:middle}
+
+#panel-life .memory-home{margin:14px 0 20px}#panel-life-agent #life-timeline-list .life-timeline-links{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px}#panel-life-agent #life-timeline-list .life-timeline-links a{text-decoration:underline;text-underline-offset:2px}#panel-stickers .card>p.muted{font-size:12px;line-height:1.45}#panel-stickers details{margin:10px 0}#panel-stickers details>summary{cursor:pointer;font-weight:600}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1166,7 +1170,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   </div>
 </section>
 <section id="panel-models" hidden>
-<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>所有 AI 模型只在这里设置。Provider 和模型 ID 留空时继承 DSH 当前模型；不需要在插件重复填写 API Key。每日次数统计的是插件启动的模型任务，并非 Provider 实际 API 请求数；安装本版后开始记录，不补算历史。测试连接不计入统计，但会产生实际模型请求，可能消耗额度。请先保存模型配置再测试。独立视觉的测试只验证文字连接，不验证识图能力。表情包规则优化只在你手动点击时调用，日常评论仍使用本地零 Token 检索。</p></div></div>
+<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择一个默认模型，可应用到所有任务；需要时再展开单独调整。连接测试会实际调用模型，可能产生费用。</p></div></div>
 <div class="settings-stack">
 <div class="settings-section" id="headless-model-sync-panel">
 <h4>🔐 后台模型同步与检测（独立 Agent 必需）</h4>
@@ -1188,19 +1192,19 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button><button type="button" id="headless-sync-preview" class="primary" title="只查看准备同步的模型配置，不会立即修改 DSH 文件">查看待同步配置</button><button type="button" id="headless-sync-commit" hidden>确认同步到 Headless</button></div>
 <p class="muted">只有要使用的自定义 Provider 才需要勾选同步；DSH 官方已注册模型无需同步。<strong>快速设置只需任选一个模型通过验证</strong>，其他模型可以以后需要时再验证。</p>
 </div>
-<div class="settings-section model-default-panel"><h4>✨ 默认模型与快捷配置</h4><p id="models-default-summary" class="muted">正在从 DSH 读取默认模型…</p><p class="muted"><strong>自动继承不是选择第一个已验证模型。</strong>通常沿用 DSH 当前默认模型；「生活动态文案」和「主人私信 Agent」优先继承「后台互动」，「独立视觉」优先继承「视频理解」。只有选择具体 Provider/模型才是手动覆盖。验证通过仅代表连接测试成功，不代表它是默认模型、低成本或适合视觉。</p><div class="toolbar"><button id="models-reset-inheritance" type="button">将任务模型改回自动继承（仅预览）</button></div><small id="models-recommendation-note" class="setting-note">保存后才生效；连接测试针对已保存的模型配置。</small></div>
-<div class="settings-section"><h4>刷视频与内容理解</h4><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责搜索、阅读视频、选片、评论决策与点赞收藏决策。此项运行独立 Agent，须先在上方通过真实 Headless 验证；DSH 官方模型无需额外同步配置。</p><div class="fields" id="models-video"></div></div>
-<div class="settings-section"><h4>后台评论与私信</h4><div class="model-activity"><span id="models-interaction-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-interaction-test" class="model-test-button">测试连接</button><span id="models-interaction-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责后台评论与私信；B站动态草稿有独立模型配置，不使用人生反思模型。</p><div class="fields" id="models-interaction"></div><div class="fields"><div><label for="models-interaction-context-mode">B站后台互动 · 对话上下文模式</label><select id="models-interaction-context-mode"><option value="compact">精简按需（默认；模型自主请求时才检索记忆/画像/梗）</option><option value="full">原始完整（兼容旧版；一次提供所有已准备的上下文）</option></select><small class="setting-note">仅影响普通 B站私信及走统一互动生成器的公开评论/被 @；主人专属私信 Agent 使用自己的多步行动循环，主 Session 由 DSH 宿主管理，二者不受此选项控制。精简模式必要时会多一次 AI 续推；无关资料默认不进入模型提示。发送权限、隐私和真实待办回执校验始终生效。</small><div class="toolbar"><button type="button" id="models-interaction-context-refresh">刷新真实调用统计</button></div><small id="models-interaction-context-status" class="setting-note">调用统计尚未读取</small><div id="models-interaction-context-recent" class="setting-note" style="white-space:pre-wrap" role="status" aria-live="polite">最近 12 个互动批次：尚未读取（不含 UID 与聊天正文）</div></div></div></div>
-<div class="settings-section"><h4>生活动态文案 · 专用模型（默认继承后台互动）</h4><div class="model-activity"><span id="models-dailyDynamic-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-dailyDynamic-test" class="model-test-button">测试连接</button><span id="models-dailyDynamic-test-result" class="muted" role="status"></span></div><p class="muted">负责 B站公开生活动态的草稿构思，既不是人生反思，也不会读取私人聊天。留空时继承后台评论与私信模型；它也未配置时继承 DSH 默认模型。</p><div class="fields" id="models-dailyDynamic"></div></div>
-<div class="settings-section"><h4>主人私信受限 Agent · 专用模型（默认继承后台互动）</h4><div class="model-activity"><span id="models-ownerDmAgent-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-ownerDmAgent-test" class="model-test-button">测试连接</button><span id="models-ownerDmAgent-test-result" class="muted" role="status"></span></div><p class="muted">仅在已核验的主人私信内负责自然语言理解、计划和选择允许的操作；该模型没有 B站、Shell、文件及主 Session 工具。留空时继承后台互动模型或 DSH 默认模型；调用真实工具必须通过插件的后端白名单与独立授权。</p><div class="fields" id="models-ownerDmAgent"></div></div>
-<div class="settings-section"><h4>人生反思与经历提炼</h4><div class="model-activity"><span id="models-reflection-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-reflection-test" class="model-test-button">测试连接</button><span id="models-reflection-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">专门分析积累的真实经历，决定哪些内容值得凝练成人生记忆。这里的模型不会获得 B站、文件或 Shell 工具。优先复用当前 DSH 宿主已注册的 Provider；留空时继承 DSH 当前默认模型，不必另外配置 headless。若 DSH 自身不能使用该模型，仍需先修复 DSH 模型配置。</p><div class="fields" id="models-reflection"></div></div>
-<div class="settings-section"><h4>独立视觉识图</h4><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">只有开启独立视觉模式时才使用；普通模式复用视频模型。独立识图必须验证 Headless 模型后才能启动；上面的文本测试不等同于识图实测。</p><div class="fields" id="models-vision"></div>
+<div class="settings-section model-default-panel"><h4>✨ 默认模型 <span class="help-tip" title="选择后同步所有 8 个任务并重置思考深度。若模型不支持视觉或工具任务，相应能力可能不可用。之后仍可单项调整。">?</span></h4><p class="muted">选择后，下面全部八项任务会变成同一个模型，思考深度使用模型默认值。</p><div class="fields"><div><label for="models-default-provider">默认 Provider</label><select id="models-default-provider"></select></div><div><label for="models-default-model">默认模型</label><select id="models-default-model"></select></div></div><p id="models-default-summary" class="muted">正在读取可用模型…</p><small id="models-recommendation-note" class="setting-note">保存后生效，仍可单独调整每项任务。</small></div>
+<details class="settings-section model-task"><summary><strong>视频理解模型 <span class="help-tip" title="独立 Headless Agent 需先通过连接验证。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责视频和公开内容理解。建议高级模型。能力差异会影响选片与评论判断。</p><div class="fields" id="models-video"></div></div></details>
+<details class="settings-section model-task"><summary><strong>后台评论与私信模型 <span class="help-tip" title="不改变发言授权、审核与平台回执。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-interaction-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-interaction-test" class="model-test-button">测试连接</button><span id="models-interaction-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责后台互动回复。日常量大建议低成本模型，复杂对话可用高级模型。能力差异会影响理解与语气。</p><div class="fields" id="models-interaction"></div><div class="fields"><div><label for="models-interaction-context-mode">B站后台互动 · 对话上下文模式</label><select id="models-interaction-context-mode"><option value="compact">精简按需（默认；模型自主请求时才检索记忆/画像/梗）</option><option value="full">原始完整（兼容旧版；一次提供所有已准备的上下文）</option></select><small class="setting-note">选择后台互动一次携带多少资料；精简模式更省成本。不会改变权限。</small><div class="toolbar"><button type="button" id="models-interaction-context-refresh">刷新真实调用统计</button></div><small id="models-interaction-context-status" class="setting-note">调用统计尚未读取</small><div id="models-interaction-context-recent" class="setting-note" style="white-space:pre-wrap" role="status" aria-live="polite">最近 12 个互动批次：尚未读取（不含 UID 与聊天正文）</div></div></div></div></details>
+<details class="settings-section model-task"><summary><strong>生活动态文案模型 <span class="help-tip" title="只生成草稿，发布需要独立权限与确认。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-dailyDynamic-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-dailyDynamic-test" class="model-test-button">测试连接</button><span id="models-dailyDynamic-test-result" class="muted" role="status"></span></div><p class="muted">负责起草公开生活动态。建议低成本到中档模型。能力差异会影响文字表现。</p><div class="fields" id="models-dailyDynamic"></div></div></details>
+<details class="settings-section model-task"><summary><strong>主人私信理解模型 <span class="help-tip" title="无任意文件/Shell/平台写入能力，工具由白名单校验。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-ownerDmAgent-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-ownerDmAgent-test" class="model-test-button">测试连接</button><span id="models-ownerDmAgent-test-result" class="muted" role="status"></span></div><p class="muted">负责理解主人私信并规划允许的操作。简单问题建议低成本模型，复杂任务使用高级模型。能力差异会影响多步计划。</p><div class="fields" id="models-ownerDmAgent"></div></div></details>
+<details class="settings-section model-task"><summary><strong>人生反思与经历提炼模型 <span class="help-tip" title="无平台写入工具；仅从真实可读经历筛选。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-reflection-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-reflection-test" class="model-test-button">测试连接</button><span id="models-reflection-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责从真实经历中提炼长期认识。建议较强模型。能力差异会影响反思深度与归纳质量。</p><div class="fields" id="models-reflection"></div></div></details>
+<details class="settings-section model-task"><summary><strong>视觉识别模型 <span class="help-tip" title="只有独立视觉模式才使用；文本连接测试不验证视觉能力。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责识别视频画面。建议支持视觉的高级模型。能力差异会影响画面理解。</p><div class="fields" id="models-vision"></div>
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="reuse_video_model">复用视频模型（默认）</option><option value="independent_dsh">独立 DSH 视觉模型</option><option value="auto">自动（历史兼容：当前等同复用视频模型）</option></select></div>
 <div><label class="checkline"><input id="models-vision-enabled" type="checkbox">启用视频预览识图</label></div>
 <div><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></div></div>
-</div>
-<div class="settings-section"><h4>表情包检索规则优化</h4><div class="model-activity"><span id="models-memeRules-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-memeRules-test" class="model-test-button">测试连接</button><span id="models-memeRules-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">仅在「表情包管理」点击 AI 更新时调用；不参与每次评论。留空时继承 DSH 当前默认模型。建议使用低成本模型与 low 思考深度；提示词只包含真实表情包名称/分类与现有规则；不会读取或发送大肥鱼的当前兴趣、评论、私信、好友画像或图片。兴趣由本地检索在每次查询时动态读取。</p><div class="fields" id="models-memeRules"></div></div>
-<div class="settings-section"><h4>低成本人生记忆检索</h4><div class="model-activity"><span id="models-memory-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-memory-test" class="model-test-button">测试连接</button><span id="models-memory-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">从当前可用的经历与长期认识候选中只选择真实 ID，不会读取封存档案，也不能发送 B站消息或修改记忆。是否启用和额度在「人生记忆 → 记忆流程」下方设置。</p><div class="fields" id="models-memory"></div></div>
+</div></details>
+<details class="settings-section model-task"><summary><strong>表情包规则优化模型 <span class="help-tip" title="不读取聊天正文、好友画像或原始图片。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-memeRules-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-memeRules-test" class="model-test-button">测试连接</button><span id="models-memeRules-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">仅在手动更新规则时调用。建议低成本模型。能力差异会影响规则整理，不影响日常本地匹配。</p><div class="fields" id="models-memeRules"></div></div></details>
+<details class="settings-section model-task"><summary><strong>人生记忆检索模型 <span class="help-tip" title="只能选择真实 ID，不创造记忆或读取封存档案。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-memory-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-memory-test" class="model-test-button">测试连接</button><span id="models-memory-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责从允许召回的记忆候选中挑出有关记录。建议低成本模型即可。能力差异会影响召回准确度和速度。</p><div class="fields" id="models-memory"></div></div></details>
 <div class="toolbar"><button id="models-save" class="primary">保存全部模型配置</button><button id="models-refresh">重新读取</button></div>
 </div></section>
 <section id="panel-bili" hidden>
@@ -1414,6 +1418,44 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </section>
 <section id="panel-life" hidden>
 <div class="life-hero life-memory-hero"><div class="life-memory-hero-copy"><span class="page-eyebrow">MEMORY GARDEN · 逐渐长大的回忆</span><div class="status-line"><span id="life-learning-status" class="live-badge">● 正在整理真实经历</span></div><h2>鱼鱼的记忆花园</h2><p class="muted">每一次真实相遇，都可能留下些小小的印象。她会记住一些，也会慢慢忘记一些。</p><button id="main-life-refresh" class="life-action life-indigo">↻ 刷新记忆</button></div><img class="life-memory-character" src="/api/bili-duty/life-character.png" alt="" loading="lazy" decoding="async" aria-hidden="true"><span class="life-memory-bubble" aria-hidden="true"></span></div>
+<div id="life-recall-section" class="settings-section life-section memory-home">
+<div class="memory-garden-heading"><div class="memory-garden-mark" aria-hidden="true">🧠</div><div><span class="page-eyebrow">LIFE MEMORY · 真实而会变化</span><h4>此刻还记得的事</h4><p class="muted">浏览真实经历与长期认识，按类别筛选；搜视频标题、BV 号或聊天关键词，留空看最近。开启已有的「人生记忆检索模型」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p></div></div>
+<div class="memory-filter-pills" role="group" aria-label="筛选记忆花园中的经历和长期认识"><button type="button" data-memory-kind="" aria-pressed="true">✨ 全部</button><button type="button" data-memory-kind="experience" aria-pressed="false">🎬 经历</button><button type="button" data-memory-kind="relationship" aria-pressed="false">💞 人物</button><button type="button" data-memory-kind="interest" aria-pressed="false">🌱 兴趣</button><button type="button" data-memory-kind="fact" aria-pressed="false">📜 事实</button></div>
+<div class="toolbar memory-search-bar"><input id="main-session-history-query" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="输入视频标题 / BV号 / 聊天关键词，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div>
+<section class="neural-recall-board" aria-label="神经回忆场：只读的真实记忆关系">
+  <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4></div><span id="neural-memory-count" class="neural-counter">等待读取</span></div>
+  <p class="muted">拖动旋转、滚轮缩放。彩色证据线＝已核验共享来源；搜索后由「查询向量」发出的青色线＝高维余弦相似度，不是 3D 距离。</p>
+  <div class="neural-query-toolbar" role="search"><label for="neural-search-input">在回忆场内搜索</label><input id="neural-search-input" maxlength="120" placeholder="例如：游戏、绘画、朋友…" autocomplete="off"><button type="button" id="neural-search-apply" class="life-action life-sky">唤起回忆</button><span id="neural-query-stage" role="status" aria-live="polite">等待输入关键词</span></div>
+  <p class="muted neural-search-boundary">仅在启用并成功连接<strong>本地 Embedding 模型</strong>时，这是语义搜索；否则只是明确标记的关键词匹配，不会假装生成向量。真实肥鱼的回忆流程不同：<strong>场景理解 → 回忆意图 → 权限／遗忘过滤 → 候选召回 → （可选向量排序／模型甄别）→ 读取真实记忆 → 自主组织回应</strong>。此图仅演示可视化检索，不是模型内部思考的录像。</p>
+  <div class="neural-recall-controls"><label><input id="neural-show-all" type="checkbox" checked> 显示全部可回忆节点（未命中变灰）</label><label for="neural-node-limit">最多显示</label><select id="neural-node-limit" aria-label="最多绘制的记忆节点数"><option value="500">500</option><option value="1000" selected>1000</option><option value="2000">2000</option><option value="10000">10000（高负载）</option></select></div>
+  <div class="neural-recall-controls"><label title="仅显示真实共享证据，数量为 0 时不会凭空画线"><input id="neural-show-interest" type="checkbox" checked> 兴趣证据连线 <small id="neural-interest-edge-count">(0)</small></label><label><input id="neural-show-relationship" type="checkbox" checked> 互动证据连线 <small id="neural-relationship-edge-count">(0)</small></label><label><input id="neural-show-source" type="checkbox" checked> 共享来源连线 <small id="neural-source-edge-count">(0)</small></label><label><input id="neural-show-emotion" type="checkbox" checked> 当时情绪回声（有证据时）</label></div>
+  <p class="muted" id="neural-evidence-explanation">连线必须由两个节点共享已核验的来源证据；若显示 (0)，开关不会改变画面，绝不伪造关联。</p>
+  <div class="neural-legend" aria-label="记忆节点颜色图例">
+  <span><i class="neural-swatch experience"></i>蓝 · 生活经历</span><span><i class="neural-swatch relationship"></i>粉 · 人物互动</span><span><i class="neural-swatch interest"></i>绿 · 后天兴趣</span><span><i class="neural-swatch fact"></i>金 · 事实认识</span>
+  <span><i class="neural-swatch emotion"></i>紫 · 当时情绪（仅有证据时）</span>
+  <strong id="neural-layout-mode">结构布局 · 非语义坐标</strong>
+</div>
+  <p class="muted neural-clarity-key" aria-label="记忆衰减亮度图例">节点深浅代表已记录的记忆清晰程度：<strong>清晰</strong>（明亮） · <strong>模糊</strong>（中等） · <strong>印象</strong>（较淡）；未标注不凭日期推算衰减。类别由颜色区分，衰减由明暗区分。</p>
+<div class="neural-recall-layout">
+    <div class="neural-recall-field"><div id="neural-memory-viewport" class="neural-memory-viewport"><div class="neural-viewport-actions"><button id="neural-memory-reset" type="button" title="回到初始视角">⟲ 重置视角</button><button id="neural-memory-fullscreen" type="button" aria-pressed="false" aria-label="全屏打开神经回忆场">⛶ 全屏</button></div><canvas id="neural-memory-canvas" aria-hidden="true"></canvas><svg id="neural-semantic-overlay" viewBox="0 0 1000 570" aria-hidden="true"><g id="neural-semantic-beams"></g></svg><svg id="neural-memory-svg" viewBox="0 0 1000 570" role="group" aria-label="可旋转的三维记忆节点空间，拖动旋转，滚轮缩放，点击节点查看详情" tabindex="0"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a6dfe3" stop-opacity=".16"/><stop offset="1" stop-color="#a6dfe3" stop-opacity="0"/></radialGradient></defs><circle cx="500" cy="285" r="255" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g></svg></div><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
+    <div class="neural-recall-side"><h5>被唤起的记忆</h5><div id="neural-memory-results" class="neural-memory-results"><p class="muted">输入关键词并搜索，或留空查看最近。</p></div><div id="neural-memory-detail" class="neural-memory-detail" tabindex="-1" aria-live="polite">点击节点或结果卡片查看真实来源和清晰程度。</div></div>
+  </div>
+</section>
+<p id="main-session-history-status" class="muted" role="status">等待读取鱼鱼当前还能回忆的经历与认识…</p><div id="main-session-history" class="records records-scroll tall" aria-live="polite"></div>
+<div id="life-lessons" class="memory-lessons"><h4>✨ 这些经历给她留下了什么？</h4><p class="muted">有些经历会被忘掉具体细节，但值得保留的兴趣、约定或体会，可能继续影响鱼鱼的选择。并非每条经历都要产生感悟。</p>
+<div class="toolbar"><select id="main-memory-kind" aria-label="筛选留下的认识"><option value="">全部认识</option><option value="experience">经历带来的体会</option><option value="relationship">人物关系</option><option value="interest">兴趣变化</option><option value="fact">事实和约定</option></select><span id="memory-lessons-summary" class="muted" role="status">正在读取…</span></div>
+<input id="main-memory-query" maxlength="120" hidden aria-label="同步搜索认识的关键词"><button id="main-memory-search" hidden>搜索认识</button>
+<div id="main-memory-list" class="records records-scroll tall"></div>
+<details class="memory-reflection-details" id="life-reflection-details"><summary>✨ 鱼鱼怎样整理这些经历？<span id="reflection-learning-status" class="live-badge">● 正在读取</span> <span id="memory-reflection-short" class="muted">自动整理</span></summary><p class="muted">反思只使用鱼鱼<strong>目前还记得的经历</strong>，从中提炼有依据的体会；不强制每次都留下新认识。这里的候选是等待分析的材料，不是另一套“反思记忆”。</p><p class="muted">统计说明：「评估后未沉淀」表示经历已成功评估，但没有形成可关联的长期认识；「因经历已遗忘跳过」表示当前可衰减记忆中已无证据，系统不会从永久档案恢复。两类都不会删除原始归档。</p>
+<p id="main-reflection-status" class="muted" role="status">正在读取整理状态…</p>
+<div id="main-reflection-list" class="records records-scroll"></div>
+<div class="toolbar"><button id="main-reflection-refresh" class="life-action life-sky">刷新待整理经历</button><button id="main-reflection-run" class="life-action life-green">手动整理一次（调用 AI）</button></div></details>
+<details class="memory-advanced-details" id="life-memory-advanced"><summary>⚙️ 高级工具与检索诊断（通常不需要操作）</summary>
+<p class="muted">下面是排查问题和手动维护用的工具。日常搜索只需使用上方一个输入框。诊断可能调用独立模型，不会改变已遗忘的经历。</p>
+<div class="toolbar"><input id="main-memory-test-query" maxlength="180" placeholder="高级检索诊断关键词"><button id="main-memory-test" class="life-action life-purple">运行检索诊断</button></div><p id="main-memory-test-result" class="muted" role="status">未运行诊断。</p>
+<div class="toolbar"><input id="main-memory-add-text" maxlength="1000" placeholder="主人手动添加一条长期认识"><button id="main-memory-add" class="life-action life-purple">手动添加认识</button></div>
+<details class="memory-legacy-details"><summary>旧版数据迁移（仅旧插件用户）</summary><p class="muted">仅从旧的 dsh-fish-memory 导入已有记录。全新安装不需要使用，不会自动读取旧数据。</p><button id="main-memory-import" class="life-action life-indigo">导入旧版 dsh-fish-memory</button></details>
+</details></div></div>
 <div class="life-memory-tiles" aria-label="记忆花园分区"><a href="#life-interest-section"><span>🌱</span><strong>最近喜欢</strong><small>新发现的兴趣</small></a><a href="#life-recall-section"><span>🧠</span><strong>还能想起</strong><small>此刻可回忆的经历</small></a><a href="?tab=personality" data-open-tab="personality"><span>🪴</span><strong>成长轨迹</strong><small>被核验过的变化</small></a></div>
 <nav class="life-jump" aria-label="人生记忆分区快捷跳转"><a href="#life-interest-section">🌱 最近兴趣</a><a href="#life-recall-section">🧠 经历与体会</a><a href="?tab=life-agent#life-timeline-section" data-open-tab="life-agent" data-open-anchor="life-timeline-section">📅 真实生活</a><a href="?tab=life-agent" data-open-tab="life-agent">🐟 当前生活与心情</a></nav>
 <details class="memory-flow-toggle life-subdetails"><summary>了解记忆如何形成与自然遗忘</summary><section class="memory-flow-panel" aria-label="记忆流向示意图">
@@ -1452,13 +1494,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 
 
 <div class="settings-stack">
-<section id="life-evidence-atlas" class="life-evidence-atlas settings-section life-section" aria-labelledby="life-atlas-title">
-  <div class="toolbar"><div><span class="page-eyebrow">LIFE · EVIDENCE CONNECTIONS</span><h3 id="life-atlas-title">鱼鱼的生活脉络</h3><p class="muted">把真实经历、生活线索、后天兴趣与已记录的行动放到一起。实线只代表同一个可信 BV 来源，不代表因果或已发送。没有来源证明的关系不会被画出来。</p></div><button id="life-atlas-refresh" type="button" class="life-action life-sky">刷新脉络</button></div>
-  <div class="life-atlas-legend" aria-label="生活脉络图例"><span><i class="life-atlas-dot source"></i>真实经历</span><span><i class="life-atlas-dot cue"></i>生活线索</span><span><i class="life-atlas-dot interest"></i>后天兴趣证据</span><span><i class="life-atlas-dot action"></i>已记录行动</span></div>
-  <div class="toolbar"><label for="life-atlas-filter">查看</label><select id="life-atlas-filter"><option value="all">完整生活脉络</option><option value="linked">仅有直接来源关联</option><option value="opportunities">优先看生活线索</option><option value="interests">优先看兴趣证据</option></select><span id="life-atlas-status" class="muted" role="status">正在加载可信来源…</span></div>
-  <div id="life-atlas-graph" class="life-atlas-graph" role="group" aria-label="真实经历、线索、兴趣与行动之间的证据图"><svg id="life-atlas-lines" class="life-atlas-lines" aria-hidden="true"></svg><div id="life-atlas-columns" class="life-atlas-columns"></div></div>
-  <p id="life-atlas-explanation" class="muted" role="status">只有当两个记录共享实际核验的 BV 时，才绘制明确来源连线；其他联系仍可通过各栏查看，但不臆测因果。</p>
-</section>
+
 <div id="life-interest-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">🌱 鱼鱼最近喜欢什么</h4><span id="interest-learning-status" class="live-badge">● 正在收集兴趣线索</span><span class="muted">根据真实入选视频积累，和主人设定的核心兴趣分开</span></div>
 <p class="muted">核心兴趣由主人明确设置，优先参与选片但会轮换；短期/成长/稳定兴趣则来自真实入选视频证据。至少 3 个不同视频、横跨 2 天才会形成短期兴趣，长期没有新证据会逐渐淡出。自动学习永远不会覆盖核心兴趣。</p>
 <div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div>
@@ -1473,44 +1509,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p class="muted">鱼鱼可参考当前账号的<strong>评论观察、跨日自主选片兴趣、公开交流证据</strong>，自主决定只读探索或保持沉默。首批新增：可信兴趣经历即使原候选已关闭，仍可由鱼鱼自行产生“我想进一步探索”的目的，通过真实 B站公开搜索保留 BV；之后不必重进刷视频轮，也能自主选中实际搜索结果核实或放下。独立自主调度沿用原每日 AI 额度；单纯自由探索增加最长 6 小时的重复考虑冷却。不会自动创建待办、评论、私信、关注，也不代表已观看或听见音频。</p>
 <p id="life-opportunities-status" class="muted" role="status">尚未读取生活契机</p><div id="life-opportunities-list" class="records records-scroll" aria-live="polite"></div>
 </div>
-<div id="life-recall-section" class="settings-section life-section memory-home">
-<div class="memory-garden-heading"><div class="memory-garden-mark" aria-hidden="true">🧠</div><div><span class="page-eyebrow">LIFE MEMORY · 真实而会变化</span><h4>此刻还记得的事</h4><p class="muted">浏览真实经历与长期认识，按类别筛选；搜视频标题、BV 号或聊天关键词，留空看最近。开启已有的「低成本人生记忆检索」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p></div></div>
-<div class="memory-filter-pills" role="group" aria-label="筛选记忆花园中的经历和长期认识"><button type="button" data-memory-kind="" aria-pressed="true">✨ 全部</button><button type="button" data-memory-kind="experience" aria-pressed="false">🎬 经历</button><button type="button" data-memory-kind="relationship" aria-pressed="false">💞 人物</button><button type="button" data-memory-kind="interest" aria-pressed="false">🌱 兴趣</button><button type="button" data-memory-kind="fact" aria-pressed="false">📜 事实</button></div>
-<div class="toolbar memory-search-bar"><input id="main-session-history-query" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="输入视频标题 / BV号 / 聊天关键词，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div>
-<section class="neural-recall-board" aria-label="神经回忆场：只读的真实记忆关系">
-  <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4></div><span id="neural-memory-count" class="neural-counter">等待读取</span></div>
-  <p class="muted">拖动旋转、滚轮缩放。彩色证据线＝已核验共享来源；搜索后由「查询向量」发出的青色线＝高维余弦相似度，不是 3D 距离。</p>
-  <div class="neural-query-toolbar" role="search"><label for="neural-search-input">在回忆场内搜索</label><input id="neural-search-input" maxlength="120" placeholder="例如：游戏、绘画、朋友…" autocomplete="off"><button type="button" id="neural-search-apply" class="life-action life-sky">唤起回忆</button><span id="neural-query-stage" role="status" aria-live="polite">等待输入关键词</span></div>
-  <p class="muted neural-search-boundary">仅在启用并成功连接<strong>本地 Embedding 模型</strong>时，这是语义搜索；否则只是明确标记的关键词匹配，不会假装生成向量。真实肥鱼的回忆流程不同：<strong>场景理解 → 回忆意图 → 权限／遗忘过滤 → 候选召回 → （可选向量排序／模型甄别）→ 读取真实记忆 → 自主组织回应</strong>。此图仅演示可视化检索，不是模型内部思考的录像。</p>
-  <div class="neural-recall-controls"><label><input id="neural-show-all" type="checkbox" checked> 显示全部可回忆节点（未命中变灰）</label><label for="neural-node-limit">最多显示</label><select id="neural-node-limit" aria-label="最多绘制的记忆节点数"><option value="500">500</option><option value="1000" selected>1000</option><option value="2000">2000</option><option value="10000">10000（高负载）</option></select></div>
-  <div class="neural-recall-controls"><label title="仅显示真实共享证据，数量为 0 时不会凭空画线"><input id="neural-show-interest" type="checkbox" checked> 兴趣证据连线 <small id="neural-interest-edge-count">(0)</small></label><label><input id="neural-show-relationship" type="checkbox" checked> 互动证据连线 <small id="neural-relationship-edge-count">(0)</small></label><label><input id="neural-show-source" type="checkbox" checked> 共享来源连线 <small id="neural-source-edge-count">(0)</small></label><label><input id="neural-show-emotion" type="checkbox" checked> 当时情绪回声（有证据时）</label></div>
-  <p class="muted" id="neural-evidence-explanation">连线必须由两个节点共享已核验的来源证据；若显示 (0)，开关不会改变画面，绝不伪造关联。</p>
-  <div class="neural-legend" aria-label="记忆节点颜色图例">
-  <span><i class="neural-swatch experience"></i>蓝 · 生活经历</span><span><i class="neural-swatch relationship"></i>粉 · 人物互动</span><span><i class="neural-swatch interest"></i>绿 · 后天兴趣</span><span><i class="neural-swatch fact"></i>金 · 事实认识</span>
-  <span><i class="neural-swatch emotion"></i>紫 · 当时情绪（仅有证据时）</span>
-  <strong id="neural-layout-mode">结构布局 · 非语义坐标</strong>
-</div>
-  <p class="muted neural-clarity-key" aria-label="记忆衰减亮度图例">节点深浅代表已记录的记忆清晰程度：<strong>清晰</strong>（明亮） · <strong>模糊</strong>（中等） · <strong>印象</strong>（较淡）；未标注不凭日期推算衰减。类别由颜色区分，衰减由明暗区分。</p>
-<div class="neural-recall-layout">
-    <div class="neural-recall-field"><div id="neural-memory-viewport" class="neural-memory-viewport"><div class="neural-viewport-actions"><button id="neural-memory-reset" type="button" title="回到初始视角">⟲ 重置视角</button><button id="neural-memory-fullscreen" type="button" aria-pressed="false" aria-label="全屏打开神经回忆场">⛶ 全屏</button></div><canvas id="neural-memory-canvas" aria-hidden="true"></canvas><svg id="neural-semantic-overlay" viewBox="0 0 1000 570" aria-hidden="true"><g id="neural-semantic-beams"></g></svg><svg id="neural-memory-svg" viewBox="0 0 1000 570" role="group" aria-label="可旋转的三维记忆节点空间，拖动旋转，滚轮缩放，点击节点查看详情" tabindex="0"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a6dfe3" stop-opacity=".16"/><stop offset="1" stop-color="#a6dfe3" stop-opacity="0"/></radialGradient></defs><circle cx="500" cy="285" r="255" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g></svg></div><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
-    <div class="neural-recall-side"><h5>被唤起的记忆</h5><div id="neural-memory-results" class="neural-memory-results"><p class="muted">输入关键词并搜索，或留空查看最近。</p></div><div id="neural-memory-detail" class="neural-memory-detail" tabindex="-1" aria-live="polite">点击节点或结果卡片查看真实来源和清晰程度。</div></div>
-  </div>
-</section>
-<p id="main-session-history-status" class="muted" role="status">等待读取鱼鱼当前还能回忆的经历与认识…</p><div id="main-session-history" class="records records-scroll tall" aria-live="polite"></div>
-<div id="life-lessons" class="memory-lessons"><h4>✨ 这些经历给她留下了什么？</h4><p class="muted">有些经历会被忘掉具体细节，但值得保留的兴趣、约定或体会，可能继续影响鱼鱼的选择。并非每条经历都要产生感悟。</p>
-<div class="toolbar"><select id="main-memory-kind" aria-label="筛选留下的认识"><option value="">全部认识</option><option value="experience">经历带来的体会</option><option value="relationship">人物关系</option><option value="interest">兴趣变化</option><option value="fact">事实和约定</option></select><span id="memory-lessons-summary" class="muted" role="status">正在读取…</span></div>
-<input id="main-memory-query" maxlength="120" hidden aria-label="同步搜索认识的关键词"><button id="main-memory-search" hidden>搜索认识</button>
-<div id="main-memory-list" class="records records-scroll tall"></div>
-<details class="memory-reflection-details" id="life-reflection-details"><summary>✨ 鱼鱼怎样整理这些经历？<span id="reflection-learning-status" class="live-badge">● 正在读取</span> <span id="memory-reflection-short" class="muted">自动整理</span></summary><p class="muted">反思只使用鱼鱼<strong>目前还记得的经历</strong>，从中提炼有依据的体会；不强制每次都留下新认识。这里的候选是等待分析的材料，不是另一套“反思记忆”。</p><p class="muted">统计说明：「评估后未沉淀」表示经历已成功评估，但没有形成可关联的长期认识；「因经历已遗忘跳过」表示当前可衰减记忆中已无证据，系统不会从永久档案恢复。两类都不会删除原始归档。</p>
-<p id="main-reflection-status" class="muted" role="status">正在读取整理状态…</p>
-<div id="main-reflection-list" class="records records-scroll"></div>
-<div class="toolbar"><button id="main-reflection-refresh" class="life-action life-sky">刷新待整理经历</button><button id="main-reflection-run" class="life-action life-green">手动整理一次（调用 AI）</button></div></details>
-<details class="memory-advanced-details" id="life-memory-advanced"><summary>⚙️ 高级工具与检索诊断（通常不需要操作）</summary>
-<p class="muted">下面是排查问题和手动维护用的工具。日常搜索只需使用上方一个输入框。诊断可能调用独立模型，不会改变已遗忘的经历。</p>
-<div class="toolbar"><input id="main-memory-test-query" maxlength="180" placeholder="高级检索诊断关键词"><button id="main-memory-test" class="life-action life-purple">运行检索诊断</button></div><p id="main-memory-test-result" class="muted" role="status">未运行诊断。</p>
-<div class="toolbar"><input id="main-memory-add-text" maxlength="1000" placeholder="主人手动添加一条长期认识"><button id="main-memory-add" class="life-action life-purple">手动添加认识</button></div>
-<details class="memory-legacy-details"><summary>旧版数据迁移（仅旧插件用户）</summary><p class="muted">仅从旧的 dsh-fish-memory 导入已有记录。全新安装不需要使用，不会自动读取旧数据。</p><button id="main-memory-import" class="life-action life-indigo">导入旧版 dsh-fish-memory</button></details>
-</details></div></div>
+
 
 
 <p class="muted" style="margin:10px 0 4px">如需把近期生活汇报到主 Session，可<a href="#life-others">展开更多生活操作</a>。</p>
@@ -2029,34 +2028,24 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p class="muted">大肥鱼先在不同视频里积累真实线索，再由 AI 综合判断它是角色、二创系列、圈内称呼还是具体梗。至少两个不同 BV 的证据才能自动形成新条目；新知识以「待核实」等级保存，不需要人工批准。</p>
 <div class="toolbar"><button id="meme-learning-run" class="primary">现在整理跨视频线索</button><button id="meme-learning-refresh">刷新线索进度</button></div>
 <p id="meme-reflection-status" class="muted">等待读取</p></div>
-<div class="toolbar"><h2 style="margin:0">梗知识库</h2><input id="meme-search" placeholder="搜索名称、别名、解释"><button id="meme-find">搜索</button></div><p class="muted" id="meme-stats">新梗自动入库并可检索；历史待审记录仍可处理。随时可编辑或删除错误记录，原视频证据保留。</p><div class="grid" id="meme-list"></div></section>
+<div class="toolbar"><h2 style="margin:0">梗知识库</h2><input id="meme-search" placeholder="搜索名称、别名、解释"><button id="meme-find">搜索</button></div><p class="muted" id="meme-stats">梗知识必须有跨视频证据；通用标题只作待核实线索，不会自动入库。随时可编辑或删除错误记录。</p><details id="meme-title-hints" class="card" style="margin:12px 0" hidden><summary><strong>待核实标题线索</strong> <span class="help-tip" title="例如 Day 1、经验开源仅是标题前缀，不会进入 AI 梗学习或变成梗知识；这里保留原 BV 供核对。">?</span> <span id="meme-title-hints-count" class="muted"></span></summary><p class="muted">这些只是真实标题线索，不代表已看过视频或形成了梗知识。</p><div id="meme-title-hints-list" class="records"></div></details><div class="grid" id="meme-list"></div></section>
 <section id="panel-stickers" hidden>
+
 <div class="card" style="margin-bottom:14px">
-<h3>推荐流程 · AI 自动维护本地检索规则</h3>
-<p class="muted">现在可以直接点击下方的 AI 更新按钮，无需手动导出、改 JSON、再导入。默认只处理新增/删除/改名的表情包；只有你明确点击“全量优化”时，才把完整图库名称交给模型。若模型输出不合格或目标名称不存在，系统拒绝应用并保留旧规则。手动导入/导出仍可作为备份与高级编辑方式。</p>
-<ol class="muted" style="line-height:1.8;margin-top:8px">
-<li>首次使用先在「AI 模型」页为“表情包检索规则优化”选择低成本模型，建议思考深度 low，然后保存并测试连接。</li>
-<li>新增、删除或重命名表情包后，点“AI 增量更新本地规则”。图库没有变化时会跳过模型调用。</li>
-<li>如果想重新整理旧规则，才点“AI 全量优化（Token 较多）”。</li>
-<li>更新后用“测试本地匹配”检查常见评论；如果不满意，可以恢复 AI 更新前规则。</li><li>如果你希望手动调整，也可以把“导出最新表情包名称 TXT”和“导出当前规则 JSON”这两个文件一起交给 AI，再通过导入/测试/保存流程应用。</li>
-</ol>
-<div class="toolbar"><button id="sticker-workflow-export-names">① 导出最新表情包名称 TXT</button><button id="sticker-workflow-export-rules">② 导出当前规则 JSON</button><span class="muted">导入后不会自动保存，可先测试再确认。</span></div>
-</div>
-<div class="card" style="margin-bottom:14px">
-<h3>AI 自动维护本地匹配规则</h3>
-<p class="muted">AI 只在你点击时运行，不会每条评论都额外消耗 Token。AI 维护只整理相对稳定的评论语境→真实表情包名称/分类规则，不读取当前兴趣；兴趣变化不触发规则重写。日常检索会实时读取最新有效兴趣，对已经匹配当前评论的候选做小幅排序加权，不额外消耗 Token；兴趣不会单独强行召回无关图片。默认按新增/删除的表情包做增量更新；如果图库没有变化，就跳过模型调用。全量优化只会把当前图库名称与现有规则交给「AI 模型」页配置的模型。AI 输出通过结构和真实文件名校验后才会写入本地，并保留一份更新前备份。当前不分析图片画面，也不生成视觉语义标签。</p>
-<div class="settings-section" style="margin:12px 0">
-<h4>AI 维护表情包语义规则的提示词（可查看、可编辑）</h4>
-<p class="muted">这里编辑的是 AI 维护稳定检索规则时使用的基础指令。系统会在后面自动附加本次更新模式、真实图库名称和当前旧规则；不会附加大肥鱼当前兴趣、视频标题、评论正文、私信、好友画像或图片画面。即使修改提示词，程序仍会强制校验 JSON 格式、规则数量和 target 是否真实存在；不合格输出不会覆盖旧规则。只有点击“保存提示词”后，修改才会用于后续 AI 更新。若图库没有变化，普通增量更新会跳过模型；要把新提示词应用到已有规则，请使用“AI 全量优化”，会消耗更多 Token。</p>
+<h3>AI 规则维护</h3><p class="muted">增量更新只处理图库变化；全量优化会调用模型重新整理全部规则。更新不会发送表情包。</p>
+<details class="contextual-subdetails"><summary>高级：编辑 AI 规则提示词</summary><div class="settings-section" style="margin:12px 0">
+
+<p class="muted">仅在手动更新规则时使用；不会读取当前兴趣、聊天正文或图片内容。</p>
 <label for="meme-rule-ai-prompt">规则维护提示词</label>
 <textarea id="meme-rule-ai-prompt" maxlength="8000" rows="14" spellcheck="false" placeholder="正在读取默认提示词…"></textarea>
 <div class="toolbar"><button id="meme-rule-ai-prompt-save" class="primary">保存提示词</button><button id="meme-rule-ai-prompt-reset">恢复默认提示词</button><span id="meme-rule-ai-prompt-status" class="muted" role="status" aria-live="polite">正在读取…</span></div>
-</div>
+</div></details>
+<details class="contextual-subdetails"><summary>高级：导出名称与规则</summary><div class="toolbar"><button id="sticker-workflow-export-names">① 导出最新表情包名称 TXT</button><button id="sticker-workflow-export-rules">② 导出当前规则 JSON</button><span class="muted">导入后不会自动保存，可先测试再确认。</span></div></details>
 <div class="toolbar"><button id="meme-rule-ai-update" class="primary">AI 增量更新本地规则</button><button id="meme-rule-ai-full">AI 全量优化（Token 较多）</button><button id="meme-rule-ai-restore">恢复 AI 更新前规则</button><span id="meme-rule-ai-status" class="muted" role="status" aria-live="polite">尚未运行 AI 规则更新</span></div>
 </div>
-<div class="card" style="margin-bottom:14px">
-<h3>表情包检索规则 · 可编辑</h3>
-<p class="muted">让评论中的词和已存在的表情包名称／分类关联起来。只检索文件名/分类，不识别图片画面；日常检索不额外调用 AI，并会参考大肥鱼当前已形成的自身兴趣调整匹配候选排序。每条规则支持<strong>同时包含</strong>与<strong>排除</strong>条件；关闭规则不会禁止完全相同的文字直接命中文件名。</p>
+<details class="card sticker-advanced"><summary><strong>表情包检索规则 · 可编辑</strong> · 展开管理</summary><div>style="margin-bottom:14px">
+
+<p class="muted">按需管理；现有规则和图片不会因展开或收起而改变。</p>
 <div class="toolbar"><button id="meme-rule-add">新增规则</button><button id="meme-rule-save" class="primary">保存全部规则</button><button id="meme-rule-default">加载出厂默认（需保存）</button><button id="meme-rule-export">导出规则 JSON</button><label for="meme-rule-import" style="margin:0">导入 JSON</label><input id="meme-rule-import" type="file" accept=".json,application/json" style="max-width:245px"></div>
 <div class="toolbar" style="margin-top:10px">
   <label for="meme-rule-search">搜索规则</label><input id="meme-rule-search" type="search" placeholder="名称、触发词、候选词（如白饭、爆笑）" style="flex:1;min-width:180px" autocomplete="off">
@@ -2067,19 +2056,19 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div id="meme-rule-list" class="records"></div>
 <div class="toolbar" aria-label="表情包检索规则翻页" style="margin-top:12px"><button id="meme-rule-prev" disabled>上一页</button><span id="meme-rule-page-status" class="muted" aria-live="polite">第 1 / 1 页</span><button id="meme-rule-next" disabled>下一页</button></div>
 <div class="settings-section" style="margin-top:12px"><h4>测试本地匹配（无需 AI）</h4><label for="meme-rule-test-text">输入一条评论；测试直接使用当前编辑区规则（即使尚未保存），仅测试不会覆盖已保存的规则</label><textarea id="meme-rule-test-text" maxlength="280" rows="2" placeholder="例如：这中转站我看不下去了，白饭先从冰箱里拿出来"></textarea><div class="toolbar"><button id="meme-rule-test">测试当前编辑规则</button></div><div id="meme-rule-test-result" class="records" role="status" aria-live="polite"></div></div>
-</div>
-<div class="card"><h3>表情包整库 · ZIP 导出 / 批量导入</h3>
-<p class="muted"><strong>整库导出</strong>会把当前 comment-memes 中的表情包按原目录结构打成 ZIP。<strong>批量导入</strong>不会逐张询问名称：请先在 ZIP 里自己整理好文件夹、文件名和扩展名，再一次性导入。导入是追加式的，遇到现有同名路径会直接拒绝，不会覆盖已有图片。</p>
+</div></details>
+<details class="card sticker-advanced"><summary><strong>表情包整库 · ZIP 导出 / 批量导入</strong> · 展开管理</summary><div>
+<p class="muted">按需管理；现有规则和图片不会因展开或收起而改变。</p>
 <div class="toolbar"><button id="sticker-archive-export">导出全部表情包 ZIP</button><label for="sticker-archive-import" style="margin:0">批量导入 ZIP</label><input id="sticker-archive-import" type="file" accept=".zip,application/zip" style="max-width:260px"><button id="sticker-archive-import-button" class="primary">导入 ZIP</button></div>
-<p id="sticker-archive-status" class="muted" role="status" aria-live="polite">ZIP 最多 128 MB；最多三级分类目录；单张图片仍按现有格式、尺寸和 8 MB 上限校验。</p></div>
-<div class="card"><h3>单张导入表情包</h3><p class="muted">支持 PNG、JPG、GIF、WebP，单张最多 8 MB。选中图片后会自动带入原文件名，你可以在真正导入前修改分类和名称；这就是单张导入时的重命名步骤。仅导入自己有权使用且适合公开发表评论的图片。</p>
+<p id="sticker-archive-status" class="muted" role="status" aria-live="polite">ZIP 最多 128 MB；最多三级分类目录；单张图片仍按现有格式、尺寸和 8 MB 上限校验。</p></div></details>
+<details class="card sticker-advanced"><summary><strong>单张导入表情包</strong> · 展开管理</summary><div><p class="muted">按需管理；现有规则和图片不会因展开或收起而改变。</p>
 <div class="fields"><div><label for="sticker-file">选择图片</label><input id="sticker-file" type="file" accept="image/png,image/jpeg,image/gif,image/webp"></div>
 <div><label for="sticker-category">分类（可留空）</label><input id="sticker-category" maxlength="48" placeholder="例如 开心"></div>
 <div><label for="sticker-name">导入名称（可修改，不含扩展名）</label><input id="sticker-name" maxlength="64" placeholder="例如 笑哭"></div></div>
-<div class="toolbar" style="margin-top:12px"><button id="sticker-upload" class="primary">导入这张表情包</button><span id="sticker-upload-status" class="muted"></span></div></div>
-<div class="toolbar" style="margin-top:20px"><h2 style="margin:0">已保存的表情包</h2><label for="sticker-folder-filter" style="margin:0">文件夹分类</label><select id="sticker-folder-filter" aria-label="按文件夹筛选表情包"><option value="all">全部文件夹</option></select><input id="sticker-search" placeholder="搜索名称或分类"><button id="sticker-reload">刷新图库</button><button id="sticker-export-names">导出所有表情包名称 TXT</button></div>
+<div class="toolbar" style="margin-top:12px"><button id="sticker-upload" class="primary">导入这张表情包</button><span id="sticker-upload-status" class="muted"></span></div></div></details>
+<div class="toolbar" style="margin-top:20px"><h2 style="margin:0">已保存的表情包</h2><label for="sticker-folder-filter" style="margin:0">文件夹分类</label><select id="sticker-folder-filter" aria-label="按文件夹筛选表情包"><option value="all">全部文件夹</option></select><input id="sticker-search" placeholder="搜索名称或分类"><button id="sticker-reload">刷新</button><button id="sticker-export-names">导出图片名称 TXT</button></div>
 <p id="sticker-summary" class="muted">正在读取…</p><div id="sticker-list" class="grid sticker-grid"></div><div class="toolbar" aria-label="表情包翻页" style="margin-top:16px"><button id="sticker-page-prev" disabled>上一页</button><span id="sticker-page-status" class="muted" aria-live="polite">第 1 / 1 页</span><button id="sticker-page-next" disabled>下一页</button></div>
-<p class="muted">重命名后，AI 下次读取图库将使用新名称；已经发表的评论图片不受影响。删除后无法恢复，请先备份重要素材。</p>
+<p class="muted">重命名会影响后续匹配；删除不能撤销，建议先备份。</p>
 </section>
 <section id="panel-dm" hidden>
 <div class="feature-intro"><div><h2>✉️ 后台私信</h2><p>私信记录与自主交流规则分别管理；默认不会自动回复陌生人。</p></div></div>

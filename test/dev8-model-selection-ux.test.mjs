@@ -31,7 +31,7 @@ function ui(){
   ]
   const snippet=js.slice(js.indexOf('  const modelRouteControls='),js.indexOf('  const loadModels=async()=>{'))
   let feedback=''
-  const controls=runInNewContext(`(()=>{${snippet}\nreturn {renderModelDropdowns,updateRouteDescription}})()`,{
+  const controls=runInNewContext(`(()=>{${snippet}\nreturn {renderModelDropdowns,updateRouteDescription,applyDefaultModelToAllRoutes}})()`,{
     modelDefs,headlessCurrentCatalog:catalog,headlessDefaultModel:{provider:'claude',model:'sonnet'},mobileViewOnly:false,
     $,
     document:{createElement:()=>new FakeElement()},
@@ -50,56 +50,25 @@ test('官方 Provider 不是必做清单：仅首次设置要求一个真实连�
   assert.match(readFileSync(new URL('../lib/first-start.mjs',import.meta.url),'utf8'),/headlessSync\.hasAnyVerified\(\)/)
 })
 
-test('从实际模型目录生成 Provider 与模型下拉选项，展示继承路由',()=>{
-  assert.match(js,/node\(i<2\?'select':'input'\)/)
-  assert.match(html,/<select id="main-memory-model-provider"><\/select>/)
-  assert.match(html,/<select id="main-memory-model-id"><\/select>/)
-  const {$,controls}=ui()
-  controls.renderModelDropdowns({})
-  const provider=$('model-videoModelProvider'), model=$('model-videoModelId')
-  assert.deepEqual(provider.children.map(x=>x.value),['','claude','deepseek-official'])
-  assert.deepEqual(model.children.map(x=>x.value),['','haiku','sonnet'])
-  assert.match($('models-video-effective').textContent,/claude \/ sonnet/)
-  assert.equal(provider.value,'')
-  assert.equal(model.value,'')
-  assert.match($('models-default-summary').textContent,/DSH 当前默认模型：claude \/ sonnet/)
-  assert.match($('models-recommendation-note').textContent,/已验证模型/)
-  assert.match($('models-video-effective').textContent,/已保存配置/)
-  provider.value='deepseek-official';provider.trigger('change')
-  assert.deepEqual(model.children.map(x=>x.value),['','flash','v4-pro'])
-  assert.equal(model.value,'flash')
-  assert.match($('models-video-effective').textContent,/deepseek-official \/ flash/)
+test('实际模型目录生成明确的默认模型与独立任务下拉框',()=>{
+ const {$,controls}=ui();controls.renderModelDropdowns({})
+ assert.equal($('models-default-provider').value,'claude')
+ assert.equal($('models-default-model').value,'sonnet')
+ assert.equal($('model-videoModelProvider').value,'claude')
+ assert.equal($('model-videoModelId').value,'sonnet')
+ assert.deepEqual($('model-videoModelProvider').children.map(x=>x.value),['','claude','deepseek-official'])
 })
-
-test('自动继承保持宿主默认，恢复继承不误选首个已验证的 Claude',()=>{
-  const {$,controls,feedback}=ui()
-  controls.renderModelDropdowns({mainSessionReflectionModelProvider:'legacy',mainSessionReflectionModelId:'legacy-model',interactionModelProvider:'claude',interactionModelId:'haiku'})
-  assert.equal($('model-mainSessionReflectionModelProvider').value,'legacy')
-  assert.match($('models-dailyDynamic-effective').textContent,/claude \/ haiku/)
-  $('models-reset-inheritance').trigger('click')
-  for(const group of ['video','interaction','dailyDynamic','ownerDmAgent','reflection','vision','memeRules']){
-    const [provider,model]=group==='reflection'?['model-mainSessionReflectionModelProvider','model-mainSessionReflectionModelId']:[`model-${group}ModelProvider`,`model-${group}ModelId`]
-    assert.equal($(provider).value,'',group)
-    assert.equal($(model).value,'',group)
-  }
-  // Semantic retrieval is not a runtime-inheritable model, so reset leaves it untouched.
-  assert.equal($('main-memory-model-provider').value,'')
-  assert.match($('models-dailyDynamic-effective').textContent,/claude \/ sonnet/)
-  assert.match(feedback(),/尚未保存/)
-})
-
-test('更改上游互动模型时，下游的继承下拉框与待保存预览一起刷新',()=>{
- const {$,controls}=ui()
- controls.renderModelDropdowns({})
- const upstream=$('model-interactionModelProvider');upstream.value='claude';upstream.trigger('change')
- const model=$('model-interactionModelId');model.value='haiku';model.trigger('change')
- for(const target of ['dailyDynamic','ownerDmAgent']){
-   const select=$(`model-${target}ModelId`)
-   assert.match(select.children[0].textContent,/自动继承（claude \/ haiku）/)
-   assert.match($(`models-${target}-effective`).textContent,/待保存预览：claude \/ haiku/)
+test('一键同步全部八项任务，同时重置思考深度',()=>{
+ const {$,controls}=ui();controls.renderModelDropdowns({})
+ $('models-default-provider').value='deepseek-official';$('models-default-provider').trigger('change')
+ $('models-default-model').value='v4-pro';$('models-default-model').trigger('change')
+ for(const group of ['video','interaction','dailyDynamic','ownerDmAgent','reflection','vision','memeRules']){
+  const def=group==='reflection'?'mainSessionReflection':group
+  assert.equal($('model-'+def+'ModelProvider').value,'deepseek-official',group)
+  assert.equal($('model-'+def+'ModelId').value,'v4-pro',group)
+  assert.equal($('model-'+def+'ReasoningEffort').value,'',group)
  }
- upstream.value='';upstream.trigger('change')
- for(const target of ['dailyDynamic','ownerDmAgent']){
-   assert.match($(`model-${target}ModelId`).children[0].textContent,/自动继承（claude \/ sonnet）/)
- }
+ assert.equal($('main-memory-model-provider').value,'deepseek-official')
+ assert.equal($('main-memory-model-id').value,'v4-pro')
+ assert.equal($('main-memory-model-effort').value,'')
 })

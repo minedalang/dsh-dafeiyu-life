@@ -144,3 +144,8 @@
 ## dev.53 · 当前回忆投影、Life 调度和主评论诊断（未发布）
 
 `LifeMemoryGateway → MemoryRetriever（原当前允许集合）→ 可选 EmbeddingMemoryIndex → memoryNeuralProjection → 神经管理 UI`；仅在该管理 UI 使用真正查询向量 cosine 与匿名节点 ID 映射，不影响聊天主 Session 的实际检索时序。`AutonomousPlanner.status → systemHealthSnapshot → 健康横幅/额度卡片`；不新增 Life 定时器。`LifeVideoActionBridge → VideoCommentReadiness` 将 Life 延期/拒绝/技术异常作为不同证据；平台验证/授权不变。当前关联图：`diagrams/life-receipt-memory-current.mmd`。完整边界和回归参见 [dev.53 实现说明](./2.7.1-dev53-semantic-recall-comment-health.md)。真实环境未验收，`releaseReady:false`。
+
+
+## dev.54 调度恢复与行动日记
+
+Life 自动调度仍由唯一 `AutonomousPlanner` 管理；状态轮询和手动唤醒可在定时器消失后恢复原检查，不新增定时器或发送许可。主人时间线的 BV/UID 只来自同账号已核验记录。神经回忆结果筛选和梗证据门槛不建立第二事实账本。详见 [dev.54](2.7.1-dev54-life-recovery-and-owner-ui.md)。

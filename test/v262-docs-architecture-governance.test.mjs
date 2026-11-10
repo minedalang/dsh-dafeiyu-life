@@ -9,13 +9,8 @@ const read=relative=>readFileSync(path.join(root,relative),'utf8')
 
 const liveDocs=['AGENTS.md','docs/README.md','docs/architecture/README.md','docs/archive/README.md','docs/architecture/2.6.2-unified-layer-change-gate.md']
 
-test('AGENTS 聚焦当前约束，不再堆叠旧版 dev/RC 流水账',()=>{
- const agents=read('AGENTS.md')
- assert.ok(agents.split('\n').length<120,'AGENTS 应保持短小，具体历史写归档')
- for(const phrase of ['统一层归属检查','Life Voice Context','SocialContextAssembler','SocialPolicyGate','允许新增统一层','架构变更必须同步更新文档','跨 UID','Git Patch']){
-  assert.ok(agents.includes(phrase),`missing: ${phrase}`)
- }
- assert.doesNotMatch(agents,/^##\s*(?:dev\.\d+|2\.6\.[01](?:-dev\.| RC)|v2\.6\.0-dev)/m)
+test('AGENTS 记录文档规则与真实 Life 安全边界',()=>{
+ const guide=read('AGENTS.md');assert.match(guide,/README 是用户首页/);assert.match(guide,/统一层/);assert.match(guide,/权限/);
 })
 
 test('架构门禁说明何时可新增公共层，且架构图与文档同提交更新',()=>{

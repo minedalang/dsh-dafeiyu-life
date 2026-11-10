@@ -158,6 +158,12 @@ flowchart TB
     gapGrowth["长期兴趣/人格因果、真实 Windows/平台/本地 GGUF/72h：未验收"]
   end
   gapSocial ~~~ gapRecall ~~~ gapGrowth
+  dev54Scheduler["Life 定时器 ensureStarted：仅恢复自动检查，不绕过 runLease"]
+  dev54Diary["Owner 日记：已核验 BV/UID 跳转，未知目标不推断"]
+  dev54Recall["神经回忆：trace 不命中、结果相关性排序"]
+  %% @code dev54Scheduler | lib/autonomous-planner.mjs | const ensureStarted=()=>
+  %% @code dev54Diary | lib/life-timeline.mjs | export function buildLifeTimeline
+  %% @code dev54Recall | lib/memory-neural-projection.mjs | const keywordRelevance=
   classDef active fill:#e8f3ff,stroke:#3579c9,color:#17385f
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   classDef gap fill:#fff0f1,stroke:#d26975,color:#822f39
@@ -420,6 +426,12 @@ flowchart TB
   %% @code embeddingLookup | lib/embedding-memory-index.mjs | async function search(query
   %% @code lifeHeartbeat | lib/autonomous-planner.mjs | schedulerPulse:{...schedulerPulse
   %% @code healthView | lib/system-health-projection.mjs | export function systemHealthSnapshot
+  dev54Scheduler["Life 定时器 ensureStarted：仅恢复自动检查，不绕过 runLease"]
+  dev54Diary["Owner 日记：已核验 BV/UID 跳转，未知目标不推断"]
+  dev54Recall["神经回忆：trace 不命中、结果相关性排序"]
+  %% @code dev54Scheduler | lib/autonomous-planner.mjs | const ensureStarted=()=>
+  %% @code dev54Diary | lib/life-timeline.mjs | export function buildLifeTimeline
+  %% @code dev54Recall | lib/memory-neural-projection.mjs | const keywordRelevance=
   classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
   classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
   classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b

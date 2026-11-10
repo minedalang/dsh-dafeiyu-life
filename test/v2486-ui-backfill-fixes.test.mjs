@@ -21,7 +21,7 @@ test('统一模型页所访问的 checked DOM 都存在，兼容自动模式和�
   const html=read('lib/management-console.html'),js=read('lib/management-console.js')
   const region=js.slice(js.indexOf('const loadModels='),js.indexOf('const biliFields='))
   for(const [,id] of region.matchAll(/\$\('([^']+)'\)\.checked/g)){
-    assert.ok(html.includes('id="'+id+'"'),`${id} is missing in the HTML`) 
+    assert.ok(html.includes('id="'+id+'"'),`${id} is missing in the HTML`)
   }
   for(const id of ['models-vision-enabled','models-vision-debug','models-vision-mode'])assert.ok(html.includes('id="'+id+'"'))
   assert.match(html,/<option value="auto">/)
@@ -41,7 +41,7 @@ test('真实模拟打开模型页刷新时不会因缺失 DOM 的 checked 属性
     setAttribute(){}
   }
   for(const id of htmlIds){const e=new Element();e.id=id}
-  const document={getElementById:id=>registry.get(id)||null,createElement:()=>new Element(),querySelectorAll:()=>[],querySelector:()=>new Element()}
+  const document={getElementById:id=>registry.get(id)||null,createElement:()=>new Element(),querySelectorAll:()=>[],querySelector:()=>new Element(),addEventListener(){}}
   const fetchCalls=[]
   const fetch=async(path,options={})=>{fetchCalls.push({path,options});return {ok:true,status:200,json:async()=>({ok:true,localVerified:true,config:{visionEnabled:true,visionDebug:true,visionMode:'auto',mainSessionMemoryModelId:'retriever',mainSessionReflectionModelProvider:'reflect-provider',mainSessionReflectionModelId:'reflect-model',mainSessionReflectionReasoningEffort:'high'}})}}
   runInNewContext(script,{document,window:{addEventListener(){}},fetch,console,setTimeout,clearTimeout,confirm:()=>true,Date,URL,Blob,TextDecoder,Uint8Array}, {timeout:1500})

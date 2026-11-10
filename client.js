@@ -425,7 +425,7 @@ function WatchTab() {
       const onOpenManage = async (tab = '') => {
         setManageError('')
         try {
-          const safeTab = ['firststart', 'models', 'home', 'life'].includes(tab) ? tab : ''
+          const safeTab = ['firststart', 'models', 'home', 'life', 'life-agent'].includes(tab) ? tab : ''
           const ua = String(window.navigator?.userAgent || '')
           const smallTouch = Number(window.navigator?.maxTouchPoints || 0) > 0 &&
             Number(window.innerWidth || 1024) <= 900
@@ -719,6 +719,14 @@ function WatchTab() {
             h('div',{'data-bd-grow':''},h('div',{'data-bd-label':''},'🐳 大肥鱼 · DSH 生活系统'),
               h('div',{'data-bd-note':''},'她会自己去 B站、把重要经历带回主 Session、长期记住主人和朋友；精确档案、长期记忆、梗、好友关系与互动状态都保存在本地。')),
             h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage()},'打开管理中心 ↗')),
+          h('div',{'data-bd-sec':'','data-bd-group':'overview'},
+            h('div',{'data-bd-h':''},'✨ 2.7.1 核心功能总览'),
+            h('div',{'data-bd-note':''},'Life 自主生活：基于真实线索，自行选择探索或休息。'),
+            h('div',{'data-bd-note':''},'神经回忆场：三维可视化会衰减的记忆，支持语义检索。'),
+            h('div',{'data-bd-note':''},'行动日记：显示有证据的 BV 与 UID 跳转；情绪和经历参与自然表达。'),
+            h('div',{'data-bd-note':''},'统一默认模型：可一键同步所有任务，仍能单独调整。'),
+            h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('life-agent')},'打开 Life 管理 ↗'),
+            h('a',{'data-bd-btn':'',href:'https://github.com/minedalang/dsh-dafeiyu-life/blob/dev/docs/FUTURE_ROADMAP_2.6.1_TO_2.9.1.md',target:'_blank',rel:'noopener noreferrer'},'未来规划 ↗')),
           manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
 
         /* ── 大肥鱼总开关：永久展示，不隐藏设置，不清除历史 ── */
@@ -740,7 +748,6 @@ function WatchTab() {
 
         /* ── 今天 ── */
         h('div', { 'data-bd-row': '' },
-          h('span', { 'data-bd-badge': '' }, `今天已挑 ${st.pickedToday ?? st.ranToday ?? 0} / ${cfg.perDay} 条`),
           h('span', { 'data-bd-badge': '' }, '环境' + (st.venvReady ? '已就绪' : (st.installing ? '正在装' : '未装'))),
           h('span', { 'data-bd-badge': '' }, st.loggedIn ? 'B站已登录' : 'B站未登录'),
             h('span', { 'data-bd-badge': '' }, 'v' + (st.version || '?')),
@@ -758,18 +765,6 @@ function WatchTab() {
             h('button',{'data-bd-btn':'',disabled:busy==='selfcheck',onClick:onSelfCheck},'环境自检')),
           h('div',{'data-bd-note':''},'扫码登录统一由管理中心 → 首次设置管理。'),
           st.installTail?h('pre',{'data-bd-pre':''},String(st.installTail).slice(-2500)):null),
-
-        /* Legacy time-window controls have been retired. Daily page is simple:
-         * the Life Agent is the only automatic video wake owner now. */
-        h('div',{'data-bd-sec':'','data-bd-group':'daily'},
-          h('div',{'data-bd-h':''},'🌿 鱼鱼的自主生活'),
-          h('div',{'data-bd-note':''},'不再按旧谷时定时器自动刷视频。让鱼鱼自己考虑待办、好奇心和休息；在管理中心只需设置生活状态和活跃程度。旧时段保留在存档里，不再控制启动。'),
-          h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('life')},'设置鱼鱼的生活 →')),
-
-        /* 数量配额现在统一在管理中心，避免过期草稿覆盖编辑。 */
-        h('div', { 'data-bd-sec':'', 'data-bd-group':'daily', 'data-bd-away':tab==='daily'?undefined:'' },
-          h('div',{'data-bd-h':''},'选片数量'),
-          h('div',{'data-bd-note':''},`每天最多 ${cfg.perDay} 条 · 每轮最多 ${cfg.pickPerRound} 条。本轮最多还可挑 ${st.canPickThisRound??0} 条。修改请前往管理中心 → 次数与额度。`)),
 
         /* ── 发言与转写 ── */
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'social', 'data-bd-away': tab === 'social' ? undefined : '' },
@@ -943,39 +938,7 @@ function WatchTab() {
           h('div', { 'data-bd-row': '' },
             msg ? h('div', { 'data-bd-msg': '', 'data-good': msgTone === 'good' ? '' : undefined, 'data-warn': msgTone === 'warn' ? '' : undefined }, msg) : null)),
 
-        /* ── 环境与账号 ── */
-        /* ── 它刷过的视频 ── */
-        h('div', { 'data-bd-sec': '', 'data-bd-group': 'daily', 'data-bd-away': tab === 'daily' ? undefined : '' },
-          h('div', { 'data-bd-h': '' }, '它刷过的视频'),
-          h('div', { 'data-bd-row': '' },
-            h('button', { 'data-bd-btn': '', disabled: busy === 'watched', onClick: () => (watchedRows !== null ? setWatchedRows(null) : onLoadWatched(watchedState, watchedTier, watchedOffset)) },
-              watchedRows !== null ? '收起' : '看它刷过什么'),
-            watchedRows !== null ? h('button', { 'data-bd-btn': '', disabled: busy === 'watched', onClick: () => onLoadWatched(watchedState, watchedTier, 0) }, '刷新') : null,
-            h('div', { 'data-bd-note': '' },
-              watchedRows === null ? '（点一下读出来；数据来自 seen.md + 日报 + 视频归档）'
-                : (watchedTotal ? `共 ${watchedTotal} 条` : '这一类还没有记录 —— 跑一轮之后就有了'))),
-          watchedRows !== null ? h('div', { 'data-bd-row': '' },
-            [['', '全部'], ['picked', '挑了'], ['skipped', '跳过'], ['commented', '发给你了']].map(([v, label]) =>
-              h('button', { key: v || 'all', 'data-bd-chip': '', 'aria-selected': watchedState === v ? 'true' : 'false', onClick: () => onWatchPick('state', v) }, label)),
-            ['值得看', '可以看', '不值当'].map((v) =>
-              h('button', { key: v, 'data-bd-chip': '', 'aria-selected': watchedTier === v ? 'true' : 'false', onClick: () => onWatchPick('tier', v) }, v))) : null,
-          watchedRows !== null && watchedRows.length ? h('div', { 'data-bd-list': '' },
-            watchedRows.map((x, i) => h('div', { key: x.day + x.bvid, 'data-bd-item': '' },
-              // 封面走宿主代理（直连 i0.hdslb.com 会被防盗链挡，也等于把使用者 IP 交出去）
-              i < 40 ? h('img', { 'data-bd-cover': '', src: API + '/cover?bv=' + x.bvid, loading: 'lazy', alt: '' }) : null,
-              h('div', { 'data-bd-item-body': '' },
-                h('div', { 'data-bd-item-t': '' },
-                  h('a', { href: x.url, target: '_blank', rel: 'noreferrer' }, x.title)),
-                h('div', { 'data-bd-item-n': '' },
-                  `${x.day} · ${x.up} · `, x.picked ? '挑中了' : (x.status && /跳过/.test(x.status) ? '跳过' : '看过'), (x.delivered || x.commented) ? ' · 已发给你' : '',
-                  x.tier ? h('span', { 'data-bd-tier': x.tier }, ' · ' + x.tier) : null),
-                x.why ? h('div', { 'data-bd-item-why': '' }, x.why) : null))))
-            : null,
-          watchedRows !== null && watchedTotal > WATCH_PAGE ? h('div', { 'data-bd-row': '' },
-            h('button', { 'data-bd-btn': '', disabled: watchedOffset <= 0, onClick: () => onWatchPage(-WATCH_PAGE) }, '上一页'),
-            h('div', { 'data-bd-note': '' }, `${watchedOffset + 1}–${Math.min(watchedOffset + WATCH_PAGE, watchedTotal)} / ${watchedTotal}`),
-            h('button', { 'data-bd-btn': '', disabled: watchedOffset + WATCH_PAGE >= watchedTotal, onClick: () => onWatchPage(WATCH_PAGE) }, '下一页')) : null),
-
+        /* 设置与历史视频详情统一到管理中心。 */
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'adv', 'data-bd-away': tab === 'adv' ? undefined : '' },
           h('div', { 'data-bd-row': '' },
             h('button', { 'data-bd-btn': '', disabled: busy === 'diag', onClick: onDiagnose }, '复制诊断信息'),

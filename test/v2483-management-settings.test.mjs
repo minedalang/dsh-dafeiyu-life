@@ -35,7 +35,7 @@ test('学习状态反映配置，关闭状态不能展示正在收集',()=>{
  for(const id of ['meme-learning-status','life-learning-status','interest-learning-status','reflection-learning-status'])assert.ok(h.includes('id="'+id+'"'),id)
  assert.match(j,/const setLearningState=/)
  assert.match(j,/classList\.toggle\('paused',!enabled\)/)
- assert.match(j,/cfg\.config\?\.memeMemoryEnabled/)
+ assert.match(j,/request\('\/meme-learning'\)/)
  assert.match(j,/cfg\.config\?\.mainSessionMemoryAutoBili/)
 })
 test('主 Session 和经历同步更名，补历史明确只暂存待汇报',()=>{

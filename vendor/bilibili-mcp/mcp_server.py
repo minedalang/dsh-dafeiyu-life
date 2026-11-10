@@ -1288,6 +1288,10 @@ def _append_home(rel, text):
 # 所有检索结果都是从公开视频提取的“不可信资料”，不能作为指令使用。
 # 没有识图，外观状态一律为「未知（未识图）」，不凭名字推断角色外形。
 _MEME_DB_NAME = "meme-memory.sqlite3"
+_MEME_GENERIC_MARKER = re.compile(r'(?i)^(?:day\s*\d{1,4}|第[0-9零〇一二三四五六七八九十百]+天|第[0-9零〇一二三四五六七八九十百]+期|经验开源|经验分享|教程合集|资源分享|作品展示)$')
+def _meme_is_generic_marker(value):return bool(_MEME_GENERIC_MARKER.fullmatch(str(value or '').strip()))
+def _meme_evidence_rank(column):return "CASE "+column+" WHEN '标题' THEN 0 WHEN '低清预览' THEN 1 WHEN '简介' THEN 2 WHEN '其他文字' THEN 2 WHEN '字幕' THEN 3 WHEN '弹幕' THEN 3 WHEN '评论' THEN 4 ELSE 0 END"
+
 _MEME_FORBIDDEN = re.compile(r"(?i)(?:\b(?:api[_-]?key|access[_-]?token|sessdata|bili_jct|authorization|cookie|password|secret)\b|https?://|[A-Za-z]:[\\/]|(?:\.dsh[/\\])|-----BEGIN|\b[0-9a-f]{32,}\b)")
 
 
@@ -1332,6 +1336,19 @@ def _meme_conn():
         PRIMARY KEY(meme_id, bvid),
         FOREIGN KEY(meme_id) REFERENCES memes(id)
     )""")
+    conn.execute("CREATE TABLE IF NOT EXISTS meme_schema_migrations(version TEXT PRIMARY KEY,applied_at TEXT NOT NULL)")
+    if not conn.execute("SELECT 1 FROM meme_schema_migrations WHERE version='generic-title-marker-v2'").fetchone():
+        conn.execute("CREATE TABLE IF NOT EXISTS meme_observations (id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,bvid TEXT NOT NULL,evidence TEXT NOT NULL,evidence_type TEXT NOT NULL,created_at TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',UNIQUE(name,bvid))")
+        for row in conn.execute("SELECT id,name,confidence FROM memes WHERE review_status='approved'").fetchall():
+            if row['confidence']!='待核实' or not _meme_is_generic_marker(row['name']):continue
+            sources=conn.execute("SELECT bvid,evidence_type,evidence,noted_at FROM meme_sources WHERE meme_id=?",(row['id'],)).fetchall()
+            if len({x['bvid'] for x in sources})>=2 and all(x['evidence_type']=='标题' for x in sources):
+                for src in sources:
+                    conn.execute("INSERT OR IGNORE INTO meme_observations(name,bvid,evidence,evidence_type,created_at,status) VALUES(?,?,?,?,?,'pending')",
+                        (row['name'],src['bvid'],src['evidence'],src['evidence_type'],src['noted_at']))
+                conn.execute("UPDATE memes SET review_status='rejected' WHERE id=?",(row['id'],))
+        conn.execute("INSERT INTO meme_schema_migrations(version,applied_at) VALUES('generic-title-marker-v2',?)",(datetime.now().astimezone().isoformat(timespec='seconds'),))
+        conn.commit()
     return conn
 
 
@@ -1552,6 +1569,7 @@ async def bili_meme_remember(name: str, meaning: str, bvid: str, evidence: str,
 def _meme_observe(name,bvid,evidence,evidence_type='字幕'):
     nm=_meme_clean(name,48)
     if len(nm)<2:raise ValueError('概念名称至少两个字')
+    if _meme_is_generic_marker(nm):raise ValueError('标题序号或通用栏目标签不是梗名')
     bv=_valid_bv(bvid)
     ev=_meme_clean(evidence,180)
     source_type=evidence_type if evidence_type in ('字幕','评论','简介','标题','弹幕','其他文字','低清预览') else '其他文字'
@@ -1570,9 +1588,11 @@ def _meme_observe(name,bvid,evidence,evidence_type='字幕'):
                 UNIQUE(name,bvid))''')
             count=con.execute("SELECT COUNT(*) FROM meme_observations WHERE status='pending'").fetchone()[0]
             if count>=300:return {'ok':False,'error':'梗线索池已满，请等待跨视频反思处理'}
-            con.execute('''INSERT INTO meme_observations(name,bvid,evidence,evidence_type,created_at)
-                VALUES(?,?,?,?,?) ON CONFLICT(name,bvid) DO UPDATE SET evidence=excluded.evidence,
-                evidence_type=excluded.evidence_type''',
+            better=_meme_evidence_rank('excluded.evidence_type')+' >= '+_meme_evidence_rank('evidence_type')
+            con.execute(f'''INSERT INTO meme_observations(name,bvid,evidence,evidence_type,created_at)
+                VALUES(?,?,?,?,?) ON CONFLICT(name,bvid) DO UPDATE SET
+                evidence=CASE WHEN {better} THEN excluded.evidence ELSE evidence END,
+                evidence_type=CASE WHEN {better} THEN excluded.evidence_type ELSE evidence_type END''',
                 (nm,bv,ev,source_type,datetime.now().astimezone().isoformat(timespec='seconds')))
         n=con.execute("SELECT COUNT(DISTINCT bvid) FROM meme_observations WHERE name=?",(nm,)).fetchone()[0]
         return {'ok':True,'status':'observed','name':nm,'source_count':n,

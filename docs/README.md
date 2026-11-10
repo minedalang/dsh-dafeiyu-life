@@ -1,24 +1,11 @@
-**当前开发预览：2.7.1-dev.52（未发布）。** [评论回复恢复和生活证据脉络](architecture/2.7.1-dev52-life-evidence-and-reply-recovery.md)。平台真实回执与 Windows DSH 仍待现场验收。
-
-**当前开发预览：2.7.1-dev.51（未发布）。** [全景神经记忆与主 Session 短暂停顿续接](architecture/2.7.1-dev51-neural-atlas-short-pause.md)，不新增 B站自动发送授权；真实 Windows 宿主需现场验证。
-
-**当前开发版本：2.7.1-dev.49（未发布）**。三维神经回忆场、已有向量的本地 PCA 投影、后台监听逐渠道诊断。详情见 [dev.49 架构](architecture/2.7.1-dev49-neural-3d-and-channel-health.md)。
-
-**当前开发版：`2.7.1-dev.48`（尚未发布）。** [dev.48 Life 自主按需社交只读、神经回忆与技术状态](architecture/2.7.1-dev48-neural-recall-and-social-reads.md) · [Life 日志与使用者可读的生活时间线](architecture/2.7.1-dev47-owner-readable-life-timeline.md) ·  [dev.46 Life 执行动作细节与脱敏模型调用诊断](architecture/2.7.1-dev46-life-decision-explain.md) · [dev.45 统一读取限流和主人交流预设](architecture/2.7.1-dev45-dm-read-budget-and-owner-defaults.md) · [dev.44 主人联系与断网恢复](architecture/2.7.1-dev44-contact-and-recovery.md) · [Life 主 Session 自主交谈接线及宿主输出限制](architecture/2.7.1-dev42-main-session-self-initiated-chat.md) · [dev.42 P6-A 诊断](architecture/2.7.1-dev42-main-chat-style-p6-diagnostics.md) · [dev.41 视频间隔](architecture/2.7.1-dev41-video-agent-configurable-interval.md) · [专业 Agent 自主连续决策源码审计](architecture/2.7.1-dev40-autonomy-and-continuity-audit.md)。
-
 # 文档导航
 
-本目录给维护者使用；普通用户从根目录 [README](../README.md) 和 [首次使用教程](../README.md#-首次使用教程) 开始。
+普通用户先看 [README](../README.md) 和 [首次使用教程](../README.md#-首次使用教程)。
 
-| 需要了解 | 唯一入口 | 适用范围 |
-| --- | --- | --- |
-| 当前系统结构与模块调用 | [架构首页](architecture/README.md) | 当前 `2.7.1-dev.39`，优先阅读统一 Life Episode、主评论 P0 诊断及真实回执与记忆接线 |
-| 统一层的归属、新层准入与文档同步规则 | [变更门禁](architecture/2.6.2-unified-layer-change-gate.md) | 每项代码需求修改前 |
-| 人格和情绪如何保持同一条鱼 | [统一人格](architecture/2.6.2-life-voice-context.md) | 当前接线与边界 |
-| 真实事实、回访与任务证据 | [统一事实与回访](architecture/2.6.2-unified-facts-and-followup-context.md) | 当前接线与边界 |
-| 隐私、遗忘、跨域反思 | [Life Memory 分域契约](architecture/life-memory-domain-reflection-v2.6.0-dev.4.md) | 兼容性和权限约束 |
-| RC 十三项自然行为与用户指南自检 | [RC 准入审计](architecture/2.7.1-rc-preflight-13-questions.md) | 2.7.1 暂不准入 RC |
-| 发布检查 | [当前开发版说明](../RELEASE_NOTES_v2.7.1.md) | 详细历史发布资料见仓库 `docs/release/`，不随 npm 安装包分发 |
-| 旧版实验、废弃设计与追溯 | [历史文档索引](archive/README.md) | 不能当作当前实现 |
+- **当前开发预览 2.7.1-dev.54（未发布）**：[Life 自恢复、行动日记、模型页与记忆搜索](architecture/2.7.1-dev54-life-recovery-and-owner-ui.md)
+- [当前系统架构](architecture/README.md)
+- [未来规划 2.6.1 → 2.9.1](FUTURE_ROADMAP_2.6.1_TO_2.9.1.md)
+- [RC 十三项行为自检](architecture/2.7.1-rc-preflight-13-questions.md)
+- [历史方案与归档](archive/README.md)
 
-**文档维护规则：** 架构变更必须在同一提交中修订当前架构说明、可编辑图和关联测试；历史文档通过归档或 Git 历史保留，不要让多个 README 同时声称自己是当前架构的真值。
+README 面向普通使用者；每个 dev 的技术细节分别记录在 CHANGELOG 和架构文档，不堆在 README。
