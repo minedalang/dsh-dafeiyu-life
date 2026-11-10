@@ -7658,7 +7658,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         }}catch(e){log('Life 可信回执诊断暂不可用：'+String(e?.message||e).slice(0,80))}
         const watched=parseSeenTable()
         const rows=buildLifeTimeline({watched,videoRounds,lifeDecisions,comments,emotionHistory:emotion.history,relationshipRows:relationships,episodes:episodeRows,days,limit:160})
-        const counts=Object.fromEntries(['video','video-round','life-read','life-write','life-reflection','life-rest','life-action','comment','emotion','relationship'].map(k=>[k,rows.filter(row=>row.type===k).length]))
+        const counts=Object.fromEntries(['video','video-round','life-read','life-write','life-reflection','life-rest','life-action','comment','life-idle','life-consider','emotion','relationship'].map(k=>[k,rows.filter(row=>row.type===k).length]))
         return sendJson(res,200,{ok:true,days,rows,counts,commentReadiness,privacy:'仅展示公开经历与情绪类别；不展示私信正文或私人画像内容。未出现的动作不能据此推断发生过。'})
       }catch(e){return sendJson(res,400,{ok:false,error:'生活时间线读取失败：'+String(e?.message||e).slice(0,180)})}
     }

@@ -1,3 +1,7 @@
+## 当前开发版本 2.7.1-dev.47：Life 可读生活时间线（未发布）
+
+[社交快速考虑与子 Agent 调度关系、生活时间线安全原因类别、可信回执边界](2.7.1-dev47-owner-readable-life-timeline.md)。这是从原 LifeAgentEvents 投影的只读用户卡片，不新增社交所有权或发送权限，`releaseReady:false`。
+
 ## 当前开发版本 2.7.1-dev.46：Life 全动作解释日志（未发布）
 
 [dev.46 Life 决策细节、模型输入来源/指纹、社交事件逐项结算与隐私边界](2.7.1-dev46-life-decision-explain.md)。此日志不保存私信正文或模型隐藏思考，也不伪造平台发送回执。

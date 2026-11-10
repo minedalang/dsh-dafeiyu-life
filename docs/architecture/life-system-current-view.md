@@ -394,6 +394,11 @@ flowchart TB
   growth --> curiosity
   curiosity --> planner
   videoFeedback -.-> planner
+  ownerDiary["大肥鱼的一天｜从现有事件/行动回执生成可读卡片；社交关注≠实际发送，休息类别仅来自模型白名单"]
+  lifeEventJournal["LifeAgentEvents 原账号匿名决策账本｜候选计数/休息类别"]
+  lifeEventJournal -.-> ownerDiary
+  verified -.->|经核验行为| ownerDiary
+  ownerDiary -.->|只读 UI，不产生写权限| planner
   planner --> source
   ownerFollowup["Life talk_to_owner → 现有主 Session followup；成功只等于入队，不能当成平台发送回执"]
   planner -.->|独立同意才可选择，允许休息| ownerFollowup
@@ -428,6 +433,10 @@ dmFollowReceipt -.->|只有成功回执| verified
 %% dev.44: no new memory store or channel; one quota ledger.
 %% @code ownerDmSilence | lib/owner-dm-agent.mjs | const considerSilence=async()=>
 %% @code ownerContactQuota | lib/main-session-bridge.mjs | const reserveOwnerContact=
+
+%% dev.47: only readable projection from existing ledger and trusted receipts.
+%% @code ownerDiary | lib/life-timeline.mjs | const restCard=
+%% @code lifeEventJournal | lib/life-agent-events.mjs | export const LIFE_REST_REASON_CODES
 ```
 
 ## 四、统一 Life Episode 因果持续性

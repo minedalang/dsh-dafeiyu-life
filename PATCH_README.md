@@ -1,3 +1,11 @@
+# 当前增量：dev.46 → dev.47（未发布）
+
+本轮增强主人生活时间线：将原 Life 决策的候选类别/数量、模型安全休息原因、社交仅关注与平台实际回执分开展示。普通私信与评论专业 Agent 不等待日常 Life 30 分钟调度。**只支持已包含 dev.46 的完整源码。**
+
+Windows CRLF 工作区使用 `DSH-2.7.1-dev46-to-dev47-readable-life-timeline-CRLF.patch`，全部 LF 工作区使用 `...-LF.patch`，二选一。先 `git apply --check`，通过再应用。此次不改主人授权或外发权限，旧记录无法反推当时未存的模型原因；详细说明见 `docs/architecture/2.7.1-dev47-owner-readable-life-timeline.md`。
+
+---
+
 # 当前增量：dev.44 → dev.45（未发布）
 
 完整交付 ZIP 包内的 `patches/` 提供两种行尾 Patch。请以 **dev.44 完整源码** 为基线，先 `git status --short` 和 `git apply --check`，确认后再应用且二选一。Windows 如果 CRLF 补丁能检查通过，优先使用 CRLF。该补丁改进 B站 -509 统一读取退避、按轮 HTTP 尝试数、主人联系默认预设。不会抹除既有配置或强迫肥鱼主动聊天。切勿叠加两份补丁。
