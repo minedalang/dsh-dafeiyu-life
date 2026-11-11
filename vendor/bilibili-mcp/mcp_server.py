@@ -1728,11 +1728,13 @@ def _record_owned_observation(bv: str, title: str, up: str, status: str) -> None
     con = _action_conn()
     try:
         with con:
-            con.execute("""INSERT INTO seen_observations(account,bvid,day,title,up,status)
-                VALUES(?,?,?,?,?,?) ON CONFLICT(account,bvid) DO UPDATE SET
-                day=excluded.day,title=excluded.title,up=excluded.up,status=excluded.status""",
+            con.execute("""INSERT INTO seen_observations(account,bvid,day,title,up,status,recorded_at_ms)
+                VALUES(?,?,?,?,?,?,?) ON CONFLICT(account,bvid) DO UPDATE SET
+                day=excluded.day,title=excluded.title,up=excluded.up,status=excluded.status,
+                recorded_at_ms=excluded.recorded_at_ms""",
                 (account,bv,datetime.now().strftime('%Y-%m-%d'),
-                 _safe_line(title,130),_safe_line(up,60),_safe_line(status,80)))
+                 _safe_line(title,130),_safe_line(up,60),_safe_line(status,80),
+                 int(datetime.now().timestamp()*1000)))
     finally:
         con.close()
 
@@ -1778,9 +1780,10 @@ def _record_owned_selection(bv: str) -> bool:
     try:
         with con:
             cur = con.execute("""INSERT OR IGNORE INTO selected_videos
-                (account,bvid,day,round_id,status) VALUES(?,?,?,?,?)""",
+                (account,bvid,day,round_id,status,recorded_at_ms) VALUES(?,?,?,?,?,?)""",
                 (account,bv,datetime.now().strftime('%Y-%m-%d'),
-                 str(os.environ.get('BILI_DUTY_LIFE_ROUND_ID', ''))[:24],'挑中'))
+                 str(os.environ.get('BILI_DUTY_LIFE_ROUND_ID', ''))[:24],'挑中',
+                 int(datetime.now().timestamp()*1000)))
         return cur.rowcount == 1
     finally:
         con.close()
@@ -1811,11 +1814,19 @@ def _action_conn():
     con.execute('''CREATE TABLE IF NOT EXISTS selected_videos (
         account TEXT NOT NULL, bvid TEXT NOT NULL, day TEXT NOT NULL,
         round_id TEXT NOT NULL DEFAULT '', status TEXT NOT NULL CHECK(status='挑中'),
+        recorded_at_ms INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY(account,bvid))''')
     con.execute('''CREATE TABLE IF NOT EXISTS seen_observations (
         account TEXT NOT NULL, bvid TEXT NOT NULL, day TEXT NOT NULL,
         title TEXT NOT NULL DEFAULT '', up TEXT NOT NULL DEFAULT '', status TEXT NOT NULL,
+        recorded_at_ms INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY(account,bvid))''')
+    # Legacy databases did not store per-video times; zero means genuinely unknown.
+    # Migration is idempotent and does not invent historical timestamps.
+    for table in ('selected_videos', 'seen_observations'):
+        cols = {r[1] for r in con.execute('PRAGMA table_info('+table+')')}
+        if 'recorded_at_ms' not in cols:
+            con.execute('ALTER TABLE '+table+' ADD COLUMN recorded_at_ms INTEGER NOT NULL DEFAULT 0')
     con.execute('''CREATE TABLE IF NOT EXISTS created_folders (
         uid TEXT NOT NULL, title TEXT NOT NULL, fid INTEGER NOT NULL,
         day TEXT NOT NULL, PRIMARY KEY(uid,title))''')

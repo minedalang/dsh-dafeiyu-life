@@ -1,8 +1,10 @@
 # 文档导航
 
-**当前 dev.61 Life 修复：** [主评论、选片证据、视频失败与章程迁移](architecture/2.7.1-dev61-life-state-comment-repair.md)。
+**当前 dev.62 时间线修复：** [连续经历、真实入选记账时间与历史回复边界](architecture/2.7.1-dev62-life-timeline-provenance.md)。
 
-**当前唯一架构事实源：** [2.7.1-dev.61 实际接线](architecture/CURRENT-ARCHITECTURE.md) · [2.7.1 RC 场景验收](architecture/CURRENT-RC-ACCEPTANCE.md)。
+**dev.61 主评论修复：** [主评论、选片证据、视频失败与章程迁移](architecture/2.7.1-dev61-life-state-comment-repair.md)。
+
+**当前唯一架构事实源：** [2.7.1-dev.62 实际接线](architecture/CURRENT-ARCHITECTURE.md) · [2.7.1 RC 场景验收](architecture/CURRENT-RC-ACCEPTANCE.md)。
 
 普通用户先看 [README](../README.md) 和 [首次使用教程](../README.md#-首次使用教程)。
 
