@@ -38,7 +38,7 @@ const hostDeps = await loadHostDeps()
 const z = hostDeps.z
 const defineTool = hostDeps.defineTool
 import { spawn } from 'node:child_process'
-import {readOwnedVideoLedger,selectedInExactRound} from './lib/video-owned-ledger.mjs'
+import {readOwnedVideoLedger,explainCommentSelection} from './lib/video-owned-ledger.mjs'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
 import { randomUUID, createHash, randomBytes } from 'node:crypto'
 import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
@@ -3252,7 +3252,7 @@ function reportMeta() {
             proposed:diagnostic.proposed,approved:diagnostic.approved,blocked:diagnostic.blocked,
             verified:diagnostic.verified,unverified:diagnostic.unverified,
             // Only a bounded gate code, never a draft or platform error body.
-            ...((diagnostic.blocked>0||diagnostic.proposed>0&&diagnostic.approved===0)&&commentDiagnostics?.lastReason?
+            ...((diagnostic.reviewRejected>0||diagnostic.blocked>0||diagnostic.proposed>0&&diagnostic.approved===0)&&commentDiagnostics?.lastReason?
               {reason:commentDiagnostics.lastReason}:{})})
           trace.finish({state:'finished',action:'video_comment',result:diagnostic.code})
           log('本轮原创主评论诊断：'+diagnostic.code+'；入选 '+(selected??'未知')+'，考虑 '+diagnostic.reviewed+
@@ -5440,7 +5440,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // A model self-report cannot manufacture an eligible selection: consult
       // the existing canonical ledger, without creating a second evidence store.
       const owned=ownedSelectionSnapshot()
-      if(row.previouslyPickedBvids.has(bvid)||!selectedInExactRound(owned,bvid,roundId))return {ok:false,reason:'comment-selection-not-confirmed'}
+      const check=explainCommentSelection(owned,bvid,roundId,{previouslyPicked:row.previouslyPickedBvids.has(bvid)})
+      if(check.ok!==true)return check
       if(checkOnly)return {ok:true}
       row.reviewBvids.add(bvid);row.reviewed++
       if(decision==='want')row.wanted++
