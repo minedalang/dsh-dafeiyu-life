@@ -108,7 +108,7 @@ test('readiness is privacy-preserving, fail-closed, account-scoped and not a cre
   const x=make(t)
   x.setOptedIn(false)
   let status=x.ownership.status()
-  assert.ok(status.handoffReadiness.channels.dm.preflightBlockers.includes('verified-social-context-not-opted-in'))
+  assert.equal(status.handoffReadiness.channels.dm.preflightBlockers.includes('verified-social-context-not-opted-in'),false, 'retired shadow opt-in is not a production blocker')
   x.setMode('off')
   assert.ok(x.ownership.readiness().channels.comment.preflightBlockers.includes('life-not-active'))
   x.setAccount('')

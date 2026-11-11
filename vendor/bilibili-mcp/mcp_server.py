@@ -513,7 +513,7 @@ async def bili_search(keyword: str, num: int = 10, order: str = "totalrank") -> 
         keyword: 搜索关键词，如"AI Agent"、"大模型教程"
         num: 返回视频数量，默认10，最大50
         order: 排序方式 totalrank=综合 click=播放量 pubdate=最新 dm=弹幕
-    
+
     Returns:
         JSON格式的视频列表，包含标题、BV号、播放量、评论数、UP主等
     """
@@ -789,7 +789,7 @@ async def bili_comments(bvid: str, num: int = 30) -> str:
     Args:
         bvid: 视频BV号，如"BV1uNk1YxEJQ"
         num: 获取评论数量，默认30
-    
+
     Returns:
         JSON格式的评论列表，包含用户名、评论内容、点赞数、回复数
     """
@@ -1093,7 +1093,7 @@ async def bili_danmaku(bvid: str, num: int = 100) -> str:
     Args:
         bvid: 视频BV号
         num: 获取弹幕数量，默认100
-    
+
     Returns:
         弹幕列表，包含弹幕文本和出现时间
     """
@@ -1121,7 +1121,7 @@ async def bili_video_info(bvid: str) -> str:
 
     Args:
         bvid: 视频BV号
-    
+
     Returns:
         视频标题、描述、UP主、播放量、评论数、收藏数等详细数据
     """
@@ -1623,56 +1623,146 @@ async def bili_meme_observe(name: str,bvid: str,evidence: str,evidence_type: str
 _ACTION_DB_NAME = 'video-actions.sqlite3'
 
 
+def _selected_owned(bv: str) -> bool:
+    """Read-only, account-bound selection proof. Historical Markdown is never authority.
+
+    A former shared seen.md or daily report cannot be safely attributed to a
+    logged-in account; do not silently migrate it to another person's history.
+    """
+    account = str(getattr(get_cred(), 'dedeuserid', '') or '')
+    if not account.isdigit() or int(account) <= 0:
+        return False
+    db = _DUTY_HOME / _ACTION_DB_NAME
+    if db.is_symlink() or not db.is_file():
+        return False
+    try:
+        con = sqlite3.connect(db.as_uri() + '?mode=ro', uri=True, timeout=8)
+        try:
+            found = con.execute("""SELECT 1 FROM selected_videos
+                WHERE account=? AND bvid=? AND day=? AND status='挑中' LIMIT 1""",
+                (account, bv, datetime.now().strftime('%Y-%m-%d'))).fetchone()
+            return bool(found)
+        finally:
+            con.close()
+    except (OSError, sqlite3.Error):
+        return False
+
+
+def _owned_comment_exists(bv: str) -> bool:
+    """Only this login's accepted public comment can prevent a fresh selection."""
+    account = str(getattr(get_cred(), 'dedeuserid', '') or '')
+    if not account.isdigit() or int(account)<=0:
+        return False
+    db = _DUTY_HOME / _ACTION_DB_NAME
+    if db.is_symlink() or not db.is_file():
+        return False
+    try:
+        con = sqlite3.connect(db.as_uri()+'?mode=ro',uri=True,timeout=8)
+        try:
+            return bool(con.execute('SELECT 1 FROM comment_receipts WHERE account=? AND bvid=? LIMIT 1',
+                                    (account,bv)).fetchone())
+        finally:con.close()
+    except (OSError,sqlite3.Error):return False
+
+
+
+def _current_account_uid() -> str:
+    account = str(getattr(get_cred(), 'dedeuserid', '') or '')
+    if not account.isdigit() or int(account) <= 0:
+        raise ValueError('无法验证当前 B站账号，拒绝使用选片判重账本')
+    return account
+
+
+def _owned_seen(bv: str) -> bool:
+    """Current-account selections and read/skip observations only."""
+    account = _current_account_uid()
+    db = _DUTY_HOME / _ACTION_DB_NAME
+    if db.is_symlink() or not db.is_file():
+        return False
+    try:
+        con = sqlite3.connect(db.as_uri()+'?mode=ro', uri=True, timeout=8)
+        try:
+            a = con.execute('SELECT 1 FROM selected_videos WHERE account=? AND bvid=? LIMIT 1',
+                            (account, bv)).fetchone()
+            b = con.execute('SELECT 1 FROM seen_observations WHERE account=? AND bvid=? LIMIT 1',
+                            (account, bv)).fetchone()
+            return bool(a or b)
+        finally:
+            con.close()
+    except (OSError, sqlite3.Error):
+        return False
+
+
+def _record_owned_observation(bv: str, title: str, up: str, status: str) -> None:
+    """Human-visible read/skip history still belongs to the active login."""
+    account = _current_account_uid()
+    con = _action_conn()
+    try:
+        with con:
+            con.execute("""INSERT INTO seen_observations(account,bvid,day,title,up,status)
+                VALUES(?,?,?,?,?,?) ON CONFLICT(account,bvid) DO UPDATE SET
+                day=excluded.day,title=excluded.title,up=excluded.up,status=excluded.status""",
+                (account,bv,datetime.now().strftime('%Y-%m-%d'),
+                 _safe_line(title,130),_safe_line(up,60),_safe_line(status,80)))
+    finally:
+        con.close()
+
+
+def _owned_ledger_text(max_rows: int = 200) -> str:
+    """Only current-account observations; never reattribute legacy seen.md."""
+    account = _current_account_uid()
+    db = _DUTY_HOME / _ACTION_DB_NAME
+    if db.is_symlink():
+        raise ValueError('判重数据库路径不安全')
+    if not db.is_file():
+        return '（本账号尚无可信判重记录；旧共享 seen.md 只供人工查看，不是当前账号的已读证明）'
+    con = sqlite3.connect(db.as_uri()+'?mode=ro', uri=True, timeout=8)
+    try:
+        rows = con.execute("""SELECT day,bvid,title,up,status FROM seen_observations
+            WHERE account=? ORDER BY day DESC, rowid DESC LIMIT ?""", (account,max_rows)).fetchall()
+        older = con.execute("""SELECT day,bvid FROM selected_videos WHERE account=?
+            AND bvid NOT IN(SELECT bvid FROM seen_observations WHERE account=?)
+            ORDER BY day DESC LIMIT ?""", (account,account,max_rows)).fetchall()
+    finally:
+        con.close()
+    out = ['# 当前账号专属判重（SQLite 已绑定 B站 UID）',
+           '旧共享 seen.md／日报仅是历史展示，不能作为当前账号已看过、已挑中、已评论或已遇见 UP 的证明。']
+    for day,bv,title,up,status in rows:
+        out.append('| ' + ' | '.join([str(day),str(bv),_safe_line(title,130),
+                                      _safe_line(up,60),_safe_line(status,80)]) + ' |')
+    for day,bv in older:
+        out.append('| ' + str(day) + ' | ' + str(bv) + ' | （旧本账号入选） |  | 挑中 |')
+    if not rows and not older:
+        out.append('（本账号尚无可信判重记录）')
+    return '\n'.join(out)[:30000]
+
+def _record_owned_selection(bv: str) -> bool:
+    """Transactionally record only a new canonical pick for this account.
+
+    The one authoritative store is an account-bound SQLite record. Markdown is
+    a readable history projection, not a permission or creator-encounter proof.
+    """
+    account = str(getattr(get_cred(), 'dedeuserid', '') or '')
+    if not account.isdigit() or int(account) <= 0:
+        raise ValueError('无法验证当前 B站账号，拒绝写入选片事实')
+    con = _action_conn()
+    try:
+        with con:
+            cur = con.execute("""INSERT OR IGNORE INTO selected_videos
+                (account,bvid,day,round_id,status) VALUES(?,?,?,?,?)""",
+                (account,bv,datetime.now().strftime('%Y-%m-%d'),
+                 str(os.environ.get('BILI_DUTY_LIFE_ROUND_ID', ''))[:24],'挑中'))
+        return cur.rowcount == 1
+    finally:
+        con.close()
+
+
 def _selected_for_reaction(bv: str) -> bool:
-    # 必须在真实选中后才允许操作
-    today=datetime.now().strftime('%Y-%m-%d')
-    report=_DUTY_HOME / 'out' / (today+'.md')
-    try:
-        if report.is_file() and not report.is_symlink() and report.stat().st_size <= 2_000_000:
-            content=report.read_text('utf8')
-            if re.search(r'^#{2,3}[ \t]*'+re.escape(bv)+r'(?:[ \t]|$)',content,re.M):
-                return True
-    except (OSError,UnicodeError):
-        pass
-    # 无日报模式依赖同日判重表的明确「入选」状态，不接受「看过／跳过」标记。
-    seen=_DUTY_HOME / 'seen.md'
-    try:
-        if seen.is_file() and not seen.is_symlink() and seen.stat().st_size <= 2_000_000:
-            for line in seen.read_text('utf8').splitlines():
-                if not line.startswith('|'): continue
-                parts=[part.strip() for part in line.strip('|').split('|')]
-                if len(parts)>=5 and parts[0]==today and parts[1]==bv and parts[4].strip() in ('挑中','已挑中','选中','已选中','入选','已入选','值得看','可以看'):
-                    return True
-    except (OSError,UnicodeError):
-        pass
-    return False
+    return _selected_owned(bv)
 
 
 def _selected_for_creator_encounter(bv: str) -> bool:
-    """Own-life encounter only: never promote legacy owner recommendation labels.
-
-    Keep the existing recommendation ledger unchanged. An explicit same-day fish
-    selection or real daily report is provenance of meeting a creator, not liking.
-    """
-    today=datetime.now().strftime('%Y-%m-%d')
-    report=_DUTY_HOME / 'out' / (today+'.md')
-    try:
-        if report.is_file() and not report.is_symlink() and report.stat().st_size<=2_000_000:
-            if re.search(r'^#{2,3}[ \t]*'+re.escape(bv)+r'(?:[ \t]|$)',report.read_text('utf8'),re.M):
-                return True
-    except (OSError,UnicodeError):
-        pass
-    seen=_DUTY_HOME/'seen.md'
-    try:
-        if seen.is_file() and not seen.is_symlink() and seen.stat().st_size<=2_000_000:
-            for line in seen.read_text('utf8').splitlines():
-                if not line.startswith('|'):continue
-                parts=[part.strip() for part in line.strip('|').split('|')]
-                if len(parts)>=5 and parts[0]==today and parts[1]==bv and parts[4] in ('挑中','已挑中','选中','已选中','入选','已入选'):
-                    return True
-    except (OSError,UnicodeError):
-        pass
-    return False
+    return _selected_owned(bv)
 
 
 def _action_conn():
@@ -1686,6 +1776,17 @@ def _action_conn():
         uid TEXT NOT NULL, bvid TEXT NOT NULL, kind TEXT NOT NULL,
         day TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '',
         PRIMARY KEY(uid,bvid,kind))''')
+    con.execute('''CREATE TABLE IF NOT EXISTS comment_receipts (
+        account TEXT NOT NULL, bvid TEXT NOT NULL, rpid TEXT NOT NULL,
+        day TEXT NOT NULL, PRIMARY KEY(account,bvid,rpid))''')
+    con.execute('''CREATE TABLE IF NOT EXISTS selected_videos (
+        account TEXT NOT NULL, bvid TEXT NOT NULL, day TEXT NOT NULL,
+        round_id TEXT NOT NULL DEFAULT '', status TEXT NOT NULL CHECK(status='挑中'),
+        PRIMARY KEY(account,bvid))''')
+    con.execute('''CREATE TABLE IF NOT EXISTS seen_observations (
+        account TEXT NOT NULL, bvid TEXT NOT NULL, day TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '', up TEXT NOT NULL DEFAULT '', status TEXT NOT NULL,
+        PRIMARY KEY(account,bvid))''')
     con.execute('''CREATE TABLE IF NOT EXISTS created_folders (
         uid TEXT NOT NULL, title TEXT NOT NULL, fid INTEGER NOT NULL,
         day TEXT NOT NULL, PRIMARY KEY(uid,title))''')
@@ -1748,7 +1849,7 @@ def _finish_session_manual_action(uid: str,kind: str,target: str,body_hash: str,
 def _check_reaction(bvid,env_key):
     if os.environ.get(env_key)!='1':raise ValueError('主人没有开启此项自主视频行为')
     bv=_valid_bv(bvid)
-    if not _selected_for_reaction(bv):raise ValueError('只允许操作今日已真正入选并记录的视频（日报 ### BV 或判重表入选标记）')
+    if not _selected_for_reaction(bv):raise ValueError('只允许操作当前账号今日已经事务确认「挑中」的视频；旧日报和共享判重表不能授权')
     cred=get_cred()
     uid=str(getattr(cred,'dedeuserid','') or '')
     if not uid.isdigit() or int(uid)<=0:raise ValueError('无法确定登录账号 UID')
@@ -2673,52 +2774,46 @@ async def bili_session_watch_mark(bvid: str, title: str = '', up: str = '') -> s
 
 @tool()
 async def bili_ledger_read() -> str:
-    """读取刷B站最近判重表（只读 seen.md，不能指定其他文件）。"""
+    """读取当前 B站账号专属判重表；旧共享 Markdown 不再提供权限或判重事实。"""
     if (e := _guard("bili_ledger_read")): return e
-    return _read_home("seen.md", 30000) or "（判重表为空；可通过 bili_ledger_mark 初始化）"
+    try:
+        return _owned_ledger_text()
+    except Exception as exc:
+        return '（当前账号判重账本不可用，不能将旧 seen.md 当作当前账号经历：' + str(exc)[:110] + '）'
 
 
 @tool()
 async def bili_ledger_mark(bvid: str, title: str, up: str = "", status: str = "看过",
                            comment_decision: str = "") -> str:
-    """标记本轮实际入选或跳过；可选在同一次入选标记时记录只读原创评论意愿（不发送）。"""
+    """标记本轮实际入选或跳过；只有精确「挑中」写入账号绑定的 SQLite 证据账本。"""
     if (e := _guard("bili_ledger_mark")): return e
     try:
         bv = _valid_bv(bvid)
         st = _safe_line(status, 80) or "看过"
-        selected = st in ("挑中", "已挑中", "选中", "已选中", "入选", "已入选", "值得看", "可以看")
-        # Do not silently store an apparently positive but noncanonical status
-        # like "挑中·值得看" as an unpicked video. Give the model a chance to
-        # correct its marker before considering a public comment.
-        if not selected and re.match(r'^(?:挑中|已挑中|选中|已选中|入选|已入选|值得看|可以看)[·：:（(\s-]', st):
-            return json.dumps({"ok": False, "error": "入选状态必须填写精确的「挑中」，本次未写入；可以修正状态后再标记"}, ensure_ascii=False)
-        if comment_decision and (comment_decision not in ("pass", "insufficient") or not selected):
-            return json.dumps({"ok": False, "error": "comment_decision 只允许 pass/insufficient；想评论请先标记入选，再用 bili_comment_consideration(...,decision=consider,draft=...,evidence=...) 让 Life 直接决定"}, ensure_ascii=False)
-        now = datetime.now().strftime("%Y-%m-%d")
-        src = _read_home("seen.md", 2_000_000)
-        already_seen = bool(re.search(r"\|\s*"+re.escape(bv)+r"\s*\|", src))
-        # A BV can appear earlier only as a watch/skip record or as a COMMENT
-        # receipt. Neither is proof of a picked video. The old global BV
-        # duplicate check silently discarded a genuine later selection, then
-        # the host correctly rejected its comment consideration as unpicked.
-        # Only explicit selection rows count, never free text or comment IDs.
-        picked_statuses = {'挑中','已挑中','选中','已选中','入选','已入选','值得看','可以看'}
-        prior_picked = False
-        for line in src.splitlines():
-            if not line.startswith('|'): continue
-            cells = [c.strip() for c in line.strip('|').split('|')]
-            if (len(cells) >= 5 and re.fullmatch(r'20\d{2}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?', cells[0])
-                    and cells[1] == bv and cells[-1] in picked_statuses):
-                prior_picked = True
-                break
-        # A prior confirmed comment receipt is also a do-not-revisit guard:
-        # correcting a watch/skip -> picked transition must never open a
-        # shortcut to commenting again on a video already publicly addressed.
-        prior_comment = bool(re.search(r'^\|\s*'+re.escape(bv)+r'\s*\|\s*\d{6,30}\s*\|',src,re.M))
-        # Preserve prior picks (including an earlier day) and posted videos.
+        # The only accepted positive state is the exact canonical marker.
+        # Legacy aliases remain human-readable history but never grant rights.
+        selected = st == '挑中'
+        if st != '挑中' and re.match(r'^(?:挑中|已挑中|选中|已选中|入选|已入选|值得看|可以看)(?:$|[·：:（(\s-])', st):
+            return json.dumps({'ok':False,'error':'入选状态只允许精确的「挑中」；旧入选别名不再授权'},ensure_ascii=False)
+        if comment_decision and (comment_decision not in ('pass', 'insufficient') or not selected):
+            return json.dumps({'ok': False, 'error': 'comment_decision 只允许 pass/insufficient；想评论请先标记入选，再由 Life 考虑'}, ensure_ascii=False)
+        now = datetime.now().strftime('%Y-%m-%d')
+        # Shared Markdown may contain picks from other logged-in accounts.
+        # Never count it as a current-account seen/selected fact.
+        already_seen = _owned_seen(bv)
+        # Do not infer an account-bound selection from old shared Markdown.
+        # An older pick by another account must not prevent a genuine pick.
+        prior_picked = selected and _selected_owned(bv)
+        # Legacy shared comment receipts have no account identity. They must
+        # not block another account's read-only selection; sending remains
+        # governed by account/round authorization and the sender's own dedupe.
+        prior_comment = _owned_comment_exists(bv)
+        # Preserve prior picks from the same account, including older days.
         # A new explicit pick after an earlier non-picked VIDEO row is a new
         # canonical status transition, not a repeat of the same selection.
-        recorded_selection = selected and not prior_picked and not prior_comment
+        recorded_selection = bool(selected and not prior_picked and not prior_comment
+                                  and _record_owned_selection(bv))
+        _record_owned_observation(bv, title, up, st)
         if not already_seen or recorded_selection:
             _append_home("seen.md", "| " + " | ".join([now,bv,_safe_line(title),_safe_line(up),st]) + " |\n")
         result = {"ok": True, "already_seen": already_seen, "recorded_selection": bool(recorded_selection)}
@@ -3102,6 +3197,19 @@ def _record_comment_in_ledger(payload, bvid, target_rpid, comment_text="", root=
         summary = _safe_line(comment_text, 4096) or "（未保存正文）"
         if rid == "?":
             summary = "[成功回执·无评论ID] " + summary
+        # This auxiliary account-scoped projection must not suppress the
+        # existing human-readable accepted-comment receipt on storage failure.
+        try:
+            account = str(getattr(get_cred(), 'dedeuserid', '') or '')
+            if account.isdigit() and int(account)>0:
+                con = _action_conn()
+                try:
+                    with con:
+                        con.execute('INSERT OR IGNORE INTO comment_receipts(account,bvid,rpid,day) VALUES(?,?,?,?)',
+                                    (account,bv,rid,stamp[:10]))
+                finally:con.close()
+        except Exception:
+            pass
         existing = _read_home("seen.md", 2_000_000)
         if rid != "?" and re.search(r"\|\s*" + re.escape(bv) + r"\s*\|\s*" + re.escape(rid) + r"\s*\|", existing):
             return
@@ -3418,7 +3526,7 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
         meme_image_name: bili_comment_meme_list 中存在的分类/梗图名（无扩展名），不可自行拼路径
         meme_image_reason: AI 选择梗图的简短情境理由，只供用户 Debug，不公开发送
         no_meme_image_reason: AI 不附图时用一句话说明原因，只保存在本地
-    
+
     Returns:
         发表结果
     """
@@ -3649,7 +3757,7 @@ async def bili_crawl(keyword: str, max_videos: int = 5, comments_per_video: int 
         max_videos: 最多采集视频数，默认5
         comments_per_video: 每个视频采集评论数，默认20
         get_subtitles: 是否获取字幕，默认True
-    
+
     Returns:
         包含视频信息、评论和字幕的完整采集数据
     """

@@ -29,12 +29,12 @@ test('strict JSON: no invented action, wrong candidate, or extra fields',()=>{
 test('Life choice produces a short lived account-bound proof and anonymous trace',async t=>{
  const x=fixture(t);const result=await x.decide()
  assert.equal(result.ok,true)
- assert.equal(x.actor.verify(result.proof,'dm_reply').ok,true)
+ assert.equal(x.actor.verify(result.proof,'dm_reply').ok,false) // legacy unsealed proof cannot send
  assert.equal(x.actor.verify(result.proof,'comment_reply').ok,false)
  const trace=x.trace.list().runs[0];assert.equal(trace.trigger,'dm-received')
  const stored=readFileSync(join(x.dir,'life-decision-traces',await import('node:crypto').then(m=>m.createHash('sha256').update(A).digest('hex').slice(0,24)),trace.id+'.json'),'utf8')
  for(const privateValue of ['verified-dm-event:123',A,'画画','活泼但不强求回复']) assert.equal(stored.includes(privateValue),false)
- x.actor.receipt(result.proof,{status:'verified'});assert.equal(x.actor.verify(result.proof,'dm_reply').ok,true)
+ x.actor.receipt(result.proof,{status:'verified'});assert.equal(x.actor.verify(result.proof,'dm_reply').ok,false) // legacy unsealed proof cannot send
  x.changeTag(B);assert.equal(x.actor.verify(result.proof,'dm_reply').ok,false)
 })
 test('time expiry, revoked settings and unknown receipt fail closed',async t=>{
@@ -53,7 +53,7 @@ test('independent candidate triggers share one model contract and existing plann
  for(const [kind,id] of [['comment_reply','reply_comment'],['write_dynamic','write_dynamic'],['share_video','share_video'],['followup','followup']]){
   const result=await x.decide({sourceKey:'trusted:'+id,candidates:[{id,kind,label:'真实候选'}]})
   assert.equal(result.ok,true,kind)
-  assert.equal(x.actor.verify(result.proof,kind).ok,true)
+  assert.equal(x.actor.verify(result.proof,kind).ok,!['dm_reply','comment_reply'].includes(kind))
   x.actor.receipt(result.proof,{status:'verified'})
  }
  const ledger=JSON.parse(readFileSync(join(x.dir,'autonomous-planner.json'),'utf8'))

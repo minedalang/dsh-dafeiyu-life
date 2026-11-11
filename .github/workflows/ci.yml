@@ -1,0 +1,36 @@
+name: Pull request and push acceptance
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  node-python-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependencies
+        run: |
+          npm ci --ignore-scripts
+          python -m pip install pillow
+      - name: Syntax and prompt-tool contract
+        run: |
+          node --check index.js
+          node --check client.js
+          npm run check:video-tool-contract
+          npm run check:life-architecture
+      - name: Full Node regression
+        run: node --test test/*.test.mjs
+      - name: Full Python regression
+        run: python -m unittest discover -s test -p 'test*.py'
+      - name: Plugin self-check and package manifest
+        run: |
+          node selfcheck.mjs
+          npm pack --dry-run --ignore-scripts > /dev/null

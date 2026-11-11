@@ -15,7 +15,7 @@ import { buildGrowthContext, syncReportsToGrowth, listGrowth, proposeGrowth, upd
  *   1. **插件内部起那份 Python MCP**（`vendor/bilibili-mcp/mcp_server.py`），把它的能力
  *      注册成 dsh 工具（搜 / 字幕 / 评论 / 发评论 @ 人 / 登录检查）—— 用户不用再手改 profile。
  *   2. **自定义自动刷定时器**：用户配置多段本机时间，间隔可低至 1 分钟，
- *      只有处在用户保存的窗口内才自动跑；「定量刷」的数字是**每天总量上限**。
+ *      只有处在用户保存的窗口内才自动跑；「定量刷」的数字只是每轮探索期望值，不是每日入选上限。
  *   3. **跑一轮** = 起一个 `dsh --profile headless <prompt>`（跟老方案同一条路，已被验证过），
  *      把 `duty.md` 交给它，报告写进 `<家>/out/<日期>.md`。
  *   4. **设置页**（`client.js`）通过 `/api/bili-duty/*` 读写配置、看状态、扫码登录。
@@ -58,6 +58,7 @@ import { createReadActionExecutionGate,readToolAction } from './lib/read-action-
 import {createLifeDecisionTrace} from './lib/life-decision-trace.mjs'
 import {createLifeWillingness} from './lib/life-willingness.mjs'
 import {createLifeVideoActionBridge} from './lib/life-video-action-bridge.mjs'
+import {createModelInvocationJournal} from './lib/model-invocation-journal.mjs'
 import {createLifeContinuationWriteExecutor} from './lib/life-continuation-write.mjs'
 import {CONTINUATION_WRITES} from './lib/life-continuation.mjs'
 import { createOutboundActionStatus } from './lib/outbound-action-status.mjs'
@@ -3891,7 +3892,21 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     } finally { modelTestBusy=false }
   }
 
+  // Host-only model-call telemetry. It never makes another model call, stores
+  // no prompts or responses, and makes unknown token/price data explicit.
+  const modelInvocationJournal=createModelInvocationJournal({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   async function invokeMemoryPrompt(promptText,maxChars=4200) {
+    const start=Date.now(),expectedScope=trustedLifeAccountTag()
+    try{const output=await invokeMemoryPromptRaw(promptText,maxChars)
+      modelInvocationJournal.record({scene:'memory',trigger:'memory',expectedScope,durationMs:Date.now()-start,
+        provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider||'',
+        model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId||''})
+      return output
+    }catch(error){modelInvocationJournal.record({scene:'memory',trigger:'memory',expectedScope,durationMs:Date.now()-start,
+        provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider||'',
+        model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId||'',error});throw error}
+  }
+  async function invokeMemoryPromptRaw(promptText,maxChars=4200) {
     refreshCfg()
     if(cfg.mainSessionMemoryEnabled!==true||cfg.mainSessionMemorySemanticEnabled!==true)throw Error('独立记忆检索没有开启')
     const native=hostModel()
@@ -3919,7 +3934,23 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     })
   }
 
-  async function invokeInteractionPrompt(promptText, maxChars = 450, { requireMasterEnabled = true, modelRoute = 'interaction' } = {}) {
+  async function invokeInteractionPrompt(promptText,maxChars=450,options={}){
+    const start=Date.now(),expectedScope=trustedLifeAccountTag(),route=options.modelRoute||'interaction',channel=lifeSocialScope.getStore()?.channel
+    const trigger=channel==='dm'?'incoming-dm':channel==='comment'?'incoming-comment':'host'
+    try{const output=await invokeInteractionPromptRaw(promptText,maxChars,options)
+      modelInvocationJournal.record({scene:route,trigger,expectedScope,durationMs:Date.now()-start,
+        provider:route==='reflection'?cfg.mainSessionReflectionModelProvider||cfg.pluginDefaultModelProvider||'':
+          route==='dailyDynamic'?cfg.dailyDynamicModelProvider||cfg.pluginDefaultModelProvider||'':
+          route==='ownerDmAgent'?cfg.ownerDmAgentModelProvider||cfg.pluginDefaultModelProvider||'':
+          cfg.interactionModelProvider||cfg.pluginDefaultModelProvider||'',
+        model:route==='reflection'?cfg.mainSessionReflectionModelId||cfg.pluginDefaultModelId||'':
+          route==='dailyDynamic'?cfg.dailyDynamicModelId||cfg.pluginDefaultModelId||'':
+          route==='ownerDmAgent'?cfg.ownerDmAgentModelId||cfg.pluginDefaultModelId||'':
+          cfg.interactionModelId||cfg.pluginDefaultModelId||''})
+      return output
+    }catch(error){modelInvocationJournal.record({scene:route,trigger,expectedScope,durationMs:Date.now()-start,error});throw error}
+  }
+  async function invokeInteractionPromptRaw(promptText, maxChars = 450, { requireMasterEnabled = true, modelRoute = 'interaction' } = {}) {
     refreshCfg()
     if (requireMasterEnabled && cfg.masterEnabled !== true) throw new Error('大肥鱼已暂停，不生成互动回复')
     const native=hostModel()
@@ -4262,27 +4293,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         recommendationContext,verifiedSharedVideoContext,sharedVideoEvidence:share,todoProgressContext,identityContext:replyIdentityContext(req.uid)})
       const checked=socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
       if(!checked.ok)throw Error('私信决策期间账号或归属已变化：'+checked.reason)
-      // Retired social-shadow capture. Professional reply follows unified Life choice.
-      // The specialist has now read the real thread, relationship and Episode
-      // context and produced a proposal. Its draft/skip is not a second approval.
-      // The unified Life willingness model is called exactly once, only for a
-      // proposed outbound reply, with the evidence already collected above.
+      // The existing interaction batch has already invoked the Life Voice
+      // model once for the current verified message. SKIP is Life's own
+      // decision inside that invocation, not a separate specialist veto.
       if(generated==='SKIP'||generated?.action==='skip'||generated?.action==='defer')
         return attachSocialProof(generated,owner)
-      const lifeChoice=await lifeWillingness?.decide({trigger:'dm-received',scene:'dm',uid:req.uid,
-        sourceKey:'dm:'+String(req.uid)+':'+String(req.messageId||''),
-        candidates:[{id:'reply_dm',kind:'dm_reply',label:'现在自然回复这位来信者'}],
-        hint:'对方当前消息：'+String(req.text||'').slice(0,150)+'；拟回复：'+String(generated?.messages?.[0]||generated?.reply||'').slice(0,180),evidence:{socialReply:{incoming:String(req.text||'').slice(0,440),draftMessages:(Array.isArray(generated?.messages)&&generated.messages.length?generated.messages:
-          typeof generated?.reply==='string'&&generated.reply.trim()?[generated.reply]:[]).slice(0,3)},episode:episodeContext,relationship:{tier,stage:relationshipStage},recentTurns:(Array.isArray(req.history)?req.history:[]).slice(-6).map(x=>({role:['user','assistant'].includes(x?.role)?x.role:'other',text:String(x?.text||x?.content||'').slice(0,110)})),sharedVideo:verifiedSharedVideoContext?{verified:true}:null,todoProgress:todoProgressContext?{available:true}:null}})
-      if(lifeChoice?.ok!==true){
-        if(lifeChoice?.action==='skip'&&lifeChoice?.invalid!==true)return attachSocialProof({action:'skip',messages:[]},owner)
-        if(lifeChoice?.action==='defer'&&lifeChoice?.invalid!==true){
-          if(req.socialAutonomy!==true||cfg.dmP6Enabled===false)throw Error('Life 延后私信：当前续行未启用，保留原消息待后续安全重试')
-          return attachSocialProof({action:'defer',messages:[],notBefore:Date.now()+Math.max(5,Math.min(360,Number(cfg.socialP6MinDelayMinutes)||30))*60_000},owner)
-        }
-        throw Error('Life 意愿审批暂不可用，保留原消息待安全重试')
-      }
-      return attachSocialProof(lifeChoice.lifeSpeech?{...generated,messages:lifeChoice.lifeSpeech}:generated,owner,lifeChoice.proof)
+      const lines=Array.isArray(generated?.messages)&&generated.messages.length?generated.messages:
+        typeof generated?.reply==='string'&&generated.reply.trim()?[generated.reply]:[]
+      const sealed=lifeWillingness?.adoptSocialDecision({kind:'dm_reply',uid:String(req.uid),
+        sourceKey:'dm:'+String(req.uid)+':'+String(req.messageId||''),messages:lines,targetKey:''})
+      if(sealed?.ok!==true)throw Error('Life 私信表达授权不可用：'+String(sealed?.reason||'missing'))
+      return attachSocialProof(generated,owner,sealed.proof)
       })
       } finally {stopLiveDm()}
     },
@@ -4291,7 +4312,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       refreshCfg()
       const owner=socialSendOwner('dm',socialOwnerProof)
       if(!owner.ok)return {ok:false,error:'私信决策所有权检查失败：'+owner.reason}
-      const intention=lifeWillingness?.verify(lifeWillingnessProof,'dm_reply')
+      const intention=lifeWillingness?.verify(lifeWillingnessProof,'dm_reply',{uid:String(uid),targetKey:'',text:String(text)})
       if(intention?.ok!==true)return {ok:false,no_retry:true,error:'Life 私信意愿已失效：'+(intention?.reason||'missing')}
       return runLifeSocialOperation({channel:'dm',expectedScope:owner.scope,phase:'send',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
       if (cfg.masterEnabled !== true) return {ok:false,error:'总开关已关闭，私信发送已暂停'}
@@ -4729,29 +4750,19 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!checked.ok)throw Error('评论决策期间账号或归属已变化：'+checked.reason)
       const sourceKey=req.contentType==='dynamic'?'dynamic:'+String(req.dynamicId||'')+':'+String(req.rpid||''):
         String(req.bvid||'')+':'+String(req.rpid||req.id||'')
-      // Retired social-shadow capture. No debug-only second model call.
-      // Read/understand the actual comment thread first. The specialist's
-      // result is a proposal; only the unified Life willingness layer grants
-      // the one outbound intention proof. No upstream AI veto is repeated.
+      // The existing social batch is one Life-voice decision, including
+      // natural silence; no second social willingness model is invoked.
       if(generated==='SKIP'||generated?.action==='skip'||generated?.action==='defer')
         return attachSocialProof(generated,owner)
-      const lifeChoice=await lifeWillingness?.decide({trigger:'comment-received',scene:'comment',uid:req.uid,
-        sourceKey:'comment:'+createHash('sha256').update(String(req.contentType||'video')+':'+String(req.bvid||req.dynamicId||'')+':'+String(req.messageId||req.rpid||'')).digest('hex'),
-        candidates:[{id:'reply_comment',kind:'comment_reply',label:'现在自然回复这条公开评论或@'}],
-        hint:'原评论：'+String(req.text||'').slice(0,150)+'；拟回复：'+String(generated?.messages?.[0]||generated?.reply||'').slice(0,180)+'；当前线程：'+sourceKey.slice(0,70),
-        evidence:{socialReply:{incoming:String(req.text||'').slice(0,440),draftMessages:(Array.isArray(generated?.messages)&&generated.messages.length?generated.messages:
-          typeof generated?.reply==='string'&&generated.reply.trim()?[generated.reply]:[]).slice(0,3)},episode:commentEpisodeContext,relationship:{tier:socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)},contentType:req.contentType==='dynamic'?'dynamic':'video'}})
-      if(lifeChoice?.ok!==true){
-        if(lifeChoice?.action==='skip'&&lifeChoice?.invalid!==true)return attachSocialProof({action:'skip',messages:[]},owner)
-        if(lifeChoice?.action==='defer'&&lifeChoice?.invalid!==true){
-          // Defer is a valid Life choice independent of the optional P6
-          // continuation feature. Never turn a voluntary pause into an AI error.
-          return attachSocialProof({action:'defer',messages:[],notBefore:Date.now()+
-            Math.max(5,Math.min(360,Number(cfg.socialP6MinDelayMinutes)||30))*60_000},owner)
-        }
-        throw Error('Life 意愿审批暂不可用，保留原评论事件待安全重试')
-      }
-      return attachSocialProof(lifeChoice.lifeSpeech?{...generated,messages:lifeChoice.lifeSpeech}:generated,owner,lifeChoice.proof)
+      const lines=Array.isArray(generated?.messages)&&generated.messages.length?generated.messages:
+        typeof generated?.reply==='string'&&generated.reply.trim()?[generated.reply]:[]
+      const commentTarget='comment:'+String(req.contentType==='dynamic'?'dynamic':'video')+':'+
+        String(req.contentType==='dynamic'?req.dynamicId||'':req.bvid||'')+':'+
+        String(req.rpid||'')+':'+String(req.uid||'')
+      const sealed=lifeWillingness?.adoptSocialDecision({kind:'comment_reply',uid:String(req.uid),
+        sourceKey:commentTarget, targetKey:commentTarget,messages:lines})
+      if(sealed?.ok!==true)throw Error('Life 评论表达授权不可用：'+String(sealed?.reason||'missing'))
+      return attachSocialProof(generated,owner,sealed.proof)
       })
       } finally {stopLiveComment()}
     },
@@ -4775,7 +4786,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const owner=humanVerifiedRetry?routedSocialOwner('comment'):socialSendOwner('comment',req.socialOwnerProof)
       if(!owner.ok)return {ok:false,notAttempted:true,no_retry:true,reason:owner.reason,
         error:'评论决策所有权检查失败：'+owner.reason}
-      const intention=humanVerifiedRetry?{ok:true}:lifeWillingness?.verify(req.lifeWillingnessProof,'comment_reply')
+      const intention=humanVerifiedRetry?{ok:true}:lifeWillingness?.verify(req.lifeWillingnessProof,'comment_reply',{uid:String(req.uid||''),targetKey:'comment:'+String(req.contentType==='dynamic'?'dynamic':'video')+':'+String(req.contentType==='dynamic'?req.dynamicId||'':req.bvid||'')+':'+String(req.rpid||'')+':'+String(req.uid||''),text:String(req.text||'')})
       if(intention?.ok!==true)return {ok:false,notAttempted:true,no_retry:true,error:'Life 评论意愿已失效：'+(intention?.reason||'missing')}
       return runLifeSocialOperation({channel:'comment',expectedScope:owner.scope,phase:'send',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
       if(req.contentType==='dynamic'){
@@ -7944,6 +7955,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       } catch(e) {return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,350)})}
     }
 
+    if (req.method === 'GET' && path === '/api/bili-duty/model-invocations') {
+      // Only bounded metadata for the current verified account; never prompt,
+      // reply, token secret, UID or raw provider error response.
+      return sendJson(res,200,{ok:true,coverage:'host-model-only',tokens:'not-reported',
+        videoHeadlessCallsNotCovered:true,entries:modelInvocationJournal.recent(40)})
+    }
     if (req.method === 'GET' && path === '/api/bili-duty/model-usage') {
       return sendJson(res,200,{ok:true,...readModelTaskUsage(stateDir)})
     }

@@ -229,16 +229,18 @@ dmFollow -->|已核实后回执| receipts
 %% @code ownerContactPolicy | lib/owner-contact-policy.mjs | export function ownerContactPolicy
 %% @code networkPollBackoff | lib/network-poll-backoff.mjs | export function createNetworkPollBackoff
 
-%% dev.56: actual social shadow comparator is retired, legacy snapshots remain read-only.
-lifeOwnsSpeech["LifeWillingness｜普通私信与评论回复可产生最终 lifeSpeech"]
-professionalDraft["DM / Comment 专业 Agent｜真实上下文、候选草稿（不拥有最终意愿）"]
+%% dev.59: DM/Comment keeps one model call with Life Voice, then seals exact expression without AI.
+lifeOwnsSpeech["交互批处理中的 Life Voice｜单次模型选择回复/沉默/延期及最终表达"]
+professionalDraft["DM / Comment 专业感知｜读取真实事件和场景上下文，不替 Life 决定沉默"]
+socialProofSeal["LifeWillingness｜零模型调用绑定账号/收件人/线程/正文"]
 shadowRetired["历史 social-shadow 样本｜active 模式不再调用第二模型；只读留痕"]
 journeyGroups["鱼的记忆｜以同轮 video-round / Episode 精确回执分组，独立事件不硬连"]
-professionalDraft --> lifeOwnsSpeech --> socialWrite
+professionalDraft --> lifeOwnsSpeech --> socialProofSeal --> socialWrite
 shadowRetired -.->|不参与发送| journeyGroups
 receipts -->|只有来源可证实时关联| journeyGroups
-%% @code lifeOwnsSpeech | lib/life-willingness.mjs | lifeSpeech
-%% @code professionalDraft | index.js | socialReply:{incoming:
+%% @code lifeOwnsSpeech | lib/interaction-batch.mjs | 你是大肥鱼的 Life 意愿与表达主体
+%% @code professionalDraft | index.js | const generated=await interactionBatcher.generate({kind:'dm'
+%% @code socialProofSeal | lib/life-willingness.mjs | function adoptSocialDecision
 %% @code shadowRetired | lib/autonomous-planner.mjs | outcome.result='social-signal-considered'
 %% @code journeyGroups | lib/life-timeline.mjs | export function groupLifeTimeline
 
@@ -253,3 +255,8 @@ modelBackoffClear -.->|不调用模型/不增加发送权限| modelFailureLedger
 %% @code modelFailureLedger | lib/autonomous-planner.mjs | s.modelFailureEvidence={
 %% @code modelHealthUi | lib/system-health-projection.mjs | title:'Life 模型失败 · 正在自动退避'
 %% @code modelBackoffClear | lib/autonomous-planner.mjs | const clearModelBackoff=
+
+%% dev.59: local Host-only model attribution, no additional AI call.
+modelJournal["宿主模型调用归因｜账号隔离/耗时/错误分类，Headless 内部调用不包含"]
+modelHealthUi -.->|只读本地调用记录| modelJournal
+%% @code modelJournal | lib/model-invocation-journal.mjs | export function createModelInvocationJournal

@@ -22,15 +22,27 @@ class LedgerCommentReviewTests(unittest.TestCase):
         self.lines = []
         self.requests = []
         self.pre_round_picked = set()
+        self.owned_selections = set()
+        self.owned_comments = set()
         self.recorded = set()
         self.ctx = {'asyncio': asyncio, 'json': json, 'os': os, 're': re, 'datetime': datetime,
             '_guard': lambda n: '', '_valid_bv': lambda v: v if re.fullmatch(r'BV[0-9A-Za-z]{10}', v) else (_ for _ in ()).throw(ValueError('bad-bv')),
             '_safe_line': lambda text, limit=80: str(text)[:limit],
+            '_selected_owned': lambda bv: bv in self.owned_selections,
+            '_record_owned_selection': self.record_selection,
+            '_owned_seen': lambda bv: bv in self.owned_selections or any(re.search(r'\|\s*'+re.escape(bv)+r'\s*\|', line) for line in self.lines),
+            '_record_owned_observation': lambda *_: None,
+            '_owned_comment_exists': lambda bv: bv in self.owned_comments,
             '_read_home': lambda *_: ''.join(self.lines),
             '_append_home': lambda _path, s: self.lines.append(s),
             'get_cred': lambda: SimpleNamespace(dedeuserid='1234567'),
             '_life_video_request': self.request}
         exec(CODE, self.ctx)
+
+    def record_selection(self,bv):
+        if bv in self.owned_selections:return False
+        self.owned_selections.add(bv)
+        return True
 
     def request(self, route, payload):
         self.requests.append((route, payload))
@@ -80,6 +92,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
     def test_previously_selected_video_cannot_fake_a_new_round_review(self):
         self.lines.append('| 2026-11-07 | BV1abcde1234 | old video | uploader | 挑中 |\n')
         self.pre_round_picked.add('BV1abcde1234')
+        self.owned_selections.add('BV1abcde1234')
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
             out = self.call('pass')
         self.assertTrue(out['already_seen'])
@@ -95,6 +108,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
             self.lines[:] = [row]
             self.requests.clear()
             self.recorded.clear()
+            self.owned_selections.clear()
             with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
                 out = self.call('pass')
             self.assertTrue(out['already_seen'])
@@ -105,6 +119,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
 
     def test_prior_published_comment_remains_duplicate_protected(self):
         self.lines[:] = ['| BV1abcde1234 | 322469935296 | 0 | 2026-10-31 | comment |\n']
+        self.owned_comments.add('BV1abcde1234')
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
             out = self.call('pass')
         self.assertTrue(out['already_seen'])
@@ -115,6 +130,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
     def test_old_pick_never_becomes_new_round_review(self):
         self.lines[:] = ['| 2026-10-30 | BV1abcde1234 | old | uploader | 挑中 |\n']
         self.pre_round_picked.add('BV1abcde1234')
+        self.owned_selections.add('BV1abcde1234')
         with patch.dict(os.environ, {'BILI_DUTY_LIFE_ROUND_ID': 'c'*24}):
             out = self.call('pass')
         self.assertTrue(out['already_seen'])

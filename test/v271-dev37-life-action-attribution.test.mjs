@@ -62,12 +62,14 @@ test('Life 统一意愿的一次批准可有多条独立平台回执；每条最
    getContext:async()=>({voice:'鱼鱼自己的生活语境',world:{}}),
    invokeModel:async()=>JSON.stringify({action:'act',candidateId:'reply',reason:'觉得值得回应'}),
    onVerifiedAction:x=>notices.push(x),enabled:()=>true,opportunityWindowMs:0,crossChannelCooldownMs:0})
- const result=await w.decide({trigger:'dm-received',sourceKey:'dm:confirmed-inbox-1',scene:'dm',
-   candidates:[{id:'reply',kind:'dm_reply',label:'回复一条有真实回执的私信'}]})
+ const result=w.adoptSocialDecision({kind:'dm_reply',uid:'123456789',sourceKey:'dm:confirmed-inbox-1',
+   messages:['第一条完整回复','第二条完整回复']})
  assert.equal(result.ok,true)
- assert.equal(w.verify(result.proof,'dm_reply').ok,true)
+ assert.equal(w.verify(result.proof,'dm_reply',{uid:'123456789',targetKey:'',text:'第一条完整回复'}).ok,true)
+ assert.equal(w.verify(result.proof,'dm_reply',{uid:'123456789',targetKey:'',text:'第一条完整回复'}).ok,false)
  assert.equal(w.receipt(result.proof,{status:'verified',receiptId:'bili-dm:991'}).ok,true)
  assert.equal(w.receipt(result.proof,{status:'verified',receiptId:'bili-dm:991'}).ok,true)
+ assert.equal(w.verify(result.proof,'dm_reply',{uid:'123456789',targetKey:'',text:'第二条完整回复'}).ok,true)
  assert.equal(w.receipt(result.proof,{status:'verified',receiptId:'bili-dm:992'}).ok,true)
  assert.equal(notices.length,2)
  assert.deepEqual(notices.map(x=>x.receiptId),['bili-dm:991','bili-dm:992'])

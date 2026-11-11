@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=(ROOT/'vendor/bilibili-mcp/mcp_server.py').read_text('utf8')
-FUNCTIONS={'_selected_for_reaction','_action_conn','_claim_video_action','_finish_video_action',
+FUNCTIONS={'_selected_owned','_record_owned_selection','_selected_for_reaction','_action_conn','_claim_video_action','_finish_video_action',
            '_check_reaction','_folder_title','_styled_auto_folder_title','_favorite_new_private','_ensure_ai_folder','bili_video_like','bili_video_collect'}
 TREE=ast.parse(SOURCE)
 BODY=[]
@@ -57,8 +57,7 @@ class AutonomousTests(unittest.TestCase):
     def call(self,name,*args):return json.loads(asyncio.run(self.scope[name](*args)))
 
     def mark_selected(self):
-        p=self.home/'out';p.mkdir()
-        (p/(datetime.now().strftime('%Y-%m-%d')+'.md')).write_text('### '+BV+'\n**档位**：值得看\n','utf8')
+        self.scope['_record_owned_selection'](BV)
 
     def test_no_selected_video_no_action(self):
         x=self.call('bili_video_like',BV,'内容确实不错')

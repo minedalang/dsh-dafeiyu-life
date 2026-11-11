@@ -1,4 +1,11 @@
-## 当前开发版本 2.7.1-dev.58：模型配置页 Provider 下拉渲染修复（未发布）
+# 架构文档：现行事实与历史增量（dev.59，未发布）
+
+**先看唯一当前事实源：** [CURRENT-ARCHITECTURE.md](CURRENT-ARCHITECTURE.md) · [CURRENT-RC-ACCEPTANCE.md](CURRENT-RC-ACCEPTANCE.md)。
+旧版文档均是**当时的开发增量或历史设计**，其中保留的“当前/已实现”字样不应被理解为 dev.59 的生产现状。请勿通过旧迁移/影子说明重新启用退役入口。
+
+---
+
+## 历史开发版本（当时） 2.7.1-dev.58：模型配置页 Provider 下拉渲染修复（未发布）
 
 - [dev.58 DOM 选项节点复用缺陷与测试](2.7.1-dev58-provider-dom-options.md)：修复默认及八项任务 Provider 下拉因跨 select 重用同一批 option 节点而被浏览器搬空；没有改变 DSH 模型发现、Life 意愿、发送权限或记忆数据流。
 
@@ -14,60 +21,60 @@
 
 - [dev.55 日选片 50 条旧章程误拦修复](2.7.1-dev55-daily-pick-quota-retirement.md)：不再因今日入选总数停止读字幕或核验详情；无日报每天一次的视频轮次隐藏限制移除。仍有模型/视频启动节奏及平台读取预算，不增加任何外发授权。
 
-## 当前开发版本 2.7.1-dev.54：Life 自动恢复与主人管理界面（未发布）
+## 历史开发版本（当时） 2.7.1-dev.54：Life 自动恢复与主人管理界面（未发布）
 
 - [dev.54 Life 调度恢复、真实 BV/UID 时间线、默认模型 UI、神经检索、梗证据与设置简化](2.7.1-dev54-life-recovery-and-owner-ui.md)：仍待真实 Windows DSH / B站长时验收，不新增外发授权。
 
-## 当前开发版本 2.7.1-dev.53：神经高维语义搜索与 Life 调度可观测性（未发布）
+## 历史开发版本（当时） 2.7.1-dev.53：神经高维语义搜索与 Life 调度可观测性（未发布）
 
 - [dev.53 神经回忆场、真实高维余弦关系、主评论审批与 Life 健康](./2.7.1-dev53-semantic-recall-comment-health.md)：全屏可直接输入搜索；本地 Embedding 可用时，用查询向量同基 PCA 投影与真实余弦分数驱动连线，3D 距离只作空间展示；无模型显式回退关键词。修复真实向量索引 ID/匿名节点 ID 错位；评论拒绝与延期/技术异常分开记录；Life 今日额度、心跳、下次考虑公开只读，真正异常显示告警。**未新增人格卡片、外发授权或自动发言；Windows 实机及长期成长待验收**。
 
-## 当前开发版本 2.7.1-dev.52：Life 行为证据脉络、评论回复与私信读取治理
+## 历史开发版本（当时） 2.7.1-dev.52：Life 行为证据脉络、评论回复与私信读取治理
 
 - [dev.52 评论事务、证据可视化、回复可用性和文档界面](./2.7.1-dev52-life-evidence-and-reply-recovery.md)：已核验入站评论不被主动联系冷却误拦；人工复核重试不伪造旧 Life 决策证明；私信读取按关系控制无变化详情扫描；真实经历、生活线索、兴趣与行为仅通过可信 BV 建立来源连线；生活时间线移除过度诊断。
 
-## 当前开发版本 2.7.1-dev.51：全量神经记忆图谱与聊天内短暂停顿续聊
+## 历史开发版本（当时） 2.7.1-dev.51：全量神经记忆图谱与聊天内短暂停顿续聊
 
 - [dev.51 神经回忆全景、高密度绘图、Life 自主短暂停顿接话与实机边界](./2.7.1-dev51-neural-atlas-short-pause.md)：默认 1000，可选 2000/10000 个**可回忆**节点；搜索命中有色、非命中变灰、按真实衰减阶段调节亮度，三种来源连线只显示有证据的边，搜索 3D 聚焦；主人在原 Session 回复后暂停约 90 秒由 Life 自主决定是否续上，不占长时联系冷却／额度，外部权限不变。
-## 当前开发版本 2.7.1-dev.50：视频节奏、主人 UID、主 Session 工具和记忆衰减
+## 历史开发版本（当时） 2.7.1-dev.50：视频节奏、主人 UID、主 Session 工具和记忆衰减
 
 - [dev.50 视频节奏、主人 UID、主 Session 工具和记忆衰减](./2.7.1-dev50-owner-video-memory.md)：视频最短启动间隔可配置为 1～1440 分钟（旧值保留），每轮阅读／挑选为软参考目标，首次设置可明确保存唯一主人，移除 DSH 工具不支持的 `minItems/maxItems`，3D 节点明暗反映已记录记忆阶段；未增加外发授权。
-## 当前开发版本 2.7.1-dev.49：三维神经回忆场与逐渠道后台状态（未发布）
+## 历史开发版本（当时） 2.7.1-dev.49：三维神经回忆场与逐渠道后台状态（未发布）
 
 [dev.49 三维视图、Embedding PCA 只读空间投影、点击选中与健康状态实现边界](2.7.1-dev49-neural-3d-and-channel-health.md)。不重新生成 embedding、不显示内部向量、不引入另一套记忆。行为/权限不变；`releaseReady:false`。
 
-## 当前开发版本 2.7.1-dev.48：Life 自主选择公开补读、神经回忆与后台技术健康（未发布）
+## 历史开发版本（当时） 2.7.1-dev.48：Life 自主选择公开补读、神经回忆与后台技术健康（未发布）
 
 [dev.48 生产接线、真实证据约束与已知未完成范围](2.7.1-dev48-neural-recall-and-social-reads.md)。不新增 Life 数据库、子 Agent 或私信发送渠道，旧许可不迁移开启；系统状态取已有本地快照。Windows/B站实机未验收，`releaseReady:false`。
 
-## 当前开发版本 2.7.1-dev.47：Life 可读生活时间线（未发布）
+## 历史开发版本（当时） 2.7.1-dev.47：Life 可读生活时间线（未发布）
 
 [社交快速考虑与子 Agent 调度关系、生活时间线安全原因类别、可信回执边界](2.7.1-dev47-owner-readable-life-timeline.md)。这是从原 LifeAgentEvents 投影的只读用户卡片，不新增社交所有权或发送权限，`releaseReady:false`。
 
-## 当前开发版本 2.7.1-dev.46：Life 全动作解释日志（未发布）
+## 历史开发版本（当时） 2.7.1-dev.46：Life 全动作解释日志（未发布）
 
 [dev.46 Life 决策细节、模型输入来源/指纹、社交事件逐项结算与隐私边界](2.7.1-dev46-life-decision-explain.md)。此日志不保存私信正文或模型隐藏思考，也不伪造平台发送回执。
 
-## 当前开发版本 2.7.1-dev.45：私信平台限流与交流默认值（未发布）
+## 历史开发版本（当时） 2.7.1-dev.45：私信平台限流与交流默认值（未发布）
 
 [dev.45 统一 -509 读取限流、请求观测及卡片式交流权限](2.7.1-dev45-dm-read-budget-and-owner-defaults.md)。本版仍为开发预览，不把主 Session/微信真实气泡与 B站送达视作已验收。
 
-# 当前开发版本 2.7.1-dev.44：自主交流边界、沉默续聊与后台恢复（未发布）
+# 历史开发版本（当时） 2.7.1-dev.44：自主交流边界、沉默续聊与后台恢复（未发布）
 
 [dev.44 代码接线与限制](2.7.1-dev44-contact-and-recovery.md)：联系人配置卡片只控制允许交流的时间和额度；Main Session/主人私信可分别授权沉默续聊；统一联系尝试账本、Life 调度心跳、B站 -509/DNS 持久网络退避及插件本地配置保存确认。实机行为仍待验收，`releaseReady:false`。
 
-## 当前开发版本 2.7.1-dev.43：统一自然多气泡输出（未发布）
+## 历史开发版本（当时） 2.7.1-dev.43：统一自然多气泡输出（未发布）
 
 - 普通私信、主人私信、主 Session 共用 `message-burst` 协议和 P6-A 条数设置。
 - 主 Session 的多气泡属于一个逻辑回复批次，后续消息用连续续步 Turn 保证 DSH Chat 紧凑视图逐条显示。
 - B站逐气泡回执未知时停止，不自动重发；真实 Windows/B站验收待完成。
 - 详见 [dev.43 统一自然多气泡架构](2.7.1-dev43-shared-message-burst.md)。
 
-## 当前开发版本 2.7.1-dev.42：主 Session 可选自主联系（未发布）
+## 历史开发版本（当时） 2.7.1-dev.42：主 Session 可选自主联系（未发布）
 
 [Owner chat architecture, opt-in, evidence, cooldown, session delivery boundary](./2.7.1-dev42-main-session-self-initiated-chat.md) and [P6-A DM diagnostics and living Life Voice](./2.7.1-dev42-main-chat-style-p6-diagnostics.md). Host followup is **not** a verified outgoing chat bubble; no WeChat adapter was added.
 
-## 当前开发版本 2.7.1-dev.41：视频 Agent 启动间隔可配置
+## 历史开发版本（当时） 2.7.1-dev.41：视频 Agent 启动间隔可配置
 
 [配置契约、启动门禁、旧设置保护与离线验收](./2.7.1-dev41-video-agent-configurable-interval.md)：dev.41 当时默认 20 分钟、允许 20～1440 分钟；dev.50 已放开到 1～1440 分钟，旧值保留；自动与手动启动共用同一账号级真实启动冷却，且独立于 Life 模型考虑频率。`releaseReady:false`，Windows／真实 B站尚待验收。
 
@@ -75,15 +82,15 @@
 
 [管理界面清理与兼容边界](./2.7.1-dev40-closure-fix06-life-settings-cleanup.md)：移除普通 Life 页的开发者折叠、影子对照、模拟演示和迁移演练；保留真实视频 Agent 手动入口，并把评论者公开投稿只读授权放回评论设置。仅 UI 调整，架构接线未变；旧配置不重置，`releaseReady:false`。
 
-## 当前开发版本 2.7.1-dev.40：动态候选、子 Agent 连续取证与跨 Agent 公开 Episode 桥
+## 历史开发版本（当时） 2.7.1-dev.40：动态候选、子 Agent 连续取证与跨 Agent 公开 Episode 桥
 
 [dev.40 各入口自由决策／连续性详细审计](./2.7.1-dev40-autonomy-and-continuity-audit.md)：视频／私信／评论／主人私信／待办／自主社交／反思均按当前实际能力决定下一步，且共享受权限裁剪的 Episode；评论和私信有界连续只读取证；视频与评论可沿同 BV 的真实回执关联。**尚不代表全部 Agent 具备无限或完整开放式跨轮行动**。发布未获批准，Windows 与真实 B站未验收。
 
-## 当前开发版本 2.7.1-dev.39：专业 Agent 续行交接扩展（未发布）
+## 历史开发版本（当时） 2.7.1-dev.39：专业 Agent 续行交接扩展（未发布）
 
 [dev.39 各入口源码覆盖矩阵、自主程度与未达标事项](./2.7.1-dev39-cross-agent-continuity-audit.md)。主人私信、待办、回访、社交快速唤醒和公开反思获得不同权限范围的 Episode 上下文；不是新增万能工具或全部 Agent 开放式持续循环。源码离线测试不能代替 Windows/B站验收；`releaseReady:false`。
 
-## 当前开发版本 2.7.1-dev.38：专业 Agent 持续性（未发布）
+## 历史开发版本（当时） 2.7.1-dev.38：专业 Agent 持续性（未发布）
 
 [专业 Agent Episode 动作持续性与私信联系人关注（第一阶段）](./2.7.1-dev38-subagent-action-continuity.md)。视频、私信和公开评论读取按来源裁剪的 Life Episode 摘要；长期可信好友私信可在模型自主决策后提出关注候选，只有独立授权、原 Life 再决定和 B站关系读回均通过才执行并入账。待办、反思及自由社交尚未全量迁移成通用 Agent 内部多步决策循环，Windows/B站未实机验收；`releaseReady:false`。
 
@@ -106,7 +113,7 @@
 
 [Episode 写入后继续只读／休息、安全再写、额外首页、评论区只读与跨步记忆](./2.7.1-dev35-life-episode-p1p2.md)。已实现的功能与长期未实机验证的效果分开标注；主 Mermaid 图、候选图、回执记忆图均需保持同步，`releaseReady:false`。
 
-## 当前权威 Life 全景图与源码接线审计（已更新至 dev.37，未发布）
+## 历史 Life 全景图与源码接线审计（当时为 dev.37）
 
 **优先阅读**：[GitHub 可直接渲染的完整 Life 图](./life-system-current-view.md) · [Life 完整源码关系与审计矩阵](./life-system-current.md) · [可编辑的 Mermaid 全景图](./diagrams/life-system-current.mmd) · [todos / cues / intentions / opportunities 等候选字典图](./diagrams/life-candidates-current.mmd) · [可信行动回执与记忆闭环图](./diagrams/life-receipt-memory-current.mmd)。这四张图用实际生产代码锚点校验；`npm run check:life-architecture` 和相关 Node 回归用于避免图与实现明显脱节。仍有未完全接通的渠道、模型实机及 72h 验收，`releaseReady:false`。
 
@@ -118,7 +125,7 @@
 
 [真实评论入口、历史记忆及后续续聊边界](./2.7.1-dev33-mention-memory-hotfix.md) · [Mermaid 处理图](./diagrams/2.7.1-dev33-mention-memory-hotfix.mmd)。解决“@大肥鱼怒了看看”昵称不可靠边界时，把内部诊断字样当成对方说话并污染人生记忆的 Bug；仍可回忆的经历校正为不能确认正文的 @ 提及，已完成回复事实保留。`releaseReady:false`。
 
-## 当前开发版本 2.7.1-dev.33：首页闲逛独立决策与候选来源精确归因（未发布）
+## 历史开发版本（当时） 2.7.1-dev.33：首页闲逛独立决策与候选来源精确归因（未发布）
 
 [dev.33 生产接线、匿名来源归因与安全边界](./2.7.1-dev33-home-browse-attribution.md) · [Mermaid 可编辑流程](./diagrams/2.7.1-dev33-home-browse-attribution.mmd)。Life `browse_home` 不再依赖匿名事件或 `quiet-window` 成功入队；原账号、Life active、视频能力、20 分钟间隔与首页推荐开关仍是硬门禁。首页工具返回 BV 与本轮新增入选 BV 精确匹配，持久化只保留来源数量，轮次哈希在完成时清除。没有新 Agent、模型计费、定时器或写权限；仍需 Windows/B站/72h 实机验收，`releaseReady:false`。
 
@@ -148,7 +155,7 @@
 
 [dev.27 主动探索写入的唯一归属与执行门禁](./2.7.1-dev27-life-continuation-writes.md) · [可编辑 Mermaid 图](./diagrams/2.7.1-dev27-life-continuation-writes.mmd)。已有公开探索的真实视频 BV 可由鱼鱼自愿选择点赞、收藏、关注作者或原创主评论，选择后同轮立即停止，绝不连续发多条；复用原平台工具、Life 意愿二次审批与回执。没有开放评论者主页、跨串回复或私信授权，仍需 Windows/B站真实验收。
 
-## 当前开发版本 2.7.1-dev.26：有界连续生活探索与主评论逐轮诊断（未发布）
+## 历史开发版本（当时） 2.7.1-dev.26：有界连续生活探索与主评论逐轮诊断（未发布）
 
 [dev.26 Life 自主续行和原创主评论诊断](./2.7.1-dev26-life-continuation-and-comment-diagnosis.md) · [可编辑 Mermaid](./diagrams/2.7.1-dev26-life-continuation-comment.mmd)。复用原 `AutonomousPlanner`、Life 意愿和回执，只在已核验的只读探索完成后加入最多两次由鱼鱼选择的继续动作，停止/失败/额度耗尽不增加外发；管理页区分视频主评论工具是否开放以及生命周期中的提出、准入、核验。修复包移除旧报告与原创评论的耦合，迁移不更改原有 `autoComment` 授权。Windows、真实 B站和长时行为待验收。
 **dev.26 修复增量：**旧视频每轮清单私信投递及 `dmMode/dmUid` 已退役，原创主评论独立授权；历史 `only` 配置迁移时不改变 `autoComment`，移除旧报告阻断；外发仍由原评论权限与 Life 门禁控制。历史文档中的 `dmMode` 只作旧行为记录。
