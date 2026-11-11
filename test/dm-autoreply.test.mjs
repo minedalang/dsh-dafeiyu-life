@@ -285,3 +285,15 @@ test('DM configured delay range rejects a too-soon defer without reserving a fut
   const {existsSync}=await import('node:fs');
   assert.equal(existsSync(join(m.path,'social-continuity','intentions.json')),false);
 });
+
+test('dev.74: provider 429 stays a retryable technical failure, never an autonomous skip',async()=>{
+  const m=await mk();await m.make().poll();m.inbox.push(msg('200','retry-429','你还在吗'));
+  const failedAgent=m.make({generateReply:async()=>{throw Error('provider 429')}});
+  assert.equal((await failedAgent.poll()).sent,0);
+  let state=JSON.parse(await readFile(join(m.path,'dm-autoreply-state.json'),'utf8'));
+  assert.equal(state.p6LastTurn.status,'technical-failure');
+  assert.equal(state.people['200'].seen.includes('retry-429'),false);
+  const resumed=await m.make().poll();assert.equal(resumed.sent,1);
+  state=JSON.parse(await readFile(join(m.path,'dm-autoreply-state.json'),'utf8'));
+  assert.equal(state.people['200'].seen.includes('retry-429'),true);
+});

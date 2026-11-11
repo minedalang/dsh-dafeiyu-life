@@ -1,3 +1,4 @@
+%% dev.74：三维关系来自当前账号可信事件；公开评论熟悉度不是主动私信授权。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% 大肥鱼 Life 当前源码全景（2.7.1-dev.72 · Life 授权 FIFO 与事务恢复；继承动态核验与可见 Life 额度）
@@ -12,6 +13,7 @@ flowchart TB
   subgraph sources["原有事实与上下文层｜依账号和来源独立核验"]
     adapter["B站受控适配器＋视频轮次来源回执"]
     socialFacts["原 DM／评论／关系来源账本"]
+    accountChannels["三维关系证据：自然熟悉度／评论与私信渠道／独立 DM 资格"]
     canonical["原待办／生活意愿／平台事务账本"]
     eventLedger["Life 匿名唤醒事件｜eventRefs 不是事实正文"]
   end
@@ -19,6 +21,8 @@ flowchart TB
   socialInput --> socialFacts
   tasksInput --> canonical
   adapter --> eventLedger
+  socialFacts --> accountChannels
+  accountChannels -.->|评论熟悉不授权私信| eventLedger
   socialFacts --> eventLedger
   canonical --> eventLedger
 
@@ -40,7 +44,7 @@ flowchart TB
   canonical --> intentions
   adapter --> cues
   adapter --> opportunities
-  socialFacts --> friends
+  accountChannels --> friends
   eventLedger --> events
   eventLedger --> feedback
   adapter --> video
@@ -283,3 +287,5 @@ modelBackoffClear -.->|不调用模型/不增加发送权限| modelFailureLedger
 modelJournal["宿主模型调用归因｜账号隔离/耗时/错误分类，Headless 内部调用不包含"]
 modelHealthUi -.->|只读本地调用记录| modelJournal
 %% @code modelJournal | lib/model-invocation-journal.mjs | export function createModelInvocationJournal
+
+%% @code accountChannels | lib/social-relationship-channels.mjs | export function createSocialRelationshipChannels

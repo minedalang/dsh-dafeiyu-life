@@ -1,3 +1,5 @@
+> **当前 dev.74 关系契约：** 自然熟悉度由原 `SocialRelationshipIndex` 提供，不以白名单提升；当前账号新 `social-relationship-channels` 仅存已核实的渠道、方向、时间和事件摘要。公开评论再熟悉也不能直接取得主动私信资格；仅在稳定跨日双向 DM、单独主人授权、明确拒联检查、Life 决定与原 DM 事务共同通过时才有可发起机会。老关系存档仅用于历史展示，不会升级为私人发送权限。参见 [dev.74 说明](./2.7.1-dev74-three-dimensional-relationships.md)。
+
 > **当前 dev.73 增量：** `LifeOpportunities` 观察/契机与 `OwnerTodos` 已接受待办并列呈现在只读计划卡片；普通自主轮受设定的最短 10/30/80 分钟节奏控制，已核验入站社交关注保持独立快节奏。`LifeDecisionTrace` 以授权待回执／超时未结算／平台已核验区分结果，不改写原状态或平台外发权限。参见 [dev.73 约束](./2.7.1-dev73-life-pace-and-decision-clarity.md)。
 
 > **当前 dev.72 增量：** Life 同账号新机会由进程内有界队列协调，评论和私信生成后的表达授权随队列等待原证明结算；仍由原 Agent 验证身份、内容和平台回执。B站私信 -509 退避不由其他读取接口提前清零。生活时间线不再绘制稀疏关联分组，重复情绪不刷屏；设置搜索只导航，名单保存仍走原权限接口。见 [dev.72 约束](./2.7.1-dev72-life-fairness-and-owner-ui.md)。
@@ -33,7 +35,7 @@
 - **cues（生活线索）**：`LifeOpportunities.explorationCues()` 现在提供账号可归属的 `interest-milestone`、`discussion-read` 和 `selection-curiosity`（仅当前账号真实已选中 BV、有效时间、主人未排除的短期好奇）。**无聊去刷首页不是存储的 cue**；`browse_home` 是无需 cue 也可选择的独立候选动作。
 - **intentions（自主探索意愿）**：同一 `life-opportunities` 账本中模型选择后写入、带有效期和可信 BV/来源的跨轮公开探索意愿；不等于全域持久事务队列或私信发送批准。
 - **opportunities（生活契机）**：`deriveDiscussionOpportunities`、跨日兴趣、`public-person-observation` 等带可信来源、可复核的具体机会；不是“只要看到评论就可回复”，也不从陌生私信正文造任意机会。
-- **social（社交机会）**：入站 `dm-received` / `comment-received` 是匿名关注信号；另外有已核验双向互动的好友自主候选。真正对外回复/联系经过独立的原渠道准入、拒联、限额和事务回执。
+- **social（社交机会）**：入站 `dm-received` / `comment-received` 是匿名关注信号；另外有已核验双向互动的好友只读考虑候选；主动私信必须有单独的私人交往证据与主人授权。真正对外回复/联系经过独立的原渠道准入、拒联、限额和事务回执。
 - **video（视频能力）**：是当前账号启用且过冷却的 `bilibili.video-explore` 等可选能力，**不是已经观看视频**；`homeCandidates` 与 `homePickedCount` 分别是已读候选数和实际入选来源数，不证明画面/音频消费。
 - **reflection（反思）**：`LifeReflection.status().canAutoReflect` 提供真实就绪状态，执行前还要重新核对。此维护补丁修复旧解析器接受本轮未提供 `reflect` 的问题。
 - **eventRefs（匿名事件引用）**：`life-agent-events` 提供事件类型/ID/重考虑提示，不能被模型当作评论原文、已完成事实或写入授权；真实完成凭原平台回执。

@@ -25,9 +25,9 @@ test('真实公开互动的陌生人能跨日自然成为社交好友，不获�
  assert.equal(gate.canTrustComment({uid:'987654321',kind:'at'}),false)
  assert.equal(index.preferenceHint('987654321').stage,'friend')
 }))
-test('白名单仅提供较高关系起点，不会伪造已互动的次数或成长事实',()=>using(async({index})=>{
+test('白名单不影响自然熟悉度起点，不会伪造已互动的次数或成长事实',()=>using(async({index})=>{
  const friendDirectory=JSON.stringify([{uid:'200',name:'小甲',dm:true,atInvite:true}]);
- const row=index.get('200',{friendDirectory});assert.equal(row.whitelisted,true);assert.equal(row.count,0);assert.equal(row.stage,'new');assert.equal(row.score>=64,true)
+ const row=index.get('200',{friendDirectory});assert.equal(row.whitelisted,true);assert.equal(row.count,0);assert.equal(row.stage,'new');assert.equal(row.score,0)
  assert.equal(index.get('300'),null)
  const fromList=index.list({friendDirectory,query:'200'});assert.equal(fromList.rows[0].uid,'200')
  assert.equal(index.get('200',{friendDirectory}).firstAt,0)

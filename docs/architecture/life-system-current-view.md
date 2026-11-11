@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.74：三维关系来自当前账号可信事件；公开评论熟悉度不是主动私信授权。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% 大肥鱼 Life 当前源码全景（2.7.1-dev.72 · Life 授权 FIFO 与事务恢复；继承动态核验与可见 Life 额度）
@@ -19,6 +20,7 @@ flowchart TB
   subgraph sources["原有事实与上下文层｜依账号和来源独立核验"]
     adapter["B站受控适配器＋视频轮次来源回执"]
     socialFacts["原 DM／评论／关系来源账本"]
+    accountChannels["三维关系证据：自然熟悉度／评论与私信渠道／独立 DM 资格"]
     canonical["原待办／生活意愿／平台事务账本"]
     eventLedger["Life 匿名唤醒事件｜eventRefs 不是事实正文"]
   end
@@ -26,6 +28,8 @@ flowchart TB
   socialInput --> socialFacts
   tasksInput --> canonical
   adapter --> eventLedger
+  socialFacts --> accountChannels
+  accountChannels -.->|评论熟悉不授权私信| eventLedger
   socialFacts --> eventLedger
   canonical --> eventLedger
 
@@ -47,7 +51,7 @@ flowchart TB
   canonical --> intentions
   adapter --> cues
   adapter --> opportunities
-  socialFacts --> friends
+  accountChannels --> friends
   eventLedger --> events
   eventLedger --> feedback
   adapter --> video
@@ -290,11 +294,14 @@ modelBackoffClear -.->|不调用模型/不增加发送权限| modelFailureLedger
 modelJournal["宿主模型调用归因｜账号隔离/耗时/错误分类，Headless 内部调用不包含"]
 modelHealthUi -.->|只读本地调用记录| modelJournal
 %% @code modelJournal | lib/model-invocation-journal.mjs | export function createModelInvocationJournal
+
+%% @code accountChannels | lib/social-relationship-channels.mjs | export function createSocialRelationshipChannels
 ```
 
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.74：关系按自然熟悉度/渠道证据/DM Openness 三维分离，只有私人关系才可能授权发起。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% dev.71：继承 dev.70 动态核验恢复与可见 Life 额度；Life 授权证明消费/结算按 dev.71 账本契约执行。
@@ -308,6 +315,7 @@ flowchart LR
     sourceLife["LifeOpportunities 意愿账本：ready/inspected、未过期"]
     episodeState["Universal Episode｜已核验步骤 + 到期暂停恢复；不可代替原目标凭据"]
     sourceSocial["匿名 dm-received/comment-received 事件"]
+    privateBound["当前账号渠道事实 + DM 开放资格｜评论熟悉不能转私信"]
     sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
     sourceVideoFeedback["已核验视频子进程结束回执｜只读，与下次启动冷却独立"]
     sourceReflect["LifeReflection.status().canAutoReflect"]
@@ -336,6 +344,7 @@ flowchart LR
   episodeState -.->|持续性与优先考虑，并非新权限| resume
   intentions --> resume
   sourceSocial --> social
+  privateBound -.->|仅允许的自主私信机会，无权限者只读| social
   sourceVideo --> video
   sourceVideoFeedback --> reviewFeedback
   sourceReflect --> reflection
@@ -401,11 +410,14 @@ dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
 
 %% dev.44 shared owner contact settings and silence consideration.
 %% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=
+
+%% @code privateBound | lib/social-relationship-channels.mjs | export function evaluateDmOpenness
 ```
 
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.74：社交自然熟悉度只读成长；私人联系资格必须与原发送事务分离。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% 同版本 Life 补链维护：模型/菜单不是平台成功证据
@@ -425,6 +437,7 @@ dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
   source["真实平台操作｜原视频/评论/DM 事务"]
+  dmQualify["DM Openness：私人双向事实 + 独立授权 + 拒联检查"]
   universalCausal["匿名因果 Episode｜账号隔离、分段延续、暂停与未知冻结；不是第二记忆库"]
   postWrite["同 Episode 的已核验写入：只计一步，下一写前只读或休息且每轮一写"]
   commentReview["入选标记允许同轮只读补记意愿：重复 BV 不重写、宿主核验一次；不等于发送"]
@@ -445,6 +458,7 @@ flowchart TB
   videoFeedback["已完成轮次只读反馈：Life 可在新视频冷却期间 review_video_feedback"]
   commentReview -.->|自愿提出评论，仍需原外发门禁| source
   commentReview -.-> commentOutcome
+  dmQualify -.->|仅在允许后进入原 DM 事务| source
   source --> receipt
   verified -.-> postWrite -.->|安全限制，不是写授权| planner
   receipt -.-> commentOutcome
@@ -525,11 +539,14 @@ dmFollowReceipt -.->|只有成功回执| verified
 %% dev.47: only readable projection from existing ledger and trusted receipts.
 %% @code ownerDiary | lib/life-timeline.mjs | const restCard=
 %% @code lifeEventJournal | lib/life-agent-events.mjs | export const LIFE_REST_REASON_CODES
+
+%% @code dmQualify | lib/social-policy-gate.mjs | const canInitiateDm=
 ```
 
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.74：评论区的自然熟悉度不形成主动私信资格，Episode 不赋予新权限。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% dev.37 统一归属 + dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
@@ -540,6 +557,7 @@ flowchart TB
   canonical["原有 LifeOpportunities 跨轮公开探索意愿｜唯一 BV 事实源"]
   attribution["LifeActionAttribution｜主人请求 / Life 自选 / 被动社交；只接原回执"]
   socialReceipt["社交 / 私信 / 评论多条平台回执：精确去重，不把一次意愿当成功"]
+  socialContact["主动私人交流另验 DM Openness 与主人独立授权"]
   todoReceipt["已完成只读待办 + 原任务回访：同一因果片段"]
   reflectionReceipt["反思批次真实处理回执：零条长期认识也算真实反思"]
   videoFeedback["新视频启动冷却中：Life 仍可只读考虑已完成轮次反馈"]
@@ -553,6 +571,7 @@ flowchart TB
   other["其他已核验 Life 待办/反思/社交/人物行动也有关联 Episode"]
   memory["原 Life Memory 与各渠道真实回执仍为事实权威"]
   child --> canonical --> attribution --> record
+  socialContact -.->|许可仅在原 DM 事务生效| socialReceipt
   socialReceipt --> attribution
   todoReceipt --> attribution
   reflectionReceipt --> attribution
@@ -614,4 +633,6 @@ professionalMenu -.-> commentObservation
 %% @code professionalMenu | lib/life-subagent-continuity.mjs | export function subagentActionMenu
 %% @code commentObservation | lib/interaction-batch.mjs | for(let pass=0;pass<2;pass++){
 %% @code commentPublicPerson | lib/life-public-capabilities.mjs | export async function readVerifiedCommenterPublicVideos
+
+%% @code socialContact | lib/life-friend-initiatives.mjs | const outboundEnabled=
 ```

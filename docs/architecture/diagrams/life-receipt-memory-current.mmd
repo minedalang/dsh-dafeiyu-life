@@ -1,3 +1,4 @@
+%% dev.74：社交自然熟悉度只读成长；私人联系资格必须与原发送事务分离。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% 同版本 Life 补链维护：模型/菜单不是平台成功证据
@@ -17,6 +18,7 @@
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
   source["真实平台操作｜原视频/评论/DM 事务"]
+  dmQualify["DM Openness：私人双向事实 + 独立授权 + 拒联检查"]
   universalCausal["匿名因果 Episode｜账号隔离、分段延续、暂停与未知冻结；不是第二记忆库"]
   postWrite["同 Episode 的已核验写入：只计一步，下一写前只读或休息且每轮一写"]
   commentReview["入选标记允许同轮只读补记意愿：重复 BV 不重写、宿主核验一次；不等于发送"]
@@ -37,6 +39,7 @@ flowchart TB
   videoFeedback["已完成轮次只读反馈：Life 可在新视频冷却期间 review_video_feedback"]
   commentReview -.->|自愿提出评论，仍需原外发门禁| source
   commentReview -.-> commentOutcome
+  dmQualify -.->|仅在允许后进入原 DM 事务| source
   source --> receipt
   verified -.-> postWrite -.->|安全限制，不是写授权| planner
   receipt -.-> commentOutcome
@@ -117,3 +120,5 @@ dmFollowReceipt -.->|只有成功回执| verified
 %% dev.47: only readable projection from existing ledger and trusted receipts.
 %% @code ownerDiary | lib/life-timeline.mjs | const restCard=
 %% @code lifeEventJournal | lib/life-agent-events.mjs | export const LIFE_REST_REASON_CODES
+
+%% @code dmQualify | lib/social-policy-gate.mjs | const canInitiateDm=

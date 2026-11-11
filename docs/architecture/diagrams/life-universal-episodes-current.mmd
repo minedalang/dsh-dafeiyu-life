@@ -1,3 +1,4 @@
+%% dev.74：评论区的自然熟悉度不形成主动私信资格，Episode 不赋予新权限。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% dev.37 统一归属 + dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
@@ -8,6 +9,7 @@ flowchart TB
   canonical["原有 LifeOpportunities 跨轮公开探索意愿｜唯一 BV 事实源"]
   attribution["LifeActionAttribution｜主人请求 / Life 自选 / 被动社交；只接原回执"]
   socialReceipt["社交 / 私信 / 评论多条平台回执：精确去重，不把一次意愿当成功"]
+  socialContact["主动私人交流另验 DM Openness 与主人独立授权"]
   todoReceipt["已完成只读待办 + 原任务回访：同一因果片段"]
   reflectionReceipt["反思批次真实处理回执：零条长期认识也算真实反思"]
   videoFeedback["新视频启动冷却中：Life 仍可只读考虑已完成轮次反馈"]
@@ -21,6 +23,7 @@ flowchart TB
   other["其他已核验 Life 待办/反思/社交/人物行动也有关联 Episode"]
   memory["原 Life Memory 与各渠道真实回执仍为事实权威"]
   child --> canonical --> attribution --> record
+  socialContact -.->|许可仅在原 DM 事务生效| socialReceipt
   socialReceipt --> attribution
   todoReceipt --> attribution
   reflectionReceipt --> attribution
@@ -82,3 +85,5 @@ professionalMenu -.-> commentObservation
 %% @code professionalMenu | lib/life-subagent-continuity.mjs | export function subagentActionMenu
 %% @code commentObservation | lib/interaction-batch.mjs | for(let pass=0;pass<2;pass++){
 %% @code commentPublicPerson | lib/life-public-capabilities.mjs | export async function readVerifiedCommenterPublicVideos
+
+%% @code socialContact | lib/life-friend-initiatives.mjs | const outboundEnabled=
