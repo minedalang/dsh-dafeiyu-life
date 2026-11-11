@@ -103,4 +103,33 @@ class DynamicTests(unittest.TestCase):
         self.assertEqual(len(writes),1)
         self.assertEqual(finished[0][5],'uncertain')
 
+    def test_nested_dynamic_target_on_later_page_keeps_exact_parent_author(self):
+        env,*_=make_env()
+        topid='319798167777'; targetid='319847247793'; parentid='323612080800'
+        pages=[]
+        def comment_row(rpid,uid,parent='',root=topid):
+            return {'rpid_str':rpid,'parent':parent,'root':root,
+                'member':{'mid':uid},'content':{'message':'实际评论'}}
+        head=comment_row(topid,'382440088')
+        parent=comment_row(parentid,'3747574597028931',topid)
+        target=comment_row(targetid,'382440088',parentid)
+        class Thread:
+            def __init__(self,oid,type_,rpid,credential=None):
+                self.rpid=str(rpid)
+            async def get_sub_comments(self,page_index=1,page_size=20):
+                pages.append(page_index)
+                replies=[comment_row(str(318000000000+page_index*100+i),'771',topid)
+                    for i in range(20)]
+                if page_index==2:replies[0]=parent
+                if page_index==5:replies[10]=target
+                return {'root':head,'replies':replies}
+        env['comment'].Comment=Thread
+        result=asyncio.run(env['_find_dynamic_target'](
+            {'oid':'414465057','resource_type':'dynamic'},env['get_cred'](),targetid,topid))
+        self.assertEqual(result['target']['rpid'],targetid)
+        self.assertEqual(result['replyToUid'],'3747574597028931')
+        self.assertEqual(result['replyToRpid'],parentid)
+        self.assertEqual(result['root'],topid)
+        self.assertEqual(pages,[1,2,3,4,5])
+
 if __name__=='__main__':unittest.main()

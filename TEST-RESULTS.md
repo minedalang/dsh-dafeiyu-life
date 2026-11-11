@@ -1,28 +1,37 @@
-# 2.7.1-dev.69 · 验证记录（未发布）
+# 2.7.1-dev.70 · 验证记录（开发预览，未发布）
+
+## 修复对象及证据等级
+
+- 用户 2026-11-11 15:52:41 看到「毅武 · 动态评论核验暂失败，将稍后重试」。已上传的旧运行账本能确认动态 `1267086296612864004`、源评论 `319847247793`、根楼层 `319798167777`、直接父回复 `323612080800` 和发言者 `382440088`；父回复在本账号下有真实发送回执。
+- **15:52 的新一轮完整 MCP 返回和运行日志未上传。**因此只能判断该状态属于*回复生成前的真实动态读取核验阶段*，不能宣称已确定发生的是 B站风控、API 故障、楼中楼翻页还是其他平台原因。
+- 旧实现曾在连续三次只读核验失败后把评论永久记作 `dynamic-context-unavailable`。本版使仍在 24 小时有效期的通知可有界重试，恢复旧版误终结标记，记录安全错误原因与下次时间；确认已发出或平台回执不确定的消息绝不自动重发。
 
 ## 本地已通过
 
-- `node selfcheck.mjs`：假宿主 `apply`、41 个工具注册与假客户端组件挂载通过；无 B站真实发送。
-- `npm run write:life-architecture-view`、`npm run check:life-architecture`：四张 Mermaid 源图与 102 个代码锚点通过。
-- `node scripts/check-video-tool-contract.mjs`：选片工具状态和非每日入选硬上限契约通过。
-- 纯本地 Node 定向测试共 37 项通过：`v271-dev69-social-expression-and-quotas`、`v271-discussion-contract`、`home-recommendations`、`comment-reply-thread-v2437`、`v271-dev60-social-retry-recovery`、`v271-dev4-life-exploration-continuity`、`v271-dev4-life-agent-metadata-recovery`。涵盖普通评论字符串 → Life 精确文本授权、P6、多次授权消费、防 @、额度延期、旧 paused 迁移、可调后台预算、视频审阅状态。
-- `python -m unittest discover -s test -p test_v271_discussion_life.py -v`：14 项通过，使用内存替身，未访问 B站；验证取消视频讨论隐藏次数后仍按已核验 root 读取。
-- `npm --offline pack --dry-run --json`：本地包清单验证通过，包版本 `2.7.1-dev.69`，未发布。
-- `git -c core.whitespace=cr-at-eol diff --check`：通过。原仓库保留 CRLF 行尾，裸 `git diff --check` 会将 CRLF 误报为尾随空白。
+| 执行项目 | 结果 | 覆盖范围 |
+| --- | --- | --- |
+| `node --test test/v271-dev70-dynamic-comment-recovery.test.mjs test/v262-dynamic-comment-continuity.test.mjs` | 8 项通过 | 对应毅武链的模拟；四次读取失败后恢复且仅发送一次；旧记录升级、确证身份不符、退避和显式额度。 |
+| `python test/test_dev6_dynamic_comment.py -v` | 4 项通过 | B站动态评论工具在第五页才找到目标楼中楼且核对直接父评论；无平台访问。 |
+| `node --test test/v271-dev4-life-agent-manual-wake-hotfix.test.mjs test/v271-dev4-life-exploration-continuity.test.mjs test/v271-dev13-life-continuation-and-fairness.test.mjs test/v271-rc10-life-global-opportunities.test.mjs` | 23 项通过 | 取消好奇探索额外 6 小时静默的影响、Life 继续选择及可用机会。 |
+| 针对 dev.70、dev.69、动态连续性、Life 恢复、主评论相关的 Node 组合回归 | 41 项通过 | 授权、防重复、恢复与管理诊断相关合同。 |
+| `python -m unittest discover -s test -p 'test_v271_discussion_life.py' -v` | 14 项通过 | Python 视频评论区只读合同；内存替身。 |
+| `node selfcheck.mjs` | 通过 | 41 个模拟宿主工具与假客户端挂载；无真实外发。 |
+| `node scripts/check-video-tool-contract.mjs` | 通过 | 原视频工具安全与动作合同。 |
+| `npm run write:life-architecture-view`、`npm run check:life-architecture` | 通过 | 4 张 Mermaid 图及 102 个代码锚点。 |
 
-## 未跑或需实机验证
+## 本轮改变的实际运行边界
 
-- `npm test` 全部测试：执行环境阻止其中可能访问真实 B站的测试，已停止，不以绕过形式重试；仅改为执行明确无联网行为的定向测试。**不能声明全量通过。**
-- `npm run test:python` 全套：没有审定所有用例均无联网，因此只跑离线可审计的专项 Python 用例。**不能声明全量通过。**
-- 真实 Windows DSH 插件重启和管理页可视化、账号更换、B站动态回复发送与读回、真正平台风控、72 小时自然生活和 RC 验收：**未执行**。有真实会话、授权和平台回执才能确认；任何实验均不自动补发旧 `sent`/`uncertain` 事件。
+- 动态评论核验失败：不再因第三次失败永久跳过，5→10→20→30 分钟退避，保持原通知 24 小时范围；核验确认 UID/来源不一致立即拒绝。
+- Life 退休四项无独立管理设置的隐藏阻拦：跨渠道 30 秒、纯探索 6 小时、两项公开每日额度之上额外合计 288 次、视频主评论审阅达到 20 次的暗闸。
+- 原有用户**可见的**发送额度、模型额度、B站读取预算、来源证明、账号隔离、发送幂等和不确定回执冻结仍有效。
 
-## 2026-11-11 报告问题与状态边界
+## 明确尚未验收或完成
 
-1. 毅武的动态回复曾显示 `life-social-expression-invalid`：非 P6 模型返回字符串，旧代码把它当作无消息数组，导致原本可用的评论正文无法封存 Life 授权。修复后只调用原模型一次、精确绑定最终正文。
-2. 旧版不可见的陌生人模型考虑额度已在 dev.68 退役；本版补查并退休其余只读/探索的固定限制，把确实需要保留的后台资源节奏接到管理页。成功发送额度仍可调，额度耗尽的未发送通知不应永久标记已处理。
-3. 主评论的“未发生”不必然是鱼鱼不想说话。新增审阅尝试、自主延期、技术失败三类记录；真实发送仍由 Life 提议、专业 Agent 同轮核验和一次性平台事务负责。
-4. 老版本曾因三次读取错误写入永久 `paused` 的意愿，只在可确认为元数据读取故障时于内存恢复为 `ready`，仍遵守原下一次允许时间；原始账本不在只读加载时悄悄覆盖。
+- **未运行** `npm test` 和 Python 全套测试：旧环境完整用例可能连接实际 B站，未经逐一确认均可离线执行；不能声称全量通过。
+- **未在真实 Windows/DSH 和 B站登录账号上发送或读取回执。**模拟的“成功一次”不是这条毅武评论已经得到回复。真实动态评论是否从新状态转为回复仍需新版本运行和对应日志确认。
+- **跨轮次自动恢复历史入选视频的原创主评论尚未完成。**不能用旧轮入选直接制造新的公开发言许可；需要新轮真实证据并保留原防重、权限、意愿。
+- 通知超过原 24 小时有效期、账号切换、评论被删、平台持续拒绝读取的情况，不因本次补丁而变成自动发送。
 
-## 交付验证
+## 打包验收
 
-dev.68→dev.69 Patch 在独立源码副本通过 `git apply --check` 和实际应用；应用后的全部源码与完整交付版逐文件一致。ZIP 内容完整性另见交付包根目录说明。
+dev.69→dev.70 Patch、完整源码逐文件一致性和 ZIP 完整性由交付包根目录 `README-交付说明.md` 记录；没有创建 Git Tag、提交远端或发布 npm。

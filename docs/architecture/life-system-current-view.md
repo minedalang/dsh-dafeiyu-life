@@ -5,7 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.69 · Life 评论精确表达与可调预算；视频工具漏斗）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.70 · 动态核验恢复与可见 Life 额度；视频工具漏斗）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -63,8 +63,12 @@ flowchart TB
   feedback -.-> selection
   ownerContactPolicy -.-> ownerChat
   socialRetry["社交实际回复：DM 延期模型错误有界重试 / 评论临时额度不写永久 seen"]
+  dynamicVerify["动态来源核验：失败退避重读，旧技术停止可恢复；真身份冲突拒绝"]
   socialFacts --> socialRetry
+  socialFacts --> dynamicVerify
+  dynamicVerify --> socialRetry
   socialRetry -.->|只有重新核实且具备发送许可才执行| socialWrite
+  %% @code dynamicVerify | lib/comment-interact.mjs | export const dynamicVerificationRetryDelay
   networkPollBackoff -.-> socialFacts
   ownerChat -.-> selection
 
@@ -280,7 +284,7 @@ modelHealthUi -.->|只读本地调用记录| modelJournal
 ## 二、八类候选细目
 
 ```mermaid
-%% dev.69：只读次数隐藏硬限额退役；真正评论仍通过既有单次 Life 表达、精确文本授权、显式额度与原平台回执。
+%% dev.70：动态评论技术核验可恢复；隐藏 30 秒、纯探索 6 小时和模型总额上限退役；真正评论仍由 Life 精确授权和原平台回执。
 %% 生活候选细目字典：这是当前项目的真实 schema 类型/选择约束，不是泛化的 AI 心理推演。
 flowchart LR
   subgraph inputs["有事实来源，才能构成候选"]

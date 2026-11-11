@@ -1,10 +1,10 @@
 # 文档导航
 
-**当前 dev.69 增量：** [普通评论表达授权修复、后台自主预算显性化和视频评论诊断](architecture/2.7.1-dev69-social-expression-and-free-quotas.md)。前版 [陌生人隐藏考虑额度退役](architecture/2.7.1-dev68-social-choice-and-idle-diagnostics.md) 与 [生活日记和神经记忆点阵修复](architecture/2.7.1-dev67-life-diary-neural-visuals.md) 继续保留。
+**当前 dev.70 增量：** [动态评论核验恢复、旧技术停止迁移与 Life 隐藏额度清理](architecture/2.7.1-dev70-dynamic-verification-and-visible-life-quotas.md)。前版 [普通评论表达授权与后台预算](architecture/2.7.1-dev69-social-expression-and-free-quotas.md)、[陌生人隐藏考虑额度退役](architecture/2.7.1-dev68-social-choice-and-idle-diagnostics.md) 继续保留。
 
 **dev.61 主评论修复：** [主评论、选片证据、视频失败与章程迁移](architecture/2.7.1-dev61-life-state-comment-repair.md)。
 
-**当前唯一架构事实源：** [2.7.1-dev.62 实际接线](architecture/CURRENT-ARCHITECTURE.md) · [2.7.1 RC 场景验收](architecture/CURRENT-RC-ACCEPTANCE.md)。
+**当前唯一架构事实源：** [2.7.1-dev.70 实际接线](architecture/CURRENT-ARCHITECTURE.md) · [2.7.1 RC 场景验收](architecture/CURRENT-RC-ACCEPTANCE.md)。
 
 普通用户先看 [README](../README.md) 和 [首次使用教程](../README.md#-首次使用教程)。
 

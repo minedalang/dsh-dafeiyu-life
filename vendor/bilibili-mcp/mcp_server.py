@@ -2531,7 +2531,11 @@ async def _find_dynamic_target(area,cred,rpid,root=0):
     if root not in ('','0'):
         top=comment.Comment(oid=int(area['oid']),type_=area['resource_type'],rpid=int(root),credential=cred)
         head=None;target=None;parents={}
-        for pn in range(1,4):
+        # Replies are ordered by B站 rather than by notification age.  Three
+        # pages can miss an existing reply in an active dynamic conversation.
+        # Keep the read bounded for platform pacing, but search the real thread
+        # through twelve pages before declaring source evidence unavailable.
+        for pn in range(1,13):
             data=await top.get_sub_comments(page_index=pn,page_size=20)
             row=_safe_dynamic_reply(data.get('root')) if isinstance(data,dict) else None
             if not row or row['rpid']!=root:raise ValueError('没有确认该动态评论区的根评论')
@@ -2554,8 +2558,8 @@ async def _find_dynamic_target(area,cred,rpid,root=0):
             # The target exists, but its *direct* parent is not verified.
             # We may still reply inside our own dynamic; not a foreign one.
             return {'root':root,'target':target,'replyToUid':'','replyToRpid':''}
-        raise ValueError('目标回复不在已核验的动态楼中楼内，未发送')
-    for pn in range(1,4):
+        raise ValueError('动态根楼层已核验，但目标回复尚未出现在已读取的楼中楼页面；稍后重试')
+    for pn in range(1,13):
         data=await comment.get_comments(oid=int(area['oid']),type_=area['resource_type'],page_index=pn,
                                         order=comment.OrderType.TIME,credential=cred)
         rows=(data or {}).get('replies') or []

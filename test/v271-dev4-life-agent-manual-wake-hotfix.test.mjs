@@ -24,16 +24,15 @@ function rig(dir,{mode='shadow',getEvents,model}={}){
     executeRead:async()=>({ok:true}),updateTodo:()=>{},reflect:async()=>({ok:true})})
   return {events,planner,config,advance:ms=>{t+=ms},get calls(){return calls},get launches(){return launches}}
 }
-test('manual force bypasses six-hour cue-only automatic throttle, without bypassing quota',()=>home(async dir=>{
+test('ordinary autonomous curiosity is not secretly muted for six hours; model quota still applies',()=>home(async dir=>{
   const r=rig(dir,{mode:'off'})
   assert.equal((await r.planner.tick({force:true})).action,'skip')
   r.advance(10*60_000)
   const automatic=await r.planner.tick()
-  assert.equal(automatic.skipped,'life-exploration-cooldown')
-  assert.equal(automatic.nextAt,start+6*3600_000)
+  assert.equal(automatic.action,'skip')
   const manual=await r.planner.tick({force:true})
   assert.equal(manual.action,'skip')
-  assert.equal(r.calls,2)
+  assert.equal(r.calls,3)
   assert.equal(r.launches,0)
   r.config.autonomousPlannerDailyLimit=2
   assert.equal((await r.planner.tick({force:true})).skipped,'quota')

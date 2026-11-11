@@ -4733,31 +4733,37 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       let dynamicId=String(notice?.dynamicId||'');
       const targetRpid=String(notice?.rpid||'');
       const notificationOid=String(notice?.aid||'');
-      if(!validCommentId(targetRpid))return {usable:false};
+      if(!validCommentId(targetRpid))return {usable:false,reason:'通知缺少合法的完整评论 ID',terminal:true};
       // Notifications sometimes provide only the comment-area oid rather than
       // a public dynamic id. Match it to one of our published dynamics by
       // querying verified B站 metadata; never treat the oid as a dynamic id.
       if(!validDynamicId(dynamicId)){
-        if(!/^\d{1,20}$/.test(notificationOid))return {usable:false};
+        if(!/^\d{1,20}$/.test(notificationOid))return {usable:false,reason:'通知未提供可核验的动态 ID 或评论区 oid'};
         const matched=[];
+        let lastLookupError='';
         for(const ownedId of ownPublishedDynamics(stateDir).slice(0,20)){
-          const info=parseMaybeJson(await call('bili_dynamic_comment_context',
-            {dynamic_id:ownedId,target_rpid:'',root:'',num:1}));
+          let info;
+          try{info=parseMaybeJson(await call('bili_dynamic_comment_context',
+            {dynamic_id:ownedId,target_rpid:'',root:'',num:1}));}
+          catch(e){lastLookupError=String(e?.message||e).slice(0,120);continue}
+          if(info?.ok===false)lastLookupError=String(info.error||'动态评论区读取失败').slice(0,120);
           if(info?.ok===true&&
             (String(info.oid||'')===notificationOid||ownedId===notificationOid)){
             matched.push(ownedId);if(matched.length>1)break;
           }
         }
-        if(matched.length!==1)return {usable:false};
+        if(matched.length!==1)return {usable:false,reason:matched.length>1?'动态评论区匹配不唯一':lastLookupError||'未找到唯一的已发布动态评论区（将重试）'};
         dynamicId=matched[0];
       }
       const raw=parseMaybeJson(await call('bili_dynamic_comment_context',
         {dynamic_id:dynamicId,target_rpid:targetRpid,root:String(notice?.contextRoot||notice?.root||''),num:20}));
+      if(raw?.ok!==true)return {usable:false,reason:String(raw?.error||'B站动态评论区暂未返回完整核验结果').slice(0,180)};
       // All IDs and actual target author must match before AI, memory or write.
-      if(raw?.ok!==true||String(raw.dynamicId||'')!==dynamicId||
+      if(String(raw.dynamicId||'')!==dynamicId||
          String(raw.target?.rpid||'')!==targetRpid||
          String(raw.target?.uid||'')!==String(notice.uid||'')||
-         (notificationOid&&notificationOid!==dynamicId&&String(raw.oid||'')!==notificationOid))return {usable:false};
+         (notificationOid&&notificationOid!==dynamicId&&String(raw.oid||'')!==notificationOid))
+        return {usable:false,terminal:true,reason:'动态、评论区、rpid 或发送者 UID 与 B站核验结果不一致'};
       return {usable:true,dynamicId,targetUid:String(raw.target.uid),
         authorUid:String(raw.authorUid||''),replyToUid:String(raw.replyToUid||''),
         replyToRpid:String(raw.replyToRpid||''),ownedLocal:ownPublishedDynamics(stateDir).includes(dynamicId),
@@ -5481,7 +5487,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         if(r?.ok===false)log('Life 可信完成续行未登记：'+String(r.reason||'invalid-source').slice(0,70))
       }catch(e){log('Life 可信完成续行待补偿：'+String(e?.message||e).slice(0,80))}
     },
-    opportunityWindowMs:140,crossChannelCooldownMs:30_000,
+    opportunityWindowMs:140,crossChannelCooldownMs:0,
   })
   lifeVideoActionBridge=createLifeVideoActionBridge({
     getAccountUid:()=>{try{const status=accountBinding.status();return status.blocked?'':status.activeUid}catch{return ''}},
@@ -5515,7 +5521,6 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(cfg.masterEnabled!==true||cfg.autoComment!==true||Number(cfg.commentDailyLimit)<=0||Number(cfg.commentPerRound)<=0)
         return {ok:false,reason:'comment-review-permission-unavailable'}
       if(row.reviewBvids.has(bvid))return {ok:false,reason:'comment-review-already-recorded'}
-      if(row.reviewed>=20)return {ok:false,reason:'comment-review-not-current'}
       // A model self-report cannot manufacture an eligible selection: consult
       // the existing canonical ledger, without creating a second evidence store.
       const boundUid=String(accountBinding.status().activeUid||'')
