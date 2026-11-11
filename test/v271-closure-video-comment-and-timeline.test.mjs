@@ -42,7 +42,7 @@ test('旧式直接发送不允许借用意愿模型审批；必须由视频入�
  assert.equal(calls,0)
 })
 
-test('生活时间线如实显示评论意愿与阻断，不把未发出的草稿写成公开评论',()=>{
+test('生活时间线只展示真实视频活动，评论技术状态保留在诊断账本',()=>{
  const rounds=[
   {source:'life-agent',ref:'aaaaaaaaaaaa',state:'completed',endedAt:T,pickedCount:1,commentGate:'configured',
    commentDiagnostics:{reviewed:1,passed:1}},
@@ -53,9 +53,8 @@ test('生活时间线如实显示评论意愿与阻断，不把未发出的草�
  ]
  const rows=buildLifeTimeline({now:T+100,videoRounds:rounds,days:7})
  assert.equal(rows.length,3)
- assert.match(rows[0].detail,/决定不发表主评论/)
- assert.match(rows[1].detail,/执行或 Life 审批被阻断/)
- assert.match(rows[2].detail,/通过平台独立核验/)
+ assert.ok(rows.every(x=>x.detail===''),'不在生活卡片中重复评论审核诊断')
+ assert.equal(rounds[1].commentDiagnostics.lastReason,'life-not-ready','真实技术诊断未删除')
  assert.ok(rows.every(x=>x.type==='video-round'&&!x.bvid&&!x.url))
  const text=JSON.stringify(rows)
  assert.doesNotMatch(text,/12345678|commentText|评论草稿|私信正文/)
@@ -119,8 +118,8 @@ test('Life 时间线明确展示自主休息，但不把休息伪装成已执行
  assert.equal(rows.length,1)
  assert.equal(rows[0].type,'life-rest')
  assert.equal(rows[0].label,'自主休息')
- assert.match(rows[0].title,/决定暂时休息/)
- assert.match(rows[0].detail,/没有执行外部动作/)
+ assert.match(rows[0].title,/决定歇一会儿/)
+ assert.equal(rows[0].detail,'')
 })
 
 test('Life Planner 已作出 browse_home 意愿选择后，执行层不再发起第二次 AI 意愿审批',()=>{
@@ -152,6 +151,6 @@ test('视频 Agent 时间线同时显示真实进程启动和结束，不把启�
  const rows=buildLifeTimeline({now:T+100,days:7,videoRounds:[{source:'life-agent',ref:'d'.repeat(12),state:'completed',startedAt:start,endedAt:end,pickedCount:2}]})
  assert.equal(rows.length,2)
  assert.equal(rows.find(x=>x.type==='video-round-start')?.at,new Date(start).toISOString())
- assert.match(rows.find(x=>x.type==='video-round-start').detail,/不代表视频已经观看/)
+ assert.match(rows.find(x=>x.type==='video-round-start').detail,/还没有挑中内容/)
  assert.equal(rows.find(x=>x.type==='video-round')?.at,new Date(end).toISOString())
 })

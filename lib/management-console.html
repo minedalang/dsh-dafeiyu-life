@@ -895,8 +895,11 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life .neural-memory-viewport.is-dragging{cursor:grabbing}
 #panel-life #neural-memory-svg{display:block;min-height:520px;width:100%;height:100%;aspect-ratio:auto;pointer-events:auto}
 #panel-life #neural-memory-canvas{display:none;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-#panel-life .neural-memory-viewport.is-canvas #neural-memory-svg{visibility:hidden}
+#panel-life .neural-memory-viewport.is-canvas #neural-memory-svg{opacity:0;pointer-events:auto}
 #panel-life .neural-memory-viewport.is-canvas #neural-memory-canvas{display:block}
+#panel-life .neural-node .neural-dot{stroke:#eef8ff;stroke-width:1.05;filter:none;transition:stroke .18s,stroke-width .18s,opacity .22s}
+#panel-life .neural-node .neural-sheen{stroke:none;filter:none;fill:#fff;pointer-events:none}
+#panel-life .neural-node:hover .neural-dot,#panel-life .neural-node:focus-visible .neural-dot,#panel-life .neural-node[data-active="true"] .neural-dot{stroke:#176eaa;stroke-width:2.2;filter:drop-shadow(0 0 4px #5aa4d580)}
 #panel-life .neural-viewport-actions{position:absolute;z-index:4;right:10px;top:10px;display:flex;gap:6px}
 #panel-life .neural-viewport-actions button{background:var(--panel);border:1px solid var(--stroke);color:var(--ink);border-radius:9px;padding:6px 10px;box-shadow:0 2px 8px #0000000d}
 #panel-life .neural-node[data-matched="false"] text{display:none}

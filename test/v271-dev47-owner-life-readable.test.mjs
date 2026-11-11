@@ -36,10 +36,10 @@ test('3 real social cues + model skip: diary says 3 cues, offers actual reason c
   const diary=buildLifeTimeline({lifeDecisions:[ledger],now:T+3000})
   assert.equal(diary.length,1)
   assert.equal(diary[0].type,'life-rest')
-  assert.match(diary[0].title,/3 个社交提醒/)
-  assert.match(diary[0].detail,/私信与评论提醒/)
+  assert.match(diary[0].title,/留意到新消息/)
+  assert.match(diary[0].detail,/3 个私信与评论提醒/)
   assert.match(diary[0].detail,/想先休息/)
-  assert.match(diary[0].detail,/专业 Agent 独立/)
+  assert.doesNotMatch(diary[0].detail,/专业 Agent|模型|候选筛选/)
   assert.doesNotMatch(JSON.stringify({ledger,diary}),/18888888888|私密想法|\buid\b|姓名/)
 }))
 
@@ -52,7 +52,8 @@ test('A skip with an unapproved reason code cannot inject model prose into user 
  assert.equal(ledger.restReasonCode,'')
  assert.equal(ledger.modelReasonProvided,true)
  const diary=buildLifeTimeline({lifeDecisions:[ledger],now:T+3000})
- assert.match(diary[0].detail,/没有可公开显示的原因类别/)
+ assert.match(diary[0].detail,/留意到 1 个评论提醒/)
+ assert.doesNotMatch(diary[0].detail,/模型|原因类别|未公开/)
  assert.doesNotMatch(JSON.stringify({ledger,diary}),/姓名张某|secret/)
 }))
 
@@ -66,7 +67,7 @@ test('Social signal attention is not social sending or real read of message cont
  assert.equal(diary.length,1)
  assert.equal(diary[0].type,'life-consider')
  assert.match(diary[0].title,/私信提醒/)
- assert.match(diary[0].detail,/尚未因此发送/)
+ assert.match(diary[0].detail,/还没有打开具体内容或发送回复/)
  assert.doesNotMatch(diary[0].title,/回复了/)
 }))
 
@@ -76,12 +77,11 @@ test('A model rest is distinct from an empty menu, failure and missing social si
   {at:T-2000,mode:'active',action:'skip',result:'no-actionable-options',options:{social:0},kinds:[]},
   {at:T-1000,mode:'active',action:'skip',result:'invalid-decision',options:{social:4},kinds:['dm-received']},
  ]})
- assert.deepEqual(rows.map(x=>x.type),['life-idle','life-rest'])
- const rest=rows.find(x=>x.type==='life-rest'),empty=rows.find(x=>x.type==='life-idle')
+ assert.deepEqual(rows.map(x=>x.type),['life-rest'])
+ const rest=rows.find(x=>x.type==='life-rest')
  assert.match(rest.detail,/2项待办/)
  assert.match(rest.detail,/没有让她产生行动兴趣/)
- assert.match(empty.title,/没有找到可执行/)
- assert.match(empty.detail,/不是模型选择休息/)
+ assert.ok(!rows.some(x=>x.type==='life-idle'),'无可用候选是调度诊断，不是生活事件')
 })
 
 test('Owner outreach queued is not presented as a confirmed delivered message',()=>temp(async dir=>{

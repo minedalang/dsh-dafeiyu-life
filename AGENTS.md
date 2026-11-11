@@ -10,7 +10,7 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 - **当前 Life 架构图的唯一维护入口**：`docs/architecture/life-system-current.md`、`docs/architecture/diagrams/life-system-current.mmd`、`docs/architecture/diagrams/life-candidates-current.mmd`、`docs/architecture/diagrams/life-receipt-memory-current.mmd`。每次修改 Life 候选、调度、权限或回执，须同时维护 Mermaid 代码锚点，先执行 `npm run write:life-architecture-view` 更新 GitHub 预览，再执行 `npm run check:life-architecture` 与 `test/v271-dev33-life-architecture-contract.test.mjs`；图中已接线不得宣称实机验收。
 - **dev.33 同版本菜单加固**：Life 每次输出须与当轮动作菜单中的 action/id/BV/capability 严格匹配；未提供的 reflect 不可从旧 parser 走漏。保持原账户、授权、回执/遗忘限制，详见 `docs/architecture/life-system-current.md`。
 - **dev.35 P1/P2 补充限制**：已核验写入后可继续阅读或休息，但第二次写入须先完成真实只读核实或实际休息至少 15 分钟并重新审批；点赞不意味着必须评论。新增评论区只读与一次首页换方向，禁推断陌生人 UID。见 `docs/architecture/2.7.1-dev35-life-episode-p1p2.md`。**历史 dev.34 连续 Life Episode**：首页成功轮次的新入选候选接入原 `life-opportunities` 意愿账本；每个 Episode 最多 5 个已核验步骤，每一步重新决策，已核验 BV 去重，休息有界延后，未知写入冻结。原创评论的已知跨渠道冷却最多重考虑一次，账号变化/在途/未知不重试；不扩大任何外发许可。详见 `docs/architecture/life-system-current.md`。
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.66`（视频轮次工具回执漏斗与提前结束原因、评论技术拒绝修正、MCP 完整安全修复流程；继承 dev.65 评论账本有限重试与主人明确委托的已核验入站私信回复；Windows/真实 B站仍待验收），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.7.1-dev.67`（生活日记排除调度空轮技术噪声；神经回忆点阵等比清晰绘制；延续 dev.66 视频漏斗和社交安全诊断；Windows/真实 B站仍待验收），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - dev.33 同版本维护修复：@通知只有经 B站源评论/UID/rpid/BV 核验并能分清独立留言正文时才进入回复 AI 或社交记忆；旧内部昵称歧义提示不是观众说过的话，修正仍清晰的情节副本与旧评论缓存，但不抹除已确认外发、也不恢复已遗忘内容。详见 `docs/architecture/2.7.1-dev33-mention-memory-hotfix.md`。
 - dev.32：为 Life 自主首页闲逛补上**实际 MCP 首页读取**的匿名回执：由原视频 Agent 的随机轮次 ID 绑定 headless 工具调用，区分未观察到、无候选、失败、有候选；不把选片/观看与进程成功混淆，不复制 BV/UID/私密内容，也不调整视频发送门禁。见 `docs/architecture/2.7.1-dev32-home-feed-receipts.md`。
 - dev.31：`LifeReflection.status()` 提供与自动反思执行器共用的就绪判断，`AutonomousPlanner` 不再凭 pending 数量提供假可用 reflect；反思被跳过的枚举原因进入脱敏日志。主 Life 模型失败后的退避在原 planner 预算账本持久化，手动唤醒不自动打开新写权限；`browse_home` 只在已打开首页推荐且原视频能力可用时列入菜单，通过原视频 Agent 先看真实首页推荐。`life-willingness` 的可选语境读取失败尽量降级，基础身份不可用仍拒绝写入。见 `docs/architecture/2.7.1-dev31-life-idle-and-home-browse.md`。
@@ -108,6 +108,8 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 - 先定位真实生产入口及现有接口，再实现并添加定向测试；不要把脚本层 mock 当作真实 B站发送成功，也不要为了让测试变绿恢复错误的重复逻辑。
 - 检查 Node.js 全量测试、相关 Python 测试、`node selfcheck.mjs`、`npm pack --dry-run` 与 `git diff --check`；某项失败／超时应如实报告。
 - 交付注明基线、变更文件、复用的统一层、新增内容、未覆盖入口、实机待验收项，提供 Git Patch、中文 Conventional Commit 和适用于 `dev` 的 Git 命令。不得自动发布。
+- **每次 dev 交付必须提供单个完整 ZIP**：其中含可直接使用的新版完整源码 `source/`、相对上一开发版本的 Git Patch、`COMMIT_MESSAGE.txt` 中文提交文案、`README-交付说明.md` 与源码目录内的 `TEST-RESULTS.md`。源码和 Patch 是两种替代使用方式，不允许提示用户在新版源码上再次套用同一 Patch；交付前检查 ZIP 完整性与补丁在指定原版上的 `git apply --check`。
+- **中文 Commit 格式**遵循 Conventional Commits：标题为 `<type>(<scope>): dev.N 简短变更概要`，例如 `fix(life): dev.67 精简生活日记并优化记忆点阵`；标题和正文间空一行，正文用 3～6 条以 `- ` 开头的简洁要点，每条一句话，只列关键行为变化。不要在 Commit 中堆内部变量名、长日志、测试统计和全部边界声明；细节写入 CHANGELOG、架构文档与测试报告。`type` 选能表达主要意图的 `fix`、`feat`、`refactor`、`docs` 等。
 - **版本阶段门禁**：开发阶段使用 `X.Y.Z-dev.N`，不要提前把 `package.json` 填为 `X.Y.Z`；正式封版时再同步升级 `package.json`、`package-lock.json`、README、CHANGELOG、Release Notes、测试与 Git Tag。GitHub 预览标签 `vX.Y.Z-dev.N` 不属于正式 Latest，npm 预览必须使用独立 dist-tag。
 - README 写面向用户的理念、特色与首用步骤，**不放开发历史流水账**；技术细节与架构更新进入 `docs/architecture/`。
 ## 使用与安装诊断
