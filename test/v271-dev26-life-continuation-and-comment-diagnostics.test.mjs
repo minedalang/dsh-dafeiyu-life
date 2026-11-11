@@ -108,9 +108,10 @@ test('video comment diagnostics preserve no text/BV/UID and never claim zero pro
 // bili_reply tool was available to the model or that a comment is still visible.
 test('comment approval bridge reports proposal, approval and independently verified receipt without target or text',async t=>{
  const {createLifeVideoActionBridge}=await import('../lib/life-video-action-bridge.mjs')
- const events=[]
+ const events=[],roundId='a'.repeat(24)
  const bridge=createLifeVideoActionBridge({getAccountUid:()=>cred.dedeuserid,getAccountTag:()=>discussionAccountTag(cred),
-  choose:async()=>({ok:true,proof:{valid:true}}),verify:()=>({ok:true}),receipt:()=>{},
+  choose:async()=>({ok:true,proof:{valid:true,expiresAt:Date.now()+60_000},publicCommentText:'经测试确认的主评论'}),
+  verify:()=>({ok:true}),receipt:()=>{},onCommentReview:async()=>({ok:true}),
   verifyPlatformState:async()=>true,onCommentDiagnostic:x=>events.push(x)})
  t.after(()=>bridge.stop())
  await bridge.start()
@@ -118,24 +119,30 @@ test('comment approval bridge reports proposal, approval and independently verif
    const resp=await fetch(env.BILI_LIFE_ACTION_URL+path,{method:'POST',headers:{authorization:'Bearer '+env.BILI_LIFE_ACTION_TOKEN,'content-type':'application/json'},body:JSON.stringify(payload)})
    return resp.json()
  }
- const proposal=await post('/life-action',{tool:'bili_reply',target:BV,uid:cred.dedeuserid,topLevel:true,commentText:'临时测试评论'})
+ const review=await post('/life-comment-review',{roundId,bvid:BV,uid:cred.dedeuserid,decision:'consider',
+   draft:'基于已读取的公开内容形成的短评',evidence:'已读取视频简介和字幕，并核实当前视频入选记录。'})
+ assert.equal(review.ok,true)
+ const proposal=await post('/life-action',{tool:'bili_reply',target:BV,uid:cred.dedeuserid,roundId,
+   topLevel:true,commentText:review.publicCommentText})
  assert.equal(proposal.ok,true)
  const outcome=await post('/life-action-result',{grant:proposal.grant,uid:cred.dedeuserid,ok:true,receiptId:'123456789012'})
  assert.equal(outcome.status,'verified')
- assert.deepEqual(events,[{stage:'proposed',code:''},{stage:'approved',code:''},{stage:'verified',code:'verified'}])
- assert.ok(!JSON.stringify(events).includes(BV));assert.ok(!JSON.stringify(events).includes('临时测试评论'))
+ assert.deepEqual(events,[{stage:'review-attempted',code:''},{stage:'proposed',code:''},
+   {stage:'approved',code:''},{stage:'verified',code:'verified'}])
+ assert.ok(!JSON.stringify(events).includes(BV));assert.ok(!JSON.stringify(events).includes('经测试确认的主评论'))
 })
 
-test('comment gateway classifies a cross-channel cooldown as a technical block, not a voluntary decline',async t=>{
+test('comment gateway preserves a legacy cross-channel cooldown as a technical block, not a voluntary decline',async t=>{
  const {createLifeVideoActionBridge}=await import('../lib/life-video-action-bridge.mjs')
- const events=[]
+ const events=[],roundId='b'.repeat(24)
  const bridge=createLifeVideoActionBridge({getAccountUid:()=>cred.dedeuserid,getAccountTag:()=>discussionAccountTag(cred),
-  choose:async()=>({ok:false,reason:'life-cross-channel-rest'}),verify:()=>({ok:false}),receipt:()=>{},
-  onCommentDiagnostic:x=>events.push(x)})
+  choose:async()=>({ok:false,action:'defer',reason:'life-cross-channel-rest'}),verify:()=>({ok:false}),receipt:()=>{},
+  onCommentReview:async()=>({ok:true}),onCommentDiagnostic:x=>events.push(x)})
  t.after(()=>bridge.stop());await bridge.start()
- const env=bridge.env();const resp=await fetch(env.BILI_LIFE_ACTION_URL+'/life-action',{method:'POST',
+ const env=bridge.env();const resp=await fetch(env.BILI_LIFE_ACTION_URL+'/life-comment-review',{method:'POST',
   headers:{authorization:'Bearer '+env.BILI_LIFE_ACTION_TOKEN,'content-type':'application/json'},
-  body:JSON.stringify({tool:'bili_reply',target:BV,uid:cred.dedeuserid,topLevel:true,commentText:'临时测试评论'})})
+  body:JSON.stringify({roundId,bvid:BV,uid:cred.dedeuserid,decision:'consider',
+    draft:'已读取内容后形成的短评',evidence:'视频简介与字幕已核验，具备公开讨论依据。'})})
  assert.equal(resp.status,409)
- assert.deepEqual(events,[{stage:'proposed',code:''},{stage:'blocked',code:'life-cross-channel-rest'}])
+ assert.deepEqual(events,[{stage:'review-attempted',code:''},{stage:'review-deferred',code:'life-cross-channel-rest'}])
 })

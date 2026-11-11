@@ -1225,48 +1225,54 @@ function reportMeta() {
       }
     },
     send:async({uid,channel,text,commentBvid,commentRpid,commentRoot,social,eventId,taskId,lifeWillingnessProof})=>{
-      const intention=lifeWillingness?.verify(lifeWillingnessProof,'followup')
-      if(intention?.ok!==true)return {ok:false,no_retry:true,error:'Life 回访意愿已失效，未发送'}
-      const factCheck=outboundFactCheck(text,{uid,channel});
-      if(!factCheck.ok)return {ok:false,error:'回访未经统一事实核验：'+factCheck.reason};
-      const allowed=todoFollowupContact({uid,channel,commentBvid,commentRpid,social:social===true,crossChannel:channel==='dm'&&!!commentBvid})
-      if(allowed.blocked)return {ok:false,error:allowed.reason}
-      if(channel==='comment'){
-        // No top-level fallback: exact original comment only, no automatic @.
-        const scope=trustedLifeAccountTag()
-        if(!/^[a-f0-9]{16}$/.test(String(scope||''))||typeof eventId!=='string'||
-          eventId.length<3||eventId.length>600||/[\u0000-\u001f]/.test(eventId))
-          return {ok:false,no_retry:true,reason:'missing-stable-social-source'}
+      const settleProof=lifeProofSettler(lifeWillingnessProof)
+      try{
+        const intention=lifeWillingness?.verify(lifeWillingnessProof,'followup')
+        if(intention?.ok!==true){settleProof('not-sent');return {ok:false,no_retry:true,error:'Life 回访意愿已失效，未发送'}}
+        const factCheck=outboundFactCheck(text,{uid,channel})
+        if(!factCheck.ok){settleProof('not-sent');return {ok:false,error:'回访未经统一事实核验：'+factCheck.reason}}
+        const allowed=todoFollowupContact({uid,channel,commentBvid,commentRpid,social:social===true,crossChannel:channel==='dm'&&!!commentBvid})
+        if(allowed.blocked){settleProof('not-sent');return {ok:false,error:allowed.reason}}
+        if(channel==='comment'){
+          const scope=trustedLifeAccountTag()
+          if(!/^[a-f0-9]{16}$/.test(String(scope||''))||typeof eventId!=='string'||
+            eventId.length<3||eventId.length>600||/[\u0000-\u001f]/.test(eventId)){
+            settleProof('not-sent');return {ok:false,no_retry:true,reason:'missing-stable-social-source'}
+          }
+          const sourceHash=createHash('sha256').update('todo-followup-v1\0'+eventId).digest('hex')
+          const result=await lifeSocialWrite('comment',()=>socialSendTransaction.execute({
+            channel:'comment',eventKey:`todo-followup:${uid}:${sourceHash}`,expectedScope:scope
+          },async()=>{
+            const raw=parseMaybeJson(await call('bili_reply',{
+              bvid:commentBvid,text,rpid:Number(commentRpid),root:Number(commentRoot)||0,
+              should_mention:false,mention_mode:'off',mention_targets:[],mention_names:[],sync_to_dynamic:false}))
+            const rpid=String(raw?.rpid_str||raw?.rpid||raw?.data?.rpid||'')
+            return raw?.success===true&&/^[1-9]\d{0,19}$/.test(rpid)?{ok:true,rpid}:{ok:false}
+          }))
+          const receiptId=result?.ok===true&&result?.rpid?'bili-followup-comment:'+result.rpid:
+            result?.ok===true&&result?.receiptId?'bili-followup-dm:'+result.receiptId:''
+          settleProof(result?.ok===true?'verified':result?.notAttempted===true?'not-sent':'uncertain',receiptId)
+          if(result?.ok!==true&&result?.no_retry===true&&taskId)
+            lifeActionAttribution.unknown({accountTag:scope,channel:'todo-followup',owner:'life',
+              sourceRef:'todo:'+taskId,receiptId:'followup-unknown:'+eventId,action:'followup',kind:'social'})
+          return {ok:result?.ok===true,sentRpid:String(result?.rpid||''),no_retry:result?.no_retry===true}
+        }
+        if(typeof eventId!=='string'||eventId.length<3||eventId.length>600||/[\u0000-\u001f]/.test(eventId)){
+          settleProof('not-sent');return {ok:false,no_retry:true,reason:'missing-stable-social-source'}
+        }
         const sourceHash=createHash('sha256').update('todo-followup-v1\0'+eventId).digest('hex')
-        const result=await lifeSocialWrite('comment',()=>socialSendTransaction.execute({
-          channel:'comment',eventKey:`todo-followup:${uid}:${sourceHash}`,expectedScope:scope
-        },async()=>{
-          const raw=parseMaybeJson(await call('bili_reply',{
-            bvid:commentBvid,text,rpid:Number(commentRpid),root:Number(commentRoot)||0,
-            should_mention:false,mention_mode:'off',mention_targets:[],mention_names:[],sync_to_dynamic:false}))
-          const rpid=String(raw?.rpid_str||raw?.rpid||raw?.data?.rpid||'')
-          return raw?.success===true&&/^[1-9]\d{0,19}$/.test(rpid)?{ok:true,rpid}:{ok:false}
-        }))
-        lifeWillingness?.receipt(lifeWillingnessProof,{status:result?.ok===true?'verified':'uncertain',
-          receiptId:result?.ok===true&&result?.rpid?'bili-followup-comment:'+result.rpid:
-            result?.ok===true&&result?.receiptId?'bili-followup-dm:'+result.receiptId:''})
+        const result=await lifeDmWithReceipt({uid,text,eventKey:`todo-followup:${sourceHash}`})
+        const receiptId=result?.ok===true&&result?.rpid?'bili-followup-comment:'+result.rpid:
+          result?.ok===true&&result?.receiptId?'bili-followup-dm:'+result.receiptId:''
+        settleProof(result?.ok===true?'verified':result?.notAttempted===true?'not-sent':'uncertain',receiptId)
         if(result?.ok!==true&&result?.no_retry===true&&taskId)
-          lifeActionAttribution.unknown({accountTag:scope,channel:'todo-followup',owner:'life',
+          lifeActionAttribution.unknown({accountTag:trustedLifeAccountTag(),channel:'todo-followup',owner:'life',
             sourceRef:'todo:'+taskId,receiptId:'followup-unknown:'+eventId,action:'followup',kind:'social'})
-        return {ok:result?.ok===true,sentRpid:String(result?.rpid||''),no_retry:result?.no_retry===true}
-      }
-      if(typeof eventId!=='string'||eventId.length<3||eventId.length>600||/[\u0000-\u001f]/.test(eventId))
-        return {ok:false,no_retry:true,reason:'missing-stable-social-source'}
-      const sourceHash=createHash('sha256').update('todo-followup-v1\0'+eventId).digest('hex')
-      const result=await lifeDmWithReceipt({uid,text,eventKey:`todo-followup:${sourceHash}`})
-      lifeWillingness?.receipt(lifeWillingnessProof,{status:result?.ok===true?'verified':'uncertain',
-          receiptId:result?.ok===true&&result?.rpid?'bili-followup-comment:'+result.rpid:
-            result?.ok===true&&result?.receiptId?'bili-followup-dm:'+result.receiptId:''})
-      if(result?.ok!==true&&result?.no_retry===true&&taskId)
-        lifeActionAttribution.unknown({accountTag:trustedLifeAccountTag(),channel:'todo-followup',owner:'life',
-          sourceRef:'todo:'+taskId,receiptId:'followup-unknown:'+eventId,action:'followup',kind:'social'})
-      return {ok:result?.ok===true,no_retry:result?.no_retry===true,receiptId:result?.ok===true?String(result.receiptId||''):''}
-    },logger:{warn:m=>log('统一待办回访：'+m)}})
+        return {ok:result?.ok===true,no_retry:result?.no_retry===true,receiptId:result?.ok===true?String(result.receiptId||''):''}
+      }catch(e){settleProof('uncertain');throw e}
+      finally{settleProof('not-sent')}
+    },
+logger:{warn:m=>log('统一待办回访：'+m)}})
   const runOwnerTodoWithFollowup=async(id,{initiator='owner'}={})=>{
     accountBinding.assertReady()
     const originalEpisodeAccount=trustedLifeAccountTag()
@@ -1386,6 +1392,18 @@ function reportMeta() {
   }
   let socialIntentEngine = null
   let lifeWillingness = null
+  // Every issued Life proof must be settled even when a local gate prevents
+  // the sender callback from running. This releases only the account admission
+  // claim; the per-event send transaction still freezes uncertain platform writes.
+  const lifeProofSettler=proof=>{
+    let settled=false
+    return (status='not-sent',receiptId='')=>{
+      if(settled||!proof||typeof proof.id!=='string')return {ok:true,skipped:true}
+      settled=true
+      try{return lifeWillingness?.receipt(proof,{status,receiptId})||{ok:false,reason:'life-willingness-unavailable'}}
+      catch{return {ok:false,reason:'life-willingness-receipt-error'}}
+    }
+  }
   let lifeVideoActionBridge = null
   let dailyDynamic = null
   // Successful PUBLIC replies only provide a new Life opportunity; they
@@ -3327,9 +3345,20 @@ function reportMeta() {
             ...((diagnostic.reviewRejected>0||diagnostic.reviewBlocked>0||diagnostic.reviewDeferred>0||diagnostic.blocked>0||diagnostic.proposed>0&&diagnostic.approved===0)&&commentDiagnostics?.lastReason?
               {reason:commentDiagnostics.lastReason,selectionLedgerCode:commentDiagnostics.selectionLedgerCode||''}:{})})
           trace.finish({state:'finished',action:'video_comment',result:diagnostic.code})
-          log('本轮原创主评论诊断：'+diagnostic.code+'；入选 '+(selected??'未知')+'，考虑 '+diagnostic.reviewed+
-            '，考虑回执拒绝 '+diagnostic.reviewRejected+(diagnostic.reviewRejected>0?'（'+String(commentDiagnostics?.lastReason||'unknown').slice(0,50)+(commentDiagnostics?.selectionLedgerCode?' / '+String(commentDiagnostics.selectionLedgerCode).slice(0,50):'')+'）':'')+'，模型提出 '+diagnostic.proposed+'，Life 批准 '+diagnostic.approved+'，技术阻断 '+diagnostic.blocked+'，平台核验 '+diagnostic.verified+
-            (diagnostic.proposed>0&&diagnostic.approved===0?'，未批准原因 '+String(commentDiagnostics?.lastReason||'本轮未保存具体原因').slice(0,65):''))
+          const reviewReason=(diagnostic.reviewRejected>0||diagnostic.reviewDeferred>0||
+            diagnostic.reviewBlocked>0||diagnostic.proposed>0&&diagnostic.approved===0)
+            ?String(commentDiagnostics?.lastReason||'本轮未保存具体原因').slice(0,65):''
+          const admissionStatus=lifeWillingness?.status()?.admission||null
+          const admissionReview=admissionStatus?.needsReview
+            ?'，Life 授权账本待离线复核（stage='+String(admissionStatus.stage||'unknown')+
+              '，used='+(admissionStatus.used===null?'unknown':String(admissionStatus.used))+')':''
+          log('本轮原创主评论诊断：'+diagnostic.code+'；入选 '+(selected??'未知')+
+            '，审阅尝试 '+diagnostic.reviewAttempted+'，已完成审阅 '+diagnostic.reviewed+
+            '，自主延期 '+diagnostic.reviewDeferred+'，审阅技术阻断 '+diagnostic.reviewBlocked+
+            '，审阅拒绝 '+diagnostic.reviewRejected+'，模型提出 '+diagnostic.proposed+
+            '，Life 批准 '+diagnostic.approved+'，发送技术阻断 '+diagnostic.blocked+
+            '，平台核验 '+diagnostic.verified+
+            (reviewReason?'，审阅原因 '+reviewReason:'')+admissionReview)
         }catch(e){log('原创评论诊断待补偿：'+String(e?.message||e).slice(0,100))}
         // Never queue a "completed round" life decision if the trusted
         // account ledger did NOT persist a verified normal-exit receipt.
@@ -4388,36 +4417,41 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     getVerifiedFacts:verifiedFactsFor,
     send: async ({ uid, text, eventId, socialOwnerProof, lifeWillingnessProof }) => {
-      refreshCfg()
-      const owner=socialSendOwner('dm',socialOwnerProof)
-      if(!owner.ok)return {ok:false,error:'私信决策所有权检查失败：'+owner.reason}
-      const intention=lifeWillingness?.verify(lifeWillingnessProof,'dm_reply',{uid:String(uid),targetKey:'',text:String(text)})
-      if(intention?.ok!==true)return {ok:false,no_retry:true,error:'Life 私信意愿已失效：'+(intention?.reason||'missing')}
-      return runLifeSocialOperation({channel:'dm',expectedScope:owner.scope,phase:'send',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
-      if (cfg.masterEnabled !== true) return {ok:false,error:'总开关已关闭，私信发送已暂停'}
-      return await cadenceSend({uid,channel:'dm'},async()=>{
-      const checked=socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
-      if(!checked.ok)return {ok:false,error:'私信发送前账号或归属已变化：'+checked.reason}
-      const guarded=await socialSendTransaction.execute({channel:'dm',
-        eventKey:/^[1-9]\d{0,18}$/.test(String(uid))&&typeof eventId==='string'&&eventId.length>2
-          ?`dm:${uid}:${eventId}`:'',expectedScope:owner.scope},async()=>{
-        const result=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)})
-        const receiptId=result?.success===true?extractBiliDmReceiptId(result):''
-        return receiptId?{ok:true,receiptId}:{ok:false}
-      })
-      if(guarded?.ok===true&&guarded?.receiptId){
-        lifeActionAttribution.verified({accountTag:owner.scope,channel:'dm',owner:'life',
-          sourceRef:'dm-conversation:'+String(uid),receiptId:'bili-dm:'+guarded.receiptId,
-          action:'dm_reply',kind:'social'})
-      }
-      lifeWillingness?.receipt(lifeWillingnessProof,{status:guarded?.ok===true?'verified':'uncertain',
-        receiptId:guarded?.ok===true&&guarded?.receiptId?'bili-dm:'+guarded.receiptId:''})
-      if(guarded?.ok!==true)return guarded
-      try{activityFeed.publish('social',{count:1})}catch{}
-      try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:'dm-reply:'+String(eventId),at:Date.now()})}catch(e){log('私信关系投影待补偿：'+String(e?.message||e))}
-      return guarded
-      });
-      })
+      const settleProof=lifeProofSettler(lifeWillingnessProof)
+      try{
+        refreshCfg()
+        const owner=socialSendOwner('dm',socialOwnerProof)
+        if(!owner.ok){settleProof('not-sent');return {ok:false,notAttempted:true,error:'私信决策所有权检查失败：'+owner.reason}}
+        const intention=lifeWillingness?.verify(lifeWillingnessProof,'dm_reply',{uid:String(uid),targetKey:'',text:String(text)})
+        if(intention?.ok!==true){settleProof('not-sent');return {ok:false,notAttempted:true,no_retry:true,error:'Life 私信意愿已失效：'+(intention?.reason||'missing')}}
+        const result=await runLifeSocialOperation({channel:'dm',expectedScope:owner.scope,phase:'send',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
+          if(cfg.masterEnabled!==true){settleProof('not-sent');return {ok:false,notAttempted:true,error:'总开关已关闭，私信发送已暂停'}}
+          return await cadenceSend({uid,channel:'dm'},async()=>{
+            const checked=socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
+            if(!checked.ok){settleProof('not-sent');return {ok:false,notAttempted:true,error:'私信发送前账号或归属已变化：'+checked.reason}}
+            const guarded=await socialSendTransaction.execute({channel:'dm',
+              eventKey:/^[1-9]\d{0,18}$/.test(String(uid))&&typeof eventId==='string'&&eventId.length>2
+                ?`dm:${uid}:${eventId}`:'',expectedScope:owner.scope},async()=>{
+              const result=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)})
+              const receiptId=result?.success===true?extractBiliDmReceiptId(result):''
+              return receiptId?{ok:true,receiptId}:{ok:false}
+            })
+            const receiptId=guarded?.ok===true&&guarded?.receiptId?'bili-dm:'+guarded.receiptId:''
+            settleProof(guarded?.ok===true?'verified':guarded?.notAttempted===true?'not-sent':'uncertain',receiptId)
+            if(guarded?.ok===true&&guarded?.receiptId){
+              lifeActionAttribution.verified({accountTag:owner.scope,channel:'dm',owner:'life',
+                sourceRef:'dm-conversation:'+String(uid),receiptId,
+                action:'dm_reply',kind:'social'})
+            }
+            if(guarded?.ok!==true)return guarded
+            try{activityFeed.publish('social',{count:1})}catch{}
+            try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:'dm-reply:'+String(eventId),at:Date.now()})}catch(e){log('私信关系投影待补偿：'+String(e?.message||e))}
+            return guarded
+          })
+        })
+        return result
+      }catch(e){settleProof('uncertain');throw e}
+      finally{settleProof('not-sent')}
     },
     onVerifiedReply:async({uid,messageId,nextAction,history,optedOut,trusted,approved:dmApproved})=>{
       refreshCfg()
@@ -4853,7 +4887,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         String(req.rpid||'')+':'+String(req.uid||'')
       const sealed=lifeWillingness?.adoptSocialDecision({kind:'comment_reply',uid:String(req.uid),
         sourceKey:commentTarget, targetKey:commentTarget,messages:lines})
-      if(sealed?.ok!==true)throw Error('Life 评论表达授权不可用：'+String(sealed?.reason||'missing'))
+      if(sealed?.ok!==true){
+        if(sealed?.reason==='life-choice-review-required'){
+          const admission=lifeWillingness?.status()?.admission||{}
+          log('Life 社交授权账本需要离线复核：stage='+String(admission.stage||'unknown')+
+            ' used='+(admission.used===null||admission.used===undefined?'unknown':String(admission.used))+
+            ' expired='+String(admission.needsReview===true)+' ageMs='+String(Number(admission.ageMs)||0))
+        }
+        throw Error('Life 评论表达授权不可用：'+String(sealed?.reason||'missing'))
+      }
       return attachSocialProof(normalized,owner,sealed.proof)
       })
       } finally {stopLiveComment()}
@@ -4868,87 +4910,97 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         ?`${source}:${req.rpid}:${req.uid||''}:${req.replyPurpose||'normal'}:${req.replyIndex??0}`:''
       // A human-verified resend of an unchanged local draft is a separate,
       // explicit operation. The old transient Life proof is intentionally not
-      // reconstructed. Only the local comment worker can produce these flags
-      // after checking its durable failed-send ledger and retry cap.
+      // reconstructed.
       const humanVerifiedRetry=req.manual===true&&req.manualVerifiedRetry===true&&
         req.reusedDraft===true&&req.replyPurpose==='manual'&&
         /^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))&&
         /^[1-9]\d{0,19}$/.test(String(req.rpid||''))&&
         /^[1-9]\d{0,18}$/.test(String(req.uid||''));
-      const owner=humanVerifiedRetry?routedSocialOwner('comment'):socialSendOwner('comment',req.socialOwnerProof)
-      if(!owner.ok)return {ok:false,notAttempted:true,no_retry:true,reason:owner.reason,
-        error:'评论决策所有权检查失败：'+owner.reason}
-      const intention=humanVerifiedRetry?{ok:true}:lifeWillingness?.verify(req.lifeWillingnessProof,'comment_reply',{uid:String(req.uid||''),targetKey:'comment:'+String(req.contentType==='dynamic'?'dynamic':'video')+':'+String(req.contentType==='dynamic'?req.dynamicId||'':req.bvid||'')+':'+String(req.rpid||'')+':'+String(req.uid||''),text:String(req.text||'')})
-      if(intention?.ok!==true)return {ok:false,notAttempted:true,no_retry:true,error:'Life 评论意愿已失效：'+(intention?.reason||'missing')}
-      return runLifeSocialOperation({channel:'comment',expectedScope:owner.scope,phase:'send',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
-      if(req.contentType==='dynamic'){
-        refreshCfg()
-        if(!(cfg.masterEnabled===true && (req.kind==='at'?cfg.commentAtEnabled===true:cfg.commentWatchReplies===true)))
-          return {ok:false,error:'动态评论回复未授权'}
-        // Actual publication / parent identity is checked against live B站 metadata
-        // again by bili_dynamic_reply_inbox. Local drafts are not an identity authority.
-        return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment',
-          verifiedReply:((intention?.ok===true&&!req.manual)||humanVerifiedRetry)&&
-            /^[1-9]\d{0,19}$/.test(String(req.rpid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))},async()=>{
-        const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
-        if(!checked.ok)return {ok:false,error:'动态评论发送前账号或归属已变化：'+checked.reason}
-        const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
-          expectedScope:owner.scope},async()=>{
-          const r=parseMaybeJson(await call('bili_dynamic_reply_inbox',{
-            dynamic_id:String(req.dynamicId||''),target_rpid:String(req.rpid||''),
-            root:String(req.root||''),text:String(req.text||'').slice(0,130),expected_uid:String(req.uid||''),
-            is_at:req.kind==='at'}))
-          return r?.ok===true&&String(r.dynamicId)===String(req.dynamicId)&&validCommentId(r.rpid)
-            ?{ok:true,rpid:String(r.rpid)}:{ok:false}
+      const settleProof=lifeProofSettler(humanVerifiedRetry?null:req.lifeWillingnessProof)
+      try{
+        const owner=humanVerifiedRetry?routedSocialOwner('comment'):socialSendOwner('comment',req.socialOwnerProof)
+        if(!owner.ok){settleProof('not-sent');return {ok:false,notAttempted:true,no_retry:true,reason:owner.reason,
+          error:'评论决策所有权检查失败：'+owner.reason}}
+        const intention=humanVerifiedRetry?{ok:true}:lifeWillingness?.verify(req.lifeWillingnessProof,'comment_reply',{
+          uid:String(req.uid||''),targetKey:'comment:'+String(req.contentType==='dynamic'?'dynamic':'video')+':'+
+            String(req.contentType==='dynamic'?req.dynamicId||'':req.bvid||'')+':'+String(req.rpid||'')+':'+String(req.uid||''),
+          text:String(req.text||'')})
+        if(intention?.ok!==true){settleProof('not-sent');return {ok:false,notAttempted:true,no_retry:true,
+          error:'Life 评论意愿已失效：'+(intention?.reason||'missing')}}
+        const result=await runLifeSocialOperation({channel:'comment',expectedScope:owner.scope,phase:'send',
+          requester:owner.owner,expectedGeneration:owner.generation},async()=>{
+          if(req.contentType==='dynamic'){
+            refreshCfg()
+            if(!(cfg.masterEnabled===true&&(req.kind==='at'?cfg.commentAtEnabled===true:cfg.commentWatchReplies===true))){
+              settleProof('not-sent');return {ok:false,notAttempted:true,error:'动态评论回复未授权'}
+            }
+            return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment',
+              verifiedReply:((intention?.ok===true&&!req.manual)||humanVerifiedRetry)&&
+                /^[1-9]\d{0,19}$/.test(String(req.rpid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))},async()=>{
+              const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,
+                expectedScope:owner.scope,expectedGeneration:owner.generation})
+              if(!checked.ok){settleProof('not-sent');return {ok:false,notAttempted:true,error:'动态评论发送前账号或归属已变化：'+checked.reason}}
+              const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
+                expectedScope:owner.scope},async()=>{
+                const r=parseMaybeJson(await call('bili_dynamic_reply_inbox',{
+                  dynamic_id:String(req.dynamicId||''),target_rpid:String(req.rpid||''),
+                  root:String(req.root||''),text:String(req.text||'').slice(0,130),
+                  expected_uid:String(req.uid||''),is_at:req.kind==='at'}))
+                return r?.ok===true&&String(r.dynamicId)===String(req.dynamicId)&&validCommentId(r.rpid)
+                  ?{ok:true,rpid:String(r.rpid)}:{ok:false}
+              })
+              const receiptId=ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))?'bili-comment:'+ack.rpid:''
+              settleProof(ack?.ok===true?'verified':ack?.notAttempted===true?'not-sent':'uncertain',receiptId)
+              if(ack?.ok!==true)return ack
+              try{await lifeMemoryCoordinator?.recordEvents([{kind:'comment',contentType:'dynamic',
+                dynamicId:String(req.dynamicId),reply:true,text:String(req.text).slice(0,130),
+                rpid:ack.rpid,recipientName:'',time:new Date().toISOString(),
+                key:`comment:dynamic:${req.dynamicId}:${ack.rpid}`}],{reflect:true})}
+              catch(e){log('动态回复记忆投影失败：'+String(e?.message||e).slice(0,110))}
+              return ack
+            })
+          }
+          // Backend video replies remain separately protected by the comment
+          // interaction switch. Every early exit settles the Life proof.
+          refreshCfg()
+          if(!(cfg.masterEnabled&&(req.manual===true||cfg.commentWatchReplies||cfg.commentAtEnabled))){
+            settleProof('not-sent');return {ok:false,notAttempted:true,error:'后台评论回复已关闭'}
+          }
+          return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment',
+            verifiedReply:((intention?.ok===true&&!req.manual)||humanVerifiedRetry)&&
+              /^[1-9]\d{0,19}$/.test(String(req.rpid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))},async()=>{
+            const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,
+              expectedScope:owner.scope,expectedGeneration:owner.generation})
+            if(!checked.ok){settleProof('not-sent');return {ok:false,notAttempted:true,error:'评论发送前账号或归属已变化：'+checked.reason}}
+            const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
+              expectedScope:owner.scope},async()=>{
+              const r=await call('bili_reply',{bvid:req.bvid||'',aid:Number(req.aid)||0,
+                rpid:Number(req.rpid),root:Number(req.root)||0,text:String(req.text).slice(0,130)})
+              return r?.success===true?{ok:true,rpid:String(r?.rpid_str||r?.rpid||'')}:{ok:false}
+            })
+            const receiptId=ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))?'bili-comment:'+ack.rpid:''
+            settleProof(ack?.ok===true?'verified':ack?.notAttempted===true?'not-sent':'uncertain',receiptId)
+            // Canonical platform confirmation first enters the SAME UID/thread Episode.
+            if(ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))&&
+              /^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))){
+              lifeActionAttribution.verified({accountTag:owner.scope,channel:'comment',owner:'life',
+                sourceRef:'comment-thread:'+String(req.bvid||'')+':'+String(req.uid),
+                receiptId,action:'comment_reply',kind:'social',publicBvid:String(req.bvid)})
+            }
+            if(ack?.ok!==true)return ack
+            try{const role=socialPolicyGate.actor(req.uid).role
+              const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role,
+                actorUid:req.uid,bvid:req.bvid,rpid:req.rpid,text:req.text,
+                eventKey:`${req.uid}:${req.bvid}:${req.rpid}:reply`,at:Date.now()})
+              if(sync?.ok===false)log('评论回复投影待补偿：'+String(sync.lastError||sync.reason||''))
+            }catch(e){log('评论回复投影记录失败：'+String(e?.message||e).slice(0,110))}
+            wakeDynamicAfterConfirmedComment()
+            return ack
+          })
         })
-        lifeWillingness?.receipt(req.lifeWillingnessProof,{status:ack?.ok===true?'verified':'uncertain',
-          receiptId:ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))?'bili-comment:'+ack.rpid:''})
-        if(ack?.ok!==true)return ack
-        try{await lifeMemoryCoordinator?.recordEvents([{kind:'comment',contentType:'dynamic',
-          dynamicId:String(req.dynamicId),reply:true,text:String(req.text).slice(0,130),
-          rpid:ack.rpid,recipientName:'',time:new Date().toISOString(),
-          key:`comment:dynamic:${req.dynamicId}:${ack.rpid}`}],{reflect:true})}
-        catch(e){log('动态回复记忆投影失败：'+String(e?.message||e).slice(0,110))}
-        return ack
-        });
-      }
-      // 后台独立发送，受评论互动专用开关保护，不使用 model 的 force 绕过公开评论安全闸。
-      refreshCfg()
-      if (!(cfg.masterEnabled && (req.manual===true || cfg.commentWatchReplies || cfg.commentAtEnabled))) return {ok:false,error:'后台评论回复已关闭'}
-      return await cadenceSend({uid:req.uid,channel:req.kind==='at'?'at':'comment',
-          verifiedReply:((intention?.ok===true&&!req.manual)||humanVerifiedRetry)&&
-            /^[1-9]\d{0,19}$/.test(String(req.rpid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))},async()=>{
-      const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
-      if(!checked.ok)return {ok:false,error:'评论发送前账号或归属已变化：'+checked.reason}
-      const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
-        expectedScope:owner.scope},async()=>{
-        const r=await call('bili_reply',{bvid:req.bvid||'',aid:Number(req.aid)||0,
-          rpid:Number(req.rpid),root:Number(req.root)||0,text:String(req.text).slice(0,130)})
-        return r?.success===true?{ok:true,rpid:String(r?.rpid_str||r?.rpid||'')}:{ok:false}
-      })
-      // Canonical platform confirmation first enters the SAME UID/thread Episode;
-      // the Life willingness notification must not preempt attribution with a
-      // second hashed source using the identical platform receipt.
-      if(ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))&&
-          /^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))){
-        lifeActionAttribution.verified({accountTag:owner.scope,channel:'comment',owner:'life',
-          sourceRef:'comment-thread:'+String(req.bvid||'')+':'+String(req.uid),
-          receiptId:'bili-comment:'+String(ack.rpid),action:'comment_reply',kind:'social',publicBvid:String(req.bvid)})
-      }
-      lifeWillingness?.receipt(req.lifeWillingnessProof,{status:ack?.ok===true?'verified':'uncertain',
-          receiptId:ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))?'bili-comment:'+ack.rpid:''})
-      if(ack?.ok!==true)return ack
-      try{const role=socialPolicyGate.actor(req.uid).role
-        const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role,actorUid:req.uid,bvid:req.bvid,rpid:req.rpid,text:req.text,eventKey:`${req.uid}:${req.bvid}:${req.rpid}:reply`,at:Date.now()})
-        if(sync?.ok===false)log('评论回复投影待补偿：'+String(sync.lastError||sync.reason||''))
-      }catch(e){log('评论回复投影记录失败：'+String(e?.message||e).slice(0,110))}
-      // Give the original public-memory coordinator time to project the
-      // confirmed reply. Life must still independently choose and verify any
-      // dynamic; the Python comment tool is NEVER allowed to auto-sync.
-      wakeDynamicAfterConfirmedComment()
-      return ack
-      });
-      })
+        return result
+      }catch(e){settleProof('uncertain');throw e}
+      finally{settleProof('not-sent')}
     },
     logger: {warn: (msg) => log('评论互动警告：'+msg),error:(msg)=>log('评论互动错误：'+msg)},
   })
@@ -5494,7 +5546,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getAccountTag:trustedLifeAccountTag,
     enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&firstStart.isReady()&&!accountBinding.status().blocked},
     choose:params=>lifeWillingness.decide(params),
-    verify:(proof,kind)=>lifeWillingness.verify(proof,kind),
+    verify:(proof,kind,payload,options)=>lifeWillingness.verify(proof,kind,payload,options),
     receipt:(proof,result)=>lifeWillingness.receipt(proof,result),
     onVerifiedAction:({kind,target,scope,sourceId,at})=>{
       if(scope!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
@@ -5984,36 +6036,48 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return decideLifeVideoShare({uid,text,bvid,itemId,scope:route.scope,generation:route.generation})
     },
     sendMessage:async({uid,text,bvid,accountTag,eventId,automatic,lifeWillingnessProof})=>{
-      if(!/^[a-f0-9]{16}$/.test(String(accountTag||''))||accountTag!==trustedLifeAccountTag()||accountBinding.status().blocked)
-        return {ok:false,no_retry:true,error:'主动推荐执行前账号身份已发生变化'}
-      // Bind the link to the CURRENT account's real picked BV, not a model URL.
-      const picked=typeof bvid==='string'&&/^BV[0-9A-Za-z]{10}$/.test(bvid)&&
-        parseSeenTable().some(x=>x.picked===true&&x.bvid===bvid)
-      const shareFact=picked?lifeFactFromReceipt({type:'video_selected',operation:'public-video-selection',ok:true,
-        sourceId:'current-share:'+bvid,at:Date.now(),bvid,scope:'public',channel:'dm'}):null
-      const factCheck=outboundFactCheck(text,{uid,channel:'dm',extraEvents:shareFact?[shareFact]:[]});
-      if(!factCheck.ok)return {ok:false,error:'主动分享事实未经核实：'+factCheck.reason};
-      refreshCfg();if(cfg.masterEnabled!==true)return {ok:false,error:'总开关关闭'}
-      if(automatic&&lifeWillingness?.verify(lifeWillingnessProof,'share_video')?.ok!==true)
-        return {ok:false,no_retry:true,error:'Life 视频分享意愿已过期，未发送'}
-      // A voluntary video-share draft is not permission to replay a DM. The
-      // source ID stays stable across restarts and the shared opaque send ledger
-      // locks BEFORE entering B站. Missing platform receipts remain uncertain.
-      const scope=trustedLifeAccountTag()
-      if(!/^[a-f0-9]{16}$/.test(String(scope||''))||!/^[1-9]\d{0,18}$/.test(String(uid||''))||
-        typeof eventId!=='string'||!/^social-intent:[a-zA-Z0-9:_-]{3,160}$/.test(eventId))
-        return {ok:false,no_retry:true,error:'主动视频私信缺少可信账号或稳定来源，未发送'}
-      const sent=await lifeSocialWrite('dm',()=>socialSendTransaction.execute({
-        channel:'dm',eventKey:`video-recommendation:${uid}:${eventId}`,expectedScope:scope
-      },async()=>{
-        const response=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,230)})
-        const receiptId=response?.success===true?extractBiliDmReceiptId(response):''
-        return receiptId?{ok:true,receiptId}:{ok:false}
-      }))
-      if(automatic)lifeWillingness?.receipt(lifeWillingnessProof,{status:sent?.ok===true?'verified':'uncertain'})
-      if(sent?.ok===true){try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:eventId,at:Date.now()})}catch(e){log('主动私信投影待补偿：'+String(e?.message||e))}return {ok:true}}
-      return {ok:false,no_retry:true,error:String(sent?.error||'主动视频私信结果不确定，不允许重试')}
-    },logger:{warn:m=>log('社交意图：'+m)}
+      const settleProof=lifeProofSettler(automatic?lifeWillingnessProof:null)
+      try{
+        if(!/^[a-f0-9]{16}$/.test(String(accountTag||''))||accountTag!==trustedLifeAccountTag()||accountBinding.status().blocked){
+          settleProof('not-sent');return {ok:false,no_retry:true,error:'主动推荐执行前账号身份已发生变化'}
+        }
+        // Bind the link to the CURRENT account's real picked BV, not a model URL.
+        const picked=typeof bvid==='string'&&/^BV[0-9A-Za-z]{10}$/.test(bvid)&&
+          parseSeenTable().some(x=>x.picked===true&&x.bvid===bvid)
+        const shareFact=picked?lifeFactFromReceipt({type:'video_selected',operation:'public-video-selection',ok:true,
+          sourceId:'current-share:'+bvid,at:Date.now(),bvid,scope:'public',channel:'dm'}):null
+        const factCheck=outboundFactCheck(text,{uid,channel:'dm',extraEvents:shareFact?[shareFact]:[]})
+        if(!factCheck.ok){settleProof('not-sent');return {ok:false,error:'主动分享事实未经核实：'+factCheck.reason}}
+        refreshCfg()
+        if(cfg.masterEnabled!==true){settleProof('not-sent');return {ok:false,notAttempted:true,error:'总开关关闭'}}
+        if(automatic&&lifeWillingness?.verify(lifeWillingnessProof,'share_video')?.ok!==true){
+          settleProof('not-sent');return {ok:false,no_retry:true,error:'Life 视频分享意愿已过期，未发送'}
+        }
+        const scope=trustedLifeAccountTag()
+        if(!/^[a-f0-9]{16}$/.test(String(scope||''))||!/^[1-9]\d{0,18}$/.test(String(uid||''))||
+          typeof eventId!=='string'||!/^social-intent:[a-zA-Z0-9:_-]{3,160}$/.test(eventId)){
+          settleProof('not-sent');return {ok:false,no_retry:true,error:'主动视频私信缺少可信账号或稳定来源，未发送'}
+        }
+        const sent=await lifeSocialWrite('dm',()=>socialSendTransaction.execute({
+          channel:'dm',eventKey:`video-recommendation:${uid}:${eventId}`,expectedScope:scope
+        },async()=>{
+          const response=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,230)})
+          const receiptId=response?.success===true?extractBiliDmReceiptId(response):''
+          return receiptId?{ok:true,receiptId}:{ok:false}
+        }))
+        const receiptId=sent?.ok===true&&sent?.receiptId?'bili-dm:'+sent.receiptId:''
+        settleProof(sent?.ok===true?'verified':sent?.notAttempted===true?'not-sent':'uncertain',receiptId)
+        if(sent?.ok===true){
+          try{await socialInteractionCoordinator?.record({type:'outgoing-dm',source:'dm',
+            role:socialPolicyGate.actor(uid).role,actorUid:uid,eventKey:eventId,at:Date.now()})}
+          catch(e){log('主动私信投影待补偿：'+String(e?.message||e))}
+          return {ok:true}
+        }
+        return {ok:false,no_retry:true,error:String(sent?.error||'主动视频私信结果不确定，不允许重试')}
+      }catch(e){settleProof('uncertain');throw e}
+      finally{settleProof('not-sent')}
+    },
+logger:{warn:m=>log('社交意图：'+m)}
   })
 
   mainSessionBridge = createMainSessionBridge({
@@ -7864,10 +7928,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         let recentRoundComments=[]
         try{if(trustedLifeAccountTag())recentRoundComments=(lifeAgentEvents?.status()?.recentVideoRounds||[]).slice(0,8)
           .map(({startedAt,state,commentGate,commentDiagnostics})=>({startedAt,state,commentGate,commentDiagnostics}))}catch{}
+        let willingnessAdmission=null
+        try{willingnessAdmission=lifeWillingness?.status()?.admission||null}catch{}
         const commentReadiness={...videoCommentReadiness(cfg),day:today,recentRounds:recentRoundComments,
           observedTop:todayVisible.filter(row=>row.kind==='top').length,
           observedReplies:todayVisible.filter(row=>row.kind==='reply').length,
-          sampleLimit:200,sampleTruncated:comments.length>=200,
+          sampleLimit:200,sampleTruncated:comments.length>=200,willingnessAdmission,
           evidence:'本地公开评论账本最近 200 条；顶层原创评论与回复他人分开统计。没有记录不能证明平台上绝对没有发送。'}
         const relationships=listFriendRelationships(stateDir,cfg.friendDirectory)
         const emotion=emotionalState.snapshot()

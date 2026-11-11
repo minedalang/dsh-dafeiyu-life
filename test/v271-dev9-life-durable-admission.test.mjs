@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {execFileSync} from 'node:child_process'
 import {createLifeWillingness} from '../lib/life-willingness.mjs'
-import {createLifeWillingnessAdmission,recoverLifeWillingnessOffline} from '../lib/life-willingness-admission.mjs'
+import {createLifeWillingnessAdmission,inspectLifeWillingnessAdmissionOffline,recoverLifeWillingnessOffline} from '../lib/life-willingness-admission.mjs'
 const ACCOUNT='a'.repeat(16),OTHER='b'.repeat(16)
 const offer=(id='observation')=>({sourceKey:'verified-public-data:1',scene:'main',candidates:[{id,kind:'reflect',label:'反思已记录的经历'}]})
 const build=(dir,{scope=ACCOUNT,clock=Date.now,invoke=async()=>JSON.stringify({action:'act',candidateId:'observation',reason:'想要反思'})}={})=>createLifeWillingness({
@@ -79,7 +79,7 @@ test('存储账本格式损坏时拒绝 Life 行动，不向模型发送任何�
   assert.equal(result.ok,false);assert.equal(result.reason,'life-admission-storage-unavailable');assert.equal(calls,0)
 })
 
-test('进程死亡后仅过期的考虑阶段可安全自动回收；已批准阶段永不自动释放',async t=>{
+test('进程死亡后的过期考虑可回收；过期且未使用的批准可回收，已使用批准仍需复核',async t=>{
   const dir=temp(t)
   const source=`import {createLifeWillingnessAdmission} from ${JSON.stringify(new URL('../lib/life-willingness-admission.mjs',import.meta.url).href)};`+
     `const row=createLifeWillingnessAdmission({dataDir:${JSON.stringify(dir)}});if(!row.acquire(${JSON.stringify(ACCOUNT)}).ok)process.exit(2);`
@@ -89,6 +89,47 @@ test('进程死亡后仅过期的考虑阶段可安全自动回收；已批准�
   const acquired=ledger.acquire(ACCOUNT)
   assert.equal(acquired.ok,true);assert.equal(acquired.recoveredConsideration,true)
   assert.equal(ledger.approve(ACCOUNT,acquired.token).ok,true)
+  const unusedRecovery=ledger.acquire(ACCOUNT)
+  assert.equal(unusedRecovery.reason,'life-choice-in-progress')
   const later=createLifeWillingnessAdmission({dataDir:dir,now:()=>clock+11*60_000})
-  assert.equal(later.acquire(ACCOUNT).reason,'life-choice-review-required')
+  const recovered=later.acquire(ACCOUNT)
+  assert.equal(recovered.ok,true);assert.equal(recovered.recoveredExpiredUnusedApproval,true)
+  assert.equal(later.approve(ACCOUNT,recovered.token).ok,true)
+  assert.equal(later.markUsed(ACCOUNT,recovered.token).ok,true)
+  const expiredUsed=createLifeWillingnessAdmission({dataDir:dir,now:()=>clock+22*60_000})
+  assert.equal(expiredUsed.acquire(ACCOUNT).reason,'life-choice-review-required')
+})
+
+test('社交表达授权过期但未消费时自动释放持久准入；已消费则保留复核保护',t=>{
+  const dir=temp(t);let at=Date.now()
+  const life=build(dir,{clock:()=>at})
+  const base={kind:'comment_reply',uid:'382440088',targetKey:'dynamic:1267086296612864004:319798167777:382440088'}
+  const first=life.adoptSocialDecision({...base,sourceKey:'comment:dynamic:first',messages:['第一条回复']})
+  assert.equal(first.ok,true,first.reason)
+  at+=11*60_000
+  const next=life.adoptSocialDecision({...base,sourceKey:'comment:dynamic:second',messages:['第二条回复']})
+  assert.equal(next.ok,true,next.reason)
+  assert.equal(life.receipt(next.proof,{status:'not-sent'}).ok,true)
+
+  const used=life.adoptSocialDecision({...base,sourceKey:'comment:dynamic:used',messages:['已核验回复']})
+  assert.equal(used.ok,true,used.reason)
+  assert.equal(life.verify(used.proof,'comment_reply',{uid:base.uid,targetKey:base.targetKey,text:'已核验回复'}).ok,true)
+  at+=11*60_000
+  const blocked=life.adoptSocialDecision({...base,sourceKey:'comment:dynamic:after-used',messages:['不能自动复用']})
+  assert.equal(blocked.ok,false)
+  assert.equal(blocked.reason,'life-choice-review-required')
+})
+
+test('离线批量恢复要求停机和平台事务核对，检查结果不泄露 token 或账号标签',async t=>{
+  const dir=temp(t)
+  const source=`import {createLifeWillingnessAdmission} from ${JSON.stringify(new URL('../lib/life-willingness-admission.mjs',import.meta.url).href)};`+
+    `const row=createLifeWillingnessAdmission({dataDir:${JSON.stringify(dir)}});const c=row.acquire(${JSON.stringify(ACCOUNT)});if(!c.ok||!row.approve(${JSON.stringify(ACCOUNT)},c.token).ok)process.exit(2);`
+  execFileSync(process.execPath,['--input-type=module','-e',source],{timeout:8000})
+  const inspected=inspectLifeWillingnessAdmissionOffline({dataDir:dir})
+  assert.equal(inspected.ok,true);assert.equal(inspected.claims.length,1)
+  assert.equal(JSON.stringify(inspected).includes(ACCOUNT),false)
+  assert.equal(JSON.stringify(inspected).includes('token'),false)
+  assert.equal(recoverLifeWillingnessOffline({dataDir:dir,allScopes:true}).ok,false)
+  const recovered=recoverLifeWillingnessOffline({dataDir:dir,allScopes:true,confirmedAllStopped:true,platformTransactionReviewed:true})
+  assert.equal(recovered.ok,true);assert.equal(recovered.removedCount,1)
 })

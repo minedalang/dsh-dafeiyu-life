@@ -56,6 +56,27 @@ test('升级不自动清除历史 stranger-budget seen，确保不突然对旧�
  await x.poll();const db=await localState(dir,'comment-interact-state.json');db.seen['comment:200003']='stranger-budget';await writeFile(join(dir,'comment-interact-state.json'),JSON.stringify(db));
  items.push(notice(200003));await x.poll();assert.equal(calls,0);assert.equal(x.status().legacyStrangerBudgetCount,1);
 }));
+
+test('Life 授权复核/表达校验错误与模型生成失败分开诊断',()=>workspace(async dir=>{
+ let items=[],calls=0
+ const x=makeComment(dir,{items,now:()=>T,generateReply:async()=>{
+   calls++
+   if(calls===1)throw Error('Life 评论表达授权不可用：life-choice-review-required')
+   throw Error('Life 评论表达授权不可用：life-social-expression-invalid')
+ }})
+ await x.poll()
+ items.push(notice(200007),notice(200008));await x.poll()
+ const rows=x.status().replyDiagnostics
+ const review=rows.find(r=>r.id==='comment:200007')
+ const expression=rows.find(r=>r.id==='comment:200008')
+ assert.equal(review.reason,'life_authorization_review_required')
+ assert.equal(expression.reason,'life_expression_validation_failed')
+ assert.match(review.errorDetail,/life-choice-review-required/)
+ assert.ok(review.preflightRetryAt>=T+15*60_000)
+ assert.equal(review.generatedReply,'')
+ assert.equal(expression.generatedReply,'')
+ assert.equal(calls,2)
+}));
 const dmMessage=(t)=>({senderUid:'200',messageId:'source-message-one',timestampMs:t,text:'有什么新鲜事吗？',incoming:true});
 test('私信延期遇模型429不等于 Life 沉默，保留同一个续行任务有界重试',()=>workspace(async dir=>{
  let t=T,items=[],calls=0,sends=0;

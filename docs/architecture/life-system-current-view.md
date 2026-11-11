@@ -5,7 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.70 · 动态核验恢复与可见 Life 额度；视频工具漏斗）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.71 · Life 授权事务恢复；继承动态核验与可见 Life 额度）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -251,15 +251,23 @@ dmFollow -->|已核实后回执| receipts
 %% dev.59: DM/Comment keeps one model call with Life Voice, then seals exact expression without AI.
 lifeOwnsSpeech["交互批处理中的 Life Voice｜单次模型选择回复/沉默/延期及最终表达"]
 professionalDraft["DM / Comment 专业感知｜读取真实事件和场景上下文，不替 Life 决定沉默"]
-socialProofSeal["LifeWillingness｜零模型调用绑定账号/收件人/线程/正文"]
+socialProofSeal["LifeWillingness｜绑定账号/收件人/线程/正文；未消费过期可释放，已消费/旧未知需离线复核"]
+lifeProofExpiry["过期未消费 proof｜先 settle(not-sent)，再清理内存记录"]
+lifeAdmissionUsed["持久 used 标记｜最终执行校验前写入"]
+lifeProofSettlement["发送路径结算｜提前退出 not-sent，异常 uncertain，平台回执 verified"]
 shadowRetired["历史 social-shadow 样本｜active 模式不再调用第二模型；只读留痕"]
 journeyGroups["鱼的记忆｜以同轮 video-round / Episode 精确回执分组，独立事件不硬连"]
-professionalDraft --> lifeOwnsSpeech --> socialProofSeal --> socialWrite
+professionalDraft --> lifeOwnsSpeech --> socialProofSeal --> lifeAdmissionUsed --> socialWrite
+lifeProofExpiry -.->|只释放明确未消费的过期许可| socialProofSeal
+socialWrite --> lifeProofSettlement --> receipts
 shadowRetired -.->|不参与发送| journeyGroups
 receipts -->|只有来源可证实时关联| journeyGroups
 %% @code lifeOwnsSpeech | lib/interaction-batch.mjs | 你是大肥鱼的 Life 意愿与表达主体
 %% @code professionalDraft | index.js | const generated=await interactionBatcher.generate({kind:'dm'
 %% @code socialProofSeal | lib/life-willingness.mjs | function adoptSocialDecision
+%% @code lifeProofExpiry | lib/life-willingness.mjs | const forgetOld=()=>
+%% @code lifeAdmissionUsed | lib/life-willingness-admission.mjs | function markUsed(scope,token)
+%% @code lifeProofSettlement | index.js | const lifeProofSettler=proof=>
 %% @code shadowRetired | lib/autonomous-planner.mjs | outcome.result='social-signal-considered'
 %% @code journeyGroups | lib/life-timeline.mjs | export function groupLifeTimeline
 
@@ -284,7 +292,7 @@ modelHealthUi -.->|只读本地调用记录| modelJournal
 ## 二、八类候选细目
 
 ```mermaid
-%% dev.70：动态评论技术核验可恢复；隐藏 30 秒、纯探索 6 小时和模型总额上限退役；真正评论仍由 Life 精确授权和原平台回执。
+%% dev.71：继承 dev.70 动态核验恢复与可见 Life 额度；Life 授权证明消费/结算按 dev.71 账本契约执行。
 %% 生活候选细目字典：这是当前项目的真实 schema 类型/选择约束，不是泛化的 AI 心理推演。
 flowchart LR
   subgraph inputs["有事实来源，才能构成候选"]
