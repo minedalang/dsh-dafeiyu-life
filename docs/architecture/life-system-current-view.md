@@ -354,6 +354,9 @@ flowchart LR
 %% @code eventRefs | lib/life-agent-events.mjs | export const lifeEventDebugRef
 %% @code planner | lib/autonomous-planner.mjs | export function validateOfferedLifeAction
 
+%% dev.68：独立评论 Agent 不再用隐藏的陌生人模型考虑次数挡住 Life 自主交流；
+%% 这里的匿名社交提醒仍不是回复发送许可，真实评论回执和外发额度由原执行器核验。
+
 %% dev.33 maintenance: selection-curiosity from account-tagged verified selected BV only;
 %% no free-form title search, no automatic outbound approval.
 

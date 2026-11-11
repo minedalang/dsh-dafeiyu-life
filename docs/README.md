@@ -1,6 +1,6 @@
 # 文档导航
 
-**当前 dev.67 增量：** [生活日记与神经回忆场显示修复](architecture/2.7.1-dev67-life-diary-neural-visuals.md)。前版 [视频工具漏斗与独立社交安全诊断](architecture/2.7.1-dev66-video-funnel-social-integrity.md) 继续保留；历史 dev.62 时间线修复仍见 [连续经历、真实入选记账时间与回复边界](architecture/2.7.1-dev62-life-timeline-provenance.md)。
+**当前 dev.68 增量：** [移除陌生人隐藏考虑额度与无行动技术诊断](architecture/2.7.1-dev68-social-choice-and-idle-diagnostics.md)。前版 [生活日记与神经回忆场显示修复](architecture/2.7.1-dev67-life-diary-neural-visuals.md) 继续保留；历史 dev.62 时间线修复仍见 [连续经历、真实入选记账时间与回复边界](architecture/2.7.1-dev62-life-timeline-provenance.md)。
 
 **dev.61 主评论修复：** [主评论、选片证据、视频失败与章程迁移](architecture/2.7.1-dev61-life-state-comment-repair.md)。
 

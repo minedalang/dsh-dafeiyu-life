@@ -1,4 +1,4 @@
-# 当前生产接线事实 · 2.7.1-dev.62（开发预览，未发布）
+# 当前开发接线事实 · 2.7.1-dev.68（开发预览，未发布）
 
 > **唯一当前入口。** 其他 dev.1–dev.60 文档仅表示各版本当时的设计/变更；不能把当时的“当前”当成 dev.60 的现行事实。2.7.1 RC/Windows/B站 72h 尚未验收。
 
@@ -17,9 +17,9 @@
 ## dev.60 社交错误恢复边界（非另一个 AI 决策器）
 
 - `lib/autonomous-planner.mjs` 的社交快速考虑只有匿名 `consider_social` / `skip`，选择 `consider_social` 仅更新 Life 关注账本，不构成 DM/评论回复收据，也不保证该事件再次触发 Life。真正的收件箱仍由 `lib/interaction-scheduler.mjs` 驱动 `lib/dm-autoreply.mjs`、`lib/comment-interact.mjs`，其独立开关、B站读取预算及网络退避仍有效。
-- 评论陌生人 24h 上限是**有效 Life 意愿模型返回**次数，模型异常不计数；满额新通知记录 `preflightDefers` 并显示 `stranger_budget_deferred`，不会被写入终态 seen。只在下一次轮询仍能获取真实、近 24h 通知且重新核验且权限允许时才可能再次考虑；并不保证一定会回复。既有历史 `seen=stranger-budget` **不迁移或自动恢复**。
+- **dev.68 已移除旧版“每位陌生人 24 小时只考虑两次”的隐藏模型调用限制**；收件仍由独立评论轮询器核验，Life 模型自由选择 `reply/skip/defer`。用户设置中的全局公开发送额度、单人已发送条数上限、授权、平台冷却、未知结果冻结和防重复校验均不变。旧版 `strangerAttempts` 仅供识别旧延期，不再新增计数；只有时间戳能精确证明属于旧限制、且原通知仍在 24 小时窗口内的**未结算**延期才解除。既有历史 `seen=stranger-budget` 不自动补发，无法证明来源的旧延期不被清理。
 - `social-continuity/intentions.json` 按账号记录续聊：私信已读但延期的事件需通过此账本恢复，模型 429 不能 `settle('skipped')`。模型异常以原有 `retryPreflight` 最多允许两次有界延期，再以 `failed` 显示需要诊断；Life 明确沉默仍记 `skipped`，平台发送结果未知仍记 `uncertain` 并禁止重发。
-- 这些改动仅修复技术恢复状态和归因，不增加成功路径的新模型审核次数、不更改用户配置或已有写权限。现场 archive 只用于离线分析；没有将账号 ZIP 或私信原文带入发布文件。
+- 技术故障退避不被重新读取的 `received` 状态覆盖，诊断显示实际本地延期时间；不增加额外模型审核次数、不更改用户配置或已有写权限。现场 archive 只用于离线分析；没有将账号 ZIP 或私信原文带入发布文件。
 
 ## 真实一条社交回复的边界
 
