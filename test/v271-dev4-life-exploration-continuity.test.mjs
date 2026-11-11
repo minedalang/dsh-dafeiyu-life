@@ -107,7 +107,7 @@ test('failed cue journal has a distinct code after read result and does not over
   assert.equal(x.events.status().needsReview,0,'read-only failure is not an unknown platform write')
 }))
 
-test('three failed independent cue reads pause only its exploration; changing account hides failures',()=>home(async dir=>{
+test('three failed independent cue reads cool down without permanently pausing exploration; account remains isolated',()=>home(async dir=>{
   const x=harness(dir,{failedRead:true});const id=x.life.explorationCues()[0].id
   for(const [i,delay] of [0,15*60_000,60*60_000].entries()){
     x.clock.at+=delay
@@ -115,7 +115,9 @@ test('three failed independent cue reads pause only its exploration; changing ac
     assert.equal(row.ok,true);assert.equal(row.failures,i+1)
   }
   assert.equal(x.life.explorationCues().length,0)
-  assert.equal(x.life.status().explorationReadFailures[0].paused,true)
+  assert.equal(x.life.status().explorationReadFailures[0].paused,false)
+  x.clock.at+=6*60*60_000
+  assert.ok(x.life.explorationCues().some(c=>c.id===id))
   x.setAccount(B)
   assert.deepEqual(x.life.status().explorationReadFailures,[])
   x.setAccount(A)

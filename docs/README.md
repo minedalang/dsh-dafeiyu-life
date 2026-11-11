@@ -1,6 +1,6 @@
 # 文档导航
 
-**当前 dev.68 增量：** [移除陌生人隐藏考虑额度与无行动技术诊断](architecture/2.7.1-dev68-social-choice-and-idle-diagnostics.md)。前版 [生活日记与神经回忆场显示修复](architecture/2.7.1-dev67-life-diary-neural-visuals.md) 继续保留；历史 dev.62 时间线修复仍见 [连续经历、真实入选记账时间与回复边界](architecture/2.7.1-dev62-life-timeline-provenance.md)。
+**当前 dev.69 增量：** [普通评论表达授权修复、后台自主预算显性化和视频评论诊断](architecture/2.7.1-dev69-social-expression-and-free-quotas.md)。前版 [陌生人隐藏考虑额度退役](architecture/2.7.1-dev68-social-choice-and-idle-diagnostics.md) 与 [生活日记和神经记忆点阵修复](architecture/2.7.1-dev67-life-diary-neural-visuals.md) 继续保留。
 
 **dev.61 主评论修复：** [主评论、选片证据、视频失败与章程迁移](architecture/2.7.1-dev61-life-state-comment-repair.md)。
 

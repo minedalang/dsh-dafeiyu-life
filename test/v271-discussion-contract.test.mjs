@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 const read = f => readFileSync(new URL('../' + f, import.meta.url),'utf8')
 
-test('video Agent opens bounded independent read-only discussion tools, never widens writing gate',()=>{
+test('video Agent can freely read verified discussion threads under shared pacing, never widens writing gate',()=>{
  const src=read('index.js')
  const py=read('vendor/bilibili-mcp/mcp_server.py')
  assert.match(src,/const list = \['bili_search', 'bili_subtitle', 'bili_comments', 'bili_comment_thread', 'bili_discussion_note'/)
@@ -13,8 +13,8 @@ test('video Agent opens bounded independent read-only discussion tools, never wi
  assert.match(src,/仍按原有启用开关、发送额度、事实证据与回执门禁/)
  assert.match(py,/async def bili_discussion_note\(/)
  assert.match(py,/async def bili_comment_thread\(/)
- assert.match(py,/_DISCUSSION_MAX_THREADS = 2/)
- assert.match(py,/_DISCUSSION_MAX_VIDEOS = 6/)
+ assert.doesNotMatch(py,/_DISCUSSION_MAX_THREADS\s*=/)
+ assert.doesNotMatch(py,/_DISCUSSION_MAX_VIDEOS\s*=/)
  assert.match(py,/str\(root\) not in _DISCUSSION_ROOTS\.get\(bvid, set\(\)\)/)
  assert.match(py,/externally_verified': False/)
  assert.doesNotMatch(src,/bili_discussion_note.*(?:ownerTodos\.add|bili_send_message)/)

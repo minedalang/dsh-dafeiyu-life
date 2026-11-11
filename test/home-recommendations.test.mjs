@@ -35,5 +35,5 @@ test('AI vision and mention history guardrails still present',()=>{
  const ui=src('lib/management-console.js'),server=src('vendor/bilibili-mcp/mcp_server.py')
  assert.match(ui,/mention-diagnostics/)
  assert.match(ui,/slice\(0,12\)/)
- assert.match(server,/_VISION_PER_RUN_LIMIT = 2/)
+ assert.doesNotMatch(server,/_VISION_PER_RUN_LIMIT\s*=/)
 })

@@ -63,7 +63,7 @@ test('failed metadata is a diagnosed technical failure, not a fish defer or clai
   assert.equal(system.store.recentReads()[0].title,'平台核实标题')
 }))
 
-test('three consecutive failed opportunity reads pause it, without repeated model calls or false memory',()=>home(async dir=>{
+test('three consecutive failed opportunity reads cool down and recover without false memory',()=>home(async dir=>{
   const clock={value:T},system=create(dir,clock)
   const id=system.store.list()[0].id
   const p=system.planner(async()=>({ok:false,code:'metadata-rate-limited'}),()=>({action:'inspect_opportunity',id}))
@@ -80,8 +80,24 @@ test('three consecutive failed opportunity reads pause it, without repeated mode
   assert.equal(system.store.recentReads().length,0)
   clock.value+=24*60*60_000
   const calls=system.modelCalls
-  assert.equal((await p.tick({force:true,opportunitiesOnly:true})).skipped,'nothing-to-do')
-  assert.equal(system.modelCalls,calls)
+  assert.equal((await p.tick({force:true,opportunitiesOnly:true})).result,'metadata-read-failed')
+  assert.equal(system.modelCalls,calls+1)
+}))
+
+test('旧版三次读取失败写入的 paused 意愿只恢复为可冷却状态，不改写原账本或已核验经历',()=>home(dir=>{
+ const clock={value:T+7*60*60_000},system=create(dir,clock),folder=join(dir,'life-opportunities')
+ mkdirSync(folder)
+ const id='a'.repeat(24),old={version:1,decisions:[],cueFailures:[],intentions:[{
+   id,source:'interest-milestone',sourceId:'b'.repeat(24),topic:'游戏音乐',status:'paused',
+   metadataFailures:3,metadataFailureCode:'metadata-rate-limited',nextAt:T+6*60*60_000,
+   expiresAt:T+7*24*60*60_000,receipt:'verified-search-results',videos:[]
+ }]}
+ const file=join(folder,tag+'.json')
+ writeFileSync(file,JSON.stringify(old))
+ const live=system.store.intentions({includeClosed:true})
+ assert.equal(live[0].status,'ready')
+ assert.equal(live[0].receipt,'verified-search-results')
+ assert.equal(JSON.parse(readFileSync(file,'utf8')).intentions[0].status,'paused','只读迁移不默默覆盖原始文件')
 }))
 
 test('old metadata-read-failed erroneously marked fish defer becomes a bounded retry without taking ownership of other data',()=>home(dir=>{

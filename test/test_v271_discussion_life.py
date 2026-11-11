@@ -67,7 +67,6 @@ class DiscussionTests(unittest.TestCase):
             '_DISCUSSION_VIDEO_ROUND': True, '_DISCUSSION_LIST_CACHE': {},
             '_DISCUSSION_ROOTS': {}, '_DISCUSSION_THREADS': {}, '_DISCUSSION_NOTED': set(),
             '_DISCUSSION_REPORT_UNNOTED': set(),
-            '_DISCUSSION_MAX_VIDEOS': 6, '_DISCUSSION_MAX_THREADS': 2,
             '_ALLOWED': {'bili_discussion_note', 'bili_report_append'},
             'load_credential': lambda: SimpleNamespace(dedeuserid=self.account, sessdata='FAKE_TEST_SECRET'),
             'get_cred': lambda: 'fake', '_guard': lambda name: '',
@@ -103,7 +102,9 @@ class DiscussionTests(unittest.TestCase):
         self.assertEqual(self.go(self.s['bili_comment_thread'](self.bv, 1)), thread)
         self.assertEqual(len(self.s['_DISCUSSION_THREADS']), 1)
         self.go(self.s['bili_comment_thread'](self.bv, 2))
-        self.assertEqual(self.go(self.s['bili_comment_thread'](self.bv, 3))['status'], 'budget_exhausted')
+        third = self.go(self.s['bili_comment_thread'](self.bv, 3))
+        self.assertEqual(third['read_evidence']['type'], 'comment_thread_read')
+        self.assertEqual(len(self.s['_DISCUSSION_THREADS']), 3)
         note = self.go(self.s['bili_discussion_note'](self.bv, 'curious', '这里为什么有不同意见？'))
         self.assertTrue(note['ok'])
         self.assertTrue(note['not_external_fact'])
@@ -150,12 +151,12 @@ class DiscussionTests(unittest.TestCase):
         self.assertTrue(result['read_evidence']['verified'])
         self.assertTrue(self.go(self.s['bili_discussion_note'](self.bv, 'none'))['ok'])
 
-    def test_budget_unrelated_to_external_write_and_sensitive_note_rejected(self):
+    def test_removed_hidden_read_caps_keep_sensitive_note_rejected(self):
         for i in range(6):
             bv = f'BV{i:010d}'
             self.assertEqual(self.go(self.s['bili_comments'](bv, 10))['count'], 10)
-        self.assertEqual(self.go(self.s['bili_comments']('BVaaaaaaaaaa', 10))['status'], 'budget_exhausted')
-        self.assertEqual(len(self.calls), 6)
+        self.assertEqual(self.go(self.s['bili_comments']('BVaaaaaaaaaa', 10))['count'], 10)
+        self.assertEqual(len(self.calls), 7)
         self.assertFalse(self.go(self.s['bili_discussion_note']('BV0000000000','curious','https://bad.example/'))['ok'])
         self.assertFalse(self.go(self.s['bili_discussion_note']('BV0000000000','curious','用户 123456789'))['ok'])
         self.assertFalse(self.go(self.s['bili_discussion_note']('BV0000000000','true', ''))['ok'])

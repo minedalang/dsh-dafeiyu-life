@@ -756,8 +756,7 @@ _DISCUSSION_ROOTS = {}          # BV -> root IDs actually observed in that list
 _DISCUSSION_THREADS = {}        # (BV, root) -> returned, platform-backed thread
 _DISCUSSION_NOTED = set()
 _DISCUSSION_REPORT_UNNOTED = set()  # bounded, in-memory per video round
-_DISCUSSION_MAX_VIDEOS = 6
-_DISCUSSION_MAX_THREADS = 2
+# No hidden per-round read quota. Source verification and platform pacing remain.
 
 
 def _discussion_account_tag():
@@ -925,9 +924,6 @@ async def bili_comments(bvid: str, num: int = 30) -> str:
             return json.dumps({'bvid': str(bvid)[:24], 'error': 'BV 格式错误'}, ensure_ascii=False)
         if bvid in _DISCUSSION_LIST_CACHE:
             return json.dumps(_DISCUSSION_LIST_CACHE[bvid], ensure_ascii=False)
-        if len(_DISCUSSION_LIST_CACHE) >= _DISCUSSION_MAX_VIDEOS:
-            return json.dumps({'bvid': bvid, 'error': '本轮评论区阅读额度已满',
-                               'status': 'budget_exhausted'}, ensure_ascii=False)
         num = min(max(int(num), 1), 10)
     try:
         cred = get_cred()
@@ -1038,9 +1034,6 @@ async def bili_comment_thread(bvid: str, root: int, num: int = 20, target_rpid: 
         if str(root) not in _DISCUSSION_ROOTS.get(bvid, set()):
             return json.dumps({'error': '本轮未在该视频评论列表中读到此楼层，不能跨视频猜楼层',
                                'status': 'unverified_root'}, ensure_ascii=False)
-        if len(_DISCUSSION_THREADS) >= _DISCUSSION_MAX_THREADS:
-            return json.dumps({'error': '本轮楼中楼阅读额度已满',
-                               'status': 'budget_exhausted'}, ensure_ascii=False)
         # Reserve the attempt before contacting the platform to avoid repeated
         # network requests after failure. Do not store a fabricated success.
         _DISCUSSION_THREADS[key] = {'error': '楼中楼读取尚未完成', 'status': 'failed'}
@@ -1278,11 +1271,10 @@ async def bili_video_info(bvid: str) -> str:
 
 
 
-# ========== v2.4.10: 受限预览帧识图（Agent 自主选择，工具层每轮最多 2 个 BV） ==========
+# ========== 预览帧识图（Agent 自主选择；由已公开配置的后台预算与平台风控保护） ==========
 # 每轮 headless 创建独立 MCP 进程；同一个 BV 重试不扩张上限。
 # 这道上限是实际后端闸，不只依赖 AI 遵守提示词。手动预览测试走单独的受限脚本。
 _VISION_BVS_PER_RUN = set()
-_VISION_PER_RUN_LIMIT = 2
 def _fetch_preview_frames_reserved(bvid):
     """Reserve only frame acquisition, NEVER the outer/child DSH vision call.
 
@@ -1306,8 +1298,6 @@ async def bili_preview_vision(bvid: str):
     if not re.fullmatch(r'BV[0-9A-Za-z]{10}', str(bvid or '')):
         return json.dumps({'ok':False,'error':'BV号格式不正确'},ensure_ascii=False)
     if bvid not in _VISION_BVS_PER_RUN:
-        if len(_VISION_BVS_PER_RUN) >= _VISION_PER_RUN_LIMIT:
-            return json.dumps({'ok':False,'status':'round_limit','error':'本轮预览识图最多2条视频；其他视频请根据字幕与已有梗记忆处理'},ensure_ascii=False)
         _VISION_BVS_PER_RUN.add(bvid)
     try:
         from preview_vision import analyze_preview
@@ -3094,7 +3084,7 @@ def _discussion_report_without_note_receipts():
     """
     if not _DISCUSSION_VIDEO_ROUND:
         return
-    for bv, record in list(_DISCUSSION_LIST_CACHE.items())[:_DISCUSSION_MAX_VIDEOS]:
+    for bv, record in list(_DISCUSSION_LIST_CACHE.items()):
         if (bv in _DISCUSSION_REPORT_UNNOTED or bv in _DISCUSSION_NOTED or
                 record.get('error') or not record.get('read_evidence', {}).get('verified') or
                 int(record.get('count', 0)) <= 0):
