@@ -1,6 +1,8 @@
 # 文档导航
 
-**当前唯一架构事实源：** [2.7.1-dev.59 实际接线](architecture/CURRENT-ARCHITECTURE.md) · [2.7.1 RC 场景验收](architecture/CURRENT-RC-ACCEPTANCE.md)。
+**当前 dev.60 社交故障恢复：** [实际边界与恢复策略](architecture/2.7.1-dev60-social-recovery.md)。
+
+**当前唯一架构事实源：** [2.7.1-dev.60 实际接线](architecture/CURRENT-ARCHITECTURE.md) · [2.7.1 RC 场景验收](architecture/CURRENT-RC-ACCEPTANCE.md)。
 
 普通用户先看 [README](../README.md) 和 [首次使用教程](../README.md#-首次使用教程)。
 

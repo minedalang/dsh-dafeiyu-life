@@ -1,7 +1,9 @@
-# 架构文档：现行事实与历史增量（dev.59，未发布）
+# 架构文档：现行事实与历史增量（dev.60，未发布）
+
+**本次 dev.60：** [社交失败恢复、匿名 Life 关注和专业回复的职责分离](2.7.1-dev60-social-recovery.md)。AI 429 不是自主沉默；匿名 `consider_social` 不是后台已回复。历史 seen / skipped 不自动补发。
 
 **先看唯一当前事实源：** [CURRENT-ARCHITECTURE.md](CURRENT-ARCHITECTURE.md) · [CURRENT-RC-ACCEPTANCE.md](CURRENT-RC-ACCEPTANCE.md)。
-旧版文档均是**当时的开发增量或历史设计**，其中保留的“当前/已实现”字样不应被理解为 dev.59 的生产现状。请勿通过旧迁移/影子说明重新启用退役入口。
+旧版文档均是**当时的开发增量或历史设计**，其中保留的“当前/已实现”字样不应被理解为 dev.60 的生产现状。请勿通过旧迁移/影子说明重新启用退役入口。
 
 ---
 

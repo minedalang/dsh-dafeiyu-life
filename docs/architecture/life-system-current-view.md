@@ -5,7 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.57 · 统一意愿 + 模型故障退避诊断）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.60 · 统一意愿 + 社交有界失败恢复）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -62,6 +62,9 @@ flowchart TB
   events -.-> selection
   feedback -.-> selection
   ownerContactPolicy -.-> ownerChat
+  socialRetry["社交实际回复：DM 延期模型错误有界重试 / 评论临时额度不写永久 seen"]
+  socialFacts --> socialRetry
+  socialRetry -.->|只有重新核实且具备发送许可才执行| socialWrite
   networkPollBackoff -.-> socialFacts
   ownerChat -.-> selection
 
