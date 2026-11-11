@@ -107,5 +107,6 @@ test('UI distinguishes historical malformed traces, video feedback and shadow no
   assert.match(ui,/历史影子记录（旧版、未发送）/)
   assert.match(ui,/旧版未识别诊断步骤（不能作为技术错误证据）/)
   assert.match(ui,/只读影子倾向回复，实际没有发送/)
-  assert.match(ui,/item\.state==='failed'\?'本轮失败'/)
+  assert.match(ui,/traceLabels\[item\.presentation\]/)
+  assert.match(ui,/approval-pending':'Life 已同意/ )
 })

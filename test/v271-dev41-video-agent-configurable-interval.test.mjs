@@ -18,8 +18,8 @@ test('video Agent interval defaults to 20 minutes and is independent of Life dec
   assert.equal(MIN_VIDEO_AGENT_INTERVAL_MINUTES,1)
   assert.equal(MAX_VIDEO_AGENT_INTERVAL_MINUTES,1440)
   assert.equal(lifeSettingsV2({...config,videoAgentMinIntervalMinutes:undefined}).budget.videoAgentMinIntervalMinutes,20)
-  assert.equal(lifePacePolicy({...config,autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:100}).videoCooldownMinutes,20)
-  assert.equal(lifePacePolicy({...config,autonomousPlannerMinutes:120,autonomousPlannerDailyLimit:12,videoAgentMinIntervalMinutes:45}).videoCooldownMinutes,45)
+  assert.equal(lifePacePolicy({...config,autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:200}).videoCooldownMinutes,20)
+  assert.equal(lifePacePolicy({...config,autonomousPlannerMinutes:80,autonomousPlannerDailyLimit:50,videoAgentMinIntervalMinutes:45}).videoCooldownMinutes,45)
   assert.equal(projectLifeSettings({...config,videoAgentMinIntervalMinutes:75}).budget.videoAgentMinIntervalMinutes,75)
 })
 

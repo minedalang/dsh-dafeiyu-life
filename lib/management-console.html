@@ -1014,6 +1014,19 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-social #friend-directory-editor .peer-line{display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,2fr) auto;align-items:center;gap:8px}
 #panel-social #friend-directory-editor .peer-line select,#panel-social #friend-directory-editor .peer-line input{min-width:0;width:100%}
 @media(max-width:650px){#panel-social #friend-directory-editor .peer-line{grid-template-columns:minmax(0,1fr)}#panel-social #friend-directory-editor .peer-line button{justify-self:end}.settings-finder{max-width:100%}}
+
+/* Account-scoped, read-only Life source → decision visualization. */
+#panel-life-agent .life-source-flow{border:1px solid var(--life-ui-line,var(--stroke));border-radius:19px;padding:16px;margin:12px 0 19px;background:color-mix(in srgb,var(--panel) 94%,#a6d7eb)}
+#panel-life-agent .life-source-flow-title{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+#panel-life-agent .life-source-flow-title span{color:var(--muted);font-size:12px}
+#panel-life-agent .life-source-flow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:center}
+#panel-life-agent .life-source-flow-card{display:flex;flex-direction:column;gap:7px;min-height:112px;border:1px solid var(--stroke);border-radius:14px;padding:11px;background:var(--panel)}
+#panel-life-agent .life-source-flow-card strong{color:var(--ink)}
+#panel-life-agent .life-source-flow-card span{color:var(--ui-teal,#278574);font-weight:700}
+#panel-life-agent .life-source-flow-card small{font-size:12px;color:var(--muted);line-height:1.5}
+#panel-life-agent .life-source-flow-decision{border:1px dashed var(--stroke);border-radius:11px;padding:10px;text-align:center;margin-top:10px}
+#panel-life-agent .life-source-flow p{margin:10px 0 0;font-size:12px}
+@media(max-width:620px){#panel-life-agent .life-source-flow-grid{grid-template-columns:1fr}#panel-life-agent .life-source-flow-card{min-height:auto}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1164,9 +1177,9 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
           <label class="quick-option"><input type="radio" name="quick-life-mode" value="active"><strong>✦ 开启自主生活</strong><small>通过必需验证后按所选节奏自主考虑，不代表强制评论或关注</small></label>
           <label class="quick-option"><input type="radio" name="quick-life-mode" value="off"><strong>☾ 暂停自主探索</strong><small>暂停启动新的生活决策，不撤销其他已授权社交渠道</small></label></div>
         <h5>生活活跃度</h5><div class="quick-choice-grid" role="radiogroup" aria-label="快速设置生活活跃程度">
-          <label class="quick-option"><input type="radio" name="quick-life-pace" value="quiet"><strong>🌙 安静</strong><small>120 分 / 12 次自主规划；视频无额外日轮数限制；最短启动间隔可单独设置</small></label>
-          <label class="quick-option"><input type="radio" name="quick-life-pace" value="natural"><strong>🍃 自然</strong><small>30 分 / 40 次自主规划；视频无额外日轮数限制；最短启动间隔可单独设置</small></label>
-          <label class="quick-option"><input type="radio" name="quick-life-pace" value="lively"><strong>✨ 活跃</strong><small>10 分 / 100 次自主规划；视频无额外日轮数限制；最短启动间隔可单独设置</small></label>
+          <label class="quick-option"><input type="radio" name="quick-life-pace" value="quiet"><strong>🌙 安静</strong><small>80 分 / 50 次自主规划；视频无额外日轮数限制；最短启动间隔可单独设置</small></label>
+          <label class="quick-option"><input type="radio" name="quick-life-pace" value="natural"><strong>🍃 自然</strong><small>30 分 / 100 次自主规划；视频无额外日轮数限制；最短启动间隔可单独设置</small></label>
+          <label class="quick-option"><input type="radio" name="quick-life-pace" value="lively"><strong>✨ 活跃</strong><small>10 分 / 200 次自主规划；视频无额外日轮数限制；最短启动间隔可单独设置</small></label>
           <label class="quick-option"><input type="radio" name="quick-life-pace" value="custom"><strong>🎛️ 自定义／旧设置</strong><small>保留当前参数，到生活页精细设置</small></label></div>
         <p id="quick-life-current" class="quick-current" role="status">读取生活参数…</p><div class="quick-config-actions"><button type="button" class="primary" id="quick-life-save">确认保存生活设置</button><button type="button" data-open-tab="life-agent" data-open-anchor="life-settings-v2-panel">高级生活设置 ↗</button></div>
       </section>
@@ -1554,8 +1567,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
 </details></div>
 <div id="life-opportunities-section" class="settings-section life-section">
-<div class="toolbar"><h4 style="margin:0">🐟 生活线索</h4><button id="life-opportunities-refresh" type="button" class="life-action life-sky">刷新契机记录</button><button id="life-opportunities-reconsider" type="button" class="life-action life-purple">提醒鱼鱼考虑一次（消耗 AI 额度）</button></div>
-<p class="muted">鱼鱼可参考当前账号的<strong>评论观察、跨日自主选片兴趣、公开交流证据</strong>，自主决定只读探索或保持沉默。首批新增：可信兴趣经历即使原候选已关闭，仍可由鱼鱼自行产生“我想进一步探索”的目的，通过真实 B站公开搜索保留 BV；之后不必重进刷视频轮，也能自主选中实际搜索结果核实或放下。独立自主调度沿用原每日 AI 额度；单纯自由探索增加最长 6 小时的重复考虑冷却。不会自动创建待办、评论、私信、关注，也不代表已观看或听见音频。</p>
+<div class="toolbar"><h4 style="margin:0">💡 生活线索与契机详情</h4><button id="life-opportunities-refresh" type="button" class="life-action life-sky">刷新契机记录</button><button id="life-opportunities-reconsider" type="button" class="life-action life-purple">提醒鱼鱼考虑一次（消耗 AI 额度）</button></div>
+<p class="muted">鱼鱼可参考当前账号的<strong>评论观察、跨日自主选片兴趣、公开交流证据</strong>，自主决定只读探索或保持沉默。首批新增：可信兴趣经历即使原候选已关闭，仍可由鱼鱼自行产生“我想进一步探索”的目的，通过真实 B站公开搜索保留 BV；之后不必重进刷视频轮，也能自主选中实际搜索结果核实或放下。独立自主调度沿用原每日 AI 额度；只读探索由当前 Life 规划处理，不因隐藏的固定冷却而失去机会。不会自动创建待办、评论、私信、关注，也不代表已观看或听见音频。</p>
 <p id="life-opportunities-status" class="muted" role="status">尚未读取生活契机</p><div id="life-opportunities-list" class="records records-scroll" aria-live="polite"></div>
 </div>
 
@@ -1607,6 +1620,16 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">🧭 决策回执</a>
 </nav></details>
 <details id="life-now-todos" class="life-now-todos" open><summary>📝 鱼鱼想做的事</summary>
+<div class="life-source-flow" role="group" aria-label="鱼鱼的线索、契机与待办如何进入生活决策">
+  <div class="life-source-flow-title"><strong>🧭 鱼鱼的想法怎么变成行动？</strong><span>实时读取当前账号记录，不触发模型</span></div>
+  <div class="life-source-flow-grid">
+    <div class="life-source-flow-card"><strong>💡 生活线索</strong><span id="life-flow-cues">等待读取…</span><small>最近的观察和兴趣记录；不是 Life 必须执行的任务</small></div>
+    <div class="life-source-flow-card"><strong>🧭 生活契机</strong><span id="life-flow-opportunities">等待读取…</span><small>经过过滤、仍有证据的核实与续接机会</small></div>
+    <div class="life-source-flow-card"><strong>📝 已接受的待办</strong><span id="life-flow-todos">等待读取…</span><small>独立来源；不是线索的必经下一步</small></div>
+  </div>
+  <div class="life-source-flow-decision">⬇ Life 从三类记录中筛选合格机会，再结合其他真实事件自主选择：<strong>行动／延期／暂不行动</strong></div>
+  <p class="muted">此处显示最近读取的记录数量（不同来源可能重合），不代表 Life 已调用模型或平台发送成功。公开评论／私信由各自独立监听，Life 意愿与发送结果在决策日志中分别核验。</p>
+</div>
 <div class="life-hero todo-page-hero"><div><span class="page-eyebrow">📝 FISH'S PLANS · 自主生活</span><h2>鱼鱼想做的事</h2><p class="muted">看看鱼鱼想做什么、正在做什么，以及暂缓的打算。</p></div><button type="button" data-open-tab="life" class="life-action life-indigo">🧠 看看鱼鱼的回忆</button></div>
 <div class="todo-page-intro"><span>✨ 自主决定</span><span>🔎 连续探索</span><span>💞 关系参与</span><span>🔒 外发独立授权</span></div>
 <div id="life-todo-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📝 鱼鱼想做的事</h4><span id="owner-todo-status" class="live-badge">● 正在整理待办</span><button id="owner-todo-refresh" class="life-action life-sky">刷新待办</button><button id="owner-todo-remind" type="button" class="life-action life-green">提醒鱼鱼考虑待办</button></div>
@@ -1702,14 +1725,14 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </details>
 <details id="life-now-settings" class="life-now-settings" open><summary>⚙️ 生活节奏与整体方案</summary><div class="settings-section" id="life-settings-v2-panel" style="border-left:4px solid #5d9b88">
 <h3>🌿 鱼鱼的生活</h3>
-<p class="muted">鱼鱼自己选择何时探索、聊天或休息；对外互动仍遵守你的授权。</p>
+<p class="muted">鱼鱼自己选择何时探索、聊天或休息；对外互动仍遵守你的授权。日常生活自动考虑遵守设定的最短间隔；新私信／评论等实时事件由独立通道及时处理，不被该间隔延迟。提高每日额度只提高可用模型预算，不强迫鱼鱼行动。旧版已保存额度不会自动上调；请重新选档并确认保存。</p>
 <div class="life-native-settings"><div><label for="life-v2-mode">自主生活</label><select id="life-v2-mode"><option value="off">暂停</option><option value="active">开启生活探索</option><option value="shadow" hidden>历史观察模式（兼容旧配置）</option></select></div>
-<div><label for="life-v2-pace">活跃程度</label><select id="life-v2-pace"><option value="quiet">安静（120 分钟 / 12 次）</option><option value="natural">自然（30 分钟 / 40 次）</option><option value="lively">活跃（10 分钟 / 100 次）</option><option value="custom">自定义（高级）</option></select></div></div><small id="life-legacy-pace-note" class="setting-note" hidden>正在保留你以前的活跃度设置；需要改动时再选安静、自然或活跃。</small>
+<div><label for="life-v2-pace">活跃程度</label><select id="life-v2-pace"><option value="quiet">安静（80 分钟 / 50 次）</option><option value="natural">自然（30 分钟 / 100 次）</option><option value="lively">活跃（10 分钟 / 200 次）</option><option value="custom">自定义（高级）</option></select></div></div><small id="life-legacy-pace-note" class="setting-note" hidden>正在保留你以前的活跃度设置；需要改动时再选安静、自然或活跃。</small>
 <div class="life-mode-switch" role="radiogroup" aria-label="自主生活开关"><label class="life-select-card"><input type="radio" name="life-mode-card" value="active"><span class="life-select-icon">✦</span><span><strong>开启自主生活</strong><small>鱼鱼自行决定探索、互动或休息</small></span></label><label class="life-select-card"><input type="radio" name="life-mode-card" value="off"><span class="life-select-icon">☾</span><span><strong>暂停自主探索</strong><small>不再启动新生活决策</small></span></label></div>
 <div class="life-runtime-meter" aria-live="polite"><div class="toolbar"><strong>🧭 今日 Life 模型决策</strong><b id="life-decision-usage">读取中…</b><button type="button" id="life-decision-refresh" class="life-action life-sky">刷新状态（不调用模型）</button></div>
   <progress id="life-decision-progress" max="100" value="0" aria-label="本日自主生活模型决策额度使用百分比"></progress>
   <p id="life-decision-next" class="muted" role="status">正在读取调度心跳…</p><p class="muted">每日额度限制 Life 日常模型考虑机会，不直接限制评论／私信发送次数，也不是视频 Agent 的轮次数。子 Agent 还有自己的独立准入和发送限制。网络故障、冷却、无候选或自主休息均不应显示为“已经发表”。</p></div>
-<div class="life-pace-heading"><h4>活跃程度</h4><p class="muted">只是考虑机会的上限，不是每天必须执行的次数。</p></div><div class="life-pace-cards" role="radiogroup" aria-label="生活活跃程度"><label class="life-select-card"><input type="radio" name="life-pace-card" value="quiet"><span class="life-select-icon">☾</span><span><strong>安静</strong><small>120 分 / 12 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="natural"><span class="life-select-icon">❀</span><span><strong>自然</strong><small>30 分 / 40 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="lively"><span class="life-select-icon">✧</span><span><strong>活跃</strong><small>10 分 / 100 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="custom"><span class="life-select-icon">⚙</span><span><strong>自定义</strong><small>单独调整间隔和额度</small></span></label></div>
+<div class="life-pace-heading"><h4>活跃程度</h4><p class="muted">这是日常自主规划的考虑间隔与每日预算，不是每天必须执行的次数；社交事件有独立处理节奏。</p></div><div class="life-pace-cards" role="radiogroup" aria-label="生活活跃程度"><label class="life-select-card"><input type="radio" name="life-pace-card" value="quiet"><span class="life-select-icon">☾</span><span><strong>安静</strong><small>80 分 / 50 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="natural"><span class="life-select-icon">❀</span><span><strong>自然</strong><small>30 分 / 100 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="lively"><span class="life-select-icon">✧</span><span><strong>活跃</strong><small>10 分 / 200 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="custom"><span class="life-select-icon">⚙</span><span><strong>自定义</strong><small>单独调整间隔和额度</small></span></label></div>
 <details class="life-subdetails" id="life-settings-advanced"><summary>⚙️ 高级设置 · 模型次数与活动时间</summary>
 <p class="muted">仅选择「自定义」时，以下数字才会写入配置；选择预设不会覆盖原有时段。次数是<strong>日常生活模型决策上限</strong>，不是必须执行的任务或真实视频播放次数；社交事件只读快速关注有独立额度，所有调用共享原子总上限。对外发布／私信授权仍在相应页面单独设置。</p>
 <div class="fields"><div><label for="life-v2-minutes">最短考虑间隔（分钟，5～1440）</label><input type="number" id="life-v2-minutes" min="5" max="1440" value="60"></div><div><label for="life-v2-limit">每日最多模型决策（1～288）</label><input type="number" id="life-v2-limit" min="1" max="288" value="12"></div><div><label for="life-v2-start">每日开始（0～23 时）</label><input type="number" id="life-v2-start" min="0" max="23" value="9"></div><div><label for="life-v2-end">每日结束（1～24 时）</label><input type="number" id="life-v2-end" min="1" max="24" value="23"></div></div><div class="toolbar"><button type="button" class="life-action life-sky" id="life-v2-preview-btn">预览详细变化</button></div>

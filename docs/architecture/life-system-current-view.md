@@ -5,6 +5,8 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
+%% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% 大肥鱼 Life 当前源码全景（2.7.1-dev.72 · Life 授权 FIFO 与事务恢复；继承动态核验与可见 Life 额度）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
@@ -293,6 +295,8 @@ modelHealthUi -.->|只读本地调用记录| modelJournal
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
+%% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% dev.71：继承 dev.70 动态核验恢复与可见 Life 额度；Life 授权证明消费/结算按 dev.71 账本契约执行。
 %% 生活候选细目字典：这是当前项目的真实 schema 类型/选择约束，不是泛化的 AI 心理推演。
 flowchart LR
@@ -402,6 +406,8 @@ dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
+%% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% 同版本 Life 补链维护：模型/菜单不是平台成功证据
 %% @code source | lib/life-video-action-bridge.mjs | createLifeVideoActionBridge
 %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_comment_consideration
@@ -524,6 +530,8 @@ dmFollowReceipt -.->|只有成功回执| verified
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
+%% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% dev.37 统一归属 + dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
 flowchart TB
   child["可选首步：真实 B站首页轮次完成 + 本轮新挑中 BV 精确匹配"]
