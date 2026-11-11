@@ -5,7 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.71 · Life 授权事务恢复；继承动态核验与可见 Life 额度）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.72 · Life 授权 FIFO 与事务恢复；继承动态核验与可见 Life 额度）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -74,13 +74,14 @@ flowchart TB
 
   subgraph decision["唯一 Life 自主决策中心｜不给模型任意 UID / BV / 写权限"]
     selection["候选筛选 + 去重归属 + 账号/冷却/额度检查"]
+    willingnessQueue["Life 账号内有界 FIFO 等待：同窗口择一，跨窗口等待证明结算；未知外发仍停机复核"]
     planner["AutonomousPlanner + Life Voice + 当轮动作菜单"]
     universalEpisode["Universal Episode｜账号匿名因果片段：有真实回执才计入已完成动作"]
     resumeEpisode["resume_episode｜暂停到期可复续；优先旧片段，来源与权限每步重新核验"]
     menuGuard["后端再次核对：action/id/BV/capability 必须确在本轮菜单"]
     rest["skip：鱼鱼自由休息；技术失败不得伪装休息"]
   end
-  selection --> planner --> menuGuard
+  selection --> willingnessQueue --> planner --> menuGuard
   universalEpisode -.->|只提供历史/关联，不授予权限| planner
   menuGuard --> resumeEpisode -.-> lifeEpisode
   menuGuard --> rest

@@ -985,6 +985,35 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life-agent #life-timeline-list .life-independent-note{font-size:11px;color:var(--muted)}
 @keyframes life-journey-pulse{0%,100%{box-shadow:0 0 0 3px var(--panel)}50%{box-shadow:0 0 0 7px color-mix(in srgb,#55b8c3 20%,transparent)}}
 @media(prefers-reduced-motion:reduce){#panel-life-agent #life-timeline-list .life-journey-steps>.record,#panel-life-agent #life-timeline-list .life-journey-steps>.record:before{animation:none}}
+
+/* dev.72 · compact, keyboard-accessible settings finder */
+.settings-finder{position:relative;max-width:475px;margin:12px 0 10px;display:flex;gap:9px;align-items:center;z-index:12}
+.settings-finder>label{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+.settings-finder>input{min-width:0;width:100%;height:38px;border-radius:999px;padding:8px 14px;background:var(--panel);border:1px solid var(--stroke)}
+.settings-finder-results{position:absolute;top:calc(100% + 5px);left:0;right:0;border:1px solid var(--stroke);background:var(--panel);border-radius:14px;box-shadow:0 15px 38px #193a4a27;max-height:310px;overflow:auto;padding:6px;z-index:100}
+.settings-finder-results[hidden]{display:none!important}
+.settings-finder-item{width:100%;border:0;border-radius:9px;background:transparent;color:var(--ink);padding:10px 12px;text-align:left;line-height:1.4;white-space:normal}
+.settings-finder-item:hover,.settings-finder-item:focus-visible{background:var(--tint);outline:1px solid var(--stroke)}
+/* Owner and friend cards use a full-width, stable editor instead of nested cramped columns. */
+#panel-social #friend-directory-editor{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+#panel-social #friend-directory-editor .friend-directory-card{width:100%;max-width:100%;min-width:0;overflow:hidden;padding:15px 18px}
+#panel-social #friend-directory-editor .friend-directory-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+#panel-social #friend-directory-editor .friend-directory-title{min-width:0;overflow-wrap:anywhere;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#panel-social #friend-directory-editor .friend-editor{display:block;max-width:100%;min-width:0;padding:0;margin-top:12px;border:1px solid var(--stroke);border-radius:13px;background:var(--panel);overflow:hidden}
+#panel-social #friend-directory-editor .friend-editor>summary{padding:13px 16px;margin:0;font-size:13px;font-weight:750;line-height:1.4;list-style-position:inside;cursor:pointer;background:var(--tint)}
+#panel-social #friend-directory-editor .friend-editor[open]>summary{margin:0;border-bottom:1px solid var(--stroke)}
+#panel-social #friend-directory-editor .friend-editor-body{padding:15px;display:grid;gap:15px;min-width:0}
+#panel-social #friend-directory-editor .friend-editor-body>.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,265px),1fr));gap:13px}
+#panel-social #friend-directory-editor .friend-editor-body :is(input:not([type=checkbox]),select,textarea){max-width:100%;width:100%;min-width:0;box-sizing:border-box}
+#panel-social #friend-directory-editor .friend-role-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,265px),1fr));gap:10px;margin:0}
+#panel-social #friend-directory-editor .friend-role-row>.checkline{display:flex;align-items:flex-start;gap:10px;margin:0;padding:12px;line-height:1.5;min-width:0}
+#panel-social #friend-directory-editor .friend-role-row>.checkline>input{flex:none;width:18px;height:18px}
+#panel-social #friend-directory-editor .friend-role-row>.checkline>span{overflow-wrap:anywhere}
+#panel-social #friend-directory-editor .friend-role-row>div{min-width:0;padding:12px;border:1px solid var(--stroke);border-radius:10px}
+#panel-social #friend-directory-editor .friend-role-row>div>small{display:block;margin-top:7px;line-height:1.6}
+#panel-social #friend-directory-editor .peer-line{display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,2fr) auto;align-items:center;gap:8px}
+#panel-social #friend-directory-editor .peer-line select,#panel-social #friend-directory-editor .peer-line input{min-width:0;width:100%}
+@media(max-width:650px){#panel-social #friend-directory-editor .peer-line{grid-template-columns:minmax(0,1fr)}#panel-social #friend-directory-editor .peer-line button{justify-self:end}.settings-finder{max-width:100%}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1070,6 +1099,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </head>
 <body><main class="wrap">
 <header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><a class="button mobile-back" href="/" aria-label="返回 DSH Mobile">← 返回 DSH</a><button id="refresh">刷新当前页</button></div></header>
+<div class="settings-finder" role="search"><label for="settings-finder-input">查找设置</label><input id="settings-finder-input" type="search" placeholder="搜索权限、模型、白名单、评论额度…" autocomplete="off" aria-controls="settings-finder-results" aria-expanded="false"><div id="settings-finder-results" class="settings-finder-results" role="listbox" hidden></div></div>
 <aside id="life-system-health" class="life-health-banner" role="status" aria-live="polite">
   <div class="health-strip-heading"><span class="health-indicator" aria-hidden="true"></span><strong id="life-health-title">正在核对后台监听状态</strong><span id="life-health-retry" class="health-retry"></span><button id="life-health-clear-model-backoff" type="button" hidden>取消模型退避</button><button id="life-health-details" type="button">查看诊断</button></div>
   <p id="life-health-detail">仅依据本机已有调度记录，不额外请求 B站。</p>
@@ -1261,7 +1291,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <label class="checkline"><input id="bili-favorite-delete" type="checkbox" data-inverted-permission="true">禁止删除鱼鱼自己创建的主题收藏夹</label>
 <p class="muted">只允许删除本插件账本记录、且已核验为当前账号自己的收藏夹；每日最多 1 次，不会删除其他收藏夹或默认收藏夹。删除是不可逆的外部操作。</p>
 <label class="checkline"><input id="bili-agent-follow" type="checkbox" data-inverted-permission="true">禁止自主关注／取关 UP 主</label>
-<p class="muted" id="bili-agent-follow-explain">默认可自主关注或取关；仍须有真实相遇、鱼鱼自己愿意，并遵守平台确认及频率限制。</p><label class="checkline"><input id="bili-dm-follow" type="checkbox">允许与长期交流的好友私信后自主考虑关注对方（新增独立授权，默认关闭）</label>
+<p class="muted" id="bili-agent-follow-explain">默认允许提出关注机会，但必须是已核实的长期好友；是否关注由 Life 独立判断，发送仍需授权与平台回执。已有用户明确关闭的设置不会被升级覆盖。</p><label class="checkline"><input id="bili-dm-follow" type="checkbox">允许 Life 在与长期好友私信后自主考虑关注（新安装默认开启）</label>
 <p class="muted">至少 3 次真实双向交流，跨度至少 24 小时；仅已核验好友，不能由对方的话自动触发。仍需鱼鱼独立决定、Life 复核、登录账号与平台关系回读，每日共用最多 3 次关注额度。</p>
 <p class="muted" id="bili-agent-follow-readiness" role="status">自主关注状态：读取中…</p>
 </details>
@@ -1543,7 +1573,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <nav class="life-day-shortcuts" aria-label="鱼鱼此刻快捷查看"><a href="#life-timeline-section">今天的经历</a><a href="#life-emotion-section">此刻心情</a><a href="#life-todo-section">想做的事</a><a href="#life-settings-v2-panel">生活设置</a></nav>
 <details class="life-now-timeline" open><summary>📅 大肥鱼的一天 · 真实生活时间线</summary>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
-<p class="muted">按真实来源串起连续经历：同一视频轮次／已核验 Life Episode 用连线展示；没有明确关联的行为独立陈列，不因为发生时间接近而硬连。点击经历可展开具体步骤。旧账本只有日期的条目不会伪造时刻。</p><p id="life-timeline-summary" class="muted" role="status"></p>
+<p class="muted">只展示真实生活经历，按实际日期排列。没有可靠时间或关联的内容不会编造；技术细节请到运行诊断查看。</p><p id="life-timeline-summary" class="muted" role="status"></p>
 <div id="life-timeline-list" class="records records-scroll tall"></div></div>
 </details>
 <details class="life-now-emotion" open><summary>💗 现在的心情</summary>

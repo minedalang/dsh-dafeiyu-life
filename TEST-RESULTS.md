@@ -1,39 +1,10 @@
-# TEST-RESULTS · 2.7.1-dev.71
+# dev.72 离线验证
 
-## 本轮日志结论
+基线：上传的 `2.7.1-dev.71` 完整交付源码；增量为本交付的 `dev.71-to-dev.72.patch`。
 
-- 最新日志截至北京时间 2026-11-11 16:09。两条不同用户的动态评论在模型调用 `completed` 后均出现 `life-choice-review-required`；对应通知没有发送尝试，也没有平台回执。
-- dev.70 的 `life-willingness-admission` 对过期批准采用 fail-closed；`life-willingness.mjs` 过期清理只删除内存 proof，没有结算磁盘 claim。由于旧 claim 没有 `used` 字段，新的评论/私信/主评论可能被同一个账号级 claim 阻断。
-- 日志导出未包含原始授权账本，故不能从本包确定是哪一笔旧动作留下 claim，也不能确认其最终消费状态。dev.71 对旧版未知状态仍要求离线复核。
-- 16:08:59 的 DM `-509` 触发 B站后台读取共享冷却，16:09:00 评论读取被暂停至 16:09:59；这是平台读取退避，与 16:05 的 Life 授权账本错误是两个独立问题。
-- Life 调度在 16:07 仍有自动决策轨迹；日志中出现的自主休息/暂缓不能等同于调度器停机。
-
-## 修改内容
-
-- 新准入记录持久保存 `used`；过期且明确未消费的批准可以安全释放，已消费或旧版未知状态继续要求离线复核。
-- 内存 proof 过期时先结算持久 claim，再清理内存表；不再仅删除内存对象。
-- DM、动态/视频评论、待办回访、视频分享发送路径统一结算 Life proof；提前退出记为 `not-sent`，异常记为 `uncertain`，只有真实平台回执记为 `verified`。
-- 视频评论预审阶段仅检查 proof，不提前标记消费；最终发送授权前才持久标记 `used`。
-- `life-choice-review-required` 与表达校验错误不再记为 AI 模型生成失败；主评论轮次摘要增加审阅尝试、完成、延期、阻断及具体原因。
-- 管理页评论诊断增加 Life 准入状态；新增旧版账本离线检查/恢复工具。
-
-## 已完成验证
-
-| 验证 | 结果 |
-|---|---:|
-| 定向 Node 回归 | 35/35 通过 |
-| 定向 Python 动态评论/来源核验回归 | 37/37 通过 |
-| `node --check`（本轮修改的 JS/MJS） | 通过 |
-| `npm run check:life-architecture` | 通过（4 张 Mermaid、105 个唯一代码节点） |
-| `npm run check:video-tool-contract` | 通过 |
-| 版本/发布元信息一致性测试 | 2/2 通过 |
-| 离线账本 CLI 检查与恢复冒烟测试 | 通过 |
-| `npm pack --dry-run` | 554 个文件，恢复工具包含在包内 |
-| dev.70 → dev.71 Patch | 在干净 dev.70 基线上通过 `git -c core.whitespace=cr-at-eol apply --check`，实际应用后与 dev.71 源码逐文件一致 |
-
-## 未完成 / 不宣称通过
-
-- 全量 `npm test` 在当前执行环境的 240 秒时限内未完成；不宣称全仓测试通过。
-- 全量 Python unittest 在当前执行环境的 240 秒时限内未完成；不宣称全量 Python 测试通过。
-- 未连接真实 B站账号执行评论/私信发送；未验证 Windows DSH 长时间运行。
-- dev.70 旧账本缺少 `used` 状态，升级后若显示“Life 授权账本需要离线复核”，必须先关闭所有 DSH 实例并核对平台未知事务，再运行交付包内的离线恢复工具。工具不发送、不重放、不清除通知账本。
+- Node 定向安全/架构/社交/时间线/额度回归：**65 项通过，0 失败**。明确范围为 `v271-dev72-life-queue-owner-ui`、`v271-rc9-unified-willingness`、`v271-rc10-life-global-opportunities`、`v271-dev59-life-social-proof`、`v271-dev9-life-durable-admission`、`v271-dev71-life-proof-settlement-contract`、`v271-dev67-life-diary-neural-visuals`、`v271-dev69-social-expression-and-quotas`、`v271-dev45-read-budget-owner-defaults`、`v271-dev19-owner-life-timeline`、`v271-dev38-subagent-action-continuity` 等本地用例。
+- 新增 dev.72 独立契约 6 项通过，包括已选视频与评论封存排队、证明结算后排队推进、心情去重、DM -509 错误不被其他接口清零、好友自主关注权限边界、设置搜索与白名单布局 DOM。
+- Python：`test_dev6_dynamic_comment.py` **4 项通过**。
+- `node scripts/check-life-architecture.mjs --write-preview` 与检查契约通过；`node selfcheck.mjs` 通过；`node scripts/check-video-tool-contract.mjs` 通过。
+- 不将已有历史全仓测试的失败声称为本版修复；也未执行可能访问实际 B站的全仓在线用例。Chrome 本地文件页受执行环境策略拦截，无法做可信视觉截图。
+- **没有验证**真实账号外发、B站 -509 真实风控解除、Windows 管理页视觉和跨进程长期公平性；原发送事务安全限制未改变。

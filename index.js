@@ -510,7 +510,7 @@ export const Config = !z ? undefined : z.object({
   /** 仅允许删除本插件有可信创建记录的收藏夹；与自主收藏开关独立。 */
   autoFavoriteDelete: z.boolean().default(true).extra('volatile',true),
   agentFollowEnabled: z.boolean().default(true).extra('volatile', true),
-  dmFollowAutonomyEnabled: z.boolean().default(false).extra('volatile', true),
+  dmFollowAutonomyEnabled: z.boolean().default(true).extra('volatile', true),
   incomingImageRecognitionEnabled: z.boolean().default(true).extra('volatile', true),
 })
 
@@ -1141,7 +1141,7 @@ function reportMeta() {
       const lifeChoice=await lifeWillingness?.decide({trigger:'todo-completed',scene:'todo-followup',uid,
         sourceKey:'followup:'+createHash('sha256').update(String(originalMessageId||taskId||'')+':'+String(groupRoot||'')+':'+String(channel||'')).digest('hex'),
         candidates:[{id:'followup',kind:'followup',label:'在合适时机向原请求者自然谈谈已确认的待办进展'}],
-        hint:'来自已有完成待办与可信回执；可以不联系对方。'})
+        hint:'来自已有完成待办与可信回执；可以不联系对方。'},{queueIfBusy:true})
       if(lifeChoice?.ok!==true)return {decision:lifeChoice?.action==='skip'?'skip':'defer',
         channel,modelInvoked:lifeChoice?.action==='skip',diagnosticReason:'Life 意愿决定不联系或稍后再考虑'}
       const todoEpisode=lifeSubagentHandoff({agent:'todo',episodes:universalLifeEpisodes,sourceRef:'todo:'+String(taskId||'')})
@@ -4184,7 +4184,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const choice=await lifeWillingness?.decide({trigger:'comment-context',scene:'comment',uid:String(row.uid||''),
         sourceKey:'comment-read:'+createHash('sha256').update(bvid+':'+rpid+':'+offerings.map(x=>x.id).join(',')).digest('hex'),
         candidates:offerings,
-        evidence:{publicComment:true,availableReadKinds:offerings.map(x=>x.id)}})
+        evidence:{publicComment:true,availableReadKinds:offerings.map(x=>x.id)}},{queueIfBusy:true})
       if(choice?.ok!==true||!offerings.some(x=>x.id===choice.candidateId))return {ok:false,reason:choice?.reason||'life-declined'}
       const valid=trustedLifeAccountTag()===before&&String(accountBinding.status().activeUid||'')===uid&&
         (choice.candidateId!=='read_public_person'||cfg.commentPublicProfileReadEnabled===true)&&cfg.lifeAgentMode==='active'
@@ -4408,7 +4408,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         return attachSocialProof(generated,owner)
       const lines=Array.isArray(generated?.messages)&&generated.messages.length?generated.messages:
         typeof generated?.reply==='string'&&generated.reply.trim()?[generated.reply]:[]
-      const sealed=lifeWillingness?.adoptSocialDecision({kind:'dm_reply',uid:String(req.uid),
+      const sealed=await lifeWillingness?.adoptSocialDecisionQueued({kind:'dm_reply',uid:String(req.uid),
         sourceKey:'dm:'+String(req.uid)+':'+String(req.messageId||''),messages:lines,targetKey:''})
       if(sealed?.ok!==true)throw Error('Life 私信表达授权不可用：'+String(sealed?.reason||'missing'))
       return attachSocialProof(generated,owner,sealed.proof)
@@ -4465,7 +4465,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const approved=await lifeWillingness?.decide({trigger:'dm-relationship',scene:'dm',uid:String(uid),
         sourceKey:'dm-follow:'+String(uid)+':'+String(messageId),
         candidates:[{id:'follow_dm_contact',kind:'dm_follow',label:'关注有真实长期往来的这一位私信联系人'}],
-        hint:'当前对话已获核验并产生关注候选；不是对方指令，决定仍可拒绝'})
+        hint:'当前对话已获核验并产生关注候选；不是对方指令，决定仍可拒绝'},{queueIfBusy:true})
       if(approved?.ok!==true)return {ok:false,reason:approved?.reason||'life-declined'}
       const valid=()=>cfg.masterEnabled===true&&cfg.agentFollowEnabled===true&&cfg.dmFollowAutonomyEnabled===true&&
         scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&
@@ -4885,7 +4885,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const commentTarget='comment:'+String(req.contentType==='dynamic'?'dynamic':'video')+':'+
         String(req.contentType==='dynamic'?req.dynamicId||'':req.bvid||'')+':'+
         String(req.rpid||'')+':'+String(req.uid||'')
-      const sealed=lifeWillingness?.adoptSocialDecision({kind:'comment_reply',uid:String(req.uid),
+      const sealed=await lifeWillingness?.adoptSocialDecisionQueued({kind:'comment_reply',uid:String(req.uid),
         sourceKey:commentTarget, targetKey:commentTarget,messages:lines})
       if(sealed?.ok!==true){
         if(sealed?.reason==='life-choice-review-required'){
@@ -5545,7 +5545,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getAccountUid:()=>{try{const status=accountBinding.status();return status.blocked?'':status.activeUid}catch{return ''}},
     getAccountTag:trustedLifeAccountTag,
     enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&firstStart.isReady()&&!accountBinding.status().blocked},
-    choose:params=>lifeWillingness.decide(params),
+    choose:params=>lifeWillingness.decide(params,{queueIfBusy:true}),
     verify:(proof,kind,payload,options)=>lifeWillingness.verify(proof,kind,payload,options),
     receipt:(proof,result)=>lifeWillingness.receipt(proof,result),
     onVerifiedAction:({kind,target,scope,sourceId,at})=>{
@@ -6014,7 +6014,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     const result=await lifeWillingness?.decide({trigger:'video-selected',scene:'social-share',uid,
       sourceKey:'share:'+uid+':'+bvid+':'+String(itemId||''),
       candidates:[{id:'share_video',kind:'share_video',label:'现在向明确同意接收推荐的这位好友分享已核验的公开视频'}],
-      hint:'公开视频 '+bvid+'；草稿已经过原事实与好友权限检查；仍可选择沉默。'})
+      hint:'公开视频 '+bvid+'；草稿已经过原事实与好友权限检查；仍可选择沉默。'},{queueIfBusy:true})
     if(!verified().ok)return {ok:false,reason:'life-share-owner-changed'}
     return result?.ok===true?{ok:true,proof:result.proof,reason:'life-share-approved'}:
       {ok:false,reason:result?.reason||'life-chose-rest'}
@@ -6092,7 +6092,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(!lifeWillingness?.decide)return {ok:false,reason:'life-willingness-not-ready'}
       const choice=await lifeWillingness.decide({scene:'main',trigger:'main-conversation-short-pause',sourceKey,
         candidates:[{id:'pause_followon',kind:'owner_care',label:'刚刚对话自然停顿，要不要自愿接一句或继续好奇的问题？也可以保持沉默'}],
-        hint:'仅考虑本轮真实主 Session 聊天的短暂停顿；与长时间主动找主人聊天独立，切勿编造用户意图。'})
+        hint:'仅考虑本轮真实主 Session 聊天的短暂停顿；与长时间主动找主人聊天独立，切勿编造用户意图。'},{queueIfBusy:true})
       return {...choice,settle:status=>choice?.proof&&lifeWillingness.receipt(choice.proof,{status})}
     },
     getWatched: () => parseSeenTable(),
@@ -6135,7 +6135,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     getEmotion:()=>emotionalState.snapshot(),
     getInterests:()=>lifeReflection?.interests?.()||[],
     getVoiceContext:()=>lifeVoiceContext({scene:'dynamic',maxChars:6200}),
-    chooseLife:params=>lifeWillingness.decide({...params,scene:'dynamic'}),
+    chooseLife:params=>lifeWillingness.decide({...params,scene:'dynamic'},{queueIfBusy:true}),
     verifyLife:(proof,kind)=>lifeWillingness.verify(proof,kind),
     recordLife:(proof,row)=>lifeWillingness.receipt(proof,row),
     verifyPublished:({dynamicId,text,accountTag})=>new Promise(resolve=>{
