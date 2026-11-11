@@ -1,4 +1,4 @@
-%% 大肥鱼 Life 当前源码全景（2.7.1-dev.60 · 统一意愿 + 社交有界失败恢复）
+%% 大肥鱼 Life 当前源码全景（2.7.1-dev.66 · 视频工具漏斗 + 独立社交安全诊断）
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
@@ -81,6 +81,7 @@ flowchart TB
     readTodo["原只读待办"]
     explore["公开搜索/视频元数据/作者作品/已证实人物"]
     home["browse_home → 原视频 Agent → 首页候选/选片归因；无每日入选数限额"]
+    roundFunnel["本轮视频工具回执漏斗：候选/详情/内容证据/入选/失败；不等于完整观看"]
     lifeEpisode["Life Episode · 账号绑定意愿账本 · 最多 5 个已核验步骤"]
     homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
@@ -95,6 +96,8 @@ flowchart TB
   readTodo --> receipts
   explore --> receipts
   home --> receipts
+  home -.->|仅真实工具返回状态| roundFunnel
+  roundFunnel -.->|汇总到原 Life 视频轮次/日报；不授予写权限| decisions
   home --> homeCandidateMatch -->|仅本轮精确匹配入选 BV；不等于观看| homeEpisode
   homeEpisode --> lifeEpisode
   explore -.->|搜索/人物作品/视频核验成功后进入同一意愿账本| lifeEpisode
@@ -147,6 +150,8 @@ flowchart TB
   growth -.->|仅已核实新线索| cues
   growth -.->|仅已有来源的新机会| opportunities
   decisions -.->|提示下一轮，不证明写入成功| eventLedger
+
+  %% @code roundFunnel | lib/video-round-funnel.mjs | export function summarizeVideoFunnel
 
   subgraph gaps["当前仍未形成完整生产闭环 / 实机验收"]
     gapSocial["跨串陌生人回复/任意评论者主页：未通用开放"]

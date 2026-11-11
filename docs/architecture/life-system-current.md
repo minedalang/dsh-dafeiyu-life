@@ -6,6 +6,8 @@
 
 # Life 全景图与源码接线审计（当前 dev.37 发布前检验／dev.37 跨渠道行动归属 + Universal Life Episode）
 
+> **dev.66 增量：** 视频 MCP 在原 Headless 轮次内只记搜索/详情/字幕/评论/入选工具的受限回执；原 LifeAgentEvents 视频轮次新增脱敏漏斗计数，日报可写入真实 BV 链接与可核验分类，仍不把取标题或字幕等同看完视频。评论和私信独立调度不等待 Life `consider_social`；若 MCP 已审版本不一致，安全门禁会停止评论读取，须主人在运行诊断里核对、备份后修复。详见 [dev.66 契约](./2.7.1-dev66-video-funnel-social-integrity.md)。
+
 > **可直接在 GitHub 查看渲染结果：**[Life 全景与候选图](./life-system-current-view.md)。它是根据 `.mmd` 自动生成的只读展示，不应直接编辑。
 >
 > **唯一维护入口：**[完整 Life 生产代码全景 Mermaid](./diagrams/life-system-current.mmd) · [八类候选精确字典 Mermaid](./diagrams/life-candidates-current.mmd) · [回执与可衰减记忆闭环 Mermaid](./diagrams/life-receipt-memory-current.mmd) · [统一 Life Episode Mermaid](./diagrams/life-universal-episodes-current.mmd)。这四张 `.mmd` **是源文件**，可直接通过 GitHub Mermaid 或支持 Mermaid 的编辑器编辑、比较和渲染；此前的 PNG 仅为概念插画，不是程序运行证明。

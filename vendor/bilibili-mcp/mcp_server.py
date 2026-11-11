@@ -89,6 +89,83 @@ _LIFE_VIDEO_WRITES = frozenset((
     'bili_video_like', 'bili_video_collect', 'bili_follow_creator',
     'bili_unfollow_creator', 'bili_favorite_folder_delete', 'bili_reply'))
 
+_VIDEO_FUNNEL_TOOLS = frozenset((
+    'bili_search', 'bili_home_recommendations', 'bili_video_info',
+    'bili_subtitle', 'bili_comments', 'bili_transcribe_safe', 'bili_ledger_mark'))
+
+
+def _observe_video_tool(name, args, result, failed=False):
+    """Bounded tool receipts for one host-created round; never log source text.
+
+    This is observation only, not evidence of full audiovisual consumption and
+    never part of any authorization, identity or sending decision.
+    """
+    round_id = os.environ.get('BILI_DUTY_LIFE_ROUND_ID', '')
+    if name not in _VIDEO_FUNNEL_TOOLS or not re.fullmatch(r'[a-f0-9]{24}', round_id):
+        return
+    try:
+        home = Path(os.environ['BILI_DUTY_HOME'])
+        if home.is_symlink() or not home.is_dir(): return
+        directory = home / 'video-round-observations'
+        if directory.is_symlink(): return
+        directory.mkdir(mode=0o700, exist_ok=True)
+        if directory.is_symlink(): return
+        path = directory / (round_id + '.jsonl')
+        if path.is_symlink() or (path.exists() and path.stat().st_size > 90_000): return
+        try: data = json.loads(result) if isinstance(result, str) else result
+        except (TypeError, ValueError): data = {}
+        if not isinstance(data, dict): data = {}
+        ok = not failed and data.get('ok') is not False and not data.get('error') and not data.get('failureCode')
+        bv = str(args.get('bvid') or '')
+        row = {'tool': name, 'ok': bool(ok)}
+        if re.fullmatch(r'BV[0-9A-Za-z]{10}', bv): row['bvid'] = bv
+        if name in ('bili_search', 'bili_home_recommendations'):
+            videos = data.get('videos')
+            if not isinstance(videos, list): videos = data.get('items')
+            row['candidates'] = list(dict.fromkeys(str(v.get('bvid')) for v in
+                (videos if isinstance(videos, list) else [])[:50]
+                if isinstance(v, dict) and re.fullmatch(r'BV[0-9A-Za-z]{10}', str(v.get('bvid') or ''))))
+        elif name == 'bili_video_info':
+            ok = bool(ok and data.get('bvid') == bv and isinstance(data.get('stat'), dict))
+            row['ok'] = ok
+            if not ok: return _append_video_observation(path, row)
+            stat = data.get('stat') if isinstance(data.get('stat'), dict) else {}
+            row['stat'] = {key: max(0, min(2_000_000_000, int(stat.get(key) or 0)))
+                           for key in ('view', 'like', 'reply')}
+        elif name == 'bili_subtitle':
+            row['content'] = bool(ok and data.get('subtitle_evidence') == 'caption_text' and
+                                  len(str(data.get('text') or '').strip()) >= 35)
+        elif name == 'bili_comments':
+            row['content'] = bool(ok and isinstance(data.get('comments'), list) and data.get('comments'))
+        elif name == 'bili_transcribe_safe':
+            # This tool usually returns plain text; require substantive text,
+            # not a human-readable failure / disabled message.
+            text_result = result if isinstance(result, str) else ''
+            row['content'] = bool(not failed and len(text_result.strip()) >= 35 and
+                                  not text_result.startswith(('转写失败', '本地转写失败',
+                                      '本轮未授权', '本地转写依赖未安装', '转写路径不安全')))
+        elif name == 'bili_ledger_mark':
+            status = str(args.get('status') or '')
+            row['status'] = 'picked' if status == '挑中' else 'skipped' if '跳过' in status else 'other'
+            row['recorded'] = data.get('recorded_selection') is True
+            row['duplicate'] = data.get('already_seen') is True
+        _append_video_observation(path, row)
+    except Exception:
+        pass  # Diagnostic sidecar cannot fail a real tool call.
+
+
+def _append_video_observation(path, row):
+    try:
+        encoded = (json.dumps(row, ensure_ascii=True, separators=(',', ':')) + '\n').encode('utf8')
+        if len(encoded) > 2400: return
+        flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+        if hasattr(os, 'O_NOFOLLOW'): flags |= os.O_NOFOLLOW
+        fd = os.open(str(path), flags, 0o600)
+        try: os.write(fd, encoded)
+        finally: os.close(fd)
+    except Exception:
+        pass  # Diagnostic sidecar cannot fail a real tool call.
+
 
 def _life_video_request(route, payload):
     endpoint = os.environ.get('BILI_LIFE_ACTION_URL', '')
@@ -181,7 +258,24 @@ def tool():
         if _ALLOWED and fn.__name__ not in _ALLOWED:
             return fn
         if fn.__name__ not in _LIFE_VIDEO_WRITES:
-            return mcp.tool()(fn)
+            if fn.__name__ not in _VIDEO_FUNNEL_TOOLS:
+                return mcp.tool()(fn)
+            @wraps(fn)
+            async def observed(*args, **kwargs):
+                values = {}
+                try:
+                    bound = inspect.signature(fn).bind(*args, **kwargs)
+                    bound.apply_defaults()
+                    values = bound.arguments
+                except Exception: pass
+                try:
+                    response = await fn(*args, **kwargs)
+                except Exception:
+                    _observe_video_tool(fn.__name__, values, None, failed=True)
+                    raise
+                _observe_video_tool(fn.__name__, values, response)
+                return response
+            return mcp.tool()(observed)
         @wraps(fn)
         async def guarded(*args, **kwargs):
             if (e := _guard(fn.__name__)): return e
