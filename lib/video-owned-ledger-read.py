@@ -16,7 +16,7 @@ def load(home: str, account: str):
     root = Path(home).resolve()
     db = root / 'video-actions.sqlite3'
     if db.is_symlink() or not db.is_file() or db.stat().st_size > 100_000_000:
-        return {'ok': False, 'code': 'selection-ledger-unavailable', 'rows': []}
+        return {'ok': False, 'code': 'selection-ledger-missing', 'rows': []}
     try:
         con = sqlite3.connect(db.as_uri() + '?mode=ro', uri=True, timeout=2)
         try:
@@ -31,6 +31,10 @@ def load(home: str, account: str):
             sent = {r[0] for r in con.execute('SELECT DISTINCT bvid FROM comment_receipts WHERE account=?', (account,))}
         finally:
             con.close()
+    except sqlite3.OperationalError as exc:
+        if 'locked' in str(exc).lower() or 'busy' in str(exc).lower():
+            return {'ok': False, 'code': 'selection-ledger-busy', 'rows': []}
+        return {'ok': False, 'code': 'selection-ledger-unavailable', 'rows': []}
     except (OSError, sqlite3.Error):
         return {'ok': False, 'code': 'selection-ledger-unavailable', 'rows': []}
     selected = {str(bv): (str(day), str(round_id), int(at or 0)) for bv, day, round_id, at in selections}

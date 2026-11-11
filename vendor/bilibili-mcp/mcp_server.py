@@ -117,6 +117,8 @@ def _life_video_request(route, payload):
                 # actual model decline must not masquerade as a network error.
                 safe_review = ('comment-review-not-current', 'comment-selection-not-confirmed',
                                'comment-review-already-recorded', 'comment-review-permission-unavailable',
+                               'comment-selection-ledger-unavailable', 'comment-selection-preexisting',
+                               'comment-selection-round-mismatch',
                                'comment-evidence-required', 'life-choice-deferred',
                                'life-willingness-unavailable', 'life-choice-review-required',
                                'life-choice-in-progress', 'life-cross-channel-rest',
@@ -1855,7 +1857,7 @@ def _finish_video_action(uid,bv,kind,ok,detail=''):
     finally:con.close()
 
 
-def _claim_session_manual_action(uid: str, kind: str, target: str, body: str, daily_limit: int):
+def _claim_session_manual_action(uid: str, kind: str, target: str, body: str, daily_limit: int, *, unique_target_day: bool = False):
     """Atomic idempotency ledger for explicit main-Session writes; uncertain sends are not retried."""
     digest=hashlib.sha256(str(body or '').encode('utf8')).hexdigest()
     day=datetime.now().strftime('%Y-%m-%d')
@@ -1867,6 +1869,14 @@ def _claim_session_manual_action(uid: str, kind: str, target: str, body: str, da
                 day TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL,detail TEXT NOT NULL DEFAULT '',
                 PRIMARY KEY(uid,kind,target,body_hash,day))""")
             con.execute('BEGIN IMMEDIATE')
+            # Owner's exceptional 'reply this already-received DM' instruction
+            # is once per recipient per day, even if a different text was used
+            # via the ordinary manual tool. Read and claim under the SAME lock.
+            if unique_target_day:
+                prior_target=con.execute('SELECT status FROM session_manual_actions WHERE uid=? AND kind=? AND target=? AND day=? LIMIT 1',
+                                         (uid,kind,target,day)).fetchone()
+                if prior_target:
+                    return {'ok':False,'already':True,'error':'这位收件人今日已有一次主人手动私信记录，不能通过补发入口重复发送'}
             prior=con.execute('SELECT status FROM session_manual_actions WHERE uid=? AND kind=? AND target=? AND body_hash=? AND day=?',(uid,kind,target,digest,day)).fetchone()
             if prior:
                 return {'ok':False,'already':True,'error':f'同一{kind}请求今天已有记录（{prior["status"]}），为避免重复操作不自动重试'}
@@ -2668,6 +2678,86 @@ async def bili_send_message_manual(receiver_uid: int, text: str, confirm: bool =
             _finish_session_manual_action(uid,'dm',str(target),claim['body_hash'],claim['day'],'uncertain',str(exc)[:160])
             return json.dumps({'ok':False,'error':'私信结果不确定，禁止自动重试：'+str(exc)[:130],'no_retry':True},ensure_ascii=False)
     except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False)
+
+
+def _verified_existing_dm_recipient(account: str, recipient: str, nickname: str, source_message_id: str):
+    """Only this account's authenticated inbound DM record authorizes a manual reply.
+
+    No private message text is read into the result. This is not a friend allowlist.
+    """
+    if not re.fullmatch(r'[1-9][0-9]{0,18}', str(account or '')):
+        raise ValueError('当前登录账号不可核验')
+    if not re.fullmatch(r'[1-9][0-9]{0,18}', str(recipient or '')) or account == recipient:
+        raise ValueError('私信目标 UID 无效')
+    if not isinstance(nickname, str) or not nickname.strip() or len(nickname)>60 or nickname.strip()!=nickname:
+        raise ValueError('缺少精确核验的收件昵称')
+    if not isinstance(source_message_id,str) or not source_message_id or len(source_message_id)>150:
+        raise ValueError('缺少有效的入站消息证明')
+    file = _DUTY_HOME / 'accounts' / account / 'runtime' / 'dm-autoreply-state.json'
+    if file.is_symlink() or not file.is_file() or file.stat().st_size > 5_000_000:
+        raise ValueError('当前账号入站私信证明不可用')
+    try:
+        people=json.loads(file.read_text(encoding='utf-8')).get('people')
+        p=people.get(recipient) if isinstance(people,dict) else None
+        if (not isinstance(p,dict) or p.get('nickname')!=nickname or
+                source_message_id not in (p.get('seen') or []) or
+                source_message_id != next((x for x in reversed(p.get('seen') or []) if isinstance(x,str) and x),None)):
+            raise ValueError('无法匹配该账号的真实入站私信与昵称')
+        boundary=(p.get('dmContactBoundaries') or {}).get(account)
+        if not boundary and isinstance(p.get('dmContactBoundary'),dict) and p['dmContactBoundary'].get('accountUid')==account:
+            boundary=p['dmContactBoundary']
+        if isinstance(boundary,dict) and boundary.get('status')=='stop':
+            raise ValueError('接收者已明确拒绝后续私信')
+        recent=[int(x['at']) for x in (p.get('history') or []) if isinstance(x,dict) and
+                x.get('role')=='user' and str(x.get('at','')).isdigit() and int(x['at'])>0]
+        if not recent:raise ValueError('缺少可核验的入站会话上下文')
+        last=max(recent)
+        if int(p.get('lastRepliedAt') or 0)>=last:
+            raise ValueError('已有回复记录，不通过补发通道重复发送')
+        return True
+    except (OSError,ValueError,TypeError,KeyError,json.JSONDecodeError) as exc:
+        raise ValueError('当前账号入站私信核验失败：'+str(exc)[:90]) from None
+
+
+@tool()
+async def bili_reply_existing_dm_manual(receiver_uid: int, receiver_name: str, source_message_id: str,
+                                        text: str, confirm: bool = False) -> str:
+    """Main Session owner-ordered response to a verified inbound DM, without permanent whitelist grants."""
+    if (e:=_guard('bili_reply_existing_dm_manual')):return e
+    try:
+        if os.environ.get('BILI_JS_MCP_ADAPTER')!='1' or os.environ.get('BILI_SESSION_MANUAL_EXISTING_DM_REPLY_ENABLED')!='1':
+            raise ValueError('仅允许主 Session 手动回复已核验私信')
+        if os.environ.get('BILI_SESSION_MANUAL_ACTIONS_ENABLED')!='1':
+            raise ValueError('主 Session 手动 B站操作未授权')
+        if confirm is not True:raise ValueError('缺少主人在本次对话中的明确委托')
+        target=int(receiver_uid)
+        body=str(text or '').strip()
+        if target<=0 or target>=10**19 or not body or len(body)>450:
+            raise ValueError('收件人或正文非法')
+        cred=get_cred();account=str(getattr(cred,'dedeuserid','') or '')
+        _verified_existing_dm_recipient(account,str(target),receiver_name,source_message_id)
+        # Share the same account + target + body-hash duplicate/quota ledger as
+        # the ordinary whitelist-only manual DM tool. Never retry uncertain writes.
+        # Hash the verified inbound source ID as the idempotency key, not
+        # private message content; limit and ledger remain shared with manual DM.
+        claim=_claim_session_manual_action(account,'dm',str(target),'inbound:'+source_message_id,
+            max(0,min(20,int(os.environ.get('BILI_SESSION_DM_DAILY_LIMIT','5')))),unique_target_day=True)
+        if not claim.get('ok'):return json.dumps(claim,ensure_ascii=False)
+        try:
+            raw=await bili_send_message(receiver_uid=target,text=body)
+            try:result=json.loads(raw) if isinstance(raw,str) else raw
+            except Exception:result={'success':False}
+            if isinstance(result,dict) and result.get('success') is True:
+                _finish_session_manual_action(account,'dm',str(target),claim['body_hash'],claim['day'],'ok','B站返回投递回执')
+                return json.dumps({'ok':True,'action':'dm','receiver_uid':str(target),
+                    'receipt':result,'message':'B站已接受这次主人委托回复；不授予自动私信权限'},ensure_ascii=False)
+            _finish_session_manual_action(account,'dm',str(target),claim['body_hash'],claim['day'],'uncertain','B站未确认投递')
+            return json.dumps({'ok':False,'no_retry':True,'error':'发送结果无法确认，已封存禁止自动重试'},ensure_ascii=False)
+        except Exception:
+            _finish_session_manual_action(account,'dm',str(target),claim['body_hash'],claim['day'],'uncertain','平台发送异常')
+            return json.dumps({'ok':False,'no_retry':True,'error':'发送结果未知，禁止自动重试'},ensure_ascii=False)
+    except Exception as exc:
+        return json.dumps({'ok':False,'error':str(exc)[:150]},ensure_ascii=False)
 
 
 @tool()
