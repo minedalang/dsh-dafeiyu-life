@@ -23,7 +23,9 @@ test('原管理页四组顶部横向导航、页签 ID 均保留，没有注入�
 test('角色来自本地素材，同源静态资源明确纳入首次设置访问路径',()=>{
   const image=readFileSync(join(root,'lib/assets/deepseek-girl-front.png'));
   assert.deepEqual(image.subarray(0,8),Buffer.from([137,80,78,71,13,10,26,10]));
-  assert.equal((html.match(/src="\/api\/bili-duty\/life-character\.png"/g)||[]).length,3);
+  // dev.63 removes the redundant animated fish in Fish Life; keep the one
+  // hero character and the separate existing character preview elsewhere.
+  assert.equal((html.match(/src="\/api\/bili-duty\/life-character\.png"/g)||[]).length,2);
   assert.match(server,/path==='\/api\/bili-duty\/life-character\.png'/);
   assert.match(server,/join\(pluginDir,'lib','assets','deepseek-girl-front\.png'\)/);
   assert.match(server,/'content-type':'image\/png'/);

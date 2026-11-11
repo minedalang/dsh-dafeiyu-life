@@ -62,4 +62,7 @@ if __name__ == '__main__':
         result = load(sys.argv[1], sys.argv[2]) if len(sys.argv) == 3 else {'ok': False, 'rows': []}
     except Exception:
         result = {'ok': False, 'code': 'selection-ledger-unavailable', 'rows': []}
-    print(json.dumps(result, ensure_ascii=False))
+    # Node reads stdout as UTF-8. On Windows, Python stdout may use cp936/GBK;
+    # ASCII-escaped JSON preserves every Unicode title even when the pipe encoding
+    # is not UTF-8, and also handles characters outside the console code page.
+    print(json.dumps(result, ensure_ascii=True))

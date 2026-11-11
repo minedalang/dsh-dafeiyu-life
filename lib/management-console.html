@@ -691,15 +691,14 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 @media(max-width:560px){#panel-life-agent .life-command-state{grid-template-columns:1fr 1fr;gap:8px}#panel-life-agent .life-command-card{padding:11px}#panel-life-agent .life-command-links a{flex:1 1 40%}}
 
 /* 2.7.1 RC: interactive Life cards & verified activity, responsive, reduced motion. */
-#panel-life-agent .life-now-stage{display:flex;align-items:center;gap:20px;padding:21px 23px;margin:13px 0 12px;border-radius:22px;border:1px solid color-mix(in srgb,#55a99f 35%,var(--stroke));background:linear-gradient(115deg,color-mix(in srgb,#b9eee0 45%,var(--panel)),color-mix(in srgb,#afc7ff 28%,var(--panel)));box-shadow:0 14px 30px rgba(17,90,84,.08)}
-#panel-life-agent .fish-scene{position:relative;min-width:108px;width:108px;height:105px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 33% 30%,#d6fff1,#70cdbf 85%);box-shadow:inset 0 -7px 13px rgba(15,81,90,.15)}
-#panel-life-agent .fish-avatar{font-size:62px;filter:drop-shadow(2px 6px 3px rgba(0,77,68,.17));display:block;animation:fish-bob 3.2s ease-in-out infinite}
-#panel-life-agent .fish-bubble{position:absolute;right:12px;top:8px;width:10px;height:10px;border-radius:50%;border:2px solid #fff;animation:fish-bubble 3s ease-out infinite}
-#panel-life-agent .fish-bubble-b{right:27px;top:28px;width:7px;height:7px;animation-delay:1.1s}
-#panel-life-agent .life-now-copy{flex:1;min-width:0}
-#panel-life-agent .life-now-copy h3{font-size:clamp(18px,2.4vw,24px);margin:6px 0 4px}
-#panel-life-agent .life-now-copy p{margin:3px 0}
-#panel-life-agent .life-now-eyebrow{font-size:12px;font-weight:750;color:#156e63}
+#panel-life-agent .life-now-eyebrow{font-size:12px;font-weight:750;color:#d7f9f5;letter-spacing:.02em}
+#panel-life-agent .life-hero-live{position:relative;margin:13px 0 9px;min-width:0}
+#panel-life-agent .life-hero-live h2{overflow-wrap:anywhere}
+#panel-life-agent .life-hero-live p{max-width:550px;margin:7px 0 0}
+#panel-life-agent .life-hero-footer{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin-top:17px}
+#panel-life-agent .life-hero-footer>span{font-size:11px;line-height:1.5;color:#d0e9f5;max-width:300px}
+#panel-life-agent .life-hero-footer button{flex-shrink:0}
+#panel-life-agent #life-now-time{font-size:12px;opacity:.87}
 #panel-life-agent .life-now-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#32b69a;box-shadow:0 0 0 3px rgba(50,182,154,.15);margin-right:5px}
 #panel-life-agent .life-now-recent{display:flex;gap:8px;flex-wrap:wrap;margin:11px 0 18px}
 #panel-life-agent .life-now-recent-item{font-size:12px;padding:7px 10px;border-radius:12px;background:var(--panel);border:1px solid var(--stroke);display:flex;gap:8px}
@@ -736,11 +735,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life .interest-detail{font-size:11px}
 #emotion-agency-activity{font-size:12px}
 #emotion-agency-activity>details>summary{cursor:pointer;color:var(--muted)}
-@keyframes fish-bob{0%,100%{transform:translateY(3px) rotate(-2deg)}50%{transform:translateY(-5px) rotate(3deg)}}
-@keyframes fish-bubble{0%{transform:translateY(14px) scale(.5);opacity:0}35%{opacity:1}100%{transform:translateY(-29px) scale(1.2);opacity:0}}
 @media(max-width:850px){#panel-life-agent .life-profile-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:590px){#panel-life-agent .life-now-stage{gap:10px;padding:14px;flex-wrap:wrap}#panel-life-agent .fish-scene{width:71px;height:71px;min-width:71px}#panel-life-agent .fish-avatar{font-size:43px}#panel-life-agent .life-profile-card{min-height:130px;padding:11px}}
-@media(prefers-reduced-motion:reduce){#panel-life-agent :is(.fish-avatar,.fish-bubble){animation:none}#panel-life-agent .life-profile-card{transition:none}#panel-life-agent .life-profile-card:hover{transform:none}}
+@media(max-width:590px){#panel-life-agent .life-profile-card{min-height:130px;padding:11px}}
+@media(prefers-reduced-motion:reduce){#panel-life-agent .life-profile-card{transition:none}#panel-life-agent .life-profile-card:hover{transform:none}}
 
 #panel-life-agent .emotion-grid{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:12px 0}
 #panel-life-agent .emotion-card{position:relative;border:1px solid var(--stroke);border-radius:12px;background:var(--panel);padding:12px;min-width:0}
@@ -1017,17 +1014,12 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-life-agent .life-command-hero h2{color:#fff;font-size:clamp(26px,3.2vw,38px);line-height:1.27;letter-spacing:-.04em;margin:10px 0}
 #panel-life-agent .life-command-hero .muted{color:#e4f2f7;line-height:1.8;max-width:550px;font-size:13px;margin:9px 0 12px}
 #panel-life-agent .life-command-hero .page-eyebrow{color:#c7eaf8;letter-spacing:.15em;font-size:11px;font-weight:750}
-#panel-life-agent .life-hero-tags{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0}
-#panel-life-agent .life-hero-tags span{display:inline-flex;border:1px solid #ffffff3e;border-radius:50px;background:#ffffff19;color:#effdff;padding:4px 10px;font-size:12px}
 #panel-life-agent .life-hero-character{position:absolute;bottom:-17px;right:40px;z-index:1;width:min(32%,270px);height:292px;display:flex;align-items:end;justify-content:center;animation:life-character-float 5.7s ease-in-out infinite}
 #panel-life-agent .life-hero-character img{position:relative;z-index:2;display:block;width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 15px 21px #112b5766)}
 #panel-life-agent .life-glow{position:absolute;z-index:0;inset:26% 12% 8%;background:radial-gradient(ellipse,#d0f7ef80,transparent 72%);filter:blur(11px)}
 #panel-life-agent .life-hero-bubble{position:absolute;right:28%;top:35%;border-radius:50%;border:2px solid #e2ffff80;width:13px;height:13px;animation:life-bubbles 7s ease-in-out infinite}
 #panel-life-agent .life-bubble-two{right:12%;top:66%;width:22px;height:22px;animation-delay:-3s}
 #panel-life-agent .life-command-hero button.life-action{position:relative;z-index:3;background:#f1f8ff;color:#2d6287;border-color:#ffffff8a;box-shadow:0 5px 13px #163c5f20;margin-top:2px}
-#panel-life-agent .life-now-stage{background:linear-gradient(125deg,color-mix(in srgb,#b6eced 19%,var(--panel)),color-mix(in srgb,#b0b5f5 13%,var(--panel)));border:1px solid var(--life-ui-line);box-shadow:var(--life-ui-shadow);border-radius:23px;padding:19px 24px}
-#panel-life-agent .fish-scene{overflow:hidden;background:radial-gradient(circle at 40% 25%,#dff9ff,#b3e1f0);border:1px solid #c0e5f1}
-#panel-life-agent .fish-portrait{object-fit:contain;width:101px;height:103px;font-size:0;transform-origin:center bottom;filter:drop-shadow(1px 8px 8px #2f6c8c2e)}
 #panel-life-agent .life-now-recent-item,#panel-life-agent .life-command-card{border-radius:15px;border:1px solid var(--life-ui-line);box-shadow:0 8px 24px #2954780d}
 #panel-life-agent .life-command-card:nth-child(3n+1){background:linear-gradient(145deg,var(--panel),color-mix(in srgb,#ddf4fa 30%,var(--panel)))}
 #panel-life-agent .life-command-card:nth-child(3n+2){background:linear-gradient(145deg,var(--panel),color-mix(in srgb,#e9e5ff 30%,var(--panel)))}
@@ -1067,10 +1059,10 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 @keyframes life-character-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @keyframes life-bubbles{0%{transform:translateY(22px) scale(.7);opacity:0}30%{opacity:.8}100%{transform:translateY(-56px) scale(1.1);opacity:0}}
 @keyframes life-card-reveal{from{opacity:.5;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
-@media(max-width:720px){#panel-life-agent .life-command-hero{min-height:228px;padding:23px 19px}#panel-life-agent .life-hero-copy{width:73%}#panel-life-agent .life-hero-character{right:-4px;width:37%;height:222px}#panel-life-agent .life-command-hero h2{font-size:23px}#panel-life-agent .life-hero-tags{display:none}#panel-life-agent .life-now-stage{padding:12px}}
-@media(max-width:450px){#panel-life-agent .life-command-hero h2{font-size:20px}#panel-life-agent .life-command-hero .muted{font-size:11px}#panel-life-agent .life-hero-character{height:191px;right:-15px;bottom:-10px;width:40%}#panel-life-agent .life-now-stage{gap:9px}#panel-life-agent .fish-scene{width:70px;min-width:70px;height:70px}#panel-life-agent .fish-portrait{width:69px;height:69px}#panel-life-agent #life-timeline-list{padding-left:14px}#panel-life-agent #life-timeline-list .record:before{left:-22px}}
-@media(prefers-color-scheme:dark){#panel-life-agent .life-command-hero{border-color:#577f94}#panel-life-agent .life-now-stage{border-color:var(--stroke)}#panel-life-agent .emotion-trend .trend-line{filter:brightness(1.22)}#panel-life-agent .emotion-meter{background:#354960}}
-@media(prefers-reduced-motion:reduce){#panel-life-agent :is(.life-hero-character,.life-hero-bubble,.life-command-hero:before,.life-command-hero:after,.fish-avatar,.fish-bubble,.trend-line,.record){animation:none!important}#panel-life-agent :is(.life-profile-card,.todo-item){transition:none!important}}
+@media(max-width:720px){#panel-life-agent .life-command-hero{min-height:228px;padding:23px 19px}#panel-life-agent .life-hero-copy{width:73%}#panel-life-agent .life-hero-character{right:-4px;width:37%;height:222px}#panel-life-agent .life-command-hero h2{font-size:23px}}
+@media(max-width:450px){#panel-life-agent .life-command-hero h2{font-size:20px}#panel-life-agent .life-command-hero .muted{font-size:11px}#panel-life-agent .life-hero-character{height:191px;right:-15px;bottom:-10px;width:40%}#panel-life-agent #life-timeline-list{padding-left:14px}#panel-life-agent #life-timeline-list .record:before{left:-22px}}
+@media(prefers-color-scheme:dark){#panel-life-agent .life-command-hero{border-color:#577f94}#panel-life-agent .emotion-trend .trend-line{filter:brightness(1.22)}#panel-life-agent .emotion-meter{background:#354960}}
+@media(prefers-reduced-motion:reduce){#panel-life-agent :is(.life-hero-character,.life-hero-bubble,.life-command-hero:before,.life-command-hero:after,.trend-line,.record){animation:none!important}#panel-life-agent :is(.life-profile-card,.todo-item){transition:none!important}}
 </style>
 </head>
 <body><main class="wrap">
@@ -1543,8 +1535,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p class="muted">这里仅控制是否把近期生活摘要主动发送给选定的主 Session；不影响上方“鱼鱼现在记得什么”的记忆搜索。</p></div></div></details>
 </div></section>
 <section id="panel-life-agent" hidden>
-<div class="life-hero life-command-hero"><div class="life-hero-copy"><span class="page-eyebrow">FISH LIFE · 实时生活</span><h2>今天，鱼鱼也在认真生活。</h2><p class="muted">看看鱼鱼真实发生的探索、聊天、心情和打算。所有行动都以实际记录为准，不模拟未发生的操作。</p><div class="life-hero-tags" aria-hidden="true"><span>✦ 自主探索</span><span>♡ 连续心情</span><span>◉ 真实生活时间线</span></div><button id="life-integration-refresh" class="life-action life-sky" type="button">刷新生活状态</button></div><div class="life-hero-character" aria-hidden="true"><i class="life-glow"></i><img src="/api/bili-duty/life-character.png" alt="" decoding="async"></div><span class="life-hero-bubble life-bubble-one" aria-hidden="true"></span><span class="life-hero-bubble life-bubble-two" aria-hidden="true"></span></div>
-<div class="life-now-stage" aria-live="polite"><div class="fish-scene" aria-hidden="true"><div class="fish-bubble fish-bubble-a"></div><div class="fish-bubble fish-bubble-b"></div><img class="fish-avatar fish-portrait" src="/api/bili-duty/life-character.png" alt="" decoding="async"></div><div class="life-now-copy"><span class="life-now-eyebrow"><span class="life-now-dot"></span>实时状态 · 约 4 秒刷新</span><h3 id="life-now-title">正在核对鱼鱼的行动…</h3><p id="life-now-detail" class="muted">不推断未发生的操作</p><p id="life-now-time" class="muted"></p></div><button id="life-now-refresh" type="button">刷新</button></div>
+<div class="life-hero life-command-hero"><div class="life-hero-copy"><span class="page-eyebrow">FISH LIFE · 实时生活大动画</span><div class="life-hero-live" role="status" aria-live="polite" aria-atomic="true"><span class="life-now-eyebrow"><span class="life-now-dot" aria-hidden="true"></span>鱼鱼此刻 · 每 4 秒核对实际状态</span><h2 id="life-now-title">正在核对鱼鱼的行动…</h2><p id="life-now-detail" class="muted">只展示实际发生的活动，不模拟未发生的操作。</p><p id="life-now-time" class="muted"></p></div><div class="life-hero-footer"><span>真实行动 · 有据可查 · 没有动作时也可以休息</span><button id="life-integration-refresh" class="life-action life-sky" type="button">刷新生活状态</button></div></div><div class="life-hero-character" aria-hidden="true"><i class="life-glow"></i><img src="/api/bili-duty/life-character.png" alt="" decoding="async"></div><span class="life-hero-bubble life-bubble-one" aria-hidden="true"></span><span class="life-hero-bubble life-bubble-two" aria-hidden="true"></span></div>
 <div id="life-now-recent" class="life-now-recent" aria-label="最近已确认的活动"></div>
 <nav class="life-day-shortcuts" aria-label="鱼鱼此刻快捷查看"><a href="#life-timeline-section">今天的经历</a><a href="#life-emotion-section">此刻心情</a><a href="#life-todo-section">想做的事</a><a href="#life-settings-v2-panel">生活设置</a></nav>
 <details class="life-now-timeline" open><summary>📅 大肥鱼的一天 · 真实生活时间线</summary>
