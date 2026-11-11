@@ -29,14 +29,15 @@ test('评论诊断能够区分未考虑、不愿评论、想说但未提议、Li
  assert.equal(classifyVideoCommentRound({...input,exitCode:1}).code,'video-process-not-completed')
 })
 
-test('review 路由只存模型自述计数，不会产生 Life 审批或发送；账号/轮次/目标严格绑定',async t=>{
- let scope=TAG,uid=UID,nowRound=ROUND,proposalCalls=0,writes=0
+test('Video Agent 不能用 pass 抢走 Life 沉默权；insufficient 是技术证据不足，不花模型调用',async t=>{
+ let scope=TAG,uid=UID,models=0
  const reviews=new Map(),selected=new Set([BV])
  const bridge=createLifeVideoActionBridge({getAccountUid:()=>uid,getAccountTag:()=>scope,
-  choose:async()=>{proposalCalls++;return {ok:false}},verify:()=>({ok:false}),receipt:()=>{writes++},
-  onCommentReview:({roundId,bvid,decision})=>{
-   if(roundId!==nowRound||!selected.has(bvid)||reviews.has(bvid))return {ok:false}
-   reviews.set(bvid,decision);return {ok:true}
+  choose:async()=>{models++;return {ok:false,action:'skip'}},verify:()=>({ok:false}),receipt:()=>{},
+  onCommentReview:({roundId,bvid,decision,checkOnly})=>{
+   if(roundId!==ROUND||!selected.has(bvid)||reviews.has(bvid))return {ok:false}
+   if(!checkOnly)reviews.set(bvid,decision)
+   return {ok:true}
   }})
  t.after(()=>bridge.stop());await bridge.start()
  const {BILI_LIFE_ACTION_URL:url,BILI_LIFE_ACTION_TOKEN:secret}=bridge.env()
@@ -44,17 +45,16 @@ test('review 路由只存模型自述计数，不会产生 Life 审批或发送�
   const response=await fetch(url+'/life-comment-review',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(data)})
   return {status:response.status,body:await response.json()}
  }
- const good={uid:UID,roundId:ROUND,bvid:BV,decision:'pass'}
+ const good={uid:UID,roundId:ROUND,bvid:BV,decision:'insufficient'}
  assert.equal((await send({...good,bvid:OTHER})).status,409)
  assert.equal((await send({...good,roundId:'bad'})).status,400)
- assert.equal((await send({...good,decision:'post',commentText:'secret'})).status,400)
+ assert.equal((await send({...good,decision:'pass'})).status,400)
  assert.equal((await send(good,'0'.repeat(64))).status,403)
  assert.equal((await send(good)).body.recorded,true)
- assert.equal((await send(good)).status,409,'cannot replay consideration for one BV')
- assert.equal(reviews.get(BV),'pass')
+ assert.equal((await send(good)).status,409)
+ assert.equal(reviews.get(BV),'insufficient')
+ assert.equal(models,0)
  scope=OTHER_TAG;assert.equal((await send(good)).status,409)
- scope=TAG;uid='12345679';assert.equal((await send(good)).status,409)
- assert.equal(proposalCalls,0);assert.equal(writes,0)
 })
 
 test('视频轮次只持久化脱敏计数，DEBUG 单独记录视频结束，不把候选误认成发言',()=>runDir(async dir=>{

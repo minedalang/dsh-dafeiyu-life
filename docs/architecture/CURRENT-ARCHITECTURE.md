@@ -1,6 +1,6 @@
-# 当前生产接线事实 · 2.7.1-dev.60（开发预览，未发布）
+# 当前生产接线事实 · 2.7.1-dev.61（开发预览，未发布）
 
-> **唯一当前入口。** 其他 dev.1–dev.59 文档仅表示各版本当时的设计/变更；不能把当时的“当前”当成 dev.60 的现行事实。2.7.1 RC/Windows/B站 72h 尚未验收。
+> **唯一当前入口。** 其他 dev.1–dev.60 文档仅表示各版本当时的设计/变更；不能把当时的“当前”当成 dev.60 的现行事实。2.7.1 RC/Windows/B站 72h 尚未验收。
 
 ## 目标、权限与唯一事实源
 
@@ -8,7 +8,7 @@
 |---|---|---|---|
 | 真实私信／评论通知 | `interaction-scheduler` 经可信源过滤，现有 `interaction-batch` 的**一次**模型判断由 Life Voice 直接作 `reply/skip/defer` 和最终表达；DM、Comment 子 Agent 提供上下文/候选能力 | `lib/life-willingness.mjs` 的 `adoptSocialDecision` 仅本地登记模型已给出的结果；`social-send-transaction` 持有每条发送事务 | `adoptSocialDecision` 本身**零 AI 调用**；UID、线程、正文、账号与一次性消息消费不匹配拒发；不改变原技术授权、平台未知回执不盲重试。主 Session／主人专属独立授权仍保留 |
 | 视频入选 | Video Agent 搜索、视频详情、字幕等专业感知；真正正向记录仅 `挑中` | `vendor/bilibili-mcp/mcp_server.py` 中 `selected_videos` 和 `seen_observations` 使用真实登录账号 UID 的 SQLite 事务；`seen.md`/日报为旧历史投影 | 旧无 UID 的 Markdown 不授予相遇、点赞、关注或本账号判重。被拒绝的别名不能假冒挑中。每日 50 条限制已退役；每轮目标仍是柔性的 |
-| 视频原创主评论 | Video Agent 提交真实入选证据与候选短评；Life 在原 `life-comment-review` 中决定意愿与最终正文 | `lib/life-video-action-bridge.mjs` 绑定账号、BV、轮次、正文的一次性授权，Python MCP 原发送技术门禁 | 发送时无第二次 Life 模型判断；平台状态未知必须独立复核；附加 @、附图或同步动态不继承评论授权 |
+| 视频原创主评论 | Video Agent 真正 `挑中` 后，原 MCP 使用同轮实际读取的字幕/详情/评论工具结果，自动向 Life 提交评论机会；Life 在唯一 `life-comment-review` 决定意愿并亲自生成最终正文 | `lib/life-video-action-bridge.mjs` 绑定账号、BV、轮次、正文的一次性授权，Python MCP 原发送技术门禁 | 发送时无第二次 Life 模型判断；平台状态未知必须独立复核；附加 @、附图或同步动态不继承评论授权 |
 | 点赞、收藏、关注/取关、文件夹整理 | Video Agent 提交能力和理由；Life 意愿层选择是否愿意 | `life-video-action-bridge` + 原 Python MCP 账号/额度/判重/平台回执 | 理由仍可能是专业 Agent 的未核实概括：需要继续完善同轮已核验的证据包；入选或喜欢不自动授予权限 |
 | Life Planner／Episode | 自主考虑何时探索/休息/继续；可信事件才形成 Episode | `autonomous-planner`, `life-opportunities`, `life-action-attribution` 及原 `LifeMemoryGateway` | 不凭日期相同编造因果，不把模型声称的动作算作平台成功；没有新增陌生人无授权私信能力 |
 | 主人私信／主 Session／公开动态 | 各自专业入口；复用 Life Voice/统一意愿/技术门禁 | 既有 owner/host/dynamic 事务和主人显式授权 | 本轮没有把这些路径重写成万能调度器；账号身份/私密域不能交叉继承，续聊回执仍需实机验证 |
@@ -41,7 +41,7 @@ flowchart TD
 ## 不可混淆的数据或安全边界
 
 - `seen.md` 和已有日报保留给人类查看；切账号不读取他人的“已看过/已挑中”作为现账号可行动证明。历史无 UID 记录不迁移为可信选片；升级后同账号如需关联旧片，须重新在已认证会话产生当前账号的 `挑中`。
-- `duty.md` 是用户可改的阅读/表达章程，额度由代码与配置强制执行。运行时会覆盖旧每日额度描述，但不修改用户盘上的自定义文本。
+- `duty.md` 原本是用户可改章程。dev.61 生效工具契约永远取插件版，旧家目录文件原样保留；仅显式非权限“自定义偏好”可被安全导入。额度、身份、状态与公开动作的唯一权威是代码和配置。
 - 旧 `social-shadow` 额外模型比较在 active 下已退役；历史诊断只读保留。`shadow` 系统干跑仍属独立安全模式，不等同已发送。
 - `pick-quota.mjs` 无正式运行依赖，已移除。`cold-state-snapshot.mjs` 有备份维护工具依赖，保留。
 - 失败、未核验、已接受但平台不可读、真实公开可见是**不同状态**，不得互相升格。

@@ -45,7 +45,7 @@ test('只读评论考虑拒绝会返回具体可枚举原因，不会触发 Life
   choose:async()=>{proposal++;return {ok:false}},verify:()=>({ok:false}),receipt:()=>{writes++},
   onCommentReview:()=>scope!==A?{ok:false,reason:'comment-review-not-current'}:selected?{ok:true}:{ok:false,reason:'comment-selection-not-confirmed'}})
  t.after(()=>bridge.stop());await bridge.start()
- const env=bridge.env(),payload={uid:UID,roundId:ROUND,bvid:BV,decision:'pass'}
+ const env=bridge.env(),payload={uid:UID,roundId:ROUND,bvid:BV,decision:'insufficient'}
  const send=async()=>{const r=await fetch(env.BILI_LIFE_ACTION_URL+'/life-comment-review',{method:'POST',
   headers:{authorization:'Bearer '+env.BILI_LIFE_ACTION_TOKEN,'content-type':'application/json'},body:JSON.stringify(payload)})
   return {status:r.status,body:await r.json()}}
@@ -74,11 +74,11 @@ test('匿名 S0 快照把暂停冷却、失去原来源与可恢复分开，仍�
 test('视频标记的附带只读意愿与评论写入仍是独立工具，当前轮未入选则拒绝',()=>{
  const idx=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const py=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
- assert.match(idx,/comment_decision=pass\/insufficient/)
+ assert.match(idx,/Video Agent 不准提交 comment_decision=pass/)
  assert.match(idx,/comment-review-permission-unavailable/)
  assert.match(idx,/row\.previouslyPickedBvids\.has\(bvid\)/)
  assert.match(py,/comment_decision: str = ""/)
- assert.match(py,/if comment_decision and \(comment_decision not in/)
+ assert.match(py,/if comment_decision and \(comment_decision != 'insufficient'/)
  assert.match(py,/result\['comment_review'\]/)
  assert.match(py,/round_id = os\.environ\.get\('BILI_DUTY_LIFE_ROUND_ID'/)
  assert.match(py,/if route in \('\/life-comment-review', '\/life-action'\) and exc\.code == 409/)

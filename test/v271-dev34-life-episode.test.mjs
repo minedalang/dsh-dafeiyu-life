@@ -117,45 +117,43 @@ test('the video round seeds an Episode only after a verified Life-owned homepage
  assert.match(idx,/lifeOpportunities\.beginHomeExploration\(videoRoundReceiptId/)
  assert.match(idx,/exactHomePickedRows\.slice\(0,5\)/)
  assert.match(idx,/completed\?\.homePickedBvids/)
- assert.match(idx,/newlyPickedRows=parseSeenTable\(\)\.filter\(x=>x\.picked&&!watchedBeforeRun\.has\(x\.bvid\)\)/)
+ assert.match(idx,/const exact=ownedSelectionSnapshot\(\)/)
+ assert.match(idx,/x\.picked&&x\.roundId===videoRoundReceiptId&&!watchedBeforeRun\.has\(x\.bvid\)/)
 })
 
 test('technical comment blocks are not misclassified as voluntary refusal',()=>{
  assert.equal(classifyVideoCommentRound({gate:'configured',pickedCount:1,exitCode:0,review:{proposed:1,blocked:1}}).code,'comment-technically-blocked')
 })
 
-test('cross-channel comment cooldown gets one bounded Life re-consideration, never an automatic platform retry',async t=>{
- let now=T,calls=0,platformVerifications=0
- const events=[]
+test('direct video comment send without a matching Life decision never calls a second model or verifies platform',async t=>{
+ let calls=0,platformVerifications=0
  const bridge=createLifeVideoActionBridge({getAccountUid:()=>cred.dedeuserid,getAccountTag:()=>scope,
-  now:()=>now,sleep:async ms=>{now+=ms},
-  choose:async()=>++calls===1?{ok:false,reason:'life-cross-channel-rest',notBefore:T+30_000}:{ok:true,proof:{id:'proof',valid:true}},
-  verify:()=>({ok:true}),receipt:()=>{},verifyPlatformState:async()=>{platformVerifications++;return true},
-  onCommentDiagnostic:x=>events.push(x)})
- t.after(()=>bridge.stop());await bridge.start()
- const env=bridge.env()
- const proposed=await fetch(env.BILI_LIFE_ACTION_URL+'/life-action',{method:'POST',headers:{authorization:'Bearer '+env.BILI_LIFE_ACTION_TOKEN,'content-type':'application/json'},
-  body:JSON.stringify({tool:'bili_reply',target:BV,uid:cred.dedeuserid,topLevel:true,commentText:'有真实证据支持的原创评论'})})
- const grant=await proposed.json()
- assert.equal(proposed.status,200);assert.equal(grant.ok,true);assert.equal(calls,2)
- assert.deepEqual(events,[{stage:'proposed',code:''},{stage:'approved',code:''}])
- // Life approval is not a platform write. Only a separate writer result can
- // trigger the independent read-after-write verification path.
- assert.equal(platformVerifications,0)
-})
-
-
-test('account switch during comment cooldown prevents the delayed Life re-consideration',async t=>{
- let now=T,calls=0,tag=scope
- const bridge=createLifeVideoActionBridge({getAccountUid:()=>cred.dedeuserid,getAccountTag:()=>tag,
-  now:()=>now,sleep:async ms=>{now+=ms;tag='b'.repeat(16)},
-  choose:async()=>{calls++;return {ok:false,reason:'life-cross-channel-rest',notBefore:T+30_000}},
-  verify:()=>({ok:true}),receipt:()=>{}})
+  choose:async()=>{calls++;return {ok:false,reason:'life-cross-channel-rest'}},
+  verify:()=>({ok:true}),receipt:()=>{},verifyPlatformState:async()=>{platformVerifications++;return true}})
  t.after(()=>bridge.stop());await bridge.start()
  const env=bridge.env()
  const resp=await fetch(env.BILI_LIFE_ACTION_URL+'/life-action',{method:'POST',headers:{authorization:'Bearer '+env.BILI_LIFE_ACTION_TOKEN,'content-type':'application/json'},
   body:JSON.stringify({tool:'bili_reply',target:BV,uid:cred.dedeuserid,topLevel:true,commentText:'有真实证据支持的原创评论'})})
- assert.equal(resp.status,409);assert.equal(calls,1,'account switch cancels the only deferred re-consideration')
+ const result=await resp.json()
+ assert.equal(resp.status,409)
+ assert.equal(result.reason,'comment-review-not-current')
+ assert.equal(calls,0)
+ assert.equal(platformVerifications,0)
+})
+
+
+test('account changed before video comment send cannot invoke a substitute Life decision',async t=>{
+ let calls=0,tag=scope
+ const bridge=createLifeVideoActionBridge({getAccountUid:()=>cred.dedeuserid,getAccountTag:()=>tag,
+  choose:async()=>{calls++;return {ok:false,reason:'life-cross-channel-rest'}},
+  verify:()=>({ok:true}),receipt:()=>{}})
+ t.after(()=>bridge.stop());await bridge.start()
+ const env=bridge.env()
+ tag='b'.repeat(16)
+ const resp=await fetch(env.BILI_LIFE_ACTION_URL+'/life-action',{method:'POST',headers:{authorization:'Bearer '+env.BILI_LIFE_ACTION_TOKEN,'content-type':'application/json'},
+  body:JSON.stringify({tool:'bili_reply',target:BV,uid:cred.dedeuserid,topLevel:true,commentText:'有真实证据支持的原创评论'})})
+ assert.equal(resp.status,409)
+ assert.equal(calls,0)
 })
 
 

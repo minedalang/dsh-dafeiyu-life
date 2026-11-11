@@ -36,9 +36,9 @@ test('现代规则明确覆盖旧章程/旧配置里的50条和标题级跳过�
   assert.doesNotMatch(read('prompts/duty.md'),/每天最多挑几条|每天最多几条|宿主数配额用/)
 })
 
-test('真正生产 prompt 在读家目录章程时兼容旧版，并在末尾声明新规则',()=>{
+test('真正生产 prompt 始终使用新版本工具契约，并保留历史章程文件不覆盖',()=>{
   const source=read('index.js')
-  assert.match(source,/charterText = normalizeRetiredDailyPickCharter\(readFileSync\(duty/)
+  assert.match(source,/effectiveVideoCharter\(shipped,local\)/)
   assert.match(source,/\+ '\\n' \+ VIDEO_PICK_POLICY/)
   assert.match(source,/const pickedBeforeRun = countPickedToday\(\)/,'只记录真实计数')
   assert.doesNotMatch(source,/report-off-one-round/,'关闭日报不应每天只允许一轮')

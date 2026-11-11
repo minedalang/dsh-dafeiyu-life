@@ -31,7 +31,7 @@ class CommentConsiderationTests(unittest.TestCase):
                     'get_cred': lambda: SimpleNamespace(dedeuserid=self.uid),
                     '_guard': lambda action: json.dumps({'ok': False, 'blocked': True}) if self.paused else '',
                     '_valid_bv': lambda bvid: bvid if re.fullmatch(r'BV[0-9A-Za-z]{10}', bvid) else (_ for _ in ()).throw(ValueError('invalid BV')),
-                    '_life_video_request': request}
+                    '_life_video_request': request, '_round_comment_evidence': lambda bv: '本轮真实从视频字幕工具核验的充分阅读证据（不是Agent凭空自述）'}
         exec(CODE, self.ctx)
 
     def call(self, bvid='BV1abcde1234', decision='consider', reason='short', draft='我想回应视频里真实看到的细节', evidence='本轮字幕读到主题与具体场面，评论区也有真实讨论'):
@@ -44,7 +44,7 @@ class CommentConsiderationTests(unittest.TestCase):
         self.assertTrue(result['recorded'])
         self.assertEqual(self.requests, [('/life-comment-review', {'uid':'1234567',
             'roundId':'a'*24, 'bvid':'BV1abcde1234', 'decision':'consider',
-            'draft':'我想回应视频里真实看到的细节', 'evidence':'本轮字幕读到主题与具体场面，评论区也有真实讨论'})])
+            'draft':'我想回应视频里真实看到的细节', 'evidence':'本轮真实从视频字幕工具核验的充分阅读证据（不是Agent凭空自述）'})])
         self.assertNotIn('PRIVATE_MODEL_REASON', json.dumps(self.requests))
         self.assertNotIn('commentText', json.dumps(self.requests))
         self.assertEqual(result['decision'], '')  # fake backend has not returned Life's decision

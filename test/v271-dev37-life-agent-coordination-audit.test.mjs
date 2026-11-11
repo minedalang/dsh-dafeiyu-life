@@ -91,7 +91,7 @@ test('production video adapter does not repeat the Planner willingness vote; it 
  const end=source.indexOf("const lifeDecisionTrace=createLifeDecisionTrace",start)
  const block=source.slice(start,end)
  const inspect=block.indexOf('const admission=lifeCapabilities.inspect()')
- const spawn=block.indexOf("return runDuty('life-agent'")
+ const spawn=block.indexOf("const launched=runDuty('life-agent'")
  assert.ok(start>=0&&end>start&&inspect>0&&spawn>inspect)
  assert.doesNotMatch(block,/lifeWillingness\?\.decide\(/)
  assert.doesNotMatch(block,/lifeWillingness\?\.verify\(/)
