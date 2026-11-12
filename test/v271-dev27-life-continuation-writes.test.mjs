@@ -25,7 +25,8 @@ test('write menu requires current verified selected BV, trusted metadata time an
  assert.equal(continuationMenu({...selected,metadataAt:T-2*86400_000},{at:T,writeActions:['comment_video']}).some(x=>x.action==='comment_video'),false)
  assert.equal(continuationMenu({...selected,writeOutcomes:[{action:'comment_video',bvid:BV,status:'uncertain'}]},{at:T,writeActions:['comment_video']}).some(x=>x.action==='comment_video'),false)
  assert.deepEqual(lifeWriteKinds({...cfg,autoComment:false},evidence).includes('comment_video'),false)
- assert.deepEqual(lifeWriteKinds(cfg,{...evidence,commentReady:false}).includes('comment_video'),false)
+ assert.equal(lifeWriteKinds(cfg,{...evidence,commentReady:false}).includes('comment_video'),true)
+ assert.equal(lifeWriteKinds(cfg,{...evidence,title:''}).includes('comment_video'),false)
  assert.equal(lifeWriteKinds({...cfg,agentFollowEnabled:false},evidence).includes('follow_creator'),false)
 })
 

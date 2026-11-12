@@ -2264,8 +2264,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="settings-stack">
 <div class="settings-section"><h4>回复上下文与频率</h4><p class="muted">不再独立轮询旧视频热评。只有确实需要处理的当前回复才按权限读取相关评论；一般回复与自然续聊仍受每轮和每日硬上限。</p><div class="fields">
 <div><label for="comment-reply-hot-count">回复时最多读取其他热评数（1–30）</label><input id="comment-reply-hot-count" type="number" min="1" max="30" value="12"></div>
-<div class="checkline"><input id="comment-side-hot-enabled" type="checkbox"><label for="comment-side-hot-enabled">回复别人后，顺路看看同视频其他热门评论，并自主决定是否也回复（默认关闭）</label></div>
-<small class="setting-note">只有成功回复真实通知后才会提供少量热评作为下次判断的候选；不会恢复旧的全视频热门评论巡扫。仍计入原有公开回复配额和安全审核。</small>
+<small class="setting-note">成功回复真实视频评论后，会把已核验的视频经历交给 Life。鱼鱼可自主选择是否阅读同视频热门评论；只有 Life 实际选择并取得真实评论回执后，才产生后续社交回复候选。无需额外开关，但评论发送仍由原有回复授权、限额和统一意愿凭据控制。</small>
 <div><label for="comment-per-poll">每轮公开回复总数（1–1000）</label><input id="comment-per-poll" type="number" min="1" max="1000" value="1"></div>
 <div><label for="comment-per-day">后台自动回复：滚动24小时已成功发送上限（1–1000，独立设置）</label><input id="comment-per-day" type="number" min="1" max="1000" value="5"></div>
 </div></div>
