@@ -180,6 +180,7 @@ import {verifiedShareMemoryEvents} from './lib/confirmed-video-share.mjs'
 import { createLifeReflection } from './lib/life-reflection.mjs'
 import {createActivityFeed} from './lib/activity-feed.mjs'
 import {createLiveLifeActivity} from './lib/live-life-activity.mjs'
+import {createLifeManagementEvents} from './lib/life-management-events.mjs'
 import {describeIncomingBiliImage,verifiedBiliImageUrl} from './lib/incoming-image-vision.mjs'
 import {favoriteStyleFromPersona,publicFavoriteTopics} from './lib/favorite-style.mjs'
 import { createLifeMemoryGateway, relationshipMemoryHalfLifeDays } from './lib/life-memory-gateway.mjs'
@@ -706,8 +707,10 @@ function reportMeta() {
 }
   mkdirSync(outDir, { recursive: true })
 
-  const activityFeed=createActivityFeed({dataDir:stateDir})
-  const liveLifeActivity=createLiveLifeActivity()
+  const lifeManagementEvents=createLifeManagementEvents()
+  ctx.effect(()=>()=>lifeManagementEvents.close(),'bili-duty: 关闭管理页实时状态流')
+  const activityFeed=createActivityFeed({dataDir:stateDir,onChange:()=>lifeManagementEvents.publish('timeline')})
+  const liveLifeActivity=createLiveLifeActivity({onChange:()=>lifeManagementEvents.publish('life')})
   const log = (msg) => {
     const line = `${formatLocalLogTimestamp()}  ${msg}`
     try { appendFileSync(logFile, line + '\n', 'utf8') } catch { /* 日志写不进去也不致命 */ }
@@ -1122,7 +1125,7 @@ function reportMeta() {
       '尚无足够可信的持续双向私信关系；公开评论再熟悉也不得据此主动私信。'
     return `【自然关系熟悉度】阶段「${r.stageLabel}」，${acquaintance}${familiar}${privateNote} 自然熟悉度与白名单和主动联系资格互不替代。不要编造共同经历或提及后台分数。`}
 
-  const ownerTodos = createOwnerTodoEngine({dataDir:stateDir,getAccountUid:()=>accountBinding.accountUid()})
+  const ownerTodos = createOwnerTodoEngine({dataDir:stateDir,getAccountUid:()=>accountBinding.accountUid(),onChange:()=>lifeManagementEvents.publish('plans')})
   // One read-only, recipient-scoped fact view for all generated outbound chat.
   // This is NOT a separate immortal memory store or a grant to contact anyone.
   const verifiedFactsFor=({uid,channel='dm'}={})=>{
@@ -2582,7 +2585,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const lifeOpportunities=createLifeOpportunities({stateDir,getCredential:()=>lifeOpportunityAccountReady()?dmCred(stateDir):null,
     getInterestEvidence:tag=>lifeOpportunityAccountReady()?
       [...scopedInterestOpportunityEvidence(stateDir,tag),...scopedCuriosityOpportunityEvidence(stateDir,tag)]:[],
-    getPublicPersonEvidence:()=>lifeOpportunityAccountReady()?socialPortrait.publicOpportunitySignals():[]})
+    getPublicPersonEvidence:()=>lifeOpportunityAccountReady()?socialPortrait.publicOpportunitySignals():[],onChange:()=>lifeManagementEvents.publish('plans')})
   // Independent relationship-originated Life opportunities. No video receipts are
   // required, and no contact UID or text enters this persistent ledger.
   const lifeFriendInitiatives=createLifeFriendInitiatives({dataDir:accountRuntimeDir,
@@ -5523,7 +5526,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
 
   }])
-  const lifeDecisionTrace=createLifeDecisionTrace({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
+  const lifeDecisionTrace=createLifeDecisionTrace({dataDir:stateDir,getAccountTag:trustedLifeAccountTag,onChange:stage=>lifeManagementEvents.publish(stage==='finish'?'timeline':'life')})
   lifeWillingness=createLifeWillingness({
     dataDir:stateDir,
     getAccountTag:trustedLifeAccountTag,
@@ -6665,6 +6668,8 @@ logger:{warn:m=>log('社交意图：'+m)}
         }catch(e){return sendJson(res,409,{ok:false,error:String(e?.message||e).slice(0,200)})}
       }
     }
+    // Same-origin SSE emits only change categories; fetch authoritative scoped data separately.
+    if(req.method==='GET'&&path==='/api/bili-duty/life-management/stream')return lifeManagementEvents.subscribe(req,res)
     if (req.method === 'GET' && path === '/api/bili-duty/live-activity') {
       const scope=trustedLifeAccountTag()
       return sendJson(res,200,liveLifeActivity.snapshot(scope))

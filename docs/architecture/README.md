@@ -1,3 +1,5 @@
+**当前开发预览 dev.77：** [历史生活记录状态说明、来源直达与 Life 管理页实时事件流](2.7.1-dev77-life-owner-realtime.md)。真实 Windows DSH/B站长时运行尚未验收，不可发布正式 2.7.1。
+
 **当前开发预览 dev.76：** [安全跨轮主评论机会恢复、统一生活看板与十三项 RC 准入审计](2.7.1-dev76-release-readiness-and-comment-recovery.md)。仍为未发布开发版，不能代替真实 Windows/DSH、B站和跨日验收。
 
 **上一开发预览 dev.75：** [生活决策行为审计、真实动作树、计划独立页与管理文案](2.7.1-dev75-owner-life-activity-map.md)。代码接线不等于真实平台验收，所有外发仍走原安全门禁。
