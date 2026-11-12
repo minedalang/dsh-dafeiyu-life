@@ -170,7 +170,10 @@ flowchart TB
     gapGrowth["长期兴趣/人格因果、真实 Windows/平台/本地 GGUF/72h：未验收"]
   end
   gapSocial ~~~ gapRecall ~~~ gapGrowth
-  dev54Scheduler["Life 定时器 ensureStarted：仅恢复自动检查，不绕过 runLease"]
+  dev54Scheduler["Life 定时器 ensureStarted：恢复检查心跳，不越过权限／回执门禁"]
+  dev4AutoRecovery["dev.4 规划运行锁：证明旧 PID 已退出 → 原子回收；异常拒绝，不重播旧动作"]
+  dev4AutoRecovery -.-> dev54Scheduler
+  %% @code dev4AutoRecovery | lib/life-planner-atomic.mjs | function reclaimDeadPlannerRun
   dev54Diary["Owner 日记：已核验 BV/UID 跳转，未知目标不推断"]
   dev54Recall["神经回忆：trace 不命中、结果相关性排序"]
   %% @code dev54Scheduler | lib/autonomous-planner.mjs | const ensureStarted=()=>

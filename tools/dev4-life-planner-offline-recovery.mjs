@@ -17,9 +17,10 @@ if(typeof dataDir!=='string'||!dataDir||!(inspect!==recover)||recover&&!confirme
   console.error('No such local data directory. No changes made.')
   process.exitCode=2
 }else{
-  const names=['autonomous-planner-run.lock','autonomous-planner-ledger.lock','life-agent-events-ledger.lock','life-opportunities-ledger.lock']
+  const names=['autonomous-planner-run.lock','autonomous-planner-run-recovery.lock','autonomous-planner-ledger.lock','life-agent-events-ledger.lock','life-opportunities-ledger.lock']
   if(inspect){
     console.log(JSON.stringify({mode:'inspect',run:createPlannerRunLease({dataDir}).inspect(),
+      recoveryGuard:{present:existsSync(dataDir+'/autonomous-planner-run-recovery.lock')},
       ledger:{present:existsSync(dataDir+'/autonomous-planner-ledger.lock')},
       events:{writeLockPresent:existsSync(dataDir+'/life-agent-events-ledger.lock')},
       opportunities:{writeLockPresent:existsSync(dataDir+'/life-opportunities-ledger.lock')}},null,2))

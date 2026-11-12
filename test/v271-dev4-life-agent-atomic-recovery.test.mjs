@@ -106,7 +106,7 @@ test('two DSH processes cannot make concurrent model calls or spend the global d
   assert.equal(existsSync(join(dir,'autonomous-planner-run.lock')),false)
 }))
 
-test('crash residue blocks automatically; offline recovery requires stopped instances and a proven dead owner',()=>withHome(dir=>{
+test('dead run lease is automatically reclaimed without a manual tool; live owner remains protected',()=>withHome(dir=>{
   const lease=createPlannerRunLease({dataDir:dir,now:()=>T})
   const live=lease.acquire()
   assert.equal(live.ok,true)
@@ -116,9 +116,12 @@ test('crash residue blocks automatically; offline recovery requires stopped inst
   const folder=join(dir,'autonomous-planner-run.lock');mkdirSync(folder)
   writeFileSync(join(folder,'owner.json'),JSON.stringify({version:1,kind:'autonomous-planner-run.lock',token:'123e4567-e89b-12d3-a456-426614174000',pid:2147483640,at:T}))
   assert.equal(lease.inspect().needsReview,true)
-  assert.equal(lease.acquire().ok,false)
+  const auto=lease.acquire()
+  assert.equal(auto.ok,true,'crashed run owner should recover automatically on next attempt')
+  assert.equal(lease.inspect().autoRecovery.count,1)
+  assert.equal(lease.release(auto).ok,true)
   assert.equal(recoverPlannerLockOffline(dir,'autonomous-planner-run.lock').ok,false)
-  assert.equal(recoverPlannerLockOffline(dir,'autonomous-planner-run.lock',{confirmedAllStopped:true}).removed,true)
+  assert.equal(recoverPlannerLockOffline(dir,'autonomous-planner-run.lock',{confirmedAllStopped:true}).removed,false)
   assert.equal(lease.acquire().ok,true)
 }))
 
@@ -131,4 +134,111 @@ test('symlink lock and incomplete lock cannot be automatically reclaimed',()=>wi
   assert.equal(recoverPlannerLockOffline(dir,'autonomous-planner-run.lock',{confirmedAllStopped:true}).ok,false)
   assert.equal(existsSync(target),true)
   assert.equal(before,true)
+}))
+
+
+test('startup recovery reclaims a real exited Node owner, without replaying its previous model turn',()=>withHome(async dir=>{
+  const moduleUrl=new URL('../lib/life-planner-atomic.mjs',import.meta.url).href
+  const code=`import {createPlannerRunLease} from ${JSON.stringify(moduleUrl)};
+    const lease=createPlannerRunLease({dataDir:process.env.DSH_TEST_ROOT});
+    if(!lease.acquire().ok)process.exit(2);
+    process.exit(0);`
+  const {spawnSync}=await import('node:child_process')
+  const child=spawnSync(process.execPath,['--input-type=module','-e',code],
+    {env:{...process.env,DSH_TEST_ROOT:dir},encoding:'utf8'})
+  assert.equal(child.status,0,child.stderr)
+  assert.equal(existsSync(join(dir,'autonomous-planner-run.lock')),true)
+  const clock={value:T};let modelCalls=0
+  const x=setup(dir,async()=>{modelCalls++;return '{"action":"skip","reason":"自主休息"}'},clock)
+  const start=x.planner.start()
+  assert.equal(start.running,true)
+  const status=x.planner.status()
+  assert.equal(status.runLease.held,false)
+  assert.equal(status.runLease.autoRecovery.count,1)
+  assert.equal(modelCalls,0,'recovering a scheduling lease must not replay an interrupted model/tool call')
+  x.events.offer({kind:'dm-received',platform:'bilibili',sourceKey:'verified-incoming'})
+  const result=await x.planner.tick({force:true})
+  assert.equal(result.result,'voluntary-rest')
+  assert.equal(modelCalls,1)
+  assert.equal(x.planner.status().runLease.held,false)
+  x.planner.stop()
+}))
+
+test('invalid abandoned owner, unknown PID, extra files and a recovery guard fail closed',()=>withHome(dir=>{
+  const lease=createPlannerRunLease({dataDir:dir,now:()=>T})
+  const lock=join(dir,'autonomous-planner-run.lock');mkdirSync(lock)
+  writeFileSync(join(lock,'owner.json'),'not-json')
+  assert.equal(lease.recoverAbandoned().recovered,false)
+  assert.equal(lease.acquire().reason,'planner-lock-review-required')
+  rmSync(lock,{recursive:true,force:true})
+  mkdirSync(lock)
+  writeFileSync(join(lock,'owner.json'),JSON.stringify({version:1,kind:'autonomous-planner-run.lock',token:'123e4567-e89b-12d3-a456-426614174000',pid:2147483640,at:T}))
+  writeFileSync(join(lock,'unexpected'),'do-not-delete')
+  assert.equal(lease.recoverAbandoned().recovered,false)
+  assert.equal(existsSync(join(lock,'unexpected')),true)
+  rmSync(lock,{recursive:true,force:true})
+  mkdirSync(lock)
+  writeFileSync(join(lock,'owner.json'),JSON.stringify({version:1,kind:'autonomous-planner-run.lock',token:'123e4567-e89b-12d3-a456-426614174000',pid:2147483640,at:T}))
+  const guard=join(dir,'autonomous-planner-run-recovery.lock');mkdirSync(guard)
+  writeFileSync(join(guard,'owner.json'),JSON.stringify({version:1,kind:'autonomous-planner-run-recovery.lock',token:'123e4567-e89b-12d3-a456-426614174000',pid:process.pid,at:T}))
+  assert.equal(lease.acquire().reason,'planner-recovery-in-progress')
+  assert.equal(existsSync(lock),true)
+}))
+
+test('stale global planner lock never clears an unrelated outbound/ledger lock',()=>withHome(dir=>{
+  for(const name of ['autonomous-planner-run.lock','life-opportunities-ledger.lock']){
+    const lock=join(dir,name);mkdirSync(lock)
+    writeFileSync(join(lock,'owner.json'),JSON.stringify({version:1,kind:name,token:'123e4567-e89b-12d3-a456-426614174000',pid:2147483640,at:T}))
+  }
+  const lease=createPlannerRunLease({dataDir:dir,now:()=>T})
+  assert.equal(lease.recoverAbandoned().recovered,true)
+  assert.equal(existsSync(join(dir,'life-opportunities-ledger.lock')),true)
+  assert.equal(lease.acquire().ok,true)
+}))
+
+
+test('two independent DSH instances racing an abandoned run lock cannot double-spend quota',()=>withHome(async dir=>{
+  const stale=join(dir,'autonomous-planner-run.lock');mkdirSync(stale)
+  writeFileSync(join(stale,'owner.json'),JSON.stringify({version:1,kind:'autonomous-planner-run.lock',token:'123e4567-e89b-12d3-a456-426614174000',pid:2147483640,at:T}))
+  const logFile=join(dir,'calls.log'),worker=fileURLToPath(new URL('./fixtures/life-planner-multiprocess-worker.mjs',import.meta.url))
+  writeFileSync(logFile,'')
+  const launch=who=>new Promise((resolve,reject)=>{
+    const child=spawn(process.execPath,[worker,dir,logFile,who],{stdio:['ignore','pipe','pipe']})
+    let stdout='',stderr=''
+    child.stdout.on('data',chunk=>stdout+=chunk);child.stderr.on('data',chunk=>stderr+=chunk)
+    child.on('error',reject);child.on('close',code=>code===0?resolve(JSON.parse(stdout.trim())):reject(Error(stderr||stdout)))
+  })
+  const [a,b]=await Promise.all([launch('a'),launch('b')])
+  assert.equal(readFileSync(logFile,'utf8').trim().split('\n').filter(Boolean).length,1)
+  assert.equal(JSON.parse(readFileSync(join(dir,'autonomous-planner.json'),'utf8')).runs,1)
+  assert.equal(existsSync(join(dir,'autonomous-planner-run.lock')),false)
+  assert.equal(existsSync(join(dir,'autonomous-planner-run-recovery.lock')),false)
+  assert.equal([a,b].filter(x=>x.result?.action==='skip').length,1)
+}))
+
+test('crash recovery never refunds a prior reserved model decision',()=>withHome(dir=>{
+  const stale=join(dir,'autonomous-planner-run.lock');mkdirSync(stale)
+  writeFileSync(join(stale,'owner.json'),JSON.stringify({version:1,kind:'autonomous-planner-run.lock',token:'123e4567-e89b-12d3-a456-426614174000',pid:2147483640,at:T}))
+  const before={version:1,day:new Date(T).toLocaleDateString('en-CA'),runs:4,lifeRuns:4,socialRuns:0,willingnessRuns:0,
+    lastAt:T,recent:[],willingnessBillingVersion:2}
+  const file=join(dir,'autonomous-planner.json')
+  writeFileSync(file,JSON.stringify(before))
+  const lease=createPlannerRunLease({dataDir:dir,now:()=>T})
+  assert.equal(lease.recoverAbandoned().recovered,true)
+  const after=JSON.parse(readFileSync(file,'utf8'))
+  assert.deepEqual(after,before)
+  assert.equal(lease.inspect().autoRecovery.count,1)
+}))
+
+
+test('crashed recovery guardian is not misreported as normal cooldown or silently deleted',()=>withHome(dir=>{
+  const lock=join(dir,'autonomous-planner-run.lock');mkdirSync(lock)
+  writeFileSync(join(lock,'owner.json'),JSON.stringify({version:1,kind:'autonomous-planner-run.lock',token:'123e4567-e89b-12d3-a456-426614174000',pid:2147483640,at:T}))
+  const guard=join(dir,'autonomous-planner-run-recovery.lock');mkdirSync(guard)
+  writeFileSync(join(guard,'owner.json'),JSON.stringify({version:1,kind:'autonomous-planner-run-recovery.lock',token:'123e4567-e89b-12d3-a456-426614174000',pid:2147483640,at:T}))
+  const lease=createPlannerRunLease({dataDir:dir,now:()=>T})
+  assert.equal(lease.recoverAbandoned().reason,'planner-recovery-guard-orphaned')
+  assert.equal(lease.acquire().reason,'planner-recovery-guard-orphaned')
+  assert.equal(lease.inspect().autoRecovery.lastError,'planner-recovery-guard-orphaned')
+  assert.equal(existsSync(lock),true)
 }))

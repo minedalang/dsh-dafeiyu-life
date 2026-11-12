@@ -1,3 +1,5 @@
+> **2.8.0-dev.4 自动恢复补充：** `AutonomousPlanner.start()` 与 `runLease.acquire()` 仅对操作系统证明原 PID 已退出、内容结构完整的原全局规划运行锁进行带竞争保护的自动回收，不改变同账号外发事务或 Life 授权账本。损坏/归属不明的锁继续拒绝，管理页展示停摆诊断。详细审计见 [dev.4 自动恢复契约](./2.8.0-dev4-planner-crash-autorecovery.md)。
+
 > **当前 dev.74 关系契约：** 自然熟悉度由原 `SocialRelationshipIndex` 提供，不以白名单提升；当前账号新 `social-relationship-channels` 仅存已核实的渠道、方向、时间和事件摘要。公开评论再熟悉也不能直接取得主动私信资格；仅在稳定跨日双向 DM、单独主人授权、明确拒联检查、Life 决定与原 DM 事务共同通过时才有可发起机会。老关系存档仅用于历史展示，不会升级为私人发送权限。参见 [dev.74 说明](./2.7.1-dev74-three-dimensional-relationships.md)。
 
 > **当前 dev.73 增量：** `LifeOpportunities` 观察/契机与 `OwnerTodos` 已接受待办并列呈现在只读计划卡片；普通自主轮受设定的最短 10/30/80 分钟节奏控制，已核验入站社交关注保持独立快节奏。`LifeDecisionTrace` 以授权待回执／超时未结算／平台已核验区分结果，不改写原状态或平台外发权限。参见 [dev.73 约束](./2.7.1-dev73-life-pace-and-decision-clarity.md)。
