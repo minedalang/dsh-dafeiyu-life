@@ -38,7 +38,7 @@ const hostDeps = await loadHostDeps()
 const z = hostDeps.z
 const defineTool = hostDeps.defineTool
 import { spawn } from 'node:child_process'
-import {readOwnedVideoLedger,readOwnedVideoLedgerForComment,explainCommentSelection} from './lib/video-owned-ledger.mjs'
+import {readOwnedVideoLedger,readOwnedVideoLedgerForComment,explainCommentSelection,recoverableCommentCandidates} from './lib/video-owned-ledger.mjs'
 import {resolveExistingDmContact} from './lib/manual-dm-contact.mjs'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
 import { randomUUID, createHash, randomBytes } from 'node:crypto'
@@ -3292,8 +3292,16 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         proposed:0,approved:0,blocked:0,declined:0,deferred:0,verified:0,unverified:0,reviewed:0,wanted:0,passed:0,insufficient:0,reviewRejected:0,reviewAttempted:0,reviewDeferred:0,reviewBlocked:0,
         reviewBvids:new Set(),previouslyPickedBvids:watchedBeforeRun,lastReason:'',selectionLedgerCode:''}
     }catch(e){log('Life Agent 视频启动生命周期登记失败：'+String(e?.message||e).slice(0,100))}
+    // Prompt only safe, recent, incomplete review candidates, not old selections.
+    // The video Agent MUST re-read public content in this round before asking
+    // Life again. This is not a post/send instruction.
+    const pendingReview=cfg.autoComment===true&&Number(cfg.commentDailyLimit)>0&&
+      Number(cfg.commentPerRound)>0&&lifeVideoActionBridge?.status().ready===true?
+      recoverableCommentCandidates(beforeOwnedSelection,{limit:2}):[]
+    const pendingGuidance=pendingReview.length?'【可重新考虑的旧视频评论机会】以下是当前账号近24小时明确尚未完成 Life 意愿判断的视频：'+
+      pendingReview.map(x=>x.bvid).join('、')+'。这些只是可选阅读对象，不要求重评或发表评论；若你自主选择回访，必须本轮重新读取真实视频详情与内容证据，随后用 bili_comment_consideration 提交，由 Life 再次自由决定；不得根据旧简介／旧草稿直接评论。已通过或结果未知的机会不能恢复。':''
     const homeGuidance=homeFirst?'【本轮已由 Life 或主人明确触发：随便逛首页】优先从 bili_home_recommendations 获取当前账号首页真实候选（最多一次），不需要先有兴趣或搜索词；再由你自行决定是否读哪一条、深入了解或停止。接口不可用则按原安全规则停止或转普通探索，不要重试刷新、不要伪造观看，也不强迫评论。':''
-    args.push([homeGuidance,promptFor(),emotionalState.agentContext()].filter(Boolean).join('\n\n'))
+    args.push([homeGuidance,pendingGuidance,promptFor(),emotionalState.agentContext()].filter(Boolean).join('\n\n'))
     log(`本轮视频目标：争取取得 ${cfg.videoAgentReadTargetPerRound} 条内容阅读证据，择优挑选约 ${cfg.videoAgentPickTargetPerRound} 条；提前结束须说明真实原因，不强制凑量`)
     log(`本轮已选 ${pickedBeforeRun} 条；鱼鱼自主决定是否继续探索，不设强制选片数量`)
     // ⭐ 这一轮的工作目录 = 使用者（或别的用户）的**工作区** —— 只有这样它的 `AGENTS.md` 才会自动加载。

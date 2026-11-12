@@ -1027,6 +1027,61 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life-agent .life-source-flow-decision{border:1px dashed var(--stroke);border-radius:11px;padding:10px;text-align:center;margin-top:10px}
 #panel-life-agent .life-source-flow p{margin:10px 0 0;font-size:12px}
 @media(max-width:620px){#panel-life-agent .life-source-flow-grid{grid-template-columns:1fr}#panel-life-agent .life-source-flow-card{min-height:auto}}
+
+/* dev.76 unified plans: one coherent overview; original controls remain in details. */
+#panel-plans .life-plan-hub{--plan-border:color-mix(in srgb,var(--stroke) 78%,#98c9bd);border:1px solid var(--plan-border);border-radius:26px;overflow:hidden;background:var(--panel);box-shadow:0 18px 44px #38586d13;margin:18px 0 16px}
+#panel-plans .life-plan-hub-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:29px 30px 21px;background:linear-gradient(118deg,color-mix(in srgb,#d8f2e5 65%,var(--panel)),color-mix(in srgb,#dceaff 38%,var(--panel)))}
+#panel-plans .life-plan-hub-top h3{font-size:25px;letter-spacing:-.035em;margin:4px 0 8px;color:var(--ink)}
+#panel-plans .life-plan-hub-top p{font-size:13px;color:var(--muted);margin:0;line-height:1.7;max-width:600px}
+#panel-plans .life-plan-count{border-radius:16px;padding:12px 16px;border:1px solid var(--stroke);background:color-mix(in srgb,var(--panel) 85%,transparent);font-size:12px;font-weight:700;white-space:nowrap}
+#panel-plans .life-plan-hub-filters{display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--stroke);padding:16px 24px}
+#panel-plans .life-plan-hub-filters button{padding:9px 15px;background:transparent;color:var(--muted);border-radius:999px;border:1px solid transparent;font-weight:650}
+#panel-plans .life-plan-hub-filters button[aria-pressed=true]{border-color:color-mix(in srgb,#4a9d89 48%,var(--stroke));background:color-mix(in srgb,#a2d7c7 20%,var(--panel));color:var(--ink)}
+#panel-plans .life-plan-hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:13px;padding:23px;align-items:stretch}
+#panel-plans .life-plan-item{border:1px solid var(--stroke);border-radius:19px;padding:18px 19px 19px;background:linear-gradient(145deg,var(--panel),color-mix(in srgb,#dce9e6 10%,var(--panel)));min-width:0;display:flex;flex-direction:column;gap:12px;box-shadow:0 5px 16px #304f6309}
+#panel-plans .life-plan-item[data-kind="cue"]{border-top:3px solid #c79a50}
+#panel-plans .life-plan-item[data-kind="opportunity"]{border-top:3px solid #579a92}
+#panel-plans .life-plan-item[data-kind="todo"]{border-top:3px solid #7b82c9}
+#panel-plans .life-plan-item-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#panel-plans .life-plan-kind{color:var(--muted);font-size:12px;font-weight:750}
+#panel-plans .life-plan-stage{font-size:11px;font-weight:680;color:var(--ink);background:var(--tint);padding:5px 8px;border-radius:8px;max-width:55%;text-align:center}
+#panel-plans .life-plan-item h4{margin:0;font-size:17px;line-height:1.5;letter-spacing:-.01em;overflow-wrap:anywhere}
+#panel-plans .life-plan-item .life-plan-sub{color:var(--muted);font-size:12px;line-height:1.7;margin:0;flex:1}
+#panel-plans .life-plan-next{font-size:12px;line-height:1.6;padding:10px 11px;border-radius:10px;background:color-mix(in srgb,#d4e6e0 21%,var(--panel));color:var(--ink)}
+#panel-plans .life-plan-empty{grid-column:1/-1;padding:38px 20px;text-align:center;color:var(--muted);font-size:14px}
+#panel-plans .life-plan-hub-foot{border-top:1px solid var(--stroke);padding:15px 24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;color:var(--muted);font-size:12px;line-height:1.65}
+#panel-plans .life-plan-admin{border:1px solid var(--stroke);border-radius:19px;background:var(--panel);margin-bottom:20px}
+#panel-plans .life-plan-admin>summary{cursor:pointer;font-size:14px;font-weight:700;padding:19px 23px;list-style:none;display:flex;justify-content:space-between;gap:10px}
+#panel-plans .life-plan-admin>summary::-webkit-details-marker{display:none}
+#panel-plans .life-plan-admin>summary:before{content:'＋';color:#4b9a8c;margin-right:6px}
+#panel-plans .life-plan-admin[open]>summary:before{content:'－'}
+#panel-plans .life-plan-admin>summary span{font-size:12px;font-weight:450;color:var(--muted)}
+#panel-plans .life-plan-admin-inner{padding:0 16px 18px}
+@media(max-width:670px){#panel-plans .life-plan-hub-top{padding:20px;flex-direction:column}#panel-plans .life-plan-hub-filters{padding:12px 14px}#panel-plans .life-plan-hub-grid{padding:12px}}
+/* dev.76 action tree: a visual status system, not generic moving decoration. */
+#panel-life-agent .life-behavior-card{background:linear-gradient(135deg,color-mix(in srgb,#e4f2f0 80%,var(--panel)),color-mix(in srgb,#e8eaf9 65%,var(--panel)));border-radius:25px}
+#panel-life-agent .life-tree-viewport{background:radial-gradient(circle at 30% 35%,#143f53,#0d263b 62%,#0b1e32);border:1px solid #38677a;box-shadow:inset 0 0 56px #061725a8}
+#panel-life-agent #life-behavior-tree .life-tree-edge{stroke:#618497;stroke-width:1.4;opacity:.32}
+#panel-life-agent #life-behavior-tree .life-tree-edge.is-selected{stroke:#99ecde;stroke-width:2.9;opacity:.96;filter:drop-shadow(0 0 3px #62d5b8)}
+#panel-life-agent #life-behavior-tree .life-tree-edge.is-running{stroke-dasharray:5 13;animation:life-tree-flow 1s linear infinite}
+#panel-life-agent #life-behavior-tree .life-tree-node{fill:#183b50;stroke:#52788c;stroke-width:1.4}
+#panel-life-agent #life-behavior-tree .life-tree-node.is-selected{fill:#276b72;stroke:#a1f4e5;stroke-width:2.5}
+#panel-life-agent #life-behavior-tree .life-tree-node.is-confirmed{fill:#236e5a;stroke:#8ce4ad}
+#panel-life-agent #life-behavior-tree .life-tree-node.is-pending{fill:#66552c;stroke:#e9ca75}
+#panel-life-agent #life-behavior-tree .life-tree-node.is-unsent{fill:#60475c;stroke:#daa1ba}
+#panel-life-agent #life-behavior-tree .life-tree-node.is-running{animation:life-tree-pulse 1.4s ease-in-out infinite}
+
+
+#panel-life-agent .life-choice-rail{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:16px 0 14px}
+#panel-life-agent .life-choice-stage{border:1px solid var(--stroke);border-radius:15px;padding:13px 14px;background:var(--panel);min-width:0;transition:background .2s,border-color .2s}
+#panel-life-agent .life-choice-stage small{display:block;color:var(--muted);font-size:11px;margin-bottom:6px;letter-spacing:.015em}
+#panel-life-agent .life-choice-stage strong{font-size:13px;font-weight:730;line-height:1.5;display:block}
+#panel-life-agent .life-choice-stage[data-state="finished"]{border-color:#70b39c;background:color-mix(in srgb,#a2d7c4 17%,var(--panel))}
+#panel-life-agent .life-choice-stage[data-state="live"]{border-color:#a2cdd5;background:color-mix(in srgb,#a9d8e5 28%,var(--panel))}
+#panel-life-agent .life-choice-stage[data-state="blocked"]{border-color:#e5c199;background:color-mix(in srgb,#f6d8a9 20%,var(--panel))}
+#panel-life-agent .life-choice-stage[data-state="unsent"]{border-color:#d2a7b1;background:color-mix(in srgb,#f6c7ce 18%,var(--panel))}
+@media(max-width:750px){#panel-life-agent .life-choice-rail{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1643,8 +1698,14 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <section id="panel-life-agent" hidden>
 <div class="life-hero life-command-hero"><div class="life-hero-copy"><span class="page-eyebrow">FISH LIFE · 实时生活大动画</span><div class="life-hero-live" role="status" aria-live="polite" aria-atomic="true"><span class="life-now-eyebrow"><span class="life-now-dot" aria-hidden="true"></span>鱼鱼此刻 · 每 4 秒核对实际状态</span><h2 id="life-now-title">正在核对鱼鱼的行动…</h2><p id="life-now-detail" class="muted">只展示实际发生的活动，不模拟未发生的操作。</p><p id="life-now-time" class="muted"></p></div><div class="life-hero-footer"><span>真实行动 · 有据可查 · 没有动作时也可以休息</span><button id="life-integration-refresh" class="life-action life-sky" type="button">刷新生活状态</button></div></div><div class="life-hero-character" aria-hidden="true"><i class="life-glow"></i><img src="/api/bili-duty/life-character.png" alt="" decoding="async"></div><span class="life-hero-bubble life-bubble-one" aria-hidden="true"></span><span class="life-hero-bubble life-bubble-two" aria-hidden="true"></span></div>
 <section class="life-behavior-card" aria-labelledby="life-behavior-title">
-<div class="life-behavior-header"><div><span class="page-eyebrow">LIFE ACTION MAP · 真实回执驱动</span><h3 id="life-behavior-title">🌳 鱼鱼的行动树</h3><p>每次选择从中心出发；流动的光路只代表最近这轮真实决策。没有证据的枝条保持安静，不会播放虚假的执行动画。</p></div><button type="button" id="life-behavior-refresh" class="life-action life-sky">更新行动树</button></div>
+<div class="life-behavior-header"><div><span class="page-eyebrow">LIFE ACTION MAP · 真实回执驱动</span><h3 id="life-behavior-title">🌳 鱼鱼的行动树</h3><p>从真实候选到 Life 选择，再到专业执行和回执。点亮路径有证据；流动光线仅在本轮实际进行时出现。</p></div><button type="button" id="life-behavior-refresh" class="life-action life-sky">更新行动树</button></div>
 <div class="life-behavior-status" id="life-behavior-status" role="status" aria-live="polite">正在读取真实决策记录…</div>
+<div class="life-choice-rail" id="life-choice-rail" aria-label="最近一轮决策实际进度">
+ <div class="life-choice-stage" data-stage="candidate"><small>01 · 发现机会</small><strong>等待可信候选</strong></div>
+ <div class="life-choice-stage" data-stage="choice"><small>02 · 鱼鱼决定</small><strong>尚未决定</strong></div>
+ <div class="life-choice-stage" data-stage="execute"><small>03 · 执行动作</small><strong>待执行</strong></div>
+ <div class="life-choice-stage" data-stage="receipt"><small>04 · 核对结果</small><strong>尚无回执</strong></div>
+</div>
 <div class="life-tree-viewport"><svg id="life-behavior-tree" viewBox="0 0 1180 765" role="img" aria-label="Life 可选行为树，按最近真实决策与回执高亮"></svg></div>
 <div class="life-tree-legend"><span>◉ 最新选择</span><span>≈ 光线流动：最近正在处理</span><span>✓ 已核验回执</span><span>○ 可用能力类别（不代表本轮可执行）</span></div>
 <p class="muted">行为树展示的是源码支持的动作类别及最近的匿名真实决策，不等同于每一轮可用的完整动作菜单。只有合格候选才进入实际模型菜单；视频 Agent 的下游动作由专业工具与发送门禁执行。</p>
@@ -1716,7 +1777,13 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </section>
 <section id="panel-plans" hidden class="life-plans-page">
 <div class="life-hero todo-page-hero"><div><span class="page-eyebrow">LIFE INTENTIONS · 真实的自主选择</span><h2>🧭 鱼鱼想做</h2><p class="muted">生活线索、值得留意的契机和已经接下的待办，在这里一起查看。不要求每条都执行，也不把模型批准当作完成。</p></div><button type="button" data-open-tab="life-agent" class="life-action life-indigo">看看鱼鱼正在做什么</button></div>
-<div class="life-plan-explain" role="note"><strong>三种来源，汇入同一份生活判断</strong><p>线索是兴趣与观察，契机是可以进一步核实的机会，待办是已经接受的事项。它们并非必然依次转换；只有本轮合格且经过核验的候选才可能进入 Life 的动作菜单。</p></div>
+<div class="life-plan-hub" id="life-plan-hub" aria-label="统一生活意向面板">
+  <div class="life-plan-hub-top"><div><span class="page-eyebrow">MY LIFE · 有据可查的生活打算</span><h3>想法与行动，一起看</h3><p>来自真实经历的线索、可以继续的契机和已经接下的待办，以同一种方式呈现。记录不代表已经执行。</p></div><div id="life-plan-hub-total" class="life-plan-count">正在读取…</div></div>
+  <div id="life-plan-hub-filter" class="life-plan-hub-filters" role="group" aria-label="筛选生活记录"><button type="button" data-life-plan-filter="all" aria-pressed="true">全部</button><button type="button" data-life-plan-filter="cue" aria-pressed="false">生活线索</button><button type="button" data-life-plan-filter="opportunity" aria-pressed="false">生活契机</button><button type="button" data-life-plan-filter="todo" aria-pressed="false">已接待办</button></div>
+  <div id="life-plan-hub-grid" class="life-plan-hub-grid" aria-live="polite"><div class="life-plan-empty">正在读取当前账号的生活记录…</div></div>
+  <div class="life-plan-hub-foot"><span>🌿 可进入候选 ≠ Life 已决定 · 已决定 ≠ 动作完成</span><span>具体技术原因在「诊断」页查看</span></div>
+</div>
+<details class="life-plan-admin" id="life-plan-admin"><summary>管理待办、查看来源证据与完整历史 <span>展开高级管理</span></summary><div class="life-plan-admin-inner">
 <div id="life-now-todos" class="life-now-todos">
 <div class="life-source-flow" role="group" aria-label="鱼鱼的线索、契机与待办如何进入生活决策">
   <div class="life-source-flow-title"><strong>🧭 鱼鱼的想法怎么变成行动？</strong><span>实时读取当前账号记录，不触发模型</span></div>
@@ -1728,7 +1795,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="life-source-flow-decision">⬇ Life 从三类记录中筛选合格机会，再结合其他真实事件自主选择：<strong>行动／延期／暂不行动</strong></div>
   <p class="muted">此处显示最近读取的记录数量（不同来源可能重合），不代表 Life 已调用模型或平台发送成功。公开评论／私信由各自独立监听，Life 意愿与发送结果在决策日志中分别核验。</p>
 </div>
-<div class="life-hero todo-page-hero"><div><span class="page-eyebrow">📝 FISH'S PLANS · 自主生活</span><h2>鱼鱼想做的事</h2><p class="muted">看看鱼鱼想做什么、正在做什么，以及暂缓的打算。</p></div><button type="button" data-open-tab="life" class="life-action life-indigo">🧠 看看鱼鱼的回忆</button></div>
+
 <div class="todo-page-intro"><span>✨ 自主决定</span><span>🔎 连续探索</span><span>💞 关系参与</span><span>🔒 外发独立授权</span></div>
 <div id="life-todo-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📝 鱼鱼想做的事</h4><span id="owner-todo-status" class="live-badge">● 正在整理待办</span><button id="owner-todo-refresh" class="life-action life-sky">刷新待办</button><button id="owner-todo-remind" type="button" class="life-action life-green">提醒鱼鱼考虑待办</button></div>
 <p id="owner-todo-intake-status" class="muted" role="status">社交 AI 待办识别：尚无本次运行记录（只显示判断结果，不保存聊天原话）。</p>
@@ -1826,7 +1893,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p class="muted">鱼鱼可参考当前账号的<strong>评论观察、跨日自主选片兴趣、公开交流证据</strong>，自主决定只读探索或保持沉默。首批新增：可信兴趣经历即使原候选已关闭，仍可由鱼鱼自行产生“我想进一步探索”的目的，通过真实 B站公开搜索保留 BV；之后不必重进刷视频轮，也能自主选中实际搜索结果核实或放下。独立自主调度沿用原每日 AI 额度；只读探索由当前 Life 规划处理，不因隐藏的固定冷却而失去机会。不会自动创建待办、评论、私信、关注，也不代表已观看或听见音频。</p>
 <p id="life-opportunities-status" class="muted" role="status">尚未读取生活契机</p><div id="life-opportunities-list" class="records records-scroll" aria-live="polite"></div>
 </div>
-<p class="life-plan-boundary">记录存在 ≠ 已提交模型；Life 想行动 ≠ 执行成功。评论、私信、点赞与关注仍须单独核验授权及真实回执。</p>
+</div></details>
+<p class="life-plan-boundary">Life 只会从当前合格候选中自主选择。公开写入和私信仍由独立授权与真实平台回执保护。</p>
 </section>
 
 <section id="panel-diagnostics" hidden><div id="life-decision-traces-section" class="settings-section life-section">

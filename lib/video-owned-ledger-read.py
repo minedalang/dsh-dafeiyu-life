@@ -29,6 +29,11 @@ def load(home: str, account: str):
             observations = con.execute(f'''SELECT bvid,day,title,up,status,{observation_time} FROM seen_observations
                 WHERE account=? ORDER BY day DESC LIMIT 2000''', (account,)).fetchall()
             sent = {r[0] for r in con.execute('SELECT DISTINCT bvid FROM comment_receipts WHERE account=?', (account,))}
+            try:
+                review_state = {r[0]: r[1] for r in con.execute(
+                    'SELECT bvid,state FROM video_comment_reviews WHERE account=?', (account,))}
+            except sqlite3.OperationalError:
+                review_state = {}
         finally:
             con.close()
     except sqlite3.OperationalError as exc:
@@ -55,7 +60,8 @@ def load(home: str, account: str):
                      'roundId': round_id if picked else '', 'picked': picked,
                      'observedAt': selected_at if picked and selected_at else obs.get('observedAt', 0),
                      'autonomousSelected': picked, 'delivered': bv in sent,
-                     'commented': bv in sent, 'title': obs.get('title', ''),
+                     'commented': bv in sent, 'reviewState': review_state.get(bv,''),
+                     'selectedAt': selected_at, 'title': obs.get('title', ''),
                      'up': obs.get('up', ''), 'status': '挑中' if picked else obs.get('status', '看过'),
                      'url': 'https://www.bilibili.com/video/' + bv})
     return {'ok': True, 'rows': rows[:2000]}

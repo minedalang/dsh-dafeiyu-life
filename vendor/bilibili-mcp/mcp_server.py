@@ -1875,6 +1875,55 @@ def _record_owned_selection(bv: str) -> bool:
         con.close()
 
 
+
+# An unfinished Life comment decision is not a second video selection.
+# Keep its recovery status in the ORIGINAL account-bound SQLite database.
+# No draft, provider output, recipient ID or reusable send permission is stored.
+def _comment_review_state(bv: str) -> str:
+    account = _current_account_uid()
+    db = _DUTY_HOME / _ACTION_DB_NAME
+    if db.is_symlink() or not db.is_file(): return ''
+    try:
+        con = sqlite3.connect(db.as_uri()+'?mode=ro', uri=True, timeout=3)
+        try:
+            found = con.execute('SELECT state FROM video_comment_reviews WHERE account=? AND bvid=?',
+                                (account,bv)).fetchone()
+            return str(found[0]) if found else ''
+        finally: con.close()
+    except sqlite3.Error: return ''
+
+
+def _set_comment_review_state(bv: str, state: str) -> bool:
+    # Only explicit finite states. Never unfreeze an uncertain or attempted send.
+    if state not in ('pending','passed','approved','uncertain','verified'): return False
+    account = _current_account_uid()
+    con = _action_conn()
+    try:
+        with con:
+            cur = con.execute('''INSERT INTO video_comment_reviews(account,bvid,state,updated_at_ms)
+                VALUES(?,?,?,?) ON CONFLICT(account,bvid) DO UPDATE SET
+                state=excluded.state,updated_at_ms=excluded.updated_at_ms
+                WHERE video_comment_reviews.state='pending' AND excluded.state!='pending' ''',
+                (account,bv,state,int(datetime.now().timestamp()*1000)))
+        return cur.rowcount>0
+    finally: con.close()
+
+
+def _comment_review_recovery_eligible(bv: str) -> bool:
+    if _comment_review_state(bv) != 'pending' or _owned_comment_exists(bv): return False
+    account = _current_account_uid()
+    db = _DUTY_HOME / _ACTION_DB_NAME
+    if db.is_symlink() or not db.is_file(): return False
+    try:
+        con = sqlite3.connect(db.as_uri()+'?mode=ro',uri=True,timeout=3)
+        try:
+            row = con.execute('''SELECT recorded_at_ms FROM selected_videos
+                WHERE account=? AND bvid=? AND status='æŒ‘ä¸­' ''',(account,bv)).fetchone()
+            now = int(datetime.now().timestamp()*1000)
+            return bool(row and row[0] and 0 <= now-int(row[0]) <= 24*60*60*1000)
+        finally: con.close()
+    except sqlite3.Error: return False
+
 def _selected_for_reaction(bv: str) -> bool:
     return _selected_owned(bv)
 
@@ -1897,6 +1946,9 @@ def _action_conn():
     con.execute('''CREATE TABLE IF NOT EXISTS comment_receipts (
         account TEXT NOT NULL, bvid TEXT NOT NULL, rpid TEXT NOT NULL,
         day TEXT NOT NULL, PRIMARY KEY(account,bvid,rpid))''')
+    con.execute('''CREATE TABLE IF NOT EXISTS video_comment_reviews (
+        account TEXT NOT NULL, bvid TEXT NOT NULL, state TEXT NOT NULL,
+        updated_at_ms INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(account,bvid))''')
     con.execute('''CREATE TABLE IF NOT EXISTS selected_videos (
         account TEXT NOT NULL, bvid TEXT NOT NULL, day TEXT NOT NULL,
         round_id TEXT NOT NULL DEFAULT '', status TEXT NOT NULL CHECK(status='æŒ‘ä¸­'),
@@ -3031,6 +3083,8 @@ async def bili_ledger_mark(bvid: str, title: str, up: str = "", status: str = "ç
         # canonical status transition, not a repeat of the same selection.
         recorded_selection = bool(selected and not prior_picked and not prior_comment
                                   and _record_owned_selection(bv))
+        if recorded_selection:
+            _set_comment_review_state(bv,'pending')
         _record_owned_observation(bv, title, up, st)
         if not already_seen or recorded_selection:
             _append_home("seen.md", "| " + " | ".join([now,bv,_safe_line(title),_safe_line(up),st]) + " |\n")
@@ -3039,7 +3093,10 @@ async def bili_ledger_mark(bvid: str, title: str, up: str = "", status: str = "ç
         # decision endpoint once, in this SAME tool call. Video Agent cannot
         # suppress Life's desire by simply omitting a later review tool call.
         # Disabled comment permission never launches a model or a send.
-        auto = (recorded_selection and
+        # A previously picked BV may re-enter only if its original Life decision
+        # is still pending, it is <=24h old, and fresh round evidence exists.
+        # An approved/unknown/declined reply is NEVER replayed automatically.
+        auto = (selected and (recorded_selection or _comment_review_recovery_eligible(bv)) and
                 os.environ.get('BILI_DUTY_AUTO_COMMENT_REVIEW') == '1')
         if auto or comment_decision == 'insufficient':
             round_id = os.environ.get('BILI_DUTY_LIFE_ROUND_ID', '')
@@ -3062,6 +3119,8 @@ async def bili_ledger_mark(bvid: str, title: str, up: str = "", status: str = "ç
                         payload = {'uid': uid, 'roundId': round_id, 'bvid': bv, 'decision': decision,
                                    'draft': '', 'evidence': evidence if decision == 'consider' else ''}
                         response = await asyncio.to_thread(_life_video_request, '/life-comment-review', payload)
+                        if response.get('ok') is True and response.get('decision') in ('pass','want'):
+                            _set_comment_review_state(bv, 'passed' if response['decision']=='pass' else 'approved')
                         result['comment_review'] = {
                             'ok': response.get('ok') is True, 'recorded': response.get('recorded') is True,
                             'decision': response.get('decision', ''), 'canPost': response.get('canPost') is True,
@@ -3730,6 +3789,8 @@ async def bili_comment_consideration(bvid: str, decision: str = 'consider', reas
                    'draft':draft if decision == 'consider' else '',
                    'evidence':verified_evidence if decision == 'consider' else ''}
         receipt = await asyncio.to_thread(_life_video_request,'/life-comment-review',payload)
+        if receipt.get('ok') is True and receipt.get('decision') in ('pass','want'):
+            _set_comment_review_state(_valid_bv(bvid),'passed' if receipt['decision']=='pass' else 'approved')
         return json.dumps({'ok':receipt.get('ok') is True,'recorded':receipt.get('recorded') is True,
                            'decision':receipt.get('decision',''), 'canPost':receipt.get('canPost') is True,
                            'publicCommentText':receipt.get('publicCommentText','') if receipt.get('canPost') is True else '',
