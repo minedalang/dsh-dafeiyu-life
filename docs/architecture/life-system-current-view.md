@@ -47,6 +47,12 @@ flowchart TB
     ownerContactPolicy["主人联系策略｜卡片/自定义窗口和冷却，主 Session 与主人私信共用"]
     networkPollBackoff["B站私信/评论只读轮询｜-509/DNS 持久退避"]
   end
+  dmAccepted["可信私信邀请 + 社交模型自主 accept + 原待办成功新建"]
+  quickWake["单次即时 Life 考虑｜同账号、5分钟内、原日额度/退避；可 skip"]
+  socialFacts -.->|原 DM 模型与真实 BV 校验后才接纳| dmAccepted
+  dmAccepted --> canonical
+  dmAccepted -.->|仅新建的只读待办| quickWake
+  quickWake -.->|不等普通 Life 间隔；本轮重新核验| selection
   canonical --> todos
   canonical --> intentions
   adapter --> cues
@@ -74,6 +80,8 @@ flowchart TB
   socialFacts --> dynamicVerify
   dynamicVerify --> socialRetry
   socialRetry -.->|只有重新核实且具备发送许可才执行| socialWrite
+  %% @code dmAccepted | lib/social-todo-intake.mjs | export function intakeAiReadProposals
+  %% @code quickWake | lib/autonomous-planner.mjs | const acceptedWake=
   %% @code dynamicVerify | lib/comment-interact.mjs | export const dynamicVerificationRetryDelay
   networkPollBackoff -.-> socialFacts
   ownerChat -.-> selection
@@ -337,6 +345,8 @@ flowchart LR
     ownerChat["talk_to_owner：已核验经历或自发谈话意愿；允许跳过、不保证送达"]
     eventRefs["eventRefs：匿名事件引用 + 公平重考虑；不代表成功回执"]
   end
+  acceptedDm["刚接受的真实 DM 只读待办 + 原账号/证据复核"]
+  acceptedDm -.->|只唤醒 Life 考虑本条；不授予外发| todos
   sourceTodo --> todos
   sourceInterest --> cues
   sourceDiscussion --> cues
@@ -374,6 +384,7 @@ flowchart LR
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   class social,eventRefs partial
 
+%% @code acceptedDm | lib/autonomous-planner.mjs | const acceptedWake=
 %% @code todos | lib/owner-todos.mjs | export const READ_TODO_TYPES
 %% @code cues | lib/life-opportunities.mjs | const explorationCues=
 %% @code opportunities | lib/life-opportunities.mjs | export function deriveDiscussionOpportunities

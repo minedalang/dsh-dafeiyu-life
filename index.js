@@ -1376,6 +1376,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // reply/interpretation AI call. This bridge performs provenance, read-only
   // type, willingness and persistence checks; it never parses intent itself.
   const socialTodoIntakeRecent=[] // bounded diagnostics; no message bodies or identity records
+  let queueAcceptedSocialTodoWake=()=>{} // assigned after the single Life planner starts
   const onSocialTodoConsistency=({status,channel})=>{
     if(!['review-requested','model-revised','unverified-still','model-revision-failed','suppressed-unverified'].includes(status))return
     socialTodoIntakeRecent.push({at:Date.now(),channel:channel==='comment'?'comment':'dm',outcome:status,kind:'consistency'})
@@ -1401,6 +1402,15 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         result?.created?'partial-created':String(result?.skipped||result?.reason||result?.error||'unknown').slice(0,80)})
     if(socialTodoIntakeRecent.length>30)socialTodoIntakeRecent.splice(0,socialTodoIntakeRecent.length-30)
     if(result?.created)log(`AI 社交意图已接受并加入只读待办：${channel==='comment'?'评论':'私信'} · ${result.createdCount} 项${result.complete?'':'（部分候选未通过核验）'}`)
+    // A fresh, verified DM acceptance may awaken Life immediately. The notifier
+    // provides only an opaque persisted TODO id. Never auto-run or resend here.
+    if(channel==='dm'&&result?.created===true){
+      // Only the item whose canonical ledger operation actually inserted it
+      // may trigger a one-shot model wake. Duplicate/preexisting tasks never do.
+      const fresh=(result.results||[]).find(r=>r?.created===true&&r?.item?.source==='recommendation'&&
+        r.item?.origin?.kind==='bilibili-dm'&&['watch_video','search_videos'].includes(r.item?.type))?.item
+      if(fresh?.id)queueAcceptedSocialTodoWake(fresh.id)
+    }
     if(todoDisposition==='accept'&&!result?.complete)log('AI 社交待办候选未完整入队：'+String(result.skipped||result.error||'至少一项候选未通过核验').slice(0,100))
     else if(result?.ok===false)log('AI 社交待办未保存：'+String(result.error||result.skipped||'未知原因').slice(0,100))
     return result
@@ -3089,6 +3099,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // A one-shot notifier for VERIFIED social signals. The normal Life timer
   // remains the fallback; no independent social decision agent is introduced.
   let wakeSocialLife = null, socialWakeTimer = null
+  let wakeAcceptedSocialTodo = null, socialTodoWakeTimer = null, queuedAcceptedTodoId = ''
   const queueLifeSocialAttention = () => {
     if(!wakeSocialLife||socialWakeTimer)return
     socialWakeTimer=setTimeout(()=>{
@@ -3097,7 +3108,24 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     },1000)
     socialWakeTimer.unref?.()
   }
-  ctx.effect(()=>()=>{if(socialWakeTimer)clearTimeout(socialWakeTimer)},'bili-duty: Life 社交快速通知清理')
+  queueAcceptedSocialTodoWake=id=>{
+    if(!/^[0-9a-f-]{36}$/i.test(String(id||''))||!wakeAcceptedSocialTodo)return
+    queuedAcceptedTodoId=id
+    if(socialTodoWakeTimer)return
+    socialTodoWakeTimer=setTimeout(()=>{
+      socialTodoWakeTimer=null
+      const target=queuedAcceptedTodoId;queuedAcceptedTodoId=''
+      void wakeAcceptedSocialTodo(target).then(result=>{
+        if(['busy','planner-already-running'].includes(result?.skipped)){
+          // A normal Life turn already holds the single model lease. Its next
+          // regular poll is the durable fallback; no parallel model call.
+          log('Life 刚接下的只读待办待下一轮考虑：当前决策正在执行')
+        }
+      }).catch(e=>log('Life 只读待办快速考虑失败：'+String(e?.message||e).slice(0,85)))
+    },1800)
+    socialTodoWakeTimer.unref?.()
+  }
+  ctx.effect(()=>()=>{if(socialWakeTimer)clearTimeout(socialWakeTimer);if(socialTodoWakeTimer)clearTimeout(socialTodoWakeTimer)},'bili-duty: Life 社交快速通知清理')
   const socialHandoffFence=createSocialHandoffFence({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   const socialSendTransaction=createSocialSendTransaction({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   const socialDecisionOwnership=createSocialDecisionOwnership({
@@ -6040,8 +6068,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     logger:{warn:m=>log('⚠️ '+m)},
   })
   wakeSocialLife=()=>{autonomousPlanner.ensureStarted();return autonomousPlanner.tick({socialWake:true})}
+  wakeAcceptedSocialTodo=id=>{autonomousPlanner.ensureStarted();return autonomousPlanner.tick({acceptedTodoWakeId:id})}
   autonomousPlanner.start()
-  ctx.effect(()=>()=>{wakeSocialLife=null;autonomousPlanner.stop()},'bili-duty: 独立自主调度')
+  ctx.effect(()=>()=>{wakeSocialLife=null;wakeAcceptedSocialTodo=null;queueAcceptedSocialTodoWake=()=>{};autonomousPlanner.stop()},'bili-duty: 独立自主调度')
   // Independent, adjustable completion-review cadence. The initial inspection runs
   // after startup rather than silently waiting an entire interval. Re-schedule
   // after each run and after changing the setting; never overlap send attempts.

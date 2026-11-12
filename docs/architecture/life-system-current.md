@@ -1,3 +1,5 @@
+> **dev.5 增量接线：** 实名账号的私信模型在真实 BV 邀请上自由接受只读待办后，只有当前轮新创建的 `OwnerTodos` 项能提供一次非定时 Life 快速考虑 ID；后端重新验证 `acceptance.kind`、`origin.kind`、5 分钟、账号、启用、模型额度和退避，仅提供该任务的执行/延期/放下/休息菜单，复用原 `executeRead`，不再需要等默认 10/30/80 分钟；未接受不生成任务，已读元数据不等于完整观看。见 [dev.5 契约](./2.8.0-dev5-dm-work-acceptance-wake.md)。
+
 > **2.8.0-dev.4 自动恢复补充：** `AutonomousPlanner.start()` 与 `runLease.acquire()` 仅对操作系统证明原 PID 已退出、内容结构完整的原全局规划运行锁进行带竞争保护的自动回收，不改变同账号外发事务或 Life 授权账本。损坏/归属不明的锁继续拒绝，管理页展示停摆诊断。详细审计见 [dev.4 自动恢复契约](./2.8.0-dev4-planner-crash-autorecovery.md)。
 
 > **当前 dev.74 关系契约：** 自然熟悉度由原 `SocialRelationshipIndex` 提供，不以白名单提升；当前账号新 `social-relationship-channels` 仅存已核实的渠道、方向、时间和事件摘要。公开评论再熟悉也不能直接取得主动私信资格；仅在稳定跨日双向 DM、单独主人授权、明确拒联检查、Life 决定与原 DM 事务共同通过时才有可发起机会。老关系存档仅用于历史展示，不会升级为私人发送权限。参见 [dev.74 说明](./2.7.1-dev74-three-dimensional-relationships.md)。
