@@ -41,10 +41,13 @@ test('意愿判断批准后未结算应显示等待回执，超时不伪称中�
 test('生活页使用真实只读状态展示三类生活记录，解释额度与事件差异',()=>{
   const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
-  for(const id of ['life-flow-cues','life-flow-opportunities','life-flow-todos']){
+  // The dev.73 duplicate counters retired in 2.8.0; use one unified board.
+  for(const id of ['life-plan-hub-grid','owner-todo-list','life-opportunities-list']){
     assert.match(html,new RegExp('id="'+id+'"'))
     assert.ok(js.includes("$('"+id+"')"))
   }
+  for(const kind of ['cue','opportunity','todo'])assert.match(html,new RegExp('data-life-plan-filter="'+kind+'"'))
+  assert.doesNotMatch(html,/class="life-source-flow"/)
   for(const pace of ['80 分 / 50 次','30 分 / 100 次','10 分 / 200 次'])assert.ok(html.includes(pace))
   assert.match(js,/approval-pending':'Life 已同意/)
 })

@@ -1,10 +1,12 @@
+**当前版本：`2.8.0-dev.1`（开发预览，正式版未发布）**。先看 [2.8.0 用户 README](../README.md)、[新版说明](../RELEASE_NOTES_v2.8.0.md) 及 [发布就绪审计](architecture/2.8.0-release-readiness.md)。
+
 # 文档导航
 
-**当前 dev.70 增量：** [动态评论核验恢复、旧技术停止迁移与 Life 隐藏额度清理](architecture/2.7.1-dev70-dynamic-verification-and-visible-life-quotas.md)。前版 [普通评论表达授权与后台预算](architecture/2.7.1-dev69-social-expression-and-free-quotas.md)、[陌生人隐藏考虑额度退役](architecture/2.7.1-dev68-social-choice-and-idle-diagnostics.md) 继续保留。
+**旧 dev.70 增量（历史）：** [动态评论核验恢复、旧技术停止迁移与 Life 隐藏额度清理](architecture/2.7.1-dev70-dynamic-verification-and-visible-life-quotas.md)。前版 [普通评论表达授权与后台预算](architecture/2.7.1-dev69-social-expression-and-free-quotas.md)、[陌生人隐藏考虑额度退役](architecture/2.7.1-dev68-social-choice-and-idle-diagnostics.md) 继续保留。
 
-**dev.61 主评论修复：** [主评论、选片证据、视频失败与章程迁移](architecture/2.7.1-dev61-life-state-comment-repair.md)。
+**历史 dev.61 主评论修复：** [主评论、选片证据、视频失败与章程迁移](architecture/2.7.1-dev61-life-state-comment-repair.md)。
 
-**当前唯一架构事实源：** [2.7.1-dev.70 实际接线](architecture/CURRENT-ARCHITECTURE.md) · [2.7.1 RC 场景验收](architecture/CURRENT-RC-ACCEPTANCE.md)。
+**历史架构入口（以 docs/architecture/README.md 为准）：** [2.7.1-dev.70 实际接线](architecture/CURRENT-ARCHITECTURE.md) · [2.7.1 RC 场景验收](architecture/CURRENT-RC-ACCEPTANCE.md)。
 
 普通用户先看 [README](../README.md) 和 [首次使用教程](../README.md#-首次使用教程)。
 

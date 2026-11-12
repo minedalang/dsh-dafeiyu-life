@@ -1084,6 +1084,23 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 
 
 
+
+/* 2.8.0: one owner-facing life board; secondary tools are a single tabbed surface. */
+#panel-plans .life-plan-quick-actions{display:flex;flex-wrap:wrap;gap:8px}
+#panel-plans .life-plan-quick-actions button,#panel-plans .life-plan-tool-switch button{border:1px solid var(--stroke);border-radius:12px;background:var(--panel);color:var(--ink);font-size:13px;font-weight:700;padding:10px 15px;cursor:pointer;transition:background .16s,transform .16s,border-color .16s}
+#panel-plans .life-plan-quick-actions button:hover,#panel-plans .life-plan-tool-switch button:hover{background:var(--tint);transform:translateY(-1px)}
+#panel-plans .life-plan-tool-switch{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 14px;padding:0 0 14px;border-bottom:1px solid var(--stroke)}
+#panel-plans .life-plan-tool-switch button[aria-pressed="true"]{color:var(--action);background:var(--tint);border-color:var(--action)}
+#panel-plans .life-plan-admin-inner{padding:18px;min-width:0}
+#panel-plans .life-plan-admin-inner :is(#life-todo-section,#life-opportunities-section){border:0;background:transparent;padding:4px 0;margin:0;box-shadow:none;min-width:0}
+#panel-plans .life-plan-admin-inner #life-opportunities-section[hidden],#panel-plans .life-plan-admin-inner #life-todo-section[hidden]{display:none!important}
+#panel-plans .life-plan-admin-inner .record{margin:10px 0;padding:17px 19px;border:1px solid var(--stroke);border-left:4px solid color-mix(in srgb,var(--action) 50%,var(--stroke));border-radius:15px;background:var(--panel);box-shadow:0 4px 15px #315c7608;line-height:1.65}
+#panel-plans .life-plan-admin-inner .todo-overview{border-radius:15px;background:var(--tint);padding:14px}
+#panel-plans .life-plan-admin-inner .toolbar{flex-wrap:wrap;gap:9px}
+#panel-life .neural-recall-field>.neural-query-toolbar{margin:0 0 9px;padding:12px;border:1px solid var(--stroke);border-radius:16px;background:var(--panel);box-shadow:0 4px 18px #3257750b}
+#panel-life .neural-recall-field>.neural-query-toolbar input{min-width:160px}
+#panel-life .neural-recall-board:fullscreen .neural-recall-field>.neural-query-toolbar,#panel-life .neural-recall-board.is-expanded .neural-recall-field>.neural-query-toolbar{position:sticky;top:0;z-index:7}
+@media(max-width:610px){#panel-plans .life-plan-hub-foot{align-items:flex-start}#panel-plans .life-plan-quick-actions{width:100%}#panel-plans .life-plan-quick-actions button{flex:1}#panel-life .neural-recall-field>.neural-query-toolbar{padding:9px}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1651,7 +1668,6 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <section class="neural-recall-board" aria-label="神经回忆场：只读的真实记忆关系">
   <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4></div><span id="neural-memory-count" class="neural-counter">等待读取</span></div>
   <p class="muted">拖动旋转、滚轮缩放。彩色证据线＝已核验共享来源；搜索后由「查询向量」发出的青色线＝高维余弦相似度，不是 3D 距离。</p>
-  <div class="neural-query-toolbar" role="search"><label for="neural-search-input">在回忆场内搜索</label><input id="neural-search-input" maxlength="120" placeholder="例如：游戏、绘画、朋友…" autocomplete="off"><button type="button" id="neural-search-apply" class="life-action life-sky">唤起回忆</button><span id="neural-query-stage" role="status" aria-live="polite">等待输入关键词</span></div>
   <p class="muted neural-search-boundary">仅在启用并成功连接<strong>本地 Embedding 模型</strong>时，这是语义搜索；否则只是明确标记的关键词匹配，不会假装生成向量。真实肥鱼的回忆流程不同：<strong>场景理解 → 回忆意图 → 权限／遗忘过滤 → 候选召回 → （可选向量排序／模型甄别）→ 读取真实记忆 → 自主组织回应</strong>。此图仅演示可视化检索，不是模型内部思考的录像。</p>
   <div class="neural-recall-controls"><label><input id="neural-show-all" type="checkbox" checked> 显示全部可回忆节点（未命中变灰）</label><label for="neural-node-limit">最多显示</label><select id="neural-node-limit" aria-label="最多绘制的记忆节点数"><option value="500">500</option><option value="1000" selected>1000</option><option value="2000">2000</option><option value="10000">10000（高负载）</option></select></div>
   <div class="neural-recall-controls"><label title="仅显示真实共享证据，数量为 0 时不会凭空画线"><input id="neural-show-interest" type="checkbox" checked> 兴趣证据连线 <small id="neural-interest-edge-count">(0)</small></label><label><input id="neural-show-relationship" type="checkbox" checked> 互动证据连线 <small id="neural-relationship-edge-count">(0)</small></label><label><input id="neural-show-source" type="checkbox" checked> 共享来源连线 <small id="neural-source-edge-count">(0)</small></label><label><input id="neural-show-emotion" type="checkbox" checked> 当时情绪回声（有证据时）</label></div>
@@ -1663,7 +1679,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </div>
   <p class="muted neural-clarity-key" aria-label="记忆衰减亮度图例">节点深浅代表已记录的记忆清晰程度：<strong>清晰</strong>（明亮） · <strong>模糊</strong>（中等） · <strong>印象</strong>（较淡）；未标注不凭日期推算衰减。类别由颜色区分，衰减由明暗区分。</p>
 <div class="neural-recall-layout">
-    <div class="neural-recall-field"><div id="neural-memory-viewport" class="neural-memory-viewport"><div class="neural-viewport-actions"><button id="neural-memory-reset" type="button" title="回到初始视角">⟲ 重置视角</button><button id="neural-memory-fullscreen" type="button" aria-pressed="false" aria-label="全屏打开神经回忆场">⛶ 全屏</button></div><canvas id="neural-memory-canvas" aria-hidden="true"></canvas><svg id="neural-semantic-overlay" viewBox="0 0 1000 570" aria-hidden="true"><g id="neural-semantic-beams"></g></svg><svg id="neural-memory-svg" viewBox="0 0 1000 570" role="group" aria-label="可旋转的三维记忆节点空间，拖动旋转，滚轮缩放，点击节点查看详情" tabindex="0"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a6dfe3" stop-opacity=".16"/><stop offset="1" stop-color="#a6dfe3" stop-opacity="0"/></radialGradient></defs><circle cx="500" cy="285" r="255" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g></svg></div><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
+    <div class="neural-recall-field"><div class="neural-query-toolbar" role="search"><label for="neural-search-input">在回忆场内搜索</label><input id="neural-search-input" maxlength="120" placeholder="例如：游戏、绘画、朋友…" autocomplete="off"><button type="button" id="neural-search-apply" class="life-action life-sky">唤起回忆</button><span id="neural-query-stage" role="status" aria-live="polite">等待输入关键词</span></div><div id="neural-memory-viewport" class="neural-memory-viewport"><div class="neural-viewport-actions"><button id="neural-memory-reset" type="button" title="回到初始视角">⟲ 重置视角</button><button id="neural-memory-fullscreen" type="button" aria-pressed="false" aria-label="全屏打开神经回忆场">⛶ 全屏</button></div><canvas id="neural-memory-canvas" aria-hidden="true"></canvas><svg id="neural-semantic-overlay" viewBox="0 0 1000 570" aria-hidden="true"><g id="neural-semantic-beams"></g></svg><svg id="neural-memory-svg" viewBox="0 0 1000 570" role="group" aria-label="可旋转的三维记忆节点空间，拖动旋转，滚轮缩放，点击节点查看详情" tabindex="0"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a6dfe3" stop-opacity=".16"/><stop offset="1" stop-color="#a6dfe3" stop-opacity="0"/></radialGradient></defs><circle cx="500" cy="285" r="255" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g></svg></div><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
     <div class="neural-recall-side"><h5>被唤起的记忆</h5><div id="neural-memory-results" class="neural-memory-results"><p class="muted">输入关键词并搜索，或留空查看最近。</p></div><div id="neural-memory-detail" class="neural-memory-detail" tabindex="-1" aria-live="polite">点击节点或结果卡片查看真实来源和清晰程度。</div></div>
   </div>
 </section>
@@ -1818,24 +1834,17 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="life-plan-hub-top"><div><span class="page-eyebrow">MY LIFE · 有据可查的生活打算</span><h3>想法与行动，一起看</h3><p>从真实来源到 Life 的选择，再到核验结果；历史决定与当前可否继续分开显示。来源链接只指向确有凭据的视频或公开主页。</p></div><div id="life-plan-hub-total" class="life-plan-count">正在读取…</div></div>
   <div id="life-plan-hub-filter" class="life-plan-hub-filters" role="group" aria-label="筛选生活记录"><button type="button" data-life-plan-filter="all" aria-pressed="true">全部</button><button type="button" data-life-plan-filter="cue" aria-pressed="false">生活线索</button><button type="button" data-life-plan-filter="opportunity" aria-pressed="false">生活契机</button><button type="button" data-life-plan-filter="todo" aria-pressed="false">已接待办</button></div>
   <div id="life-plan-hub-grid" class="life-plan-hub-grid" aria-live="polite"><div class="life-plan-empty">正在读取当前账号的生活记录…</div></div>
-  <div class="life-plan-hub-foot"><span>🌿 可进入候选 ≠ Life 已决定 · 已决定 ≠ 动作完成</span><span>具体技术原因在「诊断」页查看</span></div>
+  <div class="life-plan-hub-foot"><span>🌿 想到一件事，不代表一定要做；只有真实回执才算完成。</span>
+<div class="life-plan-quick-actions"><button type="button" data-life-plan-open="todo">管理待办</button><button type="button" data-life-plan-open="source">核对来源</button></div></div>
 </div>
-<details class="life-plan-admin" id="life-plan-admin"><summary>管理待办、查看来源证据与完整历史 <span>展开高级管理</span></summary><div class="life-plan-admin-inner">
+<details class="life-plan-admin" id="life-plan-admin"><summary>更多操作与来源核对 <span>需要时再展开</span></summary><div class="life-plan-admin-inner">
+<nav class="life-plan-tool-switch" aria-label="生活事项管理方式">
+<button type="button" data-life-plan-tool="todo" aria-pressed="true">📝 管理待办</button>
+<button type="button" data-life-plan-tool="source" aria-pressed="false">🔎 来源与历史</button>
+</nav>
 <div id="life-now-todos" class="life-now-todos">
-<div class="life-source-flow" role="group" aria-label="鱼鱼的线索、契机与待办如何进入生活决策">
-  <div class="life-source-flow-title"><strong>🧭 鱼鱼的想法怎么变成行动？</strong><span>实时读取当前账号记录，不触发模型</span></div>
-  <div class="life-source-flow-grid">
-    <div class="life-source-flow-card"><strong>💡 生活线索</strong><span id="life-flow-cues">等待读取…</span><small>最近的观察和兴趣记录；不是 Life 必须执行的任务</small></div>
-    <div class="life-source-flow-card"><strong>🧭 生活契机</strong><span id="life-flow-opportunities">等待读取…</span><small>经过过滤、仍有证据的核实与续接机会</small></div>
-    <div class="life-source-flow-card"><strong>📝 已接受的待办</strong><span id="life-flow-todos">等待读取…</span><small>独立来源；不是线索的必经下一步</small></div>
-  </div>
-  <div class="life-source-flow-decision">⬇ Life 从三类记录中筛选合格机会，再结合其他真实事件自主选择：<strong>行动／延期／暂不行动</strong></div>
-  <p class="muted">此处显示最近读取的记录数量（不同来源可能重合），不代表 Life 已调用模型或平台发送成功。公开评论／私信由各自独立监听，Life 意愿与发送结果在决策日志中分别核验。</p>
-</div>
-
-<div class="todo-page-intro"><span>✨ 自主决定</span><span>🔎 连续探索</span><span>💞 关系参与</span><span>🔒 外发独立授权</span></div>
-<div id="life-todo-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📝 鱼鱼想做的事</h4><span id="owner-todo-status" class="live-badge">● 正在整理待办</span><button id="owner-todo-refresh" class="life-action life-sky">刷新待办</button><button id="owner-todo-remind" type="button" class="life-action life-green">提醒鱼鱼考虑待办</button></div>
-<p id="owner-todo-intake-status" class="muted" role="status">社交 AI 待办识别：尚无本次运行记录（只显示判断结果，不保存聊天原话）。</p>
+<div id="life-todo-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📝 已接待办</h4><span id="owner-todo-status" class="live-badge">● 正在整理待办</span><button id="owner-todo-refresh" class="life-action life-sky">刷新待办</button><button id="owner-todo-remind" type="button" class="life-action life-green">提醒鱼鱼考虑待办</button></div>
+<p id="owner-todo-intake-status" class="muted" role="status" hidden>待办识别诊断仅供内部查看。</p>
 <p class="muted" id="autonomous-planner-next" role="status">预计下次自动决策：读取中…</p><p class="muted">鱼鱼自己决定接不接受建议，何时行动，也可以延期。提醒只触发一次有额度的考虑，不强制执行。</p><div class="todo-overview" id="owner-todo-overview" aria-live="polite"><span>正在读取待办…</span></div>
 <div class="todo-filter" role="group" aria-label="查看待办状态"><button id="owner-todo-filter-active" type="button" aria-pressed="true" class="is-selected">进行中</button><button id="owner-todo-filter-all" type="button" aria-pressed="false">全部</button><button id="owner-todo-filter-finished" type="button" aria-pressed="false">已结束</button></div>
 <style>.todo-origin-quote{margin:8px 0;padding:10px 12px;border-left:3px solid #7b8ef9;background:var(--surface-2,rgba(107,129,228,.09));border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.92em}
@@ -1925,9 +1934,9 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </details>
 </div>
 </div>
-<div id="life-opportunities-section" class="settings-section life-section">
-<div class="toolbar"><h4 style="margin:0">💡 生活线索与契机详情</h4><button id="life-opportunities-refresh" type="button" class="life-action life-sky">刷新契机记录</button><button id="life-opportunities-reconsider" type="button" class="life-action life-purple">提醒鱼鱼考虑一次（消耗 AI 额度）</button></div>
-<p class="muted">鱼鱼可参考当前账号的<strong>评论观察、跨日自主选片兴趣、公开交流证据</strong>，自主决定只读探索或保持沉默。首批新增：可信兴趣经历即使原候选已关闭，仍可由鱼鱼自行产生“我想进一步探索”的目的，通过真实 B站公开搜索保留 BV；之后不必重进刷视频轮，也能自主选中实际搜索结果核实或放下。独立自主调度沿用原每日 AI 额度；只读探索由当前 Life 规划处理，不因隐藏的固定冷却而失去机会。不会自动创建待办、评论、私信、关注，也不代表已观看或听见音频。</p>
+<div id="life-opportunities-section" class="settings-section life-section" hidden>
+<div class="toolbar"><h4 style="margin:0">🔎 来源与历史决定</h4><button id="life-opportunities-refresh" type="button" class="life-action life-sky">刷新契机记录</button><button id="life-opportunities-reconsider" type="button" class="life-action life-purple">提醒鱼鱼考虑一次（消耗 AI 额度）</button></div>
+<p class="muted">这里可以核对线索来自哪里、鱼鱼当时作了什么决定，以及是否真的拿到了公开资料。历史记录不会因为本轮没选中就被删除。</p>
 <p id="life-opportunities-status" class="muted" role="status">尚未读取生活契机</p><div id="life-opportunities-list" class="records records-scroll" aria-live="polite"></div>
 </div>
 </div></details>

@@ -10,12 +10,13 @@ const within=(panel,id)=>{
   assert.ok(a>=0&&b>a,`panel ${panel}`)
   assert.ok(html.slice(a,b).includes(`id="${id}"`),`${id} located in ${panel}`)
 }
-test('life plans are their own page and reuse original records instead of duplicate displays',()=>{
-  for(const id of ['panel-plans','life-source-flow','life-flow-cues','life-flow-opportunities','life-flow-todos','life-todo-section','owner-todo-list','life-opportunities-section']){
-    if(id==='life-source-flow')assert.match(html,/class="life-source-flow"/)
-    else once(id)
-  }
-  for(const id of ['life-todo-section','life-opportunities-section','life-flow-cues'])within('plans',id)
+test('life plans retain real todo/source tools without the obsolete duplicate flow',()=>{
+  for(const id of ['panel-plans','life-plan-hub-grid','life-plan-admin','life-todo-section','owner-todo-list','life-opportunities-section'])once(id)
+  for(const id of ['life-todo-section','life-opportunities-section'])within('plans',id)
+  assert.doesNotMatch(html,/class="life-source-flow"/)
+  assert.match(html,/data-life-plan-tool="todo"/)
+  assert.match(html,/data-life-plan-tool="source"/)
+  assert.match(js,/showLifePlanTool/)
   assert.match(js,/if\(tab==='todos'\)tab='plans'/)
   assert.match(js,/plans:async\(\)=>\{await Promise\.all\(\[loadOwnerTodos\(\),loadLifeOpportunities\(\)\]\)\}/)
 })

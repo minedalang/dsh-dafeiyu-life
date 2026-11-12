@@ -22,7 +22,7 @@ test('all visible tabs have a registered route, distinct panel and loader',()=>{
   assert.ok(tabs.includes('life-agent'),'Life must be registered, not only rendered as a hidden panel')
   const loaderBlock=js.slice(js.indexOf('const loaders='),js.indexOf('// 直接刷新或复制管理页链接'))
   assert.match(loaderBlock,/'life-agent':async/,'Life route must load its data')
-  assert.match(html,/<button data-tab="life-agent" aria-selected="false">🐟 鱼鱼此刻<\/button>/)
+  assert.match(html,/<button data-tab="life-agent" aria-selected="false">🐟 鱼鱼正在做<\/button>/)
 })
 
 test('clicking real Life tab runs the production switchTab path and reveals its panel',async()=>{
