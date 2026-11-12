@@ -93,6 +93,7 @@ import { selectSearchVideos } from './lib/owner-dm-agent.mjs'
 import { selectRelevantSearchVideos } from './lib/todo-search-context.mjs'
 import { parseOwnerDmAction, createOwnerDmActionLedger, OWNER_DM_ACTION_FLAGS } from './lib/owner-dm-actions.mjs'
 import { createOwnerDmAgent } from './lib/owner-dm-agent.mjs'
+import {observedVideoFromRead,unifiedLegacySocialChoice} from './lib/life-action-protocol.mjs'
 import { validateOwnerRosterUpdate } from './lib/owner-identity.mjs'
 import { formatLocalLogTimestamp } from './lib/log-time.mjs'
 import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
@@ -1373,6 +1374,17 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       try{const hint=existingRelationshipIndex()?.preferenceHint(uid,relationshipOptions());if(hint)return hint}catch{}
       return '' // Legacy whitelist-only relationship ledger no longer supplies model context
     }})
+  // Compatibility-only social requests that have no first model decision use
+  // the SAME Life willingness arbiter. All AI-enabled agents instead record
+  // their own first explicit model choice; neither path uses mood thresholds.
+  const decideLegacySocial=async({source,uid,messageId,intent,target='',thread='',text=''})=>{
+    const decision=await unifiedLegacySocialChoice({lifeWillingness,source,uid,messageId,intent,target,thread,hint:text})
+    if(['allow','defer','refuse'].includes(decision.decision))try{
+      dualContextAgency.recordAI({source,uid,messageId:String(messageId)+':life280',text,intent,
+        action:'legacy-request',target,thread,decision:decision.decision})
+    }catch{/* diagnostics must not override the already completed Life choice */}
+    return decision
+  }
   // All social channels consume the structured proposal from their EXISTING
   // reply/interpretation AI call. This bridge performs provenance, read-only
   // type, willingness and persistence checks; it never parses intent itself.
@@ -3775,7 +3787,20 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const event=preparePrivateLifeEvent({source:'owner-dm',role:socialPolicyGate.actor(uid).role,uid,eventId,text,at})
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人私信私密经历待补偿：'+String(result.lastError||''))}
     },
-    decideAgency:({uid,messageId,text,intent,target})=>dualContextAgency.decide({source:'bili-dm',uid,messageId,text,intent,target}),
+    // The owner-DM model already selected a step; record that same decision.
+    // Never let a second emotion-score formula veto it after the model vote.
+    decideAgency:({uid,messageId,text,intent,target})=>dualContextAgency.recordAI({
+      source:'bili-dm',uid,messageId:String(messageId)+':life280-agent',text,intent,action:intent,target,decision:'allow'}),
+    onVideoObservation:async({sourceId,bvid,read})=>{
+      const scope=trustedLifeAccountTag()
+      const observation=observedVideoFromRead({source:'owner-dm-read',sourceId,
+        expectedBvid:bvid,read,accountTag:scope})
+      if(!observation.ok)return {ok:false,code:observation.code}
+      const receipt=lifeOpportunities.beginVideoObservation(observation,scope)
+      if(receipt?.ok===true)try{lifeAgentEvents.offer({kind:'exploration-ready',
+        platform:'life',sourceKey:receipt.id+':owner-dm-read'})}catch{}
+      return receipt
+    },
     writeMain:async(e)=>mainSessionBridge?.injectOwnerDmExperience(e)||{ok:false},
     executeRead:async(step)=>{
       const task={type:step.action==='search'?'search_videos':step.action==='watch'?'watch_video':step.action, bvid:step.bvid,uid:step.uid,topic:step.query}
@@ -3845,11 +3870,14 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         rows:incoming,ownerUid:cfg.dmOwnerUid,friendDirectory:cfg.friendDirectory,
       })}catch(e){log('主人私信偏好观察失败：'+String(e?.message||e).slice(0,100))}
     }
+    // The model-enabled owner DM route already contains one decision.
+    // Legacy commands still have their compatibility gate, but the model
+    // route must never be silently refused by a prior formula.
     // dev.9: apply one persistent willingness decision BEFORE every owner DM route
     // (the LLM Agent, legacy read-only TODO commands, and legacy write commands).
     // Ordinary chat, recommendation consent changes, and other users are untouched.
     const declinedOwnerRequests=new Set()
-    for(const row of (ownerAgentFirstBaseline||cfg.masterEnabled!==true||cfg.dmWatch!==true?[]:incoming)){
+    for(const row of (ownerAgentFirstBaseline||cfg.ownerDmAgentEnabled===true||cfg.masterEnabled!==true||cfg.dmWatch!==true?[]:incoming)){
       if(row?.incoming!==true||String(row.senderUid||'')!==String(cfg.dmOwnerUid||'')||!String(row.messageId||'').startsWith(String(row.senderUid)+':')||!Number.isSafeInteger(Number(row.timestampMs))||Date.now()-Number(row.timestampMs)>15*60_000||Number(row.timestampMs)>Date.now()+60_000)continue
       const raw=String(row.text||'')
       const legacyAction=parseOwnerDmAction(raw),legacyTodo=parseOwnerDmTodo(raw)
@@ -3857,7 +3885,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(!legacyAction&&!legacyTodo&&!classified)continue
       const intent=legacyAction?(['like','collect','follow','unfollow'].includes(legacyAction.type)?legacyAction.type:'publish'):(legacyTodo?'explore':classified.intent)
       const target=String(legacyAction?.bvid||legacyTodo?.bvid||classified?.target||'')
-      const r=dualContextAgency.decide({source:'bili-dm',uid:String(row.senderUid),messageId:String(row.messageId),text:raw,intent,target})
+      const r=await decideLegacySocial({source:'bili-dm',uid:String(row.senderUid),messageId:String(row.messageId),text:raw,intent,target})
       if(r.decision==='allow')continue
       declinedOwnerRequests.add(row)
       // A repeated poll must never send a second refusal or increase persuasion.
@@ -4634,7 +4662,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   })
   const ownerCommentAgent=createOwnerCommentAgent({
     dataDir:accountRuntimeDir,getConfig:()=>{refreshCfg();return cfg},
-    decideAgency:({uid,messageId,text,intent,bvid,thread})=>dualContextAgency.decide({source:'bili-comment',uid,messageId,text,intent,target:bvid,thread}),
+    decideAgency:({uid,messageId,text,intent,bvid,thread})=>decideLegacySocial({source:'bili-comment',uid,messageId,text,intent,target:bvid,thread}),
     getRole:uid=>socialPolicyGate.actor(uid).role,
     interpretSocial:async(row)=>{
       const ctx=await socialContextAssembler.comment(row)
@@ -4666,7 +4694,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       })
     },
     recordAgency:({uid,messageId,text,intent,action,bvid,thread,decision})=>dualContextAgency.recordAI({
-      source:'bili-comment',uid,messageId,text,intent,action,target:bvid,thread,decision,
+      source:'bili-comment',uid,messageId:String(messageId)+':life280-agent',text,intent,action,target:bvid,thread,decision,
     }),
     onTodoProposal:async({row,first})=>{
       // watch_later/watch_now/social_invite already handle the current video;
@@ -4698,6 +4726,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(action.type==='watch_now'){
         if(cfg.masterEnabled!==true)return {ok:false,error:'插件已暂停'}
         const inspection=await executeWatchVideo({bvid:action.bvid,include_comments:true,include_danmaku:true,record_session:false})
+        if(inspection?.ok===true){
+          const scope=trustedLifeAccountTag()
+          const observation=observedVideoFromRead({source:'social-read-now',
+            sourceId:'comment:'+String(action.messageId||'')+':'+action.bvid,
+            expectedBvid:action.bvid,read:inspection,accountTag:scope})
+          if(observation.ok){
+            const receipt=lifeOpportunities.beginVideoObservation(observation,scope)
+            if(receipt?.ok===true)try{lifeAgentEvents.offer({kind:'exploration-ready',
+              platform:'life',sourceKey:receipt.id+':comment-read'})}catch{}
+          }
+        }
         return inspection?.ok===true?{ok:true,summary:'B站生活域已查看公开视频可用资料'}
           :{ok:false,error:String(inspection?.error||'视频只读查看未完成').slice(0,140)}
       }
@@ -4734,45 +4773,25 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           visual:parseMaybeJson(inspection.visual),
         },action.bvid)
         if(!evidence.ok)return {ok:false,error:'已尝试读取视频，但公开元数据不足，无法验证标题或简介'}
-        // Public top-level commenting is an independent permission. If disabled,
-        // successfully exploring the video must not be reported as a failure.
-        refreshCfg()
-        if(actorTier==='owner'&&cfg.ownerCommentSocialPublishEnabled!==true)
-          return {ok:true,inspected:true,inspection:evidence.evidence.level,commentDecision:'blocked',
-            ownerReplySuccess:'鱼鱼去了解了一下，但目前没有公开评论授权，就先不留言啦～🐟',
-            summary:'已查看公开视频可用资料；未授权自主发表评论，未公开发布'}
-        const socialMessage=await socialContextAssembler.message({kind:'comment',uid:action.actorUid,
-          text:action.invitation||'',context:[evidence.video?.title,evidence.video?.description,evidence.context].filter(Boolean).join('\n'),bvid:action.bvid})
-        const decision=await decideOwnerSocialComment({
-          info:evidence.video,bvid:action.bvid,context:evidence.context,invitation:action.invitation||'',
-          // 统一人格已含当前情绪；不能再次追加独立 styleHint。
-          style:buildInteractionPersona([{kind:'comment',uid:action.actorUid,text:action.invitation||''}]),
-          willingness:action.willingness||{},commentRequested:action.commentRequested===true,
-          priorCommentOutcomes:action.priorCommentOutcomes||[],
-          memoryContext:socialMessage.memoryContext||'',memeContext:socialMessage.memeContext||'',
-          canPublish:actorTier==='owner',requireReply:action.aiSocial===true,maxAttempts:action.aiSocial===true?1:2,
-          invoke:p=>invokeInteractionPrompt(p,2200,{modelRoute:'interaction'}),
-        })
-        if(!decision.ok)return {ok:false,inspected:true,inspection:evidence.evidence.level,
-          ownerReplyFailure:'我看过能找到的资料啦，不过这次没能整理出可信的评论，先不乱发～🐟',
-          error:'自主评论选择未通过公开校验（'+decision.reason+'）'}
-        if(actorTier==='friend')return {ok:true,skipped:true,inspected:true,inspection:evidence.evidence.level,
-          commentDecision:'not-authorized',ownerReply:decision.ownerReply||'我查了这个视频，想法先在这里和你聊聊，不另外公开留言啦～🐟',
-          summary:'好友邀请已完成只读探索；未开放好友请求顶层发表评论'}
-        if(decision.skipped)return {ok:true,skipped:true,inspected:true,inspection:evidence.evidence.level,
-          commentDecision:'skip',ownerReply:decision.ownerReply,
-          summary:'大肥鱼已探索公开视频资料，选择暂不公开评论（'+decision.reason+'）'}
-        // Re-evaluate authorization just before the only external write: the owner
-        // or public publish permission may have been revoked during model inference.
-        refreshCfg()
-        if(cfg.masterEnabled!==true||cfg.ownerCommentAgentEnabled!==true||cfg.ownerCommentSocialPublishEnabled!==true
-          ||!hasCredential()||String(action.actorUid||'')!==String(cfg.dmOwnerUid||''))
-          return {ok:false,inspected:true,inspection:evidence.evidence.level,
-            commentDecision:'blocked',ownerReplyFailure:'我想去评论，不过权限已经变更，这次没有发出去～🐟',error:'授权已变更，未公开发表评论'}
-        const published=await runOwnerDmPublishComment(action.bvid,decision.text)
-        return {...published,inspected:true,inspection:evidence.evidence.level,commentDecision:'comment',
-          ownerReplySuccess:decision.ownerReplySuccess,ownerReplyFailure:decision.ownerReplyFailure,
-          ownerReplyUncertain:decision.ownerReplyUncertain}
+        // Social invitation and ordinary Life exploration are the SAME video
+        // observation. The social agent has already chosen to read; it cannot
+        // run another willingness model and directly publish a top-level
+        // comment from this read. Life Episode owns the optional next action.
+        const scope=trustedLifeAccountTag()
+        const observation=observedVideoFromRead({source:'social-read-now',
+          sourceId:'comment-invite:'+String(action.messageId||'')+':'+action.bvid,
+          expectedBvid:action.bvid,read:inspection,accountTag:scope})
+        if(!observation.ok)return {ok:false,inspected:true,inspection:evidence.evidence.level,
+          error:'视频读取回执不完整，不能建立后续互动机会'}
+        const next=lifeOpportunities.beginVideoObservation(observation,scope)
+        if(next?.ok!==true)return {ok:false,inspected:true,inspection:evidence.evidence.level,
+          error:'视频观察无法写入统一 Life 账本'}
+        try{lifeAgentEvents.offer({kind:'exploration-ready',platform:'life',
+          sourceKey:next.id+':comment-invite'})}catch{/* a wake failure never authorizes a write */}
+        return {ok:true,inspected:true,inspection:evidence.evidence.level,
+          commentDecision:'life-offered',
+          ownerReplySuccess:'已经了解这条视频的公开资料啦。至于要不要互动，我会自己再考虑～🐟',
+          summary:'公开视频观察已归入统一 Life Episode，后续互动由 Life 自主选择'}
       }
       return {ok:false,error:'不支持的评论动作'}
     },
@@ -4950,8 +4969,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     decideSocial:({uid,id,kind,scope,text,bvid,thread})=>{
       const tier=socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory)
       if(tier!=='friend')return {decision:'allow',tier}
-      const result=dualContextAgency.decide({source:'bili-comment',uid,messageId:id,text,intent:'chat',target:bvid,thread})
-      return {...result,tier}
+      // The ordinary comment expression model (and exact-text Life seal) is
+      // the FIRST decision. Never apply a pre-model emotion threshold here.
+      return {decision:'allow',reason:'reply-owned-by-life-model',tier}
     },
     socialTier:(uid)=>socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory),
     canContinue:(uid,channel)=>socialPortrait.continuationAllowed(uid,{channel}),
@@ -5793,12 +5813,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // A separate, short-lived Python process invokes the SAME autonomous MCP
   // Python function, using a fresh Life approval bridge token per action. It
   // cannot invoke any owner-manual or social-adapter tool.
-  const lifeContinuationPythonWrite=(proposal,{scope,accountUid})=>new Promise(resolve=>{
+  const lifeContinuationPythonWrite=(proposal,{scope,accountUid,intentTicket})=>new Promise(resolve=>{
     const current=()=>trustedLifeAccountTag()===scope&&
       String(accountBinding.status().activeUid||'')===accountUid&&!accountBinding.status().blocked
     const action=proposal.action,tool={like_video:'bili_video_like',collect_video:'bili_video_collect',
       follow_creator:'bili_follow_creator',comment_video:'bili_reply'}[action]
-    if(!tool||!current()||lifeVideoActionBridge?.status().ready!==true)return resolve({ok:false,status:'unavailable',attempted:false})
+    if(!tool||!current()||lifeVideoActionBridge?.status().ready!==true||!/^[-a-f0-9]{36}$/i.test(String(intentTicket||'')))return resolve({ok:false,status:'unavailable',attempted:false})
     const bridge=lifeVideoActionBridge.env()
     if(!bridge.BILI_LIFE_ACTION_URL||!bridge.BILI_LIFE_ACTION_TOKEN)return resolve({ok:false,status:'unavailable',attempted:false})
     const payload=JSON.stringify(proposal)
@@ -5817,6 +5837,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         BILI_LIFE_EXPECT_UID:accountUid,BILI_JS_MCP_ADAPTER:'0',BILI_DUTY_TOP_LEVEL_ONLY:'1',
         BILI_SYNC_DYNAMIC:'0',BILI_MENTION_MODE:'off',BILI_DM_TARGET_UID:'0',
         BILI_LIFE_ACTION_URL:bridge.BILI_LIFE_ACTION_URL,BILI_LIFE_ACTION_TOKEN:bridge.BILI_LIFE_ACTION_TOKEN,
+        BILI_LIFE_PREAPPROVED_TICKET:intentTicket,
         BILI_AUTO_VIDEO_LIKE:cfg.autoVideoLike?'1':'0',BILI_AUTO_VIDEO_LIKE_DAILY_LIMIT:String(cfg.autoVideoLikeDailyLimit),
         BILI_AUTO_VIDEO_COLLECT:cfg.autoVideoCollect?'1':'0',BILI_AGENT_FOLLOW_ENABLED:cfg.agentFollowEnabled?'1':'0',
         BILI_COMMENT_DAILY_LIMIT:String(cfg.commentDailyLimit),BILI_FISH_FOLDER_VISIBILITY:'private'
@@ -5850,6 +5871,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const result=parseMaybeJson(await call('bili_ledger_mark',{bvid,title,up:'',status:'挑中'}))
       return result?.ok===true?{ok:true}:{ok:false}
     },runWriter:lifeContinuationPythonWrite,
+    prepareIntent:({sourceKey,kind,target,commentText},{scope,uid})=>{
+      if(scope!==trustedLifeAccountTag()||String(accountBinding.status().activeUid||'')!==uid)
+        return {ok:false,code:'account-changed'}
+      const choice=lifeWillingness.adoptVideoDecision({sourceKey,kind,target,commentText})
+      if(choice?.ok!==true)return choice
+      const ticket=lifeVideoActionBridge.registerTrustedIntent({proof:choice.proof,
+        kind,target,commentText,scope,uid})
+      if(ticket?.ok!==true)lifeWillingness.receipt(choice.proof,{status:'not-sent'})
+      return ticket
+    },cancelIntent:ticket=>lifeVideoActionBridge.cancelTrustedIntent(ticket),
     bridgeReady:()=>lifeVideoActionBridge?.status().ready===true
   })
   // A voluntary Life friend outreach starts ONLY after the single Planner has

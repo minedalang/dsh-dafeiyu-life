@@ -49,7 +49,7 @@ test('executor does not write when permission changes between evidence read and 
  const settings={...cfg}
  const run=createLifeContinuationWriteExecutor({getConfig:()=>settings,getAccountTag:()=>scope,getAccountUid:()=> '1234',
   getIntention:()=>selected,getPublicEvidence:async()=>{settings.autoComment=false;return evidence},
-  markSelected:()=>{marks++;return {ok:true}},runWriter:()=>{calls++;return {ok:true,status:'verified'}},now:()=>T})
+  markSelected:()=>{marks++;return {ok:true}},prepareIntent:()=>({ok:true,ticket:'12345678-1234-1234-1234-123456789abc'}),cancelIntent:()=>{},runWriter:()=>{calls++;return {ok:true,status:'verified'}},now:()=>T})
  const r=await run({action:'comment_video',id:ID,bvid:BV,reason:'确实有一些具体观点想自然表达',text:'公开视频描述确实很有意思'},scope)
  assert.equal(r.ok,false);assert.equal(calls,0);assert.equal(marks,0)
 })
@@ -58,7 +58,7 @@ test('executor keeps account and canonical BV hard-bound; an unverified send nev
  let account=scope,mark=0,writes=0
  const run=createLifeContinuationWriteExecutor({getConfig:()=>cfg,getAccountTag:()=>account,getAccountUid:()=> '1234',
   getIntention:()=>selected,getPublicEvidence:async()=>evidence,
-  markSelected:()=>{mark++;return {ok:true}},runWriter:async()=>{writes++;return {ok:true,status:'unconfirmed',attempted:true}},now:()=>T})
+  markSelected:()=>{mark++;return {ok:true}},prepareIntent:()=>({ok:true,ticket:'12345678-1234-1234-1234-123456789abc'}),cancelIntent:()=>{},runWriter:async()=>{writes++;return {ok:true,status:'unconfirmed',attempted:true}},now:()=>T})
  const action={action:'like_video',id:ID,bvid:BV,reason:'确实欣赏这个视频公开呈现的主题'}
  assert.equal((await run({...action,bvid:OTHER},scope)).code,'invalid-write-proposal')
  assert.equal(writes,0)
@@ -73,7 +73,7 @@ test('executor keeps account and canonical BV hard-bound; an unverified send nev
 test('executor recognizes ONLY independently verified write result, not raw ok',async()=>{
  const run=createLifeContinuationWriteExecutor({getConfig:()=>cfg,getAccountTag:()=>scope,getAccountUid:()=> '1234',
   getIntention:()=>selected,getPublicEvidence:async()=>evidence,markSelected:()=>({ok:true}),
-  runWriter:async()=>({ok:true,status:'verified',attempted:true}),now:()=>T})
+  prepareIntent:()=>({ok:true,ticket:'12345678-1234-1234-1234-123456789abc'}),cancelIntent:()=>{},runWriter:async()=>({ok:true,status:'verified',attempted:true}),now:()=>T})
  assert.deepEqual(await run({action:'follow_creator',id:ID,bvid:BV,reason:'很想继续了解这个视频作者的公开新作品'},scope),
   {ok:true,status:'verified',code:'verified-platform-write'})
 })

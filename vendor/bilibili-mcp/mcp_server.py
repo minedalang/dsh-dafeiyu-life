@@ -207,7 +207,9 @@ def _life_video_request(route, payload):
                                'life-account-unavailable', 'account-not-ready',
                                'account-changed', 'life-video-gateway-unavailable',
                                'comment-life-intent-missing', 'comment-draft-mismatch',
-                               'comment-life-intent-expired', 'comment-review-not-current')
+                               'comment-life-intent-expired', 'comment-review-not-current',
+                               'life-intent-ticket-not-current', 'life-intent-target-mismatch',
+                               'life-intent-proof-invalid')
                 if code in (safe_review if route == '/life-comment-review' else safe_action):
                     return {'ok': False, 'reason': code}
             except Exception:
@@ -230,6 +232,8 @@ async def _life_video_authorize(tool_name, args):
         return {'ok': False, 'reason': '未核验的 B站账号'}
     reason = args.get('reason') or (args.get('text') or '')[:100]
     payload = {'uid': uid, 'tool': tool_name, 'target': str(target or ''), 'reason': str(reason)[:100]}
+    if os.environ.get('BILI_LIFE_PREAPPROVED_TICKET'):
+        payload['intentTicket'] = os.environ['BILI_LIFE_PREAPPROVED_TICKET']
     if tool_name == 'bili_reply':
         # Ephemeral proof binding. Only the originating host uses the exact
         # proposed text for a later independent platform GET; it is not logged.
@@ -3843,7 +3847,7 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
     if _deny: return _deny
     # For an autonomous video comment Life reviewed this exact draft. Keep the
     # expected text in process memory; no second model decision at send time.
-    life_approved_comment_text = text if os.environ.get('BILI_DUTY_LIFE_ROUND_ID') else None
+    life_approved_comment_text = text if (os.environ.get('BILI_DUTY_LIFE_ROUND_ID') or os.environ.get('BILI_LIFE_PREAPPROVED_TICKET')) else None
     if life_approved_comment_text is not None and (sync_to_dynamic or should_mention or meme_image_name):
         return json.dumps({'success':False,'blocked':True,'error':'Life 原创评论不允许顺带动态同步、@ 好友或附图；请只发送已批准的文字'},ensure_ascii=False)
     verified_recipient = None

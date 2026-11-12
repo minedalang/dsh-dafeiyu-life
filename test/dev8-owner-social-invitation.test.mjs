@@ -54,7 +54,7 @@ test('a publication is only attempted after verified social invitation and stays
  try{
   const message='@大肥鱼 你觉得这个视频怎么样'
   assert.equal((await t.agent.accept(t.row(message))).status,'done')
-  assert.deepEqual(t.calls,[{type:'social_invite',invitation:message,willingness:null,bvid:BV,actorUid:'999'}])
+  assert.deepEqual(t.calls,[{type:'social_invite',invitation:message,willingness:null,bvid:BV,actorUid:'999',messageId:'at:1'}])
   assert.equal(t.replies.length,0) // No extra robotic success ack for a top-level comment
   assert.equal((await t.agent.accept(t.row(message))).skipped,'duplicate')
  }finally{t.close()}
@@ -97,7 +97,8 @@ test('new consent is a single default-off visible switch and legacy explicit pub
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  assert.match(index,/ownerCommentSocialPublishEnabled: z\.boolean\(\)\.default\(false\)/)
  assert.match(index,/if\(cfg\.ownerCommentSocialPublishEnabled!==true\)/)
- assert.match(index,/cfg\.ownerCommentAgentEnabled!==true\|\|cfg\.ownerCommentSocialPublishEnabled!==true/)
+ assert.match(index,/if\(cfg\.ownerCommentSocialPublishEnabled!==true\)/)
+ assert.match(index,/beginVideoObservation\(observation,scope\)/)
  assert.match(ui,/ownerCommentSocialPublishEnabled:\$\('owner-comment-publish'\)\.checked/)
  assert.doesNotMatch(ui,/ownerCommentPublishEnabled:\$\('owner-comment-publish'\)\.checked/)
  assert.equal((html.match(/id="owner-comment-publish"/g)||[]).length,1)
