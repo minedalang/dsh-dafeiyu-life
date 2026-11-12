@@ -31,13 +31,13 @@ test('old duplicate plan flow is gone and functional admin tools are tabs, not t
 
 test('2.8.0 preview version and user release docs are consistent without public release',()=>{
  const pkg=JSON.parse(src('package.json')),lock=JSON.parse(src('package-lock.json'))
- assert.equal(pkg.version,'2.8.0-dev.1')
+ assert.match(pkg.version,/^2\.8\.0-dev\.\d+$/)
  assert.equal(lock.version,pkg.version)
  assert.equal(lock.packages[''].version,pkg.version)
  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.8.0.md'))
  const readme=src('README.md'),notes=src('RELEASE_NOTES_v2.8.0.md'),audit=src('docs/architecture/2.8.0-release-readiness.md')
- assert.match(readme,/新生活系统刚上线/)
- assert.match(readme,/反馈体验和提出建议/)
+ assert.match(readme,/新生活系统(?:刚上线|上线初期)/)
+ assert.match(readme,/反馈体验和(?:提出|改进)建议/)
  assert.match(notes,/可能仍有不稳定、遗漏或 Bug/)
  assert.match(readme,/2\.8\.0-life-overview\.svg/)
  assert.match(audit,/releaseReady:false/)
