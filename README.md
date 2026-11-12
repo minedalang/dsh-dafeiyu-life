@@ -4,7 +4,7 @@
 
 [![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [安装与更新](#-开始使用) · [2.8.0 更新说明](RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [提建议 / 报告问题](https://github.com/minedalang/dsh-dafeiyu-life/issues)
 
-> **2.8.0 开发预览（`2.8.0-dev.1`，尚未发布正式版）**。目前 npm 稳定版仍以实际市场信息为准。新生活系统刚上线，可能还有不稳定或 Bug；非常欢迎大家 [反馈体验和提出建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)，一起让鱼鱼插件变得更好。正式发布前仍需完成真实 DSH/B站测试及长期运行验收。
+> **2.8.0 开发预览（`2.8.0-dev.2`，尚未发布正式版）**。目前 npm 稳定版仍以实际市场信息为准。新生活系统刚上线，可能还有不稳定或 Bug；非常欢迎大家 [反馈体验和提出建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)，一起让鱼鱼插件变得更好。正式发布前仍需完成真实 DSH/B站测试及长期运行验收。
 
 ## ✨ 2.8.0 带来了什么？
 
@@ -36,7 +36,7 @@
 2. 打开 **设置 → 大肥鱼 → 管理中心**，按照向导核验 B站账号、主人 UID、模型连接及所需的 Headless 视频模型。
 3. 在「鱼鱼正在做」选择生活节奏；**单独确认**评论、私信、关注等可能公开写入的权限。旧设置不会因升级自动放宽。
 4. 到「鱼鱼想做」看线索与已接待办；到「鱼的记忆」查看回忆场。遇到技术错误请在「诊断」检查实际回执。
-5. 升级、切号或恢复前，先离线备份 `$DSH_HOME/bili-duty/`，并注意备份可能含有隐私数据和账号凭证。
+5. 升级、切号或恢复前，请先停止 DSH 并使用 `node tools/dev4-cold-state-backup.mjs backup --root <数据目录> --to <独立备份目录> --stopped` 创建**完整本地快照**，随后执行 `verify --snapshot <独立备份目录>` 校验。完整快照包含 B站凭证与私密数据，务必自己保管，**不要上传给任何人**。管理中心的「备份全部业务数据」「单独备份完整人生记忆」是便携 JSON／专项记忆备份，均不能替代停机完整快照。
 
 模型服务、视频浏览和可选本地 Embedding 可能产生费用或资源消耗。公开视频元数据、字幕或评论读取**不等同于完整观看或理解视频音画**。
 

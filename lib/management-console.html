@@ -1536,7 +1536,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
       <button id="backup-export" class="primary" type="button">备份全部业务数据</button>
     </div>
     <p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
-    <p class="backup-footnote">这是便携业务备份，**不是整套 DSH 运行目录快照**：不包含 B站 Cookie、登录凭证、部分私密账号运行账本、Life Agent 短期时间线、密钥、缓存与日志，也不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。重构前需停机使用 docs/architecture/2.7.1-dev4-life-agent-phase3.md 所述完整本地快照；其中包含私密数据与凭证，请勿上传。</p>
+    <p class="backup-footnote">这是便携业务备份，**不是整套 DSH 运行目录快照**：不包含 B站 Cookie、登录凭证、部分私密账号运行账本、Life Agent 短期时间线、密钥、缓存与日志，也不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。重要：**老用户跨版本迁移前，必须停机制作并校验完整本地快照**；便携业务备份及「人生记忆专项备份」均不能替代完整快照。请按 README 的离线命令或 docs/architecture/2.8.0-dev2-old-user-backup-safety.md 操作；完整快照包含账号凭证和私密数据，严禁上传分享。</p>
   </div>
   <div class="backup-more-grid">
     <details class="backup-fold" id="backup-memory-tools">
