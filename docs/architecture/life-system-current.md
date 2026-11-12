@@ -1,4 +1,4 @@
-> **dev.5 增量接线：** 实名账号的私信模型在真实 BV 邀请上自由接受只读待办后，只有当前轮新创建的 `OwnerTodos` 项能提供一次非定时 Life 快速考虑 ID；后端重新验证 `acceptance.kind`、`origin.kind`、5 分钟、账号、启用、模型额度和退避，仅提供该任务的执行/延期/放下/休息菜单，复用原 `executeRead`，不再需要等默认 10/30/80 分钟；未接受不生成任务，已读元数据不等于完整观看。见 [dev.5 契约](./2.8.0-dev5-dm-work-acceptance-wake.md)。
+> **dev.6 当前单次意愿接线：** DM/评论原社交模型可一轮输出 `todoTiming=now|later`；合法 now 从原 `OwnerTodos` 原子写入后，在原 Life 运行锁下直接执行同一只读意愿，**没有第二次 Life 模型投票**；later 和旧无 timing 待办仍走普通自主规划。`assessReadExecution` 不得再次用本地情绪分数否决。原 Life 决定的朋友联系只需下游生成文案；已有社交回复中明确而经核验的好友关注采用一次性绑定证明；待办回访由 Life 决定后只生成表达。新的真实公开读取证据之后的**下一步**才允许另外自主选择。权限、账号、防重、未知冻结和真实回执仍独立执行。见 [dev.6 契约](./2.8.0-dev6-single-intent-actions.md)。
 
 > **2.8.0-dev.4 自动恢复补充：** `AutonomousPlanner.start()` 与 `runLease.acquire()` 仅对操作系统证明原 PID 已退出、内容结构完整的原全局规划运行锁进行带竞争保护的自动回收，不改变同账号外发事务或 Life 授权账本。损坏/归属不明的锁继续拒绝，管理页展示停摆诊断。详细审计见 [dev.4 自动恢复契约](./2.8.0-dev4-planner-crash-autorecovery.md)。
 

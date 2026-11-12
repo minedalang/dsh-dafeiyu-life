@@ -19,7 +19,7 @@ flowchart LR
     sourceOwner["主人联系卡片/自定义额度 + 明确绑定且在线的主 Session + 可选沉默续聊"]
   end
   subgraph candidates["本轮实际类型 / 内容边界"]
-    todos["todos：只读已接受任务（执行前复核）"]
+    todos["todos：已接待办｜新任务由 Life 自主安排，已确定动作只做技术复核"]
     cues["cues：interest-milestone / discussion-read / selection-curiosity"]
     opportunities["opportunities：兴趣/评论/短期好奇的同 BV 核实；或 public-person-observation"]
     intentions["intentions：已有 BV / 作者/公开评论只读及一次额外首页；14 天有效窗"]
@@ -31,8 +31,11 @@ flowchart LR
     ownerChat["talk_to_owner：已核验经历或自发谈话意愿；允许跳过、不保证送达"]
     eventRefs["eventRefs：匿名事件引用 + 公平重考虑；不代表成功回执"]
   end
-  acceptedDm["刚接受的真实 DM 只读待办 + 原账号/证据复核"]
-  acceptedDm -.->|只唤醒 Life 考虑本条；不授予外发| todos
+  acceptedDm["刚接受的 DM/评论只读待办｜同一社交模型 now/later"]
+  acceptedNow["now：一次性执行原已接受只读动作；不再投第二票"]
+  acceptedDm -->|now + 新入账 + 当前账号有效| acceptedNow
+  acceptedDm -.->|later 与旧无 timing：正常自主规划| todos
+  acceptedNow -.->|原执行器+权限+回执；不增加 AI 调用| sourceTodo
   sourceTodo --> todos
   sourceInterest --> cues
   sourceDiscussion --> cues
@@ -70,7 +73,8 @@ flowchart LR
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   class social,eventRefs partial
 
-%% @code acceptedDm | lib/autonomous-planner.mjs | const acceptedWake=
+%% @code acceptedDm | lib/social-todo-intake.mjs | export function intakeAiReadProposals
+%% @code acceptedNow | lib/autonomous-planner.mjs | const executeAcceptedSocialRead=
 %% @code todos | lib/owner-todos.mjs | export const READ_TODO_TYPES
 %% @code cues | lib/life-opportunities.mjs | const explorationCues=
 %% @code opportunities | lib/life-opportunities.mjs | export function deriveDiscussionOpportunities
@@ -100,7 +104,7 @@ flowchart LR
 dmHistory["同 UID 真正长期双向私信证据 + 本轮独立自主关注授权"]
 dmFollowCandidate["follow_dm_contact｜可信好友；仅建议，绝不直接外发"]
 dmHistory --> dmFollowCandidate
-dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
+dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验，后续只封装一次性证明| social
 %% @code dmHistory | lib/life-subagent-continuity.mjs | export function dmContactFollowCandidates
 %% @code dmFollowCandidate | lib/life-subagent-continuity.mjs | action:'follow_dm_contact'
 

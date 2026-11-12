@@ -11,21 +11,21 @@ const T=Date.parse('2026-11-01T14:00:00Z'),BV='BV19SJi6VEj1';
 const inDir=async f=>{const dir=mkdtempSync(join(tmpdir(),'dafeiyu-p5b-'));try{return await f(dir)}finally{rmSync(dir,{force:true,recursive:true})}}
 const settings={masterEnabled:true,autonomousPlannerEnabled:true,autonomousPlannerMinutes:15,autonomousPlannerDailyLimit:3,autonomousPlannerStartHour:0,autonomousPlannerEndHour:24,mainSessionReflectionMinCandidates:6};
 
-test('dev.5 执行前复核：极低能量只延期而不遗忘，恢复精力即可接受，纯评估不创建意愿文件',()=>inDir(dir=>{
+test('dev.6 单次意愿：情绪波动不在执行阶段再次否决；仍检查任务客观资格',()=>inDir(dir=>{
   let state={energy:3,curiosity:5,sociality:2,valence:-80};
   const gate=createDualContextAgency({dataDir:dir,getEmotion:()=>state,getRelationship:()=>({stage:'friend',score:100})});
   const task={id:'ok',type:'watch_video',status:'open',source:'recommendation',origin:{uid:'23456'}};
-  assert.equal(gate.assessReadExecution({task}).decision,'defer');
+  assert.equal(gate.assessReadExecution({task}).decision,'allow');
   assert.equal(existsSync(join(dir,'dual-context-agency.json')),false,'不应为了复核新建/打开意愿账本');
   state={energy:78,curiosity:70,sociality:64,valence:40};
   assert.equal(gate.assessReadExecution({task}).decision,'allow');
   assert.equal(gate.assessReadExecution({task:{...task,type:'dm_friend'}}).decision,'blocked');
   assert.equal(gate.assessReadExecution({task:{...task,status:'uncertain'}}).decision,'blocked');
   state={enabled:false,energy:0,curiosity:0};
-  assert.equal(gate.assessReadExecution({task}).reason,'emotion-disabled');
+  assert.equal(gate.assessReadExecution({task}).reason,'prior-life-intent-retained');
 }));
 
-test('dev.5 背景执行双重检查：在模型选择后因状态变更而延期，绝不调用视频执行器',()=>inDir(async dir=>{
+test('dev.6 生活模型选中后情绪变化不会被第二评分器否决，仍验证原任务资格',()=>inDir(async dir=>{
   let feeling={energy:75,curiosity:65,sociality:55,valence:30};let fired=0,now=T,prompt='';
   const engine=createOwnerTodoEngine({dataDir:dir,now:()=>now});
   const item=engine.add({type:'watch_video',bvid:BV,origin:{kind:'bilibili-dm',uid:'23456'}},{source:'recommendation'}).item;
@@ -36,9 +36,9 @@ test('dev.5 背景执行双重检查：在模型选择后因状态变更而延�
     executeRead:async()=>{fired++;return {ok:true}},updateTodo:(...args)=>engine.update(...args),
     reflect:async()=>({ok:false}),reflectionStatus:()=>({pending:0})});
   const result=await planner.tick();
-  assert.equal(result.action,'defer');assert.equal(fired,0);
+  assert.equal(result.action,'execute_read');assert.equal(fired,1);
   const saved=engine.list({limit:500,includeClosed:true}).find(x=>x.id===item.id);
-  assert.equal(saved.status,'deferred');assert.ok(saved.dueAt>now);assert.match(saved.note,/休息/);
+  assert.equal(saved.status,'open','测试中的模拟执行器没有写入真实完成回执，不可伪称已完成');
   assert.match(prompt,/"energy":75/);assert.doesNotMatch(prompt,/quotedText|私信原文/);
 }));
 

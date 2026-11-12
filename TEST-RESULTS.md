@@ -1,3 +1,13 @@
+# 2.8.0-dev.6 · 单次 Life 意愿修复专项验证
+
+- `node --test` 选取 12 个相关测试文件：**86 项通过，0 失败**，覆盖原创 Life 写动作、统一意愿、DM 私信续行、待办自主执行、回访与任务来源、异常旧状态。测试日志留存于开发环境，不作为真实平台回执。
+- 新 `test/v280-dev6-single-intent-contract.test.mjs` 测试真实 OwnerTodos 入账 now/later、旧任务/虚假 BV 拒绝、极低情绪不二次否决、联系人关注授权的同 UID 一次消费/跨账号失效、下游文本不重复投票。
+- `test/v271-dev38-subagent-continuity.test.mjs`：新 `intentProtocol:2` 候选正常续接，旧私信账本仅提议的 pending 行不能直接升级成平台关注授权。
+- `npm run write:life-architecture-view` 与 `npm run check:life-architecture`：4 张图、111 个代码节点对齐；`node selfcheck.mjs` 通过（临时数据目录）；`npm pack --dry-run --json` 通过。
+- 仍未取得 Windows DSH、B站真实收发、连续 72 小时、旧用户完整迁移/回滚和跨日自然成长的正式验收证据；本次为 `2.8.0-dev.6` 开发版，不等于正式稳定版。以前全量 Node 基线存在未逐项修复的测试失败，不宣称整个仓库全量测试通过。
+
+---
+
 # 2.8.0-dev.5 · 作品私信即时意愿与生活事项时间测试
 
 ## 本轮已验证（离线，不调用用户真实模型/B站）

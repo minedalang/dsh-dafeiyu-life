@@ -47,12 +47,12 @@ flowchart TB
     ownerContactPolicy["主人联系策略｜卡片/自定义窗口和冷却，主 Session 与主人私信共用"]
     networkPollBackoff["B站私信/评论只读轮询｜-509/DNS 持久退避"]
   end
-  dmAccepted["可信私信邀请 + 社交模型自主 accept + 原待办成功新建"]
-  quickWake["单次即时 Life 考虑｜同账号、5分钟内、原日额度/退避；可 skip"]
-  socialFacts -.->|原 DM 模型与真实 BV 校验后才接纳| dmAccepted
+  dmAccepted["可信私信/评论邀请 + 原社交模型决定 now/later + 真实待办入账"]
+  quickWake["立即 now：同账号有效任务 + 原 Life 运行锁｜直接只读执行，不再次调用意愿模型"]
+  socialFacts -.->|同一社交模型的接受和时间选择；校验证据| dmAccepted
   dmAccepted --> canonical
-  dmAccepted -.->|仅新建的只读待办| quickWake
-  quickWake -.->|不等普通 Life 间隔；本轮重新核验| selection
+  dmAccepted -.->|仅新建 now 待办，5 分钟内| quickWake
+  quickWake -->|同账号、时窗、权限、额度、幂等| readTodo
   canonical --> todos
   canonical --> intentions
   adapter --> cues
@@ -81,7 +81,7 @@ flowchart TB
   dynamicVerify --> socialRetry
   socialRetry -.->|只有重新核实且具备发送许可才执行| socialWrite
   %% @code dmAccepted | lib/social-todo-intake.mjs | export function intakeAiReadProposals
-  %% @code quickWake | lib/autonomous-planner.mjs | const acceptedWake=
+  %% @code quickWake | lib/autonomous-planner.mjs | const executeAcceptedSocialRead=
   %% @code dynamicVerify | lib/comment-interact.mjs | export const dynamicVerificationRetryDelay
   networkPollBackoff -.-> socialFacts
   ownerChat -.-> selection
@@ -111,7 +111,7 @@ flowchart TB
     lifeEpisode["Life Episode · 账号绑定意愿账本 · 最多 5 个已核验步骤"]
     homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
-    episodeContinuation["每步重新交给 Life 选择 · 最多追加 4 次 · 可随时休息"]
+    episodeContinuation["有新核验信息后 Life 可自由选择下一步 · 最多追加 4 次 · 可随时休息；不是重复批准旧动作"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
     episodeAftercare["已核验写入计一步 · 下一写前必须真只读或实际休息；每 tick 最多一写"]
@@ -333,7 +333,7 @@ flowchart LR
     sourceOwner["主人联系卡片/自定义额度 + 明确绑定且在线的主 Session + 可选沉默续聊"]
   end
   subgraph candidates["本轮实际类型 / 内容边界"]
-    todos["todos：只读已接受任务（执行前复核）"]
+    todos["todos：已接待办｜新任务由 Life 自主安排，已确定动作只做技术复核"]
     cues["cues：interest-milestone / discussion-read / selection-curiosity"]
     opportunities["opportunities：兴趣/评论/短期好奇的同 BV 核实；或 public-person-observation"]
     intentions["intentions：已有 BV / 作者/公开评论只读及一次额外首页；14 天有效窗"]
@@ -345,8 +345,11 @@ flowchart LR
     ownerChat["talk_to_owner：已核验经历或自发谈话意愿；允许跳过、不保证送达"]
     eventRefs["eventRefs：匿名事件引用 + 公平重考虑；不代表成功回执"]
   end
-  acceptedDm["刚接受的真实 DM 只读待办 + 原账号/证据复核"]
-  acceptedDm -.->|只唤醒 Life 考虑本条；不授予外发| todos
+  acceptedDm["刚接受的 DM/评论只读待办｜同一社交模型 now/later"]
+  acceptedNow["now：一次性执行原已接受只读动作；不再投第二票"]
+  acceptedDm -->|now + 新入账 + 当前账号有效| acceptedNow
+  acceptedDm -.->|later 与旧无 timing：正常自主规划| todos
+  acceptedNow -.->|原执行器+权限+回执；不增加 AI 调用| sourceTodo
   sourceTodo --> todos
   sourceInterest --> cues
   sourceDiscussion --> cues
@@ -384,7 +387,8 @@ flowchart LR
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   class social,eventRefs partial
 
-%% @code acceptedDm | lib/autonomous-planner.mjs | const acceptedWake=
+%% @code acceptedDm | lib/social-todo-intake.mjs | export function intakeAiReadProposals
+%% @code acceptedNow | lib/autonomous-planner.mjs | const executeAcceptedSocialRead=
 %% @code todos | lib/owner-todos.mjs | export const READ_TODO_TYPES
 %% @code cues | lib/life-opportunities.mjs | const explorationCues=
 %% @code opportunities | lib/life-opportunities.mjs | export function deriveDiscussionOpportunities
@@ -414,7 +418,7 @@ flowchart LR
 dmHistory["同 UID 真正长期双向私信证据 + 本轮独立自主关注授权"]
 dmFollowCandidate["follow_dm_contact｜可信好友；仅建议，绝不直接外发"]
 dmHistory --> dmFollowCandidate
-dmFollowCandidate -.->|私信模型决定，Life 原意愿再选| planner
+dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验，后续只封装一次性证明| social
 %% @code dmHistory | lib/life-subagent-continuity.mjs | export function dmContactFollowCandidates
 %% @code dmFollowCandidate | lib/life-subagent-continuity.mjs | action:'follow_dm_contact'
 
