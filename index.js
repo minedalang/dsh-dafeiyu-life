@@ -4816,18 +4816,53 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         /^[1-9]\d{0,18}$/.test(String(actorUid||''))&&
         /^[a-z-]{3,35}$/.test(String(kind||''))
         ?`trusted-comment:${bvid}:${rpid}:${actorUid}:${kind}`:''
-      const receipt=await socialSendTransaction.execute({channel:'comment',eventKey:stableKey,
-        expectedScope:boundLegacyScope('comment')},async()=>{
-        const r=parseMaybeJson(await call('bili_reply_manual',{
-          bvid,rpid:Number(rpid),root:Number(root)||0,text,confirm:true}))
-        const ack=confirmedOwnerCommentReceipt(r,'reply')
-        return ack.ok&&ack.rpid?{ok:true,rpid:ack.rpid}:{ok:false}
-      })
-      if(receipt?.ok===true)try{
-        const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role:tier,eventKey:`${actorUid}:${bvid}:${rpid}:reply`,actorUid,bvid,rpid,text,at:Date.now()})
-        if(sync?.ok===false)log('可信评论回复投影待补偿：'+String(sync.lastError||sync.reason||''))
-      }catch(e){log('可信社交回复经历写入失败：'+String(e?.message||e).slice(0,100))}
-      return receipt
+      if(!stableKey)return {ok:false,notAttempted:true,reason:'trusted-comment-source-invalid'}
+      const expectedScope=boundLegacyScope('comment')
+      if(!expectedScope||trustedLifeAccountTag()!==expectedScope)
+        return {ok:false,notAttempted:true,reason:'life-account-changed'}
+      // The trusted comment agent's first model already chose to speak.
+      // Seal its exact public words, recipient and thread through the SAME
+      // Life admission/receipt protocol used by ordinary comment replies.
+      const targetKey=`trusted-comment:${bvid}:${rpid}:${String(root||'0')}:${String(actorUid)}`
+      const sealed=await lifeWillingness?.adoptSocialDecisionQueued({kind:'comment_reply',uid:String(actorUid),
+        sourceKey:stableKey,targetKey,messages:[String(text)]})
+      if(sealed?.ok!==true)return {ok:false,notAttempted:true,
+        reason:sealed?.reason||'trusted-comment-intent-unavailable'}
+      const settle=lifeProofSettler(sealed.proof)
+      try{
+        refreshCfg()
+        const liveTier=socialTier(actorUid,cfg.dmOwnerUid,cfg.friendDirectory)
+        if(cfg.masterEnabled!==true||trustedLifeAccountTag()!==expectedScope||liveTier!==tier||
+          Number(cfg.commentDailyLimit)<=0||Number(cfg.commentReplyPerDay)<=0||
+          (liveTier==='owner'?(cfg.ownerCommentAgentEnabled!==true||
+            (['social-skip','social-chat','social-result'].includes(kind)
+              ?cfg.ownerCommentSocialPublishEnabled!==true:cfg.ownerCommentNaturalAckEnabled!==true)):
+            liveTier==='friend'?(channel==='notice'?cfg.commentWatchReplies!==true:cfg.commentAtEnabled!==true):true)){
+          settle('not-sent');return {ok:false,notAttempted:true,reason:'trusted-comment-authorization-changed'}
+        }
+        const intent=lifeWillingness?.verify(sealed.proof,'comment_reply',{
+          uid:String(actorUid),targetKey,text:String(text)})
+        if(intent?.ok!==true){settle('not-sent');return {ok:false,notAttempted:true,
+          reason:intent?.reason||'trusted-comment-proof-invalid'}}
+        const receipt=await socialSendTransaction.execute({channel:'comment',eventKey:stableKey,
+          expectedScope},async()=>{
+          const r=parseMaybeJson(await call('bili_reply_manual',{
+            bvid,rpid:Number(rpid),root:Number(root)||0,text,confirm:true}))
+          const ack=confirmedOwnerCommentReceipt(r,'reply')
+          return ack.ok&&ack.rpid?{ok:true,rpid:ack.rpid}:{ok:false}
+        })
+        const confirmed=receipt?.ok===true&&/^[1-9]\d{0,19}$/.test(String(receipt.rpid||''))
+        const preflightDenied=['social-send-already-reserved','social-transaction-storage-unsafe',
+          'missing-stable-social-source','account-changed','social-transaction-preflight-incomplete'].includes(receipt?.reason)
+        settle(confirmed?'verified':preflightDenied?'not-sent':'uncertain',
+          confirmed?'bili-comment:'+receipt.rpid:'')
+        if(receipt?.ok===true)try{
+          const sync=await socialInteractionCoordinator?.record({type:'reply',source:'comment',role:tier,eventKey:`${actorUid}:${bvid}:${rpid}:reply`,actorUid,bvid,rpid,text,at:Date.now()})
+          if(sync?.ok===false)log('可信评论回复投影待补偿：'+String(sync.lastError||sync.reason||''))
+        }catch(e){log('可信社交回复经历写入失败：'+String(e?.message||e).slice(0,100))}
+        return receipt
+      }catch(e){settle('uncertain');throw e}
+      finally{settle('not-sent')}
     },logger:{warn:m=>log('主人评论 Agent：'+m)}
   })
   const commentInteract = createCommentInteract({
@@ -5871,11 +5906,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const result=parseMaybeJson(await call('bili_ledger_mark',{bvid,title,up:'',status:'挑中'}))
       return result?.ok===true?{ok:true}:{ok:false}
     },runWriter:lifeContinuationPythonWrite,
-    prepareIntent:({sourceKey,kind,target,commentText},{scope,uid})=>{
+    prepareIntent:async({sourceKey,kind,target,commentText},{scope,uid})=>{
       if(scope!==trustedLifeAccountTag()||String(accountBinding.status().activeUid||'')!==uid)
         return {ok:false,code:'account-changed'}
-      const choice=lifeWillingness.adoptVideoDecision({sourceKey,kind,target,commentText})
+      const choice=await lifeWillingness.adoptVideoDecisionQueued({sourceKey,kind,target,commentText})
       if(choice?.ok!==true)return choice
+      if(scope!==trustedLifeAccountTag()||String(accountBinding.status().activeUid||'')!==uid){
+        lifeWillingness.receipt(choice.proof,{status:'not-sent'});return {ok:false,code:'account-changed'}
+      }
       const ticket=lifeVideoActionBridge.registerTrustedIntent({proof:choice.proof,
         kind,target,commentText,scope,uid})
       if(ticket?.ok!==true)lifeWillingness.receipt(choice.proof,{status:'not-sent'})

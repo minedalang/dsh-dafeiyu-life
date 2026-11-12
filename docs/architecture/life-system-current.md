@@ -1,3 +1,11 @@
+## 2.8.0-dev.10 · 跨渠道证据与社交意愿统一（开发预览）
+
+- 首次可信评论模型分离行动决定与表达决定；普通聊天可自主沉默，公开回忆的第二模型仅能修正回复，不可改变动作。
+- 同窗口公开候选保留限长证据摘要；混合 DM 与公开机会不带出私信原文。视频 Episode 与社交已选回复进入同一账户 FIFO 意愿证明。
+- 主人/好友可信评论回复复用 `LifeWillingness.adoptSocialDecisionQueued`，精确绑定源评论、对象和最终文本；原 B站回复发送器仍负责事实核验、配额、平台事务与独立回执。
+- 取消并发导致视频意愿被直接丢弃的部分情况；排队期间切号/撤权安全阻断而不是重新意愿审判。队列超时不自动重放，真实平台/Windows 仍待验。
+- 见 [dev.10 跨场景自主协议](2.8.0-dev10-cross-scene-autonomy.md)；四张架构图的代码锚点与可视化预览同步维护。
+
 **2.8.0-dev.8 增量：** Life 自己 `inspect_opportunity` 并有原机会账本同 BV 已核实决定后，可以创建 `inspected-opportunity` 原账本意愿；Life 自选 `execute_read` 中的 `watch_video` 有可信完成任务回执、同 BV/标题与当前账号时，可以创建 `completed-video-todo` 原账本意愿。两者复用 `continueLifeRead` 下一次独立模型选择、原 Life/Python 写入门禁和独立平台回执，不要求启动完整视频 Agent；不能将只读元数据当完整观看，也不强迫点赞/评论。源码 `lib/life-opportunities.mjs`、`lib/life-video-episode-evidence.mjs`、`lib/autonomous-planner.mjs`、`index.js`；真实平台仍待验收。
 
 > **dev.6 当前单次意愿接线：** DM/评论原社交模型可一轮输出 `todoTiming=now|later`；合法 now 从原 `OwnerTodos` 原子写入后，在原 Life 运行锁下直接执行同一只读意愿，**没有第二次 Life 模型投票**；later 和旧无 timing 待办仍走普通自主规划。`assessReadExecution` 不得再次用本地情绪分数否决。原 Life 决定的朋友联系只需下游生成文案；已有社交回复中明确而经核验的好友关注采用一次性绑定证明；待办回访由 Life 决定后只生成表达。新的真实公开读取证据之后的**下一步**才允许另外自主选择。权限、账号、防重、未知冻结和真实回执仍独立执行。见 [dev.6 契约](./2.8.0-dev6-single-intent-actions.md)。
