@@ -6739,7 +6739,12 @@ logger:{warn:m=>log('社交意图：'+m)}
         if (action === 'restore') validateRestoreIdentity(stateDir,data)
         // Inspect must not write anything. The browser shows scope + a second confirmation.
         if (action === 'inspect') return sendJson(res, 200, {ok:true,summary})
-        if (body.confirm !== 'RESTORE_VERIFIED_DATA') return sendJson(res, 400, {ok:false,error:'未完成恢复前人工确认'})
+        // Unsigned v2.4.x exports require a separate, stronger owner confirmation.
+        // Existing SHA-256 manifests for schema 2 remain mandatory and are never synthesized.
+        if (summary.legacyUnscoped && body.confirm!=='RESTORE_LEGACY_UNSCOPED_DATA')
+          return sendJson(res,400,{ok:false,error:'第一代旧备份无原始完整性签名及可靠角色身份，需单独确认后恢复'})
+        if (!summary.legacyUnscoped && body.confirm !== 'RESTORE_VERIFIED_DATA')
+          return sendJson(res,400,{ok:false,error:'未完成恢复前人工确认'})
         const patch = Object.fromEntries(Object.keys(DEFAULTS).filter(k=>k!=='backupDirectory'&&Object.hasOwn(data.config,k)).map(k=>[k,data.config[k]]))
         if (Object.keys(patch).length < 10) return sendJson(res,400,{ok:false,error:'设置项不足，不能执行整包恢复'})
         // User-chosen destination: no system Temp fallback, never overwrite prior snapshots.

@@ -1101,6 +1101,69 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life .neural-recall-field>.neural-query-toolbar input{min-width:160px}
 #panel-life .neural-recall-board:fullscreen .neural-recall-field>.neural-query-toolbar,#panel-life .neural-recall-board.is-expanded .neural-recall-field>.neural-query-toolbar{position:sticky;top:0;z-index:7}
 @media(max-width:610px){#panel-plans .life-plan-hub-foot{align-items:flex-start}#panel-plans .life-plan-quick-actions{width:100%}#panel-plans .life-plan-quick-actions button{flex:1}#panel-life .neural-recall-field>.neural-query-toolbar{padding:9px}}
+.todo-origin-quote{margin:8px 0;padding:10px 12px;border-left:3px solid #7b8ef9;background:var(--surface-2,rgba(107,129,228,.09));border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.92em}
+/* Life UI v2: presentation layer; IDs and APIs preserved. */
+#panel-life-agent .life-day-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:13px 0 20px}
+#panel-life-agent .life-day-shortcuts a{border:1px solid var(--life-ui-line,#c7e2eb);background:var(--panel);border-radius:15px;padding:13px 8px;text-align:center;text-decoration:none;color:var(--ink);font-weight:720;box-shadow:0 5px 15px #385d8c0c;transition:transform .2s,background .2s}
+#panel-life-agent .life-day-shortcuts a:hover{transform:translateY(-3px);background:color-mix(in srgb,#c3f2f1 20%,var(--panel))}
+#panel-life-agent .life-technical-details{border:1px dashed var(--stroke);border-radius:15px;padding:10px 14px;margin:20px 0;color:var(--muted);background:color-mix(in srgb,var(--tint) 35%,var(--panel))}
+#panel-life-agent .life-technical-details>summary{font-size:13px;cursor:pointer;color:var(--muted);font-weight:700}
+#panel-life-agent .life-technical-details>summary small{font-weight:450;margin-left:10px}
+#panel-life-agent .life-technical-details .life-command-state{margin-top:16px}
+#panel-life-agent .life-technical-details .life-command-links{margin-bottom:10px}
+#panel-life-agent .life-native-settings{display:none}
+#panel-life-agent .life-mode-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+#panel-life-agent .life-pace-heading{margin:18px 0 10px}#panel-life-agent .life-pace-heading h4{margin:0 0 4px}#panel-life-agent .life-pace-heading p{margin:0}
+#panel-life-agent .life-pace-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+#panel-life-agent .life-select-card{cursor:pointer;display:flex;position:relative;gap:11px;align-items:center;background:linear-gradient(135deg,var(--panel),color-mix(in srgb,#d8edff 28%,var(--panel)));border:1.5px solid var(--stroke);border-radius:18px;padding:15px;min-height:91px;transition:transform .22s,border-color .22s,box-shadow .22s}
+#panel-life-agent .life-select-card:hover{transform:translateY(-3px);box-shadow:0 8px 22px #567da21b}
+#panel-life-agent .life-select-card:has(input:checked){border-color:#438db4;box-shadow:0 0 0 2px #438db428,0 10px 22px #347ba51c;background:linear-gradient(130deg,color-mix(in srgb,#c7edf9 42%,var(--panel)),color-mix(in srgb,#d9d3f5 28%,var(--panel)))}
+#panel-life-agent .life-select-card input{width:18px;height:18px;accent-color:#347ca4;flex-shrink:0;margin:0}
+#panel-life-agent .life-select-card .life-select-icon{display:grid;place-items:center;min-width:35px;height:35px;border-radius:12px;background:color-mix(in srgb,#a9dbed 38%,var(--panel));color:#4779a4;font-size:20px}
+#panel-life-agent .life-select-card span:last-child{min-width:0}#panel-life-agent .life-select-card strong{font-size:14px;display:block}#panel-life-agent .life-select-card small{display:block;margin-top:4px;color:var(--muted);font-size:11px;line-height:1.55}
+#panel-life .life-memory-hero{position:relative;isolation:isolate;min-height:225px;padding:28px 33px;overflow:hidden;background:linear-gradient(115deg,#2c4d7b,#4b8eab 65%,#82bab9);border:0;border-radius:26px;box-shadow:0 20px 34px #365a8822}
+#panel-life .life-memory-hero:after{content:"";position:absolute;inset:auto -6% -80px;height:125px;background:#cae5ff30;border-radius:50% 50% 0 0;animation:life-sea-wave 7s ease-in-out infinite alternate}
+#panel-life .life-memory-hero-copy{position:relative;z-index:2;width:70%}#panel-life .life-memory-hero :is(h2,.muted,.page-eyebrow){color:#fff}#panel-life .life-memory-hero h2{font-size:clamp(24px,3vw,34px);margin:8px 0}
+#panel-life .life-memory-hero .muted{color:#e8f8ff;max-width:480px}#panel-life .life-memory-hero .page-eyebrow{font-size:11px;letter-spacing:.12em;font-weight:750}
+#panel-life .life-memory-hero .status-line{margin-top:8px}#panel-life .life-memory-hero button{background:#f6fdff;color:#316782;border-color:#fff;position:relative;z-index:3;margin-top:10px}
+#panel-life .life-memory-character{position:absolute;right:6%;bottom:-18px;width:min(29%,240px);height:265px;object-fit:contain;object-position:center bottom;z-index:1;animation:life-character-float 5.9s ease-in-out infinite;filter:drop-shadow(0 12px 20px #21375c6c)}
+#panel-life .life-memory-bubble{position:absolute;top:38px;right:29%;width:17px;height:17px;border:2px solid #ffffff70;border-radius:50%;animation:life-bubbles 6s ease-in-out infinite}
+#panel-life .life-memory-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:15px 0}
+#panel-life .life-memory-tiles a{display:flex;align-items:center;gap:10px;min-height:68px;padding:12px 17px;text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid var(--stroke);border-radius:17px;box-shadow:0 7px 17px #3a63800e;transition:transform .2s}
+#panel-life .life-memory-tiles a:hover{transform:translateY(-3px)}#panel-life .life-memory-tiles span{font-size:22px}#panel-life .life-memory-tiles strong{font-size:14px}#panel-life .life-memory-tiles small{font-size:11px;color:var(--muted);margin-left:auto}
+#panel-life .life-section{border-radius:22px;box-shadow:0 9px 24px #3152820c}#panel-life #main-session-history .record,#panel-life #main-memory-list .record{transition:transform .2s,box-shadow .2s}#panel-life #main-session-history .record:hover,#panel-life #main-memory-list .record:hover{transform:translateY(-2px);box-shadow:0 9px 21px #5474a020}
+#panel-social #unified-friends,#panel-social #social-outreach-section,#panel-social #owner-dm-control-section,#panel-social #social-owner-comment{border:1px solid var(--stroke);border-radius:22px;background:linear-gradient(135deg,var(--panel),color-mix(in srgb,#d8effa 13%,var(--panel)));box-shadow:0 10px 25px #3152820c;padding:21px}
+#panel-social .friend-directory-banner{display:flex;gap:14px;align-items:center;margin-bottom:12px}#panel-social .friend-directory-banner-mark{width:55px;height:55px;display:grid;place-items:center;border-radius:19px;font-size:24px;background:color-mix(in srgb,#bcdaf9 40%,var(--panel))}#panel-social .friend-directory-banner h4{margin:1px 0 5px;font-size:20px}#panel-social .friend-directory-banner p{margin:0;font-size:12px}#panel-social .friend-directory-banner .page-eyebrow{font-size:10px;color:#4d8ea6;letter-spacing:.12em}
+#panel-social .friend-add-card{padding:15px;border-radius:17px;border:1px dashed #a2c8da;background:color-mix(in srgb,#cde9f5 18%,var(--panel));margin:19px 0}#panel-social .friend-add-card-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px}#panel-social .friend-add-card-heading strong{font-size:15px}#panel-social .friend-add-card-heading small{color:var(--muted)}
+#panel-social #friend-directory-editor{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:13px;margin:16px 0}
+#panel-social #friend-directory-editor .friend-directory-card{margin:0;border:1px solid var(--stroke);border-radius:19px;padding:17px;background:var(--panel);box-shadow:0 9px 20px #3459820c;min-width:0}
+#panel-social #friend-directory-editor .friend-directory-card.is-owner{border-color:#b9a3d9;background:linear-gradient(130deg,var(--panel),color-mix(in srgb,#ddcff9 25%,var(--panel)))}
+#panel-social #friend-directory-editor .friend-directory-card .friend-directory-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+#panel-social #friend-directory-editor .friend-directory-card .friend-directory-title strong{display:block;overflow-wrap:anywhere}#panel-social #friend-directory-editor .friend-directory-card .friend-editor{border:1px solid var(--stroke);border-radius:13px;margin-top:12px;padding:11px;background:color-mix(in srgb,var(--tint) 29%,var(--panel))}#panel-social #friend-directory-editor .friend-editor>summary{cursor:pointer;font-weight:700}
+#panel-social #friend-directory-editor .friend-role-row{display:grid;gap:8px;margin:12px 0}#panel-social #friend-directory-editor .friend-role-row>.checkline{padding:10px;border:1px solid var(--stroke);border-radius:10px;background:var(--panel)}
+#panel-social .social-share-layout{display:grid;gap:13px;margin:15px 0}#panel-social .social-share-visual{background:linear-gradient(120deg,#2e5886,#4a90a4);color:white;padding:17px 21px;border-radius:17px}#panel-social .social-share-visual .social-share-kicker{display:block;font-size:10px;color:#d5f3f8;letter-spacing:.13em}#panel-social .social-share-visual strong{font-size:18px;display:block;margin:5px 0}#panel-social .social-share-visual p{color:#e6f9fc;font-size:12px;margin:0}
+#panel-social .choice-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}#panel-social .choice-presets .choice-card{border-radius:17px;padding:15px;min-width:0;transition:transform .2s}#panel-social .choice-presets .choice-card:hover{transform:translateY(-2px)}
+#panel-social #social-outreach-section .choice-advanced{border:1px solid var(--stroke);border-radius:15px;padding:12px;margin:14px 0}
+#panel-social #owner-dm-control-section .checkline,#panel-social #social-owner-comment .checkline{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--stroke);border-radius:13px;padding:11px 13px;background:color-mix(in srgb,var(--panel) 90%,#d8edf7);margin:8px 0;min-width:0}
+#panel-social #owner-dm-control-section .checkline input,#panel-social #social-owner-comment .checkline input{accent-color:#448aab;flex-shrink:0}
+#panel-social #owner-dm-control-section .settings-section,#panel-social #social-owner-comment .settings-section{border-radius:16px;background:var(--panel)}
+@media(max-width:820px){#panel-life-agent .life-pace-cards{grid-template-columns:repeat(2,minmax(0,1fr))}#panel-life .life-memory-tiles small{display:none}}
+@media(max-width:590px){#panel-life-agent .life-day-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}#panel-life-agent .life-mode-switch,#panel-life-agent .life-pace-cards{grid-template-columns:1fr 1fr}#panel-life-agent .life-select-card{padding:10px;min-height:82px;gap:6px}#panel-life-agent .life-select-card .life-select-icon{display:none}#panel-life .life-memory-hero{min-height:205px;padding:18px}#panel-life .life-memory-hero-copy{width:74%}#panel-life .life-memory-character{width:40%;right:-8px;height:204px}#panel-life .life-memory-tiles{grid-template-columns:1fr 1fr 1fr;gap:6px}#panel-life .life-memory-tiles a{flex-direction:column;align-items:center;padding:9px 4px;text-align:center;gap:3px}#panel-life .life-memory-tiles a strong{font-size:11px}#panel-life .life-memory-tiles a span{font-size:19px}#panel-social .choice-presets{grid-template-columns:1fr}#panel-social .friend-directory-banner-mark{display:none}}
+@media(prefers-reduced-motion:reduce){#panel-life .life-memory-hero:after,#panel-life .life-memory-character,#panel-life .life-memory-bubble{animation:none!important}#panel-life-agent .life-select-card,#panel-life .life-memory-tiles a{transition:none!important}}
+
+/* On narrow screens, keep the requested top navigation without consuming an entire screen. */
+@media(max-width:700px){
+  .tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:6px;position:sticky;top:0;z-index:20;overscroll-behavior-x:contain;scrollbar-width:thin;scroll-snap-type:x proximity;padding:9px;margin:12px 0 18px}
+  .tabs .tab-cluster{display:flex;flex:0 0 auto;width:auto!important;gap:5px;flex-wrap:nowrap!important;align-items:center;border-bottom:0;border-right:1px solid var(--stroke);padding:0 8px 0 0;white-space:nowrap}
+  .tabs .tab-cluster-label{width:auto!important;flex:0 0 auto;padding:4px 5px}
+  .tabs button{flex:0 0 auto;scroll-snap-align:start}
+}
+/* Shared setting card rhythm, without changing existing settings endpoints. */
+#panel-models>.settings-stack>.settings-section,#panel-quota>.settings-stack>.settings-section,#panel-quotas>.settings-stack>.settings-section,#panel-dm .card,#panel-comments .card,#panel-persona .settings-section,#panel-social .social-category{border-radius:19px;box-shadow:0 7px 22px #345b8010}
+#panel-dm #dm-settings-section .settings-section,#panel-comments #comments-configuration .settings-section{border:1px solid var(--stroke);border-radius:16px;background:color-mix(in srgb,#dcecf7 12%,var(--panel))}
+#panel-dm #dm-settings-section .checkline,#panel-comments #comments-configuration .checkline{border:1px solid var(--stroke);border-radius:12px;background:var(--panel);padding:11px}
+#panel-dm #dm-legacy-approval-archive{margin-top:20px;padding:9px 15px}#panel-dm #dm-legacy-approval-archive>summary{cursor:pointer;color:var(--muted);font-size:13px}
+
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1278,6 +1341,37 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 @media(max-width:760px){#panel-life-agent .life-hero{padding:19px}#panel-life-agent .life-day-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}#panel-life-agent .life-behavior-card{padding:14px}#panel-life-agent .life-choice-rail{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){#panel-life-agent #life-behavior-tree .is-executing,#panel-life-agent #life-behavior-tree .is-thinking,#panel-life-agent #life-behavior-tree .is-completed{animation:none!important}}
 
+
+/* 2.8.0 backup + to-do management: rebuilt layout after moving into Plans. */
+#panel-plans .life-plan-admin-inner{display:block;min-width:0;padding:18px 20px 22px}
+#panel-plans #life-now-todos,#panel-plans #life-todo-section{display:block;width:100%;min-width:0;box-sizing:border-box}
+#panel-plans #life-todo-section{padding:0;margin:0;max-width:none}
+#panel-plans #life-todo-section>.toolbar:first-child{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:0 0 12px}
+#panel-plans #life-todo-section>.toolbar:first-child h4{flex:1 1 170px;font-size:17px}
+#panel-plans #owner-todo-list{display:grid;gap:11px;min-width:0;max-width:100%;overflow-wrap:anywhere}
+#panel-plans #owner-todo-list>.record{min-width:0;margin:0;overflow-wrap:anywhere}
+#panel-plans #owner-todo-overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px}
+#panel-plans .todo-filter{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0}
+#panel-plans .todo-filter button{border:1px solid var(--stroke);border-radius:100px;padding:9px 16px;background:var(--panel);color:var(--ink);cursor:pointer}
+#panel-plans .todo-filter button[aria-pressed='true']{background:var(--tint);border-color:var(--action);color:var(--action);font-weight:700}
+#panel-plans .todo-create,#panel-plans .todo-settings{display:block;border:1px solid var(--stroke);border-radius:16px;background:var(--panel);margin:14px 0;padding:0;min-width:0;overflow:hidden}
+#panel-plans .todo-create>summary,#panel-plans .todo-settings>summary{display:list-item;cursor:pointer;padding:15px 18px;font-weight:700;color:var(--ink)}
+#panel-plans .todo-create>.inset,#panel-plans .todo-settings>.inset{padding:8px 17px 18px;border:0;margin:0;background:transparent}
+#panel-plans .todo-create .fields,#panel-plans .todo-settings .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}
+#panel-plans .todo-create :is(input,select),#panel-plans .todo-settings :is(input,select){max-width:100%;min-width:0;box-sizing:border-box}
+#panel-plans .life-plan-admin-inner .toolbar :is(button,span){max-width:100%}
+/* Restore the moved todo action palette: old #panel-life selectors no longer apply. */
+#panel-plans .life-plan-admin-inner .life-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid transparent;border-radius:10px;padding:9px 14px;background:var(--action);color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(20,50,92,.10);cursor:pointer;max-width:100%;white-space:normal;text-align:center}
+#panel-plans .life-plan-admin-inner .life-action.life-indigo{background:#4e59bc;border-color:#4e59bc}
+#panel-plans .life-plan-admin-inner .life-action.life-sky{background:#176d9b;border-color:#176d9b}
+#panel-plans .life-plan-admin-inner .life-action.life-green{background:#187859;border-color:#187859}
+#panel-plans .life-plan-admin-inner .life-action.life-purple{background:#7753a3;border-color:#7753a3}
+#panel-plans .life-plan-admin-inner .life-action.life-amber{background:#9d621b;border-color:#9d621b}
+#panel-plans .life-plan-admin-inner .life-action:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}
+#panel-plans .life-plan-admin-inner .life-action:focus-visible{outline:3px solid #e29c3f;outline-offset:2px}
+#panel-plans .life-plan-admin-inner .life-action:disabled{opacity:.52;cursor:not-allowed;transform:none;box-shadow:none}
+
+@media(max-width:630px){#panel-plans .life-plan-admin-inner{padding:12px}#panel-plans #life-todo-section>.toolbar:first-child h4{flex-basis:100%}#panel-plans .todo-create>.inset,#panel-plans .todo-settings>.inset{padding:7px 12px 15px}}
 </style>
 </head>
 <body><main class="wrap">
@@ -1847,69 +1941,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p id="owner-todo-intake-status" class="muted" role="status" hidden>待办识别诊断仅供内部查看。</p>
 <p class="muted" id="autonomous-planner-next" role="status">预计下次自动决策：读取中…</p><p class="muted">鱼鱼自己决定接不接受建议，何时行动，也可以延期。提醒只触发一次有额度的考虑，不强制执行。</p><div class="todo-overview" id="owner-todo-overview" aria-live="polite"><span>正在读取待办…</span></div>
 <div class="todo-filter" role="group" aria-label="查看待办状态"><button id="owner-todo-filter-active" type="button" aria-pressed="true" class="is-selected">进行中</button><button id="owner-todo-filter-all" type="button" aria-pressed="false">全部</button><button id="owner-todo-filter-finished" type="button" aria-pressed="false">已结束</button></div>
-<style>.todo-origin-quote{margin:8px 0;padding:10px 12px;border-left:3px solid #7b8ef9;background:var(--surface-2,rgba(107,129,228,.09));border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.92em}
-/* Life UI v2: presentation layer; IDs and APIs preserved. */
-#panel-life-agent .life-day-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:13px 0 20px}
-#panel-life-agent .life-day-shortcuts a{border:1px solid var(--life-ui-line,#c7e2eb);background:var(--panel);border-radius:15px;padding:13px 8px;text-align:center;text-decoration:none;color:var(--ink);font-weight:720;box-shadow:0 5px 15px #385d8c0c;transition:transform .2s,background .2s}
-#panel-life-agent .life-day-shortcuts a:hover{transform:translateY(-3px);background:color-mix(in srgb,#c3f2f1 20%,var(--panel))}
-#panel-life-agent .life-technical-details{border:1px dashed var(--stroke);border-radius:15px;padding:10px 14px;margin:20px 0;color:var(--muted);background:color-mix(in srgb,var(--tint) 35%,var(--panel))}
-#panel-life-agent .life-technical-details>summary{font-size:13px;cursor:pointer;color:var(--muted);font-weight:700}
-#panel-life-agent .life-technical-details>summary small{font-weight:450;margin-left:10px}
-#panel-life-agent .life-technical-details .life-command-state{margin-top:16px}
-#panel-life-agent .life-technical-details .life-command-links{margin-bottom:10px}
-#panel-life-agent .life-native-settings{display:none}
-#panel-life-agent .life-mode-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
-#panel-life-agent .life-pace-heading{margin:18px 0 10px}#panel-life-agent .life-pace-heading h4{margin:0 0 4px}#panel-life-agent .life-pace-heading p{margin:0}
-#panel-life-agent .life-pace-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
-#panel-life-agent .life-select-card{cursor:pointer;display:flex;position:relative;gap:11px;align-items:center;background:linear-gradient(135deg,var(--panel),color-mix(in srgb,#d8edff 28%,var(--panel)));border:1.5px solid var(--stroke);border-radius:18px;padding:15px;min-height:91px;transition:transform .22s,border-color .22s,box-shadow .22s}
-#panel-life-agent .life-select-card:hover{transform:translateY(-3px);box-shadow:0 8px 22px #567da21b}
-#panel-life-agent .life-select-card:has(input:checked){border-color:#438db4;box-shadow:0 0 0 2px #438db428,0 10px 22px #347ba51c;background:linear-gradient(130deg,color-mix(in srgb,#c7edf9 42%,var(--panel)),color-mix(in srgb,#d9d3f5 28%,var(--panel)))}
-#panel-life-agent .life-select-card input{width:18px;height:18px;accent-color:#347ca4;flex-shrink:0;margin:0}
-#panel-life-agent .life-select-card .life-select-icon{display:grid;place-items:center;min-width:35px;height:35px;border-radius:12px;background:color-mix(in srgb,#a9dbed 38%,var(--panel));color:#4779a4;font-size:20px}
-#panel-life-agent .life-select-card span:last-child{min-width:0}#panel-life-agent .life-select-card strong{font-size:14px;display:block}#panel-life-agent .life-select-card small{display:block;margin-top:4px;color:var(--muted);font-size:11px;line-height:1.55}
-#panel-life .life-memory-hero{position:relative;isolation:isolate;min-height:225px;padding:28px 33px;overflow:hidden;background:linear-gradient(115deg,#2c4d7b,#4b8eab 65%,#82bab9);border:0;border-radius:26px;box-shadow:0 20px 34px #365a8822}
-#panel-life .life-memory-hero:after{content:"";position:absolute;inset:auto -6% -80px;height:125px;background:#cae5ff30;border-radius:50% 50% 0 0;animation:life-sea-wave 7s ease-in-out infinite alternate}
-#panel-life .life-memory-hero-copy{position:relative;z-index:2;width:70%}#panel-life .life-memory-hero :is(h2,.muted,.page-eyebrow){color:#fff}#panel-life .life-memory-hero h2{font-size:clamp(24px,3vw,34px);margin:8px 0}
-#panel-life .life-memory-hero .muted{color:#e8f8ff;max-width:480px}#panel-life .life-memory-hero .page-eyebrow{font-size:11px;letter-spacing:.12em;font-weight:750}
-#panel-life .life-memory-hero .status-line{margin-top:8px}#panel-life .life-memory-hero button{background:#f6fdff;color:#316782;border-color:#fff;position:relative;z-index:3;margin-top:10px}
-#panel-life .life-memory-character{position:absolute;right:6%;bottom:-18px;width:min(29%,240px);height:265px;object-fit:contain;object-position:center bottom;z-index:1;animation:life-character-float 5.9s ease-in-out infinite;filter:drop-shadow(0 12px 20px #21375c6c)}
-#panel-life .life-memory-bubble{position:absolute;top:38px;right:29%;width:17px;height:17px;border:2px solid #ffffff70;border-radius:50%;animation:life-bubbles 6s ease-in-out infinite}
-#panel-life .life-memory-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:15px 0}
-#panel-life .life-memory-tiles a{display:flex;align-items:center;gap:10px;min-height:68px;padding:12px 17px;text-decoration:none;color:var(--ink);background:var(--panel);border:1px solid var(--stroke);border-radius:17px;box-shadow:0 7px 17px #3a63800e;transition:transform .2s}
-#panel-life .life-memory-tiles a:hover{transform:translateY(-3px)}#panel-life .life-memory-tiles span{font-size:22px}#panel-life .life-memory-tiles strong{font-size:14px}#panel-life .life-memory-tiles small{font-size:11px;color:var(--muted);margin-left:auto}
-#panel-life .life-section{border-radius:22px;box-shadow:0 9px 24px #3152820c}#panel-life #main-session-history .record,#panel-life #main-memory-list .record{transition:transform .2s,box-shadow .2s}#panel-life #main-session-history .record:hover,#panel-life #main-memory-list .record:hover{transform:translateY(-2px);box-shadow:0 9px 21px #5474a020}
-#panel-social #unified-friends,#panel-social #social-outreach-section,#panel-social #owner-dm-control-section,#panel-social #social-owner-comment{border:1px solid var(--stroke);border-radius:22px;background:linear-gradient(135deg,var(--panel),color-mix(in srgb,#d8effa 13%,var(--panel)));box-shadow:0 10px 25px #3152820c;padding:21px}
-#panel-social .friend-directory-banner{display:flex;gap:14px;align-items:center;margin-bottom:12px}#panel-social .friend-directory-banner-mark{width:55px;height:55px;display:grid;place-items:center;border-radius:19px;font-size:24px;background:color-mix(in srgb,#bcdaf9 40%,var(--panel))}#panel-social .friend-directory-banner h4{margin:1px 0 5px;font-size:20px}#panel-social .friend-directory-banner p{margin:0;font-size:12px}#panel-social .friend-directory-banner .page-eyebrow{font-size:10px;color:#4d8ea6;letter-spacing:.12em}
-#panel-social .friend-add-card{padding:15px;border-radius:17px;border:1px dashed #a2c8da;background:color-mix(in srgb,#cde9f5 18%,var(--panel));margin:19px 0}#panel-social .friend-add-card-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px}#panel-social .friend-add-card-heading strong{font-size:15px}#panel-social .friend-add-card-heading small{color:var(--muted)}
-#panel-social #friend-directory-editor{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:13px;margin:16px 0}
-#panel-social #friend-directory-editor .friend-directory-card{margin:0;border:1px solid var(--stroke);border-radius:19px;padding:17px;background:var(--panel);box-shadow:0 9px 20px #3459820c;min-width:0}
-#panel-social #friend-directory-editor .friend-directory-card.is-owner{border-color:#b9a3d9;background:linear-gradient(130deg,var(--panel),color-mix(in srgb,#ddcff9 25%,var(--panel)))}
-#panel-social #friend-directory-editor .friend-directory-card .friend-directory-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
-#panel-social #friend-directory-editor .friend-directory-card .friend-directory-title strong{display:block;overflow-wrap:anywhere}#panel-social #friend-directory-editor .friend-directory-card .friend-editor{border:1px solid var(--stroke);border-radius:13px;margin-top:12px;padding:11px;background:color-mix(in srgb,var(--tint) 29%,var(--panel))}#panel-social #friend-directory-editor .friend-editor>summary{cursor:pointer;font-weight:700}
-#panel-social #friend-directory-editor .friend-role-row{display:grid;gap:8px;margin:12px 0}#panel-social #friend-directory-editor .friend-role-row>.checkline{padding:10px;border:1px solid var(--stroke);border-radius:10px;background:var(--panel)}
-#panel-social .social-share-layout{display:grid;gap:13px;margin:15px 0}#panel-social .social-share-visual{background:linear-gradient(120deg,#2e5886,#4a90a4);color:white;padding:17px 21px;border-radius:17px}#panel-social .social-share-visual .social-share-kicker{display:block;font-size:10px;color:#d5f3f8;letter-spacing:.13em}#panel-social .social-share-visual strong{font-size:18px;display:block;margin:5px 0}#panel-social .social-share-visual p{color:#e6f9fc;font-size:12px;margin:0}
-#panel-social .choice-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}#panel-social .choice-presets .choice-card{border-radius:17px;padding:15px;min-width:0;transition:transform .2s}#panel-social .choice-presets .choice-card:hover{transform:translateY(-2px)}
-#panel-social #social-outreach-section .choice-advanced{border:1px solid var(--stroke);border-radius:15px;padding:12px;margin:14px 0}
-#panel-social #owner-dm-control-section .checkline,#panel-social #social-owner-comment .checkline{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--stroke);border-radius:13px;padding:11px 13px;background:color-mix(in srgb,var(--panel) 90%,#d8edf7);margin:8px 0;min-width:0}
-#panel-social #owner-dm-control-section .checkline input,#panel-social #social-owner-comment .checkline input{accent-color:#448aab;flex-shrink:0}
-#panel-social #owner-dm-control-section .settings-section,#panel-social #social-owner-comment .settings-section{border-radius:16px;background:var(--panel)}
-@media(max-width:820px){#panel-life-agent .life-pace-cards{grid-template-columns:repeat(2,minmax(0,1fr))}#panel-life .life-memory-tiles small{display:none}}
-@media(max-width:590px){#panel-life-agent .life-day-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}#panel-life-agent .life-mode-switch,#panel-life-agent .life-pace-cards{grid-template-columns:1fr 1fr}#panel-life-agent .life-select-card{padding:10px;min-height:82px;gap:6px}#panel-life-agent .life-select-card .life-select-icon{display:none}#panel-life .life-memory-hero{min-height:205px;padding:18px}#panel-life .life-memory-hero-copy{width:74%}#panel-life .life-memory-character{width:40%;right:-8px;height:204px}#panel-life .life-memory-tiles{grid-template-columns:1fr 1fr 1fr;gap:6px}#panel-life .life-memory-tiles a{flex-direction:column;align-items:center;padding:9px 4px;text-align:center;gap:3px}#panel-life .life-memory-tiles a strong{font-size:11px}#panel-life .life-memory-tiles a span{font-size:19px}#panel-social .choice-presets{grid-template-columns:1fr}#panel-social .friend-directory-banner-mark{display:none}}
-@media(prefers-reduced-motion:reduce){#panel-life .life-memory-hero:after,#panel-life .life-memory-character,#panel-life .life-memory-bubble{animation:none!important}#panel-life-agent .life-select-card,#panel-life .life-memory-tiles a{transition:none!important}}
-
-/* On narrow screens, keep the requested top navigation without consuming an entire screen. */
-@media(max-width:700px){
-  .tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:6px;position:sticky;top:0;z-index:20;overscroll-behavior-x:contain;scrollbar-width:thin;scroll-snap-type:x proximity;padding:9px;margin:12px 0 18px}
-  .tabs .tab-cluster{display:flex;flex:0 0 auto;width:auto!important;gap:5px;flex-wrap:nowrap!important;align-items:center;border-bottom:0;border-right:1px solid var(--stroke);padding:0 8px 0 0;white-space:nowrap}
-  .tabs .tab-cluster-label{width:auto!important;flex:0 0 auto;padding:4px 5px}
-  .tabs button{flex:0 0 auto;scroll-snap-align:start}
-}
-/* Shared setting card rhythm, without changing existing settings endpoints. */
-#panel-models>.settings-stack>.settings-section,#panel-quota>.settings-stack>.settings-section,#panel-quotas>.settings-stack>.settings-section,#panel-dm .card,#panel-comments .card,#panel-persona .settings-section,#panel-social .social-category{border-radius:19px;box-shadow:0 7px 22px #345b8010}
-#panel-dm #dm-settings-section .settings-section,#panel-comments #comments-configuration .settings-section{border:1px solid var(--stroke);border-radius:16px;background:color-mix(in srgb,#dcecf7 12%,var(--panel))}
-#panel-dm #dm-settings-section .checkline,#panel-comments #comments-configuration .checkline{border:1px solid var(--stroke);border-radius:12px;background:var(--panel);padding:11px}
-#panel-dm #dm-legacy-approval-archive{margin-top:20px;padding:9px 15px}#panel-dm #dm-legacy-approval-archive>summary{cursor:pointer;color:var(--muted);font-size:13px}
-</style><p class="muted">优先顺序会参考关系、等待时间和鱼鱼的意愿，但她仍可自由决定。</p><div id="owner-todo-list" class="records records-scroll tall"></div><div class="toolbar" style="margin-top:10px"><button type="button" id="owner-todo-prev" class="life-action" disabled>上一页</button><span class="muted" id="owner-todo-page-info" aria-live="polite">第 1 页</span><button type="button" id="owner-todo-next" class="life-action" disabled>下一页</button></div>
+<p class="muted">优先顺序会参考关系、等待时间和鱼鱼的意愿，但她仍可自由决定。</p><div id="owner-todo-list" class="records records-scroll tall"></div><div class="toolbar" style="margin-top:10px"><button type="button" id="owner-todo-prev" class="life-action" disabled>上一页</button><span class="muted" id="owner-todo-page-info" aria-live="polite">第 1 页</span><button type="button" id="owner-todo-next" class="life-action" disabled>下一页</button></div>
 <details class="life-subdetails todo-create"><summary>＋ 手动添加一件事</summary><div class="inset"><h4>新增只读待办</h4><div class="fields"><div><label for="owner-todo-type">要做什么</label><select id="owner-todo-type"><option value="watch_video">看看指定视频</option><option value="inspect_my_space">看看我自己的空间投稿</option><option value="inspect_creator_videos">看看某位 UP 主的投稿</option><option value="search_videos">搜索视频主题</option><option value="check_notifications">检查 B站通知</option></select></div><div><label for="owner-todo-target">目标（BV 号 / UID / 关键词）</label><input id="owner-todo-target" maxlength="120" placeholder="根据任务类型填写"></div><div><label for="owner-todo-title">待办名称（可留空）</label><input id="owner-todo-title" maxlength="120" placeholder="例如：有空看看这个推荐"></div></div><div class="toolbar" style="margin-top:10px"><button id="owner-todo-add" class="life-action life-green">加入待办</button><span class="muted">点赞、收藏、关注等写入任务建议直接在主 Session 明确提出，由大肥鱼绑定准确目标与授权。</span></div></div>
 </details>
 <p class="muted">🌿 新的自主生活节奏由「<a href="?tab=life-agent#life-settings-v2-panel" data-open-tab="life-agent">Life 自主生活</a>」统一管理，旧谷时视频定时器已退役。</p>

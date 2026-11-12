@@ -1009,7 +1009,7 @@ function WatchTab() {
             h('a', { 'data-bd-btn':'', href:'https://github.com/minedalang/dsh-dafeiyu-life', target:'_blank', rel:'noreferrer' }, '项目仓库 ↗'),
             h('a', { 'data-bd-btn':'', href:'https://github.com/minedalang/dsh-dafeiyu-life/blob/main/THIRD_PARTY_NOTICES.md', target:'_blank', rel:'noreferrer' }, '第三方声明 ↗')),
           h('div', { 'data-bd-sub': '' },
-            h('div', { 'data-bd-h': '' }, '作者的 B站主页'),
+            h('div', { 'data-bd-h': '' }, '作者的 B站主页 · 欢迎私信反馈 Bug 与改进建议'),
             h('a', { href:'https://space.bilibili.com/210228238', target:'_blank', rel:'noopener noreferrer', 'data-bd-author-link': '' }, '长条动物')),
           h('div', { 'data-bd-sep': '' }),
           h('div', { 'data-bd-h': '' }, '开源来源与致谢'),

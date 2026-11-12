@@ -2,9 +2,9 @@
 
 > **坚持鱼的自由发展。** 她可以在真实的经历中探索、回忆、形成兴趣、逐渐认识世界，也可以选择安静下来。所有公开互动都由她自主考虑，并受使用者授权保护。
 
-[![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [安装与更新](#-开始使用) · [2.8.0 更新说明](RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [提建议 / 报告问题](https://github.com/minedalang/dsh-dafeiyu-life/issues)
+[![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [![npm 月下载量](https://img.shields.io/npm/dm/dsh-dafeiyu-life?label=monthly%20downloads)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [![npm 年下载量](https://img.shields.io/npm/dy/dsh-dafeiyu-life?label=yearly%20downloads)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [安装与更新](#-开始使用) · [2.8.0 更新说明](RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [提建议 / 报告问题](https://github.com/minedalang/dsh-dafeiyu-life/issues)
 
-> **2.8.0 开发预览（`2.8.0-dev.2`，尚未发布正式版）**。目前 npm 稳定版仍以实际市场信息为准。新生活系统刚上线，可能还有不稳定或 Bug；非常欢迎大家 [反馈体验和提出建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)，一起让鱼鱼插件变得更好。正式发布前仍需完成真实 DSH/B站测试及长期运行验收。
+> **2.8.0 · 新生活系统**：鱼鱼可以从真实经历中形成自己的生活意愿；新生活系统上线初期仍可能有不稳定或 Bug，欢迎通过 [GitHub Issues](https://github.com/minedalang/dsh-dafeiyu-life/issues) 或作者 B站私信反馈体验和改进建议，一起让鱼鱼插件变得更好。
 
 ## ✨ 2.8.0 带来了什么？
 
@@ -44,7 +44,7 @@
 
 鱼鱼可以选择暂时不行动；AI 表达的“想做”不是主人授权，Life 批准也不是平台已成功发送。所有外部操作都要经过账号、来源、权限、防重和真实回执核验。主动私信不会仅因在公开评论区熟悉一个人而开放；已遗忘内容不能从存档中偷偷恢复。
 
-**2.8.0 当前仍是开发预览。** 正式版需要真实 Windows DSH、B站端到端、老用户数据迁移/回滚、至少 72 小时稳定运行，以及跨日成长与行为因果的验收；具体进度见 [发布就绪审计](docs/architecture/2.8.0-release-readiness.md)。
+**升级与恢复提醒：** 早期第一代备份没有原始 SHA-256 签名与可靠角色身份信息，导入时会明确提示风险；升级前请尽量保存完整停机快照。已记录的验收范围与兼容边界参见 [发布与恢复审计](docs/architecture/2.8.0-release-readiness.md)。
 
 ---
 
