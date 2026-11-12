@@ -99,7 +99,7 @@ test('UI has one Life V2 editor, retires duplicate legacy controls and keeps dis
  for(const id of ['autonomous-planner-enabled','autonomous-planner-limit','autonomous-planner-minutes',
   'autonomous-planner-recommended','life-agent-mode','life-legacy-planner-advanced'])assert.doesNotMatch(html,new RegExp('id="'+id+'"'))
  for(const tab of ['life','life-agent','relationships','personality','diagnostics'])assert.match(html,new RegExp('data-open-tab="'+tab+'"'))
- assert.doesNotMatch(html,/data-open-tab="todos"/);assert.match(js,/if\(tab==='todos'\)tab='life-agent'/)
+ assert.doesNotMatch(html,/data-open-tab="todos"/);assert.match(js,/if\(tab==='todos'\)tab='plans'/)
  assert.match(js,/['"]life-agent['"]:async/)
  assert.match(js,/life:loadLifeMemory/)
  assert.match(server,/life-agent\/integration-status/)

@@ -85,7 +85,7 @@ test('图片-only 评论在按 root_id 核验 UID/rpid 后可获得图片来源�
   assert.equal(spoof.imageUrl,'')
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
-test('统一界面只有一份实时 Life、待办、情绪入口，生活方案有独立自定义卡',()=>{
+test('实时 Life、专属待办、情绪各有唯一入口，生活方案有独立自定义卡',()=>{
  const html=source('lib/management-console.html'),js=source('lib/management-console.js'),index=source('index.js')
  assert.match(html,/data-tab="life-agent"[^>]*>🐟 鱼鱼此刻/)
  assert.doesNotMatch(html,/data-tab="todos"/)
@@ -96,5 +96,5 @@ test('统一界面只有一份实时 Life、待办、情绪入口，生活方案
  assert.match(js,/\/live-activity/)
  assert.match(index,/incomingImageRecognitionEnabled: z\.boolean\(\)\.default\(true\)/)
  assert.match(index,/agentFollowEnabled: z\.boolean\(\)\.default\(true\)/)
- assert.match(js,/if\(tab==='todos'\)tab='life-agent'/)
+ assert.match(js,/if\(tab==='todos'\)tab='plans'/)
 })

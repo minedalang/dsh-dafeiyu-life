@@ -1108,6 +1108,67 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 @media(max-width:450px){#panel-life-agent .life-command-hero h2{font-size:20px}#panel-life-agent .life-command-hero .muted{font-size:11px}#panel-life-agent .life-hero-character{height:191px;right:-15px;bottom:-10px;width:40%}#panel-life-agent #life-timeline-list{padding-left:14px}#panel-life-agent #life-timeline-list .record:before{left:-22px}}
 @media(prefers-color-scheme:dark){#panel-life-agent .life-command-hero{border-color:#577f94}#panel-life-agent .emotion-trend .trend-line{filter:brightness(1.22)}#panel-life-agent .emotion-meter{background:#354960}}
 @media(prefers-reduced-motion:reduce){#panel-life-agent :is(.life-hero-character,.life-hero-bubble,.life-command-hero:before,.life-command-hero:after,.trend-line,.record){animation:none!important}#panel-life-agent :is(.life-profile-card,.todo-item){transition:none!important}}
+
+/* dev.75 – owner-facing life navigation and evidence-driven action tree. */
+#panel-plans .life-now-todos{display:block;margin:16px 0;background:transparent;border:0;padding:0}
+#panel-plans .life-source-flow{border:1px solid var(--stroke);border-radius:22px;padding:20px;background:color-mix(in srgb,var(--panel) 94%,#afd8dd)}
+#panel-plans .life-source-flow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:13px}
+#panel-plans .life-source-flow-card{border:1px solid var(--stroke);border-radius:17px;padding:18px;background:var(--panel);display:grid;gap:8px;box-shadow:0 7px 19px #244f7410}
+#panel-plans .life-source-flow-card span{font-size:24px;font-weight:750;color:#438f8c}
+#panel-plans .life-source-flow-card small{color:var(--muted);line-height:1.6}
+#panel-plans .life-source-flow-decision{margin:14px 0;padding:14px;text-align:center;border-radius:13px;background:color-mix(in srgb,var(--panel) 85%,#b9e4d5);color:var(--ink)}
+#panel-plans .todo-page-hero{margin-bottom:15px;min-height:130px}
+#panel-plans #life-todo-section,#panel-plans #life-opportunities-section{margin-top:17px}
+#panel-plans .todo-page-intro{display:flex;gap:9px;flex-wrap:wrap;margin:13px 0;color:var(--muted);font-size:13px}
+#panel-plans .todo-page-intro span{border:1px solid var(--stroke);border-radius:99px;padding:6px 11px;background:var(--panel)}
+#panel-plans .life-plan-boundary,#panel-plans .life-plan-explain{border:1px solid var(--stroke);border-radius:16px;background:var(--panel);padding:17px 19px;line-height:1.75}
+#panel-life-agent .life-plans-shortcut{margin:12px 0 18px;display:flex;flex-wrap:wrap;gap:11px;align-items:center;justify-content:space-between;background:color-mix(in srgb,#b8e2df 22%,var(--panel));border:1px solid var(--stroke);border-radius:17px;padding:12px 18px}
+#panel-life-agent .life-plans-shortcut p{flex:1 1 270px;color:var(--muted);margin:0;font-size:13px}
+#panel-life-agent .life-now-settings{margin-top:14px;margin-bottom:14px}
+#panel-life-agent .life-behavior-card{margin:18px 0;padding:21px;border-radius:25px;border:1px solid #a9cbdd;background:linear-gradient(145deg,color-mix(in srgb,#edf7fc 88%,var(--panel)),color-mix(in srgb,#eaf6f3 82%,var(--panel)));box-shadow:0 16px 34px #295f7f14}
+#panel-life-agent .life-behavior-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+#panel-life-agent .life-behavior-header h3{margin:6px 0;font-size:24px;color:var(--ink)}
+#panel-life-agent .life-behavior-header p{max-width:620px;margin:5px 0;color:var(--muted);font-size:13px;line-height:1.65}
+#panel-life-agent .life-behavior-status{font-weight:650;color:#3b788b;margin:14px 0 5px;min-height:22px}
+#panel-life-agent .life-tree-viewport{overflow-x:auto;background:linear-gradient(120deg,#092b40,#13394f 49%,#123f4a);border-radius:21px;border:1px solid #447487;box-shadow:inset 0 0 48px #05263a7d;scrollbar-color:#84b6c7 #163c4b}
+#panel-life-agent #life-behavior-tree{min-width:680px;width:100%;display:block}
+#panel-life-agent #life-behavior-tree .life-tree-edge{fill:none;stroke:#6a9eae;stroke-width:1.7;opacity:.39}
+#panel-life-agent #life-behavior-tree .life-tree-edge.is-selected{stroke:#82e8dd;stroke-width:3;opacity:.96}
+#panel-life-agent #life-behavior-tree .life-tree-edge.is-running{stroke-dasharray:7 12;animation:life-tree-flow .8s linear infinite}
+#panel-life-agent #life-behavior-tree .life-tree-node{fill:#204c5b;stroke:#629aab;stroke-width:1.6}
+#panel-life-agent #life-behavior-tree .life-tree-node.is-selected{fill:#236d70;stroke:#a5fae9;stroke-width:3}
+#panel-life-agent #life-behavior-tree .life-tree-node.is-running{animation:life-tree-pulse 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+#panel-life-agent #life-behavior-tree .life-tree-text{fill:#ecf7fa;font-size:14px;pointer-events:none;font-weight:620}
+#panel-life-agent #life-behavior-tree .life-tree-subtext{fill:#b3d4db;font-size:11px;pointer-events:none}
+#panel-life-agent .life-tree-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:13px;font-size:12px;color:var(--muted)}
+@keyframes life-tree-flow{to{stroke-dashoffset:-38}}
+@keyframes life-tree-pulse{50%{filter:drop-shadow(0 0 14px #69ecdc);stroke-width:5}}
+#panel-models .model-task{border-radius:16px;border:1px solid var(--stroke);margin:9px 0;background:linear-gradient(132deg,var(--panel),color-mix(in srgb,#d6ecf5 18%,var(--panel)));transition:box-shadow .2s,border-color .2s}
+#panel-models .model-task:hover{box-shadow:0 8px 24px #3c6b8b12;border-color:#90bdd1}
+#panel-models .model-task>summary{padding:18px 20px;font-size:15px}
+#panel-models .model-task>summary strong{display:inline-flex;align-items:center;gap:5px}
+#panel-models .model-task>summary>span{font-size:12px;color:var(--muted);padding:5px 9px;border-radius:100px;background:color-mix(in srgb,var(--panel) 65%,#d1e8ec)}
+#panel-models .model-task[open]{border-color:#83b7c8;box-shadow:0 12px 29px #39739217}
+#panel-models .model-verify-guide{padding:17px;border-radius:15px;border:1px solid #add9d2;background:color-mix(in srgb,#cbe9e3 33%,var(--panel));font-size:13px;line-height:1.85;color:var(--ink)}
+#panel-life #main-session-history,#panel-life #main-memory-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:13px;align-items:stretch}
+#panel-life #main-session-history .record,#panel-life #main-memory-list .record{position:relative;overflow:hidden;padding:17px 18px 18px 24px;border:1px solid var(--stroke);border-radius:17px;background:linear-gradient(142deg,var(--panel),color-mix(in srgb,#d6e7f1 13%,var(--panel)));box-shadow:0 8px 22px #2e62800d;line-height:1.72}
+#panel-life #main-session-history .record:before,#panel-life #main-memory-list .record:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(#72cabb,#9bb7f0,#f2cd9f)}
+#panel-life #main-session-history .record:after,#panel-life #main-memory-list .record:after{content:"";position:absolute;right:13px;top:13px;width:25px;height:25px;border:1px solid color-mix(in srgb,var(--stroke) 72%,transparent);border-radius:50%;opacity:.34;pointer-events:none}
+#panel-life .neural-recall-board{border-radius:24px;overflow:hidden;box-shadow:0 16px 35px #376a8c17}
+#panel-life .neural-memory-results .record,#panel-life .neural-memory-detail{border-radius:15px;border:1px solid var(--stroke);background:var(--panel)}
+#panel-dm .dm-privacy-care{padding:14px 18px}#panel-dm .dm-privacy-care>summary{font-weight:730;cursor:pointer}#panel-dm .dm-privacy-care>summary small{float:right;color:var(--muted);font-weight:400}
+#panel-dm .dm-technical-note{font-size:12px;color:var(--muted);padding:7px 0}
+@media(max-width:660px){#panel-plans .life-source-flow-grid{grid-template-columns:1fr}#panel-life-agent .life-behavior-card{padding:12px}#panel-life-agent .life-behavior-header h3{font-size:19px}}
+@media(prefers-reduced-motion:reduce){#panel-life-agent #life-behavior-tree .is-running{animation:none!important}}
+
+
+#panel-life .memory-journey-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:17px 0 19px}
+#panel-life .memory-journey-nav a{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:17px;border:1px solid var(--stroke);border-radius:19px;background:linear-gradient(140deg,var(--panel),color-mix(in srgb,#d4ebec 22%,var(--panel)));color:var(--ink);text-decoration:none;box-shadow:0 9px 22px #274d7010;transition:transform .2s,border-color .2s}
+#panel-life .memory-journey-nav a:hover{transform:translateY(-3px);border-color:#71b4b8}
+#panel-life .memory-journey-nav a span{font-size:24px}#panel-life .memory-journey-nav a strong{font-size:14px}#panel-life .memory-journey-nav a small{color:var(--muted);font-size:11px;width:100%;padding-left:39px}
+#panel-life #life-interest-section{margin:12px 0 20px}#panel-life #life-recall-section{margin-top:12px}
+@media(max-width:580px){#panel-life .memory-journey-nav{grid-template-columns:1fr}#panel-life .memory-journey-nav a{padding:10px 13px}#panel-life .memory-journey-nav a small{width:auto;padding-left:0}}
+
 </style>
 </head>
 <body><main class="wrap">
@@ -1122,6 +1183,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
 <button data-tab="home" aria-selected="false">大肥鱼的家</button>
 <button data-tab="life-agent" aria-selected="false">🐟 鱼鱼此刻</button>
+<button data-tab="plans" aria-selected="false">🧭 鱼鱼想做</button>
 <button data-tab="life" aria-selected="false">🧠 鱼的记忆</button>
 
 <button data-tab="relationships" aria-selected="false">👥 逐渐熟悉的人</button>
@@ -1248,8 +1310,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div id="headless-sync-status" role="status" aria-live="polite" class="muted">尚未检查后台模型。</div>
 <div id="headless-provider-list" class="settings-stack"></div>
 <div id="headless-sync-plan" class="muted" role="status" aria-live="polite"></div>
-<div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button><button type="button" id="headless-sync-preview" class="primary" title="只查看准备同步的模型配置，不会立即修改 DSH 文件">查看待同步配置</button><button type="button" id="headless-sync-commit" hidden>确认同步到 Headless</button></div>
-<p class="muted">只有要使用的自定义 Provider 才需要勾选同步；DSH 官方已注册模型无需同步。<strong>快速设置只需任选一个模型通过验证</strong>，其他模型可以以后需要时再验证。</p>
+<div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button><button type="button" id="headless-sync-preview" class="primary" title="先预览将同步的模型，再由你明确确认写入 Headless">同步到 Headless · 先预览</button><button type="button" id="headless-sync-commit" hidden>确认同步到 Headless</button></div>
+<p class="model-verify-guide"><strong>模型怎样才能使用？</strong> DSH 已注册模型可供宿主一般任务选择，单项「测试连接」用于检查连通性；独立 Headless 视频 Agent 必须完成相应配置同步与真实模型验证后才能就绪。首次快速设置至少验证一个可用于 Headless 的模型，不必把全部模型逐个验证。自定义 Provider 先预览并确认同步，再展开验证模型；未验证不代表能实际运行。</p>
 </div>
 <div class="settings-section model-default-panel"><h4>✨ 默认模型 <span class="help-tip" title="选择后同步所有 8 个任务并重置思考深度。若模型不支持视觉或工具任务，相应能力可能不可用。之后仍可单项调整。">?</span></h4><p class="muted">选择后，下面全部八项任务会变成同一个模型，思考深度使用模型默认值。</p><div class="fields"><div><label for="models-default-provider">默认 Provider</label><select id="models-default-provider"></select></div><div><label for="models-default-model">默认模型</label><select id="models-default-model"></select></div></div><p id="models-default-summary" class="muted">正在读取可用模型…</p><p id="models-catalog-diagnostic" class="setting-note" role="status">Provider 下拉框只显示已发现的目录、当前宿主模型或已保存设置；显示不代表连接已通过。遇到 502 请先检查中转站，不会自动切换供应商。</p><small id="models-recommendation-note" class="setting-note">保存后生效，仍可单独调整每项任务。</small></div>
 <details class="settings-section"><summary><strong>最近模型调用归因（仅本地宿主，零额外 AI 调用）</strong></summary>
@@ -1411,7 +1473,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="feature-intro"><div><h2>🏠 大肥鱼的家 · 生活总览</h2><p>这里看到鱼鱼此刻的生活、记忆与社交近况。回忆详情在「人生记忆」，行为授权在「社交互动」，相关设置在对应功能下方的折叠区。以下状态来自本地真实记录，不会自动触发对外发送。</p></div></div>
 <div class="home-overview grid" aria-label="生活概览">
 <a class="card home-summary" href="?tab=life" data-open-tab="life"><strong>🧠 鱼鱼的记忆</strong><span id="home-overview-memory" class="muted">正在读取记忆概况…</span><small>进入心情与记忆 →</small></a>
-<a class="card home-summary" href="?tab=life#life-emotion-section" data-open-tab="life" data-open-anchor="life-emotion-section"><strong>💗 最近的心情</strong><span id="home-overview-mood" class="muted">正在读取心情…</span><small>查看情绪变化 →</small></a>
+<a class="card home-summary" href="?tab=life-agent#life-emotion-section" data-open-tab="life-agent" data-open-anchor="life-emotion-section"><strong>💗 最近的心情</strong><span id="home-overview-mood" class="muted">正在读取心情…</span><small>查看此刻心情 →</small></a>
 <a class="card home-summary" href="?tab=social" data-open-tab="social"><strong>👥 熟悉的朋友</strong><span id="home-overview-social" class="muted">正在读取社交近况…</span><small>查看好友与社交授权 →</small></a>
 </div>
 <div class="toolbar"><h2 style="margin:0">🐟 当前聊天房间 · 主 Session</h2><button id="main-session-refresh">刷新在线会话</button></div>
@@ -1480,6 +1542,16 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </section>
 <section id="panel-life" hidden>
 <div class="life-hero life-memory-hero"><div class="life-memory-hero-copy"><span class="page-eyebrow">MEMORY GARDEN · 逐渐长大的回忆</span><div class="status-line"><span id="life-learning-status" class="live-badge">● 正在整理真实经历</span></div><h2>鱼鱼的记忆花园</h2><p class="muted">每一次真实相遇，都可能留下些小小的印象。她会记住一些，也会慢慢忘记一些。</p><button id="main-life-refresh" class="life-action life-indigo">↻ 刷新记忆</button></div><img class="life-memory-character" src="/api/bili-duty/life-character.png" alt="" loading="lazy" decoding="async" aria-hidden="true"><span class="life-memory-bubble" aria-hidden="true"></span></div>
+<nav class="memory-journey-nav" aria-label="记忆花园分区"><a href="#life-interest-section"><span>🌱</span><strong>最近兴趣</strong><small>真实积累的喜好</small></a><a href="#life-recall-section"><span>🧠</span><strong>经历与体会</strong><small>现在还能想起的事</small></a><a href="?tab=life-agent" data-open-tab="life-agent"><span>🐟</span><strong>此刻的生活</strong><small>去看看鱼鱼正在做什么</small></a></nav>
+<div id="life-interest-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">🌱 鱼鱼最近喜欢什么</h4><span id="interest-learning-status" class="live-badge">● 正在收集兴趣线索</span><span class="muted">根据真实入选视频积累，和主人设定的核心兴趣分开</span></div>
+<p class="muted">核心兴趣由主人明确设置，优先参与选片但会轮换；短期/成长/稳定兴趣则来自真实入选视频证据。至少 3 个不同视频、横跨 2 天才会形成短期兴趣，长期没有新证据会逐渐淡出。自动学习永远不会覆盖核心兴趣。</p>
+<div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div>
+<details class="life-subdetails" id="life-curiosity-review"><summary>短期好奇探索 · 查看候选与排除主题（默认折叠）</summary>
+<div class="inset"><p class="muted">只展示真实入选公开视频后产生的临时陌生主题。每约 3 天至多占用一个只读选片搜索位置，不代表鱼鱼已经喜欢；排除某主题后 30 天内不会再用同名主题探索。撤销排除只允许未来新证据重新形成候选，不会恢复已清除的历史记录。</p>
+<div class="toolbar"><button id="life-curiosity-refresh" type="button">刷新好奇候选</button><button id="life-curiosity-clear" type="button">清空当前候选</button><span id="life-curiosity-status" class="muted">尚未读取</span></div>
+<div id="life-curiosity-list" class="records records-scroll"></div></div></details>
+<details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
+</details></div>
 <div id="life-recall-section" class="settings-section life-section memory-home">
 <div class="memory-garden-heading"><div class="memory-garden-mark" aria-hidden="true">🧠</div><div><span class="page-eyebrow">LIFE MEMORY · 真实而会变化</span><h4>此刻还记得的事</h4><p class="muted">浏览真实经历与长期认识，按类别筛选；搜视频标题、BV 号或聊天关键词，留空看最近。开启已有的「人生记忆检索模型」后，含糊的查询也能由 AI 从当前还记得的经历与认识中选择真实记录；否则使用本地搜索。不会访问封存档案。</p></div></div>
 <div class="memory-filter-pills" role="group" aria-label="筛选记忆花园中的经历和长期认识"><button type="button" data-memory-kind="" aria-pressed="true">✨ 全部</button><button type="button" data-memory-kind="experience" aria-pressed="false">🎬 经历</button><button type="button" data-memory-kind="relationship" aria-pressed="false">💞 人物</button><button type="button" data-memory-kind="interest" aria-pressed="false">🌱 兴趣</button><button type="button" data-memory-kind="fact" aria-pressed="false">📜 事实</button></div>
@@ -1518,8 +1590,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="toolbar"><input id="main-memory-add-text" maxlength="1000" placeholder="主人手动添加一条长期认识"><button id="main-memory-add" class="life-action life-purple">手动添加认识</button></div>
 <details class="memory-legacy-details"><summary>旧版数据迁移（仅旧插件用户）</summary><p class="muted">仅从旧的 dsh-fish-memory 导入已有记录。全新安装不需要使用，不会自动读取旧数据。</p><button id="main-memory-import" class="life-action life-indigo">导入旧版 dsh-fish-memory</button></details>
 </details></div></div>
-<div class="life-memory-tiles" aria-label="记忆花园分区"><a href="#life-interest-section"><span>🌱</span><strong>最近喜欢</strong><small>新发现的兴趣</small></a><a href="#life-recall-section"><span>🧠</span><strong>还能想起</strong><small>此刻可回忆的经历</small></a><a href="?tab=personality" data-open-tab="personality"><span>🪴</span><strong>成长轨迹</strong><small>被核验过的变化</small></a></div>
-<nav class="life-jump" aria-label="人生记忆分区快捷跳转"><a href="#life-interest-section">🌱 最近兴趣</a><a href="#life-recall-section">🧠 经历与体会</a><a href="?tab=life-agent#life-timeline-section" data-open-tab="life-agent" data-open-anchor="life-timeline-section">📅 真实生活</a><a href="?tab=life-agent" data-open-tab="life-agent">🐟 当前生活与心情</a></nav>
+
+
 <details class="memory-flow-toggle life-subdetails"><summary>了解记忆如何形成与自然遗忘</summary><section class="memory-flow-panel" aria-label="记忆流向示意图">
   <div class="memory-flow-title"><strong>一段经历，怎样变成鱼鱼的记忆？</strong><span id="memory-flow-updated" class="muted" role="status">正在读取记忆状态…</span></div>
   <div class="memory-flow-steps" role="list">
@@ -1557,20 +1629,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 
 <div class="settings-stack">
 
-<div id="life-interest-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">🌱 鱼鱼最近喜欢什么</h4><span id="interest-learning-status" class="live-badge">● 正在收集兴趣线索</span><span class="muted">根据真实入选视频积累，和主人设定的核心兴趣分开</span></div>
-<p class="muted">核心兴趣由主人明确设置，优先参与选片但会轮换；短期/成长/稳定兴趣则来自真实入选视频证据。至少 3 个不同视频、横跨 2 天才会形成短期兴趣，长期没有新证据会逐渐淡出。自动学习永远不会覆盖核心兴趣。</p>
-<div id="main-interests-list" class="grid interest-grid" aria-live="polite"></div>
-<details class="life-subdetails" id="life-curiosity-review"><summary>短期好奇探索 · 查看候选与排除主题（默认折叠）</summary>
-<div class="inset"><p class="muted">只展示真实入选公开视频后产生的临时陌生主题。每约 3 天至多占用一个只读选片搜索位置，不代表鱼鱼已经喜欢；排除某主题后 30 天内不会再用同名主题探索。撤销排除只允许未来新证据重新形成候选，不会恢复已清除的历史记录。</p>
-<div class="toolbar"><button id="life-curiosity-refresh" type="button">刷新好奇候选</button><button id="life-curiosity-clear" type="button">清空当前候选</button><span id="life-curiosity-status" class="muted">尚未读取</span></div>
-<div id="life-curiosity-list" class="records records-scroll"></div></div></details>
-<details class="life-subdetails"><summary>编辑主人设定的核心兴趣</summary><div class="inset"><label for="core-interest-topics">核心兴趣（每行或用逗号分隔，最多 12 项）</label><textarea id="core-interest-topics" rows="3" maxlength="700" placeholder="例如：AI 模型拟人、独立游戏、猫咪、美食"></textarea><div class="toolbar"><button id="core-interest-save" class="life-action life-green">保存核心兴趣</button><span id="core-interest-status" class="muted">主人设定 · 不会自动覆盖</span></div><div id="core-interest-list" class="grid interest-grid"></div></div>
-</details></div>
-<div id="life-opportunities-section" class="settings-section life-section">
-<div class="toolbar"><h4 style="margin:0">💡 生活线索与契机详情</h4><button id="life-opportunities-refresh" type="button" class="life-action life-sky">刷新契机记录</button><button id="life-opportunities-reconsider" type="button" class="life-action life-purple">提醒鱼鱼考虑一次（消耗 AI 额度）</button></div>
-<p class="muted">鱼鱼可参考当前账号的<strong>评论观察、跨日自主选片兴趣、公开交流证据</strong>，自主决定只读探索或保持沉默。首批新增：可信兴趣经历即使原候选已关闭，仍可由鱼鱼自行产生“我想进一步探索”的目的，通过真实 B站公开搜索保留 BV；之后不必重进刷视频轮，也能自主选中实际搜索结果核实或放下。独立自主调度沿用原每日 AI 额度；只读探索由当前 Life 规划处理，不因隐藏的固定冷却而失去机会。不会自动创建待办、评论、私信、关注，也不代表已观看或听见音频。</p>
-<p id="life-opportunities-status" class="muted" role="status">尚未读取生活契机</p><div id="life-opportunities-list" class="records records-scroll" aria-live="polite"></div>
-</div>
+
+<div class="settings-section life-section life-plans-shortcut"><h4>💡 生活契机</h4><p>生活线索、契机和待办已集中到独立的「鱼鱼想做」页面，记忆花园只展示记忆与兴趣。</p><button type="button" data-open-tab="plans">查看生活契机</button></div>
 
 
 
@@ -1582,8 +1642,39 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </div></section>
 <section id="panel-life-agent" hidden>
 <div class="life-hero life-command-hero"><div class="life-hero-copy"><span class="page-eyebrow">FISH LIFE · 实时生活大动画</span><div class="life-hero-live" role="status" aria-live="polite" aria-atomic="true"><span class="life-now-eyebrow"><span class="life-now-dot" aria-hidden="true"></span>鱼鱼此刻 · 每 4 秒核对实际状态</span><h2 id="life-now-title">正在核对鱼鱼的行动…</h2><p id="life-now-detail" class="muted">只展示实际发生的活动，不模拟未发生的操作。</p><p id="life-now-time" class="muted"></p></div><div class="life-hero-footer"><span>真实行动 · 有据可查 · 没有动作时也可以休息</span><button id="life-integration-refresh" class="life-action life-sky" type="button">刷新生活状态</button></div></div><div class="life-hero-character" aria-hidden="true"><i class="life-glow"></i><img src="/api/bili-duty/life-character.png" alt="" decoding="async"></div><span class="life-hero-bubble life-bubble-one" aria-hidden="true"></span><span class="life-hero-bubble life-bubble-two" aria-hidden="true"></span></div>
+<section class="life-behavior-card" aria-labelledby="life-behavior-title">
+<div class="life-behavior-header"><div><span class="page-eyebrow">LIFE ACTION MAP · 真实回执驱动</span><h3 id="life-behavior-title">🌳 鱼鱼的行动树</h3><p>每次选择从中心出发；流动的光路只代表最近这轮真实决策。没有证据的枝条保持安静，不会播放虚假的执行动画。</p></div><button type="button" id="life-behavior-refresh" class="life-action life-sky">更新行动树</button></div>
+<div class="life-behavior-status" id="life-behavior-status" role="status" aria-live="polite">正在读取真实决策记录…</div>
+<div class="life-tree-viewport"><svg id="life-behavior-tree" viewBox="0 0 1180 765" role="img" aria-label="Life 可选行为树，按最近真实决策与回执高亮"></svg></div>
+<div class="life-tree-legend"><span>◉ 最新选择</span><span>≈ 光线流动：最近正在处理</span><span>✓ 已核验回执</span><span>○ 可用能力类别（不代表本轮可执行）</span></div>
+<p class="muted">行为树展示的是源码支持的动作类别及最近的匿名真实决策，不等同于每一轮可用的完整动作菜单。只有合格候选才进入实际模型菜单；视频 Agent 的下游动作由专业工具与发送门禁执行。</p>
+</section>
 <div id="life-now-recent" class="life-now-recent" aria-label="最近已确认的活动"></div>
-<nav class="life-day-shortcuts" aria-label="鱼鱼此刻快捷查看"><a href="#life-timeline-section">今天的经历</a><a href="#life-emotion-section">此刻心情</a><a href="#life-todo-section">想做的事</a><a href="#life-settings-v2-panel">生活设置</a></nav>
+<nav class="life-day-shortcuts" aria-label="鱼鱼此刻快捷查看"><a href="#life-timeline-section">今天的经历</a><a href="#life-emotion-section">此刻心情</a><a href="?tab=plans#life-todo-section" data-open-tab="plans" data-open-anchor="life-todo-section">想做的事</a><a href="#life-settings-v2-panel">生活设置</a></nav>
+<details id="life-now-settings" class="life-now-settings"><summary>⚙️ 生活节奏与整体方案</summary><div class="settings-section" id="life-settings-v2-panel" style="border-left:4px solid #5d9b88">
+<h3>🌿 鱼鱼的生活</h3>
+<p class="muted">鱼鱼自己选择何时探索、聊天或休息；对外互动仍遵守你的授权。日常生活自动考虑遵守设定的最短间隔；新私信／评论等实时事件由独立通道及时处理，不被该间隔延迟。提高每日额度只提高可用模型预算，不强迫鱼鱼行动。旧版已保存额度不会自动上调；请重新选档并确认保存。</p>
+<div class="life-native-settings"><div><label for="life-v2-mode">自主生活</label><select id="life-v2-mode"><option value="off">暂停</option><option value="active">开启生活探索</option><option value="shadow" hidden>历史观察模式（兼容旧配置）</option></select></div>
+<div><label for="life-v2-pace">活跃程度</label><select id="life-v2-pace"><option value="quiet">安静（80 分钟 / 50 次）</option><option value="natural">自然（30 分钟 / 100 次）</option><option value="lively">活跃（10 分钟 / 200 次）</option><option value="custom">自定义（高级）</option></select></div></div><small id="life-legacy-pace-note" class="setting-note" hidden>正在保留你以前的活跃度设置；需要改动时再选安静、自然或活跃。</small>
+<div class="life-mode-switch" role="radiogroup" aria-label="自主生活开关"><label class="life-select-card"><input type="radio" name="life-mode-card" value="active"><span class="life-select-icon">✦</span><span><strong>开启自主生活</strong><small>鱼鱼自行决定探索、互动或休息</small></span></label><label class="life-select-card"><input type="radio" name="life-mode-card" value="off"><span class="life-select-icon">☾</span><span><strong>暂停自主探索</strong><small>不再启动新生活决策</small></span></label></div>
+<div class="life-runtime-meter" aria-live="polite"><div class="toolbar"><strong>🧭 今日 Life 模型决策</strong><b id="life-decision-usage">读取中…</b><button type="button" id="life-decision-refresh" class="life-action life-sky">刷新状态（不调用模型）</button></div>
+  <progress id="life-decision-progress" max="100" value="0" aria-label="本日自主生活模型决策额度使用百分比"></progress>
+  <p id="life-decision-next" class="muted" role="status">正在读取调度心跳…</p><p class="muted">每日额度限制 Life 日常模型考虑机会，不直接限制评论／私信发送次数，也不是视频 Agent 的轮次数。子 Agent 还有自己的独立准入和发送限制。网络故障、冷却、无候选或自主休息均不应显示为“已经发表”。</p></div>
+<div class="life-pace-heading"><h4>活跃程度</h4><p class="muted">这是日常自主规划的考虑间隔与每日预算，不是每天必须执行的次数；社交事件有独立处理节奏。</p></div><div class="life-pace-cards" role="radiogroup" aria-label="生活活跃程度"><label class="life-select-card"><input type="radio" name="life-pace-card" value="quiet"><span class="life-select-icon">☾</span><span><strong>安静</strong><small>80 分 / 50 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="natural"><span class="life-select-icon">❀</span><span><strong>自然</strong><small>30 分 / 100 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="lively"><span class="life-select-icon">✧</span><span><strong>活跃</strong><small>10 分 / 200 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="custom"><span class="life-select-icon">⚙</span><span><strong>自定义</strong><small>单独调整间隔和额度</small></span></label></div>
+<details class="life-subdetails" id="life-settings-advanced"><summary>⚙️ 高级设置 · 模型次数与活动时间</summary>
+<p class="muted">仅选择「自定义」时，以下数字才会写入配置；选择预设不会覆盖原有时段。次数是<strong>日常生活模型决策上限</strong>，不是必须执行的任务或真实视频播放次数；社交事件只读快速关注有独立额度，所有调用共享原子总上限。对外发布／私信授权仍在相应页面单独设置。</p>
+<div class="fields"><div><label for="life-v2-minutes">最短考虑间隔（分钟，5～1440）</label><input type="number" id="life-v2-minutes" min="5" max="1440" value="60"></div><div><label for="life-v2-limit">每日最多模型决策（1～288）</label><input type="number" id="life-v2-limit" min="1" max="288" value="12"></div><div><label for="life-v2-start">每日开始（0～23 时）</label><input type="number" id="life-v2-start" min="0" max="23" value="9"></div><div><label for="life-v2-end">每日结束（1～24 时）</label><input type="number" id="life-v2-end" min="1" max="24" value="23"></div></div><div class="toolbar"><button type="button" class="life-action life-sky" id="life-v2-preview-btn">预览详细变化</button></div>
+</details>
+<div class="inset" id="life-video-agent-interval-setting"><h4>🎬 视频 Agent 启动间隔</h4><p class="muted">独立于 Life 自主决策的考虑频率。自动运行和手动触发共用此最短间隔；每次启动后至少等待设定时长，才允许下一轮启动。间隔可设为 1～1440 分钟；默认保留此前的 20 分钟设置。设得过短会增加模型调用和 B站请求风险，模型仍能决定不启动。</p><div class="fields"><div><label for="life-v2-video-min-interval">视频 Agent 最短启动间隔（分钟，1～1440）</label><input type="number" id="life-v2-video-min-interval" min="1" max="1440" step="1" value="20"/><small class="setting-note">例如设置为 45，表示自动和手动两种入口都必须距离上次真实启动至少 45 分钟。</small></div><div><label for="life-v2-video-read-target">每轮希望深入阅读的视频数（1～30）</label><input type="number" id="life-v2-video-read-target" min="1" max="30" step="1" value="8"/><small class="setting-note">本轮真实探索目标，提前结束应说明原因；并不强迫读满，也不能绕过平台预算。内容证据不等于完整观看。</small></div><div><label for="life-v2-video-pick-target">每轮希望挑选的视频数（0～12）</label><input type="number" id="life-v2-video-pick-target" min="0" max="12" step="1" value="4"/><small class="setting-note">择优目标而非硬上限，允许少选或不选；不是评论配额，也不降低选片门槛。</small></div></div></div>
+<div class="toolbar"><button type="button" class="life-action life-green" id="life-v2-save-btn">保存生活设置</button><button type="button" id="life-agent-wake" class="life-action life-sky">现在让鱼鱼考虑一次</button></div>
+<p class="muted"><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看本轮决策全过程与错误回执</a>（只读取本机诊断，不触发模型或 B站请求）</p>
+<p id="life-agent-wake-result" class="muted" role="status" aria-live="polite">手动考虑会消耗一次模型额度；鱼鱼也可以自己选择休息。</p>
+<p class="muted">已有旧档位会在后台保持原值，不会让新版选择框继续出现旧选项。视频 Agent 仍有独立的启动和成本门禁。当前社交快速关注不表示已发送回复。</p>
+<p id="life-v2-status" class="muted" role="status">正在读取生活设置…</p>
+<div class="inset" id="life-real-acceptance"><h4>🔍 真实运行状态</h4><p class="muted">查看当前账号的实际运行门禁与最近委派记录。可在这里手动启动一轮原视频 Agent；启动后由视频 Agent 自主决定看什么、是否继续或结束，不会强迫选片、发表评论或点赞。任何写操作仍受原有授权、Life 意愿审批、平台核验、额度与冷却限制。</p><p id="life-readiness" class="muted" role="status">正在读取本机真实运行门禁…</p><p id="life-actual-proof" class="muted" role="status">正在核对本账号的真实委派记录…</p><div class="toolbar"><button type="button" class="life-action life-sky" id="life-readiness-refresh">重新核查真实状态（零模型调用）</button><button type="button" class="life-action life-purple" id="life-video-agent-test-run">手动触发一轮真实视频 Agent</button></div><p id="life-video-agent-test-result" class="muted" role="status" aria-live="polite">单轮真实诊断：启动原视频 Agent，不强制选片或发表评论；评论、点赞、收藏等写操作仍须通过原 Life 意愿审批及平台核验，并受原冷却限制。</p></div>
+<p class="muted">升级不会清空旧任务、记忆、好友关系或平台回执；旧「谷时刷视频」字段仅为历史兼容保留，无法重新启用。停止新生活决策<strong>不会撤销先前单独开启的社交自动发送授权</strong>，需要在社交页调整。</p>
+</div>
+</details>
 <details class="life-now-timeline" open><summary>📅 大肥鱼的一天 · 真实生活时间线</summary>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">📅 大肥鱼的一天 · 真实生活时间线</h4><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新时间线</button></div>
 <p class="muted">只展示真实生活经历，按实际日期排列。没有可靠时间或关联的内容不会编造；技术细节请到运行诊断查看。</p><p id="life-timeline-summary" class="muted" role="status"></p>
@@ -1612,14 +1703,21 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p id="life-integration-warning" class="muted" role="status" aria-live="polite">各系统独立读取；失败不会被伪装为成长完成。</p>
 <nav class="life-command-links" aria-label="查看生活详情">
 <a href="?tab=life" data-open-tab="life">🧠 鱼的记忆</a>
-<a href="#life-todo-section" data-open-tab="life-agent" data-open-anchor="life-todo-section">📝 鱼鱼的计划</a>
+<a href="?tab=plans#life-todo-section" data-open-tab="plans" data-open-anchor="life-todo-section">📝 鱼鱼的计划</a>
 <a href="?tab=life" data-open-tab="life" data-open-anchor="life-interest-section">🌿 兴趣趋势</a>
 <a href="?tab=personality" data-open-tab="personality">🪴 人格成长证据</a>
 <a href="?tab=relationships" data-open-tab="relationships">👥 关系与熟悉度</a>
 <a href="?tab=social" data-open-tab="social" data-open-anchor="social-outreach-section">🐟 自主视频推荐设置</a>
 <a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">🧭 决策回执</a>
 </nav></details>
-<details id="life-now-todos" class="life-now-todos" open><summary>📝 鱼鱼想做的事</summary>
+<div class="life-plans-shortcut" role="note"><strong>🧭 最近想到的事</strong><p>生活线索、生活契机和待办，现已在「鱼鱼想做」集中查看。这里仍显示真正进行的活动。</p><button type="button" data-open-tab="plans" class="life-action life-sky">打开鱼鱼想做</button></div>
+
+
+</section>
+<section id="panel-plans" hidden class="life-plans-page">
+<div class="life-hero todo-page-hero"><div><span class="page-eyebrow">LIFE INTENTIONS · 真实的自主选择</span><h2>🧭 鱼鱼想做</h2><p class="muted">生活线索、值得留意的契机和已经接下的待办，在这里一起查看。不要求每条都执行，也不把模型批准当作完成。</p></div><button type="button" data-open-tab="life-agent" class="life-action life-indigo">看看鱼鱼正在做什么</button></div>
+<div class="life-plan-explain" role="note"><strong>三种来源，汇入同一份生活判断</strong><p>线索是兴趣与观察，契机是可以进一步核实的机会，待办是已经接受的事项。它们并非必然依次转换；只有本轮合格且经过核验的候选才可能进入 Life 的动作菜单。</p></div>
+<div id="life-now-todos" class="life-now-todos">
 <div class="life-source-flow" role="group" aria-label="鱼鱼的线索、契机与待办如何进入生活决策">
   <div class="life-source-flow-title"><strong>🧭 鱼鱼的想法怎么变成行动？</strong><span>实时读取当前账号记录，不触发模型</span></div>
   <div class="life-source-flow-grid">
@@ -1722,32 +1820,15 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="toolbar"><button class="life-action life-indigo" id="owner-todo-settings-save">保存回访设置</button></div>
 </details>
 </div>
-</details>
-<details id="life-now-settings" class="life-now-settings" open><summary>⚙️ 生活节奏与整体方案</summary><div class="settings-section" id="life-settings-v2-panel" style="border-left:4px solid #5d9b88">
-<h3>🌿 鱼鱼的生活</h3>
-<p class="muted">鱼鱼自己选择何时探索、聊天或休息；对外互动仍遵守你的授权。日常生活自动考虑遵守设定的最短间隔；新私信／评论等实时事件由独立通道及时处理，不被该间隔延迟。提高每日额度只提高可用模型预算，不强迫鱼鱼行动。旧版已保存额度不会自动上调；请重新选档并确认保存。</p>
-<div class="life-native-settings"><div><label for="life-v2-mode">自主生活</label><select id="life-v2-mode"><option value="off">暂停</option><option value="active">开启生活探索</option><option value="shadow" hidden>历史观察模式（兼容旧配置）</option></select></div>
-<div><label for="life-v2-pace">活跃程度</label><select id="life-v2-pace"><option value="quiet">安静（80 分钟 / 50 次）</option><option value="natural">自然（30 分钟 / 100 次）</option><option value="lively">活跃（10 分钟 / 200 次）</option><option value="custom">自定义（高级）</option></select></div></div><small id="life-legacy-pace-note" class="setting-note" hidden>正在保留你以前的活跃度设置；需要改动时再选安静、自然或活跃。</small>
-<div class="life-mode-switch" role="radiogroup" aria-label="自主生活开关"><label class="life-select-card"><input type="radio" name="life-mode-card" value="active"><span class="life-select-icon">✦</span><span><strong>开启自主生活</strong><small>鱼鱼自行决定探索、互动或休息</small></span></label><label class="life-select-card"><input type="radio" name="life-mode-card" value="off"><span class="life-select-icon">☾</span><span><strong>暂停自主探索</strong><small>不再启动新生活决策</small></span></label></div>
-<div class="life-runtime-meter" aria-live="polite"><div class="toolbar"><strong>🧭 今日 Life 模型决策</strong><b id="life-decision-usage">读取中…</b><button type="button" id="life-decision-refresh" class="life-action life-sky">刷新状态（不调用模型）</button></div>
-  <progress id="life-decision-progress" max="100" value="0" aria-label="本日自主生活模型决策额度使用百分比"></progress>
-  <p id="life-decision-next" class="muted" role="status">正在读取调度心跳…</p><p class="muted">每日额度限制 Life 日常模型考虑机会，不直接限制评论／私信发送次数，也不是视频 Agent 的轮次数。子 Agent 还有自己的独立准入和发送限制。网络故障、冷却、无候选或自主休息均不应显示为“已经发表”。</p></div>
-<div class="life-pace-heading"><h4>活跃程度</h4><p class="muted">这是日常自主规划的考虑间隔与每日预算，不是每天必须执行的次数；社交事件有独立处理节奏。</p></div><div class="life-pace-cards" role="radiogroup" aria-label="生活活跃程度"><label class="life-select-card"><input type="radio" name="life-pace-card" value="quiet"><span class="life-select-icon">☾</span><span><strong>安静</strong><small>80 分 / 50 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="natural"><span class="life-select-icon">❀</span><span><strong>自然</strong><small>30 分 / 100 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="lively"><span class="life-select-icon">✧</span><span><strong>活跃</strong><small>10 分 / 200 次思考；视频启动间隔独立设置</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="custom"><span class="life-select-icon">⚙</span><span><strong>自定义</strong><small>单独调整间隔和额度</small></span></label></div>
-<details class="life-subdetails" id="life-settings-advanced"><summary>⚙️ 高级设置 · 模型次数与活动时间</summary>
-<p class="muted">仅选择「自定义」时，以下数字才会写入配置；选择预设不会覆盖原有时段。次数是<strong>日常生活模型决策上限</strong>，不是必须执行的任务或真实视频播放次数；社交事件只读快速关注有独立额度，所有调用共享原子总上限。对外发布／私信授权仍在相应页面单独设置。</p>
-<div class="fields"><div><label for="life-v2-minutes">最短考虑间隔（分钟，5～1440）</label><input type="number" id="life-v2-minutes" min="5" max="1440" value="60"></div><div><label for="life-v2-limit">每日最多模型决策（1～288）</label><input type="number" id="life-v2-limit" min="1" max="288" value="12"></div><div><label for="life-v2-start">每日开始（0～23 时）</label><input type="number" id="life-v2-start" min="0" max="23" value="9"></div><div><label for="life-v2-end">每日结束（1～24 时）</label><input type="number" id="life-v2-end" min="1" max="24" value="23"></div></div><div class="toolbar"><button type="button" class="life-action life-sky" id="life-v2-preview-btn">预览详细变化</button></div>
-</details>
-<div class="inset" id="life-video-agent-interval-setting"><h4>🎬 视频 Agent 启动间隔</h4><p class="muted">独立于 Life 自主决策的考虑频率。自动运行和手动触发共用此最短间隔；每次启动后至少等待设定时长，才允许下一轮启动。间隔可设为 1～1440 分钟；默认保留此前的 20 分钟设置。设得过短会增加模型调用和 B站请求风险，模型仍能决定不启动。</p><div class="fields"><div><label for="life-v2-video-min-interval">视频 Agent 最短启动间隔（分钟，1～1440）</label><input type="number" id="life-v2-video-min-interval" min="1" max="1440" step="1" value="20"/><small class="setting-note">例如设置为 45，表示自动和手动两种入口都必须距离上次真实启动至少 45 分钟。</small></div><div><label for="life-v2-video-read-target">每轮希望深入阅读的视频数（1～30）</label><input type="number" id="life-v2-video-read-target" min="1" max="30" step="1" value="8"/><small class="setting-note">本轮真实探索目标，提前结束应说明原因；并不强迫读满，也不能绕过平台预算。内容证据不等于完整观看。</small></div><div><label for="life-v2-video-pick-target">每轮希望挑选的视频数（0～12）</label><input type="number" id="life-v2-video-pick-target" min="0" max="12" step="1" value="4"/><small class="setting-note">择优目标而非硬上限，允许少选或不选；不是评论配额，也不降低选片门槛。</small></div></div></div>
-<div class="toolbar"><button type="button" class="life-action life-green" id="life-v2-save-btn">保存生活设置</button><button type="button" id="life-agent-wake" class="life-action life-sky">现在让鱼鱼考虑一次</button></div>
-<p class="muted"><a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">查看本轮决策全过程与错误回执</a>（只读取本机诊断，不触发模型或 B站请求）</p>
-<p id="life-agent-wake-result" class="muted" role="status" aria-live="polite">手动考虑会消耗一次模型额度；鱼鱼也可以自己选择休息。</p>
-<p class="muted">已有旧档位会在后台保持原值，不会让新版选择框继续出现旧选项。视频 Agent 仍有独立的启动和成本门禁。当前社交快速关注不表示已发送回复。</p>
-<p id="life-v2-status" class="muted" role="status">正在读取生活设置…</p>
-<div class="inset" id="life-real-acceptance"><h4>🔍 真实运行状态</h4><p class="muted">查看当前账号的实际运行门禁与最近委派记录。可在这里手动启动一轮原视频 Agent；启动后由视频 Agent 自主决定看什么、是否继续或结束，不会强迫选片、发表评论或点赞。任何写操作仍受原有授权、Life 意愿审批、平台核验、额度与冷却限制。</p><p id="life-readiness" class="muted" role="status">正在读取本机真实运行门禁…</p><p id="life-actual-proof" class="muted" role="status">正在核对本账号的真实委派记录…</p><div class="toolbar"><button type="button" class="life-action life-sky" id="life-readiness-refresh">重新核查真实状态（零模型调用）</button><button type="button" class="life-action life-purple" id="life-video-agent-test-run">手动触发一轮真实视频 Agent</button></div><p id="life-video-agent-test-result" class="muted" role="status" aria-live="polite">单轮真实诊断：启动原视频 Agent，不强制选片或发表评论；评论、点赞、收藏等写操作仍须通过原 Life 意愿审批及平台核验，并受原冷却限制。</p></div>
-<p class="muted">升级不会清空旧任务、记忆、好友关系或平台回执；旧「谷时刷视频」字段仅为历史兼容保留，无法重新启用。停止新生活决策<strong>不会撤销先前单独开启的社交自动发送授权</strong>，需要在社交页调整。</p>
 </div>
-</details>
+<div id="life-opportunities-section" class="settings-section life-section">
+<div class="toolbar"><h4 style="margin:0">💡 生活线索与契机详情</h4><button id="life-opportunities-refresh" type="button" class="life-action life-sky">刷新契机记录</button><button id="life-opportunities-reconsider" type="button" class="life-action life-purple">提醒鱼鱼考虑一次（消耗 AI 额度）</button></div>
+<p class="muted">鱼鱼可参考当前账号的<strong>评论观察、跨日自主选片兴趣、公开交流证据</strong>，自主决定只读探索或保持沉默。首批新增：可信兴趣经历即使原候选已关闭，仍可由鱼鱼自行产生“我想进一步探索”的目的，通过真实 B站公开搜索保留 BV；之后不必重进刷视频轮，也能自主选中实际搜索结果核实或放下。独立自主调度沿用原每日 AI 额度；只读探索由当前 Life 规划处理，不因隐藏的固定冷却而失去机会。不会自动创建待办、评论、私信、关注，也不代表已观看或听见音频。</p>
+<p id="life-opportunities-status" class="muted" role="status">尚未读取生活契机</p><div id="life-opportunities-list" class="records records-scroll" aria-live="polite"></div>
+</div>
+<p class="life-plan-boundary">记录存在 ≠ 已提交模型；Life 想行动 ≠ 执行成功。评论、私信、点赞与关注仍须单独核验授权及真实回执。</p>
 </section>
+
 <section id="panel-diagnostics" hidden><div id="life-decision-traces-section" class="settings-section life-section">
 <div class="toolbar"><h4 style="margin:0">🧭 鱼鱼的决策全过程</h4><button id="life-traces-refresh" type="button" class="life-action life-sky">刷新决策记录</button></div>
 <p class="muted">按每次 Life Agent 唤醒展示候选、模型校验、动作、回执和事件结算。最近 7 天最多 60 轮，当前 B站账号隔离；不存储完整模型提示、原始回复、私信正文、UID、视频 BV 或工具响应，以免调试日志造成隐私泄露。技术回执不代表鱼鱼真正看过或理解视频。</p>
@@ -1843,7 +1924,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="settings-stack">
 <div class="settings-section" id="main-expression-evidence-section"><h4>💬 肥鱼的表达是怎样形成的</h4>
 <p class="muted">主 Session 的表达由原有角色基础、真实经历、记忆、当前情绪和成长人格共同影响。这里不提供主人指定「俏皮／温柔」的性格开关，也不强制分成多条消息。</p>
-<div class="toolbar"><a href="?tab=life#life-emotion-section" data-open-tab="life" data-open-anchor="life-emotion-section">查看当前情绪 →</a><a href="?tab=personality" data-open-tab="personality">查看人格成长证据 →</a></div>
+<div class="toolbar"><a href="?tab=life-agent#life-emotion-section" data-open-tab="life-agent" data-open-anchor="life-emotion-section">查看当前情绪 →</a><a href="?tab=personality" data-open-tab="personality">查看人格成长证据 →</a></div>
 <p class="muted">注意：状态记录与提示词接入不等于实际表达已经改变；需要结合真实对话和对照验收。微信多条消息仍取决于通道发送能力。</p>
 </div>
 <div class="settings-section"><h4>🐳 大肥鱼人设</h4><p class="muted">用于刷视频、公开评论和私信的角色语气。空配置使用内置默认；不在公开评论里发布提示词原文。</p><textarea id="persona-text" maxlength="18000" rows="13"></textarea><p id="persona-compat-status" class="muted" role="status">粘贴后会检查长度、外部工具指令和实际提示词预算。</p><div class="toolbar"><button id="persona-save" class="primary">保存大肥鱼人设</button><button id="persona-reset">恢复默认</button><span id="persona-status" class="muted"></span></div></div>
@@ -2183,8 +2264,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </div></div>
 </div></details><div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
 </details>
-<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然续聊预约状态：尚未读取。</p><p id="dm-p6-last-turn" class="muted" role="status">普通私信 P6-A 最近一轮的生成与发送统计：暂无记录。</p><p class="muted">注意：已核验主人的 B站私信优先交给「主人私信 Agent」，并不经过这里的普通私信 P6-A 多气泡发送器。普通私信 1–3 条仅为上限，模型可自由只说一条。</p><p id="dm-error" class="muted"></p><p class="muted">网络失败会显示接口主机与底层错误码；如果出现 ECONNRESET、ENETUNREACH、ETIMEDOUT 或 DNS 错误，需同时检查系统网络／代理与 B站连通性。</p></div>
-<div id="dm-context-governance" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>私信上下文与记忆边界</h3><button id="dm-memory-prune" type="button">清理过期聊天内容</button></div><p class="muted">本区只治理「后台普通私信」的近期聊天原文与旧来信片段，和主 Session「主人聊天记忆整理」不是一回事。主人专属私信 Agent、人生记忆、好友画像各有独立来源与权限；本操作不会清理这些系统，也不会清除已读去重、拒联边界、审批、发送额度或平台回执。</p><p id="dm-memory-governance-status" class="muted" role="status">正在读取当前账号的本地上下文状态…</p></div>
+<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然续聊状态：尚未读取。</p><p id="dm-p6-last-turn" class="muted" role="status">最近一轮私信交流：暂无记录。</p><p class="muted">与主人的私信由专门通道处理。鱼鱼可以根据对话自然决定回复长短，不要求凑满消息数量。</p><p id="dm-error" class="muted"></p><details class="dm-technical-note"><summary>网络连接故障怎么看？</summary><p class="muted">当私信暂时无法读取时，可先检查网络、代理和 B站连接。具体错误代码请在「运行诊断」查看。</p></details></div>
+<details id="dm-context-governance" class="card dm-privacy-care" style="margin-top:16px"><summary>🪷 聊天内容的保留与清理 <small>按需展开</small></summary><p class="muted">可以查看普通私信的近期聊天内容是否需要清理。不会清除已发送记录，也不会影响鱼鱼已确认的记忆或对方拒绝联系的设置。</p><p id="dm-memory-governance-status" class="muted" role="status">正在查看保留状态…</p><button id="dm-memory-prune" type="button">清理过期聊天内容</button></details>
 <div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">只显示本插件已经保存的对话片段；不从 B站 额外拉取完整历史。旧版心愿已停止自动处理，历史资料只随本地备份保留；新的陌生人探索灵感与好友观看邀请在「社交互动」查看。记录仅在本机展示。</p><p class="muted">这里统计的是后台私信自动回复通道；主人专属 Agent、其他已授权途径的回复不计入陌生人额度。历史中出现多条来信也不代表已发送多次。</p><div id="dm-recent-list" class="records"></div></div>
 
 <details id="dm-legacy-approval-archive" class="contextual-settings"><summary>历史严格审核记录（只读 · 不再开放人工审批）</summary><div id="dm-requests" class="toolbar"><h2 style="margin:0">历史申请</h2><select id="dm-filter"><option value="pending">只看待审批</option><option value="">全部申请</option><option value="approved">已通过</option><option value="rejected">已拒绝</option></select></div><p class="muted">仅保留历史查看。不能批准、驳回、恢复或补发旧申请；旧配置若曾启用严格审核，仍保持原限制，直到明确保存新的自主交流方案。</p><div class="grid" id="dm-list"></div>

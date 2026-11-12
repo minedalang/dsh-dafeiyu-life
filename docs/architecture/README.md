@@ -1,10 +1,12 @@
+**当前开发预览 dev.75：** [生活决策行为审计、真实动作树、计划独立页与管理文案](2.7.1-dev75-owner-life-activity-map.md)。代码接线不等于真实平台验收，所有外发仍走原安全门禁。
+
 **当前开发预览 dev.74：** [三维社会关系、私人联系独立资格及拒联/发送门禁](2.7.1-dev74-three-dimensional-relationships.md)，仅有离线验证，真实 Windows/B站待验。
 
 **上一开发预览 dev.73：** [Life 生活线索/契机/待办关系、活跃度与意愿回执诊断](2.7.1-dev73-life-pace-and-decision-clarity.md)，未完成 Windows 与 B站实机验收。
 
 **上一开发预览 dev.72：** [Life 并发公平协调、B站只读退避、生活时间线与管理 UI](2.7.1-dev72-life-fairness-and-owner-ui.md)，未完成 Windows 与平台长期验收。
 
-# 架构文档：现行事实与历史增量（dev.74，未发布）
+# 架构文档：现行事实与历史增量（dev.75，未发布）
 
 **dev.71 Life 授权账本防滞留：** [过期未消费授权安全释放、发送路径结算、旧账本离线复核与状态诊断](2.7.1-dev71-life-admission-recovery.md)。已消费或旧版状态未知的批准仍需停机核查，不自动推断平台未发送，也不重放旧动作。
 

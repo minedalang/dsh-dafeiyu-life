@@ -104,20 +104,20 @@ test('DM HTTP adapter charges each actual request through shared budget; limit n
   }finally{globalThis.fetch=original}
 })
 
-test('UI unifies TODO in fish live tab, preserves memory and polling budgets without duplicated IDs',()=>{
+test('UI retains unique TODO controls in a dedicated plans tab and preserves memory and polling budgets',()=>{
   const html=readFileSync(join(root,'lib/management-console.html'),'utf8')
   const js=readFileSync(join(root,'lib/management-console.js'),'utf8')
   const index=readFileSync(join(root,'index.js'),'utf8')
   assert.doesNotMatch(html,/data-tab="todos"/);assert.match(html,/data-tab="life-agent"/)
   assert.doesNotMatch(html,/<section id="panel-todos"/)
-  assert.match(html,/<section id="panel-life-agent" hidden>[\s\S]*?id="life-todo-section"/)
+  assert.match(html,/<section id="panel-plans" hidden[\s\S]*?id="life-todo-section"/)
   const life=html.slice(html.indexOf('<section id="panel-life" hidden>'),html.indexOf('<section id="panel-diagnostics" hidden>'))
   assert.ok(life.includes('id="life-todo-section"'))
   for(const id of ['owner-todo-list','owner-todo-next','owner-todo-prev','owner-todo-remind','owner-todo-followup-check','owner-todo-add','settings-todo','main-session-history-query','main-memory-kind','personality-evolution-traits']){
     assert.equal(html.split(`id="${id}"`).length-1,1,`unique ${id}`)
   }
   assert.match(html,/data-memory-kind="interest"/)
-  assert.match(js,/if\(tab==='todos'\)tab='life-agent'/)
+  assert.match(js,/if\(tab==='todos'\)tab='plans'/)
   assert.match(js,/document\.querySelectorAll\('\[data-memory-kind\]'\)/)
   assert.match(html,/id="polling-budget-status"/)
   assert.match(js,/scheduler\.readBudget/)
@@ -125,9 +125,9 @@ test('UI unifies TODO in fish live tab, preserves memory and polling budgets wit
   assert.match(index,/maxSessions: 12/)
 })
 
-test('legacy todo-settings bookmark opens unified fish live page, not the memory page',()=>{
+test('legacy todo-settings bookmark opens dedicated fish plans page, not memory',()=>{
   const js=readFileSync(join(root,'lib/management-console.js'),'utf8')
-  assert.match(js,/legacySettingsTarget==='settings-todo'\?'life-agent':'life'/)
+  assert.match(js,/legacySettingsTarget==='settings-todo'\?'plans':'life'/)
 })
 
 test('DM cursor only commits after auto-reply dedupe safely persists and prevents duplicate messages',async()=>{
