@@ -111,6 +111,7 @@ flowchart TB
     lifeEpisode["Life Episode · 账号绑定意愿账本 · 最多 5 个已核验步骤"]
     homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
+    inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
     episodeContinuation["有新核验信息后 Life 可自由选择下一步 · 最多追加 4 次 · 可随时休息；不是重复批准旧动作"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
@@ -307,6 +308,9 @@ modelHealthUi -.->|只读本地调用记录| modelJournal
 %% @code modelJournal | lib/model-invocation-journal.mjs | export function createModelInvocationJournal
 
 %% @code accountChannels | lib/social-relationship-channels.mjs | export function createSocialRelationshipChannels
+
+  inspectedSource -->|原机会/待办账本与视频读取证明| lifeEpisode
+%% @code inspectedSource | lib/autonomous-planner.mjs | const next=beginInspectedOpportunity
 ```
 
 ## 二、八类候选细目
@@ -357,6 +361,8 @@ flowchart LR
   sourceDiscussion --> opportunities
   sourcePerson --> opportunities
   sourceLife --> intentions
+  opportunities -.->|Life 主动核实同 BV 成功→原账本新意愿| intentions
+  todos -.->|Life 自行完成 watch_video 且有同 BV 任务回执→原账本新意愿| intentions
   episodeState -.->|持续性与优先考虑，并非新权限| resume
   intentions --> resume
   sourceSocial --> social
@@ -430,6 +436,9 @@ dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验�
 %% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=
 
 %% @code privateBound | lib/social-relationship-channels.mjs | export function evaluateDmOpenness
+
+%% @code intentions | lib/life-opportunities.mjs | const beginInspectedOpportunity=
+%% @code todos | lib/life-video-episode-evidence.mjs | export function verifiedCompletedVideoTodo
 ```
 
 ## 三、可信回执与记忆闭环
@@ -562,6 +571,10 @@ dmFollowReceipt -.->|只有成功回执| verified
 %% @code lifeEventJournal | lib/life-agent-events.mjs | export const LIFE_REST_REASON_CODES
 
 %% @code dmQualify | lib/social-policy-gate.mjs | const canInitiateDm=
+
+  videoReadHandoff["自选 Life 视频读取完成→当前账号原意愿账本，下一模型自愿考虑互动"]
+  videoReadHandoff -.->|仅当前 BV/标题和完成回执，非写权限| planner
+%% @code videoReadHandoff | lib/autonomous-planner.mjs | beginCompletedVideoTodo(fresh,proof,accountBefore)
 ```
 
 ## 四、统一 Life Episode 因果持续性
@@ -597,6 +610,10 @@ flowchart TB
   todoReceipt --> attribution
   reflectionReceipt --> attribution
   firstOther -->|已有真实回执；无需经过首页| record
+  opportunityEntry["Life 选中生活契机并核实公开视频 BV／标题"]
+  todoVideoEntry["Life 选择 watch_video 只读待办，并核验完成记录与同 BV 真实标题"]
+  opportunityEntry -->|原 LifeOpportunities 意愿，不是发言许可| canonical
+  todoVideoEntry -->|原 LifeOpportunities 意愿，不是发言许可| canonical
   videoFeedback -.->|review_video_feedback 不产出平台新回执| menu
   record --> context --> eligible --> due --> menu
   menu -->|自主继续| read -->|成功并核验| record
@@ -656,4 +673,7 @@ professionalMenu -.-> commentObservation
 %% @code commentPublicPerson | lib/life-public-capabilities.mjs | export async function readVerifiedCommenterPublicVideos
 
 %% @code socialContact | lib/life-friend-initiatives.mjs | const outboundEnabled=
+
+%% @code opportunityEntry | lib/life-opportunities.mjs | const beginInspectedOpportunity=
+%% @code todoVideoEntry | lib/life-opportunities.mjs | const beginCompletedVideoTodo=
 ```

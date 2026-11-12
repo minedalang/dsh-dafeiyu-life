@@ -125,3 +125,7 @@ dmFollowReceipt -.->|只有成功回执| verified
 %% @code lifeEventJournal | lib/life-agent-events.mjs | export const LIFE_REST_REASON_CODES
 
 %% @code dmQualify | lib/social-policy-gate.mjs | const canInitiateDm=
+
+  videoReadHandoff["自选 Life 视频读取完成→当前账号原意愿账本，下一模型自愿考虑互动"]
+  videoReadHandoff -.->|仅当前 BV/标题和完成回执，非写权限| planner
+%% @code videoReadHandoff | lib/autonomous-planner.mjs | beginCompletedVideoTodo(fresh,proof,accountBefore)

@@ -43,6 +43,8 @@ flowchart LR
   sourceDiscussion --> opportunities
   sourcePerson --> opportunities
   sourceLife --> intentions
+  opportunities -.->|Life 主动核实同 BV 成功→原账本新意愿| intentions
+  todos -.->|Life 自行完成 watch_video 且有同 BV 任务回执→原账本新意愿| intentions
   episodeState -.->|持续性与优先考虑，并非新权限| resume
   intentions --> resume
   sourceSocial --> social
@@ -116,3 +118,6 @@ dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验�
 %% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=
 
 %% @code privateBound | lib/social-relationship-channels.mjs | export function evaluateDmOpenness
+
+%% @code intentions | lib/life-opportunities.mjs | const beginInspectedOpportunity=
+%% @code todos | lib/life-video-episode-evidence.mjs | export function verifiedCompletedVideoTodo

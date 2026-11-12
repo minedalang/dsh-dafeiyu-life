@@ -1,3 +1,5 @@
+**2.8.0-dev.8 增量：** Life 自己 `inspect_opportunity` 并有原机会账本同 BV 已核实决定后，可以创建 `inspected-opportunity` 原账本意愿；Life 自选 `execute_read` 中的 `watch_video` 有可信完成任务回执、同 BV/标题与当前账号时，可以创建 `completed-video-todo` 原账本意愿。两者复用 `continueLifeRead` 下一次独立模型选择、原 Life/Python 写入门禁和独立平台回执，不要求启动完整视频 Agent；不能将只读元数据当完整观看，也不强迫点赞/评论。源码 `lib/life-opportunities.mjs`、`lib/life-video-episode-evidence.mjs`、`lib/autonomous-planner.mjs`、`index.js`；真实平台仍待验收。
+
 > **dev.6 当前单次意愿接线：** DM/评论原社交模型可一轮输出 `todoTiming=now|later`；合法 now 从原 `OwnerTodos` 原子写入后，在原 Life 运行锁下直接执行同一只读意愿，**没有第二次 Life 模型投票**；later 和旧无 timing 待办仍走普通自主规划。`assessReadExecution` 不得再次用本地情绪分数否决。原 Life 决定的朋友联系只需下游生成文案；已有社交回复中明确而经核验的好友关注采用一次性绑定证明；待办回访由 Life 决定后只生成表达。新的真实公开读取证据之后的**下一步**才允许另外自主选择。权限、账号、防重、未知冻结和真实回执仍独立执行。见 [dev.6 契约](./2.8.0-dev6-single-intent-actions.md)。
 
 > **2.8.0-dev.4 自动恢复补充：** `AutonomousPlanner.start()` 与 `runLease.acquire()` 仅对操作系统证明原 PID 已退出、内容结构完整的原全局规划运行锁进行带竞争保护的自动回收，不改变同账号外发事务或 Life 授权账本。损坏/归属不明的锁继续拒绝，管理页展示停摆诊断。详细审计见 [dev.4 自动恢复契约](./2.8.0-dev4-planner-crash-autorecovery.md)。

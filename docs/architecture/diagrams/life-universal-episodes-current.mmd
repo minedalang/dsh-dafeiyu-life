@@ -28,6 +28,10 @@ flowchart TB
   todoReceipt --> attribution
   reflectionReceipt --> attribution
   firstOther -->|已有真实回执；无需经过首页| record
+  opportunityEntry["Life 选中生活契机并核实公开视频 BV／标题"]
+  todoVideoEntry["Life 选择 watch_video 只读待办，并核验完成记录与同 BV 真实标题"]
+  opportunityEntry -->|原 LifeOpportunities 意愿，不是发言许可| canonical
+  todoVideoEntry -->|原 LifeOpportunities 意愿，不是发言许可| canonical
   videoFeedback -.->|review_video_feedback 不产出平台新回执| menu
   record --> context --> eligible --> due --> menu
   menu -->|自主继续| read -->|成功并核验| record
@@ -87,3 +91,6 @@ professionalMenu -.-> commentObservation
 %% @code commentPublicPerson | lib/life-public-capabilities.mjs | export async function readVerifiedCommenterPublicVideos
 
 %% @code socialContact | lib/life-friend-initiatives.mjs | const outboundEnabled=
+
+%% @code opportunityEntry | lib/life-opportunities.mjs | const beginInspectedOpportunity=
+%% @code todoVideoEntry | lib/life-opportunities.mjs | const beginCompletedVideoTodo=

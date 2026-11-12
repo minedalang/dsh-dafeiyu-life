@@ -104,6 +104,7 @@ flowchart TB
     lifeEpisode["Life Episode · 账号绑定意愿账本 · 最多 5 个已核验步骤"]
     homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
+    inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
     episodeContinuation["有新核验信息后 Life 可自由选择下一步 · 最多追加 4 次 · 可随时休息；不是重复批准旧动作"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
@@ -300,3 +301,6 @@ modelHealthUi -.->|只读本地调用记录| modelJournal
 %% @code modelJournal | lib/model-invocation-journal.mjs | export function createModelInvocationJournal
 
 %% @code accountChannels | lib/social-relationship-channels.mjs | export function createSocialRelationshipChannels
+
+  inspectedSource -->|原机会/待办账本与视频读取证明| lifeEpisode
+%% @code inspectedSource | lib/autonomous-planner.mjs | const next=beginInspectedOpportunity

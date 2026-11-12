@@ -310,6 +310,7 @@ function WatchTab() {
       const [favId, setFavId] = React.useState(null)             // 选中的收藏夹 fid（字符串）
       const [persona, setPersona] = React.useState(null)   // 人设提示词草稿
       const [rl, setRl] = React.useState(null)
+      const [newVerSource, setNewVerSource] = React.useState('npm')
       const [newVer, setNewVer] = React.useState('')       // 发现的新版本号（空 = 没发现）          // 日报形态：full / brief / off
       // ⚠️ 输入框必须绑"本地草稿"：页面每 5 秒轮询 /status，服务端那份会把 config 盖掉
       //    ⇒ 直接绑 cfg 的话，用户打字打到一半就被冲没了 ✗（2026-10-14 陌生人验收时抓到）
@@ -573,6 +574,16 @@ function WatchTab() {
         } catch (e) { say(String(e?.message ?? e), 'warn') } finally { setBusy('') }
       }
 
+      // Read npm registry on entry only; the backend caches this network
+      // lookup. Do not periodically ping the registry along with /status.
+      React.useEffect(() => {
+        let alive = true
+        jget('/update?source=npm').then(r => {
+          if(alive && r?.ok===true && r.source==='npm'){setNewVerSource('npm');setNewVer(r.hasNew===true?r.latest:'')}
+        }).catch(()=>{})
+        return ()=>{alive=false}
+      }, [])
+
       const onCheckUpdate = async () => {
         setBusy('update')
         try {
@@ -580,9 +591,10 @@ function WatchTab() {
           if (r && r.ok && r.latest) {
             const from = r.source === 'github' ? '（npm 上还没发上去，这个版本来自 GitHub）' : ''
             if (r.hasNew) {
+              setNewVerSource(r.source==='github'?'github':'npm')
               setNewVer(r.latest)
               say('有新版 v' + r.latest + '（你的是 v' + r.current + '）' + from + ' —— 点右边的「一键升级」，完了重启一次 dsh', 'warn')
-            } else say('已经是最新版 v' + r.current + from, 'good')
+            } else {setNewVer('');say('没有检测到比 v' + r.current + ' 更新的版本' + from, 'good')}
           } else {
             say('查不到最新版（可能网络不通）—— 你现在的版本是 v' + ((r && r.current) || '?'))
           }
@@ -718,15 +730,15 @@ function WatchTab() {
           h('div',{'data-bd-row':'',style:{justifyContent:'space-between',alignItems:'center'}},
             h('div',{'data-bd-grow':''},h('div',{'data-bd-label':''},'🐳 大肥鱼 · DSH 生活系统'),
               h('div',{'data-bd-note':''},'她会自己去 B站、把重要经历带回主 Session、长期记住主人和朋友；精确档案、长期记忆、梗、好友关系与互动状态都保存在本地。')),
-            h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage()},'打开管理中心 ↗')),
-          h('div',{'data-bd-sec':'','data-bd-group':'overview'},
-            h('div',{'data-bd-h':''},'✨ 2.7.1 核心功能总览'),
-            h('div',{'data-bd-note':''},'Life 自主生活：基于真实线索，自行选择探索或休息。'),
-            h('div',{'data-bd-note':''},'神经回忆场：三维可视化会衰减的记忆，支持语义检索。'),
-            h('div',{'data-bd-note':''},'行动日记：显示有证据的 BV 与 UID 跳转；情绪和经历参与自然表达。'),
-            h('div',{'data-bd-note':''},'统一默认模型：可一键同步所有任务，仍能单独调整。'),
-            h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('life-agent')},'打开 Life 管理 ↗'),
-            h('a',{'data-bd-btn':'',href:'https://github.com/minedalang/dsh-dafeiyu-life/blob/dev/docs/FUTURE_ROADMAP_2.6.1_TO_2.9.1.md',target:'_blank',rel:'noopener noreferrer'},'未来规划 ↗')),
+            h('div',{'data-bd-row':'',style:{position:'relative',gap:'8px'}},
+              newVer ? h('button',{type:'button','data-bd-btn':'',onClick:onUpgrade,
+                disabled:busy==='upgrade',style:{position:'relative',color:'#c62828',borderColor:'#d32f2f',fontWeight:'bold'}},
+                '更新至 v'+newVer,
+                h('span',{title:'检测到新版本',style:{display:'inline-block',position:'absolute',right:'-5px',top:'-5px',
+                  width:'11px',height:'11px',borderRadius:'50%',background:'#e53935',boxShadow:'0 0 0 2px white'}})) : null,
+              h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage()},'打开管理中心 ↗'))),
+          newVer ? h('div',{'data-bd-note':'',style:{marginTop:'6px',color:'#c62828'}},
+            (newVerSource==='github'?'GitHub':'npm')+' 发现新版本 v'+newVer+'；安装后请重启 DSH。') : null,
           manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
 
         /* ── 大肥鱼总开关：永久展示，不隐藏设置，不清除历史 ── */

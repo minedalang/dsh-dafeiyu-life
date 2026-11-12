@@ -5992,6 +5992,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeAccountTag:()=>trustedLifeAccountTag(),
     beginLifeExploration:(id,goal,found,tag)=>lifeOpportunities.beginExploration(id,goal,found,tag),
     beginLifeVideoExploration:(id,goal,found,tag)=>lifeOpportunities.beginVideoExploration(id,goal,found,tag),
+    beginInspectedOpportunity:(...args)=>lifeOpportunities.beginInspectedOpportunity(...args),
+    beginCompletedVideoTodo:(...args)=>lifeOpportunities.beginCompletedVideoTodo(...args),
     recordExplorationCueFailure:(id,code,tag)=>lifeOpportunities.failExplorationCueRead(id,code,tag),
     completeLifeExploration:(id,bvid,receipt,tag)=>lifeOpportunities.completeExploration(id,bvid,receipt,tag),
     failLifeExploration:(id,bvid,tag,code)=>lifeOpportunities.failExplorationRead(id,bvid,tag,code),
@@ -8678,18 +8680,33 @@ logger:{warn:m=>log('社交意图：'+m)}
     //    npm 上可能还没发上去（账号被暂停时会停在旧版），那时候 GitHub 才是最新 ✓
     //    ⇒ 谁给的版本号更新就用谁，并记住来源：一键升级按来源选 `add dsh-dafeiyu-life` / `add github:…` ✓
     if (req.method === 'GET' && path === '/api/bili-duty/update') {
+      // The settings-page badge checks npm only. Manual checks retain the
+      // historical GitHub fallback, without claiming it is an npm release.
+      const npmOnly = url.searchParams.get('source') === 'npm'
       const out = { ok: true, current: myVersion(), latest: '', hasNew: false, source: 'npm', page: 'https://www.npmjs.com/package/dsh-dafeiyu-life' }
       // ⭐ 要比谁更新，不能只比不相等 —— 否则本地版本高于 npm 时会误报有新版
       // ⭐ 2026-10-20：预发布标签要单独看 —— 以前只比三段数字 ⇒ `0.2.0-rc.1` 被当成 [0,2,0]，
       //    跟正式版打平、却比 0.1.18 更大 ⇒ 用户会被提示"升级到 rc 版" ✗；现在数字段相同时**正式版 > 预发布版**
-      const vnum = (v) => String(v || '').trim().replace(/^v/i, '').split('-')[0].split('.').map((x) => parseInt(x, 10) || 0)
-      const isPre = (v) => /-/.test(String(v || '').trim())
-      const cmp = (a, b) => {
-        const x = vnum(a), y = vnum(b)
-        for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0) }
-        const pa = isPre(a), pb = isPre(b)
-        if (pa === pb) return 0
-        return pa ? -1 : 1   // 有预发布标签的更旧
+      const cmp = (a,b) => {
+        const parts = v => /^v?(\d+)\.(\d+)\.(\d+)(?:-([\w.-]+))?$/.exec(String(v||'').trim())
+        const x=parts(a),y=parts(b)
+        if(!x||!y)return 0
+        for(let i=1;i<=3;i++)if(Number(x[i])!==Number(y[i]))return Number(x[i])-Number(y[i])
+        if(!x[4]&&!y[4])return 0
+        if(!x[4])return 1
+        if(!y[4])return -1
+        const pre=s=>s.split('.').map(p=>/^(?:0|[1-9]\d*)$/.test(p)?Number(p):p)
+        const px=pre(x[4]),py=pre(y[4])
+        for(let i=0;i<Math.max(px.length,py.length);i++){
+          if(px[i]===undefined)return -1
+          if(py[i]===undefined)return 1
+          if(px[i]===py[i])continue
+          if(typeof px[i]==='number'&&typeof py[i]==='number')return px[i]-py[i]
+          if(typeof px[i]==='number')return -1
+          if(typeof py[i]==='number')return 1
+          return px[i]<py[i]?-1:1
+        }
+        return 0
       }
       const fresh = (c) => Boolean(c) && Date.now() - c.at < 24 * 3600 * 1000
       // ① npm（不依赖加速器，通常最快）
@@ -8705,7 +8722,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       } catch (e) { log('查 npm 版本没成功（接着查 GitHub）：' + (e?.message ?? e)) }
       // ② GitHub（要加速器；不通就安静跳过，别打扰用户）
       let ghVer = ''
-      try {
+      if(!npmOnly)try {
         if (fresh(ghUpdateCache)) ghVer = ghUpdateCache.latest
         else {
           const r = await fetch('https://api.github.com/repos/minedalang/dsh-dafeiyu-life/contents/package.json', {
@@ -8726,7 +8743,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       if (out.source === 'github') out.page = 'https://github.com/minedalang/dsh-dafeiyu-life'
       out.hasNew = Boolean(out.latest) && cmp(out.latest, out.current) > 0
       lastUpdateSource = out.source
-      if (!out.latest) { out.ok = false; out.error = '两条源都没查到版本号（网络可能不通）' }
+      if (!out.latest) { out.ok = false; out.error = npmOnly?'未从 npm 仓库获取版本号（网络可能不通）':'两条源都没查到版本号（网络可能不通）' }
       return sendJson(res, 200, out)
     }
 
