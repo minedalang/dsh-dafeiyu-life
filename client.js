@@ -311,7 +311,8 @@ function WatchTab() {
       const [persona, setPersona] = React.useState(null)   // 人设提示词草稿
       const [rl, setRl] = React.useState(null)
       const [newVerSource, setNewVerSource] = React.useState('npm')
-      const [newVer, setNewVer] = React.useState('')       // 发现的新版本号（空 = 没发现）          // 日报形态：full / brief / off
+      const [newVer, setNewVer] = React.useState('')       // 发现的新版本号（空 = 没发现）
+      const [npmUpdateState, setNpmUpdateState] = React.useState({status:'checking',latest:'',current:'',error:''})
       // ⚠️ 输入框必须绑"本地草稿"：页面每 5 秒轮询 /status，服务端那份会把 config 盖掉
       //    ⇒ 直接绑 cfg 的话，用户打字打到一半就被冲没了 ✗（2026-10-14 陌生人验收时抓到）
       const [perDay, setPerDay] = React.useState(null)
@@ -568,37 +569,46 @@ function WatchTab() {
       const onUpgrade = async () => {
         setBusy('upgrade')
         try {
-          const r = await jpost('/upgrade', {})
+          const r = await jpost('/upgrade', {source:newVerSource==='npm'?'npm':'github',expectedLatest:newVer})
           // 原来这两句分两次 say，第二句把服务端的 hint 冲掉了 —— 合成一句。（2026-10-16 审查修）
-          say(((r && r.hint) || '正在升级') + ' —— 升级过程写在下面的「主依赖的日志」里；完了记得重启一次 dsh（不重启还是旧版）', 'warn')
+          if(r?.ok!==true) say('未启动升级：'+String(r?.error||r?.hint||'后端未确认'),'warn')
+          else say(((r && r.hint) || '已请求升级') + ' —— 请检查下方「主依赖的日志」；升级完成后重启 dsh', 'warn')
         } catch (e) { say(String(e?.message ?? e), 'warn') } finally { setBusy('') }
       }
 
-      // Read npm registry on entry only; the backend caches this network
-      // lookup. Do not periodically ping the registry along with /status.
+      // A permanent, diagnosable npm version status. Opening settings performs
+      // one query only; no background polling or automatic installation.
+      const readNpmVersion = async ({fresh=false}={}) => {
+        const r = await jget('/update?source=npm'+(fresh?'&refresh=1':''))
+        const status=r?.ok===true&&r.source==='npm'?(r.hasNew===true?'available':'current'):'error'
+        setNpmUpdateState({status,latest:String(r?.latest||''),current:String(r?.current||''),
+          error:status==='error'?String(r?.error||'npm 版本查询失败'):''})
+        setNewVerSource('npm');setNewVer(status==='available'?String(r.latest):'')
+        return r
+      }
       React.useEffect(() => {
-        let alive = true
-        jget('/update?source=npm').then(r => {
-          if(alive && r?.ok===true && r.source==='npm'){setNewVerSource('npm');setNewVer(r.hasNew===true?r.latest:'')}
-        }).catch(()=>{})
+        let alive=true
+        jget('/update?source=npm').then(r=>{
+          if(!alive)return
+          const status=r?.ok===true&&r.source==='npm'?(r.hasNew===true?'available':'current'):'error'
+          setNpmUpdateState({status,latest:String(r?.latest||''),current:String(r?.current||''),
+            error:status==='error'?String(r?.error||'npm 版本查询失败'):''})
+          setNewVerSource('npm');setNewVer(status==='available'?String(r.latest):'')
+        }).catch(e=>alive&&setNpmUpdateState({status:'error',latest:'',current:'',error:String(e?.message||e)}))
         return ()=>{alive=false}
       }, [])
 
       const onCheckUpdate = async () => {
         setBusy('update')
+        setNpmUpdateState(old=>({...old,status:'checking'}))
         try {
-          const r = await jget('/update')
-          if (r && r.ok && r.latest) {
-            const from = r.source === 'github' ? '（npm 上还没发上去，这个版本来自 GitHub）' : ''
-            if (r.hasNew) {
-              setNewVerSource(r.source==='github'?'github':'npm')
-              setNewVer(r.latest)
-              say('有新版 v' + r.latest + '（你的是 v' + r.current + '）' + from + ' —— 点右边的「一键升级」，完了重启一次 dsh', 'warn')
-            } else {setNewVer('');say('没有检测到比 v' + r.current + ' 更新的版本' + from, 'good')}
-          } else {
-            say('查不到最新版（可能网络不通）—— 你现在的版本是 v' + ((r && r.current) || '?'))
-          }
-        } catch (e) { say(String(e?.message ?? e), 'warn') } finally { setBusy('') }
+          const r=await readNpmVersion({fresh:true})
+          if(r?.ok===true){
+            say(r.hasNew===true?'npm 发现新版本 v'+r.latest+'（当前 v'+r.current+'），可点红点更新':
+              'npm 当前没有比 v'+r.current+' 更高的正式版本',r.hasNew===true?'warn':'good')
+          }else say('npm 查询失败：'+String(r?.error||'网络或 npm 服务不可用'),'warn')
+        }catch(e){setNpmUpdateState(old=>({...old,status:'error',error:String(e?.message||e)}));say(String(e?.message||e),'warn')}
+        finally{setBusy('')}
       }
 
       const onCheck = async () => {
@@ -711,6 +721,15 @@ function WatchTab() {
       if(st?.onboarding && !(st.onboarding.welcomeCompleted??st.onboarding.completed)){
         const steps=st.onboarding;
         return h('div',{'data-bd-page':''},
+          h('div',{'data-bd-sec':'',style:{padding:'10px',borderRadius:'12px'}},
+            h('div',{'data-bd-row':''},
+              h('button',{'data-bd-btn':'',onClick:newVer?onUpgrade:onCheckUpdate,
+                disabled:busy==='update'||busy==='upgrade',
+                style:{position:'relative',...(newVer?{color:'#c62828',borderColor:'#d32f2f'}:{})}},
+                newVer?'更新至 v'+newVer:npmUpdateState.status==='checking'?'正在检查 npm…':'检查更新',
+                newVer?h('span',{title:'发现 npm 更新',style:{position:'absolute',right:'-5px',top:'-5px',width:'11px',height:'11px',borderRadius:'50%',background:'#e53935'}}):null)),
+            h('div',{'data-bd-note':''},npmUpdateState.status==='error'?'npm 查询失败：'+npmUpdateState.error:
+              newVer?'npm 有新版 v'+newVer:npmUpdateState.status==='current'?'npm 暂无比本机更高的版本':'正在核实 npm 版本')),
           h('div',{'data-bd-sec':'',style:{padding:'20px',borderRadius:'16px',border:'2px solid #c74351',background:'rgba(218,61,73,.08)'}},
             h('div',{'data-bd-label':'',style:{fontSize:'19px',fontWeight:800,color:'#c74351'}},'🐟 欢迎来到大肥鱼 · 首次配置'),
             h('div',{'data-bd-note':''},'新用户和老用户都会看到一次这份向导；不会清除你的旧资料。B站账号与 Headless 模型是两项必需配置，未完成前所有业务功能锁定。'),
@@ -731,14 +750,20 @@ function WatchTab() {
             h('div',{'data-bd-grow':''},h('div',{'data-bd-label':''},'🐳 大肥鱼 · DSH 生活系统'),
               h('div',{'data-bd-note':''},'她会自己去 B站、把重要经历带回主 Session、长期记住主人和朋友；精确档案、长期记忆、梗、好友关系与互动状态都保存在本地。')),
             h('div',{'data-bd-row':'',style:{position:'relative',gap:'8px'}},
-              newVer ? h('button',{type:'button','data-bd-btn':'',onClick:onUpgrade,
-                disabled:busy==='upgrade',style:{position:'relative',color:'#c62828',borderColor:'#d32f2f',fontWeight:'bold'}},
-                '更新至 v'+newVer,
-                h('span',{title:'检测到新版本',style:{display:'inline-block',position:'absolute',right:'-5px',top:'-5px',
-                  width:'11px',height:'11px',borderRadius:'50%',background:'#e53935',boxShadow:'0 0 0 2px white'}})) : null,
+              h('button',{type:'button','data-bd-btn':'',onClick:newVer?onUpgrade:onCheckUpdate,
+                disabled:busy==='upgrade'||busy==='update',
+                title:npmUpdateState.status==='error'?npmUpdateState.error:'仅通过 npm 官方仓库检测版本，手动更新前再次确认',
+                style:{position:'relative',...(newVer?{color:'#c62828',borderColor:'#d32f2f',fontWeight:'bold'}:{})}},
+                newVer?'更新至 v'+newVer:npmUpdateState.status==='checking'?'正在检查版本…':
+                  npmUpdateState.status==='error'?'更新检查失败 · 重试':'检查更新',
+                newVer?h('span',{title:'npm 检测到更高版本',style:{display:'inline-block',position:'absolute',right:'-5px',top:'-5px',
+                  width:'11px',height:'11px',borderRadius:'50%',background:'#e53935',boxShadow:'0 0 0 2px white'}}):null),
               h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage()},'打开管理中心 ↗'))),
-          newVer ? h('div',{'data-bd-note':'',style:{marginTop:'6px',color:'#c62828'}},
-            (newVerSource==='github'?'GitHub':'npm')+' 发现新版本 v'+newVer+'；安装后请重启 DSH。') : null,
+          h('div',{'data-bd-note':'',style:{marginTop:'6px',...(newVer?{color:'#c62828'}:{})}},
+            npmUpdateState.status==='available'?'npm 发现新版本 v'+newVer+'；点击上方按钮更新并重启 DSH。':
+              npmUpdateState.status==='checking'?'正在查询 npm 仓库版本（不会自动更新）…':
+              npmUpdateState.status==='error'?'npm 查询失败：'+npmUpdateState.error+'。请检查网络后手动重试。':
+              'npm 未发现更高正式版（本地 v'+(st.version||'?')+'；仓库 v'+(npmUpdateState.latest||'?')+'）。'),
           manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
 
         /* ── 大肥鱼总开关：永久展示，不隐藏设置，不清除历史 ── */

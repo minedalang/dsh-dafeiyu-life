@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% Life 事件增量节流、开放式视频回执以及 npm 更新状态为 dev.12 增量，沿原控制/执行安全边界
 %% dev.10：可信评论独立沉默/表达、同一社交凭据、视频已选行为排队；源代码在 dev.10 协议与当前架构审计。
 %% dev.74：三维关系来自当前账号可信事件；公开评论熟悉度不是主动私信授权。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
@@ -312,11 +313,18 @@ modelHealthUi -.->|只读本地调用记录| modelJournal
 
   inspectedSource -->|原机会/待办账本与视频读取证明| lifeEpisode
 %% @code inspectedSource | lib/autonomous-planner.mjs | const next=beginInspectedOpportunity
+
+%% dev.12: the original planner keeps global agency while evidence novelty limits redundant local loops.
+localNovelty["dev.12 新增公开证据才主动唤醒额外局部推理
+无新增时保留未来独立选择"]
+planner -.->|仅节省重复调用，不代替模型决定喜恶| localNovelty
+%% @code localNovelty | lib/autonomous-planner.mjs | no-new-public-evidence
 ```
 
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.12：具跨日公共关系证据的评论者作品为可选只读行动，不是自由 UID 或私信权限
 %% dev.10：同窗口选择携带经清洗的候选公开视频证据；混合私信不带出正文。
 %% dev.74：关系按自然熟悉度/渠道证据/DM Openness 三维分离，只有私人关系才可能授权发起。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
@@ -446,6 +454,7 @@ dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验�
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.12：经核验阅读增量仅作可观测收益，跨日兴趣与反思人格计数只读归因
 %% dev.10：可信回复通过统一意愿密封与原发送事务核验；未尝试和未知送达分离。
 %% dev.74：社交自然熟悉度只读成长；私人联系资格必须与原发送事务分离。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
@@ -578,11 +587,18 @@ dmFollowReceipt -.->|只有成功回执| verified
   videoReadHandoff["自选 Life 视频读取完成→当前账号原意愿账本，下一模型自愿考虑互动"]
   videoReadHandoff -.->|仅当前 BV/标题和完成回执，非写权限| planner
 %% @code videoReadHandoff | lib/autonomous-planner.mjs | registerCompletedVideoRead(fresh,result,scopeBefore)
+
+%% dev.12: independently sourced growth indicators are a read-only projection.
+growthReadOnly["dev.12 匿名探索收益 + 原跨日兴趣 + 人格反思事实
+只读诊断，不修改偏好或发布权限"]
+verified -.->|事实归因，而非新兴趣证明| growthReadOnly
+%% @code growthReadOnly | lib/life-growth-attribution.mjs | export function projectLifeGrowthAttribution
 ```
 
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.12：重复读取抑制额外模型唤醒，五步上限只保存一次未来自愿续章
 %% dev.10：视频 Episode 已选择的写操作与社交共用 FIFO 资格；不重复意愿模型。
 %% dev.74：评论区的自然熟悉度不形成主动私信资格，Episode 不赋予新权限。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
@@ -680,4 +696,18 @@ professionalMenu -.-> commentObservation
 
 %% @code opportunityEntry | lib/life-opportunities.mjs | const beginInspectedOpportunity=
 %% @code todoVideoEntry | lib/life-opportunities.mjs | const beginCompletedVideoTodo=
+
+%% dev.12: non-repeating LOCAL consideration and an optional bounded future chapter.
+novelRead["可信公开事实增量｜只影响额外局部推理，不能投票否决模型意愿"]
+optionalChapter["第 5 步确有新证据 → 最多一份 20 分钟后可选续章
+不复制发送证明、不重读 BV"]
+commenterChoice["评论后开放行为菜单：评论者作品限独立跨日公共证据
+不允许任意 UID 或自动私信"]
+read --> novelRead
+novelRead -.->|最后一步确有新资料| optionalChapter
+optionalChapter -.->|等下次 Life 自主决定| eligible
+commenterChoice -.->|候选非强制动作| menu
+%% @code novelRead | lib/life-episode-value.mjs | export function verifiedEpisodeYield
+%% @code optionalChapter | lib/life-opportunities.mjs | const carryNewEvidence=
+%% @code commenterChoice | lib/life-continuation.mjs | inspect_commenter_works
 ```

@@ -1,4 +1,5 @@
 import {verifyLifePublicMetadata, classifyLifeMetadataFailure, lifeMetadataDiagnostics} from './lib/life-public-metadata.mjs'
+import {projectLifeGrowthAttribution} from './lib/life-growth-attribution.mjs'
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
 import {lifeSettingsV2,planLifeSettingsV2,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
@@ -2394,15 +2395,16 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let upgrading = false
   let lastUpdateSource = 'github'   // 上一次「检查更新」是从哪儿查到新版的：npm / github（一键升级按它选装法）
   let ghUpdateCache = null
-  const runUpgrade = () => {
+  const runUpgrade = (requestedSource='') => {
+    const installSource=requestedSource==='npm'||requestedSource==='github'?requestedSource:lastUpdateSource
     if (upgrading) return { ok: true, busy: true, log: installLogFile, hint: '正在升级，别重复点' }
     upgrading = true
-    let spec = lastUpdateSource === 'github' ? 'github:minedalang/dsh-dafeiyu-life' : 'dsh-dafeiyu-life'
+    let spec = installSource === 'github' ? 'github:minedalang/dsh-dafeiyu-life' : 'dsh-dafeiyu-life'
     ;(async () => {
       try {
       // ⭐ 2026-10-22（用户实证）：没装 git 的机器上 `add github:` 必失败（pnpm 要调 git ls-remote）
       //    ⇒ 从 GitHub 升级时**直接取 Release 里的 tgz 直链**，https 下载，不需要 git ✓
-      if (lastUpdateSource === 'github') {
+      if (installSource === 'github') {
         try {
           const rr = await fetch('https://api.github.com/repos/minedalang/dsh-dafeiyu-life/releases/latest', {
             signal: AbortSignal.timeout(8000),
@@ -6040,7 +6042,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     runLifeCapability:(id,options)=>lifeCapabilities.run(id,options),
     recordVideoStart:()=>lifeAgentEvents.recordVideoStart(),
     recordLifeDecision:row=>lifeAgentEvents.recordDecision(row),
-    getLifeOpportunities:()=>lifeOpportunities.list({limit:4}),
+    getLifeOpportunities:()=>lifeOpportunities.list({limit:20}),
     beginPublicPersonExploration:(...args)=>lifeOpportunities.beginPublicPersonExploration(...args),
     getFriendInitiatives:()=>lifeFriendInitiatives.eligible(),
     recordFriendInitiative:(id,choice)=>lifeFriendInitiatives.mark(id,choice),
@@ -6175,7 +6177,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const comments=result.comments.slice(0,10).map(row=>({rpid:String(row?.rpid||''),
         mid:String(row?.mid||''),content:String(row?.content||'').slice(0,700),
         time:Number(row?.time)||0})).filter(row=>/^\d{1,20}$/.test(row.rpid)&&/^\d{1,20}$/.test(row.mid)&&row.content.trim())
-      return {ok:true,verified:true,bvid,count:result.count,comments}
+      // Opaque commenter portfolio opportunities require BOTH a verified
+      // commenter on this BV AND independently established cross-day public
+      // person evidence. Never offer arbitrary UID exploration or DM rights.
+      const commenters=new Set(comments.map(x=>x.mid))
+      const publicPersonIds=lifeOpportunities.list({limit:30}).filter(x=>x.source==='public-person-observation'&&
+        x.eligible!==false&&commenters.has(String(socialPortrait.resolvePublicOpportunity(x.personKey)?.uid||'')))
+        .slice(0,3).map(x=>x.id)
+      return {ok:true,verified:true,bvid,count:result.count,comments,publicPersonIds}
     }),
     inspectLifeVideoDiscussion:(id,proof,scope)=>lifeOpportunities.inspectVideoDiscussion(id,proof,scope),
     executeOpportunityRead:readLifeVideoMetadata,
@@ -8361,7 +8370,11 @@ logger:{warn:m=>log('社交意图：'+m)}
         todos:read(()=>ownerTodos.status()),
         interests:Array.isArray(interestRows)?interestRows:null,
         relationshipsReady:Boolean(relationshipView&&relationshipView.ok!==false),
-        socialOwner:socialDecisionOwnership.status().socialDecisionOwner}),willingness:lifeWillingness?.status()||{ok:false}})
+        socialOwner:socialDecisionOwnership.status().socialDecisionOwner}),willingness:lifeWillingness?.status()||{ok:false},
+        growthAttribution:read(()=>projectLifeGrowthAttribution({
+          yieldEvidence:lifeOpportunities.status().verifiedExplorationYield,
+          interestEvidence:lifeOpportunityAccountReady()?scopedInterestOpportunityEvidence(stateDir,trustedLifeAccountTag()):[],
+          reflection:lifeReflection.status()}))})
     }
     if (req.method === 'POST' && path === '/api/bili-duty/life-agent/model-backoff/clear') {
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
@@ -8784,7 +8797,17 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
 
     // 「一键升级」：点了它自己跑 add（⚠️ 之后要重启才生效）
-    if (req.method === 'POST' && path === '/api/bili-duty/upgrade') return sendJson(res, 200, runUpgrade())
+    if (req.method === 'POST' && path === '/api/bili-duty/upgrade') {
+      const requested=await readBody(req)
+      if(requested?.source!==undefined&&!['npm','github'].includes(requested.source))
+        return sendJson(res,400,{ok:false,error:'未知升级来源'})
+      // A pinned npm badge must match the server's registry observation.
+      // Otherwise another settings client may have switched installation source.
+      if(requested?.source==='npm'&&(!requested.expectedLatest||
+        String(requested.expectedLatest)!==String(updateCache?.latest||'')))
+        return sendJson(res,409,{ok:false,error:'npm 版本信息已变化，请先重新检查更新'})
+      return sendJson(res,200,runUpgrade(requested?.source||''))
+    }
 
     // 「检查更新」：⚠️ 只在用户点按钮时才联网（不偷偷发请求 ✓），结果缓存一天 ✓
     // ⭐ 2026-10-19（主人："现在自动更新能让扫 github 吗"）：**两条源都问** ——
@@ -8794,6 +8817,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       // The settings-page badge checks npm only. Manual checks retain the
       // historical GitHub fallback, without claiming it is an npm release.
       const npmOnly = url.searchParams.get('source') === 'npm'
+      const refreshNpm = npmOnly && url.searchParams.get('refresh') === '1'
       const out = { ok: true, current: myVersion(), latest: '', hasNew: false, source: 'npm', page: 'https://www.npmjs.com/package/dsh-dafeiyu-life' }
       // ⭐ 要比谁更新，不能只比不相等 —— 否则本地版本高于 npm 时会误报有新版
       // ⭐ 2026-10-20：预发布标签要单独看 —— 以前只比三段数字 ⇒ `0.2.0-rc.1` 被当成 [0,2,0]，
@@ -8823,9 +8847,10 @@ logger:{warn:m=>log('社交意图：'+m)}
       // ① npm（不依赖加速器，通常最快）
       let npmVer = ''
       try {
-        if (fresh(updateCache)) npmVer = updateCache.latest
+        if (!refreshNpm && fresh(updateCache)) npmVer = updateCache.latest
         else {
           const r = await fetch('https://registry.npmjs.org/dsh-dafeiyu-life/latest', { signal: AbortSignal.timeout(8000) })
+          if (!r.ok) throw new Error('npm HTTP '+r.status)
           const j = await r.json()
           npmVer = String(j.version || '')
           updateCache = { at: Date.now(), latest: npmVer }

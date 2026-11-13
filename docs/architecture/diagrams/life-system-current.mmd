@@ -1,3 +1,4 @@
+%% Life 事件增量节流、开放式视频回执以及 npm 更新状态为 dev.12 增量，沿原控制/执行安全边界
 %% dev.10：可信评论独立沉默/表达、同一社交凭据、视频已选行为排队；源代码在 dev.10 协议与当前架构审计。
 %% dev.74：三维关系来自当前账号可信事件；公开评论熟悉度不是主动私信授权。
 %% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
@@ -305,3 +306,9 @@ modelHealthUi -.->|只读本地调用记录| modelJournal
 
   inspectedSource -->|原机会/待办账本与视频读取证明| lifeEpisode
 %% @code inspectedSource | lib/autonomous-planner.mjs | const next=beginInspectedOpportunity
+
+%% dev.12: the original planner keeps global agency while evidence novelty limits redundant local loops.
+localNovelty["dev.12 新增公开证据才主动唤醒额外局部推理
+无新增时保留未来独立选择"]
+planner -.->|仅节省重复调用，不代替模型决定喜恶| localNovelty
+%% @code localNovelty | lib/autonomous-planner.mjs | no-new-public-evidence

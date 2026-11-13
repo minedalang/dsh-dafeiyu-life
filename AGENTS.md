@@ -5,6 +5,8 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 
 # 大肥鱼 · DSH 生活系统：AI 开发约定
 
+> **dev.12 当前收口契约**：评论真实回执只创建开放式探索机会，不自动读热评或外发；局部无事实增量可技术停止，但不得标为鱼鱼主动拒绝。跨日公共人物身份先验和当轮具体评论者回执缺一不可；续章不得突破五步、外发护理、账本冻结。所有新成长指标是只读原证据，不能影响兴趣权重或形成新权限；npm 升级需真实较新版本和用户点击。见 [`dev.12 设计`](docs/architecture/2.8.0-dev12-natural-life-design.md)。
+
 > 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 RC8 方案优先的 UI 接线见 [`管理卡片架构`](docs/architecture/2.7.1-rc8-choice-first-management.md)；管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 - **2.8.0-dev.8 视频探索互动接线**：Life 自主核实视频契机和 Life 自行执行并取得可信完成回执的 `watch_video` 只读待办，可创建同账号原 `life-opportunities` 探索片段；接下来的点赞/收藏/关注/原创主评论仍须下一次 Life 独立选择并经过原平台写入与回执门禁。未完成、错误 BV/标题、过期或账号切换不可创建；相关图和测试见 `docs/architecture/2.8.0-dev8-video-entry-and-update.md`。
