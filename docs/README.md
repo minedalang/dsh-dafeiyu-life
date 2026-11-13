@@ -1,4 +1,4 @@
-**当前版本：`2.8.0-dev.1`（开发预览，正式版未发布）**。先看 [2.8.0 用户 README](../README.md)、[新版说明](../RELEASE_NOTES_v2.8.0.md) 及 [发布就绪审计](architecture/2.8.0-release-readiness.md)。
+**现行开发验收基线：`2.8.0-dev.16`（文档与管理页正在收口；尚未正式发布）**。先看 [2.8.0 用户 README](../README.md)、[新版说明](../RELEASE_NOTES_v2.8.0.md) 及 [发布就绪审计](architecture/2.8.0-release-readiness.md)。
 
 # 文档导航
 
@@ -8,7 +8,7 @@
 
 **历史架构入口（以 docs/architecture/README.md 为准）：** [2.7.1-dev.70 实际接线](architecture/CURRENT-ARCHITECTURE.md) · [2.7.1 RC 场景验收](architecture/CURRENT-RC-ACCEPTANCE.md)。
 
-普通用户先看 [README](../README.md) 和 [首次使用教程](../README.md#-首次使用教程)。
+普通用户先看 [README](../README.md) 和 [开始使用](../README.md#-开始使用)。
 
 - **历史开发预览 2.7.1-dev.58（未发布）**：[Provider 下拉选项 DOM 复用缺陷修复](architecture/2.7.1-dev58-provider-dom-options.md)；修复默认和八项任务选择器选项被搬空，不改变 DSH 模型目录或权限。
 - **历史开发预览 2.7.1-dev.57（未发布）**：[Life 模型故障退避和 Provider 目录故障定位](architecture/2.7.1-dev57-life-model-backoff-and-catalog.md)；以本地失败账本为真实来源，状态仅说明已观察到的错误。

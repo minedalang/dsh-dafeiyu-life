@@ -29,6 +29,7 @@ import re
 import subprocess
 import sqlite3
 import uuid
+from contextlib import closing
 import hashlib
 import hmac
 import inspect
@@ -3250,7 +3251,7 @@ def _reserve_comment_quota() -> tuple[bool, str]:
         return False, "公开评论已被每日硬上限禁用"
     db = _DUTY_HOME / "public-comment-quota.sqlite3"
     try:
-        with sqlite3.connect(str(db), timeout=8) as conn:
+        with closing(sqlite3.connect(str(db), timeout=8)) as conn:
             conn.execute("CREATE TABLE IF NOT EXISTS public_comment_attempt(day TEXT NOT NULL, nonce TEXT PRIMARY KEY)")
             conn.execute("BEGIN IMMEDIATE")
             day = datetime.now().strftime("%Y-%m-%d")
@@ -3277,7 +3278,7 @@ def _comment_quota_preflight() -> tuple[bool, str]:
     if not db.is_file():
         return True, ""
     try:
-        with sqlite3.connect(db.as_uri() + "?mode=ro", uri=True, timeout=3) as conn:
+        with closing(sqlite3.connect(db.as_uri() + "?mode=ro", uri=True, timeout=3)) as conn:
             exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='public_comment_attempt'").fetchone()
             if not exists:
                 return True, ""

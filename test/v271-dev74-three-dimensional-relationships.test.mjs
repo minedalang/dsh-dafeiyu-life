@@ -8,7 +8,7 @@ import {createLifeFriendInitiatives} from '../lib/life-friend-initiatives.mjs'
 import {createSocialPolicyGate} from '../lib/social-policy-gate.mjs'
 import {createSocialRelationshipIndex} from '../lib/social-relationship-index.mjs'
 const DAY=86_400_000, NOW=Date.parse('2026-11-11T12:00:00Z'),A='a'.repeat(16)
-function using(t){const home=mkdtempSync(join(tmpdir(),'dsh-3d-'));const channels=createSocialRelationshipChannels({dataDir:join(home,'account-A'),now:()=>NOW});t.after(()=>{channels.close();rmSync(home,{recursive:true,force:true})});return {home,channels}}
+function using(t){const home=mkdtempSync(join(tmpdir(),'dsh-3d-'));const channels=createSocialRelationshipChannels({dataDir:join(home,'account-A'),now:()=>NOW});const handles=[channels];t.after(()=>{try{for(const db of handles)db.close()}finally{rmSync(home,{recursive:true,force:true})}});return {home,channels,track:db=>{handles.push(db);return db}}}
 function evidence(channels,uid,channel,direction,n,day=0){for(let i=0;i<n;i++){
  const r=channels.observe({uid,source:channel,direction,eventId:`${uid}-${channel}-${direction}-${day}-${i}`,at:NOW-(5-day)*DAY});assert.equal(r.ok,true)
 }}
@@ -53,10 +53,10 @@ test('已有白名单授权也不得绕过 DM 资格；关闭或拒联立即撤�
  x.setBlocked(false);x.cfg.dmWatch=false;assert.equal(x.e.eligible()[0].outboundEnabled,false)
 })
 test('新渠道账本账号隔离，旧版综合关系索引不能升级成私人联系资格',t=>{
- const {home,channels}=using(t);establish(channels,'34567')
- const other=createSocialRelationshipChannels({dataDir:join(home,'account-B'),now:()=>NOW});t.after(()=>other.close())
+ const {home,channels,track}=using(t);establish(channels,'34567')
+ const other=track(createSocialRelationshipChannels({dataDir:join(home,'account-B'),now:()=>NOW}))
  assert.equal(other.get('34567'),null)
- const old=createSocialRelationshipIndex({dataDir:home,now:()=>NOW});t.after(()=>old.close())
+ const old=track(createSocialRelationshipIndex({dataDir:home,now:()=>NOW}))
  for(let day=0;day<6;day++)old.observe({uid:'34567',source:'comment',direction:day%2?'incoming':'outgoing',eventId:'legacy-'+day,at:NOW-(6-day)*DAY})
  assert.equal(old.get('34567').dmOpenness,undefined)
  assert.equal(other.get('34567'),null)

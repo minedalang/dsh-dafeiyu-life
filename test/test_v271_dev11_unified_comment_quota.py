@@ -20,7 +20,7 @@ class SharedCommentQuotaTests(unittest.TestCase):
         selected = [node for node in MODULE.body if isinstance(node, ast.FunctionDef)
                     and node.name in ('_reserve_comment_quota', '_comment_quota_preflight')]
         self.assertEqual(len(selected), 2)
-        env = {'os': os, 'sqlite3': sqlite3, 'datetime': datetime, 'uuid': uuid,
+        env = {'os': os, 'sqlite3': sqlite3, 'datetime': datetime, 'uuid': uuid, 'closing': closing,
                '_DUTY_HOME': Path(directory)}
         exec(compile(ast.Module(body=selected, type_ignores=[]), str(SOURCE), 'exec'), env)
         return env['_reserve_comment_quota'], env['_comment_quota_preflight']

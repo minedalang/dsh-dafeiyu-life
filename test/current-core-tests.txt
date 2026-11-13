@@ -32,3 +32,6 @@ v271-dev4-life-nested-read-identity.test.mjs
 v271-dev2-context-lazy-retrieval.test.mjs
 v280-dev14-test-runner-profiles.test.mjs
 v280-dev16-fast-dm-progressive.test.mjs
+v280-dev17-dm-settings-cleanup.test.mjs
+
+v280-dev17-owner-reciprocity-action-ui.test.mjs

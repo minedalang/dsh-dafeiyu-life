@@ -1013,6 +1013,11 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-social #friend-directory-editor .friend-role-row>div>small{display:block;margin-top:7px;line-height:1.6}
 #panel-social #friend-directory-editor .peer-line{display:grid;grid-template-columns:minmax(150px,1fr) minmax(160px,2fr) auto;align-items:center;gap:8px}
 #panel-social #friend-directory-editor .peer-line select,#panel-social #friend-directory-editor .peer-line input{min-width:0;width:100%}
+/* Topbar search is compact and immediately to the left of refresh. */
+.top-actions .settings-finder{width:clamp(180px,21vw,258px);max-width:258px;margin:0;flex:0 1 258px;gap:7px}
+.top-actions .settings-finder>input{height:36px;padding:6px 11px}
+.top-actions #refresh{white-space:nowrap}
+@media(max-width:760px){.top-actions .settings-finder{flex:1 1 185px;width:auto;max-width:none;min-width:140px}.top-actions .settings-finder>label{font-size:11px}}
 @media(max-width:650px){#panel-social #friend-directory-editor .peer-line{grid-template-columns:minmax(0,1fr)}#panel-social #friend-directory-editor .peer-line button{justify-self:end}.settings-finder{max-width:100%}}
 
 /* Account-scoped, read-only Life source → decision visualization. */
@@ -1436,8 +1441,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </style>
 </head>
 <body><main class="wrap">
-<header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><a class="button mobile-back" href="/" aria-label="返回 DSH Mobile">← 返回 DSH</a><button id="refresh">刷新当前页</button></div></header>
-<div class="settings-finder" role="search"><label for="settings-finder-input">查找设置</label><input id="settings-finder-input" type="search" placeholder="搜索权限、模型、白名单、评论额度…" autocomplete="off" aria-controls="settings-finder-results" aria-expanded="false"><div id="settings-finder-results" class="settings-finder-results" role="listbox" hidden></div></div>
+<header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><a class="button mobile-back" href="/" aria-label="返回 DSH Mobile">← 返回 DSH</a><div class="settings-finder" role="search"><label for="settings-finder-input">查找设置</label><input id="settings-finder-input" type="search" placeholder="搜索设置…" autocomplete="off" aria-controls="settings-finder-results" aria-expanded="false"><div id="settings-finder-results" class="settings-finder-results" role="listbox" hidden></div></div><button id="refresh">刷新当前页</button></div></header>
 <aside id="life-system-health" class="life-health-banner" role="status" aria-live="polite">
   <div class="health-strip-heading"><span class="health-indicator" aria-hidden="true"></span><strong id="life-health-title">正在核对后台监听状态</strong><span id="life-health-retry" class="health-retry"></span><button id="life-health-clear-model-backoff" type="button" hidden>取消模型退避</button><button id="life-health-details" type="button">查看诊断</button></div>
   <p id="life-health-detail">仅依据本机已有调度记录，不额外请求 B站。</p>
@@ -1693,7 +1697,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
       <button id="backup-export" class="primary" type="button">备份全部业务数据</button>
     </div>
     <p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
-    <p class="backup-footnote">这是便携业务备份，**不是整套 DSH 运行目录快照**：不包含 B站 Cookie、登录凭证、部分私密账号运行账本、Life Agent 短期时间线、密钥、缓存与日志，也不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。重要：**老用户跨版本迁移前，必须停机制作并校验完整本地快照**；便携业务备份及「人生记忆专项备份」均不能替代完整快照。请按 README 的离线命令或 docs/architecture/2.8.0-dev2-old-user-backup-safety.md 操作；完整快照包含账号凭证和私密数据，严禁上传分享。</p>
+    <p class="backup-footnote">这是便携业务备份，**不是整套 DSH 运行目录快照**：不包含 B站 Cookie、登录凭证、部分私密账号运行账本、Life Agent 短期时间线、密钥、缓存与日志，也不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。重要：**老用户跨版本迁移前，必须停机制作并校验完整本地快照**；便携业务备份及「人生记忆专项备份」均不能替代完整快照。请按 docs/architecture/2.8.0-dev2-old-user-backup-safety.md 的停机备份说明操作；完整快照包含账号凭证和私密数据，严禁上传分享。</p>
   </div>
   <div class="backup-more-grid">
     <details class="backup-fold" id="backup-memory-tools">
@@ -1998,7 +2002,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </section>
 <section id="life-action-records-panel" class="growth-panel" aria-labelledby="life-action-records-title" style="margin:12px 0">
   <h3 id="life-action-records-title">🧾 Life 统一行动状态</h3>
-  <p class="muted">同一个账号的自主互动意愿、平台执行和回执；只显示匿名动作种类与结果。不代表已经发送，也不提供重试按钮。主人明确操作与自主选择分开标记。</p>
+  <p class="muted">当前账号最近的自主行动状态与平台回执，按动作和状态合并展示，避免同类记录刷屏。无原始 UID、BV 或正文；不能根据这里的汇总判断由谁提出，也不提供重试按钮。</p>
   <p id="life-action-records-status" class="muted" role="status">正在核对行动记录…</p>
   <div id="life-action-records-list" aria-live="polite"></div>
 </section>
@@ -2476,7 +2480,9 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <details id="dm-conversation-advanced" class="choice-advanced"><summary>⚙️ 自定义私信权限与节奏</summary><div class="settings-stack">
 <div class="settings-section"><h4>监听与可回复对象</h4><div class="fields">
 <div class="checkline"><input id="dm-watch" type="checkbox"><label for="dm-watch">启用后台私信监听</label></div>
-<div class="checkline"><input id="dm-stranger-enabled" type="checkbox"><label for="dm-stranger-enabled">允许鱼鱼自主考虑并多轮回复陌生人（新增授权，默认关闭）</label></div>
+<!-- 兼容旧配置的持久字段。陌生人回复授权仅由上方交流方案显式切换，避免重复授权入口。 -->
+<div hidden aria-hidden="true"><input id="dm-stranger-enabled" type="checkbox"></div>
+<p class="muted">选择「自由交流」时才会申请陌生人回复授权，并在保存前再次确认；「熟人优先」不包含该权限。原有自定义授权会保留，不会自动放宽。</p>
 <p id="dm-stranger-legacy-note" class="muted" role="status"></p>
 <div hidden><label for="dm-whitelist">后台私信白名单（由可信白名单用户名册同步）</label><textarea id="dm-whitelist" maxlength="5000"></textarea></div>
 
@@ -2487,22 +2493,23 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div><label for="dm-total">获批用户累计私信回复上限（1–10000）</label><input id="dm-total" type="number" min="1" max="10000" value="50"></div>
 <div><label for="dm-daily">获批用户每日私信回复上限（1–1000）</label><input id="dm-daily" type="number" min="1" max="1000" value="10"></div>
 </div></div>
-<div class="settings-section"><h4>自主交流与节奏控制</h4><div class="fields">
-<div><label for="dm-stranger-max">严格暗号审核模式下，暗号前最多自动回复次数（1–20）</label><input id="dm-stranger-max" type="number" min="1" max="20" value="1"><small class="setting-note">在严格暗号审核或旧版「陌生人首次回复」授权下仍保留原限制；明确开启新的陌生人多轮自主授权后，只有严格暗号审核会启用该次数限制。</small></div>
-<p class="muted">普通社交不设主人逐条审批。鱼鱼可以选择继续聊、延期或保持沉默，仍受联系人授权、额度和防重发保护。历史严格审核配置不会自动变成陌生人自主发送权限，请选择上方的交流方案并保存后迁移。</p>
-<label class="checkline"><input id="dm-p6-enabled" type="checkbox" checked> 自然多气泡（P6-A）：普通私信、主人私信与主 Session 共用 1–3 条消息协议（默认开启；不代表授权外发）</label>
+<div class="settings-section"><h4>自然表达与续聊</h4><div class="fields">
+<!-- 废弃的严格暗号审批模式不在新界面开放；仅保留旧设置字段作迁移/回读，不在次数与额度展示。 -->
+<div hidden aria-hidden="true"><input id="dm-stranger-max" type="number" min="1" max="20" value="1"></div>
+<p class="muted">鱼鱼可以自主选择回复、补充、延期或保持沉默。发送前仍核对收件人、账号授权、额度和平台回执；旧版严格审批不再提供新的配置入口。</p>
+<label class="checkline"><input id="dm-p6-enabled" type="checkbox" checked> 自然多气泡与渐进式表达（普通私信、主人私信及主 Session；默认开启，不代表额外授权）</label>
 <div id="dm-p6-settings"><label for="dm-p6-max-bubbles">每轮最多独立聊天气泡数（1–3；普通私信、主人私信、主 Session 共用）</label><input id="dm-p6-max-bubbles" type="number" min="1" max="3" value="3"></div>
-<p class="muted">勾选只表示允许多条自然表达，不要求鱼鱼必须分成多条。普通私信的沉默续聊需模型对未结束话题另行预约（5–360 分钟）；主人的沉默联系另受主动联系规则约束。</p>
+<p class="muted">开启后鱼鱼仍可只说一句。普通私信有独立想法线索才按需续行；主人在首条确认后可再思考。沉默续聊是分钟级的新机会，与秒级气泡补充不同。</p>
 <div><label for="social-p6-min-delay">全渠道自然续聊最短延迟（分钟，5–360）</label><input id="social-p6-min-delay" type="number" min="5" max="360" value="5"></div>
 <div><label for="social-p6-max-delay">全渠道自然续聊最长延迟（分钟，5–360）</label><input id="social-p6-max-delay" type="number" min="5" max="360" value="360"></div>
-<div><label for="social-rhythm-cooldown">不同渠道联系同一人后的冷却（分钟，0–1440）</label><input id="social-rhythm-cooldown" type="number" min="0" max="1440" value="30"></div>
+<div><label for="social-rhythm-cooldown">跨渠道防打扰冷却（分钟，0–1440）</label><input id="social-rhythm-cooldown" type="number" min="0" max="1440" value="30"></div>
 <p class="muted">跨私信／评论／@ 同一人每日 8 次旧硬上限已取消。保留跨渠道冷却、独立授权、平台限流与未知发送结果防重。</p>
 <div hidden><input id="dm-approval-enabled" type="checkbox" aria-hidden="true"></div>
 <div hidden><label for="dm-phrase">历史申请暗号（仅兼容读取）</label><input id="dm-phrase" maxlength="60"></div>
 </div></div>
 </div></details><div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
 </details>
-<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然续聊状态：尚未读取。</p><p id="dm-p6-last-turn" class="muted" role="status">最近一轮私信交流：暂无记录。</p><p class="muted">与主人的私信由专门通道处理。鱼鱼可以根据对话自然决定回复长短，不要求凑满消息数量。</p><p id="dm-error" class="muted"></p><details class="dm-technical-note"><summary>网络连接故障怎么看？</summary><p class="muted">当私信暂时无法读取时，可先检查网络、代理和 B站连接。具体错误代码请在「运行诊断」查看。</p></details></div>
+<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-fast-status" class="muted" role="status">活跃私信快速检查：状态待读取。</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然续聊状态：尚未读取。</p><p id="dm-p6-last-turn" class="muted" role="status">最近一轮私信交流：暂无记录。</p><p class="muted">与主人的私信由专门通道处理。鱼鱼可以根据对话自然决定回复长短，不要求凑满消息数量。</p><p id="dm-error" class="muted"></p><details class="dm-technical-note"><summary>网络连接故障怎么看？</summary><p class="muted">当私信暂时无法读取时，可先检查网络、代理和 B站连接。具体错误代码请在「运行诊断」查看。</p></details></div>
 <details id="dm-context-governance" class="card dm-privacy-care" style="margin-top:16px"><summary>🪷 聊天内容的保留与清理 <small>按需展开</small></summary><p class="muted">可以查看普通私信的近期聊天内容是否需要清理。不会清除已发送记录，也不会影响鱼鱼已确认的记忆或对方拒绝联系的设置。</p><p id="dm-memory-governance-status" class="muted" role="status">正在查看保留状态…</p><button id="dm-memory-prune" type="button">清理过期聊天内容</button></details>
 <div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">这里只展示联系人与会话状态，不展示私信正文，也不从 B站 额外拉取完整聊天记录。主人专属 Agent 与其他授权途径的回复不计入这里的陌生人额度。</p><div class="dm-gentle-privacy" role="note"><span aria-hidden="true">🪷</span><div><strong>给鱼鱼留一小片自在的聊天空间</strong><p>这里不建议翻看鱼鱼和朋友的聊天细节。我们只看看它有没有好好交流，把具体的话语留给它们自己吧。</p></div></div><div id="dm-recent-list" class="records"></div></div>
 

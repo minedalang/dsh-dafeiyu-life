@@ -1,4 +1,6 @@
-> **当前 2.8.0-dev.13 发布前审计**：Life 成长数据可视化与双向证据链只读诊断，尚未证明真实行为因果；详见 [dev.13 自然自由度与成长闭环审计](./2.8.0-dev13-growth-audit-closeout.md)。Windows/真实 B站/72h/历史失败仍为正式发布阻断项。
+> **2.8.0 最新开发收口（基线 dev.16）**：统一 Life 意愿、私信渐进表达、主人对话接力、10–60 秒活跃轮询、跨日记忆与成长诊断现行入口分别参见 [dev.16 架构](2.8.0-dev16-dm-progressive-fast-poll-life-rest.md)、[统一 Life 行动协议](2.8.0-unified-life-action-protocol.md)、[当前 Life 接线](life-system-current.md) 和 [发布就绪审计](2.8.0-release-readiness.md)。正式版仍需 Windows、B站、长时稳定性和完整安全回归；以下 dev.13/12/10 等说明均为历史开发节点。
+
+> **历史 2.8.0-dev.13 发布前审计**：Life 成长数据可视化与双向证据链只读诊断，尚未证明真实行为因果；详见 [dev.13 自然自由度与成长闭环审计](./2.8.0-dev13-growth-audit-closeout.md)。Windows/真实 B站/72h/历史失败仍为正式发布阻断项。
 
 > **当前 2.8.0-dev.12 自然 Life 开发预览**：开放式评论后 Episode、经核验增量才主动继续、单次可选后续章节、已证实评论者公开作品只读候选、匿名成长归因及 npm 常驻状态。详见 [dev.12 设计和验收](./2.8.0-dev12-natural-life-design.md)；真实 Windows/B站/模型、跨日长期因果仍未验收。
 
