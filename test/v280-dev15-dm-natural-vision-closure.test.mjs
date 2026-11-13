@@ -40,24 +40,21 @@ test('ordinary DM retains up to three distinct images from one authenticated tur
     assert.equal(new Set(f.sent.map(x=>x.eventId)).size,2);
     assert.equal(f.agent.status().p6LastTurn.proposed,2);
     assert.equal(f.agent.status().p6LastTurn.confirmed,2);
-    assert.equal(f.agent.status().p6LastTurn.reconsideration,'scheduled');
+    assert.equal(f.agent.status().p6LastTurn.reconsideration,undefined);
   }finally{await f.cleanup()}
 });
 
-test('due silence reconsideration can end in genuine model-selected silence and is explicitly diagnosed',async()=>{
-  const f=await makeDm({turnReply:req=>req.trigger==='scheduled'?{action:'skip',messages:[]}:
-    {action:'reply',messages:['聊得很开心，有空继续。'],idleReconsiderMinutes:5,idleReconsiderReason:'open-conversation'}});
-  try{
-    await f.agent.poll();f.inbox.push(row('a','那个话题我们下次继续聊',{imageUrl:pic(1)}));
-    assert.equal((await f.agent.poll()).sent,1);
-    assert.equal(f.agent.status().p6LastTurn.reconsideration,'scheduled');
-    f.advance(300001);
-    assert.equal((await f.agent.poll()).sent,0);
-    assert.equal(f.models.length,2);
-    assert.equal(f.sent.length,1);
-    assert.equal(f.agent.status().p6LastTurn.reconsideration,'model-chose-skip');
-  }finally{await f.cleanup()}
-});
+test('旧延迟续聊不会因时间经过而再次调用模型',async()=>{
+ const f=await makeDm({turnReply:()=>({action:'reply',messages:['这一段说完啦'],topicState:'settled'})})
+ try{
+  await f.agent.poll();f.inbox.push(row('a','这话题说完啦',{imageUrl:pic(1)}))
+  assert.equal((await f.agent.poll()).sent,1)
+  f.advance(300001)
+  assert.equal((await f.agent.poll()).sent,0)
+  assert.equal(f.models.length,1)
+  assert.equal(f.sent.length,1)
+ }finally{await f.cleanup()}
+})
 
 test('owner DM uses the same optional bounded image observation before the existing model decision',async()=>{
   const dataDir=await mkdtemp(join(tmpdir(),'dafeiyu-dev15-owner-vision-'));
@@ -117,8 +114,8 @@ test('Life DM prompt invites meaningful multiple bubbles but never forces an exa
     const result=await batcher.generate({kind:'dm',uid:'200',text:'你好呀',socialAutonomy:true,threadKey:'dm:200',trigger:'incoming',p6MaxBubbles:3});
     assert.equal(result.action,'reply');
     assert.deepEqual(result.messages,['这一句就够了']);
-    assert.match(seen[0],/独立的真实意思|两个可独立表达的真实念头/);
-    assert.match(seen[0],/绝不为设置开关而凑数|不能为了凑多条而拆句/);
+    assert.match(seen[0],/独立意思|有承接/);
+    assert.match(seen[0],/禁止拆句凑数/);
   }finally{batcher.stop()}
 });
 

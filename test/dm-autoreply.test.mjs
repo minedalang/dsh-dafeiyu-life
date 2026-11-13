@@ -160,7 +160,7 @@ test('recent conversation list returns only bounded local snippets', async()=>{
   assert.equal(rows[0].strangerRepliesLimit,null,'strict approval disabled means no fixed stranger reply cap');
 });
 
-test('one DM turn can send up to three natural bubbles and reserve one delayed supplement',async()=>{
+test('one DM turn sends independent bubbles without reserving a delayed supplement',async()=>{
   const m=await mk();const agent=m.make({generateReply:async req=>{
     assert.equal(req.socialAutonomy,true);assert.equal(req.trigger,'incoming');assert.equal(req.threadKey,'dm:200');
     return {action:'reply',messages:['第一句','第二句'],followUpMinutes:5};
@@ -168,10 +168,8 @@ test('one DM turn can send up to three natural bubbles and reserve one delayed s
   await agent.poll();m.inbox.push(msg('200','1','今天有点开心'));
   assert.equal((await agent.poll()).sent,2);
   assert.deepEqual(m.sent.map(x=>x.text),['第一句','第二句']);
-  const ledger=JSON.parse(await readFile(join(m.path,'social-continuity','intentions.json'),'utf8'));
-  assert.equal(ledger.entries.length,1);
-  assert.equal(ledger.entries[0].purpose,'delayed-supplement');
-  assert.equal(ledger.entries[0].status,'scheduled');
+  const {existsSync}=await import('node:fs');
+  assert.equal(existsSync(join(m.path,'social-continuity','intentions.json')),false);
 });
 
 test('a newer message arriving between bubbles stops the remaining burst and is handled next poll',async()=>{
@@ -200,36 +198,31 @@ test('a newer message arriving while the model is thinking cancels the stale dra
   assert.equal(calls,2);
 });
 
-test('DM defer creates a reconsideration; due wakeup re-evaluates and requires a real receipt',async()=>{
-  const m=await mk();let turn=0;
-  const agent=m.make({generateReply:async req=>{
-    turn++;
-    if(turn===1){assert.equal(req.trigger,'incoming');return {action:'defer',notBefore:m.params.now()+5*60_000};}
-    assert.equal(req.trigger,'scheduled');assert.equal(req.scheduledPurpose,'silence-reconsideration');
-    return {action:'reply',messages:['过了一会儿，我又想起来一件事。']};
-  },send:async item=>{m.sent.push(item);return {ok:true,receiptId:'verified-msg-key'};}});
-  await agent.poll();m.inbox.push(msg('200','1','刚才想问你一个问题'));
-  assert.equal((await agent.poll()).sent,0);
-  assert.equal((await agent.listRecentConversations())[0].recent.at(-1).role,'user');
-  m.clockForward(5*60_000+1);
-  assert.equal((await agent.poll()).sent,1);
-  assert.equal(m.sent.length,1);
-  const ledger=JSON.parse(await readFile(join(m.path,'social-continuity','intentions.json'),'utf8'));
-  assert.equal(ledger.entries[0].status,'sent');
-  assert.ok(ledger.entries[0].receiptHash);
-});
-
-test('a newer incoming DM cancels an older deferred intention before it can send',async()=>{
+test('DM defer means no reply this turn; elapsed time alone cannot schedule a reply',async()=>{
   const m=await mk();let calls=0;
-  const agent=m.make({generateReply:async()=>{calls++;return calls===1
-    ?{action:'defer',notBefore:m.params.now()+5*60_000}:'接住你刚刚的新话题';}});
-  await agent.poll();m.inbox.push(msg('200','1','先前的话题'));
-  await agent.poll();m.clockForward(5*60_000+1);m.inbox.push(msg('200','2','我换个问题'));
-  assert.equal((await agent.poll()).sent,1);
-  assert.equal(calls,2,'only the new incoming message is generated; the old scheduled task is cancelled');
-  const ledger=JSON.parse(await readFile(join(m.path,'social-continuity','intentions.json'),'utf8'));
-  assert.equal(ledger.entries[0].status,'cancelled');
-});
+  const agent=m.make({generateReply:async()=>{calls++;return {action:'defer'};}})
+  await agent.poll();m.inbox.push(msg('200','1','刚才想问你一个问题'));
+  assert.equal((await agent.poll()).sent,0)
+  m.clockForward(8*60_000)
+  assert.equal((await agent.poll()).sent,0)
+  assert.equal(calls,1)
+  const {existsSync}=await import('node:fs')
+  assert.equal(existsSync(join(m.path,'social-continuity','intentions.json')),false)
+})
+
+test('a new incoming DM after defer creates a fresh reply, never replays the earlier one',async()=>{
+  const m=await mk();let calls=0
+  const agent=m.make({generateReply:async()=>++calls===1?{action:'defer'}:'接住你刚刚的新话题'})
+  await agent.poll();m.inbox.push(msg('200','1','先前的话题'))
+  assert.equal((await agent.poll()).sent,0)
+  m.clockForward(5*60_000+1)
+  m.inbox.push(msg('200','2','我换个问题'))
+  assert.equal((await agent.poll()).sent,1)
+  assert.equal(calls,2)
+  assert.equal(m.sent.length,1)
+  const {existsSync}=await import('node:fs')
+  assert.equal(existsSync(join(m.path,'social-continuity','intentions.json')),false)
+})
 
 test('legacy one-shot stranger permission does not silently become ongoing chat on 2.7.0 upgrade',async()=>{
   const m=await mk({config:{whitelist:[],strangerEnabled:true,legacyStrangerOnce:true,strangerMaxReplies:1,approvalEnabled:false}});

@@ -53,23 +53,21 @@ test('关系冷却可运行时配置，沉默后也进入冷却，无每日上�
  } finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('旧延期参数仍存在，但新卡片冷却与私信授权不混用',()=>{
+test('已删除旧预约设置，新的自然表达卡片仍独立于私信授权',()=>{
  const js=read('lib/management-console.js'),html=read('lib/management-console.html'),index=read('index.js')
- assert.match(html,/旧版延期预约与跨渠道防打扰/)
- assert.match(html,/旧预约最短延期/)
- assert.match(index,/delayMinMinutes:cfg\.socialP6MinDelayMinutes/)
+ assert.doesNotMatch(html,/旧版延期预约与跨渠道防打扰|旧预约最短延期/)
+ assert.doesNotMatch(index,/socialP6MinDelayMinutes|socialP6MaxDelayMinutes/)
+ assert.doesNotMatch(js,/socialP6MinDelayMinutes|socialP6MaxDelayMinutes/)
  assert.match(js,/naturalThoughtOwnerMinutes:boundedInt/)
- assert.match(js,/socialP6MinDelayMinutes:minDelay/)
  const group=js.match(/const dmPlans=(\{[\s\S]*?\n  \});/)
  assert.ok(group)
  assert.doesNotMatch(group[1],/dmP6Enabled|naturalThought/)
 })
 
-// Model output is accepted as one intent; the topic state only suppresses
-// unsolicited followup scheduling and is never a second model gate.
-test('私信互动模型在原生成结果里保留结束状态并过滤旧延期提案',()=>{
- assert.match(read('lib/interaction-batch.mjs'),/topicState:\(\['settled','waiting'\]/)
- assert.match(read('lib/interaction-batch.mjs'),/const followUpMinutes=!\['settled','waiting'\]/)
+test('互动模型结构化输出不再携带旧预约参数',()=>{
+ const source=read('lib/interaction-batch.mjs')
+ assert.match(source,/topicState/)
+ assert.doesNotMatch(source,/followUpMinutes:|idleReconsiderMinutes:|p6MinDelayMinutes|p6MaxDelayMinutes/)
 })
 
 test('互动模型一次生成回复和 settled 状态，原授权校验不再二次判断',async()=>{
@@ -101,7 +99,8 @@ test('普通私信话题 settled 后即使抽中额外思考也不再补话或�
   clock+=1000;await engine.poll()
   assert.deepEqual(sends,['这一段说完啦'])
   assert.equal(extras,0)
-  assert.equal(engine.status().p6.counts.scheduled||0,0)
+  assert.equal(engine.status().p6,undefined)
+  assert.doesNotMatch(read('lib/dm-autoreply.mjs'),/scheduleContinuity|ledgerFor/)
   // A genuinely new incoming message should remain eligible for a new decision.
   topic='open';clock+=40*60_000
   queue.push({senderUid:'88888',messageId:'88888:2',timestampMs:clock,incoming:true,text:'对了，想问新问题'})

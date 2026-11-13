@@ -18,7 +18,7 @@ test('严格暗号旧配额仅兼容迁移，当前自然表达与跨渠道防�
   assert.match(html,/<div hidden aria-hidden="true"><input id="dm-stranger-max"/)
   assert.match(html,/<h4>🌱 自然表达与续聊 · 独立方案<\/h4>/)
   assert.match(html,/id="dm-p6-enabled"/)
-  assert.match(html,/id="social-p6-min-delay"/)
+  assert.doesNotMatch(html,/id="social-p6-min-delay"/)
   assert.match(html,/id="social-rhythm-cooldown"/)
   assert.match(js,/dmP6MaxBubbles:boundedInt/)
   assert.match(js,/socialRhythmCrossChannelMinutes:boundedInt/)

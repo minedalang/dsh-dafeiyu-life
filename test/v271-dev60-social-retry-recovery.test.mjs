@@ -5,7 +5,6 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createCommentInteract} from '../lib/comment-interact.mjs';
 import {createDmAutoReply} from '../lib/dm-autoreply.mjs';
-import {createSocialContinuityLedger} from '../lib/social-continuity-ledger.mjs';
 const DAY=86_400_000,T=Date.parse('2026-11-11T00:00:00Z'),quiet={warn(){},error(){}};
 async function workspace(fn){const dir=await mkdtemp(join(tmpdir(),'dsh-dev60-social-retry-'));try{return await fn(dir)}finally{await rm(dir,{recursive:true,force:true})}}
 const notice=(id,t=T)=>({user:{mid:123,uname:'viewer'},item:{business:'评论',business_id:1,subject_id:987654321,source_id:String(id),root_id:777,target_id:777,source_content:'鱼还在吗',target_reply_content:'我先前的留言',timestamp:Math.floor(t/1000)}});
@@ -78,27 +77,3 @@ test('Life 授权复核/表达校验错误与模型生成失败分开诊断',()=
  assert.equal(calls,2)
 }));
 const dmMessage=(t)=>({senderUid:'200',messageId:'source-message-one',timestampMs:t,text:'有什么新鲜事吗？',incoming:true});
-test('私信延期遇模型429不等于 Life 沉默，保留同一个续行任务有界重试',()=>workspace(async dir=>{
- let t=T,items=[],calls=0,sends=0;
- const x=createDmAutoReply({dataDir:dir,now:()=>t,selfUid:'900',logger:quiet,getConfig:()=>({enabled:true,whitelist:['200'],p6Enabled:true,delayMinMinutes:5,delayMaxMinutes:360,historyLimit:30}),
-  fetchIncoming:async()=>items,generateReply:async()=>{calls++;if(calls===1)return {action:'defer',notBefore:t+5*60000};if(calls===2)throw Error('HTTP 429 All providers are saturated');return {action:'skip',messages:[]}},
-  send:async()=>{sends++;return {ok:true,receiptId:'should-not-send'}}});
- await x.poll();items.push(dmMessage(T));await x.poll();assert.equal(calls,1);
- let state=await localState(dir,'dm-autoreply-state.json');assert.equal(state.people['200'].seen.length,1);assert.equal(state.people['200'].lastRepliedAt,0);
- t+=5*60000+1000;await x.poll();assert.equal(calls,2);assert.equal(sends,0);
- const ledger=createSocialContinuityLedger({dataDir:dir,accountUid:'900',now:()=>t});
- assert.equal(ledger.status().counts.scheduled,1);assert.equal(ledger.status().counts.skipped,0);assert.equal(ledger.status().nextAt,t+15*60000);
- const saved=await localState(dir,'social-continuity/intentions.json');assert.equal(saved.entries[0].lastPreflightFailure,'model-unavailable');
- t+=5*60000;await x.poll();assert.equal(calls,2);
- t+=10*60000;await x.poll();assert.equal(calls,3);assert.equal(ledger.status().counts.skipped,1);assert.equal(sends,0);
-}));
-test('私信延期模型持续故障：最多两次安全延期，最后明确 failed 而非 skipped 或重复发送',()=>workspace(async dir=>{
- let t=T,items=[],calls=0,sends=0;
- const x=createDmAutoReply({dataDir:dir,now:()=>t,selfUid:'900',logger:quiet,getConfig:()=>({enabled:true,whitelist:['200'],p6Enabled:true,delayMinMinutes:5,delayMaxMinutes:360}),
-  fetchIncoming:async()=>items,generateReply:async()=>{calls++;if(calls===1)return {action:'defer',notBefore:t+5*60000};throw Error('429 providers saturated')},
-  send:async()=>{sends++;return {ok:true,receiptId:'never'}}});
- await x.poll();items.push(dmMessage(T));await x.poll();t+=5*60000;await x.poll();t+=15*60000;await x.poll();t+=15*60000;await x.poll();
- const ledger=createSocialContinuityLedger({dataDir:dir,accountUid:'900',now:()=>t});
- assert.equal(ledger.status().counts.failed,1);assert.equal(ledger.status().counts.skipped,0);assert.equal(calls,4);assert.equal(sends,0);
- await x.poll();assert.equal(calls,4);
-}));

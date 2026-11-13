@@ -50,10 +50,9 @@ test('relationship-dependent public social half life is separate from private DM
   assert.ok(friendDays>newDays)
 })
 
-test('natural DM bubbles and silence reconsideration are gated, not compulsory',()=>{
-  const source=readFileSync(new URL('../lib/dm-autoreply.mjs', import.meta.url),'utf8')
-  assert.match(source,/p6MaxBubbles:clamp\(config\.p6MaxBubbles,1,3,3\)/)
-  assert.match(source,/idleRequested=decision\.idleReconsiderMinutes>0/)
-  assert.match(source,/\['open-conversation','explicit-check-back'\]/)
-  assert.match(source,/const eligible=dmConversationPhase\(latest\.text\)!=='closed'/)
+test('自然多气泡与关系冷却独立；没有旧沉默预约代码',()=>{
+ const source=readFileSync(new URL('../lib/dm-autoreply.mjs', import.meta.url),'utf8')
+ assert.match(source,/p6MaxBubbles:clamp\(config\.p6MaxBubbles,1,3,3\)/)
+ assert.match(source,/createNaturalExpressionOpportunity/)
+ assert.doesNotMatch(source,/idleRequested=decision\.idleReconsiderMinutes>0|scheduleContinuity/)
 })
