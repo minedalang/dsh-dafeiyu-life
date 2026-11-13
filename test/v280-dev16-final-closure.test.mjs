@@ -18,43 +18,39 @@ function fakeAgent(){
   return {agent,emit,claim,steered,followups,cancels}
 }
 
-test('main Session uses the SAME live agent after a confirmed first bubble for optional post-delivery thought',()=>{
+test('main Session sends only model-authored independent bubbles and never rethinks on delivery alone',()=>{
   const h=fakeAgent(),c=createSessionMessageBurstController({agent:h.agent,logger:{warn(){}}})
   h.emit('session/event',null,{type:'turn/start',data:{turn:11}})
-  assert.deepEqual(c.start(['我刚想到一个细节'],{afterReceipt:true}),{ok:true,queued:1,afterReceipt:true})
-  assert.equal(h.followups.length,0,'before a visible assistant message there is no post-delivery continuation')
+  assert.deepEqual(c.start(['今天看到了一段好视频。','里面的想法让我想起昨天的聊天。']),{ok:true,queued:2})
+  assert.equal(h.followups.length,0)
   h.claim(h.steered[0],11)
-  h.emit('session/event',null,{type:'assistant/message',data:{turn:11,message:{content:[{type:'text',text:'我刚想到一个细节'}]}}})
+  h.emit('session/event',null,{type:'assistant/message',data:{turn:11,message:{content:[{type:'text',text:'今天看到了一段好视频。'}]}}})
   h.emit('agent/turn-stopping',{turn:11,signal:new AbortController().signal})
   assert.equal(h.followups.length,1)
-  assert.match(h.followups[0].content[0].text,/保持沉默/)
-  assert.equal(c.status().postReceiptQueued,true)
+  assert.match(h.followups[0].content[0].text,/里面的想法让我想起昨天的聊天/)
   h.emit('session/event',null,{type:'turn/end',data:{turn:11}})
   h.emit('session/event',null,{type:'turn/start',data:{turn:12}})
   h.claim(h.followups[0],12)
-  h.emit('session/event',null,{type:'assistant/message',data:{turn:12,message:{content:[{type:'text',text:'其实我还想说一点'}]}}})
+  h.emit('session/event',null,{type:'assistant/message',data:{turn:12,message:{content:[{type:'text',text:'里面的想法让我想起昨天的聊天。'}]}}})
   h.emit('agent/turn-stopping',{turn:12,signal:new AbortController().signal})
-  assert.equal(h.followups.length,1,'never create a third unrequested continuation')
+  assert.equal(h.followups.length,1,'receipt alone cannot trigger speculative third bubble')
   assert.deepEqual(c.status(),{active:false})
   c.dispose()
 })
 
-test('a silent/aborted first bubble never triggers optional second thought',()=>{
+test('a single message stays a normal reply; old afterReceipt does not force speculative continuation',()=>{
   const h=fakeAgent(),c=createSessionMessageBurstController({agent:h.agent,logger:{warn(){}}})
   h.emit('session/event',null,{type:'turn/start',data:{turn:2}})
-  assert.equal(c.start(['先说一句'],{afterReceipt:true}).ok,true)
-  h.claim(h.steered[0],2)
-  h.emit('agent/turn-stopping',{turn:2,signal:new AbortController().signal})
+  assert.deepEqual(c.start(['只说一句'],{afterReceipt:true}),{ok:false,reason:'use-ordinary-single-reply'})
+  assert.equal(h.steered.length,0)
   assert.equal(h.followups.length,0)
-  assert.deepEqual(c.status(),{active:false})
-  assert.equal(c.start(['单气泡']).ok,false,'ordinary single-bubble replies are not converted to unsolicited followups')
   c.dispose()
 })
 
-test('owner message cancels pending optional post-delivery continuation and keeps the owner inbox',()=>{
+test('new owner message cancels remaining model-authored bubbles, but not the owner input',()=>{
   const h=fakeAgent(),c=createSessionMessageBurstController({agent:h.agent,logger:{warn(){}}})
   h.emit('session/event',null,{type:'turn/start',data:{turn:4}})
-  c.start(['第一句'],{afterReceipt:true});h.claim(h.steered[0],4)
+  c.start(['第一句','第二句']);h.claim(h.steered[0],4)
   h.emit('session/event',null,{type:'assistant/message',data:{turn:4,message:{content:[{type:'text',text:'第一句'}]}}})
   h.emit('agent/turn-stopping',{turn:4,signal:new AbortController().signal})
   assert.equal(h.followups.length,1)
@@ -125,8 +121,8 @@ test('reflection failures preserve stage codes and do not count as fish silence'
   }finally{h.dispose()}
 })
 
-test('main session tool exposes opt-in post-receipt path without auto-continuation for ordinary replies',()=>{
+test('main Session tool asks for model-authored semantic bubbles without after-receipt prediction',()=>{
   const source=readFileSync(new URL('../lib/long-term-memory.mjs',import.meta.url),'utf8')
-  assert.match(source,/after_receipt/)
-  assert.match(source,/afterReceipt:args\?\.after_receipt===true/)
+  assert.match(source,/对于有多个实际表达要点的回复/)
+  assert.doesNotMatch(source,/after_receipt/)
 })

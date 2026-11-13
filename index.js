@@ -4510,6 +4510,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getConfig: dmConfig,
     canSendDm: args=>socialPolicyGate.canSendDm(args),
     canContinue:(uid,channel)=>socialPortrait.continuationAllowed(uid,{channel}),
+    // Familiarity only adjusts extra model-thought cooldown, never DM permission.
+    getRelationshipStage:uid=>{try{return existingRelationshipIndex()?.get(uid,relationshipOptions())?.stage||'new'}catch{return 'new'}},
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     fetchIncoming: getNewDmMessages,
     fetchApprovalHistory: async (uid='') => {

@@ -38,17 +38,17 @@ test('transport extends only after a confirmed first send, never on unknown or d
  assert.equal(noDuplicate.planned,1)
 })
 
-test('non-owner DM triggers zero extra calls without cue and exactly one after verified first bubble',async()=>mk(async dataDir=>{
+test('non-owner DM occasionally reconsiders after confirmed delivery without a predeclared cue',async()=>mk(async dataDir=>{
  const inbox=[],sent=[];let gen=0,extra=0,clock=t0
  const config={enabled:true,strangerEnabled:true,p6Enabled:true,p6MaxBubbles:3,whitelist:[],whitelistCooldownSeconds:0,dmActivePollEnabled:true,dmActivePollSeconds:10,dmActiveWindowSeconds:180}
- let mode='no-cue'
- const engine=createDmAutoReply({dataDir,getConfig:()=>config,selfUid:'999',now:()=>clock,fetchIncoming:async()=>inbox,
+ let mode='no-cue', chance=1
+ const engine=createDmAutoReply({dataDir,getConfig:()=>config,selfUid:'999',now:()=>clock,reconsiderRandom:()=>chance,fetchIncoming:async()=>inbox,
    send:async req=>{sent.push(req.text);return {ok:true,receiptId:'receipt-'+sent.length}},
    generateReply:async()=>{gen++;return {action:'reply',messages:['一句完整回答'],continuation:mode==='cue'?{intent:'maybe',thoughtCue:'想再问一个独立问题'}:{intent:'none'}}},
    generateContinuation:async()=>{extra++;return '事后补充的问题'},logger:{warn(){},error(){}}})
  await engine.poll();inbox.push(input('1','你好'));assert.equal((await engine.poll()).sent,1)
  assert.equal(extra,0);assert.deepEqual(sent,['一句完整回答'])
- mode='cue';clock+=20_000;inbox.push(input('2','想听后续'));assert.equal((await engine.poll()).sent,2)
+ mode='no-cue';chance=0;clock+=20_000;inbox.push(input('2','想听后续'));assert.equal((await engine.poll()).sent,2)
  assert.equal(extra,1);assert.deepEqual(sent.slice(-2),['一句完整回答','事后补充的问题'])
  assert.equal(engine.status().p6LastTurn.postSendStage,'post-send-confirmed')
  assert.equal(engine.nextFastUid(),'') // no immediate redundant read after a confirmed outgoing bubble
@@ -117,10 +117,10 @@ test('active lane is account-scoped and does not retry failed model every ten se
 }))
 
 
-test('owner direct chat may think once more after confirmed first bubble; no compulsory second message',async()=>mk(async dataDir=>{
+test('owner direct chat may occasionally think once more without a predicted cue',async()=>mk(async dataDir=>{
  const cfg={masterEnabled:true,dmWatch:true,dmOwnerUid:'123',ownerDmAgentEnabled:true,ownerDmReadCommandsEnabled:true,dmP6Enabled:true,dmP6MaxBubbles:3}
  let modelCalls=0;const sent=[]
- const agent=createOwnerDmAgent({dataDir,getConfig:()=>cfg,now:()=>t0,
+ const agent=createOwnerDmAgent({dataDir,getConfig:()=>cfg,now:()=>t0, getAccountTag:()=> 'a'.repeat(16),reconsiderRandom:()=>0,
    invokeModel:async()=>{modelCalls++;return modelCalls===1
      ?JSON.stringify({action:'reply',messages:['我先说一句。'],continuation:{intent:'maybe',thoughtCue:'后来想到的小事'}})
      :JSON.stringify({action:'continue',reply:'又想起一个小问题。'})},
@@ -134,10 +134,10 @@ test('owner direct chat may think once more after confirmed first bubble; no com
  assert.equal((await agent.processMessage({incoming:true,senderUid:'123',messageId:'o1',timestampMs:t0,text:'跟我聊聊'})).skipped,'duplicate')
 }))
 
-test('owner stop after first receipt never sends a filler bubble',async()=>mk(async dataDir=>{
+test('owner no-extra opportunity returns one message without filler',async()=>mk(async dataDir=>{
  const cfg={masterEnabled:true,dmWatch:true,dmOwnerUid:'123',ownerDmAgentEnabled:true,ownerDmReadCommandsEnabled:true,dmP6Enabled:true,dmP6MaxBubbles:3}
  let modelCalls=0;const sent=[]
- const agent=createOwnerDmAgent({dataDir,getConfig:()=>cfg,now:()=>t0,
+ const agent=createOwnerDmAgent({dataDir,getConfig:()=>cfg,now:()=>t0,getAccountTag:()=> 'a'.repeat(16),reconsiderRandom:()=>1,
   invokeModel:async()=>{modelCalls++;return modelCalls===1
    ?JSON.stringify({action:'reply',messages:['今晚就说到这。']})
    :JSON.stringify({action:'stop',reply:''})},
@@ -145,5 +145,5 @@ test('owner stop after first receipt never sends a filler bubble',async()=>mk(as
   send:async r=>{sent.push(r.text);return {ok:true,receiptId:'owner-'+sent.length}},logger:{warn(){}}})
  agent.primeInbox([])
  const result=await agent.processMessage({incoming:true,senderUid:'123',messageId:'o2',timestampMs:t0,text:'晚安'})
- assert.equal(result.ok,true);assert.deepEqual(sent,['今晚就说到这。']);assert.equal(modelCalls,2)
+ assert.equal(result.ok,true);assert.deepEqual(sent,['今晚就说到这。']);assert.equal(modelCalls,1)
 }))

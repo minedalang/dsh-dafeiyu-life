@@ -104,7 +104,7 @@ test('owner Bstation DM model may skip silence without sending and without repla
   let t=date(12),sent=[],probes=0,modelCalls=0
   const cfg={masterEnabled:true,lifeAgentMode:'active',ownerSpontaneousChatEnabled:true,
     ownerDmSilenceFollowupEnabled:true,ownerDmAgentEnabled:true,dmWatch:true,dmOwnerUid:'123',ownerContactPreset:'lively',dmP6Enabled:true,dmP6MaxBubbles:3}
-  const client=createOwnerDmAgent({dataDir:dir,now:()=>t,getConfig:()=>cfg,getAccountTag:()=>tag,
+  const client=createOwnerDmAgent({dataDir:dir,now:()=>t,getConfig:()=>cfg,getAccountTag:()=>tag,reconsiderRandom:()=>1,
     getPersona:()=> '大肥鱼长期人格（不包含固定语气强制）',probeOwnerIncoming:async()=>{probes++;return []},
     reserveOwnerContact:()=>{throw Error('skip must never reserve')},
     invokeModel:async prompt=>{modelCalls++;return JSON.stringify({action:modelCalls===1?'reply':'skip',text:'刚刚看到的真有趣',messages:modelCalls===1?['刚刚看到的真有趣']:[]})},
