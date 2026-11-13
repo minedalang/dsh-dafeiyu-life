@@ -64,7 +64,7 @@ test('quiet cursor uses periodic safety rescan and refuses corrupted data',()=>{
   let time=1_800_000_000_000;const dir=work(),row={uid:'10002',unread:0,lastTs:1_800_000_000}
   const cursor=createDmPollCursor({dataDir:dir,now:()=>time});cursor.observed(row);cursor.commit()
   time+=15*60_000;assert.equal(cursor.shouldRead(row),false)
-  time+=15*60_000+1;assert.equal(cursor.shouldRead(row),true)
+  time+=75*60_000+1;assert.equal(cursor.shouldRead(row),true) // now > default 90-minute quiet rescan
   writeFileSync(join(dir,'dm-poll-cursor.json'),'{broken')
   assert.throws(()=>createDmPollCursor({dataDir:dir}),/游标损坏/)
 })
@@ -156,7 +156,7 @@ test('DM cursor only commits after auto-reply dedupe safely persists and prevent
   assert.equal(sent.length,1)
   assert.equal(cursor.shouldRead(session()),false)
   assert.equal((await make().poll()).sent,0)
-  clock+=31*60_000
+  clock+=91*60_000 // current quietRescanMinutes default is 90, not the obsolete 30-minute default
   assert.equal(cursor.shouldRead(session()),true)
   assert.equal((await make().poll()).sent,0,'safety rescan must not re-send a persisted message')
   assert.equal(sent.length,1)

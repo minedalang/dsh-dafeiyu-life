@@ -1615,8 +1615,10 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <label class="checkline"><input id="bili-favorite-delete" type="checkbox" data-inverted-permission="true">禁止删除鱼鱼自己创建的主题收藏夹</label>
 <p class="muted">只允许删除本插件账本记录、且已核验为当前账号自己的收藏夹；每日最多 1 次，不会删除其他收藏夹或默认收藏夹。删除是不可逆的外部操作。</p>
 <label class="checkline"><input id="bili-agent-follow" type="checkbox" data-inverted-permission="true">禁止自主关注／取关 UP 主</label>
-<p class="muted" id="bili-agent-follow-explain">默认允许提出关注机会，但必须是已核实的长期好友；是否关注由 Life 独立判断，发送仍需授权与平台回执。已有用户明确关闭的设置不会被升级覆盖。</p><label class="checkline"><input id="bili-dm-follow" type="checkbox">允许 Life 在与长期好友私信后自主考虑关注（新安装默认开启）</label>
-<p class="muted">至少 3 次真实双向交流，跨度至少 24 小时；仅已核验好友，不能由对方的话自动触发。仍需鱼鱼独立决定、Life 复核、登录账号与平台关系回读，每日共用最多 3 次关注额度。</p>
+<p class="muted" id="bili-agent-follow-explain">默认允许提出关注机会，但必须是已核实的长期好友；是否关注由 Life 独立判断，发送仍需授权与平台回执。已有用户明确关闭的设置不会被升级覆盖。</p><label class="checkline"><input id="bili-dm-follow" type="checkbox">允许 Life 对已核验私信联系人自主考虑关注（实际发送对象范围见下方）</label>
+<label for="bili-dm-follow-audience">私信自主关注的授权对象范围</label>
+<select id="bili-dm-follow-audience"><option value="trusted">仅已核验好友（沿用旧版范围）</option><option value="verified-incoming">也允许当前收到真实私信的陌生人（需明确确认）</option></select>
+<p class="muted">鱼鱼可以考虑任何已核验来信人的关注意愿，但实际关注范围默认只覆盖好友。扩大到陌生人必须主动选择并确认；收到“互关”请求不会自动执行。依旧需要独立关注权限、原账号与收件人核验、拒联保护、平台回执和最多每日 3 次关注额度。</p>
 <p class="muted" id="bili-agent-follow-readiness" role="status">自主关注状态：读取中…</p>
 </details>
 </div>
@@ -1978,6 +1980,12 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="growth-panel" style="margin-top:12px"><h4>🔁 决策与成长的双向证据链</h4><div id="life-growth-chain" class="growth-chain" aria-live="polite"></div>
     <p id="life-growth-diagnosis" class="growth-diagnosis" role="status">只有日志支持的事实才会显示为已确认；关联不等于因果。</p></div>
   <p class="growth-footnote">数据窗口不同：探索收益为最近 7 天，决策诊断最多最近 30 轮，兴趣与人格为原账本摘要；不能混合计算成长率。<a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">核对决策回执</a> · <a href="?tab=personality" data-open-tab="personality">查看人格原证据</a></p>
+</section>
+<section id="life-action-records-panel" class="growth-panel" aria-labelledby="life-action-records-title" style="margin:12px 0">
+  <h3 id="life-action-records-title">🧾 Life 统一行动状态</h3>
+  <p class="muted">同一个账号的自主互动意愿、平台执行和回执；只显示匿名动作种类与结果。不代表已经发送，也不提供重试按钮。主人明确操作与自主选择分开标记。</p>
+  <p id="life-action-records-status" class="muted" role="status">正在核对行动记录…</p>
+  <div id="life-action-records-list" aria-live="polite"></div>
 </section>
 <div class="life-plans-shortcut" role="note"><strong>🧭 最近想到的事</strong><p>生活线索、生活契机和待办，现已在「鱼鱼想做」集中查看。这里仍显示真正进行的活动。</p><button type="button" data-open-tab="plans" class="life-action life-sky">打开鱼鱼想做</button></div>
 

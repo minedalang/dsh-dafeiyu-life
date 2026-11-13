@@ -39,7 +39,7 @@ test('asynchronous ledger check retries ONE transient local-only busy read, not 
  const runner=async()=>{calls++;return {stdout:JSON.stringify(calls===1?{ok:false,code:'selection-ledger-busy',rows:[]}:successes)}}
  const r=await readOwnedVideoLedgerForComment({home:'/safe/data',uid:OWNER,runner})
  assert.equal(r.ok,true);assert.equal(r.attempts,2);assert.equal(calls,2)
- assert.deepEqual(explainCommentSelection(r,BV,ROUND),{ok:true})
+ assert.equal(explainCommentSelection(r,BV,ROUND).ok,true);assert.equal(explainCommentSelection(r,BV,ROUND).recovered,false)
 })
 test('missing ledger fails closed without retry; timeout retry is bounded at 2',async()=>{
  let calls=0

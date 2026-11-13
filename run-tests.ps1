@@ -5,6 +5,14 @@ Set-Location -LiteralPath $PSScriptRoot
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $logPath = Join-Path $env:TEMP "dsh-bili-scroll-plus-tests-$stamp.log"
 $script:Results = @()
+# Always preserve the native TAP/traceback output, not only batch exit codes.
+# Files are local diagnostic artifacts; no credentials or model content are added.
+$script:DetailDir = Join-Path $env:TEMP "dsh-bili-scroll-plus-details-$stamp"
+$script:StepLogFiles = @()
+$script:StepNumber = 0
+try { New-Item -ItemType Directory -Path $script:DetailDir -Force | Out-Null }
+catch { Write-Host "诊断日志目录不可用：$($_.Exception.Message)" -ForegroundColor Yellow }
+
 
 try {
     Start-Transcript -Path $logPath -Force | Out-Null
@@ -26,13 +34,26 @@ function Invoke-NativeStep {
     Write-Host ("=" * 72) -ForegroundColor DarkCyan
 
     $exitCode = 1
+    $script:StepNumber++
+    $detailPath = Join-Path $script:DetailDir ("step-{0:D2}.tap.log" -f $script:StepNumber)
+    $outputLines = New-Object 'System.Collections.Generic.List[string]'
     try {
-        & $FilePath @Arguments
+        & $FilePath @Arguments 2>&1 | ForEach-Object {
+            $line = [string]$_
+            $outputLines.Add($line)
+            Write-Host $line
+        }
         $exitCode = $LASTEXITCODE
         if ($null -eq $exitCode) { $exitCode = 0 }
     } catch {
+        $outputLines.Add("diagnostic-runner-exception: $($_.Exception.Message)")
         Write-Host "执行异常：$($_.Exception.Message)" -ForegroundColor Red
         $exitCode = 1
+    } finally {
+        try {
+            [System.IO.File]::WriteAllLines($detailPath, $outputLines.ToArray(), [System.Text.UTF8Encoding]::new($false))
+            $script:StepLogFiles += [pscustomobject]@{ Name=$Name; File=$detailPath; ExitCode=$exitCode }
+        } catch { Write-Host "保存专项 TAP 失败：$($_.Exception.Message)" -ForegroundColor Yellow }
     }
 
     $status = if ($exitCode -eq 0) { "PASS" } else { "FAIL" }
@@ -317,6 +338,23 @@ if ($allPassed) {
     Write-Host "存在失败或跳过的测试；请查看上方输出和日志。" -ForegroundColor Red
 }
 Write-Host "完整日志：$logPath"
+Write-Host "逐批完整 TAP / Python traceback：$script:DetailDir" -ForegroundColor Cyan
+try {
+    $report = New-Object 'System.Collections.Generic.List[string]'
+    $report.Add('# 大肥鱼完整测试失败诊断')
+    $report.Add('')
+    $report.Add('该清单由 run-tests.ps1 实际运行自动生成。打开对应 step-XX.tap.log 查看断言和堆栈。')
+    foreach ($entry in $script:StepLogFiles) {
+        if ($entry.ExitCode -eq 0) { continue }
+        $report.Add('')
+        $report.Add(('## ' + $entry.Name + ' (exit ' + $entry.ExitCode + ')'))
+        $report.Add('Log: ' + [System.IO.Path]::GetFileName($entry.File))
+        $failedRows = @(Select-String -LiteralPath $entry.File -Pattern '^not ok [0-9]+ - ' -Encoding UTF8 -ErrorAction SilentlyContinue)
+        foreach ($row in $failedRows) { $report.Add('- ' + $row.Line) }
+        if ($failedRows.Count -eq 0) { $report.Add('- 此步骤失败，但没有 Node TAP `not ok`；请查看完整日志（可能是 Python traceback 或运行错误）。') }
+    }
+    [System.IO.File]::WriteAllLines((Join-Path $script:DetailDir 'FAILED-TESTS.md'), $report.ToArray(), [System.Text.UTF8Encoding]::new($false))
+} catch { Write-Host "生成失败清单时遇到问题：$($_.Exception.Message)" -ForegroundColor Yellow }
 
 try { Stop-Transcript | Out-Null } catch {}
 

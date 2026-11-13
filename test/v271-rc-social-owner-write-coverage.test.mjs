@@ -19,7 +19,7 @@ test('owner agent passes one verified incoming source to its outbound adapter',(
   agent.primeInbox([])
   const row={incoming:true,senderUid:'123',messageId:'123:m1',timestampMs:Date.now(),text:'你好鱼鱼'}
   assert.equal((await agent.processMessage(row)).ok,true)
-  assert.deepEqual(sent.map(x=>x.eventId),['owner-agent:123:m1'])
+  assert.deepEqual(sent.map(x=>x.eventId),['owner-agent:123:m1:bubble:1']) // per-bubble idempotent key
   assert.equal((await agent.processMessage(row)).skipped,'duplicate')
   assert.equal(sent.length,1)
 }))
@@ -79,7 +79,7 @@ test('production owner DM and TODO branches share decision fence; manual user to
   const sendGate=src.slice(src.indexOf('const lifeDmWithReceipt=async('),src.indexOf('const lifeSocialShadow=createLifeSocialShadow('))
   assert.match(sendGate,/lifeSocialWrite\('dm',\(\)=>socialSendTransaction\.execute/)
   assert.match(sendGate,/extractBiliDmReceiptId\(result\)/)
-  assert.match(agent,/send\(\{uid,text:note,eventId:'owner-agent:'\+id\}\)/)
+  assert.match(agent,/eventId:`owner-agent:\$\{id\}:bubble:\$\{index\+1\}`/) // unique per DM bubble
   assert.match(followup,/send\(\{uid:r\.uid,channel,text:replyText,eventId:r\.key\|\|r\.taskId/)
   const ownerAction=src.slice(src.indexOf('async function runOwnerDmAction('),src.indexOf('const ownerDmAgent=createOwnerDmAgent('))
   assert.match(ownerAction,/case 'message': \{[\s\S]*?lifeSocialWrite\('dm',\(\)=>call\('bili_send_message_manual'/)

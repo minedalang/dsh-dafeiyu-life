@@ -1,6 +1,6 @@
 # 🐟 大肥鱼 · DSH 生活系统
 
-> **坚持鱼的自由发展。** 她可以在真实的经历中探索、回忆、形成兴趣、逐渐认识世界，也可以选择安静下来。所有公开互动都由她自主考虑，并受使用者授权保护。
+> **坚持鱼的自由发展。** 她可以在真实的经历中探索、回忆、形成兴趣、逐渐认识世界，也可以选择安静下来。所有公开互动都由她自主考虑，并受使用者授权保护。 **会回忆，会遗忘，也会成长。**
 
 [![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [![npm 月下载量](https://img.shields.io/npm/dm/dsh-dafeiyu-life?label=monthly%20downloads)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [![npm 年下载量](https://img.shields.io/npm/dy/dsh-dafeiyu-life?label=yearly%20downloads)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [安装与更新](#-开始使用) · [2.8.0 更新说明](RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [提建议 / 报告问题](https://github.com/minedalang/dsh-dafeiyu-life/issues)
 
@@ -25,6 +25,15 @@
 **2.8.0 统一 Life 行动协议：** 只要鱼鱼从当前账号的真实公开视频资料读取获得可信 BV 和标题，就能通过统一观察账本获得同等的后续自主选择机会。这覆盖生活契机、普通只读待办、搜索子视频、社交“现在查看”与邀请、主人私信 Agent 查看；不再要求先启动完整视频 Agent。它可选择**继续了解、点赞、收藏、关注作者、原创主评论或不互动**，但每个动作均受独立证据、原账号权限和平台回执保护。
 
 **一次意愿，不被再次投票：** Life Episode 原模型已决定的具体写入会生成账号、BV、动作和评论原文绑定的一次性凭据，原 Python 视频工具仅验证并消费它，不再重新询问鱼鱼愿不愿意。社交模型已决定的交流意愿只登记，旧版明确请求回退入口改由同一 Life 意愿模型判断。动态风格不再被“14 天内写过认真型就强制换风格”的规则替换。更多调用链和边界见 [统一行动协议](docs/architecture/2.8.0-unified-life-action-protocol.md)。
+
+## 2.8.0-dev.14 · 一个鱼鱼，一套 Life 意愿协议，一套行动记录（开发预览）
+
+- 对真实已核验的私信，**模型可以自主考虑关注发件人**，不再要求先成为好友或满足固定聊天次数；实际关注默认仍只授权已核验好友，设置页可明确确认扩展至已核验陌生来信人。它不自动开启关注权限，也不能因此主动私信陌生人。
+- 私信回复与行动分离：即使鱼鱼选择不回复，也可以独立记录已选的 `follow_dm_contact` 后续意愿。写入前继续核验当前账号、独立关注授权、拒联限制、额度、原消息来源和平台回执。
+- 新增最小化、账号隔离的 `Life Action Records` 状态投影，管理中心可只读查看意愿、等待、阻断、成功和未知送达；持久化文件仅保存哈希标识和状态，**不是发送凭据，重启后不能凭记录自动补发**。
+- 共用外发事实校验阻止在缺乏同一收件人实际关注回执时宣称“已经回关/互关成功”；这只是事实核验，不是第二次意愿投票，也不自动生成固定话术。
+- `run-tests.ps1` 现在逐批保存 UTF-8 原始 TAP 输出和 Python traceback，并自动生成 `FAILED-TESTS.md`；历史失败仍阻断正式发布，不以修改安全断言掩盖。
+- [统一架构与分场景契约](docs/architecture/2.8.0-dev14-one-life-one-action.md)。尚未通过 Windows 实机全量与真实 B站端到端验收，仍不发布正式 2.8.0。
 
 ## 2.8.0-dev.13 · 成长证据可视化与发布前双向审计（开发预览）
 

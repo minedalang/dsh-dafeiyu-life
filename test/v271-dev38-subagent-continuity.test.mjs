@@ -13,7 +13,8 @@ const longHistory=(time=t)=>[...Array(3)].flatMap((_,i)=>[
   {role:'user',text:'我们聊天',at:time-3*86_400_000+i*3600_000},
   {role:'assistant',text:'聊得很开心',at:time-3*86_400_000+i*3600_000+20_000}
 ])
-const candidate=()=>dmContactFollowCandidates({enabled:true,uid:'12345',role:'friend',history:longHistory() ,now:t})
+const candidate=()=>dmContactFollowCandidates({enabled:true,uid:'12345',role:'friend',history:longHistory(),
+  incomingText:'你好，要不要了解一下我的作品？',verifiedIncoming:true,now:t})
 
 test('dev38 同人 Episode 可读、跨 UID 不可读、切号自动隔离',ctx=>{
   const d=dirFor(ctx);let account=A
@@ -38,17 +39,20 @@ test('dev38 视频 Episode 只获得公开视频相关匿名步骤，不泄露�
   assert.equal(JSON.stringify(handoff).includes('dm_reply'),false)
 })
 
-test('dev38 私信关注候选必须开启独立授权、真实双向长期交流和可信联系人',()=>{
-  assert.equal(candidate().length,1)
-  for(const diff of [
-    {enabled:false},{role:'stranger'},{role:'known'},{uid:'12345<script>'},{uid:'9007199254740993'},{optedOut:true},
-    {history:longHistory().slice(0,3)},{history:longHistory(t).map(x=>({...x,at:t-3600_000}))}
-  ])assert.deepEqual(dmContactFollowCandidates({enabled:true,uid:'12345',role:'friend',history:longHistory(),now:t,...diff}),[])
-  assert.deepEqual(validateSubagentNextAction({action:'follow_dm_contact',reason:'因为我们已经连续聊了很久'},candidate()),
-    {action:'follow_dm_contact',reason:'因为我们已经连续聊了很久'})
-  assert.equal(validateSubagentNextAction({action:'follow_dm_contact',reason:'因为我们已经连续聊了很久'},[]),null)
-  assert.equal(validateSubagentNextAction({action:'follow_dm_contact',reason:'好'},candidate()),null)
-  assert.equal(validateSubagentNextAction({action:'follow_dm_contact',reason:'因为我们已经连续聊了很久',uid:'999'},candidate()),null)
+test('2.8.0 私信关注候选由真实消息和独立授权决定，不以好友身份/固定对话次数替代意愿',()=>{
+ assert.equal(candidate().length,1)
+ assert.equal(dmContactFollowCandidates({enabled:true,uid:'12345',role:'stranger',history:[],
+   incomingText:'互关！',verifiedIncoming:true,now:t}).length,1)
+ for(const diff of [
+   {enabled:false},{uid:'12345<script>'},{uid:'9007199254740993'},
+   {optedOut:true},{verifiedIncoming:false},{incomingText:''},{role:'owner'}
+ ])assert.deepEqual(dmContactFollowCandidates({enabled:true,uid:'12345',role:'friend',history:longHistory(),
+   incomingText:'我发来了真实消息',verifiedIncoming:true,now:t,...diff}),[])
+ assert.deepEqual(validateSubagentNextAction({action:'follow_dm_contact',reason:'我愿意根据真实交流考虑关注'},candidate()),
+   {action:'follow_dm_contact',reason:'我愿意根据真实交流考虑关注'})
+ assert.equal(validateSubagentNextAction({action:'follow_dm_contact',reason:'我愿意根据真实交流考虑关注'},[]),null)
+ assert.equal(validateSubagentNextAction({action:'follow_dm_contact',reason:'好'},candidate()),null)
+ assert.equal(validateSubagentNextAction({action:'follow_dm_contact',reason:'有自己的选择',uid:'999'},candidate()),null)
 })
 
 test('dev38 私信模型自己决定要不要提出关注；不存在候选时提议无效',async()=>{
