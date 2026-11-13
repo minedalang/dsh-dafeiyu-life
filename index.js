@@ -1,5 +1,6 @@
 import {verifyLifePublicMetadata, classifyLifeMetadataFailure, lifeMetadataDiagnostics} from './lib/life-public-metadata.mjs'
 import {projectLifeGrowthAttribution} from './lib/life-growth-attribution.mjs'
+import {projectLifeGrowthAudit} from './lib/life-growth-audit.mjs'
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
 import {lifeSettingsV2,planLifeSettingsV2,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
@@ -8371,10 +8372,11 @@ logger:{warn:m=>log('社交意图：'+m)}
         interests:Array.isArray(interestRows)?interestRows:null,
         relationshipsReady:Boolean(relationshipView&&relationshipView.ok!==false),
         socialOwner:socialDecisionOwnership.status().socialDecisionOwner}),willingness:lifeWillingness?.status()||{ok:false},
-        growthAttribution:read(()=>projectLifeGrowthAttribution({
+        growthAudit:read(()=>projectLifeGrowthAudit({runs:lifeDecisionTrace.list({limit:30}).runs})),
+        growthAttribution:read(()=>lifeOpportunityAccountReady()?projectLifeGrowthAttribution({
           yieldEvidence:lifeOpportunities.status().verifiedExplorationYield,
           interestEvidence:lifeOpportunityAccountReady()?scopedInterestOpportunityEvidence(stateDir,trustedLifeAccountTag()):[],
-          reflection:lifeReflection.status()}))})
+          reflection:lifeReflection.status()}):{ok:false,reason:'account-not-ready'})})
     }
     if (req.method === 'POST' && path === '/api/bili-duty/life-agent/model-backoff/clear') {
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')

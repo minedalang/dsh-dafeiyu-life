@@ -1166,6 +1166,32 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-dm #dm-settings-section .checkline,#panel-comments #comments-configuration .checkline{border:1px solid var(--stroke);border-radius:12px;background:var(--panel);padding:11px}
 #panel-dm #dm-legacy-approval-archive{margin-top:20px;padding:9px 15px}#panel-dm #dm-legacy-approval-archive>summary{cursor:pointer;color:var(--muted);font-size:13px}
 
+
+/* 2.8.0-dev.13: read-only growth and agency evidence dashboard. */
+#life-growth-evidence{margin:18px 0;border-radius:16px;padding:19px;border:1px solid var(--stroke);background:var(--panel)}
+#life-growth-evidence .growth-head{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+#life-growth-evidence h3{font-size:17px;margin:2px 0 4px}
+#life-growth-evidence .growth-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
+#life-growth-evidence .growth-kpi{background:var(--tint);border-radius:12px;padding:12px;min-width:0}
+#life-growth-evidence .growth-kpi strong{display:block;font-size:23px;line-height:1.3;font-variant-numeric:tabular-nums}
+#life-growth-evidence .growth-kpi small{color:var(--muted);font-size:12px}
+#life-growth-evidence .growth-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#life-growth-evidence .growth-panel{border:1px solid var(--stroke);border-radius:12px;padding:14px;min-width:0}
+#life-growth-evidence .growth-panel h4{margin:0 0 8px;font-size:14px}
+#life-growth-evidence .growth-measure{display:grid;gap:3px;margin:10px 0}
+#life-growth-evidence .growth-measure-head{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+#life-growth-evidence .growth-meter{height:8px;background:var(--tint);overflow:hidden;border-radius:20px}
+#life-growth-evidence .growth-meter>span{display:block;height:100%;max-width:100%;border-radius:20px;background:var(--action)}
+#life-growth-evidence .growth-meter>span.growth-muted{background:#8297a9}
+#life-growth-evidence .growth-milestones{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+#life-growth-evidence .growth-milestones>span{font-size:12px;padding:5px 9px;background:var(--tint);border:1px solid var(--stroke);border-radius:999px}
+#life-growth-evidence .growth-chain{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+#life-growth-evidence .growth-chain-item{background:var(--tint);border:1px solid var(--stroke);border-radius:12px;padding:12px;min-width:0}
+#life-growth-evidence .growth-chain-item b{display:block;font-size:13px;margin-bottom:4px}
+#life-growth-evidence .growth-chain-item p{font-size:12px;color:var(--muted);margin:0;overflow-wrap:anywhere}
+#life-growth-evidence .growth-footnote{margin:12px 0 0;font-size:12px;color:var(--muted)}
+#life-growth-evidence .growth-diagnosis{margin:12px 0 0;font-size:12px;padding:10px 12px;border-left:3px solid var(--action);background:var(--tint);border-radius:6px}
+@media(max-width:760px){#life-growth-evidence .growth-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#life-growth-evidence .growth-sections{grid-template-columns:1fr}#life-growth-evidence .growth-chain{grid-template-columns:1fr}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1939,6 +1965,20 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <a href="?tab=social" data-open-tab="social" data-open-anchor="social-outreach-section">🐟 自主视频推荐设置</a>
 <a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">🧭 决策回执</a>
 </nav></details>
+<section id="life-growth-evidence" aria-labelledby="life-growth-title">
+  <div class="growth-head"><div><span class="page-eyebrow">EVIDENCE · GROWTH</span><h3 id="life-growth-title">🌱 探索与成长证据</h3>
+    <p class="muted">当前 B站账号的探索、兴趣证据与决策回执，及鱼鱼自身的人格反思。人格不按 B站账号拆分；全部只读，不给鱼鱼自动加兴趣分或人格分。</p></div>
+    <button type="button" id="life-growth-refresh" class="life-action life-sky">刷新证据</button></div>
+  <p id="life-growth-status" role="status" aria-live="polite" class="muted">正在核对当前账号的成长证据…</p>
+  <div id="life-growth-kpis" class="growth-kpis" aria-label="近七天探索收益"></div>
+  <div class="growth-sections">
+    <div class="growth-panel"><h4>🌿 独立兴趣证据</h4><p class="muted">仅列出已有跨日证据的匿名兴趣阶段，不展示人物、话题或原始来源。</p><div id="life-growth-interests" aria-live="polite"></div></div>
+    <div class="growth-panel"><h4>🪴 人格反思证据</h4><p class="muted">观察、建议、采纳是不同状态；采纳也不等于某次视频决定了人格。</p><div id="life-growth-personality" aria-live="polite"></div></div>
+  </div>
+  <div class="growth-panel" style="margin-top:12px"><h4>🔁 决策与成长的双向证据链</h4><div id="life-growth-chain" class="growth-chain" aria-live="polite"></div>
+    <p id="life-growth-diagnosis" class="growth-diagnosis" role="status">只有日志支持的事实才会显示为已确认；关联不等于因果。</p></div>
+  <p class="growth-footnote">数据窗口不同：探索收益为最近 7 天，决策诊断最多最近 30 轮，兴趣与人格为原账本摘要；不能混合计算成长率。<a href="?tab=diagnostics" data-open-tab="diagnostics" data-open-anchor="life-decision-traces-section">核对决策回执</a> · <a href="?tab=personality" data-open-tab="personality">查看人格原证据</a></p>
+</section>
 <div class="life-plans-shortcut" role="note"><strong>🧭 最近想到的事</strong><p>生活线索、生活契机和待办，现已在「鱼鱼想做」集中查看。这里仍显示真正进行的活动。</p><button type="button" data-open-tab="plans" class="life-action life-sky">打开鱼鱼想做</button></div>
 
 
