@@ -3370,7 +3370,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       pendingReview.map(x=>x.bvid).join('、')+'。这些只是可选阅读对象，不要求重评或发表评论；若你自主选择回访，必须本轮重新读取真实视频详情与内容证据，随后用 bili_comment_consideration 提交，由 Life 再次自由决定；不得根据旧简介／旧草稿直接评论。已通过或结果未知的机会不能恢复。':''
     const homeGuidance=homeFirst?'【独立首页漫游轮】只从 bili_home_recommendations 取得本轮首页候选（最多一次）；关键词搜索工具在本轮不可用。接口失败或没有候选时直接结束，不重试、也不降级混入兴趣搜索。你仍可以只读、不选任何作品、不发表评论。':''
     args.push([homeGuidance,pendingGuidance,promptFor({sourceMode:homeFirst?'home':'mixed'}),emotionalState.agentContext()].filter(Boolean).join('\n\n'))
-    log(`本轮视频目标：争取取得 ${cfg.videoAgentReadTargetPerRound} 条内容阅读证据，择优挑选约 ${cfg.videoAgentPickTargetPerRound} 条；提前结束须说明真实原因，不强制凑量`)
+    log(`本轮视频参考范围（非任务配额）：内容阅读约 ${cfg.videoAgentReadTargetPerRound} 条，入选约 ${cfg.videoAgentPickTargetPerRound} 条；鱼鱼可随时依据真实兴趣与信息质量结束，不需要补足差额`)
     log(`本轮已选 ${pickedBeforeRun} 条；鱼鱼自主决定是否继续探索，不设强制选片数量`)
     // ⭐ 这一轮的工作目录 = 使用者（或别的用户）的**工作区** —— 只有这样它的 `AGENTS.md` 才会自动加载。
     // ⭐ 工作目录 = **插件家**：那一轮**被沙箱关着**，只写得了自己工作目录里的东西 ✗
