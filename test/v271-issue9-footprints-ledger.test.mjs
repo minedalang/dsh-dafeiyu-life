@@ -28,15 +28,13 @@ test('完整评论和附图绑定真实成功 rpid，历史 20 字摘要不被�
  assert.match(data.rows[0].url,/comment_root_id=1234567890120/)
 })
 
-test('评论足迹从单一 /recent-comments 回执源读取，并展示保守图文状态',()=>{
+test('删除主 Session 的评论足迹页但保留后台真实评论回执与管理中心图文证据',()=>{
  const frontend=readFileSync(new URL('../client.js',import.meta.url),'utf8')
- assert.match(frontend,/function FootprintComments\(\)/)
- assert.match(frontend,/jget\('\/recent-comments\?limit='/)
+ assert.doesNotMatch(frontend,/function FootprintComments\(\)/)
+ assert.doesNotMatch(frontend,/h\(FootprintComments\)/)
+ assert.doesNotMatch(frontend,/slots\.inject\('conversation\.view'/)
  const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  assert.match(server,/path === '\/api\/bili-duty\/recent-comments'/)
- assert.match(frontend,/h\(FootprintComments\)/)
- assert.match(frontend,/已随评论提交，公开显示未核验/)
- assert.match(frontend,/本地图库原图，非平台显示回执/)
  const admin=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  assert.match(admin,/meme-receipt-preview/)
 })

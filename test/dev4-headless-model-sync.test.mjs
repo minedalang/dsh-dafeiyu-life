@@ -54,7 +54,7 @@ test('管理页必须有明确选择、预览、确认、后台验证和未同�
   const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   for(const id of ['headless-sync-preview','headless-sync-commit','headless-provider-list','headless-sync-status']) assert.match(html,new RegExp(id))
   for(const route of ['/headless-model/status','/headless-model/preview','/headless-model/sync','/headless-model/verify']) assert.ok(js.includes(route),route)
-  assert.match(host,/assertVerifiedHeadless\(args,overlay,\{kind:'main'/)
+  assert.match(host,/assertVerifiedHeadless\(args,overlay,\{kind:homeFirst\?'home':'main'/)
   assert.match(host,/assertVerifiedHeadless\(visionArgs/)
   assert.match(host,/assertVerifiedHeadless\(memArgs/)
   assert.match(host,/hostLlmService\(ctx\)/)

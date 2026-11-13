@@ -41,7 +41,7 @@ test('主 Session 注册单条手动点赞工具，并要求真实 BV、总开�
 
 test('自动刷视频的 MCP 白名单仍不开放主 Session 手动点赞工具',()=>{
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
-  const body=index.slice(index.indexOf('const mcpWhitelist = () =>'),index.indexOf('// 不依赖模型自觉'))
+  const body=index.slice(index.indexOf("const mcpWhitelist = (sourceMode='mixed') =>"),index.indexOf('// 不依赖模型自觉'))
   assert.doesNotMatch(body,/bili_video_like_manual/)
   assert.match(body,/if \(cfg\.autoVideoLike\) list\.push\('bili_video_like'\)/)
 })

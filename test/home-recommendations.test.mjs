@@ -7,14 +7,16 @@ test('homepage recommendations are independent opt-in source and enabled by defa
  const server=src('index.js')
  assert.match(server,/homeRecommendationsEnabled: z\.boolean\(\)\.default\(true\)/)
  assert.match(server,/homeRecommendationsEnabled: true, keywords:/)
- assert.match(server,/if \(cfg\.homeRecommendationsEnabled\) list\.push\('bili_home_recommendations'\)/)
+ assert.match(server,/if \(sourceMode==='home' && cfg\.homeRecommendationsEnabled\) list\.push\('bili_home_recommendations'\)/)
  assert.match(server,/name: 'bili_home_recommendations'/)
 })
-test('Agent freely chooses recommendation/search sources within shared quotas',()=>{
+test('首页漫游和兴趣关键词探索有互斥来源，Life 仍可选择不看或休息',()=>{
  const code=src('index.js')
- for (const txt of ['不强制同时使用全部来源','不强制按来源配比','本轮自主视频探索参考','参考数量不是强制选片指标','自行选择搜索词','自主决定是否查视频详情']) {
-  assert.ok(code.includes(txt),txt)
- }
+ assert.match(code,/sourceMode==='home'\?\[\]:\['bili_search'\]/)
+ assert.match(code,/sourceMode==='home' && cfg\.homeRecommendationsEnabled/)
+ assert.match(code,/首页候选不足可以直接结束，不转关键词搜索/)
+ assert.match(code,/关键词搜索无合适结果可以直接结束，不自动切换首页/)
+ assert.match(code,/兴趣\/生活线索探索/)
 })
 test('Python server limits recommendation list to one round call; nothing is published',()=>{
  const server=src('vendor/bilibili-mcp/mcp_server.py')

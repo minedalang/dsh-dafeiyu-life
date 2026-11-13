@@ -5,20 +5,28 @@ import {readFileSync} from 'node:fs'
 const root=new URL('../',import.meta.url)
 const html=readFileSync(new URL('lib/management-console.html',root),'utf8')
 const index=readFileSync(new URL('index.js',root),'utf8')
+const ui=readFileSync(new URL('lib/management-console.js',root),'utf8')
 
-test('AI 模型页将视频模型与 Life 互动模型真实职责准确呈现',()=>{
-  assert.match(html,/视频模型（视频 Agent）/)
-  assert.match(html,/互动模型（Life 自主决策与社交）/)
-  assert.match(html,/Life 是否开启视频探索、是否委派视频 Agent，由下方「互动模型」负责决定/)
-  assert.match(html,/Life 的核心决策模型/)
+test('AI 模型页按九种实际任务说明质量与成本取舍',()=>{
+  assert.match(html,/按工作选模型，不必九项都选最贵/)
+  for(const name of ['行为决策模型','社交互动模型','主人 Agent 模型','视频 Agent 模型',
+    '视觉识别模型','人生反思与经历提炼模型','人生记忆检索模型','生活动态文案模型','表情包规则优化模型'])
+    assert.ok(html.includes(name),`missing task ${name}`)
+  assert.match(html,/默认复用视频 Agent 模型/)
+  assert.match(html,/文字连接测试不证明识图成功/)
+  assert.match(html,/旧用户未单独配置时继续沿用互动模型/)
+  assert.match(html,/id="models-behaviorDecision"/)
   assert.match(html,/id="models-video"/)
   assert.match(html,/id="models-interaction"/)
-  assert.doesNotMatch(html,/<summary><strong>后台评论与私信模型/)
+  assert.match(ui,/behaviorDecisionModelProvider/)
 })
 
-test('界面改名不更改底层 interaction 和 video 模型路由',()=>{
-  assert.match(index,/modelRoute = 'interaction'/)
+test('Life 决策拥有真实独立模型路由，仍兼容原互动模型',()=>{
+  assert.match(index,/behaviorDecisionModelProvider: z\.string\(\)/)
+  assert.match(index,/route==='behaviorDecision'\?cfg\.behaviorDecisionModelProvider\|\|cfg\.interactionModelProvider/)
+  assert.match(index,/modelRoute:'behaviorDecision'/)
+  assert.match(index,/headless-life-decision-overlay\.yml/)
+  assert.match(index,/recordModelTask\(stateDir,modelRoute\)/)
   assert.match(index,/cfg\.interactionModelProvider\|\|cfg\.pluginDefaultModelProvider/)
   assert.match(index,/cfg\.videoModelProvider\|\|cfg\.pluginDefaultModelProvider/)
-  assert.match(index,/invokeModel:\(prompt,maxChars\)=>invokeInteractionPrompt\(prompt,maxChars\)/)
 })

@@ -76,7 +76,7 @@ test('retirement removes both user interfaces and automatic video DM tool, witho
  assert.doesNotMatch(index,/cfg\.dmMode|cfg\.dmUid|dmUidCache|warmDmUid/)
  assert.doesNotMatch(html,/id="bili-dm-mode"|id="bili-dm-uid"/)
  assert.doesNotMatch(client,/setDmMode|setDmUid|cfg\.dmMode|cfg\.dmUid/)
- const whitelist=index.slice(index.indexOf('const mcpWhitelist = () => {'),index.indexOf('const mcpWhitelist = () => {')+2100)
+ const whitelist=index.slice(index.indexOf("const mcpWhitelist = (sourceMode='mixed') => {"),index.indexOf("const mcpWhitelist = (sourceMode='mixed') => {")+2100)
  assert.match(whitelist,/cfg\.autoComment && Number\(cfg\.commentPerRound\)>0 && Number\(cfg\.commentDailyLimit\)>0/)
  assert.doesNotMatch(whitelist,/list\.push\('bili_send_message'\)/)
  assert.match(index,/call\('bili_send_message_manual'/)
