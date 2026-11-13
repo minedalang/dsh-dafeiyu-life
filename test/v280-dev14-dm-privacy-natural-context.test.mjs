@@ -55,5 +55,5 @@ test('natural DM bubbles and silence reconsideration are gated, not compulsory',
   assert.match(source,/p6MaxBubbles:clamp\(config\.p6MaxBubbles,1,3,3\)/)
   assert.match(source,/idleRequested=decision\.idleReconsiderMinutes>0/)
   assert.match(source,/\['open-conversation','explicit-check-back'\]/)
-  assert.match(source,/if\(followMinutes&&dmConversationPhase\(latest\.text\)!=='closed'/)
+  assert.match(source,/const eligible=dmConversationPhase\(latest\.text\)!=='closed'/)
 })

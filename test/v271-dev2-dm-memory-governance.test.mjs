@@ -101,7 +101,8 @@ test('管理中心能观察来源/清理结果，但无发送权限扩张',()=>{
   assert.match(index,/path === '\/api\/bili-duty\/dm-memory-prune'/);
   assert.match(index,/PRUNE_EXPIRED_DM_CONTEXT/);
   assert.match(html,/id="dm-context-governance"/);
-  assert.match(html,/主人专属私信 Agent、人生记忆、好友画像各有独立来源与权限/);
+  assert.match(html,/id="dm-context-governance"/);
+  assert.match(html,/给鱼鱼留一小片自在的聊天空间/);
   assert.match(js,/loadDmMemoryGovernance/);
   assert.match(js,/staleContextEntries/);
 });
