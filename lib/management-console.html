@@ -2503,21 +2503,34 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div><label for="dm-total">获批用户累计私信回复上限（1–10000）</label><input id="dm-total" type="number" min="1" max="10000" value="50"></div>
 <div><label for="dm-daily">获批用户每日私信回复上限（1–1000）</label><input id="dm-daily" type="number" min="1" max="1000" value="10"></div>
 </div></div>
-<div class="settings-section"><h4>自然表达与续聊</h4><div class="fields">
-<!-- 废弃的严格暗号审批模式不在新界面开放；仅保留旧设置字段作迁移/回读，不在次数与额度展示。 -->
-<div hidden aria-hidden="true"><input id="dm-stranger-max" type="number" min="1" max="20" value="1"></div>
-<p class="muted">鱼鱼可以自主选择回复、补充、延期或保持沉默。发送前仍核对收件人、账号授权、额度和平台回执；旧版严格审批不再提供新的配置入口。</p>
-<label class="checkline"><input id="dm-p6-enabled" type="checkbox" checked> 自然多气泡与渐进式表达（普通私信、主人私信及主 Session；默认开启，不代表额外授权）</label>
-<div id="dm-p6-settings"><label for="dm-p6-max-bubbles">每轮最多独立聊天气泡数（1–3；普通私信、主人私信、主 Session 共用）</label><input id="dm-p6-max-bubbles" type="number" min="1" max="3" value="3"></div>
-<p class="muted">开启后鱼鱼仍可只说一句。普通私信有独立想法线索才按需续行；主人在首条确认后可再思考。沉默续聊是分钟级的新机会，与秒级气泡补充不同。</p>
-<div><label for="social-p6-min-delay">全渠道自然续聊最短延迟（分钟，5–360）</label><input id="social-p6-min-delay" type="number" min="5" max="360" value="5"></div>
-<div><label for="social-p6-max-delay">全渠道自然续聊最长延迟（分钟，5–360）</label><input id="social-p6-max-delay" type="number" min="5" max="360" value="360"></div>
+<div hidden aria-hidden="true"><input id="dm-stranger-max" type="number" min="1" max="20" value="1"><input id="dm-approval-enabled" type="checkbox"><label for="dm-phrase">历史申请暗号</label><input id="dm-phrase" maxlength="60"></div>
+</div></details><section id="dm-natural-section" class="settings-section" aria-label="自然表达与续聊方案">
+<h4>🌱 自然表达与续聊 · 独立方案</h4><p class="muted">只影响模型组织气泡及额外思考机会，不决定鱼鱼允许给谁发私信。修改这些参数不会将上方「自由交流」切换成「自己设定」。</p>
+<div class="choice-presets" role="radiogroup" aria-label="自然表达与续聊方案">
+<label class="choice-card"><input type="radio" name="dm-natural-choice" value="gentle"><span class="choice-icon" aria-hidden="true">🍃</span><strong>安静陪伴</strong><small>额外思考较少，节奏从容</small></label>
+<label class="choice-card"><input type="radio" name="dm-natural-choice" value="balanced"><span class="choice-icon" aria-hidden="true">🌿</span><strong>自然适中 · 默认</strong><small>主人 2 分钟，亲密 5 分钟；25% 的合格轮次</small></label>
+<label class="choice-card"><input type="radio" name="dm-natural-choice" value="lively"><span class="choice-icon" aria-hidden="true">🌻</span><strong>更爱分享</strong><small>较短冷却，偶尔多想一句</small></label>
+<label class="choice-card"><input type="radio" name="dm-natural-choice" value="custom"><span class="choice-icon" aria-hidden="true">🎛️</span><strong>自己设定</strong><small>独立调整四档关系与机会比例</small></label>
+</div><p class="choice-review" role="status" id="dm-natural-choice-status">正在读取自然表达设置…</p>
+<label class="checkline"><input id="dm-p6-enabled" type="checkbox" checked> 启用自然多气泡与额外自主续想（普通私信、主人私信、主 Session 共用；不增加联系权限）</label>
+<div><label for="dm-p6-max-bubbles">每轮最多独立气泡数（1–3；模型自主组织，不机械分句）</label><input id="dm-p6-max-bubbles" type="number" min="1" max="3" value="3"></div>
+<details id="dm-natural-advanced" class="choice-advanced"><summary>⚙️ 查看／自定义关系冷却与机会比例</summary><div class="settings-stack"><div class="fields">
+<div><label for="natural-owner-minutes">主人自主续想冷却（分钟，1–1440）</label><input id="natural-owner-minutes" type="number" min="1" max="1440" value="2"></div>
+<div><label for="natural-intimate-minutes">亲密朋友冷却（分钟）</label><input id="natural-intimate-minutes" type="number" min="1" max="1440" value="5"></div>
+<div><label for="natural-familiar-minutes">熟悉朋友冷却（分钟）</label><input id="natural-familiar-minutes" type="number" min="1" max="1440" value="10"></div>
+<div><label for="natural-stranger-minutes">普通关系与陌生人冷却（分钟）</label><input id="natural-stranger-minutes" type="number" min="1" max="1440" value="30"></div>
+<div><label for="natural-chance-percent">冷却满足后的额外思考机会（0–100%；不是发言概率）</label><input id="natural-chance-percent" type="number" min="0" max="100" value="25"></div>
+<p class="muted">不限制每日额外思考次数；仍尊重对方联系意愿、平台发送额度及同一个话题的自然结束状态。沉默也消耗已获得的冷却机会。</p>
+</div></div></details>
+<details id="dm-legacy-delay-settings" class="choice-advanced"><summary>🕰️ 旧版延期预约与跨渠道防打扰（兼容）</summary>
+<div class="settings-stack"><div class="fields">
+<p class="muted">这一组仍控制旧的延迟预约（含部分公开评论的延期），不等于本组自主续想的关系冷却，也不会改变上方私信交流授权卡片。</p>
+<div><label for="social-p6-min-delay">旧预约最短延期（分钟，5–360）</label><input id="social-p6-min-delay" type="number" min="5" max="360" value="5"></div>
+<div><label for="social-p6-max-delay">旧预约最长延期（分钟，5–360）</label><input id="social-p6-max-delay" type="number" min="5" max="360" value="360"></div>
 <div><label for="social-rhythm-cooldown">跨渠道防打扰冷却（分钟，0–1440）</label><input id="social-rhythm-cooldown" type="number" min="0" max="1440" value="30"></div>
-<p class="muted">跨私信／评论／@ 同一人每日 8 次旧硬上限已取消。保留跨渠道冷却、独立授权、平台限流与未知发送结果防重。</p>
-<div hidden><input id="dm-approval-enabled" type="checkbox" aria-hidden="true"></div>
-<div hidden><label for="dm-phrase">历史申请暗号（仅兼容读取）</label><input id="dm-phrase" maxlength="60"></div>
-</div></div>
-</div></details><div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
+</div></div></details>
+</section>
+<div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
 </details>
 <div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-fast-status" class="muted" role="status">活跃私信快速检查：状态待读取。</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然续聊状态：尚未读取。</p><p id="dm-p6-last-turn" class="muted" role="status">最近一轮私信交流：暂无记录。</p><p class="muted">与主人的私信由专门通道处理。鱼鱼可以根据对话自然决定回复长短，不要求凑满消息数量。</p><p id="dm-error" class="muted"></p><details class="dm-technical-note"><summary>网络连接故障怎么看？</summary><p class="muted">当私信暂时无法读取时，可先检查网络、代理和 B站连接。具体错误代码请在「运行诊断」查看。</p></details></div>
 <details id="dm-context-governance" class="card dm-privacy-care" style="margin-top:16px"><summary>🪷 聊天内容的保留与清理 <small>按需展开</small></summary><p class="muted">可以查看普通私信的近期聊天内容是否需要清理。不会清除已发送记录，也不会影响鱼鱼已确认的记忆或对方拒绝联系的设置。</p><p id="dm-memory-governance-status" class="muted" role="status">正在查看保留状态…</p><button id="dm-memory-prune" type="button">清理过期聊天内容</button></details>

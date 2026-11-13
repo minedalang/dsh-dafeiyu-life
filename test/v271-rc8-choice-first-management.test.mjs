@@ -48,7 +48,7 @@ test('私信方案不改变好友列表、额度和主人独立工具授权',()=
  assert.equal(p.friends.dmStrangerAutonomyEnabled,false)
  assert.equal(p.paused.dmWatch,false)
  for(const v of Object.values(p)){
-  assert.deepEqual(Object.keys(v).sort(),['dmApprovalEnabled','dmP6Enabled','dmStrangerAutonomyEnabled','dmWatch'].sort())
+  assert.deepEqual(Object.keys(v).sort(),['dmApprovalEnabled','dmStrangerAutonomyEnabled','dmWatch'].sort())
  }
  assert.match(js,/selectedChoice\('dm-conversation-choice'\)!=='custom'\|\|\$\('dm-stranger-enabled'\)\.checked \? \{dmStrangerOnce:false\}/)
  assert.match(js,/title:'确认开放陌生人私信'/)
