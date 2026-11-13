@@ -50,6 +50,7 @@ test('non-owner DM triggers zero extra calls without cue and exactly one after v
  assert.equal(extra,0);assert.deepEqual(sent,['一句完整回答'])
  mode='cue';clock+=20_000;inbox.push(input('2','想听后续'));assert.equal((await engine.poll()).sent,2)
  assert.equal(extra,1);assert.deepEqual(sent.slice(-2),['一句完整回答','事后补充的问题'])
+ assert.equal(engine.status().p6LastTurn.postSendStage,'post-send-confirmed')
  assert.equal(engine.nextFastUid(),'') // no immediate redundant read after a confirmed outgoing bubble
  clock+=10_000;let received=0;const next=engine.nextFastUid();assert.equal(next,person)
  await engine.poll({fastUid:next}); // test transport can pass a scoped fast fetch, old IDs do not resend
@@ -66,6 +67,9 @@ test('fast session scheduler has no extra get_sessions call and obeys config / r
  try{
   scheduler.start();await new Promise(r=>setTimeout(r,8));assert.equal(calls.length,1)
   clock+=10_000;await scheduler.tick();assert.deepEqual(calls.at(-1),{fastUid:'22334'})
+  // Expose the fast lane separately, not only the coarse full-session scan.
+  assert.equal(scheduler.status().checks.dmFast.lastResult,'completed')
+  assert.equal(scheduler.status().checks.dmFast.intervalSeconds,10)
   cfg.dmActivePollEnabled=false;clock+=10_000;await scheduler.tick();assert.equal(calls.length,2)
   cfg.dmActivePollEnabled=true;fastReady='';clock+=10_000;await scheduler.tick();assert.equal(calls.length,2)
   clock+=120_000;await scheduler.tick();assert.deepEqual(calls.at(-1),{})
@@ -125,6 +129,8 @@ test('owner direct chat may think once more after confirmed first bubble; no com
  agent.primeInbox([])
  const first=await agent.processMessage({incoming:true,senderUid:'123',messageId:'o1',timestampMs:t0,text:'跟我聊聊'})
  assert.equal(first.ok,true);assert.deepEqual(sent,['我先说一句。','又想起一个小问题。']);assert.equal(modelCalls,2)
+ const ownerState=JSON.parse((await import('node:fs/promises')).readFile?await (await import('node:fs/promises')).readFile(join(dataDir,'owner-dm-agent.json'),'utf8'):'{}')
+ assert.equal(ownerState.items.find(x=>x.confirmedBubbles===2)?.postSendStage,'post-send-confirmed')
  assert.equal((await agent.processMessage({incoming:true,senderUid:'123',messageId:'o1',timestampMs:t0,text:'跟我聊聊'})).skipped,'duplicate')
 }))
 
