@@ -1300,6 +1300,10 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-life-agent .life-behavior-header h3{margin:6px 0;font-size:24px;color:var(--ink)}
 #panel-life-agent .life-behavior-header p{max-width:620px;margin:5px 0;color:var(--muted);font-size:13px;line-height:1.65}
 #panel-life-agent .life-behavior-status{font-weight:650;color:#3b788b;margin:14px 0 5px;min-height:22px}
+#panel-life-agent .life-action-origin{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;padding:12px 14px;margin:10px 0;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;font-size:13px;line-height:1.65}
+#panel-life-agent .life-action-origin strong{white-space:nowrap;color:var(--ink)}
+#panel-life-agent .life-action-origin span{color:var(--muted);overflow-wrap:anywhere}
+
 #panel-life-agent .life-tree-viewport{overflow-x:auto;background:linear-gradient(120deg,#092b40,#13394f 49%,#123f4a);border-radius:21px;border:1px solid #447487;box-shadow:inset 0 0 48px #05263a7d;scrollbar-color:#84b6c7 #163c4b}
 #panel-life-agent #life-behavior-tree{min-width:680px;width:100%;display:block}
 #panel-life-agent #life-behavior-tree .life-tree-edge{fill:none;stroke:#6a9eae;stroke-width:1.7;opacity:.39}
@@ -1919,6 +1923,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <section class="life-behavior-card" aria-labelledby="life-behavior-title">
 <div class="life-behavior-header"><div><span class="page-eyebrow">LIFE ACTION MAP · 真实回执驱动</span><h3 id="life-behavior-title">🌳 鱼鱼的行动树</h3><p>从真实候选到 Life 选择，再到专业执行和回执。点亮路径有证据；流动光线仅在本轮实际进行时出现。</p></div><button type="button" id="life-behavior-refresh" class="life-action life-sky">更新行动树</button></div>
 <div class="life-behavior-status" id="life-behavior-status" role="status" aria-live="polite">正在读取真实决策记录…</div>
+<div class="life-action-origin" id="life-action-origin" role="status" aria-live="polite"><strong>行动来源</strong><span>等待本轮真实决策与来源证据…</span></div>
 <div class="life-choice-rail" id="life-choice-rail" aria-label="最近一轮决策实际进度">
  <div class="life-choice-stage" data-stage="candidate"><small>01 · 发现机会</small><strong>等待可信候选</strong></div>
  <div class="life-choice-stage" data-stage="choice"><small>02 · 鱼鱼决定</small><strong>尚未决定</strong></div>
