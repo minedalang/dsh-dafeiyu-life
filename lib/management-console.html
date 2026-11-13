@@ -925,6 +925,13 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life .neural-recall-board:fullscreen .neural-search-boundary,#panel-life .neural-recall-board.is-expanded .neural-search-boundary{margin:3px 0}
 @media(prefers-reduced-motion:reduce){#panel-life .neural-semantic-beam{filter:none}}
 
+/* Embedding-free mode: never present keyword positions as semantic recall. */
+#panel-life .neural-recall-board{position:relative}
+#panel-life .neural-embedding-mask{position:absolute;inset:57px 0 0;z-index:12;display:flex;align-items:center;justify-content:center;padding:24px;background:color-mix(in srgb,var(--panel) 90%,transparent);backdrop-filter:blur(6px);border-radius:0 0 18px 18px}
+#panel-life .neural-embedding-mask[hidden]{display:none!important}
+#panel-life .neural-embedding-message{max-width:400px;text-align:center;border:1px solid var(--stroke);background:var(--panel);padding:24px;border-radius:18px;box-shadow:var(--lift);color:var(--ink)}
+#panel-life .neural-embedding-message strong{display:block;font-size:17px;margin-bottom:8px}
+#panel-life .neural-embedding-message p{font-size:13px;color:var(--muted);line-height:1.7;margin:0}
 /* dev49: quiet, per-channel status replaces top alert and animated ticker */
 .life-health-banner{position:static;z-index:auto;max-width:none;margin:11px 0 15px;background:var(--panel);color:var(--ink);border:1px solid var(--stroke);border-left:4px solid #c28a47;padding:10px 14px;border-radius:14px;box-shadow:var(--lift)}
 .life-health-banner[data-level="critical"]{border-left-color:#cf6262}
@@ -1852,6 +1859,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <div class="neural-recall-field"><div class="neural-query-toolbar" role="search"><label for="neural-search-input">在回忆场内搜索</label><input id="neural-search-input" maxlength="120" placeholder="例如：游戏、绘画、朋友…" autocomplete="off"><button type="button" id="neural-search-apply" class="life-action life-sky">唤起回忆</button><span id="neural-query-stage" role="status" aria-live="polite">等待输入关键词</span></div><div id="neural-memory-viewport" class="neural-memory-viewport"><div class="neural-viewport-actions"><button id="neural-memory-reset" type="button" title="回到初始视角">⟲ 重置视角</button><button id="neural-memory-fullscreen" type="button" aria-pressed="false" aria-label="全屏打开神经回忆场">⛶ 全屏</button></div><canvas id="neural-memory-canvas" aria-hidden="true"></canvas><svg id="neural-semantic-overlay" viewBox="0 0 1000 570" aria-hidden="true"><g id="neural-semantic-beams"></g></svg><svg id="neural-memory-svg" viewBox="0 0 1000 570" role="group" aria-label="可旋转的三维记忆节点空间，拖动旋转，滚轮缩放，点击节点查看详情" tabindex="0"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a6dfe3" stop-opacity=".16"/><stop offset="1" stop-color="#a6dfe3" stop-opacity="0"/></radialGradient></defs><circle cx="500" cy="285" r="255" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g></svg></div><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
     <div class="neural-recall-side"><h5>被唤起的记忆</h5><div id="neural-memory-results" class="neural-memory-results"><p class="muted">输入关键词并搜索，或留空查看最近。</p></div><div id="neural-memory-detail" class="neural-memory-detail" tabindex="-1" aria-live="polite">点击节点或结果卡片查看真实来源和清晰程度。</div></div>
   </div>
+  <div id="neural-embedding-mask" class="neural-embedding-mask" role="status" aria-live="polite"><div class="neural-embedding-message"><strong>🔒 本地语义回忆暂未开启</strong><p id="neural-embedding-mask-hint">正在检查 Embedding 模型状态。启用本地模型后即可使用神经回忆场；下方真实记忆列表不受影响。</p></div></div>
 </section>
 <p id="main-session-history-status" class="muted" role="status">等待读取鱼鱼当前还能回忆的经历与认识…</p><div id="main-session-history" class="records records-scroll tall" aria-live="polite"></div>
 <div id="life-lessons" class="memory-lessons"><h4>✨ 这些经历给她留下了什么？</h4><p class="muted">有些经历会被忘掉具体细节，但值得保留的兴趣、约定或体会，可能继续影响鱼鱼的选择。并非每条经历都要产生感悟。</p>
