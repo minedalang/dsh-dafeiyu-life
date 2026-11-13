@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {readFileSync,existsSync,readdirSync} from 'node:fs'
 import {join} from 'node:path'
 import {fileURLToPath} from 'node:url'
-const root=fileURLToPath(new URL('../',import.meta.url))
+const root=fileURLToPath(new URL('../../',import.meta.url))
 const read=x=>readFileSync(join(root,x),'utf8')
 
 test('正式版标识与 npm 发行清单一致，旧版说明只留历史归档',()=>{

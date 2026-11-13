@@ -1,3 +1,4 @@
+import {symlinkOrSkip} from './test-platform-fixtures.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync,readFileSync,symlinkSync,writeFileSync} from 'node:fs'
@@ -29,7 +30,7 @@ test('single Life action record is redacted, account-scoped, terminal and never 
 })
 test('action records fail closed on symlink and do not overwrite target',ctx=>{
  const dir=temp(ctx),target=join(dir,'dont-touch.txt');writeFileSync(target,'unchanged')
- symlinkSync(target,join(dir,'life-action-records.json'))
+ if (!symlinkOrSkip(ctx,target,join(dir,'life-action-records.json'))) return
  const r=createLifeActionRecords({dataDir:dir,getAccountTag:()=>A,now:()=>T})
  assert.equal(r.update({decisionId:'decision01',kind:'dm_reply',state:'selected'}).ok,false)
  assert.equal(readFileSync(target,'utf8'),'unchanged')

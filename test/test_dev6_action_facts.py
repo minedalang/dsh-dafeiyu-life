@@ -45,7 +45,10 @@ class ActionFacts(unittest.TestCase):
             'datetime':datetime,'timedelta':timedelta,'get_cred':lambda:SimpleNamespace(dedeuserid=self.account),
             'video':SimpleNamespace(Video=Video),'_single_creator_relation':lambda cred,uid:self.relation,
             '_guard':lambda name:'','_valid_bv':lambda b:b if re.fullmatch(r'BV[0-9A-Za-z]{10}',b) else (_ for _ in ()).throw(ValueError('无效BV')),
-            '_safe_line':lambda data,n=80:str(data).strip()[:n], '_read_home':read_home,'_append_home':append_home}
+            '_safe_line':lambda data,n=80:str(data).strip()[:n], '_read_home':read_home,'_append_home':append_home,
+            '_set_comment_review_state': lambda *_: None,
+            '_comment_review_recovery_eligible': lambda *_: False,
+            '_round_comment_evidence': lambda *_: ''}
         exec(BYTECODE,self.locals)
     def call(self,name,*args):return json.loads(asyncio.run(self.locals[name](*args)))
     def mark(self,bv,status):return self.call('bili_ledger_mark',bv,'有来源的标题','UP',status)

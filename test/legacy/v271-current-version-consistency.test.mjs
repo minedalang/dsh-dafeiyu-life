@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 
-const read=(filename)=>readFileSync(new URL('../'+filename,import.meta.url),'utf8')
+const read=(filename)=>readFileSync(new URL('../../'+filename,import.meta.url),'utf8')
 
 test('当前开发版本与 package lock、README、变更和架构文档一致',()=>{
   const pkg=JSON.parse(read('package.json'))

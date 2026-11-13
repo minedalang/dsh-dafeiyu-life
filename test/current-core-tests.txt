@@ -1,0 +1,31 @@
+# 2.8.0 current-version core: real behavior/security, not historical UI snapshots.
+# Lines are filenames relative to test/. This list is reviewed on each release.
+v280-dev14-one-life-one-intent.test.mjs
+v280-dev13-growth-visibility-audit.test.mjs
+v280-dev12-natural-life.test.mjs
+v280-dev11-life-hot-choice.test.mjs
+v280-dev10-cross-scene-intent.test.mjs
+v280-dev9-unified-action-protocol.test.mjs
+v280-dev8-video-entry-continuation.test.mjs
+v280-dev7-unified-life-story-ui.test.mjs
+v280-dev6-single-intent-contract.test.mjs
+v280-dev5-dm-read-wake-and-plan-times.test.mjs
+v280-dev4-life-crash-auto-recovery-ui.test.mjs
+v280-dev3-official-backup-compat-and-owner-ui.test.mjs
+v280-dev2-legacy-backup-compat.test.mjs
+v271-dev71-life-proof-settlement-contract.test.mjs
+v271-dev74-three-dimensional-relationships.test.mjs
+v271-dev59-model-invocation-journal.test.mjs
+v271-dev26-retire-legacy-report-dm.test.mjs
+v261-account-switch-hardening.test.mjs
+v271-dev33-life-menu-hardening.test.mjs
+dev14-hybrid-memory-release.test.mjs
+v271-dev4-life-agent-atomic-recovery.test.mjs
+v271-dev3-crosslang-todo-transaction.test.mjs
+v271-dev3-discussion-shared-gate.test.mjs
+v271-dev3-danmaku-read-gate.test.mjs
+v271-dev3-subtitle-read-gate.test.mjs
+v271-dev3-three-phase-execution.test.mjs
+v271-dev4-life-nested-read-identity.test.mjs
+v271-dev2-context-lazy-retrieval.test.mjs
+v280-dev14-test-runner-profiles.test.mjs

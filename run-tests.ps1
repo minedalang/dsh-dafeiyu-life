@@ -1,6 +1,16 @@
 ﻿#requires -Version 5.1
+param([ValidateSet('quick','full','legacy')][string]$Mode = 'quick')
+# The ordinary double-click run is an explicit CURRENT-RELEASE quick gate.
+# run-tests.bat full performs the exhaustive historical audit.
 $ErrorActionPreference = "Continue"
 Set-Location -LiteralPath $PSScriptRoot
+$script:VerboseOutput = $env:DAFEIYU_TEST_VERBOSE -eq '1'
+# Windows PowerShell 5.1 otherwise decodes Node/Python UTF-8 output as ANSI/GBK.
+try {
+    $utf8 = [System.Text.UTF8Encoding]::new($false)
+    [Console]::OutputEncoding = $utf8
+    $OutputEncoding = $utf8
+} catch { Write-Host '终端 UTF-8 初始化失败，详细文件仍会保存。' -ForegroundColor Yellow }
 
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $logPath = Join-Path $env:TEMP "dsh-bili-scroll-plus-tests-$stamp.log"
@@ -10,6 +20,7 @@ $script:Results = @()
 $script:DetailDir = Join-Path $env:TEMP "dsh-bili-scroll-plus-details-$stamp"
 $script:StepLogFiles = @()
 $script:StepNumber = 0
+$script:SecurityFixtureSkipped = $false
 try { New-Item -ItemType Directory -Path $script:DetailDir -Force | Out-Null }
 catch { Write-Host "诊断日志目录不可用：$($_.Exception.Message)" -ForegroundColor Yellow }
 
@@ -41,7 +52,7 @@ function Invoke-NativeStep {
         & $FilePath @Arguments 2>&1 | ForEach-Object {
             $line = [string]$_
             $outputLines.Add($line)
-            Write-Host $line
+            if ($script:VerboseOutput) { Write-Host $line }
         }
         $exitCode = $LASTEXITCODE
         if ($null -eq $exitCode) { $exitCode = 0 }
@@ -56,6 +67,20 @@ function Invoke-NativeStep {
         } catch { Write-Host "保存专项 TAP 失败：$($_.Exception.Message)" -ForegroundColor Yellow }
     }
 
+    if (@($outputLines | Where-Object { $_ -match 'Windows symlink privilege unavailable' }).Count -gt 0) {
+        $script:SecurityFixtureSkipped = $true
+        Write-Host '安全测试提示：当前 Windows 缺少符号链接创建权限，相关测试为 SKIP，必须在具备权限的环境补测。' -ForegroundColor Yellow
+    }
+    if (-not $script:VerboseOutput) {
+        $failedCases = @($outputLines | Where-Object { $_ -match '^\s*not ok\s+\d+\s+-|^(?:FAIL|ERROR):\s+test_' })
+        $counts = @($outputLines | Where-Object { $_ -match '^#\s+(?:tests|pass|fail|skipped)\s+\d+|^Ran\s+\d+\s+tests|^FAILED\s*\(' })
+        if ($counts.Count -gt 0) { Write-Host (($counts | Select-Object -Last 5) -join ' | ') }
+        if ($exitCode -ne 0) {
+            foreach ($item in ($failedCases | Select-Object -First 12)) { Write-Host $item -ForegroundColor Red }
+            if ($failedCases.Count -gt 12) { Write-Host ("... 其余 " + ($failedCases.Count - 12) + ' 项见详细文件') -ForegroundColor Yellow }
+            Write-Host "错误详情：$detailPath" -ForegroundColor Yellow
+        }
+    }
     $status = if ($exitCode -eq 0) { "PASS" } else { "FAIL" }
     $script:Results += [pscustomobject]@{
         Name = $Name
@@ -70,7 +95,12 @@ function Invoke-NativeStep {
     }
 }
 
-Write-Host "大肥鱼 Plus 自动化测试" -ForegroundColor Cyan
+Write-Host "大肥鱼 Plus 自动化测试（$Mode）" -ForegroundColor Cyan
+if ($Mode -eq 'quick') {
+    Write-Host '当前 2.8.0 核心回归：不会执行全部历史断言；正式发布必须另外执行 full。' -ForegroundColor Yellow
+} elseif ($Mode -eq 'legacy') {
+    Write-Host '历史发行快照审计：预期部分旧版断言不适用于 2.8.0，不代表当前版验收。' -ForegroundColor Yellow
+}
 Write-Host "项目目录：$PSScriptRoot"
 Write-Host "日志文件：$logPath"
 
@@ -209,15 +239,52 @@ if ($pythonPath) {
 # 1. Focused regression test.
 Invoke-NativeStep -Name "白名单好友推荐偏好专项测试" `
     -FilePath $nodePath `
-    -Arguments @("--test", "--test-concurrency=1", "test/dev4-friend-recommendation-feedback.test.mjs")
+    -Arguments @("--test", "--test-reporter=tap", "--test-concurrency=1", "test/dev4-friend-recommendation-feedback.test.mjs")
 
 # 2. Full Node.js test suite.
 $testDir = Join-Path $PSScriptRoot "test"
-$testFiles = @(
-    Get-ChildItem -LiteralPath $testDir -Filter "*.test.mjs" -File |
+$allCurrentFiles = @(
+    Get-ChildItem -LiteralPath $testDir -Filter '*.test.mjs' -File |
     Sort-Object FullName |
     ForEach-Object { $_.FullName }
 )
+$legacyDir = Join-Path $testDir 'legacy'
+$legacyFiles = @()
+if (Test-Path -LiteralPath $legacyDir -PathType Container) {
+    $legacyFiles = @(Get-ChildItem -LiteralPath $legacyDir -Filter '*.test.mjs' -File |
+        Sort-Object FullName | ForEach-Object { $_.FullName })
+}
+$testFiles = @()
+if ($Mode -eq 'quick') {
+    $manifest = Join-Path $testDir 'current-core-tests.txt'
+    if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) {
+        Write-Host "缺少当前版本核心测试清单：$manifest" -ForegroundColor Red
+        exit 2
+    }
+    $relativeNames = @(Get-Content -LiteralPath $manifest -Encoding UTF8 |
+        ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })
+    if ($relativeNames.Count -ne @($relativeNames | Sort-Object -Unique).Count) {
+        Write-Host '核心测试清单含重复文件，拒绝误报覆盖。' -ForegroundColor Red
+        exit 2
+    }
+    foreach ($relative in $relativeNames) {
+        if ($relative -notmatch '^[A-Za-z0-9_-]+\.test\.mjs$') {
+            Write-Host "核心测试清单存在非法路径：$relative" -ForegroundColor Red
+            exit 2
+        }
+        $candidate = Join-Path $testDir $relative
+        if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            Write-Host "核心测试文件缺失：$relative" -ForegroundColor Red
+            exit 2
+        }
+        $testFiles += $candidate
+    }
+} elseif ($Mode -eq 'legacy') {
+    $testFiles = @($legacyFiles)
+} else {
+    $testFiles = @($allCurrentFiles)
+}
+Write-Host "本次 Node 测试文件：$($testFiles.Count)（当前目录 $($allCurrentFiles.Count)；归档 $($legacyFiles.Count)）" -ForegroundColor Cyan
 
 if ($testFiles.Count -gt 0) {
     # These subprocess-sensitive files are mandatory and independently reported,
@@ -238,6 +305,7 @@ if ($testFiles.Count -gt 0) {
         [pscustomobject]@{ Name = "Node.js 三阶段跨语言与外发保护专项（必须通过）"; File = $isolatedThreePhaseFile },
         [pscustomobject]@{ Name = "Node.js 嵌套 Python 读取预约专项（必须通过）"; File = $isolatedNestedReadFile }
     )
+    $isolatedSpecs = @($isolatedSpecs | Where-Object { $_.File -in $testFiles })
     $isolatedTestFiles = @($isolatedSpecs | ForEach-Object { $_.File })
     $mainTestFiles = @($testFiles | Where-Object { $_ -notin $isolatedTestFiles })
     $scheduledTestFiles = 0
@@ -248,7 +316,7 @@ if ($testFiles.Count -gt 0) {
         if (Test-Path -LiteralPath $spec.File -PathType Leaf) {
             $scheduledTestFiles++
             Invoke-NativeStep -Name $spec.Name `
-                -FilePath $nodePath -Arguments @("--test", "--test-concurrency=1", $spec.File)
+                -FilePath $nodePath -Arguments @("--test", "--test-reporter=tap", "--test-concurrency=1", $spec.File)
         } else {
             $script:Results += [pscustomobject]@{
                 Name = $spec.Name
@@ -280,7 +348,7 @@ if ($testFiles.Count -gt 0) {
             $batchFiles = @($mainTestFiles[$from..$to])
             $scheduledTestFiles += $batchFiles.Count
             Invoke-NativeStep -Name "Node.js 主测试集 $($batchIndex + 1)/$batchCount 批（$($batchFiles.Count) 文件）" `
-                -FilePath $nodePath -Arguments (@("--test", "--test-concurrency=$nodeTestConcurrency") + $batchFiles)
+                -FilePath $nodePath -Arguments (@("--test", "--test-reporter=tap", "--test-concurrency=$nodeTestConcurrency") + $batchFiles)
         }
     }
 
@@ -308,15 +376,20 @@ Invoke-NativeStep -Name "插件自检" `
     -FilePath $nodePath `
     -Arguments @("selfcheck.mjs")
 
-# 4. Full Python unittest suite.
+# Python: quick gate uses current receipt/quota contracts; full runs all historical cases.
 if ($pythonPath) {
-    $pythonTestArgs = $pythonArgsPrefix + @(
-        "-m", "unittest", "discover",
-        "-s", "test",
-        "-p", "test*.py"
-    )
-    Invoke-NativeStep -Name "Python 全量测试" -FilePath $pythonPath -Arguments $pythonTestArgs
-} else {
+    if ($Mode -eq 'quick') {
+        foreach ($pattern in @('test_dev37_episode_comment_review.py', 'test_v271_dev11_unified_comment_quota.py')) {
+            Invoke-NativeStep -Name "Python 当前关键契约 $pattern" -FilePath $pythonPath `
+                -Arguments @($pythonArgsPrefix + @('-m', 'unittest', 'discover', '-s', 'test', '-p', $pattern))
+        }
+    } elseif ($Mode -eq 'full') {
+        $pythonTestArgs = $pythonArgsPrefix + @(
+            '-m', 'unittest', 'discover', '-s', 'test', '-p', 'test*.py'
+        )
+        Invoke-NativeStep -Name 'Python 全量测试' -FilePath $pythonPath -Arguments $pythonTestArgs
+    }
+} elseif ($Mode -ne 'legacy') {
     $script:Results += [pscustomobject]@{
         Name = "Python 全量测试"
         Status = "SKIP"
@@ -332,24 +405,30 @@ Write-Host "测试汇总" -ForegroundColor Cyan
 $script:Results | Format-Table -AutoSize
 
 $allPassed = ($script:Results.Count -gt 0) -and (@($script:Results | Where-Object { $_.Status -ne "PASS" }).Count -eq 0)
+if ($Mode -eq 'full' -and $script:SecurityFixtureSkipped) {
+    $allPassed = $false
+    Write-Host '完整发布验收未完成：Windows 符号链接安全用例被跳过，不能宣布 full 通过。' -ForegroundColor Red
+}
 if ($allPassed) {
     Write-Host "全部测试通过。" -ForegroundColor Green
 } else {
     Write-Host "存在失败或跳过的测试；请查看上方输出和日志。" -ForegroundColor Red
 }
 Write-Host "完整日志：$logPath"
-Write-Host "逐批完整 TAP / Python traceback：$script:DetailDir" -ForegroundColor Cyan
+Write-Host "逐批完整 TAP / Python traceback：$script:DetailDir"
+if ($Mode -eq 'quick') { Write-Host '注意：快速通过不是全量通过；发布前必须执行 run-tests.bat full。' -ForegroundColor Yellow }
+if ($script:SecurityFixtureSkipped) { Write-Host '注意：安全符号链接测试曾因 Windows 权限不足跳过。' -ForegroundColor Yellow }
 try {
     $report = New-Object 'System.Collections.Generic.List[string]'
     $report.Add('# 大肥鱼完整测试失败诊断')
     $report.Add('')
-    $report.Add('该清单由 run-tests.ps1 实际运行自动生成。打开对应 step-XX.tap.log 查看断言和堆栈。')
+    $report.Add('模式：' + $Mode + '。该清单由 run-tests.ps1 实际运行自动生成。打开对应 step-XX.tap.log 查看断言和堆栈。')
     foreach ($entry in $script:StepLogFiles) {
         if ($entry.ExitCode -eq 0) { continue }
         $report.Add('')
         $report.Add(('## ' + $entry.Name + ' (exit ' + $entry.ExitCode + ')'))
         $report.Add('Log: ' + [System.IO.Path]::GetFileName($entry.File))
-        $failedRows = @(Select-String -LiteralPath $entry.File -Pattern '^not ok [0-9]+ - ' -Encoding UTF8 -ErrorAction SilentlyContinue)
+        $failedRows = @(Select-String -LiteralPath $entry.File -Pattern '^\s*(?:not ok [0-9]+ - |(?:FAIL|ERROR): test_)' -Encoding UTF8 -ErrorAction SilentlyContinue)
         foreach ($row in $failedRows) { $report.Add('- ' + $row.Line) }
         if ($failedRows.Count -eq 0) { $report.Add('- 此步骤失败，但没有 Node TAP `not ok`；请查看完整日志（可能是 Python traceback 或运行错误）。') }
     }

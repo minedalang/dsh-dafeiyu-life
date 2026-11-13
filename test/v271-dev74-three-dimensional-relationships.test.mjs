@@ -8,7 +8,7 @@ import {createLifeFriendInitiatives} from '../lib/life-friend-initiatives.mjs'
 import {createSocialPolicyGate} from '../lib/social-policy-gate.mjs'
 import {createSocialRelationshipIndex} from '../lib/social-relationship-index.mjs'
 const DAY=86_400_000, NOW=Date.parse('2026-11-11T12:00:00Z'),A='a'.repeat(16)
-function using(t){const home=mkdtempSync(join(tmpdir(),'dsh-3d-'));t.after(()=>rmSync(home,{recursive:true,force:true}));const channels=createSocialRelationshipChannels({dataDir:join(home,'account-A'),now:()=>NOW});t.after(()=>channels.close());return {home,channels}}
+function using(t){const home=mkdtempSync(join(tmpdir(),'dsh-3d-'));const channels=createSocialRelationshipChannels({dataDir:join(home,'account-A'),now:()=>NOW});t.after(()=>{channels.close();rmSync(home,{recursive:true,force:true})});return {home,channels}}
 function evidence(channels,uid,channel,direction,n,day=0){for(let i=0;i<n;i++){
  const r=channels.observe({uid,source:channel,direction,eventId:`${uid}-${channel}-${direction}-${day}-${i}`,at:NOW-(5-day)*DAY});assert.equal(r.ok,true)
 }}

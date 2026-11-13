@@ -6,6 +6,9 @@
 
 > **2.8.0 · 新生活系统**：鱼鱼可以从真实经历中形成自己的生活意愿；新生活系统上线初期仍可能有不稳定或 Bug，欢迎通过 [GitHub Issues](https://github.com/minedalang/dsh-dafeiyu-life/issues) 或作者 B站私信反馈体验和改进建议，一起让鱼鱼插件变得更好。
 
+
+> **自动化测试（2.8.0 开发验收）**：双击 `run-tests.bat` 执行当前版本核心回归（非全量）；当前维护的全量回归用 `run-tests.bat full`；旧版快照单独用 `run-tests.bat legacy`。详细分层与安全约束参见 [`docs/TESTING.md`](docs/TESTING.md)。
+
 ## ✨ 2.8.0 带来了什么？
 
 ![鱼鱼的生活如何形成行动](docs/architecture/2.8.0-life-overview.svg)

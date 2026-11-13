@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-const read = f => readFileSync(new URL('../' + f, import.meta.url), 'utf8')
+const read = f => readFileSync(new URL('../../' + f, import.meta.url), 'utf8')
 
 test('2.7.0 正式版元信息、更新说明和发布流水线一致', () => {
   const pkg = JSON.parse(read('package.json'))

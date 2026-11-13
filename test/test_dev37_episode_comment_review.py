@@ -25,6 +25,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
         self.owned_selections = set()
         self.owned_comments = set()
         self.recorded = set()
+        self.review_states = {}
         self.ctx = {'asyncio': asyncio, 'json': json, 'os': os, 're': re, 'datetime': datetime,
             '_guard': lambda n: '', '_valid_bv': lambda v: v if re.fullmatch(r'BV[0-9A-Za-z]{10}', v) else (_ for _ in ()).throw(ValueError('bad-bv')),
             '_safe_line': lambda text, limit=80: str(text)[:limit],
@@ -36,7 +37,9 @@ class LedgerCommentReviewTests(unittest.TestCase):
             '_read_home': lambda *_: ''.join(self.lines),
             '_append_home': lambda _path, s: self.lines.append(s),
             'get_cred': lambda: SimpleNamespace(dedeuserid='1234567'),
-            '_life_video_request': self.request, '_round_comment_evidence': lambda bv: ''}
+            '_life_video_request': self.request, '_round_comment_evidence': lambda bv: '',
+            '_set_comment_review_state': lambda bv, state: self.review_states.__setitem__(bv, state),
+            '_comment_review_recovery_eligible': lambda bv: self.review_states.get(bv) == 'pending'}
         exec(CODE, self.ctx)
 
     def record_selection(self,bv):
@@ -55,7 +58,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
         if bvid in self.recorded:
             return {'ok': False, 'reason': 'comment-review-already-recorded'}
         self.recorded.add(bvid)
-        return {'ok': True}
+        return {'ok': True, 'decision': 'pass'}
 
     def call(self, decision='', status='挑中', bvid='BV1abcde1234'):
         return json.loads(asyncio.run(self.ctx['bili_ledger_mark'](bvid, 'video title', 'uploader', status, decision)))
@@ -171,7 +174,7 @@ class LedgerCommentReviewTests(unittest.TestCase):
             again=self.call('')
         self.assertTrue(first['ok'])
         self.assertTrue(first['comment_review']['ok'])
-        self.assertEqual(first['comment_review']['decision'], '')
+        self.assertEqual(first['comment_review']['decision'], 'pass')
         self.assertEqual(len(self.requests),1)
         self.assertNotIn('comment_review',again)
         self.assertEqual(self.requests[0][1]['decision'],'consider')

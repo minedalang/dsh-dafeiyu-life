@@ -1,3 +1,4 @@
+import {symlinkOrSkip} from './test-platform-fixtures.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync,readFileSync,rmSync,symlinkSync,statSync,existsSync} from 'node:fs'
@@ -57,7 +58,7 @@ test('model journal refuses symlink journal and does not modify pointed-to targe
   const account='a'.repeat(16)
   const target=join(dir,'payload.txt')
   const path=join(dir,'model-invocations',account+'.jsonl.old')
-  symlinkSync(target,path)
+  if (!symlinkOrSkip(t,target,path)) return
   assert.equal(journal.record(),false)
   assert.deepEqual(journal.recent(),[])
   assert.equal(existsSync(target),false)

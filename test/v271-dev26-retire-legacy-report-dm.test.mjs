@@ -1,3 +1,4 @@
+import {symlinkOrSkip} from './test-platform-fixtures.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync,writeFileSync,readFileSync,symlinkSync,existsSync} from 'node:fs'
@@ -63,10 +64,10 @@ test('migration without saved comment permission does not force a value into set
   assert.equal(Object.hasOwn(saved,'dmMode'),false)
   assert.equal(saved._videoReportRetired,1)
 }))
-test('migration refuses symlink config instead of mutating another file',()=>scoped(dir=>{
+test('migration refuses symlink config instead of mutating another file',t=>scoped(dir=>{
  const destination=join(dir,'other.json'),file=join(dir,'config.json')
  writeFileSync(destination,JSON.stringify({dmMode:'only',autoComment:true}))
- symlinkSync(destination,file)
+ if (!symlinkOrSkip(t,destination,file)) return
  assert.throws(()=>retireVideoReportConfig(dir,{legacyInstall:true}),/不是安全的普通文件/)
  assert.equal(JSON.parse(readFileSync(destination,'utf8')).autoComment,true)
 }))

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-const read=file=>readFileSync(new URL('../'+file,import.meta.url),'utf8')
+const read=file=>readFileSync(new URL('../../'+file,import.meta.url),'utf8')
 test('2.6.0 稳定版本、锁文件、正式发布说明与历史 dev.8 归档并存',()=>{
   const pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json'))
   assert.match(pkg.version,/^(?:2\.6\.2(?:-dev\.[1-9]\d*)?|2\.7\.0(?:-dev\.[1-9]\d*)?|2\.7\.1-dev\.[1-9]\d*)$/)

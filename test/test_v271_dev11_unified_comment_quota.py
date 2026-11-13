@@ -2,6 +2,7 @@
 import ast
 import os
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 import uuid
@@ -32,7 +33,7 @@ class SharedCommentQuotaTests(unittest.TestCase):
                 self.assertTrue(reserve()[0])
             self.assertFalse(reserve()[0])
             self.assertFalse(preflight()[0])
-            with sqlite3.connect(str(Path(home) / 'public-comment-quota.sqlite3')) as db:
+            with closing(sqlite3.connect(str(Path(home) / 'public-comment-quota.sqlite3'))) as db:
                 self.assertEqual(db.execute('SELECT COUNT(*) FROM public_comment_attempt').fetchone()[0], 3)
 
     def test_all_comment_api_branches_reserve_from_same_ledger(self):
