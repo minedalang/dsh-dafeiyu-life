@@ -1,6 +1,7 @@
 # 2.8.0 current-version core: real behavior/security, not historical UI snapshots.
 # Lines are filenames relative to test/. This list is reviewed on each release.
 v280-dev14-one-life-one-intent.test.mjs
+v280-dev14-dm-privacy-natural-context.test.mjs
 v280-dev13-growth-visibility-audit.test.mjs
 v280-dev12-natural-life.test.mjs
 v280-dev11-life-hot-choice.test.mjs

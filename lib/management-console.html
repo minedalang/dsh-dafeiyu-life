@@ -1321,6 +1321,21 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-life #main-session-history .record:after,#panel-life #main-memory-list .record:after{content:"";position:absolute;right:13px;top:13px;width:25px;height:25px;border:1px solid color-mix(in srgb,var(--stroke) 72%,transparent);border-radius:50%;opacity:.34;pointer-events:none}
 #panel-life .neural-recall-board{border-radius:24px;overflow:hidden;box-shadow:0 16px 35px #376a8c17}
 #panel-life .neural-memory-results .record,#panel-life .neural-memory-detail{border-radius:15px;border:1px solid var(--stroke);background:var(--panel)}
+
+/* Recent DM conversations deliberately never render private message text in the DOM.
+   The soft frosted preview is decorative, not a blurred copy of raw messages. */
+#panel-dm .dm-gentle-privacy{display:flex;gap:12px;align-items:flex-start;margin:13px 0 15px;padding:14px 16px;border-radius:15px;border:1px solid color-mix(in srgb,var(--action) 22%,var(--stroke));background:linear-gradient(125deg,color-mix(in srgb,var(--panel) 78%,#d7ebef 22%),color-mix(in srgb,var(--panel) 86%,#efdfef 14%));line-height:1.65}
+#panel-dm .dm-gentle-privacy>span{font-size:23px;line-height:1.25}
+#panel-dm .dm-gentle-privacy strong{font-size:13px;color:var(--ink)}
+#panel-dm .dm-gentle-privacy p{font-size:12px;margin:5px 0 0;color:var(--muted)}
+#panel-dm .dm-private-preview{position:relative;isolation:isolate;margin-top:11px;min-height:88px;border:1px solid var(--stroke);border-radius:13px;overflow:hidden;background:color-mix(in srgb,var(--panel) 83%,var(--tint) 17%)}
+#panel-dm .dm-private-preview-lines{position:absolute;inset:13px;display:grid;gap:10px;align-content:center;filter:blur(5px);opacity:.36;pointer-events:none}
+#panel-dm .dm-private-preview-lines span{height:12px;max-width:83%;border-radius:9px;background:color-mix(in srgb,var(--muted) 27%,var(--panel));display:block}
+#panel-dm .dm-private-preview-lines span:nth-child(2){width:55%;margin-left:auto}
+#panel-dm .dm-private-preview-lines span:nth-child(3){width:65%}
+#panel-dm .dm-private-preview-overlay{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;min-height:88px;padding:13px 18px;text-align:center;background:color-mix(in srgb,var(--panel) 66%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#panel-dm .dm-private-preview-overlay span{font-size:12px;color:var(--muted);line-height:1.65}
+@media(prefers-reduced-transparency:reduce){#panel-dm .dm-private-preview-overlay{background:var(--panel)}}
 #panel-dm .dm-privacy-care{padding:14px 18px}#panel-dm .dm-privacy-care>summary{font-weight:730;cursor:pointer}#panel-dm .dm-privacy-care>summary small{float:right;color:var(--muted);font-weight:400}
 #panel-dm .dm-technical-note{font-size:12px;color:var(--muted);padding:7px 0}
 @media(max-width:660px){#panel-plans .life-source-flow-grid{grid-template-columns:1fr}#panel-life-agent .life-behavior-card{padding:12px}#panel-life-agent .life-behavior-header h3{font-size:19px}}
@@ -2474,6 +2489,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p class="muted">普通社交不设主人逐条审批。鱼鱼可以选择继续聊、延期或保持沉默，仍受联系人授权、额度和防重发保护。历史严格审核配置不会自动变成陌生人自主发送权限，请选择上方的交流方案并保存后迁移。</p>
 <label class="checkline"><input id="dm-p6-enabled" type="checkbox" checked> 自然多气泡（P6-A）：普通私信、主人私信与主 Session 共用 1–3 条消息协议（默认开启；不代表授权外发）</label>
 <div id="dm-p6-settings"><label for="dm-p6-max-bubbles">每轮最多独立聊天气泡数（1–3；普通私信、主人私信、主 Session 共用）</label><input id="dm-p6-max-bubbles" type="number" min="1" max="3" value="3"></div>
+<p class="muted">勾选只表示允许多条自然表达，不要求鱼鱼必须分成多条。普通私信的沉默续聊需模型对未结束话题另行预约（5–360 分钟）；主人的沉默联系另受主动联系规则约束。</p>
 <div><label for="social-p6-min-delay">全渠道自然续聊最短延迟（分钟，5–360）</label><input id="social-p6-min-delay" type="number" min="5" max="360" value="5"></div>
 <div><label for="social-p6-max-delay">全渠道自然续聊最长延迟（分钟，5–360）</label><input id="social-p6-max-delay" type="number" min="5" max="360" value="360"></div>
 <div><label for="social-rhythm-cooldown">不同渠道联系同一人后的冷却（分钟，0–1440）</label><input id="social-rhythm-cooldown" type="number" min="0" max="1440" value="30"></div>
@@ -2485,7 +2501,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </details>
 <div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然续聊状态：尚未读取。</p><p id="dm-p6-last-turn" class="muted" role="status">最近一轮私信交流：暂无记录。</p><p class="muted">与主人的私信由专门通道处理。鱼鱼可以根据对话自然决定回复长短，不要求凑满消息数量。</p><p id="dm-error" class="muted"></p><details class="dm-technical-note"><summary>网络连接故障怎么看？</summary><p class="muted">当私信暂时无法读取时，可先检查网络、代理和 B站连接。具体错误代码请在「运行诊断」查看。</p></details></div>
 <details id="dm-context-governance" class="card dm-privacy-care" style="margin-top:16px"><summary>🪷 聊天内容的保留与清理 <small>按需展开</small></summary><p class="muted">可以查看普通私信的近期聊天内容是否需要清理。不会清除已发送记录，也不会影响鱼鱼已确认的记忆或对方拒绝联系的设置。</p><p id="dm-memory-governance-status" class="muted" role="status">正在查看保留状态…</p><button id="dm-memory-prune" type="button">清理过期聊天内容</button></details>
-<div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">只显示本插件已经保存的对话片段；不从 B站 额外拉取完整历史。旧版心愿已停止自动处理，历史资料只随本地备份保留；新的陌生人探索灵感与好友观看邀请在「社交互动」查看。记录仅在本机展示。</p><p class="muted">这里统计的是后台私信自动回复通道；主人专属 Agent、其他已授权途径的回复不计入陌生人额度。历史中出现多条来信也不代表已发送多次。</p><div id="dm-recent-list" class="records"></div></div>
+<div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">这里只展示联系人与会话状态，不展示私信正文，也不从 B站 额外拉取完整聊天记录。主人专属 Agent 与其他授权途径的回复不计入这里的陌生人额度。</p><div class="dm-gentle-privacy" role="note"><span aria-hidden="true">🪷</span><div><strong>给鱼鱼留一小片自在的聊天空间</strong><p>这里不建议翻看鱼鱼和朋友的聊天细节。我们只看看它有没有好好交流，把具体的话语留给它们自己吧。</p></div></div><div id="dm-recent-list" class="records"></div></div>
 
 <details id="dm-legacy-approval-archive" class="contextual-settings"><summary>历史严格审核记录（只读 · 不再开放人工审批）</summary><div id="dm-requests" class="toolbar"><h2 style="margin:0">历史申请</h2><select id="dm-filter"><option value="pending">只看待审批</option><option value="">全部申请</option><option value="approved">已通过</option><option value="rejected">已拒绝</option></select></div><p class="muted">仅保留历史查看。不能批准、驳回、恢复或补发旧申请；旧配置若曾启用严格审核，仍保持原限制，直到明确保存新的自主交流方案。</p><div class="grid" id="dm-list"></div>
 <div class="card" style="margin:14px 0" id="dm-history-recovery" hidden><h3>找回旧版漏掉的米饭投喂</h3>
