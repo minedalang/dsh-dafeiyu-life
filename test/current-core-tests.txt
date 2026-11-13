@@ -31,3 +31,4 @@ v271-dev3-three-phase-execution.test.mjs
 v271-dev4-life-nested-read-identity.test.mjs
 v271-dev2-context-lazy-retrieval.test.mjs
 v280-dev14-test-runner-profiles.test.mjs
+v280-dev16-fast-dm-progressive.test.mjs

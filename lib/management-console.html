@@ -2143,7 +2143,10 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="polling-budget-card" aria-live="polite"><div><span class="page-eyebrow">BILIBILI · READ SAFETY</span><h3>🛡️ 后台读取保护</h3><p class="muted">私信按账号记录会话游标；评论和 @ 的后台读取共享已接入请求预算。遇到限流或验证码会暂停读取，而不是反复重试。</p></div><div id="polling-budget-status" role="status">正在读取预算…</div><details class="polling-budget-details"><summary>查看各类读取次数</summary><div id="polling-budget-by-kind" class="polling-budget-breakdown" aria-live="polite">暂无数据</div></details></div>
 <div class="settings-stack">
 <div class="settings-section"><h4>检查间隔</h4><div class="fields">
-<div><label for="dm-interval">自动私信检查（分钟，默认 1）</label><input id="dm-interval" type="number" min="1" max="120" value="1"></div>
+<div><label for="dm-interval">普通收件箱检查（分钟，新安装默认 2）</label><input id="dm-interval" type="number" min="1" max="120" value="2"></div>
+<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">只在最近真正确认发出私信后短期开启；不逐人轮询所有历史会话。与普通轮询共享读取预算及平台限流保护。</small></div>
+<div><label for="dm-active-seconds">活跃会话检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="10"></div>
+<div><label for="dm-active-window">活跃时长（秒，60–600）</label><input id="dm-active-window" type="number" min="60" max="600" value="180"></div>
 <div><label for="poll-replies-minutes">收到评论回复检查（分钟，默认 3）</label><input id="poll-replies-minutes" type="number" min="1" max="120" value="3"></div>
 <div><label for="poll-at-minutes">被 @ 邀请检查（分钟，默认 3）</label><input id="poll-at-minutes" type="number" min="1" max="120" value="3"></div>
 <div><label for="poll-top-minutes">近期视频热评检查（分钟，默认 5）</label><input id="poll-top-minutes" type="number" min="1" max="120" value="5"></div>
