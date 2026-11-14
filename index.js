@@ -5141,7 +5141,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const commentEpisodeContext=lifeSubagentHandoff({agent:'comment',episodes:universalLifeEpisodes,
         sourceRef:'comment-thread:'+String(req.bvid||'')+':'+String(req.uid||''),
         linkedPublicBvid:String(req.bvid||'')});
-      const generated=await interactionBatcher.generate({...visualReq,lifeEpisodeContext:commentEpisodeContext,
+      const generated=await interactionBatcher.generate({...visualReq,lifeCommentMessages:true,lifeEpisodeContext:commentEpisodeContext,
         verifiedCommentSource:/^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))&&/^[1-9]\d{0,19}$/.test(String(req.rpid||'')),
         identityContext:'',incomingRpid:req.rpid,
       p6MaxBubbles:cfg.commentP6MaxBubbles,
@@ -5164,7 +5164,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         (req.socialChannel==='at'?cfg.commentAtP6Enabled===true:cfg.commentP6Enabled===true)
       const normalized=prepareLifeCommentReply(generated,{p6Enabled,maxBubbles:cfg.commentP6MaxBubbles})
       const lines=normalized.messages
-      if(!lines.length)throw Error('Life 评论表达授权不可用：life-social-expression-empty')
+      if(!lines.length){
+        const outputShape=typeof generated==='string'?'string':Array.isArray(generated?.messages)?'messages-array':typeof generated?.reply==='string'?'reply-field':'other'
+        log('Life 评论表达无有效正文：outputShape='+outputShape+' action='+(['reply','skip','defer','close'].includes(generated?.action)?generated.action:'other')+'（不记录评论正文）')
+        throw Error('Life 评论表达授权不可用：life-social-expression-empty')
+      }
       const commentTarget='comment:'+String(req.contentType==='dynamic'?'dynamic':'video')+':'+
         String(req.contentType==='dynamic'?req.dynamicId||'':req.bvid||'')+':'+
         String(req.rpid||'')+':'+String(req.uid||'')
