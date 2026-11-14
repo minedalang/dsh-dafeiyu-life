@@ -1,8 +1,10 @@
 # 发布文档索引
 
-- **当前目标正式版 2.7.0：** 根目录 [`RELEASE_NOTES_v2.7.0.md`](../../RELEASE_NOTES_v2.7.0.md) 是面向用户的封版发行说明；[`CHANGELOG.md`](../../CHANGELOG.md) 保留 `dev.1`～`dev.10` 开发记录。
-- **上一个已发布稳定版 2.6.2：** [`RELEASE_NOTES_v2.6.2.md`](../../RELEASE_NOTES_v2.6.2.md) 留作升级对照；2.6.1 历史发布和审核资料继续保留，不再作为当前发布门禁。
-- **详细技术架构：** [`../architecture/README.md`](../architecture/README.md) 为当前源码接口与权限职责的唯一入口；旧发布候选在 [`archive/`](archive/) 中追溯。
-- **后续规划：** [`../FUTURE_ROADMAP_2.6.1_TO_2.9.1.md`](../FUTURE_ROADMAP_2.6.1_TO_2.9.1.md) 是历史版本路线，未来能力以新版本具体验收为准。
+**当前开发目标：2.8.0（dev.16 预览版，尚未正式发布）。** 旧版 2.7.x 发布草案与开发过程文档不能代替当前验收。
 
-发布顺序：自动化回归 → Windows DSH Desktop 与 B站受控实测 → 审核 dev 封版提交 → 快进合并到 main → 创建并推送 `v2.7.0` Tag → 核对 GitHub Release、tgz 与 SHA256 → **独立** npm 发布 → DSHMarket 安装/更新验证。推送 `dev` 或创建 Tag 并不自动代表 npm 已上架；不要把历史离线测试计作本次实机验收。
+- **当前版本功能与发布门禁：** [2.8.0 版本说明](../../RELEASE_NOTES_v2.8.0.md) · [2.8.0 发布就绪审计](../architecture/2.8.0-release-readiness.md)。
+- **未来规划：** [2.8.1 候选体验与长期方向](../ROADMAP.md) · [研发技术评估](../architecture/2.8.1-roadmap.md)。
+- **技术架构：** [统一 Life 协议与历史增量](../architecture/README.md)。
+- **历史发布：** [2.6.2](../../RELEASE_NOTES_v2.6.2.md) · [早期档案](archive/)。过时的 2.6.0 开发预览说明已清理，已发布版本说明仍保留。
+
+发布必须先完成完整回归、Windows DSH/真实 B站受控测试、账号与迁移安全验收，再审核封版、合并代码、生成 Tag 和 Release、核对 npm/市场发布。**Git 推送、开发 Tag 与离线测试都不等于正式上架。**

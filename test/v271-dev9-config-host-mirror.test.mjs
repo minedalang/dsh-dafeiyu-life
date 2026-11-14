@@ -30,8 +30,7 @@ async function saveChangedMemory(app){
   const initial=await app.call('GET','onboarding/quick/options')
   assert.equal(initial.status,200)
   const m=initial.data.memory
-  const command={kind:'memory',choice:'custom',revision:m.revision,previewOnly:false,confirm:'APPLY_QUICK_MEMORY',
-    memoryEnabled:!m.values.mainSessionMemoryEnabled,reflectionEnabled:!m.values.mainSessionReflectionAuto}
+  const command={kind:'memory',choice:'curious',revision:m.revision,previewOnly:false,confirm:'APPLY_QUICK_MEMORY'}
   return {response:await app.call('POST','onboarding/quick/save',command),before:m}
 }
 
@@ -43,8 +42,9 @@ test('宿主完全不可写：本地文件和运行配置回读一致，原生�
   assert.equal(response.data.host.role,'optional-native-mirror')
   assert.match(response.data.host.error,/没有可写/)
   const after=(await app.call('GET','config')).data.config
-  assert.equal(after.mainSessionMemoryEnabled,!before.values.mainSessionMemoryEnabled)
-  assert.equal(after.mainSessionReflectionAuto,!before.values.mainSessionReflectionAuto)
+  assert.equal(after.mainSessionMemoryEnabled,true)
+  assert.equal(after.mainSessionMemoryHalfLifeDays,45)
+  assert.equal(after.mainSessionReflectionAuto,true)
 })
 
 test('宿主更新接口成功但用户层没有变化：不伪称已同步，也不丢本地配置',async t=>{
@@ -55,7 +55,8 @@ test('宿主更新接口成功但用户层没有变化：不伪称已同步，�
   assert.ok(app.updates()>=1)
   assert.match(response.data.host.error,/读回来还是旧值/)
   const after=(await app.call('GET','config')).data.config
-  assert.equal(after.mainSessionMemoryEnabled,!before.values.mainSessionMemoryEnabled)
+  assert.equal(after.mainSessionMemoryEnabled,true)
+  assert.equal(after.mainSessionMemoryHalfLifeDays,45)
 })
 
 test('宿主镜像更新且回读成功：本地确认和宿主确认均真实',async t=>{

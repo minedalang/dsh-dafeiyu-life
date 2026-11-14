@@ -10,7 +10,7 @@ const source=(name)=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 const original={masterEnabled:true,lifeAgentMode:'active',autonomousPlannerEnabled:true,
   autonomousPlannerMinutes:30,autonomousPlannerDailyLimit:40,videoAgentMinIntervalMinutes:20,
   autonomousPlannerStartHour:9,autonomousPlannerEndHour:23,videoAgentReadTargetPerRound:8,videoAgentPickTargetPerRound:4}
-const request=(diff={})=>({schemaVersion:2,revision:lifeSettingsV2(original).revision,mode:'active',pace:'natural',previewOnly:true,...diff})
+const request=(diff={})=>({schemaVersion:2,revision:lifeSettingsV2(original).revision,mode:'active',pace:'custom',advanced:{minutes:30,dailyLimit:40,startHour:9,endHour:23},previewOnly:true,...diff})
 
 test('video Agent interval has configurable one-minute lower bound, with existing 20 minute default intact',()=>{
   assert.equal(MIN_VIDEO_AGENT_INTERVAL_MINUTES,1)

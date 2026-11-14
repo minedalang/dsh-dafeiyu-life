@@ -11,8 +11,9 @@ import {apply} from '../index.js'
 const read=file=>readFileSync(new URL('../'+file,import.meta.url),'utf8')
 test('快速设置实际可保存、原页参数保持同一配置键，模型仍独立配置',()=>{
   const html=read('lib/management-console.html'),js=read('lib/management-console.js'),server=read('index.js')
-  for(const id of ['quick-life-section','quick-memory-section','quick-social-section','quick-life-save','quick-memory-save','quick-dm-save','quick-share-save','quick-memory-enabled','quick-reflection-enabled'])
+  for(const id of ['quick-life-section','quick-memory-section','quick-social-section','quick-life-save','quick-memory-save','quick-dm-save','quick-share-save'])
     assert.match(html,new RegExp('id="'+id+'"'))
+  assert.doesNotMatch(html,/id="quick-memory-enabled"|id="quick-reflection-enabled"/)
   assert.match(js,/quickConfirmSave\('memory'/)
   assert.match(js,/quickConfirmSave\('life'/)
   assert.match(js,/quickConfirmSave\('social'/)
@@ -32,7 +33,7 @@ test('记忆方案只改记忆字段，不影响生活节奏、聊天授权和�
   assert.equal(plan.patch.autonomousPlannerMinutes,undefined)
   assert.equal(plan.patch.dmStrangerAutonomyEnabled,undefined)
   const custom=quickMemoryPlan(cfg,{choice:'custom',revision,previewOnly:true,memoryEnabled:true,reflectionEnabled:false})
-  assert.deepEqual(custom.patch,{mainSessionMemoryEnabled:true})
+  assert.deepEqual(custom.patch,{mainSessionMemoryEnabled:true,mainSessionReflectionAuto:true})
   assert.throws(()=>quickMemoryPlan(cfg,{choice:'balanced',revision,previewOnly:false,memoryEnabled:true,reflectionEnabled:true}),/明确确认/)
   assert.throws(()=>quickMemoryPlan(cfg,{choice:'__proto__',revision,previewOnly:true,memoryEnabled:true,reflectionEnabled:true}),/有效/)
 })
@@ -79,7 +80,7 @@ test('真实 HTTP：首次设置可保存非外发配置，新增社交和自主
   assert.equal(before.data.requiredReady,false)
   assert.equal(before.data.social.values.dmStrangerAutonomyEnabled!==undefined,true)
   assert.equal(before.data.memory.profiles.balanced.mainSessionMemoryHalfLifeDays,30)
-  const memReq={kind:'memory',choice:'balanced',revision:before.data.memory.revision,memoryEnabled:!before.data.memory.values.mainSessionMemoryEnabled,reflectionEnabled:!before.data.memory.values.mainSessionReflectionAuto}
+  const memReq={kind:'memory',choice:'curious',revision:before.data.memory.revision,memoryEnabled:!before.data.memory.values.mainSessionMemoryEnabled,reflectionEnabled:!before.data.memory.values.mainSessionReflectionAuto}
   assert.equal((await call('POST','onboarding/quick/save',{...memReq,previewOnly:true})).status,200)
   assert.equal((await call('POST','onboarding/quick/save',{...memReq,previewOnly:false})).status,400)
   const saved=await call('POST','onboarding/quick/save',{...memReq,previewOnly:false,confirm:'APPLY_QUICK_MEMORY'})
@@ -90,7 +91,7 @@ test('真实 HTTP：首次设置可保存非外发配置，新增社交和自主
   assert.equal(saved.data.host.ok,false)
   assert.equal(saved.data.host.role,'optional-native-mirror')
   const after=await call('GET','onboarding/quick/options')
-  assert.equal(after.data.memory.values.mainSessionMemoryHalfLifeDays,30)
+  assert.equal(after.data.memory.values.mainSessionMemoryHalfLifeDays,45)
   const socialReq={kind:'social',channel:'share',choice:'autonomous',dailyLimit:100,revision:after.data.social.revision,previewOnly:false,confirm:'APPLY_QUICK_SOCIAL'}
   assert.equal((await call('POST','onboarding/quick/save',socialReq)).status,400)
   assert.equal((await call('POST','onboarding/quick/save',{kind:'life',mode:'active',pace:'lively',revision:after.data.life.revision,enableMaster:true,previewOnly:true})).status,400)
