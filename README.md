@@ -175,6 +175,8 @@ dsh plugin --profile desktop add dsh-dafeiyu-life
 
 **2.8.1-dev.3a 首批低清预览去重：** 视觉模型现在先从 B站播放器原有预览拼图中生成少量候选缩略图，再根据内容差异选择最多三张代表画面；近乎相同的画面只发一次，保留真实时间戳与采样记录。不会额外下载完整视频、不能以抽帧冒充看完整片；真正的镜头切分、片段放大和音轨理解属于后续开发。[技术与边界](docs/architecture/2.8.1-video-perception-dev3a.md)。
 
+**视觉模型人工验收：** DSH 视觉与 Ollama 本地视觉共用一张大肥鱼原图和一个验收区，切换到本地模式时 DSH 模型配置置灰但原值保留。普通 DSH Session 识图成功不等于独立 Headless 验收可以启动，失败会提示进一步排查方向。真正从视频流自适应检测镜头（不只使用官方低清预览索引）安排在后续 dev.3a.3，尚未实现。
+
 **2.8.1-dev.3a.2 自主视频深度与局部复查：** 鱼鱼仍自行决定是否了解某条视频；已经决定要看时可选择略看（只读资料）、正常了解（已授权时识图）或深入探索（可选指定 3～120 秒官方低清预览窗口复查），无字幕并不意味着必须识图。DSH 与 Ollama 走相同的时间窗证据协议；局部复查不是完整视频解码、观看或音频理解。详见 [dev.3a 技术与边界](docs/architecture/2.8.1-video-perception-dev3a.md)。
 
 视频感知方向还参考了 [SAOS-3624/dsh-video-storyboard](https://github.com/SAOS-3624/dsh-video-storyboard) 的分镜/时间锚点设计与 [SAOS-3624/dsh-see-now](https://github.com/SAOS-3624/dsh-see-now) 的变化驱动采样理念；本批次没有直接复制这两个项目的源码。具体参考关系与模型上游见 [第三方声明](THIRD_PARTY_NOTICES.md)。

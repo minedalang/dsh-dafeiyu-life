@@ -245,6 +245,39 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         except OSError: pass
 
 
+def _safe_dsh_headless_diagnostic(stderr, stdout=b'', exit_code=1):
+    """Convert noisy/sensitive DSH CLI output to a fixed, credential-free hint.
+
+    Regular DSH sessions and restricted headless sessions do not share identical
+    provider/tool startup conditions. Never show raw stderr: it may include URLs,
+    credentials, request headers or private filesystem paths.
+    """
+    raw=((stderr or b'')[-12000:]+b'\n'+(stdout or b'')[-2000:]).decode('utf8',errors='replace').lower()
+    checks=(
+      ('headless_auth',('account_sign_in_required','sign in required','unauthorized','not authenticated','no adapter'),
+       '受限 Headless 会话未取得有效登录或 Provider 适配器，请在 DSH 的 Headless 模型管理中核验同一 Provider/模型'),
+      ('model_route',('model not found','unknown model','provider not found','unsupported model','model unavailable'),
+       '受限 Headless 会话没有找到已选模型；请重新同步并验证该 Provider/模型'),
+      ('mcp_startup',('mcp','failed to spawn','cannot find module','module not found','no such file'),
+       '受限图片工具启动失败，请检查 DSH MCP 客户端及插件内 Python 运行环境'),
+      ('tool_call',('tool not found','unknown tool','tool call failed','permission denied'),
+       '受限图片工具未能执行，请检查 DSH Headless 工具加载与安全配置'),
+      ('network',('timeout','timed out','econnreset','enotfound','connection refused','fetch failed'),
+       '受限会话无法完成模型网络请求，请检查该进程的网络连接'),
+      ('quota',('rate limit','429','quota exceeded','insufficient balance'),
+       '模型服务额度或速率限制导致受限会话失败'),
+      ('image_input',('image not supported','unsupported image','image input','multimodal'),
+       '受限会话的图片输入处理失败，请检查 Headless 视觉工具与模型格式兼容性'),
+      ('startup_flags',('unknown option','unrecognized option','invalid patch','invalid profile'),
+       'DSH CLI 启动参数与当前版本不兼容，请检查 Headless profile/patch 配置'),
+    )
+    for code,patterns,hint in checks:
+        if any(k in raw for k in patterns):
+            return {'diagnosticCode':code,'error':f'DSH 受限图片验收子会话退出（exit={exit_code}）：{hint}。普通 Session 可识图不代表独立 Headless 会话已通过验证。'}
+    return {'diagnosticCode':'headless_exit_unknown',
+            'error':f'DSH 受限图片验收子会话异常退出（exit={exit_code}）。这不代表模型不能识图；请先在 DSH 中确认 Headless 模型验证和只读 MCP 工具可用。'}
+
+
 def describe_test_image_with_dsh(home, env=None, runner=None):
     """Manual-only DSH mascot image probe. Never reads a BV or uses write tools.
 
@@ -297,7 +330,7 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         except (OSError,ValueError) as exc:
             return {'ok':False,'status':'launch_error','error':'无法安全启动 DSH 视觉会话：'+type(exc).__name__}
         if result.returncode!=0:
-            return {'ok':False,'status':'model_error','error':'DSH 视觉会话异常结束（exit='+str(result.returncode)+'），检查模型 Provider / 图片能力'}
+            return {'ok':False,'status':'headless_launch_failed',**_safe_dsh_headless_diagnostic(result.stderr,result.stdout,result.returncode)}
         try:observed=json.loads(proof.read_text(encoding='utf8'))
         except (OSError,ValueError):
             return {'ok':False,'status':'no_image_proof','error':'DSH 模型没有实际调用受控图片工具，不能人工认可'}

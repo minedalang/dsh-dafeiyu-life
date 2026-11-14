@@ -15,7 +15,8 @@ test('前端只有两种识图方式，旧 Endpoint 的编辑项已删除',()=>{
   assert.deepEqual([...select.matchAll(/<option value="([^"]+)"/g)].map(m=>m[1]),['independent_dsh','independent_local'])
   assert.doesNotMatch(js,/旧版 Endpoint|visionEndpoint/)
   assert.doesNotMatch(client,/reuse_video_model.*option/)
-  for(const id of ['dsh-vision-probe-image','dsh-vision-probe-answer','dsh-vision-approve','dsh-vision-reject','dsh-vision-verify'])assert.ok(html.includes(`id="${id}"`),id)
+  for(const id of ['vision-unified-probe-panel','vision-probe-image','vision-probe-answer','vision-probe-approve','vision-probe-reject','vision-probe-verify'])assert.ok(html.includes(`id="${id}"`),id)
+  assert.equal((html.match(/id="vision-unified-probe-panel"/g)||[]).length,1)
 })
 test('生产模型配置移除旧视觉 Endpoint、legacy 模式安全退役',()=>{
   const js=src('index.js')

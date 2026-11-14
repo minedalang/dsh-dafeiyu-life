@@ -1661,16 +1661,35 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <details class="settings-section model-task"><summary><strong>主人 Agent 模型（理解请求与规划） <span class="help-tip" title="无任意文件/Shell/平台写入能力，工具由白名单校验。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-ownerDmAgent-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-ownerDmAgent-test" class="model-test-button">测试连接</button><span id="models-ownerDmAgent-test-result" class="muted" role="status"></span></div><p class="muted">用于理解主人私信、分解可执行的受限操作。按需调用；复杂多步任务建议较强推理及指令遵循模型，不授予任意 Shell 或文件权限。</p><div class="fields" id="models-ownerDmAgent"></div></div></details>
 <h4 class="model-role-group">② 视频、视觉与长期认识 · 按实际能力配置</h4>
 <details class="settings-section model-task"><summary><strong>视频 Agent 模型（选片与内容分析） <span class="help-tip" title="用于独立视频 Agent 的选片与内容分析；Life 是否委派由行为决策模型自主决定。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">视频 Agent 启动后，使用此模型进行自主选片、内容阅读与分析。Life 是否逛首页及是否委派 Agent，由「行为决策模型」决定。此模型主要阅读文字线索、调用搜索与字幕工具；只有在需要看画面时才按下方「视觉识别」配置使用多模态能力。不会强制启动或评论。独立视频 Agent 需完成 Headless 模型验证。</p><div class="fields" id="models-video"></div></div></details>
-<details class="settings-section model-task"><summary><strong>视觉识别模型 <span class="help-tip" title="可选择 DSH 视觉模型（使用下方已配置的 Provider/模型）或本地 Ollama 视觉模型；连接测试不能代替图片验收。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">只在预览识图确实启用且需要理解画面时调用，不负责挑片、安排 Life 行动或写评论。仅提供「DSH 识图模型」与「本地 Ollama 视觉模型」两种方式。DSH 使用此处填写的 Provider / 模型，Ollama 使用下方已安装并经过人工认可的本地模型；两种方式都可用相同的大肥鱼原图实际识图并查看完整结果。上方普通“测试连接”只检查模型可达，不等于实际识图成功。</p><div class="fields" id="models-vision"></div>
+<details class="settings-section model-task"><summary><strong>视觉识别模型 <span class="help-tip" title="可选择 DSH 视觉模型（使用下方已配置的 Provider/模型）或本地 Ollama 视觉模型；连接测试不能代替图片验收。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">只在预览识图确实启用且需要理解画面时调用，不负责挑片、安排 Life 行动或写评论。仅提供「DSH 识图模型」与「本地 Ollama 视觉模型」两种方式。DSH 使用此处填写的 Provider / 模型，Ollama 使用下方已安装并经过人工认可的本地模型；选择本地模式时 DSH Provider / 模型自动置灰且不参与当前视觉运行。两种方式共用下方唯一的原图人工验收面板。上方普通“测试连接”只检查模型可达，不等于实际识图成功。</p><div class="fields" id="models-vision"></div>
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="independent_dsh">DSH 识图模型（使用上方 Provider / 模型）</option><option value="independent_local">本地 Ollama 视觉模型（下方一键安装）</option></select></div>
 <div><label class="checkline"><input id="models-vision-enabled" type="checkbox">启用视频预览识图</label></div>
 <div><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></div></div>
-<div class="setting-note" id="dsh-vision-probe-panel" aria-label="DSH 识图人工验收" style="margin-top:12px">
-<strong>🐟 DSH 图片识别验收 · 大肥鱼真实图片与模型回答</strong>
-<p class="muted">使用上方 DSH 视觉 Provider / 模型做一次只读图片识别；与本地 Ollama 使用<strong>同一张大肥鱼原图</strong>。无需配置其他 Endpoint 或 API Key。结果不经程序语义评分，是否认可由你决定；失败不会自动换用其他模型。</p>
-<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap"><figure style="margin:0;flex:0 0 164px;text-align:center"><img id="dsh-vision-probe-image" alt="DSH 识图测试用大肥鱼原图" width="154" height="186" style="width:154px;height:186px;object-fit:contain;background:#fff;border:1px solid #c8ced7;border-radius:8px" loading="lazy"/><figcaption class="muted">实际测试图：大肥鱼</figcaption></figure>
-<div style="flex:1 1 260px;min-width:0"><p id="dsh-vision-probe-result" class="muted" role="status" aria-live="polite">尚未执行 DSH 图片识别</p><strong>DSH 视觉模型最终回答</strong><pre id="dsh-vision-probe-answer" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;margin-top:4px" aria-label="DSH 视觉模型完整回答">尚无结果</pre><p id="dsh-vision-probe-error" class="muted" style="overflow-wrap:anywhere"></p>
-<div class="toolbar"><button type="button" id="dsh-vision-verify">重新识别大肥鱼图片</button><button type="button" id="dsh-vision-approve">认可本次识图</button><button type="button" id="dsh-vision-reject">结果不满意</button></div><p class="muted">人工认可仅代表接受本次识别结果；修改 Provider / 模型或再次识图后需要重新认可。模型调用失败不能认可。仅有技术连接成功不足以证明识图。</p></div></div></div>
+<section class="setting-note" id="vision-unified-probe-panel" aria-label="视觉模型图片人工验收" style="margin-top:14px;border-radius:14px;padding:16px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <strong>🐟 图片识别验收</strong>
+    <span id="vision-probe-source" style="display:inline-block;border:1px solid var(--border,#aeb7c2);border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600">DSH 识图模型</span>
+  </div>
+  <p id="vision-probe-route" class="muted" style="margin:6px 0 10px">选择识图方式后，此处展示实际待验证的模型。</p>
+  <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+    <figure style="margin:0;flex:0 0 164px;text-align:center">
+      <img id="vision-probe-image" src="/api/bili-duty/local-vision/selftest-image" alt="实际发送给所选模型的大肥鱼原图" width="154" height="186" style="width:154px;height:186px;object-fit:contain;background:#fff;border:1px solid #c8ced7;border-radius:10px" loading="lazy"/>
+      <figcaption class="muted">两种识图方式共用同一张原图</figcaption>
+    </figure>
+    <div style="flex:1 1 270px;min-width:0">
+      <p id="vision-probe-result" role="status" aria-live="polite">尚未识图</p>
+      <strong>实际模型回答</strong>
+      <pre id="vision-probe-answer" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;margin-top:6px" aria-label="当前识图方式的完整回答">尚无结果</pre>
+      <p id="vision-probe-error" class="muted" style="overflow-wrap:anywhere" role="status"></p>
+    </div>
+  </div>
+  <div class="toolbar" style="margin-top:10px;flex-wrap:wrap">
+    <button type="button" id="vision-probe-verify">识别大肥鱼图片</button>
+    <button type="button" id="vision-probe-approve" disabled>认可本次识图</button>
+    <button type="button" id="vision-probe-reject" disabled>结果不满意</button>
+  </div>
+  <p class="muted">仅对上方当前选定的识图方式进行测试；更换方式、模型或重新验证后，旧结果不能沿用。请求成功并返回真实图片描述后，由你决定是否认可。不会向 B站发送内容。DSH 使用独立受限 Headless 子会话，与平时交谈的 Session 不完全相同。</p>
+</section>
 <div class="contextual-memory-group" id="local-vision-controls">
 <h4>🖥️ 可选本地视频视觉模型</h4>
 <p class="muted">本地视觉仅负责画面观察，Life 仍使用原有 DSH 模型；<strong>无需在 DSH 中另外配置 Ollama Provider 或 API Key</strong>。需要先在本机安装并运行 Ollama；下载成功后还需完成图片推理自检和手动启用。</p>
@@ -1682,26 +1701,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell 启动的 Ollama 进程生效，不修改 Windows 用户级或系统级环境变量。若 Ollama 已在后台运行，请先退出以免端口占用。<a href="https://docs.ollama.com/faq#how-do-i-use-ollama-behind-a-proxy" target="_blank" rel="noopener noreferrer">查看 Ollama 官方网络代理说明</a>。</p></div>
 <div class="fields"><div><label for="local-vision-model">可选本地模型</label><select id="local-vision-model"><option value="qwen3.5-4b">Qwen3.5 4B</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B</option></select></div></div>
 <p id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</p><progress id="local-vision-progress" max="100" value="0" hidden></progress>
-<div class="setting-note" id="local-vision-probe-panel" aria-label="本地视觉识图人工验收" style="margin-top:12px">
-  <strong>🐟 图片识别验收 · 大肥鱼真实图片与模型回答</strong>
-  <p class="muted">测试使用大肥鱼的角色原图。左侧就是实际发送给 Ollama 的图片，右侧展示模型的完整回答。程序不再根据颜色或关键词自动评分，<strong>由你判断是否真正理解了图片</strong>。验证不会向 B站发送任何内容。</p>
-  <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
-    <figure style="margin:0;flex:0 0 164px;text-align:center">
-      <img id="local-vision-probe-image" alt="本次自检使用的大肥鱼角色图片" width="154" height="186" style="width:154px;height:186px;object-fit:contain;background:#fff;border:1px solid #c8ced7;border-radius:8px" loading="lazy"/>
-      <figcaption class="muted">实际测试图：大肥鱼</figcaption>
-    </figure>
-    <div style="flex:1 1 260px;min-width:0">
-      <p id="local-vision-probe-result" class="muted" role="status" aria-live="polite">尚未识图</p>
-      <strong>Ollama 最终回答（完整显示，不截断）</strong>
-      <pre id="local-vision-probe-answer" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;margin-top:4px" aria-label="模型的完整识图回答">尚无结果</pre>
-      <p id="local-vision-probe-error" class="muted" style="overflow-wrap:anywhere"></p>
-      <div class="toolbar"><button type="button" id="local-vision-approve">认可本次识图</button><button type="button" id="local-vision-reject">结果不满意</button></div>
-      <p class="muted">人工认可只证明你接受本次图片识别结果，不代表模型能正确理解所有视频。Ollama 请求失败或没有最终文字时无法认可，请重新验证。</p>
-    </div>
-  </div>
-</div>
-<div class="toolbar"><button type="button" id="local-vision-install">一键下载并识图</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-verify">重新识别大肥鱼图片</button><button type="button" id="local-vision-select">启用选中模型</button><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div>
-<p class="muted">模型下载完成后可直接识别图片，<strong>识别完成并不等于通过</strong>；需要查看回答并主动点击「认可本次识图」后才能启用。无需重新下载也可重新识图。运行时错误请核对 <code>ollama --version</code>。</p>
+<div class="toolbar"><button type="button" id="local-vision-install">一键下载并识图</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-select">启用选中模型</button><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div>
+<p class="muted">模型模型下载完成后，请使用上方统一验收区识图；<strong>识别完成并不等于通过</strong>，需人工认可后才能启用。无需重复下载。运行时错误请核对 <code>ollama --version</code>。</p>
 <p class="muted">下载时展示的是 Ollama 当前文件层的进度（并非整个模型的总进度），切换到下一文件时百分比会重新计算；取消下载可能保留已缓存的分片。删除会移除 Ollama 全局模型，可能影响其他应用，需再次确认。网络问题请先检查代理是否被 Ollama 进程继承，再重试。真实 GPU/视频表现需本机验收。</p>
 </div>
 </div></details>

@@ -32,7 +32,8 @@ test('额度表单和两条 Python 路线接入可配置上限，UI解释 0 的�
  const index=src('index.js'),py=src('lib/preview_vision.py'),dsh=src('lib/vision_dsh.py');
  assert.match(html,/id="quota-vision-daily" type="number" min="0" max="200"/);
  assert.match(js,/\['quota-vision-daily','visionDailyLimit',0,200,30\]/);
- assert.match(js,/复用模式；视频 Agent 直接看图不计入此账本/);
+ // 旧复用视频模型入口已退役；两种独立视觉方式按真实调用计入统一额度。
+ assert.match(js,/独立视觉调用/);
  assert.ok(index.split('BILI_VISION_DAILY_LIMIT').length>=3);
  assert.match(py,/def _vision_daily_limit\(env=None\)/);
  assert.match(dsh,/_vision_daily_limit\(env\)/);
