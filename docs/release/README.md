@@ -2,6 +2,7 @@
 
 **当前开发目标：2.8.0（dev.16 预览版，尚未正式发布）。** 旧版 2.7.x 发布草案与开发过程文档不能代替当前验收。
 
+- **最后一轮正式版审计：** [2.8.0 发布阻断与检查表](../architecture/2.8.0-final-release-audit-20261114.md)。
 - **当前版本功能与发布门禁：** [2.8.0 版本说明](../../RELEASE_NOTES_v2.8.0.md) · [2.8.0 发布就绪审计](../architecture/2.8.0-release-readiness.md)。
 - **未来规划：** [2.8.1 候选体验与长期方向](../ROADMAP.md) · [研发技术评估](../architecture/2.8.1-roadmap.md)。
 - **技术架构：** [统一 Life 协议与历史增量](../architecture/README.md)。

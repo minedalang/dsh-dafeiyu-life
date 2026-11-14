@@ -50,6 +50,8 @@
     "prompts",
     "vendor",
     "README.md",
+    "docs/ROADMAP.md",
+    "docs/README.md",
     "docs/LIFE_MEMORY_2_TECHNICAL.md",
     "docs/architecture",
     "docs/archive/README.md",
@@ -65,6 +67,7 @@
     "RELEASE_NOTES_v2.7.1.md",
     "scripts/check-video-tool-contract.mjs",
     "tools/life-willingness-offline-recovery.mjs",
+    "tools/导出B站日志.bat",
     "RELEASE_NOTES_v2.8.0.md"
   ],
   "engines": {

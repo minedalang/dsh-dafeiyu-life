@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {continuationPrompt,parseContinuationDecision} from '../lib/life-continuation.mjs'
+import {createLifePublicDiscussionWindow} from '../lib/life-public-discussion-window.mjs'
 const id='a'.repeat(24),bv='BV1aBcD2eF3G'
 const menu=[{action:'inspect_creator_space',id},{action:'comment_video',id,bvid:bv},{action:'inspect_video_discussion',id,bvid:bv}]
 test('same-BV verified discussion evidence is presented as untrusted public context',()=>{
@@ -21,11 +22,18 @@ test('empty schema placeholders do not manufacture unexpected-target; nonempty w
  assert.equal(parseContinuationDecision(JSON.stringify({action:'inspect_creator_space',id,bvid:bv,reason:'想看看作者'}),menu).reason,'unexpected-target')
  assert.equal(parseContinuationDecision(JSON.stringify({action:'comment_video',id,bvid:bv,text:'',reason:'确实很想评论这条作品'}),menu).reason,'unsafe-comment')
 })
-test('verified public discussion is ephemeral and bound to current account and BV',()=>{
- const s=readFileSync(new URL('../lib/autonomous-planner.mjs',import.meta.url),'utf8')
- assert.match(s,/discussionEvidenceCache\?\.account===scope/)
- assert.match(s,/discussionEvidenceCache\.bvid===writeEvidence\.bvid/)
- assert.match(s,/now\(\)-discussionEvidenceCache\.at<600_000/)
- assert.match(s,/discussion\.verified!==true/)
- assert.match(s,/discussionEvidenceCache=\{account:scope,bvid:selected/)
+test('verified public discussion is ephemeral, account isolated, BV bound and expires',()=>{
+ let time=Date.parse('2026-11-14T10:00:00Z')
+ const window=createLifePublicDiscussionWindow({now:()=>time})
+ const owner='a'.repeat(16),other='b'.repeat(16),otherBV='BV1zYxWvUtSr'
+ assert.equal(window.put(owner,bv,[' 真实的公开留言 ',{content:'第二条公开留言'}]),true)
+ assert.deepEqual(window.get(owner,bv),['真实的公开留言','第二条公开留言'])
+ assert.deepEqual(window.get(owner,otherBV),[],'the window does not reuse a different BV')
+ assert.deepEqual(window.get(other,bv),[],'account switch clears all previous discussion')
+ assert.deepEqual(window.get(owner,bv),[],'switching back cannot resurrect previous snippets')
+ assert.equal(window.put(owner,bv,['短期有效']),true)
+ time+=600_000
+ assert.deepEqual(window.get(owner,bv),[],'discussion expires after 10 minutes')
+ assert.equal(window.put(owner,'not-a-bv',['不可信']),false)
+ assert.deepEqual(window.get(owner,'not-a-bv'),[])
 })

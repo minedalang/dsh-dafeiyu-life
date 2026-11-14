@@ -23,13 +23,18 @@ function make(t,read){
    body:JSON.stringify(body)})
   return {code:r.status,...await r.json()}
  }
- return {bridge,post,results,setScope:x=>scope=x,setUid:x=>uid=x}
+ return {bridge,post,results,setScope:x=>scope=x,setUid:x=>uid=x,
+  registerComment:(text)=>bridge.registerTrustedIntent({proof:{id:'test-'+Math.random(),kind:'video_comment',expiresAt:Date.now()+60_000},
+   kind:'video_comment',target:BV,commentText:text,uid:uid,scope:scope})}
 }
 test('dev16 exact comment receipt + approved text + independent platform read confirm one Life action',async t=>{
  const seen=[];const x=make(t,async row=>{seen.push(row);return true})
  await x.bridge.start()
+ const commentText='喜欢这个镜头，看得我又有点好奇了。'
+ const ticket=x.registerComment(commentText)
+ assert.equal(ticket.ok,true)
  const grant=await x.post('/life-action',{tool:'bili_reply',target:BV,uid:UID,
-   commentText:'喜欢这个镜头，看得我又有点好奇了。',topLevel:true})
+   commentText,topLevel:true,intentTicket:ticket.ticket})
  assert.equal(grant.ok,true)
  const r=await x.post('/life-action-result',{grant:grant.grant,uid:UID,ok:true,receiptId:'123456789012'})
  assert.equal(r.status,'verified')
@@ -42,7 +47,9 @@ test('dev16 missing or malformed platform rpid does not query and remains unveri
  let called=0
  const x=make(t,async()=>{called++;return true});await x.bridge.start()
  for(const receiptId of ['', '0','1e10','-5','wrong']){
-  const g=await x.post('/life-action',{tool:'bili_reply',target:BV,uid:UID,commentText:'原评论',topLevel:true})
+  const ticket=x.registerComment('原评论')
+  assert.equal(ticket.ok,true)
+  const g=await x.post('/life-action',{tool:'bili_reply',target:BV,uid:UID,commentText:'原评论',topLevel:true,intentTicket:ticket.ticket})
   const r=await x.post('/life-action-result',{grant:g.grant,uid:UID,ok:true,receiptId})
   assert.equal(r.status,'accepted-unverified')
  }
@@ -82,4 +89,12 @@ test('dev16 evidence stays in ledger while owner diary uses ordinary action word
   assert.ok(rows.some(x=>x.type==='life-write'&&x.title==='回复了一条私信'))
   assert.ok(rows.every(x=>!/(平台|回执|已核验|事务|只读回查)/.test(x.title+' '+x.detail)))
  }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('comment writer without a Life intent ticket is denied before any platform call',async t=>{
+ const x=make(t,async()=>true);await x.bridge.start()
+ const response=await x.post('/life-action',{tool:'bili_reply',target:BV,uid:UID,commentText:'未获批准的草稿',topLevel:true})
+ assert.equal(response.code,409)
+ assert.equal(response.reason,'comment-review-not-current')
+ assert.deepEqual(x.results,[])
 })

@@ -140,6 +140,8 @@ dsh plugin --profile desktop add dsh-dafeiyu-life
 
 ### 关于当前 2.8.0 预览版
 
+正式发布门禁、测试差异与实机验收条件见 [2.8.0 最终发布审计](docs/architecture/2.8.0-final-release-audit-20261114.md)。
+
 新生活系统上线初期，真实 B站网络、模型能力与个人配置存在差异，个别环节仍需持续实机验收。欢迎通过 GitHub Issues **反馈体验和提出建议**；遇到问题可优先导出脱敏后的诊断，不需要公开分享账号凭据与私人聊天。
 
 ## 🔒 自由与安全的边界

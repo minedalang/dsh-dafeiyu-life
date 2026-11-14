@@ -1,6 +1,6 @@
 # 🐟 大肥鱼 · DSH 生活系统 2.6.0
 
-> 本说明对应 `v2.6.0`。GitHub Release、npm、DSHMarket 并非同步发布，安装时请核对实际版本。完整功能介绍见 [README](README.md)。
+> 本说明对应 `v2.6.0`。GitHub Release、npm、DSHMarket 并非同步发布，安装时请核对实际版本。完整功能介绍见 [README](../../../README.md)。
 
 **这次最重要的变化：鱼鱼可以从与任何真实用户的相遇中自然建立友情，并根据关系远近，渐渐记住或忘记共同经历。** 同时完善人生记忆、情绪生活、动态互动与管理中心，让日常使用更容易理解。
 
@@ -44,4 +44,4 @@
 
 ## 致谢与许可
 
-本项目由社区独立维护，采用 MIT 许可，非 DSH 或 B站官方产品。感谢 [dsh-bili-scroll](https://github.com/c1overzz/dsh-bili-scroll)、[bilibili-mcp](https://github.com/adoresever/bilibili-mcp)、[dsh-fish-memory](https://github.com/Yuuyuko-uu/dsh-fish-memory) 与 [dsh-bili-subagent](https://github.com/Yuuyuko-uu/dsh-bili-subagent) 的开源贡献与启发。版权及第三方归属见 [LICENSE](LICENSE)、[NOTICE](NOTICE.md) 和 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md)。
+本项目由社区独立维护，采用 MIT 许可，非 DSH 或 B站官方产品。感谢 [dsh-bili-scroll](https://github.com/c1overzz/dsh-bili-scroll)、[bilibili-mcp](https://github.com/adoresever/bilibili-mcp)、[dsh-fish-memory](https://github.com/Yuuyuko-uu/dsh-fish-memory) 与 [dsh-bili-subagent](https://github.com/Yuuyuko-uu/dsh-bili-subagent) 的开源贡献与启发。版权及第三方归属见 [LICENSE](../../../LICENSE)、[NOTICE](../../../NOTICE.md) 和 [THIRD_PARTY_NOTICES](../../../THIRD_PARTY_NOTICES.md)。

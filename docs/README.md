@@ -5,7 +5,7 @@
 - **首次使用与主要功能**：[项目 README](../README.md)
 - **面向使用者的未来计划**：[2.8.1 预计体验与长期方向](ROADMAP.md)
 - **2.8.0 当前架构**：[统一 Life 意愿协议](architecture/2.8.0-unified-life-action-protocol.md) · [Life 接线](architecture/life-system-current.md) · [dev.16 当前变更](architecture/2.8.0-dev16-dm-progressive-fast-poll-life-rest.md)
-- **2.8.0 当前验收**：[发布就绪审计](architecture/2.8.0-release-readiness.md) · [本轮设置和文档收口](architecture/2.8.0-20261114-management-settings-closure.md)
+- **2.8.0 当前验收**：[最终发布审计（P0 阻断）](architecture/2.8.0-final-release-audit-20261114.md) · [发布就绪审计](architecture/2.8.0-release-readiness.md) · [本轮设置和文档收口](architecture/2.8.0-20261114-management-settings-closure.md)
 - **后续技术计划**：[2.8.1 研发评估与验收边界](architecture/2.8.1-roadmap.md)
 - **旧版资料和过程**：[架构历史入口](architecture/README.md) · [发布历史](release/README.md) · [归档说明](archive/README.md)
 

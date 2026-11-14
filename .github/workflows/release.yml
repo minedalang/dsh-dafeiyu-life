@@ -79,12 +79,14 @@ jobs:
               echo 'Stable release tag must reference a commit merged into main' >&2
               exit 1
             }
-            ! grep -Eq '当前开发版本：|尚未正式发布' <(grep -E '^当前开发版本：|^> .*当前仅供开发' README.md) || {
-              echo 'Stable release README still identifies a dev build' >&2
+            # Refuse stable tags while the CURRENT user-facing material still
+            # says preview. The old filtered grep missed actual dev.16 wording.
+            ! grep -Eq '关于当前.*预览版|当前开发版本：|尚未正式发布|尚未上架 npm' README.md || {
+              echo 'Stable release README still identifies a preview build' >&2
               exit 1
             }
-            ! grep -q '开发预览，尚未发布' "RELEASE_NOTES_${GITHUB_REF_NAME}.md" || {
-              echo 'Stable Release Notes still identify a dev build' >&2
+            ! grep -Eq '开发预览提醒|开发预览，尚未发布|当前交付代码仍是|当前构建标记为.*dev' "RELEASE_NOTES_${GITHUB_REF_NAME}.md" || {
+              echo 'Stable release notes still identify a preview build' >&2
               exit 1
             }
           fi

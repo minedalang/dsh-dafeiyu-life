@@ -20,7 +20,7 @@
 
 ## 🚀 安装与升级
 
-以插件市场实际提供的版本和安装入口为准，也可参照 [README](README.md) 通过 DSH CLI 安装。使用前确认包内 `package.json` 的 DSH／Node.js 版本要求。
+以插件市场实际提供的版本和安装入口为准，也可参照 [README](../../../README.md) 通过 DSH CLI 安装。使用前确认包内 `package.json` 的 DSH／Node.js 版本要求。
 
 升级前建议备份 `$DSH_HOME/bili-duty/`；升级插件不会主动重置人生记忆或好友关系。安装/升级后完整重启 DSH，再检查主 Session、模型连接、B站登录、授权范围以及相关数据是否仍可用。
 
