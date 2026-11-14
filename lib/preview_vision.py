@@ -18,7 +18,7 @@ import struct
 import sys
 import urllib.parse
 import urllib.request
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 BV_RE = re.compile(r'^BV[0-9A-Za-z]{10}$')
 IMAGE_HOST_RE = re.compile(r'^(?:i\d+\.hdslb\.com|i\d+\.bilivideo\.com|(?:bimp|boss)\.hdslb\.com)$', re.I)
@@ -203,6 +203,33 @@ def _endpoint(provider, custom):
     return url
 
 
+
+def _call_local_ollama(frames, model):
+    """Read-only fixed loopback visual inference; never sends images to cloud."""
+    if model not in ('qwen3.5:4b','openbmb/minicpm-v4.7'):
+        raise ValueError('本地视觉模型不在安全白名单中')
+    note = '\n'.join(f'图片{i+1}：视频约 {frame["second"]} 秒' for i,frame in enumerate(frames))
+    payload={'model':model,'stream':False,'keep_alive':'0','options':{'num_predict':240},
+             'messages':[{'role':'user','content':PROMPT+'\n'+note,
+                          'images':[base64.b64encode(f['bytes']).decode('ascii') for f in frames]}]}
+    url='http://127.0.0.1:11434/api/chat'
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self,*args,**kwargs):
+            raise ValueError('本地视觉服务不允许跳转')
+    req=urllib.request.Request(url,json.dumps(payload).encode('utf8'),
+                               headers={'content-type':'application/json'},method='POST')
+    try:
+        with urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect()).open(req,timeout=50) as response:
+            raw=response.read(300_001)
+        if len(raw)>300_000: raise ValueError('本地视觉模型返回内容过大')
+        data=json.loads(raw)
+        answer=data.get('message',{}).get('content','')
+        if not isinstance(answer,str) or not answer.strip():
+            raise ValueError('本地模型没有返回可用的图片观察')
+        return answer.strip()[:1100]
+    except (URLError, TimeoutError) as error:
+        raise ValueError('本地 Ollama 未运行、模型不兼容或响应超时') from None
+
 def _call_vision(frames, provider, model, url, api_key):
     if provider not in ('anthropic','openai'):
         raise ValueError('视觉模型提供方只能选 anthropic 或 openai')
@@ -287,7 +314,7 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
     model=(model if model is not None else os.environ.get('BILI_VISION_MODEL','')).strip()
     endpoint=endpoint if endpoint is not None else os.environ.get('BILI_VISION_ENDPOINT','')
     if not enabled and not debug and not return_frames and not prefetch_only:return {'ok':False,'error':'视觉识图与 Debug 都未开启'}
-    if enabled and not return_frames and provider not in ('anthropic','openai'):
+    if enabled and not return_frames and provider not in ('anthropic','openai','ollama'):
         return {'ok':False,'error':'视觉模型提供方未配置'}
     if enabled and not return_frames and not model:
         return {'ok':False,'error':'视觉模型 ID 尚未配置'}
@@ -371,13 +398,13 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
             answer['frames']=frames
             return answer
         if prefetch_only or not enabled:return answer
-        key=_credentials(provider,home)
+        key='local-loopback' if provider=='ollama' else _credentials(provider,home)
         if not key:
             answer.update(status='vision_unavailable',error='没有读到视觉 API Key；已抓取预览图但尚未识图。请在设置页「视觉 API Key」保存密钥，或配置 BILI_VISION_API_KEY。');return answer
         if not _claim_vision_quota(home):
             answer.update(status='daily_limit',error=f'今日独立视觉模型调用已达 {_vision_daily_limit()} 次上限；只取得预览图，未识图');return answer
         try:
-            description=_call_vision(frames,provider,model,endpoint,key)
+            description=_call_local_ollama(frames,model) if provider=='ollama' else _call_vision(frames,provider,model,endpoint,key)
         except Exception as e:
             answer.update(status='vision_unavailable',error=str(e)[:240]);return answer
         answer.update(status='analyzed',description=description,model=model)

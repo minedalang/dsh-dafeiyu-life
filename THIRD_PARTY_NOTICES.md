@@ -90,3 +90,28 @@ remain in force.
 - 上游：<https://github.com/ggml-org/llama.cpp>
 - 许可：MIT License（以 release 附带的上游许可文件为准）。
 - 本项目不随 npm 包分发平台二进制；用户明确启用后，Runtime Manager 下载固定 `b12110` 平台资产并校验 SHA-256。
+
+## 2.8.1-dev.2b：视频感知方案参考与可选本地模型
+
+以下说明将 **设计借鉴** 与 **实际引入的代码/模型制品** 明确区分。本批次为独立实现的本地模型管理器与预览识图路由，**没有复制、修改或嵌入下列视频插件的任何源文件**。
+
+### SAOS-3624/dsh-video-storyboard
+
+- 上游：<https://github.com/SAOS-3624/dsh-video-storyboard>
+- 当前仓库许可：Apache License 2.0（以采用的上游版本为准）
+- 关系：视频分镜、时间锚点、局部复查的**设计参考**；本版尚未实现完整镜头检测/分镜布局算法，亦未引入其源代码。
+- 若后续复制/修改源文件，必须保留相应 Apache-2.0 LICENSE、NOTICE、版权及修改说明。
+
+### SAOS-3624/dsh-see-now
+
+- 上游：<https://github.com/SAOS-3624/dsh-see-now>
+- 当前仓库许可：Apache License 2.0（以采用的上游版本为准）
+- 关系：变化驱动保留画面、减少重复帧的**设计参考**；本版尚未引入屏幕捕获、HSV 差分算法或其源代码。
+- 后续若实际改编其实现，必须附带对应 LICENSE/NOTICE/版权与更改说明。
+
+### Ollama 与可选视觉模型制品
+
+- Ollama：<https://github.com/ollama/ollama>。本版通过用户已安装、仅在本机回环地址可用的 Ollama HTTP API 管理模型；**不内置或再分发 Ollama 二进制**。
+- Qwen3.5 4B：<https://ollama.com/library/qwen3.5:4b>；Qwen 模型/权重许可须遵守所下载制品的官方说明。
+- MiniCPM-V 4.7 1B：<https://github.com/OpenBMB/MiniCPM-V>；具体模型仓库可能有独立许可与使用条件，应以用户下载的官方制品为准。
+- 本项目不将以上模型权重装入 npm 交付包。下载通过用户本地 Ollama 向其模型 Registry 请求；仍须核对运行时兼容、模型 digest 与适用许可。**下载成功不代表实际视觉推理成功**。

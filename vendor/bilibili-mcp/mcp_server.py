@@ -1307,6 +1307,13 @@ async def bili_preview_vision(bvid: str):
     try:
         from preview_vision import analyze_preview
         mode = os.environ.get('BILI_VISION_MODE', 'separate')
+        if mode == 'independent_local':
+            from preview_vision import record_vision_event
+            with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
+                result = await asyncio.to_thread(analyze_preview,bvid,_DUTY_HOME,enabled=True,provider='ollama',
+                        model=os.environ.get('BILI_VISION_MODEL',''),debug=False)
+            result['mode']='independent_local'
+            return json.dumps(result,ensure_ascii=False)
         if mode == 'independent_dsh':
             from vision_dsh import describe_with_dsh
             from preview_vision import record_vision_event

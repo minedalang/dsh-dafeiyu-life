@@ -41,6 +41,8 @@ Life 是鱼鱼的统一生活协调系统。真实的公开视频信息、评论
 
 每段经历有明确的步骤及资源上限。部分有真实新增证据的片段可以延迟保留一次后续考虑机会，但不会无限递归探索，也不会把已读材料假装成新发现。
 
+**2.8.1 开发预览中的可选本地视觉：** 管理中心「AI 模型 → 视频视觉模型」已提供 Qwen3.5 4B 和 MiniCPM-V 4.7 1B 的 Ollama 模型下载、图片自检与手动切换。需要用户事先安装并启动 Ollama；MiniCPM-V 4.7 是否可运行还取决于本地 Ollama 版本。原 DSH 视觉模式不变，不强制安装、不因本地识图失败自动切云端，也不扩大评论/点赞权限。[开发与限制](docs/architecture/2.8.1-video-perception-dev2b.md)。
+
 **真实读取与真实观看不同。** 视频标题、简介、字幕和评论各有证据范围；鱼鱼不会因为看到了文字资料就宣称自己完整看过音画。原创评论必须建立在实际可核验的内容证据上。
 
 ## 💬 更自然的交流
@@ -170,6 +172,8 @@ dsh plugin --profile desktop add dsh-dafeiyu-life
 ---
 
 欢迎通过 [GitHub Issues](https://github.com/minedalang/dsh-dafeiyu-life/issues) 反馈建议与问题。
+
+视频感知方向还参考了 [SAOS-3624/dsh-video-storyboard](https://github.com/SAOS-3624/dsh-video-storyboard) 的分镜/时间锚点设计与 [SAOS-3624/dsh-see-now](https://github.com/SAOS-3624/dsh-see-now) 的变化驱动采样理念；本批次没有直接复制这两个项目的源码。具体参考关系与模型上游见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
 感谢 [c1overzz/dsh-bili-scroll](https://github.com/c1overzz/dsh-bili-scroll)、[adoresever/bilibili-mcp](https://github.com/adoresever/bilibili-mcp)、[Yuuyuko-uu/dsh-fish-memory](https://github.com/Yuuyuko-uu/dsh-fish-memory)、[Yuuyuko-uu/dsh-bili-subagent](https://github.com/Yuuyuko-uu/dsh-bili-subagent) 及社区贡献者；具体许可证和归属见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
