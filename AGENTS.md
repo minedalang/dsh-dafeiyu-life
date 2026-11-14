@@ -1,6 +1,22 @@
+# 当前开发规范（2.8.0-dev.16，未正式发布）
+
+> **优先级：正在运行的源码与验证结果 > 本节现行约束 > `docs/architecture/` 当前架构 > 按日期归档的旧版契约。** 若任何历史段落写着“当前”、旧版 `dev.N`、预约续聊、严格禁止跨渠道理解或一次只能选择一项视频写入，应先核验源码并修改冲突文档，不能据此恢复退役行为。版本以 `package.json` 为准。
+
+- **统一 Life 意愿**：同一 Episode 的模型决策可选一个动作，或同 BV 的兼容写入组合（点赞／收藏／关注作者／原创顶层评论）。仅四类不同子动作可组合；一个父意愿、逐子动作精确凭据与独立平台回读；没有模型配额目标，未知结果冻结，部分成功不回放；原权限、额度、账号和相互冲突动作限制不变。详见 `docs/architecture/2.8.0-dev16-composable-writes-private-memory.md`。
+- **跨渠道记忆**：可信身份匹配后可使用同一个人的私下关系记忆进行理解；不同账号／UID、访问权限、原文保存域及对外可披露范围仍严格隔离。公开表达不得直接或暗示透露私聊事实；普通熟悉语气不是私聊事实。私信临时原文只用于段式 AI 提炼到可衰减记忆，不等于直接长存。
+- **私信并发与隐私**：短期缓冲的读改写跨进程短锁，AI 提炼前持久领取片段，处理中不长持锁；仅可在原 PID 已确认死亡后恢复认领。对私密语义泄露的本地启发式拦截并非完备隐私证明，真实服务商、Windows、B站与双实例场景均须验证。
+- **强制文档一致性**：任何代码变更都要核对根 README（用户实际功能、删除的功能、限制）、`AGENTS.md`（现行规范）、CHANGELOG、对应当前架构／可编辑 Mermaid 图、Release Notes 和测试。不需要改的文件须在交付记录说明原因；不得仅改测试而保留过时产品宣称。修改前查找旧文字如“预约续聊”“thoughtCue”“公开与私密完全隔离”“单轮只能写一次”，新功能亦应在用户 README 中正确呈现。
+- **真实验收分层**：离线单测、跨进程模拟与 Loopback 桥回执都不能宣传为真实 B站／Windows 实机验证。全量旧失败逐项比对基线；未知发送不得自动重试，失效意愿不能重放。
+
+---
+
+## 历史开发记录（供追溯，不再视为现行约束）
+
+> 以下旧版段落的“当前”仅代表其编写时刻。若与顶部 dev.16 规则或实际代码冲突，应修订历史说明，不得恢复旧机制。
+
 - **2.8.0-dev.13 收口事实：** 成长证据看板现在消费现有匿名探索/兴趣/公开反思计数；最近 30 轮 Life 轨迹可诊断确实提供的 Life Voice、公开兴趣/记忆类别、执行回执及新事实收益，不能证明因果、不能增加偏好分或外发资格。正式版仍受 Windows DSH/真实 B站/72h/旧数据迁移/历史失败门禁约束。见 `docs/architecture/2.8.0-dev13-growth-audit-closeout.md`。
 - **2.8.0-dev.10 收口硬门禁**：可信评论与普通社交均应在同一 Life 意愿准入生成精确原文与目标凭据，行动和回复独立可拒绝/沉默；跨渠道竞选仅共享限长公开证据，不在混合场景披露私信正文；队列等待后重核权限/账号，未发送与未知送达必须区分。详见 [dev.10 协议](docs/architecture/2.8.0-dev10-cross-scene-autonomy.md)。
-## 当前开发目标（2.8.0-dev.8，未发布）
+## 历史开发目标（2.8.0-dev.8；已被 dev.16 覆盖）
 
 dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自主关注候选；其余 Agent 通用动作循环尚未完整实现，参见 `docs/architecture/2.7.1-dev38-subagent-action-continuity.md`。Universal Life Episode 不是单独的视频刷片脚本：有可信回执的 Life 自主行动要归入当前账号的匿名连续性片段；下轮要重新向鱼鱼提供有效的 `resume_episode` 选择（不强制），而不是因为上次视频 Agent 结束就失去上下文。入口、步骤、账号隔离、暂停、未知冻结、写权限和评论意愿均以 `docs/architecture/2.7.1-dev36-universal-life-episodes.md` 和 4 张 Mermaid 图为准。后续每次修改 Life 调用链，运行 `npm run write:life-architecture-view`、`npm run check:life-architecture` 与 `test/v271-dev36-universal-life-episodes.test.mjs`。原实际平台回执和 Life Memory 仍是唯一事实来源，不将匿名 Episode 记录当成真实观看/发布证明。 dev.37 统一归属以 `lib/life-action-attribution.mjs` 为唯一接入契约；只有原专业执行器可信平台回执才可记已核验，未知冻结原片段，不在此执行写入；详见 `docs/architecture/2.7.1-dev37-unified-action-ownership.md`。
 
@@ -8,7 +24,7 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 
 > **dev.12 当前收口契约**：评论真实回执只创建开放式探索机会，不自动读热评或外发；局部无事实增量可技术停止，但不得标为鱼鱼主动拒绝。跨日公共人物身份先验和当轮具体评论者回执缺一不可；续章不得突破五步、外发护理、账本冻结。所有新成长指标是只读原证据，不能影响兴趣权重或形成新权限；npm 升级需真实较新版本和用户点击。见 [`dev.12 设计`](docs/architecture/2.8.0-dev12-natural-life-design.md)。
 
-> 本文件只规定**当前长期有效**的开发边界和交付流程，不记录各版补丁历史。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 RC8 方案优先的 UI 接线见 [`管理卡片架构`](docs/architecture/2.7.1-rc8-choice-first-management.md)；管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
+> 本文件保留历次安全约束供追溯；**只有本页顶部“现行规则”和对应当前架构文档描述 dev.16 的生产事实**。其余带旧 dev 编号的段落属于历史增量，不得以历史“当前”用语覆盖新版代码。后续历史过程应迁移到 CHANGELOG／归档。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 RC8 方案优先的 UI 接线见 [`管理卡片架构`](docs/architecture/2.7.1-rc8-choice-first-management.md)；管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 - **2.8.0-dev.8 视频探索互动接线**：Life 自主核实视频契机和 Life 自行执行并取得可信完成回执的 `watch_video` 只读待办，可创建同账号原 `life-opportunities` 探索片段；接下来的点赞/收藏/关注/原创主评论仍须下一次 Life 独立选择并经过原平台写入与回执门禁。未完成、错误 BV/标题、过期或账号切换不可创建；相关图和测试见 `docs/architecture/2.8.0-dev8-video-entry-and-update.md`。
 - **2.8.0-dev.7 UI 收口契约**：「鱼鱼的行动树」与「大肥鱼的一天」同属于一张可折叠生活行为卡，时间线从属行为树，仍使用原只读时间线接口及 SSE；「鱼鱼想做」仅解释三类记录而不改变数据状态。2.8.1 的剩余重复意愿及 Vue 重构只列计划，不在 dev.7 暗中实现。
@@ -29,13 +45,13 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 - **当前 Life 架构图的唯一维护入口**：`docs/architecture/life-system-current.md`、`docs/architecture/diagrams/life-system-current.mmd`、`docs/architecture/diagrams/life-candidates-current.mmd`、`docs/architecture/diagrams/life-receipt-memory-current.mmd`。每次修改 Life 候选、调度、权限或回执，须同时维护 Mermaid 代码锚点，先执行 `npm run write:life-architecture-view` 更新 GitHub 预览，再执行 `npm run check:life-architecture` 与 `test/v271-dev33-life-architecture-contract.test.mjs`；图中已接线不得宣称实机验收。
 - **dev.33 同版本菜单加固**：Life 每次输出须与当轮动作菜单中的 action/id/BV/capability 严格匹配；未提供的 reflect 不可从旧 parser 走漏。保持原账户、授权、回执/遗忘限制，详见 `docs/architecture/life-system-current.md`。
 - **dev.35 P1/P2 补充限制**：已核验写入后可继续阅读或休息，但第二次写入须先完成真实只读核实或实际休息至少 15 分钟并重新审批；点赞不意味着必须评论。新增评论区只读与一次首页换方向，禁推断陌生人 UID。见 `docs/architecture/2.7.1-dev35-life-episode-p1p2.md`。**历史 dev.34 连续 Life Episode**：首页成功轮次的新入选候选接入原 `life-opportunities` 意愿账本；每个 Episode 最多 5 个已核验步骤，每一步重新决策，已核验 BV 去重，休息有界延后，未知写入冻结。原创评论的已知跨渠道冷却最多重考虑一次，账号变化/在途/未知不重试；不扩大任何外发许可。详见 `docs/architecture/life-system-current.md`。
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.8.0-dev.10`（真实 Life 动态行为树、生活计划分区、模型/记忆/DM 管理页简化；Windows/真实 B站仍待验收），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.8.0-dev.16`（真实 Life 动态行为树、生活计划分区、模型/记忆/DM 管理页简化；Windows/真实 B站仍待验收），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
 - dev.33 同版本维护修复：@通知只有经 B站源评论/UID/rpid/BV 核验并能分清独立留言正文时才进入回复 AI 或社交记忆；旧内部昵称歧义提示不是观众说过的话，修正仍清晰的情节副本与旧评论缓存，但不抹除已确认外发、也不恢复已遗忘内容。详见 `docs/architecture/2.7.1-dev33-mention-memory-hotfix.md`。
 - dev.32：为 Life 自主首页闲逛补上**实际 MCP 首页读取**的匿名回执：由原视频 Agent 的随机轮次 ID 绑定 headless 工具调用，区分未观察到、无候选、失败、有候选；不把选片/观看与进程成功混淆，不复制 BV/UID/私密内容，也不调整视频发送门禁。见 `docs/architecture/2.7.1-dev32-home-feed-receipts.md`。
 - dev.31：`LifeReflection.status()` 提供与自动反思执行器共用的就绪判断，`AutonomousPlanner` 不再凭 pending 数量提供假可用 reflect；反思被跳过的枚举原因进入脱敏日志。主 Life 模型失败后的退避在原 planner 预算账本持久化，手动唤醒不自动打开新写权限；`browse_home` 只在已打开首页推荐且原视频能力可用时列入菜单，通过原视频 Agent 先看真实首页推荐。`life-willingness` 的可选语境读取失败尽量降级，基础身份不可用仍拒绝写入。见 `docs/architecture/2.7.1-dev31-life-idle-and-home-browse.md`。
 - dev.30：所有本轮已核验、具有可信来源的 Life 读写操作（包括搜索、公开作品核实、社交推荐、点赞、收藏、关注、评论、私信联络、已接受的只读待办）以 `kind:action` 投影到原 `life-memory-coordinator` → `LifeMemoryGateway`，由原有 `MemoryRetriever` 的词法＋本地向量统一召回；仅保留真实来源、账号范围与安全可公开的元数据，不录私信正文或评论原文。新事件始终受账号、权限、逐步衰减和遗忘门禁；原操作账本仅作事实证明，不从永久档案复活记忆。已安装模型“重新检查”只读状态，进度只在有进行中任务时显示。详见 `docs/architecture/2.7.1-dev30-verified-life-action-memory.md`。
 - dev.28：在现有跨日公开互动的匿名人物契机之上，允许 Life 自主读取经宿主重新核验 UID 的评论者公开投稿列表，存储仍沿原账号意愿账本，只写真实 BV/标题；随后沿用 dev.27 对选定作品的逐动作写入门禁，不开放任意陌生人漫游、跨串回复或新的私信许可。见 `docs/architecture/2.7.1-dev28-public-person-life-exploration.md`。
-- dev.27：Life 仅在原账号真实核验 BV 和公开内容证据后，把点赞/收藏/视频作者关注/原创顶层评论列为自主续行候选；新 `life-continuation-write.mjs` 与受控 Python 工具只协调原 `life-video-action-bridge.mjs` + Python 自主工具，不替代原 Life 再意愿、额度、身份、防重或读回核验。单轮最多一次写入，结果未知冻结；原账号意愿仅存匿名动作状态，不存评论正文。老用户授权不改动，不给评论者 UID/跨串回复权限。见 `docs/architecture/2.7.1-dev27-life-continuation-writes.md`。
+- dev.27：Life 仅在原账号真实核验 BV 和公开内容证据后，把点赞/收藏/视频作者关注/原创顶层评论列为自主续行候选；新 `life-continuation-write.mjs` 与受控 Python 工具只协调原 `life-video-action-bridge.mjs` + Python 自主工具，不替代原 Life 再意愿、额度、身份、防重或读回核验。历史 dev.27 当时单轮最多一次写入（现行 dev.16 允许同 BV 兼容组合），结果未知冻结；原账号意愿仅存匿名动作状态，不存评论正文。老用户授权不改动，不给评论者 UID/跨串回复权限。见 `docs/architecture/2.7.1-dev27-life-continuation-writes.md`。
 - dev.26：复用原 `AutonomousPlanner`、账号隔离的 `life-opportunities` 意愿/回执与现有模型额度，在自动 Life 轮已有真实公开读取成功后最多增加 2 次模型自主选择；只允许既有名单的 `inspect_exploration`、`inspect_creator_space` 与放下，执行前重新核验账号与候选，禁止新建第二任务账本或新增外发权限。原创主评论仍由视频 Agent 的 `bili_reply` 经 Life 意愿、公开评论授权及平台回执；新增原 `life-agent-events` 视频轮次脱敏诊断。旧 `dmMode` 报告投递已退役；迁移不修改 `autoComment` 原有开关，只移除旧报告字段和错误门禁。见 `docs/architecture/2.7.1-dev26-life-continuation-and-comment-diagnosis.md`。
 - dev.25：`lib/recall-request.mjs` 承担模型提出的回忆意图/查询词/日期/事件种类的结构化校验，宿主时区换算，日期与事件类型必须在当前已授权/未遗忘候选上执行硬过滤。`memoryRetriever` 只将过滤后的候选交给可选 Embedding；时间线回顾按真实发生时间排序，不能用长期记忆 `createdAt` 猜事件日期；模糊/痕迹记忆不提供精确日期。主人私信、普通 compact 社交、好友私密回忆、公开评论成功回执沿旧统一层接线，无新的事实源、权限或发送器。详见 `docs/architecture/2.7.1-dev25-temporal-intent-recall.md`。
 - dev.24：本地 Embedding 仅作为 `memoryRetriever` 的候选排序提供者；不建立第二事实账本、不绕过 `LifeMemoryGateway` 权限/遗忘过滤。向量命中必须按 ID 回到实时账本重新核验；llama.cpp 只绑定 `127.0.0.1`，使用随机 API Key、关闭 Web UI，默认不开启且只有用户明确点击才下载模型。详见 `docs/architecture/2.7.1-dev24-local-embedding-recall.md`；dev.23 主动回忆契约及 legacy full/专业 Agent 未统一边界见 `docs/architecture/2.7.1-dev23-active-recall-unified.md`。

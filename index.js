@@ -6085,10 +6085,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const result=parseMaybeJson(await call('bili_ledger_mark',{bvid,title,up:'',status:'挑中'}))
       return result?.ok===true?{ok:true}:{ok:false}
     },runWriter:lifeContinuationPythonWrite,
-    prepareIntent:async({sourceKey,kind,target,commentText},{scope,uid})=>{
+    cancelBundleIntent:(proof,firstChild)=>lifeWillingness.receipt(proof,{status:'not-sent',
+      kind:firstChild?({like_video:'video_like',collect_video:'video_collect',follow_creator:'video_follow',comment_video:'video_comment'})[firstChild.action]:''}),
+    prepareBundleIntent:async({sourceKey,actions},{scope,uid})=>{
       if(scope!==trustedLifeAccountTag()||String(accountBinding.status().activeUid||'')!==uid)
         return {ok:false,code:'account-changed'}
-      const choice=await lifeWillingness.adoptVideoDecisionQueued({sourceKey,kind,target,commentText})
+      return lifeWillingness.adoptVideoBundleDecisionQueued({sourceKey,actions})
+    },
+    prepareIntent:async({sourceKey,kind,target,commentText,bundleProof},{scope,uid})=>{
+      if(scope!==trustedLifeAccountTag()||String(accountBinding.status().activeUid||'')!==uid)
+        return {ok:false,code:'account-changed'}
+      const choice=bundleProof?{ok:true,proof:bundleProof}:await lifeWillingness.adoptVideoDecisionQueued({sourceKey,kind,target,commentText})
       if(choice?.ok!==true)return choice
       if(scope!==trustedLifeAccountTag()||String(accountBinding.status().activeUid||'')!==uid){
         lifeWillingness.receipt(choice.proof,{status:'not-sent'});return {ok:false,code:'account-changed'}
@@ -6241,6 +6248,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         accountUid:String(accountBinding.status().activeUid||'')})
     },
     recordLifeExplorationWrite:(id,action,bvid,status,tag)=>lifeOpportunities.recordExplorationWrite(id,action,bvid,status,tag),
+    startLifeWriteBundle:(id,bvid,actions,tag)=>lifeOpportunities.startWriteBundle(id,bvid,actions,tag),
+    recordLifeWriteBundleChild:(id,bundleId,action,bvid,status,tag)=>lifeOpportunities.recordWriteBundleChild(id,bundleId,action,bvid,status,tag),
     // Include temporarily cooled-down intentions for duplicate-read checks;
     // they are NOT offered to the model until their scheduled time.
     getActiveLifeIntentionReservations:()=>lifeOpportunities.intentions({includeClosed:true,limit:20}),

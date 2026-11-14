@@ -84,7 +84,7 @@ test('uncertain platform write freezes episode; no read/rest escapes the freeze'
  assert.equal(life.continuations().some(x=>x.id===id),false)
 }))
 
-test('a single Life tick cannot produce two outbound operations even after a verified read',()=>home(async dir=>{
+test('without an explicit compatible bundle, a Life tick does not chain unrelated writes',()=>home(async dir=>{
  let t=START;const life=make(dir,()=>t),id=seed(life),actions=[],menus=[]
  let calls=0,first=true
  const replies=[

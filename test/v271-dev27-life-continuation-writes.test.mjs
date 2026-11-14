@@ -20,7 +20,7 @@ const home=async fn=>{const dir=mkdtempSync(join(tmpdir(),'dev27-safe-writes-'))
 test('write menu requires current verified selected BV, trusted metadata time and enabled flag',()=>{
  assert.deepEqual(lifeWriteKinds(cfg,evidence),['like_video','collect_video','follow_creator','comment_video'])
  assert.deepEqual(continuationMenu(selected,{at:T,writeActions:lifeWriteKinds(cfg,evidence)}).map(x=>x.action),
-   ['inspect_creator_space','inspect_video_discussion','like_video','collect_video','follow_creator','comment_video','abandon_exploration'])
+   ['inspect_creator_space','inspect_video_discussion','like_video','collect_video','follow_creator','comment_video','write_bundle','abandon_exploration'])
  assert.equal(continuationMenu({...selected,selectedBvid:''},{at:T,writeActions:['comment_video']}).some(x=>x.action==='comment_video'),false)
  assert.equal(continuationMenu({...selected,metadataAt:T-2*86400_000},{at:T,writeActions:['comment_video']}).some(x=>x.action==='comment_video'),false)
  assert.equal(continuationMenu({...selected,writeOutcomes:[{action:'comment_video',bvid:BV,status:'uncertain'}]},{at:T,writeActions:['comment_video']}).some(x=>x.action==='comment_video'),false)

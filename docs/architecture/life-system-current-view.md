@@ -475,10 +475,13 @@ dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验�
 %% @code bridge | index.js | const rememberVerifiedLifeAction
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
+  bundle["Life 组合意愿：同 BV 兼容多子动作；父凭据 + 精确子票据"]
+  bundleGuard["逐项核验：原 Python 写入 + 原平台回读；未知冻结剩余"]
   source["真实平台操作｜原视频/评论/DM 事务"]
+  bundle --> bundleGuard --> source
   dmQualify["DM Openness：私人双向事实 + 独立授权 + 拒联检查"]
   universalCausal["匿名因果 Episode｜账号隔离、分段延续、暂停与未知冻结；不是第二记忆库"]
-  postWrite["同 Episode 的已核验写入：只计一步，下一写前只读或休息且每轮一写"]
+  postWrite["同 Episode 的兼容写入：一次意愿可多子动作，逐项回执；下一写前只读或休息"]
   commentReview["入选标记允许同轮只读补记意愿：重复 BV 不重写、宿主核验一次；不等于发送"]
   commentOutcome["结束后的独立 DEBUG｜未考虑／未提议／Life 否决／平台未知"]
   receipt{"原渠道可信结果?"}
@@ -512,7 +515,7 @@ flowchart TB
   outbox -->|已排队但投影暂失败| pending
   episode --> recall
   verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]
-  privateBuffer["短期对话片段：按账号/UID隔离、顺序去重；仅临时保留原文"]
+  privateBuffer["短期对话片段：跨进程原子短锁+认领；按账号/UID隔离；原文限期"]
   privateBatch["安静期/话题收尾/容量触发：模型批量提炼；失败退避、成功删除原文"]
   privateFading["原 private-social 可衰减记忆：账号标记 + 私密域/UID 隔离"]
   privateReflection["私密反思：有来源的共同话题 → 受限 privateInsights；不写公开长期记忆"]
