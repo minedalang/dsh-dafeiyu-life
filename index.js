@@ -133,6 +133,7 @@ import {createLifeActionAttribution} from './lib/life-action-attribution.mjs'
 import {createLifeActionRecords} from './lib/life-action-records.mjs'
 import {eligibleLifeEpisodeSources,prioritizeLifeContinuationCandidates} from './lib/life-episode-entrypoints.mjs'
 import {preparePrivateSelfExperience,preparePrivateLifeEvent,preparePrivateImageObservation} from './lib/life-private-policy.mjs'
+import {createPrivateConversationExperiences} from './lib/private-conversation-experiences.mjs'
 import { createMemoryConsolidator } from './lib/memory-consolidation.mjs'
 import { createOwnerCommentAgent } from './lib/owner-comment-agent.mjs'
 import { createEmotionRecall } from './lib/emotion-recall.mjs'
@@ -1465,6 +1466,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let memoryRetriever = null
   let lifeReflection = null
   let lifeMemoryCoordinator = null
+  let privateConversationExperiences = null
   let socialInteractionCoordinator = null
   let socialContextAssembler = null
   let memoryConsolidator = null
@@ -3816,6 +3818,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         if(scope)lifeActionAttribution.verified({accountTag:scope,channel:'owner-dm',owner:'owner',
           sourceRef:'owner-dm-conversation:'+String(uid),receiptId:'bili-owner-dm:'+receiptId,action:'owner_dm_reply',kind:'social'})
       }
+      if(receiptId)try{await privateConversationExperiences?.observe({uid,role:'owner',direction:'outgoing',eventId,at,text})}
+      catch{log('主人私信确认表达暂存失败（不记录正文）')}
       const event=preparePrivateSelfExperience({source:'owner-dm',role:'owner',uid,eventId,text,at,accountTag:trustedLifeAccountTag()})
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
         if(result?.ok===false)log('主人已确认私信的自主感想等待记忆补偿：'+String(result.lastError||''))}
@@ -3825,11 +3829,20 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(cfg.masterEnabled!==true||cfg.emotionSystemEnabled===false||String(cfg.dmOwnerUid||'')!==String(uid))return {ok:false,skipped:'unauthorized'}
       return emotionalState.update({mood,intensity,source:'dm'})
     },
-    onPrivateExperience:async({uid,text,eventId,at})=>{
+    onConversationSettled:async({uid})=>{
+      try{await privateConversationExperiences?.markSettled({uid,role:'owner'})}
+      catch{log('主人私信自然收尾标记失败（不记录正文）')}
+    },
+    onPrivateExperience:async({uid,text,eventId,at,messages})=>{
       try{conversationLifeFeedback.observe({source:'dm',role:'owner',uid,eventId,text,at})}
       catch(e){log('主人私信情绪反馈失败：'+String(e?.message||e).slice(0,100))}
-      const event=preparePrivateLifeEvent({source:'owner-dm',role:socialPolicyGate.actor(uid).role,uid,eventId,text,at,accountTag:trustedLifeAccountTag()})
-      if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人私信私密经历待补偿：'+String(result.lastError||''))}
+      // Preserve real, ordered DM turns temporarily. A later low-frequency AI
+      // extraction (rather than keyword filters per incoming line) projects
+      // only reviewed summaries into the EXISTING fading Life memory.
+      try{for(const row of Array.isArray(messages)&&messages.length?messages:[{eventId,text,at}]){
+        const result=await privateConversationExperiences?.observe({uid,role:'owner',direction:'incoming',eventId:row.eventId,text:row.text,at:row.at})
+        if(result?.reason==='buffer-full')log('主人私信临时缓冲已满，未收录本条（不记录正文）')
+      }}catch{log('主人私信临时经历暂存失败（不记录正文）')}
     },
     // The owner-DM model already selected a step; record that same decision.
     // Never let a second emotion-score formula veto it after the model vote.
@@ -4569,6 +4582,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     onScanSettled:()=>dmPollCursor.commit(),
     lookupNickname: lookupBiliNickname,
+    onConversationSettled:async({uid})=>{
+      const role=socialPolicyGate.actor(uid).role
+      if(['owner','friend'].includes(role))try{await privateConversationExperiences?.markSettled({uid,role})}
+      catch{log('私信收尾片段标记失败（不记录正文）')}
+    },
+    onConfirmedMessage:async({uid,text,eventId,time})=>{
+      const role=socialPolicyGate.actor(uid).role
+      if(['owner','friend'].includes(role))try{
+        await privateConversationExperiences?.observe({uid,role,direction:'outgoing',eventId,text,at:time})
+      }catch{log('私信确认回复暂存失败（不记录正文）')}
+    },
     onIncoming:async({uid,text,messageId,time})=>{
       const role=socialPolicyGate.actor(uid).role
       if(['owner','friend'].includes(role))try{conversationLifeFeedback.observe({source:'dm',role,uid,eventId:messageId,text,at:time})}
@@ -4577,8 +4601,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(['friend','stranger'].includes(role)&&!accountBinding.status().blocked)try{socialPortrait.observe({uid,text,source:'dm',eventId:messageId,at:time})}
       catch(e){log('私信好友交流画像未更新：'+String(e?.message||e).slice(0,110))}
       const interest=socialPolicyGate.canLearn({uid,kind:'dm'})?prepareFriendInterestObservation({uid,text,source:'dm',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory,accountTag:trustedLifeAccountTag()}):null
-      const lifeEvent=preparePrivateLifeEvent({source:role==='owner'?'owner-dm':'friend-dm',role,uid,eventId:messageId,text,at:time,accountTag:trustedLifeAccountTag()})
-      const recorded=await socialInteractionCoordinator?.record({type:'incoming',source:'dm',eventKey:messageId,actorUid:uid,role,at:time,cognition,interest,lifeEvent})
+      // Existing social cognition and relationship receipts remain separate;
+      // private fading experiences are now batched from the verified dialogue.
+      const recorded=await socialInteractionCoordinator?.record({type:'incoming',source:'dm',eventKey:messageId,actorUid:uid,role,at:time,cognition,interest})
+      if(['owner','friend'].includes(role))try{
+        const result=await privateConversationExperiences?.observe({uid,role,direction:'incoming',eventId:messageId,text,at:time})
+        if(result?.reason==='buffer-full')log('私信经历临时缓冲已达到安全容量，未收录本条（不记录正文）')
+      }catch{log('私信对话片段暂存失败（不记录正文）')}
       if(recorded?.ok===true){
         const id=offerSocialLifeWake({kind:'dm-received',uid,eventId:messageId,verified:true})
         // Retired phase-5 shadow sampling: the social event itself is already
@@ -5675,6 +5704,19 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   lifeReflection.start()
   ctx.effect(() => () => lifeReflection.stop(), 'bili-duty: 人生记忆自主反思')
   lifeMemoryCoordinator=createLifeMemoryCoordinator({dataDir:stateDir,memoryGateway:lifeMemory,lifeReflection,getAccountTag:trustedLifeAccountTag,logger:{warn:m=>log('人生记忆协调：'+m)}})
+  // A scoped temporary DM buffer (excluded from portable backups). The cheap
+  // interaction model summarizes only closed/idle/capacity-bounded segments;
+  // Life Reflection independently decides what becomes long-term knowledge.
+  privateConversationExperiences=createPrivateConversationExperiences({
+    dataDir:stateDir,getAccountTag:trustedLifeAccountTag,getConfig:()=>cfg,
+    invokeModel:(prompt,maxChars)=>cfg.mainSessionMemorySemanticEnabled===true
+      ?invokeMemoryPrompt(prompt,maxChars)
+      :invokeInteractionPrompt(prompt,maxChars,{modelRoute:'interaction'}),
+    recordEvents:(events,options)=>lifeMemoryCoordinator.recordEvents(events,options),
+    logger:{warn:m=>log('私信经历：'+m)},
+  })
+  privateConversationExperiences.start()
+  ctx.effect(()=>()=>privateConversationExperiences?.stop(),'bili-duty: 私信片段临时经历整理')
   // A trusted source's completion is an ordinary Life memory event.
   // The coordinator performs durable deduplication; archives are NEVER queried
   // to rebuild a forgotten episode. The embedding index follows live memory.
@@ -8058,7 +8100,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     if (req.method === 'GET' && path === '/api/bili-duty/main-session/memory') {
       const q=String(url.searchParams.get('q')||'').trim().slice(0,120)
       const limit=Math.max(1,Math.min(300,Number(url.searchParams.get('limit'))||100))
-      return sendJson(res,200,{...longTermMemory.status(),retrieval:memoryRetriever?.status()||null,lifeCoordinator:lifeMemoryCoordinator?.status()||null,socialCoordinator:socialInteractionCoordinator?.status()||null,consolidation:memoryConsolidator?.status()||null,rows:longTermMemory.list(q,limit)})
+      return sendJson(res,200,{...longTermMemory.status(),retrieval:memoryRetriever?.status()||null,lifeCoordinator:lifeMemoryCoordinator?.status()||null,privateConversationMemory:privateConversationExperiences?.status()||null,socialCoordinator:socialInteractionCoordinator?.status()||null,consolidation:memoryConsolidator?.status()||null,rows:longTermMemory.list(q,limit)})
     }
     if (req.method === 'POST' && path === '/api/bili-duty/main-session/memory/consolidate') {
       const body=await readBody(req)
@@ -8467,7 +8509,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const relationshipView=read(()=>existingRelationshipIndex())
       return sendJson(res,200,{...projectLifeIntegrationStatus({config:cfg,
         planner:read(()=>autonomousPlanner.status()),memory:read(()=>lifeMemory.status()),
-        coordinator:read(()=>lifeMemoryCoordinator.status()),
+        coordinator:read(()=>lifeMemoryCoordinator.status()),privateConversationMemory:read(()=>privateConversationExperiences?.status()),
         reflection:read(()=>lifeReflection.status()),
         personality:read(()=>personalityEvolution.status()),
         todos:read(()=>ownerTodos.status()),

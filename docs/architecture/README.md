@@ -1,3 +1,5 @@
+**2.8.0-dev.16 私信按段经历提炼（当前交付）：** [临时双向缓冲、AI 按段整理、可衰减经历与原有反思](2.8.0-dev16-private-conversation-extraction.md)。以用户上传源码为基线修复普通/主人私信真实回执与自然收尾接线；原文仅短期保留，统计按账号隔离。未完成 Windows/B站实机验收。
+
 **2.8.0-dev.16 当前增量：** [私信可衰减共同交流、私密反思与跨渠道熟人理解](2.8.0-dev16-private-relationship-memory.md)。仅供同一账号、同一 UID 关系理解，绝不把私聊直接公开；真实平台及完整语义隐私仍待验收。
 
 > **2.8.0 最新开发收口（基线 dev.16）**：统一 Life 意愿、私信渐进表达、主人对话接力、10–60 秒活跃轮询、跨日记忆与成长诊断现行入口分别参见 [dev.16 架构](2.8.0-dev16-dm-progressive-fast-poll-life-rest.md)、[统一 Life 行动协议](2.8.0-unified-life-action-protocol.md)、[当前 Life 接线](life-system-current.md) 和 [发布就绪审计](2.8.0-release-readiness.md)。正式版仍需 Windows、B站、长时稳定性和完整安全回归；以下 dev.13/12/10 等说明均为历史开发节点。

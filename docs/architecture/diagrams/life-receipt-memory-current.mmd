@@ -55,17 +55,21 @@ flowchart TB
   outbox --> episode
   outbox -->|已排队但投影暂失败| pending
   episode --> recall
-  verifiedDmInput["已核验主人/好友私信事件：仅提炼有限低敏主题，不复制原文"]
+  verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]
+  privateBuffer["短期对话片段：按账号/UID隔离、顺序去重；仅临时保留原文"]
+  privateBatch["安静期/话题收尾/容量触发：模型批量提炼；失败退避、成功删除原文"]
   privateFading["原 private-social 可衰减记忆：账号标记 + 私密域/UID 隔离"]
   privateReflection["私密反思：有来源的共同话题 → 受限 privateInsights；不写公开长期记忆"]
   privateUnderstanding["compact 公开评论：同账号同 UID 的私下熟悉线索；按需回忆"]
   publicReplyFence["公开表达边界：可自然熟悉，禁止透露私聊；原发送权限与回执不变"]
-  verifiedDmInput --> privateFading
+  verifiedDmInput --> privateBuffer --> privateBatch --> privateFading
   privateFading -.-> privateReflection
   privateFading -.->|未遗忘且可访问| privateUnderstanding
   privateReflection -.->|受限认识，只用于内部理解| privateUnderstanding
   privateUnderstanding -.-> publicReplyFence
-  %% @code verifiedDmInput | lib/life-private-policy.mjs | export function preparePrivateLifeEvent
+  %% @code verifiedDmInput | index.js | onConfirmedMessage:async
+  %% @code privateBuffer | lib/private-conversation-experiences.mjs | export function createPrivateConversationExperiences
+  %% @code privateBatch | lib/private-conversation-experiences.mjs | async function tick()
   %% @code privateFading | lib/life-memory-gateway.mjs | function accessible
   %% @code privateReflection | lib/life-reflection.mjs | function validateOutput
   %% @code privateUnderstanding | lib/social-context-assembler.mjs | privateUnderstandingContext
