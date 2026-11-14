@@ -2161,22 +2161,30 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </section>
 <section id="panel-polling" hidden>
 <div class="toolbar"><h2 style="margin:0">后台轮询与请求保护</h2><button id="polling-refresh">刷新轮询状态</button></div>
-<p class="muted">四项任务独立控制检查间隔（1–120 分钟）。只有对应功能已开启且主开关开启时才会执行；修改间隔后下次调度自动采用新值，无需重启。收到消息不代表一定回复，模型可以选择沉默。</p>
+<p class="muted">选择后台检查节奏，或自己设置各项读取间隔。默认私信、评论回复、被 @ 均为 2 分钟；私信长期安静时自动渐进到设置的最长间隔。只改变读取节奏，不授权外发。</p>
 <div class="polling-budget-card" aria-live="polite"><div><span class="page-eyebrow">BILIBILI · READ SAFETY</span><h3>🛡️ 后台读取保护</h3><p class="muted">私信按账号记录会话游标；评论和 @ 的后台读取共享已接入请求预算。遇到限流或验证码会暂停读取，而不是反复重试。</p></div><div id="polling-budget-status" role="status">正在读取预算…</div><details class="polling-budget-details"><summary>查看各类读取次数</summary><div id="polling-budget-by-kind" class="polling-budget-breakdown" aria-live="polite">暂无数据</div></details></div>
 <div class="settings-stack">
+<div class="settings-section"><h4>后台轮询方案</h4>
+<div class="choice-presets" role="radiogroup" aria-label="后台轮询节奏方案">
+<label class="choice-card"><input type="radio" name="polling-choice" value="quiet"><span class="choice-icon">🌙</span><strong>安静节流</strong><small>私信 5–45 分钟 · 评论与 @ 10 分钟</small></label>
+<label class="choice-card"><input type="radio" name="polling-choice" value="balanced" checked><span class="choice-icon">🌿</span><strong>自然适中 · 默认</strong><small>私信 2–15 分钟 · 评论与 @ 都是 2 分钟</small></label>
+<label class="choice-card"><input type="radio" name="polling-choice" value="responsive"><span class="choice-icon">⚡</span><strong>及时响应</strong><small>私信 1–10 分钟 · 评论与 @ 都是 2 分钟，注意限流</small></label>
+<label class="choice-card"><input type="radio" name="polling-choice" value="custom"><span class="choice-icon">🎛️</span><strong>自己设定</strong><small>设置私信最短／最长、评论及 @ 检查间隔</small></label>
+</div><p class="muted" id="polling-choice-note">选择后可继续调整数值，调整即变为「自己设定」；必须点击保存才会生效。老用户的已存间隔不会被强制覆盖。</p></div>
 <div class="settings-section"><h4>检查间隔</h4><div class="fields">
-<div><label for="dm-interval">普通收件箱检查（分钟，新安装默认 2）</label><input id="dm-interval" type="number" min="1" max="120" value="2"></div>
+<div><label for="dm-interval">私信最短检查间隔（分钟，默认 2）</label><input id="dm-interval" type="number" min="1" max="120" value="2"></div>
+<div><label for="dm-quiet-max">私信安静期最长检查间隔（分钟，默认 15）</label><input id="dm-quiet-max" type="number" min="1" max="120" value="15"><small class="setting-note" id="dm-quiet-levels">中间间隔自动计算</small></div>
 <div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">只在最近真正确认发出私信后短期开启；不逐人轮询所有历史会话。与普通轮询共享读取预算及平台限流保护。</small></div>
 <div><label for="dm-active-seconds">活跃会话检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="10"></div>
 <div><label for="dm-active-window">活跃时长（秒，60–600）</label><input id="dm-active-window" type="number" min="60" max="600" value="180"></div>
-<div><label for="poll-replies-minutes">收到评论回复检查（分钟，默认 3）</label><input id="poll-replies-minutes" type="number" min="1" max="120" value="3"></div>
-<div><label for="poll-at-minutes">被 @ 邀请检查（分钟，默认 3）</label><input id="poll-at-minutes" type="number" min="1" max="120" value="3"></div>
-<div><label for="poll-top-minutes">近期视频热评检查（分钟，默认 5）</label><input id="poll-top-minutes" type="number" min="1" max="120" value="5"></div>
-</div><p class="muted">轮询频繁可能导致 B站接口限流。建议私信 1–5 分钟、评论及 @ 3–10 分钟、主动热评 5–15 分钟；不要把此处间隔与“每次轮询回复数量”混淆。</p>
+<div><label for="poll-replies-minutes">收到评论回复检查（分钟，默认 2）</label><input id="poll-replies-minutes" type="number" min="1" max="120" value="3"></div>
+<div><label for="poll-at-minutes">被 @ 邀请检查（分钟，默认 2）</label><input id="poll-at-minutes" type="number" min="1" max="120" value="3"></div>
+
+</div><p class="muted">各方案和自定义设置都受共享读取预算及 -509 退避保护。下方历史热评检查已停用，不参与卡片方案或实际轮询。</p>
 <div class="toolbar"><button id="polling-save" class="primary">保存检查间隔</button><button id="polling-reload">重读设置</button></div></div>
 <div class="settings-section"><h4>最近检查情况</h4><p class="muted">时间按本机显示；上次检查与错误为本次 DSH 运行期间的记录，重启后重新计时。“已完成”只代表轮询流程结束，不代表发送成功或 B站通知送达。</p>
 <div id="polling-status-list" class="grid" role="status" aria-live="polite">读取中…</div></div>
-</div><p class="muted">刷视频的“自定义时段执行”是独立的任务计划，不属于以上四种收件轮询。</p>
+</div><p class="muted">刷视频的“自定义时段执行”是独立的任务计划，不属于以上三种收件轮询。</p>
 </section>
 <section id="panel-persona">
 <div class="toolbar"><h2 style="margin:0">角色人设</h2><button id="persona-refresh">重新读取</button></div>

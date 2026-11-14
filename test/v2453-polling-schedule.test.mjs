@@ -59,9 +59,9 @@ test('插件 HTTP 配置保存四项轮询分钟数并合理钳制，无需改�
       let out;const response={writeHead(){},end(v){out=JSON.parse(v)}};await route.handler(request,response);return out;
     }
     let c=await req('GET','/api/bili-duty/config');
-    assert.equal(c.config.commentReplyWatchMinutes,3);assert.equal(c.config.commentAtWatchMinutes,3);assert.equal(c.config.commentTopWatchMinutes,5);
-    c=await req('POST','/api/bili-duty/config',{dmWatchMinutes:4,commentReplyWatchMinutes:8,commentAtWatchMinutes:2,commentTopWatchMinutes:18});
-    assert.equal(c.config.dmWatchMinutes,4);assert.equal(c.config.commentReplyWatchMinutes,8);
+    assert.equal(c.config.commentReplyWatchMinutes,2);assert.equal(c.config.commentAtWatchMinutes,2);assert.equal(c.config.dmQuietMaxMinutes,15);assert.equal(c.config.commentTopWatchMinutes,5);
+    c=await req('POST','/api/bili-duty/config',{dmWatchMinutes:4,dmQuietMaxMinutes:40,commentReplyWatchMinutes:8,commentAtWatchMinutes:2,commentTopWatchMinutes:18});
+    assert.equal(c.config.dmWatchMinutes,4);assert.equal(c.config.dmQuietMaxMinutes,40);assert.equal(c.config.commentReplyWatchMinutes,8);
     assert.equal(c.config.commentAtWatchMinutes,2);assert.equal(c.config.commentTopWatchMinutes,18);
     c=await req('POST','/api/bili-duty/config',{commentAtWatchMinutes:999,commentTopWatchMinutes:0});
     assert.equal(c.config.commentAtWatchMinutes,120);assert.equal(c.config.commentTopWatchMinutes,5);
@@ -70,8 +70,9 @@ test('插件 HTTP 配置保存四项轮询分钟数并合理钳制，无需改�
 test('管理中心只有后台轮询可以修改间隔，并显示上次下次和异常',()=>{
  const h=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8');
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8');
- for(const id of ['polling','dm-interval','poll-replies-minutes','poll-at-minutes','poll-top-minutes','polling-status-list'])assert.match(h,new RegExp(`id="${id}"|data-tab="${id}"`));
- for(const key of ['dmWatchMinutes','commentReplyWatchMinutes','commentAtWatchMinutes','commentTopWatchMinutes','nextAt','lastFinishedAt'])assert.match(js,new RegExp(key));
+ for(const id of ['polling','dm-interval','dm-quiet-max','poll-replies-minutes','poll-at-minutes','polling-status-list'])assert.match(h,new RegExp(`id="${id}"|data-tab="${id}"`));
+ for(const key of ['dmWatchMinutes','dmQuietMaxMinutes','commentReplyWatchMinutes','commentAtWatchMinutes','nextAt','lastFinishedAt'])assert.match(js,new RegExp(key));
  assert.doesNotMatch(js,/\['dm-interval','dmWatchMinutes',1,120,1\]/);
+ assert.match(h,/name="polling-choice"/);assert.doesNotMatch(h,/id="poll-top-minutes"/);
  assert.equal((h.match(/id="dm-interval"/g)||[]).length,1);
 });
