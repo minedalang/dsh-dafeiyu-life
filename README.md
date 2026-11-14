@@ -173,6 +173,8 @@ dsh plugin --profile desktop add dsh-dafeiyu-life
 
 欢迎通过 [GitHub Issues](https://github.com/minedalang/dsh-dafeiyu-life/issues) 反馈建议与问题。
 
+**2.8.1-dev.3a 首批低清预览去重：** 视觉模型现在先从 B站播放器原有预览拼图中生成少量候选缩略图，再根据内容差异选择最多三张代表画面；近乎相同的画面只发一次，保留真实时间戳与采样记录。不会额外下载完整视频、不能以抽帧冒充看完整片；真正的镜头切分、片段放大和音轨理解属于后续开发。[技术与边界](docs/architecture/2.8.1-video-perception-dev3a.md)。
+
 视频感知方向还参考了 [SAOS-3624/dsh-video-storyboard](https://github.com/SAOS-3624/dsh-video-storyboard) 的分镜/时间锚点设计与 [SAOS-3624/dsh-see-now](https://github.com/SAOS-3624/dsh-see-now) 的变化驱动采样理念；本批次没有直接复制这两个项目的源码。具体参考关系与模型上游见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
 感谢 [c1overzz/dsh-bili-scroll](https://github.com/c1overzz/dsh-bili-scroll)、[adoresever/bilibili-mcp](https://github.com/adoresever/bilibili-mcp)、[Yuuyuko-uu/dsh-fish-memory](https://github.com/Yuuyuko-uu/dsh-fish-memory)、[Yuuyuko-uu/dsh-bili-subagent](https://github.com/Yuuyuko-uu/dsh-bili-subagent) 及社区贡献者；具体许可证和归属见 [第三方声明](THIRD_PARTY_NOTICES.md)。

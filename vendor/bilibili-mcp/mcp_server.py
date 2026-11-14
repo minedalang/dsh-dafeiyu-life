@@ -1374,7 +1374,8 @@ async def bili_preview_vision(bvid: str):
                 try:
                     proof_path=Path(proof_file).resolve()
                     if proof_path.parent == (_DUTY_HOME/'vision-proof').resolve() and re.fullmatch(r'[a-f0-9]{32}\.json',proof_path.name):
-                        proof_path.write_text(json.dumps({'bvid':bvid,'times':result['times']},ensure_ascii=False),encoding='utf8')
+                        proof_path.write_text(json.dumps({'bvid':bvid,'times':result['times'],
+                            'sampling':result.get('sampling')},ensure_ascii=False),encoding='utf8')
                 except OSError: pass
             blocks = [TextContent(type='text', text=json.dumps(result,ensure_ascii=False))]
             for i,frame in enumerate(frames):

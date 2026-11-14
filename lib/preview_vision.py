@@ -161,6 +161,65 @@ def _pick_indices(times, count, scores=None, step=1):
     return sorted(candidates[:count])
 
 
+
+# v2 uses only B站官方 videoshot sprites already required by the primary picks.
+# This is an inexpensive representative-thumbnail filter, NOT actual scene detection.
+_SAMPLER_VERSION=2
+
+
+def _candidate_indices_from_primary(primary, times, slots, *, limit=12):
+    """Expand candidates *within primary sprite sheets*: never fetch extra sheets."""
+    if not primary or not times or slots <= 0:
+        return []
+    limit=max(len(primary),min(12,int(limit)))
+    candidates=list(dict.fromkeys(primary))
+    radius=max(1, slots//4)
+    for offset in (-radius,radius,-2*radius,2*radius):
+        for index in primary:
+            other=index+offset
+            if (0<=other<len(times) and other//slots==index//slots
+                    and other not in candidates):
+                candidates.append(other)
+                if len(candidates)>=limit:
+                    return sorted(candidates)
+    return sorted(candidates)
+
+
+def _thumb_difference(left, right):
+    """Mean absolute RGB difference in [0,1] for cheap thumbnail dedup."""
+    from PIL import ImageChops, ImageStat
+    return sum(ImageStat.Stat(ImageChops.difference(left,right)).mean)/(3*255)
+
+
+def _select_distinct_previews(candidates, primary, wanted, *, threshold=0.025):
+    """Greedily choose visually distinct thumbnails, then order by video time.
+
+    candidates: {index:int, second:float, tile:PIL.Image}. At most 12.
+    The actual model receives only `wanted` frames, never all candidates.
+    """
+    from PIL import Image
+    if not candidates:return []
+    wanted=max(1,min(3,int(wanted)))
+    thumbs={c['index']:c['tile'].resize((24,24),Image.Resampling.BILINEAR).convert('RGB') for c in candidates}
+    by_index={c['index']:c for c in candidates}
+    priority=[k for k in primary if k in by_index]
+    first=priority[0] if priority else candidates[0]['index']
+    chosen=[first]
+    while len(chosen)<wanted:
+        possibilities=[]
+        for c in candidates:
+            k=c['index']
+            if k in chosen:continue
+            novelty=min(_thumb_difference(thumbs[k],thumbs[old]) for old in chosen)
+            if novelty<threshold:continue
+            # Favour original activity/time-based picks, but not duplicate pixels.
+            score=novelty+(0.025 if k in priority else 0.0)
+            possibilities.append((score,novelty,-k,k))
+        if not possibilities:break
+        chosen.append(max(possibilities)[-1])
+    return [by_index[k] for k in sorted(chosen,key=lambda k:(by_index[k]['second'],k))]
+
+
 def _call_local_ollama(frames, model):
     """Read-only fixed loopback visual inference; never sends images to cloud."""
     if model not in ('qwen3.5:4b','openbmb/minicpm-v4.7:1b'):
@@ -239,8 +298,8 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
     if enabled and not debug and not return_frames and cache.exists():
         try:
             d=json.loads(cache.read_text('utf8'))
-            if d.get('provider')==provider and d.get('model')==model and d.get('frames_limit')==max_frames and d.get('description'):
-                return {'ok':True,'bvid':bvid,'status':'cached','description':d['description'],'times':d.get('times',[]),'image_source':'B站低清预览','notice':'缓存的快照描述，不能代表完整视频'}
+            if d.get('provider')==provider and d.get('model')==model and d.get('frames_limit')==max_frames and d.get('sampler_version')==_SAMPLER_VERSION and d.get('description'):
+                return {'ok':True,'bvid':bvid,'status':'cached','description':d['description'],'times':d.get('times',[]),'sampling':d.get('sampling'),'image_source':'B站低清预览','notice':'缓存的快照描述，不能代表完整视频'}
         except (ValueError,OSError):pass
     try:
         from PIL import Image
@@ -280,23 +339,35 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
             step=float(trend.get('step_sec') or 0) if isinstance(trend,dict) else 0
         except Exception:
             scores=None
-        indices=_pick_indices(times,max_frames,scores,step)
-        frames=[]; images_by_sheet={}
-        for count,i in enumerate(indices):
-            sheet=i//(xlen*ylen)
+        primary=_pick_indices(times,max_frames,scores,step)
+        slots=xlen*ylen
+        candidates=_candidate_indices_from_primary(primary,times,slots,limit=max_frames*4)
+        available=[];images_by_sheet={}
+        for i in candidates:
+            sheet=i//slots
             if sheet>=len(images):continue
             if sheet not in images_by_sheet:
                 img=Image.open(BytesIO(_safe_api_get(_image_url(images[sheet]),image=True,max_bytes=6_000_000)))
                 if img.width*img.height>20_000_000:raise ValueError('预览拼图过大')
                 img.load()
                 images_by_sheet[sheet]=img.convert('RGB')
-            local=i%(xlen*ylen)
+            local=i%slots
             left=(local%xlen)*w; top=(local//xlen)*h
             sheet_img=images_by_sheet[sheet]
             if left+w>sheet_img.width or top+h>sheet_img.height:continue
-            tile=sheet_img.crop((left,top,left+w,top+h))
-            buf=BytesIO();tile.save(buf,format='JPEG',quality=88)
-            frames.append({'second':round(times[i],1),'bytes':buf.getvalue(),'rank':count})
+            available.append({'index':i,'second':round(times[i],1),
+                              'tile':sheet_img.crop((left,top,left+w,top+h))})
+        selected=_select_distinct_previews(available,primary,max_frames)
+        frames=[]
+        for count,entry in enumerate(selected):
+            buf=BytesIO();entry['tile'].save(buf,format='JPEG',quality=88)
+            frames.append({'second':entry['second'],'bytes':buf.getvalue(),
+                           'rank':count,'source_index':entry['index']})
+        sampling={'strategy':'activity-time+local-thumbnail-difference',
+                  'sampler_version':_SAMPLER_VERSION,
+                  'candidates_examined':len(available),'frames_selected':len(frames),
+                  'sheets_downloaded':len(images_by_sheet),
+                  'note':'仅为B站低清预览图的差异去重，不等于原视频镜头分割'}
         if not frames:raise ValueError('预览拼图与索引不匹配，无法提取图片')
         folder=None
         if debug:
@@ -306,8 +377,8 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
                 if re.fullmatch(r'\d{2}_\d+s\.jpg',old.name):old.unlink()
             for i,f in enumerate(frames):
                 (folder/f'{i+1:02d}_{int(f["second"])}s.jpg').write_bytes(f['bytes'])
-            (folder/'metadata.json').write_text(json.dumps({'bvid':bvid,'times':[f['second'] for f in frames],'source':'B站 videoshot 低清预览','high_energy':bool(scores),'index_source':index_source},ensure_ascii=False,indent=2),encoding='utf8')
-        answer={'ok':True,'bvid':bvid,'status':'preview_only','times':[f['second'] for f in frames], 'high_energy':bool(scores),'index_source':index_source,'image_source':'B站低清预览','notice':'预览图分辨率较低，不代表完整视频；画面没看清的内容不可编造'}
+            (folder/'metadata.json').write_text(json.dumps({'bvid':bvid,'times':[f['second'] for f in frames],'source':'B站 videoshot 低清预览','high_energy':bool(scores),'index_source':index_source,'sampling':sampling},ensure_ascii=False,indent=2),encoding='utf8')
+        answer={'ok':True,'bvid':bvid,'status':'preview_only','times':[f['second'] for f in frames], 'high_energy':bool(scores),'index_source':index_source,'sampling':sampling,'image_source':'B站低清预览','notice':'预览图分辨率较低，不代表完整视频；画面没看清的内容不可编造'}
         if folder:answer['debug_dir']=str(folder)
         if return_frames:
             # In-process only: never JSON-serialize image bytes or write API credentials.
@@ -324,7 +395,7 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
         answer.update(status='analyzed',description=description,model=model)
         cache.parent.mkdir(parents=True,exist_ok=True)
         temp=cache.with_suffix('.tmp')
-        temp.write_text(json.dumps({'model':model,'provider':provider,'frames_limit':max_frames,'times':answer['times'],'description':description},ensure_ascii=False),encoding='utf8')
+        temp.write_text(json.dumps({'model':model,'provider':provider,'frames_limit':max_frames,'sampler_version':_SAMPLER_VERSION,'times':answer['times'],'sampling':sampling,'description':description},ensure_ascii=False),encoding='utf8')
         os.replace(temp,cache)
         return answer
     except Exception as e:

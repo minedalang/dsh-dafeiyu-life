@@ -120,3 +120,7 @@ remain in force.
 
 本阶段受限 DSH 图片验收实现、固定自检图片路径校验和 UI 逻辑为本项目独立实现；沿用此前 `adoresever/bilibili-mcp` 的 vendored MCP 基础（参见文件顶部的 MIT 声明）。
 `dsh-video-storyboard` 与 `dsh-see-now` 在本阶段仍仅是设计参考，并未复制/嵌入其代码；今后如果真正采用代码，则按对应版本的许可证另行保留完整署名与 NOTICE。
+
+## 2.8.1-dev.3a.1：自适应 B站预览代表帧
+
+本阶段在项目现有 `lib/preview_vision.py` 基础上，由本项目独立编写限制在官方 B站低清预览拼图内部的「时间/活动候选 + 本地缩略图差异去重」实现。继续参考 [dsh-video-storyboard](https://github.com/SAOS-3624/dsh-video-storyboard) 的分镜和时间锚点方向、[dsh-see-now](https://github.com/SAOS-3624/dsh-see-now) 的变化采样理念，但**没有复制、修改、vendor 或再分发两者源代码**，也尚未实现它们的完整算法。若以后直接移植，须核对当时许可并随附版权、LICENSE/NOTICE 与改动说明。图片处理使用本项目已有的 Pillow 依赖；不下载或捆绑第三方模型权重。

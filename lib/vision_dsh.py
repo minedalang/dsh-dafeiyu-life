@@ -142,6 +142,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None):
         except (ValueError,UnicodeDecodeError):
             visual_instruction=''
         prompt_hash=hashlib.sha256(visual_instruction.encode('utf8')).hexdigest()[:16]
+        from preview_vision import _SAMPLER_VERSION
         cached=home/'vision-cache'/f'{bvid}.json'
         if cached.is_file():
             try:
@@ -149,9 +150,10 @@ def describe_with_dsh(bvid, home, env=None, runner=None):
                 if (d.get('origin')=='dsh-independent-unverified' and d.get('model')==model
                     and d.get('provider')==provider and d.get('frames_limit')==frames
                     and d.get('prompt_hash')==prompt_hash
+                    and d.get('sampler_version')==_SAMPLER_VERSION
                     and d.get('description')):
                     return {'ok':True,'status':'cached','bvid':bvid,'description':d['description'],
-                            'times':d.get('times',[]),'notice':'缓存的独立视觉模型观察，低清待核实'}
+                            'times':d.get('times',[]),'sampling':d.get('sampling'),'notice':'缓存的独立视觉模型观察，低清待核实'}
             except (OSError,ValueError): pass
         from preview_vision import _claim_vision_quota, _vision_daily_limit
         daily_limit=_vision_daily_limit(env)
@@ -220,13 +222,16 @@ def describe_with_dsh(bvid, home, env=None, runner=None):
         if len(description)<8:
             return {'ok':False,'status':'empty_result','error':'视觉模型未提供有效画面描述'}
         record={'origin':'dsh-independent-unverified','model':model,'provider':provider,
-                'frames_limit':frames,'prompt_hash':prompt_hash,'times':observed['times'][:3],'description':description}
+                'frames_limit':frames,'prompt_hash':prompt_hash,'sampler_version':_SAMPLER_VERSION,
+                'times':observed['times'][:3],'sampling':observed.get('sampling'),
+                'description':description}
         cached.parent.mkdir(parents=True,exist_ok=True)
         tmp=cached.with_suffix('.tmp')
         tmp.write_text(json.dumps(record,ensure_ascii=False),encoding='utf8')
         os.replace(tmp,cached)
         return {'ok':True,'status':'analyzed','bvid':bvid,'description':description,
-                'times':record['times'],'notice':'独立 DSH 视觉模型根据低清图片自述观察，尚未独立核实'}
+                'times':record['times'],'sampling':record.get('sampling'),
+                'notice':'独立 DSH 视觉模型根据低清图片自述观察，尚未独立核实'}
     except Exception as exc:
         return {'ok':False,'status':'vision_config_error','error':str(exc)[:180]}
     finally:
