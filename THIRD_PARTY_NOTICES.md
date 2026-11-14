@@ -115,3 +115,8 @@ remain in force.
 - Qwen3.5 4B：<https://ollama.com/library/qwen3.5:4b>；Qwen 模型/权重许可须遵守所下载制品的官方说明。
 - MiniCPM-V 4.7 1B：<https://github.com/OpenBMB/MiniCPM-V>；具体模型仓库可能有独立许可与使用条件，应以用户下载的官方制品为准。
 - 本项目不将以上模型权重装入 npm 交付包。下载通过用户本地 Ollama 向其模型 Registry 请求；仍须核对运行时兼容、模型 digest 与适用许可。**下载成功不代表实际视觉推理成功**。
+
+## 2.8.1-dev.2c：DSH/Ollama 图片验收与模式收敛
+
+本阶段受限 DSH 图片验收实现、固定自检图片路径校验和 UI 逻辑为本项目独立实现；沿用此前 `adoresever/bilibili-mcp` 的 vendored MCP 基础（参见文件顶部的 MIT 声明）。
+`dsh-video-storyboard` 与 `dsh-see-now` 在本阶段仍仅是设计参考，并未复制/嵌入其代码；今后如果真正采用代码，则按对应版本的许可证另行保留完整署名与 NOTICE。

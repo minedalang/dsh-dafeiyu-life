@@ -1276,6 +1276,37 @@ async def bili_video_info(bvid: str) -> str:
 
 
 
+# 2.8.1-dev.2c: DSH model image acceptance probe.
+# Only accessible inside a tool-isolated Headless session with an explicit
+# BILI_VISION_SELFTEST_ALLOWED flag. No Bilibili request and no write tools.
+_DAFEIYU_IMAGE_SHA256 = 'a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b'
+
+@tool()
+async def bili_vision_selftest():
+    """Return only the project-supplied fixed mascot image for manual model review."""
+    if (e := _guard('bili_vision_selftest')): return e
+    if os.environ.get('BILI_VISION_SELFTEST_ALLOWED') != '1':
+        return json.dumps({'ok':False,'error':'当前会话没有图片人工验收资格'},ensure_ascii=False)
+    path=Path(os.environ.get('BILI_VISION_TEST_ASSET',''))
+    if path.name != 'local-vision-selftest-dafeiyu.png' or path.is_symlink() or not path.is_file():
+        return json.dumps({'ok':False,'error':'固定测试图片不可用'},ensure_ascii=False)
+    try:
+        contents=path.read_bytes()
+        if len(contents)>1_000_000 or hashlib.sha256(contents).hexdigest()!=_DAFEIYU_IMAGE_SHA256:
+            raise ValueError('测试图片完整性不匹配')
+        proof_file=os.environ.get('BILI_VISION_PROOF_FILE','')
+        if proof_file:
+            dst=Path(proof_file).resolve()
+            if dst.parent == (_DUTY_HOME/'vision-proof').resolve() and re.fullmatch(r'[a-f0-9]{32}\.json',dst.name):
+                dst.write_text(json.dumps({'kind':'dafeiyu-selftest','sha256':_DAFEIYU_IMAGE_SHA256}),encoding='utf8')
+        return CallToolResult(content=[
+            TextContent(type='text',text='图片验收素材：大肥鱼官方角色原图。只描述实际看见的画面，不要按照文件名猜测。'),
+            ImageContent(type='image',mimeType='image/png',data=base64.b64encode(contents).decode('ascii')),
+        ])
+    except (OSError,ValueError):
+        return json.dumps({'ok':False,'error':'测试图片不可读取或内容校验失败'},ensure_ascii=False)
+
+
 # ========== 预览帧识图（Agent 自主选择；由已公开配置的后台预算与平台风控保护） ==========
 # 每轮 headless 创建独立 MCP 进程；同一个 BV 重试不扩张上限。
 # 这道上限是实际后端闸，不只依赖 AI 遵守提示词。手动预览测试走单独的受限脚本。
@@ -1322,7 +1353,7 @@ async def bili_preview_vision(bvid: str):
                                 source='independent_dsh_result',ok=result.get('ok'),
                                 error=result.get('error',''),times=result.get('times'))
             return json.dumps(result,ensure_ascii=False)
-        if mode in ('reuse_video_model','auto'):
+        if mode == 'reuse_video_model' and os.environ.get('BILI_VISION_CHILD') == '1':
             # MCP SDK translates real image blocks to the video model route through DSH's
             # attachment bridge. No independent vision API or DPAPI key is accessed here.
             result = await asyncio.to_thread(_fetch_preview_frames_reserved, bvid)
@@ -1362,7 +1393,7 @@ async def bili_preview_observation(bvid: str, description: str) -> str:
     if (e := _guard('bili_preview_observation')): return e
     try:
         bv = _valid_bv(bvid)
-        if os.environ.get('BILI_VISION_MODE','separate') not in ('reuse_video_model','auto'):
+        if os.environ.get('BILI_VISION_MODE','separate') != 'reuse_video_model' or os.environ.get('BILI_VISION_CHILD') != '1':
             raise ValueError('仅复用视频模型模式支持该工具')
         if bv not in _VISION_FRAMES_SERVED:
             raise ValueError('本轮未为该 BV 返回过真实图片，拒绝记录视觉观察')

@@ -18,14 +18,14 @@ test('原生日常页底部：项目仓库、第三方声明、作者主页、�
   assert.match(ui,/https:\/\/github\.com\/minedalang\/dsh-dafeiyu-life\/blob\/main\/THIRD_PARTY_NOTICES\.md/)
 })
 
-test('统一模型页所访问的 checked DOM 都存在，兼容自动模式和视觉 Debug',()=>{
+test('统一模型页所访问的 checked DOM 都存在，旧自动模式安全回退且兼容视觉 Debug',()=>{
   const html=read('lib/management-console.html'),js=read('lib/management-console.js')
   const region=js.slice(js.indexOf('const loadModels='),js.indexOf('const biliFields='))
   for(const [,id] of region.matchAll(/\$\('([^']+)'\)\.checked/g)){
     assert.ok(html.includes('id="'+id+'"'),`${id} is missing in the HTML`)
   }
   for(const id of ['models-vision-enabled','models-vision-debug','models-vision-mode'])assert.ok(html.includes('id="'+id+'"'))
-  assert.match(html,/<option value="auto">/)
+  assert.match(html,/<option value="independent_dsh">/);assert.match(html,/<option value="independent_local">/);assert.doesNotMatch(html.slice(html.indexOf('id="models-vision-mode"'),html.indexOf('</select>',html.indexOf('id="models-vision-mode"'))),/<option value="auto">/)
   assert.doesNotMatch(region,/payload\.visionEnabled=.*\n\s*payload\.visionMode=.*\n\s*payload\.visionEnabled=/)
 })
 
@@ -51,7 +51,7 @@ test('真实模拟打开模型页刷新时不会因缺失 DOM 的 checked 属性
   await new Promise(resolve=>setTimeout(resolve,15))
   assert.equal(registry.get('models-vision-enabled').checked,true)
   assert.equal(registry.get('models-vision-debug').checked,true)
-  assert.equal(registry.get('models-vision-mode').value,'auto')
+  assert.equal(registry.get('models-vision-mode').value,'independent_dsh')
   assert.equal(registry.get('main-memory-model-id').value,'retriever')
   assert.equal(registry.get('model-mainSessionReflectionModelProvider').value,'reflect-provider')
   assert.equal(registry.get('model-mainSessionReflectionModelId').value,'reflect-model')

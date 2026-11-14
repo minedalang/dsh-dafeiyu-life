@@ -14,6 +14,8 @@
 
 **实施状态（2026-11-14）：** 已从 `dev.2a` 启动：新增视频证据类别/来源/时间锚点的只读合同，并接入主 Session 与社交推荐共用的 `bili_watch_video` 读取；其他视频 Agent 入口、多帧深度理解、安装器仍在后续批次。**跳过原 dev.1** 的 GPT-6-Luna 识图确认及 Token/费用测试：使用者已经确认其支持识图并自行测试费用，本项目不安排重复验证。见 [2.8.1 视频感知实施方案](architecture/2.8.1-video-perception-dev2a.md)。
 
+**视觉识别合并阶段（dev.2c，开发增量）：** 用户只在「DSH 识图模型」与「本地 Ollama 视觉模型」之间选择；两者都能对大肥鱼原图进行真实只读图片验收、展示模型文字并由使用者决定认可与否。旧 Endpoint / 用户可见复用视觉选项移除；旧自动配置迁移时先关闭视觉，避免暗中变更计费路由。DSH 验收仍需 Windows 实机确认。详见 [dev.2c 架构说明](architecture/2.8.1-video-perception-dev2c.md)。
+
 **本地视频模型阶段成果（dev.2b，开发预览）：** 已为 **MiniCPM-V 4.7 1B / Qwen3.5 4B** 增加管理中心可选型号、Ollama 模型下载/进度/取消、自检、显式启用与删除（需先安装 Ollama）；视频 Agent 可走独立本地只读识图。尚未验证 Windows 实机和模型版本兼容，模型权重由 Ollama Registry 管理，未固定完整 manifest digest；未完成一键自动安装 Ollama Runtime。详见 [dev.2b 架构](architecture/2.8.1-video-perception-dev2b.md)。
 
 **原本地视频模型规划（dev.2a 阶段历史描述）：** 提供 **MiniCPM-V 4.7 1B** 与 **Qwen3.5 4B** 两个候选，让使用者在管理中心像本地语义 Embedding 一样选择型号、一键下载安装、查看进度、取消、删除或切换；保留 DSH 视觉模型且不强制本地安装。安装器先验证上游固定修订和哈希，不能把模型“已下载”当作视觉“已运行”。

@@ -43,14 +43,14 @@ class PreviewTests(unittest.TestCase):
             folder=Path(d['debug_dir']);self.assertEqual(len(list(folder.glob('*.jpg'))),2)
             self.assertEqual(d['high_energy'],True)
             fail=pv.analyze_preview('BV1234567890',temp,enabled=True,debug=True,max_frames=2,provider='anthropic',model='claude-haiku-4-5-20251001')
-            self.assertEqual(fail['status'],'vision_unavailable')
+            self.assertFalse(fail['ok']); self.assertIn('提供方',fail.get('error',''))
             self.assertFalse(fail.get('description'))
-            with patch.object(pv,'_credentials',return_value='test-key'), patch.object(pv,'_call_vision',return_value='只有一张看得见圆形头像，人物身份不确定') as call:
-                ok=pv.analyze_preview('BV1234567890',temp,enabled=True,debug=True,max_frames=2,provider='anthropic',model='claude-haiku-4-5-20251001')
+            with patch.object(pv,'_call_local_ollama',return_value='画面分别为红、绿色等色块，不能确认完整视频内容') as call:
+                ok=pv.analyze_preview('BV1234567890',temp,enabled=True,debug=True,max_frames=2,provider='ollama',model='qwen3.5:4b')
                 self.assertEqual(ok['status'],'analyzed')
                 self.assertEqual(len(call.call_args[0][0]),2)
             with patch.object(pv,'_json_api',side_effect=AssertionError('cache should be used')):
-                cached=pv.analyze_preview('BV1234567890',temp,enabled=True,debug=False,max_frames=2,provider='anthropic',model='claude-haiku-4-5-20251001')
+                cached=pv.analyze_preview('BV1234567890',temp,enabled=True,debug=False,max_frames=2,provider='ollama',model='qwen3.5:4b')
             self.assertEqual(cached['status'],'cached')
 
 if __name__=='__main__':unittest.main()

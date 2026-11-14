@@ -1,6 +1,6 @@
 """B站播放器 videoshot 预览快照 + 独立视觉模型（安全受限）。
 
-无任意 URL / 文件路径输入；只允许固定 B站官方源及预设视觉服务端点。
+无任意 URL / 文件路径输入；只允许固定 B站官方源与本机 Ollama。
 视觉图像低清，仅作粗略视觉提示，不代表已看完整视频。
 """
 import argparse
@@ -13,7 +13,6 @@ from pathlib import Path
 import re
 import sqlite3
 from contextlib import closing
-import subprocess
 import struct
 import sys
 import urllib.parse
@@ -162,48 +161,6 @@ def _pick_indices(times, count, scores=None, step=1):
     return sorted(candidates[:count])
 
 
-def _credentials(provider, home=None):
-    """Prefer user's locally saved DPAPI key; never read DSH model credentials."""
-    if home and os.name == 'nt':
-        secret = Path(home) / '.vision-api-key.dpapi'
-        helper = Path(__file__).with_name('vision-secret.ps1')
-        if secret.is_file() and helper.is_file():
-            try:
-                result = subprocess.run(
-                    ['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
-                     '-File', str(helper), '-Action', 'load', '-Path', str(secret)],
-                    capture_output=True, timeout=8, check=True,
-                )
-                key = base64.b64decode(result.stdout.strip(), validate=True).decode('utf-8')
-                if key and len(key) <= 4096:
-                    return key
-            except (OSError, subprocess.SubprocessError, ValueError, UnicodeError):
-                # Fall back to explicitly supplied process env, not to DSH credential files.
-                pass
-    if provider == 'anthropic':
-        return os.environ.get('BILI_VISION_API_KEY') or os.environ.get('ANTHROPIC_API_KEY') or ''
-    return os.environ.get('BILI_VISION_API_KEY') or os.environ.get('OPENAI_API_KEY') or ''
-
-
-def _endpoint(provider, custom):
-    default = 'https://api.anthropic.com/v1/messages' if provider=='anthropic' else 'https://api.openai.com/v1/chat/completions'
-    url = str(custom or default).strip()
-    parsed=urllib.parse.urlsplit(url)
-    if parsed.scheme != 'https' or not parsed.netloc or parsed.username or parsed.password or parsed.fragment or parsed.query:
-        raise ValueError('视觉 API 地址必须是 HTTPS 地址，不允许账号/密码/查询参数/片段')
-    # The UI commonly receives API base URLs, e.g. https://4router.net/v1.
-    # Complete ONLY known API base paths; don't rewrite custom full endpoints.
-    path=parsed.path.rstrip('/')
-    if path in ('', '/v1'):
-        end='/v1/messages' if provider=='anthropic' else '/v1/chat/completions'
-        return urllib.parse.urlunsplit(parsed._replace(path=end))
-    if path in ('/messages', '/chat/completions'):
-        end='/v1/messages' if provider=='anthropic' else '/v1/chat/completions'
-        return urllib.parse.urlunsplit(parsed._replace(path=end))
-    return url
-
-
-
 def _call_local_ollama(frames, model):
     """Read-only fixed loopback visual inference; never sends images to cloud."""
     if model not in ('qwen3.5:4b','openbmb/minicpm-v4.7:1b'):
@@ -230,45 +187,6 @@ def _call_local_ollama(frames, model):
     except (URLError, TimeoutError) as error:
         raise ValueError('本地 Ollama 未运行、模型不兼容或响应超时') from None
 
-def _call_vision(frames, provider, model, url, api_key):
-    if provider not in ('anthropic','openai'):
-        raise ValueError('视觉模型提供方只能选 anthropic 或 openai')
-    if not re.fullmatch(r'[A-Za-z0-9._:/-]{1,120}', model or ''):
-        raise ValueError('请填写真实的视觉模型 ID')
-    if not api_key:raise ValueError('未配置视觉 API Key：设置 BILI_VISION_API_KEY（或 ANTHROPIC_API_KEY / OPENAI_API_KEY）环境变量')
-    url = _endpoint(provider,url)
-    note = '\n'.join(f'图{i+1}：约{f["second"]}秒' for i,f in enumerate(frames))
-    if provider == 'anthropic':
-        content=[{'type':'text','text':PROMPT+'\n'+note}]
-        content += [{'type':'image','source':{'type':'base64','media_type':'image/jpeg','data':base64.b64encode(f['bytes']).decode('ascii')}} for f in frames]
-        payload={'model':model,'max_tokens':240,'messages':[{'role':'user','content':content}]}
-        headers={'x-api-key':api_key,'anthropic-version':'2023-06-01','content-type':'application/json'}
-    else:
-        content=[{'type':'text','text':PROMPT+'\n'+note}]
-        content += [{'type':'image_url','image_url':{'url':'data:image/jpeg;base64,'+base64.b64encode(f['bytes']).decode('ascii'),'detail':'low'}} for f in frames]
-        payload={'model':model,'max_tokens':240,'messages':[{'role':'user','content':content}]}
-        headers={'Authorization':'Bearer '+api_key,'content-type':'application/json'}
-    req=urllib.request.Request(url,json.dumps(payload).encode('utf8'),headers=headers,method='POST')
-    # 禁止 API 端点重定向，避免含有 API Key 的 Authorization 头被转发到其他服务器。
-    class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self,*args,**kwargs):
-            raise ValueError('视觉 API 不允许重定向')
-    try:
-        with urllib.request.build_opener(NoRedirect()).open(req,timeout=35) as r: result=json.loads(r.read(300_000))
-    except HTTPError as e:
-        # 不回显响应体：服务可能在错误消息中反射凭证。
-        hint={401:'（API Key 不正确或未获授权）',403:'（服务商拒绝访问）',404:'（模型或 API 路径不存在，请核对模型 ID 与接口协议）',429:'（请求过于频繁）'}.get(e.code,'')
-        raise ValueError('视觉模型请求失败 HTTP '+str(e.code)+hint) from None
-    if provider=='anthropic':
-        ans='\n'.join(x.get('text','') for x in result.get('content',[]) if x.get('type')=='text')
-    else:
-        ans=result.get('choices',[{}])[0].get('message',{}).get('content','')
-        if isinstance(ans,list): ans=' '.join(x.get('text','') for x in ans if isinstance(x,dict))
-    if not isinstance(ans,str) or not ans.strip():
-        raise ValueError('视觉模型没有返回可用的文字结果')
-    return ans[:1100]
-
-
 def _vision_daily_limit(env=None):
     # 缺失时采用可编辑的默认值；配置过高或异常时防止意外高额调用。
     raw=(os.environ if env is None else env).get('BILI_VISION_DAILY_LIMIT','30')
@@ -279,7 +197,7 @@ def _vision_daily_limit(env=None):
     return max(0,min(200,value))
 
 def _claim_vision_quota(home, daily_limit=None):
-    # 同一账本供独立 DSH 视觉和旧独立 API 路线共享。
+    # 同一账本供独立 DSH 视觉与本地 Ollama 路线共享。
     # 额度以实际开始的调用/尝试计费（包括调用失败），缓存命中不扣。
     # SQLite BEGIN IMMEDIATE 避免两轮同时计数时超额。
     if daily_limit is None:
@@ -302,7 +220,7 @@ def _claim_vision_quota(home, daily_limit=None):
         return True
 
 
-def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, endpoint=None, return_frames=False, prefetch_only=False):
+def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False):
     """返回经过长度钳制的结构化文本；debug 才保存 JPEG，缓存只存分析文字。"""
     if not BV_RE.fullmatch(str(bvid or '')):return {'ok':False,'error':'BV号格式不正确'}
     home=Path(home).resolve()
@@ -310,11 +228,10 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
     if debug is None: debug=os.environ.get('BILI_VISION_DEBUG')=='1'
     if max_frames is None: max_frames=os.environ.get('BILI_VISION_FRAMES','2')
     max_frames=max(1,min(3,int(max_frames)))
-    provider=(provider if provider is not None else os.environ.get('BILI_VISION_PROVIDER','anthropic')).strip().lower()
+    provider=(provider if provider is not None else os.environ.get('BILI_VISION_PROVIDER','ollama')).strip().lower()
     model=(model if model is not None else os.environ.get('BILI_VISION_MODEL','')).strip()
-    endpoint=endpoint if endpoint is not None else os.environ.get('BILI_VISION_ENDPOINT','')
     if not enabled and not debug and not return_frames and not prefetch_only:return {'ok':False,'error':'视觉识图与 Debug 都未开启'}
-    if enabled and not return_frames and provider not in ('anthropic','openai','ollama'):
+    if enabled and not return_frames and provider != 'ollama':
         return {'ok':False,'error':'视觉模型提供方未配置'}
     if enabled and not return_frames and not model:
         return {'ok':False,'error':'视觉模型 ID 尚未配置'}
@@ -398,13 +315,10 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
             answer['frames']=frames
             return answer
         if prefetch_only or not enabled:return answer
-        key='local-loopback' if provider=='ollama' else _credentials(provider,home)
-        if not key:
-            answer.update(status='vision_unavailable',error='没有读到视觉 API Key；已抓取预览图但尚未识图。请在设置页「视觉 API Key」保存密钥，或配置 BILI_VISION_API_KEY。');return answer
         if not _claim_vision_quota(home):
             answer.update(status='daily_limit',error=f'今日独立视觉模型调用已达 {_vision_daily_limit()} 次上限；只取得预览图，未识图');return answer
         try:
-            description=_call_local_ollama(frames,model) if provider=='ollama' else _call_vision(frames,provider,model,endpoint,key)
+            description=_call_local_ollama(frames,model)
         except Exception as e:
             answer.update(status='vision_unavailable',error=str(e)[:240]);return answer
         answer.update(status='analyzed',description=description,model=model)
@@ -436,12 +350,12 @@ def record_vision_event(home, bvid, status, *, source='preview', ok=False, debug
         pass  # diagnostics must never prevent the read-only vision tool
 
 
-def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, endpoint=None, return_frames=False, prefetch_only=False):
+def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False):
     # The manual preview button and the actual vision tool share this receipt.
     source='manual_preview' if prefetch_only else ('video_agent_frames' if return_frames else 'vision_provider')
     result=_analyze_preview_core(bvid,home,enabled=enabled,debug=debug,
                                  max_frames=max_frames,provider=provider,
-                                 model=model,endpoint=endpoint,return_frames=return_frames,
+                                 model=model,return_frames=return_frames,
                                  prefetch_only=prefetch_only)
     record_vision_event(home,bvid,result.get('status') or ('preview_failed' if not result.get('ok') else 'preview_only'),
                         source=source,ok=result.get('ok'),debug_saved=bool(result.get('debug_dir')),
