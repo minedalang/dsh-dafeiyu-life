@@ -1,3 +1,10 @@
+## [2.8.1-dev.2b-ui-copy] · Ollama 下载进度及 Windows 网络代理说明
+
+- 模型下载界面明确标注 Ollama 当前文件层进度而非整个模型总进度，提示权重和视觉投影器会分别下载。
+- 将本地视觉设置页网络说明改为中性措辞，并仅提供 Windows 下当前 PowerShell 会话的 `HTTPS_PROXY` / `ollama serve` 两条示例命令；不再推荐修改用户级环境变量。
+- 明确安装后本地视觉识别不再需要下载代理，但必须保持 Ollama 运行；同步 README、架构说明和回归测试。
+- 仅界面文案、进度标注与文档修复；未变更网络请求、模型制品、B站授权和 Life 决策机制。
+
 ## [2.8.1-dev.2b-hotfix] · Ollama 下载代理与视觉模型说明（开发补丁）
 
 - 修正 MiniCPM-V 4.7 1B 的 Ollama 标签为 `openbmb/minicpm-v4.7:1b`，同时修正本地 Python 推理白名单，避免误下默认大型模型。

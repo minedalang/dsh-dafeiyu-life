@@ -41,7 +41,7 @@ Life 是鱼鱼的统一生活协调系统。真实的公开视频信息、评论
 
 每段经历有明确的步骤及资源上限。部分有真实新增证据的片段可以延迟保留一次后续考虑机会，但不会无限递归探索，也不会把已读材料假装成新发现。
 
-**2.8.1 开发预览中的可选本地视觉：** 管理中心「AI 模型 → 视频视觉模型」已提供 Qwen3.5 4B 和 MiniCPM-V 4.7 1B 的 Ollama 模型下载、图片自检与手动切换。需要用户事先安装并启动 Ollama；MiniCPM-V 4.7 1B 下载约 1.8GB、建议 4GB 显存起试，Qwen3.5 4B 下载约 3.3～4.0GB、建议 6～8GB 显存起试（非最低保证值）。下载可能经过 Cloudflare R2；开梯子后也请检查 Ollama 后台是否正确使用 `HTTPS_PROXY`，修改 Windows 环境变量后需彻底退出并重启 Ollama。无需在 DSH 单独配置 Ollama Provider；MiniCPM-V 运行还取决于本地 Ollama 版本。原 DSH 视觉模式不变，不强制安装、不因本地识图失败自动切云端，也不扩大评论/点赞权限。[开发与限制](docs/architecture/2.8.1-video-perception-dev2b.md)。
+**2.8.1 开发预览中的可选本地视觉：** 管理中心「AI 模型 → 视频视觉模型」已提供 Qwen3.5 4B 和 MiniCPM-V 4.7 1B 的 Ollama 模型下载、图片自检与手动切换。需要用户事先安装并启动 Ollama；MiniCPM-V 4.7 1B 下载约 1.8GB、建议 4GB 显存起试，Qwen3.5 4B 下载约 3.3～4.0GB、建议 6～8GB 显存起试（非最低保证值）。下载可能经过 Cloudflare R2。若使用网络代理，Windows 可先完全退出 Ollama，再在独立 PowerShell 窗口执行 `$env:HTTPS_PROXY = "http://127.0.0.1:7890"`（端口按实际修改）、`ollama serve`，使代理只作用于该 Ollama 服务进程；安装后正常本地识图不需要下载代理，但须保持 Ollama 服务运行。下载界面的百分比是当前文件层进度，切换文件会重新计数，并非模型总进度。无需在 DSH 单独配置 Ollama Provider；MiniCPM-V 运行还取决于本地 Ollama 版本。原 DSH 视觉模式不变，不强制安装、不因本地识图失败自动切云端，也不扩大评论/点赞权限。[开发与限制](docs/architecture/2.8.1-video-perception-dev2b.md)。
 
 **真实读取与真实观看不同。** 视频标题、简介、字幕和评论各有证据范围；鱼鱼不会因为看到了文字资料就宣称自己完整看过音画。原创评论必须建立在实际可核验的内容证据上。
 

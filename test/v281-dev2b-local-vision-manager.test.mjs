@@ -131,3 +131,18 @@ test('管理中心说明两种模型能力、体积、显存与 Windows Ollama �
   assert.match(page,/无需在 DSH 中另外配置 Ollama Provider/)
   assert.match(python,/openbmb\/minicpm-v4\.7:1b/)
 })
+
+
+test('Windows 下载说明使用仅本进程代理并标明当前文件层百分比',async()=>{
+  const {readFileSync}=await import('node:fs')
+  const page=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
+  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+  const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8')
+  assert.match(page,/当前仅列举 Windows 环境下的方法/)
+  assert.match(page,/\$env:HTTPS_PROXY = "http:\/\/127\.0\.0\.1:7890"/)
+  assert.match(page,/ollama serve/)
+  assert.match(page,/当前文件层的进度/)
+  assert.match(js,/非模型总进度/)
+  assert.doesNotMatch(page,/梯子/)
+  assert.doesNotMatch(readme,/梯子/)
+})
