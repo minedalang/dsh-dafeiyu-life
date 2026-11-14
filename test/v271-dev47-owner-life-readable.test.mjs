@@ -64,11 +64,9 @@ test('Social signal attention is not social sending or real read of message cont
   {getLifeSocialPreview:()=>({ok:false})}).tick({socialWake:true})
  assert.equal(result.result,'social-signal-considered')
  const diary=buildLifeTimeline({lifeDecisions:events.status().timeline,now:T+3000})
- assert.equal(diary.length,1)
- assert.equal(diary[0].type,'life-consider')
- assert.match(diary[0].title,/私信提醒/)
- assert.match(diary[0].detail,/还没有打开具体内容或发送回复/)
- assert.doesNotMatch(diary[0].title,/回复了/)
+ // Attention without a verified read/send is diagnostic only. The user-facing
+ // timeline intentionally omits this noisy non-action rather than implying a DM reply.
+ assert.equal(diary.length,0)
 }))
 
 test('A model rest is distinct from an empty menu, failure and missing social signals',()=>{

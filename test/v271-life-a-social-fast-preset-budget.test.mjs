@@ -18,9 +18,9 @@ test('new pace values are explicit and saved legacy presets are never silently m
     autonomousPlannerMinutes:30,autonomousPlannerDailyLimit:20,autonomousPlannerStartHour:9,autonomousPlannerEndHour:23,peakValley:false}
   assert.equal(lifeSettingsV2(config).pace,'legacy-lively')
   assert.deepEqual(settings(config,'legacy-lively',true).patch,{})
-  assert.deepEqual(settings(config,'lively',false).patch,{autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:200})
-  assert.deepEqual(settings(config,'natural').patch,{autonomousPlannerDailyLimit:100})
-  assert.deepEqual(settings(config,'quiet').patch,{autonomousPlannerMinutes:80,autonomousPlannerDailyLimit:50})
+  assert.deepEqual(settings(config,'lively',false).patch,{autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:200,videoAgentMinIntervalMinutes:15,videoAgentReadTargetPerRound:8,videoAgentPickTargetPerRound:5})
+  assert.deepEqual(settings(config,'natural').patch,{autonomousPlannerDailyLimit:100,videoAgentMinIntervalMinutes:30,videoAgentReadTargetPerRound:5,videoAgentPickTargetPerRound:5})
+  assert.deepEqual(settings(config,'quiet').patch,{autonomousPlannerMinutes:80,autonomousPlannerDailyLimit:50,videoAgentMinIntervalMinutes:60,videoAgentReadTargetPerRound:3,videoAgentPickTargetPerRound:3})
   assert.throws(()=>settings(config,'legacy-quiet'),/只允许保留/)
   assert.equal(config.autonomousPlannerDailyLimit,20)
 })

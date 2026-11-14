@@ -123,15 +123,15 @@ test('dev40 评论者公开投稿只读需要当轮真实评论、独立开启�
  assert.equal((await readVerifiedCommenterPublicVideos({...opts,readVideos:async()=>({uid:'9999',videos:[]})})).ok,false)
 })
 
-test('dev40 所有专业上下文都必须连接到生产提示而非测试虚构；新公开号授权默认关闭',()=>{
+test('dev40 所有专业上下文都必须连接到生产提示而非测试虚构；评论者公开资料读取能力固定开启，但依旧不放开发送授权',()=>{
  const root=new URL('../',import.meta.url)
  const text=file=>readFileSync(new URL(file,root),'utf8')
  assert.match(text('lib/owner-dm-agent.mjs'),/实时专业行为菜单/)
  assert.match(text('lib/autonomous-planner.mjs'),/待办子循环本轮实际候选行为/)
  assert.match(text('lib/autonomous-planner.mjs'),/当前社交专业行为菜单/)
  assert.match(text('lib/life-reflection.mjs'),/反思模块本次合法候选范围/)
- assert.match(text('index.js'),/commentPublicProfileReadEnabled:\s*z\.boolean\(\)\.default\(false\)/)
+ assert.match(text('index.js'),/commentPublicProfileReadEnabled:\s*z\.boolean\(\)\.default\(true\)/)
  assert.match(text('index.js'),/readVerifiedCommenterPublicVideos\(/)
  assert.match(text('index.js'),/linkedPublicBvid:String\(req\.bvid/)
- assert.match(text('lib/management-console.js'),/ENABLE_PUBLIC_COMMENTER_READ/)
+ assert.doesNotMatch(text('lib/management-console.html'),/id="comment-public-person-read"/)
 })

@@ -19,7 +19,7 @@ async function rig(overrides={}) {
  const add=(uid,text)=>inbox.push({senderUid:String(uid),text,messageId:String(++id),timestampMs:time,incoming:true});
  return {dataDir,cfg,handler,inbox,sent,calls,add,advance:ms=>time+=ms};
 }
-test('限额→申请白饭→人工通过→每天限额与累计限额',async()=>{
+test('陌生人申请白饭获批后不再受已废弃的个人日/累计上限拦截',async()=>{
  const x=await rig();await x.handler.poll();
  x.add('100','你好'); assert.equal((await x.handler.poll()).sent,1);
  assert.equal(x.sent[0].text,'AI: 你好'); // 只发送模型原文，审核暗号不再由程序拼接
@@ -30,12 +30,12 @@ test('限额→申请白饭→人工通过→每天限额与累计限额',async(
  assert.equal((await x.handler.listApprovals())[0].status,'approved');
  x.add('100','第一句');assert.equal((await x.handler.poll()).sent,1);
  x.add('100','第二句');assert.equal((await x.handler.poll()).sent,1);
- x.add('100','第三句');assert.equal((await x.handler.poll()).sent,0);
+ x.add('100','第三句');assert.equal((await x.handler.poll()).sent,1);
  x.advance(86400_000);
  x.add('100','第四句');assert.equal((await x.handler.poll()).sent,1);
- x.add('100','第五句');assert.equal((await x.handler.poll()).sent,0);
- assert.equal((await x.handler.listApprovals())[0].total,3);
- assert.equal(x.calls.length,4); // 首条陌生人私信现在也由同一轮 AI 回复/意图调用处理
+ x.add('100','第五句');assert.equal((await x.handler.poll()).sent,1);
+ assert.equal((await x.handler.listApprovals())[0].status,'approved');
+ assert.equal(x.calls.length,6); // 首条陌生人私信现在也由同一轮 AI 回复/意图调用处理
 });
 test('老白名单无限额，不受审批配额和全局每日配额影响',async()=>{
  const x=await rig({approvedDailyLimit:1,approvedTotalLimit:1,maxPerDay:1});await x.handler.poll();

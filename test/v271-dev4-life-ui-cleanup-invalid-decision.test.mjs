@@ -36,8 +36,9 @@ test('Life 常规设置移除旧开发选项，真实运行入口保留；评论
  for(const id of ['life-v2-mode','life-v2-pace','life-v2-save-btn','life-agent-wake','life-agent-wake-result','life-integration-refresh','life-video-agent-test-run']){
   assert.equal(html.split('id="'+id+'"').length-1,1,id)
  }
- const comments=html.indexOf('id="panel-comments"'),publicRead=html.indexOf('id="comment-public-person-read"')
- assert.ok(comments>=0&&publicRead>comments,'评论者公开投稿只读授权应放在评论设置页')
+ const comments=html.indexOf('id="panel-comments"')
+ assert.ok(comments>=0)
+ assert.doesNotMatch(html,/id="comment-public-person-read"/,'评论公开资料只读能力固定开启，退休的单独开关不得复活')
  assert.equal(html.includes('🐟 Life Agent · 自主生活驱动（dev.4'),false)
  assert.equal(html.includes('Phase 5/6g · 社交上下文影子对照'),false)
 })

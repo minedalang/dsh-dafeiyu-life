@@ -65,7 +65,7 @@ test('新安装的推荐默认开启，但老用户已保存权限不被安装�
 
 test('记忆花园分类控制真正的顶部生活记忆列表，而非仅长期认识附属区',()=>{
   const html=read('lib/management-console.html'),js=read('lib/management-console.js')
-  assert.match(html,/data-tab="life"[^>]*>🧠 经历与记忆/)
+  assert.match(html,/data-tab="life"[^>]*>🧠 鱼的记忆/)
   assert.match(html,/data-memory-kind="relationship"/)
   assert.match(html,/id="main-session-history"/)
   assert.match(js,/const paintMemoryGarden=\(\)=>/)

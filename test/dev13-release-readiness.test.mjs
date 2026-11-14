@@ -50,7 +50,7 @@ test('2.6.2 全新安装只默认启用已授权好友视频私信推荐，公�
   assert.match(host,new RegExp(`${name}:\\s*true`),name+' runtime fallback must default on')
  }
  assert.match(host,/legacyInstall/)
- assert.match(host,/dailyDynamicDraftOnly: z\.boolean\(\)\.default\(true\)/)
+ assert.match(host,/dailyDynamicDraftOnly: z\.boolean\(\)\.default\(false\)/)
  assert.match(host,/mainSessionMemoryCandidates: z\.natural\(\)\.default\(48\)/)
  assert.match(host,/mainSessionMemorySearchDailyLimit: z\.natural\(\)\.default\(80\)/)
  assert.match(host,/mainSessionMemoryHalfLifeDays: z\.number\(\)\.default\(30\)/)

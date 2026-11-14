@@ -124,7 +124,7 @@ test('管理中心拒绝开启旧版人工私信审批，历史旧配置只能�
   assert.equal(change.code,200);
   const saved=(await fx.call('GET','config')).json().config;
   assert.equal(saved.dmApprovalEnabled,false);
-  assert.equal(saved.dmApprovedDailyLimit,3);
-  assert.equal(saved.dmApprovedTotalLimit,12);
+  assert.equal(saved.dmApprovedDailyLimit,undefined,'已移除获批用户个人每日限额，不得继续暗中保存');
+  assert.equal(saved.dmApprovedTotalLimit,undefined,'已移除获批用户个人累计限额，不得继续暗中保存');
  }finally{fx.close()}
 });

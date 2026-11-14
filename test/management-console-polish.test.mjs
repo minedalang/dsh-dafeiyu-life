@@ -18,7 +18,7 @@ test('recent comment link targets a specific rpid instead of only opening the vi
 test('comment per-poll limit and per-user own-comment limits are visually separated',()=>{
   assert.doesNotMatch(html,/当前视频评论上下文（不再独立轮询热评）/)
   assert.match(html,/<details id="comments-settings-collapse"[^>]*>/)
-  assert.match(html,/优先回复别人对大肥鱼自己评论的留言/)
+  assert.doesNotMatch(html,/优先回复别人对大肥鱼自己评论的留言/,'旧优先回复的二级设置应已移除')
   assert.match(html,/每轮公开回复总数（1–1000）/)
   assert.match(html,/当前回复才按权限读取相关评论/)
   assert.match(js,/commentReplyPerPoll/)

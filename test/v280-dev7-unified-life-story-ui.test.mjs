@@ -27,7 +27,8 @@ test('timeline remains independently refreshable using existing read-only busine
   assert.match(js,/\$\('life-timeline-refresh'\)\.addEventListener\('click'/)
   assert.match(js,/const loadLifeNowTimeline=\(\)=>/)
   assert.match(js,/EventSource/)
-  assert.match(panel,/href="#life-timeline-section"/)
+  assert.doesNotMatch(panel,/href="#life-timeline-section"/,'用户要求删除重复的标题与时间线跳转')
+  assert.match(js,/setInterval\(\(\)=>\{void reconcileVisibleLife\(\)\},4000\)/)
 })
 
 test('the three explanations are concise, singular, and paired with original filters',()=>{

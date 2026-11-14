@@ -82,7 +82,7 @@ test('读取失败不影响互动 AI 继续生成；没有数据库也不会启�
 test('评论自动与人工回复都携带原始父评论，配置与入口均连接',()=>{
   const comment=readFileSync(new URL('../lib/comment-interact.mjs',import.meta.url),'utf8');
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8');
-  assert.equal((comment.match(/memeSourceText:x\.context/g)||[]).length,3);
+  assert.equal((comment.match(/memeSourceText:x\.context/g)||[]).length,2,'两个实际评论生成分支都必须传入父评论材料');
   assert.match(index,/getMeme:async\(item\)=>\(await interactionMemeLookup\.forBatch\(\[item\]\)\)/);
   assert.match(index,/prepareContexts:\(batch,\{mode\}=\{\}\)=>socialContextAssembler\?\.batch\(batch,\{mode\}\)/);
   assert.match(index,/cfg\.memeMemoryEnabled===true/);

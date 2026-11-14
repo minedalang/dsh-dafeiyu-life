@@ -66,7 +66,7 @@ test('social attention action says local consideration only, never actual DM rep
   assert.equal(sent,0)
   const steps=trace.list().runs[0].steps
   assert.ok(steps.some(x=>x.type==='action-start'&&x.tool==='social-attention-local'&&x.kind==='comment-received'))
-  assert.ok(steps.some(x=>x.type==='execution-result'&&x.result==='no-verified-preview'))
+  assert.ok(steps.some(x=>x.type==='execution-result'&&x.result==='attention-only'))
   assert.ok(steps.some(x=>x.type==='event-resolution'&&x.eventStatus==='attention-selected'))
   assert.ok(steps.some(x=>x.type==='execution-result'&&x.delivery==='not-sent'))
 }))

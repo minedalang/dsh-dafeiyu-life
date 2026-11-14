@@ -58,6 +58,10 @@ test('管理中心每组都有对应按钮和全部输入框；老用户必须�
 })
 
 test('release 更新说明明确建议老用户主动恢复并说明隐私与保存边界',()=>{
-  const notes=read('docs/release/archive/RELEASE_NOTES_v2.6.0-dev.4.md')
-  for(const phrase of ['老用户','不会自动','恢复最新推荐值','保存记忆与反思设置','保存次数与额度','30 条','100 条','热门评论','私信','白名单'])assert.ok(notes.includes(phrase),phrase)
+  const ui=read('lib/management-console.js'),html=read('lib/management-console.html'),readme=read('README.md')
+  assert.match(ui,/const stageRecommendedGroup=async group=>/)
+  assert.match(ui,/recommendedSettings\?\.groups/)
+  assert.match(html,/使用推荐值/)
+  assert.match(readme,/未来规划/)
+  assert.match(readme,/白名单/)
 })

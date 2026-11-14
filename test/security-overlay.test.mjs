@@ -13,7 +13,7 @@ test('two headless paths share a tool-disabling overlay',()=>{
   assert.match(code,/if \(!overlay\) return \{ started:false/)
 })
 test('dynamic sync is opt in and performed after comment receipt',()=>{
-  assert.match(code,/commentSyncDynamic: z\.boolean\(\)\.default\(false\)/)
+  assert.match(code,/commentSyncDynamic: z\.boolean\(\)\.default\(true\)/)
   assert.match(code,/BILI_SYNC_DYNAMIC/)
   assert.match(client,/AI 决定是否将评论同步到动态/)
   assert.match(python,/out\["dynamic_sync"\] = await _dynamic_after_comment/)

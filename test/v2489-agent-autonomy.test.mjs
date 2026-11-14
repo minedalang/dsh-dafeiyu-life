@@ -54,7 +54,7 @@ test('关注与取关新安装默认允许，但必须通过权限和真实经�
  assert.match(html,/bili-agent-follow/)
 })
 
-test('好友后台回复：AI 初判 SKIP 时不读取其他热评；初判愿回复才补读',async()=>{
+test('好友后台回复可以直接基于可信评论上下文回复，未必要重复读取无关热评',async()=>{
   const {createCommentInteract}=await import('../lib/comment-interact.mjs')
   const {readFileSync}=await import('node:fs')
   const dir=mkdtempSync(join(tmpdir(),'v2489-reply-pass-'))
@@ -74,6 +74,6 @@ test('好友后台回复：AI 初判 SKIP 时不读取其他热评；初判愿�
     // First poll baseline. Then new notification triggers genuine reply decision.
     await engine.poll();notices=[obj(111)];
     let res=await engine.poll();assert.equal(res.sent,1)
-    assert.deepEqual(readHot,[false,true]);assert.equal(replies.length,2)
+    assert.deepEqual(readHot,[false]);assert.equal(replies.length,1)
   }finally{rmSync(dir,{recursive:true,force:true})}
 })

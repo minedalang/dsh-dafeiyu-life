@@ -31,8 +31,8 @@ test('persistent network backoff survives restart and is isolated by account and
  let a=make();a.settle('dm','code=-509')
  assert.equal(make().check('dm').allowed,false)
  assert.equal(make().check('replies').allowed,true)
- assert.equal(make().check('dm').remainingMs,300000)
- now+=300000;a=make();assert.equal(a.check('dm').allowed,true)
+ assert.equal(make().check('dm').remainingMs,900000) // DM -509 protection: 15 minutes, not the old 5-minute retry
+ now+=900000;a=make();assert.equal(a.check('dm').allowed,true)
  a.settle('dm','ENOTFOUND');assert.equal(make().check('dm').remainingMs,120000)
  scope='fedcba9876543210';assert.equal(make().check('dm').allowed,true)
  scope=tag;a.settle('dm','');assert.equal(make().check('dm').allowed,true)
@@ -46,7 +46,7 @@ test('interaction scheduler suppresses network requests in the persisted cooldow
  assert.equal(calls,1)
  now+=60_000;await scheduler.tick();assert.equal(calls,1)
  scheduler.stop();scheduler=setup();scheduler.start();await scheduler.tick();assert.equal(calls,1)
- now+=5*60_000;await scheduler.tick();assert.equal(calls,2)
+ now+=15*60_000;await scheduler.tick();assert.equal(calls,2)
  scheduler.stop()
 }))
 test('main and Bstation owner DM share one durable contact quota and ID replay gate',async()=>withDir(async dir=>{

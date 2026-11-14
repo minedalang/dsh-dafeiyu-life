@@ -2,12 +2,13 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 const read=(f)=>readFileSync(new URL('../'+f,import.meta.url),'utf8')
-test('dev.1 version and docs explicitly separate shipped actions from P4 design',()=>{
+test('当前 2.8.0 预览版本和发布文档存在，旧开发草案不再充当正式规范',()=>{
  const p=JSON.parse(read('package.json'))
- assert.match(p.version,/^(?:2\.6\.2(?:-dev\.[1-9]\d*)?|2\.7\.0(?:-dev\.[1-9]\d*)?|2\.7\.1-dev\.[1-9]\d*)$/)
- assert.ok(p.files.includes('RELEASE_NOTES_v2.6.2.md'))
- assert.match(read('README.md'),/当前稳定版：\*\*`2\.7\.0`\*\*；当前开发预览：\*\*`2\.7\.1-dev\.[1-9]\d*`\*\*/)
- assert.match(read('docs/release/archive/RELEASE_NOTES_v2.6.1-dev.1.md'),/P4 统一待办/)
+ assert.match(p.version,/^2\.8\.0-dev\.[1-9]\d*$/)
+ assert.ok(p.files.includes('RELEASE_NOTES_v2.8.0.md'))
+ assert.ok(p.files.includes('docs/ROADMAP.md'))
+ assert.match(read('README.md'),/统一 Life/)
+ assert.match(read('docs/archive/README.md'),/历史文档与清理记录/)
 })
 test('backend, overlay and regular Python client enforce the independent default-on deletion gate',()=>{
  const js=read('index.js'),py=read('vendor/bilibili-mcp/mcp_server.py')

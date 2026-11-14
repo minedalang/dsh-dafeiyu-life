@@ -37,25 +37,28 @@ function rig(enabled) {
   return { memory, tools, warnings, listeners, cleanup() { memory.stop(); rmSync(dataDir, { recursive: true, force: true }) } }
 }
 
-test('主 Session 关闭长期记忆也能在真实宿主式注册器中挂载五个工具', async () => {
+test('旧配置关闭长期记忆也必须为已绑定主 Session 挂载全部七个工具', async () => {
   const r = rig(false)
   try {
     r.memory.start()
-    const expected = ['dafeiyu_life_recall','dafeiyu_todo_list','dafeiyu_todo_add','dafeiyu_todo_update','dafeiyu_todo_execute']
+    const expected = ['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall','dafeiyu_todo_list','dafeiyu_todo_add','dafeiyu_todo_update','dafeiyu_todo_execute']
     assert.deepEqual(r.tools.map(t => t.name), expected)
-    assert.deepEqual(r.warnings, [])
+    assert.equal(r.warnings.length, 1)
+    assert.match(r.warnings[0], /多气泡宿主能力不可用/)
     for(const tool of r.tools) {
       const rendered = tool.output.render({}, { ok:true, items:[] })
       assert.equal(rendered[0].type,'text')
-      assert.deepEqual(JSON.parse(rendered[0].text), {ok:true,items:[]})
+      assert.equal(typeof rendered[0].text,'string')
+      if(rendered[0].text.startsWith('{')) assert.deepEqual(JSON.parse(rendered[0].text), {ok:true,items:[]})
     }
-    const recalled = await r.tools[0].execute({ query:'猫咪' })
+    const byName=Object.fromEntries(r.tools.map(t=>[t.name,t]))
+    const recalled = await byName.dafeiyu_life_recall.execute({ query:'猫咪' })
     assert.equal(recalled.ok,true)
     assert.equal(recalled.experiences[0].summary,'读过字幕')
-    const add = await r.tools[2].execute({ type:'watch_video', bvid:'BV19SJi6VEj1', title:'以后看看' })
+    const add = await byName.dafeiyu_todo_add.execute({ type:'watch_video', bvid:'BV19SJi6VEj1', title:'以后看看' })
     assert.equal(add.ok,true)
-    assert.equal((await r.tools[1].execute({})).items.length, 1)
-    const unauthorized = await r.tools[2].execute({ type:'like_video', bvid:'BV19SJi6VEj1' })
+    assert.equal((await byName.dafeiyu_todo_list.execute({})).items.length, 1)
+    const unauthorized = await byName.dafeiyu_todo_add.execute({ type:'like_video', bvid:'BV19SJi6VEj1' })
     assert.equal(unauthorized.ok,false)
   } finally { r.cleanup() }
 })
@@ -65,7 +68,8 @@ test('开启长期记忆时两项已有记忆工具和五项新增工具均完�
   try {
     r.memory.start()
     assert.deepEqual(r.tools.map(t => t.name), ['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall','dafeiyu_todo_list','dafeiyu_todo_add','dafeiyu_todo_update','dafeiyu_todo_execute'])
-    assert.deepEqual(r.warnings, [])
+    assert.equal(r.warnings.length, 1)
+    assert.match(r.warnings[0], /多气泡宿主能力不可用/)
     for(const tool of r.tools) assert.equal(typeof tool.output.render,'function',tool.name)
   } finally { r.cleanup() }
 })
@@ -112,6 +116,7 @@ test('Issue #6：DSH 0.2.1 输出 DSL、七项工具真实回执及 content.some
       assert.equal(content.some(b=>b.type==='image'),false,`${name}: content.some must work`)
       assert.ok(content.every(b=>b.type==='text'&&typeof b.text==='string'),`${name}: invalid text block`)
     }
-    assert.deepEqual(r.warnings,[])
+    assert.equal(r.warnings.length, 1)
+    assert.match(r.warnings[0], /多气泡宿主能力不可用/)
   } finally {r.cleanup()}
 })

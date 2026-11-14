@@ -94,7 +94,7 @@ test('长期被别的选择掩盖的真实契机，六小时后源仍有效才�
  assert.equal(e.status().failed,1)
 }))
 
-test('Life 可以在普通 30 分钟间隔尚未结束时，自主续行刚完成的真实只读行动',async()=>{
+test('Life 只读后的续行不会越过配置的 30 分钟最短调度间隔',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'dev13-life-tick-'))
  try{
   let at=T,readDone=false,calls=0,friendsReviewed=0
@@ -113,6 +113,8 @@ test('Life 可以在普通 30 分钟间隔尚未结束时，自主续行刚完�
   assert.equal(calls,1)
   assert.equal(events().status().dueExperienceFollowup,false)
   at+=9*60_000
+  assert.equal((await create().tick()).skipped,'cooldown')
+  at+=21*60_000
   const again=await create().tick()
   assert.equal(again.action,'review_friend',JSON.stringify(again))
   assert.equal(friendsReviewed,1)

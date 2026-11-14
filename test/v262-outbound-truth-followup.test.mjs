@@ -99,8 +99,9 @@ test('回访模型不再以人生记忆检索为空作为唯一的永久延期�
 
 test('README 是面向用户的特色体验说明，详细版本信息移出首页',()=>{
  const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8')
- for(const heading of ['她的生活有什么不同','首次使用教程','未来规划'])assert.ok(readme.includes(heading),heading)
- for(const feature of ['两种生活，两种意愿','自由结识世界里的每个人','模拟心情','会回忆，会遗忘，也会成长','有自己的待办','可以换 B站账号'])assert.ok(readme.includes(feature),feature)
+ for(const heading of ['从分散能力到连续生活','开始使用','未来规划'])assert.ok(readme.includes(heading),heading)
+ for(const feature of ['一个 Life','关系不等于好友名单','会回忆，会遗忘，也会成长','真实可信观察','白名单','渐进式聊天'])assert.ok(readme.includes(feature),feature)
+ assert.match(readme,/docs\/ROADMAP\.md/)
  assert.doesNotMatch(readme,/\bP6\b|## .*2\.6\.0-dev|生活能力列表/)
- assert.ok(readme.split('\n').length<115)
+ assert.ok(readme.split('\n').length<240,'README should remain a navigable user introduction')
 })

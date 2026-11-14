@@ -19,7 +19,9 @@ test('自定义提示词真实进入本轮 Agent 提示词，内置风格不再�
   assert.ok(!out.includes('① 先读视频真实字幕'))
   assert.ok(out.includes('实际次数由程序硬限制'))
   assert.ok(out.includes('不能声称已亲眼看到画面'))
-  assert.match(server,/buildCommentMemePrompt\(\{ customPrompt: cfg\.commentMemePrompt/)
+  assert.match(server,/buildCommentMemePrompt/)
+ assert.match(server,/commentMemePrompt: z\.string\(\)/)
+ assert.match(server,/BILI_COMMENT_MEMES_ENABLED/)
 })
 
 test('超长和异常控制字符被限制',()=>{

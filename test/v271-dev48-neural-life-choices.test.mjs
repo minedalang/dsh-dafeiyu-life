@@ -108,12 +108,12 @@ test('管理器有意关闭监听时不能显示为故障',()=>{
  assert.equal(systemHealthSnapshot({scheduler:{running:false},schedulerExpected:false}).state,'no-current-alert')
  assert.equal(systemHealthSnapshot({scheduler:{running:false},schedulerExpected:true}).state,'degraded')
 })
-test('管理页的图谱与故障提示使用真实接口和可访问元素；公开投稿开关仍是授权',()=>{
+test('管理页的图谱与故障提示使用真实接口和可访问元素；公开投稿读取固定开启但仍有可信身份边界',()=>{
  const h=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  assert.match(h,/neural-memory-svg/);assert.match(h,/neural-memory-results/);assert.match(h,/neural-show-emotion/);assert.match(h,/prefers-reduced-motion/)
  assert.match(js,/main-session\/memory\/neural/);assert.match(js,/life-agent\/system-health/)
  assert.match(index,/memoryNeuralProjection/);assert.match(index,/authorizeContextRead/)
- assert.match(index,/cfg\.commentPublicProfileReadEnabled===true/)
+ assert.match(index,/commentPublicProfileReadEnabled:true/)
 })

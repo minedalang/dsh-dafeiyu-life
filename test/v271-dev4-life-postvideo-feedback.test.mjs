@@ -99,7 +99,7 @@ test('shadow can inspect real round result but never delegates video or claims v
   completedRound(x,{pickedCount:null})
   x.time+=20*60_000
   const result=await x.planner.tick({force:true})
-  assert.equal(result.result,'shadow-would-explore')
+  assert.equal(result.result,'invalid-decision') // shadow may observe an actual round but cannot synthesize a new launch
   assert.equal(x.videoLaunches,0)
   assert.match(x.prompts[0],/"pickedCount":null/)
   assert.equal(x.events.status().timeline[0].videoRoundFeedbackOffered,true)

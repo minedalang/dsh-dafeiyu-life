@@ -50,7 +50,7 @@ test('Life UI removes obsolete provenance atlas and keeps memory near the top',(
 test('project homepage is user-facing and dev updates are not prepended',()=>{
  const doc=read('README.md'),policy=read('AGENTS.md')
  assert.match(doc,/大肥鱼 · DSH 生活系统/)
- assert.match(doc,/2\.7\.1-dev\.54/)
+ assert.match(doc,/2\.8\.0/)
  assert.match(doc,/神经回忆场/)
  assert.doesNotMatch(doc,/生活脉络/)
  assert.match(policy,/README 是用户首页，不是开发版本日志/)

@@ -154,7 +154,7 @@ test('shadow evidence is diagnostic only; both-channel sampling cannot grant han
     transactions:{ok:true,accountReady:true,channels:{dm:{},comment:{}}}}
   const noSamples=lifeTransitionReadiness(args)
   assert.equal(noSamples.status.socialShadow.diagnostic,'not-observed')
-  assert.equal(noSamples.checks.find(x=>x.id==='social-shadow-sampling').status,'pending')
+  assert.equal(noSamples.checks.find(x=>x.id==='social-shadow-sampling').status,'passed') // diagnostic shadow comparison retired, never release proof
   const s={enabled:true,mode:'read-only-shadow',byChannel:{
     dm:{paired:7,agreed:6,disagreed:1},comment:{paired:6,agreed:5,disagreed:1}}}
   const x=lifeTransitionReadiness({...args,shadow:s})
@@ -162,7 +162,7 @@ test('shadow evidence is diagnostic only; both-channel sampling cannot grant han
   assert.equal(x.status.socialShadow.productionHandoffProof,false)
   assert.equal(x.releaseReady,false)
   assert.equal(x.status.oldSocialOwner,true)
-  assert.equal(x.checks.find(c=>c.id==='social-shadow-sampling').status,'pending')
+  assert.equal(x.checks.find(c=>c.id==='social-shadow-sampling').status,'passed') // retired second-opinion shadow must never become a production release vote
   const high=lifeTransitionReadiness({...args,shadow:{...s,byChannel:{...s.byChannel,dm:{paired:7,agreed:2,disagreed:5}}}})
   assert.equal(high.status.socialShadow.diagnostic,'high-disagreement')
   const incomplete=lifeTransitionReadiness({...args,shadow:{...s,byChannel:{...s.byChannel,comment:{paired:0}}}})

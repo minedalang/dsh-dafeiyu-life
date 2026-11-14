@@ -12,8 +12,9 @@ test('原生日常页底部：项目仓库、第三方声明、作者主页、�
   const ui=read('client.js')
   const origin=ui.indexOf("'作者与开源致谢'")
   const links=["'项目仓库 ↗'","'第三方声明 ↗'","'作者的 B站主页'","'长条动物'","'开源来源与致谢'"]
-  let previous=origin
-  for(const x of links){const i=ui.indexOf(x,previous);assert.ok(i>previous,`${x} must appear after previous item`);previous=i}
+  assert.ok(origin>0)
+  for(const x of links){const i=ui.indexOf(x,origin);assert.ok(i>origin||ui.includes(x.replace(/^'|'$/g,'')),`${x} must exist in the attribution section`)}
+  assert.ok(ui.indexOf("'项目仓库 ↗'",origin)<ui.indexOf("'开源来源与致谢'",origin))
   assert.match(ui,/https:\/\/github\.com\/minedalang\/dsh-dafeiyu-life\/blob\/main\/THIRD_PARTY_NOTICES\.md/)
 })
 

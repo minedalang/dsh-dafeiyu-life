@@ -11,10 +11,11 @@ test('dev.15 家 / 人生记忆就地设置，B站各功能归同一领域，全
   const home=panel('home'),life=panel('life'),todos=panel('life-agent');
   assert.ok(!html.includes('id="panel-settings"'),'no separate plugin settings page');
   for(const id of ['main-session-id','main-session-save','home-overview-memory','home-overview-mood','home-overview-social'])assert.ok(home.includes(`id="${id}"`),id);
-  for(const id of ['main-memory-enabled','main-memory-semantic','main-memory-half-life','main-reflection-daily']){
+  for(const id of ['main-memory-semantic','main-memory-half-life','main-reflection-daily']){
     assert.ok(life.includes(`id="${id}"`),id);
     assert.ok(!home.includes(`id="${id}"`),`memory control ${id} was left in house`);
   }
+  assert.ok(!life.includes('id="main-memory-enabled"'),'身份级记忆固定开启，不再暴露旧开关');
   for(const id of ['main-session-minutes','main-session-sync-save'])assert.ok(home.includes(`id="${id}"`),id);
   assert.ok(todos.includes('id="owner-todo-settings-save"'));
   assert.ok(!life.includes('id="owner-todo-settings-save"'));

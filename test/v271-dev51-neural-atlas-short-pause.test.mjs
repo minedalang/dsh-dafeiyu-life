@@ -124,11 +124,12 @@ test('indexed coordinates scale beyond old 80-node PCA cap with no extra embeddi
  assert.equal(Object.keys(p.coordinates).length,210);assert.equal(embedded,before)
 }))
 
-test('UI exposes separate short pause toggle, full graph, 1k/2k/10k cap, evidence counts, canvas and cluster animation',()=>{
+test('UI no longer duplicates short-pause controls, graph cap and evidence view remain available',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- for(const text of ['neural-show-all','neural-node-limit','value="1000"','value="2000"','value="10000"','neural-memory-canvas','neural-evidence-explanation','main-session-short-pause-enabled','main-session-short-pause-seconds'])assert.ok(html.includes(text),text)
+ for(const text of ['neural-show-all','neural-node-limit','value="1000"','value="2000"','value="10000"','neural-memory-canvas','neural-evidence-explanation'])assert.ok(html.includes(text),text)
+ assert.doesNotMatch(html,/id="main-session-short-pause-enabled"|id="main-session-short-pause-seconds"/)
  assert.match(js,/focusNeuralHits/);assert.match(js,/neuralCanvas\.getContext/)
  assert.match(index,/shouldShortPause:async/)
  assert.match(index,/mainSessionShortPauseSeconds: z\.natural\(\)\.default\(90\)/)

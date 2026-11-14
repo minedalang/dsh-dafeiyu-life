@@ -12,7 +12,7 @@ const stamp=new Date('2026-11-11T10:03:11+08:00').getTime()
 
 test('评论登记细分账本异常、旧选片、跨轮次，不通过猜测绕过发送门禁',()=>{
   const good={ok:true,rows:[{bvid:BV,picked:true,roundId:ROUND}]}
-  assert.deepEqual(explainCommentSelection(good,BV,ROUND),{ok:true})
+  assert.deepEqual(explainCommentSelection(good,BV,ROUND),{ok:true,recovered:false})
   assert.equal(explainCommentSelection({ok:false,rows:[]},BV,ROUND).reason,'comment-selection-ledger-unavailable')
   assert.equal(explainCommentSelection(good,BV,ROUND,{previouslyPicked:true}).reason,'comment-selection-preexisting')
   assert.equal(explainCommentSelection(good,BV,'fedcba987654321001234567').reason,'comment-selection-round-mismatch')

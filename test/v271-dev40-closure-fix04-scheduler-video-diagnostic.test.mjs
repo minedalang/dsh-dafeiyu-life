@@ -43,13 +43,13 @@ test('model failure is traced as failed settlement, never normal or voluntary re
   assert.notEqual(x.events.status().timeline[0].result,'voluntary-rest')
 }))
 
-test('planner status reports the dominant next wake reason and next timestamp',()=>withDir(async dir=>{
+test('planner status forecast does not promise earlier experience follow-up than execution permits',()=>withDir(async dir=>{
   const now=()=>T
   const x=makePlanner(dir,{now,nextExperience:T+5*60_000})
   writeFileSync(join(dir,'autonomous-planner.json'),JSON.stringify({version:1,day:new Date(T).toLocaleDateString('en-CA'),runs:1,lifeRuns:1,socialRuns:0,willingnessRuns:0,lastAt:T,lastResult:'browse_home / capability-launched',lastAccountTag:ACCOUNT,recent:[]}))
   const status=x.planner.status()
-  assert.equal(status.nextDecisionReason,'experience-followup')
-  assert.equal(status.nextDecisionAt,T+10*60_000)
+  assert.equal(status.nextDecisionReason,'base-interval')
+  assert.equal(status.nextDecisionAt,T+60*60_000)
   assert.match(status.nextDecisionNote,/不保证执行/)
 }))
 
@@ -63,13 +63,13 @@ test('model retry backoff is reported as the dominant next wake reason',()=>with
   assert.equal(status.nextDecisionAt,retryAt)
 }))
 
-test('due Episode can be the dominant next wake reason',()=>withDir(async dir=>{
+test('due Episode cannot bypass the saved minimum Life polling interval',()=>withDir(async dir=>{
   const now=()=>T
   const x=makePlanner(dir,{now,episodeDue:()=>true})
   writeFileSync(join(dir,'autonomous-planner.json'),JSON.stringify({version:1,day:new Date(T).toLocaleDateString('en-CA'),runs:1,lifeRuns:1,socialRuns:0,willingnessRuns:0,lastAt:T,lastResult:'browse_home / capability-launched',lastAccountTag:ACCOUNT,recent:[]}))
   const status=x.planner.status()
-  assert.equal(status.nextDecisionReason,'episode-due')
-  assert.equal(status.nextDecisionAt,T+2*60_000)
+  assert.equal(status.nextDecisionReason,'base-interval')
+  assert.equal(status.nextDecisionAt,T+60*60_000)
 }))
 
 test('manual real video diagnostic button is explicit, one-round, active-mode only and uses original capability',()=>{

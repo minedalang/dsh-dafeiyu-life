@@ -26,7 +26,8 @@ test('preview and save use the same changes, no second authority or social permi
  const applied=planLifeSettingsV2(old,request(old,'active','natural',{confirm:'APPLY_LIFE_SETTINGS_V2'}))
  assert.deepEqual(applied.patch,preview.patch)
  assert.deepEqual(applied.patch,{lifeAgentMode:'active',peakValley:false,autonomousPlannerEnabled:true,
-  autonomousPlannerMinutes:30,autonomousPlannerDailyLimit:40})
+  autonomousPlannerMinutes:30,autonomousPlannerDailyLimit:100,videoAgentMinIntervalMinutes:30,
+  videoAgentReadTargetPerRound:5,videoAgentPickTargetPerRound:5})
  for(const k of ['masterEnabled','perDay','autonomousPlannerStartHour','autonomousPlannerEndHour','dmStrangerAutonomyEnabled','socialAutoSend','lifeAgentSocialContextOptIn'])
    assert.equal(Object.hasOwn(applied.patch,k),false,k)
  const merged={...old,...applied.patch};assert.equal(lifeSettingsV2(merged).mode,'active')
@@ -35,7 +36,8 @@ test('preview and save use the same changes, no second authority or social permi
 test('shadow also disables legacy video scheduling without granting outbound',()=>{
  const cfg=seed(),patch=planLifeSettingsV2(cfg,request(cfg,'shadow','quiet',{confirm:'APPLY_LIFE_SETTINGS_V2'})).patch
  assert.equal(patch.lifeAgentMode,'shadow');assert.equal(patch.peakValley,false)
- assert.equal(patch.autonomousPlannerDailyLimit,12)
+ assert.equal(patch.autonomousPlannerDailyLimit,50)
+ assert.equal(patch.videoAgentMinIntervalMinutes,60)
 })
 test('rejects malformed version, absent confirmation, stale config and unsupported presets',()=>{
  const old=seed(),req=request(old)

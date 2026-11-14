@@ -23,7 +23,8 @@ test('manual and autonomous video subprocesses share a launch cooldown, without 
  const budget=events.status()
  assert.equal(budget.videoStartsToday,0,'manual run must not be relabeled as a Life planner launch')
  assert.equal(lifeVideoGate(cfg,budget,clock).reason,'video-launch-cooldown')
- assert.equal(lifeVideoGate(cfg,budget,T+20*60_000).eligible,true)
+ assert.equal(lifeVideoGate(cfg,budget,T+20*60_000).eligible,false)
+ assert.equal(lifeVideoGate(cfg,budget,T+30*60_000).eligible,true)
  assert.equal(lifeVideoGate(cfg,{...budget,lastVideoAt:0,recentVideoRounds:[{state:'completed',startedAt:T+30*60_000}]},clock).eligible,true, 'future-stamped records cannot invent a cooldown')
 }))
 
@@ -123,13 +124,15 @@ test('a voluntary rest delays repeated due-Episode wakeups without pausing an un
 
 test('DM/评论先完成真实上下文读取与专业提议，再调用唯一 Life 意愿审批',()=>{
  const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- for(const marker of ["trigger:'dm-received'","trigger:'comment-received'"]){
+ for(const marker of ['const stopLiveDm=','const stopLiveComment=']){
   const pos=source.indexOf(marker)
   const start=source.lastIndexOf('generateReply: async (req) => {',pos)
-  const end=source.indexOf('return attachSocialProof(generated,owner,lifeChoice.proof)',pos)
+  const end=source.indexOf(marker==='const stopLiveDm='?'return attachSocialProof(generated,owner,sealed.proof)':'return attachSocialProof(normalized,owner,sealed.proof)',pos)
   const block=source.slice(start,end)
   assert.ok(start>=0&&end>pos)
-  assert.ok(block.indexOf('interactionBatcher.generate')<block.indexOf('lifeWillingness?.decide'))
+  assert.ok(block.indexOf('interactionBatcher.generate')>=0)
+  assert.ok(block.indexOf('adoptSocialDecisionQueued')>block.indexOf('interactionBatcher.generate'))
+  assert.doesNotMatch(block,/lifeWillingness\?\.decide\(/)
   assert.match(block,/lifeEpisodeContext|evidence:\{episode:/)
  }
 })

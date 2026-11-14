@@ -76,7 +76,7 @@ test('life management center displays real read-only growth evidence without add
  const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  for(const id of ['life-growth-evidence','life-growth-kpis','life-growth-interests','life-growth-personality','life-growth-chain','life-growth-diagnosis','life-growth-status','life-growth-refresh'])
   assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id)
- assert.ok(html.indexOf('id="life-growth-evidence"')<html.indexOf('class="life-plans-shortcut"'))
+ assert.ok(html.indexOf('id="life-growth-evidence"')>html.indexOf('id="panel-life-agent"'),'保留只读成长证据，不依赖旧跳转卡片位置')
  assert.match(js,/renderLifeGrowthEvidence\(r\.growthAttribution,r\.growthAudit\)/)
  assert.match(js,/life-growth-refresh.*addEventListener/)
  assert.match(js,/mobileReadOnlySelector=.*#life-growth-refresh/)

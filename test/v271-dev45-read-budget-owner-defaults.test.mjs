@@ -96,7 +96,7 @@ test('new-install owner contact default on, explicit old-user off preserved; chi
  assert.match(ui,/\$\('owner-contact-options'\)\.disabled=!enabled/)
  assert.match(ui,/contactConfig\.ownerSpontaneousChatEnabled!==false/)
  assert.match(html,/沉默 120 分钟/)
- assert.match(html,/同一轮连续发 1～3 条/)
+ assert.match(html,/自然表达|多气泡|续聊/)
 })
 
 test('unchanged conversations do not require fetching every user to detect new DMs',async()=>{

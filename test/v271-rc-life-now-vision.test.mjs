@@ -23,9 +23,9 @@ test('正在进行中的动作是按账号、进程和真实结束来展示，�
  assert.equal(tracker.snapshot('bbbbbbbbbbbbbbbb').active.length,0)
  stop();stop()
  assert.equal(tracker.snapshot('aaaaaaaaaaaaaaaa').live,false)
- assert.equal(tracker.snapshot('aaaaaaaaaaaaaaaa').recent.length,1)
+ assert.equal(tracker.snapshot('aaaaaaaaaaaaaaaa').recent.length,0,'未核实评论决策不得作为完成事件展示')
  assert.equal(tracker.snapshot('bbbbbbbbbbbbbbbb').recent.length,0)
- assert.match(tracker.snapshot('aaaaaaaaaaaaaaaa').recent[0].text,/未核实发表/)
+ assert.ok(!tracker.snapshot('aaaaaaaaaaaaaaaa').recent.some(x=>/评论决策已结束/.test(x.text)))
  tracker.start('video','aaaaaaaaaaaaaaaa',{maxAgeMs:1000})
  tick+=1001
  assert.equal(tracker.snapshot('aaaaaaaaaaaaaaaa').active.length,0,'失联的进程标记不能永远显示运行中')
@@ -87,7 +87,7 @@ test('图片-only 评论在按 root_id 核验 UID/rpid 后可获得图片来源�
 })
 test('实时 Life、专属待办、情绪各有唯一入口，生活方案有独立自定义卡',()=>{
  const html=source('lib/management-console.html'),js=source('lib/management-console.js'),index=source('index.js')
- assert.match(html,/data-tab="life-agent"[^>]*>🐟 鱼鱼此刻/)
+ assert.match(html,/data-tab="life-agent"[^>]*>🐟 鱼鱼正在做/)
  assert.doesNotMatch(html,/data-tab="todos"/)
  for(const id of ['life-now-title','life-now-detail','life-now-recent','life-todo-section','life-emotion-section','life-organic-profile','bili-disable-incoming-vision'])assert.equal(html.split(`id="${id}"`).length-1,1,id)
  for(const option of ['gentle','balanced','curious','custom'])assert.match(html,new RegExp('name="life-organic-choice" value="'+option+'"'))

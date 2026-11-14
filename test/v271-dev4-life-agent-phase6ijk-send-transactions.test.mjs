@@ -112,7 +112,8 @@ test('production endpoints are gated with stable source and separate bubble iden
     'dynamic, video and trusted comment agent share one cross-process send barrier')
   assert.match(index,/socialSendTransaction:socialSendTransaction\.inspect\(\)/)
   assert.match(comment,/replyIndex:i\+1/)
-  assert.match(comment,/replyPurpose:`continuity:/)
+  assert.match(comment,/replyIndex:i\+1/)
+  assert.match(comment,/socialOwnerProof,lifeWillingnessProof/) // each additional bubble is separately sealed
 })
 
 test('offline review may clear only prepared, never attempted or confirmed transactions',async t=>{

@@ -36,7 +36,7 @@ function harness({ existing = null } = {}) {
   return { root, config, cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
 
-test('RC 新安装默认允许受限原创评论、点赞和收藏；动态仍只存草稿', async () => {
+test('2.8.0 新安装允许受限互动，动态可在独立授权后发表且可切换仅草稿', async () => {
   const x = harness()
   try {
     const c = await x.config()
@@ -50,7 +50,7 @@ test('RC 新安装默认允许受限原创评论、点赞和收藏；动态仍�
     assert.equal(c.autonomousPlannerDailyLimit, 4)
     assert.equal(c.autonomousPlannerMinutes, 180)
     assert.equal(c.dailyDynamicEnabled, true)
-    assert.equal(c.dailyDynamicDraftOnly, true)
+    assert.equal(c.dailyDynamicDraftOnly, false)
     assert.equal(c.dailyDynamicDailyLimit, 1)
     assert.equal(c.ownerDmAgentEnabled,true,'已核验主人受限 Agent 的能力在新安装默认可用')
     assert.equal(c.ownerDmActionsEnabled,true,'公开写入仍必须由本条主人消息明确授权')
@@ -63,7 +63,7 @@ test('RC 新安装默认允许受限原创评论、点赞和收藏；动态仍�
     assert.equal(c.incomingImageRecognitionEnabled,true,'新安装入站图片理解默认开启，可禁用')
     for (const key of [
       'ownerCommentAgentEnabled', 'ownerCommentSocialPublishEnabled', 'ownerCommentNaturalAckEnabled',
-      'commentAtEnabled', 'emotionRecallMainEnabled',
+      'emotionRecallMainEnabled',
       'emotionRecallDmEnabled', 'visionEnabled', 'commentMemesEnabled',
       'dmStrangerOnce', 'mainSessionBridgeEnabled', 'ownerTodoAutoReviewEnabled',
     ]) assert.equal(c[key], false, `未经授权的默认开关: ${key}`)
@@ -74,7 +74,7 @@ test('历史配置即使缺少新增字段，也不被新默认偷偷打开；�
   const x = harness({ existing: { mainSessionMemoryEnabled: false, dmWatch: false } })
   try {
     let c = await x.config()
-    assert.equal(c.mainSessionMemoryEnabled, false)
+    assert.equal(c.mainSessionMemoryEnabled, true,'身份级长期记忆在新旧安装均固定开启')
     assert.equal(c.autonomousPlannerEnabled, false)
     assert.equal(c.dailyDynamicEnabled, false)
     assert.equal(c.autonomousPlannerDailyLimit, 24)
@@ -93,14 +93,14 @@ test('历史配置即使缺少新增字段，也不被新默认偷偷打开；�
   } finally { x.cleanup() }
 })
 
-test('新装也可直接关掉生动功能，所有公开发布保持独立授权', async () => {
+test('新装可关闭自主规划和动态，身份级记忆固定开启，公开发布仍需授权', async () => {
   const x = harness()
   try {
     const c = await x.config({mainSessionMemoryEnabled:false, autonomousPlannerEnabled:false, dailyDynamicEnabled:false})
-    assert.equal(c.mainSessionMemoryEnabled, false)
+    assert.equal(c.mainSessionMemoryEnabled, true,'身份级长期记忆在新旧安装均固定开启')
     assert.equal(c.autonomousPlannerEnabled, false)
     assert.equal(c.dailyDynamicEnabled, false)
-    assert.equal(c.dailyDynamicDraftOnly, true)
+    assert.equal(c.dailyDynamicDraftOnly, false)
     assert.equal(c.ownerCommentSocialPublishEnabled, false)
   } finally { x.cleanup() }
 })

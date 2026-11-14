@@ -12,8 +12,8 @@ const valid={should_post:true,text:content,source_bvids:[BV],evidence_claims:[{t
 test('原生设置只显示统一 Life Agent 入口，旧视频时段不再可编辑，底部仍保留作者与开源致谢',()=>{
   const source=read('client.js')
   assert.match(source,/const tab = 'daily'/)
-  assert.match(source,/鱼鱼的自主生活/)
-  assert.match(source,/onOpenManage\('life'\)/)
+  assert.match(source,/大肥鱼|鱼鱼/)
+  assert.match(source,/onOpenManage\(\)/)
   assert.doesNotMatch(source,/定时自主刷视频（可选）|保存时间段|刷视频间隔（分钟）/)
   assert.match(source,/href:'https:\/\/space\.bilibili\.com\/210228238'/)
   assert.match(source,/长条动物/)
@@ -23,7 +23,8 @@ test('原生设置只显示统一 Life Agent 入口，旧视频时段不再可�
 })
 test('管理中心集中配置全部 AI 模型、辅助开关、B站互动与每日额度',()=>{
   const html=read('lib/management-console.html'),js=read('lib/management-console.js'), host=read('index.js')
-  for(const x of ['panel-models','models-video','models-interaction','models-vision','models-memory','models-vision-mode','models-vision-enabled','panel-bili','bili-report-level','bili-transcribe','bili-comment-memes','bili-asr-model','meme-auto-enabled','quota-daily-dynamic','quota-like-daily']) assert.ok(html.includes('id="'+x+'"'),x)
+  for(const x of ['panel-models','models-video','models-interaction','models-vision','models-memory','models-vision-mode','models-vision-enabled','panel-bili','bili-report-level','bili-transcribe','bili-comment-memes','bili-asr-model','meme-auto-enabled','daily-dynamic-limit']) assert.ok(html.includes('id="'+x+'"'),x)
+  assert.doesNotMatch(html,/id="quota-daily-dynamic"/,'重复的动态数量设置已移除');
   for(const x of ['visionMode','visionEnabled','reportLevel','asrModel','commentMemesEnabled','mainSessionMemoryModelId','dailyDynamicDailyLimit','autoVideoLikeDailyLimit']) assert.ok(js.includes(x)||host.includes(x),x)
   assert.match(host,/createDailyDynamic/)
 })

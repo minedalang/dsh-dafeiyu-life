@@ -28,15 +28,10 @@ test('Life 常规设置彻底移除旧开发者控件，但保留真实运行状
   assert.doesNotMatch(ui,/request\('\/life-agent\/(?:offline-demo|transition-readiness|social-handoff-rehearsal|evidence-contrast)'/)
 })
 
-test('评论者公开投稿只读许可位于评论设置，并沿用服务端单独确认门禁',()=>{
-  const comments=html.indexOf('id="panel-comments"')
-  const setting=html.indexOf('id="comment-public-person-read"')
-  const life=html.indexOf('id="panel-life-agent"')
-  assert.ok(comments>=0&&setting>comments&&setting>life)
-  assert.match(ui,/commentPublicProfileReadEnabled:publicRead/)
-  assert.match(ui,/commentProfileReadConfirm:'ENABLE_PUBLIC_COMMENTER_READ'/)
-  assert.match(ui,/publicReadNew&&!await confirmAction/)
-  assert.match(ui,/\$\('comment-public-person-read'\)\.dataset\.loaded/)
-  assert.match(server,/commentProfileReadConfirm!=='ENABLE_PUBLIC_COMMENTER_READ'/)
+test('评论者公开资料读取为统一能力，管理页不再重复询问但仍限制精确账号和证据',()=>{
+  assert.doesNotMatch(html,/id="comment-public-person-read"/)
+  assert.doesNotMatch(ui,/commentProfileReadConfirm:'ENABLE_PUBLIC_COMMENTER_READ'/)
+  assert.match(server,/commentPublicProfileReadEnabled:\s*z\.boolean\(\)\.default\(true\)/)
+  assert.match(server,/readVerifiedCommenterPublicVideos\(/)
   assert.doesNotMatch(ui,/lifeAgentSocialContextOptIn|lifeSocialShadowConfirm/)
 })

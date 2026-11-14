@@ -14,7 +14,7 @@ test('主人聊天可以接过对方话题自主展开，但不强迫反问或�
  assert.equal(ownerDmAwaitsAnswer('那你吃了什么？'),true)
  assert.equal(ownerDmAwaitsAnswer('你中午吃的是饺子? 🐟'),true)
  assert.equal(ownerDmAwaitsAnswer('原来是排骨米饭！'),false)
- assert.match(owner,/!ownerDmAwaitsAnswer\(replyMessages\[0\]\)/)
+ assert.match(owner,/!ownerDmAwaitsAnswer\(replyMessages\.at\(-1\)\)/)
  assert.deepEqual(ownerDmLimitBackToBackQuestions(['那我猜饺子？','那我猜面条？']),['那我猜饺子？'])
  assert.deepEqual(ownerDmLimitBackToBackQuestions(['原来是排骨米饭！','那轮到你猜，如果我点餐会挑什么？']),['原来是排骨米饭！','那轮到你猜，如果我点餐会挑什么？'])
  assert.match(owner,/ownerDmLimitBackToBackQuestions\(normalizeMessageBurst/)

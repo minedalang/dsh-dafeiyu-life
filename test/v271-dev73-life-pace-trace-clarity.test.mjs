@@ -16,7 +16,7 @@ test('新档位显式升级，保留旧用户已保存的较低模型额度',()=
   assert.equal(lifeSettingsV2(legacy).pace,'legacy-2026-lively')
   const base={schemaVersion:2,revision:lifeSettingsV2(legacy).revision,mode:'active',previewOnly:true}
   assert.deepEqual(planLifeSettingsV2(legacy,{...base,pace:'legacy-2026-lively'}).patch,{peakValley:false})
-  assert.deepEqual(planLifeSettingsV2(legacy,{...base,pace:'lively'}).patch,{autonomousPlannerDailyLimit:200,peakValley:false})
+  assert.deepEqual(planLifeSettingsV2(legacy,{...base,pace:'lively'}).patch,{autonomousPlannerDailyLimit:200,peakValley:false,videoAgentMinIntervalMinutes:15,videoAgentReadTargetPerRound:8,videoAgentPickTargetPerRound:5})
   assert.equal(lifePacePolicy(config(10,200)).spontaneousWindowMinutes,10)
   assert.equal(lifePacePolicy(config(30,100)).pace,'natural')
   assert.equal(lifePacePolicy(config(80,50)).pace,'quiet')

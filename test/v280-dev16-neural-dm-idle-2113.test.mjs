@@ -13,7 +13,7 @@ test('neural graph is masked without ready local embedding; ordinary memory sear
  assert.match(html,/id="neural-embedding-mask"/);
  assert.match(html,/neural-embedding-mask\[hidden\]\{display:none/);
  assert.match(js,/syncNeuralEmbeddingMask\(localEmbeddingEnabled/);
- assert.match(js,/if\(!localEmbeddingEnabled\)\{syncNeuralEmbeddingMask\(false\);return\}/);
+ assert.match(js,/syncNeuralEmbeddingMask\(false,'已安装的本地模型暂时无法执行语义搜索/);
  assert.match(html,/id="main-session-history-query"/);
  assert.match(js,/\$\('neural-search-input'\)\.disabled=ready!==true/);
 });

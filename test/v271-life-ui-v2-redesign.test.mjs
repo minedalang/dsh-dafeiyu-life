@@ -17,7 +17,7 @@ test('Life overview has single primary navigation with technical cards collapsed
   assert.match(html,/<div class="life-now-timeline life-behavior-timeline" aria-label=/)
   assert.match(html,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/)
   assert.match(html,/<details class="life-technical-details"><summary>/)
-  assert.match(html,/class="life-day-shortcuts"/)
+  assert.doesNotMatch(html,/<div class="life-day-shortcuts"/,'旧跳转标签由用户明确要求删除')
   assert.match(html,/name="life-mode-card" value="active"/)
   assert.match(html,/name="life-mode-card" value="off"/)
   assert.match(html,/class="life-pace-cards"/)

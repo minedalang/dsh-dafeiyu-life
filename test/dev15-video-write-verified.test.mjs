@@ -62,6 +62,10 @@ test('dev15 legacy self-reported comment without rpid and folder deletion remain
   {tool:'bili_favorite_folder_delete',target:'456789',uid:UID}]
  for(const request of cases){
   const g=await x.post('/life-action',request)
+  if(request.tool==='bili_reply'){
+   assert.equal(g.ok,false,'未持有 Life 已确认评论意愿时，不能获取发评论凭据')
+   continue
+  }
   assert.equal(g.ok,true)
   const outcome=await x.post('/life-action-result',{grant:g.grant,uid:UID,ok:true})
   assert.equal(outcome.status,'accepted-unverified')
