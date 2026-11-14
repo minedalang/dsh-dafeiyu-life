@@ -64,7 +64,7 @@ test('自然多气泡完整草稿→独立语义点→最终 messages，仍允�
   assert.match(text,/③最后按所选条数输出 messages 数组/)
   assert.match(text,/不能|不得|不要/)
   assert.match(text,/简短回答/)
-  assert.match(source('lib/interaction-batch.mjs'),/context:'B站私信与评论',requireArray:true/)
+  assert.match(source('lib/interaction-batch.mjs'),/context:'B站私信',requireArray:true/)
   assert.match(source('lib/owner-dm-agent.mjs'),/context:'主人 B站私信',requireArray:true/)
   const delivered=[]
   const receipt=await deliverMessageBurst({messages:['先说一条','再补一句'],

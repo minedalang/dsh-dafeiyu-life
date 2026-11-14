@@ -28,10 +28,10 @@ test('非 P6 字符串回复先归一化为可发送正文，再绑定 Life 精�
  life.receipt(answer.proof,{status:'not-sent'});
 }));
 
-test('超过 130 字的草稿在授权前规整，P6 多条保留但非 P6 只发送一条',()=>{
+test('超过 130 字的草稿在授权前规整，公开评论无论旧 P6 配置均只允许一条',()=>{
  const long='鱼'.repeat(180);
  assert.equal(prepareLifeCommentReply(long,{p6Enabled:false}).messages[0].length,130);
- assert.deepEqual(prepareLifeCommentReply({action:'reply',messages:['第一条','第二条']},{p6Enabled:true,maxBubbles:2}).messages,['第一条','第二条']);
+ assert.deepEqual(prepareLifeCommentReply({action:'reply',messages:['第一条','第二条']},{p6Enabled:true,maxBubbles:2}).messages,['第一条']);
  assert.deepEqual(prepareLifeCommentReply({action:'reply',messages:['第一条','第二条']},{p6Enabled:false}).messages,['第一条']);
  assert.equal(prepareLifeCommentReply({action:'defer',notBefore:20}).action,'defer');
  assert.equal(prepareLifeCommentReply('SKIP'),'SKIP');

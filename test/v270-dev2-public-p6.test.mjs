@@ -42,7 +42,7 @@ test('public P6 disabled still produces a single legacy reply without any schedu
   const result=await h.engine.poll({mentions:true,notifications:false,top:false});
   assert.equal(result.sent,1);assert.equal(h.sends.length,1);
   assert.equal(h.ledger(),null);
-  assert.equal(h.calls[0].socialAutonomy,false);
+  assert.equal(h.calls[0].socialAutonomy,false,'旧公开 P6 关闭时仍采用单句兼容路径');
 },{p6At:false}));
 
 test('public P6 additional bubbles never bypass the per-poll cap',async()=>fixture(async h=>{
@@ -81,3 +81,11 @@ test('public P6 configurable max bubble limit reduces outgoing sends even if AI 
   assert.equal(res.sent,1);assert.deepEqual(h.sends.map(x=>x.text),['第一段']);
 },{p6MaxBubbles:1}));
 
+
+test('public comments and @ cannot burst despite persisted legacy P6 switches',async()=>fixture(async h=>{
+  h.model(()=>({action:'reply',messages:['第一条可以独立回答','第二条不得公开续发']}));h.add(57);
+  const result=await h.engine.poll({mentions:true,notifications:false,top:false});
+  assert.equal(result.sent,1);
+  assert.deepEqual(h.sends.map(x=>x.text),['第一条可以独立回答']);
+  assert.equal(h.sends[0].replyIndex,0);
+},{p6At:true,p6Comment:true,p6MaxBubbles:3,replyPerPoll:5}));

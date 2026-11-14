@@ -5190,7 +5190,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const generated=await interactionBatcher.generate({...visualReq,lifeCommentMessages:true,lifeEpisodeContext:commentEpisodeContext,
         verifiedCommentSource:/^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))&&/^[1-9]\d{0,19}$/.test(String(req.rpid||'')),
         identityContext:'',incomingRpid:req.rpid,
-      p6MaxBubbles:2,
+      p6MaxBubbles:1, // public comment/@ always one message
       allowTodoIntake:req.forceReply!==true&&req.todoIntake!==false,
       onTodoProposal:req.forceReply===true||req.todoIntake===false?undefined:proposal=>intakeAiSocialTodo({...proposal,request:req,channel:'comment'}),
       onTodoConsistency:onSocialTodoConsistency})
@@ -5206,8 +5206,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // that *one existing model answer* into the exact bounded payload the
       // comment sender will use. Do not run another model or mint a proof for
       // an empty expression. P6 keeps its independently chosen bubble count.
-      const p6Enabled=true // unified natural social expression; legacy split toggles retired
-      const normalized=prepareLifeCommentReply(generated,{p6Enabled,maxBubbles:2})
+      const normalized=prepareLifeCommentReply(generated,{p6Enabled:false,maxBubbles:1}) // public comment: single utterance
       const lines=normalized.messages
       if(!lines.length){
         const outputShape=typeof generated==='string'?'string':Array.isArray(generated?.messages)?'messages-array':typeof generated?.reply==='string'?'reply-field':'other'

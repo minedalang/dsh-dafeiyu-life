@@ -12,16 +12,15 @@ const create = (invoke,mode='full') => createInteractionBatcher({
   logger:{warn(){}},
 });
 
-test('消息数组不会在普通评论入口丢失：完整与精简模式均保留原本的气泡',async()=>{
+test('评论多气泡不外发：完整与精简模式都会拒绝拆句提案',async()=>{
   for(const mode of ['full','compact']){
     let calls=0;
     const batch=create(async()=>{calls++;return payload({action:'reply',messages:['抓到啦！','尾巴轻点揉哦！']});},mode);
     try {
       const result=await batch.generate({...request,lifeCommentMessages:true});
       assert.equal(calls,1);
-      assert.deepEqual(result,{action:'reply',messages:['抓到啦！','尾巴轻点揉哦！']});
-      assert.deepEqual(prepareLifeCommentReply(result,{p6Enabled:true,maxBubbles:2}).messages,['抓到啦！','尾巴轻点揉哦！']);
-      assert.deepEqual(prepareLifeCommentReply(result,{p6Enabled:false}).messages,['抓到啦！']);
+      assert.deepEqual(result,{action:'skip',messages:[],reason:'public-burst-not-allowed'});
+      assert.deepEqual(prepareLifeCommentReply({action:'reply',messages:['抓到啦！','尾巴轻点揉哦！']},{p6Enabled:true,maxBubbles:2}).messages,['抓到啦！']);
     } finally {batch.stop()}
   }
 });
