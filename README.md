@@ -6,7 +6,7 @@
 
 [![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [![npm 月下载量](https://img.shields.io/npm/dm/dsh-dafeiyu-life?label=monthly%20downloads)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [![npm 年下载量](https://img.shields.io/npm/dy/dsh-dafeiyu-life?label=yearly%20downloads)](https://www.npmjs.com/package/dsh-dafeiyu-life)
 
-**[功能概览](#-从分散能力到连续生活) · [自然交流](#-更自然的交流) · [关系与成长](#-关系记忆与成长) · [可视化成长](#-可视化的生活成长) · [开始使用](#-开始使用) · [未来规划](docs/ROADMAP.md) · [2.8.0 更新说明](RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)**
+**[2.8.1 开发计划](docs/architecture/2.8.1-video-perception-dev2a.md) · [功能概览](#-从分散能力到连续生活) · [自然交流](#-更自然的交流) · [关系与成长](#-关系记忆与成长) · [可视化成长](#-可视化的生活成长) · [开始使用](#-开始使用) · [未来规划](docs/ROADMAP.md) · [2.8.0 更新说明](RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)**
 
 **2.8.0 · 一个 Life，让鱼鱼的探索、交流与成长真正连成生活。** 视频探索、私信交流、人与人的关系、记忆和原创表达，不再只是各自运行的功能：鱼鱼从真实的视频、来信和生活线索里发现值得关注的事，在同一套 Life 行为机制下自主决定继续了解、互动、表达或休息。看过的内容和认识的人也可能成为下一次探索的起点。
 
