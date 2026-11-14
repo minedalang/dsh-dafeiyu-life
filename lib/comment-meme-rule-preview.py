@@ -13,6 +13,6 @@ try:
     if len(raw)>100_000:
         raise ValueError('预览规则超过100 KB限制')
     overrides=json.loads(raw.decode('utf-8')) if raw.strip() else None
-    print(json.dumps(search_library(home,sys.argv[2],limit=12,rules_override=overrides),ensure_ascii=False))
+    print(json.dumps(search_library(home,sys.argv[2],limit=12,rules_override=overrides),ensure_ascii=True))
 except Exception as exc:
-    print(json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False))
+    print(json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=True))

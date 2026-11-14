@@ -29,9 +29,9 @@ test('old duplicate plan flow is gone and functional admin tools are tabs, not t
  assert.match(ui,/\('owner-todo-add'\)\.addEventListener/)
 })
 
-test('2.8.0 preview version and user release docs are consistent without public release',()=>{
+test('2.8.0 stable version and user release docs are consistent',()=>{
  const pkg=JSON.parse(src('package.json')),lock=JSON.parse(src('package-lock.json'))
- assert.match(pkg.version,/^2\.8\.0-dev\.\d+$/)
+ assert.equal(pkg.version,'2.8.0')
  assert.equal(lock.version,pkg.version)
  assert.equal(lock.packages[''].version,pkg.version)
  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.8.0.md'))

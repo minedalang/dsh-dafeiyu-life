@@ -86,12 +86,12 @@ test('dev.7 管理页面与工具入口保留沙盒隔离、安全权限和第�
 
 
 test('2.8.0 预览版发布包不携带过时开发草案，但当前说明与审计仍可追溯',()=>{
-  const pkg=JSON.parse(read('package.json'));assert.match(pkg.version,/^2\.8\.0-dev\.[1-9]\d*$/);
+  const pkg=JSON.parse(read('package.json'));assert.match(pkg.version,/^2\.8\.0(?:-dev\.[1-9]\d*)?$/);
   assert.ok(pkg.files.includes('RELEASE_NOTES_v2.8.0.md'));
   assert.ok(!pkg.files.includes('docs/release'));
   assert.ok(!pkg.files.includes('RELEASE_NOTES_v2.6.0-dev.7.md'));
   assert.match(read('docs/archive/README.md'),/历史文档与清理记录/);
   assert.match(read('README.md'),/统一 Life/);
   assert.match(read('docs/release/README.md'),/发布阻断/);
-  assert.match(read('RELEASE_NOTES_v2.8.0.md'),/开发预览提醒|正式发布前/);
+  assert.match(read('RELEASE_NOTES_v2.8.0.md'),/正式版更新说明/);
 })

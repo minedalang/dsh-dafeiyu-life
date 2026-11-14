@@ -72,7 +72,7 @@ test('2.8.0 README and developer navigation reflect the RC gates without falsely
   assert.match(readme,/docs\/ROADMAP\.md/)
   assert.match(doc,/2\.8\.0/)
   assert.match(doc,/2\.8\.0-release-readiness\.md/)
-  assert.match(notes,/开发预览提醒|正式发布前/)
+  assert.match(notes,/正式版更新说明/)
   assert.match(src('docs/architecture/2.8.0-release-readiness.md'),/releaseReady:false/)
   assert.match(src('AGENTS.md'),/RC 十三项自然行为/)
   assert.match(src('docs/AGENT_ARCHITECTURE.md'),/历史示意/)

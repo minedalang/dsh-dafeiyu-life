@@ -13,7 +13,7 @@ CONFIDENCES = ('待核实', '有文字依据')
 STATUSES = ('pending', 'approved', 'rejected')
 
 def result(obj):
-    print(json.dumps(obj,ensure_ascii=False))
+    print(json.dumps(obj,ensure_ascii=True))
 
 def clean(v, maxlen, *, required=True):
     if not isinstance(v,str):

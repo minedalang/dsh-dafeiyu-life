@@ -1,8 +1,8 @@
-# 当前开发规范（2.8.0-dev.17，未正式发布）
+# 2.8.0 当前维护规范（正式版源码；平台发布与实机验收独立确认）
 
 > **优先级：正在运行的源码与验证结果 > 本节现行约束 > `docs/architecture/` 当前架构 > 按日期归档的旧版契约。** 若任何历史段落写着“当前”、旧版 `dev.N`、预约续聊、严格禁止跨渠道理解或一次只能选择一项视频写入，应先核验源码并修改冲突文档，不能据此恢复退役行为。版本以 `package.json` 为准。
 
-- **本次用户 ZIP 基线（dev.17）**：新的修复只能以 `dsh-bili-scroll-plus2.zip` 的真实文件生成差异；普通 DM 每日额度不能限制主人，任何主人气泡都不应占普通额度。互动节奏卡片保存方案身份且与真实数值一致，改任何额度转自定义。多气泡先拟完整回复、再确定自然语义拆分，不强制拆分或增加第二次 AI 意愿投票。
+- **本次 2.8.0 正式版基线**：从最后一份用户 ZIP 的实际源码确认现行行为；普通 DM 每日额度不能限制主人，任何主人气泡都不应占普通额度。互动节奏卡片保存方案身份且与真实数值一致，改任何额度转自定义。多气泡先拟完整回复、再确定自然语义拆分，不强制拆分或增加第二次 AI 意愿投票。
 - **主人私信自然上下文（dev.17）**：最近有效原始聊天记录按条提供 UTC 时间戳；模型以主人当前消息及上一条已确认回复为语义锚点，不得仅凭固定 90 分钟间隔强制丢弃跨日话题。短期保留期、账号/UID 隔离、长记忆主动检索及写操作权限不变；网络恢复只解普通连接错误，不解 B站 -509/429。
 - **统一 Life 意愿**：同一 Episode 的模型决策可选一个动作，或同 BV 的兼容写入组合（点赞／收藏／关注作者／原创顶层评论）。仅四类不同子动作可组合；一个父意愿、逐子动作精确凭据与独立平台回读；没有模型配额目标，未知结果冻结，部分成功不回放；原权限、额度、账号和相互冲突动作限制不变。详见 `docs/architecture/2.8.0-dev16-composable-writes-private-memory.md`。
 - **跨渠道记忆**：可信身份匹配后可使用同一个人的私下关系记忆进行理解；不同账号／UID、访问权限、原文保存域及对外可披露范围仍严格隔离。公开表达不得直接或暗示透露私聊事实；普通熟悉语气不是私聊事实。私信临时原文只用于段式 AI 提炼到可衰减记忆，不等于直接长存。
@@ -26,7 +26,7 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 
 > **dev.12 当前收口契约**：评论真实回执只创建开放式探索机会，不自动读热评或外发；局部无事实增量可技术停止，但不得标为鱼鱼主动拒绝。跨日公共人物身份先验和当轮具体评论者回执缺一不可；续章不得突破五步、外发护理、账本冻结。所有新成长指标是只读原证据，不能影响兴趣权重或形成新权限；npm 升级需真实较新版本和用户点击。见 [`dev.12 设计`](docs/architecture/2.8.0-dev12-natural-life-design.md)。
 
-> 本文件保留历次安全约束供追溯；**只有本页顶部“现行规则”和对应当前架构文档描述 dev.16 的生产事实**。其余带旧 dev 编号的段落属于历史增量，不得以历史“当前”用语覆盖新版代码。后续历史过程应迁移到 CHANGELOG／归档。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 RC8 方案优先的 UI 接线见 [`管理卡片架构`](docs/architecture/2.7.1-rc8-choice-first-management.md)；管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
+> 本文件保留历次安全约束供追溯；**只有本页顶部“现行规则”和对应当前架构文档描述当前 2.8.0 的代码事实**。其余带旧 dev 编号的段落属于历史增量，不得以历史“当前”用语覆盖新版代码。后续历史过程应迁移到 CHANGELOG／归档。现行架构从 [`docs/architecture/README.md`](docs/architecture/README.md) 开始；历史决策通过 Git 与 [`docs/archive/README.md`](docs/archive/README.md) 查找。 当前 [RC 十三项自然行为](docs/architecture/2.7.1-rc-preflight-13-questions.md) 尚未通过 Windows、真实平台与跨日成长验收；不通过不得封 RC，所有改动应同步架构图、文档与测试。 RC8 方案优先的 UI 接线见 [`管理卡片架构`](docs/architecture/2.7.1-rc8-choice-first-management.md)；管理页、本轮生活套餐、新装/老用户授权差异及人格式证据边界见 [`RC 有机生活架构`](docs/architecture/2.7.1-rc-organic-life-controls.md)。
 - 本版快速设置可直接预览、确认并保存生活、记忆与社交卡片，仍写入原配置；未完成必要验证不得新增社交授权。详见 [`快速设置内嵌卡片架构`](docs/architecture/2.7.1-dev8-inline-quick-setup.md)；V3 导览为历史增量。
 - **2.8.0-dev.8 视频探索互动接线**：Life 自主核实视频契机和 Life 自行执行并取得可信完成回执的 `watch_video` 只读待办，可创建同账号原 `life-opportunities` 探索片段；接下来的点赞/收藏/关注/原创主评论仍须下一次 Life 独立选择并经过原平台写入与回执门禁。未完成、错误 BV/标题、过期或账号切换不可创建；相关图和测试见 `docs/architecture/2.8.0-dev8-video-entry-and-update.md`。
 - **2.8.0-dev.7 UI 收口契约**：「鱼鱼的行动树」与「大肥鱼的一天」同属于一张可折叠生活行为卡，时间线从属行为树，仍使用原只读时间线接口及 SSE；「鱼鱼想做」仅解释三类记录而不改变数据状态。2.8.1 的剩余重复意愿及 Vue 重构只列计划，不在 dev.7 暗中实现。
@@ -47,7 +47,7 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 - **当前 Life 架构图的唯一维护入口**：`docs/architecture/life-system-current.md`、`docs/architecture/diagrams/life-system-current.mmd`、`docs/architecture/diagrams/life-candidates-current.mmd`、`docs/architecture/diagrams/life-receipt-memory-current.mmd`。每次修改 Life 候选、调度、权限或回执，须同时维护 Mermaid 代码锚点，先执行 `npm run write:life-architecture-view` 更新 GitHub 预览，再执行 `npm run check:life-architecture` 与 `test/v271-dev33-life-architecture-contract.test.mjs`；图中已接线不得宣称实机验收。
 - **dev.33 同版本菜单加固**：Life 每次输出须与当轮动作菜单中的 action/id/BV/capability 严格匹配；未提供的 reflect 不可从旧 parser 走漏。保持原账户、授权、回执/遗忘限制，详见 `docs/architecture/life-system-current.md`。
 - **dev.35 P1/P2 补充限制**：已核验写入后可继续阅读或休息，但第二次写入须先完成真实只读核实或实际休息至少 15 分钟并重新审批；点赞不意味着必须评论。新增评论区只读与一次首页换方向，禁推断陌生人 UID。见 `docs/architecture/2.7.1-dev35-life-episode-p1p2.md`。**历史 dev.34 连续 Life Episode**：首页成功轮次的新入选候选接入原 `life-opportunities` 意愿账本；每个 Episode 最多 5 个已核验步骤，每一步重新决策，已核验 BV 去重，休息有界延后，未知写入冻结。原创评论的已知跨渠道冷却最多重考虑一次，账号变化/在途/未知不重试；不扩大任何外发许可。详见 `docs/architecture/life-system-current.md`。
-- 包名与宿主插件名：`dsh-dafeiyu-life`；当前开发版本 `2.8.0-dev.17`（真实 Life 动态行为树、生活计划分区、模型/记忆/DM 管理页简化；Windows/真实 B站仍待验收），稳定版基线 `2.7.0`（npm 实际发布状态仍须由维护者验证）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发应重新从 `X.Y.Z-dev.N` 开始。
+- 包名与宿主插件名：`dsh-dafeiyu-life`；本次准备发布的源码版本为 `2.8.0`（实际 npm/DSHMarket 发布状态由维护者验证，Windows/真实 B站与长期运行仍须实机核验）；未经用户明确授权不得合并 `main`、创建 Tag 或发布。后续开发从新的 `X.Y.Z-dev.N` 开始。
 - dev.33 同版本维护修复：@通知只有经 B站源评论/UID/rpid/BV 核验并能分清独立留言正文时才进入回复 AI 或社交记忆；旧内部昵称歧义提示不是观众说过的话，修正仍清晰的情节副本与旧评论缓存，但不抹除已确认外发、也不恢复已遗忘内容。详见 `docs/architecture/2.7.1-dev33-mention-memory-hotfix.md`。
 - dev.32：为 Life 自主首页闲逛补上**实际 MCP 首页读取**的匿名回执：由原视频 Agent 的随机轮次 ID 绑定 headless 工具调用，区分未观察到、无候选、失败、有候选；不把选片/观看与进程成功混淆，不复制 BV/UID/私密内容，也不调整视频发送门禁。见 `docs/architecture/2.7.1-dev32-home-feed-receipts.md`。
 - dev.31：`LifeReflection.status()` 提供与自动反思执行器共用的就绪判断，`AutonomousPlanner` 不再凭 pending 数量提供假可用 reflect；反思被跳过的枚举原因进入脱敏日志。主 Life 模型失败后的退避在原 planner 预算账本持久化，手动唤醒不自动打开新写权限；`browse_home` 只在已打开首页推荐且原视频能力可用时列入菜单，通过原视频 Agent 先看真实首页推荐。`life-willingness` 的可选语境读取失败尽量降级，基础身份不可用仍拒绝写入。见 `docs/architecture/2.7.1-dev31-life-idle-and-home-browse.md`。

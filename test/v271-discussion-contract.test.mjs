@@ -23,7 +23,7 @@ test('video Agent can freely read verified discussion threads under shared pacin
 
 test('2.8.0 版本、依赖锁、当前 Life 架构文档和历史讨论图均可追溯',()=>{
  const pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json'))
- assert.match(pkg.version,/^2\.8\.0-dev\.[1-9]\d*$/)
+ assert.match(pkg.version,/^2\.8\.0(?:-dev\.[1-9]\d*)?$/)
  assert.equal(lock.version,pkg.version)
  assert.equal(lock.packages[''].version,pkg.version)
  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.8.0.md'))

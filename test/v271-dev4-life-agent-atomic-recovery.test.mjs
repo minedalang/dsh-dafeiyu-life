@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,rmSync,readFileSync,writeFileSync,mkdirSync,symlinkSync,existsSync} from 'node:fs'
+import {mkdtempSync,rmSync,readFileSync,writeFileSync,mkdirSync,symlinkSync,existsSync,utimesSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {spawn} from 'node:child_process'
@@ -102,8 +102,31 @@ test('two DSH processes cannot make concurrent model calls or spend the global d
   assert.equal(ledger.runs,1)
   assert.equal(ledger.version,1)
   assert.equal([a.result,b.result].filter(x=>x.action==='skip').length,1)
-  assert.equal([a.result,b.result].filter(x=>['planner-already-running','quota'].includes(x.skipped)).length,1)
+  assert.equal([a.result,b.result].filter(x=>['planner-already-running','quota'].includes(x.skipped)).length,1,JSON.stringify([a.result,b.result]))
   assert.equal(existsSync(join(dir,'autonomous-planner-run.lock')),false)
+}))
+
+test('a competing process seeing a newly created run lock is busy, not orphaned',()=>withHome(dir=>{
+  // Simulate the mkdir -> owner.json publication window on NTFS.
+  const lock=join(dir,'autonomous-planner-run.lock');mkdirSync(lock)
+  const lease=createPlannerRunLease({dataDir:dir})
+  assert.equal(lease.acquire().reason,'planner-already-running')
+  assert.equal(lease.inspect().needsReview,true,'inspection still warns of an incomplete owner')
+  assert.equal(existsSync(lock),true,'other processes must not remove the lock')
+  writeFileSync(join(lock,'owner.json'),'')
+  assert.equal(lease.acquire().reason,'planner-already-running',
+    'owner.json may exist before its contents have been written')
+  writeFileSync(join(lock,'owner.json'),'{\"version\":1')
+  assert.equal(lease.acquire().reason,'planner-already-running',
+    'a partially written owner record does not authorize a second planner')
+  // A stale incomplete claim still fails closed without automatic recovery.
+  const old=new Date(Date.now()-10000);utimesSync(lock,old,old)
+  assert.equal(lease.acquire().reason,'planner-lock-review-required')
+  assert.equal(existsSync(lock),true)
+  rmSync(lock,{recursive:true,force:true})
+  mkdirSync(lock);writeFileSync(join(lock,'owner.json'),'not-json')
+  assert.equal(lease.acquire().reason,'planner-lock-review-required',
+    'a recent malformed owner is not considered ordinary contention')
 }))
 
 test('dead run lease is automatically reclaimed without a manual tool; live owner remains protected',()=>withHome(dir=>{

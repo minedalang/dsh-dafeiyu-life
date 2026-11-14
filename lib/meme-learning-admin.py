@@ -109,5 +109,5 @@ if __name__=='__main__':
     try:
         home,mode=sys.argv[1:3]
         payload=json.loads(sys.stdin.read(16000)) if mode in ('commit','observe') else None
-        print(json.dumps(operate(home,mode,payload),ensure_ascii=False))
-    except Exception as exc:print(json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False))
+        print(json.dumps(operate(home,mode,payload),ensure_ascii=True))
+    except Exception as exc:print(json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=True))

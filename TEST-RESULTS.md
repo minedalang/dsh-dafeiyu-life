@@ -1,3 +1,42 @@
+## 2.8.0 · Windows 跨进程 Life 锁初始化竞态修复（2026-11-14）
+- 报错位置：`test/v271-dev4-life-agent-atomic-recovery.test.mjs:105`；预期第二个进程正常返回忙碌，实际偶发 `planner-lock-review-required`。该回归并不代表模型调用了两次。
+- 修复前 24 轮双进程实验：20 轮正常忙碌，4 轮误报需要人工检查；24 轮均仅记录 1 次模型调用。
+- 修复后 35 轮双进程实验：35 轮均准确记录一次调用及另一个进程忙碌，0 次误报。新增测试验证空目录、空 owner、半写 owner 与持久损坏的锁仍不被自动清除。
+- 相关 Node 测试 322/322 通过；本轮完整 Node 回归使用 `node --test --test-concurrency=8 test/*.test.mjs` **2633/2633 通过、0 失败**。首次使用默认并发的尝试超时，未计为通过。Python 与其他生产执行器没有改动。
+- Python 全量 `npm run test:python`：274 项中 273 通过、1 跳过、0 失败；Life 架构检查、视频工具契约、自检和 `npm pack --dry-run --ignore-scripts` 均通过（609 个原包文件加 1 个此前新增测试，共 610 个）。
+- 本轮未在 Windows 用户机器验证，不涉及真实平台收发；用户可在已激活的 Conda 环境继续运行本机 `npm test`。
+
+---
+
+## 2.8.0 · Windows/Conda Python 测试编码与解释器修复（2026-11-14）
+
+- 影响：Windows `python3` 可误命中 WindowsApps 假别名并返回 9009；中文 Windows/Conda 子进程 stdout 默认 CP936 时，部分 JSON 结果被 `json.loads(bytes)` 当作 UTF-8 解码而报 `UnicodeDecodeError`，另有使用 `subprocess.run(text=True, encoding='utf-8')` 的测试可能出现 `_readerthread` 解码错误。
+- 修复：两项 Node SQLite 测试共用真实 Python 3 解释器探测，优先本次 `CONDA_PREFIX`，不跳过缺解释器的安全测试；Python 全量脚本通过 `scripts/test-python.mjs` 选择当前 Conda/显式 `PYTHON`，固定 `PYTHONUTF8=1` 与 `PYTHONIOENCODING=utf-8`；梗库公开 JSON 接口改为 ASCII 安全转义，内容仍是相同 Unicode 文本。
+- 复现与针对性验证：模拟 `PYTHONIOENCODING=cp936` 时梗库原先 4 个错误可复现，修复后 10 个相关测试通过；新加 CP936 JSON 输出回归。Node SQLite 两个文件共 6 项通过。`BV号格式错误` 属于原测试故意触发的非法 BV 拒绝诊断，本轮未改动该平台校验。
+- 真实 Windows 用户机器上仍建议在激活的 Conda 环境中重跑；本轮未向 B站发送或恢复数据。日志中的其余 F/E 若重跑后仍存在，需要提供失败测试名和完整 traceback 再逐项处理，不能自动归为编码问题。
+
+---
+
+## 2.8.0 · Windows Conda 环境中的 SQLite 测试启动修复（2026-11-14）
+
+- 仅修正 `test/v2468-data-backup.test.mjs`、`test/v2469-backup-dir-no-temp.test.mjs` 的 Python 3 调用：使用同一个 `test/helpers/python-sqlite-runner.mjs` 选择解释器。Windows 优先当前 `CONDA_PREFIX/python.exe`，其次才是 `python`、`py -3`、`python3`；尊重明确配置的 `PYTHON`。
+- 解释器必须实际运行 Python 3 且成功导入标准库 `sqlite3`；WindowsApps 假 `python3` 返回 9009 不会被误当作通过，确实找不到 Python 3 时明确报错（不再静默跳过备份测试）。
+- 对数据快照、备份恢复、权限、生产执行器均**没有任何变更**；Conda 用户不需另外安装 Python，只需确认所激活环境可运行 `python -c "import sqlite3"`。
+- 仅表示离线测试启动兼容性验证，不代表已经在用户本机 Windows DSH 运行。
+
+---
+
+# 2.8.0 正式版源码发布前离线审核（2026-11-14）
+
+- 以最后一次用户上传 ZIP 为基线；使用其 ZIP Unicode 路径元数据正确还原 `tools/导出B站日志.bat`，不再把解压路径误报成打包缺陷。
+- `package.json` 与 `package-lock.json` 版本同步为 `2.8.0`；README、Release Notes、CHANGELOG 与文档索引改为正式版表述。开发版历次验证仍保留在以下历史记录中。
+- **Linux/Node 22 离线全量**：`npm test` 共 2,632 项，2,632 通过、0 失败、0 跳过；`npm run test:python` 共 273 项，272 通过、1 跳过、0 失败（Python 3.13）。
+- `npm run check:life-architecture`、`npm run check:video-tool-contract` 与 `node selfcheck.mjs` 通过；`npm pack --dry-run --ignore-scripts --json` 验证包含 609 文件，其中 `tools/导出B站日志.bat`、`docs/ROADMAP.md`、`RELEASE_NOTES_v2.8.0.md` 均在发布物中。
+- 版本相关旧测试已迁移，允许 `2.8.0` 正式 SemVer 并继续校验锁文件、版本说明及平台/账号安全契约；未更改生产评论、私信、平台发送逻辑。
+- 真实 Windows DSH、B站平台与长时间运行不能由本地离线测试替代；此轮未推送 Git Tag、未发布 npm。
+
+---
+
 # dev.17 评论自主沉默、公开单句与跨时区召回修复（2026-11-14）
 
 - **范围**：在最新用户 ZIP 对应的 dev.17 源码上，合并上一轮「评论自主沉默」修复，同时禁止评论／被 @ 的多气泡拆分及发送后额外续想；私信与主 Session 仍保留既有多气泡和凭回执决定续想的机制。

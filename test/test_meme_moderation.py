@@ -1,5 +1,5 @@
 """Meme approval/migration/edit cycles without Bilibili access."""
-import importlib.util, json, sqlite3, subprocess, sys, tempfile, unittest
+import importlib.util, json, os, sqlite3, subprocess, sys, tempfile, unittest
 from datetime import datetime
 from contextlib import closing
 from pathlib import Path
@@ -38,6 +38,14 @@ class MemeAdminTests(unittest.TestCase):
         self.assertFalse(self.call('edit',x)['ok'])
         self.assertEqual(self.call('list','')['entries'][0]['meaning'],'人物造型不明')
         self.assertFalse(self.call('review',{'id':1,'status':'invalid'})['ok'])
+    def test_json_is_utf8_readable_even_with_legacy_windows_output_codepage(self):
+        # The CP936 stdout previously produced bytes that json.loads cannot read as UTF-8.
+        env={**os.environ,'PYTHONIOENCODING':'cp936'}
+        raw=subprocess.check_output([sys.executable,str(SCRIPT),str(self.home),'list',''],env=env)
+        data=json.loads(raw)
+        self.assertEqual(data['entries'][0]['name'],'奶蛙')
+        self.assertEqual(data['entries'][0]['meaning'],'人物造型不明')
+
     def test_delete_source_and_meme(self):
         self.assertTrue(self.call('delete',1)['deleted'])
         self.assertEqual(self.call('list','')['total'],0)

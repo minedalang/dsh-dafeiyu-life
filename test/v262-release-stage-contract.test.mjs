@@ -16,6 +16,11 @@ test('正式版与后续 dev 开发版都遵循 SemVer 并与锁文件、README 
     assert.match(read('RELEASE_NOTES_v2.8.0.md'), /开发预览提醒|正式发布前/)
     assert.match(read('CHANGELOG.md'), new RegExp('2\\.8\\.0-dev\\.16'))
     assert.ok(pkg.files.includes('RELEASE_NOTES_v2.8.0.md'))
+  } else if (pkg.version === '2.8.0') {
+    assert.match(read('CHANGELOG.md'), /^## \[2\.8\.0\] · 正式版/m)
+    assert.match(read('RELEASE_NOTES_v2.8.0.md'), /^# 大肥鱼 2\.8\.0 · 正式版更新说明/m)
+    assert.doesNotMatch(readme,/关于当前.*预览版/)
+    assert.ok(pkg.files.includes('RELEASE_NOTES_v2.8.0.md'))
   } else if (pkg.version.startsWith('2.7.1-dev.')) {
     assert.match(readme, /当前开发预览：\*\*`2\.7\.1-dev\.[1-9]\d*`/)
     assert.match(read('CHANGELOG.md'), /^## \[2\.7\.1-dev\.[1-9]\d*\]/m)
