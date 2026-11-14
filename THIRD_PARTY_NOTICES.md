@@ -1,3 +1,8 @@
+## 2.8.1-dev.3a.2 时间窗复查实现的开源归属
+
+这一批在项目自身的官方 B站 `videoshot` 低清预览采样器与 Life 决策协议基础上新增时间窗查询、缓存隔离及 DSH/Ollama 共用回执。仍然只参考已列明的 `SAOS-3624/dsh-video-storyboard`（按时间定位/分镜复查的设计方向）与 `SAOS-3624/dsh-see-now`（变化驱动选帧的设计方向），**没有复制、改编、捆绑或再分发上述项目源码**。若将来实际集成代码，应再次核对上游仓库对应版本的 LICENSE/NOTICE 并保留版权与改动说明。
+
+
 # Third-Party Notices
 
 This repository intentionally keeps third-party origins visible. The product name and repository rename do not erase upstream code ancestry.

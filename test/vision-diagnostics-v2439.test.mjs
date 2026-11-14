@@ -29,7 +29,7 @@ test('management UI distinguishes debug file saving from tool calls, current tri
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  assert.match(html,/预览识图诊断/);assert.match(js,/vision-diagnostics/)
- assert.match(source,/不要整个轮次惯性拒绝/)
+ assert.match(source,/由鱼鱼自主选择观看与深度/)
  assert.match(source,/bili_comments\(bvid,num=10\)/)
 })
 test('catalog can provide representative images across folders even with a large folder',()=>{

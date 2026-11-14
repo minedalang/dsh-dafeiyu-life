@@ -105,7 +105,7 @@ test('2.8.1-dev.2a: no raw image, transcript, third-party text, URL or secret ma
 test('2.8.1-dev.2a: production read tool returns provenance, but no new write/send path',()=>{
  const main=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  assert.match(main,/const videoEvidence=buildVideoEvidenceBundle\(/)
- assert.match(main,/return \{ok:true,action:'watch',bvid,info,videoEvidence/)
+ assert.match(main,/return \{ok:true,action:'watch',bvid,viewDepth:visionPlan.depth,visionDecision:visionPlan.reason,info,videoEvidence/)
  const bundle=readFileSync(new URL('../lib/video-evidence-bundle.mjs',import.meta.url),'utf8')
  assert.doesNotMatch(bundle,/\b(?:bili_video_like|bili_comment_manual|lifeWillingness\.decide)\s*\(/)
 })

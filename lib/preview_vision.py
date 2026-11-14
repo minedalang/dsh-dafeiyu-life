@@ -163,6 +163,39 @@ def _pick_indices(times, count, scores=None, step=1):
 
 
 # v2 uses only B站官方 videoshot sprites already required by the primary picks.
+# v3 focus windows are explicitly selected by Life, not auto-triggered by subtitles.
+# The focus window still only samples B站播放器官方预览图, NOT original video frames.
+_FOCUS_SAMPLER_VERSION=3
+
+def _normalize_focus_window(start, end):
+    """Optional, bounded time selection; reject malformed/infinite input before IO."""
+    if start is None and end is None:
+        return None
+    import math
+    if (type(start) not in (float,int) or type(end) not in (float,int)
+        or not math.isfinite(start) or not math.isfinite(end)):
+        raise ValueError('局部复查必须同时指定合法的起止秒数')
+    start=round(float(start),1)
+    end=round(float(end),1)
+    if start<0 or end>43200 or end-start<3 or end-start>120:
+        raise ValueError('局部复查窗口必须在视频0～12小时内，时长3～120秒')
+    return {'startSeconds':start, 'endSeconds':end}
+
+def _focus_primary_indices(times, focus, count):
+    """Choose evenly spaced preview indices inside a Life-selected window."""
+    pool=[i for i,t in enumerate(times) if focus['startSeconds']<=t<=focus['endSeconds']]
+    if not pool:
+        raise ValueError('所选时间窗内没有官方预览帧，未获取局部图片')
+    count=min(max(1,int(count)),len(pool))
+    indices=[]
+    for j in range(count):
+        selected=pool[min(len(pool)-1,round((j+1)*(len(pool)-1)/(count+1)))]
+        if selected not in indices:indices.append(selected)
+    for idx in pool:
+        if len(indices)>=count:break
+        if idx not in indices:indices.append(idx)
+    return sorted(indices)
+
 # This is an inexpensive representative-thumbnail filter, NOT actual scene detection.
 _SAMPLER_VERSION=2
 
@@ -279,10 +312,12 @@ def _claim_vision_quota(home, daily_limit=None):
         return True
 
 
-def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False):
+def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None):
     """返回经过长度钳制的结构化文本；debug 才保存 JPEG，缓存只存分析文字。"""
     if not BV_RE.fullmatch(str(bvid or '')):return {'ok':False,'error':'BV号格式不正确'}
     home=Path(home).resolve()
+    try: focus=_normalize_focus_window(focus_start,focus_end)
+    except ValueError as exc: return {'ok':False,'status':'invalid_focus_window','error':str(exc)}
     if enabled is None: enabled=os.environ.get('BILI_VISION_ENABLED')=='1'
     if debug is None: debug=os.environ.get('BILI_VISION_DEBUG')=='1'
     if max_frames is None: max_frames=os.environ.get('BILI_VISION_FRAMES','2')
@@ -294,12 +329,14 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
         return {'ok':False,'error':'视觉模型提供方未配置'}
     if enabled and not return_frames and not model:
         return {'ok':False,'error':'视觉模型 ID 尚未配置'}
-    cache=home/'vision-cache'/f'{bvid}.json'
+    suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
+    cache=home/'vision-cache'/f'{bvid}{suffix}.json'
+    sampler_version=_FOCUS_SAMPLER_VERSION if focus else _SAMPLER_VERSION
     if enabled and not debug and not return_frames and cache.exists():
         try:
             d=json.loads(cache.read_text('utf8'))
-            if d.get('provider')==provider and d.get('model')==model and d.get('frames_limit')==max_frames and d.get('sampler_version')==_SAMPLER_VERSION and d.get('description'):
-                return {'ok':True,'bvid':bvid,'status':'cached','description':d['description'],'times':d.get('times',[]),'sampling':d.get('sampling'),'image_source':'B站低清预览','notice':'缓存的快照描述，不能代表完整视频'}
+            if d.get('provider')==provider and d.get('model')==model and d.get('frames_limit')==max_frames and d.get('sampler_version')==sampler_version and d.get('focus_window')==focus and d.get('description'):
+                return {'ok':True,'bvid':bvid,'status':'cached','description':d['description'],'times':d.get('times',[]),'sampling':d.get('sampling'),'focus_window':focus,'image_source':'B站低清预览','notice':'缓存的快照描述，不能代表完整视频'}
         except (ValueError,OSError):pass
     try:
         from PIL import Image
@@ -339,9 +376,10 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
             step=float(trend.get('step_sec') or 0) if isinstance(trend,dict) else 0
         except Exception:
             scores=None
-        primary=_pick_indices(times,max_frames,scores,step)
+        primary=(_focus_primary_indices(times,focus,max_frames) if focus else _pick_indices(times,max_frames,scores,step))
         slots=xlen*ylen
         candidates=_candidate_indices_from_primary(primary,times,slots,limit=max_frames*4)
+        if focus: candidates=[i for i in candidates if focus['startSeconds']<=times[i]<=focus['endSeconds']]
         available=[];images_by_sheet={}
         for i in candidates:
             sheet=i//slots
@@ -363,8 +401,8 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
             buf=BytesIO();entry['tile'].save(buf,format='JPEG',quality=88)
             frames.append({'second':entry['second'],'bytes':buf.getvalue(),
                            'rank':count,'source_index':entry['index']})
-        sampling={'strategy':'activity-time+local-thumbnail-difference',
-                  'sampler_version':_SAMPLER_VERSION,
+        sampling={'strategy':'focus-window+local-thumbnail-difference' if focus else 'activity-time+local-thumbnail-difference',
+                  'sampler_version':sampler_version,
                   'candidates_examined':len(available),'frames_selected':len(frames),
                   'sheets_downloaded':len(images_by_sheet),
                   'note':'仅为B站低清预览图的差异去重，不等于原视频镜头分割'}
@@ -377,8 +415,8 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
                 if re.fullmatch(r'\d{2}_\d+s\.jpg',old.name):old.unlink()
             for i,f in enumerate(frames):
                 (folder/f'{i+1:02d}_{int(f["second"])}s.jpg').write_bytes(f['bytes'])
-            (folder/'metadata.json').write_text(json.dumps({'bvid':bvid,'times':[f['second'] for f in frames],'source':'B站 videoshot 低清预览','high_energy':bool(scores),'index_source':index_source,'sampling':sampling},ensure_ascii=False,indent=2),encoding='utf8')
-        answer={'ok':True,'bvid':bvid,'status':'preview_only','times':[f['second'] for f in frames], 'high_energy':bool(scores),'index_source':index_source,'sampling':sampling,'image_source':'B站低清预览','notice':'预览图分辨率较低，不代表完整视频；画面没看清的内容不可编造'}
+            (folder/'metadata.json').write_text(json.dumps({'bvid':bvid,'times':[f['second'] for f in frames],'source':'B站 videoshot 低清预览','high_energy':bool(scores),'index_source':index_source,'sampling':sampling,'focus_window':focus},ensure_ascii=False,indent=2),encoding='utf8')
+        answer={'ok':True,'bvid':bvid,'status':'preview_only','times':[f['second'] for f in frames], 'high_energy':bool(scores),'index_source':index_source,'sampling':sampling,'focus_window':focus,'image_source':'B站低清预览','notice':'预览图分辨率较低，不代表完整视频；画面没看清的内容不可编造'}
         if folder:answer['debug_dir']=str(folder)
         if return_frames:
             # In-process only: never JSON-serialize image bytes or write API credentials.
@@ -395,7 +433,7 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
         answer.update(status='analyzed',description=description,model=model)
         cache.parent.mkdir(parents=True,exist_ok=True)
         temp=cache.with_suffix('.tmp')
-        temp.write_text(json.dumps({'model':model,'provider':provider,'frames_limit':max_frames,'sampler_version':_SAMPLER_VERSION,'times':answer['times'],'sampling':sampling,'description':description},ensure_ascii=False),encoding='utf8')
+        temp.write_text(json.dumps({'model':model,'provider':provider,'frames_limit':max_frames,'sampler_version':sampler_version,'times':answer['times'],'sampling':sampling,'focus_window':focus,'description':description},ensure_ascii=False),encoding='utf8')
         os.replace(temp,cache)
         return answer
     except Exception as e:
@@ -421,13 +459,13 @@ def record_vision_event(home, bvid, status, *, source='preview', ok=False, debug
         pass  # diagnostics must never prevent the read-only vision tool
 
 
-def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False):
+def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None):
     # The manual preview button and the actual vision tool share this receipt.
     source='manual_preview' if prefetch_only else ('video_agent_frames' if return_frames else 'vision_provider')
     result=_analyze_preview_core(bvid,home,enabled=enabled,debug=debug,
                                  max_frames=max_frames,provider=provider,
                                  model=model,return_frames=return_frames,
-                                 prefetch_only=prefetch_only)
+                                 prefetch_only=prefetch_only,focus_start=focus_start,focus_end=focus_end)
     record_vision_event(home,bvid,result.get('status') or ('preview_failed' if not result.get('ok') else 'preview_only'),
                         source=source,ok=result.get('ok'),debug_saved=bool(result.get('debug_dir')),
                         error=result.get('error',''),times=result.get('times'))

@@ -115,7 +115,7 @@ def _validate_vision_overlay_file(path, home, *, selftest=False):
     return path.resolve()
 
 
-def describe_with_dsh(bvid, home, env=None, runner=None):
+def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, focus_end=None):
     if not _BV.fullmatch(str(bvid)):
         return {'ok':False,'status':'invalid_bvid','error':'BV 号格式不正确'}
     home=Path(home).resolve()
@@ -142,18 +142,21 @@ def describe_with_dsh(bvid, home, env=None, runner=None):
         except (ValueError,UnicodeDecodeError):
             visual_instruction=''
         prompt_hash=hashlib.sha256(visual_instruction.encode('utf8')).hexdigest()[:16]
-        from preview_vision import _SAMPLER_VERSION
-        cached=home/'vision-cache'/f'{bvid}.json'
+        from preview_vision import _SAMPLER_VERSION, _FOCUS_SAMPLER_VERSION, _normalize_focus_window
+        focus=_normalize_focus_window(focus_start,focus_end)
+        sampler_version=_FOCUS_SAMPLER_VERSION if focus else _SAMPLER_VERSION
+        suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
+        cached=home/'vision-cache'/f'{bvid}{suffix}.json'
         if cached.is_file():
             try:
                 d=json.loads(cached.read_text(encoding='utf8'))
                 if (d.get('origin')=='dsh-independent-unverified' and d.get('model')==model
                     and d.get('provider')==provider and d.get('frames_limit')==frames
                     and d.get('prompt_hash')==prompt_hash
-                    and d.get('sampler_version')==_SAMPLER_VERSION
-                    and d.get('description')):
+                    and d.get('sampler_version')==sampler_version
+                    and d.get('focus_window')==focus and d.get('description')):
                     return {'ok':True,'status':'cached','bvid':bvid,'description':d['description'],
-                            'times':d.get('times',[]),'sampling':d.get('sampling'),'notice':'缓存的独立视觉模型观察，低清待核实'}
+                            'times':d.get('times',[]),'sampling':d.get('sampling'),'focus_window':focus,'notice':'缓存的独立视觉模型观察，低清待核实'}
             except (OSError,ValueError): pass
         from preview_vision import _claim_vision_quota, _vision_daily_limit
         daily_limit=_vision_daily_limit(env)
@@ -188,8 +191,9 @@ def describe_with_dsh(bvid, home, env=None, runner=None):
         child_env['BILI_VISION_PROOF_FILE']=str(proof)
         # Body never includes freeform user/video content, paths, or AI-authored commands.
         # 用户可修改识图重点，但末尾的图片证明/只读工具/输出格式要求不可覆盖。
+        focus_params=(f'，focus_start_seconds={focus["startSeconds"]}，focus_end_seconds={focus["endSeconds"]}' if focus else '')
         prompt=(f'你是独立的 B站低清预览图观察助手。只处理 BV号 {bvid}。'
-                f'先调用 mcp__bilivision__bili_preview_vision，参数 bvid={bvid}。'
+                f'先调用 mcp__bilivision__bili_preview_vision，参数 bvid={bvid}{focus_params}。'
                 '仅依据工具真正送达的 JPEG 画面，写出100字以内客观、具体的中文画面描述。'
                 '不要猜测视频完整剧情或角色身份；不能看清则在输出说明。'
                 +('\n【用户识图重点】'+visual_instruction+'\n【固定安全规则】' if visual_instruction else '')
@@ -212,7 +216,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None):
             observed=json.loads(proof.read_text(encoding='utf8'))
         except (OSError,ValueError):
             return {'ok':False,'status':'no_images_confirmed','error':'没有证据表明独立视觉会话真正取得图片工具结果'}
-        if observed.get('bvid')!=bvid or not observed.get('times'):
+        if observed.get('bvid')!=bvid or not observed.get('times') or observed.get('focus_window')!=focus:
             return {'ok':False,'status':'no_images_confirmed','error':'独立视觉图片回执不匹配'}
         output=(result.stdout or b'')[-16000:].decode('utf8',errors='replace')
         descs=_DESC.findall(output)
@@ -222,15 +226,15 @@ def describe_with_dsh(bvid, home, env=None, runner=None):
         if len(description)<8:
             return {'ok':False,'status':'empty_result','error':'视觉模型未提供有效画面描述'}
         record={'origin':'dsh-independent-unverified','model':model,'provider':provider,
-                'frames_limit':frames,'prompt_hash':prompt_hash,'sampler_version':_SAMPLER_VERSION,
-                'times':observed['times'][:3],'sampling':observed.get('sampling'),
+                'frames_limit':frames,'prompt_hash':prompt_hash,'sampler_version':sampler_version,
+                'times':observed['times'][:3],'sampling':observed.get('sampling'),'focus_window':focus,
                 'description':description}
         cached.parent.mkdir(parents=True,exist_ok=True)
         tmp=cached.with_suffix('.tmp')
         tmp.write_text(json.dumps(record,ensure_ascii=False),encoding='utf8')
         os.replace(tmp,cached)
         return {'ok':True,'status':'analyzed','bvid':bvid,'description':description,
-                'times':record['times'],'sampling':record.get('sampling'),
+                'times':record['times'],'sampling':record.get('sampling'),'focus_window':focus,
                 'notice':'独立 DSH 视觉模型根据低清图片自述观察，尚未独立核实'}
     except Exception as exc:
         return {'ok':False,'status':'vision_config_error','error':str(exc)[:180]}

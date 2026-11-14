@@ -113,3 +113,35 @@ def test_custom_prompt_uses_same_independent_model_and_invalidates_cache(tmp_pat
         env['BILI_VISION_PROMPT_B64']=base64.b64encode('只观察画面可读文字'.encode('utf8')).decode('ascii')
         result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=fake_runner)
         assert result['status']=='analyzed' and len(calls)==2
+
+
+def test_dsh_focused_window_receipt_is_bound_to_requested_window(tmp_path):
+    env=configured(tmp_path)
+    expected={'startSeconds':21.0,'endSeconds':51.0}
+    seen=[]
+    def fake_runner(args,**kwargs):
+        seen.append(args[-1])
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(
+            json.dumps({'bvid':'BV1234567890','times':[30.0,40.0],
+                        'focus_window':expected}),encoding='utf8')
+        return SimpleNamespace(returncode=0,
+            stdout='VISION_DESC: 第30秒和第40秒分别显示两幅不同的卡通画面。\n'.encode(),stderr=b'')
+    with patch('preview_vision._claim_vision_quota',return_value=True):
+        result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=fake_runner,focus_start=21,focus_end=51)
+        assert result['ok'] is True
+        assert result['focus_window']==expected
+        assert 'focus_start_seconds=21.0' in seen[0]
+        assert 'focus_end_seconds=51.0' in seen[0]
+        # Cached focused proof does not authorize an ordinary full-video observation.
+        ordinary=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=lambda *_a,**_kw: SimpleNamespace(returncode=2,stdout=b'',stderr=b''))
+        assert ordinary['ok'] is False
+    def wrong_focus(args,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(
+            json.dumps({'bvid':'BV1234567890','times':[30], 'focus_window':None}),encoding='utf8')
+        return SimpleNamespace(returncode=0,stdout='VISION_DESC: 不应接受的结果\n'.encode(),stderr=b'')
+    with patch('preview_vision._claim_vision_quota',return_value=True):
+        mismatched=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=wrong_focus,focus_start=30,focus_end=40)
+        assert not mismatched['ok'] and mismatched['status']=='no_images_confirmed'

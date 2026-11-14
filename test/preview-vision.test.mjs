@@ -14,7 +14,7 @@ test('预览功能默认关闭，视觉与 debug 独立配置',()=>{
 })
 test('MCP 只接受 bvid，必须先过白名单与总开关',()=>{
  const py=txt('vendor/bilibili-mcp/mcp_server.py')
- assert.match(py,/async def bili_preview_vision\(bvid: str\)/)
+ assert.match(py,/async def bili_preview_vision\(bvid: str, focus_start_seconds: float/)
  assert.match(py,/_guard\("bili_preview_vision"\)/)
  assert.doesNotMatch(py,/async def bili_preview_vision\(bvid: str, url/)
 })
