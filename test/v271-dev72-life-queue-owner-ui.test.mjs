@@ -72,7 +72,8 @@ test('new install allows DM friend-follow proposal but still requires Life and e
  const code=file('index.js'),ui=file('lib/management-console.html')
  assert.match(code,/dmFollowAutonomyEnabled: z\.boolean\(\)\.default\(true\)/)
  assert.match(code,/cfg\.dmFollowAutonomyEnabled===true&&cfg\.agentFollowEnabled===true&&cfg\.masterEnabled===true/)
- assert.match(code,/kind:'dm_follow'/)
+ assert.match(code,/wantUnfollow\?'dm_unfollow':'dm_follow'/)
+ assert.match(code,/kind:intentKind/)
  assert.match(ui,/id="bili-dm-follow"[^>]*>允许 Life/)
 })
 test('settings search uses existing control, owner editor has a single structured body, timeline no longer adds continuity panel',()=>{

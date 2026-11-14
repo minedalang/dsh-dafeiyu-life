@@ -65,7 +65,7 @@ test('DM follow seal rejects unverified text and never enables unknown action ty
 })
 test('no second model vote may be added in specialist followup or friend message drafting',()=>{
  const code=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(code,/adoptSocialDecisionQueued\(\{kind:'dm_follow'/)
+ assert.match(code,/adoptSocialDecisionQueued\(\{kind:intentKind/)
  assert.doesNotMatch(code,/lifeWillingness\?\.decide\(\{trigger:'dm-relationship'/)
  assert.match(code,/Life 已经自主选择联系，不要再次对同一联系意愿投票/)
  assert.match(code,/这里不是第二次是否愿意的投票，只负责生成真实、有依据的表达/)

@@ -90,7 +90,7 @@ flowchart TB
   planner --> source
   ownerFollowup["Life talk_to_owner → 现有主 Session followup；成功只等于入队，不能当成平台发送回执"]
   planner -.->|独立同意才可选择，允许休息| ownerFollowup
-  ownerDmSilence["主人私信沉默续聊｜原账号/真实新来信确认 + 共用额度 + 逐气泡回执"]
+  ownerDmSilence["主人私信自然气泡｜真实入站 + 单轮完整草稿/分段 + 逐气泡回执；不受普通自动私信每日额度限制"]
   ownerContactQuota["主人联系唯一额度池｜主 Session 与主人 B站私信共用本地尝试账本"]
   ownerContactQuota -.-> ownerFollowup
   ownerContactQuota -.-> ownerDmSilence
@@ -133,9 +133,9 @@ flowchart TB
 %% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
 
 %% dev.38 真实平台关系读回后才入 Life Episode，原可衰减记忆可按动作类别描述。
-dmFollowReceipt["DM 联系人关注：模型提案 → 待续意愿 → 真实平台关系读回"]
+dmFollowReceipt["DM 联系人关注或取关：单次模型意愿 → 一次性授权 → 真实平台关系读回"]
 dmFollowReceipt -.->|只有成功回执| verified
-%% @code dmFollowReceipt | index.js | receiptId:'bili-relation-follow:'
+%% @code dmFollowReceipt | index.js | receiptId:'bili-relation-'+
 
 %% dev.42: host followup != independently confirmed platform delivery.
 %% @code ownerFollowup | lib/main-session-bridge.mjs | const initiateOwnerChat=

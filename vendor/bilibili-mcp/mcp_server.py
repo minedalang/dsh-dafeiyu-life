@@ -2345,10 +2345,8 @@ async def bili_follow_dm_contact(uid: int, reason: str) -> str:
         return json.dumps({'ok':False,'error':str(exc)[:160]},ensure_ascii=False)
 
 
-@tool()
-async def bili_unfollow_creator(uid: int, reason: str) -> str:
-    # Unfollow only self-followed creator after 7 days
-    if (error:=_guard('bili_unfollow_creator')):return error
+async def _unfollow_creator_provenance_checked(uid: int, reason: str) -> str:
+    # Shared executor for both Life routes. Provenance and 7-day rule remain.
     try:
         if os.environ.get('BILI_AGENT_FOLLOW_ENABLED')!='1':raise ValueError('主人未开启 B站自主关注权限')
         target=int(uid)
@@ -2377,6 +2375,23 @@ async def bili_unfollow_creator(uid: int, reason: str) -> str:
         return json.dumps({'ok':True,'action':'unfollow','uid':target},ensure_ascii=False)
     except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:170]},ensure_ascii=False)
 
+
+@tool()
+async def bili_unfollow_creator(uid: int, reason: str) -> str:
+    """Video-agent unfollow; the existing video Life bridge still applies."""
+    if (error:=_guard('bili_unfollow_creator')):return error
+    return await _unfollow_creator_provenance_checked(uid, reason)
+
+
+@tool()
+async def bili_unfollow_dm_contact(uid: int, reason: str) -> str:
+    """Verified DM Life decision, never callable from the video-agent route."""
+    if (error := _guard('bili_unfollow_dm_contact')): return error
+    if (os.environ.get('BILI_JS_MCP_ADAPTER') != '1' or
+            os.environ.get('BILI_DM_FOLLOW_ENABLED') != '1' or
+            os.environ.get('BILI_AGENT_FOLLOW_ENABLED') != '1'):
+        return json.dumps({'ok':False,'error':'私信联系人自主取关没有授权'},ensure_ascii=False)
+    return await _unfollow_creator_provenance_checked(uid, reason)
 
 @tool()
 async def bili_video_like(bvid: str, reason: str = '') -> str:

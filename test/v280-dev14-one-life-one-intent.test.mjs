@@ -6,7 +6,7 @@ import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createLifeActionRecords} from '../lib/life-action-records.mjs'
 import {createLifeWillingness} from '../lib/life-willingness.mjs'
-import {dmContactFollowCandidates,dmFollowAudienceAllowed} from '../lib/life-subagent-continuity.mjs'
+import {dmContactFollowCandidates} from '../lib/life-subagent-continuity.mjs'
 import {createDmAutoReply} from '../lib/dm-autoreply.mjs'
 import {createInteractionBatcher} from '../lib/interaction-batch.mjs'
 import {verifyLifeOutbound,lifeFactFromReceipt} from '../lib/verified-life-facts.mjs'
@@ -56,7 +56,7 @@ test('willingness proof is the only permission source; journal is an audit proje
 })
 test('stranger incoming DM offers follow consideration without friend-count formula',()=>{
  const data={enabled:true,uid:'12345',role:'stranger',history:[],incomingText:'互关！',verifiedIncoming:true,now:T}
- assert.equal(dmContactFollowCandidates(data).length,1)
+ assert.equal(dmContactFollowCandidates(data).length,2)
  assert.deepEqual(dmContactFollowCandidates({...data,verifiedIncoming:false}),[])
  assert.deepEqual(dmContactFollowCandidates({...data,optedOut:true}),[])
  assert.deepEqual(dmContactFollowCandidates({...data,enabled:false}),[])
@@ -127,15 +127,14 @@ test('one DM model call can select silence and an independent real-source follow
  }finally{batcher.stop()}
 })
 
-test('historical follow permissions remain friend-only until owner explicitly broadens target scope',()=>{
- assert.equal(dmFollowAudienceAllowed('friend','trusted'),true)
- assert.equal(dmFollowAudienceAllowed('stranger','trusted'),false)
- assert.equal(dmFollowAudienceAllowed('stranger','verified-incoming'),true)
- assert.equal(dmFollowAudienceAllowed('owner','verified-incoming'),false)
- assert.equal(dmFollowAudienceAllowed('blocked','verified-incoming'),false)
+test('DM contacts share one action permission; model may select follow or unfollow',()=>{
+ const menu=dmContactFollowCandidates({enabled:true,uid:'12345',role:'stranger',verifiedIncoming:true,incomingText:'今天好像不太合得来了',history:[]})
+ assert.deepEqual(menu.map(x=>x.action),['follow_dm_contact','unfollow_dm_contact'])
+ assert.equal(dmContactFollowCandidates({enabled:false,uid:'12345',role:'friend',verifiedIncoming:true,incomingText:'你好',history:[]}).length,0)
+ assert.equal(dmContactFollowCandidates({enabled:true,uid:'12345',role:'owner',verifiedIncoming:true,incomingText:'你好',history:[]}).length,0)
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(html,/id="bili-dm-follow-audience"/)
- assert.match(host,/dmFollowAudienceAllowed\(socialPolicyGate\.actor\(uid\)\.role,cfg\.dmFollowAudience\)/)
- assert.match(host,/dmFollowAudience: z\.string\(\)\.default\('trusted'\)/)
+ assert.doesNotMatch(html,/bili-dm-follow-audience/)
+ assert.doesNotMatch(host,/dmFollowAudience|dmFollowAudienceAllowed/)
+ assert.match(host,/dmFollowAutonomyEnabled: z\.boolean\(\)\.default\(true\)/)
 })

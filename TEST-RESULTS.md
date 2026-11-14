@@ -1,3 +1,15 @@
+# 2.8.0-dev.17 · 最新用户 ZIP 基线补丁验收（2026-11-14）
+
+- **唯一来源**：用户上传 `dsh-bili-scroll-plus2.zip`（SHA-256 `63903645045bf7f5dfe09c77b10093422b3af443b374e5de6360a5ba896186b8`）。不是上次交付的 dev.17 补丁基线；ZIP 内若附带旧的 `dafeiyu-2.8.0-dev17-final-audit-fixes.patch`，**不要再次应用**。
+- **Python 完整回归**：`python -m unittest discover -s test -p "test*.py"`，**273 项执行，272 通过、1 跳过、0 失败**（41.6 秒）。
+- **Node.js 完整回归**：`node --test --test-concurrency=2 test/*.test.mjs`，**2,627/2,627 通过，0 失败、0 跳过**。第一次 2,626/2,627（旧多气泡提示词固定措辞断言），更新为等价语义与结构校验后，最终完整重跑全部通过。
+- **已修复**：删除私信自主关注对象范围旧逻辑、加入受平台来源与七天规则限制的私信自主取关；合格私信来信可激活快通道；README 增加 DSHMarket 收录；多气泡统一三阶段引导；主人发送不消费普通私信每日额度；互动额度卡片方案身份持久保存且手工更改转自定义。
+- **定向测试**：最新新增 `test/v280-dev17-uploaded-baseline-quota-burst.test.mjs` 4/4 通过；私信及现有预设等 42/42 相关回归通过；旧自然续想提示合同 5/5 通过。
+- `npm run check:life-architecture`、`npm run check:video-tool-contract`、`node selfcheck.mjs` 均通过。Linux 无真实 Windows DSH、真实 B站外发、旧用户长周期迁移或 72 小时验收；尚未正式发布 npm。
+- **Git Patch 应用验收**：参见随补丁的《应用说明》；只以用户该 ZIP 原文件作为 `git apply --check` 基线，未对用户 Windows 本地工作目录作实际写入。
+
+---
+
 # 2.8.0-dev.16 本轮组合写入／私信并发／隐私与文档对齐审计（2026-11-14）
 
 **基线**：用户上传完整源码＋上一轮已验收的私信按段经历提炼交付；本轮 Patch 应用于此前交付版，不叠加任何实验增量。未进行真实 Windows DSH 或 B站实机写入。

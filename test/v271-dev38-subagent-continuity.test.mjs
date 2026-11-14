@@ -40,9 +40,9 @@ test('dev38 视频 Episode 只获得公开视频相关匿名步骤，不泄露�
 })
 
 test('2.8.0 私信关注候选由真实消息和独立授权决定，不以好友身份/固定对话次数替代意愿',()=>{
- assert.equal(candidate().length,1)
+ assert.deepEqual(candidate().map(x=>x.action),['follow_dm_contact','unfollow_dm_contact'])
  assert.equal(dmContactFollowCandidates({enabled:true,uid:'12345',role:'stranger',history:[],
-   incomingText:'互关！',verifiedIncoming:true,now:t}).length,1)
+   incomingText:'互关！',verifiedIncoming:true,now:t}).length,2)
  for(const diff of [
    {enabled:false},{uid:'12345<script>'},{uid:'9007199254740993'},
    {optedOut:true},{verifiedIncoming:false},{incomingText:''},{role:'owner'}
@@ -53,6 +53,7 @@ test('2.8.0 私信关注候选由真实消息和独立授权决定，不以好�
  assert.equal(validateSubagentNextAction({action:'follow_dm_contact',reason:'我愿意根据真实交流考虑关注'},[]),null)
  assert.equal(validateSubagentNextAction({action:'follow_dm_contact',reason:'好'},candidate()),null)
  assert.equal(validateSubagentNextAction({action:'follow_dm_contact',reason:'有自己的选择',uid:'999'},candidate()),null)
+ assert.deepEqual(validateSubagentNextAction({action:'unfollow_dm_contact',reason:'双方的共同兴趣已经有明显变化'},candidate()),{action:'unfollow_dm_contact',reason:'双方的共同兴趣已经有明显变化'})
 })
 
 test('dev38 私信模型自己决定要不要提出关注；不存在候选时提议无效',async()=>{

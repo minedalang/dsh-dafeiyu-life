@@ -239,9 +239,9 @@ flowchart TB
 %% dev.38：专业 Agent 局部自主性——模型可以自主提议，但原职责/权限分开。
 subgraph subagentLoop["dev.38 专业 Agent 续行｜第一阶段，非全 Agent 通用循环"]
   subagentContext["Subagent Handoff｜同账号、同来源、脱敏 Episode 摘要"]
-  dmChoice["私信 Agent｜本轮 reply/skip/defer + 可选 follow_dm_contact"]
+  dmChoice["私信 Agent｜完整回复草稿→自然气泡分段；可选关注/取关联系人"]
   dmPending["原私信状态 pendingLifeAction｜75s 后跨 poll 重新审批"]
-  dmFollow["已核验长期好友 UID｜独立关注开关 + Life 二次意愿 + B站关系读回"]
+  dmFollow["已核验真实来信 UID｜单次意愿凭据 + 关注/取关原平台回执；取关须本插件关注满七天"]
 end
 universalEpisode -.->|不授予权限| subagentContext
 subagentContext -.-> dmChoice

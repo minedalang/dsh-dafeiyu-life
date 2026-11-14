@@ -1,3 +1,7 @@
+## 2.8.0-dev.17 用户最新源码基线修订
+
+[多气泡自然分段、主人额度排除、持久互动节奏卡片和 ZIP 基线补丁](2.8.0-dev17-uploaded-zip-quota-burst.md)。仍需真实 Windows/B站验收。
+
 ## 2.8.0-dev.17 当前增量（基于 dev.16）
 
 [网络退避恢复、主人私信 10 秒快通道接线、短反馈上下文锚定与 Windows 测试修复](2.8.0-dev17-network-backoff-fast-dm-recovery.md)。这是源码与日志驱动的离线修复；真实 Windows／B站连接恢复验收仍需完成。

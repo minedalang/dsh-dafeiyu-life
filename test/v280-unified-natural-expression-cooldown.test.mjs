@@ -43,7 +43,7 @@ test('minority lottery may skip without spending cooldown; unsafe state fails cl
 
 test('shared prompt has thought -> semantic rhythm -> structured bubbles, while allowing a short reply',()=>{
   const p=messageBurstInstruction({context:'三个渠道',requireArray:true})
-  for (const part of ['①先决定','②再看','③最后','优先写成 2–3','简短回答','不得按标点或固定长度','不输出步骤或分析过程']) assert.ok(p.includes(part),part)
+  for (const part of ['①先理解','写出完整','②再从草稿','③最后','优先尝试拆成 2–3','简短回答','不得按标点或固定长度','不要输出推理或步骤','必须输出 messages 数组']) assert.ok(p.includes(part),part)
 })
 
 function fakeAgent(){
