@@ -145,10 +145,10 @@ test('公开成功评论回执支持日期筛选，且不能从日期查询跳�
  const dir=mkdtempSync(join(tmpdir(),'dsh-dev25-comments-'))
  try{
   mkdirSync(join(dir,'seen'))
-  writeFileSync(join(dir,'seen','2026-11.md'),`# 成功评论\n| ${BV} | 322275838160 | 0 | 2026-11-06 12:41:35 | 昨天谈到了雨后的天空。 |\n| ${BV} | 322275838161 | 0 | 2026-11-03 08:00:00 | 很久以前也谈到了雨后的天空。 |\n`)
+  writeFileSync(join(dir,'seen','2026-11.md'),`# 成功评论\n| ${BV} | 322275838160 | 0 | 2026-11-06T12:41:35-08:00 | 昨天谈到了雨后的天空。 |\n| ${BV} | 322275838161 | 0 | 2026-11-03 08:00:00 | 很久以前也谈到了雨后的天空。 |\n`)
   const result=searchVerifiedPublicComments(dir,{query:{intent:'conversation_recall',queries:['过去说过的话'],time:{relative:'yesterday'}},beforeAt:NOW})
   assert.equal(result.ok,true);assert.deepEqual(result.items.map(x=>x.id),[`public-comment:${BV}:322275838160`])
-  const cut=searchVerifiedPublicComments(dir,{query:{intent:'conversation_recall',queries:['过去说过的话'],time:{relative:'yesterday'}},oldestAt:Date.parse('2026-11-06T18:00:00Z'),beforeAt:NOW})
+  const cut=searchVerifiedPublicComments(dir,{query:{intent:'conversation_recall',queries:['过去说过的话'],time:{relative:'yesterday'}},oldestAt:Date.parse('2026-11-06T22:00:00Z'),beforeAt:NOW})
   assert.equal(cut.items.length,0)
   assert.equal(searchVerifiedPublicComments(dir,{query:{queries:['a'],time:{relative:'tomorrow'}},beforeAt:NOW}).ok,false)
  }finally{rmSync(dir,{recursive:true,force:true})}

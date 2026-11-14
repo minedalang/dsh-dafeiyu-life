@@ -5343,13 +5343,20 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     logger: {warn: (msg) => log('评论互动警告：'+msg),error:(msg)=>log('评论互动错误：'+msg)},
   })
   const interactionScheduler = createInteractionScheduler({
-    dm: {poll:async()=>{
-      const result=await dmAutoreply.poll()
-      if(!result?.error&&!result?.skipped){
-        try{await ownerDmAgent.considerSilence()}catch(e){log('主人私信沉默续聊检查失败：'+String(e?.message||e).slice(0,100))}
-      }
-      return result
-    }}, comments: commentInteract, readBudget:biliReadBudget, dmCursor:dmPollCursor,
+    // The fast lane must use the same authenticated DM engine and lock/ledger,
+    // but target one recently confirmed conversation instead of listing sessions.
+    dm: {
+      poll:async({fastUid=''}={})=>{
+        const result=await dmAutoreply.poll(fastUid?{fastUid}:{})
+        // Silence reconsideration belongs to the ordinary inbox sweep only.
+        if(!fastUid&&!result?.error&&!result?.skipped){
+          try{await ownerDmAgent.considerSilence()}catch(e){log('主人私信沉默续聊检查失败：'+String(e?.message||e).slice(0,100))}
+        }
+        return result
+      },
+      nextFastUid:()=>dmAutoreply.nextFastUid(),
+      status:()=>dmAutoreply.status(),
+    }, comments: commentInteract, readBudget:biliReadBudget, dmCursor:dmPollCursor,
     dataDir:accountRuntimeDir,getAccountTag:trustedLifeAccountTag,
     getConfig: () => {refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     logger: {error:(msg)=>log(msg)},
@@ -8540,6 +8547,19 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(body?.confirm!==true)return sendJson(res,400,{ok:false,error:'请明确确认仅清除 Life 模型错误退避'})
       const result=autonomousPlanner.clearModelBackoff({expectedRetryAt:body.expectedRetryAt})
       if(result?.ok===true)log('主人手动清除 Life 模型错误退避；未调用模型、未清除其他冷却与权限。')
+      return sendJson(res,result?.ok===true?200:409,result)
+    }
+    if (req.method === 'POST' && path === '/api/bili-duty/interaction-backoff/clear-network') {
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))
+        return sendJson(res,403,{ok:false,error:'仅允许同源管理中心恢复后台网络监听'})
+      if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+        return sendJson(res,403,{ok:false,error:'拒绝跨站操作'})
+      const body=await readBody(req)
+      if(body?.confirm!==true||!body.expected||typeof body.expected!=='object'||Array.isArray(body.expected))
+        return sendJson(res,400,{ok:false,error:'请明确确认并提供当前网络退避时间戳'})
+      const result=interactionScheduler.clearNetworkBackoff({expected:body.expected})
+      if(result?.ok===true)log('主人手动恢复后台网络监听；仅清除 DNS/连接失败退避：'+result.cleared.join(','))
       return sendJson(res,result?.ok===true?200:409,result)
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/system-health') {

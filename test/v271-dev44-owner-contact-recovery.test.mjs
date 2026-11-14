@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,rmSync,readFileSync} from 'node:fs'
+import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {checkOwnerContact,ownerContactPolicy} from '../lib/owner-contact-policy.mjs'
@@ -37,6 +37,61 @@ test('persistent network backoff survives restart and is isolated by account and
  scope='fedcba9876543210';assert.equal(make().check('dm').allowed,true)
  scope=tag;a.settle('dm','');assert.equal(make().check('dm').allowed,true)
 }))
+test('ordinary network backoff is capped at five-minute recovery probes and manual recovery clears only CAS-matched network lanes',async()=>withDir(async dir=>{
+ let now=date(12),scope=tag
+ const backoff=createNetworkPollBackoff({dataDir:dir,getAccountTag:()=>scope,now:()=>now})
+ for(let i=0;i<5;i++)backoff.settle('replies','getaddrinfo failed')
+ const status=backoff.status()
+ assert.equal(status.replies.streak,5)
+ assert.equal(status.replies.remainingMs,5*60_000)
+ backoff.settle('mentions','ENOTFOUND')
+ backoff.settle('dm','HTTP 200 code=-509')
+ const before=backoff.status()
+ const result=backoff.clearNetwork({replies:before.replies.nextAt,mentions:before.mentions.nextAt,dm:before.dm.nextAt})
+ assert.equal(result.ok,true)
+ assert.deepEqual(result.cleared,['replies','mentions'])
+ assert.equal(backoff.check('replies').allowed,true)
+ assert.equal(backoff.check('mentions').allowed,true)
+ assert.equal(backoff.check('dm').category,'rate-limit')
+ assert.equal(backoff.check('dm').allowed,false)
+ assert.equal(backoff.clearNetwork({dm:before.dm.nextAt}).ok,false)
+}))
+test('legacy 40-minute network backoff gets one immediate recovery probe while rate-limit remains intact',async()=>withDir(async dir=>{
+ let now=date(12)
+ writeFileSync(join(dir,'interaction-network-backoff.json'),JSON.stringify({version:1,scope:tag,lanes:{
+  replies:{category:'network',streak:5,nextAt:now+40*60_000},
+  mentions:{category:'network',streak:5,nextAt:now+40*60_000},
+  dm:{category:'rate-limit',streak:5,nextAt:now+180*60_000},
+ }}))
+ const backoff=createNetworkPollBackoff({dataDir:dir,getAccountTag:()=>tag,now:()=>now})
+ assert.equal(backoff.check('replies').allowed,true)
+ assert.equal(backoff.check('mentions').allowed,true)
+ assert.equal(backoff.check('dm').allowed,false)
+ assert.equal(backoff.check('dm').nextAt,now+180*60_000)
+ const migrated=JSON.parse(readFileSync(join(dir,'interaction-network-backoff.json'),'utf8'))
+ assert.equal(migrated.version,2)
+ assert.equal(migrated.lanes.replies.nextAt,now)
+ assert.equal(migrated.lanes.mentions.nextAt,now)
+ assert.equal(migrated.lanes.dm.category,'rate-limit')
+ backoff.settle('replies','ENOTFOUND')
+ assert.equal(backoff.check('replies').remainingMs,5*60_000)
+}))
+
+test('a skipped scheduler poll does not clear a stored network failure',async()=>withDir(async dir=>{
+ let now=date(11),calls=0
+ const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:1,commentWatchReplies:false,commentAtEnabled:false}
+ const backoff=createNetworkPollBackoff({dataDir:dir,getAccountTag:()=>tag,now:()=>now})
+ backoff.settle('dm','ENOTFOUND')
+ now+=2*60_000
+ const scheduler=createInteractionScheduler({dataDir:dir,getAccountTag:()=>tag,now:()=>now,getConfig:()=>cfg,
+  dm:{poll:async()=>{calls++;return {skipped:'busy'}}},comments:{poll:async()=>({sent:0})}})
+ try{
+  scheduler.start();await new Promise(resolve=>setTimeout(resolve,8));await scheduler.tick()
+  assert.equal(calls,1)
+  assert.equal(backoff.check('dm').category,'network')
+ }finally{scheduler.stop()}
+}))
+
 test('interaction scheduler suppresses network requests in the persisted cooldown window',async()=>withDir(async dir=>{
  let now=date(11),calls=0
  const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:1,commentWatchReplies:false,commentAtEnabled:false}

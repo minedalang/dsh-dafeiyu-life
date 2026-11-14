@@ -8,7 +8,7 @@
  * anchored because its Python MCP exposes the actual video Agent tools.
  */
 import {readFileSync,existsSync,writeFileSync} from 'node:fs'
-import {resolve,join,relative,sep} from 'node:path'
+import {resolve,join,relative,isAbsolute} from 'node:path'
 import {fileURLToPath} from 'node:url'
 
 const diagrams=['life-system-current.mmd','life-candidates-current.mmd','life-receipt-memory-current.mmd','life-universal-episodes-current.mmd']
@@ -20,15 +20,23 @@ const previewDoc='docs/architecture/life-system-current-view.md'
 
 /** A GitHub-renderable preview derived from the four canonical .mmd files. */
 export function renderLifeArchitectureView(root,{overrides={}}={}){
-  const read=name=>Object.hasOwn(overrides,name)?overrides[name]:readFileSync(join(root,name),'utf8')
+  const overrideMap=new Map(Object.entries(overrides).map(([name,value])=>[String(name).replace(/\\/g,'/'),value]))
+  const read=name=>overrideMap.has(String(name).replace(/\\/g,'/'))
+    ?overrideMap.get(String(name).replace(/\\/g,'/'))
+    :readFileSync(join(root,name),'utf8')
   return '# 大肥鱼 Life 源码全景（自动生成）\n\n'+
     '> 不要直接编辑此页；修改 `diagrams/life-system-current.mmd` / `diagrams/life-candidates-current.mmd` / `diagrams/life-receipt-memory-current.mmd` / `diagrams/life-universal-episodes-current.mmd` 后运行 `npm run write:life-architecture-view`。架构状态及未实现部分见 [源码审计](./life-system-current.md)。\n\n'+
     diagrams.map((name,i)=>'## '+(['一、系统全景','二、八类候选细目','三、可信回执与记忆闭环','四、统一 Life Episode 因果持续性'][i])+'\n\n```mermaid\n'+read(join(diagramDir,name)).trimEnd()+'\n```\n').join('\n')
 }
 
 export function checkLifeArchitecture(root,{overrides={}}={}){
-  const errors=[],observed=new Set()
-  const read=(name)=>Object.hasOwn(overrides,name)?overrides[name]:readFileSync(join(root,name),'utf8')
+  const errors=[],observed=new Set(),rootPath=resolve(root)
+  // Diagram paths are logical POSIX paths. Normalize override keys so tests
+  // using those paths behave identically when path.join() emits '\\' on Windows.
+  const overrideMap=new Map(Object.entries(overrides).map(([name,value])=>[String(name).replace(/\\/g,'/'),value]))
+  const read=(name)=>overrideMap.has(String(name).replace(/\\/g,'/'))
+    ?overrideMap.get(String(name).replace(/\\/g,'/'))
+    :readFileSync(join(rootPath,name),'utf8')
   for(const name of diagrams){
     const rel=join(diagramDir,name)
     let diagram
@@ -37,9 +45,10 @@ export function checkLifeArchitecture(root,{overrides={}}={}){
     const anchors=[...diagram.matchAll(anchor)]
     if(anchors.length<7)errors.push(`${rel}: @code 锚点太少，无法验证主要代码归属`)
     for(const [,node,pathRaw,markerRaw] of anchors){
-      const path=pathRaw.trim(),marker=markerRaw.trim()
-      const full=resolve(root,path),back=relative(root,full)
-      if(!back||back.startsWith('..'+sep)||back==='..'||path.startsWith('/')||!path.startsWith('lib/')&&!path.startsWith('index.')&&path!=='vendor/bilibili-mcp/mcp_server.py' ){
+      const path=pathRaw.trim().replace(/\\/g,'/'),marker=markerRaw.trim()
+      const full=resolve(rootPath,path),back=relative(rootPath,full).replace(/\\/g,'/')
+      const allowedPath=path.startsWith('lib/')||path.startsWith('index.')||path==='vendor/bilibili-mcp/mcp_server.py'
+      if(!back||back==='..'||back.startsWith('../')||back!==path||isAbsolute(pathRaw)||!allowedPath){
         errors.push(`${rel}: @code ${node} 不允许访问项目外文件: ${path}`);continue
       }
       if(!new RegExp('(?:^|\\n)\\s*'+node+'\\[','m').test(diagram)){

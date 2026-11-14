@@ -41,3 +41,12 @@ test('the generated GitHub Mermaid preview must not drift from canonical diagram
   assert.equal(result.ok,false)
   assert.ok(result.errors.some(x=>x.includes('可视化预览没有与当前 .mmd 同步')))
 })
+
+
+test('Windows-style diagram override keys are normalized before architecture checks',()=>{
+  const winName=name.replaceAll('/','\\')
+  const swapped=source.replace('export function validateOfferedLifeAction','export function nonexistent_architecture_symbol')
+  const result=checkLifeArchitecture(root,{overrides:{[winName]:swapped}})
+  assert.equal(result.ok,false)
+  assert.ok(result.errors.some(x=>x.includes('menuGuard')&&x.includes('源码标记失效')))
+})
