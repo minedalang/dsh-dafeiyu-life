@@ -1676,7 +1676,26 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell 启动的 Ollama 进程生效，不修改 Windows 用户级或系统级环境变量。若 Ollama 已在后台运行，请先退出以免端口占用。<a href="https://docs.ollama.com/faq#how-do-i-use-ollama-behind-a-proxy" target="_blank" rel="noopener noreferrer">查看 Ollama 官方网络代理说明</a>。</p></div>
 <div class="fields"><div><label for="local-vision-model">可选本地模型</label><select id="local-vision-model"><option value="qwen3.5-4b">Qwen3.5 4B</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B</option></select></div></div>
 <p id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</p><progress id="local-vision-progress" max="100" value="0" hidden></progress>
-<div class="toolbar"><button type="button" id="local-vision-install">一键下载并验证</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-select">启用选中模型</button><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div>
+<div class="setting-note" id="local-vision-probe-panel" aria-label="本地视觉识图人工验收" style="margin-top:12px">
+  <strong>🐟 图片识别验收 · 大肥鱼真实图片与模型回答</strong>
+  <p class="muted">测试使用大肥鱼的角色原图。左侧就是实际发送给 Ollama 的图片，右侧展示模型的完整回答。程序不再根据颜色或关键词自动评分，<strong>由你判断是否真正理解了图片</strong>。验证不会向 B站发送任何内容。</p>
+  <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+    <figure style="margin:0;flex:0 0 164px;text-align:center">
+      <img id="local-vision-probe-image" alt="本次自检使用的大肥鱼角色图片" width="154" height="186" style="width:154px;height:186px;object-fit:contain;background:#fff;border:1px solid #c8ced7;border-radius:8px" loading="lazy"/>
+      <figcaption class="muted">实际测试图：大肥鱼</figcaption>
+    </figure>
+    <div style="flex:1 1 260px;min-width:0">
+      <p id="local-vision-probe-result" class="muted" role="status" aria-live="polite">尚未识图</p>
+      <strong>Ollama 最终回答（完整显示，不截断）</strong>
+      <pre id="local-vision-probe-answer" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;margin-top:4px" aria-label="模型的完整识图回答">尚无结果</pre>
+      <p id="local-vision-probe-error" class="muted" style="overflow-wrap:anywhere"></p>
+      <div class="toolbar"><button type="button" id="local-vision-approve">认可本次识图</button><button type="button" id="local-vision-reject">结果不满意</button></div>
+      <p class="muted">人工认可只证明你接受本次图片识别结果，不代表模型能正确理解所有视频。Ollama 请求失败或没有最终文字时无法认可，请重新验证。</p>
+    </div>
+  </div>
+</div>
+<div class="toolbar"><button type="button" id="local-vision-install">一键下载并识图</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-verify">重新识别大肥鱼图片</button><button type="button" id="local-vision-select">启用选中模型</button><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div>
+<p class="muted">模型下载完成后可直接识别图片，<strong>识别完成并不等于通过</strong>；需要查看回答并主动点击「认可本次识图」后才能启用。无需重新下载也可重新识图。运行时错误请核对 <code>ollama --version</code>。</p>
 <p class="muted">下载时展示的是 Ollama 当前文件层的进度（并非整个模型的总进度），切换到下一文件时百分比会重新计算；取消下载可能保留已缓存的分片。删除会移除 Ollama 全局模型，可能影响其他应用，需再次确认。网络问题请先检查代理是否被 Ollama 进程继承，再重试。真实 GPU/视频表现需本机验收。</p>
 </div>
 </div></details>

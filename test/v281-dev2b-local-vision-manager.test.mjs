@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createLocalVisionModelManager,getLocalVisionModel,LOCAL_VISION_MODELS} from '../lib/local-vision-model-manager.mjs'
+import {createLocalVisionModelManager,getLocalVisionModel,LOCAL_VISION_MODELS,getLocalVisionTestImage} from '../lib/local-vision-model-manager.mjs'
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}})
 const ndjson=(rows)=>new Response(rows.map(x=>JSON.stringify(x)+'\n').join(''),{status:200})
 
@@ -18,8 +18,11 @@ test('只接受两种固定模型 ID，所有请求只访问 127.0.0.1 Ollama',a
   assert.throws(()=>manager.start('user/evil'),'不支持')
   assert.equal((await manager.list()).models[0].installed,true)
   const result=await manager.start('qwen3.5-4b')
-  assert.equal(result.verified,true)
-  assert.equal(manager.progress().phase,'ready')
+  assert.equal(result.verified,false)
+  assert.equal(result.awaitingReview,true)
+  assert.equal(manager.progress().phase,'idle')
+  const approved=await manager.review('qwen3.5-4b',{reviewId:result.reviewId,accepted:true})
+  assert.equal(approved.verified,true)
   assert.ok(urls.every(([url])=>url.startsWith('http://127.0.0.1:11434/api/')))
   assert.ok(urls.some(([url,method])=>url.endsWith('/api/chat')&&method==='POST'))
 })
@@ -63,14 +66,21 @@ test('没有 Ollama 服务时明确标记不可用，不回退成云端视觉',a
   assert.match(s.error,/Ollama/)
 })
 
-test('图片自检必须识别指定颜色，不能拿随便一段模型输出冒充通过',async()=>{
+test('不做颜色关键词判定；图片有最终回答时必须等待用户人工认可',async()=>{
   const manager=createLocalVisionModelManager({logger:{warn:()=>{}},fetchImpl:async url=>{
     if(url.endsWith('/api/pull'))return ndjson([{status:'success'}])
-    if(url.endsWith('/api/chat'))return json({message:{content:'我无法判断图片'}})
+    if(url.endsWith('/api/chat'))return json({message:{content:'我无法判断这是什么图片'}})
     return json({models:[{name:'qwen3.5:4b'}]})
   }})
-  await assert.rejects(manager.start('qwen3.5-4b'),/颜色自检未通过/)
-  assert.equal(manager.progress().phase,'error')
+  const result=await manager.start('qwen3.5-4b')
+  assert.equal(result.awaitingReview,true)
+  const state=(await manager.list()).models[0]
+  assert.equal(state.verified,false)
+  assert.equal(state.verification.answer,'我无法判断这是什么图片')
+  assert.equal(state.verification.status,'awaiting_review')
+  const rejected=await manager.review('qwen3.5-4b',{reviewId:result.reviewId,accepted:false})
+  assert.equal(rejected.verified,false)
+  assert.equal((await manager.list()).models[0].verification.status,'rejected')
 })
 
 test('下载进行中时禁止另开自检，以免覆盖安装状态',async()=>{
@@ -89,7 +99,8 @@ test('生产调用与通用设置不能绕过本地模式的检查',async()=>{
   const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   assert.match(source,/visionPlan\.attempt&&\['independent_dsh','independent_local'\]\.includes/)
   assert.match(source,/body\.visionLocalModel!==cfg\.visionLocalModel/)
-  assert.match(source,/await localVisionModels\.verifyId\(id\)/)
+  assert.match(source,/await localVisionModels\.review\(id,/ )
+  assert.match(source,/models\.find\(x=>x\.id===id\)\?\.verified/)
 })
 
 
@@ -145,4 +156,96 @@ test('Windows 下载说明使用仅本进程代理并标明当前文件层百分
   assert.match(js,/非模型总进度/)
   assert.doesNotMatch(page,/梯子/)
   assert.doesNotMatch(readme,/梯子/)
+})
+
+
+test('管理台测试图片和 Ollama 输入是用户上传的同一份原始 PNG，模型完整答复不截断',async()=>{
+  const {readFileSync}=await import('node:fs')
+  const original=readFileSync(new URL('../lib/assets/local-vision-selftest-dafeiyu.png',import.meta.url))
+  assert.equal(original.subarray(0,8).toString('hex'),'89504e470d0a1a0a')
+  assert.deepEqual(getLocalVisionTestImage(),original)
+  let sentImage=null,body=null
+  const answer='蓝色长发、鱼尾、女仆服、蓝色蝴蝶结和张开的手。'.repeat(200)
+  const manager=createLocalVisionModelManager({fetchImpl:async(url,opts)=>{
+    if(url.endsWith('/api/chat')){
+      body=JSON.parse(opts.body)
+      sentImage=body.messages[0].images[0]
+      return json({message:{content:answer},done_reason:'stop'})
+    }
+    return json({models:[{name:'qwen3.5:4b'}]})
+  }})
+  const stateBefore=await manager.list()
+  assert.equal(stateBefore.testImage.url,'/api/bili-duty/local-vision/selftest-image')
+  assert.equal(stateBefore.testImage.dataUri,undefined)
+  const result=await manager.verifyId('qwen3.5-4b')
+  assert.equal(result.verified,false)
+  assert.equal(result.awaitingReview,true)
+  assert.deepEqual(Buffer.from(sentImage,'base64'),original)
+  const state=await manager.list()
+  assert.equal(state.models[0].verification.answer,answer)
+  assert.equal(state.models[0].verification.status,'awaiting_review')
+  assert.equal(state.models[0].verified,false)
+  assert.equal(body.think,false)
+  assert.equal(Object.hasOwn(body.options,'num_predict'),false)
+  assert.match(body.messages[0].content,/大肥鱼/)
+  assert.equal(state.models[0].verification.doneReason,'stop')
+})
+
+test('人工确认结果后才能通过；拒绝与过期确认不可复用',async()=>{
+  const manager=createLocalVisionModelManager({fetchImpl:async url=>
+    url.endsWith('/api/chat')?json({message:{content:'蓝色头发和白色围裙'}}):json({models:[{name:'qwen3.5:4b'}]})})
+  const v1=await manager.verifyId('qwen3.5-4b')
+  await assert.rejects(manager.review('minicpm-v4.7-1b',{reviewId:v1.reviewId,accepted:true}),/失效/)
+  await assert.rejects(manager.review('qwen3.5-4b',{reviewId:'stale',accepted:true}),/失效/)
+  await assert.rejects(manager.review('qwen3.5-4b',{reviewId:v1.reviewId,accepted:'true'}),/必须明确/)
+  assert.equal((await manager.list()).models[0].verified,false)
+  const accepted=await manager.review('qwen3.5-4b',{reviewId:v1.reviewId,accepted:true})
+  assert.equal(accepted.verified,true)
+  assert.equal((await manager.list()).models[0].verification.status,'approved')
+  await assert.rejects(manager.review('qwen3.5-4b',{reviewId:v1.reviewId,accepted:true}),/失效/)
+  const v2=await manager.verifyId('qwen3.5-4b')
+  assert.equal((await manager.list()).models[0].verified,false)
+  await assert.rejects(manager.review('qwen3.5-4b',{reviewId:v1.reviewId,accepted:true}),/失效/)
+  await manager.review('qwen3.5-4b',{reviewId:v2.reviewId,accepted:false})
+  assert.equal((await manager.list()).models[0].verified,false)
+})
+
+test('Ollama 报错或只有内部 thinking 时不能供用户人工验收',async()=>{
+  const manager=createLocalVisionModelManager({logger:{warn:()=>{}},fetchImpl:async url=>
+    url.endsWith('/api/chat')?json({message:{content:'',thinking:'internal'}}):json({models:[{name:'qwen3.5:4b'}]})})
+  await assert.rejects(manager.verifyId('qwen3.5-4b'),/没有可供用户查看的最终文字/)
+  const record=(await manager.list()).models[0].verification
+  assert.equal(record.status,'failed')
+  assert.equal(record.hadThinking,true)
+  assert.doesNotMatch(JSON.stringify(record),/internal/)
+  await assert.rejects(manager.review('qwen3.5-4b',{reviewId:record.reviewId,accepted:true}),/失效/)
+})
+
+test('Ollama 视觉投影器加载失败时保留具体原因',async()=>{
+  const manager=createLocalVisionModelManager({logger:{warn:()=>{}},fetchImpl:async url=>
+    url.endsWith('/api/chat')?json({error:'Failed to load CLIP model'},500):json({models:[{name:'openbmb/minicpm-v4.7:1b'}]})})
+  await assert.rejects(manager.verifyId('minicpm-v4.7-1b'),/Failed to load CLIP model/)
+  const record=(await manager.list()).models[1].verification
+  assert.match(record.error,/HTTP 500/)
+  assert.match(record.error,/Failed to load CLIP model/)
+  assert.equal(record.status,'failed')
+})
+
+test('页面展示大肥鱼原图、模型完整回复与明确的用户认可按钮',async()=>{
+  const {readFileSync}=await import('node:fs')
+  const page=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
+  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+  const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+  assert.match(page,/id="local-vision-probe-image"/)
+  assert.match(page,/id="local-vision-probe-answer"/)
+  assert.match(page,/id="local-vision-approve"/)
+  assert.match(page,/id="local-vision-reject"/)
+  assert.match(page,/id="local-vision-verify"/)
+  assert.match(page,/大肥鱼真实图片/)
+  assert.match(js,/state\.testImage\?\.url/)
+  assert.match(js,/local-vision\/review/)
+  assert.match(js,/local-vision-probe-answer'\)\.textContent/)
+  assert.match(server,/getLocalVisionTestImage\(\)/)
+  assert.match(server,/state\.models\.find\(x=>x\.id===id\)\?\.verified/)
+  assert.doesNotMatch(js,/testImage\?\.dataUri/)
 })

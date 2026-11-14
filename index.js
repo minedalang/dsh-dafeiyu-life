@@ -183,7 +183,7 @@ import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
 import { createLongTermMemory } from './lib/long-term-memory.mjs'
 import { createMemoryRetriever } from './lib/memory-retriever.mjs'
 import {createEmbeddingRuntimeManager} from './lib/embedding-runtime-manager.mjs'
-import {createLocalVisionModelManager,getLocalVisionModel} from './lib/local-vision-model-manager.mjs'
+import {createLocalVisionModelManager,getLocalVisionModel,getLocalVisionTestImage} from './lib/local-vision-model-manager.mjs'
 import {createEmbeddingMemoryIndex} from './lib/embedding-memory-index.mjs'
 import {verifiedLifeActionEvent} from './lib/life-action-memory.mjs'
 import {verifiedShareMemoryEvents} from './lib/confirmed-video-share.mjs'
@@ -8068,11 +8068,17 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     // Optional local visual models are managed separately from embedding and DSH.
     // There is no arbitrary URL or model name; the daemon is fixed to loopback.
+    if(req.method==='GET'&&path==='/api/bili-duty/local-vision/selftest-image'){
+      const png=getLocalVisionTestImage()
+      res.writeHead(200,{'Content-Type':'image/png','Content-Length':png.length,
+        'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff'})
+      return res.end(png)
+    }
     if(req.method==='GET'&&path==='/api/bili-duty/local-vision/status'){
       const current=await localVisionModels.list()
       return sendJson(res,200,{...current,active:cfg.visionMode==='independent_local'?cfg.visionLocalModel:'',visionEnabled:cfg.visionEnabled===true})
     }
-    if(req.method==='POST'&&['/api/bili-duty/local-vision/install','/api/bili-duty/local-vision/cancel','/api/bili-duty/local-vision/select','/api/bili-duty/local-vision/verify','/api/bili-duty/local-vision/delete'].includes(path)){
+    if(req.method==='POST'&&['/api/bili-duty/local-vision/install','/api/bili-duty/local-vision/cancel','/api/bili-duty/local-vision/select','/api/bili-duty/local-vision/verify','/api/bili-duty/local-vision/review','/api/bili-duty/local-vision/delete'].includes(path)){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'本地视觉模型管理仅允许电脑端同源操作'})
@@ -8089,11 +8095,13 @@ logger:{warn:m=>log('社交意图：'+m)}
           return sendJson(res,202,{ok:true,started:true,model:id})
         }
         if(path.endsWith('/verify'))return sendJson(res,200,await localVisionModels.verifyId(id))
+        if(path.endsWith('/review'))return sendJson(res,200,await localVisionModels.review(id,{reviewId:String(data?.reviewId||''),accepted:data?.accepted}))
         if(path.endsWith('/select')){
           const state=await localVisionModels.list()
           if(!state.running||!state.models.find(x=>x.id===id)?.installed)
             return sendJson(res,409,{ok:false,error:'模型尚未安装或 Ollama 未运行；请先安装并通过视觉自检'})
-          await localVisionModels.verifyId(id)
+          if(!state.models.find(x=>x.id===id)?.verified)
+            return sendJson(res,409,{ok:false,error:'请先查看模型对大肥鱼图片的完整回复，并人工认可本轮识图结果'})
           await persistCfg({visionLocalModel:id,visionMode:'independent_local',visionEnabled:true})
           return sendJson(res,200,{ok:true,active:id,visionEnabled:true})
         }
@@ -8752,7 +8760,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         body?.lifeSocialShadowConfirm!=='ENABLE_READ_ONLY_SHADOW')
         return sendJson(res,400,{ok:false,error:'开启社交上下文影子读取必须进行单独确认'})
       // Selecting local inference must pass the explicit owner confirmation and
-      // real image self-test at /local-vision/select, never a generic config save.
+      // user-reviewed image result at /local-vision/review, then /local-vision/select; never generic config save.
       if((body?.visionMode==='independent_local'&&cfg.visionMode!=='independent_local') ||
         (Object.prototype.hasOwnProperty.call(body||{},'visionLocalModel')&&body.visionLocalModel!==cfg.visionLocalModel))
         return sendJson(res,409,{ok:false,error:'请在本地视觉模型卡片中完成下载安装、图片自检并点击启用；普通模型设置不能跳过验证或切换本地模型'})

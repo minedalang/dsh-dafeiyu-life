@@ -10,7 +10,7 @@
 - **强制文档一致性**：任何代码变更都要核对根 README（用户实际功能、删除的功能、限制）、`AGENTS.md`（现行规范）、CHANGELOG、对应当前架构／可编辑 Mermaid 图、Release Notes 和测试。不需要改的文件须在交付记录说明原因；不得仅改测试而保留过时产品宣称。修改前查找旧文字如“预约续聊”“thoughtCue”“公开与私密完全隔离”“单轮只能写一次”，新功能亦应在用户 README 中正确呈现。
 - **真实验收分层**：离线单测、跨进程模拟与 Loopback 桥回执都不能宣传为真实 B站／Windows 实机验证。全量旧失败逐项比对基线；未知发送不得自动重试，失效意愿不能重放。
 
-- **2.8.1-dev.2b 本地视觉硬边界：** 新增的 Qwen3.5 4B / MiniCPM-V 4.7 1B 仅在用户显式下载安装、本机视觉自检成功并再次选择启用后接入；使用固定 Ollama 本机 127.0.0.1，不接受任意模型/URL。缺 Ollama Runtime、运行不兼容或缓存失败不回退到未知云端，不提升画面真实性或 Life 发言权限。参考/移植第三方视频算法时，README 与 `THIRD_PARTY_NOTICES.md` 同次更新，并按许可证保留必要 LICENSE/NOTICE。现行契约见 `docs/architecture/2.8.1-video-perception-dev2b.md`。
+- **2.8.1-dev.2b 本地视觉硬边界：** 新增的 Qwen3.5 4B / MiniCPM-V 4.7 1B 仅在用户显式下载安装、Ollama 真正返回可查看的图片识别文字、用户人工认可本轮结果并再次选择启用后接入；使用固定 Ollama 本机 127.0.0.1，不接受任意模型/URL。缺 Ollama Runtime、运行不兼容或缓存失败不回退到未知云端，不提升画面真实性或 Life 发言权限。参考/移植第三方视频算法时，README 与 `THIRD_PARTY_NOTICES.md` 同次更新，并按许可证保留必要 LICENSE/NOTICE。现行契约见 `docs/architecture/2.8.1-video-perception-dev2b.md`。
 
 ---
 
