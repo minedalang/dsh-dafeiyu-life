@@ -1,15 +1,12 @@
-# 文档导航
+# 大肥鱼文档导航（2.8.0）
 
-本目录给维护者使用；普通用户从根目录 [README](../README.md) 和 [首次使用教程](../README.md#-首次使用教程) 开始。
+**更新于 2026-11-14。** 本目录以 2.8.0 正式版本源码为当前文档基线；发布平台状态以实际上传结果为准。旧版本技术文档中的“当前”“已实现”仅指写作时的历史版本。
 
-| 需要了解 | 唯一入口 | 适用范围 |
-| --- | --- | --- |
-| 当前系统结构与模块调用 | [架构首页](architecture/README.md) | 当前 `2.6.2 dev`，优先阅读 |
-| 统一层的归属、新层准入与文档同步规则 | [变更门禁](architecture/2.6.2-unified-layer-change-gate.md) | 每项代码需求修改前 |
-| 人格和情绪如何保持同一条鱼 | [统一人格](architecture/2.6.2-life-voice-context.md) | 当前接线与边界 |
-| 真实事实、回访与任务证据 | [统一事实与回访](architecture/2.6.2-unified-facts-and-followup-context.md) | 当前接线与边界 |
-| 隐私、遗忘、跨域反思 | [Life Memory 分域契约](architecture/life-memory-domain-reflection-v2.6.0-dev.4.md) | 兼容性和权限约束 |
-| 发布检查 | [当前开发版说明](../RELEASE_NOTES_v2.6.2.md) | 详细历史发布资料见仓库 `docs/release/`，不随 npm 安装包分发 |
-| 旧版实验、废弃设计与追溯 | [历史文档索引](archive/README.md) | 不能当作当前实现 |
+- **首次使用与主要功能**：[项目 README](../README.md)
+- **面向使用者的未来计划**：[2.8.1 预计体验与长期方向](ROADMAP.md)
+- **2.8.0 当前架构**：[统一 Life 意愿协议](architecture/2.8.0-unified-life-action-protocol.md) · [Life 接线](architecture/life-system-current.md) · [开发阶段 dev.16 变更记录](architecture/2.8.0-dev16-dm-progressive-fast-poll-life-rest.md)
+- **2.8.0 当前验收**：[最终发布审计与未完成实机验收](architecture/2.8.0-final-release-audit-20261114.md) · [发布就绪审计](architecture/2.8.0-release-readiness.md) · [本轮设置和文档收口](architecture/2.8.0-20261114-management-settings-closure.md)
+- **后续技术计划**：[2.8.1 研发评估与验收边界](architecture/2.8.1-roadmap.md)
+- **旧版资料和过程**：[架构历史入口](architecture/README.md) · [发布历史](release/README.md) · [归档说明](archive/README.md)
 
-**文档维护规则：** 架构变更必须在同一提交中修订当前架构说明、可编辑图和关联测试；历史文档通过归档或 Git 历史保留，不要让多个 README 同时声称自己是当前架构的真值。
+历史工程笔记不等于当前用户操作说明；已删除过期版本规划和未被当前导航引用的旧预览版发布草稿。避免以旧版定时/分散意愿设计指导当前代码。

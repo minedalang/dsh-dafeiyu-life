@@ -64,7 +64,7 @@ test('quiet cursor uses periodic safety rescan and refuses corrupted data',()=>{
   let time=1_800_000_000_000;const dir=work(),row={uid:'10002',unread:0,lastTs:1_800_000_000}
   const cursor=createDmPollCursor({dataDir:dir,now:()=>time});cursor.observed(row);cursor.commit()
   time+=15*60_000;assert.equal(cursor.shouldRead(row),false)
-  time+=15*60_000+1;assert.equal(cursor.shouldRead(row),true)
+  time+=75*60_000+1;assert.equal(cursor.shouldRead(row),true) // now > default 90-minute quiet rescan
   writeFileSync(join(dir,'dm-poll-cursor.json'),'{broken')
   assert.throws(()=>createDmPollCursor({dataDir:dir}),/游标损坏/)
 })
@@ -104,20 +104,20 @@ test('DM HTTP adapter charges each actual request through shared budget; limit n
   }finally{globalThis.fetch=original}
 })
 
-test('UI uses real independent TODO tab, memory filter, personality and polling read budget without duplicated IDs',()=>{
+test('UI retains unique TODO controls in a dedicated plans tab and preserves memory and polling budgets',()=>{
   const html=readFileSync(join(root,'lib/management-console.html'),'utf8')
   const js=readFileSync(join(root,'lib/management-console.js'),'utf8')
   const index=readFileSync(join(root,'index.js'),'utf8')
-  assert.match(html,/data-tab="todos"[^>]*>📝 鱼鱼想做的事/)
-  assert.match(html,/<section id="panel-todos" hidden>/)
-  assert.match(html,/<section id="panel-todos" hidden>[\s\S]*?id="life-todo-section"/)
+  assert.doesNotMatch(html,/data-tab="todos"/);assert.match(html,/data-tab="life-agent"/)
+  assert.doesNotMatch(html,/<section id="panel-todos"/)
+  assert.match(html,/<section id="panel-plans" hidden[\s\S]*?id="life-todo-section"/)
   const life=html.slice(html.indexOf('<section id="panel-life" hidden>'),html.indexOf('<section id="panel-diagnostics" hidden>'))
-  assert.ok(!life.includes('id="life-todo-section"'))
+  assert.ok(life.includes('id="life-todo-section"'))
   for(const id of ['owner-todo-list','owner-todo-next','owner-todo-prev','owner-todo-remind','owner-todo-followup-check','owner-todo-add','settings-todo','main-session-history-query','main-memory-kind','personality-evolution-traits']){
     assert.equal(html.split(`id="${id}"`).length-1,1,`unique ${id}`)
   }
   assert.match(html,/data-memory-kind="interest"/)
-  assert.match(js,/todos:\(\)=>loadOwnerTodos\(\)/)
+  assert.match(js,/if\(tab==='todos'\)tab='plans'/)
   assert.match(js,/document\.querySelectorAll\('\[data-memory-kind\]'\)/)
   assert.match(html,/id="polling-budget-status"/)
   assert.match(js,/scheduler\.readBudget/)
@@ -125,9 +125,9 @@ test('UI uses real independent TODO tab, memory filter, personality and polling 
   assert.match(index,/maxSessions: 12/)
 })
 
-test('legacy todo-settings bookmark opens the new TODO page, not the memory page',()=>{
+test('legacy todo-settings bookmark opens dedicated fish plans page, not memory',()=>{
   const js=readFileSync(join(root,'lib/management-console.js'),'utf8')
-  assert.match(js,/legacySettingsTarget==='settings-todo'\?'todos':'life'/)
+  assert.match(js,/legacySettingsTarget==='settings-todo'\?'plans':'life'/)
 })
 
 test('DM cursor only commits after auto-reply dedupe safely persists and prevents duplicate messages',async()=>{
@@ -156,7 +156,7 @@ test('DM cursor only commits after auto-reply dedupe safely persists and prevent
   assert.equal(sent.length,1)
   assert.equal(cursor.shouldRead(session()),false)
   assert.equal((await make().poll()).sent,0)
-  clock+=31*60_000
+  clock+=91*60_000 // current quietRescanMinutes default is 90, not the obsolete 30-minute default
   assert.equal(cursor.shouldRead(session()),true)
   assert.equal((await make().poll()).sent,0,'safety rescan must not re-send a persisted message')
   assert.equal(sent.length,1)

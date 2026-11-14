@@ -1,0 +1,125 @@
+%% dev.12：具跨日公共关系证据的评论者作品为可选只读行动，不是自由 UID 或私信权限
+%% dev.10：同窗口选择携带经清洗的候选公开视频证据；混合私信不带出正文。
+%% dev.74：关系按自然熟悉度/渠道证据/DM Openness 三维分离，只有私人关系才可能授权发起。
+%% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
+%% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
+%% dev.71：继承 dev.70 动态核验恢复与可见 Life 额度；Life 授权证明消费/结算按 dev.71 账本契约执行。
+%% 生活候选细目字典：这是当前项目的真实 schema 类型/选择约束，不是泛化的 AI 心理推演。
+flowchart LR
+  subgraph inputs["有事实来源，才能构成候选"]
+    sourceTodo["原 accepted TODO：open/deferred 且到期"]
+    sourceInterest["LifeInterests：账号绑定、跨日自主选片兴趣及有时效的开放式好奇"]
+    sourceDiscussion["已有 BV 评论阅读 + 可核验主观疑问"]
+    sourcePerson["SocialPortrait：跨日公开双向交流证据"]
+    sourceLife["LifeOpportunities 意愿账本：ready/inspected、未过期"]
+    episodeState["Universal Episode｜已核验步骤 + 到期暂停恢复；不可代替原目标凭据"]
+    sourceSocial["匿名 dm-received/comment-received 事件"]
+    privateBound["当前账号渠道事实 + DM 开放资格｜评论熟悉不能转私信"]
+    sourceVideo["video-explore 可用 + 首页来源开关 + 启动冷却"]
+    sourceVideoFeedback["已核验视频子进程结束回执｜只读，与下次启动冷却独立"]
+    sourceReflect["LifeReflection.status().canAutoReflect"]
+    sourceOwner["主人联系卡片/自定义额度 + 明确绑定且在线的主 Session + 可选沉默续聊"]
+  end
+  subgraph candidates["本轮实际类型 / 内容边界"]
+    todos["todos：已接待办｜新任务由 Life 自主安排，已确定动作只做技术复核"]
+    cues["cues：interest-milestone / discussion-read / selection-curiosity"]
+    opportunities["opportunities：兴趣/评论/短期好奇的同 BV 核实；或 public-person-observation"]
+    intentions["intentions：已有 BV / 作者/公开评论只读及一次额外首页；14 天有效窗"]
+    resume["resume_episode：优先旧片段，但仅重新选择原账号仍可执行的公开探索意愿"]
+    social["social：入站关注信号 + 已核验熟人机会；非回复许可"]
+    video["video：browse_home／use_capability；不是已观看数"]
+    reviewFeedback["review_video_feedback：读已完成轮次反馈；不会再启动或外发"]
+    reflection["reflection：真实可执行反思；不是 pending 大于阈值"]
+    ownerChat["talk_to_owner：已核验经历或自发谈话意愿；允许跳过、不保证送达"]
+    eventRefs["eventRefs：匿名事件引用 + 公平重考虑；不代表成功回执"]
+  end
+  acceptedDm["刚接受的 DM/评论只读待办｜同一社交模型 now/later"]
+  acceptedNow["now：一次性执行原已接受只读动作；不再投第二票"]
+  acceptedDm -->|now + 新入账 + 当前账号有效| acceptedNow
+  acceptedDm -.->|later 与旧无 timing：正常自主规划| todos
+  acceptedNow -.->|原执行器+权限+回执；不增加 AI 调用| sourceTodo
+  sourceTodo --> todos
+  sourceInterest --> cues
+  sourceDiscussion --> cues
+  sourceInterest --> opportunities
+  sourceDiscussion --> opportunities
+  sourcePerson --> opportunities
+  sourceLife --> intentions
+  opportunities -.->|Life 主动核实同 BV 成功→原账本新意愿| intentions
+  todos -.->|Life 自行完成 watch_video 且有同 BV 任务回执→原账本新意愿| intentions
+  episodeState -.->|持续性与优先考虑，并非新权限| resume
+  intentions --> resume
+  sourceSocial --> social
+  privateBound -.->|仅允许的自主私信机会，无权限者只读| social
+  sourceVideo --> video
+  sourceVideoFeedback --> reviewFeedback
+  sourceReflect --> reflection
+  sourceOwner --> ownerChat
+  sourceSocial --> eventRefs
+  sourceVideo -.->|本轮读取证据，可唤醒但不授予权限| eventRefs
+  sourceLife -.->|重考虑/过期后需重新查原账本| eventRefs
+  subgraph choice["Life 一次模型选择 + 后端当轮菜单验证"]
+    planner["AutonomousPlanner → validateOfferedLifeAction"]
+  end
+  todos --> planner
+  cues --> planner
+  opportunities --> planner
+  intentions --> planner
+  resume --> planner
+  social --> planner
+  video --> planner
+  reviewFeedback --> planner
+  reflection --> planner
+  ownerChat --> planner
+  eventRefs -.-> planner
+  rest["skip：自愿休息；不能与技术失败混为一谈"]
+  planner --> rest
+  classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
+  class social,eventRefs partial
+
+%% @code acceptedDm | lib/social-todo-intake.mjs | export function intakeAiReadProposals
+%% @code acceptedNow | lib/autonomous-planner.mjs | const executeAcceptedSocialRead=
+%% @code todos | lib/owner-todos.mjs | export const READ_TODO_TYPES
+%% @code cues | lib/life-opportunities.mjs | const explorationCues=
+%% @code opportunities | lib/life-opportunities.mjs | export function deriveDiscussionOpportunities
+%% @code intentions | lib/life-opportunities.mjs | const intentions=
+%% @code social | lib/life-agent-events.mjs | const TYPES=new Set
+%% @code video | lib/autonomous-planner.mjs | if(homeEnabled&&lifeSkills.some
+%% @code reflection | lib/life-reflection.mjs | canAutoReflect
+%% @code eventRefs | lib/life-agent-events.mjs | export const lifeEventDebugRef
+%% @code planner | lib/autonomous-planner.mjs | export function validateOfferedLifeAction
+
+%% dev.68：独立评论 Agent 不再用隐藏的陌生人模型考虑次数挡住 Life 自主交流；
+%% 这里的匿名社交提醒仍不是回复发送许可，真实评论回执和外发额度由原执行器核验。
+
+%% dev.33 maintenance: selection-curiosity from account-tagged verified selected BV only;
+%% no free-form title search, no automatic outbound approval.
+
+%% dev.35: Episode 的写入不是默认终点；需实际只读或主动休息 + 冷却后才能再写，仍无新权限。
+
+%% @code episodeState | lib/life-universal-episodes.mjs | const view=e=>
+%% @code resume | lib/autonomous-planner.mjs | action:'resume_episode'
+
+%% @code resume | lib/life-episode-entrypoints.mjs | export function prioritizeLifeContinuationCandidates
+
+%% @code reviewFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
+
+%% dev.38：以下私信跟进动作由私信 Agent 自主提议，不能在顶层直接凭 UID 触发。
+dmHistory["同 UID 真正长期双向私信证据 + 本轮独立自主关注授权"]
+dmFollowCandidate["follow_dm_contact｜可信好友；仅建议，绝不直接外发"]
+dmHistory --> dmFollowCandidate
+dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验，后续只封装一次性证明| social
+%% @code dmHistory | lib/life-subagent-continuity.mjs | export function dmContactFollowCandidates
+%% @code dmFollowCandidate | lib/life-subagent-continuity.mjs | action:'follow_dm_contact'
+
+%% dev.42: Life-selected owner contact is opt-in and not delivery-confirmed.
+%% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=
+%% @code ownerChat | lib/autonomous-planner.mjs | action:'talk_to_owner'
+
+%% dev.44 shared owner contact settings and silence consideration.
+%% @code sourceOwner | lib/main-session-bridge.mjs | const ownerChatReadiness=
+
+%% @code privateBound | lib/social-relationship-channels.mjs | export function evaluateDmOpenness
+
+%% @code intentions | lib/life-opportunities.mjs | const beginInspectedOpportunity=
+%% @code todos | lib/life-video-episode-evidence.mjs | export function verifiedCompletedVideoTodo

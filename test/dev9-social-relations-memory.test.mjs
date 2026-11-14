@@ -25,9 +25,9 @@ test('真实公开互动的陌生人能跨日自然成为社交好友，不获�
  assert.equal(gate.canTrustComment({uid:'987654321',kind:'at'}),false)
  assert.equal(index.preferenceHint('987654321').stage,'friend')
 }))
-test('白名单仅提供较高关系起点，不会伪造已互动的次数或成长事实',()=>using(async({index})=>{
+test('白名单不影响自然熟悉度起点，不会伪造已互动的次数或成长事实',()=>using(async({index})=>{
  const friendDirectory=JSON.stringify([{uid:'200',name:'小甲',dm:true,atInvite:true}]);
- const row=index.get('200',{friendDirectory});assert.equal(row.whitelisted,true);assert.equal(row.count,0);assert.equal(row.stage,'new');assert.equal(row.score>=64,true)
+ const row=index.get('200',{friendDirectory});assert.equal(row.whitelisted,true);assert.equal(row.count,0);assert.equal(row.stage,'new');assert.equal(row.score,0)
  assert.equal(index.get('300'),null)
  const fromList=index.list({friendDirectory,query:'200'});assert.equal(fromList.rows[0].uid,'200')
  assert.equal(index.get('200',{friendDirectory}).firstAt,0)
@@ -87,9 +87,11 @@ test('陌生人的新公开经历衰减更快，社交好友较慢，已模糊�
 }))
 test('dev.9 README 使用自由成长叙事，而非主人选择名单叙事',()=>{
  const s=readFileSync(new URL('../README.md',import.meta.url),'utf8')
- assert.match(s,/自由结识世界里的每个人/)
+ assert.match(s,/关系不等于好友名单/)
+ assert.match(s,/真实互动逐渐认识不同的人/)
  assert.doesNotMatch(s,/不是只有主人提前加入名单的人|不必先被主人加入白名单/)
- assert.match(s,/## 🌈 未来规划/)
+ assert.match(s,/## 🌱 未来规划/)
+ assert.match(s,/docs\/ROADMAP\.md/)
  assert.doesNotMatch(s,/后续规划：P6/)
 })
 

@@ -61,7 +61,7 @@ test('主人 Agent 吞掉消息前的偏好观察仍生效，不需让消息流�
 
 test('主人的推荐许可观察位于双域意愿门与主人 Agent 分流之前',()=>{
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- const begin=index.indexOf("async function getNewDmMessages({probeOnly=false,forceUid=''}={})")
+ const begin=index.indexOf("async function getNewDmMessages(")
  const hook=index.indexOf('observeAuthenticatedOwnerDmPreferences(stateDir,',begin)
  const agency=index.indexOf('const declinedOwnerRequests=',begin)
  const agent=index.indexOf('await ownerDmAgent.processMessages(ownerRows)',begin)

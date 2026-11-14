@@ -101,8 +101,8 @@ test('主人私信的主角色输入被预先按预算装配，不在末尾二�
  const x=voice('owner-dm',{persona:p.persona+'长人设'.repeat(2000)},5200)
  requireSections(x)
  const index=source('index.js')
- assert.match(index,/getPersona:\(\)=>lifeVoiceContext\(\{scene:'owner-dm',[^\n]*maxChars:5200\}/)
- assert.match(source('lib/owner-dm-agent.mjs'),/scrub\(getPersona\(\),5500\)/)
+ assert.match(index,/getPersona:\(\)=>lifeVoiceContext\(\{scene:'owner-dm',[^\n]*maxChars:2600\}/)
+ assert.match(source('lib/owner-dm-agent.mjs'),/scrub\(getPersona\(\),2600\)/)
 })
 
 test('完成回执在回访发送前即可读取，但不同 UID、不同渠道不得串用',()=>{

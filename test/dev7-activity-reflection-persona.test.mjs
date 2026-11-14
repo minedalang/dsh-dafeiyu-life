@@ -76,7 +76,7 @@ test('dev.7 管理页面与工具入口保留沙盒隔离、安全权限和第�
   assert.match(ui,/模拟尚无变化/)
   assert.doesNotMatch(html,/aigengtu\.com\/persona/)
   assert.match(ui,/外部平台\/工具指令/)
-  assert.match(html,/activity-ticker-text/)
+  assert.doesNotMatch(html,/activity-ticker-text/)
   assert.match(server,/activity-feed/)
   assert.match(server,/BILI_FISH_FAVORITE_STYLE/)
   assert.match(py,/automatic=True/)
@@ -85,13 +85,13 @@ test('dev.7 管理页面与工具入口保留沙盒隔离、安全权限和第�
 })
 
 
-test('2.6.0 正式源码保留历史发行归档，但发布包只带当前 Release Notes',()=>{
-  const pkg=JSON.parse(read('package.json'));assert.match(pkg.version,/^(?:2\.6\.2(?:-dev\.[1-9]\d*)?|2\.7\.0(?:-dev\.[1-9]\d*)?)$/);
-  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.2.md'));
+test('2.8.0 预览版发布包不携带过时开发草案，但当前说明与审计仍可追溯',()=>{
+  const pkg=JSON.parse(read('package.json'));assert.match(pkg.version,/^2\.8\.0(?:-dev\.[1-9]\d*)?$/);
+  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.8.0.md'));
   assert.ok(!pkg.files.includes('docs/release'));
   assert.ok(!pkg.files.includes('RELEASE_NOTES_v2.6.0-dev.7.md'));
-  assert.match(read('docs/release/archive/RELEASE_NOTES_v2.6.0-dev.7.md'),/2\.6\.0-dev\.7/);
-  assert.match(read('README.md'),/aigengtu.com\/persona/);
-  assert.match(read('docs/release/2.6.0-readiness.md'),/正式发布/);
-  assert.match(read('docs/release/2.6.0-bilibili-pinned-post.md'),/【2.6.0 新增/);
+  assert.match(read('docs/archive/README.md'),/历史文档与清理记录/);
+  assert.match(read('README.md'),/统一 Life/);
+  assert.match(read('docs/release/README.md'),/发布阻断/);
+  assert.match(read('RELEASE_NOTES_v2.8.0.md'),/正式版更新说明/);
 })

@@ -106,7 +106,8 @@ test('real entry points are wired before owner DM or public @ side effects',()=>
  assert.ok(code.indexOf('declinedOwnerRequests=new Set()')<code.indexOf('ownerDmAgent.processMessages(ownerRows)'))
  assert.ok(code.indexOf('declinedOwnerRequests=new Set()')<code.indexOf('queueOwnerDmReadTodo({messages:incoming'))
  assert.ok(code.indexOf('declinedOwnerRequests=new Set()')<code.indexOf('ownerDmActions.claim({uid:row.senderUid'))
- assert.match(code,/decideAgency:\(\{uid,messageId,text,intent,bvid,thread\}\)=>dualContextAgency.decide/)
+ assert.match(code,/decideAgency:\(\{uid,messageId,text,intent,bvid,thread\}\)=>decideLegacySocial/)
+ assert.doesNotMatch(code,/dualContextAgency\.decide\(/)
  assert.match(code,/source:'bili-comment'/)
 })
 test('elliptical polite @ followups only reopen a previously refused social invitation, never a like',async()=>{
@@ -127,10 +128,11 @@ test('elliptical polite @ followups only reopen a previously refused social invi
  }finally{m.close()}
 })
 
-test('owner DM model-planned side effects are also subject to willingness, not just inbox regex',()=>{
+test('owner DM already-model-chosen side effects are recorded, not vetoed by an emotional formula',()=>{
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const agent=readFileSync(new URL('../lib/owner-dm-agent.mjs',import.meta.url),'utf8')
- assert.match(index,/decideAgency:\(\{uid,messageId,text,intent,target\}\)=>dualContextAgency.decide/)
+ assert.match(index,/decideAgency:\(\{uid,messageId,text,intent,target\}\)=>dualContextAgency.recordAI/)
+ assert.match(index,/const decideLegacySocial=async/)
  assert.ok(agent.indexOf('const will=decideAgency(')<agent.indexOf('if(READ.has(step.action))result=await executeRead(step)'))
  assert.match(agent,/if\(will\?\.decision!=='allow'\)/)
 })

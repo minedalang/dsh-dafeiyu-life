@@ -14,8 +14,9 @@ const cfg=()=>({masterEnabled:true,dmOwnerUid:11111,socialOutreachEnabled:true,s
   friendDirectory:JSON.stringify([{uid:'11111',dm:true,recommend:'dm'},{uid:'22222',dm:true,recommend:'dm'}]),mentionProfiles:'{}'})
 const video=[{picked:true,bvid:BV,title:'一个没被任何好友画像提及的公开视频'}]
 const engine=(dir,config,callbacks={})=>createSocialIntentEngine({dataDir:dir,videoRecommendationsOnly:true,getConfig:()=>config,now:()=>epoch,
+  getSelectedVideos:()=>[{...video[0],day:'2026-11-03'}],
   invokeModel:async()=>JSON.stringify({action:'draft',message:'今天刚遇到一条蛮有趣的公开视频，想分享给你看～',reason:'有自己的分享理由'}),
-  sendMessage:async()=>({ok:true}),...callbacks})
+  sendMessage:async()=>({ok:true}),authorizeDraft:async()=>({ok:true,reason:'tested-life-choice',proof:{id:'verified-life-candidate'}}),...callbacks})
 
 test('主人无需人工画像关键词，真实入选视频经自主判断可以自动私信，重复运行不重发',()=>temp(async dir=>{
   const c=cfg();let called=0,sent=0
@@ -64,7 +65,7 @@ test('新安装的推荐默认开启，但老用户已保存权限不被安装�
 
 test('记忆花园分类控制真正的顶部生活记忆列表，而非仅长期认识附属区',()=>{
   const html=read('lib/management-console.html'),js=read('lib/management-console.js')
-  assert.match(html,/data-tab="life"[^>]*>💗 心情与记忆/)
+  assert.match(html,/data-tab="life"[^>]*>🧠 鱼的记忆/)
   assert.match(html,/data-memory-kind="relationship"/)
   assert.match(html,/id="main-session-history"/)
   assert.match(js,/const paintMemoryGarden=\(\)=>/)

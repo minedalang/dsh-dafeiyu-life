@@ -1,6 +1,6 @@
 {
   "name": "dsh-dafeiyu-life",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "大肥鱼 · DSH 生活系统：主 Session 可回忆人生记忆与真实经历、管理自主待办，并按权限使用 B站读取与互动；支持可遗忘人生记忆、情绪与兴趣成长、三级社交和有边界的自主意愿。",
   "keywords": [
     "dsh",
@@ -29,14 +29,29 @@
     "./client": "./client.js",
     "./package.json": "./package.json"
   },
+  "scripts": {
+    "prepare:embedding-runtime": "node scripts/prepare-embedding-runtime.mjs",
+    "check:life-architecture": "node scripts/check-life-architecture.mjs",
+    "write:life-architecture-view": "node scripts/check-life-architecture.mjs --write-preview",
+    "test": "node --test test/*.test.mjs",
+    "test:python": "node scripts/test-python.mjs",
+    "check:video-tool-contract": "node scripts/check-video-tool-contract.mjs"
+  },
   "files": [
     "index.js",
     "client.js",
     "cordis.patch.yml",
     "lib",
+    "scripts/prepare-embedding-runtime.mjs",
+    "scripts/check-life-architecture.mjs",
+    "tools/dev4-cold-state-backup.mjs",
+    "tools/dev4-life-planner-offline-recovery.mjs",
+    "tools/dev4-life-events-offline-review.mjs",
     "prompts",
     "vendor",
     "README.md",
+    "docs/ROADMAP.md",
+    "docs/README.md",
     "docs/LIFE_MEMORY_2_TECHNICAL.md",
     "docs/architecture",
     "docs/archive/README.md",
@@ -48,7 +63,13 @@
     "CONTRIBUTORS.md",
     "CHANGELOG.md",
     "RELEASE_NOTES_v2.6.2.md",
-    "RELEASE_NOTES_v2.7.0.md"
+    "RELEASE_NOTES_v2.7.0.md",
+    "RELEASE_NOTES_v2.7.1.md",
+    "scripts/check-video-tool-contract.mjs",
+    "scripts/test-python.mjs",
+    "tools/life-willingness-offline-recovery.mjs",
+    "tools/导出B站日志.bat",
+    "RELEASE_NOTES_v2.8.0.md"
   ],
   "engines": {
     "dsh": ">=0.1.7-rc.1",

@@ -44,7 +44,7 @@ test('批准已消费的投喂消息后，不需新私信，下轮自动回复�
   assert.equal((await x.make().poll()).sent,0);
   assert.equal(x.sent.length,2);
   assert.equal((await x.make().listApprovals())[0].autoReplyStatus,'sent');
-  assert.equal((await x.state()).people['100'].approvedUsage.total,1);
+  assert.equal((await x.make().listApprovals())[0].autoReplyStatus,'sent'); // the retired per-approved-user quota counter must not be needed
 });
 
 test('重启后仍有审批待回复队列，轮询不依赖再次看到暗号',async()=>{

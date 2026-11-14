@@ -18,7 +18,7 @@ function fakeAgent(){
 }
 const defineTool=x=>x
 
-test('只要选为主 Session，即使关闭长期记忆也只挂载一份带成长的人格',()=>{
+test('主 Session 记忆固定启用，旧版 false 配置不会停用人格与记忆',()=>{
   const dir=temp(),f=fakeAgent()
   try{
     const mem=createLongTermMemory({
@@ -29,7 +29,7 @@ test('只要选为主 Session，即使关闭长期记忆也只挂载一份带成
       getIdentityPrompt:()=> '你就是大肥鱼本人。不要用通用助手开场。主人叫浪哥。【成长】我现在更喜欢简短自然地聊天。',
     })
     mem.start()
-    assert.equal(f.sections.length,2)
+    assert.equal(f.sections.length,4)
     const identity=f.sections.find(x=>x.name==='dafeiyu-main-identity')
     assert.ok(identity)
     assert.match(identity.text(),/大肥鱼本人/)
@@ -38,9 +38,9 @@ test('只要选为主 Session，即使关闭长期记忆也只挂载一份带成
     assert.match(identity.text(),/简短自然/)
     assert.ok(!f.contexts.some(x=>x.name==='dafeiyu-growth'))
     assert.ok(f.contexts.some(x=>x.name==='dafeiyu-owner-todos'))
-    assert.deepEqual(f.tools.map(x=>x.name),['dafeiyu_life_recall','dafeiyu_todo_list','dafeiyu_todo_add','dafeiyu_todo_update','dafeiyu_todo_execute'])
+    assert.deepEqual(f.tools.map(x=>x.name),['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall','dafeiyu_todo_list','dafeiyu_todo_add','dafeiyu_todo_update','dafeiyu_todo_execute'])
     assert.equal(mem.status().identityMounted,true)
-    assert.equal(mem.status().mounted,false)
+    assert.equal(mem.status().mounted,true)
     mem.stop()
   }finally{rmSync(dir,{recursive:true,force:true})}
 })

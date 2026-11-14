@@ -4,10 +4,11 @@ import { readFileSync } from 'node:fs'
 
 const read = file => readFileSync(new URL(file, import.meta.url), 'utf8')
 
-test('管理页仅有独立自主调度和不强制执行的提醒入口', () => {
+test('管理页在 Life 总览中只有一个统一调度入口，原待办提醒仍不强制执行', () => {
   const html = read('../lib/management-console.html')
   const js = read('../lib/management-console.js')
-  assert.ok(html.includes('id="autonomous-planner-enabled"'))
+  assert.ok(html.includes('id="life-v2-mode"'))
+  assert.ok(!html.includes('id="autonomous-planner-enabled"'))
   assert.ok(html.includes('id="owner-todo-remind"'))
   assert.ok(html.includes('预计下次自动决策'))
   assert.ok(!html.includes('id="owner-todo-auto-review"'))

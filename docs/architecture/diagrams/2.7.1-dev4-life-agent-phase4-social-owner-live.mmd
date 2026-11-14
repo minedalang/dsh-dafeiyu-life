@@ -1,0 +1,19 @@
+flowchart TD
+  DM[已核验入站 DM] --> DC[原 DM 收件及社交投影]
+  CO[已核验评论或 @] --> CC[原评论收件及社交投影]
+  DC --> AN[按账号匿名生活唤醒]
+  CC --> AN
+  AN --> LIFE[Life Agent 仅观察/考虑匿名事件]
+  DC --> GATE[社交决策所有权契约]
+  CC --> GATE
+  GATE -->|仅 legacy 可决策| LEGACY[原 InteractionBatcher / 可信评论 Agent]
+  GATE -.拒绝 Life Agent 接管请求.-> LIFE
+  LEGACY --> CHECK[生成前后复核账号]
+  CHECK --> POLICY[原 SocialPolicyGate / 额度 / 冷却]
+  POLICY --> SEND[发送前再次核对账号]
+  SEND --> RECEIPT[原平台发送器及真实回执]
+  GATE --> DIAG[本进程临时匿名计数]
+  DIAG --> UI[管理中心社交归属诊断]
+  LIFE --> TIMELINE[原短期生活时间线]
+  SNAP[独立离线模拟器] -.纯合成数据.-> GATE
+  SNAP -.临时目录冷快照恢复.-> FREEZE[恢复后外发冻结]

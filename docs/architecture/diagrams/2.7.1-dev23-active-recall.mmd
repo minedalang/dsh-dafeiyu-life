@@ -1,0 +1,24 @@
+flowchart TD
+  A[主人/好友私信或评论] --> B[Life Voice + 近期对话及可信状态]
+  B --> C{AI 判断是否需要回忆?}
+  C -->|否| D[原有社交回复/意愿流程]
+  C -->|是| E[AI 提交最多三组 recallQueries]
+  E --> F[active-recall-contract 词语校验]
+  F --> G{原 UID/账号/渠道权限与作用域}
+  G -->|主人私信| H[MemoryRetriever: 当前长期/可衰减副本]
+  G -->|普通社交/受信好友公评| I[SocialContextAssembler: 公开安全/同 UID 副本]
+  G -->|主人公开成功评论| J[recent-comments: 当前账号唯一主账本]
+  H --> K[当前遗忘/范围/时效过滤]
+  I --> K
+  J --> K
+  K --> L[只读已核实证据/未命中]
+  L --> M[AI 继续生成回复 / 沉默]
+  M --> N[原 SocialPolicyGate + 发送事务 + 回执]
+  D --> N
+  G -->|非法请求| X[拒绝检索/不发送半成品]
+  F -->|无合法检索词| X
+  subgraph Boundaries[无新增存储/权限]
+    H
+    I
+    J
+  end

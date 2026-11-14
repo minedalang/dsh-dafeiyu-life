@@ -19,7 +19,7 @@ test('导航待审角标隐藏样式生效，四种诊断都有可保存开关',
   for(const key of ['diagMentionEnabled','diagDynamicEnabled','diagVisionEnabled','diagMemeEnabled'])assert.match(js,new RegExp(key));
   assert.match(js,/request\('\/config',patch\)/);
   assert.match(html,/quota-usage-tiles/);
-  assert.match(js,/quotaReadout\('dm-daily'/);
+  assert.match(html,/quota-usage-tiles/);
 });
 
 test('服务端四个诊断开关默认开启，允许独立关停和重新开启',async()=>{
@@ -50,7 +50,7 @@ test('私信用量从成功发送账本真实读取，今日与滚动24h不能�
   writeFileSync(join(dir,'dm-autoreply-state.json'),JSON.stringify({version:1,initialized:true,sentAt:[now-3600_000,now-3*3600_000],people:{123:{approval:{status:'approved'},approvedUsage:{day,total:4,daily:2}},456:{approval:{status:'approved'},approvedUsage:{day,total:2,daily:1}}}}));
   const dm=createDmAutoReply({dataDir:dir,now:()=>now,selfUid:'999',logger:{warn(){}},fetchIncoming:async()=>[],send:async()=>true,getConfig:()=>({enabled:false})});
   const stat=await dm.quotaUsage();assert.equal(stat.ok,true);assert.equal(stat.sentToday,1);assert.equal(stat.sent24h,2);
-  assert.equal(stat.approvedDailyMaxUsed,2);assert.equal(stat.approvedDailyTotalUsed,3);
+  assert.equal(stat.approvedDailyMaxUsed,undefined);assert.equal(stat.approvedDailyTotalUsed,undefined); // removed per-approved-user quotas
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 

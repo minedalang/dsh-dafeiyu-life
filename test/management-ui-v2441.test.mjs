@@ -15,8 +15,10 @@ const client=readFileSync(new URL('../client.js',import.meta.url),'utf8')
 
 test('管理中心成为额度与提示词单一编辑入口，旧页面不会覆盖新配额',()=>{
   for(const id of ['quotas','persona']) assert.match(html,new RegExp(`data-tab="${id}"`))
-  for(const id of ['quota-comment-daily','quota-per-day','quota-pick-round','quota-vision-frames','quota-meme-day','friend-directory-editor','persona-text','meme-prompt-text','vision-prompt-text']) assert.match(html,new RegExp(`id="${id}"`))
-  for(const key of ['commentDailyLimit','commentReplyPerDay','dmApprovedTotalLimit','memeMemoryMaxEntries','minVideoViews','visionFrames']) assert.ok(web.includes(key))
+  for(const id of ['quota-comment-daily','quota-vision-frames','quota-meme-day','friend-directory-editor','persona-text','meme-prompt-text','vision-prompt-text']) assert.match(html,new RegExp(`id="${id}"`))
+  assert.doesNotMatch(html,/id="quota-per-day"|id="quota-pick-round"/,'选片数量已不是用户额度设置');
+  for(const key of ['commentDailyLimit','commentReplyPerDay','memeMemoryMaxEntries','minVideoViews','visionFrames']) assert.ok(web.includes(key))
+  assert.doesNotMatch(web,/dmApprovedTotalLimit/)
   assert.match(web,/commentWatchReplies:\$\('comment-watch-replies'\)\.checked/)
   assert.doesNotMatch(client,/patch\(\{ personaPrompt: String\(persona/)
   assert.match(client,/clear: list.length \? \[\] : \['keywords'\]/)

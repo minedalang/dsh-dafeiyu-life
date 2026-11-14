@@ -1,0 +1,17 @@
+flowchart TD
+  A[Life 定时/事件唤醒] --> B{首页能力当前可用？}
+  B -->|否| C[只显示其他有效候选或休息]
+  B -->|是| D[动作菜单提供 browse_home]
+  D --> E{鱼鱼自主选择？}
+  E -->|休息/其他行动| F[按原 Life 账本结算]
+  E -->|逛首页| G[原视频 Agent · home 模式]
+  G --> H[bili_home_recommendations · 最多一次]
+  H --> I[候选 BV 临时摘要 · 随机轮次盐]
+  I --> J[原视频 Agent 自主选片/核实]
+  J --> K[父进程读取新增 picked BV]
+  K --> L[精确匹配首页候选]
+  L --> M[持久化 homePickedCount · 清除临时摘要]
+  M --> N[管理中心 / Life 后续反馈 / 时间线]
+  C --> O[不伪造观看或入选事实]
+  F --> O
+  N --> O

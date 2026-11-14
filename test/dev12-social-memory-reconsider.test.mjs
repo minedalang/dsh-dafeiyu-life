@@ -65,7 +65,7 @@ test('假字幕/错误状态不是视频内容证据，真实字幕才是',()=>{
 })
 test('真实生产入口：普通与可信评论均经过统一社交上下文装配，二次探索仍使用公开安全记忆',()=>{
  const src=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(src,/prepareContexts:batch=>socialContextAssembler\?\.batch\(batch\)/)
+ assert.match(src,/prepareContexts:\(batch,\{mode\}=\{\}\)=>socialContextAssembler\?\.batch\(batch,\{mode\}\)/)
  assert.match(src,/const ctx=await socialContextAssembler\.comment\(row\)/)
  assert.match(src,/memoryContext:ctx\.memoryContext,memeContext:ctx\.memeContext/)
  const assembler=readFileSync(new URL('../lib/social-context-assembler.mjs',import.meta.url),'utf8')

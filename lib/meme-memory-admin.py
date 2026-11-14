@@ -13,7 +13,7 @@ CONFIDENCES = ('待核实', '有文字依据')
 STATUSES = ('pending', 'approved', 'rejected')
 
 def result(obj):
-    print(json.dumps(obj,ensure_ascii=False))
+    print(json.dumps(obj,ensure_ascii=True))
 
 def clean(v, maxlen, *, required=True):
     if not isinstance(v,str):
@@ -24,12 +24,23 @@ def clean(v, maxlen, *, required=True):
     return value
 
 def migrate(conn):
-    if not conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memes'").fetchone():
-        return False
+    if not conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='memes'").fetchone():return False
     cols={x['name'] for x in conn.execute('PRAGMA table_info(memes)')}
     if 'review_status' not in cols:
-        with conn:
-            conn.execute("ALTER TABLE memes ADD COLUMN review_status TEXT NOT NULL DEFAULT 'approved'")
+        with conn:conn.execute("ALTER TABLE memes ADD COLUMN review_status TEXT NOT NULL DEFAULT 'approved'")
+    conn.execute("CREATE TABLE IF NOT EXISTS meme_schema_migrations(version TEXT PRIMARY KEY,applied_at TEXT NOT NULL)")
+    if not conn.execute("SELECT 1 FROM meme_schema_migrations WHERE version='generic-title-marker-v2'").fetchone():
+        if conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='meme_sources'").fetchone():
+            conn.execute("CREATE TABLE IF NOT EXISTS meme_observations(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,bvid TEXT NOT NULL,evidence TEXT NOT NULL,evidence_type TEXT NOT NULL,created_at TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',UNIQUE(name,bvid))")
+            for row in conn.execute("SELECT id,name,confidence FROM memes WHERE review_status='approved'").fetchall():
+                if row['confidence']!='待核实' or not re.fullmatch(r'(?i)(?:day\s*\d{1,4}|经验开源|经验分享|教程合集|资源分享|作品展示)',str(row['name'] or '')):continue
+                sources=conn.execute("SELECT bvid,evidence_type,evidence,noted_at FROM meme_sources WHERE meme_id=?",(row['id'],)).fetchall()
+                if len({x['bvid'] for x in sources})>=2 and all(x['evidence_type']=='标题' for x in sources):
+                    for src in sources:
+                        conn.execute("INSERT OR IGNORE INTO meme_observations(name,bvid,evidence,evidence_type,created_at,status) VALUES(?,?,?,?,?,'pending')",(row['name'],src['bvid'],src['evidence'],src['evidence_type'],src['noted_at']))
+                    conn.execute("UPDATE memes SET review_status='rejected' WHERE id=?",(row['id'],))
+            conn.execute("INSERT INTO meme_schema_migrations(version,applied_at) VALUES('generic-title-marker-v2',?)",(datetime.now().astimezone().isoformat(timespec='seconds'),))
+            conn.commit()
     return True
 
 def main():

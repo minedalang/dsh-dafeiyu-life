@@ -1,0 +1,22 @@
+flowchart TD
+  A[原 Life Agent 或主人手动请求] --> B[原 LifeCapabilities / runDuty 门禁]
+  B --> C{有真实子进程 PID?}
+  C -->|否| D[启动失败 不登记成功]
+  C -->|是| E[账号隔离 LifeAgentEvents.videoRounds started]
+  E --> F[原 Headless 视频 Agent 运行]
+  F --> G{真实 exit / error 回执}
+  G -->|code 0| H[completed 进程完成]
+  G -->|非零| I[failed 失败]
+  G -->|无退出码| J[interrupted 结果不明]
+  H --> K[原 seen 账本核实新增 picked 数 未知则 null]
+  K --> L[同账号 offer video-round-ended]
+  I --> M[不发送正常结束唤醒 不自动补跑]
+  J --> M
+  H --> N[原 LifeTimeline 轮次事实 非观看]
+  I --> N
+  J --> N
+  K -.逐 BV 入选证据仍独立.-> O[原 watched 账本时间线]
+  L --> P[下次自主考虑 有原额度与选择]
+  N --> Q[管理中心状态与真实生活时间线]
+  O --> Q
+  B -.旧社交权限与唯一回复器不变.-> S[原外发安全门禁]

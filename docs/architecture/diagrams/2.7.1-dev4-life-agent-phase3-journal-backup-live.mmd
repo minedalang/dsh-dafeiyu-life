@@ -1,0 +1,16 @@
+flowchart TD
+  A[已核验的生活事件] --> B[当前账号 Life Agent 事件池 v1]
+  B --> C[原 AutonomousPlanner 单一模型决定]
+  D[原 Life Voice / 待办 / 可信意愿] --> C
+  C --> E[原执行权限与回执]
+  C --> F[短期匿名时间线]
+  E --> F
+  B --> F
+  F --> G[管理中心只读时间线]
+  F -.不等于人生记忆.-> H[Life Memory 唯一可信来源]
+  I[停止 DSH] --> J[全量本地冷快照 + SHA256]
+  J --> K[逐文件校验 / 身份核对]
+  K --> L[完整恢复并保留原数据目录]
+  L --> M[restore-freeze 外发复核门禁]
+  N[便携业务备份 schema2] --> O[原有白名单恢复 / 身份保护]
+  N -.不含凭证和私密运行账本.-> J

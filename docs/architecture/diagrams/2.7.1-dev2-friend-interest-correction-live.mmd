@@ -1,0 +1,15 @@
+flowchart TD
+  A[真实 B站白名单 UID 私信/评论] --> B[原 prepareFriendInterestObservation]
+  B --> C{是否明确自述当前喜好?}
+  C -- 否 --> X[不创建兴趣记录]
+  C -- 是 --> D[原 recordPreparedFriendInterest]
+  D --> E[(账号隔离 friend-interest-observations.json)]
+  E --> F[friendInterestSummary: 最新自述覆盖旧偏好]
+  F --> G[learnedFriendContext: 只给本 UID 合法上下文]
+  F --> H[friendRecommendationGuard: 主题主动推荐检查]
+  H --> I{喜欢 / 不喜欢 / 暂不确定}
+  I -- 不喜欢/暂不确定 --> J[跳过同主题主动推荐]
+  I -- 喜欢 --> K[继续原有授权/冷却/去重/发送检查]
+  F --> L[管理中心: 好友兴趣变化可验收]
+  M[退订与拒联等独立安全状态] --> K
+  M --> H

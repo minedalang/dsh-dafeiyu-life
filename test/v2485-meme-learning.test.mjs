@@ -19,3 +19,14 @@ test('不足两个不同 BV 的线索不会调用语义模型，关闭时不调�
   assert.equal((await engine.reflect()).skipped,'disabled')
   assert.equal(calls,0)
 })
+
+test('通用 Day 和栏目标题不能进入梗学习模型，但仍供主人查看线索',async()=>{
+ const rows=[{id:1,bvid:'BV19SJi6VEj1',name:'Day 1',evidence_type:'标题',evidence:'【Day 1】...'},
+  {id:2,bvid:'BV1ab2345678',name:'Day 1',evidence_type:'标题',evidence:'【Day 1】...'}]
+ let calls=0
+ const engine=createMemeLearning({getConfig:()=>({masterEnabled:true,memeMemoryEnabled:true}),read:async()=>({ok:true,rows,pending:2}),invokeModel:async()=>{calls++;return '{}'},commit:async()=>({ok:true})})
+ const status=await engine.status();assert.equal(status.pendingTitleHints.length,1)
+ assert.equal(status.pendingTitleHints[0].sources.length,2)
+ assert.equal((await engine.reflect({force:true})).skipped,'insufficient-cross-video-evidence')
+ assert.equal(calls,0)
+})

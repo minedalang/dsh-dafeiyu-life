@@ -1,0 +1,19 @@
+flowchart TD
+    A[Life Agent 自主考虑或手动只读探测] --> B{账号与已核验 BV 来源}
+    B -->|无| C[安全停止 无模型和平台写入]
+    B -->|已核验| D[共享 JS readLifeVideoMetadata]
+    D --> E[原账号与平台读取额度门禁]
+    E --> F[原跨进程只读预约 readActionGate]
+    F --> G[Python MCP bili_video_info]
+    G --> H{B站真实 get_info}
+    H -->|失败| I[Python 有限枚举失败及安全平台码]
+    H -->|返回| J[同 BV 可信标题与结构核验]
+    I --> K[统一 Life 元数据诊断]
+    J -->|不符合| K
+    J -->|符合| L[仅可信元数据回执 非观看]
+    K --> M[既有 Life 契机失败有界冷却]
+    L --> N[原 Life 事件与可选后续唤醒]
+    K -.-> O[脱敏 read-result 来源及错误码]
+    A -.->|手动探测 不调用模型 不改生活账本| P[管理中心诊断状态]
+    D -.-> P
+    O --> P

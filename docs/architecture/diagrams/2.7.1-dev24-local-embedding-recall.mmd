@@ -1,0 +1,32 @@
+flowchart TD
+    A[主 Session / 主人私信 / 好友与陌生人私信 / 普通评论] --> B[Agent 判断是否回忆并提供专用查询词]
+    B --> C[MemoryRetriever / SocialContextAssembler]
+    C --> D[当前记忆候选集]
+    D --> E[账号、UID、角色、渠道、公开私有域过滤]
+    E --> F[衰减与遗忘过滤]
+    F --> G[EmbeddingMemoryIndex]
+    G --> H[本地 Qwen3 Embedding]
+    H --> I[余弦相似度：仅返回候选 ID + 分数]
+    I --> J[实时账本按 ID 二次核验]
+    J --> K[可信记忆证据]
+    K --> L[原 Agent 继续回答 / 决策]
+    L --> M[原权限、发送事务、平台回执]
+
+    G --> N{本地模型/索引就绪?}
+    N -->|否| O[原有本地词法召回]
+    O --> J
+    N -->|是| H
+
+    subgraph LocalRuntime[本机运行时，仅回环地址]
+      P[管理中心显式启用] --> Q[下载固定 llama.cpp CPU Runtime]
+      Q --> R[下载或导入 Qwen3 GGUF]
+      R --> S[SHA-256 校验]
+      S --> T[127.0.0.1 + 随机 API Key + 无 Web UI]
+      T --> H
+    end
+
+    U[遗忘 / 活动窗口淘汰 / 长期记忆删除] --> V[清理对应向量 ID]
+    V --> G
+
+    W[公开评论成功回执账本] --> X[独立 public_comments 只读检索]
+    X --> L

@@ -1,0 +1,17 @@
+flowchart TD
+  OBS[60秒轻量检查 / 手动唤醒] --> P{配置 Life Agent mode}
+  P -->|off| OLD[原谷时定时器可按原配置启动]
+  P -->|shadow / active| EVENTS[life-agent-events: 账号匿名事件 / 三小时可选空档]
+  PROD[原视频子进程退出] --> EVENTS
+  EVENTS -->|账号与额度校验| PLANNER[原 AutonomousPlanner 唯一后台模型调用]
+  TODOS[原已接受只读待办] --> PLANNER
+  INTENTS[dev3 LifeOpportunities / intentions] --> PLANNER
+  VOICE[原 Life Voice / 人格情绪] --> PLANNER
+  PLANNER -->|skip / defer / reflect / read| CHOICE[原待办与只读执行机制]
+  PLANNER -->|use_capability| REG[平台中立 life-capabilities 白名单]
+  REG -->|shadow| SH[仅记录意愿 不执行]
+  REG -->|active且重新校验| VIDEO[原 B站 runDuty 专业视频 Agent]
+  VIDEO --> GATES[原平台授权/去重/回执/未知冻结]
+  REG --> MOCK[模拟第二平台技能: 仅测试 不在生产注册]
+  OLD --> VIDEO
+  NOTE[私信/评论场景仍走原接线 尚未迁移到此图]

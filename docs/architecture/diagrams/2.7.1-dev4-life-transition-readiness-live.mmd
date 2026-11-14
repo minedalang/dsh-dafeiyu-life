@@ -1,0 +1,15 @@
+flowchart LR
+    UI[Life 页面 折叠验收清单] --> GET[GET transition-readiness 只读]
+    GET --> AUDIT[LifeTransitionReadiness 纯计算]
+    CFG[原 cfg 与 LifeDriverOwnership] --> AUDIT
+    PLANNER[原 AutonomousPlanner.status] --> AUDIT
+    FENCE[SocialHandoffFence.inspect] --> AUDIT
+    TX[SocialSendTransaction.inspect] --> AUDIT
+    AUDIT --> VIEW[固定枚举 计数 缺口和提示]
+    VIEW --> UI
+    PAUSE[普通手动 Life 唤醒] --> MODE{已开启 active 或 shadow?}
+    MODE -->|否| NO[不调用模型 不消耗额度]
+    MODE -->|是| ORIGINAL[沿原 Planner 权限及预算执行]
+    OWNER[旧社交决策和平台发送器] -.依旧唯一生产拥有者.-> FENCE
+    OWNER -.逐消息发送检查.-> TX
+    AUDIT -.不授权外发 不迁移存档.-> NO

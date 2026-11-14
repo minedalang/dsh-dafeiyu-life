@@ -39,7 +39,8 @@ test('主评论下优先回复、上下文保留、24小时按 UID 限额且统�
  assert.equal((await x.handler.poll()).sent,1); // 不影响另一个 UID
  assert.equal(x.handler.status().sentLast24Hours,3);
  const state=JSON.parse(await readFile(join(x.dataDir,'comment-interact-state.json'),'utf8'));
- assert.equal(state.seen['comment:300003'],'per-user-limit');
+ assert.equal(state.seen['comment:300003'],undefined,'单人发送额度届满不应永久吞掉来信');
+ assert.ok(state.preflightDefers['comment:300003']>1800000000000);
 });
 
 test('回复我在别人楼中楼里的 A 时使用独立限额，且记住该评论串',async()=>{

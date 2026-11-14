@@ -1,0 +1,112 @@
+%% dev.12：重复读取抑制额外模型唤醒，五步上限只保存一次未来自愿续章
+%% dev.10：视频 Episode 已选择的写操作与社交共用 FIFO 资格；不重复意愿模型。
+%% dev.74：评论区的自然熟悉度不形成主动私信资格，Episode 不赋予新权限。
+%% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
+%% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
+%% dev.37 统一归属 + dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
+flowchart TB
+  child["可选首步：真实 B站首页轮次完成 + 本轮新挑中 BV 精确匹配"]
+  firstOther["其他可选首步：已核验的待办、反思、公开机会、社交、非首页视频探索"]
+  eligible["当前可续行来源：原视频意愿／未完成已接受只读待办／尚有效的公开机会"]
+  canonical["原有 LifeOpportunities 跨轮公开探索意愿｜唯一 BV 事实源"]
+  attribution["LifeActionAttribution｜主人请求 / Life 自选 / 被动社交；只接原回执"]
+  socialReceipt["社交 / 私信 / 评论多条平台回执：精确去重，不把一次意愿当成功"]
+  socialContact["主动私人交流另验 DM Openness 与主人独立授权"]
+  todoReceipt["已完成只读待办 + 原任务回访：同一因果片段"]
+  reflectionReceipt["反思批次真实处理回执：零条长期认识也算真实反思"]
+  videoFeedback["新视频启动冷却中：Life 仍可只读考虑已完成轮次反馈"]
+  record["createUniversalLifeEpisodes｜只保存当前账号匿名摘要/因果步骤 + 允许的归属枚举"]
+  context["当前片段最多五个已核验步骤；历史可跨段关联"]
+  due["有原账号可执行目标且至少两分钟后才优先唤醒"]
+  menu["鱼鱼仍可选择合法原动作/休息；视频意愿可选 resume_episode；不增加新权限"]
+  read["查看视频元数据／评论区／作者作品／一次额外首页｜真实只读回执"]
+  write["原 Life 意愿审批 → 原专业平台发送 → 独立核验｜不强制主评论"]
+  pause["自愿休息、预算不足、授权变化或未知结果：暂停/冻结"]
+  other["其他已核验 Life 待办/反思/社交/人物行动也有关联 Episode"]
+  memory["原 Life Memory 与各渠道真实回执仍为事实权威"]
+  child --> canonical --> attribution --> record
+  socialContact -.->|许可仅在原 DM 事务生效| socialReceipt
+  socialReceipt --> attribution
+  todoReceipt --> attribution
+  reflectionReceipt --> attribution
+  firstOther -->|已有真实回执；无需经过首页| record
+  opportunityEntry["Life 选中生活契机并核实公开视频 BV／标题"]
+  todoVideoEntry["Life 选择 watch_video 只读待办，并核验完成记录与同 BV 真实标题"]
+  opportunityEntry -->|原 LifeOpportunities 意愿，不是发言许可| canonical
+  todoVideoEntry -->|原 LifeOpportunities 意愿，不是发言许可| canonical
+  videoFeedback -.->|review_video_feedback 不产出平台新回执| menu
+  record --> context --> eligible --> due --> menu
+  menu -->|自主继续| read -->|成功并核验| record
+  menu -->|自行考虑互动，单轮最多一次写| write -->|成功且平台核验| record
+  menu -->|放下或暂不继续| pause
+  write -->|结果未知| pause
+  other --> record
+  record -.->|因果索引，不可冒充事实| memory
+  pause -.->|之后仍需原目标有效、权限通过| menu
+  classDef safe fill:#e8f4fd,stroke:#4689b6,color:#173d5c
+  classDef caveat fill:#fff1e7,stroke:#d68a3c,color:#74421c
+  class record,context,menu,due,attribution,socialReceipt,todoReceipt,reflectionReceipt safe
+  class pause,write caveat
+
+%% @code child | index.js | const episode=lifeOpportunities.beginHomeExploration
+%% @code canonical | lib/life-opportunities.mjs | const continuations=
+%% @code firstOther | lib/autonomous-planner.mjs | const good=new Map([
+%% @code eligible | lib/life-episode-entrypoints.mjs | export function eligibleLifeEpisodeSources
+%% @code record | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
+%% @code context | lib/life-universal-episodes.mjs | const view=e=>
+%% @code due | lib/life-universal-episodes.mjs | const due=(
+%% @code menu | lib/autonomous-planner.mjs | action:'resume_episode'
+%% @code read | lib/autonomous-planner.mjs | const continueLifeRead=async
+%% @code write | lib/life-video-action-bridge.mjs | createLifeVideoActionBridge
+%% @code pause | lib/life-universal-episodes.mjs | const pauseLatest=(
+%% @code other | index.js | onEpisodeAction:proof=>universalLifeEpisodes.record(proof)
+%% @code memory | lib/life-memory-coordinator.mjs | createLifeMemoryCoordinator
+
+%% @code attribution | lib/life-action-attribution.mjs | export function createLifeActionAttribution
+%% @code socialReceipt | lib/life-willingness.mjs | const exact=typeof receiptId
+%% @code todoReceipt | index.js | sourceRef:'todo:'+original.id
+%% @code reflectionReceipt | lib/life-reflection.mjs | result.receiptId=receiptId
+
+%% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
+
+%% dev.38 专业 Agent 局部决策复用同账号匿名因果摘要；Episode 没有发送权。
+subagentHandoff["Episode Handoff｜视频/私信/评论按自身可读范围裁剪"]
+subagentFollow["私信 Agent 可自选长期好友关注｜原 DM 状态跨轮延期，独立权限复核"]
+record -.->|只读匿名动作历史| subagentHandoff
+subagentHandoff -.-> subagentFollow
+subagentFollow -.->|成功的平台关系读回才算已完成| attribution
+%% @code subagentHandoff | lib/life-subagent-continuity.mjs | export function lifeSubagentHandoff
+%% @code subagentFollow | lib/dm-autoreply.mjs | pending.status='reserved'
+
+%% dev.40: every verified BV public action is anchored on ITS OWN step, never the whole episode.
+publicStepBridge["同 BV 公开行为因果桥：每条回执自带 BV 哈希，无跨视频串线"]
+professionalMenu["各专业 Agent 当前真实行为菜单：宿主工具/授权决定候选"]
+commentObservation["评论/私信按需观察→最多两次只读取证→再决策"]
+commentPublicPerson["评论者公开投稿：独立授权 + 核验 UID/rpid/BV + 只读"]
+record -.-> publicStepBridge -.-> subagentHandoff
+subagentHandoff --> professionalMenu
+commentPublicPerson -.->|只读候选| professionalMenu
+professionalMenu -.-> commentObservation
+%% @code publicStepBridge | lib/life-universal-episodes.mjs | const publicVideoState=bvid=>
+%% @code professionalMenu | lib/life-subagent-continuity.mjs | export function subagentActionMenu
+%% @code commentObservation | lib/interaction-batch.mjs | for(let pass=0;pass<2;pass++){
+%% @code commentPublicPerson | lib/life-public-capabilities.mjs | export async function readVerifiedCommenterPublicVideos
+
+%% @code socialContact | lib/life-friend-initiatives.mjs | const outboundEnabled=
+
+%% @code opportunityEntry | lib/life-opportunities.mjs | const beginInspectedOpportunity=
+%% @code todoVideoEntry | lib/life-opportunities.mjs | const beginCompletedVideoTodo=
+
+%% dev.12: non-repeating LOCAL consideration and an optional bounded future chapter.
+novelRead["可信公开事实增量｜只影响额外局部推理，不能投票否决模型意愿"]
+optionalChapter["第 5 步确有新证据 → 最多一份 20 分钟后可选续章
+不复制发送证明、不重读 BV"]
+commenterChoice["评论后开放行为菜单：评论者作品限独立跨日公共证据
+不允许任意 UID 或自动私信"]
+read --> novelRead
+novelRead -.->|最后一步确有新资料| optionalChapter
+optionalChapter -.->|等下次 Life 自主决定| eligible
+commenterChoice -.->|候选非强制动作| menu
+%% @code novelRead | lib/life-episode-value.mjs | export function verifiedEpisodeYield
+%% @code optionalChapter | lib/life-opportunities.mjs | const carryNewEvidence=
+%% @code commenterChoice | lib/life-continuation.mjs | inspect_commenter_works

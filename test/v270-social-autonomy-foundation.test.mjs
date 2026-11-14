@@ -4,7 +4,6 @@ import { mkdtempSync, readFileSync, rmSync, symlinkSync, mkdirSync, writeFileSyn
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { composeSocialDecisionContext, interestEvidenceForTopic, validateSocialActionProposal } from '../lib/social-autonomy-contract.mjs'
-import { createSocialContinuityLedger } from '../lib/social-continuity-ledger.mjs'
 
 const actorUid = '485221842'
 const context = (overrides = {}) => composeSocialDecisionContext({
@@ -60,106 +59,11 @@ test('收到任意核验UID的@可以进入意愿考虑，但不存在由此推�
   assert.equal('canPost' in r, false)
 })
 
-test('延期要求未来重新判断，沉默和结束不是自动发消息', () => {
-  const c = context(), t = 1770000000000
-  assert.equal(validateSocialActionProposal({ action: 'defer', notBefore: t + 60000 }, c, { now: t }).requiresReconsideration, true)
-  assert.equal(validateSocialActionProposal({ action: 'defer', notBefore: t - 1 }, c, { now: t }).reason, 'invalid-defer-time')
-  assert.equal(validateSocialActionProposal({ action: 'skip' }, c).action, 'skip')
-  assert.equal(validateSocialActionProposal({ action: 'close' }, c).action, 'close')
+test('自主延期不产生新的自动预约，沉默和结束不是自动发送',()=>{
+ const c=context()
+ const r=validateSocialActionProposal({action:'defer',notBefore:1800000000000},c,{now:1700000000000})
+ assert.equal(r.ok,true);assert.equal(r.action,'defer')
+ assert.equal(r.notBefore,undefined);assert.equal(r.requiresReconsideration,undefined)
+ assert.equal(validateSocialActionProposal({action:'skip'},c).ok,true)
+ assert.equal(validateSocialActionProposal({action:'close'},c).ok,true)
 })
-
-test('P6-A/B 共享按账号、UID、线程隔离的预约账本，且不保存私信原文', () => temp(dir => {
-  let clock = 1770000000000
-  const ledger = createSocialContinuityLedger({ dataDir: dir, accountUid: '10001', now: () => clock })
-  const req = { uid: actorUid, channel: 'dm', threadKey: 'private-conversation-1', sourceEventId: 'real-message-1',
-    purpose: 'silence-reconsideration', notBefore: clock + 60000, expiresAt: clock + 4 * 3600000 }
-  const r = ledger.schedule(req)
-  assert.equal(r.scheduled, true)
-  assert.equal(ledger.schedule(req).duplicate, true)
-  assert.equal(ledger.due().length, 0)
-  const saved = readFileSync(ledger.file, 'utf8')
-  assert.doesNotMatch(saved, /private-conversation-1|real-message-1|真实私信/)
-  assert.equal(ledger.status().accountUid, '10001')
-  clock += 61000
-  assert.equal(ledger.due().length, 1)
-  assert.equal(ledger.claim(r.id).recheckPermissionAndMood, true)
-  assert.equal(ledger.due().length, 0)
-  assert.equal(ledger.settle(r.id, { outcome: 'sent' }).reason, 'missing-platform-receipt')
-  assert.equal(ledger.settle(r.id, { outcome: 'sent', receiptId: 'bili-confirmed-567' }).status, 'sent')
-  assert.equal(ledger.claim(r.id).reason, 'not-scheduled')
-  assert.throws(() => createSocialContinuityLedger({ dataDir: dir, accountUid: '20002' }).status(), /mismatch/)
-}))
-
-test('新消息取消同一人同一线程的未执行续聊，其他人和线程不受影响', () => temp(dir => {
-  let clock = 1770000000000
-  const ledger = createSocialContinuityLedger({ dataDir: dir, accountUid: '10001', now: () => clock })
-  const base = { channel: 'dm', purpose: 'delayed-supplement', notBefore: clock + 60000, expiresAt: clock + DAY }
-  const a = ledger.schedule({ ...base, uid: '10010', threadKey: 'a', sourceEventId: 'm1' })
-  const b = ledger.schedule({ ...base, uid: '10010', threadKey: 'b', sourceEventId: 'm2' })
-  const c = ledger.schedule({ ...base, uid: '10011', threadKey: 'a', sourceEventId: 'm3' })
-  assert.equal(a.ok && b.ok && c.ok, true)
-  assert.equal(ledger.cancelForIncoming({ uid: '10010', channel: 'dm', threadKey: 'a' }).cancelled, 1)
-  clock += 61000
-  const due = ledger.due()
-  assert.equal(due.length, 2)
-  assert.deepEqual(new Set(due.map(x => x.id)), new Set([b.id, c.id]))
-}))
-
-test('到期的续聊预约会被明确标记 expired，不会永久留在 scheduled', () => temp(dir => {
-  let clock=1770000000000
-  const ledger=createSocialContinuityLedger({dataDir:dir,accountUid:'10001',now:()=>clock})
-  const r=ledger.schedule({uid:'10010',channel:'dm',threadKey:'a',sourceEventId:'expired-1',purpose:'silence-reconsideration',
-    notBefore:clock+60000,expiresAt:clock+120000})
-  assert.equal(r.scheduled,true)
-  clock+=121000
-  assert.deepEqual(ledger.due(),[])
-  assert.equal(ledger.status().counts.expired,1)
-  assert.equal(ledger.status().counts.scheduled,0)
-}))
-
-const DAY = 86400000
-
-test('已领取但未收到可信回执不能自动重复发送；退出时仍显示 claimed', () => temp(dir => {
-  let clock = 1770000000000
-  const opts = { dataDir: dir, accountUid: '10001', now: () => clock }
-  const first = createSocialContinuityLedger(opts)
-  const r = first.schedule({ uid: '10010', channel: 'comment', threadKey: 'BV:thread', sourceEventId: 'rpid',
-    purpose: 'silence-reconsideration', notBefore: clock + 1500, expiresAt: clock + DAY })
-  clock += 2000
-  assert.equal(first.claim(r.id).ok, true)
-  const rebooted = createSocialContinuityLedger(opts)
-  assert.deepEqual(rebooted.due(), [])
-  assert.equal(rebooted.status().counts.claimed, 1)
-  assert.equal(rebooted.settle(r.id, { outcome: 'uncertain' }).ok, true)
-  assert.equal(rebooted.claim(r.id).ok, false)
-}))
-
-test('账本拒绝越界时间', () => temp(dir => {
-  const t = 1770000000000
-  const ledger = createSocialContinuityLedger({ dataDir: dir, accountUid: '10001', now: () => t })
-  assert.equal(ledger.schedule({ uid: '10010', channel: 'at', threadKey: 'a', sourceEventId: 'm', purpose: 'delayed-supplement',
-    notBefore: t - 1000, expiresAt: t + DAY }).reason, 'invalid-intention-time')
-}))
-
-test('账本拒绝用普通文件冒充存储目录', () => temp(dir => {
-  const ledger = createSocialContinuityLedger({ dataDir: dir, accountUid: '10001' })
-  writeFileSync(join(dir, 'social-continuity'), 'not a directory')
-  assert.throws(() => ledger.status(), /unsafe-continuity-dir/)
-}))
-
-test('账本拒绝符号链接目录（Windows 使用无需提升权限的 junction）', t => temp(dir => {
-  const ledger = createSocialContinuityLedger({ dataDir: dir, accountUid: '10001' })
-  const linked = join(dir, 'linked'); mkdirSync(linked)
-  try {
-    symlinkSync(linked, join(dir, 'social-continuity'), process.platform === 'win32' ? 'junction' : 'dir')
-  } catch (error) {
-    // A restricted Windows account / filesystem can forbid even directory junctions.
-    // Only skip link creation in that environment; time/path safety tests still run.
-    if (process.platform === 'win32' && ['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(error?.code)) {
-      t.skip(`当前 Windows 环境不允许创建目录联接：${error.code}`)
-      return
-    }
-    throw error
-  }
-  assert.throws(() => ledger.status(), /unsafe-continuity-dir/)
-}))

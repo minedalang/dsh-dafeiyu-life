@@ -1,0 +1,15 @@
+flowchart TD
+    A[Life 选择 browse_home] --> B[原视频 Agent 启动]
+    B --> C[账号绑定的匿名轮次 ID]
+    C --> D{实际调用首页推荐?}
+    D -->|未观察到| E[not-observed]
+    D -->|已调用| F{真实有效 BV?}
+    F -->|有| G[candidates · 计数]
+    F -->|空列表| H[empty]
+    F -->|失败| I[unavailable]
+    E --> J[子进程退出 + 独立选片账本]
+    G --> J
+    H --> J
+    I --> J
+    J --> K[Life 下轮参考 / 管理中心诊断]
+    K --> L[自选继续 / 休息]

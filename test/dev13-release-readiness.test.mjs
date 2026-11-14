@@ -50,7 +50,7 @@ test('2.6.2 全新安装只默认启用已授权好友视频私信推荐，公�
   assert.match(host,new RegExp(`${name}:\\s*true`),name+' runtime fallback must default on')
  }
  assert.match(host,/legacyInstall/)
- assert.match(host,/dailyDynamicDraftOnly: z\.boolean\(\)\.default\(true\)/)
+ assert.match(host,/dailyDynamicDraftOnly: z\.boolean\(\)\.default\(false\)/)
  assert.match(host,/mainSessionMemoryCandidates: z\.natural\(\)\.default\(48\)/)
  assert.match(host,/mainSessionMemorySearchDailyLimit: z\.natural\(\)\.default\(80\)/)
  assert.match(host,/mainSessionMemoryHalfLifeDays: z\.number\(\)\.default\(30\)/)
@@ -101,7 +101,7 @@ test('默认值班提示词与正式文档不允许从任务审计档案绕过�
  assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/每日运行的 AI、自动反思与普通回忆工具不提供读取档案的 API/)
  assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/可选 AI 辅助回忆/)
  assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/Release 前必做验收/)
- assert.match(packageInfo.version,/^(?:2\.5\.\d+|2\.6\.0|2\.6\.1|2\.6\.2|2\.7\.0)(?:-dev\.\d+)?$/)
+ assert.match(packageInfo.version,/^(?:2\.5\.\d+|2\.6\.0|2\.6\.1|2\.6\.2|2\.7\.0|2\.7\.1|2\.8\.0)(?:-dev\.\d+)?$/)
  assert.ok(packageInfo.files.includes('RELEASE_NOTES_v2.6.2.md'))
  assert.ok(!packageInfo.files.includes('RELEASE_NOTES_v2.5.0.md'))
 })

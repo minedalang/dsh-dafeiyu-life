@@ -95,35 +95,6 @@ test('旧版兴趣档案缺少 curiosityDismissed 仍可读取，伪造来源与
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('DM 真实 P6 预约尊重画像 no-followup；正常来信仍可得到单次回复',async()=>{
- const dir=home();try{
-  let t=base,allow=true
-  const inbox=[],sent=[]
-  const agent=createDmAutoReply({dataDir:dir,selfUid:'999',now:()=>t,getConfig:()=>({enabled:true,whitelist:['12345'],p6Enabled:true,whitelistCooldownSeconds:0}),
-   canContinue:()=>allow,fetchIncoming:async()=>inbox,
-   generateReply:async()=>({action:'reply',messages:['这条正常回复'],followUpMinutes:5}),
-   send:async x=>{sent.push(x);return {ok:true,receiptId:'platform-dm-receipt'}},logger:{warn(){},error(){}}})
-  await agent.poll()
-  inbox.push({senderUid:'12345',messageId:'1',text:'你好',timestampMs:t,incoming:true})
-  allow=false
-  const result=await agent.poll()
-  assert.equal(result.sent,1)
-  assert.equal(sent.length,1)
-  const {createSocialContinuityLedger}=await import('../lib/social-continuity-ledger.mjs')
-  const ledger=createSocialContinuityLedger({dataDir:dir,accountUid:'999',now:()=>t})
-  assert.equal(ledger.status().counts.scheduled,0)
-  allow=true
-  inbox.push({senderUid:'12345',messageId:'2',text:'再聊聊',timestampMs:t+1000,incoming:true})
-  t+=1000
-  await agent.poll()
-  assert.equal(ledger.status().counts.scheduled,1)
-  allow=false;t+=5*60000+10
-  await agent.poll()
-  assert.equal(sent.length,2,'scheduled wakeup was cancelled after boundary changed')
-  assert.equal(ledger.status().counts.cancelled,1)
- }finally{rmSync(dir,{recursive:true,force:true})}
-})
-
 test('dev.4 生产接线和管理 API/页面使用唯一画像与 LifeInterests 存储',()=>{
  const root=new URL('../',import.meta.url)
  const idx=readFileSync(new URL('index.js',root),'utf8')
@@ -133,7 +104,7 @@ test('dev.4 生产接线和管理 API/页面使用唯一画像与 LifeInterests 
  const comment=readFileSync(new URL('lib/comment-interact.mjs',root),'utf8')
  assert.equal(idx.match(/canContinue:\(uid,channel\)=>socialPortrait\.continuationAllowed/g)?.length,2)
  assert.match(dm,/canContinue\(uid,'dm'\)/)
- assert.match(comment,/canContinue\(entry.uid,entry.kind===/)
+ assert.doesNotMatch(comment,/scheduleP6|createSocialContinuityLedger/)
  assert.match(idx,/listCuriosityReview\(stateDir\)/)
  assert.match(idx,/curiosityReview\(stateDir,/)
  assert.match(idx,/REVIEW_LIFE_CURIOSITY/)
@@ -144,33 +115,3 @@ test('dev.4 生产接线和管理 API/页面使用唯一画像与 LifeInterests 
  assert.match(js,/boundary:no-followup/)
 })
 
-test('公开 @ P6：不主动追问边界阻断延期；旧预约在到期前撤销后不能发送',async()=>{
- const {createCommentInteract}=await import('../lib/comment-interact.mjs')
- const {createSocialContinuityLedger}=await import('../lib/social-continuity-ledger.mjs')
- const dir=home();try{
-  const self='999',uid='12345',bvid='BV1ignA6REjB'
-  let t=1790000000000,allowed=true
-  const notices=[],sends=[]
-  const msg=(id,at=t)=>({id,at_time:Math.floor(at/1000),user:{mid:uid,nickname:'好友'},item:{business_id:1,subject_id:'777',source_id:String(id+500),root_id:'888',target_id:'888',source_content:'@大肥鱼 想聊聊',uri:`https://www.bilibili.com/video/${bvid}`,at_details:[{mid:self}]}})
-  const engine=createCommentInteract({dataDir:dir,selfUid:async()=>self,now:()=>t,
-    getConfig:()=>({watchAt:true,replyAt:true,p6At:true,p6Comment:false,p6MaxBubbles:2,delayMinMinutes:5,delayMaxMinutes:360,
-      watchReplies:true,replyPerPoll:5,replyPerDay:20,globalDailyLimit:100,ownTopPerUser:15,ownNestedPerUser:15}),
-    canContinue:()=>allowed,getAtNotifications:async()=>({at:{code:0,data:{items:notices}}}),getNotifications:async()=>({data:{replies:[]}}),
-    getAtSource:async x=>({ok:true,uid:x.uid,rpid:x.rpid,bvid:x.bvid,text:'核实的 B站 评论'}),
-    getOwnComments:async()=>({top:[],nested:[]}),getVideoContext:async()=>({usable:true,text:'已核实视频'}),
-    generateReply:async req=>req.trigger==='scheduled'?{action:'reply',messages:['不应该发送']}:{action:'defer',notBefore:t+5*60000},
-    send:async req=>{sends.push(req);return {ok:true,rpid:'888888'}},logger:{warn(){},error(){}}})
-  await engine.poll({mentions:true,notifications:false,top:false})
-  const ledger=createSocialContinuityLedger({dataDir:dir,accountUid:self,now:()=>t})
-  allowed=false;notices.push(msg(1))
-  await engine.poll({mentions:true,notifications:false,top:false})
-  assert.equal(ledger.status().counts.scheduled,0)
-  allowed=true;t+=1000;notices.push(msg(2,t))
-  await engine.poll({mentions:true,notifications:false,top:false})
-  assert.equal(ledger.status().counts.scheduled,1)
-  allowed=false;t+=5*60000+10
-  await engine.poll({mentions:true,notifications:false,top:false})
-  assert.equal(sends.length,0)
-  assert.equal(ledger.status().counts.cancelled,1)
- }finally{rmSync(dir,{recursive:true,force:true})}
-})

@@ -97,8 +97,8 @@ test('自然遗忘后不能靠同 UID、相似文字或新回复从永久档案�
 test('真实社交记忆经过 ContextAssembler 注入评论且有 UID 权限隔离',()=>{
  const src=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const ctx=readFileSync(new URL('../lib/social-context-assembler.mjs',import.meta.url),'utf8')
- assert.match(src,/prepareContexts:batch=>socialContextAssembler\?\.batch\(batch\)/)
- assert.match(ctx,/memoryRetriever\?\.socialContext\(query/)
+ assert.match(src,/prepareContexts:\(batch,\{mode\}=\{\}\)=>socialContextAssembler\?\.batch\(batch,\{mode\}\)/)
+ assert.match(ctx,/memoryRetriever\?\.socialContext\(search/)
  assert.match(ctx,/policy\.canViewIdentity/)
  assert.match(src,/recordReply:async/)
 })

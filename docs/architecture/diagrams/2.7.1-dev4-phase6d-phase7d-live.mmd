@@ -1,0 +1,23 @@
+flowchart TD
+  S[管理中心统一生活设置] --> C[lifeDriverOwnership 当前配置只读归属]
+  O[旧管理表单 保存无关设置] --> L{是否 shadow 或 active}
+  L -->|是| D[不提交已托管生活模式与额度]
+  L -->|否 legacy| E[旧 Planner 参数兼容]
+  D --> P[原 persistCfg 唯一写入]
+  E --> P
+  S --> P
+  P --> C
+  C -->|旧定时器合法| T[旧视频时段入口]
+  C -->|shadow active| X[旧视频时段禁止]
+  C -->|新 Planner 启用| A[原 AutonomousPlanner 唯一视频 Life Agent 决策]
+  J[当前账号匿名时间线 最近48小时成功只读类别] --> F{用户手动确认且可预留两次额度}
+  F -->|缺证据 无额度或未授权| Z[返回明确拒绝 无模型调用]
+  F -->|通过| B[无证据的只读模型倾向]
+  B --> Q{账号与授权不变}
+  Q -->|是| W[含成功类别的同场景倾向]
+  Q -->|否| Y[终止 不执行任何工具]
+  W --> R[仅返回枚举相同 不同 无效]
+  R -.不写入成长事实.-> M[原 LifeMemoryGateway 和 Life Voice]
+  A --> V[原只读执行 真实回执与原权限]
+  DM[旧私信 评论真实回复器] --> G[原发送授权 去重 冻结]
+  R -.无平台操作.-> G

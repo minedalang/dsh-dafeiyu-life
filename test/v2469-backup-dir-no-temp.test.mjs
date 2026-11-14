@@ -3,13 +3,13 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,mkdirSync,existsSync,readFileSync,readdirSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {spawnSync} from 'node:child_process'
+import {spawnPython} from './helpers/python-sqlite-runner.mjs'
 import {requireBackupDirectory,saveBackupJson} from '../lib/backup-directory.mjs'
 import {createBackup} from '../lib/data-backup.mjs'
 
 const temp=()=>mkdtempSync(join(tmpdir(),'dafeiyu-v2469-'))
 const helper=join(import.meta.dirname,'..','lib','data-backup-sqlite.py')
-const python=(op,root,body='',extra={})=>spawnSync(process.env.PYTHON||'python3',[helper,op,root],{
+const python=(op,root,body='',extra={})=>spawnPython([helper,op,root],{
   encoding:'utf8',input:body,env:{...process.env,...extra},timeout:15000})
 
 test('备份目录必须由用户指定，且必须可写、不能是磁盘根目录',()=>{
@@ -36,10 +36,9 @@ test('SQLite 完整导出和恢复无须 Windows TEMP/TMP/TMPDIR',()=>{
   const root=temp(),target=temp()
   try {
     mkdirSync(join(root,'dynamic-sync'),{recursive:true})
-    const fixture=spawnSync(process.env.PYTHON||'python3',['-c',
+    const fixture=spawnPython(['-c',
       "import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute('create table knowledge (name text,status text)');d.execute('insert into knowledge values (?,?)',('鱼来','approved'));d.commit();d.close()",
       join(root,'meme-memory.sqlite3')],{encoding:'utf8'})
-    if(fixture.error?.code==='ENOENT')return
     assert.equal(fixture.status,0,fixture.stderr)
     const bad=join(root,'no-such-temp');
     const unusable={TEMP:bad,TMP:bad,TMPDIR:bad}
@@ -49,7 +48,7 @@ test('SQLite 完整导出和恢复无须 Windows TEMP/TMP/TMPDIR',()=>{
     assert.ok(data.sqlite['meme-memory.sqlite3'])
     const imported=python('restore',target,JSON.stringify(data),unusable)
     assert.equal(imported.status,0,imported.stderr+' / '+imported.stdout)
-    const verify=spawnSync(process.env.PYTHON||'python3',['-c',
+    const verify=spawnPython(['-c',
       "import sqlite3,sys;print(sqlite3.connect(sys.argv[1]).execute('select name,status from knowledge').fetchone())",
       join(target,'meme-memory.sqlite3')],{encoding:'utf8'})
     assert.match(verify.stdout,/鱼来/)

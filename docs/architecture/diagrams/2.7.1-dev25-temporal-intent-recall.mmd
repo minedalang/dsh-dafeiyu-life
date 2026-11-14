@@ -1,0 +1,18 @@
+flowchart TD
+  A[Agent 当前首轮模型\n决定是否回忆并提出意图/查询词/时间] -->|RecallRequest 只读| B[recall-request.mjs\n校验意图 日期 类型\n宿主可信时区]
+  B --> C[MemoryRetriever\n账号角色 UID 访问控制]
+  C --> D{授权数据源}
+  D --> E[长期记忆\n仅显式 occurredAt 可用于精确日期]
+  D --> F[LifeMemoryGateway\n仅当前仍记得的经历]
+  D --> G[公开成功评论回执\n账户/BV/时间截断]
+  E --> H[日期和事件类型硬过滤]
+  F --> H
+  G --> H
+  H --> I{时间线宽泛回顾?}
+  I -->|是| J[按真实发生时间排序]
+  I -->|否| K[词法相关度 + 可选本地 Embedding\n仅在已过滤候选内]
+  K --> L[语义失败则词法排序\n不解除日期过滤]
+  J --> M[从实时账本按 ID 重新核验]
+  L --> M
+  M --> N[返回可信只读证据\n继续原 Agent 回答]
+  N -.-> O[无新社交发送权限]

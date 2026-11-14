@@ -1,0 +1,27 @@
+flowchart TD
+    E[真实事件 / 到期目标 / 生活节律] --> F[轻量事件汇聚与唤醒
+去重 合批 过期 冷却 不调用模型]
+    F -->|有值得考虑的线索且预算允许| A[唯一 Life Agent
+自主意愿 目标 规划 沉默或休息]
+    F -->|无新线索或不值得| Z[不调用模型]
+    M[统一生活认知
+Life Voice / 情绪 / Life Memory
+兴趣 / 关系 / 已接受待办 / 跨轮意愿] <--> A
+    A -->|选择授权范围内的能力| C[能力目录 / 平台无关接口]
+    C --> G[dev.3 安全执行底座
+权限 额度 身份 预约 回执 未知冻结]
+    G --> B[B站能力适配器]
+    G -.未来.-> D[抖音能力适配器]
+    G -.未来.-> O[其他平台适配器]
+    B --> R[真实结果 / 失败 / 不确定]
+    D --> R
+    O --> R
+    R --> V[事实核验与证据分级]
+    V -->|有意义的真实经历| M
+    V -->|目标延期或放下| F
+    classDef target fill:#e8f1ff,stroke:#4375bf,color:#1e3d6b
+    classDef existing fill:#e8f5e9,stroke:#4c956c,color:#214c32
+    classDef future fill:#f5f5f5,stroke:#999,color:#555,stroke-dasharray: 4 4
+    class A,F,C target
+    class M,G,B existing
+    class D,O future

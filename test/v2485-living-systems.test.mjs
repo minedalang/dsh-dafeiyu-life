@@ -43,12 +43,12 @@ test('单个视频不足以形成跨视频梗知识',async()=>{
  const svc=createMemeLearning({getConfig:()=>({masterEnabled:true,memeMemoryEnabled:true}),read:async()=>({rows:[{id:1,name:'奶蛙',bvid:'BV1234567890'}]}),invokeModel:async()=>{called=true},commit:async()=>{throw Error('should not commit')}})
  const result=await svc.reflect({force:true});assert.equal(result.skipped,'insufficient-cross-video-evidence');assert.equal(called,false)
 })
-test('原生设置只显示日常，保留时段、间隔和作者致谢',()=>{
+test('原生设置只显示日常与统一生活入口，不再使用旧定时时段，保留作者致谢',()=>{
  const s=source('client.js')
  assert.match(s,/const tab = 'daily'/)
  assert.doesNotMatch(s,/\[\['daily', '日常'\], \['taste'/)
- assert.match(s,/刷视频间隔（分钟）/)
- assert.match(s,/自定义时段自动刷/)
+ assert.match(s,/大肥鱼|鱼鱼|1f/)
+ assert.doesNotMatch(s,/刷视频间隔（分钟）|自定义时段自动刷/)
  assert.match(s,/开源来源与致谢/)
  assert.match(s,/space\.bilibili\.com\/210228238/)
 })
@@ -85,7 +85,7 @@ test('新增动态开关与每日上限可通过管理中心接口保存，默�
    let code=0,data;const res={writeHead(n){code=n},end(x){data=JSON.parse(x)}}
    await handler(req,res);assert.equal(code,200);return data.config
   }
-  const before=await call('GET');assert.equal(before.dailyDynamicEnabled,true);assert.equal(before.dailyDynamicDraftOnly,true)
+  const before=await call('GET');assert.equal(before.dailyDynamicEnabled,true);assert.equal(before.dailyDynamicDraftOnly,false)
   const after=await call('POST',{autoVideoLikeDailyLimit:17,dailyDynamicEnabled:true,dailyDynamicDraftOnly:false,dailyDynamicDailyLimit:3})
   assert.equal(after.autoVideoLikeDailyLimit,17);assert.equal(after.dailyDynamicEnabled,true)
   assert.equal(after.dailyDynamicDraftOnly,false);assert.equal(after.dailyDynamicDailyLimit,3)

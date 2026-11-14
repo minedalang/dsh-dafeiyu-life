@@ -7,6 +7,10 @@ from pathlib import Path
 # These are tentative names, NOT explanations, characters, mood or visual identifications.
 STOP={'最新','完整版','合集','原创','搞笑','视频','推荐','剪辑','高能','必看','日常','体验','官方','直播','测试','介绍','挑战','投稿','翻唱','音乐','游戏','更新','教程','番剧'}
 BV=re.compile(r'^BV[0-9A-Za-z]{10}$')
+GENERIC_MARKER=re.compile(r'^(?:day\s*\d{1,4}|第[0-9零〇一二三四五六七八九十百]+天|第[0-9零〇一二三四五六七八九十百]+期|经验开源|经验分享|教程合集|资源分享|作品展示)$',re.I)
+STRONG_BODY_EVIDENCE={'字幕','评论','弹幕','简介','其他文字'}
+def generic_marker(name):return bool(GENERIC_MARKER.fullmatch(str(name or '').strip()))
+
 
 def title_candidates(title):
     if not isinstance(title,str): return []
@@ -79,7 +83,9 @@ def operate(home,mode,payload=None):
                 src=[byid[i] for i in ids]
                 if len({r['bvid'] for r in src})<2:continue
                 name=str(entry.get('name') or '').strip()[:48]
-                if not name or any(r['name'].casefold()!=name.casefold() for r in src):continue
+                sources=len({r['bvid'] for r in src})
+                title_only=all(str(r['evidence_type'] or '') not in STRONG_BODY_EVIDENCE for r in src)
+                if not name or generic_marker(name) or (title_only and sources<3) or any(r['name'].casefold()!=name.casefold() for r in src):continue
                 meaning=str(entry.get('meaning') or '').strip()[:220]
                 if len(meaning)<10 or re.search(r'https?://|(?:cookie|token|password|sessdata|secret)',meaning,re.I):continue
                 kind=entry.get('kind') if entry.get('kind') in ('梗','角色','人物','系列','其他') else '其他'
@@ -103,5 +109,5 @@ if __name__=='__main__':
     try:
         home,mode=sys.argv[1:3]
         payload=json.loads(sys.stdin.read(16000)) if mode in ('commit','observe') else None
-        print(json.dumps(operate(home,mode,payload),ensure_ascii=False))
-    except Exception as exc:print(json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False))
+        print(json.dumps(operate(home,mode,payload),ensure_ascii=True))
+    except Exception as exc:print(json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=True))

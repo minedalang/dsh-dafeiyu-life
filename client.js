@@ -111,6 +111,8 @@ window.__ModuleLoader__.load({
     [data-bd-item-n]{font-size:11px;line-height:15px;color:var(--dsw-alias-label-tertiary,inherit);margin:0;}
     [data-bd-item-why]{font-size:12px;line-height:17px;color:var(--dsw-alias-label-secondary,inherit);
       display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    [data-bd-comment-body]{display:block;white-space:pre-wrap;overflow-wrap:anywhere;-webkit-line-clamp:unset;}
+    [data-bd-sticker-preview]{display:block;max-width:210px;max-height:160px;object-fit:contain;border-radius:8px;margin:6px 0;}
     [data-bd-clickable]{cursor:pointer;transition:border-color .12s,background .12s;}
     [data-bd-clickable]:hover{border-color:var(--dsw-alias-brand-primary,rgba(76,141,255,.5));
       background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));}
@@ -197,60 +199,6 @@ window.__ModuleLoader__.load({
 
     /* ────────────── 设置页正文 ────────────── */
 
-/* ────────────── 会话头那个 tab：它刷过的视频（最小实验版）────────────── */
-function WatchTab() {
-  const PAGE = 30
-  const onOpenUrl = (u) => { jpost('/open', { what: 'url', u }).catch(() => {}) }
-  const [rows, setRows] = React.useState(null)
-  const [st, setSt] = React.useState('')      // '' | picked | skipped | commented
-  const [tier, setTier] = React.useState('')  // '' | 值得看 / 可以看 / 不值当
-  const [offset, setOffset] = React.useState(0)
-  const [total, setTotal] = React.useState(0)
-  const load = (s, t, off) => {
-    setRows(null)
-    const q = `/watched?limit=${PAGE}&offset=${off}` + (s ? '&state=' + s : '') + (t ? '&tier=' + encodeURIComponent(t) : '')
-    jget(q).then((r) => {
-      if (!r || !r.ok) { setRows([]); return }
-      setRows(r.rows || [])
-      setTotal(Number(r.total) || 0)
-    }).catch(() => setRows([]))
-  }
-  React.useEffect(() => { load("", "", 0) }, [])
-  const pick = (kind, v) => {
-    const next = (kind === 'state' ? st : tier) === v ? '' : v
-    if (kind === 'state') setSt(next); else setTier(next)
-    setOffset(0)
-    load(kind === 'state' ? next : st, kind === 'tier' ? next : tier, 0)
-  }
-  const go = (d) => { const n = Math.max(0, Math.min(offset + d, Math.max(0, total - 1))); setOffset(n); load(st, tier, n) }
-  const chip = (label, on, active) => h('button', { 'data-bd-chip': '', 'aria-selected': active ? 'true' : 'false', onClick: on }, label)
-  return h('div', { 'data-bd-page': '', 'data-bd-wide': '' },
-    h('div', { 'data-bd-row': '' },
-      chip('全部', () => pick('state', ''), st === ''),
-      chip('挑了', () => pick('state', 'picked'), st === 'picked'),
-      chip('跳过', () => pick('state', 'skipped'), st === 'skipped'),
-      chip('发给你了', () => pick('state', 'commented'), st === 'commented'),
-      chip('刷新', () => { setOffset(0); load(st, tier, 0) }, false),
-      h('div', { 'data-bd-note': '' }, rows === null ? '读取中…' : `共 ${total} 条`)),
-    h('div', { 'data-bd-row': '' },
-      chip('值得看', () => pick('tier', '值得看'), tier === '值得看'),
-      chip('可以看', () => pick('tier', '可以看'), tier === '可以看'),
-      chip('不值当', () => pick('tier', '不值当'), tier === '不值当')),
-    rows && rows.length ? h('div', { 'data-bd-list': '' },
-      rows.map((x, i) => h('div', { key: x.day + x.bvid, 'data-bd-item': '', 'data-bd-clickable': '', title: '在浏览器打开', onClick: () => onOpenUrl(x.url) },
-        i < 30 ? h('img', { 'data-bd-cover': '', src: API + '/cover?bv=' + x.bvid, loading: 'lazy', alt: '' }) : null,
-        h('div', { 'data-bd-item-body': '' },
-          h('div', { 'data-bd-item-t': '' }, x.title),
-          h('div', { 'data-bd-item-n': '' }, `${x.day} · ${x.up} · `, x.picked ? '挑中了' : (x.status && /跳过/.test(x.status) ? '跳过' : '看过'), (x.delivered || x.commented) ? ' · 已发给你' : '',
-            x.tier ? h('span', { 'data-bd-tier': x.tier }, ' · ' + x.tier) : null),
-          x.why ? h('div', { 'data-bd-item-why': '' }, x.why) : null))))
-      : h('div', { 'data-bd-note': '' }, rows === null ? '' : '这一类还没有记录 —— 跑一轮之后就有了'),
-    total > PAGE ? h('div', { 'data-bd-row': '' },
-      h('button', { 'data-bd-btn': '', disabled: offset <= 0, onClick: () => go(-PAGE) }, '上一页'),
-      h('div', { 'data-bd-note': '' }, `${offset + 1}–${Math.min(offset + PAGE, total)} / ${total}`),
-      h('button', { 'data-bd-btn': '', disabled: offset + PAGE >= total, onClick: () => go(PAGE) }, '下一页')) : null)
-}
-
     function Panel() {
       const [st, setSt, fails] = useStatus(5000)
       const [busy, setBusy] = React.useState('')
@@ -262,7 +210,9 @@ function WatchTab() {
       const [favId, setFavId] = React.useState(null)             // 选中的收藏夹 fid（字符串）
       const [persona, setPersona] = React.useState(null)   // 人设提示词草稿
       const [rl, setRl] = React.useState(null)
-      const [newVer, setNewVer] = React.useState('')       // 发现的新版本号（空 = 没发现）          // 日报形态：full / brief / off
+      const [newVerSource, setNewVerSource] = React.useState('npm')
+      const [newVer, setNewVer] = React.useState('')       // 发现的新版本号（空 = 没发现）
+      const [npmUpdateState, setNpmUpdateState] = React.useState({status:'checking',latest:'',current:'',error:''})
       // ⚠️ 输入框必须绑"本地草稿"：页面每 5 秒轮询 /status，服务端那份会把 config 盖掉
       //    ⇒ 直接绑 cfg 的话，用户打字打到一半就被冲没了 ✗（2026-10-14 陌生人验收时抓到）
       const [perDay, setPerDay] = React.useState(null)
@@ -270,7 +220,6 @@ function WatchTab() {
       const [peakIntervalDraft, setPeakIntervalDraft] = React.useState(null)
       const [peakWindowsDraft, setPeakWindowsDraft] = React.useState(null)
       const [perRound, setPerRound] = React.useState(null)
-      const [dmUid, setDmUid] = React.useState(null)        // 私信收件人 UID（本地草稿）
       const [dmWatch, setDmWatch] = React.useState(null)          // 后台私信总开关
       const [dailyPublicCommentLimit, setDailyPublicCommentLimit] = React.useState(null)
       const [dynamicDailyLimitDraft, setDynamicDailyLimitDraft] = React.useState(null)
@@ -291,7 +240,6 @@ function WatchTab() {
       const [visionTest,setVisionTest] = React.useState(null)
       const [visionBusy,setVisionBusy] = React.useState(false)
       const [visionDraft,setVisionDraft] = React.useState(null)
-      const [dmMode, setDmMode] = React.useState(null)      // 投递方式：off / only / both
       const [mentionTargets, setMentionTargets] = React.useState(null)
       const [mentionMode, setMentionMode] = React.useState(null)
       const [friendProfiles,setFriendProfiles] = React.useState(null)
@@ -346,8 +294,6 @@ function WatchTab() {
         if (cfg && mentionMode === null) setMentionMode(cfg.mentionMode || 'ai')
         if (cfg && friendProfiles === null) {try {setFriendProfiles(JSON.parse(cfg.mentionProfiles||'{}'))} catch {setFriendProfiles({})}}
         if (cfg && loreDraft === null) setLoreDraft(cfg.characterLore || '')
-        if (cfg && dmUid === null) setDmUid(cfg.dmUid ? String(cfg.dmUid) : '')
-        if (cfg && dmMode === null) setDmMode(cfg.dmMode || 'only')
         if (cfg && dmWatch === null) setDmWatch(cfg.dmWatch !== false)
         if(cfg && visionDraft===null) setVisionDraft(Object.fromEntries(['visionModelProvider','visionModelId','visionReasoningEffort','visionFrames'].map(k=>[k,cfg[k]??''])))
         if(cfg && modelDraft===null) setModelDraft(Object.fromEntries(['videoModelProvider','videoModelId','videoReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort'].map(k=>[k,cfg[k]||''])))
@@ -370,16 +316,6 @@ function WatchTab() {
         return () => {alive = false; clearInterval(timer)}
       }, [])
 
-      const scheduleRows = peakWindowsDraft || []
-      const updateSchedule = (idx, key, value) => setPeakWindowsDraft(rows => (rows || []).map((w, i) => i === idx ? {...w, [key]:value} : w))
-      const saveSchedule = () => {
-        const rows = peakWindowsDraft || []
-        if (rows.some(w => !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(w.start) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(w.end) || w.start === w.end)) {
-          say('时间段格式无效：请填完整 HH:MM，开始和结束不能相同', 'warn'); return
-        }
-        patch({peakWindows:JSON.stringify(rows)}, '自定义时间段')
-      }
-
       const say = (text, tone) => {
         setMsg(text); setMsgTone(tone || '')
         setRunNote(text ? { t: text, tone: tone || '' } : null)   // ⭐ 同时镜像到顶部，免得提示掉到页面最底下看不见
@@ -391,7 +327,7 @@ function WatchTab() {
       const onOpenManage = async (tab = '') => {
         setManageError('')
         try {
-          const safeTab = ['firststart', 'models', 'home'].includes(tab) ? tab : ''
+          const safeTab = ['firststart', 'models', 'home', 'life', 'life-agent'].includes(tab) ? tab : ''
           const ua = String(window.navigator?.userAgent || '')
           const smallTouch = Number(window.navigator?.maxTouchPoints || 0) > 0 &&
             Number(window.innerWidth || 1024) <= 900
@@ -450,8 +386,8 @@ function WatchTab() {
           }
           if (r.config) setSt((old) => ({ ...old, config: r.config }))
           // ⭐ DSH 原生设置页里显式设过的键由宿主说了算 ⇒ 我们这份也得写进去；写失败要说出来，别假装"已保存"
-          if (r?.host && r.host.ok === false) say(`${what || '设置'}：插件自己那份存了，但 DSH 设置页那份没写进去（${r.host.error}）`, 'warn')
-          else say(what ? `${what}：已保存` : '已保存', 'good')
+          if (r?.host?.ok === false && r.host?.skipped !== true) say(`${what || '设置'}已保存并通过插件配置回读；DSH 原生设置镜像未同步（${r.host.error}）`, 'good')
+          else say(what ? `${what}：已保存并生效` : '已保存并生效', 'good')
         } catch (e) { say(String(e?.message ?? e), 'warn') }
         finally { setBusy('') }
       }
@@ -533,26 +469,46 @@ function WatchTab() {
       const onUpgrade = async () => {
         setBusy('upgrade')
         try {
-          const r = await jpost('/upgrade', {})
+          const r = await jpost('/upgrade', {source:newVerSource==='npm'?'npm':'github',expectedLatest:newVer})
           // 原来这两句分两次 say，第二句把服务端的 hint 冲掉了 —— 合成一句。（2026-10-16 审查修）
-          say(((r && r.hint) || '正在升级') + ' —— 升级过程写在下面的「主依赖的日志」里；完了记得重启一次 dsh（不重启还是旧版）', 'warn')
+          if(r?.ok!==true) say('未启动升级：'+String(r?.error||r?.hint||'后端未确认'),'warn')
+          else say(((r && r.hint) || '已请求升级') + ' —— 请检查下方「主依赖的日志」；升级完成后重启 dsh', 'warn')
         } catch (e) { say(String(e?.message ?? e), 'warn') } finally { setBusy('') }
       }
 
+      // A permanent, diagnosable npm version status. Opening settings performs
+      // one query only; no background polling or automatic installation.
+      const readNpmVersion = async ({fresh=false}={}) => {
+        const r = await jget('/update?source=npm'+(fresh?'&refresh=1':''))
+        const status=r?.ok===true&&r.source==='npm'?(r.hasNew===true?'available':'current'):'error'
+        setNpmUpdateState({status,latest:String(r?.latest||''),current:String(r?.current||''),
+          error:status==='error'?String(r?.error||'npm 版本查询失败'):''})
+        setNewVerSource('npm');setNewVer(status==='available'?String(r.latest):'')
+        return r
+      }
+      React.useEffect(() => {
+        let alive=true
+        jget('/update?source=npm').then(r=>{
+          if(!alive)return
+          const status=r?.ok===true&&r.source==='npm'?(r.hasNew===true?'available':'current'):'error'
+          setNpmUpdateState({status,latest:String(r?.latest||''),current:String(r?.current||''),
+            error:status==='error'?String(r?.error||'npm 版本查询失败'):''})
+          setNewVerSource('npm');setNewVer(status==='available'?String(r.latest):'')
+        }).catch(e=>alive&&setNpmUpdateState({status:'error',latest:'',current:'',error:String(e?.message||e)}))
+        return ()=>{alive=false}
+      }, [])
+
       const onCheckUpdate = async () => {
         setBusy('update')
+        setNpmUpdateState(old=>({...old,status:'checking'}))
         try {
-          const r = await jget('/update')
-          if (r && r.ok && r.latest) {
-            const from = r.source === 'github' ? '（npm 上还没发上去，这个版本来自 GitHub）' : ''
-            if (r.hasNew) {
-              setNewVer(r.latest)
-              say('有新版 v' + r.latest + '（你的是 v' + r.current + '）' + from + ' —— 点右边的「一键升级」，完了重启一次 dsh', 'warn')
-            } else say('已经是最新版 v' + r.current + from, 'good')
-          } else {
-            say('查不到最新版（可能网络不通）—— 你现在的版本是 v' + ((r && r.current) || '?'))
-          }
-        } catch (e) { say(String(e?.message ?? e), 'warn') } finally { setBusy('') }
+          const r=await readNpmVersion({fresh:true})
+          if(r?.ok===true){
+            say(r.hasNew===true?'npm 发现新版本 v'+r.latest+'（当前 v'+r.current+'），可点红点更新':
+              'npm 当前没有比 v'+r.current+' 更高的正式版本',r.hasNew===true?'warn':'good')
+          }else say('npm 查询失败：'+String(r?.error||'网络或 npm 服务不可用'),'warn')
+        }catch(e){setNpmUpdateState(old=>({...old,status:'error',error:String(e?.message||e)}));say(String(e?.message||e),'warn')}
+        finally{setBusy('')}
       }
 
       const onCheck = async () => {
@@ -665,6 +621,15 @@ function WatchTab() {
       if(st?.onboarding && !(st.onboarding.welcomeCompleted??st.onboarding.completed)){
         const steps=st.onboarding;
         return h('div',{'data-bd-page':''},
+          h('div',{'data-bd-sec':'',style:{padding:'10px',borderRadius:'12px'}},
+            h('div',{'data-bd-row':''},
+              h('button',{'data-bd-btn':'',onClick:newVer?onUpgrade:onCheckUpdate,
+                disabled:busy==='update'||busy==='upgrade',
+                style:{position:'relative',...(newVer?{color:'#c62828',borderColor:'#d32f2f'}:{})}},
+                newVer?'更新至 v'+newVer:npmUpdateState.status==='checking'?'正在检查 npm…':'检查更新',
+                newVer?h('span',{title:'发现 npm 更新',style:{position:'absolute',right:'-5px',top:'-5px',width:'11px',height:'11px',borderRadius:'50%',background:'#e53935'}}):null)),
+            h('div',{'data-bd-note':''},npmUpdateState.status==='error'?'npm 查询失败：'+npmUpdateState.error:
+              newVer?'npm 有新版 v'+newVer:npmUpdateState.status==='current'?'npm 暂无比本机更高的版本':'正在核实 npm 版本')),
           h('div',{'data-bd-sec':'',style:{padding:'20px',borderRadius:'16px',border:'2px solid #c74351',background:'rgba(218,61,73,.08)'}},
             h('div',{'data-bd-label':'',style:{fontSize:'19px',fontWeight:800,color:'#c74351'}},'🐟 欢迎来到大肥鱼 · 首次配置'),
             h('div',{'data-bd-note':''},'新用户和老用户都会看到一次这份向导；不会清除你的旧资料。B站账号与 Headless 模型是两项必需配置，未完成前所有业务功能锁定。'),
@@ -684,7 +649,21 @@ function WatchTab() {
           h('div',{'data-bd-row':'',style:{justifyContent:'space-between',alignItems:'center'}},
             h('div',{'data-bd-grow':''},h('div',{'data-bd-label':''},'🐳 大肥鱼 · DSH 生活系统'),
               h('div',{'data-bd-note':''},'她会自己去 B站、把重要经历带回主 Session、长期记住主人和朋友；精确档案、长期记忆、梗、好友关系与互动状态都保存在本地。')),
-            h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage()},'打开管理中心 ↗')),
+            h('div',{'data-bd-row':'',style:{position:'relative',gap:'8px'}},
+              h('button',{type:'button','data-bd-btn':'',onClick:newVer?onUpgrade:onCheckUpdate,
+                disabled:busy==='upgrade'||busy==='update',
+                title:npmUpdateState.status==='error'?npmUpdateState.error:'仅通过 npm 官方仓库检测版本，手动更新前再次确认',
+                style:{position:'relative',...(newVer?{color:'#c62828',borderColor:'#d32f2f',fontWeight:'bold'}:{})}},
+                newVer?'更新至 v'+newVer:npmUpdateState.status==='checking'?'正在检查版本…':
+                  npmUpdateState.status==='error'?'更新检查失败 · 重试':'检查更新',
+                newVer?h('span',{title:'npm 检测到更高版本',style:{display:'inline-block',position:'absolute',right:'-5px',top:'-5px',
+                  width:'11px',height:'11px',borderRadius:'50%',background:'#e53935',boxShadow:'0 0 0 2px white'}}):null),
+              h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage()},'打开管理中心 ↗'))),
+          h('div',{'data-bd-note':'',style:{marginTop:'6px',...(newVer?{color:'#c62828'}:{})}},
+            npmUpdateState.status==='available'?'npm 发现新版本 v'+newVer+'；点击上方按钮更新并重启 DSH。':
+              npmUpdateState.status==='checking'?'正在查询 npm 仓库版本（不会自动更新）…':
+              npmUpdateState.status==='error'?'npm 查询失败：'+npmUpdateState.error+'。请检查网络后手动重试。':
+              'npm 未发现更高正式版（本地 v'+(st.version||'?')+'；仓库 v'+(npmUpdateState.latest||'?')+'）。'),
           manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
 
         /* ── 大肥鱼总开关：永久展示，不隐藏设置，不清除历史 ── */
@@ -706,12 +685,10 @@ function WatchTab() {
 
         /* ── 今天 ── */
         h('div', { 'data-bd-row': '' },
-          h('span', { 'data-bd-badge': '' }, `今天已挑 ${st.pickedToday ?? st.ranToday ?? 0} / ${cfg.perDay} 条`),
           h('span', { 'data-bd-badge': '' }, '环境' + (st.venvReady ? '已就绪' : (st.installing ? '正在装' : '未装'))),
           h('span', { 'data-bd-badge': '' }, st.loggedIn ? 'B站已登录' : 'B站未登录'),
             h('span', { 'data-bd-badge': '' }, 'v' + (st.version || '?')),
-          h('div', { 'data-bd-grow': '' }),
-          h('button', { 'data-bd-btn': '', disabled: busy === 'run' || cfg.masterEnabled === false, onClick: onRun }, '现在跑一轮')),
+          h('div', { 'data-bd-grow': '' })),
           runNote ? h('div', { 'data-bd-msg': '', 'data-good': runNote.tone === 'good' ? '' : undefined,
             'data-warn': runNote.tone === 'warn' ? '' : undefined }, runNote.t) : null,
 
@@ -726,70 +703,10 @@ function WatchTab() {
           h('div',{'data-bd-note':''},'扫码登录统一由管理中心 → 首次设置管理。'),
           st.installTail?h('pre',{'data-bd-pre':''},String(st.installTail).slice(-2500)):null),
 
-        /* ── 定时 ── */
-        /* v2.4.86: 偏好、互动、高级的配置统一搬到管理中心；不再显示原生设置多标签。 */
-        h('div',{'data-bd-note':''},'日常页只负责启停、运行时间和立即运行；模型、选片、点赞、动态、记忆及额度都在管理中心统一设置。'),
-
-        h('div', { 'data-bd-sec': '', 'data-bd-group': 'daily', 'data-bd-away': tab === 'daily' ? undefined : '' },
-          h('div', { 'data-bd-h': '' }, '什么时候自己跑'),
-          h(ToggleRow, {
-            label: '定时自主刷视频（可选）',
-            note: '这是可选的后台活动计划，不是人生记忆或情绪系统的前提。关闭后大肥鱼仍可在主 Session 按你的要求看视频、回忆经历并处理待办；只有开启后才会按下方时段自动刷视频。',
-            on: sw('peakValley'),
-            onChange: (v) => patch({ peakValley: v }, '自定义时段自动刷'),
-          }),
-          h('div', { 'data-bd-sub': '' },
-            h('div', { 'data-bd-note': '' }, '记忆、反思、情绪与主 Session 工具独立运行，不需要开启定时刷视频。时段与间隔只控制后台自动浏览；关闭开关不会清除已保存时间段。跨午夜例如 23:00–02:00。'),
-            ...scheduleRows.map((w, i) => h('div', { key:i, 'data-bd-row': '' },
-              h('span', { 'data-bd-label': '' }, `时段 ${i + 1}`),
-              h('input', { 'data-bd-input':'', type:'time', style:{width:120}, value:w.start,
-                'aria-label':`时段 ${i + 1} 开始`, onChange:e=>updateSchedule(i,'start',e.target.value) }),
-              h('span', null, '至'),
-              h('input', { 'data-bd-input':'', type:'time', style:{width:120}, value:w.end,
-                'aria-label':`时段 ${i + 1} 结束`, onChange:e=>updateSchedule(i,'end',e.target.value) }),
-              h('button', { 'data-bd-btn':'', disabled:Boolean(busy), onClick:()=>setPeakWindowsDraft(rows=>(rows||[]).filter((_,j)=>j!==i)) }, '删除')
-            )),
-            h('div', { 'data-bd-row': '' },
-              h('button', { 'data-bd-btn':'', disabled:Boolean(busy)||scheduleRows.length>=16,
-                onClick:()=>setPeakWindowsDraft(rows=>[...(rows||[]),{start:'',end:''}]) }, '＋ 添加时间段'),
-              h('button', { 'data-bd-btn':'', 'data-primary':'', disabled:Boolean(busy), onClick:saveSchedule }, '保存时间段')),
-            scheduleRows.length===0 ? h('div', {'data-bd-msg':'','data-warn':''}, '尚未设置时段；开启自动刷后不会执行，先添加并保存一个时间段。') : null,
-            h('div', { 'data-bd-row': '' },
-              h('div', { 'data-bd-grow': '' },
-                h('div', { 'data-bd-label': '' }, '刷视频间隔（分钟）'),
-                h('div', { 'data-bd-note': '' }, '1～720 分钟；跨时段共用此间隔，受每日额度及总开关约束。')),
-              h('input', { 'data-bd-input': '', 'data-bd-num': '', type: 'number', min: 1, max: 720, step: 1,
-                value: peakIntervalDraft ?? '',
-                onChange: (e) => setPeakIntervalDraft(e.target.value),
-                onBlur: () => { const raw = Number(peakIntervalDraft); const n = Number.isFinite(raw) && raw>=1 ? Math.max(1,Math.min(720,Math.floor(raw))) : 30; setPeakIntervalDraft(String(n)); patch({ peakIntervalMinutes: n }, '自动运行间隔') },
-              })
-            ))),
-
-
-        /* 数量配额现在统一在管理中心，避免过期草稿覆盖编辑。 */
-        h('div', { 'data-bd-sec':'', 'data-bd-group':'daily', 'data-bd-away':tab==='daily'?undefined:'' },
-          h('div',{'data-bd-h':''},'选片数量'),
-          h('div',{'data-bd-note':''},`每天最多 ${cfg.perDay} 条 · 每轮最多 ${cfg.pickPerRound} 条。本轮最多还可挑 ${st.canPickThisRound??0} 条。修改请前往管理中心 → 次数与额度。`)),
-
         /* ── 发言与转写 ── */
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'social', 'data-bd-away': tab === 'social' ? undefined : '' },
-          h('div', { 'data-bd-h': '' }, '它怎么把结果给你'),
-          h('div', { 'data-bd-label': '' }, '投递方式'),
-          h('select', {
-            'data-bd-input': '', value: dmMode ?? 'only',
-            onChange: (e) => { setDmMode(e.target.value); patch({ dmMode: e.target.value }, '投递方式') },
-          },
-            h('option', { value: 'only' }, '只发私信 —— 一条公开评论都不发（默认，最不打扰别人）'),
-            h('option', { value: 'off' }, '只发评论 —— @ 可选（公开，别人能看见）'),
-            h('option', { value: 'both' }, '私信 + 评论 —— 两边都发')),
-          (dmMode && dmMode !== 'off') ? h('div', { 'data-bd-label': '' }, '私信推荐收件人 UID（与评论 @ 名单独立）') : null,
-          (dmMode && dmMode !== 'off') ? h('input', {
-            'data-bd-input': '', value: dmUid ?? '', type: 'number', min: 0,
-            placeholder: '输入用于接收刷视频报告的数字 UID',
-            onChange: (e) => setDmUid(e.target.value),
-            onBlur: () => patch({dmUid: Math.max(0, Math.floor(Number(dmUid)||0))}, '私信收件人 UID'),
-          }) : null,
-          (dmMode && dmMode !== 'off') ? h('div', { 'data-bd-note': '' }, '这里的 UID 只控制刷视频报告发给谁，不是白名单，也不是公开评论 @ 对象。') : null,
+          h('div', { 'data-bd-h': '' }, '原创评论与互动'),
+          h('div', { 'data-bd-note': '' }, '旧视频报告清单私信投递已退役；本地日报保留，Life 自主视频分享不受影响。'),
           h('div', { 'data-bd-sep': '' }),
           h('div', { 'data-bd-note': '' }, '公开评论 @ 名单及每位好友的画像（关系、兴趣、邀请偏好），现统一在管理中心 → 人设与好友中编辑。'),
           h('div', { 'data-bd-note': '' }, '公开评论 @ 策略：'+({ai_select:'AI 选择部分好友',ai:'AI 判断是否 @ 全部好友',off:'永不 @',always:'每次 @ 全部好友'}[cfg.mentionMode]||'AI 决定')+'；在管理中心「人设与好友」里调整。'),
@@ -798,25 +715,24 @@ function WatchTab() {
           h('div', { 'data-bd-note': '' }, '今日 @ 诊断、表情包选取原因、每日报告、后台私信记录和最近评论集中在管理中心展示，避免设置页过长。'),
           h('div', { 'data-bd-row': '' },
             h('button', { 'data-bd-btn': '', onClick: () => onOpenManage() }, '打开管理中心 ↗')),
-          (dmMode && dmMode !== 'off') ? h('div', { 'data-bd-note': '' }, '私信内容 = 本轮每条的「标题 + 链接 + 一句话」，一轮合并成一条发。⚠️ 建议先让这个号和收件人互关：B站 对「陌生人私信」会限流，还可能不弹提醒。') : null,
 
-          (dmMode === 'off' || dmMode === 'both') ? h('div', { 'data-bd-sep': '' }) : null,
-          (dmMode === 'off' || dmMode === 'both') ? h(ToggleRow, {
+          h('div', { 'data-bd-sep': '' }),
+          h(ToggleRow, {
             label: '自动发表评论（@ 可选）',
             note: '大肥鱼可根据视频内容决定是否 @；不需要每条 @',
             on: sw('autoComment'),
             onChange: (v) => patch({ autoComment: v }, '自动评论'),
-          }) : null,
+          }),
           h('div', { 'data-bd-note': '' }, commentQuota?.ok
             ? `公开评论今日全局已占用 ${commentQuota.used} / ${commentQuota.limit} 次；次数请到管理中心 → 次数与额度编辑。`
             : '公开评论全局额度及每轮上限已移至管理中心 → 次数与额度。'),
-          (dmMode === 'off' || dmMode === 'both') && sw('autoComment') ? h(ToggleRow, {
+          sw('autoComment') ? h(ToggleRow, {
             label: 'AI 决定是否将评论同步到动态',
             note: '默认关闭。开启后 AI 会逐条认真判断：有鲜明笑点、反差、实用发现或共鸣点且单独发动态也自然时，应积极考虑同步；不是每条必发，也不是默认不发。动态正文=评论原文+视频链接，不增加模型调用。',
             on: sw('commentSyncDynamic'),
             onChange: (v) => patch({ commentSyncDynamic: v }, '评论同步动态'),
           }) : null,
-          (dmMode === 'off' || dmMode === 'both') && sw('autoComment') && sw('commentSyncDynamic')
+          sw('autoComment') && sw('commentSyncDynamic')
             ? h('div',{'data-bd-note':''},`动态今日已尝试 ${st?.dynamicSyncUsage?.used??0} 次；每日额度在管理中心调整。`):null,
           h('div', { 'data-bd-sep': '' }),
           h(ToggleRow, {label:'AI 自主给顶层评论附表情包（试验）',
@@ -928,7 +844,7 @@ function WatchTab() {
           h('div',{'data-bd-sep':''})),
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'taste', 'data-bd-away': tab === 'taste' ? undefined : '' },
           h('div', { 'data-bd-h': '' }, '选片来源'),
-          h(ToggleRow, {label:'加入首页推荐视频', note:'默认开启；与兴趣主导的主题搜索混合选片。每轮首页推荐最多读取一次、最多12个候选，过滤直播与广告。是否挑中仍由大肥鱼判断，共用原有额度。',
+          h(ToggleRow, {label:'加入首页推荐视频', note:'默认开启；与兴趣主导的主题搜索混合选片。每轮首页推荐最多读取一次、最多12个候选，过滤直播与广告。是否挑中仍由大肥鱼判断；不设每日入选视频数量上限，但共享原有平台读取预算与外发权限。',
             on:sw('homeRecommendationsEnabled'),onChange:v=>patch({homeRecommendationsEnabled:v},'首页推荐选片来源')}),
           h('div', { 'data-bd-note':'' }, `当前入选门槛：播放 ${cfg.minVideoViews??1000}、点赞 ${cfg.minVideoLikes??10}、评论 ${cfg.minVideoReplies??3}。到管理中心 → 次数与额度修改。`),
           h('div', { 'data-bd-h': '' }, '主人额外指定的关注主题'),
@@ -959,39 +875,7 @@ function WatchTab() {
           h('div', { 'data-bd-row': '' },
             msg ? h('div', { 'data-bd-msg': '', 'data-good': msgTone === 'good' ? '' : undefined, 'data-warn': msgTone === 'warn' ? '' : undefined }, msg) : null)),
 
-        /* ── 环境与账号 ── */
-        /* ── 它刷过的视频 ── */
-        h('div', { 'data-bd-sec': '', 'data-bd-group': 'daily', 'data-bd-away': tab === 'daily' ? undefined : '' },
-          h('div', { 'data-bd-h': '' }, '它刷过的视频'),
-          h('div', { 'data-bd-row': '' },
-            h('button', { 'data-bd-btn': '', disabled: busy === 'watched', onClick: () => (watchedRows !== null ? setWatchedRows(null) : onLoadWatched(watchedState, watchedTier, watchedOffset)) },
-              watchedRows !== null ? '收起' : '看它刷过什么'),
-            watchedRows !== null ? h('button', { 'data-bd-btn': '', disabled: busy === 'watched', onClick: () => onLoadWatched(watchedState, watchedTier, 0) }, '刷新') : null,
-            h('div', { 'data-bd-note': '' },
-              watchedRows === null ? '（点一下读出来；数据来自 seen.md + 日报 + 视频归档）'
-                : (watchedTotal ? `共 ${watchedTotal} 条` : '这一类还没有记录 —— 跑一轮之后就有了'))),
-          watchedRows !== null ? h('div', { 'data-bd-row': '' },
-            [['', '全部'], ['picked', '挑了'], ['skipped', '跳过'], ['commented', '发给你了']].map(([v, label]) =>
-              h('button', { key: v || 'all', 'data-bd-chip': '', 'aria-selected': watchedState === v ? 'true' : 'false', onClick: () => onWatchPick('state', v) }, label)),
-            ['值得看', '可以看', '不值当'].map((v) =>
-              h('button', { key: v, 'data-bd-chip': '', 'aria-selected': watchedTier === v ? 'true' : 'false', onClick: () => onWatchPick('tier', v) }, v))) : null,
-          watchedRows !== null && watchedRows.length ? h('div', { 'data-bd-list': '' },
-            watchedRows.map((x, i) => h('div', { key: x.day + x.bvid, 'data-bd-item': '' },
-              // 封面走宿主代理（直连 i0.hdslb.com 会被防盗链挡，也等于把使用者 IP 交出去）
-              i < 40 ? h('img', { 'data-bd-cover': '', src: API + '/cover?bv=' + x.bvid, loading: 'lazy', alt: '' }) : null,
-              h('div', { 'data-bd-item-body': '' },
-                h('div', { 'data-bd-item-t': '' },
-                  h('a', { href: x.url, target: '_blank', rel: 'noreferrer' }, x.title)),
-                h('div', { 'data-bd-item-n': '' },
-                  `${x.day} · ${x.up} · `, x.picked ? '挑中了' : (x.status && /跳过/.test(x.status) ? '跳过' : '看过'), (x.delivered || x.commented) ? ' · 已发给你' : '',
-                  x.tier ? h('span', { 'data-bd-tier': x.tier }, ' · ' + x.tier) : null),
-                x.why ? h('div', { 'data-bd-item-why': '' }, x.why) : null))))
-            : null,
-          watchedRows !== null && watchedTotal > WATCH_PAGE ? h('div', { 'data-bd-row': '' },
-            h('button', { 'data-bd-btn': '', disabled: watchedOffset <= 0, onClick: () => onWatchPage(-WATCH_PAGE) }, '上一页'),
-            h('div', { 'data-bd-note': '' }, `${watchedOffset + 1}–${Math.min(watchedOffset + WATCH_PAGE, watchedTotal)} / ${watchedTotal}`),
-            h('button', { 'data-bd-btn': '', disabled: watchedOffset + WATCH_PAGE >= watchedTotal, onClick: () => onWatchPage(WATCH_PAGE) }, '下一页')) : null),
-
+        /* 设置与历史视频详情统一到管理中心。 */
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'adv', 'data-bd-away': tab === 'adv' ? undefined : '' },
           h('div', { 'data-bd-row': '' },
             h('button', { 'data-bd-btn': '', disabled: busy === 'diag', onClick: onDiagnose }, '复制诊断信息'),
@@ -1062,7 +946,7 @@ function WatchTab() {
             h('a', { 'data-bd-btn':'', href:'https://github.com/minedalang/dsh-dafeiyu-life', target:'_blank', rel:'noreferrer' }, '项目仓库 ↗'),
             h('a', { 'data-bd-btn':'', href:'https://github.com/minedalang/dsh-dafeiyu-life/blob/main/THIRD_PARTY_NOTICES.md', target:'_blank', rel:'noreferrer' }, '第三方声明 ↗')),
           h('div', { 'data-bd-sub': '' },
-            h('div', { 'data-bd-h': '' }, '作者的 B站主页'),
+            h('div', { 'data-bd-h': '' }, '作者的 B站主页 · 欢迎私信反馈 Bug 与改进建议'),
             h('a', { href:'https://space.bilibili.com/210228238', target:'_blank', rel:'noopener noreferrer', 'data-bd-author-link': '' }, '长条动物')),
           h('div', { 'data-bd-sep': '' }),
           h('div', { 'data-bd-h': '' }, '开源来源与致谢'),
@@ -1104,16 +988,7 @@ function WatchTab() {
           () => h(Panel),
         ))
 
-  // ⭐ 2026-10-20 实验：会话头第三个 tab（0.2.1 里这个槽位真实存在；老版本没有就静默跳过）
-  try {
-    slots.inject('conversation.view', () => slots.register({
-      name: 'conversation.view',
-      id: 'bili-watched',
-      order: 20,
-      label: '大肥鱼足迹',
-      scope: 'session',
-    }, () => h(WatchTab)))
-  } catch (e) { /* 没有这个槽位就算了 */ }
+  // 会话视图保持为原生 Chat；视频与已确认评论足迹仍可在管理中心查看。
       },
     }
   },

@@ -1,0 +1,16 @@
+flowchart TD
+  I[已核验入站 DM / 评论] --> L[旧 DM / 评论回复器和原游标]
+  L --> O[SocialDecisionOwnership route]
+  O --> H[Phase 6h SocialHandoffFence 只读检查]
+  H --> P[原 SocialPolicyGate / 额度 / 冷却和 cadenceSend]
+  P --> T[SocialSendTransaction 逐消息原子目录]
+  T --> A{prepared 和 attempted 落盘成功?}
+  A -->|否| STOP[拒绝发送，人工核查]
+  A -->|是| MCP[原 DM / 评论 MCP 平台发送]
+  MCP --> R{可信 msg_key / rpid?}
+  R -->|是| C[匿名 confirmed 事务]
+  R -->|否或异常| U[uncertain / attempted 禁止重试]
+  C --> OLD[原业务回执投影和收件状态]
+  U --> REV[人工核查平台，不自动解除]
+  T -.-> STATUS[管理中心匿名分类汇总]
+  LIFE[Life Agent] -.-> NO[社交接管和发送权继续关闭]

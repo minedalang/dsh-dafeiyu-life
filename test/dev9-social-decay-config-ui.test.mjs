@@ -35,10 +35,10 @@ test('关系从人生记忆拆到生活与成长，仍能搜索昵称及查看�
 test('自动继承仅来自默认或上游任务，不强行写入首个已验证模型',()=>{
  assert.doesNotMatch(html,/一键使用已验证模型/)
  assert.doesNotMatch(js,/models-use-recommended/)
- assert.match(js,/models-reset-inheritance/)
- assert.match(js,/待保存预览：/)
- assert.match(js,/refreshInheriting\(entry.group\)/)
- assert.match(html,/连接测试针对已保存的模型配置/)
+ assert.match(js,/models-.*-effective/)
+ assert.match(html,/选择一个默认模型，可应用到所有任务/)
+ assert.match(js,/未单独指定：继承/)
+ assert.match(html,/连接测试会实际调用模型/)
 })
 
 test('真实可衰减副本响应运行时关系记忆参数变化，同时不复活已模糊的 UID',async()=>{
@@ -69,11 +69,9 @@ test('真实可衰减副本响应运行时关系记忆参数变化，同时不�
 
 test('README 用真实社交场景说明模拟情绪，而不把演示当成实际聊天记录',()=>{
  const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8')
- assert.match(readme,/### 💗 模拟心情：开心、好奇，也会疲惫/)
- assert.match(readme,/社交真的会在鱼鱼的生活里留下“情绪波纹”/)
- assert.match(readme,/温暖.*社交意愿/)
- assert.match(readme,/好奇心被激发/)
- assert.match(readme,/暂时沉默|甚至暂时沉默/)
- assert.match(readme,/虚构场景，不是实际用户聊天记录/)
- assert.match(readme,/不是对 AI 真实主观感受的证明/)
+ assert.match(readme,/会回忆，会遗忘，也会成长/)
+ assert.match(readme,/自主选择探索、互动、延期或不行动/)
+ assert.match(readme,/也可以选择沉默、延期或休息/)
+ assert.match(readme,/私密记忆的保存域/)
+ assert.doesNotMatch(readme,/这是实际用户的聊天记录/)
 })

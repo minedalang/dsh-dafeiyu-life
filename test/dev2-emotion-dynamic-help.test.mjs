@@ -89,7 +89,7 @@ test('人生记忆每项设置都有可阅读的浅色效果说明，旧版后�
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const home=html.split('id="settings-memory"')[1].split('id="main-memory-save"')[0]
  const controls=[...home.matchAll(/<input\b[^>]*\bid="(main-memory-[^"]+|main-reflection-[^"]+)"[^>]*>/g)]
- assert.ok(controls.length>=18)
+ assert.ok(controls.length>=15,'固定开启的长期记忆与反思旧开关已删除，剩余可配置项仍需提供说明')
  for(const m of controls){
    const tail=home.slice(m.index+m[0].length,m.index+m[0].length+380)
    assert.match(tail,/^<small class="setting-note">.{4,}<\/small>/,m[1])

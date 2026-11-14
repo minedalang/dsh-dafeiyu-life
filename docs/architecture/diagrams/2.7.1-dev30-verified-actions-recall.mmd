@@ -1,0 +1,13 @@
+flowchart TD
+ A[Life 本人自主选择\n视频探索 社交互动] --> B[专业 Agent 与既有平台工具]
+ B --> C{平台或原账本\n可信成功回执?}
+ C -->|失败 / 未确认| D[只记录诊断及未知状态\n不生成我做过的记忆]
+ C -->|已确认| E[life-action-memory\n最小化 action 事件]
+ E --> F[原 Life Memory Coordinator\n去重 / 持久化补偿]
+ F --> G[原 Life Memory Gateway\n可衰减情节记忆]
+ F --> H[脱敏永久审计档案\n不允许回忆扫描]
+ G --> I{实时账号 隐私\n衰减 遗忘 门禁}
+ I -->|拒绝| J[不提供给模型]
+ I -->|通过| K[词法 + 可选本地 Embedding]
+ K --> L[原 Memory Retriever\n按需主动召回]
+ L --> M[主人回答 / 后续 Life 自主决策]

@@ -36,7 +36,7 @@ function harness({ existing = null } = {}) {
   return { root, config, cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
 
-test('2.6.2 新安装默认视频私信推荐，但不自动发布公开评论或动态', async () => {
+test('2.8.0 新安装允许受限互动，动态可在独立授权后发表且可切换仅草稿', async () => {
   const x = harness()
   try {
     const c = await x.config()
@@ -50,19 +50,21 @@ test('2.6.2 新安装默认视频私信推荐，但不自动发布公开评论�
     assert.equal(c.autonomousPlannerDailyLimit, 4)
     assert.equal(c.autonomousPlannerMinutes, 180)
     assert.equal(c.dailyDynamicEnabled, true)
-    assert.equal(c.dailyDynamicDraftOnly, true)
+    assert.equal(c.dailyDynamicDraftOnly, false)
     assert.equal(c.dailyDynamicDailyLimit, 1)
     assert.equal(c.ownerDmAgentEnabled,true,'已核验主人受限 Agent 的能力在新安装默认可用')
     assert.equal(c.ownerDmActionsEnabled,true,'公开写入仍必须由本条主人消息明确授权')
     assert.equal(c.ownerTodoCompletionFollowupEnabled,false,'主动任务进度回访必须单独开启')
+    for(const key of ['autoComment','autoVideoLike','autoVideoCollect'])assert.equal(c[key],true,`新安装默认授权: ${key}`)
     assert.equal(c.socialOutreachEnabled,true)
     assert.equal(c.socialLifeIntentEnabled,true)
     assert.equal(c.socialAutoSend,true,'仅可给已授权的私信推荐收件人，仍受真实选片和冷却限制')
+    assert.equal(c.agentFollowEnabled,true,'新安装自主关注/取关默认允许但仍经平台门禁')
+    assert.equal(c.incomingImageRecognitionEnabled,true,'新安装入站图片理解默认开启，可禁用')
     for (const key of [
       'ownerCommentAgentEnabled', 'ownerCommentSocialPublishEnabled', 'ownerCommentNaturalAckEnabled',
-      'commentAtEnabled', 'emotionRecallMainEnabled',
-      'emotionRecallDmEnabled', 'autoComment', 'autoVideoLike',
-      'autoVideoCollect', 'agentFollowEnabled', 'visionEnabled', 'commentMemesEnabled',
+      'emotionRecallMainEnabled',
+      'emotionRecallDmEnabled', 'visionEnabled', 'commentMemesEnabled',
       'dmStrangerOnce', 'mainSessionBridgeEnabled', 'ownerTodoAutoReviewEnabled',
     ]) assert.equal(c[key], false, `未经授权的默认开关: ${key}`)
   } finally { x.cleanup() }
@@ -72,7 +74,7 @@ test('历史配置即使缺少新增字段，也不被新默认偷偷打开；�
   const x = harness({ existing: { mainSessionMemoryEnabled: false, dmWatch: false } })
   try {
     let c = await x.config()
-    assert.equal(c.mainSessionMemoryEnabled, false)
+    assert.equal(c.mainSessionMemoryEnabled, true,'身份级长期记忆在新旧安装均固定开启')
     assert.equal(c.autonomousPlannerEnabled, false)
     assert.equal(c.dailyDynamicEnabled, false)
     assert.equal(c.autonomousPlannerDailyLimit, 24)
@@ -80,6 +82,9 @@ test('历史配置即使缺少新增字段，也不被新默认偷偷打开；�
     assert.equal(c.mainSessionMemoryMaxItems, 6)
     assert.equal(c.mainSessionMemoryMaxChars, 800)
     assert.equal(c.dmWatch, false)
+    for(const key of ['autoComment','autoVideoLike','autoVideoCollect'])assert.equal(c[key],false,`旧用户缺键不自动扩大权限: ${key}`)
+    c=await x.config({agentFollowEnabled:false,incomingImageRecognitionEnabled:false})
+    assert.equal(c.agentFollowEnabled,false);assert.equal(c.incomingImageRecognitionEnabled,false)
     c = await x.config({ mainSessionMemoryEnabled: true, dailyDynamicEnabled: true })
     assert.equal(c.mainSessionMemoryEnabled, true)
     assert.equal(c.dailyDynamicEnabled, true)
@@ -88,14 +93,14 @@ test('历史配置即使缺少新增字段，也不被新默认偷偷打开；�
   } finally { x.cleanup() }
 })
 
-test('新装也可直接关掉生动功能，所有公开发布保持独立授权', async () => {
+test('新装可关闭自主规划和动态，身份级记忆固定开启，公开发布仍需授权', async () => {
   const x = harness()
   try {
     const c = await x.config({mainSessionMemoryEnabled:false, autonomousPlannerEnabled:false, dailyDynamicEnabled:false})
-    assert.equal(c.mainSessionMemoryEnabled, false)
+    assert.equal(c.mainSessionMemoryEnabled, true,'身份级长期记忆在新旧安装均固定开启')
     assert.equal(c.autonomousPlannerEnabled, false)
     assert.equal(c.dailyDynamicEnabled, false)
-    assert.equal(c.dailyDynamicDraftOnly, true)
+    assert.equal(c.dailyDynamicDraftOnly, false)
     assert.equal(c.ownerCommentSocialPublishEnabled, false)
   } finally { x.cleanup() }
 })

@@ -1,0 +1,20 @@
+flowchart TD
+    A[已核验主人私信] --> B[主人私信 Agent]
+    C[已核验主人公开评论] --> D[TrustedSocial 初轮意图/意愿]
+    B -->|public_comments 只读| E[宿主统一账号与主人认证]
+    D -->|仅 chat 且自主选 recallQuery| E
+    E -->|只读查询| F[recent-comments 成功回执查询]
+    F --> G[seen.md + seen/YYYY-MM.md 唯一评论主账本]
+    F --> H[回执 ID / 发生时间 / BV / 账号切换截断]
+    H --> I[有限带来源公开评论证据]
+    G --> H
+    I --> J[主人私信现有回忆/回复流程]
+    I --> K[公开评论仅修正 chat 回复一次]
+    J --> L[原私信授权/外发事务/回执]
+    K --> M[原评论授权/外发事务/回执]
+    D -->|其他意图 / 无检索| M
+    X[私人记忆 / 私信 / 其他账号 / 遗忘归档] -. 不允许进入公开查询 .-> F
+    Y[Life Voice 状态、Life 意愿契约] --> B
+    Y --> D
+    Z[原 SocialPolicyGate] --> L
+    Z --> M

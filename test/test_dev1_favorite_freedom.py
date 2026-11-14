@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=(ROOT/'vendor/bilibili-mcp/mcp_server.py').read_text('utf8')
-NEEDED={'_action_conn','_folder_title','_styled_auto_folder_title','_favorite_new_private','_ensure_ai_folder',
+NEEDED={'_selected_owned','_record_owned_selection','_action_conn','_folder_title','_styled_auto_folder_title','_favorite_new_private','_ensure_ai_folder',
         '_check_reaction','_selected_for_reaction','_claim_video_action','_finish_video_action',
         'bili_video_collect','bili_fish_created_folders','bili_favorite_folder_delete'}
 tree=ast.parse(SOURCE)
@@ -61,8 +61,7 @@ class FreedomTests(unittest.TestCase):
         exec(PROGRAM,self.scope)
     def call(self,name,*args,**kwargs):return json.loads(asyncio.run(self.scope[name](*args,**kwargs)))
     def mark(self,bv=BV):
-        d=self.home/'out';d.mkdir(exist_ok=True)
-        (d/(datetime.now().strftime('%Y-%m-%d')+'.md')).write_text('### '+bv+'\n','utf8')
+        self.scope['_record_owned_selection'](bv)
     def test_automatic_public_and_private_and_forced_policies(self):
         self.mark()
         result=self.call('bili_video_collect',BV,'料理','想给大家分享自己发现的食谱',visibility='public')

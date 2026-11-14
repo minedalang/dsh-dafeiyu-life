@@ -1,0 +1,23 @@
+flowchart TD
+  input[已核验事件 / 待办 / 兴趣到期] --> events[原 Life 事件与状态]
+  events --> planner[当前统一 Life Planner]
+  mem[原可遗忘 Life Memory] --> planner
+  interest[原兴趣与关系] --> planner
+  personality[原人格 / 情绪 / Life Voice] --> planner
+  planner --> choose{当前可执行动作}
+  choose -->|公开只读 / 视频委派| guard[原预算 / 权限 / 真实回执]
+  choose -->|社交快速关注| shadow[只读 consider_social]
+  shadow -. 未接线 .-> nohandoff[正式 Life 社交决策器: 缺失]
+  inbox[原 DM / 评论 / @ 收件] --> legacy[旧社交真实决策 owner]
+  legacy --> send[现有外发许可 / 原子发送事务]
+  send --> receipts[平台已核验回执 / 未知则冻结]
+  guard --> receipts
+  receipts --> coord[原 LifeMemoryCoordinator]
+  coord --> mem
+  mem --> reflect[原反思 / 兴趣与人格证据过滤]
+  reflect --> personality
+  reflect --> interest
+  readiness[RC 十三项只读准入诊断] -. 读取状态 .-> events
+  readiness -. 保持 releaseReady:false .-> nohandoff
+  cold[老用户业务冷备份 / 专项记忆备份] -. 校验、人工确认、不可复活已遗忘 .-> mem
+  readiness -. 验证迁移与自然节律，仍待实机 .-> cold

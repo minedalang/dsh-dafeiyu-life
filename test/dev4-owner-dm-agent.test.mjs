@@ -95,3 +95,54 @@ test('dev.4 主人私信的角色情绪只在 B站确认投递成功后回写，
   assert.deepEqual(emotions.map(x=>x.mood),['warm'])
   assert.equal(parseAgentStep('{"action":"reply","text":"嗨","mood":"joyful","intensity":3}').intensity,0)
 }))
+
+test('P6-A shared burst protocol is reused by owner DM and sends 2–3 separate bubbles with per-bubble receipts',()=>withDir(async dir=>{
+  const sent=[],confirmed=[];let prompt=''
+  const agent=createOwnerDmAgent({dataDir:dir,getConfig:()=>config({dmP6Enabled:true,dmP6MaxBubbles:3}),
+    invokeModel:async value=>{prompt=value;return JSON.stringify({action:'reply',messages:['我刚刚看到那个视频了。','评论区有个人的观点还挺有意思的。','我还想再跟你聊聊这个。']})},
+    executeRead:async()=>({ok:true}),executeWrite:async()=>({ok:true}),
+    send:async value=>{sent.push(value);return {ok:true,receiptId:'owner-r'+sent.length}},
+    onConfirmedReply:async value=>confirmed.push(value),logger:{warn(){}}})
+  agent.primeInbox([])
+  const result=await agent.processMessage(row('鱼鱼，最近怎么样？','burst-1'))
+  assert.equal(result.ok,true)
+  assert.equal(result.burst.status,'confirmed')
+  assert.equal(result.burst.planned,3)
+  assert.equal(result.burst.confirmed,3)
+  assert.deepEqual(sent.map(x=>x.text),['我刚刚看到那个视频了。','评论区有个人的观点还挺有意思的。','我还想再跟你聊聊这个。'])
+  assert.equal(new Set(sent.map(x=>x.eventId)).size,3)
+  assert.match(prompt,/统一自然多气泡协议/)
+  assert.equal(confirmed.length,1)
+  assert.equal(confirmed[0].text,sent.map(x=>x.text).join('\n'))
+  const status=agent.status().recent.at(-1)
+  assert.equal(status.status,'done')
+}))
+
+test('owner-DM P6-A stops after an unknown later receipt and never replays the confirmed first bubble',()=>withDir(async dir=>{
+  const sent=[]
+  const agent=createOwnerDmAgent({dataDir:dir,getConfig:()=>config({dmP6Enabled:true,dmP6MaxBubbles:3}),
+    invokeModel:async()=>JSON.stringify({action:'reply',messages:['第一条已发内容','第二条结果未知','第三条不应发送']}),
+    executeRead:async()=>({ok:true}),executeWrite:async()=>({ok:true}),
+    send:async value=>{sent.push(value);return sent.length===1?{ok:true,receiptId:'confirmed-1'}:{ok:false,error:'timeout'}}})
+  agent.primeInbox([])
+  const result=await agent.processMessage(row('和我聊聊最近的事','burst-unknown'))
+  assert.equal(result.ok,false)
+  assert.equal(result.burst.status,'partial-unknown')
+  assert.equal(result.burst.confirmed,1)
+  assert.deepEqual(sent.map(x=>x.text),['第一条已发内容','第二条结果未知'])
+  assert.equal((await agent.processMessage(row('和我聊聊最近的事','burst-unknown'))).skipped,'duplicate')
+  assert.equal(sent.length,2)
+}))
+
+test('owner-DM uses the shared P6-A off switch and falls back to one bubble',()=>withDir(async dir=>{
+  const sent=[]
+  const agent=createOwnerDmAgent({dataDir:dir,getConfig:()=>config({dmP6Enabled:false,dmP6MaxBubbles:3}),
+    invokeModel:async()=>JSON.stringify({action:'reply',messages:['只发第一条','不应发第二条','不应发第三条']}),
+    executeRead:async()=>({ok:true}),executeWrite:async()=>({ok:true}),
+    send:async value=>{sent.push(value);return {ok:true,receiptId:'single'}}})
+  agent.primeInbox([])
+  const result=await agent.processMessage(row('随便聊聊','burst-off'))
+  assert.equal(result.ok,true)
+  assert.deepEqual(sent.map(x=>x.text),['只发第一条'])
+  assert.equal(result.burst.planned,1)
+}))

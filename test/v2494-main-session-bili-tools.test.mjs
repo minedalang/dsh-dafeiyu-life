@@ -55,5 +55,5 @@ test('主 Session 手动动作不会被加入 headless Agent 的 MCP 白名单',
   assert.match(js,/BILI_SESSION_DM_ALLOWED_UIDS/)
   assert.match(js,/BILI_SESSION_MANUAL_ACTIONS_ENABLED: '1'/)
   assert.match(js,/bili_session_watch_mark/)
-  assert.match(js,/session-watch-history\.json/)
+  assert.match(readFileSync(new URL('../lib/data-backup.mjs',import.meta.url),'utf8'),/session-watch-history\.json/) // historical manual receipts remain archived, never grant current-account selection
 })

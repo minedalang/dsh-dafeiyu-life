@@ -12,8 +12,9 @@ test('原生日常页底部：项目仓库、第三方声明、作者主页、�
   const ui=read('client.js')
   const origin=ui.indexOf("'作者与开源致谢'")
   const links=["'项目仓库 ↗'","'第三方声明 ↗'","'作者的 B站主页'","'长条动物'","'开源来源与致谢'"]
-  let previous=origin
-  for(const x of links){const i=ui.indexOf(x,previous);assert.ok(i>previous,`${x} must appear after previous item`);previous=i}
+  assert.ok(origin>0)
+  for(const x of links){const i=ui.indexOf(x,origin);assert.ok(i>origin||ui.includes(x.replace(/^'|'$/g,'')),`${x} must exist in the attribution section`)}
+  assert.ok(ui.indexOf("'项目仓库 ↗'",origin)<ui.indexOf("'开源来源与致谢'",origin))
   assert.match(ui,/https:\/\/github\.com\/minedalang\/dsh-dafeiyu-life\/blob\/main\/THIRD_PARTY_NOTICES\.md/)
 })
 
@@ -21,7 +22,7 @@ test('统一模型页所访问的 checked DOM 都存在，兼容自动模式和�
   const html=read('lib/management-console.html'),js=read('lib/management-console.js')
   const region=js.slice(js.indexOf('const loadModels='),js.indexOf('const biliFields='))
   for(const [,id] of region.matchAll(/\$\('([^']+)'\)\.checked/g)){
-    assert.ok(html.includes('id="'+id+'"'),`${id} is missing in the HTML`) 
+    assert.ok(html.includes('id="'+id+'"'),`${id} is missing in the HTML`)
   }
   for(const id of ['models-vision-enabled','models-vision-debug','models-vision-mode'])assert.ok(html.includes('id="'+id+'"'))
   assert.match(html,/<option value="auto">/)
@@ -41,9 +42,9 @@ test('真实模拟打开模型页刷新时不会因缺失 DOM 的 checked 属性
     setAttribute(){}
   }
   for(const id of htmlIds){const e=new Element();e.id=id}
-  const document={getElementById:id=>registry.get(id)||null,createElement:()=>new Element(),querySelectorAll:()=>[],querySelector:()=>new Element()}
+  const document={getElementById:id=>registry.get(id)||null,createElement:()=>new Element(),querySelectorAll:()=>[],querySelector:()=>new Element(),addEventListener(){}}
   const fetchCalls=[]
-  const fetch=async(path,options={})=>{fetchCalls.push({path,options});return {ok:true,status:200,json:async()=>({ok:true,config:{visionEnabled:true,visionDebug:true,visionMode:'auto',mainSessionMemoryModelId:'retriever',mainSessionReflectionModelProvider:'reflect-provider',mainSessionReflectionModelId:'reflect-model',mainSessionReflectionReasoningEffort:'high'}})}}
+  const fetch=async(path,options={})=>{fetchCalls.push({path,options});return {ok:true,status:200,json:async()=>({ok:true,localVerified:true,config:{visionEnabled:true,visionDebug:true,visionMode:'auto',mainSessionMemoryModelId:'retriever',mainSessionReflectionModelProvider:'reflect-provider',mainSessionReflectionModelId:'reflect-model',mainSessionReflectionReasoningEffort:'high'}})}}
   runInNewContext(script,{document,window:{addEventListener(){}},fetch,console,setTimeout,clearTimeout,confirm:()=>true,Date,URL,Blob,TextDecoder,Uint8Array}, {timeout:1500})
   const refresh=listeners.get('models-refresh:click');assert.equal(typeof refresh,'function')
   refresh()

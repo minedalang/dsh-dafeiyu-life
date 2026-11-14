@@ -1,0 +1,22 @@
+flowchart TD
+  IN[已核验账号和入站来源] --> ROUTE[SocialDecisionOwnership.route 旧处理器独占]
+  ROUTE --> BEGIN[SocialHandoffFence.beginLegacyOperation 原子写入在途记录]
+  BEGIN --> CHECK{再次检查持久交接预约}
+  CHECK -->|已预约或异常| STOP[拒绝旧模型与平台发送]
+  CHECK -->|没有预约| OLD[原 Life Voice 和旧决策器]
+  OLD --> COMPLETE[finally: 仅拥有者移除自己的在途决策]
+  OLD --> POLICY[原 SocialPolicyGate 和额度/冷却/审批]
+  POLICY --> SENDOP[在途发送登记并再次检查预约]
+  SENDOP --> TX[普通 DM/公开评论/可信评论 逐来源事务]
+  TX --> NETWORK[原 B站发送适配器]
+  NETWORK --> RECEIPT{可信平台回执}
+  RECEIPT -->|可信| CONFIRMED[confirmed + 原经历投影]
+  RECEIPT -->|失败/未知| UNKNOWN[uncertain/attempted 禁止自动重试]
+  SENDOP --> OTHER[原主人 DM/回访/主动分享等旧发送：在途保护，原回执]
+  SENDOP --> FINISH[finally: 清理本次在途记录]
+  RES[内部 legacy-only 预约: 先持久关闭通道] --> COUNTS[再检查该账号/渠道在途记录]
+  COUNTS -->|仍在途/残留| BLOCKED[quiescent=false 不得切换]
+  COUNTS -->|全无| CHECKED[quiescent=true 仅证明已接线旧路径排空]
+  RES --> CHECK
+  COUNTS -.-> UI[管理中心当前账号匿名计数]
+  LIFE[Life Agent 只读 shadow] -.-> NO[真实社交接管继续关闭]

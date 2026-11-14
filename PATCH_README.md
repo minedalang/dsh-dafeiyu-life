@@ -1,46 +1,23 @@
-# 2.6.1 RC2 · 全社交 AI 待办接入补丁
+# DSH 2.7.1-dev.51 → 2.7.1-dev.52（开发预览）
 
-本补丁基于 **`dsh-bili-scroll-plus2-v2.6.1-RC2-natural-todo-source.zip`**（上一轮主人私信自然待办修复版）。不是 RC1 → RC2 完整补丁，也不能直接应用到 dev.6、原始 RC1 或其他 AI 的未核验 RC2 Patch。
+**只能应用在完整、未修改的 dev.51 基线上**。不适用于 dev.50 或更早源码。Windows 建议使用 CRLF Patch；LF/CRLF 二选一，绝不能重复应用。
 
-## 本次范围
-
-- 主人私信继续使用 Owner DM Agent；主人/好友可信评论使用现有 trusted-social AI；普通好友/陌生人私信、普通评论使用现有 InteractionBatcher。
-- 各入口在原有模型调用中同时生成自然回复和结构化只读待办提议，不增加第二次意图识别调用。
-- 普通用户不再依赖关键词或固定句式判断待办；支持自然表达、错别字、分段消息和同 UID 近期上下文。
-- 已启用陌生人私信时，首条也走现有 AI 回复调用；陌生人开关、回复次数、额度、审批不变。旧固定欢迎语设置保留兼容但停用。
-- BV 分享链接只作 48 小时候选上下文，不自动接受任务；只允许公开视频搜索/观看，不增加任何 B站写操作权限。
-- 聊天意愿和探索意愿分开；不想聊天不会阻断同轮 AI 理解独立只读探索提议，但仍会抑制聊天回复。
-
-## 应用方法（Git Bash）
-
-先备份 `$DSH_HOME/bili-duty/` 中的待办、回访、私信状态与配置文件，并确认工作区干净：
-
-```bash
-git switch dev
+```powershell
+# 确认当前代码与 dev.51 基线一致，且工作区无未提交修改
 git status --short
 
-git apply --check ../dsh-v261-rc2-all-social-ai-todo.patch
-git apply ../dsh-v261-rc2-all-social-ai-todo.patch
+# 先检查，不改文件
+git -c core.whitespace=cr-at-eol apply --check .\patches\DSH-2.7.1-dev51-to-dev52-life-visual-social-CRLF.patch
+
+# 只有检查通过后才能正式应用
+git -c core.whitespace=cr-at-eol apply .\patches\DSH-2.7.1-dev51-to-dev52-life-visual-social-CRLF.patch
 
 git diff --check
-node --test test/*.test.mjs
+node --test test/v271-dev52-social-memory-home.test.mjs
+npm run check:life-architecture
 node selfcheck.mjs
 ```
 
-Python 全量测试：
+本版主要修复入站评论回复的跨渠道冷却误拦、人工核实草稿重试的过期 Life 证明、发送前延期与未知结果的区分；私信游标按关系控制无变化会话的详情复查；管理页增加只读生活证据脉络并将原创评论调试移入诊断页；README 改为简洁用户首页。**仍不强迫每轮发表评论**，不改变旧用户许可或记忆遗忘规则。
 
-```bash
-PYTHONUTF8=1 PYTHONIOENCODING=utf-8 python -m unittest discover -s test -p 'test*.py'
-```
-
-Windows 可继续运行 `cmd.exe /c run-tests.bat`。补丁已应用后不要再次执行 `git apply`。
-
-## 验收重点
-
-1. 开启陌生人私信入口后，普通用户首条私信也由 AI 自然回复；同一输出可提出 `todoDisposition/suggestedTodo`。
-2. 普通好友/陌生人评论、私信提出“有空了解/看看/听听……”时，由 AI 语义理解；不是每条闲聊都创建待办。
-3. 好友本轮不想聊天时，聊天回复不发送，但同轮 AI 仍可接受独立只读探索建议。
-4. `defer/refuse/none`、证据不匹配、不同 UID 历史、超过 24 小时的旧上下文、无效 BV、写操作类型均不入队。
-5. 同一消息重复轮询或模型重试最多建立一条待办；候选链接不自动变成待办。
-
-仍为 `2.6.1 RC2` 发布候选。真实 B站私信/评论送达和运行时行为待本机验收；不创建 Release、npm 或市场版本。
+`releaseReady:false`。真实 Windows DSH、B站限流恢复、人工确认草稿重发及长期稳定性仍待现场验收；全仓测试在当前容器未完成全绿，详见交付 `TEST-RESULTS.md`。

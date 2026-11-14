@@ -7,13 +7,14 @@ import sqlite3
 import tempfile
 import unittest
 from datetime import datetime, timedelta
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=(ROOT/'vendor/bilibili-mcp/mcp_server.py').read_text('utf8')
-NAME={'_relation_claim','_relation_finish','bili_follow_creator','bili_unfollow_creator'}
+NAME={'_relation_claim','_relation_finish','_coordinated_relation','bili_follow_creator','bili_unfollow_creator','bili_unfollow_dm_contact','_unfollow_creator_provenance_checked'}
 NODES=[]
 for node in ast.parse(SOURCE).body:
     if isinstance(node,(ast.FunctionDef,ast.AsyncFunctionDef)) and node.name in NAME:
@@ -28,8 +29,11 @@ class FakeVideo:
 
 class FakeUser:
     writes=[]
+    on_change=None
     def __init__(self,uid,credential):self.uid=uid
-    async def modify_relation(self,relation):self.writes.append((self.uid,relation))
+    async def modify_relation(self,relation):
+        self.writes.append((self.uid,relation))
+        if self.on_change:self.on_change(relation)
 
 class TestFollow(unittest.TestCase):
     def setUp(self):
@@ -37,13 +41,20 @@ class TestFollow(unittest.TestCase):
         self.file=str(Path(self.dir.name)/'actions.sqlite3')
         self.env=patch.dict(os.environ,{'BILI_AGENT_FOLLOW_ENABLED':'1'});self.env.start();self.addCleanup(self.env.stop)
         FakeUser.writes=[]
+        FakeUser.on_change=staticmethod(lambda rel:setattr(self,'relation',2 if rel=='follow' else 0))
         self.source_selected=True;self.relation=0;self.actor=123
         credential=SimpleNamespace(dedeuserid='123')
         def conn():
             c=sqlite3.connect(self.file,timeout=8)
             c.row_factory=sqlite3.Row
             return c
-        self.scope={'datetime':datetime,'sqlite3':sqlite3,'json':json,'os':os,'_action_conn':conn,
+        @contextmanager
+        def verified_outbound(kind,target,content,home=None):
+            class Claim:
+                def confirm(self,receipt):
+                    if not receipt:raise ValueError('receipt required')
+            yield Claim()
+        self.scope={'_DUTY_HOME':self.dir.name,'outbound_reservation':verified_outbound,'datetime':datetime,'sqlite3':sqlite3,'json':json,'os':os,'_action_conn':conn,
             '_guard':lambda name:'', '_selected_for_creator_encounter':lambda bv:self.source_selected,
             '_valid_bv':lambda bv:bv,'get_cred':lambda:credential,
             'video':SimpleNamespace(Video=FakeVideo),
@@ -76,6 +87,29 @@ class TestFollow(unittest.TestCase):
         self.assertFalse(r['ok']);self.assertEqual(r['skipped'],'already-followed-or-blocked')
         self.assertFalse(self.call('bili_unfollow_creator',234,'不再感兴趣，经过考虑')['ok'])
         self.assertEqual(FakeUser.writes,[])
+    def test_dm_unfollow_requires_host_authorization_and_same_provenance(self):
+        self.relation=2
+        with patch.dict(os.environ,{'BILI_JS_MCP_ADAPTER':'1','BILI_DM_FOLLOW_ENABLED':'0'}):
+            self.assertFalse(self.call('bili_unfollow_dm_contact',234,'双方已经不再合拍，决定取关')['ok'])
+            self.assertEqual(FakeUser.writes,[])
+        with patch.dict(os.environ,{'BILI_JS_MCP_ADAPTER':'1','BILI_DM_FOLLOW_ENABLED':'1'}):
+            self.assertFalse(self.call('bili_unfollow_dm_contact',234,'双方已经不再合拍，决定取关')['ok'])
+            self.assertEqual(FakeUser.writes,[])
+            r=self.call('bili_follow_creator',BV,'真心喜欢这位作者近期的作品')
+            # If the platform relation is already followed manually, no new
+            # self-provenance was created by this tool.
+            self.assertFalse(r['ok'])
+        self.relation=0
+        with patch.dict(os.environ,{'BILI_JS_MCP_ADAPTER':'1','BILI_DM_FOLLOW_ENABLED':'1'}):
+            self.assertTrue(self.call('bili_follow_creator',BV,'真实想继续关注这些作品')['ok'])
+            self.relation=2
+            self.assertFalse(self.call('bili_unfollow_dm_contact',234,'近期没有相同兴趣了，决定取关')['ok'])
+            c=self.scope['_action_conn']()
+            with c:c.execute('UPDATE creator_relations SET followed_at=? WHERE target=?',((datetime.now()-timedelta(days=9)).isoformat(),234))
+            c.close()
+            self.assertTrue(self.call('bili_unfollow_dm_contact',234,'长期以来关系和兴趣发生了变化')['ok'])
+            self.assertEqual(FakeUser.writes[-1],(234,'unfollow'))
+
     def test_unfollow_requires_seven_days_and_own_follow(self):
         r=self.call('bili_follow_creator',BV,'持续关注这个UP今后的创作')
         self.assertTrue(r['ok'])

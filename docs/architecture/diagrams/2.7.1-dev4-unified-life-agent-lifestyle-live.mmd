@@ -1,0 +1,17 @@
+flowchart TD
+    A[管理中心 · 鱼鱼的记忆] --> B[生活状态与活跃程度]
+    A --> C[折叠的高级设置]
+    D[DSH 原生设置] -->|打开管理中心 Life 标签| A
+    B --> E[Life Settings V2 · 预览/确认/版本校验]
+    C --> E
+    E --> F[原始 DSH 配置 · persistCfg]
+    F --> G[AutonomousPlanner · 唯一自主生活轮询]
+    G --> H{生活选择}
+    H -->|只读待办/契机| I[原有只读动作与可信回执]
+    H -->|想探索视频 · active| J[原有视频 Agent / 身份和额度门禁]
+    H -->|休息/延期| K[自主记录和冷却]
+    H -->|shadow 影子观察| L[只记录，不启动视频]
+    F -.-> M[历史 peakValley/peakWindows 仅保留备份]
+    M -.-> N[旧视频 setInterval 已删除 · 无执行入口]
+    O[普通私信/评论/回访] --> P[原社交决策器 / 发送许可 / 平台回执]
+    style N fill:#eee,stroke:#888,color:#333

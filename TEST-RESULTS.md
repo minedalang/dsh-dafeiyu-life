@@ -1,0 +1,226 @@
+## 2.8.0 · Windows 跨进程 Life 锁初始化竞态修复（2026-11-14）
+- 报错位置：`test/v271-dev4-life-agent-atomic-recovery.test.mjs:105`；预期第二个进程正常返回忙碌，实际偶发 `planner-lock-review-required`。该回归并不代表模型调用了两次。
+- 修复前 24 轮双进程实验：20 轮正常忙碌，4 轮误报需要人工检查；24 轮均仅记录 1 次模型调用。
+- 修复后 35 轮双进程实验：35 轮均准确记录一次调用及另一个进程忙碌，0 次误报。新增测试验证空目录、空 owner、半写 owner 与持久损坏的锁仍不被自动清除。
+- 相关 Node 测试 322/322 通过；本轮完整 Node 回归使用 `node --test --test-concurrency=8 test/*.test.mjs` **2633/2633 通过、0 失败**。首次使用默认并发的尝试超时，未计为通过。Python 与其他生产执行器没有改动。
+- Python 全量 `npm run test:python`：274 项中 273 通过、1 跳过、0 失败；Life 架构检查、视频工具契约、自检和 `npm pack --dry-run --ignore-scripts` 均通过（609 个原包文件加 1 个此前新增测试，共 610 个）。
+- 本轮未在 Windows 用户机器验证，不涉及真实平台收发；用户可在已激活的 Conda 环境继续运行本机 `npm test`。
+
+---
+
+## 2.8.0 · Windows/Conda Python 测试编码与解释器修复（2026-11-14）
+
+- 影响：Windows `python3` 可误命中 WindowsApps 假别名并返回 9009；中文 Windows/Conda 子进程 stdout 默认 CP936 时，部分 JSON 结果被 `json.loads(bytes)` 当作 UTF-8 解码而报 `UnicodeDecodeError`，另有使用 `subprocess.run(text=True, encoding='utf-8')` 的测试可能出现 `_readerthread` 解码错误。
+- 修复：两项 Node SQLite 测试共用真实 Python 3 解释器探测，优先本次 `CONDA_PREFIX`，不跳过缺解释器的安全测试；Python 全量脚本通过 `scripts/test-python.mjs` 选择当前 Conda/显式 `PYTHON`，固定 `PYTHONUTF8=1` 与 `PYTHONIOENCODING=utf-8`；梗库公开 JSON 接口改为 ASCII 安全转义，内容仍是相同 Unicode 文本。
+- 复现与针对性验证：模拟 `PYTHONIOENCODING=cp936` 时梗库原先 4 个错误可复现，修复后 10 个相关测试通过；新加 CP936 JSON 输出回归。Node SQLite 两个文件共 6 项通过。`BV号格式错误` 属于原测试故意触发的非法 BV 拒绝诊断，本轮未改动该平台校验。
+- 真实 Windows 用户机器上仍建议在激活的 Conda 环境中重跑；本轮未向 B站发送或恢复数据。日志中的其余 F/E 若重跑后仍存在，需要提供失败测试名和完整 traceback 再逐项处理，不能自动归为编码问题。
+
+---
+
+## 2.8.0 · Windows Conda 环境中的 SQLite 测试启动修复（2026-11-14）
+
+- 仅修正 `test/v2468-data-backup.test.mjs`、`test/v2469-backup-dir-no-temp.test.mjs` 的 Python 3 调用：使用同一个 `test/helpers/python-sqlite-runner.mjs` 选择解释器。Windows 优先当前 `CONDA_PREFIX/python.exe`，其次才是 `python`、`py -3`、`python3`；尊重明确配置的 `PYTHON`。
+- 解释器必须实际运行 Python 3 且成功导入标准库 `sqlite3`；WindowsApps 假 `python3` 返回 9009 不会被误当作通过，确实找不到 Python 3 时明确报错（不再静默跳过备份测试）。
+- 对数据快照、备份恢复、权限、生产执行器均**没有任何变更**；Conda 用户不需另外安装 Python，只需确认所激活环境可运行 `python -c "import sqlite3"`。
+- 仅表示离线测试启动兼容性验证，不代表已经在用户本机 Windows DSH 运行。
+
+---
+
+# 2.8.0 正式版源码发布前离线审核（2026-11-14）
+
+- 以最后一次用户上传 ZIP 为基线；使用其 ZIP Unicode 路径元数据正确还原 `tools/导出B站日志.bat`，不再把解压路径误报成打包缺陷。
+- `package.json` 与 `package-lock.json` 版本同步为 `2.8.0`；README、Release Notes、CHANGELOG 与文档索引改为正式版表述。开发版历次验证仍保留在以下历史记录中。
+- **Linux/Node 22 离线全量**：`npm test` 共 2,632 项，2,632 通过、0 失败、0 跳过；`npm run test:python` 共 273 项，272 通过、1 跳过、0 失败（Python 3.13）。
+- `npm run check:life-architecture`、`npm run check:video-tool-contract` 与 `node selfcheck.mjs` 通过；`npm pack --dry-run --ignore-scripts --json` 验证包含 609 文件，其中 `tools/导出B站日志.bat`、`docs/ROADMAP.md`、`RELEASE_NOTES_v2.8.0.md` 均在发布物中。
+- 版本相关旧测试已迁移，允许 `2.8.0` 正式 SemVer 并继续校验锁文件、版本说明及平台/账号安全契约；未更改生产评论、私信、平台发送逻辑。
+- 真实 Windows DSH、B站平台与长时间运行不能由本地离线测试替代；此轮未推送 Git Tag、未发布 npm。
+
+---
+
+# dev.17 评论自主沉默、公开单句与跨时区召回修复（2026-11-14）
+
+- **范围**：在最新用户 ZIP 对应的 dev.17 源码上，合并上一轮「评论自主沉默」修复，同时禁止评论／被 @ 的多气泡拆分及发送后额外续想；私信与主 Session 仍保留既有多气泡和凭回执决定续想的机制。
+- **根因**：`lib/recent-comments.mjs` 过去使用 `stamp.slice(0,10)` 判定记录日期，遇到明确 `-08:00` 或其他偏移时会错把记录原日期当作用户时区中的发生日期；现在带偏移时间按绝对毫秒与可信时区起止区间比较，旧版无偏移的日期文本只用已记录日历日。
+- **Windows 用户提供的失败批次**：`TZ=Asia/Shanghai`、`--test-concurrency=2`、12 文件，**87 测试全部通过，0 失败**。修复前在同样时区曾复现公开评论日期测试失败。跨上海／洛杉矶测试覆盖切号时间截断、忽略模型伪造时区字段。
+- **Node.js 全量**：`TZ=Asia/Shanghai node --test --test-reporter=tap --test-concurrency=2 test/*.test.mjs`：**2632 项，2625 通过，0 失败，7 跳过**。
+- **Python 全量**：`python -m unittest discover -s test -p "test*.py"`：**273 项，272 通过，0 失败，1 跳过**。
+- **专项兼容回归**：评论、私信、多气泡与日期相关 64/64 通过；Life 架构与视频工具契约通过。未向真实 B站发送任何消息。
+- **补丁应用验证**：两种互斥基线分别执行 `git apply --check`、实际 `git apply`、反向检查以及 1203 文件内容一致性检查，全部通过。注意已应用旧评论沉默补丁的工作目录不属于这两种原始状态。
+- **发布状态**：仅修复 dev.17，未改 `package.json` 版本号，未发布 npm，未声称真实 Windows DSH 与 B站已实机验收。
+
+---
+
+# 2.8.0-dev.17 · 最新用户 ZIP 基线补丁验收（2026-11-14）
+
+- **唯一来源**：用户上传 `dsh-bili-scroll-plus2.zip`（SHA-256 `63903645045bf7f5dfe09c77b10093422b3af443b374e5de6360a5ba896186b8`）。不是上次交付的 dev.17 补丁基线；ZIP 内若附带旧的 `dafeiyu-2.8.0-dev17-final-audit-fixes.patch`，**不要再次应用**。
+- **Python 完整回归**：`python -m unittest discover -s test -p "test*.py"`，**273 项执行，272 通过、1 跳过、0 失败**（41.6 秒）。
+- **Node.js 完整回归**：`node --test --test-concurrency=2 test/*.test.mjs`，**2,627/2,627 通过，0 失败、0 跳过**。第一次 2,626/2,627（旧多气泡提示词固定措辞断言），更新为等价语义与结构校验后，最终完整重跑全部通过。
+- **已修复**：删除私信自主关注对象范围旧逻辑、加入受平台来源与七天规则限制的私信自主取关；合格私信来信可激活快通道；README 增加 DSHMarket 收录；多气泡统一三阶段引导；主人发送不消费普通私信每日额度；互动额度卡片方案身份持久保存且手工更改转自定义。
+- **定向测试**：最新新增 `test/v280-dev17-uploaded-baseline-quota-burst.test.mjs` 4/4 通过；私信及现有预设等 42/42 相关回归通过；旧自然续想提示合同 5/5 通过。
+- `npm run check:life-architecture`、`npm run check:video-tool-contract`、`node selfcheck.mjs` 均通过。Linux 无真实 Windows DSH、真实 B站外发、旧用户长周期迁移或 72 小时验收；尚未正式发布 npm。
+- **Git Patch 应用验收**：参见随补丁的《应用说明》；只以用户该 ZIP 原文件作为 `git apply --check` 基线，未对用户 Windows 本地工作目录作实际写入。
+
+---
+
+# 2.8.0-dev.16 本轮组合写入／私信并发／隐私与文档对齐审计（2026-11-14）
+
+**基线**：用户上传完整源码＋上一轮已验收的私信按段经历提炼交付；本轮 Patch 应用于此前交付版，不叠加任何实验增量。未进行真实 Windows DSH 或 B站实机写入。
+
+- 新增 7 项专项：同 BV 组合白名单、精确正文／顺序／防重、未知结果冻结、真实 Loopback 桥逐子动作确认、两实例同进程认领、两个独立 Node 进程并发写入、公开场合私密披露判定，均通过。
+- 扩大 Node 相关回归：246 项，242 通过，4 失败。4 项均在未修改的上一轮源码中复现（旧社交回执文案、成长页面断言、公开讨论缓存、主人聊天页面／提示词）；不把这些遗留测试称为通过。
+- 全量 Node 与全量 Python 回归在本轮执行超时，**无完整结论**。此前的基线全量失败尚未完成修复，不具备正式发布准入。
+- `node selfcheck.mjs`、`npm run check:video-tool-contract`、`npm run write:life-architecture-view`、`npm run check:life-architecture` 和 `npm pack --dry-run` 通过。
+- 平台不可模拟的事实：真实 B站写入、额度、响应、私聊公开语义泄露、Windows 多实例异常断电恢复及长时间运行尚待验收。跨进程原子锁仅保证同一台机器的本地文件系统语义，不保证网络盘安全。
+
+---
+
+## 2.8.0-dev.16 · 基于用户上传完整源码的精准增量（Linux 离线，2026-11-14）
+
+- 原始 ZIP 源码 `npm test`：**2,568 项，2,496 通过，72 失败**。
+- 修改后工作副本（最终新增按账号统计与新测试前）`npm test`：**2,582 项，2,512 通过，70 失败**。失败的 70 个测试名称和文件均包含在原始 72 失败之中；原始版另两项单次运行失败不能归功于本次修复。
+- 最终差异相关扩展回归：**102/102 通过**；额外覆盖当前上传版普通 DM 多气泡真实回执、模型 `close`／`settled`、未知发送和账户诊断隔离。
+- Python 全量：`npm run test:python`，**272 项运行，271 通过、1 跳过、0 失败**。
+- `npm run check:life-architecture`（4 图/120 锚点）、`npm run check:video-tool-contract`、`node selfcheck.mjs`、`npm pack --dry-run` 通过。最终补丁仍须在用户 Windows 仓库本机执行 `git apply --check`，不等于实机成功。
+- **未验收**：真实 B站私信/评论和 Windows DSH；多进程共用临时 JSON 的竞争、模型服务商对私聊片段的处理、跨场合隐私语义边界、Life 组合视频写入。
+
+## 2.8.0-dev.16 · 私信衰减经历与跨渠道熟人理解增量（2026-11-13）
+
+- 新增五项定向测试：可衰减私密主题、账号与 UID 访问范围、私密反思、compact 按需检索、普通和可信评论的披露拦截，5/5 通过。
+- 原有私密反思／备份和跨渠道评论回归覆盖在扩大样本内：85 项中 83 项通过；其中架构预览生成先后顺序造成的一项临时失败已重新生成并单独 5/5 通过；剩余旧版管理页文案测试在未修改基线上同样失败。
+- `npm run check:life-architecture`、`npm pack --dry-run`、`node selfcheck.mjs` 通过；尚未完成 Windows DSH、B站真实评论和长期反思生命周期实机验收。
+- 新式私密事件只保留有限的低敏主题和有证据的关系陈述，旧版没有账号标记的记忆不自动出现在公开评论；隐私输出正则只是补充防护，不代表语义隐私已完整证明。
+
+# 大肥鱼 2.8.0-dev.10 · 二次审计与修复验证
+
+> 2026-11-12 · Linux 离线/模拟 · **无真实 B站外发、无 Windows DSH 接入、无 npm 发布**。
+
+## 相对 `2.8.0-dev.9` 的关键发现与修复
+
+1. **P0 可信评论沉默权**：`chat` 的 `defer/refuse` 不得转换为 `allow`；合法的 `replyDecision=defer/refuse` 不发生外发。历史只读回忆第二轮只能修订文字，不得重复投票；仅安全且未明示拒绝的旧 `chat` JSON 能兼容省略 `decision`。
+2. **P0 同窗口候选缺证据**：原 140ms 合并流程遗失视频与公开来信上下文；现引入有界清洗的逐候选证据摘要，不在混合公私候选时传入 DM 原文。仍由原有唯一 Life 决策模型择一。
+3. **P1 已形成视频意愿丢失**：Life Episode 视频意愿与社交回复共用原账号内有界 FIFO 等待；不另投模型。队列期间账号切换/权限撤销/目标无效，阻断在平台尝试前；等待超时为系统延期，不能冒充鱼鱼主动拒绝，亦不自动重发。
+4. **P0 可信社交回复发送凭据不统一**：主人/好友可信评论回复与普通评论回复共用 `LifeWillingness.adoptSocialDecisionQueued`、精确 UID/评论串/回复正文一次性证明，再走原 `socialSendTransaction` 与 B站平台回执，权限在排队后重核。
+5. **P1 表达正文被模板替换**：邀请动作成功后，可信评论 Agent 不能以“我试过啦”等固定结果话术替换鱼鱼首轮选择的原文。现复用首轮模型最终合法文本；显式未尝试发送的回复阻断计为 `blocked`，未知实际送达才计 `uncertain`。
+
+## 基线对照（测试名称集合）
+
+| 检查 | 原始 dev.9 | 本轮 dev.10 | 对比 |
+|---|---:|---:|---|
+| Node 全量 | 2,451 项；2,371 通过、80 失败 | **2,464 项；2,384 通过、80 失败** | **80 项失败名称完全一致，未新增失败** |
+| Python 全量 | 272 项；5 失败、6 错误、1 跳过 | 272 项；5 失败、6 错误、1 跳过 | 未新增失败（历史问题未修） |
+| 新增跨场景专项 | — | **13/13 通过** | 模拟结果，不是平台外发 |
+| `node selfcheck.mjs` | — | 通过 | 不触碰用户实际数据目录 |
+| `npm run check:video-tool-contract` | — | 通过 | 视频工具契约 |
+| Life 架构 4 图 + 115 锚点 | — | 通过 | Mermaid 预览同步 |
+| `npm pack --dry-run` | — | 通过 | 非实际发布 |
+
+节点失败对照：原始 dev.9 的 80 项失败名与本轮完全相等；该 80 项不能视作通过。Python 历史失败主要位于 `test_dev37_episode_comment_review` 和 `test_dev6_action_facts`，需在正确依赖/运行环境中独立复核原因。
+
+## 本轮 13 项专项测试范围
+
+- 普通聊天拒绝或延期仍沉默；单模型独立行动/表达选择；可信主人评论静默不外发。
+- 邀请拒绝后可以选择回答或沉默；并发公开候选视频/评论证据均保留；混合 DM 不泄露正文。
+- 视频意愿与社交共用 FIFO，不多投意愿；排队期间切号、撤权、重复证明无法越权发送。
+- 可信评论发送生产接口具有同一准入证明；撤权发生在平台尝试前应为阻断；成功情形发送鱼鱼选择的精确回复，而非系统模板。
+
+## 当前协议边界与尚未收口事项
+
+- 账号内 FIFO 是**同一进程的有界等待队列**，未将已选意愿持久化后自动重放；崩溃恢复只能重读事实并由合法的新意愿另选，旧未知发送继续冻结。
+- 群组仲裁只传已清洗的**公开摘要**，并未在全部渠道传递所有原始上下文。混合 DM 正文刻意不共享，可能因此由模型选择跳过，不代表真实私信无内容。
+- 原视频/社交事务与权限、配额、风控、退订、账号/UID、反重复发送仍是硬安全边界；用户主 Session 明确指令与 Life 自主行为分流，不把人工命令冒充鱼鱼自主。
+- 其他旧入口的所有行为统一程度尚未完成基于真实 Windows B站的逐路径证明；**不能宣称本轮已达到正式版完整统一验收**。
+- 必须验证真实账户上的 DM、可信评论、普通评论、点赞/收藏/关注/原创主评论，含撤权、切号、网断、断电与未知回执；旧用户迁移/72h 长时运行仍未完成。未经明确授权不得自动发布 npm。
+
+---
+
+# 2.8.0-dev.8 回归与验收记录（2026-11-12）
+
+> 开发预览，不是正式 2.8.0 发布验收。测试在当前隔离的 Linux/Node/Python 环境执行，未连接真实 Windows DSH 或 B站账户、未发送任何真实评论／点赞／收藏／关注，也未运行 72 小时跨日验收。
+
+## 本版针对性验收
+
+- `node --test test/v280-dev8-video-entry-continuation.test.mjs`：**7/7 通过**。在模拟的原平台写执行器中，验证 Life 自选 `inspect_opportunity` → 原创主评论候选／执行，以及 Life 自选 `watch_video` 只读待办 → 点赞候选／执行，两条均不需要启动完整视频 Agent。
+- 同一测试验证：视频只读任务没有可信完成记录、任务 / BV / 标题错误、账号不符、未经原 Life 核实决策、重复回执、主人关闭评论授权、模型选择休息，均不能伪造授权或强制外发。
+- `node --test test/v271-dev46-life-decision-explain.test.mjs test/v271-dev33-life-architecture-contract.test.mjs test/v280-dev8-video-entry-continuation.test.mjs`：**15/16 通过，1 项历史失败**（旧 `social attention` 测试在原 `dev.7` 同样不通过）。
+- `npm run write:life-architecture-view`：生成四张当前 Mermaid 图对应的 GitHub 预览。
+- `npm run check:life-architecture`：**通过**，4 张 Mermaid／115 个唯一代码节点。
+- `node selfcheck.mjs`：**通过**（宿主 API 与客户端注册预检）。
+- `npm pack --dry-run`：**通过**，版本 `2.8.0-dev.8`、573 个待打包文件；未实际发布 npm。
+- `git diff --check`：**通过**（仓库 `core.whitespace=cr-at-eol`，原源码主要使用 CRLF；没有新增空格错误）。
+- 完整交付 ZIP 完整性和从原始 `dev.7` 源码应用补丁：交付阶段另行验证。
+
+## 全量测试（同一环境下对照，不能宣称全绿）
+
+| 测试 | 原始 `dev.7` 基线 | 本次 `dev.8` | 与基线比较 |
+| --- | --- | --- | --- |
+| `npm test` | 2,437 项；2,357 通过／80 失败 | 2,444 项；2,364 通过／80 失败 | 新增 7 项全通过；失败测试**名称集合完全一致**，未引入新失败 |
+| `npm run test:python` | 272 项；5 fail／6 error／1 skipped | 272 项；5 fail／6 error／1 skipped | 失败／错误测试名称集合完全一致，未引入新失败 |
+
+上述历史失败包含版本与 README 历史期望、既有依赖／运行环境、旧社交回执与现存架构测试未满足等问题。本次不擅自修改旧测试断言或扩大重构范围以让数字变绿；正式版封版前需逐项复核。
+
+## 行为边界与人工待验
+
+1. `inspect_opportunity` 只把 Life 已选择且资料核验成功的当前 BV 接进原账号探索片段；不是完整音画观看证明。
+2. `watch_video` 只在 **Life 自主选择执行**、旧待办已经由可信执行器真正标记完成，且返回同 BV、真实标题的读取回执后接入互动续行。主人手动触发的其他渠道尚未全部统一到这个选择入口。
+3. 续行模型有权点赞／收藏／关注／原创主评论，也有权休息；在原 `life-continuation-write` 中执行严格的账号、授权、配额、去重与平台确认检查；模拟写入测试不等于真实 B站发送成功。
+4. 设置页进入时只读查询 npm `/latest` 的版本元数据，有新版时红色提醒；点击后复用既有 DSH 安装器，需人工查安装日志并重启。手动版本查询保留 GitHub 回退。npm 网络失败时不伪称已是最新版。
+5. Windows DSH 设置页实际渲染、网络可达、真实 B站端点及风控、重启后连续 Life 行为、跨账号隔离与 72 小时稳定运行仍待测试；**`releaseReady:false`**，不得发布正式 2.8.0。
+
+---
+
+## 历史开发版测试记录（保留原 dev.7 及更早日志，不替代本次统计）
+
+# 2.8.0-dev.7 · 界面合并与发布收口测试
+
+- `test/v280-dev7-unified-life-story-ui.test.mjs`：校验树/时间线同卡、旧 DOM ID 唯一、SSE 与只读时间线 API 未变、分类说明只有三句。
+- 调整原 UI 布局测试以匹配新的组件位置，不更改其他行为数据、发送权限或模型调用。
+- 本次管理中心和发布文档定向 Node 测试：5 个文件、22 项通过，0 失败；HTML DOM/控件唯一性检查通过。
+- 冻结前 dev.6 全量 Node 2434 项（2343 通过、84 失败、7 跳过）；全量 Python 272 项（5 失败、6 错误、1 跳过）。仍需旧版基线对比与实机复核，不能宣布正式版 P0 门禁通过。
+
+---
+
+# 2.8.0-dev.6 · 单次 Life 意愿修复专项验证
+
+- `node --test` 选取 12 个相关测试文件：**86 项通过，0 失败**，覆盖原创 Life 写动作、统一意愿、DM 私信续行、待办自主执行、回访与任务来源、异常旧状态。测试日志留存于开发环境，不作为真实平台回执。
+- 新 `test/v280-dev6-single-intent-contract.test.mjs` 测试真实 OwnerTodos 入账 now/later、旧任务/虚假 BV 拒绝、极低情绪不二次否决、联系人关注授权的同 UID 一次消费/跨账号失效、下游文本不重复投票。
+- `test/v271-dev38-subagent-continuity.test.mjs`：新 `intentProtocol:2` 候选正常续接，旧私信账本仅提议的 pending 行不能直接升级成平台关注授权。
+- `npm run write:life-architecture-view` 与 `npm run check:life-architecture`：4 张图、111 个代码节点对齐；`node selfcheck.mjs` 通过（临时数据目录）；`npm pack --dry-run --json` 通过。
+- 仍未取得 Windows DSH、B站真实收发、连续 72 小时、旧用户完整迁移/回滚和跨日自然成长的正式验收证据；本次为 `2.8.0-dev.6` 开发版，不等于正式稳定版。以前全量 Node 基线存在未逐项修复的测试失败，不宣称整个仓库全量测试通过。
+
+---
+
+# 2.8.0-dev.5 · 作品私信即时意愿与生活事项时间测试
+
+## 本轮已验证（离线，不调用用户真实模型/B站）
+
+- `test/v280-dev5-dm-read-wake-and-plan-times.test.mjs`：**8/8 通过**。涵盖：已接受且新建的当前账号私信只读待办可绕开普通最短时间间隔；Life 仍可 skip；可当轮选择原只读工具；旧任务/非私信/关闭待办/停用模式不得唤醒；不伪造任意 ID；日报额度、模型退避不突破；模型期间账号切换禁止执行；真实列表的本机时区及缺失时间不伪造；不引入第二 DM 发送器。
+- 社交待办、旧 OwnerTodos、Life 节奏、菜单、Episode、意见授权恢复等 11 个相关测试文件：**51/51 通过（含新增 8 项）**。
+- `node --check index.js`、`node --check lib/autonomous-planner.mjs`：通过。
+- `npm run write:life-architecture-view` 与 `npm run check:life-architecture`：通过（4 张图、110 个唯一代码节点）。
+- `node selfcheck.mjs`：通过；`npm pack --dry-run`：通过（569 个 npm 文件）。
+- 当前仅执行相关离线测试，并未执行本版全量 Node、Python 测试，**不能宣称全套通过**；原 dev.3 已有旧全量 82 项失败未逐一归因。
+
+## 严格界限与日志关联
+
+- 11 月 12 日 11:00:45 私信 BV 出现了已接受候选入口日志，而在该段日志未观察到对应 OwnerTodos 新建回执；因此不能认定当时已入账，亦不能说是残留调度锁导致这段回复。私信回复模型的快速调用独立于普通 Life 10 分钟规划。
+- 接受意愿 ≠ 已加入待办；入账成功 ≠ 执行；读取公开标题/字幕 ≠ 完整看过/听过；AI 回复 ≠ 平台送达。只对已通过原社交意愿与受信来源核验、当前轮新建的只读任务触发快速考虑，不因对方单纯发送 BV 而强制看。
+- 快唤醒如果碰到 Life busy/运行锁或关闭时段，不绕过这些保护，保留已有待办等待正常规划；不会外发消息，不保证一定有后续回复。
+- Windows DSH、实际模型结果、B站真实工具、私信发送、SSE 浏览器实时界面尚未在此环境验收。
+
+---
+
+# 2.8.0-dev.4 · Life 调度异常退出自动恢复补丁测试
+
+## 本轮已验证（隔离测试目录，未访问用户真实 B站账号）
+
+- Life 运行锁自动恢复、真实 Node 子进程异常退出、两进程竞争同一旧锁、单日模型额度不退款、损坏锁/符号链接/附加异常文件、恢复守卫失效及原外发事务隔离：`test/v271-dev4-life-agent-atomic-recovery.test.mjs`，**13/13 通过**；另重复运行 5 次通过。
+- 原 Life 恢复、动作菜单、事件账本、原账号权限、Life 节奏与计数、架构、管理员 UI 和旧版备份协议等 13 个测试文件：**83/83 通过**；合计 **85/85 通过**。
+- 新增普通用户 UI 与自动恢复入口契约：`test/v280-dev4-life-crash-auto-recovery-ui.test.mjs`，**2/2 通过**。
+- `npm run write:life-architecture-view` / `npm run check:life-architecture`：通过；`node selfcheck.mjs`：通过；相关 JS 文件语法检查：通过。
+- 本轮只针对自动恢复与相邻模块做离线回归，不等于 npm test 全量成功。上版 dev.3 已记录全量 **2413 项：2324 通过、82 失败、7 跳过**，这些历史问题本版未全面解决、未宣称可直接发布正式 2.8.0。
+
+## 自动恢复的精确范围
+
+仅在 `autonomous-planner-run.lock/owner.json` 完全合法、上一进程 PID 已由操作系统证实不存在时回收该 **非发送规划运行锁**。`life-willingness-ledger`、实际私信/评论事务、未知回执、模型预算、账号权限和待办状态均不改变。原 PID 仍活着、无法确认、锁损坏、额外文件或恢复守卫异常时拒绝危险解锁并展示原因。
+
+Windows DSH Desktop 实机、异常中途再次崩溃、文件权限和真实 B站平台端到端未验收；只声明离线行为已测试。

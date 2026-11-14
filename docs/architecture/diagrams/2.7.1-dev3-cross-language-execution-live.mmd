@@ -1,0 +1,15 @@
+flowchart TB
+  A[主人私信 / 主 Session 的只读动作] --> JS[Node MCP 适配器]
+  B[自主待办 / 自主生活只读探索] --> JS
+  C[独立 Python 视频 Agent] --> PY[Python MCP 工具]
+  JS --> LOCK[共用持久只读预约目录]
+  PY --> LOCK
+  LOCK --> API[B站真实只读接口]
+  API --> RECEIPT[技术回执: 未完成任何承诺]
+  RECEIPT --> TODO[待办事务账本]
+  RECEIPT --> LIFE[生活意愿账本]
+  D[真实评论通知] --> R[评论回复决策]
+  R --> S{原回复成功?}
+  S -->|显式开启| H[同 BV 顺路热评候选]
+  H --> R
+  R --> WRITE[原社交发送器 / 权限 / 配额 / 回执]

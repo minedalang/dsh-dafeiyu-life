@@ -1,0 +1,19 @@
+flowchart TD
+  In[已核验私信 / 评论 / @] --> Old[旧收件游标与 SocialInteractionCoordinator]
+  Old --> Legacy[legacy 唯一正式决策者]
+  Old --> LifeEvent[账号隔离匿名 Life Events]
+  LifeEvent --> LifePlanner[同一个 AutonomousPlanner]
+  LifePlanner --> Shadow[只读影子分类: reply / defer / silent]
+  Shadow -.不授予发送权.-> NoSend[无 Life 正式社交发送器]
+  Legacy --> Guard[SocialDecisionOwnership.route]
+  Guard --> Active[SocialHandoffFence 旧操作先登记再检查]
+  Active --> Policy[原 SocialPolicyGate / 渠道权限与冷却]
+  Policy --> Txn[原 SocialSendTransaction 逐消息事务]
+  Txn --> Platform[B站发送适配器及真实回执]
+  Admin[管理中心开发者人工确认] --> Dry[按渠道无发送演练]
+  Dry --> Reserve[原子预约渠道并排空在途]
+  Reserve --> Check[原发送事务账本汇总]
+  Check --> Release[仅无平台发送时释放预约]
+  Release -.不改变所有权.-> Guard
+  Dry -.不得调用.-> Platform
+  Dry -.不得调用.-> LifePlanner

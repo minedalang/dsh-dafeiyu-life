@@ -94,15 +94,17 @@ test('DEBUG 没有可核验事实时不能被催成发送，同时应显示模�
  assert.match(f.status().recent[0].lastCheckReason,/缺少可核实/)
 }))
 
-test('管理中心有显式 DEBUG 路由、一次一条的按钮和反悔确认，不改原到期检查',()=>{
+test('管理中心有显式手动重新考虑入口、一次一条和确认，不改原到期检查',()=>{
  const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const ui=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  assert.match(host,/body\?\.action==='debug-reconsider'/)
  assert.match(host,/ownerTodoFollowup\.debugReconsider/)
- assert.match(ui,/id="owner-todo-followup-debug"/)
+ assert.match(ui,/id="owner-todo-followup-reconsider"/)
  assert.match(ui,/检查到期回访（不跳过延期）/)
  assert.match(js,/action:'debug-reconsider',key:row\.key/)
  assert.match(js,/action:'debug-reconsider'\}/)
- assert.match(js,/if\(!confirm\('DEBUG/)
+ assert.match(js,/if\(!await confirmAction\(\{title:'请确认操作',description:'这会跳过延期时间/)
+ assert.doesNotMatch(ui,/DEBUG/)
+ assert.doesNotMatch(js,/DEBUG：|DEBUG 此条/)
 })

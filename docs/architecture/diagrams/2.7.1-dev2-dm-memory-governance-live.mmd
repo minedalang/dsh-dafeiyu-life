@@ -1,0 +1,14 @@
+flowchart TD
+  In[Authenticated Bilibili DM] --> Account[Account and UID scoped]
+  Account --> Dm[Background DM raw short context]
+  Account --> Owner[Owner Agent only when authenticated owner]
+  Dm --> TTL[14d history / 7d older excerpts]
+  TTL --> Model[Current same UID reply context]
+  Dm --> Security[Seen / opt-out / approval / receipt untouched]
+  Owner --> OwnerTTL[14d context / 24h confirmed follow-ups]
+  TTL --> Admin[Local-only counts and explicit prune]
+  OwnerTTL --> Admin
+  Model --> Gate[Existing send authorization and real receipts]
+  Security --> Gate
+  Account -.-> Main[Main session memory - unchanged]
+  Account -.-> Portrait[Friend portrait and fading Life Memory - unchanged]

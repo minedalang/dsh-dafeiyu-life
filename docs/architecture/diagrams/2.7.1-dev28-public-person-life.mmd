@@ -1,0 +1,19 @@
+flowchart TD
+  A[当前账号跨日真实公开交流事件] --> B[现有 SocialPortrait 公开安全证据]
+  B -->|当前允许且证据仍有效| C[匿名人物契机 personKey]
+  C --> D{Life 自主决策}
+  D -->|跳过/延期/本地复核| E[不访问外部资料]
+  D -->|inspect_public_person| F[宿主实时解析 personKey]
+  F -->|证据撤销/账号变化| G[停止并保留失败冷却]
+  F -->|获得真实 UID 仅供工具使用| H[原 bili_user_videos 只读]
+  H -->|返回 UID 不同/无有效 BV| G
+  H -->|同 UID、有效公开视频 BV| I[原 life-opportunities 意愿账本]
+  I --> J{鱼鱼继续选什么}
+  J -->|核实某个真实 BV| K[原视频元数据只读]
+  J -->|放下| L[结束]
+  K --> M{继续选择}
+  M -->|点赞/收藏/关注该视频作者/原创主评论| N[dev27 原 Life 二次审批与 Python 外发网关]
+  M -->|继续看/结束| L
+  N --> O[权限·防重·配额·平台 GET]
+  O -->|真实核验| P[记入既有 Life 回执并停下]
+  O -->|失败/未知| Q[停止且绝不盲目重发]

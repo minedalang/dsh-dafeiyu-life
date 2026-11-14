@@ -1,0 +1,13 @@
+flowchart LR
+  A[管理中心 · 实际运行状态] --> B[AutonomousPlanner.status]
+  B --> C[唯一现有配置]
+  B --> D[LifeAgentEvents 账号隔离委派账本]
+  B --> E[LifeCapabilities · 原视频 Agent 可用性]
+  B --> F[只读门禁汇总]
+  F --> G[真实状态／委派数／阻断原因]
+  H[明确点击合成演示] --> I[假事件＋假模型]
+  I --> J[原 AutonomousPlanner.tick]
+  J --> K[假视频适配器]
+  K --> L[模拟结果 · 零实际外发]
+  M[实际自主运行 active] --> N[原视频 Agent]
+  N --> O[原安全授权／回执]

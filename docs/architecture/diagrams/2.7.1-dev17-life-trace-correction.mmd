@@ -1,0 +1,15 @@
+flowchart TD
+  A[Life 本轮考虑] --> B[模型额度预约]
+  B --> C{是否普通生活轮且有视频轮次退出回执}
+  C -->|是| D[video-round-feedback 合法阶段]
+  C -->|否| E[不写无关视频事件]
+  D --> F[有限字段: 数量、退出类别、选片计数是否已知]
+  E --> G[调用模型]
+  F --> G
+  G --> H{决策与执行}
+  H -->|reflect 等真实成功| I[完成回执]
+  H -->|social-shadow-reply| J[仅只读倾向 未发送]
+  H -->|真实异常| K[保留 error/blocked + code]
+  I --> L[本轮结束 不等于社交已发送]
+  J --> L
+  K --> L

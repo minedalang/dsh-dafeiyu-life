@@ -81,7 +81,7 @@ test('表情包上传、预览、改名和删除；扩展名伪装、路径穿�
 test('管理页提供四类入口，已批准成长经验才需要删除确认',()=>{
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
- assert.match(js,/e.status==='approved'&&\!confirm/)
+ assert.match(js,/e.status==='approved'&&\!await confirmAction/)
  for(const name of ['growth-list','meme-new-save','sticker-upload','sticker-list','sticker-search'])assert.ok(html.includes('id="'+name+'"'))
  assert.ok(html.includes('data-tab="stickers"'))
  assert.ok(html.includes('自己编写，直接待审核'))

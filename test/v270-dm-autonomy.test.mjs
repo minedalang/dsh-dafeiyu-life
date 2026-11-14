@@ -35,11 +35,11 @@ test('DM decision contract receives the same Life Voice once, relationship stage
   x.batcher.stop();
 });
 
-test('DM autonomy accepts one to three natural bubbles and bounded delayed supplement',async()=>{
+test('DM autonomy accepts one to three semantic bubbles without old scheduled supplements',async()=>{
   const x=batcherFor(item({messages:['第一条','第二条','第三条'],reply:'',followUpMinutes:30}));
   const result=await x.batcher.generate(req);
   assert.deepEqual(result.messages,['第一条','第二条','第三条']);
-  assert.equal(result.followUpMinutes,30);
+  assert.equal(result.followUpMinutes,undefined);
   x.batcher.stop();
 });
 
@@ -51,11 +51,11 @@ test('DM autonomy turns invalid proactive @ into silence, never an outgoing mess
   x.batcher.stop();
 });
 
-test('DM autonomy defer is a bounded reconsideration, not a promise to send',async()=>{
+test('DM autonomy defer is a current-turn pause, never an automatic appointment',async()=>{
   const x=batcherFor(item({action:'defer',reply:'',messages:[],deferMinutes:20}));
   const result=await x.batcher.generate(req);
   assert.equal(result.action,'defer');
-  assert.equal(result.notBefore,1_800_000_000_000+20*60_000);
+  assert.equal(result.notBefore,undefined);
   x.batcher.stop();
 });
 
@@ -98,12 +98,13 @@ test('DM production adapter no longer runs the separate numeric dual-context wil
   assert.match(dmSource,/fetchIncoming\(\{probeOnly:true,forceUid:uid\}\)/);
 });
 
-test('DM UI labels the approval code as optional strict mode and autonomy as the reply policy',async()=>{
+test('DM UI keeps only historical approval fields while autonomy remains the reply policy',async()=>{
   const html=await readFile(new URL('../lib/management-console.html',import.meta.url),'utf8');
   const source=await readFile(new URL('../index.js',import.meta.url),'utf8');
-  assert.match(html,/允许鱼鱼自主考虑并多轮回复陌生人/);
-  assert.match(html,/启用严格暗号审核（可选，默认关闭）/);
-  assert.match(html,/关闭严格审核时，不要求投喂暗号/);
+  assert.match(html,/name="dm-conversation-choice" value="free"/);
+  assert.doesNotMatch(html,/启用严格暗号审核（可选，默认关闭）/);
+  assert.match(html,/历史严格审核记录（只读/);
+  assert.match(source,/人工严格私信审批已停止/);
   assert.match(source,/dmStrangerOnce:\s*z\.boolean\(\)\.default\(false\)/);
   assert.match(source,/dmStrangerAutonomyEnabled:\s*z\.boolean\(\)\.default\(false\)/);
   assert.match(source,/dmApprovalEnabled:\s*z\.boolean\(\)\.default\(false\)/);

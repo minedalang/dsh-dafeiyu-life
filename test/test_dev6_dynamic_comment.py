@@ -5,12 +5,13 @@ import json
 import os
 import re
 import types
+from contextlib import contextmanager
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 SERVER = Path(__file__).resolve().parents[1] / 'vendor' / 'bilibili-mcp' / 'mcp_server.py'
-FUNC = {'_checked_dynamic_id', '_dynamic_comment_area', '_get_dynamic_comment_area',
+FUNC = {'_coordinated_send','_comment_platform_receipt','_checked_dynamic_id', '_dynamic_comment_area', '_get_dynamic_comment_area',
         '_safe_dynamic_reply','_find_dynamic_target','bili_dynamic_comment_context',
         'bili_dynamic_comment_manual'}
 
@@ -42,13 +43,19 @@ def make_env(info=None, rows=None, response=None):
         return {'ok':True,'body_hash':'hashed','day':'2026-11-01'}
     def finish(*args):finished.append(args)
     def tool():return lambda fn:fn
-    env={'__name__':'__isolated_dynamic_test__','re':re,'os':os,'json':json,'tool':tool,
+    @contextmanager
+    def mock_outbound(*args,**kwargs):
+        class Claim:
+            def confirm(self,proof):
+                assert proof
+        yield Claim()
+    env={'_DUTY_HOME':'/tmp/mock-dynamic', 'outbound_reservation':mock_outbound, '__name__':'__isolated_dynamic_test__','re':re,'os':os,'json':json,'tool':tool,
         'get_cred':lambda:types.SimpleNamespace(dedeuserid='12345'),
         'dynamic':types.SimpleNamespace(Dynamic=Dynamic),
         'comment':types.SimpleNamespace(Comment=Comment, get_comments=get_comments,
                  send_comment=send_comment,OrderType=types.SimpleNamespace(TIME='time'),
                  CommentResourceType=types.SimpleNamespace(DYNAMIC='dynamic',DYNAMIC_DRAW='draw')),
-        '_guard':lambda name:'','_claim_session_manual_action':claim,'_finish_session_manual_action':finish}
+        '_guard':lambda name:'','_reserve_comment_quota':lambda:(True,''),'_claim_session_manual_action':claim,'_finish_session_manual_action':finish}
     root=ast.parse(SERVER.read_text(encoding='utf8'))
     nodes=[n for n in root.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name in FUNC]
     code=compile(ast.fix_missing_locations(ast.Module(body=nodes,type_ignores=[])),str(SERVER),'exec')
@@ -95,5 +102,34 @@ class DynamicTests(unittest.TestCase):
         self.assertFalse(result['ok']);self.assertTrue(result['no_retry'])
         self.assertEqual(len(writes),1)
         self.assertEqual(finished[0][5],'uncertain')
+
+    def test_nested_dynamic_target_on_later_page_keeps_exact_parent_author(self):
+        env,*_=make_env()
+        topid='319798167777'; targetid='319847247793'; parentid='323612080800'
+        pages=[]
+        def comment_row(rpid,uid,parent='',root=topid):
+            return {'rpid_str':rpid,'parent':parent,'root':root,
+                'member':{'mid':uid},'content':{'message':'实际评论'}}
+        head=comment_row(topid,'382440088')
+        parent=comment_row(parentid,'3747574597028931',topid)
+        target=comment_row(targetid,'382440088',parentid)
+        class Thread:
+            def __init__(self,oid,type_,rpid,credential=None):
+                self.rpid=str(rpid)
+            async def get_sub_comments(self,page_index=1,page_size=20):
+                pages.append(page_index)
+                replies=[comment_row(str(318000000000+page_index*100+i),'771',topid)
+                    for i in range(20)]
+                if page_index==2:replies[0]=parent
+                if page_index==5:replies[10]=target
+                return {'root':head,'replies':replies}
+        env['comment'].Comment=Thread
+        result=asyncio.run(env['_find_dynamic_target'](
+            {'oid':'414465057','resource_type':'dynamic'},env['get_cred'](),targetid,topid))
+        self.assertEqual(result['target']['rpid'],targetid)
+        self.assertEqual(result['replyToUid'],'3747574597028931')
+        self.assertEqual(result['replyToRpid'],parentid)
+        self.assertEqual(result['root'],topid)
+        self.assertEqual(pages,[1,2,3,4,5])
 
 if __name__=='__main__':unittest.main()

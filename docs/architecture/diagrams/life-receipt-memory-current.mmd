@@ -1,0 +1,161 @@
+%% dev.12：经核验阅读增量仅作可观测收益，跨日兴趣与反思人格计数只读归因
+%% dev.10：可信回复通过统一意愿密封与原发送事务核验；未尝试和未知送达分离。
+%% dev.74：社交自然熟悉度只读成长；私人联系资格必须与原发送事务分离。
+%% dev.73：普通自主 Life 最短间隔不再由 2 分钟经验/片段续接绕过；真实入站社交独立快唤醒。
+%% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
+%% 同版本 Life 补链维护：模型/菜单不是平台成功证据
+%% @code source | lib/life-video-action-bridge.mjs | createLifeVideoActionBridge
+%% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_comment_consideration
+%% @code commentOutcome | lib/video-comment-readiness.mjs | classifyVideoCommentRound
+%% @code catalog | lib/life-action-memory.mjs | LIFE_ACTION_NAMES
+%% @code verified | lib/life-action-memory.mjs | export function verifiedLifeActionEvent
+%% @code wake | lib/life-agent-events.mjs | VERIFIED_COMPLETION_KINDS
+%% @code outbox | lib/life-memory-coordinator.mjs | createLifeMemoryCoordinator
+%% @code episode | lib/life-memory-gateway.mjs | function asEpisode
+%% @code recall | lib/life-memory-gateway.mjs | function recall
+%% @code growth | lib/life-interests.mjs | recordInterestEvents
+%% @code curiosity | lib/life-interests.mjs | scopedCuriosityOpportunityEvidence
+%% @code planner | lib/autonomous-planner.mjs | export function plannerActionMenu
+%% @code bridge | index.js | const rememberVerifiedLifeAction
+%% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
+flowchart TB
+  bundle["Life 组合意愿：同 BV 兼容多子动作；父凭据 + 精确子票据"]
+  bundleGuard["逐项核验：原 Python 写入 + 原平台回读；未知冻结剩余"]
+  source["真实平台操作｜原视频/评论/DM 事务"]
+  bundle --> bundleGuard --> source
+  dmQualify["DM Openness：私人双向事实 + 独立授权 + 拒联检查"]
+  universalCausal["匿名因果 Episode｜账号隔离、分段延续、暂停与未知冻结；不是第二记忆库"]
+  postWrite["同 Episode 的兼容写入：一次意愿可多子动作，逐项回执；下一写前只读或休息"]
+  commentReview["入选标记允许同轮只读补记意愿：重复 BV 不重写、宿主核验一次；不等于发送"]
+  commentOutcome["结束后的独立 DEBUG｜未考虑／未提议／Life 否决／平台未知"]
+  receipt{"原渠道可信结果?"}
+  verified["行动事件仅接受 verified=true 与当前账号"]
+  unknown["冻结/失败｜不得写成成功，不自动重试"]
+  catalog["20 类 Life 行动统一字典｜含 14 类写操作"]
+  wake["匿名 Life 事件引用｜仅提醒下轮考虑"]
+  bridge["原进程回调 await 接收记忆入队｜不发送第二次"]
+  outbox["原 Life Memory 协调器持久化补偿队列"]
+  episode["可衰减情节｜有账号/私密/删除边界"]
+  pending["可补偿；诊断不伪装已写入"]
+  recall["实时账号/权限/遗忘过滤，再词法/向量检索"]
+  growth["真实已选片证据可形成兴趣候选"]
+  curiosity["当前账号、有真实 BV、未过期、未排除的开放式好奇"]
+  planner["Life 自主决定是否核实同一 BV，或不做"]
+  videoFeedback["已完成轮次只读反馈：Life 可在新视频冷却期间 review_video_feedback"]
+  commentReview -.->|自愿提出评论，仍需原外发门禁| source
+  commentReview -.-> commentOutcome
+  dmQualify -.->|仅在允许后进入原 DM 事务| source
+  source --> receipt
+  verified -.-> postWrite -.->|安全限制，不是写授权| planner
+  receipt -.-> commentOutcome
+  receipt -->|独立确认成功| verified
+  receipt -->|失败或未知| unknown
+  verified --> catalog
+  verified --> universalCausal
+  verified --> wake
+  catalog --> bridge
+  bridge --> outbox
+  outbox --> episode
+  outbox -->|已排队但投影暂失败| pending
+  episode --> recall
+  verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]
+  privateBuffer["短期对话片段：跨进程原子短锁+认领；按账号/UID隔离；原文限期"]
+  privateBatch["安静期/话题收尾/容量触发：模型批量提炼；失败退避、成功删除原文"]
+  privateFading["原 private-social 可衰减记忆：账号标记 + 私密域/UID 隔离"]
+  privateReflection["私密反思：有来源的共同话题 → 受限 privateInsights；不写公开长期记忆"]
+  privateUnderstanding["compact 公开评论：同账号同 UID 的私下熟悉线索；按需回忆"]
+  publicReplyFence["公开表达边界：可自然熟悉，禁止透露私聊；原发送权限与回执不变"]
+  verifiedDmInput --> privateBuffer --> privateBatch --> privateFading
+  privateFading -.-> privateReflection
+  privateFading -.->|未遗忘且可访问| privateUnderstanding
+  privateReflection -.->|受限认识，只用于内部理解| privateUnderstanding
+  privateUnderstanding -.-> publicReplyFence
+  %% @code verifiedDmInput | index.js | onConfirmedMessage:async
+  %% @code privateBuffer | lib/private-conversation-experiences.mjs | export function createPrivateConversationExperiences
+  %% @code privateBatch | lib/private-conversation-experiences.mjs | async function tick()
+  %% @code privateFading | lib/life-memory-gateway.mjs | function accessible
+  %% @code privateReflection | lib/life-reflection.mjs | function validateOutput
+  %% @code privateUnderstanding | lib/social-context-assembler.mjs | privateUnderstandingContext
+  %% @code publicReplyFence | lib/interaction-privacy.mjs | export function publicPrivateDisclosureRisk
+  universalCausal -.->|仅提供可信行为上下文| planner
+  episode --> growth
+  growth --> curiosity
+  curiosity --> planner
+  videoFeedback -.-> planner
+  ownerDiary["大肥鱼的一天｜从现有事件/行动回执生成可读卡片；社交关注≠实际发送，休息类别仅来自模型白名单"]
+  lifeEventJournal["LifeAgentEvents 原账号匿名决策账本｜候选计数/休息类别"]
+  lifeEventJournal -.-> ownerDiary
+  verified -.->|经核验行为| ownerDiary
+  ownerDiary -.->|只读 UI，不产生写权限| planner
+  planner --> source
+  ownerFollowup["Life talk_to_owner → 现有主 Session followup；成功只等于入队，不能当成平台发送回执"]
+  planner -.->|独立同意才可选择，允许休息| ownerFollowup
+  ownerDmSilence["主人私信自然气泡｜真实入站 + 单轮完整草稿/分段 + 逐气泡回执；不受普通自动私信每日额度限制"]
+  ownerContactQuota["主人联系唯一额度池｜主 Session 与主人 B站私信共用本地尝试账本"]
+  ownerContactQuota -.-> ownerFollowup
+  ownerContactQuota -.-> ownerDmSilence
+  ownerDmSilence -.-> receipt
+  neuralView["神经回忆场：仅显示当前可回忆节点、全屏搜索、真实语义余弦连线"]
+  embeddingLookup["可选本地 Embedding 索引：查询向量→当前语义排名；不是长期事实源"]
+  healthView["健康横幅：本地模型／网络／Life 心跳异常，用户暂停除外"]
+  lifeHeartbeat["Life 60秒检查：已用日额度、下次预计、心跳；没新决策≠故障"]
+  recall -.->|受原遗忘/权限约束| neuralView
+  embeddingLookup -.->|只读 PCA 和高维 cosine，不授权发言| neuralView
+  lifeHeartbeat -.-> healthView
+  planner -.-> lifeHeartbeat
+  commentOutcome -.->|对否决／延期／技术错误显式区分，不推断历史原因| healthView
+  %% @code neuralView | lib/memory-neural-projection.mjs | export function memoryNeuralProjection
+  %% @code embeddingLookup | lib/embedding-memory-index.mjs | async function search(query
+  %% @code lifeHeartbeat | lib/autonomous-planner.mjs | schedulerPulse:{...schedulerPulse
+  %% @code healthView | lib/system-health-projection.mjs | export function systemHealthSnapshot
+  dev54Scheduler["Life 定时器 ensureStarted：恢复检查心跳，不越过权限／回执门禁"]
+  dev4AutoRecovery["dev.4 规划运行锁：证明旧 PID 已退出 → 原子回收；异常拒绝，不重播旧动作"]
+  dev4AutoRecovery -.-> dev54Scheduler
+  %% @code dev4AutoRecovery | lib/life-planner-atomic.mjs | function reclaimDeadPlannerRun
+  dev54Diary["Owner 日记：已核验 BV/UID 跳转，未知目标不推断"]
+  dev54Recall["神经回忆：trace 不命中、结果相关性排序"]
+  %% @code dev54Scheduler | lib/autonomous-planner.mjs | const ensureStarted=()=>
+  %% @code dev54Diary | lib/life-timeline.mjs | export function buildLifeTimeline
+  %% @code dev54Recall | lib/memory-neural-projection.mjs | const keywordRelevance=
+  classDef green fill:#e6f8ed,stroke:#2a9961,color:#16452d
+  classDef yellow fill:#fff4de,stroke:#c48a20,color:#65440d
+  classDef red fill:#fff0f0,stroke:#c66565,color:#762b2b
+  class verified,catalog,wake,bridge,outbox,episode,recall,curiosity,planner,postWrite green
+  class pending yellow
+  class unknown red
+
+%% @code postWrite | lib/life-opportunities.mjs | entry.writeAftercare='read-or-rest'
+
+%% @code universalCausal | lib/life-universal-episodes.mjs | export function createUniversalLifeEpisodes
+
+%% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_ledger_mark
+
+%% @code videoFeedback | lib/autonomous-planner.mjs | action:'review_video_feedback'
+
+%% dev.38 真实平台关系读回后才入 Life Episode，原可衰减记忆可按动作类别描述。
+dmFollowReceipt["DM 联系人关注或取关：单次模型意愿 → 一次性授权 → 真实平台关系读回"]
+dmFollowReceipt -.->|只有成功回执| verified
+%% @code dmFollowReceipt | index.js | receiptId:'bili-relation-'+
+
+%% dev.42: host followup != independently confirmed platform delivery.
+%% @code ownerFollowup | lib/main-session-bridge.mjs | const initiateOwnerChat=
+
+%% dev.44: no new memory store or channel; one quota ledger.
+%% @code ownerDmSilence | lib/owner-dm-agent.mjs | const considerSilence=async()=>
+%% @code ownerContactQuota | lib/main-session-bridge.mjs | const reserveOwnerContact=
+
+%% dev.47: only readable projection from existing ledger and trusted receipts.
+%% @code ownerDiary | lib/life-timeline.mjs | const restCard=
+%% @code lifeEventJournal | lib/life-agent-events.mjs | export const LIFE_REST_REASON_CODES
+
+%% @code dmQualify | lib/social-policy-gate.mjs | const canInitiateDm=
+
+  videoReadHandoff["自选 Life 视频读取完成→当前账号原意愿账本，下一模型自愿考虑互动"]
+  videoReadHandoff -.->|仅当前 BV/标题和完成回执，非写权限| planner
+%% @code videoReadHandoff | lib/autonomous-planner.mjs | registerCompletedVideoRead(fresh,result,scopeBefore)
+
+%% dev.12: independently sourced growth indicators are a read-only projection.
+growthReadOnly["dev.12 匿名探索收益 + 原跨日兴趣 + 人格反思事实
+只读诊断，不修改偏好或发布权限"]
+verified -.->|事实归因，而非新兴趣证明| growthReadOnly
+%% @code growthReadOnly | lib/life-growth-attribution.mjs | export function projectLifeGrowthAttribution

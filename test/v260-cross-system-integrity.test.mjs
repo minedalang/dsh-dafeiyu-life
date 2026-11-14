@@ -116,7 +116,7 @@ test('动态配置同源：管理页填写与次数设置都保存同一个 key�
  const py=readFileSync(new URL('../lib/daily-dynamic-publish.py',import.meta.url),'utf8')
  assert.match(html,/id="daily-dynamic-limit"[^>]*max="10"/)
  assert.match(ui,/payload\.dailyDynamicDailyLimit=boundedInt\('daily-dynamic-limit',0,10/)
- assert.match(ui,/\['quota-daily-dynamic','dailyDynamicDailyLimit',0,10,1\]/)
+ assert.doesNotMatch(ui,/\['quota-daily-dynamic','dailyDynamicDailyLimit',0,10,1\]/,'移除次数页重复动态额度编辑器')
  assert.match(py,/15<=len\(text\)<=230/)
 })
 

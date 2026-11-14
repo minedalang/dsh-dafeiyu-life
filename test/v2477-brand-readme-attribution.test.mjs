@@ -17,11 +17,11 @@ test('v2.4.77+ 使用新的产品名、包名和 Cordis id',()=>{
 test('README 前部讲生活系统并前置开源来源，不再堆版本流水账',()=>{
   const readme=read('README.md')
   assert.match(readme,/大肥鱼 · DSH 生活系统/)
-  assert.match(readme,/先感谢这些开源项目/)
-  assert.match(readme,/c1overzz\/dsh-bili-scroll/)
-  assert.match(readme,/adoresever\/bilibili-mcp/)
-  assert.match(readme,/Yuuyuko-uu\/dsh-fish-memory/)
-  assert.match(readme,/Yuuyuko-uu\/dsh-bili-subagent/)
+  assert.match(readme,/可视化的生活成长/)
+  assert.match(read('THIRD_PARTY_NOTICES.md'),/c1overzz\/dsh-bili-scroll/)
+  assert.match(read('THIRD_PARTY_NOTICES.md'),/adoresever\/bilibili-mcp/)
+  assert.match(read('THIRD_PARTY_NOTICES.md'),/Yuuyuko-uu\/dsh-fish-memory/)
+  assert.match(read('THIRD_PARTY_NOTICES.md'),/Yuuyuko-uu\/dsh-bili-subagent/)
   assert.doesNotMatch(readme.slice(0,1800),/v2\.4\.7[0-6]/)
 })
 
@@ -39,5 +39,5 @@ test('新备份格式写新品牌，无老用户时拒绝旧版无校验备份',
   const mod=await import('../lib/data-backup.mjs')
   assert.equal(mod.FORMAT,'dsh-dafeiyu-life-backup')
   const bad={format:'dsh-bili-scroll-plus-backup',schema:1,config:{a:1},files:{'../../x':'bad'},sqlite:{}}
-  assert.throws(()=>mod.validateBackup(bad),/格式版本不支持/)
+  assert.throws(()=>mod.validateBackup(bad),/不允许恢复的路径|格式版本不支持/)
 })

@@ -1,0 +1,38 @@
+flowchart TD
+  A[LifeInterests 本账号真实跨日自主选片证据] --> B[LifeOpportunities explorationCues 只读线索]
+  C[本账号真实评论阅读与模型自主疑问] --> B
+  D[旧评论观察与公开交流候选] --> E[原 AutonomousPlanner 同一调度器]
+  T[原只读待办与反思] --> E
+  B --> E
+  V[原 Life Voice Context 唯一人格源] --> E
+  E --> F{鱼鱼自己决定}
+  F -->|begin_exploration 从兴趣| G[重新核对当前账号可信兴趣主题]
+  F -->|begin_exploration 从评论| U[核实同 BV 公开视频元数据]
+  U --> J
+  G --> H[Bili search 只读公开搜索]
+  H --> I{返回可信 BV?}
+  I -->|是| J[同账号 life-opportunities.json intentions 意愿与搜索回执]
+  I -->|否| N[失败 不登记成功]
+  J -->|下次自主决策| E
+  F -->|inspect_exploration| K{已保存的 BV 与当前账号仍一致?}
+  K -->|是| L[Bili video info 只读核实]
+  L --> M{同 BV 与真实标题?}
+  M -->|是| O[可信公开元数据回执]
+  M -->|否| N
+  K -->|否| N
+  O --> P[视频 Agent 下一轮可忽略的弱线索]
+  O --> Z[该探索已核实的视频，可在后续继续了解作者]
+  U --> Z
+  Z -->|inspect_creator_space 仅由鱼鱼选| AA[同 BV 只读核实公开作者及当前 B站账号]
+  AA --> AB[Bili user videos 读取该作者公开投稿]
+  AB --> AC{同 UID 且取得真实 BV?}
+  AC -->|是| AD[同账号意愿保存公开投稿列表与回执]
+  AC -->|否| AE[读取失败 24小时冷却 或拒绝错误身份]
+  AD --> J
+  F -->|abandon_exploration| Q[同账号自主放下回执]
+  F -->|skip| R[不开展新的探索]
+  J --> S[管理中心 只读展示意愿与来源]
+  O --> S
+  Q --> S
+  X[评论 私信 关注等外发] -.-> Y[原独立授权 身份检查 平台回执]
+  E -.->|不授权外发| X

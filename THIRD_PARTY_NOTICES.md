@@ -79,3 +79,14 @@ release are implemented by this repository. They reuse the existing project modu
 vendor or copy new third-party source code. Existing MIT notices for `dsh-bili-scroll`,
 `bilibili-mcp`, and `dsh-fish-memory`, and the architectural credit for `dsh-bili-subagent`,
 remain in force.
+## Qwen3-Embedding-0.6B-GGUF（可选下载的模型权重）
+
+- 上游：<https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF>
+- 许可：Apache License 2.0（以模型仓库随附许可为准）。
+- 本项目不随 npm 包分发模型权重；用户明确启用后才下载固定 revision 的 `Qwen3-Embedding-0.6B-Q8_0.gguf`，或由用户导入同一文件。Runtime Manager 校验固定文件大小与 SHA-256。
+
+## llama.cpp（可选下载的 CPU 推理 Runtime）
+
+- 上游：<https://github.com/ggml-org/llama.cpp>
+- 许可：MIT License（以 release 附带的上游许可文件为准）。
+- 本项目不随 npm 包分发平台二进制；用户明确启用后，Runtime Manager 下载固定 `b12110` 平台资产并校验 SHA-256。

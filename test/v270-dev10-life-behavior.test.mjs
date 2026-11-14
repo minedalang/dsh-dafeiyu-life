@@ -79,15 +79,12 @@ test('真实 DM sender：模型只说什么就发什么，不附加投喂和审�
  }finally{rmSync(dataDir,{recursive:true,force:true})}
 })
 
-test('P6 关闭话题不能登记沉默复议、延迟补充或 defer',()=>{
- const context=composeSocialDecisionContext({channel:'dm',actorUid:'10001',threadKey:'dm:10001',trigger:'incoming',lifeVoiceContext:'唯一 Life Voice',conversation:{phase:'closed'}})
- for(const request of [
-  {action:'reply',messages:['好的'],idleReconsiderMinutes:10,idleReconsiderReason:'open-conversation'},
-  {action:'reply',messages:['好的'],followUpMinutes:10},
-  {action:'defer',notBefore:T+100000}])assert.equal(validateSocialActionProposal(request,context,{now:T}).ok,false)
- assert.equal(validateSocialActionProposal({action:'reply',messages:['好的']},context,{now:T}).ok,true)
+test('已关闭话题不会建立额外定时续想，旧提案字段被忽略',()=>{
+ const c=composeSocialDecisionContext({channel:'dm',actorUid:'10001',threadKey:'dm:10001',trigger:'incoming',lifeVoiceContext:'唯一 Life Voice',conversation:{phase:'closed'}})
+ const r=validateSocialActionProposal({action:'reply',messages:['好的'],followUpMinutes:10,idleReconsiderMinutes:10},c,{now:T})
+ assert.equal(r.ok,true);assert.equal(r.followUpMinutes,undefined);assert.equal(r.idleReconsiderMinutes,undefined)
+ assert.equal(validateSocialActionProposal({action:'defer',notBefore:T+100000},c,{now:T}).ok,false)
  assert.equal(dmConversationPhase('那再见，不用继续聊了'),'closed')
- assert.equal(dmConversationPhase('我昨天和别人说再见'),'ongoing')
 })
 
 test('隐私请求：不带私域上下文调用模型，模型安全拒绝可发，泄露候选直接沉默',async()=>{

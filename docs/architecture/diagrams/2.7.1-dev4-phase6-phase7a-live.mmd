@@ -1,0 +1,17 @@
+flowchart TD
+  UI[简化生活设置与确认差异] --> PREVIEW[GET/POST settings-v2]
+  PREVIEW --> REVI{schema/指纹/确认有效?}
+  REVI -->|否| FAIL[拒绝修改 不覆盖旧配置]
+  REVI -->|是| SAVE[persistCfg 原配置唯一写入]
+  SAVE --> CFG[原 cfg 与 DSH 宿主配置]
+  CFG --> LEGACY{旧固定视频定时器}
+  CFG --> PLAN[原 AutonomousPlanner 事件驱动按需选择]
+  LEGACY -->|active 阻断 / v2 保存关闭 peakValley| HOLD[不会与 Life Agent 双启动]
+  PLAN --> CAND[可信只读候选 + 关系/共同兴趣参考]
+  CAND --> LIFE[Life Voice + 原每日模型预算]
+  LIFE --> SAFE[权限复核与既有视频 Agent / 只读工具]
+  CAND --> COUNTS[匿名关系及共同兴趣候选数量]
+  COUNTS --> TIMELINE[七天原 Life Agent 生活时间线]
+  SAFE --> TIMELINE
+  EXISTING[原 DM / 评论决策与安全外发链] --> GATE[旧平台授权/去重/真实回执]
+  CFG -. 不修改社交权限 .-> EXISTING

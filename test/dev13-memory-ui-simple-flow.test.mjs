@@ -9,7 +9,7 @@ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url
 const script=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
 
 test('记忆页只暴露一个常用搜索框；反思、模型诊断和旧插件导入默认收起',()=>{
- const life=html.split('<section id="panel-life"')[1].split('<section id="panel-diagnostics"')[0]
+ const life=html.split('<section id="panel-life"')[1].split('<section id="panel-life-agent"')[0]
  assert.equal((life.match(/id="main-session-history-query"/g)||[]).length,1)
  assert.equal((life.match(/id="main-memory-query"/g)||[]).length,1)
  assert.match(life,/id="main-memory-query"[^>]*hidden/)
@@ -65,17 +65,19 @@ test('视频标题少一个汉字仍能搜索清晰经历，但不会误命中�
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('人生记忆页面突出心情、兴趣、待办与关系；复杂权限和自主调度按需展开',()=>{
- const life=html.split('<section id="panel-life"')[1].split('<section id="panel-diagnostics"')[0]
- for(const id of ['life-emotion-section','life-interest-section']){
+test('人生记忆聚焦兴趣；鱼鱼此刻展示心情和待办',()=>{
+ const life=html.split('<section id="panel-life"')[1].split('<section id="panel-life-agent"')[0]
+ for(const id of ['life-interest-section']){
   assert.equal((life.match(new RegExp(`id="${id}"`,'g'))||[]).length,1,id)
  }
- const todos=html.split('<section id="panel-todos"')[1].split('<section id="panel-life"')[0];
+ const todos=html.split('<section id="panel-life-agent"')[1].split('<section id="panel-diagnostics"')[0];
  for(const id of ['life-todo-section','owner-todo-overview','owner-todo-filter-active','owner-todo-filter-all','owner-todo-filter-finished'])assert.equal((todos.match(new RegExp(`id="${id}"`,'g'))||[]).length,1,id)
  assert.match(html,/id="panel-relationships"/);assert.match(html,/id="life-relationship-section"/);assert.match(html,/data-tab="relationships"/);
  assert.match(todos,/class="life-subdetails todo-settings contextual-settings"/)
  assert.match(todos,/class="life-subdetails todo-create"/)
  assert.match(life,/class="life-subdetails life-sync-more"/)
+ assert.match(todos,/id="life-emotion-section"/)
+ assert.doesNotMatch(life,/id="life-emotion-section"/)
  assert.match(todos,/id="owner-todo-filter-active"[^>]*aria-pressed="true"/)
  assert.match(script,/activeTodoStatuses=new Set/)
  assert.match(script,/lastOwnerTodos=data/)
