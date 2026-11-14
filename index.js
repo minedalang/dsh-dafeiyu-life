@@ -4125,7 +4125,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   }
   // UI model connection checks: deliberately do not mount Bilibili, filesystem, shell,
   // memory read, or ANY model-facing MCP tool; never write normal task telemetry.
-  const modelTestNextAt = new Map()
+  // Reject concurrent requests, not intentional sequential retries.
   let modelTestBusy = false
   let memeRulesUpdateNextAt = 0
 
@@ -4167,11 +4167,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   }
   async function testConfiguredModel(task) {
     if (!MODEL_TASKS.includes(task)) throw Error('未知模型测试类型')
-    const next = modelTestNextAt.get(task) || 0
-    if (Date.now() < next) throw Error('同一模型任务测试至少间隔 60 秒，以免产生意外费用')
     if (modelTestBusy) throw Error('已有模型测试在运行，请等待当前测试结束')
     modelTestBusy = true
-    modelTestNextAt.set(task, Date.now()+60_000)
     const started = Date.now()
     try {
       refreshCfg()

@@ -78,11 +78,54 @@ test('页面每个模型都有调用统计和独立测试按钮，测试请求�
   const start=server.indexOf('async function testConfiguredModel('),end=server.indexOf('async function invokeMemoryPrompt(',start)
   const testing=server.slice(start,end)
   assert.doesNotMatch(testing,/recordModelTask\(/)
-  assert.match(testing,/modelTestNextAt/)
+  assert.doesNotMatch(testing,/modelTestNextAt/)
   assert.match(testing,/assertVerifiedHeadless\(args,overlay,\{kind:'model-test',stateDir\},task\)/)
   assert.match(testing,/DAFEIYU_MODEL_TEST_OK/)
-  assert.match(html,/独立视觉的测试只验证文字连接/)
+  assert.match(html,/连接测试不能代替图片验收/)
   assert.match(html,/测试连接不计入统计/)
+})
+
+test('同一模型两次顺序连接测试不设隐藏冷却，仍拒绝并行测试',()=>{
+  const server=read('index.js'),ui=read('lib/management-console.js')
+  const start=server.indexOf('async function testConfiguredModel('),end=server.indexOf('async function invokeMemoryPrompt(',start)
+  const connectionTest=server.slice(start,end)
+  assert.ok(start>=0 && end>start)
+  assert.doesNotMatch(connectionTest,/modelTestNextAt|至少间隔 60 秒|Date\.now\(\)\s*<\s*next/)
+  assert.match(connectionTest,/if \(modelTestBusy\) throw Error\('已有模型测试在运行/)
+  assert.match(connectionTest,/finally \{ modelTestBusy=false \}/)
+  assert.match(ui,/finally \{button\.disabled=false;\}/)
+})
+
+test('真实连接测试可连续成功两次，未完成时仍拒绝第二次并行调用',async()=>{
+  const source=read('index.js')
+  const start=source.indexOf('async function testConfiguredModel(')
+  const end=source.indexOf('// Host-only model-call telemetry.',start)
+  assert.ok(start>=0&&end>start)
+  const functionSource=source.slice(start,end)
+  const create=new Function('deps',`const {MODEL_TASKS,refreshCfg,hostModel,hostText,cfg}=deps; let modelTestBusy=false; ${functionSource};return testConfiguredModel;`)
+  let calls=0
+  const testModel=create({MODEL_TASKS:['interaction'],refreshCfg:()=>{},hostModel:()=>({}),cfg:{},hostText:async()=>{
+    calls++;return 'DAFEIYU_MODEL_TEST_OK'
+  }})
+  assert.equal((await testModel('interaction')).ok,true)
+  assert.equal((await testModel('interaction')).ok,true)
+  assert.equal(calls,2,'第二次必须实际发出新的模型调用，而不是命中冷却或缓存')
+  let finish
+  const waiting=new Promise(resolve=>{finish=resolve})
+  const busyModel=create({MODEL_TASKS:['interaction'],refreshCfg:()=>{},hostModel:()=>({}),cfg:{},hostText:()=>waiting})
+  const pending=busyModel('interaction')
+  await assert.rejects(busyModel('interaction'),/已有模型测试在运行/)
+  finish('DAFEIYU_MODEL_TEST_OK')
+  assert.equal((await pending).ok,true)
+  assert.equal((await busyModel('interaction')).ok,true)
+  let attempts=0
+  const retryAfterError=create({MODEL_TASKS:['interaction'],refreshCfg:()=>{},hostModel:()=>({}),cfg:{},hostText:async()=>{
+    if(++attempts===1)throw Error('502 Bad Gateway')
+    return 'DAFEIYU_MODEL_TEST_OK'
+  }})
+  await assert.rejects(retryAfterError('interaction'),/502/)
+  assert.equal((await retryAfterError('interaction')).ok,true)
+  assert.equal(attempts,2,'首次失败后不得隐性冷却，必须允许用户主动重试')
 })
 
 test('视频、Life 决策、互动、反思、记忆检索等均独立记录；Python 子进程也记录',()=>{
