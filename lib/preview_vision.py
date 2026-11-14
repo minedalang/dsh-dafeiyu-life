@@ -206,7 +206,7 @@ def _endpoint(provider, custom):
 
 def _call_local_ollama(frames, model):
     """Read-only fixed loopback visual inference; never sends images to cloud."""
-    if model not in ('qwen3.5:4b','openbmb/minicpm-v4.7'):
+    if model not in ('qwen3.5:4b','openbmb/minicpm-v4.7:1b'):
         raise ValueError('本地视觉模型不在安全白名单中')
     note = '\n'.join(f'图片{i+1}：视频约 {frame["second"]} 秒' for i,frame in enumerate(frames))
     payload={'model':model,'stream':False,'keep_alive':'0','options':{'num_predict':240},

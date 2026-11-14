@@ -1667,11 +1667,16 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></div></div>
 <div class="contextual-memory-group" id="local-vision-controls">
 <h4>🖥️ 可选本地视频视觉模型</h4>
-<p class="muted">无需安装即可继续使用 DSH 模型。可选择 Qwen3.5 4B 或 MiniCPM-V 4.7 1B，由已经安装并运行的本机 Ollama 下载模型。模型权重由 Ollama 自行管理，不随本插件分发；MiniCPM-V 4.7 在部分 Ollama 版本尚不兼容，必须通过图片推理自检才可选用。</p>
+<p class="muted">本地视觉仅负责画面观察，Life 仍使用原有 DSH 模型；<strong>无需在 DSH 中另外配置 Ollama Provider 或 API Key</strong>。需要先在本机安装并运行 Ollama；下载成功后还需完成图片推理自检和手动启用。</p>
+<div class="fields" aria-label="可选本地视觉模型能力与硬件建议">
+<div class="setting-note"><strong>MiniCPM-V 4.7 1B · 轻量视觉</strong><p>适合图片、多图与视频片段的初步观察，注重低资源占用。<strong>Ollama 模型约 1.8 GB</strong>（量化版）；<strong>建议 4 GB 以上显存起试</strong>，也可考虑 CPU/系统内存运行，实际占用与上下文、图像数量有关。必须下载 <code>openbmb/minicpm-v4.7:1b</code>，不能省略 <code>:1b</code>；部分 Ollama 版本不支持其视觉投影器。</p></div>
+<div class="setting-note"><strong>Qwen3.5 4B · 中文与复杂画面</strong><p>适合中文场景、屏幕文字及多张图片之间的关联理解。<strong>Ollama 模型约 3.3～4.0 GB</strong>（制品不同大小有差异）；<strong>建议 6～8 GB 显存起试，优先 8 GB</strong>，多图/长上下文会增加显存需求。模型标识 <code>qwen3.5:4b</code>。</p></div>
+</div>
+<p class="setting-note"><strong>下载和代理：</strong>模型通过本机 <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">Ollama</a> 从模型仓库下载，较大文件可能由 Cloudflare R2 提供。请确保磁盘空间、网络环境和代理能访问模型下载站点。<strong>开了梯子不等于 Ollama 后台正在走代理</strong>；Windows 可以给 Ollama 设置 <code>HTTPS_PROXY=http://127.0.0.1:你的代理HTTP端口</code>，然后彻底退出托盘 Ollama 并重新启动。不要只为下载设置 <code>HTTP_PROXY</code>。<a href="https://docs.ollama.com/faq#how-do-i-use-ollama-behind-a-proxy" target="_blank" rel="noopener noreferrer">查看 Ollama 官方代理说明</a>。</p>
 <div class="fields"><div><label for="local-vision-model">可选本地模型</label><select id="local-vision-model"><option value="qwen3.5-4b">Qwen3.5 4B</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B</option></select></div></div>
 <p id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</p><progress id="local-vision-progress" max="100" value="0" hidden></progress>
 <div class="toolbar"><button type="button" id="local-vision-install">一键下载并验证</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-select">启用选中模型</button><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div>
-<p class="muted">模型安装前需要已启动 <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">Ollama</a>；取消下载会保留 Ollama 已缓存的分片。删除会删除 Ollama 全局模型，可能影响其他应用；需要再次确认。下载、模型运行及 B站视频测试均需在本机验收。</p>
+<p class="muted">下载进度与模型尺寸以本机 Ollama 返回数据为准；取消下载可能保留已缓存的分片。删除会移除 Ollama 全局模型，可能影响其他应用，需再次确认。网络问题请先检查代理是否被 Ollama 进程继承，再重试。真实 GPU/视频表现需本机验收。</p>
 </div>
 </div></details>
 <details class="settings-section model-task"><summary><strong>人生反思与经历提炼模型 <span class="help-tip" title="无平台写入工具；仅从真实可读经历筛选。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-reflection-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-reflection-test" class="model-test-button">测试连接</button><span id="models-reflection-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">从真实经历中筛选值得长期保留的认识；不是每次反思都必须产生记忆。频率相对低，建议使用较强推理与长文本归纳模型。</p><div class="fields" id="models-reflection"></div></div></details>

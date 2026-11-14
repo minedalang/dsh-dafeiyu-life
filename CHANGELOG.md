@@ -1,3 +1,10 @@
+## [2.8.1-dev.2b-hotfix] · Ollama 下载代理与视觉模型说明（开发补丁）
+
+- 修正 MiniCPM-V 4.7 1B 的 Ollama 标签为 `openbmb/minicpm-v4.7:1b`，同时修正本地 Python 推理白名单，避免误下默认大型模型。
+- 增强下载网络错误提示，保留 DNS/代理/超时/证书错误的尾部信息，并提供 `HTTPS_PROXY` 配置检查建议；不自动读取或改写代理设置。
+- 管理中心展示两款模型的视觉能力、参考模型下载空间、建议显存和 Ollama 下载/代理须知；不改变原 DSH Provider 与 B站权限。
+- 没有真实 Windows Ollama 下载或 GPU 识图结果，仍需用户实机验收。
+
 ## [2.8.1-dev.2b] · 可选本机视觉模型与上游归属（开发预览）
 
 - 为 Qwen3.5 4B、MiniCPM-V 4.7 1B 提供本地 Ollama 模型下载、进度、取消、图片自检、切换与删除入口；安装 Ollama Runtime 本身仍需用户操作，尚未实机验收。
