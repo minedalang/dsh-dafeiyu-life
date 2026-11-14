@@ -49,7 +49,7 @@ test('a legacy damaged title is not presented as a verified Chinese video title'
 test('Fish Life is the only animated fish and the one live status container',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
- const panel=html.slice(html.indexOf('<section id="panel-life-agent"'),html.indexOf('<details class="life-now-timeline"'))
+ const panel=html.slice(html.indexOf('<section id="panel-life-agent"'),html.indexOf('<div class="life-now-timeline"'))
  assert.ok(panel.length>0)
  for(const id of ['life-now-title','life-now-detail','life-now-time','life-integration-refresh']){
   assert.equal((panel.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id)
@@ -58,7 +58,7 @@ test('Fish Life is the only animated fish and the one live status container',()=
  assert.doesNotMatch(panel,/fish-scene|fish-avatar|life-now-stage|life-now-refresh/)
  assert.match(panel,/FISH LIFE · 实时生活大动画/)
  assert.match(panel,/aria-live="polite"/)
- assert.match(js,/setInterval\(\(\)=>\{if\(!document\.hidden&&active==='life-agent'\)void refreshLiveNow\(\)\},4000\)/)
+ assert.match(js,/setInterval\(\(\)=>\{void reconcileVisibleLife\(\)\},4000\)/)
  assert.match(js,/Promise\.all\(\[refreshLiveNow\(\),loadLifeIntegration\(\),loadUnifiedLifeSettings\(\)\]\)/)
  assert.doesNotMatch(js,/\$\('life-now-refresh'\)/)
 })

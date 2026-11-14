@@ -44,7 +44,7 @@ test('当时间线同一天混合数字与字符串时间输入仍排序，确�
    {at:t,mode:'active',action:'execute_read',result:'done',verifiedReadKind:'todo-read'}],
   comments:[{time:new Date(t+5000).toISOString(),bvid:BV,kind:'top',rpid:'987654321',snippet:'自己发的原创主评论'}]})
  assert.deepEqual(result.map(x=>x.type),['comment','life-reflection','life-read'])
- assert.equal(result.find(x=>x.type==='comment').label,'发了评论')
+ assert.equal(result.find(x=>x.type==='comment').label,'发表原创主评论')
 })
 
 test('主动视频评论准入独立于退役报告模式，只看授权、单轮额度和日额度',()=>{

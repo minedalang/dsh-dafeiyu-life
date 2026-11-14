@@ -14,7 +14,8 @@ test('legacy top navigation and stable panel IDs survive the UI redesign',()=>{
   assert.doesNotMatch(html,/class="sidebar"|class="mobile-bottom-nav"/)
 })
 test('Life overview has single primary navigation with technical cards collapsed and timeline visible',()=>{
-  assert.match(html,/<details class="life-now-timeline life-behavior-timeline" open>/)
+  assert.match(html,/<div class="life-now-timeline life-behavior-timeline" aria-label=/)
+  assert.match(html,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/)
   assert.match(html,/<details class="life-technical-details"><summary>/)
   assert.match(html,/class="life-day-shortcuts"/)
   assert.match(html,/name="life-mode-card" value="active"/)

@@ -24,7 +24,7 @@ test('life timeline is contained in behavior map and pace remains collapsed by d
   once('life-now-settings');once('life-timeline-section');once('life-behavior-tree')
   assert.ok(html.indexOf('id="life-behavior-tree"')<html.indexOf('id="life-timeline-list"'))
   assert.ok(html.indexOf('id="life-timeline-list"')<html.indexOf('id="life-now-recent"'))
-  assert.match(html, /class="life-now-timeline life-behavior-timeline" open/)
+  assert.match(html, /class="life-now-timeline life-behavior-timeline"/)
   assert.match(html,/<details id="life-now-settings" class="life-now-settings">/)
 })
 test('behavior map follows real read-only decision traces, not a fake autoplay or write action',()=>{

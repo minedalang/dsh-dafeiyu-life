@@ -22,7 +22,7 @@ function record(dir,items){writeFileSync(join(dir,'social-intentions.json'),JSON
 test('首次配置有明确推荐和跳过按钮，共用原安装 API，老用户配置不自动修改',()=>{
  const html=data('lib/management-console.html'),js=data('lib/management-console.js'),index=data('index.js')
  for(const id of ['quick-embedding-section','quick-embedding-install','quick-embedding-later','quick-embedding-status','quick-embedding-progress'])assert.match(html,new RegExp('id="'+id+'"'))
- assert.match(html,/推荐安装 · 可选/);assert.match(html,/不需另外安装 Ollama 或 Python/)
+ assert.match(html,/强烈推荐 · 可选/);assert.match(html,/不开启时仍可用词法回忆/);assert.match(html,/Qwen3-Embedding-0\.6B/)
  assert.match(js,/\$\('quick-embedding-install'\)\.addEventListener\('click',\(\)=>run\(inspectOrEnableEmbedding\)\)/)
  assert.match(js,/\$\('quick-embedding-later'\)/)
  assert.match(js,/request\('\/embedding\/install',\{\}\)/)

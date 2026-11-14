@@ -10,7 +10,7 @@ const plans=html.slice(html.indexOf('<section id="panel-plans"'),html.indexOf('<
 test('action tree and day timeline share one life card with real chronology below the tree',()=>{
   const card=panel.slice(panel.indexOf('<section class="life-behavior-card"'),panel.indexOf('</section>',panel.indexOf('<section class="life-behavior-card"')))
   assert.match(card,/id="life-behavior-tree"/)
-  assert.match(card,/class="life-now-timeline life-behavior-timeline" open/)
+  assert.match(card,/class="life-now-timeline life-behavior-timeline"/)
   assert.match(card,/id="life-timeline-list"/)
   assert.ok(card.indexOf('id="life-behavior-tree"')<card.indexOf('id="life-timeline-list"'))
   assert.ok(panel.indexOf('id="life-timeline-list"')<panel.indexOf('id="life-now-recent"'))
@@ -25,7 +25,7 @@ test('timeline remains independently refreshable using existing read-only busine
   assert.match(js,/request\('\/life-timeline\?days='/)
   assert.match(js,/\$\('life-timeline-days'\)\.addEventListener\('change'/)
   assert.match(js,/\$\('life-timeline-refresh'\)\.addEventListener\('click'/)
-  assert.match(js,/querySelector\('#panel-life-agent \.life-now-timeline'\)/)
+  assert.match(js,/const loadLifeNowTimeline=\(\)=>/)
   assert.match(js,/EventSource/)
   assert.match(panel,/href="#life-timeline-section"/)
 })

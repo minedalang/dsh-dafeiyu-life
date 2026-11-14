@@ -4818,8 +4818,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         trustedCommentVideoContext.set(trustedCommentEvidenceKey(currentScope,row.bvid,row.rpid,row.uid),
           {title:verified.title,at:Date.now()})
       }
+      // The owner-invoked trusted-comment route is separate from the ordinary
+      // comment batch. It must receive the same verified image observation,
+      // not merely an image URL the text model cannot inspect.
+      const visualRow=await addIncomingPictureObservation({...row,
+        imageUrl:row.imageUrl||ctx.video.imageUrl||'',
+        imageUrls:[...new Set([...(Array.isArray(row.imageUrls)?row.imageUrls:[]),ctx.video.imageUrl].filter(Boolean))].slice(0,3)})
       return interpretTrustedSocial({
-        row:{...row,context:ctx.context,threadPreview:ctx.video.threadPreview,rootPreview:ctx.video.rootPreview},
+        row:{...visualRow,context:ctx.context,threadPreview:ctx.video.threadPreview,rootPreview:ctx.video.rootPreview},
         role:ctx.role,emotion:emotionalState.snapshot(),style:ctx.persona,
         memoryContext:ctx.memoryContext,memeContext:ctx.memeContext,privateUnderstandingContext:ctx.privateUnderstandingContext,
         relationship:ctx.relationshipContext,history:dualContextAgency.context({uid:row.uid,thread:row.thread,target:row.bvid}),

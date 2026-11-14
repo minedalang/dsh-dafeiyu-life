@@ -32,10 +32,11 @@ test('角色来自本地素材，同源静态资源明确纳入首次设置访�
 });
 
 test('首进 Life 页面即读取时间线，展开和切换范围可再次加载',()=>{
-  assert.match(js,/lifeNowTimelineDetails\?\.addEventListener\('toggle'/);
+  assert.doesNotMatch(js,/lifeNowTimelineDetails\?\.addEventListener\('toggle'/);
+  assert.match(js,/reconcileVisibleLife/);
   assert.match(js,/loadLifeNowTimeline\(\)\.catch\(\(\)=>\{\}\)/);
   assert.match(js,/life-timeline-days'\)\.addEventListener\('change'/);
-  assert.match(js,/时间线读取失败，可以点击“刷新时间线”重试/);
+  assert.match(js,/时间线读取失败，可以点击“刷新列表”重试/);
   assert.match(js,/renderLifeTimeline=async\(\)=>/);
 });
 
