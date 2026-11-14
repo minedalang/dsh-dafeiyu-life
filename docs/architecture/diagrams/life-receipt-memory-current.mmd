@@ -55,6 +55,21 @@ flowchart TB
   outbox --> episode
   outbox -->|已排队但投影暂失败| pending
   episode --> recall
+  verifiedDmInput["已核验主人/好友私信事件：仅提炼有限低敏主题，不复制原文"]
+  privateFading["原 private-social 可衰减记忆：账号标记 + 私密域/UID 隔离"]
+  privateReflection["私密反思：有来源的共同话题 → 受限 privateInsights；不写公开长期记忆"]
+  privateUnderstanding["compact 公开评论：同账号同 UID 的私下熟悉线索；按需回忆"]
+  publicReplyFence["公开表达边界：可自然熟悉，禁止透露私聊；原发送权限与回执不变"]
+  verifiedDmInput --> privateFading
+  privateFading -.-> privateReflection
+  privateFading -.->|未遗忘且可访问| privateUnderstanding
+  privateReflection -.->|受限认识，只用于内部理解| privateUnderstanding
+  privateUnderstanding -.-> publicReplyFence
+  %% @code verifiedDmInput | lib/life-private-policy.mjs | export function preparePrivateLifeEvent
+  %% @code privateFading | lib/life-memory-gateway.mjs | function accessible
+  %% @code privateReflection | lib/life-reflection.mjs | function validateOutput
+  %% @code privateUnderstanding | lib/social-context-assembler.mjs | privateUnderstandingContext
+  %% @code publicReplyFence | lib/interaction-privacy.mjs | export function publicPrivateDisclosureRisk
   universalCausal -.->|仅提供可信行为上下文| planner
   episode --> growth
   growth --> curiosity

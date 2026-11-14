@@ -3816,7 +3816,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         if(scope)lifeActionAttribution.verified({accountTag:scope,channel:'owner-dm',owner:'owner',
           sourceRef:'owner-dm-conversation:'+String(uid),receiptId:'bili-owner-dm:'+receiptId,action:'owner_dm_reply',kind:'social'})
       }
-      const event=preparePrivateSelfExperience({source:'owner-dm',role:'owner',uid,eventId,text,at})
+      const event=preparePrivateSelfExperience({source:'owner-dm',role:'owner',uid,eventId,text,at,accountTag:trustedLifeAccountTag()})
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
         if(result?.ok===false)log('主人已确认私信的自主感想等待记忆补偿：'+String(result.lastError||''))}
     },
@@ -3828,7 +3828,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     onPrivateExperience:async({uid,text,eventId,at})=>{
       try{conversationLifeFeedback.observe({source:'dm',role:'owner',uid,eventId,text,at})}
       catch(e){log('主人私信情绪反馈失败：'+String(e?.message||e).slice(0,100))}
-      const event=preparePrivateLifeEvent({source:'owner-dm',role:socialPolicyGate.actor(uid).role,uid,eventId,text,at})
+      const event=preparePrivateLifeEvent({source:'owner-dm',role:socialPolicyGate.actor(uid).role,uid,eventId,text,at,accountTag:trustedLifeAccountTag()})
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人私信私密经历待补偿：'+String(result.lastError||''))}
     },
     // The owner-DM model already selected a step; record that same decision.
@@ -4577,7 +4577,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(['friend','stranger'].includes(role)&&!accountBinding.status().blocked)try{socialPortrait.observe({uid,text,source:'dm',eventId:messageId,at:time})}
       catch(e){log('私信好友交流画像未更新：'+String(e?.message||e).slice(0,110))}
       const interest=socialPolicyGate.canLearn({uid,kind:'dm'})?prepareFriendInterestObservation({uid,text,source:'dm',eventId:messageId,now:time,friendDirectory:cfg.friendDirectory,accountTag:trustedLifeAccountTag()}):null
-      const lifeEvent=preparePrivateLifeEvent({source:role==='owner'?'owner-dm':'friend-dm',role,uid,eventId:messageId,text,at:time})
+      const lifeEvent=preparePrivateLifeEvent({source:role==='owner'?'owner-dm':'friend-dm',role,uid,eventId:messageId,text,at:time,accountTag:trustedLifeAccountTag()})
       const recorded=await socialInteractionCoordinator?.record({type:'incoming',source:'dm',eventKey:messageId,actorUid:uid,role,at:time,cognition,interest,lifeEvent})
       if(recorded?.ok===true){
         const id=offerSocialLifeWake({kind:'dm-received',uid,eventId:messageId,verified:true})
@@ -4748,11 +4748,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // Life Voice is the sole model-facing source for current emotion and growth.
     // Keep the assembler's older callback contract without injecting a second copy.
     getLifeStateContext:()=>'',
-    getPrivateLifeContext:async({uid,role,query})=>{
-      // Only this authenticated private DM; public comments never call here.
-      if(typeof memoryRetriever?.privateContextAsync==='function')return memoryRetriever.privateContextAsync({uid,role,query})
-      const episodes=lifeMemory?.recall({query,domain:'bili-dm',role,actorUid:uid,kinds:['private-social'],maxItems:3,maxChars:650})||[]
-      const insights=lifeMemory?.privateInsights({query,domain:'bili-dm',role,actorUid:uid,maxItems:3})||[]
+    getPrivateLifeContext:async({uid,role,query,publicUnderstanding=false,overviewOnly=false})=>{
+      if(publicUnderstanding&&(!/^[a-f0-9]{16}$/.test(String(trustedLifeAccountTag()||''))||accountBinding.status().blocked))return ''
+      if(typeof memoryRetriever?.privateContextAsync==='function')return memoryRetriever.privateContextAsync({uid,role,query,publicUnderstanding,overviewOnly})
+      const episodes=lifeMemory?.recall({query,domain:publicUnderstanding?'bili-public-understanding':'bili-dm',role,actorUid:uid,kinds:['private-social'],maxItems:3,maxChars:650})||[]
+      const insights=lifeMemory?.privateInsights({query,domain:publicUnderstanding?'bili-public-understanding':'bili-dm',role,actorUid:uid,maxItems:3})||[]
       return [...episodes.map(x=>x.summary),...insights.map(x=>x.text)].filter(Boolean).map(x=>'- '+x).join('\n').slice(0,850)
     },
     videoContext,logger:{warn:m=>log('社交上下文：'+m)},
@@ -4792,7 +4792,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return interpretTrustedSocial({
         row:{...row,context:ctx.context,threadPreview:ctx.video.threadPreview,rootPreview:ctx.video.rootPreview},
         role:ctx.role,emotion:emotionalState.snapshot(),style:ctx.persona,
-        memoryContext:ctx.memoryContext,memeContext:ctx.memeContext,
+        memoryContext:ctx.memoryContext,memeContext:ctx.memeContext,privateUnderstandingContext:ctx.privateUnderstandingContext,
         relationship:ctx.relationshipContext,history:dualContextAgency.context({uid:row.uid,thread:row.thread,target:row.bvid}),
         // Caller identity is the platform-authenticated owner; a friend cannot
         // request owner recall. Public results contain only confirmed self-posted
@@ -4802,8 +4802,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
             context:ctx.context,bvid:row.bvid,incomingRpid:row.rpid,recallQueries:queries,recallRequest},
             {mode:'compact',requested:['memory']})
           if(!read.ok||read.loadErrors?.length)return {ok:false,reason:'memory-read-unavailable',items:[]}
-          return {ok:true,items:read.memoryContext?[{id:'social-public-memory',kind:'public-safe',
-            summary:read.memoryContext,source:'live-memory-only'}]:[]}
+          return {ok:true,items:[...(read.memoryContext?[{id:'social-public-memory',kind:'public-safe',
+            summary:read.memoryContext,source:'live-memory-only'}]:[]),
+            ...(read.privateUnderstandingContext?[{id:'private-understanding',kind:'private-context-non-disclosable',
+            summary:read.privateUnderstandingContext,source:'live-private-memory-only'}]:[])]}
         }:null,
         recallPublic:ctx.role==='owner'?({query,scope})=>{
           refreshCfg()
@@ -5589,7 +5591,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       try{conversationLifeFeedback.observe({source:'main-session',role:'owner',sessionId,eventId,text,at})}
       catch(e){log('主 Session 情绪反馈失败：'+String(e?.message||e).slice(0,100))}
       if(cfg.mainSessionMemoryEnabled!==true)return
-      const event=preparePrivateLifeEvent({source:'owner-session',role:'owner',eventId:eventId||'chat:'+sessionId+':'+createHash('sha256').update(sessionId+'|'+new Date(at).toISOString().slice(0,10)+'|'+text).digest('hex').slice(0,32),text,at,validated:true})
+      const event=preparePrivateLifeEvent({source:'owner-session',role:'owner',eventId:eventId||'chat:'+sessionId+':'+createHash('sha256').update(sessionId+'|'+new Date(at).toISOString().slice(0,10)+'|'+text).digest('hex').slice(0,32),text,at,validated:true,accountTag:trustedLifeAccountTag()})
       if(event)try{const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
         if(result?.ok===false)log('主 Session 私密经历待补偿：'+String(result.lastError||result.reason||''))}
       catch(e){log('主 Session 私密经历记录失败：'+String(e?.message||e).slice(0,100))}
@@ -5600,7 +5602,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     getRetriever: () => memoryRetriever,
     onOwnerMemorySaved:async({text,eventId,at})=>{
-      const event=preparePrivateLifeEvent({source:'owner-session',role:'owner',eventId,text,at,validated:true})
+      const event=preparePrivateLifeEvent({source:'owner-session',role:'owner',eventId,text,at,validated:true,accountTag:trustedLifeAccountTag()})
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人主 Session 经历待补偿：'+String(result.lastError||result.reason||''))}
     },
     getExperienceRecall: (query,limit) => lifeMemory?.recall({query,domain:'main-session',maxItems:limit,maxChars:3000}).map(x=>({kind:x.kind,time:x.at,summary:x.summary}))||[],
