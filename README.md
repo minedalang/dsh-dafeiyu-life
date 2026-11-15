@@ -126,6 +126,12 @@ Life 是鱼鱼的统一生活协调系统。真实的公开视频信息、评论
 
 鱼鱼**先决定看不看、了解多深**。当它选择视觉观察时，分镜选帧同时参考真实解码画面的镜头变化、运动幅度与可获得的弹幕活跃度；还要照顾整条视频的时间覆盖，不能只看最热闹的几秒。
 
+![大肥鱼视频感知架构：自主选择观看深度，三路信号联合选帧与可信时间轴](docs/architecture/assets/video-perception-current.svg)
+
+> 图为 **SVG 矢量排版**，不是 PNG 截图；可以直接修改源码。另保留 [Mermaid 可编辑流程图](docs/architecture/diagrams/video-perception-current.mmd)，用于维护逻辑和自动检查。
+
+<details><summary>展开查看 Mermaid 源码与可渲染流程图</summary>
+
 ```mermaid
 flowchart TB
     V{"🐟 鱼鱼决定：看不看、看多深？"}
@@ -151,6 +157,8 @@ flowchart TB
     class C,M,H signal;
     class GO,R,B,F,E,S action;
 ```
+
+</details>
 
 **高能弹幕是线索，不是事实。** 下图用一条虚构的 5 分钟视频示例说明：弹幕突然密集时，系统可以把**峰值前后的片段**列为复查候选；真正看不看、要不要追加画面，仍由鱼鱼自主决定。刷屏、跟风和反应延迟都可能导致假峰值。
 
@@ -212,6 +220,8 @@ dsh plugin --profile desktop add dsh-dafeiyu-life
 **2.8.1-dev.3a.1 历史预览实验：** 曾对 B站低清预览候选按活跃度选帧，**高能预览图识别已在 dev.3a.4 删除**；现行低清来源仅按时间均匀取样并去重，不能与真实公开视频分镜混记。[历史记录](docs/architecture/2.8.1-video-perception-dev3a.md)。
 
 **视觉模型人工验收：** DSH 视觉与 Ollama 本地视觉共用一张大肥鱼原图和一个验收区，切换到本地模式时 DSH 模型配置置灰但原值保留。普通 DSH Session 识图成功不等于独立 Headless 验收可以启动，失败会提示进一步排查方向。
+
+**2.8.1-dev.3b.1 时间轴与视觉配置（开发增量）：** 视频观察回执将 B站字幕的明确起止秒数与分镜采样时间点生成**只读时间邻接表**；“时间附近”不等于“音画相互证明”，本批尚无独立 OCR / 原声时间戳 ASR / 语义交叉核对。DSH 模式提供第三方模型的图片输入与思考档位**设置向导／模型条目复制片段**，不自动更改 `cordis.patch.yml`；可考虑通过支持的中转商使用 `gpt-6-luna`，但需确认图像能力、实际费率与隐私条款，不默认认为任何 DeepSeek 型号都更贵。本地 Ollama 模式有**用户点击确认后打开 Windows PowerShell 执行 `ollama serve`** 的快捷入口，不自动安装或修改代理。详见 [本阶段技术说明](docs/architecture/2.8.1-video-perception-dev3b1.md) 与 [DSH 官方模型配置指南](https://deepseek-harness.github.io/deepseek-harness/en/guide/providers)。
 
 **2.8.1-dev.3a.4 多信号分镜（开发增量）：** 鱼鱼仍自主决定看不看和看多深；真实公开视频在可用时跨全片做受控稀疏采样，融合切镜、运动与可选弹幕活跃度。管理中心有 **12/24（默认）/48** 个时刻的三档卡片，每最多 12 格拼为一张带时间码的分镜图；`standard` 仍最多 12 时刻。只支持**公开单段、≤24MiB、≤45 分钟**的视频，累计离线采样最多 120 秒。不可用时低清均匀回退最多 3 帧，绝不称完整观看或理解原声；Windows/B站实机尚未验收。[实现和限制](docs/architecture/2.8.1-video-perception-dev3a4.md)。
 

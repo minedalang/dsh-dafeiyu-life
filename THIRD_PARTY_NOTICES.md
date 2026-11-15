@@ -141,3 +141,8 @@ remain in force.
 ## 2.8.1-dev.3a.1：自适应 B站预览代表帧
 
 本阶段在项目现有 `lib/preview_vision.py` 基础上，由本项目独立编写限制在官方 B站低清预览拼图内部的「时间/活动候选 + 本地缩略图差异去重」实现。继续参考 [dsh-video-storyboard](https://github.com/SAOS-3624/dsh-video-storyboard) 的分镜和时间锚点方向、[dsh-see-now](https://github.com/SAOS-3624/dsh-see-now) 的变化采样理念，但**没有复制、修改、vendor 或再分发两者源代码**，也尚未实现它们的完整算法。若以后直接移植，须核对当时许可并随附版权、LICENSE/NOTICE 与改动说明。图片处理使用本项目已有的 Pillow 依赖；不下载或捆绑第三方模型权重。
+
+
+### 2.8.1-dev.3b.1 能力配置参考（非第三方源码复制）
+
+DSH 第三方模型的 `input` / `reasoningEfforts` 语法参考 [DeepSeek Harness 官方模型配置说明](https://deepseek-harness.github.io/deepseek-harness/en/guide/providers)；Windows `ollama serve` 的行为参考 [Ollama Windows 官方说明](https://github.com/ollama/ollama/blob/main/docs/windows.mdx)。本批的时间轴投影、管理界面提示、PowerShell 启动包装和 SVG 绘图代码为项目自行实现，未移植这些项目的源代码。

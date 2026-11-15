@@ -1181,8 +1181,33 @@ async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
         async with session.get(sub_url) as resp:
             sub_data = await resp.json()
 
-    texts = [item.get("content", "") for item in sub_data.get("body", [])]
+    raw_rows = sub_data.get("body", [])
+    if not isinstance(raw_rows, list):
+        raw_rows = []
+    raw_rows = raw_rows[:2500]
+    texts = [str(item.get("content", "")) for item in raw_rows if isinstance(item, dict)]
     full_text = "\n".join(texts)
+    # The official caption body explicitly defines `from` / `to` in seconds.
+    # Convert here, never infer units from untyped timestamps later. Bounded
+    # video-time excerpts are transient tool data, not persisted Life memory.
+    timed_segments = []
+    import math
+    for item in raw_rows:
+        if not isinstance(item, dict):
+            continue
+        start, end = item.get('from'), item.get('to')
+        if not isinstance(start, (int, float)) or isinstance(start, bool) or not isinstance(end, (int, float)) or isinstance(end, bool):
+            continue
+        if not math.isfinite(start) or not math.isfinite(end) or start < 0 or end <= start or end > 43200:
+            continue
+        content = ' '.join(str(item.get('content', '')).split())[:180]
+        if content:
+            timed_segments.append({'startSeconds':round(start,3),'endSeconds':round(end,3),'text':content})
+    # Sample evenly across the entire caption track, not just its opening.
+    # Otherwise long videos would have timestamps only for the first minutes.
+    if len(timed_segments) > 160:
+        count = len(timed_segments)
+        timed_segments = [timed_segments[round(i * (count - 1) / 159)] for i in range(160)]
     # A subtitle track can exist while containing no meaningful language (empty
     # body / attribution line). It is not proof that the video has no images.
     if not full_text.strip() or re.fullmatch(r'字幕\s*by.{0,40}', full_text.strip(), flags=re.I):
@@ -1195,6 +1220,7 @@ async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
         "title": info.get("title", ""),
         "language": target.get("lan_doc", ""),
         "segments": len(texts),
+        "timed_segments": timed_segments,
         "text": full_text,
         "subtitle_evidence": "caption_text",
         "visual_evidence": "none",
