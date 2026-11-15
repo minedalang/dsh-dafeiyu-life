@@ -1223,6 +1223,15 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .video-aux-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .video-aux-card .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .video-aux-card .checkline{margin:10px 0}
+
+@keyframes visionApprovalPulse{0%,100%{box-shadow:0 0 0 0 transparent}25%,75%{box-shadow:0 0 0 5px rgba(53,164,238,.56)}50%{box-shadow:0 0 0 8px rgba(53,164,238,.15)}}
+#vision-unified-probe-panel.vision-approval-flash{outline:2px solid #39a5ef;animation:visionApprovalPulse .8s ease-in-out 3}
+@media(prefers-reduced-motion:reduce){#vision-unified-probe-panel.vision-approval-flash{animation:none}}
+
+.video-debug-image-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:12px;margin:10px 0 16px}
+.video-debug-image-grid figure{margin:0;min-width:0;padding:8px;border:1px solid var(--border,#aeb7c2);border-radius:12px}
+.video-debug-image-grid img{display:block;width:100%;height:auto;max-height:320px;object-fit:contain;background:#171b22;border-radius:7px}
+.video-debug-image-grid figcaption{font-size:12px;line-height:1.45;overflow-wrap:anywhere;margin-top:6px;color:var(--text-muted,#7f8892)}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1752,7 +1761,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="setting-note"><strong>下载和代理：</strong>本地视觉模型通过 <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">Ollama</a> 下载。安装模型时可能需要在合适的网络环境下启动 Ollama；<strong>安装完成后，本地识图无需下载代理，但仍需 Ollama 服务运行</strong>。下载过程可能包含多份模型文件（例如语言权重与视觉投影器），每份文件有独立进度，<strong>文件进度达到 100% 不代表整个模型已安装完成</strong>。<p><strong>Windows 本地网络代理示例（当前仅列举 Windows 环境下的方法）：</strong>确认 Ollama 已完全退出，在 PowerShell 中执行下面两条命令，并保持该窗口运行：</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere"><code>$env:HTTPS_PROXY = "http://127.0.0.1:7890" # 7890 是常见网络代理端口，具体请以实际端口为准
 ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell 启动的 Ollama 进程生效，不修改 Windows 用户级或系统级环境变量。若 Ollama 已在后台运行，请先退出以免端口占用。<a href="https://docs.ollama.com/faq#how-do-i-use-ollama-behind-a-proxy" target="_blank" rel="noopener noreferrer">查看 Ollama 官方网络代理说明</a>。</p></div>
 <div class="fields"><div><label for="local-vision-model">可选本地模型</label><select id="local-vision-model"><option value="qwen3.5-4b">Qwen3.5 4B</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B</option></select></div></div>
-<p id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</p>
+<div class="toolbar" style="align-items:center;flex-wrap:wrap"><p id="local-vision-status" class="muted" role="status" aria-live="polite" style="margin:0;flex:1">正在检查本机 Ollama…</p><button type="button" id="local-vision-review-jump" class="life-action life-sky" hidden>前往人工验收 ↑</button></div>
 <p class="muted">切换到本地识图或点击「检查并恢复服务」后，会尝试运行已安装的 Ollama（Windows / macOS / Linux）；不会自动安装、下载模型或修改网络代理。若系统未安装，请先从 Ollama 官网安装。模型已通过人工验收后，重启服务无需重复验收。</p><progress id="local-vision-progress" max="100" value="0" hidden></progress>
 <div class="toolbar"><button type="button" id="local-vision-ensure">检查并恢复 Ollama 服务</button><button type="button" id="local-vision-install">下载本地模型</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-select">启用选中模型</button><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div>
 <p class="muted">已安装的模型无需重新下载；已获人工认可且模型摘要未变时，重启 Ollama 后将恢复验收状态。未认可的模型请使用上方统一图片验收区，认可后即可启用。</p>
@@ -2281,6 +2290,7 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <progress id="video-debug-progressbar" max="6" style="width:100%;height:15px;display:none" aria-label="视频感知只读验收进行中"></progress>
 <p id="video-debug-progress" class="muted" role="status" aria-live="polite">尚未执行。新版本启用后请确认模型与 FFmpeg / Whisper 状态。</p>
 <div id="video-debug-summary" class="video-debug-summary" aria-live="polite"></div>
+<section class="setting-note" aria-label="真实视频采样图像" style="margin-top:12px"><strong>🖼️ 真实分镜拼图与高清局部复查</strong><p class="muted">仅展示本机实际送入视觉模型的 JPEG；图片按本轮回执显示，最多保留 30 分钟。时间戳是抽样瞬间，不代表连续观看。若命中旧缓存且原图已过期，会明确提示没有可复看的图像。</p><div id="video-debug-images" class="video-debug-images" aria-live="polite">尚无本轮图像回执</div></section>
 <div class="toolbar"><button id="video-debug-show-test" type="button" class="life-action life-sky">查看试运行输入</button><button id="video-debug-show-life" type="button" class="life-action life-sky">查看最近真实 Life 输入</button><button id="video-debug-copy" type="button" class="life-action life-sky">复制当前完整 JSON</button></div>
 <div class="video-debug-panels">
 <details><summary>🖼️ 视觉模型实际回执 · 来源、时间与描述</summary><pre id="video-debug-visual" class="video-debug-json">暂无结果</pre></details>
@@ -2289,7 +2299,7 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 </div>
 <details open><summary>完整输入（含实际视觉回答、字幕 / ASR、OCR、时间轴及错误原因）</summary>
 <pre id="video-debug-json" class="video-debug-json" aria-live="polite">暂无可展示的实际结果</pre></details>
-<p class="muted">本调试页的完整回执仅保留在当前插件进程内最多 30 分钟；识图与转写工具各自的既有缓存仍按原设置工作。只允许本机管理中心查看。视频模型看的是稀疏分镜，并非全片逐帧；相近时间的音画信息不代表已完成语义互证。复制结果前请注意第三方视频文本的隐私与版权。</p>
+<p class="muted">本调试页的完整文字回执仅保留在当前插件进程内最多 30 分钟；本轮分镜与复查 JPEG 可为本机调试短时保存，使用本机账号门禁，过期不可读取并按清理策略删除。识图与转写工具各自的既有缓存仍按原设置工作。视频模型看的是稀疏分镜，并非全片逐帧；相近时间的音画信息不代表已完成语义互证。复制结果前请注意第三方视频文本的隐私与版权。</p>
 </div></details>
 <details class="settings-section life-section" id="life-video-manual-diagnostics"><summary>🎬 视频 Agent · 手动诊断与运行证据</summary><div class="inset" id="life-real-acceptance"><h4>视频 Agent 运行证据</h4><p class="muted">查看当前账号的实际运行门禁与最近委派记录。仅在需要排障时手动启动一轮原视频 Agent；启动后由视频 Agent 自主决定看什么、是否继续或结束，不会强迫选片、发表评论或点赞。任何写操作仍受原有授权、Life 意愿审批、平台核验、额度与冷却限制。</p><p id="life-readiness" class="muted" role="status">正在读取本机真实运行门禁…</p><p id="life-actual-proof" class="muted" role="status">正在核对本账号的真实委派记录…</p><div class="toolbar"><button type="button" class="life-action life-sky" id="life-readiness-refresh">重新核查真实状态（零模型调用）</button><button type="button" class="life-action life-purple" id="life-video-agent-test-run">手动触发一轮真实视频 Agent</button></div><p id="life-video-agent-test-result" class="muted" role="status" aria-live="polite">单轮真实诊断：启动原视频 Agent，不强制选片或发表评论；评论、点赞、收藏等写操作仍须通过原 Life 意愿审批及平台核验，并受原冷却限制。</p></div></details><div id="life-decision-traces-section" class="settings-section life-section">
 <div class="toolbar"><h4 style="margin:0">🧭 鱼鱼的决策全过程</h4><button id="life-traces-refresh" type="button" class="life-action life-sky">刷新决策记录</button></div>

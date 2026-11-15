@@ -115,7 +115,7 @@ def _validate_vision_overlay_file(path, home, *, selftest=False):
     return path.resolve()
 
 
-def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None):
+def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None, debug_capture=False):
     if not _BV.fullmatch(str(bvid)):
         return {'ok':False,'status':'invalid_bvid','error':'BV 号格式不正确'}
     if perception_source not in ('preview','adaptive'):
@@ -156,7 +156,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         if network_budget_bytes is not None:suffix+='-cap'+str(network_budget_bytes)
         source_suffix='-adaptive' if perception_source=='adaptive' else ''
         cached=home/'vision-cache'/f'{bvid}{source_suffix}-v{sampler_version}-{view_depth}{suffix}.json'
-        if cached.is_file():
+        if cached.is_file() and not debug_capture:
             try:
                 d=json.loads(cached.read_text(encoding='utf8'))
                 if (d.get('origin')=='dsh-independent-unverified' and d.get('model')==model
@@ -169,6 +169,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
                     return {'ok':True,'status':'cached','bvid':bvid,'description':d['description'],
                             'times':d.get('times',[]),'sampling':d.get('sampling'),'ocr':d.get('ocr'),'focus_window':focus,
                             'image_source':d.get('image_source','B站低清预览'),
+                            'debugCapture':d.get('debugCapture'),
                             'perception_source_requested':perception_source,
                             'notice':'缓存的独立视觉模型采样观察，并非完整播放'}
             except (OSError,ValueError): pass
@@ -247,12 +248,14 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
                 'frames_limit':frames,'view_depth':view_depth,'prompt_hash':prompt_hash,'sampler_version':sampler_version,
                 'times':observed['times'][:48],'sampling':observed.get('sampling'),'ocr':observed.get('ocr'),'focus_window':focus,
                 'description':description,'image_source':observed.get('image_source','B站低清预览'),
+                'debugCapture':observed.get('debugCapture'),
                 'perception_source_requested':perception_source,'network_budget_override':network_budget_bytes}
         # Never cache a videoshot downgrade under an adaptive source identity.
         if perception_source=='adaptive' and record['image_source']!='B站公开视频片段（离线解码）':
             return {'ok':True,'status':'analyzed','bvid':bvid,'description':description,
                     'times':record['times'],'sampling':record.get('sampling'),'ocr':record.get('ocr'),
                     'focus_window':focus,'image_source':record['image_source'],
+                    'debugCapture':record.get('debugCapture'),
                     'perception_source_requested':perception_source,
                     'adaptive_fallback':{'actual_source':'videoshot','reason':'public_stream_unavailable'},
                     'notice':'真实视频不可用，仅据官方低清预览得到观察'}
@@ -262,7 +265,8 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         os.replace(tmp,cached)
         return {'ok':True,'status':'analyzed','bvid':bvid,'description':description,
                 'times':record['times'],'sampling':record.get('sampling'),'ocr':record.get('ocr'),'focus_window':focus,
-                'image_source':record['image_source'],'perception_source_requested':perception_source,
+                'image_source':record['image_source'],'debugCapture':record.get('debugCapture'),
+                'perception_source_requested':perception_source,
                 'notice':'独立 DSH 视觉模型根据采样图片自述观察，尚未独立核实'}
     except Exception as exc:
         return {'ok':False,'status':'vision_config_error','error':str(exc)[:180]}

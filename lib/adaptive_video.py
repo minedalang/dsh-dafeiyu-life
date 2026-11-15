@@ -692,6 +692,14 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
             raise AdaptiveUnavailable(exc.code, fallback=False) from None
         raise
     boards=_make_storyboards(moments)
+    # The restricted diagnostics renderer may show the actual higher-resolution
+    # focus JPEGs. They never become a model reply or persisted Life memory.
+    debug_moments=[]
+    if focus:
+        for item in moments[:12]:
+            raw=BytesIO()
+            item['image'].save(raw,format='JPEG',quality=84,optimize=True)
+            debug_moments.append({'second':item['second'],'bytes':raw.getvalue()})
     # Optional, strictly offline OCR of already decoded frames; NEVER of low-res
     # videoshot fallback. It is a machine estimate, not a semantic confirmation.
     try:
@@ -719,6 +727,7 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
     sampling['ocr_engine'] = ocr['engine']
     sampling['ocr_attempted'] = ocr['attempted']
     return {'ok':True, 'bvid':bvid, 'status':'frames_ready', 'frames':boards,
+            'debug_moments':debug_moments,
             'times':[x['second'] for x in moments], 'sampling':sampling, 'ocr':ocr,
             'focus_window':focus, 'image_source':'B站公开视频片段（离线解码）',
             'notice':'每张分镜拼图包含多个带时间码的公开视频采样时刻；未逐帧观看完整视频或听到音频'}

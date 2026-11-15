@@ -420,6 +420,60 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
     except Exception as e:
         return {'ok':False,'bvid':bvid,'error':str(e)[:240]}
 
+def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source):
+    """30-minute local diagnostic, never a Life/model image payload.
+
+    A snapshot is created from exactly the JPEGs fed to the visual worker.
+    No arbitrary filename, raw prompt, credential, audio or downloaded movie is saved.
+    """
+    import time
+    import uuid
+    import shutil
+    if not BV_RE.fullmatch(str(bvid)) or source!='B站公开视频片段（离线解码）':
+        return None
+    home=Path(home).resolve()
+    root=home/'vision-perception-captures'
+    if root.is_symlink(): return None
+    try:
+        root.mkdir(mode=0o700,parents=True,exist_ok=True)
+        if root.is_symlink():return None
+        now=time.time()
+        entries=[]
+        for p in root.iterdir():
+            if p.is_symlink():continue
+            if p.is_dir() and re.fullmatch(r'[a-f0-9]{32}',p.name):
+                try:
+                    if now-p.stat().st_mtime>1800:shutil.rmtree(p)
+                    else:entries.append(p)
+                except OSError:pass
+        for old in sorted(entries,key=lambda p:p.stat().st_mtime)[:-7]:
+            shutil.rmtree(old,ignore_errors=True)
+        token=uuid.uuid4().hex
+        folder=root/token
+        folder.mkdir(mode=0o700)
+        images=[]
+        kind='focus' if focus else 'storyboard'
+        for i,item in enumerate((focus_images if focus else boards)[:12 if focus else 4]):
+            contents=item.get('bytes')
+            if not isinstance(contents,bytes) or not 0<len(contents)<=600_000:continue
+            filename=f'{kind}-{i+1:02d}.jpg'
+            target=folder/filename
+            target.write_bytes(contents)
+            target.chmod(0o600)
+            times=item.get('tile_times') if not focus else [item.get('second')]
+            images.append({'file':filename,'times':[float(t) for t in (times or []) if isinstance(t,(int,float))][:12],
+                           'kind':kind,'resolution':'384×216 原始复查采样' if focus else '原始分镜拼图'})
+        if not images:
+            shutil.rmtree(folder,ignore_errors=True)
+            return None
+        manifest={'bvid':bvid,'id':token,'createdAt':int(now*1000),'kind':kind,
+                  'focusWindow':focus,'images':images}
+        (folder/'receipt.json').write_text(json.dumps(manifest,ensure_ascii=False),encoding='utf8')
+        return manifest
+    except (OSError,ValueError,TypeError):
+        return None
+
+
 def analyze_perception(bvid, home, *, perception_source='preview', enabled=None, debug=False,
                        max_frames=None, provider=None, model=None, return_frames=False,
                        focus_start=None, focus_end=None, view_depth='standard', network_budget_bytes=None):
@@ -469,6 +523,7 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
                         'times':saved['times'],'description':saved['description'],
                         'sampling':saved['sampling'],'ocr':saved.get('ocr'),'focus_window':focus,
                         'image_source':saved['image_source'],
+                        'debugCapture':saved.get('debugCapture'),
                         'notice':'缓存的公开视频采样帧描述，并非完整视频观看'}
         except (ValueError,OSError,KeyError,TypeError):pass
     from adaptive_video import acquire_adaptive_frames, AdaptiveUnavailable
@@ -499,6 +554,11 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
         # Decoding bugs must be visible, not masked as successful sampling.
         return {'ok':False,'bvid':bvid,'status':'adaptive_internal_error',
                 'error':'公开视频自适应取帧发生内部错误，没有完成识图'}
+    # Preserve only bounded local JPEG diagnostics. They are NOT included in
+    # the Life result JSON or the long-term memory/interest ledger.
+    focus_images=result.pop('debug_moments',[])
+    capture=_capture_actual_video_images(home,bvid,result.get('frames',[]),focus_images,focus,result.get('image_source'))
+    if capture:result['debugCapture']=capture
     result['perception_source_requested']='adaptive'
     if return_frames or not enabled:
         return result
@@ -513,7 +573,8 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
         record={'model':model,'provider':provider,'frames_limit':max_frames,
                 'sampler_version':6,'view_depth':view_depth,'times':result['times'],'description':result['description'],
                 'sampling':result['sampling'],'ocr':result.get('ocr'),'focus_window':focus,
-                'image_source':result['image_source'],'network_budget_override':network_budget_bytes}
+                'image_source':result['image_source'],'network_budget_override':network_budget_bytes,
+                'debugCapture':result.get('debugCapture')}
         cache.parent.mkdir(parents=True,exist_ok=True)
         temp=cache.with_suffix('.tmp')
         temp.write_text(json.dumps(record,ensure_ascii=False),encoding='utf8')

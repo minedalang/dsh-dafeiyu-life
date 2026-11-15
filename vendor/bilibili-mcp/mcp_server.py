@@ -1351,7 +1351,7 @@ def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perce
 _VISION_FRAMES_SERVED = {}  # 单轮内实际经 MCP 返回图片的 BV 时间点；不含图片正文
 
 @tool()
-async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0):
+async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0, capture_for_debug: bool = False):
     """鱼鱼主动选画面来源：preview官方低清，adaptive受控公开视频采样；可指定3～120秒。"""
     if (e := _guard("bili_preview_vision")): return e
     if os.environ.get('BILI_VISION_ENABLED') != '1':
@@ -1384,7 +1384,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             from preview_vision import record_vision_event
             with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
                 result = await asyncio.to_thread(analyze_perception,bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
-                        model=os.environ.get('BILI_VISION_MODEL',''),debug=False,
+                        model=os.environ.get('BILI_VISION_MODEL',''),debug=capture_for_debug is True,
                         focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
                         network_budget_bytes=budget_override)
             result['mode']='independent_local'
@@ -1397,7 +1397,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             from preview_vision import record_vision_event
             result = await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
                 focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
-                network_budget_bytes=budget_override)
+                network_budget_bytes=budget_override,debug_capture=capture_for_debug is True)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='independent_dsh_result',ok=result.get('ok'),
                                 error=result.get('error',''),times=result.get('times'))
@@ -1427,7 +1427,8 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                         proof_path.write_text(json.dumps({'bvid':bvid,'times':result['times'],
                             'sampling':result.get('sampling'),'ocr':result.get('ocr'),'focus_window':focus,
                             'perception_source_requested':perception_source,'view_depth':view_depth,
-                            'image_source':result.get('image_source')},ensure_ascii=False),encoding='utf8')
+                            'image_source':result.get('image_source'),
+                            'debugCapture':result.get('debugCapture')},ensure_ascii=False),encoding='utf8')
                 except OSError: pass
             blocks = [TextContent(type='text', text=json.dumps(result,ensure_ascii=False))]
             for i,frame in enumerate(frames):

@@ -34,7 +34,8 @@ test('UI: single unified visual panel with FFmpeg and Whisper; comment memes bel
  assert.doesNotMatch(js,/local-vision\/start-ollama/)
  assert.doesNotMatch(html,/id="local-vision-start-ollama"/)
  assert.match(html,/id="local-vision-ensure"/)
- assert.match(js,/model\?\.installed\?'已下载，无需重装'/)
+ assert.match(js,/local-vision-install'\)\.hidden=Boolean\(model\?\.installed\)/)
+ assert.match(js,/local-vision-cancel'\)\.hidden=!downloading/)
  assert.match(js,/await restoreOllama\(\)/)
 })
 

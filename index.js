@@ -101,6 +101,7 @@ import { validateOwnerRosterUpdate } from './lib/owner-identity.mjs'
 import { formatLocalLogTimestamp } from './lib/log-time.mjs'
 import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
 import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
+import {runLifeChosenVideoRead} from './lib/life-video-read-admission.mjs'
 import {buildVideoEvidenceBundle} from './lib/video-evidence-bundle.mjs'
 import {buildVideoPerceptionTimeline} from './lib/video-perception-timeline.mjs'
 import {buildVideoPerceptionHandoff} from './lib/video-perception-handoff.mjs'
@@ -1884,7 +1885,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   readTool({name:'bili_received_at_and_likes',description:'读取当前登录账号收到的 @ 与点赞通知；只读。',parameters:{}})
 
   // Owner-only read diagnostics. Keep the last actual Life handoff in process memory
-  // for 30 minutes; no disk transcript/image/audio cache and no cross-account carryover.
+  // for 30 minutes; JPEG snapshots are isolated, short-lived local diagnostics only.
   let lastLifeVideoDebug=null,videoDebugJob=null
   let lastLifeVisionActivity=null // in-process operational metadata, no BV/visual text/UID
   const recentVideoFocusCues=new Map() // account-scoped, short-lived, no durable model text
@@ -1894,7 +1895,22 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   }
   const videoDebugExpiry=30*60*1000
   const videoDebugAccount=()=>String(accountBinding.accountUid()||'')
-  const executeWatchVideo = async(args={}) => {
+  const safeVideoDebugCapture=(value,bvid)=>{
+    if(!value||value.bvid!==bvid||!(/^[a-f0-9]{32}$/).test(String(value.id||''))||
+      !['storyboard','focus'].includes(value.kind)||!Array.isArray(value.images))return null
+    const images=value.images.slice(0,12).filter(x=>
+      x?.kind===value.kind&&/^(?:storyboard|focus)-\d{2}\.jpg$/.test(String(x.file||''))&&
+      Array.isArray(x.times)&&x.times.length<=12&&x.times.every(t=>Number.isFinite(t)&&t>=0&&t<=2700))
+      .map(x=>({kind:x.kind,file:x.file,times:x.times,resolution:String(x.resolution||'').slice(0,45)}))
+    if(!images.length)return null
+    // Best-effort automatic expiry while DSH is running. Python also sweeps
+    // stale captures on the next observation after a process restart.
+    const purge=setTimeout(()=>{try{rmSync(join(stateDir,'vision-perception-captures',value.id),
+      {recursive:true,force:true})}catch{}},videoDebugExpiry)
+    purge.unref?.()
+    return {id:value.id,kind:value.kind,createdAt:Number(value.createdAt)||0,images}
+  }
+  const executeWatchVideo = async(args={},internal={}) => {
     const dryRun=args.__debugDryRun===true
     const initialAccount=videoDebugAccount()
     const stage=(label,step)=>{if(dryRun&&videoDebugJob?.status==='running'){videoDebugJob.stage=label;if(Number.isInteger(step))videoDebugJob.step=step;videoDebugJob.updatedAt=Date.now()}}
@@ -1953,7 +1969,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       visualQuestion:args.visual_question===true,depth:args.view_depth})
     stage(visionPlan.attempt?'下载真实视频窗口／FFmpeg 解码／视觉模型理解中（正在等待实际回执）':'略看资料或视觉服务不可用',3)
     if(visionPlan.attempt&&['independent_dsh','independent_local'].includes(resolvedVisionMode())){
-      try{vision=await call('bili_preview_vision',{bvid,perception_source:'adaptive',view_depth:visionPlan.depth})}catch(e){vision={ok:false,error:String(e?.message||e).slice(0,140)}}
+      try{vision=await call('bili_preview_vision',{bvid,perception_source:'adaptive',view_depth:visionPlan.depth,
+        ...(dryRun?{capture_for_debug:true}:{})})}catch(e){vision={ok:false,error:String(e?.message||e).slice(0,140)}}
     }else if(visionPlan.kind==='unavailable'){
       vision={ok:false,status:'vision-budget-unavailable',reason:visionPlan.reason}
     }
@@ -1962,6 +1979,13 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // exploration; never lets model text choose a URL or arbitrary time.
     let focusReview=null,focusReviewStatus=null
     const parsedInfo=parseMaybeJson(info),parsedVisual=parseMaybeJson(vision)
+    const debugImages=[]
+    const initialCapture=safeVideoDebugCapture(parsedVisual?.debugCapture,bvid)
+    if(initialCapture)debugImages.push(initialCapture)
+    // The in-process debug JPEG receipt is deliberately removed from the
+    // model-visible evidence and the durable experience.
+    if(parsedVisual&&typeof parsedVisual==='object')delete parsedVisual.debugCapture
+    vision=parsedVisual
     if(!dryRun&&visionPlan.attempt&&['independent_dsh','independent_local'].includes(resolvedVisionMode())){
       lastLifeVisionActivity={at:Date.now(),ok:parsedVisual?.ok===true&&
         ['analyzed','cached'].includes(parsedVisual.status)&&Boolean(String(parsedVisual.description||'').trim())};
@@ -1974,11 +1998,15 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       try{
         const raw=await call('bili_preview_vision',{bvid,perception_source:'adaptive',view_depth:'deep',
           focus_start_seconds:focusPlan.startSeconds,focus_end_seconds:focusPlan.endSeconds,
-          network_budget_bytes:focusPlan.networkBudgetBytes})
+          network_budget_bytes:focusPlan.networkBudgetBytes,
+          ...(dryRun?{capture_for_debug:true}:{})})
         const result=parseMaybeJson(raw)
+        const focusedCapture=safeVideoDebugCapture(result?.debugCapture,bvid)
+        if(result&&typeof result==='object')delete result.debugCapture
         const proof=buildVideoEvidenceBundle({bvid,info:parsedInfo,visual:result})
         focusReview=verifyVideoFocusReview({bvid,plan:focusPlan,result,evidence:proof})
         focusReviewStatus=focusReview?'completed':'unverified-focus-receipt'
+        if(focusReview&&focusedCapture)debugImages.push(focusedCapture)
         if(!focusReview)log('视频局部复查未获得可信回执：'+String(result?.status||result?.error||'unknown').slice(0,100))
       }catch(e){focusReviewStatus='focus-read-failed';log('视频局部复查未完成：'+String(e?.message||e).slice(0,100))}
     }else if(focusPlan){focusReviewStatus=focusPlan.reason}
@@ -1991,7 +2019,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         subtitle:normalized(subtitle),comments:normalized(comments),
         danmaku:normalized(danmaku),visual:normalized(vision),
         source:args.record_session===false?'bili-life':'main-session',
-        purpose:args.explorationPurpose||(args.record_session===false?'self-exploration':'main-session'),operationId:randomUUID()})
+        purpose:args.explorationPurpose||(args.record_session===false?'self-exploration':'main-session'),operationId:randomUUID(),
+        autonomousSelected:internal.lifeChoiceVerified===true&&args.record_session===false})
       if(event){const synced=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(!synced)throw Error('人生记忆协调器尚未就绪');if(synced.ok===false)log('视频经历已进入待补偿队列：'+String(synced.lastError||synced.reason||'unknown').slice(0,100))}
       else log('视频探索没有可验证的标题/资料，不生成生活观看经历：'+bvid)
     }catch(e){log('视频探索经历写入失败（不影响只读查看）：'+String(e?.message||e).slice(0,120))}
@@ -2034,11 +2063,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // Exactly the same object is returned through the existing Life tool.
     // Its model text is transient and MUST NOT enter durable Life memory.
     if(!dryRun&&args.record_session===false&&initialAccount&&initialAccount===videoDebugAccount()){
-      const record={account:initialAccount,at:Date.now(),payload:lifePayload}
+      const record={account:initialAccount,at:Date.now(),payload:lifePayload,images:debugImages}
       lastLifeVideoDebug=record
       const retire=setTimeout(()=>{if(lastLifeVideoDebug===record)lastLifeVideoDebug=null},videoDebugExpiry)
       retire.unref?.()
     }
+    if(dryRun&&videoDebugJob?.account===initialAccount)videoDebugJob.images=debugImages
     stage('Life 输入已生成（调试试运行：未记账、未写记忆）',6)
     return lifePayload
   }
@@ -2048,6 +2078,28 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     description:'当主人说“去看/看看这个视频”时调用。读取真实视频详情、字幕（如有）、热门评论与少量弹幕，完成后返回可核验的内容材料并记一条“主 Session 指定观看”经历。它不播放完整视频；没有字幕/视觉证据时必须说明看到了什么、没看到什么，不能编造画面。',
     parameters:{bvid:{type:'string',description:'主人指定的真实 BV 号'},include_comments:{type:'boolean',description:'是否读取热门评论，默认 true'},include_danmaku:{type:'boolean',description:'是否读取少量弹幕，默认 true'},view_depth:{type:'string',description:'由鱼鱼决定理解深度：skim 略看资料（默认，不识图）；standard 正常了解（可用视觉时识图）；deep 深入探索（可用视觉时识图，并可随后按时间窗复查）。不强制选择后两项。'},visual_question:{type:'boolean',description:'旧接口兼容：主动提出视觉疑问时相当于 standard；显式 skim 优先'}},
     async execute(args={}) { return executeWatchVideo(args) }
+  })
+
+  // An unfamiliar BV is an opportunity, not a command to watch. The Life
+  // willingness model may decline, skim, read representative frames or deeply
+  // explore; the original watch pipeline still owns memory and evidence.
+  tool({
+    name:'bili_life_consider_video',
+    description:'给 Life 一次自主决定是否了解某条真实公开视频的机会，即使之前完全没看过也可以考虑观看。先经过统一 Life 意愿；可以略看、普通看、深入看、延期或不看。只读，不提供点赞评论授权。主人明确指定观看仍使用 bili_watch_video。',
+    parameters:{bvid:{type:'string',description:'真实 BV，不可从模糊描述猜测'}},
+    async execute(args={}){
+      refreshCfg()
+      if(cfg.masterEnabled!==true||!hasCredential())return {ok:false,reason:'video-unavailable'}
+      const bvid=String(args.bvid||'').trim()
+      if(!validBv(bvid))return {ok:false,reason:'invalid-bv'}
+      return runLifeChosenVideoRead({willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,
+        bvid,mode:'new',read:async({viewDepth,account})=>{
+          if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
+          return executeWatchVideo({bvid,include_comments:true,include_danmaku:true,
+            record_session:false,view_depth:viewDepth,explorationPurpose:'life-voluntary-new-video'},
+            {lifeChoiceVerified:true})
+        }})
+    }
   })
 
   // Follow-up video clarification: the user may mention a minute or an
@@ -2075,20 +2127,40 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         afterSeconds:args.after_seconds,description:args.event_cue,
         priorObservations:recallVideoFocusCues(bvid),durationSeconds})
       if(!plan.ok)return {ok:false,...plan}
-      const budget=Number(cfg.visionFrames)>=48?100*1048576:Number(cfg.visionFrames)>=24?50*1048576:24*1048576
-      let visual
-      try{visual=parseMaybeJson(await call('bili_preview_vision',{bvid,perception_source:'adaptive',
-        view_depth:'deep',focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
-        network_budget_bytes:budget}))}
-      catch(e){return {ok:false,reason:'focus-read-failed',error:String(e?.message||e).slice(0,160)}}
-      const evidence=buildVideoEvidenceBundle({bvid,info,visual})
-      const confirmed=verifyVideoFocusReview({bvid,plan:{...plan,networkBudgetBytes:budget},result:visual,evidence})
-      if(!confirmed)return {ok:false,reason:'focus-receipt-unverified',
-        error:String(visual?.error||visual?.status||'未取得可信复查结果').slice(0,130)}
-      return {ok:true,bvid,source:'decoded-public-video-focus',status:'observed-new-window',
-        anchorSeconds:plan.anchorSeconds,origin:plan.origin,review:confirmed,
-        limits:['sampled-window-only','not-full-video-playback','no-audio-perception',
-          'new-observation-does-not-prove-prior-knowledge'],noExternalActions:true}
+      return runLifeChosenVideoRead({willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,
+        bvid,mode:'revisit',read:async({account})=>{
+          if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
+          const budget=Number(cfg.visionFrames)>=48?100*1048576:Number(cfg.visionFrames)>=24?50*1048576:24*1048576
+          let visual
+          try{visual=parseMaybeJson(await call('bili_preview_vision',{bvid,perception_source:'adaptive',
+            view_depth:'deep',focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
+            network_budget_bytes:budget}))}
+          catch(e){return {ok:false,reason:'focus-read-failed',error:String(e?.message||e).slice(0,160)}}
+          if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
+          const evidence=buildVideoEvidenceBundle({bvid,info,visual})
+          const confirmed=verifyVideoFocusReview({bvid,plan:{...plan,networkBudgetBytes:budget},result:visual,evidence})
+          if(!confirmed)return {ok:false,reason:'focus-receipt-unverified',
+            error:String(visual?.error||visual?.status||'未取得可信复查结果').slice(0,130)}
+          // Save only a bounded factual provenance receipt. Raw model answers,
+          // image bytes, uncertain descriptions and third-party text remain
+          // transient; a follow-up cannot rewrite the original experience.
+          let memoryState='not-recorded'
+          try{
+            const event=buildVideoExplorationEvent({bvid,info,visual,source:'bili-life',
+              purpose:'life-voluntary-focus-read',operationId:randomUUID(),autonomousSelected:true})
+            if(event){
+              event.note='自主补看一个已核实的公开视频时间窗口'
+              event.experience.focusWindow={startMs:confirmed.startMs,endMs:confirmed.endMs,
+                frames:confirmed.frameTimesMs.length,source:'decoded-public-video-focus'}
+              const stored=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
+              memoryState=stored?.ok===true?'recorded': 'pending-retry'
+            }
+          }catch(e){log('Life 补看证据记账暂不可用：'+String(e?.message||e).slice(0,90))}
+          return {ok:true,bvid,source:'decoded-public-video-focus',status:'observed-new-window',
+            anchorSeconds:plan.anchorSeconds,origin:plan.origin,review:confirmed,experienceState:memoryState,
+            limits:['sampled-window-only','not-full-video-playback','no-audio-perception',
+              'new-observation-does-not-prove-prior-knowledge'],noExternalActions:true}
+        }})
     }
   })
 
@@ -6086,6 +6158,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // already verified original channel/transaction, never a model claim.
     onVerifiedAction:({kind,sourceRef,scope,receiptId='',evidence=''})=>{
       if(scope!==trustedLifeAccountTag())return
+      // A Life read is not a platform send. Its own evidence-confirmed reader
+      // records a watch event; do not forge a social action or duplicate it.
+      if(kind==='explore_video')return
       // Minimal verified operations without public targets still become Life
       // experiences. Video actions and shares use richer, separately verified
       // callbacks so this path cannot duplicate or misdescribe their target.
@@ -7435,9 +7510,10 @@ logger:{warn:m=>log('社交意图：'+m)}
       // The helper binds results to the CURRENT login (HMAC; no UID or cookie returned).
       return sendJson(res,200,readVideoDiscussionDiagnostics({stateDir,credential:dmCred(stateDir)}))
     }
-    if (path === '/api/bili-duty/video-perception-debug' || path === '/api/bili-duty/video-perception-debug/run') {
-      // Full source excerpts and model answers: local desktop only, never saved
-      // to disk, never exposed through remote/mobile management gateways.
+    if (path === '/api/bili-duty/video-perception-debug' || path === '/api/bili-duty/video-perception-debug/run' ||
+        path.startsWith('/api/bili-duty/video-perception-debug/image/')) {
+      // Source excerpts and answers remain memory-only. Local JPEG captures
+      // expire and require same-account, same-origin loopback access; no remote gateway.
       const peer=String(req.socket?.remoteAddress||'')
       const local=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
@@ -7448,12 +7524,29 @@ logger:{warn:m=>log('社交意图：'+m)}
         return sendJson(res,403,{ok:false,error:'不允许跨站请求视频调试'})
       if(!hasCredential()||!videoDebugAccount())return sendJson(res,401,{ok:false,error:'请先完成本机 B站登录和账号核验'})
       const now=Date.now(),account=videoDebugAccount()
+      if(req.method==='GET'&&path.startsWith('/api/bili-duty/video-perception-debug/image/')){
+        const match=/^\/api\/bili-duty\/video-perception-debug\/image\/([a-f0-9]{32})\/((?:storyboard|focus)-\d{2}\.jpg)$/.exec(path)
+        if(!match)return sendJson(res,404,{ok:false,error:'诊断图片不存在'})
+        const [_,id,file]=match
+        const allowed=[videoDebugJob,lastLifeVideoDebug].some(row=>row?.account===account&&now-row.at<videoDebugExpiry&&
+          row.images?.some(c=>c.id===id&&c.images.some(img=>img.file===file)))
+        if(!allowed)return sendJson(res,404,{ok:false,error:'诊断图片不存在或已过期'})
+        const root=join(stateDir,'vision-perception-captures'),folder=join(root,id),target=join(folder,file)
+        try{
+          if(lstatSync(root).isSymbolicLink()||lstatSync(folder).isSymbolicLink()||lstatSync(target).isSymbolicLink())throw Error('unsafe')
+          if(now-statSync(folder).mtimeMs>videoDebugExpiry||statSync(target).size>600000)throw Error('expired')
+          const contents=readFileSync(target)
+          if(contents.length<4||contents[0]!==0xff||contents[1]!==0xd8)throw Error('invalid')
+          res.writeHead(200,{'Content-Type':'image/jpeg','Content-Length':contents.length,
+            'Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'});return res.end(contents)
+        }catch{return sendJson(res,404,{ok:false,error:'诊断图片不可用或已过期'})}
+      }
       if(req.method==='GET'&&path.endsWith('/video-perception-debug')){
         const current=videoDebugJob&&videoDebugJob.account===account&&now-videoDebugJob.at<videoDebugExpiry?videoDebugJob:null
         const last=lastLifeVideoDebug&&lastLifeVideoDebug.account===account&&now-lastLifeVideoDebug.at<videoDebugExpiry?lastLifeVideoDebug:null
         return sendJson(res,200,{ok:true,job:current&&{id:current.id,status:current.status,stage:current.stage,step:current.step,updatedAt:current.updatedAt,at:current.at,
-          ...(current.status==='done'?{lifeInput:current.payload}:{}),...(current.status==='error'?{error:current.error}:{})},
-          lastLife:last&&{at:last.at,lifeInput:last.payload},retention:'volatile-30m',source:'actual-bili-watch-video-return'})
+          ...(current.status==='done'?{lifeInput:current.payload,images:current.images||[]}:{}),...(current.status==='error'?{error:current.error}:{})},
+          lastLife:last&&{at:last.at,lifeInput:last.payload,images:last.images||[]},retention:'volatile-30m',source:'actual-bili-watch-video-return'})
       }
       if(req.method==='POST'&&path.endsWith('/video-perception-debug/run')){
         if(videoDebugJob?.status==='running')return sendJson(res,409,{ok:false,error:'已有视频感知试运行，请等它完成'})
