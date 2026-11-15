@@ -1350,6 +1350,37 @@ def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perce
 
 _VISION_FRAMES_SERVED = {}  # 单轮内实际经 MCP 返回图片的 BV 时间点；不含图片正文
 
+def _record_production_vision_attempt(result, mode, model, debug=False):
+    """Only actual model attempts from normal workers, never owner Debug runs.
+
+    Operational receipt is restricted to outcome, fixed execution mode, model ID
+    and UTC timestamp. No BV, user ID, model response, prompt or image content.
+    """
+    if debug or not isinstance(result, dict):
+        return
+    status = str(result.get('status') or '')
+    if status not in ('analyzed', 'vision_unavailable', 'timeout', 'subagent_error',
+                      'no_vision_result', 'empty_result', 'no_images_confirmed'):
+        return  # Cached observation is not a fresh invocation of the model.
+    if mode not in ('independent_local', 'independent_dsh'):
+        return
+    try:
+        import time
+        target = (_DUTY_HOME / 'vision-production-last.json')
+        if target.parent != _DUTY_HOME or (target.exists() and target.is_symlink()):
+            return
+        payload = {'version': 1, 'at': int(time.time() * 1000),
+                   'ok': status == 'analyzed' and bool(str(result.get('description') or '').strip()),
+                   'status': status, 'mode': mode, 'model': str(model or '')[:90]}
+        temp = target.with_name('vision-production-last-' + str(os.getpid()) + '.tmp')
+        if temp.exists() and temp.is_symlink():
+            return
+        temp.write_text(json.dumps(payload, ensure_ascii=False), encoding='utf8')
+        os.replace(temp, target)
+    except (OSError, ValueError, TypeError):
+        pass
+
+
 @tool()
 async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0, capture_for_debug: bool = False):
     """鱼鱼主动选画面来源：preview官方低清，adaptive受控公开视频采样；可指定3～120秒。"""
@@ -1388,6 +1419,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                         focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
                         network_budget_bytes=budget_override)
             result['mode']='independent_local'
+            _record_production_vision_attempt(result, 'independent_local', os.environ.get('BILI_VISION_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='adaptive_local_result' if perception_source=='adaptive' else 'independent_local_result',
                                 ok=result.get('ok'),error=result.get('error',''),times=result.get('times'))
@@ -1398,6 +1430,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             result = await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
                 focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
                 network_budget_bytes=budget_override,debug_capture=capture_for_debug is True)
+            _record_production_vision_attempt(result, 'independent_dsh', os.environ.get('BILI_VISION_DSH_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='independent_dsh_result',ok=result.get('ok'),
                                 error=result.get('error',''),times=result.get('times'))
@@ -3340,6 +3373,24 @@ def _record_asr_attempt(outcome, model, segments=0, reason=None):
         pass
 
 
+def _asr_failure_category(stderr):
+    # Never return raw stderr; it can contain media titles or text from the source.
+    tail = stderr or ''
+    if isinstance(tail, bytes): tail = tail.decode('utf-8', 'replace')
+    tail = str(tail)[-10000:]
+    if '[asr] 开始转写' in tail:
+        return 'inference-failed', '语音推理失败（检查音频解码、CPU/内存和模型兼容性）'
+    if '[asr] 加载模型' in tail:
+        return 'model-load-failed', '本地 Whisper 模型加载失败（检查模型文件及依赖）'
+    if '[asr] 先下音频' in tail:
+        if any(code in tail for code in ('HTTP Error 403','HTTP Error: 403','HTTP Error: 412','HTTP Error 412')):
+            return 'audio-access-denied', '视频音频获取被平台拒绝（HTTP 403/412），不是视频没有语音'
+        if any(code in tail.lower() for code in ('timed out','timeout','connectionerror','proxyerror','network is unreachable')):
+            return 'audio-network-failed', '视频音频下载连接失败或超时'
+        return 'audio-download-failed', '未能下载可用的 B站音轨（检查网络、播放授权或音频格式）'
+    return 'process-failed', '本地转写子进程异常结束；缺少阶段回执'
+
+
 @tool()
 async def bili_transcribe_safe(bvid: str) -> str:
     """Opt-in local ASR: fixed script, approved model, evidence-aware status."""
@@ -3371,12 +3422,20 @@ async def bili_transcribe_safe(bvid: str) -> str:
                                       timeout=timeout_seconds,cwd=str(_DUTY_HOME),
                                       creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         if res.returncode != 0 or len(res.stdout)>65000:
-            _record_asr_attempt('failed',model,reason='transcription-failed')
-            return json.dumps({'ok':False,'status':'asr_failed','error':'本地语音转写未成功'},ensure_ascii=False)
+            code, hint = _asr_failure_category(res.stderr)
+            if len(res.stdout)>65000: code, hint = 'output-too-large', '转写回执超出受控大小上限'
+            _record_asr_attempt('failed',model,reason=code)
+            return json.dumps({'ok':False,'status':'asr_failed','error':hint,'reasonCode':code},ensure_ascii=False)
         try: payload = json.loads(res.stdout)
         except (ValueError,TypeError):
             _record_asr_attempt('failed',model,reason='invalid-receipt')
             return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'本地语音转写回执不完整'},ensure_ascii=False)
+        if (isinstance(payload,dict) and payload.get('bvid')==bv and
+            payload.get('source')=='local-asr' and
+            payload.get('asr_evidence')=='faster-whisper-machine-transcript' and
+            payload.get('text')=='' and payload.get('timed_segments')==[]):
+            _record_asr_attempt('no-speech',model,reason='no-recognized-speech')
+            return json.dumps({'ok':False,'status':'asr_no_speech','error':'本轮未识别出可靠语音文字；不代表视频没有声音'},ensure_ascii=False)
         if (not isinstance(payload,dict) or payload.get('bvid') != bv or
             payload.get('source') != 'local-asr' or
             payload.get('asr_evidence') != 'faster-whisper-machine-transcript' or

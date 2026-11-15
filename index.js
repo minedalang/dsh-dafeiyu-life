@@ -204,6 +204,7 @@ import { createLifeMemoryGateway, relationshipMemoryHalfLifeDays } from './lib/l
 import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import { memoryNeuralProjection, neuralProjectionKey } from './lib/memory-neural-projection.mjs'
 import { systemHealthSnapshot } from './lib/system-health-projection.mjs'
+import {readProductionVisionStatus} from './lib/vision-production-status.mjs'
 import {planVideoMomentFollowup} from './lib/video-moment-followup.mjs'
 import {modelTestFailure} from './lib/model-failure-diagnostics.mjs'
 import {providerIds,modelIds} from './lib/model-catalog.mjs'
@@ -1948,6 +1949,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
               reason:String(asr?.error||asr?.message||asr?.status||
                 (typeof asr==='string'?asr:'Whisper 未返回有效文本')).slice(0,180),
               ...(['audio-download','model-load','inference','unknown'].includes(asr?.phase)?{phase:asr.phase}:{}),
+              ...(['audio-access-denied','audio-network-failed','audio-download-failed','model-load-failed','inference-failed','process-failed','output-too-large'].includes(asr?.reasonCode)?{reasonCode:asr.reasonCode}:{}),
               ...(Number.isInteger(asr?.timeoutSeconds)?{timeoutSeconds:asr.timeoutSeconds}:{})}
           }
         }
@@ -1986,9 +1988,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // model-visible evidence and the durable experience.
     if(parsedVisual&&typeof parsedVisual==='object')delete parsedVisual.debugCapture
     vision=parsedVisual
-    if(!dryRun&&visionPlan.attempt&&['independent_dsh','independent_local'].includes(resolvedVisionMode())){
-      lastLifeVisionActivity={at:Date.now(),ok:parsedVisual?.ok===true&&
-        ['analyzed','cached'].includes(parsedVisual.status)&&Boolean(String(parsedVisual.description||'').trim())};
+    // The Python MCP worker stores a durable receipt ONLY when a real production
+    // vision model was invoked. Never turn a cached observation or owner Debug
+    // into a fresh green model-health signal.
+    if(!dryRun&&['analyzed','vision_unavailable','timeout','subagent_error','no_vision_result','empty_result','no_images_confirmed'].includes(parsedVisual?.status)){
+      lastLifeVisionActivity=readProductionVisionStatus(stateDir)||lastLifeVisionActivity;
     }
     const preliminary=buildVideoEvidenceBundle({bvid,info:parsedInfo,subtitle:parseMaybeJson(subtitle),
       visual:parsedVisual,comments:parseMaybeJson(comments),danmaku:parseMaybeJson(danmaku)})
@@ -9080,7 +9084,8 @@ logger:{warn:m=>log('社交意图：'+m)}
             ?Boolean(getLocalVisionModel(cfg.visionLocalModel))
             :Boolean(cfg.visionModelId||cfg.pluginDefaultModelId)),
           model:resolvedVisionMode()==='independent_local'?getLocalVisionModel(cfg.visionLocalModel)?.name||'本地模型':
-            String(cfg.visionModelId||cfg.pluginDefaultModelId||'DSH 视觉模型'),...lastLifeVisionActivity},
+            String(cfg.visionModelId||cfg.pluginDefaultModelId||'DSH 视觉模型'),
+            ...((readProductionVisionStatus(stateDir)||lastLifeVisionActivity)||{})},
         schedulerExpected:cfg.masterEnabled===true&&(cfg.dmWatch===true||cfg.commentWatchReplies===true||cfg.commentAtEnabled===true),
         lifeExpected:cfg.masterEnabled===true&&cfg.autonomousPlannerEnabled===true&&cfg.lifeAgentMode==='active',
         now:Date.now()}))}
