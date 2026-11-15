@@ -803,10 +803,10 @@ window.__ModuleLoader__.load({
 
         /* ── 关注什么 / 在哪儿刷 ── */
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'taste', 'data-bd-away': tab === 'taste' ? undefined : '' },
-          h('div', { 'data-bd-h': '' }, '👀 视频预览快照识图（试验功能）'),
-          h(ToggleRow, {label:'开启低清预览识图', note:'默认关闭；由视频 Agent 综合播放量、评论、弹幕及视觉梗价值自行决定要不要识图。冷门但有明确画面梗也可识图，绝不默认每条都分析；每轮最多 2 条。',
+          h('div', { 'data-bd-h': '' }, '👀 自主视频分镜感知（2.8.1 开发版）'),
+          h(ToggleRow, {label:'启用视觉理解能力', note:'鱼鱼自己决定是否观看和理解深度；支持受控真实视频自适应分镜，取不到时标注低清预览回退。不会强制看完或额外点赞。',
             on:sw('visionEnabled'),onChange:v=>patch({visionEnabled:v},'预览识图总开关')}),
-          h(ToggleRow, {label:'Debug：保存实际预览图', note:'默认关闭；开启后把送去识图的 JPEG 保存到插件数据目录 vision-debug/BV号/，方便自己查看。',
+          h(ToggleRow, {label:'Debug：保存实际预览图', note:'默认关闭；低清预览调试图片写入 vision-debug/BV号/；真实公开视频分镜不会默认持久保留。',
             on:sw('visionDebug'),onChange:v=>patch({visionDebug:v},'预览图调试保存')}),
           h('div',{'data-bd-note':''},'视觉识图提示词已移至管理中心 → 人设与好友。'),
           (cfg.visionEnabled||cfg.visionDebug) ? h('div',{'data-bd-sub':''},
@@ -827,7 +827,7 @@ window.__ModuleLoader__.load({
                     onChange:e=>setVisionDraft(old=>({...old,[key]:e.target.value})),
                     onBlur:()=>patch({[key]:(visionDraft||{})[key]||''},label)}))),
               h('div',{'data-bd-note':''},'留空时优先继承刷视频模型的相应配置。独立视觉 Agent 与主视频 Agent 是两次 DSH 模型会话，但不走旧的 API Key/DPAPI 接口。')):null,
-            h('div',{'data-bd-note':''},`每条取图 ${cfg.visionFrames??2} 张；DSH 与 Ollama 视觉分析每日最多 ${cfg.visionDailyLimit??30} 次（命中缓存不计费）。在管理中心 → 次数与额度修改。`),
+            h('div',{'data-bd-note':''},`当前分镜预算上限 ${cfg.visionFrames??24} 个时刻（标准了解最多12；深入探索按所选档位，最多4张12格分镜图）；实际可少于上限。DSH 与 Ollama 每日最多 ${cfg.visionDailyLimit??30} 次（命中缓存不计费），在管理中心 → 次数与额度选择卡片。`),
             h('div',{'data-bd-note':''},'不再需要视觉 API Key。旧版本本地可能保存过 DPAPI 加密文件，升级不会读取或上传它；如需清理，可删除 bili-duty 目录中的 .vision-api-key.dpapi。'),
             h('div',{'data-bd-row':''},
               h('input',{'data-bd-input':'',placeholder:'输入一个 BV 号，测试预览图片',style:{flex:1,minWidth:'180px'},value:visionBV,

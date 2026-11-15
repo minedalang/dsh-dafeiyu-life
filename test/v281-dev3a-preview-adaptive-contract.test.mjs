@@ -11,7 +11,7 @@ test('自适应预览只生成证据元数据，不产生视频已播放或已�
       candidates_examined:9,frames_selected:2,sheets_downloaded:2}},at:Date.now()})
   const frames=evidence.sources.find(s=>s.kind==='preview_frames')
   assert.deepEqual(frames.timePointsMs,[4500,18000])
-  assert.equal(frames.sampling.selection,'activity-time+thumbnail-dedup')
+  assert.equal(frames.sampling.selection,'uniform-time+thumbnail-dedup')
   assert.equal(frames.sampling.framesSelected,2)
   assert.equal(evidence.observedVideoPlayback,false)
   assert.equal(evidence.analyzedOriginalAudio,false)

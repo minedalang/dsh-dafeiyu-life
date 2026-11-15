@@ -1,3 +1,9 @@
+## 2.8.1-dev.3a.4 多信号分镜与弹幕活跃曲线的实现归属
+
+- 新增 `lib/video_heat_signal.py` 的官方 PBP 读取尝试和受限弹幕 XML 时间密度提取、`lib/adaptive_video.py` 的分层窗口/热度加权候选选择及 Pillow 分镜拼图均由本仓库**独立编写**。不保存弹幕内容、用户身份或 UID，也不将观众反应当成作品事实。
+- README 使用的 Mermaid 架构和 `docs/architecture/assets/video-danmaku-heat-illustration.svg` 是本项目新编的示意图，曲线为**模拟值**，不来自真实 B站，未复制他人可视化素材。
+- `SAOS-3624/dsh-video-storyboard`、`SAOS-3624/dsh-see-now`、`PySceneDetect` 仍仅为设计参考，**没有移植、复制或捆绑源代码**。FFmpeg 仅由用户自行安装，具体许可随其构建版本；Pillow 为原有依赖。此前 `adoresever/bilibili-mcp`、`c1overzz/dsh-bili-scroll` 和 `dsh-fish-memory` 的版权/许可证声明保留不变。
+
 ## 2.8.1-dev.3a.3 真实公开视频稀疏感知的第三方声明
 
 - **FFmpeg（可选外部运行程序）**：本项目调用使用者**自行安装**并位于 PATH 的 `ffmpeg` 子进程，读取有严格大小上限的临时本地视频文件。**本补丁没有捆绑、修改、复制或再分发 FFmpeg 源码或可执行文件**。FFmpeg 许可证取决于安装的具体构建配置（可能包含 LGPL/GPL 组件），使用者按其所选发行版的 LICENSE 和相关声明使用。参见 https://ffmpeg.org/legal.html 。

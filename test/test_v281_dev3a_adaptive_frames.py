@@ -59,14 +59,14 @@ class AdaptivePreviewTests(unittest.TestCase):
             r=pv.analyze_preview('BV1234567890',d,enabled=False,debug=False,return_frames=True,max_frames=3)
             self.assertTrue(r['ok'])
             self.assertEqual(r['status'],'frames_ready')
-            self.assertEqual(r['sampling']['sampler_version'],2)
+            self.assertEqual(r['sampling']['sampler_version'],3)
             self.assertLessEqual(len(r['frames']),3)
             self.assertGreaterEqual(len(r['frames']),2) # two distinct colored scenes
             self.assertEqual(len([x for x in fetched if '/videoshot/' in x]),2)
             self.assertEqual(r['sampling']['sheets_downloaded'],2)
             self.assertTrue(all(f['source_index'] in range(8) for f in r['frames']))
             self.assertEqual([f['second'] for f in r['frames']],sorted(f['second'] for f in r['frames']))
-            self.assertIn('不等于原视频镜头分割',r['sampling']['note'])
+            self.assertIn('不使用旧高能预览选帧',r['sampling']['note'])
 
     def test_cache_invalidated_if_old_sampler_version(self):
         def sheet():
@@ -84,7 +84,7 @@ class AdaptivePreviewTests(unittest.TestCase):
                 self.assertEqual(newer['status'],'analyzed')
                 self.assertEqual(model.call_count,1)
                 self.assertEqual(len(model.call_args[0][0]),1)
-            self.assertEqual(json.loads(cache.read_text())['sampler_version'],2)
+            self.assertEqual(json.loads(cache.read_text())['sampler_version'],3)
             self.assertEqual(json.loads(cache.read_text())['sampling']['frames_selected'],1)
 
 if __name__=='__main__':unittest.main()

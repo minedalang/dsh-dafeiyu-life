@@ -41,3 +41,11 @@ test('dev.3a.3 adaptive decoder is staged beside MCP and preview adapter',()=>ho
   assert.equal(readFileSync(join(dir,'adaptive_video.py'),'utf8'),expected)
   assert.equal(readFileSync(join(dir,'.shipped-adaptive_video.py.sha'),'utf8'),hash(expected))
 }))
+
+
+test('dev.3a.4 danmaku heat helper is staged and fingerprinted for headless import',()=>homeWith(dir=>{
+  ensureHomeFiles(root,dir)
+  const expected=readFileSync(join(root,'lib','video_heat_signal.py'),'utf8')
+  assert.equal(readFileSync(join(dir,'video_heat_signal.py'),'utf8'),expected)
+  assert.equal(readFileSync(join(dir,'.shipped-video_heat_signal.py.sha'),'utf8'),hash(expected))
+}))

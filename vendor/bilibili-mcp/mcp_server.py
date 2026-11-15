@@ -1311,7 +1311,7 @@ async def bili_vision_selftest():
 # 每轮 headless 创建独立 MCP 进程；同一个 BV 重试不扩张上限。
 # 这道上限是实际后端闸，不只依赖 AI 遵守提示词。手动预览测试走单独的受限脚本。
 _VISION_BVS_PER_RUN = set()
-def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perception_source="preview"):
+def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard"):
     """Reserve only frame acquisition, NEVER the outer/child DSH vision call.
 
     The independent visual DSH subprocess may itself call bili_preview_vision.
@@ -1319,19 +1319,23 @@ def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perce
     """
     from preview_vision import analyze_perception
     with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
-        return analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source)
+        return analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source,view_depth=view_depth)
 
 
 _VISION_FRAMES_SERVED = {}  # 单轮内实际经 MCP 返回图片的 BV 时间点；不含图片正文
 
 @tool()
-async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview"):
+async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard"):
     """鱼鱼主动选画面来源：preview官方低清，adaptive受控公开视频采样；可指定3～120秒。"""
     if (e := _guard("bili_preview_vision")): return e
     if os.environ.get('BILI_VISION_ENABLED') != '1':
         return json.dumps({'ok':False,'error':'视觉识图已关闭'}, ensure_ascii=False)
     if perception_source not in ('preview','adaptive'):
         return json.dumps({'ok':False,'status':'invalid_source','error':'未知视频画面来源'},ensure_ascii=False)
+    if view_depth not in ('skim','standard','deep'):
+        return json.dumps({'ok':False,'status':'invalid_depth','error':'观看深度无效'},ensure_ascii=False)
+    if view_depth=='skim':
+        return json.dumps({'ok':False,'status':'skipped_by_fish','error':'鱼鱼选择略看，不执行视觉观察'},ensure_ascii=False)
     # 校验 BV 必须发生在占用名额之前，避免无效 ID 耗尽当轮预算。
     if not re.fullmatch(r'BV[0-9A-Za-z]{10}', str(bvid or '')):
         return json.dumps({'ok':False,'error':'BV号格式不正确'},ensure_ascii=False)
@@ -1351,7 +1355,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
                 result = await asyncio.to_thread(analyze_perception,bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
                         model=os.environ.get('BILI_VISION_MODEL',''),debug=False,
-                        focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None)
+                        focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth)
             result['mode']='independent_local'
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='adaptive_local_result' if perception_source=='adaptive' else 'independent_local_result',
@@ -1361,7 +1365,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             from vision_dsh import describe_with_dsh
             from preview_vision import record_vision_event
             result = await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
-                focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None)
+                focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='independent_dsh_result',ok=result.get('ok'),
                                 error=result.get('error',''),times=result.get('times'))
@@ -1370,7 +1374,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             # MCP SDK translates real image blocks to the video model route through DSH's
             # attachment bridge. No independent vision API or DPAPI key is accessed here.
             result = await asyncio.to_thread(_fetch_preview_frames_reserved, bvid,
-                focus['startSeconds'] if focus else None,focus['endSeconds'] if focus else None,perception_source)
+                focus['startSeconds'] if focus else None,focus['endSeconds'] if focus else None,perception_source,view_depth)
             if not result.get('ok'):
                 return json.dumps(result, ensure_ascii=False)
             frames = result.pop('frames', [])
@@ -1390,12 +1394,12 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                     if proof_path.parent == (_DUTY_HOME/'vision-proof').resolve() and re.fullmatch(r'[a-f0-9]{32}\.json',proof_path.name):
                         proof_path.write_text(json.dumps({'bvid':bvid,'times':result['times'],
                             'sampling':result.get('sampling'),'focus_window':focus,
-                            'perception_source_requested':perception_source,
+                            'perception_source_requested':perception_source,'view_depth':view_depth,
                             'image_source':result.get('image_source')},ensure_ascii=False),encoding='utf8')
                 except OSError: pass
             blocks = [TextContent(type='text', text=json.dumps(result,ensure_ascii=False))]
             for i,frame in enumerate(frames):
-                blocks.append(TextContent(type='text',text=f'视频采样帧 {i+1}/{len(frames)}：约 {frame["second"]} 秒（来源：{result.get("image_source")}）'))
+                blocks.append(TextContent(type='text',text=f'视频分镜图 {i+1}/{len(frames)}：采样时刻 {frame.get("tile_times",[frame["second"]])} 秒（来源：{result.get("image_source")}）'))
                 blocks.append(ImageContent(type='image', mimeType='image/jpeg',
                                            data=base64.b64encode(frame['bytes']).decode('ascii')))
             return CallToolResult(content=blocks)

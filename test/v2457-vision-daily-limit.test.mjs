@@ -18,11 +18,11 @@ test('独立视觉每日上限与取帧数分开保存，范围与默认值正�
   };
   const initial=await ask('GET','/api/bili-duty/config');
   assert.equal(initial.config.visionDailyLimit,30);
-  assert.equal(initial.config.visionFrames,2);
-  let saved=await ask('POST','/api/bili-duty/config',{visionDailyLimit:90,visionFrames:3});
-  assert.equal(saved.config.visionDailyLimit,90);assert.equal(saved.config.visionFrames,3);
+  assert.equal(initial.config.visionFrames,24);
+  let saved=await ask('POST','/api/bili-duty/config',{visionDailyLimit:90,visionFrames:48});
+  assert.equal(saved.config.visionDailyLimit,90);assert.equal(saved.config.visionFrames,48);
   saved=await ask('POST','/api/bili-duty/config',{visionDailyLimit:500,visionFrames:0});
-  assert.equal(saved.config.visionDailyLimit,200);assert.equal(saved.config.visionFrames,2);
+  assert.equal(saved.config.visionDailyLimit,200);assert.equal(saved.config.visionFrames,24);
   saved=await ask('POST','/api/bili-duty/config',{visionDailyLimit:0});
   assert.equal(saved.config.visionDailyLimit,0);
  }finally{rmSync(dir,{recursive:true,force:true})}

@@ -1,0 +1,23 @@
+flowchart TB
+    V{"🐟 鱼鱼决定：看不看、看多深？"}
+    V -->|不看 / 略看| S["📖 仅了解文字资料或结束探索"]
+    V -->|正常了解 / 深入探索| GO["🎞️ 开始受控视觉采样"]
+    subgraph INPUT["三路候选线索 · 不代表已理解视频"]
+      direction LR
+      C["🎬 镜头变化<br/>发现新场景"]
+      M["🏃 画面运动<br/>发现动作变化"]
+      H["💬 弹幕热度<br/>发现观众反应"]
+    end
+    GO --> C & M & H
+    C & M & H --> R["🧩 联合排序<br/>时间覆盖 · 去重 · 上下文连续"]
+    R --> B["🖼️ 自适应分镜<br/>卡片预算只设上限，不强制看满"]
+    B --> Q{"鱼鱼还有疑问吗？"}
+    Q -->|有| F["🔎 指定时间窗复查"]
+    F --> R
+    Q -->|没有 / 不想继续| E["🧠 保存可追溯观察与未确认内容"]
+    classDef choice fill:#FFF1D6,stroke:#DAA520,color:#5D3C05,stroke-width:2px;
+    classDef signal fill:#E8F7F3,stroke:#3D9A91,color:#123B36,stroke-width:1.5px;
+    classDef action fill:#E8F0FF,stroke:#6588CF,color:#1B3763,stroke-width:1.5px;
+    class V,Q choice;
+    class C,M,H signal;
+    class GO,R,B,F,E,S action;

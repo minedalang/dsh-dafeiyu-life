@@ -122,6 +122,42 @@ Life 是鱼鱼的统一生活协调系统。真实的公开视频信息、评论
 
 相关设计与技术审计：[Life 现行架构](docs/architecture/life-system-current.md) · [统一行动协议](docs/architecture/2.8.0-unified-life-action-protocol.md) · [统一意愿和行动记录](docs/architecture/2.8.0-dev14-one-life-one-action.md)。
 
+## 🎥 视频感知：既看画面，也留意观众反应
+
+鱼鱼**先决定看不看、了解多深**。当它选择视觉观察时，分镜选帧同时参考真实解码画面的镜头变化、运动幅度与可获得的弹幕活跃度；还要照顾整条视频的时间覆盖，不能只看最热闹的几秒。
+
+```mermaid
+flowchart TB
+    V{"🐟 鱼鱼决定：看不看、看多深？"}
+    V -->|不看 / 略看| S["📖 仅了解文字资料或结束探索"]
+    V -->|正常了解 / 深入探索| GO["🎞️ 开始受控视觉采样"]
+    subgraph INPUT["三路候选线索 · 不代表已理解视频"]
+      direction LR
+      C["🎬 镜头变化<br/>发现新场景"]
+      M["🏃 画面运动<br/>发现动作变化"]
+      H["💬 弹幕热度<br/>发现观众反应"]
+    end
+    GO --> C & M & H
+    C & M & H --> R["🧩 联合排序<br/>时间覆盖 · 去重 · 上下文连续"]
+    R --> B["🖼️ 自适应分镜<br/>卡片预算只设上限，不强制看满"]
+    B --> Q{"鱼鱼还有疑问吗？"}
+    Q -->|有| F["🔎 指定时间窗复查"]
+    F --> R
+    Q -->|没有 / 不想继续| E["🧠 保存可追溯观察与未确认内容"]
+    classDef choice fill:#FFF1D6,stroke:#DAA520,color:#5D3C05,stroke-width:2px;
+    classDef signal fill:#E8F7F3,stroke:#3D9A91,color:#123B36,stroke-width:1.5px;
+    classDef action fill:#E8F0FF,stroke:#6588CF,color:#1B3763,stroke-width:1.5px;
+    class V,Q choice;
+    class C,M,H signal;
+    class GO,R,B,F,E,S action;
+```
+
+**高能弹幕是线索，不是事实。** 下图用一条虚构的 5 分钟视频示例说明：弹幕突然密集时，系统可以把**峰值前后的片段**列为复查候选；真正看不看、要不要追加画面，仍由鱼鱼自主决定。刷屏、跟风和反应延迟都可能导致假峰值。
+
+![300 秒视频弹幕活跃度示意：约 01:40 与 03:50 有两处候选复查峰值；虚构数据](docs/architecture/assets/video-danmaku-heat-illustration.svg)
+
+> **图为模拟数据，不是实际 B站视频的分析结果。** 弹幕文字与观众反应不是事实证明，更不能成为行动指令；视频画面也只能证明采样时刻实际看见的内容。正式版 2.8.0 不包含这套开发中的动态分镜能力。更多细节见 [dev.3a.4 视频感知技术说明](docs/architecture/2.8.1-video-perception-dev3a4.md)。
+
 ## 🚀 开始使用
 
 ### 安装与更新
@@ -173,11 +209,11 @@ dsh plugin --profile desktop add dsh-dafeiyu-life
 
 欢迎通过 [GitHub Issues](https://github.com/minedalang/dsh-dafeiyu-life/issues) 反馈建议与问题。
 
-**2.8.1-dev.3a 首批低清预览去重：** 视觉模型现在先从 B站播放器原有预览拼图中生成少量候选缩略图，再根据内容差异选择最多三张代表画面；近乎相同的画面只发一次，保留真实时间戳与采样记录。不会额外下载完整视频、不能以抽帧冒充看完整片；真正的镜头切分、片段放大和音轨理解属于后续开发。[技术与边界](docs/architecture/2.8.1-video-perception-dev3a.md)。
+**2.8.1-dev.3a.1 历史预览实验：** 曾对 B站低清预览候选按活跃度选帧，**高能预览图识别已在 dev.3a.4 删除**；现行低清来源仅按时间均匀取样并去重，不能与真实公开视频分镜混记。[历史记录](docs/architecture/2.8.1-video-perception-dev3a.md)。
 
 **视觉模型人工验收：** DSH 视觉与 Ollama 本地视觉共用一张大肥鱼原图和一个验收区，切换到本地模式时 DSH 模型配置置灰但原值保留。普通 DSH Session 识图成功不等于独立 Headless 验收可以启动，失败会提示进一步排查方向。
 
-**2.8.1-dev.3a.3 真实视频稀疏场景感知（开发增量）：** 鱼鱼仍先决定看不看，再决定略看、正常了解或深入探索。自主选用视觉后，新工具可在**公开、单段、大小≤24MiB 的 B站视频**中使用本机可选 FFmpeg 离线采样镜头变化、运动与代表帧（默认前60秒或指定3～120秒窗口，最多三帧）；来源不可用或本机没装 FFmpeg 时**明确降级官方低清预览**，不能称已经看完整视频或听到原声。需要用户自行准备 FFmpeg 并加入 PATH；不支持登录/付费流、不抓取任意 URL，真实 Windows/B站实机尚未验收。[实现和限制](docs/architecture/2.8.1-video-perception-dev3a3.md)。
+**2.8.1-dev.3a.4 多信号分镜（开发增量）：** 鱼鱼仍自主决定看不看和看多深；真实公开视频在可用时跨全片做受控稀疏采样，融合切镜、运动与可选弹幕活跃度。管理中心有 **12/24（默认）/48** 个时刻的三档卡片，每最多 12 格拼为一张带时间码的分镜图；`standard` 仍最多 12 时刻。只支持**公开单段、≤24MiB、≤45 分钟**的视频，累计离线采样最多 120 秒。不可用时低清均匀回退最多 3 帧，绝不称完整观看或理解原声；Windows/B站实机尚未验收。[实现和限制](docs/architecture/2.8.1-video-perception-dev3a4.md)。
 
 **2.8.1-dev.3a.2 自主视频深度与局部复查：** 鱼鱼仍自行决定是否了解某条视频；已经决定要看时可选择略看（只读资料）、正常了解（已授权时识图）或深入探索（可选指定 3～120 秒官方低清预览窗口复查），无字幕并不意味着必须识图。DSH 与 Ollama 走相同的时间窗证据协议；局部复查不是完整视频解码、观看或音频理解。详见 [dev.3a 技术与边界](docs/architecture/2.8.1-video-perception-dev3a.md)。
 

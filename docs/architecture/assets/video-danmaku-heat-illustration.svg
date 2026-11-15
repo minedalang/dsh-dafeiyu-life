@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="382" viewBox="0 0 1080 382" role="img" aria-labelledby="title description">
+<title id="title">示意：300秒视频的弹幕热度与候选复查区间</title>
+<desc id="description">虚构的弹幕活跃度曲线，约1分40秒和3分50秒出现高峰。高能信号只用于提出候选复查窗口，不能证明视频内容重要或真实。</desc>
+<rect width="1080" height="382" rx="24" fill="#0F172A"/>
+<text x="40" y="44" fill="#F8FAFC" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif" font-size="24" font-weight="700">弹幕峰值：把观众反应变成复查线索</text>
+<text x="40" y="73" fill="#94A3B8" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif" font-size="15">300 秒视频 · 模拟活跃度曲线 · 仅供架构说明，非真实 B站数据</text>
+<rect x="90" y="97" width="930" height="184" rx="6" fill="#192740"/>
+<line x1="90" y1="281.0" x2="1020" y2="281.0" stroke="#3A4E6A" stroke-width="1" stroke-dasharray="4 6"/>
+<line x1="90" y1="235.0" x2="1020" y2="235.0" stroke="#3A4E6A" stroke-width="1" stroke-dasharray="4 6"/>
+<line x1="90" y1="189.0" x2="1020" y2="189.0" stroke="#3A4E6A" stroke-width="1" stroke-dasharray="4 6"/>
+<line x1="90" y1="143.0" x2="1020" y2="143.0" stroke="#3A4E6A" stroke-width="1" stroke-dasharray="4 6"/>
+<line x1="90" y1="97.0" x2="1020" y2="97.0" stroke="#3A4E6A" stroke-width="1" stroke-dasharray="4 6"/>
+<line x1="90.0" y1="97" x2="90.0" y2="281" stroke="#32435E" stroke-width="1" stroke-dasharray="3 7"/>
+<text x="90.0" y="310" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif" text-anchor="middle" font-size="14" fill="#CBD5E1">00:00</text>
+<line x1="276.0" y1="97" x2="276.0" y2="281" stroke="#32435E" stroke-width="1" stroke-dasharray="3 7"/>
+<text x="276.0" y="310" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif" text-anchor="middle" font-size="14" fill="#CBD5E1">01:00</text>
+<line x1="462.0" y1="97" x2="462.0" y2="281" stroke="#32435E" stroke-width="1" stroke-dasharray="3 7"/>
+<text x="462.0" y="310" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif" text-anchor="middle" font-size="14" fill="#CBD5E1">02:00</text>
+<line x1="648.0" y1="97" x2="648.0" y2="281" stroke="#32435E" stroke-width="1" stroke-dasharray="3 7"/>
+<text x="648.0" y="310" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif" text-anchor="middle" font-size="14" fill="#CBD5E1">03:00</text>
+<line x1="834.0" y1="97" x2="834.0" y2="281" stroke="#32435E" stroke-width="1" stroke-dasharray="3 7"/>
+<text x="834.0" y="310" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif" text-anchor="middle" font-size="14" fill="#CBD5E1">04:00</text>
+<line x1="1020.0" y1="97" x2="1020.0" y2="281" stroke="#32435E" stroke-width="1" stroke-dasharray="3 7"/>
+<text x="1020.0" y="310" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif" text-anchor="middle" font-size="14" fill="#CBD5E1">05:00</text>
+<rect x="375.2" y="97" width="34.1" height="184" fill="#F59E0B" fill-opacity=".16" stroke="#FBBF24" stroke-opacity=".45" stroke-width="1"/>
+<rect x="778.2" y="97" width="34.1" height="184" fill="#F59E0B" fill-opacity=".16" stroke="#FBBF24" stroke-opacity=".45" stroke-width="1"/>
+<path d="M90.0 240.6 L97.8 235.2 L105.5 229.8 L113.2 231.7 L121.0 237.7 L128.8 239.5 L136.5 237.6 L144.2 239.5 L152.0 246.2 L159.8 249.6 L167.5 245.5 L175.2 240.5 L183.0 240.8 L190.8 242.2 L198.5 237.9 L206.2 231.2 L214.0 230.4 L221.8 235.7 L229.5 238.7 L237.2 237.0 L245.0 237.3 L252.8 243.5 L260.5 249.0 L268.2 247.2 L276.0 242.1 L283.8 241.3 L291.5 243.4 L299.2 240.8 L307.0 233.5 L314.8 230.1 L322.5 233.9 L330.2 237.8 L338.0 236.5 L345.8 235.1 L353.5 238.7 L361.2 241.2 L369.0 229.7 L376.8 200.7 L384.5 163.3 L392.2 131.5 L400.0 116.3 L407.8 123.9 L415.5 152.5 L423.2 189.7 L431.0 218.4 L438.8 230.3 L446.5 232.5 L454.2 237.0 L462.0 244.9 L469.8 248.2 L477.5 244.8 L485.2 242.0 L493.0 244.1 L500.8 245.1 L508.5 239.3 L516.2 231.7 L524.0 230.2 L531.8 232.9 L539.5 231.6 L547.2 226.0 L555.0 223.7 L562.8 227.1 L570.5 228.7 L578.2 223.6 L586.0 217.8 L593.8 218.2 L601.5 221.3 L609.2 219.7 L617.0 215.2 L624.8 215.9 L632.5 222.8 L640.2 227.9 L648.0 227.7 L655.8 228.9 L663.5 236.3 L671.2 244.2 L679.0 245.4 L686.8 242.5 L694.5 243.2 L702.2 246.9 L710.0 245.7 L717.8 238.4 L725.5 233.0 L733.2 234.2 L741.0 235.2 L748.8 229.3 L756.5 219.0 L764.2 208.8 L772.0 193.6 L779.8 165.7 L787.5 130.0 L795.2 103.6 L803.0 97.6 L810.8 108.7 L818.5 128.7 L826.2 155.1 L834.0 185.5 L841.8 210.8 L849.5 223.0 L857.2 226.1 L865.0 230.7 L872.8 239.2 L880.5 244.4 L888.2 243.0 L896.0 241.8 L903.8 245.6 L911.5 248.8 L919.2 244.8 L927.0 237.5 L934.8 235.2 L942.5 237.5 L950.2 236.7 L958.0 231.8 L965.8 230.6 L973.5 236.6 L981.2 242.8 L989.0 242.8 L996.8 241.0 L1004.5 244.0 L1012.2 248.8 L1020.0 247.4 L1020 281 L90 281 Z" fill="#2DD4BF" fill-opacity=".14"/>
+<path d="M90.0 240.6 L97.8 235.2 L105.5 229.8 L113.2 231.7 L121.0 237.7 L128.8 239.5 L136.5 237.6 L144.2 239.5 L152.0 246.2 L159.8 249.6 L167.5 245.5 L175.2 240.5 L183.0 240.8 L190.8 242.2 L198.5 237.9 L206.2 231.2 L214.0 230.4 L221.8 235.7 L229.5 238.7 L237.2 237.0 L245.0 237.3 L252.8 243.5 L260.5 249.0 L268.2 247.2 L276.0 242.1 L283.8 241.3 L291.5 243.4 L299.2 240.8 L307.0 233.5 L314.8 230.1 L322.5 233.9 L330.2 237.8 L338.0 236.5 L345.8 235.1 L353.5 238.7 L361.2 241.2 L369.0 229.7 L376.8 200.7 L384.5 163.3 L392.2 131.5 L400.0 116.3 L407.8 123.9 L415.5 152.5 L423.2 189.7 L431.0 218.4 L438.8 230.3 L446.5 232.5 L454.2 237.0 L462.0 244.9 L469.8 248.2 L477.5 244.8 L485.2 242.0 L493.0 244.1 L500.8 245.1 L508.5 239.3 L516.2 231.7 L524.0 230.2 L531.8 232.9 L539.5 231.6 L547.2 226.0 L555.0 223.7 L562.8 227.1 L570.5 228.7 L578.2 223.6 L586.0 217.8 L593.8 218.2 L601.5 221.3 L609.2 219.7 L617.0 215.2 L624.8 215.9 L632.5 222.8 L640.2 227.9 L648.0 227.7 L655.8 228.9 L663.5 236.3 L671.2 244.2 L679.0 245.4 L686.8 242.5 L694.5 243.2 L702.2 246.9 L710.0 245.7 L717.8 238.4 L725.5 233.0 L733.2 234.2 L741.0 235.2 L748.8 229.3 L756.5 219.0 L764.2 208.8 L772.0 193.6 L779.8 165.7 L787.5 130.0 L795.2 103.6 L803.0 97.6 L810.8 108.7 L818.5 128.7 L826.2 155.1 L834.0 185.5 L841.8 210.8 L849.5 223.0 L857.2 226.1 L865.0 230.7 L872.8 239.2 L880.5 244.4 L888.2 243.0 L896.0 241.8 L903.8 245.6 L911.5 248.8 L919.2 244.8 L927.0 237.5 L934.8 235.2 L942.5 237.5 L950.2 236.7 L958.0 231.8 L965.8 230.6 L973.5 236.6 L981.2 242.8 L989.0 242.8 L996.8 241.0 L1004.5 244.0 L1012.2 248.8 L1020.0 247.4" fill="none" stroke="#5EEAD4" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="400.0" y1="99" x2="400.0" y2="281" stroke="#FBBF24" stroke-width="2" stroke-dasharray="4 5"/>
+<circle cx="400.0" cy="116.3" r="7" fill="#FBBF24" stroke="#0F172A" stroke-width="3"/>
+<rect x="360.0" y="104.0" width="80" height="26" rx="8" fill="#F59E0B"/>
+<text x="400.0" y="121.0" fill="#111827" text-anchor="middle" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="700">01:40</text>
+<line x1="803.0" y1="99" x2="803.0" y2="281" stroke="#FBBF24" stroke-width="2" stroke-dasharray="4 5"/>
+<circle cx="803.0" cy="97.6" r="7" fill="#FBBF24" stroke="#0F172A" stroke-width="3"/>
+<rect x="763.0" y="104.0" width="80" height="26" rx="8" fill="#F59E0B"/>
+<text x="803.0" y="121.0" fill="#111827" text-anchor="middle" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="700">03:50</text>
+<circle cx="96" cy="340" r="5" fill="#5EEAD4"/><text x="110" y="345" font-size="15" fill="#CBD5E1" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif">弹幕活跃度（模拟）</text>
+<rect x="390" y="331" width="18" height="15" rx="3" fill="#F59E0B" fill-opacity=".45" stroke="#FBBF24" stroke-width="1"/><text x="418" y="345" font-size="15" fill="#CBD5E1" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif">峰值附近的建议复查窗口</text>
+<text x="1020" y="347" font-size="14" text-anchor="end" fill="#94A3B8" font-family="Noto Sans CJK SC, Microsoft YaHei, PingFang SC, sans-serif">候选 ≠ 重要事实</text>
+</svg>

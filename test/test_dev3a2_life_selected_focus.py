@@ -43,7 +43,7 @@ class FocusedPreviewTest(unittest.TestCase):
             self.assertEqual(frame['status'],'frames_ready')
             self.assertEqual(frame['focus_window'],{'startSeconds':21.0,'endSeconds':51.0})
             self.assertTrue(all(21<=t<=51 for t in frame['times']))
-            self.assertEqual(frame['sampling']['sampler_version'],3)
+            self.assertEqual(frame['sampling']['sampler_version'],4)
             with patch.object(pv,'_call_local_ollama',return_value='官方播放器的局部低清预览画面，仅可确认采样片段') as mdl:
                 analysed=pv.analyze_preview(BV,home,enabled=True,provider='ollama',model='qwen3.5:4b',
                     focus_start=21,focus_end=51)

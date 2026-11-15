@@ -19,14 +19,16 @@ import time
 from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
-from PIL import Image, ImageChops, ImageStat
+from PIL import Image, ImageChops, ImageStat, ImageDraw
 
 BV_RE = re.compile(r'BV[0-9A-Za-z]{10}\Z')
 VIDEO_FILE_MAX = 24 * 1024 * 1024
 FRAME_W, FRAME_H, FRAME_RATE = 192, 108, 2
 MAX_WINDOW = 120
 MAX_FRAMES = MAX_WINDOW * FRAME_RATE
-SAMPLER_VERSION = 4
+SAMPLER_VERSION = 5
+MAX_SUPPORTED_DURATION = 2700  # non-film content; 45 min hard limit
+FRAME_PLANS = (12, 24, 48)
 
 
 class AdaptiveUnavailable(ValueError):
@@ -72,7 +74,7 @@ def _playurl(bvid):
         duration = float(duration)
     except (ValueError, TypeError):
         raise AdaptiveUnavailable('video_duration_unavailable') from None
-    if not cid or not 3 <= duration <= 43200:
+    if not cid or not 3 <= duration <= MAX_SUPPORTED_DURATION:
         raise AdaptiveUnavailable('video_duration_unavailable')
     # fnval=0 requests a single progressive DURL. DASH and protected/paid
     # sessions are deliberately out of scope for this first bounded decoder.
@@ -93,7 +95,7 @@ def _playurl(bvid):
         raise AdaptiveUnavailable('video_size_unavailable') from None
     if size <= 0 or size > VIDEO_FILE_MAX:
         raise AdaptiveUnavailable('video_exceeds_24mb_limit')
-    return _cdn_url(stream.get('url')), size, duration
+    return _cdn_url(stream.get('url')), size, duration, int(cid)
 
 
 def _download_video(url, path, expected_size):
@@ -237,33 +239,204 @@ def _detect_scenes(images, *, start, max_selected):
         'note':'从可访问的视频流离线稀疏采样，切镜点仅为0.5秒粒度候选，非逐帧准确分镜；未读取音轨'}
 
 
-def acquire_adaptive_frames(bvid, *, max_frames=2, focus=None):
-    """Return in-process JPEG frames or a typed reason to use videoshot."""
+def _choose_windows(duration, budget, focus, heat=None):
+    """Use full-timeline strata plus up to two danmaku hints, never just peaks.
+
+    Viewer reactions are delayed and noisy. Reserve >= 3/4 of windows for
+    uniform coverage and let peaks augment, rather than replace, that view.
+    """
+    if focus:
+        return [(float(focus['startSeconds']), float(focus['endSeconds']))]
+    if duration <= 120:
+        return [(0.0, duration)]
+    if heat and max(heat['points']) <= max(0., statistics.median(heat['points']) * 1.4):
+        heat = None  # No meaningful peak: no slots are reserved for crowd reactions.
+    slices = 4 if budget <= 12 else (6 if budget <= 24 else 8)
+    width = min(15.0, 120.0 / slices)
+    heat_slots = 0 if not heat else min(2, slices // 4)
+    uniform_slots = slices - heat_slots
+    windows = []
+    for i in range(uniform_slots):
+        midpoint = duration * (i + 0.5) / uniform_slots
+        start = max(0., min(duration - width, midpoint - width / 2))
+        windows.append((round(start, 2), round(start + width, 2)))
+    if heat_slots:
+        # Score a bounded peak list once, not one HTTP request per timestamp.
+        step = heat['step']
+        values = heat['points']
+        baseline = statistics.median(values)
+        ranked = sorted(range(len(values)), key=lambda i: (-values[i], i))
+        for index in ranked:
+            if len(windows) >= slices:
+                break
+            if values[index] <= max(0, baseline * 1.4):
+                break
+            # Danmaku can arrive several seconds after the noteworthy action.
+            midpoint = max(0., min(duration, (index + .5) * step - 5.))
+            start = max(0., min(duration - width, midpoint - width / 2))
+            candidate = (round(start, 2), round(start + width, 2))
+            if any(max(0., min(b, candidate[1]) - max(a, candidate[0])) > width * .2
+                   or abs((a+b)/2 - (candidate[0]+candidate[1])/2) < width
+                   for a,b in windows):
+                continue
+            windows.append(candidate)
+        # Sparse/fake peaks may not fill both slots: restore uniform coverage.
+        for i in range(slices):
+            if len(windows) >= slices:
+                break
+            midpoint = duration * (i + .5) / slices
+            start = max(0., min(duration-width, midpoint-width/2))
+            candidate = (round(start,2), round(start+width,2))
+            if any(abs((a+b)/2 - midpoint) < width*.6 for a,b in windows):
+                continue
+            windows.append(candidate)
+    return sorted(windows)
+
+
+def _scene_candidates(images, starts, *, heat=None, limit=24):
+    """Coverage first; changes, motion and optional viewer activity rank extras.
+
+    Input is only *locally decoded* frames, grouped by separate decode window.
+    No artificial cuts are inferred between different windows.
+    """
+    buckets=[]
+    for start, pictures in zip(starts, images):
+        entries=[]
+        for i,picture in enumerate(pictures):
+            prev=pictures[i-1] if i else picture
+            diff=_frame_difference(prev,picture)
+            before=pictures[i-2] if i>1 else picture
+            jump=diff >= .19 and _frame_difference(before,prev)<.18
+            second=round(start+i/FRAME_RATE,2)
+            from video_heat_signal import heat_at
+            audience=heat_at(heat,second)
+            score=(.32 if jump else 0)+min(.22,diff*.8)+.31*audience+.15
+            entries.append({'second':second,'image':picture,'thumb':picture.resize((24,14)),'score':score,
+                            'jump':jump,'diff':diff,'audience':audience})
+        if entries:
+            buckets.append(entries)
+    if not buckets:
+        raise AdaptiveUnavailable('no_decoded_frames')
+    # Uniformly cover all sampled windows. A static shot needs one observation.
+    chosen=[]
+    def add(item):
+        if item in chosen:
+            return False
+        if any(abs(item['second']-prev['second'])<.45 for prev in chosen):
+            return False
+        # Avoid duplicate static shots even across separate timeline windows.
+        if any(_frame_difference(item['thumb'],prev['thumb'])<.013 for prev in chosen):
+            return False
+        chosen.append(item)
+        return True
+    for bucket in buckets:
+        add(bucket[len(bucket)//2])
+    per_window_cap=max(2,math.ceil(limit/len(buckets)*1.75))
+    per_window_counts={id(bucket):0 for bucket in buckets}
+    for bucket in buckets:
+        per_window_counts[id(bucket)]=sum(x in chosen for x in bucket)
+    # Candidate weighting retains weak uniform coverage and avoids concentrating on one peak.
+    while len(chosen)<limit:
+        ranked=[]
+        for bucket in buckets:
+            if per_window_counts[id(bucket)]>=per_window_cap:
+                continue
+            for item in bucket:
+                if item in chosen or any(abs(item['second']-x['second'])<1.5 for x in chosen):
+                    continue
+                if chosen and min(_frame_difference(item['thumb'],x['thumb']) for x in chosen) < .025:
+                    continue
+                score=item['score']+ .18*min(1, min(abs(item['second']-x['second']) for x in chosen)/15)
+                score-=.09*per_window_counts[id(bucket)]
+                ranked.append((score,-item['second'],bucket,item))
+        if not ranked:
+            break
+        ranked.sort(key=lambda x:(x[0],x[1]),reverse=True)
+        _,__,bucket,item=ranked[0]
+        if not add(item):break
+        per_window_counts[id(bucket)]+=1
+    chosen.sort(key=lambda x:x['second'])
+    return chosen, {'scene_change_seconds':[x['second'] for bucket in buckets for x in bucket if x['jump']][:24],
+                   'motion_hotspots_seconds':[x['second'] for x in sorted(
+                       (e for bucket in buckets for e in bucket if e['diff']>.045),
+                       key=lambda x:x['diff'],reverse=True)[:12]],
+                   'heat_candidates_seconds':[x['second'] for x in chosen if x['audience']>=.7][:12],
+                   'candidates_examined':sum(map(len,buckets)),
+                   'windows_covered':len(buckets),
+                   'frames_selected':len(chosen)}
+
+
+def _make_storyboards(items):
+    """12 individually timestamped decoded moments per bounded image board."""
+    from PIL import ImageFont
+    output=[]
+    for start in range(0,len(items),12):
+        chunk=items[start:start+12]
+        tile_w,tile_h=FRAME_W,FRAME_H+20
+        grid=Image.new('RGB',(4*tile_w,3*tile_h),(19,23,30))
+        paint=ImageDraw.Draw(grid)
+        for j,item in enumerate(chunk):
+            x=(j%4)*tile_w;y=(j//4)*tile_h
+            grid.paste(item['image'],(x,y))
+            t=item['second']
+            paint.text((x+5,y+FRAME_H+2), '%02d:%02d'%(int(t//60),int(t%60)),fill=(247,247,247))
+        out=BytesIO();grid.save(out,format='JPEG',quality=86,optimize=True)
+        output.append({'second':chunk[0]['second'],'bytes':out.getvalue(),
+                       'rank':len(output),'tile_times':[x['second'] for x in chunk],
+                       'tile_count':len(chunk)})
+    return output
+
+
+def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'):
+    """Return storyboards *of actual decoded moments* or an explicit fallback reason."""
     if not BV_RE.fullmatch(str(bvid or '')):
         raise AdaptiveUnavailable('invalid_bvid', fallback=False)
+    if depth not in ('standard','deep'):
+        raise AdaptiveUnavailable('invalid_view_depth',fallback=False)
     if focus is not None and (not isinstance(focus, dict)
         or type(focus.get('startSeconds')) not in (int, float)
         or type(focus.get('endSeconds')) not in (int, float)):
         raise AdaptiveUnavailable('invalid_focus_window', fallback=False)
-    limit = max(1, min(3, int(max_frames)))
+    configured=int(max_frames)
+    if configured not in FRAME_PLANS:
+        raise AdaptiveUnavailable('invalid_frame_plan', fallback=False)
+    limit = min(configured,12) if depth=='standard' else configured
     if not shutil.which('ffmpeg'):
         raise AdaptiveUnavailable('ffmpeg_not_installed')
-    url, size, duration = _playurl(bvid)
-    start = float(focus['startSeconds']) if focus else 0.0
-    end = float(focus['endSeconds']) if focus else min(duration, 60.0)
-    if (not math.isfinite(start) or not math.isfinite(end) or start < 0
-        or end > duration + 0.01 or end - start < 1 or end - start > MAX_WINDOW):
+    url, size, duration, cid = _playurl(bvid)
+    if focus and (not math.isfinite(windows[0][0]) or not math.isfinite(windows[0][1])
+        or windows[0][0]<0 or windows[0][1]>duration+.01
+        or windows[0][1]-windows[0][0]<3 or windows[0][1]-windows[0][0]>MAX_WINDOW):
         raise AdaptiveUnavailable('window_outside_video')
-    # Uses the OS temporary directory, not Life Memory or video-cache.
+    # Heat is optional and applies to *decoded video* only; never to videoshot.
+    from video_heat_signal import obtain_heat_signal
+    heat=obtain_heat_signal(bvid,cid,duration)
+    windows = _choose_windows(duration,limit,focus,heat=heat)
+    all_images=[]
+    started=time.monotonic()
     with tempfile.TemporaryDirectory(prefix='dafeiyu-scene-') as folder:
         ext = '.flv' if parse.urlsplit(url).path.lower().endswith('.flv') else '.mp4'
         filename = Path(folder) / ('public-video' + ext)
         count = _download_video(url, filename, size)
-        images = _decode_samples(filename, start=start, length=end-start)
-        frames, sampling = _detect_scenes(images, start=start, max_selected=limit)
-    sampling.update(source_type='bili-public-playurl-durl', input_bytes=count,
-                    clip_window={'startSeconds':start, 'endSeconds':end})
-    return {'ok':True, 'bvid':bvid, 'status':'frames_ready', 'frames':frames,
-            'times':[f['second'] for f in frames], 'sampling':sampling,
+        for start,end in windows:
+            if time.monotonic()-started>95:
+                raise AdaptiveUnavailable('video_sampling_budget_exhausted')
+            all_images.append(_decode_samples(filename,start=start,length=end-start))
+    moments,info=_scene_candidates(all_images,[start for start,_ in windows],heat=heat,limit=limit)
+    boards=_make_storyboards(moments)
+    coverage=round(sum(end-start for start,end in windows),1)
+    sampling={'strategy':'decoded-storyboard-stratified-2fps','sampler_version':SAMPLER_VERSION,
+              'source_type':'bili-public-playurl-durl','input_bytes':count,
+              'clip_window':focus if focus else {'startSeconds':0.,'endSeconds':duration},
+              'sampled_windows':[{'startSeconds':a,'endSeconds':b} for a,b in windows],
+              'sampled_duration_seconds':coverage,'video_duration_seconds':duration,
+              'heat_source':heat['source'] if heat else 'unavailable',
+              'viewer_heat_is_content_evidence':False,'depth':depth,
+              'frame_plan':configured,'frame_budget':limit,'storyboard_count':len(boards),
+              'sample_interval_seconds':1/FRAME_RATE,
+              'note':'全片按时间分区稀疏抽样，再结合切镜、运动和可选弹幕活跃度排序；并未连续观看、OCR 或理解音轨'}
+    sampling.update(info)
+    return {'ok':True, 'bvid':bvid, 'status':'frames_ready', 'frames':boards,
+            'times':[x['second'] for x in moments], 'sampling':sampling,
             'focus_window':focus, 'image_source':'B站公开视频片段（离线解码）',
-            'notice':'仅分析公开媒体文件中稀疏采样的静态帧，不能推断完整剧情或音频内容'}
+            'notice':'每张分镜拼图包含多个带时间码的公开视频采样时刻；未逐帧观看完整视频或听到音频'}
