@@ -3,18 +3,26 @@ import assert from 'node:assert/strict'
 import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller} from '../lib/video-dependencies.mjs'
+import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallCommand} from '../lib/video-dependencies.mjs'
 const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
 const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
 const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
 const mcp=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
 
-test('仅 AI 模型页有辅助能力开关，视频探索只提供引导，统一独立保存',()=>{
+test('视觉模型区统一显示 FFmpeg/Whisper，评论梗图仅在评论页',()=>{
   for(const id of ['models-transcribe','models-asr-model','models-comment-memes','models-comment-memes-debug','models-whisper-last','models-ffmpeg-test'])
     assert.equal((html.match(new RegExp(`id="${id}"`,'g'))||[]).length,1,id)
   for(const id of ['bili-transcribe','bili-asr-model','bili-comment-memes','bili-comment-memes-debug'])
     assert.doesNotMatch(html,new RegExp('id="'+id+'"'))
   assert.match(html,/data-open-tab="models" data-open-anchor="video-aux-dependencies"/)
+  const vision=html.slice(html.indexOf('<details class="settings-section model-task"><summary><strong>视觉识别模型'),html.indexOf('<details class="settings-section model-task"><summary><strong>人生反思'))
+  assert.match(vision,/id="video-aux-dependencies"/)
+  assert.match(vision,/id="models-ffmpeg-install"/)
+  assert.match(vision,/id="models-whisper-install"/)
+  assert.doesNotMatch(vision,/id="models-comment-memes"/)
+  const comments=html.slice(html.indexOf('<section id="panel-comments"'),html.indexOf('<section id="panel-meme"'))
+  assert.match(comments,/id="models-comment-memes"/)
+  assert.match(comments,/id="models-memes-save"/)
   assert.match(ui,/const loadVideoAux=async/)
   assert.match(ui,/models-aux-save/)
   assert.doesNotMatch(ui,/\['bili-transcribe','transcribe'\]/)
@@ -55,8 +63,10 @@ test('Whisper selected-model cache requires actual files; a hub dir alone is ins
     assert.doesNotMatch(JSON.stringify(record),/PRIVATE|BV123/)
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
-test('one-click FFmpeg installer requires Windows + winget, fixed package, and visible window',async()=>{
-  assert.equal((await openFFmpegInstaller({platform:'linux'})).ok,false)
+test('FFmpeg Windows winget is fixed, and macOS/Linux package commands never accept user input',async()=>{
+  assert.match(ffmpegInstallCommand({platform:'darwin',run:()=>({status:0}),exists:x=>x==='/opt/homebrew/bin/brew'}).binary,/brew/)
+  assert.deepEqual(ffmpegInstallCommand({platform:'linux',run:cmd=>({status:['pkexec','apt-get'].includes(cmd)?0:1})}).args,['apt-get','install','-y','ffmpeg'])
+  assert.equal(ffmpegInstallCommand({platform:'darwin',run:()=>({status:1})}).error.includes('Homebrew'),true)
   assert.equal((await openFFmpegInstaller({platform:'win32',run:()=>({status:1})})).ok,false)
   let launch=[]
   const res=await openFFmpegInstaller({platform:'win32',run:()=>({status:0}),spawn:(exe,args,options)=>{

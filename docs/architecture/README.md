@@ -1,3 +1,5 @@
+> 当前开发增量：**2.8.1-dev.3b.4 · 视觉模型与依赖管理一体化**。视觉识别模型、FFmpeg/Whisper 同页；模型人工认可依据 Ollama 模型摘要持久恢复，系统组件显式受控安装；详见 [dev.3b.4 设计与验收](2.8.1-video-perception-dev3b4.md)。正式版 2.8.0 不包含上述功能。
+
 > **2.8.1-dev.3b.3 依赖入口收口：** [快速设置安装主依赖及勾选的 FFmpeg/Whisper，可在 AI 模型页设置语音识别并验收实际回执](2.8.1-video-perception-dev3b3.md)。两类安装使用不同的原有安装器，避免重复控制与未经确认的大模型下载。
 
 > **2.8.1-dev.3b.3 本轮视频依赖集中管理：** [FFmpeg 状态、自测及 Windows 显式 winget 安装、Whisper 安装/模型缓存/真实转写状态、辅助能力迁移至 AI 模型页](2.8.1-video-perception-dev3b3.md)。修复选择 Whisper 模型后仍复用旧 MCP 默认型号的接线；离线检查不代表 Windows 实机/真实 B站验收。

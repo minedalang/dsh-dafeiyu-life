@@ -4,7 +4,7 @@ import {readFileSync,existsSync} from 'node:fs'
 import {EventEmitter} from 'node:events'
 import {buildVideoEvidenceBundle} from '../lib/video-evidence-bundle.mjs'
 import {buildVideoPerceptionTimeline} from '../lib/video-perception-timeline.mjs'
-import {openOllamaPowerShell,findWindowsOllama} from '../lib/ollama-start-windows.mjs'
+import {ensureOllamaService,ollamaExecutable} from '../lib/ollama-service.mjs'
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8')
 const bvid='BV1234567890', info={bvid,title:'测试字幕时间对齐'}, subtitles={bvid,text:'第一句\n第二句',timed_segments:[{startSeconds:1,endSeconds:3,text:'第一句'},{startSeconds:20,endSeconds:24,text:'第二句'}]}
 test('only official explicit seconds produce caption spans, aligned to trusted low-res frames',()=>{
@@ -41,28 +41,27 @@ test('timeline clamps captions, caps anchors, ignores invalid and unverified vis
  const noVision=buildVideoEvidenceBundle({bvid,info,visual:{bvid,ok:false,status:'vision_error',times:[42],description:'假证据'}})
  assert.equal(buildVideoPerceptionTimeline({bvid,evidence:noVision,visual:{times:[42]}}).anchors.length,0)
 })
-test('PowerShell launcher is opt-in, Windows only, with a fixed safely quoted executable',async()=>{
- assert.equal((await openOllamaPowerShell({platform:'linux'})).ok,false)
- assert.match((await openOllamaPowerShell({platform:'win32',find:()=>null})).error,/未找到/)
+test('native Ollama recovery is opt-in by local mode, without PowerShell or shell input',async()=>{
+ let online=false
  const calls=[]
- const result=await openOllamaPowerShell({platform:'win32',find:()=>"C:\\O'Neil\\ollama.exe",spawn:(cmd,args,options)=>{
-   calls.push({cmd,args,options}); const child=new EventEmitter();child.unref=()=>{};queueMicrotask(()=>child.emit('close',0));return child
+ const launched=await ensureOllamaService({probe:async()=>({running:online}),executable:'ollama',waitFor:async()=>{online=true},spawn:(cmd,args,options)=>{
+   calls.push({cmd,args,options});const child=new EventEmitter();child.unref=()=>{};
+   queueMicrotask(()=>child.emit('spawn'));return child
  }})
- assert.equal(result.opened,true)
- assert.equal(calls[0].cmd,'powershell.exe')
+ assert.equal(launched.ok,true)
+ assert.equal(calls[0].cmd,'ollama')
+ assert.deepEqual(calls[0].args,['serve'])
  assert.equal(calls[0].options.shell,false)
  assert.equal(calls[0].options.windowsHide,true)
- assert.match(Buffer.from(calls[0].args[3].match(/'([A-Za-z0-9+/=]+)'\) -WindowStyle/)[1],'base64').toString('utf16le'),/O''Neil/)
- assert.ok(!calls[0].args[3].includes('HTTPS_PROXY'))
- assert.equal(findWindowsOllama({env:{},where:()=>({status:1}),exists:()=>false}),null)
+ assert.equal(ollamaExecutable({platform:'darwin',exists:x=>x==='/Applications/Ollama.app/Contents/Resources/ollama'}),'/Applications/Ollama.app/Contents/Resources/ollama')
 })
-test('owner-only launcher route, DSH ability guide and README vector diagrams are wired',()=>{
+test('owner-only Ollama recovery route, DSH ability guide and README vector diagrams are wired',()=>{
  const src=read('index.js'),html=read('lib/management-console.html'),ui=read('lib/management-console.js'),readme=read('README.md')
- assert.match(src,/\/api\/bili-duty\/local-vision\/start-ollama/)
+ assert.match(src,/\/api\/bili-duty\/local-vision\/ensure/)
  assert.match(src,/req\.socket\?\.remoteAddress/)
  assert.match(ui,/dshVisionModelSnippet/)
- assert.match(ui,/local-vision\/start-ollama/)
- for(const id of ['local-vision-start-ollama','dsh-vision-config-copy','dsh-vision-capabilities-guide'])assert.ok(html.includes('id="'+id+'"'))
+ assert.match(ui,/local-vision\/ensure/)
+ for(const id of ['local-vision-ensure','dsh-vision-config-copy','dsh-vision-capabilities-guide'])assert.ok(html.includes('id="'+id+'"'))
  assert.match(readme,/video-perception-current\.svg/)
  assert.match(readme,/video-danmaku-heat-illustration\.svg/)
  assert.ok(existsSync(new URL('../docs/architecture/assets/video-perception-current.svg',import.meta.url)))

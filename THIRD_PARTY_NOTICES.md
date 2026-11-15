@@ -1,3 +1,11 @@
+## 2.8.1-dev.3b.4：跨平台安装器与第三方许可边界
+
+大肥鱼不通过 npm 分发 FFmpeg、Ollama 可执行文件、Whisper 环境或模型权重。安装器在用户主动确认后调用本机已受支持的系统包管理器，不代表用户已获得某个第三方的任何额外授权。
+
+- FFmpeg 可按构建选项适用 LGPL/GPL，macOS Homebrew 的 ffmpeg Formula 当前标注 GPL-3.0-or-later。具体以包管理器所实际安装的组件和发行者声明为准；插件只通过独立进程调用外部程序，不将二进制并入 MIT 插件。
+- Whisper/faster-whisper、Ollama 等的版权声明与使用限制仍参照前述原始许可证条目；模型权重许可不能一概视作插件的 MIT 许可。
+- FFmpeg：https://ffmpeg.org/legal.html · 系统版本：https://ffmpeg.org/download.html · macOS Formula：https://formulae.brew.sh/formula/ffmpeg
+
 ## 2.8.1-dev.3b.3 · 首次设置安装第三方依赖的补充说明
 
 - 本插件在管理中心「快速设置」提供用户可选的 FFmpeg（通过 Windows winget 固定包 ID `Gyan.FFmpeg.Essentials`）及本地 Whisper 安装。不内置 FFmpeg、Whisper 权重、winget 可执行文件；安装前提示使用者确认下载。

@@ -103,8 +103,8 @@ import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
 import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
 import {buildVideoEvidenceBundle} from './lib/video-evidence-bundle.mjs'
 import {buildVideoPerceptionTimeline} from './lib/video-perception-timeline.mjs'
-import {openOllamaPowerShell} from './lib/ollama-start-windows.mjs'
-import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller} from './lib/video-dependencies.mjs'
+import {ensureOllamaService} from './lib/ollama-service.mjs'
+import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus} from './lib/video-dependencies.mjs'
 import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-continuity.mjs'
 import {todoParentId} from './lib/todo-lineage.mjs'
 import {verifyLifeOutbound,lifeFactsFromCompletedTodos,lifeFactsFromCreatorSnapshot,lifeFactFromReceipt} from './lib/verified-life-facts.mjs'
@@ -1485,7 +1485,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let lifeMemory = null
   let embeddingRuntime = null
   let embeddingIndex = null
-  const localVisionModels=createLocalVisionModelManager({logger:{warn:m=>log('本地视觉模型：'+m)}})
+  const localVisionModels=createLocalVisionModelManager({stateDir,logger:{warn:m=>log('本地视觉模型：'+m)}})
   let personalityEvolution = null
   const personalityContext=(scene,maxChars)=>{
     try{
@@ -6970,7 +6970,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     const setupAccess = (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
-      path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/open' ||
+      path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&path==='/api/bili-duty/video-dependencies/status')
     if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
     // ⭐ 2026-10-21：每条视频一份笔记 —— **宿主拆报告**，不让模型多写一个字（零 token、不会写错）
@@ -8133,22 +8133,22 @@ logger:{warn:m=>log('社交意图：'+m)}
         'Cache-Control':'private, max-age=3600','X-Content-Type-Options':'nosniff'})
       return res.end(png)
     }
-    if(req.method==='POST'&&path==='/api/bili-duty/local-vision/start-ollama'){
+    if(req.method==='POST'&&path==='/api/bili-duty/local-vision/ensure'){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       const ip=String(req.socket?.remoteAddress||'')
       if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
-        return sendJson(res,403,{ok:false,error:'仅允许在本机 DSH 管理中心启动 Ollama'})
+        return sendJson(res,403,{ok:false,error:'仅允许在本机 DSH 管理中心恢复 Ollama'})
       const running=await localVisionModels.list()
       if(running.running)return sendJson(res,200,{ok:true,alreadyRunning:true,message:'Ollama 本地服务已经运行，无需再次启动'})
-      const started=await openOllamaPowerShell()
+      const started=await ensureOllamaService({probe:()=>localVisionModels.list()})
       return sendJson(res,started.ok?200:409,started)
     }
     if(req.method==='GET'&&path==='/api/bili-duty/video-dependencies/status'){
       const whisper=readWhisperReadiness({stateDir,model:cfg.asrModel||'small',
         pythonAvailable:existsSync(asrPython()),packageAvailable:hasPkg(asrDir,'faster_whisper')})
-      return sendJson(res,200,{ok:true,ffmpeg:probeFFmpeg(),whisper:{...whisper,
+      return sendJson(res,200,{ok:true,ffmpeg:probeFFmpeg(),ffmpegInstall:ffmpegInstallStatus(),whisper:{...whisper,
         enabled:cfg.transcribe===true,installing:installingAsr,
         installLogTail:(()=>{try{return readFileSync(asrLogFile,'utf8').slice(-700)}catch{return ''}})()}})
     }
@@ -8180,7 +8180,10 @@ logger:{warn:m=>log('社交意图：'+m)}
         const entry=getLocalVisionModel(id)
         if(!entry)return sendJson(res,400,{ok:false,error:'仅支持预设的两款本地视觉模型'})
         if(path.endsWith('/install')){
-          if(!(await localVisionModels.list()).running)return sendJson(res,409,{ok:false,error:'本机 Ollama 未启动，请先安装并启动 Ollama'})
+          const current=await localVisionModels.list()
+          if(!current.running)return sendJson(res,409,{ok:false,error:'本机 Ollama 未启动，请先检查并恢复 Ollama 服务'})
+          const existing=current.models.find(x=>x.id===id)
+          if(existing?.installed)return sendJson(res,200,{ok:true,alreadyInstalled:true,verified:existing.verified,message:'模型已安装；不重复下载，必要时仅进行图片人工验收'})
           const job=localVisionModels.start(id)
           void job.catch(e=>log('本地视觉模型安装或自检失败：'+String(e?.message||e).slice(0,130)))
           return sendJson(res,202,{ok:true,started:true,model:id})

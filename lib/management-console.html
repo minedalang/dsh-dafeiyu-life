@@ -1579,8 +1579,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <div class="quick-config-actions"><button id="fs-main-deps-install" type="button" class="primary">安装主依赖</button><button id="fs-main-deps-refresh" type="button">刷新依赖状态</button></div>
     <details><summary>查看主依赖安装日志末尾</summary><pre id="fs-main-deps-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto">暂无安装记录</pre></details>
     <div class="video-aux-heading" style="margin-top:16px"><strong>② 视频增强组件 · 自愿勾选</strong><span class="pill">不影响首次设置必需项</span></div>
-    <p class="muted">FFmpeg 用于解码真实视频；Whisper 用于可选语音转写。Whisper small 模型约 484 MB，其他型号可能更大，且还需安装 Python 依赖。安装不会自动开启语音转写或触发视频观看。</p>
-    <div class="fields"><label class="checkline"><input id="fs-install-ffmpeg" type="checkbox">安装 FFmpeg（Windows 使用系统 winget，打开可见 PowerShell）</label><label class="checkline"><input id="fs-install-whisper" type="checkbox">安装 Whisper 转写环境及当前已保存的模型（下载可能超过数百 MB）</label></div>
+    <p class="muted">FFmpeg 预计下载约 40 MB～1 GB+（依平台与系统依赖变化）；Whisper tiny / base / small / medium / large-v3 模型预计约 75 MB / 145 MB / 485 MB / 1.5 GB / 3 GB，另需 Python 环境与磁盘缓存。安装不会自动开启语音转写或触发视频观看。</p>
+    <div class="fields"><label class="checkline"><input id="fs-install-ffmpeg" type="checkbox">安装 FFmpeg（Windows / macOS / 支持的 Linux 包管理器）</label><label class="checkline"><input id="fs-install-whisper" type="checkbox">安装 Whisper 转写环境及当前已保存的模型（下载可能超过数百 MB）</label></div>
     <p id="fs-addons-status" class="quick-current" role="status" aria-live="polite">正在检查视频增强组件…</p>
     <div class="quick-config-actions"><button id="fs-addons-install" type="button">安装勾选的视频组件</button><button type="button" data-open-tab="models" data-open-anchor="video-aux-dependencies">选择 Whisper 模型与启用转写 ↗</button></div>
     <p id="fs-addons-detail" class="setting-note" role="status">安装 FFmpeg 后可能需重启 DSH；Whisper 转写是否生效，请到 AI 模型页查看最近真实运行回执。</p>
@@ -1653,7 +1653,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   </div>
 </section>
 <section id="panel-models" hidden>
-<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择一个默认模型，可应用到所有任务；需要时再展开单独调整。连接测试会实际调用模型，可能产生费用；测试连接不计入统计。</p><p><a href="#video-aux-dependencies" style="font-weight:650">🎞️ 前往 FFmpeg、Whisper、字幕与梗图设置 ↓</a></p></div></div>
+<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择一个默认模型，可应用到所有任务；需要时再展开单独调整。连接测试会实际调用模型，可能产生费用；测试连接不计入统计。</p><p><a href="#models-vision" style="font-weight:650">🎞️ 视觉模型、FFmpeg 与 Whisper 已统一收纳在「视觉识别模型」中 ↓</a></p></div></div>
 <div class="settings-stack">
 <div class="settings-section" id="headless-model-sync-panel">
 <h4>🔐 后台模型同步与检测（独立 Agent 必需）</h4>
@@ -1686,7 +1686,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <details class="settings-section model-task"><summary><strong>主人 Agent 模型（理解请求与规划） <span class="help-tip" title="无任意文件/Shell/平台写入能力，工具由白名单校验。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-ownerDmAgent-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-ownerDmAgent-test" class="model-test-button">测试连接</button><span id="models-ownerDmAgent-test-result" class="muted" role="status"></span></div><p class="muted">用于理解主人私信、分解可执行的受限操作。按需调用；复杂多步任务建议较强推理及指令遵循模型，不授予任意 Shell 或文件权限。</p><div class="fields" id="models-ownerDmAgent"></div></div></details>
 <h4 class="model-role-group">② 视频、视觉与长期认识 · 按实际能力配置</h4>
 <details class="settings-section model-task"><summary><strong>视频 Agent 模型（选片与内容分析） <span class="help-tip" title="用于独立视频 Agent 的选片与内容分析；Life 是否委派由行为决策模型自主决定。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">视频 Agent 启动后，使用此模型进行自主选片、内容阅读与分析。Life 是否逛首页及是否委派 Agent，由「行为决策模型」决定。此模型主要阅读文字线索、调用搜索与字幕工具；只有在需要看画面时才按下方「视觉识别」配置使用多模态能力。不会强制启动或评论。独立视频 Agent 需完成 Headless 模型验证。</p><div class="fields" id="models-video"></div></div></details>
-<details class="settings-section model-task"><summary><strong>视觉识别模型 <span class="help-tip" title="可选择 DSH 视觉模型（使用下方已配置的 Provider/模型）或本地 Ollama 视觉模型；连接测试不能代替图片验收。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">只在预览识图确实启用且需要理解画面时调用，不负责挑片、安排 Life 行动或写评论。仅提供「DSH 识图模型」与「本地 Ollama 视觉模型」两种方式。DSH 使用此处填写的 Provider / 模型，Ollama 使用下方已安装并经过人工认可的本地模型；选择本地模式时 DSH Provider / 模型自动置灰且不参与当前视觉运行。两种方式共用下方唯一的原图人工验收面板。上方普通“测试连接”只检查模型可达，不等于实际识图成功。</p><div class="fields" id="models-vision"></div>
+<details class="settings-section model-task"><summary><strong>视觉识别模型 <span class="help-tip" title="可选择 DSH 视觉模型（使用下方已配置的 Provider/模型）或本地 Ollama 视觉模型；连接测试不能代替图片验收。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">只在鱼鱼自主选择视觉理解时调用，不负责挑片、安排 Life 行动或写评论。仅提供「DSH 识图模型」与「本地 Ollama 视觉模型」两种方式。DSH 使用此处填写的 Provider / 模型，Ollama 使用下方已安装并经过人工认可的本地模型；选择本地模式时 DSH Provider / 模型自动置灰且不参与当前视觉运行。两种方式共用下方唯一的原图人工验收面板。上方普通“测试连接”只检查模型可达，不等于实际识图成功。</p><div class="fields" id="models-vision"></div>
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="independent_dsh">DSH 识图模型（使用上方 Provider / 模型）</option><option value="independent_local">本地 Ollama 视觉模型（下方一键安装）</option></select></div>
 <div><label class="checkline"><input id="models-vision-enabled" type="checkbox">启用视频视觉感知</label></div>
 <div><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></div></div>
@@ -1734,21 +1734,20 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell 启动的 Ollama 进程生效，不修改 Windows 用户级或系统级环境变量。若 Ollama 已在后台运行，请先退出以免端口占用。<a href="https://docs.ollama.com/faq#how-do-i-use-ollama-behind-a-proxy" target="_blank" rel="noopener noreferrer">查看 Ollama 官方网络代理说明</a>。</p></div>
 <div class="fields"><div><label for="local-vision-model">可选本地模型</label><select id="local-vision-model"><option value="qwen3.5-4b">Qwen3.5 4B</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B</option></select></div></div>
 <p id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</p>
-<p class="muted">“在 PowerShell 启动”仅支持 Windows，且须由你点击确认；不会安装 Ollama、修改系统代理或静默启动后台服务。若系统托盘已有 Ollama，请直接刷新；若窗口提示端口被占用，先退出已运行的实例。</p><progress id="local-vision-progress" max="100" value="0" hidden></progress>
-<div class="toolbar"><button type="button" id="local-vision-start-ollama">在 PowerShell 启动 Ollama</button><button type="button" id="local-vision-install">一键下载并识图</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-select">启用选中模型</button><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div>
-<p class="muted">模型下载完成后，请使用上方统一验收区识图；<strong>识别完成并不等于通过</strong>，需人工认可后才能启用。无需重复下载。运行时错误请核对 <code>ollama --version</code>。</p>
+<p class="muted">切换到本地识图或点击「检查并恢复服务」后，会尝试运行已安装的 Ollama（Windows / macOS / Linux）；不会自动安装、下载模型或修改网络代理。若系统未安装，请先从 Ollama 官网安装。模型已通过人工验收后，重启服务无需重复验收。</p><progress id="local-vision-progress" max="100" value="0" hidden></progress>
+<div class="toolbar"><button type="button" id="local-vision-ensure">检查并恢复 Ollama 服务</button><button type="button" id="local-vision-install">下载本地模型</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-select">启用选中模型</button><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div>
+<p class="muted">已安装的模型无需重新下载；已获人工认可且模型摘要未变时，重启 Ollama 后将恢复验收状态。未认可的模型请使用上方统一图片验收区，认可后即可启用。</p>
 <p class="muted">下载时展示的是 Ollama 当前文件层的进度（并非整个模型的总进度），切换到下一文件时百分比会重新计算；取消下载可能保留已缓存的分片。删除会移除 Ollama 全局模型，可能影响其他应用，需再次确认。网络问题请先检查代理是否被 Ollama 进程继承，再重试。真实 GPU/视频表现需本机验收。</p>
 </div>
-</div></details>
-<section class="settings-section video-aux-section" id="video-aux-dependencies" aria-label="视频感知依赖与辅助能力">
-  <h4>🎞️ 视频感知依赖与辅助能力</h4>
+<div class="video-aux-section" id="video-aux-dependencies" aria-label="视频感知依赖与辅助能力">
+  <h4>🎞️ 视频感知 · 解码和语音能力</h4>
   <p class="muted">视频分镜、字幕和本地转写在这里集中管理。<strong>启用不代表已经运行成功</strong>；安装/转写状态只依据真实运行证据。鱼鱼仍自行选择是否观看、看多深。</p>
   <div class="video-aux-cards">
     <div class="video-aux-card">
       <div class="video-aux-heading"><strong>🎬 FFmpeg · 真实视频解码</strong><span id="models-ffmpeg-badge" class="pill pending">检测中</span></div>
       <p id="models-ffmpeg-status" class="muted" role="status" aria-live="polite">正在检测 FFmpeg…</p>
-      <p class="muted">未安装时真实视频分镜可能降级为官方低清预览；不会假称已解码。Windows 使用 winget <code>Gyan.FFmpeg.Essentials</code> 安装，需手动确认，无法保证每条视频都能获取源文件。</p>
-      <div class="toolbar"><button type="button" data-open-tab="firststart" data-open-anchor="fs-deps-card">前往快速设置安装 ↗</button><button id="models-ffmpeg-test" type="button">视频解码自测</button><button id="models-ffmpeg-refresh" type="button">重新检测</button></div>
+      <p class="muted">未安装时真实视频分镜可能降级为官方低清预览；不会假称已解码。支持 Windows winget、macOS Homebrew，以及部分具有图形授权环境的 Linux 发行版；预计额外下载约 40 MB～1 GB 或更多（依赖随系统变化）。无法保证每条视频都能获取源文件。</p>
+      <div class="toolbar"><button type="button" id="models-ffmpeg-install">安装 FFmpeg</button><button id="models-ffmpeg-test" type="button">视频解码自测</button><button id="models-ffmpeg-refresh" type="button">重新检测</button></div>
       <p id="models-ffmpeg-test-result" class="setting-note" role="status">尚未进行解码自测。</p>
     </div>
     <div class="video-aux-card">
@@ -1757,20 +1756,15 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
       <div class="fields"><div><label for="models-asr-model">Whisper 模型</label><select id="models-asr-model"><option value="tiny">tiny · 更省资源</option><option value="base">base</option><option value="small">small · 默认</option><option value="medium">medium</option><option value="large-v3">large-v3 · 更高资源占用</option></select></div></div>
       <p id="models-whisper-status" class="muted" role="status" aria-live="polite">正在检查转写依赖…</p>
       <p id="models-whisper-last" class="setting-note" role="status">最近实际转写：暂无记录</p>
-      <p class="muted">仅在鱼鱼主动请求、没有可用官方字幕时才可能触发；安装好不代表用过。切换模型后须确保对应模型已下载。</p>
-      <div class="toolbar"><button type="button" data-open-tab="firststart" data-open-anchor="fs-deps-card">前往快速设置安装 ↗</button><button type="button" id="models-whisper-refresh">刷新转写状态</button></div>
+      <p class="muted">仅在鱼鱼主动请求、没有可用官方字幕时才可能触发；安装好不代表用过。模型预估体积：tiny ≈75 MB、base ≈145 MB、small ≈485 MB、medium ≈1.5 GB、large-v3 ≈3 GB；另需转写环境与缓存空间。</p>
+      <div class="toolbar"><button type="button" id="models-whisper-install">安装所选 Whisper 模型</button><button type="button" id="models-whisper-refresh">刷新转写状态</button></div>
       <details><summary>查看安装日志末尾（不含转写正文）</summary><pre id="models-whisper-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto"></pre></details>
     </div>
   </div>
-  <div class="settings-section" style="margin-top:14px">
-    <h4>🖼️ 评论梗图及调试</h4>
-    <label class="checkline"><input id="models-comment-memes" type="checkbox">评论时允许鱼鱼自主选择本地表情包</label>
-    <label class="checkline"><input id="models-comment-memes-debug" type="checkbox">记录表情包选择原因（调试用）</label>
-    <p class="muted">这里只移动原开关，不改变素材位置、评论权限或每日限额。具体素材仍在「表情包图库」管理。</p>
-  </div>
-  <div class="toolbar"><button id="models-aux-save" type="button" class="primary">保存辅助能力</button></div>
-  <p id="models-aux-save-status" class="setting-note" role="status">这里单独保存辅助能力，模型设置仍使用上方原按钮，不会相互覆盖。</p>
-</section>
+  <div class="toolbar"><button id="models-aux-save" type="button" class="primary">保存视频语音识别设置</button></div>
+  <p id="models-aux-save-status" class="setting-note" role="status">语音识别开关和型号在此保存；视觉模型路由使用本页「保存全部模型配置」，两者不覆盖。</p>
+</div>
+</div></details>
 <details class="settings-section model-task"><summary><strong>人生反思与经历提炼模型 <span class="help-tip" title="无平台写入工具；仅从真实可读经历筛选。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-reflection-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-reflection-test" class="model-test-button">测试连接</button><span id="models-reflection-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">从真实经历中筛选值得长期保留的认识；不是每次反思都必须产生记忆。频率相对低，建议使用较强推理与长文本归纳模型。</p><div class="fields" id="models-reflection"></div></div></details>
 <details class="settings-section model-task"><summary><strong>人生记忆检索模型 <span class="help-tip" title="只能选择真实 ID，不创造记忆或读取封存档案。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-memory-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-memory-test" class="model-test-button">测试连接</button><span id="models-memory-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责从允许召回的记忆候选中挑出有关记录。调用频率相对高，但需要一定语义理解与相关性判断能力，建议选速度快、具有基础推理能力的均衡模型，不建议只追求最便宜。</p><div class="fields" id="models-memory"></div></div></details>
 <h4 class="model-role-group">③ 低频辅助创作 · 优先表达质量与推理能力</h4>
@@ -2514,6 +2508,8 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 </section>
 <section id="panel-comments" hidden>
 <div class="feature-intro"><div><h2>💬 最近评论</h2><p>这里查看鱼鱼已经发送的公开评论。回复授权统一仍在本页保存；也可以从「社交互动」首页一键跳到对应设置。</p></div></div>
+<div class="settings-section" id="comments-meme-settings"><h4>🖼️ 评论梗图及调试</h4><label class="checkline"><input id="models-comment-memes" type="checkbox">评论时允许鱼鱼自主选择本地表情包</label><label class="checkline"><input id="models-comment-memes-debug" type="checkbox">记录表情包选择原因（调试用）</label><p class="muted">图片素材在「表情包图库」管理；这里只保存评论梗图权限，不改变评论额度。</p><div class="toolbar"><button id="models-memes-save" class="primary" type="button">保存评论梗图设置</button></div><p id="models-memes-save-status" class="setting-note" role="status"></p></div>
+
 <nav class="context-jump" aria-label="评论页分区"><a href="#comments-records">最近记录</a><a href="#comments-configuration">回复规则与授权</a><a href="#comment-at-section">被 @ 回复开关</a></nav>
 <details id="comments-settings-collapse" class="settings-category"><summary><strong>⚙️ 后台评论互动设置</strong><span>展开修改回复权限、自然续聊与额度</span></summary>
 <div id="comments-configuration" class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台评论互动设置</h3><button id="comments-refresh">刷新状态与记录</button></div><p id="comments-status" class="muted">正在读取状态…</p>

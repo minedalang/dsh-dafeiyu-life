@@ -6,11 +6,13 @@ import {join} from 'node:path'
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8')
 const html=read('lib/management-console.html'),ui=read('lib/management-console.js'),client=read('client.js'),server=read('index.js')
 
-test('quick setup owns the only main + auxiliary installation controls',()=>{
+test('quick setup owns main installer, both quick setup and AI models reuse optional installers',()=>{
   for(const id of ['fs-deps-card','fs-main-deps-install','fs-main-deps-refresh','fs-install-ffmpeg','fs-install-whisper','fs-addons-install'])
     assert.equal((html.match(new RegExp(`id="${id}"`,'g'))||[]).length,1,id)
-  assert.doesNotMatch(html,/id="models-ffmpeg-install"|id="models-whisper-install"/)
-  assert.match(html,/data-open-tab="firststart" data-open-anchor="fs-deps-card"/)
+  assert.match(html,/id="models-ffmpeg-install"/)
+  assert.match(html,/id="models-whisper-install"/)
+  assert.match(html,/id="models-ffmpeg-install"/)
+  assert.match(html,/id="models-whisper-install"/)
   assert.doesNotMatch(client,/onClick:onInstall\b|const onInstall\b|const onInstallAsr\b/)
   assert.match(client,/安装／修复主依赖/)
   assert.match(ui,/request\('\/install',\{\}\)/)
@@ -25,7 +27,7 @@ test('Whisper enabled control has recommended label, unchanged config and explic
   assert.match(ui,/addFfmpeg=\$\('fs-install-ffmpeg'\)\.checked,addWhisper=\$\('fs-install-whisper'\)\.checked/)
   assert.match(ui,/!addFfmpeg&&!addWhisper/)
   assert.match(ui,/confirmAction\(\{title:'安装勾选的视频增强组件？'/)
-  assert.match(html,/Whisper small 模型约 484 MB/)
+  assert.match(html,/Whisper tiny \/ base \/ small/)
   assert.doesNotMatch(html,/<input id="fs-install-whisper"[^>]*checked/)
   assert.match(ui,/\.textContent='FFmpeg：'/)
   assert.match(ui,/modelCached/)
@@ -43,11 +45,12 @@ test('installation before onboarding is allowed but optional installers keep loo
   assert.match(asr,/runAsrInstall\(\)/)
 })
 
-test('AI models owns single settings state, status and FFmpeg test but defers installation',()=>{
+test('AI models owns direct FFmpeg and Whisper installation plus status and FFmpeg decode test',()=>{
   assert.match(ui,/const loadVideoAux=async/)
   assert.match(ui,/models-ffmpeg-test/)
   assert.match(html,/id="models-whisper-last"/)
-  assert.doesNotMatch(ui,/\$\('models-whisper-install'\)|\$\('models-ffmpeg-install'\)/)
+  assert.match(ui,/\$\('models-whisper-install'\)/)
+  assert.match(ui,/\$\('models-ffmpeg-install'\)/)
   assert.match(ui,/installTail/)
 })
 
