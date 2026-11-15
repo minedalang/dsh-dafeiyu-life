@@ -149,9 +149,9 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         except (ValueError,UnicodeDecodeError):
             visual_instruction=''
         prompt_hash=hashlib.sha256(visual_instruction.encode('utf8')).hexdigest()[:16]
-        from preview_vision import _SAMPLER_VERSION, _FOCUS_SAMPLER_VERSION, _normalize_focus_window
+        from preview_vision import _SAMPLER_VERSION, _FOCUS_SAMPLER_VERSION, PREVIEW_BOARD_VERSION, _normalize_focus_window
         focus=_normalize_focus_window(focus_start,focus_end)
-        sampler_version=6 if perception_source=='adaptive' else (_FOCUS_SAMPLER_VERSION if focus else _SAMPLER_VERSION)
+        sampler_version=6 if perception_source=='adaptive' else PREVIEW_BOARD_VERSION
         suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
         if network_budget_bytes is not None:suffix+='-cap'+str(network_budget_bytes)
         source_suffix='-adaptive' if perception_source=='adaptive' else ''
