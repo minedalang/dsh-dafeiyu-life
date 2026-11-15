@@ -34,7 +34,7 @@ test('代码不增加任意视频 URL 或全量视频下载入口，不改变写
   assert.match(py,/_candidate_indices_from_primary/)
   assert.match(py,/_select_distinct_previews/)
   assert.match(py,/other\/\/slots==index\/\/slots/)
-  assert.match(py,/max_frames=max\(1,min\(3,int\(max_frames\)\)\)/)
+  assert.match(py,/max_frames=max\(1,min\(48 if storyboard else 3,int\(max_frames\)\)\)/)
   assert.match(mcp,/bili_preview_vision/)
   assert.doesNotMatch(py,/https:\/\/www\.bilibili\.com\/video\/\{bvid\}/)
 })

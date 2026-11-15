@@ -2378,7 +2378,7 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <label class="choice-card"><input type="radio" name="polling-choice" value="balanced" checked><span class="choice-icon">🌿</span><strong>自然适中 · 默认</strong><small>私信 2–15 分钟 · 评论与 @ 都是 2 分钟</small></label>
 <label class="choice-card"><input type="radio" name="polling-choice" value="responsive"><span class="choice-icon">⚡</span><strong>及时响应</strong><small>私信 1–10 分钟 · 评论与 @ 都是 2 分钟，注意限流</small></label>
 <label class="choice-card"><input type="radio" name="polling-choice" value="custom"><span class="choice-icon">🎛️</span><strong>自己设定</strong><small>设置私信最短／最长、评论及 @ 检查间隔</small></label>
-</div><p class="muted" id="polling-choice-note">选择后可继续调整数值，调整即变为「自己设定」；必须点击保存才会生效。老用户的已存间隔不会被强制覆盖。</p></div>
+</div><p class="setting-note" id="polling-active-dm-reminder">💬 正在活跃的私信对话默认每 10 秒进行一次定向检查（需开启「活跃对话快速检查」）。上述方案的分钟间隔主要用于普通监听；新对话的首次发现仍依赖普通轮询，活跃快通道也受平台限流和共享读取预算保护。</p><p class="muted" id="polling-choice-note">选择后可继续调整数值，调整即变为「自己设定」；必须点击保存才会生效。老用户的已存间隔不会被强制覆盖。</p></div>
 <div class="settings-section"><h4>检查间隔</h4><div class="fields">
 <div><label for="dm-interval">私信最短检查间隔（分钟，默认 2）</label><input id="dm-interval" type="number" min="1" max="120" value="2"></div>
 <div><label for="dm-quiet-max">私信安静期最长检查间隔（分钟，默认 15）</label><input id="dm-quiet-max" type="number" min="1" max="120" value="15"><small class="setting-note" id="dm-quiet-levels">中间间隔自动计算</small></div>

@@ -8,6 +8,7 @@ import base64
 from datetime import datetime
 from io import BytesIO
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -542,6 +543,19 @@ def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source
     import shutil
     if not BV_RE.fullmatch(str(bvid)) or source not in ('B站公开视频片段（离线解码）','B站低清预览'):
         return None
+    # Diagnostic receipts must identify actual sampled times; isolated images
+    # without any source-aligned frame timestamp cannot be called video boards.
+    items = boards if source == 'B站低清预览' else focus_images if focus else boards
+    if not any(
+        isinstance(item, dict) and any(
+            isinstance(t, (int, float)) and not isinstance(t, bool) and
+            0 <= t <= 86_400 and math.isfinite(t)
+            for t in (item.get('tile_times') if source == 'B站低清预览' or not focus
+                      else [item.get('second')]) or []
+        )
+        for item in (items or [])
+    ):
+        return None
     home=Path(home).resolve()
     root=home/'vision-perception-captures'
     if root.is_symlink(): return None
@@ -567,12 +581,15 @@ def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source
         for i,item in enumerate((boards if source=='B站低清预览' else focus_images if focus else boards)[:4 if source=='B站低清预览' else 12 if focus else 4]):
             contents=item.get('bytes')
             if not isinstance(contents,bytes) or not 0<len(contents)<=600_000:continue
+            times=item.get('tile_times') if source=='B站低清预览' or not focus else [item.get('second')]
+            verified_times=[float(t) for t in (times or []) if isinstance(t,(int,float)) and
+                            not isinstance(t,bool) and 0 <= t <= 86_400 and math.isfinite(t)][:12]
+            if not verified_times:continue
             filename=f'{kind}-{i+1:02d}.jpg'
             target=folder/filename
             target.write_bytes(contents)
             target.chmod(0o600)
-            times=item.get('tile_times') if source=='B站低清预览' or not focus else [item.get('second')]
-            images.append({'file':filename,'times':[float(t) for t in (times or []) if isinstance(t,(int,float))][:12],
+            images.append({'file':filename,'times':verified_times,
                            'kind':kind,'resolution':('B站原生低清预览分镜' if source=='B站低清预览' else '384×216 原始复查采样' if focus else '原始视频解码分镜拼图')})
         if not images:
             shutil.rmtree(folder,ignore_errors=True)
