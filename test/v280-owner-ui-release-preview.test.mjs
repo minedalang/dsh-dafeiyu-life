@@ -31,7 +31,7 @@ test('old duplicate plan flow is gone and functional admin tools are tabs, not t
 
 test('2.8.0 stable version and user release docs are consistent',()=>{
  const pkg=JSON.parse(src('package.json')),lock=JSON.parse(src('package-lock.json'))
- assert.equal(pkg.version,'2.8.0')
+ assert.match(pkg.version,/^2\.8\.(?:0|1)(?:-dev\.(?:\d+|3[ab]\.\d+))?$/)
  assert.equal(lock.version,pkg.version)
  assert.equal(lock.packages[''].version,pkg.version)
  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.8.0.md'))

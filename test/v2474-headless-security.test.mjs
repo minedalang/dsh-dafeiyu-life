@@ -13,7 +13,7 @@ function base(kind='main') {
   for (const id of HEADLESS_DENY_TOOLS) rows.push('- id: '+id,'  disabled: true','')
   for (const id of ['credentials','authorization','deepseek-account']) rows.push('- id: '+id,'  disabled: false','')
   if (kind==='main' || kind==='home') rows.push('- insert:','    - id: mcp-bili-duty',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bili-duty','        transport: stdio','        env:',"          BILI_MCP_TOOLS: '"+(kind==='home'?'bili_home_recommendations,bili_video_info':'bili_search,bili_comments')+"'",'')
-  if (kind==='vision') rows.push('- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_preview_vision'",'')
+  if (kind==='vision') rows.push('- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_preview_vision'", "          BILI_VISION_CHILD: '1'",'')
   return rows.join('\n')
 }
 

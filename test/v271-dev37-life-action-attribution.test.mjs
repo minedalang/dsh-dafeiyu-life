@@ -100,7 +100,7 @@ test('生产接线要求每条社交回执携带真实平台 ID，待办与反�
  assert.match(idx,/bili-comment:/)
  assert.match(idx,/sourceRef:'todo:'\+original\.id/)
  assert.match(idx,/result\.item\.completedAt/)
- assert.match(idx,/runOwnerTodoWithFollowup\(id,\{initiator:'life'\}\)/)
+ assert.match(idx,/runOwnerTodoWithFollowup\(id,\{initiator:'life',viewDepth\}\)/)
  assert.match(idx,/lifeReflection\.reflect\(\{force:false,origin:'life'\}\)/)
  assert.match(reflection,/origin:origin==='life'\?'life'/)
  assert.match(reflection,/accountTag:originalEpisodeAccount/)

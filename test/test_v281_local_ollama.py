@@ -26,11 +26,11 @@ class LocalVision(unittest.TestCase):
             def open(self, req, timeout=None):
                 self_req=req
                 assert req.full_url=='http://127.0.0.1:11434/api/chat'
-                assert timeout<=70
+                assert 0 < timeout <= 120  # Full local storyboard inference may use up to 110 s
                 body=json.loads(self_req.data)
                 assert body['model']=='qwen3.5:4b'
                 assert body['stream'] is False
-                assert '约 2 秒' in body['messages'][0]['content']
+                assert '分镜图1' in body['messages'][0]['content'] and '[2] 秒' in body['messages'][0]['content']
                 assert base64.b64decode(body['messages'][0]['images'][0])==b'img'
                 return FakeReply()
         with patch('urllib.request.build_opener',return_value=Opener()):

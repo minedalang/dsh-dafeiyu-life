@@ -63,8 +63,8 @@ test('account-private reservation blocks independent Python, allows verified Nod
 
 test('vision locks only real low-resolution frame fetch, not nested independent DSH',()=>{
   const server=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
-  assert.match(server,/def _fetch_preview_frames_reserved\(bvid\):[\s\S]*?public_read_reservation\('bili_preview_frames'/)
-  assert.match(server,/asyncio\.to_thread\(_fetch_preview_frames_reserved, bvid\)/)
+  assert.match(server,/def _fetch_preview_frames_reserved\(bvid[,\s\S]*?public_read_reservation\('bili_preview_frames'/)
+  assert.match(server,/asyncio\.to_thread\(_fetch_preview_frames_reserved, bvid[,\s]/)
   assert.match(server,/mode == 'independent_dsh':\s+from vision_dsh import describe_with_dsh/)
   assert.doesNotMatch(server,/@_gate_read\('bili_preview_vision'\)/)
 })

@@ -47,7 +47,7 @@ class VisionDailyLimitV2457(unittest.TestCase):
                 rows.extend([f'- id: {ident}','  disabled: true',''])
             for ident in ('credentials','authorization','deepseek-account'):
                 rows.extend([f'- id: {ident}','  disabled: false',''])
-            rows.extend(['- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_preview_vision'",''])
+            rows.extend(['- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_preview_vision'", "          BILI_VISION_CHILD: '1'",''])
             (home/'headless-vision-overlay.yml').write_text('\n'.join(rows),encoding='utf8')
             env={'BILI_VISION_DSH_ARGV':json.dumps([str(home/'fake-dsh'),'--profile','headless','--patch',str(home/'headless-vision-overlay.yml')]),
                  'BILI_VISION_DSH_PROVIDER':'mock','BILI_VISION_DSH_MODEL':'vision',

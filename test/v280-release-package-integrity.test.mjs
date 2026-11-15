@@ -24,10 +24,14 @@ test('official release remains blocked until preview version and release gates a
   const notes=readFileSync(resolve(root,'RELEASE_NOTES_v2.8.0.md'),'utf8')
   const gate=readFileSync(resolve(root,'docs/architecture/2.8.0-release-readiness.md'),'utf8')
   const workflow=readFileSync(resolve(root,'.github/workflows/release.yml'),'utf8')
-  if(pkg.version.includes('-dev.')){
+  if(pkg.version.startsWith('2.8.0-dev.')){
     assert.match(notes,/尚未发布到 npm|不代表已发布到 npm/)
     assert.match(gate,/releaseReady:false/)
     assert.match(workflow,/关于当前\.\*预览版/)
     assert.match(workflow,/开发预览提醒/)
+  } else if(pkg.version.startsWith('2.8.1-dev.')) {
+    const plan=readFileSync(resolve(root,'docs/architecture/2.8.1-video-perception-dev3b6.md'),'utf8')
+    assert.match(plan,/正式版门禁（尚未完成）/)
+    assert.match(plan,/真实 B站/)
   }
 })
