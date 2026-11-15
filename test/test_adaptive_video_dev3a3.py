@@ -82,7 +82,7 @@ class AdaptiveTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             with (patch.object(av,'acquire_adaptive_frames',side_effect=frames) as acq,
                   patch.object(pv,'_call_local_ollama',return_value='画面中可见颜色变化，但不能确认声音') as model,
-                  patch.object(pv,'_claim_vision_quota',return_value=True)):
+                  patch.object(pv,'_record_vision_attempt',return_value=True)):
                 result=pv.analyze_perception(BV,home,perception_source='adaptive',enabled=True,
                     provider='ollama',model='qwen3.5:4b',focus_start=2,focus_end=8)
                 self.assertEqual(result['status'],'analyzed')

@@ -275,37 +275,26 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
     except (URLError, TimeoutError) as error:
         raise ValueError('本地 Ollama 未运行、模型不兼容或响应超时') from None
 
-def _vision_daily_limit(env=None):
-    # 缺失时采用可编辑的默认值；配置过高或异常时防止意外高额调用。
-    raw=(os.environ if env is None else env).get('BILI_VISION_DAILY_LIMIT','30')
-    try:
-        value=int(raw)
-    except (TypeError,ValueError):
-        return 30
-    return max(0,min(200,value))
+def _record_vision_attempt(home):
+    """Audit an independent model attempt; never impose a daily ceiling.
 
-def _claim_vision_quota(home, daily_limit=None):
-    # 同一账本供独立 DSH 视觉与本地 Ollama 路线共享。
-    # 额度以实际开始的调用/尝试计费（包括调用失败），缓存命中不扣。
-    # SQLite BEGIN IMMEDIATE 避免两轮同时计数时超额。
-    if daily_limit is None:
-        daily_limit=_vision_daily_limit()
-    else:
-        daily_limit=max(0,min(200,int(daily_limit)))
+    The selected per-video storyboard plan bounds work per exploration. The
+    historical ledger stays readable for diagnostic usage counts, including
+    old installations that stored visionDailyLimit=0.
+    """
     day=datetime.now().strftime('%Y-%m-%d')
     db=Path(home)/'vision-usage.sqlite3'
-    db.parent.mkdir(parents=True,exist_ok=True)
-    with closing(sqlite3.connect(db,timeout=4)) as con, con:
-        con.execute('CREATE TABLE IF NOT EXISTS usage (day TEXT PRIMARY KEY, used INTEGER NOT NULL)')
-        con.execute('BEGIN IMMEDIATE')
-        used=con.execute('SELECT used FROM usage WHERE day=?',(day,)).fetchone()
-        n=int(used[0]) if used else 0
-        if n>=daily_limit:
-            con.rollback()
-            return False
-        con.execute('INSERT INTO usage (day,used) VALUES (?,1) ON CONFLICT(day) DO UPDATE SET used=used+1',(day,))
-        con.commit()
-        return True
+    try:
+        db.parent.mkdir(parents=True,exist_ok=True)
+        with closing(sqlite3.connect(db,timeout=4)) as con, con:
+            con.execute('CREATE TABLE IF NOT EXISTS usage (day TEXT PRIMARY KEY, used INTEGER NOT NULL)')
+            con.execute('BEGIN IMMEDIATE')
+            con.execute('INSERT INTO usage (day,used) VALUES (?,1) ON CONFLICT(day) DO UPDATE SET used=used+1',(day,))
+            con.commit()
+    except (OSError,sqlite3.Error):
+        # A diagnostic-only counter must not deny an otherwise authorized
+        # read-only video observation.
+        pass
 
 
 def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None):
@@ -415,8 +404,7 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
             answer['frames']=frames
             return answer
         if prefetch_only or not enabled:return answer
-        if not _claim_vision_quota(home):
-            answer.update(status='daily_limit',error=f'今日独立视觉模型调用已达 {_vision_daily_limit()} 次上限；只取得预览图，未识图');return answer
+        _record_vision_attempt(home)
         try:
             description=_call_local_ollama(frames,model)
         except Exception as e:
@@ -503,10 +491,7 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
     if provider!='ollama' or not model:
         return {'ok':False,'bvid':bvid,'status':'vision_model_unavailable',
                 'error':'自适应画面识图需要已配置的本地视觉模型'}
-    if not _claim_vision_quota(home):
-        result.pop('frames',None)
-        result.update(status='daily_limit',error='已达到独立视觉模型调用上限，未执行识图')
-        return result
+    _record_vision_attempt(home)
     frames=result.pop('frames')
     try:
         result['description']=_call_local_ollama(frames,model,image_source=result['image_source'])

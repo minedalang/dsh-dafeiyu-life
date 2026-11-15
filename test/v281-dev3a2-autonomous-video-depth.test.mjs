@@ -13,7 +13,7 @@ test('无字幕没有强制调用，不看不产生视觉意愿，深度由模�
  assert.equal(visionDecision({enabled:true,subtitle:null,depth:'standard'}).attempt,true)
  assert.equal(visionDecision({enabled:true,subtitle:{text:'这是一段真实的字幕文字信息。'},depth:'deep'}).attempt,true)
  assert.equal(visionDecision({enabled:false,depth:'deep'}).attempt,false)
- assert.equal(visionDecision({enabled:true,depth:'deep',quotaRemaining:0}).attempt,false)
+ assert.equal(visionDecision({enabled:true,depth:'deep',quotaRemaining:0}).attempt,true,'legacy vision quota does not block an explicit deep choice')
 })
 test('Life 同一次 TODO 选择可携带视频深度，不向非视频动作扩权',()=>{
  const rows=[{id:'read1',type:'watch_video'},{id:'read2',type:'search_videos'}]

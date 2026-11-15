@@ -149,8 +149,20 @@ def _download_video(url, path, expected_size):
     return total
 
 
+def _ffmpeg_binary():
+    """Use owner-selected local decoder only after strict executable validation."""
+    configured = os.environ.get('BILI_FFMPEG_PATH', '').strip()
+    if not configured:
+        return shutil.which('ffmpeg')
+    candidate = Path(configured)
+    if (not candidate.is_absolute() or candidate.name.lower() not in ('ffmpeg', 'ffmpeg.exe')
+            or not candidate.is_file()):
+        return None
+    return str(candidate.resolve())
+
+
 def _decode_samples(filename, *, start, length):
-    exe = shutil.which('ffmpeg')
+    exe = _ffmpeg_binary()
     if not exe:
         raise AdaptiveUnavailable('ffmpeg_not_installed')
     # Accept ONLY a known progressive container, not playlists or remote probes.
@@ -401,7 +413,7 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
     if configured not in FRAME_PLANS:
         raise AdaptiveUnavailable('invalid_frame_plan', fallback=False)
     limit = min(configured,12) if depth=='standard' else configured
-    if not shutil.which('ffmpeg'):
+    if not _ffmpeg_binary():
         raise AdaptiveUnavailable('ffmpeg_not_installed')
     url, size, duration, cid = _playurl(bvid)
     if focus and (not math.isfinite(focus['startSeconds']) or not math.isfinite(focus['endSeconds'])

@@ -15,7 +15,7 @@ test('视觉模型区统一显示 FFmpeg/Whisper，评论梗图仅在评论页',
   for(const id of ['bili-transcribe','bili-asr-model','bili-comment-memes','bili-comment-memes-debug'])
     assert.doesNotMatch(html,new RegExp('id="'+id+'"'))
   assert.match(html,/data-open-tab="models" data-open-anchor="video-aux-dependencies"/)
-  const vision=html.slice(html.indexOf('<details class="settings-section model-task"><summary><strong>视觉识别模型'),html.indexOf('<details class="settings-section model-task"><summary><strong>人生反思'))
+  const vision=html.slice(html.indexOf('<details class="settings-section model-task" id="models-vision-settings"><summary><strong>视觉识别模型'),html.indexOf('<details class="settings-section model-task"><summary><strong>人生反思'))
   assert.match(vision,/id="video-aux-dependencies"/)
   assert.match(vision,/id="models-ffmpeg-install"/)
   assert.match(vision,/id="models-whisper-install"/)

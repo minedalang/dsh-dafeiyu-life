@@ -18,7 +18,7 @@ def configured(tmp_path):
         rows.extend([f'- id: {ident}','  disabled: true',''])
     for ident in ('credentials','authorization','deepseek-account'):
         rows.extend([f'- id: {ident}','  disabled: false',''])
-    rows.extend(['- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_preview_vision'",''])
+    rows.extend(['- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_preview_vision'", "          BILI_VISION_CHILD: '1'",''])
     (tmp_path/'headless-vision-overlay.yml').write_text('\n'.join(rows),encoding='utf8')
     args=['/some/absolute/dsh','--profile','headless','--patch',str(tmp_path/'headless-vision-overlay.yml')]
     env={'BILI_VISION_DSH_ARGV':json.dumps(args),'BILI_VISION_DSH_MODEL':'claude-haiku-5-5',
@@ -43,14 +43,14 @@ def test_dsh_model_analysis_requires_frame_receipt(tmp_path):
         receipt=Path(kwargs['env']['BILI_VISION_PROOF_FILE'])
         receipt.write_text(json.dumps({'bvid':'BV1234567890','times':[3.0,7.0]}),encoding='utf8')
         return SimpleNamespace(returncode=0,stdout='VISION_DESC: 画面中央有一只圆形黄色卡通角色，背景呈蓝色。\n'.encode(),stderr=b'')
-    with patch('preview_vision._claim_vision_quota',return_value=True) as quota:
+    with patch('preview_vision._record_vision_attempt',return_value=True) as quota:
         result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=fake_runner)
         assert result['ok'] and result['status']=='analyzed'
         assert calls[0][0][-1].find('BV1234567890')>=0
         assert '--patch' in calls[0][0]
         assert not Path(calls[0][1]['env']['BILI_VISION_PROOF_FILE']).exists()
         quota.assert_called_once()
-    with patch('preview_vision._claim_vision_quota',side_effect=AssertionError('cache should skip quota')):
+    with patch('preview_vision._record_vision_attempt',side_effect=AssertionError('cache should skip quota')):
         result2=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=lambda *a,**kw: 1/0)
         assert result2['status']=='cached'
 
@@ -59,16 +59,20 @@ def test_dsh_model_no_frame_receipt_not_success(tmp_path):
     env=configured(tmp_path)
     def fake_runner(*args,**kwargs):
         return SimpleNamespace(returncode=0,stdout=b'VISION_DESC: made-up graphic scene\n',stderr=b'')
-    with patch('preview_vision._claim_vision_quota',return_value=True):
+    with patch('preview_vision._record_vision_attempt',return_value=True):
         result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=fake_runner)
     assert not result['ok'] and result['status']=='no_images_confirmed'
 
 
-def test_daily_quota_applies_to_independent_dsh(tmp_path):
+def test_no_daily_quota_blocks_independent_dsh(tmp_path):
     env=configured(tmp_path)
-    with patch('preview_vision._claim_vision_quota',return_value=False):
-        result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=lambda *a,**kw: 1/0)
-    assert result['status']=='daily_limit'
+    called=[]
+    def runner(*args,**kwargs):
+        called.append(True)
+        return SimpleNamespace(returncode=2,stdout=b'',stderr=b'')
+    with patch('preview_vision._record_vision_attempt',return_value=None):
+        result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=runner)
+    assert called and result['status']!='daily_limit'
 
 
 def test_tampered_vision_overlay_fails_closed(tmp_path):
@@ -106,7 +110,7 @@ def test_custom_prompt_uses_same_independent_model_and_invalidates_cache(tmp_pat
         calls.append(args[-1])
         Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({'bvid':'BV1234567890','times':[6.0]}),encoding='utf8')
         return SimpleNamespace(returncode=0,stdout='VISION_DESC: 画面里一只绿色卡通角色正挥动手臂。\n'.encode(),stderr=b'')
-    with patch('preview_vision._claim_vision_quota',return_value=True):
+    with patch('preview_vision._record_vision_attempt',return_value=True):
         assert module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=fake_runner)['ok']
         assert '优先观察角色动作与表情' in calls[0]
         # Switching the instruction must not reuse a different instruction's observation.
@@ -126,7 +130,7 @@ def test_dsh_focused_window_receipt_is_bound_to_requested_window(tmp_path):
                         'focus_window':expected}),encoding='utf8')
         return SimpleNamespace(returncode=0,
             stdout='VISION_DESC: 第30秒和第40秒分别显示两幅不同的卡通画面。\n'.encode(),stderr=b'')
-    with patch('preview_vision._claim_vision_quota',return_value=True):
+    with patch('preview_vision._record_vision_attempt',return_value=True):
         result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
             runner=fake_runner,focus_start=21,focus_end=51)
         assert result['ok'] is True
@@ -141,7 +145,7 @@ def test_dsh_focused_window_receipt_is_bound_to_requested_window(tmp_path):
         Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(
             json.dumps({'bvid':'BV1234567890','times':[30], 'focus_window':None}),encoding='utf8')
         return SimpleNamespace(returncode=0,stdout='VISION_DESC: 不应接受的结果\n'.encode(),stderr=b'')
-    with patch('preview_vision._claim_vision_quota',return_value=True):
+    with patch('preview_vision._record_vision_attempt',return_value=True):
         mismatched=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
             runner=wrong_focus,focus_start=30,focus_end=40)
         assert not mismatched['ok'] and mismatched['status']=='no_images_confirmed'
@@ -160,16 +164,16 @@ def test_dsh_adaptive_vision_binds_proof_source_and_never_caches_preview_fallbac
                 'source_type':'bili-public-playurl-durl','clip_window':{'startSeconds':0,'endSeconds':10},
                 'frames_selected':2,'candidates_examined':20}}),encoding='utf8')
         return SimpleNamespace(returncode=0,stdout='VISION_DESC: 第三秒与第七秒画面显示不同颜色的动画场景。\n'.encode(),stderr=b'')
-    with patch('preview_vision._claim_vision_quota',return_value=True):
+    with patch('preview_vision._record_vision_attempt',return_value=True):
         real=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=run_real,perception_source='adaptive')
         assert real['ok'] and real['image_source']=='B站公开视频片段（离线解码）'
         assert 'perception_source=adaptive' in calls[0]
-    with patch('preview_vision._claim_vision_quota',side_effect=AssertionError('adaptive cache should be used')):
+    with patch('preview_vision._record_vision_attempt',side_effect=AssertionError('adaptive cache should be used')):
         cached=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
             runner=lambda *_a,**_kw:1/0,perception_source='adaptive')
         assert cached['status']=='cached' and cached['image_source']=='B站公开视频片段（离线解码）'
     # A preview source request must never hit the adaptive result cache.
-    with patch('preview_vision._claim_vision_quota',return_value=True):
+    with patch('preview_vision._record_vision_attempt',return_value=True):
         ordinary=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
             runner=lambda *a,**kw:SimpleNamespace(returncode=1,stdout=b'',stderr=b''))
     assert ordinary['ok'] is False
@@ -180,7 +184,7 @@ def test_dsh_adaptive_vision_binds_proof_source_and_never_caches_preview_fallbac
             'perception_source_requested':'preview',
             'image_source':'B站低清预览'}),encoding='utf8')
         return SimpleNamespace(returncode=0,stdout='VISION_DESC: 不应认可的图片观察\n'.encode(),stderr=b'')
-    with patch('preview_vision._claim_vision_quota',return_value=True):
+    with patch('preview_vision._record_vision_attempt',return_value=True):
         wrong=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
             runner=wrong_source,perception_source='adaptive',focus_start=3,focus_end=8)
     assert not wrong['ok'] and wrong['status']=='no_images_confirmed'

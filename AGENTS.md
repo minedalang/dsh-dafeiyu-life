@@ -5,7 +5,7 @@
 - **视频感知 Debug 必须展示原生产工具实际返回给 Life 的完整 JSON**，包括真实视频帧来源/时间、视觉回答、字幕/Whisper、OCR、来源验证和失败降级；不得仅用模拟数据或截断预览伪称全链路成功。
 - 完整观察文本仅限本机管理端短期进程内存，不加入永久日志、记忆账本或可供其他账户访问的缓存；禁止从调试结果直接推导外发授权。
 - **正式发布门禁：** 至少一条真实公开视频成功走完 DSH 或 Ollama 视觉、FFmpeg 解码、字幕/ASR+OCR、Life 输入 Debug 核对，以及全新 Windows DSH 主依赖安装与扫码；24 MiB 单段 DURL 限制等实际覆盖率问题必须如实记录。未验收不得把 `X.Y.Z-dev.N` 改成正式版本、创建正式 Tag 或推送 npm Latest。
-- 每次 dev 补丁同步 `package.json` / `package-lock.json` / 用户可见版本，中文 Commit、测试、Patch 回放并记录。新版标识 `2.8.1-dev.3b.7`。
+- 每次 dev 补丁同步 `package.json` / `package-lock.json` / 用户可见版本，中文 Commit、测试、Patch 回放并记录。新版标识 `2.8.1-dev.3b.8`。
 
 ## 2.8.1-dev.3b.5 首次安装防假成功约束
 

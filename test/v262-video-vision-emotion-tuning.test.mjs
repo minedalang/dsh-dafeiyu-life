@@ -7,7 +7,7 @@ import {createEmotionalState} from '../lib/emotional-state.mjs'
 import {usableSubtitle,visionDecision} from '../lib/video-vision-policy.mjs'
 
 const dir=()=>mkdtempSync(join(tmpdir(),'dafeiyu-vision-emotion-'))
-test('看不看、看多深由鱼鱼自己选择；无字幕不再强制视觉；开关与额度为硬限制',()=>{
+test('看不看、看多深由鱼鱼自己选择；无字幕不再强制视觉；开关和单轮保护仍有效，旧每日额度参数不再阻断',()=>{
  assert.equal(usableSubtitle({message:'该视频没有字幕'}),false)
  assert.equal(usableSubtitle({text:'字幕by 张三'}),false)
  assert.equal(usableSubtitle('{"error":"subtitle failed"}'),false)
@@ -19,7 +19,7 @@ test('看不看、看多深由鱼鱼自己选择；无字幕不再强制视觉�
  assert.equal(visionDecision({subtitle:{text:'完整且可用的字幕线索已经拿到了'},enabled:true}).attempt,false)
  assert.equal(visionDecision({subtitle:{text:'完整且可用的字幕线索已经拿到了'},enabled:true,visualQuestion:true}).attempt,true)
  assert.equal(visionDecision({subtitle:null,enabled:false}).attempt,false)
- assert.equal(visionDecision({subtitle:null,enabled:true,quotaRemaining:0,depth:'deep'}).kind,'unavailable')
+ assert.equal(visionDecision({subtitle:null,enabled:true,quotaRemaining:0,depth:'deep'}).kind,'chosen')
  assert.equal(visionDecision({subtitle:null,enabled:true,roundRemaining:0,depth:'standard'}).attempt,false)
 })
 test('持续开心与温暖不再把活力/社交意愿/好奇心/正向度刷成100',()=>{

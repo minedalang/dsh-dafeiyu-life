@@ -171,10 +171,8 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
                             'perception_source_requested':perception_source,
                             'notice':'缓存的独立视觉模型采样观察，并非完整播放'}
             except (OSError,ValueError): pass
-        from preview_vision import _claim_vision_quota, _vision_daily_limit
-        daily_limit=_vision_daily_limit(env)
-        if not _claim_vision_quota(home,daily_limit):
-            return {'ok':False,'status':'daily_limit','error':f'今日独立视觉模型调用已达 {daily_limit} 次上限'}
+        from preview_vision import _record_vision_attempt
+        _record_vision_attempt(home)
         proof_dir=home/'vision-proof'
         if proof_dir.is_symlink():
             raise ValueError('视觉证明目录不能是符号链接')

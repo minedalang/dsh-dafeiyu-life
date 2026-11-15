@@ -18,6 +18,7 @@ import argparse
 import json
 import math
 import os
+from pathlib import Path
 import re
 import sys
 import tempfile
@@ -135,9 +136,20 @@ def main() -> int:
             print('[asr] 找不到文件：' + src, file=sys.stderr)
             return 2
 
+        local_model = os.environ.get('BILI_ASR_MODEL_PATH', '').strip() if args.json else ''
+        if local_model:
+            model_dir = Path(local_model)
+            if (not model_dir.is_absolute() or not model_dir.is_dir()
+                or not (model_dir / 'model.bin').is_file()
+                or not (model_dir / 'config.json').is_file()):
+                print('[asr] 自定义模型目录缺少 model.bin / config.json', file=sys.stderr)
+                return 2
+            model_source = str(model_dir.resolve())
+        else:
+            model_source = args.model
         from faster_whisper import WhisperModel
         print('[asr] 加载模型 %s（第一次会自动下模型，之后就是本地读）…' % args.model, file=sys.stderr)
-        model = WhisperModel(args.model, device='cpu', compute_type='int8')
+        model = WhisperModel(model_source, device='cpu', compute_type='int8')
         print('[asr] 开始转写…', file=sys.stderr)
         segments, _info = model.transcribe(
             src,

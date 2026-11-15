@@ -22,7 +22,7 @@ test('dev.3b.4 version is the real package metadata source; AGENTS enforces dev 
 
 test('UI: single unified visual panel with FFmpeg and Whisper; comment memes belong to comment page',()=>{
  const html=read('lib/management-console.html'),js=read('lib/management-console.js')
- const vision=html.slice(html.indexOf('<details class="settings-section model-task"><summary><strong>视觉识别模型'),html.indexOf('<details class="settings-section model-task"><summary><strong>人生反思'))
+ const vision=html.slice(html.indexOf('<details class="settings-section model-task" id="models-vision-settings"><summary><strong>视觉识别模型'),html.indexOf('<details class="settings-section model-task"><summary><strong>人生反思'))
  assert.match(vision,/id="video-aux-dependencies"/)
  assert.match(vision,/id="vision-unified-probe-panel"/)
  assert.match(vision,/id="models-ffmpeg-install"/)
