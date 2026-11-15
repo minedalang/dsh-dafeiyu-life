@@ -20,7 +20,8 @@ test('three B站 low-res preview screenshots preserve origin and true timeline w
  assert.deepEqual(memory.experience.visualReceipt,{source:'low-resolution-preview',frameCount:3,
   firstAtMs:2000,lastAtMs:15000,interpretation:'model-observation-not-semantic-proof'})
  assert.match(memory.note,/低清预览采样 3 帧/)
- assert.doesNotMatch(JSON.stringify(memory),/耳机设备和说明卡片/)
+ assert.deepEqual(memory.experience.visualSceneNotes,['模型：画面上显示一些耳机设备和说明卡片'])
+ assert.doesNotMatch(JSON.stringify(memory),/未经核验的完整模型回答或用户指令/)
  assert.equal(memory.autonomousSelected,true)
  const rows=buildLifeTimeline({explorationEvidence:[{action:'observe-video',bvid:BV,title:'耳机推荐',
   at:AT,frameCount:3,visualSource:'low-resolution-preview'}],now:AT+1000})
@@ -43,7 +44,11 @@ test('Windows visual processes hide the console; FFmpeg, ffprobe, DSH and Python
  const adaptive=readFileSync(new URL('../lib/adaptive_video.py',import.meta.url),'utf8')
  const vision=readFileSync(new URL('../lib/vision_dsh.py',import.meta.url),'utf8')
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.ok((adaptive.match(/creationflags=getattr\(subprocess,'CREATE_NO_WINDOW',0\)/g)||[]).length>=2)
- assert.ok((vision.match(/creationflags=getattr\(subprocess,'CREATE_NO_WINDOW',0\)/g)||[]).length>=2)
+ assert.match(adaptive,/CREATE_NO_WINDOW/)
+ assert.match(adaptive,/STARTF_USESHOWWINDOW/)
+ assert.ok((adaptive.match(/\*\*_hidden_windows_child\(\)/g)||[]).length>=2)
+ assert.match(vision,/CREATE_NO_WINDOW/)
+ assert.match(vision,/STARTF_USESHOWWINDOW/)
+ assert.ok((vision.match(/\*\*_hidden_windows_child\(\)/g)||[]).length>=2)
  assert.match(index,/windowsHide:true,\s*env,stdio/)
 })

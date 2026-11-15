@@ -34,6 +34,15 @@ import hashlib
 import hmac
 import inspect
 from functools import wraps
+def _hidden_windows_child():
+    options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+    if os.name == 'nt' and hasattr(subprocess, 'STARTUPINFO'):
+        startup = subprocess.STARTUPINFO()
+        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startup.wShowWindow = 0  # SW_HIDE
+        options['startupinfo'] = startup
+    return options
+
 from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent, ImageContent
 
@@ -1771,7 +1780,7 @@ def _identity_public_memory(query: str, limit: int = 6) -> dict:
             _record_model_launch(home, 'memory')
             result=subprocess.run([*argv,prompt],capture_output=True,text=True,encoding='utf-8',
                                  timeout=35,shell=False,cwd=home,check=False,
-                                 creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+                                 **_hidden_windows_child())
             if result.returncode != 0: raise ValueError('检索模型退出异常')
             out=result.stdout[:6500];obj=json.loads(out[out.find('{'):out.rfind('}')+1])
             ids=obj.get('memory_ids')
@@ -3420,7 +3429,7 @@ async def bili_transcribe_safe(bvid: str) -> str:
                                       [str(python), str(asr), bv, '--json', '--model', model],
                                       capture_output=True,text=True,encoding='utf-8',errors='replace',
                                       timeout=timeout_seconds,cwd=str(_DUTY_HOME),
-                                      creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+                                      **_hidden_windows_child())
         if res.returncode != 0 or len(res.stdout)>65000:
             code, hint = _asr_failure_category(res.stderr)
             if len(res.stdout)>65000: code, hint = 'output-too-large', '转写回执超出受控大小上限'
@@ -4369,7 +4378,7 @@ def _extract_cover_from_video(video_path: str) -> Picture:
             ["ffmpeg", "-y", "-ss", "3", "-i", video_path,
              "-vframes", "1", "-q:v", "2", tmp_cover],
             capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
-            creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0),
+            **_hidden_windows_child(),
         )
         if os.path.isfile(tmp_cover) and os.path.getsize(tmp_cover) > 0:
             return Picture.from_file(tmp_cover)
@@ -4383,7 +4392,7 @@ def _extract_cover_from_video(video_path: str) -> Picture:
             ["ffmpeg", "-y", "-ss", "0", "-i", video_path,
              "-vframes", "1", "-q:v", "2", tmp_cover2],
             capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
-            creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0),
+            **_hidden_windows_child(),
         )
         if os.path.isfile(tmp_cover2) and os.path.getsize(tmp_cover2) > 0:
             return Picture.from_file(tmp_cover2)

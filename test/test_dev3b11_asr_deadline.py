@@ -12,7 +12,7 @@ SOURCE = (Path(__file__).resolve().parents[1] / 'vendor/bilibili-mcp/mcp_server.
 TREE = ast.parse(SOURCE)
 FUNCS = []
 for node in TREE.body:
-    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in {'_record_asr_attempt', 'bili_transcribe_safe'}:
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in {'_record_asr_attempt', '_asr_failure_category', '_hidden_windows_child', 'bili_transcribe_safe'}:
         node.decorator_list = []
         FUNCS.append(node)
 COMPILED = compile(ast.Module(body=FUNCS, type_ignores=[]),'<isolated-whisper>','exec')

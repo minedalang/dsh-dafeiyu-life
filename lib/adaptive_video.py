@@ -15,6 +15,16 @@ import re
 import shutil
 import statistics
 import subprocess
+
+
+def _hidden_windows_child():
+    options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+    if os.name == 'nt' and hasattr(subprocess, 'STARTUPINFO'):
+        startup = subprocess.STARTUPINFO()
+        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startup.wShowWindow = 0  # SW_HIDE (no console/GUI window request)
+        options['startupinfo'] = startup
+    return options
 import tempfile
 import time
 from urllib import parse, request
@@ -305,7 +315,7 @@ def _packet_index(filename):
             '-show_entries', 'packet=pts_time,pos,flags', '-of', 'csv=p=0', str(filename)]
     try:
         result = subprocess.run(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0),
+                                **_hidden_windows_child(),
                                 stderr=subprocess.PIPE, timeout=22, check=False)
     except (OSError, subprocess.TimeoutExpired):
         raise AdaptiveUnavailable('video_mp4_index_probe_failed', fallback=False) from None
@@ -404,7 +414,7 @@ def _decode_samples(filename, *, start, length, focused=False):
            '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1']
     try:
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0),
+                                **_hidden_windows_child(),
                                 stdin=subprocess.DEVNULL, timeout=35, check=False)
     except (OSError, subprocess.TimeoutExpired):
         raise AdaptiveUnavailable('video_decode_unavailable') from None

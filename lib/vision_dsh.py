@@ -10,6 +10,16 @@ import hashlib
 import os
 import re
 import subprocess
+
+
+def _hidden_windows_child():
+    options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+    if os.name == 'nt' and hasattr(subprocess, 'STARTUPINFO'):
+        startup = subprocess.STARTUPINFO()
+        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startup.wShowWindow = 0  # SW_HIDE (no console/GUI window request)
+        options['startupinfo'] = startup
+    return options
 import uuid
 from pathlib import Path
 from datetime import datetime
@@ -221,7 +231,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         try:
             result=execute([*child_args,prompt],cwd=str(home),env=child_env,stdin=subprocess.DEVNULL,
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=220 if perception_source=='adaptive' else 50,
-                           creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0),check=False)
+                           **_hidden_windows_child(),check=False)
         except subprocess.TimeoutExpired:
             return {'ok':False,'status':'timeout','error':'独立 DSH 视觉模型超时；未验证图片理解结果'}
         except (OSError,ValueError) as exc:
@@ -357,7 +367,7 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         try:
             result=execute([*args,prompt],cwd=str(home),env=child_env,stdin=subprocess.DEVNULL,
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False,
-                           creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+                           **_hidden_windows_child())
         except subprocess.TimeoutExpired:
             return {'ok':False,'status':'timeout','error':'DSH 识图验证超过 180 秒，请检查模型响应或网络'}
         except (OSError,ValueError) as exc:

@@ -12,13 +12,13 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = (ROOT / 'vendor' / 'bilibili-mcp' / 'mcp_server.py').read_text(encoding='utf8')
 TREE = ast.parse(SOURCE)
-NAMES = {'_record_asr_attempt', '_asr_failure_category', 'bili_transcribe_safe'}
+NAMES = {'_record_asr_attempt', '_asr_failure_category', '_hidden_windows_child', 'bili_transcribe_safe'}
 FUNCS = []
 for node in TREE.body:
     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in NAMES:
         node.decorator_list = []
         FUNCS.append(node)
-assert len(FUNCS) == 3
+assert len(FUNCS) == 4
 COMPILED = compile(ast.Module(body=FUNCS, type_ignores=[]), '<mcp-whisper>', 'exec')
 
 class WhisperRuntimeTests(unittest.TestCase):

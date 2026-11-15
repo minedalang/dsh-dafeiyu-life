@@ -64,7 +64,8 @@ class TimedMediaTests(unittest.TestCase):
         tree=ast.parse(source.read_text(encoding='utf8'))
         fn=next(node for node in tree.body if isinstance(node,ast.AsyncFunctionDef) and node.name=='bili_transcribe_safe')
         fn.decorator_list=[]
-        script=compile(ast.fix_missing_locations(ast.Module(body=[fn],type_ignores=[])),str(source),'exec')
+        helpers=[node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name in {'_asr_failure_category','_hidden_windows_child'}]
+        script=compile(ast.fix_missing_locations(ast.Module(body=[*helpers,fn],type_ignores=[])),str(source),'exec')
         with tempfile.TemporaryDirectory() as folder:
             home=Path(folder);(home/'asr.py').write_text('# fake asr')
             runtime=home/'.venv-asr'/('Scripts' if os.name=='nt' else 'bin')

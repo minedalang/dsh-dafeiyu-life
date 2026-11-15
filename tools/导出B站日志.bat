@@ -162,6 +162,23 @@ if isinstance(planner, dict):
         for x in recent[-20:] if isinstance(x, dict)] if isinstance(recent, list) else []
 dump('life-video-launch-state.json', snapshot)
 
+# This was previously absent from exported bundles. Include only a closed,
+# privacy-preserving receipt of the last production visual model attempt.
+# Do not include BV, model path, source JPEG, answer, raw stderr or account IDs.
+vision = read_json(root/'vision-production-last.json', limit=2048)
+vision_status = {'present': False}
+if isinstance(vision, dict) and vision.get('version') == 1:
+    allowed_status = ('analyzed','vision_unavailable','timeout','subagent_error',
+                      'no_vision_result','empty_result','no_images_confirmed')
+    allowed_mode = ('independent_local','independent_dsh')
+    at = number(vision.get('at'))
+    if (at is not None and isinstance(vision.get('ok'), bool)
+            and vision.get('status') in allowed_status
+            and vision.get('mode') in allowed_mode):
+        vision_status = {'present': True, 'at': at, 'ok': vision['ok'],
+                         'status': vision['status'], 'mode': vision['mode']}
+dump('visual-model-last-run.json', vision_status)
+
 life_file = root/'life-agent-events'
 rounds=[]
 if life_file.is_dir():

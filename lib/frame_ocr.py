@@ -12,6 +12,15 @@ import shutil
 import subprocess
 from PIL import Image, ImageEnhance, ImageOps
 
+def _hidden_windows_child():
+    options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+    if hasattr(subprocess, 'STARTUPINFO'):
+        startup = subprocess.STARTUPINFO()
+        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startup.wShowWindow = 0  # SW_HIDE
+        options['startupinfo'] = startup
+    return options
+
 MAX_OCR_FRAMES = 12
 
 
@@ -47,7 +56,7 @@ def extract_frame_ocr(moments, *, executable=None, runner=subprocess.run, langua
         try:
             langs = runner([executable, '--list-langs'], capture_output=True, text=True,
                            timeout=3, check=False,
-                           **({'creationflags':subprocess.CREATE_NO_WINDOW} if hasattr(subprocess,'CREATE_NO_WINDOW') else {}))
+                           **_hidden_windows_child())
             available = set(langs.stdout.split()) | set(langs.stderr.split())
             languages = 'chi_sim+eng' if 'chi_sim' in available and 'eng' in available else (
                 'chi_sim' if 'chi_sim' in available else 'eng' if 'eng' in available else None)
@@ -77,7 +86,7 @@ def extract_frame_ocr(moments, *, executable=None, runner=subprocess.run, langua
             reply = runner([executable,'stdin','stdout','-l',languages,'--psm','11','tsv'],
                            input=png.getvalue(), stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                            timeout=3,check=False,
-                           **({'creationflags':subprocess.CREATE_NO_WINDOW} if hasattr(subprocess,'CREATE_NO_WINDOW') else {}))
+                           **_hidden_windows_child())
             if reply.returncode != 0 or len(reply.stdout) > 120000:
                 continue
             data=reply.stdout.decode('utf-8',errors='replace') if isinstance(reply.stdout,bytes) else reply.stdout
