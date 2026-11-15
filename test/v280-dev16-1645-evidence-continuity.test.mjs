@@ -11,10 +11,10 @@ test('same-BV verified discussion evidence is presented as untrusted public cont
  assert.match(prompt,/其他人公开发言/)
  assert.match(prompt,/信息增量/)
 })
-test('metadata-only comment eligibility is described without claiming full viewing',()=>{
+test('metadata-only evidence warns Life that background text cannot unlock video opinions',()=>{
  const prompt=continuationPrompt(menu,'',{ok:true,bvid:bv,title:'标题',description:'',comments:[]})
- assert.match(prompt,/只有公开元数据/)
- assert.match(prompt,/保持沉默/)
+ assert.match(prompt,/标题\/简介只提供背景/)
+ assert.match(prompt,/不能替代真实画面/)
 })
 test('empty schema placeholders do not manufacture unexpected-target; nonempty wrong target still rejected',()=>{
  assert.deepEqual(parseContinuationDecision(JSON.stringify({action:'inspect_creator_space',id,bvid:'',text:'',folderTitle:'',personId:'',reason:'想看看作者'}),menu),

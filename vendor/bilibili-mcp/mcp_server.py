@@ -4368,7 +4368,8 @@ def _extract_cover_from_video(video_path: str) -> Picture:
         subprocess.run(
             ["ffmpeg", "-y", "-ss", "3", "-i", video_path,
              "-vframes", "1", "-q:v", "2", tmp_cover],
-            capture_output=True, timeout=30,
+            capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
+            creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0),
         )
         if os.path.isfile(tmp_cover) and os.path.getsize(tmp_cover) > 0:
             return Picture.from_file(tmp_cover)
@@ -4381,7 +4382,8 @@ def _extract_cover_from_video(video_path: str) -> Picture:
         subprocess.run(
             ["ffmpeg", "-y", "-ss", "0", "-i", video_path,
              "-vframes", "1", "-q:v", "2", tmp_cover2],
-            capture_output=True, timeout=30,
+            capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
+            creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0),
         )
         if os.path.isfile(tmp_cover2) and os.path.getsize(tmp_cover2) > 0:
             return Picture.from_file(tmp_cover2)

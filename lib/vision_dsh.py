@@ -356,7 +356,8 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         execute=runner or subprocess.run
         try:
             result=execute([*args,prompt],cwd=str(home),env=child_env,stdin=subprocess.DEVNULL,
-                           stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False)
+                           stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False,
+                           creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         except subprocess.TimeoutExpired:
             return {'ok':False,'status':'timeout','error':'DSH 识图验证超过 180 秒，请检查模型响应或网络'}
         except (OSError,ValueError) as exc:

@@ -86,6 +86,9 @@ test('uncertain platform write freezes episode; no read/rest escapes the freeze'
 
 test('without an explicit compatible bundle, a Life tick does not chain unrelated writes',()=>home(async dir=>{
  let t=START;const life=make(dir,()=>t),id=seed(life),actions=[],menus=[]
+ // This older write-after-metadata scenario now needs a previously verified
+ // visual glimpse. Duplicate whole-video watching remains suppressed.
+ life.rememberVerifiedVideoVisual({ok:true,bvid:OTHER,depth:'standard',frameCount:3,source:'low-resolution-preview'},SCOPE)
  let calls=0,first=true
  const replies=[
    l=>({action:'inspect_exploration',id,bvid:OTHER,reason:'还想核实第二条作品'}),
@@ -96,6 +99,7 @@ test('without an explicit compatible bundle, a Life tick does not chain unrelate
  const planner=createAutonomousPlanner({dataDir:dir,now:()=>t,getConfig:()=>cfg,getLifeAccountTag:()=>SCOPE,
   getTodos:()=>[],getLifeOpportunities:()=>[],getLifeIntentionCues:()=>[],getLifeIntentions:()=>life.continuations(),
   getActiveLifeIntentionReservations:()=>life.intentions({includeClosed:true,limit:20}),
+  hasVerifiedLifeVideoVisual:(bvid,scope)=>life.hasVerifiedVideoVisual(bvid,scope),
   completeLifeExploration:(...a)=>life.completeExploration(...a),failLifeExploration:()=>({ok:false}),
   inspectLifeCreatorSpace:()=>({ok:false}),inspectLifeVideoDiscussion:(...a)=>life.inspectVideoDiscussion(...a),
   recordLifeExplorationWrite:(...a)=>life.recordExplorationWrite(...a),

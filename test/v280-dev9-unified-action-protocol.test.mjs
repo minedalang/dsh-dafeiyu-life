@@ -81,7 +81,7 @@ test('one original Life decision reaches the same execution gateway and writer w
  const entry={id:ID,status:'inspected',selectedBvid:BV,metadataAt:Date.now()-1000,
    expiresAt:Date.now()+3600_000,nextAt:0}
  let invocations=0,observedTicket=''
- const execute=createLifeContinuationWriteExecutor({getConfig:()=>cfg,getAccountTag:()=>ACCOUNT,
+ const execute=createLifeContinuationWriteExecutor({hasVerifiedVisual:()=>true,getConfig:()=>cfg,getAccountTag:()=>ACCOUNT,
    getAccountUid:()=>U,getIntention:()=>entry,getPublicEvidence:async()=>({ok:true,bvid:BV,
    title:'真实公开视频',description:'确实核验过的一些公开视频资料',commentReady:true}),
    markSelected:async()=>({ok:true}),

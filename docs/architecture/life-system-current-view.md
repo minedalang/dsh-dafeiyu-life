@@ -115,6 +115,7 @@ flowchart TB
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
     episodeContinuation["有新核验信息后 Life 可自由选择下一步 · 最多追加 4 次 · 可随时休息；不是重复批准旧动作"]
+    episodeVisualFirst["进入已核实 BV 后先尝试一次受控画面采样；失败只保留资料，禁止外发"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
     episodeAftercare["已核验写入计一步 · 下一写前必须真只读或实际休息；每 tick 最多一写"]
@@ -130,11 +131,13 @@ flowchart TB
   home --> homeCandidateMatch -->|仅本轮精确匹配入选 BV；不等于观看| homeEpisode
   homeEpisode --> lifeEpisode
   explore -.->|搜索/人物作品/视频核验成功后进入同一意愿账本| lifeEpisode
+  lifeEpisode --> episodeVisualFirst --> episodeContinuation
   lifeEpisode --> episodeDiscussion --> episodeContinuation
   lifeEpisode --> episodeHomeMore --> episodeContinuation
   lifeEpisode --> episodeAftercare -.->|只读／休息后再次选择，非自动外发| episodeContinuation
   lifeEpisode --> episodeContinuation -.->|下一步重新选择；到上限/休息/结束时停止| selection
 
+  %% @code episodeVisualFirst | lib/autonomous-planner.mjs | const observeSelectedVideo=async
   %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_comment_consideration
   %% @code commentDiagnosis | lib/video-comment-readiness.mjs | classifyVideoCommentRound
 %% @code commentAdmission | lib/life-video-action-bridge.mjs | reviewApprovals.set(key,
@@ -219,7 +222,7 @@ flowchart TB
 %% @code menuGuard | lib/autonomous-planner.mjs | export function validateOfferedLifeAction
 %% @code home | lib/life-agent-events.mjs | homePickedCount
 %% @code lifeEpisode | lib/life-opportunities.mjs | const beginHomeExploration=
-%% @code episodeContinuation | lib/autonomous-planner.mjs | const continueLifeRead=async intentionId=>
+%% @code episodeContinuation | lib/autonomous-planner.mjs | const continueLifeRead=async (intentionId,
 %% @code homeEpisode | index.js | const episode=lifeOpportunities.beginHomeExploration
 %% @code homeCandidateMatch | lib/life-agent-events.mjs | let transientHomePickedBvids=null
 %% @code videoWrite | lib/life-continuation-write.mjs | export function createLifeContinuationWriteExecutor

@@ -6389,6 +6389,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getConfig:()=>{refreshCfg();return cfg},getAccountTag:trustedLifeAccountTag,
     getAccountUid:()=>accountBinding.status().blocked?'':String(accountBinding.status().activeUid||''),
     getIntention:id=>lifeOpportunities.continuations({limit:20}).find(x=>x.id===id),
+    hasVerifiedVisual:(bvid,scope)=>lifeOpportunities.hasVerifiedVideoVisual(bvid,scope),
     getPublicEvidence:lifeContinuationEvidence,
     markSelected:async({bvid,title,scope})=>{
       if(trustedLifeAccountTag()!==scope)return {ok:false}

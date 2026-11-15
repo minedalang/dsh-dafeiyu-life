@@ -23,7 +23,7 @@ const validVisual=(bvid=BV,depth='deep')=>({ok:true,action:'watch',bvid,viewDept
  videoEvidence:{verifiedContent:true,sources:[{kind:'decoded_visual_analysis',status:'analyzed',timePointsMs:[5000,10000]}]},
  perceptionHandoff:{video:{source:'decoded-public-video',frameCount:2,frameTimesMs:[5000,10000],modelDescription:'有实际场景变化'}}})
 const home=async fn=>{const dir=mkdtempSync(join(tmpdir(),'life-video-visual-'));try{await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
-function setup(dir,{select=true,observed=validVisual(),enabled=true,onExecute=()=>{},onModel=()=>{}}={}){
+function setup(dir,{select=false,observed=validVisual(BV,'standard'),enabled=true,onExecute=()=>{},onModel=()=>{},onPrompt=()=>{}}={}){
  let modelCalls=0,videoCalls=0,scope=account
  const store=createLifeOpportunities({stateDir:dir,getCredential:()=>cred,getInterestEvidence:()=>[interest],now:()=>NOW})
  const planner=createAutonomousPlanner({dataDir:dir,now:()=>NOW,getConfig:()=>({...config,visionEnabled:enabled}),
@@ -37,30 +37,30 @@ function setup(dir,{select=true,observed=validVisual(),enabled=true,onExecute=()
    executeLifeVideoObservation:async args=>{videoCalls++;onExecute(args,()=>{scope='d'.repeat(16)});return observed},
    recordLifeVideoVisual:(...a)=>store.recordVideoVisual(...a),
    hasVerifiedLifeVideoVisual:(bvid,scope)=>store.hasVerifiedVideoVisual(bvid,scope),
-   invokeModel:async()=>{modelCalls++;if(modelCalls===1)return JSON.stringify({action:'inspect_opportunity',id:store.list()[0].id});
-     if(modelCalls===2&&select){onModel(store);return JSON.stringify({action:'observe_video',id:store.continuations()[0].id,bvid:BV,viewDepth:'deep'});}
+   invokeModel:async(prompt)=>{onPrompt(prompt);modelCalls++;if(modelCalls===1)return JSON.stringify({action:'inspect_opportunity',id:store.list()[0].id});
+     if(modelCalls===2){onModel(store);if(select)return JSON.stringify({action:'observe_video',id:store.continuations()[0].id,bvid:BV,viewDepth:'deep'});}
      return JSON.stringify({action:'stop'})},
    executeRead:async()=>({ok:false}),updateTodo:()=>({ok:false}),reflect:async()=>({ok:false})})
  return {planner,store,get videoCalls(){return videoCalls},get modelCalls(){return modelCalls}}
 }
-test('metadata-only Life opportunity voluntarily becomes true visual read in the SAME Episode',()=>home(async dir=>{
+test('entering a video automatically verifies an initial glimpse in the SAME Life Episode',()=>home(async dir=>{
  const f=setup(dir),r=await f.planner.tick()
  assert.equal(r.action,'inspect_opportunity');assert.equal(r.result,'verified-metadata')
- assert.equal(r.continuation.reason,'visual-read-verified')
+ assert.match(r.continuation.reason,/^fish-chose-rest/)
  assert.equal(f.videoCalls,1);assert.equal(f.modelCalls,2)
  const episode=f.store.intentions({includeClosed:true})[0]
  assert.deepEqual(episode.observedVideoBvids,[BV])
- assert.ok(episode.episodeHistory.some(x=>x.action==='observe-video'&&x.frameCount===2&&x.viewDepth==='deep'))
+ assert.ok(episode.episodeHistory.some(x=>x.action==='observe-video'&&x.frameCount===2&&x.viewDepth==='standard'))
  const rows=f.store.timelineEvidence({days:3})
  assert.ok(rows.some(x=>x.action==='observe-video'&&x.frameCount===2))
  const diary=buildLifeTimeline({explorationEvidence:rows,now:NOW+1_000})
  assert.ok(diary.some(x=>x.label==='观察视频画面'&&x.bvid===BV))
  assert.ok(!JSON.stringify(episode).includes('有实际场景变化'))
 }))
-test('Life may decline, and a non-configured visual model never offers a visual action',()=>home(async dir=>{
+test('Life can stop AFTER first glimpse; an unconfigured model produces no falsely verified view',()=>home(async dir=>{
  const f=setup(dir,{select:false}),r=await f.planner.tick()
- assert.equal(r.result,'verified-metadata');assert.equal(f.videoCalls,0)
- assert.deepEqual(f.store.intentions({includeClosed:true})[0].observedVideoBvids,[])
+ assert.equal(r.result,'verified-metadata');assert.equal(f.videoCalls,1)
+ assert.deepEqual(f.store.intentions({includeClosed:true})[0].observedVideoBvids,[BV])
  const subdir=mkdtempSync(join(tmpdir(),'life-video-off-'))
  try{const disabled=setup(subdir,{enabled:false});const x=await disabled.planner.tick();assert.equal(disabled.videoCalls,0);assert.notEqual(x.continuation?.reason,'visual-read-verified')}
  finally{rmSync(subdir,{recursive:true,force:true})}
@@ -81,9 +81,9 @@ test('visual continuation rejects BV substitution, missing depth, arbitrary sour
    assert.equal(verifyEpisodeVideoVisual({result,bvid:BV,depth:'deep'}),null)
 })
 test('a failed/unverified visual read never writes a view receipt or pretends to have watched',()=>home(async dir=>{
- const f=setup(dir,{observed:{ok:true,bvid:BV,viewDepth:'deep',info:{title:'只有标题'}}})
+ const f=setup(dir,{observed:{ok:true,bvid:BV,viewDepth:'standard',info:{title:'只有标题'}}})
  const r=await f.planner.tick()
- assert.equal(r.continuation.reason,'visual-read-unverified')
+ assert.ok(r.continuation.reason.startsWith('fish-chose-rest')||r.continuation.reason==='visual-read-unverified')
  assert.equal(f.videoCalls,1)
  assert.ok(!f.store.timelineEvidence({days:3}).some(x=>x.action==='observe-video'))
  assert.deepEqual(f.store.intentions({includeClosed:true})[0].observedVideoBvids,[])
@@ -117,8 +117,8 @@ test('a verified prior Life visual observation suppresses another full watch acr
  assert.equal(reloaded.rememberVerifiedVideoVisual({ok:true,bvid:BV,depth:'standard',frameCount:12,source:'decoded-public-video'},account).alreadySeen,true)
 }))
 
-test('metadata-only and unverified vision never suppress a new voluntary look; explicit focused revisit is separate',()=>home(async dir=>{
- const f=setup(dir,{select:false})
+test('failed glance remains unobserved and never suppresses a future voluntary look',()=>home(async dir=>{
+ const f=setup(dir,{observed:{ok:true,bvid:BV,viewDepth:'standard',info:{title:'仅有元数据'}}})
  await f.planner.tick()
  assert.equal(f.store.hasVerifiedVideoVisual(BV,account),false)
  const i={id:'a'.repeat(24),status:'inspected',expiresAt:NOW+50_000,nextAt:NOW,
@@ -130,13 +130,47 @@ test('metadata-only and unverified vision never suppress a new voluntary look; e
 }))
 
 
-test('another verified Life visual read while model is thinking prevents a duplicate execution',()=>home(async dir=>{
- const f=setup(dir,{onModel:store=>{
-   const recorded=store.rememberVerifiedVideoVisual({ok:true,bvid:BV,depth:'standard',frameCount:12,source:'decoded-public-video'},account)
-   assert.equal(recorded.ok,true)
- }})
+test('another Life choice cannot trigger repeated full observation after first glimpse',()=>home(async dir=>{
+ const f=setup(dir,{select:true})
  const result=await f.planner.tick()
- assert.equal(result.continuation.reason,'candidate-changed')
- assert.equal(f.videoCalls,0)
+ assert.equal(f.videoCalls,1)
  assert.equal(f.store.hasVerifiedVideoVisual(BV,account),true)
+ assert.ok(['target-not-offered','candidate-changed'].includes(result.continuation.reason))
+}))
+
+test('Life search chooses a concrete video and automatically samples it before any write choice',()=>home(async dir=>{
+ let calls=0,seenPrompt='',modelCalls=0
+ const life=createLifeOpportunities({stateDir:dir,getCredential:()=>cred,getInterestEvidence:()=>[interest],now:()=>NOW})
+ const planner=createAutonomousPlanner({dataDir:dir,now:()=>NOW,getConfig:()=>config,
+  getLifeAccountTag:()=>account,getTodos:()=>[],getLifeOpportunities:()=>life.list(),
+  getLifeIntentionCues:()=>life.explorationCues(),getLifeIntentions:()=>life.continuations(),
+  beginLifeExploration:(...args)=>life.beginExploration(...args),
+  completeLifeExploration:(...args)=>life.completeExploration(...args),
+  executeLifeSearch:async topic=>({ok:true,topic,videos:[{bvid:BV,title:'真实视频'}]}),
+  executeOpportunityRead:async()=>({ok:true,bvid:BV,title:'真实视频'}),
+  canLifeObserveVideo:()=>true,
+  executeLifeVideoObservation:async args=>{calls++;assert.equal(args.viewDepth,'standard');return validVisual(BV,'standard')},
+  recordLifeVideoVisual:(...args)=>life.recordVideoVisual(...args),
+  hasVerifiedLifeVideoVisual:(bvid,scope)=>life.hasVerifiedVideoVisual(bvid,scope),
+  invokeModel:async prompt=>{modelCalls++;seenPrompt=prompt;
+    if(modelCalls===1)return JSON.stringify({action:'begin_exploration',id:life.explorationCues()[0].id,goal:'想看看有趣的视频'});
+    if(modelCalls===2)return JSON.stringify({action:'inspect_exploration',id:life.continuations()[0].id,bvid:BV});
+    return JSON.stringify({action:'stop'})},
+  executeRead:async()=>({ok:false}),updateTodo:()=>({ok:false}),reflect:async()=>({ok:false})})
+ const r=await planner.tick()
+ assert.equal(r.action,'begin_exploration')
+ assert.equal(calls,1)
+ assert.equal(life.hasVerifiedVideoVisual(BV,account),true)
+ assert.ok(life.timelineEvidence({days:3}).some(x=>x.action==='observe-video'&&x.frameCount===2))
+ assert.ok(modelCalls>=3)
+ assert.match(String(seenPrompt),/有实际场景变化/)
+}))
+
+test('actual visual model interpretation reaches next Life choice but not durable Episode',()=>home(async dir=>{
+ const prompts=[]
+ const f=setup(dir,{onPrompt:prompt=>prompts.push(prompt)})
+ await f.planner.tick()
+ assert.equal(f.videoCalls,1)
+ assert.ok(prompts.some(x=>JSON.stringify(x).includes('有实际场景变化')))
+ assert.ok(!JSON.stringify(f.store.intentions({includeClosed:true})).includes('有实际场景变化'))
 }))
