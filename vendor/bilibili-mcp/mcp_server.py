@@ -1337,7 +1337,7 @@ async def bili_vision_selftest():
 # 每轮 headless 创建独立 MCP 进程；同一个 BV 重试不扩张上限。
 # 这道上限是实际后端闸，不只依赖 AI 遵守提示词。手动预览测试走单独的受限脚本。
 _VISION_BVS_PER_RUN = set()
-def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard"):
+def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None):
     """Reserve only frame acquisition, NEVER the outer/child DSH vision call.
 
     The independent visual DSH subprocess may itself call bili_preview_vision.
@@ -1345,13 +1345,13 @@ def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perce
     """
     from preview_vision import analyze_perception
     with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
-        return analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source,view_depth=view_depth)
+        return analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source,view_depth=view_depth,network_budget_bytes=network_budget_bytes)
 
 
 _VISION_FRAMES_SERVED = {}  # 单轮内实际经 MCP 返回图片的 BV 时间点；不含图片正文
 
 @tool()
-async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard"):
+async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0):
     """鱼鱼主动选画面来源：preview官方低清，adaptive受控公开视频采样；可指定3～120秒。"""
     if (e := _guard("bili_preview_vision")): return e
     if os.environ.get('BILI_VISION_ENABLED') != '1':
@@ -1365,6 +1365,10 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
     # 校验 BV 必须发生在占用名额之前，避免无效 ID 耗尽当轮预算。
     if not re.fullmatch(r'BV[0-9A-Za-z]{10}', str(bvid or '')):
         return json.dumps({'ok':False,'error':'BV号格式不正确'},ensure_ascii=False)
+    if (type(network_budget_bytes) is not int or network_budget_bytes<0 or network_budget_bytes>104857600
+        or (network_budget_bytes and (network_budget_bytes<1048576 or perception_source!='adaptive'))):
+        return json.dumps({'ok':False,'status':'invalid_network_budget','error':'网络读取预算无效'},ensure_ascii=False)
+    budget_override=network_budget_bytes or None
     from preview_vision import _normalize_focus_window
     try:
         if focus_start_seconds==-1.0 and focus_end_seconds==-1.0:focus=None
@@ -1381,7 +1385,8 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
                 result = await asyncio.to_thread(analyze_perception,bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
                         model=os.environ.get('BILI_VISION_MODEL',''),debug=False,
-                        focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth)
+                        focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
+                        network_budget_bytes=budget_override)
             result['mode']='independent_local'
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='adaptive_local_result' if perception_source=='adaptive' else 'independent_local_result',
@@ -1391,7 +1396,8 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             from vision_dsh import describe_with_dsh
             from preview_vision import record_vision_event
             result = await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
-                focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth)
+                focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
+                network_budget_bytes=budget_override)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='independent_dsh_result',ok=result.get('ok'),
                                 error=result.get('error',''),times=result.get('times'))
@@ -1400,7 +1406,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             # MCP SDK translates real image blocks to the video model route through DSH's
             # attachment bridge. No independent vision API or DPAPI key is accessed here.
             result = await asyncio.to_thread(_fetch_preview_frames_reserved, bvid,
-                focus['startSeconds'] if focus else None,focus['endSeconds'] if focus else None,perception_source,view_depth)
+                focus['startSeconds'] if focus else None,focus['endSeconds'] if focus else None,perception_source,view_depth,budget_override)
             if not result.get('ok'):
                 return json.dumps(result, ensure_ascii=False)
             frames = result.pop('frames', [])
@@ -1730,7 +1736,8 @@ def _identity_public_memory(query: str, limit: int = 6) -> dict:
                     +json.dumps(cards,ensure_ascii=False)+'</memory_index>')
             _record_model_launch(home, 'memory')
             result=subprocess.run([*argv,prompt],capture_output=True,text=True,encoding='utf-8',
-                                 timeout=35,shell=False,cwd=home,check=False)
+                                 timeout=35,shell=False,cwd=home,check=False,
+                                 creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
             if result.returncode != 0: raise ValueError('检索模型退出异常')
             out=result.stdout[:6500];obj=json.loads(out[out.find('{'):out.rfind('}')+1])
             ids=obj.get('memory_ids')
@@ -3355,7 +3362,8 @@ async def bili_transcribe_safe(bvid: str) -> str:
         res = await asyncio.to_thread(subprocess.run,
                                       [str(python), str(asr), bv, '--json', '--model', model],
                                       capture_output=True,text=True,encoding='utf-8',errors='replace',
-                                      timeout=160,cwd=str(_DUTY_HOME))
+                                      timeout=160,cwd=str(_DUTY_HOME),
+                                      creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         if res.returncode != 0 or len(res.stdout)>65000:
             _record_asr_attempt('failed',model,reason='transcription-failed')
             return json.dumps({'ok':False,'status':'asr_failed','error':'本地语音转写未成功'},ensure_ascii=False)

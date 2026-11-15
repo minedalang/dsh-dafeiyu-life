@@ -305,6 +305,7 @@ def _packet_index(filename):
             '-show_entries', 'packet=pts_time,pos,flags', '-of', 'csv=p=0', str(filename)]
     try:
         result = subprocess.run(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0),
                                 stderr=subprocess.PIPE, timeout=22, check=False)
     except (OSError, subprocess.TimeoutExpired):
         raise AdaptiveUnavailable('video_mp4_index_probe_failed', fallback=False) from None
@@ -385,31 +386,35 @@ def _ffmpeg_binary():
     return str(candidate.resolve())
 
 
-def _decode_samples(filename, *, start, length):
+def _decode_samples(filename, *, start, length, focused=False):
     exe = _ffmpeg_binary()
     if not exe:
         raise AdaptiveUnavailable('ffmpeg_not_installed')
     # Accept ONLY a known progressive container, not playlists or remote probes.
     container = 'flv' if str(filename).endswith('.flv') else 'mp4'
+    # Focus mode decodes ORIGINAL pixels at double resolution, not upscale
+    # of the 192x108 overview tiles. Work remains local and time-bounded.
+    width,height=(384,216) if focused else (FRAME_W,FRAME_H)
     # Strictly local input, offline decoder, bounded raw RGB output and runtime.
     cmd = [exe, '-nostdin', '-hide_banner', '-loglevel', 'error',
            '-protocol_whitelist', 'file,pipe', '-threads', '1',
            '-ss', str(start), '-f', container, '-i', str(filename), '-t', str(length),
-           '-vf', f'fps={FRAME_RATE},scale={FRAME_W}:{FRAME_H}:force_original_aspect_ratio=decrease,pad={FRAME_W}:{FRAME_H}:(ow-iw)/2:(oh-ih)/2',
+           '-vf', f'fps={FRAME_RATE},scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2',
            '-an', '-sn', '-dn', '-frames:v', str(min(MAX_FRAMES, math.ceil(length * FRAME_RATE))),
            '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1']
     try:
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0),
                                 stdin=subprocess.DEVNULL, timeout=35, check=False)
     except (OSError, subprocess.TimeoutExpired):
         raise AdaptiveUnavailable('video_decode_unavailable') from None
-    size = FRAME_W * FRAME_H * 3
+    size = width * height * 3
     if result.returncode != 0 or len(result.stdout) < size or len(result.stdout) % size:
         raise AdaptiveUnavailable('video_decode_failed')
     count = len(result.stdout) // size
     if count > MAX_FRAMES:
         raise AdaptiveUnavailable('decode_frame_limit_exceeded')
-    return [Image.frombytes('RGB', (FRAME_W, FRAME_H), result.stdout[i*size:(i+1)*size])
+    return [Image.frombytes('RGB', (width, height), result.stdout[i*size:(i+1)*size])
             for i in range(count)]
 
 
@@ -608,14 +613,16 @@ def _make_storyboards(items):
     output=[]
     for start in range(0,len(items),12):
         chunk=items[start:start+12]
-        tile_w,tile_h=FRAME_W,FRAME_H+20
+        tile_w=chunk[0]['image'].width
+        tile_height=chunk[0]['image'].height
+        tile_h=tile_height+20
         grid=Image.new('RGB',(4*tile_w,3*tile_h),(19,23,30))
         paint=ImageDraw.Draw(grid)
         for j,item in enumerate(chunk):
             x=(j%4)*tile_w;y=(j//4)*tile_h
             grid.paste(item['image'],(x,y))
             t=item['second']
-            paint.text((x+5,y+FRAME_H+2), '%02d:%02d'%(int(t//60),int(t%60)),fill=(247,247,247))
+            paint.text((x+5,y+tile_height+2), '%02d:%02d'%(int(t//60),int(t%60)),fill=(247,247,247))
         out=BytesIO();grid.save(out,format='JPEG',quality=86,optimize=True)
         output.append({'second':chunk[0]['second'],'bytes':out.getvalue(),
                        'rank':len(output),'tile_times':[x['second'] for x in chunk],
@@ -623,7 +630,7 @@ def _make_storyboards(items):
     return output
 
 
-def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'):
+def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard', network_budget_bytes=None):
     """Return storyboards *of actual decoded moments* or an explicit fallback reason."""
     if not BV_RE.fullmatch(str(bvid or '')):
         raise AdaptiveUnavailable('invalid_bvid', fallback=False)
@@ -637,6 +644,9 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
     if configured not in FRAME_PLANS:
         raise AdaptiveUnavailable('invalid_frame_plan', fallback=False)
     limit = min(configured,12) if depth=='standard' else configured
+    if network_budget_bytes is not None:
+        if (type(network_budget_bytes) is not int or not 1_048_576<=network_budget_bytes<=NETWORK_BUDGETS[configured]):
+            raise AdaptiveUnavailable('invalid_network_budget', fallback=False)
     if not _ffmpeg_binary():
         raise AdaptiveUnavailable('ffmpeg_not_installed')
     url, size, duration, cid = _playurl(bvid)
@@ -654,7 +664,7 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
     with tempfile.TemporaryDirectory(prefix='dafeiyu-scene-') as folder:
         ext = '.flv' if parse.urlsplit(url).path.lower().endswith('.flv') else '.mp4'
         filename = Path(folder) / ('public-video' + ext)
-        budget = NETWORK_BUDGETS[configured]
+        budget = min(NETWORK_BUDGETS[configured], network_budget_bytes) if network_budget_bytes is not None else NETWORK_BUDGETS[configured]
         if size <= budget:
             count = _download_video(url, filename, size, budget=budget)
             download_mode, range_count = 'complete-bounded', 1
@@ -667,7 +677,8 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
             if time.monotonic()-started>95:
                 raise AdaptiveUnavailable('video_sampling_budget_exhausted')
             try:
-                all_images.append(_decode_samples(filename,start=start,length=end-start))
+                all_images.append(_decode_samples(filename,start=start,length=end-start,focused=True) if focus
+                                  else _decode_samples(filename,start=start,length=end-start))
             except AdaptiveUnavailable as exc:
                 # A failed indexed range must never be misreported as a
                 # successful three-preview-frame substitute.
@@ -701,6 +712,7 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
               'heat_source':heat['source'] if heat else 'unavailable',
               'viewer_heat_is_content_evidence':False,'depth':depth,
               'frame_plan':configured,'frame_budget':limit,'storyboard_count':len(boards),
+              'frame_pixel_size':[384,216] if focus else [FRAME_W,FRAME_H],
               'sample_interval_seconds':1/FRAME_RATE,
               'note':'超预算 MP4 按真实索引分段读取；全片按时间分区稀疏抽样；OCR 仅在本机可用时分析少量静帧，未理解音轨或完整播放'}
     sampling.update(info)

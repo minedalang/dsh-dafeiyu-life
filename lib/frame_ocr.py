@@ -46,7 +46,8 @@ def extract_frame_ocr(moments, *, executable=None, runner=subprocess.run, langua
     if languages is None:
         try:
             langs = runner([executable, '--list-langs'], capture_output=True, text=True,
-                           timeout=3, check=False)
+                           timeout=3, check=False,
+                           **({'creationflags':subprocess.CREATE_NO_WINDOW} if hasattr(subprocess,'CREATE_NO_WINDOW') else {}))
             available = set(langs.stdout.split()) | set(langs.stderr.split())
             languages = 'chi_sim+eng' if 'chi_sim' in available and 'eng' in available else (
                 'chi_sim' if 'chi_sim' in available else 'eng' if 'eng' in available else None)
@@ -75,7 +76,8 @@ def extract_frame_ocr(moments, *, executable=None, runner=subprocess.run, langua
             attempted += 1
             reply = runner([executable,'stdin','stdout','-l',languages,'--psm','11','tsv'],
                            input=png.getvalue(), stdout=subprocess.PIPE,stderr=subprocess.PIPE,
-                           timeout=3,check=False)
+                           timeout=3,check=False,
+                           **({'creationflags':subprocess.CREATE_NO_WINDOW} if hasattr(subprocess,'CREATE_NO_WINDOW') else {}))
             if reply.returncode != 0 or len(reply.stdout) > 120000:
                 continue
             data=reply.stdout.decode('utf-8',errors='replace') if isinstance(reply.stdout,bytes) else reply.stdout

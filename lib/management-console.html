@@ -2273,6 +2273,7 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <button id="video-debug-run" type="button" class="life-action life-purple">开始只读视频感知验收</button>
 <button id="video-debug-refresh" type="button" class="life-action life-sky">刷新当前结果</button>
 </div>
+<progress id="video-debug-progressbar" max="6" style="width:100%;height:15px;display:none" aria-label="视频感知只读验收进行中"></progress>
 <p id="video-debug-progress" class="muted" role="status" aria-live="polite">尚未执行。新版本启用后请确认模型与 FFmpeg / Whisper 状态。</p>
 <div id="video-debug-summary" class="video-debug-summary" aria-live="polite"></div>
 <div class="toolbar"><button id="video-debug-show-test" type="button" class="life-action life-sky">查看试运行输入</button><button id="video-debug-show-life" type="button" class="life-action life-sky">查看最近真实 Life 输入</button><button id="video-debug-copy" type="button" class="life-action life-sky">复制当前完整 JSON</button></div>
