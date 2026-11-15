@@ -145,3 +145,42 @@ def test_dsh_focused_window_receipt_is_bound_to_requested_window(tmp_path):
         mismatched=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
             runner=wrong_focus,focus_start=30,focus_end=40)
         assert not mismatched['ok'] and mismatched['status']=='no_images_confirmed'
+
+
+def test_dsh_adaptive_vision_binds_proof_source_and_never_caches_preview_fallback(tmp_path):
+    env=configured(tmp_path)
+    calls=[]
+    def run_real(argv,**kw):
+        calls.append(argv[-1])
+        Path(kw['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'bvid':'BV1234567890','times':[3.0,7.0],
+            'perception_source_requested':'adaptive',
+            'image_source':'B站公开视频片段（离线解码）',
+            'sampling':{'sampler_version':4,'strategy':'decoded-scene-2fps',
+                'source_type':'bili-public-playurl-durl','clip_window':{'startSeconds':0,'endSeconds':10},
+                'frames_selected':2,'candidates_examined':20}}),encoding='utf8')
+        return SimpleNamespace(returncode=0,stdout='VISION_DESC: 第三秒与第七秒画面显示不同颜色的动画场景。\n'.encode(),stderr=b'')
+    with patch('preview_vision._claim_vision_quota',return_value=True):
+        real=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=run_real,perception_source='adaptive')
+        assert real['ok'] and real['image_source']=='B站公开视频片段（离线解码）'
+        assert 'perception_source=adaptive' in calls[0]
+    with patch('preview_vision._claim_vision_quota',side_effect=AssertionError('adaptive cache should be used')):
+        cached=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=lambda *_a,**_kw:1/0,perception_source='adaptive')
+        assert cached['status']=='cached' and cached['image_source']=='B站公开视频片段（离线解码）'
+    # A preview source request must never hit the adaptive result cache.
+    with patch('preview_vision._claim_vision_quota',return_value=True):
+        ordinary=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=lambda *a,**kw:SimpleNamespace(returncode=1,stdout=b'',stderr=b''))
+    assert ordinary['ok'] is False
+
+    def wrong_source(argv,**kw):
+        Path(kw['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'bvid':'BV1234567890','times':[4.0],
+            'perception_source_requested':'preview',
+            'image_source':'B站低清预览'}),encoding='utf8')
+        return SimpleNamespace(returncode=0,stdout='VISION_DESC: 不应认可的图片观察\n'.encode(),stderr=b'')
+    with patch('preview_vision._claim_vision_quota',return_value=True):
+        wrong=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=wrong_source,perception_source='adaptive',focus_start=3,focus_end=8)
+    assert not wrong['ok'] and wrong['status']=='no_images_confirmed'

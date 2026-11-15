@@ -12,6 +12,8 @@
 
 - **2.8.1-dev.2b 本地视觉硬边界：** 新增的 Qwen3.5 4B / MiniCPM-V 4.7 1B 仅在用户显式下载安装、Ollama 真正返回可查看的图片识别文字、用户人工认可本轮结果并再次选择启用后接入；使用固定 Ollama 本机 127.0.0.1，不接受任意模型/URL。缺 Ollama Runtime、运行不兼容或缓存失败不回退到未知云端，不提升画面真实性或 Life 发言权限。参考/移植第三方视频算法时，README 与 `THIRD_PARTY_NOTICES.md` 同次更新，并按许可证保留必要 LICENSE/NOTICE。现行契约见 `docs/architecture/2.8.1-video-perception-dev2b.md`。
 
+- **2.8.1-dev.3a.3 现行视频感知约束（开发增量）：** 鱼鱼先自由决定是否看，再自由决定 `skim/standard/deep`；只在主动选择视觉时可取受控公开视频片段。`lib/adaptive_video.py` 只能消费官方 B站公开单段 DURL，严格白名单、下载≤24MiB、时间窗≤120秒、可选本地 FFmpeg 离线稀疏采样，失败按来源标明 videoshot 回退，遇平台限流不强制重试。`lib/video-evidence-bundle.mjs` 必须把实际解码帧、低清预览、字幕/ASR和原音轨严格分开，不可由局部帧声称完整观看。所有试验只读，不授予 B站写操作。具体见 `docs/architecture/2.8.1-video-perception-dev3a3.md`。
+
 ---
 
 ## 历史开发记录（供追溯，不再视为现行约束）

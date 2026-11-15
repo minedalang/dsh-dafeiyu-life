@@ -1311,25 +1311,27 @@ async def bili_vision_selftest():
 # 每轮 headless 创建独立 MCP 进程；同一个 BV 重试不扩张上限。
 # 这道上限是实际后端闸，不只依赖 AI 遵守提示词。手动预览测试走单独的受限脚本。
 _VISION_BVS_PER_RUN = set()
-def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None):
+def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perception_source="preview"):
     """Reserve only frame acquisition, NEVER the outer/child DSH vision call.
 
     The independent visual DSH subprocess may itself call bili_preview_vision.
     Taking a lock around the parent orchestration would deadlock that child.
     """
-    from preview_vision import analyze_preview
+    from preview_vision import analyze_perception
     with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
-        return analyze_preview(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end)
+        return analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source)
 
 
 _VISION_FRAMES_SERVED = {}  # 单轮内实际经 MCP 返回图片的 BV 时间点；不含图片正文
 
 @tool()
-async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0):
-    """仅在鱼鱼主动选择画面理解时调用；可选择3～120秒的时间窗复查。"""
+async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview"):
+    """鱼鱼主动选画面来源：preview官方低清，adaptive受控公开视频采样；可指定3～120秒。"""
     if (e := _guard("bili_preview_vision")): return e
     if os.environ.get('BILI_VISION_ENABLED') != '1':
         return json.dumps({'ok':False,'error':'视觉识图已关闭'}, ensure_ascii=False)
+    if perception_source not in ('preview','adaptive'):
+        return json.dumps({'ok':False,'status':'invalid_source','error':'未知视频画面来源'},ensure_ascii=False)
     # 校验 BV 必须发生在占用名额之前，避免无效 ID 耗尽当轮预算。
     if not re.fullmatch(r'BV[0-9A-Za-z]{10}', str(bvid or '')):
         return json.dumps({'ok':False,'error':'BV号格式不正确'},ensure_ascii=False)
@@ -1342,20 +1344,23 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
     if bvid not in _VISION_BVS_PER_RUN:
         _VISION_BVS_PER_RUN.add(bvid)
     try:
-        from preview_vision import analyze_preview
+        from preview_vision import analyze_perception
         mode = os.environ.get('BILI_VISION_MODE', 'separate')
         if mode == 'independent_local':
             from preview_vision import record_vision_event
             with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
-                result = await asyncio.to_thread(analyze_preview,bvid,_DUTY_HOME,enabled=True,provider='ollama',
+                result = await asyncio.to_thread(analyze_perception,bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
                         model=os.environ.get('BILI_VISION_MODEL',''),debug=False,
                         focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None)
             result['mode']='independent_local'
+            record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
+                                source='adaptive_local_result' if perception_source=='adaptive' else 'independent_local_result',
+                                ok=result.get('ok'),error=result.get('error',''),times=result.get('times'))
             return json.dumps(result,ensure_ascii=False)
         if mode == 'independent_dsh':
             from vision_dsh import describe_with_dsh
             from preview_vision import record_vision_event
-            result = await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,
+            result = await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
                 focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='independent_dsh_result',ok=result.get('ok'),
@@ -1365,7 +1370,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             # MCP SDK translates real image blocks to the video model route through DSH's
             # attachment bridge. No independent vision API or DPAPI key is accessed here.
             result = await asyncio.to_thread(_fetch_preview_frames_reserved, bvid,
-                focus['startSeconds'] if focus else None,focus['endSeconds'] if focus else None)
+                focus['startSeconds'] if focus else None,focus['endSeconds'] if focus else None,perception_source)
             if not result.get('ok'):
                 return json.dumps(result, ensure_ascii=False)
             frames = result.pop('frames', [])
@@ -1373,7 +1378,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                 return json.dumps({'ok':False,'status':'no_frames','error':'未取得图片帧'},ensure_ascii=False)
             result['status']='frames_ready'
             result['mode']='reuse_video_model'
-            result['notice']='图片仅是 B站低清预览；下方图片由当前视频模型自己判断，不能据此推断完整剧情。'
+            result['notice']='仅为所选来源稀疏画面，未验证完整播放、音频或完整剧情。'
             _VISION_FRAMES_SERVED[bvid] = list(result.get('times',[]))
             # Only the independent read-only DSH vision child uses this one-shot receipt.
             # It confirms the MCP server returned image blocks, NOT that a remote model
@@ -1384,15 +1389,17 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                     proof_path=Path(proof_file).resolve()
                     if proof_path.parent == (_DUTY_HOME/'vision-proof').resolve() and re.fullmatch(r'[a-f0-9]{32}\.json',proof_path.name):
                         proof_path.write_text(json.dumps({'bvid':bvid,'times':result['times'],
-                            'sampling':result.get('sampling'),'focus_window':focus},ensure_ascii=False),encoding='utf8')
+                            'sampling':result.get('sampling'),'focus_window':focus,
+                            'perception_source_requested':perception_source,
+                            'image_source':result.get('image_source')},ensure_ascii=False),encoding='utf8')
                 except OSError: pass
             blocks = [TextContent(type='text', text=json.dumps(result,ensure_ascii=False))]
             for i,frame in enumerate(frames):
-                blocks.append(TextContent(type='text',text=f'低清预览图 {i+1}/{len(frames)}：视频约 {frame["second"]} 秒（只描述看得清的内容）'))
+                blocks.append(TextContent(type='text',text=f'视频采样帧 {i+1}/{len(frames)}：约 {frame["second"]} 秒（来源：{result.get("image_source")}）'))
                 blocks.append(ImageContent(type='image', mimeType='image/jpeg',
                                            data=base64.b64encode(frame['bytes']).decode('ascii')))
             return CallToolResult(content=blocks)
-        return json.dumps(await asyncio.to_thread(analyze_preview,bvid,_DUTY_HOME),ensure_ascii=False)
+        return json.dumps(await asyncio.to_thread(analyze_perception,bvid,_DUTY_HOME,perception_source=perception_source),ensure_ascii=False)
     except Exception as e:
         return json.dumps({'ok':False,'error':'预览视觉分析失败：'+str(e)[:180]},ensure_ascii=False)
 

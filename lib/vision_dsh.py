@@ -2,7 +2,7 @@
 
 No API keys are accepted or handled here. The parent plugin builds the fixed overlay and
 passes an argv JSON array (never a shell command). Video IDs are strictly validated.
-The extra session is bounded to 50 seconds to stay below MCP default call deadlines.
+The extra session is bounded; adaptive local sampling may take longer than previews.
 """
 import json
 import base64
@@ -115,9 +115,11 @@ def _validate_vision_overlay_file(path, home, *, selftest=False):
     return path.resolve()
 
 
-def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, focus_end=None):
+def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, focus_end=None, perception_source="preview"):
     if not _BV.fullmatch(str(bvid)):
         return {'ok':False,'status':'invalid_bvid','error':'BV 号格式不正确'}
+    if perception_source not in ('preview','adaptive'):
+        return {'ok':False,'status':'invalid_source','error':'未知视觉画面来源'}
     home=Path(home).resolve()
     env=dict(os.environ if env is None else env)
     try:
@@ -144,9 +146,10 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         prompt_hash=hashlib.sha256(visual_instruction.encode('utf8')).hexdigest()[:16]
         from preview_vision import _SAMPLER_VERSION, _FOCUS_SAMPLER_VERSION, _normalize_focus_window
         focus=_normalize_focus_window(focus_start,focus_end)
-        sampler_version=_FOCUS_SAMPLER_VERSION if focus else _SAMPLER_VERSION
+        sampler_version=4 if perception_source=='adaptive' else (_FOCUS_SAMPLER_VERSION if focus else _SAMPLER_VERSION)
         suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
-        cached=home/'vision-cache'/f'{bvid}{suffix}.json'
+        source_suffix='-adaptive' if perception_source=='adaptive' else ''
+        cached=home/'vision-cache'/f'{bvid}{source_suffix}{suffix}.json'
         if cached.is_file():
             try:
                 d=json.loads(cached.read_text(encoding='utf8'))
@@ -154,9 +157,14 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
                     and d.get('provider')==provider and d.get('frames_limit')==frames
                     and d.get('prompt_hash')==prompt_hash
                     and d.get('sampler_version')==sampler_version
-                    and d.get('focus_window')==focus and d.get('description')):
+                    and d.get('focus_window')==focus and d.get('description')
+                    and d.get('perception_source_requested','preview')==perception_source
+                    and (perception_source!='adaptive' or d.get('image_source')=='B站公开视频片段（离线解码）')):
                     return {'ok':True,'status':'cached','bvid':bvid,'description':d['description'],
-                            'times':d.get('times',[]),'sampling':d.get('sampling'),'focus_window':focus,'notice':'缓存的独立视觉模型观察，低清待核实'}
+                            'times':d.get('times',[]),'sampling':d.get('sampling'),'focus_window':focus,
+                            'image_source':d.get('image_source','B站低清预览'),
+                            'perception_source_requested':perception_source,
+                            'notice':'缓存的独立视觉模型采样观察，并非完整播放'}
             except (OSError,ValueError): pass
         from preview_vision import _claim_vision_quota, _vision_daily_limit
         daily_limit=_vision_daily_limit(env)
@@ -192,8 +200,9 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         # Body never includes freeform user/video content, paths, or AI-authored commands.
         # 用户可修改识图重点，但末尾的图片证明/只读工具/输出格式要求不可覆盖。
         focus_params=(f'，focus_start_seconds={focus["startSeconds"]}，focus_end_seconds={focus["endSeconds"]}' if focus else '')
-        prompt=(f'你是独立的 B站低清预览图观察助手。只处理 BV号 {bvid}。'
-                f'先调用 mcp__bilivision__bili_preview_vision，参数 bvid={bvid}{focus_params}。'
+        source_params=f'，perception_source={perception_source}'
+        prompt=(f'你是独立的 B站公开视频采样帧观察助手。只处理 BV号 {bvid}。'
+                f'先调用 mcp__bilivision__bili_preview_vision，参数 bvid={bvid}{focus_params}{source_params}。'
                 '仅依据工具真正送达的 JPEG 画面，写出100字以内客观、具体的中文画面描述。'
                 '不要猜测视频完整剧情或角色身份；不能看清则在输出说明。'
                 +('\n【用户识图重点】'+visual_instruction+'\n【固定安全规则】' if visual_instruction else '')
@@ -205,9 +214,9 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         execute=runner or subprocess.run
         try:
             result=execute([*child_args,prompt],cwd=str(home),env=child_env,stdin=subprocess.DEVNULL,
-                           stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=50,check=False)
+                           stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=115 if perception_source=='adaptive' else 50,check=False)
         except subprocess.TimeoutExpired:
-            return {'ok':False,'status':'timeout','error':'独立 DSH 视觉模型超过50秒；未验证图片理解结果'}
+            return {'ok':False,'status':'timeout','error':'独立 DSH 视觉模型超时；未验证图片理解结果'}
         except (OSError,ValueError) as exc:
             return {'ok':False,'status':'subagent_error','error':'无法运行独立 DSH 视觉会话：'+type(exc).__name__}
         if result.returncode!=0:
@@ -216,7 +225,9 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
             observed=json.loads(proof.read_text(encoding='utf8'))
         except (OSError,ValueError):
             return {'ok':False,'status':'no_images_confirmed','error':'没有证据表明独立视觉会话真正取得图片工具结果'}
-        if observed.get('bvid')!=bvid or not observed.get('times') or observed.get('focus_window')!=focus:
+        if (observed.get('bvid')!=bvid or not observed.get('times')
+            or observed.get('focus_window')!=focus
+            or observed.get('perception_source_requested','preview')!=perception_source):
             return {'ok':False,'status':'no_images_confirmed','error':'独立视觉图片回执不匹配'}
         output=(result.stdout or b'')[-16000:].decode('utf8',errors='replace')
         descs=_DESC.findall(output)
@@ -228,14 +239,24 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         record={'origin':'dsh-independent-unverified','model':model,'provider':provider,
                 'frames_limit':frames,'prompt_hash':prompt_hash,'sampler_version':sampler_version,
                 'times':observed['times'][:3],'sampling':observed.get('sampling'),'focus_window':focus,
-                'description':description}
+                'description':description,'image_source':observed.get('image_source','B站低清预览'),
+                'perception_source_requested':perception_source}
+        # Never cache a videoshot downgrade under an adaptive source identity.
+        if perception_source=='adaptive' and record['image_source']!='B站公开视频片段（离线解码）':
+            return {'ok':True,'status':'analyzed','bvid':bvid,'description':description,
+                    'times':record['times'],'sampling':record.get('sampling'),
+                    'focus_window':focus,'image_source':record['image_source'],
+                    'perception_source_requested':perception_source,
+                    'adaptive_fallback':{'actual_source':'videoshot','reason':'public_stream_unavailable'},
+                    'notice':'真实视频不可用，仅据官方低清预览得到观察'}
         cached.parent.mkdir(parents=True,exist_ok=True)
         tmp=cached.with_suffix('.tmp')
         tmp.write_text(json.dumps(record,ensure_ascii=False),encoding='utf8')
         os.replace(tmp,cached)
         return {'ok':True,'status':'analyzed','bvid':bvid,'description':description,
                 'times':record['times'],'sampling':record.get('sampling'),'focus_window':focus,
-                'notice':'独立 DSH 视觉模型根据低清图片自述观察，尚未独立核实'}
+                'image_source':record['image_source'],'perception_source_requested':perception_source,
+                'notice':'独立 DSH 视觉模型根据采样图片自述观察，尚未独立核实'}
     except Exception as exc:
         return {'ok':False,'status':'vision_config_error','error':str(exc)[:180]}
     finally:

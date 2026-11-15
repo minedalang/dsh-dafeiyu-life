@@ -34,3 +34,10 @@ test('user-edited preview script is never silently overwritten', () => homeWith(
   assert.equal(readFileSync(join(dir, 'preview_vision.py'), 'utf8'), custom)
   assert.equal(readFileSync(join(dir, 'preview_vision.py.new'), 'utf8'), readFileSync(join(root, 'lib', 'preview_vision.py'), 'utf8'))
 }))
+
+test('dev.3a.3 adaptive decoder is staged beside MCP and preview adapter',()=>homeWith(dir=>{
+  ensureHomeFiles(root,dir)
+  const expected=readFileSync(join(root,'lib','adaptive_video.py'),'utf8')
+  assert.equal(readFileSync(join(dir,'adaptive_video.py'),'utf8'),expected)
+  assert.equal(readFileSync(join(dir,'.shipped-adaptive_video.py.sha'),'utf8'),hash(expected))
+}))
