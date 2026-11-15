@@ -3348,6 +3348,11 @@ async def bili_transcribe_safe(bvid: str) -> str:
     model = os.environ.get('BILI_ASR_MODEL', 'small')
     if model not in ('tiny','base','small','medium','large-v3'):
         model = 'small'
+    # CPU-first Whisper small can spend longer than the former 160-second wall
+    # limit on model initialization + audio fetch + inference. Bound the entire
+    # subprocess, and allow an operator-only override (never model-supplied).
+    try: timeout_seconds = max(90, min(600, int(os.environ.get('BILI_ASR_TIMEOUT_SECONDS', '360'))))
+    except (ValueError, TypeError): timeout_seconds = 360
     _record_asr_attempt('started', model)
     try:
         bv = _valid_bv(bvid)
@@ -3362,7 +3367,7 @@ async def bili_transcribe_safe(bvid: str) -> str:
         res = await asyncio.to_thread(subprocess.run,
                                       [str(python), str(asr), bv, '--json', '--model', model],
                                       capture_output=True,text=True,encoding='utf-8',errors='replace',
-                                      timeout=160,cwd=str(_DUTY_HOME),
+                                      timeout=timeout_seconds,cwd=str(_DUTY_HOME),
                                       creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         if res.returncode != 0 or len(res.stdout)>65000:
             _record_asr_attempt('failed',model,reason='transcription-failed')
@@ -3384,9 +3389,18 @@ async def bili_transcribe_safe(bvid: str) -> str:
                            'text':payload['text'][:12000],
                            'timed_segments':payload['timed_segments'][:160],
                            'can_claim_audio_listened':False,'can_claim_full_video_watched':False},ensure_ascii=False)
-    except subprocess.TimeoutExpired:
-        _record_asr_attempt('failed',model,reason='timeout')
-        return json.dumps({'ok':False,'status':'asr_failed','error':'本地语音转写超时'},ensure_ascii=False)
+    except subprocess.TimeoutExpired as exc:
+        # Only recognize *our own fixed phase markers* from stderr; never
+        # persist or return raw stderr, which could contain private audio text.
+        tail=exc.stderr or b''
+        if isinstance(tail,bytes): tail=tail.decode('utf-8','replace')
+        phase='inference' if '[asr] 开始转写' in tail else (
+            'model-load' if '[asr] 加载模型' in tail else (
+            'audio-download' if '[asr] 先下音频' in tail else 'unknown'))
+        _record_asr_attempt('failed',model,reason='timeout-'+phase)
+        return json.dumps({'ok':False,'status':'asr_timeout','error':'本地语音转写超过受控时限',
+                           'phase':phase,'timeoutSeconds':timeout_seconds,
+                           'hint':'检查网络音频读取与 CPU/内存；超时不等于音轨没有语音'},ensure_ascii=False)
     except Exception:
         _record_asr_attempt('failed',model,reason='process-error')
         return json.dumps({'ok':False,'status':'asr_failed','error':'本地语音转写未成功'},ensure_ascii=False)

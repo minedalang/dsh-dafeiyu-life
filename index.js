@@ -203,6 +203,7 @@ import { createLifeMemoryGateway, relationshipMemoryHalfLifeDays } from './lib/l
 import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import { memoryNeuralProjection, neuralProjectionKey } from './lib/memory-neural-projection.mjs'
 import { systemHealthSnapshot } from './lib/system-health-projection.mjs'
+import {planVideoMomentFollowup} from './lib/video-moment-followup.mjs'
 import {modelTestFailure} from './lib/model-failure-diagnostics.mjs'
 import {providerIds,modelIds} from './lib/model-catalog.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
@@ -1885,6 +1886,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // Owner-only read diagnostics. Keep the last actual Life handoff in process memory
   // for 30 minutes; no disk transcript/image/audio cache and no cross-account carryover.
   let lastLifeVideoDebug=null,videoDebugJob=null
+  let lastLifeVisionActivity=null // in-process operational metadata, no BV/visual text/UID
+  const recentVideoFocusCues=new Map() // account-scoped, short-lived, no durable model text
+  const recallVideoFocusCues=bvid=>{
+    const row=recentVideoFocusCues.get(videoDebugAccount()+':'+bvid)
+    return row&&row.expiresAt>Date.now()?row.observations:[]
+  }
   const videoDebugExpiry=30*60*1000
   const videoDebugAccount=()=>String(accountBinding.accountUid()||'')
   const executeWatchVideo = async(args={}) => {
@@ -1911,7 +1918,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           speechAttempt={status:'not-enabled',reason:'Whisper 自动转写开关未启用；已安装不等于授权转写'}
         }else{
           speechAttempt={status:'running',reason:'正在请求本地 Whisper 转写'}
-          let asr=await call('bili_transcribe_safe',{bvid})
+          let asr=await call('bili_transcribe_safe',{bvid},{timeoutMs:390_000})
           if(typeof asr==='string'){try{asr=JSON.parse(asr)}catch{}}
           if(asr?.ok!==false&&!asr?.error&&typeof asr?.text==='string'&&asr.text.trim()){
             subtitle={...asr,source:'local-asr'}
@@ -1921,8 +1928,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
             subtitle={source:'local-asr',text:asr}
             speechAttempt={status:'asr-success',reason:'local-asr-text-retrieved'}
           }else{
-            speechAttempt={status:'asr-unavailable',reason:String(asr?.error||asr?.message||asr?.status||
-              (typeof asr==='string'?asr:'Whisper 未返回有效文本')).slice(0,180)}
+            speechAttempt={status:asr?.status==='asr_timeout'?'asr-timeout':'asr-unavailable',
+              reason:String(asr?.error||asr?.message||asr?.status||
+                (typeof asr==='string'?asr:'Whisper 未返回有效文本')).slice(0,180),
+              ...(['audio-download','model-load','inference','unknown'].includes(asr?.phase)?{phase:asr.phase}:{}),
+              ...(Number.isInteger(asr?.timeoutSeconds)?{timeoutSeconds:asr.timeoutSeconds}:{})}
           }
         }
         if(typeof subtitle?.text==='string'&&subtitle.text.length>12000){subtitle.text=subtitle.text.slice(0,12000);subtitle.truncated=true}
@@ -1952,6 +1962,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // exploration; never lets model text choose a URL or arbitrary time.
     let focusReview=null,focusReviewStatus=null
     const parsedInfo=parseMaybeJson(info),parsedVisual=parseMaybeJson(vision)
+    if(!dryRun&&visionPlan.attempt&&['independent_dsh','independent_local'].includes(resolvedVisionMode())){
+      lastLifeVisionActivity={at:Date.now(),ok:parsedVisual?.ok===true&&
+        ['analyzed','cached'].includes(parsedVisual.status)&&Boolean(String(parsedVisual.description||'').trim())};
+    }
     const preliminary=buildVideoEvidenceBundle({bvid,info:parsedInfo,subtitle:parseMaybeJson(subtitle),
       visual:parsedVisual,comments:parseMaybeJson(comments),danmaku:parseMaybeJson(danmaku)})
     const focusPlan=planVideoFocusReview({bvid,depth:visionPlan.depth,visual:parsedVisual,evidence:preliminary})
@@ -2001,6 +2015,13 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       perceptionHandoff.review.verifiedAgreement=false
       perceptionHandoff.review.verifiedContradiction=false
     }
+    if(!dryRun&&focusReview&&initialAccount&&initialAccount===videoDebugAccount()){
+      const key=initialAccount+':'+bvid
+      recentVideoFocusCues.set(key,{expiresAt:Date.now()+30*60_000,
+        observations:[{fromMs:focusReview.startMs,toMs:focusReview.endMs,
+          description:String(focusReview.description||'').slice(0,400)}]})
+      if(recentVideoFocusCues.size>10)recentVideoFocusCues.delete(recentVideoFocusCues.keys().next().value)
+    }
     if(perceptionHandoff?.speech)perceptionHandoff.speech.attempt=speechAttempt
     // Debug probes never write memory, owner task ledger or session watch history.
     // Only explicit main-Session watches may create main-Session history.
@@ -2027,6 +2048,48 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     description:'当主人说“去看/看看这个视频”时调用。读取真实视频详情、字幕（如有）、热门评论与少量弹幕，完成后返回可核验的内容材料并记一条“主 Session 指定观看”经历。它不播放完整视频；没有字幕/视觉证据时必须说明看到了什么、没看到什么，不能编造画面。',
     parameters:{bvid:{type:'string',description:'主人指定的真实 BV 号'},include_comments:{type:'boolean',description:'是否读取热门评论，默认 true'},include_danmaku:{type:'boolean',description:'是否读取少量弹幕，默认 true'},view_depth:{type:'string',description:'由鱼鱼决定理解深度：skim 略看资料（默认，不识图）；standard 正常了解（可用视觉时识图）；deep 深入探索（可用视觉时识图，并可随后按时间窗复查）。不强制选择后两项。'},visual_question:{type:'boolean',description:'旧接口兼容：主动提出视觉疑问时相当于 standard；显式 skim 优先'}},
     async execute(args={}) { return executeWatchVideo(args) }
+  })
+
+  // Follow-up video clarification: the user may mention a minute or an
+  // already evidenced event AFTER the first observation. This is an isolated
+  // new read, not a rewrite of past memories or automatic social write.
+  tool({
+    name:'bili_video_revisit_moment',
+    description:'只读补看之前视频中没有观察清楚的一段。对方明确给出某个 BV 和时间点（例如1分左右）时，传 at_seconds=60；提到动作但时间不明时，只有已经核实过的事件时间锚点才可调用，绝不猜测它发生在哪秒。重新解码实际公开视频时间窗，不能声称以前看过未采样的情节。不会评论、点赞或修改记忆。',
+    parameters:{bvid:{type:'string',description:'从当前消息或可信记忆找到的真实 BV，不可猜'},
+      at_seconds:{type:'number',description:'明确提及或已核实观察到的时间（秒）'},
+      after_seconds:{type:'number',description:'请求了解这个已确认时刻之后多少秒，最多60，默认0'},
+      event_cue:{type:'string',description:'若没明确时间，可用当前账号本机近期真实局部复查中已明确描述过的事件短语；没有唯一锚点则拒绝推断时间'}},
+    async execute(args={}){
+      refreshCfg()
+      if(cfg.masterEnabled!==true||!hasCredential())return {ok:false,error:'B站当前不可读取'}
+      if(cfg.visionEnabled!==true||!['independent_dsh','independent_local'].includes(resolvedVisionMode()))
+        return {ok:false,reason:'vision-not-enabled',error:'尚未启用独立视觉识别'}
+      const bvid=String(args.bvid||'').trim()
+      if(!validBv(bvid))return {ok:false,reason:'invalid-bv'}
+      let info
+      try{info=parseMaybeJson(await call('bili_video_info',{bvid}))}
+      catch{return {ok:false,reason:'video-metadata-unavailable'}}
+      const durationSeconds=Number(info?.duration)
+      const plan=planVideoMomentFollowup({bvid,atSeconds:args.at_seconds,
+        afterSeconds:args.after_seconds,description:args.event_cue,
+        priorObservations:recallVideoFocusCues(bvid),durationSeconds})
+      if(!plan.ok)return {ok:false,...plan}
+      const budget=Number(cfg.visionFrames)>=48?100*1048576:Number(cfg.visionFrames)>=24?50*1048576:24*1048576
+      let visual
+      try{visual=parseMaybeJson(await call('bili_preview_vision',{bvid,perception_source:'adaptive',
+        view_depth:'deep',focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
+        network_budget_bytes:budget}))}
+      catch(e){return {ok:false,reason:'focus-read-failed',error:String(e?.message||e).slice(0,160)}}
+      const evidence=buildVideoEvidenceBundle({bvid,info,visual})
+      const confirmed=verifyVideoFocusReview({bvid,plan:{...plan,networkBudgetBytes:budget},result:visual,evidence})
+      if(!confirmed)return {ok:false,reason:'focus-receipt-unverified',
+        error:String(visual?.error||visual?.status||'未取得可信复查结果').slice(0,130)}
+      return {ok:true,bvid,source:'decoded-public-video-focus',status:'observed-new-window',
+        anchorSeconds:plan.anchorSeconds,origin:plan.origin,review:confirmed,
+        limits:['sampled-window-only','not-full-video-playback','no-audio-perception',
+          'new-observation-does-not-prove-prior-knowledge'],noExternalActions:true}
+    }
   })
 
   tool({
@@ -8920,6 +8983,11 @@ logger:{warn:m=>log('社交意图：'+m)}
       // Local snapshots only: no additional model/network calls or account identifiers.
       try{return sendJson(res,200,systemHealthSnapshot({planner:autonomousPlanner.status(),
         scheduler:interactionScheduler.status(),send:socialSendTransaction.inspect(),
+        vision:{configured:cfg.visionEnabled===true&&(resolvedVisionMode()==='independent_local'
+            ?Boolean(getLocalVisionModel(cfg.visionLocalModel))
+            :Boolean(cfg.visionModelId||cfg.pluginDefaultModelId)),
+          model:resolvedVisionMode()==='independent_local'?getLocalVisionModel(cfg.visionLocalModel)?.name||'本地模型':
+            String(cfg.visionModelId||cfg.pluginDefaultModelId||'DSH 视觉模型'),...lastLifeVisionActivity},
         schedulerExpected:cfg.masterEnabled===true&&(cfg.dmWatch===true||cfg.commentWatchReplies===true||cfg.commentAtEnabled===true),
         lifeExpected:cfg.masterEnabled===true&&cfg.autonomousPlannerEnabled===true&&cfg.lifeAgentMode==='active',
         now:Date.now()}))}

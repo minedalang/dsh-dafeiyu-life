@@ -956,6 +956,11 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .life-health-banner .health-channel-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .life-health-banner .health-channel-chip{display:flex;align-items:center;gap:7px;font-size:12px;border-radius:10px;padding:6px 9px;background:var(--tint);border:1px solid var(--stroke);color:var(--ink)}
 .life-health-banner .health-channel-chip small{color:var(--muted);font-size:11px}
+.life-health-banner .health-channel-chip[data-state="ok"]{border-color:#37a17d;color:#237e60;background:rgba(45,173,125,.11)}
+.life-health-banner .health-channel-chip[data-state="failed"]{border-color:#d66161;color:#d45555;background:rgba(218,82,82,.11)}
+.life-health-banner .health-channel-chip[data-state="backoff"]{border-color:#d8a252;color:#ac7333;background:rgba(217,154,61,.12)}
+.life-health-banner .health-channel-chip[data-state="running"]{border-color:#629fca;color:#4282ad}
+.life-health-banner .health-channel-chip{cursor:help}
 
 
 /* Life evidence atlas – shared management palette; no second memory store. */
@@ -1738,7 +1743,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <p class="muted">仅对上方当前选定的识图方式进行测试；更换方式、模型或重新验证后，旧结果不能沿用。请求成功并返回真实图片描述后，由你决定是否认可。不会向 B站发送内容。DSH 使用独立受限 Headless 子会话，与平时交谈的 Session 不完全相同。</p>
 </section>
 <div class="contextual-memory-group" id="local-vision-controls">
-<h4>🖥️ 可选本地视频视觉模型</h4>
+<div class="video-aux-heading"><h4>🖥️ 可选本地视频视觉模型</h4><span id="models-local-vision-active" class="pill pending">读取当前配置…</span></div>
 <p class="muted">本地视觉仅负责画面观察，Life 仍使用原有 DSH 模型；<strong>无需在 DSH 中另外配置 Ollama Provider 或 API Key</strong>。需要先在本机安装并运行 Ollama；下载成功后还需完成图片推理自检和手动启用。</p>
 <div class="fields" aria-label="可选本地视觉模型能力与硬件建议">
 <div class="setting-note"><strong>MiniCPM-V 4.7 1B · 轻量视觉</strong><p>适合图片、多图与视频片段的初步观察，注重低资源占用。<strong>Ollama 模型约 1.8 GB</strong>（量化版）；<strong>建议 4 GB 以上显存起试</strong>，也可考虑 CPU/系统内存运行，实际占用与上下文、图像数量有关。必须下载 <code>openbmb/minicpm-v4.7:1b</code>，不能省略 <code>:1b</code>；部分 Ollama 版本不支持其视觉投影器。</p></div>

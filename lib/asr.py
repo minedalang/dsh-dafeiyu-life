@@ -74,6 +74,9 @@ def fetch_audio(url: str, tmp: str, tag: str) -> str:
         'quiet': True,
         'no_warnings': True,
         'noplaylist': True,
+        'socket_timeout': 20,
+        'retries': 2,
+        'fragment_retries': 2,
         'http_headers': {
             'Referer': 'https://www.bilibili.com',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
@@ -155,6 +158,8 @@ def main() -> int:
             src,
             language=None if args.lang == 'auto' else args.lang,
             vad_filter=True,          # 掐掉静音段，省时间也少出错
+            beam_size=1,              # CPU 上优先按时完成；不宣称改变模型准确率保证
+            condition_on_previous_text=False,
         )
         receipt = _asr_receipt(args.target, segments)
         text = receipt['text']
