@@ -41,12 +41,17 @@ class AdaptiveTests(unittest.TestCase):
             with self.subTest(url=url),self.assertRaises(av.AdaptiveUnavailable):
                 av._cdn_url(url)
 
-    def test_playurl_hard_size_and_bv_match(self):
+    def test_playurl_accepts_large_public_source_but_keeps_maximum_virtual_size_and_bv_match(self):
         def api(url):
             if '/view?' in url:return {'bvid':BV,'pages':[{'cid':12,'duration':60}]}
             return {'durl':[{'size':av.VIDEO_FILE_MAX+1,'url':'https://a.bilivideo.com/upgcxcode/a.mp4'}]}
         with patch.object(pv,'_json_api',side_effect=api):
-            with self.assertRaisesRegex(av.AdaptiveUnavailable,'video_exceeds_24mb_limit'):
+            self.assertGreater(av._playurl(BV)[1],av.VIDEO_FILE_MAX)
+        def too_big(url):
+            if '/view?' in url:return {'bvid':BV,'pages':[{'cid':12,'duration':60}]}
+            return {'durl':[{'size':av.MAX_REMOTE_SIZE+1,'url':'https://a.bilivideo.com/upgcxcode/a.mp4'}]}
+        with patch.object(pv,'_json_api',side_effect=too_big):
+            with self.assertRaisesRegex(av.AdaptiveUnavailable,'video_size_outside_supported_range'):
                 av._playurl(BV)
         with patch.object(pv,'_json_api',return_value={'bvid':'BV0987654321'}):
             with self.assertRaisesRegex(av.AdaptiveUnavailable,'video_identity_mismatch'):

@@ -1806,14 +1806,14 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <div class="settings-section"><h4>选片方向</h4><p class="muted">大肥鱼的兴趣档案主导搜索；主人额外关键词只是补充关注，不会覆盖已形成的兴趣。</p>
 <label class="checkline"><input id="bili-home-recommend" type="checkbox">混合 B站首页推荐</label>
 <label for="bili-extra-keywords">主人额外指定的主题（每行一个）</label><textarea id="bili-extra-keywords" rows="4" placeholder="例如：白饭、AI拟人"></textarea></div>
-<div class="settings-section" id="bili-video-perception-plans"><div class="video-aux-heading"><strong>🎞️ 视频感知方案 · 深入探索采样预算</strong><span class="pill">选择上限 · 非强制观看</span></div><p class="muted">由鱼鱼决定是否观看以及略看／正常／深入。卡片控制深入探索的真实解码取帧预算，不改变模型授权或外发权限；不设独立视觉每日调用上限。若公开视频源超过 24 MiB，仍会明确降级为最多 3 帧低清预览；这不等于深入观看成功。</p>
+<div class="settings-section" id="bili-video-perception-plans"><div class="video-aux-heading"><strong>🎞️ 视频感知方案 · 深入探索采样预算</strong><span class="pill">选择上限 · 非强制观看</span></div><p class="muted">由鱼鱼决定是否观看以及略看／正常／深入。卡片控制深入探索的真实解码取帧预算，不改变模型授权或外发权限；不设独立视觉每日调用上限。超过当前方案的单视频网络预算时优先使用受控 MP4 索引分段读取真实窗口；Range / 容器不兼容时明确报错，不以 3 张低清图假装深入探索。</p>
 <div class="vision-budget-settings"><h4>🎞️ 自适应分镜预算 · 自选档位</h4>
 <input id="quota-vision-frames" type="hidden" value="24">
 <div id="vision-frame-plan-cards" class="vision-frame-plan-cards" role="group" aria-label="选择深入探索时每条视频的采样帧预算">
-<button type="button" class="vision-frame-plan" data-vision-frame-plan="12" aria-pressed="false"><strong>轻量档 · 12</strong><span>短视频 / 轻度探索</span><small>最多1张分镜图 · 更省模型计算</small></button>
-<button type="button" class="vision-frame-plan" data-vision-frame-plan="24" aria-pressed="true"><strong>均衡档 · 24 <em>默认</em></strong><span>常见中短视频的深入了解</span><small>最多2张分镜图 · 不保证高信息量片段全覆盖</small></button>
-<button type="button" class="vision-frame-plan" data-vision-frame-plan="48" aria-pressed="false"><strong>详查档 · 48</strong><span>非电影长度的高信息量视频</span><small>最多4张分镜图 · 可能较慢、较贵</small></button>
-</div><p class="muted">卡片设置上限而非强制使用量；略看为0、正常了解最多12个时刻，深入探索可用本档上限。只支持≤45分钟公开视频，实际能否获取仍受24MiB单段源限制。</p></div>
+<button type="button" class="vision-frame-plan" data-vision-frame-plan="12" aria-pressed="false"><strong>轻量档 · 12</strong><span>短视频 / 轻度探索</span><small>最多1张分镜图 · 单视频最多24 MiB网络读取</small></button>
+<button type="button" class="vision-frame-plan" data-vision-frame-plan="24" aria-pressed="true"><strong>均衡档 · 24 <em>默认</em></strong><span>常见中短视频的深入了解</span><small>最多2张分镜图 · 单视频最多50 MiB网络读取</small></button>
+<button type="button" class="vision-frame-plan" data-vision-frame-plan="48" aria-pressed="false"><strong>详查档 · 48</strong><span>非电影长度的高信息量视频</span><small>最多4张分镜图 · 单视频最多100 MiB网络读取</small></button>
+</div><p class="muted">卡片设置上限而非强制使用量；略看为0、正常了解最多12个时刻，深入探索可用本档上限。支持≤45分钟的受控公开单段视频。文件超过预算并不直接拒绝：可借助 MP4 索引按时间窗口请求 Range；实际支持情况取决于 CDN、容器与 FFprobe，所有失败都应在 Debug 中说明。</p></div>
 <div class="toolbar"><button type="button" id="bili-vision-plan-save" class="primary">保存视频感知方案</button><button type="button" data-open-tab="models" data-open-anchor="models-vision-settings">配置视觉识别模型 ↗</button><button type="button" data-open-tab="models" data-open-anchor="video-aux-dependencies">FFmpeg / Whisper 依赖 ↗</button></div><p id="bili-vision-plan-status" class="setting-note" role="status">尚未读取方案。</p></div>
 <div class="settings-section"><h4>🐟 鱼鱼怎样与视频互动</h4><p class="muted">选择一个方案，鱼鱼自己决定做不做。不会自动发布或改变你的旧授权。</p>
 <div class="choice-presets" role="radiogroup" aria-label="视频互动方案">

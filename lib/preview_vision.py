@@ -451,11 +451,11 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
     model=(model if model is not None else os.environ.get('BILI_VISION_MODEL','')).strip()
     provider=(provider if provider is not None else os.environ.get('BILI_VISION_PROVIDER','ollama')).strip().lower()
     suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
-    cache=Path(home).resolve()/'vision-cache'/f'{bvid}-adaptive-v5-{view_depth}{suffix}.json'
+    cache=Path(home).resolve()/'vision-cache'/f'{bvid}-adaptive-v6-{view_depth}{suffix}.json'
     if enabled and not return_frames and not debug and cache.is_file():
         try:
             saved=json.loads(cache.read_text(encoding='utf8'))
-            if (saved.get('sampler_version')==5 and saved.get('model')==model
+            if (saved.get('sampler_version')==6 and saved.get('model')==model
                 and saved.get('provider')==provider and saved.get('frames_limit')==max_frames
                 and saved.get('view_depth')==view_depth
                 and saved.get('focus_window')==focus and saved.get('description')
@@ -471,8 +471,17 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
         result=acquire_adaptive_frames(bvid,max_frames=max_frames,focus=focus,depth=view_depth)
     except AdaptiveUnavailable as exc:
         if not exc.fallback:
+            explanations = {
+                'video_range_not_supported':'视频 CDN 不支持字节 Range；已停止，未冒认真实画面，也未降级为三张低清图。',
+                'video_range_identity_mismatch':'CDN 分段内容身份或大小不一致；为防止混合不同文件，已停止。',
+                'video_network_budget_exhausted':'分段网络读取已达到本档单视频预算；未取得足够可信画面。',
+                'video_window_budget_insufficient':'本档单视频预算不足以覆盖所选真实画面窗口；未改用三张低清预览。',
+                'video_range_container_unsupported':'该流的容器暂不支持可信随机时间分段解码；不会假称深入观看成功。',
+                'ffprobe_not_installed':'已找到 FFmpeg，但超预算 MP4 分段索引还需要同安装中的 ffprobe。',
+                'video_mp4_index_unavailable':'未取得有效 MP4 索引，无法可靠定位真实画面时间窗口。',
+            }
             return {'ok':False,'bvid':bvid,'status':exc.code,
-                    'error':'视频平台访问受限或所选参数无效，停止继续取帧'}
+                    'error':explanations.get(exc.code,'真实视频分段未完成（'+exc.code+'）；未改用三张低清预览冒充深入探索。')}
         # No fake real-video receipt: the actual sampling is ordinary videoshot.
         preview=analyze_preview(bvid, home, enabled=enabled, debug=debug,
                                 max_frames=min(3,max_frames), provider=provider, model=model,
@@ -497,7 +506,7 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
         result['description']=_call_local_ollama(frames,model,image_source=result['image_source'])
         result['status']='analyzed'
         record={'model':model,'provider':provider,'frames_limit':max_frames,
-                'sampler_version':5,'view_depth':view_depth,'times':result['times'],'description':result['description'],
+                'sampler_version':6,'view_depth':view_depth,'times':result['times'],'description':result['description'],
                 'sampling':result['sampling'],'ocr':result.get('ocr'),'focus_window':focus,
                 'image_source':result['image_source']}
         cache.parent.mkdir(parents=True,exist_ok=True)

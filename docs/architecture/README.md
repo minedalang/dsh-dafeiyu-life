@@ -1,3 +1,5 @@
+> **2.8.1-dev.3b.9 当前：** [受控 MP4 HTTP Range 分段视频感知与本地 Ollama 视觉模型认可恢复](2.8.1-video-perception-dev3b9.md)。超过卡片网络预算不强制整文件下载，不回退3帧冒充深入；当前范围仅索引可用的公开单段 MP4，实际 Windows/B站还需验收。
+
 > **当前开发候选 2.8.1-dev.3b.6：** [视频感知全链路、只读 Life 输入 Debug、实机发布门禁](2.8.1-video-perception-dev3b6.md)。此前 dev.3b.5 等段落均是按阶段保留的历史描述。未通过真实 B站/DSH 模型验收，不应以正式版发布。
 
 > **当前 2.8.1-dev.3b.5 · 新用户安装可靠性：** [首次设置主依赖安装、实测就绪扫码门禁、可选视频探测隔离与二维码 Python 兼容修复](2.8.1-dev3b5-first-start-dependency.md)。已发布 2.8.0 不受本补丁改变；Windows/macOS/Linux 空白环境仍待真实安装验收。

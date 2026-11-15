@@ -1,14 +1,20 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import {mkdtempSync,rmSync} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
 import {createLocalVisionModelManager,getLocalVisionModel,LOCAL_VISION_MODELS,getLocalVisionTestImage} from '../lib/local-vision-model-manager.mjs'
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json'}})
 const ndjson=(rows)=>new Response(rows.map(x=>JSON.stringify(x)+'\n').join(''),{status:200})
+const mockDigest='sha256:'+'e'.repeat(64)
 
 test('只接受两种固定模型 ID，所有请求只访问 127.0.0.1 Ollama',async()=>{
   const urls=[]
-  const manager=createLocalVisionModelManager({fetchImpl:async(url,opts)=>{
+  const stateDir=mkdtempSync(join(tmpdir(),'vision-catalog-'))
+  try{
+  const manager=createLocalVisionModelManager({stateDir,fetchImpl:async(url,opts)=>{
     urls.push([url,opts?.method||'GET'])
-    if(url.endsWith('/api/tags'))return json({models:[{name:'qwen3.5:4b'}]})
+    if(url.endsWith('/api/tags'))return json({models:[{name:'qwen3.5:4b',digest:mockDigest}]})
     if(url.endsWith('/api/pull'))return ndjson([{status:'downloading',total:100,completed:50},{status:'success'}])
     if(url.endsWith('/api/chat'))return json({message:{content:'红色'}})
     throw Error('unexpected URL')
@@ -25,6 +31,7 @@ test('只接受两种固定模型 ID，所有请求只访问 127.0.0.1 Ollama',a
   assert.equal(approved.verified,true)
   assert.ok(urls.every(([url])=>url.startsWith('http://127.0.0.1:11434/api/')))
   assert.ok(urls.some(([url,method])=>url.endsWith('/api/chat')&&method==='POST'))
+  }finally{rmSync(stateDir,{recursive:true,force:true})}
 })
 
 test('失败的模型自检不准标记为可用，保留错误供管理台排障',async()=>{
@@ -192,8 +199,10 @@ test('管理台测试图片和 Ollama 输入是用户上传的同一份原始 PN
 })
 
 test('人工确认结果后才能通过；拒绝与过期确认不可复用',async()=>{
-  const manager=createLocalVisionModelManager({fetchImpl:async url=>
-    url.endsWith('/api/chat')?json({message:{content:'蓝色头发和白色围裙'}}):json({models:[{name:'qwen3.5:4b'}]})})
+  const stateDir=mkdtempSync(join(tmpdir(),'vision-review-'))
+  try{
+  const manager=createLocalVisionModelManager({stateDir,fetchImpl:async url=>
+    url.endsWith('/api/chat')?json({message:{content:'蓝色头发和白色围裙'}}):json({models:[{name:'qwen3.5:4b',digest:mockDigest}]})})
   const v1=await manager.verifyId('qwen3.5-4b')
   await assert.rejects(manager.review('minicpm-v4.7-1b',{reviewId:v1.reviewId,accepted:true}),/失效/)
   await assert.rejects(manager.review('qwen3.5-4b',{reviewId:'stale',accepted:true}),/失效/)
@@ -204,10 +213,13 @@ test('人工确认结果后才能通过；拒绝与过期确认不可复用',asy
   assert.equal((await manager.list()).models[0].verification.status,'approved')
   await assert.rejects(manager.review('qwen3.5-4b',{reviewId:v1.reviewId,accepted:true}),/失效/)
   const v2=await manager.verifyId('qwen3.5-4b')
-  assert.equal((await manager.list()).models[0].verified,false)
+  // 重新识图是自愿复测；摘要未改变时原有人工认可继续有效。
+  assert.equal((await manager.list()).models[0].verified,true)
   await assert.rejects(manager.review('qwen3.5-4b',{reviewId:v1.reviewId,accepted:true}),/失效/)
   await manager.review('qwen3.5-4b',{reviewId:v2.reviewId,accepted:false})
+  // 只有主人明确拒绝（而非重新测试）才撤销。
   assert.equal((await manager.list()).models[0].verified,false)
+  }finally{rmSync(stateDir,{recursive:true,force:true})}
 })
 
 test('Ollama 报错或只有内部 thinking 时不能供用户人工验收',async()=>{

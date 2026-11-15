@@ -1,3 +1,10 @@
+## 2.8.1-dev.3b.9 受控分段视频与 Ollama 认可恢复（当前增量）
+
+- 视频视觉单次方案对应轻量 12帧/24MiB、均衡 24帧/50MiB、详查 48帧/100MiB；`standard` 仍最多12帧。文件总长超过单视频网络预算时，支持 B站公开单段 MP4 的索引感知 HTTP Range 分段请求，下载器严格校验 CDN 白名单、`206`/`Content-Range`、媒体大小/版本与累计字节；FFmpeg/FFprobe 仅读取受控本机临时媒体文件。不得把任意 CDN URL 传给模型或 FFmpeg。
+- 超预算源不因为整体大小超过24MiB就默默回退3张低清预览。对于 FLV / 无有效 MP4 索引 / CDN 不支持 Range / 预算无法覆盖关键帧的情况返回明确错误，不能冒称已经深入观看。真实视频取帧依旧只算稀疏观察，非完整播放/听声音；缓存版本升级后必须重新取得真实回执，不能重用旧低清文字假证据。
+- MiniCPM-V/Qwen 本地视觉的已选 ID 必须从持久配置恢复到 UI，下拉列表不得因浏览器刷新恢复为默认 Qwen；人工认可绑定可靠 SHA-256 摘要持久化，临时 Ollama 离线、标签暂缺、用户主动复测失败均不得抹去既有认可，版本摘要实际改变、明确拒绝或删除才撤销。无摘要时不能伪称已认可。
+- 此增量须有真实本地 FFmpeg 测试样片的 MP4 首/尾索引 Range 解码、HTTP 不响应 206、身份错误、预算上限、模型验收跨进程重启/换摘要回归；Windows/真实 B站 CDN 验收未完成，不得发布正式版本。详见 `docs/architecture/2.8.1-video-perception-dev3b9.md`。
+
 ## 2.8.1 发布范围与视频感知强制验收（2026-11-15）
 
 - **2.8.1 只收口视频感知、Life 真实视频观察和新用户必需依赖初始化**；其他新增社交/人格/记忆/UI 扩展放进 2.8.2，不为追赶时刻仓促引入。
@@ -5,7 +12,7 @@
 - **视频感知 Debug 必须展示原生产工具实际返回给 Life 的完整 JSON**，包括真实视频帧来源/时间、视觉回答、字幕/Whisper、OCR、来源验证和失败降级；不得仅用模拟数据或截断预览伪称全链路成功。
 - 完整观察文本仅限本机管理端短期进程内存，不加入永久日志、记忆账本或可供其他账户访问的缓存；禁止从调试结果直接推导外发授权。
 - **正式发布门禁：** 至少一条真实公开视频成功走完 DSH 或 Ollama 视觉、FFmpeg 解码、字幕/ASR+OCR、Life 输入 Debug 核对，以及全新 Windows DSH 主依赖安装与扫码；24 MiB 单段 DURL 限制等实际覆盖率问题必须如实记录。未验收不得把 `X.Y.Z-dev.N` 改成正式版本、创建正式 Tag 或推送 npm Latest。
-- 每次 dev 补丁同步 `package.json` / `package-lock.json` / 用户可见版本，中文 Commit、测试、Patch 回放并记录。新版标识 `2.8.1-dev.3b.8`。
+- 每次 dev 补丁同步 `package.json` / `package-lock.json` / 用户可见版本，中文 Commit、测试、Patch 回放并记录。新版标识 `2.8.1-dev.3b.9`。
 
 ## 2.8.1-dev.3b.5 首次安装防假成功约束
 
@@ -47,7 +54,7 @@
 
 - **2.8.1-dev.3b.1 当前增量约束：** 只有真正的 B站字幕正文可按官方字幕 `from/to` 秒生成显式时间段；Life 返回的 `perceptionTimeline` 只是画面时间与字幕时间的邻接索引，不是语义互证、OCR、听原声音频或完整观看证明。没有明确 ASR 时间的文本必须保持未锚定。DSH 第三方模型能力助手只复制模型级配置，不自动更改 `cordis.patch.yml`；Windows Ollama 仅可经本机管理中心显式确认、启动可见 PowerShell，不能静默启动、改系统代理或宣称服务已启动成功。当前文档见 `docs/architecture/2.8.1-video-perception-dev3b1.md`。
 
-- **2.8.1-dev.3a.4 当前视频感知开发约束：** 鱼鱼先自主决定是否观看，再决定 `skim/standard/deep`；略看绝不识图。`standard` 最多12个真实视频时刻，`deep` 可选12/24/48（默认24）；每最多12个时刻合成一张带时间码分镜，模型和缓存不得冒认逐帧完整观看。`lib/adaptive_video.py` 仅访问 B站公开单段≤24MiB 的视频源，最长45分钟，仅累计离线采样≤120秒；切镜/运动与可选热度联合排名，先确保全片时间覆盖；`lib/video_heat_signal.py` 的 PBP/XML 只是观众活动信号，绝不可作为内容事实或行动指令。旧版“高能区官方低清预览图识别”生产路径彻底退役，低清只按时间均匀采样/去重最多3帧，FFmpeg 不可用则明确回退。实际解码帧与预览来源、时间和额度分离；新分镜遵循 `sampler_version=5`。现行说明、Mermaid 和 SVG 见 `docs/architecture/2.8.1-video-perception-dev3a4.md`。
+- **2.8.1-dev.3a.4 历史视频感知开发约束（单段24MiB已被dev.3b.9取代）：** 鱼鱼先自主决定是否观看，再决定 `skim/standard/deep`；略看绝不识图。`standard` 最多12个真实视频时刻，`deep` 可选12/24/48（默认24）；每最多12个时刻合成一张带时间码分镜，模型和缓存不得冒认逐帧完整观看。`lib/adaptive_video.py` 仅访问 B站公开单段≤24MiB 的视频源，最长45分钟，仅累计离线采样≤120秒；切镜/运动与可选热度联合排名，先确保全片时间覆盖；`lib/video_heat_signal.py` 的 PBP/XML 只是观众活动信号，绝不可作为内容事实或行动指令。旧版“高能区官方低清预览图识别”生产路径彻底退役，低清只按时间均匀采样/去重最多3帧，FFmpeg 不可用则明确回退。实际解码帧与预览来源、时间和额度分离；新分镜遵循 `sampler_version=5`。现行说明、Mermaid 和 SVG 见 `docs/architecture/2.8.1-video-perception-dev3a4.md`。
 
 - **2.8.1-dev.3a.3 历史采样约束（已由 dev.3a.4 扩展）：** 鱼鱼先自由决定是否看，再自由决定 `skim/standard/deep`；只在主动选择视觉时可取受控公开视频片段。`lib/adaptive_video.py` 只能消费官方 B站公开单段 DURL，严格白名单、下载≤24MiB、时间窗≤120秒、可选本地 FFmpeg 离线稀疏采样，失败按来源标明 videoshot 回退，遇平台限流不强制重试。`lib/video-evidence-bundle.mjs` 必须把实际解码帧、低清预览、字幕/ASR和原音轨严格分开，不可由局部帧声称完整观看。所有试验只读，不授予 B站写操作。具体见 `docs/architecture/2.8.1-video-perception-dev3a3.md`。
 
