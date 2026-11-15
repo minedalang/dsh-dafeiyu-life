@@ -1519,6 +1519,19 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 @media(max-width:520px){.quota-plan-cards{grid-template-columns:1fr}#panel-plans .todo-page-hero{flex-direction:column;align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){.quota-plan-cards button,#panel-plans .life-plan-hub-grid>*{transition:none!important}}
 </style>
+<style>
+#video-perception-final-debug{border:1px solid color-mix(in srgb,var(--ui-teal,#1c9c8c) 40%,var(--stroke));border-radius:18px;padding:14px 17px;margin-bottom:15px;background:linear-gradient(115deg,var(--panel),color-mix(in srgb,var(--ui-teal,#1c9c8c) 5%,var(--panel)))}
+#video-perception-final-debug>summary{cursor:pointer;font-weight:750}
+#video-perception-final-debug .video-debug-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+#video-perception-final-debug .video-debug-toolbar label{font-size:12px;display:flex;flex-direction:column;gap:5px}
+#video-perception-final-debug input,#video-perception-final-debug select{min-height:38px;border-radius:9px;border:1px solid var(--stroke);background:var(--panel);color:var(--ink);padding:5px 9px}
+#video-perception-final-debug .video-debug-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px;margin:10px 0}
+#video-perception-final-debug .video-debug-tile{border-radius:12px;background:color-mix(in srgb,var(--tint) 50%,var(--panel));border:1px solid var(--stroke);padding:10px 12px;white-space:pre-line;overflow-wrap:anywhere}
+#video-perception-final-debug .video-debug-panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:9px;margin:10px 0}
+#video-perception-final-debug .video-debug-panels details{border:1px solid var(--stroke);border-radius:12px;padding:10px;background:var(--panel);overflow:hidden}
+#video-perception-final-debug .video-debug-panels summary{cursor:pointer;font-weight:700;font-size:12px}
+#video-perception-final-debug .video-debug-json{white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;max-height:580px;min-height:90px;padding:13px;line-height:1.55;border:1px solid var(--stroke);border-radius:12px;background:var(--panel);font-size:12px}
+</style>
 </head>
 <body><main class="wrap">
 <header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><a class="button mobile-back" href="/" aria-label="返回 DSH Mobile">← 返回 DSH</a><div class="settings-finder" role="search"><label for="settings-finder-input">查找设置</label><input id="settings-finder-input" type="search" placeholder="搜索设置…" autocomplete="off" aria-controls="settings-finder-results" aria-expanded="false"><div id="settings-finder-results" class="settings-finder-results" role="listbox" hidden></div></div><button id="refresh">刷新当前页</button></div></header>
@@ -2238,7 +2251,29 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <p class="life-plan-boundary">Life 只会从当前合格候选中自主选择。公开写入和私信仍由独立授权与真实平台回执保护。</p>
 </section>
 
-<section id="panel-diagnostics" hidden><details class="settings-section life-section" id="life-video-manual-diagnostics"><summary>🎬 视频 Agent · 手动诊断与运行证据</summary><div class="inset" id="life-real-acceptance"><h4>视频 Agent 运行证据</h4><p class="muted">查看当前账号的实际运行门禁与最近委派记录。仅在需要排障时手动启动一轮原视频 Agent；启动后由视频 Agent 自主决定看什么、是否继续或结束，不会强迫选片、发表评论或点赞。任何写操作仍受原有授权、Life 意愿审批、平台核验、额度与冷却限制。</p><p id="life-readiness" class="muted" role="status">正在读取本机真实运行门禁…</p><p id="life-actual-proof" class="muted" role="status">正在核对本账号的真实委派记录…</p><div class="toolbar"><button type="button" class="life-action life-sky" id="life-readiness-refresh">重新核查真实状态（零模型调用）</button><button type="button" class="life-action life-purple" id="life-video-agent-test-run">手动触发一轮真实视频 Agent</button></div><p id="life-video-agent-test-result" class="muted" role="status" aria-live="polite">单轮真实诊断：启动原视频 Agent，不强制选片或发表评论；评论、点赞、收藏等写操作仍须通过原 Life 意愿审批及平台核验，并受原冷却限制。</p></div></details><div id="life-decision-traces-section" class="settings-section life-section">
+<section id="panel-diagnostics" hidden><details class="settings-section life-section" id="video-perception-final-debug" open>
+<summary>🎞️ 视频感知全链路 · Life 最终输入 Debug</summary>
+<div class="inset">
+<p class="muted">本机只读验收：输入一个真实 BV，分步骤查看画面、字幕／Whisper、OCR 和证据时间轴。试运行不会登记 Life 经历或观看历史，也不会点赞／评论；可能产生 B站读取和视觉模型成本。下方「真实 Life」展示最近一次实际观看工具返回给 Life 的<strong>同一份数据</strong>，不是测试替身。</p>
+<div class="toolbar video-debug-toolbar">
+<label>BV 视频号 <input id="video-debug-bvid" type="text" placeholder="BV1xxxxxxxxxx" maxlength="12" autocomplete="off" spellcheck="false" aria-label="测试视频 BV 号"></label>
+<label>本次主人测试深度 <select id="video-debug-depth" aria-label="试运行理解深度"><option value="skim">略看 · 不识图</option><option value="standard">正常了解</option><option value="deep" selected>深入探索</option></select></label>
+<button id="video-debug-run" type="button" class="life-action life-purple">开始只读视频感知验收</button>
+<button id="video-debug-refresh" type="button" class="life-action life-sky">刷新当前结果</button>
+</div>
+<p id="video-debug-progress" class="muted" role="status" aria-live="polite">尚未执行。新版本启用后请确认模型与 FFmpeg / Whisper 状态。</p>
+<div id="video-debug-summary" class="video-debug-summary" aria-live="polite"></div>
+<div class="toolbar"><button id="video-debug-show-test" type="button" class="life-action life-sky">查看试运行输入</button><button id="video-debug-show-life" type="button" class="life-action life-sky">查看最近真实 Life 输入</button><button id="video-debug-copy" type="button" class="life-action life-sky">复制当前完整 JSON</button></div>
+<div class="video-debug-panels">
+<details><summary>🖼️ 视觉模型实际回执 · 来源、时间与描述</summary><pre id="video-debug-visual" class="video-debug-json">暂无结果</pre></details>
+<details><summary>🎙️ B站字幕／Whisper 语音识别回执</summary><pre id="video-debug-speech" class="video-debug-json">暂无结果</pre></details>
+<details><summary>🔎 OCR 结果与可信时间轴</summary><pre id="video-debug-timeline" class="video-debug-json">暂无结果</pre></details>
+</div>
+<details open><summary>完整输入（含实际视觉回答、字幕 / ASR、OCR、时间轴及错误原因）</summary>
+<pre id="video-debug-json" class="video-debug-json" aria-live="polite">暂无可展示的实际结果</pre></details>
+<p class="muted">本调试页的完整回执仅保留在当前插件进程内最多 30 分钟；识图与转写工具各自的既有缓存仍按原设置工作。只允许本机管理中心查看。视频模型看的是稀疏分镜，并非全片逐帧；相近时间的音画信息不代表已完成语义互证。复制结果前请注意第三方视频文本的隐私与版权。</p>
+</div></details>
+<details class="settings-section life-section" id="life-video-manual-diagnostics"><summary>🎬 视频 Agent · 手动诊断与运行证据</summary><div class="inset" id="life-real-acceptance"><h4>视频 Agent 运行证据</h4><p class="muted">查看当前账号的实际运行门禁与最近委派记录。仅在需要排障时手动启动一轮原视频 Agent；启动后由视频 Agent 自主决定看什么、是否继续或结束，不会强迫选片、发表评论或点赞。任何写操作仍受原有授权、Life 意愿审批、平台核验、额度与冷却限制。</p><p id="life-readiness" class="muted" role="status">正在读取本机真实运行门禁…</p><p id="life-actual-proof" class="muted" role="status">正在核对本账号的真实委派记录…</p><div class="toolbar"><button type="button" class="life-action life-sky" id="life-readiness-refresh">重新核查真实状态（零模型调用）</button><button type="button" class="life-action life-purple" id="life-video-agent-test-run">手动触发一轮真实视频 Agent</button></div><p id="life-video-agent-test-result" class="muted" role="status" aria-live="polite">单轮真实诊断：启动原视频 Agent，不强制选片或发表评论；评论、点赞、收藏等写操作仍须通过原 Life 意愿审批及平台核验，并受原冷却限制。</p></div></details><div id="life-decision-traces-section" class="settings-section life-section">
 <div class="toolbar"><h4 style="margin:0">🧭 鱼鱼的决策全过程</h4><button id="life-traces-refresh" type="button" class="life-action life-sky">刷新决策记录</button></div>
 <p class="muted">按每次 Life Agent 唤醒展示候选、模型校验、动作、回执和事件结算。最近 7 天最多 60 轮，当前 B站账号隔离；不存储完整模型提示、原始回复、私信正文、UID、视频 BV 或工具响应，以免调试日志造成隐私泄露。技术回执不代表鱼鱼真正看过或理解视频。</p>
 <div class="toolbar"><button type="button" id="life-metadata-probe" class="life-action life-sky">诊断一次真实视频资料读取（不调用模型）</button></div>

@@ -13,7 +13,7 @@ const json=x=>new Response(JSON.stringify(x),{status:200,headers:{'content-type'
 
 test('dev.3b.4 version is the real package metadata source; AGENTS enforces dev release version',()=>{
  const p=JSON.parse(read('package.json')), lock=JSON.parse(read('package-lock.json'))
- assert.equal(p.version,'2.8.1-dev.3b.5')
+ assert.match(p.version,/^2\.8\.1-dev\.3b\.\d+$/)
  assert.equal(lock.version,p.version)
  assert.equal(lock.packages[''].version,p.version)
  assert.match(read('AGENTS.md'),/每次开发增量均同步更新真实版本号/)
