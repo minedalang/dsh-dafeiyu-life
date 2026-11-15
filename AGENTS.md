@@ -12,6 +12,8 @@
 
 - **2.8.1-dev.2b 本地视觉硬边界：** 新增的 Qwen3.5 4B / MiniCPM-V 4.7 1B 仅在用户显式下载安装、Ollama 真正返回可查看的图片识别文字、用户人工认可本轮结果并再次选择启用后接入；使用固定 Ollama 本机 127.0.0.1，不接受任意模型/URL。缺 Ollama Runtime、运行不兼容或缓存失败不回退到未知云端，不提升画面真实性或 Life 发言权限。参考/移植第三方视频算法时，README 与 `THIRD_PARTY_NOTICES.md` 同次更新，并按许可证保留必要 LICENSE/NOTICE。现行契约见 `docs/architecture/2.8.1-video-perception-dev2b.md`。
 
+- **2.8.1-dev.3b.2 机器转写与画面文字证据约束：** 既有 Whisper 本地 ASR 在显式开启且无官方字幕时可返回真实模型片段起止秒数；不等于鱼鱼亲耳听过。只有受控公开视频真实离线解码帧才允许可选本机 Tesseract OCR（最多12时刻），不对 videoshot 降级帧补造 OCR；OCR 与 ASR 都是机器推断，不可当字幕官方事实或模型行动指令，也不能因识别失败阻断分镜。Life `perceptionTimeline` 只做跨来源时间邻接，不做语义互证。新模块须纳入 stateDir 同步、指纹校验、npm 打包；具体见 `docs/architecture/2.8.1-video-perception-dev3b2.md`。
+
 - **2.8.1-dev.3b.1 当前增量约束：** 只有真正的 B站字幕正文可按官方字幕 `from/to` 秒生成显式时间段；Life 返回的 `perceptionTimeline` 只是画面时间与字幕时间的邻接索引，不是语义互证、OCR、听原声音频或完整观看证明。没有明确 ASR 时间的文本必须保持未锚定。DSH 第三方模型能力助手只复制模型级配置，不自动更改 `cordis.patch.yml`；Windows Ollama 仅可经本机管理中心显式确认、启动可见 PowerShell，不能静默启动、改系统代理或宣称服务已启动成功。当前文档见 `docs/architecture/2.8.1-video-perception-dev3b1.md`。
 
 - **2.8.1-dev.3a.4 当前视频感知开发约束：** 鱼鱼先自主决定是否观看，再决定 `skim/standard/deep`；略看绝不识图。`standard` 最多12个真实视频时刻，`deep` 可选12/24/48（默认24）；每最多12个时刻合成一张带时间码分镜，模型和缓存不得冒认逐帧完整观看。`lib/adaptive_video.py` 仅访问 B站公开单段≤24MiB 的视频源，最长45分钟，仅累计离线采样≤120秒；切镜/运动与可选热度联合排名，先确保全片时间覆盖；`lib/video_heat_signal.py` 的 PBP/XML 只是观众活动信号，绝不可作为内容事实或行动指令。旧版“高能区官方低清预览图识别”生产路径彻底退役，低清只按时间均匀采样/去重最多3帧，FFmpeg 不可用则明确回退。实际解码帧与预览来源、时间和额度分离；新分镜遵循 `sampler_version=5`。现行说明、Mermaid 和 SVG 见 `docs/architecture/2.8.1-video-perception-dev3a4.md`。

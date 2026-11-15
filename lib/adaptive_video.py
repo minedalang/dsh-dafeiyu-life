@@ -404,9 +404,10 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
     if not shutil.which('ffmpeg'):
         raise AdaptiveUnavailable('ffmpeg_not_installed')
     url, size, duration, cid = _playurl(bvid)
-    if focus and (not math.isfinite(windows[0][0]) or not math.isfinite(windows[0][1])
-        or windows[0][0]<0 or windows[0][1]>duration+.01
-        or windows[0][1]-windows[0][0]<3 or windows[0][1]-windows[0][0]>MAX_WINDOW):
+    if focus and (not math.isfinite(focus['startSeconds']) or not math.isfinite(focus['endSeconds'])
+        or focus['startSeconds'] < 0 or focus['endSeconds'] > duration + .01
+        or focus['endSeconds']-focus['startSeconds'] < 3
+        or focus['endSeconds']-focus['startSeconds'] > MAX_WINDOW):
         raise AdaptiveUnavailable('window_outside_video')
     # Heat is optional and applies to *decoded video* only; never to videoshot.
     from video_heat_signal import obtain_heat_signal
@@ -424,6 +425,15 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
             all_images.append(_decode_samples(filename,start=start,length=end-start))
     moments,info=_scene_candidates(all_images,[start for start,_ in windows],heat=heat,limit=limit)
     boards=_make_storyboards(moments)
+    # Optional, strictly offline OCR of already decoded frames; NEVER of low-res
+    # videoshot fallback. It is a machine estimate, not a semantic confirmation.
+    try:
+        from frame_ocr import extract_frame_ocr
+        ocr=extract_frame_ocr(moments)
+    except Exception:
+        # OCR is optional: its failure must never erase decoded frame proof.
+        ocr={'engine':'unavailable','segments':[],'attempted':0}
+
     coverage=round(sum(end-start for start,end in windows),1)
     sampling={'strategy':'decoded-storyboard-stratified-2fps','sampler_version':SAMPLER_VERSION,
               'source_type':'bili-public-playurl-durl','input_bytes':count,
@@ -434,9 +444,11 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
               'viewer_heat_is_content_evidence':False,'depth':depth,
               'frame_plan':configured,'frame_budget':limit,'storyboard_count':len(boards),
               'sample_interval_seconds':1/FRAME_RATE,
-              'note':'全片按时间分区稀疏抽样，再结合切镜、运动和可选弹幕活跃度排序；并未连续观看、OCR 或理解音轨'}
+              'note':'全片按时间分区稀疏抽样；OCR 仅在本机可用时分析少量静帧，未理解音轨或完整播放'}
     sampling.update(info)
+    sampling['ocr_engine'] = ocr['engine']
+    sampling['ocr_attempted'] = ocr['attempted']
     return {'ok':True, 'bvid':bvid, 'status':'frames_ready', 'frames':boards,
-            'times':[x['second'] for x in moments], 'sampling':sampling,
+            'times':[x['second'] for x in moments], 'sampling':sampling, 'ocr':ocr,
             'focus_window':focus, 'image_source':'B站公开视频片段（离线解码）',
             'notice':'每张分镜拼图包含多个带时间码的公开视频采样时刻；未逐帧观看完整视频或听到音频'}

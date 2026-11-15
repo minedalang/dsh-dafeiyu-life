@@ -11,7 +11,8 @@ flowchart TB
     GO --> C & M & H
     C & M & H --> R["🧩 联合排序<br/>时间覆盖 · 去重 · 上下文连续"]
     R --> B["🖼️ 自适应分镜<br/>卡片预算只设上限，不强制看满"]
-    B --> Q{"鱼鱼还有疑问吗？"}
+    B --> T["📝 可选 Tesseract 静帧 OCR<br/>🎙️ 已启用时 Whisper 分段 ASR<br/>来源分别标注、只做时间邻接"]
+    T --> Q{"鱼鱼还有疑问吗？"}
     Q -->|有| F["🔎 指定时间窗复查"]
     F --> R
     Q -->|没有 / 不想继续| E["🧠 保存可追溯观察与未确认内容"]
@@ -20,4 +21,4 @@ flowchart TB
     classDef action fill:#E8F0FF,stroke:#6588CF,color:#1B3763,stroke-width:1.5px;
     class V,Q choice;
     class C,M,H signal;
-    class GO,R,B,F,E,S action;
+    class GO,R,B,T,F,E,S action;

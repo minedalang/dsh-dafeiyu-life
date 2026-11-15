@@ -641,3 +641,5 @@
 - [2.7.1-dev.8 顶部导航 Life UI 试行](./2.7.1-dev8-topnav-life-ui-trial.md)：保留四组横向页签，使用用户原设立绘、动画；修复时间线和心情 CSS；不涉及决策与外发。
 
 - [2.8.0-dev.2 老用户备份兼容与完整冷快照安全说明](2.8.0-dev2-old-user-backup-safety.md)
+
+> **dev.3b.2 · 画面静帧 OCR 与本地 ASR 明确时间片段（开发增量）：** [实现和证据边界](2.8.1-video-perception-dev3b2.md)。不等于音画语义互证；真实平台和 Windows 实机未验收。

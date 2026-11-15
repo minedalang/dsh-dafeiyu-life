@@ -49,3 +49,15 @@ test('dev.3a.4 danmaku heat helper is staged and fingerprinted for headless impo
   assert.equal(readFileSync(join(dir,'video_heat_signal.py'),'utf8'),expected)
   assert.equal(readFileSync(join(dir,'.shipped-video_heat_signal.py.sha'),'utf8'),hash(expected))
 }))
+
+
+test('dev.3b.2 optional OCR helper is staged and fingerprinted without overwriting owner edits',()=>homeWith(dir=>{
+  ensureHomeFiles(root,dir)
+  const expected=readFileSync(join(root,'lib','frame_ocr.py'),'utf8')
+  assert.equal(readFileSync(join(dir,'frame_ocr.py'),'utf8'),expected)
+  assert.equal(readFileSync(join(dir,'.shipped-frame_ocr.py.sha'),'utf8'),hash(expected))
+  writeFileSync(join(dir,'frame_ocr.py'),'# owner edited OCR helper')
+  ensureHomeFiles(root,dir)
+  assert.equal(readFileSync(join(dir,'frame_ocr.py'),'utf8'),'# owner edited OCR helper')
+  assert.equal(readFileSync(join(dir,'frame_ocr.py.new'),'utf8'),expected)
+}))

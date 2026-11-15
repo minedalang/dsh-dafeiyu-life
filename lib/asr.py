@@ -15,6 +15,8 @@ asr.py —— 把一条 B站 视频（或本地音视频文件）转成文字。
   ② **音频不落盘到别处**：yt-dlp 下到临时目录，转写完就随系统清理
 """
 import argparse
+import json
+import math
 import os
 import re
 import sys
@@ -81,6 +83,29 @@ def fetch_audio(url: str, tmp: str, tag: str) -> str:
         return ydl.prepare_filename(info)
 
 
+def _asr_receipt(bvid, pieces):
+    """Keep only explicitly timed Whisper spans; never infer time from plain text."""
+    rows = []
+    text_parts = []
+    for part in pieces:
+        body = ' '.join(str(getattr(part, 'text', '') or '').split())
+        if not body:
+            continue
+        text_parts.append(body)
+        a, b = getattr(part, 'start', None), getattr(part, 'end', None)
+        if (type(a) in (int, float) and type(b) in (int, float)
+            and math.isfinite(a) and math.isfinite(b) and 0 <= a < b <= 43200):
+            rows.append({'startSeconds': round(a, 3), 'endSeconds': round(b, 3),
+                         'text': body[:180]})
+        if len(text_parts) >= 2500:
+            break
+    if len(rows) > 160:
+        rows = [rows[round(i * (len(rows) - 1) / 159)] for i in range(160)]
+    return {'bvid': bvid, 'source': 'local-asr', 'asr_evidence': 'faster-whisper-machine-transcript',
+            'text': ' '.join(text_parts)[:12000], 'timed_segments': rows,
+            'can_claim_audio_listened': False, 'can_claim_full_video_watched': False}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description='把一条视频转成文字（默认中文）')
     ap.add_argument('target', help='BV 号 / B站链接 / 本地音视频文件')
@@ -88,8 +113,12 @@ def main() -> int:
     ap.add_argument('--model', default=os.environ.get('BILI_DUTY_ASR_MODEL', 'small'),
                     help='Whisper 模型大小：tiny / base / small / medium（默认 small）')
     ap.add_argument('--lang', default='zh', help='语言（默认 zh；不给就自动判断请传 auto）')
+    ap.add_argument('--json', action='store_true', help='输出带明确时间戳的 JSON 回执（只供受限 MCP 调用）')
     args = ap.parse_args()
 
+    if args.json and not re.fullmatch(r'BV[0-9A-Za-z]{10}', args.target):
+        print('[asr] JSON 模式仅允许精确 BV 号', file=sys.stderr)
+        return 2
     src = args.target
     # ⚠️ 不用 mkdtemp：沙箱只允许写"子进程启动前就存在"的目录，新建的会被拒 ✗
     #    这个目录由宿主（插件）预先建好；文件名固定，跑完自己清掉
@@ -115,7 +144,8 @@ def main() -> int:
             language=None if args.lang == 'auto' else args.lang,
             vad_filter=True,          # 掐掉静音段，省时间也少出错
         )
-        text = ''.join(seg.text for seg in segments).strip()
+        receipt = _asr_receipt(args.target, segments)
+        text = receipt['text']
     finally:
         # 临时音频不留在磁盘上
         try:
@@ -128,6 +158,9 @@ def main() -> int:
         except Exception:
             pass
 
+    if args.json:
+        print(json.dumps(receipt, ensure_ascii=False))
+        return 0
     if args.out:
         with open(args.out, 'w', encoding='utf-8') as f:
             f.write(text)

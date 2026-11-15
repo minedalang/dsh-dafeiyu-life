@@ -166,7 +166,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
                     and d.get('perception_source_requested','preview')==perception_source
                     and (perception_source!='adaptive' or d.get('image_source')=='B站公开视频片段（离线解码）')):
                     return {'ok':True,'status':'cached','bvid':bvid,'description':d['description'],
-                            'times':d.get('times',[]),'sampling':d.get('sampling'),'focus_window':focus,
+                            'times':d.get('times',[]),'sampling':d.get('sampling'),'ocr':d.get('ocr'),'focus_window':focus,
                             'image_source':d.get('image_source','B站低清预览'),
                             'perception_source_requested':perception_source,
                             'notice':'缓存的独立视觉模型采样观察，并非完整播放'}
@@ -244,13 +244,13 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
             return {'ok':False,'status':'empty_result','error':'视觉模型未提供有效画面描述'}
         record={'origin':'dsh-independent-unverified','model':model,'provider':provider,
                 'frames_limit':frames,'view_depth':view_depth,'prompt_hash':prompt_hash,'sampler_version':sampler_version,
-                'times':observed['times'][:48],'sampling':observed.get('sampling'),'focus_window':focus,
+                'times':observed['times'][:48],'sampling':observed.get('sampling'),'ocr':observed.get('ocr'),'focus_window':focus,
                 'description':description,'image_source':observed.get('image_source','B站低清预览'),
                 'perception_source_requested':perception_source}
         # Never cache a videoshot downgrade under an adaptive source identity.
         if perception_source=='adaptive' and record['image_source']!='B站公开视频片段（离线解码）':
             return {'ok':True,'status':'analyzed','bvid':bvid,'description':description,
-                    'times':record['times'],'sampling':record.get('sampling'),
+                    'times':record['times'],'sampling':record.get('sampling'),'ocr':record.get('ocr'),
                     'focus_window':focus,'image_source':record['image_source'],
                     'perception_source_requested':perception_source,
                     'adaptive_fallback':{'actual_source':'videoshot','reason':'public_stream_unavailable'},
@@ -260,7 +260,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         tmp.write_text(json.dumps(record,ensure_ascii=False),encoding='utf8')
         os.replace(tmp,cached)
         return {'ok':True,'status':'analyzed','bvid':bvid,'description':description,
-                'times':record['times'],'sampling':record.get('sampling'),'focus_window':focus,
+                'times':record['times'],'sampling':record.get('sampling'),'ocr':record.get('ocr'),'focus_window':focus,
                 'image_source':record['image_source'],'perception_source_requested':perception_source,
                 'notice':'独立 DSH 视觉模型根据采样图片自述观察，尚未独立核实'}
     except Exception as exc:

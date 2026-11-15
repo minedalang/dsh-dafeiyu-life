@@ -2983,6 +2983,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         if (readFileSync(join(stateDir,'vision_dsh.py'),'utf8') !== readFileSync(join(pluginDir,'lib','vision_dsh.py'),'utf8')) {log('🔒 DSH 独立视觉脚本不一致，请检查 vision_dsh.py.new');return null}
         if (readFileSync(join(stateDir,'adaptive_video.py'),'utf8') !== readFileSync(join(pluginDir,'lib','adaptive_video.py'),'utf8')) {log('🔒 自适应视频采样脚本不一致，请检查 adaptive_video.py.new');return null}
         if (readFileSync(join(stateDir,'video_heat_signal.py'),'utf8') !== readFileSync(join(pluginDir,'lib','video_heat_signal.py'),'utf8')) {log('🔒 弹幕热度采样脚本版本不一致，请检查 video_heat_signal.py.new');return null}
+        if (readFileSync(join(stateDir,'frame_ocr.py'),'utf8') !== readFileSync(join(pluginDir,'lib','frame_ocr.py'),'utf8')) {log('🔒 OCR 采样脚本版本不一致，请检查 frame_ocr.py.new');return null}
       } catch {log('🔒 预览识图脚本不存在或无法读取');return null}
     }
     const posix = (p) => String(p).replace(/\\/g, '/')

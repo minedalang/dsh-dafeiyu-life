@@ -1419,7 +1419,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                     proof_path=Path(proof_file).resolve()
                     if proof_path.parent == (_DUTY_HOME/'vision-proof').resolve() and re.fullmatch(r'[a-f0-9]{32}\.json',proof_path.name):
                         proof_path.write_text(json.dumps({'bvid':bvid,'times':result['times'],
-                            'sampling':result.get('sampling'),'focus_window':focus,
+                            'sampling':result.get('sampling'),'ocr':result.get('ocr'),'focus_window':focus,
                             'perception_source_requested':perception_source,'view_depth':view_depth,
                             'image_source':result.get('image_source')},ensure_ascii=False),encoding='utf8')
                 except OSError: pass
@@ -3330,10 +3330,29 @@ async def bili_transcribe_safe(bvid: str) -> str:
         if not asr.is_relative_to(_DUTY_HOME) or not python.is_relative_to(_DUTY_HOME):
             return "转写路径不安全"
         if not asr.is_file() or not python.is_file(): return "本地转写依赖未安装"
-        res = await asyncio.to_thread(subprocess.run, [str(python), str(asr), bv], capture_output=True, text=True, errors="replace", timeout=160, cwd=str(_DUTY_HOME))
-        return res.stdout[:12000] if res.returncode == 0 else "转写失败（已跳过）：" + res.stderr[-350:]
-    except Exception as exc:
-        return "本地转写失败（已跳过）：" + str(exc)[:160]
+        res = await asyncio.to_thread(subprocess.run, [str(python), str(asr), bv, '--json'],
+                                      capture_output=True, text=True, encoding='utf-8', errors="replace",
+                                      timeout=160, cwd=str(_DUTY_HOME))
+        if res.returncode != 0 or len(res.stdout) > 65000:
+            return json.dumps({'ok':False,'status':'asr_failed','error':'本地语音转写未成功'},ensure_ascii=False)
+        try:
+            payload = json.loads(res.stdout)
+        except (ValueError,TypeError):
+            return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'本地语音转写回执不完整'},ensure_ascii=False)
+        if (not isinstance(payload,dict) or payload.get('bvid') != bv or
+            payload.get('source') != 'local-asr' or
+            payload.get('asr_evidence') != 'faster-whisper-machine-transcript' or
+            not isinstance(payload.get('text'),str) or not payload['text'].strip() or
+            not isinstance(payload.get('timed_segments'),list)):
+            return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'本地语音转写回执不完整'},ensure_ascii=False)
+        # Do not trust any process output to announce audio listening or playback.
+        return json.dumps({'bvid':bv,'source':'local-asr',
+                           'asr_evidence':'faster-whisper-machine-transcript',
+                           'text':payload['text'][:12000],
+                           'timed_segments':payload['timed_segments'][:160],
+                           'can_claim_audio_listened':False,'can_claim_full_video_watched':False},ensure_ascii=False)
+    except Exception:
+        return json.dumps({'ok':False,'status':'asr_failed','error':'本地语音转写未成功'},ensure_ascii=False)
 
 
 

@@ -474,7 +474,7 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
                 and saved.get('image_source')=='B站公开视频片段（离线解码）'):
                 return {'ok':True,'bvid':bvid,'status':'cached',
                         'times':saved['times'],'description':saved['description'],
-                        'sampling':saved['sampling'],'focus_window':focus,
+                        'sampling':saved['sampling'],'ocr':saved.get('ocr'),'focus_window':focus,
                         'image_source':saved['image_source'],
                         'notice':'缓存的公开视频采样帧描述，并非完整视频观看'}
         except (ValueError,OSError,KeyError,TypeError):pass
@@ -513,7 +513,7 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
         result['status']='analyzed'
         record={'model':model,'provider':provider,'frames_limit':max_frames,
                 'sampler_version':5,'view_depth':view_depth,'times':result['times'],'description':result['description'],
-                'sampling':result['sampling'],'focus_window':focus,
+                'sampling':result['sampling'],'ocr':result.get('ocr'),'focus_window':focus,
                 'image_source':result['image_source']}
         cache.parent.mkdir(parents=True,exist_ok=True)
         temp=cache.with_suffix('.tmp')

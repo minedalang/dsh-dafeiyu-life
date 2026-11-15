@@ -146,3 +146,9 @@ remain in force.
 ### 2.8.1-dev.3b.1 能力配置参考（非第三方源码复制）
 
 DSH 第三方模型的 `input` / `reasoningEfforts` 语法参考 [DeepSeek Harness 官方模型配置说明](https://deepseek-harness.github.io/deepseek-harness/en/guide/providers)；Windows `ollama serve` 的行为参考 [Ollama Windows 官方说明](https://github.com/ollama/ollama/blob/main/docs/windows.mdx)。本批的时间轴投影、管理界面提示、PowerShell 启动包装和 SVG 绘图代码为项目自行实现，未移植这些项目的源代码。
+
+## 2.8.1-dev.3b.2：可选本地 OCR 引擎（不随插件分发）
+
+- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) 是可由用户自行安装的外部 OCR 程序。本项目只按固定参数调用本机已安装的 CLI，对真实视频采样静帧解析机器结果；不捆绑其源码、可执行文件、训练数据或语言包。Tesseract 及其模型/依赖按用户安装的上游许可证执行（项目主代码为 Apache-2.0）。
+- 原有本地 [faster-whisper](https://github.com/SYSTRAN/faster-whisper) 模型运行方式未变；本批仅保留已由 Whisper 提供的时间信息，不分发新的模型权重或下载器。
+- 画面 OCR、ASR 时间分段与时间轴代码均在本仓库独立编写。先前 dsh-video-storyboard、dsh-see-now 仍仅用于设计参考，没有移植源文件。
