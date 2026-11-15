@@ -1,4 +1,5 @@
 import importlib.util
+import unittest
 import json
 import sys
 from pathlib import Path
@@ -188,3 +189,106 @@ def test_dsh_adaptive_vision_binds_proof_source_and_never_caches_preview_fallbac
         wrong=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
             runner=wrong_source,perception_source='adaptive',focus_start=3,focus_end=8)
     assert not wrong['ok'] and wrong['status']=='no_images_confirmed'
+
+
+def selftest_configured(tmp_path):
+    rows=[]
+    for ident in module._HEADLESS_DENY_TOOLS:
+        rows.extend([f'- id: {ident}','  disabled: true',''])
+    for ident in ('credentials','authorization','deepseek-account'):
+        rows.extend([f'- id: {ident}','  disabled: false',''])
+    rows.extend(['- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_vision_selftest'","          BILI_VISION_SELFTEST_ALLOWED: '1'",
+        f"          BILI_VISION_TEST_ASSET: '{ROOT / 'lib' / 'assets' / 'local-vision-selftest-dafeiyu.png'}'",''])
+    overlay=tmp_path/'headless-vision-selftest-overlay.yml'
+    overlay.write_text('\n'.join(rows),encoding='utf8')
+    args=['/some/absolute/dsh','--profile','headless','--patch',str(overlay)]
+    return {'BILI_VISION_DSH_ARGV':json.dumps(args)}
+
+
+def test_dsh_image_selftest_reports_mcp_payload_and_unobservable_attachment_bridge(tmp_path):
+    env=selftest_configured(tmp_path)
+    def fake_runner(args,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'kind':'dafeiyu-selftest',
+            'sha256':'a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b',
+            'byteLength':515908,'mimeType':'image/png','imageBlocks':1,
+        }),encoding='utf8')
+        return SimpleNamespace(returncode=0,
+            stdout='VISION_TEST_RESULT: 画面中是一只蓝色头发、白色围裙的卡通角色。\n'.encode(),stderr=b'')
+    result=module.describe_test_image_with_dsh(tmp_path,env=env,runner=fake_runner)
+    assert result['ok'] and result['status']=='awaiting_review'
+    assert result['diagnostics']['mcpImage']=={
+        'status':'verified','mimeType':'image/png','imageBlocks':1,'byteLength':515908}
+    assert result['diagnostics']['attachmentBridge']['status']=='not_observable'
+    assert result['diagnostics']['providerApi']['status']=='completed'
+    assert result['diagnostics']['modelAnswer']['status']=='returned'
+    assert not list((tmp_path/'vision-proof').glob('*.json'))
+    assert not list((tmp_path/'vision-proof').glob('*.yml'))
+
+
+def test_dsh_image_selftest_distinguishes_missing_mcp_proof_and_provider_api_error(tmp_path):
+    env=selftest_configured(tmp_path)
+    missing=module.describe_test_image_with_dsh(tmp_path,env=env,
+        runner=lambda *a,**kw:SimpleNamespace(returncode=0,
+            stdout='VISION_TEST_RESULT: 我看见了一只卡通角色。'.encode(),stderr=b''))
+    assert not missing['ok'] and missing['status']=='no_image_proof'
+    assert missing['diagnostics']['mcpImage']['status']=='not_received'
+    assert missing['diagnostics']['providerApi']['status']=='completed'
+    failed=module.describe_test_image_with_dsh(tmp_path,env=env,
+        runner=lambda *a,**kw:SimpleNamespace(returncode=1,stdout=b'',
+            stderr=b'HTTP 400 invalid_request_error payload too large'))
+    assert not failed['ok'] and failed['status']=='headless_launch_failed'
+    assert failed['diagnosticCode']=='provider_api'
+    assert failed['diagnostics']['providerApi']['diagnosticCode']=='provider_api'
+    assert failed['diagnostics']['modelAnswer']['status']=='not_returned'
+
+
+class TestDshImageSelftestDiagnostics(unittest.TestCase):
+    def test_mcp_image_receipt_and_unobservable_bridge_are_separate(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            home=Path(directory)
+            env=selftest_configured(home)
+            def runner(args,**kwargs):
+                Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+                    'kind':'dafeiyu-selftest',
+                    'sha256':'a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b',
+                    'byteLength':515908,'mimeType':'image/png','imageBlocks':1,
+                }),encoding='utf8')
+                return SimpleNamespace(returncode=0,
+                    stdout='VISION_TEST_RESULT: 画面中是一只蓝色头发、白色围裙的卡通角色。\n'.encode(),stderr=b'')
+            result=module.describe_test_image_with_dsh(home,env=env,runner=runner)
+            self.assertTrue(result['ok'])
+            self.assertEqual(result['diagnostics']['mcpImage']['status'],'verified')
+            self.assertEqual(result['diagnostics']['mcpImage']['byteLength'],515908)
+            self.assertEqual(result['diagnostics']['attachmentBridge']['status'],'not_observable')
+            self.assertEqual(result['diagnostics']['providerApi']['status'],'completed')
+            self.assertEqual(result['diagnostics']['modelAnswer']['status'],'returned')
+            self.assertEqual(list((home/'vision-proof').glob('*.json')),[])
+            self.assertEqual(list((home/'vision-proof').glob('*.yml')),[])
+
+    def test_missing_image_proof_is_not_model_visual_success(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            home=Path(directory)
+            env=selftest_configured(home)
+            result=module.describe_test_image_with_dsh(home,env=env,
+                runner=lambda *a,**kw:SimpleNamespace(returncode=0,
+                    stdout='VISION_TEST_RESULT: 我看见了一只卡通角色。'.encode(),stderr=b''))
+            self.assertFalse(result['ok'])
+            self.assertEqual(result['status'],'no_image_proof')
+            self.assertEqual(result['diagnostics']['mcpImage']['status'],'not_received')
+            self.assertEqual(result['diagnostics']['providerApi']['status'],'completed')
+
+    def test_provider_http_error_is_safely_classified(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            home=Path(directory)
+            env=selftest_configured(home)
+            result=module.describe_test_image_with_dsh(home,env=env,
+                runner=lambda *a,**kw:SimpleNamespace(returncode=1,stdout=b'',
+                    stderr=b'HTTP 400 invalid_request_error payload too large'))
+            self.assertFalse(result['ok'])
+            self.assertEqual(result['diagnosticCode'],'provider_api')
+            self.assertEqual(result['diagnostics']['providerApi']['diagnosticCode'],'provider_api')
+            self.assertEqual(result['diagnostics']['modelAnswer']['status'],'not_returned')

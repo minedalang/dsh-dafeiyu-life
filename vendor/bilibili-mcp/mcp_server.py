@@ -1333,7 +1333,8 @@ async def bili_vision_selftest():
         if proof_file:
             dst=Path(proof_file).resolve()
             if dst.parent == (_DUTY_HOME/'vision-proof').resolve() and re.fullmatch(r'[a-f0-9]{32}\.json',dst.name):
-                dst.write_text(json.dumps({'kind':'dafeiyu-selftest','sha256':_DAFEIYU_IMAGE_SHA256}),encoding='utf8')
+                dst.write_text(json.dumps({'kind':'dafeiyu-selftest','sha256':_DAFEIYU_IMAGE_SHA256,
+                    'byteLength':len(contents),'mimeType':'image/png','imageBlocks':1}),encoding='utf8')
         return CallToolResult(content=[
             TextContent(type='text',text='图片验收素材：大肥鱼官方角色原图。只描述实际看见的画面，不要按照文件名猜测。'),
             ImageContent(type='image',mimeType='image/png',data=base64.b64encode(contents).decode('ascii')),

@@ -440,6 +440,14 @@ padding:11px 12px;margin:12px 0;font-size:13px;line-height:1.65;display:grid;gap
 .headless-next-action{width:max-content;max-width:100%;font-weight:800;box-shadow:0 5px 15px rgba(70,86,155,.2)}
 .headless-verify-button.primary{background:linear-gradient(110deg,#7352bd,#426fd0);color:#fff;border-color:transparent;font-weight:800}
 .headless-verify-hint{display:block;color:var(--action);font-size:12px;font-weight:700;margin:5px 0}
+.vision-route-capabilities{display:grid;gap:5px;padding:10px 12px;border:1px solid var(--stroke);border-radius:10px;background:var(--panel);font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.vision-probe-stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:7px;margin:12px 0}
+.vision-probe-stage{min-width:0;padding:9px 10px;border:1px solid var(--stroke);border-radius:10px;background:var(--panel);font-size:12px;line-height:1.55;color:var(--muted)}
+.vision-probe-stage strong{display:block;color:var(--ink);margin-bottom:3px}
+.vision-probe-stage[data-state="passed"]{border-color:#45a580;background:color-mix(in srgb,#4ec9a2 10%,var(--panel))}
+.vision-probe-stage[data-state="failed"]{border-color:#cf6470;background:color-mix(in srgb,#e58a93 11%,var(--panel))}
+.vision-probe-stage[data-state="pending"]{border-color:#d6a14e;background:color-mix(in srgb,#f4ca78 11%,var(--panel))}
+.vision-probe-stage[data-state="unknown"]{border-style:dashed}
 /* Android via DSH Mobile is currently a read-only remote console, not a local admin session. */
 .mobile-view-banner{border:1px solid #c0aedc;border-left:5px solid #7862bb;border-radius:12px;background:linear-gradient(110deg,color-mix(in srgb,#b6a1f0 19%,var(--panel)),var(--panel));padding:14px 17px;margin:15px 0;line-height:1.7}
 .mobile-view-banner strong{display:block;font-size:14px}.mobile-view-banner p{font-size:13px;margin:4px 0;color:var(--muted)}
@@ -1732,6 +1740,14 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <span id="vision-probe-source" style="display:inline-block;border:1px solid var(--border,#aeb7c2);border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600">DSH 识图模型</span>
   </div>
   <p id="vision-probe-route" class="muted" style="margin:6px 0 10px">选择识图方式后，此处展示实际待验证的模型。</p>
+  <div id="vision-route-capabilities" class="vision-route-capabilities" role="status" aria-live="polite">正在读取实际视觉路由、图片能力声明和思考深度声明…</div>
+  <div id="vision-probe-stages" class="vision-probe-stages" aria-label="DSH 图片识别验收阶段">
+    <div class="vision-probe-stage" data-stage="route" data-state="unknown"><strong>① 实际模型路由</strong><span>等待检测</span></div>
+    <div class="vision-probe-stage" data-stage="mcpImage" data-state="unknown"><strong>② MCP 图片工具</strong><span>等待验收</span></div>
+    <div class="vision-probe-stage" data-stage="attachmentBridge" data-state="unknown"><strong>③ 图片附件桥接</strong><span>插件无法读取独立桥接回执</span></div>
+    <div class="vision-probe-stage" data-stage="providerApi" data-state="unknown"><strong>④ DSH / Provider 请求</strong><span>等待验收</span></div>
+    <div class="vision-probe-stage" data-stage="modelAnswer" data-state="unknown"><strong>⑤ 模型最终回答</strong><span>等待验收</span></div>
+  </div>
   <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
     <figure style="margin:0;flex:0 0 164px;text-align:center">
       <img id="vision-probe-image" src="/api/bili-duty/local-vision/selftest-image" alt="实际发送给所选模型的大肥鱼原图" width="154" height="186" style="width:154px;height:186px;object-fit:contain;background:#fff;border:1px solid #c8ced7;border-radius:10px" loading="lazy"/>

@@ -1,3 +1,7 @@
+> **2.8.1-dev.3b.19 当前：** [DSH 视觉路由一致性、Headless 能力声明与分阶段图片验收](2.8.1-video-perception-dev3b19-headless-vision-route-diagnostics.md)。管理页按实际生效路由比较继承模型；图片声明、Headless 文字连接、MCP 图片块回执、附件桥接和最终模型回答分别呈现。插件不能直接观察 DSH 内部附件桥接，真实 Windows/第三方中转站图片验收仍需完成。
+
+以下各节保留为历史开发阶段记录；当前实现与约束以本节 dev.3b.19 文档及仓库根目录 `AGENTS.md` 为准。
+
 > **2.8.1-dev.3b.9 当前：** [受控 MP4 HTTP Range 分段视频感知与本地 Ollama 视觉模型认可恢复](2.8.1-video-perception-dev3b9.md)。超过卡片网络预算不强制整文件下载，不回退3帧冒充深入；当前范围仅索引可用的公开单段 MP4，实际 Windows/B站还需验收。
 
 > **当前开发候选 2.8.1-dev.3b.6：** [视频感知全链路、只读 Life 输入 Debug、实机发布门禁](2.8.1-video-perception-dev3b6.md)。此前 dev.3b.5 等段落均是按阶段保留的历史描述。未通过真实 B站/DSH 模型验收，不应以正式版发布。

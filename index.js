@@ -182,6 +182,7 @@ import { normalizeFriendDirectory, directoryToLegacy } from './lib/friend-direct
 import { shouldRunWindow, parsePeakWindows, readPeakWindows, activePeakWindow, DEFAULT_PEAK_INTERVAL_MINUTES } from './lib/peak-schedule.mjs'
 import { effectiveModelSelection } from './lib/model-routing.mjs'
 import { createHeadlessModelSync } from './lib/headless-model-sync.mjs'
+import { resolveVisionModelRoute } from './lib/vision-model-route.mjs'
 import { createFirstStart } from './lib/first-start.mjs'
 import { hostLlmService, runHostModelText } from './lib/host-model-call.mjs'
 import { HEADLESS_DENY_TOOLS, writeSecureHeadlessOverlay, validateHeadlessOverlayFile, assertSafeHeadlessLaunch } from './lib/headless-security.mjs'
@@ -608,14 +609,24 @@ export function apply(ctx, config) {
     const current=ctx.get?.('agentDefaultModel')?.currentSelection?.()||{}
     const rows=[]
     for(const id of providers){
-      let models=[]
-      try{models=typeof llm.listModels==='function'?modelIds(await llm.listModels(id)):[]}catch{}
+      let rawModels=[],models=[]
+      try{rawModels=typeof llm.listModels==='function'?await llm.listModels(id):[];models=modelIds(rawModels)}catch{}
+      const modelRows=Array.isArray(rawModels)?rawModels:Array.isArray(rawModels?.models)?rawModels.models:[]
+      const modelDetails=modelRows.filter(x=>x&&typeof x==='object'&&!Array.isArray(x)).map(x=>{
+        const modelId=modelIds([x])[0]
+        if(!modelId)return null
+        const input=Array.isArray(x.input)?x.input.filter(v=>['text','image','audio','video','file'].includes(v)).slice(0,8):undefined
+        const efforts=x.reasoningEfforts&&typeof x.reasoningEfforts==='object'&&!Array.isArray(x.reasoningEfforts)
+          ?Object.fromEntries(Object.keys(x.reasoningEfforts).filter(k=>/^[a-zA-Z0-9_-]{1,40}$/.test(k)).slice(0,24).map(k=>[k,true]))
+          :undefined
+        return {id:modelId,...(input?{input}:{}),...(efforts?{reasoningEfforts:efforts}:{})}
+      }).filter(Boolean)
       // This is only a catalog hint, not evidence that a model call succeeds.
       if((current.provider||current.providerId)===id){
         const selected=current.model||current.modelId
         if(typeof selected==='string'&&!models.includes(selected))models.push(selected)
       }
-      rows.push({id,models})
+      rows.push({id,models,modelDetails})
     }
     return rows
   }
@@ -2871,6 +2882,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // provider+model gate. Host-only text calls never pass through this gate.
   function headlessSelection(task) {
     const current=ctx.get('agentDefaultModel')?.currentSelection?.() ?? {}
+    if(task==='vision'){
+      const route=resolveVisionModelRoute(cfg,current)
+      return {provider:route.provider,model:route.model}
+    }
     const routes={
       main:{provider:cfg.videoModelProvider||cfg.pluginDefaultModelProvider,model:cfg.videoModelId||cfg.pluginDefaultModelId},
       vision:{provider:cfg.visionModelProvider||cfg.pluginDefaultModelProvider,model:cfg.visionModelId||cfg.pluginDefaultModelId},
@@ -3147,11 +3162,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     for (const id of HEADLESS_DENY_TOOLS) rows.push('- id: '+id,'  disabled: true','')
     for (const id of ['credentials','authorization','deepseek-account']) rows.push('- id: '+id,'  disabled: false','')
     const selection=ctx.get('agentDefaultModel')?.currentSelection?.() ?? null
-    // 如独立模型字段留空：分别继承当前视频 Agent 的配置，避免 DSH 退回未经确认的默认路由。
+    // One resolver owns the actual DSH visual route used by both the launch gate and overlay.
+    const resolved=resolveVisionModelRoute(cfg,selection)
     const custom = {
-      provider: cfg.visionModelProvider || cfg.pluginDefaultModelProvider || '',
-      model: cfg.visionModelId || cfg.pluginDefaultModelId || '',
-      reasoningEffort: cfg.visionReasoningEffort || cfg.videoReasoningEffort || '',
+      provider: resolved.provider,
+      model: resolved.model,
+      reasoningEffort: resolved.reasoningEffort,
     }
     rows.push(...effectiveModelSelection(selection,custom,yq))
     rows.push('- insert:',
@@ -3184,10 +3200,25 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // A dedicated read-only DSH image probe. It uses the same owner-supplied PNG
   // as Ollama; headless is allowed only one fixed-image MCP tool.
   const dshVisionReview=createDshVisionReview({
-    getRoute:()=>({provider:cfg.visionModelProvider||cfg.pluginDefaultModelProvider||'',
-      model:cfg.visionModelId||cfg.pluginDefaultModelId||'',effort:cfg.visionReasoningEffort||'',
-      selected:ctx.get('agentDefaultModel')?.currentSelection?.()?.model||''}),
+    getRoute:()=>{
+      const selected=ctx.get('agentDefaultModel')?.currentSelection?.()||{}
+      const route=resolveVisionModelRoute(cfg,selected)
+      const details=headlessSync.describeRoute({provider:route.provider,model:route.model})
+      const model=details.headlessModel||details.sourceModel||null
+      const provider=details.headless||details.source||null
+      return {
+        ...route,kind:details.kind||'unresolved',profile:details.profile||'',
+        api:provider?.api||'',baseURL:provider?.baseURL||'',
+        input:model?.input||null,imageInputDeclared:model?.imageInputDeclared??null,
+        reasoningEfforts:model?.reasoningEfforts||null,
+        reasoningEffortsDeclared:model?.reasoningEffortsDeclared===true,
+        headlessSynced:details.synced===true,headlessVerified:details.verified===true,
+        routeFingerprint:details.fingerprint||'',
+      }
+    },
     probe:async()=>{
+      if(resolveVisionModelRoute(cfg,ctx.get('agentDefaultModel')?.currentSelection?.()||{}).mode!=='independent_dsh')
+        throw Error('当前识图方式是本地 Ollama，不能启动 DSH Headless 图片验收')
       const dsh=resolveDsh()
       if(dsh.missing||dsh.shell)throw Error('未找到安全可执行的 DSH CLI，无法进行真实图片自检')
       const overlay=ensureVisionOverlay('vision-selftest')

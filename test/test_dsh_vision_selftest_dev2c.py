@@ -32,7 +32,7 @@ class DshImageProbeTests(unittest.TestCase):
             self.assertFalse(result['ok'])
             self.assertEqual(result['status'],'no_image_proof')
             def complete(argv,**kw):
-                Path(kw['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({'kind':'dafeiyu-selftest','sha256':'a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b'}))
+                Path(kw['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({'kind':'dafeiyu-selftest','sha256':'a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b','byteLength':515908,'mimeType':'image/png','imageBlocks':1}))
                 return subprocess.CompletedProcess(argv,0,'VISION_TEST_RESULT: 蓝色头发，深蓝裙子，鱼尾。'.encode('utf8'),b'')
             good=vision.describe_test_image_with_dsh(home,env=env,runner=complete)
             self.assertTrue(good['ok']);self.assertIn('鱼尾',good['answer'])

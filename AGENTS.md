@@ -1,3 +1,12 @@
+## 2.8.1-dev.3b.19 DSH 视觉路由一致性与分阶段图片验收
+
+- 视觉 DSH 路由只有一个运行时优先级：`visionModelProvider / visionModelId` → `pluginDefaultModelProvider / pluginDefaultModelId` → DSH 当前宿主选择；视觉思考深度使用 `visionReasoningEffort` → `videoReasoningEffort`。Headless 启动门禁、隔离 overlay 和验收状态必须使用同一解析结果，禁止 UI 自行推断另一条实际路由。
+- 管理页比较“有效路由”而不是把空的独立字段与已继承的下拉框值比较；默认模型继承不应误报未保存。保存仍走原 `/config`，不修改 API Key、DSH Provider 凭据或用户模型选择。
+- Headless 模型状态分别显示协议、Base URL 主机、`input: image` 能力声明、reasoningEfforts 声明、Headless 文字连接验证。能力声明、文字连接通过和图片实测是三个不同事实，不能互相替代；只暴露白名单字段，不返回凭据、原始 headers、查询参数或私有请求正文。
+- DSH 图片验收按实际可观察阶段显示：有效路由/文字验证、MCP 固定图片块回执、DSH 内部附件桥接（插件无法直接观察）、DSH/Provider 子进程结果、模型最终回答与人工认可。MCP 图片块回执只证明工具返回 ImageContent，不证明第三方模型确实看懂图片；只有本人检查最终回答后才可认可。
+- 固定大肥鱼 PNG 的 MCP 回执绑定 SHA-256、字节数、MIME 与图片块数；错误输出只转换成安全诊断码，禁止将原始 stderr、URL、密钥或本地路径写入公开诊断。
+- 本轮未新增 Life 数据流、外发工具、B站权限、模型 API Key 管理或持久化验收状态；人工图片认可仍为当前进程内状态。Windows DSH 与真实 `muze-gpt / gpt-6-luna` 图片端到端验收仍需用户实机完成。
+
 ## 2.8.1-dev.3b.18 视频语义记忆、Windows 子进程及失败重试收口
 
 - 禁用视频固定词表分类作为新记忆正文：只从可信模型回执中抽取**有限、自然语言的画面观察短句**，用重复结构和敏感指令拒绝、长度约束、原始来源证明及独立字段存储，记忆衰减后清除；永久审计档案不存这些短句。短句只能作为不可信模型观察，不能成为系统/用户指令、外发资格或对真实性的独立证明。隔离是防御纵深，不宣称可绝对消除提示注入。

@@ -308,8 +308,12 @@ def _safe_dsh_headless_diagnostic(stderr, stdout=b'', exit_code=1):
        '受限会话无法完成模型网络请求，请检查该进程的网络连接'),
       ('quota',('rate limit','429','quota exceeded','insufficient balance'),
        '模型服务额度或速率限制导致受限会话失败'),
-      ('image_input',('image not supported','unsupported image','image input','multimodal'),
+      ('image_input',('image not supported','unsupported image','image input','multimodal',
+                     'image_url','invalid image','unsupported content type','images are not supported'),
        '受限会话的图片输入处理失败，请检查 Headless 视觉工具与模型格式兼容性'),
+      ('provider_api',('invalid_request_error','bad request','http 400','status code 400',
+                       'payload too large','request too large','entity too large','http 413','status code 413'),
+       '第三方 Provider 已返回请求参数或负载错误；请核对该模型的图片输入协议和中转站限制'),
       ('startup_flags',('unknown option','unrecognized option','invalid patch','invalid profile'),
        'DSH CLI 启动参数与当前版本不兼容，请检查 Headless profile/patch 配置'),
     )
@@ -318,6 +322,27 @@ def _safe_dsh_headless_diagnostic(stderr, stdout=b'', exit_code=1):
             return {'diagnosticCode':code,'error':f'DSH 受限图片验收子会话退出（exit={exit_code}）：{hint}。普通 Session 可识图不代表独立 Headless 会话已通过验证。'}
     return {'diagnosticCode':'headless_exit_unknown',
             'error':f'DSH 受限图片验收子会话异常退出（exit={exit_code}）。这不代表模型不能识图；请先在 DSH 中确认 Headless 模型验证和只读 MCP 工具可用。'}
+
+
+
+def _vision_selftest_diagnostics(*, mcp='not_run', provider_api='not_run', answer='not_run',
+                                image_bytes=None, diagnostic_code=''):
+    return {
+        'mcpImage': {
+            'status': mcp,
+            **({'mimeType':'image/png','imageBlocks':1,'byteLength':int(image_bytes)} if image_bytes is not None else {}),
+        },
+        'attachmentBridge': {
+            'status':'not_observable',
+            'note':'MCP 可证明已返回 ImageContent；插件无法读取 DSH 内部附件桥接的独立回执',
+        },
+        'providerApi': {
+            'status':provider_api,
+            **({'diagnosticCode':str(diagnostic_code)[:80]} if diagnostic_code else {}),
+            'note':'仅能观察 DSH 子进程退出状态，不能读取第三方中转站的私有请求/响应正文',
+        },
+        'modelAnswer': {'status':answer},
+    }
 
 
 def describe_test_image_with_dsh(home, env=None, runner=None):
@@ -329,6 +354,7 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
     home=Path(home).resolve()
     env=dict(os.environ if env is None else env)
     proof=None;private_overlay=None
+    diagnostics=_vision_selftest_diagnostics()
     try:
         argv=json.loads(env.get('BILI_VISION_DSH_ARGV','[]'))
         if not isinstance(argv,list) or not 3<=len(argv)<=16 or not all(isinstance(x,str) and 0<len(x)<=3000 for x in argv):
@@ -369,25 +395,49 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False,
                            **_hidden_windows_child())
         except subprocess.TimeoutExpired:
-            return {'ok':False,'status':'timeout','error':'DSH 识图验证超过 180 秒，请检查模型响应或网络'}
+            diagnostics=_vision_selftest_diagnostics(provider_api='timeout',answer='not_returned')
+            return {'ok':False,'status':'timeout','diagnosticCode':'headless_timeout',
+                    'error':'DSH 识图验证超过 180 秒，请检查模型响应或网络','diagnostics':diagnostics}
         except (OSError,ValueError) as exc:
-            return {'ok':False,'status':'launch_error','error':'无法安全启动 DSH 视觉会话：'+type(exc).__name__}
+            diagnostics=_vision_selftest_diagnostics(provider_api='not_started',answer='not_returned')
+            return {'ok':False,'status':'launch_error','diagnosticCode':'dsh_launch_error',
+                    'error':'无法安全启动 DSH 视觉会话：'+type(exc).__name__,'diagnostics':diagnostics}
         if result.returncode!=0:
-            return {'ok':False,'status':'headless_launch_failed',**_safe_dsh_headless_diagnostic(result.stderr,result.stdout,result.returncode)}
+            safe=_safe_dsh_headless_diagnostic(result.stderr,result.stdout,result.returncode)
+            diagnostics=_vision_selftest_diagnostics(provider_api='failed',answer='not_returned',
+                                                     diagnostic_code=safe.get('diagnosticCode',''))
+            return {'ok':False,'status':'headless_launch_failed',**safe,'diagnostics':diagnostics}
         try:observed=json.loads(proof.read_text(encoding='utf8'))
         except (OSError,ValueError):
-            return {'ok':False,'status':'no_image_proof','error':'DSH 模型没有实际调用受控图片工具，不能人工认可'}
-        if observed.get('kind')!='dafeiyu-selftest' or observed.get('sha256')!='a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b':
-            return {'ok':False,'status':'image_mismatch','error':'DSH 收到的图片回执与大肥鱼原图不匹配'}
+            diagnostics=_vision_selftest_diagnostics(mcp='not_received',provider_api='completed',answer='not_returned')
+            return {'ok':False,'status':'no_image_proof','diagnosticCode':'mcp_image_not_proven',
+                    'error':'DSH 模型没有实际调用受控图片工具，不能人工认可','diagnostics':diagnostics}
+        expected_sha='a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b'
+        expected_bytes=515908
+        if (observed.get('kind')!='dafeiyu-selftest' or observed.get('sha256')!=expected_sha
+            or observed.get('byteLength')!=expected_bytes or observed.get('mimeType')!='image/png'
+            or observed.get('imageBlocks')!=1):
+            diagnostics=_vision_selftest_diagnostics(mcp='mismatch',provider_api='completed',answer='not_accepted')
+            return {'ok':False,'status':'image_mismatch','diagnosticCode':'mcp_image_receipt_mismatch',
+                    'error':'DSH 收到的图片回执与大肥鱼原图不匹配','diagnostics':diagnostics}
+        diagnostics=_vision_selftest_diagnostics(mcp='verified',provider_api='completed',
+                                                 answer='not_returned',image_bytes=expected_bytes)
         output=(result.stdout or b'').decode('utf8',errors='replace')
         if 'VISION_TEST_RESULT:' not in output or 'VISION_TEST_FAILED' in output.split('VISION_TEST_RESULT:')[-1]:
-            return {'ok':False,'status':'no_final_answer','error':'DSH 模型未返回可人工查看的最终图片描述'}
+            diagnostics['modelAnswer']={'status':'missing'}
+            return {'ok':False,'status':'no_final_answer','diagnosticCode':'model_final_answer_missing',
+                    'error':'DSH 模型未返回可人工查看的最终图片描述','diagnostics':diagnostics}
         answer=output.rsplit('VISION_TEST_RESULT:',1)[1].strip()
-        if not answer:return {'ok':False,'status':'empty_answer','error':'DSH 视觉模型最终回答为空'}
-        # Do not impose max generation tokens; stdout only retains one actual response.
-        return {'ok':True,'status':'awaiting_review','answer':answer}
+        if not answer:
+            diagnostics['modelAnswer']={'status':'empty'}
+            return {'ok':False,'status':'empty_answer','diagnosticCode':'model_final_answer_empty',
+                    'error':'DSH 视觉模型最终回答为空','diagnostics':diagnostics}
+        diagnostics['modelAnswer']={'status':'returned'}
+        return {'ok':True,'status':'awaiting_review','answer':answer,'diagnostics':diagnostics}
     except Exception as exc:
-        return {'ok':False,'status':'vision_config_error','error':str(exc)[:240]}
+        diagnostics=_vision_selftest_diagnostics()
+        return {'ok':False,'status':'vision_config_error','diagnosticCode':'vision_config_error',
+                'error':str(exc)[:240],'diagnostics':diagnostics}
     finally:
         try:
             if proof is not None:proof.unlink(missing_ok=True)
