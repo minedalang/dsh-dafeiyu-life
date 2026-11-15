@@ -72,7 +72,7 @@ class TimedMediaTests(unittest.TestCase):
             (runtime/('python.exe' if os.name=='nt' else 'python')).write_text('# fake python')
             scope={'_guard':lambda _:None,'_valid_bv':lambda value:value,
                    '_DUTY_HOME':home,'asyncio':asyncio,'subprocess':__import__('subprocess'),
-                   'os':os,'json':json}
+                   'os':os,'json':json,'_record_asr_attempt':lambda *args,**kwargs:None}
             exec(script,scope)
             expected={'bvid':BV,'source':'local-asr','asr_evidence':'faster-whisper-machine-transcript',
                       'text':'这句有起止时间','timed_segments':[{'startSeconds':1,'endSeconds':2,'text':'这句有起止时间'}]}
@@ -85,7 +85,7 @@ class TimedMediaTests(unittest.TestCase):
                 result=json.loads(asyncio.run(scope['bili_transcribe_safe'](BV)))
             self.assertEqual(result['timed_segments'][0]['startSeconds'],1)
             self.assertFalse(result['can_claim_audio_listened'])
-            self.assertEqual(worker.call_args.args[0][-1],'--json')
+            self.assertEqual(worker.call_args.args[0][-3:],['--json','--model','small'])
             expected['bvid']='BV0000000000'
             with patch.dict(os.environ,env),patch('subprocess.run',return_value=types.SimpleNamespace(
                     returncode=0,stdout=json.dumps(expected),stderr='private token')):

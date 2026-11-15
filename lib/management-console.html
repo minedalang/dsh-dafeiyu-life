@@ -1212,6 +1212,11 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #life-growth-evidence .growth-footnote{margin:12px 0 0;font-size:12px;color:var(--muted)}
 #life-growth-evidence .growth-diagnosis{margin:12px 0 0;font-size:12px;padding:10px 12px;border-left:3px solid var(--action);background:var(--tint);border-radius:6px}
 @media(max-width:760px){#life-growth-evidence .growth-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#life-growth-evidence .growth-sections{grid-template-columns:1fr}#life-growth-evidence .growth-chain{grid-template-columns:1fr}}
+.video-aux-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px}
+.video-aux-card{padding:16px;border:1px solid var(--stroke);border-radius:16px;background:color-mix(in srgb,var(--panel) 88%,var(--tint) 12%);min-width:0}
+.video-aux-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.video-aux-card .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.video-aux-card .checkline{margin:10px 0}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1566,7 +1571,20 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
       <a class="fs-progress-step" href="#fs-final-stage" data-fs-step="finish"><span>05</span><strong>完成引导</strong><small>不重置设置</small></a>
     </div>
     <p class="fs-progress-hint" id="fs-progress-hint" role="status" aria-live="polite">正在读取快速设置状态…</p>
-    <div id="fs-verify-stage" class="fs-phase"><div class="fs-phase-title"><strong>连接鱼鱼的世界</strong><span>先完成两项必要验证；已有登录和模型不会自动重置</span></div>
+    <div id="fs-verify-stage" class="fs-phase"><div class="fs-phase-title"><strong>连接鱼鱼的世界</strong><span>先准备运行环境，再完成两项必要验证；已有登录和模型不会自动重置</span></div>
+  <section class="quick-config-section" id="fs-deps-card" aria-label="快速设置依赖安装">
+    <div class="quick-config-title"><span class="quick-card-icon">🛠️</span><div><h4>运行依赖 · 一站安装 <span class="pill">安装可选视频增强，不改变观看意愿</span></h4><p>主依赖负责 B站读取、MCP、登录二维码；FFmpeg 和 Whisper 由用户选择安装，不捆绑在主依赖里。安装后可随时回来修复。</p></div></div>
+    <div class="video-aux-heading"><strong>① 主依赖 · B站及 MCP 运行环境</strong><span id="fs-main-deps-badge" class="pill pending">检测中</span></div>
+    <p class="quick-current" id="fs-main-deps-status" role="status" aria-live="polite">正在检查主依赖…</p>
+    <div class="quick-config-actions"><button id="fs-main-deps-install" type="button" class="primary">安装主依赖</button><button id="fs-main-deps-refresh" type="button">刷新依赖状态</button></div>
+    <details><summary>查看主依赖安装日志末尾</summary><pre id="fs-main-deps-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto">暂无安装记录</pre></details>
+    <div class="video-aux-heading" style="margin-top:16px"><strong>② 视频增强组件 · 自愿勾选</strong><span class="pill">不影响首次设置必需项</span></div>
+    <p class="muted">FFmpeg 用于解码真实视频；Whisper 用于可选语音转写。Whisper small 模型约 484 MB，其他型号可能更大，且还需安装 Python 依赖。安装不会自动开启语音转写或触发视频观看。</p>
+    <div class="fields"><label class="checkline"><input id="fs-install-ffmpeg" type="checkbox">安装 FFmpeg（Windows 使用系统 winget，打开可见 PowerShell）</label><label class="checkline"><input id="fs-install-whisper" type="checkbox">安装 Whisper 转写环境及当前已保存的模型（下载可能超过数百 MB）</label></div>
+    <p id="fs-addons-status" class="quick-current" role="status" aria-live="polite">正在检查视频增强组件…</p>
+    <div class="quick-config-actions"><button id="fs-addons-install" type="button">安装勾选的视频组件</button><button type="button" data-open-tab="models" data-open-anchor="video-aux-dependencies">选择 Whisper 模型与启用转写 ↗</button></div>
+    <p id="fs-addons-detail" class="setting-note" role="status">安装 FFmpeg 后可能需重启 DSH；Whisper 转写是否生效，请到 AI 模型页查看最近真实运行回执。</p>
+  </section>
   <div class="fs-grid">
     <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>🔐 在线核验并确认当前扫码账号</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>✅ 重启后复核并恢复账号</button></div></section>
     <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
@@ -1635,7 +1653,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   </div>
 </section>
 <section id="panel-models" hidden>
-<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择一个默认模型，可应用到所有任务；需要时再展开单独调整。连接测试会实际调用模型，可能产生费用；测试连接不计入统计。</p></div></div>
+<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择一个默认模型，可应用到所有任务；需要时再展开单独调整。连接测试会实际调用模型，可能产生费用；测试连接不计入统计。</p><p><a href="#video-aux-dependencies" style="font-weight:650">🎞️ 前往 FFmpeg、Whisper、字幕与梗图设置 ↓</a></p></div></div>
 <div class="settings-stack">
 <div class="settings-section" id="headless-model-sync-panel">
 <h4>🔐 后台模型同步与检测（独立 Agent 必需）</h4>
@@ -1722,6 +1740,37 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <p class="muted">下载时展示的是 Ollama 当前文件层的进度（并非整个模型的总进度），切换到下一文件时百分比会重新计算；取消下载可能保留已缓存的分片。删除会移除 Ollama 全局模型，可能影响其他应用，需再次确认。网络问题请先检查代理是否被 Ollama 进程继承，再重试。真实 GPU/视频表现需本机验收。</p>
 </div>
 </div></details>
+<section class="settings-section video-aux-section" id="video-aux-dependencies" aria-label="视频感知依赖与辅助能力">
+  <h4>🎞️ 视频感知依赖与辅助能力</h4>
+  <p class="muted">视频分镜、字幕和本地转写在这里集中管理。<strong>启用不代表已经运行成功</strong>；安装/转写状态只依据真实运行证据。鱼鱼仍自行选择是否观看、看多深。</p>
+  <div class="video-aux-cards">
+    <div class="video-aux-card">
+      <div class="video-aux-heading"><strong>🎬 FFmpeg · 真实视频解码</strong><span id="models-ffmpeg-badge" class="pill pending">检测中</span></div>
+      <p id="models-ffmpeg-status" class="muted" role="status" aria-live="polite">正在检测 FFmpeg…</p>
+      <p class="muted">未安装时真实视频分镜可能降级为官方低清预览；不会假称已解码。Windows 使用 winget <code>Gyan.FFmpeg.Essentials</code> 安装，需手动确认，无法保证每条视频都能获取源文件。</p>
+      <div class="toolbar"><button type="button" data-open-tab="firststart" data-open-anchor="fs-deps-card">前往快速设置安装 ↗</button><button id="models-ffmpeg-test" type="button">视频解码自测</button><button id="models-ffmpeg-refresh" type="button">重新检测</button></div>
+      <p id="models-ffmpeg-test-result" class="setting-note" role="status">尚未进行解码自测。</p>
+    </div>
+    <div class="video-aux-card">
+      <div class="video-aux-heading"><strong>🎙️ 视频语音识别模型（推荐开启）</strong><span id="models-whisper-badge" class="pill pending">检测中</span></div>
+      <label class="checkline"><input id="models-transcribe" type="checkbox">启用视频语音识别（无可用官方字幕时，鱼鱼可按需使用 Whisper）</label>
+      <div class="fields"><div><label for="models-asr-model">Whisper 模型</label><select id="models-asr-model"><option value="tiny">tiny · 更省资源</option><option value="base">base</option><option value="small">small · 默认</option><option value="medium">medium</option><option value="large-v3">large-v3 · 更高资源占用</option></select></div></div>
+      <p id="models-whisper-status" class="muted" role="status" aria-live="polite">正在检查转写依赖…</p>
+      <p id="models-whisper-last" class="setting-note" role="status">最近实际转写：暂无记录</p>
+      <p class="muted">仅在鱼鱼主动请求、没有可用官方字幕时才可能触发；安装好不代表用过。切换模型后须确保对应模型已下载。</p>
+      <div class="toolbar"><button type="button" data-open-tab="firststart" data-open-anchor="fs-deps-card">前往快速设置安装 ↗</button><button type="button" id="models-whisper-refresh">刷新转写状态</button></div>
+      <details><summary>查看安装日志末尾（不含转写正文）</summary><pre id="models-whisper-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto"></pre></details>
+    </div>
+  </div>
+  <div class="settings-section" style="margin-top:14px">
+    <h4>🖼️ 评论梗图及调试</h4>
+    <label class="checkline"><input id="models-comment-memes" type="checkbox">评论时允许鱼鱼自主选择本地表情包</label>
+    <label class="checkline"><input id="models-comment-memes-debug" type="checkbox">记录表情包选择原因（调试用）</label>
+    <p class="muted">这里只移动原开关，不改变素材位置、评论权限或每日限额。具体素材仍在「表情包图库」管理。</p>
+  </div>
+  <div class="toolbar"><button id="models-aux-save" type="button" class="primary">保存辅助能力</button></div>
+  <p id="models-aux-save-status" class="setting-note" role="status">这里单独保存辅助能力，模型设置仍使用上方原按钮，不会相互覆盖。</p>
+</section>
 <details class="settings-section model-task"><summary><strong>人生反思与经历提炼模型 <span class="help-tip" title="无平台写入工具；仅从真实可读经历筛选。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-reflection-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-reflection-test" class="model-test-button">测试连接</button><span id="models-reflection-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">从真实经历中筛选值得长期保留的认识；不是每次反思都必须产生记忆。频率相对低，建议使用较强推理与长文本归纳模型。</p><div class="fields" id="models-reflection"></div></div></details>
 <details class="settings-section model-task"><summary><strong>人生记忆检索模型 <span class="help-tip" title="只能选择真实 ID，不创造记忆或读取封存档案。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-memory-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-memory-test" class="model-test-button">测试连接</button><span id="models-memory-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责从允许召回的记忆候选中挑出有关记录。调用频率相对高，但需要一定语义理解与相关性判断能力，建议选速度快、具有基础推理能力的均衡模型，不建议只追求最便宜。</p><div class="fields" id="models-memory"></div></div></details>
 <h4 class="model-role-group">③ 低频辅助创作 · 优先表达质量与推理能力</h4>
@@ -1775,11 +1824,9 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <div class="settings-section"><h4>本地探索日报</h4>
 <div class="fields"><div><label for="bili-report-level">本地日报内容</label><select id="bili-report-level"><option value="full">详细</option><option value="brief">简短</option><option value="off">不写日报</option></select></div></div>
 <p class="muted">旧版每轮视频清单自动私信已退役；日报仍保存在本地。原创评论和 Life 自主好友视频分享分别授权。</p></div>
-<div class="settings-section"><h4>字幕、梗图及其他辅助能力</h4>
-<label class="checkline"><input id="bili-transcribe" type="checkbox">无字幕时尝试转写视频语音（需转写依赖）</label>
-<div class="fields"><div><label for="bili-asr-model">Whisper 转写模型</label><select id="bili-asr-model"><option value="tiny">tiny</option><option value="base">base</option><option value="small">small</option><option value="medium">medium</option><option value="large-v3">large-v3</option></select></div></div>
-<label class="checkline"><input id="bili-comment-memes" type="checkbox">评论时允许自主搭配本地表情包</label>
-<label class="checkline"><input id="bili-comment-memes-debug" type="checkbox">记录表情包选择原因（调试用）</label></div>
+<div class="settings-section"><h4>字幕、转写与梗图</h4>
+<p class="muted">这些辅助能力及 FFmpeg / Whisper 安装、运行记录已统一移至 <strong>AI 模型 → 视频感知依赖与辅助能力</strong>，不在这里重复保存。</p>
+<div class="toolbar"><button type="button" data-open-tab="models" data-open-anchor="video-aux-dependencies">打开辅助能力管理 ↗</button></div></div>
 
 </details>
 <div class="toolbar"><button id="bili-save" class="primary">保存视频探索设置</button><button id="bili-refresh">重新读取</button></div>

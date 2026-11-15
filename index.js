@@ -104,6 +104,7 @@ import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
 import {buildVideoEvidenceBundle} from './lib/video-evidence-bundle.mjs'
 import {buildVideoPerceptionTimeline} from './lib/video-perception-timeline.mjs'
 import {openOllamaPowerShell} from './lib/ollama-start-windows.mjs'
+import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller} from './lib/video-dependencies.mjs'
 import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-continuity.mjs'
 import {todoParentId} from './lib/todo-lineage.mjs'
 import {verifyLifeOutbound,lifeFactsFromCompletedTodos,lifeFactsFromCreatorSnapshot,lifeFactFromReceipt} from './lib/verified-life-facts.mjs'
@@ -1683,7 +1684,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let mcpKey = ''
   const favoriteStyle=()=>favoriteStyleFromPersona(effectivePersonaPrompt(cfg.personaPrompt))
   const favoriteTopics=()=>{try{return publicFavoriteTopics(cfg.coreInterestTopics,listLifeInterests(stateDir))}catch{return publicFavoriteTopics(cfg.coreInterestTopics)}}
-  const mcpKeyNow = () => `${cfg.pythonPath}|${join(stateDir, 'mcp_server.py')}|${favoriteStyle()}|${favoriteTopics()}|${cfg.commentDailyLimit}|${cfg.autoVideoLikeDailyLimit}|${cfg.diagMentionEnabled}|${cfg.diagDynamicEnabled}|${cfg.diagVisionEnabled}|${cfg.diagMemeEnabled}|${cfg.friendDirectory}|${cfg.visionEnabled}|${cfg.visionMode}|${cfg.visionFrames}|${cfg.visionDailyLimit}|${cfg.visionModelProvider}|${cfg.visionModelId}|${cfg.visionLocalModel}|${cfg.visionReasoningEffort}|${cfg.transcribe}|${cfg.autoFavoriteVisibility}|${cfg.autoFavoriteDelete}|${cfg.dmFollowAutonomyEnabled}|${cfg.agentFollowEnabled}`
+  const mcpKeyNow = () => `${cfg.pythonPath}|${join(stateDir, 'mcp_server.py')}|${favoriteStyle()}|${favoriteTopics()}|${cfg.commentDailyLimit}|${cfg.autoVideoLikeDailyLimit}|${cfg.diagMentionEnabled}|${cfg.diagDynamicEnabled}|${cfg.diagVisionEnabled}|${cfg.diagMemeEnabled}|${cfg.friendDirectory}|${cfg.visionEnabled}|${cfg.visionMode}|${cfg.visionFrames}|${cfg.visionDailyLimit}|${cfg.visionModelProvider}|${cfg.visionModelId}|${cfg.visionLocalModel}|${cfg.visionReasoningEffort}|${cfg.transcribe}|${cfg.asrModel}|${cfg.autoFavoriteVisibility}|${cfg.autoFavoriteDelete}|${cfg.dmFollowAutonomyEnabled}|${cfg.agentFollowEnabled}`
 
   const assertSecureMcp = () => {
     // 安全升级必须拒绝继续使用旧/用户自行修改但未经复核的 MCP 副本。
@@ -1728,7 +1729,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         BILI_VISION_DSH_PROVIDER: cfg.visionModelProvider || cfg.pluginDefaultModelProvider || '', BILI_VIDEO_MODEL_ID: cfg.videoModelId || '',
         BILI_VISION_PROVIDER: resolvedVisionMode()==='independent_local'?'ollama':cfg.visionModelProvider || '', BILI_VISION_MODEL: resolvedVisionMode()==='independent_local'?(getLocalVisionModel(cfg.visionLocalModel)?.ollama||''):cfg.visionModelId || '',
         BILI_VISION_PROMPT_B64: Buffer.from(normalizeVisionPrompt(cfg.visionPrompt),'utf8').toString('base64'),
-        BILI_ASR_ENABLED: cfg.transcribe?'1':'0' }),
+        BILI_ASR_ENABLED: cfg.transcribe?'1':'0', BILI_ASR_MODEL: cfg.asrModel||'small' }),
       log,
     })
     return mcp
@@ -3077,6 +3078,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         '          BILI_SYNC_DYNAMIC: ' + yq('0'),
         '          BILI_DYNAMIC_DAILY_LIMIT: ' + yq(cfg.dynamicDailyLimit),
         '          BILI_ASR_ENABLED: ' + yq(cfg.transcribe ? '1' : '0'),
+        '          BILI_ASR_MODEL: ' + yq(cfg.asrModel || 'small'),
         '          BILI_DM_TARGET_UID: ' + yq(0),
         '          BILI_COMMENT_DAILY_LIMIT: ' + yq(cfg.commentDailyLimit),
         '          BILI_DUTY_AUTO_COMMENT_REVIEW: ' + yq(cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0 && lifeVideoActionBridge?.status().ready===true ? '1':'0'),
@@ -6948,7 +6950,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       // ── 本地转写那一套的状态（设置页要显示进度）──
       asrReady: asrReadyNow(),
       // 模型下没下（免得界面写"就绪"、其实还得现下）
-      asrModelReady: (() => { try { return existsSync(join(stateDir, '.hf-cache', 'hub')) } catch { return false } })(),
+      asrModelReady: readWhisperReadiness({stateDir,model:cfg.asrModel,pythonAvailable:existsSync(asrPython()),packageAvailable:hasPkg(asrDir,'faster_whisper')}).modelCached,
       asrInstalling: installingAsr,
       asrLog: asrLogFile,
       asrTail: (() => { try { return readFileSync(asrLogFile, 'utf8').slice(-1400) } catch { return '' } })(),
@@ -6968,8 +6970,8 @@ logger:{warn:m=>log('社交意图：'+m)}
     const setupAccess = (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
-      path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/open' ||
-      path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity'
+      path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/open' ||
+      path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&path==='/api/bili-duty/video-dependencies/status')
     if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
     // ⭐ 2026-10-21：每条视频一份笔记 —— **宿主拆报告**，不让模型多写一个字（零 token、不会写错）
     const notesDir = join(stateDir, 'reports')
@@ -8143,6 +8145,26 @@ logger:{warn:m=>log('社交意图：'+m)}
       const started=await openOllamaPowerShell()
       return sendJson(res,started.ok?200:409,started)
     }
+    if(req.method==='GET'&&path==='/api/bili-duty/video-dependencies/status'){
+      const whisper=readWhisperReadiness({stateDir,model:cfg.asrModel||'small',
+        pythonAvailable:existsSync(asrPython()),packageAvailable:hasPkg(asrDir,'faster_whisper')})
+      return sendJson(res,200,{ok:true,ffmpeg:probeFFmpeg(),whisper:{...whisper,
+        enabled:cfg.transcribe===true,installing:installingAsr,
+        installLogTail:(()=>{try{return readFileSync(asrLogFile,'utf8').slice(-700)}catch{return ''}})()}})
+    }
+    if(req.method==='POST'&&['/api/bili-duty/video-dependencies/ffmpeg/install','/api/bili-duty/video-dependencies/ffmpeg/test'].includes(path)){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')
+      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+        String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
+        !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
+        return sendJson(res,403,{ok:false,error:'仅允许从本机 DSH 管理中心安装或验证 FFmpeg'})
+      if(path.endsWith('/install')){
+        const launched=await openFFmpegInstaller()
+        return sendJson(res,launched.ok?200:409,launched)
+      }
+      const result=testFFmpegDecode()
+      return sendJson(res,200,{ok:true,test:result})
+    }
     if(req.method==='GET'&&path==='/api/bili-duty/local-vision/status'){
       const current=await localVisionModels.list()
       return sendJson(res,200,{...current,active:cfg.visionMode==='independent_local'?cfg.visionLocalModel:'',visionEnabled:cfg.visionEnabled===true})
@@ -8974,6 +8996,12 @@ logger:{warn:m=>log('社交意图：'+m)}
 
     // 装"本地转写"那套（独立环境：faster-whisper + yt-dlp + Whisper 模型）
     if (req.method === 'POST' && path === '/api/bili-duty/install-asr') {
+      // Initial setup permits optional downloads only on the local management origin.
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'');
+      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+        String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
+        !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
+        return sendJson(res,403,{ok:false,error:'仅允许从本机 DSH 管理中心安装 Whisper'});
       return sendJson(res, 200, runAsrInstall())
 
     }

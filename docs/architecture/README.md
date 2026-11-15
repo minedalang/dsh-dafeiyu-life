@@ -1,3 +1,7 @@
+> **2.8.1-dev.3b.3 依赖入口收口：** [快速设置安装主依赖及勾选的 FFmpeg/Whisper，可在 AI 模型页设置语音识别并验收实际回执](2.8.1-video-perception-dev3b3.md)。两类安装使用不同的原有安装器，避免重复控制与未经确认的大模型下载。
+
+> **2.8.1-dev.3b.3 本轮视频依赖集中管理：** [FFmpeg 状态、自测及 Windows 显式 winget 安装、Whisper 安装/模型缓存/真实转写状态、辅助能力迁移至 AI 模型页](2.8.1-video-perception-dev3b3.md)。修复选择 Whisper 模型后仍复用旧 MCP 默认型号的接线；离线检查不代表 Windows 实机/真实 B站验收。
+
 > **2.8.1-dev.3b.1 当前开发增量：** [字幕/分镜时间邻接证据、DSH 第三方模型能力助手、Windows Ollama 启动和统一 SVG 配图](2.8.1-video-perception-dev3b1.md)。只证明时间邻接，不宣称已经 OCR、听原声或音画语义互证。
 
 > **2.8.1-dev.3a.4 当前视频感知开发说明：** [12/24/48 卡片式分镜、全片时间分层、真实视频切镜/运动/弹幕热度联合选帧、旧高能预览实验退役、可信证据、Mermaid/SVG](2.8.1-video-perception-dev3a4.md)。高能只是候选线索，不构成事实；真实 Windows/B站/模型未验收。

@@ -23,7 +23,7 @@ test('原生设置只显示统一 Life Agent 入口，旧视频时段不再可�
 })
 test('管理中心集中配置全部 AI 模型、辅助开关、B站互动与每日额度',()=>{
   const html=read('lib/management-console.html'),js=read('lib/management-console.js'), host=read('index.js')
-  for(const x of ['panel-models','models-video','models-interaction','models-vision','models-memory','models-vision-mode','models-vision-enabled','panel-bili','bili-report-level','bili-transcribe','bili-comment-memes','bili-asr-model','meme-auto-enabled','daily-dynamic-limit']) assert.ok(html.includes('id="'+x+'"'),x)
+  for(const x of ['panel-models','models-video','models-interaction','models-vision','models-memory','models-vision-mode','models-vision-enabled','panel-bili','bili-report-level','models-transcribe','models-comment-memes','models-asr-model','meme-auto-enabled','daily-dynamic-limit']) assert.ok(html.includes('id="'+x+'"'),x)
   assert.doesNotMatch(html,/id="quota-daily-dynamic"/,'重复的动态数量设置已移除');
   for(const x of ['visionMode','visionEnabled','reportLevel','asrModel','commentMemesEnabled','mainSessionMemoryModelId','dailyDynamicDailyLimit','autoVideoLikeDailyLimit']) assert.ok(js.includes(x)||host.includes(x),x)
   assert.match(host,/createDailyDynamic/)

@@ -39,6 +39,7 @@ test('真实模拟打开模型页刷新时不会因缺失 DOM 的 checked 属性
     addEventListener(name,fn){if(this.id)listeners.set(this.id+':'+name,fn)}
     appendChild(child){child.parentElement=this;return child}
     replaceChildren(){}
+    querySelectorAll(){return []}
     setAttribute(){}
   }
   for(const id of htmlIds){const e=new Element();e.id=id}

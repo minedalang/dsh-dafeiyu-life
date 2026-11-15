@@ -221,6 +221,8 @@ dsh plugin --profile desktop add dsh-dafeiyu-life
 
 **视觉模型人工验收：** DSH 视觉与 Ollama 本地视觉共用一张大肥鱼原图和一个验收区，切换到本地模式时 DSH 模型配置置灰但原值保留。普通 DSH Session 识图成功不等于独立 Headless 验收可以启动，失败会提示进一步排查方向。
 
+**2.8.1-dev.3b.3 视频依赖一站管理（开发增量）：** 「快速设置 → 运行依赖」统一提供主依赖安装／修复按钮；FFmpeg 和 Whisper 属于**默认不勾选**的视频增强组件，仅由用户勾选并确认后安装，绝不随主依赖静默下载大模型。原 DSH 设置页只保留状态和跳转。「AI 模型 → 视频感知依赖与辅助能力」统一管理「视频语音识别模型（推荐开启）」开关、Whisper 型号、字幕／梗图及调试选项，视频探索页仅保留跳转。FFmpeg 在 AI 模型页可检测版本并执行离线解码自测；Windows 安装需返回快速设置中显式确认，通过可见 PowerShell `winget` 启动，不内置 FFmpeg，不视启动安装为安装成功。Whisper 分别显示启用状态、所选模型缓存文件和**最近一次真实转写**（无记录明确提示）；已修复选中型号未正确传入实际 MCP 转写工具的问题。真实 Windows/B站需自行验收，鱼鱼仍自主选择是否看视频及深度。[详细功能与 Windows 验收](docs/architecture/2.8.1-video-perception-dev3b3.md)。
+
 **2.8.1-dev.3b.2 画面文字与语音时间锚点（开发增量）：** 在鱼鱼自主选择正常／深入了解且取得真实公开视频解码帧时，如本机额外装有 Tesseract OCR，可对最多12个代表时刻尝试读取屏幕文字；OCR 文字是**机器估计**，并非已核实事实。已有可选 Whisper 本地转写（需要用户在管理中心启用及安装依赖）现在能保留每段语音转写的起止时间，没有官方字幕时才尝试。Life 的只读时间轴分别标记字幕、ASR、OCR 来源，不因为时间相邻就认定互相证明；缺引擎、没有可用视频流或鱼鱼选择略看时不强制新增视觉工作。修复指定时间窗口真实视频复查故障。[实现与安全边界](docs/architecture/2.8.1-video-perception-dev3b2.md)。
 
 **2.8.1-dev.3b.1 时间轴与视觉配置（开发增量）：** 视频观察回执将 B站字幕的明确起止秒数与分镜采样时间点生成**只读时间邻接表**；“时间附近”不等于“音画相互证明”，本批尚无独立 OCR / 原声时间戳 ASR / 语义交叉核对。DSH 模式提供第三方模型的图片输入与思考档位**设置向导／模型条目复制片段**，不自动更改 `cordis.patch.yml`；可考虑通过支持的中转商使用 `gpt-6-luna`，但需确认图像能力、实际费率与隐私条款，不默认认为任何 DeepSeek 型号都更贵。本地 Ollama 模式有**用户点击确认后打开 Windows PowerShell 执行 `ollama serve`** 的快捷入口，不自动安装或修改代理。详见 [本阶段技术说明](docs/architecture/2.8.1-video-perception-dev3b1.md) 与 [DSH 官方模型配置指南](https://deepseek-harness.github.io/deepseek-harness/en/guide/providers)。

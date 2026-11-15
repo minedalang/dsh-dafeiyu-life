@@ -1,3 +1,15 @@
+## 2.8.1-dev.3b.3 · 首次设置安装第三方依赖的补充说明
+
+- 本插件在管理中心「快速设置」提供用户可选的 FFmpeg（通过 Windows winget 固定包 ID `Gyan.FFmpeg.Essentials`）及本地 Whisper 安装。不内置 FFmpeg、Whisper 权重、winget 可执行文件；安装前提示使用者确认下载。
+- [FFmpeg](https://ffmpeg.org/legal.html) 主要受 LGPL 约束，某些预编译配置带 GPL 组件，许可证以实际分发构建为准。不能把“启动外部安装器”理解为许可证豁免。
+- [SYSTRAN/faster-whisper](https://github.com/SYSTRAN/faster-whisper/blob/master/LICENSE) 是 MIT 许可；[Systran/faster-whisper-small](https://huggingface.co/Systran/faster-whisper-small) 模型权重按上游 MIT 许可提供。其他下载的 Python 依赖各有许可证，安装时由包管理器根据选定上游来源下载；本插件不复制或重分发其源码、二进制和模型权重。
+- 安装默认只包含 Python/B站/MCP 主依赖；FFmpeg 与 Whisper 均需要用户勾选并确认。
+
+## 2.8.1-dev.3b.3 · FFmpeg 可选一键安装的第三方边界
+
+- Windows 管理中心可在使用者明确确认后，调用系统已有的 [Windows Package Manager（winget）](https://learn.microsoft.com/windows/package-manager/winget/) 并使用固定包 ID `Gyan.FFmpeg.Essentials`。本插件不自带或分发 FFmpeg、winget、安装包或第三方源码；安装过程、包来源及 FFmpeg 许可证由所选择的上游发行版负责，许可参见 [FFmpeg legal](https://ffmpeg.org/legal.html)。
+- 使用者可以不安装 FFmpeg，届时真实视频取帧可能降级；一键按钮只启动可见 PowerShell，不暗示安装、使用许可和后续运行已成功。Whisper 原有 faster-whisper / Hugging Face 模型下载方式未更换，不捆绑新权重。
+
 ## 2.8.1-dev.3a.4 多信号分镜与弹幕活跃曲线的实现归属
 
 - 新增 `lib/video_heat_signal.py` 的官方 PBP 读取尝试和受限弹幕 XML 时间密度提取、`lib/adaptive_video.py` 的分层窗口/热度加权候选选择及 Pillow 分镜拼图均由本仓库**独立编写**。不保存弹幕内容、用户身份或 UID，也不将观众反应当成作品事实。

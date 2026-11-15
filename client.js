@@ -521,26 +521,6 @@ window.__ModuleLoader__.load({
         } catch (e) { say(String(e?.message ?? e), 'warn') } finally { setBusy('') }
       }
 
-      const onInstallAsr = async () => {
-        setBusy('asr')
-        say('')
-        try {
-          const r = await jpost('/install-asr', {})
-          say(r?.started ? '开始装转写依赖 —— 进度显示在下面（要下模型，慢一点正常）' : (r?.hint || '没起来'),
-            r?.started ? 'good' : 'warn')
-        } catch (e) { say(String(e?.message ?? e), 'warn') } finally { setBusy('') }
-      }
-
-      const onInstall = async () => {
-        setBusy('install')
-        say('')
-        try {
-          const r = await jpost('/install', {})
-          say(r?.hint || '已经在后台开始装了', '')
-        } catch (e) { say(String(e?.message ?? e), 'warn') }
-        finally { setBusy('') }
-      }
-
       const onRun = async () => {
         setBusy('run')
         try {
@@ -636,7 +616,7 @@ window.__ModuleLoader__.load({
             h('div',{'data-bd-label':''},(steps.biliVerified?'✓':'○')+' B站账号登录并验证'+(steps.biliVerified?' · 已完成':'')),
             h('div',{'data-bd-label':''},(steps.headlessVerified?'✓':'○')+' Headless 模型同步并验证'+(steps.headlessVerified?' · 已完成':'')),
             h('div',{'data-bd-row':''},
-              !st.venvReady?h('button',{'data-bd-btn':'',onClick:onInstall,disabled:busy==='install'},'安装 B站运行依赖'):null,
+              !st.venvReady?h('div',{'data-bd-note':''},'先到管理中心 → 快速设置安装主依赖'):null,
               h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('firststart')},'打开管理中心，开始配置 ↗')),
             h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。'),
             manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null))
@@ -696,7 +676,7 @@ window.__ModuleLoader__.load({
         h('div',{'data-bd-sec':'','data-bd-group':'daily'},
           h('div',{'data-bd-h':''},'账号与运行环境'),
           h('div',{'data-bd-row':''},
-            h('button',{'data-bd-btn':'',disabled:busy==='install',onClick:onInstall},st.venvReady?'重装主依赖':'安装主依赖'),
+            h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},'安装／修复主依赖 ↗'),
             h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},'管理中心登录设置 ↗'),
             h('button',{'data-bd-btn':'',disabled:busy==='check',onClick:onCheck},'检查账号'),
             h('button',{'data-bd-btn':'',disabled:busy==='selfcheck',onClick:onSelfCheck},'环境自检')),
@@ -762,26 +742,8 @@ window.__ModuleLoader__.load({
           h('div', { 'data-bd-note': '' }, '热评不再后台轮询：只有 AI 决定回复当前视频的评论后，才按需读取该视频其他热评。'),
           h('div', { 'data-bd-row': '' }, h('button', { 'data-bd-btn': '', onClick: () => onOpenManage() }, '管理后台互动 ↗')),
           h('div', { 'data-bd-sep': '' }),
-          h(ToggleRow, {
-            label: '本地转写没字幕的视频',
-            note: '默认关；开了以后，没字幕的视频会在本机转写一遍（不花 API 钱）',
-            on: sw('transcribe'),
-            onChange: (v) => patch({ transcribe: v }, '本地转写'),
-          }),
-          sw('transcribe') ? h('div', { 'data-bd-sub': '' },
-            h('div', { 'data-bd-row': '' },
-              h('button', { 'data-bd-btn': '', disabled: busy === 'asr', onClick: onInstallAsr },
-                st.asrReady ? '重装转写依赖' : '装转写依赖'),
-              h('div', { 'data-bd-note': '' },
-                !st.asrReady ? '还没装 —— 现在开着也没用：没字幕的视频会被跳过（报告里会写"因无字幕跳过 N 条"）'
-                  : (st.asrModelReady ? '环境和模型都好了' : '环境好了；模型会在第一次转写时自动下（几百 MB）'))),
-            h('div', { 'data-bd-note': '' },
-              '点一下就好：建一个独立环境、装 faster-whisper + yt-dlp，并把 Whisper 模型也下好',
-              h('br'),
-              '（模型默认 small，几百 MB，走国内镜像；装一次就够了）'),
-            st.asrTail ? h('div', null,
-              h('div', { 'data-bd-note': '' }, st.asrInstalling ? '正在装转写依赖（进度）：' : '转写依赖的日志（末尾）—— 只有「没字幕的视频」用得到它：'),
-              h('pre', { 'data-bd-pre': '' }, st.asrTail)) : null) : null),
+          h('div', { 'data-bd-note': '' }, '字幕、Whisper 转写、FFmpeg 与表情包辅助设置已移至管理中心 → AI 模型 → 视频感知依赖与辅助能力。'),
+          h('div', {'data-bd-row':''}, h('button', {'data-bd-btn':'',onClick:()=>onOpenManage('models')}, '前往 AI 模型辅助能力 ↗'))),
 
         /* 复杂内容管理统一进入管理中心；原设置页只保留少量基础开关。 */
         h('div',{'data-bd-sec':'','data-bd-group':'taste','data-bd-away':tab==='taste'?undefined:''},
@@ -905,22 +867,20 @@ window.__ModuleLoader__.load({
           h('div', { 'data-bd-sep': '' }),
           h('div', { 'data-bd-h': '' }, '环境与账号'),
           h('div', { 'data-bd-row': '' },
-            h('button', { 'data-bd-btn': '', disabled: busy === 'install', onClick: onInstall },
-              st.venvReady ? '重装主依赖' : '装主依赖（建 venv）'),
+            h('button', { 'data-bd-btn': '', onClick:()=>onOpenManage('firststart') }, '安装／修复主依赖 ↗'),
             h('button', { 'data-bd-btn': '', disabled: busy === 'check', onClick: onCheck }, '测一下'),
             h('button', { 'data-bd-btn': '', disabled: busy === 'update', onClick: onCheckUpdate }, '检查更新'),
             newVer ? h('button', { 'data-bd-btn': '', 'data-primary': '', disabled: busy === 'upgrade', onClick: onUpgrade }, '一键升级到 v' + newVer) : null,
-            h('button', { 'data-bd-btn': '', onClick:()=>onOpenManage('firststart') }, '管理中心登录设置 ↗'),
             h('div', { 'data-bd-note': '' },
               !st.venvReady ? (st.installFailed ? '上次没装成 → 看下面日志' : '还没装 → 先点「装主依赖」')
                 : (st.loggedIn ? '已有 B站凭据，可在管理中心重新验证' : '环境好了 → 去管理中心登录 B站'))),
-          h('div', { 'data-bd-note': '' }, 'B站账号登录已统一到管理中心；本页只保留环境安装。'),
+          h('div', { 'data-bd-note': '' }, '运行环境安装与账号登录均已统一到管理中心 → 快速设置；本页只显示只读状态。'),
           st.installTail ? h('div', null,
             h('div', { 'data-bd-note': '' }, st.installing ? '正在装主依赖（进度）：' : '主依赖的日志（B站 搜索 / 字幕 / 评论 用得到，末尾）：'),
             h('pre', { 'data-bd-pre': '' }, st.installTail)) : null,
           h('div', { 'data-bd-note': '' }, '如需重新登录，请前往大肥鱼管理中心 → 首次设置。')),
           (Array.isArray(st.missingDeps) && st.missingDeps.length)
-            ? h('div', { 'data-bd-note': '' }, '还缺这几项：' + st.missingDeps.join(' / ') + '（qrcode = 画登录二维码用的）—— 点一次「重装主依赖」就会补上')
+            ? h('div', { 'data-bd-note': '' }, '还缺这几项：' + st.missingDeps.join(' / ') + '（qrcode = 画登录二维码用的）—— 前往管理中心 → 快速设置修复')
             : null,
 
         /* ── 它是怎么干活的（给他看的） ── */

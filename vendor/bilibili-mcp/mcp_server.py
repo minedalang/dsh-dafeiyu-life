@@ -3317,41 +3317,70 @@ async def bili_digest_append(bvid: str, title: str, up: str, summary: str) -> st
         return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
 
 
+def _record_asr_attempt(outcome, model, segments=0, reason=None):
+    """Only operational metadata, never BV, text, audio, account or provider data."""
+    try:
+        from datetime import datetime, timezone
+        payload = {'version':1,'at':datetime.now(timezone.utc).isoformat(),
+                   'outcome':outcome,'model':model,'segments':max(0,min(160,int(segments)))}
+        if reason:
+            payload['reason'] = reason
+        target = (_DUTY_HOME / 'asr-last-run.json').resolve()
+        if target.parent == _DUTY_HOME:
+            target.write_text(json.dumps(payload,ensure_ascii=False),encoding='utf8')
+    except (OSError, ValueError, TypeError):
+        pass
+
+
 @tool()
 async def bili_transcribe_safe(bvid: str) -> str:
-    """可选字幕转写：只执行插件家里固定的 asr.py，不允许自定义命令/路径。"""
+    """Opt-in local ASR: fixed script, approved model, evidence-aware status."""
     if (e := _guard("bili_transcribe_safe")): return e
     if os.environ.get("BILI_ASR_ENABLED") != "1":
         return "本轮未授权本地转写"
+    model = os.environ.get('BILI_ASR_MODEL', 'small')
+    if model not in ('tiny','base','small','medium','large-v3'):
+        model = 'small'
+    _record_asr_attempt('started', model)
     try:
         bv = _valid_bv(bvid)
         asr = (_DUTY_HOME / "asr.py").resolve()
         python = (_DUTY_HOME / ".venv-asr" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")).resolve()
         if not asr.is_relative_to(_DUTY_HOME) or not python.is_relative_to(_DUTY_HOME):
+            _record_asr_attempt('failed',model,reason='unavailable')
             return "转写路径不安全"
-        if not asr.is_file() or not python.is_file(): return "本地转写依赖未安装"
-        res = await asyncio.to_thread(subprocess.run, [str(python), str(asr), bv, '--json'],
-                                      capture_output=True, text=True, encoding='utf-8', errors="replace",
-                                      timeout=160, cwd=str(_DUTY_HOME))
-        if res.returncode != 0 or len(res.stdout) > 65000:
+        if not asr.is_file() or not python.is_file():
+            _record_asr_attempt('failed',model,reason='unavailable')
+            return "本地转写依赖未安装"
+        res = await asyncio.to_thread(subprocess.run,
+                                      [str(python), str(asr), bv, '--json', '--model', model],
+                                      capture_output=True,text=True,encoding='utf-8',errors='replace',
+                                      timeout=160,cwd=str(_DUTY_HOME))
+        if res.returncode != 0 or len(res.stdout)>65000:
+            _record_asr_attempt('failed',model,reason='transcription-failed')
             return json.dumps({'ok':False,'status':'asr_failed','error':'本地语音转写未成功'},ensure_ascii=False)
-        try:
-            payload = json.loads(res.stdout)
+        try: payload = json.loads(res.stdout)
         except (ValueError,TypeError):
+            _record_asr_attempt('failed',model,reason='invalid-receipt')
             return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'本地语音转写回执不完整'},ensure_ascii=False)
         if (not isinstance(payload,dict) or payload.get('bvid') != bv or
             payload.get('source') != 'local-asr' or
             payload.get('asr_evidence') != 'faster-whisper-machine-transcript' or
             not isinstance(payload.get('text'),str) or not payload['text'].strip() or
             not isinstance(payload.get('timed_segments'),list)):
+            _record_asr_attempt('failed',model,reason='invalid-receipt')
             return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'本地语音转写回执不完整'},ensure_ascii=False)
-        # Do not trust any process output to announce audio listening or playback.
+        _record_asr_attempt('success',model,segments=len(payload['timed_segments']))
         return json.dumps({'bvid':bv,'source':'local-asr',
                            'asr_evidence':'faster-whisper-machine-transcript',
                            'text':payload['text'][:12000],
                            'timed_segments':payload['timed_segments'][:160],
                            'can_claim_audio_listened':False,'can_claim_full_video_watched':False},ensure_ascii=False)
+    except subprocess.TimeoutExpired:
+        _record_asr_attempt('failed',model,reason='timeout')
+        return json.dumps({'ok':False,'status':'asr_failed','error':'本地语音转写超时'},ensure_ascii=False)
     except Exception:
+        _record_asr_attempt('failed',model,reason='process-error')
         return json.dumps({'ok':False,'status':'asr_failed','error':'本地语音转写未成功'},ensure_ascii=False)
 
 
