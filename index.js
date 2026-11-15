@@ -2340,9 +2340,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     parameters: {},
     async execute() {
       const { key, url } = await loginStart()
-      const png = await renderQrPng(cfg.pythonPath, stateDir, url)
+      const png = await renderQrPng(venvPython(), stateDir, url)
       return {
-        ok: true, key, url, png,
+        ok: Boolean(png), key: png?key:undefined, png,
         hint: png ? '用 present 把这张 PNG 推给本人扫；扫完调 bili_login_poll' : '没画出 PNG：先去设置里点「建 venv 装依赖」（venv 里要有 qrcode）',
       }
     },
@@ -5477,6 +5477,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
    * 依赖走**国内镜像**（使用者那条网络 pip 直连只有 ~24KB/s ✗；uv + 清华源是几十秒 ✓）。
    */
   let installing = false
+  let installOutcome = '' // started | ready | failed; never treat queued work as installed
+  let installFailureHint = ''
   const installLogFile = join(stateDir, 'install.log')
   const appendInstall = (s) => { try { appendFileSync(installLogFile, s, 'utf8') } catch { /* 写不进去就算了 */ } }
 
@@ -6804,6 +6806,8 @@ logger:{warn:m=>log('社交意图：'+m)}
   const runInstall = () => {
     if (installing) return { ok: true, busy: true, log: installLogFile, hint: '正在装，别重复起' }
     installing = true
+    installOutcome = 'started'
+    installFailureHint = ''
     appendInstall(`\n=== ${new Date().toISOString()} 开始装依赖 ===\n`)
     ;(async () => {
       try {
@@ -6816,7 +6820,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           const msg = '这台机器上没有 uv，也没有可用的 python（试过 "' + py + '"），而且我自动下 uv 也没成功'
             + '（大概是网络到不了 GitHub / PyPI 镜像）。⇒ 请手动装 uv（单个 exe：https://docs.astral.sh/uv/）'
             + '或 Python 3.10+（安装时勾 Add to PATH），然后回来再点一次「装依赖」。'
-          appendInstall(msg + '\n'); log(msg); installing = false; return
+          appendInstall(msg + '\n'); log(msg); installOutcome = 'failed'; installFailureHint = '未找到可用的 Python 或 uv，请查看安装日志'; installing = false; return
         }
       // ⭐ 2026-10-22（群里 @俺爱啃猪蹄子 定位）：钉 3.12 那句一旦失败会退回 uv 默认（可能是 3.14/3.15），
       //    而 venv 一旦建好就不再重建 ⇒ 每次装依赖都在 brotli/pyyaml 上编译失败，用户只能自己删目录 ✗
@@ -6866,10 +6870,13 @@ logger:{warn:m=>log('社交意图：'+m)}
           const miss = missingVenvDeps()
           appendInstall(`=== 结束（exit ${code}，venvReady=${venvReadyNow()}${miss.length ? '，缺：' + miss.join(' / ') : ''}）===\n`)
           log(`装依赖结束：exit=${code} venvReady=${venvReadyNow()}${miss.length ? ' 缺：' + miss.join(',') : ''}`)
+          installOutcome = code === 0 && venvReadyNow() ? 'ready' : 'failed'
+          installFailureHint = installOutcome === 'failed' ? '依赖安装未通过实际就绪检查；请查看日志中的 exit、缺包或网络报错' : ''
         }
       } catch (e) {
         appendInstall(`装依赖崩了：${e?.stack ?? e}\n`)
         log(`装依赖崩了：${e?.message ?? e}`)
+        installOutcome = 'failed'; installFailureHint = '安装器出现异常，请查看主依赖日志'
       } finally { installing = false }
     })()
     return { ok: true, started: true, log: installLogFile, hint: '正在后台装依赖 —— 进度就显示在下面（走国内镜像，通常几十秒到一两分钟）' }
@@ -6947,6 +6954,8 @@ logger:{warn:m=>log('社交意图：'+m)}
       dshCli: dshCliCached(),
       installFailed: !installing && !venvReadyNow() && (() => { try { return readFileSync(installLogFile, 'utf8').length > 0 } catch { return false } })(),
       installing,
+      installPhase: installing ? 'installing' : venvReadyNow() ? 'ready' : installOutcome === 'failed' ? 'failed' : 'not-ready',
+      installFailureHint: !installing && !venvReadyNow() ? installFailureHint : '',
       // ── 本地转写那一套的状态（设置页要显示进度）──
       asrReady: asrReadyNow(),
       // 模型下没下（免得界面写"就绪"、其实还得现下）
@@ -8994,6 +9003,11 @@ logger:{warn:m=>log('社交意图：'+m)}
 
     // 建 venv + 装依赖（**不等它**：几分钟的活，进度写 install.log）
     if (req.method === 'POST' && path === '/api/bili-duty/install') {
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'');
+      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+        String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
+        !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
+        return sendJson(res,403,{ok:false,error:'仅允许在本机管理中心明确操作 B站主依赖安装'});
       return sendJson(res, 200, runInstall())
     }
 
@@ -9369,12 +9383,16 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
 
     if (req.method === 'POST' && path === '/api/bili-duty/login/start') {
+      if (!venvReadyNow()) return sendJson(res,409,{ok:false,error:'B站主依赖尚未就绪，请先在「快速设置」安装，等待实际检测通过后再扫码。'})
       const { key, url } = await loginStart()
-      const png = await renderQrPng(cfg.pythonPath, stateDir, url)
+      // The QR dependency is in the plugin venv, regardless of a saved
+      // pythonPath from an older DSH profile. Never expose signed QR URL in logs.
+      const png = await renderQrPng(venvPython(), stateDir, url)
       let qr = null
       if (png) { try { qr = 'data:image/png;base64,' + readFileSync(png).toString('base64') } catch { qr = null } }
-      log(`出码：${url}${qr ? '（已画成 PNG）' : '（没画出 PNG —— venv 里大概还没有 qrcode）'}`)
-      return sendJson(res, 200, { ok: true, key, url, qr })
+      log(qr ? 'B站扫码图片已生成（不记录二维码 URL 或登录 key）' : 'B站二维码绘制失败：检查主依赖 Python 与 qrcode')
+      if(!qr)return sendJson(res,503,{ok:false,error:'主依赖目录已存在，但二维码生成失败。请检查「快速设置 → 主依赖日志」，点击修复后重新检测。'})
+      return sendJson(res, 200, { ok: true, key, qr })
     }
 
     if (req.method === 'POST' && path === '/api/bili-duty/login/poll') {

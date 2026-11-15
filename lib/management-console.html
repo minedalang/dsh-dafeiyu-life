@@ -1560,11 +1560,11 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <p id="message" role="status" aria-live="polite"></p>
 <div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">快速设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开快速设置 ↗</button></div>
 <section id="panel-firststart" hidden>
-  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 新版本快速设置</span><h2>快速设置 · 一次完成必要验证与生活选择</h2><p>新老用户首次打开本版都会看到这一条设置流程。<strong>B站登录和 Headless 模型验证是必须完成的两项</strong>，其他设置可以先跳过，之后随时回来修改。</p></div>
+  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 新版本快速设置</span><h2>快速设置 · 一次完成必要验证与生活选择</h2><p>新用户请<strong>先检查并安装 B站主依赖</strong>，实际就绪后才能扫码登录；随后验证 Headless 模型。已有依赖与登录的老用户无需重装。FFmpeg、Whisper 和生活偏好可选，之后随时修改。</p></div>
 
   <div class="fs-journey" aria-label="统一快速设置流程">
     <div class="fs-progress" id="fs-progress" aria-label="快速设置进度">
-      <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="account"><span>01</span><strong>登录 B站</strong><small>必须</small></a>
+      <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="account"><span>01</span><strong>主依赖与 B站登录</strong><small>必须</small></a>
       <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="model"><span>02</span><strong>模型验证</strong><small>必须</small></a>
       <a class="fs-progress-step" href="#fs-choices-stage" data-fs-step="preferences"><span>03</span><strong>生活方案</strong><small>可跳过</small></a>
       <a class="fs-progress-step" href="#fs-session-stage" data-fs-step="session"><span>04</span><strong>主会话</strong><small>可跳过</small></a>
@@ -1574,7 +1574,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <div id="fs-verify-stage" class="fs-phase"><div class="fs-phase-title"><strong>连接鱼鱼的世界</strong><span>先准备运行环境，再完成两项必要验证；已有登录和模型不会自动重置</span></div>
   <section class="quick-config-section" id="fs-deps-card" aria-label="快速设置依赖安装">
     <div class="quick-config-title"><span class="quick-card-icon">🛠️</span><div><h4>运行依赖 · 一站安装 <span class="pill">安装可选视频增强，不改变观看意愿</span></h4><p>主依赖负责 B站读取、MCP、登录二维码；FFmpeg 和 Whisper 由用户选择安装，不捆绑在主依赖里。安装后可随时回来修复。</p></div></div>
-    <div class="video-aux-heading"><strong>① 主依赖 · B站及 MCP 运行环境</strong><span id="fs-main-deps-badge" class="pill pending">检测中</span></div>
+    <div class="video-aux-heading"><strong>① 首次安装先完成 · B站及 MCP 主依赖</strong><span id="fs-main-deps-badge" class="pill pending">检测中</span></div>
     <p class="quick-current" id="fs-main-deps-status" role="status" aria-live="polite">正在检查主依赖…</p>
     <div class="quick-config-actions"><button id="fs-main-deps-install" type="button" class="primary">安装主依赖</button><button id="fs-main-deps-refresh" type="button">刷新依赖状态</button></div>
     <details><summary>查看主依赖安装日志末尾</summary><pre id="fs-main-deps-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto">暂无安装记录</pre></details>
@@ -1586,7 +1586,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <p id="fs-addons-detail" class="setting-note" role="status">安装 FFmpeg 后可能需重启 DSH；Whisper 转写是否生效，请到 AI 模型页查看最近真实运行回执。</p>
   </section>
   <div class="fs-grid">
-    <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button">扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>🔐 在线核验并确认当前扫码账号</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>✅ 重启后复核并恢复账号</button></div></section>
+    <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button" disabled>扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>🔐 在线核验并确认当前扫码账号</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>✅ 重启后复核并恢复账号</button></div></section>
     <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
   </div>
     </div>
