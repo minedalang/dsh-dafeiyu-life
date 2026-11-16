@@ -1,3 +1,10 @@
+## 2.8.1-dev.3b.30 (2026-11-16) — 修复独立 DSH 视觉子会话缺失 Electron Node 模式
+
+- Windows 实测对照：15:39 的可见伪控制台归属 `ollama.exe`/`llama-server.exe`，不是 FFmpeg 进程窗口；无法通过插件侧 FFmpeg 隐藏参数修复 Ollama 自己的窗口。新增本机只读 `tools/diagnose-ollama-runner.bat`，仅输出 Ollama 错误类别计数，避免导出原始日志或模型隐私。
+- **修复源代码启动环境断点**：普通 DSH Agent 启动具备 `ELECTRON_RUN_AS_NODE`，但嵌套 `Python → DeepSeek Harness.exe` 的图片验收与 Life 独立视频视觉路径未显式转发该标志。通过 `BILI_VISION_DSH_RUN_AS_NODE` 受控传递，Python 在启动 CLI 时仅对标志 `1` 开启 Electron Node 模式；保持 shell=false、受限 overlay、单工具 MCP、nonce 证据与人工认可边界。
+- 旧版 `headless_exit_unknown / node_exception / exit=1` 证实子会话未取得 MCP 图片回执，**不足以证明缺失标志是唯一根因**；修复只经本地模拟与增量测试，真实 DSH、Provider 识图和黑窗口消除仍未验收。
+- 云端按 AGENTS.md 只跑直接相关的增量测试、契约/语法与打包检查，不运行全量 Node 测试；不发布 npm 或正式 Git Tag，不进行 B站外发。
+
 ## 2.8.1-dev.3b.29 (2026-11-16) — 本地视频诊断收口与动态行动树
 
 - 纠正黑窗归因：当前六次可见伪控制台关联 Ollama 推理子进程而非 FFmpeg；保持 FFmpeg 原启动门禁。

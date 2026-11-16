@@ -1,3 +1,11 @@
+## 2.8.1-dev.3b.30 嵌套 DSH CLI Electron 环境修复与 Ollama 诊断
+
+- Windows 本轮 15:39 可见的三组 `PseudoConsoleWindow` 与 Ollama daemon 派生的 `llama-server.exe`、`ollama.exe` 精确 PID 关联。插件 FFmpeg 或 Python 启动隐藏参数无法约束第三方 Ollama daemon/runner 的内部窗口；切勿把减少 `keep_alive` 卸载等同于实机根治。
+- 普通 DSH JS Agent 启动使用 Electron Node 模式，而嵌套 Python 视觉子会话原本未显式传递。`index.js` 必须在手动固定图片验收和生产视频 MCP overlay 中将 **实际 DSH CLI 启动器所需**的 Node 模式写为 `BILI_VISION_DSH_RUN_AS_NODE`；`vision_dsh.py` 只能在值为 `1` 时给下一层 DSH CLI 注入 `ELECTRON_RUN_AS_NODE=1`，并从其环境移除传输标志。此修复不能降低 MCP、验证指纹、图片回执或人工认可门槛。
+- 15:40:49 图片验收仍为 `exit=1`、`stderrKind=node_exception`、独立 MCP 预检成功而 DSH 内 MCP 回执缺失；目前确认环境传递缺陷，**尚不能证明它解释全部 Node 异常**。真实 Windows 复测前不宣称 DSH 模型已经获得图片或 Ollama 黑窗彻底消除。
+- `tools/diagnose-ollama-runner.bat`/同名 PS1 只能做只读有限错误计数，不能导出 Ollama `server.log`/`app.log` 的原始行、模型内容、密钥、路径或请求。采集结果用于区分频繁重启/加载失败/资源不足，不自动修改 Ollama 服务或系统设置。
+- 云端禁止全量 Node 测试，只运行直接相关 Node/Python 增量、架构检查、自检及打包/补丁回放；全量由用户 Windows 本地执行。保留 Life 自主性、账号隔离、平台额度与 B站写操作安全边界。
+
 ## 2.8.1-dev.3b.29 Ollama 可见窗口、手动视觉验收与 Life 行动树增量
 
 - 2026-11-16 15:10 新窗口采集把 6 组可见 `PseudoConsoleWindow` 与 `llama-server.exe`/`ollama.exe` 子进程关联，父进程为本地 Ollama 服务。与 FFmpeg 启动记录不得混淆；Ollama daemon/runner 不是插件自己的 FFmpeg 子进程，不能宣称修改 `windowsHide` 或 `DETACHED_PROCESS` 已根治其窗口。

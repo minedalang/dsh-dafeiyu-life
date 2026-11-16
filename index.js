@@ -3248,7 +3248,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const args=[...dsh.args,'--profile','headless','--patch',overlay]
       assertVerifiedHeadless(args,overlay,{kind:'vision-selftest',stateDir},'vision')
       const pyArgs=[join(stateDir,'vision_dsh.py'),'--selftest','--home',stateDir]
-      const env=pyEnv({BILI_DUTY_HOME:stateDir,BILI_VISION_DSH_ARGV:JSON.stringify([dsh.command,...args])})
+      // The Desktop's CLI executable must run as Node, even when launched by
+      // the Python vision wrapper rather than the ordinary JS Agent launcher.
+      const runAsNode=Boolean(process.versions.electron||dsh.env?.ELECTRON_RUN_AS_NODE==='1')
+      const env=pyEnv({BILI_DUTY_HOME:stateDir,BILI_VISION_DSH_ARGV:JSON.stringify([dsh.command,...args]),
+        BILI_VISION_DSH_RUN_AS_NODE:runAsNode?'1':'0'})
       return await new Promise((resolve,reject)=>{
         const child=spawn(cfg.pythonPath||'python',pyArgs,{cwd:stateDir,shell:false,windowsHide:true,
           env,stdio:['ignore','pipe','pipe']})
@@ -3342,6 +3346,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       // 不降级到另一个未经确认的模型。让 DSH 自身选用其 profile 配置。
     }
     let independentVisionArgv = ''
+    let independentVisionRunAsNode = false
     if (!dmSafe && cfg.visionEnabled && resolvedVisionMode()==='independent_dsh') {
       try {
         const vdsh=resolveDsh()
@@ -3351,6 +3356,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         const visionArgs=[...vdsh.args,'--profile','headless','--patch',visionOverlay]
         assertVerifiedHeadless(visionArgs,visionOverlay,{kind:'vision',stateDir},'vision')
         independentVisionArgv=JSON.stringify([vdsh.command,...visionArgs])
+        independentVisionRunAsNode=Boolean(process.versions.electron||vdsh.env?.ELECTRON_RUN_AS_NODE==='1')
       } catch (e) {log('独立视觉 DSH 初始化失败：'+String(e?.message||e));}
     }
     // v2.4.82: prepare a tool-less read-only memory model route for the video MCP.
@@ -3411,6 +3417,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           '          BILI_VISION_ENABLED: ' + yq(cfg.visionEnabled ? '1' : '0'),
           '          BILI_VISION_MODE: ' + yq(resolvedVisionMode()),
           '          BILI_VISION_DSH_ARGV: ' + yq(independentVisionArgv),
+          // MCP Python env may be restricted: carry the Desktop Electron CLI
+          // requirement explicitly into the nested, read-only vision subprocess.
+          '          BILI_VISION_DSH_RUN_AS_NODE: ' + yq(independentVisionRunAsNode ? '1' : '0'),
           '          BILI_VISION_DSH_MODEL: ' + yq(cfg.visionModelId || cfg.pluginDefaultModelId || ''),
           '          BILI_VISION_PROMPT_B64: ' + yq(Buffer.from(normalizeVisionPrompt(cfg.visionPrompt), 'utf8').toString('base64')),
           '          BILI_VISION_DSH_PROVIDER: ' + yq(cfg.visionModelProvider || cfg.pluginDefaultModelProvider || ''),
