@@ -494,6 +494,34 @@ padding:11px 12px;margin:12px 0;font-size:13px;line-height:1.65;display:grid;gap
 .vision-probe-stage[data-state="failed"]{border-color:#cf6470;background:color-mix(in srgb,#e58a93 11%,var(--panel))}
 .vision-probe-stage[data-state="pending"]{border-color:#d6a14e;background:color-mix(in srgb,#f4ca78 11%,var(--panel))}
 .vision-probe-stage[data-state="unknown"]{border-style:dashed}
+
+/* dev.3b.33: human-first visual setup; diagnostics remain available on demand. */
+.visual-advanced{min-width:0;margin:12px 0;border:1px solid var(--stroke);border-radius:12px;padding:10px 13px;background:color-mix(in srgb,var(--panel) 91%,var(--tint) 9%)}
+.visual-advanced>summary,.headless-capability-explainer>summary{cursor:pointer;font-size:13px;font-weight:650;color:var(--action);list-style-position:outside}
+.visual-advanced>summary:focus-visible,.headless-capability-explainer>summary:focus-visible{outline:2px solid var(--action);outline-offset:3px;border-radius:5px}
+.visual-advanced pre{margin:10px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;background:var(--panel);border:1px solid var(--stroke);padding:12px;border-radius:9px}
+.local-vision-install-guide{margin:13px 0;border-radius:14px;border:1px solid var(--stroke);background:var(--tint);padding:12px 15px;font-size:13px}
+.local-vision-install-guide p{margin:0 0 7px}.local-vision-install-guide .visual-advanced{background:var(--panel)}
+#vision-unified-probe-panel{background:color-mix(in srgb,var(--panel) 93%,var(--tint) 7%);border:1px solid var(--stroke)!important;padding:clamp(12px,2.5vw,20px)!important}
+.vision-journey{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0 9px}
+.vision-journey-step{display:flex;align-items:center;min-width:0;gap:10px;background:var(--panel);border:1px solid var(--stroke);border-radius:12px;padding:12px;color:var(--muted);transition:background .16s,border-color .16s}
+.vision-journey-index{flex:0 0 30px;height:30px;display:grid;place-items:center;border-radius:50%;background:var(--tint);font-size:14px;font-weight:750;color:var(--action)}
+.vision-journey-step strong,.vision-journey-step small{display:block}.vision-journey-step strong{font-size:13px;color:var(--ink)}.vision-journey-step small{font-size:11px;margin-top:2px}
+.vision-journey-step[data-state="current"]{border-color:var(--action);background:var(--tint)}
+.vision-journey-step[data-state="done"]{border-color:#4f9b7b}.vision-journey-step[data-state="done"] .vision-journey-index{background:color-mix(in srgb,#54b999 23%,var(--panel));color:#16815c}
+.vision-journey-step[data-state="blocked"]{border-style:dashed;opacity:.74}
+.vision-journey-next{margin:6px 0 15px;color:var(--muted);font-size:13px}
+.vision-proof-board{display:grid;grid-template-columns:minmax(135px,190px) minmax(0,1fr);gap:16px;align-items:stretch;margin:11px 0}
+.vision-proof-image{margin:0;display:grid;place-items:center;gap:6px;padding:12px;border:1px solid var(--stroke);border-radius:14px;background:var(--panel)}
+.vision-proof-image img{width:min(100%,154px);height:auto;max-height:190px;object-fit:contain}.vision-proof-image figcaption{text-align:center;font-size:11px}
+.vision-proof-answer{min-width:0;border:1px solid var(--stroke);border-radius:14px;background:var(--panel);padding:12px 14px}
+.vision-proof-answer #vision-probe-result{margin:0 0 8px;font-size:13px;font-weight:700;color:var(--action)}
+.vision-proof-answer>strong{font-size:13px}.vision-proof-answer pre{min-height:70px;max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:9px;margin:8px 0 0;padding:12px;background:var(--tint);font-size:13px}
+.vision-proof-actions{margin:14px 0}.vision-proof-actions button{min-height:40px}
+.vision-technical-diagnostics{background:var(--panel);margin:10px 0 14px}.vision-technical-diagnostics .vision-probe-stages{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.vision-technical-diagnostics #vision-probe-last-run{font-size:11px;overflow-wrap:anywhere}
+@media(max-width:640px){.vision-journey{grid-template-columns:1fr}.vision-proof-board{grid-template-columns:minmax(0,1fr)}.vision-proof-image{display:flex;justify-content:center;flex-wrap:wrap}.vision-proof-image img{max-height:130px}.vision-proof-actions button{flex:1 1 100%}}
+
 /* Android via DSH Mobile is currently a read-only remote console, not a local admin session. */
 .mobile-view-banner{border:1px solid #c0aedc;border-left:5px solid #7862bb;border-radius:12px;background:linear-gradient(110deg,color-mix(in srgb,#b6a1f0 19%,var(--panel)),var(--panel));padding:14px 17px;margin:15px 0;line-height:1.7}
 .mobile-view-banner strong{display:block;font-size:14px}.mobile-view-banner p{font-size:13px;margin:4px 0;color:var(--muted)}
@@ -1752,8 +1780,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="settings-stack">
 <div class="settings-section" id="headless-model-sync-panel">
 <div class="headless-panel-heading"><h4>🔐 模型同步与能力管理</h4><span id="headless-provider-summary">检测 Desktop 模型中…</span></div>
-<p class="muted">首次启用或更换模型后，请先同步 DSH Desktop 的模型配置，再执行一次后台验证。<strong>未同步并验证成功时，独立视频 Agent、独立识图及需要 headless 的兼容路径不会运行。</strong> 人生反思、文字评论/私信、动态草稿、AI 记忆检索等纯文本功能在宿主模型服务可用时可以直接运行，不需要同步。宿主不可用且没有已验证的后台模型时，不会偷偷降级到其他模型。</p>
-<p class="muted">把 Desktop 中需要的模型同步到 Headless；不复制 API Key，不修改 Desktop 原配置。同步仅包含模型定义（Provider、协议、Base URL、模型和环境变量名），不会复制凭据或工具授权，也不会开启任何 B站发布权限。</p>
+<p class="muted">首次使用独立视频 Agent 或 DSH 识图时，请先将需要的模型同步到 Headless，再进行文字验证。<strong>未验证的后台模型不会被自动启用。</strong></p>
+<details class="visual-advanced"><summary>同步会修改哪些内容？</summary><p class="muted">只同步选择的模型定义（Provider、协议、Base URL、模型和环境变量名称），不复制 API Key、不修改 Desktop 原配置，也不开放任何 B站发布权限。</p></details>
 <div id="headless-journey" class="headless-journey" data-stage="source" aria-label="Headless 三步设置进度">
   <h5>模型配置流程</h5>
   <div class="headless-stages">
@@ -1777,41 +1805,49 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <div id="headless-target-list" class="headless-provider-stack"><div class="headless-target-empty"><strong>▱</strong><span>同步后会出现在这里</span><small>Headless 能力声明可在同步后单独补充</small></div></div>
   </section>
 </div>
-<section class="headless-capability-explainer" aria-label="能力声明与实际验证说明">
-  <h5>ⓘ 能力声明与实际验证是两回事</h5>
+<details class="headless-capability-explainer" aria-label="能力声明与实际验证说明">
+  <summary>了解能力声明、文字连接和图片实测的区别</summary>
   <div class="headless-capability-legend">
     <article><strong>◇ 模型声明</strong><span>文字 / 图片 / 思考档位</span><small>模型配置中声明允许的输入能力和思考档位；未声明不等于不支持。</small></article>
     <article><strong>↗ 文字连接</strong><span>只验证文字请求</span><small>检查 Headless 到模型的基础文字请求是否正常，不代表图片可用。</small></article>
     <article><strong>▧ 图片实测</strong><span>验证 MCP 图片、Headless 请求和模型回答</span><small>使用固定测试图片验证完整视觉链路；最终结果仍需人工认可。</small></article>
   </div>
   <p>不会擅自给第三方中转模型添加 <code>image</code> 或 <code>reasoningEfforts</code>；缺失时可在 Headless 专用能力向导中由你明确确认，只修改 Headless，不动 Desktop。</p>
-</section>
+</details>
 <div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button></div>
-<p class="model-verify-guide"><strong>模型怎样才能使用？</strong> DSH 已注册模型可供宿主一般任务选择，单项「测试连接」用于检查连通性；独立 Headless 视频 Agent 必须完成相应配置同步与真实模型验证后才能就绪。首次快速设置至少验证一个可用于 Headless 的模型，不必把全部模型逐个验证。自定义 Provider 在左栏逐项同步，之后在右栏对应模型卡片验证文字连接；图片输入与最终回答仍须单独实测。</p>
+<p class="model-verify-guide"><strong>模型怎样才能使用？</strong> 在左栏选模型并同步，在右栏验证文字连接；如需图片识别，再到「视觉识别模型」进行图片实测并人工确认。</p>
 </div>
 <div class="settings-section model-default-panel"><h4>✨ 默认模型 <span class="help-tip" title="选择后同步所有 9 个任务并重置思考深度。若模型不支持视觉或工具任务，相应能力可能不可用。之后仍可单项调整。">?</span></h4><p class="muted">选择后，下面全部九项任务会变成同一个模型，思考深度使用模型默认值。</p><div class="fields"><div><label for="models-default-provider">默认 Provider</label><select id="models-default-provider"></select></div><div><label for="models-default-model">默认模型</label><select id="models-default-model"></select></div></div><p id="models-default-summary" class="muted">正在读取可用模型…</p><p id="models-catalog-diagnostic" class="setting-note" role="status">Provider 下拉框只显示已发现的目录、当前宿主模型或已保存设置；显示不代表连接已通过。遇到 502 请先检查中转站，不会自动切换供应商。</p><small id="models-recommendation-note" class="setting-note">保存后生效，仍可单独调整每项任务。</small></div>
 <details class="settings-section"><summary><strong>最近模型调用归因（仅本地宿主，零额外 AI 调用）</strong></summary>
 <p class="muted">仅记录已核验账号的宿主模型请求：场景、耗时、模型标识和脱敏失败类型，不保存提示词、输出或私信。视频 Headless 内部调用尚未覆盖；Token 和费用数据如未由宿主提供则显示「未知」，不能用调用次数推断费用。</p>
 <pre id="models-invocation-recent" class="setting-note" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere">暂未读取模型调用归因</pre></details>
-<div class="settings-section" id="models-role-guide"><h4>🧠 按工作选模型，不必九项都选最贵</h4><p class="muted"><strong>高频决策重视成本：</strong>Life 行为决策、私信和评论优先稳定、能够遵循结构化指令的均衡模型；记忆检索还需基本的语义判断能力。<strong>按需任务重视质量：</strong>主人 Agent 的复杂操作规划可选较强模型。<strong>低频任务优先质量：</strong>人生反思、生活动态和手动表情规则优化调用较少，可使用更强的模型。</p><p class="muted">模型页统计的是插件任务启动次数，不是 Token 或费用；支持什么模型以 DSH 已注册目录和实测为准。下方视觉默认使用<strong>上面指定的 DSH 视觉 Provider / 模型</strong>；或选择已安装并人工验收的本地 Ollama 模型。只有真正需要观察画面时才调用。</p></div>
+<div class="settings-section" id="models-role-guide"><details class="visual-advanced"><summary>按任务选择模型的建议（可选）</summary><p class="muted"><strong>高频决策重视成本：</strong>Life 行为决策、私信和评论优先稳定、能够遵循结构化指令的均衡模型；记忆检索还需基本的语义判断能力。<strong>按需任务重视质量：</strong>主人 Agent 的复杂操作规划可选较强模型。<strong>低频任务优先质量：</strong>人生反思、生活动态和手动表情规则优化调用较少，可使用更强的模型。</p><p class="muted">模型页统计的是插件任务启动次数，不是 Token 或费用；支持什么模型以 DSH 已注册目录和实测为准。下方视觉默认使用<strong>上面指定的 DSH 视觉 Provider / 模型</strong>；或选择已安装并人工验收的本地 Ollama 模型。只有真正需要观察画面时才调用。</p></details></div>
 <h4 class="model-role-group">① Life 行为与交流 · 先配置这三项</h4>
-<details class="settings-section model-task" open><summary><strong>行为决策模型（Life 的行动选择） <span class="help-tip" title="专门负责 Life 自主规划、视频经历续行与统一行动意愿；不负责普通私信文案。">?</span></strong><span class="muted">高频 · 推荐均衡模型</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-behaviorDecision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-behaviorDecision-test" class="model-test-button">测试连接</button><span id="models-behaviorDecision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">决定探索、继续已有 Episode、逛首页、是否评论或休息，调用相对频繁。<strong>优先选择价格可承受、响应稳定、能正确输出结构化动作的均衡模型</strong>，无须默认使用昂贵的深度推理档。先用「测试连接」核对输出可靠性，再结合页面的每日调用次数评估成本；若实际决策质量不足，才考虑升级模型。<strong>旧用户未单独配置时仍沿用互动模型</strong>，不会自动切换 Provider 或模型 ID。</p><div class="fields" id="models-behaviorDecision"></div></div></details>
-<details class="settings-section model-task"><summary><strong>社交互动模型（私信与评论） <span class="help-tip" title="用于普通私信、评论回复和自然表达；Life 规划与意愿可单独选用「行为决策模型」。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-interaction-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-interaction-test" class="model-test-button">测试连接</button><span id="models-interaction-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">主要处理普通私信、评论回复和社交上下文组织。调用相对频繁，建议选择响应快、表达自然的均衡模型；不宜仅追求最低成本。Life 的关键动作由独立的「行为决策模型」负责；未单独设置行为模型时，仍兼容沿用此模型。发言授权和回执不变。</p><div class="fields" id="models-interaction"></div><div class="fields"><div><label for="models-interaction-context-mode">B站后台互动 · 对话上下文模式</label><select id="models-interaction-context-mode"><option value="compact">精简按需（默认；模型自主请求时才检索记忆/画像/梗）</option><option value="full">原始完整（兼容旧版；一次提供所有已准备的上下文）</option></select><small class="setting-note">选择后台互动一次携带多少资料；精简模式更省成本。不会改变权限。主人专属私信 Agent 使用独立模型与判断流程，不受此选项控制。</small><div class="toolbar"><button type="button" id="models-interaction-context-refresh">刷新真实调用统计</button></div><small id="models-interaction-context-status" class="setting-note">调用统计尚未读取</small><div id="models-interaction-context-recent" class="setting-note" style="white-space:pre-wrap" role="status" aria-live="polite">最近 12 个互动批次：尚未读取（不含 UID 与聊天正文）</div></div></div></div></details>
-<details class="settings-section model-task"><summary><strong>主人 Agent 模型（理解请求与规划） <span class="help-tip" title="无任意文件/Shell/平台写入能力，工具由白名单校验。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-ownerDmAgent-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-ownerDmAgent-test" class="model-test-button">测试连接</button><span id="models-ownerDmAgent-test-result" class="muted" role="status"></span></div><p class="muted">用于理解主人私信、分解可执行的受限操作。按需调用；复杂多步任务建议较强推理及指令遵循模型，不授予任意 Shell 或文件权限。</p><div class="fields" id="models-ownerDmAgent"></div></div></details>
+<details class="settings-section model-task" open><summary><strong>行为决策模型（Life 的行动选择） <span class="help-tip" title="专门负责 Life 自主规划、视频经历续行与统一行动意愿；不负责普通私信文案。">?</span></strong><span class="muted">高频 · 推荐均衡模型</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-behaviorDecision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-behaviorDecision-test" class="model-test-button">测试连接</button><span id="models-behaviorDecision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">决定 Life 的探索、互动与休息等行动。建议使用响应稳定的均衡模型；旧用户未单独设置时仍沿用互动模型。</p><div class="fields" id="models-behaviorDecision"></div></div></details>
+<details class="settings-section model-task"><summary><strong>社交互动模型（私信与评论） <span class="help-tip" title="用于普通私信、评论回复和自然表达；Life 规划与意愿可单独选用「行为决策模型」。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-interaction-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-interaction-test" class="model-test-button">测试连接</button><span id="models-interaction-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">主要处理普通私信、评论回复和社交上下文组织。调用相对频繁，建议选择响应快、表达自然的均衡模型；不宜仅追求最低成本。Life 的关键动作由独立的「行为决策模型」负责；未单独设置行为模型时，仍兼容沿用此模型。发言授权和回执不变。</p><div class="fields" id="models-interaction"></div><div class="fields"><div><label for="models-interaction-context-mode">B站后台互动 · 对话上下文模式</label><select id="models-interaction-context-mode"><option value="compact">精简按需（默认；模型自主请求时才检索记忆/画像/梗）</option><option value="full">原始完整（兼容旧版；一次提供所有已准备的上下文）</option></select><small class="setting-note">选择后台互动一次携带多少资料；精简模式更省成本。不会改变权限，所有符合处理条件的私信均由统一 Life 决策入口处理。</small><div class="toolbar"><button type="button" id="models-interaction-context-refresh">刷新真实调用统计</button></div><small id="models-interaction-context-status" class="setting-note">调用统计尚未读取</small><div id="models-interaction-context-recent" class="setting-note" style="white-space:pre-wrap" role="status" aria-live="polite">最近 12 个互动批次：尚未读取（不含 UID 与聊天正文）</div></div></div></div></details>
+<details class="settings-section model-task"><summary><strong>旧版主人 Agent 模型（兼容配置） <span class="help-tip" title="无任意文件/Shell/平台写入能力，工具由白名单校验。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-ownerDmAgent-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-ownerDmAgent-test" class="model-test-button">测试连接</button><span id="models-ownerDmAgent-test-result" class="muted" role="status"></span></div><p class="muted">保留旧设置便于兼容；新版主人私信已统一进入 Life 决策，不再由此模型独立接管。</p><div class="fields" id="models-ownerDmAgent"></div></div></details>
 <h4 class="model-role-group">② 视频、视觉与长期认识 · 按实际能力配置</h4>
 <details class="settings-section model-task"><summary><strong>视频 Agent 模型（选片与内容分析） <span class="help-tip" title="用于独立视频 Agent 的选片与内容分析；Life 是否委派由行为决策模型自主决定。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">视频 Agent 启动后，使用此模型进行自主选片、内容阅读与分析。Life 是否逛首页及是否委派 Agent，由「行为决策模型」决定。此模型主要阅读文字线索、调用搜索与字幕工具；只有在需要看画面时才按下方「视觉识别」配置使用多模态能力。不会强制启动或评论。独立视频 Agent 需完成 Headless 模型验证。</p><div class="fields" id="models-video"></div></div></details>
-<details class="settings-section model-task" id="models-vision-settings"><summary><strong>视觉识别模型 <span class="help-tip" title="可选择 DSH 视觉模型（使用下方已配置的 Provider/模型）或本地 Ollama 视觉模型；连接测试不能代替图片验收。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">只在鱼鱼自主选择视觉理解时调用，不负责挑片、安排 Life 行动或写评论。仅提供「DSH 识图模型」与「本地 Ollama 视觉模型」两种方式。DSH 使用此处填写的 Provider / 模型，Ollama 使用下方已安装并经过人工认可的本地模型；选择本地模式时 DSH Provider / 模型自动置灰且不参与当前视觉运行。两种方式共用下方唯一的原图人工验收面板。上方普通“测试连接”只检查模型可达，不等于实际识图成功。</p><p class="muted"><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">🎞️ 选择视频感知方案（轻量／均衡／详查） ↗</a></p><div class="fields" id="models-vision"></div>
+<details class="settings-section model-task" id="models-vision-settings"><summary><strong>视觉识别模型 <span class="help-tip" title="可选择 DSH 视觉模型（使用下方已配置的 Provider/模型）或本地 Ollama 视觉模型；连接测试不能代替图片验收。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">选择 DSH 视觉模型或本地 Ollama 视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><p class="muted"><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">🎞️ 选择视频感知方案（轻量／均衡／详查） ↗</a></p><div class="fields" id="models-vision"></div>
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="independent_dsh">DSH 识图模型（使用上方 Provider / 模型）</option><option value="independent_local">本地 Ollama 视觉模型（下方一键安装）</option></select></div>
 <div><label class="checkline"><input id="models-vision-enabled" type="checkbox">启用视频视觉感知</label></div>
-<div><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></div></div>
+<div><details class="visual-advanced"><summary>调试选项</summary><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></details></div></div>
 <section class="setting-note" id="vision-unified-probe-panel" aria-label="视觉模型图片人工验收" style="margin-top:14px;border-radius:14px;padding:16px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
     <strong>🐟 图片识别验收</strong>
     <span id="vision-probe-source" style="display:inline-block;border:1px solid var(--border,#aeb7c2);border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600">DSH 识图模型</span>
   </div>
   <p id="vision-probe-route" class="muted" style="margin:6px 0 10px">选择识图方式后，此处展示实际待验证的模型。</p>
+  <div class="vision-journey" id="vision-journey" aria-label="图片识别三步验收">
+    <div class="vision-journey-step" data-step="choose" data-state="current"><span class="vision-journey-index">1</span><div><strong>选择模型</strong><small>确认当前识图方式</small></div></div>
+    <div class="vision-journey-step" data-step="test" data-state="pending"><span class="vision-journey-index">2</span><div><strong>识别图片</strong><small>让模型描述原图</small></div></div>
+    <div class="vision-journey-step" data-step="review" data-state="pending"><span class="vision-journey-index">3</span><div><strong>确认结果</strong><small>看懂了再认可</small></div></div>
+  </div>
+  <p id="vision-journey-next" class="vision-journey-next" role="status" aria-live="polite">先选择模型，再执行一次图片识别。</p>
+  <details class="visual-advanced vision-technical-diagnostics" id="vision-technical-diagnostics">
+  <summary>技术诊断与模型能力明细（排障时展开）</summary>
   <div id="vision-route-capabilities" class="vision-route-capabilities" role="status" aria-live="polite">正在读取实际视觉路由、图片能力声明和思考深度声明…</div>
-  <div id="vision-probe-stages" class="vision-probe-stages" aria-label="DSH 图片识别验收阶段">
+  <div id="vision-probe-stages" class="vision-probe-stages" aria-label="DSH 图片识别诊断阶段">
     <div class="vision-probe-stage" data-stage="route" data-state="unknown"><strong>① 实际模型路由</strong><span>等待检测</span></div>
     <div class="vision-probe-stage" data-stage="mcpPreflight" data-state="unknown"><strong>② MCP 本地前置预检</strong><span>等待验收</span></div>
     <div class="vision-probe-stage" data-stage="mcpImage" data-state="unknown"><strong>③ DSH 实际 MCP 图片回执</strong><span>等待验收</span></div>
@@ -1819,41 +1855,42 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <div class="vision-probe-stage" data-stage="providerApi" data-state="unknown"><strong>⑤ DSH / Provider 请求</strong><span>等待验收</span></div>
     <div class="vision-probe-stage" data-stage="modelAnswer" data-state="unknown"><strong>⑥ 模型最终回答</strong><span>等待验收</span></div>
   </div>
-  <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-    <figure style="margin:0;flex:0 0 164px;text-align:center">
+  <p id="vision-probe-last-run" class="muted" role="status"></p>
+  <p id="vision-probe-error" class="muted" style="overflow-wrap:anywhere" role="status"></p>
+  </details>
+  <div class="vision-proof-board">
+    <figure class="vision-proof-image">
       <img id="vision-probe-image" src="/api/bili-duty/local-vision/selftest-image" alt="实际发送给所选模型的大肥鱼原图" width="154" height="186" style="width:154px;height:186px;object-fit:contain;background:#fff;border:1px solid #c8ced7;border-radius:10px" loading="lazy"/>
       <figcaption class="muted">两种识图方式共用同一张原图</figcaption>
     </figure>
-    <div style="flex:1 1 270px;min-width:0">
+    <div class="vision-proof-answer">
       <p id="vision-probe-result" role="status" aria-live="polite">尚未识图</p>
-      <p id="vision-probe-last-run" class="muted" role="status"></p>
-      <strong>实际模型回答</strong>
-      <pre id="vision-probe-answer" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;margin-top:6px" aria-label="当前识图方式的完整回答">尚无结果</pre>
-      <p id="vision-probe-error" class="muted" style="overflow-wrap:anywhere" role="status"></p>
+      <strong>模型实际回答</strong>
+      <pre id="vision-probe-answer" aria-label="当前识图方式的完整回答">尚无结果</pre>
     </div>
   </div>
-  <div class="toolbar" style="margin-top:10px;flex-wrap:wrap">
-    <button type="button" id="vision-probe-verify">识别大肥鱼图片</button>
-    <button type="button" id="vision-probe-approve" disabled>认可本次识图</button>
-    <button type="button" id="vision-probe-reject" disabled>结果不满意</button>
+  <div class="toolbar vision-proof-actions">
+    <button type="button" id="vision-probe-verify" class="primary">开始识图测试</button>
+    <button type="button" id="vision-probe-approve" disabled>识别正确，认可</button>
+    <button type="button" id="vision-probe-reject" disabled>识别不正确</button>
   </div>
-  <p class="muted">仅对上方当前选定的识图方式进行测试；更换方式、模型或重新验证后，旧结果不能沿用。请求成功并返回真实图片描述后，由你决定是否认可。不会向 B站发送内容。DSH 使用独立受限 Headless 子会话，与平时交谈的 Session 不完全相同。</p>
+  <p class="muted">测试使用固定图片，不会发布到 B站。仅当回答与图片内容一致时，点击「识别正确，认可」。</p>
 </section>
 <div class="contextual-memory-group" id="local-vision-controls">
 <div class="video-aux-heading"><h4>🖥️ 可选本地视频视觉模型</h4><span id="models-local-vision-active" class="pill pending">读取当前配置…</span></div>
-<p class="muted">本地视觉仅负责画面观察，Life 仍使用原有 DSH 模型；<strong>无需在 DSH 中另外配置 Ollama Provider 或 API Key</strong>。需要先在本机安装并运行 Ollama；下载成功后还需完成图片推理自检和手动启用。</p>
-<div class="fields" aria-label="可选本地视觉模型能力与硬件建议">
+<p class="muted">本地视觉模型负责画面观察。下面提供一键安装，需本机有 Ollama 环境。也可直接在 DSH 中配置 Ollama Provider 调用本地模型。</p>
+<details class="visual-advanced"><summary>查看模型大小与硬件建议</summary><div class="fields" aria-label="可选本地视觉模型能力与硬件建议">
 <div class="setting-note"><strong>MiniCPM-V 4.7 1B · 轻量视觉</strong><p>适合图片、多图与视频片段的初步观察，注重低资源占用。<strong>Ollama 模型约 1.8 GB</strong>（量化版）；<strong>建议 4 GB 以上显存起试</strong>，也可考虑 CPU/系统内存运行，实际占用与上下文、图像数量有关。必须下载 <code>openbmb/minicpm-v4.7:1b</code>，不能省略 <code>:1b</code>；部分 Ollama 版本不支持其视觉投影器。</p></div>
 <div class="setting-note"><strong>Qwen3.5 4B · 中文与复杂画面</strong><p>适合中文场景、屏幕文字及多张图片之间的关联理解。<strong>Ollama 模型约 3.3～4.0 GB</strong>（制品不同大小有差异）；<strong>建议 6～8 GB 显存起试，优先 8 GB</strong>，多图/长上下文会增加显存需求。模型标识 <code>qwen3.5:4b</code>。</p></div>
-</div>
-<div class="setting-note"><strong>下载和代理：</strong>本地视觉模型通过 <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">Ollama</a> 下载。安装模型时可能需要在合适的网络环境下启动 Ollama；<strong>安装完成后，本地识图无需下载代理，但仍需 Ollama 服务运行</strong>。下载过程可能包含多份模型文件（例如语言权重与视觉投影器），每份文件有独立进度，<strong>文件进度达到 100% 不代表整个模型已安装完成</strong>。<p><strong>Windows 本地网络代理示例（当前仅列举 Windows 环境下的方法）：</strong>确认 Ollama 已完全退出，在 PowerShell 中执行下面两条命令，并保持该窗口运行：</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere"><code>$env:HTTPS_PROXY = "http://127.0.0.1:7890" # 7890 是常见网络代理端口，具体请以实际端口为准
-ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell 启动的 Ollama 进程生效，不修改 Windows 用户级或系统级环境变量。若 Ollama 已在后台运行，请先退出以免端口占用。<a href="https://docs.ollama.com/faq#how-do-i-use-ollama-behind-a-proxy" target="_blank" rel="noopener noreferrer">查看 Ollama 官方网络代理说明</a>。</p></div>
+</div></details>
+<div class="local-vision-install-guide"><p><strong>简化下载和代理：</strong>本地视觉模型通过 <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">Ollama</a> 下载安装。需要保证 Ollama 有合适的网络环境。</p>
+<details class="visual-advanced"><summary>Windows 使用本地网络代理启动 Ollama 示例</summary><p>当前仅列举 Windows 环境下的方法：确认 Ollama 已完全退出，在 PowerShell 中执行下面两条命令，并保持该窗口运行：</p><pre><code>$env:HTTPS_PROXY = "http://127.0.0.1:7890" # 7890 是常见网络代理端口，具体请以实际端口为准
+ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="fields"><div><label for="local-vision-model">可选本地模型</label><select id="local-vision-model"><option value="qwen3.5-4b">Qwen3.5 4B</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B</option></select></div></div>
 <div class="local-vision-status-line"><span id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</span><span id="local-vision-review-inline" class="local-vision-review-inline" hidden><strong id="local-vision-review-label">尚未人工验收</strong><button type="button" id="local-vision-review-jump" class="life-action local-vision-review-action">前往人工验收 ↑</button></span><span id="local-vision-status-tail" class="muted"></span></div>
-<p class="muted">切换到本地识图或点击「检查并恢复服务」后，会尝试运行已安装的 Ollama（Windows / macOS / Linux）；不会自动安装、下载模型或修改网络代理。若系统未安装，请先从 Ollama 官网安装。模型已通过人工验收后，重启服务无需重复验收。</p><progress id="local-vision-progress" max="100" value="0" hidden></progress>
-<div class="toolbar"><button type="button" id="local-vision-ensure">检查并恢复 Ollama 服务</button><button type="button" id="local-vision-install">下载本地模型</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-select">启用选中模型</button><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div>
-<p class="muted">已安装的模型无需重新下载；已获人工认可且模型摘要未变时，重启 Ollama 后将恢复验收状态。未认可的模型请使用上方统一图片验收区，认可后即可启用。</p>
-<p class="muted">下载时展示的是 Ollama 当前文件层的进度（并非整个模型的总进度），切换到下一文件时百分比会重新计算；取消下载可能保留已缓存的分片。删除会移除 Ollama 全局模型，可能影响其他应用，需再次确认。网络问题请先检查代理是否被 Ollama 进程继承，再重试。真实 GPU/视频表现需本机验收。</p>
+<p class="muted">需先安装并运行 Ollama。选择模型并下载，识图成功且人工认可后再启用。</p><progress id="local-vision-progress" max="100" value="0" hidden></progress>
+<div class="toolbar"><button type="button" id="local-vision-ensure">检查并恢复 Ollama 服务</button><button type="button" id="local-vision-install">下载本地模型</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-select">启用选中模型</button></div><details class="visual-advanced local-vision-maintenance"><summary>更多管理操作</summary><div class="toolbar"><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div><p class="muted">删除会影响这台电脑上其他使用同一 Ollama 模型的程序，执行前会再次确认。</p></details>
+<p class="muted">已安装的模型不必重复下载；请在上方识图验收区确认结果。</p>
 </div>
 <div class="video-aux-section" id="video-aux-dependencies" aria-label="视频感知依赖与辅助能力">
   <h4>🎞️ 视频感知 · 解码和语音能力</h4>
@@ -1862,8 +1899,8 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
     <div class="video-aux-card">
       <div class="video-aux-heading"><strong>🎬 FFmpeg · 真实视频解码</strong><span id="models-ffmpeg-badge" class="pill pending">检测中</span></div>
       <p id="models-ffmpeg-status" class="muted" role="status" aria-live="polite">正在检测 FFmpeg…</p>
-      <p class="muted">未安装时真实视频分镜可能降级为官方低清预览；不会假称已解码。支持 Windows winget、macOS Homebrew，以及部分具有图形授权环境的 Linux 发行版；预计额外下载约 40 MB～1 GB 或更多（依赖随系统变化）。无法保证每条视频都能获取源文件。</p>
-      <div class="fields"><div><label for="models-ffmpeg-path">使用已安装 FFmpeg 的可执行文件路径（可选）</label><input id="models-ffmpeg-path" type="text" autocomplete="off" placeholder="例如 C:\ffmpeg\bin\ffmpeg.exe"><small class="setting-note">留空使用系统 PATH；自定义路径只从本机管理中心保存，需真实版本探测和视频解码自测。</small></div></div><div class="toolbar"><button type="button" id="models-ffmpeg-path-save">验证并使用此路径</button><button type="button" id="models-ffmpeg-path-clear">恢复系统默认路径</button></div><p id="models-ffmpeg-path-result" class="setting-note" role="status"></p>
+      <p class="muted">需要 FFmpeg 才能解码真实视频画面。安装后可点击「视频解码自测」确认可用。</p>
+      <details class="visual-advanced"><summary>FFmpeg 自定义路径（高级）</summary><div class="fields"><div><label for="models-ffmpeg-path">使用已安装 FFmpeg 的可执行文件路径（可选）</label><input id="models-ffmpeg-path" type="text" autocomplete="off" placeholder="例如 C:\ffmpeg\bin\ffmpeg.exe"><small class="setting-note">留空使用系统 PATH；自定义路径只从本机管理中心保存，需真实版本探测和视频解码自测。</small></div></div><div class="toolbar"><button type="button" id="models-ffmpeg-path-save">验证并使用此路径</button><button type="button" id="models-ffmpeg-path-clear">恢复系统默认路径</button></div><p id="models-ffmpeg-path-result" class="setting-note" role="status"></p></details>
 <div class="toolbar"><button type="button" id="models-ffmpeg-install">安装 FFmpeg</button><button id="models-ffmpeg-test" type="button">视频解码自测</button><button id="models-ffmpeg-refresh" type="button">重新检测</button></div>
       <p id="models-ffmpeg-test-result" class="setting-note" role="status">尚未进行解码自测。</p>
     </div>
@@ -1873,8 +1910,8 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
       <div class="fields"><div><label for="models-asr-model">Whisper 模型</label><select id="models-asr-model"><option value="tiny">tiny · 更省资源</option><option value="base">base</option><option value="small">small · 默认</option><option value="medium">medium</option><option value="large-v3">large-v3 · 更高资源占用</option></select></div></div>
       <p id="models-whisper-status" class="muted" role="status" aria-live="polite">正在检查转写依赖…</p>
       <p id="models-whisper-last" class="setting-note" role="status">最近实际转写：暂无记录</p>
-      <p class="muted">仅在鱼鱼主动请求、没有可用官方字幕时才可能触发；安装好不代表用过。模型预估体积：tiny ≈75 MB、base ≈145 MB、small ≈485 MB、medium ≈1.5 GB、large-v3 ≈3 GB；另需转写环境与缓存空间。</p>
-      <div class="fields"><div><label for="models-whisper-model-path">使用现有 faster-whisper 模型文件夹（可选）</label><input id="models-whisper-model-path" type="text" autocomplete="off" placeholder="包含 model.bin 与 config.json 的绝对目录"><small class="setting-note">支持本机已下载的 CTranslate2 / faster-whisper 模型目录或 Hugging Face snapshot；不支持直接填 .pt 文件。模型已就绪则不重复下载，Python 转写运行环境仍需可用。</small></div></div><div class="toolbar"><button type="button" id="models-whisper-path-save">验证并使用模型目录</button><button type="button" id="models-whisper-path-clear">恢复默认模型缓存</button></div><p id="models-whisper-path-result" class="setting-note" role="status"></p>
+      <p class="muted">当视频没有可用字幕时，鱼鱼可自主选择使用语音识别。</p>
+      <details class="visual-advanced"><summary>Whisper 使用已有模型目录（高级）</summary><div class="fields"><div><label for="models-whisper-model-path">使用现有 faster-whisper 模型文件夹（可选）</label><input id="models-whisper-model-path" type="text" autocomplete="off" placeholder="包含 model.bin 与 config.json 的绝对目录"><small class="setting-note">支持本机已下载的 CTranslate2 / faster-whisper 模型目录或 Hugging Face snapshot；不支持直接填 .pt 文件。模型已就绪则不重复下载，Python 转写运行环境仍需可用。</small></div></div><div class="toolbar"><button type="button" id="models-whisper-path-save">验证并使用模型目录</button><button type="button" id="models-whisper-path-clear">恢复默认模型缓存</button></div><p id="models-whisper-path-result" class="setting-note" role="status"></p></details>
 <div class="toolbar"><button type="button" id="models-whisper-install">安装所选 Whisper 模型</button><button type="button" id="models-whisper-refresh">刷新转写状态</button></div>
       <details><summary>查看安装日志末尾（不含转写正文）</summary><pre id="models-whisper-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto"></pre></details>
     </div>
