@@ -1281,6 +1281,16 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .video-debug-image-grid figure{margin:0;min-width:0;padding:8px;border:1px solid var(--border,#aeb7c2);border-radius:12px}
 .video-debug-image-grid img{display:block;width:100%;height:auto;max-height:320px;object-fit:contain;background:#171b22;border-radius:7px}
 .video-debug-image-grid figcaption{font-size:12px;line-height:1.45;overflow-wrap:anywhere;margin-top:6px;color:var(--text-muted,#7f8892)}
+
+/* dev.3b.21 — 统一显式保存提醒。保留各分组的后端事务和授权边界。 */
+.wrap{padding-bottom:160px}
+@media(max-width:580px){.wrap{padding-bottom:185px}}
+#settings-save-hint[hidden]{display:none!important}
+#settings-save-hint{position:fixed;z-index:50;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom,0px));max-width:760px;margin:auto;display:flex;gap:14px;align-items:center;justify-content:space-between;padding:13px 17px;background:var(--panel);border:2px solid var(--action);border-radius:15px;box-shadow:0 14px 35px #111e3940}
+#settings-save-hint-text{flex:1;min-width:0;font-size:13px;font-weight:600}
+#settings-save-hint-action{flex-shrink:0;min-height:42px}
+@media(max-width:580px){#settings-save-hint{flex-direction:column;align-items:stretch}#settings-save-hint-action{width:100%}}
+@media(prefers-reduced-motion:reduce){html:focus-within{scroll-behavior:auto}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1635,6 +1645,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </nav>
 <div id="mobile-view-banner" class="mobile-view-banner" role="note" hidden><strong>📱 手机端 · 查看模式</strong><p>DSH Mobile 通过远程网关查看管理中心。配置保存、B站登录、Headless 同步与验证、备份恢复等需要在运行 DSH 的电脑端完成；这里的相关按钮已置灰。你仍可切换页面、展开内容及刷新可访问的状态。</p></div>
 <p id="message" role="status" aria-live="polite"></p>
+<aside id="settings-save-hint" role="status" aria-live="polite" hidden><span id="settings-save-hint-text">此处修改尚未保存。</span><button id="settings-save-hint-action" type="button" class="primary">保存本组设置</button></aside>
 <div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">快速设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开快速设置 ↗</button></div>
 <section id="panel-firststart" hidden>
   <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 新版本快速设置</span><h2>快速设置 · 一次完成必要验证与生活选择</h2><p>新用户请<strong>先检查并安装 B站主依赖</strong>，实际就绪后才能扫码登录；随后验证 Headless 模型。已有依赖与登录的老用户无需重装。FFmpeg、Whisper 和生活偏好可选，之后随时修改。</p></div>

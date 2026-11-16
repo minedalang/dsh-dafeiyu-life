@@ -240,7 +240,17 @@ def test_dsh_image_selftest_distinguishes_missing_mcp_proof_and_provider_api_err
     assert not failed['ok'] and failed['status']=='headless_launch_failed'
     assert failed['diagnosticCode']=='provider_api'
     assert failed['diagnostics']['providerApi']['diagnosticCode']=='provider_api'
+    assert failed['diagnostics']['providerApi']['status']=='not_confirmed'
     assert failed['diagnostics']['modelAnswer']['status']=='not_returned'
+
+
+def test_dsh_selftest_exit_diagnostics_do_not_misclassify_incidental_mcp_words():
+    # A generic mention of MCP is not evidence that MCP startup failed.
+    result=module._safe_dsh_headless_diagnostic(b'MCP tool loaded. HTTP 401 authentication failed',b'',1)
+    assert result['diagnosticCode']=='provider_auth'
+    assert 'API Key' not in result['error']
+    unknown=module._safe_dsh_headless_diagnostic(b'MCP tool loaded; unexplained child exit',b'',1)
+    assert unknown['diagnosticCode']=='headless_exit_unknown'
 
 
 def test_dsh_image_selftest_keeps_verified_mcp_receipt_when_child_exits_nonzero(tmp_path):

@@ -300,7 +300,7 @@ def _safe_dsh_headless_diagnostic(stderr, stdout=b'', exit_code=1):
        '受限 Headless 会话未取得有效登录或 Provider 适配器，请在 DSH 的 Headless 模型管理中核验同一 Provider/模型'),
       ('model_route',('model not found','unknown model','provider not found','unsupported model','model unavailable'),
        '受限 Headless 会话没有找到已选模型；请重新同步并验证该 Provider/模型'),
-      ('mcp_startup',('mcp','failed to spawn','cannot find module','module not found','no such file'),
+      ('mcp_startup',('mcp server failed','mcp startup failed','failed to spawn','cannot find module','module not found','no such file'),
        '受限图片工具启动失败，请检查 DSH MCP 客户端及插件内 Python 运行环境'),
       ('tool_call',('tool not found','unknown tool','tool call failed','permission denied'),
        '受限图片工具未能执行，请检查 DSH Headless 工具加载与安全配置'),
@@ -311,6 +311,9 @@ def _safe_dsh_headless_diagnostic(stderr, stdout=b'', exit_code=1):
       ('image_input',('image not supported','unsupported image','image input','multimodal',
                      'image_url','invalid image','unsupported content type','images are not supported'),
        '受限会话的图片输入处理失败，请检查 Headless 视觉工具与模型格式兼容性'),
+      ('provider_auth',('invalid api key','missing api key','invalid_api_key','http 401','status code 401',
+                       'http 403','status code 403','authentication failed'),
+       '第三方 Provider 的 Headless 身份验证或权限未通过；请检查同一路由在 Headless 运行时的密钥环境变量是否可用，不要在日志里粘贴密钥'),
       ('provider_api',('invalid_request_error','bad request','http 400','status code 400',
                        'payload too large','request too large','entity too large','http 413','status code 413'),
        '第三方 Provider 已返回请求参数或负载错误；请核对该模型的图片输入协议和中转站限制'),
@@ -427,7 +430,7 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         if result.returncode!=0:
             safe=_safe_dsh_headless_diagnostic(result.stderr,result.stdout,result.returncode)
             proof_status,_=_read_selftest_image_proof(proof)
-            diagnostics=_vision_selftest_diagnostics(mcp=proof_status,provider_api='failed',answer='not_returned',
+            diagnostics=_vision_selftest_diagnostics(mcp=proof_status,provider_api='failed' if proof_status=='verified' else 'not_confirmed',answer='not_returned',
                 image_bytes=_SELFTEST_IMAGE_BYTES if proof_status=='verified' else None,
                 diagnostic_code=safe.get('diagnosticCode',''))
             if proof_status=='verified':

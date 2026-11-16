@@ -1,6 +1,7 @@
 """动态发布 API 的零模型调用测试：不需要 B站凭证或网络。"""
 import ast
 import asyncio
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -80,7 +81,7 @@ def test_public_comment_quota_is_shared_atomic_file():
     from datetime import datetime
     fn=next(n for n in _ast.body if isinstance(n,ast.FunctionDef) and n.name=='_reserve_comment_quota')
     mini=ast.Module(body=[fn],type_ignores=[])
-    scope={'os':os, 'sqlite3':sqlite3,'datetime':datetime,'uuid':uuid,'_DUTY_HOME':None}
+    scope={'os':os, 'sqlite3':sqlite3,'datetime':datetime,'uuid':uuid,'closing':closing,'_DUTY_HOME':None}
     exec(compile(ast.fix_missing_locations(mini),'<quota>', 'exec'),scope)
     with tempfile.TemporaryDirectory() as td,patch.dict(os.environ,{'BILI_COMMENT_DAILY_LIMIT':'2'}):
         scope['_DUTY_HOME']=Path(td)
@@ -121,7 +122,7 @@ def test_public_comment_quota_preflight_is_read_only_and_blocks_when_full():
     from datetime import datetime
     names={'_reserve_comment_quota','_comment_quota_preflight'}
     subset=ast.Module(body=[n for n in _ast.body if isinstance(n,ast.FunctionDef) and n.name in names],type_ignores=[])
-    scope={'os':os,'sqlite3':sqlite3,'datetime':datetime,'uuid':uuid,'Path':Path,'_DUTY_HOME':None}
+    scope={'os':os,'sqlite3':sqlite3,'datetime':datetime,'uuid':uuid,'Path':Path,'closing':closing,'_DUTY_HOME':None}
     exec(compile(ast.fix_missing_locations(subset),'<quota-preflight>','exec'),scope)
     with tempfile.TemporaryDirectory() as td,patch.dict(os.environ,{'BILI_COMMENT_DAILY_LIMIT':'2'}):
         scope['_DUTY_HOME']=Path(td)
