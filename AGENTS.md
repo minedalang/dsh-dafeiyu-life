@@ -1,3 +1,11 @@
+## 2.8.1-dev.3b.28 DSH CLI 证据导出与黑窗归因收敛
+
+- 14:48–14:50 Windows 新事件日志证实 Python PID 49060 的 `PseudoConsoleWindow` 短暂可见；FFmpeg 确有子进程启动，但本轮可见窗口事件没有归属 FFmpeg，不能再将 13 个 FFmpeg 或 51 个 conhost 的进程次数当成黑窗次数。
+- 排除输入法/状态窗口 `SoPY_Status` 等非控制台窗口；记录可见窗口的原始 PID + 进程开始时间，关闭事件沿用最初的进程标识，规避 PID 重用误关联。采集器不读取标题、截图、命令行、私信或凭据。
+- `dsh-vision-selftest-last-run.json` 在 dev.3b.27 已持久化脱敏 CLI 退出信息；本轮修复常规导出脚本未传出 CLI 退出状态、退出码、stderr/stdout 存在性的问题，并增加**封闭枚举**的 stderr 形态分类。禁止导出原始输出、路径、密钥和模型提示词。
+- Windows 实机仍需验证 MCP Python 客户端 stdio 子进程是否闪窗、DSH 是否真正调用 `bili_vision_selftest`、Provider 是否接收图片；`headless_exit_unknown` 且无图片回执不等于模型拒绝图片。本版不改 DSH/SDK 的 stdio 子进程创建机制，不将诊断增强宣传为修复识图成功。
+- 云端仅运行相关增量 Node/Python、语法/架构/包检查、独立 Git Patch 回放；**禁止执行全量 Node 测试**，全量交给用户 Windows 本机运行。
+
 ## 2.8.1-dev.3b.27 FFmpeg 黑窗定向修复与 DSH 图片失败诊断
 
 - 针对 2026-11-16 14:21 Windows 日志中 FFmpeg 关联可见 `PseudoConsoleWindow`，**仅**离线 FFmpeg/FFprobe 抽帧使用 `DETACHED_PROCESS`（不支持时回退），保留输出管道及超时；MCP stdio、ASR、记忆与 DSH 主进程继续用原隐藏启动策略，不允许批量替换。

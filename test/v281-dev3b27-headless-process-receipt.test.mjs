@@ -13,7 +13,7 @@ test('dev3b27 persists only bounded CLI process metadata, no stdout/stderr raw d
   const mgr=createDshVisionReview({stateFile:store,getRoute:()=>({provider:'muze-gpt',model:'gpt-6-luna'}),probe:async()=>({
    ok:false,status:'headless_launch_failed',error:'DSH failed',diagnosticCode:'headless_exit_unknown',
    diagnostics:{mcpPreflight:{status:'ready'},mcpImage:{status:'not_received'},
-     cliProcess:{status:'exited',exitCode:1,stdout:'empty',stderr:'present',originalStderr:secret},
+     cliProcess:{status:'exited',exitCode:1,stdout:'empty',stderr:'present',stderrKind:'node_exception',originalStderr:secret},
      providerApi:{status:'not_confirmed'},modelAnswer:{status:'not_returned'}}
   })})
   await assert.rejects(mgr.verify())
@@ -25,5 +25,6 @@ test('dev3b27 persists only bounded CLI process metadata, no stdout/stderr raw d
   assert.equal(last.cliProcess,'exited')
   assert.equal(last.cliStderr,'present')
   assert.equal(last.cliStdout,'empty')
+  assert.equal(last.cliStderrKind,'node_exception')
  }finally{rmSync(dir,{recursive:true,force:true})}
 })

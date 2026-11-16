@@ -420,14 +420,25 @@ def _run_mcp_stdio_preflight(home, overlay_text, env):
 
 
 def _safe_cli_process_receipt(result):
-    # Only bounded process metadata; stderr/stdout may contain private secrets.
+    # Store only closed-vocabulary process metadata, never the output text.
     try:
         code=int(result.returncode)
     except (TypeError, ValueError, AttributeError):
         code=-1
+    err=getattr(result, 'stderr', b'') or b''
+    if not isinstance(err, bytes): err=str(err).encode('utf8',errors='replace')
+    normalized=err[-16000:].decode('utf8',errors='replace').lower()
+    # Categorization is a hint, not evidence the provider received a request.
+    if not err: stderr_kind='none'
+    elif 'traceback (most recent call last)' in normalized: stderr_kind='python_traceback'
+    elif 'error [err_' in normalized or 'node:internal' in normalized: stderr_kind='node_exception'
+    elif 'mcp' in normalized and ('error' in normalized or 'failed' in normalized): stderr_kind='mcp_diagnostic'
+    elif 'http 4' in normalized or 'http 5' in normalized or 'status code' in normalized: stderr_kind='http_diagnostic'
+    else: stderr_kind='unclassified_output'
     return {'status': 'exited', 'exitCode': code if 0 <= code <= 255 else -1,
             'stdout': 'present' if getattr(result, 'stdout', b'') else 'empty',
-            'stderr': 'present' if getattr(result, 'stderr', b'') else 'empty'}
+            'stderr': 'present' if err else 'empty',
+            'stderrKind':stderr_kind}
 
 
 def _vision_selftest_diagnostics(*, mcp='not_run', provider_api='not_run', answer='not_run',

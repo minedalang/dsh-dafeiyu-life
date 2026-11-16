@@ -60,6 +60,7 @@ if ($latest -and $latest.schema -eq 1 -and $latest.last) {
   SaveJson 'dsh-vision-last-run.json' @{at=(SafeTime $a.at);status=(SafeCode $a.status);diagnosticCode=(SafeCode $a.diagnosticCode);
     preflight=(SafeCode $a.preflight);mcpImage=(SafeCode $a.mcpImage);attachmentBridge='not_observable';
     providerApi=(SafeCode $a.providerApi);modelAnswer=(SafeCode $a.modelAnswer);
+    cliProcess=(SafeCode $a.cliProcess);cliExitCode=([int]$a.cliExitCode);cliStdout=(SafeCode $a.cliStdout);cliStderr=(SafeCode $a.cliStderr);cliStderrKind=(SafeCode $a.cliStderrKind);
     note='No raw stderr, tool payload, API credentials, model reply or image is collected.'}
 } else { SaveJson 'dsh-vision-last-run.json' @{status='not_found';note='No persisted diagnostic was available.'} }
 $DMs=@()

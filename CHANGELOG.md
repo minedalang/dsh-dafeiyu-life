@@ -1,3 +1,9 @@
+## 2.8.1-dev.3b.28（诊断可靠性增量，P0 仍未关闭）
+
+- Windows 进程采集只识别实际控制台类，排除输入法状态窗口误报；关联进程创建时间，降低 PID 回收引起的误判。
+- DSH 图片验收的有限 CLI 退出字段补入日志导出和管理 UI：退出码、输出存在性、封闭分类的 stderr 形态，不保存内容。
+- 14:48 的可见黑窗关联 Python/PseudoConsoleWindow；14:50 `headless_exit_unknown` 未取得图片回执。两项在 Windows 实机端到端验证前仍保持未解决，不扩大 B站权限或绕开自主决策。
+
 ## 2.8.1-dev.3b.27 · 2026-11-16（FFmpeg 黑窗与 DSH 图片验收）
 
 - 针对可见 FFmpeg 伪控制台记录，Windows 离线 FFmpeg/FFprobe 抽帧改用 `DETACHED_PROCESS`，保留管道、安全输入和超时；MCP 其他 Python/DSH 子进程不变。

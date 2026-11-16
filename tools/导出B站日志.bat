@@ -192,7 +192,13 @@ if isinstance(dsh_diag,dict) and dsh_diag.get('schema')==1 and isinstance(dsh_di
             'at':str(row.get('at',''))[:35] if re.fullmatch(r'[0-9T:.+\-Z]{10,35}',str(row.get('at',''))) else '',
             'routeId':str(row.get('routeId','')) if re.fullmatch(r'[a-f0-9]{16}',str(row.get('routeId',''))) else '',
             'diagnosticCode':stage(row.get('diagnosticCode')),
-            'stages':{key:stage(row.get(key)) for key in stage_names}}
+            'stages':{key:stage(row.get(key)) for key in stage_names},
+            'cli':{
+                'status':stage(row.get('cliProcess')),
+                'exitCode':row['cliExitCode'] if type(row.get('cliExitCode')) is int and -1<=row['cliExitCode']<=255 else -1,
+                'stdout':row.get('cliStdout') if row.get('cliStdout') in ('present','empty') else 'unknown',
+                'stderr':row.get('cliStderr') if row.get('cliStderr') in ('present','empty') else 'unknown',
+                'stderrKind':stage(row.get('cliStderrKind'))}}
 dump('dsh-vision-selftest-last-run.json',dsh_summary)
 
 life_file = root/'life-agent-events'

@@ -48,7 +48,7 @@ def test_dsh_exit_receipt_contains_no_output_or_private_values():
     vision=_load('vision_dsh_dev3b27','lib/vision_dsh.py')
     child=subprocess.CompletedProcess(['DSH'],1,b'private request secret',b'api_key=secret')
     receipt=vision._safe_cli_process_receipt(child)
-    assert receipt == {'status':'exited','exitCode':1,'stdout':'present','stderr':'present'}
+    assert receipt == {'status':'exited','exitCode':1,'stdout':'present','stderr':'present','stderrKind':'unclassified_output'}
     assert 'secret' not in json.dumps(receipt)
     assert vision._safe_cli_process_receipt(subprocess.CompletedProcess(['DSH'],0,b'',b''))['stderr']=='empty'
 
