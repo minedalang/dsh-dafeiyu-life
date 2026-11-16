@@ -1,4 +1,6 @@
-> **2.8.1-dev.3b.31 最新说明：** 主人私信分享的 B站动态/视频链接现在可成为 Life 的只读候选，仍由 Life 自己决定查看、延迟或忽略；修复将动态误当无目标视频搜索的固定回复。历史版本说明已归档到 `docs/release/archive/`，单次交付记录不再进入源码根目录。**Ollama 黑窗与 DSH 识图仍未在 Windows 端到端通过**，详见 CHANGELOG。
+> **2.8.1-dev.3b.31.1 热修说明：** 视频感知全链路 Debug 的 `debugImages is not defined` 属于收尾作用域错误，已修复并补执行级回归；本地 Ollama 已通过 HTTP API 访问，黑窗是否发生与用户实际启动的服务及 runner 有关，尚未根治。DSH 图片验收 `exit=1` 也仍未关闭。
+
+> **2.8.1-dev.3b.31 说明：** 主人私信分享的 B站动态/视频链接现在可成为 Life 的只读候选，仍由 Life 自己决定查看、延迟或忽略；修复将动态误当无目标视频搜索的固定回复。历史版本说明已归档到 `docs/release/archive/`，单次交付记录不再进入源码根目录。**Ollama 黑窗与 DSH 识图仍未在 Windows 端到端通过**，详见 CHANGELOG。
 
 > **2.8.1-dev.3b.27 开发说明：** 本地视频 FFmpeg/FFprobe 抽帧在 Windows 改用无控制台进程模式，限定范围不触碰 MCP stdio；DSH 图片验收要求 MCP 启动成功，故障日志新增脱敏子进程退出证据。仍须本机确认黑窗不再出现与第三方模型真实识图成功，不能因模拟测试通过就宣告根治。详见 `docs/architecture/2.8.1-dev3b27-ffmpeg-console-and-dsh-vision.md`。
 
@@ -14,7 +16,7 @@
 
 **[2.8.1 开发计划](docs/architecture/2.8.1-video-perception-dev2a.md) · [功能概览](#-从分散能力到连续生活) · [自然交流](#-更自然的交流) · [关系与成长](#-关系记忆与成长) · [可视化成长](#-可视化的生活成长) · [开始使用](#-开始使用) · [未来规划](docs/ROADMAP.md) · [2.8.0 更新说明](docs/release/archive/RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)**
 
-**当前开发分支：`2.8.1-dev.3b.31`（开发预览，尚未正式发布）。**
+**当前开发分支：`2.8.1-dev.3b.31.1`（Debug 作用域热修，开发预览，尚未正式发布）。**
 
 **2.8.1-dev.3b.26：** 修复 B站私信分享卡片丢失动态 URL：识别 `msg_type=7/source=11` 动态分享、`source=5` 视频分享及受支持的网页/其他分享卡片，只允许官方 HTTPS B站链接进入 Life 机会；普通监听与单联系人复核使用相同消息类型规则。Windows 黑窗口采集新增启动进程快照、父进程名称和 100ms 可见控制台窗口枚举。注意：黑窗口根因仍需新窗口归属日志确认，本版不是最终黑窗口修复。
 

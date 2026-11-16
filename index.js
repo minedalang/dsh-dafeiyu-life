@@ -1993,6 +1993,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // Persist the focus receipt after the observation try/finally: it must
     // remain in scope for Life experience recording and perceptual handoff.
     let focusReview=null,focusReviewStatus=null
+    // Captures are consumed by both the Debug response and Life receipt after
+    // the observation try/finally. Keep their lifetime in this function scope.
+    const debugImages=[]
     try{
     if(willInvokeVision){
       try{vision=await call('bili_preview_vision',{bvid,perception_source:'adaptive',view_depth:visionPlan.depth,
@@ -2004,7 +2007,6 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // a higher-resolution focused read. This remains in the same read-only
     // exploration; never lets model text choose a URL or arbitrary time.
     const parsedInfo=parseMaybeJson(info),parsedVisual=parseMaybeJson(vision)
-    const debugImages=[]
     const initialCapture=safeVideoDebugCapture(parsedVisual?.debugCapture,bvid)
     if(initialCapture)debugImages.push(initialCapture)
     // The in-process debug JPEG receipt is deliberately removed from the

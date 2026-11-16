@@ -1,3 +1,9 @@
+## 2.8.1-dev.3b.31.1 (2026-11-16) — 视频感知 Debug 作用域热修
+
+- 修复 `executeWatchVideo()` 在 `try` 内声明 `debugImages`、在 `finally` 之后的 Debug 图片回执和 Life 观察记录中使用它，导致 `ReferenceError: debugImages is not defined`。将其移到同函数作用域，不改变实际识图方式和任何 B站写入行为。
+- 增加执行级 Node 增量回归，验证试运行带/不带调试截图均能返回 Life 输入，以及真实 Life 观察记录能接到图像回执；不能以此证明 Windows 上模型已识图成功。
+- 用户实机对比显示 PowerShell `ollama serve` + HTTP 请求没有重现黑窗。Ollama 进程启动模式/模型 runner 的窗口行为仍需不同启动来源进一步验证；当前插件已使用本机 HTTP API，不强迫使用者选择 PowerShell 启动，亦不宣称根治上游弹窗。DSH Headless 图片 `exit=1` 仍未解决。
+
 ## 2.8.1-dev.3b.31 (2026-11-16) — 主人分享动态进入 Life 只读候选与仓库整理
 
 - 修复主人私信中分享 B站动态或视频 URL 被主人私信 Agent 错误归入无目标视频搜索、回复硬编码“请告诉我想搜索的视频主题”的分支。对明确安全的官方链接纠正错误搜索动作，基于实际收到的链接自然回复，不谎称已经打开动态。

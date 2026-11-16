@@ -1,3 +1,9 @@
+## 2.8.1-dev.3b.31.1 视频感知 Debug 作用域热修
+
+- `executeWatchVideo` 的 `debugImages` 必须位于观察 `try/finally` 之外的同函数作用域；主人只读视频 Debug 和 Life 可信观察回执共用该短期数组，不得把错误处理末尾 `ReferenceError` 误判为 Ollama 模型不识图。使用**实际执行收尾路径**的增量回归，不再仅测试包含 `videoDebugJob.images=debugImages` 静态字符串。
+- 正常本地视觉已走 `127.0.0.1:11434/api/chat`；禁止再为了防止黑窗替换成相同 HTTP 路由或强迫每位使用者通过 PowerShell 启动 Ollama。原后台 runner 窗口归因仍属 Windows 上游进程行为，新的手动启动方式实验仅建立相关性，未证明唯一原因。
+- DSH `headless_exit_unknown` 图片未获真实模型回答，继续标记未解决。仅执行本次相关 Node 增量、语法、契约及包/补丁验证，不在云端运行全量测试、不进行 B站真实外发或 npm 发布。
+
 ## 2.8.1-dev.3b.31 主人私信分享动态 / Life 自主只读 / 仓库卫生
 
 - 来自真实主人 UID 的私信分享卡片或官方 B站 HTTPS 链接允许进入 `owner-shared-bili-link` Life 契机账本。**入站只存受限引用和幂等身份，不自动解析或访问 URL**；只有 Life 自主选中 `inspect_shared_link`、通过账号/来源/有效性复核后才可以只读访问，也允许放弃或延期。
