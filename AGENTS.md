@@ -1,3 +1,8 @@
+## dev.3b.33.1 Headless 配置分层诊断（增量）
+
+- 18:39 Windows 验收 `headless_config_dump_exit` 只能确认配置 dump 子命令退出失败，不等于 MCP 被 DSH 拒绝或模型不识图。`vision_dsh.py` 仅在 dump 非零时用同一 CLI 做 `--dump-default-config` 和不带视觉 patch 的 `--dump-config` 分层对照，保留封闭类目和原 CLI 安全退出信息，不留 stdout/stderr 原文。
+- 失败仍应阻止人工图片认可；不得为让界面变绿绕过 overlay / MCP nonce 图片回执或模型回答验证。旧高能预览的 `frames_ready` 不是模型 `analyzed`。不动 Ollama 和 Life。只跑增量测试，完整 Node/Python 测试交给用户 Windows。
+
 ## 2.8.1-dev.3b.33 视觉管理页精简与用户验收
 
 - AI 模型管理页优先展示用户能理解的「选择模型 → 识别图片 → 人工认可」三步，以及固定原图与最终模型回答；独立 MCP、Headless 配置合成、内部图片工具、附件桥接、Provider 回执和持久化失败码必须保留在可展开诊断里，不得删除或把不可观察状态当成成功。

@@ -468,6 +468,36 @@ def _safe_cli_process_receipt(result):
             'stderrKind':stderr_kind,**({'nodeErrorCode':node_code} if node_code!='unknown' else {})}
 
 
+def _safe_dump_failure_kind(result):
+    """Closed-vocabulary classifier for a CLI dump failure, no raw strings persisted."""
+    data=((getattr(result, 'stderr', b'') or b'')[-12000:]
+          +b'\n'+(getattr(result, 'stdout', b'') or b'')[-2000:]).decode('utf8',errors='replace').lower()
+    if any(token in data for token in ('unknown option', 'unrecognized option', 'unknown argument', 'unexpected argument')):
+        return 'unsupported_dump_option'
+    if any(token in data for token in ('err_module_not_found','cannot find module','module not found')):
+        return 'module_resolution_error'
+    if any(token in data for token in ('invalid patch','invalid yaml','yaml parse','failed to parse','unexpected end of the stream')):
+        return 'patch_parse_error'
+    if any(token in data for token in ('invalid profile','profile not found','failed to load profile','profile is missing')):
+        return 'profile_error'
+    if 'node:internal' in data or 'error [err_' in data:
+        return 'node_runtime_error'
+    return 'unknown'
+
+
+def _probe_dump_baseline(args, home, env, execute, dump_flag):
+    """Probe layers without the vision overlay. No model/tool request is made."""
+    try:
+        r=execute([*args,dump_flag],cwd=str(home),env=env,
+                  stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                  timeout=25,check=False,**_hidden_windows_child())
+        return 'ready' if r.returncode==0 else 'failed'
+    except subprocess.TimeoutExpired:
+        return 'timeout'
+    except (OSError,ValueError):
+        return 'launch_error'
+
+
 def _probe_headless_composition(args, home, env, execute=subprocess.run):
     """Probe actual CLI profile/patch composition, without any model/tool call.
 
@@ -483,7 +513,24 @@ def _probe_headless_composition(args, home, env, execute=subprocess.run):
     except (OSError,ValueError):
         return {'status':'failed','reason':'headless_config_dump_launch'}
     if result.returncode!=0:
+        # Distinguish a broken CLI/profile from a rejected vision overlay.
+        # This is diagnostic only; an unsuccessful dump still fails closed.
+        default_dump='not_run'; base_dump='not_run'; failure_layer='unknown'
+        try:
+            if args.count('--profile')==1 and args.count('--patch')==1:
+                patch_index=args.index('--patch')
+                if patch_index+1 < len(args):
+                    unpatched=[*args[:patch_index],*args[patch_index+2:]]
+                    default_dump=_probe_dump_baseline(unpatched,home,env,execute,'--dump-default-config')
+                    if default_dump=='ready':
+                        base_dump=_probe_dump_baseline(unpatched,home,env,execute,'--dump-config')
+                    failure_layer=('cli_or_bundle' if default_dump!='ready' else
+                                   'profile_or_home' if base_dump!='ready' else 'vision_overlay')
+        except (ValueError,TypeError,IndexError):
+            pass
         return {'status':'failed','reason':'headless_config_dump_exit',
+                'failureLayer':failure_layer,'defaultDump':default_dump,'baseDump':base_dump,
+                'failureKind':_safe_dump_failure_kind(result),
                 'cli':_safe_cli_process_receipt(result)}
     data=result.stdout or b''
     if b'mcp-bili-vision-readonly' not in data or b'bilivision' not in data:
@@ -592,9 +639,15 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         composition={'status':'not_run','reason':'injected_runner'} if runner is not None else _probe_headless_composition(args,home,child_env)
         if composition['status']=='failed':
             diagnostics=_vision_selftest_diagnostics(preflight=preflight,composition=composition,
-                provider_api='not_started',answer='not_returned')
+                cli_process=composition.get('cli'),provider_api='not_started',answer='not_returned')
+            layer=composition.get('failureLayer','unknown')
+            hints={
+                'cli_or_bundle':'DSH CLI 或内置 Headless bundle 自身无法导出默认配置',
+                'profile_or_home':'Headless profile 或 DSH Home 配置层无法合成',
+                'vision_overlay':'DSH 基础配置正常，但追加受限视觉 overlay 后合成失败',
+            }
             return {'ok':False,'status':'headless_config_failed','diagnosticCode':composition['reason'],
-                'error':'DSH Headless 实际配置合成未通过；请检查当前安装版是否加载了只读 MCP 插件及 overlay，模型尚未请求',
+                'error':hints.get(layer,'DSH Headless 配置检查命令失败')+'；模型尚未请求。请查看技术诊断中的配置失败层级、CLI 退出码和安全错误分类',
                 'diagnostics':diagnostics}
         _record_model_launch(home,'vision')
         execute=runner or subprocess.run

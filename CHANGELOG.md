@@ -1,3 +1,9 @@
+## [2.8.1-dev.3b.33.1] · DSH 配置 dump 失败归因（未完成 Windows 识图验收）
+
+- Windows 18:39 验收的 `headless_config_dump_exit` 实际是 CLI `--dump-config` 非零退出，独立 MCP ready，但模型尚未请求；旧版丢失该配置检查的 CLI 安全退出信息。
+- 只有初次 dump 失败时依次对照默认 bundle 与用户 profile/Home 配置，区分 CLI/bundle、用户配置层及视觉 overlay 问题，安全持久化失败层级与已知错误枚举；绝不保存原始 stderr/stdout 或泄露路径/凭据。
+- 旧高能视频预览实验已经退役；历史 `frames_ready` 仅证明抓帧成功，不能证明视觉模型分析成功。仍需用户 Windows DSH 实机复测，未改 Ollama 或 B站外发。详见 `docs/architecture/2.8.1-dev3b33.1-headless-dump-triage.md`。
+
 ## 2.8.1-dev.3b.33 (2026-11-16) — 视觉模型管理页简洁模式与图片人工验收重排
 
 - 本地 Ollama 说明替换为精简安装/代理文案；Windows 代理 PowerShell 示例默认收起，保留实际命令；删除旧的长篇下载分片说明。用户可自行在 DSH 中配置 Ollama Provider，不影响插件当前所选视觉路由。

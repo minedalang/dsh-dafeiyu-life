@@ -1,3 +1,7 @@
+### dev.3b.33.1：DSH 视觉配置导出失败排障
+
+最新 Windows 日志确认 `--dump-config` 本身异常退出，尚未进入图片模型。诊断增强可以区分 DSH CLI/内置 Headless、用户 profile/Home 和视觉 overlay 哪一层失败，记录安全的 CLI 退出码/异常类型，原图、凭据和原始错误不上传。没有 Windows 端到端成功记录前不宣称识图完成。[诊断原理](docs/architecture/2.8.1-dev3b33.1-headless-dump-triage.md)。
+
 ### dev.3b.33：视觉模型设置更简洁
 
 AI 模型页中的本地视觉支持简短 Ollama 安装与 Windows 代理示例。图片验收界面默认只需三步：选择模型、对固定原图执行识别、检查真实回答并人工认可。专业诊断和高阶配置默认收起，点击即可展开；不会因为独立 MCP 预检通过而自动认可 DSH 图片识别。DSH `exit=1` 仍需 Windows 实机排查，不属于本次 UI 修复。
