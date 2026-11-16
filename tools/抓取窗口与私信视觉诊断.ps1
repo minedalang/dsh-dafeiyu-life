@@ -1,4 +1,4 @@
-# Read-only Windows DSH / video window / DM status diagnostic.
+﻿# Read-only Windows DSH / video window / DM status diagnostic.
 # Usage: powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\抓取窗口与私信视觉诊断.ps1 -Uid 202573574 -Seconds 90
 param([string]$Uid = '', [int]$Seconds = 90)
 $ErrorActionPreference = 'Stop'

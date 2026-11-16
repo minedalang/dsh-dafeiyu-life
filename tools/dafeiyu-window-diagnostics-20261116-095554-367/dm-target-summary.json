@@ -1,0 +1,16 @@
+{
+    "selectedContactProvided":  true,
+    "matches":  [
+                    {
+                        "lastRepliedAtMs":  1794404070212,
+                        "latestHistoryAtMs":  1794739000000,
+                        "latestHistoryRole":  "user",
+                        "platformUnreadHint":  1,
+                        "sessionCursorAtMs":  1794794110187,
+                        "recentOutcome":  null,
+                        "note":  "Only the selected contact in account-scoped runtime, without UID or message text.",
+                        "seenCount":  11
+                    }
+                ],
+    "note":  "The newest inbound outcome exists only for turns processed after this diagnostic patch; a missing outcome does not mean no message or refusal."
+}

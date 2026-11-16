@@ -1,0 +1,186 @@
+{
+    "notes":  [
+                  "No command line, executable path, environment variables or private content captured.",
+                  "The recorder itself runs PowerShell/cmd; distinguish it by process creation time and parent PID.",
+                  "An already-exited pop-up may have been missed between samples; absence is not proof of no pop-up."
+              ],
+    "captureStartUtc":  "2026-11-16T01:55:54.3721339Z",
+    "processes":  [
+                      {
+                          "pid":  23148,
+                          "name":  "WindowsTerminal.exe",
+                          "parentPid":  6796,
+                          "createdUtc":  "2026-11-12T00:58:21.8824780Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  5768,
+                          "name":  "conhost.exe",
+                          "parentPid":  32548,
+                          "createdUtc":  "2026-11-15T10:33:14.3735490Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  13684,
+                          "name":  "OpenConsole.exe",
+                          "parentPid":  35668,
+                          "createdUtc":  "2026-11-14T07:40:10.9655180Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  13828,
+                          "name":  "powershell.exe",
+                          "parentPid":  43312,
+                          "createdUtc":  "2026-11-16T01:55:54.1128680Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  38120,
+                          "name":  "DeepSeek Harness.exe",
+                          "parentPid":  45428,
+                          "createdUtc":  "2026-11-16T01:51:02.7479700Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  8604,
+                          "name":  "powershell.exe",
+                          "parentPid":  35668,
+                          "createdUtc":  "2026-11-14T07:39:41.8313340Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  23412,
+                          "name":  "DeepSeek Harness.exe",
+                          "parentPid":  45428,
+                          "createdUtc":  "2026-11-16T01:51:03.2776790Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  39084,
+                          "name":  "python.exe",
+                          "parentPid":  24016,
+                          "createdUtc":  "2026-11-16T01:51:09.6343550Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  20388,
+                          "name":  "conhost.exe",
+                          "parentPid":  20376,
+                          "createdUtc":  "2026-11-12T00:54:28.2906210Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  21456,
+                          "name":  "conhost.exe",
+                          "parentPid":  3392,
+                          "createdUtc":  "2026-11-16T01:51:15.2068650Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  48124,
+                          "name":  "conhost.exe",
+                          "parentPid":  19392,
+                          "createdUtc":  "2026-11-16T01:51:10.2958780Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  39476,
+                          "name":  "conhost.exe",
+                          "parentPid":  43312,
+                          "createdUtc":  "2026-11-15T11:51:49.1604050Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  43312,
+                          "name":  "powershell.exe",
+                          "parentPid":  42500,
+                          "createdUtc":  "2026-11-15T11:51:49.1061380Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  17024,
+                          "name":  "OpenConsole.exe",
+                          "parentPid":  23148,
+                          "createdUtc":  "2026-11-12T00:58:22.2410700Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  37188,
+                          "name":  "powershell.exe",
+                          "parentPid":  35668,
+                          "createdUtc":  "2026-11-14T07:40:11.0047380Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  37588,
+                          "name":  "DeepSeek Harness.exe",
+                          "parentPid":  45428,
+                          "createdUtc":  "2026-11-16T01:51:02.7526010Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  2284,
+                          "name":  "powershell.exe",
+                          "parentPid":  23148,
+                          "createdUtc":  "2026-11-12T00:58:22.2477480Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  41348,
+                          "name":  "conhost.exe",
+                          "parentPid":  13040,
+                          "createdUtc":  "2026-11-14T07:39:44.4661660Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  38080,
+                          "name":  "DeepSeek Harness.exe",
+                          "parentPid":  45428,
+                          "createdUtc":  "2026-11-16T01:51:02.7796000Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  24016,
+                          "name":  "python.exe",
+                          "parentPid":  23412,
+                          "createdUtc":  "2026-11-16T01:51:09.5990850Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  45428,
+                          "name":  "DeepSeek Harness.exe",
+                          "parentPid":  42500,
+                          "createdUtc":  "2026-11-16T01:51:02.2976750Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  18364,
+                          "name":  "OpenConsole.exe",
+                          "parentPid":  35668,
+                          "createdUtc":  "2026-11-14T07:39:41.7864710Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  15720,
+                          "name":  "conhost.exe",
+                          "parentPid":  27272,
+                          "createdUtc":  "2026-11-12T00:58:27.1837130Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  15752,
+                          "name":  "conhost.exe",
+                          "parentPid":  24016,
+                          "createdUtc":  "2026-11-16T01:51:09.6164160Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      },
+                      {
+                          "pid":  15916,
+                          "name":  "conhost.exe",
+                          "parentPid":  13460,
+                          "createdUtc":  "2026-11-14T07:39:59.6170000Z",
+                          "firstSeenUtc":  "2026-11-16T01:55:54.3916393Z"
+                      }
+                  ],
+    "captureEndUtc":  "2026-11-16T01:57:24.6039429Z"
+}
