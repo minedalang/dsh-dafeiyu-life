@@ -7,7 +7,7 @@ test('2.6.0 稳定版本、锁文件、正式发布说明与历史 dev.8 归档�
   assert.match(pkg.version,/^(?:2\.6\.2(?:-dev\.[1-9]\d*)?|2\.7\.0(?:-dev\.[1-9]\d*)?|2\.7\.1-dev\.[1-9]\d*)$/)
   assert.equal(lock.version,pkg.version)
   assert.equal(lock.packages[''].version,pkg.version)
-  assert.ok(pkg.files.includes('RELEASE_NOTES_v2.6.2.md'))
+  assert.ok(pkg.files.includes('docs/release/archive/RELEASE_NOTES_v2.6.2.md'))
   assert.ok(!pkg.files.some(x=>x.startsWith('RELEASE_NOTES_v2.6.0-dev.')))
   assert.match(read('README.md'),/(?:当前开发版本|当前版本|当前稳定版)：\*\*`(?:2\.6\.2(?:-dev\.[1-9]\d*)?|2\.7\.0(?:-dev\.[1-9]\d*)?|2\.7\.1-dev\.[1-9]\d*)`/)
   assert.match(read('README.md'),pkg.version.startsWith('2.7.')?/RELEASE_NOTES_v2\.7\.0\.md/:/RELEASE_NOTES_v2\.6\.2\.md/)

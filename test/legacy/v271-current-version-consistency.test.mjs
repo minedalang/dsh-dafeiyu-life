@@ -15,5 +15,5 @@ test('当前开发版本与 package lock、README、变更和架构文档一致'
   assert.ok(read('CHANGELOG.md').startsWith('## ['+pkg.version+'] ·'))
   assert.ok(read('docs/architecture/README.md').includes('当前开发版本 '+pkg.version+'：'))
   assert.ok(read('docs/architecture/2.7.1-dev20-life-contract-owner-recall.md').startsWith('# dev.20 ·'))
-  assert.ok(read('RELEASE_NOTES_v2.7.1.md').startsWith('# '+pkg.version+' ·'))
+  assert.ok(read('docs/release/archive/RELEASE_NOTES_v2.7.1.md').startsWith('# '+pkg.version+' ·'))
 })

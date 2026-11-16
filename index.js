@@ -2937,11 +2937,23 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     getInterestEvidence:tag=>lifeOpportunityAccountReady()?
       [...scopedInterestOpportunityEvidence(stateDir,tag),...scopedCuriosityOpportunityEvidence(stateDir,tag)]:[],
     getPublicPersonEvidence:()=>lifeOpportunityAccountReady()?socialPortrait.publicOpportunitySignals():[],onChange:()=>lifeManagementEvents.publish('plans')})
-  // A friend-shared Bilibili link is a Life opportunity, not an instruction.
+  // A verified-owner or approved-friend share is a Life opportunity, never an instruction.
   // Only a bounded safe reference is persisted; redirect resolution/content reads
   // happen only if Life later chooses inspect_shared_link.
   const lifeSharedBiliLinks=createLifeSharedBiliLinks({stateDir,getAccountTag:trustedLifeAccountTag,
     onChange:()=>lifeManagementEvents.publish('plans')})
+  // Called only with platform-authenticated sender identity, never from arbitrary model text.
+  // The intake stores an opaque public link reference; it never resolves/fetches it.
+  const offerPrivateBiliLinkToLife=({uid,role,text,messageId,at})=>{
+    if(!['owner','friend'].includes(role)||accountBinding.status().blocked)return {ok:false,created:0}
+    if(role==='owner'&&String(uid)!==String(cfg.dmOwnerUid||''))return {ok:false,created:0}
+    if(role==='friend'&&!socialPolicyGate.canLearn({uid,kind:'dm'}))return {ok:false,created:0}
+    const offered=lifeSharedBiliLinks.offerFromMessage({uid,role,text,messageId,at})
+    if(offered?.ok===true&&offered.created>0){
+      try{lifeAgentEvents.offer({kind:'public-ready',platform:'bili',sourceKey:'private-shared-bili-link:'+offered.ids[0]})}catch{}
+    }
+    return offered
+  }
   // Independent relationship-originated Life opportunities. No video receipts are
   // required, and no contact UID or text enters this persistent ledger.
   const lifeFriendInitiatives=createLifeFriendInitiatives({dataDir:accountRuntimeDir,
@@ -4208,6 +4220,14 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       catch{log('主人私信自然收尾标记失败（不记录正文）')}
     },
     onPrivateExperience:async({uid,text,eventId,at,messages})=>{
+      // The owner Agent is processed before the ordinary DM onIncoming callback.
+      // Offer a bounded Life read-only opportunity without running any read here.
+      if(String(uid)===String(cfg.dmOwnerUid||'')){
+        for(const m of (Array.isArray(messages)&&messages.length?messages:[{eventId,text,at}])){
+          try{offerPrivateBiliLinkToLife({uid,role:'owner',text:m.text,messageId:m.eventId,at:m.at})}
+          catch(e){log('主人分享链接登记为 Life 契机失败：'+String(e?.message||e).slice(0,100))}
+        }
+      }
       try{conversationLifeFeedback.observe({source:'dm',role:'owner',uid,eventId,text,at})}
       catch(e){log('主人私信情绪反馈失败：'+String(e?.message||e).slice(0,100))}
       // Preserve real, ordered DM turns temporarily. A later low-frequency AI
@@ -4987,14 +5007,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     onIncoming:async({uid,text,messageId,time})=>{
       const role=socialPolicyGate.actor(uid).role
-      if(role==='friend'&&socialPolicyGate.canLearn({uid,kind:'dm'})&&!accountBinding.status().blocked){
-        try{
-          const shared=lifeSharedBiliLinks.offerFromMessage({uid,role,text,messageId,at:Number(time)||Date.now()})
-          if(shared?.ok===true&&shared.ids?.length){
-            const eligible=lifeSharedBiliLinks.list({limit:20}).some(x=>shared.ids.includes(x.id))
-            if(eligible){const ref=shared.ids[0];lifeAgentEvents.offer({kind:'public-ready',platform:'bili',sourceKey:'friend-shared-bili-link:'+ref})}
-          }
-        }catch(e){log('好友分享的 B 站链接未进入 Life 契机：'+String(e?.message||e).slice(0,100))}
+      if(['owner','friend'].includes(role)&&!accountBinding.status().blocked){
+        try{offerPrivateBiliLinkToLife({uid,role,text,messageId,at:Number(time)||Date.now()})}
+        catch(e){log('私信分享的 B站链接未进入 Life 契机：'+String(e?.message||e).slice(0,100))}
       }
       if(['owner','friend'].includes(role))try{conversationLifeFeedback.observe({source:'dm',role,uid,eventId:messageId,text,at:time})}
       catch(e){log('私信生活情绪反馈失败：'+String(e?.message||e).slice(0,100))}

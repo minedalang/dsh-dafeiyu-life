@@ -44,7 +44,7 @@ test('Bilibili short-link resolution is only invoked after Life chooses inspect_
  const onIncoming=host.slice(host.indexOf('onIncoming:async'),host.indexOf('generateReply: async',host.indexOf('onIncoming:async')))
  const readFn=host.slice(host.indexOf('const executeSharedBiliLinkRead='),host.indexOf('const recordSharedBiliLinkFailure='))
  const branch=planner.slice(planner.indexOf("outcome.action==='inspect_shared_link'"),planner.indexOf("outcome.action==='like_shared_dynamic'"))
- assert.match(onIncoming,/offerFromMessage/)
+ assert.match(onIncoming,/offerPrivateBiliLinkToLife/)
  assert.doesNotMatch(onIncoming,/resolveBiliShareLink|bili_dynamic_info|bili_video_info_by_aid/)
  assert.match(readFn,/resolveBiliShareLink/)
  assert.match(branch,/executeSharedBiliLinkRead/)

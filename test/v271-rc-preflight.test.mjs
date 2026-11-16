@@ -65,7 +65,7 @@ test('normal Life management wording is clear; developer-only controls are not e
 })
 
 test('2.8.0 README and developer navigation reflect the RC gates without falsely claiming release',()=>{
-  const readme=src('README.md'),doc=src('docs/README.md'),notes=src('RELEASE_NOTES_v2.8.0.md')
+  const readme=src('README.md'),doc=src('docs/README.md'),notes=src('docs/release/archive/RELEASE_NOTES_v2.8.0.md')
   const opening=readme.slice(0,2200)
   for(const term of ['一个 Life','2.8.0','生活','记忆'])
     assert.ok(opening.includes(term),term)

@@ -26,7 +26,7 @@ test('2.8.0 版本、依赖锁、当前 Life 架构文档和历史讨论图均�
  assert.match(pkg.version,/^2\.8\.(?:0|1)(?:-dev\.(?:[1-9]\d*|3[ab]\.\d+))?$/)
  assert.equal(lock.version,pkg.version)
  assert.equal(lock.packages[''].version,pkg.version)
- assert.ok(pkg.files.includes('RELEASE_NOTES_v2.8.0.md'))
+ assert.ok(pkg.files.includes('docs/release/archive/RELEASE_NOTES_v2.8.0.md'))
  assert.match(read('README.md'),/统一 Life/)
  assert.match(read('CHANGELOG.md'),/2\.8\.0-dev\.16/)
  assert.match(read('docs/architecture/README.md'),/Life/)

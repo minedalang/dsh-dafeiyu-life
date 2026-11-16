@@ -1,7 +1,0 @@
-fix(vision): 避免 FFmpeg 抽帧控制台闪窗并收紧 DSH 图片工具启动诊断
-
-- 仅本地 FFmpeg/FFprobe 离线抽帧使用 Windows DETACHED_PROCESS，保留重定向与超时
-- MCP 供应商脚本单独隔离 FFmpeg 子进程创建，不改变 ASR/记忆/DSH stdio
-- 视觉 MCP 初始加载失败时快速失败，不再静默进入缺工具的模型回合
-- 记录不含内容的 DSH CLI 退出码及输出存在性，便于下轮实机定位
-- 添加安全和增量测试、开发文档，保持真实图片验收未确认状态

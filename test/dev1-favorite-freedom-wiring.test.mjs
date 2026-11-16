@@ -5,7 +5,7 @@ const read=(f)=>readFileSync(new URL('../'+f,import.meta.url),'utf8')
 test('当前 2.8.0 正式版本和发布文档存在，旧开发草案不再充当正式规范',()=>{
  const p=JSON.parse(read('package.json'))
  assert.match(p.version,/^2\.8\.(?:0|1)(?:-dev\.(?:[1-9]\d*|3[ab]\.\d+))?$/)
- assert.ok(p.files.includes('RELEASE_NOTES_v2.8.0.md'))
+ assert.ok(p.files.includes('docs/release/archive/RELEASE_NOTES_v2.8.0.md'))
  assert.ok(p.files.includes('docs/ROADMAP.md'))
  assert.match(read('README.md'),/统一 Life/)
  assert.match(read('docs/archive/README.md'),/历史文档与清理记录/)

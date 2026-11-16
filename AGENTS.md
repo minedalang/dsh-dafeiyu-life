@@ -1,3 +1,11 @@
+## 2.8.1-dev.3b.31 主人私信分享动态 / Life 自主只读 / 仓库卫生
+
+- 来自真实主人 UID 的私信分享卡片或官方 B站 HTTPS 链接允许进入 `owner-shared-bili-link` Life 契机账本。**入站只存受限引用和幂等身份，不自动解析或访问 URL**；只有 Life 自主选中 `inspect_shared_link`、通过账号/来源/有效性复核后才可以只读访问，也允许放弃或延期。
+- 主人分享链接不等于视频搜索意图。主人私信 Agent 不得因动态卡片或“看看我动态”执行空搜索并回复固定“请告诉我想搜索的视频主题”，不得把未读取的动态内容假装已看过。主人私信回复可与 Life 后续查看不同步，二者不得相互冒充。
+- 动态点赞评论的好友独立授权只适用于已核验好友作者匹配的好友分享来源；主人私信的链接不能借用该授权。不得放宽真实 B站外发、额度、幂等、当前账号及身份门禁。
+- 正式版历史 `RELEASE_NOTES_v*.md` 应在 `docs/release/archive/`，历史 APPLY/COMMIT/TEST-RESULTS 与 patch 属于单次开发交付 ZIP，**严禁提交到项目根目录**。交付 ZIP 顶层与 `source/` 严格分开，`source/` 只包含可维护代码与长期文档。
+- dev.3b.31 本地日志仍证实 Ollama/llama-server 可见黑窗与 DSH `headless_exit_unknown` 失败；两项均**未最终修复/验收**，禁止仅凭安全摘要错误数为零、MCP 独立预检或 Node 环境修复就对外宣布成功。云端仅运行本次相关增量测试，全量由用户本机完成。
+
 ## 2.8.1-dev.3b.30 嵌套 DSH CLI Electron 环境修复与 Ollama 诊断
 
 - Windows 本轮 15:39 可见的三组 `PseudoConsoleWindow` 与 Ollama daemon 派生的 `llama-server.exe`、`ollama.exe` 精确 PID 关联。插件 FFmpeg 或 Python 启动隐藏参数无法约束第三方 Ollama daemon/runner 的内部窗口；切勿把减少 `keep_alive` 卸载等同于实机根治。
@@ -357,7 +365,7 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 - 先定位真实生产入口及现有接口，再实现并添加定向测试；不要把脚本层 mock 当作真实 B站发送成功，也不要为了让测试变绿恢复错误的重复逻辑。
 - 检查 Node.js 全量测试、相关 Python 测试、`node selfcheck.mjs`、`npm pack --dry-run` 与 `git diff --check`；某项失败／超时应如实报告。
 - 交付注明基线、变更文件、复用的统一层、新增内容、未覆盖入口、实机待验收项，提供 Git Patch、中文 Conventional Commit 和适用于 `dev` 的 Git 命令。不得自动发布。
-- **每次 dev 交付必须提供单个完整 ZIP**：其中含可直接使用的新版完整源码 `source/`、相对上一开发版本的 Git Patch、`COMMIT_MESSAGE.txt` 中文提交文案、`README-交付说明.md` 与源码目录内的 `TEST-RESULTS.md`。源码和 Patch 是两种替代使用方式，不允许提示用户在新版源码上再次套用同一 Patch；交付前检查 ZIP 完整性与补丁在指定原版上的 `git apply --check`。
+- **每次 dev 交付必须提供单个完整 ZIP**：其中含可直接使用的新版完整源码 `source/`、相对上一开发版本的 Git Patch、`COMMIT_MESSAGE.txt` 中文提交文案、`README-交付说明.md` 与交付 ZIP 顶层（非源码目录）的 `TEST-RESULTS.md`。源码和 Patch 是两种替代使用方式，不允许提示用户在新版源码上再次套用同一 Patch；交付前检查 ZIP 完整性与补丁在指定原版上的 `git apply --check`。
 - **中文 Commit 格式**遵循 Conventional Commits：标题为 `<type>(<scope>): dev.N 简短变更概要`，例如 `fix(life): dev.67 精简生活日记并优化记忆点阵`；标题和正文间空一行，正文用 3～6 条以 `- ` 开头的简洁要点，每条一句话，只列关键行为变化。不要在 Commit 中堆内部变量名、长日志、测试统计和全部边界声明；细节写入 CHANGELOG、架构文档与测试报告。`type` 选能表达主要意图的 `fix`、`feat`、`refactor`、`docs` 等。
 - **版本阶段门禁**：开发阶段使用 `X.Y.Z-dev.N`，不要提前把 `package.json` 填为 `X.Y.Z`；正式封版时再同步升级 `package.json`、`package-lock.json`、README、CHANGELOG、Release Notes、测试与 Git Tag。GitHub 预览标签 `vX.Y.Z-dev.N` 不属于正式 Latest，npm 预览必须使用独立 dist-tag。
 - README 写面向用户的理念、特色与首用步骤，**不放开发历史流水账**；技术细节与架构更新进入 `docs/architecture/`。
@@ -372,7 +380,7 @@ dev.38 历史阶段新增视频/私信/评论局部 Episode Handoff 和私信自
 
 - 根目录 `README.md` 必须当作**最终发布页的简洁用户介绍**维护：价值主张、最重要的 2.7.1 新功能（自主 Life、原主 Session 自然对话、真实记忆／兴趣脉络、社交与安全）、安装／配置、权限及诚实的验收状态优先。
 - 禁止在 README 顶部不断追加 `dev.xx` 小版本逐条通告、长篇技术实现、完整补丁清单和流水账。每次新开发版只更新一个当前版本标识，并仅在影响用户功能时修改相关的一两句话。
-- 每一个开发版本的详细变更、故障原因、测试、约束与代码锚点应写在 `CHANGELOG.md`、`RELEASE_NOTES_v2.7.1.md`、`docs/architecture/` 和交付包的 `TEST-RESULTS.md`；不要重复抄进 README。
+- 每一个开发版本的详细变更、故障原因、测试、约束与代码锚点应写在 `CHANGELOG.md`、`docs/release/archive/RELEASE_NOTES_v2.7.1.md`、`docs/architecture/` 和交付包顶层的 `TEST-RESULTS.md`；不要重复抄进 README。
 - 不得为了推广声称未真实验收的功能已在 Windows、B站或 DSH 各宿主全部通过；模型选择、发送提议、提交工具、平台确认严格区分。
 - 社交行为回归时以主人权限、账号隔离、入站核验、Life 自主意愿、未知回执禁止自动重试为硬边界。不要用强制最低评论数取代自主表达；先解释有证据的行为诊断和技术拒绝原因。
 - 可视化链接只能依赖已核实的同源 ID；相似词、同日和相近话题不构成因果。兴趣的累计证据不能伪装成某条具体 BV 的关联。

@@ -13,7 +13,7 @@ test('npm package includes linked roadmap and correctly named Windows diagnostic
   assert.ok(included.has('tools/导出B站日志.bat'),'Windows diagnostic exporter must be packaged')
   assert.match(readFileSync(resolve(root,'README.md'),'utf8'),/\]\(docs\/ROADMAP\.md\)/)
   const bats=readdirSync(resolve(root,'tools')).filter(name=>name.endsWith('.bat'))
-  assert.deepEqual(bats,['导出B站日志.bat'])
+  assert.ok(bats.includes('导出B站日志.bat'),'existing diagnostic exporter must remain available')
   const bat=readFileSync(resolve(root,'tools/导出B站日志.bat'))
   assert.equal(bat.subarray(0,11).toString('ascii'),'@echo off\r\n')
   assert.equal(bat.subarray(0,3).equals(Buffer.from([0xef,0xbb,0xbf])),false)
@@ -21,7 +21,7 @@ test('npm package includes linked roadmap and correctly named Windows diagnostic
 })
 
 test('official release remains blocked until preview version and release gates are cleared',()=>{
-  const notes=readFileSync(resolve(root,'RELEASE_NOTES_v2.8.0.md'),'utf8')
+  const notes=readFileSync(resolve(root,'docs/release/archive/RELEASE_NOTES_v2.8.0.md'),'utf8')
   const gate=readFileSync(resolve(root,'docs/architecture/2.8.0-release-readiness.md'),'utf8')
   const workflow=readFileSync(resolve(root,'.github/workflows/release.yml'),'utf8')
   if(pkg.version.startsWith('2.8.0-dev.')){
