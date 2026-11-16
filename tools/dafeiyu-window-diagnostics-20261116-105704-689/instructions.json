@@ -1,0 +1,8 @@
+{
+    "version":  "2.8.1-dev.3b.23",
+    "notes":  [
+                  "After reproduction, run the project log export batch with --no-pause and share both ZIPs privately.",
+                  "Untranslated exit=1 does not prove Headless lacks image support.",
+                  "Process ancestry is a sampling aid, not a kernel-level window-creation trace."
+              ]
+}

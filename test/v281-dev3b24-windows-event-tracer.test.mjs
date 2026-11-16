@@ -14,5 +14,11 @@ test('Windows intermittent console trace is ASCII-only and 5.1-safe',()=>{
  assert.match(body,/Math]::Min\(3600/);
  assert.match(body,/Get-CimInstance/);
  assert.match(body,/Compress-Archive/);
+ assert.match(body,/Console\]::KeyAvailable/);
+ assert.match(body,/Console\]::ReadKey/);
+ assert.match(body,/KeyChar -eq 'q'/);
+ assert.match(body,/KeyChar -eq 'Q'/);
+ assert.match(body,/StopReason: /);
+ assert.match(body,/manual-q/);
  assert.doesNotMatch(body,/\$proc\.CommandLine|\$_\.CommandLine|ScreenCapture|clipboard|Get-Content.*config\.json|WriteAllText.*private/i);
 });

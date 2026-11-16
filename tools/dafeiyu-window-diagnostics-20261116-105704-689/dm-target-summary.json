@@ -1,0 +1,7 @@
+{
+    "selectedContactProvided":  true,
+    "matches":  [
+
+                ],
+    "note":  "The newest inbound outcome exists only for turns processed after this diagnostic patch; a missing outcome does not mean no message or refusal."
+}
