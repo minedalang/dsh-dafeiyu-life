@@ -2783,6 +2783,144 @@ async def _find_dynamic_target(area,cred,rpid,root=0):
 
 
 @tool()
+async def bili_video_info_by_aid(aid: str) -> str:
+    """只读：按 B 站 AV/AID 分享链接解析为可信 BV 和公开元数据。"""
+    if (e:=_guard('bili_video_info_by_aid')): return e
+    try:
+        value=str(aid or '')
+        if not re.fullmatch(r'[1-9][0-9]{1,14}',value): raise ValueError('AID 无效')
+        info=await video.Video(aid=int(value),credential=get_cred()).get_info()
+        if not isinstance(info,dict) or not re.fullmatch(r'BV[0-9A-Za-z]{10}',str(info.get('bvid') or '')):
+            raise ValueError('AID 未返回可信 BV')
+        owner=info.get('owner') if isinstance(info.get('owner'),dict) else {}
+        return json.dumps({'ok':True,'aid':value,'bvid':info['bvid'],'title':str(info.get('title') or '')[:100],
+            'description':str(info.get('desc') or '')[:420],'authorName':str(owner.get('name') or '')[:50],
+            'authorUid':str(owner.get('mid') or '')},ensure_ascii=False)
+    except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:140]},ensure_ascii=False)
+
+
+@tool()
+async def bili_dynamic_info(dynamic_id: str) -> str:
+    """只读：返回一条 B 站动态的有界文字、作者和可信图像 CDN 引用。"""
+    if (e:=_guard('bili_dynamic_info')): return e
+    try:
+        did=_checked_dynamic_id(dynamic_id);cred=get_cred()
+        info=await dynamic.Dynamic(int(did),credential=cred).get_info()
+        item=info.get('item') if isinstance(info,dict) else None
+        if item is None and isinstance(info,dict): item=(info.get('data') or {}).get('item')
+        if not isinstance(item,dict) or str(item.get('id_str') or item.get('id') or '')!=did:
+            raise ValueError('动态详情 ID 不匹配')
+        modules=item.get('modules') or {};author=modules.get('module_author') or {}
+        module=modules.get('module_dynamic') or {};desc=module.get('desc') or {}
+        text=str(desc.get('text') or '').strip()
+        major=module.get('major') or {};kind=str(item.get('type') or '')
+        title=''
+        if isinstance(major.get('archive'),dict): title=str(major['archive'].get('title') or '')
+        if not title: title=text[:100] or 'B站好友分享的图文动态'
+        images=[]
+        draw=major.get('draw') if isinstance(major,dict) else None
+        if isinstance(draw,dict):
+            for row in (draw.get('items') or [])[:9]:
+                if not isinstance(row,dict): continue
+                raw=str(row.get('src') or row.get('url') or '')
+                try:
+                    u=urllib.parse.urlsplit(raw)
+                    if u.scheme=='https' and re.fullmatch(r'i[0-9]\.hdslb\.com',u.hostname or '') and u.path.startswith('/bfs/') and not u.username and not u.password and not u.port:
+                        images.append('https://'+u.hostname+u.path)
+                except Exception: pass
+        author_uid=str(author.get('mid') or '')
+        if not re.fullmatch(r'[1-9][0-9]{0,19}',author_uid): author_uid=''
+        basic=item.get('basic') or {};raw_comment_type=basic.get('comment_type')
+        try:comment_type=int(raw_comment_type)
+        except (TypeError,ValueError):comment_type=0
+        commentable=kind=='DYNAMIC_TYPE_DRAW' and comment_type==11 or kind=='DYNAMIC_TYPE_WORD' and comment_type==17
+        return json.dumps({'ok':True,'dynamicId':did,'kind':kind,'commentable':commentable,'title':title[:100],
+            'text':text[:1000],'authorUid':author_uid,'authorName':str(author.get('name') or '')[:50],
+            'imageUrls':list(dict.fromkeys(images))[:9]},ensure_ascii=False)
+    except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:160]},ensure_ascii=False)
+
+
+async def bili_dynamic_like_life(dynamic_id: str, expected_author_uid: str, reason: str) -> str:
+    """Host-only Life action. Not registered in any DSH MCP whitelist."""
+    if (e:=_guard('bili_dynamic_like_life')): return e
+    if os.environ.get('BILI_LIFE_SHARED_DYNAMIC_ACTION_ENABLED')!='1' or os.environ.get('BILI_LIFE_SHARED_DYNAMIC_LIKE_ENABLED')!='1':
+        return json.dumps({'ok':False,'attempted':False,'status':'not-sent'},ensure_ascii=False)
+    claim=None;uid='';did='';attempted=False
+    try:
+        did=_checked_dynamic_id(dynamic_id);cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
+        author_expected=str(expected_author_uid or '')
+        if not re.fullmatch(r'[1-9][0-9]{0,19}',uid) or not re.fullmatch(r'[1-9][0-9]{0,19}',author_expected) or uid==author_expected:
+            raise ValueError('账号或好友作者身份未核验')
+        info=await dynamic.Dynamic(int(did),credential=cred).get_info()
+        item=info.get('item') if isinstance(info,dict) else None
+        if item is None and isinstance(info,dict): item=(info.get('data') or {}).get('item')
+        author=((item or {}).get('modules') or {}).get('module_author') or {}
+        if str((item or {}).get('id_str') or (item or {}).get('id') or '')!=did or str(author.get('mid') or '')!=author_expected:
+            raise ValueError('动态作者与分享好友不匹配')
+        why=str(reason or '').strip()
+        if len(why)<8 or len(why)>100 or re.search(r'[\x00-\x1f\x7f]|https?://|www\.|@',why,re.I):
+            raise ValueError('点赞理由不合规')
+        limit=max(0,min(10,int(os.environ.get('BILI_LIFE_DYNAMIC_LIKE_DAILY_LIMIT','2'))))
+        target='friend-shared-dynamic:'+did
+        claim=_claim_session_manual_action(uid,'like',target,'like',limit)
+        if not claim.get('ok'): return json.dumps({'ok':False,'attempted':False,'status':'not-sent','already':claim.get('already') is True,'limit':claim.get('limit') is True},ensure_ascii=False)
+        attempted=True
+        result=await dynamic.Dynamic(int(did),credential=cred).set_like(status=True)
+        if result is False or (isinstance(result,dict) and result.get('code',0) not in (0,None)): raise ValueError('B站动态点赞未接受')
+        _finish_session_manual_action(uid,'like',target,claim['body_hash'],claim['day'],'accepted','Life friend-shared dynamic like')
+        return json.dumps({'ok':True,'attempted':True,'status':'accepted-unverified'},ensure_ascii=False)
+    except Exception as exc:
+        if claim and uid and did:
+            try:_finish_session_manual_action(uid,'like','friend-shared-dynamic:'+did,claim['body_hash'],claim['day'],'uncertain',str(exc)[:120])
+            except Exception:pass
+        return json.dumps({'ok':False,'attempted':attempted,'status':'uncertain' if attempted else 'not-sent','no_retry':attempted},ensure_ascii=False)
+
+
+async def bili_dynamic_comment_life(dynamic_id: str, expected_author_uid: str, text: str, reason: str) -> str:
+    """Host-only Life top-level comment on the exact friend's own text/draw dynamic."""
+    if (e:=_guard('bili_dynamic_comment_life')): return e
+    if os.environ.get('BILI_LIFE_SHARED_DYNAMIC_ACTION_ENABLED')!='1' or os.environ.get('BILI_LIFE_SHARED_DYNAMIC_COMMENT_ENABLED')!='1':
+        return json.dumps({'ok':False,'attempted':False,'status':'not-sent'},ensure_ascii=False)
+    claim=None;uid='';did='';attempted=False
+    try:
+        did=_checked_dynamic_id(dynamic_id);cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
+        author_expected=str(expected_author_uid or '')
+        if not re.fullmatch(r'[1-9][0-9]{0,19}',uid) or not re.fullmatch(r'[1-9][0-9]{0,19}',author_expected) or uid==author_expected:
+            raise ValueError('账号或好友作者身份未核验')
+        info=await dynamic.Dynamic(int(did),credential=cred).get_info()
+        area=_dynamic_comment_area(info,did)
+        if area['author_uid']!=author_expected: raise ValueError('动态作者与分享好友不匹配')
+        body=str(text or '').strip();why=str(reason or '').strip()
+        if not body or len(body)>180 or re.search(r'[\r\n\x00-\x1f\x7f]|https?://|www\.|@',body,re.I):
+            raise ValueError('动态评论正文不合规')
+        if len(why)<8 or len(why)>100 or re.search(r'[\x00-\x1f\x7f]|https?://|www\.|@',why,re.I):
+            raise ValueError('动态评论理由不合规')
+        limit=max(0,min(10,int(os.environ.get('BILI_LIFE_DYNAMIC_COMMENT_DAILY_LIMIT','1'))))
+        target='dynamic:'+did+':'+area['oid']+':0'
+        claim=_claim_session_manual_action(uid,'comment',target,body,limit)
+        if not claim.get('ok'): return json.dumps({'ok':False,'attempted':False,'status':'not-sent','already':claim.get('already') is True,'limit':claim.get('limit') is True},ensure_ascii=False)
+        quota_ok,quota_error=_reserve_comment_quota()
+        if not quota_ok:
+            _finish_session_manual_action(uid,'comment',target,claim['body_hash'],claim['day'],'blocked',quota_error)
+            return json.dumps({'ok':False,'attempted':False,'status':'not-sent','limit':True},ensure_ascii=False)
+        attempted=True
+        response=await _coordinated_send('dynamic-comment',target,body,
+            lambda: comment.send_comment(text=body,oid=int(area['oid']),type_=area['resource_type'],
+                root=None,parent=None,credential=cred),_comment_platform_receipt)
+        data=response.get('data') if isinstance(response,dict) and isinstance(response.get('data'),dict) else {}
+        rpid=str(data.get('rpid_str') or data.get('rpid') or (response.get('rpid_str') or response.get('rpid') if isinstance(response,dict) else '') or '')
+        if not isinstance(response,dict) or response.get('code',0)!=0 or not re.fullmatch(r'[1-9][0-9]{0,29}',rpid):
+            raise ValueError('B站未返回可确认的动态评论 ID')
+        _finish_session_manual_action(uid,'comment',target,claim['body_hash'],claim['day'],'accepted',rpid)
+        return json.dumps({'ok':True,'attempted':True,'status':'accepted','receiptId':rpid},ensure_ascii=False)
+    except Exception as exc:
+        if claim and uid and did:
+            try:_finish_session_manual_action(uid,'comment','dynamic:'+did+':'+(area['oid'] if 'area' in locals() else '0')+':0',claim['body_hash'],claim['day'],'uncertain',str(exc)[:120])
+            except Exception:pass
+        return json.dumps({'ok':False,'attempted':attempted,'status':'uncertain' if attempted else 'not-sent','no_retry':attempted},ensure_ascii=False)
+
+
+@tool()
 async def bili_dynamic_comment_context(dynamic_id: str, target_rpid: str = '', root: str = '', num: int = 20) -> str:
     """只读：定位文字/图文动态的真实评论区，读取评论并核实目标回复。"""
     try:

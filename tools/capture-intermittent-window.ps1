@@ -14,7 +14,76 @@ $events = New-Object System.Collections.Generic.List[object]
 $registered = $false
 $startedAt = Get-Date
 $stopReason = 'timeout'
+$windowEvents = New-Object System.Collections.Generic.List[object]
+$windowSeen = @{}
+$lastWindowScan = [DateTime]::MinValue
+$windowTypeReady = $false
 try {
+  try {
+    $windowSource = @'
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Runtime.InteropServices;
+public sealed class DafeiyuConsoleWindowRow { public int Pid; public string ClassName; }
+public static class DafeiyuConsoleWindowEnum {
+  private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+  [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+  [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern int GetClassName(IntPtr hWnd, StringBuilder className, int maxCount);
+  [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+  public static List<DafeiyuConsoleWindowRow> GetVisibleConsoleWindows() {
+    var rows = new List<DafeiyuConsoleWindowRow>();
+    EnumWindows(delegate(IntPtr hWnd, IntPtr lParam) {
+      if (!IsWindowVisible(hWnd)) return true;
+      var name = new StringBuilder(128);
+      if (GetClassName(hWnd, name, name.Capacity) <= 0) return true;
+      if (!String.Equals(name.ToString(), "ConsoleWindowClass", StringComparison.Ordinal) &&
+          !String.Equals(name.ToString(), "CASCADIA_HOSTING_WINDOW_CLASS", StringComparison.Ordinal)) return true;
+      uint pid; GetWindowThreadProcessId(hWnd, out pid);
+      if (pid > 0) rows.Add(new DafeiyuConsoleWindowRow { Pid=(int)pid, ClassName=name.ToString() });
+      return true;
+    }, IntPtr.Zero);
+    return rows;
+  }
+}
+'@
+    Add-Type -TypeDefinition $windowSource -Language CSharp -ErrorAction Stop | Out-Null
+    $windowTypeReady = $true
+  } catch { $windowTypeReady = $false }
+  $sampleConsoleWindows = {
+    if (-not $windowTypeReady) { return }
+    try {
+      $current = @{}
+      foreach ($window in [DafeiyuConsoleWindowEnum]::GetVisibleConsoleWindows()) {
+        $pidText = [string]$window.Pid
+        $key = $pidText + '|' + [string]$window.ClassName
+        $current[$key] = $true
+        if (-not $windowSeen.ContainsKey($key) -and $windowEvents.Count -lt 10000) {
+          $proc = Get-Process -Id ([int]$pidText) -ErrorAction SilentlyContinue | Select-Object -First 1
+          $procEvent = $events | Where-Object { [int]$_.PID -eq [int]$pidText } | Select-Object -Last 1
+          $procName='unknown';$parent=0
+          if ($proc) { $procName=[string]$proc.ProcessName+'.exe' }
+          if ($procEvent) { $parent=[int]$procEvent.ParentPID }
+          $windowEvents.Add([pscustomobject]@{ Time=(Get-Date).ToString('o'); Process=$procName; PID=[int]$window.Pid; ParentPID=$parent; WindowClass=[string]$window.ClassName; Visible=$true; Source='EnumWindows' })
+        }
+      }
+      foreach ($key in @($windowSeen.Keys)) {
+        if (-not $current.ContainsKey($key) -and $windowEvents.Count -lt 10000) {
+          $parts=$key.Split('|');$pidText=$parts[0]
+          $proc = Get-Process -Id ([int]$pidText) -ErrorAction SilentlyContinue | Select-Object -First 1
+          $procEvent = $events | Where-Object { [int]$_.PID -eq [int]$pidText } | Select-Object -Last 1
+          $procName='unknown';$parent=0
+          if ($proc) { $procName=[string]$proc.ProcessName+'.exe' }
+          if ($procEvent) { $parent=[int]$procEvent.ParentPID }
+          $windowEvents.Add([pscustomobject]@{ Time=(Get-Date).ToString('o'); Process=$procName; PID=[int]$pidText; ParentPID=$parent; WindowClass=$parts[1]; Visible=$false; Source='EnumWindows' })
+        }
+      }
+      $windowSeen=$current
+    } catch { }
+  }
+  . $sampleConsoleWindows
+  $lastWindowScan=Get-Date
   try {
     Register-WmiEvent -Query 'SELECT * FROM Win32_ProcessStartTrace' -SourceIdentifier $source -ErrorAction Stop | Out-Null
     $registered = $true
@@ -78,6 +147,10 @@ try {
       } catch { }
       Start-Sleep -Milliseconds 800
     }
+    if (((Get-Date) - $lastWindowScan).TotalMilliseconds -ge 500) {
+      . $sampleConsoleWindows
+      $lastWindowScan=Get-Date
+    }
   }
   # Drain events that occurred immediately before capture ended.
   if ($registered) {
@@ -95,6 +168,7 @@ try {
       Remove-Event -EventIdentifier $evt.EventIdentifier -ErrorAction SilentlyContinue
     }
   }
+  . $sampleConsoleWindows
 } finally {
   if ($registered) { Unregister-Event -SourceIdentifier $source -ErrorAction SilentlyContinue }
 }
@@ -105,14 +179,22 @@ try {
   } else {
     'Time,Process,PID,ParentPID,Source' | Set-Content -Path $csv -Encoding ASCII
   }
+  $windowCsv = Join-Path $work 'console-window-events.csv'
+  if ($windowEvents.Count -gt 0) {
+    $windowEvents | Export-Csv -Path $windowCsv -NoTypeInformation -Encoding UTF8
+  } else {
+    'Time,Process,PID,ParentPID,WindowClass,Visible,Source' | Set-Content -Path $windowCsv -Encoding ASCII
+  }
   $elapsedSeconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1)
   @(
     ('Mode: ' + $mode),
     ('RequestedSeconds: ' + $Seconds),
     ('ElapsedSeconds: ' + $elapsedSeconds),
     ('StopReason: ' + $stopReason),
-    ('Events: ' + $events.Count),
-    'Process names and numeric IDs only. No commands, titles, message bodies, or credentials.',
+    ('ProcessEvents: ' + $events.Count),
+    ('ConsoleWindowEvents: ' + $windowEvents.Count),
+    ('WindowEnumAvailable: ' + $windowTypeReady),
+    'Captured only visible ConsoleWindowClass PID, process name, parent PID and visibility; no window title, command line, screenshot, message body, image or credentials.',
     'A missing event does not prove no window appeared. WMI unavailability uses a slower polling fallback.'
   ) | Set-Content -Path (Join-Path $work 'README.txt') -Encoding ASCII
   Compress-Archive -Path (Join-Path $work '*') -DestinationPath $archive -Force -ErrorAction Stop

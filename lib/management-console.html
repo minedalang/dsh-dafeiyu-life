@@ -2558,6 +2558,14 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <p class="muted">不会自动发送旧版的任务回访或情绪联系。无新入选视频、没有合格收件人、模型决定沉默、失去发送授权或触发安全防重复保护，都不会私信；发送不确定时禁止自动重试。</p>
 </fieldset></details></div>
 </div>
+<div class="card" id="life-shared-dynamic-card" style="margin-top:12px">
+<h4>🔗 好友分享动态 · Life 自主互动</h4>
+<p class="muted">好友在私信中分享 B 站安全链接后，Life 可以自主选择是否查看。查看后，如果确认动态作者就是分享好友本人，鱼鱼才可能自行决定点赞或评论。两项公开写入权限完全独立，默认关闭；开启不代表每条动态都会互动。短链只允许跳转到 B 站官方 HTTPS 域名，动态文字和图片按不可信内容处理。</p>
+<label class="checkline"><input id="life-shared-dynamic-like-enabled" type="checkbox">允许 Life 自主点赞好友分享、且已核验为好友本人发布的动态（默认关闭；每日最多 2 次）</label>
+<label class="checkline"><input id="life-shared-dynamic-comment-enabled" type="checkbox">允许 Life 自主评论好友分享、且已核验为好友本人发布的文字/图文动态（默认关闭；每日最多 1 次）</label>
+<p class="muted">评论必须是鱼鱼自己写的简短、具体、友善内容，不允许 @、链接或私密信息。若平台回执不确定，系统不会自动重发。关闭权限立即停止新互动。</p>
+<div class="toolbar"><button type="button" id="life-shared-dynamic-save" class="primary">保存好友动态互动权限</button><span id="life-shared-dynamic-status" class="muted">尚未读取</span></div>
+</div>
 <div class="card" id="life-friend-outreach-card" style="margin-top:12px">
 <h4>熟人自主联系 · 区分评论与私信关系</h4>
 <p class="muted">评论区熟悉仅影响自然认识，不授予主动私信资格。必须有当前账号真实、跨日、双向的私人交流记录，且独立主人授权、未拒联并通过发送门禁，才可考虑主动私信。旧版关系资料不自动升级成私信许可。</p>

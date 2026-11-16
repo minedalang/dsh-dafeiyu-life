@@ -8,7 +8,9 @@
 
 **[2.8.1 开发计划](docs/architecture/2.8.1-video-perception-dev2a.md) · [功能概览](#-从分散能力到连续生活) · [自然交流](#-更自然的交流) · [关系与成长](#-关系记忆与成长) · [可视化成长](#-可视化的生活成长) · [开始使用](#-开始使用) · [未来规划](docs/ROADMAP.md) · [2.8.0 更新说明](RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)**
 
-**当前开发分支：`2.8.1-dev.3b.24`（开发预览，尚未正式发布）。**
+**当前开发分支：`2.8.1-dev.3b.25`（开发预览，尚未正式发布）。**
+
+**2.8.1-dev.3b.25：** 好友分享的 B站链接进入 Life 自主机会池：只在 Life 自己选择后解析安全短链/读取动态、视频或空间；动态作者与分享好友完全匹配且主人分别授权时，才可能由 Life 自己决定点赞或评论（默认均关闭）。同时修复设置未保存误报，行动树新增真实的“正在看视频画面”状态，Windows 黑窗诊断新增可见控制台窗口 PID/类名采集并保留 Q 提前导出。详见 [架构说明](docs/architecture/2.8.1-dev.3b.25-life-shared-bili-links.md)。
 
 **2.8.1-dev.3b.24：** 「最近私信会话」每位普通/获批好友旁可点击「检查遗漏私信」：先核对平台最近50条来信与本地 seen/确认发送，主人二次确认后才让鱼鱼根据原模型自主重新考虑，不能强制补发或越过退避。偶发视频黑窗建议运行 `tools/capture-intermittent-window.bat 900` 采集进程启动事件（Windows PowerShell 5.1，默认15分钟）；新旧两个诊断 ZIP 分别上传。详情见 [本轮复核说明](docs/architecture/2.8.1-dev3b24-manual-dm-recheck-and-window-events.md)。
 
