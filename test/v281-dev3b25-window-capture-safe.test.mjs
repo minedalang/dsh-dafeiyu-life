@@ -15,3 +15,13 @@ test('long capture keeps early Q export and avoids Ctrl+C cancellation',()=>{
  assert.match(script,/Console\]::KeyAvailable/);assert.match(script,/KeyChar -eq 'q'/i)
  assert.match(script,/manual-q/);assert.match(script,/console-window-events\.csv/)
 })
+
+test('window trace snapshots existing parent processes and resolves owner parent names',()=>{
+ assert.match(script,/process-snapshot\.csv/)
+ assert.match(script,/Get-CimInstance -ClassName Win32_Process/)
+ assert.match(script,/ParentProcess/)
+ assert.match(script,/windowScanIntervalMs = 40/)
+ assert.match(script,/Start-Sleep -Milliseconds 40/)
+ assert.doesNotMatch(script,/MainWindowTitle/)
+ assert.doesNotMatch(script,/CommandLine/)
+})

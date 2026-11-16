@@ -1989,6 +1989,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     stage(visionPlan.attempt?'下载真实视频窗口／FFmpeg 解码／视觉模型理解中（正在等待实际回执）':'略看资料或视觉服务不可用',3)
     const willInvokeVision=visionPlan.attempt&&['independent_dsh','independent_local'].includes(resolvedVisionMode())
     const stopLiveVideoObservation=willInvokeVision?liveLifeActivity.start('video-observe',initialLifeAccountTag,{maxAgeMs:8*60_000}):()=>{}
+    // Persist the focus receipt after the observation try/finally: it must
+    // remain in scope for Life experience recording and perceptual handoff.
+    let focusReview=null,focusReviewStatus=null
     try{
     if(willInvokeVision){
       try{vision=await call('bili_preview_vision',{bvid,perception_source:'adaptive',view_depth:visionPlan.depth,
@@ -1999,7 +2002,6 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // Optional second-stage observation: a deep, ambiguous overview may need
     // a higher-resolution focused read. This remains in the same read-only
     // exploration; never lets model text choose a URL or arbitrary time.
-    let focusReview=null,focusReviewStatus=null
     const parsedInfo=parseMaybeJson(info),parsedVisual=parseMaybeJson(vision)
     const debugImages=[]
     const initialCapture=safeVideoDebugCapture(parsedVisual?.debugCapture,bvid)
@@ -4244,7 +4246,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(!Array.isArray(messages))throw new Error('私信定向复核没有返回消息数组')
       return messages.filter(m=>m?.fromMe===false&&m.key&&Number(m.ts)>0&&String(m.text||'').trim()&&String(m.text)!=='[非文字消息]')
         .map(m=>{const ts=Number(m.ts);return {senderUid:target,senderName:'',messageId:`${target}:${String(m.key).slice(0,100)}`,
-          timestampMs:ts<1e11?ts*1000:ts,text:String(m.text).slice(0,4000),incoming:true,system:![1,2,7,8].includes(Number(m.kind)||1),
+          timestampMs:ts<1e11?ts*1000:ts,text:String(m.text).slice(0,4000),incoming:true,system:![1,2,7,13,14].includes(Number(m.kind)||1),
           ...(Number(m.kind)===2&&verifiedBiliImageUrl(m.imageUrl)?{imageUrl:verifiedBiliImageUrl(m.imageUrl)}:{})}})
     }
     // Probe-only reads are used between multi-bubble sends / at a delayed
@@ -8465,7 +8467,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         const reason=result?.reason||(result?.busy?'video-busy':result?.paused?'disabled':result?.blocked?'account-not-ready':started?'':'spawn-failed')
         return sendJson(res,started?200:409,{ok:started,diagnostic:true,started,source:'manual-video-agent',
           reason,error:result?.error||'',
-          note:started?'已启动一轮真实视频 Agent；不强制选片或发表评论，所有外发仍经过原 Life 意愿审批和平台核验。':'本轮未启动；请检查返回的技术门禁原因。'})
+          note:started?'已启动一轮真实视频 Agent；不强制视觉观察或发表评论。读取详情/字幕/评论不等于取得画面回执，评论成功也不证明视觉理解。所有外发仍经过原 Life 意愿审批和平台核验。':'本轮未启动；请检查返回的技术门禁原因。'})
       }catch(e){return sendJson(res,500,{ok:false,error:'视频 Agent 单轮诊断启动失败：'+String(e?.message||e).slice(0,120)})}
     }
     // Phase 7d: explicit no-action model comparison. This cannot dispatch B站

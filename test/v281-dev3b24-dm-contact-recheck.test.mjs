@@ -120,3 +120,10 @@ test('用户界面需有逐联系人按钮、二次确认、服务端单人限�
  assert.match(server,/dmFetch\(cred,target,50,\{readBudget:biliReadBudget\}\)/);
  assert.match(server,/accountBinding\.enterPlatformOperation\(\)/);
 });
+
+test('manual recheck accepts verified Bilibili dynamic share-card kinds',()=>{
+ const dynamic={...remote()[0],kind:7,text:'[分享动态] 今天做的饭 https://t.bilibili.com/1234567890123456'}
+ assert.equal(classify({rawMessages:[dynamic]}).state,'eligible')
+ const webpage={...remote()[0],kind:13,text:'[网页卡片] 好友动态 https://t.bilibili.com/1234567890123456'}
+ assert.equal(classify({rawMessages:[webpage]}).state,'eligible')
+})

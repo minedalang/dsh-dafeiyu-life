@@ -15,10 +15,22 @@ $registered = $false
 $startedAt = Get-Date
 $stopReason = 'timeout'
 $windowEvents = New-Object System.Collections.Generic.List[object]
+$processSnapshot = New-Object System.Collections.Generic.List[object]
+$processMap = @{}
 $windowSeen = @{}
 $lastWindowScan = [DateTime]::MinValue
+$windowScanIntervalMs = 40
 $windowTypeReady = $false
 try {
+  # Snapshot existing processes so an already-running parent PID can be named.
+  # Only process name, PID and parent PID are collected; no command line or path.
+  try {
+    foreach ($proc in @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop)) {
+      $row = [pscustomobject]@{ Process=[string]$proc.Name; PID=[int]$proc.ProcessId; ParentPID=[int]$proc.ParentProcessId }
+      $processSnapshot.Add($row)
+      $processMap[[string]$row.PID] = $row
+    }
+  } catch { }
   try {
     $windowSource = @'
 using System;
@@ -38,8 +50,8 @@ public static class DafeiyuConsoleWindowEnum {
       if (!IsWindowVisible(hWnd)) return true;
       var name = new StringBuilder(128);
       if (GetClassName(hWnd, name, name.Capacity) <= 0) return true;
-      if (!String.Equals(name.ToString(), "ConsoleWindowClass", StringComparison.Ordinal) &&
-          !String.Equals(name.ToString(), "CASCADIA_HOSTING_WINDOW_CLASS", StringComparison.Ordinal)) return true;
+      // Window titles are deliberately never requested. The caller only
+      // retains console classes and selected tool-process owner PIDs.
       uint pid; GetWindowThreadProcessId(hWnd, out pid);
       if (pid > 0) rows.Add(new DafeiyuConsoleWindowRow { Pid=(int)pid, ClassName=name.ToString() });
       return true;
@@ -57,26 +69,30 @@ public static class DafeiyuConsoleWindowEnum {
       $current = @{}
       foreach ($window in [DafeiyuConsoleWindowEnum]::GetVisibleConsoleWindows()) {
         $pidText = [string]$window.Pid
+        $procInfo = $processMap[$pidText]
+        $procName='unknown';$parent=0;$parentName='unknown'
+        if ($procInfo) { $procName=[string]$procInfo.Process; $parent=[int]$procInfo.ParentPID }
+        # Only console-class windows or known tool-process owners. Never store
+        # windows from arbitrary desktop apps or any window title.
+        $knownConsoleClass = $window.ClassName -eq 'ConsoleWindowClass' -or $window.ClassName -eq 'CASCADIA_HOSTING_WINDOW_CLASS'
+        if (-not $knownConsoleClass -and $procName -notmatch '^(?:pythonw?|conhost|OpenConsole|cmd|powershell|pwsh|DeepSeek Harness|ffmpeg|WindowsTerminal)\.exe$') { continue }
         $key = $pidText + '|' + [string]$window.ClassName
         $current[$key] = $true
         if (-not $windowSeen.ContainsKey($key) -and $windowEvents.Count -lt 10000) {
-          $proc = Get-Process -Id ([int]$pidText) -ErrorAction SilentlyContinue | Select-Object -First 1
-          $procEvent = $events | Where-Object { [int]$_.PID -eq [int]$pidText } | Select-Object -Last 1
-          $procName='unknown';$parent=0
-          if ($proc) { $procName=[string]$proc.ProcessName+'.exe' }
-          if ($procEvent) { $parent=[int]$procEvent.ParentPID }
-          $windowEvents.Add([pscustomobject]@{ Time=(Get-Date).ToString('o'); Process=$procName; PID=[int]$window.Pid; ParentPID=$parent; WindowClass=[string]$window.ClassName; Visible=$true; Source='EnumWindows' })
+          $parentInfo = $processMap[[string]$parent]
+          if ($parentInfo) { $parentName=[string]$parentInfo.Process }
+          $windowEvents.Add([pscustomobject]@{ Time=(Get-Date).ToString('o'); Process=$procName; PID=[int]$window.Pid; ParentPID=$parent; ParentProcess=$parentName; WindowClass=[string]$window.ClassName; Visible=$true; Source='EnumWindows' })
         }
       }
       foreach ($key in @($windowSeen.Keys)) {
         if (-not $current.ContainsKey($key) -and $windowEvents.Count -lt 10000) {
           $parts=$key.Split('|');$pidText=$parts[0]
-          $proc = Get-Process -Id ([int]$pidText) -ErrorAction SilentlyContinue | Select-Object -First 1
-          $procEvent = $events | Where-Object { [int]$_.PID -eq [int]$pidText } | Select-Object -Last 1
-          $procName='unknown';$parent=0
-          if ($proc) { $procName=[string]$proc.ProcessName+'.exe' }
-          if ($procEvent) { $parent=[int]$procEvent.ParentPID }
-          $windowEvents.Add([pscustomobject]@{ Time=(Get-Date).ToString('o'); Process=$procName; PID=[int]$pidText; ParentPID=$parent; WindowClass=$parts[1]; Visible=$false; Source='EnumWindows' })
+          $procInfo = $processMap[$pidText]
+          $procName='unknown';$parent=0;$parentName='unknown'
+          if ($procInfo) { $procName=[string]$procInfo.Process; $parent=[int]$procInfo.ParentPID }
+          $parentInfo = $processMap[[string]$parent]
+          if ($parentInfo) { $parentName=[string]$parentInfo.Process }
+          $windowEvents.Add([pscustomobject]@{ Time=(Get-Date).ToString('o'); Process=$procName; PID=[int]$pidText; ParentPID=$parent; ParentProcess=$parentName; WindowClass=$parts[1]; Visible=$false; Source='EnumWindows' })
         }
       }
       $windowSeen=$current
@@ -115,17 +131,22 @@ public static class DafeiyuConsoleWindowEnum {
       foreach ($evt in $batch) {
         try {
           $item = $evt.SourceEventArgs.NewEvent
+          $parentInfo = $processMap[[string][int]$item.ParentProcessID]
+          $parentName = if ($parentInfo) { [string]$parentInfo.Process } else { 'unknown' }
+          $processRow = [pscustomobject]@{ Process=[string]$item.ProcessName; PID=[int]$item.ProcessID; ParentPID=[int]$item.ParentProcessID }
+          $processMap[[string]$processRow.PID] = $processRow
           $events.Add([pscustomobject]@{
             Time = $evt.TimeGenerated.ToString('o')
             Process = [string]$item.ProcessName
             PID = [int]$item.ProcessID
             ParentPID = [int]$item.ParentProcessID
+            ParentProcess = $parentName
             Source = 'Win32_ProcessStartTrace'
           })
         } catch { }
         Remove-Event -EventIdentifier $evt.EventIdentifier -ErrorAction SilentlyContinue
       }
-      Start-Sleep -Milliseconds 250
+      Start-Sleep -Milliseconds 40
     } else {
       try {
         $batch = @(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop)
@@ -134,20 +155,24 @@ public static class DafeiyuConsoleWindowEnum {
           $id = [string]$proc.ProcessId
           $next[$id] = $true
           if (-not $seen.ContainsKey($id)) {
+            $parentInfo = $processMap[[string][int]$proc.ParentProcessId]
+            $parentName = if ($parentInfo) { [string]$parentInfo.Process } else { 'unknown' }
             $events.Add([pscustomobject]@{
               Time = (Get-Date).ToString('o')
               Process = [string]$proc.Name
               PID = [int]$proc.ProcessId
               ParentPID = [int]$proc.ParentProcessId
+              ParentProcess = $parentName
               Source = 'Win32_ProcessPoll'
             })
           }
+          $processMap[$id] = [pscustomobject]@{ Process=[string]$proc.Name; PID=[int]$proc.ProcessId; ParentPID=[int]$proc.ParentProcessId }
         }
         $seen = $next
       } catch { }
-      Start-Sleep -Milliseconds 800
+      Start-Sleep -Milliseconds 200
     }
-    if (((Get-Date) - $lastWindowScan).TotalMilliseconds -ge 500) {
+    if (((Get-Date) - $lastWindowScan).TotalMilliseconds -ge $windowScanIntervalMs) {
       . $sampleConsoleWindows
       $lastWindowScan=Get-Date
     }
@@ -157,11 +182,16 @@ public static class DafeiyuConsoleWindowEnum {
     foreach ($evt in @(Get-Event -SourceIdentifier $source -ErrorAction SilentlyContinue)) {
       try {
         $item = $evt.SourceEventArgs.NewEvent
+        $parentInfo = $processMap[[string][int]$item.ParentProcessID]
+        $parentName = if ($parentInfo) { [string]$parentInfo.Process } else { 'unknown' }
+        $processRow = [pscustomobject]@{ Process=[string]$item.ProcessName; PID=[int]$item.ProcessID; ParentPID=[int]$item.ParentProcessID }
+        $processMap[[string]$processRow.PID] = $processRow
         $events.Add([pscustomobject]@{
           Time = $evt.TimeGenerated.ToString('o')
           Process = [string]$item.ProcessName
           PID = [int]$item.ProcessID
           ParentPID = [int]$item.ParentProcessID
+          ParentProcess = $parentName
           Source = 'Win32_ProcessStartTrace'
         })
       } catch { }
@@ -173,17 +203,28 @@ public static class DafeiyuConsoleWindowEnum {
   if ($registered) { Unregister-Event -SourceIdentifier $source -ErrorAction SilentlyContinue }
 }
 try {
+  $snapshotCsv = Join-Path $work 'process-snapshot.csv'
+  if ($processSnapshot.Count -gt 0) {
+    foreach ($row in $processSnapshot) {
+      $parentInfo = $processMap[[string]$row.ParentPID]
+      $parentName = if ($parentInfo) { [string]$parentInfo.Process } else { 'unknown' }
+      $row | Add-Member -NotePropertyName ParentProcess -NotePropertyValue $parentName -Force
+    }
+    $processSnapshot | Export-Csv -Path $snapshotCsv -NoTypeInformation -Encoding UTF8
+  } else {
+    'Process,PID,ParentPID' | Set-Content -Path $snapshotCsv -Encoding ASCII
+  }
   $csv = Join-Path $work 'process-start-events.csv'
   if ($events.Count -gt 0) {
     $events | Export-Csv -Path $csv -NoTypeInformation -Encoding UTF8
   } else {
-    'Time,Process,PID,ParentPID,Source' | Set-Content -Path $csv -Encoding ASCII
+    'Time,Process,PID,ParentPID,ParentProcess,Source' | Set-Content -Path $csv -Encoding ASCII
   }
   $windowCsv = Join-Path $work 'console-window-events.csv'
   if ($windowEvents.Count -gt 0) {
     $windowEvents | Export-Csv -Path $windowCsv -NoTypeInformation -Encoding UTF8
   } else {
-    'Time,Process,PID,ParentPID,WindowClass,Visible,Source' | Set-Content -Path $windowCsv -Encoding ASCII
+    'Time,Process,PID,ParentPID,ParentProcess,WindowClass,Visible,Source' | Set-Content -Path $windowCsv -Encoding ASCII
   }
   $elapsedSeconds = [Math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1)
   @(
@@ -191,11 +232,13 @@ try {
     ('RequestedSeconds: ' + $Seconds),
     ('ElapsedSeconds: ' + $elapsedSeconds),
     ('StopReason: ' + $stopReason),
+    ('ProcessSnapshot: ' + $processSnapshot.Count),
     ('ProcessEvents: ' + $events.Count),
     ('ConsoleWindowEvents: ' + $windowEvents.Count),
+    ('WindowScanIntervalMs: ' + $windowScanIntervalMs),
     ('WindowEnumAvailable: ' + $windowTypeReady),
-    'Captured only visible ConsoleWindowClass PID, process name, parent PID and visibility; no window title, command line, screenshot, message body, image or credentials.',
-    'A missing event does not prove no window appeared. WMI unavailability uses a slower polling fallback.'
+    'Captured process names, PID/parent PID snapshot and events, plus visible console/diagnostic process window owner PID/process/parent/class/visibility. No window title, command line, screenshot, message body, image or credentials.',
+    'Window enumeration polls about every 40ms and may still miss shorter windows. A missing event does not prove no window appeared. WMI unavailability uses a slower process polling fallback.'
   ) | Set-Content -Path (Join-Path $work 'README.txt') -Encoding ASCII
   Compress-Archive -Path (Join-Path $work '*') -DestinationPath $archive -Force -ErrorAction Stop
   if ($stopReason -eq 'manual-q') { Write-Host 'Stopped by Q. Export completed early.' } else { Write-Host 'Capture duration completed. Export completed.' }
