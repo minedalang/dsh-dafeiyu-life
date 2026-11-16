@@ -1,3 +1,9 @@
+## 2.8.1-dev.3b.33.2 (2026-11-16)
+
+- DM polling: after a real Bilibili -509, require a persisted, three-read slow recovery probation (10 minutes between successful read probes) before restoring normal/fast checks. DNS failure retains the platform guard; repeated -509 escalates cooldown. No forced sends.
+- Add `tools/diagnose-dsh-headless.ps1`: safe, read-only Windows differential check of the official Desktop `dsh.cmd` and the direct Electron CLI. Prints only limited classifications / exit codes; no config contents, private errors or credentials.
+- DSH image acceptance remains unresolved until a nonce-bound tool receipt and model description are actually observed on Windows.
+
 ## [2.8.1-dev.3b.33.1] · DSH 配置 dump 失败归因（未完成 Windows 识图验收）
 
 - Windows 18:39 验收的 `headless_config_dump_exit` 实际是 CLI `--dump-config` 非零退出，独立 MCP ready，但模型尚未请求；旧版丢失该配置检查的 CLI 安全退出信息。

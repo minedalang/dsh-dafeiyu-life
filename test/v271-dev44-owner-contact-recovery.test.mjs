@@ -33,9 +33,9 @@ test('persistent network backoff survives restart and is isolated by account and
  assert.equal(make().check('replies').allowed,true)
  assert.equal(make().check('dm').remainingMs,900000) // DM -509 protection: 15 minutes, not the old 5-minute retry
  now+=900000;a=make();assert.equal(a.check('dm').allowed,true)
- a.settle('dm','ENOTFOUND');assert.equal(make().check('dm').remainingMs,120000)
+ a.settle('dm','ENOTFOUND');assert.equal(make().check('dm').remainingMs,10*60_000) // DNS cannot prove -509 recovery
  scope='fedcba9876543210';assert.equal(make().check('dm').allowed,true)
- scope=tag;a.settle('dm','');assert.equal(make().check('dm').allowed,true)
+ scope=tag;now+=10*60_000;a.settle('dm','');assert.equal(make().check('dm').recoverySuccesses,1);assert.equal(make().check('dm').allowed,false)
 }))
 test('ordinary network backoff is capped at five-minute recovery probes and manual recovery clears only CAS-matched network lanes',async()=>withDir(async dir=>{
  let now=date(12),scope=tag

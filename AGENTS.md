@@ -1,3 +1,9 @@
+## dev.3b.33.2 2026-11-16 DM -509 recovery probation and DSH CLI differential probe
+
+- A completed DM inbox read after an expired Bilibili -509 cooldown must NOT immediately restore 2-minute regular or 10-second fast polling. Keep an account-scoped persisted probation across DSH restarts: 3 completed reads spaced by 10 minutes before clearing the rate-limit lane; a subsequent -509 increases the existing streak, while DNS failure cannot be a successful recovery receipt. Keep platform limits, read budget, and sending permissions intact. Do not automatically retry old private messages.
+- DSH vision remains NOT validated on the user's Windows installation. Official dsh.cmd and the direct Electron cli.js launcher must be compared via read-only dump/version probes. Never record raw dumps, stderr, model answers, paths or secrets. The independent MCP ready state does not imply model picture understanding. Do not bypass the Headless overlay/nonce proof gate.
+- Cloud agent may only run relevant increment Node/Python tests, architecture/contract/selfcheck and npm dry-run. Never run full Node/Python suite; real Bilibili writes and Windows visual acceptance are not performed.
+
 ## dev.3b.33.1 Headless 配置分层诊断（增量）
 
 - 18:39 Windows 验收 `headless_config_dump_exit` 只能确认配置 dump 子命令退出失败，不等于 MCP 被 DSH 拒绝或模型不识图。`vision_dsh.py` 仅在 dump 非零时用同一 CLI 做 `--dump-default-config` 和不带视觉 patch 的 `--dump-config` 分层对照，保留封闭类目和原 CLI 安全退出信息，不留 stdout/stderr 原文。
