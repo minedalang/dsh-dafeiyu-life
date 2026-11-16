@@ -179,6 +179,17 @@ if isinstance(vision, dict) and vision.get('version') == 1:
                          'status': vision['status'], 'mode': vision['mode']}
 dump('visual-model-last-run.json', vision_status)
 
+video_job=read_json(root/'video-perception-debug-last-run.json',limit=2048)
+video_debug={'present':False}
+if isinstance(video_job,dict) and video_job.get('version')==1 and video_job.get('status') in ('running','done','error','interrupted'):
+    at=number(video_job.get('startedAt'))
+    updated=number(video_job.get('updatedAt'))
+    if at is not None and updated is not None:
+        video_debug={'present':True,'status':video_job['status'],'startedAt':at,'updatedAt':updated,
+            'step':max(0,min(6,int(number(video_job.get('step')) or 0))),
+            'reason':video_job.get('reason') if video_job.get('reason') in ('video_debug_failed','video_debug_finished','host_restarted','in_progress') else 'unknown'}
+dump('video-perception-debug-last-run.json',video_debug)
+
 # DSH mascot probe: redact again at export, never copy raw stdout or model answer.
 dsh_diag = read_json(root/'dsh-vision-selftest-last-run.json',limit=8192)
 dsh_summary={'present':False}
@@ -198,7 +209,8 @@ if isinstance(dsh_diag,dict) and dsh_diag.get('schema')==1 and isinstance(dsh_di
                 'exitCode':row['cliExitCode'] if type(row.get('cliExitCode')) is int and -1<=row['cliExitCode']<=255 else -1,
                 'stdout':row.get('cliStdout') if row.get('cliStdout') in ('present','empty') else 'unknown',
                 'stderr':row.get('cliStderr') if row.get('cliStderr') in ('present','empty') else 'unknown',
-                'stderrKind':stage(row.get('cliStderrKind'))}}
+                'stderrKind':stage(row.get('cliStderrKind')),
+                'nodeErrorCode':stage(row.get('cliNodeErrorCode'))}}
 dump('dsh-vision-selftest-last-run.json',dsh_summary)
 
 life_file = root/'life-agent-events'

@@ -201,6 +201,7 @@ import {verifiedShareMemoryEvents} from './lib/confirmed-video-share.mjs'
 import { createLifeReflection } from './lib/life-reflection.mjs'
 import {createActivityFeed} from './lib/activity-feed.mjs'
 import {createLiveLifeActivity} from './lib/live-life-activity.mjs'
+import {saveVideoDebugSummary,readVideoDebugSummary} from './lib/video-debug-receipt.mjs'
 import {createLifeManagementEvents} from './lib/life-management-events.mjs'
 import {describeIncomingBiliImage,verifiedBiliImageUrl} from './lib/incoming-image-vision.mjs'
 import {favoriteStyleFromPersona,publicFavoriteTopics} from './lib/favorite-style.mjs'
@@ -1903,7 +1904,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
 
   // Owner-only read diagnostics. Keep the last actual Life handoff in process memory
   // for 30 minutes; JPEG snapshots are isolated, short-lived local diagnostics only.
-  let lastLifeVideoDebug=null,videoDebugJob=null
+  let lastLifeVideoDebug=null,videoDebugJob=null,videoDebugWorkInFlight=false
   let lastLifeVisionActivity=null // in-process operational metadata, no BV/visual text/UID
   const recentVideoFocusCues=new Map() // account-scoped, short-lived, no durable model text
   const recallVideoFocusCues=bvid=>{
@@ -1931,7 +1932,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const dryRun=args.__debugDryRun===true
     const initialAccount=videoDebugAccount()
     const initialLifeAccountTag=trustedLifeAccountTag()
-    const stage=(label,step)=>{if(dryRun&&videoDebugJob?.status==='running'){videoDebugJob.stage=label;if(Number.isInteger(step))videoDebugJob.step=step;videoDebugJob.updatedAt=Date.now()}}
+    const stage=(label,step)=>{if(dryRun&&videoDebugJob?.status==='running'){videoDebugJob.stage=label;if(Number.isInteger(step))videoDebugJob.step=step;videoDebugJob.updatedAt=Date.now();saveVideoDebugSummary(stateDir,videoDebugJob,initialAccount)}}
     refreshCfg()
     if(cfg.masterEnabled!==true&&!dryRun)return {ok:false,blocked:true,error:'大肥鱼总开关已关闭'}
     if(!hasCredential())return {ok:false,loggedIn:false,error:'B站尚未登录，请先扫码登录'}
@@ -1988,7 +1989,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       visualQuestion:args.visual_question===true,depth:args.view_depth})
     stage(visionPlan.attempt?'下载真实视频窗口／FFmpeg 解码／视觉模型理解中（正在等待实际回执）':'略看资料或视觉服务不可用',3)
     const willInvokeVision=visionPlan.attempt&&['independent_dsh','independent_local'].includes(resolvedVisionMode())
-    const stopLiveVideoObservation=willInvokeVision?liveLifeActivity.start('video-observe',initialLifeAccountTag,{maxAgeMs:8*60_000}):()=>{}
+    const stopLiveVideoObservation=willInvokeVision?liveLifeActivity.start(dryRun?'video-observe-debug':'video-observe',initialLifeAccountTag,{maxAgeMs:8*60_000}):()=>{}
     // Persist the focus receipt after the observation try/finally: it must
     // remain in scope for Life experience recording and perceptual handoff.
     let focusReview=null,focusReviewStatus=null
@@ -7806,32 +7807,49 @@ logger:{warn:m=>log('社交意图：'+m)}
       }
       if(req.method==='GET'&&path.endsWith('/video-perception-debug')){
         const current=videoDebugJob&&videoDebugJob.account===account&&now-videoDebugJob.at<videoDebugExpiry?videoDebugJob:null
+        const previous=!current?readVideoDebugSummary(stateDir,account):null
         const last=lastLifeVideoDebug&&lastLifeVideoDebug.account===account&&now-lastLifeVideoDebug.at<videoDebugExpiry?lastLifeVideoDebug:null
         return sendJson(res,200,{ok:true,job:current&&{id:current.id,status:current.status,stage:current.stage,step:current.step,updatedAt:current.updatedAt,at:current.at,
-          ...(current.status==='done'?{lifeInput:current.payload,images:current.images||[]}:{}),...(current.status==='error'?{error:current.error}:{})},
-          lastLife:last&&{at:last.at,lifeInput:last.payload,images:last.images||[]},retention:'volatile-30m',source:'actual-bili-watch-video-return'})
+          ...(current.status==='done'?{lifeInput:current.payload,images:current.images||[],visionOutcome:current.visionOutcome||'no_model_answer'}:{}),...(current.status==='error'?{error:current.error}:{})},
+          lastLife:last&&{at:last.at,lifeInput:last.payload,images:last.images||[]},
+          lastSummary:previous,retention:'volatile-30m',source:'actual-bili-watch-video-return'})
       }
       if(req.method==='POST'&&path.endsWith('/video-perception-debug/run')){
-        if(videoDebugJob?.status==='running')return sendJson(res,409,{ok:false,error:'已有视频感知试运行，请等它完成'})
+        if(videoDebugWorkInFlight)return sendJson(res,409,{ok:false,error:'上一轮视频感知底层任务仍在执行；请勿重复触发，等待它结束或重启插件后再试'})
         const body=await readBody(req,2500),bvid=String(body?.bvid||'').trim()
         if(!validBv(bvid))return sendJson(res,400,{ok:false,error:'请填写有效的 BV 号'})
         const depth=['skim','standard','deep'].includes(body?.depth)?body.depth:'deep'
         const job={id:randomUUID(),at:now,account,status:'running',stage:'已受理，只读任务开始',step:0,updatedAt:now}
         videoDebugJob=job
+        videoDebugWorkInFlight=true
+        saveVideoDebugSummary(stateDir,job,account)
+        const watchdog=setTimeout(()=>{
+          if(videoDebugJob===job&&job.status==='running'){
+            job.status='error';job.stage='视频感知处理超出 8 分钟';job.error='本轮已超过 8 分钟，未取得最终视觉回执；底层任务可能仍在结束中，暂不接受重复启动。';job.updatedAt=Date.now()
+            saveVideoDebugSummary(stateDir,job,account)
+          }
+        },8*60_000);watchdog.unref?.()
         const retire=setTimeout(()=>{if(videoDebugJob===job)videoDebugJob=null},videoDebugExpiry)
         retire.unref?.()
         // Manual explicit debug request: does not express an autonomous Life intent.
         // Do not await in the HTTP handler: visual/ASR can exceed browser timeout.
         Promise.resolve().then(()=>executeWatchVideo({bvid,view_depth:depth,include_comments:false,
           include_danmaku:true,record_session:false,__debugDryRun:true})).then(result=>{
-          if(videoDebugJob!==job)return
-          if(videoDebugAccount()!==job.account){job.status='error';job.stage='账号已切换';job.error='账号变化，已丢弃本轮诊断结果';return}
-          job.status=result?.ok===true?'done':'error'
-          job.stage=job.status==='done'?'完成，只读 Life 输入已生成':'只读感知失败'
-          if(job.status==='done')job.payload=result
-          else job.error=String(result?.error||'视频感知未完成').slice(0,240)
-        }).catch(error=>{if(videoDebugJob===job){job.status='error';job.stage='执行失败';
-          job.error=String(error?.message||error||'未知错误').slice(0,240)}})
+          if(videoDebugJob!==job||job.status!=='running')return
+          if(videoDebugAccount()!==job.account){job.status='error';job.stage='账号已切换';job.error='账号变化，已丢弃本轮诊断结果'}
+          else {
+            job.status=result?.ok===true?'done':'error'
+            job.stage=job.status==='done'?'完成，只读 Life 输入已生成':'只读感知失败'
+            if(job.status==='done'){
+              job.payload=result
+              job.visionOutcome=result?.visual?.status==='analyzed'&&Boolean(String(result?.perceptionHandoff?.video?.modelDescription||'').trim())?'model_answer_returned':'no_model_answer'
+              job.stage=job.visionOutcome==='model_answer_returned'?'只读资料已整理且视觉模型返回了实际回答':'只读资料已整理，但尚无可信视觉模型回答'
+            }else job.error=String(result?.error||result?.visual?.error||'视频感知未完成').slice(0,240)
+          }
+          job.updatedAt=Date.now();saveVideoDebugSummary(stateDir,job,account)
+        }).catch(error=>{if(videoDebugJob===job&&job.status==='running'){job.status='error';job.stage='执行失败';
+          job.error=String(error?.message||error||'未知错误').slice(0,240);job.updatedAt=Date.now();saveVideoDebugSummary(stateDir,job,account)}})
+        .finally(()=>{videoDebugWorkInFlight=false;clearTimeout(watchdog)})
         return sendJson(res,202,{ok:true,id:job.id,status:'running',notice:'只读试运行，不创建 Life 经历、不执行外部写入'})
       }
       return sendJson(res,405,{ok:false,error:'不支持的方法'})

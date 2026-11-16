@@ -1404,7 +1404,9 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-life-agent .life-action-origin span{color:var(--muted);overflow-wrap:anywhere}
 
 #panel-life-agent .life-tree-viewport{overflow-x:auto;background:linear-gradient(120deg,#092b40,#13394f 49%,#123f4a);border-radius:21px;border:1px solid #447487;box-shadow:inset 0 0 48px #05263a7d;scrollbar-color:#84b6c7 #163c4b}
-#panel-life-agent #life-behavior-tree{min-width:680px;width:100%;display:block}
+#panel-life-agent .life-timeline-live-activity:not([hidden]){margin:10px 0;padding:12px 16px;border:1px solid #76bcb3;border-radius:13px;background:color-mix(in srgb,var(--panel) 80%,#b6eae0);animation:life-entry-arrive .48s ease both;font-weight:650;font-size:13px;line-height:1.5}
+#panel-life-agent .life-timeline-live-activity[data-kind="video-observe-debug"]{border-color:#b6a8df;background:color-mix(in srgb,var(--panel) 80%,#e5dcfa)}
+#panel-life-agent #life-behavior-tree{min-width:620px;width:100%;display:block}
 #panel-life-agent #life-behavior-tree .life-tree-edge{fill:none;stroke:#6a9eae;stroke-width:1.7;opacity:.39}
 #panel-life-agent #life-behavior-tree .life-tree-edge.is-selected{stroke:#82e8dd;stroke-width:3;opacity:.96}
 #panel-life-agent #life-behavior-tree .life-tree-edge.is-running{stroke-dasharray:7 12;animation:life-tree-flow .8s linear infinite}
@@ -2238,10 +2240,11 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
  <div class="life-choice-stage" data-stage="execute"><small>03 · 执行动作</small><strong>待执行</strong></div>
  <div class="life-choice-stage" data-stage="receipt"><small>04 · 核对结果</small><strong>尚无回执</strong></div>
 </div>
-<div class="life-tree-viewport"><svg id="life-behavior-tree" viewBox="0 0 1180 765" role="img" aria-label="Life 可选行为树，按最近真实决策与回执高亮"></svg></div>
-<div class="life-tree-legend"><span>◉ 最新选择</span><span>≈ 流动：执行中 · 呼吸：考虑中 · 余晖：已结束</span><span>✓ 已核验回执</span><span>○ 可用能力类别（不代表本轮可执行）</span></div>
+<div class="life-tree-viewport"><svg id="life-behavior-tree" viewBox="0 0 970 400" role="img" aria-label="Life 五类基础行为与当前真实动作，动态入场"></svg></div>
+<div class="life-tree-legend"><span>◎ 五类常驻行为</span><span>◉ 真正发生的动作才显示分支</span><span>≈ 运行中动态</span><span>✓ 结果须有真实回执</span></div>
 <p class="muted">行为树展示的是源码支持的动作类别及最近的匿名真实决策，不等同于每一轮可用的完整动作菜单。只有合格候选才进入实际模型菜单；视频 Agent 的下游动作由专业工具与发送门禁执行。</p>
 <div class="life-now-timeline life-behavior-timeline" aria-label="行动树关联的实时生活记录">
+<div id="life-timeline-live-activity" class="life-timeline-live-activity" role="status" aria-live="polite" hidden></div>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar life-timeline-controls"><span class="life-timeline-live-dot" aria-hidden="true"></span><span class="life-timeline-update-state" id="life-timeline-update-state" role="status">实时同步 · 每 4 秒对账</span><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新列表</button></div>
 <p id="life-timeline-summary" class="muted" role="status" hidden></p>
 <div id="life-timeline-list" class="records records-scroll tall" aria-label="真实生活时间线滚动列表" aria-live="polite" aria-relevant="additions"></div></div>

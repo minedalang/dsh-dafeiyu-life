@@ -349,7 +349,7 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
     if model not in ('qwen3.5:4b','openbmb/minicpm-v4.7:1b'):
         raise ValueError('本地视觉模型不在安全白名单中')
     note = '\n'.join(f'分镜图{i+1}：包含视频时刻 {frame.get("tile_times",[frame["second"]])} 秒' for i,frame in enumerate(frames))
-    payload={'model':model,'stream':False,'keep_alive':'0','options':{'num_predict':1200 if image_source!='B站低清预览' else (720 if any(f.get('tile_count',1)>1 for f in frames) else 240)},
+    payload={'model':model,'stream':False,'keep_alive':'5m','options':{'num_predict':1200 if image_source!='B站低清预览' else (720 if any(f.get('tile_count',1)>1 for f in frames) else 240)},
              'messages':[{'role':'user','content':((PREVIEW_BOARD_PROMPT if any(f.get('tile_count',1)>1 for f in frames) else PROMPT) if image_source=='B站低清预览' else ADAPTIVE_PROMPT)+'\n'+note,
                           'images':[base64.b64encode(f['bytes']).decode('ascii') for f in frames]}]}
     url='http://127.0.0.1:11434/api/chat'

@@ -1,3 +1,12 @@
+## 2.8.1-dev.3b.29 Ollama 可见窗口、手动视觉验收与 Life 行动树增量
+
+- 2026-11-16 15:10 新窗口采集把 6 组可见 `PseudoConsoleWindow` 与 `llama-server.exe`/`ollama.exe` 子进程关联，父进程为本地 Ollama 服务。与 FFmpeg 启动记录不得混淆；Ollama daemon/runner 不是插件自己的 FFmpeg 子进程，不能宣称修改 `windowsHide` 或 `DETACHED_PROCESS` 已根治其窗口。
+- 本地图片请求由强制 `keep_alive=0` 改为温和的 `5m`，减少连续验收时频繁卸载模型的机会；不修改 Ollama 程序和系统全局设置，也不保证首次模型加载绝不会弹窗。
+- 主人视频感知调试与 Life 自主观察必须有不同实时活动类别；调试不能进入 Life 自主行动/记忆/发送回执。任务超时可显示错误但底层 MCP 可能尚未结束，禁止在未结束时重复并行启动。最后一次诊断仅落盘状态、时间、阶段号、不可逆账号指纹，绝不保存 BV、图片、模型内容、私信或凭据。
+- 行动树只常驻五个行为类别，当前真实行为才临时出现子节点。正在观察视频期间显示真实活动；刚结束仅给有限时间的观察阶段回执，不冒称识图成功。最近一轮 Life 决策不能冒充主人当前只读调试。
+- DSH `node_exception` 继续属于未解决问题，只允许把 Node 可信闭集的 ERR_ 代码记入脱敏诊断，不导出异常文本或本地路径。MCP 无图片回执时不能声称 Provider 收到图片，更不能将 `exit=1` 当作模型不支持图片。
+- 按长期规则：云端只运行增量 Node/Python、架构、语法、npm 包检查和 Patch 回放，**严禁云端全量 Node 测试**。Windows Ollama 和 Headless 识图仍需用户实机确认。
+
 ## 2.8.1-dev.3b.28 DSH CLI 证据导出与黑窗归因收敛
 
 - 14:48–14:50 Windows 新事件日志证实 Python PID 49060 的 `PseudoConsoleWindow` 短暂可见；FFmpeg 确有子进程启动，但本轮可见窗口事件没有归属 FFmpeg，不能再将 13 个 FFmpeg 或 51 个 conhost 的进程次数当成黑窗次数。

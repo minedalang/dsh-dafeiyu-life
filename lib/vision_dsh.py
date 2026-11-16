@@ -435,10 +435,17 @@ def _safe_cli_process_receipt(result):
     elif 'mcp' in normalized and ('error' in normalized or 'failed' in normalized): stderr_kind='mcp_diagnostic'
     elif 'http 4' in normalized or 'http 5' in normalized or 'status code' in normalized: stderr_kind='http_diagnostic'
     else: stderr_kind='unclassified_output'
+    # Closed allowlist: a raw Node exception stack may contain sensitive paths.
+    match=re.search(r'\b(ERR_[A-Z_]{3,50}|MODULE_NOT_FOUND)\b',normalized.upper())
+    allowed={'ERR_MODULE_NOT_FOUND','MODULE_NOT_FOUND','ERR_REQUIRE_ESM',
+             'ERR_UNKNOWN_FILE_EXTENSION','ERR_INVALID_ARG_VALUE','ERR_INVALID_ARG_TYPE',
+             'ERR_PACKAGE_PATH_NOT_EXPORTED','ERR_UNSUPPORTED_DIR_IMPORT',
+             'ERR_INVALID_URL','ERR_CONNECTION_REFUSED','ERR_PARSE_ARGS_INVALID_OPTION_VALUE'}
+    node_code=match.group(1).lower() if match and match.group(1) in allowed else 'unknown'
     return {'status': 'exited', 'exitCode': code if 0 <= code <= 255 else -1,
             'stdout': 'present' if getattr(result, 'stdout', b'') else 'empty',
             'stderr': 'present' if err else 'empty',
-            'stderrKind':stderr_kind}
+            'stderrKind':stderr_kind,**({'nodeErrorCode':node_code} if node_code!='unknown' else {})}
 
 
 def _vision_selftest_diagnostics(*, mcp='not_run', provider_api='not_run', answer='not_run',
