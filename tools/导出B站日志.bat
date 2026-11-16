@@ -179,6 +179,22 @@ if isinstance(vision, dict) and vision.get('version') == 1:
                          'status': vision['status'], 'mode': vision['mode']}
 dump('visual-model-last-run.json', vision_status)
 
+# DSH mascot probe: redact again at export, never copy raw stdout or model answer.
+dsh_diag = read_json(root/'dsh-vision-selftest-last-run.json',limit=8192)
+dsh_summary={'present':False}
+if isinstance(dsh_diag,dict) and dsh_diag.get('schema')==1 and isinstance(dsh_diag.get('last'),dict):
+    row=dsh_diag['last']
+    stage_names=('preflight','mcpImage','attachmentBridge','providerApi','modelAnswer')
+    stage=lambda v: v if isinstance(v,str) and re.fullmatch(r'[a-z][a-z0-9_]{0,39}',v) else 'unknown'
+    status=row.get('status')
+    if status in ('idle','running','failed','awaiting_review','approved','rejected'):
+        dsh_summary={'present':True,'status':status,
+            'at':str(row.get('at',''))[:35] if re.fullmatch(r'[0-9T:.+\-Z]{10,35}',str(row.get('at',''))) else '',
+            'routeId':str(row.get('routeId','')) if re.fullmatch(r'[a-f0-9]{16}',str(row.get('routeId',''))) else '',
+            'diagnosticCode':stage(row.get('diagnosticCode')),
+            'stages':{key:stage(row.get(key)) for key in stage_names}}
+dump('dsh-vision-selftest-last-run.json',dsh_summary)
+
 life_file = root/'life-agent-events'
 rounds=[]
 if life_file.is_dir():

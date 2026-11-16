@@ -21,7 +21,7 @@ test('Headless 同步与真实验证清楚分开，首次设置有可见的下�
 function journey(mobileViewOnly=false){
   const elements=new Map()
   const $=id=>{
-    if(!elements.has(id))elements.set(id,{dataset:{},textContent:'',hidden:false})
+    if(!elements.has(id))elements.set(id,{dataset:{},textContent:'',hidden:false,querySelector:()=>({textContent:''})})
     return elements.get(id)
   }
   const start=js.indexOf('  const renderHeadlessJourney=providers=>{')
@@ -59,7 +59,7 @@ test('Android 查看模式不提供验证主按钮，仍展示所需电脑端操
 
 function makeRequest({status,body=null,mobileViewOnly=true}={}){
   const start=js.indexOf('  const request=async(path,body)=>{')
-  const end=js.indexOf('  // 统一样式的异步弹窗',start)
+  const end=js.indexOf('  // A save assistant for the EXISTING',start)
   assert.ok(start>=0&&end>start)
   const fetches=[]
   const request=runInNewContext(js.slice(start,end)+'\nrequest',{

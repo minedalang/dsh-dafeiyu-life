@@ -440,7 +440,7 @@ padding:11px 12px;margin:12px 0;font-size:13px;line-height:1.65;display:grid;gap
 .headless-next-action{width:max-content;max-width:100%;font-weight:800;box-shadow:0 5px 15px rgba(70,86,155,.2)}
 .headless-verify-button.primary{background:linear-gradient(110deg,#7352bd,#426fd0);color:#fff;border-color:transparent;font-weight:800}
 .headless-verify-hint{display:block;color:var(--action);font-size:12px;font-weight:700;margin:5px 0}
-.headless-sync-board{display:grid;grid-template-columns:minmax(0,1fr) 52px minmax(0,1fr);gap:10px;align-items:stretch;margin:16px 0;border:1px solid var(--stroke);border-radius:17px;overflow:hidden;background:color-mix(in srgb,var(--panel) 94%,var(--ui-indigo) 6%)}
+.headless-sync-board{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 52px minmax(0,1fr);gap:10px;align-items:stretch;margin:16px 0;border:1px solid var(--stroke);border-radius:17px;overflow:hidden;background:color-mix(in srgb,var(--panel) 94%,var(--ui-indigo) 6%)}
 .headless-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.headless-panel-heading h4{margin:0}.headless-panel-heading span{font-size:11px;color:var(--muted);font-weight:750;border-radius:999px;background:color-mix(in srgb,var(--stroke) 35%,var(--panel));padding:6px 10px}
 .headless-sync-column{min-width:0;background:var(--panel);padding:0 12px 12px}
 .headless-sync-column>header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 -12px 12px;padding:12px 14px;background:color-mix(in srgb,var(--stroke) 34%,var(--panel));font-size:14px}
@@ -463,6 +463,11 @@ padding:11px 12px;margin:12px 0;font-size:13px;line-height:1.65;display:grid;gap
 .headless-capability-chip[data-state="unknown"]{background:color-mix(in srgb,#aeb8c5 24%,var(--panel));color:var(--muted)}
 .headless-model-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .headless-model-actions button,.headless-provider-action{font-size:12px;padding:6px 9px}
+.headless-sync-links{position:absolute;inset:0;width:100%;height:100%;z-index:2;overflow:visible;pointer-events:none}
+.headless-pair-link{fill:none;stroke:var(--ui-teal);stroke-width:1.8;stroke-dasharray:5 5;opacity:.55;transition:opacity .18s,stroke-width .18s}
+.headless-pair-link.is-active{stroke-width:3;opacity:1}.headless-pair-link.is-muted{opacity:.13}
+.headless-model-row:focus-visible{outline:2px solid var(--ui-teal);outline-offset:2px;border-radius:5px}
+@media(max-width:850px){.headless-sync-links{display:none}.headless-model-row[data-connected="true"] .headless-model-name::after{content:" · ↔ Headless 同源";font-size:10px;color:var(--ui-teal);font-weight:600}}
 .headless-sync-flow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:var(--muted)}
 .headless-sync-flow strong{font-size:30px;color:var(--action)}.headless-sync-flow span{font-size:10px;font-weight:750;text-align:center;writing-mode:vertical-rl}
 .headless-target-empty{border:1px dashed var(--stroke);border-radius:14px;min-height:145px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:var(--muted);text-align:center;padding:14px}
@@ -1763,7 +1768,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <header><strong>▣ ① DSH Desktop · 来源模型</strong><span id="headless-source-count">检测中…</span></header>
     <div id="headless-source-list" class="headless-provider-stack"><p class="muted">等待检测 Desktop 模型…</p></div>
   </section>
-  <div class="headless-sync-flow" aria-hidden="true"><strong>→</strong><span id="headless-sync-flow-status">待同步</span></div>
+  <div class="headless-sync-flow" aria-hidden="true"><strong>↔</strong><span id="headless-sync-flow-status">待同步</span></div>
+  <svg id="headless-sync-links" class="headless-sync-links" aria-hidden="true" focusable="false"></svg>
   <section class="headless-sync-column headless-target-column">
     <header><strong>▤ DSH Headless · 后台模型</strong><span id="headless-target-count">0 个已同步</span></header>
     <div id="headless-target-list" class="headless-provider-stack"><div class="headless-target-empty"><strong>▱</strong><span>同步后会出现在这里</span><small>Headless 能力声明可在同步后单独补充</small></div></div>
@@ -1796,14 +1802,6 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="independent_dsh">DSH 识图模型（使用上方 Provider / 模型）</option><option value="independent_local">本地 Ollama 视觉模型（下方一键安装）</option></select></div>
 <div><label class="checkline"><input id="models-vision-enabled" type="checkbox">启用视频视觉感知</label></div>
 <div><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></div></div>
-<section class="setting-note" id="dsh-vision-capabilities-guide" aria-label="DSH 第三方视觉模型能力配置助手" style="margin-top:12px;border-radius:14px;padding:14px">
-  <strong>☁️ DSH 第三方视觉模型 · 能力配置助手</strong>
-  <p class="muted">不使用本地 Ollama 时，可考虑已由可信渠道提供、支持图片输入的 <code>gpt-6-luna</code>：官方 API 的文本 Token 单价较低，但第三方中转站可能自行定价、限制图片或不支持某些协议。不同 DeepSeek 型号及中转渠道成本差异较大，请按实际价格、图片用量和模型表现选择，避免笼统判断。</p>
-  <p class="muted"><strong>普通使用者不需要手改 YAML：</strong>先在上方 Desktop / Headless 双栏同步 Provider，再在右侧目标模型卡片点击「配置 Headless 能力声明」，只为 Headless 明确补充你确认支持的图片输入或思考档位；不会修改 Desktop。下面的 YAML 仅供高级用户核对，不是必要步骤。</p>
-  <div class="toolbar"><button type="button" id="dsh-vision-config-generate">高级：生成手动配置片段</button><button type="button" id="dsh-vision-config-copy">复制高级配置片段</button></div>
-  <pre id="dsh-vision-config-snippet" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto" aria-label="第三方视觉模型能力示例配置">请填写上方 DSH 模型 ID 后点击生成。</pre>
-  <p class="muted">这里只辅助声明模型能力，<strong>不自动改配置、不开启图片功能、更不保证中转站真的支持</strong>。配置完成后须新建 Session，并使用下方真实大肥鱼图片进行人工验收。思考档位映射依所用 Provider API 而定；不能识别的档位请删除。</p>
-</section>
 <section class="setting-note" id="vision-unified-probe-panel" aria-label="视觉模型图片人工验收" style="margin-top:14px;border-radius:14px;padding:16px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
     <strong>🐟 图片识别验收</strong>
@@ -1813,10 +1811,11 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div id="vision-route-capabilities" class="vision-route-capabilities" role="status" aria-live="polite">正在读取实际视觉路由、图片能力声明和思考深度声明…</div>
   <div id="vision-probe-stages" class="vision-probe-stages" aria-label="DSH 图片识别验收阶段">
     <div class="vision-probe-stage" data-stage="route" data-state="unknown"><strong>① 实际模型路由</strong><span>等待检测</span></div>
-    <div class="vision-probe-stage" data-stage="mcpImage" data-state="unknown"><strong>② MCP 图片工具</strong><span>等待验收</span></div>
-    <div class="vision-probe-stage" data-stage="attachmentBridge" data-state="unknown"><strong>③ 图片附件桥接</strong><span>插件无法读取独立桥接回执</span></div>
-    <div class="vision-probe-stage" data-stage="providerApi" data-state="unknown"><strong>④ DSH / Provider 请求</strong><span>等待验收</span></div>
-    <div class="vision-probe-stage" data-stage="modelAnswer" data-state="unknown"><strong>⑤ 模型最终回答</strong><span>等待验收</span></div>
+    <div class="vision-probe-stage" data-stage="mcpPreflight" data-state="unknown"><strong>② MCP 本地前置预检</strong><span>等待验收</span></div>
+    <div class="vision-probe-stage" data-stage="mcpImage" data-state="unknown"><strong>③ DSH 实际 MCP 图片回执</strong><span>等待验收</span></div>
+    <div class="vision-probe-stage" data-stage="attachmentBridge" data-state="unknown"><strong>④ 图片附件桥接</strong><span>插件无法读取独立桥接回执</span></div>
+    <div class="vision-probe-stage" data-stage="providerApi" data-state="unknown"><strong>⑤ DSH / Provider 请求</strong><span>等待验收</span></div>
+    <div class="vision-probe-stage" data-stage="modelAnswer" data-state="unknown"><strong>⑥ 模型最终回答</strong><span>等待验收</span></div>
   </div>
   <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
     <figure style="margin:0;flex:0 0 164px;text-align:center">
@@ -1825,6 +1824,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     </figure>
     <div style="flex:1 1 270px;min-width:0">
       <p id="vision-probe-result" role="status" aria-live="polite">尚未识图</p>
+      <p id="vision-probe-last-run" class="muted" role="status"></p>
       <strong>实际模型回答</strong>
       <pre id="vision-probe-answer" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;margin-top:6px" aria-label="当前识图方式的完整回答">尚无结果</pre>
       <p id="vision-probe-error" class="muted" style="overflow-wrap:anywhere" role="status"></p>

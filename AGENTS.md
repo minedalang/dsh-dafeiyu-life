@@ -1,3 +1,11 @@
+## 2.8.1-dev.3b.22 Headless 图片诊断与双栏对应（当前增量）
+
+- Headless 文字连接验证、Provider 同步、Headless 专属能力声明写入后，管理 UI 必须重新读取真实 `dsh-vision/status`。旧状态不能遮蔽已通过的路由；图片测试只能在实际已保存、同 Provider/模型且文字验证有效、无未保存更改时启用。异步旧响应不能覆盖新状态。
+- DSH 图片实测先在独立只读 stdio MCP 会话中预检固定 PNG 完整性、单个白名单工具与真实 ImageContent；随后才启动原受限 DSH 子会话。预检成功只代表工具本身可调用；**DSH 内部附件桥接不可独立观测**，不得把独立预检成功冒充模型识图成功。
+- 即使 DSH Python 子进程以非零码退出，也要优先保留已取得的 nonce 图片回执与脱敏分阶段诊断。`dsh-vision-selftest-last-run.json` 仅存时间/模型标识/有限诊断状态，不存模型回答、图片、原始 stderr、密钥、请求正文或完整 URL；跨重启只展示诊断、不恢复人工认可。导出日志只携带脱敏摘要。
+- 精简重复的第三方能力 YAML 配置助手，保留原 Headless 专属能力声明弹窗；双栏同源线仅按真实 Provider+模型匹配、同步状态展示，不能用连线表示文字验证或图片验收已通过。移动端只读使用文本标记。
+- 不改 Desktop 配置、API Key、真实 B站写入、Life 自主行为、账号围栏或限流；不得发布 npm、创建正式 Tag。必须通过 Windows DSH `muze-gpt/gpt-6-luna` 人工端到端图片验收后才可声明真实模型识图成功；详见 `docs/architecture/2.8.1-dev3b22-headless-vision-test-diagnostics.md`。
+
 ## 2.8.1-dev.3b.21 全站设置保存与多领域审计（当前增量）
 
 - 用户确认的新范围是**完整只读审计**与有事实依据的安全修复，而非放宽 Life/社交/B站写入。跨系统审计详见 `docs/architecture/2.8.1-dev3b21-settings-and-cross-system-audit.md`。

@@ -55,13 +55,15 @@ test('native Ollama recovery is opt-in by local mode, without PowerShell or shel
  assert.equal(calls[0].options.windowsHide,true)
  assert.equal(ollamaExecutable({platform:'darwin',exists:x=>x==='/Applications/Ollama.app/Contents/Resources/ollama'}),'/Applications/Ollama.app/Contents/Resources/ollama')
 })
-test('owner-only Ollama recovery route, DSH ability guide and README vector diagrams are wired',()=>{
+test('owner-only Ollama recovery route, unified Headless capability dialog and README vector diagrams are wired',()=>{
  const src=read('index.js'),html=read('lib/management-console.html'),ui=read('lib/management-console.js'),readme=read('README.md')
  assert.match(src,/\/api\/bili-duty\/local-vision\/ensure/)
  assert.match(src,/req\.socket\?\.remoteAddress/)
- assert.match(ui,/dshVisionModelSnippet/)
+ assert.doesNotMatch(ui,/dshVisionModelSnippet/)
+ assert.match(ui,/补充图片与思考能力/)
  assert.match(ui,/local-vision\/ensure/)
- for(const id of ['local-vision-ensure','dsh-vision-config-copy','dsh-vision-capabilities-guide'])assert.ok(html.includes('id="'+id+'"'))
+ for(const id of ['local-vision-ensure','headless-capability-dialog','headless-sync-links'])assert.ok(html.includes('id="'+id+'"'))
+ for(const id of ['dsh-vision-config-copy','dsh-vision-capabilities-guide'])assert.equal(html.includes('id="'+id+'"'),false)
  assert.match(readme,/video-perception-current\.svg/)
  assert.match(readme,/video-danmaku-heat-illustration\.svg/)
  assert.ok(existsSync(new URL('../docs/architecture/assets/video-perception-current.svg',import.meta.url)))

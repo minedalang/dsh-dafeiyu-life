@@ -7,6 +7,8 @@ The extra session is bounded; adaptive local sampling may take longer than previ
 import json
 import base64
 import hashlib
+import importlib.util
+import asyncio
 import os
 import re
 import subprocess
@@ -328,9 +330,99 @@ def _safe_dsh_headless_diagnostic(stderr, stdout=b'', exit_code=1):
 
 
 
+def _selftest_mcp_preflight(home, overlay_text):
+    """Local, read-only prerequisites; not a DSH tool-call receipt.
+
+    Actual MCP invocation remains verified only by the nonce-bound receipt from
+    the DSH child. Do not confuse local asset/readiness with model understanding.
+    """
+    try:
+        match=re.search(r"^\s{10}BILI_VISION_TEST_ASSET: '([^'\r\n]*)'\s*$",overlay_text,re.M)
+        if not match:
+            return {'status':'failed','reason':'asset_path_missing'}
+        asset=Path(match.group(1))
+        if asset.is_symlink() or not asset.is_file() or asset.name!='local-vision-selftest-dafeiyu.png':
+            return {'status':'failed','reason':'asset_unavailable'}
+        data=asset.read_bytes()
+        if len(data)!=_SELFTEST_IMAGE_BYTES or hashlib.sha256(data).hexdigest()!=_SELFTEST_IMAGE_SHA256:
+            return {'status':'failed','reason':'asset_integrity'}
+        if not data.startswith(b'\x89PNG\r\n\x1a\n'):
+            return {'status':'failed','reason':'asset_format'}
+        server=Path(home)/'mcp_server.py'
+        if server.is_symlink() or not server.is_file():
+            return {'status':'failed','reason':'mcp_server_missing'}
+        # This check only validates the installed tool declaration; it does
+        # not infer that DSH has loaded or invoked it.
+        content=server.read_text(encoding='utf8')
+        if (not re.search(r'async def bili_vision_selftest\s*\(',content)
+            or 'ImageContent(type=' not in content):
+            return {'status':'failed','reason':'selftest_tool_missing'}
+        if importlib.util.find_spec('mcp') is None:
+            return {'status':'failed','reason':'mcp_python_dependency_missing'}
+        return {'status':'prerequisites_ready','reason':'local_prerequisites_only'}
+    except (OSError,UnicodeError,ValueError):
+        return {'status':'failed','reason':'preflight_unavailable'}
+
+
+async def _probe_mcp_stdio_tool(home, overlay_text, env):
+    """Call the actual single-whitelisted MCP tool in an independent stdio session.
+
+    Does not ask any model or Bilibili service. This cannot establish DSH's
+    attachment bridge or Provider capabilities; only the independent tool.
+    """
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+    match=re.search(r"^\s{10}BILI_VISION_TEST_ASSET: '([^'\r\n]*)'\s*$",overlay_text,re.M)
+    if not match: return {'status':'failed','reason':'asset_path_missing'}
+    proof=Path(home)/'vision-proof'/(uuid.uuid4().hex+'.json')
+    child_env=dict(env)
+    child_env.update({'BILI_MCP_TOOLS':'bili_vision_selftest','BILI_VISION_SELFTEST_ALLOWED':'1',
+                      'BILI_VISION_TEST_ASSET':match.group(1),'BILI_DUTY_HOME':str(home),
+                      'BILI_VISION_PROOF_FILE':str(proof)})
+    params=StdioServerParameters(command=os.sys.executable,
+                                 args=[str(Path(home)/'mcp_server.py')],env=child_env)
+    try:
+        async with stdio_client(params) as (reader,writer):
+            async with ClientSession(reader,writer) as session:
+                await session.initialize()
+                catalog=await session.list_tools()
+                names=[str(t.name) for t in catalog.tools]
+                if names!=['bili_vision_selftest']:
+                    return {'status':'failed','reason':'mcp_whitelist_mismatch'}
+                response=await session.call_tool('bili_vision_selftest',{})
+                if getattr(response,'isError',False):
+                    return {'status':'failed','reason':'mcp_tool_error'}
+                images=[x for x in response.content if getattr(x,'type',None)=='image']
+                if len(images)!=1 or getattr(images[0],'mimeType',None)!='image/png':
+                    return {'status':'failed','reason':'mcp_image_block_missing'}
+                try: content=base64.b64decode(images[0].data,validate=True)
+                except (ValueError,TypeError):
+                    return {'status':'failed','reason':'mcp_image_block_invalid'}
+                receipt_status,_=_read_selftest_image_proof(proof)
+                if receipt_status!='verified' or len(content)!=_SELFTEST_IMAGE_BYTES or hashlib.sha256(content).hexdigest()!=_SELFTEST_IMAGE_SHA256:
+                    return {'status':'failed','reason':'mcp_image_integrity'}
+                return {'status':'ready','reason':'mcp_stdio_tool_verified'}
+    finally:
+        try:proof.unlink(missing_ok=True)
+        except OSError:pass
+
+
+def _run_mcp_stdio_preflight(home, overlay_text, env):
+    try:
+        return asyncio.run(asyncio.wait_for(_probe_mcp_stdio_tool(home,overlay_text,env),timeout=18))
+    except asyncio.TimeoutError:
+        return {'status':'failed','reason':'mcp_stdio_timeout'}
+    except (ImportError,ModuleNotFoundError):
+        return {'status':'failed','reason':'mcp_python_dependency_missing'}
+    except Exception:
+        # Suppress raw traceback / exception text: paths or env values may be present.
+        return {'status':'failed','reason':'mcp_stdio_start_or_call_failed'}
+
+
 def _vision_selftest_diagnostics(*, mcp='not_run', provider_api='not_run', answer='not_run',
-                                image_bytes=None, diagnostic_code=''):
+                                image_bytes=None, diagnostic_code='', preflight=None):
     return {
+        'mcpPreflight': preflight or {'status':'not_run'},
         'mcpImage': {
             'status': mcp,
             **({'mimeType':'image/png','imageBlocks':1,'byteLength':int(image_bytes)} if image_bytes is not None else {}),
@@ -375,7 +467,8 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
     home=Path(home).resolve()
     env=dict(os.environ if env is None else env)
     proof=None;private_overlay=None
-    diagnostics=_vision_selftest_diagnostics()
+    preflight={'status':'not_run'}
+    diagnostics=_vision_selftest_diagnostics(preflight=preflight)
     try:
         argv=json.loads(env.get('BILI_VISION_DSH_ARGV','[]'))
         if not isinstance(argv,list) or not 3<=len(argv)<=16 or not all(isinstance(x,str) and 0<len(x)<=3000 for x in argv):
@@ -396,6 +489,16 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         _validate_vision_overlay_text(base,selftest=True)
         fixed=base.rstrip()+"\n          BILI_VISION_PROOF_FILE: '"+str(proof).replace('\\','/').replace("'","''")+"'\n"
         _validate_vision_overlay_text(fixed,selftest=True)
+        preflight=_selftest_mcp_preflight(home,fixed)
+        if preflight['status']=='prerequisites_ready' and runner is None:
+            preflight=_run_mcp_stdio_preflight(home,fixed,env)
+        elif runner is not None:
+            # Test runners verify the DSH receipt path without launching MCP.
+            preflight={'status':'not_run','reason':'injected_runner'}
+        if runner is None and preflight['status']!='ready':
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,provider_api='not_started')
+            return {'ok':False,'status':'mcp_preflight_failed','diagnosticCode':preflight['reason'],
+                    'error':'独立 MCP 图片工具预检失败；DSH 模型请求尚未启动','diagnostics':diagnostics}
         with private_overlay.open('x',encoding='utf8') as fp:fp.write(fixed)
         try:os.chmod(private_overlay,0o600)
         except OSError:pass
@@ -417,20 +520,20 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
                            **_hidden_windows_child())
         except subprocess.TimeoutExpired:
             proof_status,_=_read_selftest_image_proof(proof)
-            diagnostics=_vision_selftest_diagnostics(mcp=proof_status,provider_api='timeout',answer='not_returned',
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp=proof_status,provider_api='timeout',answer='not_returned',
                 image_bytes=_SELFTEST_IMAGE_BYTES if proof_status=='verified' else None)
             suffix=('；MCP 已成功返回固定图片，但 DSH 后续会话超时' if proof_status=='verified'
                     else '；MCP 图片回执与固定原图不匹配' if proof_status=='mismatch' else '')
             return {'ok':False,'status':'timeout','diagnosticCode':'headless_timeout',
                     'error':'DSH 识图验证超过 180 秒，请检查模型响应或网络'+suffix,'diagnostics':diagnostics}
         except (OSError,ValueError) as exc:
-            diagnostics=_vision_selftest_diagnostics(provider_api='not_started',answer='not_returned')
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,provider_api='not_started',answer='not_returned')
             return {'ok':False,'status':'launch_error','diagnosticCode':'dsh_launch_error',
                     'error':'无法安全启动 DSH 视觉会话：'+type(exc).__name__,'diagnostics':diagnostics}
         if result.returncode!=0:
             safe=_safe_dsh_headless_diagnostic(result.stderr,result.stdout,result.returncode)
             proof_status,_=_read_selftest_image_proof(proof)
-            diagnostics=_vision_selftest_diagnostics(mcp=proof_status,provider_api='failed' if proof_status=='verified' else 'not_confirmed',answer='not_returned',
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp=proof_status,provider_api='failed' if proof_status=='verified' else 'not_confirmed',answer='not_returned',
                 image_bytes=_SELFTEST_IMAGE_BYTES if proof_status=='verified' else None,
                 diagnostic_code=safe.get('diagnosticCode',''))
             if proof_status=='verified':
@@ -440,14 +543,14 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
             return {'ok':False,'status':'headless_launch_failed',**safe,'diagnostics':diagnostics}
         proof_status,observed=_read_selftest_image_proof(proof)
         if proof_status=='not_received':
-            diagnostics=_vision_selftest_diagnostics(mcp='not_received',provider_api='completed',answer='not_returned')
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='not_received',provider_api='completed',answer='not_returned')
             return {'ok':False,'status':'no_image_proof','diagnosticCode':'mcp_image_not_proven',
                     'error':'DSH 模型没有实际调用受控图片工具，不能人工认可','diagnostics':diagnostics}
         if proof_status=='mismatch':
-            diagnostics=_vision_selftest_diagnostics(mcp='mismatch',provider_api='completed',answer='not_accepted')
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='mismatch',provider_api='completed',answer='not_accepted')
             return {'ok':False,'status':'image_mismatch','diagnosticCode':'mcp_image_receipt_mismatch',
                     'error':'DSH 收到的图片回执与大肥鱼原图不匹配','diagnostics':diagnostics}
-        diagnostics=_vision_selftest_diagnostics(mcp='verified',provider_api='completed',
+        diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='verified',provider_api='completed',
                                                  answer='not_returned',image_bytes=_SELFTEST_IMAGE_BYTES)
         output=(result.stdout or b'').decode('utf8',errors='replace')
         if 'VISION_TEST_RESULT:' not in output or 'VISION_TEST_FAILED' in output.split('VISION_TEST_RESULT:')[-1]:
@@ -462,7 +565,7 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         diagnostics['modelAnswer']={'status':'returned'}
         return {'ok':True,'status':'awaiting_review','answer':answer,'diagnostics':diagnostics}
     except Exception as exc:
-        diagnostics=_vision_selftest_diagnostics()
+        diagnostics=_vision_selftest_diagnostics(preflight=preflight)
         return {'ok':False,'status':'vision_config_error','diagnosticCode':'vision_config_error',
                 'error':str(exc)[:240],'diagnostics':diagnostics}
     finally:

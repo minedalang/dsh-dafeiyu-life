@@ -3200,6 +3200,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // A dedicated read-only DSH image probe. It uses the same owner-supplied PNG
   // as Ollama; headless is allowed only one fixed-image MCP tool.
   const dshVisionReview=createDshVisionReview({
+    stateFile:join(stateDir,'dsh-vision-selftest-last-run.json'),
     getRoute:()=>{
       const selected=ctx.get('agentDefaultModel')?.currentSelection?.()||{}
       const route=resolveVisionModelRoute(cfg,selected)
@@ -3230,16 +3231,29 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       return await new Promise((resolve,reject)=>{
         const child=spawn(cfg.pythonPath||'python',pyArgs,{cwd:stateDir,shell:false,windowsHide:true,
           env,stdio:['ignore','pipe','pipe']})
-        let out='',err='',closed=false
+        let out='',closed=false
         const finish=(error,result)=>{if(closed)return;closed=true;clearTimeout(timer);if(error)reject(error);else resolve(result)}
-        const timer=setTimeout(()=>{try{child.kill()}catch{};finish(Error('DSH 图片识别超过 195 秒，未取得可验收结果'))},195_000)
+        const safeFailure=(code,hint)=>Object.assign(Error(hint),{diagnosticCode:code,
+          diagnostics:{providerApi:{status:'not_confirmed'},modelAnswer:{status:'not_returned'}}})
+        const timer=setTimeout(()=>{try{child.kill()}catch{};finish(safeFailure('python_wrapper_timeout',
+          '图片验收 Python 包装进程超时；未收到可核验的 MCP/模型结构化结果'))},225_000)
         timer.unref?.()
-        child.stdout?.on('data',data=>{out+=String(data);if(Buffer.byteLength(out)>1_000_000){try{child.kill()}catch{};finish(Error('DSH 验证响应异常过大'))}})
-        child.stderr?.on('data',data=>{err=(err+String(data)).slice(-3000)})
-        child.on('error',error=>finish(Error('DSH 图片验收启动失败：'+String(error?.message||error).slice(0,180))))
+        child.stdout?.on('data',data=>{out+=String(data);if(Buffer.byteLength(out)>1_000_000){try{child.kill()}catch{};
+          finish(safeFailure('python_response_too_large','图片验收包装进程输出超过安全限制'))}})
+        // Never retain/pass through raw stderr: it can contain keys, local paths or request bodies.
+        child.stderr?.resume()
+        child.on('error',()=>finish(safeFailure('python_wrapper_launch','无法启动 DSH 图片验收 Python 包装进程')))
         child.on('close',code=>{
-          if(code!==0)return finish(Error('DSH 图片验收进程异常退出 '+code+'：'+err.slice(-250)))
-          try{const data=JSON.parse(out);finish(null,data)}catch{finish(Error('DSH 图片验收未返回正确的结构化结果'))}
+          let parsed=null
+          try{parsed=JSON.parse(out)}catch{}
+          if(parsed&&typeof parsed==='object'&&typeof parsed.ok==='boolean'){
+            // A nonzero exit cannot turn a failed result into success.
+            if(code!==0)parsed={...parsed,ok:false,status:'wrapper_exited',
+              diagnosticCode:'python_wrapper_exit',error:'图片验收包装进程异常退出；请核对分阶段回执'}
+            return finish(null,parsed)
+          }
+          finish(safeFailure(code===0?'python_invalid_response':'python_wrapper_exit',
+            code===0?'图片验收包装进程没有返回可解析的结构化结果':'图片验收包装进程异常退出且没有结构化诊断'))
         })
       })
     },
