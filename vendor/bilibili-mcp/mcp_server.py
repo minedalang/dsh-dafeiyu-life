@@ -35,12 +35,24 @@ import hmac
 import inspect
 from functools import wraps
 def _hidden_windows_child():
+    # Used by MCP memory/ASR/DSH subprocesses: preserve stdio-compatible
+    # CREATE_NO_WINDOW policy. These are NOT offline decoder processes.
     options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
     if os.name == 'nt' and hasattr(subprocess, 'STARTUPINFO'):
         startup = subprocess.STARTUPINFO()
         startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = 0  # SW_HIDE
         options['startupinfo'] = startup
+    return options
+
+
+def _detached_windows_ffmpeg_child():
+    # Only local FFmpeg extraction uses DETACHED_PROCESS. Keep MCP stdio,
+    # model/ASR and unrelated Python subprocesses on their original flags.
+    options = _hidden_windows_child()
+    if os.name == 'nt':
+        options['creationflags'] = (getattr(subprocess, 'DETACHED_PROCESS', 0)
+                                    or getattr(subprocess, 'CREATE_NO_WINDOW', 0))
     return options
 
 from mcp.server.fastmcp import FastMCP
@@ -4517,7 +4529,7 @@ def _extract_cover_from_video(video_path: str) -> Picture:
             ["ffmpeg", "-y", "-ss", "3", "-i", video_path,
              "-vframes", "1", "-q:v", "2", tmp_cover],
             capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
-            **_hidden_windows_child(),
+            **_detached_windows_ffmpeg_child(),
         )
         if os.path.isfile(tmp_cover) and os.path.getsize(tmp_cover) > 0:
             return Picture.from_file(tmp_cover)
@@ -4531,7 +4543,7 @@ def _extract_cover_from_video(video_path: str) -> Picture:
             ["ffmpeg", "-y", "-ss", "0", "-i", video_path,
              "-vframes", "1", "-q:v", "2", tmp_cover2],
             capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
-            **_hidden_windows_child(),
+            **_detached_windows_ffmpeg_child(),
         )
         if os.path.isfile(tmp_cover2) and os.path.getsize(tmp_cover2) > 0:
             return Picture.from_file(tmp_cover2)

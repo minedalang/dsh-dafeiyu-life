@@ -1,3 +1,10 @@
+## 2.8.1-dev.3b.27 FFmpeg 黑窗定向修复与 DSH 图片失败诊断
+
+- 针对 2026-11-16 14:21 Windows 日志中 FFmpeg 关联可见 `PseudoConsoleWindow`，**仅**离线 FFmpeg/FFprobe 抽帧使用 `DETACHED_PROCESS`（不支持时回退），保留输出管道及超时；MCP stdio、ASR、记忆与 DSH 主进程继续用原隐藏启动策略，不允许批量替换。
+- DSH 视觉 overlay 开启 `failOnStartupError: true`，防止 MCP 只读图片工具初始化失败后无声继续；`cliProcess/cliExitCode/cliStdout/cliStderr` 仅存进程状态及输出是否存在，不存原始 stderr、stdout、私信、请求或凭据。
+- 14:26 的 `preflight=ready/mcpImage=not_received/headless_exit_unknown` 仍不能判定第三方模型不支持图片；Windows 实机需验证 FFmpeg 解码可用与窗口不再出现、DSH 真正调用图片工具并取得模型回答；未实测不得宣称根治。
+- **云端禁止全量 Node 测试**；只运行增量测试、架构/契约/打包/补丁回放，全量由用户本机执行。
+
 ## 2.8.1-dev.3b.26 私信分享卡片解析与黑窗口归因采集（当前增量）
 
 - **13:38 实证修复：** `executeWatchVideo` 的 `focusReview` 必须在视觉 `try/finally` 外部声明，因读后 Life 经历落盘和感知交接在 `finally` 之后，不能因作用域错误 `focusReview is not defined` 丢失已验证的观看经历；Debug dry-run 仍不能写入 Life 记忆。

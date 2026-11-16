@@ -3193,6 +3193,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       '      config:',
       '        serverName: bilivision',
       '        transport: stdio',
+      // The image tool must be registered before the model turn begins. Do not
+      // silently continue into a tool-less vision session if stdio startup fails.
+      '        failOnStartupError: true',
       '        command: '+yq(posix(cfg.pythonPath || 'python')),
       '        args:',
       '          - '+yq(posix(join(stateDir,'mcp_server.py'))),

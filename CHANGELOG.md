@@ -1,3 +1,9 @@
+## 2.8.1-dev.3b.27 · 2026-11-16（FFmpeg 黑窗与 DSH 图片验收）
+
+- 针对可见 FFmpeg 伪控制台记录，Windows 离线 FFmpeg/FFprobe 抽帧改用 `DETACHED_PROCESS`，保留管道、安全输入和超时；MCP 其他 Python/DSH 子进程不变。
+- 视觉 Headless MCP 初始化失败显式中止，图片失败日志新增脱敏的 CLI 退出状态/是否有输出，不记录原始模型内容或敏感 stderr。
+- 仍需 Windows 实机确认可见黑窗消失与 DSH 图片回执完整；`exit=1` 原因未查明不能宣称识图已修复。仅执行增量测试，未发布 npm。
+
 ## 2.8.1-dev.3b.26 · 2026-11-16（补充 13:40 实机日志修复）
 
 - 修复 `executeWatchVideo` 的 `focusReview` 在 try 块内声明、块外引用导致 `ReferenceError`，阻断视频 Life 经历记录；保留 Debug 只读约束。

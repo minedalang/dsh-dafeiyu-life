@@ -419,10 +419,22 @@ def _run_mcp_stdio_preflight(home, overlay_text, env):
         return {'status':'failed','reason':'mcp_stdio_start_or_call_failed'}
 
 
+def _safe_cli_process_receipt(result):
+    # Only bounded process metadata; stderr/stdout may contain private secrets.
+    try:
+        code=int(result.returncode)
+    except (TypeError, ValueError, AttributeError):
+        code=-1
+    return {'status': 'exited', 'exitCode': code if 0 <= code <= 255 else -1,
+            'stdout': 'present' if getattr(result, 'stdout', b'') else 'empty',
+            'stderr': 'present' if getattr(result, 'stderr', b'') else 'empty'}
+
+
 def _vision_selftest_diagnostics(*, mcp='not_run', provider_api='not_run', answer='not_run',
-                                image_bytes=None, diagnostic_code='', preflight=None):
+                                image_bytes=None, diagnostic_code='', preflight=None, cli_process=None):
     return {
         'mcpPreflight': preflight or {'status':'not_run'},
+        'cliProcess': cli_process or {'status':'not_run'},
         'mcpImage': {
             'status': mcp,
             **({'mimeType':'image/png','imageBlocks':1,'byteLength':int(image_bytes)} if image_bytes is not None else {}),
@@ -535,23 +547,24 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
             proof_status,_=_read_selftest_image_proof(proof)
             diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp=proof_status,provider_api='failed' if proof_status=='verified' else 'not_confirmed',answer='not_returned',
                 image_bytes=_SELFTEST_IMAGE_BYTES if proof_status=='verified' else None,
-                diagnostic_code=safe.get('diagnosticCode',''))
+                diagnostic_code=safe.get('diagnosticCode',''),cli_process=_safe_cli_process_receipt(result))
             if proof_status=='verified':
                 safe['error']+='；MCP 已成功返回固定图片，失败发生在其后的 DSH/模型会话阶段'
             elif proof_status=='mismatch':
                 safe['error']+='；已取得 MCP 回执，但图片回执与固定原图不匹配'
             return {'ok':False,'status':'headless_launch_failed',**safe,'diagnostics':diagnostics}
         proof_status,observed=_read_selftest_image_proof(proof)
+        process_receipt=_safe_cli_process_receipt(result)
         if proof_status=='not_received':
-            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='not_received',provider_api='completed',answer='not_returned')
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='not_received',provider_api='completed',answer='not_returned',cli_process=process_receipt)
             return {'ok':False,'status':'no_image_proof','diagnosticCode':'mcp_image_not_proven',
                     'error':'DSH 模型没有实际调用受控图片工具，不能人工认可','diagnostics':diagnostics}
         if proof_status=='mismatch':
-            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='mismatch',provider_api='completed',answer='not_accepted')
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='mismatch',provider_api='completed',answer='not_accepted',cli_process=process_receipt)
             return {'ok':False,'status':'image_mismatch','diagnosticCode':'mcp_image_receipt_mismatch',
                     'error':'DSH 收到的图片回执与大肥鱼原图不匹配','diagnostics':diagnostics}
         diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='verified',provider_api='completed',
-                                                 answer='not_returned',image_bytes=_SELFTEST_IMAGE_BYTES)
+                                                 answer='not_returned',image_bytes=_SELFTEST_IMAGE_BYTES,cli_process=process_receipt)
         output=(result.stdout or b'').decode('utf8',errors='replace')
         if 'VISION_TEST_RESULT:' not in output or 'VISION_TEST_FAILED' in output.split('VISION_TEST_RESULT:')[-1]:
             diagnostics['modelAnswer']={'status':'missing'}

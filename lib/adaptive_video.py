@@ -18,7 +18,15 @@ import subprocess
 
 
 def _hidden_windows_child():
-    options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+    # FFmpeg/FFprobe do not require a console: their stdin/stdout/stderr are
+    # redirected by our callers. Windows' CREATE_NO_WINDOW may still create a
+    # short-lived visible pseudo-console host on some FFmpeg builds. Use the
+    # DETACHED_PROCESS creation mode for these offline decoders ONLY; never use
+    # it for MCP stdio or the parent DSH/Python process.
+    options = {'creationflags': (getattr(subprocess, 'DETACHED_PROCESS', 0)
+                                 if os.name == 'nt' else 0)}
+    if os.name == 'nt' and not options['creationflags']:
+        options['creationflags'] = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
     if os.name == 'nt' and hasattr(subprocess, 'STARTUPINFO'):
         startup = subprocess.STARTUPINFO()
         startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
