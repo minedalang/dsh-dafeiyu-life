@@ -440,6 +440,47 @@ padding:11px 12px;margin:12px 0;font-size:13px;line-height:1.65;display:grid;gap
 .headless-next-action{width:max-content;max-width:100%;font-weight:800;box-shadow:0 5px 15px rgba(70,86,155,.2)}
 .headless-verify-button.primary{background:linear-gradient(110deg,#7352bd,#426fd0);color:#fff;border-color:transparent;font-weight:800}
 .headless-verify-hint{display:block;color:var(--action);font-size:12px;font-weight:700;margin:5px 0}
+.headless-sync-board{display:grid;grid-template-columns:minmax(0,1fr) 52px minmax(0,1fr);gap:10px;align-items:stretch;margin:16px 0;border:1px solid var(--stroke);border-radius:17px;overflow:hidden;background:color-mix(in srgb,var(--panel) 94%,var(--ui-indigo) 6%)}
+.headless-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.headless-panel-heading h4{margin:0}.headless-panel-heading span{font-size:11px;color:var(--muted);font-weight:750;border-radius:999px;background:color-mix(in srgb,var(--stroke) 35%,var(--panel));padding:6px 10px}
+.headless-sync-column{min-width:0;background:var(--panel);padding:0 12px 12px}
+.headless-sync-column>header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 -12px 12px;padding:12px 14px;background:color-mix(in srgb,var(--stroke) 34%,var(--panel));font-size:14px}
+.headless-sync-column>header span{font-size:11px;color:var(--muted);font-weight:650;white-space:nowrap}
+.headless-provider-stack{display:grid;gap:10px;min-height:145px;align-content:start}
+.headless-provider-card{min-width:0;border:1px solid var(--stroke);border-radius:14px;background:var(--panel);padding:12px;box-shadow:0 2px 8px rgba(15,35,55,.035)}
+.headless-provider-card.is-synced{opacity:.62;background:color-mix(in srgb,var(--panel) 78%,var(--stroke) 22%)}
+.headless-provider-card.is-target-ready{border-color:color-mix(in srgb,#2a9b65 65%,var(--stroke));box-shadow:0 2px 10px rgba(32,140,89,.06)}
+.headless-provider-head{display:flex;align-items:center;gap:10px;min-width:0}
+.headless-provider-mark{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:11px;background:color-mix(in srgb,var(--ui-teal) 13%,var(--panel));font-size:19px;font-weight:800}
+.headless-provider-title{min-width:0;flex:1}.headless-provider-title strong{display:block;overflow-wrap:anywhere;font-size:15px}.headless-provider-title small{display:block;color:var(--muted);overflow-wrap:anywhere;margin-top:2px}
+.headless-provider-state{font-size:11px;font-weight:750;border-radius:999px;padding:4px 8px;background:color-mix(in srgb,var(--stroke) 45%,var(--panel));color:var(--muted);white-space:nowrap}
+.headless-provider-state[data-state="synced"],.headless-provider-state[data-state="verified"]{background:color-mix(in srgb,#55c98a 24%,var(--panel));color:#167346}
+.headless-model-rows{display:grid;gap:9px;margin-top:10px}
+.headless-model-row{min-width:0;border-top:1px solid var(--stroke);padding-top:9px;display:grid;gap:7px}
+.headless-model-name{font-size:13px;font-weight:750;overflow-wrap:anywhere}
+.headless-capability-chips{display:flex;gap:6px;flex-wrap:wrap}
+.headless-capability-chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:650;background:color-mix(in srgb,var(--stroke) 42%,var(--panel));color:var(--muted)}
+.headless-capability-chip[data-state="declared"]{background:color-mix(in srgb,#55c98a 24%,var(--panel));color:#167346}
+.headless-capability-chip[data-state="unknown"]{background:color-mix(in srgb,#aeb8c5 24%,var(--panel));color:var(--muted)}
+.headless-model-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.headless-model-actions button,.headless-provider-action{font-size:12px;padding:6px 9px}
+.headless-sync-flow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:var(--muted)}
+.headless-sync-flow strong{font-size:30px;color:var(--action)}.headless-sync-flow span{font-size:10px;font-weight:750;text-align:center;writing-mode:vertical-rl}
+.headless-target-empty{border:1px dashed var(--stroke);border-radius:14px;min-height:145px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:var(--muted);text-align:center;padding:14px}
+.headless-target-empty strong{font-size:28px;opacity:.55}.headless-target-empty span{font-size:13px;font-weight:700;color:var(--ink)}.headless-target-empty small{font-size:11px}
+.headless-capability-explainer{border:1px solid var(--stroke);border-radius:16px;padding:13px;margin:12px 0;background:var(--panel)}
+.headless-capability-explainer h5{margin:0 0 10px;font-size:14px}
+.headless-capability-legend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.headless-capability-legend article{min-width:0;border-radius:11px;background:color-mix(in srgb,var(--stroke) 26%,var(--panel));padding:10px;display:grid;gap:4px}
+.headless-capability-legend article strong{font-size:12px}.headless-capability-legend article span{font-size:11px;font-weight:700}.headless-capability-legend article small{font-size:10px;line-height:1.5;color:var(--muted)}
+.headless-capability-explainer>p{font-size:11px;line-height:1.55;color:var(--muted);margin:10px 0 0;padding:8px 10px;border-radius:9px;background:color-mix(in srgb,var(--stroke) 28%,var(--panel))}
+.headless-capability-dialog{width:min(560px,calc(100vw - 28px));max-width:560px}
+.headless-capability-fieldset{border:1px solid var(--stroke);border-radius:12px;padding:11px 13px;margin:12px 0;min-width:0}
+.headless-capability-fieldset legend{font-size:13px;font-weight:800;padding:0 5px}
+.headless-capability-fieldset>label{display:inline-flex;align-items:center;gap:7px;margin:3px 16px 3px 0;font-size:13px}
+.headless-effort-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.headless-effort-grid label{display:flex;align-items:center;gap:7px;font-size:12px}
+.headless-capability-dialog .confirm-footer{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}.headless-capability-dialog #headless-capability-reset{margin-right:auto}
+@media(max-width:850px){.headless-sync-board{grid-template-columns:minmax(0,1fr);gap:0}.headless-sync-flow{flex-direction:row;min-height:30px}.headless-sync-flow strong{transform:rotate(90deg);font-size:24px}.headless-sync-flow span{writing-mode:horizontal-tb}.headless-sync-column{padding-bottom:14px}.headless-sync-column>header{margin-bottom:10px}}
+@media(max-width:570px){.headless-capability-legend{grid-template-columns:1fr}.headless-capability-dialog .confirm-footer>*{flex:1 1 100%}.headless-capability-dialog #headless-capability-reset{margin-right:0}.headless-effort-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .vision-route-capabilities{display:grid;gap:5px;padding:10px 12px;border:1px solid var(--stroke);border-radius:10px;background:var(--panel);font-size:12px;line-height:1.65;overflow-wrap:anywhere}
 .vision-probe-stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:7px;margin:12px 0}
 .vision-probe-stage{min-width:0;padding:9px 10px;border:1px solid var(--stroke);border-radius:10px;background:var(--panel);font-size:12px;line-height:1.55;color:var(--muted)}
@@ -1623,7 +1664,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   </section>
   <div class="fs-grid">
     <section class="fs-step"><h3>01 · B站登录 <span class="pill pending">必须完成</span></h3><p>使用鱼鱼专用的 B站账号扫码登录。老用户若已有有效凭据，只需点击「检测已有登录」，无需重新扫码。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button" disabled>扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>🔐 在线核验并确认当前扫码账号</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>✅ 重启后复核并恢复账号</button></div></section>
-    <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后还必须展开模型并点击「验证模型」完成真实连接测试。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
+    <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先在左栏同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后请在右侧 Headless 模型卡片点击「验证文字连接」完成真实请求；图片能力还需单独实测。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
   </div>
     </div>
     <section class="quick-config-section" id="fs-owner-uid-section" aria-label="首次设置 B站主人身份"><div class="quick-config-title"><span class="quick-card-icon">👑</span><div><h4>主人 B站 UID <span class="pill">可选 · 建议现在配置</span></h4><p>决定谁可以通过真实 B站私信或 @ 身份被认作唯一授权主人。主人 UID 不等于鱼鱼登录的 UID。</p></div></div><div class="fields"><div><label for="fs-owner-uid">主人自己的 B站 UID（纯数字）</label><input id="fs-owner-uid" type="text" inputmode="numeric" pattern="[1-9][0-9]{0,18}" maxlength="19" placeholder="你的 B站个人空间 UID" autocomplete="off"/><small class="setting-note">仅保存主人身份；不会自动开启点赞、公开发表评论、关注或私信他人等权限。已有主人身份不会被页面自动更换。</small></div></div><div class="quick-config-actions"><button id="fs-owner-uid-save" type="button" class="primary">确认并保存唯一主人 UID</button><button type="button" data-open-tab="social" data-open-anchor="friend-directory-editor">高级主人／好友权限 ↗</button></div><p id="fs-owner-uid-status" class="quick-current" role="status">读取当前主人身份…</p></section>
@@ -1692,24 +1733,42 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择一个默认模型，可应用到所有任务；需要时再展开单独调整。连接测试会实际调用模型，可能产生费用；测试连接不计入统计。</p><p><a href="#models-vision" style="font-weight:650">🎞️ 视觉模型、FFmpeg 与 Whisper 已统一收纳在「视觉识别模型」中 ↓</a></p></div></div>
 <div class="settings-stack">
 <div class="settings-section" id="headless-model-sync-panel">
-<h4>🔐 后台模型同步与检测（独立 Agent 必需）</h4>
+<div class="headless-panel-heading"><h4>🔐 模型同步与能力管理</h4><span id="headless-provider-summary">检测 Desktop 模型中…</span></div>
 <p class="muted">首次启用或更换模型后，请先同步 DSH Desktop 的模型配置，再执行一次后台验证。<strong>未同步并验证成功时，独立视频 Agent、独立识图及需要 headless 的兼容路径不会运行。</strong> 人生反思、文字评论/私信、动态草稿、AI 记忆检索等纯文本功能在宿主模型服务可用时可以直接运行，不需要同步。宿主不可用且没有已验证的后台模型时，不会偷偷降级到其他模型。</p>
-<p class="muted">仅同步模型定义（Provider ID、协议、Base URL、模型、环境变量名），不复制 API Key、凭据或工具授权。不会自动开启任何 B站发布权限。连接验证会发送一条简短测试请求，可能产生少量模型费用。</p>
+<p class="muted">把 Desktop 中需要的模型同步到 Headless；不复制 API Key，不修改 Desktop 原配置。同步仅包含模型定义（Provider、协议、Base URL、模型和环境变量名），不会复制凭据或工具授权，也不会开启任何 B站发布权限。</p>
 <div id="headless-journey" class="headless-journey" data-stage="source" aria-label="Headless 三步设置进度">
-  <h5>Headless 配置进度 · 三步完成</h5>
+  <h5>模型配置流程</h5>
   <div class="headless-stages">
-    <div id="headless-stage-source" class="headless-stage" data-state="current"><strong>① 检测模型</strong><span>从 DSH 读取 Provider</span></div>
-    <div id="headless-stage-sync" class="headless-stage" data-state="pending"><strong>② 按需同步</strong><span>官方模型跳过此步</span></div>
-    <div id="headless-stage-verify" class="headless-stage" data-state="pending"><strong>③ 真实连接验证</strong><span>任选一个模型即可</span></div>
+    <div id="headless-stage-source" class="headless-stage" data-state="current"><strong>✓ 检测 Desktop</strong><span>读取来源 Provider 与能力声明</span></div>
+    <div id="headless-stage-sync" class="headless-stage" data-state="pending"><strong>② 同步模型</strong><span>只同步你选择的 Provider</span></div>
+    <div id="headless-stage-verify" class="headless-stage" data-state="pending"><strong>③ 验证能力</strong><span>文字连接与图片实测分开</span></div>
   </div>
   <div class="headless-next" role="status" aria-live="polite"><strong id="headless-next-title">先检测可用模型</strong><p id="headless-next-description">选择模型来源后点击「重新检测」。</p><button id="headless-next-action" type="button" class="primary headless-next-action" hidden>下一步</button></div>
 </div>
 <div class="fields"><div><label for="headless-source-profile">模型来源</label><select id="headless-source-profile"><option value="desktop">DSH Desktop</option><option value="web">DSH Web（使用 Web 时选择）</option></select></div></div>
 <div id="headless-sync-status" role="status" aria-live="polite" class="muted">尚未检查后台模型。</div>
-<div id="headless-provider-list" class="settings-stack"></div>
-<div id="headless-sync-plan" class="muted" role="status" aria-live="polite"></div>
-<div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button><button type="button" id="headless-sync-preview" class="primary" title="先预览将同步的模型，再由你明确确认写入 Headless">同步到 Headless · 先预览</button><button type="button" id="headless-sync-commit" hidden>确认同步到 Headless</button></div>
-<p class="model-verify-guide"><strong>模型怎样才能使用？</strong> DSH 已注册模型可供宿主一般任务选择，单项「测试连接」用于检查连通性；独立 Headless 视频 Agent 必须完成相应配置同步与真实模型验证后才能就绪。首次快速设置至少验证一个可用于 Headless 的模型，不必把全部模型逐个验证。自定义 Provider 先预览并确认同步，再展开验证模型；未验证不代表能实际运行。</p>
+<div class="headless-sync-board" id="headless-sync-board">
+  <section class="headless-sync-column headless-source-column">
+    <header><strong>▣ ① DSH Desktop · 来源模型</strong><span id="headless-source-count">检测中…</span></header>
+    <div id="headless-source-list" class="headless-provider-stack"><p class="muted">等待检测 Desktop 模型…</p></div>
+  </section>
+  <div class="headless-sync-flow" aria-hidden="true"><strong>→</strong><span id="headless-sync-flow-status">待同步</span></div>
+  <section class="headless-sync-column headless-target-column">
+    <header><strong>▤ DSH Headless · 后台模型</strong><span id="headless-target-count">0 个已同步</span></header>
+    <div id="headless-target-list" class="headless-provider-stack"><div class="headless-target-empty"><strong>▱</strong><span>同步后会出现在这里</span><small>Headless 能力声明可在同步后单独补充</small></div></div>
+  </section>
+</div>
+<section class="headless-capability-explainer" aria-label="能力声明与实际验证说明">
+  <h5>ⓘ 能力声明与实际验证是两回事</h5>
+  <div class="headless-capability-legend">
+    <article><strong>◇ 模型声明</strong><span>文字 / 图片 / 思考档位</span><small>模型配置中声明允许的输入能力和思考档位；未声明不等于不支持。</small></article>
+    <article><strong>↗ 文字连接</strong><span>只验证文字请求</span><small>检查 Headless 到模型的基础文字请求是否正常，不代表图片可用。</small></article>
+    <article><strong>▧ 图片实测</strong><span>验证 MCP 图片、Headless 请求和模型回答</span><small>使用固定测试图片验证完整视觉链路；最终结果仍需人工认可。</small></article>
+  </div>
+  <p>不会擅自给第三方中转模型添加 <code>image</code> 或 <code>reasoningEfforts</code>；缺失时可在 Headless 专用能力向导中由你明确确认，只修改 Headless，不动 Desktop。</p>
+</section>
+<div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button></div>
+<p class="model-verify-guide"><strong>模型怎样才能使用？</strong> DSH 已注册模型可供宿主一般任务选择，单项「测试连接」用于检查连通性；独立 Headless 视频 Agent 必须完成相应配置同步与真实模型验证后才能就绪。首次快速设置至少验证一个可用于 Headless 的模型，不必把全部模型逐个验证。自定义 Provider 在左栏逐项同步，之后在右栏对应模型卡片验证文字连接；图片输入与最终回答仍须单独实测。</p>
 </div>
 <div class="settings-section model-default-panel"><h4>✨ 默认模型 <span class="help-tip" title="选择后同步所有 9 个任务并重置思考深度。若模型不支持视觉或工具任务，相应能力可能不可用。之后仍可单项调整。">?</span></h4><p class="muted">选择后，下面全部九项任务会变成同一个模型，思考深度使用模型默认值。</p><div class="fields"><div><label for="models-default-provider">默认 Provider</label><select id="models-default-provider"></select></div><div><label for="models-default-model">默认模型</label><select id="models-default-model"></select></div></div><p id="models-default-summary" class="muted">正在读取可用模型…</p><p id="models-catalog-diagnostic" class="setting-note" role="status">Provider 下拉框只显示已发现的目录、当前宿主模型或已保存设置；显示不代表连接已通过。遇到 502 请先检查中转站，不会自动切换供应商。</p><small id="models-recommendation-note" class="setting-note">保存后生效，仍可单独调整每项任务。</small></div>
 <details class="settings-section"><summary><strong>最近模型调用归因（仅本地宿主，零额外 AI 调用）</strong></summary>
@@ -1729,8 +1788,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <section class="setting-note" id="dsh-vision-capabilities-guide" aria-label="DSH 第三方视觉模型能力配置助手" style="margin-top:12px;border-radius:14px;padding:14px">
   <strong>☁️ DSH 第三方视觉模型 · 能力配置助手</strong>
   <p class="muted">不使用本地 Ollama 时，可考虑已由可信渠道提供、支持图片输入的 <code>gpt-6-luna</code>：官方 API 的文本 Token 单价较低，但第三方中转站可能自行定价、限制图片或不支持某些协议。不同 DeepSeek 型号及中转渠道成本差异较大，请按实际价格、图片用量和模型表现选择，避免笼统判断。</p>
-  <p class="muted">DSH 的第三方模型若缺少能力声明，可能无法在桌面 Session 发送图片或选择思考深度。<strong>推荐先在 DSH → 设置 → 模型（Settings → Models）→ 自定义 Provider → 模型选项</strong>中手动开启 Image 输入、选择真实支持的推理档位。若当前 DSH 版本没有可用的能力选项，可复制下面的 YAML <em>模型条目片段</em>，合并进对应 Profile 的 <code>cordis.patch.yml</code>；请勿把片段粘贴到文件最外层，也不要覆盖整份配置。</p>
-  <div class="toolbar"><button type="button" id="dsh-vision-config-generate">根据当前模型生成配置片段</button><button type="button" id="dsh-vision-config-copy">复制配置片段</button></div>
+  <p class="muted"><strong>普通使用者不需要手改 YAML：</strong>先在上方 Desktop / Headless 双栏同步 Provider，再在右侧目标模型卡片点击「配置 Headless 能力声明」，只为 Headless 明确补充你确认支持的图片输入或思考档位；不会修改 Desktop。下面的 YAML 仅供高级用户核对，不是必要步骤。</p>
+  <div class="toolbar"><button type="button" id="dsh-vision-config-generate">高级：生成手动配置片段</button><button type="button" id="dsh-vision-config-copy">复制高级配置片段</button></div>
   <pre id="dsh-vision-config-snippet" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:240px;overflow:auto" aria-label="第三方视觉模型能力示例配置">请填写上方 DSH 模型 ID 后点击生成。</pre>
   <p class="muted">这里只辅助声明模型能力，<strong>不自动改配置、不开启图片功能、更不保证中转站真的支持</strong>。配置完成后须新建 Session，并使用下方真实大肥鱼图片进行人工验收。思考档位映射依所用 Provider API 而定；不能识别的档位请删除。</p>
 </section>
@@ -2398,8 +2457,8 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <div class="settings-section"><h4>检查间隔</h4><div class="fields">
 <div><label for="dm-interval">私信最短检查间隔（分钟，默认 2）</label><input id="dm-interval" type="number" min="1" max="120" value="2"></div>
 <div><label for="dm-quiet-max">私信安静期最长检查间隔（分钟，默认 15）</label><input id="dm-quiet-max" type="number" min="1" max="120" value="15"><small class="setting-note" id="dm-quiet-levels">中间间隔自动计算</small></div>
-<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">在最近真正确认发出私信，或普通监听发现已核验且允许回复的新来信后，短期开启；首次发现来信仍取决于普通监听间隔。无活跃会话时不会每 10 秒扫描所有私信。与普通轮询共享读取预算及平台限流保护。</small></div>
-<div><label for="dm-active-seconds">活跃会话检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="10"></div>
+<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">在最近真正确认发出私信，或普通监听发现已核验且允许回复的新来信后，短期开启；首次发现来信仍取决于普通监听间隔。无活跃会话时不会每 10 秒扫描所有私信。连续没有新消息时自动放慢为 10 → 20 → 30 → 60 秒；有新来信会恢复基础间隔。与普通轮询共享读取预算及平台限流保护。</small></div>
+<div><label for="dm-active-seconds">活跃会话基础检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="10"></div>
 <div><label for="dm-active-window">活跃时长（秒，60–600）</label><input id="dm-active-window" type="number" min="60" max="600" value="180"></div>
 <div><label for="poll-replies-minutes">收到评论回复检查（分钟，默认 2）</label><input id="poll-replies-minutes" type="number" min="1" max="120" value="3"></div>
 <div><label for="poll-at-minutes">被 @ 邀请检查（分钟，默认 2）</label><input id="poll-at-minutes" type="number" min="1" max="120" value="3"></div>
@@ -2786,6 +2845,27 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
   <div class="confirm-head"><span class="confirm-sparkle">✎</span><div><h3 id="action-input-title">编辑内容</h3><p>此操作只修改确认后的内容</p></div></div>
   <label for="action-input-value" id="action-input-label">请输入内容</label><textarea id="action-input-value" rows="3" maxlength="320" style="display:block;width:100%;margin:10px 0 18px"></textarea>
   <div class="confirm-footer"><button type="button" id="action-input-cancel">取消</button><button type="button" id="action-input-accept" class="primary">确认</button></div>
+</dialog>
+<dialog id="headless-capability-dialog" class="action-confirm-dialog headless-capability-dialog" aria-labelledby="headless-capability-title">
+  <div class="confirm-head"><span class="confirm-sparkle">◇</span><div><h3 id="headless-capability-title">配置 Headless 能力声明</h3><p id="headless-capability-route">仅补充已确认的模型能力</p></div></div>
+  <p class="muted">请只勾选你确认该模型及第三方中转站实际支持的能力。这里写入的是 Headless 配置声明，不代表实测成功；Desktop 原配置不会修改。</p>
+  <fieldset class="headless-capability-fieldset"><legend>输入能力</legend>
+    <label><input id="headless-capability-text" type="checkbox"> 文字输入</label>
+    <label><input id="headless-capability-image" type="checkbox"> 图片输入</label>
+  </fieldset>
+  <fieldset class="headless-capability-fieldset"><legend>思考深度档位</legend>
+    <div class="headless-effort-grid">
+      <label><input type="checkbox" data-headless-effort="off"> off</label>
+      <label><input type="checkbox" data-headless-effort="low"> low</label>
+      <label><input type="checkbox" data-headless-effort="medium"> medium</label>
+      <label><input type="checkbox" data-headless-effort="high"> high</label>
+      <label><input type="checkbox" data-headless-effort="xhigh"> xhigh</label>
+      <label><input type="checkbox" data-headless-effort="max"> max</label>
+    </div>
+    <small class="setting-note">只添加来源配置中尚未声明的档位；按 DSH 常见映射写入 off:null、其余同名值。若中转站要求自定义参数映射，本向导尚不支持；off 不保证关闭上游推理。</small>
+  </fieldset>
+  <p id="headless-capability-dialog-status" class="setting-note" role="status" aria-live="polite"></p>
+  <div class="confirm-footer"><button type="button" id="headless-capability-reset">恢复来源声明</button><button type="button" id="headless-capability-cancel">取消</button><button type="button" id="headless-capability-apply" class="primary">仅应用到 Headless</button></div>
 </dialog>
 </body></html>
 

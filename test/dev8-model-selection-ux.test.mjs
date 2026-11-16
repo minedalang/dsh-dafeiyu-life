@@ -55,9 +55,10 @@ function ui(){
 test('官方 Provider 不是必做清单：仅首次设置要求一个真实连接回执',()=>{
   assert.match(html,/快速设置只需任选一个模型验证成功，不必验证全部 Provider/)
   assert.match(js,/headlessGlobalVerified=r\.anyVerified===true/)
-  assert.match(js,/!headlessGlobalVerified\)details\.open=true/)
+  assert.match(html,/data-open-anchor="headless-model-sync-panel"/)
+  assert.match(js,/headless-next-action/)
   assert.doesNotMatch(js,/必须点击验证，才能完成首次设置/)
-  assert.match(js,/按需验证 · /)
+  assert.match(js,/文字连接验证 · 待验证/)
   assert.match(server,/defaultModel:provider&&model\?\{provider,model\}:null/)
   assert.match(readFileSync(new URL('../lib/first-start.mjs',import.meta.url),'utf8'),/headlessSync\.hasAnyVerified\(\)/)
 })

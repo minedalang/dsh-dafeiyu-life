@@ -243,6 +243,38 @@ def test_dsh_image_selftest_distinguishes_missing_mcp_proof_and_provider_api_err
     assert failed['diagnostics']['modelAnswer']['status']=='not_returned'
 
 
+def test_dsh_image_selftest_keeps_verified_mcp_receipt_when_child_exits_nonzero(tmp_path):
+    env=selftest_configured(tmp_path)
+    def failed_after_image(argv,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'kind':'dafeiyu-selftest','sha256':module._SELFTEST_IMAGE_SHA256,
+            'byteLength':module._SELFTEST_IMAGE_BYTES,'mimeType':'image/png','imageBlocks':1,
+        }),encoding='utf8')
+        return SimpleNamespace(returncode=1,stdout=b'',stderr=b'HTTP 400 invalid_request_error payload too large')
+    result=module.describe_test_image_with_dsh(tmp_path,env=env,runner=failed_after_image)
+    assert not result['ok'] and result['status']=='headless_launch_failed'
+    assert result['diagnostics']['mcpImage']['status']=='verified'
+    assert result['diagnostics']['mcpImage']['byteLength']==module._SELFTEST_IMAGE_BYTES
+    assert result['diagnostics']['providerApi']['status']=='failed'
+    assert result['diagnostics']['modelAnswer']['status']=='not_returned'
+    assert 'MCP 已成功返回固定图片' in result['error']
+
+
+def test_dsh_image_selftest_keeps_verified_mcp_receipt_when_child_times_out(tmp_path):
+    env=selftest_configured(tmp_path)
+    def timeout_after_image(argv,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'kind':'dafeiyu-selftest','sha256':module._SELFTEST_IMAGE_SHA256,
+            'byteLength':module._SELFTEST_IMAGE_BYTES,'mimeType':'image/png','imageBlocks':1,
+        }),encoding='utf8')
+        raise module.subprocess.TimeoutExpired(argv,180)
+    result=module.describe_test_image_with_dsh(tmp_path,env=env,runner=timeout_after_image)
+    assert not result['ok'] and result['status']=='timeout'
+    assert result['diagnostics']['mcpImage']['status']=='verified'
+    assert result['diagnostics']['providerApi']['status']=='timeout'
+    assert result['diagnostics']['modelAnswer']['status']=='not_returned'
+
+
 class TestDshImageSelftestDiagnostics(unittest.TestCase):
     def test_mcp_image_receipt_and_unobservable_bridge_are_separate(self):
         from tempfile import TemporaryDirectory

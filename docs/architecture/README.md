@@ -1,20 +1,20 @@
-> **2.8.1-dev.3b.19 当前：** [DSH 视觉路由一致性、Headless 能力声明与分阶段图片验收](2.8.1-video-perception-dev3b19-headless-vision-route-diagnostics.md)。管理页按实际生效路由比较继承模型；图片声明、Headless 文字连接、MCP 图片块回执、附件桥接和最终模型回答分别呈现。插件不能直接观察 DSH 内部附件桥接，真实 Windows/第三方中转站图片验收仍需完成。
+> **2.8.1-dev.3b.20 当前：** [私信限流收口、Headless 双栏能力管理与图片回执诊断](2.8.1-dev3b20-dm-headless-capability-management.md)。普通监听与快通道显示为同一 DM 退避，活跃检查自适应放慢；Desktop/Headless 双栏由真实配置状态驱动，Headless 能力补充不修改 Desktop；图片验收在 DSH 子进程异常时仍保留 MCP 图片证明。真实 B站 -509 恢复、Windows DSH 与第三方中转站图片链路仍需实机验证。
 
-以下各节保留为历史开发阶段记录；当前实现与约束以本节 dev.3b.19 文档及仓库根目录 `AGENTS.md` 为准。
+上一批 [dev.3b.19 DSH 视觉路由一致性与分阶段图片验收](2.8.1-video-perception-dev3b19-headless-vision-route-diagnostics.md) 保留为历史记录；当前实现与约束以本节 dev.3b.20 文档及仓库根目录 `AGENTS.md` 为准。
 
-> **2.8.1-dev.3b.9 当前：** [受控 MP4 HTTP Range 分段视频感知与本地 Ollama 视觉模型认可恢复](2.8.1-video-perception-dev3b9.md)。超过卡片网络预算不强制整文件下载，不回退3帧冒充深入；当前范围仅索引可用的公开单段 MP4，实际 Windows/B站还需验收。
+> **历史增量 2.8.1-dev.3b.9：** [受控 MP4 HTTP Range 分段视频感知与本地 Ollama 视觉模型认可恢复](2.8.1-video-perception-dev3b9.md)。超过卡片网络预算不强制整文件下载，不回退3帧冒充深入；当前范围仅索引可用的公开单段 MP4，实际 Windows/B站还需验收。
 
-> **当前开发候选 2.8.1-dev.3b.6：** [视频感知全链路、只读 Life 输入 Debug、实机发布门禁](2.8.1-video-perception-dev3b6.md)。此前 dev.3b.5 等段落均是按阶段保留的历史描述。未通过真实 B站/DSH 模型验收，不应以正式版发布。
+> **历史开发候选 2.8.1-dev.3b.6：** [视频感知全链路、只读 Life 输入 Debug、实机发布门禁](2.8.1-video-perception-dev3b6.md)。此前 dev.3b.5 等段落均是按阶段保留的历史描述。未通过真实 B站/DSH 模型验收，不应以正式版发布。
 
-> **当前 2.8.1-dev.3b.5 · 新用户安装可靠性：** [首次设置主依赖安装、实测就绪扫码门禁、可选视频探测隔离与二维码 Python 兼容修复](2.8.1-dev3b5-first-start-dependency.md)。已发布 2.8.0 不受本补丁改变；Windows/macOS/Linux 空白环境仍待真实安装验收。
+> **历史增量 2.8.1-dev.3b.5 · 新用户安装可靠性：** [首次设置主依赖安装、实测就绪扫码门禁、可选视频探测隔离与二维码 Python 兼容修复](2.8.1-dev3b5-first-start-dependency.md)。已发布 2.8.0 不受本补丁改变；Windows/macOS/Linux 空白环境仍待真实安装验收。
 
-> 当前开发增量：**2.8.1-dev.3b.4 · 视觉模型与依赖管理一体化**。视觉识别模型、FFmpeg/Whisper 同页；模型人工认可依据 Ollama 模型摘要持久恢复，系统组件显式受控安装；详见 [dev.3b.4 设计与验收](2.8.1-video-perception-dev3b4.md)。正式版 2.8.0 不包含上述功能。
+> 历史增量：**2.8.1-dev.3b.4 · 视觉模型与依赖管理一体化**。视觉识别模型、FFmpeg/Whisper 同页；模型人工认可依据 Ollama 模型摘要持久恢复，系统组件显式受控安装；详见 [dev.3b.4 设计与验收](2.8.1-video-perception-dev3b4.md)。正式版 2.8.0 不包含上述功能。
 
 > **2.8.1-dev.3b.3 依赖入口收口：** [快速设置安装主依赖及勾选的 FFmpeg/Whisper，可在 AI 模型页设置语音识别并验收实际回执](2.8.1-video-perception-dev3b3.md)。两类安装使用不同的原有安装器，避免重复控制与未经确认的大模型下载。
 
 > **2.8.1-dev.3b.3 本轮视频依赖集中管理：** [FFmpeg 状态、自测及 Windows 显式 winget 安装、Whisper 安装/模型缓存/真实转写状态、辅助能力迁移至 AI 模型页](2.8.1-video-perception-dev3b3.md)。修复选择 Whisper 模型后仍复用旧 MCP 默认型号的接线；离线检查不代表 Windows 实机/真实 B站验收。
 
-> **2.8.1-dev.3b.1 当前开发增量：** [字幕/分镜时间邻接证据、DSH 第三方模型能力助手、Windows Ollama 启动和统一 SVG 配图](2.8.1-video-perception-dev3b1.md)。只证明时间邻接，不宣称已经 OCR、听原声或音画语义互证。
+> **历史增量 2.8.1-dev.3b.1：** [字幕/分镜时间邻接证据、DSH 第三方模型能力助手、Windows Ollama 启动和统一 SVG 配图](2.8.1-video-perception-dev3b1.md)。只证明时间邻接，不宣称已经 OCR、听原声或音画语义互证。
 
 > **2.8.1-dev.3a.4 当前视频感知开发说明：** [12/24/48 卡片式分镜、全片时间分层、真实视频切镜/运动/弹幕热度联合选帧、旧高能预览实验退役、可信证据、Mermaid/SVG](2.8.1-video-perception-dev3a4.md)。高能只是候选线索，不构成事实；真实 Windows/B站/模型未验收。
 
@@ -38,17 +38,17 @@
 
 [多气泡自然分段、主人额度排除、持久互动节奏卡片和 ZIP 基线补丁](2.8.0-dev17-uploaded-zip-quota-burst.md)。仍需真实 Windows/B站验收。
 
-## 2.8.0-dev.17 当前增量（基于 dev.16）
+## 2.8.0-dev.17 历史增量（基于 dev.16）
 
 [网络退避恢复、主人私信 10 秒快通道接线、短反馈上下文锚定与 Windows 测试修复](2.8.0-dev17-network-backoff-fast-dm-recovery.md)。这是源码与日志驱动的离线修复；真实 Windows／B站连接恢复验收仍需完成。
 
-## 2.8.0-dev.16 当前增量入口（优先阅读）
+## 2.8.0-dev.16 历史增量入口
 
 [同一 Life 意愿的兼容视频多动作／私信缓冲跨进程保护／公开场合隐私](2.8.0-dev16-composable-writes-private-memory.md)。此版本仍是开发预览，**未通过** Windows／真实 B站／真实模型服务商／72 小时验收。历史文档下方即使写着“当前”，也按其开发时间看作历史。
 
 **2.8.0-dev.16 私信按段经历提炼（当前交付）：** [临时双向缓冲、AI 按段整理、可衰减经历与原有反思](2.8.0-dev16-private-conversation-extraction.md)。以用户上传源码为基线修复普通/主人私信真实回执与自然收尾接线；原文仅短期保留，统计按账号隔离。未完成 Windows/B站实机验收。
 
-**2.8.0-dev.16 当前增量：** [私信可衰减共同交流、私密反思与跨渠道熟人理解](2.8.0-dev16-private-relationship-memory.md)。仅供同一账号、同一 UID 关系理解，绝不把私聊直接公开；真实平台及完整语义隐私仍待验收。
+**2.8.0-dev.16 历史增量：** [私信可衰减共同交流、私密反思与跨渠道熟人理解](2.8.0-dev16-private-relationship-memory.md)。仅供同一账号、同一 UID 关系理解，绝不把私聊直接公开；真实平台及完整语义隐私仍待验收。
 
 > **2.8.0 最新开发收口（基线 dev.16）**：统一 Life 意愿、私信渐进表达、主人对话接力、10–60 秒活跃轮询、跨日记忆与成长诊断现行入口分别参见 [dev.16 架构](2.8.0-dev16-dm-progressive-fast-poll-life-rest.md)、[统一 Life 行动协议](2.8.0-unified-life-action-protocol.md)、[当前 Life 接线](life-system-current.md) 和 [发布就绪审计](2.8.0-release-readiness.md)。正式版仍需 Windows、B站、长时稳定性和完整安全回归；以下 dev.13/12/10 等说明均为历史开发节点。
 
@@ -422,7 +422,7 @@
 
 - [已结算生活契机与独立探索线索分账本语义、失败有界冷却、成功元数据后的后续自主考虑](./2.7.1-dev4-life-exploration-read-continuity.md) · [当前调用 Mermaid](./diagrams/2.7.1-dev4-life-exploration-read-continuity-live.mmd)。修复 `cues>0`、`opportunities=0` 时只读失败的错误结算；仅验证公开元数据，视频观看和社交接管仍需真实回执与独立授权。
 
-# 当前增量：Life Agent 决策全过程 DEBUG / B站只读拒绝分类 / 旧测试入口清理
+# 历史增量：Life Agent 决策全过程 DEBUG / B站只读拒绝分类 / 旧测试入口清理
 
 - [真实生活决策链脱敏追踪、平台拒绝分类及重复汇总、错误冻结收紧、Debug 入口和兼容说明](./2.7.1-dev4-life-decision-trace-and-read-diagnostics.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-life-decision-trace-live.mmd)。保留原生活事件、已授权只读动作及平台回执为事实源；调试记录不是第二份记忆或授权；Dev3 旧离线按钮退役。Life Agent 社交仍未接管。
 

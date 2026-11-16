@@ -47,12 +47,14 @@ test('tree shows genuinely wired Life branches and clearly distinguishes profess
   assert.match(html,/专业工具与发送门禁/)
 })
 test('Headless explicit verification path is separate from preview-then-confirm sync',()=>{
-  assert.match(html,/同步到 Headless · 先预览/)
+  assert.match(js,/同步到 Headless →/)
   assert.match(html,/必须完成相应配置同步与真实模型验证后才能就绪/)
-  assert.match(html,/id="headless-sync-commit" hidden/)
+  assert.match(html,/id="headless-target-list"/)
   assert.match(js,/request\('\/headless-model\/preview'/)
   assert.match(js,/request\('\/headless-model\/sync'/)
   assert.match(js,/request\('\/headless-model\/verify'/)
+  assert.match(js,/request\('\/headless-model\/capabilities-preview'/)
+  assert.match(js,/request\('\/headless-model\/capabilities'/)
 })
 test('owner friendly DM and memories do not expose raw errors by default',()=>{
   assert.match(html,/聊天内容的保留与清理/)

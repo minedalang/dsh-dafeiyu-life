@@ -45,7 +45,7 @@ test('监控列出三个真实轮询渠道、错误类别、不同重试时间�
   mentions:{category:'network',streak:3,nextAt:now+420_000}
  }}})
  const x=r.issues.find(i=>i.id==='network')
- assert.deepEqual(x.channels.map(y=>y.label),['后台私信','评论回复','被 @ 提及'])
+ assert.deepEqual(x.channels.map(y=>y.label),['私信监听与快通道','评论回复','被 @ 提及'])
  assert.equal(x.channels[0].reason,'B站限流')
  assert.equal(x.channels[0].canClear,false)
  assert.equal(x.channels[1].reason,'网络请求失败')
@@ -53,6 +53,36 @@ test('监控列出三个真实轮询渠道、错误类别、不同重试时间�
  assert.equal(x.channels[2].canClear,true)
  assert.equal(x.retryAt,now+120_000)
  assert.equal(JSON.stringify(x).includes('cookie'),false)
+})
+
+test('私信监听与快通道显示为同一退避；合并 DM 专属限流和共享读取冷却的最晚恢复时间',()=>{
+ const now=Date.parse('2026-11-15T12:00:00Z')
+ const r=systemHealthSnapshot({now,scheduler:{running:true,readBudget:{blocked:true,reason:'platform-cooldown',
+   retryAt:now+60_000,lastErrorAt:now,lastRateLimitKind:'dm-list'},networkBackoff:{
+   dm:{category:'rate-limit',streak:2,nextAt:now+30*60_000}},checks:{
+     dm:{enabled:true,lastResult:'error',lastFinishedAt:now},dmFast:{enabled:true,lastResult:'completed',lastFinishedAt:now}}}})
+ const network=r.issues.find(x=>x.id==='network')
+ assert.equal(network.channels.filter(x=>x.id==='dm').length,1)
+ assert.equal(network.channels[0].label,'私信监听与快通道')
+ assert.equal(network.channels[0].retryAt,now+30*60_000)
+ assert.match(network.channels[0].detail,/私信接口触发的共享限流/)
+ assert.equal(r.channels.filter(x=>x.id==='dm'||x.id==='dmFast').length,1)
+ assert.equal(r.channels.find(x=>x.id==='dm').retryAt,now+30*60_000)
+ assert.equal(r.issues.some(x=>x.id==='read'),false,'同一次 DM -509 不再重复列成独立的全局限流故障')
+ assert.equal(network.channels[0].canClear,false)
+})
+
+test('评论触发的共享读取预算也会推迟私信的实际恢复时间，但保留全局预算告警',()=>{
+ const now=Date.parse('2026-11-15T12:00:00Z')
+ const r=systemHealthSnapshot({now,scheduler:{running:true,readBudget:{blocked:true,reason:'minute-budget',
+   retryAt:now+90_000,lastErrorAt:now,lastRateLimitKind:'comment-replies'},networkBackoff:{
+   dm:{category:'network',streak:2,nextAt:now+60_000}}}})
+ const dm=r.channels.find(x=>x.id==='dm')
+ assert.equal(dm.label,'私信监听与快通道')
+ assert.equal(dm.retryAt,now+90_000)
+ assert.equal(dm.state,'backoff')
+ assert.equal(r.issues.some(x=>x.id==='read'),true,'全局读取预算仍单独说明其影响范围')
+ assert.equal(r.issues.find(x=>x.id==='network').channels[0].canClear,false)
 })
 
 test('管理页具备可全屏的交互三维记忆空间、明确颜色图例、点击详情同步；删除顶部生活播报',()=>{

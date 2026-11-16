@@ -92,12 +92,18 @@ test('a verified Life bubble may extend its own exact text seal once, never anot
 }))
 
 
-test('targeted fetch failure propagates into shared backoff; ordinary inbox keeps other sessions',async()=>{
+test('B站 -509 / 共享读取暂停立即停止整轮私信扫描；普通网络错误仍可检查其他会话',async()=>{
  const source=[{uid:person,unread:1,lastTs:t0},{uid:'33445',unread:1,lastTs:t0}]
- const adapter=async(uid)=>{if(uid===person)throw Error('HTTP -509');return [{key:'k',ts:t0,text:'你好',fromMe:false,kind:1}]}
- const normal=await collectDmInbox({sessions:source,ownUid:uid,readConversation:adapter,now:()=>t0,logger:{warn(){}}})
- assert.equal(normal.length,1)
- await assert.rejects(collectDmInbox({sessions:source.slice(0,1),ownUid:uid,readConversation:adapter,now:()=>t0,failClosed:true,logger:{warn(){}}}),/HTTP -509/)
+ const rateCalls=[]
+ const throttled=async(uid)=>{rateCalls.push(uid);throw Error('HTTP 200 code=-509 请求过于频繁')}
+ await assert.rejects(collectDmInbox({sessions:source,ownUid:uid,readConversation:throttled,now:()=>t0,logger:{warn(){}}}),/HTTP 200 code=-509/)
+ assert.deepEqual(rateCalls,[person],'命中平台限流后不能继续读取第二个会话')
+ const normal=await collectDmInbox({sessions:source,ownUid:uid,readConversation:async target=>{
+   if(target===person)throw Error('ECONNRESET')
+   return [{key:'k',ts:t0,text:'你好',fromMe:false,kind:1}]
+ },now:()=>t0,logger:{warn(){}}})
+ assert.equal(normal.length,1,'普通单会话网络错误仍允许本轮检查其他会话')
+ await assert.rejects(collectDmInbox({sessions:source.slice(0,1),ownUid:uid,readConversation:throttled,now:()=>t0,failClosed:true,logger:{warn(){}}}),/HTTP 200 code=-509/)
 })
 
 test('active lane is account-scoped and does not retry failed model every ten seconds',async()=>mk(async dataDir=>{
@@ -114,6 +120,36 @@ test('active lane is account-scoped and does not retry failed model every ten se
  clock+=60_000;assert.equal(engine.nextFastUid(),person)
  account='998';assert.equal(engine.nextFastUid(),'')
  assert.equal((await engine.poll({fastUid:person})).skipped,'inactive-session')
+}))
+
+test('活跃私信快通道在连续无新消息时自适应 10→20→30→60 秒，有新来信后重置',async()=>mk(async dataDir=>{
+ let clock=t0
+ const inbox=[input('baseline','旧消息')]
+ const config={enabled:true,strangerEnabled:false,p6Enabled:true,p6MaxBubbles:3,whitelist:[person],
+   whitelistCooldownSeconds:0,dmActivePollSeconds:10,dmActiveWindowSeconds:600}
+ const engine=createDmAutoReply({dataDir,getConfig:()=>config,selfUid:'999',now:()=>clock,fetchIncoming:async()=>inbox,
+   send:async()=>({ok:true,receiptId:'adaptive'}),generateReply:async()=>({action:'skip',messages:[]}),
+   logger:{warn(){},error(){}}})
+ await engine.poll() // establish safe baseline
+ inbox.push(input('new-1','刚刚有新消息'))
+ await engine.poll() // create active session; model may choose silence
+ assert.equal(engine.status().fast.nextIntervalSeconds,10)
+ clock+=10_000;assert.equal(engine.nextFastUid(),person)
+ await engine.poll({fastUid:person}) // quiet check 1
+ assert.equal(engine.status().fast.nextIntervalSeconds,20)
+ clock+=10_000;assert.equal(engine.nextFastUid(),'')
+ clock+=10_000;assert.equal(engine.nextFastUid(),person)
+ await engine.poll({fastUid:person}) // quiet check 2
+ assert.equal(engine.status().fast.nextIntervalSeconds,30)
+ clock+=20_000;assert.equal(engine.nextFastUid(),'')
+ clock+=10_000;assert.equal(engine.nextFastUid(),person)
+ await engine.poll({fastUid:person}) // quiet check 3
+ assert.equal(engine.status().fast.nextIntervalSeconds,60)
+ clock+=30_000;assert.equal(engine.nextFastUid(),'')
+ clock+=30_000;assert.equal(engine.nextFastUid(),person)
+ inbox.push(input('new-2','又有新消息'))
+ await engine.poll({fastUid:person})
+ assert.equal(engine.status().fast.nextIntervalSeconds,10,'新消息重新建立快速响应窗口')
 }))
 
 

@@ -345,6 +345,24 @@ def _vision_selftest_diagnostics(*, mcp='not_run', provider_api='not_run', answe
     }
 
 
+_SELFTEST_IMAGE_SHA256='a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b'
+_SELFTEST_IMAGE_BYTES=515908
+
+
+def _read_selftest_image_proof(proof):
+    """Read the nonce-bound MCP receipt even when the DSH child later fails."""
+    try:
+        observed=json.loads(proof.read_text(encoding='utf8'))
+    except (OSError,ValueError,AttributeError):
+        return 'not_received',None
+    if (not isinstance(observed,dict) or observed.get('kind')!='dafeiyu-selftest'
+        or observed.get('sha256')!=_SELFTEST_IMAGE_SHA256
+        or observed.get('byteLength')!=_SELFTEST_IMAGE_BYTES
+        or observed.get('mimeType')!='image/png' or observed.get('imageBlocks')!=1):
+        return 'mismatch',observed
+    return 'verified',observed
+
+
 def describe_test_image_with_dsh(home, env=None, runner=None):
     """Manual-only DSH mascot image probe. Never reads a BV or uses write tools.
 
@@ -395,33 +413,39 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False,
                            **_hidden_windows_child())
         except subprocess.TimeoutExpired:
-            diagnostics=_vision_selftest_diagnostics(provider_api='timeout',answer='not_returned')
+            proof_status,_=_read_selftest_image_proof(proof)
+            diagnostics=_vision_selftest_diagnostics(mcp=proof_status,provider_api='timeout',answer='not_returned',
+                image_bytes=_SELFTEST_IMAGE_BYTES if proof_status=='verified' else None)
+            suffix=('；MCP 已成功返回固定图片，但 DSH 后续会话超时' if proof_status=='verified'
+                    else '；MCP 图片回执与固定原图不匹配' if proof_status=='mismatch' else '')
             return {'ok':False,'status':'timeout','diagnosticCode':'headless_timeout',
-                    'error':'DSH 识图验证超过 180 秒，请检查模型响应或网络','diagnostics':diagnostics}
+                    'error':'DSH 识图验证超过 180 秒，请检查模型响应或网络'+suffix,'diagnostics':diagnostics}
         except (OSError,ValueError) as exc:
             diagnostics=_vision_selftest_diagnostics(provider_api='not_started',answer='not_returned')
             return {'ok':False,'status':'launch_error','diagnosticCode':'dsh_launch_error',
                     'error':'无法安全启动 DSH 视觉会话：'+type(exc).__name__,'diagnostics':diagnostics}
         if result.returncode!=0:
             safe=_safe_dsh_headless_diagnostic(result.stderr,result.stdout,result.returncode)
-            diagnostics=_vision_selftest_diagnostics(provider_api='failed',answer='not_returned',
-                                                     diagnostic_code=safe.get('diagnosticCode',''))
+            proof_status,_=_read_selftest_image_proof(proof)
+            diagnostics=_vision_selftest_diagnostics(mcp=proof_status,provider_api='failed',answer='not_returned',
+                image_bytes=_SELFTEST_IMAGE_BYTES if proof_status=='verified' else None,
+                diagnostic_code=safe.get('diagnosticCode',''))
+            if proof_status=='verified':
+                safe['error']+='；MCP 已成功返回固定图片，失败发生在其后的 DSH/模型会话阶段'
+            elif proof_status=='mismatch':
+                safe['error']+='；已取得 MCP 回执，但图片回执与固定原图不匹配'
             return {'ok':False,'status':'headless_launch_failed',**safe,'diagnostics':diagnostics}
-        try:observed=json.loads(proof.read_text(encoding='utf8'))
-        except (OSError,ValueError):
+        proof_status,observed=_read_selftest_image_proof(proof)
+        if proof_status=='not_received':
             diagnostics=_vision_selftest_diagnostics(mcp='not_received',provider_api='completed',answer='not_returned')
             return {'ok':False,'status':'no_image_proof','diagnosticCode':'mcp_image_not_proven',
                     'error':'DSH 模型没有实际调用受控图片工具，不能人工认可','diagnostics':diagnostics}
-        expected_sha='a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b'
-        expected_bytes=515908
-        if (observed.get('kind')!='dafeiyu-selftest' or observed.get('sha256')!=expected_sha
-            or observed.get('byteLength')!=expected_bytes or observed.get('mimeType')!='image/png'
-            or observed.get('imageBlocks')!=1):
+        if proof_status=='mismatch':
             diagnostics=_vision_selftest_diagnostics(mcp='mismatch',provider_api='completed',answer='not_accepted')
             return {'ok':False,'status':'image_mismatch','diagnosticCode':'mcp_image_receipt_mismatch',
                     'error':'DSH 收到的图片回执与大肥鱼原图不匹配','diagnostics':diagnostics}
         diagnostics=_vision_selftest_diagnostics(mcp='verified',provider_api='completed',
-                                                 answer='not_returned',image_bytes=expected_bytes)
+                                                 answer='not_returned',image_bytes=_SELFTEST_IMAGE_BYTES)
         output=(result.stdout or b'').decode('utf8',errors='replace')
         if 'VISION_TEST_RESULT:' not in output or 'VISION_TEST_FAILED' in output.split('VISION_TEST_RESULT:')[-1]:
             diagnostics['modelAnswer']={'status':'missing'}
