@@ -57,7 +57,7 @@ test('用户指定云端增量测试约束与日志导出脚本已经接线',asy
  assert.match(agents,/禁止云端 Agent 执行全量 Node 测试/)
  assert.match(agents,/增量 Node\/Python 测试/)
  assert.match(exporter,/dm-inbound-outcomes\.json/)
- assert.match(bat,/抓取窗口与私信视觉诊断\.ps1/)
+ assert.match(bat,/capture-window-dm-vision\.bat/)
  assert.match(ps,/ParentProcessId/)
  assert.doesNotMatch(ps,/\.CommandLine/)
 })

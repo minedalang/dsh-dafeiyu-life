@@ -4877,6 +4877,26 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   }
 
 
+  // A single-user read-only Bilibili reconciliation. Never touch the ordinary
+  // inbox cursor or bypass the shared DM read budget / account fence.
+  async function fetchDmContactSnapshot(uid){
+    refreshCfg()
+    if(cfg.masterEnabled!==true||cfg.dmWatch!==true)throw Error('私信监听或总开关未启用')
+    const release=accountBinding.enterPlatformOperation()
+    try{
+      accountBinding.assertReady()
+      const cred=dmCred(stateDir)
+      const target=String(uid||'')
+      if(!cred||!/^[1-9]\d{0,18}$/.test(target)||target===String(cred.dedeuserid||''))
+        throw Error('登录凭证或目标联系人 UID 不合法')
+      const remote=await dmFetch(cred,target,50,{readBudget:biliReadBudget})
+      accountBinding.assertReady()
+      if(String(dmCred(stateDir)?.dedeuserid||'')!==String(cred.dedeuserid))throw Error('平台账号已经切换')
+      if(!Array.isArray(remote))throw Error('私信接口没有返回有效消息')
+      return remote
+    }finally{release()}
+  }
+
   const dmAutoreply = createDmAutoReply({
     dataDir: accountRuntimeDir,
     getConfig: dmConfig,
@@ -4886,6 +4906,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getRelationshipStage:uid=>{try{return existingRelationshipIndex()?.get(uid,relationshipOptions())?.stage||'new'}catch{return 'new'}},
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     fetchIncoming: getNewDmMessages,
+    fetchContactSnapshot:fetchDmContactSnapshot,
     fetchApprovalHistory: async (uid='') => {
       const release=accountBinding.enterPlatformOperation();
       try {
@@ -9404,6 +9425,35 @@ logger:{warn:m=>log('社交意图：'+m)}
       const confirmedMissing=body?.confirmedMissing===true
       try { const result=await commentInteract.forceReply({id,confirmedMissing});return sendJson(res,200,result) }
       catch(e) {return sendJson(res,409,{ok:false,error:String(e?.message||e).slice(0,200)})}
+    }
+
+    // Two-step targeted reconciliation of one existing contact: read-only
+    // preview first, then an explicit owner-confirmed *AI reconsideration*.
+    // This must not clear seen IDs or force any platform send.
+    if(req.method==='POST'&&(path==='/api/bili-duty/dm-contact-check'||path==='/api/bili-duty/dm-contact-reconsider')){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')
+      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+        String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
+        !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
+        return sendJson(res,403,{ok:false,error:'仅可在本机管理中心检查指定联系人'})
+      const body=await readBody(req)
+      const uid=String(body?.uid||'').trim()
+      if(!/^[1-9]\d{0,18}$/.test(uid))return sendJson(res,400,{ok:false,error:'联系人 UID 不合法'})
+      if(!dmConfig().enabled)return sendJson(res,409,{ok:false,error:'私信监听或账号围栏未就绪'})
+      try{
+        if(path==='/api/bili-duty/dm-contact-check'){
+          const result=await dmAutoreply.inspectContact(uid)
+          return sendJson(res,200,result.ok===false?{...result,error:result.message||'私信检查未完成'}:result)
+        }
+        if(body?.confirm!==true||!/^[a-f0-9]{64}$/.test(String(body?.token||'')))
+          return sendJson(res,400,{ok:false,error:'需要先检查该联系人并明确确认'})
+        const result=await dmAutoreply.poll({manualUid:uid,manualToken:body.token})
+        return sendJson(res,200,result.ok===false?{...result,error:result.message||'私信重新考虑未完成'}:result)
+      }catch(e){
+        // Never return raw platform error, sender text, model answer or URL.
+        log('私信联系人单独复核失败（无正文）：'+String(e?.name||'error').slice(0,50))
+        return sendJson(res,200,{ok:false,state:'check-failed',error:'当前平台请求、共享读额度或账号状态阻止了定向检查。请到运行诊断查看冷却状态。'})
+      }
     }
 
     if (req.method === 'GET' && path === '/api/bili-duty/dm-recent') {

@@ -8,9 +8,11 @@
 
 **[2.8.1 开发计划](docs/architecture/2.8.1-video-perception-dev2a.md) · [功能概览](#-从分散能力到连续生活) · [自然交流](#-更自然的交流) · [关系与成长](#-关系记忆与成长) · [可视化成长](#-可视化的生活成长) · [开始使用](#-开始使用) · [未来规划](docs/ROADMAP.md) · [2.8.0 更新说明](RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)**
 
-**当前开发分支：`2.8.1-dev.3b.23`（开发预览，尚未正式发布）。**
+**当前开发分支：`2.8.1-dev.3b.24`（开发预览，尚未正式发布）。**
 
-**2.8.1-dev.3b.23：** 新增私信逐联系人脱敏结果；日志 BAT 汇总 `dm-inbound-outcomes.json`。黑窗复现请在 Windows 运行 `tools/抓取窗口与私信视觉诊断.bat [UID] [秒数]`。`exit=1` 尚不证明 Headless 不支持图片。云端仅跑增量测试，全量由用户本地执行。详见 [定点诊断](docs/architecture/2.8.1-dev3b23-window-dm-vision-diagnostics.md)。
+**2.8.1-dev.3b.24：** 「最近私信会话」每位普通/获批好友旁可点击「检查遗漏私信」：先核对平台最近50条来信与本地 seen/确认发送，主人二次确认后才让鱼鱼根据原模型自主重新考虑，不能强制补发或越过退避。偶发视频黑窗建议运行 `tools/capture-intermittent-window.bat 900` 采集进程启动事件（Windows PowerShell 5.1，默认15分钟）；新旧两个诊断 ZIP 分别上传。详情见 [本轮复核说明](docs/architecture/2.8.1-dev3b24-manual-dm-recheck-and-window-events.md)。
+
+**2.8.1-dev.3b.23：** 新增私信逐联系人脱敏结果；日志 BAT 汇总 `dm-inbound-outcomes.json`。黑窗复现建议在 Windows 运行 ASCII 入口 `tools/capture-window-dm-vision.bat [UID] [秒数]`；原中文 BAT 兼容调用，解决部分系统代码页导致的 `-File` 路径乱码。`exit=1` 尚不证明 Headless 不支持图片。云端仅跑增量测试，全量由用户本地执行。详见 [定点诊断](docs/architecture/2.8.1-dev3b23-window-dm-vision-diagnostics.md)。
 
 **2.8.1-dev.3b.22 图片验收开发说明：** [Headless 文字验证、独立 MCP 预检、DSH 实测、分阶段诊断和人工验收](docs/architecture/2.8.1-dev3b22-headless-vision-test-diagnostics.md) 分别显示。Desktop 与 Headless 同源模型可在双栏中以虚线对应；能力声明不等于图片识别已通过。真实 Windows DSH／第三方中转站仍需实机验收，当前开发版未发布 npm。
 
