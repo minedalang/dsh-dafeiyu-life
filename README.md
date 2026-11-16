@@ -8,7 +8,9 @@
 
 **[2.8.1 开发计划](docs/architecture/2.8.1-video-perception-dev2a.md) · [功能概览](#-从分散能力到连续生活) · [自然交流](#-更自然的交流) · [关系与成长](#-关系记忆与成长) · [可视化成长](#-可视化的生活成长) · [开始使用](#-开始使用) · [未来规划](docs/ROADMAP.md) · [2.8.0 更新说明](RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)**
 
-**当前开发分支：`2.8.1-dev.3b.22`（开发预览，尚未正式发布）。**
+**当前开发分支：`2.8.1-dev.3b.23`（开发预览，尚未正式发布）。**
+
+**2.8.1-dev.3b.23：** 新增私信逐联系人脱敏结果；日志 BAT 汇总 `dm-inbound-outcomes.json`。黑窗复现请在 Windows 运行 `tools/抓取窗口与私信视觉诊断.bat [UID] [秒数]`。`exit=1` 尚不证明 Headless 不支持图片。云端仅跑增量测试，全量由用户本地执行。详见 [定点诊断](docs/architecture/2.8.1-dev3b23-window-dm-vision-diagnostics.md)。
 
 **2.8.1-dev.3b.22 图片验收开发说明：** [Headless 文字验证、独立 MCP 预检、DSH 实测、分阶段诊断和人工验收](docs/architecture/2.8.1-dev3b22-headless-vision-test-diagnostics.md) 分别显示。Desktop 与 Headless 同源模型可在双栏中以虚线对应；能力声明不等于图片识别已通过。真实 Windows DSH／第三方中转站仍需实机验收，当前开发版未发布 npm。
 

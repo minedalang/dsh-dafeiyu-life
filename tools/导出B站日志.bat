@@ -375,6 +375,36 @@ if accountdir.is_dir():
                 if phase:row['postSendStage']=phase
                 recent.append(row)
             owners.append({'statusCounts':dict(stats),'recent':recent})
+# Per-contact outcomes are bounded enums only. They cannot reconstruct old
+# turns that predate the diagnostic recorder and do not imply Bilibili unread=0.
+import hashlib
+per_contact=[]
+if accountdir.is_dir():
+    for acct in accountdir.iterdir():
+        if not acct.is_dir(): continue
+        state=read_json(acct/'runtime'/'dm-autoreply-state.json',5_000_000)
+        cursors=read_json(acct/'runtime'/'dm-poll-cursor.json',400_000)
+        if not isinstance(state,dict):continue
+        for target,p in (state.get('people') or {}).items():
+            if not isinstance(p,dict) or not isinstance(target,str):continue
+            last=p.get('lastInboundOutcome')
+            if not isinstance(last,dict):continue
+            status=code(last.get('status'))
+            if not status or status not in ('model-skip','model-close','model-defer','delivered','send-unknown','send-blocked','model-failed','model-invalid','safety-blocked','approval-pending','permission-denied'):continue
+            record={'contactKey':hashlib.sha256((acct.name+':'+target).encode('utf8')).hexdigest()[:16],
+                'status':status,'reason':code(last.get('reason')) or '',
+                'at':number(last.get('at')),'inboundAt':number(last.get('inboundAt')),
+                'lastRepliedAt':number(p.get('lastRepliedAt'))}
+            cur=(cursors.get('people') or {}).get(target,{}) if isinstance(cursors,dict) else {}
+            if isinstance(cur,dict):
+                record['platformUnreadHint']=number(cur.get('unread'))
+                record['sessionCursorAt']=number(cur.get('at'))
+            per_contact.append(record)
+per_contact.sort(key=lambda item:item.get('at') or 0,reverse=True)
+dump('dm-inbound-outcomes.json',{'scope':'last recorded outcome per contact, no message text',
+    'recordedContacts':len(per_contact),'recent':per_contact[:100],
+    'note':'Missing entries on older versions are unknown, not skipped. Unread is Bilibili session hint, not plugin processing state.'})
+
 dump('dm-expression-overview.json',{
     'normalLastTurnByAccount':people,'ownerAgentByAccount':owners,
     'knownUnobservableFromDisk':[

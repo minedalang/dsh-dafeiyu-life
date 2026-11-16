@@ -1,6 +1,6 @@
 {
   "name": "dsh-dafeiyu-life",
-  "version": "2.8.1-dev.3b.22",
+  "version": "2.8.1-dev.3b.23",
   "description": "大肥鱼 · DSH 生活系统：主 Session 可回忆人生记忆与真实经历、管理自主待办，并按权限使用 B站读取与互动；支持可遗忘人生记忆、情绪与兴趣成长、三级社交和有边界的自主意愿。",
   "keywords": [
     "dsh",
@@ -69,6 +69,8 @@
     "scripts/test-python.mjs",
     "tools/life-willingness-offline-recovery.mjs",
     "tools/导出B站日志.bat",
+    "tools/抓取窗口与私信视觉诊断.bat",
+    "tools/抓取窗口与私信视觉诊断.ps1",
     "RELEASE_NOTES_v2.8.0.md"
   ],
   "engines": {
