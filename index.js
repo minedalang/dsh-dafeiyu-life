@@ -3272,7 +3272,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       // the Python vision wrapper rather than the ordinary JS Agent launcher.
       const runAsNode=Boolean(process.versions.electron||dsh.env?.ELECTRON_RUN_AS_NODE==='1')
       const env=pyEnv({BILI_DUTY_HOME:stateDir,BILI_VISION_DSH_ARGV:JSON.stringify([dsh.command,...args]),
-        BILI_VISION_DSH_RUN_AS_NODE:runAsNode?'1':'0'})
+        BILI_VISION_DSH_RUN_AS_NODE:runAsNode?'1':'0',
+        BILI_VISION_DSH_WORKDIR:process.cwd()})
       return await new Promise((resolve,reject)=>{
         const child=spawn(cfg.pythonPath||'python',pyArgs,{cwd:stateDir,shell:false,windowsHide:true,
           env,stdio:['ignore','pipe','pipe']})
@@ -3440,6 +3441,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           // MCP Python env may be restricted: carry the Desktop Electron CLI
           // requirement explicitly into the nested, read-only vision subprocess.
           '          BILI_VISION_DSH_RUN_AS_NODE: ' + yq(independentVisionRunAsNode ? '1' : '0'),
+          '          BILI_VISION_DSH_WORKDIR: ' + yq(posix(process.cwd())),
           '          BILI_VISION_DSH_MODEL: ' + yq(cfg.visionModelId || cfg.pluginDefaultModelId || ''),
           '          BILI_VISION_PROMPT_B64: ' + yq(Buffer.from(normalizeVisionPrompt(cfg.visionPrompt), 'utf8').toString('base64')),
           '          BILI_VISION_DSH_PROVIDER: ' + yq(cfg.visionModelProvider || cfg.pluginDefaultModelProvider || ''),
@@ -7389,6 +7391,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       // 2026-10-22：缺哪个 Python 包装不上，得能一眼看出来（出不了二维码 =09 缺 qrcode）
       missingDeps: (() => { try { return missingVenvDeps() } catch { return [] } })(),
       dmAutoReplyStatus: dmAutoreply.status(),
+      dmDetailQueueStatus: dmDetailQueue.status(),
       commentInteractStatus: commentInteract.status(),
       interactionSchedulerStatus: interactionScheduler.status(),
       mainSessionBridgeStatus: mainSessionBridge.status(),

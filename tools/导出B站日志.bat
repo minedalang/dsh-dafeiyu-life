@@ -195,7 +195,7 @@ dsh_diag = read_json(root/'dsh-vision-selftest-last-run.json',limit=8192)
 dsh_summary={'present':False}
 if isinstance(dsh_diag,dict) and dsh_diag.get('schema')==1 and isinstance(dsh_diag.get('last'),dict):
     row=dsh_diag['last']
-    stage_names=('preflight','headlessConfig','headlessConfigReason','headlessConfigFailureLayer','headlessConfigFailureKind','headlessConfigDefaultDump','headlessConfigBaseDump','headlessConfigNodeEnvRetry','mcpImage','attachmentBridge','providerApi','modelAnswer')
+    stage_names=('preflight','headlessConfig','headlessConfigReason','headlessConfigFailureLayer','headlessConfigFailureKind','headlessConfigDefaultDump','headlessConfigBaseDump','headlessConfigNodeEnvRetry','headlessConfigWorkdirRetry','headlessConfigLaunchCwd','mcpImage','attachmentBridge','providerApi','modelAnswer')
     stage=lambda v: v if isinstance(v,str) and re.fullmatch(r'[a-z][a-z0-9_]{0,39}',v) else 'unknown'
     status=row.get('status')
     if status in ('idle','running','failed','awaiting_review','approved','rejected'):
@@ -423,6 +423,34 @@ per_contact.sort(key=lambda item:item.get('at') or 0,reverse=True)
 dump('dm-inbound-outcomes.json',{'scope':'last recorded outcome per contact, no message text',
     'recordedContacts':len(per_contact),'recent':per_contact[:100],
     'note':'Missing entries on older versions are unknown, not skipped. Unread is Bilibili session hint, not plugin processing state.'})
+
+# dev.3b.33.5: aggregate durable intake/decision queues without disclosing
+# contacts, message identifiers, bodies, model prompts or account names.
+life_queue_summaries=[]
+if accountdir.is_dir():
+    for acct in accountdir.iterdir():
+        if not acct.is_dir():continue
+        runtime=acct/'runtime'
+        li=read_json(runtime/'dm-life-inbox.json',300_000)
+        dq=read_json(runtime/'dm-detail-queue.json',300_000)
+        if not isinstance(li,dict) and not isinstance(dq,dict):continue
+        rows=li.get('rows',[]) if isinstance(li,dict) else []
+        counts=collections.Counter()
+        if isinstance(rows,list):
+            for row in rows:
+                if isinstance(row,dict):
+                    st=code(row.get('status'))
+                    if st in ('pending','deciding','technical-deferred','send-unknown','review-required'):
+                        counts[st]+=1
+        drows=dq.get('rows',[]) if isinstance(dq,dict) else []
+        life_queue_summaries.append({'detailPending':len(drows) if isinstance(drows,list) else 0,
+            'lifePending':counts['pending']+counts['deciding'],
+            'lifeTechnicalDeferred':counts['technical-deferred'],
+            'lifeSendUnknown':counts['send-unknown'],
+            'lifeReviewRequired':counts['review-required']})
+dump('dm-life-queue-summary.json',{'accountCount':len(life_queue_summaries),
+    'accounts':life_queue_summaries,
+    'note':'Privacy-safe counts only. Reading a DM is not a Life decision or send receipt.'})
 
 dump('dm-expression-overview.json',{
     'normalLastTurnByAccount':people,'ownerAgentByAccount':owners,

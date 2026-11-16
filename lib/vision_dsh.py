@@ -228,6 +228,13 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         child_args[child_args.index('--patch')+1]=str(private_overlay)
         child_env=_vision_dsh_child_env(env)
         child_env['BILI_VISION_PROOF_FILE']=str(proof)
+        # The real restricted vision session uses the same cwd/environment
+        # which passed the Headless config check, not an unverified fallback.
+        composition,child_env,vision_cwd=_probe_headless_with_workdir(child_args,home,child_env) if runner is None else (
+            {'status':'not_run','reason':'injected_runner'},child_env,str(home))
+        if composition.get('status')=='failed':
+            return {'ok':False,'status':'headless_config_failed','diagnosticCode':composition.get('reason','headless_config_failed'),
+                    'error':'DSH 受限视觉安全配置未通过；模型未请求'}
         # Body never includes freeform user/video content, paths, or AI-authored commands.
         # 用户可修改识图重点，但末尾的图片证明/只读工具/输出格式要求不可覆盖。
         focus_params=(f'，focus_start_seconds={focus["startSeconds"]}，focus_end_seconds={focus["endSeconds"]}' if focus else '')
@@ -245,7 +252,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         _record_model_launch(home, 'vision')
         execute=runner or subprocess.run
         try:
-            result=execute([*child_args,prompt],cwd=str(home),env=child_env,stdin=subprocess.DEVNULL,
+            result=execute([*child_args,prompt],cwd=vision_cwd,env=child_env,stdin=subprocess.DEVNULL,
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=220 if perception_source=='adaptive' else 50,
                            **_hidden_windows_child(),check=False)
         except subprocess.TimeoutExpired:
@@ -562,6 +569,48 @@ def _probe_headless_with_node_env_isolation(args,home,env,execute=subprocess.run
     return primary,env
 
 
+def _vision_dsh_valid_host_workdir(home,env):
+    """Optional trusted HOST-supplied CLI cwd, never a message/URL or prompt.
+
+    The Windows differential was run in a host working directory whereas the
+    failing nested Python probe used the plugin data home. Both must execute
+    the identical already-validated CLI/overlay; only cwd may differ.
+    """
+    target=env.get('BILI_VISION_DSH_WORKDIR','')
+    if not isinstance(target,str) or not target or len(target)>2048 or '\0' in target:
+        return None
+    try:
+        p=Path(target)
+        if not p.is_absolute() or p.is_symlink() or not p.is_dir():return None
+        p=p.resolve(strict=True)
+        if p==Path(home).resolve():return None
+        return p
+    except (ValueError,OSError):return None
+
+
+def _probe_headless_with_workdir(args,home,env,execute=subprocess.run):
+    """Same exact Headless safety patch, with a bounded cwd-only comparison.
+
+    This never bypasses --dump-config. The real model session must use the
+    cwd/env pair which passed the actual composed read-only overlay check.
+    """
+    result,child_env=_probe_headless_with_node_env_isolation(args,home,env,execute)
+    result['launchCwd']='duty_home'
+    if result.get('status')=='ready':return result,child_env,str(home)
+    other=_vision_dsh_valid_host_workdir(home,env)
+    if other is None:
+        result['workdirRetry']='not_available'
+        return result,child_env,str(home)
+    second,second_env=_probe_headless_with_node_env_isolation(args,other,env,execute)
+    if second.get('status')=='ready':
+        second['launchCwd']='host_workdir'
+        second['workdirRetry']='ready'
+        return second,second_env,str(other)
+    result['workdirRetry']='failed'
+    result['hostWorkdirFailureKind']=second.get('failureKind','unknown')
+    return result,child_env,str(home)
+
+
 def _vision_selftest_diagnostics(*, mcp='not_run', provider_api='not_run', answer='not_run',
                                 image_bytes=None, diagnostic_code='', preflight=None, cli_process=None, composition=None):
     return {
@@ -662,7 +711,9 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         # that this installed DSH can resolve the inserted client plugin.
         composition={'status':'not_run','reason':'injected_runner'} if runner is not None else None
         if runner is None:
-            composition,child_env=_probe_headless_with_node_env_isolation(args,home,child_env)
+            composition,child_env,vision_cwd=_probe_headless_with_workdir(args,home,child_env)
+        else:
+            vision_cwd=str(home)
         if composition['status']=='failed':
             diagnostics=_vision_selftest_diagnostics(preflight=preflight,composition=composition,
                 cli_process=composition.get('cli'),provider_api='not_started',answer='not_returned')
@@ -678,7 +729,7 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         _record_model_launch(home,'vision')
         execute=runner or subprocess.run
         try:
-            result=execute([*args,prompt],cwd=str(home),env=child_env,stdin=subprocess.DEVNULL,
+            result=execute([*args,prompt],cwd=vision_cwd,env=child_env,stdin=subprocess.DEVNULL,
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False,
                            **_hidden_windows_child())
         except subprocess.TimeoutExpired:

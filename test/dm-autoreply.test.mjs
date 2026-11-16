@@ -286,6 +286,8 @@ test('dev.74: provider 429 stays a retryable technical failure, never an autonom
   let state=JSON.parse(await readFile(join(m.path,'dm-autoreply-state.json'),'utf8'));
   assert.equal(state.p6LastTurn.status,'technical-failure');
   assert.equal(state.people['200'].seen.includes('retry-429'),false);
+  assert.equal((await m.make().poll()).sent,0,'Life technical failure must not immediately spin');
+  m.clockForward(91_000);
   const resumed=await m.make().poll();assert.equal(resumed.sent,1);
   state=JSON.parse(await readFile(join(m.path,'dm-autoreply-state.json'),'utf8'));
   assert.equal(state.people['200'].seen.includes('retry-429'),true);
