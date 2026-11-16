@@ -2508,8 +2508,10 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="settings-section"><h4>检查间隔</h4><div class="fields">
 <div><label for="dm-interval">私信最短检查间隔（分钟，默认 2）</label><input id="dm-interval" type="number" min="1" max="120" value="2"></div>
 <div><label for="dm-quiet-max">私信安静期最长检查间隔（分钟，默认 15）</label><input id="dm-quiet-max" type="number" min="1" max="120" value="15"><small class="setting-note" id="dm-quiet-levels">中间间隔自动计算</small></div>
-<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">在最近真正确认发出私信，或普通监听发现已核验且允许回复的新来信后，短期开启；首次发现来信仍取决于普通监听间隔。无活跃会话时不会每 10 秒扫描所有私信。连续没有新消息时自动放慢为 10 → 20 → 30 → 60 秒；有新来信会恢复基础间隔。与普通轮询共享读取预算及平台限流保护。</small></div>
-<div><label for="dm-active-seconds">活跃会话基础检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="10"></div>
+<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">在最近真正确认发出私信，或普通监听发现已核验且允许回复的新来信后，短期开启；首次发现来信仍取决于普通监听间隔。无活跃会话时不会每 10 秒扫描所有私信。连续没有新消息时自动放慢为基础间隔的 100% → 200% → 300%（默认 10 → 20 → 30 秒）；有新来信会恢复基础间隔。与普通轮询共享读取预算及平台限流保护。</small></div>
+<div><label for="dm-active-seconds">活跃会话基础检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="10"><p id="dm-fast-levels" class="muted">自适应档位：10 秒 → 20 秒 → 30 秒（上限 300%）</p></div>
+<div><label for="dm-detail-max-sessions">普通轮询每轮最多读取联系人详情（1–12）</label><input id="dm-detail-max-sessions" type="number" min="1" max="12" value="3"></div>
+<div><label for="dm-detail-spacing-ms">两次详情读取之间的等待（毫秒，500–5000）</label><input id="dm-detail-spacing-ms" type="number" min="500" max="5000" step="250" value="1500"><p class="muted">默认 1500 毫秒；仅对普通轮询中同一轮的多位联系人详情请求生效。</p></div>
 <div><label for="dm-active-window">活跃时长（秒，60–600）</label><input id="dm-active-window" type="number" min="60" max="600" value="180"></div>
 <div><label for="poll-replies-minutes">收到评论回复检查（分钟，默认 2）</label><input id="poll-replies-minutes" type="number" min="1" max="120" value="3"></div>
 <div><label for="poll-at-minutes">被 @ 邀请检查（分钟，默认 2）</label><input id="poll-at-minutes" type="number" min="1" max="120" value="3"></div>

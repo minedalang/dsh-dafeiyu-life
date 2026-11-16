@@ -122,7 +122,7 @@ test('UI retains unique TODO controls in a dedicated plans tab and preserves mem
   assert.match(html,/id="polling-budget-status"/)
   assert.match(js,/scheduler\.readBudget/)
   assert.match(index,/monitoredReadTools\.has\(toolName\)/)
-  assert.match(index,/maxSessions: 12/)
+  assert.match(index,/maxSessions: Number(cfg.dmDetailMaxSessions)||3/)
 })
 
 test('legacy todo-settings bookmark opens dedicated fish plans page, not memory',()=>{

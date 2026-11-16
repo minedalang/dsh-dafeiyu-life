@@ -1,3 +1,10 @@
+## 2.8.1-dev.3b.33.4 (development only)
+
+- 私信普通轮询加入账号隔离的持久 FIFO 联系人详情队列；默认每轮最多 3 人、两次详情串行间隔 1500ms，可在管理页调整。未扫描 UID 不会因为轮次截断被提前提交。
+- 失败联系人轮转到队尾，平台限流立即终止扫描且不清除剩余队列；仍以平台读取游标及 Life 决策账本分别管理阶段。
+- 活跃会话快通道自适应限定为基础间隔的 1/2/3 倍，并在设置旁动态显示相应档位。
+- DSH 图片验收仍处于 Windows CLI/overlay 合成失败状态，不将 MCP 独立预检视作成功。
+
 ## 2.8.1-dev.3b.33.3 (2026-11-16)
 
 - Windows Desktop DSH: auto-discovered `@deepseek-ai/dsh/lib/bin.js` now resolves to the verified official `dsh-desktop-host/lib/cli.js` Electron Host entry, with `--expose-internals`, Node mode and no shell. Unlike the previous diagnostic's tested entry, the old automatic entry was a different CLI. Real vision remains pending nonce-bound tool receipt and actual model response.

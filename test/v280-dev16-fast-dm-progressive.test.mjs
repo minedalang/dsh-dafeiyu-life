@@ -122,7 +122,7 @@ test('active lane is account-scoped and does not retry failed model every ten se
  assert.equal((await engine.poll({fastUid:person})).skipped,'inactive-session')
 }))
 
-test('活跃私信快通道在连续无新消息时自适应 10→20→30→60 秒，有新来信后重置',async()=>mk(async dataDir=>{
+test('活跃私信快通道在连续无新消息时自适应 10→20→30 秒，有新来信后重置',async()=>mk(async dataDir=>{
  let clock=t0
  const inbox=[input('baseline','旧消息')]
  const config={enabled:true,strangerEnabled:false,p6Enabled:true,p6MaxBubbles:3,whitelist:[person],
@@ -144,9 +144,9 @@ test('活跃私信快通道在连续无新消息时自适应 10→20→30→60 �
  clock+=20_000;assert.equal(engine.nextFastUid(),'')
  clock+=10_000;assert.equal(engine.nextFastUid(),person)
  await engine.poll({fastUid:person}) // quiet check 3
- assert.equal(engine.status().fast.nextIntervalSeconds,60)
- clock+=30_000;assert.equal(engine.nextFastUid(),'')
- clock+=30_000;assert.equal(engine.nextFastUid(),person)
+ assert.equal(engine.status().fast.nextIntervalSeconds,30)
+ clock+=20_000;assert.equal(engine.nextFastUid(),'')
+ clock+=10_000;assert.equal(engine.nextFastUid(),person)
  inbox.push(input('new-2','又有新消息'))
  await engine.poll({fastUid:person})
  assert.equal(engine.status().fast.nextIntervalSeconds,10,'新消息重新建立快速响应窗口')

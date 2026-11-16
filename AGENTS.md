@@ -1,3 +1,10 @@
+## dev.3b.33.4 私信持久扫描队列及快通道上限
+
+- 普通轮询将需要详情的 UID 放入当前账号的原子化持久队列；默认每轮最多 3 人，跨轮保留剩余联系人；两次详情调用串行间隔 1500ms（可调）。平台 -509 应终止当轮并保留未处理 UID；不能以已读取替代 Life 完成回执。
+- 快通道的自适应档位限定为基础值 100% / 200% / 300%；基础 10 秒对应 10 / 20 / 30 秒。管理页展示档位。
+- DSH 的独立 MCP 测试成功不代表 Headless 配置合成成功；模型未回答前不能认可识图。
+- 仅执行定向增量测试，不做全量测试、真实 B站发送或 npm 发布。
+
 ## dev.3b.33.3 2026-11-16 Desktop Host CLI correction and quieter safe DM rescans
 
 - The user's Windows differential JSON shows both `dsh.cmd` and Electron `--expose-internals @deepseek-ai/dsh-desktop-host/lib/cli.js` succeed on version/default/headless dump checks. It does NOT test the older automatic `@deepseek-ai/dsh/lib/bin.js` launcher. On Windows, when that exact Desktop `bin.js` is discovered, resolve it to the same official Desktop Host CLI as `dsh.cmd`, with `ELECTRON_RUN_AS_NODE=1`, `shell:false`, and fail-closed if the trusted Desktop app/host is missing. Do not claim a successful DSH visual model call before a nonce-bound MCP image receipt and a final model answer are obtained on Windows.

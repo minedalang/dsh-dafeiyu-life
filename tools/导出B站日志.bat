@@ -195,7 +195,7 @@ dsh_diag = read_json(root/'dsh-vision-selftest-last-run.json',limit=8192)
 dsh_summary={'present':False}
 if isinstance(dsh_diag,dict) and dsh_diag.get('schema')==1 and isinstance(dsh_diag.get('last'),dict):
     row=dsh_diag['last']
-    stage_names=('preflight','headlessConfig','headlessConfigReason','mcpImage','attachmentBridge','providerApi','modelAnswer')
+    stage_names=('preflight','headlessConfig','headlessConfigReason','headlessConfigFailureLayer','headlessConfigFailureKind','headlessConfigDefaultDump','headlessConfigBaseDump','headlessConfigNodeEnvRetry','mcpImage','attachmentBridge','providerApi','modelAnswer')
     stage=lambda v: v if isinstance(v,str) and re.fullmatch(r'[a-z][a-z0-9_]{0,39}',v) else 'unknown'
     status=row.get('status')
     if status in ('idle','running','failed','awaiting_review','approved','rejected'):

@@ -538,6 +538,30 @@ def _probe_headless_composition(args, home, env, execute=subprocess.run):
     return {'status':'ready','reason':'headless_patch_composed'}
 
 
+def _probe_headless_with_node_env_isolation(args,home,env,execute=subprocess.run):
+    """Retry only config composition with inherited Node control flags removed.
+
+    The official dsh.cmd differential can succeed while an embedded Python
+    child inherits NODE_OPTIONS/NODE_PATH from an Electron host. Do not drop
+    credentials, DSH_HOME or TLS/proxy variables, and never bypass --dump-config.
+    A retry that still fails remains a hard stop.
+    """
+    primary=_probe_headless_composition(args,home,env,execute=execute)
+    if primary.get('status')=='ready':return primary,env
+    flags=('NODE_OPTIONS','NODE_PATH')
+    if not any(k in env for k in flags):
+        primary['nodeEnvRetry']='no_flags'
+        return primary,env
+    clean={k:v for k,v in env.items() if k not in flags}
+    retry=_probe_headless_composition(args,home,clean,execute=execute)
+    if retry.get('status')=='ready':
+        retry['reason']='headless_patch_composed_isolated_node_env'
+        retry['nodeEnvRetry']='ready'
+        return retry,clean
+    primary['nodeEnvRetry']='failed'
+    return primary,env
+
+
 def _vision_selftest_diagnostics(*, mcp='not_run', provider_api='not_run', answer='not_run',
                                 image_bytes=None, diagnostic_code='', preflight=None, cli_process=None, composition=None):
     return {
@@ -636,7 +660,9 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         # Validate the *real* DSH CLI's composed headless overlay before
         # spending a model request. The isolated Python MCP check cannot prove
         # that this installed DSH can resolve the inserted client plugin.
-        composition={'status':'not_run','reason':'injected_runner'} if runner is not None else _probe_headless_composition(args,home,child_env)
+        composition={'status':'not_run','reason':'injected_runner'} if runner is not None else None
+        if runner is None:
+            composition,child_env=_probe_headless_with_node_env_isolation(args,home,child_env)
         if composition['status']=='failed':
             diagnostics=_vision_selftest_diagnostics(preflight=preflight,composition=composition,
                 cli_process=composition.get('cli'),provider_api='not_started',answer='not_returned')
