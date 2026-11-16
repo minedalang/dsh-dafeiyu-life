@@ -1,3 +1,9 @@
+## dev.3b.33.6 Windows DSH 视觉 CLI 受控 Node 桥接（增量修复候选）
+
+- 用户 Windows 精确对照确认 EXE 和 app.asar SHA256 相同；PowerShell/.NET 从原工作目录或 Duty Home（包括隐藏子进程）导出配置均为 exit=0；**仅 Python subprocess 直接启动同一 Electron CLI 为 exit=1**，分类 filesystem_or_permissions，尚不能认定具体 ENOENT/EACCES/EPERM 原因。
+- 仅在 Windows、有可信同步桥接文件和 `node.exe` 时，视觉 Python 允许通过 `dsh-vision-node-bridge.mjs` 运行 DSH：Python→node.exe（stdin 传 JSON）→受限 Desktop Host Electron（`spawn`, `shell:false`）。桥接器校验安装 EXE、Desktop Host 脚本、headless profile、受限 patch 路径、允许的工作目录和超时；缺失或被篡改一律拒绝。不得创建其他 Shell、文件读取、网页工具能力。
+- 真实 DSH 图像验收仍必须严格依次经过 `--dump-config`、只读 MCP 图片回执、模型最终答复与人工认可。此 Linux 模拟/静态检查不等于 Windows 实机识图通过。保留原 Life 私信可靠续办及限流门禁；禁止云端全量 Node/Python、真实 B站外发与 npm 发布。
+
 ## dev.3b.33.5 DSH 对照启动与私信 Life 可靠续办
 
 - DSH 视觉模型仍需 Windows 真实图片验收；插件和官方 CLI 在不同 cwd 执行的结果不可混同。仅在原始 Home 下受限 `--dump-config` 失败时，允许切到可信的宿主工作目录用**同一 CLI/只读 overlay/环境**重新合成；只有安全配置实际通过才运行模型。记录 `launchCwd`、`workdirRetry` 的闭集状态，绝不输出配置正文、环境变量值或原始异常。独立 MCP ready 不代表模型收到图片。

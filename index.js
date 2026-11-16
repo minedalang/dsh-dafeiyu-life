@@ -3192,6 +3192,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // 视觉与评论分开，且不会读取用户的视觉 API Key 或 DPAPI 密钥。
   const ensureVisionOverlay = (kind='vision') => {
     if(!['vision','vision-selftest'].includes(kind))return null
+    // The bridge is executable code copied into user data: compare against the
+    // shipped source before exposing it to an MCP or selftest subprocess.
+    try {
+      if(readFileSync(join(stateDir,'dsh-vision-node-bridge.mjs'),'utf8')!==readFileSync(join(pluginDir,'lib','dsh-vision-node-bridge.mjs'),'utf8'))
+        throw Error('bridge mismatch')
+    } catch { log('🔒 视觉 CLI Node 桥接文件不匹配或缺失，已拒绝启动'); return null }
     const isSelftest=kind==='vision-selftest'
     const out = join(stateDir, isSelftest?'headless-vision-selftest-overlay.yml':'headless-vision-overlay.yml')
     const yq = v => "'" + String(v).replace(/'/g,"''") + "'"
@@ -3224,6 +3230,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       '          BILI_MCP_TOOLS: '+yq(isSelftest?'bili_vision_selftest':'bili_preview_vision'),
       ...(isSelftest?['          BILI_VISION_SELFTEST_ALLOWED: '+yq('1'), '          BILI_VISION_TEST_ASSET: '+yq(posix(join(pluginDir,'lib','assets','local-vision-selftest-dafeiyu.png')))]:['          BILI_VISION_CHILD: '+yq('1')]),
       '          BILI_DUTY_HOME: '+yq(posix(stateDir)),
+      '          BILI_VISION_DSH_BRIDGE: '+yq(posix(join(stateDir,'dsh-vision-node-bridge.mjs'))),
       '          BILI_VISION_ENABLED: '+yq('1'),
       '          BILI_VISION_MODE: '+yq('reuse_video_model'),
       '          BILI_VISION_DEBUG: '+yq(cfg.visionDebug?'1':'0'),
@@ -3273,7 +3280,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const runAsNode=Boolean(process.versions.electron||dsh.env?.ELECTRON_RUN_AS_NODE==='1')
       const env=pyEnv({BILI_DUTY_HOME:stateDir,BILI_VISION_DSH_ARGV:JSON.stringify([dsh.command,...args]),
         BILI_VISION_DSH_RUN_AS_NODE:runAsNode?'1':'0',
-        BILI_VISION_DSH_WORKDIR:process.cwd()})
+        BILI_VISION_DSH_WORKDIR:process.cwd(),
+        BILI_VISION_DSH_BRIDGE:join(stateDir,'dsh-vision-node-bridge.mjs')})
       return await new Promise((resolve,reject)=>{
         const child=spawn(cfg.pythonPath||'python',pyArgs,{cwd:stateDir,shell:false,windowsHide:true,
           env,stdio:['ignore','pipe','pipe']})
@@ -3317,6 +3325,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       try {
         if (readFileSync(join(stateDir,'preview_vision.py'),'utf8') !== readFileSync(join(pluginDir,'lib','preview_vision.py'),'utf8')) {log('🔒 预览识图脚本版本不一致，请检查 preview_vision.py.new');return null}
         if (readFileSync(join(stateDir,'vision_dsh.py'),'utf8') !== readFileSync(join(pluginDir,'lib','vision_dsh.py'),'utf8')) {log('🔒 DSH 独立视觉脚本不一致，请检查 vision_dsh.py.new');return null}
+        if (readFileSync(join(stateDir,'dsh-vision-node-bridge.mjs'),'utf8') !== readFileSync(join(pluginDir,'lib','dsh-vision-node-bridge.mjs'),'utf8')) {log('🔒 视觉 CLI Node 启动桥接脚本不一致，拒绝启动');return null}
         if (readFileSync(join(stateDir,'adaptive_video.py'),'utf8') !== readFileSync(join(pluginDir,'lib','adaptive_video.py'),'utf8')) {log('🔒 自适应视频采样脚本不一致，请检查 adaptive_video.py.new');return null}
         if (readFileSync(join(stateDir,'video_heat_signal.py'),'utf8') !== readFileSync(join(pluginDir,'lib','video_heat_signal.py'),'utf8')) {log('🔒 弹幕热度采样脚本版本不一致，请检查 video_heat_signal.py.new');return null}
         if (readFileSync(join(stateDir,'frame_ocr.py'),'utf8') !== readFileSync(join(pluginDir,'lib','frame_ocr.py'),'utf8')) {log('🔒 OCR 采样脚本版本不一致，请检查 frame_ocr.py.new');return null}
@@ -3442,6 +3451,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           // requirement explicitly into the nested, read-only vision subprocess.
           '          BILI_VISION_DSH_RUN_AS_NODE: ' + yq(independentVisionRunAsNode ? '1' : '0'),
           '          BILI_VISION_DSH_WORKDIR: ' + yq(posix(process.cwd())),
+          '          BILI_VISION_DSH_BRIDGE: ' + yq(posix(join(stateDir,'dsh-vision-node-bridge.mjs'))),
           '          BILI_VISION_DSH_MODEL: ' + yq(cfg.visionModelId || cfg.pluginDefaultModelId || ''),
           '          BILI_VISION_PROMPT_B64: ' + yq(Buffer.from(normalizeVisionPrompt(cfg.visionPrompt), 'utf8').toString('base64')),
           '          BILI_VISION_DSH_PROVIDER: ' + yq(cfg.visionModelProvider || cfg.pluginDefaultModelProvider || ''),

@@ -12,6 +12,7 @@ import asyncio
 import os
 import re
 import subprocess
+import shutil
 
 
 def _vision_dsh_child_env(env):
@@ -26,6 +27,40 @@ def _vision_dsh_child_env(env):
     if run_as_node == '1':
         child_env['ELECTRON_RUN_AS_NODE'] = '1'
     return child_env
+
+
+def _vision_bridge_active(env, execute):
+    return execute is subprocess.run and os.name == 'nt' and bool(env.get('BILI_VISION_DSH_BRIDGE'))
+
+
+def _run_vision_cli(args, *, cwd, env, timeout, execute=subprocess.run, **kwargs):
+    """Use the existing JS-Agent process-spawn semantics for Desktop vision.
+
+    The user's Windows differential demonstrated the same Desktop Electron CLI
+    succeeds from a .NET/Node host but fails when directly created by Python.
+    The bridge is only selected for Windows with a trusted state-dir copy and a
+    real node.exe; other platforms retain the original subprocess behavior.
+    Its stdin transports argv/prompt without passing them through a shell.
+    """
+    if not _vision_bridge_active(env, execute):
+        return execute(args,cwd=str(cwd),env=env,timeout=timeout,**kwargs)
+    bridge=Path(env['BILI_VISION_DSH_BRIDGE'])
+    home=Path(env.get('BILI_DUTY_HOME',''))
+    if not (bridge.is_absolute() and home.is_absolute() and bridge.parent.resolve()==home.resolve()
+            and bridge.name=='dsh-vision-node-bridge.mjs' and bridge.is_file() and not bridge.is_symlink()):
+        raise OSError('untrusted_node_bridge')
+    node=shutil.which('node.exe')
+    if not node or Path(node).name.lower()!='node.exe' or not Path(node).is_file():
+        raise OSError('node_bridge_runtime_unavailable')
+    packet={'exe':args[0],'argv':args[1:],'cwd':str(cwd),'timeoutMs':min(240000,max(1000,int(timeout)*1000))}
+    data=json.dumps(packet,ensure_ascii=False).encode('utf8')
+    if len(data)>65000:raise ValueError('node_bridge_packet_too_large')
+    # Input and stdin= are exclusive for subprocess.run; no model prompt leaks
+    # through process arguments or a disk file. Node invokes Electron shell:false.
+    result=subprocess.run([node,str(bridge)],cwd=str(cwd),env=env,input=data,
+                          timeout=timeout+6,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                          check=False,**_hidden_windows_child())
+    return subprocess.CompletedProcess(args,result.returncode,result.stdout,result.stderr)
 
 
 def _hidden_windows_child():
@@ -252,7 +287,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         _record_model_launch(home, 'vision')
         execute=runner or subprocess.run
         try:
-            result=execute([*child_args,prompt],cwd=vision_cwd,env=child_env,stdin=subprocess.DEVNULL,
+            result=_run_vision_cli([*child_args,prompt],cwd=vision_cwd,env=child_env,execute=execute,stdin=subprocess.DEVNULL,
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=220 if perception_source=='adaptive' else 50,
                            **_hidden_windows_child(),check=False)
         except subprocess.TimeoutExpired:
@@ -479,6 +514,8 @@ def _safe_dump_failure_kind(result):
     """Closed-vocabulary classifier for a CLI dump failure, no raw strings persisted."""
     data=((getattr(result, 'stderr', b'') or b'')[-12000:]
           +b'\n'+(getattr(result, 'stdout', b'') or b'')[-2000:]).decode('utf8',errors='replace').lower()
+    if 'dsh_bridge_' in data:
+        return 'node_bridge_error'
     if any(token in data for token in ('unknown option', 'unrecognized option', 'unknown argument', 'unexpected argument')):
         return 'unsupported_dump_option'
     if any(token in data for token in ('err_module_not_found','cannot find module','module not found')):
@@ -495,7 +532,7 @@ def _safe_dump_failure_kind(result):
 def _probe_dump_baseline(args, home, env, execute, dump_flag):
     """Probe layers without the vision overlay. No model/tool request is made."""
     try:
-        r=execute([*args,dump_flag],cwd=str(home),env=env,
+        r=_run_vision_cli([*args,dump_flag],cwd=str(home),env=env,execute=execute,
                   stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                   timeout=25,check=False,**_hidden_windows_child())
         return 'ready' if r.returncode==0 else 'failed'
@@ -512,13 +549,17 @@ def _probe_headless_composition(args, home, env, execute=subprocess.run):
     config assembly only, not that MCP executed or that the model saw an image.
     """
     try:
-        result=execute([*args,'--dump-config'],cwd=str(home),env=env,
+        result=_run_vision_cli([*args,'--dump-config'],cwd=str(home),env=env,execute=execute,
                        stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                        timeout=25,check=False,**_hidden_windows_child())
     except subprocess.TimeoutExpired:
         return {'status':'failed','reason':'headless_config_dump_timeout'}
-    except (OSError,ValueError):
-        return {'status':'failed','reason':'headless_config_dump_launch'}
+    except (OSError,ValueError) as exc:
+        reason=('headless_bridge_launch_failed' if any(t in str(exc) for t in
+          ('node_bridge_runtime_unavailable','untrusted_node_bridge','node_bridge_packet_too_large'))
+          else 'headless_config_dump_launch')
+        return {'status':'failed','reason':reason,
+                'launchMethod':'node_bridge' if os.name=='nt' and env.get('BILI_VISION_DSH_BRIDGE') else 'python_subprocess'}
     if result.returncode!=0:
         # Distinguish a broken CLI/profile from a rejected vision overlay.
         # This is diagnostic only; an unsuccessful dump still fails closed.
@@ -538,11 +579,13 @@ def _probe_headless_composition(args, home, env, execute=subprocess.run):
         return {'status':'failed','reason':'headless_config_dump_exit',
                 'failureLayer':failure_layer,'defaultDump':default_dump,'baseDump':base_dump,
                 'failureKind':_safe_dump_failure_kind(result),
+                'launchMethod':'node_bridge' if os.name=='nt' and env.get('BILI_VISION_DSH_BRIDGE') else 'python_subprocess',
                 'cli':_safe_cli_process_receipt(result)}
     data=result.stdout or b''
     if b'mcp-bili-vision-readonly' not in data or b'bilivision' not in data:
         return {'status':'failed','reason':'headless_vision_patch_not_composed'}
-    return {'status':'ready','reason':'headless_patch_composed'}
+    return {'status':'ready','reason':'headless_patch_composed',
+            'launchMethod':'node_bridge' if os.name=='nt' and env.get('BILI_VISION_DSH_BRIDGE') else 'python_subprocess'}
 
 
 def _probe_headless_with_node_env_isolation(args,home,env,execute=subprocess.run):
@@ -723,13 +766,15 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
                 'profile_or_home':'Headless profile 或 DSH Home 配置层无法合成',
                 'vision_overlay':'DSH 基础配置正常，但追加受限视觉 overlay 后合成失败',
             }
+            notice=('Windows Node 桥接运行时或受控脚本不可用' if composition['reason']=='headless_bridge_launch_failed'
+                    else hints.get(layer,'DSH Headless 配置检查命令失败'))
             return {'ok':False,'status':'headless_config_failed','diagnosticCode':composition['reason'],
-                'error':hints.get(layer,'DSH Headless 配置检查命令失败')+'；模型尚未请求。请查看技术诊断中的配置失败层级、CLI 退出码和安全错误分类',
+                'error':notice+'；模型尚未请求。请查看技术诊断中的配置失败层级、CLI 退出码和安全错误分类',
                 'diagnostics':diagnostics}
         _record_model_launch(home,'vision')
         execute=runner or subprocess.run
         try:
-            result=execute([*args,prompt],cwd=vision_cwd,env=child_env,stdin=subprocess.DEVNULL,
+            result=_run_vision_cli([*args,prompt],cwd=vision_cwd,env=child_env,execute=execute,stdin=subprocess.DEVNULL,
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=180,check=False,
                            **_hidden_windows_child())
         except subprocess.TimeoutExpired:

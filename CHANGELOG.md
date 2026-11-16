@@ -1,3 +1,9 @@
+## 2.8.1-dev.3b.33.6 (开发版 · Windows 识图待实机验证)
+
+- 根据 Windows 精确对照，修正视觉 Python 直接启动 Electron CLI 的独立调用路径：通过同步且经源码一致性检查的 Node 桥接器，使用与原有 DSH JS Agent 一致的 `spawn(shell:false)` 启动 Desktop Host；不经 Shell 传递提示词，限制 CLI/profile/overlay/cwd/超时，失败严格阻断。
+- 保留原 DSH 默认配置、视觉 overlay、MCP nonce 图片回执和最终模型回答验收要求；新增封闭的启动方式诊断，不声明在 Windows 已识图成功。
+- 其余 Life 私信可靠续办、额度、去重与平台限流逻辑保持 `dev.3b.33.5` 不变。仅运行定点增量与打包核验。
+
 ## 2.8.1-dev.3b.33.5 (开发版 · 未实机验收)
 
 - DSH：增加插件数据 Home 与宿主 CLI 工作目录的等价、安全 overlay 配置合成对照；同一套配置真正通过后才运行图片会话，新增脱敏诊断状态。Windows 真实识图仍须现场测试。

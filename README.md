@@ -1,3 +1,7 @@
+### dev.3b.33.6：Windows DSH 图片验收启动路径调整（实机待验收）
+
+此前 Windows 对照表明：相同 DSH 安装文件、工作目录下，PowerShell/宿主进程能导出 Headless 配置，但 Python 直接创建 Electron 子进程失败。独立 DSH 视觉现在在 Windows 使用可信的 `node.exe` 运行受控 Node 桥接文件，再由 Node 以 `shell:false` 启动相同 Desktop Host CLI。需要系统可调用的 Node.js（`node.exe`），并且桥接文件与安装包一致；不满足时会明确拒绝启动，而不会跳过安全配置检查。Linux/macOS 维持原启动方式。**这只是针对已经观察到的 Python 启动差异的修正候选；真正识图仍需在 Windows 看到 MCP 图片回执和模型最终回答。**
+
 ### dev.3b.33.1：DSH 视觉配置导出失败排障
 
 ### 私信 Life 可靠续办（开发版）
