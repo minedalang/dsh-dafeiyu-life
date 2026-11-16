@@ -37,6 +37,22 @@ test('Windows Desktop dsh.cmd must be resolved to native Electron CLI rather tha
   }finally{rmSync(fx.root,{recursive:true,force:true})}
 })
 
+test('auto-discovered Desktop core bin.js resolves to the same tested Desktop Host launcher as dsh.cmd',()=>{
+  const fx=fakeDesktop()
+  try{
+    const core=join(fx.root,'resources','app.asar','dsh','node_modules','@deepseek-ai','dsh','lib','bin.js')
+    const byShim=makeSafeDshLaunch(fx.shim,{platform:'win32'})
+    const byCore=makeSafeDshLaunch(core,{platform:'win32'})
+    assert.deepEqual(byCore,byShim)
+    assert.equal(byCore.command,fx.exe)
+    assert.deepEqual(byCore.args,['--expose-internals',fx.entry])
+    assert.equal(byCore.shell,false)
+    assert.equal(byCore.env.ELECTRON_RUN_AS_NODE,'1')
+    const unavailable=makeSafeDshLaunch(core,{platform:'win32',pathExists:()=>false})
+    assert.equal(unavailable.missing,true)
+  }finally{rmSync(fx.root,{recursive:true,force:true})}
+})
+
 test('unrecognized .cmd/.bat fails closed, rather than silently re-enabling shell command injection',()=>{
   for(const f of ['C:\\temp\\dsh.cmd','C:\\temp\\dsh.bat']){
     const launch=makeSafeDshLaunch(f,{platform:'win32'})

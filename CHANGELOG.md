@@ -1,3 +1,10 @@
+## 2.8.1-dev.3b.33.3 (2026-11-16)
+
+- Windows Desktop DSH: auto-discovered `@deepseek-ai/dsh/lib/bin.js` now resolves to the verified official `dsh-desktop-host/lib/cli.js` Electron Host entry, with `--expose-internals`, Node mode and no shell. Unlike the previous diagnostic's tested entry, the old automatic entry was a different CLI. Real vision remains pending nonce-bound tool receipt and actual model response.
+- DM: for a fully unchanged, zero-unread session extend cross-client-read safety rescans to 2h owner / 6h friend / 8h familiar / 12h others; changed latest timestamp/unread immediately triggers a detailed read, and nonzero unread uses previous short interval. Normal DM list frequency, fast lane, platform budget, -509 probation, permissions, dedupe and send behavior unchanged.
+- The 19:19 export contains a contact with unread=1 and no corresponding recent outbound/decision receipt; insufficient evidence to blame cooldown alone. No automatic backfill or resend on uncertain messages.
+- Only focused regression checks; no live Bilibili write, real Windows DSH image acceptance or npm publication.
+
 ## 2.8.1-dev.3b.33.2 (2026-11-16)
 
 - DM polling: after a real Bilibili -509, require a persisted, three-read slow recovery probation (10 minutes between successful read probes) before restoring normal/fast checks. DNS failure retains the platform guard; repeated -509 escalates cooldown. No forced sends.
