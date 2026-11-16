@@ -2577,13 +2577,13 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <div class="toolbar"><button type="button" id="life-friend-dm-save" class="primary">保存熟人自主联系授权</button><span id="life-friend-dm-status" class="muted">尚未读取</span></div>
 </div>
 </details>
-<details id="social-owner-dm-group" class="social-category"><summary><strong>🧠 主人私信 Agent 与远程操作</strong><span>仅面向已核验主人 UID 的独立高权限设置</span></summary>
-<div class="card" id="owner-dm-control-section" style="margin-bottom:14px"><h3>🧠 主人私信 · 受限 Agent 与远程操作</h3>
-<p class="muted">仅接收 B站真实收件箱中已核验的 <strong>主人 UID</strong>；发件人自称主人、别人转发的命令或视频/评论中的文字不能授权。须在「后台私信」页开启私信监听，在「社交互动 → 白名单用户权限」中勾选唯一授权主人并保存，再单独授权所需操作。此处与独立的「鱼鱼想做的事」页面完全分开保存。所有公开写入权限默认关闭。私信轮询一般在约 1 分钟内发现新消息；为防旧消息回放，写入命令只接受最近 15 分钟内收到的消息。</p>
+<details id="social-owner-dm-group" class="social-category"><summary><strong>🧠 主人私信 · Life 统一决策与历史授权</strong><span>所有联系人共用 Life；仅主人保留额外授权候选</span></summary>
+<div class="card" id="owner-dm-control-section" style="margin-bottom:14px"><h3>🧠 主人私信 · Life 决策与历史操作授权</h3>
+<p class="muted">仅接收 B站真实收件箱中已核验的 <strong>主人 UID</strong>；发件人自称主人、别人转发的命令或视频/评论中的文字不能授权。须在「后台私信」页开启私信监听，在「社交互动 → 白名单用户权限」中勾选唯一授权主人并保存，再单独授权所需操作。此处与独立的「鱼鱼想做的事」页面完全分开保存。所有公开写入权限默认关闭。私信轮询一般在约 1 分钟内发现新消息；为防旧消息回放，本版首次升级建立主人私信迁移时间围栏；旧的私信关键词远程写入已经停止。</p>
 <p id="owner-dm-authorized-uid" class="muted">唯一授权主人 UID：读取中…</p>
 <div class="settings-section" style="border-left:3px solid #91a8ef">
-<h4>🧠 主人私信 · 受限 Agent</h4>
-<p class="muted">主人可用自然语言连续委托搜索、观看和获授权的 B站操作；只在核验主人 UID 后启用。不向模型挂载 B站 MCP、Shell、文件工具；模型只能提议动作，每步由插件后端验证。启用后主人消息优先走 Agent，不会错误地加入视频待选。</p>
+<h4>🧠 主人专用 Agent · 历史兼容设置</h4>
+<p class="muted">主人可用自然语言连续委托搜索、观看和获授权的 B站操作；只在核验主人 UID 后启用。不向模型挂载 B站 MCP、Shell、文件工具；模型只能提议动作，每步由插件后端验证。dev.3b.32 起所有入站私信都由统一 Life 模型决定回复、沉默和只读探查；本区旧 Agent 不再抢先消费主人消息，相关字段暂保留以兼容已保存设置。</p>
 <label class="checkline"><input id="owner-dm-agent-enabled" type="checkbox">启用主人私信受限 Agent（新安装默认开启）</label>
 <p class="muted">专用模型统一在「AI 模型配置 → 主人私信受限 Agent」设置；留空继承私信互动模型。</p>
 <label class="checkline"><input id="owner-dm-agent-read-main" type="checkbox">允许 Agent 读取已选择的在线主 Session 近期对话（默认关闭）</label>
@@ -2593,10 +2593,10 @@ ollama serve # 启动 Ollama 服务</code></pre><p>代理仅对该 PowerShell �
 <small class="setting-note">仅注入简短的任务结果摘要，不发送陌生人私信正文；不会主动唤醒主 Session。</small>
 <p id="owner-dm-agent-status" class="muted">Agent 尚未启用；开启后查看执行记录。</p>
 </div>
-<label class="checkline"><input id="owner-dm-read-commands" type="checkbox">允许主人私信只读指令（新安装默认开启）（看视频、搜索、查投稿与通知）</label>
-<p class="muted">示例：<code>大肥鱼 现在看 BV1xxxxxxxxx</code>／<code>大肥鱼 有空看看 BV1xxxxxxxxx</code>（仅入待办）。看视频是读取实际可用资料，不等于完整播放。</p>
+<label class="checkline"><input id="owner-dm-read-commands" type="checkbox">历史主人私信只读指令授权（兼容设置；当前统一 Life 不按关键词直接执行）</label>
+<p class="muted">收到 B站安全链接时，Life 可自主决定是否通过现有只读执行器查看真实公开内容；纯文本请求亦可自主建立待办，不再有自动指令分流。</p>
 <div class="settings-section" style="margin-top:12px"><h4>🔐 允许 Agent 使用的 B站能力</h4>
-<p class="muted">新安装默认勾选下列 B站能力，旧安装保留原有勾选；只有已核验主人的本条明确请求能触发公开写入，仍受 B站登录、操作额度、去重和平台回执约束。建议按自己的信任范围取消不需要的权限。主 Session 对话读取继续默认关闭。</p>
+<p class="muted">新安装默认勾选下列 B站能力，旧安装保留原有勾选；dev.3b.32 不再按关键词自动执行主人远程写入；旧授权设置仅保留兼容，不等于收到私信即可外发。之后若开放 Life 写入候选，必须再经过独立当轮授权、账号核验、操作额度、去重和平台回执。建议按自己的信任范围取消不需要的权限。主 Session 对话读取继续默认关闭。</p>
 <div class="fields" style="margin-top:10px">
 <div><label class="checkline"><input id="owner-dm-like" type="checkbox">点赞指定 BV 视频</label><small class="setting-note">示例：大肥鱼 点赞 BV1xxxxxxxxx；使用现有每日点赞额度及去重账本。</small></div>
 <div><label class="checkline"><input id="owner-dm-collect" type="checkbox">收藏指定 BV 视频</label><small class="setting-note">示例：大肥鱼 收藏 BV1xxxxxxxxx 到 我的收藏夹；必须指定已存在的收藏夹。</small></div>

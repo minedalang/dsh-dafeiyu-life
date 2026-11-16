@@ -31,6 +31,7 @@ import { growthSuggestionPrompt, parseGrowthSuggestion, growthSuggestionIssue } 
 import {readVideoDiscussionDiagnostics,discussionAccountTag} from './lib/video-discussion-diagnostics.mjs'
 import {createLifeOpportunities} from './lib/life-opportunities.mjs'
 import {createLifeSharedBiliLinks} from './lib/life-shared-bili-links.mjs'
+import {unifiedOwnerDmCutover} from './lib/unified-dm-cutover.mjs'
 import {resolveBiliShareLink} from './lib/bili-share-link.mjs'
 import {createLifeFriendInitiatives} from './lib/life-friend-initiatives.mjs'
 import {readVerifiedCreatorPortfolio,readVerifiedPublicPersonPortfolio,readVerifiedCommenterPublicVideos} from './lib/life-public-capabilities.mjs'
@@ -2947,9 +2948,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // Called only with platform-authenticated sender identity, never from arbitrary model text.
   // The intake stores an opaque public link reference; it never resolves/fetches it.
   const offerPrivateBiliLinkToLife=({uid,role,text,messageId,at})=>{
-    if(!['owner','friend'].includes(role)||accountBinding.status().blocked)return {ok:false,created:0}
+    if(!['owner','friend','stranger','known'].includes(role)||accountBinding.status().blocked)return {ok:false,created:0}
     if(role==='owner'&&String(uid)!==String(cfg.dmOwnerUid||''))return {ok:false,created:0}
     if(role==='friend'&&!socialPolicyGate.canLearn({uid,kind:'dm'}))return {ok:false,created:0}
+    if(['stranger','known'].includes(role)&&!dmConfig().strangerEnabled)return {ok:false,created:0}
     const offered=lifeSharedBiliLinks.offerFromMessage({uid,role,text,messageId,at})
     if(offered?.ok===true&&offered.created>0){
       try{lifeAgentEvents.offer({kind:'public-ready',platform:'bili',sourceKey:'private-shared-bili-link:'+offered.ids[0]})}catch{}
@@ -4308,134 +4310,15 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       maxSessions: 12,
       logger: { warn: (msg) => log(msg) },
     })
-    // Establish an inbox baseline before performing any first-run side effects.
-    // Newly enabled agent must not execute messages already present before activation.
-    let ownerAgentFirstBaseline=false
-    if(cfg.ownerDmAgentEnabled===true){
-      try{ownerAgentFirstBaseline=ownerDmAgent.primeInbox(incoming)?.initialized===true}
-      catch(e){
-        // Never turn a failed owner inbox baseline into a successful empty
-        // scan: the ordinary DM engine would then persist the cursor and
-        // silently suppress owner messages until the next safety rescan.
-        dmPollCursor.discard()
-        throw new Error('主人私信 Agent 基线建立失败，本轮不确认私信游标：'+String(e?.message||e),{cause:e})
-      }
-    }
-    // BUG-003: the owner DM Agent consumes owner messages before ordinary DM onIncoming.
-    // Capture authenticated, recent recommendation preferences first. This is the
-    // sender's contact choice, never an action command subject to willingness.
-    // First-run owner Agent inbox baselines must not replay historical preferences.
-    if(cfg.ownerDmAgentEnabled===true&&!ownerAgentFirstBaseline&&cfg.masterEnabled===true&&cfg.dmWatch===true){
-      try{observeAuthenticatedOwnerDmPreferences(stateDir,{
-        rows:incoming,ownerUid:cfg.dmOwnerUid,friendDirectory:cfg.friendDirectory,
-      })}catch(e){log('主人私信偏好观察失败：'+String(e?.message||e).slice(0,100))}
-    }
-    // The model-enabled owner DM route already contains one decision.
-    // Legacy commands still have their compatibility gate, but the model
-    // route must never be silently refused by a prior formula.
-    // dev.9: apply one persistent willingness decision BEFORE every owner DM route
-    // (the LLM Agent, legacy read-only TODO commands, and legacy write commands).
-    // Ordinary chat, recommendation consent changes, and other users are untouched.
-    const declinedOwnerRequests=new Set()
-    for(const row of (ownerAgentFirstBaseline||cfg.ownerDmAgentEnabled===true||cfg.masterEnabled!==true||cfg.dmWatch!==true?[]:incoming)){
-      if(row?.incoming!==true||String(row.senderUid||'')!==String(cfg.dmOwnerUid||'')||!String(row.messageId||'').startsWith(String(row.senderUid)+':')||!Number.isSafeInteger(Number(row.timestampMs))||Date.now()-Number(row.timestampMs)>15*60_000||Number(row.timestampMs)>Date.now()+60_000)continue
-      const raw=String(row.text||'')
-      const legacyAction=parseOwnerDmAction(raw),legacyTodo=parseOwnerDmTodo(raw)
-      const classified=classifyBiliOwnerRequest(raw)
-      if(!legacyAction&&!legacyTodo&&!classified)continue
-      const intent=legacyAction?(['like','collect','follow','unfollow'].includes(legacyAction.type)?legacyAction.type:'publish'):(legacyTodo?'explore':classified.intent)
-      const target=String(legacyAction?.bvid||legacyTodo?.bvid||classified?.target||'')
-      const r=await decideLegacySocial({source:'bili-dm',uid:String(row.senderUid),messageId:String(row.messageId),text:raw,intent,target})
-      if(r.decision==='allow')continue
-      declinedOwnerRequests.add(row)
-      // A repeated poll must never send a second refusal or increase persuasion.
-      if(r.newDecision===true){
-        try{const delivered=await lifeDmWithReceipt({uid:row.senderUid,
-          text:agencyDeclineMessage(r),eventKey:`agency-decline:${row.messageId}`})
-          if(delivered?.ok!==true)log('双域意愿：拒绝回复未确认送达')}
-        catch(e){log('双域意愿：拒绝回复失败 '+String(e?.message||e).slice(0,90))}
-      }
-    }
-    if(declinedOwnerRequests.size){
-      const accepted=incoming.filter(row=>!declinedOwnerRequests.has(row))
-      incoming.length=0;incoming.push(...accepted)
-    }
-    // Owner's natural future suggestions are extracted by the existing Agent model turn,
-    // not by a hard-coded singer-name regex or an additional model invocation.
-    // dev.4: Owner's rapid consecutive DM fragments form ONE task and ONE receipt.
-    // Even if the Agent fails, authenticated owner messages NEVER fall back into recommendations.
-    const ownerRows=cfg.ownerDmAgentEnabled===true?incoming.filter(row=>
-      row?.incoming===true&&String(row.senderUid||'')===String(cfg.dmOwnerUid||'')):[]
-    if(ownerRows.length){
-      const lifeOwner=routedSocialOwner('dm')
-      if(!lifeOwner.ok){dmPollCursor.discard();throw Error('Life 私信归属迁移尚未完成，保留私信游标：'+lifeOwner.reason)}
-      try{const ownerOutcomes=await ownerDmAgent.processMessages(ownerRows)
-        if(ownerOutcomes?.some(x=>x?.ok===true&&x?.burst?.confirmed>0))dmAutoreply.noteActive(String(cfg.dmOwnerUid||''))}
-      catch(e){
-        dmPollCursor.discard()
-        throw new Error('主人私信 Agent 批量接收失败，本轮不确认私信游标：'+String(e?.message||e).slice(0,100),{cause:e})
-      }
-    }
-    const remaining=incoming.filter(row=>!ownerRows.includes(row))
-    incoming.length=0;incoming.push(...remaining)
-    if(incoming.some(row=>row?.incoming===true&&String(row.senderUid||'')===String(cfg.dmOwnerUid||''))){
-      const lifeOwner=routedSocialOwner('dm')
-      if(!lifeOwner.ok){dmPollCursor.discard();throw Error('Life 主人指令归属尚未完成：'+lifeOwner.reason)}
-    }
-    try{const approvedUids=new Set((Array.isArray(cfg.dmWhitelist)?cfg.dmWhitelist:[]).map(String));const recommendationEligible=incoming.filter(row=>{const uid=String(row.senderUid||'');return socialTier(uid,cfg.dmOwnerUid,cfg.friendDirectory)!=='stranger'||approvedUids.has(uid)||cfg.dmStrangerOnce===true||cfg.dmStrangerAutonomyEnabled===true});const received=receiveRecommendations(stateDir,recommendationEligible);if(received?.added)log(`收到 B站视频链接候选：${received.added} 条；是否加入待办由同轮私信 AI 自主判断`)}catch(e){log('B站私信视频候选暂存失败：'+String(e?.message||e).slice(0,100))}
-    try{
-      const queued=queueOwnerDmReadTodo({messages:incoming,ownerUid:cfg.dmOwnerUid,enabled:cfg.ownerDmReadCommandsEnabled===true,todos:ownerTodos})
-      if(queued.added)log(`主人 B站私信只读任务入队：${queued.added} 条`)
-      // Explicit read-only command from the platform-authenticated owner is an immediate request.
-      // Idempotency: queue only returns freshly created tasks; never re-execute old messages.
-      for(const task of (queued.immediate||[]).slice(0,3)){
-        const result=await runOwnerTodoWithFollowup(task.id)
-        // A completed search has already created bounded children. Invite an
-        // immediate autonomous consideration rather than waiting for the timer.
-        if(result?.ok===true&&task.type==='search_videos'){
-          try{await autonomousPlanner.considerChildren(task.id)}catch(e){log('子待办即时自主考虑失败：'+String(e?.message||e).slice(0,90))}
-        }
-        const summary=result.ok?String(result?.result?.summary||`已读取 ${task.bvid} 的公开视频资料（不等于完整播放）。`):`只读指令 ${task.type} 未完成：${String(result?.result?.error||result?.item?.lastError||result.error||'未知错误').slice(0,100)}`
-        log('主人私信立即查看：'+summary)
-        try{
-          refreshCfg()
-          if(cfg.masterEnabled===true&&cfg.dmWatch===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===task.ownerUid){
-            const ack=await lifeDmWithReceipt({uid:task.ownerUid,text:summary.slice(0,230),
-              eventKey:`owner-todo-immediate:${task.id}`})
-            if(ack?.ok!==true)log('主人私信操作回执未确认送达（任务状态已留存在待办）：'+String(ack?.error||'').slice(0,80))
-          }
-        }catch(e){log('主人私信操作回执发送失败（任务状态已留存在待办）：'+String(e?.message||e).slice(0,100))}
-      }
-    }catch(e){log('主人私信只读待办入队或执行失败：'+String(e?.message||e).slice(0,120))}
-    const claimedCommands=new Set()
-    if(cfg.masterEnabled===true&&cfg.dmWatch===true&&cfg.ownerDmActionsEnabled===true&&/^[1-9]\d{0,18}$/.test(String(cfg.dmOwnerUid||''))){
-      for(const row of incoming.slice(0,40)){
-        if(row?.incoming!==true||String(row.senderUid)!==String(cfg.dmOwnerUid))continue
-        const action=parseOwnerDmAction(row.text)
-        if(!action)continue
-        const checked=ownerDmActions.claim({uid:row.senderUid,messageId:row.messageId,timestampMs:row.timestampMs,action,enabled:true})
-        // Denied commands are not silently executed or treated as conversational AI instructions.
-        if(checked.reason==='duplicate')claimedCommands.add(row.messageId)
-        if(!checked.ok)continue
-        claimedCommands.add(row.messageId)
-        const r=await runOwnerDmAction({...action,actorUid:row.senderUid})
-        ownerDmActions.finish(checked.key,r)
-        const summary=String(r?.summary||(r?.uncertain?'结果不确定，暂不重试：':'未完成：')+String(r?.error||'未知原因')).slice(0,370)
-        log('主人私信 B站动作：'+action.type+' '+(r?.ok?'完成':r?.uncertain?'结果不确定':'未完成'))
-        try{
-          refreshCfg()
-          if(cfg.masterEnabled===true&&cfg.dmWatch===true&&cfg.ownerDmActionsEnabled===true&&String(cfg.dmOwnerUid||'')===String(row.senderUid)){
-            const ack=await lifeDmWithReceipt({uid:row.senderUid,text:summary.slice(0,390),
-              eventKey:`owner-action-ack:${row.messageId}`})
-            if(ack?.ok!==true)log('主人私信动作回执未确认送达：'+String(ack?.error||'').slice(0,100))
-          }
-        }catch(e){log('主人私信动作回执失败：'+String(e?.message||e).slice(0,100))}
-      }
-    }
-    // Commands must not fall back to an unrestricted model chat loop.
-    return incoming.filter(row=>!(row?.incoming===true&&String(row?.senderUid||'')===String(cfg.dmOwnerUid||'')&&(
-      (cfg.ownerDmReadCommandsEnabled===true&&parseOwnerDmTodo(row.text))||
-      (cfg.ownerDmActionsEnabled===true&&parseOwnerDmAction(row.text))||claimedCommands.has(row.messageId))))
+    // dev.3b.32: every permitted contact, including the owner, goes through
+    // the *same* dmAutoreply -> Life interaction model -> send gate. The old
+    // owner specialist and keyword parsers no longer consume inbound messages.
+    // First upgrade records a one-time cutover: old owner rows must not be
+    // mistaken for newly delivered messages and replayed with a second reply.
+    const ownerCutover=unifiedOwnerDmCutover(accountRuntimeDir)
+    return incoming.filter(row=>!(row?.incoming===true&&
+      String(row.senderUid||'')===String(cfg.dmOwnerUid||'')&&
+      Number(row.timestampMs)<ownerCutover))
     } finally {releaseDmRead()}
   }
 
@@ -4784,6 +4667,27 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return Promise.all(base.map(async(row,i)=>{
         const wantsHot=requestedByIndex?.[i]?.includes('hot_comments')
         const wantsPerson=requestedByIndex?.[i]?.includes('public_person')
+        const wantsShared=requestedByIndex?.[i]?.includes('shared_link')&&batch[i]?.kind==='dm'
+        if(wantsShared){
+          const input=batch[i],scope=trustedLifeAccountTag()
+          const shared=scope===input.sharedLinkScope&&input.sharedLinkId?
+            lifeSharedBiliLinks.get(input.sharedLinkId,scope):null
+          if(!shared||shared.senderUid!==String(input.uid)||
+             !['pending','error','deferred'].includes(shared.status)||Number(shared.nextAt||0)>Date.now()||
+             accountBinding.status().blocked||cfg.masterEnabled!==true||cfg.dmWatch!==true){
+            return {...row,sharedLinkContext:'链接目前不可读取，不能声称看过内容'}
+          }
+          const proof=await executeSharedBiliLinkRead(shared.id,scope)
+          if(proof?.ok!==true){
+            recordSharedBiliLinkFailure(shared.id,proof?.code||'link-read-failed',scope)
+            return {...row,sharedLinkContext:'本轮真实读取失败，不能描述链接内容或声称已经查看'}
+          }
+          const receipt=recordSharedBiliLinkRead(shared.id,proof,scope)
+          if(receipt?.ok!==true)return {...row,sharedLinkContext:'回执账号或链接证据不匹配，不能声称查看成功'}
+          row={...row,sharedLinkContext:JSON.stringify({kind:proof.kind,title:String(proof.title||'').slice(0,100),
+            summary:String(proof.summary||'').slice(0,420),authorName:String(proof.authorName||'').slice(0,50),
+            verified:true,readOnly:true}).slice(0,950)}
+        }
         if(!wantsPerson&&!wantsHot)return row
         if(wantsHot){
           const before=trustedLifeAccountTag(),uid=String(accountBinding.status().activeUid||'')
@@ -5047,11 +4951,21 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const verifiedSharedVideoContext=confirmedSharePromptContext(share)
       const todoProgressContext=dmTodoProgressContext.forReply(req)
       const visualReq=await addIncomingPictureObservation({...req,privateDmImage:true})
+      // No automatic link fetch. A validated current-message reference is
+      // offered to the same Life model as an optional read capability.
+      const linkOffer=offerPrivateBiliLinkToLife({uid:req.uid,role:tier,text:req.text,
+        messageId:req.messageId,at:Number(req.timestampMs)||Date.now()})
+      const linkScope=trustedLifeAccountTag()
+      const linkRow=(linkOffer?.ids||[]).map(id=>lifeSharedBiliLinks.get(id,linkScope))
+        .find(row=>row?.senderUid===String(req.uid)&&['pending','error','deferred'].includes(row.status)&&
+          Number(row.nextAt||0)<=Date.now())||null
+
       const episodeContext=lifeSubagentHandoff({agent:'dm',episodes:universalLifeEpisodes,sourceRef:'dm-conversation:'+String(req.uid)})
       const followCandidates=dmContactFollowCandidates({enabled:cfg.dmFollowAutonomyEnabled===true&&cfg.agentFollowEnabled===true&&cfg.masterEnabled===true&&req.trigger==='incoming',
         uid:String(req.uid),role:tier,history:req.history,incomingText:String(req.text||''),
         verifiedIncoming:req.trigger==='incoming'&&String(req.messageId||'').length>0,now:Date.now(),optedOut:socialPortrait?.contactBoundary?.(req.uid)==='stop'})
       const generated=await interactionBatcher.generate({kind:'dm',role:tier,...visualReq,socialAutonomy:true,
+        ...(linkRow?{sharedLinkId:linkRow.id,sharedLinkScope:linkScope,availableContexts:['shared_link']}:{}),
         lifeEpisodeContext:episodeContext,availableLifeActions:followCandidates,
         p6MaxBubbles:cfg.dmP6MaxBubbles,
         threadKey:`dm:${String(req.uid)}`,relationshipStage,
@@ -5775,7 +5689,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const result=await dmAutoreply.poll(fastUid?{fastUid}:{})
         // Silence reconsideration belongs to the ordinary inbox sweep only.
         if(!fastUid&&!result?.error&&!result?.skipped){
-          try{await ownerDmAgent.considerSilence()}catch(e){log('主人私信沉默续聊检查失败：'+String(e?.message||e).slice(0,100))}
+          // Owner DM now follows the same Life DM owner; retired independent owner silence model is not invoked.
         }
         return result
       },

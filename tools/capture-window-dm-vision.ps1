@@ -58,9 +58,9 @@ $latest = ReadSafeJson (Join-Path $homeDir 'dsh-vision-selftest-last-run.json')
 if ($latest -and $latest.schema -eq 1 -and $latest.last) {
   $a=$latest.last
   SaveJson 'dsh-vision-last-run.json' @{at=(SafeTime $a.at);status=(SafeCode $a.status);diagnosticCode=(SafeCode $a.diagnosticCode);
-    preflight=(SafeCode $a.preflight);mcpImage=(SafeCode $a.mcpImage);attachmentBridge='not_observable';
+    preflight=(SafeCode $a.preflight);headlessConfig=(SafeCode $a.headlessConfig);headlessConfigReason=(SafeCode $a.headlessConfigReason);mcpImage=(SafeCode $a.mcpImage);attachmentBridge='not_observable';
     providerApi=(SafeCode $a.providerApi);modelAnswer=(SafeCode $a.modelAnswer);
-    cliProcess=(SafeCode $a.cliProcess);cliExitCode=([int]$a.cliExitCode);cliStdout=(SafeCode $a.cliStdout);cliStderr=(SafeCode $a.cliStderr);cliStderrKind=(SafeCode $a.cliStderrKind);
+    cliProcess=(SafeCode $a.cliProcess);cliExitCode=([int]$a.cliExitCode);cliStdout=(SafeCode $a.cliStdout);cliStderr=(SafeCode $a.cliStderr);cliStderrKind=(SafeCode $a.cliStderrKind);cliNodeErrorCode=(SafeCode $a.cliNodeErrorCode);cliNodeExceptionType=(SafeCode $a.cliNodeExceptionType);
     note='No raw stderr, tool payload, API credentials, model reply or image is collected.'}
 } else { SaveJson 'dsh-vision-last-run.json' @{status='not_found';note='No persisted diagnostic was available.'} }
 $DMs=@()

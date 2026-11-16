@@ -233,7 +233,7 @@ def test_dsh_image_selftest_distinguishes_missing_mcp_proof_and_provider_api_err
             stdout='VISION_TEST_RESULT: 我看见了一只卡通角色。'.encode(),stderr=b''))
     assert not missing['ok'] and missing['status']=='no_image_proof'
     assert missing['diagnostics']['mcpImage']['status']=='not_received'
-    assert missing['diagnostics']['providerApi']['status']=='completed'
+    assert missing['diagnostics']['providerApi']['status']=='not_confirmed'
     failed=module.describe_test_image_with_dsh(tmp_path,env=env,
         runner=lambda *a,**kw:SimpleNamespace(returncode=1,stdout=b'',
             stderr=b'HTTP 400 invalid_request_error payload too large'))
@@ -320,7 +320,7 @@ class TestDshImageSelftestDiagnostics(unittest.TestCase):
             self.assertFalse(result['ok'])
             self.assertEqual(result['status'],'no_image_proof')
             self.assertEqual(result['diagnostics']['mcpImage']['status'],'not_received')
-            self.assertEqual(result['diagnostics']['providerApi']['status'],'completed')
+            self.assertEqual(result['diagnostics']['providerApi']['status'],'not_confirmed')
 
     def test_provider_http_error_is_safely_classified(self):
         from tempfile import TemporaryDirectory

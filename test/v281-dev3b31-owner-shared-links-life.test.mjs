@@ -37,9 +37,9 @@ test('verified owner dynamic share becomes a Life-only candidate; no automatic r
  }finally{x.close()}
 })
 
-test('untrusted offsite links and other roles never grant Life reads',()=>{
+test('untrusted offsite links are rejected; authorized stranger may form only read-only Life candidate',()=>{
  const x=fresh();try{
-  assert.equal(x.store.offerFromMessage({uid,role:'stranger',messageId:'q1',text:'https://t.bilibili.com/1234567890123456'}).created,0)
+  assert.equal(x.store.offerFromMessage({uid,role:'stranger',messageId:'q1',text:'https://t.bilibili.com/1234567890123456'}).created,1)
   assert.equal(x.store.offerFromMessage({uid,role:'owner',messageId:'q2',text:'https://evil.example/path?redirect=https://t.bilibili.com/1234567890123456'}).created,0)
   assert.equal(x.store.offerFromMessage({uid,role:'owner',messageId:'q3',text:'https://www.bilibili.com.evil.example/opus/1234567890123456'}).created,0)
  }finally{x.close()}

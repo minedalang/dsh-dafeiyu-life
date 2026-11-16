@@ -339,6 +339,9 @@ def _safe_dsh_headless_diagnostic(stderr, stdout=b'', exit_code=1):
     for code,patterns,hint in checks:
         if any(k in raw for k in patterns):
             return {'diagnosticCode':code,'error':f'DSH 受限图片验收子会话退出（exit={exit_code}）：{hint}。普通 Session 可识图不代表独立 Headless 会话已通过验证。'}
+    if 'node:internal' in raw or 'error [err_' in raw:
+        return {'diagnosticCode':'headless_node_runtime_exception',
+                'error':f'DSH Headless Node 运行期异常退出（exit={exit_code}），MCP/Provider 阶段需以独立回执判断；不是图片能力测试结果。'}
     return {'diagnosticCode':'headless_exit_unknown',
             'error':f'DSH 受限图片验收子会话异常退出（exit={exit_code}）。这不代表模型不能识图；请先在 DSH 中确认 Headless 模型验证和只读 MCP 工具可用。'}
 
@@ -456,15 +459,42 @@ def _safe_cli_process_receipt(result):
              'ERR_PACKAGE_PATH_NOT_EXPORTED','ERR_UNSUPPORTED_DIR_IMPORT',
              'ERR_INVALID_URL','ERR_CONNECTION_REFUSED','ERR_PARSE_ARGS_INVALID_OPTION_VALUE'}
     node_code=match.group(1).lower() if match and match.group(1) in allowed else 'unknown'
+    exception_type = next((name for name in ('TypeError','ReferenceError','SyntaxError','RangeError','AggregateError')
+                          if re.search(r'\b'+name.lower()+r'(?::|\s|\[)',normalized)), 'unknown')
     return {'status': 'exited', 'exitCode': code if 0 <= code <= 255 else -1,
+            **({'nodeExceptionType':exception_type} if exception_type!='unknown' else {}),
             'stdout': 'present' if getattr(result, 'stdout', b'') else 'empty',
             'stderr': 'present' if err else 'empty',
             'stderrKind':stderr_kind,**({'nodeErrorCode':node_code} if node_code!='unknown' else {})}
 
 
+def _probe_headless_composition(args, home, env, execute=subprocess.run):
+    """Probe actual CLI profile/patch composition, without any model/tool call.
+
+    Dump content is never written to logs or persisted. A ready result proves
+    config assembly only, not that MCP executed or that the model saw an image.
+    """
+    try:
+        result=execute([*args,'--dump-config'],cwd=str(home),env=env,
+                       stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                       timeout=25,check=False,**_hidden_windows_child())
+    except subprocess.TimeoutExpired:
+        return {'status':'failed','reason':'headless_config_dump_timeout'}
+    except (OSError,ValueError):
+        return {'status':'failed','reason':'headless_config_dump_launch'}
+    if result.returncode!=0:
+        return {'status':'failed','reason':'headless_config_dump_exit',
+                'cli':_safe_cli_process_receipt(result)}
+    data=result.stdout or b''
+    if b'mcp-bili-vision-readonly' not in data or b'bilivision' not in data:
+        return {'status':'failed','reason':'headless_vision_patch_not_composed'}
+    return {'status':'ready','reason':'headless_patch_composed'}
+
+
 def _vision_selftest_diagnostics(*, mcp='not_run', provider_api='not_run', answer='not_run',
-                                image_bytes=None, diagnostic_code='', preflight=None, cli_process=None):
+                                image_bytes=None, diagnostic_code='', preflight=None, cli_process=None, composition=None):
     return {
+        'headlessConfig': composition or {'status':'not_run'},
         'mcpPreflight': preflight or {'status':'not_run'},
         'cliProcess': cli_process or {'status':'not_run'},
         'mcpImage': {
@@ -556,6 +586,16 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         child_env=_vision_dsh_child_env(env)
         child_env['BILI_VISION_PROOF_FILE']=str(proof)
         child_env.pop('BILI_VISION_DSH_ARGV',None)
+        # Validate the *real* DSH CLI's composed headless overlay before
+        # spending a model request. The isolated Python MCP check cannot prove
+        # that this installed DSH can resolve the inserted client plugin.
+        composition={'status':'not_run','reason':'injected_runner'} if runner is not None else _probe_headless_composition(args,home,child_env)
+        if composition['status']=='failed':
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,composition=composition,
+                provider_api='not_started',answer='not_returned')
+            return {'ok':False,'status':'headless_config_failed','diagnosticCode':composition['reason'],
+                'error':'DSH Headless 实际配置合成未通过；请检查当前安装版是否加载了只读 MCP 插件及 overlay，模型尚未请求',
+                'diagnostics':diagnostics}
         _record_model_launch(home,'vision')
         execute=runner or subprocess.run
         try:
@@ -564,20 +604,20 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
                            **_hidden_windows_child())
         except subprocess.TimeoutExpired:
             proof_status,_=_read_selftest_image_proof(proof)
-            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp=proof_status,provider_api='timeout',answer='not_returned',
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,composition=composition,mcp=proof_status,provider_api='timeout',answer='not_returned',
                 image_bytes=_SELFTEST_IMAGE_BYTES if proof_status=='verified' else None)
             suffix=('；MCP 已成功返回固定图片，但 DSH 后续会话超时' if proof_status=='verified'
                     else '；MCP 图片回执与固定原图不匹配' if proof_status=='mismatch' else '')
             return {'ok':False,'status':'timeout','diagnosticCode':'headless_timeout',
                     'error':'DSH 识图验证超过 180 秒，请检查模型响应或网络'+suffix,'diagnostics':diagnostics}
         except (OSError,ValueError) as exc:
-            diagnostics=_vision_selftest_diagnostics(preflight=preflight,provider_api='not_started',answer='not_returned')
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,composition=composition,provider_api='not_started',answer='not_returned')
             return {'ok':False,'status':'launch_error','diagnosticCode':'dsh_launch_error',
                     'error':'无法安全启动 DSH 视觉会话：'+type(exc).__name__,'diagnostics':diagnostics}
         if result.returncode!=0:
             safe=_safe_dsh_headless_diagnostic(result.stderr,result.stdout,result.returncode)
             proof_status,_=_read_selftest_image_proof(proof)
-            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp=proof_status,provider_api='failed' if proof_status=='verified' else 'not_confirmed',answer='not_returned',
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,composition=composition,mcp=proof_status,provider_api='failed' if proof_status=='verified' else 'not_confirmed',answer='not_returned',
                 image_bytes=_SELFTEST_IMAGE_BYTES if proof_status=='verified' else None,
                 diagnostic_code=safe.get('diagnosticCode',''),cli_process=_safe_cli_process_receipt(result))
             if proof_status=='verified':
@@ -588,14 +628,14 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         proof_status,observed=_read_selftest_image_proof(proof)
         process_receipt=_safe_cli_process_receipt(result)
         if proof_status=='not_received':
-            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='not_received',provider_api='completed',answer='not_returned',cli_process=process_receipt)
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,composition=composition,mcp='not_received',provider_api='not_confirmed',answer='not_returned',cli_process=process_receipt)
             return {'ok':False,'status':'no_image_proof','diagnosticCode':'mcp_image_not_proven',
                     'error':'DSH 模型没有实际调用受控图片工具，不能人工认可','diagnostics':diagnostics}
         if proof_status=='mismatch':
-            diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='mismatch',provider_api='completed',answer='not_accepted',cli_process=process_receipt)
+            diagnostics=_vision_selftest_diagnostics(preflight=preflight,composition=composition,mcp='mismatch',provider_api='not_confirmed',answer='not_accepted',cli_process=process_receipt)
             return {'ok':False,'status':'image_mismatch','diagnosticCode':'mcp_image_receipt_mismatch',
                     'error':'DSH 收到的图片回执与大肥鱼原图不匹配','diagnostics':diagnostics}
-        diagnostics=_vision_selftest_diagnostics(preflight=preflight,mcp='verified',provider_api='completed',
+        diagnostics=_vision_selftest_diagnostics(preflight=preflight,composition=composition,mcp='verified',provider_api='completed',
                                                  answer='not_returned',image_bytes=_SELFTEST_IMAGE_BYTES,cli_process=process_receipt)
         output=(result.stdout or b'').decode('utf8',errors='replace')
         if 'VISION_TEST_RESULT:' not in output or 'VISION_TEST_FAILED' in output.split('VISION_TEST_RESULT:')[-1]:
