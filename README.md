@@ -1,3 +1,5 @@
+> **dev.3b.33.13 视觉临时环境修复：** 视觉 Python、环境自动修复与生产视觉 MCP 改用插件数据目录下 `tmp/vision` 作为受控临时目录；不再强制访问 Windows 默认 TEMP，不要求 Conda 或管理员权限。仍须 Windows 实机验证识图。
+
 > **dev.3b.33.12 视觉环境自检与回忆场交互：** 模型页自动只读检查 DSH 视觉 Python；发现异常提示定位一键修复（安装仍需确认）。视觉开关改为推拉式；记忆回忆场支持右键平移与五类证据筛选。Windows 真实图片模型回答仍待现场验收。
 
 > **历史 dev.3b.33.11 视觉环境自助修复：** 图片验收页新增一键修复视觉运行环境。宿主自动寻找普通权限可用的 Python、按需建立独立视觉环境、安装 MCP 依赖、复检并保存路径；正常用户无需 Conda 或 PowerShell。仅在明确点击后安装，不改主 `.venv`、不提权、不绕过 DSH 安全验收。[设计与边界](docs/architecture/2.8.1-dev3b3311-vision-one-click-repair.md)。
@@ -6,9 +8,11 @@
 
 > **dev.3b.33.9 资源协调增量：** Life 仍自主选择，新增多队列分资源池的受控调度、重复合成唤醒收敛、Episode 过期候选去除；仅进程内资源仲裁，跨进程安全凭据继续由旧账本负责。参见 [协调与自然 Life 架构](docs/architecture/2.8.1-dev3b339-resource-scheduler-and-natural-life.md)。
 
-> **当前源码开发基线：`2.8.1-dev.3b.33.12`，不是已发布稳定版。** [2.8.1-dev.3b.33.8 全系统与 Life 自然性审计](docs/architecture/2.8.1-dev3b338-system-integration-audit.md)。真实 Windows DSH 图片识别及 Life 私信拥塞恢复仍待实机验收；本文以下各个 dev.X 章节为历史开发说明，勿当作当前版本。
+> **当前源码开发基线：`2.8.1-dev.3b.33.13`，不是已发布稳定版。** [2.8.1-dev.3b.33.8 全系统与 Life 自然性审计](docs/architecture/2.8.1-dev3b338-system-integration-audit.md)。真实 Windows DSH 图片识别及 Life 私信拥塞恢复仍待实机验收；本文以下各个 dev.X 章节为历史开发说明，勿当作当前版本。
 
-### dev.3b.33.6：Windows DSH 图片验收启动路径调整（实机待验收）
+**DSH 视觉 Python 环境**：在 Windows 自动修复时，插件会使用 Duty Home 下的 `tmp/vision` 作为视觉专用临时目录（仅视觉 Python/MCP 进程继承），无需安装 Conda，也不会修改系统 TEMP。只有环境读写与 MCP 依赖检测全部通过才会保存；真实图片识别仍须单独人工验收。
+
+## dev.3b.33.6：Windows DSH 图片验收启动路径调整（实机待验收）
 
 此前 Windows 对照表明：相同 DSH 安装文件、工作目录下，PowerShell/宿主进程能导出 Headless 配置，但 Python 直接创建 Electron 子进程失败。独立 DSH 视觉现在在 Windows 使用可信的 `node.exe` 运行受控 Node 桥接文件，再由 Node 以 `shell:false` 启动相同 Desktop Host CLI。需要系统可调用的 Node.js（`node.exe`），并且桥接文件与安装包一致；不满足时会明确拒绝启动，而不会跳过安全配置检查。Linux/macOS 维持原启动方式。**这只是针对已经观察到的 Python 启动差异的修正候选；真正识图仍需在 Windows 看到 MCP 图片回执和模型最终回答。**
 

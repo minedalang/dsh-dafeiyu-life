@@ -1,3 +1,9 @@
+## dev.3b.33.13 视觉 Python 专用临时目录
+
+- 仅视觉 Python / 视觉 MCP 继承位于 Duty Home 下的 `tmp/vision` 作为 TEMP/TMP/TMPDIR；宿主启动时预建真实目录且拒绝符号链接。模型设置页只读检查不能安装或创建虚拟环境；显式修复允许准备临时目录但不得修改系统 TEMP、系统 PATH、Conda base、主 `.venv`、ACL 或提权。
+- 自动修复各阶段（健康基础解释器探测、venv/uv 创建、pip、最终 MCP 依赖复检）必须使用同一受控临时环境；缺失/不可用时应明确拒绝持久化。生产 DSH 视觉独立 MCP、视频 MCP 内视觉子进程与手动固定图片验收也使用相同临时环境，不能只修安装器。
+- Python 可来自普通 Python、uv 或 Conda（非必需），仍要独立环境和受控 MCP。没有 Windows 本地真实图片回执和模型最终回答不得关闭识图 P0。仅跑相关增量测试、架构/契约/selfcheck、npm dry-run 与补丁独立回放；不做全量/真实外发/npm 发布。
+
 ## dev.3b.33.12 视觉健康检查与神经回忆交互
 
 - 进入 AI 模型设置页只能进行限时、只读、无 Shell 的普通权限视觉 Python 检查；不要自动执行 pip/uv 安装。异常仅引导至现有 DSH 视觉修复入口；视觉启用开关仍沿用 `visionEnabled` 和原保存按钮，不改变默认授权。

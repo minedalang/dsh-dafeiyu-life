@@ -174,7 +174,7 @@ import { createBiliReadBudget } from './lib/bili-read-budget.mjs'
 import { fetchBiliCover } from './lib/bili-cover-proxy.mjs'
 import {createDmPollCursor} from './lib/dm-poll-cursor.mjs'
 import {createDmDetailQueue} from './lib/dm-detail-queue.mjs'
-import {selectVisionPython,probeVisionPython,visionPythonCandidates} from './lib/vision-python-runtime.mjs'
+import {selectVisionPython,probeVisionPython,visionPythonCandidates,ensureVisionTempDir,visionTempPath,visionPythonTempEnv} from './lib/vision-python-runtime.mjs'
 import {createVisionEnvironmentRepair,probeVisionPythonAsync} from './lib/vision-environment-repair.mjs'
 import {dmContinuationPrompt,parseDmContinuationReply} from './lib/dm-progressive-expression.mjs'
 import { listCommentMemes, getCommentMemePreview } from './lib/comment-meme-library.mjs'
@@ -582,6 +582,10 @@ export function apply(ctx, config) {
     return myVer
   }
   const stateDir = stateDirOf(ctx)
+  // Pre-create the vision-only TEMP at host startup, before DSH/MCP sandboxing.
+  // Entering the models page remains read-only and never installs dependencies.
+  try{ensureVisionTempDir(stateDir,{create:true})}catch{/* health/repair will report unavailable */}
+  const visionEnv=extra=>visionPythonTempEnv({home:stateDir,env:pyEnv(extra),create:false})
   const legacyInstallAtEntry = existsSync(join(stateDir,'config.json')) || readdirSync(stateDir).length > 0
   // Character identity is stable; B站 UID is a replaceable, verified transport identity.
   const accountBinding = createAccountBinding({dataDir:stateDir})
@@ -3199,8 +3203,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     if(!fresh&&visionPythonCache?.key===key&&Date.now()-visionPythonCache.at<120000)return visionPythonCache.result
     // The user-selected vision interpreter is the first candidate. Do not let
     // an unhealthy main .venv mask a missing MCP package in the chosen Conda Python.
-    const result=selectVisionPython({preferred:cfg.visionPythonPath||'',configured:cfg.pythonPath||'',
-      home:stateDir,workdir:process.cwd(),env:pyEnv(),requiresMcp:true})
+    let result
+    try{result=selectVisionPython({preferred:cfg.visionPythonPath||'',configured:cfg.pythonPath||'',
+      home:stateDir,workdir:process.cwd(),env:visionEnv(),requiresMcp:true})}
+    catch{result={ok:false,path:'',source:'none',reason:'vision_temp_unavailable'}}
     visionPythonCache={key,at:Date.now(),result}
     return result
   }
@@ -3211,7 +3217,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const visionEnvironmentRepair=createVisionEnvironmentRepair({
     home:stateDir,workdir:process.cwd(),
     requirementsFile:join(pluginDir,'vendor','bilibili-mcp','requirements.txt'),
-    env:pyEnv(),
+    env:uvEnv(),
     configured:()=>cfg.pythonPath||'',preferred:()=>cfg.visionPythonPath||'',
     persist:async path=>{
       const saved=await persistCfg({visionPythonPath:path})
@@ -3231,11 +3237,14 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     if(process.platform!=='win32')return {status:'unsupported',reason:'windows_only'}
     if(visualHealthCheck&&Date.now()-visualHealthCheck.at<30000)return visualHealthCheck.promise
     const promise=(async()=>{
+      let environment
+      try{environment=visionEnv()}
+      catch{return {status:'unhealthy',reason:'vision_temp_unavailable',checked:0}}
       const candidates=visionPythonCandidates({preferred:cfg.visionPythonPath||'',configured:cfg.pythonPath||'',
-        home:stateDir,workdir:process.cwd(),env:pyEnv(),platform:'win32'}).slice(0,4)
+        home:stateDir,workdir:process.cwd(),env:environment,platform:'win32'}).slice(0,4)
       let reason='missing_runtime',checked=0
       for(const python of candidates){
-        const check=await probeVisionPythonAsync(python,{home:stateDir,env:pyEnv(),requiresMcp:true,timeoutMs:3000})
+        const check=await probeVisionPythonAsync(python,{home:stateDir,env:environment,requiresMcp:true,timeoutMs:3000})
         checked++
         if(check.ok)return {status:'healthy',reason:'healthy',checked}
         reason=check.reason||reason
@@ -3312,6 +3321,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       '          BILI_MCP_TOOLS: '+yq(isSelftest?'bili_vision_selftest':'bili_preview_vision'),
       ...(isSelftest?['          BILI_VISION_SELFTEST_ALLOWED: '+yq('1'), '          BILI_VISION_TEST_ASSET: '+yq(posix(join(pluginDir,'lib','assets','local-vision-selftest-dafeiyu.png')))]:['          BILI_VISION_CHILD: '+yq('1')]),
       '          BILI_DUTY_HOME: '+yq(posix(stateDir)),
+      '          TEMP: '+yq(posix(visionTempPath(stateDir))),
+      '          TMP: '+yq(posix(visionTempPath(stateDir))),
+      '          TMPDIR: '+yq(posix(visionTempPath(stateDir))),
       '          BILI_VISION_DSH_BRIDGE: '+yq(posix(join(stateDir,'dsh-vision-node-bridge.mjs'))),
       '          BILI_VISION_ENABLED: '+yq('1'),
       '          BILI_VISION_MODE: '+yq('reuse_video_model'),
@@ -3369,7 +3381,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       // The Desktop's CLI executable must run as Node, even when launched by
       // the Python vision wrapper rather than the ordinary JS Agent launcher.
       const runAsNode=Boolean(process.versions.electron||dsh.env?.ELECTRON_RUN_AS_NODE==='1')
-      const env=pyEnv({BILI_DUTY_HOME:stateDir,BILI_VISION_DSH_ARGV:JSON.stringify([dsh.command,...args]),
+      const env=visionEnv({BILI_DUTY_HOME:stateDir,BILI_VISION_DSH_ARGV:JSON.stringify([dsh.command,...args]),
         BILI_VISION_DSH_RUN_AS_NODE:runAsNode?'1':'0',
         BILI_VISION_DSH_WORKDIR:process.cwd(),
         BILI_VISION_DSH_BRIDGE:join(stateDir,'dsh-vision-node-bridge.mjs')})
@@ -3526,6 +3538,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         '          BILI_COMMENT_DAILY_LIMIT: ' + yq(cfg.commentDailyLimit),
         '          BILI_DUTY_AUTO_COMMENT_REVIEW: ' + yq(cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0 && lifeVideoActionBridge?.status().ready===true ? '1':'0'),
         '          BILI_DUTY_HOME: ' + yq(posix(stateDir)),
+        ...(cfg.visionEnabled ? [
+          '          TEMP: ' + yq(posix(visionTempPath(stateDir))),
+          '          TMP: ' + yq(posix(visionTempPath(stateDir))),
+          '          TMPDIR: ' + yq(posix(visionTempPath(stateDir))),
+        ] : []),
         // Loopback Life approval for EACH video Agent external write.
         // No bridge / no token => Python tool fails closed.
         ...Object.entries(lifeVideoActionBridge?.env()||{}).map(([key,value])=>'          '+key+': '+yq(value)),
@@ -8046,7 +8063,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const bv = String(body?.bvid || '').trim()
       if (!/^BV[0-9A-Za-z]{10}$/.test(bv)) return sendJson(res, 400, {ok:false,error:'请输入正确的 BV 号'})
       const script = join(pluginDir, 'lib', 'preview_vision.py')
-      const env=pyEnv({BILI_VISION_ENABLED:'0',BILI_VISION_MODE:resolvedVisionMode(),BILI_VISION_DEBUG:cfg.visionDebug?'1':'0',BILI_VISION_DIAG_ENABLED:cfg.diagVisionEnabled?'1':'0',
+      const env=visionEnv({BILI_VISION_ENABLED:'0',BILI_VISION_MODE:resolvedVisionMode(),BILI_VISION_DEBUG:cfg.visionDebug?'1':'0',BILI_VISION_DIAG_ENABLED:cfg.diagVisionEnabled?'1':'0',
         BILI_VISION_PROVIDER:resolvedVisionMode()==='independent_local'?'ollama':cfg.visionModelProvider,BILI_VISION_MODEL:resolvedVisionMode()==='independent_local'?(getLocalVisionModel(cfg.visionLocalModel)?.ollama||''):cfg.visionModelId,
         BILI_VISION_FRAMES:String(cfg.visionFrames),BILI_FFMPEG_PATH:cfg.ffmpegPath||'',BILI_ASR_MODEL_PATH:cfg.asrModelPath||'',BILI_DUTY_HOME:stateDir})
       const result = await new Promise(resolve=>{
