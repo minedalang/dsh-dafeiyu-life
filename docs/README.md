@@ -1,3 +1,5 @@
+> **现行发布审计入口（2026-11-17）**：当前源码已推进到 `2.8.1-dev.3b.33.13-hostprobe.2` + 私有 Overlay 换行热修与快速设置增量。下方历史导航标题保留其原先写作日期，不代表当前可正式发布。最新依据：[2.8.1 发布前全链路审计](architecture/2.8.1-release-audit-20261117.md) · [发布检查单](release/2.8.1-release-checklist.md) · [用户升级说明](release/2.8.1-user-upgrade-guide.md)。
+
 - [2.8.1-dev.3b.33.11：视觉 Python 环境一键修复](architecture/2.8.1-dev3b3311-vision-one-click-repair.md)
 # 大肥鱼文档导航（2.8.1-dev.3b.33.11 开发版）
 

@@ -1,3 +1,5 @@
+> **2026-11-17 发布准备核对**：本路线图以下大部分为早期开发里程碑，最新 2.8.1 状态与阻断项见 [发布前审计](architecture/2.8.1-release-audit-20261117.md)。当前手动 DSH 固定图片验收在用户 Windows 有真实回执，生产视频视觉尚未通过同一 Node 宿主链路验收，正式版仍受发布检查单约束。
+
 > **dev.3b.33.9 已实现（开发版）**：[统一资源协调与自然契机收敛](architecture/2.8.1-dev3b339-resource-scheduler-and-natural-life.md)；还不是跨进程统一任务总线，Windows 实测仍待验收。
 
 > **当前开发核对点：`2.8.1-dev.3b.33.9`（2026-11-16）。** [全系统／Life 自然性／文档同步审计](architecture/2.8.1-dev3b338-system-integration-audit.md)。私信 fast lane 在 `dev.3b.33.4` 已变为基础间隔的 **1×/2×/3×**，以下 `dev.3b.21` 的 10→20→30→60 秒是历史方案，不是当前默认行为。DSH 实机识图及 Life 私信实机恢复仍未验收。

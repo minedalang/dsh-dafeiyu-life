@@ -1612,6 +1612,11 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-firststart .quick-strong-recommend{background:#fdefd9;color:#80551c;border:1px solid #e7bd79;font-weight:800}
 #panel-firststart #quick-embedding-section{border-color:color-mix(in srgb,#e2ac59 58%,var(--stroke));background:linear-gradient(130deg,color-mix(in srgb,#ffebc8 35%,var(--panel)),var(--panel));box-shadow:0 13px 36px #c18e4c1a}
 #panel-firststart .quick-setup-stack{gap:18px}
+#panel-firststart .fs-vision-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+#panel-firststart .fs-vision-steps>div{border:1px solid var(--stroke);border-radius:13px;padding:12px;background:color-mix(in srgb,#c5e8f4 14%,var(--panel))}
+#panel-firststart .fs-vision-steps strong{font-size:13px}
+#panel-firststart .fs-vision-steps p{font-size:12px;color:var(--muted);line-height:1.6;margin:7px 0 0}
+@media(max-width:700px){#panel-firststart .fs-vision-steps{grid-template-columns:1fr}}
 #panel-firststart .quick-config-section{transition:transform .22s,box-shadow .22s,border-color .22s}
 #panel-firststart .quick-config-section:focus-within{border-color:#6dbaa8;box-shadow:0 12px 27px #317a8c22}
 #panel-firststart .quick-option{overflow:hidden;min-height:118px;justify-content:center;box-shadow:inset 0 1px 0 #ffffff24}
@@ -1701,13 +1706,13 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <aside id="settings-save-hint" role="status" aria-live="polite" hidden><span id="settings-save-hint-text">此处修改尚未保存。</span><button id="settings-save-hint-action" type="button" class="primary">保存本组设置</button></aside>
 <div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">快速设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开快速设置 ↗</button></div>
 <section id="panel-firststart" hidden>
-  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 新版本快速设置</span><h2>快速设置 · 一次完成必要验证与生活选择</h2><p>新用户请<strong>先检查并安装 B站主依赖</strong>，实际就绪后才能扫码登录；随后验证 Headless 模型。已有依赖与登录的老用户无需重装。FFmpeg、Whisper 和生活偏好可选，之后随时修改。</p></div>
+  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 2.8.1 升级必看</span><h2>快速设置 · 检查新版能力与已有配置</h2><p>2.8.1 首次打开管理中心时，新老用户都需要进入本页确认新版设置说明。<strong>已有登录、模型、Life 和记忆不会因此清空或重置</strong>；已有健康环境无需重装。B站主依赖与 Headless 文字模型验证属于基础必需项；视频画面识别需要另行配置视觉模型并完成图片验收，<strong>视频视觉可选且默认不开启</strong>。</p></div>
 
   <div class="fs-journey" aria-label="统一快速设置流程">
     <div class="fs-progress" id="fs-progress" aria-label="快速设置进度">
       <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="account"><span>01</span><strong>主依赖与 B站登录</strong><small>必须</small></a>
       <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="model"><span>02</span><strong>模型验证</strong><small>必须</small></a>
-      <a class="fs-progress-step" href="#fs-choices-stage" data-fs-step="preferences"><span>03</span><strong>生活方案</strong><small>可跳过</small></a>
+      <a class="fs-progress-step" href="#fs-choices-stage" data-fs-step="preferences"><span>03</span><strong>新版设置检查</strong><small>需查看</small></a>
       <a class="fs-progress-step" href="#fs-session-stage" data-fs-step="session"><span>04</span><strong>主会话</strong><small>可跳过</small></a>
       <a class="fs-progress-step" href="#fs-final-stage" data-fs-step="finish"><span>05</span><strong>完成引导</strong><small>不重置设置</small></a>
     </div>
@@ -1731,6 +1736,17 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先在左栏同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后请在右侧 Headless 模型卡片点击「验证文字连接」完成真实请求；图片能力还需单独实测。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
   </div>
     </div>
+    <section class="quick-config-section" id="fs-vision-guide" aria-label="2.8.1 视频视觉模型配置引导">
+      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>02B · 视频视觉感知 <span class="pill">可选 · 推荐检查</span></h4><p>Headless 文字连接通过，不代表鱼鱼能看懂视频画面。2.8.1 将模型选择、依赖修复和真实图片验收集中在「AI 模型 → 视觉识别模型」。</p></div></div>
+      <p id="fs-vision-state" class="quick-current" role="status" aria-live="polite">正在读取当前视觉设置…</p>
+      <div class="fs-vision-steps" aria-label="视觉模型配置三步">
+        <div><strong>① 选择识图来源</strong><p>可选 DSH 多模态 Provider / 模型，或本地 Ollama 视觉模型。仅使用文字功能的用户可以不配置。</p></div>
+        <div><strong>② 准备依赖并验证</strong><p>DSH 识图 Python 环境异常时才点击「自动修复视觉运行环境」；随后让模型识别固定原图，检查真实图片回执与回答。</p></div>
+        <div><strong>③ 人工认可并启用</strong><p>核对描述正确，再在视觉模型页认可结果、开启「启用视频视觉感知」并保存。只有鱼鱼主动选择看画面时才会调用，不会自动授予点赞或评论权限。</p></div>
+      </div>
+      <div class="quick-config-actions"><button type="button" class="primary" data-open-tab="models" data-open-anchor="models-vision-settings">配置视觉模型并进行图片验收 ↗</button><button type="button" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">选择视频采样方案 ↗</button></div>
+      <p class="setting-note">本步骤不会修改已有模型，不自动下载安装，不强制开启视频视觉；可在完成快速设置后随时返回。</p>
+    </section>
     <section class="quick-config-section" id="fs-owner-uid-section" aria-label="首次设置 B站主人身份"><div class="quick-config-title"><span class="quick-card-icon">👑</span><div><h4>主人 B站 UID <span class="pill">可选 · 建议现在配置</span></h4><p>决定谁可以通过真实 B站私信或 @ 身份被认作唯一授权主人。主人 UID 不等于鱼鱼登录的 UID。</p></div></div><div class="fields"><div><label for="fs-owner-uid">主人自己的 B站 UID（纯数字）</label><input id="fs-owner-uid" type="text" inputmode="numeric" pattern="[1-9][0-9]{0,18}" maxlength="19" placeholder="你的 B站个人空间 UID" autocomplete="off"/><small class="setting-note">仅保存主人身份；不会自动开启点赞、公开发表评论、关注或私信他人等权限。已有主人身份不会被页面自动更换。</small></div></div><div class="quick-config-actions"><button id="fs-owner-uid-save" type="button" class="primary">确认并保存唯一主人 UID</button><button type="button" data-open-tab="social" data-open-anchor="friend-directory-editor">高级主人／好友权限 ↗</button></div><p id="fs-owner-uid-status" class="quick-current" role="status">读取当前主人身份…</p></section>
     <div id="fs-choices-stage" class="fs-phase"><div class="fs-phase-title"><strong>定制鱼鱼的生活</strong><span>可直接选择、预览并保存；不保存就不会更改已有参数</span></div>
   <section class="quick-settings-home" aria-label="快速设置卡片操作">

@@ -16,7 +16,7 @@ test('new-user onboarding exposes the main dependency installer and real status,
   assert.match(js,/installTail/)
   assert.match(js,/request\('\/install',\{\}\)/)
   assert.match(js,/installing/)
-  assert.match(backend,/installOutcome = code === 0 && venvReadyNow\(\) \? 'ready' : 'failed'/)
+  assert.match(backend,/installOutcome = installedHealthy && venvReadyNow\(\) \? 'ready' : 'failed'/)
   assert.match(backend,/if \(!venvReadyNow\(\)\) return sendJson\(res,409,\{ok:false,error:'B站主依赖尚未就绪/)
 })
 
