@@ -174,8 +174,8 @@ import { createBiliReadBudget } from './lib/bili-read-budget.mjs'
 import { fetchBiliCover } from './lib/bili-cover-proxy.mjs'
 import {createDmPollCursor} from './lib/dm-poll-cursor.mjs'
 import {createDmDetailQueue} from './lib/dm-detail-queue.mjs'
-import {selectVisionPython,probeVisionPython} from './lib/vision-python-runtime.mjs'
-import {createVisionEnvironmentRepair} from './lib/vision-environment-repair.mjs'
+import {selectVisionPython,probeVisionPython,visionPythonCandidates} from './lib/vision-python-runtime.mjs'
+import {createVisionEnvironmentRepair,probeVisionPythonAsync} from './lib/vision-environment-repair.mjs'
 import {dmContinuationPrompt,parseDmContinuationReply} from './lib/dm-progressive-expression.mjs'
 import { listCommentMemes, getCommentMemePreview } from './lib/comment-meme-library.mjs'
 import {readCommentMemeRules,saveCommentMemeRules,validateCommentMemeRules} from './lib/comment-meme-rules.mjs'
@@ -3217,11 +3217,34 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const saved=await persistCfg({visionPythonPath:path})
       if(saved?.localVerified!==true)return false
       visionPythonCache=null
+      visualHealthCheck=null
       return true
     },
     findUv:async()=>await resolveUv(),
   })
 
+
+  // Model-page entry performs a bounded, read-only, non-blocking probe.
+  // It never installs Python or affects the stored runtime selection.
+  let visualHealthCheck=null
+  const checkVisualHealthOnEntry=async()=>{
+    if(process.platform!=='win32')return {status:'unsupported',reason:'windows_only'}
+    if(visualHealthCheck&&Date.now()-visualHealthCheck.at<30000)return visualHealthCheck.promise
+    const promise=(async()=>{
+      const candidates=visionPythonCandidates({preferred:cfg.visionPythonPath||'',configured:cfg.pythonPath||'',
+        home:stateDir,workdir:process.cwd(),env:pyEnv(),platform:'win32'}).slice(0,4)
+      let reason='missing_runtime',checked=0
+      for(const python of candidates){
+        const check=await probeVisionPythonAsync(python,{home:stateDir,env:pyEnv(),requiresMcp:true,timeoutMs:3000})
+        checked++
+        if(check.ok)return {status:'healthy',reason:'healthy',checked}
+        reason=check.reason||reason
+      }
+      return {status:'unhealthy',reason,checked}
+    })().catch(()=>({status:'unhealthy',reason:'runtime_execution_failed',checked:0}))
+    visualHealthCheck={at:Date.now(),promise}
+    return promise
+  }
 
   const mcpWhitelist = (sourceMode='mixed') => {
     const list = [...(sourceMode==='home'?[]:['bili_search']), 'bili_subtitle', 'bili_comments', 'bili_comment_thread', 'bili_discussion_note', 'bili_video_info',
@@ -8856,6 +8879,8 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     // Optional local visual models are managed separately from embedding and DSH.
     // There is no arbitrary URL or model name; the daemon is fixed to loopback.
+    if(req.method==='GET'&&path==='/api/bili-duty/dsh-vision/runtime-health')
+      return sendJson(res,200,{ok:true,...await checkVisualHealthOnEntry()})
     if(req.method==='GET'&&path==='/api/bili-duty/dsh-vision/status')
       return sendJson(res,200,{ok:true,...dshVisionReview.status(),pythonRuntime:(()=>{const r=visionPythonCache?.result;return {status:r?.ok?'healthy':r?'unhealthy':'unchecked',source:r?.source||'none',reason:r?.reason||'not_run'}})(),visionRepair:visionEnvironmentRepair.status(),imageUrl:'/api/bili-duty/local-vision/selftest-image'})
     if(req.method==='POST'&&path==='/api/bili-duty/dsh-vision/repair'){
