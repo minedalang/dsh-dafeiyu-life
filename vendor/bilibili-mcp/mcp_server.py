@@ -2869,74 +2869,100 @@ async def bili_dynamic_info(dynamic_id: str) -> str:
                     if u.scheme=='https' and re.fullmatch(r'i[0-9]\.hdslb\.com',u.hostname or '') and u.path.startswith('/bfs/') and not u.username and not u.password and not u.port:
                         images.append('https://'+u.hostname+u.path)
                 except Exception: pass
+        # Links for further Life choices are extracted from actual typed Bilibili
+        # API objects. Never infer a target from captions, usernames or links in text.
+        related=[]
+        def add_related(ref):
+            if ref and ref not in related and len(related)<4: related.append(ref)
+        original=item.get('orig')
+        if isinstance(original,dict):
+            oid=str(original.get('id_str') or original.get('id') or '')
+            if re.fullmatch(r'[1-9][0-9]{5,19}',oid) and oid!=did:
+                add_related({'kind':'dynamic','dynamicId':oid,'relation':'reposted-original'})
+        def archive_from(node):
+            if not isinstance(node,dict):return
+            dyn=(node.get('modules') or {}).get('module_dynamic') or {}
+            m=dyn.get('major') or {}
+            archive=m.get('archive') if isinstance(m,dict) else None
+            bv=str((archive or {}).get('bvid') or '') if isinstance(archive,dict) else ''
+            if re.fullmatch(r'BV[0-9A-Za-z]{10}',bv):
+                add_related({'kind':'video','bvid':bv,'relation':'embedded-video'})
+        archive_from(item)
+        if isinstance(original,dict):archive_from(original)
         author_uid=str(author.get('mid') or '')
         if not re.fullmatch(r'[1-9][0-9]{0,19}',author_uid): author_uid=''
+        if author_uid:add_related({'kind':'profile','uid':author_uid,'relation':'author-profile'})
+        if isinstance(original,dict):
+            original_author=((original.get('modules') or {}).get('module_author') or {})
+            orig_uid=str(original_author.get('mid') or '')
+            if re.fullmatch(r'[1-9][0-9]{0,19}',orig_uid) and orig_uid!=author_uid:
+                add_related({'kind':'profile','uid':orig_uid,'relation':'author-profile'})
         basic=item.get('basic') or {};raw_comment_type=basic.get('comment_type')
         try:comment_type=int(raw_comment_type)
         except (TypeError,ValueError):comment_type=0
         commentable=kind=='DYNAMIC_TYPE_DRAW' and comment_type==11 or kind=='DYNAMIC_TYPE_WORD' and comment_type==17
         return json.dumps({'ok':True,'dynamicId':did,'kind':kind,'commentable':commentable,'title':title[:100],
             'text':text[:1000],'authorUid':author_uid,'authorName':str(author.get('name') or '')[:50],
-            'imageUrls':list(dict.fromkeys(images))[:9]},ensure_ascii=False)
+            'imageUrls':list(dict.fromkeys(images))[:9],'related':related},ensure_ascii=False)
     except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:160]},ensure_ascii=False)
 
 
 async def bili_dynamic_like_life(dynamic_id: str, expected_author_uid: str, reason: str) -> str:
     """Host-only Life action. Not registered in any DSH MCP whitelist."""
     if (e:=_guard('bili_dynamic_like_life')): return e
-    if os.environ.get('BILI_LIFE_SHARED_DYNAMIC_ACTION_ENABLED')!='1' or os.environ.get('BILI_LIFE_SHARED_DYNAMIC_LIKE_ENABLED')!='1':
+    if os.environ.get('BILI_LIFE_SHARED_DYNAMIC_ACTION_ENABLED')!='1' or os.environ.get('BILI_LIFE_PUBLIC_INTERACTION_ENABLED')!='1':
         return json.dumps({'ok':False,'attempted':False,'status':'not-sent'},ensure_ascii=False)
     claim=None;uid='';did='';attempted=False
     try:
         did=_checked_dynamic_id(dynamic_id);cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
         author_expected=str(expected_author_uid or '')
         if not re.fullmatch(r'[1-9][0-9]{0,19}',uid) or not re.fullmatch(r'[1-9][0-9]{0,19}',author_expected) or uid==author_expected:
-            raise ValueError('账号或好友作者身份未核验')
+            raise ValueError('账号或实际作者身份未核验')
         info=await dynamic.Dynamic(int(did),credential=cred).get_info()
         item=info.get('item') if isinstance(info,dict) else None
         if item is None and isinstance(info,dict): item=(info.get('data') or {}).get('item')
         author=((item or {}).get('modules') or {}).get('module_author') or {}
         if str((item or {}).get('id_str') or (item or {}).get('id') or '')!=did or str(author.get('mid') or '')!=author_expected:
-            raise ValueError('动态作者与分享好友不匹配')
+            raise ValueError('动态作者与目标核验不匹配')
         why=str(reason or '').strip()
         if len(why)<8 or len(why)>100 or re.search(r'[\x00-\x1f\x7f]|https?://|www\.|@',why,re.I):
             raise ValueError('点赞理由不合规')
-        limit=max(0,min(10,int(os.environ.get('BILI_LIFE_DYNAMIC_LIKE_DAILY_LIMIT','2'))))
-        target='friend-shared-dynamic:'+did
+        limit=max(0,min(10,int(os.environ.get('BILI_LIFE_DYNAMIC_LIKE_DAILY_LIMIT','10'))))
+        target='life-public-dynamic:'+did
         claim=_claim_session_manual_action(uid,'like',target,'like',limit)
         if not claim.get('ok'): return json.dumps({'ok':False,'attempted':False,'status':'not-sent','already':claim.get('already') is True,'limit':claim.get('limit') is True},ensure_ascii=False)
         attempted=True
         result=await dynamic.Dynamic(int(did),credential=cred).set_like(status=True)
         if result is False or (isinstance(result,dict) and result.get('code',0) not in (0,None)): raise ValueError('B站动态点赞未接受')
-        _finish_session_manual_action(uid,'like',target,claim['body_hash'],claim['day'],'accepted','Life friend-shared dynamic like')
+        _finish_session_manual_action(uid,'like',target,claim['body_hash'],claim['day'],'accepted','Life verified public dynamic like')
         return json.dumps({'ok':True,'attempted':True,'status':'accepted-unverified'},ensure_ascii=False)
     except Exception as exc:
         if claim and uid and did:
-            try:_finish_session_manual_action(uid,'like','friend-shared-dynamic:'+did,claim['body_hash'],claim['day'],'uncertain',str(exc)[:120])
+            try:_finish_session_manual_action(uid,'like','life-public-dynamic:'+did,claim['body_hash'],claim['day'],'uncertain',str(exc)[:120])
             except Exception:pass
         return json.dumps({'ok':False,'attempted':attempted,'status':'uncertain' if attempted else 'not-sent','no_retry':attempted},ensure_ascii=False)
 
 
 async def bili_dynamic_comment_life(dynamic_id: str, expected_author_uid: str, text: str, reason: str) -> str:
-    """Host-only Life top-level comment on the exact friend's own text/draw dynamic."""
+    """Host-only Life top-level comment on one verified public text/draw dynamic."""
     if (e:=_guard('bili_dynamic_comment_life')): return e
-    if os.environ.get('BILI_LIFE_SHARED_DYNAMIC_ACTION_ENABLED')!='1' or os.environ.get('BILI_LIFE_SHARED_DYNAMIC_COMMENT_ENABLED')!='1':
+    if os.environ.get('BILI_LIFE_SHARED_DYNAMIC_ACTION_ENABLED')!='1' or os.environ.get('BILI_LIFE_PUBLIC_INTERACTION_ENABLED')!='1':
         return json.dumps({'ok':False,'attempted':False,'status':'not-sent'},ensure_ascii=False)
     claim=None;uid='';did='';attempted=False
     try:
         did=_checked_dynamic_id(dynamic_id);cred=get_cred();uid=str(getattr(cred,'dedeuserid','') or '')
         author_expected=str(expected_author_uid or '')
         if not re.fullmatch(r'[1-9][0-9]{0,19}',uid) or not re.fullmatch(r'[1-9][0-9]{0,19}',author_expected) or uid==author_expected:
-            raise ValueError('账号或好友作者身份未核验')
+            raise ValueError('账号或实际作者身份未核验')
         info=await dynamic.Dynamic(int(did),credential=cred).get_info()
         area=_dynamic_comment_area(info,did)
-        if area['author_uid']!=author_expected: raise ValueError('动态作者与分享好友不匹配')
+        if area['author_uid']!=author_expected: raise ValueError('动态作者与目标核验不匹配')
         body=str(text or '').strip();why=str(reason or '').strip()
         if not body or len(body)>180 or re.search(r'[\r\n\x00-\x1f\x7f]|https?://|www\.|@',body,re.I):
             raise ValueError('动态评论正文不合规')
         if len(why)<8 or len(why)>100 or re.search(r'[\x00-\x1f\x7f]|https?://|www\.|@',why,re.I):
             raise ValueError('动态评论理由不合规')
-        limit=max(0,min(10,int(os.environ.get('BILI_LIFE_DYNAMIC_COMMENT_DAILY_LIMIT','1'))))
+        limit=max(0,min(10,int(os.environ.get('BILI_LIFE_DYNAMIC_COMMENT_DAILY_LIMIT','10'))))
         target='dynamic:'+did+':'+area['oid']+':0'
         claim=_claim_session_manual_action(uid,'comment',target,body,limit)
         if not claim.get('ok'): return json.dumps({'ok':False,'attempted':False,'status':'not-sent','already':claim.get('already') is True,'limit':claim.get('limit') is True},ensure_ascii=False)

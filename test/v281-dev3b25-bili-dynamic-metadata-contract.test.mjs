@@ -11,9 +11,11 @@ test('image-only friend dynamic can be read without inventing caption text',()=>
  assert.match(host,/imageObservations:observations/)
 })
 
-test('friend dynamic write requires exact sharer authorship and a real read summary',()=>{
- assert.match(host,/row\.authorUid!==row\.senderUid/)
+test('public dynamic write checks real author identity and original content evidence, not the sharer',()=>{
+ assert.doesNotMatch(host,/row\.authorUid!==row\.senderUid/)
+ assert.match(host,/lifePublicInteractionEnabled!==true/)
+ assert.match(host,/fresh\.authorUid!==row\.authorUid/)
  assert.match(host,/!String\(row\.summary\|\|''\)\.trim\(\)&&!row\.imageObservations\?\.length/)
- assert.match(host,/socialPolicyGate\.actor\(row\.senderUid\)\.role!=='friend'/)
  assert.match(py,/_dynamic_comment_area\(info,did\)/)
+ assert.match(py,/str\(author\.get\('mid'\) or ''\)!=author_expected/)
 })

@@ -6,17 +6,15 @@ const html=readFileSync('lib/management-console.html','utf8')
 const js=readFileSync('lib/management-console.js','utf8')
 const python=readFileSync('vendor/bilibili-mcp/mcp_server.py','utf8')
 
-test('friend dynamic like/comment permissions are independent and default off',()=>{
- assert.match(index,/lifeSharedDynamicLikeEnabled:\s*z\.boolean\(\)\.default\(false\)/)
- assert.match(index,/lifeSharedDynamicCommentEnabled:\s*z\.boolean\(\)\.default\(false\)/)
- assert.match(html,/id="life-shared-dynamic-like-enabled" type="checkbox"/)
- assert.match(html,/id="life-shared-dynamic-comment-enabled" type="checkbox"/)
- assert.doesNotMatch(html,/id="life-shared-dynamic-like-enabled"[^>]*checked/)
- assert.doesNotMatch(html,/id="life-shared-dynamic-comment-enabled"[^>]*checked/)
- assert.match(js,/confirmAction\(\{title:'开启好友分享动态自主点赞'/)
- assert.match(js,/confirmAction\(\{title:'开启好友分享动态自主评论'/)
- assert.match(index,/confirmSharedDynamicLike!=='ENABLE_FRIEND_SHARED_DYNAMIC_LIKE'/)
- assert.match(index,/confirmSharedDynamicComment!=='ENABLE_FRIEND_SHARED_DYNAMIC_COMMENT'/)
+test('generic public interaction permission is explicit, off by default, and legacy toggles are removed',()=>{
+ assert.match(index,/lifePublicInteractionEnabled:\s*z\.boolean\(\)\.default\(false\)/)
+ assert.match(html,/id="life-public-interaction-enabled" type="checkbox"/)
+ assert.doesNotMatch(html,/id="life-public-interaction-enabled"[^>]*checked/)
+ assert.match(index,/confirmPublicInteraction!=='ENABLE_LIFE_PUBLIC_INTERACTION'/)
+ for(const old of ['lifeSharedDynamicLikeEnabled','lifeSharedDynamicCommentEnabled']){
+  assert.doesNotMatch(index,new RegExp(old));assert.doesNotMatch(html,new RegExp(old));assert.doesNotMatch(js,new RegExp(old))
+ }
+ assert.match(python,/BILI_LIFE_PUBLIC_INTERACTION_ENABLED/)
 })
 
 test('dynamic write functions are host-only plain functions, not DSH MCP tools',()=>{

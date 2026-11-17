@@ -2713,13 +2713,12 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <p class="muted">不会自动发送旧版的任务回访或情绪联系。无新入选视频、没有合格收件人、模型决定沉默、失去发送授权或触发安全防重复保护，都不会私信；发送不确定时禁止自动重试。</p>
 </fieldset></details></div>
 </div>
-<div class="card" id="life-shared-dynamic-card" style="margin-top:12px">
-<h4>🔗 好友分享动态 · Life 自主互动</h4>
-<p class="muted">好友在私信中分享 B 站安全链接后，Life 可以自主选择是否查看。查看后，如果确认动态作者就是分享好友本人，鱼鱼才可能自行决定点赞或评论。两项公开写入权限完全独立，默认关闭；开启不代表每条动态都会互动。短链只允许跳转到 B 站官方 HTTPS 域名，动态文字和图片按不可信内容处理。</p>
-<label class="checkline"><input id="life-shared-dynamic-like-enabled" type="checkbox">允许 Life 自主点赞好友分享、且已核验为好友本人发布的动态（默认关闭；每日最多 2 次）</label>
-<label class="checkline"><input id="life-shared-dynamic-comment-enabled" type="checkbox">允许 Life 自主评论好友分享、且已核验为好友本人发布的文字/图文动态（默认关闭；每日最多 1 次）</label>
-<p class="muted">评论必须是鱼鱼自己写的简短、具体、友善内容，不允许 @、链接或私密信息。若平台回执不确定，系统不会自动重发。关闭权限立即停止新互动。</p>
-<div class="toolbar"><button type="button" id="life-shared-dynamic-save" class="primary">保存好友动态互动权限</button><span id="life-shared-dynamic-status" class="muted">尚未读取</span></div>
+<div class="card" id="life-public-interaction-card" style="margin-top:12px">
+<h4>🌱 Life 连续探索与公开互动</h4>
+<p class="muted">主人或好友分享的动态、官方确认的转发原帖和关联视频都会成为独立的自主选择：了解外层 → 决定是否继续查看原帖、视频或作者。不是自动递归抓取，也不会将视频标题误写成已看画面。</p>
+<label class="checkline"><input id="life-public-interaction-enabled" type="checkbox">允许 Life 对已核验的公开动态自主考虑点赞与原创评论（默认关闭）</label>
+<p class="muted">这是统一的公开写入授权，不再区分“好友本人动态”与“转发第三方动态”。开启后仍须 Life 独立决定、核验真实作者与目标、遵守全局评论额度和平台读写预算，未知回执绝不重发。旧版两个专属开关不会自动升级为此授权。关闭时只读探索仍可运行。</p>
+<div class="toolbar"><button type="button" id="life-public-interaction-save" class="primary">保存统一公开互动授权</button><span id="life-public-interaction-status" class="muted">尚未读取</span></div>
 </div>
 <div class="card" id="life-friend-outreach-card" style="margin-top:12px">
 <h4>熟人自主联系 · 区分评论与私信关系</h4>
@@ -2994,7 +2993,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </section>
 <div class="actions"><button id="dm-settings-save" class="primary">保存私信规则</button><button id="dm-settings-reload">重新读取</button></div></div>
 </details>
-<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-fast-status" class="muted" role="status">活跃私信快速检查：状态待读取。</p><p id="dm-life-queue-status" class="muted" role="status" aria-live="polite">待读取与 Life 续办状态正在读取…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然表达状态：尚未读取。</p><p id="dm-p6-last-turn" class="muted" role="status">最近一轮私信交流：暂无记录。</p><p class="muted">所有获准联系人的私信经统一 Life 决策。鱼鱼可以根据对话自然决定回复长短，不要求凑满消息数量。</p><p id="dm-error" class="muted"></p><details class="dm-technical-note"><summary>网络连接故障怎么看？</summary><p class="muted">当私信暂时无法读取时，可先检查网络、代理和 B站连接。具体错误代码请在「运行诊断」查看。</p></details></div>
+<div class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台私信状态</h3><button id="dm-network-test">测试私信接口连接</button><button id="dm-refresh">刷新状态与会话</button></div><p id="dm-status" class="muted">正在读取后台状态…</p><p id="dm-fast-status" class="muted" role="status">活跃私信快速检查：状态待读取。</p><details id="dm-recovery-details" class="dm-technical-note"><summary>📋 查看限流恢复、监听结果与实际回复回执</summary><p id="dm-recovery-status" class="muted" role="status">读取状态中…</p></details><p id="dm-life-queue-status" class="muted" role="status" aria-live="polite">待读取与 Life 续办状态正在读取…</p><p id="dm-p6-status" class="muted" role="status" aria-live="polite">自然表达状态：尚未读取。</p><p id="dm-p6-last-turn" class="muted" role="status">最近一轮私信交流：暂无记录。</p><p class="muted">所有获准联系人的私信经统一 Life 决策。鱼鱼可以根据对话自然决定回复长短，不要求凑满消息数量。</p><p id="dm-error" class="muted"></p><details class="dm-technical-note"><summary>网络连接故障怎么看？</summary><p class="muted">当私信暂时无法读取时，可先检查网络、代理和 B站连接。具体错误代码请在「运行诊断」查看。</p></details></div>
 <details id="dm-context-governance" class="card dm-privacy-care" style="margin-top:16px"><summary>🪷 聊天内容的保留与清理 <small>按需展开</small></summary><p class="muted">可以查看普通私信的近期聊天内容是否需要清理。不会清除已发送记录，也不会影响鱼鱼已确认的记忆或对方拒绝联系的设置。</p><p id="dm-memory-governance-status" class="muted" role="status">正在查看保留状态…</p><button id="dm-memory-prune" type="button">清理过期聊天内容</button></details>
 <div id="dm-recent-conversations" class="card" style="margin-top:16px"><div class="row" style="justify-content:space-between"><h3>最近私信会话</h3><button id="dm-recent-reload">刷新会话</button></div><p class="muted">这里只展示联系人与会话状态，不展示私信正文。仅在你点击该联系人「检查遗漏私信」时，才会受限地定向读取最近50条平台消息并核对回执；重新考虑需要二次确认，不强制发送。主人专属 Agent 与其他授权途径的回复不计入这里的陌生人额度。</p><div class="dm-gentle-privacy" role="note"><span aria-hidden="true">🪷</span><div><strong>给鱼鱼留一小片自在的聊天空间</strong><p>这里不建议翻看鱼鱼和朋友的聊天细节。我们只看看它有没有好好交流，把具体的话语留给它们自己吧。</p></div></div><div id="dm-recent-list" class="records"></div></div>
 

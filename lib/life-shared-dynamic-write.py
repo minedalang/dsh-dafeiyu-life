@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-shot host-only writer for a friend's verified shared Bilibili dynamic.
+"""One-shot host-only writer for a verified public Bilibili dynamic.
 
 This file is launched only after the Life Planner selected a current action.
 It exposes no MCP tool to DSH and accepts one exact dynamic target from stdin.
@@ -23,7 +23,7 @@ def clean_line(value, maximum):
 async def main():
     attempted=False
     try:
-        if os.environ.get('BILI_LIFE_SHARED_DYNAMIC_RUNNER')!='1' or os.environ.get('BILI_LIFE_SHARED_DYNAMIC_ACTION_ENABLED')!='1':
+        if os.environ.get('BILI_LIFE_SHARED_DYNAMIC_RUNNER')!='1' or os.environ.get('BILI_LIFE_SHARED_DYNAMIC_ACTION_ENABLED')!='1' or os.environ.get('BILI_LIFE_PUBLIC_INTERACTION_ENABLED')!='1':
             raise ValueError('Life 动态互动未授权')
         raw=sys.stdin.buffer.read(4097)
         if len(raw)>4096: raise ValueError('请求过大')
@@ -34,10 +34,6 @@ async def main():
         if action not in TOOLS or not ID.fullmatch(str(row.get('dynamicId') or '')) or not UID.fullmatch(str(row.get('expectedAuthorUid') or '')):
             raise ValueError('动作或目标无效')
         if os.environ.get('BILI_MCP_TOOLS')!=TOOLS[action]: raise ValueError('MCP 工具白名单不匹配')
-        if action=='like_shared_dynamic' and os.environ.get('BILI_LIFE_SHARED_DYNAMIC_LIKE_ENABLED')!='1':
-            raise ValueError('自主点赞未授权')
-        if action=='comment_shared_dynamic' and os.environ.get('BILI_LIFE_SHARED_DYNAMIC_COMMENT_ENABLED')!='1':
-            raise ValueError('自主评论未授权')
         reason=clean_line(row.get('reason'),100)
         text=clean_line(row.get('text'),180) if action=='comment_shared_dynamic' else ''
         home=Path(os.environ.get('BILI_DUTY_HOME','')).resolve()

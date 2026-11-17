@@ -11,7 +11,7 @@ const scope='0123456789abcdef', uid='123456789'
 function fresh(){const dir=mkdtempSync(join(tmpdir(),'fish-life-owner-link-'));
  const store=createLifeSharedBiliLinks({stateDir:dir,getAccountTag:()=>scope});
  return {dir,store,close:()=>rmSync(dir,{recursive:true,force:true})}}
-const menu=rows=>planner.plannerActionMenu({opportunities:rows,candidates:[],cues:[],intents:[],lifeEvents:[],lifeSkills:[],sharedDynamicLikeEnabled:true,sharedDynamicCommentEnabled:true})
+const menu=rows=>planner.plannerActionMenu({opportunities:rows,candidates:[],cues:[],intents:[],lifeEvents:[],lifeSkills:[],lifePublicInteractionEnabled:false})
 
 test('verified owner dynamic share becomes a Life-only candidate; no automatic read or dynamic write',()=>{
  const x=fresh();try{
@@ -33,7 +33,7 @@ test('verified owner dynamic share becomes a Life-only candidate; no automatic r
   const inspected=x.store.list()[0]
   assert.equal(inspected.status,'inspected')
   assert.equal(menu([inspected]).some(x=>['like_shared_dynamic','comment_shared_dynamic'].includes(x.action)),false)
-  assert.equal(x.store.recordInteraction(op.id,'like_shared_dynamic','verified',scope).ok,false)
+  assert.equal(x.store.recordInteraction(op.id,'like_shared_dynamic','verified',scope).ok,true) // ledger receipt only; public write still needs host explicit permission
  }finally{x.close()}
 })
 

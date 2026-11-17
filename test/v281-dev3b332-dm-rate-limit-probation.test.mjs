@@ -53,14 +53,15 @@ test('repeated -509 during recovery increases backoff, DNS does not clear it, un
 
 test('scheduler honors persistent DM probation and does not dispatch fast or normal fetch every two minutes',async()=>{
   const dir=mkdtempSync(join(tmpdir(),'dafeiyu-dm-sched-'))
-  let at=1_800_000_000_000,calls=0,fastCalls=0
+  let at=1_800_000_000_000,calls=0,fastCalls=0,platformReads=0
   const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:2,dmActivePollEnabled:true,
     commentWatchReplies:false,commentAtEnabled:false}
   const backoff=createNetworkPollBackoff({dataDir:dir,getAccountTag:()=>scope,now:()=>at})
   backoff.settle('dm','HTTP 200 code=-509')
   at+=15*minute
   const scheduler=createInteractionScheduler({dataDir:dir,getAccountTag:()=>scope,now:()=>at,getConfig:()=>cfg,
-    dm:{poll:async({fastUid}={})=>{fastUid?fastCalls++:calls++;return {sent:0}},nextFastUid:()=> '123',
+    readBudget:{status:()=>({blocked:false,byKind:[{kind:'dm-list',hour:platformReads}]})},
+    dm:{poll:async({fastUid}={})=>{if(fastUid)fastCalls++;else {calls++;platformReads++}return {sent:0}},nextFastUid:()=> '123',
       status:()=>({fast:{nextIntervalSeconds:10}})},comments:{poll:async()=>({})}})
   try{
     scheduler.start()

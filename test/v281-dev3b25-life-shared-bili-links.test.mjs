@@ -36,7 +36,7 @@ test('a dynamic read is accepted only with a verified ID and records author matc
  }finally{x.close()}
 })
 
-test('a dynamic authored by someone other than the sharer cannot be offered for autonomous interaction',()=>{
+test('a verified third-party dynamic is recorded distinctly from its sharer',()=>{
  const x=setup();try{
   const offered=x.api.offerFromMessage({uid,role:'friend',text:'https://t.bilibili.com/1234567890123456',messageId:'m4'})
   x.api.recordRead(offered.ids[0],{ok:true,kind:'dynamic',dynamicId:'1234567890123456',title:'动态',summary:'公开内容',authorUid:'99887766',authorName:'其他作者'},scope)
@@ -49,6 +49,8 @@ test('interactions are one-shot; uncertain outcomes are not re-offered',()=>{
   const offered=x.api.offerFromMessage({uid,role:'friend',text:'https://t.bilibili.com/1234567890123456',messageId:'m5'})
   x.api.recordRead(offered.ids[0],{ok:true,kind:'dynamic',dynamicId:'1234567890123456',title:'动态',authorUid:uid},scope)
   x.api.recordInteraction(offered.ids[0],'like_shared_dynamic','accepted-unverified',scope)
-  assert.equal(x.api.list().length,0)
+  assert.equal(x.api.list().length,1)
+  assert.equal(x.api.list()[0].interactions[0].status,'accepted-unverified')
+  assert.equal(x.api.recordInteraction(offered.ids[0],'like_shared_dynamic','verified',scope).ok,false)
  }finally{x.close()}
 })
