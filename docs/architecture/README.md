@@ -1,6 +1,8 @@
+> **最新视觉环境增量（dev.3b.33.11）：** [Windows 一键自助视觉运行时修复](2.8.1-dev3b3311-vision-one-click-repair.md)。保留独立健康检查，不再要求普通用户安装 Conda、运行 PowerShell 或手填路径。
+
 > **最新实施增量（dev.3b.33.9）：** [Life 统一资源调度与自然契机收敛](2.8.1-dev3b339-resource-scheduler-and-natural-life.md)。仅单宿主资源仲裁，原社交发送凭据仍由持久安全层负责。
 
-> **当前工作源码：`2.8.1-dev.3b.33.9`（2026-11-16，开发版）。** 当前审计入口：[跨系统可靠性、统一 Life、自然契机与文档审计](2.8.1-dev3b338-system-integration-audit.md)。本页以下 dev.20、2.8.0 和 2.7.1 章节是历史快照，不表示目前项目版本或正式验收通过。
+> **当前工作源码：`2.8.1-dev.3b.33.11`（2026-11-16，开发版）。** 当前审计入口：[跨系统可靠性、统一 Life、自然契机与文档审计](2.8.1-dev3b338-system-integration-audit.md)。本页以下 dev.20、2.8.0 和 2.7.1 章节是历史快照，不表示目前项目版本或正式验收通过。
 
 > **2.8.1-dev.3b.20 当前：** [私信限流收口、Headless 双栏能力管理与图片回执诊断](2.8.1-dev3b20-dm-headless-capability-management.md)。普通监听与快通道显示为同一 DM 退避，活跃检查自适应放慢；Desktop/Headless 双栏由真实配置状态驱动，Headless 能力补充不修改 Desktop；图片验收在 DSH 子进程异常时仍保留 MCP 图片证明。真实 B站 -509 恢复、Windows DSH 与第三方中转站图片链路仍需实机验证。
 

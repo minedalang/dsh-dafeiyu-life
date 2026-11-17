@@ -175,6 +175,7 @@ import { fetchBiliCover } from './lib/bili-cover-proxy.mjs'
 import {createDmPollCursor} from './lib/dm-poll-cursor.mjs'
 import {createDmDetailQueue} from './lib/dm-detail-queue.mjs'
 import {selectVisionPython,probeVisionPython} from './lib/vision-python-runtime.mjs'
+import {createVisionEnvironmentRepair} from './lib/vision-environment-repair.mjs'
 import {dmContinuationPrompt,parseDmContinuationReply} from './lib/dm-progressive-expression.mjs'
 import { listCommentMemes, getCommentMemePreview } from './lib/comment-meme-library.mjs'
 import {readCommentMemeRules,saveCommentMemeRules,validateCommentMemeRules} from './lib/comment-meme-rules.mjs'
@@ -3205,6 +3206,23 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   }
 
 
+  // Explicit one-click repair from the management UI; never runs installers
+  // on boot, never modifies the main .venv or sends Bilibili requests.
+  const visionEnvironmentRepair=createVisionEnvironmentRepair({
+    home:stateDir,workdir:process.cwd(),
+    requirementsFile:join(pluginDir,'vendor','bilibili-mcp','requirements.txt'),
+    env:pyEnv(),
+    configured:()=>cfg.pythonPath||'',preferred:()=>cfg.visionPythonPath||'',
+    persist:async path=>{
+      const saved=await persistCfg({visionPythonPath:path})
+      if(saved?.localVerified!==true)return false
+      visionPythonCache=null
+      return true
+    },
+    findUv:async()=>await resolveUv(),
+  })
+
+
   const mcpWhitelist = (sourceMode='mixed') => {
     const list = [...(sourceMode==='home'?[]:['bili_search']), 'bili_subtitle', 'bili_comments', 'bili_comment_thread', 'bili_discussion_note', 'bili_video_info',
       'bili_ledger_read', 'bili_ledger_mark', 'bili_report_append', 'bili_digest_append', 'bili_report_read']
@@ -3318,7 +3336,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(!selectedRuntime.ok){const missing=Array.isArray(selectedRuntime.missingModules)&&selectedRuntime.missingModules.length
         ?'（缺少模块：'+selectedRuntime.missingModules.join(', ')+'）':''
         const stage=selectedRuntime.stage?'（失败位置：'+selectedRuntime.stage+'）':''
-        const err=Error('DSH 视觉 Python 未通过健康检查：'+selectedRuntime.reason+stage+missing+'；建议使用独立视觉环境修复脚本，避免修改主 .venv')
+        const err=Error('DSH 视觉 Python 未通过健康检查：'+selectedRuntime.reason+stage+missing+'；请在管理中心点击“自动修复视觉运行环境”，无需手工填写 Python 路径')
         err.diagnosticCode='python_runtime_unhealthy';throw err}
       const overlay=ensureVisionOverlay('vision-selftest')
       if(!overlay)throw Error('DSH 图片验收安全配置生成失败')
@@ -7597,7 +7615,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     const setupAccess = (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
-      path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
+      path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&path==='/api/bili-duty/video-dependencies/status') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/paths') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/ffmpeg/test')
     if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
     // ⭐ 2026-10-21：每条视频一份笔记 —— **宿主拆报告**，不让模型多写一个字（零 token、不会写错）
@@ -8839,7 +8857,15 @@ logger:{warn:m=>log('社交意图：'+m)}
     // Optional local visual models are managed separately from embedding and DSH.
     // There is no arbitrary URL or model name; the daemon is fixed to loopback.
     if(req.method==='GET'&&path==='/api/bili-duty/dsh-vision/status')
-      return sendJson(res,200,{ok:true,...dshVisionReview.status(),pythonRuntime:(()=>{const r=visionPythonCache?.result;return {status:r?.ok?'healthy':r?'unhealthy':'unchecked',source:r?.source||'none',reason:r?.reason||'not_run'}})(),imageUrl:'/api/bili-duty/local-vision/selftest-image'})
+      return sendJson(res,200,{ok:true,...dshVisionReview.status(),pythonRuntime:(()=>{const r=visionPythonCache?.result;return {status:r?.ok?'healthy':r?'unhealthy':'unchecked',source:r?.source||'none',reason:r?.reason||'not_run'}})(),visionRepair:visionEnvironmentRepair.status(),imageUrl:'/api/bili-duty/local-vision/selftest-image'})
+    if(req.method==='POST'&&path==='/api/bili-duty/dsh-vision/repair'){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')
+      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+        String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
+        !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
+        return sendJson(res,403,{ok:false,error:'仅允许本机管理中心明确发起视觉环境修复'})
+      return sendJson(res,200,visionEnvironmentRepair.start())
+    }
     if(req.method==='POST'&&['/api/bili-duty/dsh-vision/verify','/api/bili-duty/dsh-vision/review'].includes(path)){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')

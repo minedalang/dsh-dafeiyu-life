@@ -1,13 +1,18 @@
-# dev.3b.33.10 — Independent, opt-in Windows DSH vision Python repair.
+﻿# dev.3b.33.10 — Independent, opt-in Windows DSH vision Python repair.
 # Never edits the main .venv, ACLs, Bilibili credentials, Life queues or DSH overlay.
 # ProbeOnly can run while DSH is open. For repair, exit DSH before invoking.
 param(
-  [string]$BasePython = 'G:\Anaconda3\python.exe',
+  [string]$BasePython = '',
   [string]$DutyHome = (Join-Path $HOME '.dsh\bili-duty'),
   [switch]$ProbeOnly
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+if (-not $BasePython) {
+  $cmd = Get-Command python -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $cmd) { throw 'Cannot find Python in PATH. Use -BasePython with a verified interpreter.' }
+  $BasePython = $cmd.Source
+}
 $backup = $null
 $target = $null
 $repaired = $false

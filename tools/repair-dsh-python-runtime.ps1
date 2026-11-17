@@ -1,11 +1,16 @@
-# dev.3b.33.7 — Offline, opt-in Python runtime repair for Windows.
+﻿# dev.3b.33.7 — Offline, opt-in Python runtime repair for Windows.
 # Run only after fully exiting DSH. No admin, ACL edits, credential reads or Bilibili calls.
 param(
-  [string]$BasePython = 'G:\Anaconda3\python.exe',
+  [string]$BasePython = '',
   [string]$DutyHome = (Join-Path $HOME '.dsh\bili-duty')
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+if (-not $BasePython) {
+  $cmd = Get-Command python -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $cmd) { throw 'Cannot find Python in PATH. Use -BasePython with a verified interpreter.' }
+  $BasePython = $cmd.Source
+}
 $old = $null
 $venv = $null
 $created = $false

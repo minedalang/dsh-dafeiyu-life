@@ -1,8 +1,10 @@
+> **dev.3b.33.11 视觉环境自助修复：** 图片验收页新增一键修复视觉运行环境。宿主自动寻找普通权限可用的 Python、按需建立独立视觉环境、安装 MCP 依赖、复检并保存路径；正常用户无需 Conda 或 PowerShell。仅在明确点击后安装，不改主 `.venv`、不提权、不绕过 DSH 安全验收。[设计与边界](docs/architecture/2.8.1-dev3b3311-vision-one-click-repair.md)。
+
 > **dev.3b.33.10 视觉 Python 诊断热修：** 显式选择的视觉专用解释器优先检查；Conda 缺少 MCP 包不再显示成旧 `.venv` 的权限错误。新增普通权限下独立 `.vision-venv` 修复工具，不改主环境；真正图片模型回答仍待 Windows 验收。[详细说明](docs/architecture/2.8.1-dev3b3310-vision-python-runtime-hotfix.md)。
 
 > **dev.3b.33.9 资源协调增量：** Life 仍自主选择，新增多队列分资源池的受控调度、重复合成唤醒收敛、Episode 过期候选去除；仅进程内资源仲裁，跨进程安全凭据继续由旧账本负责。参见 [协调与自然 Life 架构](docs/architecture/2.8.1-dev3b339-resource-scheduler-and-natural-life.md)。
 
-> **当前源码开发基线：`2.8.1-dev.3b.33.10`，不是已发布稳定版。** [2.8.1-dev.3b.33.8 全系统与 Life 自然性审计](docs/architecture/2.8.1-dev3b338-system-integration-audit.md)。真实 Windows DSH 图片识别及 Life 私信拥塞恢复仍待实机验收；本文以下各个 dev.X 章节为历史开发说明，勿当作当前版本。
+> **当前源码开发基线：`2.8.1-dev.3b.33.11`，不是已发布稳定版。** [2.8.1-dev.3b.33.8 全系统与 Life 自然性审计](docs/architecture/2.8.1-dev3b338-system-integration-audit.md)。真实 Windows DSH 图片识别及 Life 私信拥塞恢复仍待实机验收；本文以下各个 dev.X 章节为历史开发说明，勿当作当前版本。
 
 ### dev.3b.33.6：Windows DSH 图片验收启动路径调整（实机待验收）
 
@@ -49,7 +51,7 @@ AI 模型页中的本地视觉支持简短 Ollama 安装与 Windows 代理示例
 
 **[2.8.1 开发计划](docs/architecture/2.8.1-roadmap.md) · [功能概览](#-从分散能力到连续生活) · [自然交流](#-更自然的交流) · [关系与成长](#-关系记忆与成长) · [可视化成长](#-可视化的生活成长) · [开始使用](#-开始使用) · [未来规划](docs/ROADMAP.md) · [2.8.0 更新说明](docs/release/archive/RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)**
 
-**当前开发分支：`2.8.1-dev.3b.33.10`（开发预览，尚未正式发布；真实 DSH 图片及私信拥塞恢复待验收）。**
+**当前开发分支：`2.8.1-dev.3b.33.11`（开发预览，尚未正式发布；真实 DSH 图片及私信拥塞恢复待验收）。**
 
 **2.8.1-dev.3b.26：** 修复 B站私信分享卡片丢失动态 URL：识别 `msg_type=7/source=11` 动态分享、`source=5` 视频分享及受支持的网页/其他分享卡片，只允许官方 HTTPS B站链接进入 Life 机会；普通监听与单联系人复核使用相同消息类型规则。Windows 黑窗口采集新增启动进程快照、父进程名称和 100ms 可见控制台窗口枚举。注意：黑窗口根因仍需新窗口归属日志确认，本版不是最终黑窗口修复。
 
