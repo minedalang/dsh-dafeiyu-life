@@ -64,8 +64,32 @@ test('npm 安装包包含 2.8.1 升级指南、发布审计说明与检查单',(
   for(const path of ['docs/architecture','docs/release/README.md',
     'docs/release/2.8.1-user-upgrade-guide.md',
     'docs/release/2.8.1-release-checklist.md',
-    'docs/release/2.8.1-release-notes-draft.md']){
+    'docs/release/RELEASE_NOTES_v2.8.1.md']){
     assert.ok(manifest.files.includes(path),`安装包遗漏 ${path}`)
   }
   assert.match(manifest.version,/^2\.8\.1-dev\./,'尚未解除发布阻断，不得假装正式版本')
+})
+
+
+test('2.8.1 快速设置入口定位 02B 且新版视觉卡片突出；模型开关位于标题和折叠外',()=>{
+  const page=read('lib/management-console.html')
+  const js=read('lib/management-console.js')
+  assert.match(page,/href="#fs-vision-guide" data-fs-step="preferences"/)
+  assert.match(page,/id="fs-vision-guide"/)
+  assert.match(page,/fs-new-281-badge/)
+  assert.match(page,/绿色|#47a782/)
+  const vision=page.indexOf('id="models-vision-settings"')
+  const content=page.indexOf('class="model-task-body" id="models-vision-settings-body"',vision)
+  const toggle=page.indexOf('id="models-vision-enabled"',vision)
+  assert.ok(vision>0&&toggle<vision&&content>vision,'视觉开关应位于折叠 details 之前，保证关闭时仍可操作')
+  assert.match(js,/visionSection\.dataset\.visionDisabled/)
+  assert.match(js,/if\(!on\)visionSection\.open=false/)
+  assert.match(js,/else visionSection\.open=true/)
+  assert.match(js,/event\.preventDefault\(\)/)
+  assert.match(js,/management-jump-cue/)
+  assert.match(js,/revealTarget\(target\)/)
+  assert.match(page,/prefers-reduced-motion:reduce/)
+  assert.match(read('README.md'),/2\.8\.1 主要更新/)
+  assert.match(read('docs\/release\/RELEASE_NOTES_v2.8.1.md'),/2\.8\.1/)
+  assert.doesNotMatch(read('README.md'),/dev\.3b\.33\./)
 })

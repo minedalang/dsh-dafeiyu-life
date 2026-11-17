@@ -137,6 +137,9 @@ window.__ModuleLoader__.load({
   background:var(--dsw-alias-bg-layer-4,rgba(128,128,128,.14));color:var(--dsw-alias-label-secondary,#c9ccd1);}
 /* v2.4.83 — DSH 原生设置页，保留主题变量并提升交互辨识度 */
 [data-bd-page]{gap:19px;}
+[data-bd-281-intro]{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0 0}
+[data-bd-281-intro] span{font-size:11px;line-height:1.45;padding:5px 8px;border:1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.2));border-radius:9px;background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.08));color:var(--dsw-alias-label-secondary,inherit)}
+
 [data-bd-sec]{padding:15px 17px;border:1px solid var(--dsw-alias-bg-layer-3,rgba(128,128,128,.18));border-radius:15px;background:var(--dsw-alias-bg-layer-1,rgba(128,128,128,.05));}
 [data-bd-sub]{padding:10px 0 10px 14px;border-left:3px solid #35a185;}
 [data-bd-sw][data-on]{background:#18966f;box-shadow:0 0 0 3px rgba(24,150,111,.09);}
@@ -613,6 +616,9 @@ window.__ModuleLoader__.load({
           h('div',{'data-bd-sec':'',style:{padding:'20px',borderRadius:'16px',border:'2px solid #c74351',background:'rgba(218,61,73,.08)'}},
             h('div',{'data-bd-label':'',style:{fontSize:'19px',fontWeight:800,color:'#c74351'}},'🐟 欢迎来到大肥鱼 · 首次配置'),
             h('div',{'data-bd-note':''},'新用户和老用户都会看到一次这份向导；不会清除你的旧资料。B站账号与 Headless 模型是两项必需配置，未完成前所有业务功能锁定。'),
+            h('div',{'data-bd-281-intro':'','aria-label':'2.8.1 特色功能'},
+              h('span',null,'🎬 视觉模型与图片验收'),h('span',null,'🧠 神经记忆筛选'),
+              h('span',null,'🐟 Life 自主生活'),h('span',null,'⚙️ Headless 与资源协调')),
             h('div',{'data-bd-label':''},(steps.biliVerified?'✓':'○')+' B站账号登录并验证'+(steps.biliVerified?' · 已完成':'')),
             h('div',{'data-bd-label':''},(steps.headlessVerified?'✓':'○')+' Headless 模型同步并验证'+(steps.headlessVerified?' · 已完成':'')),
             h('div',{'data-bd-row':''},
@@ -628,7 +634,12 @@ window.__ModuleLoader__.load({
         h('div',{ 'data-bd-sec':'',style:{padding:'12px',borderRadius:'12px',border:'1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.24))'}},
           h('div',{'data-bd-row':'',style:{justifyContent:'space-between',alignItems:'center'}},
             h('div',{'data-bd-grow':''},h('div',{'data-bd-label':''},'🐳 大肥鱼 · DSH 生活系统'),
-              h('div',{'data-bd-note':''},'她会自己去 B站、把重要经历带回主 Session、长期记住主人和朋友；精确档案、长期记忆、梗、好友关系与互动状态都保存在本地。')),
+              h('div',{'data-bd-note':''},'她会自己去 B站、把重要经历带回主 Session、长期记住主人和朋友；精确档案、长期记忆、梗、好友关系与互动状态都保存在本地。'),
+              h('div',{'data-bd-281-intro':'','aria-label':'2.8.1 特色功能'},
+                h('span',null,'🎬 视频视觉配置与验收'),
+                h('span',null,'🧠 记忆神经场'),
+                h('span',null,'🐟 自主探索与互动'),
+                h('span',null,'⚙️ 资源协调与 Headless 同步'))),
             h('div',{'data-bd-row':'',style:{position:'relative',gap:'8px'}},
               h('button',{type:'button','data-bd-btn':'',onClick:newVer?onUpgrade:onCheckUpdate,
                 disabled:busy==='upgrade'||busy==='update',

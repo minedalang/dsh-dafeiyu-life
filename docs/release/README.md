@@ -1,4 +1,4 @@
-> **2.8.1 发布候选（未放行）**：[正式版发布检查单](2.8.1-release-checklist.md) · [新旧用户升级说明](2.8.1-user-upgrade-guide.md) · [更新说明草稿](2.8.1-release-notes-draft.md) · [全链路代码审计](../architecture/2.8.1-release-audit-20261117.md)。当前不能把 GitHub `dev` 安装与手动视觉验收当作正式上线。
+> **2.8.1 发布候选（未放行）**：[正式版发布检查单](2.8.1-release-checklist.md) · [新旧用户升级说明](2.8.1-user-upgrade-guide.md) · [2.8.1 更新说明](RELEASE_NOTES_v2.8.1.md) · [全链路代码审计](../architecture/2.8.1-release-audit-20261117.md)。当前不能把 GitHub `dev` 安装与手动视觉验收当作正式上线。
 
 # 发布文档索引
 

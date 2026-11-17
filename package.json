@@ -62,7 +62,7 @@
     "docs/release/README.md",
     "docs/release/2.8.1-user-upgrade-guide.md",
     "docs/release/2.8.1-release-checklist.md",
-    "docs/release/2.8.1-release-notes-draft.md",
+    "docs/release/RELEASE_NOTES_v2.8.1.md",
     "docs/archive/README.md",
     "AGENTS.md",
     "selfcheck.mjs",

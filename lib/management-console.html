@@ -1342,6 +1342,39 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life .neural-controls-hint{font-size:11px;margin:3px 0}
 #panel-life .neural-memory-viewport.is-dragging{cursor:grabbing}
 @media(prefers-reduced-motion:reduce){.vision-repair-attention:not(:disabled){animation:none}}
+
+/* 2.8.1 release candidate: accurate deep links and new-feature onboarding. */
+#panel-firststart #fs-vision-guide.fs-version-highlight{border:2px solid #47a782;border-left:6px solid #279667;background:linear-gradient(115deg,color-mix(in srgb,#a1e7bf 22%,var(--panel)),var(--panel));box-shadow:0 8px 24px #268e6830;scroll-margin-top:90px}
+#panel-firststart .fs-new-281-badge{background:#248359;color:white;border-color:#248359;font-weight:800}
+@keyframes management-jump-cue{0%,100%{outline:0 solid transparent;filter:none}23%{outline:4px solid #50bf8c;outline-offset:3px;box-shadow:0 0 0 9px #50bf8c25;filter:brightness(1.06)}70%{outline:2px solid #50bf8c;outline-offset:3px;box-shadow:0 0 0 5px #50bf8c1f}}
+.management-jump-cue{animation:management-jump-cue 1.45s ease-out 1;position:relative;z-index:1}
+#models-vision-shell{position:relative;min-height:75px}
+#models-vision-settings>summary{min-height:62px;padding-right:256px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+#models-vision-shell>.vision-heading-switch{position:absolute;top:9px;right:16px;z-index:4;padding:5px 9px;border:1px solid var(--stroke);border-radius:12px;background:var(--panel)}
+#models-vision-shell>.vision-heading-switch .vision-toggle{gap:7px;font-weight:700;font-size:12px}
+#models-vision-shell>.vision-heading-switch .vision-toggle small{font-weight:400;font-size:10px}
+#models-vision-settings[data-vision-disabled="true"]>summary{cursor:not-allowed;opacity:.65}
+#models-vision-settings[data-vision-disabled="false"]{border-color:#5cae8e}
+@media(max-width:680px){#models-vision-settings>summary{padding-right:13px;padding-bottom:64px}#models-vision-shell>.vision-heading-switch{top:48px;left:12px;right:auto}}
+@media(prefers-reduced-motion:reduce){.management-jump-cue{animation:none;outline:3px solid #50bf8c;outline-offset:3px}}
+
+/* 2.8.1 one-time introduction shown before reviewing the new setup page. */
+#release-281-dialog{border:0;border-radius:22px;padding:0;max-width:min(660px,calc(100vw - 30px));width:100%;max-height:min(88vh,800px);overflow:auto;color:var(--ink);background:var(--panel);box-shadow:0 22px 78px #15283e6b}
+#release-281-dialog::backdrop{background:#0a1b2ab8;backdrop-filter:blur(5px)}
+.release-281-top{padding:23px 26px 18px;background:linear-gradient(120deg,color-mix(in srgb,#56ca9d 32%,var(--panel)),color-mix(in srgb,#81b6f2 28%,var(--panel)) 60%,color-mix(in srgb,#b9a0f8 21%,var(--panel)));border-bottom:1px solid var(--stroke)}
+.release-281-top .release-281-tag{font-size:11px;letter-spacing:.08em;color:#126446;font-weight:850;background:#daf9e5;padding:5px 10px;border-radius:999px;display:inline-block}
+.release-281-top h2{font-size:24px;margin:12px 0 7px;line-height:1.25}
+.release-281-top p{font-size:13px;color:var(--muted);margin:0;line-height:1.65}
+.release-281-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:16px 24px 5px}
+.release-281-feature{display:flex;gap:12px;min-width:0;padding:13px;border:1px solid var(--stroke);border-radius:15px;background:color-mix(in srgb,var(--tint) 27%,var(--panel));align-items:flex-start}
+.release-281-feature .release-281-icon{display:grid;place-items:center;width:43px;height:43px;flex:none;border-radius:12px;font-size:24px;background:linear-gradient(140deg,#d7f3ee,#dbe8fa)}
+.release-281-feature strong{display:block;font-size:13px;margin:1px 0 4px}
+.release-281-feature small{display:block;font-size:11px;line-height:1.55;color:var(--muted)}
+.release-281-note{font-size:12px;line-height:1.6;color:var(--muted);padding:12px 26px 0;margin:0}
+.release-281-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:19px 25px 23px}
+.release-281-actions button{min-height:39px}
+@media(max-width:590px){.release-281-grid{grid-template-columns:1fr;padding:12px 15px 0}.release-281-top{padding:20px 19px}.release-281-feature{padding:10px}.release-281-top h2{font-size:21px}.release-281-note{padding:12px 19px 0}.release-281-actions{padding:15px 18px 19px}}
+@media(prefers-reduced-motion:reduce){#release-281-dialog::backdrop{backdrop-filter:none}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1712,7 +1745,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <div class="fs-progress" id="fs-progress" aria-label="快速设置进度">
       <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="account"><span>01</span><strong>主依赖与 B站登录</strong><small>必须</small></a>
       <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="model"><span>02</span><strong>模型验证</strong><small>必须</small></a>
-      <a class="fs-progress-step" href="#fs-choices-stage" data-fs-step="preferences"><span>03</span><strong>新版设置检查</strong><small>需查看</small></a>
+      <a class="fs-progress-step" href="#fs-vision-guide" data-fs-step="preferences"><span>03</span><strong>新版设置检查</strong><small>需查看</small></a>
       <a class="fs-progress-step" href="#fs-session-stage" data-fs-step="session"><span>04</span><strong>主会话</strong><small>可跳过</small></a>
       <a class="fs-progress-step" href="#fs-final-stage" data-fs-step="finish"><span>05</span><strong>完成引导</strong><small>不重置设置</small></a>
     </div>
@@ -1736,8 +1769,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先在左栏同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后请在右侧 Headless 模型卡片点击「验证文字连接」完成真实请求；图片能力还需单独实测。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
   </div>
     </div>
-    <section class="quick-config-section" id="fs-vision-guide" aria-label="2.8.1 视频视觉模型配置引导">
-      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>02B · 视频视觉感知 <span class="pill">可选 · 推荐检查</span></h4><p>Headless 文字连接通过，不代表鱼鱼能看懂视频画面。2.8.1 将模型选择、依赖修复和真实图片验收集中在「AI 模型 → 视觉识别模型」。</p></div></div>
+    <section class="quick-config-section fs-version-highlight" id="fs-vision-guide" aria-label="2.8.1 视频视觉模型配置引导">
+      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>02B · 视频视觉感知 <span class="pill fs-new-281-badge">2.8.1 新功能 · 推荐体验</span></h4><p>Headless 文字连接通过，不代表鱼鱼能看懂视频画面。2.8.1 将模型选择、依赖修复和真实图片验收集中在「AI 模型 → 视觉识别模型」。</p></div></div>
       <p id="fs-vision-state" class="quick-current" role="status" aria-live="polite">正在读取当前视觉设置…</p>
       <div class="fs-vision-steps" aria-label="视觉模型配置三步">
         <div><strong>① 选择识图来源</strong><p>可选 DSH 多模态 Provider / 模型，或本地 Ollama 视觉模型。仅使用文字功能的用户可以不配置。</p></div>
@@ -1863,9 +1896,9 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <h4 class="model-role-group">② 视频、视觉与长期认识 · 按实际能力配置</h4>
 <details class="settings-section model-task"><summary><strong>视频 Agent 模型（选片与内容分析） <span class="help-tip" title="用于独立视频 Agent 的选片与内容分析；Life 是否委派由行为决策模型自主决定。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">视频 Agent 启动后，使用此模型进行自主选片、内容阅读与分析。Life 是否逛首页及是否委派 Agent，由「行为决策模型」决定。此模型主要阅读文字线索、调用搜索与字幕工具；只有在需要看画面时才按下方「视觉识别」配置使用多模态能力。不会强制启动或评论。独立视频 Agent 需完成 Headless 模型验证。</p><div class="fields" id="models-video"></div></div></details>
 <section id="vision-runtime-alert" class="vision-runtime-alert" role="status" aria-live="polite" hidden><strong>视觉环境检查</strong><span id="vision-runtime-alert-text">正在检查…</span><button type="button" id="vision-runtime-alert-open" hidden>定位自动修复</button></section>
-<details class="settings-section model-task" id="models-vision-settings"><summary><strong>视觉识别模型 <span class="help-tip" title="可选择 DSH 视觉模型（使用下方已配置的 Provider/模型）或本地 Ollama 视觉模型；连接测试不能代替图片验收。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">选择 DSH 视觉模型或本地 Ollama 视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><p class="muted"><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">🎞️ 选择视频感知方案（轻量／均衡／详查） ↗</a></p><div class="fields" id="models-vision"></div>
+<div class="vision-settings-shell" id="models-vision-shell"><div class="vision-heading-switch"><label class="vision-toggle" for="models-vision-enabled"><input id="models-vision-enabled" type="checkbox" role="switch" aria-label="启用视频视觉感知"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span>视频视觉感知<small>明确启用后保存设置</small></span></label></div><details class="settings-section model-task" id="models-vision-settings"><summary aria-controls="models-vision-settings-body"><strong>视觉识别模型 <span class="help-tip" title="可选择 DSH 视觉模型（使用下方已配置的 Provider/模型）或本地 Ollama 视觉模型；连接测试不能代替图片验收。">?</span></strong><span id="models-vision-collapse-hint" class="muted">请先开启右侧视觉开关</span></summary><div class="model-task-body" id="models-vision-settings-body"><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">选择 DSH 视觉模型或本地 Ollama 视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><p class="muted"><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">🎞️ 选择视频感知方案（轻量／均衡／详查） ↗</a></p><div class="fields" id="models-vision"></div>
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="independent_dsh">DSH 识图模型（使用上方 Provider / 模型）</option><option value="independent_local">本地 Ollama 视觉模型（下方一键安装）</option></select></div>
-<div class="vision-switch-setting"><label class="vision-toggle" for="models-vision-enabled"><input id="models-vision-enabled" type="checkbox" role="switch" aria-label="启用视频视觉感知"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span>启用视频视觉感知<small>控制视觉识别模型的实际调用；修改后点击本页保存</small></span></label></div>
+
 <div><details class="visual-advanced"><summary>调试选项</summary><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></details></div></div>
 <details class="visual-advanced"><summary>高级：DSH 视觉 Python 运行时（可选）</summary><label for="models-vision-python-path">视觉专用 Python 完整路径（留空自动选择通过健康检查的环境）</label><input id="models-vision-python-path" type="text" autocomplete="off" spellcheck="false" placeholder="高级用法：可留空自动选择" maxlength="500" style="width:100%;max-width:640px"><p class="muted">必须能以普通权限写入临时目录及工作目录，并安装 mcp、bilibili_api、qrcode、Pillow。只更改视觉 MCP 与包装器，不修改其他 Life/私信 Python。请在本组“保存”后执行验收。</p></details>
 <section class="setting-note" id="vision-unified-probe-panel" aria-label="视觉模型图片人工验收" style="margin-top:14px;border-radius:14px;padding:16px">
@@ -1961,7 +1994,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   <div class="toolbar"><button id="models-aux-save" type="button" class="primary">保存视频语音识别设置</button></div>
   <p id="models-aux-save-status" class="setting-note" role="status">语音识别开关和型号在此保存；视觉模型路由使用本页「保存全部模型配置」，两者不覆盖。</p>
 </div>
-</div></details>
+</div></details></div><!-- /vision-settings-shell -->
 <details class="settings-section model-task"><summary><strong>人生反思与经历提炼模型 <span class="help-tip" title="无平台写入工具；仅从真实可读经历筛选。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-reflection-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-reflection-test" class="model-test-button">测试连接</button><span id="models-reflection-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">从真实经历中筛选值得长期保留的认识；不是每次反思都必须产生记忆。频率相对低，建议使用较强推理与长文本归纳模型。</p><div class="fields" id="models-reflection"></div></div></details>
 <details class="settings-section model-task"><summary><strong>人生记忆检索模型 <span class="help-tip" title="只能选择真实 ID，不创造记忆或读取封存档案。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-memory-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-memory-test" class="model-test-button">测试连接</button><span id="models-memory-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">负责从允许召回的记忆候选中挑出有关记录。调用频率相对高，但需要一定语义理解与相关性判断能力，建议选速度快、具有基础推理能力的均衡模型，不建议只追求最便宜。</p><div class="fields" id="models-memory"></div></div></details>
 <h4 class="model-role-group">③ 低频辅助创作 · 优先表达质量与推理能力</h4>
@@ -2945,6 +2978,17 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </main>
 <div id="request-indicator" class="request-indicator" role="status" aria-live="polite" hidden><span class="spinner"></span><span>正在与大肥鱼通信…</span></div>
 <div id="action-toast" class="action-toast" role="status" aria-live="polite" hidden></div>
+<dialog id="release-281-dialog" aria-labelledby="release-281-title" aria-describedby="release-281-description">
+  <div class="release-281-top"><span class="release-281-tag">🐟 2.8.1 · 新版本导览</span><h2 id="release-281-title">鱼鱼的生活，多了一双看世界的眼睛</h2><p id="release-281-description">本次更新带来视频视觉模型、真实证据驱动的探索与更方便的管理工具。升级后请查看一次新版快速设置，已有配置和记忆不会被清除。</p></div>
+  <div class="release-281-grid" aria-label="2.8.1 特色功能">
+    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">🎬</span><div><strong>视频视觉感知</strong><small>可选 DSH / 本地 Ollama；按需观察真实画面，先完成图片验收。</small></div></div>
+    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">🧠</span><div><strong>记忆神经场</strong><small>五类记忆筛选、旋转、缩放及右键平移，经历更易查看。</small></div></div>
+    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">🐟</span><div><strong>更连续的 Life</strong><small>依照真实经历与关系自主选择探索、交流、延期或休息。</small></div></div>
+    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">⚙️</span><div><strong>资源与配置管理</strong><small>进程内资源协调；Headless 同步、环境检查与模型验证分步操作。</small></div></div>
+  </div>
+  <p class="release-281-note">视频视觉默认不会替你开启；环境健康的老用户无需重复修复。查看新功能不等于授权模型调用或 B站发送。</p>
+  <div class="release-281-actions"><button type="button" id="release-281-close">先浏览设置</button><button type="button" id="release-281-view-setup" class="primary">查看 02B 视频视觉设置</button></div>
+</dialog>
 <dialog id="action-confirm-dialog" class="action-confirm-dialog" aria-labelledby="action-confirm-title" aria-describedby="action-confirm-description">
   <div class="confirm-head"><span class="confirm-sparkle">✦</span><div><h3 id="action-confirm-title">确认操作</h3><p id="action-confirm-kicker">请确认后继续</p></div></div>
   <p id="action-confirm-description"></p>
