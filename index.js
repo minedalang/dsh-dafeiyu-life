@@ -168,6 +168,8 @@ import { createInteractionBatcher } from './lib/interaction-batch.mjs'
 import {ownPublishedDynamics,ownPublishedDynamicText} from './lib/own-published-dynamics.mjs'
 import { createInteractionMemeLookup, readReplyMemeSnapshot } from './lib/interaction-meme-memory.mjs'
 import { createInteractionScheduler } from './lib/interaction-scheduler.mjs'
+import {createLifeResourceScheduler} from './lib/life-resource-scheduler.mjs'
+import {createLifePublicReadCoalescer} from './lib/life-public-read-coalescer.mjs'
 import { createBiliReadBudget } from './lib/bili-read-budget.mjs'
 import { fetchBiliCover } from './lib/bili-cover-proxy.mjs'
 import {createDmPollCursor} from './lib/dm-poll-cursor.mjs'
@@ -599,7 +601,20 @@ export function apply(ctx, config) {
   const outboundActionStatus=createOutboundActionStatus({dataDir:stateDir,getAccountScope:verifiedActionScope})
   const biliReadBudget=createBiliReadBudget({dataDir:accountRuntimeDir,
     getLimits:()=>({minuteLimit:cfg.biliReadMinuteLimit,hourLimit:cfg.biliReadHourLimit}),
+    schedule:(kind,task)=>lifeResourceScheduler.run({
+      lane:String(kind).startsWith('dm-')?'social':
+        /comment|repl|mention|at-and-likes|inbox/.test(String(kind))?'social':'exploration',
+      resources:{biliRead:1},waitMs:String(kind).startsWith('dm-')?12_000:25_000
+    },task),
     logger:{warn:msg=>console.warn(msg)}})
+  // Single-process weighted resource arbitration. Durable DM/Episode work
+  // remains in its original account-scoped ledger; this queue never grants
+  // Life intention, Bilibili reads, or public/private sends.
+  const lifeResourceScheduler=createLifeResourceScheduler({getAccountTag:()=>{
+    try{return trustedLifeAccountTag()}catch{return ''}
+  }})
+  ctx.effect(()=>()=>lifeResourceScheduler.close(),'bili-duty: Life 资源调度清理')
+  const publicVideoReadCoalescer=createLifePublicReadCoalescer()
   const dmDetailQueue=createDmDetailQueue({dataDir:accountRuntimeDir})
   const dmPollCursor=createDmPollCursor({dataDir:accountRuntimeDir,
     getPriority:uid=>{
@@ -1782,9 +1797,14 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     if (cfg.masterEnabled !== true) throw new Error('大肥鱼已暂停：请先开启总开关')
     const client = await ensureMcp()
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
-    const dispatch=()=>monitoredReadTools.has(toolName)
+    const originalDispatch=()=>monitoredReadTools.has(toolName)
       ? biliReadBudget.guard('mcp:'+toolName,()=>client.call(toolName,args,opts))
       : client.call(toolName,args,opts)
+    const dispatch=()=>toolName==='bili_video_info'&&opts===undefined&&
+      /^BV[0-9A-Za-z]{10}$/.test(String(args?.bvid||''))
+      ? publicVideoReadCoalescer.run({scope:verifiedActionScope(),bvid:args.bvid,
+        readAllowed:()=>biliReadBudget.status().blocked!==true},originalDispatch)
+      : originalDispatch()
     const action=readToolAction(toolName,args)
     const context=readActionContext.getStore()||{}
     const alreadyReserved=action&&context.preReservedAction?.operation===action.operation&&context.preReservedAction?.target===action.target
@@ -3768,6 +3788,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     }
   }
   const runDuty = (why = 'window',entryMode = 'mixed') => {
+   let videoResourceRelease=()=>{}
    try {
       if (dutyChild) {
         const alive = dutyChild.exitCode === null && !dutyChild.killed
@@ -3798,6 +3819,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     catch (e) { return {started:false,why,error:'安全隔离校验失败，已拒绝启动：'+String(e?.message||e)} }
     // Account-specific video wake is bound to the identity at launch, not at exit.
     const videoRoundLifeAccountTag=trustedLifeAccountTag()
+    const releaseVideoResource=lifeResourceScheduler.tryAcquire({lane:'exploration',resources:{video:1}})
+    if(!releaseVideoResource)return {started:false,why,busy:true,error:'视频资源被占用或账号未就绪，保留 Life 原有续办资格'}
+    videoResourceRelease=releaseVideoResource
     let videoRoundReceiptId=''
     const beforeOwnedSelection=ownedSelectionSnapshot()
     const watchedBeforeRun=new Set((beforeOwnedSelection.ok?beforeOwnedSelection.rows:[]).filter(x=>x.picked).map(x=>x.bvid))
@@ -3849,12 +3873,15 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     })
     } catch(e) {
       releaseDuty()
+      videoResourceRelease()
       if(videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
         lifeAgentEvents?.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:null})
       }catch{}
       throw e
     }
     child.once('close',releaseDuty)
+    child.once('close',videoResourceRelease)
+    child.once('error',videoResourceRelease)
     const stopLiveVideo=liveLifeActivity.start('video',videoRoundLifeAccountTag)
     child.once('close',stopLiveVideo)
     child.once('error',stopLiveVideo)
@@ -4019,6 +4046,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     return { started: spawnConfirmed, why, profile: 'headless', cwd, log: logFile,
       ...(spawnConfirmed?{}:{error:'视频子进程未取得有效 PID，不能认定已启动'}) }
    } catch (e) {
+    videoResourceRelease()
     log(`刷B站开跑失败（${why}）：${e?.stack ?? e}`)
     return { started: false, why, error: String(e?.message ?? e) }
    }
@@ -4519,7 +4547,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   const modelInvocationJournal=createModelInvocationJournal({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   async function invokeMemoryPrompt(promptText,maxChars=4200) {
     const start=Date.now(),expectedScope=trustedLifeAccountTag()
-    try{const output=await invokeMemoryPromptRaw(promptText,maxChars)
+    try{const output=await lifeResourceScheduler.run({lane:'background',resources:{model:1},waitMs:20_000},
+      ()=>invokeMemoryPromptRaw(promptText,maxChars))
       modelInvocationJournal.record({scene:'memory',trigger:'memory',expectedScope,durationMs:Date.now()-start,
         provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider||'',
         model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId||''})
@@ -4559,7 +4588,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   async function invokeInteractionPrompt(promptText,maxChars=450,options={}){
     const start=Date.now(),expectedScope=trustedLifeAccountTag(),route=options.modelRoute||'interaction',channel=lifeSocialScope.getStore()?.channel
     const trigger=channel==='dm'?'incoming-dm':channel==='comment'?'incoming-comment':'host'
-    try{const output=await invokeInteractionPromptRaw(promptText,maxChars,options)
+    const lane=channel==='dm'||channel==='comment'||route==='ownerDmAgent'?'social':
+      route==='reflection'?'background':route==='behaviorDecision'?'continuation':'exploration'
+    try{const output=await lifeResourceScheduler.run({lane,resources:{model:1},waitMs:lane==='social'?15_000:25_000},
+      ()=>invokeInteractionPromptRaw(promptText,maxChars,options))
       modelInvocationJournal.record({scene:route,trigger,expectedScope,durationMs:Date.now()-start,
         provider:route==='reflection'?cfg.mainSessionReflectionModelProvider||cfg.pluginDefaultModelProvider||'':
           route==='dailyDynamic'?cfg.dailyDynamicModelProvider||cfg.pluginDefaultModelProvider||'':
@@ -6908,9 +6940,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
          !['independent_dsh','independent_local'].includes(resolvedVisionMode())||
          !lifeOpportunityAccountReady()||trustedLifeAccountTag()!==accountTag||
          accountBinding.status().blocked)return {ok:false,reason:'life-video-vision-unavailable'}
-      return executeWatchVideo({bvid,record_session:false,include_comments:false,
-        include_danmaku:false,view_depth:viewDepth,explorationPurpose:'life-episode-voluntary-visual'},
-        {lifeChoiceVerified:true})
+      return lifeResourceScheduler.run({lane:'continuation',resources:{vision:1},waitMs:12_000},
+        ()=>executeWatchVideo({bvid,record_session:false,include_comments:false,
+          include_danmaku:false,view_depth:viewDepth,explorationPurpose:'life-episode-voluntary-visual'},
+          {lifeChoiceVerified:true})).catch(()=>({ok:false,reason:'life-vision-resource-unavailable'}))
     },
     recordLifeVideoVisual:(id,proof,tag)=>lifeOpportunities.recordVideoVisual(id,proof,tag),
     hasVerifiedLifeVideoVisual:(bvid,tag)=>lifeOpportunities.hasVerifiedVideoVisual(bvid,tag),
@@ -8595,6 +8628,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         return sendJson(res,200,{...autonomousPlanner.status(),
         lifeEpisodes:universalLifeEpisodes.list({limit:5,includeClosed:true}),
         lifeActionAttribution:lifeActionAttribution.status(),
+        lifeResourceCoordination:lifeResourceScheduler.status(),
         lifeEpisodeHealth:universalLifeEpisodes.health({eligibleSources:eligibleLifeEpisodeSources({
           intentions:lifeOpportunities.continuations({limit:20}),
           todos:ownerTodos.list({limit:100,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)),
@@ -9405,6 +9439,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         interests:Array.isArray(interestRows)?interestRows:null,
         relationshipsReady:Boolean(relationshipView&&relationshipView.ok!==false),
         socialOwner:socialDecisionOwnership.status().socialDecisionOwner}),willingness:lifeWillingness?.status()||{ok:false},
+        resourceCoordination:{...lifeResourceScheduler.status(),videoReadSharing:publicVideoReadCoalescer.status()},
         growthAudit:read(()=>projectLifeGrowthAudit({runs:lifeDecisionTrace.list({limit:30}).runs})),
         actionRecords:read(()=>lifeActionRecords.list({limit:30})),
         growthAttribution:read(()=>lifeOpportunityAccountReady()?projectLifeGrowthAttribution({

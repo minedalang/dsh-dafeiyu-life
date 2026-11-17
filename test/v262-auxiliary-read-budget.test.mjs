@@ -101,14 +101,19 @@ test('DM complete window commits the conversation cursor normally',async()=>{
   assert.equal(observed,1)
 })
 
-test('owner DM parsing failures cannot turn an uncommitted inbox into a successful empty scan',async()=>{
+test('unified DM inbox (including owner) fails closed on parsing and preserves the read cursor',async()=>{
   const {readFileSync}=await import('node:fs')
   const {resolve}=await import('node:path')
   const file=readFileSync(resolve(import.meta.dirname,'../index.js'),'utf8')
-  assert.match(file,/主人私信 Agent 基线建立失败，本轮不确认私信游标/)
-  assert.match(file,/主人私信 Agent 批量接收失败，本轮不确认私信游标/)
-  assert.match(file,/dmPollCursor\.discard\(\)\s*\n\s*throw new Error\('主人私信 Agent/)
+  assert.match(file,/const incoming=fastUid/)
+  assert.match(file,/dmPollCursor\.discard\(\)/)
+  assert.match(file,/onRead: dmPollCursor\.observed/)
+  assert.match(file,/detailQueue:dmDetailQueue/)
+  assert.match(file,/unifiedOwnerDmCutover\(accountRuntimeDir\)/)
   assert.match(file,/dmFetch\(cred, uid, 50,\{readBudget:biliReadBudget\}\)/)
+  const {collectDmInbox}=await import('../lib/dm-inbox.mjs')
+  await assert.rejects(collectDmInbox({sessions:[{uid:'112233',unread:1,lastTs:123}],ownUid:'1',
+    readConversation:async()=>null,failClosed:true}),/array|message|消息|读取|invalid/i)
 })
 
 test('request diagnostics include privacy-preserving per-kind counts',async()=>{

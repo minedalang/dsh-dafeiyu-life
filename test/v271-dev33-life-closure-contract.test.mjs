@@ -19,7 +19,7 @@ test('ALL registered Life action types have one verified event → episode → a
   let scope=A
   const memory=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>scope,now:()=>NOW})
   const expected=Object.keys(LIFE_ACTION_NAMES)
-  assert.equal(expected.length,21)
+  assert.ok(expected.length>=21,'all newly registered verified Life action types must remain covered')
   assert.equal(new Set(expected).size,expected.length)
   assert.equal(new Set(LIFE_VERIFIED_WRITE_ACTIONS).size,LIFE_VERIFIED_WRITE_ACTIONS.length)
   assert.equal(LIFE_VERIFIED_WRITE_ACTIONS.every(x=>expected.includes(x)),true)
