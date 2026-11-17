@@ -135,7 +135,8 @@ test('用户界面需有逐联系人按钮、二次确认、服务端单人限�
  const server=readFileSync(new URL('../index.js',import.meta.url),'utf8');
  assert.match(ui,/检查遗漏私信/);assert.match(ui,/dm-contact-check/);assert.match(ui,/dm-contact-reconsider/);
  assert.match(ui,/confirmAction\(/);assert.match(server,/fetchDmContactSnapshot\(uid\)/);
- assert.match(server,/dmFetch\(cred,target,50,\{readBudget:biliReadBudget\}\)/);
+ assert.match(server,/readDmDetail\(cred,target,50\)/);
+ assert.match(server,/readBudget:biliReadBudget/);
  assert.match(server,/accountBinding\.enterPlatformOperation\(\)/);
 });
 

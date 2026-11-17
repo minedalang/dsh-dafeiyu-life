@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs'
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8')
 test('DM pre-model admission deferral keeps safety, shows only allowlisted holder stage and age bucket',()=>{
  const source=read('index.js'),dm=read('lib/dm-autoreply.mjs')
- const fragment=source.slice(source.indexOf('const readiness=await waitForDmLifeReadiness'),source.indexOf("return runLifeSocialOperation({channel:'dm'"))
+ const fragment=source.slice(source.indexOf('const readiness=await waitForDmLifeReadiness'),source.indexOf("const dmPlanningPreference=lifeWillingness?.holdIncomingDmDecision"))
  assert.match(fragment,/life-admission-preflight-deferred/)
  assert.match(fragment,/waitForDmLifeReadiness/)
  assert.match(fragment,/maxWaitMs:6_000/)
@@ -15,6 +15,6 @@ test('DM pre-model admission deferral keeps safety, shows only allowlisted holde
  assert.doesNotMatch(fragment,/err\.uid|err\.messageId|err\.admissionToken/)
  const catchSection=dm.slice(dm.indexOf("const admissionBusy=e?.code==='life-admission-preflight-deferred'"),dm.indexOf('let decision=normalizeGeneratedDecision'))
  assert.match(catchSection,/lifeInbox\.defer\(msg\.uid,msg\.id,\{delay,unattempted:true\}\)/)
- assert.match(catchSection,/reason=\$\{reason\} holder=\$\{channel\}\/\$\{stage\} ageBucketSeconds=\$\{age\}/)
- assert.match(catchSection,/logger\.warn\?\.\(`DM Life admission busy before model call/)
+ assert.match(catchSection,/reason=\$\{capacityBusy\?'model-capacity-busy':reason\} holder=\$\{channel\}\/\$\{stage\} ageBucketSeconds=\$\{age\}/)
+ assert.match(catchSection,/logger\.warn\?\.\(`DM model not started; deferred without consuming a decision attempt/)
 })

@@ -175,6 +175,7 @@ import { createBiliReadBudget } from './lib/bili-read-budget.mjs'
 import { fetchBiliCover } from './lib/bili-cover-proxy.mjs'
 import {createDmPollCursor} from './lib/dm-poll-cursor.mjs'
 import {createDmDetailQueue} from './lib/dm-detail-queue.mjs'
+import {createDmDetailSingleflight} from './lib/dm-detail-singleflight.mjs'
 import {selectVisionPython,probeVisionPython,visionPythonCandidates,ensureVisionTempDir,visionTempPath,visionPythonTempEnv} from './lib/vision-python-runtime.mjs'
 import {createVisionEnvironmentRepair,probeVisionPythonAsync} from './lib/vision-environment-repair.mjs'
 import {dmContinuationPrompt,parseDmContinuationReply} from './lib/dm-progressive-expression.mjs'
@@ -623,6 +624,7 @@ export function apply(ctx, config) {
   ctx.effect(()=>()=>lifeResourceScheduler.close(),'bili-duty: Life 资源调度清理')
   const publicVideoReadCoalescer=createLifePublicReadCoalescer()
   const dmDetailQueue=createDmDetailQueue({dataDir:accountRuntimeDir})
+  const dmDetailSingleflight=createDmDetailSingleflight({getAccountTag:()=>trustedLifeAccountTag()})
   const dmPollCursor=createDmPollCursor({dataDir:accountRuntimeDir,
     getPriority:uid=>{
       // This is a read-scheduling preference, never a new social permission.
@@ -4429,6 +4431,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     },
     logger:{warn:m=>log('主人私信 Agent：'+m)},
   })
+  // Only coalesce concurrent identical authorized reads. No TTL caching:
+  // a fresh send preflight must still observe newly arrived platform messages.
+  const readDmDetail=(cred,uid,limit=50)=>dmDetailSingleflight.read({uid:String(uid),limit},
+    ()=>dmFetch(cred,String(uid),limit,{readBudget:biliReadBudget}))
   async function getNewDmMessages({probeOnly=false,forceUid='',fastUid=''}={}) {
     const releaseDmRead=accountBinding.enterPlatformOperation()
     try {
@@ -4438,7 +4444,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const target=String(forceUid||'')
       if(!/^[1-9]\d{0,18}$/.test(target)||target===String(cred.dedeuserid||''))return []
       accountBinding.assertReady()
-      const messages=await dmFetch(cred,target,50,{readBudget:biliReadBudget})
+      const messages=await readDmDetail(cred,target,50)
       if(!Array.isArray(messages))throw new Error('私信定向复核没有返回消息数组')
       return messages.filter(m=>m?.fromMe===false&&m.key&&Number(m.ts)>0&&String(m.text||'').trim()&&String(m.text)!=='[非文字消息]')
         .map(m=>{const ts=Number(m.ts);return {senderUid:target,senderName:'',messageId:`${target}:${String(m.key).slice(0,100)}`,
@@ -4457,11 +4463,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       ?await collectDmInbox({sessions:[{uid:String(fastUid),unread:0,lastTs:Date.now()}],
         ownUid:String(cred.dedeuserid),whitelist,readConversation:uid=>{
           accountBinding.assertReady()
-          return dmFetch(cred,uid,50,{readBudget:biliReadBudget})
+          return readDmDetail(cred,uid,50)
         },maxSessions:1,failClosed:true,logger:{warn:msg=>log(msg)}})
       :await collectDmInbox({
       sessions, ownUid: Number(cred.dedeuserid), whitelist,
-      readConversation: (uid) => {accountBinding.assertReady();return dmFetch(cred, uid, 50,{readBudget:biliReadBudget})},
+      readConversation: (uid) => {accountBinding.assertReady();return readDmDetail(cred,uid,50)},
       shouldRead: dmPollCursor.shouldRead,
       onRead: dmPollCursor.observed,priorityUid:String(cfg.dmOwnerUid||''),
       // Only a bounded, serial set of details per normal round. The durable
@@ -5010,7 +5016,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const target=String(uid||'')
       if(!cred||!/^[1-9]\d{0,18}$/.test(target)||target===String(cred.dedeuserid||''))
         throw Error('登录凭证或目标联系人 UID 不合法')
-      const remote=await dmFetch(cred,target,50,{readBudget:biliReadBudget})
+      const remote=await readDmDetail(cred,target,50)
       accountBinding.assertReady()
       if(String(dmCred(stateDir)?.dedeuserid||'')!==String(cred.dedeuserid))throw Error('平台账号已经切换')
       if(!Array.isArray(remote))throw Error('私信接口没有返回有效消息')
@@ -5149,7 +5155,19 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           Math.min(600,Math.floor(Math.max(0,readiness.ownerAgeMs)/1000/30)*30):null
         throw err
       }
-      return runLifeSocialOperation({channel:'dm',expectedScope:owner.scope,phase:'decision',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
+      const dmPlanningPreference=lifeWillingness?.holdIncomingDmDecision?.({maxMs:45_000})
+      // Race-safe: another Life holder may have entered after the read-only
+      // preflight. Never spend a provider call when the preference is denied.
+      // This creates NO durable claim or permission to send.
+      if(dmPlanningPreference?.ok===false){
+        const error=new Error('Life 私信准入已变化，尚未开始模型调用')
+        error.code='life-admission-preflight-deferred'
+        error.admissionReason=String(dmPlanningPreference.reason||'life-choice-in-progress')
+        throw error
+      }
+      // Only a temporary fairness hint, never a Life approval or send proof.
+      // Real account/recipient and platform write gates are unchanged.
+      try{return await runLifeSocialOperation({channel:'dm',expectedScope:owner.scope,phase:'decision',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
       let relationshipStage='new'
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
       try{relationshipStage=relationshipIndex()?.get(req.uid,relationshipOptions())?.stage||'new'}catch{}
@@ -5193,7 +5211,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         sourceKey:'dm:'+String(req.uid)+':'+String(req.messageId||''),messages:lines,targetKey:''})
       if(sealed?.ok!==true)throw Error('Life 私信表达授权不可用：'+String(sealed?.reason||'missing'))
       return attachSocialProof(generated,owner,sealed.proof)
-      })
+      })}finally{dmPlanningPreference?.release?.()}
       } finally {stopLiveDm()}
     },
     generateContinuation:async({uid,first,thoughtCue,recent,lifeWillingnessProof})=>{
