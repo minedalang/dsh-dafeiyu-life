@@ -2608,28 +2608,28 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </section>
 <section id="panel-polling" hidden>
 <div class="toolbar"><h2 style="margin:0">后台轮询与请求保护</h2><button id="polling-refresh">刷新轮询状态</button></div>
-<p class="muted">选择后台检查节奏，或自己设置各项读取间隔。默认私信、评论回复、被 @ 均为 2 分钟；私信长期安静时自动渐进到设置的最长间隔。只改变读取节奏，不授权外发。</p>
+<p class="muted">选择后台检查节奏，或自己设置各项读取间隔。自然方案普通私信列表每 5 分钟检查一次，已确认活跃对话按 60 秒基础间隔定向检查；评论回复和被 @ 默认 2 分钟。活跃检查在连续无新消息时可逐步放缓。只改变读取节奏，不授权外发。</p>
 <div class="polling-budget-card" aria-live="polite"><div><span class="page-eyebrow">BILIBILI · READ SAFETY</span><h3>🛡️ 后台读取保护</h3><p class="muted">私信按账号记录会话游标；评论和 @ 的后台读取共享已接入请求预算。遇到限流或验证码会暂停读取，而不是反复重试。</p></div><div id="polling-budget-status" role="status">正在读取预算…</div><details class="polling-budget-details"><summary>查看各类读取次数</summary><div id="polling-budget-by-kind" class="polling-budget-breakdown" aria-live="polite">暂无数据</div></details></div>
 <div class="settings-stack">
 <div class="settings-section"><h4>后台轮询方案</h4>
 <div class="choice-presets" role="radiogroup" aria-label="后台轮询节奏方案">
 <label class="choice-card"><input type="radio" name="polling-choice" value="quiet"><span class="choice-icon">🌙</span><strong>安静节流</strong><small>私信 5–45 分钟 · 评论与 @ 10 分钟</small></label>
-<label class="choice-card"><input type="radio" name="polling-choice" value="balanced" checked><span class="choice-icon">🌿</span><strong>自然适中 · 默认</strong><small>私信 2–15 分钟 · 评论与 @ 都是 2 分钟</small></label>
-<label class="choice-card"><input type="radio" name="polling-choice" value="responsive"><span class="choice-icon">⚡</span><strong>及时响应</strong><small>私信 1–10 分钟 · 评论与 @ 都是 2 分钟，注意限流</small></label>
+<label class="choice-card"><input type="radio" name="polling-choice" value="balanced" checked><span class="choice-icon">🌿</span><strong>自然适中 · 默认</strong><small>私信列表每 5 分钟 · 活跃基础 60 秒 · 评论与 @ 2 分钟</small></label>
+<label class="choice-card"><input type="radio" name="polling-choice" value="responsive"><span class="choice-icon">⚡</span><strong>及时响应</strong><small>私信 5–10 分钟 · 评论与 @ 都是 2 分钟，注意限流</small></label>
 <label class="choice-card"><input type="radio" name="polling-choice" value="custom"><span class="choice-icon">🎛️</span><strong>自己设定</strong><small>设置私信最短／最长、评论及 @ 检查间隔</small></label>
-</div><p class="setting-note" id="polling-active-dm-reminder">💬 正在活跃的私信对话默认每 10 秒进行一次定向检查（需开启「活跃对话快速检查」）。上述方案的分钟间隔主要用于普通监听；新对话的首次发现仍依赖普通轮询，活跃快通道也受平台限流和共享读取预算保护。</p><p class="muted" id="polling-choice-note">选择后可继续调整数值，调整即变为「自己设定」；必须点击保存才会生效。老用户的已存间隔不会被强制覆盖。</p></div>
+</div><p class="setting-note" id="polling-active-dm-reminder">💬 正在活跃的私信对话默认每 60 秒进行一次定向检查（需开启「活跃对话快速检查」）。上述方案的分钟间隔主要用于普通监听；新对话的首次发现仍依赖普通轮询，活跃快通道也受平台限流和共享读取预算保护。</p><p class="muted" id="polling-choice-note">选择后可继续调整数值，调整即变为「自己设定」；必须点击保存才会生效。老用户的已存间隔不会被强制覆盖。</p></div>
 <div class="settings-section"><h4>检查间隔</h4><div class="fields">
-<div><label for="dm-interval">私信最短检查间隔（分钟，默认 2）</label><input id="dm-interval" type="number" min="1" max="120" value="2"></div>
-<div><label for="dm-quiet-max">私信安静期最长检查间隔（分钟，默认 15）</label><input id="dm-quiet-max" type="number" min="1" max="120" value="15"><small class="setting-note" id="dm-quiet-levels">中间间隔自动计算</small></div>
-<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">在最近真正确认发出私信，或普通监听发现已核验且允许回复的新来信后，短期开启；首次发现来信仍取决于普通监听间隔。无活跃会话时不会每 10 秒扫描所有私信。连续没有新消息时自动放慢为基础间隔的 100% → 200% → 300%（默认 10 → 20 → 30 秒）；有新来信会恢复基础间隔。与普通轮询共享读取预算及平台限流保护。</small></div>
-<div><label for="dm-active-seconds">活跃会话基础检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="10"><p id="dm-fast-levels" class="muted">自适应档位：10 秒 → 20 秒 → 30 秒（上限 300%）</p></div>
+<div><label for="dm-interval">私信最短检查间隔（分钟，自然方案 5）</label><input id="dm-interval" type="number" min="5" max="120" value="5"></div>
+<div><label for="dm-quiet-max">私信安静期最长检查间隔（分钟，自然方案 5）</label><input id="dm-quiet-max" type="number" min="5" max="120" value="5"><small class="setting-note" id="dm-quiet-levels">中间间隔自动计算</small></div>
+<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">在最近真正确认发出私信，或普通监听发现已核验且允许回复的新来信后，短期开启；首次发现来信仍取决于普通监听间隔。无活跃会话时不会定向扫描所有私信。连续没有新消息时自动放慢为基础间隔的 100% → 200% → 300%（自然默认 60 → 120 → 180 秒）；有新来信会恢复基础间隔。与普通轮询共享读取预算及平台限流保护。</small></div>
+<div><label for="dm-active-seconds">活跃会话基础检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="60"><p id="dm-fast-levels" class="muted">自适应档位：60 秒 → 120 秒 → 180 秒（上限 300%）</p></div>
 <div><label for="dm-detail-max-sessions">普通轮询每轮最多读取联系人详情（1–12）</label><input id="dm-detail-max-sessions" type="number" min="1" max="12" value="3"></div>
 <div><label for="dm-detail-spacing-ms">两次详情读取之间的等待（毫秒，500–5000）</label><input id="dm-detail-spacing-ms" type="number" min="500" max="5000" step="250" value="1500"><p class="muted">默认 1500 毫秒；仅对普通轮询中同一轮的多位联系人详情请求生效。</p></div>
 <div><label for="dm-active-window">活跃时长（秒，60–600）</label><input id="dm-active-window" type="number" min="60" max="600" value="180"></div>
 <div><label for="poll-replies-minutes">收到评论回复检查（分钟，默认 2）</label><input id="poll-replies-minutes" type="number" min="1" max="120" value="3"></div>
 <div><label for="poll-at-minutes">被 @ 邀请检查（分钟，默认 2）</label><input id="poll-at-minutes" type="number" min="1" max="120" value="3"></div>
 
-</div><p class="muted">各方案和自定义设置都受共享读取预算及 -509 退避保护。下方历史热评检查已停用，不参与卡片方案或实际轮询。</p>
+</div><p class="muted">私信会话列表具有跨重启至少 5 分钟安全间隔，发生 -509 后会进一步放缓；老用户已存更短设置不被静默覆盖，但实际发送会受保护。各方案和自定义设置都受共享读取预算及 -509 退避保护。下方历史热评检查已停用，不参与卡片方案或实际轮询。</p>
 <div class="toolbar"><button id="polling-save" class="primary">保存检查间隔</button><button id="polling-reload">重读设置</button></div></div>
 <div class="settings-section"><h4>最近检查情况</h4><p class="muted">时间按本机显示；上次检查与错误为本次 DSH 运行期间的记录，重启后重新计时。“已完成”只代表轮询流程结束，不代表发送成功或 B站通知送达。</p>
 <div id="polling-status-list" class="grid" role="status" aria-live="polite">读取中…</div></div>

@@ -10,9 +10,9 @@ import {continuationPrompt} from '../lib/life-continuation.mjs'
 const A='a'.repeat(16),B='b'.repeat(16),EP1='1'.repeat(24),EP2='2'.repeat(24),BV='BV1aa411c7mD'
 const settle=()=>new Promise(r=>setTimeout(r,15))
 
-test('scheme default is 2-minute DM, comments, mentions; calculate intermediates from configurable endpoints',()=>{
- assert.deepEqual(POLLING_PRESETS.balanced,{dmWatchMinutes:2,dmQuietMaxMinutes:15,commentReplyWatchMinutes:2,commentAtWatchMinutes:2})
- assert.deepEqual(dmQuietIntervals(POLLING_PRESETS.balanced),[2,5,10,15])
+test('natural scheme is five-minute DM list and two-minute comments/mentions; calculate intermediates from configurable endpoints',()=>{
+ assert.deepEqual(POLLING_PRESETS.balanced,{dmWatchMinutes:5,dmQuietMaxMinutes:5,commentReplyWatchMinutes:2,commentAtWatchMinutes:2})
+ assert.deepEqual(dmQuietIntervals(POLLING_PRESETS.balanced),[5,5,5,5])
  assert.deepEqual(dmQuietIntervals({dmWatchMinutes:3,dmQuietMaxMinutes:43}),[3,13,27,43])
  assert.deepEqual(dmQuietIntervals({dmWatchMinutes:15,dmQuietMaxMinutes:15}),[15,15,15,15])
  assert.equal(detectPollingPreset({...POLLING_PRESETS.responsive}), 'responsive')

@@ -59,9 +59,9 @@ test('插件 HTTP 配置保存四项轮询分钟数并合理钳制，无需改�
       let out;const response={writeHead(){},end(v){out=JSON.parse(v)}};await route.handler(request,response);return out;
     }
     let c=await req('GET','/api/bili-duty/config');
-    assert.equal(c.config.commentReplyWatchMinutes,2);assert.equal(c.config.commentAtWatchMinutes,2);assert.equal(c.config.dmQuietMaxMinutes,15);assert.equal(c.config.commentTopWatchMinutes,5);
-    c=await req('POST','/api/bili-duty/config',{dmWatchMinutes:4,dmQuietMaxMinutes:40,commentReplyWatchMinutes:8,commentAtWatchMinutes:2,commentTopWatchMinutes:18});
-    assert.equal(c.config.dmWatchMinutes,4);assert.equal(c.config.dmQuietMaxMinutes,40);assert.equal(c.config.commentReplyWatchMinutes,8);
+    assert.equal(c.config.commentReplyWatchMinutes,2);assert.equal(c.config.commentAtWatchMinutes,2);assert.equal(c.config.dmQuietMaxMinutes,5);assert.equal(c.config.commentTopWatchMinutes,5);
+    c=await req('POST','/api/bili-duty/config',{dmWatchMinutes:5,dmQuietMaxMinutes:40,commentReplyWatchMinutes:8,commentAtWatchMinutes:2,commentTopWatchMinutes:18});
+    assert.equal(c.config.dmWatchMinutes,5);assert.equal(c.config.dmQuietMaxMinutes,40);assert.equal(c.config.commentReplyWatchMinutes,8);
     assert.equal(c.config.commentAtWatchMinutes,2);assert.equal(c.config.commentTopWatchMinutes,18);
     c=await req('POST','/api/bili-duty/config',{commentAtWatchMinutes:999,commentTopWatchMinutes:0});
     assert.equal(c.config.commentAtWatchMinutes,120);assert.equal(c.config.commentTopWatchMinutes,5);

@@ -52,7 +52,7 @@ test('shared budget cooldown prevents scheduler from starting another DM poll an
   await scheduler.tick()
   assert.equal(calls,0)
   assert.equal(scheduler.status().checks.dm.nextAt,budget.status().retryAt)
-  now+=61_000;await scheduler.tick();assert.equal(calls,1)
+  now+=5*60_000+1;await scheduler.tick();assert.equal(calls,1)
   scheduler.stop()
  }finally{rmSync(dir,{recursive:true,force:true})}
 })

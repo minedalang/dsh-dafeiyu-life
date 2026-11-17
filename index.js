@@ -358,10 +358,10 @@ export const Config = !z ? undefined : z.object({
   /** 后台私信监听总开关：只在用户允许时回复。 */
   dmWatch: z.boolean().default(true).extra('volatile', true),
   /** 私信监听间隔（分钟，1–120） */
-  dmWatchMinutes: z.natural().default(2).extra('volatile', true),
-  dmQuietMaxMinutes: z.natural().default(15).extra('volatile', true),
+  dmWatchMinutes: z.natural().default(5).extra('volatile', true),
+  dmQuietMaxMinutes: z.natural().default(5).extra('volatile', true),
   dmActivePollEnabled: z.boolean().default(true).extra('volatile', true),
-  dmActivePollSeconds: z.natural().default(10).extra('volatile', true),
+  dmActivePollSeconds: z.natural().default(60).extra('volatile', true),
   dmDetailMaxSessions: z.natural().default(3).extra('volatile', true),
   dmDetailSpacingMs: z.natural().default(1500).extra('volatile', true),
   dmActiveWindowSeconds: z.natural().default(180).extra('volatile', true),
@@ -807,7 +807,7 @@ function reportMeta() {
     autonomousSocialAttentionDailyLimit: 288,
     biliReadMinuteLimit:30,biliReadHourLimit:450,
     masterEnabled: true,
-    dmWatch: true, dmWatchMinutes: 2, dmQuietMaxMinutes: 15, dmActivePollEnabled:true, dmActivePollSeconds:10, dmDetailMaxSessions:3, dmDetailSpacingMs:1500, dmActiveWindowSeconds:180, commentReplyWatchMinutes: 2, commentAtWatchMinutes: 2, commentTopWatchMinutes: 5, dmReplyPerDay: 200, quotaPreset:'custom', dmContextMessages: 40, dmOwnerUid: 0,
+    dmWatch: true, dmWatchMinutes: 5, dmQuietMaxMinutes: 5, dmActivePollEnabled:true, dmActivePollSeconds:60, dmDetailMaxSessions:3, dmDetailSpacingMs:1500, dmActiveWindowSeconds:180, commentReplyWatchMinutes: 2, commentAtWatchMinutes: 2, commentTopWatchMinutes: 5, dmReplyPerDay: 200, quotaPreset:'custom', dmContextMessages: 40, dmOwnerUid: 0,
     dmWhitelist: '', dmStrangerOnce: false, dmStrangerAutonomyEnabled: false, dmP6Enabled: true, dmP6MaxBubbles: 3, naturalThoughtOwnerMinutes:2, naturalThoughtIntimateMinutes:5, naturalThoughtFamiliarMinutes:10, naturalThoughtStrangerMinutes:30, naturalThoughtChancePercent:25, dmStrangerMaxReplies: 1, dmStrangerFirstFixed: false,
     dmApprovalEnabled: false, dmApprovalPhrase: '白饭🍚',
     pluginDefaultModelProvider: '', pluginDefaultModelId: '', videoModelProvider: '', videoModelId: '', videoReasoningEffort: '', behaviorDecisionModelProvider: '', behaviorDecisionModelId: '', behaviorDecisionReasoningEffort: '', interactionModelProvider: '', interactionModelId: '', interactionReasoningEffort: '', interactionContextMode: 'compact', memeRulesModelProvider:'', memeRulesModelId:'', memeRulesReasoningEffort:'', memeRulesPrompt:'',
@@ -964,10 +964,12 @@ function reportMeta() {
     if ('dmWatch' in p) p.dmWatch = Boolean(p.dmWatch)
     if ('dmActivePollEnabled' in p) p.dmActivePollEnabled=p.dmActivePollEnabled===true
     for(const [k,min,max] of [['dmActivePollSeconds',10,60],['dmActiveWindowSeconds',60,600],['dmDetailMaxSessions',1,12],['dmDetailSpacingMs',500,5000]])if(k in p){const n=Number(p[k]);if(!Number.isSafeInteger(n)||n<min||n>max)throw Error(k+' 必须为 '+min+'–'+max+' 的整数');p[k]=n}
-    for (const [key, fallback] of [['dmWatchMinutes',2],['dmQuietMaxMinutes',15],['commentReplyWatchMinutes',2],['commentAtWatchMinutes',2],['commentTopWatchMinutes',5]]) {
+    for (const [key, fallback] of [['dmWatchMinutes',5],['dmQuietMaxMinutes',5],['commentReplyWatchMinutes',2],['commentAtWatchMinutes',2],['commentTopWatchMinutes',5]]) {
       if (key in p) {const v=Number(p[key]);p[key]=Number.isFinite(v)&&v>=1?Math.max(1,Math.min(120,Math.floor(v))):fallback}
     }
-    if ('dmQuietMaxMinutes' in p || 'dmWatchMinutes' in p){const min=Number('dmWatchMinutes' in p?p.dmWatchMinutes:cfg.dmWatchMinutes||2),max=Number('dmQuietMaxMinutes' in p?p.dmQuietMaxMinutes:cfg.dmQuietMaxMinutes||15);if(max<min)throw Error('私信安静期最长间隔不得短于最短间隔')}
+    if ('dmWatchMinutes' in p && p.dmWatchMinutes<5)throw Error('私信会话列表最短检查间隔不得小于 5 分钟')
+    if ('dmQuietMaxMinutes' in p && p.dmQuietMaxMinutes<5)throw Error('私信会话列表最长检查间隔不得小于 5 分钟')
+    if ('dmQuietMaxMinutes' in p || 'dmWatchMinutes' in p){const min=Number('dmWatchMinutes' in p?p.dmWatchMinutes:cfg.dmWatchMinutes||5),max=Number('dmQuietMaxMinutes' in p?p.dmQuietMaxMinutes:cfg.dmQuietMaxMinutes||5);if(max<min)throw Error('私信安静期最长间隔不得短于最短间隔')}
     if ('dmReplyPerDay' in p) p.dmReplyPerDay = Math.max(0, Math.min(1000, Math.floor(Number(p.dmReplyPerDay) || 0)))
     if ('quotaPreset' in p && !['gentle','natural','active','custom'].includes(p.quotaPreset)) throw Error('互动节奏方案不合法')
     if ('dmContextMessages' in p) p.dmContextMessages = Math.max(0,Math.min(80,Math.floor(Number(p.dmContextMessages)||0)))
@@ -9880,13 +9882,23 @@ logger:{warn:m=>log('社交意图：'+m)}
       const cred = dmCred(stateDir)
       if (!cred) return sendJson(res,200,{ok:false,error:'本机没有可用的 B站 登录凭证，请先扫码登录'})
       try{accountBinding.assertReady()}catch(e){return sendJson(res,200,{ok:false,error:'账号状态未就绪：'+String(e?.message||e).slice(0,160)})}
+      const gate=interactionScheduler.recoveryReadGate()
+      if(!gate.allowed)return sendJson(res,200,{ok:false,deferred:true,reason:'dm-recovery',error:'私信仍处于 B站限流/网络恢复观察中，连通性检测不会绕过冷却',retryAt:gate.retryAt||0})
+      const readState=biliReadBudget.status()
+      if(readState.blocked||readState.dmListNextAt>Date.now())return sendJson(res,200,{ok:false,deferred:true,
+        reason:readState.blocked?readState.reason:'dm-list-interval',
+        error:'私信会话列表仍处于 B站请求保护期，本次不发起新请求',
+        retryAt:Math.max(readState.retryAt||0,readState.dmListNextAt||0)})
       const started = Date.now()
       try {
-        const sessions = await dmList(cred)
+        const sessions = await dmList(cred,{readBudget:biliReadBudget})
         const elapsedMs = Date.now() - started
         log(`私信接口连通性测试：成功 host=api.vc.bilibili.com sessions=${sessions.length} elapsed=${elapsedMs}ms`)
         return sendJson(res,200,{ok:true,host:'api.vc.bilibili.com',sessionCount:sessions.length,elapsedMs,checkedAt:new Date().toISOString()})
       } catch (e) {
+        if(e?.name==='BiliReadDeferredError')return sendJson(res,200,{ok:false,deferred:true,
+          reason:String(e.reason||'read-budget').slice(0,40),retryAt:Number(e.retryAt)||0,
+          error:'私信会话列表处于请求间隔/平台保护期；没有发起新的 B站请求'})
         const error = String(e?.message || e).replace(/[\r\n\t]+/g,' ').slice(0,220)
         log('私信接口连通性测试失败：' + error)
         return sendJson(res,200,{ok:false,error})

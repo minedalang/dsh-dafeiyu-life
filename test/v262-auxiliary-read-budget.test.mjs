@@ -110,7 +110,9 @@ test('unified DM inbox (including owner) fails closed on parsing and preserves t
   assert.match(file,/onRead: dmPollCursor\.observed/)
   assert.match(file,/detailQueue:dmDetailQueue/)
   assert.match(file,/unifiedOwnerDmCutover\(accountRuntimeDir\)/)
-  assert.match(file,/dmFetch\(cred, uid, 50,\{readBudget:biliReadBudget\}\)/)
+  // Unified authenticated detail reads now go through same-contact singleflight.
+  assert.match(file,/readDmDetail\(cred,uid,50\)/)
+  assert.match(file,/dmFetch\(cred,String\(uid\),limit,\{readBudget:biliReadBudget\}\)/)
   const {collectDmInbox}=await import('../lib/dm-inbox.mjs')
   await assert.rejects(collectDmInbox({sessions:[{uid:'112233',unread:1,lastTs:123}],ownUid:'1',
     readConversation:async()=>null,failClosed:true}),/array|message|消息|读取|invalid/i)

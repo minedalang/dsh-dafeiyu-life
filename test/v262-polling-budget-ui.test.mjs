@@ -14,7 +14,7 @@ test('same account read budget limits per-minute calls, survives restart, clears
   let time=1_800_000_000_000;const dir=work()
   const make=()=>createBiliReadBudget({dataDir:dir,minuteLimit:5,hourLimit:12,now:()=>time,logger:{warn(){}}})
   let q=make()
-  for(let i=0;i<5;i++)q.acquire('dm-list')
+  for(let i=0;i<5;i++)q.acquire('dm-messages')
   assert.equal(q.status().minuteUsed,5)
   assert.throws(()=>q.acquire('dm-conversation'),e=>e instanceof BiliReadDeferredError&&e.reason==='minute-budget')
   q=make();assert.equal(q.status().minuteUsed,5)
@@ -32,7 +32,7 @@ test('rate-limit/captcha response creates bounded persistent exponential cooldow
   assert.equal(first.status().blocked,true)
   assert.equal(first.status().reason,'platform-cooldown')
   const next=make();assert.throws(()=>next.acquire('dm'),BiliReadDeferredError)
-  time+=60_001
+  time+=5*60_000+1
   await assert.rejects(()=>next.guard('read',async()=>{throw Error('HTTP 429 请求过于频繁')}),/429/)
   assert.ok(next.status().retryAt>=time+120_000)
   time+=31*60_000;next.acquire('dm');next.noteSuccess()
