@@ -140,6 +140,13 @@ window.__ModuleLoader__.load({
 [data-bd-281-intro]{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0 0}
 [data-bd-281-intro] span{font-size:11px;line-height:1.45;padding:5px 8px;border:1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.2));border-radius:9px;background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.08));color:var(--dsw-alias-label-secondary,inherit)}
 /* Two distinct scopes: release highlights vs. the product's lasting capabilities. */
+
+/* Header action buttons never sit beside the feature panels. */
+[data-bd-header]{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+[data-bd-header-copy]{min-width:180px;flex:1 1 220px}
+[data-bd-header-actions]{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;flex:0 1 auto}
+[data-bd-header-actions] [data-bd-btn]{white-space:nowrap}
+@media(max-width:500px){[data-bd-header-actions]{justify-content:flex-start;width:100%}}
 [data-bd-feature-panel]{margin-top:11px;border-radius:12px;padding:11px 12px;border:1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.2))}
 [data-bd-feature-panel="release"]{border-color:rgba(50,165,105,.54);background:rgba(51,168,103,.095)}
 [data-bd-feature-panel="core"]{background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.055))}
@@ -642,26 +649,11 @@ window.__ModuleLoader__.load({
 
       return h('div', { 'data-bd-page': '' },
         h('div',{ 'data-bd-sec':'',style:{padding:'12px',borderRadius:'12px',border:'1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.24))'}},
-          h('div',{'data-bd-row':'',style:{justifyContent:'space-between',alignItems:'center'}},
-            h('div',{'data-bd-grow':''},h('div',{'data-bd-label':''},'🐳 大肥鱼 · DSH 生活系统'),
-              h('div',{'data-bd-note':''},'她会自己去 B站、把重要经历带回主 Session、长期记住主人和朋友；精确档案、长期记忆、梗、好友关系与互动状态都保存在本地。'),
-              h('div',{'data-bd-feature-panel':'release','aria-label':'2.8.1 版本新增特性'},
-                h('div',{'data-bd-feature-heading':''},'✨ 2.8.1 版本亮点'),
-                h('div',{'data-bd-281-intro':''},
-                  h('span',null,'🎬 视频视觉配置与验收'),
-                  h('span',null,'🧠 记忆神经场'),
-                  h('span',null,'🐟 自主探索与互动'),
-                  h('span',null,'⚙️ 资源协调与全新 Headless 同步 UI'))),
-              h('div',{'data-bd-feature-panel':'core','aria-label':'大肥鱼核心能力'},
-                h('div',{'data-bd-feature-heading':''},'🐳 大肥鱼的核心能力'),
-                h('div',{'data-bd-281-intro':''},
-                  h('span',null,'🌱 自主生活与连续探索'),
-                  h('span',null,'🧠 可衰减的人生记忆与遗忘'),
-                  h('span',null,'💬 关系成长与自然交流'),
-                  h('span',null,'🎞️ 有证据的视频理解与互动'),
-                  h('span',null,'📖 行动日记与经历回忆'),
-                  h('span',null,'🛡️ 主人授权与安全边界')))),
-            h('div',{'data-bd-row':'',style:{position:'relative',gap:'8px'}},
+          h('div',{'data-bd-header':''},
+            h('div',{'data-bd-header-copy':''},
+              h('div',{'data-bd-label':''},'🐳 大肥鱼 · DSH 生活系统'),
+              h('div',{'data-bd-note':''},'她会自己去 B站、把重要经历带回主 Session、长期记住主人和朋友；精确档案、长期记忆、梗、好友关系与互动状态都保存在本地。')),
+            h('div',{'data-bd-header-actions':''},
               h('button',{type:'button','data-bd-btn':'',onClick:newVer?onUpgrade:onCheckUpdate,
                 disabled:busy==='upgrade'||busy==='update',
                 title:npmUpdateState.status==='error'?npmUpdateState.error:'仅通过 npm 官方仓库检测版本，手动更新前再次确认',
@@ -671,6 +663,22 @@ window.__ModuleLoader__.load({
                 newVer?h('span',{title:'npm 检测到更高版本',style:{display:'inline-block',position:'absolute',right:'-5px',top:'-5px',
                   width:'11px',height:'11px',borderRadius:'50%',background:'#e53935',boxShadow:'0 0 0 2px white'}}):null),
               h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage()},'打开管理中心 ↗'))),
+          h('div',{'data-bd-feature-panel':'release','aria-label':'2.8.1 版本新增特性'},
+            h('div',{'data-bd-feature-heading':''},'✨ 2.8.1 版本亮点'),
+            h('div',{'data-bd-281-intro':''},
+              h('span',null,'🎬 视频视觉配置与验收'),
+              h('span',null,'🧠 记忆神经场'),
+              h('span',null,'🐟 自主探索与互动'),
+              h('span',null,'⚙️ 资源协调与全新 Headless 同步 UI'))),
+          h('div',{'data-bd-feature-panel':'core','aria-label':'大肥鱼核心能力'},
+            h('div',{'data-bd-feature-heading':''},'🐳 大肥鱼的核心能力'),
+            h('div',{'data-bd-281-intro':''},
+              h('span',null,'🌱 自主生活与连续探索'),
+              h('span',null,'🧠 可衰减的人生记忆与遗忘'),
+              h('span',null,'💬 关系成长与自然交流'),
+              h('span',null,'🎞️ 有证据的视频理解与互动'),
+              h('span',null,'📖 行动日记与经历回忆'),
+              h('span',null,'🛡️ 主人授权与安全边界'))),
           h('div',{'data-bd-note':'',style:{marginTop:'6px',...(newVer?{color:'#c62828'}:{})}},
             npmUpdateState.status==='available'?'npm 发现新版本 v'+newVer+'；点击上方按钮更新并重启 DSH。':
               npmUpdateState.status==='checking'?'正在查询 npm 仓库版本（不会自动更新）…':

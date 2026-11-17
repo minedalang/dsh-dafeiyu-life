@@ -5036,7 +5036,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getRecoveryReadGate:()=>{
       try{
         const pause=biliReadBudget.status(),network=dmRecoveryNetworkGate()
-        return {allowed:!pause.blocked&&network.allowed===true,
+        // A known busy Life admission cannot process an old deferred DM.
+        // Do not fetch the SAME private message again merely to discover this
+        // after spending a B站 request. Read-only preflight only; normal
+        // get_sessions discovery and actual Life/send admission remain intact.
+        const life=lifeWillingness?.inspectSocialReadiness({kind:'dm_reply'})
+        return {allowed:!pause.blocked&&network.allowed===true&&life?.ok===true,
+          // Life claim expiry is not a promised release time: retry on the
+          // next normal due cycle, while retaining true network cooldown.
           retryAt:Math.max(Number(pause.retryAt)||0,Number(network.retryAt)||0)}
       }catch{return {allowed:false,retryAt:0}}
     },
