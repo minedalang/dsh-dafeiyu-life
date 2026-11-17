@@ -4840,6 +4840,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const wantsHot=requestedByIndex?.[i]?.includes('hot_comments')
         const wantsPerson=requestedByIndex?.[i]?.includes('public_person')
         const wantsShared=requestedByIndex?.[i]?.includes('shared_link')&&batch[i]?.kind==='dm'
+        const wantsOriginal=requestedByIndex?.[i]?.includes('shared_original')&&batch[i]?.kind==='dm'
         if(wantsShared){
           const input=batch[i],scope=trustedLifeAccountTag()
           const shared=scope===input.sharedLinkScope&&input.sharedLinkId?
@@ -4851,14 +4852,48 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           }
           const proof=await executeSharedBiliLinkRead(shared.id,scope)
           if(proof?.ok!==true){
-            recordSharedBiliLinkFailure(shared.id,proof?.code||'link-read-failed',scope)
-            return {...row,sharedLinkContext:'本轮真实读取失败，不能描述链接内容或声称已经查看'}
+            // Local budget/cooldown deferrals are not a failed platform read:
+            // keep this opportunity pending for a future voluntary Life turn.
+            if(proof?.code!=='read-budget-blocked')recordSharedBiliLinkFailure(shared.id,proof?.code||'link-read-failed',scope)
+            return {...row,sharedLinkContext:'本轮未取得真实内容回执（可能处于 B站请求保护期），不能声称已经查看'}
           }
           const receipt=recordSharedBiliLinkRead(shared.id,proof,scope)
           if(receipt?.ok!==true)return {...row,sharedLinkContext:'回执账号或链接证据不匹配，不能声称查看成功'}
+          // An API-proven original is a *new choice* for the SAME Life DM
+          // turn, never an automatic second network request.
+          const original=proof.kind==='dynamic'?lifeSharedBiliLinks.repostedOriginalForParent(shared.id,scope):null
           row={...row,sharedLinkContext:JSON.stringify({kind:proof.kind,title:String(proof.title||'').slice(0,100),
             summary:String(proof.summary||'').slice(0,420),authorName:String(proof.authorName||'').slice(0,50),
-            verified:true,readOnly:true}).slice(0,950)}
+            verified:true,readOnly:true,repostedOriginalAvailable:Boolean(original),
+            originalRead:false}).slice(0,950),
+            ...(original?{availableContexts:[...(row.availableContexts||[]),'shared_original']}:{} )}
+        }
+        if(wantsOriginal){
+          const input=batch[i],scope=trustedLifeAccountTag()
+          const root=scope===input.sharedLinkScope&&input.sharedLinkId?
+            lifeSharedBiliLinks.get(input.sharedLinkId,scope):null
+          const original=root?.senderUid===String(input.uid)&&root?.status==='inspected'&&
+            !root.parentId&&root.resolvedKind==='dynamic'&&cfg.masterEnabled===true&&
+            cfg.dmWatch===true&&!accountBinding.status().blocked?
+            lifeSharedBiliLinks.repostedOriginalForParent(root.id,scope):null
+          if(!original)return {...row,sharedOriginalContext:'没有可核验的唯一转发原动态；不能据外层附言猜原帖'}
+          if(original.status==='inspected'){
+            row={...row,sharedOriginalContext:JSON.stringify({verified:true,readOnly:true,
+              source:'reposted-original',title:original.title,summary:original.summary,
+              authorName:original.authorName,originalRead:true}).slice(0,1050)}
+          }else{
+            const proof=await executeSharedBiliLinkRead(original.id,scope)
+            if(proof?.ok!==true){
+              if(proof?.code!=='read-budget-blocked')recordSharedBiliLinkFailure(original.id,proof?.code||'link-read-failed',scope)
+              return {...row,sharedOriginalContext:'转发原动态本轮读取未成功；不可描述原帖正文、图片或声称读过'}
+            }
+            const receipt=recordSharedBiliLinkRead(original.id,proof,scope)
+            if(receipt?.ok!==true)return {...row,sharedOriginalContext:'转发原动态回执核验失败；不可声称已阅读'}
+            row={...row,sharedOriginalContext:JSON.stringify({verified:true,readOnly:true,
+              source:'reposted-original',title:String(proof.title||'').slice(0,100),
+              summary:String(proof.summary||'').slice(0,420),authorName:String(proof.authorName||'').slice(0,50),
+              originalRead:true}).slice(0,1050)}
+          }
         }
         if(!wantsPerson&&!wantsHot)return row
         if(wantsHot){
@@ -5213,6 +5248,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const generated=await interactionBatcher.generate({kind:'dm',role:tier,...visualReq,socialAutonomy:true,
         ...(linkRow&&['pending','error','deferred'].includes(linkRow.status)&&Number(linkRow.nextAt||0)<=Date.now()?
           {sharedLinkId:linkRow.id,sharedLinkScope:linkScope,availableContexts:['shared_link']}:{}),
+        ...(linkRow?.status==='inspected'&&lifeSharedBiliLinks.repostedOriginalForParent(linkRow.id,linkScope)?
+          {sharedLinkId:linkRow.id,sharedLinkScope:linkScope,availableContexts:['shared_original']}:{}),
         ...(priorReadContext?{sharedLinkContext:priorReadContext}:{}),
         lifeEpisodeContext:episodeContext,availableLifeActions:followCandidates,
         p6MaxBubbles:cfg.dmP6MaxBubbles,
