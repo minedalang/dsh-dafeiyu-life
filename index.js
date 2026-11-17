@@ -5089,6 +5089,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       } finally { release(); }
     },
     onScanSettled:()=>dmPollCursor.commit(),
+    // A sealed Life DM choice that never reached any platform sender is
+    // abandoned by the original decision holder, not replayed or force-sent.
+    // The original proof/account fence still verifies the release; uncertain
+    // transport results are NEVER passed through this path.
+    onUnsentLifeDecision:proof=>lifeWillingness?.receipt(proof,{status:'not-sent'})||
+      {ok:false,reason:'life-willingness-unavailable'},
     lookupNickname: lookupBiliNickname,
     onConversationSettled:async({uid})=>{
       const role=socialPolicyGate.actor(uid).role

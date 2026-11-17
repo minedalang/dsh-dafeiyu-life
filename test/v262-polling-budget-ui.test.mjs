@@ -55,7 +55,10 @@ test('DM cursor commits only after successful processing, handles same-session r
   assert.equal(next.shouldRead(row),false)
   assert.equal(next.shouldRead({...row,lastTs:row.lastTs+1}),true)
   assert.equal(next.shouldRead({...row,unread:2}),true)
-  time+=3*60_000+1;assert.equal(next.shouldRead(row),true)
+  // Unchanged nonzero unread is NOT another message. Keep bounded 10m
+  // fallback rescan; any new timestamp/unread was checked above.
+  time+=9*60_000+1;assert.equal(next.shouldRead(row),false)
+  time+=60_000;assert.equal(next.shouldRead(row),true)
   const other=createDmPollCursor({dataDir:work(),now:()=>time})
   assert.equal(other.shouldRead(row),true)
 })

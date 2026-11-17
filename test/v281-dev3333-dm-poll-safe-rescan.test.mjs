@@ -35,11 +35,14 @@ test('a changed latest message timestamp is read immediately even with platform 
   assert.equal(cursor.shouldRead({...old,unread:1}),true)
 }))
 
-test('unchanged nonzero unread hints retain the short recheck lane',()=>withCursor('friend',({cursor,now,setClock})=>{
+test('unchanged unread hint uses bounded 5m safety rescan without hiding real changed sessions',()=>withCursor('friend',({cursor,now,setClock})=>{
   const row={uid:'210228238',lastTs:1800000000,unread:1}
   cursor.observed(row);cursor.commit()
   setClock(now()+MIN)
   assert.equal(cursor.shouldRead(row),false)
+  setClock(now()+3*MIN)
+  assert.equal(cursor.shouldRead(row),false)
   setClock(now()+2*MIN)
   assert.equal(cursor.shouldRead(row),true)
+  assert.equal(cursor.shouldRead({...row,lastTs:1800000001}),true)
 }))
