@@ -10,9 +10,11 @@ function setup(){const dir=mkdtempSync(join(tmpdir(),'fish-shared-link-'));let n
  const api=createLifeSharedBiliLinks({stateDir:dir,getAccountTag:()=>scope,now:()=>now});
  return {dir,api,setNow:v=>{now=v},close:()=>rmSync(dir,{recursive:true,force:true})}}
 
-test('only approved-friend messages create bounded link opportunities; raw DM text and URL are not exposed',()=>{
+test('only supported authenticated sender roles create bounded share cues; public link references do not expose DM text',()=>{
  const x=setup();try{
-  assert.equal(x.api.offerFromMessage({uid,role:'stranger',text:'https://b23.tv/pjKd41b',messageId:'m1'}).created,0)
+  // The source store does not authorize incoming DM: the host's receive gate
+  // controls whether a permitted stranger can contribute a read-only Life cue.
+  assert.equal(x.api.offerFromMessage({uid,role:'unverified',text:'https://b23.tv/pjKd41b',messageId:'m1'}).created,0)
   const offered=x.api.offerFromMessage({uid,role:'friend',text:'菜做好了 https://b23.tv/pjKd41b。私密文字不保存',messageId:'m2'})
   assert.equal(offered.created,1)
   const row=x.api.list()[0]

@@ -16,7 +16,7 @@ test('Life 准入记录区分已批准但未消费与已经消费的证明',()=>
 test('过期且未执行的本地证明先结算，再从内存表移除',()=>{
   const willingness=read('../lib/life-willingness.mjs')
   assert.match(willingness,/const started=p\.executionStarted===true/)
-  assert.match(willingness,/admission\.settle\(p\.scope,p\.admissionToken,\{verified:false\}\)/)
+  assert.match(willingness,/admission\.settle\(p\.scope,p\.admissionToken,\{verified:false,reason:'unused-expired'\}\)/)
   assert.match(willingness,/options\?\.markUsed!==false/)
 })
 
@@ -39,7 +39,7 @@ test('Life 授权复核状态进入诊断，不再显示为模型生成失败',(
   const ui=read('../lib/management-console.js')
   assert.match(comments,/life_authorization_review_required/)
   assert.match(ui,/life_authorization_review_required:'Life 授权账本需要复核/)
-  assert.match(ui,/willingnessAdmission/)
+  assert.match(ui,/lifeWillingnessStatus\?\.admission/)
   const index=read('../index.js')
   assert.match(index,/审阅尝试 /)
   assert.match(index,/自主延期 /)

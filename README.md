@@ -1,3 +1,5 @@
+> **当前源码开发基线：`2.8.1-dev.3b.33.8`，不是已发布稳定版。** [2.8.1-dev.3b.33.8 全系统与 Life 自然性审计](docs/architecture/2.8.1-dev3b338-system-integration-audit.md)。真实 Windows DSH 图片识别及 Life 私信拥塞恢复仍待实机验收；本文以下各个 dev.X 章节为历史开发说明，勿当作当前版本。
+
 ### dev.3b.33.6：Windows DSH 图片验收启动路径调整（实机待验收）
 
 此前 Windows 对照表明：相同 DSH 安装文件、工作目录下，PowerShell/宿主进程能导出 Headless 配置，但 Python 直接创建 Electron 子进程失败。独立 DSH 视觉现在在 Windows 使用可信的 `node.exe` 运行受控 Node 桥接文件，再由 Node 以 `shell:false` 启动相同 Desktop Host CLI。需要系统可调用的 Node.js（`node.exe`），并且桥接文件与安装包一致；不满足时会明确拒绝启动，而不会跳过安全配置检查。Linux/macOS 维持原启动方式。**这只是针对已经观察到的 Python 启动差异的修正候选；真正识图仍需在 Windows 看到 MCP 图片回执和模型最终回答。**
@@ -41,9 +43,9 @@ AI 模型页中的本地视觉支持简短 Ollama 安装与 Windows 代理示例
 
 [![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [![npm 月下载量](https://img.shields.io/npm/dm/dsh-dafeiyu-life?label=monthly%20downloads)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [![npm 年下载量](https://img.shields.io/npm/dy/dsh-dafeiyu-life?label=yearly%20downloads)](https://www.npmjs.com/package/dsh-dafeiyu-life)
 
-**[2.8.1 开发计划](docs/architecture/2.8.1-video-perception-dev2a.md) · [功能概览](#-从分散能力到连续生活) · [自然交流](#-更自然的交流) · [关系与成长](#-关系记忆与成长) · [可视化成长](#-可视化的生活成长) · [开始使用](#-开始使用) · [未来规划](docs/ROADMAP.md) · [2.8.0 更新说明](docs/release/archive/RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)**
+**[2.8.1 开发计划](docs/architecture/2.8.1-roadmap.md) · [功能概览](#-从分散能力到连续生活) · [自然交流](#-更自然的交流) · [关系与成长](#-关系记忆与成长) · [可视化成长](#-可视化的生活成长) · [开始使用](#-开始使用) · [未来规划](docs/ROADMAP.md) · [2.8.0 更新说明](docs/release/archive/RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)**
 
-**当前开发分支：`2.8.1-dev.3b.31.1`（Debug 作用域热修，开发预览，尚未正式发布）。**
+**当前开发分支：`2.8.1-dev.3b.33.8`（开发预览，尚未正式发布；真实 DSH 图片及私信拥塞恢复待验收）。**
 
 **2.8.1-dev.3b.26：** 修复 B站私信分享卡片丢失动态 URL：识别 `msg_type=7/source=11` 动态分享、`source=5` 视频分享及受支持的网页/其他分享卡片，只允许官方 HTTPS B站链接进入 Life 机会；普通监听与单联系人复核使用相同消息类型规则。Windows 黑窗口采集新增启动进程快照、父进程名称和 100ms 可见控制台窗口枚举。注意：黑窗口根因仍需新窗口归属日志确认，本版不是最终黑窗口修复。
 

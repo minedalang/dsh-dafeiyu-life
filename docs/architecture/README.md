@@ -1,3 +1,5 @@
+> **当前工作源码：`2.8.1-dev.3b.33.8`（2026-11-16，开发版）。** 当前审计入口：[跨系统可靠性、统一 Life、自然契机与文档审计](2.8.1-dev3b338-system-integration-audit.md)。本页以下 dev.20、2.8.0 和 2.7.1 章节是历史快照，不表示目前项目版本或正式验收通过。
+
 > **2.8.1-dev.3b.20 当前：** [私信限流收口、Headless 双栏能力管理与图片回执诊断](2.8.1-dev3b20-dm-headless-capability-management.md)。普通监听与快通道显示为同一 DM 退避，活跃检查自适应放慢；Desktop/Headless 双栏由真实配置状态驱动，Headless 能力补充不修改 Desktop；图片验收在 DSH 子进程异常时仍保留 MCP 图片证明。真实 B站 -509 恢复、Windows DSH 与第三方中转站图片链路仍需实机验证。
 
 上一批 [dev.3b.19 DSH 视觉路由一致性与分阶段图片验收](2.8.1-video-perception-dev3b19-headless-vision-route-diagnostics.md) 保留为历史记录；当前实现与约束以本节 dev.3b.20 文档及仓库根目录 `AGENTS.md` 为准。
@@ -28,9 +30,9 @@
 
 > **2.8.1-dev.2a 实施入口（2026-11-14）：** [视频感知证据协议、分阶段开发与本地 MiniCPM-V / Qwen3.5 一键安装规格](2.8.1-video-perception-dev2a.md)。仅首批只读证据合同已接线；不代表本地视觉模型安装器已实现。
 
-# 2.8.0 现行架构与开发历史
+# 2.8.0 历史架构与开发记录
 
-**当前源码版本：2.8.0。** 现行事实请优先阅读 [Life 当前接线](life-system-current.md)、[统一行动协议](2.8.0-unified-life-action-protocol.md) 和 [2.8.0 发布与实机验收记录](2.8.0-final-release-audit-20261114.md)。下方按 `dev.N` 命名的节点为**历史增量文档**；其中的“当前”“未正式发布”等措辞只适用于对应开发阶段，不描述今天的版本号。
+**以下为 2.8.0 版本历史基线，并非当前 2.8.1 源码。** 回溯当时契约请阅读 [Life 当前接线](life-system-current.md)、[统一行动协议](2.8.0-unified-life-action-protocol.md) 和 [2.8.0 发布与实机验收记录](2.8.0-final-release-audit-20261114.md)。下方按 `dev.N` 命名的节点为**历史增量文档**；其中的“当前”“未正式发布”等措辞只适用于对应开发阶段，不描述今天的版本号。
 
 ---
 
