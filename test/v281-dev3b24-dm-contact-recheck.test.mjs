@@ -103,12 +103,30 @@ test('账号切换或平台限流读取错误绝不能产生手动发信',()=>di
  assert.equal(sent,0);
 }));
 
-test('陌生人、主人专用 Agent 不能从普通手动按钮打开历史补发权限',()=>dirRun(async dir=>{
+test('陌生人禁止补发；已核验主人可以按统一 Life 双确认复核',()=>dirRun(async dir=>{
  const p=person();delete p.approval;await writeDb(dir,p);
  const inst=engine(dir,{getConfig:()=>({...config(),strangerEnabled:true})});
  assert.equal((await inst.inspectContact(UID)).state,'permission-denied');
  const owner=engine(dir,{getConfig:()=>({...config(),ownerUid:UID,whitelist:[UID]})});
- assert.equal((await owner.inspectContact(UID)).state,'permission-denied');
+ const preview=await owner.inspectContact(UID);
+ assert.equal(preview.state,'eligible');assert.match(preview.token,/^[a-f0-9]{64}$/);
+ const after=JSON.parse(await readFile(join(dir,'dm-autoreply-state.json'),'utf8'));
+ assert.equal(after.people[UID].manualRecheck,undefined,'预览不能提前生成发送占位');
+}));
+
+test('统一 Life 的主人手动复核仍须两次核验，不自动发送，成功后原回执阻止重复',()=>dirRun(async dir=>{
+ const p=person();delete p.approval;await writeDb(dir,p);
+ let sends=0,decisions=0;
+ const owner=engine(dir,{getConfig:()=>({...config(),ownerUid:UID,whitelist:[UID]}),
+   generateReply:async()=>{decisions++;return {action:'reply',messages:['看到啦']};},
+   send:async()=>{sends++;return {ok:true,receiptId:'owner-reviewed-'+sends}}});
+ const preview=await owner.inspectContact(UID);
+ assert.equal(preview.state,'eligible');assert.equal(sends,0);assert.equal(decisions,0);
+ const result=await owner.poll({manualUid:UID,manualToken:preview.token});
+ assert.equal(result.manualStatus,'delivered');assert.equal(sends,1);assert.equal(decisions,1);
+ assert.equal((await owner.inspectContact(UID)).state,'local-replied');
+ assert.equal((await owner.poll({manualUid:UID,manualToken:preview.token})).state,'local-replied');
+ assert.equal(sends,1,'不能因第二次点击而重复发送');
 }));
 
 test('用户界面需有逐联系人按钮、二次确认、服务端单人限流/同源保护',()=>{

@@ -46,7 +46,7 @@ test('首次配置页包含独立视觉模型流程，默认不启用、不自�
   assert.match(page,/data-open-tab="models" data-open-anchor="models-vision-settings"/)
   assert.match(page,/不自动下载安装/)
   assert.match(js,/renderFirstStartVision/)
-  assert.match(js,/!state\.completed \|\| !state\.requiredReady \|\| !state\.quickSetupSeen/)
+  assert.match(js,/const needsSetup=!state\.completed\|\|!state\.requiredReady\|\|!state\.quickSetupSeen/)
   assert.match(server,/visionEnabled: z\.boolean\(\)\.default\(false\)/)
   assert.doesNotMatch(js,/\/onboarding\/vision\/autoenable/)
 })

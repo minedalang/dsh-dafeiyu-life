@@ -327,16 +327,17 @@ window.__ModuleLoader__.load({
       // DSH Mobile 是手机上运行的已配对 HTTPS WebView，实际业务仍在电脑端。
       // 后台调用系统浏览器只会在电脑上打开页面，不能作为手机的管理入口。
       // 始终使用当前 WebView 的同源路径；不要从 Host 推断、拼接或返回本机地址。
-      const onOpenManage = async (tab = '') => {
+      const onOpenManage = async (tab = '', anchor = '') => {
         setManageError('')
         try {
           const safeTab = ['firststart', 'models', 'home', 'life', 'life-agent'].includes(tab) ? tab : ''
+          const safeAnchor=safeTab==='firststart'&&anchor==='fs-deps-card'?'fs-deps-card':''
           const ua = String(window.navigator?.userAgent || '')
           const smallTouch = Number(window.navigator?.maxTouchPoints || 0) > 0 &&
             Number(window.innerWidth || 1024) <= 900
           const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || smallTouch
           if (!isMobile) {
-            const result = await jpost('/open', {what: 'manage', tab: safeTab})
+            const result = await jpost('/open', {what: 'manage', tab: safeTab, anchor: safeAnchor})
             if (result?.ok !== true) throw new Error(result?.error || '宿主没有确认打开管理中心')
             return
           }
@@ -362,7 +363,7 @@ window.__ModuleLoader__.load({
           }
           if (!isManage) throw new Error('移动访问通道返回的不是大肥鱼管理中心；请检查配对登录状态')
           // 同一个已配对 HTTPS Origin 打开，不触发电脑浏览器、不暴露独立管理端口。
-          window.location.assign(path)
+          window.location.assign(path+(safeAnchor?'#'+safeAnchor:''))
         } catch (e) {
           const detail = String(e?.message || e)
           const message = '打开管理中心失败：' + detail +
@@ -622,8 +623,9 @@ window.__ModuleLoader__.load({
             h('div',{'data-bd-label':''},(steps.biliVerified?'✓':'○')+' B站账号登录并验证'+(steps.biliVerified?' · 已完成':'')),
             h('div',{'data-bd-label':''},(steps.headlessVerified?'✓':'○')+' Headless 模型同步并验证'+(steps.headlessVerified?' · 已完成':'')),
             h('div',{'data-bd-row':''},
-              !st.venvReady?h('div',{'data-bd-note':''},'先到管理中心 → 快速设置安装主依赖'):null,
-              h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('firststart')},'打开管理中心，开始配置 ↗')),
+              !st.venvReady?h('div',{'data-bd-note':''},'① B站/MCP 主依赖尚未就绪：请从下面的安装入口开始。安装完成后才能扫码，不需要事先安装 Conda。'):null,
+              !st.venvReady?h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('firststart','fs-deps-card')},st.installing?'查看主依赖安装进度 ↗':'① 安装／修复主依赖 ↗'):null,
+              h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},st.venvReady?'进入初始配置 · 登录及模型 ↗':'② 进入完整快速设置 ↗')),
             h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。'),
             manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null))
       }
@@ -687,7 +689,7 @@ window.__ModuleLoader__.load({
         h('div',{'data-bd-sec':'','data-bd-group':'daily'},
           h('div',{'data-bd-h':''},'账号与运行环境'),
           h('div',{'data-bd-row':''},
-            h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},'安装／修复主依赖 ↗'),
+            h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart','fs-deps-card')},'安装／修复主依赖 ↗'),
             h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},'管理中心登录设置 ↗'),
             h('button',{'data-bd-btn':'',disabled:busy==='check',onClick:onCheck},'检查账号'),
             h('button',{'data-bd-btn':'',disabled:busy==='selfcheck',onClick:onSelfCheck},'环境自检')),

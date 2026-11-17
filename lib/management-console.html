@@ -1556,6 +1556,10 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-life-agent #life-behavior-tree .life-tree-node.is-pending{fill:color-mix(in srgb,var(--panel) 70%,#f0dea5);stroke:#c3a45b}
 #panel-life-agent #life-behavior-tree .life-tree-text{fill:var(--ink);font-size:13px;font-weight:700}
 #panel-life-agent #life-behavior-tree .life-tree-subtext{fill:var(--muted);font-size:10.5px}
+#panel-life-agent .life-tree-video-target{display:flex;align-items:center;flex-wrap:wrap;gap:5px 9px;padding:9px 13px;margin:8px 0;border:1px solid color-mix(in srgb,#57a995 50%,var(--stroke));background:color-mix(in srgb,#d0f3e9 25%,var(--panel));border-radius:12px;font-size:12px}
+#panel-life-agent .life-tree-video-target[hidden]{display:none}
+#panel-life-agent .life-tree-video-target a{font-weight:700;overflow-wrap:anywhere;text-decoration:underline;text-underline-offset:3px}
+#panel-life-agent .life-tree-video-target small{color:var(--muted);font-size:11px}
 #panel-life-agent .life-behavior-status{color:var(--ink)}
 #panel-life-agent .life-behavior-status[data-connection="reconnecting"]:after{content:' · 实时连接重连中，可手动刷新';font-weight:450;color:var(--muted)}
 @keyframes life-stream-travel{to{stroke-dashoffset:-34}}
@@ -1743,7 +1747,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 
   <div class="fs-journey" aria-label="统一快速设置流程">
     <div class="fs-progress" id="fs-progress" aria-label="快速设置进度">
-      <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="account"><span>01</span><strong>主依赖与 B站登录</strong><small>必须</small></a>
+      <a class="fs-progress-step" href="#fs-deps-card" data-fs-step="account"><span>01</span><strong>主依赖与 B站登录</strong><small>必须</small></a>
       <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="model"><span>02</span><strong>模型验证</strong><small>必须</small></a>
       <a class="fs-progress-step" href="#fs-vision-guide" data-fs-step="preferences"><span>03</span><strong>新版设置检查</strong><small>需查看</small></a>
       <a class="fs-progress-step" href="#fs-session-stage" data-fs-step="session"><span>04</span><strong>主会话</strong><small>可跳过</small></a>
@@ -2358,8 +2362,9 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
  <div class="life-choice-stage" data-stage="receipt"><small>04 · 核对结果</small><strong>尚无回执</strong></div>
 </div>
 <div class="life-tree-viewport"><svg id="life-behavior-tree" viewBox="0 0 970 400" role="img" aria-label="Life 五类基础行为与当前真实动作，动态入场"></svg></div>
+<div id="life-tree-video-target" class="life-tree-video-target" hidden><span>当前画面观察目标 · </span><a id="life-tree-video-link" target="_blank" rel="noopener noreferrer"></a><small>仅表示正在尝试读取该 BV；不是已经看完或识图成功</small></div>
 <div class="life-tree-legend"><span>◎ 五类常驻行为</span><span>◉ 真正发生的动作才显示分支</span><span>≈ 运行中动态</span><span>✓ 结果须有真实回执</span></div>
-<p class="muted">行为树展示的是源码支持的动作类别及最近的匿名真实决策，不等同于每一轮可用的完整动作菜单。只有合格候选才进入实际模型菜单；视频 Agent 的下游动作由专业工具与发送门禁执行。</p>
+<p class="muted">行为树展示的是源码支持的动作类别及最近的匿名真实决策，不等同于每一轮可用的完整动作菜单。只有合格候选才进入实际模型菜单；视频 Agent 的下游动作由专业工具与发送门禁执行。下方生活记录按真实回执时间排序；并行读取的完成顺序不代表先后决定了看什么。</p>
 <div class="life-now-timeline life-behavior-timeline" aria-label="行动树关联的实时生活记录">
 <div id="life-timeline-live-activity" class="life-timeline-live-activity" role="status" aria-live="polite" hidden></div>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar life-timeline-controls"><span class="life-timeline-live-dot" aria-hidden="true"></span><span class="life-timeline-update-state" id="life-timeline-update-state" role="status">实时同步 · 每 4 秒对账</span><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新列表</button></div>

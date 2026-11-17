@@ -2023,7 +2023,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       visualQuestion:args.visual_question===true,depth:args.view_depth})
     stage(visionPlan.attempt?'下载真实视频窗口／FFmpeg 解码／视觉模型理解中（正在等待实际回执）':'略看资料或视觉服务不可用',3)
     const willInvokeVision=visionPlan.attempt&&['independent_dsh','independent_local'].includes(resolvedVisionMode())
-    const stopLiveVideoObservation=willInvokeVision?liveLifeActivity.start(dryRun?'video-observe-debug':'video-observe',initialLifeAccountTag,{maxAgeMs:8*60_000}):()=>{}
+    const stopLiveVideoObservation=willInvokeVision?liveLifeActivity.start(dryRun?'video-observe-debug':'video-observe',initialLifeAccountTag,{maxAgeMs:8*60_000,bvid}):()=>{}
     // Persist the focus receipt after the observation try/finally: it must
     // remain in scope for Life experience recording and perceptual handoff.
     let focusReview=null,focusReviewStatus=null
@@ -2208,7 +2208,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
           const budget=Number(cfg.visionFrames)>=48?100*1048576:Number(cfg.visionFrames)>=24?50*1048576:24*1048576
           let visual
-          const stopVideoObserve=liveLifeActivity.start('video-observe',account,{maxAgeMs:8*60_000})
+          const stopVideoObserve=liveLifeActivity.start('video-observe',account,{maxAgeMs:8*60_000,bvid})
           try{visual=parseMaybeJson(await call('bili_preview_vision',{bvid,perception_source:'adaptive',
             view_depth:'deep',focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
             network_budget_bytes:budget}))}
@@ -9985,7 +9985,8 @@ logger:{warn:m=>log('社交意图：'+m)}
           const host = String(req.headers?.host || '')
           if (!/^(?:127\.0\.0\.1|localhost|\[::1\])(?::\d{1,5})?$/i.test(host))
             return sendJson(res, 200, { ok: false, error: '管理中心只允许从本机 DSH 服务打开' })
-          const tab=String(body?.tab||'');u = `http://${host}/api/bili-duty/manage${['firststart','models','home','life'].includes(tab)?'?tab='+encodeURIComponent(tab):''}`
+          const tab=String(body?.tab||'');u = `http://${host}/api/bili-duty/manage${['firststart','models','home','life'].includes(tab)?'?tab='+encodeURIComponent(tab):''}`;
+          if(tab==='firststart'&&body?.anchor==='fs-deps-card')u+='#fs-deps-card'
           // 安卓客户端可以仅获取地址并由 WebView 导航，避免尝试在宿主系统弹窗。
           if (body?.resolveOnly === true) return sendJson(res, 200, { ok: true, url: u })
         } else {
