@@ -59,14 +59,11 @@ try {
     Write-Host '旧 .venv 已备份；没有清理 B站账号或 Life 账本。'
   }
   Write-Host '使用经过检查的基础 Python 创建新虚拟环境…'
+  # Prefer the known-healthy base interpreter to create the environment.
+  # uv's managed Python is known to fail unprivileged writes on this machine.
+  & $BasePython '-m' 'venv' '--copies' $venv
+  if ($LASTEXITCODE -ne 0) { throw 'python -m venv --copies 创建失败；未回退到可能受限的 uv Python。' }
   $uv=Get-Command uv -ErrorAction SilentlyContinue
-  if ($uv) {
-    & $uv.Source 'venv' '--seed' '--python' $BasePython $venv
-    if ($LASTEXITCODE -ne 0) { throw 'uv venv 创建失败。' }
-  } else {
-    & $BasePython '-m' 'venv' '--copies' $venv
-    if ($LASTEXITCODE -ne 0) { throw 'python -m venv 创建失败。' }
-  }
   $created=$true
   Assert-HealthyPython $candidate $false
   Write-Host '安装 MCP 主依赖（可能需要网络；不会修改 Conda base 的包）…'

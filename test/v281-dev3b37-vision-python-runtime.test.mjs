@@ -45,3 +45,23 @@ test('no elevation or ACL changes are embedded in the runtime probe',()=>{
  const r=selectVisionPython({preferred:bad,home,platform:'linux',execute:()=>receipt(false,true)})
  assert.equal(r.ok,false)
 })
+
+test('reported failure follows the explicitly selected vision interpreter, not the unhealthy main venv',()=>{
+ const first=selectVisionPython({preferred:good,configured:bad,home,platform:'linux',
+   execute:(file)=>file===good?receipt(true,false):receipt(false,true)})
+ assert.equal(first.ok,false)
+ assert.equal(first.reason,'missing_mcp_dependencies')
+ assert.equal(first.candidatesChecked,2)
+ assert.equal(first.checks[1].reason,'runtime_permission_error')
+})
+test('write failure describes temp versus Duty Home without exposing filesystem paths',()=>{
+ const reported=probeVisionPython(good,{home,execute:()=>({status:0,stdout:'VISION_PYTHON_CHECK:'+
+   JSON.stringify({ok:false,version:[3,12],deps:true,stage:'duty_home'})+'\n'})})
+ assert.deepEqual(reported,{ok:false,reason:'runtime_permission_error',stage:'duty_home'})
+ assert.equal(JSON.stringify(reported).includes(root),false)
+})
+test('missing required modules are included only from the fixed allowlist',()=>{
+ const r=probeVisionPython(good,{home,execute:()=>({status:0,stdout:'VISION_PYTHON_CHECK:'+
+   JSON.stringify({ok:true,version:[3,12],deps:false,missingModules:['mcp','secret_user_path','bilibili_api']})+'\n'})})
+ assert.deepEqual(r,{ok:false,reason:'missing_mcp_dependencies',missingModules:['mcp','bilibili_api']})
+})

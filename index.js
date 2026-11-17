@@ -3196,7 +3196,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     if(process.platform!=='win32')return {ok:true,path:cfg.pythonPath||'python',source:'configured',reason:'healthy'}
     const key=JSON.stringify([cfg.pythonPath,cfg.visionPythonPath,process.env.BILI_DUTY_VISION_PYTHON])
     if(!fresh&&visionPythonCache?.key===key&&Date.now()-visionPythonCache.at<120000)return visionPythonCache.result
-    const result=selectVisionPython({preferred:cfg.pythonPath||'',configured:cfg.visionPythonPath||'',
+    // The user-selected vision interpreter is the first candidate. Do not let
+    // an unhealthy main .venv mask a missing MCP package in the chosen Conda Python.
+    const result=selectVisionPython({preferred:cfg.visionPythonPath||'',configured:cfg.pythonPath||'',
       home:stateDir,workdir:process.cwd(),env:pyEnv(),requiresMcp:true})
     visionPythonCache={key,at:Date.now(),result}
     return result
@@ -3313,7 +3315,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const dsh=resolveDsh()
       if(dsh.missing||dsh.shell)throw Error('未找到安全可执行的 DSH CLI，无法进行真实图片自检')
       const selectedRuntime=selectHealthyVisionPython({fresh:true})
-      if(!selectedRuntime.ok){const err=Error('DSH 视觉 Python 无法安全启动或缺少 MCP 依赖：'+selectedRuntime.reason+'；请通过主依赖修复功能重建健康环境');err.diagnosticCode='python_runtime_unhealthy';throw err}
+      if(!selectedRuntime.ok){const missing=Array.isArray(selectedRuntime.missingModules)&&selectedRuntime.missingModules.length
+        ?'（缺少模块：'+selectedRuntime.missingModules.join(', ')+'）':''
+        const stage=selectedRuntime.stage?'（失败位置：'+selectedRuntime.stage+'）':''
+        const err=Error('DSH 视觉 Python 未通过健康检查：'+selectedRuntime.reason+stage+missing+'；建议使用独立视觉环境修复脚本，避免修改主 .venv')
+        err.diagnosticCode='python_runtime_unhealthy';throw err}
       const overlay=ensureVisionOverlay('vision-selftest')
       if(!overlay)throw Error('DSH 图片验收安全配置生成失败')
       const args=[...dsh.args,'--profile','headless','--patch',overlay]
@@ -7412,7 +7418,7 @@ logger:{warn:m=>log('社交意图：'+m)}
             :{ok:false,reason:'missing_runtime'}
         const explicitlyRequested=String(process.env.BILI_DUTY_VENV_PYTHON||'').trim()
         const baseChoice=process.platform==='win32'&&(!currentHealth.ok||!existsSync(venvPy))
-          ?selectVisionPython({preferred:explicitlyRequested,configured:cfg.visionPythonPath,
+          ?selectVisionPython({preferred:explicitlyRequested||cfg.visionPythonPath,configured:cfg.visionPythonPath,
               home:stateDir,workdir:process.cwd(),env:pyEnv(),requiresMcp:false})
           :null
         if(explicitlyRequested && !currentHealth.ok && !probeVisionPython(explicitlyRequested,
