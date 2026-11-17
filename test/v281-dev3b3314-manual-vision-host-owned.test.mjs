@@ -88,6 +88,26 @@ test('host starts exactly a scoped DSH child, rejects absent token and forged ex
   }finally{await server?.close();f.dispose()}
 })
 
+test('host compares exact private overlay content across Windows CRLF and mixed line endings',()=>{
+  const f=fixture()
+  try{
+    const common={home:f.home,exe:f.exe,cli:f.cli,baseOverlay:f.baseOverlay,
+      workdir:f.root,baseText:readFileSync(f.baseOverlay,'utf8'),env:f.env}
+    const valid=readFileSync(f.privateOverlay,'utf8')
+    // Python text-mode open() on Windows can translate every LF to CRLF.
+    writeFileSync(f.privateOverlay,valid.replace(/\n/g,'\r\n'))
+    assert.equal(verifyManualVisionPacket(f.packet(['--patch',f.privateOverlay,'--dump-config']),common),'private_dump')
+    // A mixed-line-ending base overlay must be compared using identical normalization.
+    writeFileSync(f.baseOverlay,readFileSync(f.baseOverlay,'utf8').replace(/\n/g,'\r\n'))
+    common.baseText=readFileSync(f.baseOverlay,'utf8')
+    assert.equal(verifyManualVisionPacket(f.packet(['--patch',f.privateOverlay,'--dump-config']),common),'private_dump')
+    // Only CRLF/LF differences are acceptable; modified YAML content remains rejected.
+    writeFileSync(f.privateOverlay,readFileSync(f.privateOverlay,'utf8').replace('bili_vision_selftest','bili_preview_vision'))
+    assert.throws(()=>verifyManualVisionPacket(f.packet(['--patch',f.privateOverlay,'--dump-config']),common),
+      {message:'private_overlay_mismatch'})
+  }finally{f.dispose()}
+})
+
 test('host rejects private overlay content changes; never allows public writable tools',()=>{
   const f=fixture()
   try{

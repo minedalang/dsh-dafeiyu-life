@@ -802,7 +802,8 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
             diagnostics=_vision_selftest_diagnostics(preflight=preflight,provider_api='not_started')
             return {'ok':False,'status':'mcp_preflight_failed','diagnosticCode':preflight['reason'],
                     'error':'独立 MCP 图片工具预检失败；DSH 模型请求尚未启动','diagnostics':diagnostics}
-        with private_overlay.open('x',encoding='utf8') as fp:fp.write(fixed)
+        # Preserve LF exactly on Windows; Node host verifies the nonce-bound overlay.
+        with private_overlay.open('x',encoding='utf8',newline='\n') as fp:fp.write(fixed)
         try:os.chmod(private_overlay,0o600)
         except OSError:pass
         args=list(argv);args[oi+1]=str(private_overlay)
