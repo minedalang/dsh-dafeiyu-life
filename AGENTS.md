@@ -1,3 +1,10 @@
+## 本地暂存实验：Node 宿主负责 DSH 手动固定图片验收（未发布）
+
+- 此实验只把管理页**手动固定图片验收**的 Windows Desktop Headless 子进程交给插件 Node 宿主，视觉虚拟环境 Python 仍执行独立 MCP 预检、生成带 nonce 的回执文件、解析模型回答，并由使用者人工认可。生产视频 Life/嵌套 MCP 的 Headless 调用**尚未切换**。
+- Node 宿主通道必须临时绑定 127.0.0.1 随机端口、仅处理本次传递的随机令牌；只允许官方 Desktop Host CLI、默认配置导出、预先核验的随机私有只读视觉 overlay，以及固定图片验收提示词。不得通过此通道执行任意命令、任意提示词或 B站写入。
+- 不持久化临时通道令牌、CLI 输出、图片、私信、API Key；禁用代理、限制数据长度与超时，验收结束或异常时关闭通道。任一新校验失败必须停止，不能放宽安全 overlay / MCP nonce / 人工认可，不能自动回退到已证实 EPERM 的 Python 启动路径。
+- 仅针对性测试、架构契约、自检、npm 本地 pack 及 Patch 回放；不得在云端真实图片验收、外发 B站、运行全量测试、执行 Git Commit/Push 或 npm publish。成功条件仍是 Windows 本机真实图片模型回答和人工检查。
+
 ## dev.3b.33.13 视觉 Python 专用临时目录
 
 - 仅视觉 Python / 视觉 MCP 继承位于 Duty Home 下的 `tmp/vision` 作为 TEMP/TMP/TMPDIR；宿主启动时预建真实目录且拒绝符号链接。模型设置页只读检查不能安装或创建虚拟环境；显式修复允许准备临时目录但不得修改系统 TEMP、系统 PATH、Conda base、主 `.venv`、ACL 或提权。

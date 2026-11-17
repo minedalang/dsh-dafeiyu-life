@@ -33,6 +33,45 @@ def _vision_bridge_active(env, execute):
     return execute is subprocess.run and os.name == 'nt' and bool(env.get('BILI_VISION_DSH_BRIDGE'))
 
 
+def _run_host_owned_vision_cli(args, *, cwd, env, timeout):
+    """Manual image acceptance only: ask the running plugin Node host to spawn DSH.
+
+    The one-shot loopback capability is supplied to this Python child in its
+    process environment, never stored in an overlay or a persistent config.
+    All model text and stderr remain in memory and preserve existing proof gates.
+    """
+    import urllib.request
+    token=env.get('BILI_VISION_HOST_TOKEN','')
+    port=str(env.get('BILI_VISION_HOST_PORT',''))
+    if not re.fullmatch(r'[0-9a-f]{64}',token) or not port.isdecimal() or not 1<=int(port)<=65535:
+        raise OSError('vision_host_capability_invalid')
+    packet={'exe':args[0],'argv':args[1:],'cwd':str(cwd),
+            'timeoutMs':min(240000,max(1000,int(timeout)*1000))}
+    data=json.dumps(packet,ensure_ascii=False).encode('utf8')
+    if len(data)>65000:raise ValueError('vision_host_packet_too_large')
+    req=urllib.request.Request('http://127.0.0.1:'+port+'/vision',data=data,
+                               headers={'X-Vision-Token':token,'Content-Type':'application/json'},
+                               method='POST')
+    opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(req,timeout=timeout+8) as response:
+            body=response.read(12_100_001)
+    except Exception as exc:
+        raise OSError('vision_host_connection_failed') from None
+    if len(body)>12_100_000:raise OSError('vision_host_response_too_large')
+    try:
+        reply=json.loads(body.decode('utf8'))
+        if reply.get('kind')!='process_result':raise ValueError('wrong_reply')
+        code=reply['exitCode']
+        if not isinstance(code,int) or not 0<=code<=255:raise ValueError('bad_exit')
+        stdout=base64.b64decode(reply['out'],validate=True)
+        stderr=base64.b64decode(reply['err'],validate=True)
+        if len(stdout)>8000000 or len(stderr)>1000000:raise ValueError('oversize')
+    except (KeyError,ValueError,TypeError,UnicodeError):
+        raise OSError('vision_host_invalid_response') from None
+    return subprocess.CompletedProcess(args,code,stdout,stderr)
+
+
 def _run_vision_cli(args, *, cwd, env, timeout, execute=subprocess.run, **kwargs):
     """Use the existing JS-Agent process-spawn semantics for Desktop vision.
 
@@ -42,6 +81,9 @@ def _run_vision_cli(args, *, cwd, env, timeout, execute=subprocess.run, **kwargs
     real node.exe; other platforms retain the original subprocess behavior.
     Its stdin transports argv/prompt without passing them through a shell.
     """
+    if (execute is subprocess.run and os.name == 'nt'
+            and ('BILI_VISION_HOST_PORT' in env or 'BILI_VISION_HOST_TOKEN' in env)):
+        return _run_host_owned_vision_cli(args,cwd=cwd,env=env,timeout=timeout)
     if not _vision_bridge_active(env, execute):
         return execute(args,cwd=str(cwd),env=env,timeout=timeout,**kwargs)
     bridge=Path(env['BILI_VISION_DSH_BRIDGE'])

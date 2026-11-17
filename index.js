@@ -195,6 +195,7 @@ import { createFirstStart } from './lib/first-start.mjs'
 import { hostLlmService, runHostModelText } from './lib/host-model-call.mjs'
 import { HEADLESS_DENY_TOOLS, writeSecureHeadlessOverlay, validateHeadlessOverlayFile, assertSafeHeadlessLaunch } from './lib/headless-security.mjs'
 import {createDshVisionReview} from './lib/dsh-vision-review.mjs'
+import {startManualVisionHostExecutor} from './lib/vision-host-owned-executor.mjs'
 import { mergeWatchedRows } from './lib/watched.mjs'
 import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
 import { createLongTermMemory } from './lib/long-term-memory.mjs'
@@ -3385,7 +3386,27 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         BILI_VISION_DSH_RUN_AS_NODE:runAsNode?'1':'0',
         BILI_VISION_DSH_WORKDIR:process.cwd(),
         BILI_VISION_DSH_BRIDGE:join(stateDir,'dsh-vision-node-bridge.mjs')})
-      return await new Promise((resolve,reject)=>{
+      // Windows local acceptance experiment: the real plugin Node host owns
+      // the Desktop Headless process. Only this manually initiated fixed PNG
+      // selftest receives the short-lived loopback capability; no persistent
+      // overlay, production MCP or Life run receives the bearer token.
+      let hostExecutor=null
+      if(process.platform==='win32'){
+        if(dsh.source!=='desktop-native'||dsh.args?.[0]!=='--expose-internals'||!dsh.args?.[1])
+          throw Object.assign(Error('Windows 手动图片验收要求可信的 Desktop Host CLI；拒绝降级到旧 Python 子进程启动方式'),
+            {diagnosticCode:'vision_host_not_desktop_native'})
+        try{
+          hostExecutor=await startManualVisionHostExecutor({
+            home:stateDir,exe:dsh.command,cli:dsh.args[1],baseOverlay:overlay,
+            workdir:process.cwd(),env:{...env,...(dsh.env||{})},
+          })
+          Object.assign(env,hostExecutor.env)
+        }catch{
+          throw Object.assign(Error('无法建立受限视觉 Node 宿主通道；本次验收已停止，不回退到已知失败的 Python 启动方式'),
+            {diagnosticCode:'vision_host_executor_unavailable'})
+        }
+      }
+      try{return await new Promise((resolve,reject)=>{
         const child=spawn(selectedRuntime.path,pyArgs,{cwd:stateDir,shell:false,windowsHide:true,
           env,stdio:['ignore','pipe','pipe']})
         let out='',closed=false
@@ -3412,7 +3433,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           finish(safeFailure(code===0?'python_invalid_response':'python_wrapper_exit',
             code===0?'图片验收包装进程没有返回可解析的结构化结果':'图片验收包装进程异常退出且没有结构化诊断'))
         })
-      })
+      })}finally{await hostExecutor?.close()}
     },
   })
 
