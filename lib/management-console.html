@@ -1348,14 +1348,19 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-firststart .fs-new-281-badge{background:#248359;color:white;border-color:#248359;font-weight:800}
 @keyframes management-jump-cue{0%,100%{outline:0 solid transparent;filter:none}23%{outline:4px solid #50bf8c;outline-offset:3px;box-shadow:0 0 0 9px #50bf8c25;filter:brightness(1.06)}70%{outline:2px solid #50bf8c;outline-offset:3px;box-shadow:0 0 0 5px #50bf8c1f}}
 .management-jump-cue{animation:management-jump-cue 1.45s ease-out 1;position:relative;z-index:1}
-#models-vision-shell{position:relative;min-height:75px}
-#models-vision-settings>summary{min-height:62px;padding-right:256px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-#models-vision-shell>.vision-heading-switch{position:absolute;top:9px;right:16px;z-index:4;padding:5px 9px;border:1px solid var(--stroke);border-radius:12px;background:var(--panel)}
-#models-vision-shell>.vision-heading-switch .vision-toggle{gap:7px;font-weight:700;font-size:12px}
-#models-vision-shell>.vision-heading-switch .vision-toggle small{font-weight:400;font-size:10px}
-#models-vision-settings[data-vision-disabled="true"]>summary{cursor:not-allowed;opacity:.65}
-#models-vision-settings[data-vision-disabled="false"]{border-color:#5cae8e}
-@media(max-width:680px){#models-vision-settings>summary{padding-right:13px;padding-bottom:64px}#models-vision-shell>.vision-heading-switch{top:48px;left:12px;right:auto}}
+#models-vision-shell{min-width:0}
+#models-vision-settings>summary{min-height:60px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#models-vision-settings[open]{border-color:#5cae8e}
+.vision-usage-permissions{display:grid;gap:10px;margin:5px 0 18px}
+.vision-usage-permission{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px 15px;border:1px solid var(--stroke);border-radius:14px;background:var(--panel)}
+.vision-usage-video{border-color:rgba(45,151,113,.35);background:color-mix(in srgb,#47b886 8%,var(--panel))}
+.vision-permission-copy{display:flex;flex-direction:column;gap:5px;min-width:0}
+.vision-permission-copy strong{font-size:13px}
+.vision-permission-copy small{font-size:12px;color:var(--muted);line-height:1.6}
+.vision-usage-permission>.vision-toggle{flex-shrink:0;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.vision-toggle-caption{font-size:12px;font-weight:650}
+.vision-usage-permission>a{font-size:12px;flex-shrink:0}
+@media(max-width:680px){.vision-usage-permission{align-items:flex-start;flex-direction:column;gap:10px}.vision-usage-permission>.vision-toggle{align-self:flex-start}}
 @media(prefers-reduced-motion:reduce){.management-jump-cue{animation:none;outline:3px solid #50bf8c;outline-offset:3px}}
 
 /* 2.8.1 one-time introduction shown before reviewing the new setup page. */
@@ -1900,7 +1905,12 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <h4 class="model-role-group">② 视频、视觉与长期认识 · 按实际能力配置</h4>
 <details class="settings-section model-task"><summary><strong>视频 Agent 模型（选片与内容分析） <span class="help-tip" title="用于独立视频 Agent 的选片与内容分析；Life 是否委派由行为决策模型自主决定。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">视频 Agent 启动后，使用此模型进行自主选片、内容阅读与分析。Life 是否逛首页及是否委派 Agent，由「行为决策模型」决定。此模型主要阅读文字线索、调用搜索与字幕工具；只有在需要看画面时才按下方「视觉识别」配置使用多模态能力。不会强制启动或评论。独立视频 Agent 需完成 Headless 模型验证。</p><div class="fields" id="models-video"></div></div></details>
 <section id="vision-runtime-alert" class="vision-runtime-alert" role="status" aria-live="polite" hidden><strong>视觉环境检查</strong><span id="vision-runtime-alert-text">正在检查…</span><button type="button" id="vision-runtime-alert-open" hidden>定位自动修复</button></section>
-<div class="vision-settings-shell" id="models-vision-shell"><div class="vision-heading-switch"><label class="vision-toggle" for="models-vision-enabled"><input id="models-vision-enabled" type="checkbox" role="switch" aria-label="启用视频视觉感知"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span>视频视觉感知<small>明确启用后保存设置</small></span></label></div><details class="settings-section model-task" id="models-vision-settings"><summary aria-controls="models-vision-settings-body"><strong>视觉识别模型 <span class="help-tip" title="可选择 DSH 视觉模型（使用下方已配置的 Provider/模型）或本地 Ollama 视觉模型；连接测试不能代替图片验收。">?</span></strong><span id="models-vision-collapse-hint" class="muted">请先开启右侧视觉开关</span></summary><div class="model-task-body" id="models-vision-settings-body"><div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">选择 DSH 视觉模型或本地 Ollama 视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><p class="muted"><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">🎞️ 选择视频感知方案（轻量／均衡／详查） ↗</a></p><div class="fields" id="models-vision"></div>
+<div class="vision-settings-shell" id="models-vision-shell"><details class="settings-section model-task" id="models-vision-settings"><summary aria-controls="models-vision-settings-body"><strong>视觉识别模型 <span class="help-tip" title="本区只负责配置识图模型与图片验收；视频自主观察与社交图片识别分别有自己的授权开关。">?</span></strong><span id="models-vision-collapse-hint" class="muted">设置模型、验收图片与管理用途授权</span></summary><div class="model-task-body" id="models-vision-settings-body">
+<div class="vision-usage-permissions" aria-label="视觉能力用途与权限">
+  <div class="vision-usage-permission vision-usage-video"><div class="vision-permission-copy"><strong>🎬 自主视频画面观察</strong><small>允许 Life 在视频探索时主动调用已配置的视觉模型；开启后仍由 Life 自主决定是否观察。更改后点击「保存 AI 模型配置」。</small></div><label class="vision-toggle" for="models-vision-enabled"><input id="models-vision-enabled" type="checkbox" role="switch" aria-label="允许 Life 自主观察视频画面"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span class="vision-toggle-caption">允许视频观察</span></label></div>
+  <div class="vision-usage-permission"><div class="vision-permission-copy"><strong>💬 私信与评论图片／表情包识别</strong><small>由 B站互动设置里的「禁用评论和私信图片理解」单独控制，不受上方视频开关直接控制。</small></div><a href="?tab=bili#bili-disable-incoming-vision" data-open-tab="bili" data-open-anchor="bili-disable-incoming-vision">管理图片识别权限 ↗</a></div>
+</div>
+<div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">选择 DSH 视觉模型或本地 Ollama 视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><p class="muted"><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">🎞️ 选择视频感知方案（轻量／均衡／详查） ↗</a></p><div class="fields" id="models-vision"></div>
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="independent_dsh">DSH 识图模型（使用上方 Provider / 模型）</option><option value="independent_local">本地 Ollama 视觉模型（下方一键安装）</option></select></div>
 
 <div><details class="visual-advanced"><summary>调试选项</summary><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></details></div></div>

@@ -5127,6 +5127,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const err=new Error('Life 私信准入暂不可用：'+reason)
         err.code='life-admission-preflight-deferred'
         err.retryAt=Number(readiness?.notBefore)||0
+        // Privacy-safe admission telemetry: no scope, token, UID or message.
+        err.admissionReason=['life-choice-in-progress','life-choice-review-required',
+          'life-cross-channel-rest','life-admission-storage-unavailable'].includes(reason)?reason:'other'
+        err.admissionChannel=['dm','comment','video','other'].includes(readiness?.ownerChannel)?readiness.ownerChannel:'unknown'
+        err.admissionStage=['considering','approved'].includes(readiness?.ownerStage)?readiness.ownerStage:'unknown'
+        err.admissionAgeBucket=Number.isFinite(readiness?.ownerAgeMs)?
+          Math.min(600,Math.floor(Math.max(0,readiness.ownerAgeMs)/1000/30)*30):null
         throw err
       }
       return runLifeSocialOperation({channel:'dm',expectedScope:owner.scope,phase:'decision',requester:owner.owner,expectedGeneration:owner.generation},async()=>{

@@ -52,12 +52,6 @@ Life 综合当下机会、真实视频线索、兴趣、情绪、记忆和关系
 dsh plugin --profile desktop add dsh-dafeiyu-life
 ```
 
-从 GitHub `dev` 分支测试开发候选时可使用：
-
-```bash
-dsh plugin --profile desktop add github:minedalang/dsh-dafeiyu-life#dev
-```
-
 请以实际仓库标签和插件市场公布的版本为准。升级后完全退出并重启 DSH Desktop。首次打开管理中心，会先显示一张 2.8.1 新功能导览卡片并进入新版快速设置；仅关闭导览不会自动保存设置或开启视觉。
 
 ### 2.8.1 快速设置
@@ -69,7 +63,7 @@ dsh plugin --profile desktop add github:minedalang/dsh-dafeiyu-life#dev
 5. 选择自主生活、记忆、私信权限和主 Session 等设置；每组需要明确保存。对外发言与社交授权均单独控制。
 6. 完成引导后，在管理中心查看真实生活时间线、行动树、记忆和诊断。
 
-视觉开关直接位于「视觉识别模型」的折叠标题上：已开启则自动展开，关闭时模型详情保持收起。管理中心跳转至设置项时会出现短暂的定位高亮。
+「视觉识别模型」可随时展开配置与验收；其中「自主视频画面观察」单独启用并保存，私信／评论中的图片与表情包识别由 B站互动设置的独立权限控制。跳转到设置项时会短暂高亮定位。
 
 更多步骤参见 [升级与视觉设置指南](docs/release/2.8.1-user-upgrade-guide.md)。
 

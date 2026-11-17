@@ -1,0 +1,33 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {readFileSync} from 'node:fs'
+const read=n=>readFileSync(new URL('../'+n,import.meta.url),'utf8')
+test('DSH setting separates 2.8.1 green highlights from persistent product features',()=>{
+  const code=read('client.js')
+  assert.match(code,/data-bd-feature-panel':'release'/)
+  assert.match(code,/✨ 2\.8\.1 版本亮点/)
+  assert.match(code,/资源协调与全新 Headless 同步 UI/)
+  assert.match(code,/data-bd-feature-panel':'core'/)
+  for(const x of ['可衰减的人生记忆与遗忘','关系成长与自然交流','主人授权与安全边界'])assert.ok(code.includes(x))
+  assert.match(code,/data-bd-feature-panel="release"/)
+})
+test('vision accordion opens independently and toggle is confined to video use',()=>{
+  const html=read('lib/management-console.html'),js=read('lib/management-console.js')
+  const v=html.indexOf('id="models-vision-settings"'),body=html.indexOf('id="models-vision-settings-body"',v),toggle=html.indexOf('id="models-vision-enabled"',v)
+  assert.ok(v>=0&&body>v&&toggle>body)
+  assert.ok(html.indexOf('class="vision-usage-permissions"',body)<toggle)
+  assert.match(html,/私信与评论图片／表情包识别/)
+  assert.match(html,/bili-disable-incoming-vision/)
+  assert.doesNotMatch(html,/<div class="vision-heading-switch"/)
+  assert.doesNotMatch(html,/#models-vision-settings>summary\{[^}]*padding-right:256px/)
+  assert.doesNotMatch(js,/if\(!on\)visionSection\.open=false/)
+  assert.match(js,/payload\.visionEnabled=\$\('models-vision-enabled'\)\.checked/)
+  assert.match(js,/if\(c\.visionEnabled===true\)visionSection\.open=true/)
+  assert.match(read('index.js'),/incomingImageRecognitionEnabled: z\.boolean\(\)\.default\(true\)/)
+})
+test('public README has no dev branch install step',()=>{
+ const md=read('README.md')
+ assert.doesNotMatch(md,/从 GitHub `dev` 分支测试开发候选时可使用/)
+ assert.doesNotMatch(md,/github:minedalang\/dsh-dafeiyu-life#dev/)
+ assert.match(md,/自主视频画面观察/)
+})
