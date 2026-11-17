@@ -2031,9 +2031,10 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </div>
 <small class="setting-note">切换后请重启 DSH；账号切换本身不会自动转移好友联系授权或旧账号未发送的回访。需要再次使用旧账号时仍请重新扫码核验。</small>
 </div>
-<div class="settings-section"><h4>选片方向</h4><p class="muted">大肥鱼的兴趣档案主导搜索；主人额外关键词只是补充关注，不会覆盖已形成的兴趣。</p>
-<label class="checkline"><input id="bili-home-recommend" type="checkbox">混合 B站首页推荐</label>
-<label for="bili-extra-keywords">主人额外指定的主题（每行一个）</label><textarea id="bili-extra-keywords" rows="4" placeholder="例如：白饭、AI拟人"></textarea></div>
+<div class="settings-section"><h4>探索来源</h4><p class="muted">鱼鱼的自主探索有两条独立来源：日常首页漫游只使用当前 B站账号的真实首页推荐；关键词探索只根据可信兴趣、已核验的生活线索与 Life 决策进行，不会把两条来源混在同一轮补选。</p>
+<label class="checkline"><input id="bili-home-recommend" type="checkbox">允许独立的首页漫游</label>
+<p class="muted">不需要在这里重复维护搜索关键词。主人设定的核心兴趣可前往「人生记忆 → 兴趣编辑」调整；旧额外关键词数据保留但不再作为新的选片控制入口。</p>
+<div class="toolbar"><button type="button" data-open-tab="life" data-open-anchor="life-interest-section">打开兴趣管理 ↗</button></div></div>
 <div class="settings-section" id="bili-video-perception-plans"><div class="video-aux-heading"><strong>🎞️ 视频感知方案 · 深入探索采样预算</strong><span class="pill">选择上限 · 非强制观看</span></div><p class="muted">由鱼鱼决定是否观看以及略看／正常／深入。卡片控制深入探索的真实解码取帧预算，不改变模型授权或外发权限；不设独立视觉每日调用上限。超过当前方案的单视频网络预算时优先使用受控 MP4 索引分段读取真实窗口；Range / 容器不兼容时明确报错，不以 3 张低清图假装深入探索。</p>
 <div class="vision-budget-settings"><h4>🎞️ 自适应分镜预算 · 自选档位</h4>
 <input id="quota-vision-frames" type="hidden" value="24">

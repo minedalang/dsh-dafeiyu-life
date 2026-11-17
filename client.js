@@ -21,7 +21,7 @@
  * 这一页要满足使用者 2026-10-14 说的形状：
  *   · **总开关 → 打开之后配置自定义自动刷时间段**（支持跨午夜和多时段）
  *   · **数字项要能自己填**（定量刷：每天几条）
- *   · **账号绑定必须在设置页里**（扫码登录 + 二维码直接显示在页里）
+ *   · B站账号绑定及扫码登录统一由管理中心 → 首次设置管理。
  *   · 会发东西出去的（自动评论）、要下大模型的（本地转写）**默认关**
  * ============================================================================
  */
@@ -713,7 +713,7 @@ window.__ModuleLoader__.load({
             h('button',{'data-bd-btn':'',disabled:busy==='check',onClick:onCheck},'检查账号'),
             h('button',{'data-bd-btn':'',disabled:busy==='selfcheck',onClick:onSelfCheck},'环境自检')),
           h('div',{'data-bd-note':''},'扫码登录统一由管理中心 → 首次设置管理。'),
-          st.installTail?h('pre',{'data-bd-pre':''},String(st.installTail).slice(-2500)):null),
+          h('div',{'data-bd-note':''},'主依赖安装进度和日志请前往管理中心 → 首次设置查看。')),
 
         /* ── 发言与转写 ── */
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'social', 'data-bd-away': tab === 'social' ? undefined : '' },
@@ -836,16 +836,11 @@ window.__ModuleLoader__.load({
             h('div',{'data-bd-note':''},'Windows 默认目录：C:\\Users\\你的账号\\.dsh\\bili-duty\\vision-debug\\BV号。关闭 Debug 后不会自动删除旧图片。')):null,
           h('div',{'data-bd-sep':''})),
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'taste', 'data-bd-away': tab === 'taste' ? undefined : '' },
-          h('div', { 'data-bd-h': '' }, '选片来源'),
-          h(ToggleRow, {label:'加入首页推荐视频', note:'默认开启；与兴趣主导的主题搜索混合选片。每轮首页推荐最多读取一次、最多12个候选，过滤直播与广告。是否挑中仍由大肥鱼判断；不设每日入选视频数量上限，但共享原有平台读取预算与外发权限。',
+          h('div', { 'data-bd-h': '' }, '首页日常漫游'),
+          h(ToggleRow, {label:'允许独立的 B站首页漫游', note:'仅控制首页来源；首页漫游不会混入关键词搜索。由鱼鱼自主选择何时探索，仍受平台读取预算及授权约束。',
             on:sw('homeRecommendationsEnabled'),onChange:v=>patch({homeRecommendationsEnabled:v},'首页推荐选片来源')}),
           h('div', { 'data-bd-note':'' }, `当前入选门槛：播放 ${cfg.minVideoViews??1000}、点赞 ${cfg.minVideoLikes??10}、评论 ${cfg.minVideoReplies??3}。到管理中心 → 次数与额度修改。`),
-          h('div', { 'data-bd-h': '' }, '主人额外指定的关注主题'),
-          h('textarea', {
-            'data-bd-input': '', rows: 5, placeholder: '可留空；一行一个额外关注主题（兴趣档案负责主要选片）',
-            value: kws ?? '', onChange: (e) => setKws(e.target.value),
-          }),
-          h('div', { 'data-bd-note':'' }, '日常选片主要由「人生记忆 → 兴趣趋势」决定；这里写的词是主人额外希望关注的方向，不会覆盖兴趣档案或人设。'),
+          h('div', { 'data-bd-note':'' }, '关键词探索由人生记忆中的真实兴趣及 Life 线索驱动；主人设定的核心兴趣请到管理中心 → 人生记忆 → 兴趣编辑。旧关键词配置只保留兼容读取，本页不再重复编辑。'),
           h('div', { 'data-bd-label': '' }, '日报写多细'),
           h('select', {
             'data-bd-input': '', value: rl ?? 'full',
@@ -879,7 +874,7 @@ window.__ModuleLoader__.load({
               h('div', { 'data-bd-item-t': '' }, (x.ok ? '正常 · ' : '有问题 · ') + x.name),
               h('div', { 'data-bd-item-n': '' }, x.detail || ''),
               x.ok ? null : h('div', { 'data-bd-item-why': '' }, '怎么办：' + (x.fix || '把诊断信息发给作者'))))) : null,
-          diag ? h('pre', { 'data-bd-pre': '' }, diag) : null,
+          diag ? h('div', { 'data-bd-note': '' }, '诊断信息已在本机准备好；可复制给维护者，详细日志请在管理中心查看。') : null,
           h('div',{'data-bd-h':''},'模型路由：刷视频与后台互动独立配置'),
           h('div',{'data-bd-note':''},'提供方(provider)、模型 ID 为空时继承 DSH 当前配置；思考深度为自由文本，按模型支持的原始格式填写。保存后下次启动 Agent 生效。'),
           ...[
@@ -904,12 +899,10 @@ window.__ModuleLoader__.load({
             h('button', { 'data-bd-btn': '', disabled: busy === 'update', onClick: onCheckUpdate }, '检查更新'),
             newVer ? h('button', { 'data-bd-btn': '', 'data-primary': '', disabled: busy === 'upgrade', onClick: onUpgrade }, '一键升级到 v' + newVer) : null,
             h('div', { 'data-bd-note': '' },
-              !st.venvReady ? (st.installFailed ? '上次没装成 → 看下面日志' : '还没装 → 先点「装主依赖」')
+              !st.venvReady ? (st.installFailed ? '上次安装失败 → 到首次设置修复' : '主依赖未就绪 → 前往首次设置安装')
                 : (st.loggedIn ? '已有 B站凭据，可在管理中心重新验证' : '环境好了 → 去管理中心登录 B站'))),
           h('div', { 'data-bd-note': '' }, '运行环境安装与账号登录均已统一到管理中心 → 快速设置；本页只显示只读状态。'),
-          st.installTail ? h('div', null,
-            h('div', { 'data-bd-note': '' }, st.installing ? '正在装主依赖（进度）：' : '主依赖的日志（B站 搜索 / 字幕 / 评论 用得到，末尾）：'),
-            h('pre', { 'data-bd-pre': '' }, st.installTail)) : null,
+          h('div', { 'data-bd-note': '' }, '安装进度和主依赖日志集中在管理中心 → 首次设置，避免设置页重复显示。'),
           h('div', { 'data-bd-note': '' }, '如需重新登录，请前往大肥鱼管理中心 → 首次设置。')),
           (Array.isArray(st.missingDeps) && st.missingDeps.length)
             ? h('div', { 'data-bd-note': '' }, '还缺这几项：' + st.missingDeps.join(' / ') + '（qrcode = 画登录二维码用的）—— 前往管理中心 → 快速设置修复')

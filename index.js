@@ -1,4 +1,5 @@
 import {resolveQuotaPresetPatch} from './lib/quota-preset.mjs'
+import {waitForDmLifeReadiness} from './lib/dm-life-readiness.mjs'
 import {verifyLifePublicMetadata, classifyLifeMetadataFailure, lifeMetadataDiagnostics} from './lib/life-public-metadata.mjs'
 import {projectLifeGrowthAttribution} from './lib/life-growth-attribution.mjs'
 import {projectLifeGrowthAudit} from './lib/life-growth-audit.mjs'
@@ -3022,9 +3023,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         log('本地旧 duty.md 保留不覆盖；生效工具契约以插件内新版章程为准，旧必填档位/旧发送规则已停用')
       }
     } catch { /* 读不到就退回"让它自己读路径"（下面提示词里会说） */ }
-    const kws = Array.isArray(cfg.keywords) ? cfg.keywords.filter(Boolean) : []
     let interests=[];
-    try {interests=selectionInterests(stateDir,Date.now(),3,cfg.coreInterestTopics)} catch(e){log('选片兴趣读取失败，使用主人额外关键词或冷启动词：'+String(e?.message||e).slice(0,100))}
+    try {interests=selectionInterests(stateDir,Date.now(),3,cfg.coreInterestTopics)} catch(e){log('选片兴趣读取失败，使用冷启动主题（不读取已废弃的额外关键词）：'+String(e?.message||e).slice(0,100))}
     const baseQueries=interests.length ? interests.map(e=>e.query) : ['DeepSeek Harness','AI 模型娘','美食 料理'];
     const opportunityDoc=(()=>{
       try{
@@ -3038,7 +3038,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const videoEpisodeHandoff=lifeSubagentHandoff({agent:'video',episodes:universalLifeEpisodes})
     const videoSearchPlan='兴趣主导搜索：'+baseQueries.join('、')+'。'
       +(interests.length?'当前兴趣状态：'+interests.map(e=>e.topic+'('+e.stage+')').join('、')+'。':'兴趣证据不足，先使用多方向冷启动探索；搜到并不代表已经喜欢。')
-      +(kws.length?'主人额外指定主题：'+kws.slice(0,12).join('、')+'；要适当照顾，但不得取代兴趣主导。':'主人没有额外指定主题。');
+      +'主人明确设置的核心兴趣来自已保存的兴趣档案；历史额外关键词字段不再用于新搜索。';
     // 🔒 不再自动加载或引用任何工作区 AGENTS.md，这会泄露其他 DSH 用户数据。
     // ⭐ 开场先让它读**工作区**的 AGENTS.md —— 这一轮的工作目录就是使用者的工作区，
     //    AGENTS.md 本来就会自动注入；这里再点一句，保证它真按使用者的设定来（别人的设定同理）。
@@ -5121,7 +5121,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!owner.ok)throw Error('私信决策所有权检查失败：'+owner.reason)
       // Before spending a Life Voice model call, inspect the existing durable
       // admission fence. This check never reserves/creates a send proof.
-      const readiness=lifeWillingness?.inspectSocialReadiness({kind:'dm_reply'})
+      // A short, bounded wait allows a transient video/comment Life claim to
+      // finish before we defer the DM. No choice is created here, and a used,
+      // unknown or review-required approval can never be released by waiting.
+      const readiness=await waitForDmLifeReadiness({
+        inspect:()=>lifeWillingness?.inspectSocialReadiness({kind:'dm_reply'}),
+        maxWaitMs:6_000,
+      })
       if(readiness?.ok!==true){
         const reason=String(readiness?.reason||'life-admission-unavailable')
         const err=new Error('Life 私信准入暂不可用：'+reason)
