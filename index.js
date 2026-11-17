@@ -4901,6 +4901,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     }finally{release()}
   }
 
+  // A restoration read must pass BOTH shared platform budget and the persisted
+  // DM polling backoff/probation. Fail closed until the scheduler is attached.
+  let dmRecoveryNetworkGate=()=>({allowed:false,retryAt:0})
   const dmAutoreply = createDmAutoReply({
     dataDir: accountRuntimeDir,
     getConfig: dmConfig,
@@ -4911,6 +4914,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     fetchIncoming: getNewDmMessages,
     fetchContactSnapshot:fetchDmContactSnapshot,
+    // The same account-scoped read budget guards normal scans, fast checks
+    // and authenticated Life continuation reads. No independent -509 lane.
+    getRecoveryReadGate:()=>{
+      try{
+        const pause=biliReadBudget.status(),network=dmRecoveryNetworkGate()
+        return {allowed:!pause.blocked&&network.allowed===true,
+          retryAt:Math.max(Number(pause.retryAt)||0,Number(network.retryAt)||0)}
+      }catch{return {allowed:false,retryAt:0}}
+    },
     fetchApprovalHistory: async (uid='') => {
       const release=accountBinding.enterPlatformOperation();
       try {
@@ -4990,6 +5002,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       try {
       const owner=routedSocialOwner('dm')
       if(!owner.ok)throw Error('私信决策所有权检查失败：'+owner.reason)
+      // Before spending a Life Voice model call, inspect the existing durable
+      // admission fence. This check never reserves/creates a send proof.
+      const readiness=lifeWillingness?.inspectSocialReadiness({kind:'dm_reply'})
+      if(readiness?.ok!==true){
+        const reason=String(readiness?.reason||'life-admission-unavailable')
+        const err=new Error('Life 私信准入暂不可用：'+reason)
+        err.code='life-admission-preflight-deferred'
+        err.retryAt=Number(readiness?.notBefore)||0
+        throw err
+      }
       return runLifeSocialOperation({channel:'dm',expectedScope:owner.scope,phase:'decision',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
       let relationshipStage='new'
       const tier=socialTier(req.uid,cfg.dmOwnerUid,cfg.friendDirectory)
@@ -5748,6 +5770,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getConfig: () => {refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     logger: {error:(msg)=>log(msg)},
   })
+  // Bound before scheduler.start(): recovery cannot bypass its persisted -509
+  // cooldown or the three successful spaced recovery probes after restart.
+  dmRecoveryNetworkGate=()=>interactionScheduler.recoveryReadGate()
   try { MIG_200() } catch (e) { log('迁移没跑：' + String(e?.message ?? e)) }
   try {
     const initialLifeMigration=ensureUnifiedLifeOwner()
@@ -7487,6 +7512,9 @@ logger:{warn:m=>log('社交意图：'+m)}
       missingDeps: (() => { try { return missingVenvDeps() } catch { return [] } })(),
       dmAutoReplyStatus: dmAutoreply.status(),
       dmDetailQueueStatus: dmDetailQueue.status(),
+      // Read-only, account-scoped closed-vocabulary admission diagnostics.
+      // Never return claim tokens, sender identities or model contents.
+      lifeWillingnessStatus:lifeWillingness?.status()||null,
       commentInteractStatus: commentInteract.status(),
       interactionSchedulerStatus: interactionScheduler.status(),
       mainSessionBridgeStatus: mainSessionBridge.status(),

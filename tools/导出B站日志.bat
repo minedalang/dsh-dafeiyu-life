@@ -409,7 +409,7 @@ if accountdir.is_dir():
             last=p.get('lastInboundOutcome')
             if not isinstance(last,dict):continue
             status=code(last.get('status'))
-            if not status or status not in ('model-skip','model-close','model-defer','delivered','send-unknown','send-blocked','model-failed','model-invalid','safety-blocked','approval-pending','permission-denied'):continue
+            if not status or status not in ('model-skip','model-close','model-defer','delivered','send-unknown','send-blocked','model-failed','life-admission-deferred','model-invalid','safety-blocked','approval-pending','permission-denied'):continue
             record={'contactKey':hashlib.sha256((acct.name+':'+target).encode('utf8')).hexdigest()[:16],
                 'status':status,'reason':code(last.get('reason')) or '',
                 'at':number(last.get('at')),'inboundAt':number(last.get('inboundAt')),
@@ -451,6 +451,30 @@ if accountdir.is_dir():
 dump('dm-life-queue-summary.json',{'accountCount':len(life_queue_summaries),
     'accounts':life_queue_summaries,
     'note':'Privacy-safe counts only. Reading a DM is not a Life decision or send receipt.'})
+
+# Life admission is stored in the root stateDir, not the per-account runtime.
+# Closed codes only: never export account hashes, PIDs, claim tokens or source text.
+a=read_json(root/'life-willingness-admission.json',32768)
+active=[]
+release_codes=[]
+if isinstance(a,dict):
+    claims=a.get('claims') if isinstance(a.get('claims'),dict) else {}
+    releases=a.get('releases') if isinstance(a.get('releases'),dict) else {}
+    for claim in claims.values():
+        if not isinstance(claim,dict):continue
+        stage=code(claim.get('stage'));channel=code(claim.get('channel'))
+        if stage in ('considering','approved'):
+            active.append({'stage':stage,'channel':channel if channel in ('dm','comment','video','other') else 'unknown',
+                'used':claim.get('used') if type(claim.get('used')) is bool else None,
+                'expired':(number(claim.get('until')) or 0)<int(time.time()*1000)})
+    for row in releases.values():
+        if isinstance(row,dict):
+            reason=code(row.get('reason'))
+            if reason in ('verified','delegated','not-sent','uncertain','unused-expired','model-deferred','seal-error','accepted-unverified','failed','recovered-consideration','recovered-unused'):
+                release_codes.append((number(row.get('at')) or 0,reason))
+dump('life-admission-safe-summary.json',{'active':active[:16],
+    'lastReleaseReason':max(release_codes)[1] if release_codes else 'unknown',
+    'note':'Metadata only. Expired approved claims with possible writes require offline review; no implicit unlocking.'})
 
 dump('dm-expression-overview.json',{
     'normalLastTurnByAccount':people,'ownerAgentByAccount':owners,
