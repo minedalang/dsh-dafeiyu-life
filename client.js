@@ -608,11 +608,11 @@ window.__ModuleLoader__.load({
       if (!cfg) {
         return h('div', { 'data-bd-page': '' },
           h('div', { 'data-bd-note': '' }, fails >= 3
-            ? '读不到插件配置（已经试了 ' + fails + ' 次）。常见原因有三个：装的还是 0.1.11 / 0.1.12（那两版有 bug，会卡在这里）；刚装完没重启 dsh；或者插件加载失败。'
+            ? '读不到插件配置（已经试了 ' + fails + ' 次）。插件配置接口可能尚未挂载或插件启动失败；升级后若未重启 DSH，请先重启。'
             : '读设置中…'),
           fails >= 6 ? h('div', { 'data-bd-note': '' },
-            '可以先试：升级到最新版（dsh plugin --profile web add github:minedalang/dsh-dafeiyu-life）→ 重启 dsh；还不行就把 ' +
-            '%USERPROFILE%\\.dsh\\bili-duty\\duty.log 的最后几十行发给作者。') : null)
+            '请核对安装版本与实际加载版本，勿反复重装或清空数据；仍失败请导出插件日志和 DSH 宿主的插件激活错误。详情见 ' +
+            '%USERPROFILE%\\.dsh\\bili-duty\\duty.log，另请检查 DSH 宿主插件加载错误日志。') : null)
       }
 
       // A first-start welcome is required even for existing users. B站 login

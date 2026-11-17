@@ -848,7 +848,7 @@ function reportMeta() {
    *      commentPerRound 两条路径都没钳，直接 POST 能写 9999）
    *    （2026-10-17 复查补：DSH 原生设置页那条路我们钳不到**写** —— 用户能在那儿直接填 9999 ⇒
    *      loadCfg 读回来也过一遍，写进去和读出来一个口径） */
-  const clampPatch = (patch) => {
+  const clampPatch = (patch,{storedRead=false}={}) => {
     const p = { ...patch, mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mainSessionReflectionAuto:true,commentPublicProfileReadEnabled:true }
     if ('masterEnabled' in p) p.masterEnabled = p.masterEnabled === true
     if ('lifeAgentMode' in p) p.lifeAgentMode = ['off','shadow','active'].includes(p.lifeAgentMode) ? p.lifeAgentMode : 'off'
@@ -966,6 +966,16 @@ function reportMeta() {
     for(const [k,min,max] of [['dmActivePollSeconds',10,60],['dmActiveWindowSeconds',60,600],['dmDetailMaxSessions',1,12],['dmDetailSpacingMs',500,5000]])if(k in p){const n=Number(p[k]);if(!Number.isSafeInteger(n)||n<min||n>max)throw Error(k+' 必须为 '+min+'–'+max+' 的整数');p[k]=n}
     for (const [key, fallback] of [['dmWatchMinutes',5],['dmQuietMaxMinutes',5],['commentReplyWatchMinutes',2],['commentAtWatchMinutes',2],['commentTopWatchMinutes',5]]) {
       if (key in p) {const v=Number(p[key]);p[key]=Number.isFinite(v)&&v>=1?Math.max(1,Math.min(120,Math.floor(v))):fallback}
+    }
+    // On upgrades, config.json and DSH's host settings may still contain the
+    // previously valid 1–4 minute value. Loading MUST NOT fail activation:
+    // adapt only the effective in-memory config, without overwriting the file.
+    // Explicit user writes remain strict and cannot lower the 5-minute floor.
+    if (storedRead) {
+      if ('dmWatchMinutes' in p) p.dmWatchMinutes=Math.max(5,Number(p.dmWatchMinutes)||5)
+      if ('dmQuietMaxMinutes' in p) p.dmQuietMaxMinutes=Math.max(5,Number(p.dmQuietMaxMinutes)||5)
+      if ('dmQuietMaxMinutes' in p && 'dmWatchMinutes' in p)
+        p.dmQuietMaxMinutes=Math.max(p.dmWatchMinutes,p.dmQuietMaxMinutes)
     }
     if ('dmWatchMinutes' in p && p.dmWatchMinutes<5)throw Error('私信会话列表最短检查间隔不得小于 5 分钟')
     if ('dmQuietMaxMinutes' in p && p.dmQuietMaxMinutes<5)throw Error('私信会话列表最长检查间隔不得小于 5 分钟')
@@ -1092,7 +1102,7 @@ function reportMeta() {
       return target
     }
     // ⭐ 读回来统一过一遍范围：原生设置页那边我们是钳不到写的（见 clampPatch 的注释）
-    if (!row) return retireLegacyVisionMode(clampPatch(migrateLegacyReflectionDefaults({...saved})))
+    if (!row) return retireLegacyVisionMode(clampPatch(migrateLegacyReflectionDefaults({...saved}),{storedRead:true}))
     const user = row.user || {}
     // ⭐ 2026-10-19（另一位用户的 dsh 给出的更彻底的一招）：**别用闭包里那份 `config` 当宿主基准** ——
     //    桌面版里它是挂载时的快照，之后写进 `cordis.patch.yml` 的值不会热刷新进来 ✗
@@ -1131,7 +1141,7 @@ function reportMeta() {
       lastDiffSig = sig
       log(`这些键以插件面板为准（DSH 原生设置里那份不一样）：${sig}`)
     }
-    return retireLegacyVisionMode(clampPatch(migrateLegacyReflectionDefaults(out,user)))
+    return retireLegacyVisionMode(clampPatch(migrateLegacyReflectionDefaults(out,user),{storedRead:true}))
   }
   const cfg = loadCfg()
   const socialPolicyGate=createSocialPolicyGate({getConfig:()=>cfg})
