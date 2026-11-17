@@ -41,6 +41,7 @@ def _run_host_owned_vision_cli(args, *, cwd, env, timeout):
     All model text and stderr remain in memory and preserve existing proof gates.
     """
     import urllib.request
+    import urllib.error
     token=env.get('BILI_VISION_HOST_TOKEN','')
     port=str(env.get('BILI_VISION_HOST_PORT',''))
     if not re.fullmatch(r'[0-9a-f]{64}',token) or not port.isdecimal() or not 1<=int(port)<=65535:
@@ -56,7 +57,23 @@ def _run_host_owned_vision_cli(args, *, cwd, env, timeout):
     try:
         with opener.open(req,timeout=timeout+8) as response:
             body=response.read(12_100_001)
-    except Exception as exc:
+    except urllib.error.HTTPError as exc:
+        if exc.code==403:
+            try:
+                reply=json.loads(exc.read(2048).decode('utf8'))
+                candidate=reply.get('reason','') if reply.get('kind')=='rejected' else ''
+            except (ValueError,UnicodeError,TypeError):
+                candidate=''
+            allowed={'bad_packet','bad_packet_keys','bad_executable','missing_executable',
+              'missing_desktop_bundle','bad_arguments','not_desktop_host','bad_workdir',
+              'untrusted_workdir','bad_timeout','bad_patch','bad_patch_file',
+              'bad_operation','bad_dump','wrong_cli','wrong_cwd','not_manual_vision',
+              'not_private_selftest_patch','private_overlay_mismatch','not_fixed_prompt'}
+            reason=candidate if candidate in allowed else 'rejected'
+            raise OSError('vision_host_rejected:'+reason) from None
+        if exc.code==429:raise OSError('vision_host_busy') from None
+        raise OSError('vision_host_http_failure') from None
+    except (urllib.error.URLError,TimeoutError,OSError):
         raise OSError('vision_host_connection_failed') from None
     if len(body)>12_100_000:raise OSError('vision_host_response_too_large')
     try:
@@ -597,11 +614,18 @@ def _probe_headless_composition(args, home, env, execute=subprocess.run):
     except subprocess.TimeoutExpired:
         return {'status':'failed','reason':'headless_config_dump_timeout'}
     except (OSError,ValueError) as exc:
-        reason=('headless_bridge_launch_failed' if any(t in str(exc) for t in
-          ('node_bridge_runtime_unavailable','untrusted_node_bridge','node_bridge_packet_too_large'))
+        failure=str(exc)
+        rejected=failure.split('vision_host_rejected:',1)[1] if 'vision_host_rejected:' in failure else ''
+        reason=('headless_host_request_rejected' if rejected else
+          'headless_host_connection_failed' if any(t in failure for t in
+           ('vision_host_connection_failed','vision_host_http_failure','vision_host_busy')) else
+          'headless_bridge_launch_failed' if any(t in failure for t in
+           ('node_bridge_runtime_unavailable','untrusted_node_bridge','node_bridge_packet_too_large'))
           else 'headless_config_dump_launch')
         return {'status':'failed','reason':reason,
-                'launchMethod':'node_bridge' if os.name=='nt' and env.get('BILI_VISION_DSH_BRIDGE') else 'python_subprocess'}
+                **({'hostRejectCode':rejected} if rejected else {}),
+                'launchMethod':'node_host' if env.get('BILI_VISION_HOST_PORT') else
+                  'node_bridge' if os.name=='nt' and env.get('BILI_VISION_DSH_BRIDGE') else 'python_subprocess'}
     if result.returncode!=0:
         # Distinguish a broken CLI/profile from a rejected vision overlay.
         # This is diagnostic only; an unsuccessful dump still fails closed.

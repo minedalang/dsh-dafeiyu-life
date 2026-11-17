@@ -70,3 +70,11 @@ test('model page has opt-in health diagnostic, real visual switch, right pan and
   assert.match(backend,/probeVisionPythonAsync/)
   assert.doesNotMatch(backend,/runtime-health[\s\S]{0,100}\/dsh-vision\/repair/)
 })
+
+test('neural memory categories are only shown in interactive filters, without duplicated legend',()=>{
+  const html=readFileSync(new URL('lib/management-console.html',new URL('../',import.meta.url)),'utf8')
+  for(const label of ['蓝 · 生活经历','粉 · 人物互动','绿 · 后天兴趣','金 · 事实认识','紫 · 当时情绪'])
+    assert.equal(html.split(label).length-1,1,`duplicate category label: ${label}`)
+  assert.match(html,/id="neural-layout-mode"/)
+  assert.match(html,/class="neural-kind-filters"/)
+})

@@ -16,6 +16,10 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*_): pass
     def do_POST(self):
         packet=json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+        if getattr(self.server,'reject_reason',''):
+            body=json.dumps({'kind':'rejected','reason':self.server.reject_reason}).encode('utf8')
+            self.send_response(403);self.send_header('Content-Length',str(len(body)))
+            self.end_headers();self.wfile.write(body);return
         if self.headers.get('X-Vision-Token')!='a'*64 or self.path!='/vision':
             self.send_response(403);self.end_headers();return
         self.server.packets.append(packet)
@@ -44,3 +48,10 @@ def test_host_owned_result_is_same_completedprocess_contract(server):
 def test_missing_bearer_rejected_without_connection():
     with pytest.raises(OSError,match='vision_host_capability_invalid'):
         v._run_host_owned_vision_cli(['C:/x'],cwd='C:/duty',env={'BILI_VISION_HOST_PORT':'1'},timeout=5)
+
+def test_host_rejection_reports_closed_reason_without_leaking_http_body(server):
+    server.reject_reason='not_private_selftest_patch'
+    args=['C:/desktop/DeepSeek Harness.exe','--expose-internals','C:/desktop/cli.js','--profile','headless','--dump-config']
+    env={'BILI_VISION_HOST_TOKEN':'a'*64,'BILI_VISION_HOST_PORT':str(server.server_port)}
+    with pytest.raises(OSError,match='vision_host_rejected:not_private_selftest_patch'):
+        v._run_host_owned_vision_cli(args,cwd='C:/duty',env=env,timeout=5)

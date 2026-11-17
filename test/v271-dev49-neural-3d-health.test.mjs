@@ -92,7 +92,7 @@ test('管理页具备可全屏的交互三维记忆空间、明确颜色图例�
  assert.match(html,/neural-memory-reset/)
  assert.match(html,/neural-layout-mode/)
  assert.match(html,/neural-swatch\.relationship/)
- assert.match(html,/蓝 · 生活经历/)
+ assert.match(html,/id="neural-filter-experience"[\s\S]*蓝 · 生活经历/)
  assert.match(js,/pointermove/)
  assert.match(js,/setPointerCapture/)
  assert.match(js,/addEventListener\('wheel'/)
