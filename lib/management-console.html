@@ -1832,6 +1832,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="independent_dsh">DSH 识图模型（使用上方 Provider / 模型）</option><option value="independent_local">本地 Ollama 视觉模型（下方一键安装）</option></select></div>
 <div><label class="checkline"><input id="models-vision-enabled" type="checkbox">启用视频视觉感知</label></div>
 <div><details class="visual-advanced"><summary>调试选项</summary><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></details></div></div>
+<details class="visual-advanced"><summary>高级：DSH 视觉 Python 运行时（可选）</summary><label for="models-vision-python-path">视觉专用 Python 完整路径（留空自动选择通过健康检查的环境）</label><input id="models-vision-python-path" type="text" autocomplete="off" spellcheck="false" placeholder="例如 G:\Anaconda3\python.exe" maxlength="500" style="width:100%;max-width:640px"><p class="muted">必须能以普通权限写入临时目录及工作目录，并安装 mcp、bilibili_api、qrcode、Pillow。只更改视觉 MCP 与包装器，不修改其他 Life/私信 Python。请在本组“保存”后执行验收。</p></details>
 <section class="setting-note" id="vision-unified-probe-panel" aria-label="视觉模型图片人工验收" style="margin-top:14px;border-radius:14px;padding:16px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
     <strong>🐟 图片识别验收</strong>
@@ -1857,6 +1858,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   </div>
   <p id="vision-probe-last-run" class="muted" role="status"></p>
   <p id="vision-probe-error" class="muted" style="overflow-wrap:anywhere" role="status"></p>
+  <p id="vision-probe-python-runtime" class="muted" role="status">DSH 视觉 Python：尚未执行健康检查</p>
   </details>
   <div class="vision-proof-board">
     <figure class="vision-proof-image">

@@ -1447,11 +1447,40 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                                 ok=result.get('ok'),error=result.get('error',''),times=result.get('times'))
             return json.dumps(result,ensure_ascii=False)
         if mode == 'independent_dsh':
-            from vision_dsh import describe_with_dsh
             from preview_vision import record_vision_event
-            result = await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
-                focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
-                network_budget_bytes=budget_override,debug_capture=capture_for_debug is True)
+            # The main MCP can still run under an older UV Python. For DSH vision,
+            # execute the trusted vision wrapper in the health-checked interpreter.
+            # Failure is read-only; never retry platform writes or accept raw argv.
+            vision_python=os.environ.get('BILI_VISION_PYTHON','')
+            if os.environ.get('BILI_VISION_PYTHON_REQUIRED')=='1' and not vision_python:
+                return json.dumps({'ok':False,'status':'python_runtime_unavailable',
+                    'error':'DSH 视觉 Python 未通过读写/依赖健康检查'},ensure_ascii=False)
+            if vision_python:
+                def run_healthy_vision():
+                    script=(_DUTY_HOME/'vision_dsh.py').resolve()
+                    if script.name!='vision_dsh.py' or script.parent!=_DUTY_HOME.resolve() or script.is_symlink():
+                        return {'ok':False,'status':'vision_wrapper_untrusted'}
+                    request=json.dumps({'bvid':bvid,'perception_source':perception_source,
+                        'focus_start':focus['startSeconds'] if focus else None,
+                        'focus_end':focus['endSeconds'] if focus else None,'view_depth':view_depth,
+                        'network_budget_bytes':budget_override,'debug_capture':capture_for_debug is True})
+                    try:
+                        run=subprocess.run([vision_python,str(script),'--describe-stdin','--home',str(_DUTY_HOME)],
+                            input=request,encoding='utf8',stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
+                            cwd=str(_DUTY_HOME),env=os.environ.copy(),timeout=230,check=False,
+                            **_hidden_windows_child())
+                        if run.returncode or len(run.stdout)>500000:return {'ok':False,'status':'vision_wrapper_failed'}
+                        parsed=json.loads(run.stdout)
+                        if not isinstance(parsed,dict) or type(parsed.get('ok')) is not bool:raise ValueError()
+                        return parsed
+                    except (OSError,ValueError,subprocess.TimeoutExpired):
+                        return {'ok':False,'status':'vision_wrapper_failed'}
+                result=await asyncio.to_thread(run_healthy_vision)
+            else:
+                from vision_dsh import describe_with_dsh
+                result=await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
+                    focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
+                    network_budget_bytes=budget_override,debug_capture=capture_for_debug is True)
             _record_production_vision_attempt(result, 'independent_dsh', os.environ.get('BILI_VISION_DSH_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='independent_dsh_result',ok=result.get('ok'),

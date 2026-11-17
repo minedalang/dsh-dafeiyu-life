@@ -1,3 +1,10 @@
+## dev.3b.33.7 Windows 视觉 Python 读写健康与可恢复的显式修复
+
+- 用户 Windows 对照：普通权限 UV/venv Python 不能在 TEMP / CWD 创建文件（PermissionError），Conda Python 可以；普通权限 DSH 默认/视觉 overlay 直接与 Node 桥接四项均 EPERM，管理员均成功。这个证据指向受限 Python 运行时，但不是 NTFS ACL 已确定，亦不能证明真实 MCP 图片/模型回答成功。
+- 视觉专用 Python 选择必须实际运行限时无 Shell 读写探测，依赖包括 mcp、bilibili_api、qrcode、PIL。手动图片验收/嵌套图片 MCP 与生产视频视觉必须使用同一已验证路径；无合格者显式阻断，不得回落到已知受限 Python 或移除安全 overlay。
+- 仅用户显式操作主依赖安装或离线修复时允许重建 .venv；备份旧环境，创建后实际测试读写与依赖，成功后才更新配置，失败保留/恢复备份。不编辑 NTFS ACL，不提权、不使用管理员权限，不清除凭据、Life 队列、限流与发送回执。
+- Python 健康检查不等于 Windows 实际图片识别成功。按既有规定云端只跑增量测试、架构/Video 契约/selfcheck/npm dry-run/独立 Patch 回放，不做真实 B站写入或全量测试。
+
 ## dev.3b.33.6 Windows DSH 视觉 CLI 受控 Node 桥接（增量修复候选）
 
 - 用户 Windows 精确对照确认 EXE 和 app.asar SHA256 相同；PowerShell/.NET 从原工作目录或 Duty Home（包括隐藏子进程）导出配置均为 exit=0；**仅 Python subprocess 直接启动同一 Electron CLI 为 exit=1**，分类 filesystem_or_permissions，尚不能认定具体 ENOENT/EACCES/EPERM 原因。

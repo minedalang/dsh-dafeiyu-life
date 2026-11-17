@@ -1,3 +1,10 @@
+## 2.8.1-dev.3b.33.7（开发版 · Python 环境定点修复，Windows 图片待实机验收）
+
+- Windows 对照明确 UV Python 在普通权限 TEMP/CWD 创建文件失败，而健康 Conda Python 能通过相同 DSH 默认配置、Node 桥接和安全视觉 overlay 检查。新增受控 Python 运行时选择：必须实际写入并删除测试文件、校验 Python 版本和必要 MCP 包；仅允许绝对路径、本地可信解释器与 `shell:false`，未通过直接阻断，不将其误诊为 Headless 配置错误。
+- 手动图片验收及其 MCP、视频生产 DSH 视觉子会话共用所选运行时；视频侧以固定受限 stdin 参数进入单独健康 Python 子进程。保留原 Headless 安全工具封锁、MCP 图片回执、模型最终回答、人工认可及 Life 外发围栏。
+- 管理中心增加视觉 Python 健康摘要及可选完整路径；主依赖显式安装时检查原有环境健康，备份受限旧环境、尝试由健康基础 Python 创建并检查新环境；另附普通 PowerShell 离线修复脚本。uv 指定解释器不等于赋予 Windows 权限，任何失败不改 ACL、不提权，不清除凭据、队列、发送回执。
+- 增量测试和本机源码包自检通过不等于 Windows DSH 视觉模型已经识图成功。
+
 ## 2.8.1-dev.3b.33.6 (开发版 · Windows 识图待实机验证)
 
 - 根据 Windows 精确对照，修正视觉 Python 直接启动 Electron CLI 的独立调用路径：通过同步且经源码一致性检查的 Node 桥接器，使用与原有 DSH JS Agent 一致的 `spawn(shell:false)` 启动 Desktop Host；不经 Shell 传递提示词，限制 CLI/profile/overlay/cwd/超时，失败严格阻断。

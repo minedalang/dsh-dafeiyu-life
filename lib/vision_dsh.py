@@ -839,9 +839,27 @@ if __name__=='__main__':
     import argparse
     parser=argparse.ArgumentParser()
     parser.add_argument('--selftest',action='store_true')
+    parser.add_argument('--describe-stdin',action='store_true')
     parser.add_argument('--home',required=True)
     args=parser.parse_args()
-    if args.selftest:
+    if args.selftest and not args.describe_stdin:
         print(json.dumps(describe_test_image_with_dsh(args.home),ensure_ascii=False))
+    elif args.describe_stdin and not args.selftest:
+        try:
+            # Stdin is a bounded, untrusted read-only request, not an OS command.
+            raw=os.read(0,4097)
+            if len(raw)>4096:raise ValueError('oversize')
+            request=json.loads(raw.decode('utf8'))
+            if not isinstance(request,dict) or not _BV.fullmatch(str(request.get('bvid',''))):raise ValueError('invalid_bvid')
+            if not {'perception_source','view_depth','debug_capture','network_budget_bytes','focus_start','focus_end'}.issuperset(request.keys()-{'bvid'}):
+                raise ValueError('bad_fields')
+            if type(request.get('debug_capture',False)) is not bool:raise ValueError('bad_debug')
+            result=describe_with_dsh(request['bvid'],args.home,perception_source=request.get('perception_source','preview'),
+                focus_start=request.get('focus_start'),focus_end=request.get('focus_end'),
+                view_depth=request.get('view_depth','standard'),network_budget_bytes=request.get('network_budget_bytes'),
+                debug_capture=request.get('debug_capture',False))
+            print(json.dumps(result,ensure_ascii=False))
+        except (OSError,ValueError,TypeError,UnicodeDecodeError,KeyError):
+            print(json.dumps({'ok':False,'status':'invalid_vision_worker_request'}))
     else:
-        print(json.dumps({'ok':False,'error':'只允许固定图片人工验收'},ensure_ascii=False))
+        print(json.dumps({'ok':False,'status':'unsupported_vision_worker_mode'}))

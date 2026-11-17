@@ -172,6 +172,7 @@ import { createBiliReadBudget } from './lib/bili-read-budget.mjs'
 import { fetchBiliCover } from './lib/bili-cover-proxy.mjs'
 import {createDmPollCursor} from './lib/dm-poll-cursor.mjs'
 import {createDmDetailQueue} from './lib/dm-detail-queue.mjs'
+import {selectVisionPython,probeVisionPython} from './lib/vision-python-runtime.mjs'
 import {dmContinuationPrompt,parseDmContinuationReply} from './lib/dm-progressive-expression.mjs'
 import { listCommentMemes, getCommentMemePreview } from './lib/comment-meme-library.mjs'
 import {readCommentMemeRules,saveCommentMemeRules,validateCommentMemeRules} from './lib/comment-meme-rules.mjs'
@@ -263,6 +264,8 @@ export const Config = !z ? undefined : z.object({
   visionEnabled: z.boolean().default(false).extra('volatile', true),
   /** DSH 视觉 Provider 或本机 Ollama 视觉模型，两种明确选择。 */
   visionMode: z.string().default('independent_dsh').extra('volatile', true),
+  /** Optional absolute path to an explicitly trusted, healthy vision-only Python. */
+  visionPythonPath: z.string().default('').extra('volatile', true),
   /** 保存实际预览 JPEG 到插件家目录 vision-debug，默认关闭。 */
   visionDebug: z.boolean().default(false).extra('volatile', true),
   diagMentionEnabled: z.boolean().default(true).extra('volatile', true),
@@ -792,7 +795,7 @@ function reportMeta() {
     dmStrangerText: '',
     personaPrompt: DEFAULT_PERSONA_PROMPT, characterLore: '',
     perDay: 50, pickPerRound: 5, peakValley: false, lifeAgentMode: 'off', lifeAgentSocialContextOptIn:false, commentPublicProfileReadEnabled:true, peakWindows: '[]', peakIntervalMinutes: 30, autoComment: true, transcribe: false, asrModel: 'small',
-    commentSyncDynamic: true, dynamicDailyLimit: 3, commentDailyLimit: 500, memeMemoryEnabled: true, memeMemoryMaxEntries: 300, visionEnabled: false, diagMentionEnabled: true, diagDynamicEnabled: true, diagVisionEnabled: true, diagMemeEnabled: true, diagAtInviteEnabled: true, diagReplyInboxEnabled: true, visionMode: 'independent_dsh', visionDebug: false, visionModelProvider: '', visionReasoningEffort: '', visionModelId: '', visionLocalModel: '', visionFrames: 24, ffmpegPath:'', asrModelPath:'', visionPrompt: '', commentMemesEnabled: false, commentMemesDebug: false, commentMemesPerDay: 2, commentMemesPerRound: 1, commentMemePrompt: '',
+    commentSyncDynamic: true, dynamicDailyLimit: 3, commentDailyLimit: 500, memeMemoryEnabled: true, memeMemoryMaxEntries: 300, visionEnabled: false, diagMentionEnabled: true, diagDynamicEnabled: true, diagVisionEnabled: true, diagMemeEnabled: true, diagAtInviteEnabled: true, diagReplyInboxEnabled: true, visionMode: 'independent_dsh', visionPythonPath: '', visionDebug: false, visionModelProvider: '', visionReasoningEffort: '', visionModelId: '', visionLocalModel: '', visionFrames: 24, ffmpegPath:'', asrModelPath:'', visionPrompt: '', commentMemesEnabled: false, commentMemesDebug: false, commentMemesPerDay: 2, commentMemesPerRound: 1, commentMemePrompt: '',
     homeRecommendationsEnabled: true, keywords: [], coreInterestTopics:'[]', minVideoViews: 1000, minVideoLikes: 10, minVideoReplies: 3, commentPerRound: 5, mentionName: '', mentionTargets: '', mentionProfiles: '{}', friendDirectory: '[]', mentionMode: 'ai', pythonPath: 'python', dshBin: '', headlessProfile: 'headless', overlayMcp: true, workspace: '', reportLevel: 'full', favFolderId: 0, autoVideoLike: true, autoVideoLikeDailyLimit: 10, autoVideoCollect: true, autoFavoriteVisibility: 'auto', autoFavoriteDelete: true, agentFollowEnabled: true, incomingImageRecognitionEnabled: true, dailyDynamicEnabled: true, dailyDynamicDailyLimit: 1, dailyDynamicDraftOnly: false, dailyDynamicModelProvider:'',dailyDynamicModelId:'',dailyDynamicReasoningEffort:'',
   }
   // Retire the historical report-DM routing without mutating independent comment permission.
@@ -3165,6 +3168,20 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
    */
   // 用户只选择 DSH 或本机 Ollama；内部专用只读子会话仍使用 MCP 图片块。
   const resolvedVisionMode = () => cfg.visionMode==='independent_local'?'independent_local':'independent_dsh'
+  // dev.3b.33.7: selftest AND its nested vision MCP use the SAME healthy Python.
+  // A stdlib-only Python is insufficient: the MCP needs bilibili_api/mcp/qrcode/Pillow.
+  // Cache a bounded result to avoid repeated 4*5s process probes on every overlay.
+  let visionPythonCache=null
+  const selectHealthyVisionPython=({fresh=false}={})=>{
+    if(process.platform!=='win32')return {ok:true,path:cfg.pythonPath||'python',source:'configured',reason:'healthy'}
+    const key=JSON.stringify([cfg.pythonPath,cfg.visionPythonPath,process.env.BILI_DUTY_VISION_PYTHON])
+    if(!fresh&&visionPythonCache?.key===key&&Date.now()-visionPythonCache.at<120000)return visionPythonCache.result
+    const result=selectVisionPython({preferred:cfg.pythonPath||'',configured:cfg.visionPythonPath||'',
+      home:stateDir,workdir:process.cwd(),env:pyEnv(),requiresMcp:true})
+    visionPythonCache={key,at:Date.now(),result}
+    return result
+  }
+
 
   const mcpWhitelist = (sourceMode='mixed') => {
     const list = [...(sourceMode==='home'?[]:['bili_search']), 'bili_subtitle', 'bili_comments', 'bili_comment_thread', 'bili_discussion_note', 'bili_video_info',
@@ -3198,6 +3215,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(readFileSync(join(stateDir,'dsh-vision-node-bridge.mjs'),'utf8')!==readFileSync(join(pluginDir,'lib','dsh-vision-node-bridge.mjs'),'utf8'))
         throw Error('bridge mismatch')
     } catch { log('🔒 视觉 CLI Node 桥接文件不匹配或缺失，已拒绝启动'); return null }
+    const visionRuntime=selectHealthyVisionPython()
+    if(!visionRuntime.ok){log('DSH 图片 Python 环境不可用：'+visionRuntime.reason+'；请修复运行时/依赖，不会绕过安全 MCP');return null}
     const isSelftest=kind==='vision-selftest'
     const out = join(stateDir, isSelftest?'headless-vision-selftest-overlay.yml':'headless-vision-overlay.yml')
     const yq = v => "'" + String(v).replace(/'/g,"''") + "'"
@@ -3223,7 +3242,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       // The image tool must be registered before the model turn begins. Do not
       // silently continue into a tool-less vision session if stdio startup fails.
       '        failOnStartupError: true',
-      '        command: '+yq(posix(cfg.pythonPath || 'python')),
+      '        command: '+yq(posix(visionRuntime.path)),
       '        args:',
       '          - '+yq(posix(join(stateDir,'mcp_server.py'))),
       '        env:',
@@ -3257,6 +3276,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const provider=details.headless||details.source||null
       return {
         ...route,kind:details.kind||'unresolved',profile:details.profile||'',
+        // Changing the explicitly chosen Python invalidates prior image acceptance.
+        // Hash only: never expose a local interpreter path in the review route.
+        visionRuntimeKey:createHash('sha256').update(String(cfg.visionPythonPath||cfg.pythonPath||'')).digest('hex').slice(0,12),
         api:provider?.api||'',baseURL:provider?.baseURL||'',
         input:model?.input||null,imageInputDeclared:model?.imageInputDeclared??null,
         reasoningEfforts:model?.reasoningEfforts||null,
@@ -3270,6 +3292,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         throw Error('当前识图方式是本地 Ollama，不能启动 DSH Headless 图片验收')
       const dsh=resolveDsh()
       if(dsh.missing||dsh.shell)throw Error('未找到安全可执行的 DSH CLI，无法进行真实图片自检')
+      const selectedRuntime=selectHealthyVisionPython({fresh:true})
+      if(!selectedRuntime.ok){const err=Error('DSH 视觉 Python 无法安全启动或缺少 MCP 依赖：'+selectedRuntime.reason+'；请通过主依赖修复功能重建健康环境');err.diagnosticCode='python_runtime_unhealthy';throw err}
       const overlay=ensureVisionOverlay('vision-selftest')
       if(!overlay)throw Error('DSH 图片验收安全配置生成失败')
       const args=[...dsh.args,'--profile','headless','--patch',overlay]
@@ -3283,7 +3307,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         BILI_VISION_DSH_WORKDIR:process.cwd(),
         BILI_VISION_DSH_BRIDGE:join(stateDir,'dsh-vision-node-bridge.mjs')})
       return await new Promise((resolve,reject)=>{
-        const child=spawn(cfg.pythonPath||'python',pyArgs,{cwd:stateDir,shell:false,windowsHide:true,
+        const child=spawn(selectedRuntime.path,pyArgs,{cwd:stateDir,shell:false,windowsHide:true,
           env,stdio:['ignore','pipe','pipe']})
         let out='',closed=false
         const finish=(error,result)=>{if(closed)return;closed=true;clearTimeout(timer);if(error)reject(error);else resolve(result)}
@@ -3377,8 +3401,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     }
     let independentVisionArgv = ''
     let independentVisionRunAsNode = false
+    let productionVisionPython = ''
     if (!dmSafe && cfg.visionEnabled && resolvedVisionMode()==='independent_dsh') {
       try {
+        const selectedRuntime=selectHealthyVisionPython()
+        if(!selectedRuntime.ok)throw Error('视觉 Python 未通过读写/依赖检查：'+selectedRuntime.reason)
+        productionVisionPython=selectedRuntime.path
         const vdsh=resolveDsh()
         if (vdsh.missing || vdsh.shell) throw new Error('未找到可安全直接执行的 DSH CLI')
         const visionOverlay=ensureVisionOverlay()
@@ -3447,6 +3475,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           '          BILI_VISION_ENABLED: ' + yq(cfg.visionEnabled ? '1' : '0'),
           '          BILI_VISION_MODE: ' + yq(resolvedVisionMode()),
           '          BILI_VISION_DSH_ARGV: ' + yq(independentVisionArgv),
+          '          BILI_VISION_PYTHON: ' + yq(posix(productionVisionPython)),
+          '          BILI_VISION_PYTHON_REQUIRED: ' + yq(cfg.visionEnabled&&resolvedVisionMode()==='independent_dsh'?'1':'0'),
           // MCP Python env may be restricted: carry the Desktop Electron CLI
           // requirement explicitly into the nested, read-only vision subprocess.
           '          BILI_VISION_DSH_RUN_AS_NODE: ' + yq(independentVisionRunAsNode ? '1' : '0'),
@@ -7275,11 +7305,25 @@ logger:{warn:m=>log('社交意图：'+m)}
     installFailureHint = ''
     appendInstall(`\n=== ${new Date().toISOString()} 开始装依赖 ===\n`)
     ;(async () => {
+      let rollbackRepair=()=>{}
       try {
         const reqFile = join(pluginDir, 'vendor', 'bilibili-mcp', 'requirements.txt')
         const mirror = process.env.BILI_DUTY_PIP_MIRROR || 'https://pypi.tuna.tsinghua.edu.cn/simple'
         const venvPy = venvPython()
         const py = String(cfg.pythonPath || 'python')
+        const repairBackup={path:'',done:false}
+        const restoreIfFailed=()=>{
+          if(!repairBackup.path||repairBackup.done)return
+          try{
+            const current=join(stateDir,'.venv')
+            if(existsSync(current))renameSync(current,join(stateDir,'.venv.failed-'+Date.now()))
+            renameSync(repairBackup.path,current)
+            appendInstall('已恢复原有 Python 虚拟环境；未清理历史凭据或依赖。\n')
+            repairBackup.done=true
+          }catch{appendInstall('Python 环境恢复需要人工检查；原有环境备份仍被保留。\n')}
+        }
+        rollbackRepair=restoreIfFailed
+
           const uvCmd = await resolveUv()   // ⭐ 系统里的 → 家里下好的 → 自己下一份
         if (!existsSync(venvPy) && !uvCmd && !(await probeCmd(py))) {
           const msg = '这台机器上没有 uv，也没有可用的 python（试过 "' + py + '"），而且我自动下 uv 也没成功'
@@ -7300,19 +7344,53 @@ logger:{warn:m=>log('社交意图：'+m)}
           try { renameSync(join(stateDir, '.venv'), bad) } catch (e2) { appendInstall('改名没成功：' + String(e2?.message ?? e2) + '\n') }
         }
       } catch { /* 没有 pyvenv.cfg 就算了 */ }
+        // A Python installed by uv can be blocked by a per-executable Windows
+        // security policy even when uv/pip report a successful install.
+        // Explicit installer action: preserve the old environment before repair.
+        const currentHealth=process.platform!=='win32'
+          ?{ok:existsSync(venvPy),reason:'platform_not_checked'}
+          :existsSync(venvPy)
+            ?probeVisionPython(venvPy,{home:stateDir,env:pyEnv(),requiresMcp:false})
+            :{ok:false,reason:'missing_runtime'}
+        const explicitlyRequested=String(process.env.BILI_DUTY_VENV_PYTHON||'').trim()
+        const baseChoice=process.platform==='win32'&&(!currentHealth.ok||!existsSync(venvPy))
+          ?selectVisionPython({preferred:explicitlyRequested,configured:cfg.visionPythonPath,
+              home:stateDir,workdir:process.cwd(),env:pyEnv(),requiresMcp:false})
+          :null
+        if(explicitlyRequested && !currentHealth.ok && !probeVisionPython(explicitlyRequested,
+          {home:stateDir,env:pyEnv(),requiresMcp:false}).ok){
+          appendInstall('指定的 BILI_DUTY_VENV_PYTHON 没有通过普通权限写入检查，拒绝创建环境。\n')
+          installOutcome='failed';installFailureHint='指定 Python 不健康；未修改现有环境';return
+        }
+        if(process.platform==='win32'&&!currentHealth.ok&&!baseChoice?.ok){
+          appendInstall('本机没有通过普通权限写入检查的 Python。请先修复 Python 执行策略，或指定经验证的本机 Python。\n')
+          installOutcome='failed';installFailureHint='Python 运行时没有文件写入权限；原环境已保留';return
+        }
+        if(existsSync(venvPy)&&!currentHealth.ok){
+          const backup=join(stateDir,'.venv.unhealthy-'+Date.now())
+          try{renameSync(join(stateDir,'.venv'),backup);repairBackup.path=backup}
+          catch{appendInstall('旧虚拟环境正在占用或不可重命名；请完整退出 DSH 后再修复，旧环境未删除。\n');
+            installOutcome='failed';installFailureHint='现有虚拟环境不可安全备份';return}
+          appendInstall('已将不可写的旧虚拟环境保留为独立备份，不修改其权限。\n')
+        }
         if (!existsSync(venvPy)) {
-          // ⭐ 2026-10-17（issue #8③）：ASR 那个环境带了 --seed，主环境却漏了 ⇒ uv 建的 venv 默认不含 pip，
-          //    一旦镜像失败、回退 `python -m pip` 就是 `No module named pip` ⇒ 连补救的路都没有 ✗
-          if (uvCmd) {
-    const spec = String(process.env.BILI_DUTY_VENV_PYTHON || '3.12').trim()
-    let code = await spawnLogged(uvCmd, ['venv', '--seed', '--python', spec, join(stateDir, '.venv')])
-    if (code !== 0) {
-      appendInstall(`\n（uv 带 --python ${spec} 没成 —— 退回 uv 默认 Python）\n`)
-      code = await spawnLogged(uvCmd, ['venv', '--seed', join(stateDir, '.venv')])
-    }
-    if (code !== 0) log('建 venv 没成功（两条路都试过）')
-  }
-          if (!existsSync(venvPy) && !uvCmd) await spawnLogged(py, ['-m', 'venv', join(stateDir, '.venv')])
+          // uv's --python selects an interpreter. It does NOT grant admin
+          // rights or bypass Windows per-program access control.
+          const spec=baseChoice?.ok?baseChoice.path:String(explicitlyRequested||'3.12')
+          const venvArgs=['venv','--seed','--python',spec,join(stateDir,'.venv')]
+          const createCode=uvCmd?await spawnLogged(uvCmd,venvArgs)
+            :baseChoice?.ok?await spawnLogged(baseChoice.path,['-m','venv',join(stateDir,'.venv')]):1
+          if(createCode!==0||!existsSync(venvPy)){
+            appendInstall('建 venv 失败，拒绝使用尚未验证的解释器。\n');restoreIfFailed()
+            installOutcome='failed';installFailureHint='Python 环境创建失败';return
+          }
+        }
+        const afterCreation=process.platform==='win32'
+          ?probeVisionPython(venvPy,{home:stateDir,env:pyEnv(),requiresMcp:false})
+          :{ok:existsSync(venvPy),reason:'platform_not_checked'}
+        if(!afterCreation.ok){
+          appendInstall('新建的 Python 在普通权限下仍无法写入：'+afterCreation.reason+'；拒绝把它标记为就绪。\n')
+          restoreIfFailed();installOutcome='failed';installFailureHint='新 Python 运行时未通过写入检查';return
         }
         let code = 1
         // ⭐ 2026-10-17（issue #8②）：镜像也会整站拒绝（清华对部分 IP 回 403，而 pip 的报错写成"这个包不存在"，很误导）
@@ -7324,7 +7402,9 @@ logger:{warn:m=>log('社交意图：'+m)}
           if (uvCmd) code = await spawnLogged(uvCmd, ['pip', 'install', '--python', venvPy, '-i', m, '-r', reqFile])
           if (code !== 0) code = await spawnLogged(venvPy, ['-m', 'pip', 'install', '-i', m, '-r', reqFile])
         }
-        if (code === 0 && existsSync(venvPy)) {
+        const installedHealthy=code===0 && (process.platform!=='win32'||
+          probeVisionPython(venvPy,{home:stateDir,env:pyEnv(),requiresMcp:true}).ok)
+        if (installedHealthy) {
           // ⚠️ 光写 config.json 不够：DSH 原生设置里那份旧值（"python"）会在 loadCfg 时压回来
           //    （已由 loadCfg 的 HOST_WINS_EXCLUDED 解决 ✓）；这里再把宿主的同步结果说清楚，
           //    免得以后再出现"日志说设好了、实际没生效" ✗
@@ -7335,14 +7415,17 @@ logger:{warn:m=>log('社交意图：'+m)}
           const miss = missingVenvDeps()
           appendInstall(`=== 结束（exit ${code}，venvReady=${venvReadyNow()}${miss.length ? '，缺：' + miss.join(' / ') : ''}）===\n`)
           log(`装依赖结束：exit=${code} venvReady=${venvReadyNow()}${miss.length ? ' 缺：' + miss.join(',') : ''}`)
-          installOutcome = code === 0 && venvReadyNow() ? 'ready' : 'failed'
-          installFailureHint = installOutcome === 'failed' ? '依赖安装未通过实际就绪检查；请查看日志中的 exit、缺包或网络报错' : ''
+          installOutcome = installedHealthy && venvReadyNow() ? 'ready' : 'failed'
+          installFailureHint = installOutcome === 'failed' ? '依赖安装或 Python 写入健康检查失败；请查看本机安装日志' : ''
+          if(installOutcome==='failed')restoreIfFailed()
+          else repairBackup.done=true
         }
       } catch (e) {
+        rollbackRepair()
         appendInstall(`装依赖崩了：${e?.stack ?? e}\n`)
         log(`装依赖崩了：${e?.message ?? e}`)
         installOutcome = 'failed'; installFailureHint = '安装器出现异常，请查看主依赖日志'
-      } finally { installing = false }
+      } finally { installing = false; visionPythonCache=null }
     })()
     return { ok: true, started: true, log: installLogFile, hint: '正在后台装依赖 —— 进度就显示在下面（走国内镜像，通常几十秒到一两分钟）' }
   }
@@ -7397,6 +7480,8 @@ logger:{warn:m=>log('社交意图：'+m)}
       onboarding:firstStart.status(),
       activityFeed:activityFeed.list({limit:8}),
       venvReady: venvReadyNow(),
+      visionPythonRuntime:(()=>{const r=visionPythonCache?.result;return {status:r?.ok?'healthy':r?'unhealthy':'unchecked',
+        source:r?.source||'none',reason:r?.reason||'not_run'}})(),
       version: myVersion(),
       // 2026-10-22：缺哪个 Python 包装不上，得能一眼看出来（出不了二维码 =09 缺 qrcode）
       missingDeps: (() => { try { return missingVenvDeps() } catch { return [] } })(),
@@ -8686,7 +8771,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     // Optional local visual models are managed separately from embedding and DSH.
     // There is no arbitrary URL or model name; the daemon is fixed to loopback.
     if(req.method==='GET'&&path==='/api/bili-duty/dsh-vision/status')
-      return sendJson(res,200,{ok:true,...dshVisionReview.status(),imageUrl:'/api/bili-duty/local-vision/selftest-image'})
+      return sendJson(res,200,{ok:true,...dshVisionReview.status(),pythonRuntime:(()=>{const r=visionPythonCache?.result;return {status:r?.ok?'healthy':r?'unhealthy':'unchecked',source:r?.source||'none',reason:r?.reason||'not_run'}})(),imageUrl:'/api/bili-duty/local-vision/selftest-image'})
     if(req.method==='POST'&&['/api/bili-duty/dsh-vision/verify','/api/bili-duty/dsh-vision/review'].includes(path)){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
@@ -9487,7 +9572,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       for (const k of ['masterEnabled', 'peakValley', 'lifeAgentMode', 'lifeAgentSocialContextOptIn', 'peakWindows', 'peakIntervalMinutes', 'autoComment', 'transcribe', 'asrModel',
         'diagMentionEnabled','diagDynamicEnabled','diagVisionEnabled','diagMemeEnabled','diagAtInviteEnabled','diagReplyInboxEnabled','commentMemesEnabled','commentMemesDebug','commentMemesPerDay','commentMemesPerRound','commentMemePrompt','visionPrompt','memeMemoryEnabled', 'memeMemoryMaxEntries', 'visionEnabled', 'visionDebug', 'visionMode', 'visionModelProvider', 'visionModelId', 'visionLocalModel', 'visionReasoningEffort', 'visionFrames', 'commentPerRound', 'mentionName', 'mentionTargets', 'mentionProfiles', 'friendDirectory', 'mentionMode', 'commentSyncDynamic', 'dynamicDailyLimit', 'commentDailyLimit',
         'pluginDefaultModelProvider','pluginDefaultModelId','videoModelProvider','videoModelId','videoReasoningEffort','behaviorDecisionModelProvider','behaviorDecisionModelId','behaviorDecisionReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','interactionContextMode','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort','memeRulesPrompt',
-        'keywords', 'coreInterestTopics', 'pythonPath', 'dshBin', 'headlessProfile', 'workspace', 'reportLevel', 'personaPrompt', 'characterLore', 'dmWatch', 'dmWatchMinutes', 'dmQuietMaxMinutes', 'dmActivePollEnabled', 'dmActivePollSeconds', 'dmDetailMaxSessions', 'dmDetailSpacingMs', 'dmActiveWindowSeconds', 'commentReplyWatchMinutes', 'commentAtWatchMinutes', 'commentTopWatchMinutes', 'dmReplyPerDay', 'quotaPreset', 'dmContextMessages', 'dmOwnerUid', 'dmWhitelist', 'dmStrangerOnce', 'dmStrangerAutonomyEnabled', 'dmP6Enabled', 'dmP6MaxBubbles', 'naturalThoughtOwnerMinutes','naturalThoughtIntimateMinutes','naturalThoughtFamiliarMinutes','naturalThoughtStrangerMinutes','naturalThoughtChancePercent', 'dmStrangerText', 'dmStrangerMaxReplies', 'dmStrangerFirstFixed', 'dmApprovalEnabled','dmApprovalPhrase',
+        'keywords', 'coreInterestTopics', 'pythonPath', 'visionPythonPath', 'dshBin', 'headlessProfile', 'workspace', 'reportLevel', 'personaPrompt', 'characterLore', 'dmWatch', 'dmWatchMinutes', 'dmQuietMaxMinutes', 'dmActivePollEnabled', 'dmActivePollSeconds', 'dmDetailMaxSessions', 'dmDetailSpacingMs', 'dmActiveWindowSeconds', 'commentReplyWatchMinutes', 'commentAtWatchMinutes', 'commentTopWatchMinutes', 'dmReplyPerDay', 'quotaPreset', 'dmContextMessages', 'dmOwnerUid', 'dmWhitelist', 'dmStrangerOnce', 'dmStrangerAutonomyEnabled', 'dmP6Enabled', 'dmP6MaxBubbles', 'naturalThoughtOwnerMinutes','naturalThoughtIntimateMinutes','naturalThoughtFamiliarMinutes','naturalThoughtStrangerMinutes','naturalThoughtChancePercent', 'dmStrangerText', 'dmStrangerMaxReplies', 'dmStrangerFirstFixed', 'dmApprovalEnabled','dmApprovalPhrase',
         'commentWatchReplies', 'commentWatchTop', 'commentAtEnabled', 'socialRhythmCrossChannelMinutes', 'socialRhythmDailyPerPerson', 'friendAtFeedbackEnabled', 'strangerInspirationEnabled','socialInvitationEnabled','socialInvitationAutoInspectEnabled','ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentDraftEnabled','ownerCommentPublishEnabled','ownerCommentSocialPublishEnabled','ownerCommentNaturalAckEnabled', 'commentAtMode', 'commentAtWhitelist', 'commentTopCount', 'commentTopVideoCount', 'commentReplyHotCount', 'commentAllowGeneralTop', 'commentReplyPerPoll', 'commentReplyPerDay', 'commentOwnTopPerUser', 'commentOwnNestedPerUser', 'mainSessionBridgeEnabled', 'ownerSpontaneousChatEnabled', 'ownerContactPreset','ownerContactStartHour','ownerContactEndHour','ownerContactCooldownMinutes','ownerContactDailyLimit','ownerContactSilenceMinutes','mainSessionSilenceFollowupEnabled','mainSessionShortPauseEnabled','mainSessionShortPauseSeconds','ownerDmSilenceFollowupEnabled','mainSessionId', 'mainSessionAutoSync', 'mainSessionSyncMinutes', 'mainSessionDailyBatches', 'mainSessionBatchSize', 'mainSessionIncludeComments', 'mainSessionMemoryEnabled', 'mainSessionMemoryAutoBili', 'mainSessionMemorySemanticEnabled', 'mainSessionMemoryEmbeddingEnabled', 'mainSessionMemoryModelProvider', 'mainSessionMemoryModelId', 'mainSessionMemoryReasoningEffort', 'mainSessionMemoryCandidates', 'mainSessionMemorySearchDailyLimit', 'socialOutreachEnabled', 'socialLifeIntentEnabled', 'lifeProactiveFriendDmEnabled','lifeNaturalDmOutreachEnabled','lifeSharedDynamicLikeEnabled','lifeSharedDynamicCommentEnabled', 'socialVideoRecommendationsAuthorizedV2', 'emotionSystemEnabled', 'socialAutoSend', 'socialOutreachDailyLimit', 'ownerTodoAutoReviewEnabled','ownerTodoReviewMinutes','ownerTodoCompletionFollowupEnabled','socialTodoCompletionFollowupEnabled','ownerTodoFollowupCooldownMinutes','ownerTodoFollowupDailyLimit','ownerTodoFollowupMinIntervalMinutes','ownerTodoFollowupPollMinutes','ownerTodoFollowupQuietEnabled','ownerTodoFollowupQuietStartHour','ownerTodoFollowupQuietEndHour','autonomousPlannerEnabled','videoAgentMinIntervalMinutes','videoAgentReadTargetPerRound','videoAgentPickTargetPerRound','emotionRecallEnabled','emotionRecallMainEnabled','emotionRecallDmEnabled','emotionRecallUnlimited','emotionRecallDailyLimit','emotionRecallCooldownHours','emotionRecallStartHour','emotionRecallEndHour','emotionRecallCandidateLimit','emotionRecallHistoryLimit','emotionRecallRecentDays','emotionRecallMinAgeDays','emotionRecallEmotionMinIntensity','emotionRecallEmotionMaxAgeHours','ownerDmAgentEnabled','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','ownerDmAgentContextTurns','ownerDmAgentContextChars','ownerDmAgentModelProvider','ownerDmAgentModelId','ownerDmAgentReasoningEffort','ownerDmReadCommandsEnabled','ownerDmActionsEnabled','ownerDmLikeEnabled','ownerDmCollectEnabled','ownerDmFollowEnabled','ownerDmCommentDraftEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicDraftEnabled','ownerDmDynamicPublishEnabled','ownerDmFriendMessageEnabled','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour', 'mainSessionReflectionAuto', 'mainSessionReflectionModelProvider', 'mainSessionReflectionModelId', 'mainSessionReflectionReasoningEffort', 'mainSessionReflectionMinCandidates', 'mainSessionReflectionBatchSize', 'mainSessionReflectionIntervalHours', 'mainSessionReflectionDailyBatches', 'mainSessionMemoryHalfLifeDays', 'socialMemoryHalfLifeNewDays', 'socialMemoryHalfLifeKnownDays', 'socialMemoryHalfLifeFamiliarDays', 'socialMemoryHalfLifeFriendDays', 'socialMemoryHalfLifeWhitelistDays', 'socialMemoryHalfLifeOwnerDays', 'mainSessionMemoryThreshold', 'mainSessionMemoryMaxItems', 'mainSessionMemoryMaxChars', 'mainSessionMemoryDailyQuota', 'mainSessionMemoryConsolidationEnabled', 'mainSessionMemoryFactsMax', 'favFolderId','autoVideoLike','autoVideoLikeDailyLimit','autoVideoCollect','autoFavoriteVisibility','autoFavoriteDelete','agentFollowEnabled','dmFollowAutonomyEnabled','incomingImageRecognitionEnabled','dailyDynamicEnabled','dailyDynamicDailyLimit','dailyDynamicDraftOnly']) {
         if (k in body) patch[k] = body[k]
       }
