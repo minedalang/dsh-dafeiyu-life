@@ -3,7 +3,7 @@
 - [dev.3b.33.23 · 官方 DASH SIDX 长视频有限分段取帧](2.8.1-dev3b23-dash-indexed-long-video.md)：在 DURL 之外验证公开 DASH 的 `SegmentBase` 与时间索引、按 206 Range 有界取帧，真实回退原因透传、旧版证据兼容；Windows 实机待验。
 - [dev.3b.33.17 · B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)：以私信未读计数与互动通知计数作为后台消息发现入口，详情按需读取，保留 30 分钟一致性核对、活跃私信 60 秒定向检查及跨重启 `-509` 保护。
 - [dev.3b.33.18 · Life 决策自由与安全链接审计](2.8.1-dev3b18-life-decision-freedom-audit.md)：短链逐跳共享预算、多个私信链接由 Life 精确选择、执行时联系人权限复核、链接类型/AID 回执核验及视频元数据/观看语义区分。
-- [2.9.x · Life 通用注意力与跨平台活动系统未来计划](2.9.x-life-universal-attention-cross-platform-plan.md)：平台无关注意力、活动生命周期、Adapter 契约、打断与恢复、抖音/游戏平台分阶段接入。
+- [2.10.x · Life 通用注意力与活动系统未来计划](2.10.x-life-universal-attention-cross-platform-plan.md)：平台无关注意力、活动生命周期、Adapter 契约、打断与恢复、抖音/游戏平台分阶段接入。
 
 > **视觉环境能力基线（dev.3b.33.11）：** [Windows 一键自助视觉运行时修复](2.8.1-dev3b3311-vision-one-click-repair.md)。该能力继续保留；当前消息读取架构已在 dev.3b.33.17 更新为双通知哨兵。
 

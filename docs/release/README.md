@@ -6,7 +6,7 @@
 
 - **最后一轮正式版审计：** [2.8.0 发布阻断与检查表](../architecture/2.8.0-final-release-audit-20261114.md)。
 - **当前版本功能与发布门禁：** [2.8.0 版本说明](archive/RELEASE_NOTES_v2.8.0.md) · [2.8.0 发布就绪审计](../architecture/2.8.0-release-readiness.md)。
-- **未来规划：** [2.8.1 候选体验与长期方向](../ROADMAP.md) · [研发技术评估](../architecture/2.8.1-roadmap.md)。
+- **未来规划：** [未来版本路线图（2.8.2 起）](../ROADMAP.md) · [研发技术评估](../architecture/2.8.1-roadmap.md)。
 - **技术架构：** [统一 Life 协议与历史增量](../architecture/README.md)。
 - **历史发布：** [2.6.2](archive/RELEASE_NOTES_v2.6.2.md) · [早期档案](archive/)。过时的 2.6.0 开发预览说明已清理，已发布版本说明仍保留。
 
