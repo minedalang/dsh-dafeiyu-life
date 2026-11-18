@@ -2362,9 +2362,20 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   <progress id="life-decision-progress" max="100" value="0" aria-label="本日自主生活模型决策额度使用百分比"></progress>
   <p id="life-decision-next" class="muted" role="status">正在读取调度心跳…</p><p class="muted">每日额度限制 Life 日常模型考虑机会，不直接限制评论／私信发送次数，也不是视频 Agent 的轮次数。子 Agent 还有自己的独立准入和发送限制。网络故障、冷却、无候选或自主休息均不应显示为“已经发表”。</p></div>
 <div class="life-pace-heading"><h4>活跃程度</h4><p class="muted">这是日常自主规划的考虑间隔与每日预算，不是每天必须执行的次数；社交事件有独立处理节奏。</p></div><div class="life-pace-cards" role="radiogroup" aria-label="生活活跃程度"><label class="life-select-card"><input type="radio" name="life-pace-card" value="quiet"><span class="life-select-icon">☾</span><span><strong>安静</strong><small>80 分 / 50 次考虑；视频 60 分钟 / 阅读 3 / 挑选 3</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="natural"><span class="life-select-icon">❀</span><span><strong>自然</strong><small>30 分 / 100 次考虑；视频 30 分钟 / 阅读 5 / 挑选 5</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="lively"><span class="life-select-icon">✧</span><span><strong>活跃</strong><small>10 分 / 200 次考虑；视频 15 分钟 / 阅读 8 / 挑选 5</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="custom"><span class="life-select-icon">⚙</span><span><strong>自定义</strong><small>自行调整生活和视频节奏</small></span></label></div>
-<details class="life-subdetails" id="life-settings-advanced"><summary>⚙️ 高级设置 · 活动时间与视频 Agent</summary>
-<p class="muted">选择安静、自然或活跃方案时，视频 Agent 的三项数值由方案统一设置；如需手工修改视频参数，请选「自定义」。方案不覆盖原有活动时段。次数是<strong>日常生活模型决策上限</strong>，不是必须执行的任务或真实视频播放次数；社交事件只读快速关注有独立额度，所有调用共享原子总上限。对外发布／私信授权仍在相应页面单独设置。</p>
-<div class="fields"><div><label for="life-v2-minutes">最短考虑间隔（分钟，5～1440）</label><input type="number" id="life-v2-minutes" min="5" max="1440" value="60"></div><div><label for="life-v2-limit">每日最多模型决策（1～288）</label><input type="number" id="life-v2-limit" min="1" max="288" value="12"></div><div><label for="life-v2-start">每日开始（0～23 时）</label><input type="number" id="life-v2-start" min="0" max="23" value="9"></div><div><label for="life-v2-end">每日结束（1～24 时）</label><input type="number" id="life-v2-end" min="1" max="24" value="23"></div></div>
+<section class="life-hours-card" id="life-hours-card" aria-labelledby="life-hours-title">
+  <div class="life-hours-head"><div><span class="life-hours-kicker">DAILY RHYTHM · 独立设置</span><h4 id="life-hours-title">🕰️ 每天什么时候自由活动？</h4><p class="muted">只决定普通 Life 自主生活的活动时段；安静、自然、活跃决定的是活动节奏，两者互不影响。</p></div><output id="life-hours-display" class="life-hours-display" aria-live="polite">09:00 — 23:00</output></div>
+  <div class="life-hours-timeline" id="life-hours-timeline" role="img" aria-label="活动时段：09:00 至 23:00"></div>
+  <div class="life-hours-ticks" aria-hidden="true"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+  <div class="life-hours-sliders">
+    <div class="life-hours-field"><label for="life-v2-start"><span>🌤️ 开始活动</span><output id="life-hours-start-value" for="life-v2-start">09:00</output></label><input id="life-v2-start" type="range" min="0" max="23" step="1" value="9" aria-describedby="life-hours-help"></div>
+    <div class="life-hours-field"><label for="life-v2-end"><span>🌙 结束活动</span><output id="life-hours-end-value" for="life-v2-end">23:00</output></label><input id="life-v2-end" type="range" min="1" max="24" step="1" value="23" aria-describedby="life-hours-help"></div>
+  </div>
+  <div class="life-hours-bottom"><div class="life-hours-shortcuts" aria-label="常用活动时段"><button type="button" data-life-hours="0,24">全天</button><button type="button" data-life-hours="9,23">白天 09–23</button><button type="button" data-life-hours="20,2">夜间 20–02</button></div><span id="life-hours-pending" class="life-hours-pending" role="status">调整后点击下方「保存生活设置」才会生效</span></div>
+  <p id="life-hours-help" class="muted life-hours-footnote">以运行 DSH 的电脑本地时间为准，每次精确到整点；支持跨午夜时段（如 20:00–02:00）。新私信／评论等获授权的社交事件仍由独立通道处理。</p>
+</section>
+<details class="life-subdetails" id="life-settings-advanced"><summary>⚙️ 高级设置 · 生活预算与视频 Agent</summary>
+<p class="muted">选择安静、自然或活跃方案时，视频 Agent 的三项数值由方案统一设置；如需手工修改视频参数，请选「自定义」。上方活动时段始终独立，不会切换为自定义活跃程度。次数是<strong>日常生活模型决策上限</strong>，不是必须执行的任务或真实视频播放次数；社交事件只读快速关注有独立额度，所有调用共享原子总上限。对外发布／私信授权仍在相应页面单独设置。</p>
+<div class="fields"><div><label for="life-v2-minutes">最短考虑间隔（分钟，5～1440）</label><input type="number" id="life-v2-minutes" min="5" max="1440" value="60"></div><div><label for="life-v2-limit">每日最多模型决策（1～288）</label><input type="number" id="life-v2-limit" min="1" max="288" value="12"></div></div>
 <div class="inset" id="life-video-agent-interval-setting"><h4>🎬 视频 Agent 启动间隔</h4><p class="muted">自动运行和手动触发共用最短启动间隔。安静／自然／活跃方案分别为 60／30／15 分钟；更改下列数字将切换为自定义，不会立即保存。设得过短会增加模型调用和 B站请求风险，模型仍能决定不启动。</p><div class="fields"><div><label for="life-v2-video-min-interval">视频 Agent 最短启动间隔（分钟，1～1440）</label><input type="number" id="life-v2-video-min-interval" min="1" max="1440" step="1" value="30"/><small class="setting-note">例如设置为 45，表示自动和手动两种入口都必须距离上次真实启动至少 45 分钟。</small></div><div><label for="life-v2-video-read-target">每轮希望深入阅读的视频数（1～30）</label><input type="number" id="life-v2-video-read-target" min="1" max="30" step="1" value="5"/><small class="setting-note">本轮真实探索目标，提前结束应说明原因；并不强迫读满，也不能绕过平台预算。内容证据不等于完整观看。</small></div><div><label for="life-v2-video-pick-target">每轮希望挑选的视频数（0～12）</label><input type="number" id="life-v2-video-pick-target" min="0" max="12" step="1" value="5"/><small class="setting-note">择优目标而非硬上限，允许少选或不选；不是评论配额，也不降低选片门槛。</small></div></div></div>
 <div class="toolbar"><button type="button" class="life-action life-sky" id="life-v2-preview-btn">预览详细变化</button></div>
 </details>
@@ -3050,6 +3061,32 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </body></html>
 
 <style>
+
+/* 2.8.1 .22 — independent, accessible Life hours control. */
+#panel-life-agent .life-hours-card{margin:18px 0 15px;padding:19px 21px;border-radius:20px;border:1px solid color-mix(in srgb,#60a99c 42%,var(--stroke));background:linear-gradient(120deg,color-mix(in srgb,#d7f7ec 31%,var(--panel)),color-mix(in srgb,#e4efff 35%,var(--panel)));box-shadow:0 7px 19px #247f6a0d;min-width:0}
+#panel-life-agent .life-hours-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+#panel-life-agent .life-hours-kicker{display:block;font-size:10px;letter-spacing:.13em;font-weight:800;color:#438c7c}
+#panel-life-agent .life-hours-head h4{margin:4px 0 5px;font-size:17px}
+#panel-life-agent .life-hours-head p{max-width:640px;margin:0;font-size:12px;line-height:1.7}
+#panel-life-agent .life-hours-display{white-space:nowrap;font-size:18px;font-weight:800;color:var(--ink);padding:10px 14px;border-radius:13px;background:var(--panel);border:1px solid var(--stroke);font-variant-numeric:tabular-nums}
+#panel-life-agent .life-hours-timeline{height:16px;border-radius:999px;margin:21px 0 7px;background:linear-gradient(90deg,#d5e3e7,#5da996 38%,#5da996 75%,#d5e3e7);border:2px solid color-mix(in srgb,var(--panel) 70%,#6ebcaa);box-shadow:inset 0 2px 5px #184e4a1a;position:relative}
+#panel-life-agent .life-hours-timeline::after{content:"";position:absolute;inset:-5px auto -5px 50%;width:1px;background:#71879b44;pointer-events:none}
+#panel-life-agent .life-hours-ticks{display:flex;justify-content:space-between;gap:5px;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+#panel-life-agent .life-hours-sliders{display:grid;grid-template-columns:1fr 1fr;gap:19px;margin:17px 0 13px}
+#panel-life-agent .life-hours-field{min-width:0;padding:12px 14px;border:1px solid var(--stroke);background:var(--panel);border-radius:14px}
+#panel-life-agent .life-hours-field label{display:flex;justify-content:space-between;align-items:center;gap:9px;font-size:12px;font-weight:750}
+#panel-life-agent .life-hours-field output{font-size:15px;white-space:nowrap;color:#357f74;font-weight:850;font-variant-numeric:tabular-nums}
+#panel-life-agent .life-hours-field input[type=range]{display:block;width:100%;height:28px;margin:8px 0 0;accent-color:#429f8c;cursor:pointer}
+#panel-life-agent .life-hours-field input[type=range]:focus-visible{outline:2px solid #318d8e;outline-offset:2px;border-radius:4px}
+#panel-life-agent .life-hours-bottom{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+#panel-life-agent .life-hours-shortcuts{display:flex;gap:7px;flex-wrap:wrap}
+#panel-life-agent .life-hours-shortcuts button{border:1px solid var(--stroke);border-radius:999px;padding:7px 12px;background:var(--panel);color:var(--ink);cursor:pointer;font-size:11px;font-weight:750}
+#panel-life-agent .life-hours-shortcuts button:hover,#panel-life-agent .life-hours-shortcuts button:focus-visible{border-color:#419e91;background:color-mix(in srgb,#c1eadc 42%,var(--panel))}
+#panel-life-agent .life-hours-shortcuts button[aria-pressed=true]{background:color-mix(in srgb,#91d5bd 39%,var(--panel));border-color:#479e87}
+#panel-life-agent .life-hours-pending{font-size:11px;color:var(--muted)}
+#panel-life-agent .life-hours-pending.is-dirty{font-weight:750;color:#a16c1e}
+#panel-life-agent .life-hours-footnote{margin:12px 0 0;font-size:11px;line-height:1.65}
+@media(max-width:650px){#panel-life-agent .life-hours-card{padding:15px}#panel-life-agent .life-hours-sliders{grid-template-columns:1fr;gap:9px}#panel-life-agent .life-hours-display{font-size:16px}}
 #panel-life-agent #life-now-settings{margin:12px 0 19px;border:1px solid var(--life-ui-line,var(--stroke));border-radius:20px;background:var(--panel);overflow:hidden}
 #panel-life-agent #life-now-settings>summary{padding:14px 22px;cursor:pointer;font-size:16px;font-weight:800}
 #panel-life-agent #life-now-settings:not([open])>summary{padding:17px 22px}

@@ -1,9 +1,6 @@
-fix(2.8.1): 修复 Windows Git Patch 中文路径并完善 Life 实时调度日志导出
+fix(life): 生活每日活动时段独立于活跃度并加入可视化滑块
 
-- 从正常 Unicode 路径重生成 Windows 可用 .19→.21 累计补丁，禁止 #U 伪路径
-- 为 AGENTS.md 添加 UTF-8/CRLF/独立 Git apply 回放规则
-- 新增只读 Life scheduler snapshot 端点，不唤醒定时器
-- 导出脚本交互获取真实管理中心 URL，留存调度 pulse 与缺失证据标记
-- 添加行为回归及发布说明，保持原账号数据与写权限不变
-
-验证：相关定向测试、架构/契约、自检、npm pack、Patch 独立回放；Windows 实机待验收。
+- 在鱼鱼的生活活跃方案下方展示时间轴、双滑块和全日/白天/夜间快捷项
+- Life V2 引入独立 schedule 提交，保留原时段配置、旧客户端及修订号门禁
+- 改时间不切自定义活跃度，改活跃方案不覆盖时段，支持跨午夜
+- 定向回归并验证 Windows Unicode 路径的 .19/.21 升级 Patch

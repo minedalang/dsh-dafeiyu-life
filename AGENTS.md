@@ -1,3 +1,10 @@
+## 2.8.1-dev.3b.33.22 · 独立 Life 活动时段 UI 约束（2026-11-18）
+
+- 活跃度（quiet/natural/lively/custom）只控制普通 Life 决策间隔、日预算和现有 Video Agent 节奏；每日活动时间使用单独 `schedule.startHour/endHour`，UI 必须紧跟四个活跃档位卡片，不得藏进高级设置，也不得因改变时间就设置 `pace=custom`。
+- 统一写入现有 `autonomousPlannerStartHour/EndHour` 字段，不增开第二套时钟、定时器和数据库。0–23 时开始、1–24 时结束，支持跨午夜但拒绝同小时以免错误解释成全天；全天明确 0–24。保持旧客户端 custom advanced 内时段的向后兼容，同时提交时冲突必须拒绝。
+- 每次保存必须经原有 revision、预览和确认；选择活跃预设不得覆盖时段，用户仅修改时段不得修改活跃/视频设置或任何对外权限。暂停模式可独立保存下次启用的时间。社会事件快速唤醒不是普通自主活动时段的同一入口，UI 必须解释区别。
+- 保持 Windows Patch Unicode/NFC/UTF-8 无 BOM、中文路径实际 Git 回放与独立验证；不运行全量云端测试、真实平台外发、Git Commit/Push 或 npm publish。
+
 ## 2.8.1-dev.3b.33.21 · Windows UTF-8 Patch / 日志导出实时调度器证据（2026-11-18）
 
 - **跨平台 Git Patch 强制规则**：从真实 Git checkout / 正确解码的 ZIP 提取 Unicode 文件名，按 NFC 规范化；不能把 `#U5bfc...` 等 ZIP 兼容伪名称当成真实源码路径。Git diff 对非 ASCII 路径使用 `core.quotepath=true` 输出标准 C 风格八进制 UTF-8 转义；Patch 必须是 UTF-8 无 BOM，路径以 Git 解析为准，不能手工造 `#U...` 重命名。不得为了让补丁通过要求用户重命名现有中文脚本。
