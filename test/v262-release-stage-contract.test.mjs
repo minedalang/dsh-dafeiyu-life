@@ -7,7 +7,7 @@ const pkg = JSON.parse(read('package.json'))
 const lock = JSON.parse(read('package-lock.json'))
 
 test('正式版与后续 dev 开发版都遵循 SemVer 并与锁文件、README 同步', () => {
-  assert.match(pkg.version, /^2\.8\.(?:0|1)(?:-dev\.(?:[1-9]\d*|3[ab]\.\d+))?$/)
+  assert.match(pkg.version, /^2\.8\.(?:0|1)(?:-dev\.[0-9A-Za-z.-]+)?$/)
   assert.equal(lock.version, pkg.version)
   assert.equal(lock.packages[''].version, pkg.version)
   const readme = read('README.md')
@@ -22,7 +22,7 @@ test('正式版与后续 dev 开发版都遵循 SemVer 并与锁文件、README 
     assert.doesNotMatch(readme,/关于当前.*预览版/)
     assert.ok(pkg.files.includes('docs/release/archive/RELEASE_NOTES_v2.8.0.md'))
   } else if (pkg.version.startsWith('2.8.1-dev.')) {
-    assert.match(readme, /当前开发分支.*2\.8\.1-dev/)
+    assert.match(readme, /当前开发(?:分支|基线).*2\.8\.1-dev/)
     assert.match(read('CHANGELOG.md'), new RegExp('^## '+pkg.version.replaceAll('.', '\\.'), 'm'))
     assert.match(read('docs/architecture/2.8.1-video-perception-dev3b6.md'), /正式版门禁（尚未完成）/)
   } else if (pkg.version.startsWith('2.7.1-dev.')) {

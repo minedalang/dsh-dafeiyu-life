@@ -10,12 +10,12 @@ import {buildLifeTimeline} from '../lib/life-timeline.mjs'
 const A='a'.repeat(16),B='b'.repeat(16),T=Date.parse('2026-11-07T06:00:00Z')
 async function home(fn){const dir=mkdtempSync(join(tmpdir(),'life-dev14-'));try{return await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
 
-test('私信、评论、点赞等可信完成动作共享同一匿名跨进程续行账本，重复回执不叠加',()=>home(dir=>{
+test('可信完成跨进程只记一次，待续想最多三条，剩余可信回执仍留审计',()=>home(dir=>{
  let t=T,scope=A
  const events=()=>createLifeAgentEvents({stateDir:dir,getAccountTag:()=>scope,now:()=>t})
  for(const [i,kind] of ['dm_reply','comment_reply','share_video','video_like','video_collect','video_follow','video_comment','followup','owner_care'].entries()){
   const x=events().recordVerifiedCompletion({kind,sourceRef:(i+1).toString(16).repeat(16)})
-  assert.equal(x.followupQueued,true,kind)
+  assert.equal(x.followupQueued,i<3,kind)
   assert.equal(events().recordVerifiedCompletion({kind,sourceRef:(i+1).toString(16).repeat(16)}).followupQueued,false)
  }
  assert.equal(events().peek(8).length,0,'not ready before safe continuation delay')

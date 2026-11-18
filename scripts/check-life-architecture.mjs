@@ -27,9 +27,9 @@ export function renderLifeArchitectureView(root,{overrides={}}={}){
   const rendered='# 大肥鱼 Life 源码全景（自动生成）\n\n'+
     '> 不要直接编辑此页；修改 `diagrams/life-system-current.mmd` / `diagrams/life-candidates-current.mmd` / `diagrams/life-receipt-memory-current.mmd` / `diagrams/life-universal-episodes-current.mmd` 后运行 `npm run write:life-architecture-view`。架构状态及未实现部分见 [源码审计](./life-system-current.md)。\n\n'+
     diagrams.map((name,i)=>'## '+(['一、系统全景','二、八类候选细目','三、可信回执与记忆闭环','四、统一 Life Episode 因果持续性'][i])+'\n\n```mermaid\n'+read(join(diagramDir,name)).trimEnd()+'\n```\n').join('\n')
-  // Keep the generated preview in the repository's CRLF convention so a small
-  // Mermaid edit does not rewrite the entire file as a line-ending-only diff.
-  return rendered.replace(/\r?\n/g,'\r\n')
+  // Git normalizes text line endings on some Windows worktrees. Render LF on
+  // every OS so Linux CI and Windows commits compare the same logical text.
+  return rendered.replace(/\r?\n/g,'\n')
 }
 
 export function checkLifeArchitecture(root,{overrides={}}={}){
@@ -64,7 +64,9 @@ export function checkLifeArchitecture(root,{overrides={}}={}){
     }
   }
   for(const name of required)if(!observed.has(name))errors.push(`缺少核心候选/中心节点代码锚点: ${name}`)
-  try{if(read(previewDoc)!==renderLifeArchitectureView(root,{overrides}))errors.push('Mermaid 可视化预览没有与当前 .mmd 同步；运行 npm run write:life-architecture-view')}
+  // Compare text, not Git checkout-specific CRLF vs LF representation.
+  const lf=text=>String(text).replace(/\r\n/g,'\n')
+  try{if(lf(read(previewDoc))!==lf(renderLifeArchitectureView(root,{overrides})))errors.push('Mermaid 可视化预览没有与当前 .mmd 同步；运行 npm run write:life-architecture-view')}
   catch{errors.push('缺少由 Mermaid 生成的可视化预览文档')}
   let doc=''
   try{doc=read(canonicalDoc)}catch{errors.push('缺少当前架构审计文档')}

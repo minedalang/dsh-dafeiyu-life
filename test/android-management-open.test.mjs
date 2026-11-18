@@ -9,7 +9,7 @@ import {apply} from '../index.js'
 
 const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
 // Exercise the real button handler without loading the entire React/settings host.
-const start = source.indexOf('      const onOpenManage = async (tab = \'\') => {')
+const start = source.indexOf("      const onOpenManage = async (tab = '', anchor = '') => {")
 const end = source.indexOf('\n\n      const patch = async (p, what) => {', start)
 assert.ok(start > 0 && end > start, 'management handler exists')
 const handlerSource = source.slice(start, end)

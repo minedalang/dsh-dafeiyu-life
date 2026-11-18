@@ -12,6 +12,8 @@ const root=()=>mkdtempSync(join(tmpdir(),'bili-281-19-'))
 const BV='BV1uNk1YxEJQ'
 const tag='1234567890abcdef'
 const noop={warn(){}}
+// The Windows runner exports the actual Conda Python path as PYTHON.
+const pythonExecutable=process.env.PYTHON||'python3'
 test('six-hour dm-unread success does not reduce a dm-list -509 floor',()=>{
   const dir=root();let now=1_800_000_000_000
   try{
@@ -40,7 +42,7 @@ test('network backoff preserves different lanes across concurrent processes',asy
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
 test('direct Python MCP shares Node read budget and cannot treat corrupted ledger as empty',()=>{
-  const py=spawnSync('python3',['--version'],{encoding:'utf8'});
+  const py=spawnSync(pythonExecutable,['--version'],{encoding:'utf8'});
   if(py.status!==0)return // dedicated Python coverage is also in test/test_v281_shared_budget.py
   const dir=root(),home=join(dir,'duty'),runtime=join(home,'accounts','123','runtime')
   mkdirSync(runtime,{recursive:true})
@@ -49,11 +51,11 @@ test('direct Python MCP shares Node read budget and cannot treat corrupted ledge
   const budget=createBiliReadBudget({dataDir:runtime,logger:noop})
   try{
     const script=`import sys;sys.path.insert(0,${JSON.stringify(resolve('vendor/bilibili-mcp'))});from shared_read_budget import shared_read_budget\nwith shared_read_budget(${JSON.stringify(home)},'bili_video_info') as receipt:receipt({'code':0})\nprint('OK')`
-    const output=spawnSync('python3',['-c',script],{encoding:'utf8'})
+    const output=spawnSync(pythonExecutable,['-c',script],{encoding:'utf8'})
     assert.equal(output.status,0,output.stderr)
     assert.equal(budget.status().byKind.find(x=>x.kind==='mcp:bili_video_info')?.hour,1)
     budget.noteError(Error('code=-509'),'dm-list')
-    const denied=spawnSync('python3',['-c',script],{encoding:'utf8'})
+    const denied=spawnSync(pythonExecutable,['-c',script],{encoding:'utf8'})
     assert.notEqual(denied.status,0)
     assert.equal(budget.status().byKind.find(x=>x.kind==='mcp:bili_video_info')?.hour,1)
   }finally{rmSync(dir,{recursive:true,force:true})}
@@ -134,6 +136,6 @@ for (tool,args) in [('bili_video_info_by_aid',{'aid':'../etc'}),('bili_dynamic_i
  except ValueError:continue
  raise AssertionError('unsafe '+tool)
 print('ok')`
-  const proc=spawnSync('python3',['-c',code],{encoding:'utf8'})
+  const proc=spawnSync(pythonExecutable,['-c',code],{encoding:'utf8'})
   assert.equal(proc.status,0,proc.stderr)
 })

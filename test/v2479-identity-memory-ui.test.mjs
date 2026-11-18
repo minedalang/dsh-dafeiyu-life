@@ -83,13 +83,13 @@ test('README 的架构图与推荐设置入口有效；管理中心核心功能�
   // README's marketing copy is intentionally free to evolve. Validate only
   // meaningful user-facing contracts: referenced architecture asset exists,
   // upgrade recommendations are discoverable, and the privacy explanation is present.
-  const image=readme.match(/!\[[^\]\n]*\]\((docs\/architecture\/[^)]+\.svg)\)/)
-  assert.ok(image,'README 应引用 Life Memory 高层 SVG 架构图')
+  const image=readme.match(/\[Life 架构可视化图\]\((docs\/architecture\/life-system-current-view\.md)\)/)
+  assert.ok(image,'README 应引用当前自动生成的 Life Mermaid 架构总图')
   const repoRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..')
   assert.equal(existsSync(resolve(repoRoot,image[1])),true,'README 引用的架构图必须真实存在')
   assert.match(readme,/docs\/ROADMAP\.md/)
   assert.match(html,/使用推荐值/)
   assert.match(html,/保存记忆与反思设置/)
   assert.match(readme,/隐私|私密/)
-  assert.match(pkg,/"version": "2\.\d+\.\d+(?:-dev\.(?:\d+|3[ab]\.\d+))?"/)
+  assert.match(JSON.parse(pkg).version,/^2\.8\.1(?:-[0-9A-Za-z.-]+)?$/)
 })

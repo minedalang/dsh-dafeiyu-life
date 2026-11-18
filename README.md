@@ -1,5 +1,9 @@
 # 🐟 大肥鱼 · DSH 生活系统
 
+### 账号、隐私和白名单边界
+
+私信与好友互动按当前登录账号、可撤销的角色授权及必要的白名单处理；不因为视频、私信或外部链接的文本而自动授予发言、关注、点赞或评论权限。Life 的记忆、凭据、私信队列与发送结果未知冻结保存在本机，请妥善保管诊断包，升级时不要清空。
+
 ### 2.8.1 · 鱼鱼的生活：活动时间与活跃程度独立选择
 
 在「🌿 鱼鱼的生活」的安静／自然／活跃卡片下方，直接用时间轴和两个滑动条选择每天允许自主生活的时段，另有「全天」「白天 09–23」「夜间 20–02」快捷方案。支持跨午夜，本机时间按整点计；必须点击「保存生活设置」确认后才生效。活动时段和活跃程度完全解耦，改变任意一方都不会自动覆盖另一方；私信／评论社交事件仍按已有独立安全规则处理。
@@ -13,13 +17,15 @@
 Windows Git Patch 使用 UTF-8 文件名标准转义；如果仓库里原本是中文脚本名，不需要改成 `#U...`。从 `.19` 升级时使用本项目提供的**已修复中文路径补丁**，先执行 `git apply --check`，不要再使用旧 `.19→.20` 编码异常补丁。
 
 
-> **坚持鱼的自由发展。** 鱼鱼会根据真实的 B站经历、人物关系和自己逐渐形成的兴趣，自主选择探索、交流、回忆、表达或休息。她会记住重要的事，也会慢慢遗忘。
+> **坚持鱼的自由发展。** 这些不同活动属于同一个角色、一个 Life，不是多个平台机器人。 鱼鱼会根据真实的 B站经历、人物关系和自己逐渐形成的兴趣，自主选择探索、交流、回忆、表达或休息。她会记住重要的事，也会慢慢遗忘。
 
 [![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [![npm 月下载](https://img.shields.io/npm/dm/dsh-dafeiyu-life)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [DSHMarket](https://dshmarket.com/zh/) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/minedalang/dsh-dafeiyu-life/issues)
 
 **2.8.1 更新主题：看见画面，让经历更真实。** 本版完善了自主视频观察、视觉模型配置、生活记忆、统一资源协调，以及私信和模型管理的可靠性。功能始终受当前账号、用户授权、资源预算和平台回执约束。
 
-**当前开发基线：** `2.8.1-dev.3b.33.24-release-preflight`。本版保留 DASH SIDX 长视频分段取帧、实际失败原因透传，并修复发布前旧断言与发布材料不一致，保留每日活动时段与活跃程度解耦，并保留 `.20/.21` 的 DSH 视觉 Debug 路由、Windows UTF-8 Git Patch 修复和实时调度快照。**使用 `.19` 的安装需要实际升级并重启**，不能仅靠模型识图认可修复 `.19` 原有的视频路由问题。正式发布仍须 Windows/真实 B站端到端验收。
+**当前开发基线：** `2.8.1-dev.3b.33.25-ci-test-audit`。本版保留 DASH SIDX 长视频分段取帧、实际失败原因透传，并修复发布前旧断言与发布材料不一致，保留每日活动时段与活跃程度解耦，并保留 `.20/.21` 的 DSH 视觉 Debug 路由、Windows UTF-8 Git Patch 修复和实时调度快照。**使用 `.19` 的安装需要实际升级并重启**，不能仅靠模型识图认可修复 `.19` 原有的视频路由问题。正式发布仍须 Windows/真实 B站端到端验收。
+
+**发布注意：** 2026-11-18 Windows full 包含大量旧断言和未验证用例，当前仍不能签发正式 2.8.1。CI Mermaid 跨平台换行已修复，其他待关闭项详见 `docs/release/2.8.1-full-suite-triage-20261118.md`。
 
 **发布说明：** 此 README 已按 2.8.1 正式版风格整理，仓库当前仍是发布候选源码。维护者完成生产 DSH 视频视觉和 Windows 升级验收后，才应将版本号改为正式 `2.8.1` 并发布。详情参见 [2.8.1 更新说明](docs/release/RELEASE_NOTES_v2.8.1.md) 与 [发布检查单](docs/release/2.8.1-release-checklist.md)。
 
@@ -98,4 +104,4 @@ dsh plugin --profile desktop add dsh-dafeiyu-life
 
 如果遇到问题，欢迎通过 [GitHub Issues](https://github.com/minedalang/dsh-dafeiyu-life/issues) 反馈，优先上传脱敏诊断，而非 Cookie、私信正文、密钥或完整个人数据。
 
-[📖 未来计划](docs/ROADMAP.md) · [技术与架构文档](docs/README.md) · [2.8.0 历史更新说明](docs/release/archive/RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md)
+[📖 未来计划](docs/ROADMAP.md) · [技术与架构文档](docs/README.md) · [Life 架构可视化图](docs/architecture/life-system-current-view.md) · [2.8.0 历史更新说明](docs/release/archive/RELEASE_NOTES_v2.8.0.md) · [完整更新记录](CHANGELOG.md)

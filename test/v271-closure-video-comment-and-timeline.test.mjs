@@ -130,7 +130,7 @@ test('Life Planner 已作出 browse_home 意愿选择后，执行层不再发起
  assert.ok(start>=0&&end>start)
  assert.doesNotMatch(block,/lifeWillingness\?\.decide\(/)
  assert.match(block,/technical\/privacy checks/)
- assert.match(block,/const launched=runDuty\('life-agent'/)
+ assert.match(block,/const launched=await runDuty\('life-agent'/)
  assert.match(block,/videoLaunchFailureReason\(launched\)/)
 })
 

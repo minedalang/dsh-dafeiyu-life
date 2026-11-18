@@ -46,6 +46,7 @@ test('clicking real Life tab runs the production switchTab path and reveals its 
     "let active='persona',firstNavigation=false",
     'const haltSandboxTimer=()=>{}',
     'const message=()=>{}',
+    'const settingDrafts=new Map()',
     'const $=id=>panels[id]',
     'const refresh=()=>{loads.push(active);return Promise.resolve()}',
     'const run=fn=>fn()',

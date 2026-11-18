@@ -17,14 +17,6 @@ const vid=(description='模型描述：室内桌面上展示耳机，并进行�
  info:{ok:true,bvid:BV,title:'耳机推荐'},visual:{ok:true,bvid:BV,status:'analyzed',image_source:'B站低清预览',
   times:[2,8,15],description},...extra})
 
-test('polling plans explicitly explain default 10s active direct-message check and its limits',()=>{
- const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
- const plans=html.indexOf('后台轮询方案'),intervals=html.indexOf('<h4>检查间隔',plans)
- assert.ok(plans>0&&intervals>plans)
- assert.match(html.slice(plans,intervals),/正在活跃的私信对话默认每 10 秒进行一次定向检查/)
- assert.match(html.slice(plans,intervals),/新对话的首次发现仍依赖普通轮询/)
-})
-
 test('bounded freeform observations preserve unseen subjects but reject external instructions',()=>{
  assert.deepEqual(deriveVideoObservationNotes('蒸汽火车穿过钢桥，车头冒出白烟。沿河岸还有几个行人围观。'),
    ['蒸汽火车穿过钢桥，车头冒出白烟。','沿河岸还有几个行人围观。'])

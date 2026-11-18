@@ -46,7 +46,7 @@ test('监控列出三个真实轮询渠道、错误类别、不同重试时间�
  }}})
  const x=r.issues.find(i=>i.id==='network')
  assert.deepEqual(x.channels.map(y=>y.label),['私信监听与快通道','评论回复','被 @ 提及'])
- assert.equal(x.channels[0].reason,'B站限流')
+ assert.match(x.channels[0].reason,/^B站限流/)
  assert.equal(x.channels[0].canClear,false)
  assert.equal(x.channels[1].reason,'网络请求失败')
  assert.equal(x.channels[1].canClear,true)

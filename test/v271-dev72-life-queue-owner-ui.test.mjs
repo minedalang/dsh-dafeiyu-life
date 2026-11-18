@@ -66,7 +66,7 @@ test('DM rate-limit streak is not reset by unrelated Bilibili success',t=>{
  budget.noteSuccess('dm-list')
  assert.equal(budget.status().backoffCount,2,'different DM endpoint must not reset a -509 streak')
  budget.noteSuccess('dm-messages')
- assert.equal(budget.status().backoffCount,0)
+ assert.equal(budget.status().backoffCount,2,'different successful DM endpoint cannot clear a previous rate-limit streak before probation')
 })
 test('new install allows DM friend-follow proposal but still requires Life and explicit follow capability',()=>{
  const code=file('index.js'),ui=file('lib/management-console.html')

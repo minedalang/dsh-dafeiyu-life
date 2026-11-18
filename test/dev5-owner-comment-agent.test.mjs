@@ -63,7 +63,9 @@ test('owner agent has independent @ scheduler and suppresses ordinary public AI 
  const home=mkdtempSync(join(tmpdir(),'dev5-owner-routing-'))
  const clock=Date.now();let polls=0,ownerAccepted=0,generated=0,sent=0
  const settings={masterEnabled:true,commentAtEnabled:false,friendAtFeedbackEnabled:false,ownerCommentAgentEnabled:true,dmWatch:false,commentWatchReplies:false,commentAtWatchMinutes:1}
- const sched=createInteractionScheduler({dm:{poll:async()=>({})},comments:{poll:async()=>{polls++;return {sent:0}}},getConfig:()=>settings,now:()=>clock})
+ const sched=createInteractionScheduler({dm:{poll:async()=>({})},comments:{poll:async()=>{polls++;return {sent:0}}},
+  readSocialUnread:async()=>({mode:'split',replyCount:0,atCount:1,likeCount:0}),
+  dataDir:home,getAccountTag:()=> '0123456789abcdef',getConfig:()=>settings,now:()=>clock})
  try{
   sched.start();await new Promise(r=>setTimeout(r,15));assert.equal(sched.status().checks.mentions.enabled,true);assert.equal(polls,1);sched.stop()
   const messages=[]

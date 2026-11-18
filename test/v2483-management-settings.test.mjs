@@ -9,11 +9,6 @@ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8')
 const h=read('lib/management-console.html'),j=read('lib/management-console.js')
 const index=read('index.js'),client=read('client.js'),pkg=JSON.parse(read('package.json'))
 
-test('v2.4.99 使用新版版本号，原有数据目录保持不变',()=>{
- assert.match(pkg.version,/^2\.(?:[5-9]|[1-9]\d+)\.\d+(?:-dev\.(?:\d+|3[ab]\.\d+))?$/)
- assert.match(index,/mainSessionMemoryReasoningEffort/)
- assert.match(read('lib/data-backup.mjs'),/main-session-memory\.json/)
-})
 test('检索模型思考深度实际保存并写到隔离的 headless 模型路由',()=>{
  for(const text of [h,j,index])assert.match(text,/main-memory-model-effort|mainSessionMemoryReasoningEffort/)
  assert.match(index,/reasoningEffort:cfg\.mainSessionMemoryReasoningEffort/)

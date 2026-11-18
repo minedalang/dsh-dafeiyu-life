@@ -63,17 +63,3 @@ test('normal Life management wording is clear; developer-only controls are not e
   assert.doesNotMatch(html,/value="legacy-(?:quiet|natural|lively)"/)
   assert.doesNotMatch(js,/request\('\/life-agent\/transition-readiness'\)/)
 })
-
-test('2.8.0 README and developer navigation reflect the RC gates without falsely claiming release',()=>{
-  const readme=src('README.md'),doc=src('docs/README.md'),notes=src('docs/release/archive/RELEASE_NOTES_v2.8.0.md')
-  const opening=readme.slice(0,2200)
-  for(const term of ['一个 Life','2.8.0','生活','记忆'])
-    assert.ok(opening.includes(term),term)
-  assert.match(readme,/docs\/ROADMAP\.md/)
-  assert.match(doc,/2\.8\.0/)
-  assert.match(doc,/2\.8\.0-release-readiness\.md/)
-  assert.match(notes,/正式版更新说明/)
-  assert.match(src('docs/architecture/2.8.0-release-readiness.md'),/releaseReady:false/)
-  assert.match(src('AGENTS.md'),/RC 十三项自然行为/)
-  assert.match(src('docs/AGENT_ARCHITECTURE.md'),/历史示意/)
-})

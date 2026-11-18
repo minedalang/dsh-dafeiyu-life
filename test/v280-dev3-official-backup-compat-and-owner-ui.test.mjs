@@ -103,12 +103,3 @@ test('to-do management styles live in head and preserve selectors after moving t
   assert.match(html,/#panel-plans \.life-plan-admin-inner \.life-action\.life-green\{background:/)
   for(const id of ['owner-todo-add','owner-todo-remind','owner-todo-settings-save','owner-todo-list','owner-todo-refresh']) assert.ok(html.includes(`id="${id}"`),id)
 })
-
-test('README restores npm monthly/yearly badges; release notes are publication-facing',()=>{
-  assert.match(src('README.md'),/shields\.io\/npm\/dm\/dsh-dafeiyu-life/)
-  assert.match(src('README.md'),/shields\.io\/npm\/dy\/dsh-dafeiyu-life/)
-  assert.doesNotMatch(src('README.md'),/尚未发布正式版/)
-  assert.match(src('docs/release/archive/RELEASE_NOTES_v2.8.0.md'),/正式版更新说明/)
-  assert.doesNotMatch(src('docs/release/archive/RELEASE_NOTES_v2.8.0.md'),/发布说明草案/)
-  assert.match(src('client.js'),/欢迎私信反馈 Bug 与改进建议/)
-})

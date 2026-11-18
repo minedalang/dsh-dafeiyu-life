@@ -77,32 +77,41 @@ test('legacy 40-minute network backoff gets one immediate recovery probe while r
  assert.equal(backoff.check('replies').remainingMs,5*60_000)
 }))
 
-test('a skipped scheduler poll does not clear a stored network failure',async()=>withDir(async dir=>{
- let now=date(11),calls=0
- const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:1,commentWatchReplies:false,commentAtEnabled:false}
+test('a skipped five-minute unread probe does not clear a stored network failure',async()=>withDir(async dir=>{
+ let now=date(11),calls=0,reads=0
+ const cfg={masterEnabled:true,dmWatch:true,commentWatchReplies:false,commentAtEnabled:false}
  const backoff=createNetworkPollBackoff({dataDir:dir,getAccountTag:()=>tag,now:()=>now})
  backoff.settle('dm','ENOTFOUND')
  now+=2*60_000
  const scheduler=createInteractionScheduler({dataDir:dir,getAccountTag:()=>tag,now:()=>now,getConfig:()=>cfg,
-  dm:{poll:async()=>{calls++;return {skipped:'busy'}}},comments:{poll:async()=>({sent:0})}})
+  dm:{poll:async()=>{throw Error('unexpected full inbox scan')},nextFastUid:()=>null},comments:{poll:async()=>({sent:0})},
+  readPrivateUnread:async()=>{calls++;return {skipped:'busy'}},
+  readBudget:{status:()=>({blocked:false,byKind:[],retryAt:0})},logger:{error(){}}})
  try{
-  scheduler.start();await new Promise(resolve=>setTimeout(resolve,8));await scheduler.tick()
-  assert.equal(calls,1)
+  scheduler.start();await new Promise(resolve=>setTimeout(resolve,12));await scheduler.tick()
+  assert.ok(calls>=1) // A skipped local probe need not consume a Bilibili request budget.
   assert.equal(backoff.check('dm').category,'network')
  }finally{scheduler.stop()}
 }))
 
-test('interaction scheduler suppresses network requests in the persisted cooldown window',async()=>withDir(async dir=>{
- let now=date(11),calls=0
- const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:1,commentWatchReplies:false,commentAtEnabled:false}
- const setup=()=>createInteractionScheduler({dataDir:dir,getAccountTag:()=>tag,now:()=>now,getConfig:()=>cfg,
-  dm:{poll:async()=>{calls++;return calls===1?{error:'HTTP 200 code=-509'}:{sent:0}}},comments:{poll:async()=>({sent:0})}})
- let scheduler=setup();scheduler.start();await scheduler.tick(); // start triggers its own async tick too
- assert.equal(calls,1)
- now+=60_000;await scheduler.tick();assert.equal(calls,1)
- scheduler.stop();scheduler=setup();scheduler.start();await scheduler.tick();assert.equal(calls,1)
- now+=15*60_000;await scheduler.tick();assert.equal(calls,2)
- scheduler.stop()
+test('five-minute sentinel suppresses all DM read requests during a persisted -509 cooldown',async()=>withDir(async dir=>{
+ let now=date(11),calls=0,attempts=0,lastAt=0
+ const cfg={masterEnabled:true,dmWatch:true,commentWatchReplies:false,commentAtEnabled:false}
+ const budget={status:()=>({blocked:false,retryAt:0,byKind:[{kind:'dm-unread',hour:attempts}],
+  lastReadAtByKind:lastAt?{'dm-unread':lastAt}:{},dmListIntervalMinutes:5,dmUnreadNextAt:lastAt?lastAt+5*60_000:0})}
+ const setup=()=>createInteractionScheduler({dataDir:dir,getAccountTag:()=>tag,now:()=>now,getConfig:()=>cfg,readBudget:budget,
+  readPrivateUnread:async()=>{calls++;attempts++;lastAt=now;if(calls===1)throw Error('HTTP 200 code=-509');
+    return {followUnread:0,unfollowUnread:0,dustbinUnread:0}},
+  dm:{poll:async()=>({ok:true,sent:0}),nextFastUid:()=>null},comments:{poll:async()=>({sent:0})},logger:{error(){}}})
+ let scheduler=setup()
+ try{
+  scheduler.start();await new Promise(resolve=>setTimeout(resolve,12));await scheduler.tick()
+  assert.equal(calls,1)
+  assert.equal(createNetworkPollBackoff({dataDir:dir,getAccountTag:()=>tag,now:()=>now}).check('dm').category,'rate-limit')
+  now+=60_000;await scheduler.tick();assert.equal(calls,1)
+  scheduler.stop();scheduler=setup();scheduler.start();await new Promise(resolve=>setTimeout(resolve,12));await scheduler.tick();assert.equal(calls,1)
+  now+=15*60_000;await scheduler.tick();assert.equal(calls,2)
+ }finally{scheduler.stop()}
 }))
 test('main and Bstation owner DM share one durable contact quota and ID replay gate',async()=>withDir(async dir=>{
  const agent={id:'main',followup:async()=>{}}

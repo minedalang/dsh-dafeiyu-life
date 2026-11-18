@@ -50,3 +50,14 @@ test('Windows-style diagram override keys are normalized before architecture che
   assert.equal(result.ok,false)
   assert.ok(result.errors.some(x=>x.includes('menuGuard')&&x.includes('源码标记失效')))
 })
+
+
+test('Mermaid preview uses portable LF and accepts a Git-normalized Windows checkout',()=>{
+  const view='docs/architecture/life-system-current-view.md'
+  const content=readFileSync(join(root,view),'utf8')
+  assert.equal(content.includes('\r\n'),false,'generated Mermaid preview must be LF')
+  const windowsCheckout=content.replace(/\n/g,'\r\n')
+  assert.equal(checkLifeArchitecture(root,{overrides:{[view]:windowsCheckout}}).ok,true)
+  const genuinelyStale=windowsCheckout.replace('大肥鱼 Life 源码全景','大肥鱼 Life 历史草图')
+  assert.equal(checkLifeArchitecture(root,{overrides:{[view]:genuinelyStale}}).ok,false)
+})

@@ -1,3 +1,11 @@
+## 2.8.1-dev.3b.33.25-ci-test-audit (2026-11-18)
+
+- Linux GitHub Actions Mermaid 预览 LF/CRLF 不一致：架构生成器统一 LF，校验归一化行尾但仍严格比较内容，加入 Git 属性 `text eol=lf` 和防漂移测试。
+- 2026-11-18 Windows full 测试失败记录逐项审查：删除 16 个纯旧版文档/版本断言（保留同文件有效测试），为双通知哨兵、账号隔离的 DSH mock、Windows Node Bridge、真实模型路由与隐私用例更新测试夹具。
+- 修复生产 `dm-recovery-status` DOM 重复 ID；在「鱼鱼正在做」生活时间线下恢复匿名、只读、需显式点击的 S0/S1 验收快照 UI，服务端依然始终返回 `releaseReady=false`。
+- 修复旧网络退避账本一次性迁移仅在内存生效的缺陷：首次探测通过账号锁持久化，避免多次重启重复迁移恢复探测；保留 -509 冷却与安全冻结。
+- 未运行云端 570 文件全套、未得到 Windows 新一轮 full 通过或受限实机验证；**正式 `2.8.1` 不可放行**。完整差异分类详见 docs/release/2.8.1-full-suite-triage-20261118.md。
+
 ## 2.8.1-dev.3b.33.24-release-preflight (2026-11-18)
 
 - 维护者 Windows `run-tests.bat full` 命中旧三阶段视觉锁断言。修正为验证 `.19+` 独立 DSH 的健康 Python wrapper、兼容分支及外层无帧预约锁，而非要求旧版相邻 import 代码形态；没有改动真实平台或视觉执行生产代码。

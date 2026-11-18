@@ -44,8 +44,14 @@ test('复用之前的真实字幕和视频资料，同时获取当前热门和�
  }finally{await rm(dir,{recursive:true,force:true})}
 });
 test('调度器启用 @ 后独立轮询，原评论开关都关闭时仍运行',async()=>{
- let called=0;const scheduler=createInteractionScheduler({dm:{poll:async()=>{}},comments:{poll:async req=>{assert.equal(req.mentions,true);called++}},getConfig:()=>({masterEnabled:true,commentAtEnabled:true,commentWatchTop:false,commentWatchReplies:false,dmWatch:false})});
+ const dir=await mkdtemp(join(tmpdir(),'v2451-social-sentinel-'));
+ let called=0;
+ try{const scheduler=createInteractionScheduler({dm:{poll:async()=>{}},comments:{poll:async req=>{assert.equal(req.mentions,true);called++;return {sent:0}}},
+  readSocialUnread:async()=>({mode:'split',replyCount:0,atCount:1,likeCount:0}),
+  dataDir:dir,getAccountTag:()=> '0123456789abcdef',now:()=>1000000,
+  getConfig:()=>({masterEnabled:true,commentAtEnabled:true,commentWatchTop:false,commentWatchReplies:false,dmWatch:false})});
  scheduler.start();await new Promise(r=>setTimeout(r,15));scheduler.stop();assert.equal(called,1);
+ }finally{await rm(dir,{recursive:true,force:true})}
 });
 test('同一条既有回复通知又有被@通知时，只生成和发送一次',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'v2451-dedupe-'));let mentions=[notice(1)], replies=[],sent=0;

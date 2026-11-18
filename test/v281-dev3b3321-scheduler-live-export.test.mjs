@@ -10,6 +10,7 @@ import {Readable} from 'node:stream'
 import {apply} from '../index.js'
 
 const root=join(import.meta.dirname,'..')
+const pythonExecutable=process.env.PYTHON||'python3'
 const exporter=readFileSync(join(root,'tools','导出B站日志.bat'),'utf8').replace(/\r\n/g,'\n')
 const start=exporter.indexOf("  $pythonBody = @'\n")
 const end=exporter.indexOf("\n'@\n  [System.IO.File]::WriteAllText($helper",start)
@@ -22,7 +23,7 @@ async function helper(t,url){
  const duty=join(dir,'duty'),out=join(dir,'out')
  mkdirSync(duty);mkdirSync(out)
  const file=join(dir,'helper.py');writeFileSync(file,python)
- const child=spawn('python3',[file,duty,out,url||''],{env:{...process.env,HTTP_PROXY:'http://127.0.0.1:1',HTTPS_PROXY:'http://127.0.0.1:1'},stdio:['ignore','ignore','pipe']})
+ const child=spawn(pythonExecutable,[file,duty,out,url||''],{env:{...process.env,HTTP_PROXY:'http://127.0.0.1:1',HTTPS_PROXY:'http://127.0.0.1:1'},stdio:['ignore','ignore','pipe']})
  let stderr='';child.stderr.on('data',v=>{stderr+=v.toString()})
  const [code]=await once(child,'close')
  assert.equal(code,0,stderr.slice(-1500))

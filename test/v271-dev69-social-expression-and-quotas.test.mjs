@@ -55,7 +55,9 @@ test('后台 B站读取本地节流可通过设置动态调整，平台风控保
  budget.noteError(new Error('HTTP 412 risk control'));
  assert.equal(budget.status().reason,'platform-cooldown');
  at+=61_000;
- assert.equal(budget.status().blocked,false);
+ assert.equal(budget.status().blocked,true,'平台 412 冷却不能在 61 秒内自动解除');
+ at=budget.status().retryAt+1;
+ assert.equal(budget.status().reason,'');
 }));
 
 test('主评论审阅：区分尚未考虑、自主延期与技术失败',()=>{

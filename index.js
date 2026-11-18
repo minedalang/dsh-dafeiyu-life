@@ -5305,6 +5305,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     onIncoming:async({uid,text,messageId,time})=>{
       const role=socialPolicyGate.actor(uid).role
+      // Verified incoming owner DM preferences must be observed before the
+      // unified Life reply/owner action branch. Never infer consent from a
+      // model answer or from historic unverified inbox data.
+      if(role==='owner'&&!accountBinding.status().blocked)try{
+        observeAuthenticatedOwnerDmPreferences(stateDir,{
+          rows:[{incoming:true,system:false,senderUid:String(uid),messageId:String(messageId),
+            timestampMs:Number(time),text:String(text||'')}],
+          ownerUid:String(cfg.dmOwnerUid||''),friendDirectory:cfg.friendDirectory,now:Date.now()})
+      }catch(e){log('主人推荐意愿观察未能保存：'+String(e?.message||e).slice(0,110))}
       if(['owner','friend'].includes(role)&&!accountBinding.status().blocked){
         try{offerPrivateBiliLinkToLife({uid,role,text,messageId,at:Number(time)||Date.now()})}
         catch(e){log('私信分享的 B站链接未进入 Life 契机：'+String(e?.message||e).slice(0,100))}

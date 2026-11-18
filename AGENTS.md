@@ -1,4 +1,17 @@
+## 2.8.1-dev.3b.33.25 · CI 与全量历史测试分类（2026-11-18）
+
+- 当前还有 34 条“原始 Windows 失败文件”定向重跑中的失败，正式版仍不可发布；对废弃断言的清理不能当作代码安全验收。完整列表见 `docs/release/2.8.1-full-suite-triage-20261118.md`。
+
 ## 2.8.1-dev.3b.33.24 · 最后发布前回归与过期断言（2026-11-18）
+
+## 2.8.1 CI 与测试有效性维护规范（2026-11-18 · 强制）
+
+- Mermaid `.mmd` 为架构事实源；`docs/architecture/life-system-current-view.md` **统一 UTF-8 无 BOM、LF**。`.gitattributes` 固定 `text eol=lf`。每次更改 `.mmd` 后运行 `npm run write:life-architecture-view`，将预览一起提交，并运行 `npm run check:life-architecture`。校验容许操作系统行尾差异但**不得忽略真实图内容变化**；禁止通过关闭 CI 检查达成通过。
+- Windows 全量测试失败必须区分历史快照、测试夹具过期、真实产品回归。删除测试只限已由当前测试覆盖的旧 README 布局/旧预览版本声明/已退役轮询文案；**优先只删废弃子用例，保留整个文件里的权限、隐私、限流、发送冻结和运行时测试**，审计清单须列明。
+- 当前五分钟私信/互动双通知计数哨兵是唯一发现入口；测试不得模拟已退役的直接全会话、全评论或 @ 逐轮轮询，不得以删测试代替新哨兵回归。私信 -509 只有真实 dm-list 成功才降低列表退避，真实风险冷却不能被测试夹具强制缩短。
+- Windows Node 调用 Python 测试必须尊重 `run-tests.ps1` 传入的 `PYTHON` 路径；Python 夹具使用真实 `_gate_read` 签名兼容的隔离 mock，禁止通过开放生产读写权限让测试通过。Windows `.exe` 测试不得用 Unix shebang 文本冒充原生 PE；可复制本机 Node 到临时目录作为无网络模拟可执行程序。
+- 当前 CI/发布时若有关键断言失败、Python FAIL/ERROR、未解释的安全 SKIP 或真实 Windows/平台验收未完成，必须标注发布阻断；禁止将部分定向回归描述成全量 PASS。云端只执行针对变更的定向回归，遵守仓库不跑全量云端测试的规定。禁止真实 B站写入、npm Publish、未经要求的 Git Commit/Push。
+
 
 - 用户本机 `run-tests.bat full` 中**任何“必须通过”失败**都阻断正式发布，即使初步判断是测试自身过期；必须确认生产真实调用链、修复有证据的旧断言，并交由 Windows 本机重跑到完整结尾 PASS。不得把本机离线定向回归或旧提交的测试结果冒充全量通过。
 - 测试必须验证**真实有效的安全边界**，而不是假定某条路径里永远相邻的代码片段：DSH 独立视觉从 .19 起可先进入受信的健康 Python wrapper，兼容分支才直接导入 `describe_with_dsh`；严禁为了通过旧正则删除 wrapper 或将外层 `bili_preview_vision` 纳入帧预约锁导致嵌套自死锁。

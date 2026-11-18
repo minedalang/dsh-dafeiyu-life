@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync, copyFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { validateVisionBridgePacket, launchVisionBridge } from '../lib/dsh-vision-node-bridge.mjs';
@@ -9,11 +9,14 @@ const setup = () => {
   const dir=mkdtempSync(join(tmpdir(), 'dsh-vision-bridge-test-'));
   const home=join(dir,'home'), root=join(dir,'desktop');
   mkdirSync(home); mkdirSync(join(root,'resources'),{recursive:true});
-  writeFileSync(join(root,'resources','app.asar'),'fake test bundle');
+  const asar=join(root,'resources','app.asar');mkdirSync(asar,{recursive:true});
+  // A shebang pretending to be an .exe only runs on Unix. Copy the actual Node
+  // executable to exercise shell:false on both Windows and Unix without DSH.
   const exe=join(root,'DeepSeek Harness.exe');
-  writeFileSync(exe, '#!/usr/bin/env node\nconsole.log("SAFE_BRIDGE_PROBE_OK")\n');
-  chmodSync(exe,0o755);
-  const entry=join(root,'resources','app.asar','dsh','node_modules','@deepseek-ai','dsh-desktop-host','lib','cli.js');
+  copyFileSync(process.execPath,exe);chmodSync(exe,0o755);
+  const entry=join(asar,'dsh','node_modules','@deepseek-ai','dsh-desktop-host','lib','cli.js');
+  mkdirSync(join(entry,'..'),{recursive:true});
+  writeFileSync(entry,'console.log("SAFE_BRIDGE_PROBE_OK")\n');
   const patch=join(home,'vision-proof.yml');writeFileSync(patch,'test');
   const env={BILI_DUTY_HOME:home,BILI_VISION_DSH_WORKDIR:dir};
   const packet={exe,argv:['--expose-internals',entry,'--profile','headless','--patch',patch,'--dump-config'],cwd:home,timeoutMs:15000};

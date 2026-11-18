@@ -33,9 +33,3 @@ test('Life 匿名状态以动作与状态聚合，原始账本不参与改写',(
  assert.doesNotMatch(html,/主人明确操作与自主选择分开标记/)
  assert.match(html,/不提供重试按钮/)
 })
-test('README 仍有 npm 三个徽章与顶部导航，但不再展示备份测试章节',()=>{
- for(const key of ['npm/v/','npm/dm/','npm/dy/'])assert.ok(readme.includes(key))
- assert.match(readme,/\[功能概览\]/)
- assert.doesNotMatch(readme,/### 备份与测试/)
- assert.doesNotMatch(readme,/run-tests\.bat/)
-})

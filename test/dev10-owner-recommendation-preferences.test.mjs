@@ -59,12 +59,13 @@ test('主人 Agent 吞掉消息前的偏好观察仍生效，不需让消息流�
  }finally{rmSync(home,{recursive:true,force:true})}
 })
 
-test('主人的推荐许可观察位于双域意愿门与主人 Agent 分流之前',()=>{
+test('认证主人来信的推荐许可观察先于统一 Life 私信决策，不扫描历史缓存',()=>{
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- const begin=index.indexOf("async function getNewDmMessages(")
+ const begin=index.indexOf('onIncoming:async({uid,text,messageId,time})=>{')
  const hook=index.indexOf('observeAuthenticatedOwnerDmPreferences(stateDir,',begin)
- const agency=index.indexOf('const declinedOwnerRequests=',begin)
- const agent=index.indexOf('await ownerDmAgent.processMessages(ownerRows)',begin)
- assert.ok(begin>=0&&hook>begin&&agency>hook&&agent>agency,'必须先处理本人退订/恢复，再决定行动或交给 Agent')
- assert.match(index.slice(begin,agency),/!ownerAgentFirstBaseline/,'首次启用只建立基线，不回放旧消息')
+ const agency=index.indexOf('generateReply: async (req) => {',begin)
+ assert.ok(begin>=0&&hook>begin&&agency>hook,'主人推荐许可观察应在已认证入站消息中先于 Life 私信生成')
+ assert.match(index.slice(begin,agency),/role==='owner'&&!accountBinding\.status\(\)\.blocked/)
+ assert.match(index.slice(begin,agency),/incoming:true,system:false/)
+ assert.match(index.slice(begin,agency),/senderUid:String\(uid\),messageId:String\(messageId\)/)
 })

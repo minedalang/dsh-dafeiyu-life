@@ -78,5 +78,5 @@ test('DSH launch calls share the resolved native route and carry its environment
   const spawnCount=(index.match(/spawn\(dsh\.command,\s*args/g)||[]).length
   assert.equal(spawnCount,6) // new explicit headless provider verification also launches DSH
   const envCount=(index.match(/\.\.\.\(dsh\.env \|\| \{\}\)|\.\.\.\(dsh\.env\|\|\{\}\)/g)||[]).length
-  assert.equal(envCount,6)
+  assert.ok(envCount>=spawnCount,`All direct DSH spawns must inherit a verified native environment (spawns=${spawnCount}, env spreads=${envCount})`)
 })
