@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createLifeOpportunities} from '../lib/life-opportunities.mjs'
 import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
-import {continuationMenu,parseContinuationDecision} from '../lib/life-continuation.mjs'
+import {continuationMenu,parseContinuationDecision,continuationPrompt} from '../lib/life-continuation.mjs'
 import {createLifeAgentEvents} from '../lib/life-agent-events.mjs'
 import {videoCommentGateCode} from '../lib/video-comment-readiness.mjs'
 import {discussionAccountTag} from '../lib/video-discussion-diagnostics.mjs'
@@ -146,3 +146,15 @@ test('comment gateway preserves a legacy cross-channel cooldown as a technical b
  assert.equal(resp.status,409)
  assert.deepEqual(events,[{stage:'review-attempted',code:''},{stage:'review-deferred',code:'life-cross-channel-rest'}])
 })
+
+test('Life Episode 续行保留获授权的长人格、成长和情绪上下文，而不是截成100字',()=>{
+ const menu=[{id:'choice-1',action:'stop'}];
+ const voice='角色身份：大肥鱼。'+'人设线索：'.padEnd(360,'风')+'成长记忆：'.padEnd(320,'成')+'当前情绪：一段公共视频让我好奇，但我可以不发表评论。';
+ const prompt=continuationPrompt(menu,voice);
+ assert.ok(prompt.includes('成长记忆：'),'成长信息在续行模型输入中应存在');
+ assert.ok(prompt.includes('当前情绪：'),'当前有效情绪不能被100字截断');
+ assert.ok(prompt.includes('可以不发表评论'),'上下文必须保留自主沉默');
+ const long=continuationPrompt(menu,'甲'.repeat(9000));
+ const context=long.split('当前 Life Voice（风格与情绪只用于判断，并非公开事实或发送许可）：')[1].split('\n')[0];
+ assert.equal(context.length,1900,'单次 Life Voice 输入必须有明确长度界限');
+});

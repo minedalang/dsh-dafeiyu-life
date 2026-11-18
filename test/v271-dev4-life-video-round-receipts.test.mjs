@@ -98,3 +98,11 @@ test('production video subprocess wires start, success/failed exit and account-b
   assert.match(index,/ledger=lifeAgentEvents\?\.status\(\)/)
   assert.match(ui,/const rounds=\(data\.rows\|\|\[\]\)\.filter\(row=>row\.type==='video-round'\)/)
 })
+
+test('视频 Agent 生成提示词时不再引用不存在的旧 kws，启动异常也收口已登记轮次',()=>{
+ const source=readFileSync(new URL('../index.js',import.meta.url),'utf8');
+ assert.match(source,/memoryRetriever\.localContext\(baseQueries\.join\(' '\),'video'\)/);
+ assert.doesNotMatch(source,/\[\.\.\.baseQueries,\.\.\.kws\]/);
+ assert.match(source,/视频启动失败回执收口异常/);
+ assert.match(source,/recordVideoRoundFinish\(videoRoundReceiptId,\{exitCode:null\}\)/);
+});

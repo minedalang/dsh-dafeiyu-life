@@ -3127,7 +3127,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     return `你是这个账号的 B站 助手。`
       + `下面是使用者的设定（如果有）—— **按它来**，别用你默认那套人格。`
       + ownerDoc
-      + (memoryRetriever&&cfg.mainSessionMemoryEnabled?('\n'+memoryRetriever.localContext([...baseQueries,...kws].join(' '),'video').slice(0,1200)+'\n'):'')
+      + (memoryRetriever&&cfg.mainSessionMemoryEnabled?('\n'+memoryRetriever.localContext(baseQueries.join(' '),'video').slice(0,1200)+'\n'):'')
       + growthDoc
       + inspirationDoc
       + recommendationDoc
@@ -3969,6 +3969,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const runDuty = async (why = 'window',entryMode = 'mixed') => {
    let videoResourceRelease=()=>{}
    let productionVisionExecutor=null
+   let videoRoundReceiptId=''
+   let videoRoundLifeAccountTag=''
    try {
       if (dutyChild) {
         const alive = dutyChild.exitCode === null && !dutyChild.killed
@@ -3998,7 +4000,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     try { assertVerifiedHeadless(args,overlay,{kind:homeFirst?'home':'main',stateDir},'main') }
     catch (e) { return {started:false,why,error:'安全隔离校验失败，已拒绝启动：'+String(e?.message||e)} }
     // Account-specific video wake is bound to the identity at launch, not at exit.
-    const videoRoundLifeAccountTag=trustedLifeAccountTag()
+    videoRoundLifeAccountTag=trustedLifeAccountTag()
     const releaseVideoResource=lifeResourceScheduler.tryAcquire({lane:'exploration',resources:{video:1}})
     if(!releaseVideoResource)return {started:false,why,busy:true,error:'视频资源被占用或账号未就绪，保留 Life 原有续办资格'}
     videoResourceRelease=releaseVideoResource
@@ -4023,7 +4025,6 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         allowRequest:()=>trustedLifeAccountTag()===expectedAccount&&!accountBinding.status().blocked,
       })
     }
-    let videoRoundReceiptId=''
     const beforeOwnedSelection=ownedSelectionSnapshot()
     const watchedBeforeRun=new Set((beforeOwnedSelection.ok?beforeOwnedSelection.rows:[]).filter(x=>x.picked).map(x=>x.bvid))
     const pickedBeforeRun = countPickedToday()
@@ -4257,6 +4258,13 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
    } catch (e) {
     if(productionVisionExecutor){void productionVisionExecutor.close().catch(()=>{});productionVisionExecutor=null}
     videoResourceRelease()
+    // A startup exception after recordVideoRoundStart must close that same
+    // account's receipt; a "started" row is NOT evidence of a running agent.
+    if(videoRoundReceiptId&&videoRoundLifeAccountTag&&trustedLifeAccountTag()===videoRoundLifeAccountTag){
+      try{lifeAgentEvents?.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:null})}
+      catch(err){log('视频启动失败回执收口异常：'+String(err?.message||err).slice(0,100))}
+      if(currentVideoCommentDiagnostics?.roundId===videoRoundReceiptId)currentVideoCommentDiagnostics=null
+    }
     log(`刷B站开跑失败（${why}）：${e?.stack ?? e}`)
     return { started: false, why, error: String(e?.message ?? e) }
    }
