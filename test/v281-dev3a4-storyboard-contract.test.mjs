@@ -36,7 +36,10 @@ test('frame plans are explicitly available and old high-energy videoshot samplin
  assert.match(preview,/_pick_indices/)
  assert.ok(existsSync(new URL('../docs/architecture/assets/video-danmaku-heat-illustration.svg',import.meta.url)))
  const readme=src('README.md')
- assert.match(readme,/## 🎥 视频感知/)
- assert.match(readme,/video-danmaku-heat-illustration\.svg/)
- assert.match(readme,/```mermaid/)
+ assert.match(readme,/## 🎥 视频感知与模型选择/)
+ // Detailed graphics were relocated to the maintained architecture guide.
+ // Do not force retired diagrams back into the public README just to pass.
+ const architecture=src('docs/architecture/2.8.1-video-perception-dev3a4.md')
+ assert.match(architecture,/video-danmaku-heat-illustration\.svg/)
+ assert.match(architecture,/```mermaid/)
 })

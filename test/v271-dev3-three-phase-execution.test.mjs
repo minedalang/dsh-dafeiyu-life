@@ -65,7 +65,19 @@ test('vision locks only real low-resolution frame fetch, not nested independent 
   const server=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
   assert.match(server,/def _fetch_preview_frames_reserved\(bvid[,\s\S]*?public_read_reservation\('bili_preview_frames'/)
   assert.match(server,/asyncio\.to_thread\(_fetch_preview_frames_reserved, bvid[,\s]/)
-  assert.match(server,/mode == 'independent_dsh':\s+from vision_dsh import describe_with_dsh/)
+  // Since dev.3b.33.19, DSH goes through the verified-Python wrapper when
+  // available and only uses the in-process import as a guarded fallback.
+  // Check both branches, and make sure neither holds the frame reservation
+  // across its nested model/MCP invocation (which would self-deadlock).
+  const begin=server.indexOf("if mode == 'independent_dsh':")
+  const end=server.indexOf("if mode == 'reuse_video_model'",begin)
+  assert.ok(begin>=0&&end>begin,'DSH execution branch must exist before reuse_video_model')
+  const dsh=server.slice(begin,end)
+  assert.match(dsh,/if vision_python:/)
+  assert.match(dsh,/subprocess\.run\(\[vision_python,/)
+  assert.match(dsh,/else:\s+from vision_dsh import describe_with_dsh/)
+  assert.doesNotMatch(dsh,/with\s+(?:shared_read_budget|public_read_reservation)\(/,
+    'outer DSH model execution may not hold a nested frame reservation')
   assert.doesNotMatch(server,/@_gate_read\('bili_preview_vision'\)/)
 })
 

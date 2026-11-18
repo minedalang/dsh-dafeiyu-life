@@ -1,9 +1,7 @@
-# 大肥鱼 2.8.1-dev.3b.33.23 · 完整交付说明
+# 2.8.1-dev.3b.33.24 发布前最后审计交付
 
-基线：2.8.1-dev.3b.33.22-independent-life-hours。
+本次只修复维护者 Windows `run-tests.bat full` 暴露出的过期测试契约，并同步更正旧版分镜 README 断言和发布文档。**没有改动生产代码，也不能据此直接发布正式 2.8.1。**
 
-交付内容：完整源码 `source/`、独立安装 npm `.tgz`、`.22→.23` UTF-8 Git Patch、`.19→.23` 累计补丁、中文 Commit、安装/回滚文档、`TEST-RESULTS.md` 与 SHA256。Patch 与完整源码是二选一升级方式。
+交付物：完整源码 ZIP，npm 安装 TGZ，`.23 → .24` Git Patch，`TEST-RESULTS.md`，`APPLY.md`，SHA256 校验及中文 Commit。
 
-主要变化：公开 DASH SIDX 按时间索引、有限 206 Range 片段提取与本地 FFmpeg 识图；旧 DURL/预览路径兼容；保留 DSH 真实回退原因、证据来源和网络预算/账号安全。不增加任何对外写权限。
-
-真实 Windows/B站模型测试没有在当前容器进行。具体见顶层 `delivery/TEST-RESULTS.md`。
+对 Windows 用户：使用 `.23 → .24` Git Patch 升级后，在干净仓库执行 `./run-tests.bat full`，必须运行到底并最终 PASS；随后完成 `docs/release/2.8.1-release-checklist.md` 所列实际视觉、升级和限流验收。

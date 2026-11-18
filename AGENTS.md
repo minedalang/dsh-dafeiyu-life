@@ -1,3 +1,10 @@
+## 2.8.1-dev.3b.33.24 · 最后发布前回归与过期断言（2026-11-18）
+
+- 用户本机 `run-tests.bat full` 中**任何“必须通过”失败**都阻断正式发布，即使初步判断是测试自身过期；必须确认生产真实调用链、修复有证据的旧断言，并交由 Windows 本机重跑到完整结尾 PASS。不得把本机离线定向回归或旧提交的测试结果冒充全量通过。
+- 测试必须验证**真实有效的安全边界**，而不是假定某条路径里永远相邻的代码片段：DSH 独立视觉从 .19 起可先进入受信的健康 Python wrapper，兼容分支才直接导入 `describe_with_dsh`；严禁为了通过旧正则删除 wrapper 或将外层 `bili_preview_vision` 纳入帧预约锁导致嵌套自死锁。
+- 文档/图表变更后更新测试指向实际维护位置，不允许恢复退役 README 图或伪造发布已验收状态。历史架构审计应注明审计版本，不能将旧版发现当作最新实现；发行说明须区分“源码已接线”与“Windows 实机已通过”。
+- 本轮仅执行相关定向测试、Python/Node 语法、架构与 Video/MCP 契约、自检、npm pack、真实 UTF-8/CRLF Patch 独立回放。**禁止云端全量 Node 测试、真实 B站写入、Git Commit/Push 或 npm publish**；正式 `2.8.1` 需用户 Windows 全量回归和实机门禁全部通过后再发布。
+
 ## 2.8.1-dev.3b.33.23 · 可信 DASH 长视频稀疏采样（2026-11-18）
 
 - 使用官方公开 `view/playurl` 的同 BV/CID、受校验的 bilivideo.com HTTPS `.m4s` 和 SegmentBase SIDX；不允许任意 URL、模型提供媒体字节地址、登录 Cookie、FFmpeg 远程网络输入或永久缓存源媒体。

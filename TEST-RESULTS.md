@@ -1,28 +1,36 @@
-# 2.8.1-dev.3b.33.23 · DASH 长视频分段感知测试结果
+# 2.8.1-dev.3b.33.24 发布前审计与定向验证记录
 
-## 范围与版本
+## Windows 维护者提供的 full 测试证据（2026-11-18 10:08:55）
 
-基线 `.22-independent-life-hours`，目标 `.23-indexed-dash-long-video`。只读真实视频采样与 DSH 回退原因，未改 Life 自主权、通知/DM/发送、状态迁移、UI 设置、调度时间。
+- `./run-tests.bat full` 第 9 个专项 `test/v271-dev3-three-phase-execution.test.mjs`：6 tests、5 pass、1 fail，失败名称 `vision locks only real low-resolution frame fetch, not nested independent DSH`。
+- 该专项被标记为“必须通过”，runner 因而提前停止：`570` 个 Node 文件尚未全部运行。**这次 Windows full 不能宣布通过。**
+- 当前云端源码 `.23` 可复现相同失败：老测试假设 `mode == 'independent_dsh'` 后立刻导入 Python 函数。实际 `.19+` 存在健康 Python wrapper 的受限调用，以及没有该运行时才使用的直接 import 兼容分支。
 
-## 当前容器定向验证
+## 本次修正（没有更改任何生产执行逻辑）
 
-- Python 定向 6 文件：**57 passed**，包括额外 18 个子测试（其中 DASH 新增 11 项以及 206、错误 Content-Range、ETag 变化、预算不足、focus、DSH 真实回退证明）。
-- Node 定向 3 文件：**12/12 通过**（旧 DURL 证据、v7 DASH、长时间线、伪造网络预算/错误来源拒绝及 OCR/ASR 证据）。
-- `python -m py_compile`（4 个改动核心 Python 文件）、`node --check lib/video-evidence-bundle.mjs`：通过。
-- `node scripts/check-life-architecture.mjs`：通过（4 Mermaid / 126 代码节点）。
+1. `test/v271-dev3-three-phase-execution.test.mjs`：断言健康 Python wrapper、兼容分支、原始帧下载的预算/预约存在，同时确认 DSH 父层不持有 `bili_preview_frames` 预约锁。
+2. `test/v281-dev3a4-storyboard-contract.test.mjs`：继续验证真实 SVG、Mermaid、frame plan，但改在现存架构文档查找图，不要求根 README 恢复旧图。
+3. `docs/architecture/2.8.1-video-perception-dev3a4.md` / 历史审计 / `docs/release`：消除图文位置与已迁移生产视觉的过时描述。
+4. `AGENTS.md`：增加强制规则——用户 `full` 必须完整结束零失败；不得以局部回归代替发布门禁。
+
+## 当前环境验证
+
+- 直接相关的两项测试文件：**8/8 pass**。
+- 连同视觉运行时、Debug、DASH 证据、私信嵌套读取与 2.8.1 发布引导相关的 8 个测试文件：**31 tests / 30 pass / 1 skipped / 0 fail**。跳过项因当前隔离环境缺少可选 YAML 解析依赖，不能视为 Windows 依赖齐全场景的通过。
+- `node scripts/check-life-architecture.mjs`：通过，4 Mermaid / 126 个代码节点。
 - `node scripts/check-video-tool-contract.mjs`：通过。
-- `node selfcheck.mjs`：宿主/客户端自检通过。
-- `npm pack --dry-run --ignore-scripts --json`：通过。
-- 额外的历史 Node 断言 `test/v281-dev3a4-storyboard-contract.test.mjs` 对 README 中旧版图片引用的断言失败；该断言与 `.23` 解码接线无关，未算为通过，也没有修改 README 加回退役内容以使测试变绿。定向 Node 套件中未包含这个历史测试。
+- `node selfcheck.mjs`：通过。
+- `npm pack --dry-run --ignore-scripts --json`：通过，721 文件。
+- 没有运行云端全量 570 个 Node 测试、未运行真实 B站操作。
 
-## 证据边界
+## 发布决定：HOLD（暂缓正式 2.8.1）
 
-- 实际 FFmpeg 读取的是**本机合成**碎片化 MP4 `ftyp/moov/SIDX/moof/mdat`；模拟 `206 Partial Content` 的受限 HTTPS CDN，不访问真实 B站，不触发写操作、不进行模型认证。
-- 合成视频可从相距较远的四至六个窗口解码并生成分镜，在预算内读取少于媒体总长的片段；短视频旧路径仍被回归。
-- API 元数据测试覆盖 30/60/166 分钟和 4 小时硬上限，但**未**使用真实 B站 10/30/45/120 分钟视频做 Windows 端到端视觉验收。
-- 新增的公开 DASH 只支持官方 `SegmentBase` 中可解析的平面 `SIDX`、SAP 独立片段，其他 DASH 描述不能伪装为完成真实解码；可能仍降级低清或失败，返回准确代码。
-- 不进行仓库禁止的云端全量 Node/Python、外部视频网络访问、真实外发、Git Commit/Push/npm publish。
+以下仍需要维护者 Windows 端实际关闭；任何一项缺失都不能称为完整发布验收：
 
-## Patch 验证
+1. 在干净的 `.24` 源码上执行 `./run-tests.bat full`，等待最终综合表明确**全部通过**，不仅是第 9 个专项通过；报告必须包含后续测试。
+2. 实机 DSH 图片验收以及真实公开视频的 DSH 全流程感知，确认视频帧与模型回答，不能以固定图片验收或合成 FFmpeg 文件替代。
+3. 真实公开长视频 DASH / DURL 取帧、索引失败 / 低清 fallback / 网络预算、Windows FFmpeg/ASR/OCR；平台业务异常时必须有可解释原因。
+4. 从旧 `.19` / 2.8.0 升级、旧配置与账号隔离、双通知哨兵与 `-509`、跨重启发送未知冻结及回滚验证。
+5. 正式版再将 package.json、package-lock.json、README、CHANGELOG 和 Release Notes 同步更新为 `2.8.1`，核对实际 npm/DSHMarket/Git tag 内容一致。
 
-此行用于说明交付要求：Git Patch 使用真实中文路径 UTF-8 编码；需要在 `.22` / `.19` 对应真实旧版源码上完成 `git apply --check`、实际回放、逐文件 SHA256 一致性。具体结果以交付包 `delivery/patch-replay*.txt` 为准，Windows PowerShell 本机仍待验证。
+**不可从一次测试失败推断产品一定存在真实视觉死锁；也不可由一条旧测试修复和有限离线通过宣称产品正式无缺陷。**
