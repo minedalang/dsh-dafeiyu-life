@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% Life 事件增量节流、开放式视频回执以及 npm 更新状态为 dev.12 增量，沿原控制/执行安全边界
 %% dev.10：可信评论独立沉默/表达、同一社交凭据、视频已选行为排队；源代码在 dev.10 协议与当前架构审计。
 %% dev.74：三维关系来自当前账号可信事件；公开评论熟悉度不是主动私信授权。
@@ -136,7 +137,7 @@ flowchart TB
     homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
-    episodeContinuation["有新核验信息后 Life 可自由选择下一步 · 最多追加 4 次 · 可随时休息；不是重复批准旧动作"]
+    episodeContinuation["Life 自选续行：可选 observe_video standard/deep 或直接休息 · 不隐式初看 · 最多 4 次"]
     episodeVisualFirst["进入已核实 BV 后先尝试一次受控画面采样；失败只保留资料，禁止外发"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
@@ -244,7 +245,7 @@ flowchart TB
 %% @code menuGuard | lib/autonomous-planner.mjs | export function validateOfferedLifeAction
 %% @code home | lib/life-agent-events.mjs | homePickedCount
 %% @code lifeEpisode | lib/life-opportunities.mjs | const beginHomeExploration=
-%% @code episodeContinuation | lib/autonomous-planner.mjs | const continueLifeRead=async (intentionId,
+%% @code episodeContinuation | lib/autonomous-planner.mjs | const continueLifeRead=async (intentionId)
 %% @code homeEpisode | index.js | const episode=lifeOpportunities.beginHomeExploration
 %% @code homeCandidateMatch | lib/life-agent-events.mjs | let transientHomePickedBvids=null
 %% @code videoWrite | lib/life-continuation-write.mjs | export function createLifeContinuationWriteExecutor
@@ -360,6 +361,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% dev.12：具跨日公共关系证据的评论者作品为可选只读行动，不是自由 UID 或私信权限
 %% dev.10：同窗口选择携带经清洗的候选公开视频证据；混合私信不带出正文。
 %% dev.74：关系按自然熟悉度/渠道证据/DM Openness 三维分离，只有私人关系才可能授权发起。
@@ -495,6 +497,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% dev.12：经核验阅读增量仅作可观测收益，跨日兴趣与反思人格计数只读归因
 %% dev.10：可信回复通过统一意愿密封与原发送事务核验；未尝试和未知送达分离。
 %% dev.74：社交自然熟悉度只读成长；私人联系资格必须与原发送事务分离。
@@ -666,6 +669,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% dev.12：重复读取抑制额外模型唤醒，五步上限只保存一次未来自愿续章
 %% dev.10：视频 Episode 已选择的写操作与社交共用 FIFO 资格；不重复意愿模型。
 %% dev.74：评论区的自然熟悉度不形成主动私信资格，Episode 不赋予新权限。
@@ -686,7 +690,7 @@ flowchart TB
   record["createUniversalLifeEpisodes｜只保存当前账号匿名摘要/因果步骤 + 允许的归属枚举"]
   context["当前片段最多五个已核验步骤；历史可跨段关联"]
   due["有原账号可执行目标且至少两分钟后才优先唤醒"]
-  menu["鱼鱼仍可选择合法原动作/休息；视频意愿可选 resume_episode；不增加新权限"]
+  menu["Life 自选合法原动作/休息；视频可选 observe_video standard/deep，不自动取帧；不增加权限"]
   read["查看视频元数据／评论区／作者作品／一次额外首页｜真实只读回执"]
   write["原 Life 意愿审批 → 原专业平台发送 → 独立核验｜不强制主评论"]
   pause["自愿休息、预算不足、授权变化或未知结果：暂停/冻结"]
