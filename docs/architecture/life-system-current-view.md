@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
 %% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% Life 事件增量节流、开放式视频回执以及 npm 更新状态为 dev.12 增量，沿原控制/执行安全边界
@@ -362,6 +363,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
 %% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% dev.12：具跨日公共关系证据的评论者作品为可选只读行动，不是自由 UID 或私信权限
@@ -499,6 +501,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
 %% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% dev.12：经核验阅读增量仅作可观测收益，跨日兴趣与反思人格计数只读归因
@@ -561,6 +564,9 @@ flowchart TB
   outbox --> episode
   outbox -->|已排队但投影暂失败| pending
   episode --> recall
+  videoTrace["精确 BV／记忆 ID 的只读视频来源追溯｜仅当前账号清晰记忆；不加载深层详情"]
+  episode -.->|只读，不复原遗忘| videoTrace
+  videoTrace -.->|事实引用，不产生新记忆或行为| recall
   verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]
   privateBuffer["短期对话片段：跨进程原子短锁+认领；按账号/UID隔离；原文限期"]
   privateBatch["安静期/话题收尾/容量触发：模型批量提炼；失败退避、成功删除原文"]
@@ -667,11 +673,14 @@ verified -.->|事实归因，而非新兴趣证明| growthReadOnly
 contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
+
+%% @code videoTrace | lib/life-memory-gateway.mjs | function videoEvidenceTrace
 ```
 
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
 %% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% dev.12：重复读取抑制额外模型唤醒，五步上限只保存一次未来自愿续章

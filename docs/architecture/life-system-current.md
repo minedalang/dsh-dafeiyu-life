@@ -1,3 +1,5 @@
+> **2.8.2-dev.4 PR-2（开发中）**：现有 LifeMemoryGateway 增加当前账号、清晰阶段、精确 BV/记忆 ID 约束的只读视频来源追溯；不生成或读取深层详情，不改变 Life 模型或发送侧门禁。详见 [未来分层记忆提案](future-layered-memory-progressive-recall-proposal.md)。
+
 > **2.8.2-dev.3 PR-1B（开发中）**：在既有模型预算内，Episode 续行保留账本真实顺序并说明只投递最新三条事实详情；视觉观察按实收文本报告缺口；字幕提供仅字符级覆盖范围（不是播放时段）；Reflection 的全部依据若仅有节选则不沉淀长期事实、特质和情绪；Memory Retriever 标注未送达候选数。脱敏送达信息只作用于当前提示词，不成为记忆来源、外发授权、平台回执或额外读取预算。Windows full 与 DSH 实机待验。
 
 > **2.8.2 PR-1A（开发中）**：模型输入增加脱敏的完整度提示（`lib/context-delivery.mjs`），视觉模型超长指令拒绝而不截断；不改变 Life 决定权、平台回执、社交权限或原记忆库。见 [增量审计](2.8.2-pr0-pr1a-baseline.md)。

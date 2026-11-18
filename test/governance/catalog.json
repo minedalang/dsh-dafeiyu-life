@@ -610,6 +610,11 @@
       "owner": "release",
       "kind": "contract",
       "intent": "Ensure consumer git installs have no prepare/build hook, stable package metadata and release notes path agree, and README future growth features are clearly marked not implemented."
+    },
+    "v282-dev4-video-memory-provenance.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Current-account and exact-video memory evidence tracing must use only clear fading records, respect forgetting and scope, avoid archives and deep storage, and preserve independent observations."
     }
   },
   "protected": [
