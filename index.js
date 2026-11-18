@@ -199,6 +199,7 @@ import { hostLlmService, runHostModelText } from './lib/host-model-call.mjs'
 import { HEADLESS_DENY_TOOLS, writeSecureHeadlessOverlay, validateHeadlessOverlayFile, assertSafeHeadlessLaunch } from './lib/headless-security.mjs'
 import {createDshVisionReview} from './lib/dsh-vision-review.mjs'
 import {startManualVisionHostExecutor,startProductionVisionHostExecutor} from './lib/vision-host-owned-executor.mjs'
+import {callScopedDshVision} from './lib/scoped-dsh-vision-read.mjs'
 import { mergeWatchedRows } from './lib/watched.mjs'
 import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
 import { createLongTermMemory } from './lib/long-term-memory.mjs'
@@ -1817,9 +1818,17 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     if(!firstStart.isReady())throw Error(firstStart.message())
     refreshCfg()
     if (cfg.masterEnabled !== true) throw new Error('大肥鱼已暂停：请先开启总开关')
-    const client = await ensureMcp()
+    // The ordinary in-process MCP is deliberately route-less. Its environment
+    // cannot receive a one-shot Desktop Host visual bearer token; route vision
+    // through an isolated, read-only MCP with an ephemeral host instead.
+    const scopedDshVision=toolName==='bili_preview_vision'&&cfg.visionEnabled===true&&
+      resolvedVisionMode()==='independent_dsh'
+    const client=scopedDshVision?null:await ensureMcp()
+    if(scopedDshVision&&!assertSecureMcp())throw Error('DSH 视频识图 Python MCP 安全版本校验失败')
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
-    const originalDispatch=()=>monitoredReadTools.has(toolName)
+    const originalDispatch=()=>scopedDshVision
+      ? callPluginScopedDshVision(args,opts)
+      : monitoredReadTools.has(toolName)
       ? biliReadBudget.guard('mcp:'+toolName,()=>client.call(toolName,args,opts))
       : client.call(toolName,args,opts)
     const dispatch=()=>toolName==='bili_video_info'&&opts===undefined&&
@@ -3361,6 +3370,62 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       log('🔒 写视觉安全 overlay 失败：'+String(e?.message||e))
       return null
     }
+  }
+
+  // Plugin-internal B站 video reads (Main Session, Life and manual full-chain
+  // Debug) do not inherit the spawned Video Agent's one-shot visual host.
+  // Give EACH requested read an isolated whitelist-only MCP and ephemeral Node
+  // host capability. The old shared MCP stays tokenless and cannot bypass the
+  // production visual provenance / image-proof checks.
+  const callPluginScopedDshVision=async(args={},opts={})=>{
+    const account=trustedLifeAccountTag()
+    if(!account||accountBinding.status().blocked)throw Error('DSH 视觉识图账号尚未验证')
+    const runtime=selectHealthyVisionPython()
+    if(!runtime.ok||!runtime.path)throw Error('DSH 视觉 Python 环境不可用：'+String(runtime.reason||'unknown').slice(0,70))
+    const dsh=resolveDsh()
+    if(dsh.missing||dsh.shell)throw Error('DSH 视觉模型执行路由不可用：未找到可信 CLI')
+    if(process.platform==='win32'&&(dsh.source!=='desktop-native'||
+      dsh.args?.[0]!=='--expose-internals'||!dsh.args?.[1]))
+      throw Error('DSH 视频视觉必须使用可信 Desktop Host CLI，不能回退 Python Bridge')
+    const overlay=ensureVisionOverlay()
+    if(!overlay)throw Error('DSH 视觉安全 overlay 未建立；请检查视觉环境')
+    const visionArgs=[...dsh.args,'--profile','headless','--patch',overlay]
+    assertVerifiedHeadless(visionArgs,overlay,{kind:'vision',stateDir},'vision')
+    const current=resolveVisionModelRoute(cfg,ctx.get('agentDefaultModel')?.currentSelection?.()||{})
+    if(!current.complete)throw Error('DSH 视觉模型 Provider / 模型路由未完整配置')
+    // Preserve the normal Python MCP's public-read reservation, shared B站
+    // minute/hour budget, platform account separation and prompt-proof checks.
+    const env=visionEnv({
+      BILI_DUTY_HOME:stateDir,BILI_MCP_TOOLS:'bili_preview_vision',
+      BILI_SHARED_READ_MINUTE_LIMIT:String(cfg.biliReadMinuteLimit),
+      BILI_SHARED_READ_HOUR_LIMIT:String(cfg.biliReadHourLimit),
+      BILI_VISION_ENABLED:'1',BILI_VISION_MODE:'independent_dsh',
+      BILI_VISION_PYTHON:runtime.path,BILI_VISION_PYTHON_REQUIRED:'1',
+      BILI_VISION_DSH_ARGV:JSON.stringify([dsh.command,...visionArgs]),
+      BILI_VISION_DSH_RUN_AS_NODE:process.versions.electron||dsh.env?.ELECTRON_RUN_AS_NODE==='1'?'1':'0',
+      BILI_VISION_DSH_WORKDIR:process.cwd(),
+      BILI_VISION_DSH_BRIDGE:join(stateDir,'dsh-vision-node-bridge.mjs'),
+      BILI_VISION_HOST_REQUIRED:process.platform==='win32'?'1':'0',
+      BILI_VISION_DSH_PROVIDER:current.provider,BILI_VISION_DSH_MODEL:current.model,
+      BILI_VISION_PROMPT_B64:Buffer.from(normalizeVisionPrompt(cfg.visionPrompt),'utf8').toString('base64'),
+      BILI_VISION_FRAMES:String(cfg.visionFrames),
+      BILI_VISION_DEBUG:cfg.visionDebug?'1':'0',
+      BILI_VISION_DIAG_ENABLED:cfg.diagVisionEnabled?'1':'0',
+    })
+    return callScopedDshVision({command:runtime.path,script:join(stateDir,'mcp_server.py'),
+      home:stateDir,env,args,
+      timeoutMs:Math.min(250000,Math.max(230000,Number(opts?.timeoutMs)||240000)),
+      startHost:async()=>{
+        if(process.platform!=='win32')return null
+        return startProductionVisionHostExecutor({
+          home:stateDir,exe:dsh.command,cli:dsh.args[1],baseOverlay:overlay,
+          workdir:process.cwd(),env:{...visionEnv({BILI_DUTY_HOME:stateDir}),...(dsh.env||{})},
+          visualInstruction:normalizeVisionPrompt(cfg.visionPrompt),
+          allowRequest:()=>trustedLifeAccountTag()===account&&!accountBinding.status().blocked&&
+            cfg.visionEnabled===true&&resolvedVisionMode()==='independent_dsh',
+        })
+      },
+    })
   }
 
   // A dedicated read-only DSH image probe. It uses the same owner-supplied PNG
@@ -9979,8 +10044,11 @@ logger:{warn:m=>log('社交意图：'+m)}
         'commentWatchReplies', 'commentWatchTop', 'commentAtEnabled', 'socialRhythmCrossChannelMinutes', 'socialRhythmDailyPerPerson', 'friendAtFeedbackEnabled', 'strangerInspirationEnabled','socialInvitationEnabled','socialInvitationAutoInspectEnabled','ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentDraftEnabled','ownerCommentPublishEnabled','ownerCommentSocialPublishEnabled','ownerCommentNaturalAckEnabled', 'commentAtMode', 'commentAtWhitelist', 'commentTopCount', 'commentTopVideoCount', 'commentReplyHotCount', 'commentAllowGeneralTop', 'commentReplyPerPoll', 'commentReplyPerDay', 'commentOwnTopPerUser', 'commentOwnNestedPerUser', 'mainSessionBridgeEnabled', 'ownerSpontaneousChatEnabled', 'ownerContactPreset','ownerContactStartHour','ownerContactEndHour','ownerContactCooldownMinutes','ownerContactDailyLimit','ownerContactSilenceMinutes','mainSessionSilenceFollowupEnabled','mainSessionShortPauseEnabled','mainSessionShortPauseSeconds','ownerDmSilenceFollowupEnabled','mainSessionId', 'mainSessionAutoSync', 'mainSessionSyncMinutes', 'mainSessionDailyBatches', 'mainSessionBatchSize', 'mainSessionIncludeComments', 'mainSessionMemoryEnabled', 'mainSessionMemoryAutoBili', 'mainSessionMemorySemanticEnabled', 'mainSessionMemoryEmbeddingEnabled', 'mainSessionMemoryModelProvider', 'mainSessionMemoryModelId', 'mainSessionMemoryReasoningEffort', 'mainSessionMemoryCandidates', 'mainSessionMemorySearchDailyLimit', 'socialOutreachEnabled', 'socialLifeIntentEnabled', 'lifeProactiveFriendDmEnabled','lifeNaturalDmOutreachEnabled','lifePublicInteractionEnabled', 'socialVideoRecommendationsAuthorizedV2', 'emotionSystemEnabled', 'socialAutoSend', 'socialOutreachDailyLimit', 'ownerTodoAutoReviewEnabled','ownerTodoReviewMinutes','ownerTodoCompletionFollowupEnabled','socialTodoCompletionFollowupEnabled','ownerTodoFollowupCooldownMinutes','ownerTodoFollowupDailyLimit','ownerTodoFollowupMinIntervalMinutes','ownerTodoFollowupPollMinutes','ownerTodoFollowupQuietEnabled','ownerTodoFollowupQuietStartHour','ownerTodoFollowupQuietEndHour','autonomousPlannerEnabled','videoAgentMinIntervalMinutes','videoAgentReadTargetPerRound','videoAgentPickTargetPerRound','emotionRecallEnabled','emotionRecallMainEnabled','emotionRecallDmEnabled','emotionRecallUnlimited','emotionRecallDailyLimit','emotionRecallCooldownHours','emotionRecallStartHour','emotionRecallEndHour','emotionRecallCandidateLimit','emotionRecallHistoryLimit','emotionRecallRecentDays','emotionRecallMinAgeDays','emotionRecallEmotionMinIntensity','emotionRecallEmotionMaxAgeHours','ownerDmAgentEnabled','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','ownerDmAgentContextTurns','ownerDmAgentContextChars','ownerDmAgentModelProvider','ownerDmAgentModelId','ownerDmAgentReasoningEffort','ownerDmReadCommandsEnabled','ownerDmActionsEnabled','ownerDmLikeEnabled','ownerDmCollectEnabled','ownerDmFollowEnabled','ownerDmCommentDraftEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicDraftEnabled','ownerDmDynamicPublishEnabled','ownerDmFriendMessageEnabled','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour', 'mainSessionReflectionAuto', 'mainSessionReflectionModelProvider', 'mainSessionReflectionModelId', 'mainSessionReflectionReasoningEffort', 'mainSessionReflectionMinCandidates', 'mainSessionReflectionBatchSize', 'mainSessionReflectionIntervalHours', 'mainSessionReflectionDailyBatches', 'mainSessionMemoryHalfLifeDays', 'socialMemoryHalfLifeNewDays', 'socialMemoryHalfLifeKnownDays', 'socialMemoryHalfLifeFamiliarDays', 'socialMemoryHalfLifeFriendDays', 'socialMemoryHalfLifeWhitelistDays', 'socialMemoryHalfLifeOwnerDays', 'mainSessionMemoryThreshold', 'mainSessionMemoryMaxItems', 'mainSessionMemoryMaxChars', 'mainSessionMemoryDailyQuota', 'mainSessionMemoryConsolidationEnabled', 'mainSessionMemoryFactsMax', 'favFolderId','autoVideoLike','autoVideoLikeDailyLimit','autoVideoCollect','autoFavoriteVisibility','autoFavoriteDelete','agentFollowEnabled','dmFollowAutonomyEnabled','incomingImageRecognitionEnabled','dailyDynamicEnabled','dailyDynamicDailyLimit','dailyDynamicDraftOnly']) {
         if (k in body) patch[k] = body[k]
       }
-      if(['visionMode','visionModelProvider','visionModelId','visionReasoningEffort','pluginDefaultModelProvider','pluginDefaultModelId'].some(k=>Object.prototype.hasOwnProperty.call(body||{},k)))
-        dshVisionReview.clear()
+      // The review already binds its approval to the *resolved* DSH route.
+      // Do not clear a successful image review simply because an ordinary
+      // model-page Save posts the SAME route fields again. A real route change
+      // is detected by dshVisionReview.status()/review() and invalidates the
+      // old result without granting a different model any approval.
       if(body?.socialOutreachEnabled===false||body?.socialLifeIntentEnabled===false)patch.socialVideoRecommendationsAuthorizedV2=false
       // The formerly hardcoded read-only social-attention quota is now
       // explicitly editable on the central quotas page.

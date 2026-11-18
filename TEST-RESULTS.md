@@ -1,49 +1,34 @@
-# 2.8.1-dev.3b.33.18-life-choice-audit 测试报告
+# 2.8.1-dev.3b.33.20 · DSH 视觉路由修复离线验证
 
-## 结果摘要
+**基线**：`2.8.1-dev.3b.33.19-code-closure`。**修复版本**：`2.8.1-dev.3b.33.20-vision-debug-route-fix`。
 
-**134 / 134 项定向回归通过。** 本轮按项目规则未运行完整测试套件，只运行与私信、Life 自主决策、B站安全链接、planner、写权限和未知结果保护直接相关的测试。
+## 确认的代码根因
 
-- 定向 Node 测试：134/134 通过，17 个测试文件，无失败、无跳过。
-- Node 语法检查：`index.js`、`lib/bili-share-link.mjs`、`lib/life-shared-bili-links.mjs`、`lib/life-shared-link-policy.mjs`、`lib/interaction-batch.mjs`、`lib/autonomous-planner.mjs` 通过。
-- Life 架构契约：通过，4 张 Mermaid、126 个唯一代码节点。
-- Video/MCP canonical selection 与 no-daily-cap 契约：通过。
-- `selfcheck.mjs`：Host / Client 两端通过，43 个工具注入检查通过。
-- `npm pack --dry-run`：通过，713 个文件；TGZ 包体 4,486,764 bytes，解包 9,638,039 bytes；实际 `npm pack` 成功生成本地安装包，未发布 npm。
-- Git Patch：从 `.17-notification-sentinel` 基线 `git apply --check` 通过；独立回放后与 `.18` 工作源码逐文件校验一致（不含 VCS 元数据和 node_modules）。
-- `git diff --check`：按项目 CRLF 约定使用 `core.whitespace=cr-at-eol` 检查通过。
+手动固定图片验收单独创建 DSH Headless 临时受限宿主，生产 Video Agent 启动时创建本轮受限能力；但是管理中心全流程视频感知经过插件内部长驻 Python MCP，此 MCP 环境没有 `BILI_VISION_DSH_ARGV`。`vision_dsh.py` 读取不到该配置会返回 `vision_config_error: DSH 视觉模型执行路由未配置`，与用户错误完全一致。认可图片是另一条测试链，不能自动为长驻 MCP 注入一次性能力。
 
-## 本轮新增覆盖
+## 修复验证矩阵
 
-1. B站短链重定向逐 hop 经过共享读取预算。
-2. HTTP 429、共享预算冷却、Life 资源队列未准入被区分为可恢复延期，不记成内容读取失败。
-3. 多条私信安全链接由 Life 选择宿主提供的精确 opaque ID；多候选缺少精确选择时 fail closed。
-4. 联系人从好友降为陌生人、陌生人许可关闭、DM 开关关闭、账号变化时，旧分享链接不能绕过当前权限。
-5. 直接 dynamic/video/profile 链接的 proof 类型必须匹配；视频 AID 必须与平台回执精确一致。
-6. `video-metadata-only`、`dynamic-text`、`dynamic-text-image` 和 `profile-metadata-only` 分开记录；不把视频元数据说成观看，不把纯文字动态说成图片已观察。
-7. 每条安全分享链接拥有独立幂等 Life 唤醒；联系人分享链接的有限摘要可供 planner 自主选择。
-8. 外部内容仍是不可信数据；任意外站 URL 不获得读取能力。
+- 单次只读 `bili_preview_vision` MCP 真实启动参数与临时宿主能力传递：通过。
+- 新增真实 Node 模拟 MCP 子进程：协议握手、工具调用、实际环境变量交接、结束清理：通过（不调用 B站或真实 DSH）。
+- 不存在 DSH 路由 / Windows 临时宿主不可用：拒绝调用而不回退旧 Bridge：通过。
+- 错误/无效 MCP 回执/异常：释放 MCP 与宿主资源：通过。
+- AI 模型页保存后显著验收提示、认可后的全流程说明、重复保存同路由不清除人工认可：定向静态及契约检查通过。
+- 旧启动、原生产 Video Agent 白名单、账号/读取预算、私信及发布门禁未被扩权：有关代码与定向回归检查通过，未做实机证明。
 
-## 其他自主决策场景回归
+## 测试与打包
 
-- 私信回复、沉默、延期、联系人权限撤销和发送幂等。
-- 评论回复与 @ 的 Life 意愿、目标核验和发送回执。
-- 关注/取关的一次性意愿凭据与独立权限门禁。
-- 公开点赞/评论仍要求全局授权、目标核验和未知结果冻结。
-- TODO 接受/继续不能授予外部写权限；只读自主探索仍受每日调度和证据门槛约束。
-- Life 反思不能自动修改记忆；外部推荐原话不进入自主计划员上下文。
+- 定向视觉/AI 模型/宿主/Debug/权限测试：**38 通过、1 跳过、0 失败**（其中 1 项因本机缺失 `yaml` 测试依赖而跳过）。
+- Life 架构契约：通过（4 张 Mermaid、126 个唯一代码节点）。
+- Video/MCP 契约：通过。
+- `node selfcheck.mjs`：通过（Host 43 工具、Client 插槽）。
+- `node --check index.js lib/management-console.js lib/scoped-dsh-vision-read.mjs`：通过。
+- `npm pack --dry-run --ignore-scripts --json`：通过，确认新模块、中文诊断脚本、发布指南被收录。
+- `.19 → .20` Git Patch 独立回放，逐文件 SHA-256 对比：**1521 个文件一致**。
 
-## 交付文档
+## 仍待实机验证
 
-- `docs/architecture/2.8.1-dev3b18-life-decision-freedom-audit.md`：当前实现审计、问题与修复。
-- `docs/architecture/2.9.x-life-universal-attention-cross-platform-plan.md`：未来跨平台统一注意力与活动系统详细方案。
-- `README.md`、`docs/ROADMAP.md`、`docs/README.md`、`docs/architecture/README.md` 已同步。
+- Windows DSH Desktop 实际版本加载、设置保存后 UX、人工识图认可、真实公开视频采样 JPEG、受限宿主与 DSH 模型最终回答。
+- Windows 账户切换、退出/重启时临时宿主停止、与真实 B站 `-509` 预算并行运行。
+- 本地 Windows 全量测试，及上游正式发布检查单中未关闭门禁。
 
-## 不代表已验证的事项
-
-- 未向真实 B站账号发起本轮验收请求；未发送私信、评论、点赞、关注或取关。
-- 未在用户 Windows DSH 宿主实机验证短链、真实动态/视频/空间读取、联系人权限撤销后的完整端到端表现。
-- 未完成 24 小时 B站 `-509` 观察；离线测试不证明平台风控已解除。
-- 未执行 Git Commit/Push 或 npm publish。
-- 2.9.x 通用注意力系统、抖音 Adapter 和游戏平台 Adapter 是未来计划，不是本版已实现能力。
-- 项目其他正式发布门禁（尤其生产 DSH 视频视觉实机验收）仍独立存在。
+不执行真实 B站请求、不公开任何凭据/用户日志、不运行云端全量测试、不自动 Git Commit/Push 或 npm publish。

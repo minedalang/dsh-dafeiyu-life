@@ -1,24 +1,14 @@
-# 大肥鱼 2.8.1-dev.3b.33.18 交付说明
+# 大肥鱼 2.8.1-dev.3b.33.20 · 交付说明
 
-## 本次交付内容
+## 本版解决什么
 
-1. **2.9.x 未来计划**：新增《Life Universal Attention & Cross-Platform Activity System》详细规划，定义通用注意力核心、跨平台活动管理、Platform Adapter 契约、通知打断、活动暂停/恢复、兴趣记忆分层、链接安全和分阶段接入 B站/抖音/游戏平台。README 和路线图已增加入口。
-2. **当前决策自由审计**：检查私信安全链接、转发原动态、Life Planner、私信回复、评论/@、关注/取关、公开互动、TODO 和视频探索的意愿、权限与回执链。
-3. **安全链接修复**：短链每一跳纳入共享预算；多链接由 Life 精确选择；执行时重验发件人权限；校验资源类型与 AID；明确元数据和观看证据；预算/资源延期不再记成内容失败。
-4. **权限保持**：没有扩大私信发送、公开点赞/评论、关注/取关、陌生人准入或任意 URL 访问权限。
+`.19` AI 模型页固定图片测试可识别并手动认可，但“运行诊断→全流程视频感知”仍然因插件内部 Python MCP 缺少 `BILI_VISION_DSH_ARGV` 报 `vision_config_error`。此版本新增单次、只读、可释放的 DSH 视频视觉 MCP/Node 宿主链路，为内部全链路 Debug 提供生产同级安全执行能力；同时在保存 DSH 模型后明确引导识图验收，认可后提示仍需真实视频测试。
 
-## 交付结构
+## 文件
 
-- `source/`：完整源码（不含 node_modules、VCS 元数据、本机配置、个人数据和本轮诊断日志压缩包）。
-- `patches/`：从 `.17` 到 `.18` 的独立 Git Patch。
-- `dsh-dafeiyu-life-2.8.1-dev.3b.33.18-life-choice-audit.tgz`：本地安装包。
-- `APPLY.md`：升级、验收和回滚说明。
-- `TEST-RESULTS.md`：定向测试和未验证边界。
-- `COMMIT_MESSAGE.txt`：中文 Commit 文案。
-- `SHA256SUMS.txt`：安装包与补丁校验和。
-- `docs/architecture/2.9.x-life-universal-attention-cross-platform-plan.md`：2.9.x 详细未来计划。
-- `docs/architecture/2.8.1-dev3b18-life-decision-freedom-audit.md`：本轮审计报告。
+- `source/` 完整升级源码。
+- `delivery/dsh-dafeiyu-life-2.8.1-dev.3b.33.20-vision-debug-route-fix.tgz` npm 安装包。
+- `delivery/patches/2.8.1-dev.3b.33.19-to-20-vision-debug-route.patch` `.19→.20` Git Patch。
+- `delivery/APPLY.md` 安装/回滚、`delivery/TEST-RESULTS.md` 离线验证、`delivery/COMMIT_MESSAGE.txt` 中文提交文案、`delivery/SHA256SUMS.txt` 校验和。
 
-## 状态
-
-134/134 项相关定向测试通过；Life 架构契约、Video/MCP 契约、Host/Client 自检和 npm 打包预检通过（713 个文件，TGZ 约 4.5 MB）。尚未在用户 Windows DSH 和真实 B站账号上完成端到端验收；未执行 Git Commit/Push 或 npm publish。请先阅读 `APPLY.md`。
+升级不应修改 `%USERPROFILE%\.dsh\bili-duty` 内的旧配置、发送结果未知账本、私信队列、凭据或 Life 记忆。当前仍为开发候选；Windows 真实图片/模型最终答复验证不由离线模拟替代。

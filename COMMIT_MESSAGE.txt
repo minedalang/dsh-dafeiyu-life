@@ -1,16 +1,7 @@
-feat(life): audit decision freedom and harden shared-link reading
+fix(vision): 修复 DSH 图片验收后视频全链路 Debug 缺少执行路由
 
-- add the 2.9.x universal attention and cross-platform activity roadmap
-- document the Life decision-freedom and safe-link audit
-- route every Bilibili short-link redirect through the shared read budget
-- let Life select one exact host-issued link candidate from multi-link DMs
-- revalidate sender permissions and account scope at read and receipt time
-- verify direct resource kind and AID against platform receipts
-- distinguish video metadata from actual viewing and dynamic text from image evidence
-- defer budget/resource admission blocks without recording content failures
-- expose bounded contact-shared link summaries to the autonomous planner
-- preserve all existing social write permissions and unknown-send freezes
-- update README, roadmap, architecture navigation, changelog and tests
-
-Tests: 134/134 targeted tests; architecture, Video/MCP contract and selfcheck passed.
-No real Bilibili account actions, git push or npm publish were performed.
+- 视频 Debug 的独立只读 MCP 按次获得安全 overlay、官方 DSH CLI 与 Node 宿主临时能力，不复用无令牌的常驻 MCP
+- 无有效受限能力时拒绝视频识图，禁止隐式退回旧 Python Bridge，保留平台读取预算和账号隔离
+- AI 模型保存 DSH 模式后要求图片验收、明确图片与视频双验收步骤；相同路由重复保存不清除人工认可
+- 修复诊断脚本 UTF-8 路径兼容，更新 README/发布检查单/升级指南
+- 增加模拟 MCP 真实进程握手和失败清理测试；只进行离线定向回归，不运行真实外发和发布
