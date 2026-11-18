@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% Life 事件增量节流、开放式视频回执以及 npm 更新状态为 dev.12 增量，沿原控制/执行安全边界
 %% dev.10：可信评论独立沉默/表达、同一社交凭据、视频已选行为排队；源代码在 dev.10 协议与当前架构审计。
@@ -353,7 +354,7 @@ planner -.->|仅节省重复调用，不代替模型决定喜恶| localNovelty
 %% @code localNovelty | lib/autonomous-planner.mjs | no-new-public-evidence
 %% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
 %% receipt, memory fact or autonomous decision. The original Life route stays.
-contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 ```
@@ -361,6 +362,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% dev.12：具跨日公共关系证据的评论者作品为可选只读行动，不是自由 UID 或私信权限
 %% dev.10：同窗口选择携带经清洗的候选公开视频证据；混合私信不带出正文。
@@ -489,7 +491,7 @@ dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验�
 %% @code todos | lib/life-video-episode-evidence.mjs | export function verifiedCompletedVideoTodo
 %% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
 %% receipt, memory fact or autonomous decision. The original Life route stays.
-contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 ```
@@ -497,6 +499,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% dev.12：经核验阅读增量仅作可观测收益，跨日兴趣与反思人格计数只读归因
 %% dev.10：可信回复通过统一意愿密封与原发送事务核验；未尝试和未知送达分离。
@@ -661,7 +664,7 @@ verified -.->|事实归因，而非新兴趣证明| growthReadOnly
 %% @code growthReadOnly | lib/life-growth-attribution.mjs | export function projectLifeGrowthAttribution
 %% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
 %% receipt, memory fact or autonomous decision. The original Life route stays.
-contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 ```
@@ -669,6 +672,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% dev.12：重复读取抑制额外模型唤醒，五步上限只保存一次未来自愿续章
 %% dev.10：视频 Episode 已选择的写操作与社交共用 FIFO 资格；不重复意愿模型。
@@ -784,7 +788,7 @@ commenterChoice -.->|候选非强制动作| menu
 %% @code commenterChoice | lib/life-continuation.mjs | inspect_commenter_works
 %% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
 %% receipt, memory fact or autonomous decision. The original Life route stays.
-contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 ```

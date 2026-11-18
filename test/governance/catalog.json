@@ -591,6 +591,11 @@
       "kind": "security",
       "intent": "Require bounded model context to preserve valid JSON, recent evidence, balanced candidates, and the end of long subtitles without changing authoritative source data."
     },
+    "v282-dev3-semantic-coverage.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Verify subtitle source coverage, actual Episode context delivery, conservative reflection on incomplete fading evidence, and memory omission disclosure without private-data or write-permission expansion."
+    },
     "v282-context-delivery.test.mjs": {
       "owner": "life-context-and-evidence",
       "kind": "security",
