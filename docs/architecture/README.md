@@ -1,10 +1,14 @@
-> **最新视觉环境增量（dev.3b.33.11）：** [Windows 一键自助视觉运行时修复](2.8.1-dev3b3311-vision-one-click-repair.md)。保留独立健康检查，不再要求普通用户安装 Conda、运行 PowerShell 或手填路径。
+## 当前 2.8.1 通知读取架构（2026-11-17）
+
+- [dev.3b.33.17 · B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)：以私信未读计数与互动通知计数作为后台消息发现入口，详情按需读取，保留 30 分钟一致性核对、活跃私信 60 秒定向检查及跨重启 `-509` 保护。
+
+> **视觉环境能力基线（dev.3b.33.11）：** [Windows 一键自助视觉运行时修复](2.8.1-dev3b3311-vision-one-click-repair.md)。该能力继续保留；当前消息读取架构已在 dev.3b.33.17 更新为双通知哨兵。
 
 > **最新实施增量（dev.3b.33.9）：** [Life 统一资源调度与自然契机收敛](2.8.1-dev3b339-resource-scheduler-and-natural-life.md)。仅单宿主资源仲裁，原社交发送凭据仍由持久安全层负责。
 
-> **当前工作源码：`2.8.1-dev.3b.33.11`（2026-11-16，开发版）。** 当前审计入口：[跨系统可靠性、统一 Life、自然契机与文档审计](2.8.1-dev3b338-system-integration-audit.md)。本页以下 dev.20、2.8.0 和 2.7.1 章节是历史快照，不表示目前项目版本或正式验收通过。
+> **当前工作源码：`2.8.1-dev.3b.33.17-notification-sentinel`（2026-11-17，开发版）。** 当前架构入口：[B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)；系统集成审计：[跨系统可靠性、统一 Life、自然契机与文档审计](2.8.1-dev3b338-system-integration-audit.md)。本页以下 dev.20、2.8.0 和 2.7.1 章节是历史快照，不表示目前项目版本或正式验收通过。
 
-> **2.8.1-dev.3b.20 当前：** [私信限流收口、Headless 双栏能力管理与图片回执诊断](2.8.1-dev3b20-dm-headless-capability-management.md)。普通监听与快通道显示为同一 DM 退避，活跃检查自适应放慢；Desktop/Headless 双栏由真实配置状态驱动，Headless 能力补充不修改 Desktop；图片验收在 DSH 子进程异常时仍保留 MCP 图片证明。真实 B站 -509 恢复、Windows DSH 与第三方中转站图片链路仍需实机验证。
+> **历史实现增量 2.8.1-dev.3b.20：** [私信限流收口、Headless 双栏能力管理与图片回执诊断](2.8.1-dev3b20-dm-headless-capability-management.md)。普通监听与快通道显示为同一 DM 退避，活跃检查自适应放慢；Desktop/Headless 双栏由真实配置状态驱动，Headless 能力补充不修改 Desktop；图片验收在 DSH 子进程异常时仍保留 MCP 图片证明。真实 B站 -509 恢复、Windows DSH 与第三方中转站图片链路仍需实机验证。
 
 上一批 [dev.3b.19 DSH 视觉路由一致性与分阶段图片验收](2.8.1-video-perception-dev3b19-headless-vision-route-diagnostics.md) 保留为历史记录；当前实现与约束以本节 dev.3b.20 文档及仓库根目录 `AGENTS.md` 为准。
 

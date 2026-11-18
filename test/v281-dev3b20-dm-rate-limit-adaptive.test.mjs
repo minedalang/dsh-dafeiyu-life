@@ -33,16 +33,18 @@ test('预算阻断不是新的网络成功回执，不会清除已到期的 DM �
  writeFileSync(backoffFile,JSON.stringify({version:2,scope:tag,lanes:{dm:{category:'rate-limit',streak:2,nextAt:now}}}))
  const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:1,dmActivePollEnabled:false,
   commentWatchReplies:false,commentAtEnabled:false}
- let calls=0
+ let calls=0,sentinelAttempts=0
  const scheduler=createInteractionScheduler({dataDir:dir,getAccountTag:()=>tag,now:()=>now,getConfig:()=>cfg,
   readBudget:{status:()=>({blocked:false,byKind:[]})},
-  dm:{poll:async()=>{calls++;return {error:'B站后台读取已暂停（minute-budget）'}},status:()=>({fast:{activeCount:0,nextIntervalSeconds:10}})},
+  readPrivateUnread:async()=>{sentinelAttempts++;throw Object.assign(new Error('B站后台读取已暂停（minute-budget）'),{name:'BiliReadDeferredError'})},
+  dm:{poll:async()=>{calls++;return {error:'should not reach full inbox'}},nextFastUid:()=>'',status:()=>({fast:{activeCount:0,nextIntervalSeconds:10}})},
   comments:{poll:async()=>({})},logger:{error(){}}})
  try{
   scheduler.start()
   await new Promise(resolve=>setTimeout(resolve,20))
   scheduler.stop()
-  assert.equal(calls,1)
+  assert.equal(sentinelAttempts,1)
+  assert.equal(calls,0)
   const state=JSON.parse(readFileSync(backoffFile,'utf8'))
   assert.equal(state.lanes.dm.category,'rate-limit')
   assert.equal(state.lanes.dm.streak,2)

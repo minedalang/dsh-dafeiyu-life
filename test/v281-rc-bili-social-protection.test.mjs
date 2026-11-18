@@ -58,22 +58,29 @@ test('read budget stores only bounded endpoint/time metadata and does not consum
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('scheduler skips protected comment notifications rather than calling the platform',async()=>{
- const dir=work();let now=1_800_000_000_000,dm=0,comments=0
+test('scheduler keeps both notification sentinels behind account-level -509 protection',async()=>{
+ const dir=work();let now=1_800_000_000_000,dm=0,comments=0,dmSentinels=0,socialSentinels=0
  try{
   const budget=createBiliReadBudget({dataDir:dir,now:()=>now,logger:silent})
   budget.acquire('dm-list');budget.noteError(Error('HTTP 200 code=-509'),'dm-list')
   const scheduler=createInteractionScheduler({dataDir:dir,now:()=>now,logger:silent,
    getAccountTag:()=>account,readBudget:budget,
-   getConfig:()=>({masterEnabled:true,dmWatch:true,dmWatchMinutes:5,dmQuietMaxMinutes:5,
-    dmActivePollEnabled:false,commentWatchReplies:true,commentReplyWatchMinutes:2,
-    commentAtEnabled:true,commentAtWatchMinutes:2}),
-   dm:{poll:async()=>{dm++;return {}}},comments:{poll:async()=>{comments++;budget.acquire('mcp:bili_received_replies');budget.acquire('mcp:bili_received_at_and_likes');return {}}}})
+   readPrivateUnread:async()=>{budget.acquire('dm-unread');budget.noteSuccess('dm-unread');dmSentinels++;return {followUnread:0,unfollowUnread:0,dustbinUnread:0,unfollowPushUnread:0,dustbinPushUnread:0,bizFollowUnread:0,bizUnfollowUnread:0,customUnread:0}},
+   readSocialUnread:async()=>{budget.acquire('social-unread');budget.noteSuccess('social-unread');socialSentinels++;return {mode:'split',replyCount:0,atCount:0,replyAtTotal:0,likeCount:0}},
+   getConfig:()=>({masterEnabled:true,dmWatch:true,dmActivePollEnabled:false,commentWatchReplies:true,commentAtEnabled:true}),
+   dm:{poll:async()=>{budget.acquire('dm-list');budget.noteSuccess('dm-list');dm++;return {ok:true}}},
+   comments:{poll:async()=>{comments++;budget.acquire('mcp:bili_received_replies');budget.acquire('mcp:bili_received_at_and_likes');return {ok:true}}}})
   scheduler.start();await settle()
-  assert.equal(comments,0)
-  now+=5*M;await scheduler.tick();assert.equal(comments,0)
-  now+=10*M;await scheduler.tick();assert.equal(comments,1)
-  now+=2*M;await scheduler.tick();assert.equal(comments,1,'social safe interval is stronger than UI 2m setting')
+  assert.equal(dmSentinels,0);assert.equal(socialSentinels,0);assert.equal(comments,0)
+  now+=5*M;await scheduler.tick()
+  assert.equal(dmSentinels,1,'after the global pause only the DM counter may probe; list detail remains pending')
+  assert.equal(dm,0);assert.equal(comments,0);assert.equal(socialSentinels,0)
+  now+=10*M;await scheduler.tick()
+  assert.equal(dmSentinels,2);assert.equal(dm,1,'DM list detail follows only after its adaptive floor and recovery gate')
+  assert.equal(socialSentinels,0,'the second counter probe remains staggered after the DM probe')
+  now+=15_001;await scheduler.tick()
+  assert.equal(socialSentinels,1);assert.equal(comments,1,'social detail is read only after its sentinel becomes eligible')
+  now+=2*M;await scheduler.tick();assert.equal(comments,1,'social safe interval is stronger than any legacy per-category interval')
   const status=scheduler.status()
   assert.equal(status.checks.replies.nextAt,now+8*M)
   assert.equal(status.checks.mentions.nextAt,now+8*M)
@@ -94,7 +101,7 @@ test('diagnostic/UI production paths label protection separately from a new plat
  const comments=readFileSync(new URL('../lib/comment-interact.mjs',import.meta.url),'utf8')
  assert.match(src,/if\(readState\.blocked\|\|readState\.dmListNextAt>Date\.now\(\)\)/)
  assert.match(ui,/B站限流保护中，本次没有发起请求/)
- assert.match(ui,/评论\/@通知正执行限流后低频观察/)
+ assert.match(ui,/B站限流后互动通知低频保护至/)
  assert.match(dm,/skipped:'platform-read-protected'/)
  assert.match(comments,/skipped:'platform-read-protected'/)
 })

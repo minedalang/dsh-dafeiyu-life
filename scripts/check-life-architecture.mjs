@@ -24,9 +24,12 @@ export function renderLifeArchitectureView(root,{overrides={}}={}){
   const read=name=>overrideMap.has(String(name).replace(/\\/g,'/'))
     ?overrideMap.get(String(name).replace(/\\/g,'/'))
     :readFileSync(join(root,name),'utf8')
-  return '# 大肥鱼 Life 源码全景（自动生成）\n\n'+
+  const rendered='# 大肥鱼 Life 源码全景（自动生成）\n\n'+
     '> 不要直接编辑此页；修改 `diagrams/life-system-current.mmd` / `diagrams/life-candidates-current.mmd` / `diagrams/life-receipt-memory-current.mmd` / `diagrams/life-universal-episodes-current.mmd` 后运行 `npm run write:life-architecture-view`。架构状态及未实现部分见 [源码审计](./life-system-current.md)。\n\n'+
     diagrams.map((name,i)=>'## '+(['一、系统全景','二、八类候选细目','三、可信回执与记忆闭环','四、统一 Life Episode 因果持续性'][i])+'\n\n```mermaid\n'+read(join(diagramDir,name)).trimEnd()+'\n```\n').join('\n')
+  // Keep the generated preview in the repository's CRLF convention so a small
+  // Mermaid edit does not rewrite the entire file as a line-ending-only diff.
+  return rendered.replace(/\r?\n/g,'\r\n')
 }
 
 export function checkLifeArchitecture(root,{overrides={}}={}){

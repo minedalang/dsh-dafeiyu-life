@@ -48,20 +48,19 @@ test('unsafe outgoing draft fails locally without leaking sealed Life approval',
  assert.deepEqual(r.settlements,['not-sent']);assert.deepEqual(r.sends,[])
 })
 
-test('technical backlog is not fresh activity: ordinary DM adaptive idle interval can grow',async()=>{
- let clock=T,n=0,fresh=0;
- const scheduler=createInteractionScheduler({dataDir:'',getConfig:()=>({masterEnabled:true,dmWatch:true,dmWatchMinutes:2,dmQuietMaxMinutes:15,
-   commentWatchReplies:false,commentAtEnabled:false,dmActivePollEnabled:false}),
-  now:()=>clock,dm:{poll:async()=>{n++;return {ok:true,conversations:1,deferred:3,freshIncomingContacts:fresh}},status:()=>({fast:{}})},
-  comments:{poll:async()=>({ok:true})},readBudget:{status:()=>({byKind:[],blocked:false})}});
- scheduler.start();await new Promise(resolve=>setImmediate(resolve));
- assert.equal(n,1);assert.equal(scheduler.status().dmAdaptive.intervalMinutes,2)
- clock+=16*60_000;
- assert.equal(scheduler.status().dmAdaptive.intervalMinutes,5)
- await scheduler.tick();assert.equal(n,2)
- fresh=1;clock+=6*60_000;await scheduler.tick()
- assert.equal(n,3);assert.equal(scheduler.status().dmAdaptive.intervalMinutes,2)
- scheduler.stop()
+test('technical backlog remains a targeted Life continuation and does not force a full DM list scan',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dm-approval-sentinel-'));let clock=T,full=0,continuation=0,continuationDue=false
+ const scheduler=createInteractionScheduler({dataDir:dir,getAccountTag:()=> 'aaaaaaaaaaaaaaaa',getConfig:()=>({masterEnabled:true,dmWatch:true,
+   dmActivePollEnabled:false,commentWatchReplies:false,commentAtEnabled:false}),now:()=>clock,
+  readPrivateUnread:async()=>({followUnread:0,unfollowUnread:0,dustbinUnread:0,unfollowPushUnread:0,dustbinPushUnread:0,bizFollowUnread:0,bizUnfollowUnread:0,customUnread:0}),
+  dm:{poll:async options=>{if(options?.continuationOnly)continuation++;else full++;return {ok:true,conversations:0,deferred:3}},
+   hasDueContinuation:()=>continuationDue,nextFastUid:()=>null,status:()=>({fast:{}})},comments:{poll:async()=>({ok:true})}})
+ try{
+  scheduler.start();await new Promise(resolve=>setTimeout(resolve,15));assert.equal(full,1)
+  clock+=16*60_000;await scheduler.tick();assert.equal(full,1,'the five-minute counter can remain unchanged without full-list reads')
+  continuationDue=true;await scheduler.tick();assert.equal(continuation,1);assert.equal(full,1)
+  assert.equal(scheduler.status().dmAdaptive.sentinelIntervalMinutes,5)
+ }finally{scheduler.stop();rmSync(dir,{recursive:true,force:true})}
 })
 
 test('real cross-channel Life approval is released by the DM pre-send no-write exit',async t=>{

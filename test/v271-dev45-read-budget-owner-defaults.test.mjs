@@ -4,7 +4,7 @@ import {mkdtempSync,readFileSync,rmSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createBiliReadBudget,BiliReadDeferredError} from '../lib/bili-read-budget.mjs'
-import {listSessions,fetchMsgs} from '../lib/dm.mjs'
+import {listSessions,fetchMsgs,readPrivateUnreadCounts} from '../lib/dm.mjs'
 import {createInteractionScheduler} from '../lib/interaction-scheduler.mjs'
 import {OWNER_CONTACT_PRESETS,ownerContactPolicy,checkOwnerContact} from '../lib/owner-contact-policy.mjs'
 import {classifyReadFailure} from '../lib/read-action-diagnostics.mjs'
@@ -45,11 +45,12 @@ test('shared budget cooldown prevents scheduler from starting another DM poll an
   const budget=makeBudget(dir,()=>now)
   budget.noteError(new Error('HTTP 200 code=-509'))
   const scheduler=createInteractionScheduler({dataDir:dir,now:()=>now,
-    getAccountTag:()=> '1234567890abcdef',readBudget:budget,getConfig:()=>({masterEnabled:true,dmWatch:true,dmWatchMinutes:1}),
-    dm:{poll:async()=>{calls++;return {sent:0}}},comments:{poll:async()=>({sent:0})}})
+    getAccountTag:()=> '1234567890abcdef',readBudget:budget,readPrivateUnread:async()=>{budget.acquire('dm-unread');budget.noteSuccess('dm-unread');return {followUnread:0,unfollowUnread:0,dustbinUnread:0,unfollowPushUnread:0,dustbinPushUnread:0,bizFollowUnread:0,bizUnfollowUnread:0,customUnread:0}},
+    getConfig:()=>({masterEnabled:true,dmWatch:true,dmWatchMinutes:5}),
+    dm:{poll:async()=>{calls++;budget.acquire('dm-list');return {sent:0}}},comments:{poll:async()=>({sent:0})}})
   await scheduler.tick() // stopped -> no op
   scheduler.start()
-  await scheduler.tick()
+  await new Promise(resolve=>setTimeout(resolve,15))
   assert.equal(calls,0)
   assert.equal(scheduler.status().checks.dm.nextAt,budget.status().retryAt)
   now+=5*60_000+1;await scheduler.tick();assert.equal(calls,1)
@@ -58,18 +59,20 @@ test('shared budget cooldown prevents scheduler from starting another DM poll an
 })
 test('scheduler reports observed DM-list/detail requests instead of only the check interval',async()=>{
  const dir=tmp(),old=globalThis.fetch;let now=t
- globalThis.fetch=async url=>String(url).includes('get_sessions')?json({code:0,data:{session_list:[]}}):json({code:0,data:{messages:[]}})
+ globalThis.fetch=async url=>String(url).includes('single_unread')?json({code:0,data:{follow_unread:0,unfollow_unread:0,dustbin_unread:0}}):String(url).includes('get_sessions')?json({code:0,data:{session_list:[]}}):json({code:0,data:{messages:[]}})
  try{
   const budget=makeBudget(dir,()=>now)
   const scheduler=createInteractionScheduler({dataDir:dir,readBudget:budget,now:()=>now,
-    getAccountTag:()=> '1234567890abcdef',getConfig:()=>({masterEnabled:true,dmWatch:true,dmWatchMinutes:1}),
+    getAccountTag:()=> '1234567890abcdef',readPrivateUnread:()=>readPrivateUnreadCounts(cred,{readBudget:budget}),
+    getConfig:()=>({masterEnabled:true,dmWatch:true,dmActivePollEnabled:false}),
     dm:{poll:async()=>{await listSessions(cred,{readBudget:budget});await fetchMsgs(cred,123,10,{readBudget:budget});return {sent:0}}},
     comments:{poll:async()=>({sent:0})}})
   scheduler.start();
-  for(let wait=0;wait<30&&!scheduler.status().checks.dm.lastHttpRequests;wait++)
+  for(let wait=0;wait<30&&!scheduler.status().checks.dmDetails.lastHttpRequests;wait++)
     await new Promise(resolve=>setTimeout(resolve,10))
-  const row=scheduler.status().checks.dm.lastHttpRequests
-  assert.deepEqual(row,{estimatedTotal:2,dmList:1,dmMessages:1})
+  const row=scheduler.status().checks.dmDetails.lastHttpRequests
+  assert.deepEqual(row,{estimatedTotal:2,dmUnread:0,socialUnread:0,dmList:1,dmMessages:1,replies:0,mentions:0})
+  assert.equal(scheduler.status().checks.dm.lastHttpRequests.dmUnread,1)
   scheduler.stop()
  }finally{globalThis.fetch=old;rmSync(dir,{recursive:true,force:true})}
 })

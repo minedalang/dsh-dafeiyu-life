@@ -47,8 +47,30 @@ flowchart TB
     feedback["本账号真实视频完成反馈｜只读考虑，不受新视频启动冷却影响"]
     ownerChat["talk_to_owner｜可配置联系时间/额度+主 Session 在线；真实经历/闲聊/沉默；可 skip"]
     ownerContactPolicy["主人联系策略｜卡片/自定义窗口和冷却，主 Session 与主人私信共用"]
-    networkPollBackoff["B站私信/评论只读轮询｜-509/DNS 持久退避"]
+    networkPollBackoff["B站双通知哨兵与按需详情｜-509/DNS 持久退避"]
   end
+  subgraph notificationSentinels["B站消息发现｜两个计数哨兵，不再分别定时拉完整列表"]
+    dmSentinel["私信未读计数 single_unread｜正常每 5 分钟"]
+    socialSentinel["评论回复/@/点赞计数 msgfeed/unread｜正常每 5 分钟"]
+    counterCompare["账号隔离计数快照｜只存分类计数与时间戳"]
+    detailsOnChange["按需读取详情｜计数增加/首次基线/30 分钟核对"]
+    activeDmSentinel["已确认活跃私信｜60 秒定向读取，空闲逐步放缓"]
+  end
+  dmSentinel --> counterCompare
+  socialSentinel --> counterCompare
+  counterCompare -->|私信计数增加| detailsOnChange
+  counterCompare -->|互动类别计数增加| detailsOnChange
+  counterCompare -.->|30 分钟一致性核对| detailsOnChange
+  detailsOnChange --> socialFacts
+  detailsOnChange --> adapter
+  socialFacts --> activeDmSentinel
+  activeDmSentinel --> socialFacts
+  networkPollBackoff -.-> dmSentinel
+  networkPollBackoff -.-> socialSentinel
+  networkPollBackoff -.-> detailsOnChange
+  networkPollBackoff -.-> activeDmSentinel
+  notificationManualCheck["Life check_notifications｜复用哨兵快照，不旁路拉完整列表"]
+  notificationManualCheck -.-> counterCompare
   dmAccepted["可信私信/评论邀请 + 原社交模型决定 now/later + 真实待办入账"]
   quickWake["立即 now：同账号有效任务 + 原 Life 运行锁｜直接只读执行，不再次调用意愿模型"]
   socialFacts -.->|同一社交模型的接受和时间选择；校验证据| dmAccepted
@@ -204,7 +226,7 @@ flowchart TB
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   classDef gap fill:#fff0f1,stroke:#d26975,color:#822f39
   class planner,menuGuard,selection,readTodo,explore,home,lifeEpisode,homeEpisode,homeCandidateMatch,episodeContinuation,episodeDiscussion,episodeHomeMore,episodeAftercare,verifiedActions,receipts,eventLedger active
-  class friends,socialWrite,videoWrite,gateway,retriever,growth partial
+  class friends,socialWrite,videoWrite,gateway,retriever,growth,dmSentinel,socialSentinel,counterCompare,detailsOnChange,activeDmSentinel,notificationManualCheck partial
   class gapSocial,gapRecall,gapGrowth gap
 
 %% @code adapter | lib/life-home-feed-evidence.mjs | export function summarizeHomeFeedResult
@@ -270,6 +292,12 @@ dmFollow -->|已核实后回执| receipts
 
 %% dev.44: opt-in owner policy and rate-limit recovery.
 %% @code ownerContactPolicy | lib/owner-contact-policy.mjs | export function ownerContactPolicy
+%% @code dmSentinel | lib/dm.mjs | export async function readPrivateUnreadCounts
+%% @code socialSentinel | lib/dm.mjs | export async function readInteractionUnreadCounts
+%% @code counterCompare | lib/notification-sentinel-state.mjs | export function createNotificationSentinelState
+%% @code detailsOnChange | lib/interaction-scheduler.mjs | const categories=sentinelState.pendingSocialCategories
+%% @code activeDmSentinel | lib/dm-autoreply.mjs | hasDueContinuation:()=>lifeInbox.due(1).length>0
+%% @code notificationManualCheck | index.js | const result=await interactionScheduler.checkNow()
 %% @code networkPollBackoff | lib/network-poll-backoff.mjs | export function createNetworkPollBackoff
 
 %% dev.59: DM/Comment keeps one model call with Life Voice, then seals exact expression without AI.

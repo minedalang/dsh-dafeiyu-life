@@ -1,3 +1,9 @@
+## 2.8.1-dev.3b.33.17 · B站双通知哨兵（2026-11-17）
+
+- 后台发现统一为私信 `single_unread` 与互动 `msgfeed/unread` 两个计数哨兵，正常各 5 分钟且错开；完整私信/评论/@详情只在计数增加、首次安全基线或 30 分钟一致性核对时读取。活跃 DM 60 秒定向检查与 Life 技术续办不强制 `get_sessions`。
+- 快照按账号作用域持久化，仅保存计数和时间戳；计数失败不当作 0，文件损坏 fail closed；Life `check_notifications` 不得旁路读完整列表。旧轮询配置字段保留兼容但管理页不再暴露独立间隔。
+- 当前开发基线以 `package.json` 为准；本轮只运行定向增量测试、架构/Video 契约、自检、npm pack dry-run、Patch 独立回放。禁止云端全量 Node/Python 测试、真实 B站外发、自动 Git Commit/Push 和 npm publish；Windows 实机计数接口与持续限流恢复仍待验收。架构见 `docs/architecture/2.8.1-notification-sentinel-20261117.md`。
+
 ## 2.8.1-dev.3b.33.16 · 升级旧配置无法挂载 P0 修复（2026-11-17）
 
 - 20:47 更新后 `duty.log` 停在宿主依赖输出，管理页连续重试读不到配置。已用旧配置 `dmWatchMinutes=2` 复现启动 `clampPatch` 直接抛错：`.14` 误把“用户主动保存间隔”的严格校验用于旧配置读取，导致 `apply` 在 HTTP 路由挂载前中断。

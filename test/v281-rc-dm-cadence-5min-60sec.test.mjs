@@ -14,7 +14,7 @@ const logger={warn(){},error(){}}
 const cred={sessdata:'dummy',bili_jct:'dummy',buvid3:'dummy'}
 const settle=()=>new Promise(resolve=>setTimeout(resolve,15))
 
-test('natural plan sets regular 5m/5m and new active base 60s without changing comment cadence',()=>{
+test('notification-sentinel plan keeps legacy config compatibility and active DM base at 60s',()=>{
   assert.deepEqual(POLLING_PRESETS.balanced,{dmWatchMinutes:5,dmQuietMaxMinutes:5,commentReplyWatchMinutes:2,commentAtWatchMinutes:2})
   assert.deepEqual(dmQuietIntervals(POLLING_PRESETS.balanced),[5,5,5,5])
   const src=readFileSync(new URL('../index.js',import.meta.url),'utf8')
@@ -22,8 +22,9 @@ test('natural plan sets regular 5m/5m and new active base 60s without changing c
   assert.match(src,/dmWatchMinutes: z\.natural\(\)\.default\(5\)/)
   const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
-  assert.match(html,/活跃基础 60 秒/)
-  assert.match(ui,/\$\('dm-active-seconds'\)\.value='60'/)
+  assert.match(html,/活跃对话另走下方 60 秒定向通道/)
+  assert.match(html,/私信未读计数哨兵/);assert.match(html,/互动通知计数哨兵/)
+  assert.match(ui,/dmActivePollSeconds\?\?60/)
 })
 
 test('DM list cannot be re-polled before 5m across process object restarts; detail snapshots remain possible',()=>{
@@ -88,21 +89,25 @@ test('competing read budget instances see each other’s writes and cannot bypas
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('scheduler restart waits for persisted dm-list cadence while comments keep their own cadence',async()=>{
+test('scheduler restart uses persisted unread sentinels and keeps a blocked first detail scan pending',async()=>{
   const dir=work();let now=1_800_000_000_000,lists=0,comments=0
   try{
-    const budget=createBiliReadBudget({dataDir:dir,now:()=>now,logger})
-    budget.acquire('dm-list')
+    const budget=()=>createBiliReadBudget({dataDir:dir,now:()=>now,logger})
+    budget().acquire('dm-list')
+    const readDm=()=>{const b=budget();b.acquire('dm-unread');b.noteSuccess('dm-unread');return Promise.resolve({followUnread:0,unfollowUnread:0,dustbinUnread:0,unfollowPushUnread:0,dustbinPushUnread:0,bizFollowUnread:0,bizUnfollowUnread:0,customUnread:0})}
+    const readSocial=()=>{const b=budget();b.acquire('social-unread');b.noteSuccess('social-unread');return Promise.resolve({mode:'split',replyCount:0,atCount:0,replyAtTotal:0,likeCount:0})}
     const make=()=>createInteractionScheduler({dataDir:dir,now:()=>now,logger,
-      getAccountTag:()=> 'a'.repeat(16),readBudget:createBiliReadBudget({dataDir:dir,now:()=>now,logger}),
+      getAccountTag:()=> 'aaaaaaaaaaaaaaaa',readBudget:budget(),readPrivateUnread:readDm,readSocialUnread:readSocial,
       getConfig:()=>({masterEnabled:true,dmWatch:true,dmWatchMinutes:5,dmQuietMaxMinutes:5,
         dmActivePollEnabled:false,commentWatchReplies:true,commentReplyWatchMinutes:2,commentAtEnabled:false}),
-      dm:{poll:async()=>{lists++;return {}}},comments:{poll:async()=>{comments++;return {}}}})
+      dm:{poll:async()=>{budget().acquire('dm-list');lists++;return {ok:true}}},
+      comments:{poll:async()=>{budget().acquire('mcp:bili_received_replies');comments++;return {ok:true}}}})
     const sched=make();sched.start();await settle()
-    assert.equal(lists,0);assert.equal(comments,1)
+    assert.equal(lists,0,'the prior DM list floor keeps the first full scan pending')
+    assert.equal(comments,0,'social sentinel is staggered after the private sentinel')
     assert.equal(sched.status().checks.dm.nextAt,now+5*minute)
-    now+=4*minute;await sched.tick();assert.equal(lists,0)
-    now+=minute;await sched.tick();assert.equal(lists,1)
+    now+=4*minute;await sched.tick();assert.equal(lists,0);assert.equal(comments,1)
+    now+=minute;await sched.tick();assert.equal(lists,1,'baseline detail scan runs when the persisted list floor expires')
     sched.stop()
   }finally{rmSync(dir,{recursive:true,force:true})}
 })

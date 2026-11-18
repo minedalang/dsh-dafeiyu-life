@@ -74,7 +74,7 @@ import {CONTINUATION_WRITES} from './lib/life-continuation.mjs'
 import { createOutboundActionStatus } from './lib/outbound-action-status.mjs'
 import {AsyncLocalStorage} from 'node:async_hooks'
 import { resolveUid } from './lib/uid.mjs'
-import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch } from './lib/dm.mjs'
+import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch, readPrivateUnreadCounts, readInteractionUnreadCounts } from './lib/dm.mjs'
 import { ensureUv } from './lib/uvfetch.mjs'
 import { createDmAutoReply } from './lib/dm-autoreply.mjs'
 import { extractBiliDmReceiptId } from './lib/dm-send-receipt.mjs'
@@ -610,7 +610,7 @@ export function apply(ctx, config) {
     getLimits:()=>({minuteLimit:cfg.biliReadMinuteLimit,hourLimit:cfg.biliReadHourLimit}),
     schedule:(kind,task)=>lifeResourceScheduler.run({
       lane:String(kind).startsWith('dm-')?'social':
-        /comment|repl|mention|at-and-likes|inbox/.test(String(kind))?'social':'exploration',
+        /social|comment|repl|mention|at-and-likes|inbox/.test(String(kind))?'social':'exploration',
       resources:{biliRead:1},waitMs:String(kind).startsWith('dm-')?12_000:25_000
     },task),
     logger:{warn:msg=>console.warn(msg)}})
@@ -1731,8 +1731,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const oldInterval = Number(saved.dmWatchMinutes) === 5
         && Number(saved.dmReplyPerDay) === 3
       if (oldInterval) {
-        persistCfg({ dmWatchMinutes: 1, dmReplyPerDay: 0 })
-          .then(() => log('已把私信间隔/条数迁到 2.0 的默认（每 1 分钟、不限条数）；开关按你自己的设置保持不变'))
+        persistCfg({ dmWatchMinutes: 5, dmReplyPerDay: 0 })
+          .then(() => log('已迁移旧版私信回复条数默认；普通消息发现由统一未读计数哨兵负责，开关按你自己的设置保持不变'))
           .catch((e2) => log('迁移私信默认值失败（不影响使用）：' + String(e2?.message ?? e2)))
       }
       writeFileSync(marker, String(Date.now()), 'utf8')
@@ -1805,7 +1805,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const monitoredReadTools=new Set([
     'bili_video_info','bili_user_videos','bili_home_recommendations','bili_search',
     'bili_comments','bili_comment_thread','bili_subtitle','bili_danmaku',
-    'bili_received_replies','bili_received_at_and_likes','bili_dynamic_reply_inbox',
+    'bili_unread_messages','bili_received_replies','bili_received_at_and_likes','bili_dynamic_reply_inbox',
     'bili_dynamic_comment_context','bili_dynamic_info','bili_video_info_by_aid'
   ])
   const call = async (toolName, args, opts) => {
@@ -2413,9 +2413,15 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       return {ok:true,summary:`已搜索「${topic}」，${task.searchGoal==='music'&&task.id&&!selectRelevantSearchVideos(selectSearchVideos(result,{limit:20}),{topic,searchGoal:'music'}).length?'没有找到有足够音乐相关证据的视频，本轮不生成子待办。':'搜索结果尚不等于已实际听看。'}`,data:result}
     }
     if(task?.type==='check_notifications'){
-      const [unread,replies,atLikes]=await Promise.allSettled([call('bili_unread_messages',{}),call('bili_received_replies',{}),call('bili_received_at_and_likes',{})])
-      const data={unread:unread.status==='fulfilled'?parseMaybeJson(unread.value):{error:String(unread.reason?.message||unread.reason)},replies:replies.status==='fulfilled'?parseMaybeJson(replies.value):{error:String(replies.reason?.message||replies.reason)},atAndLikes:atLikes.status==='fulfilled'?parseMaybeJson(atLikes.value):{error:String(atLikes.reason?.message||atLikes.reason)}}
-      return {ok:true,summary:'已检查 B站未读数、评论回复以及 @/点赞通知；请以各接口返回内容为准。',data}
+      // Manual/Life notification checks use the same two counter sentinels as
+      // background scheduling. They never bypass the persisted 5-minute floor
+      // to fetch full reply, @ or DM lists when the counters have not changed.
+      const result=await interactionScheduler.checkNow()
+      if(result?.ok!==true)return {ok:false,error:String(result?.error||'通知哨兵暂不可用'),data:result}
+      const data=result.sentinels||{}
+      return {ok:true,summary:result.skipped==='scheduler-busy'
+        ?'通知调度正在处理上一轮；已返回最近一次私信与互动未读计数，未额外发起请求。'
+        :'已通过统一通知哨兵检查私信与互动未读计数；只有发现新增通知时才会读取详情。',data}
     }
     if(task?.type==='collect_video'){
       if(!/^BV[0-9A-Za-z]{10}$/.test(bvid))return {ok:false,error:'收藏待办缺少真实 BV 号'}
@@ -4180,7 +4186,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       approvalEnabled:cfg.dmApprovalEnabled, approvalPhrase:cfg.dmApprovalPhrase,
       // Legacy approved-user limits are retired; sender and global rate protections still apply.
       whitelist: [...allow], ownerUid: String(owner||''),
-      intervalMinutes: cfg.dmWatchMinutes,
+      // Legacy field retained for stored-config compatibility; the unified unread sentinel owns ordinary discovery.
+      intervalMinutes: 5,
       maxPerPoll: 3, maxPerHour: 40,
       maxPerDay: cfg.dmReplyPerDay,
       whitelistCooldownSeconds: 15,
@@ -4446,6 +4453,22 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // a fresh send preflight must still observe newly arrived platform messages.
   const readDmDetail=(cred,uid,limit=50)=>dmDetailSingleflight.read({uid:String(uid),limit},
     ()=>dmFetch(cred,String(uid),limit,{readBudget:biliReadBudget}))
+  const readScopedUnreadCounts=async reader=>{
+    const release=accountBinding.enterPlatformOperation()
+    try{
+      accountBinding.assertReady()
+      const cred=dmCred(stateDir)
+      if(!cred||!Number(cred.dedeuserid))throw Error('尚未登录 B站，无法读取通知未读计数')
+      const accountUid=String(cred.dedeuserid)
+      const result=await reader(cred,{readBudget:biliReadBudget})
+      accountBinding.assertReady()
+      if(String(dmCred(stateDir)?.dedeuserid||'')!==accountUid)throw Error('平台账号已经切换，丢弃本次通知计数')
+      return result
+    }finally{release()}
+  }
+  const readPrivateUnreadSentinel=()=>readScopedUnreadCounts(readPrivateUnreadCounts)
+  const readSocialUnreadSentinel=()=>readScopedUnreadCounts(readInteractionUnreadCounts)
+
   async function getNewDmMessages({probeOnly=false,forceUid='',fastUid=''}={}) {
     const releaseDmRead=accountBinding.enterPlatformOperation()
     try {
@@ -5980,8 +6003,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // The fast lane must use the same authenticated DM engine and lock/ledger,
     // but target one recently confirmed conversation instead of listing sessions.
     dm: {
-      poll:async({fastUid=''}={})=>{
-        const result=await dmAutoreply.poll(fastUid?{fastUid}:{})
+      poll:async({fastUid='',continuationOnly=false}={})=>{
+        const result=await dmAutoreply.poll(fastUid?{fastUid}:continuationOnly?{continuationOnly:true}:{})
         // Silence reconsideration belongs to the ordinary inbox sweep only.
         if(!fastUid&&!result?.error&&!result?.skipped){
           // Owner DM now follows the same Life DM owner; retired independent owner silence model is not invoked.
@@ -5989,8 +6012,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         return result
       },
       nextFastUid:()=>dmAutoreply.nextFastUid(),
+      hasDueContinuation:()=>dmAutoreply.hasDueContinuation(),
+      needsBootstrap:()=>dmAutoreply.needsBootstrap(),
       status:()=>dmAutoreply.status(),
-    }, comments: commentInteract, readBudget:biliReadBudget, dmCursor:dmPollCursor,
+    }, comments: commentInteract, readPrivateUnread:readPrivateUnreadSentinel,
+    readSocialUnread:readSocialUnreadSentinel,readBudget:biliReadBudget, dmCursor:dmPollCursor,
     dataDir:accountRuntimeDir,getAccountTag:trustedLifeAccountTag,
     getConfig: () => {refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     logger: {error:(msg)=>log(msg)},

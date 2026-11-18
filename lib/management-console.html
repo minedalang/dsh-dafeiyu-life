@@ -1751,7 +1751,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <button data-tab="growth" aria-selected="false">行为与表达改进 <span id="growth-count" class="queue-badge" hidden></span></button>
 <button data-tab="models" aria-selected="false">AI 模型</button>
 <button data-tab="quotas" aria-selected="false">次数与额度</button>
-<button data-tab="polling" aria-selected="false">后台轮询</button></div>
+<button data-tab="polling" aria-selected="false">消息感知</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">🗂️ 知识与维护</span>
 <button data-tab="meme" aria-selected="false">梗与网络文化 <span id="meme-count" class="queue-badge" hidden></span></button>
 <button data-tab="stickers" aria-selected="false">表情包管理</button>
@@ -2607,33 +2607,29 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <p id="quota-recommend-status" class="muted recommend-feedback" role="status" aria-live="polite">升级不会自动修改已有额度；恢复推荐值后请点保存。</p><div class="toolbar" style="margin-top:16px"><button id="quota-save" class="primary">保存次数与额度</button><span class="muted">离开页面前先保存；只提交此处的数值字段。</span></div>
 </section>
 <section id="panel-polling" hidden>
-<div class="toolbar"><h2 style="margin:0">后台轮询与请求保护</h2><button id="polling-refresh">刷新轮询状态</button></div>
-<p class="muted">选择后台检查节奏，或自己设置各项读取间隔。自然方案普通私信列表每 5 分钟检查一次，已确认活跃对话按 60 秒基础间隔定向检查；评论回复和被 @ 默认 2 分钟。活跃检查在连续无新消息时可逐步放缓。只改变读取节奏，不授权外发。</p>
-<div class="polling-budget-card" aria-live="polite"><div><span class="page-eyebrow">BILIBILI · READ SAFETY</span><h3>🛡️ 后台读取保护</h3><p class="muted">私信按账号记录会话游标；评论和 @ 的后台读取共享已接入请求预算。遇到限流或验证码会暂停读取，而不是反复重试。</p></div><div id="polling-budget-status" role="status">正在读取预算…</div><details class="polling-budget-details"><summary>查看各类读取次数</summary><div id="polling-budget-by-kind" class="polling-budget-breakdown" aria-live="polite">暂无数据</div></details></div>
+<div class="toolbar"><h2 style="margin:0">消息感知与请求保护</h2><button id="polling-refresh">刷新消息感知状态</button></div>
+<p class="muted">采用统一双哨兵：私信未读计数与互动通知计数均每 5 分钟检查；没有新增计数时不读取完整列表。发现变化后按类别读取详情，并每 30 分钟进行低频一致性核对。已确认活跃私信仍可每 60 秒定向检查。以上只改变读取节奏，不授权外发。</p>
+<div class="polling-budget-card" aria-live="polite"><div><span class="page-eyebrow">BILIBILI · READ SAFETY</span><h3>🛡️ 后台读取保护</h3><p class="muted">两个未读计数哨兵、详情读取和活跃私信通道共享账号级请求预算。遇到限流或验证码会暂停读取，而不是反复重试。</p></div><div id="polling-budget-status" role="status">正在读取预算…</div><details class="polling-budget-details"><summary>查看各类读取次数</summary><div id="polling-budget-by-kind" class="polling-budget-breakdown" aria-live="polite">暂无数据</div></details></div>
 <div class="settings-stack">
-<div class="settings-section"><h4>后台轮询方案</h4>
-<div class="choice-presets" role="radiogroup" aria-label="后台轮询节奏方案">
-<label class="choice-card"><input type="radio" name="polling-choice" value="quiet"><span class="choice-icon">🌙</span><strong>安静节流</strong><small>私信 5–45 分钟 · 评论与 @ 10 分钟</small></label>
-<label class="choice-card"><input type="radio" name="polling-choice" value="balanced" checked><span class="choice-icon">🌿</span><strong>自然适中 · 默认</strong><small>私信列表每 5 分钟 · 活跃基础 60 秒 · 评论与 @ 2 分钟</small></label>
-<label class="choice-card"><input type="radio" name="polling-choice" value="responsive"><span class="choice-icon">⚡</span><strong>及时响应</strong><small>私信 5–10 分钟 · 评论与 @ 都是 2 分钟，注意限流</small></label>
-<label class="choice-card"><input type="radio" name="polling-choice" value="custom"><span class="choice-icon">🎛️</span><strong>自己设定</strong><small>设置私信最短／最长、评论及 @ 检查间隔</small></label>
-</div><p class="setting-note" id="polling-active-dm-reminder">💬 正在活跃的私信对话默认每 60 秒进行一次定向检查（需开启「活跃对话快速检查」）。上述方案的分钟间隔主要用于普通监听；新对话的首次发现仍依赖普通轮询，活跃快通道也受平台限流和共享读取预算保护。</p><p class="muted" id="polling-choice-note">选择后可继续调整数值，调整即变为「自己设定」；必须点击保存才会生效。老用户的已存间隔不会被强制覆盖。</p></div>
-<div class="settings-section"><h4>检查间隔</h4><div class="fields">
-<div><label for="dm-interval">私信最短检查间隔（分钟，自然方案 5）</label><input id="dm-interval" type="number" min="5" max="120" value="5"></div>
-<div><label for="dm-quiet-max">私信安静期最长检查间隔（分钟，自然方案 5）</label><input id="dm-quiet-max" type="number" min="5" max="120" value="5"><small class="setting-note" id="dm-quiet-levels">中间间隔自动计算</small></div>
-<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">在最近真正确认发出私信，或普通监听发现已核验且允许回复的新来信后，短期开启；首次发现来信仍取决于普通监听间隔。无活跃会话时不会定向扫描所有私信。连续没有新消息时自动放慢为基础间隔的 100% → 200% → 300%（自然默认 60 → 120 → 180 秒）；有新来信会恢复基础间隔。与普通轮询共享读取预算及平台限流保护。</small></div>
-<div><label for="dm-active-seconds">活跃会话基础检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="60"><p id="dm-fast-levels" class="muted">自适应档位：60 秒 → 120 秒 → 180 秒（上限 300%）</p></div>
-<div><label for="dm-detail-max-sessions">普通轮询每轮最多读取联系人详情（1–12）</label><input id="dm-detail-max-sessions" type="number" min="1" max="12" value="3"></div>
-<div><label for="dm-detail-spacing-ms">两次详情读取之间的等待（毫秒，500–5000）</label><input id="dm-detail-spacing-ms" type="number" min="500" max="5000" step="250" value="1500"><p class="muted">默认 1500 毫秒；仅对普通轮询中同一轮的多位联系人详情请求生效。</p></div>
+<div class="settings-section"><h4>统一消息感知 · 双哨兵</h4>
+<p class="muted">后台不再分别轮询私信会话列表、评论回复列表和 @ 通知列表。系统先读取两个轻量级未读计数哨兵：私信未读计数每 5 分钟一次，互动通知计数每 5 分钟一次；计数出现增加时，才读取对应详情。计数下降只更新基准，不触发详情读取。</p>
+<div class="fields">
+<div><label>私信未读计数哨兵</label><p class="setting-note">固定每 5 分钟检查一次；发现新增未读后才读取会话列表与必要的联系人消息。活跃对话另走下方 60 秒定向通道。当前接口不包含粉丝团私信，仍沿用现有普通私信监控范围。</p></div>
+<div><label>互动通知计数哨兵</label><p class="setting-note">固定每 5 分钟统一检查评论回复、@ 与点赞未读计数；发现对应类别增加后，才读取相应通知详情。</p></div>
+<div><label>低频一致性核对</label><p class="setting-note">每 30 分钟进行一次必要的详情核对，防止计数抵消、其他设备已读或平台计数延迟导致漏消息。首次启用会进行一次安全基线建立，不会批量回复历史通知。</p></div>
+<div><label>限流与异常处理</label><p class="setting-note">两个哨兵及所有详情读取统一经过账号隔离、跨重启请求预算和 -509 自适应退避。接口失败不会当作未读数为 0，也不会回退到高频详情轮询。</p></div>
+</div></div>
+<div class="settings-section"><h4>活跃私信定向检查</h4><div class="fields">
+<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">只针对最近真实确认活跃的联系人，不扫描全部私信。无新消息时自动放慢为 60 → 120 → 180 秒；收到新消息后恢复 60 秒。仍受统一请求预算与平台限流保护。</small></div>
+<div><label for="dm-active-seconds">活跃会话基础检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="60"><p id="dm-fast-levels" class="muted">自适应档位：60 秒 → 120 秒 → 180 秒</p></div>
+<div><label for="dm-detail-max-sessions">新增通知后每轮最多读取联系人详情（1–12）</label><input id="dm-detail-max-sessions" type="number" min="1" max="12" value="3"></div>
+<div><label for="dm-detail-spacing-ms">两次详情读取之间的等待（毫秒，500–5000）</label><input id="dm-detail-spacing-ms" type="number" min="500" max="5000" step="250" value="1500"><p class="muted">仅在哨兵发现新增私信、首次基线或 30 分钟一致性核对时生效。</p></div>
 <div><label for="dm-active-window">活跃时长（秒，60–600）</label><input id="dm-active-window" type="number" min="60" max="600" value="180"></div>
-<div><label for="poll-replies-minutes">收到评论回复检查（分钟，默认 2）</label><input id="poll-replies-minutes" type="number" min="1" max="120" value="3"></div>
-<div><label for="poll-at-minutes">被 @ 邀请检查（分钟，默认 2）</label><input id="poll-at-minutes" type="number" min="1" max="120" value="3"></div>
-
-</div><p class="muted">私信会话列表具有跨重启至少 5 分钟安全间隔，发生 -509 后会进一步放缓；老用户已存更短设置不被静默覆盖，但实际发送会受保护。各方案和自定义设置都受共享读取预算及 -509 退避保护。下方历史热评检查已停用，不参与卡片方案或实际轮询。</p>
-<div class="toolbar"><button id="polling-save" class="primary">保存检查间隔</button><button id="polling-reload">重读设置</button></div></div>
+</div><p class="muted">旧版「私信最短检查间隔」「收到评论回复检查」「被 @ 邀请检查」仅作为旧配置兼容字段保留，不再控制后台轮询；对应功能是否处理仍由原有私信、评论与 @ 功能开关决定。</p>
+<div class="toolbar"><button id="polling-save" class="primary">保存活跃私信设置</button><button id="polling-reload">重读设置</button></div></div>
 <div class="settings-section"><h4>最近检查情况</h4><p class="muted">时间按本机显示；上次检查与错误为本次 DSH 运行期间的记录，重启后重新计时。“已完成”只代表轮询流程结束，不代表发送成功或 B站通知送达。</p>
 <div id="polling-status-list" class="grid" role="status" aria-live="polite">读取中…</div></div>
-</div><p class="muted">刷视频的“自定义时段执行”是独立的任务计划，不属于以上三种收件轮询。</p>
+</div><p class="muted">Life 主动探索、主人明确要求的只读任务和发送前必要安全复核仍保留独立入口；通知哨兵不会限制鱼鱼自主了解视频与动态。刷视频的“自定义时段执行”是独立任务计划。</p>
 </section>
 <section id="panel-persona">
 <div class="toolbar"><h2 style="margin:0">角色人设</h2><button id="persona-refresh">重新读取</button></div>

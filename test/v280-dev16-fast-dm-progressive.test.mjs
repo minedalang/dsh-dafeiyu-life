@@ -1,8 +1,9 @@
 import test from 'node:test'
-import assert from 'node:assert/strict'
-import {mkdtemp,rm} from 'node:fs/promises'
+import {mkdtempSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import assert from 'node:assert/strict'
+import {mkdtemp,rm} from 'node:fs/promises'
 import {deliverMessageBurst} from '../lib/message-burst.mjs'
 import {createDmAutoReply} from '../lib/dm-autoreply.mjs'
 import {collectDmInbox} from '../lib/dm-inbox.mjs'
@@ -59,21 +60,22 @@ test('non-owner DM occasionally reconsiders after confirmed delivery without a p
  clock+=181_000;assert.equal(engine.nextFastUid(),'')
 }))
 
-test('fast session scheduler has no extra get_sessions call and obeys config / rate-limited backoff',async()=>{
- let clock=t0,fastReady='22334';const calls=[]
- const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:2,dmActivePollEnabled:true,dmActivePollSeconds:10,commentWatchReplies:false,commentAtEnabled:false}
- const dm={poll:async opt=>{calls.push(opt||{});return {sent:0}},nextFastUid:()=>fastReady,status:()=>({fast:{activeCount:1}})}
- const scheduler=createInteractionScheduler({dm,comments:{poll:async()=>({})},getConfig:()=>cfg,now:()=>clock})
+test('fast session scheduler keeps the one-time baseline scan and then targets only the active conversation',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dev16-fast-sentinel-'));let clock=t0,fastReady='22334';const calls=[]
+ const cfg={masterEnabled:true,dmWatch:true,dmActivePollEnabled:true,dmActivePollSeconds:10,commentWatchReplies:false,commentAtEnabled:false}
+ const dm={poll:async opt=>{calls.push(opt||{});return {ok:true,sent:0}},nextFastUid:()=>fastReady,status:()=>({fast:{activeCount:1,nextIntervalSeconds:10}})}
+ const scheduler=createInteractionScheduler({dataDir:dir,getAccountTag:()=> 'aaaaaaaaaaaaaaaa',dm,comments:{poll:async()=>({})},
+   readPrivateUnread:async()=>({followUnread:0,unfollowUnread:0,dustbinUnread:0,unfollowPushUnread:0,dustbinPushUnread:0,bizFollowUnread:0,bizUnfollowUnread:0,customUnread:0}),
+   getConfig:()=>cfg,now:()=>clock})
  try{
-  scheduler.start();await new Promise(r=>setTimeout(r,8));assert.equal(calls.length,1)
+  scheduler.start();await new Promise(r=>setTimeout(r,15));assert.deepEqual(calls[0],{})
   clock+=10_000;await scheduler.tick();assert.deepEqual(calls.at(-1),{fastUid:'22334'})
-  // Expose the fast lane separately, not only the coarse full-session scan.
   assert.equal(scheduler.status().checks.dmFast.lastResult,'completed')
   assert.equal(scheduler.status().checks.dmFast.intervalSeconds,10)
   cfg.dmActivePollEnabled=false;clock+=10_000;await scheduler.tick();assert.equal(calls.length,2)
   cfg.dmActivePollEnabled=true;fastReady='';clock+=10_000;await scheduler.tick();assert.equal(calls.length,2)
-  clock+=120_000;await scheduler.tick();assert.deepEqual(calls.at(-1),{})
- }finally{scheduler.stop()}
+  clock+=120_000;await scheduler.tick();assert.equal(calls.length,2,'no new counter means no new full-session scan')
+ }finally{scheduler.stop();rmSync(dir,{recursive:true,force:true})}
 })
 
 test('a verified Life bubble may extend its own exact text seal once, never another recipient',async()=>mk(async dataDir=>{
