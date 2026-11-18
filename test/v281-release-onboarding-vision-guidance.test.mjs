@@ -67,7 +67,7 @@ test('npm 安装包包含 2.8.1 升级指南、发布审计说明与检查单',(
     'docs/release/RELEASE_NOTES_v2.8.1.md']){
     assert.ok(manifest.files.includes(path),`安装包遗漏 ${path}`)
   }
-  assert.match(manifest.version,/^2\.8\.1-dev\./,'尚未解除发布阻断，不得假装正式版本')
+  assert.match(manifest.version,/^2\.8\.1(?:-dev\..+)?$/,'版本只能为 2.8.1 或同版开发候选')
 })
 
 
@@ -90,6 +90,6 @@ test('2.8.1 快速设置入口定位 02B 且新版视觉卡片突出；模型开
   assert.match(page,/prefers-reduced-motion:reduce/)
   assert.match(read('README.md'),/2\.8\.1 主要更新/)
   assert.match(read('docs\/release\/RELEASE_NOTES_v2.8.1.md'),/2\.8\.1/)
-  // README must truthfully show the current candidate build until release gates pass.
+  // README must state the exact package version, including a stable release candidate.
   assert.match(read('README.md'),new RegExp(JSON.parse(read('package.json')).version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))
 })

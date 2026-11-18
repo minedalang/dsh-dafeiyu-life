@@ -1,3 +1,11 @@
+## 2.8.1 · 稳定版候选发布收口（2026-11-18）
+
+- 移除消费者 GitHub 安装时不需要的 `prepare` Git Hook 脚本，保留开发者本地测试与 CI 的自动测试治理。
+- 提示词上下文采用有界的有效 JSON、显式缺省说明，长字幕保留头/中/尾；未改动权限事实源、持久记忆、平台写入额度及真实回执。
+- README 新增自主成长 SVG，已实现基础与 2.9.x 尚未实现的角色认知、关系成长明确区分；新版默认角色卡与视频触发记忆仅作为未来提案归档。
+- 校准 `package.json` / lock 的 2.8.1 版本、GitHub Release Notes 路径、测试门禁及 Windows 发布操作指引。
+- **状态：等待本轮新增源码后的 Windows 普通/管理员 full、干净 DSH Profile GitHub 安装及真实视频验收；没有执行 Tag / npm 发布。** 历史 dev 候选快照保留下方，不能当作本轮终验结论。
+
 ## 2.8.1-dev.3b.33.25-ci-test-audit (2026-11-18)
 
 - Linux GitHub Actions Mermaid 预览 LF/CRLF 不一致：架构生成器统一 LF，校验归一化行尾但仍严格比较内容，加入 Git 属性 `text eol=lf` 和防漂移测试。

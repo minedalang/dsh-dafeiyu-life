@@ -11,9 +11,9 @@ const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8')
 const sha=d=>'sha256:'+d.repeat(64)
 const json=x=>new Response(JSON.stringify(x),{status:200,headers:{'content-type':'application/json'}})
 
-test('dev.3b.4 version is the real package metadata source; AGENTS enforces dev release version',()=>{
+test('package.json remains the authoritative source for stable or dev release version',()=>{
  const p=JSON.parse(read('package.json')), lock=JSON.parse(read('package-lock.json'))
- assert.match(p.version,/^2\.8\.1-dev\.3b\.\d+(?:\.\d+)*(?:-[0-9a-z.-]+)?$/)
+ assert.match(p.version,/^2\.8\.1(?:-dev\..+)?$/)
  assert.equal(lock.version,p.version)
  assert.equal(lock.packages[''].version,p.version)
  assert.match(read('AGENTS.md'),/版本|开发基线|package\.json/)

@@ -246,6 +246,19 @@ if ($pythonPath) {
 
 # Test catalog integrity is a hard gate: unregistered new tests, missing security
 # anchors, or undocumented retirements cannot silently reduce coverage.
+# Check prompt evidence truncation automatically in quick/full Windows runs.
+# This never reads accounts, messages or private files and never runs network tools.
+Invoke-NativeStep -Name "提示词上下文截断防回归检查（必须通过）" `
+    -FilePath $nodePath -Arguments @("scripts/check-context-budget.mjs")
+if ($script:Results[-1].Status -ne "PASS") {
+    Write-Host '提示词 JSON 结构截断检查失败：禁止把当前运行标记为 full 通过。' -ForegroundColor Red
+    try { Stop-Transcript | Out-Null } catch {}
+    if ($env:DAFEIYU_TEST_COMPLETE_FLAG) {
+        try { Set-Content -LiteralPath $env:DAFEIYU_TEST_COMPLETE_FLAG -Value "FAIL" -Encoding ASCII } catch {}
+    }
+    exit 1
+}
+
 Invoke-NativeStep -Name "测试清单治理与安全覆盖检查（必须通过）" `
     -FilePath $nodePath -Arguments @("scripts/test-governance.mjs", "check")
 if (@($script:Results | Where-Object { $_.Status -ne "PASS" }).Count -gt 0) {

@@ -6,7 +6,7 @@
 
 [![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) [![npm 月下载](https://img.shields.io/npm/dm/dsh-dafeiyu-life)](https://www.npmjs.com/package/dsh-dafeiyu-life) [![npm 年下载](https://img.shields.io/npm/dy/dsh-dafeiyu-life)](https://www.npmjs.com/package/dsh-dafeiyu-life)
 
-[✨ 特色功能](#-鱼鱼能做什么) · [🆕 2.8.1 新特性](#-281-新特性) · [🚀 开始使用](#-开始使用) · [🌱 未来规划](#-未来规划让生活更有故事) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)
+[✨ 特色功能](#-鱼鱼能做什么) · [🌊 自主成长体系](#-一条鱼慢慢长成自己的样子) · [🆕 2.8.1 新特性](#-281-新特性) · [🚀 开始使用](#-开始使用) · [🌱 未来规划](#-未来规划让生活更有故事) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)
 
 大肥鱼（鱼鱼）是运行于 **DeepSeek Harness（DSH）** 的开源 AI 角色生活插件。她不只是收到指令后完成一次任务的助手，也在尝试把一次次真实的观看、交流、回忆和选择连成持续的生活。
 
@@ -31,6 +31,12 @@
 例如，鱼鱼看到一条有趣的视频推荐，可能先阅读作品资料、看看大家怎么讨论；如果确实发现了值得继续了解的内容，她可以接着了解作者，或者把它与过去喜欢的话题联系起来。也可能看完就觉得“今天到这里吧”。如果想点赞、收藏、关注或发表原创评论，**还要有对应授权与平台核验**。不会因为浏览了几个作品，就必须做几次互动。
 
 朋友分享的动态或视频，也只是一次可以考虑的邀请。鱼鱼可以决定看看转发内容、继续了解来源，或者不再深入；分享文字本身不会赋予她公开发言的权利。
+
+## 🌊 一条鱼，慢慢长成自己的样子
+
+![大肥鱼自主成长体系：已有能力与 2.9.x 未实现规划](docs/architecture/assets/dafeiyu-growth-blueprint.svg)
+
+**图中虚线「2.9.x 未实现」是未来计划，不是目前功能。** 现阶段已有统一身份、初步兴趣学习、人格与情绪成长；角色认知、关系经历的持续学习，以及由当前视频主动触发相关角色记忆检索，仍需后续实现与验证。我们不会把虚构角色或固定兴趣预先写死在鱼鱼的人设中。
 
 ## 🆕 2.8.1 新特性
 
@@ -58,7 +64,7 @@
 
 [阅读 2.8.1 完整更新说明](docs/release/RELEASE_NOTES_v2.8.1.md) · [从旧版升级](docs/release/2.8.1-user-upgrade-guide.md)
 
-> **版本提醒：** 当前开发基线是 **`2.8.1-dev.3b.33.25-ci-test-audit`**，目前仍为 **2.8.1 开发候选版**，不是已经通过发布验收的正式 2.8.1。上述内容描述设计和已接入的能力，不代表每个 Windows/DSH/B站组合都已完成实机验收；尤其生产视频画面识别仍须确认真实视频帧和模型结果。正式上线以 npm、插件市场及 GitHub Release 的实际版本为准。
+> **版本提醒：** 当前源码标识为 **`2.8.1`**。这是准备发布的源码状态，**Git 提交或版本号本身不代表已经上架**。用户下载安装时请以 npm、DSHMarket 与 GitHub Release 实际显示的版本为准；视频视觉效果还取决于本人启用的模型、真实公开视频来源与环境配置。
 
 ## 🚀 开始使用
 

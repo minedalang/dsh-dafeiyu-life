@@ -585,6 +585,16 @@
       "owner": "test-governance",
       "kind": "security",
       "intent": "Verify staged-index-safe automatic precommit governance and preservation of unrelated Git hooks."
+    },
+    "v281-context-budget-regression.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Require bounded model context to preserve valid JSON, recent evidence, balanced candidates, and the end of long subtitles without changing authoritative source data."
+    },
+    "v281-release-preflight-no-prepare.test.mjs": {
+      "owner": "release",
+      "kind": "contract",
+      "intent": "Ensure consumer git installs have no prepare/build hook, stable package metadata and release notes path agree, and README future growth features are clearly marked not implemented."
     }
   },
   "protected": [

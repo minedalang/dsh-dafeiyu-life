@@ -28,6 +28,7 @@ jobs:
           node --check client.js
           npm run check:video-tool-contract
           npm run check:life-architecture
+          npm run check:context-budget
       - name: Verify current test inventory and protected regressions
         run: npm run check:test-governance
       - name: Surface impacted test cases for this PR

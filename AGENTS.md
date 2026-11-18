@@ -57,7 +57,7 @@
 - 管理员/普通 PowerShell 应分别记录结果，不能将定向通过说成全量通过。任何关键 FAIL、ERROR、未解释的安全 SKIP 或必要 Windows 实机端到端验收缺失均阻断正式发布。
 - 修复历史断言须先查明其已过时的证据，优先更新测试而非恢复已退役行为；仍有效的真实权限、平台写入、限流、异常恢复断言一律保留。
 - 所有新增 Node/Python 测试须先登记 `test/governance/catalog.json`（提交 Hook、CI 和 full 测试自动检查）；填写负责模块、验证意图与行为/契约/界面/安全类型。重构时由开发 Agent 根据自动影响报告核对受影响测试，逐项判断继续保留、按当前行为重写、或归档；**测试失败和文件版本老都不构成归档理由**。
-- **测试治理默认自动执行**：首次 `npm install` 或执行现有 `run-tests.ps1` 时自动尝试启用 `.githooks/pre-commit`；随后 `git commit` 仅做暂存区快速清单/安全保护核验，提示受影响测试，不运行全量。已有其他 Git Hook 不得覆盖，PR CI 仍严格核验。用户无需日常手动执行 `npm run check:test-governance` 或 `npm run review:impacted-tests`。Hooks 不能自动判断产品需求或安全测试可否退役；开发 Agent 必须在改功能时同步完成测试改写和归档审计。
+- **测试治理默认自动执行**：开发者执行现有 `run-tests.ps1` 时自动尝试启用 `.githooks/pre-commit`（必要时可显式运行 `node scripts/install-git-hooks.mjs`）；普通插件安装不运行 Git Hook 初始化；随后 `git commit` 仅做暂存区快速清单/安全保护核验，提示受影响测试，不运行全量。已有其他 Git Hook 不得覆盖，PR CI 仍严格核验。用户无需日常手动执行 `npm run check:test-governance` 或 `npm run review:impacted-tests`。Hooks 不能自动判断产品需求或安全测试可否退役；开发 Agent 必须在改功能时同步完成测试改写和归档审计。
 - 归档必须可审计：提供旧断言为何不再适用的具体证据、仍有效行为的替代测试或归属、归档日期；受保护安全用例和 quick 核心门禁不得直接归档。优先替换单条过时断言，不能因为文件中有一个陈旧断言就移走整个仍有价值的测试文件。不得靠 skip、修改测试运行器筛选规则、放宽真实安全边界制造全绿。
 
 - Windows 相关测试遵守运行脚本提供的 Python 可执行路径，处理 UTF-8/CRLF、子进程退出/流关闭次序、权限与符号链接的跨平台差异；不可为消除错误而关闭安全功能。
