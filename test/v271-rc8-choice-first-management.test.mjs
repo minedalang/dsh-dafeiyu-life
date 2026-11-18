@@ -30,7 +30,7 @@ test('视频互动方案只操作旧授权字段，不建立第二份设置账�
  assert.deepEqual(Object.keys(p),['free','balanced','observe'])
  assert.equal(p.free.autoComment,true)
  assert.equal(p.free.agentFollowEnabled,true)
- assert.equal(p.free.incomingImageRecognitionEnabled,true)
+ assert.equal(p.free.incomingImageRecognitionEnabled,undefined,'视觉识别具有独立授权，不得被视频互动预设暗中打开')
  assert.equal(p.balanced.autoComment,false)
  assert.equal(p.balanced.autoVideoLike,true)
  assert.equal(p.observe.autoComment,false)

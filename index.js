@@ -586,11 +586,14 @@ export function apply(ctx, config) {
     return myVer
   }
   const stateDir = stateDirOf(ctx)
+  // Determine whether this is an upgrade BEFORE allocating the vision TEMP folder.
+  // Otherwise the folder itself makes a pristine installation look like a legacy one,
+  // silently applying old defaults and changing first-start permissions/experience.
+  const legacyInstallAtEntry = existsSync(join(stateDir,'config.json')) || readdirSync(stateDir).length > 0
   // Pre-create the vision-only TEMP at host startup, before DSH/MCP sandboxing.
   // Entering the models page remains read-only and never installs dependencies.
   try{ensureVisionTempDir(stateDir,{create:true})}catch{/* health/repair will report unavailable */}
   const visionEnv=extra=>visionPythonTempEnv({home:stateDir,env:pyEnv(extra),create:false})
-  const legacyInstallAtEntry = existsSync(join(stateDir,'config.json')) || readdirSync(stateDir).length > 0
   // Character identity is stable; B站 UID is a replaceable, verified transport identity.
   const accountBinding = createAccountBinding({dataDir:stateDir})
   const accountRuntimeDir = accountBinding.runtimeDir()

@@ -21,7 +21,7 @@ def configured(tmp_path):
         rows.extend([f'- id: {ident}','  disabled: false',''])
     rows.extend(['- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_preview_vision'", "          BILI_VISION_CHILD: '1'",''])
     (tmp_path/'headless-vision-overlay.yml').write_text('\n'.join(rows),encoding='utf8')
-    args=['/some/absolute/dsh','--profile','headless','--patch',str(tmp_path/'headless-vision-overlay.yml')]
+    args=[sys.executable,'--profile','headless','--patch',str(tmp_path/'headless-vision-overlay.yml')]
     env={'BILI_VISION_DSH_ARGV':json.dumps(args),'BILI_VISION_DSH_MODEL':'claude-haiku-5-5',
          'BILI_VISION_DSH_PROVIDER':'claude','BILI_VISION_FRAMES':'2'}
     return env
@@ -201,7 +201,7 @@ def selftest_configured(tmp_path):
         f"          BILI_VISION_TEST_ASSET: '{ROOT / 'lib' / 'assets' / 'local-vision-selftest-dafeiyu.png'}'",''])
     overlay=tmp_path/'headless-vision-selftest-overlay.yml'
     overlay.write_text('\n'.join(rows),encoding='utf8')
-    args=['/some/absolute/dsh','--profile','headless','--patch',str(overlay)]
+    args=[sys.executable,'--profile','headless','--patch',str(overlay)]
     return {'BILI_VISION_DSH_ARGV':json.dumps(args)}
 
 

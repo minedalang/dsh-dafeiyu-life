@@ -13,8 +13,8 @@ test('所有管理子页共用实时显式保存提醒，且保留原设置分�
  assert.match(js,/createSettingDraftTracker/);assert.match(js,/settingDraftTracker\.change\(field,save,panel\)/);assert.match(js,/captureSettingBaseline/)
  assert.match(js,/if\(!field\|\|!save\|\|!baselines\.has\(field\)\)return false/)
  assert.match(js,/if\(candidates\.length>1\)return null/)
- assert.match(js,/item\.save\.click\(\)/)
- assert.match(js,/if\(own\.length===1&&!item\.save\.disabled\)/)
+ assert.match(js,/own\[0\]\.save\.click\(\)/)
+ assert.match(js,/if\(own\.length!==1\|\|!own\[0\]\.save\|\|own\[0\]\.save\.disabled\)return/)
 })
 
 test('不自动保存公开发送权限；只在确认成功提交时清除待保存提醒',()=>{

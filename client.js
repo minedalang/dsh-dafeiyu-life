@@ -640,7 +640,7 @@ window.__ModuleLoader__.load({
             h('div',{'data-bd-row':''},
               !st.venvReady?h('div',{'data-bd-note':''},'① B站/MCP 主依赖尚未就绪：请从下面的安装入口开始。安装完成后才能扫码，不需要事先安装 Conda。'):null,
               !st.venvReady?h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('firststart','fs-deps-card')},st.installing?'查看主依赖安装进度 ↗':'① 安装／修复主依赖 ↗'):null,
-              h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},st.venvReady?'进入初始配置 · 登录及模型 ↗':'② 进入完整快速设置 ↗')),
+              h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},st.venvReady?'打开管理中心，开始配置 · 登录及模型 ↗':'② 打开管理中心，开始配置 ↗')),
             h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。'),
             manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null))
       }

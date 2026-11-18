@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {readFileSync} from 'node:fs';
 import {createInteractionBatcher} from '../lib/interaction-batch.mjs';
+import {createSocialContextAssembler} from '../lib/social-context-assembler.mjs';
 import {buildReplyMemeContext,findReplyMemeMatches,createInteractionMemeLookup} from '../lib/interaction-meme-memory.mjs';
 
 const memes=[
@@ -29,10 +30,32 @@ test('不让无关视频热评触发梗，允许当前楼层直接上文触发',
   assert.match(buildReplyMemeContext({kind:'dm',text:'这是怎么回事',history:[{role:'user',text:'大家都说鱼来'},{role:'assistant',text:'还没查过'}]},memes),/鱼来/);
   assert.equal(findReplyMemeMatches({text:'你好',history:[{role:'assistant',text:'鱼来'}]},memes).length,0);
 });
-test('批量私信与评论只带各自梗知识，没命中的没有梗',async()=>{
-  const received=[];
-  const batcher=createInteractionBatcher({delayMs:1,batchSize:3,invoke:async prompt=>{received.push(prompt);const item=JSON.parse(prompt.split('消息：').at(-1))[0];return JSON.stringify({items:[{id:'0',action:item.text.includes('鱼来')||item.text.includes('饭桶鱼')?'reply':'skip',reply:item.uid==='100'?'来啦':'你好'}]})},
-    getPersona:()=>'',prepareMemeContexts:async b=>b.map(x=>buildReplyMemeContext(x,memes))});
+test('现行独立社交轮次：评论完整模式与私信按需读取梗，不跨 UID 或渠道共享',async()=>{
+  // The legacy preloaded-batch expectation is invalid: DM always starts in
+  // compact mode and can request only its own meme evidence on a later turn.
+  const received=[],lookups=[];
+  const assembler=createSocialContextAssembler({
+    policy:{actor:()=>({role:'friend'}),memoryScope:()=> 'public-social',
+      canViewIdentity:()=>false,canViewRelationship:()=>false},
+    memoryRetriever:{socialContext:()=>''},
+    getMeme:async item=>{lookups.push({uid:item.uid,kind:item.kind});return buildReplyMemeContext(item,memes)},
+    logger:{warn(){}}
+  });
+  const batcher=createInteractionBatcher({delayMs:1,batchSize:3,
+    getContextMode:()=> 'full',getPersona:()=>'',logger:{warn(){},info(){}},
+    prepareContexts:(rows,options)=>assembler.batch(rows,options),
+    loadRequestedContexts:(rows,requested)=>assembler.batch(rows,{mode:'compact',requestedByIndex:requested}),
+    invoke:async prompt=>{
+      const items=JSON.parse(prompt.split('消息：').at(-1));
+      assert.equal(items.length,1,'不同 UID 或私信/评论不能共用模型输入');
+      const item=items[0];received.push(item);
+      let result={id:'0',action:'skip',reply:'',todoDisposition:'none',mood:'neutral',intensity:0};
+      if(item.uid==='100')result={...result,action:'reply',reply:'来啦'};
+      if(item.uid==='200')result=item.memeContext
+        ?{...result,action:'reply',reply:'你好'}
+        :{...result,contextRequests:['meme']};
+      return JSON.stringify({items:[result]});
+    }});
   try{
     const output=await Promise.all([
       batcher.generate({kind:'comment',uid:'100',text:'鱼来鱼来'}),
@@ -40,13 +63,18 @@ test('批量私信与评论只带各自梗知识，没命中的没有梗',async(
       batcher.generate({kind:'dm',uid:'300',text:'下午好'})
     ]);
     assert.deepEqual(output,['来啦','你好','SKIP']);
-    assert.equal(received.length,3);
-    const items=received.map(text=>JSON.parse(text.split('消息：').at(-1))[0]);
-    assert.match(items[0].memeContext,/鱼来/);
-    assert.doesNotMatch(items[0].memeContext,/饭桶鱼/);
-    assert.match(items[1].memeContext,/饭桶鱼/);
-    assert.doesNotMatch(items[1].memeContext,/鱼来/);
-    assert.equal(items[2].memeContext,'');
+    assert.equal(received.length,4,'只需为明确请求梗知识的私信增加一次模型调用');
+    const comment=received.filter(x=>x.uid==='100');
+    const memeDm=received.filter(x=>x.uid==='200');
+    const plainDm=received.filter(x=>x.uid==='300');
+    assert.equal(comment.length,1);assert.equal(memeDm.length,2);assert.equal(plainDm.length,1);
+    assert.match(comment[0].memeContext,/鱼来/);
+    assert.doesNotMatch(comment[0].memeContext,/饭桶鱼/);
+    assert.equal(memeDm[0].memeContext,'','私信首轮不预先读取梗库');
+    assert.match(memeDm[1].memeContext,/饭桶鱼/);
+    assert.doesNotMatch(memeDm[1].memeContext,/鱼来/);
+    assert.equal(plainDm[0].memeContext,'','无需求时不检索、不注入梗知识');
+    assert.deepEqual(lookups,[{uid:'100',kind:'comment'},{uid:'200',kind:'dm'}]);
   }finally{batcher.stop()}
 });
 test('缓存根据梗库文件修改更新、总开关关闭时不检索',async()=>{

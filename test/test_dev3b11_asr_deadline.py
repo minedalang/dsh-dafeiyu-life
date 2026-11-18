@@ -20,8 +20,10 @@ class TestAsrDeadline(unittest.TestCase):
     def test_bounded_deadline_and_private_phase_diagnostics(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
-            (root/'.venv-asr'/'bin').mkdir(parents=True)
-            (root/'.venv-asr'/'bin'/'python').write_text('fake')
+            # Match the production interpreter location on both platforms.
+            local_python = root / '.venv-asr' / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+            local_python.parent.mkdir(parents=True)
+            local_python.write_text('fake')
             (root/'asr.py').write_text('fake')
             state={'deadline':None}
             def fail(argv,**kw):

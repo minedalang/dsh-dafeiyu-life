@@ -48,7 +48,7 @@ test('tree shows genuinely wired Life branches and clearly distinguishes profess
 })
 test('Headless explicit verification path is separate from preview-then-confirm sync',()=>{
   assert.match(js,/同步到 Headless →/)
-  assert.match(html,/必须完成相应配置同步与真实模型验证后才能就绪/)
+  assert.match(html,/同步成功 ≠ 验证成功/)
   assert.match(html,/id="headless-target-list"/)
   assert.match(js,/request\('\/headless-model\/preview'/)
   assert.match(js,/request\('\/headless-model\/sync'/)

@@ -60,6 +60,6 @@ test('tree renders dedicated source stage and handles historical records without
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  assert.match(html,/id="life-action-origin"/)
  assert.match(js,/历史决策未记录来源/)
- assert.match(js,/const sourceText=latest\?lifeOriginLabel\(plan\)/)
+ assert.match(js,/liveVideoObserve\?'Life 自主观看画面（回执待确认）':latest\?lifeOriginLabel\(plan\)/)
  assert.match(js,/来源无法确认/)
 })

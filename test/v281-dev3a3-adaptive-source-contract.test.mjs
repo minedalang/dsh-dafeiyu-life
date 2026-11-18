@@ -57,7 +57,7 @@ test('自主不看和略看不触发识图，正常/深入才申请工具',()=>{
  assert.equal(visionDecision({enabled:true,depth:'deep'}).attempt,true)
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const watch=index.slice(index.indexOf('const executeWatchVideo = async'),index.indexOf('tool({',index.indexOf('const executeWatchVideo = async')))
- assert.match(watch,/if\(visionPlan\.attempt/)
+ assert.match(watch,/const willInvokeVision=visionPlan\.attempt&&\['independent_dsh','independent_local'\]/)
  assert.match(watch,/perception_source:'adaptive'/)
  const mcp=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
  assert.match(mcp,/perception_source: str = "preview"/)

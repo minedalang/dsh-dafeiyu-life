@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -27,7 +28,7 @@ class DshImageProbeTests(unittest.TestCase):
     def test_verified_image_receipt_required(self):
         with tempfile.TemporaryDirectory() as temp:
             home=Path(temp);patch=home/'headless-vision-selftest-overlay.yml';patch.write_text(self._overlay(),encoding='utf8')
-            env={'BILI_VISION_DSH_ARGV':json.dumps(['/usr/bin/node','/app/dsh','--profile','headless','--patch',str(patch)])}
+            env={'BILI_VISION_DSH_ARGV':json.dumps([sys.executable,'/app/dsh','--profile','headless','--patch',str(patch)])}
             result=vision.describe_test_image_with_dsh(home,env=env,runner=lambda *a,**kw:subprocess.CompletedProcess(a[0],0,b'VISION_TEST_RESULT: hello',b''))
             self.assertFalse(result['ok'])
             self.assertEqual(result['status'],'no_image_proof')
@@ -57,7 +58,7 @@ class DshFailureDiagnosticTests(unittest.TestCase):
             rows.extend(['- insert:','    - id: mcp-bili-vision-readonly','      config:','        serverName: bilivision','        env:',"          BILI_MCP_TOOLS: 'bili_vision_selftest'","          BILI_VISION_SELFTEST_ALLOWED: '1'","          BILI_VISION_TEST_ASSET: '/app/local-vision-selftest-dafeiyu.png'"])
             overlay=home/'headless-vision-selftest-overlay.yml'
             overlay.write_text('\n'.join(rows)+'\n',encoding='utf8')
-            env={'BILI_VISION_DSH_ARGV':json.dumps(['/usr/bin/node','/app/dsh','--profile','headless','--patch',str(overlay)])}
+            env={'BILI_VISION_DSH_ARGV':json.dumps([sys.executable,'/app/dsh','--profile','headless','--patch',str(overlay)])}
             r=vision.describe_test_image_with_dsh(home,env=env,runner=lambda *a,**kw:subprocess.CompletedProcess(a[0],1,b'',b'ACCOUNT_SIGN_IN_REQUIRED'))
             self.assertFalse(r['ok'])
             self.assertEqual(r['status'],'headless_launch_failed')

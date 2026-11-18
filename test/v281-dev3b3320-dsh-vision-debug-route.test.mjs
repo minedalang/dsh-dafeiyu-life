@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {callScopedDshVision} from '../lib/scoped-dsh-vision-read.mjs'
+import {McpClient} from '../lib/mcp.mjs'
 
 const env={BILI_VISION_DSH_ARGV:JSON.stringify(['C:/trusted/DSH.exe','--profile','headless','--patch','C:/home/headless-vision-overlay.yml']),
   BILI_VISION_ENABLED:'1',BILI_VISION_MODE:'independent_dsh',BILI_MCP_TOOLS:'bili_preview_vision',
@@ -96,4 +97,39 @@ process.stdin.on('data',chunk=>{buffer+=chunk;let idx;while((idx=buffer.indexOf(
     assert.equal(returned.tools,'bili_preview_vision')
     assert.equal(closed,1)
   }finally{rmSync(directory,{recursive:true,force:true})}
+})
+
+
+test('一次性 MCP 读取结束后等待子进程 stdio 关闭，临时文件可安全清理',async()=>{
+  const {mkdtempSync,writeFileSync,rmSync}=await import('node:fs')
+  const {tmpdir}=await import('node:os')
+  const {join}=await import('node:path')
+  const dir=mkdtempSync(join(tmpdir(),'dafeiyu-mcp-close-'))
+  try{
+    const fixture=join(dir,'stdio-server.mjs')
+    writeFileSync(fixture,`let buffer='';process.stdin.setEncoding('utf8');
+process.stdin.on('data',part=>{buffer+=part;let pos;while((pos=buffer.indexOf('\\n'))>=0){
+ const line=buffer.slice(0,pos);buffer=buffer.slice(pos+1);if(!line)continue;
+ const msg=JSON.parse(line);if(msg.id!==undefined)process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:msg.id,result:{capabilities:{},serverInfo:{name:'mock'}}})+'\\n')
+}})`)
+    const client=new McpClient({command:process.execPath,args:[fixture],cwd:dir})
+    await client.start()
+    const child=client.proc
+    assert.ok(child?.pid)
+    await client.stopAndWait()
+    assert.ok(child.exitCode!==null||child.signalCode!==null,'等待真实子进程退出，不只是发出 kill')
+    assert.equal(client.running,false)
+  }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('MCP 可执行文件不存在时立即拒绝而非等待请求超时',async()=>{
+  const {mkdtempSync,rmSync}=await import('node:fs')
+  const {tmpdir}=await import('node:os')
+  const {join}=await import('node:path')
+  const dir=mkdtempSync(join(tmpdir(),'dafeiyu-mcp-spawn-error-'))
+  try{
+    const client=new McpClient({command:join(dir,'missing-executable'),cwd:dir})
+    await assert.rejects(()=>client.start(),/MCP 子进程无法启动/)
+    assert.equal(client.running,false)
+  }finally{rmSync(dir,{recursive:true,force:true})}
 })

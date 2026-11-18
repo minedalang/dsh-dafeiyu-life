@@ -123,8 +123,7 @@ test('a fake package directory is insufficient to assert a working QR: failure g
   }finally{global.fetch=originalFetch;rmSync(home,{recursive:true,force:true})}
 })
 
-test('offline QR happy path: main runtime ready and a working QR Python produce PNG without remote B站 requests',
-  {skip:process.platform==='win32' || (await import('node:child_process')).spawnSync('python3',['-c','import qrcode']).status!==0},async()=>{
+test('offline QR route uses the plugin-local Python on Windows/Linux without network or credential leakage',async()=>{
   const {mkdirSync,writeFileSync}=await import('node:fs')
   const {spawnSync}=await import('node:child_process')
   const home=mkdtempSync(join(tmpdir(),'fish-qr-success-'))
@@ -135,11 +134,31 @@ test('offline QR happy path: main runtime ready and a working QR Python produce 
       logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
     apply(ctx,{})
     const state=join(home,'bili-duty'),venv=join(state,'.venv')
-    const packages=join(venv,'lib','python3.12','site-packages')
-    mkdirSync(packages,{recursive:true});mkdirSync(join(venv,'bin'),{recursive:true})
-    for(const dep of ['bilibili_api','mcp','qrcode'])mkdirSync(join(packages,dep))
-    const python=spawnSync('python3',['-c','import sys;print(sys.executable)'],{encoding:'utf8'}).stdout.trim()
-    writeFileSync(join(venv,'bin','python'),'#!/bin/sh\nexec '+JSON.stringify(python)+' "$@"\n',{mode:0o755})
+    // A real local venv supplies the actual native executable. No Windows symlink,
+    // Linux shell wrapper, network access, or preinstalled qrcode is required.
+    const basePython=process.env.PYTHON||(process.platform==='win32'?'python':'python3')
+    const built=spawnSync(basePython,['-m','venv','--without-pip',venv],{encoding:'utf8',timeout:90000,windowsHide:true})
+    assert.equal(built.status,0,`local Python venv must work: ${built.error?.code||built.status}`)
+    const packages=process.platform==='win32'?join(venv,'Lib','site-packages'):
+      join(venv,'lib','python3.12','site-packages')
+    for(const dep of ['bilibili_api','mcp','qrcode'])mkdirSync(join(packages,dep),{recursive:true})
+    // Hermetic qrcode.py verifies the JS=>venv=>PNG bridge, not the external QR
+    // encoding library. Real QR encoding is an installation/runtime acceptance.
+    const fakeQr=[
+      'from pathlib import Path',
+      'import struct, zlib',
+      'def _chunk(tag, raw):',
+      '    return struct.pack("!I", len(raw))+tag+raw+struct.pack("!I",zlib.crc32(tag+raw)&0xffffffff)',
+      'class _FixtureImage:',
+      '    def __init__(self, value):',
+      '        if not value.startswith("https://example.invalid/qr?key="): raise ValueError("unexpected QR URL")',
+      '    def save(self, path):',
+      '        png=(b"\\x89PNG\\r\\n\\x1a\\n"+_chunk(b"IHDR",struct.pack("!IIBBBBB",1,1,8,2,0,0,0))',
+      '             +_chunk(b"IDAT",zlib.compress(b"\\x00\\x00\\x80\\xff"))+_chunk(b"IEND",b""))',
+      '        Path(path).write_bytes(png)',
+      'def make(value): return _FixtureImage(value)',
+    ].join('\n')+'\n'
+    writeFileSync(join(state,'qrcode.py'),fakeQr)
     global.fetch=async()=>({json:async()=>({data:{qrcode_key:'QR-FIXTURE-KEY',url:'https://example.invalid/qr?key=QR-FIXTURE-KEY'}})})
     const req=Readable.from([Buffer.from('{}')]);req.method='POST';req.url='/api/bili-duty/login/start'
     req.headers={host:'127.0.0.1:8761',origin:'http://127.0.0.1:8761','sec-fetch-site':'same-origin'}

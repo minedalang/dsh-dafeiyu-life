@@ -103,9 +103,10 @@ test('comment Agent persistently chooses skip BEFORE sending public like or comm
 test('real entry points are wired before owner DM or public @ side effects',()=>{
  const code=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  assert.match(code,/createDualContextAgency\(\{dataDir:stateDir/)
- assert.ok(code.indexOf('declinedOwnerRequests=new Set()')<code.indexOf('ownerDmAgent.processMessages(ownerRows)'))
- assert.ok(code.indexOf('declinedOwnerRequests=new Set()')<code.indexOf('queueOwnerDmReadTodo({messages:incoming'))
- assert.ok(code.indexOf('declinedOwnerRequests=new Set()')<code.indexOf('ownerDmActions.claim({uid:row.senderUid'))
+ const agent=readFileSync(new URL('../lib/owner-dm-agent.mjs',import.meta.url),'utf8')
+ assert.match(agent,/status:'claimed'/,'现行主人 DM Agent 在模型或网络前必须持久认领消息')
+ assert.match(code,/probeOwnerIncoming:uid=>getNewDmMessages\(\{probeOnly:true,forceUid:uid\}\)/)
+ assert.match(code,/socialPolicyGate\.canSendDm/,'现行社交发送依然经过公共权限门禁')
  assert.match(code,/decideAgency:\(\{uid,messageId,text,intent,bvid,thread\}\)=>decideLegacySocial/)
  assert.doesNotMatch(code,/dualContextAgency\.decide\(/)
  assert.match(code,/source:'bili-comment'/)

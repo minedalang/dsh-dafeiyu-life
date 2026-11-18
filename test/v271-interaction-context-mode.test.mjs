@@ -39,14 +39,17 @@ test('模型自主请求个人待办与回忆，第二次才披露本UID证据�
   b.stop()
 })
 
-test('传统完整模式保留旧提示词与预先汇总的所有作用域材料，不增加额外调用',async()=>{
-  let first='',calls=0
-  const b=make(async prompt=>(calls++,first=prompt,answer()),{getContextMode:()=> 'full'})
-  assert.equal(await b.generate(base),'自然回复')
-  assert.equal(calls,1)
-  assert.match(first,/真实待办回执|本轮真实BV入账/)
-  assert.match(first,/只有本人的长期记忆密钥风格文本/)
-  b.stop()
+test('旧 full 设置不能绕过现行私信按需读取；评论完整模式仅使用其公开作用域',async()=>{
+  const seen=[];const b=make(async prompt=>(seen.push(prompt),answer()),{getContextMode:()=> 'full'})
+  try {
+    assert.equal(await b.generate(base),'自然回复')
+    assert.equal(seen.length,1)
+    assert.match(seen[0],/availableContexts/)
+    assert.doesNotMatch(seen[0],/真实待办回执|本轮真实BV入账|只有本人的长期记忆密钥风格文本/)
+    assert.equal(await b.generate({...base,kind:'comment',uid:'5678',text:'公开视频里的猫真可爱',memoryContext:'仅本公开作用域知识'}),'自然回复')
+    assert.match(seen[1],/仅本公开作用域知识/)
+    assert.doesNotMatch(seen[1],/只有本人的长期记忆密钥风格文本/)
+  } finally {b.stop()}
 })
 
 test('上下文续推失败不能把首次请求当作回复发送，且不会登记待办',async()=>{
@@ -81,6 +84,6 @@ test('配置及管理界面开关在真实读写路径上接通，并精确说�
   assert.match(index,/getContextMode:.*cfg\.interactionContextMode/)
   assert.match(index,/'interactionContextMode','memeRulesModelProvider'/)
   assert.match(ui,/models-interaction-context-mode/)
-  assert.match(ui,/主人专属私信 Agent.*不受此选项控制/)
+  assert.match(ui,/所有符合处理条件的私信均由统一 Life 决策入口处理/)
   assert.match(js,/payload\.interactionContextMode/)
 })

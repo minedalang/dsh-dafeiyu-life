@@ -97,9 +97,9 @@ function Invoke-NativeStep {
 
 Write-Host "大肥鱼 Plus 自动化测试（$Mode）" -ForegroundColor Cyan
 if ($Mode -eq 'quick') {
-    Write-Host '当前 2.8.0 核心回归：不会执行全部历史断言；正式发布必须另外执行 full。' -ForegroundColor Yellow
+    Write-Host '当前版本核心回归：不会执行全部历史断言；正式发布必须另外执行 full。' -ForegroundColor Yellow
 } elseif ($Mode -eq 'legacy') {
-    Write-Host '历史发行快照审计：预期部分旧版断言不适用于 2.8.0，不代表当前版验收。' -ForegroundColor Yellow
+    Write-Host '历史发行快照审计：预期部分旧版断言不适用于当前版本，不代表当前版验收。' -ForegroundColor Yellow
 }
 Write-Host "项目目录：$PSScriptRoot"
 Write-Host "日志文件：$logPath"
@@ -116,6 +116,14 @@ if (-not $nodeCommand) {
 }
 $nodePath = $nodeCommand.Source
 if (-not $nodePath) { $nodePath = $nodeCommand.Definition }
+
+# One-time local hook bootstrap piggybacks on the existing test command.
+# Never overwrite custom hooks; hook failures are reported but not disguised as test failures.
+try {
+    & $nodePath (Join-Path $PSScriptRoot 'scripts/install-git-hooks.mjs') 2>&1 | ForEach-Object { Write-Host ([string]$_) }
+} catch {
+    Write-Host "Git Hook 自动配置未完成：$($_.Exception.Message)（CI 检查仍有效）" -ForegroundColor Yellow
+}
 
 # Locate Python. Prefer the active Conda environment, then common Conda installs.
 $pythonPath = $null
@@ -234,6 +242,19 @@ if ($pythonPath) {
         }
         exit 1
     }
+}
+
+# Test catalog integrity is a hard gate: unregistered new tests, missing security
+# anchors, or undocumented retirements cannot silently reduce coverage.
+Invoke-NativeStep -Name "测试清单治理与安全覆盖检查（必须通过）" `
+    -FilePath $nodePath -Arguments @("scripts/test-governance.mjs", "check")
+if (@($script:Results | Where-Object { $_.Status -ne "PASS" }).Count -gt 0) {
+    Write-Host '测试清单治理失败：先登记/修复当前测试与归档说明，禁止继续报告 full 通过。' -ForegroundColor Red
+    try { Stop-Transcript | Out-Null } catch {}
+    if ($env:DAFEIYU_TEST_COMPLETE_FLAG) {
+        try { Set-Content -LiteralPath $env:DAFEIYU_TEST_COMPLETE_FLAG -Value "FAIL" -Encoding ASCII } catch {}
+    }
+    exit 1
 }
 
 # 1. Focused regression test.

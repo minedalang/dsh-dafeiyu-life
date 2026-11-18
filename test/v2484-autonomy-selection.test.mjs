@@ -54,7 +54,7 @@ test('真实兴趣先于主人额外关键词，兴趣为空安全冷启动',()=
     assert.equal(selected[0].topic,'白饭与美食')
     assert.equal(selected[0].query,'美食 料理')
     assert.match(source('index.js'),/const videoSearchPlan='兴趣主导搜索：'/)
-    assert.match(source('client.js'),/主人额外指定的关注主题/)
+    assert.match(source('client.js'),/关键词探索由人生记忆中的真实兴趣及 Life 线索驱动/)
   }finally{rmSync(tmp,{recursive:true,force:true})}
 })
 

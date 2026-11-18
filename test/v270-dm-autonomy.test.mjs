@@ -92,7 +92,8 @@ test('DM production adapter no longer runs the separate numeric dual-context wil
   assert.match(adapter,/relationshipStage/);
   assert.match(source,/canSendDm:\s*args=>socialPolicyGate\.canSendDm\(args\)/);
   assert.match(source,/async function getNewDmMessages\(\{probeOnly=false,forceUid=''/);
-  assert.match(source,/if\(probeOnly\)\{[\s\S]{0,700}dmFetch\(cred,target,50/);
+  assert.match(source,/if\(probeOnly\)\{[\s\S]{0,700}readDmDetail\(cred,target,50/);
+  assert.match(source,/accountBinding\.assertReady\(\)/);
   assert.match(source,/dmPollCursor\.discard\(\)/);
   const dmSource=await readFile(new URL('../lib/dm-autoreply.mjs',import.meta.url),'utf8');
   assert.match(dmSource,/fetchIncoming\(\{probeOnly:true,forceUid:uid\}\)/);

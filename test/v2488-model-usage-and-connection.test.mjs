@@ -81,7 +81,7 @@ test('页面每个模型都有调用统计和独立测试按钮，测试请求�
   assert.doesNotMatch(testing,/modelTestNextAt/)
   assert.match(testing,/assertVerifiedHeadless\(args,overlay,\{kind:'model-test',stateDir\},task\)/)
   assert.match(testing,/DAFEIYU_MODEL_TEST_OK/)
-  assert.match(html,/连接测试不能代替图片验收/)
+  assert.match(html,/连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收/)
   assert.match(html,/测试连接不计入统计/)
 })
 

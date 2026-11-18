@@ -30,12 +30,15 @@
     "./package.json": "./package.json"
   },
   "scripts": {
+    "prepare": "node scripts/install-git-hooks.mjs",
     "prepare:embedding-runtime": "node scripts/prepare-embedding-runtime.mjs",
     "check:life-architecture": "node scripts/check-life-architecture.mjs",
     "write:life-architecture-view": "node scripts/check-life-architecture.mjs --write-preview",
     "test": "node --test test/*.test.mjs",
     "test:python": "node scripts/test-python.mjs",
-    "check:video-tool-contract": "node scripts/check-video-tool-contract.mjs"
+    "check:video-tool-contract": "node scripts/check-video-tool-contract.mjs",
+    "check:test-governance": "node scripts/test-governance.mjs check",
+    "review:impacted-tests": "node scripts/test-governance.mjs impact"
   },
   "files": [
     "index.js",
@@ -43,6 +46,7 @@
     "cordis.patch.yml",
     "lib",
     "scripts/prepare-embedding-runtime.mjs",
+    "scripts/install-git-hooks.mjs",
     "scripts/check-life-architecture.mjs",
     "tools/dev4-cold-state-backup.mjs",
     "tools/dev4-life-planner-offline-recovery.mjs",

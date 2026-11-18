@@ -57,6 +57,8 @@ test('配置入口、独立权限及按钮都要同步存在',()=>{
   assert.ok(js.includes(flag),flag+' must have UI save')
  }
  for(const id of ['owner-dm-agent-save','owner-dm-like','owner-dm-collect','owner-dm-follow','owner-dm-comment-draft','owner-dm-comment-publish','owner-dm-dynamic-draft','owner-dm-dynamic-publish','owner-dm-friend-message'])assert.ok(ui.includes(`id="${id}"`))
- assert.match(host,/ownerDmActions\.claim/)
- assert.match(host,/ownerDmActions\.finish/)
+ const ownerAgent=readFileSync(new URL('../lib/owner-dm-agent.mjs',import.meta.url),'utf8')
+ assert.match(ownerAgent,/status:'claimed'/,'现行主人 Agent 仍须在执行前持久占位')
+ assert.match(ownerAgent,/writeFile\(file,d,now\(\)\)/,'现行消息领取及结果必须持久化')
+ assert.match(host,/createOwnerDmAgent/)
 })

@@ -1,9 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,readFileSync,writeFileSync,rmSync,lstatSync,symlinkSync} from 'node:fs'
+import {mkdtempSync,readFileSync,writeFileSync,rmSync,lstatSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createDshVisionReview} from '../lib/dsh-vision-review.mjs'
+import {symlinkOrSkip} from './test-platform-fixtures.mjs'
 
 const source=(name)=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 
@@ -39,12 +40,12 @@ test('3b.22 图片验收失败/重启只存结构化诊断，不持久化密钥�
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('3b.22 诊断持久文件是 symlink 时拒绝落盘',async()=>{
+test('3b.22 诊断持久文件是 symlink 时拒绝落盘',async t=>{
  const dir=mkdtempSync(join(tmpdir(),'dsh-3b22-symlink-'))
  try{
   const out=join(dir,'outside'),file=join(dir,'dsh-vision-selftest-last-run.json')
   writeFileSync(out,'DO NOT MODIFY')
-  symlinkSync(out,file)
+  if(!symlinkOrSkip(t,out,file,'file'))return
   const mgr=createDshVisionReview({stateFile:file,getRoute:()=>({provider:'p',model:'m'}),probe:async()=>({ok:true,answer:'描述'})})
   await mgr.verify()
   assert.equal(readFileSync(out,'utf8'),'DO NOT MODIFY')

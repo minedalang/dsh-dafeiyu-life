@@ -34,12 +34,13 @@ test('真实模拟打开模型页刷新时不会因缺失 DOM 的 checked 属性
   const htmlIds=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]))
   const registry=new Map(),listeners=new Map()
   class Element{
-    constructor(){this.value='';this.textContent='';this.style={};this.dataset={};this.hidden=false;this.checked=false;this.parentElement=this;this.classList={toggle(){}}}
+    constructor(){this.value='';this.textContent='';this.style={};this.dataset={};this.hidden=false;this.checked=false;this.parentElement=this;this.children=[];this.classList={toggle(){},add(){},remove(){},contains(){return false}}}
     set id(value){this._id=value;registry.set(value,this)}get id(){return this._id}
     addEventListener(name,fn){if(this.id)listeners.set(this.id+':'+name,fn)}
-    appendChild(child){child.parentElement=this;return child}
-    replaceChildren(){}
+    appendChild(child){child.parentElement=this;this.children.push(child);return child}
+    replaceChildren(...nodes){this.children=[];for(const node of nodes)this.appendChild(node)}
     querySelectorAll(){return []}
+    querySelector(){return new Element()}
     setAttribute(){}
   }
   for(const id of htmlIds){const e=new Element();e.id=id}

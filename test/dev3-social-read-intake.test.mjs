@@ -91,8 +91,9 @@ test('生产入口从同一次社交 AI 输出 intake，不再在 AI 之前用�
  assert.match(source,/allowTodoIntake:req\.trigger!=='scheduled'/,'scheduled follow-ups must not duplicate a todo intake from the original DM')
  assert.match(batch,/onTodoProposal\(\{todoDisposition/)
  assert.doesNotMatch(source,/intakePublicReadProposal|parsePublicReadProposal|hasExplicitVideoRecommendation/)
- assert.match(source,/recommendationEligible=incoming\.filter/)
- assert.match(source,/receiveRecommendations\(stateDir,recommendationEligible\)/)
+ assert.match(source,/intakeAiSocialTodo/,'现行社交提案只能来自已核验的模型结果')
+ assert.match(source,/onTodoProposal:proposal=>intakeAiSocialTodo/,'主人私信提案应与同轮 AI 回复共用入口')
+ assert.doesNotMatch(source,/recommendationEligible=incoming\.filter|receiveRecommendations\(stateDir,recommendationEligible\)/,'不得恢复正则预解析的旧队列')
 })
 
 test('跨轮主题引用只允许同 UID 最近 24 小时内的原话',()=>withHome(home=>{
@@ -156,7 +157,7 @@ test('歌手与歌曲自然推荐只用原来一次 AI 回复生成，同时决�
   let calls=0,proposals=0
   const batcher=createInteractionBatcher({delayMs:1,getPersona:()=>'',invoke:async prompt=>{
    calls++
-   assert.match(prompt,/不需要用户先提供 BV|不能把 BV 号|不能把BV号/)
+   assert.match(prompt,/不要求一定提供 BV|不需要同时给出歌手和歌名|不需要.*BV/,'当前按需模式不可强迫用户先给 BV')
    assert.match(prompt,/search_videos/)
    return JSON.stringify({items:[{id:'0',action:'reply',reply:'这首我还不熟，不过有点想找来了解一下～',
     todoDisposition:'accept',suggestedTodo:{type:'search_videos',topic:'方大同 麦恩莉',evidence:'推荐你首歌 方大同的麦恩莉'},mood:'curious',intensity:1}]})
@@ -203,8 +204,8 @@ test('只推荐艺人时复用原来的社交回复 AI 调用，无须追加歌�
   let calls=0,proposals=0
   const batcher=createInteractionBatcher({delayMs:1,getPersona:()=>'',invoke:async prompt=>{
    calls++
-   assert.match(prompt,/不需要同时给出歌手和歌名/)
-   assert.match(prompt,/不要求用户再给出歌名/)
+   assert.match(prompt,/普通私信可自然接受明确歌手|不需要同时给出歌手和歌名/)
+   assert.match(prompt,/不要求一定提供 BV|不要求用户再给出歌名|已经给出歌手名.*不要再索要歌名/)
    return JSON.stringify({items:[{id:'0',action:'reply',reply:'听过名字，我倒有点想找她的作品了解一下～',
     todoDisposition:'accept',suggestedTodo:{type:'search_videos',topic:'王菲',evidence:'推荐你听王菲'},mood:'curious',intensity:1}]})
   }})

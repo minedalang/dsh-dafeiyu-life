@@ -2,6 +2,7 @@
 import ast
 import asyncio
 import json
+import os
 import subprocess
 import tempfile
 import types
@@ -25,8 +26,10 @@ class WhisperRuntimeTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.home = Path(self.tmp.name)
-        (self.home / '.venv-asr' / 'bin').mkdir(parents=True)
-        (self.home / '.venv-asr' / 'bin' / 'python').write_text('fake')
+        # The production ASR venv uses Scripts/python.exe on Windows.
+        local_python = self.home / '.venv-asr' / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+        local_python.parent.mkdir(parents=True)
+        local_python.write_text('fake')
         (self.home / 'asr.py').write_text('fake')
         self.argv = []
         def fake_run(argv, **kw):

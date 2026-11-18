@@ -95,6 +95,8 @@ jobs:
           node --check index.js
           node --check client.js
           node --check selfcheck.mjs
+      - name: Verify current test inventory and protected regressions
+        run: npm run check:test-governance
       - name: Full Node.js regression tests
         run: node --test test/*.test.mjs
       - name: Full Python regression tests

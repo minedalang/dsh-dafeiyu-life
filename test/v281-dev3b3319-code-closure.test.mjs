@@ -115,7 +115,7 @@ test('main video production route binds the per-round capability and never edits
 })
 
 test('every standalone MCP social/public information read has a shared admission gate',()=>{
-  const python=readFileSync(resolve('vendor/bilibili-mcp/mcp_server.py'),'utf8')
+  const python=readFileSync(resolve('vendor/bilibili-mcp/mcp_server.py'),'utf8').replace(/\r/g,'')
   const gate=readFileSync(resolve('vendor/bilibili-mcp/read_action_gate.py'),'utf8')
   const node=readFileSync(resolve('index.js'),'utf8')
   for(const name of ['bili_video_info_by_aid','bili_dynamic_info','bili_dynamic_comment_context',

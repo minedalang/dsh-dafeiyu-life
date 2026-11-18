@@ -114,8 +114,8 @@ test('Life DM prompt invites meaningful multiple bubbles but never forces an exa
     const result=await batcher.generate({kind:'dm',uid:'200',text:'你好呀',socialAutonomy:true,threadKey:'dm:200',trigger:'incoming',p6MaxBubbles:3});
     assert.equal(result.action,'reply');
     assert.deepEqual(result.messages,['这一句就够了']);
-    assert.match(seen[0],/独立意思|有承接/);
-    assert.match(seen[0],/禁止拆句凑数/);
+    assert.match(seen[0],/能单独成立、自然承接|独立的语义点/);
+    assert.match(seen[0],/不得为了凑数拆半句话|不要为了凑数/);
   }finally{batcher.stop()}
 });
 

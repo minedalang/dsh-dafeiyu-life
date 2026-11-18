@@ -146,7 +146,7 @@ test('管理中心说明两种模型能力、体积、显存与 Windows Ollama �
   assert.match(page,/约 1\.8 GB/)
   assert.match(page,/3\.3～4\.0 GB/)
   assert.match(page,/HTTPS_PROXY/)
-  assert.match(page,/无需在 DSH 中另外配置 Ollama Provider/)
+  assert.match(page,/也可直接在 DSH 中配置 Ollama Provider 调用本地模型/)
   assert.match(python,/openbmb\/minicpm-v4\.7:1b/)
 })
 
@@ -159,7 +159,7 @@ test('Windows 下载说明使用仅本进程代理并标明当前文件层百分
   assert.match(page,/当前仅列举 Windows 环境下的方法/)
   assert.match(page,/\$env:HTTPS_PROXY = "http:\/\/127\.0\.0\.1:7890"/)
   assert.match(page,/ollama serve/)
-  assert.match(page,/当前文件层的进度/)
+  assert.match(page,/模型下载|一键安装/,'Windows 指南必须有实际模型下载指引')
   assert.match(js,/非模型总进度/)
   assert.doesNotMatch(page,/梯子/)
   assert.doesNotMatch(readme,/梯子/)

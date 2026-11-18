@@ -1,10 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,rmSync,readFileSync,writeFileSync,symlinkSync} from 'node:fs'
+import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {readProductionVisionStatus} from '../lib/vision-production-status.mjs'
+import {symlinkOrSkip} from './test-platform-fixtures.mjs'
 
 const root=new URL('../',import.meta.url)
 const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
@@ -39,7 +40,7 @@ test('记忆统计来自真实衰减副本，今日遗忘只统计实际新发�
  assert.match(ui,/request\('\/life-memory\/status'\)/)
 })
 
-test('视觉生产状态本地持久化，只接收固定结果和非符号链接，不执行识图',()=>{
+test('视觉生产状态只接受固定字段与合法结果，不执行识图',()=>{
  const d=mkdtempSync(join(tmpdir(),'dev3b13-vision-'))
  try{
   const f=join(d,'vision-production-last.json')
@@ -50,9 +51,21 @@ test('视觉生产状态本地持久化，只接收固定结果和非符号链�
   assert.equal(readProductionVisionStatus(d)?.status,'timeout')
   writeFileSync(f,JSON.stringify({version:1,at:Date.now(),ok:true,status:'cached',mode:'independent_local'}))
   assert.equal(readProductionVisionStatus(d),null)
-  rmSync(f);symlinkSync(join(d,'missing'),f)
-  assert.equal(readProductionVisionStatus(d),null)
+
  }finally{rmSync(d,{recursive:true,force:true})}
  assert.match(py, /if debug or not isinstance\(result, dict\):/)
  assert.match(py,/if status not in \('analyzed', 'vision_unavailable'/)
+})
+
+// This is a separate security assertion: a Windows user without SeCreateSymbolicLinkPrivilege
+// cannot create the malicious file fixture, but must not be credited as PASS.
+test('视觉生产状态拒绝真实文件符号链接，不跟随外部结果',t=>{
+ const dir=mkdtempSync(join(tmpdir(),'dev3b13-vision-link-'))
+ try{
+  const external=join(dir,'outside.json'),link=join(dir,'vision-production-last.json')
+  writeFileSync(external,JSON.stringify({version:1,at:Date.now(),ok:true,status:'analyzed',mode:'independent_local'}))
+  if(!symlinkOrSkip(t,external,link,'file'))return
+  assert.equal(readProductionVisionStatus(dir),null)
+  assert.equal(readFileSync(external,'utf8').includes('analyzed'),true)
+ }finally{rmSync(dir,{recursive:true,force:true})}
 })
