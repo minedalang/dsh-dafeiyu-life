@@ -343,3 +343,8 @@ localNovelty["dev.12 新增公开证据才主动唤醒额外局部推理
 无新增时保留未来独立选择"]
 planner -.->|仅节省重复调用，不代替模型决定喜恶| localNovelty
 %% @code localNovelty | lib/autonomous-planner.mjs | no-new-public-evidence
+%% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
+%% receipt, memory fact or autonomous decision. The original Life route stays.
+contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
+%% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext

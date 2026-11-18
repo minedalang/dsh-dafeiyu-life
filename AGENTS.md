@@ -62,7 +62,7 @@
 
 - Windows 相关测试遵守运行脚本提供的 Python 可执行路径，处理 UTF-8/CRLF、子进程退出/流关闭次序、权限与符号链接的跨平台差异；不可为消除错误而关闭安全功能。
 - Git Patch 需 UTF-8 无 BOM，保留真实 Unicode 路径与文件换行规则，在**明确的基线版本**上先执行 `git apply --check` 并实际回放；不要求用户为了应用补丁先提交已存在的未提交变更。
-- 版本标识以 `package.json` 为单一事实来源，正式发布时同步检查 lockfile、README、CHANGELOG 与 Release Notes；开发候选版不得提前打正式标签或发布到 latest。
+- 版本标识以 `package.json` 为单一事实来源；每次开发批次使用目标版本的 `X.Y.Z-dev.N`（从 `dev.1` 起递增），同步 `package-lock.json`、README 中的当前源码版本提示和 `CHANGELOG.md`，避免用上一正式版版本号交付新功能。正式发布时再核对 Release Notes；开发候选版不得提前打正式标签或发布到 latest。
 
 ## 7. 交付与提交规范
 

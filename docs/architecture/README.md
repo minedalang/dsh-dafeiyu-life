@@ -1,3 +1,5 @@
+> **2.8.2 开发中（尚未验收）**：[实施方案](2.8.2-implementation-plan.md)、[PR-0 / PR-1A 基线与首批语义预算、视觉边界审计](2.8.2-pr0-pr1a-baseline.md)。此增量不改外发权限、不新增事实库；原 2.8.1 章节继续保留为历史代码资料。
+
 ## 当前 2.8.1 通知、视频与决策架构（2026-11-18）
 
 - [dev.3b.33.23 · 官方 DASH SIDX 长视频有限分段取帧](2.8.1-dev3b23-dash-indexed-long-video.md)：在 DURL 之外验证公开 DASH 的 `SegmentBase` 与时间索引、按 206 Range 有界取帧，真实回退原因透传、旧版证据兼容；Windows 实机待验。

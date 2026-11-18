@@ -591,6 +591,16 @@
       "kind": "security",
       "intent": "Require bounded model context to preserve valid JSON, recent evidence, balanced candidates, and the end of long subtitles without changing authoritative source data."
     },
+    "v282-context-delivery.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Verify prompt-only actual delivery reports are bounded, content-free and distinguish complete, partial and unavailable Life evidence without changing Life permissions."
+    },
+    "v282-vision-instruction-boundary.test.mjs": {
+      "owner": "vision-dsh-host",
+      "kind": "security",
+      "intent": "Require host-side production visual instructions to reject oversize input rather than silently truncate untrusted guidance."
+    },
     "v281-release-preflight-no-prepare.test.mjs": {
       "owner": "release",
       "kind": "contract",
@@ -725,7 +735,13 @@
     "test_vision_events_v2439.py",
     "test_vision_host_owned_dev33314.py"
   ],
-  "registeredPython": {},
+  "registeredPython": {
+    "test_v282_vision_instruction_boundary.py": {
+      "owner": "vision-dsh-host",
+      "kind": "security",
+      "intent": "Reject Python DSH vision instructions exceeding the exact host UTF-16 boundary and fail safely on invalid encoding."
+    }
+  },
   "pythonProtected": [
     "test_v271_three_phase_outbound_gate.py",
     "test_v271_subtitle_visual_evidence.py",

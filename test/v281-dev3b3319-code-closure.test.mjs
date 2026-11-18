@@ -83,6 +83,7 @@ test('production visual host limits execution to a nonce-bound overlay and exact
   try{
     const o={home:f.home,exe:f.exe,cli:f.cli,baseOverlay:f.baseOverlay,workdir:f.dir,baseText:f.baseText,env:f.env}
     assert.equal(verifyProductionVisionPacket(f.packet(['--patch',f.patch,f.prompt]),o),'production_video_vision')
+    assert.throws(()=>verifyProductionVisionPacket(f.packet(['--patch',f.patch,f.prompt]),{...o,visualInstruction:'x'.repeat(4001)}),/vision-instruction-too-long/)
     assert.equal(verifyProductionVisionPacket(f.packet(['--patch',f.patch,'--dump-config']),o),'private_dump')
     assert.throws(()=>verifyProductionVisionPacket(f.packet(['--patch',f.baseOverlay,f.prompt]),o))
     assert.throws(()=>verifyProductionVisionPacket(f.packet(['--patch',f.patch,f.prompt+' shell']),o))

@@ -110,3 +110,8 @@ commenterChoice -.->|候选非强制动作| menu
 %% @code novelRead | lib/life-episode-value.mjs | export function verifiedEpisodeYield
 %% @code optionalChapter | lib/life-opportunities.mjs | const carryNewEvidence=
 %% @code commenterChoice | lib/life-continuation.mjs | inspect_commenter_works
+%% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
+%% receipt, memory fact or autonomous decision. The original Life route stays.
+contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
+%% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext

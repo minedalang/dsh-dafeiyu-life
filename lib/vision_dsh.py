@@ -248,6 +248,24 @@ def _validate_vision_overlay_file(path, home, *, selftest=False):
     return path.resolve()
 
 
+
+def _decode_visual_instruction(env):
+    """Align with the host's 4000 UTF-16-code-unit setting boundary.
+
+    Invalid or oversized prompts are rejected BEFORE the visual cache lookup
+    and child launch. Never let a truncated prefix change the requested scope.
+    """
+    try:
+        text=base64.b64decode(env.get('BILI_VISION_PROMPT_B64',''),validate=True).decode('utf8')
+        units=len(text.encode('utf-16-le'))//2
+    except (ValueError,UnicodeError,TypeError):
+        raise ValueError('vision-instruction-invalid-encoding') from None
+    if units>4000:
+        raise ValueError('vision-instruction-too-long')
+    if '\x00' in text:
+        raise ValueError('vision-instruction-invalid-content')
+    return text.strip()
+
 def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None, debug_capture=False):
     if not _BV.fullmatch(str(bvid)):
         return {'ok':False,'status':'invalid_bvid','error':'BV 号格式不正确'}
@@ -277,10 +295,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         model=env.get('BILI_VISION_DSH_MODEL','').strip()
         frames=int(env.get('BILI_VISION_FRAMES','24'))
         frames=frames if frames in (12,24,48) else 24
-        try:
-            visual_instruction=base64.b64decode(env.get('BILI_VISION_PROMPT_B64',''),validate=True).decode('utf8')[:4000].strip()
-        except (ValueError,UnicodeDecodeError):
-            visual_instruction=''
+        visual_instruction=_decode_visual_instruction(env)
         prompt_hash=hashlib.sha256(visual_instruction.encode('utf8')).hexdigest()[:16]
         from preview_vision import _SAMPLER_VERSION, _FOCUS_SAMPLER_VERSION, PREVIEW_BOARD_VERSION, _normalize_focus_window
         focus=_normalize_focus_window(focus_start,focus_end)

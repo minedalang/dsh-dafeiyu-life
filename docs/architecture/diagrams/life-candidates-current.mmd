@@ -123,3 +123,8 @@ dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验�
 
 %% @code intentions | lib/life-opportunities.mjs | const beginInspectedOpportunity=
 %% @code todos | lib/life-video-episode-evidence.mjs | export function verifiedCompletedVideoTodo
+%% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
+%% receipt, memory fact or autonomous decision. The original Life route stays.
+contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
+%% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext

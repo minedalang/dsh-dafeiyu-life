@@ -350,6 +350,11 @@ localNovelty["dev.12 新增公开证据才主动唤醒额外局部推理
 无新增时保留未来独立选择"]
 planner -.->|仅节省重复调用，不代替模型决定喜恶| localNovelty
 %% @code localNovelty | lib/autonomous-planner.mjs | no-new-public-evidence
+%% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
+%% receipt, memory fact or autonomous decision. The original Life route stays.
+contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
+%% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 ```
 
 ## 二、八类候选细目
@@ -480,6 +485,11 @@ dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验�
 
 %% @code intentions | lib/life-opportunities.mjs | const beginInspectedOpportunity=
 %% @code todos | lib/life-video-episode-evidence.mjs | export function verifiedCompletedVideoTodo
+%% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
+%% receipt, memory fact or autonomous decision. The original Life route stays.
+contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
+%% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 ```
 
 ## 三、可信回执与记忆闭环
@@ -646,6 +656,11 @@ growthReadOnly["dev.12 匿名探索收益 + 原跨日兴趣 + 人格反思事实
 只读诊断，不修改偏好或发布权限"]
 verified -.->|事实归因，而非新兴趣证明| growthReadOnly
 %% @code growthReadOnly | lib/life-growth-attribution.mjs | export function projectLifeGrowthAttribution
+%% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
+%% receipt, memory fact or autonomous decision. The original Life route stays.
+contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
+%% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 ```
 
 ## 四、统一 Life Episode 因果持续性
@@ -763,4 +778,9 @@ commenterChoice -.->|候选非强制动作| menu
 %% @code novelRead | lib/life-episode-value.mjs | export function verifiedEpisodeYield
 %% @code optionalChapter | lib/life-opportunities.mjs | const carryNewEvidence=
 %% @code commenterChoice | lib/life-continuation.mjs | inspect_commenter_works
+%% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
+%% receipt, memory fact or autonomous decision. The original Life route stays.
+contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
+%% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 ```

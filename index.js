@@ -187,7 +187,7 @@ import {DEFAULT_MEME_RULE_AI_PROMPT,buildMemeRuleAIUpdatePrompt,computeMemeInven
 import { DEFAULT_COMMENT_MEME_PROMPT, buildCommentMemePrompt, normalizeCommentMemePrompt } from './lib/comment-meme-prompt.mjs'
 import { DEFAULT_PERSONA_PROMPT, effectivePersonaPrompt } from './lib/persona-default.mjs'
 import { buildBalancedMemeInventory } from './lib/meme-inventory-prompt.mjs'
-import { DEFAULT_VISION_PROMPT, buildVisionPrompt, normalizeVisionPrompt } from './lib/vision-prompt.mjs'
+import { DEFAULT_VISION_PROMPT, buildVisionPrompt, normalizeVisionPrompt, validateVisionPromptUpdate } from './lib/vision-prompt.mjs'
 import { parseMentionTargets, decideMentions } from './lib/mentions.mjs'
 import { DEFAULT_CHARACTER_LORE, normalizeCharacterLore, normalizeMentionProfiles, buildMentionProfilePrompt, buildSenderRelationshipContext } from './lib/character-social.mjs'
 import { normalizeFriendDirectory, directoryToLegacy } from './lib/friend-directory.mjs'
@@ -871,7 +871,7 @@ function reportMeta() {
     if ('commentMemesPerRound' in p) p.commentMemesPerRound=Math.max(0,Math.min(5,Math.floor(Number(p.commentMemesPerRound)||0)))
     if ('commentMemePrompt' in p) p.commentMemePrompt=normalizeCommentMemePrompt(p.commentMemePrompt)
     if ('memeRulesPrompt' in p) p.memeRulesPrompt=normalizeMemeRuleAIPrompt(p.memeRulesPrompt)
-    if ('visionPrompt' in p) p.visionPrompt=normalizeVisionPrompt(p.visionPrompt)
+    if ('visionPrompt' in p) p.visionPrompt=storedRead?normalizeVisionPrompt(p.visionPrompt):validateVisionPromptUpdate(p.visionPrompt)
     for (const k of ['visionEnabled','visionDebug','diagMentionEnabled','diagDynamicEnabled','diagVisionEnabled','diagMemeEnabled','diagAtInviteEnabled','diagReplyInboxEnabled']) if (k in p) p[k]=p[k]===true
     if ('visionMode' in p) { if(!['independent_dsh','independent_local'].includes(p.visionMode)) { p.visionMode='independent_dsh'; p.visionEnabled=false } }
     if ('visionModelProvider' in p) p.visionModelProvider=String(p.visionModelProvider||'').trim().replace(/[\r\n\0]/g,'').slice(0,160)

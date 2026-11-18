@@ -159,3 +159,8 @@ growthReadOnly["dev.12 匿名探索收益 + 原跨日兴趣 + 人格反思事实
 只读诊断，不修改偏好或发布权限"]
 verified -.->|事实归因，而非新兴趣证明| growthReadOnly
 %% @code growthReadOnly | lib/life-growth-attribution.mjs | export function projectLifeGrowthAttribution
+%% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
+%% receipt, memory fact or autonomous decision. The original Life route stays.
+contextDelivery282["模型实际收到的有限上下文｜完整/部分/不可用；不保存原文"]
+contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
+%% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
