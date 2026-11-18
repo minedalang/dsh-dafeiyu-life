@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync,mkdtempSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
-import {join} from 'node:path'
+import {join,relative,isAbsolute} from 'node:path'
 import {Readable} from 'node:stream'
 import {apply} from '../index.js'
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8')
@@ -139,8 +139,15 @@ test('offline QR route uses the plugin-local Python on Windows/Linux without net
     const basePython=process.env.PYTHON||(process.platform==='win32'?'python':'python3')
     const built=spawnSync(basePython,['-m','venv','--without-pip',venv],{encoding:'utf8',timeout:90000,windowsHide:true})
     assert.equal(built.status,0,`local Python venv must work: ${built.error?.code||built.status}`)
-    const packages=process.platform==='win32'?join(venv,'Lib','site-packages'):
-      join(venv,'lib','python3.12','site-packages')
+    // Probe the *created* venv rather than assuming Python 3.12: CI currently
+    // uses 3.11, while developer machines may use a different minor version.
+    const py=process.platform==='win32'?join(venv,'Scripts','python.exe'):join(venv,'bin','python')
+    const probe=spawnSync(py,['-c','import sysconfig; print(sysconfig.get_paths()["purelib"])'],
+      {encoding:'utf8',timeout:15000,windowsHide:true})
+    assert.equal(probe.status,0,`venv site-packages probe failed: ${probe.error?.code||probe.stderr||probe.status}`)
+    const packages=probe.stdout.trim()
+    const rel=relative(venv,packages)
+    assert.ok(rel&&!rel.startsWith('..')&&!isAbsolute(rel),'site-packages must reside in the test venv')
     for(const dep of ['bilibili_api','mcp','qrcode'])mkdirSync(join(packages,dep),{recursive:true})
     // Hermetic qrcode.py verifies the JS=>venv=>PNG bridge, not the external QR
     // encoding library. Real QR encoding is an installation/runtime acceptance.

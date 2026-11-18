@@ -77,7 +77,8 @@ test('dev.4 static production wiring covers main, owner DM and friend DM, with n
  assert.match(index,/conversationLifeFeedback\.observe\(\{source:'dm',role,uid/)
  assert.match(index,/getLifeStateContext:/)
  const batch=fs('../lib/interaction-batch.mjs')
- assert.match(batch,/lifeStateContext:sanitize\(x\.lifeStateContext/)
+ // Life state remains present, but semantic context is bounded rather than raw-prefix truncated.
+ assert.match(batch,/lifeStateContext:(?:excerpt|boundedText)\(x\.lifeStateContext,780\)/)
 })
 
 test('dev.4 main Session optional mood tool needs a genuine new user turn, is bounded and renderable',async()=>run(async dir=>{
