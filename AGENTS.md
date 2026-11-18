@@ -1,3 +1,10 @@
+## 2.8.1-dev.3b.33.23 · 可信 DASH 长视频稀疏采样（2026-11-18）
+
+- 使用官方公开 `view/playurl` 的同 BV/CID、受校验的 bilivideo.com HTTPS `.m4s` 和 SegmentBase SIDX；不允许任意 URL、模型提供媒体字节地址、登录 Cookie、FFmpeg 远程网络输入或永久缓存源媒体。
+- 分段必须验证 206 / Content-Range 总长 / ETag 或 Last-Modified / 时间索引、SAP 可解码片段、实际网络字节预算；拒绝 200 / 修改响应 / 格式错误。临时本地 fMP4 仅限本轮使用，不能把选帧描述为完整观看或音频感知。
+- DSH 识图路径必须透传经 MCP 图片工具确认的实际 `adaptive_fallback.reason`，禁止用通用 `public_stream_unavailable` 覆盖真实原因；若真实理由没有回执则标注 `fallback_reason_not_reported`，不可猜测。
+- 只运行相关 Python/Node 定向测试、架构和工具契约、自检、npm pack、真实 UTF-8 中文路径 Patch 独立回放；禁止真实 B站写入、云端全量测试、Git Commit/Push 和 npm publish。
+
 ## 2.8.1-dev.3b.33.22 · 独立 Life 活动时段 UI 约束（2026-11-18）
 
 - 活跃度（quiet/natural/lively/custom）只控制普通 Life 决策间隔、日预算和现有 Video Agent 节奏；每日活动时间使用单独 `schedule.startHour/endHour`，UI 必须紧跟四个活跃档位卡片，不得藏进高级设置，也不得因改变时间就设置 `pace=custom`。

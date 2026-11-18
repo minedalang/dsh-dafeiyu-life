@@ -1,25 +1,28 @@
-# 2.8.1-dev.3b.33.22 · 安装与回滚
+# 2.8.1-dev.3b.33.23 安装、升级与回滚（2026-11-18）
 
-## 修复范围
+本次为 .22→.23 长视频 DASH 分段视觉修复。优先使用完整源码 ZIP 或 npm TGZ（二选一），**不可在已经复制 .23 源码后再次应用 .22→.23 Patch**。
 
-- 「🌿 鱼鱼的生活」活跃程度卡片下方增加独立每日时段设置。两端滑块支持 00:00–24:00 全日和跨午夜时段，保存依旧走 Life V2 revision 预览/确认。
-- 活跃方案不覆盖时段；时段改动不切换活跃方案；旧配置持久化字段不变。
-- 继承 `.20/.21` 生产视频 Debug 路由与 Windows 中文文件名补丁修复。如果宿主实际加载的是 `.19`，先升级到 `.22` 并完全退出重启 DSH，再验收视频视觉。
+## 新功能
 
-## 安装
+- 支持公开 B站 DASH `SegmentBase` 中可信 SIDX 的抽帧；有单段 DURL MP4 时沿用原 MP4 分段读取。支持时间线最长 4 小时，但每条视频网络预算仍是 24/50/100 MiB，严格不代表完整播放。
+- 如果收到无法取到的 DASH 索引、权限或 CDN Range，不再用统一 `public_stream_unavailable` 覆盖根因；当使用 DSH 模型，低清回退通过独立图片证明传递实际原因。
 
-1. 停止 DSH，**备份插件源码和 `%USERPROFILE%\.dsh\bili-duty` 数据目录**；保留账号凭据、Life 记忆、私信队列、未知发送冻结、限流账本和用户设置。
-2. 当前为 `.19`：推荐解压本包的 `delivery/2.8.1-dev.3b.33.19-to-22-life-hours-utf8.patch`，在 **真实 `.19`、没有其他未提交改动的源码树** 执行 `git apply --check`，通过再 `git apply`；或使用本包完整源码进行安全覆盖安装。不使用此前已知错误的 `.19→.20` Patch。
-3. 当前为 `.21`：使用 `delivery/2.8.1-dev.3b.33.21-to-22-life-hours-utf8.patch`，同样先检查再应用。中间其他版本请先确认基线，不能混用补丁。
-4. 或者从 `delivery/` 使用 npm TGZ 本地安装。不要执行 npm publish。
-5. 完全退出并重新启动 DSH，确认插件版本为 `.22`。进入「Life 自主生活 → 🌿 鱼鱼的生活 → 活跃程度卡片下方」，可移动时段滑块、切换快捷方案，再点击底部「保存生活设置」。
-6. 验证 09–23 更改为其他时段时仍保持原「活跃」档位，改为「安静」也不会覆盖已选时段。需跨午夜则可以选择 20:00–02:00。
-7. DSH 视觉故障：在 `.22` 完全启动后重新执行图片验收和视频全链路 Debug，不要使用仍在 `.19` 的错误作为 `.22` 回归证据。
+## 使用 Patch
 
-## 回滚
+在确认为对应旧版的 Git 工作区根目录运行，不要依赖 Windows 当前控制台代码页对 Patch 做编码转换：
 
-关闭 DSH 后恢复已备份的插件源码或应用对应逆向 Patch。此版本沿用旧有配置键，**不要删除或重置数据目录**。旧 UI 不显示新控件，但已保存活动时段仍是相同字段。跨午夜调度由原 Planner 已有逻辑支持。
+```powershell
+git status --short
+git apply --check ".\2.8.1-dev.3b.33.22-to-23-indexed-dash-utf8.patch"
+git apply ".\2.8.1-dev.3b.33.22-to-23-indexed-dash-utf8.patch"
+```
 
-## 验证边界
+仍是 `.19` 且源码与历史基线一致时，改用 `2.8.1-dev.3b.33.19-to-23-indexed-dash-utf8.patch`（**不能叠加两个 Patch**）；如果你本地修改了对应文件，应先备份并核对冲突。
 
-已完成离线定向回归、Life 架构/Video 契约、host/client 自检、npm 打包预检和从真实中文文件名基线的独立 Patch 回放。没有执行 Windows PowerShell 本机测试、真实 B站请求、真实 DSH 模型识图、Git Commit/Push 或 npm Publish。
+## 数据安全与验收
+
+备份插件及 `%USERPROFILE%\.dsh\bili-duty`（目录若已自定义，以实际状态目录为准），**不要删除或重置原配置、私信队列、未知发送回执、账号限流预算和 Life 记忆**。升级后完全退出并重启 DSH。建议先用公开短视频验 DURL，再用 10～45 分钟 B站公开视频验 DASH 深入 `watch`，查看 `sampling.source_type`、`download_mode`、`sampled_windows`、`input_bytes` 和 `adaptive_fallback.reason`。公网 CDNs、Windows FFmpeg 与真实模型执行均未在离线交付环境实测。
+
+回滚：用之前备份的原插件版本恢复源码或 npm 包，保留原状态目录。没有任何数据格式迁移需要回滚。
+
+禁止对真实 B站进行未经授权的发送、自动 Git Commit/Push 或 npm publish。详情参见 `TEST-RESULTS.md`。

@@ -641,11 +641,11 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
     # A restricted follow-up may have a smaller remaining download budget.
     # Do not allow it to reuse a cache created under another quota identity.
     cap_suffix='-cap'+str(network_budget_bytes) if network_budget_bytes is not None else ''
-    cache=Path(home).resolve()/'vision-cache'/f'{bvid}-adaptive-v6-{view_depth}{suffix}{cap_suffix}.json'
+    cache=Path(home).resolve()/'vision-cache'/f'{bvid}-adaptive-v7-{view_depth}{suffix}{cap_suffix}.json'
     if enabled and not return_frames and not debug and cache.is_file():
         try:
             saved=json.loads(cache.read_text(encoding='utf8'))
-            if (saved.get('sampler_version')==6 and saved.get('model')==model
+            if (saved.get('sampler_version')==7 and saved.get('model')==model
                 and saved.get('provider')==provider and saved.get('frames_limit')==max_frames
                 and saved.get('view_depth')==view_depth
                 and saved.get('focus_window')==focus and saved.get('network_budget_override')==network_budget_bytes and saved.get('description')
@@ -670,6 +670,11 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
                 'video_range_container_unsupported':'该流的容器暂不支持可信随机时间分段解码；不会假称深入观看成功。',
                 'ffprobe_not_installed':'已找到 FFmpeg，但超预算 MP4 分段索引还需要同安装中的 ffprobe。',
                 'video_mp4_index_unavailable':'未取得有效 MP4 索引，无法可靠定位真实画面时间窗口。',
+                'dash_sidx_unavailable':'DASH 轨道没有可验证的 SIDX 时间索引，已安全停止。',
+                'dash_sidx_invalid':'DASH 时间索引格式无效，未请求未知媒体片段。',
+                'dash_sidx_unusable':'DASH 时间索引含不可独立解码的片段，未冒认视觉成功。',
+                'dash_segment_budget_insufficient':'DASH 片段超过单视频预算，不能安全解码。',
+                'dash_indexed_video_unavailable':'B站未提供受支持的、可验证索引的 DASH 视频轨。',
             }
             return {'ok':False,'bvid':bvid,'status':exc.code,
                     'error':explanations.get(exc.code,'真实视频分段未完成（'+exc.code+'）；未改用三张低清预览冒充深入探索。')}
@@ -703,7 +708,7 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
         result['description']=_call_local_ollama(frames,model,image_source=result['image_source'])
         result['status']='analyzed'
         record={'model':model,'provider':provider,'frames_limit':max_frames,
-                'sampler_version':6,'view_depth':view_depth,'times':result['times'],'description':result['description'],
+                'sampler_version':7,'view_depth':view_depth,'times':result['times'],'description':result['description'],
                 'sampling':result['sampling'],'ocr':result.get('ocr'),'focus_window':focus,
                 'image_source':result['image_source'],'network_budget_override':network_budget_bytes,
                 'debugCapture':result.get('debugCapture')}

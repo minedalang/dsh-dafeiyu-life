@@ -1530,6 +1530,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                             'sampling':result.get('sampling'),'ocr':result.get('ocr'),'focus_window':focus,
                             'perception_source_requested':perception_source,'view_depth':view_depth,
                             'image_source':result.get('image_source'),
+                            'adaptive_fallback':result.get('adaptive_fallback'),
                             'debugCapture':result.get('debugCapture')},ensure_ascii=False),encoding='utf8')
                 except OSError: pass
             blocks = [TextContent(type='text', text=json.dumps(result,ensure_ascii=False))]

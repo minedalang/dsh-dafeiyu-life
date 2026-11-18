@@ -1,5 +1,6 @@
-## 当前 2.8.1 通知与决策架构（2026-11-17）
+## 当前 2.8.1 通知、视频与决策架构（2026-11-18）
 
+- [dev.3b.33.23 · 官方 DASH SIDX 长视频有限分段取帧](2.8.1-dev3b23-dash-indexed-long-video.md)：在 DURL 之外验证公开 DASH 的 `SegmentBase` 与时间索引、按 206 Range 有界取帧，真实回退原因透传、旧版证据兼容；Windows 实机待验。
 - [dev.3b.33.17 · B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)：以私信未读计数与互动通知计数作为后台消息发现入口，详情按需读取，保留 30 分钟一致性核对、活跃私信 60 秒定向检查及跨重启 `-509` 保护。
 - [dev.3b.33.18 · Life 决策自由与安全链接审计](2.8.1-dev3b18-life-decision-freedom-audit.md)：短链逐跳共享预算、多个私信链接由 Life 精确选择、执行时联系人权限复核、链接类型/AID 回执核验及视频元数据/观看语义区分。
 - [2.9.x · Life 通用注意力与跨平台活动系统未来计划](2.9.x-life-universal-attention-cross-platform-plan.md)：平台无关注意力、活动生命周期、Adapter 契约、打断与恢复、抖音/游戏平台分阶段接入。
@@ -8,13 +9,13 @@
 
 > **最新实施增量（dev.3b.33.9）：** [Life 统一资源调度与自然契机收敛](2.8.1-dev3b339-resource-scheduler-and-natural-life.md)。仅单宿主资源仲裁，原社交发送凭据仍由持久安全层负责。
 
-> **当前工作源码：`2.8.1-dev.3b.33.18-life-choice-audit`（2026-11-17，开发版）。** 当前架构入口：[B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)；决策安全审计：[Life 决策自由与安全链接](2.8.1-dev3b18-life-decision-freedom-audit.md)；系统集成审计：[跨系统可靠性、统一 Life、自然契机与文档审计](2.8.1-dev3b338-system-integration-audit.md)。本页以下 dev.20、2.8.0 和 2.7.1 章节是历史快照，不表示目前项目版本或正式验收通过。
+> **当前工作源码：`2.8.1-dev.3b.33.23-indexed-dash-long-video`（2026-11-18，开发版）。** 当前架构入口：[B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)；决策安全审计：[Life 决策自由与安全链接](2.8.1-dev3b18-life-decision-freedom-audit.md)；系统集成审计：[跨系统可靠性、统一 Life、自然契机与文档审计](2.8.1-dev3b338-system-integration-audit.md)。本页以下 dev.20、2.8.0 和 2.7.1 章节是历史快照，不表示目前项目版本或正式验收通过。
 
 > **历史实现增量 2.8.1-dev.3b.20：** [私信限流收口、Headless 双栏能力管理与图片回执诊断](2.8.1-dev3b20-dm-headless-capability-management.md)。普通监听与快通道显示为同一 DM 退避，活跃检查自适应放慢；Desktop/Headless 双栏由真实配置状态驱动，Headless 能力补充不修改 Desktop；图片验收在 DSH 子进程异常时仍保留 MCP 图片证明。真实 B站 -509 恢复、Windows DSH 与第三方中转站图片链路仍需实机验证。
 
 上一批 [dev.3b.19 DSH 视觉路由一致性与分阶段图片验收](2.8.1-video-perception-dev3b19-headless-vision-route-diagnostics.md) 保留为历史记录；当前实现与约束以本节 dev.3b.20 文档及仓库根目录 `AGENTS.md` 为准。
 
-> **历史增量 2.8.1-dev.3b.9：** [受控 MP4 HTTP Range 分段视频感知与本地 Ollama 视觉模型认可恢复](2.8.1-video-perception-dev3b9.md)。超过卡片网络预算不强制整文件下载，不回退3帧冒充深入；当前范围仅索引可用的公开单段 MP4，实际 Windows/B站还需验收。
+> **历史增量 2.8.1-dev.3b.9：** [受控 MP4 HTTP Range 分段视频感知与本地 Ollama 视觉模型认可恢复](2.8.1-video-perception-dev3b9.md)。超过卡片网络预算不强制整文件下载，不回退3帧冒充深入；这是早期仅索引公开单段 MP4 的历史实现；现行新增 DASH 详见 dev.3b.33.23，实际 Windows/B站仍需验收。
 
 > **历史开发候选 2.8.1-dev.3b.6：** [视频感知全链路、只读 Life 输入 Debug、实机发布门禁](2.8.1-video-perception-dev3b6.md)。此前 dev.3b.5 等段落均是按阶段保留的历史描述。未通过真实 B站/DSH 模型验收，不应以正式版发布。
 

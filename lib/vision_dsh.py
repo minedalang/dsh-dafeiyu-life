@@ -15,6 +15,15 @@ import subprocess
 import shutil
 
 
+def _verified_adaptive_fallback(proof):
+    """Only accept the real frame tool's bounded failure reason, never invent one."""
+    item=proof.get('adaptive_fallback') if isinstance(proof,dict) else None
+    reason=item.get('reason') if isinstance(item,dict) else None
+    if not isinstance(reason,str) or not re.fullmatch(r'[a-z0-9_]{1,70}',reason):
+        reason='fallback_reason_not_reported'
+    return {'actual_source':'videoshot','reason':reason}
+
+
 def _vision_dsh_child_env(env):
     """Forward the Desktop Electron Node mode to a nested DSH CLI only.
 
@@ -275,7 +284,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         prompt_hash=hashlib.sha256(visual_instruction.encode('utf8')).hexdigest()[:16]
         from preview_vision import _SAMPLER_VERSION, _FOCUS_SAMPLER_VERSION, PREVIEW_BOARD_VERSION, _normalize_focus_window
         focus=_normalize_focus_window(focus_start,focus_end)
-        sampler_version=6 if perception_source=='adaptive' else PREVIEW_BOARD_VERSION
+        sampler_version=7 if perception_source=='adaptive' else PREVIEW_BOARD_VERSION
         suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
         if network_budget_bytes is not None:suffix+='-cap'+str(network_budget_bytes)
         source_suffix='-adaptive' if perception_source=='adaptive' else ''
@@ -388,7 +397,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
                     'focus_window':focus,'image_source':record['image_source'],
                     'debugCapture':record.get('debugCapture'),
                     'perception_source_requested':perception_source,
-                    'adaptive_fallback':{'actual_source':'videoshot','reason':'public_stream_unavailable'},
+                    'adaptive_fallback':_verified_adaptive_fallback(observed),
                     'notice':'真实视频不可用，仅据官方低清预览得到观察'}
         cached.parent.mkdir(parents=True,exist_ok=True)
         tmp=cached.with_suffix('.tmp')
