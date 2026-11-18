@@ -1,34 +1,22 @@
-# 2.8.1-dev.3b.33.20 · DSH 视觉路由修复离线验证
+# 2.8.1-dev.3b.33.21 · Windows Patch 编码与 Life 实时调度导出验证
 
-**基线**：`2.8.1-dev.3b.33.19-code-closure`。**修复版本**：`2.8.1-dev.3b.33.20-vision-debug-route-fix`。
+## 修复范围
 
-## 确认的代码根因
+1. `.19→.20` 旧 Patch 源目录误含三个 `tools/#U...` ZIP 兼容文件名（真实 Git checkout 为中文脚本名），导致 Windows `git apply --check` 报找不到文件。修正版从**真实中文文件名**的干净 `.19` 源码生成，Git 路径保留规范 C quoted UTF-8 octal 转义，不产生任何 `#U` 伪路径。
+2. 新增只读 `GET /api/bili-duty/life-agent/scheduler-snapshot`，只返回运行中 Life timer 的 `running/busy/expected`、`schedulerPulse`、下一次预计决策与有限互动调度字段。与旧 `GET /autonomous-planner` 不同，该路由不调用 `ensureStarted()` / `tick()`、不触发模型或平台动作，因此不会在导出期间改变定时器状态。
+3. `tools/导出B站日志.bat` 启动时在交互模式提示用户粘贴**当前运行中的 DSH 本地管理中心 URL**，或以 `--status-url` 显式传入。只连接明确的 localhost / 127.0.0.1 / ::1 端口及固定无重定向诊断路径，超时 3 秒、响应上限 64 KiB，输出隐私字段白名单。未提供 URL、服务不可达、旧版本不存在端点时绝不推测运行健康。
+4. `AGENTS.md` 新增 Windows UTF-8 Patch/CRLF/ZIP 文件名映射、实际补丁回放及实时状态导出规则。保留原有旧配置、记忆、私信队列、共享预算和发送未知冻结机制。
 
-手动固定图片验收单独创建 DSH Headless 临时受限宿主，生产 Video Agent 启动时创建本轮受限能力；但是管理中心全流程视频感知经过插件内部长驻 Python MCP，此 MCP 环境没有 `BILI_VISION_DSH_ARGV`。`vision_dsh.py` 读取不到该配置会返回 `vision_config_error: DSH 视觉模型执行路由未配置`，与用户错误完全一致。认可图片是另一条测试链，不能自动为长驻 MCP 注入一次性能力。
+## 离线测试
 
-## 修复验证矩阵
+- 新增 `test/v281-dev3b3321-scheduler-live-export.test.mjs` **4/4**：本机模拟服务验证 timer=false/stale=true 的捕获、不泄漏多余字段、缺失/外网 URL 时不伪造状态、HTTP 302 不跟随、真实模拟宿主调度接口不唤醒。
+- 相关 9 个 Node 定向测试文件 **30/30**：包括 `.20` DSH 视觉路由、配置保存、日志导出、Life 诊断与原包的中文 BAT 检查。
+- `node --check index.js`；Life Architecture 4 张 Mermaid / 126 个代码节点通过；Video/MCP 契约通过；`node selfcheck.mjs` 通过；npm pack dry-run 通过。
+- **三份 Git Patch** 均完成 `git apply --check` → `git apply` → 逐文件 SHA-256 一致回放：修正后的 `.19→.20`、累计 `.19→.21`、增量 `.20→.21`。修正补丁不再出现 `#U...` 错误重命名，累计/增量补丁中的中文 BAT 用 Git 标准 UTF-8 八进制路径转义。所有 Patch 无 BOM。
+- 实际执行 `npm pack --ignore-scripts` 制作本地 TGZ，不执行 publish。
 
-- 单次只读 `bili_preview_vision` MCP 真实启动参数与临时宿主能力传递：通过。
-- 新增真实 Node 模拟 MCP 子进程：协议握手、工具调用、实际环境变量交接、结束清理：通过（不调用 B站或真实 DSH）。
-- 不存在 DSH 路由 / Windows 临时宿主不可用：拒绝调用而不回退旧 Bridge：通过。
-- 错误/无效 MCP 回执/异常：释放 MCP 与宿主资源：通过。
-- AI 模型页保存后显著验收提示、认可后的全流程说明、重复保存同路由不清除人工认可：定向静态及契约检查通过。
-- 旧启动、原生产 Video Agent 白名单、账号/读取预算、私信及发布门禁未被扩权：有关代码与定向回归检查通过，未做实机证明。
+## Windows/实机仍需验证
 
-## 测试与打包
-
-- 定向视觉/AI 模型/宿主/Debug/权限测试：**38 通过、1 跳过、0 失败**（其中 1 项因本机缺失 `yaml` 测试依赖而跳过）。
-- Life 架构契约：通过（4 张 Mermaid、126 个唯一代码节点）。
-- Video/MCP 契约：通过。
-- `node selfcheck.mjs`：通过（Host 43 工具、Client 插槽）。
-- `node --check index.js lib/management-console.js lib/scoped-dsh-vision-read.mjs`：通过。
-- `npm pack --dry-run --ignore-scripts --json`：通过，确认新模块、中文诊断脚本、发布指南被收录。
-- `.19 → .20` Git Patch 独立回放，逐文件 SHA-256 对比：**1521 个文件一致**。
-
-## 仍待实机验证
-
-- Windows DSH Desktop 实际版本加载、设置保存后 UX、人工识图认可、真实公开视频采样 JPEG、受限宿主与 DSH 模型最终回答。
-- Windows 账户切换、退出/重启时临时宿主停止、与真实 B站 `-509` 预算并行运行。
-- 本地 Windows 全量测试，及上游正式发布检查单中未关闭门禁。
-
-不执行真实 B站请求、不公开任何凭据/用户日志、不运行云端全量测试、不自动 Git Commit/Push 或 npm publish。
+- Linux Git 回放能证实文件名路径编码语义与版本匹配，但不能代替使用者 Windows PowerShell、Windows Git checkout 的端到端行为验证。
+- 全流程要求用户在**仍运行的 DSH** 中打开管理中心并复制浏览器 URL 中的真实端口，然后导出；导出 ZIP 检查 `_diagnostics/live-status-availability.json` 的 `captured=true` 和 `_diagnostics/live-status-snapshot.json` 的 `scheduler.running`、`scheduler.schedulerPulse.stale`。若 `captured=false`，证据不完整，不能断言 Life 定时器正常。
+- 脚本不发 B站请求、模型调用或任何写操作。本次未运行云端全量测试，未进行 Git Commit/Push/npm Publish。

@@ -7987,7 +7987,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     const path = url.pathname
     // Global fail-closed gate; setup/status/management stay accessible. Never
     // unlock business APIs merely because the user can load the settings UI.
-    const setupAccess = (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
+    const setupAccess = (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || (req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot') || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
       path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
@@ -9018,6 +9018,43 @@ logger:{warn:m=>log('社交意图：'+m)}
         }
         return sendJson(res,200,result)
       }catch(e){return sendJson(res,500,{ok:false,error:'模型对照失败：'+String(e?.message||e).slice(0,120)})}
+    }
+    if(req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot'){
+      // Exporter-only diagnostic read: never call ensureStarted/tick, make a model
+      // request, or write the scheduler state while observing its health.
+      try{
+        const planner=autonomousPlanner.status()
+        const pulse=planner?.schedulerPulse||{}
+        const scheduler=interactionScheduler.status()
+        const observedAt=Date.now()
+        const asMs=value=>Number.isSafeInteger(value)&&value>=0?value:0
+        const safeCode=value=>/^[a-zA-Z0-9._-]{1,64}$/.test(String(value||''))?String(value):'unclassified'
+        const checks={}
+        for(const key of ['dm','dmFast','replies','mentions']){
+          const check=scheduler?.checks?.[key]
+          if(check&&typeof check==='object')checks[key]={
+            polling:check.polling===true,
+            lastStartedAt:asMs(check.lastStartedAt),lastFinishedAt:asMs(check.lastFinishedAt),
+            lastResult:safeCode(check.lastResult),intervalMinutes:asMs(check.intervalMinutes)}
+        }
+        return sendJson(res,200,{ok:true,schemaVersion:1,observedAt,
+          processUptimeSeconds:Math.floor(process.uptime()),
+          planner:{running:planner.running===true,busy:planner.busy===true,
+            masterEnabled:planner.masterEnabled===true,enabled:planner.plannerEnabled===true,
+            mode:['active','shadow','off'].includes(planner.lifeAgentMode)?planner.lifeAgentMode:'unknown',
+            expected:planner.masterEnabled===true&&planner.plannerEnabled===true&&
+              ['active','shadow'].includes(planner.lifeAgentMode),
+            nextDecisionAt:asMs(planner.nextDecisionAt),
+            nextDecisionReason:safeCode(planner.nextDecisionReason),
+            dailyRuns:asMs(planner.runs),lifeRuns:asMs(planner.lifeRuns),socialRuns:asMs(planner.socialRuns),
+            modelRetryAt:asMs(planner.modelRetryAt),
+            schedulerPulse:{checks:asMs(pulse.checks),lastCheckAt:asMs(pulse.lastCheckAt),
+              lastModelTurnAt:asMs(pulse.lastModelTurnAt),lastSkipAt:asMs(pulse.lastSkipAt),
+              lastSkipReason:safeCode(pulse.lastSkipReason),lastErrorAt:asMs(pulse.lastErrorAt),
+              startCount:asMs(pulse.startCount),lastStartedAt:asMs(pulse.lastStartedAt),
+              lastStoppedAt:asMs(pulse.lastStoppedAt),stale:pulse.stale===true}},
+          interaction:{checks}})
+      }catch{return sendJson(res,503,{ok:false,error:'scheduler-snapshot-unavailable'})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/autonomous-planner'){
       try{

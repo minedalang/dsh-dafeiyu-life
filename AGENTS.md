@@ -1,3 +1,11 @@
+## 2.8.1-dev.3b.33.21 · Windows UTF-8 Patch / 日志导出实时调度器证据（2026-11-18）
+
+- **跨平台 Git Patch 强制规则**：从真实 Git checkout / 正确解码的 ZIP 提取 Unicode 文件名，按 NFC 规范化；不能把 `#U5bfc...` 等 ZIP 兼容伪名称当成真实源码路径。Git diff 对非 ASCII 路径使用 `core.quotepath=true` 输出标准 C 风格八进制 UTF-8 转义；Patch 必须是 UTF-8 无 BOM，路径以 Git 解析为准，不能手工造 `#U...` 重命名。不得为了让补丁通过要求用户重命名现有中文脚本。
+- 交付前自动检查补丁中所有 `diff --git`、`rename from/to`、`---/+++` 路径，**禁止残留字面量 `#U[0-9a-fA-F]`**；同时检查打包文件列表中没有该伪路径，并在保有真实中文文件名的干净上版 checkout 上使用 `git apply --check`、实际 `git apply` 和逐文件哈希回放。只有通过这些步骤才允许声称“已通过补丁回放”；没有 Windows 本机测试时要明确说明尚未验证 PowerShell 实机。
+- 对于跨旧 ZIP 编码异常、旧 checkout 存在不同文件名的情况，提供兼容 Patch 或完整 ZIP 方案，不能把单一差异视作通用更新。`.bat` 保留 CRLF，`tools/导出B站日志.bat` 必须保留可使用；PowerShell 脚本主体以 UTF-8 解码，禁止引入 cmd.exe 当前代码页依赖。
+- **导出真实 Life 调度状态**：`tools/导出B站日志.bat` 在交互模式明确要求用户粘贴本机 DSH 管理中心 URL，或显式传 `--status-url`；仅向经过严格校验的本机地址请求固定 `GET /api/bili-duty/life-agent/scheduler-snapshot`。该服务端路由只能调用无副作用的 `autonomousPlanner.status()`，不能通过 `GET /autonomous-planner` 悄悄启动定时器。只导出允许运行状态、最近 pulse、下一次预计决策和聚合计数，严禁全量 config、Cookie、用户 ID、私信正文或令牌。
+- 未提供 URL、服务未启动、接口不支持或请求失败时，导出包明确 `live-scheduler-status-not-captured`，不得将持久化开关/历史日志当作导出瞬间运行证据。`--no-pause` 自动化模式不强行交互；仍尊重账号隔离、限流、Life 准入和未知发送冻结。只执行相关定向测试、架构/契约、自检、npm pack、独立补丁回放；禁止云端全量、真实 B站外发、Git Commit/Push/npm publish。
+
 ## 2.8.1-dev.3b.33.20 · DSH 视觉验收与全流程 Debug 路由打通（2026-11-18）
 
 - 修复从 Ollama 切换到 DSH 视觉模型并完成图片人工验收后，管理中心的“运行诊断 → 全流程视频感知”仍返回 `vision_config_error / DSH 视觉模型执行路由未配置` 的代码缺口：插件内部共享 Python MCP 原本没有受限 `BILI_VISION_DSH_ARGV`，图片验收、生产 Video Agent 和全链路 Debug 分别有不同的启动路径。

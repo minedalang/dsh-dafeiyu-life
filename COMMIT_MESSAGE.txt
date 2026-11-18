@@ -1,7 +1,9 @@
-fix(vision): 修复 DSH 图片验收后视频全链路 Debug 缺少执行路由
+fix(2.8.1): 修复 Windows Git Patch 中文路径并完善 Life 实时调度日志导出
 
-- 视频 Debug 的独立只读 MCP 按次获得安全 overlay、官方 DSH CLI 与 Node 宿主临时能力，不复用无令牌的常驻 MCP
-- 无有效受限能力时拒绝视频识图，禁止隐式退回旧 Python Bridge，保留平台读取预算和账号隔离
-- AI 模型保存 DSH 模式后要求图片验收、明确图片与视频双验收步骤；相同路由重复保存不清除人工认可
-- 修复诊断脚本 UTF-8 路径兼容，更新 README/发布检查单/升级指南
-- 增加模拟 MCP 真实进程握手和失败清理测试；只进行离线定向回归，不运行真实外发和发布
+- 从正常 Unicode 路径重生成 Windows 可用 .19→.21 累计补丁，禁止 #U 伪路径
+- 为 AGENTS.md 添加 UTF-8/CRLF/独立 Git apply 回放规则
+- 新增只读 Life scheduler snapshot 端点，不唤醒定时器
+- 导出脚本交互获取真实管理中心 URL，留存调度 pulse 与缺失证据标记
+- 添加行为回归及发布说明，保持原账号数据与写权限不变
+
+验证：相关定向测试、架构/契约、自检、npm pack、Patch 独立回放；Windows 实机待验收。

@@ -1,5 +1,14 @@
 # 🐟 大肥鱼 · DSH 生活系统
 
+### 2.8.1 · Windows 日志导出与实时 Life 调度状态
+
+`tools/导出B站日志.bat` 保留原文件名。双击导出时，可粘贴**当前 DSH 本机管理中心**的浏览器 URL（`http://127.0.0.1:实际端口/api/bili-duty/manage`）；脚本只从相同本机端口读取固定、无副作用的 `life-agent/scheduler-snapshot` 接口，不会为了诊断而重新启动 Life 定时器。也可运行 `tools\导出B站日志.bat --no-pause --status-url "http://127.0.0.1:实际端口/api/bili-duty/manage"`。
+
+日志包内 `_diagnostics/live-status-snapshot.json` 记录导出瞬间的 `scheduler.running`、`scheduler.schedulerPulse`、下一次预计决策、模型退避及有限轮询状态；`_diagnostics/live-status-availability.json` 明确标记是否成功捕获。如果不提供本机 URL、DSH 已关闭或后台版本不支持，新日志**不能证明运行时定时器正在工作**，会保留 `live-scheduler-status-not-captured`，不会根据旧配置虚构状态。导出 ZIP 可能包含私信及敏感日志，请勿公开分享。
+
+Windows Git Patch 使用 UTF-8 文件名标准转义；如果仓库里原本是中文脚本名，不需要改成 `#U...`。从 `.19` 升级时使用本项目提供的**已修复中文路径补丁**，先执行 `git apply --check`，不要再使用旧 `.19→.20` 编码异常补丁。
+
+
 > **坚持鱼的自由发展。** 鱼鱼会根据真实的 B站经历、人物关系和自己逐渐形成的兴趣，自主选择探索、交流、回忆、表达或休息。她会记住重要的事，也会慢慢遗忘。
 
 [![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [![npm 月下载](https://img.shields.io/npm/dm/dsh-dafeiyu-life)](https://www.npmjs.com/package/dsh-dafeiyu-life) · [DSHMarket](https://dshmarket.com/zh/) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/minedalang/dsh-dafeiyu-life/issues)

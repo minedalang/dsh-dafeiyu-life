@@ -1,3 +1,9 @@
+## 2.8.1-dev.3b.33.21 · Windows Git Patch 路径与实时 Life 调度快照（2026-11-18）
+
+- 修复 `.19→.20` 补丁误以 ZIP 兼容名 `#U...` 为实际 Git 文件名导致 Windows 原生中文路径 checkout 的 `git apply --check` 失败；用规范 UTF-8 C 转义路径重新生成 `.19→.21` 累计补丁，保留原中文工具名；本次新增 `AGENTS.md` 强制检查规则。
+- 日志导出可粘贴本地管理中心 URL 或传入 `--status-url`，从只读、无重启副作用的 Life scheduler-snapshot API 捕获 timer.running、pulse/stale、下一次预计检查及聚合计数；无 URL/接口失败明确标记未采集，不伪装成正常运行。
+- 不更改 B站真实发送/读取额度、Life 调度模型、账号及持久状态。此版本离线定向回归已验证的范围与 Windows 实机 URL/终端编码验证仍应分开陈述。
+
 ## 2.8.1-dev.3b.33.20 · DSH 视觉验收与全流程 Debug 路由打通（2026-11-18）
 
 - 修复从 Ollama 切换到 DSH 视觉模型并完成图片人工验收后，管理中心的“运行诊断 → 全流程视频感知”仍返回 `vision_config_error / DSH 视觉模型执行路由未配置` 的代码缺口：插件内部共享 Python MCP 原本没有受限 `BILI_VISION_DSH_ARGV`，图片验收、生产 Video Agent 和全链路 Debug 分别有不同的启动路径。
