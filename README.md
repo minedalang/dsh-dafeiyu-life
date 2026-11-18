@@ -6,9 +6,17 @@
 
 **2.8.1 更新主题：看见画面，让经历更真实。** 本版完善了自主视频观察、视觉模型配置、生活记忆、统一资源协调，以及私信和模型管理的可靠性。功能始终受当前账号、用户授权、资源预算和平台回执约束。
 
-**当前开发基线：** `2.8.1-dev.3b.33.17-notification-sentinel`。本版加入私信与互动通知双哨兵，但仍是开发候选，真实 Windows/B站接口与持续限流恢复尚待实机验收。
+**当前开发基线：** `2.8.1-dev.3b.33.18-life-choice-audit`。本版在双通知哨兵基础上，补强私信安全链接的逐跳请求预算、多个链接自主选择、联系人权限复核与证据语义；仍是开发候选，真实 Windows/B站接口与持续限流恢复尚待实机验收。
 
 **发布说明：** 此 README 已按 2.8.1 正式版风格整理，仓库当前仍是发布候选源码。维护者完成生产 DSH 视频视觉和 Windows 升级验收后，才应将版本号改为正式 `2.8.1` 并发布。详情参见 [2.8.1 更新说明](docs/release/RELEASE_NOTES_v2.8.1.md) 与 [发布检查单](docs/release/2.8.1-release-checklist.md)。
+
+## 🔭 未来计划 · 2.9.x
+
+2.9.x 计划建设 **Life Universal Attention & Cross-Platform Activity System（跨平台统一注意力与活动系统）**。注意力归 Life 本身，而不是 B站、抖音或某个游戏平台：同一时刻保持一个主要前台专注活动，通知哨兵和必要维护作为低注意力后台任务运行；新消息通过短暂关注与打断判断处理，被暂停的活动保留可信检查点，结束交流后可以由 Life 自主决定是否恢复。
+
+技术上将分离 `Life Attention Manager`、`Life Activity Manager` 与 `Platform Adapter Manager`：先把当前 B站通知、私信、视频 Episode 接入通用活动契约，再逐步评估抖音和游戏平台适配器。新增平台只实现标准 Adapter，不复制注意力核心；平台权限、请求预算、外部内容安全和写操作回执始终独立。该计划尚未实现，不承诺发布日期。
+
+[阅读 2.9.x 详细架构与分阶段实施计划](docs/architecture/2.9.x-life-universal-attention-cross-platform-plan.md) · [2.8.1 Life 决策自由与安全链接审计](docs/architecture/2.8.1-dev3b18-life-decision-freedom-audit.md)
 
 ## ✨ 2.8.1 主要更新
 

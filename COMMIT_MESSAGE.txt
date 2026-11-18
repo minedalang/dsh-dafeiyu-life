@@ -1,0 +1,16 @@
+feat(life): audit decision freedom and harden shared-link reading
+
+- add the 2.9.x universal attention and cross-platform activity roadmap
+- document the Life decision-freedom and safe-link audit
+- route every Bilibili short-link redirect through the shared read budget
+- let Life select one exact host-issued link candidate from multi-link DMs
+- revalidate sender permissions and account scope at read and receipt time
+- verify direct resource kind and AID against platform receipts
+- distinguish video metadata from actual viewing and dynamic text from image evidence
+- defer budget/resource admission blocks without recording content failures
+- expose bounded contact-shared link summaries to the autonomous planner
+- preserve all existing social write permissions and unknown-send freezes
+- update README, roadmap, architecture navigation, changelog and tests
+
+Tests: 134/134 targeted tests; architecture, Video/MCP contract and selfcheck passed.
+No real Bilibili account actions, git push or npm publish were performed.

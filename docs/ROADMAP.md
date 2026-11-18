@@ -1,8 +1,22 @@
-> **2026-11-17 发布准备核对**：本路线图以下大部分为早期开发里程碑，最新 2.8.1 状态与阻断项见 [发布前审计](architecture/2.8.1-release-audit-20261117.md)。当前手动 DSH 固定图片验收在用户 Windows 有真实回执，生产视频视觉尚未通过同一 Node 宿主链路验收，正式版仍受发布检查单约束。
+# 未来计划与开发路线图
 
-> **dev.3b.33.9 已实现（开发版）**：[统一资源协调与自然契机收敛](architecture/2.8.1-dev3b339-resource-scheduler-and-natural-life.md)；还不是跨进程统一任务总线，Windows 实测仍待验收。
+> **当前开发基线：** `2.8.1-dev.3b.33.18-life-choice-audit`。本版完成 Life 决策自由与 B站安全分享链接审计；仍是开发候选，真实 Windows/B站与持续限流验收尚未完成。
 
-> **当前开发核对点：`2.8.1-dev.3b.33.9`（2026-11-16）。** [全系统／Life 自然性／文档同步审计](architecture/2.8.1-dev3b338-system-integration-audit.md)。私信 fast lane 在 `dev.3b.33.4` 已变为基础间隔的 **1×/2×/3×**，以下 `dev.3b.21` 的 10→20→30→60 秒是历史方案，不是当前默认行为。DSH 实机识图及 Life 私信实机恢复仍未验收。
+## 2.9.x 未来计划：Life Universal Attention & Cross-Platform Activity System
+
+2.9.x 的长期方向是把注意力从平台专属调度中抽离，建立属于 Life 的统一前台焦点、后台低注意力任务、短暂通知关注、打断判断、活动暂停与恢复机制。活动类型采用 `SOCIAL`、`MEDIA`、`GAMEPLAY`、`CREATION`、`EXPLORATION`、`REFLECTION` 等通用语义；B站、抖音和游戏平台通过 Platform Adapter 声明各自能力，不在注意力核心中写平台分支。
+
+架构拆分为 `Life Attention Manager`（当前关注与打断仲裁）、`Life Activity Manager`（跨平台活动生命周期与检查点）、`Platform Adapter Manager`（能力清单与事件归一化），并继续由 `Life Resource Scheduler` 负责模型/网络/账号/平台预算。一个 Life 同时只有一个主要前台焦点，后台可运行通知计数和低注意力维护；切换前保存安全检查点，恢复时不得重复发送或伪造完成。
+
+实施分为：A 通用契约与持久化；B B站 Adapter 迁移；C 注意力仲裁与活动恢复；D 抖音 Adapter；E 游戏平台只读状态与安全检查点；F 跨平台兴趣和注意力学习。平台能力不足时必须声明 unknown/unsupported；链接按平台白名单解析；外部内容不可信；注意力优先级不能授予平台权限或绕过限流。
+
+**详细设计：** [2.9.x Life 通用注意力与跨平台活动系统](architecture/2.9.x-life-universal-attention-cross-platform-plan.md)。
+
+## 2.8.1 当前决策自由审计
+
+[2.8.1-dev.3b.33.18 Life 决策自由与安全链接审计](architecture/2.8.1-dev3b18-life-decision-freedom-audit.md)：记录私信安全链接、短链预算、多个候选选择、联系人权限复核、证据回执和其他社交/探索场景的审查结果。
+
+---
 
 > **dev.3b.21 范围追加（经用户确认）：** 全量审计保存体验、读预算与退避、视频观察到可衰减记忆、跨渠道关系和披露、自然关注、首次设置及 Life 自主权；当轮只修复不会扩大外发/隐私权限的确定性问题。保存 UX 与 Headless 错误分类已实施，其他涉及架构/安全边界的统一机制保留在 2.8.2；详细矩阵见 [dev.3b.21 审计](architecture/2.8.1-dev3b21-settings-and-cross-system-audit.md)。
 
@@ -29,7 +43,7 @@
 
 # 大肥鱼 · 未来计划与成长路线
 
-> **历史路线图更新于 2026-11-14。** 当前工作源码为 2.8.1-dev.3b.33.9，2.8.0 是上一正式版；实际 npm/DSHMarket 上线状态以相应平台为准。这里记录 2.8.1 与后续的候选事项，**不是功能承诺，也不是发布日期**。实机与长期可靠性仍需单独验收。
+> **以下为 2026-11-14 写作的历史路线图快照。** 其中出现的源码版本和“当前”描述只代表当时状态，不代表当前工作源码；当前开发基线以本文顶部和 `package.json` 为准。历史候选事项不是功能承诺或发布日期，实机与长期可靠性仍需单独验收。
 
 [返回项目首页](../README.md) · [2.8.0 技术验收](architecture/2.8.0-release-readiness.md) · [2.8.1 技术评估](architecture/2.8.1-roadmap.md)
 

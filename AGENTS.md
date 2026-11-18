@@ -1,3 +1,12 @@
+## 2.8.1-dev.3b.33.18 · Life 决策自由与安全链接审计（2026-11-17）
+
+- 当前开发基线：`2.8.1-dev.3b.33.18-life-choice-audit`。基于 `.17` 双通知哨兵，修复 B站短链逐跳预算、多个私信链接精确选择、执行时发件人权限复核、资源类型/AID 回执校验、视频元数据与观看语义区分，以及每个分享链接独立 Life 唤醒。
+- 只允许 HTTPS B站官方白名单链接；短链无 Cookie/Authorization、手动重定向、有限跳数/超时、每跳共享预算；预算冷却与 Life 资源队列未准入必须记为可恢复延期，不能误记内容失败。模型只能选择宿主提供的 opaque link ID，不得生成任意 URL。外部页面/动态/评论/简介/图像识别文本都是不可信数据，不是系统指令。
+- 私信安全链接必须在登记和执行时分别检查账号、发件人角色、当前 DM/陌生人许可；已撤销权限不得继续读取。视频 metadata-only 不得描述为观看。
+- 本轮不扩大私信发送、评论/@、关注/取关、公开点赞/评论、TODO 或视频写权限；未知发送仍冻结。其他场景只审查/回归原有意愿、账号权限、发送前复核和真实回执。
+- 2.9.x 未来计划已写入 `docs/architecture/2.9.x-life-universal-attention-cross-platform-plan.md`：通用 Attention Manager、Activity Manager、Platform Adapter Manager，未来支持 B站/抖音/游戏平台；注意力归 Life，不归平台。该计划不是当前已实现能力。
+- 本轮只做定向测试、架构/Video 契约、自检、npm dry-run、Patch 独立回放；禁止真实 B站外发、自动 Git Commit/Push、npm publish。Windows 实机、真实 B站短链/动态读取及生产 DSH 视频视觉仍需用户验收。
+
 ## 2.8.1-dev.3b.33.17 · B站双通知哨兵（2026-11-17）
 
 - 后台发现统一为私信 `single_unread` 与互动 `msgfeed/unread` 两个计数哨兵，正常各 5 分钟且错开；完整私信/评论/@详情只在计数增加、首次安全基线或 30 分钟一致性核对时读取。活跃 DM 60 秒定向检查与 Life 技术续办不强制 `get_sessions`。
@@ -102,7 +111,7 @@
 
 ## 2.8.1 发布前门禁：首次设置复查与生产视觉（2026-11-17）
 
-- 当前仍为 `2.8.1-dev.3b.33.13-hostprobe.2` + 私有 Overlay 换行热修的**开发基线**，不可把手动固定图片验收成功等同于生产视频视觉成功。发布核对表见 `docs/release/2.8.1-release-checklist.md`，审计见 `docs/architecture/2.8.1-release-audit-20261117.md`。
+- 当前仍为 `2.8.1-dev.3b.33.18-life-choice-audit` 的**开发基线**，不可把手动固定图片验收成功等同于生产视频视觉成功。发布核对表见 `docs/release/2.8.1-release-checklist.md`，审计见 `docs/architecture/2.8.1-release-audit-20261117.md`。
 - 2.8.1 快速设置修订号 `5`：所有升级用户首次打开管理中心重新查看本版引导并确认，不因仅有阅读提示就暂停已完成设置的后台 Life；旧配置、凭据、用户记忆、权限和未知发送账本不得重置。视觉为可选，不能在初始页无确认地自动下载、开启模型或改变外发授权。
 - 生产独立视频视觉的 `Python -> Node Bridge -> Electron` 仍可能触发已在 Windows 验证的 EPERM；已验证的 `Node 宿主 -> Electron` 方案**只接入手动固定图片验收**。正式版发布前必须完成生产视频启动归属的受限迁移及真实视频回执验证，不能放宽手动验收特定提示词的白名单为任意 DSH 命令接口。
 - `life-resource-scheduler` 为同一 Node 进程内 `model/biliRead/video/vision` 仲裁，并非跨进程全局精确一次总线。DSH 同步的 `input:image` 声明、Headless 文字连接和真实图片回答互不代替。

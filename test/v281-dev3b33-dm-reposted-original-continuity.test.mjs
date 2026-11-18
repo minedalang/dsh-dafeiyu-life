@@ -127,6 +127,7 @@ test('宿主实际读取门禁的源码契约：只读原帖且保持账号、�
   assert.match(part,/if\(original\.status==='inspected'\)/)
   assert.match(part,/root\?\.senderUid===String\(input\.uid\)/)
   assert.match(part,/!accountBinding\.status\(\)\.blocked/)
-  assert.match(part,/proof\?\.code!=='read-budget-blocked'/)
+  assert.match(part,/\['read-budget-blocked','resource-deferred','share-permission-revoked'\]\.includes\(proof\?\.code\)/)
+  assert.match(part,/recordSharedBiliLinkDeferral\(original\.id/ )
   assert.doesNotMatch(part,/executeSharedDynamicWrite|bili_dynamic_like_life|bili_dynamic_comment_life/)
 })

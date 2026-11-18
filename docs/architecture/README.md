@@ -1,12 +1,14 @@
-## 当前 2.8.1 通知读取架构（2026-11-17）
+## 当前 2.8.1 通知与决策架构（2026-11-17）
 
 - [dev.3b.33.17 · B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)：以私信未读计数与互动通知计数作为后台消息发现入口，详情按需读取，保留 30 分钟一致性核对、活跃私信 60 秒定向检查及跨重启 `-509` 保护。
+- [dev.3b.33.18 · Life 决策自由与安全链接审计](2.8.1-dev3b18-life-decision-freedom-audit.md)：短链逐跳共享预算、多个私信链接由 Life 精确选择、执行时联系人权限复核、链接类型/AID 回执核验及视频元数据/观看语义区分。
+- [2.9.x · Life 通用注意力与跨平台活动系统未来计划](2.9.x-life-universal-attention-cross-platform-plan.md)：平台无关注意力、活动生命周期、Adapter 契约、打断与恢复、抖音/游戏平台分阶段接入。
 
 > **视觉环境能力基线（dev.3b.33.11）：** [Windows 一键自助视觉运行时修复](2.8.1-dev3b3311-vision-one-click-repair.md)。该能力继续保留；当前消息读取架构已在 dev.3b.33.17 更新为双通知哨兵。
 
 > **最新实施增量（dev.3b.33.9）：** [Life 统一资源调度与自然契机收敛](2.8.1-dev3b339-resource-scheduler-and-natural-life.md)。仅单宿主资源仲裁，原社交发送凭据仍由持久安全层负责。
 
-> **当前工作源码：`2.8.1-dev.3b.33.17-notification-sentinel`（2026-11-17，开发版）。** 当前架构入口：[B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)；系统集成审计：[跨系统可靠性、统一 Life、自然契机与文档审计](2.8.1-dev3b338-system-integration-audit.md)。本页以下 dev.20、2.8.0 和 2.7.1 章节是历史快照，不表示目前项目版本或正式验收通过。
+> **当前工作源码：`2.8.1-dev.3b.33.18-life-choice-audit`（2026-11-17，开发版）。** 当前架构入口：[B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)；决策安全审计：[Life 决策自由与安全链接](2.8.1-dev3b18-life-decision-freedom-audit.md)；系统集成审计：[跨系统可靠性、统一 Life、自然契机与文档审计](2.8.1-dev3b338-system-integration-audit.md)。本页以下 dev.20、2.8.0 和 2.7.1 章节是历史快照，不表示目前项目版本或正式验收通过。
 
 > **历史实现增量 2.8.1-dev.3b.20：** [私信限流收口、Headless 双栏能力管理与图片回执诊断](2.8.1-dev3b20-dm-headless-capability-management.md)。普通监听与快通道显示为同一 DM 退避，活跃检查自适应放慢；Desktop/Headless 双栏由真实配置状态驱动，Headless 能力补充不修改 Desktop；图片验收在 DSH 子进程异常时仍保留 MCP 图片证明。真实 B站 -509 恢复、Windows DSH 与第三方中转站图片链路仍需实机验证。
 

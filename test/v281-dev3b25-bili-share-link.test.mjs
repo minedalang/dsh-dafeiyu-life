@@ -57,3 +57,53 @@ test('blocks off-site redirects and never performs a second request',async()=>{
   assert.equal(result.code,'offsite-redirect-blocked')
   assert.equal(count,1)
 })
+
+test('short-link redirects consume one shared read-budget admission per hop',async()=>{
+  const seen=[],markers=[]
+  const destinations=[
+    'https://b23.tv/nextCode',
+    'https://www.bilibili.com/video/BV1xx411c7mD?from=share'
+  ]
+  const result=await resolveBiliShareLink({kind:'short',code:'pjKd41b'}, {
+    fetchImpl:async(url,opts)=>{
+      seen.push({url,opts})
+      return {status:302,headers:{get:()=>destinations.shift()},body:{cancel:async()=>{}}}
+    },
+    requestGuard:async(kind,task)=>{markers.push(kind);return task()}
+  })
+  assert.equal(result.ok,true)
+  assert.equal(result.kind,'video')
+  assert.equal(seen.length,2)
+  assert.deepEqual(markers,['shared-link-resolve','shared-link-resolve'])
+})
+
+test('short-link budget cooldown is surfaced as a deferral, not a content failure',async()=>{
+  const result=await resolveBiliShareLink({kind:'short',code:'pjKd41b'}, {
+    fetchImpl:async()=>{throw Error('must not run')},
+    requestGuard:async()=>{const error=Error('cooldown');error.name='BiliReadDeferredError';error.retryAt=123456;throw error}
+  })
+  assert.deepEqual(result,{ok:false,code:'read-budget-blocked',retryAt:123456})
+})
+
+test('HTTP 429 short-link resolution is a shared-budget deferral',async()=>{
+  let marker
+  const result=await resolveBiliShareLink({kind:'short',code:'pjKd41b'}, {
+    fetchImpl:async()=>({status:429,headers:{get:()=>null},body:{cancel:async()=>{}}}),
+    requestGuard:async(kind,task)=>{const value=await task();marker={kind,...value};return value}
+  })
+  assert.equal(marker.kind,'shared-link-resolve')
+  assert.equal(marker.status,429)
+  assert.equal(marker.code,429)
+  assert.equal(result.code,'read-budget-blocked')
+})
+
+
+test('short-link resource admission deferral is not misclassified as a network failure',async()=>{
+  const error=Error('resource queue full');error.name='LifeResourceAdmissionError';error.code='life-resource-queue-full'
+  const result=await resolveBiliShareLink({kind:'short',code:'pjKd41b'}, {
+    fetchImpl:async()=>{throw Error('must not run')},requestGuard:async()=>{throw error}
+  })
+  assert.equal(result.ok,false)
+  assert.equal(result.code,'resource-deferred')
+  assert.ok(result.retryAt>Date.now())
+})

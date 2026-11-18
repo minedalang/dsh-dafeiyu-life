@@ -32,6 +32,7 @@ import { growthSuggestionPrompt, parseGrowthSuggestion, growthSuggestionIssue } 
 import {readVideoDiscussionDiagnostics,discussionAccountTag} from './lib/video-discussion-diagnostics.mjs'
 import {createLifeOpportunities} from './lib/life-opportunities.mjs'
 import {createLifeSharedBiliLinks} from './lib/life-shared-bili-links.mjs'
+import {canReadSharedLinkFromSender} from './lib/life-shared-link-policy.mjs'
 import {unifiedOwnerDmCutover} from './lib/unified-dm-cutover.mjs'
 import {resolveBiliShareLink} from './lib/bili-share-link.mjs'
 import {createLifeFriendInitiatives} from './lib/life-friend-initiatives.mjs'
@@ -78,7 +79,7 @@ import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch, readP
 import { ensureUv } from './lib/uvfetch.mjs'
 import { createDmAutoReply } from './lib/dm-autoreply.mjs'
 import { extractBiliDmReceiptId } from './lib/dm-send-receipt.mjs'
-import { receiveRecommendations, listRecommendationCandidates } from './lib/video-recommendations.mjs'
+import { listRecommendationCandidates } from './lib/video-recommendations.mjs'
 import { intakeAiReadProposals } from './lib/social-todo-intake.mjs'
 import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/owner-todos.mjs'
 import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-planner.mjs'
@@ -3007,7 +3008,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     if(['stranger','known'].includes(role)&&!dmConfig().strangerEnabled)return {ok:false,created:0}
     const offered=lifeSharedBiliLinks.offerFromMessage({uid,role,text,messageId,at})
     if(offered?.ok===true&&offered.created>0){
-      try{lifeAgentEvents.offer({kind:'public-ready',platform:'bili',sourceKey:'private-shared-bili-link:'+offered.ids[0]})}catch{}
+      // Every independently extracted safe link gets its own idempotent wake;
+      // a second link in the same DM must not be stranded behind the first.
+      for(const id of offered.ids||[])try{lifeAgentEvents.offer({kind:'public-ready',platform:'bili',sourceKey:'private-shared-bili-link:'+id})}catch{}
     }
     return offered
   }
@@ -4194,6 +4197,23 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       historyLimit: cfg.dmContextMessages,
     }
   }
+  const sharedLinkReadDeferral=(error)=>{
+    if(error?.name==='BiliReadDeferredError')return {code:'read-budget-blocked',retryAt:Number(error.retryAt)||Number(biliReadBudget.status().retryAt)||0}
+    if(error?.name==='LifeResourceAdmissionError'||/^life-resource-/.test(String(error?.code||'')))
+      return {code:'resource-deferred',retryAt:Date.now()+60_000}
+    return null
+  }
+  const sharedLinkPermissionCurrent=(row,expectedScope)=>{
+    if(!row||trustedLifeAccountTag()!==expectedScope||accountBinding.status().blocked)return false
+    // Related public references inherit the original source's permission. A
+    // friend removed after intake must not leave a stale private-link grant.
+    const root=row.parentId?lifeSharedBiliLinks.get(row.parentId,expectedScope)||row:row
+    const senderUid=String(root.senderUid||''),senderRole=String(root.senderRole||'')
+    const currentRole=socialPolicyGate.actor(senderUid).role,dm=dmConfig()
+    return canReadSharedLinkFromSender({senderRole,senderUid,ownerUid:String(cfg.dmOwnerUid||''),
+      currentRole,dmEnabled:dm.enabled===true,strangerEnabled:dm.strangerEnabled===true,
+      friendCanLearn:currentRole==='friend'&&socialPolicyGate.canLearn({uid:senderUid,kind:'dm'})===true})
+  }
   const socialRhythm=createSocialInteractionRhythm({dataDir:accountRuntimeDir,
     getAccountUid:()=>String(dmCred(stateDir)?.dedeuserid||''),
     getPolicy:()=>({crossChannelMinutes:cfg.socialRhythmCrossChannelMinutes})});
@@ -4878,7 +4898,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           const input=batch[i],scope=trustedLifeAccountTag()
           const shared=scope===input.sharedLinkScope&&input.sharedLinkId?
             lifeSharedBiliLinks.get(input.sharedLinkId,scope):null
-          if(!shared||shared.senderUid!==String(input.uid)||
+          if(!shared||shared.senderUid!==String(input.uid)||!sharedLinkPermissionCurrent(shared,scope)||
              !['pending','error','deferred'].includes(shared.status)||Number(shared.nextAt||0)>Date.now()||
              accountBinding.status().blocked||cfg.masterEnabled!==true||cfg.dmWatch!==true){
             return {...row,sharedLinkContext:'链接目前不可读取，不能声称看过内容'}
@@ -4887,7 +4907,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           if(proof?.ok!==true){
             // Local budget/cooldown deferrals are not a failed platform read:
             // keep this opportunity pending for a future voluntary Life turn.
-            if(proof?.code!=='read-budget-blocked')recordSharedBiliLinkFailure(shared.id,proof?.code||'link-read-failed',scope)
+            if(['read-budget-blocked','resource-deferred','share-permission-revoked'].includes(proof?.code))
+              recordSharedBiliLinkDeferral(shared.id,proof?.retryAt||(proof.code==='share-permission-revoked'?Date.now()+6*60*60_000:0),scope,proof.code)
+            else recordSharedBiliLinkFailure(shared.id,proof?.code||'link-read-failed',scope)
             return {...row,sharedLinkContext:'本轮未取得真实内容回执（可能处于 B站请求保护期），不能声称已经查看'}
           }
           const receipt=recordSharedBiliLinkRead(shared.id,proof,scope)
@@ -4895,37 +4917,39 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           // An API-proven original is a *new choice* for the SAME Life DM
           // turn, never an automatic second network request.
           const original=proof.kind==='dynamic'?lifeSharedBiliLinks.repostedOriginalForParent(shared.id,scope):null
-          row={...row,sharedLinkContext:JSON.stringify({kind:proof.kind,title:String(proof.title||'').slice(0,100),
-            summary:String(proof.summary||'').slice(0,420),authorName:String(proof.authorName||'').slice(0,50),
-            verified:true,readOnly:true,repostedOriginalAvailable:Boolean(original),
-            originalRead:false}).slice(0,950),
+          row={...row,sharedLinkContext:JSON.stringify({kind:proof.kind,evidenceLevel:receipt.evidenceLevel||'',
+            title:String(proof.title||'').slice(0,100),summary:String(proof.summary||'').slice(0,420),
+            authorName:String(proof.authorName||'').slice(0,50),verified:true,readOnly:true,
+            watched:false,metadataOnly:proof.kind==='video',repostedOriginalAvailable:Boolean(original),originalRead:false}).slice(0,950),
             ...(original?{availableContexts:[...(row.availableContexts||[]),'shared_original']}:{} )}
         }
         if(wantsOriginal){
           const input=batch[i],scope=trustedLifeAccountTag()
           const root=scope===input.sharedLinkScope&&input.sharedLinkId?
             lifeSharedBiliLinks.get(input.sharedLinkId,scope):null
-          const original=root?.senderUid===String(input.uid)&&root?.status==='inspected'&&
+          const original=root?.senderUid===String(input.uid)&&sharedLinkPermissionCurrent(root,scope)&&root?.status==='inspected'&&
             !root.parentId&&root.resolvedKind==='dynamic'&&cfg.masterEnabled===true&&
             cfg.dmWatch===true&&!accountBinding.status().blocked?
             lifeSharedBiliLinks.repostedOriginalForParent(root.id,scope):null
           if(!original)return {...row,sharedOriginalContext:'没有可核验的唯一转发原动态；不能据外层附言猜原帖'}
           if(original.status==='inspected'){
             row={...row,sharedOriginalContext:JSON.stringify({verified:true,readOnly:true,
-              source:'reposted-original',title:original.title,summary:original.summary,
-              authorName:original.authorName,originalRead:true}).slice(0,1050)}
+              source:'reposted-original',evidenceLevel:original.evidenceLevel||'',title:original.title,summary:original.summary,
+              authorName:original.authorName,originalRead:true,watched:false,metadataOnly:original.resolvedKind==='video'}).slice(0,1050)}
           }else{
             const proof=await executeSharedBiliLinkRead(original.id,scope)
             if(proof?.ok!==true){
-              if(proof?.code!=='read-budget-blocked')recordSharedBiliLinkFailure(original.id,proof?.code||'link-read-failed',scope)
+              if(['read-budget-blocked','resource-deferred','share-permission-revoked'].includes(proof?.code))
+                recordSharedBiliLinkDeferral(original.id,proof?.retryAt||(proof.code==='share-permission-revoked'?Date.now()+6*60*60_000:0),scope,proof.code)
+              else recordSharedBiliLinkFailure(original.id,proof?.code||'link-read-failed',scope)
               return {...row,sharedOriginalContext:'转发原动态本轮读取未成功；不可描述原帖正文、图片或声称读过'}
             }
             const receipt=recordSharedBiliLinkRead(original.id,proof,scope)
             if(receipt?.ok!==true)return {...row,sharedOriginalContext:'转发原动态回执核验失败；不可声称已阅读'}
             row={...row,sharedOriginalContext:JSON.stringify({verified:true,readOnly:true,
-              source:'reposted-original',title:String(proof.title||'').slice(0,100),
+              source:'reposted-original',evidenceLevel:receipt.evidenceLevel||'',title:String(proof.title||'').slice(0,100),
               summary:String(proof.summary||'').slice(0,420),authorName:String(proof.authorName||'').slice(0,50),
-              originalRead:true}).slice(0,1050)}
+              originalRead:true,watched:false,metadataOnly:proof.kind==='video'}).slice(0,1050)}
           }
         }
         if(!wantsPerson&&!wantsHot)return row
@@ -5261,28 +5285,38 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const linkScope=trustedLifeAccountTag()
       const currentLinks=(linkOffer?.ids||[]).map(id=>lifeSharedBiliLinks.get(id,linkScope))
         .filter(row=>row?.senderUid===String(req.uid))
-      // Cross-turn reference is intentional only for an explicit follow-up,
-      // unique recent link, and the same authenticated sender/account. Never
-      // guess which old shared object a vague message means.
+      // Current-message links are all visible as bounded, opaque choices. The
+      // same-turn model may choose one; it never receives a generic URL tool.
+      // Cross-turn references remain stricter: explicit follow-up + one unique
+      // recent link from the same authenticated sender/account.
       const refersBack=/(看了没|看过没|读了没|刚才.{0,12}(动态|视频|链接)|之前.{0,12}(动态|视频|链接)|那条动态|那个视频|原动态)/u.test(String(req.text||''))
       const priorLinks=!currentLinks.length&&refersBack?
         lifeSharedBiliLinks.recentForContact({uid:req.uid,limit:2,maxAgeMs:3*86_400_000}):[]
       const prior=priorLinks.length===1?lifeSharedBiliLinks.get(priorLinks[0].id,linkScope):null
-      const linkRow=(currentLinks.length===1?currentLinks[0]:null)||prior
+      const linkRows=currentLinks.length?currentLinks:(prior?[prior]:[])
+      const permittedLinkRows=linkRows.filter(row=>sharedLinkPermissionCurrent(row,linkScope))
+      const sharedLinkCandidates=permittedLinkRows.filter(row=>['pending','error','deferred'].includes(row.status)&&
+        Number(row.nextAt||0)<=Date.now()).slice(0,2).map((row,index)=>({id:row.id,
+          label:`第${index+1}个${({short:'B站短链',dynamic:'B站动态',video:'B站视频',profile:'B站空间'}[row.kind]||'B站分享链接')}`}))
+      const linkRow=(currentLinks.length===1?permittedLinkRows[0]||null:null)||
+        (prior&&sharedLinkPermissionCurrent(prior,linkScope)?prior:null)
+      const sharedOriginal=linkRow?.status==='inspected'&&
+        lifeSharedBiliLinks.repostedOriginalForParent(linkRow.id,linkScope)
       const priorReadContext=linkRow?.status==='inspected'?JSON.stringify({
         verified:true,readOnly:true,source:'earlier-share',kind:linkRow.resolvedKind,
-        title:String(linkRow.title||'').slice(0,100),summary:String(linkRow.summary||'').slice(0,420),
-        status:'inspected',relatedCount:Number(linkRow.relatedCount)||0}).slice(0,700):''
+        evidenceLevel:linkRow.evidenceLevel||'',title:String(linkRow.title||'').slice(0,100),
+        summary:String(linkRow.summary||'').slice(0,420),status:'inspected',watched:false,
+        metadataOnly:linkRow.resolvedKind==='video',relatedCount:Number(linkRow.relatedCount)||0}).slice(0,760):''
 
       const episodeContext=lifeSubagentHandoff({agent:'dm',episodes:universalLifeEpisodes,sourceRef:'dm-conversation:'+String(req.uid)})
       const followCandidates=dmContactFollowCandidates({enabled:cfg.dmFollowAutonomyEnabled===true&&cfg.agentFollowEnabled===true&&cfg.masterEnabled===true&&req.trigger==='incoming',
         uid:String(req.uid),role:tier,history:req.history,incomingText:String(req.text||''),
         verifiedIncoming:req.trigger==='incoming'&&String(req.messageId||'').length>0,now:Date.now(),optedOut:socialPortrait?.contactBoundary?.(req.uid)==='stop'})
+      const linkContexts=[...(sharedLinkCandidates.length?['shared_link']:[]),...(sharedOriginal?['shared_original']:[])]
       const generated=await interactionBatcher.generate({kind:'dm',role:tier,...visualReq,socialAutonomy:true,
-        ...(linkRow&&['pending','error','deferred'].includes(linkRow.status)&&Number(linkRow.nextAt||0)<=Date.now()?
-          {sharedLinkId:linkRow.id,sharedLinkScope:linkScope,availableContexts:['shared_link']}:{}),
-        ...(linkRow?.status==='inspected'&&lifeSharedBiliLinks.repostedOriginalForParent(linkRow.id,linkScope)?
-          {sharedLinkId:linkRow.id,sharedLinkScope:linkScope,availableContexts:['shared_original']}:{}),
+        ...(linkContexts.length?{sharedLinkScope:linkScope,availableContexts:linkContexts,
+          ...(linkRow?{sharedLinkId:linkRow.id}:{}),
+          ...(sharedLinkCandidates.length?{sharedLinkCandidates}:{})}:{}),
         ...(priorReadContext?{sharedLinkContext:priorReadContext}:{}),
         lifeEpisodeContext:episodeContext,availableLifeActions:followCandidates,
         p6MaxBubbles:cfg.dmP6MaxBubbles,
@@ -6716,7 +6750,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return {ok:false,code:'account-changed'}
     return readActionContext.run({source:'life-planner',sourceId:'verified-public-dynamic:'+String(dynamicId)},async()=>{
       let raw
-      try{raw=parseMaybeJson(await call('bili_dynamic_info',{dynamic_id:String(dynamicId)}))}catch(e){return {ok:false,code:e?.name==='BiliReadDeferredError'?'read-budget-blocked':'dynamic-read-failed'}}
+      try{raw=parseMaybeJson(await call('bili_dynamic_info',{dynamic_id:String(dynamicId)}))}catch(e){const deferred=sharedLinkReadDeferral(e);return {ok:false,code:deferred?.code||'dynamic-read-failed',...(deferred||{})}}
       if(trustedLifeAccountTag()!==expectedScope||accountBinding.status().blocked)return {ok:false,code:'account-changed'}
       const authorUid=String(raw?.authorUid||''),title=String(raw?.title||raw?.text||'').replace(/[\u0000-\u001f\u007f<>]/g,' ').replace(/\s+/g,' ').trim().slice(0,100)
       if(raw?.ok!==true||String(raw.dynamicId)!==String(dynamicId)||!/^[1-9]\d{0,18}$/.test(authorUid)||!title)
@@ -6736,30 +6770,42 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     const row=lifeSharedBiliLinks.get(id,expectedScope)
     if(!row||!['pending','error','deferred'].includes(row.status)||Number(row.nextAt||0)>Date.now())return {ok:false,code:'link-not-current'}
     if(trustedLifeAccountTag()!==expectedScope||accountBinding.status().blocked)return {ok:false,code:'account-changed'}
-    const resolved=await resolveBiliShareLink(row.ref)
-    if(resolved?.ok!==true)return {ok:false,code:resolved?.code||'unsupported-bilibili-link'}
-    if(resolved.kind==='dynamic')return readSharedDynamicInfo(resolved.dynamicId,expectedScope)
+    if(!sharedLinkPermissionCurrent(row,expectedScope))return {ok:false,code:'share-permission-revoked'}
+    const resolved=await resolveBiliShareLink(row.ref,{requestGuard:(kind,task)=>biliReadBudget.guard(kind,task)})
+    if(trustedLifeAccountTag()!==expectedScope||accountBinding.status().blocked)return {ok:false,code:'account-changed'}
+    if(resolved?.ok!==true)return {ok:false,code:resolved?.code||'unsupported-bilibili-link',
+      ...(['read-budget-blocked','resource-deferred'].includes(resolved?.code)?{retryAt:Number(resolved.retryAt)||Number(biliReadBudget.status().retryAt)||0}:{})}
+    if(resolved.kind==='dynamic'){
+      let result
+      try{result=await readSharedDynamicInfo(resolved.dynamicId,expectedScope)}
+      catch(e){const deferred=sharedLinkReadDeferral(e);return {ok:false,code:deferred?.code||'dynamic-read-failed',...(deferred||{})}}
+      if(result?.ok===true&&(!sharedLinkPermissionCurrent(row,expectedScope)||trustedLifeAccountTag()!==expectedScope))
+        return {ok:false,code:'share-permission-revoked'}
+      return ['read-budget-blocked','resource-deferred'].includes(result?.code)?{...result,retryAt:Number(result.retryAt)||Number(biliReadBudget.status().retryAt)||0}:result
+    }
     if(resolved.kind==='video'){
       let bvid=resolved.bvid
       if(!bvid&&resolved.aid){
         let raw
         try{raw=await readActionContext.run({source:'life-planner',sourceId:'friend-shared-video-aid:'+id},()=>call('bili_video_info_by_aid',{aid:String(resolved.aid)}))}
-        catch{return {ok:false,code:'video-read-failed'}}
+        catch(e){const deferred=sharedLinkReadDeferral(e);return {ok:false,code:deferred?.code||'video-read-failed',...(deferred||{})}}
         const data=parseMaybeJson(raw)
-        if(data?.ok!==true||!/^BV[0-9A-Za-z]{10}$/.test(String(data.bvid||'')))return {ok:false,code:'video-read-failed'}
+        if(data?.ok!==true||String(data.aid||'')!==String(resolved.aid)||!/^BV[0-9A-Za-z]{10}$/.test(String(data.bvid||'')))return {ok:false,code:'video-read-failed'}
         bvid=String(data.bvid)
       }
       if(!bvid)return {ok:false,code:'unsupported-bilibili-link'}
       let data
-      try{data=await readLifeVideoMetadata(bvid)}catch(e){return {ok:false,code:e?.name==='BiliReadDeferredError'?'read-budget-blocked':'video-read-failed'}}
+      try{data=await readLifeVideoMetadata(bvid)}catch(e){const deferred=sharedLinkReadDeferral(e);return {ok:false,code:deferred?.code||'video-read-failed',...(deferred||{})}}
       if(data?.ok!==true||data.bvid!==bvid)return {ok:false,code:'video-read-failed'}
-      return {ok:true,kind:'video',bvid:data.bvid,title:data.title,summary:data.description||'',authorName:'',
+      if(trustedLifeAccountTag()!==expectedScope||accountBinding.status().blocked)return {ok:false,code:'account-changed'}
+      if(!sharedLinkPermissionCurrent(row,expectedScope))return {ok:false,code:'share-permission-revoked'}
+      return {ok:true,kind:'video',bvid:data.bvid,aid:resolved.aid?String(resolved.aid):'',title:data.title,summary:data.description||'',authorName:'',
         related:data.authorUid?[{kind:'profile',uid:data.authorUid,relation:'author-profile'}]:[]}
     }
     if(resolved.kind==='profile'){
       let raw
       try{raw=await readActionContext.run({source:'life-planner',sourceId:'friend-shared-profile:'+id},()=>call('bili_user_info',{uid:Number(resolved.uid)}))}
-      catch{return {ok:false,code:'profile-read-failed'}}
+      catch(e){const deferred=sharedLinkReadDeferral(e);return {ok:false,code:deferred?.code||'profile-read-failed',...(deferred||{})}}
       const data=parseMaybeJson(raw),name=String(data?.name||data?.uname||data?.data?.name||'').replace(/[\u0000-\u001f\u007f<>]/g,' ').trim().slice(0,50)
       if(!name||trustedLifeAccountTag()!==expectedScope)return {ok:false,code:'profile-read-failed'}
       return {ok:true,kind:'profile',uid:resolved.uid,title:name,summary:String(data?.sign||data?.data?.sign||'').replace(/[\u0000-\u001f\u007f<>]/g,' ').trim().slice(0,300),authorName:name,authorUid:resolved.uid}
@@ -6777,6 +6823,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     return receipt
   }
   const recordSharedBiliLinkFailure=(id,code,expectedScope)=>lifeSharedBiliLinks.recordFailure(id,code,expectedScope)
+  const recordSharedBiliLinkDeferral=(id,retryAt,expectedScope,reason='read-budget-blocked')=>
+    lifeSharedBiliLinks.recordDeferral(id,{nextAt:Number(retryAt)||Number(biliReadBudget.status().retryAt)||0,reason},expectedScope)
   const executeSharedDynamicWrite=async({id,action,reason,text='',expectedAccount}={})=>{
     refreshCfg()
     const scope=trustedLifeAccountTag(),row=lifeSharedBiliLinks.get(id,scope),uid=String(accountBinding.status().activeUid||'')
@@ -7134,6 +7182,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     executeSharedBiliLinkRead:(id,scope)=>executeSharedBiliLinkRead(id,scope),
     recordSharedBiliLinkRead:(id,proof,scope)=>recordSharedBiliLinkRead(id,proof,scope),
     recordSharedBiliLinkFailure:(id,code,scope)=>recordSharedBiliLinkFailure(id,code,scope),
+    recordSharedBiliLinkDeferral:(id,retryAt,scope,reason)=>recordSharedBiliLinkDeferral(id,retryAt,scope,reason),
     executeSharedDynamicWrite:params=>executeSharedDynamicWrite(params),
     executeLifeHomeMore:async(expectedScope)=>readActionContext.run({source:'life-planner'},async()=>{
       refreshCfg()
