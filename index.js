@@ -198,7 +198,7 @@ import { createFirstStart } from './lib/first-start.mjs'
 import { hostLlmService, runHostModelText } from './lib/host-model-call.mjs'
 import { HEADLESS_DENY_TOOLS, writeSecureHeadlessOverlay, validateHeadlessOverlayFile, assertSafeHeadlessLaunch } from './lib/headless-security.mjs'
 import {createDshVisionReview} from './lib/dsh-vision-review.mjs'
-import {startManualVisionHostExecutor} from './lib/vision-host-owned-executor.mjs'
+import {startManualVisionHostExecutor,startProductionVisionHostExecutor} from './lib/vision-host-owned-executor.mjs'
 import { mergeWatchedRows } from './lib/watched.mjs'
 import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
 import { createLongTermMemory } from './lib/long-term-memory.mjs'
@@ -1759,7 +1759,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const actual = join(stateDir, 'mcp_server.py')
     const shipped = join(pluginDir, 'vendor', 'bilibili-mcp', 'mcp_server.py')
     try {
-      const helpers = ['read_action_gate.py','vision_fallback_evidence.py','life_metadata_diagnostics.py','outbound_action_gate.py']
+      const helpers = ['read_action_gate.py','shared_read_budget.py','vision_fallback_evidence.py','life_metadata_diagnostics.py','outbound_action_gate.py']
       if (readFileSync(actual, 'utf8') === readFileSync(shipped, 'utf8') &&
           helpers.every(helper=>readFileSync(join(stateDir,helper),'utf8') ===
             readFileSync(join(pluginDir,'vendor','bilibili-mcp',helper),'utf8'))) return true
@@ -1781,7 +1781,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       cwd: stateDir,                     // 凭证落在家里 ✓
       // ⭐ 这个内置的 Python MCP 会往 stdout 打中文（ensure_ascii=False）；
       //    Windows 默认 GBK 的话，中文/emoji 一进管道就可能炸 ⇒ 钉死 UTF-8
-      env: uvEnv({ BILI_DUTY_HOME: stateDir, BILI_JS_MCP_ADAPTER: '1', BILI_JS_READ_GATE_TOKEN: readAdapterToken, BILI_MCP_TOOLS: '', BILI_DYNAMIC_INBOX_REPLY_ENABLED:'1', BILI_DYNAMIC_AT_REPLY_ENABLED:'1', BILI_COMMENT_DAILY_LIMIT: String(cfg.commentDailyLimit),
+      env: uvEnv({ BILI_DUTY_HOME: stateDir, BILI_SHARED_READ_MINUTE_LIMIT:String(cfg.biliReadMinuteLimit), BILI_SHARED_READ_HOUR_LIMIT:String(cfg.biliReadHourLimit), BILI_JS_MCP_ADAPTER: '1', BILI_JS_READ_GATE_TOKEN: readAdapterToken, BILI_MCP_TOOLS: '', BILI_DYNAMIC_INBOX_REPLY_ENABLED:'1', BILI_DYNAMIC_AT_REPLY_ENABLED:'1', BILI_COMMENT_DAILY_LIMIT: String(cfg.commentDailyLimit),
         BILI_MENTION_DIAG_ENABLED: cfg.diagMentionEnabled?'1':'0', BILI_DYNAMIC_DIAG_ENABLED: cfg.diagDynamicEnabled?'1':'0',
         BILI_VISION_DIAG_ENABLED: cfg.diagVisionEnabled?'1':'0', BILI_MEME_DIAG_ENABLED: cfg.diagMemeEnabled?'1':'0',
         BILI_SESSION_MANUAL_LIKE_ENABLED: '1', BILI_SESSION_MANUAL_ACTIONS_ENABLED: '1', BILI_SESSION_MANUAL_RELATIONS_ENABLED: '1',
@@ -1807,7 +1807,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     'bili_video_info','bili_user_videos','bili_home_recommendations','bili_search',
     'bili_comments','bili_comment_thread','bili_subtitle','bili_danmaku',
     'bili_unread_messages','bili_received_replies','bili_received_at_and_likes','bili_dynamic_reply_inbox',
-    'bili_dynamic_comment_context','bili_dynamic_info','bili_video_info_by_aid'
+    'bili_dynamic_comment_context','bili_dynamic_info','bili_video_info_by_aid',
+    'bili_user_info','bili_creator_relation_status','bili_creator_encounter','bili_fish_created_folders'
   ])
   const call = async (toolName, args, opts) => {
     const release = toolName==='bili_check_credential'?()=>{}:accountBinding.enterPlatformOperation()
@@ -2655,7 +2656,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     name: 'bili_run',
     description: '**立刻跑一轮**（不等窗口）：起一个 headless 会话，把 duty.md 交给它去刷、写报告。会执行已开启的自动行为；仅在主人当前对话明确要求立即刷一轮时调用并设 confirm=true。',
     parameters: {confirm:{type:'boolean',description:'主人明确要求立即运行时设 true'}},
-    async execute(args={}) { if(args?.confirm!==true)return {ok:false,blocked:true,needsConfirmation:true,error:'需要主人明确要求立即刷一轮；未启动。'}; const r = runDuty('manual'); return { ok: true, ...r } },
+    async execute(args={}) { if(args?.confirm!==true)return {ok:false,blocked:true,needsConfirmation:true,error:'需要主人明确要求立即刷一轮；未启动。'}; const r = await runDuty('manual'); return { ok: true, ...r } },
   })
 
   tool({
@@ -3581,6 +3582,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         '          BILI_COMMENT_DAILY_LIMIT: ' + yq(cfg.commentDailyLimit),
         '          BILI_DUTY_AUTO_COMMENT_REVIEW: ' + yq(cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0 && lifeVideoActionBridge?.status().ready===true ? '1':'0'),
         '          BILI_DUTY_HOME: ' + yq(posix(stateDir)),
+        '          BILI_SHARED_READ_MINUTE_LIMIT: ' + yq(cfg.biliReadMinuteLimit),
+        '          BILI_SHARED_READ_HOUR_LIMIT: ' + yq(cfg.biliReadHourLimit),
         ...(cfg.visionEnabled ? [
           '          TEMP: ' + yq(posix(visionTempPath(stateDir))),
           '          TMP: ' + yq(posix(visionTempPath(stateDir))),
@@ -3609,6 +3612,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           '          BILI_VISION_DSH_RUN_AS_NODE: ' + yq(independentVisionRunAsNode ? '1' : '0'),
           '          BILI_VISION_DSH_WORKDIR: ' + yq(posix(process.cwd())),
           '          BILI_VISION_DSH_BRIDGE: ' + yq(posix(join(stateDir,'dsh-vision-node-bridge.mjs'))),
+          '          BILI_VISION_HOST_REQUIRED: ' + yq(process.platform==='win32'&&cfg.visionEnabled&&resolvedVisionMode()==='independent_dsh'?'1':'0'),
           '          BILI_VISION_DSH_MODEL: ' + yq(cfg.visionModelId || cfg.pluginDefaultModelId || ''),
           '          BILI_VISION_PROMPT_B64: ' + yq(Buffer.from(normalizeVisionPrompt(cfg.visionPrompt), 'utf8').toString('base64')),
           '          BILI_VISION_DSH_PROVIDER: ' + yq(cfg.visionModelProvider || cfg.pluginDefaultModelProvider || ''),
@@ -3894,8 +3898,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       try { dutyChild.kill() } catch (e) { log('停止刷视频 Agent 失败：' + String(e?.message || e)) }
     }
   }
-  const runDuty = (why = 'window',entryMode = 'mixed') => {
+  const runDuty = async (why = 'window',entryMode = 'mixed') => {
    let videoResourceRelease=()=>{}
+   let productionVisionExecutor=null
    try {
       if (dutyChild) {
         const alive = dutyChild.exitCode === null && !dutyChild.killed
@@ -3929,6 +3934,27 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const releaseVideoResource=lifeResourceScheduler.tryAcquire({lane:'exploration',resources:{video:1}})
     if(!releaseVideoResource)return {started:false,why,busy:true,error:'视频资源被占用或账号未就绪，保留 Life 原有续办资格'}
     videoResourceRelease=releaseVideoResource
+    // Production DSH video visual on Windows uses the trusted plugin Node host,
+    // never Python -> node.exe -> Electron. The capability exists only for the
+    // current video round and is not stored in the persistent Headless overlay.
+    if(process.platform==='win32'&&cfg.visionEnabled===true&&resolvedVisionMode()==='independent_dsh'){
+      const route=resolveDsh()
+      if(route.missing||route.shell||route.source!=='desktop-native'||
+         route.args?.[0]!=='--expose-internals'||!route.args?.[1])
+        throw Error('生产 DSH 视频视觉要求受信任的 Desktop Host CLI；拒绝退回旧 Python Bridge')
+      const baseVisionOverlay=ensureVisionOverlay()
+      if(!baseVisionOverlay)throw Error('生产 DSH 视觉安全 overlay 未建立，已拒绝启动')
+      const visualArgs=[...route.args,'--profile','headless','--patch',baseVisionOverlay]
+      assertVerifiedHeadless(visualArgs,baseVisionOverlay,{kind:'vision',stateDir},'vision')
+      const expectedAccount=trustedLifeAccountTag()
+      if(!expectedAccount||accountBinding.status().blocked)throw Error('视觉启动时账号未通过验证')
+      productionVisionExecutor=await startProductionVisionHostExecutor({
+        home:stateDir,exe:route.command,cli:route.args[1],baseOverlay:baseVisionOverlay,
+        workdir:process.cwd(),env:{...visionEnv({BILI_DUTY_HOME:stateDir}),...(route.env||{})},
+        visualInstruction:normalizeVisionPrompt(cfg.visionPrompt),
+        allowRequest:()=>trustedLifeAccountTag()===expectedAccount&&!accountBinding.status().blocked,
+      })
+    }
     let videoRoundReceiptId=''
     const beforeOwnedSelection=ownedSelectionSnapshot()
     const watchedBeforeRun=new Set((beforeOwnedSelection.ok?beforeOwnedSelection.rows:[]).filter(x=>x.picked).map(x=>x.bvid))
@@ -3976,10 +4002,13 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       // ⭐ ELECTRON_RUN_AS_NODE：**桌面版（Electron）里 spawn 出去的 node 必须带这个**，
       //    否则它当成"再开一个 Electron 应用"、什么都不干就以 0 退出（issue #5：0.17 秒、code 0、什么都没做）
       env: uvEnv({ BILI_DUTY_HOME: stateDir, ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}), ...(dsh.env || {}),
+        ...(productionVisionExecutor?.env||{}),
+        ...(productionVisionExecutor?{BILI_VISION_HOST_REQUIRED:'1'}:{}),
         ...(videoRoundReceiptId?{BILI_DUTY_LIFE_ROUND_ID:videoRoundReceiptId}:{}) }),
     })
     } catch(e) {
       releaseDuty()
+      if(productionVisionExecutor){void productionVisionExecutor.close().catch(()=>{});productionVisionExecutor=null}
       videoResourceRelease()
       if(videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
         lifeAgentEvents?.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:null})
@@ -3987,6 +4016,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       throw e
     }
     child.once('close',releaseDuty)
+    const closeVisionHost=()=>{if(productionVisionExecutor){const owned=productionVisionExecutor;productionVisionExecutor=null;
+      void owned.close().catch(()=>{})}}
+    child.once('close',closeVisionHost)
+    child.once('error',closeVisionHost)
     child.once('close',videoResourceRelease)
     child.once('error',videoResourceRelease)
     const stopLiveVideo=liveLifeActivity.start('video',videoRoundLifeAccountTag)
@@ -4139,6 +4172,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const spawnConfirmed=Number.isSafeInteger(child.pid)&&child.pid>0
     dutyChild = spawnConfirmed?child:null
     dutyStartedAt = spawnConfirmed?Date.now():0
+    if(!spawnConfirmed)closeVisionHost()
     if(!spawnConfirmed&&videoRoundReceiptId&&trustedLifeAccountTag()===videoRoundLifeAccountTag)try{
       lifeAgentEvents?.recordVideoRoundFinish(videoRoundReceiptId,{exitCode:null})
     }catch{}
@@ -4153,6 +4187,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     return { started: spawnConfirmed, why, profile: 'headless', cwd, log: logFile,
       ...(spawnConfirmed?{}:{error:'视频子进程未取得有效 PID，不能认定已启动'}) }
    } catch (e) {
+    if(productionVisionExecutor){void productionVisionExecutor.close().catch(()=>{});productionVisionExecutor=null}
     videoResourceRelease()
     log(`刷B站开跑失败（${why}）：${e?.stack ?? e}`)
     return { started: false, why, error: String(e?.message ?? e) }
@@ -6500,7 +6535,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // choice, not a second willingness decision or proof of watched media.
       if(manualTrigger===true)return {...await runDuty('manual-video-agent',entryMode==='home'?'home':'mixed'),
           reason:'manual-trigger'}
-      const launched=runDuty('life-agent',entryMode==='home'?'home':'mixed')
+      const launched=await runDuty('life-agent',entryMode==='home'?'home':'mixed')
       return {...launched,reason:videoLaunchFailureReason(launched)}
     },
 
@@ -10106,7 +10141,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
 
     if (req.method === 'POST' && path === '/api/bili-duty/run') {
-      return sendJson(res, 200, { ok: true, ...runDuty('manual') })
+      return sendJson(res, 200, { ok: true, ...await runDuty('manual') })
     }
 
     // 建 venv + 装依赖（**不等它**：几分钟的活，进度写 install.log）

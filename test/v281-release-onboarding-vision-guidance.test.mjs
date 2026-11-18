@@ -90,5 +90,6 @@ test('2.8.1 快速设置入口定位 02B 且新版视觉卡片突出；模型开
   assert.match(page,/prefers-reduced-motion:reduce/)
   assert.match(read('README.md'),/2\.8\.1 主要更新/)
   assert.match(read('docs\/release\/RELEASE_NOTES_v2.8.1.md'),/2\.8\.1/)
-  assert.doesNotMatch(read('README.md'),/dev\.3b\.33\./)
+  // README must truthfully show the current candidate build until release gates pass.
+  assert.match(read('README.md'),new RegExp(JSON.parse(read('package.json')).version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))
 })

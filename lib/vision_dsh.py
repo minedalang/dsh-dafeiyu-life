@@ -34,7 +34,7 @@ def _vision_bridge_active(env, execute):
 
 
 def _run_host_owned_vision_cli(args, *, cwd, env, timeout):
-    """Manual image acceptance only: ask the running plugin Node host to spawn DSH.
+    """Scoped manual or production vision: ask the owning plugin Node host to spawn DSH.
 
     The one-shot loopback capability is supplied to this Python child in its
     process environment, never stored in an overlay or a persistent config.
@@ -98,6 +98,10 @@ def _run_vision_cli(args, *, cwd, env, timeout, execute=subprocess.run, **kwargs
     real node.exe; other platforms retain the original subprocess behavior.
     Its stdin transports argv/prompt without passing them through a shell.
     """
+    if execute is subprocess.run and os.name == 'nt' and env.get('BILI_VISION_HOST_REQUIRED')=='1':
+        if not env.get('BILI_VISION_HOST_PORT') or not env.get('BILI_VISION_HOST_TOKEN'):
+            raise OSError('vision_host_required_unavailable')
+        return _run_host_owned_vision_cli(args,cwd=cwd,env=env,timeout=timeout)
     if (execute is subprocess.run and os.name == 'nt'
             and ('BILI_VISION_HOST_PORT' in env or 'BILI_VISION_HOST_TOKEN' in env)):
         return _run_host_owned_vision_cli(args,cwd=cwd,env=env,timeout=timeout)

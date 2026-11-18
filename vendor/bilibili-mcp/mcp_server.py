@@ -59,6 +59,7 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, TextContent, ImageContent
 
 from read_action_gate import public_read_reservation, ReadReservationHeld
+from shared_read_budget import shared_read_budget, ReadBudgetDeferred
 from life_metadata_diagnostics import public_metadata_failure
 from outbound_action_gate import outbound_reservation, OutboundHeld
 from vision_fallback_evidence import classify_visual_fallback
@@ -611,9 +612,21 @@ def _gate_read(name):
             params.apply_defaults()
             home = os.environ.get('BILI_DUTY_HOME')
             try:
-                with public_read_reservation(name, params.arguments, home=home,
-                        adapter=os.environ.get('BILI_JS_MCP_ADAPTER') == '1'):
-                    return await function(*args, **kwargs)
+                if os.environ.get('BILI_JS_MCP_ADAPTER') == '1':
+                    # Only a verified parent reservation authorizes the Node-owned debit.
+                    with public_read_reservation(name, params.arguments, home=home,adapter=True) as node_owned:
+                        if not node_owned:raise ReadBudgetDeferred('adapter-not-verified')
+                        return await function(*args, **kwargs)
+                # Defer *before* taking the durable action reservation: a local
+                # budget denial did not contact Bilibili and must not freeze it.
+                with shared_read_budget(home,name) as receipt:
+                    with public_read_reservation(name,params.arguments,home=home):
+                        result=await function(*args, **kwargs)
+                        receipt(result)
+                        return result
+            except ReadBudgetDeferred as exc:
+                return json.dumps({'ok':False,'blocked':True,'status':'shared-budget-deferred',
+                                   'reason':exc.reason},ensure_ascii=False)
             except ReadReservationHeld as exc:
                 return json.dumps({'ok': False, 'blocked': True, 'status': 'reservation-held',
                                   'reservationReason': exc.reason, 'error': str(exc)}, ensure_ascii=False)
@@ -1366,8 +1379,11 @@ def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perce
     Taking a lock around the parent orchestration would deadlock that child.
     """
     from preview_vision import analyze_perception
-    with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
-        return analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source,view_depth=view_depth,network_budget_bytes=network_budget_bytes)
+    with shared_read_budget(_DUTY_HOME,'bili_preview_frames') as receipt:
+        with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
+            result=analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source,view_depth=view_depth,network_budget_bytes=network_budget_bytes)
+            receipt(result)
+            return result
 
 
 _VISION_FRAMES_SERVED = {}  # 单轮内实际经 MCP 返回图片的 BV 时间点；不含图片正文
@@ -1435,11 +1451,13 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
         mode = os.environ.get('BILI_VISION_MODE', 'separate')
         if mode == 'independent_local':
             from preview_vision import record_vision_event
-            with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
-                result = await asyncio.to_thread(analyze_perception,bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
+            with shared_read_budget(_DUTY_HOME,'bili_preview_frames') as receipt:
+                with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
+                    result = await asyncio.to_thread(analyze_perception,bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
                         model=os.environ.get('BILI_VISION_MODEL',''),debug=capture_for_debug is True,
                         focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
                         network_budget_bytes=budget_override)
+                    receipt(result)
             result['mode']='independent_local'
             _record_production_vision_attempt(result, 'independent_local', os.environ.get('BILI_VISION_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
@@ -2431,6 +2449,7 @@ def _creator_relation_table_exists(con):
 
 
 @tool()
+@_gate_read('bili_creator_encounter')
 async def bili_creator_encounter(bvid: str) -> str:
     # 只登记真实入选，不外发
     if (e:=_guard('bili_creator_encounter')):return e
@@ -2824,6 +2843,7 @@ async def _find_dynamic_target(area,cred,rpid,root=0):
 
 
 @tool()
+@_gate_read('bili_video_info_by_aid')
 async def bili_video_info_by_aid(aid: str) -> str:
     """只读：按 B 站 AV/AID 分享链接解析为可信 BV 和公开元数据。"""
     if (e:=_guard('bili_video_info_by_aid')): return e
@@ -2841,6 +2861,7 @@ async def bili_video_info_by_aid(aid: str) -> str:
 
 
 @tool()
+@_gate_read('bili_dynamic_info')
 async def bili_dynamic_info(dynamic_id: str) -> str:
     """只读：返回一条 B 站动态的有界文字、作者和可信图像 CDN 引用。"""
     if (e:=_guard('bili_dynamic_info')): return e
@@ -2988,6 +3009,7 @@ async def bili_dynamic_comment_life(dynamic_id: str, expected_author_uid: str, t
 
 
 @tool()
+@_gate_read('bili_dynamic_comment_context')
 async def bili_dynamic_comment_context(dynamic_id: str, target_rpid: str = '', root: str = '', num: int = 20) -> str:
     """只读：定位文字/图文动态的真实评论区，读取评论并核实目标回复。"""
     try:
@@ -3290,6 +3312,7 @@ async def bili_video_collect(bvid: str, folder_title: str, reason: str = '', vis
 
 
 @tool()
+@_gate_read('bili_fish_created_folders')
 async def bili_fish_created_folders() -> str:
     """Only show folders whose exact id/title is recorded as created by this plugin."""
     if (e:=_guard('bili_fish_created_folders')):return e
