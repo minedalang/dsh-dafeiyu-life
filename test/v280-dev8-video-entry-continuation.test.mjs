@@ -20,16 +20,18 @@ const facts={ok:true,bvid:BV,title:'真实公开作品',description:'官方公�
 const house=async fn=>{const dir=mkdtempSync(join(tmpdir(),'dev8-video-entry-'));try{return await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
 const todo={id:'23ce9163-055e-4e37-ab35-496b157db23e',type:'watch_video',bvid:BV,status:'open'}
 const completed=(item=todo,overrides={})=>({ok:true,item:{...item,status:'done',completedAt:T},result:{ok:true,data:{ok:true,bvid:item.bvid,info:{bvid:item.bvid,title:'真实公开作品'}},...overrides}})
-function fixture(dir,{answers=[],withOpportunity=true,task=null,read=null,config=cfg,readReceipt=null}={}){
+function fixture(dir,{answers=[],withOpportunity=true,task=null,read=null,config=cfg,readReceipt=null,priorVisual=false}={}){
  let calls=0,writes=[],activeScope=scope,readCalls=0
  const store=createLifeOpportunities({stateDir:dir,getCredential:()=>credentials,
    getInterestEvidence:()=>withOpportunity?[interest]:[],now:()=>T})
+ if(priorVisual)store.rememberVerifiedVideoVisual({ok:true,bvid:BV,depth:'standard',frameCount:3,source:'low-resolution-preview'},scope)
  const planner=createAutonomousPlanner({dataDir:dir,now:()=>T,getConfig:()=>config,
    getLifeAccountTag:()=>activeScope,
    getTodos:()=>task&&task.status==='open'?[task]:[],
    getAcceptedActionReservations:()=>task&&task.status==='open'?[task]:[],
    getLifeOpportunities:()=>store.list(),recordOpportunityDecision:(...a)=>store.decide(...a),
    getLifeIntentionCues:()=>[],getLifeIntentions:()=>store.continuations(),
+   hasVerifiedLifeVideoVisual:(bvid,scope)=>store.hasVerifiedVideoVisual(bvid,scope),
    getActiveLifeIntentionReservations:()=>store.intentions({includeClosed:true,limit:20}),
    beginInspectedOpportunity:(...a)=>store.beginInspectedOpportunity(...a),
    beginCompletedVideoTodo:(...a)=>store.beginCompletedVideoTodo(...a),
@@ -45,8 +47,8 @@ function fixture(dir,{answers=[],withOpportunity=true,task=null,read=null,config
  return {planner,store,writes,get calls(){return calls},get readCalls(){return readCalls},switchAccount(){activeScope='d'.repeat(16)}}
 }
 
-test('inspected opportunity can autonomously choose an original top-level comment without video Agent',()=>house(async dir=>{
- const x=fixture(dir,{answers:[
+test('an already visually observed opportunity can voluntarily comment without launching video Agent',()=>house(async dir=>{
+ const x=fixture(dir,{priorVisual:true,answers:[
    s=>({action:'inspect_opportunity',id:s.list()[0].id,reason:'想核实这条视频'}),
    s=>({action:'comment_video',id:s.continuations()[0].id,bvid:BV,reason:'想交流这部公开视频的创作构思',text:'这段作品的创作主题值得认真交流'}),
    ()=>({action:'stop'})]})
@@ -59,9 +61,9 @@ test('inspected opportunity can autonomously choose an original top-level commen
  assert.ok(!JSON.stringify(x.store.status()).includes('这段作品的创作主题值得认真交流'))
 }))
 
-test('completed LIFE read-only video TODO may choose like without launching video Agent',()=>house(async dir=>{
+test('visually observed LIFE read-only video TODO may choose like without video Agent',()=>house(async dir=>{
  const task={...todo}
- const x=fixture(dir,{withOpportunity:false,task,answers:[
+ const x=fixture(dir,{withOpportunity:false,task,priorVisual:true,answers:[
    ()=>({action:'execute_read',id:task.id,reason:'我想看看公开的视频内容'}),
    s=>({action:'like_video',id:s.continuations()[0].id,bvid:BV,reason:'我确实很喜欢视频展示的公开主题'}),
    ()=>({action:'stop'})]})

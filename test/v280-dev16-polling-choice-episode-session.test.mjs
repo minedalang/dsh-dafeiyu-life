@@ -4,31 +4,23 @@ import {mkdtempSync,readFileSync,rmSync,readdirSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {POLLING_PRESETS,dmQuietIntervals,detectPollingPreset} from '../lib/polling-choice.mjs'
-import {createInteractionScheduler} from '../lib/interaction-scheduler.mjs'
 import {createLifeEpisodeSessions} from '../lib/life-episode-session.mjs'
 import {continuationPrompt} from '../lib/life-continuation.mjs'
 const A='a'.repeat(16),B='b'.repeat(16),EP1='1'.repeat(24),EP2='2'.repeat(24),BV='BV1aa411c7mD'
-const settle=()=>new Promise(r=>setTimeout(r,15))
 
-test('scheme default is 2-minute DM, comments, mentions; calculate intermediates from configurable endpoints',()=>{
- assert.deepEqual(POLLING_PRESETS.balanced,{dmWatchMinutes:2,dmQuietMaxMinutes:15,commentReplyWatchMinutes:2,commentAtWatchMinutes:2})
- assert.deepEqual(dmQuietIntervals(POLLING_PRESETS.balanced),[2,5,10,15])
+test('legacy polling presets remain readable for config migration but are no longer runtime schedulers',()=>{
+ assert.deepEqual(POLLING_PRESETS.balanced,{dmWatchMinutes:5,dmQuietMaxMinutes:5,commentReplyWatchMinutes:2,commentAtWatchMinutes:2})
+ assert.deepEqual(dmQuietIntervals(POLLING_PRESETS.balanced),[5,5,5,5])
  assert.deepEqual(dmQuietIntervals({dmWatchMinutes:3,dmQuietMaxMinutes:43}),[3,13,27,43])
  assert.deepEqual(dmQuietIntervals({dmWatchMinutes:15,dmQuietMaxMinutes:15}),[15,15,15,15])
  assert.equal(detectPollingPreset({...POLLING_PRESETS.responsive}), 'responsive')
  assert.equal(detectPollingPreset({...POLLING_PRESETS.balanced,commentAtWatchMinutes:4}), 'custom')
 })
-test('scheduler uses calculated quiet stages and returns to min after real incoming event',async()=>{
- let at=1_800_000_000_000,hasIncoming=false
- const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:3,dmQuietMaxMinutes:43,commentWatchReplies:false,commentAtEnabled:false,dmActivePollEnabled:false}
- const scheduler=createInteractionScheduler({getConfig:()=>cfg,now:()=>at,dm:{poll:async()=>({conversations:hasIncoming?1:0})},comments:{poll:async()=>({})}})
- try{
-  scheduler.start();await settle();assert.deepEqual(scheduler.status().dmAdaptive.levels,[3,13,27,43]);
-  at+=16*60_000;assert.equal(scheduler.status().dmAdaptive.intervalMinutes,13)
-  at+=46*60_000;assert.equal(scheduler.status().dmAdaptive.intervalMinutes,27)
-  at+=120*60_000;assert.equal(scheduler.status().dmAdaptive.intervalMinutes,43)
-  hasIncoming=true;await scheduler.tick();assert.equal(scheduler.status().dmAdaptive.intervalMinutes,3)
- }finally{scheduler.stop()}
+test('runtime scheduler has fixed counter sentinels and does not import legacy per-category polling intervals',()=>{
+ const source=readFileSync(new URL('../lib/interaction-scheduler.mjs',import.meta.url),'utf8')
+ assert.match(source,/SENTINEL_INTERVAL_MS=5\*MINUTE/)
+ assert.match(source,/createNotificationSentinelState/);assert.match(source,/reconciliationMinutes:30/)
+ assert.doesNotMatch(source,/dmQuietIntervals|commentReplyWatchMinutes|commentAtWatchMinutes/)
 })
 test('per-account per-Episode sessions restore decisions, public evidence and receipts without cross-contamination',()=>{
  const dir=mkdtempSync(join(tmpdir(),'dafeiyu-episode-session-'))
@@ -68,15 +60,15 @@ test('provisional facts cannot be inserted as verified evidence; continuation pr
   assert.doesNotMatch(prompt,/未核实标题/)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
-test('management page polling cards are independent of fast lane and retired top-comment reader',()=>{
+test('management page shows two sentinels and active DM controls without per-category interval inputs',()=>{
  const h=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
- for(const key of ['quiet','balanced','responsive','custom'])assert.match(h,new RegExp('name="polling-choice" value="'+key+'"'))
- assert.match(h,/id="dm-quiet-max"/)
- assert.match(h,/id="poll-replies-minutes"/)
- assert.match(h,/id="poll-at-minutes"/)
- assert.doesNotMatch(h,/id="poll-top-minutes"/)
- assert.match(js,/syncPollingCards/)
- assert.match(js,/dmQuietMaxMinutes/)
+ assert.match(h,/私信未读计数哨兵/)
+ assert.match(h,/互动通知计数哨兵/)
  assert.match(h,/id="dm-active-seconds"/)
+ assert.match(h,/30 分钟进行一次必要的详情核对/)
+ for(const id of ['dm-quiet-max','poll-replies-minutes','poll-at-minutes','polling-choice'])assert.doesNotMatch(h,new RegExp('id="'+id+'"|name="'+id+'"'))
+ assert.match(js,/dm-unread/)
+ assert.match(js,/social-unread/)
+ assert.doesNotMatch(js,/syncPollingCards|dmQuietMaxMinutes/)
 })

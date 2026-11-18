@@ -85,7 +85,11 @@ jobs:
               echo 'Stable release README still identifies a preview build' >&2
               exit 1
             }
-            ! grep -Eq '开发预览提醒|开发预览，尚未发布|当前交付代码仍是|当前构建标记为.*dev' "RELEASE_NOTES_${GITHUB_REF_NAME}.md" || {
+            test -f "docs/release/RELEASE_NOTES_${GITHUB_REF_NAME}.md" || {
+              echo 'Stable release notes are missing under docs/release/' >&2
+              exit 1
+            }
+            ! grep -Eq '开发预览提醒|开发预览，尚未发布|当前交付代码仍是|当前构建标记为.*dev' "docs/release/RELEASE_NOTES_${GITHUB_REF_NAME}.md" || {
               echo 'Stable release notes still identify a preview build' >&2
               exit 1
             }
@@ -95,6 +99,9 @@ jobs:
           node --check index.js
           node --check client.js
           node --check selfcheck.mjs
+          npm run check:context-budget
+      - name: Verify current test inventory and protected regressions
+        run: npm run check:test-governance
       - name: Full Node.js regression tests
         run: node --test test/*.test.mjs
       - name: Full Python regression tests
@@ -117,11 +124,11 @@ jobs:
         id: release_notes
         shell: bash
         run: |
-          note_file="RELEASE_NOTES_${GITHUB_REF_NAME}.md"
+          note_file="docs/release/RELEASE_NOTES_${GITHUB_REF_NAME}.md"
           if ! test -f "$note_file"; then
             # Prerelease tags use the upcoming stable version's notes during dev.
             base_tag="${GITHUB_REF_NAME%%-*}"
-            note_file="RELEASE_NOTES_${base_tag}.md"
+            note_file="docs/release/RELEASE_NOTES_${base_tag}.md"
           fi
           if test -f "$note_file"; then
             echo "body_path=$note_file" >> "$GITHUB_OUTPUT"

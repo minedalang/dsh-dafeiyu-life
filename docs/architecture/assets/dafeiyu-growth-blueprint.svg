@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="690" viewBox="0 0 1060 690" role="img" aria-labelledby="title desc">
+  <title id="title">大肥鱼的自主成长体系 · 当前能力与 2.9.x 规划</title>
+  <desc id="desc">身份与世界观为起点；已有兴趣、人格情绪学习；角色认知、关系经历成长与视频相关记忆检索为 2.9.x 未实现规划，不代表当前功能。</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#081626"/><stop offset="0.56" stop-color="#13243d"/><stop offset="1" stop-color="#121a34"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8ed8f5"/><stop offset="1" stop-color="#a5baf7"/></linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#17634d"/><stop offset="1" stop-color="#184758"/></linearGradient>
+    <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#423568"/><stop offset="1" stop-color="#2a3b61"/></linearGradient>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#55402e"/><stop offset="1" stop-color="#40334e"/></linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="9" stdDeviation="12" flood-color="#000919" flood-opacity=".34"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#7297bc"/></marker>
+  </defs>
+  <rect width="1060" height="690" rx="27" fill="url(#background)"/>
+  <circle cx="990" cy="68" r="135" fill="#223d70" opacity=".22"/>
+  <circle cx="64" cy="634" r="150" fill="#145a70" opacity=".12"/>
+  <g font-family="'Noto Sans CJK SC','Microsoft YaHei','PingFang SC',sans-serif">
+    <text x="54" y="69" fill="#f0f8ff" font-size="29" font-weight="700">大肥鱼的自主成长体系</text>
+    <text x="54" y="101" fill="#adc1da" font-size="15">一个持续生活的 Life · 身份稳定，兴趣、经历与选择逐渐生长</text>
+    <g transform="translate(815 43)">
+      <rect width="191" height="58" rx="13" fill="#243752" stroke="#426483"/>
+      <circle cx="18" cy="20" r="5" fill="#59d7b0"/><text x="31" y="25" fill="#d2e4ef" font-size="13">当前已有基础</text>
+      <circle cx="18" cy="40" r="5" fill="#d8abed"/><text x="31" y="45" fill="#d2e4ef" font-size="13">2.9.x 未实现</text>
+    </g>
+    <!-- stable identity -->
+    <g filter="url(#shadow)"><rect x="295" y="134" width="470" height="111" rx="19" fill="#193a50" stroke="#4a8aa6" stroke-width="1.5"/></g>
+    <circle cx="333" cy="170" r="18" fill="#275e71"/><text x="333" y="177" text-anchor="middle" fill="#e2f4ff" font-size="19">①</text>
+    <text x="362" y="174" fill="#f4fbff" font-size="20" font-weight="700">稳定身份与基础世界观</text>
+    <text x="333" y="209" fill="#c6d8e7" font-size="14">知道自己是谁、在哪里生活；不预设具体兴趣和朋友</text>
+    <path d="M530 245V278" stroke="#7297bc" stroke-width="2.5" marker-end="url(#arrow)" fill="none"/>
+    <!-- interest -->
+    <g filter="url(#shadow)"><rect x="56" y="295" width="453" height="134" rx="20" fill="url(#green)" stroke="#2c977b" stroke-width="1.5"/></g>
+    <circle cx="95" cy="333" r="19" fill="#298769"/><text x="95" y="340" text-anchor="middle" fill="#fff" font-size="19">②</text>
+    <text x="124" y="338" fill="#f3fff9" font-size="21" font-weight="700">兴趣学习</text>
+    <rect x="377" y="313" width="104" height="29" rx="14" fill="#145743" stroke="#3a9c7c"/><text x="429" y="333" text-anchor="middle" fill="#b9f4db" font-size="13">已有基础</text>
+    <text x="95" y="374" fill="#d2f2e9" font-size="14">什么主题会吸引我？</text>
+    <text x="95" y="399" fill="#d2f2e9" font-size="14">哪些事物让我反复想了解？</text>
+    <!-- character -->
+    <g filter="url(#shadow)"><rect x="550" y="295" width="453" height="134" rx="20" fill="url(#purple)" stroke="#7a6cbb" stroke-width="1.5" stroke-dasharray="7 5"/></g>
+    <circle cx="589" cy="333" r="19" fill="#6e559f"/><text x="589" y="340" text-anchor="middle" fill="#fff" font-size="19">③</text>
+    <text x="618" y="338" fill="#fcf8ff" font-size="21" font-weight="700">角色认知</text>
+    <rect x="857" y="313" width="120" height="29" rx="14" fill="#583e7b" stroke="#b08bdb"/><text x="917" y="333" text-anchor="middle" fill="#f8ddff" font-size="13">2.9.x 未实现</text>
+    <text x="589" y="374" fill="#eadffb" font-size="14">我遇见过谁？有什么设定？</text>
+    <text x="589" y="399" fill="#eadffb" font-size="14">我从哪些可信来源认识她？</text>
+    <path d="M530 278V286M282 286H776M282 286V294M776 286V294" stroke="#7297bc" stroke-width="2.5" fill="none"/>
+    <path d="M282 429V455M776 429V455M282 455H776M530 455V475" stroke="#7297bc" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+    <!-- relation -->
+    <g filter="url(#shadow)"><rect x="152" y="490" width="756" height="86" rx="18" fill="url(#warm)" stroke="#ad926d" stroke-dasharray="7 5" stroke-width="1.4"/></g>
+    <circle cx="188" cy="522" r="17" fill="#886347"/><text x="188" y="529" text-anchor="middle" fill="#fff" font-size="17">④</text>
+    <text x="216" y="528" fill="#fffbf4" font-size="20" font-weight="700">关系与经历成长</text>
+    <rect x="757" y="506" width="123" height="28" rx="14" fill="#6b514c" stroke="#d0a58a"/><text x="818" y="525" text-anchor="middle" fill="#ffe7d0" font-size="13">2.9.x 未实现</text>
+    <text x="188" y="557" fill="#e8dacf" font-size="14">从真实视频、互动与反思中认识角色；记忆相连，不预设亲密关系</text>
+    <path d="M530 576V590" stroke="#7297bc" stroke-width="2.5" fill="none" marker-end="url(#arrow)"/>
+    <!-- personality -->
+    <g filter="url(#shadow)"><rect x="152" y="603" width="756" height="65" rx="18" fill="#1d4d5b" stroke="#378e9f" stroke-width="1.5"/></g>
+    <circle cx="188" cy="630" r="17" fill="#318a98"/><text x="188" y="637" text-anchor="middle" fill="#fff" font-size="17">⑤</text>
+    <text x="217" y="635" fill="#effdff" font-size="20" font-weight="700">人格与情绪成长</text>
+    <rect x="757" y="617" width="123" height="28" rx="14" fill="#184d56" stroke="#3d9a9e"/><text x="819" y="636" text-anchor="middle" fill="#b6f4ed" font-size="13">已有基础</text>
+    <text x="463" y="636" fill="#cae4e8" font-size="13">经历可能改变感受与表达</text>
+    <text x="530" y="680" text-anchor="middle" font-size="11" fill="#8babc6">路线图示意：③和④尚未形成完整生产通路；视频触发角色记忆的流程另列 2.9.x 规划</text>
+  </g>
+</svg>

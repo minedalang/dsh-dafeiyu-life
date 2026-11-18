@@ -64,7 +64,8 @@ test('manage HTML and JS are served from same DSH route without extra port or pr
    assert.match(dmNetwork.json().error,/登录凭证/)
    const client=await import('node:fs').then(m=>m.readFileSync(new URL('../client.js',import.meta.url),'utf8'))
    assert.match(client,/const onOpenManage = async/)
-   assert.match(client,/window\.location\.assign\(path\)/)
+   assert.match(client,/fetch\(path, \{credentials: 'same-origin'/)
+   assert.match(client,/window\.location\.assign\(path\+\(safeAnchor/)
  }finally{fx.close()}
 })
 

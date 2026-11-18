@@ -45,10 +45,23 @@ test('model cannot invent BV or UID or use comments/links as action instructions
  assert.match(continuationPrompt(menu,'好奇',evidence),/不可信/)
 })
 
+test('metadata-only Episode cannot send a video opinion even if public title and write permission exist',async()=>{
+ let attempted=0
+ const run=createLifeContinuationWriteExecutor({hasVerifiedVisual:()=>false,
+   getConfig:()=>cfg,getAccountTag:()=>scope,getAccountUid:()=> '1234',getIntention:()=>selected,
+   getPublicEvidence:async()=>{attempted++;return evidence},
+   markSelected:()=>{attempted++;return {ok:true}},prepareIntent:()=>{attempted++;return {ok:true}},
+   cancelIntent:()=>{},runWriter:()=>{attempted++;return {ok:true,status:'verified'}},now:()=>T})
+ const outcome=await run({action:'comment_video',id:ID,bvid:BV,text:'没看内容也不能评论',reason:'read title'},scope)
+ assert.equal(outcome.ok,false);assert.equal(outcome.code,'video-not-visually-observed')
+ assert.equal(attempted,0)
+ assert.equal((await run.prepareBundle([{action:'like_video',id:ID,bvid:BV},{action:'collect_video',id:ID,bvid:BV}],scope)).code,'video-not-visually-observed')
+})
+
 test('executor does not write when permission changes between evidence read and execution',async()=>{
  let calls=0,marks=0
  const settings={...cfg}
- const run=createLifeContinuationWriteExecutor({getConfig:()=>settings,getAccountTag:()=>scope,getAccountUid:()=> '1234',
+ const run=createLifeContinuationWriteExecutor({hasVerifiedVisual:()=>true,getConfig:()=>settings,getAccountTag:()=>scope,getAccountUid:()=> '1234',
   getIntention:()=>selected,getPublicEvidence:async()=>{settings.autoComment=false;return evidence},
   markSelected:()=>{marks++;return {ok:true}},prepareIntent:()=>({ok:true,ticket:'12345678-1234-1234-1234-123456789abc'}),cancelIntent:()=>{},runWriter:()=>{calls++;return {ok:true,status:'verified'}},now:()=>T})
  const r=await run({action:'comment_video',id:ID,bvid:BV,reason:'确实有一些具体观点想自然表达',text:'公开视频描述确实很有意思'},scope)
@@ -57,7 +70,7 @@ test('executor does not write when permission changes between evidence read and 
 
 test('executor keeps account and canonical BV hard-bound; an unverified send never counts as verified',async()=>{
  let account=scope,mark=0,writes=0
- const run=createLifeContinuationWriteExecutor({getConfig:()=>cfg,getAccountTag:()=>account,getAccountUid:()=> '1234',
+ const run=createLifeContinuationWriteExecutor({hasVerifiedVisual:()=>true,getConfig:()=>cfg,getAccountTag:()=>account,getAccountUid:()=> '1234',
   getIntention:()=>selected,getPublicEvidence:async()=>evidence,
   markSelected:()=>{mark++;return {ok:true}},prepareIntent:()=>({ok:true,ticket:'12345678-1234-1234-1234-123456789abc'}),cancelIntent:()=>{},runWriter:async()=>{writes++;return {ok:true,status:'unconfirmed',attempted:true}},now:()=>T})
  const action={action:'like_video',id:ID,bvid:BV,reason:'确实欣赏这个视频公开呈现的主题'}
@@ -72,7 +85,7 @@ test('executor keeps account and canonical BV hard-bound; an unverified send nev
 })
 
 test('executor recognizes ONLY independently verified write result, not raw ok',async()=>{
- const run=createLifeContinuationWriteExecutor({getConfig:()=>cfg,getAccountTag:()=>scope,getAccountUid:()=> '1234',
+ const run=createLifeContinuationWriteExecutor({hasVerifiedVisual:()=>true,getConfig:()=>cfg,getAccountTag:()=>scope,getAccountUid:()=> '1234',
   getIntention:()=>selected,getPublicEvidence:async()=>evidence,markSelected:()=>({ok:true}),
   prepareIntent:()=>({ok:true,ticket:'12345678-1234-1234-1234-123456789abc'}),cancelIntent:()=>{},runWriter:async()=>({ok:true,status:'verified',attempted:true}),now:()=>T})
  assert.deepEqual(await run({action:'follow_creator',id:ID,bvid:BV,reason:'很想继续了解这个视频作者的公开新作品'},scope),
@@ -86,9 +99,13 @@ function makeLife(dir,answers,writer=async()=>({ok:true,status:'verified'})){
   at:new Date(T-60_000).toISOString(),evidenceCount:4,evidenceDays:3}
  const life=createLifeOpportunities({stateDir:dir,getCredential:()=>cred,getInterestEvidence:()=>[interest],now:()=>T})
  const account=discussionAccountTag(cred)
+ // Legacy write tests start with a previously verified video glimpse, not
+ // metadata alone; real Life now requires visual provenance before writing.
+ life.rememberVerifiedVideoVisual({ok:true,bvid:BV,depth:'standard',frameCount:3,source:'low-resolution-preview'},account)
  const planner=createAutonomousPlanner({dataDir:dir,now:()=>T,getConfig:()=>cfg,getLifeAccountTag:()=>account,
   getTodos:()=>[],getAcceptedActionReservations:()=>[],getLifeOpportunities:()=>life.list(),
   getLifeIntentionCues:()=>life.explorationCues(),getLifeIntentions:()=>life.continuations(),
+  hasVerifiedLifeVideoVisual:(bvid,scope)=>life.hasVerifiedVideoVisual(bvid,scope),
   beginLifeExploration:(...args)=>life.beginExploration(...args),completeLifeExploration:(...args)=>life.completeExploration(...args),
   failLifeExploration:(...args)=>life.failExplorationRead(...args),abandonLifeExploration:(...args)=>life.abandonExploration(...args),
   pauseLifeExploration:(...args)=>life.pauseExploration(...args),

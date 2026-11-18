@@ -47,8 +47,30 @@ flowchart TB
     feedback["本账号真实视频完成反馈｜只读考虑，不受新视频启动冷却影响"]
     ownerChat["talk_to_owner｜可配置联系时间/额度+主 Session 在线；真实经历/闲聊/沉默；可 skip"]
     ownerContactPolicy["主人联系策略｜卡片/自定义窗口和冷却，主 Session 与主人私信共用"]
-    networkPollBackoff["B站私信/评论只读轮询｜-509/DNS 持久退避"]
+    networkPollBackoff["B站双通知哨兵与按需详情｜-509/DNS 持久退避"]
   end
+  subgraph notificationSentinels["B站消息发现｜两个计数哨兵，不再分别定时拉完整列表"]
+    dmSentinel["私信未读计数 single_unread｜正常每 5 分钟"]
+    socialSentinel["评论回复/@/点赞计数 msgfeed/unread｜正常每 5 分钟"]
+    counterCompare["账号隔离计数快照｜只存分类计数与时间戳"]
+    detailsOnChange["按需读取详情｜计数增加/首次基线/30 分钟核对"]
+    activeDmSentinel["已确认活跃私信｜60 秒定向读取，空闲逐步放缓"]
+  end
+  dmSentinel --> counterCompare
+  socialSentinel --> counterCompare
+  counterCompare -->|私信计数增加| detailsOnChange
+  counterCompare -->|互动类别计数增加| detailsOnChange
+  counterCompare -.->|30 分钟一致性核对| detailsOnChange
+  detailsOnChange --> socialFacts
+  detailsOnChange --> adapter
+  socialFacts --> activeDmSentinel
+  activeDmSentinel --> socialFacts
+  networkPollBackoff -.-> dmSentinel
+  networkPollBackoff -.-> socialSentinel
+  networkPollBackoff -.-> detailsOnChange
+  networkPollBackoff -.-> activeDmSentinel
+  notificationManualCheck["Life check_notifications｜复用哨兵快照，不旁路拉完整列表"]
+  notificationManualCheck -.-> counterCompare
   dmAccepted["可信私信/评论邀请 + 原社交模型决定 now/later + 真实待办入账"]
   quickWake["立即 now：同账号有效任务 + 原 Life 运行锁｜直接只读执行，不再次调用意愿模型"]
   socialFacts -.->|同一社交模型的接受和时间选择；校验证据| dmAccepted
@@ -115,6 +137,7 @@ flowchart TB
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
     episodeContinuation["有新核验信息后 Life 可自由选择下一步 · 最多追加 4 次 · 可随时休息；不是重复批准旧动作"]
+    episodeVisualFirst["进入已核实 BV 后先尝试一次受控画面采样；失败只保留资料，禁止外发"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
     episodeAftercare["已核验写入计一步 · 下一写前必须真只读或实际休息；每 tick 最多一写"]
@@ -130,11 +153,13 @@ flowchart TB
   home --> homeCandidateMatch -->|仅本轮精确匹配入选 BV；不等于观看| homeEpisode
   homeEpisode --> lifeEpisode
   explore -.->|搜索/人物作品/视频核验成功后进入同一意愿账本| lifeEpisode
+  lifeEpisode --> episodeVisualFirst --> episodeContinuation
   lifeEpisode --> episodeDiscussion --> episodeContinuation
   lifeEpisode --> episodeHomeMore --> episodeContinuation
   lifeEpisode --> episodeAftercare -.->|只读／休息后再次选择，非自动外发| episodeContinuation
   lifeEpisode --> episodeContinuation -.->|下一步重新选择；到上限/休息/结束时停止| selection
 
+  %% @code episodeVisualFirst | lib/autonomous-planner.mjs | const observeSelectedVideo=async
   %% @code commentReview | vendor/bilibili-mcp/mcp_server.py | async def bili_comment_consideration
   %% @code commentDiagnosis | lib/video-comment-readiness.mjs | classifyVideoCommentRound
 %% @code commentAdmission | lib/life-video-action-bridge.mjs | reviewApprovals.set(key,
@@ -201,7 +226,7 @@ flowchart TB
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   classDef gap fill:#fff0f1,stroke:#d26975,color:#822f39
   class planner,menuGuard,selection,readTodo,explore,home,lifeEpisode,homeEpisode,homeCandidateMatch,episodeContinuation,episodeDiscussion,episodeHomeMore,episodeAftercare,verifiedActions,receipts,eventLedger active
-  class friends,socialWrite,videoWrite,gateway,retriever,growth partial
+  class friends,socialWrite,videoWrite,gateway,retriever,growth,dmSentinel,socialSentinel,counterCompare,detailsOnChange,activeDmSentinel,notificationManualCheck partial
   class gapSocial,gapRecall,gapGrowth gap
 
 %% @code adapter | lib/life-home-feed-evidence.mjs | export function summarizeHomeFeedResult
@@ -219,7 +244,7 @@ flowchart TB
 %% @code menuGuard | lib/autonomous-planner.mjs | export function validateOfferedLifeAction
 %% @code home | lib/life-agent-events.mjs | homePickedCount
 %% @code lifeEpisode | lib/life-opportunities.mjs | const beginHomeExploration=
-%% @code episodeContinuation | lib/autonomous-planner.mjs | const continueLifeRead=async intentionId=>
+%% @code episodeContinuation | lib/autonomous-planner.mjs | const continueLifeRead=async (intentionId,
 %% @code homeEpisode | index.js | const episode=lifeOpportunities.beginHomeExploration
 %% @code homeCandidateMatch | lib/life-agent-events.mjs | let transientHomePickedBvids=null
 %% @code videoWrite | lib/life-continuation-write.mjs | export function createLifeContinuationWriteExecutor
@@ -267,6 +292,12 @@ dmFollow -->|已核实后回执| receipts
 
 %% dev.44: opt-in owner policy and rate-limit recovery.
 %% @code ownerContactPolicy | lib/owner-contact-policy.mjs | export function ownerContactPolicy
+%% @code dmSentinel | lib/dm.mjs | export async function readPrivateUnreadCounts
+%% @code socialSentinel | lib/dm.mjs | export async function readInteractionUnreadCounts
+%% @code counterCompare | lib/notification-sentinel-state.mjs | export function createNotificationSentinelState
+%% @code detailsOnChange | lib/interaction-scheduler.mjs | const categories=sentinelState.pendingSocialCategories
+%% @code activeDmSentinel | lib/dm-autoreply.mjs | hasDueContinuation:()=>lifeInbox.due(1).length>0
+%% @code notificationManualCheck | index.js | const result=await interactionScheduler.checkNow()
 %% @code networkPollBackoff | lib/network-poll-backoff.mjs | export function createNetworkPollBackoff
 
 %% dev.59: DM/Comment keeps one model call with Life Voice, then seals exact expression without AI.

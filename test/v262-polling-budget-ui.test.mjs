@@ -14,7 +14,7 @@ test('same account read budget limits per-minute calls, survives restart, clears
   let time=1_800_000_000_000;const dir=work()
   const make=()=>createBiliReadBudget({dataDir:dir,minuteLimit:5,hourLimit:12,now:()=>time,logger:{warn(){}}})
   let q=make()
-  for(let i=0;i<5;i++)q.acquire('dm-list')
+  for(let i=0;i<5;i++)q.acquire('dm-messages')
   assert.equal(q.status().minuteUsed,5)
   assert.throws(()=>q.acquire('dm-conversation'),e=>e instanceof BiliReadDeferredError&&e.reason==='minute-budget')
   q=make();assert.equal(q.status().minuteUsed,5)
@@ -32,7 +32,7 @@ test('rate-limit/captcha response creates bounded persistent exponential cooldow
   assert.equal(first.status().blocked,true)
   assert.equal(first.status().reason,'platform-cooldown')
   const next=make();assert.throws(()=>next.acquire('dm'),BiliReadDeferredError)
-  time+=60_001
+  time+=5*60_000+1
   await assert.rejects(()=>next.guard('read',async()=>{throw Error('HTTP 429 请求过于频繁')}),/429/)
   assert.ok(next.status().retryAt>=time+120_000)
   time+=31*60_000;next.acquire('dm');next.noteSuccess()
@@ -55,7 +55,10 @@ test('DM cursor commits only after successful processing, handles same-session r
   assert.equal(next.shouldRead(row),false)
   assert.equal(next.shouldRead({...row,lastTs:row.lastTs+1}),true)
   assert.equal(next.shouldRead({...row,unread:2}),true)
-  time+=3*60_000+1;assert.equal(next.shouldRead(row),true)
+  // Unchanged nonzero unread is NOT another message. Keep bounded 10m
+  // fallback rescan; any new timestamp/unread was checked above.
+  time+=9*60_000+1;assert.equal(next.shouldRead(row),false)
+  time+=60_000;assert.equal(next.shouldRead(row),true)
   const other=createDmPollCursor({dataDir:work(),now:()=>time})
   assert.equal(other.shouldRead(row),true)
 })
@@ -64,7 +67,7 @@ test('quiet cursor uses periodic safety rescan and refuses corrupted data',()=>{
   let time=1_800_000_000_000;const dir=work(),row={uid:'10002',unread:0,lastTs:1_800_000_000}
   const cursor=createDmPollCursor({dataDir:dir,now:()=>time});cursor.observed(row);cursor.commit()
   time+=15*60_000;assert.equal(cursor.shouldRead(row),false)
-  time+=75*60_000+1;assert.equal(cursor.shouldRead(row),true) // now > default 90-minute quiet rescan
+  time+=705*60_000+1;assert.equal(cursor.shouldRead(row),true) // now > default 12-hour quiet rescan
   writeFileSync(join(dir,'dm-poll-cursor.json'),'{broken')
   assert.throws(()=>createDmPollCursor({dataDir:dir}),/游标损坏/)
 })
@@ -122,7 +125,7 @@ test('UI retains unique TODO controls in a dedicated plans tab and preserves mem
   assert.match(html,/id="polling-budget-status"/)
   assert.match(js,/scheduler\.readBudget/)
   assert.match(index,/monitoredReadTools\.has\(toolName\)/)
-  assert.match(index,/maxSessions: 12/)
+  assert.match(index,/maxSessions: Number(cfg.dmDetailMaxSessions)||3/)
 })
 
 test('legacy todo-settings bookmark opens dedicated fish plans page, not memory',()=>{
@@ -156,7 +159,7 @@ test('DM cursor only commits after auto-reply dedupe safely persists and prevent
   assert.equal(sent.length,1)
   assert.equal(cursor.shouldRead(session()),false)
   assert.equal((await make().poll()).sent,0)
-  clock+=91*60_000 // current quietRescanMinutes default is 90, not the obsolete 30-minute default
+  clock+=721*60_000 // default 12-hour cross-device safety rescan
   assert.equal(cursor.shouldRead(session()),true)
   assert.equal((await make().poll()).sent,0,'safety rescan must not re-send a persisted message')
   assert.equal(sent.length,1)

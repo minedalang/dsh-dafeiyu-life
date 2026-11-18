@@ -34,3 +34,5 @@ __pycache__/
 *.tgz
 
 *.patch
+# Generated local vision/ASR preview scratch files
+lib/tmp/

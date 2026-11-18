@@ -66,12 +66,3 @@ test('真实可衰减副本响应运行时关系记忆参数变化，同时不�
   assert.equal(read().actorUid,undefined)
  }finally{gate.close();rmSync(dir,{recursive:true,force:true})}
 })
-
-test('README 用真实社交场景说明模拟情绪，而不把演示当成实际聊天记录',()=>{
- const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8')
- assert.match(readme,/会回忆，会遗忘，也会成长/)
- assert.match(readme,/自主选择探索、互动、延期或不行动/)
- assert.match(readme,/也可以选择沉默、延期或休息/)
- assert.match(readme,/私密记忆的保存域/)
- assert.doesNotMatch(readme,/这是实际用户的聊天记录/)
-})

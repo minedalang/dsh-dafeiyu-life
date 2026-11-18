@@ -62,6 +62,6 @@ test('release 更新说明明确建议老用户主动恢复并说明隐私与保
   assert.match(ui,/const stageRecommendedGroup=async group=>/)
   assert.match(ui,/recommendedSettings\?\.groups/)
   assert.match(html,/使用推荐值/)
-  assert.match(readme,/未来规划/)
+  assert.match(readme,/未来规划|未来计划/)
   assert.match(readme,/白名单/)
 })

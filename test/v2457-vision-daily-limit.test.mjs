@@ -8,33 +8,36 @@ import {apply} from '../index.js';
 
 const root=new URL('..',import.meta.url);
 const src=path=>readFileSync(new URL(path,root),'utf8');
-test('独立视觉每日上限与取帧数分开保存，范围与默认值正确',async()=>{
+test('旧每日视觉限额不再影响取帧卡片，历史字段写入无效',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'v2457-test-'));let route;
  try{
   apply({get(key){return key==='dshHomePath'?(...names)=>join(dir,...names):undefined},logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(def){route=def;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{});
   const ask=async(method,path,body)=>{
-    const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);req.url=path;req.method=method;req.headers={host:'localhost'};
-    let out;const res={writeHead(){},end(data){out=JSON.parse(data)}};await route.handler(req,res);return out;
+   const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);req.url=path;req.method=method;req.headers={host:'localhost'};
+   let out;const res={writeHead(){},end(data){out=JSON.parse(data)}};await route.handler(req,res);return out;
   };
   const initial=await ask('GET','/api/bili-duty/config');
-  assert.equal(initial.config.visionDailyLimit,30);
-  assert.equal(initial.config.visionFrames,2);
-  let saved=await ask('POST','/api/bili-duty/config',{visionDailyLimit:90,visionFrames:3});
-  assert.equal(saved.config.visionDailyLimit,90);assert.equal(saved.config.visionFrames,3);
-  saved=await ask('POST','/api/bili-duty/config',{visionDailyLimit:500,visionFrames:0});
-  assert.equal(saved.config.visionDailyLimit,200);assert.equal(saved.config.visionFrames,2);
-  saved=await ask('POST','/api/bili-duty/config',{visionDailyLimit:0});
-  assert.equal(saved.config.visionDailyLimit,0);
+  assert.equal(initial.config.visionDailyLimit,undefined);
+  assert.equal(initial.config.visionFrames,24);
+  let saved=await ask('POST','/api/bili-duty/config',{visionDailyLimit:0,visionFrames:48});
+  assert.equal(saved.config.visionDailyLimit,undefined,'旧字段不能继续禁用视觉模型');
+  assert.equal(saved.config.visionFrames,48);
+  saved=await ask('POST','/api/bili-duty/config',{visionFrames:12});
+  assert.equal(saved.config.visionFrames,12);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
-test('额度表单和两条 Python 路线接入可配置上限，UI解释 0 的含义',()=>{
+test('视觉每日上限在配置、UI、本地和 DSH 执行路径中全部撤销',()=>{
  const html=src('lib/management-console.html'),js=src('lib/management-console.js');
  const index=src('index.js'),py=src('lib/preview_vision.py'),dsh=src('lib/vision_dsh.py');
- assert.match(html,/id="quota-vision-daily" type="number" min="0" max="200"/);
- assert.match(js,/\['quota-vision-daily','visionDailyLimit',0,200,30\]/);
- assert.match(js,/复用模式；视频 Agent 直接看图不计入此账本/);
- assert.ok(index.split('BILI_VISION_DAILY_LIMIT').length>=3);
- assert.match(py,/def _vision_daily_limit\(env=None\)/);
- assert.match(dsh,/_vision_daily_limit\(env\)/);
- assert.doesNotMatch(js,/固定硬上限 8 次/);
+ for(const text of [html,js,index,py,dsh]){
+   assert.doesNotMatch(text,/BILI_VISION_DAILY_LIMIT|_claim_vision_quota|def _vision_daily_limit/);
+ }
+ assert.doesNotMatch(html,/quota-vision-daily|每天最多额外调用独立视觉模型/);
+ assert.doesNotMatch(js,/visionDailyLimit/);
+ assert.doesNotMatch(index,/visionDailyLimit/);
+ assert.match(html,/data-vision-frame-plan="12"/);
+ assert.match(html,/data-vision-frame-plan="24"/);
+ assert.match(html,/data-vision-frame-plan="48"/);
+ assert.match(py,/def _record_vision_attempt\(home\)/);
+ assert.match(dsh,/_record_vision_attempt\(home\)/);
 });

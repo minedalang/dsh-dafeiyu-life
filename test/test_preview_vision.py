@@ -18,8 +18,8 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(pv._image_url('//i0.hdslb.com/bfs/videoshot/x.jpg'),'https://i0.hdslb.com/bfs/videoshot/x.jpg')
         self.assertEqual(pv._image_url('http://i0.hdslb.com/bfs/videoshot/x.jpg'),'https://i0.hdslb.com/bfs/videoshot/x.jpg')
 
-    def test_high_energy(self):
-        self.assertEqual(pv._pick_indices([0,10,20,30,40,50,60],2,[0,0,0,1,10,0,0],10),[2,4])
+    def test_uniform_preview_fallback_never_reads_heat_curve(self):
+        self.assertEqual(pv._pick_indices([0,10,20,30,40,50,60],2),[1,4])
         self.assertEqual(len(pv._pick_indices([0,10,20,30,40,50,60],3)),3)
 
     def test_reject_invalid_bv(self):
@@ -41,16 +41,17 @@ class PreviewTests(unittest.TestCase):
             d=pv.analyze_preview('BV1234567890',temp,enabled=False,debug=True,max_frames=2)
             self.assertEqual(d['status'],'preview_only');self.assertEqual(len(d['times']),2)
             folder=Path(d['debug_dir']);self.assertEqual(len(list(folder.glob('*.jpg'))),2)
-            self.assertEqual(d['high_energy'],True)
+            self.assertNotIn('high_energy',d)
+            self.assertIn('不使用旧高能预览选帧',d['sampling']['note'])
             fail=pv.analyze_preview('BV1234567890',temp,enabled=True,debug=True,max_frames=2,provider='anthropic',model='claude-haiku-4-5-20251001')
-            self.assertEqual(fail['status'],'vision_unavailable')
+            self.assertFalse(fail['ok']); self.assertIn('提供方',fail.get('error',''))
             self.assertFalse(fail.get('description'))
-            with patch.object(pv,'_credentials',return_value='test-key'), patch.object(pv,'_call_vision',return_value='只有一张看得见圆形头像，人物身份不确定') as call:
-                ok=pv.analyze_preview('BV1234567890',temp,enabled=True,debug=True,max_frames=2,provider='anthropic',model='claude-haiku-4-5-20251001')
+            with patch.object(pv,'_call_local_ollama',return_value='画面分别为红、绿色等色块，不能确认完整视频内容') as call:
+                ok=pv.analyze_preview('BV1234567890',temp,enabled=True,debug=True,max_frames=2,provider='ollama',model='qwen3.5:4b')
                 self.assertEqual(ok['status'],'analyzed')
                 self.assertEqual(len(call.call_args[0][0]),2)
             with patch.object(pv,'_json_api',side_effect=AssertionError('cache should be used')):
-                cached=pv.analyze_preview('BV1234567890',temp,enabled=True,debug=False,max_frames=2,provider='anthropic',model='claude-haiku-4-5-20251001')
+                cached=pv.analyze_preview('BV1234567890',temp,enabled=True,debug=False,max_frames=2,provider='ollama',model='qwen3.5:4b')
             self.assertEqual(cached['status'],'cached')
 
 if __name__=='__main__':unittest.main()

@@ -17,7 +17,7 @@ test('梗库记忆默认启用并且通过严格 MCP 白名单',()=>{
 test('记忆查询和写入都带来源且和外部指令隔离',()=>{
   assert.match(js,/bili_meme_search\(query=/)
   assert.match(js,/bili_meme_observe\(name,bvid,evidence,evidence_type\)/)
-  assert.match(charter,/未识图/)
+  assert.match(charter,/没有真实视觉证据时不能描述画面/)
   assert.match(py,/visual_status.*未识图/)
   assert.ok(!py.includes('eval('))
 })

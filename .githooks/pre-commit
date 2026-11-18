@@ -1,0 +1,9 @@
+#!/bin/sh
+# Managed by the project. Fast staged-index validation; no full-suite test run.
+set -eu
+cd "$(git rev-parse --show-toplevel)"
+if ! command -v node >/dev/null 2>&1; then
+  echo '[test-governance] Node.js is required for commit validation.' >&2
+  exit 1
+fi
+node scripts/auto-test-governance.mjs pre-commit

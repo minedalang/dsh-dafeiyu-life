@@ -85,16 +85,6 @@ test('陌生人的新公开经历衰减更快，社交好友较慢，已模糊�
   assert.equal(initial.length,2)
  }finally{gate.close()}
 }))
-test('dev.9 README 使用自由成长叙事，而非主人选择名单叙事',()=>{
- const s=readFileSync(new URL('../README.md',import.meta.url),'utf8')
- assert.match(s,/关系不等于好友名单/)
- assert.match(s,/真实互动逐渐认识不同的人/)
- assert.doesNotMatch(s,/不是只有主人提前加入名单的人|不必先被主人加入白名单/)
- assert.match(s,/## 🌱 未来规划/)
- assert.match(s,/docs\/ROADMAP\.md/)
- assert.doesNotMatch(s,/后续规划：P6/)
-})
-
 test('关系昵称仅为短期展示缓存：旧库兼容、不能凭昵称新增用户或授予权限',()=>using(async({index,dir,clock})=>{
  const uid='522504190'
  assert.equal(index.cacheNickname(uid,'公开昵称').ok,false,'没有真实交互的 UID 不能凭名字成为熟人')

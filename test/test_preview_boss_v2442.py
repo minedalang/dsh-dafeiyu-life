@@ -82,8 +82,10 @@ class BossPreviewTests(unittest.TestCase):
             self.assertTrue(result['ok'], result)
             self.assertEqual(result['status'], 'preview_only')
             self.assertEqual(result['index_source'], 'pvdata_bin')
-            self.assertEqual(len(result['times']), 2)
-            self.assertEqual(len(list(Path(result['debug_dir']).glob('*.jpg'))), 2)
+            # All three supplied thumbnails are identical: v2 adaptive sampler
+            # intentionally sends one frame, not two duplicates.
+            self.assertEqual(len(result['times']), 1)
+            self.assertEqual(len(list(Path(result['debug_dir']).glob('*.jpg'))), 1)
 
     def test_download_checks_each_redirect(self):
         class GuardOpener:

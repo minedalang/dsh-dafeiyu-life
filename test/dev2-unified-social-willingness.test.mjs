@@ -60,9 +60,12 @@ test('planner attention order uses current relationship, not a stored authority 
 test('生产入口不再把链接候选或关键词解析当作接受决策',()=>{
  const code=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const py=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
- assert.match(code,/recommendationEligible=incoming\.filter/)
- assert.match(code,/receiveRecommendations\(stateDir,recommendationEligible\)/)
- assert.doesNotMatch(code,/intakeRecommendation|hasExplicitVideoRecommendation|isVideoInvitation|syncRecommendations\(received/)
+ // Current 2.8.1 retired the old recommendation-intake path entirely; the
+ // generic DM pipeline now owns the Life decision and exact send gate.
+ assert.match(code,/unifiedOwnerDmCutover\(accountRuntimeDir\)/)
+ assert.match(code,/return incoming\.filter/)
+ assert.doesNotMatch(code,/receiveRecommendations\(stateDir|intakeRecommendation|hasExplicitVideoRecommendation|isVideoInvitation|syncRecommendations\(received/)
+ assert.match(code,/interactionBatcher\.generate\(\{kind:'dm'/)
  assert.match(code,/intakeAiSocialTodo/)
  assert.match(code,/getRelationshipHint:uid=>/)
  assert.match(py,/motivation: str = 'other'/)

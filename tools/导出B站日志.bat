@@ -2,7 +2,7 @@
 setlocal
 set "BILI_EXPORT_SCRIPT=%~f0"
 set "BILI_EXPORT_DIR=%~dp0"
-set "BILI_EXPORT_STATUS_URL="
+if not defined BILI_EXPORT_STATUS_URL set "BILI_EXPORT_STATUS_URL="
 set "BILI_EXPORT_NO_PAUSE=0"
 set "BILI_EXPORT_PYTHON_ARG="
 set "BILI_EXPORT_STRICT=0"
@@ -33,9 +33,18 @@ if /I "%~1"=="--status-url" (
   goto parse_args
 )
 echo Unsupported argument: %~1
-echo Usage: %~nx0 [--strict] [--no-pause] [--python "C:\path\to\python.exe"] [--status-url http://127.0.0.1:PORT/api/bili-duty/status]
+echo Usage: %~nx0 [--strict] [--no-pause] [--python "C:\path\to\python.exe"] [--status-url http://127.0.0.1:PORT/api/bili-duty/manage]
 exit /b 2
 :args_done
+REM The management URL is not inferable reliably from archived on-disk data.
+REM Prompt in interactive mode; automated --no-pause needs --status-url explicitly.
+if not defined BILI_EXPORT_STATUS_URL if "%BILI_EXPORT_NO_PAUSE%"=="0" (
+  echo.
+  echo Paste the local DSH management page URL from the browser to capture LIVE Life timer status.
+  echo Example: http://127.0.0.1:3080/api/bili-duty/manage
+  echo Press Enter to skip; ZIP will mark live scheduler as NOT CAPTURED.
+  set /p "BILI_EXPORT_STATUS_URL=Local DSH URL: "
+)
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $s=[IO.File]::ReadAllText($env:BILI_EXPORT_SCRIPT,[Text.Encoding]::UTF8); $marker='# POWERSHELL_PAYLOAD_BEGIN'; $i=$s.LastIndexOf($marker); if($i -lt 0){throw 'Missing payload marker'}; Invoke-Expression $s.Substring($i+$marker.Length)"
 set "RESULT=%ERRORLEVEL%"
 if "%BILI_EXPORT_NO_PAUSE%"=="0" pause
@@ -75,7 +84,7 @@ import sqlite3
 import sys
 import time
 from urllib.parse import urlparse
-from urllib.request import build_opener, ProxyHandler, Request
+from urllib.request import build_opener, ProxyHandler, Request, HTTPRedirectHandler
 
 root = Path(sys.argv[1]).resolve()
 out = Path(sys.argv[2]).resolve()
@@ -161,6 +170,58 @@ if isinstance(planner, dict):
         if (v := x.get(k)) is not None and (number(v) is not None or code(v) is not None))
         for x in recent[-20:] if isinstance(x, dict)] if isinstance(recent, list) else []
 dump('life-video-launch-state.json', snapshot)
+
+# This was previously absent from exported bundles. Include only a closed,
+# privacy-preserving receipt of the last production visual model attempt.
+# Do not include BV, model path, source JPEG, answer, raw stderr or account IDs.
+vision = read_json(root/'vision-production-last.json', limit=2048)
+vision_status = {'present': False}
+if isinstance(vision, dict) and vision.get('version') == 1:
+    allowed_status = ('analyzed','vision_unavailable','timeout','subagent_error',
+                      'no_vision_result','empty_result','no_images_confirmed')
+    allowed_mode = ('independent_local','independent_dsh')
+    at = number(vision.get('at'))
+    if (at is not None and isinstance(vision.get('ok'), bool)
+            and vision.get('status') in allowed_status
+            and vision.get('mode') in allowed_mode):
+        vision_status = {'present': True, 'at': at, 'ok': vision['ok'],
+                         'status': vision['status'], 'mode': vision['mode']}
+dump('visual-model-last-run.json', vision_status)
+
+video_job=read_json(root/'video-perception-debug-last-run.json',limit=2048)
+video_debug={'present':False}
+if isinstance(video_job,dict) and video_job.get('version')==1 and video_job.get('status') in ('running','done','error','interrupted'):
+    at=number(video_job.get('startedAt'))
+    updated=number(video_job.get('updatedAt'))
+    if at is not None and updated is not None:
+        video_debug={'present':True,'status':video_job['status'],'startedAt':at,'updatedAt':updated,
+            'step':max(0,min(6,int(number(video_job.get('step')) or 0))),
+            'reason':video_job.get('reason') if video_job.get('reason') in ('video_debug_failed','video_debug_finished','host_restarted','in_progress') else 'unknown'}
+dump('video-perception-debug-last-run.json',video_debug)
+
+# DSH mascot probe: redact again at export, never copy raw stdout or model answer.
+dsh_diag = read_json(root/'dsh-vision-selftest-last-run.json',limit=8192)
+dsh_summary={'present':False}
+if isinstance(dsh_diag,dict) and dsh_diag.get('schema')==1 and isinstance(dsh_diag.get('last'),dict):
+    row=dsh_diag['last']
+    stage_names=('preflight','headlessConfig','headlessConfigReason','headlessConfigFailureLayer','headlessConfigFailureKind','headlessConfigDefaultDump','headlessConfigBaseDump','headlessConfigNodeEnvRetry','headlessConfigWorkdirRetry','headlessConfigLaunchCwd','mcpImage','attachmentBridge','providerApi','modelAnswer')
+    stage=lambda v: v if isinstance(v,str) and re.fullmatch(r'[a-z][a-z0-9_]{0,39}',v) else 'unknown'
+    status=row.get('status')
+    if status in ('idle','running','failed','awaiting_review','approved','rejected'):
+        dsh_summary={'present':True,'status':status,
+            'at':str(row.get('at',''))[:35] if re.fullmatch(r'[0-9T:.+\-Z]{10,35}',str(row.get('at',''))) else '',
+            'routeId':str(row.get('routeId','')) if re.fullmatch(r'[a-f0-9]{16}',str(row.get('routeId',''))) else '',
+            'diagnosticCode':stage(row.get('diagnosticCode')),
+            'stages':{key:stage(row.get(key)) for key in stage_names},
+            'cli':{
+                'status':stage(row.get('cliProcess')),
+                'exitCode':row['cliExitCode'] if type(row.get('cliExitCode')) is int and -1<=row['cliExitCode']<=255 else -1,
+                'stdout':row.get('cliStdout') if row.get('cliStdout') in ('present','empty') else 'unknown',
+                'stderr':row.get('cliStderr') if row.get('cliStderr') in ('present','empty') else 'unknown',
+                'stderrKind':stage(row.get('cliStderrKind')),
+                'nodeErrorCode':stage(row.get('cliNodeErrorCode')),
+                'nodeExceptionType':stage(row.get('cliNodeExceptionType'))}}
+dump('dsh-vision-selftest-last-run.json',dsh_summary)
 
 life_file = root/'life-agent-events'
 rounds=[]
@@ -342,13 +403,95 @@ if accountdir.is_dir():
                 if phase:row['postSendStage']=phase
                 recent.append(row)
             owners.append({'statusCounts':dict(stats),'recent':recent})
+# Per-contact outcomes are bounded enums only. They cannot reconstruct old
+# turns that predate the diagnostic recorder and do not imply Bilibili unread=0.
+import hashlib
+per_contact=[]
+if accountdir.is_dir():
+    for acct in accountdir.iterdir():
+        if not acct.is_dir(): continue
+        state=read_json(acct/'runtime'/'dm-autoreply-state.json',5_000_000)
+        cursors=read_json(acct/'runtime'/'dm-poll-cursor.json',400_000)
+        if not isinstance(state,dict):continue
+        for target,p in (state.get('people') or {}).items():
+            if not isinstance(p,dict) or not isinstance(target,str):continue
+            last=p.get('lastInboundOutcome')
+            if not isinstance(last,dict):continue
+            status=code(last.get('status'))
+            if not status or status not in ('model-skip','model-close','model-defer','delivered','send-unknown','send-blocked','model-failed','life-admission-deferred','model-invalid','safety-blocked','approval-pending','permission-denied'):continue
+            record={'contactKey':hashlib.sha256((acct.name+':'+target).encode('utf8')).hexdigest()[:16],
+                'status':status,'reason':code(last.get('reason')) or '',
+                'at':number(last.get('at')),'inboundAt':number(last.get('inboundAt')),
+                'lastRepliedAt':number(p.get('lastRepliedAt'))}
+            cur=(cursors.get('people') or {}).get(target,{}) if isinstance(cursors,dict) else {}
+            if isinstance(cur,dict):
+                record['platformUnreadHint']=number(cur.get('unread'))
+                record['sessionCursorAt']=number(cur.get('at'))
+            per_contact.append(record)
+per_contact.sort(key=lambda item:item.get('at') or 0,reverse=True)
+dump('dm-inbound-outcomes.json',{'scope':'last recorded outcome per contact, no message text',
+    'recordedContacts':len(per_contact),'recent':per_contact[:100],
+    'note':'Missing entries on older versions are unknown, not skipped. Unread is Bilibili session hint, not plugin processing state.'})
+
+# dev.3b.33.5: aggregate durable intake/decision queues without disclosing
+# contacts, message identifiers, bodies, model prompts or account names.
+life_queue_summaries=[]
+if accountdir.is_dir():
+    for acct in accountdir.iterdir():
+        if not acct.is_dir():continue
+        runtime=acct/'runtime'
+        li=read_json(runtime/'dm-life-inbox.json',300_000)
+        dq=read_json(runtime/'dm-detail-queue.json',300_000)
+        if not isinstance(li,dict) and not isinstance(dq,dict):continue
+        rows=li.get('rows',[]) if isinstance(li,dict) else []
+        counts=collections.Counter()
+        if isinstance(rows,list):
+            for row in rows:
+                if isinstance(row,dict):
+                    st=code(row.get('status'))
+                    if st in ('pending','deciding','technical-deferred','send-unknown','review-required'):
+                        counts[st]+=1
+        drows=dq.get('rows',[]) if isinstance(dq,dict) else []
+        life_queue_summaries.append({'detailPending':len(drows) if isinstance(drows,list) else 0,
+            'lifePending':counts['pending']+counts['deciding'],
+            'lifeTechnicalDeferred':counts['technical-deferred'],
+            'lifeSendUnknown':counts['send-unknown'],
+            'lifeReviewRequired':counts['review-required']})
+dump('dm-life-queue-summary.json',{'accountCount':len(life_queue_summaries),
+    'accounts':life_queue_summaries,
+    'note':'Privacy-safe counts only. Reading a DM is not a Life decision or send receipt.'})
+
+# Life admission is stored in the root stateDir, not the per-account runtime.
+# Closed codes only: never export account hashes, PIDs, claim tokens or source text.
+a=read_json(root/'life-willingness-admission.json',32768)
+active=[]
+release_codes=[]
+if isinstance(a,dict):
+    claims=a.get('claims') if isinstance(a.get('claims'),dict) else {}
+    releases=a.get('releases') if isinstance(a.get('releases'),dict) else {}
+    for claim in claims.values():
+        if not isinstance(claim,dict):continue
+        stage=code(claim.get('stage'));channel=code(claim.get('channel'))
+        if stage in ('considering','approved'):
+            active.append({'stage':stage,'channel':channel if channel in ('dm','comment','video','other') else 'unknown',
+                'used':claim.get('used') if type(claim.get('used')) is bool else None,
+                'expired':(number(claim.get('until')) or 0)<int(time.time()*1000)})
+    for row in releases.values():
+        if isinstance(row,dict):
+            reason=code(row.get('reason'))
+            if reason in ('verified','delegated','not-sent','uncertain','unused-expired','model-deferred','seal-error','accepted-unverified','failed','recovered-consideration','recovered-unused'):
+                release_codes.append((number(row.get('at')) or 0,reason))
+dump('life-admission-safe-summary.json',{'active':active[:16],
+    'lastReleaseReason':max(release_codes)[1] if release_codes else 'unknown',
+    'note':'Metadata only. Expired approved claims with possible writes require offline review; no implicit unlocking.'})
+
 dump('dm-expression-overview.json',{
     'normalLastTurnByAccount':people,'ownerAgentByAccount':owners,
     'knownUnobservableFromDisk':[
       'Whether the additional bubble was pre-written or generated AFTER the first receipt',
       'Every 10-second fast-poll dispatch and its in-memory process counter',
       'Actual model prompts and replies are intentionally not re-exported'],
-    'liveStatusHint':'Optional --status-url http://127.0.0.1:PORT/api/bili-duty/status'})
+    'liveStatusHint':'Pass --status-url http://127.0.0.1:PORT/api/bili-duty/manage for authoritative live status'})
 
 
 # Natural conversation (including silence, proactive topic starts and progressive bubbles).
@@ -488,40 +631,64 @@ dump('polling-and-model-budget.json',{
     'liveFastPollCountersRequireStatusUrl':True,
     'note':'The original model-usage and model-invocations logs are preserved for detailed timeout/cost tracing.'})
 
-# Capture authorized live status only when the user explicitly supplies a local URL.
-# Never save raw status: it includes credentials/config/persona/UID.
+# Capture LIVE scheduler state from the running process only. Never infer
+# timer health from persisted config files, and NEVER call /autonomous-planner:
+# that GET route rearms the timer, masking a stopped scheduler.
+# A browser management URL is accepted only to identify an explicit loopback port.
 live_info={'requested':bool(status_url),'captured':False,'reason':'no-local-status-url-provided'}
 if status_url:
     try:
         u=urlparse(status_url)
         if (u.scheme!='http' or u.hostname not in ('localhost','127.0.0.1','::1') or
-            u.path!='/api/bili-duty/status' or u.username or u.password or u.query or u.fragment):
-            raise ValueError('URL must be a loopback http /api/bili-duty/status endpoint')
-        if u.port is None or u.port<1 or u.port>65535:raise ValueError('Invalid local port')
-        opener=build_opener(ProxyHandler({}))
-        with opener.open(Request(status_url,headers={'Accept':'application/json'}),timeout=3) as resp:
-            blob=resp.read(2_000_001)
-        if len(blob)>2_000_000:raise ValueError('Status response exceeds size limit')
+            u.username or u.password or u.port is None or u.port<1 or u.port>65535 or
+            u.path not in ('','/','/api/bili-duty/manage','/api/bili-duty/status',
+                           '/api/bili-duty/life-agent/scheduler-snapshot')):
+            raise ValueError('Only an explicit loopback DSH management URL is allowed')
+        # Fixed-path request: do not follow redirects, query strings, or arbitrary localhost paths.
+        port=u.port
+        hostname='[::1]' if u.hostname=='::1' else u.hostname
+        safe_url=f'http://{hostname}:{port}/api/bili-duty/life-agent/scheduler-snapshot'
+        class NoRedirect(HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, hdrs, newurl):
+                return None
+        opener=build_opener(ProxyHandler({}),NoRedirect())
+        with opener.open(Request(safe_url,headers={'Accept':'application/json'}),timeout=3) as resp:
+            if resp.status!=200:raise ValueError('Scheduler endpoint not ready')
+            blob=resp.read(65537)
+        if len(blob)>65536:raise ValueError('Scheduler response exceeds safety limit')
         d=json.loads(blob)
-        if not isinstance(d,dict) or d.get('ok') is not True:
-            raise ValueError('Not a ready plugin status response')
-        scheduler=d.get('interactionSchedulerStatus',{}) or {}
-        dm=d.get('dmAutoReplyStatus',{}) or {}
-        fast=scheduler.get('activeDm') or dm.get('fast') or {}
-        checks=scheduler.get('checks') or {}
+        if not isinstance(d,dict) or d.get('ok') is not True or d.get('schemaVersion')!=1:
+            raise ValueError('Not a trusted v1 plugin scheduler snapshot')
+        p=d.get('planner') if isinstance(d.get('planner'),dict) else {}
+        pulse=p.get('schedulerPulse') if isinstance(p.get('schedulerPulse'),dict) else {}
+        interaction=d.get('interaction') if isinstance(d.get('interaction'),dict) else {}
+        checks=interaction.get('checks') if isinstance(interaction.get('checks'),dict) else {}
+        # Strict allowlist: never copy the raw API response, account tags, cookies,
+        # private Life model text, contacts or full plugin configuration.
+        safe_pulse=pick(pulse,['checks','lastCheckAt','lastModelTurnAt','lastSkipAt',
+                                'lastErrorAt','startCount','lastStartedAt','lastStoppedAt','stale'])
+        safe_pulse['lastSkipReason']=code(pulse.get('lastSkipReason')) or 'unclassified'
+        safe_planner=pick(p,['running','busy','masterEnabled','enabled','expected',
+                             'nextDecisionAt','dailyRuns','lifeRuns','socialRuns','modelRetryAt'])
+        safe_planner['mode']=code(p.get('mode')) or 'unknown'
+        safe_planner['nextDecisionReason']=code(p.get('nextDecisionReason')) or 'unclassified'
+        safe_planner['schedulerPulse']=safe_pulse
         live={'capturedAt':dt.datetime.now(dt.timezone.utc).isoformat(),
-              'configuration':safe_config(d.get('config')),
-              'videoDuty':pick(d,['lastRunAt','ranToday','pickedToday','loggedIn']),
-              'fastDm':pick(fast,['activeCount','lastFastAt','checks','enabled']),
+              'serverObservedAt':number(d.get('observedAt')),
+              'serverProcessUptimeSeconds':number(d.get('processUptimeSeconds')),
+              'scheduler':safe_planner,
               'pollChecks':{k:dict(pick(v,['lastStartedAt','lastFinishedAt','polling','intervalMinutes']),
                          lastResult=code(v.get('lastResult')) or 'unclassified')
                             for k,v in checks.items() if k in ('dm','dmFast','replies','mentions') and isinstance(v,dict)},
-              'readBudget':pick((scheduler.get('readBudget') or {}),['minuteLimit','minuteUsed','hourLimit','hourUsed','blocked','retryAt'])}
+              'observationNote':'One read-only runtime snapshot; no timer restart, Life tick, model call or platform read.'}
         dump('live-status-snapshot.json',live)
-        live_info={'requested':True,'captured':True,'reason':'ok'}
+        live_info={'requested':True,'captured':True,'reason':'ok',
+                   'schedulerRunning':p.get('running') is True,
+                   'schedulerExpected':p.get('expected') is True,
+                   'schedulerStale':pulse.get('stale') is True}
     except Exception as e:
         live_info={'requested':True,'captured':False,'reason':type(e).__name__}
-        # No private network response or source path in the manifest.
+        # No URL, private HTTP response, stack trace, or account identity in the manifest.
 dump('live-status-availability.json',live_info)
 
 # Online SQLite backup. Direct copies of a live .sqlite3/-wal/-shm combination
@@ -634,7 +801,7 @@ dump('diagnostic-coverage.json',{
     'notes':['This is NOT a guarantee that the software defect can be determined from one snapshot.',
       'When Life declined an action, no platform receipt should exist.',
       'Old program versions cannot retroactively supply absent model decision-stage events.',
-      'Live fast-poll counters require explicitly supplying a reachable authenticated status URL.',
+      'Live scheduler state requires a reachable local DSH management URL at export time; no process/timer inference from disk.',
       'Raw ZIP may contain private messages and identifying fields: do not share publicly.']})
 
 result={'completedAt':dt.datetime.now().astimezone().isoformat(),
@@ -959,12 +1126,12 @@ sys.exit(0)
     $writer = New-Object System.IO.StreamWriter($entry.Open(), [System.Text.Encoding]::UTF8)
     try {
       $writer.WriteLine('Bili-duty evidence export (updated): original logs, Life traces, receipts, and bounded diagnostic summaries in _diagnostics/.')
-      $writer.WriteLine('NEW: life-video-launch-state.json reads root autonomous-planner.json, state.json and whitelisted config fields; the original full config is NOT copied.')
+      $writer.WriteLine('NEW: life-video-launch-state.json reads root autonomous-planner.json, state.json and whitelisted config fields; live-status-snapshot.json requires a reachable running DSH and does not restart its timer.')
       $writer.WriteLine('DIAG COVERAGE: see _diagnostics/diagnostic-coverage.json; missing data means incomplete investigation, even when archive export succeeded.')
       $writer.WriteLine('PYTHON DIAGNOSTICS: video-agent-decision-timeline.json, life-comment-decision-timeline.json, natural-chat-diagnostics.json, polling-and-model-budget.json, and coherent SQLite snapshots.')
       $writer.WriteLine('POWER SHELL FALLBACK: life-decision-overview.json and dm-expression-overview.json. The fallback does NOT cover all three debugging chains completely.')
       $writer.WriteLine('SQLite: when Python works, online sqlite3 backup; otherwise NO SQLite snapshot and PowerShell-only fallback summaries. Check export-launch-health.json.')
-      $writer.WriteLine('In-process fast polling cannot be reconstructed from old disk files; optional --status-url http://127.0.0.1:PORT/api/bili-duty/status saves ONLY whitelisted live fields.')
+      $writer.WriteLine('Actual Life timer.running and schedulerPulse are captured only with an explicit local DSH management URL (--status-url or interactive prompt); without it evidence is PARTIAL.')
       $writer.WriteLine('Post-send progressive bubble stages are available only for newer runs that persist them; older runs cannot be reconstructed.')
       $writer.WriteLine('WARNING: THIS ZIP IS NOT SANITIZED. Existing account runtime files, logs and receipts may contain credentials, private messages and secrets. Do not publish.')
       $writer.WriteLine('Files are captured while the service may be running; separate non-SQLite files can be at different times.')

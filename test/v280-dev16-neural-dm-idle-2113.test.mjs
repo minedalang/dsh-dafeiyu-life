@@ -17,23 +17,22 @@ test('neural graph is masked without ready local embedding; ordinary memory sear
  assert.match(html,/id="main-session-history-query"/);
  assert.match(js,/\$\('neural-search-input'\)\.disabled=ready!==true/);
 });
-test('regular DM polling slows progressively after verified idle scans and returns to base on incoming work',async()=>{
- let at=1_800_000_000_000,count=0,incoming=false;
- const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:2,commentWatchReplies:false,commentAtEnabled:false,dmActivePollEnabled:false};
- const dm={poll:async()=>{count++;return {sent:incoming?1:0,conversations:incoming?1:0,ignored:0,failed:0,deferred:0}}};
- const sched=createInteractionScheduler({dm,comments:{poll:async()=>{}},getConfig:()=>cfg,now:()=>at});
+test('notification sentinels replace idle full-list polling; Life technical continuation stays targeted',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dm-neural-sentinel-'));let at=1_800_000_000_000,full=0,continuation=0,continuationDue=false
+ const scheduler=createInteractionScheduler({dataDir:dir,getAccountTag:()=> 'aaaaaaaaaaaaaaaa',now:()=>at,
+  getConfig:()=>({masterEnabled:true,dmWatch:true,dmActivePollEnabled:false,commentWatchReplies:false,commentAtEnabled:false}),
+  readPrivateUnread:async()=>({followUnread:0,unfollowUnread:0,dustbinUnread:0,unfollowPushUnread:0,dustbinPushUnread:0,bizFollowUnread:0,bizUnfollowUnread:0,customUnread:0}),
+  dm:{poll:async options=>{if(options?.continuationOnly)continuation++;else full++;return {ok:true}},
+   hasDueContinuation:()=>continuationDue,nextFastUid:()=>null,status:()=>({fast:{activeCount:0}})},comments:{poll:async()=>({})}})
  try{
-  sched.start();await settle();assert.equal(count,1);
-  assert.equal(sched.status().dmAdaptive.intervalMinutes,2);
-  at+=14*60_000;await sched.tick();assert.equal(count,2);
-  at+=2*60_000;await sched.tick();assert.equal(sched.status().checks.dm.intervalMinutes,5);
-  const afterTwo=count;
-  at+=1*60_000;await sched.tick();assert.equal(count,afterTwo); // no 2-minute spam
-  at+=4*60_000;await sched.tick();assert.equal(count,afterTwo+1);
-  at+=41*60_000;await sched.tick();assert.equal(sched.status().dmAdaptive.intervalMinutes,10);
-  incoming=true;at+=10*60_000;await sched.tick();assert.equal(sched.status().dmAdaptive.intervalMinutes,2);
- }finally{sched.stop()}
-});
+  scheduler.start();await new Promise(r=>setTimeout(r,15));assert.equal(full,1)
+  assert.equal(scheduler.status().dmAdaptive.sentinelIntervalMinutes,5)
+  at+=10*60_000;await scheduler.tick();assert.equal(full,1,'unchanged counter does not trigger another full session-list read')
+  continuationDue=true;await scheduler.tick();assert.equal(continuation,1);assert.equal(full,1)
+  assert.equal(scheduler.status().sentinels.private.pending,false)
+ }finally{scheduler.stop();rmSync(dir,{recursive:true,force:true})}
+})
+
 test('DM application -509 triggers longer lane backoff, persists across restart without resetting other channels',()=>{
  const dir=mkdtempSync(join(tmpdir(),'dafeiyu-dm-idle-'));
  let at=1_800_000_000_000;

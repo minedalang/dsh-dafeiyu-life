@@ -39,3 +39,22 @@ test('恢复调度必须显式 gate，管理页面包含真实运行状态',()=>
  assert.match(ui,/models-default-provider/);
  assert.doesNotMatch(ui,/id="life-evidence-atlas"/);
 });
+
+test('来自评论线索的真实 begin_exploration 核验元数据能关联唯一视频，不能误接附近搜索或冲突 BV',()=>{
+ const now=Date.now(),at=now-10_000,chosen='BV1abcde1234',other='BV1abcde1235',cueRef='f'.repeat(16);
+ const decisions=[{at,mode:'active',action:'begin_exploration',result:'verified-metadata',verifiedReadKind:'video-metadata',continuation:cueRef}];
+ const evidence=[{at:at+40,action:'inspect-video',cueRef,bvid:chosen,title:'这一轮真正核验的标题'},
+   {at:at+50,action:'search',bvid:other,title:'另一条搜索结果'}];
+ const rows=buildLifeTimeline({now,days:2,lifeDecisions:decisions,explorationEvidence:evidence});
+ const read=rows.find(x=>x.type==='life-read');
+ assert.equal(read?.bvid,chosen);assert.equal(read?.title,'这一轮真正核验的标题');
+ assert.equal(read?.url,'https://www.bilibili.com/video/'+chosen);
+ const ambiguous=buildLifeTimeline({now,days:2,lifeDecisions:decisions,
+   explorationEvidence:[...evidence,{at:at+80,action:'inspect-video',cueRef,bvid:other,title:'同时核验的第二条'}]});
+ const second=ambiguous.find(x=>x.type==='life-read');
+ assert.equal(second?.bvid,undefined,'不能把相近但不唯一的 BV 绑定到时间线');
+ assert.equal(second?.url,undefined);
+ const wrong=buildLifeTimeline({now,days:2,lifeDecisions:decisions,explorationEvidence:[
+  {at:at+1,action:'inspect-video',cueRef:'e'.repeat(16),bvid:other,title:'相近但不是本次读取'}]});
+ assert.equal(wrong.find(x=>x.type==='life-read')?.url,undefined,'时间相近但来源不符不得关联视频');
+});

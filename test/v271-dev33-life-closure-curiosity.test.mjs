@@ -1,10 +1,12 @@
 import test from 'node:test'
+import {createHash} from 'node:crypto'
 import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {recordInterestEvents,scopedCuriosityOpportunityEvidence,curiosityReview} from '../lib/life-interests.mjs'
 import {createLifeOpportunities} from '../lib/life-opportunities.mjs'
+import {buildLifeTimeline} from '../lib/life-timeline.mjs'
 import {discussionAccountTag} from '../lib/video-discussion-diagnostics.mjs'
 import {plannerActionMenu,validateOfferedLifeAction} from '../lib/autonomous-planner.mjs'
 
@@ -33,6 +35,13 @@ test('verified current-account selection becomes an optional Life cue, not a gra
   const good=op.beginVideoExploration(cue.id,'想了解这部作品的元数据',{ok:true,bvid:BV,title:'核验后的视频'},tag)
   assert.equal(good.ok,true)
   assert.equal(good.receipt,'verified-metadata')
+  const ref=createHash('sha256').update('life-continuation\0'+cue.id).digest('hex').slice(0,16)
+  const verified=op.timelineEvidence({days:2,limit:10}).filter(x=>x.action==='inspect-video')
+  assert.equal(verified.length,1)
+  assert.equal(verified[0].cueRef,ref,'video metadata receipt correlates to the original Life cue, not a nearby video')
+  const diary=buildLifeTimeline({now:NOW+1000,days:2,explorationEvidence:verified,lifeDecisions:[
+    {at:NOW,mode:'active',action:'begin_exploration',result:'verified-metadata',verifiedReadKind:'video-metadata',continuation:ref}]})
+  assert.equal(diary.find(x=>x.type==='life-read')?.bvid,BV)
   assert.equal(op.continuations()[0].selectedBvid,BV)
   assert.equal(op.explorationCues({limit:6}).length,0,'same source must cool down after successful adoption')
   assert.equal(build(dir,()=>B).continuations().length,0,'cannot move an intention to another account')

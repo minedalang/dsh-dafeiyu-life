@@ -23,6 +23,7 @@ test('所有主要自动对外语言入口共用人格装配，而不是各自�
   for(const scene of ['todo-followup','owner-dm','dm','main','social-share','dynamic'])assert.ok(main.includes("scene:'"+scene+"'"),scene)
   assert.match(main,/scene==='comment'\?2700:2900/)
   assert.match(owner,/scrub\(getPersona\(\),2600\)/)
-  assert.match(social,/const voice=String\(getVoiceContext\(/)
-  assert.match(daily,/String\(getVoiceContext\(\)\|\|''\)/)
+  // Social outreach retains the shared Life Voice, with an explicit context budget.
+  assert.match(social,/const voice=boundedText\(getVoiceContext\(\{uid:c\.uid,query:c\.title\}\),7000\)/)
+  assert.match(daily,/boundedText\(getVoiceContext\(\),6500\)/)
 })

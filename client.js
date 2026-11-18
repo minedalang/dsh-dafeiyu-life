@@ -21,7 +21,7 @@
  * 这一页要满足使用者 2026-10-14 说的形状：
  *   · **总开关 → 打开之后配置自定义自动刷时间段**（支持跨午夜和多时段）
  *   · **数字项要能自己填**（定量刷：每天几条）
- *   · **账号绑定必须在设置页里**（扫码登录 + 二维码直接显示在页里）
+ *   · B站账号绑定及扫码登录统一由管理中心 → 首次设置管理。
  *   · 会发东西出去的（自动评论）、要下大模型的（本地转写）**默认关**
  * ============================================================================
  */
@@ -137,6 +137,24 @@ window.__ModuleLoader__.load({
   background:var(--dsw-alias-bg-layer-4,rgba(128,128,128,.14));color:var(--dsw-alias-label-secondary,#c9ccd1);}
 /* v2.4.83 — DSH 原生设置页，保留主题变量并提升交互辨识度 */
 [data-bd-page]{gap:19px;}
+[data-bd-281-intro]{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0 0}
+[data-bd-281-intro] span{font-size:11px;line-height:1.45;padding:5px 8px;border:1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.2));border-radius:9px;background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.08));color:var(--dsw-alias-label-secondary,inherit)}
+/* Two distinct scopes: release highlights vs. the product's lasting capabilities. */
+
+/* Header action buttons never sit beside the feature panels. */
+[data-bd-header]{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+[data-bd-header-copy]{min-width:180px;flex:1 1 220px}
+[data-bd-header-actions]{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;flex:0 1 auto}
+[data-bd-header-actions] [data-bd-btn]{white-space:nowrap}
+@media(max-width:500px){[data-bd-header-actions]{justify-content:flex-start;width:100%}}
+[data-bd-feature-panel]{margin-top:11px;border-radius:12px;padding:11px 12px;border:1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.2))}
+[data-bd-feature-panel="release"]{border-color:rgba(50,165,105,.54);background:rgba(51,168,103,.095)}
+[data-bd-feature-panel="core"]{background:var(--dsw-alias-bg-layer-2,rgba(127,127,127,.055))}
+[data-bd-feature-panel] [data-bd-feature-heading]{font-size:12px;font-weight:800;line-height:1.4}
+[data-bd-feature-panel="release"] [data-bd-feature-heading]{color:var(--dsw-alias-color-success,#36aa70)}
+[data-bd-feature-panel] [data-bd-281-intro]{margin-top:8px}
+[data-bd-feature-panel="release"] [data-bd-281-intro] span{border-color:rgba(51,168,103,.3);background:rgba(51,168,103,.07)}
+
 [data-bd-sec]{padding:15px 17px;border:1px solid var(--dsw-alias-bg-layer-3,rgba(128,128,128,.18));border-radius:15px;background:var(--dsw-alias-bg-layer-1,rgba(128,128,128,.05));}
 [data-bd-sub]{padding:10px 0 10px 14px;border-left:3px solid #35a185;}
 [data-bd-sw][data-on]{background:#18966f;box-shadow:0 0 0 3px rgba(24,150,111,.09);}
@@ -324,16 +342,17 @@ window.__ModuleLoader__.load({
       // DSH Mobile 是手机上运行的已配对 HTTPS WebView，实际业务仍在电脑端。
       // 后台调用系统浏览器只会在电脑上打开页面，不能作为手机的管理入口。
       // 始终使用当前 WebView 的同源路径；不要从 Host 推断、拼接或返回本机地址。
-      const onOpenManage = async (tab = '') => {
+      const onOpenManage = async (tab = '', anchor = '') => {
         setManageError('')
         try {
           const safeTab = ['firststart', 'models', 'home', 'life', 'life-agent'].includes(tab) ? tab : ''
+          const safeAnchor=safeTab==='firststart'&&anchor==='fs-deps-card'?'fs-deps-card':''
           const ua = String(window.navigator?.userAgent || '')
           const smallTouch = Number(window.navigator?.maxTouchPoints || 0) > 0 &&
             Number(window.innerWidth || 1024) <= 900
           const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || smallTouch
           if (!isMobile) {
-            const result = await jpost('/open', {what: 'manage', tab: safeTab})
+            const result = await jpost('/open', {what: 'manage', tab: safeTab, anchor: safeAnchor})
             if (result?.ok !== true) throw new Error(result?.error || '宿主没有确认打开管理中心')
             return
           }
@@ -359,7 +378,7 @@ window.__ModuleLoader__.load({
           }
           if (!isManage) throw new Error('移动访问通道返回的不是大肥鱼管理中心；请检查配对登录状态')
           // 同一个已配对 HTTPS Origin 打开，不触发电脑浏览器、不暴露独立管理端口。
-          window.location.assign(path)
+          window.location.assign(path+(safeAnchor?'#'+safeAnchor:''))
         } catch (e) {
           const detail = String(e?.message || e)
           const message = '打开管理中心失败：' + detail +
@@ -521,26 +540,6 @@ window.__ModuleLoader__.load({
         } catch (e) { say(String(e?.message ?? e), 'warn') } finally { setBusy('') }
       }
 
-      const onInstallAsr = async () => {
-        setBusy('asr')
-        say('')
-        try {
-          const r = await jpost('/install-asr', {})
-          say(r?.started ? '开始装转写依赖 —— 进度显示在下面（要下模型，慢一点正常）' : (r?.hint || '没起来'),
-            r?.started ? 'good' : 'warn')
-        } catch (e) { say(String(e?.message ?? e), 'warn') } finally { setBusy('') }
-      }
-
-      const onInstall = async () => {
-        setBusy('install')
-        say('')
-        try {
-          const r = await jpost('/install', {})
-          say(r?.hint || '已经在后台开始装了', '')
-        } catch (e) { say(String(e?.message ?? e), 'warn') }
-        finally { setBusy('') }
-      }
-
       const onRun = async () => {
         setBusy('run')
         try {
@@ -609,11 +608,11 @@ window.__ModuleLoader__.load({
       if (!cfg) {
         return h('div', { 'data-bd-page': '' },
           h('div', { 'data-bd-note': '' }, fails >= 3
-            ? '读不到插件配置（已经试了 ' + fails + ' 次）。常见原因有三个：装的还是 0.1.11 / 0.1.12（那两版有 bug，会卡在这里）；刚装完没重启 dsh；或者插件加载失败。'
+            ? '读不到插件配置（已经试了 ' + fails + ' 次）。插件配置接口可能尚未挂载或插件启动失败；升级后若未重启 DSH，请先重启。'
             : '读设置中…'),
           fails >= 6 ? h('div', { 'data-bd-note': '' },
-            '可以先试：升级到最新版（dsh plugin --profile web add github:minedalang/dsh-dafeiyu-life）→ 重启 dsh；还不行就把 ' +
-            '%USERPROFILE%\\.dsh\\bili-duty\\duty.log 的最后几十行发给作者。') : null)
+            '请核对安装版本与实际加载版本，勿反复重装或清空数据；仍失败请导出插件日志和 DSH 宿主的插件激活错误。详情见 ' +
+            '%USERPROFILE%\\.dsh\\bili-duty\\duty.log，另请检查 DSH 宿主插件加载错误日志。') : null)
       }
 
       // A first-start welcome is required even for existing users. B站 login
@@ -633,11 +632,15 @@ window.__ModuleLoader__.load({
           h('div',{'data-bd-sec':'',style:{padding:'20px',borderRadius:'16px',border:'2px solid #c74351',background:'rgba(218,61,73,.08)'}},
             h('div',{'data-bd-label':'',style:{fontSize:'19px',fontWeight:800,color:'#c74351'}},'🐟 欢迎来到大肥鱼 · 首次配置'),
             h('div',{'data-bd-note':''},'新用户和老用户都会看到一次这份向导；不会清除你的旧资料。B站账号与 Headless 模型是两项必需配置，未完成前所有业务功能锁定。'),
+            h('div',{'data-bd-281-intro':'','aria-label':'2.8.1 特色功能'},
+              h('span',null,'🎬 视觉模型与图片验收'),h('span',null,'🧠 神经记忆筛选'),
+              h('span',null,'🐟 Life 自主生活'),h('span',null,'⚙️ Headless 与资源协调')),
             h('div',{'data-bd-label':''},(steps.biliVerified?'✓':'○')+' B站账号登录并验证'+(steps.biliVerified?' · 已完成':'')),
             h('div',{'data-bd-label':''},(steps.headlessVerified?'✓':'○')+' Headless 模型同步并验证'+(steps.headlessVerified?' · 已完成':'')),
             h('div',{'data-bd-row':''},
-              !st.venvReady?h('button',{'data-bd-btn':'',onClick:onInstall,disabled:busy==='install'},'安装 B站运行依赖'):null,
-              h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('firststart')},'打开管理中心，开始配置 ↗')),
+              !st.venvReady?h('div',{'data-bd-note':''},'① B站/MCP 主依赖尚未就绪：请从下面的安装入口开始。安装完成后才能扫码，不需要事先安装 Conda。'):null,
+              !st.venvReady?h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('firststart','fs-deps-card')},st.installing?'查看主依赖安装进度 ↗':'① 安装／修复主依赖 ↗'):null,
+              h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},st.venvReady?'打开管理中心，开始配置 · 登录及模型 ↗':'② 打开管理中心，开始配置 ↗')),
             h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。'),
             manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null))
       }
@@ -646,10 +649,11 @@ window.__ModuleLoader__.load({
 
       return h('div', { 'data-bd-page': '' },
         h('div',{ 'data-bd-sec':'',style:{padding:'12px',borderRadius:'12px',border:'1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.24))'}},
-          h('div',{'data-bd-row':'',style:{justifyContent:'space-between',alignItems:'center'}},
-            h('div',{'data-bd-grow':''},h('div',{'data-bd-label':''},'🐳 大肥鱼 · DSH 生活系统'),
+          h('div',{'data-bd-header':''},
+            h('div',{'data-bd-header-copy':''},
+              h('div',{'data-bd-label':''},'🐳 大肥鱼 · DSH 生活系统'),
               h('div',{'data-bd-note':''},'她会自己去 B站、把重要经历带回主 Session、长期记住主人和朋友；精确档案、长期记忆、梗、好友关系与互动状态都保存在本地。')),
-            h('div',{'data-bd-row':'',style:{position:'relative',gap:'8px'}},
+            h('div',{'data-bd-header-actions':''},
               h('button',{type:'button','data-bd-btn':'',onClick:newVer?onUpgrade:onCheckUpdate,
                 disabled:busy==='upgrade'||busy==='update',
                 title:npmUpdateState.status==='error'?npmUpdateState.error:'仅通过 npm 官方仓库检测版本，手动更新前再次确认',
@@ -659,6 +663,22 @@ window.__ModuleLoader__.load({
                 newVer?h('span',{title:'npm 检测到更高版本',style:{display:'inline-block',position:'absolute',right:'-5px',top:'-5px',
                   width:'11px',height:'11px',borderRadius:'50%',background:'#e53935',boxShadow:'0 0 0 2px white'}}):null),
               h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage()},'打开管理中心 ↗'))),
+          h('div',{'data-bd-feature-panel':'release','aria-label':'2.8.1 版本新增特性'},
+            h('div',{'data-bd-feature-heading':''},'✨ 2.8.1 版本亮点'),
+            h('div',{'data-bd-281-intro':''},
+              h('span',null,'🎬 视频视觉配置与验收'),
+              h('span',null,'🧠 记忆神经场'),
+              h('span',null,'🐟 自主探索与互动'),
+              h('span',null,'⚙️ 资源协调与全新 Headless 同步 UI'))),
+          h('div',{'data-bd-feature-panel':'core','aria-label':'大肥鱼核心能力'},
+            h('div',{'data-bd-feature-heading':''},'🐳 大肥鱼的核心能力'),
+            h('div',{'data-bd-281-intro':''},
+              h('span',null,'🌱 自主生活与连续探索'),
+              h('span',null,'🧠 可衰减的人生记忆与遗忘'),
+              h('span',null,'💬 关系成长与自然交流'),
+              h('span',null,'🎞️ 有证据的视频理解与互动'),
+              h('span',null,'📖 行动日记与经历回忆'),
+              h('span',null,'🛡️ 主人授权与安全边界'))),
           h('div',{'data-bd-note':'',style:{marginTop:'6px',...(newVer?{color:'#c62828'}:{})}},
             npmUpdateState.status==='available'?'npm 发现新版本 v'+newVer+'；点击上方按钮更新并重启 DSH。':
               npmUpdateState.status==='checking'?'正在查询 npm 仓库版本（不会自动更新）…':
@@ -696,12 +716,12 @@ window.__ModuleLoader__.load({
         h('div',{'data-bd-sec':'','data-bd-group':'daily'},
           h('div',{'data-bd-h':''},'账号与运行环境'),
           h('div',{'data-bd-row':''},
-            h('button',{'data-bd-btn':'',disabled:busy==='install',onClick:onInstall},st.venvReady?'重装主依赖':'安装主依赖'),
+            h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart','fs-deps-card')},'安装／修复主依赖 ↗'),
             h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},'管理中心登录设置 ↗'),
             h('button',{'data-bd-btn':'',disabled:busy==='check',onClick:onCheck},'检查账号'),
             h('button',{'data-bd-btn':'',disabled:busy==='selfcheck',onClick:onSelfCheck},'环境自检')),
           h('div',{'data-bd-note':''},'扫码登录统一由管理中心 → 首次设置管理。'),
-          st.installTail?h('pre',{'data-bd-pre':''},String(st.installTail).slice(-2500)):null),
+          h('div',{'data-bd-note':''},'主依赖安装进度和日志请前往管理中心 → 首次设置查看。')),
 
         /* ── 发言与转写 ── */
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'social', 'data-bd-away': tab === 'social' ? undefined : '' },
@@ -762,26 +782,8 @@ window.__ModuleLoader__.load({
           h('div', { 'data-bd-note': '' }, '热评不再后台轮询：只有 AI 决定回复当前视频的评论后，才按需读取该视频其他热评。'),
           h('div', { 'data-bd-row': '' }, h('button', { 'data-bd-btn': '', onClick: () => onOpenManage() }, '管理后台互动 ↗')),
           h('div', { 'data-bd-sep': '' }),
-          h(ToggleRow, {
-            label: '本地转写没字幕的视频',
-            note: '默认关；开了以后，没字幕的视频会在本机转写一遍（不花 API 钱）',
-            on: sw('transcribe'),
-            onChange: (v) => patch({ transcribe: v }, '本地转写'),
-          }),
-          sw('transcribe') ? h('div', { 'data-bd-sub': '' },
-            h('div', { 'data-bd-row': '' },
-              h('button', { 'data-bd-btn': '', disabled: busy === 'asr', onClick: onInstallAsr },
-                st.asrReady ? '重装转写依赖' : '装转写依赖'),
-              h('div', { 'data-bd-note': '' },
-                !st.asrReady ? '还没装 —— 现在开着也没用：没字幕的视频会被跳过（报告里会写"因无字幕跳过 N 条"）'
-                  : (st.asrModelReady ? '环境和模型都好了' : '环境好了；模型会在第一次转写时自动下（几百 MB）'))),
-            h('div', { 'data-bd-note': '' },
-              '点一下就好：建一个独立环境、装 faster-whisper + yt-dlp，并把 Whisper 模型也下好',
-              h('br'),
-              '（模型默认 small，几百 MB，走国内镜像；装一次就够了）'),
-            st.asrTail ? h('div', null,
-              h('div', { 'data-bd-note': '' }, st.asrInstalling ? '正在装转写依赖（进度）：' : '转写依赖的日志（末尾）—— 只有「没字幕的视频」用得到它：'),
-              h('pre', { 'data-bd-pre': '' }, st.asrTail)) : null) : null),
+          h('div', { 'data-bd-note': '' }, '字幕、Whisper 转写、FFmpeg 与表情包辅助设置已移至管理中心 → AI 模型 → 视频感知依赖与辅助能力。'),
+          h('div', {'data-bd-row':''}, h('button', {'data-bd-btn':'',onClick:()=>onOpenManage('models')}, '前往 AI 模型辅助能力 ↗'))),
 
         /* 复杂内容管理统一进入管理中心；原设置页只保留少量基础开关。 */
         h('div',{'data-bd-sec':'','data-bd-group':'taste','data-bd-away':tab==='taste'?undefined:''},
@@ -803,21 +805,20 @@ window.__ModuleLoader__.load({
 
         /* ── 关注什么 / 在哪儿刷 ── */
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'taste', 'data-bd-away': tab === 'taste' ? undefined : '' },
-          h('div', { 'data-bd-h': '' }, '👀 视频预览快照识图（试验功能）'),
-          h(ToggleRow, {label:'开启低清预览识图', note:'默认关闭；由视频 Agent 综合播放量、评论、弹幕及视觉梗价值自行决定要不要识图。冷门但有明确画面梗也可识图，绝不默认每条都分析；每轮最多 2 条。',
+          h('div', { 'data-bd-h': '' }, '👀 自主视频分镜感知（2.8.1 开发版）'),
+          h(ToggleRow, {label:'启用视觉理解能力', note:'鱼鱼自己决定是否观看和理解深度；支持受控真实视频自适应分镜，取不到时标注低清预览回退。不会强制看完或额外点赞。',
             on:sw('visionEnabled'),onChange:v=>patch({visionEnabled:v},'预览识图总开关')}),
-          h(ToggleRow, {label:'Debug：保存实际预览图', note:'默认关闭；开启后把送去识图的 JPEG 保存到插件数据目录 vision-debug/BV号/，方便自己查看。',
+          h(ToggleRow, {label:'Debug：保存实际预览图', note:'默认关闭；低清预览调试图片写入 vision-debug/BV号/；真实公开视频分镜不会默认持久保留。',
             on:sw('visionDebug'),onChange:v=>patch({visionDebug:v},'预览图调试保存')}),
           h('div',{'data-bd-note':''},'视觉识图提示词已移至管理中心 → 人设与好友。'),
           (cfg.visionEnabled||cfg.visionDebug) ? h('div',{'data-bd-sub':''},
             h('div',{'data-bd-label':''},'识图方式'),
             h('div',{'data-bd-row':''},
-              h('select',{'data-bd-input':'',value:['reuse_video_model','independent_dsh','auto'].includes(cfg.visionMode)?cfg.visionMode:'reuse_video_model',style:{width:'100%',maxWidth:'570px'},
+              h('select',{'data-bd-input':'',value:['independent_dsh','independent_local'].includes(cfg.visionMode)?cfg.visionMode:'independent_dsh',style:{width:'100%',maxWidth:'570px'},
                 onChange:e=>patch({visionMode:e.target.value},'视觉处理模式')},
-                h('option',{value:'reuse_video_model'},'复用刷视频 / 视频分析模型（推荐，不额外配置密钥）'),
-                h('option',{value:'independent_dsh'},'独立 DSH 视觉模型（单独配置 Provider / 模型 / 思考深度）'),
-                h('option',{value:'auto'},'自动优先复用视频模型（不暗中另调用其他付费模型）'))),
-            h('div',{'data-bd-note':''},'复用模式：图片经 DSH MCP 直接交给当前视频 Agent，与已有字幕、弹幕一起判断。独立模式：通过 DSH 账号已有的模型路由另起一个只读视觉 Agent；不需要单独填写 API Key 或 API 地址。两种模式都要求所选模型支持图片输入。'),
+                h('option',{value:'independent_dsh'},'DSH 识图模型（使用 AI 模型页中指定的 Provider）'),
+                h('option',{value:'independent_local'},'本地 Ollama 视觉模型（管理中心一键下载）'))),
+            h('div',{'data-bd-note':''},'DSH 模式：根据管理中心 AI 模型页已选的视觉 Provider 与模型，运行只读识图。Ollama 模式：使用管理中心下载安装并人工验收的本地模型。两种模式都不使用旧版 Endpoint。'),
             cfg.visionMode==='independent_dsh' ? h('div',{'data-bd-sub':''},
               h('div',{'data-bd-label':''},'独立视觉模型（与其他模型设置相同格式）'),
               ...[['visionModelProvider','模型提供方 Provider（可留空）','如 claude'],
@@ -828,7 +829,7 @@ window.__ModuleLoader__.load({
                     onChange:e=>setVisionDraft(old=>({...old,[key]:e.target.value})),
                     onBlur:()=>patch({[key]:(visionDraft||{})[key]||''},label)}))),
               h('div',{'data-bd-note':''},'留空时优先继承刷视频模型的相应配置。独立视觉 Agent 与主视频 Agent 是两次 DSH 模型会话，但不走旧的 API Key/DPAPI 接口。')):null,
-            h('div',{'data-bd-note':''},`每条取图 ${cfg.visionFrames??2} 张；额外独立视觉模型每日最多 ${cfg.visionDailyLimit??30} 次（复用视频模型看图不扣此额度）。两项分别在管理中心 → 次数与额度修改。`),
+            h('div',{'data-bd-note':''},`当前分镜预算上限 ${cfg.visionFrames??24} 个时刻（标准了解最多12；深入探索按所选档位，最多4张12格分镜图）；实际可少于上限。DSH 与 Ollama 不设每日调用次数硬上限；请在管理中心 → 视频探索选择采样预算卡片，缓存命中不重复识图。`),
             h('div',{'data-bd-note':''},'不再需要视觉 API Key。旧版本本地可能保存过 DPAPI 加密文件，升级不会读取或上传它；如需清理，可删除 bili-duty 目录中的 .vision-api-key.dpapi。'),
             h('div',{'data-bd-row':''},
               h('input',{'data-bd-input':'',placeholder:'输入一个 BV 号，测试预览图片',style:{flex:1,minWidth:'180px'},value:visionBV,
@@ -843,16 +844,11 @@ window.__ModuleLoader__.load({
             h('div',{'data-bd-note':''},'Windows 默认目录：C:\\Users\\你的账号\\.dsh\\bili-duty\\vision-debug\\BV号。关闭 Debug 后不会自动删除旧图片。')):null,
           h('div',{'data-bd-sep':''})),
         h('div', { 'data-bd-sec': '', 'data-bd-group': 'taste', 'data-bd-away': tab === 'taste' ? undefined : '' },
-          h('div', { 'data-bd-h': '' }, '选片来源'),
-          h(ToggleRow, {label:'加入首页推荐视频', note:'默认开启；与兴趣主导的主题搜索混合选片。每轮首页推荐最多读取一次、最多12个候选，过滤直播与广告。是否挑中仍由大肥鱼判断；不设每日入选视频数量上限，但共享原有平台读取预算与外发权限。',
+          h('div', { 'data-bd-h': '' }, '首页日常漫游'),
+          h(ToggleRow, {label:'允许独立的 B站首页漫游', note:'仅控制首页来源；首页漫游不会混入关键词搜索。由鱼鱼自主选择何时探索，仍受平台读取预算及授权约束。',
             on:sw('homeRecommendationsEnabled'),onChange:v=>patch({homeRecommendationsEnabled:v},'首页推荐选片来源')}),
           h('div', { 'data-bd-note':'' }, `当前入选门槛：播放 ${cfg.minVideoViews??1000}、点赞 ${cfg.minVideoLikes??10}、评论 ${cfg.minVideoReplies??3}。到管理中心 → 次数与额度修改。`),
-          h('div', { 'data-bd-h': '' }, '主人额外指定的关注主题'),
-          h('textarea', {
-            'data-bd-input': '', rows: 5, placeholder: '可留空；一行一个额外关注主题（兴趣档案负责主要选片）',
-            value: kws ?? '', onChange: (e) => setKws(e.target.value),
-          }),
-          h('div', { 'data-bd-note':'' }, '日常选片主要由「人生记忆 → 兴趣趋势」决定；这里写的词是主人额外希望关注的方向，不会覆盖兴趣档案或人设。'),
+          h('div', { 'data-bd-note':'' }, '关键词探索由人生记忆中的真实兴趣及 Life 线索驱动；主人设定的核心兴趣请到管理中心 → 人生记忆 → 兴趣编辑。旧关键词配置只保留兼容读取，本页不再重复编辑。'),
           h('div', { 'data-bd-label': '' }, '日报写多细'),
           h('select', {
             'data-bd-input': '', value: rl ?? 'full',
@@ -886,7 +882,7 @@ window.__ModuleLoader__.load({
               h('div', { 'data-bd-item-t': '' }, (x.ok ? '正常 · ' : '有问题 · ') + x.name),
               h('div', { 'data-bd-item-n': '' }, x.detail || ''),
               x.ok ? null : h('div', { 'data-bd-item-why': '' }, '怎么办：' + (x.fix || '把诊断信息发给作者'))))) : null,
-          diag ? h('pre', { 'data-bd-pre': '' }, diag) : null,
+          diag ? h('div', { 'data-bd-note': '' }, '诊断信息已在本机准备好；可复制给维护者，详细日志请在管理中心查看。') : null,
           h('div',{'data-bd-h':''},'模型路由：刷视频与后台互动独立配置'),
           h('div',{'data-bd-note':''},'提供方(provider)、模型 ID 为空时继承 DSH 当前配置；思考深度为自由文本，按模型支持的原始格式填写。保存后下次启动 Agent 生效。'),
           ...[
@@ -906,22 +902,18 @@ window.__ModuleLoader__.load({
           h('div', { 'data-bd-sep': '' }),
           h('div', { 'data-bd-h': '' }, '环境与账号'),
           h('div', { 'data-bd-row': '' },
-            h('button', { 'data-bd-btn': '', disabled: busy === 'install', onClick: onInstall },
-              st.venvReady ? '重装主依赖' : '装主依赖（建 venv）'),
+            h('button', { 'data-bd-btn': '', onClick:()=>onOpenManage('firststart') }, '安装／修复主依赖 ↗'),
             h('button', { 'data-bd-btn': '', disabled: busy === 'check', onClick: onCheck }, '测一下'),
             h('button', { 'data-bd-btn': '', disabled: busy === 'update', onClick: onCheckUpdate }, '检查更新'),
             newVer ? h('button', { 'data-bd-btn': '', 'data-primary': '', disabled: busy === 'upgrade', onClick: onUpgrade }, '一键升级到 v' + newVer) : null,
-            h('button', { 'data-bd-btn': '', onClick:()=>onOpenManage('firststart') }, '管理中心登录设置 ↗'),
             h('div', { 'data-bd-note': '' },
-              !st.venvReady ? (st.installFailed ? '上次没装成 → 看下面日志' : '还没装 → 先点「装主依赖」')
+              !st.venvReady ? (st.installFailed ? '上次安装失败 → 到首次设置修复' : '主依赖未就绪 → 前往首次设置安装')
                 : (st.loggedIn ? '已有 B站凭据，可在管理中心重新验证' : '环境好了 → 去管理中心登录 B站'))),
-          h('div', { 'data-bd-note': '' }, 'B站账号登录已统一到管理中心；本页只保留环境安装。'),
-          st.installTail ? h('div', null,
-            h('div', { 'data-bd-note': '' }, st.installing ? '正在装主依赖（进度）：' : '主依赖的日志（B站 搜索 / 字幕 / 评论 用得到，末尾）：'),
-            h('pre', { 'data-bd-pre': '' }, st.installTail)) : null,
+          h('div', { 'data-bd-note': '' }, '运行环境安装与账号登录均已统一到管理中心 → 快速设置；本页只显示只读状态。'),
+          h('div', { 'data-bd-note': '' }, '安装进度和主依赖日志集中在管理中心 → 首次设置，避免设置页重复显示。'),
           h('div', { 'data-bd-note': '' }, '如需重新登录，请前往大肥鱼管理中心 → 首次设置。')),
           (Array.isArray(st.missingDeps) && st.missingDeps.length)
-            ? h('div', { 'data-bd-note': '' }, '还缺这几项：' + st.missingDeps.join(' / ') + '（qrcode = 画登录二维码用的）—— 点一次「重装主依赖」就会补上')
+            ? h('div', { 'data-bd-note': '' }, '还缺这几项：' + st.missingDeps.join(' / ') + '（qrcode = 画登录二维码用的）—— 前往管理中心 → 快速设置修复')
             : null,
 
         /* ── 它是怎么干活的（给他看的） ── */

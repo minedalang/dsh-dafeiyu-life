@@ -32,7 +32,10 @@ test('旧好友数据升级：不重复 UID，不擅自新增 @ 或私信权限�
 test('好友 @ 意愿轮询可以独立于公开回复权限运行，且仍受总开关控制',async()=>{
  let polls=0, sent=0
  const cfg={masterEnabled:true,commentAtEnabled:false,friendAtFeedbackEnabled:true,dmWatch:false,commentWatchReplies:false,commentAtWatchMinutes:1}
- const engine=createInteractionScheduler({dm:{poll:()=>({})},comments:{poll:()=>{polls++;return {sent:0}}},getConfig:()=>cfg,now:()=>1000000})
+ const home=mkdtempSync(join(tmpdir(),'friend-at-sentinel-'))
+ const engine=createInteractionScheduler({dm:{poll:()=>({})},comments:{poll:()=>{polls++;return {sent:0}}},
+  readSocialUnread:async()=>({mode:'split',replyCount:0,atCount:1,likeCount:0}),
+  dataDir:home,getAccountTag:()=> '0123456789abcdef',getConfig:()=>cfg,now:()=>1000000})
  engine.start()
  await new Promise(r=>setTimeout(r,15))
  const status=engine.status()
@@ -42,6 +45,7 @@ test('好友 @ 意愿轮询可以独立于公开回复权限运行，且仍受�
  engine.stop()
  cfg.masterEnabled=false
  assert.equal(engine.status().checks.mentions.enabled,false)
+ rmSync(home,{recursive:true,force:true})
 })
 
 test('只读收取朋友 @ 的明确偏好，首次只建基线，后续不调用模型、不发公开评论',async()=>{

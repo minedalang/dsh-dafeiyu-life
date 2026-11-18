@@ -1,8 +1,9 @@
 import test from 'node:test'
-import assert from 'node:assert/strict'
-import {mkdtemp,rm} from 'node:fs/promises'
+import {mkdtempSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import assert from 'node:assert/strict'
+import {mkdtemp,rm} from 'node:fs/promises'
 import {deliverMessageBurst} from '../lib/message-burst.mjs'
 import {createDmAutoReply} from '../lib/dm-autoreply.mjs'
 import {collectDmInbox} from '../lib/dm-inbox.mjs'
@@ -59,21 +60,22 @@ test('non-owner DM occasionally reconsiders after confirmed delivery without a p
  clock+=181_000;assert.equal(engine.nextFastUid(),'')
 }))
 
-test('fast session scheduler has no extra get_sessions call and obeys config / rate-limited backoff',async()=>{
- let clock=t0,fastReady='22334';const calls=[]
- const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:2,dmActivePollEnabled:true,dmActivePollSeconds:10,commentWatchReplies:false,commentAtEnabled:false}
- const dm={poll:async opt=>{calls.push(opt||{});return {sent:0}},nextFastUid:()=>fastReady,status:()=>({fast:{activeCount:1}})}
- const scheduler=createInteractionScheduler({dm,comments:{poll:async()=>({})},getConfig:()=>cfg,now:()=>clock})
+test('fast session scheduler keeps the one-time baseline scan and then targets only the active conversation',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dev16-fast-sentinel-'));let clock=t0,fastReady='22334';const calls=[]
+ const cfg={masterEnabled:true,dmWatch:true,dmActivePollEnabled:true,dmActivePollSeconds:10,commentWatchReplies:false,commentAtEnabled:false}
+ const dm={poll:async opt=>{calls.push(opt||{});return {ok:true,sent:0}},nextFastUid:()=>fastReady,status:()=>({fast:{activeCount:1,nextIntervalSeconds:10}})}
+ const scheduler=createInteractionScheduler({dataDir:dir,getAccountTag:()=> 'aaaaaaaaaaaaaaaa',dm,comments:{poll:async()=>({})},
+   readPrivateUnread:async()=>({followUnread:0,unfollowUnread:0,dustbinUnread:0,unfollowPushUnread:0,dustbinPushUnread:0,bizFollowUnread:0,bizUnfollowUnread:0,customUnread:0}),
+   getConfig:()=>cfg,now:()=>clock})
  try{
-  scheduler.start();await new Promise(r=>setTimeout(r,8));assert.equal(calls.length,1)
+  scheduler.start();await new Promise(r=>setTimeout(r,15));assert.deepEqual(calls[0],{})
   clock+=10_000;await scheduler.tick();assert.deepEqual(calls.at(-1),{fastUid:'22334'})
-  // Expose the fast lane separately, not only the coarse full-session scan.
   assert.equal(scheduler.status().checks.dmFast.lastResult,'completed')
   assert.equal(scheduler.status().checks.dmFast.intervalSeconds,10)
   cfg.dmActivePollEnabled=false;clock+=10_000;await scheduler.tick();assert.equal(calls.length,2)
   cfg.dmActivePollEnabled=true;fastReady='';clock+=10_000;await scheduler.tick();assert.equal(calls.length,2)
-  clock+=120_000;await scheduler.tick();assert.deepEqual(calls.at(-1),{})
- }finally{scheduler.stop()}
+  clock+=120_000;await scheduler.tick();assert.equal(calls.length,2,'no new counter means no new full-session scan')
+ }finally{scheduler.stop();rmSync(dir,{recursive:true,force:true})}
 })
 
 test('a verified Life bubble may extend its own exact text seal once, never another recipient',async()=>mk(async dataDir=>{
@@ -92,12 +94,18 @@ test('a verified Life bubble may extend its own exact text seal once, never anot
 }))
 
 
-test('targeted fetch failure propagates into shared backoff; ordinary inbox keeps other sessions',async()=>{
+test('B站 -509 / 共享读取暂停立即停止整轮私信扫描；普通网络错误仍可检查其他会话',async()=>{
  const source=[{uid:person,unread:1,lastTs:t0},{uid:'33445',unread:1,lastTs:t0}]
- const adapter=async(uid)=>{if(uid===person)throw Error('HTTP -509');return [{key:'k',ts:t0,text:'你好',fromMe:false,kind:1}]}
- const normal=await collectDmInbox({sessions:source,ownUid:uid,readConversation:adapter,now:()=>t0,logger:{warn(){}}})
- assert.equal(normal.length,1)
- await assert.rejects(collectDmInbox({sessions:source.slice(0,1),ownUid:uid,readConversation:adapter,now:()=>t0,failClosed:true,logger:{warn(){}}}),/HTTP -509/)
+ const rateCalls=[]
+ const throttled=async(uid)=>{rateCalls.push(uid);throw Error('HTTP 200 code=-509 请求过于频繁')}
+ await assert.rejects(collectDmInbox({sessions:source,ownUid:uid,readConversation:throttled,now:()=>t0,logger:{warn(){}}}),/HTTP 200 code=-509/)
+ assert.deepEqual(rateCalls,[person],'命中平台限流后不能继续读取第二个会话')
+ const normal=await collectDmInbox({sessions:source,ownUid:uid,readConversation:async target=>{
+   if(target===person)throw Error('ECONNRESET')
+   return [{key:'k',ts:t0,text:'你好',fromMe:false,kind:1}]
+ },now:()=>t0,logger:{warn(){}}})
+ assert.equal(normal.length,1,'普通单会话网络错误仍允许本轮检查其他会话')
+ await assert.rejects(collectDmInbox({sessions:source.slice(0,1),ownUid:uid,readConversation:throttled,now:()=>t0,failClosed:true,logger:{warn(){}}}),/HTTP 200 code=-509/)
 })
 
 test('active lane is account-scoped and does not retry failed model every ten seconds',async()=>mk(async dataDir=>{
@@ -114,6 +122,36 @@ test('active lane is account-scoped and does not retry failed model every ten se
  clock+=60_000;assert.equal(engine.nextFastUid(),person)
  account='998';assert.equal(engine.nextFastUid(),'')
  assert.equal((await engine.poll({fastUid:person})).skipped,'inactive-session')
+}))
+
+test('活跃私信快通道在连续无新消息时自适应 10→20→30 秒，有新来信后重置',async()=>mk(async dataDir=>{
+ let clock=t0
+ const inbox=[input('baseline','旧消息')]
+ const config={enabled:true,strangerEnabled:false,p6Enabled:true,p6MaxBubbles:3,whitelist:[person],
+   whitelistCooldownSeconds:0,dmActivePollSeconds:10,dmActiveWindowSeconds:600}
+ const engine=createDmAutoReply({dataDir,getConfig:()=>config,selfUid:'999',now:()=>clock,fetchIncoming:async()=>inbox,
+   send:async()=>({ok:true,receiptId:'adaptive'}),generateReply:async()=>({action:'skip',messages:[]}),
+   logger:{warn(){},error(){}}})
+ await engine.poll() // establish safe baseline
+ inbox.push(input('new-1','刚刚有新消息'))
+ await engine.poll() // create active session; model may choose silence
+ assert.equal(engine.status().fast.nextIntervalSeconds,10)
+ clock+=10_000;assert.equal(engine.nextFastUid(),person)
+ await engine.poll({fastUid:person}) // quiet check 1
+ assert.equal(engine.status().fast.nextIntervalSeconds,20)
+ clock+=10_000;assert.equal(engine.nextFastUid(),'')
+ clock+=10_000;assert.equal(engine.nextFastUid(),person)
+ await engine.poll({fastUid:person}) // quiet check 2
+ assert.equal(engine.status().fast.nextIntervalSeconds,30)
+ clock+=20_000;assert.equal(engine.nextFastUid(),'')
+ clock+=10_000;assert.equal(engine.nextFastUid(),person)
+ await engine.poll({fastUid:person}) // quiet check 3
+ assert.equal(engine.status().fast.nextIntervalSeconds,30)
+ clock+=20_000;assert.equal(engine.nextFastUid(),'')
+ clock+=10_000;assert.equal(engine.nextFastUid(),person)
+ inbox.push(input('new-2','又有新消息'))
+ await engine.poll({fastUid:person})
+ assert.equal(engine.status().fast.nextIntervalSeconds,10,'新消息重新建立快速响应窗口')
 }))
 
 

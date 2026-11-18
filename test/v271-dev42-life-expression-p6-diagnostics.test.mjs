@@ -30,11 +30,13 @@ test('Life Voice combines current emotion and verified growth without claiming a
   assert.doesNotMatch(prompt,/俏皮度 [0-4]\/4|温柔度 [0-4]\/4/);
 });
 
-test('real owner Bilibili DMs are routed to separate owner DM agent before ordinary P6-A',async()=>{
+test('real owner Bilibili DMs share Life DM entry; old owner agent cannot consume them',async()=>{
   const src=await file('../index.js');
-  assert.match(src,/const ownerRows=cfg\.ownerDmAgentEnabled===true\?incoming\.filter/);
-  assert.match(src,/await ownerDmAgent\.processMessages\(ownerRows\)/);
-  assert.match(src,/const remaining=incoming\.filter\(row=>!ownerRows\.includes\(row\)\)/);
+  const from=src.indexOf('async function getNewDmMessages('),to=src.indexOf('function dmChatPrompt(',from);
+  assert.ok(from>=0&&to>from);
+  const inbox=src.slice(from,to);
+  assert.match(inbox,/unifiedOwnerDmCutover/);
+  assert.doesNotMatch(inbox,/ownerDmAgent\.processMessages|parseOwnerDmAction\(|runOwnerDmAction\(/);
 });
 
 test('P6-A diagnostic distinguishes model three, configured two, actual two, no private text or UID',async()=>{

@@ -74,7 +74,9 @@ test('Python-held danmaku lock blocks Node and releases normally without console
   const finished=new Promise(resolve=>child.once('close',(code,signal)=>resolve({code,signal})))
   let stdout='',stderr=''
   const started=new Promise((resolve,reject)=>{
-    const limit=setTimeout(()=>reject(new Error('Python did not acquire danmaku reservation: '+stderr)),4000)
+    // Python process startup may be delayed under CI's full test concurrency.
+    // Still fail closed on a bounded timeout, and verify the actual held lock.
+    const limit=setTimeout(()=>reject(new Error('Python did not acquire danmaku reservation: '+stderr)),15000)
     child.stderr.on('data',x=>{stderr+=x.toString()})
     child.stdout.on('data',x=>{stdout+=x.toString();if(stdout.includes('LOCKED')){clearTimeout(limit);resolve()}})
     child.once('error',e=>{clearTimeout(limit);reject(e)})

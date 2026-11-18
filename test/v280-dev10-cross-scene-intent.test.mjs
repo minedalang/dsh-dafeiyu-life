@@ -143,7 +143,7 @@ test('video queued admission does not override authorization revoked while waiti
     expiresAt:Date.now()+3_600_000,nextAt:0}
   const config=()=>({masterEnabled:true,autonomousPlannerEnabled:true,lifeAgentMode:'active',
     autoVideoLike:allow,autoVideoLikeDailyLimit:5})
-  const send=createLifeContinuationWriteExecutor({getConfig:config,getAccountTag:()=>SCOPE,
+  const send=createLifeContinuationWriteExecutor({hasVerifiedVisual:()=>true,getConfig:config,getAccountTag:()=>SCOPE,
     getAccountUid:()=>UID,getIntention:()=>intention,
     getPublicEvidence:async()=>({ok:true,bvid:BV,title:'真实视频'}),markSelected:async()=>({ok:true}),
     bridgeReady:()=>true,

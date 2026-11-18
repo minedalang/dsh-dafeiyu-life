@@ -26,7 +26,7 @@ test('dev.5 pack whitelist retains archived dev.4 diagrams and notes',()=>{
   assert.match(p.version,/^(?:2\.6\.2(?:-dev\.[1-9]\d*)?|2\.7\.0(?:-dev\.[1-9]\d*)?|2\.7\.1-dev\.[1-9]\d*)$/)
   assert.ok(existsSync(path.join(root,'docs/release/archive/RELEASE_NOTES_v2.6.0-dev.4.md')))
   assert.ok(existsSync(path.join(root,'docs/release/archive/RELEASE_NOTES_v2.6.0-dev.5.md')))
-  assert.ok(p.files.includes('RELEASE_NOTES_v2.6.2.md'))
+  assert.ok(p.files.includes('docs/release/archive/RELEASE_NOTES_v2.6.2.md'))
   assert.ok(!p.files.some(x=>x.includes('RELEASE_NOTES_v2.6.0-dev.')))
   assert.ok(p.files.includes('docs/architecture'))
   assert.ok(p.files.includes('lib'))

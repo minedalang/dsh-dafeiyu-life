@@ -1,4 +1,5 @@
 import importlib.util
+import unittest
 import json
 import sys
 from pathlib import Path
@@ -18,9 +19,9 @@ def configured(tmp_path):
         rows.extend([f'- id: {ident}','  disabled: true',''])
     for ident in ('credentials','authorization','deepseek-account'):
         rows.extend([f'- id: {ident}','  disabled: false',''])
-    rows.extend(['- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_preview_vision'",''])
+    rows.extend(['- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_preview_vision'", "          BILI_VISION_CHILD: '1'",''])
     (tmp_path/'headless-vision-overlay.yml').write_text('\n'.join(rows),encoding='utf8')
-    args=['/some/absolute/dsh','--profile','headless','--patch',str(tmp_path/'headless-vision-overlay.yml')]
+    args=[sys.executable,'--profile','headless','--patch',str(tmp_path/'headless-vision-overlay.yml')]
     env={'BILI_VISION_DSH_ARGV':json.dumps(args),'BILI_VISION_DSH_MODEL':'claude-haiku-5-5',
          'BILI_VISION_DSH_PROVIDER':'claude','BILI_VISION_FRAMES':'2'}
     return env
@@ -43,14 +44,14 @@ def test_dsh_model_analysis_requires_frame_receipt(tmp_path):
         receipt=Path(kwargs['env']['BILI_VISION_PROOF_FILE'])
         receipt.write_text(json.dumps({'bvid':'BV1234567890','times':[3.0,7.0]}),encoding='utf8')
         return SimpleNamespace(returncode=0,stdout='VISION_DESC: 画面中央有一只圆形黄色卡通角色，背景呈蓝色。\n'.encode(),stderr=b'')
-    with patch('preview_vision._claim_vision_quota',return_value=True) as quota:
+    with patch('preview_vision._record_vision_attempt',return_value=True) as quota:
         result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=fake_runner)
         assert result['ok'] and result['status']=='analyzed'
         assert calls[0][0][-1].find('BV1234567890')>=0
         assert '--patch' in calls[0][0]
         assert not Path(calls[0][1]['env']['BILI_VISION_PROOF_FILE']).exists()
         quota.assert_called_once()
-    with patch('preview_vision._claim_vision_quota',side_effect=AssertionError('cache should skip quota')):
+    with patch('preview_vision._record_vision_attempt',side_effect=AssertionError('cache should skip quota')):
         result2=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=lambda *a,**kw: 1/0)
         assert result2['status']=='cached'
 
@@ -59,16 +60,20 @@ def test_dsh_model_no_frame_receipt_not_success(tmp_path):
     env=configured(tmp_path)
     def fake_runner(*args,**kwargs):
         return SimpleNamespace(returncode=0,stdout=b'VISION_DESC: made-up graphic scene\n',stderr=b'')
-    with patch('preview_vision._claim_vision_quota',return_value=True):
+    with patch('preview_vision._record_vision_attempt',return_value=True):
         result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=fake_runner)
     assert not result['ok'] and result['status']=='no_images_confirmed'
 
 
-def test_daily_quota_applies_to_independent_dsh(tmp_path):
+def test_no_daily_quota_blocks_independent_dsh(tmp_path):
     env=configured(tmp_path)
-    with patch('preview_vision._claim_vision_quota',return_value=False):
-        result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=lambda *a,**kw: 1/0)
-    assert result['status']=='daily_limit'
+    called=[]
+    def runner(*args,**kwargs):
+        called.append(True)
+        return SimpleNamespace(returncode=2,stdout=b'',stderr=b'')
+    with patch('preview_vision._record_vision_attempt',return_value=None):
+        result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=runner)
+    assert called and result['status']!='daily_limit'
 
 
 def test_tampered_vision_overlay_fails_closed(tmp_path):
@@ -106,10 +111,226 @@ def test_custom_prompt_uses_same_independent_model_and_invalidates_cache(tmp_pat
         calls.append(args[-1])
         Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({'bvid':'BV1234567890','times':[6.0]}),encoding='utf8')
         return SimpleNamespace(returncode=0,stdout='VISION_DESC: 画面里一只绿色卡通角色正挥动手臂。\n'.encode(),stderr=b'')
-    with patch('preview_vision._claim_vision_quota',return_value=True):
+    with patch('preview_vision._record_vision_attempt',return_value=True):
         assert module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=fake_runner)['ok']
         assert '优先观察角色动作与表情' in calls[0]
         # Switching the instruction must not reuse a different instruction's observation.
         env['BILI_VISION_PROMPT_B64']=base64.b64encode('只观察画面可读文字'.encode('utf8')).decode('ascii')
         result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=fake_runner)
         assert result['status']=='analyzed' and len(calls)==2
+
+
+def test_dsh_focused_window_receipt_is_bound_to_requested_window(tmp_path):
+    env=configured(tmp_path)
+    expected={'startSeconds':21.0,'endSeconds':51.0}
+    seen=[]
+    def fake_runner(args,**kwargs):
+        seen.append(args[-1])
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(
+            json.dumps({'bvid':'BV1234567890','times':[30.0,40.0],
+                        'focus_window':expected}),encoding='utf8')
+        return SimpleNamespace(returncode=0,
+            stdout='VISION_DESC: 第30秒和第40秒分别显示两幅不同的卡通画面。\n'.encode(),stderr=b'')
+    with patch('preview_vision._record_vision_attempt',return_value=True):
+        result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=fake_runner,focus_start=21,focus_end=51)
+        assert result['ok'] is True
+        assert result['focus_window']==expected
+        assert 'focus_start_seconds=21.0' in seen[0]
+        assert 'focus_end_seconds=51.0' in seen[0]
+        # Cached focused proof does not authorize an ordinary full-video observation.
+        ordinary=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=lambda *_a,**_kw: SimpleNamespace(returncode=2,stdout=b'',stderr=b''))
+        assert ordinary['ok'] is False
+    def wrong_focus(args,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(
+            json.dumps({'bvid':'BV1234567890','times':[30], 'focus_window':None}),encoding='utf8')
+        return SimpleNamespace(returncode=0,stdout='VISION_DESC: 不应接受的结果\n'.encode(),stderr=b'')
+    with patch('preview_vision._record_vision_attempt',return_value=True):
+        mismatched=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=wrong_focus,focus_start=30,focus_end=40)
+        assert not mismatched['ok'] and mismatched['status']=='no_images_confirmed'
+
+
+def test_dsh_adaptive_vision_binds_proof_source_and_never_caches_preview_fallback(tmp_path):
+    env=configured(tmp_path)
+    calls=[]
+    def run_real(argv,**kw):
+        calls.append(argv[-1])
+        Path(kw['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'bvid':'BV1234567890','times':[3.0,7.0],
+            'perception_source_requested':'adaptive',
+            'image_source':'B站公开视频片段（离线解码）',
+            'sampling':{'sampler_version':4,'strategy':'decoded-scene-2fps',
+                'source_type':'bili-public-playurl-durl','clip_window':{'startSeconds':0,'endSeconds':10},
+                'frames_selected':2,'candidates_examined':20}}),encoding='utf8')
+        return SimpleNamespace(returncode=0,stdout='VISION_DESC: 第三秒与第七秒画面显示不同颜色的动画场景。\n'.encode(),stderr=b'')
+    with patch('preview_vision._record_vision_attempt',return_value=True):
+        real=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=run_real,perception_source='adaptive')
+        assert real['ok'] and real['image_source']=='B站公开视频片段（离线解码）'
+        assert 'perception_source=adaptive' in calls[0]
+    with patch('preview_vision._record_vision_attempt',side_effect=AssertionError('adaptive cache should be used')):
+        cached=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=lambda *_a,**_kw:1/0,perception_source='adaptive')
+        assert cached['status']=='cached' and cached['image_source']=='B站公开视频片段（离线解码）'
+    # A preview source request must never hit the adaptive result cache.
+    with patch('preview_vision._record_vision_attempt',return_value=True):
+        ordinary=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=lambda *a,**kw:SimpleNamespace(returncode=1,stdout=b'',stderr=b''))
+    assert ordinary['ok'] is False
+
+    def wrong_source(argv,**kw):
+        Path(kw['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'bvid':'BV1234567890','times':[4.0],
+            'perception_source_requested':'preview',
+            'image_source':'B站低清预览'}),encoding='utf8')
+        return SimpleNamespace(returncode=0,stdout='VISION_DESC: 不应认可的图片观察\n'.encode(),stderr=b'')
+    with patch('preview_vision._record_vision_attempt',return_value=True):
+        wrong=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=wrong_source,perception_source='adaptive',focus_start=3,focus_end=8)
+    assert not wrong['ok'] and wrong['status']=='no_images_confirmed'
+
+
+def selftest_configured(tmp_path):
+    rows=[]
+    for ident in module._HEADLESS_DENY_TOOLS:
+        rows.extend([f'- id: {ident}','  disabled: true',''])
+    for ident in ('credentials','authorization','deepseek-account'):
+        rows.extend([f'- id: {ident}','  disabled: false',''])
+    rows.extend(['- insert:','    - id: mcp-bili-vision-readonly',"      name: '@deepseek-ai/dsh-mcp-client'",'      config:','        serverName: bilivision','        transport: stdio','        env:',"          BILI_MCP_TOOLS: 'bili_vision_selftest'","          BILI_VISION_SELFTEST_ALLOWED: '1'",
+        f"          BILI_VISION_TEST_ASSET: '{ROOT / 'lib' / 'assets' / 'local-vision-selftest-dafeiyu.png'}'",''])
+    overlay=tmp_path/'headless-vision-selftest-overlay.yml'
+    overlay.write_text('\n'.join(rows),encoding='utf8')
+    args=[sys.executable,'--profile','headless','--patch',str(overlay)]
+    return {'BILI_VISION_DSH_ARGV':json.dumps(args)}
+
+
+def test_dsh_image_selftest_reports_mcp_payload_and_unobservable_attachment_bridge(tmp_path):
+    env=selftest_configured(tmp_path)
+    def fake_runner(args,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'kind':'dafeiyu-selftest',
+            'sha256':'a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b',
+            'byteLength':515908,'mimeType':'image/png','imageBlocks':1,
+        }),encoding='utf8')
+        return SimpleNamespace(returncode=0,
+            stdout='VISION_TEST_RESULT: 画面中是一只蓝色头发、白色围裙的卡通角色。\n'.encode(),stderr=b'')
+    result=module.describe_test_image_with_dsh(tmp_path,env=env,runner=fake_runner)
+    assert result['ok'] and result['status']=='awaiting_review'
+    assert result['diagnostics']['mcpImage']=={
+        'status':'verified','mimeType':'image/png','imageBlocks':1,'byteLength':515908}
+    assert result['diagnostics']['attachmentBridge']['status']=='not_observable'
+    assert result['diagnostics']['providerApi']['status']=='completed'
+    assert result['diagnostics']['modelAnswer']['status']=='returned'
+    assert not list((tmp_path/'vision-proof').glob('*.json'))
+    assert not list((tmp_path/'vision-proof').glob('*.yml'))
+
+
+def test_dsh_image_selftest_distinguishes_missing_mcp_proof_and_provider_api_error(tmp_path):
+    env=selftest_configured(tmp_path)
+    missing=module.describe_test_image_with_dsh(tmp_path,env=env,
+        runner=lambda *a,**kw:SimpleNamespace(returncode=0,
+            stdout='VISION_TEST_RESULT: 我看见了一只卡通角色。'.encode(),stderr=b''))
+    assert not missing['ok'] and missing['status']=='no_image_proof'
+    assert missing['diagnostics']['mcpImage']['status']=='not_received'
+    assert missing['diagnostics']['providerApi']['status']=='not_confirmed'
+    failed=module.describe_test_image_with_dsh(tmp_path,env=env,
+        runner=lambda *a,**kw:SimpleNamespace(returncode=1,stdout=b'',
+            stderr=b'HTTP 400 invalid_request_error payload too large'))
+    assert not failed['ok'] and failed['status']=='headless_launch_failed'
+    assert failed['diagnosticCode']=='provider_api'
+    assert failed['diagnostics']['providerApi']['diagnosticCode']=='provider_api'
+    assert failed['diagnostics']['providerApi']['status']=='not_confirmed'
+    assert failed['diagnostics']['modelAnswer']['status']=='not_returned'
+
+
+def test_dsh_selftest_exit_diagnostics_do_not_misclassify_incidental_mcp_words():
+    # A generic mention of MCP is not evidence that MCP startup failed.
+    result=module._safe_dsh_headless_diagnostic(b'MCP tool loaded. HTTP 401 authentication failed',b'',1)
+    assert result['diagnosticCode']=='provider_auth'
+    assert 'API Key' not in result['error']
+    unknown=module._safe_dsh_headless_diagnostic(b'MCP tool loaded; unexplained child exit',b'',1)
+    assert unknown['diagnosticCode']=='headless_exit_unknown'
+
+
+def test_dsh_image_selftest_keeps_verified_mcp_receipt_when_child_exits_nonzero(tmp_path):
+    env=selftest_configured(tmp_path)
+    def failed_after_image(argv,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'kind':'dafeiyu-selftest','sha256':module._SELFTEST_IMAGE_SHA256,
+            'byteLength':module._SELFTEST_IMAGE_BYTES,'mimeType':'image/png','imageBlocks':1,
+        }),encoding='utf8')
+        return SimpleNamespace(returncode=1,stdout=b'',stderr=b'HTTP 400 invalid_request_error payload too large')
+    result=module.describe_test_image_with_dsh(tmp_path,env=env,runner=failed_after_image)
+    assert not result['ok'] and result['status']=='headless_launch_failed'
+    assert result['diagnostics']['mcpImage']['status']=='verified'
+    assert result['diagnostics']['mcpImage']['byteLength']==module._SELFTEST_IMAGE_BYTES
+    assert result['diagnostics']['providerApi']['status']=='failed'
+    assert result['diagnostics']['modelAnswer']['status']=='not_returned'
+    assert 'MCP 已成功返回固定图片' in result['error']
+
+
+def test_dsh_image_selftest_keeps_verified_mcp_receipt_when_child_times_out(tmp_path):
+    env=selftest_configured(tmp_path)
+    def timeout_after_image(argv,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'kind':'dafeiyu-selftest','sha256':module._SELFTEST_IMAGE_SHA256,
+            'byteLength':module._SELFTEST_IMAGE_BYTES,'mimeType':'image/png','imageBlocks':1,
+        }),encoding='utf8')
+        raise module.subprocess.TimeoutExpired(argv,180)
+    result=module.describe_test_image_with_dsh(tmp_path,env=env,runner=timeout_after_image)
+    assert not result['ok'] and result['status']=='timeout'
+    assert result['diagnostics']['mcpImage']['status']=='verified'
+    assert result['diagnostics']['providerApi']['status']=='timeout'
+    assert result['diagnostics']['modelAnswer']['status']=='not_returned'
+
+
+class TestDshImageSelftestDiagnostics(unittest.TestCase):
+    def test_mcp_image_receipt_and_unobservable_bridge_are_separate(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            home=Path(directory)
+            env=selftest_configured(home)
+            def runner(args,**kwargs):
+                Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+                    'kind':'dafeiyu-selftest',
+                    'sha256':'a041e0a1ffc95fe91c13d9acc6c48b8a37ddae15a8de910d9ee35975d0ff5c3b',
+                    'byteLength':515908,'mimeType':'image/png','imageBlocks':1,
+                }),encoding='utf8')
+                return SimpleNamespace(returncode=0,
+                    stdout='VISION_TEST_RESULT: 画面中是一只蓝色头发、白色围裙的卡通角色。\n'.encode(),stderr=b'')
+            result=module.describe_test_image_with_dsh(home,env=env,runner=runner)
+            self.assertTrue(result['ok'])
+            self.assertEqual(result['diagnostics']['mcpImage']['status'],'verified')
+            self.assertEqual(result['diagnostics']['mcpImage']['byteLength'],515908)
+            self.assertEqual(result['diagnostics']['attachmentBridge']['status'],'not_observable')
+            self.assertEqual(result['diagnostics']['providerApi']['status'],'completed')
+            self.assertEqual(result['diagnostics']['modelAnswer']['status'],'returned')
+            self.assertEqual(list((home/'vision-proof').glob('*.json')),[])
+            self.assertEqual(list((home/'vision-proof').glob('*.yml')),[])
+
+    def test_missing_image_proof_is_not_model_visual_success(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            home=Path(directory)
+            env=selftest_configured(home)
+            result=module.describe_test_image_with_dsh(home,env=env,
+                runner=lambda *a,**kw:SimpleNamespace(returncode=0,
+                    stdout='VISION_TEST_RESULT: 我看见了一只卡通角色。'.encode(),stderr=b''))
+            self.assertFalse(result['ok'])
+            self.assertEqual(result['status'],'no_image_proof')
+            self.assertEqual(result['diagnostics']['mcpImage']['status'],'not_received')
+            self.assertEqual(result['diagnostics']['providerApi']['status'],'not_confirmed')
+
+    def test_provider_http_error_is_safely_classified(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            home=Path(directory)
+            env=selftest_configured(home)
+            result=module.describe_test_image_with_dsh(home,env=env,
+                runner=lambda *a,**kw:SimpleNamespace(returncode=1,stdout=b'',
+                    stderr=b'HTTP 400 invalid_request_error payload too large'))
+            self.assertFalse(result['ok'])
+            self.assertEqual(result['diagnosticCode'],'provider_api')
+            self.assertEqual(result['diagnostics']['providerApi']['diagnosticCode'],'provider_api')
+            self.assertEqual(result['diagnostics']['modelAnswer']['status'],'not_returned')

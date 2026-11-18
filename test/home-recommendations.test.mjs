@@ -31,7 +31,7 @@ test('settings UI contains homepage recommendations toggle in selection section'
  const ui=src('lib/management-console.html'),controller=src('lib/management-console.js')
  assert.match(ui,/bili-home-recommend/)
  assert.match(controller,/homeRecommendationsEnabled/)
- assert.match(ui,/兴趣档案主导搜索/)
+ assert.match(ui,/允许独立的首页漫游/)
 })
 test('AI vision and mention history guardrails still present',()=>{
  const ui=src('lib/management-console.js'),server=src('vendor/bilibili-mcp/mcp_server.py')

@@ -49,3 +49,18 @@ test('一个私信接口异常不影响其他会话', async () => {
   assert.equal(rows.length, 1)
   assert.equal(rows[0].senderUid, '3')
 })
+
+
+test('B站分享动态/网页卡片进入普通入站上下文，系统类型不冒充分享', async () => {
+  const rows = await collectDmInbox({
+    ownUid: 999, now: () => 1_800_000_000_000,
+    sessions: [{ uid: 101, unread: 1, lastTs: 1_800_000_000 }],
+    readConversation: async () => [
+      { key: 'dynamic', ts: 1_800_000_001, fromMe: false, text: '[分享动态] https://t.bilibili.com/1234567890123456', kind: 7 },
+      { key: 'card', ts: 1_800_000_002, fromMe: false, text: '[网页卡片] https://t.bilibili.com/1234567890123456', kind: 13 },
+      { key: 'legacy', ts: 1_800_000_003, fromMe: false, text: '[非文字消息]', kind: 8 },
+    ],
+  })
+  assert.deepEqual(rows.map(x => x.messageId), ['101:dynamic','101:card'])
+  assert.equal(rows.every(x => x.system === false), true)
+})

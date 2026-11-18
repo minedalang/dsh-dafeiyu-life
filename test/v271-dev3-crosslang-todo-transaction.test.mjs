@@ -74,7 +74,7 @@ test('two independent Node writers retain both accepted tasks and a stale execut
  const code=`import {createOwnerTodoEngine} from ${JSON.stringify(m)};const t=createOwnerTodoEngine({dataDir:process.argv[1]});for(let i=0;i<30;i++){const r=t.add({type:'search_videos',topic:process.argv[2]+'_'+i});if(!r.ok)throw Error(r.error)}`
  const run=prefix=>new Promise((resolve,reject)=>{
    const c=spawn(process.execPath,['--input-type=module','-e',code,dir,prefix],{stdio:['ignore','pipe','pipe'],...isolatedChild})
-   let error='';c.stderr.on('data',x=>error+=x);c.on('error',reject);c.on('exit',n=>n===0?resolve():reject(Error(error||'child exit '+n)))
+   let error='';c.stderr.on('data',x=>error+=x);c.on('error',reject);c.on('close',(n,signal)=>n===0?resolve():reject(Error(error||`child close ${n} (${signal||'no signal'})`)))
  })
  await Promise.all([run('A'),run('B')])
  const todos=createOwnerTodoEngine({dataDir:dir})

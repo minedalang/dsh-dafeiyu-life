@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -26,6 +28,12 @@ jobs:
           node --check client.js
           npm run check:video-tool-contract
           npm run check:life-architecture
+          npm run check:context-budget
+      - name: Verify current test inventory and protected regressions
+        run: npm run check:test-governance
+      - name: Surface impacted test cases for this PR
+        if: github.event_name == 'pull_request'
+        run: node scripts/test-governance.mjs impact --base=${{ github.event.pull_request.base.sha }} --require-review=1
       - name: Full Node regression
         run: node --test test/*.test.mjs
       - name: Full Python regression

@@ -1,4 +1,4 @@
-# 2.8.0 current-version core: real behavior/security, not historical UI snapshots.
+# Current core suite: real behavior/security, not fixed historical release snapshots.
 # Lines are filenames relative to test/. This list is reviewed on each release.
 v280-dev14-one-life-one-intent.test.mjs
 v280-dev14-dm-privacy-natural-context.test.mjs
@@ -35,3 +35,5 @@ v280-dev16-fast-dm-progressive.test.mjs
 v280-dev17-dm-settings-cleanup.test.mjs
 
 v280-dev17-owner-reciprocity-action-ui.test.mjs
+
+test-governance-contract.test.mjs

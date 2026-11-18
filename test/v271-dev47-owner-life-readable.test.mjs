@@ -103,17 +103,21 @@ test('Life user timeline shows actual verified new read actions, not raw intenti
  assert.match(rows.find(x=>/创作者/.test(x.title)).detail,/只读取并核验/)
 })
 
-test('Regular DM/comment specialist scheduler does not wait for Life 180-minute interval',async()=>{
- let dm=0,comments=0
+test('Two notification sentinels operate independently from the Life 180-minute interval',()=>temp(async dir=>{
+ let dm=0,comments=0,privateUnread=0,socialUnread=0,clock=T
  const scheduler=createInteractionScheduler({
-  dm:{poll:async()=>{dm++;return {sent:0}}},
+  dm:{poll:async()=>{dm++;return {sent:0}},nextFastUid:()=>null},
   comments:{poll:async()=>{comments++;return {sent:0}}},
-  getConfig:()=>({...cfg,dmWatch:true,dmWatchMinutes:1,commentWatchReplies:true,commentReplyWatchMinutes:1}),
-  now:()=>T,logger:{error(){}}})
- // Call tick immediately: no planner clock, model, quota or Life interval is consulted.
- scheduler.start()
- await scheduler.tick()
- assert.equal(dm,1)
- assert.equal(comments,1)
+  readPrivateUnread:async()=>{privateUnread++;return {followUnread:1,unfollowUnread:0,dustbinUnread:0}},
+  readSocialUnread:async()=>{socialUnread++;return {mode:'split',replyCount:1,atCount:0,likeCount:0}},
+  dataDir:dir,getAccountTag:()=>TAG,
+  getConfig:()=>({...cfg,dmWatch:true,commentWatchReplies:true}),
+  now:()=>clock,logger:{error(){}}})
+ scheduler.start();await new Promise(resolve=>setTimeout(resolve,20));await scheduler.tick()
+ assert.equal(privateUnread,1)
+ assert.equal(dm,1,'first private count snapshot opens a bounded detail read')
+ clock+=16_000;await scheduler.tick()
+ assert.equal(socialUnread,1)
+ assert.equal(comments,1,'first social count snapshot opens a bounded detail read')
  scheduler.stop()
-})
+}))

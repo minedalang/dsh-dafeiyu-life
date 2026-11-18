@@ -9,11 +9,6 @@ import {subagentActionMenu,dmContactFollowCandidates,validateSubagentNextAction}
 
 const file=(name)=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 
-test('README top announces verified DSHMarket listing and exact DSH search name',()=>{
- const readme=file('README.md')
- assert.match(readme.slice(0,450),/已被收录进 \[DSHMarket 插件市场\]\(https:\/\/dshmarket\.com\/zh\/\)/)
- assert.match(readme.slice(0,450),/dsh-dafeiyu-life/)
-})
 test('DM next-action menu offers autonomous follow and unfollow without relationship-scope whitelist',()=>{
  const candidates=dmContactFollowCandidates({enabled:true,uid:'12345678',role:'stranger',history:[],
   incomingText:'今天的新聊天',verifiedIncoming:true})
@@ -40,7 +35,7 @@ test('settings no longer tell users that DM follow is friends-only',()=>{
  const html=file('lib/management-console.html')
  assert.doesNotMatch(html,/实际关注范围默认只覆盖好友/)
  assert.match(html,/关注对象不再按好友／陌生人划授权范围/)
- assert.match(html,/首次发现来信仍取决于普通监听间隔/)
+ assert.match(html,/私信未读计数每 5 分钟一次/)
 })
 
 

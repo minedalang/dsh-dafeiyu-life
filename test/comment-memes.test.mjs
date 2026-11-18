@@ -42,7 +42,7 @@ test('界面和Python MCP具备完整附图控制，默认关闭',()=>{
   assert.match(i,/BILI_COMMENT_MEMES_PER_ROUND/)
   assert.match(i,/bili_comment_meme_list/)
   assert.match(c,/评论附表情包/)
-  assert.match(readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8'),/表情包、梗知识和视觉/)
+  assert.match(readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8'),/id="comments-meme-settings"/)
   assert.match(m,/meme_image_name/)
   assert.match(m,/reserve_attempt/)
 })

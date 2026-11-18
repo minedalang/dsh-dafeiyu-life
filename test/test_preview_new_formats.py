@@ -74,9 +74,11 @@ class ModernPreviewTests(unittest.TestCase):
             self.assertTrue(result['ok'], result)
             self.assertEqual(result['status'], 'preview_only')
             self.assertEqual(result['index_source'], 'pvdata_bin')
-            self.assertEqual(len(result['times']), 2)
+            # Solid-purple thumbnails have no visual diversity; avoid duplicate input.
+            self.assertEqual(len(result['times']), 1)
             debugdir = Path(result['debug_dir'])
-            self.assertEqual(len(list(debugdir.glob('*.jpg'))), 2)
+            self.assertEqual(len(list(debugdir.glob('*.jpg'))), 1)
+            self.assertEqual(result['sampling']['frames_selected'],1)
             self.assertEqual(json.loads((debugdir / 'metadata.json').read_text())['index_source'], 'pvdata_bin')
 
     def test_old_json_format_still_supported(self):

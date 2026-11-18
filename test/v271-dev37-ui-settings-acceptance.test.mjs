@@ -8,8 +8,8 @@ const script=source('lib/management-console.js')
 const backend=source('index.js')
 
 test('S0/S1 导出在可见生活时间线并且只有一个真实执行按钮',()=>{
- const lifePanel=html.indexOf('<section id="panel-life-agent"')
- const timeline=html.indexOf('id="life-timeline-comment-status"')
+ const lifePanel=html.indexOf('id="panel-life-agent"')
+ const timeline=html.indexOf('id="life-timeline-section"')
  const button=html.indexOf('id="life-release-evidence-export"')
  assert.ok(lifePanel>=0&&lifePanel<timeline)
  assert.ok(timeline<button,'导出应留在正常生活时间线内')
@@ -17,7 +17,7 @@ test('S0/S1 导出在可见生活时间线并且只有一个真实执行按钮',
  assert.equal(html.split('id="life-release-evidence-export"').length-1,1)
  assert.match(html,/原创主评论准入 · 最近视频轮次/)
  assert.match(script,/request\('\/life-agent\/release-acceptance-evidence'\)/)
- assert.match(script,/life-timeline-comment-status/)
+ assert.match(script,/life-timeline-summary/)
  assert.match(script,/evidence\?\.readOnly!==true\|\|evidence\?\.releaseReady!==false/)
 })
 

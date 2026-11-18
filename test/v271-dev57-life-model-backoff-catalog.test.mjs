@@ -36,6 +36,19 @@ test('auth, rate limit, timeout and transport have distinct codes; 502 cannot be
  for(const [err,category] of [['429 rate limit','rate-limited'],['401 Unauthorized','authentication'],['ETIMEDOUT','timeout'],['ENOTFOUND DNS','network'],['502 Bad Gateway','upstream-gateway']])
   assert.equal(modelFailureEvidence(Error(err)).category,category,err)
 })
+test('本地测试正在进行和旧冷却规则不冒充 Provider 故障，也不泄露原始异常',()=>{
+ const inProgress=modelTestFailure(Error('已有模型测试在运行，请等待当前测试结束 API_KEY=secret'))
+ assert.equal(inProgress.category,'test-busy')
+ assert.match(inProgress.error,/已有连接测试正在运行/)
+ assert.doesNotMatch(JSON.stringify(inProgress),/secret|provider-unavailable/)
+ const legacy=modelTestFailure(Error('同一模型任务测试至少间隔 60 秒，以免产生意外费用'))
+ assert.equal(legacy.category,'test-cooldown')
+ assert.match(legacy.error,/没有向模型发送请求/)
+ const mismatch=modelTestFailure(Error('模型已响应，但未返回预期的连接测试标记'))
+ assert.equal(mismatch.category,'test-response-mismatch')
+ assert.equal(modelTestFailure(Error('502 Bad Gateway')).category,'upstream-gateway')
+})
+
 test('health banner shows active backoff count, category, code, last incident and retry time; not stale failures',()=>{
  const planner={modelFailureCode:'upstream-gateway',modelFailureStreak:3,modelFailureAt:T-30000,
   modelRetryAt:T+15*60_000,modelFailureEvidence:{httpStatus:502,providerErrorType:'bad_response_status_code',requestId:'20261110132159495722938dznU5fe7'}}

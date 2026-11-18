@@ -16,7 +16,7 @@ import uuid
 import unicodedata
 from pathlib import Path
 
-_ALLOWED = {'bili_search', 'bili_video_info', 'bili_user_videos', 'bili_creator_relation_status', 'bili_comments', 'bili_comment_thread', 'bili_danmaku', 'bili_subtitle', 'bili_preview_frames', 'bili_user_info',
+_ALLOWED = {'bili_fish_created_folders', 'bili_creator_encounter', 'bili_video_info_by_aid', 'bili_dynamic_info', 'bili_dynamic_comment_context', 'bili_search', 'bili_video_info', 'bili_user_videos', 'bili_creator_relation_status', 'bili_comments', 'bili_comment_thread', 'bili_danmaku', 'bili_subtitle', 'bili_preview_frames', 'bili_user_info',
             'bili_hot_videos', 'bili_hot_buzzwords', 'bili_weekly_hot', 'bili_rank',
             'bili_favorite_lists', 'bili_favorite_content', 'bili_home_recommendations',
             'bili_unread_messages', 'bili_received_replies', 'bili_received_at_and_likes'}
@@ -59,7 +59,23 @@ def _exact_int(value, default=None, minimum=0, maximum=9007199254740991):
 
 def read_action(tool, args):
     a = args or {}
-    if tool in ('bili_video_info', 'bili_creator_relation_status'):
+    # Public AID/dynamic read paths must also have the same durable gate.
+    if tool == 'bili_video_info_by_aid':
+        aid = _exact_int(a.get('aid'), minimum=1, maximum=999999999999999)
+        if aid is None:
+            raise ValueError('AID 只读请求缺少有效标识')
+        return tool, str(aid)
+    if tool in ('bili_dynamic_info', 'bili_dynamic_comment_context'):
+        did = _exact_int(a.get('dynamic_id'), minimum=1, maximum=99999999999999999999)
+        if did is None:
+            raise ValueError('动态只读请求缺少有效 ID')
+        if tool == 'bili_dynamic_info':
+            return tool, str(did)
+        target = _exact_int(a.get('target_rpid', '') or None, minimum=1, maximum=99999999999999999999)
+        root = _exact_int(a.get('root', '') or None, minimum=1, maximum=99999999999999999999)
+        num = _exact_int(a.get('num', 20), minimum=1, maximum=20)
+        return tool, json.dumps([str(did), str(target or ''), str(root or ''), num], separators=(',', ':'))
+    if tool in ('bili_video_info', 'bili_creator_relation_status', 'bili_creator_encounter'):
         bv = str(a.get('bvid', ''))
         if not _BV.fullmatch(bv):
             raise ValueError('只读动作缺少有效 BV')
@@ -127,7 +143,7 @@ def read_action(tool, args):
         if mid is None or len(kw) > 80:
             raise ValueError('收藏夹参数无效')
         return tool, json.dumps([str(mid), page, kw], ensure_ascii=False, separators=(',', ':'))
-    if tool in ('bili_home_recommendations', 'bili_unread_messages', 'bili_received_replies', 'bili_received_at_and_likes'):
+    if tool in ('bili_fish_created_folders', 'bili_home_recommendations', 'bili_unread_messages', 'bili_received_replies', 'bili_received_at_and_likes'):
         return tool, 'current-account'
     if tool == 'bili_search':
         kw = _clean(a.get('keyword', ''))
@@ -241,7 +257,7 @@ def public_read_reservation(tool, args, *, home=None, adapter=False):
     """
     action = read_action(tool, args)
     if action is None or home is None:
-        yield
+        yield False
         return
     home = Path(home).resolve()
     scope = _account_scope(home)
@@ -293,7 +309,7 @@ def public_read_reservation(tool, args, *, home=None, adapter=False):
             # parent matching, never silently widening legacy permissions.
             raise ReadReservationHeld('旧版嵌套读取无法核验直接父进程', 'legacy-parent-mismatch')
         # Node handles receipt and release after this verified nested MCP call.
-        yield
+        yield True
         return
     at = int(time.time() * 1000)
     record = dict(version=1, id=key, scopeHash=_sha(scope)[:20], operation=operation,
@@ -302,7 +318,7 @@ def public_read_reservation(tool, args, *, home=None, adapter=False):
     returned = False
     try:
         _write_once(folder / 'entry.json', record)
-        yield
+        yield False
         if _account_scope(home) != scope:
             raise ValueError('读取期间 B站账号作用域变化，拒绝旧账号数据')
         returned = True

@@ -34,3 +34,30 @@ test('user-edited preview script is never silently overwritten', () => homeWith(
   assert.equal(readFileSync(join(dir, 'preview_vision.py'), 'utf8'), custom)
   assert.equal(readFileSync(join(dir, 'preview_vision.py.new'), 'utf8'), readFileSync(join(root, 'lib', 'preview_vision.py'), 'utf8'))
 }))
+
+test('dev.3a.3 adaptive decoder is staged beside MCP and preview adapter',()=>homeWith(dir=>{
+  ensureHomeFiles(root,dir)
+  const expected=readFileSync(join(root,'lib','adaptive_video.py'),'utf8')
+  assert.equal(readFileSync(join(dir,'adaptive_video.py'),'utf8'),expected)
+  assert.equal(readFileSync(join(dir,'.shipped-adaptive_video.py.sha'),'utf8'),hash(expected))
+}))
+
+
+test('dev.3a.4 danmaku heat helper is staged and fingerprinted for headless import',()=>homeWith(dir=>{
+  ensureHomeFiles(root,dir)
+  const expected=readFileSync(join(root,'lib','video_heat_signal.py'),'utf8')
+  assert.equal(readFileSync(join(dir,'video_heat_signal.py'),'utf8'),expected)
+  assert.equal(readFileSync(join(dir,'.shipped-video_heat_signal.py.sha'),'utf8'),hash(expected))
+}))
+
+
+test('dev.3b.2 optional OCR helper is staged and fingerprinted without overwriting owner edits',()=>homeWith(dir=>{
+  ensureHomeFiles(root,dir)
+  const expected=readFileSync(join(root,'lib','frame_ocr.py'),'utf8')
+  assert.equal(readFileSync(join(dir,'frame_ocr.py'),'utf8'),expected)
+  assert.equal(readFileSync(join(dir,'.shipped-frame_ocr.py.sha'),'utf8'),hash(expected))
+  writeFileSync(join(dir,'frame_ocr.py'),'# owner edited OCR helper')
+  ensureHomeFiles(root,dir)
+  assert.equal(readFileSync(join(dir,'frame_ocr.py'),'utf8'),'# owner edited OCR helper')
+  assert.equal(readFileSync(join(dir,'frame_ocr.py.new'),'utf8'),expected)
+}))

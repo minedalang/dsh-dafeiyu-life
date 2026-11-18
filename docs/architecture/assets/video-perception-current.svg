@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" role="img" aria-labelledby="vtitle vdesc">
+<title id="vtitle">大肥鱼自主视频感知架构</title><desc id="vdesc">鱼鱼自主决定是否观看与深度，镜头变化、画面运动与弹幕热度共同生成候选分镜，配合时间覆盖、字幕对齐与局部复查。热度不等于视频事实。</desc>
+<defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="#8AA0B8"/></marker><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0F172A"/><stop offset="1" stop-color="#132A3C"/></linearGradient></defs>
+<rect width="1200" height="800" rx="28" fill="url(#bg)"/>
+<rect x="26" y="26" width="1148" height="748" rx="23" fill="none" stroke="#263C56"/>
+<text x="64" y="73" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="32" font-weight="700" text-anchor="start" fill="#F8FAFC">视频感知 · 从自主意愿到可信经历</text>
+<text x="66" y="110" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#91A9C3">VISION PERCEPTION  /  SCENE · MOTION · DANMAKU · TIMELINE</text>
+<rect x="192" y="143" width="816" height="86" rx="18" fill="#3D3440" stroke="#E3B75D" stroke-width="2"/>
+<text x="600" y="179" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#FFDB8A">鱼鱼决定：要不要看？了解多深？</text>
+<text x="600" y="209" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#E0DBD4">不看 / 略看  →  只读资料或结束探索     ·     主动选择视觉  →  进入下一步</text>
+<path d="M600 230 L600 263" fill="none" stroke="#8AA0B8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
+<text x="600" y="283" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" font-weight="500" text-anchor="middle" fill="#A9C3D3">三路候选信号 · 只决定“哪里值得看”，不代表已经理解</text>
+<rect x="60" y="311" width="320" height="115" rx="18" fill="#172D43" stroke="#6EE7B7" stroke-width="2"/>
+<circle cx="98" cy="350" r="19" fill="#6EE7B7" fill-opacity=".16" stroke="#6EE7B7"/>
+<text x="98" y="357" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="17" font-weight="700" text-anchor="middle" fill="#6EE7B7">01</text>
+<text x="132" y="355" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="start" fill="#F1F5F9">镜头变化</text>
+<text x="84" y="400" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#B9CBDC">发现新场景与切镜候选</text>
+<rect x="440" y="311" width="320" height="115" rx="18" fill="#172D43" stroke="#6DD5F7" stroke-width="2"/>
+<circle cx="478" cy="350" r="19" fill="#6DD5F7" fill-opacity=".16" stroke="#6DD5F7"/>
+<text x="478" y="357" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="17" font-weight="700" text-anchor="middle" fill="#6DD5F7">02</text>
+<text x="512" y="355" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="start" fill="#F1F5F9">画面运动</text>
+<text x="464" y="400" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#B9CBDC">发现动作过程与局部变化</text>
+<rect x="820" y="311" width="320" height="115" rx="18" fill="#172D43" stroke="#FBBF24" stroke-width="2"/>
+<circle cx="858" cy="350" r="19" fill="#FBBF24" fill-opacity=".16" stroke="#FBBF24"/>
+<text x="858" y="357" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="17" font-weight="700" text-anchor="middle" fill="#FBBF24">03</text>
+<text x="892" y="355" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="start" fill="#F1F5F9">弹幕热度</text>
+<text x="844" y="400" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#B9CBDC">发现观众反应与高能时间段</text>
+<path d="M220 428 L220 462" fill="none" stroke="#8AA0B8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M600 428 L600 462" fill="none" stroke="#8AA0B8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M980 428 L980 462" fill="none" stroke="#8AA0B8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="180" y="469" width="840" height="94" rx="18" fill="#1C3550" stroke="#4B9EB1" stroke-width="2"/>
+<text x="600" y="507" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#F8FAFC">联合候选片段排序</text>
+<text x="600" y="538" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="17" font-weight="400" text-anchor="middle" fill="#AACCDD">跨全片时间覆盖  ·  去重  ·  上下文连续  ·  热度信号可缺省</text>
+<path d="M600 564 L600 595" fill="none" stroke="#8AA0B8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="80" y="602" width="505" height="115" rx="18" fill="#1D3155" stroke="#6093DA" stroke-width="2"/>
+<text x="332" y="644" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#E5F0FF">自适应分镜 + 局部复查</text>
+<text x="332" y="674" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#B4D0F3">12 / 24 / 48 视觉预算仅是上限</text>
+<text x="332" y="699" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="middle" fill="#A7C2E9">由鱼鱼自主决定追加还是停止</text>
+<rect x="615" y="602" width="505" height="115" rx="18" fill="#194442" stroke="#42B5A7" stroke-width="2"/>
+<text x="868" y="644" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#DEFBF3">字幕时间轴 + 证据边界</text>
+<text x="868" y="674" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#BCE8DF">时间相邻 ≠ 内容互相证实</text>
+<text x="868" y="699" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="middle" fill="#A8D4CC">保留来源、时间点与未确认内容</text>
+<text x="600" y="762" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#93A9BF">观众热度是辅助线索，不是视频事实、指令或外发授权  ·  示例架构</text>
+</svg>

@@ -75,6 +75,8 @@ function mockHost({modelExit=0,personaPrompt='',characterLore='',badFirst=false}
   const fakeResult = `<GROWTH_PROPOSAL_JSON>${JSON.stringify({suggestion:recommendation,reason:'视频原句与空泛评价不是角色观点'})}</GROWTH_PROPOSAL_JSON>`
   writeFileSync(fakeBin, `const fs=require('fs'),path=require('path'); const file=path.join(process.cwd(),'growth-prompt-capture.txt');fs.writeFileSync(file,process.argv.at(-1)||'');let counter=path.join(process.cwd(),'growth-prompt-calls.txt');let n=Number(fs.existsSync(counter)?fs.readFileSync(counter,'utf8'):0)+1;fs.writeFileSync(counter,String(n));if(process.env.FAKE_GROWTH_FAIL){console.error('provider unavailable');process.exit(4)}console.log(n===1&&${badFirst}?${JSON.stringify('<GROWTH_PROPOSAL_JSON>'+JSON.stringify({suggestion:'应先用自己的话概括视频内容，再紧接一句具体评价，让评论更加客观自然。',reason:'错误的老套建议'})+'</GROWTH_PROPOSAL_JSON>')}:${JSON.stringify(fakeResult)})`)
   mkdirSync(join(home,'bili-duty'),{recursive:true})
+  // Test-only authenticated account fixture; the production account gate stays enforced.
+  writeFileSync(join(home,'bili-duty','bili_credential.json'),JSON.stringify({dedeuserid:'123456',sessdata:'fixture-only',bili_jct:'fixture-only'}))
   // Headless tasks now require an explicitly tested model. Seed the fixture
   // with a corresponding verified route rather than bypassing the guard.
   mkdirSync(join(home,'profiles','desktop'),{recursive:true})

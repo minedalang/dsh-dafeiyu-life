@@ -31,9 +31,12 @@ test('DM detail cursor prioritizes owner, friend, familiar, others without extra
  const cursor=createDmPollCursor({dataDir:dir,now:()=>now,getPriority:id=>tiers[id]})
  for(const n of [1,2,3,4]){const row={uid:String(n),lastTs:55,unread:0};assert.equal(cursor.shouldRead(row),true);cursor.observed(row)}
  cursor.commit()
- now+=6*60_000
- for(const n of [1,2,3,4])assert.equal(cursor.shouldRead({uid:String(n),lastTs:55,unread:0}),n===1)
- now+=16*60_000
+ now+=119*60_000
+ for(const n of [1,2,3,4])assert.equal(cursor.shouldRead({uid:String(n),lastTs:55,unread:0}),false)
+ now+=2*60_000
+ assert.equal(cursor.shouldRead({uid:'1',lastTs:55,unread:0}),true)
+ assert.equal(cursor.shouldRead({uid:'2',lastTs:55,unread:0}),false)
+ now+=240*60_000
  assert.equal(cursor.shouldRead({uid:'2',lastTs:55,unread:0}),true)
  assert.equal(cursor.shouldRead({uid:'3',lastTs:55,unread:0}),false)
  // A new incoming message is checked immediately for every relationship tier.

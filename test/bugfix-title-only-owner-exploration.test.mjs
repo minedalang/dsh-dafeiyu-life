@@ -64,6 +64,6 @@ test('host reads real video evidence before model, and living-domain inspections
  assert.match(branch,/record_session:false/)
  assert.match(branch,/summarizeOwnerVideoExploration/)
  assert.match(branch,/exploration-ready/)
- assert.match(index,/if\(args\.record_session!==false\)\{/)
- assert.match(index,/executeWatchVideo\(\{bvid,include_comments:true,include_danmaku:true,record_session:false,explorationPurpose:'accepted-todo'\}\)/)
+ assert.match(index,/if\(!dryRun&&args\.record_session!==false\)\{/)
+ assert.match(index,/executeWatchVideo\(\{bvid,include_comments:true,include_danmaku:true,record_session:false,\s*view_depth:[^\r\n]+,explorationPurpose:'accepted-todo'\}\)/)
 })

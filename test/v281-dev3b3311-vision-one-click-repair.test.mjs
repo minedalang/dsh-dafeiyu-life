@@ -1,0 +1,193 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {mkdtempSync,writeFileSync,mkdirSync,existsSync,rmSync,readFileSync} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+import {createVisionEnvironmentRepair} from '../lib/vision-environment-repair.mjs'
+import {visionPythonCandidates} from '../lib/vision-python-runtime.mjs'
+
+function setup(){
+  const root=mkdtempSync(join(tmpdir(),'vision-auto-'))
+  const home=join(root,'home'),base=join(root,'Python312','python.exe'),main=join(root,'main','python.exe'),req=join(root,'requirements.txt')
+  for(const p of [home,join(root,'Python312'),join(root,'main')])mkdirSync(p,{recursive:true})
+  for(const p of [base,main])writeFileSync(p,'fake executable')
+  writeFileSync(req,'mcp>=1,<2\n')
+  return {root,home,base,main,req,clean(){rmSync(root,{recursive:true,force:true})}}
+}
+const status=(x)=>({ok:x,reason:x?'healthy':'runtime_permission_error'})
+
+test('healthy existing visual Python is reused without install or rebuild',async()=>{
+  const f=setup();let invoked=0,saved=''
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      preferred:()=>f.base,probe:()=>status(true),run:async()=>{invoked++;return {ok:true}},
+      persist:async p=>{saved=p;return true}})
+    const r=await repair.run();assert.equal(r.state,'ready');assert.equal(r.reason,'already_healthy');
+    assert.equal(saved,f.base);assert.equal(invoked,0)
+  }finally{f.clean()}
+})
+
+test('unhealthy main Python is skipped; native copies and deps are verified before publishing isolated path',async()=>{
+  const f=setup();let published='',packages=false;const invocations=[]
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      preferred:()=>f.main,configured:()=>f.base,
+      probe:(p,{requiresMcp})=>p===f.main?status(false):status(p===f.base?!requiresMcp:(!requiresMcp||packages)),
+      run:async(cmd,args,opts)=>{
+        invocations.push({cmd,args,opts})
+        if(args[0]==='-m'&&args[1]==='venv'){
+          mkdirSync(join(args[3],'Scripts'),{recursive:true});writeFileSync(join(args[3],'Scripts','python.exe'),'fake')
+        }else if(args[0]==='-m'&&args[1]==='pip')packages=true
+        return {ok:true}
+      },persist:async path=>{published=path;return true}})
+    const result=await repair.run()
+    assert.equal(result.state,'ready');assert.equal(result.reason,'healthy_installed')
+    assert.ok(published.includes('.vision-env-'));assert.ok(existsSync(published))
+    assert.ok(invocations.some(x=>x.args[0]==='-m'&&x.args[1]==='venv'&&x.args[2]==='--copies'))
+    assert.ok(invocations.every(x=>x.opts.cwd===f.home))
+    assert.equal(existsSync(f.main),true);assert.ok(invocations.every(x=>x.cmd!==f.main))
+  }finally{f.clean()}
+})
+
+test('if every interpreter fails unprivileged probe, installer remains fail-closed',async()=>{
+  const f=setup();let calls=0,save=0
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      preferred:()=>f.base,configured:()=>f.main,probe:()=>status(false),
+      run:async()=>{calls++;return {ok:true}},persist:async()=>{save++;return true}})
+    const result=await repair.run();assert.equal(result.state,'failed');assert.equal(result.reason,'no_healthy_base_python')
+    assert.equal(calls,0);assert.equal(save,0)
+  }finally{f.clean()}
+})
+
+test('incomplete native venv creation never changes existing runtime',async()=>{
+  const f=setup();let save=0
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      preferred:()=>f.base,probe:(_,{requiresMcp})=>status(!requiresMcp),
+      run:async()=>({ok:false}),persist:async()=>{save++}})
+    const result=await repair.run();assert.equal(result.state,'failed');assert.equal(result.reason,'vision_venv_creation_failed')
+    assert.equal(existsSync(f.base),true);assert.equal(save,0)
+  }finally{f.clean()}
+})
+
+test('failed dependency installation is not considered repaired and cannot update cfg',async()=>{
+  const f=setup();let save=0
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      preferred:()=>f.base,probe:(_,{requiresMcp})=>status(!requiresMcp),
+      run:async(_cmd,args)=>{
+        if(args[1]==='venv'){
+          mkdirSync(join(args[3],'Scripts'),{recursive:true});writeFileSync(join(args[3],'Scripts','python.exe'),'fake')
+          return {ok:true}
+        }
+        return {ok:false}
+      },findUv:async()=>'',persist:async()=>{save++}})
+    const result=await repair.run();assert.equal(result.state,'failed');assert.equal(result.reason,'vision_dependencies_install_failed');assert.equal(save,0)
+  }finally{f.clean()}
+})
+
+test('a duplicate click cannot start a second installer while the first is in progress',async()=>{
+  const f=setup();let release
+  try{
+    const gate=new Promise(resolve=>{release=resolve})
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      preferred:()=>f.base,probe:(_,{requiresMcp})=>status(!requiresMcp),
+      run:async()=>{await gate;return {ok:false}},persist:async()=>true})
+    assert.equal(repair.start().started,true)
+    assert.equal(repair.start().busy,true)
+    assert.equal(repair.status().installing,true)
+    release()
+    // runRepair is async; settled after the awaited spawn completes
+    for(let i=0;i<50&&repair.status().installing;i++)await new Promise(r=>setTimeout(r,5))
+    assert.equal(repair.status().installing,false)
+  }finally{f.clean()}
+})
+
+test('native UI has a single opt-in repair action, fixed routes and no script dependency',()=>{
+  const root=new URL('../',import.meta.url)
+  const html=readFileSync(new URL('lib/management-console.html',root),'utf8')
+  const ui=readFileSync(new URL('lib/management-console.js',root),'utf8')
+  const index=readFileSync(new URL('index.js',root),'utf8')
+  const mod=readFileSync(new URL('lib/vision-environment-repair.mjs',root),'utf8')
+  assert.match(html,/id="vision-python-auto-repair"/)
+  assert.match(ui,/request\('\/dsh-vision\/repair',\{\}\)/)
+  assert.match(index,/path==='\/api\/bili-duty\/dsh-vision\/repair'/)
+  assert.match(index,/sec-fetch-site/)
+  assert.match(mod,/shell:false/)
+  assert.doesNotMatch(mod,/icacls|takeown|runas|powershell\.exe/i)
+})
+
+test('offline PowerShell scripts parse as UTF-8 with BOM in Windows PowerShell 5.1',()=>{
+  const root=new URL('../',import.meta.url)
+  for(const file of ['repair-dsh-python-runtime.ps1','repair-dsh-vision-python.ps1']){
+    const buf=readFileSync(new URL('tools/'+file,root))
+    assert.deepEqual([...buf.subarray(0,3)],[0xef,0xbb,0xbf])
+    assert.ok(buf.toString('utf8').includes('Python'))
+  }
+})
+
+test('Windows candidate discovery recognizes ordinary Python installs without Conda',()=>{
+  const f=setup()
+  try{
+    const list=visionPythonCandidates({preferred:f.base,platform:'win32',home:f.home,workdir:f.home,
+      env:{Path:join(f.root,'Python312')+';'+join(f.root,'main'),USERPROFILE:join(f.root,'none')}})
+    assert.ok(list.includes(f.base));assert.ok(list.includes(f.main))
+  }finally{f.clean()}
+})
+
+test('first-time Windows users without Python can bootstrap through uv, but the new runtime must still pass health tests',async()=>{
+  const f=setup();let newPython='',installed=false,saved=''
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      probe:(p,{requiresMcp})=>p===newPython?status(!requiresMcp||installed):status(false),
+      findUv:async()=>join(f.root,'uv.exe'),
+      run:async(_cmd,args)=>{
+        if(args[0]==='venv'){
+          newPython=join(args[4],'Scripts','python.exe')
+          mkdirSync(join(args[4],'Scripts'),{recursive:true});writeFileSync(newPython,'fake')
+        }else if(args[0]==='-m'&&args[1]==='pip')installed=true
+        return {ok:true}
+      },persist:async path=>{saved=path;return true}})
+    const result=await repair.run()
+    assert.equal(result.state,'ready');assert.equal(saved,newPython)
+    assert.equal(existsSync(f.base),true);assert.ok(saved.includes('.vision-env-'))
+  }finally{f.clean()}
+})
+
+test('uv-bootstrap newly created Python blocked by Windows policy never becomes active',async()=>{
+  const f=setup();let save=0
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      probe:()=>status(false),findUv:async()=>join(f.root,'uv.exe'),
+      run:async(_cmd,args)=>{
+        mkdirSync(join(args[4],'Scripts'),{recursive:true});writeFileSync(join(args[4],'Scripts','python.exe'),'fake');return {ok:true}
+      },persist:async()=>{save++}})
+    const result=await repair.run();assert.equal(result.state,'failed');assert.equal(result.reason,'runtime_permission_error');assert.equal(save,0)
+  }finally{f.clean()}
+})
+
+test('when Conda base is healthy but lacks ensurepip, uv fallback touches only the new visual directory',async()=>{
+  const f=setup();let published='',modulesReady=false,bootstrapped=false,uvAttempt=0
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      preferred:()=>f.base,
+      probe:(p,{requiresMcp})=>p===f.base?status(!requiresMcp):status(!requiresMcp||modulesReady),
+      run:async(cmd,args)=>{
+        if(args[0]==='-m'&&args[1]==='venv')return {ok:false}
+        if(args[0]==='venv'){
+          uvAttempt++
+          assert.deepEqual(args.slice(0,5),['venv','--clear','--seed','--python',f.base])
+          const target=args[5];assert.ok(target.startsWith(f.home))
+          mkdirSync(join(target,'Scripts'),{recursive:true});writeFileSync(join(target,'Scripts','python.exe'),'fixture')
+          bootstrapped=true
+          return {ok:true}
+        }
+        if(args[0]==='-m'&&args[1]==='pip')modulesReady=true
+        return {ok:true}
+      },findUv:async()=>join(f.root,'uv.exe'),persist:async p=>{published=p;return true}})
+    const outcome=await repair.run()
+    assert.equal(outcome.state,'ready');assert.equal(uvAttempt,1);assert.equal(bootstrapped,true)
+    assert.ok(published.includes('.vision-env-'));assert.equal(existsSync(f.base),true)
+  }finally{f.clean()}
+})

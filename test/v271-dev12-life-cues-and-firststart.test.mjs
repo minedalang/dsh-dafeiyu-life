@@ -66,7 +66,7 @@ test('firststart 是同一流程：验证、卡片直存、可选会话和完成
  assert.ok(panel.indexOf('id="fs-choices-stage"')<panel.indexOf('id="fs-final-stage"'))
  for(const id of ['fs-bili-verify','fs-headless-state','quick-life-save','quick-memory-save','quick-dm-save','quick-share-save','fs-quick-ack','fs-complete'])assert.match(panel,new RegExp('id="'+id+'"'))
  assert.match(js,/fs-progress-hint/)
- assert.match(backend,/QUICK_SETUP_REVISION=4/)
+ assert.match(backend,/QUICK_SETUP_REVISION=5/)
 })
 
 test('多来源机会 first-pass 公平：同类多条不会完全掩盖其他生活来源',t=>{

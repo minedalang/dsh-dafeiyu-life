@@ -89,5 +89,5 @@ test('源代码将考虑工具限定为已开启的原创评论视频 Agent，�
  assert.match(idx,/if \(args\?\.confirm !== true\) return \{ok:false,blocked:true,needsConfirmation:true,error:'需要主人在当前对话明确要求发送评论/)
  assert.match(py,/async def bili_comment_consideration\(bvid: str, decision: str = 'consider', reason: str = ''/)
  assert.match(py,/_life_video_request,'\/life-comment-review'/)
- assert.match(ui,/明确考虑/)
+ assert.match(ui,/可自主考虑原创评论/,'当前界面须说明原创评论是 Life 可拒绝的自主选择')
 })

@@ -1,78 +1,68 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import {readFileSync,mkdtempSync,rmSync} from 'node:fs';
-import {join} from 'node:path';
-import {tmpdir} from 'node:os';
-import {Readable} from 'node:stream';
-import {createInteractionScheduler} from '../lib/interaction-scheduler.mjs';
-import {apply} from '../index.js';
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {readFileSync,mkdtempSync,rmSync} from 'node:fs'
+import {join} from 'node:path'
+import {tmpdir} from 'node:os'
+import {Readable} from 'node:stream'
+import {apply} from '../index.js'
 
-const delay=()=>new Promise(r=>setTimeout(r,10));
-test('后台只轮询私信、评论通知和@；旧热评开关不再触发轮询',async()=>{
-  let clock=1_800_000_000_000,dmCalls=0,commentCalls=[];
-  const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:1,commentWatchReplies:true,commentReplyWatchMinutes:3,
-    commentAtEnabled:true,commentAtWatchMinutes:7,commentWatchTop:true,commentTopWatchMinutes:5};
-  const s=createInteractionScheduler({dm:{poll:async()=>{dmCalls++;return {sent:0}}},comments:{poll:async args=>{commentCalls.push(args);return {sent:1}}},getConfig:()=>cfg,now:()=>clock});
+const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+const scheduler=readFileSync(new URL('../lib/interaction-scheduler.mjs',import.meta.url),'utf8')
+const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
+const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+
+test('后台采用双未读计数哨兵；完整私信/互动详情只由变化、基线或一致性核对触发',()=>{
+  assert.match(index,/readPrivateUnreadCounts/)
+  assert.match(index,/readInteractionUnreadCounts/)
+  assert.match(index,/readPrivateUnread:readPrivateUnreadSentinel/)
+  assert.match(index,/readSocialUnread:readSocialUnreadSentinel/)
+  assert.match(scheduler,/SENTINEL_INTERVAL_MS=5\*MINUTE/)
+  assert.match(scheduler,/createNotificationSentinelState/);assert.match(scheduler,/reconciliationMinutes:30/)
+  assert.match(scheduler,/comments\.poll\(\{notifications:categories\.includes\('replies'\),/)
+  assert.match(scheduler,/dm\.poll\(\)/)
+  assert.doesNotMatch(scheduler,/dmQuietIntervals|commentReplyWatchMinutes|commentAtWatchMinutes/)
+})
+
+test('Life 手动 check_notifications 复用哨兵，不再旁路读取三份完整通知列表',()=>{
+  assert.match(index,/interactionScheduler\.checkNow\(\)/)
+  const start=index.indexOf("if(task?.type==='check_notifications')")
+  const end=index.indexOf("if(task?.type===",start+10)
+  const block=index.slice(start,end>start?end:start+1200)
+  assert.doesNotMatch(block,/call\('bili_received_replies'/)
+  assert.doesNotMatch(block,/call\('bili_received_at_and_likes'/)
+  assert.match(block,/只有发现新增通知时才会读取详情/)
+})
+
+test('旧轮询配置字段继续兼容读取，但不再由管理页暴露为独立定时器',()=>{
+  for(const key of ['dmWatchMinutes','dmQuietMaxMinutes','commentReplyWatchMinutes','commentAtWatchMinutes'])assert.match(index,new RegExp(key))
+  for(const id of ['dm-interval','dm-quiet-max','poll-replies-minutes','poll-at-minutes','polling-choice'])assert.doesNotMatch(html,new RegExp(`id="${id}"|name="${id}"`))
+  assert.match(html,/私信未读计数哨兵/)
+  assert.match(html,/互动通知计数哨兵/)
+  assert.match(html,/每 30 分钟进行一次必要的详情核对/)
+  assert.match(html,/活跃私信定向检查/)
+  assert.match(ui,/私信未读计数哨兵/)
+  assert.match(ui,/互动通知计数哨兵/)
+})
+
+test('管理页只保存活跃私信定向参数，旧配置项不会被静默覆盖',()=>{
+  const save=ui.slice(ui.indexOf("$('polling-save').addEventListener"),ui.indexOf('// 显式加载内置默认提示词'))
+  assert.match(save,/dmActivePollEnabled/)
+  assert.match(save,/dmActivePollSeconds/)
+  assert.match(save,/dmDetailMaxSessions/)
+  assert.doesNotMatch(save,/dmWatchMinutes|dmQuietMaxMinutes|commentReplyWatchMinutes|commentAtWatchMinutes/)
+  assert.match(html,/旧版「私信最短检查间隔」「收到评论回复检查」「被 @ 邀请检查」仅作为旧配置兼容字段保留/)
+})
+
+test('插件配置 API 保留旧轮询字段的读取与保存兼容',async()=>{
+  const home=mkdtempSync(join(tmpdir(),'v2453-ui-'));let route
   try{
-    s.start();await delay();
-    assert.equal(dmCalls,1);assert.equal(commentCalls.length,1);
-    assert.deepEqual(commentCalls[0],{notifications:true,mentions:true,top:false});
-    let state=s.status();assert.equal(state.checks.mentions.intervalMinutes,7);
-    assert.equal(state.checks.replies.lastStartedAt,clock);
-    assert.equal(state.checks.replies.lastFinishedAt,clock);
-    assert.equal(state.checks.replies.nextAt,clock+3*60_000);
-    clock+=60_000;await s.tick();assert.equal(dmCalls,2);assert.equal(commentCalls.length,1);
-    clock+=2*60_000;await s.tick();assert.equal(dmCalls,3);assert.equal(commentCalls.length,2);
-    assert.deepEqual(commentCalls.at(-1),{notifications:true,mentions:false,top:false});
-    clock+=2*60_000;await s.tick();assert.equal(commentCalls.length,2); // no top polling at 5-minute mark
-    clock+=2*60_000;await s.tick();assert.deepEqual(commentCalls.at(-1),{notifications:true,mentions:true,top:false});
-  }finally{s.stop()}
-});
-test('修改间隔动态生效，关闭后不排下次，重新启用不清除上次检查',async()=>{
-  let clock=1_800_000_000_000,calls=0;
-  const cfg={masterEnabled:true,dmWatch:false,commentWatchReplies:true,commentReplyWatchMinutes:20,commentAtEnabled:false,commentWatchTop:false};
-  const s=createInteractionScheduler({dm:{poll:async()=>{}},comments:{poll:async()=>{calls++;return {sent:0}}},getConfig:()=>cfg,now:()=>clock});
-  try {
-    s.start();await delay();assert.equal(calls,1);
-    clock+=120_000;cfg.commentReplyWatchMinutes=1;assert.equal(s.status().checks.replies.nextAt,clock);
-    await s.tick();assert.equal(calls,2);
-    cfg.commentWatchReplies=false;assert.equal(s.status().checks.replies.nextAt,null);
-    clock+=360_000;await s.tick();assert.equal(calls,2);
-    cfg.commentWatchReplies=true;await s.tick();assert.equal(calls,3);
-    cfg.masterEnabled=false;assert.equal(s.status().checks.replies.enabled,false);
-    clock+=360_000;await s.tick();assert.equal(calls,3);
-  }finally{s.stop()}
-});
-test('执行失败和跳过分别显示状态，不能误报成功',async()=>{
-  let clock=1_800_000_000_000;
-  const cfg={masterEnabled:true,dmWatch:true,dmWatchMinutes:1,commentAtEnabled:false,commentWatchReplies:true,commentReplyWatchMinutes:1,commentWatchTop:false};
-  const s=createInteractionScheduler({dm:{poll:async()=>({error:'网络断开'})},comments:{poll:async()=>({skipped:'global-quota-exhausted'})},getConfig:()=>cfg,now:()=>clock});
-  try {s.start();await delay();const x=s.status();assert.equal(x.checks.dm.lastResult,'error');assert.equal(x.checks.dm.lastError,'网络断开');assert.equal(x.checks.replies.lastResult,'skipped');assert.equal(x.checks.replies.lastDetails.skipped,'global-quota-exhausted');}
-  finally{s.stop()}
-});
-test('插件 HTTP 配置保存四项轮询分钟数并合理钳制，无需改旧私信字段',async()=>{
-  const home=mkdtempSync(join(tmpdir(),'v2453-ui-'));let route;
-  try{
-    apply({get(k){return k==='dshHomePath'?(...x)=>join(home,...x):undefined},logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){route=x;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{});
-    async function req(method,path,body){const request=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);
-      request.method=method;request.url=path;request.headers={host:'localhost'};
-      let out;const response={writeHead(){},end(v){out=JSON.parse(v)}};await route.handler(request,response);return out;
-    }
-    let c=await req('GET','/api/bili-duty/config');
-    assert.equal(c.config.commentReplyWatchMinutes,2);assert.equal(c.config.commentAtWatchMinutes,2);assert.equal(c.config.dmQuietMaxMinutes,15);assert.equal(c.config.commentTopWatchMinutes,5);
-    c=await req('POST','/api/bili-duty/config',{dmWatchMinutes:4,dmQuietMaxMinutes:40,commentReplyWatchMinutes:8,commentAtWatchMinutes:2,commentTopWatchMinutes:18});
-    assert.equal(c.config.dmWatchMinutes,4);assert.equal(c.config.dmQuietMaxMinutes,40);assert.equal(c.config.commentReplyWatchMinutes,8);
-    assert.equal(c.config.commentAtWatchMinutes,2);assert.equal(c.config.commentTopWatchMinutes,18);
-    c=await req('POST','/api/bili-duty/config',{commentAtWatchMinutes:999,commentTopWatchMinutes:0});
-    assert.equal(c.config.commentAtWatchMinutes,120);assert.equal(c.config.commentTopWatchMinutes,5);
+    apply({get(k){return k==='dshHomePath'?(...x)=>join(home,...x):undefined},logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){route=x;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{})
+    async function req(method,path,body){const request=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])
+      request.method=method;request.url=path;request.headers={host:'localhost'}
+      let out;const response={writeHead(){},end(v){out=JSON.parse(v)}};await route.handler(request,response);return out}
+    let c=await req('GET','/api/bili-duty/config')
+    assert.equal(c.config.dmWatchMinutes,5);assert.equal(c.config.commentReplyWatchMinutes,2)
+    c=await req('POST','/api/bili-duty/config',{dmWatchMinutes:5,dmQuietMaxMinutes:40,commentReplyWatchMinutes:8,commentAtWatchMinutes:2})
+    assert.equal(c.config.dmWatchMinutes,5);assert.equal(c.config.dmQuietMaxMinutes,40);assert.equal(c.config.commentReplyWatchMinutes,8)
   }finally{rmSync(home,{recursive:true,force:true})}
-});
-test('管理中心只有后台轮询可以修改间隔，并显示上次下次和异常',()=>{
- const h=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8');
- const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8');
- for(const id of ['polling','dm-interval','dm-quiet-max','poll-replies-minutes','poll-at-minutes','polling-status-list'])assert.match(h,new RegExp(`id="${id}"|data-tab="${id}"`));
- for(const key of ['dmWatchMinutes','dmQuietMaxMinutes','commentReplyWatchMinutes','commentAtWatchMinutes','nextAt','lastFinishedAt'])assert.match(js,new RegExp(key));
- assert.doesNotMatch(js,/\['dm-interval','dmWatchMinutes',1,120,1\]/);
- assert.match(h,/name="polling-choice"/);assert.doesNotMatch(h,/id="poll-top-minutes"/);
- assert.equal((h.match(/id="dm-interval"/g)||[]).length,1);
-});
+})

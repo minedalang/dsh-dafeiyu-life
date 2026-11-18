@@ -35,14 +35,15 @@ test('管理中心全部为站内样式确认和输入，不使用系统原生�
  assert.match(js,/ownerCheck\.addEventListener\('change',async\(\)=>/)
  assert.match(js,/title:'保存生活设置？'/)
 })
-test('负向开关写回旧授权键只执行一次取反；已关闭的老用户不因为标签改变而放开',()=>{
- for(const id of ['bili-auto-comment','bili-auto-like','bili-auto-collect','bili-favorite-delete']){
+test('视频权限改为正向推拉开关，仍写回原有配置键而不重置旧用户设置',()=>{
+ for(const id of ['bili-auto-comment','bili-auto-like','bili-auto-collect','bili-favorite-delete','bili-agent-follow']){
   const tag=html.match(new RegExp('<input id="'+id+'"[^>]+>'))?.[0]||''
-  assert.match(tag,/data-inverted-permission="true"/)
+  assert.match(tag,/role="switch"/)
+  assert.doesNotMatch(tag,/data-inverted-permission="true"/)
  }
  assert.match(js,/dataset\.invertedPermission==='true'\?c\[key\]!==true:c\[key\]===true/)
  assert.match(js,/dataset\.invertedPermission==='true'\?!\$\(id\)\.checked:\$\(id\)\.checked/)
- assert.match(html,/禁止自主关注／取关 UP 主/)
+ assert.match(html,/自主关注／取关 UP 主/)
  assert.match(read('index.js'),/agentFollowEnabled: z\.boolean\(\)\.default\(true\)/)
 })
 test('视频兴趣私信仍显示独立链路，旧四项内部调试卡不向普通用户显示',()=>{

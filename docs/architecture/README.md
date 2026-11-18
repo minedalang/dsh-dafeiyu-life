@@ -1,6 +1,49 @@
-# 2.8.0 现行架构与开发历史
+## 当前 2.8.1 通知、视频与决策架构（2026-11-18）
 
-**当前源码版本：2.8.0。** 现行事实请优先阅读 [Life 当前接线](life-system-current.md)、[统一行动协议](2.8.0-unified-life-action-protocol.md) 和 [2.8.0 发布与实机验收记录](2.8.0-final-release-audit-20261114.md)。下方按 `dev.N` 命名的节点为**历史增量文档**；其中的“当前”“未正式发布”等措辞只适用于对应开发阶段，不描述今天的版本号。
+- [dev.3b.33.23 · 官方 DASH SIDX 长视频有限分段取帧](2.8.1-dev3b23-dash-indexed-long-video.md)：在 DURL 之外验证公开 DASH 的 `SegmentBase` 与时间索引、按 206 Range 有界取帧，真实回退原因透传、旧版证据兼容；Windows 实机待验。
+- [dev.3b.33.17 · B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)：以私信未读计数与互动通知计数作为后台消息发现入口，详情按需读取，保留 30 分钟一致性核对、活跃私信 60 秒定向检查及跨重启 `-509` 保护。
+- [dev.3b.33.18 · Life 决策自由与安全链接审计](2.8.1-dev3b18-life-decision-freedom-audit.md)：短链逐跳共享预算、多个私信链接由 Life 精确选择、执行时联系人权限复核、链接类型/AID 回执核验及视频元数据/观看语义区分。
+- [2.9.x · Life 通用注意力与跨平台活动系统未来计划](2.9.x-life-universal-attention-cross-platform-plan.md)：平台无关注意力、活动生命周期、Adapter 契约、打断与恢复、抖音/游戏平台分阶段接入。
+
+> **视觉环境能力基线（dev.3b.33.11）：** [Windows 一键自助视觉运行时修复](2.8.1-dev3b3311-vision-one-click-repair.md)。该能力继续保留；当前消息读取架构已在 dev.3b.33.17 更新为双通知哨兵。
+
+> **最新实施增量（dev.3b.33.9）：** [Life 统一资源调度与自然契机收敛](2.8.1-dev3b339-resource-scheduler-and-natural-life.md)。仅单宿主资源仲裁，原社交发送凭据仍由持久安全层负责。
+
+> **当前工作源码：`2.8.1-dev.3b.33.23-indexed-dash-long-video`（2026-11-18，开发版）。** 当前架构入口：[B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)；决策安全审计：[Life 决策自由与安全链接](2.8.1-dev3b18-life-decision-freedom-audit.md)；系统集成审计：[跨系统可靠性、统一 Life、自然契机与文档审计](2.8.1-dev3b338-system-integration-audit.md)。本页以下 dev.20、2.8.0 和 2.7.1 章节是历史快照，不表示目前项目版本或正式验收通过。
+
+> **历史实现增量 2.8.1-dev.3b.20：** [私信限流收口、Headless 双栏能力管理与图片回执诊断](2.8.1-dev3b20-dm-headless-capability-management.md)。普通监听与快通道显示为同一 DM 退避，活跃检查自适应放慢；Desktop/Headless 双栏由真实配置状态驱动，Headless 能力补充不修改 Desktop；图片验收在 DSH 子进程异常时仍保留 MCP 图片证明。真实 B站 -509 恢复、Windows DSH 与第三方中转站图片链路仍需实机验证。
+
+上一批 [dev.3b.19 DSH 视觉路由一致性与分阶段图片验收](2.8.1-video-perception-dev3b19-headless-vision-route-diagnostics.md) 保留为历史记录；当前实现与约束以本节 dev.3b.20 文档及仓库根目录 `AGENTS.md` 为准。
+
+> **历史增量 2.8.1-dev.3b.9：** [受控 MP4 HTTP Range 分段视频感知与本地 Ollama 视觉模型认可恢复](2.8.1-video-perception-dev3b9.md)。超过卡片网络预算不强制整文件下载，不回退3帧冒充深入；这是早期仅索引公开单段 MP4 的历史实现；现行新增 DASH 详见 dev.3b.33.23，实际 Windows/B站仍需验收。
+
+> **历史开发候选 2.8.1-dev.3b.6：** [视频感知全链路、只读 Life 输入 Debug、实机发布门禁](2.8.1-video-perception-dev3b6.md)。此前 dev.3b.5 等段落均是按阶段保留的历史描述。未通过真实 B站/DSH 模型验收，不应以正式版发布。
+
+> **历史增量 2.8.1-dev.3b.5 · 新用户安装可靠性：** [首次设置主依赖安装、实测就绪扫码门禁、可选视频探测隔离与二维码 Python 兼容修复](2.8.1-dev3b5-first-start-dependency.md)。已发布 2.8.0 不受本补丁改变；Windows/macOS/Linux 空白环境仍待真实安装验收。
+
+> 历史增量：**2.8.1-dev.3b.4 · 视觉模型与依赖管理一体化**。视觉识别模型、FFmpeg/Whisper 同页；模型人工认可依据 Ollama 模型摘要持久恢复，系统组件显式受控安装；详见 [dev.3b.4 设计与验收](2.8.1-video-perception-dev3b4.md)。正式版 2.8.0 不包含上述功能。
+
+> **2.8.1-dev.3b.3 依赖入口收口：** [快速设置安装主依赖及勾选的 FFmpeg/Whisper，可在 AI 模型页设置语音识别并验收实际回执](2.8.1-video-perception-dev3b3.md)。两类安装使用不同的原有安装器，避免重复控制与未经确认的大模型下载。
+
+> **2.8.1-dev.3b.3 本轮视频依赖集中管理：** [FFmpeg 状态、自测及 Windows 显式 winget 安装、Whisper 安装/模型缓存/真实转写状态、辅助能力迁移至 AI 模型页](2.8.1-video-perception-dev3b3.md)。修复选择 Whisper 模型后仍复用旧 MCP 默认型号的接线；离线检查不代表 Windows 实机/真实 B站验收。
+
+> **历史增量 2.8.1-dev.3b.1：** [字幕/分镜时间邻接证据、DSH 第三方模型能力助手、Windows Ollama 启动和统一 SVG 配图](2.8.1-video-perception-dev3b1.md)。只证明时间邻接，不宣称已经 OCR、听原声或音画语义互证。
+
+> **2.8.1-dev.3a.4 当前视频感知开发说明：** [12/24/48 卡片式分镜、全片时间分层、真实视频切镜/运动/弹幕热度联合选帧、旧高能预览实验退役、可信证据、Mermaid/SVG](2.8.1-video-perception-dev3a4.md)。高能只是候选线索，不构成事实；真实 Windows/B站/模型未验收。
+
+> **2.8.1-dev.3a.3 受控公开视频自适应采样（开发增量）：** [B站公开单段视频源、24MiB 安全边界、离线 FFmpeg 稀疏切镜、DSH/Ollama 证据与回退](2.8.1-video-perception-dev3a3.md)。仅在鱼鱼自主选择标准/深入视觉时取帧；没有逐帧全视频或音轨感知。真实 Windows/B站环境未验收。
+
+> **2.8.1-dev.3a.1 自适应低清预览采样：** [活动/时间候选、差异去重、来源时间锚点与后续局部放大限制](2.8.1-video-perception-dev3a.md)。不下载完整视频。
+
+> **2.8.1-dev.2c 视觉模式统一（开发预览）：** [DSH/Ollama 两路识图、统一大肥鱼原图人工验收与旧 Endpoint 退役](2.8.1-video-perception-dev2c.md)。历史 auto/复用视觉设置升级后需重新明确启用。
+
+> **2.8.1-dev.2b 开发预览（2026-11-14）：** [可选本机视觉模型安装、自检、使用边界与开源参考](2.8.1-video-perception-dev2b.md)。Ollama 仍须用户自行安装；MiniCPM-V 4.7 部分版本兼容性待验证。
+
+> **2.8.1-dev.2a 实施入口（2026-11-14）：** [视频感知证据协议、分阶段开发与本地 MiniCPM-V / Qwen3.5 一键安装规格](2.8.1-video-perception-dev2a.md)。仅首批只读证据合同已接线；不代表本地视觉模型安装器已实现。
+
+# 2.8.0 历史架构与开发记录
+
+**以下为 2.8.0 版本历史基线，并非当前 2.8.1 源码。** 回溯当时契约请阅读 [Life 当前接线](life-system-current.md)、[统一行动协议](2.8.0-unified-life-action-protocol.md) 和 [2.8.0 发布与实机验收记录](2.8.0-final-release-audit-20261114.md)。下方按 `dev.N` 命名的节点为**历史增量文档**；其中的“当前”“未正式发布”等措辞只适用于对应开发阶段，不描述今天的版本号。
 
 ---
 
@@ -8,17 +51,17 @@
 
 [多气泡自然分段、主人额度排除、持久互动节奏卡片和 ZIP 基线补丁](2.8.0-dev17-uploaded-zip-quota-burst.md)。仍需真实 Windows/B站验收。
 
-## 2.8.0-dev.17 当前增量（基于 dev.16）
+## 2.8.0-dev.17 历史增量（基于 dev.16）
 
 [网络退避恢复、主人私信 10 秒快通道接线、短反馈上下文锚定与 Windows 测试修复](2.8.0-dev17-network-backoff-fast-dm-recovery.md)。这是源码与日志驱动的离线修复；真实 Windows／B站连接恢复验收仍需完成。
 
-## 2.8.0-dev.16 当前增量入口（优先阅读）
+## 2.8.0-dev.16 历史增量入口
 
 [同一 Life 意愿的兼容视频多动作／私信缓冲跨进程保护／公开场合隐私](2.8.0-dev16-composable-writes-private-memory.md)。此版本仍是开发预览，**未通过** Windows／真实 B站／真实模型服务商／72 小时验收。历史文档下方即使写着“当前”，也按其开发时间看作历史。
 
 **2.8.0-dev.16 私信按段经历提炼（当前交付）：** [临时双向缓冲、AI 按段整理、可衰减经历与原有反思](2.8.0-dev16-private-conversation-extraction.md)。以用户上传源码为基线修复普通/主人私信真实回执与自然收尾接线；原文仅短期保留，统计按账号隔离。未完成 Windows/B站实机验收。
 
-**2.8.0-dev.16 当前增量：** [私信可衰减共同交流、私密反思与跨渠道熟人理解](2.8.0-dev16-private-relationship-memory.md)。仅供同一账号、同一 UID 关系理解，绝不把私聊直接公开；真实平台及完整语义隐私仍待验收。
+**2.8.0-dev.16 历史增量：** [私信可衰减共同交流、私密反思与跨渠道熟人理解](2.8.0-dev16-private-relationship-memory.md)。仅供同一账号、同一 UID 关系理解，绝不把私聊直接公开；真实平台及完整语义隐私仍待验收。
 
 > **2.8.0 最新开发收口（基线 dev.16）**：统一 Life 意愿、私信渐进表达、主人对话接力、10–60 秒活跃轮询、跨日记忆与成长诊断现行入口分别参见 [dev.16 架构](2.8.0-dev16-dm-progressive-fast-poll-life-rest.md)、[统一 Life 行动协议](2.8.0-unified-life-action-protocol.md)、[当前 Life 接线](life-system-current.md) 和 [发布就绪审计](2.8.0-release-readiness.md)。正式版仍需 Windows、B站、长时稳定性和完整安全回归；以下 dev.13/12/10 等说明均为历史开发节点。
 
@@ -392,7 +435,7 @@
 
 - [已结算生活契机与独立探索线索分账本语义、失败有界冷却、成功元数据后的后续自主考虑](./2.7.1-dev4-life-exploration-read-continuity.md) · [当前调用 Mermaid](./diagrams/2.7.1-dev4-life-exploration-read-continuity-live.mmd)。修复 `cues>0`、`opportunities=0` 时只读失败的错误结算；仅验证公开元数据，视频观看和社交接管仍需真实回执与独立授权。
 
-# 当前增量：Life Agent 决策全过程 DEBUG / B站只读拒绝分类 / 旧测试入口清理
+# 历史增量：Life Agent 决策全过程 DEBUG / B站只读拒绝分类 / 旧测试入口清理
 
 - [真实生活决策链脱敏追踪、平台拒绝分类及重复汇总、错误冻结收紧、Debug 入口和兼容说明](./2.7.1-dev4-life-decision-trace-and-read-diagnostics.md) · [当前生产 Mermaid](./diagrams/2.7.1-dev4-life-decision-trace-live.mmd)。保留原生活事件、已授权只读动作及平台回执为事实源；调试记录不是第二份记忆或授权；Dev3 旧离线按钮退役。Life Agent 社交仍未接管。
 
@@ -627,3 +670,5 @@
 - [2.7.1-dev.8 顶部导航 Life UI 试行](./2.7.1-dev8-topnav-life-ui-trial.md)：保留四组横向页签，使用用户原设立绘、动画；修复时间线和心情 CSS；不涉及决策与外发。
 
 - [2.8.0-dev.2 老用户备份兼容与完整冷快照安全说明](2.8.0-dev2-old-user-backup-safety.md)
+
+> **dev.3b.2 · 画面静帧 OCR 与本地 ASR 明确时间片段（开发增量）：** [实现和证据边界](2.8.1-video-perception-dev3b2.md)。不等于音画语义互证；真实平台和 Windows 实机未验收。

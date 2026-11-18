@@ -9,3 +9,8 @@
 *.sqlite3
 *.db
 *.log
+
+# Generated local vision/ASR preview scratch files
+lib/tmp/
+lib/tmp
+lib/tmp/**

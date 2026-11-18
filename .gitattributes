@@ -1,1 +1,2 @@
 *.bat text eol=crlf
+docs/architecture/life-system-current-view.md text eol=lf

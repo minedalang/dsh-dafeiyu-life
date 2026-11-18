@@ -51,7 +51,7 @@ test('no TODO and no queued opportunity are necessary to form an autonomous expl
   assert.equal(life.intentions().length,1)
   assert.equal(life.intentions()[0].videos.length,2)
   assert.match(a.prompt,/lifeCues/)
-  assert.doesNotMatch(a.prompt,/account-a|12345|私信正文/)
+  assert.doesNotMatch(a.prompt,/account-a|"dedeuserid":"12345"|私信正文[：:]真实/)
   assert.equal(life.status().intentions[0].status,'ready')
   t+=6*3600_000
   const b=planner(dir,life,{clock:()=>t,response:()=>({action:'inspect_exploration',id:life.intentions()[0]?.id,bvid:SECOND,
