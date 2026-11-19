@@ -67,14 +67,25 @@ def _cdn_url(url):
         raise AdaptiveUnavailable('unsafe_video_source')
     if url.startswith('//'):
         url = 'https:' + url
-    p = parse.urlsplit(url)
-    host = (p.hostname or '').lower()
-    if (p.scheme != 'https' or p.username or p.password or p.port is not None
-        or p.fragment or not re.fullmatch(r'(?:[a-z0-9-]+\.){1,5}bilivideo\.com', host)
-        or not p.path.startswith('/upgcxcode/') or '%' in p.path
-        or any(x in ('.', '..') for x in p.path.split('/'))
-        or not re.fullmatch(r'/[A-Za-z0-9_./-]{1,512}\.(?:mp4|m4v|flv|m4s)', p.path, re.I)):
-        raise AdaptiveUnavailable('unsafe_video_source')
+    try:
+        p = parse.urlsplit(url)
+        host = (p.hostname or '').lower()
+        forbidden_authority = bool(p.username or p.password or p.port is not None or p.fragment)
+    except ValueError:
+        raise AdaptiveUnavailable('video_source_authority_rejected') from None
+    # Never report raw signed URLs, hostnames, query tokens or redirect locations.
+    # These categories are diagnostic only; validation remains fail-closed.
+    if p.scheme != 'https':
+        raise AdaptiveUnavailable('video_source_scheme_rejected')
+    if forbidden_authority:
+        raise AdaptiveUnavailable('video_source_authority_rejected')
+    if not re.fullmatch(r'(?:[a-z0-9-]+\.){1,5}bilivideo\.com', host):
+        raise AdaptiveUnavailable('video_source_domain_rejected')
+    if (not p.path.startswith('/upgcxcode/') or '%' in p.path
+        or any(x in ('.', '..') for x in p.path.split('/'))):
+        raise AdaptiveUnavailable('video_source_path_rejected')
+    if not re.fullmatch(r'/[A-Za-z0-9_./-]{1,512}\.(?:mp4|m4v|flv|m4s)', p.path, re.I):
+        raise AdaptiveUnavailable('video_source_format_rejected')
     return url
 
 
@@ -103,6 +114,7 @@ def _choose_dash_video(data):
     if not isinstance(dash, dict) or not isinstance(dash.get('video'), list):
         raise AdaptiveUnavailable('dash_stream_unavailable')
     supported = []
+    rejections = []
     for stream in dash['video'][:20]:
         if not isinstance(stream, dict):
             continue
@@ -114,9 +126,16 @@ def _choose_dash_video(data):
                 bandwidth = int(stream.get('bandwidth') or 0)
                 if bandwidth < 0: continue
                 supported.append((bandwidth, url, initial, index))
-        except (AdaptiveUnavailable, ValueError, TypeError):
+        except AdaptiveUnavailable as exc:
+            rejections.append(exc.code)
+        except (ValueError, TypeError):
             continue
     if not supported:
+        # An official DASH fallback that has no acceptable safe URL should
+        # expose only the rejection *class*, never a signed CDN address.
+        source_rejections=[r for r in rejections if r.startswith('video_source_')]
+        if source_rejections and len(source_rejections)==len(rejections):
+            raise AdaptiveUnavailable(source_rejections[0])
         raise AdaptiveUnavailable('dash_indexed_video_unavailable')
     supported.sort(key=lambda x: x[0])
     _, url, initial, index = supported[0]
@@ -158,6 +177,7 @@ def _playurl(bvid):
             raise AdaptiveUnavailable('public_playurl_unavailable') from None
     progressive = playurl(1)
     durls = progressive.get('durl') or []
+    progressive_rejection = None
     if len(durls) == 1 and isinstance(durls[0], dict):
         stream = durls[0]
         try:
@@ -166,15 +186,24 @@ def _playurl(bvid):
             raise AdaptiveUnavailable('video_size_unavailable') from None
         if size <= 0 or size > MAX_REMOTE_SIZE:
             raise AdaptiveUnavailable('video_size_outside_supported_range', fallback=False)
-        url = _cdn_url(stream.get('url'))
-        # MP4 is already seekable. Small FLV is supported by bounded full download;
-        # large FLV is not and needs a separate DASH track instead.
-        if not url.lower().split('?',1)[0].endswith('.flv') or size <= NETWORK_BUDGETS[12]:
-            return url, size, duration, int(cid)
-    else:
-        url = None
+        try:
+            url = _cdn_url(stream.get('url'))
+        except AdaptiveUnavailable as exc:
+            # A rejected progressive CDN URL must not stop us inspecting the
+            # *separate, official* DASH listing. Never fetch the rejected URL.
+            progressive_rejection = exc
+        else:
+            # MP4 is seekable. Large FLV needs an indexed DASH track.
+            if not url.lower().split('?',1)[0].endswith('.flv') or size <= NETWORK_BUDGETS[12]:
+                return url, size, duration, int(cid)
     data = playurl(16)
-    dash = _choose_dash_video(data)
+    try:
+        dash = _choose_dash_video(data)
+    except AdaptiveUnavailable as exc:
+        # Preserve the original cause if DASH is absent; no URLs or tokens leak.
+        if progressive_rejection and exc.code == 'dash_stream_unavailable':
+            raise progressive_rejection from None
+        raise
     dash.update(duration=duration, cid=int(cid))
     return dash
 

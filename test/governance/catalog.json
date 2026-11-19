@@ -660,6 +660,11 @@
       "owner": "life-video-opportunities",
       "kind": "security",
       "intent": "Ensure a real Life Episode visual receipt can be registered after the same observation was saved in fading memory, while pre-read repeat guards, receipt replay, account ownership and invalid frame proofs remain denied."
+    },
+    "v282-dev14-video-source-asr-visibility.test.mjs": {
+      "owner": "video-perception-handoff-console",
+      "kind": "ui",
+      "intent": "Read-only UI identifies actual source downgrade and partial ASR, never claiming full transcript or playback."
     }
   },
   "protected": [
@@ -800,6 +805,11 @@
       "owner": "video-diagnostics",
       "kind": "behavior",
       "intent": "Verify a read-only exported-log auditor distinguishes legacy preview frame events from newer Life verified visual action receipts and never prints private video identifiers or payloads."
+    },
+    "test_v282_dev14_video_source_asr.py": {
+      "owner": "adaptive-video-asr",
+      "kind": "security",
+      "intent": "Progressive rejected CDN URL may only fall back to a separately validated official DASH track; long ASR windows are bounded and original timestamps preserved."
     }
   },
   "pythonProtected": [

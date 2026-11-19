@@ -22,6 +22,10 @@ from pathlib import Path
 import re
 import sys
 import tempfile
+import shutil
+import subprocess
+import secrets
+from types import SimpleNamespace
 
 # ⭐ Windows 上 Python 默认按 GBK 编/解码标准输出 —— 中文或 emoji 打进管道会直接炸
 #    （有用户反馈装依赖 / 跑转写时报 UnicodeDecodeError 或乱码）⇒ 这里钉死 UTF-8
@@ -87,7 +91,85 @@ def fetch_audio(url: str, tmp: str, tag: str) -> str:
         return ydl.prepare_filename(info)
 
 
-def _asr_receipt(bvid, pieces):
+# Optional full-duration ASR is still available to the local operator. Long
+# videos default to stratified representative clips: this reduces *inference*
+# cost, not the audio download size. Never label a sample as full coverage.
+LONG_ASR_THRESHOLD_SECONDS = 8 * 60
+LONG_ASR_SAMPLE_WINDOWS = 3
+LONG_ASR_WINDOW_SECONDS = 60
+
+
+def _audio_duration(src):
+    """Probe local audio only; never pass a URL or model-supplied command."""
+    ffprobe = shutil.which('ffprobe')
+    if not ffprobe:
+        return None
+    try:
+        result = subprocess.run([ffprobe, '-v', 'error', '-show_entries',
+            'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', src],
+            capture_output=True, text=True, timeout=12)
+        value = float(result.stdout.strip()) if result.returncode == 0 else 0
+        return value if math.isfinite(value) and 3 <= value <= 4 * 3600 else None
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+
+
+def _clip_windows(duration):
+    """Three separated bounded windows, with original video timeline offsets."""
+    if not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration < LONG_ASR_THRESHOLD_SECONDS:
+        return []
+    span = LONG_ASR_WINDOW_SECONDS
+    centers = (span / 2, duration / 2, duration - span / 2)
+    windows = [(round(max(0., min(duration-span, c-span/2)), 3), span) for c in centers]
+    # Do not unintentionally duplicate a clip near the threshold.
+    return list(dict.fromkeys(windows))
+
+
+def _sample_audio_windows(src, tmp, tag):
+    """Return safe local WAV excerpts, or None if sampling cannot be used.
+
+    Missing FFmpeg/probe falls back to the existing full transcription rather
+    than pretending the model heard an unknown number of seconds.
+    """
+    if os.environ.get('BILI_ASR_LONG_VIDEO_MODE', 'sample').strip().lower() == 'full':
+        return None
+    ffmpeg = shutil.which('ffmpeg')
+    duration = _audio_duration(src)
+    windows = _clip_windows(duration)
+    if not ffmpeg or not windows:
+        return None
+    samples = []
+    try:
+        for i, (start, length) in enumerate(windows):
+            out = os.path.join(tmp, tag + '.sample%d.wav' % i)
+            result = subprocess.run([ffmpeg, '-hide_banner', '-loglevel', 'error',
+                '-nostdin', '-ss', str(start), '-i', src, '-t', str(length),
+                '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', '-y', out],
+                capture_output=True, timeout=35, **_hidden_windows_child())
+            if result.returncode != 0 or not os.path.isfile(out) or os.path.getsize(out) < 512:
+                return None
+            samples.append((out, start, length))
+        return {'duration':duration,'samples':samples,'windows':windows}
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _hidden_windows_child():
+    if os.name != 'nt':
+        return {}
+    return {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+
+
+def _offset_segments(segments, offset):
+    """Whisper clip-relative seconds become truthful original-audio seconds."""
+    for item in segments:
+        start, end = getattr(item, 'start', None), getattr(item, 'end', None)
+        yield SimpleNamespace(text=getattr(item, 'text', ''),
+            start=(start + offset) if isinstance(start, (int,float)) else None,
+            end=(end + offset) if isinstance(end, (int,float)) else None)
+
+
+def _asr_receipt(bvid, pieces, *, sampling=None):
     """Keep only explicitly timed Whisper spans; never infer time from plain text."""
     rows = []
     text_parts = []
@@ -105,9 +187,15 @@ def _asr_receipt(bvid, pieces):
             break
     if len(rows) > 160:
         rows = [rows[round(i * (len(rows) - 1) / 159)] for i in range(160)]
-    return {'bvid': bvid, 'source': 'local-asr', 'asr_evidence': 'faster-whisper-machine-transcript',
+    result = {'bvid': bvid, 'source': 'local-asr', 'asr_evidence': 'faster-whisper-machine-transcript',
             'text': ' '.join(text_parts)[:12000], 'timed_segments': rows,
-            'can_claim_audio_listened': False, 'can_claim_full_video_watched': False}
+            'can_claim_audio_listened': False, 'can_claim_full_video_watched': False,
+            'coverage': 'representative-windows' if sampling else 'full-audio-attempt'}
+    if sampling:
+        result['audioDurationSeconds'] = round(sampling['duration'], 3)
+        result['sampleWindows'] = [{'startSeconds':start, 'endSeconds':round(start+length,3)}
+                                   for start, length in sampling['windows']]
+    return result
 
 
 def main() -> int:
@@ -130,7 +218,7 @@ def main() -> int:
     # ⭐ 每个视频用**自己的**文件名：以前写死 audio.m4a ⇒ 两轮同时跑会互相覆盖，
     #    上一轮转出来的其实是另一个视频的内容（2026-10-14 值班那轮亲踩 ✗）
     tag = os.path.basename(src).rsplit('.', 1)[0] or 'clip'
-    tag = re.sub(r'[^0-9A-Za-z_-]', '_', tag)[:40] or 'clip'
+    tag = (re.sub(r'[^0-9A-Za-z_-]', '_', tag)[:32] or 'clip') + '-' + secrets.token_hex(4)
     try:
         if src.lower().startswith('http') or src.upper().startswith('BV'):
             print('[asr] 先下音频…', file=sys.stderr)
@@ -154,14 +242,21 @@ def main() -> int:
         print('[asr] 加载模型 %s（第一次会自动下模型，之后就是本地读）…' % args.model, file=sys.stderr)
         model = WhisperModel(model_source, device='cpu', compute_type='int8')
         print('[asr] 开始转写…', file=sys.stderr)
-        segments, _info = model.transcribe(
-            src,
-            language=None if args.lang == 'auto' else args.lang,
-            vad_filter=True,          # 掐掉静音段，省时间也少出错
-            beam_size=1,              # CPU 上优先按时完成；不宣称改变模型准确率保证
-            condition_on_previous_text=False,
-        )
-        receipt = _asr_receipt(args.target, segments)
+        sampling = _sample_audio_windows(src, tmp, tag)
+        def transcribe(audio):
+            return model.transcribe(audio,
+                language=None if args.lang == 'auto' else args.lang,
+                vad_filter=True,
+                beam_size=1,
+                condition_on_previous_text=False)[0]
+        if sampling:
+            print('[asr] 长音轨：仅转写 3 个代表性窗口（非整段转写）', file=sys.stderr)
+            from itertools import chain
+            segments = chain.from_iterable(_offset_segments(transcribe(filename), offset)
+                for filename, offset, _length in sampling['samples'])
+        else:
+            segments = transcribe(src)
+        receipt = _asr_receipt(args.target, segments, sampling=sampling)
         text = receipt['text']
     finally:
         # 临时音频不留在磁盘上

@@ -3682,11 +3682,30 @@ async def bili_transcribe_safe(bvid: str) -> str:
             not isinstance(payload.get('timed_segments'),list)):
             _record_asr_attempt('failed',model,reason='invalid-receipt')
             return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'本地语音转写回执不完整'},ensure_ascii=False)
+        coverage = payload.get('coverage', 'full-audio-attempt')
+        if coverage not in ('representative-windows', 'full-audio-attempt'):
+            _record_asr_attempt('failed',model,reason='invalid-receipt')
+            return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'语音覆盖范围无效'},ensure_ascii=False)
+        windows = payload.get('sampleWindows', []) if coverage == 'representative-windows' else []
+        duration = payload.get('audioDurationSeconds') if coverage == 'representative-windows' else None
+        if coverage == 'representative-windows' and (not isinstance(windows, list)
+            or not 1 <= len(windows) <= 3 or not isinstance(duration, (int,float))
+            or isinstance(duration, bool) or not 480 <= duration <= 14400 or any(
+                not isinstance(w, dict) or not isinstance(w.get('startSeconds'), (int,float))
+                or not isinstance(w.get('endSeconds'), (int,float))
+                or isinstance(w.get('startSeconds'), bool) or isinstance(w.get('endSeconds'), bool)
+                or not 0 <= w['startSeconds'] < w['endSeconds'] <= duration + .1
+                or w['endSeconds'] - w['startSeconds'] > 60.1 for w in windows)):
+            _record_asr_attempt('failed',model,reason='invalid-receipt')
+            return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'语音采样时间窗无效'},ensure_ascii=False)
         _record_asr_attempt('success',model,segments=len(payload['timed_segments']))
         return json.dumps({'bvid':bv,'source':'local-asr',
                            'asr_evidence':'faster-whisper-machine-transcript',
                            'text':payload['text'][:12000],
                            'timed_segments':payload['timed_segments'][:160],
+                           'coverage':coverage,
+                           **({'audioDurationSeconds':duration,'sampleWindows':windows}
+                              if coverage == 'representative-windows' else {}),
                            'can_claim_audio_listened':False,'can_claim_full_video_watched':False},ensure_ascii=False)
     except subprocess.TimeoutExpired as exc:
         # Only recognize *our own fixed phase markers* from stderr; never
