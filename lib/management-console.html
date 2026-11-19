@@ -2573,17 +2573,18 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <section id="panel-diagnostics" hidden><details class="settings-section life-section" id="video-perception-final-debug" open>
 <summary>🎞️ 视频感知全链路 · Life 最终输入 Debug</summary>
 <div class="inset">
-<p class="muted">本机只读验收：输入一个真实 BV，分步骤查看画面、字幕／Whisper、OCR 和证据时间轴。试运行不会登记 Life 经历或观看历史，也不会点赞／评论；可能产生 B站读取和视觉模型成本。下方「真实 Life」展示最近一次实际观看工具返回给 Life 的<strong>同一份数据</strong>，不是测试替身。</p>
+<p class="muted">本机只读验收：输入真实 BV，默认走<strong>官方 videoshot 全局概览</strong>，不是先解码原视频。可单独选择原视频 FFmpeg 取帧专项。深度只控制本次主人测试的采样上限，不等于 Life 的自主意愿；试运行不会触发 Life 看后的第二次决策，也不会登记经历／观看历史或点赞／评论；可能产生 B站读取与视觉模型费用。下方「真实 Life」才展示实际观察回执。</p>
 <div class="toolbar video-debug-toolbar">
 <label>BV 视频号 <input id="video-debug-bvid" type="text" placeholder="BV1xxxxxxxxxx" maxlength="12" autocomplete="off" spellcheck="false" aria-label="测试视频 BV 号"></label>
-<label>本次主人测试深度 <select id="video-debug-depth" aria-label="试运行理解深度"><option value="skim">略看 · 不识图</option><option value="standard">正常了解</option><option value="deep" selected>深入探索</option></select></label>
+<label>读取来源 <select id="video-debug-source" aria-label="试运行视觉来源"><option value="preview" selected>全局概览 · 官方 videoshot（默认）</option><option value="adaptive">专项排障 · 原视频 FFmpeg</option></select></label>
+<label>本次主人测试深度 <select id="video-debug-depth" aria-label="试运行理解深度"><option value="skim">略看 · 不识图</option><option value="standard" selected>正常了解 · 最多12帧</option><option value="deep">深入预览 · 按档位最多24帧</option></select></label>
 <button id="video-debug-run" type="button" class="life-action life-purple">开始只读视频感知验收</button>
 <button id="video-debug-refresh" type="button" class="life-action life-sky">刷新当前结果</button>
 </div>
 <progress id="video-debug-progressbar" max="6" style="width:100%;height:15px;display:none" aria-label="视频感知只读验收进行中"></progress>
 <p id="video-debug-progress" class="muted" role="status" aria-live="polite">尚未执行。新版本启用后请确认模型与 FFmpeg / Whisper 状态。</p>
 <div id="video-debug-summary" class="video-debug-summary" aria-live="polite"></div>
-<section class="setting-note" aria-label="真实视频采样图像" style="margin-top:12px"><strong>🖼️ 真实分镜拼图与高清局部复查</strong><p class="muted">仅展示本机实际送入视觉模型的 JPEG；图片按本轮回执显示，最多保留 30 分钟。时间戳是抽样瞬间，不代表连续观看。若命中旧缓存且原图已过期，会明确提示没有可复看的图像。</p><div id="video-debug-images" class="video-debug-images" aria-live="polite">尚无本轮图像回执</div></section>
+<section class="setting-note" aria-label="视频采样图像" style="margin-top:12px"><strong>🖼️ 视觉模型实际输入分镜</strong><p class="muted">按实际来源显示官方低清 videoshot 全局分镜或 FFmpeg 原视频采样分镜。仅展示本轮实际送入视觉模型的 JPEG，最多保留 30 分钟。时间戳是抽样瞬间，不代表完整观看；命中旧缓存且原图已过期时如实提示。</p><div id="video-debug-images" class="video-debug-images" aria-live="polite">尚无本轮图像回执</div></section>
 <div class="toolbar"><button id="video-debug-show-test" type="button" class="life-action life-sky">查看试运行输入</button><button id="video-debug-show-life" type="button" class="life-action life-sky">查看最近真实 Life 输入</button><button id="video-debug-copy" type="button" class="life-action life-sky">复制当前完整 JSON</button></div>
 <div class="video-debug-panels">
 <details><summary>🖼️ 视觉模型实际回执 · 来源、时间与描述</summary><pre id="video-debug-visual" class="video-debug-json">暂无结果</pre></details>

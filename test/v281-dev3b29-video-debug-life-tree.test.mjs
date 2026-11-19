@@ -55,3 +55,20 @@ test('local vision reuse uses bounded warm keep alive rather than forced unload 
   assert.match(video,/'keep_alive':'5m'/)
   assert.doesNotMatch(video,/'keep_alive':'0'/)
 })
+
+
+test('owner Debug source is an explicit allowlisted choice, preview by default; no fake Life decision',()=>{
+  const index=read('../index.js')
+  const html=read('../lib/management-console.html')
+  const ui=read('../lib/management-console.js')
+  assert.match(html,/<select id="video-debug-source"[^>]*><option value="preview" selected>/)
+  assert.match(html,/<option value="adaptive">专项排障/)
+  assert.match(html,/<option value="standard" selected>正常了解/)
+  assert.match(ui,/sourceMode:\$\('video-debug-source'\)\.value|const sourceMode=\$\('video-debug-source'\)\.value/)
+  assert.match(ui,/depth:\$\('video-debug-depth'\)\.value,sourceMode/)
+  assert.match(index,/if\(body\?\.sourceMode!==undefined&&!\['preview','adaptive'\]\.includes\(body\.sourceMode\)\)/)
+  assert.match(index,/const debugPerceptionSource=body\?\.sourceMode==='adaptive'\?'adaptive':'preview'/)
+  assert.match(index,/__debugDryRun:true\},\s*\{debugPerceptionSource\}/)
+  assert.match(index,/lifePayload\.visionDecision='owner-debug-'\+visionPlan\.depth/)
+  assert.match(index,/if\(!dryRun&&args\.record_session!==false\)/)
+})
