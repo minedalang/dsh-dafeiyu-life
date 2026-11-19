@@ -1,3 +1,5 @@
+> **2.8.2-dev.6 状态说明：** `read-availability-projection.mjs` 仅从 `bili-read-budget.mjs`、通知网络退避读取状态，归并为管理中心只读解释；Life 的选择、原读取调度与外发权限完全不变。详见 [专项文档](2.8.2-dev6-read-availability-diagnostics.md)。
+
 > **2.8.2-dev.5 PR-3（开发中）**：保留原 `LifeOpportunities` 视觉回执账本；若账本未记录而当前可衰减的公开人生记忆有同账号同 BV 的清晰、可信画面观察，Episode 只读核对并抑制重复视觉采样；记忆模糊、遗忘、来源未知或账号变更不能借此恢复旧细节。视频感知只报告实测样本数量、时间跨度与最大采样间隔，不宣称逐帧或完整理解。详见 [dev.5 设计与回归](2.8.2-dev5-video-sampling-reuse.md)。
 
 > **2.8.2-dev.4 PR-2（开发中）**：现有 LifeMemoryGateway 增加当前账号、清晰阶段、精确 BV/记忆 ID 约束的只读视频来源追溯；不生成或读取深层详情，不改变 Life 模型或发送侧门禁。详见 [未来分层记忆提案](future-layered-memory-progressive-recall-proposal.md)。

@@ -620,6 +620,11 @@
       "owner": "life-context-and-evidence",
       "kind": "security",
       "intent": "Require current account clear public visual memory fallback for missing visual ledger receipts and bounded sample timestamp coverage, without archives, private data, forced visual reads or external writes."
+    },
+    "v282-dev6-read-availability-projection.test.mjs": {
+      "owner": "life-read-diagnostics",
+      "kind": "security",
+      "intent": "Verify non-authorizing budget and network read-defer projection, account isolation, typed causes, and UI diagnostics"
     }
   },
   "protected": [

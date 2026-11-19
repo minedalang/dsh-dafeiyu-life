@@ -1,3 +1,5 @@
+> **2.8.2-dev.6（读预算与网络退避只读解释）**：[实现、字段与安全边界](2.8.2-dev6-read-availability-diagnostics.md)。原共享读预算和通知网络退避不改变；管理中心显示分通道可用性/已知延期原因，不是平台成功保证。Windows/真实 B站仍待验。
+
 > **2.8.2-dev.5（视觉采样覆盖与去重）**：[方案、实现边界及测试](2.8.2-dev5-video-sampling-reuse.md)。同账号清晰视觉经历只读兜底现有防重账本；无新权限、无深层记忆库；真实 Windows/DSH 仍待验。
 
 > **2.8.2-dev.4（只读来源链）**：通过现有 LifeMemoryGateway 的清晰可衰减记忆、当前账号与精确 BV/记忆 ID 查询已记录来源类别和视觉采样回执；不读归档、不增加深层记忆库。未来分层回忆方案仅见 [后续架构提案](future-layered-memory-progressive-recall-proposal.md)。

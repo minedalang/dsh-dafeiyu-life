@@ -1,3 +1,4 @@
+%% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
 %% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
@@ -62,6 +63,15 @@ flowchart TB
   detailsOnChange --> adapter
   socialFacts --> activeDmSentinel
   activeDmSentinel --> socialFacts
+  sharedReadBudget["原共享 B站只读额度与 -509 冷却｜实际拦截仍由原执行器负责"]
+  readAvailability["只读读取状态投影｜共享预算 + DM/互动网络退避；不执行或授予权限"]
+  managementReadView["管理中心：分通道延期原因与最早解除；不承诺平台可用"]
+  sharedReadBudget -.-> readAvailability
+  networkPollBackoff -.-> readAvailability
+  readAvailability -.-> managementReadView
+  %% @code readAvailability | lib/read-availability-projection.mjs | export function projectReadAvailability
+  %% @code sharedReadBudget | lib/bili-read-budget.mjs | export function createBiliReadBudget
+  %% @code managementReadView | lib/management-console.js | const readAvailability=scheduler.readAvailability?.lanes
   networkPollBackoff -.-> dmSentinel
   networkPollBackoff -.-> socialSentinel
   networkPollBackoff -.-> detailsOnChange
