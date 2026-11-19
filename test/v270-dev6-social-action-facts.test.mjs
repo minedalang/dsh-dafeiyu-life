@@ -43,6 +43,6 @@ test('dev.6 主 Session 只读工具直接连接事实契约，视频 Agent 仅�
  assert.match(js,/if \(cfg\.agentFollowEnabled\) list\.push\('bili_user_info','bili_creator_encounter'/)
  assert.match(js,/explicitSelection=new Set\(\['挑中'/)
  assert.match(ui,/今天判重表记录/)
- assert.match(ui,/B站已核验私信／评论互动/)
+ assert.match(ui,/当前账号：.*有已核验交流/)
  assert.match(html,/不是人格倾向或结识新朋友的意愿强度/)
 })

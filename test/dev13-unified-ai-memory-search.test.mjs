@@ -6,15 +6,16 @@ import {join} from 'node:path'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createMemoryRetriever} from '../lib/memory-retriever.mjs'
 
+const ACCOUNT_TAG='a'.repeat(16) // Verified current account for public-model fixture
 const DAY=86400000
 const T=Date.parse('2026-10-30T10:00:00Z')
 const BV='BV1234567890'
 const make=()=>mkdtempSync(join(tmpdir(),'dev13-ai-memory-'))
 const cfg={mainSessionMemoryEnabled:true,mainSessionMemorySemanticEnabled:true,mainSessionMemoryMaxItems:6,mainSessionMemoryMaxChars:1200,mainSessionMemoryCandidates:12,mainSessionMemorySearchDailyLimit:2,mainSessionMemoryHalfLifeDays:30}
-const event=(at=T)=>({kind:'watch',key:'watch:voice',title:'怎么让你的大肥鱼有可爱的声音2',bvid:BV,at})
+const event=(at=T)=>({accountTag:ACCOUNT_TAG,kind:'watch',key:'watch:voice',title:'怎么让你的大肥鱼有可爱的声音2',bvid:BV,at})
 function setup(dir,clock,invokeModel,custom={}){
  const getConfig=()=>({...cfg,...custom})
- const gate=createLifeMemoryGateway({dataDir:dir,getConfig,now:()=>clock.value})
+ const gate=createLifeMemoryGateway({getAccountTag:()=>ACCOUNT_TAG,dataDir:dir,getConfig,now:()=>clock.value})
  const retriever=createMemoryRetriever({getMemories:()=>[{id:'lesson',text:'我希望表达有耐心，理解别人真正需要什么',source:'life-reflection',importance:.8}],getConfig,
   getEpisodes:(query,opts)=>gate.recall({query,...opts}),getEpisodeCandidates:opts=>gate.semanticCandidates(opts),invokeModel,now:()=>clock.value,logger:{warn(){}}})
  return {gate,retriever}
@@ -77,7 +78,7 @@ test('语义候选严格限制已衰减细节、平台 UID 及陌生人隐私',(
  const dir=make(),clock={value:T}
  try{
   const {gate}=setup(dir,clock,async()=>'{"memory_ids":[]}')
-  gate.recordEvents([event(),{kind:'social',key:'social:101:one',bvid:BV,actorUid:'101',text:'我的秘密暗号是灯笼',at:T},{kind:'social',key:'social:202:two',bvid:BV,actorUid:'202',text:'我喜欢看鸭子',at:T}])
+  gate.recordEvents([event(),{accountTag:ACCOUNT_TAG,kind:'social',key:'social:101:one',bvid:BV,actorUid:'101',text:'我的秘密暗号是灯笼',at:T},{accountTag:ACCOUNT_TAG,kind:'social',key:'social:202:two',bvid:BV,actorUid:'202',text:'我喜欢看鸭子',at:T}])
   assert.equal(gate.semanticCandidates({domain:'bili-life',role:'stranger',actorUid:''}).length,0)
   const own=gate.semanticCandidates({domain:'bili-life',role:'stranger',actorUid:'101'})
   assert.equal(own.length,2)
@@ -93,7 +94,7 @@ test('禁用模型或额度用完不触发 AI；普通 B站社交始终本地召
  const dir=make(),clock={value:T},count={n:0}
  try{
   const {gate,retriever}=setup(dir,clock,async()=>{count.n++;return '{"memory_ids":[]}'},{mainSessionMemorySearchDailyLimit:1})
-  gate.recordEvents([event(),{kind:'social',key:'social:101:one',bvid:BV,actorUid:'101',text:'我是小鱼干',at:T}])
+  gate.recordEvents([event(),{accountTag:ACCOUNT_TAG,kind:'social',key:'social:101:one',bvid:BV,actorUid:'101',text:'我是小鱼干',at:T}])
   assert.match(retriever.socialContext('我又来了',{actorUid:'101',role:'stranger'}),/小鱼干/)
   assert.equal(count.n,0)
   await retriever.retrieve('昨天配音的教程','manual')
@@ -116,11 +117,11 @@ test('每日 AI 检索任务上限沿用持久化统计，重启不会把额度�
   let dayUsed=1
   const setupWithUsage=()=>{
    const getConfig=()=>({...cfg,mainSessionMemorySearchDailyLimit:1})
-   const gate=createLifeMemoryGateway({dataDir:dir,getConfig,now:()=>clock.value})
+   const gate=createLifeMemoryGateway({getAccountTag:()=>ACCOUNT_TAG,dataDir:dir,getConfig,now:()=>clock.value})
    return createMemoryRetriever({getMemories:()=>[],getConfig,getEpisodes:(q,o)=>gate.recall({query:q,...o}),getEpisodeCandidates:o=>gate.semanticCandidates(o),
     getDailyUsage:()=>({day:'2026-10-30',used:dayUsed}),invokeModel:async()=>{calls.push('called');return '{"memory_ids":[]}'},now:()=>clock.value,logger:{warn(){}}})
   }
-  const gate=createLifeMemoryGateway({dataDir:dir,getConfig:()=>cfg,now:()=>clock.value})
+  const gate=createLifeMemoryGateway({getAccountTag:()=>ACCOUNT_TAG,dataDir:dir,getConfig:()=>cfg,now:()=>clock.value})
   gate.recordEvents([event()])
   assert.equal(setupWithUsage().status().usedToday,1)
   await setupWithUsage().retrieve('昨天那段配音教学','manual')
@@ -137,7 +138,7 @@ test('AI 等待期间主人删除了长期认识，不能返回已经撤销的�
  const dir=make(),clock={value:T},items=[{id:'private-lesson',text:'主人删除的特别认识',source:'life-reflection',importance:.8}]
  try{
   const getConfig=()=>({...cfg,mainSessionMemorySearchDailyLimit:5})
-  const gate=createLifeMemoryGateway({dataDir:dir,getConfig,now:()=>clock.value})
+  const gate=createLifeMemoryGateway({getAccountTag:()=>ACCOUNT_TAG,dataDir:dir,getConfig,now:()=>clock.value})
   gate.recordEvents([event()])
   const retriever=createMemoryRetriever({getMemories:()=>items,getConfig,getEpisodes:(q,o)=>gate.recall({query:q,...o}),getEpisodeCandidates:o=>gate.semanticCandidates(o),
    invokeModel:async()=>{items.splice(0,items.length);return '{"memory_ids":["private-lesson"]}'},logger:{warn(){}},now:()=>clock.value})

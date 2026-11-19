@@ -8,13 +8,14 @@ import {createLifeReflection} from '../lib/life-reflection.mjs'
 import {createPersonalityEvolution} from '../lib/personality-evolution.mjs'
 import {createBackup,allowedPath,validateBackup} from '../lib/data-backup.mjs'
 
+const ACCOUNT_TAG='a'.repeat(16)
 const NOW=Date.parse('2026-10-31T02:00:00Z')
 const DAY=86400000
 const config=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mainSessionReflectionAuto:true,mainSessionMemoryHalfLifeDays:30,mainSessionMemoryThreshold:.25})
-const events=Array.from({length:3},(_,i)=>({kind:'watch',key:'watch:personality:'+i,bvid:'BV'+String(i+1).repeat(10),title:'探索不同的视频 '+i,at:NOW-(i+1)*DAY,day:new Date(NOW-(i+1)*DAY).toISOString().slice(0,10)}))
+const events=Array.from({length:3},(_,i)=>({kind:'watch',accountTag:ACCOUNT_TAG,key:'watch:personality:'+i,bvid:'BV'+String(i+1).repeat(10),title:'探索不同的视频 '+i,at:NOW-(i+1)*DAY,day:new Date(NOW-(i+1)*DAY).toISOString().slice(0,10)}))
 async function withStore(fn){
   const dir=mkdtempSync(join(tmpdir(),'fish-personality-')),clock={value:NOW}
-  const gate=createLifeMemoryGateway({dataDir:dir,getConfig:config,now:()=>clock.value})
+  const gate=createLifeMemoryGateway({dataDir:dir,getConfig:config,now:()=>clock.value,getAccountTag:()=>ACCOUNT_TAG})
   const evolution=createPersonalityEvolution({dataDir:dir,memoryGateway:gate,now:()=>clock.value})
   try{return await fn({dir,clock,gate,evolution})}finally{gate.close();rmSync(dir,{recursive:true,force:true})}
 }

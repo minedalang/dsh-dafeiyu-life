@@ -93,5 +93,5 @@ test('开发文档、服务端 owner 认证和版本一致',()=>{
  const index=readFileSync(new URL('index.js',base),'utf8')
  assert.match(index,/recallMemory:async/)
  assert.match(index,/trustedLifeAccountTag\(\)/)
- assert.match(JSON.parse(readFileSync(new URL('package.json',base),'utf8')).version,/^2\.8\.1(?:-[0-9A-Za-z.-]+)?$/)
+ assert.match(JSON.parse(readFileSync(new URL('package.json',base),'utf8')).version,/^2\.8\.(?:1|2)(?:-[0-9A-Za-z.-]+)?$/)
 })

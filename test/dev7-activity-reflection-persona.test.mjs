@@ -46,9 +46,10 @@ test('自建收藏夹仅依据当前人设风格与公开兴趣，不使用隐�
 })
 
 test('反思无产出可诊断，不虚构长期认识、不会强制生成人格证据',()=>temp(async dir=>{
-  const cfg=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mainSessionReflectionAuto:true,mainSessionMemoryHalfLifeDays:30})
-  const gate=createLifeMemoryGateway({dataDir:dir,getConfig:cfg,now:()=>date})
-  const events=[{kind:'watch',key:'watch:dev7:one',bvid:'BV1111111111',day:'2026-10-21',title:'普通公开视频',tier:'可以看'}]
+  const ACCOUNT_TAG='a'.repeat(16)
+const cfg=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mainSessionReflectionAuto:true,mainSessionMemoryHalfLifeDays:30})
+  const gate=createLifeMemoryGateway({dataDir:dir,getConfig:cfg,now:()=>date,getAccountTag:()=>ACCOUNT_TAG})
+  const events=[{kind:'watch',accountTag:ACCOUNT_TAG,key:'watch:dev7:one',bvid:'BV1111111111',day:'2026-10-21',title:'普通公开视频',tier:'可以看'}]
   gate.recordEvents(events)
   let called=0;const seen=[]
   const life=createLifeReflection({dataDir:dir,getConfig:cfg,memoryGateway:gate,now:()=>date,

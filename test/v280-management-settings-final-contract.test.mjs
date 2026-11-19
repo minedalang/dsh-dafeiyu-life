@@ -74,7 +74,7 @@ test('视频 Agent 三项跟随 Life 预设，旧配置仅在明确保存后改�
 
 test('README 链接新的成长路线，已删除过期路线和发布草稿',()=>{
   assert.match(read('README.md'),/docs\/ROADMAP\.md/)
-  assert.match(read('docs/ROADMAP.md'),/2\.8\.1/)
+  assert.match(read('docs/ROADMAP.md'),/2\.8\.2/)
   assert.equal(existsSync(resolve(root,'docs/FUTURE_ROADMAP_2.6.1_TO_2.9.1.md')),false)
   assert.equal(existsSync(resolve(root,'docs/release/archive/RELEASE_NOTES_v2.6.0-dev.3.md')),false)
 })

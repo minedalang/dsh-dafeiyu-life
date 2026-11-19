@@ -13,7 +13,7 @@ const json=x=>new Response(JSON.stringify(x),{status:200,headers:{'content-type'
 
 test('package.json remains the authoritative source for stable or dev release version',()=>{
  const p=JSON.parse(read('package.json')), lock=JSON.parse(read('package-lock.json'))
- assert.match(p.version,/^2\.8\.1(?:-dev\..+)?$/)
+ assert.match(p.version,/^2\.8\.(?:1|2)(?:-dev\..+)?$/)
  assert.equal(lock.version,p.version)
  assert.equal(lock.packages[''].version,p.version)
  assert.match(read('AGENTS.md'),/版本|开发基线|package\.json/)

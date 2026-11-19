@@ -10,7 +10,7 @@
 - **面向使用者的未来计划**：[2.8.1 预计体验与长期方向](ROADMAP.md)
 - **2.8.0 历史架构**：[统一 Life 意愿协议](architecture/2.8.0-unified-life-action-protocol.md) · [Life 接线](architecture/life-system-current.md) · [开发阶段 dev.16 变更记录](architecture/2.8.0-dev16-dm-progressive-fast-poll-life-rest.md)
 - **2.8.0 历史验收**：[最终发布审计与未完成实机验收](architecture/2.8.0-final-release-audit-20261114.md) · [发布就绪审计](architecture/2.8.0-release-readiness.md) · [本轮设置和文档收口](architecture/2.8.0-20261114-management-settings-closure.md)
-- **后续技术计划**：[2.9.x 跨平台统一注意力与活动系统](architecture/2.9.x-life-universal-attention-cross-platform-plan.md) · [2.8.1 研发评估与验收边界](architecture/2.8.1-roadmap.md) · [2.8.1-dev.2a 视频证据与后续安装规格](architecture/2.8.1-video-perception-dev2a.md)
+- **后续技术计划**：[2.10.x 跨平台统一注意力与活动系统](architecture/2.10.x-life-universal-attention-cross-platform-plan.md) · [2.8.1 研发评估与验收边界](architecture/2.8.1-roadmap.md) · [2.8.1-dev.2a 视频证据与后续安装规格](architecture/2.8.1-video-perception-dev2a.md)
 - **当前决策自由审计**：[2.8.1-dev.3b.33.18 安全链接与自主决策审计](architecture/2.8.1-dev3b18-life-decision-freedom-audit.md)
 - **旧版资料和过程**：[架构历史入口](architecture/README.md) · [发布历史](release/README.md) · [归档说明](archive/README.md)
 

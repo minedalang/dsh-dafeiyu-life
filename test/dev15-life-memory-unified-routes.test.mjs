@@ -7,6 +7,7 @@ import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createMemoryRetriever} from '../lib/memory-retriever.mjs'
 import {createEmotionRecall} from '../lib/emotion-recall.mjs'
 
+const ACCOUNT_TAG='a'.repeat(16) // Verified current account for public-model fixture
 const T=Date.parse('2026-10-28T12:00:00Z')
 const video='BV1Q541167Qp',second='BV1Q541167Qg'
 const key='watch:2026-10-10:'+video
@@ -17,8 +18,8 @@ function fixture(){
  const dir=mkdtempSync(join(tmpdir(),'dsh-unified-gateway-'))
  let time=T
  const cfg={mainSessionMemoryEnabled:true,mainSessionMemoryHalfLifeDays:30,mainSessionMemoryThreshold:.25}
- const gateway=createLifeMemoryGateway({dataDir:dir,getConfig:()=>cfg,now:()=>time,logger:{warn(){}}})
- gateway.recordEvents([{kind:'watch',key,bvid:video,title:candidate.title,day:'2026-10-10'}])
+ const gateway=createLifeMemoryGateway({getAccountTag:()=>ACCOUNT_TAG,dataDir:dir,getConfig:()=>cfg,now:()=>time,logger:{warn(){}}})
+ gateway.recordEvents([{accountTag:ACCOUNT_TAG,kind:'watch',key,bvid:video,title:candidate.title,day:'2026-10-10'}])
  return {dir,gateway,cfg,setTime:t=>{time=t},now:()=>time,cleanup:()=>{gateway.close();rmSync(dir,{recursive:true,force:true})}}
 }
 
@@ -38,7 +39,7 @@ test('情绪回忆旧候选只提供索引 ID；当前清晰副本投影原始�
 test('视频探索只使用自己的公开视频经历，不会拿到某个陌生人的私密共同经历',()=>{
  const f=fixture()
  try{
-  f.gateway.recordEvents([{kind:'social',key:'social:123:'+video+':12345',bvid:video,uid:'123',text:'给我私密信息',day:'2026-10-27'}])
+  f.gateway.recordEvents([{accountTag:ACCOUNT_TAG,kind:'social',key:'social:123:'+video+':12345',bvid:video,uid:'123',text:'给我私密信息',day:'2026-10-27'}])
   const watches=f.gateway.recall({query:'系列影片',domain:'bili-explore',maxItems:4})
   assert.equal(watches.length,1);assert.equal(watches[0].kind,'watch')
   assert.equal(f.gateway.recall({query:'私密',domain:'bili-life',role:'stranger',actorUid:'456'}).length,0)
@@ -55,9 +56,9 @@ test('B站公开记忆最终总数上限包含公开知识 + 同一 UID 经历�
  const f=fixture()
  try{
   const r1='social:123:'+video+':12345',r2='social:123:'+second+':54321'
-  f.gateway.recordEvents([{kind:'social',key:r1,bvid:video,uid:'123',text:'你还记得我吗',day:'2026-10-27'},
-   {kind:'social',key:r2,bvid:second,uid:'123',text:'你好我又回来啦',day:'2026-10-28'},
-   {kind:'social',key:'social:789:'+second+':33333',bvid:second,uid:'789',text:'其他人的秘密',day:'2026-10-27'}])
+  f.gateway.recordEvents([{accountTag:ACCOUNT_TAG,kind:'social',key:r1,bvid:video,uid:'123',text:'你还记得我吗',day:'2026-10-27'},
+   {accountTag:ACCOUNT_TAG,kind:'social',key:r2,bvid:second,uid:'123',text:'你好我又回来啦',day:'2026-10-28'},
+   {accountTag:ACCOUNT_TAG,kind:'social',key:'social:789:'+second+':33333',bvid:second,uid:'789',text:'其他人的秘密',day:'2026-10-27'}])
   const approved=Array.from({length:5},(_,i)=>({id:'pub'+i,text:'聊天与记忆的公开经验 '+i,source:'owner-public-approved',visibility:'public',publicApproved:true}))
   const retriever=createMemoryRetriever({getMemories:()=>approved,getConfig:()=>({...f.cfg,mainSessionMemoryMaxItems:6}),getEpisodes:(q,o)=>f.gateway.recall({query:q,...o}),getEpisodeCandidates:()=>[]})
   const actual=retriever.socialContext('你好我又回来啦',{actorUid:'123',role:'friend',maxItems:2,maxChars:1000})

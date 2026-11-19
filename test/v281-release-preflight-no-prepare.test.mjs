@@ -14,11 +14,11 @@ test('git-hosted package must not run developer Git hooks during consumer instal
 })
 test('the 2.8.1 release, lockfile, README and release-note paths are consistent',()=>{
  const p=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json'))
- assert.equal(p.version,'2.8.1')
+ assert.match(p.version,/^2\.8\.(?:1|2)(?:-dev\.\d+)?$/)
  assert.equal(p.version,lock.version)
  assert.equal(p.version,lock.packages[''].version)
  assert.match(read('README.md'),/2\.8\.1/)
- assert.match(read('CHANGELOG.md'),/^## 2\.8\.1 · 稳定版候选发布收口/)
+ assert.match(read('CHANGELOG.md'),new RegExp('^## '+p.version.replaceAll('.', '\\.')+' \u00b7','m'))
  const workflow=read('.github/workflows/release.yml')
  assert.match(workflow,/note_file="docs\/release\/RELEASE_NOTES_\$\{GITHUB_REF_NAME\}\.md"/)
  assert.ok(existsSync(resolve(root,'docs/release/RELEASE_NOTES_v2.8.1.md')))
