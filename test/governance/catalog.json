@@ -690,6 +690,11 @@
       "owner": "video-traffic-management-ui",
       "kind": "ui",
       "intent": "Quota page displays measured today/since-install video visual HTTP receive bytes with explicit excluded routes, never estimated sizes or private URLs."
+    },
+    "v282-dev20-hybrid-life.test.mjs": {
+      "owner": "life-video-hybrid-overview-focus",
+      "kind": "security",
+      "intent": "Video global preview must be proof-bounded and followed by an independent Life decision before any real-video focus window or second vision invocation."
     }
   },
   "protected": [
@@ -860,6 +865,11 @@
       "owner": "adaptive-video-recovery-and-traffic",
       "kind": "security",
       "intent": "Full download uses 1MiB/s deadline; timeouts recover to sparse MP4 then same-identity official DASH without double-budget, security rejection blocks retry and failed bytes reach durable privacy-preserving ledger."
+    },
+    "test_v282_dev20_hybrid_preview.py": {
+      "owner": "preview-vision-full-timeline",
+      "kind": "behavior",
+      "intent": "Python scans all 91 indexed thumbnail candidates within byte/pixel caps, yields at most two vision boards, and discloses partial timeline scan coverage."
     }
   },
   "pythonProtected": [
@@ -1059,6 +1069,13 @@
       "newCheck": "assert.match(watch,/const willInvokeVision=visionPlan\\.attempt&&\\['independent_dsh','independent_local'\\]/)",
       "reason": "Retain deny on no-look/skim and adaptive-source read gate.",
       "date": "2026-11-18"
+    },
+    {
+      "file": "v281-dev3a3-adaptive-source-contract.test.mjs",
+      "oldCheck": "assert.match(watch,/const willInvokeVision=visionPlan\\.attempt&&\\['independent_dsh','independent_local'\\]/)",
+      "newCheck": "assert.match(watch,/const willInvokeVision=earlyVisionPlan\\.attempt&&\\s*\\['independent_dsh','independent_local'\\]/)",
+      "reason": "After Life overview separation, update the adaptive preview gate assertion while preserving the prior audited no-look/skim invariant and independent DSH coverage.",
+      "date": "2026-11-19"
     },
     {
       "file": "v281-dev3b21-management-save-feedback.test.mjs",

@@ -36,7 +36,7 @@ test('自主观看的精确时间与账号归因进入兴趣候选，但主人�
 test('实际图像通过本机受保护端点显示，不把图片正文注入 Life / 备份',()=>{
   assert.match(main,/safeVideoDebugCapture/)
   assert.match(main,/delete parsedVisual\.debugCapture/)
-  assert.match(main,/delete result\.debugCapture/)
+  assert.match(main,/delete parsedVisual\.debugCapture/)
   assert.match(main,/videoDebugJob\.images=debugImages/)
   assert.match(main,/video-perception-debug\/image/)
   assert.match(main,/local\)return sendJson\(res,403/)

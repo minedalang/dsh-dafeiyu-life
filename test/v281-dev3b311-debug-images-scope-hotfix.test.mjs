@@ -35,6 +35,8 @@ function mockWatch({vision=true,dryRun=true}={}){
     visionDecision:()=>({attempt:vision,kind:vision?'enabled':'unavailable',depth:vision?'standard':'skim',reason:'fixture'}),
     resolvedVisionMode:()=> 'independent_local',
     liveLifeActivity:{start:()=>()=>{}},parseMaybeJson:x=>x,
+    beginVideoObservationRead:async(run,complete)=>{const start=Date.now();
+      try{return await run()}finally{complete?.(Date.now()-start)}},
     safeVideoDebugCapture:(value,bvid)=>value?.bvid===bvid?value:null,
     buildVideoEvidenceBundle:()=>({sources:[]}),planVideoFocusReview:()=>null,
     buildVideoPerceptionTimeline:()=>({}),

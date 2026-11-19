@@ -111,11 +111,11 @@ import { formatLocalLogTimestamp } from './lib/log-time.mjs'
 import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
 import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
 import {verifyEpisodeVideoVisual} from './lib/life-episode-video-visual.mjs'
-import {runLifeChosenVideoRead} from './lib/life-video-read-admission.mjs'
+import {runLifeChosenVideoRead,runLifePostOverviewReview} from './lib/life-video-read-admission.mjs'
 import {buildVideoEvidenceBundle} from './lib/video-evidence-bundle.mjs'
 import {buildVideoPerceptionTimeline} from './lib/video-perception-timeline.mjs'
 import {buildVideoPerceptionHandoff} from './lib/video-perception-handoff.mjs'
-import {planVideoFocusReview,verifyVideoFocusReview} from './lib/video-focus-review.mjs'
+import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview} from './lib/video-focus-review.mjs'
 import {ensureOllamaService} from './lib/ollama-service.mjs'
 import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
 import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-continuity.mjs'
@@ -2029,8 +2029,19 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const stopLiveVideoObservation=willInvokeVision?liveLifeActivity.start(
       dryRun?'video-observe-debug':'video-observe',initialLifeAccountTag,
       {maxAgeMs:8*60_000,bvid}):()=>{}
+    // Autonomous Life always observes the global videoshot overview first.
+    // Owner-selected reads preserve the existing adaptive source path.
+    const lifeGlobalOverview=internal.lifeChoiceVerified===true&&args.record_session===false&&
+      args.explorationPurpose!=='life-voluntary-focus-read'&&
+      args.explorationPurpose!=='life-episode-voluntary-focus'
     const visualPromise=willInvokeVision?beginVideoObservationRead(()=>
-      call('bili_preview_vision',{bvid,perception_source:'adaptive',view_depth:earlyVisionPlan.depth,
+      call('bili_preview_vision',{bvid,
+        perception_source:lifeGlobalOverview?'preview':'adaptive',view_depth:earlyVisionPlan.depth,
+        ...(args.explorationPurpose==='life-voluntary-focus-read'||
+            args.explorationPurpose==='life-episode-voluntary-focus' ? {
+          focus_start_seconds:args.focus_start_seconds,focus_end_seconds:args.focus_end_seconds,
+          network_budget_bytes:args.network_budget_bytes
+        }:{}),
         ...(dryRun?{capture_for_debug:true}:{})}),elapsed=>{
           visionFinishedAt=Date.now();visualReadMs=elapsed
         }).catch(e=>({ok:false,error:String(e?.message||e).slice(0,140)}))
@@ -2240,14 +2251,14 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // explore; the original watch pipeline still owns memory and evidence.
   tool({
     name:'bili_life_consider_video',
-    description:'给 Life 一次自主决定是否了解某条真实公开视频的机会，即使之前完全没看过也可以考虑观看。先经过统一 Life 意愿；可以略看、普通看、深入看、延期或不看。只读，不提供点赞评论授权。主人明确指定观看仍使用 bili_watch_video。',
+    description:'给 Life 一次自主决定是否了解某条真实公开视频的机会，即使之前完全没看过也可以考虑观看。先自主决定略看或看全片缩略图；全局结果出来后才再次由 Life 决定是否深入真实局部、选择哪一个时间锚点。只读，不提供点赞评论授权。主人明确指定观看仍使用 bili_watch_video。',
     parameters:{bvid:{type:'string',description:'真实 BV，不可从模糊描述猜测'}},
     async execute(args={}){
       refreshCfg()
       if(cfg.masterEnabled!==true||!hasCredential())return {ok:false,reason:'video-unavailable'}
       const bvid=String(args.bvid||'').trim()
       if(!validBv(bvid))return {ok:false,reason:'invalid-bv'}
-      return runLifeChosenVideoRead({willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,
+      const overview=await runLifeChosenVideoRead({willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,
         bvid,mode:'new',read:async({viewDepth,account})=>{
           if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
           const read=()=>executeWatchVideo({bvid,include_comments:true,include_danmaku:true,
@@ -2260,6 +2271,46 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
             return read()
           })
         }})
+      if(overview?.ok!==true||overview.lifeViewDepth!=='standard'||
+         accountBinding.status().blocked||trustedLifeAccountTag()==='')return overview
+      const candidates=planGlobalPreviewFocusCandidates({bvid,overview})
+      if(!candidates.length)return {...overview,postOverviewFocus:{status:'not-offered'}}
+      const globalBytes=Math.max(0,Number(overview.visual?.sampling?.sprite_bytes)||0)
+      const totalBudget=(Number(cfg.visionFrames)>=48?100:Number(cfg.visionFrames)>=24?50:24)*1048576
+      // Network already spent on the global preview is never granted again.
+      const remaining=Math.floor(totalBudget-globalBytes)
+      if(remaining<1048576)return {...overview,postOverviewFocus:{status:'network-budget-exhausted'}}
+      const postOverviewFocus=await runLifePostOverviewReview({
+        willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,bvid,overview,candidates,
+        readFocus:async({account,plan})=>{
+          if(account!==trustedLifeAccountTag()||accountBinding.status().blocked||
+             cfg.masterEnabled!==true||cfg.visionEnabled!==true)return {ok:false,reason:'account-or-vision-changed'}
+          const stop=liveLifeActivity.start('video-observe',account,{maxAgeMs:8*60_000,bvid})
+          let visual
+          try{visual=parseMaybeJson(await call('bili_preview_vision',{
+            bvid,perception_source:'adaptive',view_depth:'deep',
+            focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
+            network_budget_bytes:remaining}))}
+          catch{return {ok:false,reason:'focus-read-failed'}}
+          finally{stop()}
+          if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
+          const focusedEvidence=buildVideoEvidenceBundle({bvid,info:overview.info,visual})
+          const review=verifyVideoFocusReview({bvid,
+            plan:{...plan,status:'ready',networkBudgetBytes:remaining},result:visual,evidence:focusedEvidence})
+          if(!review)return {ok:false,reason:'focused-evidence-not-verified'}
+          try{
+            const event=buildVideoExplorationEvent({bvid,info:overview.info,visual,
+              source:'bili-life',purpose:'life-voluntary-focus-read',
+              operationId:randomUUID(),autonomousSelected:true})
+            if(event){event.experience.focusWindow={startMs:review.startMs,endMs:review.endMs,
+              frames:review.frameTimesMs.length,source:review.source}
+              await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})}
+          }catch{log('Life 真实局部复查记忆待补偿；不影响只读视觉回执')}
+          return {ok:true,review}
+        }})
+      return {...overview,postOverviewFocus,
+        // The raw focused model answer is not copied into other channels.
+        focusReviewStatus:postOverviewFocus.status==='focused'?'life-focused':'life-declined-or-unavailable'}
     }
   })
 
@@ -7418,7 +7469,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       ['independent_dsh','independent_local'].includes(resolvedVisionMode())&&
       lifeOpportunityAccountReady()&&!accountBinding.status().blocked},
     withLifeVisualObservationLease:(target,run)=>withLifeVideoVisualLease(stateDir,target,run),
-    executeLifeVideoObservation:async({bvid,viewDepth,accountTag})=>{
+    executeLifeVideoObservation:async({bvid,viewDepth,accountTag,focusWindow,networkBudgetBytes})=>{
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.lifeAgentMode!=='active'||cfg.visionEnabled!==true||
          !['independent_dsh','independent_local'].includes(resolvedVisionMode())||
@@ -7426,7 +7477,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
          accountBinding.status().blocked)return {ok:false,reason:'life-video-vision-unavailable'}
       return lifeResourceScheduler.run({lane:'continuation',resources:{vision:1},waitMs:12_000},
         ()=>executeWatchVideo({bvid,record_session:false,include_comments:false,
-          include_danmaku:false,view_depth:viewDepth,explorationPurpose:'life-episode-voluntary-visual'},
+          include_danmaku:false,view_depth:viewDepth,
+          ...(focusWindow?{focus_start_seconds:focusWindow.startSeconds,
+            focus_end_seconds:focusWindow.endSeconds,network_budget_bytes:networkBudgetBytes}:{}),
+          explorationPurpose:focusWindow?'life-episode-voluntary-focus':'life-episode-voluntary-visual'},
           {lifeChoiceVerified:true})).catch(()=>({ok:false,reason:'life-vision-resource-unavailable'}))
     },
     recordLifeVideoVisual:(id,proof,tag)=>lifeOpportunities.recordVideoVisual(id,proof,tag),

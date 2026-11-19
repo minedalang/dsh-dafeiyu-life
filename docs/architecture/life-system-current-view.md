@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
 %% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
@@ -170,8 +171,11 @@ flowchart TB
     homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
-    episodeContinuation["Life 自选续行：可选 observe_video standard/deep 或直接休息 · 不隐式初看 · 最多 4 次"]
-    episodeVisualFirst["Life 明确选择取帧后才调用视觉能力；失败不冒充已看，禁止外发"]
+    episodeContinuation["Life 自选续行：先 observe_video standard 全局缩略图或休息；实际观察后才可能 focus_video · 最多 4 次"]
+    episodeVisualFirst["Life 已选择首次全局：Python 扫全片 videoshot 候选 · 最多 24 帧两分镜"]
+    episodeVisualModel["视觉模型第一次：概览与采样时间锚点（不声称完整观看）"]
+    episodeLifeSecond["Life 看完后自行选择或拒绝局部深入；精确 BV/时间/账号门禁"]
+    episodeFocusRead["真实 MP4/DASH Range + FFmpeg 局部取帧 · 视觉模型第二次（仅获授权）"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
     episodeAftercare["已核验写入计一步 · 下一写前必须真只读或实际休息；每 tick 最多一写"]
@@ -188,7 +192,10 @@ flowchart TB
   homeEpisode --> lifeEpisode
   explore -.->|搜索/人物作品/视频核验成功后进入同一意愿账本| lifeEpisode
   lifeEpisode --> episodeContinuation -->|明确选定取帧及深度| episodeVisualFirst
-  episodeVisualFirst --> visualLease
+  episodeVisualFirst --> episodeVisualModel --> episodeLifeSecond
+  episodeLifeSecond -->|明确选择，时间锚点校验| episodeFocusRead
+  episodeLifeSecond -->|拒绝/延期| rest
+  episodeFocusRead --> visualLease
   visualLease["账号/BV跨进程视觉只读锁｜持有至核验回执写入；不授权读写"]
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   lifeEpisode --> episodeDiscussion --> episodeContinuation
@@ -402,6 +409,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
 %% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
@@ -476,9 +484,9 @@ flowchart LR
   sourceSocial --> social
   privateBound -.->|仅允许的自主私信机会，无权限者只读| social
   sourceVideo --> video
-  videoFocusHint["Life 自主局部复查候选｜已核验时间，不自动调用"]
+  videoFocusHint["全片 videoshot 概览已核验之后的局部候选｜仅真实采样时间；Life 二次选择"]
   sourceVideo -.-> videoFocusHint
-  videoFocusHint -.->|独立意愿| planner
+  videoFocusHint -.->|Life 看完才独立选择；拒绝时无 FFmpeg| planner
   sourceVideoFeedback --> reviewFeedback
   sourceReflect --> reflection
   sourceOwner --> ownerChat
@@ -564,6 +572,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
 %% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
@@ -656,8 +665,8 @@ flowchart TB
   videoTrace -.->|精确 BV + 当前账号的已核验回执| visualReuse
   visualReuse -.->|现存清晰观察可阻止冗余取帧，不替代 Life 选择| planner
   visualLease["真实采样期间账号/BV跨进程互斥；仅短期账本不代替可遗忘记忆"]
-  videoFocusHint["视频复查时间候选｜原执行器只建议"]
-  videoFocusHint -.->|Life 独立选择，不是自动消费预算| planner
+  videoFocusHint["全局低清分镜可信回执后才提供真实局部时间候选｜非授权"]
+  videoFocusHint -.->|Life 第二轮独立选择；再用原视频 FFmpeg 核验| planner
   planner -.->|明确选中完整视觉读取| visualLease
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]
@@ -773,6 +782,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
 %% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
@@ -833,6 +843,13 @@ flowchart TB
   menu -->|明确选择观察画面| visualLease
   visualLease -.->|成功后仍以原可信回执记因果| record
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
+  dev20Overview["首次 Life observe_video 仅全片低清概览；Python 时间/差异筛选，视觉 AI 第一次"]
+  dev20Vote["取得可信预览回执后 Life 二次决定：停止/休息或给定时间点深入"]
+  dev20Focus["独立真实 MP4/DASH 片段取帧及视觉 AI 第二次；结果再交 Life"]
+  menu -.->|自选全局| dev20Overview --> dev20Vote
+  dev20Vote -->|选择可信时间锚点| dev20Focus
+  dev20Vote -.->|拒绝| pause
+  dev20Focus -.->|观察证据| record
   menu -->|自行考虑互动，单轮最多一次写| write -->|成功且平台核验| record
   menu -->|放下或暂不继续| pause
   decisionProjection["Episode 的模型选择/阻断/真实回执只读解释"]

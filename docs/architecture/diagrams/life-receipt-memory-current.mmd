@@ -1,3 +1,4 @@
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
 %% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
@@ -90,8 +91,8 @@ flowchart TB
   videoTrace -.->|精确 BV + 当前账号的已核验回执| visualReuse
   visualReuse -.->|现存清晰观察可阻止冗余取帧，不替代 Life 选择| planner
   visualLease["真实采样期间账号/BV跨进程互斥；仅短期账本不代替可遗忘记忆"]
-  videoFocusHint["视频复查时间候选｜原执行器只建议"]
-  videoFocusHint -.->|Life 独立选择，不是自动消费预算| planner
+  videoFocusHint["全局低清分镜可信回执后才提供真实局部时间候选｜非授权"]
+  videoFocusHint -.->|Life 第二轮独立选择；再用原视频 FFmpeg 核验| planner
   planner -.->|明确选中完整视觉读取| visualLease
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]

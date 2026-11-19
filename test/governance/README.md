@@ -6,7 +6,7 @@
 
 1. 修改前/后运行 `npm run review:impacted-tests`（检查当前未提交的修改）；CI 会按 PR 基线自动列出受影响测试；改动生产源码却没有同步修改测试时必须在 `test/governance/reviews/` 记录判断与补测依据，否则 PR 检查失败，或 `node scripts/test-governance.mjs impact lib/changed-file.mjs`（指定源文件）。核对受影响的测试，包括 UI、外发权限、账号数据、跨进程、平台回执和隐私，记录需要更新/归档的旧假设。
 2. 新增 Node/Python 测试先登记：`node scripts/test-governance.mjs register my-feature.test.mjs --owner=life --kind=behavior --intent="Verify the current behavior for this scenario"`（Python 文件以 `test` 开头、`.py` 结尾）。`owner`、测试目的和分类不能为空。
-3. 改版时优先把过时的文案、函数调用方式断言**替换成真实接口/行为验证**，并在 `catalog.json` 的 `retiredAssertions` 留下旧检查、替代检查、原因、日期。不要因一个旧断言失败就迁移整份含有安全测试的文件。
+3. 改版时优先把过时的文案、函数调用方式断言**替换成真实接口/行为验证**，并在 `catalog.json` 的 `retiredAssertions` 留下旧检查、替代检查、原因、日期。已登记的历史记录不可改写；如果替代断言又因重构退役，追加一条同文件审计，令其 `oldCheck` 精确等于前一条的 `newCheck`，并使审计链最终指向仍存在的真实断言。提交钩子与全量治理检查都会校验该链；禁止删除历史或通过无效占位断言绕过。不要因一个旧断言失败就迁移整份含有安全测试的文件。
 4. 如果一个文件全部只验证**已终止且无继续意义的历史发行快照**，才允许归档：`node scripts/test-governance.mjs archive old.test.mjs --reason="..." --replacement="..."`。必须说明旧需求何时/为何失效、替代测试或当前契约在哪里。保护清单、核心快速测试、疑似安全测试会阻止直接归档。
 5. 每次执行 `npm run check:test-governance`；本检查也已接入 Windows 测试入口、PR CI 和 GitHub Release workflow。未登记新增用例、无说明归档或安全锚点缺失都必须失败。**治理检查通过不代表功能测试通过。**
 

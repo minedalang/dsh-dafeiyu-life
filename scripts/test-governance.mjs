@@ -13,6 +13,24 @@ const pythonPattern = /^test[A-Za-z0-9_-]*\.py$/;
 const pythonList = dir => existsSync(dir) ? readdirSync(dir).filter(x => pythonPattern.test(x)).sort() : [];
 const isText = x => typeof x === 'string' && x.trim().length >= 16;
 
+/** Historical audit records are immutable. A replacement may later be retired again,
+ * but only an explicit, forward-only chain ending in a currently active assertion
+ * can justify the absence of an earlier replacement. */
+export function activeRetiredAssertionReplacement(source, item, allRecords) {
+  let current = item;
+  while (true) {
+    if (typeof current?.newCheck !== 'string' || !current.newCheck) return false;
+    if (source.includes(current.newCheck)) return true;
+    const index = allRecords.indexOf(current);
+    if (index < 0) return false;
+    const successors = allRecords.slice(index + 1).filter(
+      next => next.file === current.file && next.oldCheck === current.newCheck
+    );
+    if (successors.length !== 1) return false;
+    current = successors[0];
+  }
+}
+
 export function validateCatalog(root = projectRoot) {
   const errors = [];
   let catalog;
@@ -64,7 +82,7 @@ export function validateCatalog(root = projectRoot) {
     }
     const source = readFileSync(file,'utf8');
     if (source.includes(item.oldCheck)) errors.push('Retired assertion still active: '+item.file);
-    if (!source.includes(item.newCheck)) errors.push('Retired assertion replacement missing: '+item.file);
+    if (!activeRetiredAssertionReplacement(source,item,catalog.retiredAssertions)) errors.push('Retired assertion replacement missing: '+item.file);
   }
   for (const [name, meta] of Object.entries(catalog.registeredPython)) {
     if (!pythonPattern.test(name) || !isText(meta?.intent) || !meta?.owner || !['behavior','contract','ui','security'].includes(meta?.kind)) errors.push('New Python test requires owner, kind and test intent: '+name);

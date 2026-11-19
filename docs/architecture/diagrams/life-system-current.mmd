@@ -1,3 +1,4 @@
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
 %% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
@@ -163,8 +164,11 @@ flowchart TB
     homeCandidateMatch["首页候选 BV 与本轮新入选 BV 精确匹配；原始 BV 只瞬时返回宿主"]
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
-    episodeContinuation["Life 自选续行：可选 observe_video standard/deep 或直接休息 · 不隐式初看 · 最多 4 次"]
-    episodeVisualFirst["Life 明确选择取帧后才调用视觉能力；失败不冒充已看，禁止外发"]
+    episodeContinuation["Life 自选续行：先 observe_video standard 全局缩略图或休息；实际观察后才可能 focus_video · 最多 4 次"]
+    episodeVisualFirst["Life 已选择首次全局：Python 扫全片 videoshot 候选 · 最多 24 帧两分镜"]
+    episodeVisualModel["视觉模型第一次：概览与采样时间锚点（不声称完整观看）"]
+    episodeLifeSecond["Life 看完后自行选择或拒绝局部深入；精确 BV/时间/账号门禁"]
+    episodeFocusRead["真实 MP4/DASH Range + FFmpeg 局部取帧 · 视觉模型第二次（仅获授权）"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
     episodeAftercare["已核验写入计一步 · 下一写前必须真只读或实际休息；每 tick 最多一写"]
@@ -181,7 +185,10 @@ flowchart TB
   homeEpisode --> lifeEpisode
   explore -.->|搜索/人物作品/视频核验成功后进入同一意愿账本| lifeEpisode
   lifeEpisode --> episodeContinuation -->|明确选定取帧及深度| episodeVisualFirst
-  episodeVisualFirst --> visualLease
+  episodeVisualFirst --> episodeVisualModel --> episodeLifeSecond
+  episodeLifeSecond -->|明确选择，时间锚点校验| episodeFocusRead
+  episodeLifeSecond -->|拒绝/延期| rest
+  episodeFocusRead --> visualLease
   visualLease["账号/BV跨进程视觉只读锁｜持有至核验回执写入；不授权读写"]
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   lifeEpisode --> episodeDiscussion --> episodeContinuation

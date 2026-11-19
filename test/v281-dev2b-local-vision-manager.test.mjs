@@ -104,7 +104,7 @@ test('下载进行中时禁止另开自检，以免覆盖安装状态',async()=>
 test('生产调用与通用设置不能绕过本地模式的检查',async()=>{
   const {readFileSync}=await import('node:fs')
   const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
-  assert.match(source,/visionPlan\.attempt&&\['independent_dsh','independent_local'\]\.includes/)
+  assert.match(source,/earlyVisionPlan\.attempt&&\s*\['independent_dsh','independent_local'\]\.includes/)
   assert.match(source,/body\.visionLocalModel!==cfg\.visionLocalModel/)
   assert.match(source,/await localVisionModels\.review\(id,/ )
   assert.match(source,/models\.find\(x=>x\.id===id\)\?\.verified/)

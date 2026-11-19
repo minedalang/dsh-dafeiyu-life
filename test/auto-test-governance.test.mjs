@@ -97,6 +97,32 @@ test('real Git commit invokes the hook and blocks an unregistered test',()=>sand
  run(root,'add','test/governance/catalog.json');
  run(root,'-c','user.name=fixture','-c','user.email=fixture@example.invalid','commit','-qm','registered test');
 }));
+test('staged retired assertion history must be kept and must form a live forward-only chain',()=>sandbox((root,c)=>{
+ const first={file:'feature.test.mjs',oldCheck:'// old feature check',newCheck:'// replacement check v1',reason:'First implementation was replaced but feature contract remains covered.',date:'2026-11-01'};
+ c.retiredAssertions=[first];
+ writeFileSync(join(root,'test/feature.test.mjs'),'// replacement check v1\n');
+ writeFileSync(join(root,'test/governance/catalog.json'),JSON.stringify(c));
+ run(root,'add','test/feature.test.mjs','test/governance/catalog.json');
+ run(root,'-c','user.name=fixture','-c','user.email=fixture@example.invalid','commit','-qm','baseline');
+
+ writeFileSync(join(root,'test/feature.test.mjs'),'// replacement check v2\n');
+ const next={file:'feature.test.mjs',oldCheck:first.newCheck,newCheck:'// replacement check v2',reason:'Second implementation replaces the previous check without removing its history.',date:'2026-11-19'};
+ c.retiredAssertions=[{...first,newCheck:next.newCheck}];
+ writeFileSync(join(root,'test/governance/catalog.json'),JSON.stringify(c));
+ run(root,'add','test/feature.test.mjs','test/governance/catalog.json');
+ assert.match(validateStagedCatalog(root).errors.join(' '),/Previous retired-assertion audit record was removed/);
+
+ c.retiredAssertions=[first,next];
+ writeFileSync(join(root,'test/governance/catalog.json'),JSON.stringify(c));
+ run(root,'add','test/governance/catalog.json');
+ assert.equal(validateStagedCatalog(root).ok,true);
+
+ c.retiredAssertions=[first,{...next,oldCheck:'// disconnected from prior replacement'}];
+ writeFileSync(join(root,'test/governance/catalog.json'),JSON.stringify(c));
+ run(root,'add','test/governance/catalog.json');
+ assert.match(validateStagedCatalog(root).errors.join(' '),/Staged replacement assertion missing/);
+}));
+
 test('a commit cannot erase protected anchors from its catalog',()=>sandbox((root,c)=>{
  run(root,'-c','user.name=fixture','-c','user.email=fixture@example.invalid','commit','-qm','baseline');
  c.protected=[];

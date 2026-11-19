@@ -18,7 +18,7 @@ test('the 2.8.1 release, lockfile, README and release-note paths are consistent'
  assert.equal(p.version,lock.version)
  assert.equal(p.version,lock.packages[''].version)
  assert.match(read('README.md'),/2\.8\.1/)
- assert.match(read('CHANGELOG.md'),new RegExp('^## '+p.version.replaceAll('.', '\\.')+' \u00b7','m'))
+ assert.match(read('CHANGELOG.md'),new RegExp('^## '+p.version.replaceAll('.', '\\.')+'(?: ·|（开发候选）)','m'))
  const workflow=read('.github/workflows/release.yml')
  assert.match(workflow,/note_file="docs\/release\/RELEASE_NOTES_\$\{GITHUB_REF_NAME\}\.md"/)
  assert.ok(existsSync(resolve(root,'docs/release/RELEASE_NOTES_v2.8.1.md')))
