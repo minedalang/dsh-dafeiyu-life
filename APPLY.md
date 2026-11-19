@@ -1,28 +1,35 @@
-# 2.8.1 发布前定向修订包使用方法
+# 2.8.2-dev.9 桌宠开放生态预告页 · 交付说明
 
-本包中的 `source/` 是可直接使用的完整项目源码；`PATCH_FROM_DEV_3B_33_25.patch` 则仅用于你本地现有的、**与用户本次上传 ZIP 完全一致的 `.25-ci-test-audit` 原始源码**。二者选一，**不要先替换 source/ 又应用同一个 Patch**。
+本项目快照从**用户上传的 `dsh-bili-scroll-plus2(3).zip`（版本 `2.8.2-dev.8`）**增量修改而来。
 
-## 方案 A：使用完整源码
+正式交付 ZIP 内提供两种等价方式：`source/` 完整源码，或 `PATCH_FROM_2.8.2-dev.8_TO_2.8.2-dev.9.patch` 增量补丁。**二选一，不要先覆盖源码再应用补丁。**
 
-先备份当前 Git 工作目录和本地鱼鱼数据（不要公开上传私密数据），再用 `source/` 的完整内容更新你自己的项目工作目录。检查 `git diff`，保留本地独有修改，勿盲目删除自己新增的配置和数据。
+## 方案 A：完整源码
 
-## 方案 B：在精准原版上应用 Patch
+先备份现有项目工作目录与用户数据，并保留本地独有修改。将交付包 `source/` 的文件作为新代码快照，比较差异后更新原 Git 工作区；不要删除用户个人数据目录。
 
-```powershell
-# 在原项目 Git 工作目录执行；先检查无未提交修改
-git status --short
-git apply --check .\PATCH_FROM_DEV_3B_33_25.patch
-git apply .\PATCH_FROM_DEV_3B_33_25.patch
-```
+## 方案 B：精准基线 Git Patch
 
-**注意：** Patch 的输入必须是你上传 ZIP 对应的原版文件；如果本地已经有新的变动或已应用类似修复，先人工比较，不要强行套用。
-
-## 本机定向复测
+在**与本次上传原始 ZIP 内容一致**的 Git 工作目录中，先确认本地变更与 Patch 没有冲突：
 
 ```powershell
-node --test --test-reporter=tap --test-concurrency=1 test\v271-dev3-crosslang-todo-transaction.test.mjs
-node --test --test-reporter=tap test\v281-readme-user-facing-contract.test.mjs
-.\run-tests.ps1 -Mode full
+# 在原项目 Git 根目录执行
+ git status --short
+ git apply --check "D:\YourDelivery\PATCH_FROM_2.8.2-dev.8_TO_2.8.2-dev.9.patch"
+ git apply "D:\YourDelivery\PATCH_FROM_2.8.2-dev.8_TO_2.8.2-dev.9.patch"
 ```
 
-全量脚本只有跑到末尾且没有失败/错误/安全测试未解释的跳过，才可能进入正式发布审查。不要将管理员运行或开始执行第 1 批当作全部通过。完整证据请保存在本机日志中，公开反馈时先脱敏。
+补丁采用 UTF-8、无 BOM，保留中文内容和原仓库文本行尾。不要求你为了应用 Patch 先提交其他已有改动；但若本地对同一文件另有修改，请先人工对比和备份，避免盲目覆盖。
+
+## 离线定向检查
+
+```powershell
+node --check lib\management-console.js
+node --test test\v282-dev9-open-platform-preview.test.mjs test\v281-readme-user-facing-contract.test.mjs
+node scripts\test-governance.mjs check
+node selfcheck.mjs
+npm run check:life-architecture
+npm pack --dry-run
+```
+
+上面不是 Windows 正式发布放行。维护者仍需在 Windows/DSH Desktop 中检查导航、深色主题、布局、刷新与返回、普通/管理员环境 full 回归。不得据此宣称 API 已开放。完整结果见交付 ZIP 根目录的 `TEST-RESULTS.md`。

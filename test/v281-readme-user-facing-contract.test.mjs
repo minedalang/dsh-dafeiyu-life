@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs'
 
 const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8')
 const agents=readFileSync(new URL('../AGENTS.md',import.meta.url),'utf8')
+const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
 
 test('README is a complete user homepage, not just this release changelog',()=>{
   const headings=['## ✨ 鱼鱼能做什么','## 🆕 2.8.1 新特性','## 🚀 开始使用','## 🔒 让自由有边界','## 🌱 未来规划：让生活更有故事','## ❤️ 致谢']
@@ -14,9 +15,12 @@ test('README is a complete user homepage, not just this release changelog',()=>{
     assert.ok(readme.includes(feature),`User-facing capability or entrypoint missing: ${feature}`)
   // A release-candidate README must disclose that a source version is not
   // evidence of availability in external registries; avoid obsolete labels.
-  assert.match(readme,/当前源码标识为.*`2\.8\.1`/,'README must identify the current release source')
-  assert.match(readme,/Git 提交或版本号本身不代表已经上架.*以 npm、DSHMarket 与 GitHub Release 实际显示的版本为准/,
-    'unfinished release cannot claim full publication')
+  assert.ok(readme.includes('当前源码标识为 **`'+pkg.version+'`**'),
+    'README must identify the package.json version rather than a historical fixed release')
+  assert.match(readme,/不是正式发布版本，也不代表已经上架/,
+    'a dev candidate must not claim official publication')
+  assert.match(readme,/以 npm、DSHMarket 与 GitHub Release 实际显示的版本为准/,
+    'registry and release pages remain the actual availability source')
 })
 
 test('AGENTS retains mandatory user README editorial rule',()=>{

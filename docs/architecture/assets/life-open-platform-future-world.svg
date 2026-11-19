@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d">
+  <title id="t">未来 3D 生命世界示意图</title>
+  <desc id="d">展示大肥鱼在未来 3D 游戏或虚拟房间中的生活方式，以及 Life 与世界之间的分工。</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#edf8ff"/>
+      <stop offset="100%" stop-color="#f6fbff"/>
+    </linearGradient>
+    <linearGradient id="room" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#eef7f6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="760" rx="34" fill="url(#sky)"/>
+  <text x="70" y="88" fill="#274968" font-size="42" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">未来计划：鱼鱼的 3D 生命世界</text>
+  <text x="70" y="125" fill="#557189" font-size="21" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">不是现在就要实现的功能，而是开放平台长期希望支持的形态</text>
+
+  <g>
+    <rect x="90" y="180" width="690" height="470" rx="34" fill="url(#room)" stroke="#d3e5f0" stroke-width="2"/>
+    <rect x="120" y="470" width="630" height="150" rx="18" fill="#eef5ec"/>
+    <rect x="130" y="240" width="180" height="120" rx="20" fill="#dbeeff"/>
+    <circle cx="550" cy="290" r="48" fill="#9fc4ff" opacity="0.33"/>
+    <rect x="520" y="500" width="120" height="40" rx="16" fill="#d7c5ff"/>
+    <rect x="615" y="410" width="94" height="94" rx="20" fill="#f8e2c5"/>
+    <rect x="365" y="380" width="130" height="95" rx="18" fill="#cde7d8"/>
+    <path d="M270 535 Q345 470 450 490" fill="none" stroke="#c2d7b8" stroke-width="8" stroke-linecap="round"/>
+    <g>
+      <ellipse cx="310" cy="525" rx="84" ry="54" fill="#74a7f2"/>
+      <ellipse cx="276" cy="517" rx="18" ry="18" fill="#fff"/>
+      <ellipse cx="271" cy="517" rx="7" ry="7" fill="#32506d"/>
+      <ellipse cx="338" cy="545" rx="52" ry="34" fill="#5c90de"/>
+      <path d="M386 546 q44 -38 72 -8 q-25 38 -72 20 z" fill="#5c90de"/>
+      <circle cx="297" cy="549" r="6" fill="#fff" opacity="0.62"/>
+      <text x="310" y="605" text-anchor="middle" fill="#42627f" font-size="18" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">鱼鱼的 3D 身体</text>
+    </g>
+  </g>
+
+  <g>
+    <rect x="835" y="190" width="275" height="128" rx="26" fill="#ffffff" stroke="#c9dcf0"/>
+    <text x="972" y="238" text-anchor="middle" fill="#355977" font-size="28" font-weight="700" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">Life 决定意图</text>
+    <text x="972" y="273" text-anchor="middle" fill="#58758d" font-size="17" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">想休息、想观察、想聊天</text>
+  </g>
+  <g>
+    <rect x="835" y="360" width="275" height="128" rx="26" fill="#ffffff" stroke="#c9dcf0"/>
+    <text x="972" y="408" text-anchor="middle" fill="#355977" font-size="28" font-weight="700" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">游戏负责执行</text>
+    <text x="972" y="443" text-anchor="middle" fill="#58758d" font-size="17" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">寻路、动画、物理、场景交互</text>
+  </g>
+  <g>
+    <rect x="835" y="530" width="275" height="128" rx="26" fill="#ffffff" stroke="#c9dcf0"/>
+    <text x="972" y="578" text-anchor="middle" fill="#355977" font-size="28" font-weight="700" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">结果再回到 Life</text>
+    <text x="972" y="613" text-anchor="middle" fill="#58758d" font-size="17" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">经过验证后，才可能形成经历</text>
+  </g>
+
+  <path d="M780 255 C808 255 815 255 835 255" fill="none" stroke="#6b8bd9" stroke-width="7" stroke-linecap="round"/>
+  <path d="M780 425 C808 425 815 425 835 425" fill="none" stroke="#55af9c" stroke-width="7" stroke-linecap="round"/>
+  <path d="M780 594 C808 594 815 594 835 594" fill="none" stroke="#55af9c" stroke-width="7" stroke-linecap="round"/>
+</svg>

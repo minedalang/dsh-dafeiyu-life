@@ -635,6 +635,11 @@
       "owner": "life-decision-diagnostics",
       "kind": "security",
       "intent": "Project actual account-scoped Life choices, technical blocks, uncertain outcomes and verified platform receipts into bounded read-only explanations without revealing model prose or granting execution."
+    },
+    "v282-dev9-open-platform-preview.test.mjs": {
+      "owner": "management-console-and-readme",
+      "kind": "ui",
+      "intent": "Verify preview tab is actually navigable, API examples remain clearly nonfunctional, README SVG roadmap assets exist, upstream attribution remains, and dev version metadata agrees."
     }
   },
   "protected": [
@@ -997,6 +1002,20 @@
       "newCheck": "offline QR route uses the plugin-local Python on Windows/Linux without network or credential leakage",
       "reason": "Windows was silently skipped despite a valid Python runtime, hiding the QR bridge under the full-suite contract; real QR encoding remains an explicit real-install requirement.",
       "date": "2026-11-18"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.match(readme,/当前源码标识为.*`2\\.8\\.1`/)",
+      "newCheck": "assert.ok(readme.includes('当前源码标识为 **`'",
+      "reason": "The uploaded 2.8.2-dev.8 baseline README already advertised the current dev version, so a hardcoded 2.8.1 fixed-version requirement failed before this change. Preserve version disclosure by binding the assertion to package.json instead of restoring historical version text.",
+      "date": "2026-11-19"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.match(readme,/Git 提交或版本号本身不代表已经上架.*以 npm、DSHMarket 与 GitHub Release 实际显示的版本为准/)",
+      "newCheck": "assert.match(readme,/不是正式发布版本，也不代表已经上架/,",
+      "reason": "The uploaded 2.8.2-dev.8 README uses a newer, equally explicit statement that a development source version is not a published version. Continue to verify both non-publication and external registry truth without requiring obsolete 2.8.1 wording.",
+      "date": "2026-11-19"
     }
   ]
 }

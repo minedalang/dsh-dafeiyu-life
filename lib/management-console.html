@@ -1722,6 +1722,44 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #video-perception-final-debug .video-debug-panels summary{cursor:pointer;font-weight:700;font-size:12px}
 #video-perception-final-debug .video-debug-json{white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;max-height:580px;min-height:90px;padding:13px;line-height:1.55;border:1px solid var(--stroke);border-radius:12px;background:var(--panel);font-size:12px}
 </style>
+
+<style>
+/* Open Pet Platform preview page (2.8.2-dev) */
+#panel-open-platform .openpet-hero{position:relative;overflow:hidden;padding:24px 26px;border:1px solid var(--stroke);border-radius:24px;background:linear-gradient(135deg,color-mix(in srgb,#d8f0ff 38%,var(--panel)),color-mix(in srgb,#f0e3ff 20%,var(--panel)) 48%,var(--panel));box-shadow:0 14px 32px rgba(38,63,98,.08)}
+#panel-open-platform .openpet-hero:after{content:'';position:absolute;right:-50px;top:-30px;width:220px;height:220px;background:radial-gradient(circle at center,rgba(122,182,255,.28),rgba(122,182,255,0));pointer-events:none}
+#panel-open-platform .hero-eyebrow{display:inline-flex;gap:8px;align-items:center;padding:6px 12px;border-radius:999px;background:color-mix(in srgb,var(--ui-indigo) 10%,var(--panel));border:1px solid color-mix(in srgb,#7b91dd 35%,var(--stroke));font-size:12px;color:var(--action);font-weight:700}
+#panel-open-platform .openpet-hero h2{margin:10px 0 10px;font-size:30px;letter-spacing:-.02em}
+#panel-open-platform .openpet-hero p{max-width:900px;line-height:1.72}
+#panel-open-platform .hero-pills{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+#panel-open-platform .hero-pills span{display:inline-flex;align-items:center;padding:6px 11px;border-radius:999px;font-size:12px;font-weight:700;background:var(--panel);border:1px solid var(--stroke)}
+#panel-open-platform .openpet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:16px 0}
+#panel-open-platform .openpet-card{border:1px solid var(--stroke);border-radius:18px;padding:18px;background:linear-gradient(155deg,var(--panel),color-mix(in srgb,#d7eefe 14%,var(--panel)));box-shadow:0 8px 22px rgba(42,71,106,.05)}
+#panel-open-platform .openpet-card h3{margin:0 0 9px;font-size:17px}
+#panel-open-platform .openpet-card p{margin:7px 0;color:var(--muted);line-height:1.65}
+#panel-open-platform .openpet-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--ui-teal) 12%,var(--panel));color:var(--action);font-size:12px;font-weight:700;margin-bottom:9px}
+#panel-open-platform .openpet-note{border-left:4px solid #d9a54a;padding:12px 14px;background:linear-gradient(135deg,color-mix(in srgb,#e3ad5e 14%,var(--panel)),var(--panel));border-radius:15px;margin:14px 0;font-size:13px;line-height:1.7}
+#panel-open-platform .openpet-proto-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+#panel-open-platform .openpet-layer{border:1px solid var(--stroke);border-radius:18px;padding:17px;background:var(--panel)}
+#panel-open-platform .openpet-layer strong{display:block;font-size:15px;margin-bottom:8px}
+#panel-open-platform .openpet-layer ul{margin:0;padding-left:18px;color:var(--muted);line-height:1.7}
+#panel-open-platform .openpet-api{margin-top:14px;border:1px solid var(--stroke);border-radius:18px;background:linear-gradient(180deg,color-mix(in srgb,#dcebff 18%,var(--panel)),var(--panel));overflow:hidden}
+#panel-open-platform .openpet-api-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--stroke)}
+#panel-open-platform .openpet-api-head h3{margin:0;font-size:16px}
+#panel-open-platform .openpet-api pre{margin:0;padding:16px;white-space:pre-wrap;overflow:auto;font-size:12px;background:transparent}
+#panel-open-platform .openpet-api .muted{padding:0 16px 15px;margin:0}
+#panel-open-platform .openpet-roadmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px;margin-top:14px}
+#panel-open-platform .openpet-step{border:1px solid var(--stroke);border-radius:18px;padding:16px;background:var(--panel);position:relative}
+#panel-open-platform .openpet-step::before{content:attr(data-step);position:absolute;right:12px;top:10px;font-size:12px;color:var(--muted);font-weight:700}
+#panel-open-platform .openpet-step h4{margin:0 0 7px;font-size:15px}
+#panel-open-platform .openpet-step p{margin:0;color:var(--muted);line-height:1.65}
+#panel-open-platform .openpet-svg{width:100%;height:auto;margin:14px 0 4px;border:1px solid var(--stroke);border-radius:20px;background:linear-gradient(160deg,var(--panel),color-mix(in srgb,#dbeeff 11%,var(--panel)))}
+#panel-open-platform .openpet-future{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+#panel-open-platform .openpet-future .record{margin:0}
+#panel-open-platform .openpet-link-note{display:flex;gap:10px;align-items:flex-start;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg,color-mix(in srgb,var(--ui-indigo) 9%,var(--panel)),var(--panel));border:1px dashed color-mix(in srgb,#6d95d8 52%,var(--stroke));margin-top:14px}
+#panel-open-platform .openpet-link-note strong{display:block;margin-bottom:6px}
+@media(max-width:700px){#panel-open-platform .openpet-hero{padding:18px}#panel-open-platform .openpet-hero h2{font-size:24px}}
+</style>
+
 </head>
 <body><main class="wrap">
 <header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><a class="button mobile-back" href="/" aria-label="返回 DSH Mobile">← 返回 DSH</a><div class="settings-finder" role="search"><label for="settings-finder-input">查找设置</label><input id="settings-finder-input" type="search" placeholder="搜索设置…" autocomplete="off" aria-controls="settings-finder-results" aria-expanded="false"><div id="settings-finder-results" class="settings-finder-results" role="listbox" hidden></div></div><button id="refresh">刷新当前页</button></div></header>
@@ -1751,7 +1789,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <button data-tab="growth" aria-selected="false">行为与表达改进 <span id="growth-count" class="queue-badge" hidden></span></button>
 <button data-tab="models" aria-selected="false">AI 模型</button>
 <button data-tab="quotas" aria-selected="false">次数与额度</button>
-<button data-tab="polling" aria-selected="false">消息感知</button></div>
+<button data-tab="polling" aria-selected="false">消息感知</button>
+<button data-tab="open-platform" aria-selected="false">🧩 桌宠开放平台（开发中）</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">🗂️ 知识与维护</span>
 <button data-tab="meme" aria-selected="false">梗与网络文化 <span id="meme-count" class="queue-badge" hidden></span></button>
 <button data-tab="stickers" aria-selected="false">表情包管理</button>
@@ -2905,6 +2944,137 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="card" style="margin-top:14px"><h3>当前附加到提示词的内容（只读）</h3>
 <p class="muted">这里仅预览行为与表达规则，不检索兴趣、经历和关系；后者请到「人生记忆」。</p>
 <pre id="growth-context"></pre></div></section>
+
+<section id="panel-open-platform" hidden>
+  <div class="openpet-hero">
+    <span class="hero-eyebrow">🧩 LIFE RUNTIME OPEN PLATFORM · 开发中</span>
+    <h2>桌宠开放平台 <span class="pill pending">开发中</span></h2>
+    <p>这里预告的是一个面向未来的开放生态：<strong>同一个大肥鱼 Life</strong>，既可以驱动官方桌面陪伴客户端，也可以让社区开发者使用自己的 2D 桌宠、3D 游戏、Live2D 角色、虚拟世界或其他终端来自由接入。<strong>当前页面仅用于展示规划、协议草案和未来方向，暂不开放接入，也不会对外提供真实令牌或设备授权。</strong></p>
+    <div class="hero-pills"><span>预计 2.9.0 之后逐步开放</span><span>统一人格与记忆核心</span><span>支持官方客户端与社区接入</span><span>面向未来 3D 生命世界</span></div>
+  </div>
+
+  <div class="openpet-grid" aria-label="开放生态概览">
+    <article class="openpet-card">
+      <div class="openpet-badge">官方计划</div>
+      <h3>鱼鱼在场 · 官方桌面陪伴</h3>
+      <p>未来计划重启官方桌宠，让鱼鱼以更独立的桌面客户端陪伴主人。短期仍会保留现有动画思路；长期希望升级到更流畅的渲染与身体系统，甚至走向 3D 引擎实时表现。</p>
+      <p><strong>这里的重点不是限定一种表现形式</strong>，而是让鱼鱼的人格、记忆、情绪和生活轨迹保持统一。</p>
+    </article>
+    <article class="openpet-card">
+      <div class="openpet-badge">社区生态</div>
+      <h3>你的桌宠、你的世界</h3>
+      <p>我们希望第三方开发者也能基于统一协议接入大肥鱼 Life：你可以做 PySide6 小桌宠、Godot / Unity 3D 角色、网页挂件、Live2D 看板娘，甚至让鱼鱼住进一个真正的虚拟房间。</p>
+      <p>只要遵守统一的运行时协议和权限边界，就能自由定义“身体”和“世界”。</p>
+    </article>
+    <article class="openpet-card">
+      <div class="openpet-badge">设计原则</div>
+      <h3>Life 是大脑，客户端是身体</h3>
+      <p>Life 负责人格、记忆、情绪、自主生活与授权边界；桌宠或游戏负责外观、动作、场景、摄像机、骨骼和交互表现。</p>
+      <p>这意味着未来即便更换官方桌宠引擎，也不需要推翻整套生命系统。</p>
+    </article>
+  </div>
+
+  <svg class="openpet-svg" viewBox="0 0 1100 320" role="img" aria-label="开放生态示意图">
+    <defs>
+      <linearGradient id="op1" x1="0" x2="1"><stop offset="0" stop-color="#5f7ce2"/><stop offset="1" stop-color="#41b0a1"/></linearGradient>
+      <linearGradient id="op2" x1="0" x2="1"><stop offset="0" stop-color="#eff6ff"/><stop offset="1" stop-color="#eef9f7"/></linearGradient>
+    </defs>
+    <rect x="0" y="0" width="1100" height="320" rx="26" fill="url(#op2)"/>
+    <rect x="440" y="70" width="220" height="180" rx="26" fill="url(#op1)" opacity="0.95"/>
+    <text x="550" y="125" text-anchor="middle" fill="#fff" font-size="28" font-weight="700">大肥鱼 Life</text>
+    <text x="550" y="160" text-anchor="middle" fill="#eef7ff" font-size="16">人格 · 记忆 · 情绪 · 自主生活</text>
+    <text x="550" y="188" text-anchor="middle" fill="#eef7ff" font-size="16">统一授权边界 · 统一表达意图</text>
+    <rect x="90" y="55" width="230" height="86" rx="20" fill="#ffffff" stroke="#8fb2d8"/>
+    <text x="205" y="92" text-anchor="middle" fill="#35507a" font-size="22" font-weight="700">官方桌宠</text>
+    <text x="205" y="118" text-anchor="middle" fill="#56738d" font-size="14">鱼鱼在场 · 桌面陪伴</text>
+    <rect x="90" y="180" width="230" height="86" rx="20" fill="#ffffff" stroke="#8fb2d8"/>
+    <text x="205" y="217" text-anchor="middle" fill="#35507a" font-size="22" font-weight="700">社区桌宠</text>
+    <text x="205" y="243" text-anchor="middle" fill="#56738d" font-size="14">2D 桌宠 · Live2D · 网页挂件</text>
+    <rect x="780" y="55" width="230" height="86" rx="20" fill="#ffffff" stroke="#8fb2d8"/>
+    <text x="895" y="92" text-anchor="middle" fill="#35507a" font-size="22" font-weight="700">3D 游戏</text>
+    <text x="895" y="118" text-anchor="middle" fill="#56738d" font-size="14">Godot / Unity / Unreal</text>
+    <rect x="780" y="180" width="230" height="86" rx="20" fill="#ffffff" stroke="#8fb2d8"/>
+    <text x="895" y="217" text-anchor="middle" fill="#35507a" font-size="22" font-weight="700">虚拟世界</text>
+    <text x="895" y="243" text-anchor="middle" fill="#56738d" font-size="14">VR / 房间 / 多终端共存</text>
+    <path d="M320 98 C370 98 390 126 440 126" stroke="#6f8fce" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M320 223 C370 223 390 194 440 194" stroke="#6f8fce" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M660 126 C710 126 730 98 780 98" stroke="#55a89a" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M660 194 C710 194 730 223 780 223" stroke="#55a89a" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <text x="550" y="278" text-anchor="middle" fill="#4e6a82" font-size="14">统一开放运行时协议（预览） · 当前仅展示，不开放调用</text>
+  </svg>
+
+  <div class="openpet-note"><strong>当前状态说明：</strong>本页的接口、事件和开放生态都还在设计与实现中。这里展示的是<strong>预告版蓝图</strong>，用于让社区开发者提前理解方向；当前管理中心不会对外发放接入凭据，也不承诺这些草案已经稳定。</div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3>统一开放运行时协议（预览）</h3>
+    <p class="muted">未来的开放接口会尽量做到<strong>引擎无关、表现无关</strong>：不要求社区使用固定的动画格式、桌面框架或 3D 引擎，只共享鱼鱼的统一人格与生活状态。</p>
+    <div class="openpet-proto-list">
+      <div class="openpet-layer"><strong>Runtime Core · 第一阶段</strong><ul><li>只读生命状态快照：情绪、精力、当前活动、公开表达状态</li><li>实时事件流：Life 状态变化、表达意图、提醒与未来扩展事件</li><li>授权与设备配对：未来开放后由主人明确批准</li><li>互动回传：点击、摸头、场景互动等由客户端上报</li></ul></div>
+      <div class="openpet-layer"><strong>Companion Layer · 桌宠层</strong><ul><li>语义动作提示，而不是强绑定某个动画文件</li><li>统一聊天入口：未来由 Life 决定对话人格与可调用记忆</li><li>多种表现：WebM、Live2D、Spine、粒子、UI 气泡均可自定义</li><li>允许官方桌宠与第三方桌宠并行发展</li></ul></div>
+      <div class="openpet-layer"><strong>World Layer · 3D 世界扩展</strong><ul><li>面向未来的世界观察与空间交互协议</li><li>支持物体、场景、角色、位置和意图执行反馈</li><li>Life 决定“想做什么”，游戏决定“如何真实执行”</li><li>为多人空间、房间系统和虚拟经历沉淀预留可能性</li></ul></div>
+    </div>
+  </div>
+
+  <div class="openpet-api">
+    <div class="openpet-api-head"><h3>接口预览（草案）</h3><span class="pill pending">仅供阅读 · 暂未开放</span></div>
+    <pre>GET    /api/bili-duty/pet-bridge/v1/snapshot
+GET    /api/bili-duty/pet-bridge/v1/events
+POST   /api/bili-duty/pet-bridge/v1/interactions
+POST   /api/bili-duty/pet-bridge/v1/chat/turns
+POST   /api/bili-duty/pet-bridge/v1/expression-acks
+POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世界扩展</pre>
+    <p class="muted">正式开放前，这些路径、字段和权限范围都可能继续调整。页面中的草案用于说明方向，不代表当前插件已经提供这些可调用服务。</p>
+  </div>
+
+  <div class="openpet-api" style="margin-top:14px">
+    <div class="openpet-api-head"><h3>示例 JSON（草案）</h3><span class="pill">展示统一语义，而非具体动画文件名</span></div>
+    <pre>{
+  "version": "preview",
+  "life": {
+    "activity": "exploring_video",
+    "mood": "curious",
+    "energy": 0.72,
+    "sociality": 0.41
+  },
+  "presentation": {
+    "intent": "observe",
+    "speech": null,
+    "animationHint": "curious_idle"
+  },
+  "world": {
+    "future3d": true,
+    "notes": "3D 世界扩展将允许客户端汇报场景、物体和执行反馈。"
+  }
+}</pre>
+    <p class="muted">未来客户端只需要理解这些开放语义，就能把同一个鱼鱼接入成不同形态的桌宠或 3D 角色。</p>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>未来支持的官方与社区形态</h3>
+    <div class="openpet-future">
+      <div class="record"><strong>🐟 官方桌面陪伴</strong><div class="preview">计划中的官方客户端会优先验证“同一个 Life 驱动桌面陪伴”的体验，短期仍可沿用现有动画资源，长期希望升级渲染与身体系统。</div></div>
+      <div class="record"><strong>🧪 社区 2D 桌宠</strong><div class="preview">任何人都可以使用自己熟悉的桌面技术栈，只要遵守统一协议，就能把鱼鱼接入自己的角色外观和动作系统。</div></div>
+      <div class="record"><strong>🎮 3D 游戏世界</strong><div class="preview">未来希望支持让鱼鱼住进真正的场景：走路、看东西、和环境互动，甚至拥有自己的房间与生活节奏。</div></div>
+      <div class="record"><strong>🌐 更多终端</strong><div class="preview">包括网页挂件、直播伴侣、VR 或其他实验性客户端。核心目标是：同一条鱼，不同的身体与世界。</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>开放路线图（预览）</h3>
+    <div class="openpet-roadmap">
+      <div class="openpet-step" data-step="Phase 0"><h4>现在：生态预告页</h4><p>先在管理中心公开愿景、协议草案与未来方向，帮助社区开发者理解大肥鱼 Life 未来将如何支持官方桌宠和第三方客户端。</p></div>
+      <div class="openpet-step" data-step="Phase 1"><h4>2.9.0 之后：逐步开放</h4><p>计划逐步实现生命状态读取、SSE 事件、设备授权和基础互动回传。开放范围会以正式发布说明为准。</p></div>
+      <div class="openpet-step" data-step="Phase 2"><h4>统一聊天与表达</h4><p>让桌宠或游戏能够在明确授权下使用同一个鱼鱼人格、记忆与表达系统，而不是各自维护独立的 AI 角色。</p></div>
+      <div class="openpet-step" data-step="Phase 3"><h4>3D 生命世界</h4><p>探索面向 3D 引擎的世界观察、空间交互和多终端延续能力，让鱼鱼能够拥有真正“生活过”的虚拟世界体验。</p></div>
+    </div>
+  </div>
+
+  <div class="openpet-link-note">
+    <span aria-hidden="true">💡</span>
+    <div><strong>给未来开发者的话</strong><div class="muted">如果你也想为鱼鱼做自己的桌宠、3D 房间或其他终端，这里就是未来的入口。现在它还是预告页，但我们希望从一开始就把方向讲清楚：<strong>Life 做统一大脑，身体与世界留给社区自由创作。</strong></div></div>
+  </div>
+</section>
+
 <section id="panel-meme" hidden><div class="feature-intro"><div><span class="live-badge" id="meme-learning-status">● 大肥鱼正在收集梗知识</span><h2>梗知识库</h2><p class="muted">大肥鱼看视频时会自动收集并启用有真实证据的新梗，无需逐条审核；「待核实」释义只能作为线索，不能当确定事实。</p></div></div><div class="card" style="margin-bottom:14px"><h3>梗与网络文化学习</h3><label class="checkline"><input id="meme-auto-enabled" type="checkbox">启用梗知识检索、刷视频收集线索和跨视频反思</label><div class="toolbar"><button id="meme-auto-save" class="primary">保存梗学习开关</button></div></div><div class="card" style="margin-bottom:14px"><h3>主人手动补充梗知识</h3><p class="muted">你手动保存后直接获批、可以被 AI 搜到；但“是否已批准”和“释义是否有证据”是两件事。没有可靠证据的梗会保留为待核实线索。</p>
 <div class="fields"><div><label for="meme-new-name">名称</label><input id="meme-new-name" maxlength="48" placeholder="例如 某个新梗"></div><div><label for="meme-new-aliases">别名（可选）</label><input id="meme-new-aliases" maxlength="140"></div>
 <div><label for="meme-new-kind">知识类别</label><select id="meme-new-kind"><option>梗</option><option>角色</option><option>人物</option><option>系列</option><option>其他</option></select></div><div><label for="meme-new-confidence">释义证据</label><select id="meme-new-confidence"><option value="待核实">待核实 · 只有线索</option><option value="有文字依据">有文字依据 · 已核对</option></select><small class="field-help">“待核实”仍可作为理解线索，但大肥鱼不能当成确定事实；“有文字依据”表示你核对过可靠的字幕、评论或来源。此选项不代替“批准使用”。</small></div></div>

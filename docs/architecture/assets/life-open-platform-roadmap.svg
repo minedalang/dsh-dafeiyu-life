@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="t d">
+  <title id="t">大肥鱼开放平台路线图</title>
+  <desc id="d">从预告页到开放接入，再到 3D 生命世界的阶段规划图。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f4fbff"/>
+      <stop offset="100%" stop-color="#f7fbf8"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6e87de"/>
+      <stop offset="100%" stop-color="#46ae9c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="520" rx="32" fill="url(#bg)"/>
+  <text x="70" y="78" fill="#274968" font-size="42" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">桌宠开放平台路线图（预览）</text>
+  <text x="70" y="114" fill="#557189" font-size="21" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">当前先展示生态与协议方向，2.9.0 之后再逐步开放接入能力</text>
+  <path d="M120 265 H1080" stroke="url(#line)" stroke-width="14" stroke-linecap="round"/>
+
+  <g>
+    <circle cx="170" cy="265" r="30" fill="#5d7be8"/>
+    <rect x="70" y="315" width="200" height="125" rx="24" fill="#fff" stroke="#c9dcf0"/>
+    <text x="170" y="362" text-anchor="middle" fill="#335675" font-size="25" font-weight="700" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">Phase 0</text>
+    <text x="170" y="394" text-anchor="middle" fill="#58758d" font-size="18" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">预告页上线</text>
+    <text x="170" y="419" text-anchor="middle" fill="#58758d" font-size="15" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">生态愿景 · 协议草案</text>
+  </g>
+
+  <g>
+    <circle cx="420" cy="265" r="30" fill="#6a8ce3"/>
+    <rect x="320" y="120" width="200" height="125" rx="24" fill="#fff" stroke="#c9dcf0"/>
+    <text x="420" y="167" text-anchor="middle" fill="#335675" font-size="25" font-weight="700" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">Phase 1</text>
+    <text x="420" y="199" text-anchor="middle" fill="#58758d" font-size="18" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">基础开放接入</text>
+    <text x="420" y="224" text-anchor="middle" fill="#58758d" font-size="15" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">状态快照 · SSE · 配对授权</text>
+  </g>
+
+  <g>
+    <circle cx="670" cy="265" r="30" fill="#58a6c5"/>
+    <rect x="570" y="315" width="200" height="125" rx="24" fill="#fff" stroke="#c9dcf0"/>
+    <text x="670" y="362" text-anchor="middle" fill="#335675" font-size="25" font-weight="700" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">Phase 2</text>
+    <text x="670" y="394" text-anchor="middle" fill="#58758d" font-size="18" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">统一聊天与表达</text>
+    <text x="670" y="419" text-anchor="middle" fill="#58758d" font-size="15" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">互动回传 · 表达意图</text>
+  </g>
+
+  <g>
+    <circle cx="920" cy="265" r="30" fill="#38b19c"/>
+    <rect x="820" y="120" width="200" height="125" rx="24" fill="#fff" stroke="#c9dcf0"/>
+    <text x="920" y="167" text-anchor="middle" fill="#335675" font-size="25" font-weight="700" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">Phase 3</text>
+    <text x="920" y="199" text-anchor="middle" fill="#58758d" font-size="18" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">3D 生命世界</text>
+    <text x="920" y="224" text-anchor="middle" fill="#58758d" font-size="15" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">世界观察 · 空间交互</text>
+  </g>
+</svg>
