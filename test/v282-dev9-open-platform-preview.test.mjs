@@ -59,9 +59,9 @@ test('README showcases the long-term ecosystem with real local SVG assets and co
 })
 
 test('developer version identity is synchronized',()=>{
-  assert.equal(manifest.version,'2.8.2-dev.9')
+  assert.match(manifest.version,/^2\.8\.2-dev\.(?:9|[1-9]\d+)$/)
   assert.equal(lock.version,manifest.version)
   assert.equal(lock.packages[''].version,manifest.version)
-  assert.match(readme,/当前源码标识为 \*\*`2\.8\.2-dev\.9`\*\*/)
-  assert.match(read('CHANGELOG.md'),/^## 2\.8\.2-dev\.9/)
+  assert.ok(readme.includes('当前源码标识为 **`'+manifest.version+'`**'))
+  assert.ok(read('CHANGELOG.md').startsWith('## '+manifest.version))
 })

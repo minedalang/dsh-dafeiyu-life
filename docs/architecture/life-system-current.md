@@ -1,3 +1,5 @@
+> **2.8.2-dev.10 安全修复：** 原有 LifeMemoryGateway 的公开素材、bili-explore/公共场景回忆与公开反思投影必须同时满足当前核验账号及 public-event；早期无账号记忆不被推断为可发布来源。LifeMemoryCoordinator 复用入队时记录的账号证据，不在重放时拿当前账号覆盖。共享网络退避涵盖 DNS/TCP/英文 timeout，计数未增长也按确实失败的轮询进入只读退避。Life 诊断 UI 的状态与原因共用单一归类。这是现有事实源的门禁修复，未增加发送或深层记忆。
+
 > **2.8.2-dev.8 PR-5（开发中）**：原 `LifeDecisionTrace` 当前账号 7 天日志按固定枚举派生只读行动解释，管理中心与行动树区分 Life 有效选择、技术延期、仅本地回执、平台核验和未知冻结。无新增发送、记忆或调度权限。见 [dev.8 说明](2.8.2-dev8-life-decision-explanation.md)。
 
 > **2.8.2-dev.6 状态说明：** `read-availability-projection.mjs` 仅从 `bili-read-budget.mjs`、通知网络退避读取状态，归并为管理中心只读解释；Life 的选择、原读取调度与外发权限完全不变。详见 [专项文档](2.8.2-dev6-read-availability-diagnostics.md)。

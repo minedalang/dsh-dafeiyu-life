@@ -7563,7 +7563,7 @@ logger:{warn:m=>log('社交意图：'+m)}
   // 生活动态仅使用可衰减的公开经历证据：视频和鱼鱼本人已确认发表的公开文字。
   // 公开发布与模型生成严格分离：生成模型不挂 B站发送工具，实际发布由受限 Python 路径执行。
   dailyDynamic=createDailyDynamic({
-    dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
+    dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,accountTag:trustedLifeAccountTag(),masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     getPublicVideos:()=>lifeMemory?.publicVideoEvidence(40)||[],
     getPublicSocial:()=>lifeMemory?.publicSocialEvidence(24)||[],
     getEmotion:()=>emotionalState.snapshot(),

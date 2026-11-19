@@ -7,13 +7,14 @@ import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createMemoryRetriever} from '../lib/memory-retriever.mjs'
 
 const DAY=86400000
+const ACCOUNT='a'.repeat(16)
 const BV='BV1234567890'
 const T0=Date.parse('2026-10-29T12:00:00Z')
 const config=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryHalfLifeDays:30,mainSessionMemoryThreshold:.35})
 const temp=()=>mkdtempSync(join(tmpdir(),'dafeiyu-stranger-nextday-'))
-const comment=(uid,rpid,text,at)=>({kind:'social',key:`social:${uid}:${BV}:${rpid}`,actorUid:uid,bvid:BV,text,at})
+const comment=(uid,rpid,text,at)=>({kind:'social',accountTag:ACCOUNT,key:`social:${uid}:${BV}:${rpid}`,actorUid:uid,bvid:BV,text,at})
 function system(dir,clock){
- const gate=createLifeMemoryGateway({dataDir:dir,getConfig:config,now:()=>clock.value})
+ const gate=createLifeMemoryGateway({dataDir:dir,getConfig:config,getAccountTag:()=>ACCOUNT,now:()=>clock.value})
  const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:config,getEpisodes:(query,opts)=>gate.recall({query,...opts})})
  return {gate,retriever}
 }

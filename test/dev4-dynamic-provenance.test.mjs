@@ -6,7 +6,7 @@ import {join} from 'node:path'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createDailyDynamic,validateDailyDraft,dynamicContentIssue,extractVideoReaction} from '../lib/daily-dynamic.mjs'
 
-const BV='BV1234567890',NOW=Date.parse('2026-10-30T12:00:00Z')
+const ACCOUNT='a'.repeat(16),BV='BV1234567890',NOW=Date.parse('2026-10-30T12:00:00Z')
 const title='我要刷贴吧！'
 const events=[{bvid:BV,day:'2026-10-30',title,experience:'我曾经选中视频《我要刷贴吧！》'}]
 const text='看到自己选中的“我要刷贴吧！”突然有点想去贴吧逛逛，又有点懒，先挂着吧。'
@@ -17,10 +17,10 @@ const temporary=()=>mkdtempSync(join(tmpdir(),'dafeiyu-dev4-'))
 test('可衰减视频来源不再暴露内部“我曾经选中视频”叙述，只保留已发生的本人反应',()=>{
  const dir=temporary()
  try{
-  const g=createLifeMemoryGateway({dataDir:dir,now:()=>NOW,getConfig:config})
-  g.recordEvents([{kind:'watch',bvid:BV,title,day:'2026-10-30'}])
+  const g=createLifeMemoryGateway({dataDir:dir,now:()=>NOW,getConfig:config,getAccountTag:()=>ACCOUNT})
+  g.recordEvents([{kind:'watch',accountTag:ACCOUNT,bvid:BV,title,day:'2026-10-30'}])
   assert.deepEqual(g.publicVideoEvidence(1).map(x=>x.experience),[''])
-  g.recordEvents([{kind:'watch',bvid:'BV1234567891',title:'睡懒觉是不是坏习惯',day:'2026-10-30',note:'好羡慕这种可以睡到自然醒的节奏'}])
+  g.recordEvents([{kind:'watch',accountTag:ACCOUNT,bvid:'BV1234567891',title:'睡懒觉是不是坏习惯',day:'2026-10-30',note:'好羡慕这种可以睡到自然醒的节奏'}])
   assert.equal(g.publicVideoEvidence(2).find(x=>x.bvid==='BV1234567891').experience,'好羡慕这种可以睡到自然醒的节奏')
   assert.equal(extractVideoReaction('我曾经选中视频《标题》'), '')
   assert.equal(extractVideoReaction('我曾经选中视频《标题》；当时想法是有点想看看'), '有点想看看')

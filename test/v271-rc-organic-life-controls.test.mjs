@@ -60,15 +60,16 @@ test('默认人格不再强行规定兴趣领域，但保留原人物设定',()=
  assert.match(persona,/Claude 小姐/)
 })
 
+const ACCOUNT='a'.repeat(16)
 const NOW=Date.parse('2026-11-04T12:00:00Z'), DAY=86400000
 const cfg=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mainSessionMemoryHalfLifeDays:90})
 async function withExperience(fn){
  const dir=mkdtempSync(join(tmpdir(),'rc-real-personality-')),clock={at:NOW}
- const memory=createLifeMemoryGateway({dataDir:dir,getConfig:cfg,now:()=>clock.at,getRelationship:()=>({stage:'familiar',permissionRole:'stranger',whitelisted:false})})
+ const memory=createLifeMemoryGateway({dataDir:dir,getConfig:cfg,getAccountTag:()=>ACCOUNT,now:()=>clock.at,getRelationship:()=>({stage:'familiar',permissionRole:'stranger',whitelisted:false})})
  const personality=createPersonalityEvolution({dataDir:dir,memoryGateway:memory,now:()=>clock.at})
  try{personality.setEnabled(true);return await fn({dir,clock,memory,personality})}finally{memory.close();rmSync(dir,{recursive:true,force:true})}
 }
-const event=(i,day=0)=>({kind:'social',key:`social:${20000+i}:BV1234567890:${30000+i}`,bvid:'BV1234567890',actorUid:String(20000+i),text:'鱼鱼，能不能多聊聊这个话题，我真的想知道一些细节？',socialTier:'stranger',at:NOW-day*DAY})
+const event=(i,day=0)=>({kind:'social',accountTag:ACCOUNT,key:`social:${20000+i}:BV1234567890:${30000+i}`,bvid:'BV1234567890',actorUid:String(20000+i),text:'鱼鱼，能不能多聊聊这个话题，我真的想知道一些细节？',socialTier:'stranger',at:NOW-day*DAY})
 test('证实的真实评论回复才形成表达、耐心或边界的弱观察，去重且不能泄漏正文',()=>withExperience(({dir,memory,personality})=>{
  const cases=[
   {reply:'我觉得这个观点挺有趣，不过我更倾向于自己的理解。',trait:'assertiveness'},

@@ -6,6 +6,7 @@ import {join} from 'node:path'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createDailyDynamic,validateDailyDraft,pickDiverseSources,dynamicManualReviewReason} from '../lib/daily-dynamic.mjs'
 
+const ACCOUNT='a'.repeat(16)
 const BV='BV1234567890',t0=Date.parse('2026-10-30T12:00:00Z')
 const makeHome=()=>mkdtempSync(join(tmpdir(),'dafeiyu-public-dynamic-'))
 const socialText='今天和大家聊了一会儿，我发现能一起慢慢讨论一个问题，似乎比急着给出标准答案更有意思。'
@@ -15,12 +16,12 @@ const cfg=()=>({masterEnabled:true,dailyDynamicEnabled:true,dailyDynamicDraftOnl
 test('只有确认发出的公开回复/评论才提供给动态；未回复来信、UID、原话、私聊不可见',()=>{
  const dir=makeHome();let now=t0
  try{
-  const g=createLifeMemoryGateway({dataDir:dir,getConfig:cfg,now:()=>now})
+  const g=createLifeMemoryGateway({dataDir:dir,getConfig:cfg,getAccountTag:()=>ACCOUNT,now:()=>now})
   g.recordEvents([
-   {kind:'social',bvid:BV,actorUid:'101',key:`social:101:${BV}:900`,text:'我的手机号码是 13900123456，别告诉别人',at:t0},
-   {kind:'social',bvid:BV,actorUid:'202',key:`social:202:${BV}:901`,text:'你还记得我们谈过的问题吗',at:t0},
-   {kind:'comment',bvid:BV,key:'comment:public:one',text:'我觉得慢慢讨论比急着给标准答案更有意思，这个话题我还想继续想想。',at:t0},
-   {kind:'comment',bvid:BV,key:'comment:public:private',text:'我的微信号和地址在这，大家可以联系我。',at:t0}
+   {kind:'social',accountTag:ACCOUNT,bvid:BV,actorUid:'101',key:`social:101:${BV}:900`,text:'我的手机号码是 13900123456，别告诉别人',at:t0},
+   {kind:'social',accountTag:ACCOUNT,bvid:BV,actorUid:'202',key:`social:202:${BV}:901`,text:'你还记得我们谈过的问题吗',at:t0},
+   {kind:'comment',accountTag:ACCOUNT,bvid:BV,key:'comment:public:one',text:'我觉得慢慢讨论比急着给标准答案更有意思，这个话题我还想继续想想。',at:t0},
+   {kind:'comment',accountTag:ACCOUNT,bvid:BV,key:'comment:public:private',text:'我的微信号和地址在这，大家可以联系我。',at:t0}
   ])
   assert.equal(g.recordSocialReply({actorUid:'202',bvid:BV,incomingRpid:'901',text:'我想下次遇到这个话题，还能认真听听大家怎么想。',at:t0}).ok,true)
   const out=g.publicSocialEvidence()

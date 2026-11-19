@@ -640,6 +640,11 @@
       "owner": "management-console-and-readme",
       "kind": "ui",
       "intent": "Verify preview tab is actually navigable, API examples remain clearly nonfunctional, README SVG roadmap assets exist, upstream attribution remains, and dev version metadata agrees."
+    },
+    "v282-dev10-public-memory-network-trace.test.mjs": {
+      "owner": "life-memory-and-read-gates",
+      "kind": "security",
+      "intent": "Ensure public-only current-account memories cannot leak private or foreign episodes, outbox replay binds original scope, terminal Life results remain consistent, and failed DNS/timeout polls trigger bounded network backoff without extra read budget or sends."
     }
   },
   "protected": [
