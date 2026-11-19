@@ -2013,6 +2013,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     let info,subtitle,comments,danmaku,vision
     const watchStartedAt=Date.now()
     let metadataMs=0,speechReadMs=null,visualReadMs=null
+    let subtitleToolMs=null,asrToolMs=null,asrMcpTimings=null
     let speechFinishedAt=0,visionFinishedAt=0
     let speechAttempt={status:'not-checked',reason:''}
     stage('读取视频元数据',1)
@@ -2039,15 +2040,28 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const tasks=[]
     tasks.push((async()=>{
       try{
-        subtitle=parseMaybeJson(await call('bili_subtitle',{bvid,auto_vision_on_missing:false}))
+        const subtitleToolStarted=Date.now()
+        try{subtitle=parseMaybeJson(await call('bili_subtitle',{bvid,auto_vision_on_missing:false}))}
+        finally{subtitleToolMs=Date.now()-subtitleToolStarted}
         if(typeof subtitle?.text==='string'&&subtitle.text.trim()){
           speechAttempt={status:'official-subtitles',reason:'subtitle-text-retrieved'}
         }else if(cfg.transcribe!==true){
           speechAttempt={status:'not-enabled',reason:'Whisper 自动转写开关未启用；已安装不等于授权转写'}
         }else{
           speechAttempt={status:'running',reason:'正在请求本地 Whisper 转写'}
-          let asr=await call('bili_transcribe_safe',{bvid},{timeoutMs:390_000})
+          const asrToolStarted=Date.now()
+          let asr
+          try{asr=await call('bili_transcribe_safe',{bvid},{timeoutMs:390_000})}
+          finally{asrToolMs=Date.now()-asrToolStarted}
           if(typeof asr==='string'){try{asr=JSON.parse(asr)}catch{}}
+          // Only structurally verified, non-negative operational timings.
+          const mt=asr?.mcpTimings
+          if(mt?.schema==='life-asr-mcp-worker-timings/v1'&&
+             ['spawnMs','childAndPipeMs','totalMs','handlerMs'].every(k=>
+               Number.isSafeInteger(mt[k])&&mt[k]>=0&&mt[k]<=1_200_000)&&
+             mt.spawnMs+mt.childAndPipeMs<=mt.totalMs+1000&&mt.totalMs<=mt.handlerMs+1000){
+            asrMcpTimings={...mt}
+          }
           if(asr?.ok!==false&&!asr?.error&&typeof asr?.text==='string'&&asr.text.trim()){
             subtitle={...asr,source:'local-asr'}
             speechAttempt={status:'asr-success',reason:'local-asr-text-retrieved',
@@ -2186,6 +2200,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       focusReviewStatus:focusReviewStatus||'not-needed',speechAttempt,
       phaseDiagnostics:{schema:'life-video-phase-diagnostics/v1',metadataMs,
         speechMs:speechReadMs,visualMs:visualReadMs,
+        subtitleToolMs,asrToolMs,
+        ...(asrMcpTimings?{asrMcpTimings}:{}),
         visualCompletedBeforeSpeech:!!(visionFinishedAt&&speechFinishedAt&&visionFinishedAt<speechFinishedAt),
         assemblyMs:Date.now()-assemblyStartedAt,totalMs:Date.now()-watchStartedAt,
         execution:'vision-and-speech-concurrent-when-authorized'},

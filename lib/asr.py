@@ -92,9 +92,10 @@ def fetch_audio(url: str, tmp: str, tag: str) -> str:
         return ydl.prepare_filename(info)
 
 
-# Optional full-duration ASR is still available to the local operator. Long
-# videos default to stratified representative clips: this reduces *inference*
-# cost, not the audio download size. Never label a sample as full coverage.
+# Full-duration ASR is the default, including videos longer than eight minutes.
+# An operator-only environment override may opt into representative clips.
+# Full-audio-attempt means audio was submitted to ASR; it is NOT a claim
+# of understanding every sentence or watching the complete video.
 LONG_ASR_THRESHOLD_SECONDS = 8 * 60
 LONG_ASR_SAMPLE_WINDOWS = 3
 LONG_ASR_WINDOW_SECONDS = 60
@@ -132,7 +133,8 @@ def _sample_audio_windows(src, tmp, tag):
     Missing FFmpeg/probe falls back to the existing full transcription rather
     than pretending the model heard an unknown number of seconds.
     """
-    if os.environ.get('BILI_ASR_LONG_VIDEO_MODE', 'sample').strip().lower() == 'full':
+    # Fail toward full ASR on unknown config: a sample must be explicitly chosen.
+    if os.environ.get('BILI_ASR_LONG_VIDEO_MODE', 'full').strip().lower() != 'sample':
         return None
     ffmpeg = shutil.which('ffmpeg')
     duration = _audio_duration(src)
@@ -262,7 +264,7 @@ def main() -> int:
                 condition_on_previous_text=False)[0]
         inference_at = clock()
         if sampling:
-            print('[asr] 长音轨：仅转写 3 个代表性窗口（非整段转写）', file=sys.stderr)
+            print('[asr] 按操作者设置：仅转写 3 个代表性窗口（非整段转写）', file=sys.stderr)
             from itertools import chain
             segments = chain.from_iterable(_offset_segments(transcribe(filename), offset)
                 for filename, offset, _length in sampling['samples'])

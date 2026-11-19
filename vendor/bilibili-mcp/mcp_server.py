@@ -3630,6 +3630,48 @@ def _asr_failure_category(stderr):
     return 'process-failed', '本地转写子进程异常结束；缺少阶段回执'
 
 
+async def _run_bounded_asr_process(argv, *, cwd, timeout_seconds):
+    """Run the approved ASR interpreter without the shared asyncio thread pool.
+
+    The old asyncio.to_thread(subprocess.run) could queue behind unrelated
+    long-lived MCP reads; its 360s subprocess timeout did not cover queue time.
+    Direct async subprocess creation has a bounded child lifetime. Never emit
+    stdout/stderr in operational diagnostics (they can contain speech).
+    """
+    from time import perf_counter
+    clock = perf_counter
+    started = clock()
+    child = await asyncio.create_subprocess_exec(*argv, cwd=cwd,
+        stdin=subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE, **_hidden_windows_child())
+    spawned_at = clock()
+    stdout = stderr = b''
+    task = asyncio.create_task(child.communicate())
+    try:
+        stdout, stderr = await asyncio.wait_for(asyncio.shield(task), timeout_seconds)
+    except (asyncio.TimeoutError, asyncio.CancelledError) as err:
+        try:
+            if child.returncode is None: child.kill()
+        except ProcessLookupError:
+            pass
+        try:
+            stdout, stderr = await asyncio.wait_for(asyncio.shield(task), 8)
+        except (asyncio.TimeoutError, asyncio.CancelledError, OSError):
+            task.cancel()
+            try: await asyncio.wait_for(child.wait(), 2)
+            except (asyncio.TimeoutError, OSError): pass
+        if isinstance(err, asyncio.CancelledError): raise
+        raise subprocess.TimeoutExpired(argv, timeout_seconds, stderr=stderr) from None
+    ended = clock()
+    # Fixed, bounded operational numbers only, never the ASR content.
+    return (subprocess.CompletedProcess(argv, child.returncode,
+            stdout.decode('utf-8','replace'), stderr.decode('utf-8','replace')),
+            {'schema':'life-asr-mcp-worker-timings/v1',
+             'spawnMs':round((spawned_at-started)*1000),
+             'childAndPipeMs':round((ended-spawned_at)*1000),
+             'totalMs':round((ended-started)*1000)})
+
+
 @tool()
 async def bili_transcribe_safe(bvid: str) -> str:
     """Opt-in local ASR: fixed script, approved model, evidence-aware status."""
@@ -3644,7 +3686,10 @@ async def bili_transcribe_safe(bvid: str) -> str:
     # subprocess, and allow an operator-only override (never model-supplied).
     try: timeout_seconds = max(90, min(600, int(os.environ.get('BILI_ASR_TIMEOUT_SECONDS', '360'))))
     except (ValueError, TypeError): timeout_seconds = 360
+    from time import perf_counter
+    handler_started = perf_counter()
     _record_asr_attempt('started', model)
+    worker_timings = None
     try:
         bv = _valid_bv(bvid)
         asr = (_DUTY_HOME / "asr.py").resolve()
@@ -3655,11 +3700,9 @@ async def bili_transcribe_safe(bvid: str) -> str:
         if not asr.is_file() or not python.is_file():
             _record_asr_attempt('failed',model,reason='unavailable')
             return "本地转写依赖未安装"
-        res = await asyncio.to_thread(subprocess.run,
-                                      [str(python), str(asr), bv, '--json', '--model', model],
-                                      capture_output=True,text=True,encoding='utf-8',errors='replace',
-                                      timeout=timeout_seconds,cwd=str(_DUTY_HOME),
-                                      **_hidden_windows_child())
+        res, worker_timings = await _run_bounded_asr_process(
+            [str(python), str(asr), bv, '--json', '--model', model],
+            cwd=str(_DUTY_HOME), timeout_seconds=timeout_seconds)
         if res.returncode != 0 or len(res.stdout)>65000:
             code, hint = _asr_failure_category(res.stderr)
             if len(res.stdout)>65000: code, hint = 'output-too-large', '转写回执超出受控大小上限'
@@ -3713,6 +3756,9 @@ async def bili_transcribe_safe(bvid: str) -> str:
                            'timed_segments':payload['timed_segments'][:160],
                            'coverage':coverage,
                            **({'timings':timings} if timings else {}),
+                           **({'mcpTimings':{**worker_timings,
+                               'handlerMs':round((perf_counter()-handler_started)*1000)}}
+                              if worker_timings else {}),
                            **({'audioDurationSeconds':duration,'sampleWindows':windows}
                               if coverage == 'representative-windows' else {}),
                            'can_claim_audio_listened':False,'can_claim_full_video_watched':False},ensure_ascii=False)

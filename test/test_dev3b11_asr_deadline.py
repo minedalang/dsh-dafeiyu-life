@@ -26,14 +26,15 @@ class TestAsrDeadline(unittest.TestCase):
             local_python.write_text('fake')
             (root/'asr.py').write_text('fake')
             state={'deadline':None}
-            def fail(argv,**kw):
-                state['deadline']=kw['timeout']
-                raise subprocess.TimeoutExpired(argv,kw['timeout'],stderr=b'[asr] \xe5\x85\x88\xe4\xb8\x8b\xe9\x9f\xb3\xe9\xa2\x91\xe2\x80\xa6\nprivate text')
+            async def fail(argv,*,cwd,timeout_seconds):
+                state['deadline']=timeout_seconds
+                raise subprocess.TimeoutExpired(argv,timeout_seconds,stderr=b'[asr] \xe5\x85\x88\xe4\xb8\x8b\xe9\x9f\xb3\xe9\xa2\x91\xe2\x80\xa6\nprivate text')
             ns={'__builtins__':__builtins__,'_DUTY_HOME':root,'os':os,'json':json,
+                '_run_bounded_asr_process':fail,
                 'asyncio':asyncio,'subprocess':subprocess,'_guard':lambda _:None,
                 '_valid_bv':lambda value:value}
             exec(COMPILED,ns)
-            with patch.dict(os.environ,{'BILI_ASR_ENABLED':'1','BILI_ASR_MODEL':'small','BILI_ASR_TIMEOUT_SECONDS':'9999'}),patch.object(subprocess,'run',fail):
+            with patch.dict(os.environ,{'BILI_ASR_ENABLED':'1','BILI_ASR_MODEL':'small','BILI_ASR_TIMEOUT_SECONDS':'9999'}):
                 r=json.loads(asyncio.run(ns['bili_transcribe_safe']('BV1234567890')))
             self.assertEqual(state['deadline'],600)
             self.assertEqual(r['status'],'asr_timeout')

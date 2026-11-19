@@ -670,6 +670,11 @@
       "owner": "video-observation-read-life-console",
       "kind": "behavior",
       "intent": "A verified standard/deep Life choice launches a read-only visual call independently of ASR and keeps truthful fallback and stage-time UI diagnostics."
+    },
+    "v282-dev16-video-asr-diagnostics.test.mjs": {
+      "owner": "video-asr-mcp-observability",
+      "kind": "behavior",
+      "intent": "Whisper internal cost differs from MCP tool wall-clock; ASR is opt-in and full duration by default with bounded async worker and separate diagnostics."
     }
   },
   "protected": [
@@ -820,6 +825,11 @@
       "owner": "adaptive-video-asr",
       "kind": "security",
       "intent": "CDN userinfo, explicit port, fragment and malformed authorities remain rejected without leaking signed URLs; local ASR reports bounded phase timings and sampled coverage."
+    },
+    "test_v282_dev16_asr_worker.py": {
+      "owner": "asr-mcp-adaptive-video",
+      "kind": "security",
+      "intent": "Full-video ASR is default; async MCP process avoids shared default thread pool queue, cleans timeout, and strict CDN whitelist allows only standard HTTPS 443."
     }
   },
   "pythonProtected": [

@@ -66,7 +66,7 @@ class AdaptiveUnavailable(ValueError):
 
 
 def _cdn_url(url):
-    """Refuse third-party URLs, ports, alternate schemes, and non-media paths."""
+    """Validate CDN URLs, including the equivalent default HTTPS :443 port."""
     if not isinstance(url, str) or len(url) > 4096:
         raise AdaptiveUnavailable('unsafe_video_source')
     if url.startswith('//'):
@@ -74,9 +74,9 @@ def _cdn_url(url):
     try:
         p = parse.urlsplit(url)
         host = (p.hostname or '').lower()
-        # A syntactically valid explicit 443 is still refused until real CDN
-        # evidence justifies a reviewed change to the transport allowlist.
-        has_port = p.port is not None
+        # HTTPS :443 is the standard TLS endpoint, not a new transport port.
+        # Nonstandard ports are always rejected, even on an allowed CDN host.
+        explicit_port = p.port
         has_userinfo = p.username is not None or p.password is not None
     except ValueError:
         raise AdaptiveUnavailable('video_source_authority_rejected',
@@ -87,7 +87,7 @@ def _cdn_url(url):
     if has_userinfo:
         raise AdaptiveUnavailable('video_source_authority_rejected',
                                   authority_detail='userinfo')
-    if has_port:
+    if explicit_port is not None and explicit_port != 443:
         raise AdaptiveUnavailable('video_source_authority_rejected',
                                   authority_detail='explicit-port')
     if p.fragment:

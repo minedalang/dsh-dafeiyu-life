@@ -38,8 +38,12 @@ class WhisperRuntimeTests(unittest.TestCase):
                 'asr_evidence': 'faster-whisper-machine-transcript', 'text':'PRIVATE SPOKEN CONTENT',
                 'timed_segments':[{'startSeconds':1,'endSeconds':2,'text':'SECRET'}]}
             return types.SimpleNamespace(returncode=0, stdout=json.dumps(receipt), stderr='')
+        async def fake_worker(argv,*,cwd,timeout_seconds):
+            return self.fake_run(argv),{'schema':'life-asr-mcp-worker-timings/v1',
+                'spawnMs':1,'childAndPipeMs':2,'totalMs':3}
         self.fake_run = fake_run
         self.namespace = {
+            '_run_bounded_asr_process':fake_worker,
             '__builtins__': __builtins__,
             '_DUTY_HOME': self.home,
             'os': __import__('os'), 'json': json, 'asyncio': asyncio,
@@ -52,8 +56,7 @@ class WhisperRuntimeTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def call(self):
-        with patch.object(subprocess, 'run', self.fake_run):
-            return json.loads(asyncio.run(self.namespace['bili_transcribe_safe']('BV1234567890')))
+        return json.loads(asyncio.run(self.namespace['bili_transcribe_safe']('BV1234567890')))
 
     def test_disabled_creates_no_false_history(self):
         with patch.dict(__import__('os').environ, {'BILI_ASR_ENABLED':'0','BILI_ASR_MODEL':'medium'}):

@@ -27,7 +27,7 @@ class SafeAuthorityDiagnostics(unittest.TestCase):
     def test_authority_rejection_is_specific_but_never_echoes_signed_url(self):
         cases=[
             ('https://user:pass@a.bilivideo.com/upgcxcode/a.m4s?signature=SECRET','userinfo'),
-            ('https://a.bilivideo.com:443/upgcxcode/a.m4s?signature=SECRET','explicit-port'),
+            ('https://a.bilivideo.com:8443/upgcxcode/a.m4s?signature=SECRET','explicit-port'),
             ('https://a.bilivideo.com/upgcxcode/a.m4s?signature=SECRET#part','url-fragment'),
             ('https://a.bilivideo.com:invalid/upgcxcode/a.m4s?signature=SECRET','malformed-authority'),
         ]
@@ -46,7 +46,7 @@ class SafeAuthorityDiagnostics(unittest.TestCase):
             if '/view?' in url:return {'bvid':BV,'pages':[{'cid':42,'duration':1364}]}
             if 'fnval=1&' in url:return {'durl':[{'size':10000,'url':'https://evil.com/a.mp4?secret=SECRET'}]}
             return {'dash':{'video':[{'bandwidth':10000,
-                'baseUrl':'https://a.bilivideo.com:443/upgcxcode/a.m4s?secret=SECRET',
+                'baseUrl':'https://a.bilivideo.com:8443/upgcxcode/a.m4s?secret=SECRET',
                 'SegmentBase':{'Initialization':'0-100','indexRange':'101-200'}}]}}
         with patch.object(pv,'_json_api',side_effect=official),\
              self.assertRaises(av.AdaptiveUnavailable) as found:
@@ -121,10 +121,15 @@ class WrappedASRTimings(unittest.TestCase):
                      'coverage':'full-audio-attempt','text':'真实语音','timed_segments':[],
                      'timings':timings,'surprise':'SECRET'}
             def answer(*args,**kwargs):return types.SimpleNamespace(returncode=0,stdout=json.dumps(receipt),stderr='')
-            with patch.dict(os.environ,{'BILI_ASR_ENABLED':'1'}),patch.object(subprocess,'run',side_effect=answer):
+            async def worker(argv,*,cwd,timeout_seconds):
+                return answer(argv),{'schema':'life-asr-mcp-worker-timings/v1',
+                    'spawnMs':1,'childAndPipeMs':3,'totalMs':4}
+            ns['_run_bounded_asr_process']=worker
+            with patch.dict(os.environ,{'BILI_ASR_ENABLED':'1'}):
                 result=json.loads(asyncio.run(ns['bili_transcribe_safe'](BV)))
                 self.assertEqual(result['timings'],timings)
                 self.assertNotIn('surprise',result)
+                self.assertEqual(result['mcpTimings']['totalMs'],4)
                 receipt['timings']['audioDownloadMs']='SECRET'
                 invalid=json.loads(asyncio.run(ns['bili_transcribe_safe'](BV)))
                 self.assertNotIn('timings',invalid)

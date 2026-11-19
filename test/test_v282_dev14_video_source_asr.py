@@ -109,6 +109,12 @@ class BoundedAsr(unittest.TestCase):
             self.assertTrue(all(str(src) in cmd for cmd in commands))
             self.assertTrue(all(not any('http' in str(part) for part in cmd) for cmd in commands))
 
+    def test_default_long_video_restores_full_asr(self):
+        env={k:v for k,v in os.environ.items() if k!='BILI_ASR_LONG_VIDEO_MODE'}
+        with patch.dict(os.environ,env,clear=True),\
+             patch.object(asr,'_audio_duration',side_effect=AssertionError('default must not sample')):
+            self.assertIsNone(asr._sample_audio_windows('audio.m4a','tmp','tag'))
+
     def test_explicit_full_mode_disables_sampling(self):
         with patch.dict(os.environ,{'BILI_ASR_LONG_VIDEO_MODE':'full'}),\
              patch.object(asr,'_audio_duration',side_effect=AssertionError('not checked')):
