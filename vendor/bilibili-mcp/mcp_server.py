@@ -3698,12 +3698,21 @@ async def bili_transcribe_safe(bvid: str) -> str:
                 or w['endSeconds'] - w['startSeconds'] > 60.1 for w in windows)):
             _record_asr_attempt('failed',model,reason='invalid-receipt')
             return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'语音采样时间窗无效'},ensure_ascii=False)
+        timings = payload.get('timings')
+        timing_keys = ('audioDownloadMs','modelLoadMs','clipExtractionMs',
+                       'inferenceMs','receiptMs','totalMs')
+        if not (isinstance(timings, dict) and timings.get('schema')=='life-asr-phase-timings/v1'
+                and all(type(timings.get(k)) is int and 0 <= timings[k] <= 1_200_000
+                        for k in timing_keys)
+                and sum(timings[k] for k in timing_keys[:-1]) <= timings['totalMs'] + 2000):
+            timings = None  # Older script or malformed future receipt: omit, never trust.
         _record_asr_attempt('success',model,segments=len(payload['timed_segments']))
         return json.dumps({'bvid':bv,'source':'local-asr',
                            'asr_evidence':'faster-whisper-machine-transcript',
                            'text':payload['text'][:12000],
                            'timed_segments':payload['timed_segments'][:160],
                            'coverage':coverage,
+                           **({'timings':timings} if timings else {}),
                            **({'audioDurationSeconds':duration,'sampleWindows':windows}
                               if coverage == 'representative-windows' else {}),
                            'can_claim_audio_listened':False,'can_claim_full_video_watched':False},ensure_ascii=False)

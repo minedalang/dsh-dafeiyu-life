@@ -685,7 +685,9 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
                                 return_frames=return_frames,focus_start=focus_start,
                                 focus_end=focus_end,storyboard=True,network_budget_bytes=network_budget_bytes)
         preview['perception_source_requested']='adaptive'
-        preview['adaptive_fallback']={'reason':exc.code,'actual_source':'videoshot'}
+        preview['adaptive_fallback']={'reason':exc.code,'actual_source':'videoshot',
+            **({'authorityDetail':exc.authority_detail} if exc.authority_detail else {}),
+            **({'rejectedTrack':exc.track} if exc.track else {})}
         return preview
     except Exception:
         # Decoding bugs must be visible, not masked as successful sampling.

@@ -55,10 +55,14 @@ FRAME_PLANS = (12, 24, 48)
 
 
 class AdaptiveUnavailable(ValueError):
-    def __init__(self, code, *, fallback=True):
+    def __init__(self, code, *, fallback=True, authority_detail=None, track=None):
         super().__init__(code)
         self.code = code
         self.fallback = fallback
+        # Static enumerations only: no signed URL, hostname or raw parser error.
+        allowed = {'userinfo', 'explicit-port', 'url-fragment', 'malformed-authority'}
+        self.authority_detail = authority_detail if authority_detail in allowed else None
+        self.track = track if track in ('durl', 'dash') else None
 
 
 def _cdn_url(url):
@@ -70,15 +74,25 @@ def _cdn_url(url):
     try:
         p = parse.urlsplit(url)
         host = (p.hostname or '').lower()
-        forbidden_authority = bool(p.username or p.password or p.port is not None or p.fragment)
+        # A syntactically valid explicit 443 is still refused until real CDN
+        # evidence justifies a reviewed change to the transport allowlist.
+        has_port = p.port is not None
+        has_userinfo = p.username is not None or p.password is not None
     except ValueError:
-        raise AdaptiveUnavailable('video_source_authority_rejected') from None
-    # Never report raw signed URLs, hostnames, query tokens or redirect locations.
-    # These categories are diagnostic only; validation remains fail-closed.
+        raise AdaptiveUnavailable('video_source_authority_rejected',
+                                  authority_detail='malformed-authority') from None
+    # No returned diagnostics ever include signed URLs, hostnames or query data.
     if p.scheme != 'https':
         raise AdaptiveUnavailable('video_source_scheme_rejected')
-    if forbidden_authority:
-        raise AdaptiveUnavailable('video_source_authority_rejected')
+    if has_userinfo:
+        raise AdaptiveUnavailable('video_source_authority_rejected',
+                                  authority_detail='userinfo')
+    if has_port:
+        raise AdaptiveUnavailable('video_source_authority_rejected',
+                                  authority_detail='explicit-port')
+    if p.fragment:
+        raise AdaptiveUnavailable('video_source_authority_rejected',
+                                  authority_detail='url-fragment')
     if not re.fullmatch(r'(?:[a-z0-9-]+\.){1,5}bilivideo\.com', host):
         raise AdaptiveUnavailable('video_source_domain_rejected')
     if (not p.path.startswith('/upgcxcode/') or '%' in p.path
@@ -127,15 +141,17 @@ def _choose_dash_video(data):
                 if bandwidth < 0: continue
                 supported.append((bandwidth, url, initial, index))
         except AdaptiveUnavailable as exc:
-            rejections.append(exc.code)
+            rejections.append(exc)
         except (ValueError, TypeError):
             continue
     if not supported:
         # An official DASH fallback that has no acceptable safe URL should
         # expose only the rejection *class*, never a signed CDN address.
-        source_rejections=[r for r in rejections if r.startswith('video_source_')]
+        source_rejections=[r for r in rejections if r.code.startswith('video_source_')]
         if source_rejections and len(source_rejections)==len(rejections):
-            raise AdaptiveUnavailable(source_rejections[0])
+            first=source_rejections[0]
+            raise AdaptiveUnavailable(first.code, authority_detail=first.authority_detail,
+                                      track='dash')
         raise AdaptiveUnavailable('dash_indexed_video_unavailable')
     supported.sort(key=lambda x: x[0])
     _, url, initial, index = supported[0]
@@ -191,6 +207,7 @@ def _playurl(bvid):
         except AdaptiveUnavailable as exc:
             # A rejected progressive CDN URL must not stop us inspecting the
             # *separate, official* DASH listing. Never fetch the rejected URL.
+            exc.track = 'durl'
             progressive_rejection = exc
         else:
             # MP4 is seekable. Large FLV needs an indexed DASH track.

@@ -25,6 +25,7 @@ import tempfile
 import shutil
 import subprocess
 import secrets
+import time
 from types import SimpleNamespace
 
 # ⭐ Windows 上 Python 默认按 GBK 编/解码标准输出 —— 中文或 emoji 打进管道会直接炸
@@ -219,10 +220,16 @@ def main() -> int:
     #    上一轮转出来的其实是另一个视频的内容（2026-10-14 值班那轮亲踩 ✗）
     tag = os.path.basename(src).rsplit('.', 1)[0] or 'clip'
     tag = (re.sub(r'[^0-9A-Za-z_-]', '_', tag)[:32] or 'clip') + '-' + secrets.token_hex(4)
+    clock = time.perf_counter
+    started = clock()
+    phase_ms = {'audioDownloadMs':0, 'modelLoadMs':0,
+                'clipExtractionMs':0, 'inferenceMs':0, 'receiptMs':0}
     try:
+        phase_at = clock()
         if src.lower().startswith('http') or src.upper().startswith('BV'):
             print('[asr] 先下音频…', file=sys.stderr)
             src = fetch_audio(to_url(src), tmp, tag)
+        phase_ms['audioDownloadMs'] = round((clock()-phase_at)*1000)
         if not os.path.exists(src):
             print('[asr] 找不到文件：' + src, file=sys.stderr)
             return 2
@@ -238,17 +245,22 @@ def main() -> int:
             model_source = str(model_dir.resolve())
         else:
             model_source = args.model
+        phase_at = clock()
         from faster_whisper import WhisperModel
         print('[asr] 加载模型 %s（第一次会自动下模型，之后就是本地读）…' % args.model, file=sys.stderr)
         model = WhisperModel(model_source, device='cpu', compute_type='int8')
-        print('[asr] 开始转写…', file=sys.stderr)
+        phase_ms['modelLoadMs'] = round((clock()-phase_at)*1000)
+        phase_at = clock()
         sampling = _sample_audio_windows(src, tmp, tag)
+        phase_ms['clipExtractionMs'] = round((clock()-phase_at)*1000)
+        print('[asr] 开始转写…', file=sys.stderr)
         def transcribe(audio):
             return model.transcribe(audio,
                 language=None if args.lang == 'auto' else args.lang,
                 vad_filter=True,
                 beam_size=1,
                 condition_on_previous_text=False)[0]
+        inference_at = clock()
         if sampling:
             print('[asr] 长音轨：仅转写 3 个代表性窗口（非整段转写）', file=sys.stderr)
             from itertools import chain
@@ -256,7 +268,16 @@ def main() -> int:
                 for filename, offset, _length in sampling['samples'])
         else:
             segments = transcribe(src)
-        receipt = _asr_receipt(args.target, segments, sampling=sampling)
+        # Whisper returns lazy segment iterators; consuming the receipt is
+        # when inference actually happens, not when transcribe() is invoked.
+        from itertools import islice
+        parts = list(islice(segments, 2500))
+        phase_ms['inferenceMs'] = round((clock()-inference_at)*1000)
+        phase_at = clock()
+        receipt = _asr_receipt(args.target, parts, sampling=sampling)
+        phase_ms['receiptMs'] = round((clock()-phase_at)*1000)
+        receipt['timings'] = {'schema':'life-asr-phase-timings/v1',
+                              **phase_ms,'totalMs':round((clock()-started)*1000)}
         text = receipt['text']
     finally:
         # 临时音频不留在磁盘上

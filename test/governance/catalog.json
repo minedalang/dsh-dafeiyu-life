@@ -665,6 +665,11 @@
       "owner": "video-perception-handoff-console",
       "kind": "ui",
       "intent": "Read-only UI identifies actual source downgrade and partial ASR, never claiming full transcript or playback."
+    },
+    "v282-dev15-video-concurrent-perception.test.mjs": {
+      "owner": "video-observation-read-life-console",
+      "kind": "behavior",
+      "intent": "A verified standard/deep Life choice launches a read-only visual call independently of ASR and keeps truthful fallback and stage-time UI diagnostics."
     }
   },
   "protected": [
@@ -810,6 +815,11 @@
       "owner": "adaptive-video-asr",
       "kind": "security",
       "intent": "Progressive rejected CDN URL may only fall back to a separately validated official DASH track; long ASR windows are bounded and original timestamps preserved."
+    },
+    "test_v282_dev15_video_diagnostics.py": {
+      "owner": "adaptive-video-asr",
+      "kind": "security",
+      "intent": "CDN userinfo, explicit port, fragment and malformed authorities remain rejected without leaking signed URLs; local ASR reports bounded phase timings and sampled coverage."
     }
   },
   "pythonProtected": [
