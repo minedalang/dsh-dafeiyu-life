@@ -37,10 +37,15 @@ test('互动模型只把情绪类别/强度传入状态，不把 UID 或消息�
  finally{batcher.stop()}
 })
 
-test('人生反思能从同一次公开经历反思结果提取受限 mood_update，不需额外模型调用',()=>{
- const parsed=reflectionTest.validateOutput(JSON.stringify({memories:[],note:'这批经历没有长期记忆',mood_update:{mood:'curious',intensity:2}}),[])
- assert.deepEqual(parsed.moodUpdate,{mood:'curious',intensity:2})
- const invalid=reflectionTest.validateOutput(JSON.stringify({memories:[],note:'无变化',mood_update:{mood:'泄露私信',intensity:99}}),[])
+test('人生反思只从本批确有完整公开经历的反思结果提取受限 mood_update，不需额外模型调用',()=>{
+ const raw=JSON.stringify({memories:[],note:'这批经历没有长期记忆',mood_update:{mood:'curious',intensity:2}})
+ // An empty or entirely truncated batch cannot justify changing Life mood.
+ assert.equal(reflectionTest.validateOutput(raw,[]).moodUpdate,null)
+ const partial=[{id:'c-tested',kind:'watch',evidenceCoverage:'partial'}]
+ assert.equal(reflectionTest.validateOutput(raw,partial).moodUpdate,null)
+ const verified=[{id:'c-tested',kind:'watch',evidenceCoverage:'complete'}]
+ assert.deepEqual(reflectionTest.validateOutput(raw,verified).moodUpdate,{mood:'curious',intensity:2})
+ const invalid=reflectionTest.validateOutput(JSON.stringify({memories:[],note:'无变化',mood_update:{mood:'泄露私信',intensity:99}}),verified)
  assert.equal(invalid.moodUpdate,null)
 })
 

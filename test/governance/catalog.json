@@ -576,6 +576,11 @@
     "watched-merge.test.mjs"
   ],
   "registeredActive": {
+    "v282-dev12-account-scope-and-grants.test.mjs": {
+      "owner": "life-account-binding-and-social-permissions",
+      "kind": "security",
+      "intent": "Stable verified UID Life source across Cookie updates; fail-closed account switch and corrupt state; per-UID social recipient permissions never silently move across accounts; future multi-profile remains docs-only."
+    },
     "v282-dev11-action-account-continuity.test.mjs": {
       "owner": "life-trace-and-account-continuity",
       "kind": "security",

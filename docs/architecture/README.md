@@ -1,3 +1,5 @@
+> **2.8.2-dev.12（开发中）**：当前已核验 B站 UID 的 Life 记忆来源标识在本地持久化，Cookie 更新不新建身份来源；现有社交设置只在当前 UID 的独立授权快照下生效，新账号不继承旧名单或外发许可。旧无归属记忆不自动重写、已遗忘内容不恢复，冷恢复不隐式继承旧授权。本轮只读与权限变更详见 [dev.12 说明](../release/2.8.2-dev.12-account-scope-and-social-grants.md)。[本地多记忆档案](future-local-multi-life-profile-management.md)仍是未来独立工程，不在 2.8.2 实施。
+
 > **2.8.2-dev.11（开发中）**：现有 Life 决策轨迹对同一动作的执行/结果回执新增匿名 `actionRef` 关联；跨动作未知与旧记录维持保守判定。旧关系熟悉度只作 Life 历史线索，当前账号互动阶段由该账号核验的渠道事实计算，不能据此推断对方已认出新账号或获得私信许可。完整身份迁移方案暂存 [未来计划](future-life-account-relationship-continuity.md)，未实施自动联系人转移、旧友告知或新权限。
 
 > **2.8.2-dev.9（开发中）**：管理中心新增 [桌宠开放生态预告页](../open-platform/README.md)（只读静态展示）；官方桌宠、社区自由接入、3D 游戏与预览 API 均为未来规划，未新增 Life 运行时接口或架构接线。实施与验收边界见 [dev.9 说明](../release/2.8.2-dev.9-open-platform-preview.md)。

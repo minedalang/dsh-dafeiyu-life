@@ -66,9 +66,10 @@ test('统一社交协调层记录陌生人 UID 元数据，不将陌生人 UID �
 }))
 test('陌生人的新公开经历衰减更快，社交好友较慢，已模糊及遗忘内容无法复活',()=>using(async({index,dir,clock})=>{
  for(const day of [0,3,6,9,12,15,18])observe(index,'2222',day)
- const gate=createLifeMemoryGateway({dataDir:dir,now:()=>clock.at,getConfig:()=>({mainSessionMemoryHalfLifeDays:30}),getRelationship:uid=>index.get(uid)})
- const events=[{kind:'social',key:`social:2222:${BV}:123`,actorUid:'2222',bvid:BV,text:'聊起星空和旅行',at:AT},
- {kind:'social',key:`social:3333:${BV}:321`,actorUid:'3333',bvid:BV,text:'我是第一次路过的观众',at:AT}]
+ const accountTag='abcd1234abcd1234'
+ const gate=createLifeMemoryGateway({dataDir:dir,now:()=>clock.at,getConfig:()=>({mainSessionMemoryHalfLifeDays:30}),getAccountTag:()=>accountTag,getRelationship:uid=>index.get(uid)})
+ const events=[{kind:'social',key:`social:2222:${BV}:123`,actorUid:'2222',bvid:BV,text:'聊起星空和旅行',accountTag,at:AT},
+ {kind:'social',key:`social:3333:${BV}:321`,actorUid:'3333',bvid:BV,text:'我是第一次路过的观众',accountTag,at:AT}]
  try{
   assert.equal(gate.recordEvents(events).added,2)
   clock.at+=2*DAY

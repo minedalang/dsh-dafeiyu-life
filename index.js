@@ -31,6 +31,8 @@ import { buildGrowthContext, syncOwnedSelectionsToGrowth, listGrowth, proposeGro
  */
 import { growthSuggestionPrompt, parseGrowthSuggestion, growthSuggestionIssue } from './lib/growth-suggestion.mjs'
 import {readVideoDiscussionDiagnostics,discussionAccountTag} from './lib/video-discussion-diagnostics.mjs'
+import {currentLifeAccountScope} from './lib/account-life-scope.mjs'
+import {createAccountSocialGrants} from './lib/account-social-grants.mjs'
 import {createLifeOpportunities} from './lib/life-opportunities.mjs'
 import {withLifeVideoVisualLease} from './lib/life-planner-atomic.mjs'
 import {createLifeSharedBiliLinks} from './lib/life-shared-bili-links.mjs'
@@ -1038,6 +1040,7 @@ function reportMeta() {
     return p
   }
 
+  const scopedSocialGrants=createAccountSocialGrants({dataDir:stateDir,accountBinding})
   const hostCfg = () => normalize(config, { ...DEFAULTS })       // 宿主那份（schema 校验过、默认值已填）
   const savedCfg = () => normalize(readJson(cfgFile, {}), legacyInstall
     ? { ...DEFAULTS, ...legacyExperienceDefaults, ...legacySocialRecommendationDefaults } : { ...DEFAULTS })
@@ -1151,7 +1154,7 @@ function reportMeta() {
     }
     return retireLegacyVisionMode(clampPatch(migrateLegacyReflectionDefaults(out,user),{storedRead:true}))
   }
-  const cfg = loadCfg()
+  const cfg = scopedSocialGrants.effective(loadCfg())
   const socialPolicyGate=createSocialPolicyGate({getConfig:()=>cfg})
   // Familiarity and authority are deliberately different: whitelist remains an
   // authorization-only role; organic social friends never gain DM permissions.
@@ -1637,10 +1640,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   try { syncPauseState(true) } catch (e) { log('⚠️ 总开关状态文件同步失败：' + String(e?.message || e)) }
   // ⭐ 配置是"随时可能被设置页就地改掉"的东西 ⇒ 每个入口用之前重算一遍（cfg 这个对象要一直指向同一份）
   const refreshCfg = () => {
-    Object.assign(cfg, loadCfg())
+    Object.assign(cfg, scopedSocialGrants.effective(loadCfg()))
     try { syncPauseState() } catch (e) { log('总开关文件同步失败：' + String(e?.message || e)) }
   }
   const saveCfg = (patch) => {
+    scopedSocialGrants.saveExplicit(patch)
     Object.assign(cfg, normalize(patch, cfg))
     // ⭐ 记下"这些键由插件面板说了算"（0.1.11：loadCfg 拿它决定谁赢）
     for (const k of Object.keys(patch || {})) if (k in DEFAULTS) touchedKeys.add(k)
@@ -3012,7 +3016,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // An unconfirmed account switch must not read the previous runtime's public
   // portrait under the newly scanned credentials. Binding requires restart.
   const lifeOpportunityAccountReady=()=>{try{return accountBinding.status().blocked!==true}catch{return false}}
-  const trustedLifeAccountTag=()=>lifeOpportunityAccountReady()?discussionAccountTag(dmCred(stateDir)):''
+  const trustedLifeAccountTag=()=>lifeOpportunityAccountReady()?currentLifeAccountScope({dataDir:stateDir,accountBinding,credential:dmCred(stateDir)}):''
   // Cross-activity causal context; the existing memories and platform ledgers
   // remain authoritative. This does not introduce another scheduler or writer.
   const universalLifeEpisodes=createUniversalLifeEpisodes({stateDir,getAccountTag:trustedLifeAccountTag})
@@ -3021,6 +3025,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // It is a view of intent and receipt state, not a second execution authority.
   const lifeActionRecords=createLifeActionRecords({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   const lifeOpportunities=createLifeOpportunities({stateDir,getCredential:()=>lifeOpportunityAccountReady()?dmCred(stateDir):null,
+    getAccountTag:trustedLifeAccountTag,
     getInterestEvidence:tag=>lifeOpportunityAccountReady()?
       [...scopedInterestOpportunityEvidence(stateDir,tag),...scopedCuriosityOpportunityEvidence(stateDir,tag)]:[],
     getPublicPersonEvidence:()=>lifeOpportunityAccountReady()?socialPortrait.publicOpportunitySignals():[],
