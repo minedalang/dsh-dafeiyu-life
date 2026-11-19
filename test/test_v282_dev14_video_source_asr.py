@@ -28,8 +28,8 @@ class VideoSourceSafety(unittest.TestCase):
         cases = [
             ('http://a.bilivideo.com/upgcxcode/a.mp4?secret=1', 'video_source_scheme_rejected'),
             ('https://127.0.0.1/upgcxcode/a.mp4?secret=1', 'video_source_domain_rejected'),
-            ('https://a.bilivideo.com:80/upgcxcode/a.mp4?secret=1', 'video_source_authority_rejected'),
-            ('https://a.bilivideo.com/other/a.mp4?secret=1', 'video_source_path_rejected'),
+            ('https://user:pw@a.bilivideo.com:80/upgcxcode/a.mp4?secret=1', 'video_source_authority_rejected'),
+            ('https://a.bilivideo.com/../other/a.mp4?secret=1', 'video_source_path_rejected'),
             ('https://a.bilivideo.com/upgcxcode/a.exe?secret=1', 'video_source_format_rejected'),
         ]
         for url, reason in cases:
@@ -46,7 +46,7 @@ class VideoSourceSafety(unittest.TestCase):
             if '/view?' in url:
                 return {'bvid':BV,'pages':[{'cid':22,'duration':1364}]}
             if 'fnval=1&' in url:
-                return {'durl':[{'size':12000,'url':'https://bad.example/private.mp4?secret=123'}]}
+                return {'durl':[{'size':12000,'url':'http://bad.example/private.mp4?secret=123'}]}
             if 'fnval=16' in url:
                 return {'dash':{'video':[{'bandwidth':10000,'baseUrl':CDN,
                     'SegmentBase':{'Initialization':'0-100','indexRange':'101-501'}}]}}
@@ -62,7 +62,7 @@ class VideoSourceSafety(unittest.TestCase):
     def test_dash_index_failure_not_hidden_by_previous_rejected_progressive(self):
         def official(url):
             if '/view?' in url:return {'bvid':BV,'pages':[{'cid':22,'duration':600}]}
-            if 'fnval=1&' in url:return {'durl':[{'size':12000,'url':'https://evil.example/a.mp4'}]}
+            if 'fnval=1&' in url:return {'durl':[{'size':12000,'url':'http://evil.example/a.mp4'}]}
             return {'dash':{'video':[{'bandwidth':10000,'baseUrl':CDN,
                 'SegmentBase':{}}]}}
         with patch.object(pv,'_json_api',side_effect=official):
@@ -73,13 +73,13 @@ class VideoSourceSafety(unittest.TestCase):
     def test_both_official_tracks_unsafe_stay_fallback_no_fetch(self):
         def official(url):
             if '/view?' in url: return {'bvid':BV,'pages':[{'cid':22,'duration':600}]}
-            if 'fnval=1&' in url: return {'durl':[{'size':12000,'url':'https://evil.example/a.mp4'}]}
-            return {'dash':{'video':[{'bandwidth':10000,'baseUrl':'https://evil.example/a.m4s',
+            if 'fnval=1&' in url: return {'durl':[{'size':12000,'url':'http://evil.example/a.mp4'}]}
+            return {'dash':{'video':[{'bandwidth':10000,'baseUrl':'http://evil.example/a.m4s',
                 'SegmentBase':{'Initialization':'0-100','indexRange':'101-501'}}]}}
         with patch.object(pv,'_json_api',side_effect=official):
             with self.assertRaises(av.AdaptiveUnavailable) as caught:
                 av._playurl(BV)
-        self.assertEqual(caught.exception.code,'video_source_domain_rejected')
+        self.assertEqual(caught.exception.code,'video_source_scheme_rejected')
         self.assertTrue(caught.exception.fallback)
 
 

@@ -680,6 +680,11 @@
       "owner": "bili-read-budget",
       "kind": "security",
       "intent": "-509 creates persistent redacted incident snapshots and 48-hour count bins without weakening read budgets, DM intervals or account isolation."
+    },
+    "v282-dev18-life-focus-consent.test.mjs": {
+      "owner": "life-video-choice",
+      "kind": "security",
+      "intent": "An ambiguous deep overview only suggests time-bounded follow-up; actual video focus read requires separate Life willingness and verified current-account read action."
     }
   },
   "protected": [
@@ -829,17 +834,22 @@
     "test_v282_dev15_video_diagnostics.py": {
       "owner": "adaptive-video-asr",
       "kind": "security",
-      "intent": "CDN userinfo, privileged ports, fragments and malformed authorities are rejected without leaking signed URLs; ASR timings remain bounded."
+      "intent": "userinfo, fragments and malformed authorities are rejected without leaking signed URLs; ASR timings remain bounded, and dynamic official ports do not waive hostname/TLS/IP pinning."
     },
     "test_v282_dev16_asr_worker.py": {
       "owner": "asr-mcp-adaptive-video",
       "kind": "security",
-      "intent": "Full-video ASR is default, async MCP child avoids thread pool queue, 443 accepted and protected low ports rejected."
+      "intent": "Full-video ASR remains default and async MCP worker avoids thread pool queue; userinfo/private IP/fragment/path escapes remain denied while official nonstandard HTTPS media ports may be used."
     },
     "test_v282_dev17_cdn_public_port.py": {
       "owner": "adaptive-video-cdn",
       "kind": "security",
-      "intent": "Official CDN TLS high ports are allowed only through pinned globally routable DNS resolutions and no implicit proxy; reject privileged ports, redirects and internal DNS targets."
+      "intent": "Official PlayURL HTTPS media transport uses pinned globally routable DNS resolutions and no implicit proxy; private DNS addresses and malformed authorities remain blocked independent of CDN host suffix."
+    },
+    "test_v282_dev18_official_dynamic_stream.py": {
+      "owner": "adaptive-video-dynamic-playurl",
+      "kind": "security",
+      "intent": "Official PlayURL-only dynamic HTTPS media candidates, low-bandwidth DASH selection, bounded same-track backup probes, public pinned IP checks and no limit/broken-identity retry."
     }
   },
   "pythonProtected": [

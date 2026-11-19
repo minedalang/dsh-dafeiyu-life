@@ -12,10 +12,10 @@ class PublicCDNPortTests(unittest.TestCase):
         url='https://upos-sz-a.bilivideo.com:8443/upgcxcode/movie.m4s?token=DO-NOT-LOG'
         self.assertEqual(av._cdn_url(url),url)
         for bad,code in [
-            ('https://upos-sz-a.bilivideo.com:80/upgcxcode/movie.m4s','video_source_authority_rejected'),
+            ('https://127.0.0.1:80/upgcxcode/movie.m4s','video_source_domain_rejected'),
             ('http://upos-sz-a.bilivideo.com:8443/upgcxcode/movie.m4s','video_source_scheme_rejected'),
-            ('https://evil.example:8443/upgcxcode/movie.m4s','video_source_domain_rejected'),
-            ('https://upos-sz-a.bilivideo.com:8443/internal/file','video_source_path_rejected'),
+            ('https://localhost:8443/upgcxcode/movie.m4s','video_source_domain_rejected'),
+            ('https://upos-sz-a.bilivideo.com:8443/../internal/file.m4s','video_source_path_rejected'),
             ('https://user:pass@upos-sz-a.bilivideo.com:8443/upgcxcode/movie.m4s','video_source_authority_rejected'),
         ]:
             with self.subTest(bad=code),self.assertRaises(av.AdaptiveUnavailable) as err:

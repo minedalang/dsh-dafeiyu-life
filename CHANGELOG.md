@@ -1,3 +1,12 @@
+## 2.8.2-dev.18（开发候选）
+
+- 视频采样改由 B站官方 PlayURL 当前响应授予一次性媒体地址候选，不再以静态 CDN 域名或 `/upgcxcode/` 路径前缀作为必要条件；保留 HTTPS、严格 URL 结构、真正连接的公网 IP 固定、TLS 证书、逐跳重定向、Range/字节预算和 FFmpeg 离线解码。
+- DASH 轨道优先选择低带宽轨，支持其 `baseUrl/base_url` 与有限个 `backupUrl/backup_url`；仅主地址字节探针连接/HTTP 失败时最多尝试两个同轨备用地址，平台限流、安全拒绝、数据范围异常不重试。
+- 纠正深入观看之后程序自动补帧的问题：概览疑点只形成 `focusReviewSuggestion` 候选，不能自行读；Life 可通过既有 `bili_video_revisit_moment` 的独立意愿和同账号门禁选择、拒绝或延期，再复查真实视频片段。
+- 保留旧版视觉证据来源标签、局部复查回执以及低清回退如实标注；尚未经 Windows / DSH / 真实 B站回归，不能当作正式发布。
+
+- 详细设计和未完成验收门禁：[dev.18 开发候选记录](docs/release/2.8.2-dev.18-official-media-life-focus.md)。
+
 ## 2.8.2-dev.17（开发候选）
 
 - 视频 CDN：兼容官方播放地址的高位 HTTPS 服务端口，HTTPS 证书与原始主机名仍必须匹配，连接 IP 限定可路由公网地址且防止 DNS 检查与连接不一致；端口 1–1023 除 443 外继续拒绝。低清预览仍为安全降级。

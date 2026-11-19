@@ -69,42 +69,58 @@ class AdaptiveUnavailable(ValueError):
 
 
 def _cdn_url(url):
-    """Bound official HTTPS CDN URLs. Signed paths/tokens never enter diagnostics."""
-    if not isinstance(url, str) or len(url) > 4096:
+    """Validate one HTTPS media-shaped URL from the current official PlayURL.
+
+    This is deliberately NOT a global CDN-domain whitelist. Authorization is
+    contextual: callers only obtain candidates from the official authenticated
+    HTTPS playurl lookup, never from users, Life text or a persisted URL. Every
+    actual request also pins a public DNS address and verifies TLS/redirects.
+    """
+    if not isinstance(url, str) or not 12 <= len(url) <= 4096 or url != url.strip():
+        raise AdaptiveUnavailable('unsafe_video_source')
+    if any(ord(ch) < 33 or ord(ch) > 126 for ch in url) or "\\" in url:
         raise AdaptiveUnavailable('unsafe_video_source')
     if url.startswith('//'):
         url = 'https:' + url
     try:
-        p = parse.urlsplit(url)
-        host = (p.hostname or '').lower()
-        # Other high TLS ports may be legitimate for official CDN playurl tracks.
-        # Ports in the privileged range remain denied, except default TLS 443.
-        explicit_port = p.port
-        has_userinfo = p.username is not None or p.password is not None
+        parsed = parse.urlsplit(url)
+        host = (parsed.hostname or '').lower()
+        port = parsed.port
+        userinfo = parsed.username is not None or parsed.password is not None
     except ValueError:
         raise AdaptiveUnavailable('video_source_authority_rejected',
                                   authority_detail='malformed-authority') from None
-    # No returned diagnostics ever include signed URLs, hostnames or query data.
-    if p.scheme != 'https':
+    if parsed.scheme != 'https':
         raise AdaptiveUnavailable('video_source_scheme_rejected')
-    if has_userinfo:
-        raise AdaptiveUnavailable('video_source_authority_rejected',
-                                  authority_detail='userinfo')
-    if explicit_port is not None and explicit_port < 1024 and explicit_port != 443:
-        raise AdaptiveUnavailable('video_source_authority_rejected',
-                                  authority_detail='reserved-port')
-    if p.fragment:
-        raise AdaptiveUnavailable('video_source_authority_rejected',
-                                  authority_detail='url-fragment')
-    if not re.fullmatch(r'(?:[a-z0-9-]+\.){1,5}bilivideo\.com', host):
+    if userinfo:
+        raise AdaptiveUnavailable('video_source_authority_rejected', authority_detail='userinfo')
+    if parsed.fragment:
+        raise AdaptiveUnavailable('video_source_authority_rejected', authority_detail='url-fragment')
+    # Any valid HTTPS port can be used by the official CDN. There is no user-
+    # supplied URL path into this transport. IP literals are not accepted:
+    # original DNS name is required for verified TLS and pinned global IP.
+    if not host or len(host) > 253 or not re.fullmatch(
+        r'[a-z0-9-]+(?:\.[a-z0-9-]+)+', host) or any(
+        len(label) > 63 or label.startswith('-') or label.endswith('-')
+        for label in host.split('.')):
         raise AdaptiveUnavailable('video_source_domain_rejected')
-    if (not p.path.startswith('/upgcxcode/') or '%' in p.path
-        or any(x in ('.', '..') for x in p.path.split('/'))):
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        raise AdaptiveUnavailable('video_source_domain_rejected')
+    if port is not None and not 1 <= port <= 65535:
+        raise AdaptiveUnavailable('video_source_authority_rejected', authority_detail='malformed-authority')
+    # Keep an unambiguous path and familiar media file signature. This is a
+    # shape check, not an ossified CDN path-prefix allowlist.
+    path = parsed.path
+    if (not 1 <= len(path) <= 1024 or not path.startswith('/') or
+        '%' in path or '//' in path or any(part in ('.','..') for part in path.split('/'))):
         raise AdaptiveUnavailable('video_source_path_rejected')
-    if not re.fullmatch(r'/[A-Za-z0-9_./-]{1,512}\.(?:mp4|m4v|flv|m4s)', p.path, re.I):
+    if not re.fullmatch(r'/[A-Za-z0-9_./-]{1,1023}\.(?:mp4|m4v|flv|m4s)', path, re.I):
         raise AdaptiveUnavailable('video_source_format_rejected')
     return url
-
 
 
 # Do not trust DNS resolution as authorization: an approved CDN name can still
@@ -182,6 +198,23 @@ def _dash_ranges(stream):
     return initial, index
 
 
+def _official_track_urls(stream):
+    """Finite candidate URLs exclusively from ONE official DASH track."""
+    raw = [stream.get('baseUrl') or stream.get('base_url')]
+    backups = stream.get('backupUrl') or stream.get('backup_url') or []
+    if isinstance(backups, list):
+        raw.extend(backups[:4])
+    valid, rejections = [], []
+    for candidate in raw:
+        try:
+            checked = _cdn_url(candidate)
+            if parse.urlsplit(checked).path.lower().endswith('.m4s') and checked not in valid:
+                valid.append(checked)
+        except AdaptiveUnavailable as exc:
+            rejections.append(exc)
+    return valid[:3],rejections
+
+
 def _choose_dash_video(data):
     dash = data.get('dash') or {}
     if not isinstance(dash, dict) or not isinstance(dash.get('video'), list):
@@ -191,30 +224,32 @@ def _choose_dash_video(data):
     for stream in dash['video'][:20]:
         if not isinstance(stream, dict):
             continue
-        url = stream.get('baseUrl') or stream.get('base_url')
+        urls, failures = _official_track_urls(stream)
+        rejections.extend(failures)
+        if not urls:
+            continue
         try:
-            url = _cdn_url(url)
-            if parse.urlsplit(url).path.lower().endswith('.m4s'):
-                initial, index = _dash_ranges(stream)
-                bandwidth = int(stream.get('bandwidth') or 0)
-                if bandwidth < 0: continue
-                supported.append((bandwidth, url, initial, index))
+            initial, index = _dash_ranges(stream)
+            bandwidth = int(stream.get('bandwidth') or 0)
+            if bandwidth < 0:
+                continue
+            supported.append((bandwidth, urls, initial, index))
         except AdaptiveUnavailable as exc:
             rejections.append(exc)
         except (ValueError, TypeError):
             continue
     if not supported:
-        # An official DASH fallback that has no acceptable safe URL should
-        # expose only the rejection *class*, never a signed CDN address.
-        source_rejections=[r for r in rejections if r.code.startswith('video_source_')]
-        if source_rejections and len(source_rejections)==len(rejections):
+        source_rejections = [r for r in rejections if r.code.startswith('video_source_')]
+        if source_rejections and len(source_rejections) == len(rejections):
             first=source_rejections[0]
-            raise AdaptiveUnavailable(first.code, authority_detail=first.authority_detail,
-                                      track='dash')
+            raise AdaptiveUnavailable(first.code, authority_detail=first.authority_detail, track='dash')
         raise AdaptiveUnavailable('dash_indexed_video_unavailable')
-    supported.sort(key=lambda x: x[0])
-    _, url, initial, index = supported[0]
-    return {'kind':'dash', 'url':url, 'initial':initial, 'index':index}
+    # Prefer least bandwidth when visual detail is sufficient. Higher resolution
+    # is selected only for an explicit Life focus operation, not automatically.
+    supported.sort(key=lambda item: item[0])
+    _, urls, initial, index = supported[0]
+    return {'kind':'dash','url':urls[0], 'urls':urls, 'initial':initial,'index':index,
+            'track_selection':'lowest-bandwidth'}
 
 
 def _playurl(bvid):
@@ -394,12 +429,31 @@ def _download_dash_samples(source, folder, windows, focus, budget):
     model decisions. FFmpeg never receives a network URL. Budget includes the
     one-byte size probe, initialization and index ranges, and each fragment.
     """
-    size, etag, modified = _dash_probe_size(source['url'])
-    media = _SparseRangeVideo(source['url'],Path(folder)/'dash-remote.sparse',size,budget)
+    urls = source.get('urls') or [source['url']]
+    if not isinstance(urls, list) or not 1 <= len(urls) <= 3:
+        raise AdaptiveUnavailable('dash_stream_unavailable')
+    last_probe_error = None
+    # Attempt one signed primary and up to two official same-track backups.
+    # Only a failed one-byte probe retries; NEVER retry a failed body/range
+    # identity or budget check against another host.
+    probes = 0
+    for url in urls:
+        probes += 1
+        try:
+            size, etag, modified = _dash_probe_size(url)
+            break
+        except AdaptiveUnavailable as exc:
+            if exc.code not in ('video_cdn_connection_failed', 'dash_range_probe_failed',
+                                'dash_range_probe_http_error'):
+                raise
+            last_probe_error = exc
+    else:
+        raise last_probe_error or AdaptiveUnavailable('dash_range_probe_failed')
+    media = _SparseRangeVideo(url,Path(folder)/'dash-remote.sparse',size,budget)
     media.etag,media.modified=etag,modified
     # Count the range size probe as received network data (re-fetched byte 0
     # stays outside the cached data regions).
-    media.downloaded = 1
+    media.downloaded = probes  # Conservatively count all backup probes.
     initial, index = source['initial'],source['index']
     if index[1]>=size:
         raise AdaptiveUnavailable('dash_segmentbase_invalid',fallback=False)
@@ -1066,6 +1120,7 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
               'source_type':source_type,'input_bytes':count,
               'network_budget_bytes':budget,'remote_video_bytes':size,
               'download_mode':download_mode,'download_ranges':range_count,
+              'track_selection':source.get('track_selection') if isinstance(source,dict) else 'progressive-low-quality',
               'clip_window':focus if focus else {'startSeconds':0.,'endSeconds':duration},
               'sampled_windows':[{'startSeconds':a,'endSeconds':b} for a,b in windows],
               'sampled_duration_seconds':coverage,'video_duration_seconds':duration,

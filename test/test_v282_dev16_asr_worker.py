@@ -61,13 +61,13 @@ class HTTPSPortSafety(unittest.TestCase):
         good='https://a.bilivideo.com:443/upgcxcode/a.m4s?signed=SECRET'
         self.assertEqual(av._cdn_url(good),good)
         for url,code in [
-            ('https://a.bilivideo.com:81/upgcxcode/a.m4s?secret=SECRET','video_source_authority_rejected'),
-            ('https://a.bilivideo.com:80/upgcxcode/a.m4s','video_source_authority_rejected'),
+            ('https://user:pass@a.bilivideo.com:81/upgcxcode/a.m4s?secret=SECRET','video_source_authority_rejected'),
+            ('https://a.bilivideo.com:8082/upgcxcode/../secret.m4s','video_source_path_rejected'),
             ('http://a.bilivideo.com:443/upgcxcode/a.m4s','video_source_scheme_rejected'),
             ('https://127.0.0.1:443/upgcxcode/a.m4s','video_source_domain_rejected'),
-            ('https://evil.com:443/upgcxcode/a.m4s','video_source_domain_rejected'),
+            ('https://localhost:443/upgcxcode/a.m4s','video_source_domain_rejected'),
             ('https://user:secret@a.bilivideo.com:443/upgcxcode/a.m4s','video_source_authority_rejected'),
-            ('https://a.bilivideo.com:443/other/a.m4s','video_source_path_rejected'),
+            ('https://a.bilivideo.com:443/../other/a.m4s','video_source_path_rejected'),
             ('https://a.bilivideo.com:443/upgcxcode/a.m4s#frag','video_source_authority_rejected')]:
             with self.subTest(url=url),self.assertRaises(av.AdaptiveUnavailable) as result:
                 av._cdn_url(url)

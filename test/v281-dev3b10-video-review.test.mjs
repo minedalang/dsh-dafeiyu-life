@@ -91,6 +91,6 @@ test('quick setup reflects real readiness and debug has an honest indeterminate 
  assert.match(js,/input\.disabled=ready/)
  assert.match(js,/实际 FFmpeg 合成视频帧解码自测通过/)
  const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(server,/network_budget_bytes:focusPlan\.networkBudgetBytes/)
+ assert.match(server,/focusReviewSuggestion/); assert.match(server,/life-decision-required/)
  assert.match(server,/speechAttempt/)
 })

@@ -1,3 +1,5 @@
+> **2.8.2-dev.18（开发中）**：[官方媒体流动态授权与 Life 自主聚焦复查](2.8.2-dev18-video-source-life-focus.md)。原视频 CDN 不再按固定域名/路径前缀拒绝，官方主备地址仍受固定公网 IP、TLS、逐跳和 Range 预算保护；深入概览不再自动复查疑点，必须 Life 另行决定。未 Windows/DSH 实机验证。
+
 > **2.8.2-dev.12（开发中）**：当前已核验 B站 UID 的 Life 记忆来源标识在本地持久化，Cookie 更新不新建身份来源；现有社交设置只在当前 UID 的独立授权快照下生效，新账号不继承旧名单或外发许可。旧无归属记忆不自动重写、已遗忘内容不恢复，冷恢复不隐式继承旧授权。本轮只读与权限变更详见 [dev.12 说明](../release/2.8.2-dev.12-account-scope-and-social-grants.md)。[本地多记忆档案](future-local-multi-life-profile-management.md)仍是未来独立工程，不在 2.8.2 实施。
 
 > **2.8.2-dev.11（开发中）**：现有 Life 决策轨迹对同一动作的执行/结果回执新增匿名 `actionRef` 关联；跨动作未知与旧记录维持保守判定。旧关系熟悉度只作 Life 历史线索，当前账号互动阶段由该账号核验的渠道事实计算，不能据此推断对方已认出新账号或获得私信许可。完整身份迁移方案暂存 [未来计划](future-life-account-relationship-continuity.md)，未实施自动联系人转移、旧友告知或新权限。
