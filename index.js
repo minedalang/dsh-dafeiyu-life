@@ -155,6 +155,7 @@ import { createOwnerCommentAgent } from './lib/owner-comment-agent.mjs'
 import { createEmotionRecall } from './lib/emotion-recall.mjs'
 import { recordFriendInteraction, listFriendRelationships, friendRelationshipContext, clearFriendRelationships } from './lib/friend-relationships.mjs'
 import {createSocialRelationshipIndex} from './lib/social-relationship-index.mjs'
+import {currentAccountRelationshipView} from './lib/account-memory-boundary.mjs'
 import {createSocialRelationshipChannels} from './lib/social-relationship-channels.mjs'
 import {publicCommentFamiliarity} from './lib/public-comment-familiarity.mjs'
 import { buildLifeTimeline, groupLifeTimeline } from './lib/life-timeline.mjs'
@@ -1219,14 +1220,16 @@ function reportMeta() {
   // Actual verified interaction recording initializes the index when needed.
   const existingRelationshipIndex=()=>socialRelationships||
     (existsSync(join(stateDir,'social-relationships','relationships.sqlite3'))?relationshipIndex():null)
-  const relationshipText=uid=>{const r=relationshipIndex()?.get(uid,relationshipOptions());if(!r)return ''
-    const depth=relationshipPortraitDepth(r.stage,r)
-    const acquaintance=depth.level>=1?`已核实互动 ${r.count} 次，跨 ${r.activeDays} 个日期；${r.incoming>0&&r.outgoing>0?'有双向往来':'交流方向尚不充分'}。`:''
-    const familiar=depth.level>=2?`最近一次互动 ${r.lastAt?new Date(r.lastAt).toISOString().slice(0,10):'未记录'}，可根据真实对话继续了解，不可推断私密经历。`:''
-    const local=relationshipChannels()?.get(uid)
-    const privateNote=local?.dmOpenness?.eligible===true?'双方已有经核实的持续双向私信记录；这依然不构成主动私信授权。':
-      '尚无足够可信的持续双向私信关系；公开评论再熟悉也不得据此主动私信。'
-    return `【自然关系熟悉度】阶段「${r.stageLabel}」，${acquaintance}${familiar}${privateNote} 自然熟悉度与白名单和主动联系资格互不替代。不要编造共同经历或提及后台分数。`}
+  const relationshipText=uid=>{const r=existingRelationshipIndex()?.get(uid,relationshipOptions())||null
+    const local=relationshipChannels()?.get(uid)||null
+    if(!r&&!local)return ''
+    const view=currentAccountRelationshipView(r,local)
+    const old=view.knownBefore?'鱼鱼保有对该人的历史熟悉线索，但历史统计未可靠标明使用哪个 B站账号。':''
+    const current=view.seenHere?`当前账号已核实 ${local.total.count} 次互动，跨 ${local.total.activeDays} 天；当前账号阶段 ${view.stage}。`:
+      '当前账号尚无经过核实的互动证据，对方可能完全不认识当前账号。'
+    const dm=view.dmEligible?'当前账号有持续双向私信证据；但仍须单独核对授权和拒联边界。':
+      '不能把旧账号的私聊、历史熟悉感或朋友白名单当作新账号主动私信的资格。'
+    return `【Life 历史认识与当前账号关系分开】${old}${current}${dm} 不得冒称对方已认出新账号、不得自动披露旧身份、不得因为历史熟悉而主动迁移联系人或发送自我介绍。`}
 
   // Public chat recognition must come from THIS account's public channel,
   // never the legacy global index that also aggregates private DM metadata.
@@ -6682,8 +6685,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         }
         if(numericUid&&['dm','comment'].includes(scene)){
           const tier=socialTier(numericUid,cfg.dmOwnerUid,cfg.friendDirectory)
-          let stage='new';try{stage=relationshipIndex()?.get(numericUid,relationshipOptions())?.stage||'new'}catch{}
-          experience={...experience,relationship:{tier,stage}}
+          let view=currentAccountRelationshipView()
+          try{view=currentAccountRelationshipView(existingRelationshipIndex()?.get(numericUid,relationshipOptions()),
+            relationshipChannels()?.get(numericUid))}catch{}
+          experience={...experience,relationship:{tier,stage:view.stage,knownBefore:view.knownBefore,
+            currentAccountEvidence:view.currentAccountEvidence,otherPartyRecognizesUs:view.otherPartyRecognizesUs}}
         }
       }catch{degradedStages.push('episode-context');log('Life 上下文：相关经历暂不可用，保留基础人格与当前事件')}
       let voice=''
@@ -9646,9 +9652,10 @@ logger:{warn:m=>log('社交意图：'+m)}
         const data=index.list({...relationshipOptions(),query:url.searchParams.get('query')||'',cursor:url.searchParams.get('cursor')||'',limit:Number(url.searchParams.get('limit'))||30})
         data.rows=data.rows.map(row=>{
           const local=relationshipChannels()?.get(row.uid)||null
+          const continuity=currentAccountRelationshipView(row,local)
           const restricted=relationshipDmBoundary(row.uid)
           const openness=local?.dmOpenness||{state:'unknown',eligible:false,reason:'unscoped-legacy-history'}
-          return {...row,channels:local?.channelFamiliarity||{public:'unknown',private:'unknown'},
+          return {...row,continuity,channels:local?.channelFamiliarity||{public:'unknown',private:'unknown'},
             channelEvidence:local?{comment:local.comment,dm:local.dm}:null,
             dmOpenness:restricted?{state:'restricted',eligible:false,reason:'recipient-boundary'}:openness,
             ...bilibiliPerson(row.uid),portraitDepth:relationshipPortraitDepth(row.stage,row),publicMemoryHalfLifeDays:relationshipMemoryHalfLifeDays(row,cfg.mainSessionMemoryHalfLifeDays,cfg)}

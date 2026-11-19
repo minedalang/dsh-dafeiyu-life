@@ -1,3 +1,5 @@
+> **2.8.2-dev.11（开发中）**：现有 Life 决策轨迹对同一动作的执行/结果回执新增匿名 `actionRef` 关联；跨动作未知与旧记录维持保守判定。旧关系熟悉度只作 Life 历史线索，当前账号互动阶段由该账号核验的渠道事实计算，不能据此推断对方已认出新账号或获得私信许可。完整身份迁移方案暂存 [未来计划](future-life-account-relationship-continuity.md)，未实施自动联系人转移、旧友告知或新权限。
+
 > **2.8.2-dev.9（开发中）**：管理中心新增 [桌宠开放生态预告页](../open-platform/README.md)（只读静态展示）；官方桌宠、社区自由接入、3D 游戏与预览 API 均为未来规划，未新增 Life 运行时接口或架构接线。实施与验收边界见 [dev.9 说明](../release/2.8.2-dev.9-open-platform-preview.md)。
 
 > **2.8.2-dev.8（开发中）**：现有 `life-decision-traces` 增加纯只读意愿／执行结果归类，管理中心区分 Life 自愿休息、无机会、技术阻断、已委派、平台核验及未知冻结，不写模型原文或第二事实库。详见 [dev.8 说明](2.8.2-dev8-life-decision-explanation.md)。Windows/真实 B站验收仍待完成。

@@ -576,6 +576,11 @@
     "watched-merge.test.mjs"
   ],
   "registeredActive": {
+    "v282-dev11-action-account-continuity.test.mjs": {
+      "owner": "life-trace-and-account-continuity",
+      "kind": "security",
+      "intent": "Correlate only exact anonymous action receipts, fail closed on legacy/unknown outcomes, preserve Life identity on account switch, and keep old friends separate from current-account interaction and permissions."
+    },
     "test-governance-contract.test.mjs": {
       "owner": "test infrastructure",
       "kind": "security",

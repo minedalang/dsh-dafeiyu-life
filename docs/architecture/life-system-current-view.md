@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
 %% 2.8.2-dev.10: public evidence is same-account/public-event only; poll network backoff handles pre-budget DNS/timeout failures; trace terminal labels share one proof classifier.
 %% 2.8.2-dev.8：原 Life 决策步骤只读解释自主选择/技术阻断/平台回执；不写入新账本，不替 Life 行动。
 %% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
@@ -100,7 +101,12 @@ flowchart TB
   priorVisual -.->|仅在 Episode 二次视觉采样前只读检查| intentions
   adapter --> cues
   adapter --> opportunities
-  accountChannels --> friends
+  historyRelation["旧关系熟悉度｜Life 历史线索，当前账号归属未核实"]
+  accountRelationship["当前账号关系投影｜以当前渠道的真实往来为准；对方识别未知"]
+  %% @code accountRelationship | lib/account-memory-boundary.mjs | export function currentAccountRelationshipView
+  socialFacts -.->|仅历史参考，不用于授权| historyRelation
+  historyRelation -.-> accountRelationship
+  accountChannels --> accountRelationship --> friends
   eventLedger --> events
   eventLedger --> feedback
   adapter --> video
@@ -387,6 +393,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
 %% 2.8.2-dev.10: public evidence is same-account/public-event only; poll network backoff handles pre-budget DNS/timeout failures; trace terminal labels share one proof classifier.
 %% 2.8.2-dev.8：原 Life 决策步骤只读解释自主选择/技术阻断/平台回执；不写入新账本，不替 Life 行动。
 %% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
@@ -539,6 +546,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
 %% 2.8.2-dev.10: public evidence is same-account/public-event only; poll network backoff handles pre-budget DNS/timeout failures; trace terminal labels share one proof classifier.
 %% 2.8.2-dev.8：原 Life 决策步骤只读解释自主选择/技术阻断/平台回执；不写入新账本，不替 Life 行动。
 %% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
@@ -599,7 +607,10 @@ flowchart TB
   receipt -.-> commentOutcome
   receipt -->|独立确认成功| verified
   receipt -->|失败或未知| unknown
+  linkedReceipts["匿名 actionRef｜同一动作的原回执可关联；缺失标识的旧轨迹保持保守"]
+  %% @code linkedReceipts | lib/life-decision-trace.mjs | export function lifeTraceExplanation
   traceProjection["现有 Life 决策轨迹只读归类｜不改变平台事实或记忆"]
+  linkedReceipts -.-> traceProjection
   ownerDiagnostics["管理中心：意愿/技术/平台回执分层说明"]
   receipt -.-> traceProjection
   unknown -.-> traceProjection
@@ -736,6 +747,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
 %% 2.8.2-dev.10: public evidence is same-account/public-event only; poll network backoff handles pre-budget DNS/timeout failures; trace terminal labels share one proof classifier.
 %% 2.8.2-dev.8：原 Life 决策步骤只读解释自主选择/技术阻断/平台回执；不写入新账本，不替 Life 行动。
 %% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
