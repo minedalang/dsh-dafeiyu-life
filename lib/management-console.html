@@ -1313,6 +1313,16 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .video-debug-image-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:12px;margin:10px 0 16px}
 .video-debug-image-grid figure{margin:0;min-width:0;padding:8px;border:1px solid var(--border,#aeb7c2);border-radius:12px}
 .video-debug-image-grid img{display:block;width:100%;height:auto;max-height:320px;object-fit:contain;background:#171b22;border-radius:7px}
+.video-debug-image-zoom{display:block;width:100%;padding:0;border:0;border-radius:8px;background:transparent;cursor:zoom-in}
+.video-debug-image-zoom:focus-visible{outline:3px solid var(--action,#428ee7);outline-offset:3px}
+.video-debug-lightbox{box-sizing:border-box;width:min(96vw,1500px);max-width:96vw;max-height:96vh;max-height:96dvh;padding:12px;border:1px solid var(--border,#aeb7c2);border-radius:14px;background:var(--panel,#171b22);color:var(--text,#eee);box-shadow:0 14px 70px #0009}
+.video-debug-lightbox::backdrop{background:rgba(0,0,0,.85)}
+.video-debug-lightbox-header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:0 2px 10px}
+.video-debug-lightbox-header strong{min-width:0;overflow-wrap:anywhere}
+.video-debug-lightbox-close{padding:8px 14px;cursor:pointer}
+.video-debug-lightbox img{display:block;max-width:100%;width:100%;height:auto;max-height:calc(96vh - 145px);object-fit:contain;margin:auto;background:#171b22}
+.video-debug-lightbox p{margin:9px 2px 0;overflow-wrap:anywhere;font-size:12px;line-height:1.5}
+@media(max-width:580px){.video-debug-lightbox{padding:8px;max-width:98vw;width:98vw}.video-debug-lightbox img{max-height:calc(96vh - 135px)}}
 .video-debug-image-grid figcaption{font-size:12px;line-height:1.45;overflow-wrap:anywhere;margin-top:6px;color:var(--text-muted,#7f8892)}
 
 /* dev.3b.21 — 统一显式保存提醒。保留各分组的后端事务和授权边界。 */
@@ -2573,18 +2583,24 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <section id="panel-diagnostics" hidden><details class="settings-section life-section" id="video-perception-final-debug" open>
 <summary>🎞️ 视频感知全链路 · Life 最终输入 Debug</summary>
 <div class="inset">
-<p class="muted">本机只读验收：输入真实 BV，默认走<strong>官方 videoshot 全局概览</strong>，不是先解码原视频。可单独选择原视频 FFmpeg 取帧专项。深度只控制本次主人测试的采样上限，不等于 Life 的自主意愿；试运行不会触发 Life 看后的第二次决策，也不会登记经历／观看历史或点赞／评论；可能产生 B站读取与视觉模型费用。下方「真实 Life」才展示实际观察回执。</p>
+<p class="muted">本机只读验收：输入真实 BV，可选择<strong>单阶段官方 videoshot 全局概览</strong>、<strong>完整两阶段（全局预览 → Life 自主选择 → 原视频局部精查）</strong>，或单独排障原视频 FFmpeg。只有完整两阶段会在实际全局识图后再次向 Life 询问是否深入；这不是主人替 Life 选中时间段。验收不会登记 Life 视频观看经历或公开互动，但会产生实际的 Life 意愿选择记录，并可能消耗 B站读取流量与视觉模型费用。</p>
 <div class="toolbar video-debug-toolbar">
 <label>BV 视频号 <input id="video-debug-bvid" type="text" placeholder="BV1xxxxxxxxxx" maxlength="12" autocomplete="off" spellcheck="false" aria-label="测试视频 BV 号"></label>
-<label>读取来源 <select id="video-debug-source" aria-label="试运行视觉来源"><option value="preview" selected>全局概览 · 官方 videoshot（默认）</option><option value="adaptive">专项排障 · 原视频 FFmpeg</option></select></label>
-<label>本次主人测试深度 <select id="video-debug-depth" aria-label="试运行理解深度"><option value="skim">略看 · 不识图</option><option value="standard" selected>正常了解 · 最多12帧</option><option value="deep">深入预览 · 按档位最多24帧</option></select></label>
+<label>读取来源 <select id="video-debug-source" aria-label="试运行视觉来源"><option value="preview" selected>单阶段 · 官方 videoshot 全局预览</option><option value="life-two-stage">完整两阶段 · videoshot → Life 决策 → FFmpeg（建议测试）</option><option value="adaptive">单阶段专项 · 原视频 FFmpeg</option></select></label>
+<label>单阶段测试深度（两阶段固定先正常了解） <select id="video-debug-depth" aria-label="试运行理解深度"><option value="skim">略看 · 不识图</option><option value="standard" selected>正常了解 · 最多12帧</option><option value="deep">深入预览 · 按档位最多24帧</option></select></label>
 <button id="video-debug-run" type="button" class="life-action life-purple">开始只读视频感知验收</button>
+<p class="muted" id="video-debug-source-explain">单阶段模式只验收一次识图；选择「完整两阶段」才会在全局识图后调用真实 Life 意愿模型，自主决定是否读取局部。若 Life 拒绝，第二次视觉识别不会发生。主人测试不写 Life 观看经历、不会外发评论。</p>
 <button id="video-debug-refresh" type="button" class="life-action life-sky">刷新当前结果</button>
 </div>
 <progress id="video-debug-progressbar" max="6" style="width:100%;height:15px;display:none" aria-label="视频感知只读验收进行中"></progress>
 <p id="video-debug-progress" class="muted" role="status" aria-live="polite">尚未执行。新版本启用后请确认模型与 FFmpeg / Whisper 状态。</p>
 <div id="video-debug-summary" class="video-debug-summary" aria-live="polite"></div>
-<section class="setting-note" aria-label="视频采样图像" style="margin-top:12px"><strong>🖼️ 视觉模型实际输入分镜</strong><p class="muted">按实际来源显示官方低清 videoshot 全局分镜或 FFmpeg 原视频采样分镜。仅展示本轮实际送入视觉模型的 JPEG，最多保留 30 分钟。时间戳是抽样瞬间，不代表完整观看；命中旧缓存且原图已过期时如实提示。</p><div id="video-debug-images" class="video-debug-images" aria-live="polite">尚无本轮图像回执</div></section>
+<section class="setting-note" aria-label="视频采样图像" style="margin-top:12px"><strong>🖼️ 视觉模型实际输入分镜</strong><p class="muted">按实际来源显示官方低清 videoshot 全局分镜或 FFmpeg 原视频采样分镜。<strong>点击图片可放大查看，Esc 关闭。</strong>仅展示本轮实际送入视觉模型的 JPEG，最多保留 30 分钟。时间戳是抽样瞬间，不代表完整观看；命中旧缓存且原图已过期时如实提示。</p><div id="video-debug-images" class="video-debug-images" aria-live="polite">尚无本轮图像回执</div></section>
+<dialog id="video-debug-lightbox" class="video-debug-lightbox" aria-label="视频分镜大图查看">
+  <div class="video-debug-lightbox-header"><strong>🖼️ 实际输入分镜 · 放大查看</strong><button id="video-debug-lightbox-close" class="life-action life-sky video-debug-lightbox-close" type="button" aria-label="关闭分镜大图">关闭 ✕</button></div>
+  <img id="video-debug-lightbox-image" alt="" decoding="async">
+  <p id="video-debug-lightbox-caption"></p>
+</dialog>
 <div class="toolbar"><button id="video-debug-show-test" type="button" class="life-action life-sky">查看试运行输入</button><button id="video-debug-show-life" type="button" class="life-action life-sky">查看最近真实 Life 输入</button><button id="video-debug-copy" type="button" class="life-action life-sky">复制当前完整 JSON</button></div>
 <div class="video-debug-panels">
 <details><summary>🖼️ 视觉模型实际回执 · 来源、时间与描述</summary><pre id="video-debug-visual" class="video-debug-json">暂无结果</pre></details>

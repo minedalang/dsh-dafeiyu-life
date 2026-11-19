@@ -2323,6 +2323,67 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     }
   })
 
+  // Owner-only end-to-end *read-only* acceptance: reuse the REAL Life post-
+  // overview willingness proof, not a synthetic model selection or a forced
+  // focus read. The overview/response remain volatile and do not write Life
+  // experiences. Only the verified focus result can be shown as an observation.
+  async function runVideoDebugTwoStage({bvid,account,job,overview}){
+    const noFocus=status=>({status,mode:'life-two-stage',
+      explanation:'本轮未读取原视频局部片段；Life 可以拒绝或本轮没有可信候选'})
+    if(!overview?.ok||overview?.bvid!==bvid||
+       overview?.perceptionHandoff?.video?.source!=='low-resolution-preview')return noFocus('overview-not-verified')
+    if(videoDebugJob!==job||videoDebugAccount()!==account||
+       trustedLifeAccountTag()!==job.lifeAccountTag)return noFocus('account-or-job-changed')
+    const candidates=planGlobalPreviewFocusCandidates({bvid,overview})
+    if(!candidates.length)return noFocus('no-verified-preview-candidates')
+    const globalBytes=Math.max(0,Number(overview.visual?.sampling?.sprite_bytes)||0)
+    const totalBudget=(Number(cfg.visionFrames)>=48?100:Number(cfg.visionFrames)>=24?50:24)*1048576
+    const remaining=Math.floor(totalBudget-globalBytes)
+    if(!Number.isSafeInteger(remaining)||remaining<1048576)return noFocus('network-budget-exhausted')
+    job.stage='全局预览已完成，等待 Life 根据可信时间候选决定是否深入'
+    job.updatedAt=Date.now()
+    const result=await runLifePostOverviewReview({
+      willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,bvid,overview,candidates,
+      readFocus:async({account:chosenAccount,plan})=>{
+        if(chosenAccount!==job.lifeAccountTag||trustedLifeAccountTag()!==chosenAccount||
+           videoDebugAccount()!==account||videoDebugJob!==job||
+           accountBinding.status().blocked||cfg.visionEnabled!==true)
+          return {ok:false,reason:'account-or-vision-changed'}
+        job.stage='Life 已自主选择局部：受控下载 MP4 / DASH 真实视频片段'
+        job.updatedAt=Date.now()
+        let visual
+        try{visual=parseMaybeJson(await call('bili_preview_vision',{
+          bvid,perception_source:'adaptive',view_depth:'deep',
+          focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
+          network_budget_bytes:remaining,capture_for_debug:true}))}
+        catch{return {ok:false,reason:'focus-tool-failed'}}
+        if(chosenAccount!==trustedLifeAccountTag()||videoDebugAccount()!==account||
+           videoDebugJob!==job)return {ok:false,reason:'account-changed'}
+        const captured=safeVideoDebugCapture(visual?.debugCapture,bvid)
+        if(captured)job.images=[...(job.images||[]),captured]
+        if(visual&&typeof visual==='object')delete visual.debugCapture
+        const evidence=buildVideoEvidenceBundle({bvid,info:overview.info,visual})
+        const review=verifyVideoFocusReview({bvid,plan:{...plan,status:'ready',networkBudgetBytes:remaining},
+          result:visual,evidence})
+        if(!review)return {ok:false,reason:'focused-evidence-not-verified'}
+        // The answer is shown only in this owner's volatile Debug response;
+        // keep the original handoff as an explicitly separate global overview.
+        job.focusVisual={status:visual.status,image_source:visual.image_source,
+          description:String(visual.description||'').slice(0,2800),
+          times:Array.isArray(visual.times)?visual.times.slice(0,12):[],
+          sampling:{input_bytes:visual.sampling?.input_bytes,
+            network_budget_bytes:visual.sampling?.network_budget_bytes}}
+        return {ok:true,review}
+      }
+    })
+    return {mode:'life-two-stage',status:result.status,
+      candidates:candidates.map(p=>({atSeconds:p.atSeconds,startSeconds:p.startSeconds,endSeconds:p.endSeconds})),
+      ...(result.reason?{reason:result.reason}:{}),
+      ...(result.focusWindow?{focusWindow:result.focusWindow}:{}),
+      ...(result.review?{review:result.review,visual:job.focusVisual}:{}),
+      note:'主人仅发起验收；Life 依据全局预览独立选择是否深入。第二阶段只读，不写入 Life 经历或公开发送。'}
+  }
+
   // Follow-up video clarification: the user may mention a minute or an
   // already evidenced event AFTER the first observation. This is an isolated
   // new read, not a rewrite of past memories or automatic social write.
@@ -8463,6 +8524,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         const last=lastLifeVideoDebug&&lastLifeVideoDebug.account===account&&now-lastLifeVideoDebug.at<videoDebugExpiry?lastLifeVideoDebug:null
         return sendJson(res,200,{ok:true,job:current&&{id:current.id,status:current.status,stage:current.stage,step:current.step,updatedAt:current.updatedAt,at:current.at,
           sourceMode:current.sourceMode,viewDepth:current.viewDepth,
+          ...(current.status==='done'&&current.twoStage?{twoStage:current.twoStage}:{}),
           ...(current.status==='done'?{lifeInput:current.payload,images:current.images||[],visionOutcome:current.visionOutcome||'no_model_answer'}:{}),...(current.status==='error'?{error:current.error}:{})},
           lastLife:last&&{at:last.at,lifeInput:last.payload,images:last.images||[]},
           lastSummary:previous,retention:'volatile-30m',source:'actual-bili-watch-video-return'})
@@ -8474,11 +8536,14 @@ logger:{warn:m=>log('社交意图：'+m)}
         const depth=['skim','standard','deep'].includes(body?.depth)?body.depth:'standard'
         // Explicit manual diagnostic mode; reject unknown values rather than
         // silently running a more expensive original-video read.
-        if(body?.sourceMode!==undefined&&!['preview','adaptive'].includes(body.sourceMode))
+        if(body?.sourceMode!==undefined&&!['preview','adaptive','life-two-stage'].includes(body.sourceMode))
           return sendJson(res,400,{ok:false,error:'无效的视频诊断来源选项'})
-        const debugPerceptionSource=body?.sourceMode==='adaptive'?'adaptive':'preview'
+        const requestedMode=body?.sourceMode==='life-two-stage'?'life-two-stage':body?.sourceMode==='adaptive'?'adaptive':'preview'
+        const debugPerceptionSource=requestedMode==='adaptive'?'adaptive':'preview'
+        if(requestedMode==='life-two-stage'&&depth==='skim')return sendJson(res,400,{ok:false,error:'两阶段验收必须先进行正常全局识图，不能选择略看'})
         const job={id:randomUUID(),at:now,account,status:'running',stage:'已受理，只读任务开始',step:0,updatedAt:now,
-          sourceMode:debugPerceptionSource,viewDepth:depth}
+          sourceMode:requestedMode,viewDepth:requestedMode==='life-two-stage'?'standard':depth,
+          lifeAccountTag:trustedLifeAccountTag()}
         videoDebugJob=job
         videoDebugWorkInFlight=true
         saveVideoDebugSummary(stateDir,job,account)
@@ -8492,9 +8557,17 @@ logger:{warn:m=>log('社交意图：'+m)}
         retire.unref?.()
         // Manual explicit debug request: does not express an autonomous Life intent.
         // Do not await in the HTTP handler: visual/ASR can exceed browser timeout.
-        Promise.resolve().then(()=>executeWatchVideo({bvid,view_depth:depth,include_comments:false,
-          include_danmaku:true,record_session:false,__debugDryRun:true},
-          {debugPerceptionSource})).then(result=>{
+        Promise.resolve().then(async()=>{
+          const result=await executeWatchVideo({bvid,
+            view_depth:requestedMode==='life-two-stage'?'standard':depth,
+            include_comments:false,include_danmaku:true,record_session:false,__debugDryRun:true},
+            {debugPerceptionSource})
+          if(requestedMode==='life-two-stage'&&result?.ok===true){
+            job.twoStage=await runVideoDebugTwoStage({bvid,account,job,overview:result})
+            result.debugTwoStage=job.twoStage
+          }
+          return result
+        }).then(result=>{
           if(videoDebugJob!==job||job.status!=='running')return
           if(videoDebugAccount()!==job.account){job.status='error';job.stage='账号已切换';job.error='账号变化，已丢弃本轮诊断结果'}
           else {
@@ -8504,6 +8577,7 @@ logger:{warn:m=>log('社交意图：'+m)}
               job.payload=result
               job.visionOutcome=result?.visual?.status==='analyzed'&&Boolean(String(result?.perceptionHandoff?.video?.modelDescription||'').trim())?'model_answer_returned':'no_model_answer'
               job.stage=job.visionOutcome==='model_answer_returned'?'只读资料已整理且视觉模型返回了实际回答':'只读资料已整理，但尚无可信视觉模型回答'
+              if(requestedMode==='life-two-stage')job.stage='两阶段验收：'+String(job.twoStage?.status||'未取得 Life 第二次选择')
             }else job.error=String(result?.error||result?.visual?.error||'视频感知未完成').slice(0,240)
           }
           job.updatedAt=Date.now();saveVideoDebugSummary(stateDir,job,account)

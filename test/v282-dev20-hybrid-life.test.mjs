@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-import {planGlobalPreviewFocusCandidates} from '../lib/video-focus-review.mjs'
+import {planGlobalPreviewFocusCandidates,verifyVideoFocusReview} from '../lib/video-focus-review.mjs'
 import {runLifePostOverviewReview,runLifeChosenVideoRead} from '../lib/life-video-read-admission.mjs'
 import {continuationMenu,parseContinuationDecision,continuationPrompt} from '../lib/life-continuation.mjs'
 import {buildVideoEvidenceBundle} from '../lib/video-evidence-bundle.mjs'
@@ -104,4 +104,84 @@ test('production wiring only permits focused media read after the post-overview 
   assert.match(planner,/choice\.action==='focus_video'/)
   assert.match(planner,/verifyVideoFocusReview/)
   assert.match(planner,/focusCandidates:visualObservation/)
+})
+
+// Execute the actual production Debug two-stage coordinator in an isolated
+// owner-only harness. This checks that a passive preview never itself grants
+// a second video download. The real Life willingness / proof module is used.
+import {runInNewContext} from 'node:vm'
+const DEBUG_START='  async function runVideoDebugTwoStage({bvid,account,job,overview}){'
+const DEBUG_END='  // Follow-up video clarification:'
+const actualHost=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+function debugTwoStageHarness({choice='decline',accountSwitch=false,invalidVisual=false}={}){
+  const start=actualHost.indexOf(DEBUG_START),end=actualHost.indexOf(DEBUG_END,start)
+  assert.ok(start>=0&&end>start,'extract real owner Debug Life coordinator')
+  const job={account:'owner',lifeAccountTag:ACCOUNT,status:'running',images:[]}
+  const reads=[];let account=ACCOUNT,decisions=0,receipts=[]
+  const willingness={decide:async()=>{
+    decisions++
+    if(choice==='decline')return {ok:false,reason:'fish-chose-rest'}
+    if(accountSwitch)account='1234567890abcdef'
+    return {ok:true,candidateId:'global-focus-0',proof:{ref:'verified-choice'}}
+  },verify:()=>({ok:true}),receipt:(_proof,outcome)=>receipts.push(outcome.status)}
+  const capture={id:'abcdef0123456789abcdef0123456789',kind:'focus',bvid:BV,
+    images:[{kind:'focus',file:'focus-01.jpg',times:[6],resolution:'384x216'}]}
+  const ctx={videoDebugJob:job,videoDebugAccount:()=> 'owner',
+    trustedLifeAccountTag:()=>account,
+    cfg:{visionEnabled:true,masterEnabled:true,visionFrames:24},
+    planGlobalPreviewFocusCandidates,runLifePostOverviewReview,
+    verifyVideoFocusReview,lifeWillingness:willingness,
+    accountBinding:{status:()=>({blocked:false})},Date,
+    parseMaybeJson:x=>x,safeVideoDebugCapture:v=>v,
+    call:async(_name,args)=>{
+      reads.push(args)
+      const frame=6
+      return {ok:true,bvid:BV,status:invalidVisual?'unavailable':'analyzed',
+        image_source:'B站公开视频片段（离线解码）',
+        description:'这张真实视频画面里出现了新的事件。',times:[frame],
+        focus_window:{startSeconds:args.focus_start_seconds,endSeconds:args.focus_end_seconds},
+        sampling:{input_bytes:65000,network_budget_bytes:args.network_budget_bytes},
+        debugCapture:capture}
+    },
+    buildVideoEvidenceBundle:({visual})=>({bvid:BV,sources:[
+      {kind:'decoded_video_frames',status:'sampled',timePointsMs:[6000]},
+      {kind:'decoded_visual_analysis',status:'analyzed',timePointsMs:[6000]}]})}
+  runInNewContext(`${actualHost.slice(start,end)}\nglobalThis.debugTwoStageTest=runVideoDebugTwoStage`,ctx)
+  return {run:()=>ctx.debugTwoStageTest({bvid:BV,account:'owner',job,overview}),
+    job,reads,get decisions(){return decisions},receipts}
+}
+
+test('owner full-chain Debug: Life declines after global preview, no adaptive download occurs',async()=>{
+  const m=debugTwoStageHarness()
+  const result=await m.run()
+  assert.equal(result.status,'life-declined')
+  assert.equal(m.decisions,1)
+  assert.equal(m.reads.length,0)
+  assert.equal(m.job.images.length,0)
+  assert.ok(result.candidates.length>=1)
+})
+
+test('owner full-chain Debug: real Life focus proof authorizes only a bounded verified local read',async()=>{
+  const m=debugTwoStageHarness({choice:'focus'})
+  const result=await m.run()
+  assert.equal(result.status,'focused')
+  assert.equal(m.decisions,1)
+  assert.equal(m.reads.length,1)
+  assert.equal(m.reads[0].perception_source,'adaptive')
+  assert.equal(m.reads[0].view_depth,'deep')
+  assert.equal(m.reads[0].capture_for_debug,true)
+  assert.equal(m.reads[0].network_budget_bytes,50*1048576-1250000)
+  assert.equal(m.job.images.length,1)
+  assert.ok(result.review.frameTimesMs.length>0)
+  assert.equal(m.receipts[0],'verified')
+})
+
+test('owner full-chain Debug: changed account or unverified decoding cannot create a successful local receipt',async()=>{
+  const changed=debugTwoStageHarness({choice:'focus',accountSwitch:true})
+  assert.equal((await changed.run()).status,'stale-choice')
+  assert.equal(changed.reads.length,0)
+  const bad=debugTwoStageHarness({choice:'focus',invalidVisual:true})
+  assert.equal((await bad.run()).status,'focus-unavailable')
+  assert.equal(bad.reads.length,1)
+  assert.equal(bad.receipts[0],'failed')
 })

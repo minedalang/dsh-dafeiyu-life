@@ -52,3 +52,18 @@ test('未验收的本地视觉模型提供验收跳转高亮，已下载不再�
   assert.match(client,/local-vision-install'\)\.hidden=Boolean\(model\?\.installed\)/)
   assert.match(client,/local-vision-cancel'\)\.hidden=!downloading/)
 })
+
+test('视频分镜可点击放大、键盘关闭，且只复用已验证的同源诊断 JPEG',()=>{
+  assert.match(page,/id="video-debug-lightbox"[^>]*aria-label="视频分镜大图查看"/)
+  assert.match(page,/id="video-debug-lightbox-close"/)
+  assert.match(page,/id="video-debug-lightbox-image"/)
+  assert.match(page,/Esc 关闭/)
+  assert.match(page,/video-debug-image-zoom:focus-visible/)
+  assert.match(page,/video-debug-lightbox::backdrop/)
+  assert.match(client,/zoomButton\.addEventListener\('click'/)
+  assert.match(client,/enlarged\.src=img\.src/)
+  assert.match(client,/imageLightbox\.showModal\(\)/)
+  assert.match(client,/video-debug-lightbox-close'\)\.addEventListener\('click'/)
+  assert.match(client,/video-debug-lightbox-image'\)\.removeAttribute\('src'\)/)
+  assert.doesNotMatch(client,/window\.open\(img\.src/)
+})
