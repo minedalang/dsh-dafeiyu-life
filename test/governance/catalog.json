@@ -630,6 +630,11 @@
       "owner": "life-read-diagnostics",
       "kind": "security",
       "intent": "Verify non-authorizing budget and network read-defer projection, account isolation, typed causes, and UI diagnostics"
+    },
+    "v282-dev8-life-decision-explanation.test.mjs": {
+      "owner": "life-decision-diagnostics",
+      "kind": "security",
+      "intent": "Project actual account-scoped Life choices, technical blocks, uncertain outcomes and verified platform receipts into bounded read-only explanations without revealing model prose or granting execution."
     }
   },
   "protected": [

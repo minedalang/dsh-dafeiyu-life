@@ -1,3 +1,5 @@
+> **2.8.2-dev.8（开发中）**：现有 `life-decision-traces` 增加纯只读意愿／执行结果归类，管理中心区分 Life 自愿休息、无机会、技术阻断、已委派、平台核验及未知冻结，不写模型原文或第二事实库。详见 [dev.8 说明](2.8.2-dev8-life-decision-explanation.md)。Windows/真实 B站验收仍待完成。
+
 > **2.8.2-dev.7（视觉取帧并发与遗忘边界）**：[执行锁、生命周期与测试说明](2.8.2-dev7-video-visual-lease-and-forgetting.md)。仅限制 Life 自主完整采样，当前清晰记忆继续决定长期防重；尚未 Windows/DSH/B站实机验证。
 
 > **2.8.2-dev.6（读预算与网络退避只读解释）**：[实现、字段与安全边界](2.8.2-dev6-read-availability-diagnostics.md)。原共享读预算和通知网络退避不改变；管理中心显示分通道可用性/已知延期原因，不是平台成功保证。Windows/真实 B站仍待验。

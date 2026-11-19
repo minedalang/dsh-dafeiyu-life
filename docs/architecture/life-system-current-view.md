@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2-dev.8：原 Life 决策步骤只读解释自主选择/技术阻断/平台回执；不写入新账本，不替 Life 行动。
 %% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
@@ -209,6 +210,11 @@ flowchart TB
   menuGuard --> decisions
   receipts --> decisions
   receipts -->|仅经验证成功| verifiedActions
+  decisionExplanation["只读意愿解释：选择/技术阻断/回执等级｜非新事实源"]
+  managementExplanation["管理中心决策链与行动树：未结算不冒充完成"]
+  decisions -.-> decisionExplanation -.-> managementExplanation
+  %% @code decisionExplanation | lib/life-decision-trace.mjs | export function lifeTraceExplanation
+  %% @code managementExplanation | lib/management-console.js | const explanations={
 
   subgraph memory["统一回忆与成长｜精确事实仍回原受权账本核实"]
     gateway["Life Memory / 协调器：可衰减情节、隐私和遗忘"]
@@ -380,6 +386,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2-dev.8：原 Life 决策步骤只读解释自主选择/技术阻断/平台回执；不写入新账本，不替 Life 行动。
 %% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
@@ -467,6 +474,10 @@ flowchart LR
   eventRefs -.-> planner
   rest["skip：自愿休息；不能与技术失败混为一谈"]
   planner --> rest
+  decisionProjection["决策步骤只读解释｜未提供选项≠Life拒绝"]
+  planner -.-> decisionProjection
+  rest -.-> decisionProjection
+  %% @code decisionProjection | lib/life-decision-trace.mjs | export function lifeTraceExplanation
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   class social,eventRefs partial
 
@@ -526,6 +537,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2-dev.8：原 Life 决策步骤只读解释自主选择/技术阻断/平台回执；不写入新账本，不替 Life 行动。
 %% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
@@ -584,6 +596,13 @@ flowchart TB
   receipt -.-> commentOutcome
   receipt -->|独立确认成功| verified
   receipt -->|失败或未知| unknown
+  traceProjection["现有 Life 决策轨迹只读归类｜不改变平台事实或记忆"]
+  ownerDiagnostics["管理中心：意愿/技术/平台回执分层说明"]
+  receipt -.-> traceProjection
+  unknown -.-> traceProjection
+  traceProjection -.-> ownerDiagnostics
+  %% @code traceProjection | lib/life-decision-trace.mjs | export function lifeTraceExplanation
+  %% @code ownerDiagnostics | lib/management-console.js | const explanations={
   verified --> catalog
   verified --> universalCausal
   verified --> wake
@@ -714,6 +733,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2-dev.8：原 Life 决策步骤只读解释自主选择/技术阻断/平台回执；不写入新账本，不替 Life 行动。
 %% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
@@ -765,6 +785,10 @@ flowchart TB
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   menu -->|自行考虑互动，单轮最多一次写| write -->|成功且平台核验| record
   menu -->|放下或暂不继续| pause
+  decisionProjection["Episode 的模型选择/阻断/真实回执只读解释"]
+  menu -.-> decisionProjection
+  pause -.-> decisionProjection
+  %% @code decisionProjection | lib/life-decision-trace.mjs | export function lifeTraceExplanation
   write -->|结果未知| pause
   other --> record
   record -.->|因果索引，不可冒充事实| memory

@@ -1,3 +1,4 @@
+%% 2.8.2-dev.8：原 Life 决策步骤只读解释自主选择/技术阻断/平台回执；不写入新账本，不替 Life 行动。
 %% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
@@ -85,6 +86,10 @@ flowchart LR
   eventRefs -.-> planner
   rest["skip：自愿休息；不能与技术失败混为一谈"]
   planner --> rest
+  decisionProjection["决策步骤只读解释｜未提供选项≠Life拒绝"]
+  planner -.-> decisionProjection
+  rest -.-> decisionProjection
+  %% @code decisionProjection | lib/life-decision-trace.mjs | export function lifeTraceExplanation
   classDef partial fill:#fff7e4,stroke:#d99727,color:#6b4717
   class social,eventRefs partial
 
