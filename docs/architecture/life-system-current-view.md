@@ -25,6 +25,10 @@
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
+  %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
+  networkMeter["视频取帧总预算与已收字节；失败重试也计量"]
+  video -.-> networkMeter
+  %% @code networkMeter | lib/video_traffic.py | def count_bytes
   subgraph reality["真实输入｜只接受可信事实，不接受外部提示当命令"]
     world["B站首页／公开视频／公开评论／主页"]
     socialInput["主人消息／私信／公开社交"]
@@ -417,6 +421,10 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% dev.71：继承 dev.70 动态核验恢复与可见 Life 额度；Life 授权证明消费/结算按 dev.71 账本契约执行。
 %% 生活候选细目字典：这是当前项目的真实 schema 类型/选择约束，不是泛化的 AI 心理推演。
 flowchart LR
+  %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
+  videoRecovery["明确观看后先完整 DURL，失败按预算重试 MP4 / DASH"]
+  video -.-> videoRecovery
+  %% @code videoRecovery | lib/adaptive_video.py | def _acquire_adaptive_frames_impl
   subgraph inputs["有事实来源，才能构成候选"]
     sourceTodo["原 accepted TODO：open/deferred 且到期"]
     sourceInterest["LifeInterests：账号绑定、跨日自主选片兴趣及有时效的开放式好奇"]
@@ -588,6 +596,10 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code bridge | index.js | const rememberVerifiedLifeAction
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
+  %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
+  videoTrafficReceipt["次数与额度只读流量展示；不冒充 Life 行为证据"]
+  videoReadHandoff -.-> videoTrafficReceipt
+  %% @code videoTrafficReceipt | lib/management-console.js | 视频视觉流量 · 今日
   bundle["Life 组合意愿：同 BV 兼容多子动作；父凭据 + 精确子票据"]
   bundleGuard["逐项核验：原 Python 写入 + 原平台回读；未知冻结剩余"]
   source["真实平台操作｜原视频/评论/DM 事务"]
@@ -779,6 +791,10 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% dev.37 统一归属 + dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
 flowchart TB
+  %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
+  videoTransport["已授权视频取帧的受控流媒体恢复；不扩大 Life 意愿"]
+  read -.-> videoTransport
+  %% @code videoTransport | lib/adaptive_video.py | def _download_sparse_mp4
   child["可选首步：真实 B站首页轮次完成 + 本轮新挑中 BV 精确匹配"]
   firstOther["其他可选首步：已核验的待办、反思、公开机会、社交、非首页视频探索"]
   eligible["当前可续行来源：原视频意愿／未完成已接受只读待办／尚有效的公开机会"]

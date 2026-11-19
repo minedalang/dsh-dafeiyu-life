@@ -685,6 +685,11 @@
       "owner": "life-video-choice",
       "kind": "security",
       "intent": "An ambiguous deep overview only suggests time-bounded follow-up; actual video focus read requires separate Life willingness and verified current-account read action."
+    },
+    "v282-dev19-video-traffic-ui.test.mjs": {
+      "owner": "video-traffic-management-ui",
+      "kind": "ui",
+      "intent": "Quota page displays measured today/since-install video visual HTTP receive bytes with explicit excluded routes, never estimated sizes or private URLs."
     }
   },
   "protected": [
@@ -850,6 +855,11 @@
       "owner": "adaptive-video-dynamic-playurl",
       "kind": "security",
       "intent": "Official PlayURL-only dynamic HTTPS media candidates, low-bandwidth DASH selection, bounded same-track backup probes, public pinned IP checks and no limit/broken-identity retry."
+    },
+    "test_v282_dev19_video_recovery_traffic.py": {
+      "owner": "adaptive-video-recovery-and-traffic",
+      "kind": "security",
+      "intent": "Full download uses 1MiB/s deadline; timeouts recover to sparse MP4 then same-identity official DASH without double-budget, security rejection blocks retry and failed bytes reach durable privacy-preserving ledger."
     }
   },
   "pythonProtected": [

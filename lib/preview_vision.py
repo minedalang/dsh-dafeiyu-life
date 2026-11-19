@@ -19,6 +19,7 @@ import sys
 import urllib.parse
 import urllib.request
 from urllib.error import HTTPError, URLError
+from video_traffic import count_bytes, traffic_scope
 
 BV_RE = re.compile(r'^BV[0-9A-Za-z]{10}$')
 IMAGE_HOST_RE = re.compile(r'^(?:i\d+\.hdslb\.com|i\d+\.bilivideo\.com|(?:bimp|boss)\.hdslb\.com)$', re.I)
@@ -86,6 +87,7 @@ def _safe_api_get(url, max_bytes=3_000_000, image=False, index_file=False):
             if size and int(size) > max_bytes:
                 raise ValueError('预览响应超过大小限制')
             data = resp.read(max_bytes+1)
+            count_bytes('preview' if is_asset else 'metadata', len(data))
             if len(data) > max_bytes:
                 raise ValueError('预览响应超过大小限制')
             return data
@@ -602,7 +604,7 @@ def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source
         return None
 
 
-def analyze_perception(bvid, home, *, perception_source='preview', enabled=None, debug=False,
+def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled=None, debug=False,
                        max_frames=None, provider=None, model=None, return_frames=False,
                        focus_start=None, focus_end=None, view_depth='standard', network_budget_bytes=None):
     """User-selected source: real bounded public video or existing videoshot fallback.
@@ -686,6 +688,9 @@ def analyze_perception(bvid, home, *, perception_source='preview', enabled=None,
                                 focus_end=focus_end,storyboard=True,network_budget_bytes=network_budget_bytes)
         preview['perception_source_requested']='adaptive'
         preview['adaptive_fallback']={'reason':exc.code,'actual_source':'videoshot',
+            **({'attemptedStages':list(exc.attempted_stages)} if getattr(exc,'attempted_stages',None) else {}),
+            **({'previousFailure':exc.previous_failure} if getattr(exc,'previous_failure',None) else {}),
+            **({'measuredOriginalBytes':exc.measured_original_bytes} if getattr(exc,'measured_original_bytes',None) is not None else {}),
             **({'authorityDetail':exc.authority_detail} if exc.authority_detail else {}),
             **({'rejectedTrack':exc.track} if exc.track else {})}
         return preview
@@ -746,15 +751,24 @@ def record_vision_event(home, bvid, status, *, source='preview', ok=False, debug
 def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None, storyboard=False, network_budget_bytes=None):
     # The manual preview button and the actual vision tool share this receipt.
     source='manual_preview' if prefetch_only else ('video_agent_frames' if return_frames else 'vision_provider')
-    result=_analyze_preview_core(bvid,home,enabled=enabled,debug=debug,
-                                 max_frames=max_frames,provider=provider,
-                                 model=model,return_frames=return_frames,
-                                 prefetch_only=prefetch_only,focus_start=focus_start,focus_end=focus_end,
-                                 storyboard=storyboard,network_budget_bytes=network_budget_bytes)
+    with traffic_scope(home):
+        result=_analyze_preview_core(bvid,home,enabled=enabled,debug=debug,
+                                     max_frames=max_frames,provider=provider,
+                                     model=model,return_frames=return_frames,
+                                     prefetch_only=prefetch_only,focus_start=focus_start,focus_end=focus_end,
+                                     storyboard=storyboard,network_budget_bytes=network_budget_bytes)
     record_vision_event(home,bvid,result.get('status') or ('preview_failed' if not result.get('ok') else 'preview_only'),
                         source=source,ok=result.get('ok'),debug_saved=bool(result.get('debug_dir')),
                         error=result.get('error',''),times=result.get('times'))
     return result
+
+
+
+def analyze_perception(bvid, home, **kwargs):
+    # One scope spans adaptive attempts plus videoshot recovery; a failed full
+    # transfer is not erased from the usage ledger when the source changes.
+    with traffic_scope(home):
+        return _analyze_perception_impl(bvid, home, **kwargs)
 
 
 if __name__=='__main__':

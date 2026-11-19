@@ -16,6 +16,10 @@
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% dev.37 统一归属 + dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
 flowchart TB
+  %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
+  videoTransport["已授权视频取帧的受控流媒体恢复；不扩大 Life 意愿"]
+  read -.-> videoTransport
+  %% @code videoTransport | lib/adaptive_video.py | def _download_sparse_mp4
   child["可选首步：真实 B站首页轮次完成 + 本轮新挑中 BV 精确匹配"]
   firstOther["其他可选首步：已核验的待办、反思、公开机会、社交、非首页视频探索"]
   eligible["当前可续行来源：原视频意愿／未完成已接受只读待办／尚有效的公开机会"]

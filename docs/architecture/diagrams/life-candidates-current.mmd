@@ -17,6 +17,10 @@
 %% dev.71：继承 dev.70 动态核验恢复与可见 Life 额度；Life 授权证明消费/结算按 dev.71 账本契约执行。
 %% 生活候选细目字典：这是当前项目的真实 schema 类型/选择约束，不是泛化的 AI 心理推演。
 flowchart LR
+  %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
+  videoRecovery["明确观看后先完整 DURL，失败按预算重试 MP4 / DASH"]
+  video -.-> videoRecovery
+  %% @code videoRecovery | lib/adaptive_video.py | def _acquire_adaptive_frames_impl
   subgraph inputs["有事实来源，才能构成候选"]
     sourceTodo["原 accepted TODO：open/deferred 且到期"]
     sourceInterest["LifeInterests：账号绑定、跨日自主选片兴趣及有时效的开放式好奇"]

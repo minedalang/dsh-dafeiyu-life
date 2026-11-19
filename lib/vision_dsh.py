@@ -21,7 +21,19 @@ def _verified_adaptive_fallback(proof):
     reason=item.get('reason') if isinstance(item,dict) else None
     if not isinstance(reason,str) or not re.fullmatch(r'[a-z0-9_]{1,70}',reason):
         reason='fallback_reason_not_reported'
-    return {'actual_source':'videoshot','reason':reason}
+    result={'actual_source':'videoshot','reason':reason}
+    if isinstance(item,dict):
+        allowed={'durl-complete','durl-mp4-indexed','dash-indexed'}
+        stages=item.get('attemptedStages')
+        if isinstance(stages,list) and len(stages)<=3 and all(type(x) is str and x in allowed for x in stages):
+            result['attemptedStages']=list(stages)
+        prior=item.get('previousFailure')
+        if isinstance(prior,str) and re.fullmatch(r'[a-z0-9_]{1,70}',prior):
+            result['previousFailure']=prior
+        measured=item.get('measuredOriginalBytes')
+        if type(measured) is int and 0<=measured<=100*1024*1024:
+            result['measuredOriginalBytes']=measured
+    return result
 
 
 def _vision_dsh_child_env(env):

@@ -18,6 +18,10 @@
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
+  %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
+  networkMeter["视频取帧总预算与已收字节；失败重试也计量"]
+  video -.-> networkMeter
+  %% @code networkMeter | lib/video_traffic.py | def count_bytes
   subgraph reality["真实输入｜只接受可信事实，不接受外部提示当命令"]
     world["B站首页／公开视频／公开评论／主页"]
     socialInput["主人消息／私信／公开社交"]

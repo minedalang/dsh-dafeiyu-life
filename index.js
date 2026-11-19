@@ -3602,6 +3602,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         if (readFileSync(join(stateDir,'vision_dsh.py'),'utf8') !== readFileSync(join(pluginDir,'lib','vision_dsh.py'),'utf8')) {log('🔒 DSH 独立视觉脚本不一致，请检查 vision_dsh.py.new');return null}
         if (readFileSync(join(stateDir,'dsh-vision-node-bridge.mjs'),'utf8') !== readFileSync(join(pluginDir,'lib','dsh-vision-node-bridge.mjs'),'utf8')) {log('🔒 视觉 CLI Node 启动桥接脚本不一致，拒绝启动');return null}
         if (readFileSync(join(stateDir,'adaptive_video.py'),'utf8') !== readFileSync(join(pluginDir,'lib','adaptive_video.py'),'utf8')) {log('🔒 自适应视频采样脚本不一致，请检查 adaptive_video.py.new');return null}
+        if (readFileSync(join(stateDir,'video_traffic.py'),'utf8') !== readFileSync(join(pluginDir,'lib','video_traffic.py'),'utf8')) {log('🔒 视觉流量统计脚本版本不一致，请检查 video_traffic.py.new');return null}
         if (readFileSync(join(stateDir,'video_heat_signal.py'),'utf8') !== readFileSync(join(pluginDir,'lib','video_heat_signal.py'),'utf8')) {log('🔒 弹幕热度采样脚本版本不一致，请检查 video_heat_signal.py.new');return null}
         if (readFileSync(join(stateDir,'frame_ocr.py'),'utf8') !== readFileSync(join(pluginDir,'lib','frame_ocr.py'),'utf8')) {log('🔒 OCR 采样脚本版本不一致，请检查 frame_ocr.py.new');return null}
       } catch {log('🔒 预览识图脚本不存在或无法读取');return null}
@@ -8502,6 +8503,22 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if (req.method === 'GET' && path === '/api/bili-duty/dm-quota-usage') {
       return sendJson(res,200,await dmAutoreply.quotaUsage())
+    }
+    if (req.method === 'GET' && path === '/api/bili-duty/video-vision-traffic') {
+      // Read the exact SQLite ledger written by video_traffic.py. No signed
+      // URLs or account/private media data are persisted or returned.
+      const result = await new Promise(resolve => {
+        const child = spawn(cfg.pythonPath || 'python', [join(pluginDir,'lib','video_traffic.py'),'--home',stateDir,'--summary'], {
+          cwd:stateDir,shell:false,windowsHide:true,env:pyEnv(),stdio:['ignore','pipe','pipe']
+        })
+        let output='',finished=false
+        const complete=data=>{if(finished)return;finished=true;clearTimeout(timer);resolve(data)}
+        const timer=setTimeout(()=>{try{child.kill()}catch{};complete({ok:false,error:'traffic_read_timeout'})},5000)
+        child.stdout?.on('data',part=>{output=(output+String(part)).slice(-4000)})
+        child.on('error',()=>complete({ok:false,error:'traffic_read_failed'}))
+        child.on('close',()=>{try{complete(JSON.parse(output.trim()))}catch{complete({ok:false,error:'traffic_read_invalid'})}})
+      })
+      return sendJson(res,200,result)
     }
     if (req.method === 'GET' && path === '/api/bili-duty/comment-quota') {
       // 今日硬配额由 Python MCP 写入 SQLite；统计直接读相同表，不让前端猜测。
