@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
 %% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
@@ -46,7 +47,7 @@ flowchart TB
   socialInput --> socialFacts
   tasksInput --> canonical
   adapter --> eventLedger
-  videoFocusHint["真实视频疑点候选｜不是补帧授权"]
+  videoFocusHint["可信 videoshot 采样时刻 + Python 差异 + 同期字幕/未验证视觉线索｜不是补帧授权"]
   adapter -.->|概览回执可提出候选| videoFocusHint
   videoFocusHint -.->|Life 另行决定；可拒绝/延期| selection
   socialFacts --> accountChannels
@@ -174,7 +175,7 @@ flowchart TB
     episodeContinuation["Life 自选续行：先 observe_video standard 全局缩略图或休息；实际观察后才可能 focus_video · 最多 4 次"]
     episodeVisualFirst["Life 已选择首次全局：Python 扫全片 videoshot 候选 · 最多 24 帧两分镜"]
     episodeVisualModel["视觉模型第一次：概览与采样时间锚点（不声称完整观看）"]
-    episodeLifeSecond["Life 看完后自行选择或拒绝局部深入；精确 BV/时间/账号门禁"]
+    episodeLifeSecond["Life 看后结合人格/情绪/记忆与候选线索自主选择：深入/跳过/延期；错误不等于拒绝"]
     episodeFocusRead["真实 MP4/DASH Range + FFmpeg 局部取帧 · 视觉模型第二次（仅获授权）"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
@@ -409,6 +410,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
 %% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
@@ -484,7 +486,7 @@ flowchart LR
   sourceSocial --> social
   privateBound -.->|仅允许的自主私信机会，无权限者只读| social
   sourceVideo --> video
-  videoFocusHint["全片 videoshot 概览已核验之后的局部候选｜仅真实采样时间；Life 二次选择"]
+  videoFocusHint["全片 videoshot 已核验时间 + Python 变化/同期字幕/未验证画面假设｜Life 看后二次选择"]
   sourceVideo -.-> videoFocusHint
   videoFocusHint -.->|Life 看完才独立选择；拒绝时无 FFmpeg| planner
   sourceVideoFeedback --> reviewFeedback
@@ -572,6 +574,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
 %% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
@@ -665,7 +668,7 @@ flowchart TB
   videoTrace -.->|精确 BV + 当前账号的已核验回执| visualReuse
   visualReuse -.->|现存清晰观察可阻止冗余取帧，不替代 Life 选择| planner
   visualLease["真实采样期间账号/BV跨进程互斥；仅短期账本不代替可遗忘记忆"]
-  videoFocusHint["全局低清分镜可信回执后才提供真实局部时间候选｜非授权"]
+  videoFocusHint["全局低清分镜回执 + 候选字幕/像素差异/未验证模型线索｜非授权"]
   videoFocusHint -.->|Life 第二轮独立选择；再用原视频 FFmpeg 核验| planner
   planner -.->|明确选中完整视觉读取| visualLease
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
@@ -782,6 +785,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
 %% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
@@ -844,11 +848,11 @@ flowchart TB
   visualLease -.->|成功后仍以原可信回执记因果| record
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   dev20Overview["首次 Life observe_video 仅全片低清概览；Python 时间/差异筛选，视觉 AI 第一次"]
-  dev20Vote["取得可信预览回执后 Life 二次决定：停止/休息或给定时间点深入"]
+  dev20Vote["全局回执后结合兴趣情绪记忆与分段证据二次决定：skip/defer/深入；故障不算拒绝"]
   dev20Focus["独立真实 MP4/DASH 片段取帧及视觉 AI 第二次；结果再交 Life"]
   menu -.->|自选全局| dev20Overview --> dev20Vote
   dev20Vote -->|选择可信时间锚点| dev20Focus
-  dev20Vote -.->|拒绝| pause
+  dev20Vote -.->|跳过或延期；技术故障另行说明| pause
   dev20Focus -.->|观察证据| record
   menu -->|自行考虑互动，单轮最多一次写| write -->|成功且平台核验| record
   menu -->|放下或暂不继续| pause

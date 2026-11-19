@@ -2319,7 +2319,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         }})
       return {...overview,postOverviewFocus,
         // The raw focused model answer is not copied into other channels.
-        focusReviewStatus:postOverviewFocus.status==='focused'?'life-focused':'life-declined-or-unavailable'}
+        focusReviewStatus:postOverviewFocus.status==='focused'?'life-focused':
+          postOverviewFocus.status==='life-declined'?'life-declined':
+          postOverviewFocus.status==='life-deferred'?'life-deferred':'life-focus-unavailable'}
     }
   })
 
@@ -2377,7 +2379,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       }
     })
     return {mode:'life-two-stage',status:result.status,
-      candidates:candidates.map(p=>({atSeconds:p.atSeconds,startSeconds:p.startSeconds,endSeconds:p.endSeconds})),
+      candidates:candidates.map(p=>({atSeconds:p.atSeconds,startSeconds:p.startSeconds,endSeconds:p.endSeconds,
+        ...(Number.isFinite(p.pixelChange)?{pixelChange:p.pixelChange}:{}),
+        ...(p.nearbySpeech?{nearbySpeech:String(p.nearbySpeech).slice(0,110),speechSource:p.speechSource}:{}),
+        ...(p.visualCue?{visualCue:String(p.visualCue).slice(0,110),visualCueSource:p.visualCueSource}:{}),
+        selectionBasis:p.selectionBasis,scanCoverage:p.scanCoverage})),
       ...(result.reason?{reason:result.reason}:{}),
       ...(result.focusWindow?{focusWindow:result.focusWindow}:{}),
       ...(result.review?{review:result.review,visual:job.focusVisual}:{}),

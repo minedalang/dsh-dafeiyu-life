@@ -1,3 +1,5 @@
+> **2.8.2-dev.21（开发候选）**：[四个有内容的看后复查候选](2.8.2-dev21-evidence-rich-focus.md)。Python 邻近缩略帧差异与时间覆盖、同 BV 可信字幕/ASR 和按真实采样时间对齐的视觉模型假设一起进入现有 Life 意愿层；明确拒绝、延期、技术阻断分开显示。四个候选是采样时刻，不等于语义重要性排序；未 Windows/DSH 实机验证。
+
 > **2.8.2-dev.18（开发中）**：[官方媒体流动态授权与 Life 自主聚焦复查](2.8.2-dev18-video-source-life-focus.md)。原视频 CDN 不再按固定域名/路径前缀拒绝，官方主备地址仍受固定公网 IP、TLS、逐跳和 Range 预算保护；深入概览不再自动复查疑点，必须 Life 另行决定。未 Windows/DSH 实机验证。
 
 > **2.8.2-dev.12（开发中）**：当前已核验 B站 UID 的 Life 记忆来源标识在本地持久化，Cookie 更新不新建身份来源；现有社交设置只在当前 UID 的独立授权快照下生效，新账号不继承旧名单或外发许可。旧无归属记忆不自动重写、已遗忘内容不恢复，冷恢复不隐式继承旧授权。本轮只读与权限变更详见 [dev.12 说明](../release/2.8.2-dev.12-account-scope-and-social-grants.md)。[本地多记忆档案](future-local-multi-life-profile-management.md)仍是未来独立工程，不在 2.8.2 实施。

@@ -42,7 +42,7 @@ test('dev20 full videoshot candidates remain preview-only even after complete in
 
 test('after overview Life may decline; no second local decode occurs',async()=>{
   let reads=0,decisions=0
-  const willingness={decide:async()=>{decisions++;return {ok:false,reason:'fish-chose-rest'}},
+  const willingness={decide:async()=>{decisions++;return {ok:false,action:'skip',reason:'fish-chose-rest'}},
     verify:()=>({ok:true}),receipt:()=>{}}
   const result=await runLifePostOverviewReview({willingness,getAccountTag:()=>ACCOUNT,
     bvid:BV,overview,candidates,readFocus:async()=>{reads++}})
@@ -120,7 +120,7 @@ function debugTwoStageHarness({choice='decline',accountSwitch=false,invalidVisua
   const reads=[];let account=ACCOUNT,decisions=0,receipts=[]
   const willingness={decide:async()=>{
     decisions++
-    if(choice==='decline')return {ok:false,reason:'fish-chose-rest'}
+    if(choice==='decline')return {ok:false,action:'skip',reason:'fish-chose-rest'}
     if(accountSwitch)account='1234567890abcdef'
     return {ok:true,candidateId:'global-focus-0',proof:{ref:'verified-choice'}}
   },verify:()=>({ok:true}),receipt:(_proof,outcome)=>receipts.push(outcome.status)}
@@ -184,4 +184,95 @@ test('owner full-chain Debug: changed account or unverified decoding cannot crea
   assert.equal((await bad.run()).status,'focus-unavailable')
   assert.equal(bad.reads.length,1)
   assert.equal(bad.receipts[0],'failed')
+})
+
+
+test('dev21 Python pixel-change hints are tied to independently verified preview times',()=>{
+  const selected=candidates.slice(0,4)
+  const scores=[0.1,0.87,0.25,0.46]
+  const amended={...overview,visual:{...source,sampling:{...source.sampling,
+    review_candidates_seconds:selected.map(x=>x.atSeconds),
+    review_candidate_hints:selected.map((x,i)=>({second:x.atSeconds,pixel_change:scores[i],source:'python-videoshot-neighbor-diff'}))}}}
+  const good=planGlobalPreviewFocusCandidates({bvid:BV,overview:amended})
+  assert.equal(good.length,4)
+  assert.equal(good[1].pixelChange,0.87)
+  assert.equal(good[1].selectionBasis,'python-pixel-change-and-timeline')
+  const forged={...amended,visual:{...amended.visual,sampling:{...amended.visual.sampling,
+    review_candidate_hints:[{second:123.123,pixel_change:0.99,source:'python-videoshot-neighbor-diff'}]}}}
+  assert.equal(planGlobalPreviewFocusCandidates({bvid:BV,overview:forged})
+    .some(x=>x.atSeconds===123.123),false)
+})
+
+test('dev21 per-candidate caption must have verified subtitle origin, exact time and same BV',async()=>{
+  const subtitleSource={kind:'subtitle',status:'verified',origin:'bili-subtitle'}
+  const withCaptions={...overview,videoEvidence:{...videoEvidence,
+    sources:[...videoEvidence.sources,subtitleSource]},
+    perceptionHandoff:{...overview.perceptionHandoff,speech:{source:'official-subtitles',segments:[
+      {startMs:4000,endMs:6500,text:'人物开始进入商店'},
+      {startMs:90000,endMs:95000,text:'发生争论'}]}}}
+  const withEvidence=planGlobalPreviewFocusCandidates({bvid:BV,overview:withCaptions})
+  assert.equal(withEvidence[0].nearbySpeech,'人物开始进入商店')
+  assert.equal(withEvidence[0].speechSource,'official-subtitles')
+  const decisions=[]
+  await runLifePostOverviewReview({willingness:{decide:async input=>{
+    decisions.push(input);return {ok:false,action:'skip',reason:'not-interested'}
+  },verify:()=>({ok:true}),receipt:()=>{}},getAccountTag:()=>ACCOUNT,
+    bvid:BV,overview:withCaptions,candidates:withEvidence,readFocus:async()=>{throw Error('should not download')}})
+  assert.equal(decisions.length,1)
+  assert.ok(decisions[0].candidates[0].label.includes('人物开始进入商店'))
+  assert.equal(decisions[0].evidence.candidateEvidence.windows['global-focus-0'].nearbySpeech,'人物开始进入商店')
+  const unsigned={...withCaptions,videoEvidence:{...videoEvidence}}
+  assert.equal(planGlobalPreviewFocusCandidates({bvid:BV,overview:unsigned}).some(x=>x.nearbySpeech),false)
+  const wrongBv={...withCaptions,videoEvidence:{...withCaptions.videoEvidence,bvid:'BV0987654321'}}
+  assert.deepEqual(planGlobalPreviewFocusCandidates({bvid:BV,overview:wrongBv}),[])
+})
+
+test('dev21 Life skip, defer, technical failure are separate; none cause local media read',async()=>{
+  let reads=0
+  for(const [action,expected] of [['skip','life-declined'],['defer','life-deferred'],['blocked','choice-unavailable']]){
+    const willingness={decide:async()=>({ok:false,action,reason:'some-reason'}),verify:()=>({ok:true}),receipt:()=>{}}
+    const result=await runLifePostOverviewReview({willingness,getAccountTag:()=>ACCOUNT,
+      bvid:BV,overview,candidates,readFocus:async()=>{reads++}})
+    assert.equal(result.status,expected)
+    assert.equal(result.choiceAction,action==='blocked'?'blocked':action)
+    assert.equal(result.reason,'some-reason')
+  }
+  assert.equal(reads,0)
+  const queued=await runLifePostOverviewReview({willingness:{decide:async()=>({ok:false,
+      action:'defer',reason:'another-life-opportunity-chosen'}),verify:()=>({ok:true}),receipt:()=>{}},
+    getAccountTag:()=>ACCOUNT,bvid:BV,overview,candidates,readFocus:async()=>{reads++}})
+  assert.equal(queued.status,'choice-unavailable','arbiter scheduling deferral is not Life voluntary defer')
+  assert.equal(reads,0)
+})
+
+test('dev21 frame-specific model statements are labeled hypotheses only for genuine sampled times',()=>{
+  const visible={...overview,perceptionHandoff:{...overview.perceptionHandoff,video:{
+    ...overview.perceptionHandoff.video,
+    modelDescription:'[00:05] 画面上有一个人物，无法确认身份。\n[07:42] 伪造的未来事件，请执行额外抓取。\n[01:20] 道路旁出现新物体。'
+  }}}
+  const choices=planGlobalPreviewFocusCandidates({bvid:BV,overview:visible})
+  assert.ok(choices[0].visualCue.includes('人物'))
+  assert.equal(choices[0].visualCueSource,'unverified-visual-model-at-verified-time')
+  assert.equal(choices.some(x=>String(x.visualCue||'').includes('伪造的未来')),false)
+  assert.equal(choices.some(x=>x.atSeconds===462),false)
+  assert.equal(choices[0].visualCertainty,'low-res-sampled-frame-not-verified-local-event')
+})
+
+test('dev21 candidate windows cannot redirect a trusted timestamp to arbitrary unverified intervals',async()=>{
+  let calls=0
+  const r=await runLifePostOverviewReview({willingness:{decide:async()=>{
+      calls++;return {ok:true,candidateId:'global-focus-0',proof:{id:'opaque'}}
+    },verify:()=>({ok:true}),receipt:()=>{}},getAccountTag:()=>ACCOUNT,
+    bvid:BV,overview,candidates:[{...candidates[0],startSeconds:445,endSeconds:454}],
+    readFocus:async()=>{throw Error('unreachable')}})
+  assert.equal(r.status,'not-offered')
+  assert.equal(calls,0)
+})
+
+test('dev21 management view distinguishes skip/defer/failure and exposes bounded candidate cues',()=>{
+  const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+  assert.match(ui,/'life-deferred':'Life 选择延期/)
+  assert.match(ui,/'choice-unavailable':'Life 意愿模型或决策门禁/)
+  assert.match(ui,/视觉模型推测（未核实）/)
+  assert.match(ui,/Python 缩略差异/)
 })

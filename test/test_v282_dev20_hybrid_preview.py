@@ -50,6 +50,14 @@ class HybridPreview(unittest.TestCase):
         self.assertGreater(result['times'][-1]-result['times'][0],350)
         for t in sampler['review_candidates_seconds']:
             self.assertIn(t,result['times'])
+        self.assertEqual(len(sampler['review_candidate_hints']),4)
+        self.assertEqual(sampler['review_candidates_seconds'],
+                         [h['second'] for h in sampler['review_candidate_hints']])
+        for h in sampler['review_candidate_hints']:
+            self.assertEqual(h['source'],'python-videoshot-neighbor-diff')
+            self.assertGreaterEqual(h['pixel_change'],0)
+            self.assertLessEqual(h['pixel_change'],1)
+            self.assertIn(h['second'],result['times'])
         for board in result['frames']:
             self.assertLessEqual(board['tile_count'],12)
             with Image.open(BytesIO(board['bytes'])) as image:self.assertEqual(image.width,384)
