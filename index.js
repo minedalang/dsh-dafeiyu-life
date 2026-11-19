@@ -32,6 +32,7 @@ import { buildGrowthContext, syncOwnedSelectionsToGrowth, listGrowth, proposeGro
 import { growthSuggestionPrompt, parseGrowthSuggestion, growthSuggestionIssue } from './lib/growth-suggestion.mjs'
 import {readVideoDiscussionDiagnostics,discussionAccountTag} from './lib/video-discussion-diagnostics.mjs'
 import {createLifeOpportunities} from './lib/life-opportunities.mjs'
+import {withLifeVideoVisualLease} from './lib/life-planner-atomic.mjs'
 import {createLifeSharedBiliLinks} from './lib/life-shared-bili-links.mjs'
 import {canReadSharedLinkFromSender} from './lib/life-shared-link-policy.mjs'
 import {unifiedOwnerDmCutover} from './lib/unified-dm-cutover.mjs'
@@ -2206,9 +2207,15 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       return runLifeChosenVideoRead({willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,
         bvid,mode:'new',read:async({viewDepth,account})=>{
           if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
-          return executeWatchVideo({bvid,include_comments:true,include_danmaku:true,
+          const read=()=>executeWatchVideo({bvid,include_comments:true,include_danmaku:true,
             record_session:false,view_depth:viewDepth,explorationPurpose:'life-voluntary-new-video'},
             {lifeChoiceVerified:true})
+          if(!['standard','deep'].includes(viewDepth))return read()
+          return withLifeVideoVisualLease(stateDir,{accountTag:account,bvid},async()=>{
+            if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
+            if(lifeOpportunities.hasVerifiedVideoVisual(bvid,account))return {ok:false,reason:'video-already-observed'}
+            return read()
+          })
         }})
     }
   })
@@ -7362,6 +7369,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     canLifeObserveVideo:()=>{refreshCfg();return cfg.masterEnabled===true&&cfg.visionEnabled===true&&
       ['independent_dsh','independent_local'].includes(resolvedVisionMode())&&
       lifeOpportunityAccountReady()&&!accountBinding.status().blocked},
+    withLifeVisualObservationLease:(target,run)=>withLifeVideoVisualLease(stateDir,target,run),
     executeLifeVideoObservation:async({bvid,viewDepth,accountTag})=>{
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.lifeAgentMode!=='active'||cfg.visionEnabled!==true||

@@ -1,3 +1,4 @@
+%% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
@@ -68,7 +69,10 @@ flowchart TB
   videoTrace -.->|事实引用，不产生新记忆或行为| recall
   visualReuse["视觉防重兜底：现存清晰且本账号的可信观察记忆；不读永久档案或模糊细节"]
   videoTrace -.->|精确 BV + 当前账号的已核验回执| visualReuse
-  visualReuse -.->|只抑制冗余 Episode 取帧，不替代 Life 选择| planner
+  visualReuse -.->|现存清晰观察可阻止冗余取帧，不替代 Life 选择| planner
+  visualLease["真实采样期间账号/BV跨进程互斥；仅短期账本不代替可遗忘记忆"]
+  planner -.->|明确选中完整视觉读取| visualLease
+  %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]
   privateBuffer["短期对话片段：跨进程原子短锁+认领；按账号/UID隔离；原文限期"]
   privateBatch["安静期/话题收尾/容量触发：模型批量提炼；失败退避、成功删除原文"]

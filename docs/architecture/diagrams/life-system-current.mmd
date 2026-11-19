@@ -1,3 +1,4 @@
+%% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
@@ -146,7 +147,7 @@ flowchart TB
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
     episodeContinuation["Life 自选续行：可选 observe_video standard/deep 或直接休息 · 不隐式初看 · 最多 4 次"]
-    episodeVisualFirst["进入已核实 BV 后先尝试一次受控画面采样；失败只保留资料，禁止外发"]
+    episodeVisualFirst["Life 明确选择取帧后才调用视觉能力；失败不冒充已看，禁止外发"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
     episodeAftercare["已核验写入计一步 · 下一写前必须真只读或实际休息；每 tick 最多一写"]
@@ -162,7 +163,10 @@ flowchart TB
   home --> homeCandidateMatch -->|仅本轮精确匹配入选 BV；不等于观看| homeEpisode
   homeEpisode --> lifeEpisode
   explore -.->|搜索/人物作品/视频核验成功后进入同一意愿账本| lifeEpisode
-  lifeEpisode --> episodeVisualFirst --> episodeContinuation
+  lifeEpisode --> episodeContinuation -->|明确选定取帧及深度| episodeVisualFirst
+  episodeVisualFirst --> visualLease
+  visualLease["账号/BV跨进程视觉只读锁｜持有至核验回执写入；不授权读写"]
+  %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   lifeEpisode --> episodeDiscussion --> episodeContinuation
   lifeEpisode --> episodeHomeMore --> episodeContinuation
   lifeEpisode --> episodeAftercare -.->|只读／休息后再次选择，非自动外发| episodeContinuation

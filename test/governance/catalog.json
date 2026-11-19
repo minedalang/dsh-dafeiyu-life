@@ -621,6 +621,11 @@
       "kind": "security",
       "intent": "Require current account clear public visual memory fallback for missing visual ledger receipts and bounded sample timestamp coverage, without archives, private data, forced visual reads or external writes."
     },
+    "v282-dev7-visual-read-lease.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Serialize full visual observations across independent processes by account and exact BV, fail closed for unsafe claims, recover provably dead read-only owners, and honor clear-memory versus short execution receipt lifetime."
+    },
     "v282-dev6-read-availability-projection.test.mjs": {
       "owner": "life-read-diagnostics",
       "kind": "security",

@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
@@ -153,7 +154,7 @@ flowchart TB
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
     episodeContinuation["Life 自选续行：可选 observe_video standard/deep 或直接休息 · 不隐式初看 · 最多 4 次"]
-    episodeVisualFirst["进入已核实 BV 后先尝试一次受控画面采样；失败只保留资料，禁止外发"]
+    episodeVisualFirst["Life 明确选择取帧后才调用视觉能力；失败不冒充已看，禁止外发"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
     episodeHomeMore["可自愿额外获取一次首页推荐；候选未必入选"]
     episodeAftercare["已核验写入计一步 · 下一写前必须真只读或实际休息；每 tick 最多一写"]
@@ -169,7 +170,10 @@ flowchart TB
   home --> homeCandidateMatch -->|仅本轮精确匹配入选 BV；不等于观看| homeEpisode
   homeEpisode --> lifeEpisode
   explore -.->|搜索/人物作品/视频核验成功后进入同一意愿账本| lifeEpisode
-  lifeEpisode --> episodeVisualFirst --> episodeContinuation
+  lifeEpisode --> episodeContinuation -->|明确选定取帧及深度| episodeVisualFirst
+  episodeVisualFirst --> visualLease
+  visualLease["账号/BV跨进程视觉只读锁｜持有至核验回执写入；不授权读写"]
+  %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   lifeEpisode --> episodeDiscussion --> episodeContinuation
   lifeEpisode --> episodeHomeMore --> episodeContinuation
   lifeEpisode --> episodeAftercare -.->|只读／休息后再次选择，非自动外发| episodeContinuation
@@ -376,6 +380,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
@@ -434,6 +439,9 @@ flowchart LR
   intentions --> resume
   visibleVisualHistory["清晰视觉回执：当前账号精确 BV，只读、不检索遗忘档案"]
   visibleVisualHistory -.->|仅复核续行视频取帧菜单| resume
+  visualLease["执行期：账号/BV取帧互斥，不是候选与记忆来源"]
+  resume -.->|模型明确要视觉采样才执行| visualLease
+  %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   sourceSocial --> social
   privateBound -.->|仅允许的自主私信机会，无权限者只读| social
   sourceVideo --> video
@@ -518,6 +526,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
@@ -588,7 +597,10 @@ flowchart TB
   videoTrace -.->|事实引用，不产生新记忆或行为| recall
   visualReuse["视觉防重兜底：现存清晰且本账号的可信观察记忆；不读永久档案或模糊细节"]
   videoTrace -.->|精确 BV + 当前账号的已核验回执| visualReuse
-  visualReuse -.->|只抑制冗余 Episode 取帧，不替代 Life 选择| planner
+  visualReuse -.->|现存清晰观察可阻止冗余取帧，不替代 Life 选择| planner
+  visualLease["真实采样期间账号/BV跨进程互斥；仅短期账本不代替可遗忘记忆"]
+  planner -.->|明确选中完整视觉读取| visualLease
+  %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]
   privateBuffer["短期对话片段：跨进程原子短锁+认领；按账号/UID隔离；原文限期"]
   privateBatch["安静期/话题收尾/容量触发：模型批量提炼；失败退避、成功删除原文"]
@@ -702,6 +714,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
@@ -746,6 +759,10 @@ flowchart TB
   videoFeedback -.->|review_video_feedback 不产出平台新回执| menu
   record --> context --> eligible --> due --> menu
   menu -->|自主继续| read -->|成功并核验| record
+  visualLease["视频采样只读互斥：当前账号+精确BV；直到核验回执持久化"]
+  menu -->|明确选择观察画面| visualLease
+  visualLease -.->|成功后仍以原可信回执记因果| record
+  %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   menu -->|自行考虑互动，单轮最多一次写| write -->|成功且平台核验| record
   menu -->|放下或暂不继续| pause
   write -->|结果未知| pause

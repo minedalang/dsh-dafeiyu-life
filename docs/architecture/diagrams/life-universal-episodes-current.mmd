@@ -1,3 +1,4 @@
+%% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
 %% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
 %% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
@@ -42,6 +43,10 @@ flowchart TB
   videoFeedback -.->|review_video_feedback 不产出平台新回执| menu
   record --> context --> eligible --> due --> menu
   menu -->|自主继续| read -->|成功并核验| record
+  visualLease["视频采样只读互斥：当前账号+精确BV；直到核验回执持久化"]
+  menu -->|明确选择观察画面| visualLease
+  visualLease -.->|成功后仍以原可信回执记因果| record
+  %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   menu -->|自行考虑互动，单轮最多一次写| write -->|成功且平台核验| record
   menu -->|放下或暂不继续| pause
   write -->|结果未知| pause
