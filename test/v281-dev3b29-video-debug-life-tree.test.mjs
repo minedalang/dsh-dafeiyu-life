@@ -68,7 +68,7 @@ test('owner Debug source is an explicit allowlisted choice, preview by default; 
   assert.match(ui,/depth:\$\('video-debug-depth'\)\.value,sourceMode/)
   assert.match(index,/if\(body\?\.sourceMode!==undefined&&!\['preview','adaptive','life-two-stage'\]\.includes\(body\.sourceMode\)\)/)
   assert.match(index,/const debugPerceptionSource=requestedMode==='adaptive'\?'adaptive':'preview'/)
-  assert.match(index,/__debugDryRun:true\},\s*\{debugPerceptionSource\}/)
+  assert.match(index,/__debugDryRun:true\},\s*\{debugPerceptionSource,debugTwoStageGlobalOverview:requestedMode==='life-two-stage'\}/)
   assert.match(index,/lifePayload\.visionDecision='owner-debug-'\+visionPlan\.depth/)
   assert.match(index,/if\(!dryRun&&args\.record_session!==false\)/)
   assert.match(html,/<option value="life-two-stage">完整两阶段/)

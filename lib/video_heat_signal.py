@@ -97,6 +97,25 @@ def obtain_heat_signal(bvid, cid, duration):
         return None
 
 
+def obtain_preview_heat_signal(bvid, cid, duration):
+    """Optional, official read-only PBP curve for videoshot candidate ranking.
+
+    Unlike decoded-video heat retrieval, this low-cost preview path does not
+    attempt XML fallback; absence of PBP is explicitly an unavailable signal.
+    """
+    if not re.fullmatch(r'BV[0-9A-Za-z]{10}', str(bvid or '')):
+        return None
+    if not isinstance(cid, int) or not 0 < cid < 10**20:
+        return None
+    duration = _float(duration)
+    if duration is None or not 3 <= duration <= 2700:
+        return None
+    try:
+        return _pbp_curve(bvid, cid, duration)
+    except (ValueError, KeyError, TypeError, HTTPError, URLError, OSError):
+        return None
+
+
 def heat_at(signal, second):
     """Bounded lag-aware heat response: a burst can follow the actual moment."""
     if not signal:

@@ -2035,9 +2035,17 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       args.explorationPurpose!=='life-voluntary-focus-read'&&
       args.explorationPurpose!=='life-episode-voluntary-focus'
     const debugPerceptionSource=dryRun&&internal.debugPerceptionSource==='adaptive'?'adaptive':'preview'
+    // The fish consents to *whether* to view images; the owner's 12/24/48
+    // setting controls the extent of the first global videoshot overview.
+    // Do not demand a speculative pre-watch 'deep' decision. Never increase
+    // single-stage or skim reads, and never authorize the second focus read.
+    const fullGlobalPreview=(lifeGlobalOverview||
+      (dryRun&&internal.debugTwoStageGlobalOverview===true))&&
+      willInvokeVision&&earlyVisionPlan.depth!=='skim'
+    const samplerDepth=fullGlobalPreview?'deep':earlyVisionPlan.depth
     const visualPromise=willInvokeVision?beginVideoObservationRead(()=>
       call('bili_preview_vision',{bvid,
-        perception_source:lifeGlobalOverview?'preview':'adaptive',view_depth:earlyVisionPlan.depth,
+        perception_source:lifeGlobalOverview?'preview':'adaptive',view_depth:samplerDepth,
         // Only the localhost owner Debug endpoint may choose a different
         // source; real Life and main-Session reads retain their existing gates.
         ...(dryRun?{perception_source:debugPerceptionSource}:{}),
@@ -2381,6 +2389,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     return {mode:'life-two-stage',status:result.status,
       candidates:candidates.map(p=>({atSeconds:p.atSeconds,startSeconds:p.startSeconds,endSeconds:p.endSeconds,
         ...(Number.isFinite(p.pixelChange)?{pixelChange:p.pixelChange}:{}),
+        ...(p.semanticSuggested===true?{semanticSuggested:true}:{}),
+        ...(Number.isFinite(p.heat)&&p.heatSource==='bili-pbp-heat-curve'?{heat:p.heat,heatSource:p.heatSource}:{}),
         ...(p.nearbySpeech?{nearbySpeech:String(p.nearbySpeech).slice(0,110),speechSource:p.speechSource}:{}),
         ...(p.visualCue?{visualCue:String(p.visualCue).slice(0,110),visualCueSource:p.visualCueSource}:{}),
         selectionBasis:p.selectionBasis,scanCoverage:p.scanCoverage})),
@@ -8567,7 +8577,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           const result=await executeWatchVideo({bvid,
             view_depth:requestedMode==='life-two-stage'?'standard':depth,
             include_comments:false,include_danmaku:true,record_session:false,__debugDryRun:true},
-            {debugPerceptionSource})
+            {debugPerceptionSource,debugTwoStageGlobalOverview:requestedMode==='life-two-stage'})
           if(requestedMode==='life-two-stage'&&result?.ok===true){
             job.twoStage=await runVideoDebugTwoStage({bvid,account,job,overview:result})
             result.debugTwoStage=job.twoStage

@@ -276,3 +276,43 @@ test('dev21 management view distinguishes skip/defer/failure and exposes bounded
   assert.match(ui,/视觉模型推测（未核实）/)
   assert.match(ui,/Python 缩略差异/)
 })
+
+
+test('dev22 semantic recommendation chooses a verified frame beyond old four Python anchors; invented times cannot enter review',()=>{
+  const options={...overview,perceptionHandoff:{...overview.perceptionHandoff,video:{
+    ...overview.perceptionHandoff.video,
+    modelDescription:'[00:05] 起始画面。\n复查候选：[03:20] 游戏出现新的道具，值得核实如何操作。\n复查候选：[06:50] 这个时间没有采样，不能用。'
+  }}}
+  const suggested=planGlobalPreviewFocusCandidates({bvid:BV,overview:options})
+  assert.equal(suggested.length,4)
+  const semantic=suggested.find(x=>x.atSeconds===200)
+  assert.ok(semantic)
+  assert.equal(semantic.semanticSuggested,true)
+  assert.equal(semantic.selectionBasis,'model-suggested-verified-preview-time')
+  assert.match(semantic.visualCue,/新的道具/)
+  assert.equal(suggested.some(x=>x.atSeconds===410),false)
+  assert.ok(suggested.every(x=>times.includes(x.atSeconds*1000)))
+})
+
+test('dev22 optional official crowd heat is a ranking hint, never a new timestamp or decoded-video proof',()=>{
+  const visual={...source,sampling:{...source.sampling,sampler_version:7,
+    review_candidate_hints:[{second:5,pixel_change:0.1,source:'python-videoshot-neighbor-diff'},
+      {second:80,pixel_change:0.4,source:'python-videoshot-neighbor-diff'},
+      {second:155,pixel_change:0.6,source:'python-videoshot-neighbor-diff'},
+      {second:230,pixel_change:0.3,source:'python-videoshot-neighbor-diff'}],
+    review_candidates_seconds:[5,80,155,230],
+    frame_change_hints:times.map(t=>({second:t/1000,pixel_change:0.1,source:'python-videoshot-neighbor-diff'})),
+    heat_source:'bili-pbp-heat-curve',heat_hints:[{second:350,heat:1}]}}
+  const valid={...overview,visual,videoEvidence:buildVideoEvidenceBundle({bvid:BV,info:overview.info,visual})}
+  assert.equal(valid.videoEvidence.sources.some(x=>x.kind==='preview_frames'),true)
+  const plans=planGlobalPreviewFocusCandidates({bvid:BV,overview:valid})
+  const hot=plans.find(x=>x.atSeconds===350)
+  assert.ok(hot,'verified high heat slot may be offered without model recommendation')
+  assert.equal(hot.heatSource,'bili-pbp-heat-curve')
+  assert.equal(plans.some(x=>x.atSeconds===500),false,'unverified model/heat times do not become candidates')
+  assert.equal(valid.videoEvidence.sources.some(x=>x.kind==='decoded_video_frames'),false)
+  const tampered={...visual,sampling:{...visual.sampling,heat_hints:[{second:350,heat:999}]}}
+  const invalid=buildVideoEvidenceBundle({bvid:BV,info:overview.info,visual:tampered})
+  assert.equal(invalid.sources.some(x=>x.kind==='preview_frames'),false,
+    'v7 heat receipt cannot evade the full preview proof validator')
+})

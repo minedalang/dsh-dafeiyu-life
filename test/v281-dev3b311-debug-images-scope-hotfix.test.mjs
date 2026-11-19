@@ -106,3 +106,32 @@ test('owner can explicitly test original decoding without changing the Life prod
     include_comments:false,include_danmaku:false})
   assert.equal(direct.visualCalls[0].perception_source,'adaptive')
 })
+
+
+test('dev22 Life may elect ordinary global vision; owner 48-frame budget applies to preview sampling without a pre-watch deep choice',async()=>{
+  const life=mockWatch({vision:true})
+  const row=await life.run({bvid:life.bv,view_depth:'standard',record_session:false,
+    include_comments:false,include_danmaku:false},{lifeChoiceVerified:true})
+  assert.equal(life.visualCalls.length,1)
+  assert.equal(life.visualCalls[0].perception_source,'preview')
+  assert.equal(life.visualCalls[0].view_depth,'deep','sampling depth is budget not pre-watch choice')
+  assert.equal(row.viewDepth,'standard','Life did not decide to deep-focus before watching')
+  const debug=mockWatch({vision:true})
+  await debug.run({bvid:debug.bv,__debugDryRun:true,view_depth:'standard',
+    record_session:false,include_comments:false,include_danmaku:false},
+    {debugPerceptionSource:'preview',debugTwoStageGlobalOverview:true})
+  assert.equal(debug.visualCalls[0].view_depth,'deep')
+  const simple=mockWatch({vision:true})
+  await simple.run({bvid:simple.bv,__debugDryRun:true,view_depth:'standard',
+    record_session:false,include_comments:false,include_danmaku:false},
+    {debugPerceptionSource:'preview'})
+  assert.equal(simple.visualCalls[0].view_depth,'standard',
+    'ordinary single-stage owner debug does not silently expand budget')
+  const adaptive=mockWatch({vision:true})
+  await adaptive.run({bvid:adaptive.bv,__debugDryRun:true,view_depth:'standard',
+    record_session:false,include_comments:false,include_danmaku:false},
+    {debugPerceptionSource:'adaptive',debugTwoStageGlobalOverview:true})
+  assert.equal(adaptive.visualCalls[0].view_depth,'deep')
+  assert.equal(adaptive.visualCalls[0].perception_source,'adaptive',
+    'source selection remains independent from sampling budget')
+})

@@ -5,8 +5,9 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
-%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
 %% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
@@ -47,7 +48,7 @@ flowchart TB
   socialInput --> socialFacts
   tasksInput --> canonical
   adapter --> eventLedger
-  videoFocusHint["可信 videoshot 采样时刻 + Python 差异 + 同期字幕/未验证视觉线索｜不是补帧授权"]
+  videoFocusHint["可信 videoshot 采样时刻 + Python 差异 + 模型建议(已核验时间) + 可选PBP热度｜不是补帧授权"]
   adapter -.->|概览回执可提出候选| videoFocusHint
   videoFocusHint -.->|Life 另行决定；可拒绝/延期| selection
   socialFacts --> accountChannels
@@ -410,8 +411,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
-%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
 %% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
@@ -574,8 +576,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
-%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
 %% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
@@ -785,8 +788,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
-%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=24 frames; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
 %% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
 %% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
 %% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
@@ -847,7 +851,7 @@ flowchart TB
   menu -->|明确选择观察画面| visualLease
   visualLease -.->|成功后仍以原可信回执记因果| record
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
-  dev20Overview["首次 Life observe_video 仅全片低清概览；Python 时间/差异筛选，视觉 AI 第一次"]
+  dev20Overview["首次自愿看画面：按主人12/24/48档全局低清分镜；模型语义与可用热度只排序局部候选"]
   dev20Vote["全局回执后结合兴趣情绪记忆与分段证据二次决定：skip/defer/深入；故障不算拒绝"]
   dev20Focus["独立真实 MP4/DASH 片段取帧及视觉 AI 第二次；结果再交 Life"]
   menu -.->|自选全局| dev20Overview --> dev20Vote

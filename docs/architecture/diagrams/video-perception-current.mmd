@@ -1,27 +1,22 @@
 flowchart TB
-    V{"🐟 鱼鱼决定：看不看、看多深？"}
-    V -->|不看 / 略看| S["📖 仅了解文字资料或结束探索"]
-    V -->|正常了解 / 深入探索| GO["🎞️ 开始受控视觉采样"]
-    subgraph INPUT["三路候选线索 · 不代表已理解视频"]
-      direction LR
-      C["🎬 镜头变化<br/>发现新场景"]
-      M["🏃 画面运动<br/>发现动作变化"]
-      H["💬 弹幕热度<br/>发现观众反应"]
-    end
-    GO --> C & M & H
-    C & M & H --> R["🧩 联合排序<br/>时间覆盖 · 去重 · 上下文连续"]
-    R --> B["🖼️ 自适应分镜<br/>卡片预算只设上限，不强制看满"]
-    B --> T["📝 可选 Tesseract 静帧 OCR<br/>🎙️ 已启用时 Whisper 分段 ASR<br/>来源分别标注、只做时间邻接"]
-    CFG["⚙️ AI 模型页：FFmpeg 检测/自测 + 可选安装<br/>Whisper 选中模型/缓存/最近转写状态"]
-    CFG -.-> GO
-    CFG -.-> T
-    T --> Q{"鱼鱼还有疑问吗？"}
-    Q -->|有| F["🔎 指定时间窗复查"]
-    F --> R
-    Q -->|没有 / 不想继续| E["🧠 保存可追溯观察与未确认内容"]
-    classDef choice fill:#FFF1D6,stroke:#DAA520,color:#5D3C05,stroke-width:2px;
-    classDef signal fill:#E8F7F3,stroke:#3D9A91,color:#123B36,stroke-width:1.5px;
-    classDef action fill:#E8F0FF,stroke:#6588CF,color:#1B3763,stroke-width:1.5px;
-    class V,Q choice;
-    class C,M,H signal;
-    class GO,R,B,T,F,E,S,CFG action;
+  life{🐟 Life 自主决定：要不要看画面？}
+  life -->|不看或略看| stop[仅文字资料／结束]
+  life -->|愿意全局看| preview[官方 videoshot 只读缩略时间线]
+  budget[主人设置的分镜预算 12／24／48] --> coverage
+  preview --> coverage[Python 资源受限扫描；时间分层＋像素差异去重]
+  coverage --> boards[全局最多12／24／48帧；每12格一张分镜图]
+  boards --> vision[视觉模型实际观察全局分镜]
+  vision --> semantic[视觉语义建议必须对应已采样的真实时间码]
+  coverage --> change[邻格像素变化，仅技术线索]
+  heat[官方 PBP 热度可用才采；只反映观众活跃] -.-> ranking
+  semantic --> ranking[多信号排序：语义建议＋变化量＋可用热度＋时间覆盖；最多四个窗口]
+  change --> ranking
+  ranking --> vote{🐟 Life 看后第二次独立选择}
+  vote -->|跳过或延期| end[本轮不读取原视频]
+  vote -->|选择已核验窗口＋授权通过| decoded[原视频有界 MP4／DASH＋FFmpeg 局部取帧]
+  decoded --> second[第二次视觉模型精查：仅所选窗口]
+  second --> receipt[真实来源、结果、采样缺口分开记录]
+  classDef choice fill:#fff1d6,stroke:#daa520,color:#5d3c05,stroke-width:2px;
+  classDef signal fill:#e8f7f3,stroke:#3d9a91,color:#123b36;
+  class life,vote choice;
+  class semantic,change,heat signal;

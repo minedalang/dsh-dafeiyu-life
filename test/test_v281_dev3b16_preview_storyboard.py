@@ -41,7 +41,7 @@ class StoryboardTests(unittest.TestCase):
     def test_adaptive_fallback_contains_12_lowres_tiles_in_one_board(self):
         with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch('adaptive_video.acquire_adaptive_frames',side_effect=AdaptiveUnavailable('ffmpeg_not_installed',fallback=True)):
             result=pv.analyze_perception(BV,folder,perception_source='adaptive',enabled=False,return_frames=True,max_frames=24,view_depth='standard')
-        self.assertTrue(result['ok']);self.assertEqual(result['sampling']['sampler_version'],6)
+        self.assertTrue(result['ok']);self.assertEqual(result['sampling']['sampler_version'],7)
         self.assertEqual(result['sampling']['strategy'],'videoshot-storyboard-stratified')
         self.assertEqual(len(result['times']),12)
         self.assertEqual(result['sampling']['storyboard_count'],1)
@@ -64,8 +64,10 @@ class StoryboardTests(unittest.TestCase):
         self.assertEqual(len(result['times']),24)
         self.assertEqual(sum(x['tile_count'] for x in result['frames']),24)
         self.assertGreater(result['times'][-1]-result['times'][0],120)
-        self.assertEqual(len(calls),result['sampling']['sheets_downloaded'])
-        self.assertEqual(len(calls),9, 'complete scan must examine all nine sheets when in budget')
+        image_calls=[url for url in calls if '/videoshot/' in url]
+        self.assertEqual(len(image_calls),result['sampling']['sheets_downloaded'])
+        self.assertEqual(len(image_calls),9, 'complete scan must examine all nine sheets when in budget')
+        self.assertTrue(any('/pbp/data?' in url for url in calls), 'optional PBP read is separate from sprite downloads')
         self.assertLess(result['sampling']['sprite_bytes'],8*1024*1024)
 
     def test_direct_source_standard_uses_only_twelve_even_if_env_says_twentyfour(self):
@@ -83,7 +85,7 @@ class StoryboardTests(unittest.TestCase):
                   enabled=False,return_frames=True,focus_start=25,focus_end=55)
             legacy=pv.analyze_preview(BV,folder,enabled=False,return_frames=True,max_frames=3)
         self.assertTrue(result['ok']);self.assertTrue(all(25<=x<=55 for x in result['times']))
-        self.assertEqual(result['sampling']['sampler_version'],6)
+        self.assertEqual(result['sampling']['sampler_version'],7)
         self.assertLessEqual(len(legacy['times']),3)
         self.assertEqual(legacy['sampling']['sampler_version'],3)
 

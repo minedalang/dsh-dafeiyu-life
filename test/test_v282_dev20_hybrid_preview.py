@@ -9,6 +9,7 @@ from PIL import Image,ImageDraw
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'lib'))
 import preview_vision as pv
+import video_heat_signal as heat
 BV='BV1234567890'
 
 def image_bytes(n):
@@ -34,12 +35,13 @@ class HybridPreview(unittest.TestCase):
             calls.append(url)
             return image_bytes(int(url.rsplit('/',1)[1].split('.')[0]))
         with TemporaryDirectory() as home,patch.object(pv,'_json_api',side_effect=fake_api),\
-             patch.object(pv,'_safe_api_get',side_effect=fetch):
+             patch.object(pv,'_safe_api_get',side_effect=fetch),\
+             patch.object(heat,'obtain_preview_heat_signal',return_value=None):
             result=pv.analyze_preview(BV,home,storyboard=True,max_frames=24,
                 enabled=False,return_frames=True)
         self.assertTrue(result['ok'],result)
         sampler=result['sampling']
-        self.assertEqual(sampler['sampler_version'],6)
+        self.assertEqual(sampler['sampler_version'],7)
         self.assertTrue(sampler['timeline_scan_complete'])
         self.assertEqual(sampler['index_frames_available'],91)
         self.assertEqual(sampler['candidates_examined'],91)
@@ -62,9 +64,28 @@ class HybridPreview(unittest.TestCase):
             self.assertLessEqual(board['tile_count'],12)
             with Image.open(BytesIO(board['bytes'])) as image:self.assertEqual(image.width,384)
 
+    def test_48_global_preview_frames_make_four_boards_and_scoped_heat_hints(self):
+        with TemporaryDirectory() as home,patch.object(pv,'_json_api',side_effect=fake_api),\
+             patch.object(pv,'_safe_api_get',side_effect=lambda url,**kw:image_bytes(int(url.rsplit('/',1)[1].split('.')[0]))),\
+             patch.object(heat,'obtain_preview_heat_signal',return_value={
+                 'source':'bili-pbp-heat-curve','step':5,'points':[0]*60+[20]*30,
+                 'items':90}):
+            result=pv.analyze_preview(BV,home,storyboard=True,max_frames=48,
+                                      enabled=False,return_frames=True)
+        self.assertTrue(result['ok'],result)
+        sampling=result['sampling']
+        self.assertEqual(sampling['frame_budget'],48)
+        self.assertEqual(len(result['times']),48)
+        self.assertEqual(len(result['frames']),4)
+        self.assertEqual(len(sampling['frame_change_hints']),48)
+        self.assertEqual(len(sampling['heat_hints']),48)
+        self.assertEqual(sampling['heat_source'],'bili-pbp-heat-curve')
+        self.assertEqual({h['second'] for h in sampling['heat_hints']},set(result['times']))
+
     def test_explicit_small_budget_cannot_hide_overflow_or_claim_full_scan(self):
         with TemporaryDirectory() as home,patch.object(pv,'_json_api',side_effect=fake_api),\
-             patch.object(pv,'_safe_api_get',side_effect=lambda url,**kw:image_bytes(0)):
+             patch.object(pv,'_safe_api_get',side_effect=lambda url,**kw:image_bytes(0)),\
+             patch.object(heat,'obtain_preview_heat_signal',return_value=None):
             result=pv.analyze_preview(BV,home,storyboard=True,max_frames=24,
                 enabled=False,return_frames=True,network_budget_bytes=100)
         self.assertFalse(result['ok'])
