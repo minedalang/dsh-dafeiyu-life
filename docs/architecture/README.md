@@ -1,3 +1,5 @@
+> **2.8.2-dev.5（视觉采样覆盖与去重）**：[方案、实现边界及测试](2.8.2-dev5-video-sampling-reuse.md)。同账号清晰视觉经历只读兜底现有防重账本；无新权限、无深层记忆库；真实 Windows/DSH 仍待验。
+
 > **2.8.2-dev.4（只读来源链）**：通过现有 LifeMemoryGateway 的清晰可衰减记忆、当前账号与精确 BV/记忆 ID 查询已记录来源类别和视觉采样回执；不读归档、不增加深层记忆库。未来分层回忆方案仅见 [后续架构提案](future-layered-memory-progressive-recall-proposal.md)。
 
 > **2.8.2 开发中（尚未验收）**：[实施方案](2.8.2-implementation-plan.md)、[PR-0 / PR-1A 基线与首批语义预算、视觉边界审计](2.8.2-pr0-pr1a-baseline.md)。此增量不改外发权限、不新增事实库；原 2.8.1 章节继续保留为历史代码资料。

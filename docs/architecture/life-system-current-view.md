@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
 %% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
@@ -82,6 +83,8 @@ flowchart TB
   quickWake -->|同账号、时窗、权限、额度、幂等| readTodo
   canonical --> todos
   canonical --> intentions
+  priorVisual["现存可衰减视觉观察｜账号隔离、精确 BV、仍清晰才核对"]
+  priorVisual -.->|仅在 Episode 二次视觉采样前只读检查| intentions
   adapter --> cues
   adapter --> opportunities
   accountChannels --> friends
@@ -363,6 +366,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
 %% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
@@ -417,6 +421,8 @@ flowchart LR
   todos -.->|Life 自行完成 watch_video 且有同 BV 任务回执→原账本新意愿| intentions
   episodeState -.->|持续性与优先考虑，并非新权限| resume
   intentions --> resume
+  visibleVisualHistory["清晰视觉回执：当前账号精确 BV，只读、不检索遗忘档案"]
+  visibleVisualHistory -.->|仅复核续行视频取帧菜单| resume
   sourceSocial --> social
   privateBound -.->|仅允许的自主私信机会，无权限者只读| social
   sourceVideo --> video
@@ -501,6 +507,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
 %% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
@@ -567,6 +574,9 @@ flowchart TB
   videoTrace["精确 BV／记忆 ID 的只读视频来源追溯｜仅当前账号清晰记忆；不加载深层详情"]
   episode -.->|只读，不复原遗忘| videoTrace
   videoTrace -.->|事实引用，不产生新记忆或行为| recall
+  visualReuse["视觉防重兜底：现存清晰且本账号的可信观察记忆；不读永久档案或模糊细节"]
+  videoTrace -.->|精确 BV + 当前账号的已核验回执| visualReuse
+  visualReuse -.->|只抑制冗余 Episode 取帧，不替代 Life 选择| planner
   verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]
   privateBuffer["短期对话片段：跨进程原子短锁+认领；按账号/UID隔离；原文限期"]
   privateBatch["安静期/话题收尾/容量触发：模型批量提炼；失败退避、成功删除原文"]
@@ -680,6 +690,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
 %% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
@@ -727,6 +738,9 @@ flowchart TB
   write -->|结果未知| pause
   other --> record
   record -.->|因果索引，不可冒充事实| memory
+  rememberedVisual["当前清晰视频记忆：仅校验已有采样事实；模糊和已遗忘记录不可回查"]
+  memory -.->|只读已核验视觉经历| rememberedVisual
+  rememberedVisual -.->|Episode 菜单去除冗余取帧；不强制补看| menu
   pause -.->|之后仍需原目标有效、权限通过| menu
   classDef safe fill:#e8f4fd,stroke:#4689b6,color:#173d5c
   classDef caveat fill:#fff1e7,stroke:#d68a3c,color:#74421c

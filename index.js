@@ -2166,7 +2166,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       initialAccount&&initialAccount===videoDebugAccount()&&
       initialLifeAccountTag&&initialLifeAccountTag===trustedLifeAccountTag())try{
       const proof=verifyEpisodeVideoVisual({result:lifePayload,bvid,depth:visionPlan.depth})
-      if(proof)lifeOpportunities.rememberVerifiedVideoVisual(proof,initialLifeAccountTag)
+      if(proof){
+        const result=lifeOpportunities.rememberVerifiedVideoVisual(proof,initialLifeAccountTag)
+        if(result?.ok!==true)log('视频视觉防重复回执未写入：'+String(result?.reason||result?.error||'unknown').slice(0,90))
+      }
     }catch(e){log('视频视觉防重复回执写入失败：'+String(e?.message||e).slice(0,90))}
     // Exactly the same object is returned through the existing Life tool.
     // Its model text is transient and MUST NOT enter durable Life memory.
@@ -3010,7 +3013,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const lifeOpportunities=createLifeOpportunities({stateDir,getCredential:()=>lifeOpportunityAccountReady()?dmCred(stateDir):null,
     getInterestEvidence:tag=>lifeOpportunityAccountReady()?
       [...scopedInterestOpportunityEvidence(stateDir,tag),...scopedCuriosityOpportunityEvidence(stateDir,tag)]:[],
-    getPublicPersonEvidence:()=>lifeOpportunityAccountReady()?socialPortrait.publicOpportunitySignals():[],onChange:()=>lifeManagementEvents.publish('plans')})
+    getPublicPersonEvidence:()=>lifeOpportunityAccountReady()?socialPortrait.publicOpportunitySignals():[],
+    getCurrentVisualMemoryEvidence:query=>lifeMemory?.videoEvidenceTrace(query)||[],
+    onChange:()=>lifeManagementEvents.publish('plans')})
   // A verified-owner or approved-friend share is a Life opportunity, never an instruction.
   // Only a bounded safe reference is persisted; redirect resolution/content reads
   // happen only if Life later chooses inspect_shared_link.

@@ -615,6 +615,11 @@
       "owner": "life-context-and-evidence",
       "kind": "security",
       "intent": "Current-account and exact-video memory evidence tracing must use only clear fading records, respect forgetting and scope, avoid archives and deep storage, and preserve independent observations."
+    },
+    "v282-dev5-video-visual-coverage-dedup.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Require current account clear public visual memory fallback for missing visual ledger receipts and bounded sample timestamp coverage, without archives, private data, forced visual reads or external writes."
     }
   },
   "protected": [

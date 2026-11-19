@@ -1,3 +1,4 @@
+%% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
 %% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
 %% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
 %% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
@@ -45,6 +46,9 @@ flowchart TB
   write -->|结果未知| pause
   other --> record
   record -.->|因果索引，不可冒充事实| memory
+  rememberedVisual["当前清晰视频记忆：仅校验已有采样事实；模糊和已遗忘记录不可回查"]
+  memory -.->|只读已核验视觉经历| rememberedVisual
+  rememberedVisual -.->|Episode 菜单去除冗余取帧；不强制补看| menu
   pause -.->|之后仍需原目标有效、权限通过| menu
   classDef safe fill:#e8f4fd,stroke:#4689b6,color:#173d5c
   classDef caveat fill:#fff1e7,stroke:#d68a3c,color:#74421c
