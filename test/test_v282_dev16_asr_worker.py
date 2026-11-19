@@ -57,11 +57,11 @@ class FullASRDefault(unittest.TestCase):
             self.assertFalse(result['can_claim_full_video_watched'])
 
 class HTTPSPortSafety(unittest.TestCase):
-    def test_explicit_standard_port_only_after_same_cdn_guards(self):
+    def test_low_privileged_port_still_rejected_after_same_cdn_guards(self):
         good='https://a.bilivideo.com:443/upgcxcode/a.m4s?signed=SECRET'
         self.assertEqual(av._cdn_url(good),good)
         for url,code in [
-            ('https://a.bilivideo.com:444/upgcxcode/a.m4s?secret=SECRET','video_source_authority_rejected'),
+            ('https://a.bilivideo.com:81/upgcxcode/a.m4s?secret=SECRET','video_source_authority_rejected'),
             ('https://a.bilivideo.com:80/upgcxcode/a.m4s','video_source_authority_rejected'),
             ('http://a.bilivideo.com:443/upgcxcode/a.m4s','video_source_scheme_rejected'),
             ('https://127.0.0.1:443/upgcxcode/a.m4s','video_source_domain_rejected'),

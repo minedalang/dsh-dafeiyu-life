@@ -28,7 +28,7 @@ class VideoSourceSafety(unittest.TestCase):
         cases = [
             ('http://a.bilivideo.com/upgcxcode/a.mp4?secret=1', 'video_source_scheme_rejected'),
             ('https://127.0.0.1/upgcxcode/a.mp4?secret=1', 'video_source_domain_rejected'),
-            ('https://a.bilivideo.com:444/upgcxcode/a.mp4?secret=1', 'video_source_authority_rejected'),
+            ('https://a.bilivideo.com:80/upgcxcode/a.mp4?secret=1', 'video_source_authority_rejected'),
             ('https://a.bilivideo.com/other/a.mp4?secret=1', 'video_source_path_rejected'),
             ('https://a.bilivideo.com/upgcxcode/a.exe?secret=1', 'video_source_format_rejected'),
         ]

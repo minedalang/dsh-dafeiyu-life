@@ -27,7 +27,7 @@ class SafeAuthorityDiagnostics(unittest.TestCase):
     def test_authority_rejection_is_specific_but_never_echoes_signed_url(self):
         cases=[
             ('https://user:pass@a.bilivideo.com/upgcxcode/a.m4s?signature=SECRET','userinfo'),
-            ('https://a.bilivideo.com:8443/upgcxcode/a.m4s?signature=SECRET','explicit-port'),
+            ('https://a.bilivideo.com:80/upgcxcode/a.m4s?signature=SECRET','reserved-port'),
             ('https://a.bilivideo.com/upgcxcode/a.m4s?signature=SECRET#part','url-fragment'),
             ('https://a.bilivideo.com:invalid/upgcxcode/a.m4s?signature=SECRET','malformed-authority'),
         ]
@@ -46,14 +46,14 @@ class SafeAuthorityDiagnostics(unittest.TestCase):
             if '/view?' in url:return {'bvid':BV,'pages':[{'cid':42,'duration':1364}]}
             if 'fnval=1&' in url:return {'durl':[{'size':10000,'url':'https://evil.com/a.mp4?secret=SECRET'}]}
             return {'dash':{'video':[{'bandwidth':10000,
-                'baseUrl':'https://a.bilivideo.com:8443/upgcxcode/a.m4s?secret=SECRET',
+                'baseUrl':'https://a.bilivideo.com:80/upgcxcode/a.m4s?secret=SECRET',
                 'SegmentBase':{'Initialization':'0-100','indexRange':'101-200'}}]}}
         with patch.object(pv,'_json_api',side_effect=official),\
              self.assertRaises(av.AdaptiveUnavailable) as found:
             av._playurl(BV)
         err=found.exception
         self.assertEqual(err.code,'video_source_authority_rejected')
-        self.assertEqual(err.authority_detail,'explicit-port')
+        self.assertEqual(err.authority_detail,'reserved-port')
         self.assertEqual(err.track,'dash')
         self.assertNotIn('SECRET',str(err))
 

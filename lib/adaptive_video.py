@@ -9,6 +9,9 @@ from io import BytesIO
 import json
 import bisect
 import math
+import http.client
+import ipaddress
+import socket
 import os
 from pathlib import Path
 import re
@@ -60,13 +63,13 @@ class AdaptiveUnavailable(ValueError):
         self.code = code
         self.fallback = fallback
         # Static enumerations only: no signed URL, hostname or raw parser error.
-        allowed = {'userinfo', 'explicit-port', 'url-fragment', 'malformed-authority'}
+        allowed = {'userinfo', 'reserved-port', 'url-fragment', 'malformed-authority'}
         self.authority_detail = authority_detail if authority_detail in allowed else None
         self.track = track if track in ('durl', 'dash') else None
 
 
 def _cdn_url(url):
-    """Validate CDN URLs, including the equivalent default HTTPS :443 port."""
+    """Bound official HTTPS CDN URLs. Signed paths/tokens never enter diagnostics."""
     if not isinstance(url, str) or len(url) > 4096:
         raise AdaptiveUnavailable('unsafe_video_source')
     if url.startswith('//'):
@@ -74,8 +77,8 @@ def _cdn_url(url):
     try:
         p = parse.urlsplit(url)
         host = (p.hostname or '').lower()
-        # HTTPS :443 is the standard TLS endpoint, not a new transport port.
-        # Nonstandard ports are always rejected, even on an allowed CDN host.
+        # Other high TLS ports may be legitimate for official CDN playurl tracks.
+        # Ports in the privileged range remain denied, except default TLS 443.
         explicit_port = p.port
         has_userinfo = p.username is not None or p.password is not None
     except ValueError:
@@ -87,9 +90,9 @@ def _cdn_url(url):
     if has_userinfo:
         raise AdaptiveUnavailable('video_source_authority_rejected',
                                   authority_detail='userinfo')
-    if explicit_port is not None and explicit_port != 443:
+    if explicit_port is not None and explicit_port < 1024 and explicit_port != 443:
         raise AdaptiveUnavailable('video_source_authority_rejected',
-                                  authority_detail='explicit-port')
+                                  authority_detail='reserved-port')
     if p.fragment:
         raise AdaptiveUnavailable('video_source_authority_rejected',
                                   authority_detail='url-fragment')
@@ -102,6 +105,62 @@ def _cdn_url(url):
         raise AdaptiveUnavailable('video_source_format_rejected')
     return url
 
+
+
+# Do not trust DNS resolution as authorization: an approved CDN name can still
+# resolve to an internal address in a compromised DNS environment. Resolve and
+# connect to the SAME public address (no DNS rebinding window), while TLS still
+# authenticates the original hostname. No ambient HTTP(S) proxy is inherited.
+def _public_cdn_addresses(host, port):
+    try:
+        rows = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except (socket.gaierror, OSError):
+        raise AdaptiveUnavailable('video_source_dns_unavailable') from None
+    if not rows or len(rows) > 32:
+        raise AdaptiveUnavailable('video_source_dns_unavailable')
+    safe = []
+    for family, kind, proto, _, sockaddr in rows:
+        if family not in (socket.AF_INET, socket.AF_INET6):
+            raise AdaptiveUnavailable('video_source_ip_rejected', fallback=False)
+        try:
+            addr = ipaddress.ip_address(sockaddr[0])
+        except ValueError:
+            raise AdaptiveUnavailable('video_source_ip_rejected', fallback=False) from None
+        if not addr.is_global:
+            raise AdaptiveUnavailable('video_source_ip_rejected', fallback=False)
+        safe.append((family, kind, proto, sockaddr))
+    return safe
+
+
+class _PinnedCDNHTTPS(http.client.HTTPSConnection):
+    def connect(self):
+        # The full URL must already have passed _cdn_url(). HTTPS hostname
+        # verification and SNI use self.host, never the resolved numeric IP.
+        candidates = _public_cdn_addresses(self.host, self.port)
+        last_error = None
+        for family, kind, proto, sockaddr in candidates[:8]:
+            sock = socket.socket(family, kind, proto)
+            try:
+                sock.settimeout(self.timeout)
+                if self.source_address:
+                    sock.bind(self.source_address)
+                sock.connect(sockaddr)
+                self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+                return
+            except (OSError, TimeoutError) as exc:
+                last_error = exc
+                sock.close()
+        raise AdaptiveUnavailable('video_cdn_connection_failed') from None
+
+
+class _PinnedCDNHandler(request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_PinnedCDNHTTPS, req)
+
+
+def _cdn_opener(redirect_handler):
+    # An environment HTTP_PROXY must never substitute an unverified target.
+    return request.build_opener(request.ProxyHandler({}), _PinnedCDNHandler(), redirect_handler)
 
 def _dash_ranges(stream):
     """Only literal DASH SegmentBase byte intervals supplied by official playurl."""
@@ -240,7 +299,7 @@ def _dash_probe_size(url):
         'User-Agent':'Mozilla/5.0','Referer':'https://www.bilibili.com/',
         'Accept-Encoding':'identity','Range':'bytes=0-0'})
     try:
-        with request.build_opener(Redirect()).open(req, timeout=8) as resp:
+        with _cdn_opener(Redirect()).open(req, timeout=8) as resp:
             _cdn_url(resp.url)
             if resp.status != 206:
                 raise AdaptiveUnavailable('video_range_not_supported', fallback=False)
@@ -407,7 +466,7 @@ def _download_video(url, path, expected_size, *, budget=VIDEO_FILE_MAX):
     started = time.monotonic()
     total = 0
     try:
-        with request.build_opener(SecureRedirect()).open(req, timeout=8) as resp:
+        with _cdn_opener(SecureRedirect()).open(req, timeout=8) as resp:
             _cdn_url(resp.url)
             length = resp.headers.get('Content-Length')
             if length and int(length) > budget:
@@ -494,7 +553,7 @@ class _SparseRangeVideo:
             elif self.modified: headers['If-Range'] = self.modified
             try:
                 req = request.Request(self.url, headers=headers)
-                with request.build_opener(SecureRedirect()).open(req, timeout=8) as resp:
+                with _cdn_opener(SecureRedirect()).open(req, timeout=8) as resp:
                     _cdn_url(resp.url)
                     # An HTTP 200 means Range was ignored. Never accept its body.
                     if resp.status != 206:

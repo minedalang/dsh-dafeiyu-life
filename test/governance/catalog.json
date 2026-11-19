@@ -675,6 +675,11 @@
       "owner": "video-asr-mcp-observability",
       "kind": "behavior",
       "intent": "Whisper internal cost differs from MCP tool wall-clock; ASR is opt-in and full duration by default with bounded async worker and separate diagnostics."
+    },
+    "v282-dev17-rate-limit-incident.test.mjs": {
+      "owner": "bili-read-budget",
+      "kind": "security",
+      "intent": "-509 creates persistent redacted incident snapshots and 48-hour count bins without weakening read budgets, DM intervals or account isolation."
     }
   },
   "protected": [
@@ -824,12 +829,17 @@
     "test_v282_dev15_video_diagnostics.py": {
       "owner": "adaptive-video-asr",
       "kind": "security",
-      "intent": "CDN userinfo, explicit port, fragment and malformed authorities remain rejected without leaking signed URLs; local ASR reports bounded phase timings and sampled coverage."
+      "intent": "CDN userinfo, privileged ports, fragments and malformed authorities are rejected without leaking signed URLs; ASR timings remain bounded."
     },
     "test_v282_dev16_asr_worker.py": {
       "owner": "asr-mcp-adaptive-video",
       "kind": "security",
-      "intent": "Full-video ASR is default; async MCP process avoids shared default thread pool queue, cleans timeout, and strict CDN whitelist allows only standard HTTPS 443."
+      "intent": "Full-video ASR is default, async MCP child avoids thread pool queue, 443 accepted and protected low ports rejected."
+    },
+    "test_v282_dev17_cdn_public_port.py": {
+      "owner": "adaptive-video-cdn",
+      "kind": "security",
+      "intent": "Official CDN TLS high ports are allowed only through pinned globally routable DNS resolutions and no implicit proxy; reject privileged ports, redirects and internal DNS targets."
     }
   },
   "pythonProtected": [
