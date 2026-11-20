@@ -829,7 +829,7 @@ window.__ModuleLoader__.load({
                     onChange:e=>setVisionDraft(old=>({...old,[key]:e.target.value})),
                     onBlur:()=>patch({[key]:(visionDraft||{})[key]||''},label)}))),
               h('div',{'data-bd-note':''},'留空时优先继承刷视频模型的相应配置。独立视觉 Agent 与主视频 Agent 是两次 DSH 模型会话，但不走旧的 API Key/DPAPI 接口。')):null,
-            h('div',{'data-bd-note':''},`当前分镜预算上限 ${cfg.visionFrames??24} 个时刻（标准了解最多12；深入探索按所选档位，最多4张12格分镜图）；实际可少于上限。DSH 与 Ollama 不设每日调用次数硬上限；请在管理中心 → 视频探索选择采样预算卡片，缓存命中不重复识图。`),
+            h('div',{'data-bd-note':''},`当前分镜预算上限 ${cfg.visionFrames??24} 个时刻（标准了解最多12；深入探索按所选档位，低清分镜每张格数由视频探索页单独设置）；实际可少于上限。DSH 与 Ollama 不设每日调用次数硬上限；请在管理中心 → 视频探索选择采样预算卡片，缓存命中不重复识图。`),
             h('div',{'data-bd-note':''},'不再需要视觉 API Key。旧版本本地可能保存过 DPAPI 加密文件，升级不会读取或上传它；如需清理，可删除 bili-duty 目录中的 .vision-api-key.dpapi。'),
             h('div',{'data-bd-row':''},
               h('input',{'data-bd-input':'',placeholder:'输入一个 BV 号，测试预览图片',style:{flex:1,minWidth:'180px'},value:visionBV,

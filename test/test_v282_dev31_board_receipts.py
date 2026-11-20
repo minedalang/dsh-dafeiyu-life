@@ -12,6 +12,12 @@ import preview_vision as pv
 from test_v281_dev3b16_preview_storyboard import fake_api, image_fetch, BV
 
 class PerBoardVision(unittest.TestCase):
+    @staticmethod
+    def render_board(board):
+        cols=board.get('grid_cols',4)
+        return '\n'.join(f'R{i//cols+1}C{i%cols+1} [{pv._board_clock(t)}]：通道；动作不确定；文字看不清。'
+                         for i,t in enumerate(board['tile_times']))
+
     def run_preview(self, infer):
         with TemporaryDirectory() as home, \
              patch.object(pv, '_json_api', side_effect=fake_api), \
@@ -25,7 +31,7 @@ class PerBoardVision(unittest.TestCase):
         def infer(boards, model):
             self.assertEqual(len(boards), 1)
             b = boards[0]
-            return 'R1C1 [' + pv._board_clock(b['tile_times'][0]) + '] 只能看到人物与大厅，局部细节不确定。'
+            return self.render_board(b)
         out, calls = self.run_preview(infer)
         self.assertEqual(out['status'],'analyzed',out)
         self.assertEqual(len(calls),2)
@@ -43,7 +49,7 @@ class PerBoardVision(unittest.TestCase):
         def infer(boards,model):
             times.append(boards[0]['tile_times'])
             if len(times)==2:return '9. 90.0秒：'
-            return 'R1C1 ['+pv._board_clock(boards[0]['tile_times'][0])+'] 大厅中的人物。'
+            return self.render_board(boards[0])
         out, calls=self.run_preview(infer)
         self.assertEqual(len(calls),2)
         self.assertEqual(out['status'],'vision_incomplete',out)
@@ -57,7 +63,7 @@ class PerBoardVision(unittest.TestCase):
         def infer(boards,model):
             nonlocal count
             count+=1
-            return 'R1C1 [00:10] 一位游戏角色走动。' if count==2 else '只看到大厅区域，不确定确切动作。'
+            return 'R1C1 [00:10] 一位游戏角色走动。' if count==2 else self.render_board(boards[0])
         out,_=self.run_preview(infer)
         self.assertEqual(out['status'],'vision_incomplete')
         self.assertIn('未采样时间点',out['visionBoardReceipts'][1]['error'])
@@ -81,7 +87,7 @@ class PerBoardVision(unittest.TestCase):
         class Reply:
             def __enter__(self):return self
             def __exit__(self,*_):pass
-            def read(self,n):return json.dumps({'message':{'content':'R2C2 [01:05] 看到了楼梯附近的人物，方向不能确定。'},'done_reason':'stop'}).encode()
+            def read(self,n):return json.dumps({'message':{'content':'\n'.join(f'R{i//4+1}C{i%4+1} [{pv._board_clock(t)}] 看不清。' for i,t in enumerate([10,25,35,40,55,65,70,80,90,115,120,131]))},'done_reason':'stop'}).encode()
         class Opener:
             def open(self,req,timeout=None):
                 reqdata=json.loads(req.data)

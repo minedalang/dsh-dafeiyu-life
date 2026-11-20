@@ -193,7 +193,7 @@ test('管理台测试图片和 Ollama 输入是用户上传的同一份原始 PN
   assert.equal(state.models[0].verification.status,'awaiting_review')
   assert.equal(state.models[0].verified,false)
   assert.equal(body.think,false)
-  assert.equal(Object.hasOwn(body.options,'num_predict'),false)
+  assert.equal(body.options.num_predict,4096,'图片自检采用独立有界输出预算，不截断最终文字')
   assert.match(body.messages[0].content,/大肥鱼/)
   assert.equal(state.models[0].verification.doneReason,'stop')
 })

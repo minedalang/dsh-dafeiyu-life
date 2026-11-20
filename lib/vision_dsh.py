@@ -309,8 +309,10 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         model=env.get('BILI_VISION_DSH_MODEL','').strip()
         frames=int(env.get('BILI_VISION_FRAMES','24'))
         frames=frames if frames in (12,24,48) else 24
+        board_tiles=int(env.get('BILI_VISION_BOARD_TILES','12'))
+        board_tiles=board_tiles if board_tiles in (4,6,12) else 12
         visual_instruction=_decode_visual_instruction(env)
-        prompt_hash=hashlib.sha256((VISION_PROMPT_REVISION+'\n'+perception_source+'\n'+visual_instruction).encode('utf8')).hexdigest()[:16]
+        prompt_hash=hashlib.sha256((VISION_PROMPT_REVISION+'\n'+perception_source+'\n'+str(board_tiles)+'\n'+visual_instruction).encode('utf8')).hexdigest()[:16]
         from preview_vision import _SAMPLER_VERSION, _FOCUS_SAMPLER_VERSION, PREVIEW_BOARD_VERSION, _normalize_focus_window
         focus=_normalize_focus_window(focus_start,focus_end)
         sampler_version=8 if perception_source=='adaptive' else PREVIEW_BOARD_VERSION
@@ -323,7 +325,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
             try:
                 d=json.loads(cached.read_text(encoding='utf8'))
                 if (d.get('origin')=='dsh-independent-unverified' and d.get('model')==model
-                    and d.get('provider')==provider and d.get('frames_limit')==frames and d.get('view_depth')==view_depth
+                    and d.get('provider')==provider and d.get('frames_limit')==frames and d.get('board_tiles',12)==board_tiles and d.get('view_depth')==view_depth
                     and d.get('prompt_hash')==prompt_hash
                     and d.get('sampler_version')==sampler_version
                     and d.get('focus_window')==focus and d.get('network_budget_override')==network_budget_bytes
@@ -432,7 +434,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         if len(description)<8:
             return {'ok':False,'status':'empty_result','error':'视觉模型未提供有效画面描述'}
         record={'origin':'dsh-independent-unverified','model':model,'provider':provider,
-                'frames_limit':frames,'view_depth':view_depth,'prompt_hash':prompt_hash,'sampler_version':sampler_version,
+                'frames_limit':frames,'board_tiles':board_tiles,'view_depth':view_depth,'prompt_hash':prompt_hash,'sampler_version':sampler_version,
                 'times':observed['times'][:48],'sampling':observed.get('sampling'),'ocr':observed.get('ocr'),'focus_window':focus,
                 'description':description,'image_source':observed.get('image_source','B站低清预览'),
                 'debugCapture':observed.get('debugCapture'),

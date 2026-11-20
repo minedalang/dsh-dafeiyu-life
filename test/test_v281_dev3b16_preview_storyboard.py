@@ -41,7 +41,7 @@ class StoryboardTests(unittest.TestCase):
     def test_adaptive_fallback_contains_12_lowres_tiles_in_one_board(self):
         with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch('adaptive_video.acquire_adaptive_frames',side_effect=AdaptiveUnavailable('ffmpeg_not_installed',fallback=True)):
             result=pv.analyze_perception(BV,folder,perception_source='adaptive',enabled=False,return_frames=True,max_frames=24,view_depth='standard')
-        self.assertTrue(result['ok']);self.assertEqual(result['sampling']['sampler_version'],10)
+        self.assertTrue(result['ok']);self.assertEqual(result['sampling']['sampler_version'],pv.PREVIEW_BOARD_VERSION)
         self.assertEqual(result['sampling']['strategy'],'videoshot-storyboard-stratified')
         self.assertEqual(len(result['times']),12)
         self.assertEqual(result['sampling']['storyboard_count'],1)
@@ -85,7 +85,7 @@ class StoryboardTests(unittest.TestCase):
                   enabled=False,return_frames=True,focus_start=25,focus_end=55)
             legacy=pv.analyze_preview(BV,folder,enabled=False,return_frames=True,max_frames=3)
         self.assertTrue(result['ok']);self.assertTrue(all(25<=x<=55 for x in result['times']))
-        self.assertEqual(result['sampling']['sampler_version'],10)
+        self.assertEqual(result['sampling']['sampler_version'],pv.PREVIEW_BOARD_VERSION)
         self.assertLessEqual(len(legacy['times']),3)
         self.assertEqual(legacy['sampling']['sampler_version'],3)
 
@@ -95,7 +95,7 @@ class StoryboardTests(unittest.TestCase):
         self.assertFalse(result['ok']);self.assertNotIn('frames',result)
 
     def test_debug_capture_is_exact_board_bytes_and_not_in_model_answer(self):
-        with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch.object(pv,'_call_local_ollama',return_value='观察到多个低清时刻的画面。') as model:
+        with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch.object(pv,'_call_local_ollama',side_effect=lambda frames,model: '\n'.join(f'R{i//4+1}C{i%4+1} [{pv._board_clock(t)}]：模糊场景；动作不确定；文字看不清。' for i,t in enumerate(frames[0]['tile_times']))) as model:
             result=pv.analyze_preview(BV,folder,storyboard=True,max_frames=24,
                   enabled=True,model='qwen3.5:4b',debug=True)
             self.assertTrue(result['ok']); self.assertEqual(result['status'],'analyzed')

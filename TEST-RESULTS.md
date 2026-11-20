@@ -1,9 +1,10 @@
-# 2.8.2-dev.31 · 相关离线测试结果
+# 2.8.2-dev.32 · 离线测试与发布门禁
 
-基线：2.8.2-dev.30（用户已有日志导出工具的工作区状态）；当前候选：2.8.2-dev.31。
+- 变更基线：`2.8.2-dev.31`；目标：`2.8.2-dev.32`。
+- 先前相关 Node 定向回归：**68/68 通过**；最后修正图片自检思考档位、完整 Debug 分镜展示后，重新执行的 **11 个相关测试文件、52/52 通过**（两次测试集合有重叠，不能相加）。
+- 已执行 Python 旧行为回归：**18/18 通过**（分镜采样、低清回退、长索引与前一版回执校验）。
+- 已执行 Python 新专项：**10/10 通过**（4/6/12格、思考选择、Token预算、无正文、长度截断、虚构第四行、6张调试拼图完整留存）。
+- `node selfcheck.mjs`、`check:life-architecture`、`check:video-tool-contract`、`check:context-budget`、`check:test-governance`、`npm pack --dry-run`：均通过。
+- 此处**不等于 Windows 真实模型/DSH 全量通过**。下一步必须在维护者 Windows 机器上测试 qwen3.5:4b 真实视觉输出，并保留普通/管理员两组全量日志。正式版仍不放行。
 
-- Node.js 11 个相关测试文件的定向运行：**62/62 通过**（2026-11-20，本地 Linux 容器环境），包括 Life 多候选、安全预算、图片证据交接、2.8.2 设置/README。非全量 602 个 Node 测试文件。
-- Python 变更相关六组专项：**27/27 通过**；其中一项旧加载测试需通过 `PYTHONPATH=lib` 设定正确模块路径，修正启动环境后通过。
-- `node selfcheck.mjs`、Life 四张架构图检查、视频工具契约、提示词上下文结构检查、测试治理检查、`npm pack --dry-run --json`：通过；npm 清单包含 Whisper 权重脚本和新 2.8.2 用户指南。
-- 此项修复没有执行用户 Windows Ollama/MiniCPM 真正模型推理、真实 B站画面或 Windows full。**时间点合法不证明视觉内容语义一定正确**。
-- Git 补丁回放验证及完整哈希比较见交付包 `README-交付说明.md`。不包括 Git commit、push、npm 发布。
+- 真实 npm 发布文件清单：`2.8.2-dev.32`、761 个发布文件，包含 `scripts/download_whisper_model.py`；没有在本机安装用户模型。
