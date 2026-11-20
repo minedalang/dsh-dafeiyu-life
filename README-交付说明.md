@@ -1,7 +1,5 @@
-# 大肥鱼 Plus 2.8.2-dev.35 · 交付说明
+# 大肥鱼 Plus 2.8.2-dev.36 · 开发候选交付
 
-本批从 **2.8.2-dev.34** 升级到 **2.8.2-dev.35**，只收口私信读取失败/账号隔离和 Life 局部视频续行异常。**没有修改30分钟私信列表兜底间隔**，也没有对真实 B站平台发起写操作。
+基线 `2.8.2-dev.35`。本轮只修 Life 逐格描述时间格式和增加主人本机局部识图两步专项，不替 Life 作决定，不写真实 Life 观看经历，不执行公开写入。私信30分钟兜底、固定12格、已有网络额度保持原样。
 
-交付内容：`source/` 是完整开发候选源码；根目录同名 `PATCH_FROM_2.8.2-dev.34_TO_2.8.2-dev.35.patch` 是增量补丁；附 `COMMIT_MESSAGE.txt`、`TEST-RESULTS.md`、`TESTING_2.8.2-dev.35.md`、`APPLY.md` 与源码中的 `docs/release/2.8.2-dev.35-dm-focus-closure.md`。完整源码与 Patch **任选一种方式**部署，不要重复应用。
-
-请先做 `git apply --check`，然后按 Windows 验收教程确认：安静期仍30分钟、`ok:false` 不清除待核对、`-509` 仍维持退避、账号切换不会串账；Life 无候选不崩溃、局部视频每窗口成功/失败可从 trace 追踪。Linux 定向回归不代替 DSH 实机及 Windows 双环境全量测试。**不宣布正式版发布。**
+`source/` 是完整源码；`PATCH_FROM_2.8.2-dev.35_TO_2.8.2-dev.36.patch` 是增量补丁。两者是二选一的部署方案，不能先覆盖源码再应用同一个补丁。`COMMIT_MESSAGE.txt`、`TESTING_2.8.2-dev.36.md`、`TEST-RESULTS.md` 独立随包提供；测试仅表示离线定向通过，不等于 Windows 全量和真实 FFmpeg 成功。

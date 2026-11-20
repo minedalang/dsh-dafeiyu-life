@@ -745,6 +745,11 @@
       "owner": "private-inbox-sentinel-and-life-video-continuation",
       "kind": "security",
       "intent": "Keep the quiet DM list reconciliation at exactly 30 minutes; reject failed detail reads and cross-account stale sentinel writes; prevent null/stale Life focus candidates and verify decoded focus proofs with bounded metadata-only trace."
+    },
+    "v282-dev36-owner-focus-acceptance.test.mjs": {
+      "owner": "owner-video-focus-debug-and-life-visual-hypotheses",
+      "kind": "security",
+      "intent": "Owner selects only independently verified videoshot frame times, one read-only bounded FFmpeg focus is accepted without Life willingness/memory or platform writes; fake anchors, cross-account results, invalid visual receipts, and model R1C1 timestamps cannot bypass evidence checks."
     }
   },
   "protected": [

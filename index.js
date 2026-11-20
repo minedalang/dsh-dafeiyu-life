@@ -118,6 +118,7 @@ import {buildVideoEvidenceBundle} from './lib/video-evidence-bundle.mjs'
 import {buildVideoPerceptionTimeline} from './lib/video-perception-timeline.mjs'
 import {buildVideoPerceptionHandoff} from './lib/video-perception-handoff.mjs'
 import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview} from './lib/video-focus-review.mjs'
+import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from './lib/video-owner-focus-debug.mjs'
 import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
 import {ensureOllamaService} from './lib/ollama-service.mjs'
 import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
@@ -8621,6 +8622,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       return sendJson(res,200,readVideoDiscussionDiagnostics({stateDir,credential:dmCred(stateDir)}))
     }
     if (path === '/api/bili-duty/video-perception-debug' || path === '/api/bili-duty/video-perception-debug/run' ||
+        path === '/api/bili-duty/video-perception-debug/focus' ||
         path.startsWith('/api/bili-duty/video-perception-debug/image/')) {
       // Source excerpts and answers remain memory-only. Local JPEG captures
       // expire and require same-account, same-origin loopback access; no remote gateway.
@@ -8657,10 +8659,90 @@ logger:{warn:m=>log('社交意图：'+m)}
         const last=lastLifeVideoDebug&&lastLifeVideoDebug.account===account&&now-lastLifeVideoDebug.at<videoDebugExpiry?lastLifeVideoDebug:null
         return sendJson(res,200,{ok:true,job:current&&{id:current.id,status:current.status,stage:current.stage,step:current.step,updatedAt:current.updatedAt,at:current.at,
           sourceMode:current.sourceMode,viewDepth:current.viewDepth,
+          ...(current.ownerFocus?{ownerFocus:current.ownerFocus}:{}),
           ...(current.status==='done'&&current.twoStage?{twoStage:current.twoStage}:{}),
           ...(current.status==='done'?{lifeInput:current.payload,images:current.images||[],visionOutcome:current.visionOutcome||'no_model_answer'}:{}),...(current.status==='error'?{error:current.error}:{})},
           lastLife:last&&{at:last.at,lifeInput:last.payload,images:last.images||[]},
           lastSummary:previous,retention:'volatile-30m',source:'actual-bili-watch-video-return'})
+      }
+      if(req.method==='POST'&&path.endsWith('/video-perception-debug/focus')){
+        if(videoDebugWorkInFlight)return sendJson(res,409,{ok:false,error:'上一轮视频处理尚未完成，请勿重复启动'})
+        const body=await readBody(req,1600)
+        const job=videoDebugJob
+        if(!job||job.id!==body?.jobId||job.account!==account||now-job.at>=videoDebugExpiry||
+           job.status!=='done'||job.sourceMode!=='owner-focus'||
+           job.ownerFocus?.status!=='awaiting-selection'||!job.payload||
+           job.lifeAccountTag!==trustedLifeAccountTag())
+          return sendJson(res,409,{ok:false,error:'没有可用的同账号主人局部验收任务；请先生成全局分镜'})
+        refreshCfg()
+        if(cfg.visionEnabled!==true||!['independent_dsh','independent_local'].includes(resolvedVisionMode())||
+           accountBinding.status().blocked)return sendJson(res,409,{ok:false,error:'视觉能力未开启或账号状态发生变化'})
+        const bvid=job.payload.bvid
+        const tier=videoExplorationTier(cfg.visionFrames)
+        const usedBytes=Math.max(0,Math.floor(Number(job.payload.visual?.sampling?.transport_response_bytes_this_run)||
+          Number(job.payload.visual?.sampling?.sprite_bytes)||0))
+        const planResult=planOwnerFocusDebugWindow({bvid,overview:job.payload,
+          atSeconds:body?.atSeconds,durationSeconds:body?.durationSeconds,tier,globalNetworkBytes:usedBytes})
+        if(!planResult.ok)return sendJson(res,400,{ok:false,error:'局部验收目标未通过校验：'+planResult.reason})
+        const {plan,frameBudgetLimit,networkBudgetBytes}=planResult
+        videoDebugWorkInFlight=true
+        job.status='running';job.step=5;job.stage='主人专项：正在解码原视频选中窗口并独立识图';job.updatedAt=Date.now()
+        job.ownerFocus={...job.ownerFocus,status:'running',
+          selectedTargets:[{atSeconds:body.atSeconds,durationSeconds:body.durationSeconds}]}
+        job.payload.debugOwnerFocus=job.ownerFocus
+        saveVideoDebugSummary(stateDir,job,account)
+        const watchdog=setTimeout(()=>{
+          if(videoDebugJob===job&&job.status==='running'){
+            job.status='error';job.error='局部视频验收超过8分钟，未取得完成回执；底层任务可能仍在结束中';
+            job.stage=job.error;job.updatedAt=Date.now();saveVideoDebugSummary(stateDir,job,account)
+          }
+        },8*60_000);watchdog.unref?.()
+        const safeScope=()=>videoDebugJob===job&&videoDebugAccount()===account&&
+          trustedLifeAccountTag()===job.lifeAccountTag&&job.status==='running'&&
+          !accountBinding.status().blocked&&cfg.visionEnabled===true
+        Promise.resolve().then(async()=>{
+          if(!safeScope())return {ok:false,reason:'account-or-job-changed'}
+          let visual
+          try{visual=parseMaybeJson(await call('bili_preview_vision',{
+            bvid,perception_source:'adaptive',view_depth:'deep',
+            focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
+            network_budget_bytes:networkBudgetBytes,frame_budget_limit:frameBudgetLimit,
+            capture_for_debug:true}))}
+          catch{return {ok:false,reason:'focus-tool-failed'}}
+          if(!safeScope())return {ok:false,reason:'account-or-job-changed'}
+          const captured=safeVideoDebugCapture(visual?.debugCapture,bvid)
+          if(captured)job.images=[...(job.images||[]),captured]
+          if(visual&&typeof visual==='object')delete visual.debugCapture
+          const evidence=buildVideoEvidenceBundle({bvid,info:job.payload.info,visual})
+          const review=verifyVideoFocusReview({bvid,plan,result:visual,evidence})
+          if(!review)return {ok:false,reason:'focused-evidence-not-verified'}
+          return {ok:true,review,visual:{status:visual.status,image_source:visual.image_source,
+            description:String(visual.description||'').slice(0,2800),
+            times:Array.isArray(visual.times)?visual.times.slice(0,48):[],
+            sampling:{input_bytes:visual.sampling?.input_bytes,
+              frame_pixel_size:visual.sampling?.frame_pixel_size}}}
+        }).then(outcome=>{
+          if(!safeScope())return
+          const good=outcome?.ok===true
+          job.ownerFocus={...job.ownerFocus,status:good?'focused':'focus-unavailable',
+            ...(good?{}:{reason:String(outcome?.reason||'focus-failed').slice(0,70)}),
+            focusWindows:good?[{startSeconds:plan.startSeconds,endSeconds:plan.endSeconds,
+              frameCount:outcome.review.frameCount,inputBytes:outcome.review.inputBytes}]:[],
+            reviews:good?[outcome.review]:[],visuals:good?[outcome.visual]:[]}
+          job.payload.debugOwnerFocus=job.ownerFocus
+          job.status='done';job.step=6;job.updatedAt=Date.now()
+          job.stage=good?'主人局部专项成功：原视频解码、模型识别及证据验证均通过':
+            '主人局部专项未通过：'+job.ownerFocus.reason
+          saveVideoDebugSummary(stateDir,job,account)
+        }).catch(error=>{
+          if(!safeScope())return
+          job.ownerFocus={...job.ownerFocus,status:'focus-unavailable',reason:'focus-execution-error',
+            focusWindows:[],reviews:[],visuals:[]}
+          job.payload.debugOwnerFocus=job.ownerFocus
+          job.status='done';job.stage='主人局部专项异常：'+String(error?.message||error).slice(0,100)
+          job.updatedAt=Date.now();saveVideoDebugSummary(stateDir,job,account)
+        }).finally(()=>{videoDebugWorkInFlight=false;clearTimeout(watchdog)})
+        return sendJson(res,202,{ok:true,id:job.id,status:'running',notice:'主人只读技术验收；不调用 Life 决策、不写观看经历或外发'})
       }
       if(req.method==='POST'&&path.endsWith('/video-perception-debug/run')){
         if(videoDebugWorkInFlight)return sendJson(res,409,{ok:false,error:'上一轮视频感知底层任务仍在执行；请勿重复触发，等待它结束或重启插件后再试'})
@@ -8669,13 +8751,13 @@ logger:{warn:m=>log('社交意图：'+m)}
         const depth=['skim','standard','deep'].includes(body?.depth)?body.depth:'standard'
         // Explicit manual diagnostic mode; reject unknown values rather than
         // silently running a more expensive original-video read.
-        if(body?.sourceMode!==undefined&&!['preview','adaptive','life-two-stage'].includes(body.sourceMode))
+        if(body?.sourceMode!==undefined&&!['preview','adaptive','life-two-stage','owner-focus'].includes(body.sourceMode))
           return sendJson(res,400,{ok:false,error:'无效的视频诊断来源选项'})
-        const requestedMode=body?.sourceMode==='life-two-stage'?'life-two-stage':body?.sourceMode==='adaptive'?'adaptive':'preview'
+        const requestedMode=body?.sourceMode==='life-two-stage'?'life-two-stage':body?.sourceMode==='owner-focus'?'owner-focus':body?.sourceMode==='adaptive'?'adaptive':'preview'
         const debugPerceptionSource=requestedMode==='adaptive'?'adaptive':'preview'
-        if(requestedMode==='life-two-stage'&&depth==='skim')return sendJson(res,400,{ok:false,error:'两阶段验收必须先进行正常全局识图，不能选择略看'})
+        if(['life-two-stage','owner-focus'].includes(requestedMode)&&depth==='skim')return sendJson(res,400,{ok:false,error:'两阶段验收必须先进行正常全局识图，不能选择略看'})
         const job={id:randomUUID(),at:now,account,status:'running',stage:'已受理，只读任务开始',step:0,updatedAt:now,
-          sourceMode:requestedMode,viewDepth:requestedMode==='life-two-stage'?'standard':depth,
+          sourceMode:requestedMode,viewDepth:['life-two-stage','owner-focus'].includes(requestedMode)?'standard':depth,
           lifeAccountTag:trustedLifeAccountTag()}
         videoDebugJob=job
         videoDebugWorkInFlight=true
@@ -8692,12 +8774,19 @@ logger:{warn:m=>log('社交意图：'+m)}
         // Do not await in the HTTP handler: visual/ASR can exceed browser timeout.
         Promise.resolve().then(async()=>{
           const result=await executeWatchVideo({bvid,
-            view_depth:requestedMode==='life-two-stage'?'standard':depth,
+            view_depth:['life-two-stage','owner-focus'].includes(requestedMode)?'standard':depth,
             include_comments:false,include_danmaku:true,record_session:false,__debugDryRun:true},
-            {debugPerceptionSource,debugTwoStageGlobalOverview:requestedMode==='life-two-stage'})
+            {debugPerceptionSource,debugTwoStageGlobalOverview:['life-two-stage','owner-focus'].includes(requestedMode)})
           if(requestedMode==='life-two-stage'&&result?.ok===true){
             job.twoStage=await runVideoDebugTwoStage({bvid,account,job,overview:result})
             result.debugTwoStage=job.twoStage
+          }
+          if(requestedMode==='owner-focus'&&result?.ok===true){
+            const anchors=verifiedOwnerFocusAnchors({bvid,overview:result})
+            job.ownerFocus={mode:'owner-focus',status:anchors.length?'awaiting-selection':'overview-not-verified',
+              anchors,focusWindows:[],reviews:[],visuals:[],
+              note:'主人指定局部技术验收；没有向 Life 请求意愿、没有真实 Life 观看经历'}
+            result.debugOwnerFocus=job.ownerFocus
           }
           return result
         }).then(result=>{
@@ -8711,6 +8800,9 @@ logger:{warn:m=>log('社交意图：'+m)}
               job.visionOutcome=result?.visual?.status==='analyzed'&&Boolean(String(result?.perceptionHandoff?.video?.modelDescription||'').trim())?'model_answer_returned':'no_model_answer'
               job.stage=job.visionOutcome==='model_answer_returned'?'只读资料已整理且视觉模型返回了实际回答':'只读资料已整理，但尚无可信视觉模型回答'
               if(requestedMode==='life-two-stage')job.stage='两阶段验收：'+String(job.twoStage?.status||'未取得 Life 第二次选择')
+              if(requestedMode==='owner-focus')job.stage=job.ownerFocus?.status==='awaiting-selection'
+                ?'全局分镜已验证；请在下面选择一个真实采样时刻，再开始局部识图'
+                :'全局分镜未通过证据验证，无法进入主人局部专项'
             }else job.error=String(result?.error||result?.visual?.error||'视频感知未完成').slice(0,240)
           }
           job.updatedAt=Date.now();saveVideoDebugSummary(stateDir,job,account)

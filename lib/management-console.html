@@ -2602,10 +2602,18 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <p class="muted">本机只读验收：输入真实 BV，可选择<strong>单阶段官方 videoshot 全局概览</strong>、<strong>完整两阶段（全局预览 → Life 自主多候选规划 → 逐段原视频复查）</strong>，或单独排障原视频 FFmpeg。只有完整两阶段会在真实全局识图后由 Life 先决定是否深入、再自主选择0～多处可信时间点和观察时长；并不是主人指定看片。验收不会登记 Life 视频观看经历或公开互动，但会产生实际的 Life 意愿选择记录，并可能消耗 B站读取流量与视觉模型费用。</p>
 <div class="toolbar video-debug-toolbar">
 <label>BV 视频号 <input id="video-debug-bvid" type="text" placeholder="BV1xxxxxxxxxx" maxlength="12" autocomplete="off" spellcheck="false" aria-label="测试视频 BV 号"></label>
-<label>读取来源 <select id="video-debug-source" aria-label="试运行视觉来源"><option value="preview" selected>单阶段 · 官方 videoshot 全局预览</option><option value="life-two-stage">完整两阶段 · videoshot → Life 多候选规划 → FFmpeg</option><option value="adaptive">单阶段专项 · 原视频 FFmpeg</option></select></label>
+<label>读取来源 <select id="video-debug-source" aria-label="试运行视觉来源"><option value="preview" selected>单阶段 · 官方 videoshot 全局预览</option><option value="life-two-stage">完整两阶段 · videoshot → Life 多候选规划 → FFmpeg</option><option value="adaptive">单阶段专项 · 原视频 FFmpeg</option><option value="owner-focus">主人局部识图专项 · 不需 Life 同意</option></select></label>
 <label>单阶段测试深度（两阶段固定先正常了解） <select id="video-debug-depth" aria-label="试运行理解深度"><option value="skim">略看 · 不识图</option><option value="standard" selected>正常了解 · 最多12帧</option><option value="deep">深入预览 · 按档位最多24帧</option></select></label>
 <button id="video-debug-run" type="button" class="life-action life-purple">开始只读视频感知验收</button>
-<p class="muted" id="video-debug-source-explain">单阶段模式只验收一次识图；选择「完整两阶段」会让 Life 决定是否深入，再自主选0～多个已核验时间锚点（受三档累计预算保护）。若 Life 拒绝或预算不足，局部视觉读取不会发生。主人测试不写 Life 观看经历、不会外发评论。</p>
+<div id="video-debug-owner-focus-panel" class="setting-note" style="display:none;flex-basis:100%;margin:10px 0" aria-live="polite">
+  <strong>🔎 主人局部识图专项 · 从已验证时间中选择</strong>
+  <p class="muted" id="video-debug-owner-focus-help">先生成全局分镜，再选一处真实采样时刻。</p>
+  <label>已核验时间点 <select id="video-debug-owner-focus-anchor" aria-label="主人局部识图的可信时间点"></select></label>
+  <label>观察时长（秒） <select id="video-debug-owner-focus-duration" aria-label="主人局部识图时长"><option value="10">10秒</option><option value="15" selected>15秒</option><option value="20">20秒</option><option value="30">30秒</option></select></label>
+  <button id="video-debug-owner-focus-run" type="button" class="life-action life-sky">开始所选局部原视频识图</button>
+  <p class="muted">本功能仅属于主人技术验收：直接读取已验证时间附近的原视频，不调用 Life 意愿、不形成 Life 经历、不进行 B站互动。</p>
+</div>
+<p class="muted" id="video-debug-source-explain">单阶段模式只验收一次识图；选择「完整两阶段」会让 Life 决定是否深入；选择「主人局部识图专项」则在全局采样成功后由你选时刻直接技术验收，再自主选0～多个已核验时间锚点（受三档累计预算保护）。若 Life 拒绝或预算不足，局部视觉读取不会发生。主人测试不写 Life 观看经历、不会外发评论。</p>
 <button id="video-debug-refresh" type="button" class="life-action life-sky">刷新当前结果</button>
 </div>
 <progress id="video-debug-progressbar" max="6" style="width:100%;height:15px;display:none" aria-label="视频感知只读验收进行中"></progress>
