@@ -755,6 +755,16 @@
       "owner": "focus-video-evidence-and-owner-debug-diagnostics",
       "kind": "security",
       "intent": "Diagnose decoded-video focus failure at tool, visual-model, provenance and time-budget verification boundaries; persist only redacted owner focus status through existing reports export; show real nested Life video action rather than parent metadata."
+    },
+    "v282-dev40-decoded-provenance.test.mjs": {
+      "owner": "video-decoded-frame-provenance",
+      "kind": "security",
+      "intent": "Accept bounded multi-track fallback only with exact final-track download-byte proof, and report which deterministic provenance gate rejected a receipt without exposing private data."
+    },
+    "v282-dev40-source-root-hygiene.test.mjs": {
+      "owner": "release-artifacts-and-repository-hygiene",
+      "kind": "contract",
+      "intent": "Keep historical testing guides and one-off delivery files outside Git source and npm package; fail if they reappear in root or ignore rules regress."
     }
   },
   "protected": [

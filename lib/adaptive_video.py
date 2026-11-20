@@ -1228,6 +1228,9 @@ def _acquire_adaptive_frames_impl(bvid, *, max_frames=24, focus=None, depth='sta
             else:
                 source_type = 'bili-public-playurl-durl'
                 jobs = [(filename,start,end-start,start) for start,end in windows]
+        # This is the final signed track only, NOT the cumulative traffic
+        # from earlier (possibly failed) official DURL/DASH attempts.
+        selected_track_input_bytes = count
         count = original_bytes()-observed_start
         for filename,start,length,decode_start in jobs:
             if time.monotonic()>=download_deadline:
@@ -1266,6 +1269,7 @@ def _acquire_adaptive_frames_impl(bvid, *, max_frames=24, focus=None, depth='sta
     coverage=round(sum(end-start for start,end in windows),1)
     sampling={'strategy':'decoded-storyboard-stratified-2fps','sampler_version':SAMPLER_VERSION,
               'source_type':source_type,'input_bytes':count,
+              'selected_track_input_bytes':selected_track_input_bytes,
               'source_attempts':attempted,
               'network_budget_bytes':budget,'remote_video_bytes':size,
               'download_mode':download_mode,'download_ranges':range_count,
