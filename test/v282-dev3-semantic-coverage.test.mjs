@@ -30,7 +30,7 @@ test('Life Episode input distinguishes five verified steps, trimmed event detail
   const events=Array.from({length:12},(_,i)=>({type:'result',action:'explore-'+i,outcome:'verified',evidence:{verified:true,bvid:BV,title:'公开事实'+i,description:'视频描述'.repeat(400)}}))
   const prompt=continuationPrompt(menu,'鱼鱼有选择不看的自由',{episodeHistory:steps,
     episodeSessionEvents:events,verifiedEpisodeContext:{bvid:BV,summary:'有限经历'.repeat(400)},
-    visualObservation:{untrustedObservationNotes:['可能有动作变化'.repeat(300)],source:'decoded-video'}})
+    visualObservation:{untrustedObservationNotes:['可能有动作变化'.repeat(500)],source:'decoded-video'}})
   for(const step of steps)assert.match(prompt,new RegExp(step.action))
   assert.match(prompt,/只提供最近 3\/12 条已核验事实的详情/)
   assert.match(prompt,/visual-observation:partial/)

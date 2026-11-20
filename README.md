@@ -147,7 +147,7 @@
 
 [Life 架构可视化图](docs/architecture/life-system-current-view.md) · [用户升级与设置指南](docs/release/2.8.1-user-upgrade-guide.md)
 
-> **版本提醒：** 当前源码标识为 **`2.8.2-dev.28`**，属于开发候选版，不是正式发布版本，也不代表已经上架。请以 npm、DSHMarket 与 GitHub Release 实际显示的版本为准。Windows/DSH 实机、真实 B站媒体源及多模型调用效果仍待维护者验收；音画时间邻近不等于语义互证。
+> **版本提醒：** 当前源码标识为 **`2.8.2-dev.29`**，属于开发候选版，不是正式发布版本，也不代表已经上架。请以 npm、DSHMarket 与 GitHub Release 实际显示的版本为准。Windows/DSH 实机、真实 B站媒体源及多模型调用效果仍待维护者验收；音画时间邻近不等于语义互证。
 
 ## 🚀 开始使用
 

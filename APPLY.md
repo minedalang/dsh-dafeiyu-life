@@ -1,39 +1,18 @@
-# 2.8.2-dev.26 · 安全应用说明
+# 2.8.2-dev.29 · 安全应用说明
 
-本补丁基于本轮上传源码 `2.8.2-dev.25` 生成。请先备份工作区；不要覆盖用户家目录中的凭据、记忆、数据库或运行数据。
+本次补丁仅以完整 `2.8.2-dev.28` 源码为基线。如果已在本地做额外修改或合并前置补丁，请先核对工作区，不要重置或强制覆盖。
 
-## 推荐：Git Patch
-
-在项目仓库根目录执行 PowerShell：
+在 Windows PowerShell 的插件源码目录运行：
 
 ```powershell
-$Patch = 'D:\YourDelivery\PATCH_FROM_2.8.2-dev.25_TO_2.8.2-dev.26.patch'
+$Patch='D:\Delivery\PATCH_FROM_2.8.2-dev.28_TO_2.8.2-dev.29.patch'
 git status --short
 git apply --check --whitespace=nowarn $Patch
-if ($LASTEXITCODE -ne 0) { throw 'Patch check failed; stop and inspect the actual baseline.' }
+if($LASTEXITCODE -ne 0){ throw '补丁基线不一致，请停止' }
 git apply --whitespace=nowarn $Patch
-if ($LASTEXITCODE -ne 0) { throw 'Patch apply failed; do not force or use --reject.' }
+if($LASTEXITCODE -ne 0){ throw '补丁应用失败，不要使用 --reject' }
 ```
 
-`--whitespace=nowarn` 仅抑制原源码 CRLF 行尾在 Linux 生成补丁时的空白告警，不跳过内容校验。
+补丁完成后按 `TESTING_2.8.2-dev.29.md` 执行定向测试、`npm pack` 清单核验，再用 Windows/DSH 做实机验收。没有任何步骤要求删除 `.hf-cache`、记忆或凭据。
 
-确认 `package.json` 为 `2.8.2-dev.26` 后运行：
-
-```powershell
-node --test test/issue11-fixes.test.mjs
-node --test test/issue11-fixes.test.mjs test/v281-dev3b3-quick-setup-dependency-install.test.mjs test/v271-dev36-universal-life-episodes.test.mjs test/v271-dev37-life-action-attribution.test.mjs test/v281-dev3b3321-scheduler-live-export.test.mjs test/v271-dev54-owner-ui-memory-life.test.mjs test/v271-dev53-neural-semantic-life-diagnostics.test.mjs test/v281-dev3b339-planner-admission-refund.test.mjs test/v271-dev56-life-owned-actions-and-journeys.test.mjs
-npm run check:test-governance
-node selfcheck.mjs
-npm run check:life-architecture
-npm run check:video-tool-contract
-npm run check:context-budget
-npm pack --dry-run --json
-```
-
-完整手工验收见 `TESTING_2.8.2-dev.26.md`。
-
-## 回滚
-
-如果尚未提交，可在确认工作区只有本补丁变更后使用 `git apply --reverse --whitespace=nowarn <patch>` 回滚。若已有其他修改或提交，不要直接 reset；先备份并按实际 Git 状态生成反向补丁。
-
-**不要**使用 `git apply --reject`、强制覆盖、`reset --hard` 或删除运行数据来绕过补丁冲突。
+若本补丁尚未提交且没有叠加后续更改，备份后可执行 `git apply --reverse --check --whitespace=nowarn $Patch`，确认通过后再 `git apply --reverse --whitespace=nowarn $Patch`。不要使用 `git reset --hard`。

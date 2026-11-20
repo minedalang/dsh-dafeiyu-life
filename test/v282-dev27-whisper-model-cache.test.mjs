@@ -47,3 +47,14 @@ test('production API is protected by local origin and only calls the owned cache
  assert.match(ui,/startWhisperPoll\(\)/)
  assert.match(ui,/DELETE_WHISPER_/)
 })
+
+
+test('npm consumer distribution includes the model downloader script used by the production installer',()=>{
+ const pkg=JSON.parse(readFileSync(resolve('package.json'),'utf8'))
+ assert.ok(pkg.files.includes('scripts/download_whisper_model.py'),
+   'npm files allowlist must ship the actual Python downloader, not only source checkout')
+ assert.ok(existsSync(resolve('scripts/download_whisper_model.py')))
+ const installer=readFileSync(resolve('index.js'),'utf8')
+ assert.match(installer,/const modelDownloadScript=join\(pluginDir,'scripts','download_whisper_model\.py'\)/)
+ assert.match(installer,/plugin-package-missing-model-downloader/)
+})

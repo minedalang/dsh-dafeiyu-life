@@ -1,30 +1,25 @@
-# 2.8.2-dev.28 · 离线实施验证记录
+# 2.8.2-dev.29 · 收口修复与测试记录
 
-**输入基线：`2.8.2-dev.26`；输出源码：`2.8.2-dev.28`。** 测试环境为 Linux 容器 Node.js 22 和 Python；未接入用户 Windows/DSH 或真实 B站媒体流，也未安装/删除任何真实 Whisper 模型。
+**基线：dev.28 → 目标：dev.29；环境：容器内离线 Node/Python。** 未在用户 Windows/DSH 上安装/删除模型，也未连接真实 B站或进行外发。
 
-## Node.js 受影响定向回归
+## 本轮已完成
 
-- 安装器、Issue #11、Whisper 管理与 Life 视频决策组合：**68 / 68 通过**（11 个变更相关测试文件，包含新增模型缓存及三档多候选合同）。
-- 用户 README、视觉配置、旧 Life 单候选兼容及新功能测试：**44 / 44 通过**（8 个受影响文件，其中部分与上组重复）；首次有4项 README 历史固定措辞断言失败，已修正真实 README 文案并依法审计迁移过时的 2.8.1 标题断言，重测通过。
-- Python 新增 Whisper 实际单文件进度事件/非法型号回归：**2 / 2 通过**（mock 隔离网络，不是实际下载验收）。
+- Windows 上传测试报告：原 dev.28 全量 50 个 Node 主批次中 **5 批 FAIL**，共 **9 条断言**（3+3+1+1+1），并非全量通过。
+- 9 个失败点所涉及的现行测试文件 + Whisper 缓存打包检查：**43/43 Node 测试通过**。
+- Issue #11、ASR 诊断、视频预算、上下文交付等相关额外测试：**19/19 Node 通过**。
+- 版本/README 当前架构契约额外复测：**8/8 通过**（属于上述 43 中的测试文件重新执行，不另算独立用例）。
+- Python Whisper 下载进度专项（mock，不是真网下载）：**2/2 通过**。
+- `node --check index.js`、`node --check lib/management-console.js`、`python -m py_compile scripts/download_whisper_model.py`：PASS。
+- `node selfcheck.mjs`、`npm run check:life-architecture`、`npm run check:video-tool-contract`、`npm run check:context-budget`、`npm run check:test-governance`：PASS。
+- `npm pack --dry-run --json`：PASS，发布文件表有 `scripts/download_whisper_model.py`。
+- `npm pack --ignore-scripts`：PASS，实际 `.tgz` 中包含 `package/scripts/download_whisper_model.py`，版本是 `2.8.2-dev.29`。
 
-## 工程检查
+## 仍然阻止正式发布
 
-- `node --check index.js`、`lib/autonomous-planner.mjs`、`lib/life-continuation.mjs`、`lib/management-console.js`、`lib/video-exploration-budget.mjs`、`lib/whisper-model-cache.mjs`：PASS。
-- `python -m py_compile scripts/download_whisper_model.py`：PASS。
-- `node selfcheck.mjs`：PASS（host 43 工具、client 注入自检）。
-- `npm run check:video-tool-contract`：PASS。
-- `npm run check:context-budget`：PASS（结构检查，不代表11类实际完整性已验收）。
-- `npm run check:life-architecture`：PASS（4图、128个源节点）；已执行 `npm run write:life-architecture-view`。
-- `npm run check:test-governance`：PASS（600 活跃 Node + 95 活跃 Python，5 历史归档；35项历史测试断言审计记录）。
-- `npm pack --dry-run --json`：PASS（包元数据2.8.2-dev.28，758条文件）。
-- 已生成新版 `video-perception-current.svg` 并转成 PNG 作本地视觉检查；流程/文字排版没有发现裁切。
+- **尚未重新执行 dev.29 Windows 普通与管理员 PowerShell 的全量测试。** Linux 定向通过不等于 Windows 50 批均通过。
+- **Whisper 真实下载、实时 UI 进度、型号切换后缓存清理与真实 ASR 完成回执**仍需在 DSH 安装包中验收。
+- **视频二次多窗口存在潜在保守预留过量**：每窗按本档可能输出的最大帧数预校验，前窗实际只消耗少量帧也可能使后窗提前预算拒绝；需针对多窗口真实链路修复和验收。
+- B站接口 DNS/连接超时、旧轮转日志 `-509` 限流、Life 模型超时与额度不足，尚不能宣称真实网络测试通过。不要放宽安全重试与外发门禁。
+- M2 音画语义互证、M3 11 类上下文实际交付没有独立实机完整性证据，不应宣称完全收口。
 
-## 尚未执行的发布阻断项
-
-- 普通和管理员 Windows PowerShell 全量测试；实际 DSH 管理中心不同浏览器实时进度/日志与安装失败恢复。
-- 真实 Hugging Face 权重首次下载、Windows symlink 缓存、自定义模型路径与活跃使用时删除边界；真实音频转写结果。
-- 真实 B站 MP4/DASH/FFmpeg 多窗口、DSH/Ollama 多模态模型调用、费用及网络重试累积预算。
-- M2 音画语义互证与 M3 11类上下文实际交付仍不能宣称完成。
-
-**结论：新增核心能力及受影响离线定向回归通过，但没有达到正式发布门槛。**
+**结论：这批修复解决了已知 npm 打包 P0 和 9 条失败断言的生产契约/测试数据问题，但项目尚不符合正式版发布条件。**

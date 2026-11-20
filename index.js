@@ -8024,7 +8024,14 @@ logger:{warn:m=>log('社交意图：'+m)}
         try { mkdirSync(hfHome, { recursive: true }) } catch { /* 建不了后面会给报错 */ }
         setAsrProgress('download-start',{model,currentBytes:null,totalBytes:null})
         appendAsr(`下 Whisper 模型「${model}」（缓存在 ${hfHome}，源 ${hf}；真实文件下载进度显示在下方）…\n`)
-        const code2 = await spawnTo(py, ['-u', join(pluginDir,'scripts','download_whisper_model.py'),model],
+        const modelDownloadScript=join(pluginDir,'scripts','download_whisper_model.py')
+        if(!existsSync(modelDownloadScript)){
+          setAsrProgress('failed',{finishedAt:new Date().toISOString(),reason:'plugin-package-missing-model-downloader'})
+          appendAsr('模型下载尚未开始：当前安装的插件文件不完整（缺少 scripts/download_whisper_model.py）。请更新或重新安装包含该文件的插件版本，不需要删除 Python 环境或已缓存的模型。\n')
+          log('转写：插件安装包缺少模型下载脚本；模型下载未启动')
+          return
+        }
+        const code2 = await spawnTo(py, ['-u', modelDownloadScript,model],
           {sink:appendAsrDownload, env:{HF_ENDPOINT:hf,HF_HOME:hfHome,HF_HUB_DISABLE_XET:'1'},
            idleTimeoutMs:10*60_000,totalTimeoutMs:90*60_000,
            timeoutAction:'正在终止模型下载；模型不会标记为就绪。'})

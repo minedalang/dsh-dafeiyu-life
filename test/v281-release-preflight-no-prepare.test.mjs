@@ -12,13 +12,13 @@ test('git-hosted package must not run developer Git hooks during consumer instal
  assert.equal(p.scripts?.['prepare:embedding-runtime'],'node scripts/prepare-embedding-runtime.mjs')
  assert.match(read('run-tests.ps1'),/install-git-hooks|test-governance/)
 })
-test('the 2.8.1 release, lockfile, README and release-note paths are consistent',()=>{
+test('current 2.8.2 candidate, lockfile, README and historical release notes remain consistent',()=>{
  const p=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json'))
  assert.match(p.version,/^2\.8\.(?:1|2)(?:-dev\.\d+)?$/)
  assert.equal(p.version,lock.version)
  assert.equal(p.version,lock.packages[''].version)
- assert.match(read('README.md'),/2\.8\.1/)
- assert.match(read('CHANGELOG.md'),new RegExp('^## '+p.version.replaceAll('.', '\\.')+'(?: ·|（开发候选）)','m'))
+ assert.match(read('README.md'),/2\.8\.2/)
+ assert.ok(read('CHANGELOG.md').split(/\r?\n/).some(line=>line.startsWith('## '+p.version+'（')||line.startsWith('## '+p.version+' ·')))
  const workflow=read('.github/workflows/release.yml')
  assert.match(workflow,/note_file="docs\/release\/RELEASE_NOTES_\$\{GITHUB_REF_NAME\}\.md"/)
  assert.ok(existsSync(resolve(root,'docs/release/RELEASE_NOTES_v2.8.1.md')))

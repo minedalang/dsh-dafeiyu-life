@@ -59,7 +59,7 @@ test('shadow metrics remain server-side read-only; retired developer UI no longe
   const consoleJs=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   const consoleHtml=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   const owner=readFileSync(new URL('../lib/social-decision-ownership.mjs',import.meta.url),'utf8')
-  assert.match(index,/socialShadow:lifeSocialShadow\.status\(\)/)
+  assert.match(index,/shadow:inspect\(\(\)=>lifeSocialShadow\.status\(\)\)/)
   assert.doesNotMatch(consoleJs,/shadow\.byChannel\?\.\[key\]/)
   assert.doesNotMatch(consoleJs,/未配对不代表选择沉默/)
   assert.doesNotMatch(consoleHtml,/life-social-shadow-status|life-social-context-optin|life-social-shadow-save/)
