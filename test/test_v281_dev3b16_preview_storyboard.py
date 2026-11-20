@@ -41,7 +41,7 @@ class StoryboardTests(unittest.TestCase):
     def test_adaptive_fallback_contains_12_lowres_tiles_in_one_board(self):
         with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch('adaptive_video.acquire_adaptive_frames',side_effect=AdaptiveUnavailable('ffmpeg_not_installed',fallback=True)):
             result=pv.analyze_perception(BV,folder,perception_source='adaptive',enabled=False,return_frames=True,max_frames=24,view_depth='standard')
-        self.assertTrue(result['ok']);self.assertEqual(result['sampling']['sampler_version'],8)
+        self.assertTrue(result['ok']);self.assertEqual(result['sampling']['sampler_version'],9)
         self.assertEqual(result['sampling']['strategy'],'videoshot-storyboard-stratified')
         self.assertEqual(len(result['times']),12)
         self.assertEqual(result['sampling']['storyboard_count'],1)
@@ -85,7 +85,7 @@ class StoryboardTests(unittest.TestCase):
                   enabled=False,return_frames=True,focus_start=25,focus_end=55)
             legacy=pv.analyze_preview(BV,folder,enabled=False,return_frames=True,max_frames=3)
         self.assertTrue(result['ok']);self.assertTrue(all(25<=x<=55 for x in result['times']))
-        self.assertEqual(result['sampling']['sampler_version'],8)
+        self.assertEqual(result['sampling']['sampler_version'],9)
         self.assertLessEqual(len(legacy['times']),3)
         self.assertEqual(legacy['sampling']['sampler_version'],3)
 

@@ -97,6 +97,24 @@ test('production visual host limits execution to a nonce-bound overlay and exact
     assert.throws(()=>verifyProductionVisionPacket(f.packet(['--patch',f.patch,f.prompt]),o))
   }finally{f.dispose()}
 })
+test('production DSH host accepts long-video focus windows but enforces the 3..120s read-only contract',()=>{
+  const f=fixture()
+  try{
+    const opts={home:f.home,exe:f.exe,cli:f.cli,baseOverlay:f.baseOverlay,
+                workdir:f.dir,baseText:f.baseText,env:f.env}
+    const focus=(start,end)=>f.prompt.replace('，perception_source=preview，view_depth=standard',
+      `，focus_start_seconds=${start}，focus_end_seconds=${end}，perception_source=adaptive，view_depth=deep`)
+    const verify=(start,end)=>verifyProductionVisionPacket(f.packet(['--patch',f.patch,focus(start,end)]),opts)
+    for(const [start,end] of [[45,60],[900,915],[3600,3615],[6000,6015],[43080,43200]]){
+      assert.equal(verify(start,end),'production_video_vision',`legitimate focus ${start}..${end}`)
+    }
+    for(const [start,end] of [[900,902],[900,1021],[0,121],[43190,43201],[900,899],[0,0]]){
+      assert.throws(()=>verify(start,end),/invalid_video_focus/,`unsafe focus ${start}..${end}`)
+    }
+    assert.throws(()=>verifyProductionVisionPacket(
+      f.packet(['--patch',f.patch,focus(900,915)+' arbitrary command']),opts),/not_fixed_video_prompt/)
+  }finally{f.dispose()}
+})
 test('production host accepts the actual Python-generated DSH image prompt, never a forged suffix',()=>{
   const f=fixture()
   try{
@@ -107,6 +125,16 @@ test('production host accepts the actual Python-generated DSH image prompt, neve
     const args={home:f.home,exe:f.exe,cli:f.cli,baseOverlay:f.baseOverlay,workdir:f.dir,baseText:f.baseText,env:f.env}
     assert.equal(verifyProductionVisionPacket(f.packet(['--patch',f.patch,prompt]),args),'production_video_vision')
     assert.throws(()=>verifyProductionVisionPacket(f.packet(['--patch',f.patch,prompt+'extra']),args),/not_fixed_video_prompt/)
+    // Produce a *real Python-generated* long-video focus prompt (not a hand-
+    // written approximation), then validate it through the production Node host.
+    const focusedScript=script.replace(
+      "module.describe_with_dsh('BV1234567890',folder,env=env,runner=run)",
+      "module.describe_with_dsh('BV1234567890',folder,env=env,runner=run,focus_start=6000,focus_end=6015,perception_source='adaptive',view_depth='deep',network_budget_bytes=52428800)")
+    const focused=spawnSync(pythonExecutable,['-c',focusedScript,f.home],{encoding:'utf8'})
+    assert.equal(focused.status,0,focused.stderr)
+    const focusedPrompt=JSON.parse(focused.stdout.trim().split(/\r?\n/).at(-1))
+    assert.match(focusedPrompt,/focus_start_seconds=6000\.0，focus_end_seconds=6015\.0/)
+    assert.equal(verifyProductionVisionPacket(f.packet(['--patch',f.patch,focusedPrompt]),args),'production_video_vision')
   }finally{f.dispose()}
 })
 test('production visual host requires per-round capability and closes after release',async()=>{

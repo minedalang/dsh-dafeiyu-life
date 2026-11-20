@@ -41,7 +41,7 @@ class HybridPreview(unittest.TestCase):
                 enabled=False,return_frames=True)
         self.assertTrue(result['ok'],result)
         sampler=result['sampling']
-        self.assertEqual(sampler['sampler_version'],8)
+        self.assertEqual(sampler['sampler_version'],9)
         self.assertTrue(sampler['timeline_scan_complete'])
         self.assertEqual(sampler['index_frames_available'],91)
         self.assertEqual(sampler['candidates_examined'],91)
@@ -117,6 +117,73 @@ class HybridPreview(unittest.TestCase):
         self.assertEqual(sampling['scan_limited_by'],'tile-cap')
         self.assertGreater(max(result['times']),2400,'should inspect the end of the video')
         self.assertLess(min(result['times']),600,'should inspect the beginning')
+
+    def test_json_index_over_3000_preserves_full_timeline_under_resource_caps(self):
+        # 60 sheets / 6000 real timestamps: source-sheet cap selects 48 across
+        # the whole video, not the first 30 or the first 3000 timestamps.
+        from io import BytesIO
+        def api(url):
+            if '/view?' in url:return {'cid':123,'duration':6000}
+            if '/videoshot?' in url:
+                return {'image':[f'//i0.hdslb.com/bfs/videoshot/{i}.jpg' for i in range(60)],
+                        'index':[0]+list(range(6000)), 'img_x_len':10,'img_y_len':10,
+                        'img_x_size':48,'img_y_size':32}
+            raise AssertionError(url)
+        fetched=[]
+        def download(url,**kw):
+            sheet=int(url.split('/')[-1].split('.')[0]);fetched.append(sheet)
+            img=Image.new('RGB',(480,320),((sheet*7)%255,20,90))
+            buf=BytesIO();img.save(buf,format='JPEG');return buf.getvalue()
+        with TemporaryDirectory() as home,patch.object(pv,'_json_api',side_effect=api),\
+             patch.object(pv,'_safe_api_get',side_effect=download),\
+             patch.object(heat,'obtain_preview_heat_signal',return_value=None):
+            result=pv.analyze_preview(BV,home,storyboard=True,max_frames=24,
+                                      enabled=False,return_frames=True)
+        self.assertTrue(result['ok'],result)
+        sampling=result['sampling']
+        self.assertEqual(sampling['index_frames_available'],6000)
+        self.assertEqual(sampling['source_sheets_available'],60)
+        self.assertEqual(sampling['source_sheets_scanned'],48)
+        self.assertEqual(sampling['candidate_frames_scanned'],1400)
+        self.assertFalse(sampling['timeline_scan_complete'])
+        self.assertEqual(sampling['scan_limited_by'],'tile-cap')
+        self.assertLess(min(result['times']),900)
+        self.assertGreater(max(result['times']),5100)
+        self.assertTrue(any(i>=50 for i in fetched))
+        self.assertLessEqual(len(result['frames']),2)
+
+    def test_pvdata_binary_index_over_3000_not_truncated_to_early_timestamps(self):
+        import struct
+        # 40 sheets / 4000 timestamps: binary source is bigger than the old
+        # 3000-entry cutoff but still fits in the safe index read bound.
+        def api(url):
+            if '/view?' in url:return {'cid':123,'duration':4000}
+            if '/videoshot?' in url:
+                return {'image':[f'//i0.hdslb.com/bfs/videoshot/{i}.jpg' for i in range(40)],
+                        'pvdata':'//i0.hdslb.com/bfs/videoshot/times.bin',
+                        'img_x_len':10,'img_y_len':10,'img_x_size':48,'img_y_size':32}
+            raise AssertionError(url)
+        index_payload=struct.pack('>'+('H'*4001),*([0]+list(range(4000))))
+        index_reads=[]
+        def download(url,**kw):
+            if url.endswith('.bin'):
+                index_reads.append(kw.get('max_bytes'))
+                self.assertGreaterEqual(kw.get('max_bytes'),len(index_payload))
+                return index_payload
+            sheet=int(url.split('/')[-1].split('.')[0])
+            img=Image.new('RGB',(480,320),((sheet*5)%255,25,90))
+            buf=BytesIO();img.save(buf,format='JPEG');return buf.getvalue()
+        with TemporaryDirectory() as home,patch.object(pv,'_json_api',side_effect=api),\
+             patch.object(pv,'_safe_api_get',side_effect=download),\
+             patch.object(heat,'obtain_preview_heat_signal',return_value=None):
+            result=pv.analyze_preview(BV,home,storyboard=True,max_frames=12,
+                                      enabled=False,return_frames=True)
+        self.assertTrue(result['ok'],result)
+        self.assertTrue(index_reads)
+        self.assertEqual(result['sampling']['index_frames_available'],4000)
+        self.assertEqual(result['index_source'],'pvdata_bin')
+        self.assertGreater(max(result['times']),3300)
+        self.assertFalse(result['sampling']['timeline_scan_complete'])
 
 
 if __name__=='__main__':unittest.main()
