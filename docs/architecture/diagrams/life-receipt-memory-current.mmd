@@ -1,3 +1,4 @@
+%% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; Life chooses one or stops. No forced four slots, no focus grant; extra media still requires explicit Life proof.
 %% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
 %% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
@@ -93,7 +94,7 @@ flowchart TB
   videoTrace -.->|精确 BV + 当前账号的已核验回执| visualReuse
   visualReuse -.->|现存清晰观察可阻止冗余取帧，不替代 Life 选择| planner
   visualLease["真实采样期间账号/BV跨进程互斥；仅短期账本不代替可遗忘记忆"]
-  videoFocusHint["全局低清分镜回执 + 候选字幕/像素差异/未验证模型线索｜非授权"]
+  videoFocusHint["全局缩略帧与最多8条待核实语义候选（无语义最多4条技术候选）｜Life 独立选一处，非授权"]
   videoFocusHint -.->|Life 第二轮独立选择；再用原视频 FFmpeg 核验| planner
   planner -.->|明确选中完整视觉读取| visualLease
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease

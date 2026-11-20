@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; Life chooses one or stops. No forced four slots, no focus grant; extra media still requires explicit Life proof.
 %% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
 %% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
@@ -48,7 +49,7 @@ flowchart TB
   socialInput --> socialFacts
   tasksInput --> canonical
   adapter --> eventLedger
-  videoFocusHint["可信 videoshot 采样时刻 + Python 差异 + 模型建议(已核验时间) + 可选PBP热度｜不是补帧授权"]
+  videoFocusHint["已核验 videoshot 采样时刻 + 最多8条语义候选｜无语义时最多4条技术候选；Life 自选其一｜非授权"]
   adapter -.->|概览回执可提出候选| videoFocusHint
   videoFocusHint -.->|Life 另行决定；可拒绝/延期| selection
   socialFacts --> accountChannels
@@ -174,8 +175,8 @@ flowchart TB
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
     episodeContinuation["Life 自选续行：先 observe_video standard 全局缩略图或休息；实际观察后才可能 focus_video · 最多 4 次"]
-    episodeVisualFirst["Life 已选择首次全局：Python 扫全片 videoshot 候选 · 最多 24 帧两分镜"]
-    episodeVisualModel["视觉模型第一次：概览与采样时间锚点（不声称完整观看）"]
+    episodeVisualFirst["Life 已选择首次全局：Python 资源受限扫描 videoshot · 主人档位最多12/24/48帧分镜"]
+    episodeVisualModel["视觉模型首次概览：最多8条真实采样时间的语义待核实建议；不声称完整观看"]
     episodeLifeSecond["Life 看后结合人格/情绪/记忆与候选线索自主选择：深入/跳过/延期；错误不等于拒绝"]
     episodeFocusRead["真实 MP4/DASH Range + FFmpeg 局部取帧 · 视觉模型第二次（仅获授权）"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
@@ -411,6 +412,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; Life chooses one or stops. No forced four slots, no focus grant; extra media still requires explicit Life proof.
 %% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
 %% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
@@ -488,7 +490,7 @@ flowchart LR
   sourceSocial --> social
   privateBound -.->|仅允许的自主私信机会，无权限者只读| social
   sourceVideo --> video
-  videoFocusHint["全片 videoshot 已核验时间 + Python 变化/同期字幕/未验证画面假设｜Life 看后二次选择"]
+  videoFocusHint["源于真实采样的最多8条语义建议／无语义最多4条技术线索｜Life 看后自选其一或停止"]
   sourceVideo -.-> videoFocusHint
   videoFocusHint -.->|Life 看完才独立选择；拒绝时无 FFmpeg| planner
   sourceVideoFeedback --> reviewFeedback
@@ -576,6 +578,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; Life chooses one or stops. No forced four slots, no focus grant; extra media still requires explicit Life proof.
 %% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
 %% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
@@ -671,7 +674,7 @@ flowchart TB
   videoTrace -.->|精确 BV + 当前账号的已核验回执| visualReuse
   visualReuse -.->|现存清晰观察可阻止冗余取帧，不替代 Life 选择| planner
   visualLease["真实采样期间账号/BV跨进程互斥；仅短期账本不代替可遗忘记忆"]
-  videoFocusHint["全局低清分镜回执 + 候选字幕/像素差异/未验证模型线索｜非授权"]
+  videoFocusHint["全局缩略帧与最多8条待核实语义候选（无语义最多4条技术候选）｜Life 独立选一处，非授权"]
   videoFocusHint -.->|Life 第二轮独立选择；再用原视频 FFmpeg 核验| planner
   planner -.->|明确选中完整视觉读取| visualLease
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
@@ -788,6 +791,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; Life chooses one or stops. No forced four slots, no focus grant; extra media still requires explicit Life proof.
 %% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
 %% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).

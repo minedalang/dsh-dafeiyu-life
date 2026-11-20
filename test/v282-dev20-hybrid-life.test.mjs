@@ -284,7 +284,7 @@ test('dev22 semantic recommendation chooses a verified frame beyond old four Pyt
     modelDescription:'[00:05] 起始画面。\n复查候选：[03:20] 游戏出现新的道具，值得核实如何操作。\n复查候选：[06:50] 这个时间没有采样，不能用。'
   }}}
   const suggested=planGlobalPreviewFocusCandidates({bvid:BV,overview:options})
-  assert.equal(suggested.length,4)
+  assert.equal(suggested.length,1,'a single verified semantic hint must not be padded to four')
   const semantic=suggested.find(x=>x.atSeconds===200)
   assert.ok(semantic)
   assert.equal(semantic.semanticSuggested,true)

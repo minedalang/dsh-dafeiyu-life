@@ -9,9 +9,9 @@ flowchart TB
   vision --> semantic[视觉语义建议必须对应已采样的真实时间码]
   coverage --> change[邻格像素变化，仅技术线索]
   heat[官方 PBP 热度可用才采；只反映观众活跃] -.-> ranking
-  semantic --> ranking[多信号排序：语义建议＋变化量＋可用热度＋时间覆盖；最多四个窗口]
+  semantic --> ranking[模型语义与技术回退：最多8条已采样语义建议；无语义才用最多4条技术候选]
   change --> ranking
-  ranking --> vote{🐟 Life 看后第二次独立选择}
+  ranking --> vote{🐟 Life 看后结合兴趣记忆自主挑一处或停止}
   vote -->|跳过或延期| end[本轮不读取原视频]
   vote -->|选择已核验窗口＋授权通过| decoded[原视频有界 MP4／DASH＋FFmpeg 局部取帧]
   decoded --> second[第二次视觉模型精查：仅所选窗口]

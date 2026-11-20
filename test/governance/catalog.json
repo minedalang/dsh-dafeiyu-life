@@ -695,6 +695,11 @@
       "owner": "life-video-hybrid-overview-focus",
       "kind": "security",
       "intent": "Video global preview must be proof-bounded and followed by an independent Life decision before any real-video focus window or second vision invocation."
+    },
+    "v282-dev23-life-semantic-focus.test.mjs": {
+      "owner": "life-video-hybrid-overview-focus",
+      "kind": "security",
+      "intent": "Model may offer up to eight genuinely sampled semantic timestamps; Life independently picks one or refuses, no fabricated timestamps, stale account/proof or unauthorized focus. UI warns about image-model cost."
     }
   },
   "protected": [

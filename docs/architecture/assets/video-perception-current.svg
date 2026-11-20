@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" role="img" aria-labelledby="vtitle vdesc">
-<title id="vtitle">大肥鱼 Life 两阶段视频自主观察</title><desc id="vdesc">Life 先决定是否观察画面；第一轮使用主人设置的12、24或48帧低清分镜预算；视觉语义、像素变化和可选PBP观众热度生成真实时间码候选；Life看后再次自主决定局部精查与否。</desc>
+<title id="vtitle">大肥鱼 Life 两阶段视频自主观察</title><desc id="vdesc">Life 先决定是否观察画面；第一轮使用主人设置的12、24或48帧低清分镜预算；视觉模型可提议最多8个真实采样的时间点，缺乏语义时技术回退最多4个；Life看后自己选一个局部或拒绝。</desc>
 <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0F172A"/><stop offset="1" stop-color="#132A3C"/></linearGradient><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8Z" fill="#97ADC4"/></marker></defs>
 <rect width="1200" height="800" rx="28" fill="url(#bg)"/><rect x="25" y="25" width="1150" height="750" rx="24" fill="none" stroke="#263C56"/>
 <text x="64" y="73" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="30" font-weight="700" text-anchor="start" fill="#F8FAFC">视频感知 · 先看全局，再由 Life 自主选择局部</text>
@@ -10,10 +10,10 @@
 <path d="M600 221 L600 259" fill="none" stroke="#97ADC4" stroke-width="2" stroke-linecap="round" marker-end="url(#a)"/>
 <rect x="54" y="275" width="340" height="96" rx="18" fill="#172D43" stroke="#6EE7B7" stroke-width="2"/>
 <text x="224" y="314" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="19" font-weight="700" text-anchor="middle" fill="#CFFCF0">01  Python 扫描 videoshot</text>
-<text x="224" y="344" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#B9CBDC">时间分层 + 像素差异 + 有界资源</text>
+<text x="224" y="344" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#B9CBDC">全片索引→资源上限内扫描缩略候选</text>
 <rect x="430" y="275" width="340" height="96" rx="18" fill="#1D3155" stroke="#6093DA" stroke-width="2"/>
 <text x="600" y="314" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="19" font-weight="700" text-anchor="middle" fill="#E5F0FF">02  首轮全局 12 / 24 / 48 帧</text>
-<text x="600" y="344" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#B4D0F3">主人档位是上限；每12帧一张分镜</text>
+<text x="600" y="344" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#B4D0F3">时间分层＋像素去重选帧；12格/分镜</text>
 <rect x="806" y="275" width="340" height="96" rx="18" fill="#194442" stroke="#42B5A7" stroke-width="2"/>
 <text x="976" y="314" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="19" font-weight="700" text-anchor="middle" fill="#DEFBF3">03  视觉模型看全局分镜</text>
 <text x="976" y="344" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#BCE8DF">理解所见画面，标注真实时间码</text>
@@ -35,8 +35,8 @@
 <path d="M600 388 L223 388" fill="none" stroke="#97ADC4" stroke-width="2" stroke-linecap="round"/>
 <path d="M223 388 L223 425" fill="none" stroke="#97ADC4" stroke-width="2" stroke-linecap="round" marker-end="url(#a)"/>
 <rect x="180" y="550" width="840" height="75" rx="18" fill="#1C3550" stroke="#4B9EB1" stroke-width="2"/>
-<text x="600" y="582" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#F8FAFC">联合候选排序 · 最多4个可信局部时间窗口</text>
-<text x="600" y="607" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="middle" fill="#AACCDD">语义优先 · 去重和时间覆盖 · 保留来源与不确定性</text>
+<text x="600" y="582" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#F8FAFC">模型最多8个语义建议 · 无语义时最多4个技术候选</text>
+<text x="600" y="607" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="middle" fill="#AACCDD">只用已采样的时间码，不强行凑数 · 保留来源与不确定性</text>
 <path d="M223 510 L223 530" fill="none" stroke="#97ADC4" stroke-width="2" stroke-linecap="round"/>
 <path d="M223 530 L600 547" fill="none" stroke="#97ADC4" stroke-width="2" stroke-linecap="round" marker-end="url(#a)"/>
 <path d="M600 510 L600 530" fill="none" stroke="#97ADC4" stroke-width="2" stroke-linecap="round"/>
@@ -45,7 +45,7 @@
 <path d="M976 530 L600 547" fill="none" stroke="#97ADC4" stroke-width="2" stroke-linecap="round" marker-end="url(#a)"/>
 <path d="M600 625 L600 645" fill="none" stroke="#97ADC4" stroke-width="2" stroke-linecap="round" marker-end="url(#a)"/>
 <rect x="190" y="652" width="820" height="64" rx="18" fill="#3D3440" stroke="#E3B75D" stroke-width="2"/>
-<text x="600" y="680" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="21" font-weight="700" text-anchor="middle" fill="#FFDB8A">鱼鱼看过全局后，再独立决定：是否深入局部？</text>
+<text x="600" y="680" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="21" font-weight="700" text-anchor="middle" fill="#FFDB8A">鱼鱼看过全局后：自选一个感兴趣的位置或停止</text>
 <text x="600" y="702" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#E0DBD4">拒绝 / 延期 → 不读原视频；主动选择 → FFmpeg 有界局部精查</text>
 <text x="600" y="753" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#93A9BF">48帧预算不要求看片前先猜 deep · 视觉建议与热度不是事实、指令或授权 · 开发候选设计</text>
 </svg>

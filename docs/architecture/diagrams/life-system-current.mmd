@@ -1,3 +1,4 @@
+%% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; Life chooses one or stops. No forced four slots, no focus grant; extra media still requires explicit Life proof.
 %% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
 %% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
@@ -41,7 +42,7 @@ flowchart TB
   socialInput --> socialFacts
   tasksInput --> canonical
   adapter --> eventLedger
-  videoFocusHint["可信 videoshot 采样时刻 + Python 差异 + 模型建议(已核验时间) + 可选PBP热度｜不是补帧授权"]
+  videoFocusHint["已核验 videoshot 采样时刻 + 最多8条语义候选｜无语义时最多4条技术候选；Life 自选其一｜非授权"]
   adapter -.->|概览回执可提出候选| videoFocusHint
   videoFocusHint -.->|Life 另行决定；可拒绝/延期| selection
   socialFacts --> accountChannels
@@ -167,8 +168,8 @@ flowchart TB
     homeEpisode["仅成功的 Life 首页轮次回执后建立 home-browse intention"]
     inspectedSource["Life inspect_opportunity 同 BV 核实成功／execute_read 可信 watch_video 完成"]
     episodeContinuation["Life 自选续行：先 observe_video standard 全局缩略图或休息；实际观察后才可能 focus_video · 最多 4 次"]
-    episodeVisualFirst["Life 已选择首次全局：Python 扫全片 videoshot 候选 · 最多 24 帧两分镜"]
-    episodeVisualModel["视觉模型第一次：概览与采样时间锚点（不声称完整观看）"]
+    episodeVisualFirst["Life 已选择首次全局：Python 资源受限扫描 videoshot · 主人档位最多12/24/48帧分镜"]
+    episodeVisualModel["视觉模型首次概览：最多8条真实采样时间的语义待核实建议；不声称完整观看"]
     episodeLifeSecond["Life 看后结合人格/情绪/记忆与候选线索自主选择：深入/跳过/延期；错误不等于拒绝"]
     episodeFocusRead["真实 MP4/DASH Range + FFmpeg 局部取帧 · 视觉模型第二次（仅获授权）"]
     episodeDiscussion["独立只读当前已核实 BV 的公开评论区；不强迫回复"]
