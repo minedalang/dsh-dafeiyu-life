@@ -4,13 +4,14 @@ import {readFileSync} from 'node:fs'
 import {createLocalVisionModelManager} from '../lib/local-vision-model-manager.mjs'
 const load=file=>readFileSync(new URL('../'+file,import.meta.url),'utf8')
 
-test('local Ollama thinking depth and board density are independently persisted and bounded',()=>{
+test('local Ollama thinking settings remain independent while low-res boards stay fixed at 12 tiles',()=>{
   const html=load('lib/management-console.html')
   const js=load('lib/management-console.js')
   const source=load('index.js')
-  for(const token of ['local-vision-thinking','local-vision-thinking-save','local-vision-model','bili-vision-board-tiles'])assert.ok(html.includes(token),token)
+  for(const token of ['local-vision-thinking','local-vision-thinking-save','local-vision-model'])assert.ok(html.includes(token),token)
   assert.match(js,/visionLocalThinking:mode/)
-  assert.match(js,/visionBoardTiles:tiles/)
+  assert.doesNotMatch(html,/id="bili-vision-board-tiles"/)
+  assert.match(js,/request\('\/video-vision\/plan',\{visionFrames:frames\}\)/)
   assert.match(source,/visionLocalThinking: z\.string\(\)/)
   assert.match(source,/BILI_VISION_LOCAL_THINKING/)
   assert.match(source,/toolName==='bili_preview_vision'&&resolvedVisionMode\(\)==='independent_local'/)

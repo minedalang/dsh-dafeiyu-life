@@ -4,7 +4,7 @@ flowchart TB
   life -->|不看、略看、休息| stop["只读文字资料 / 结束"]
   life -->|愿意看| preview["官方 videoshot 全片可信时间线 · 资源有界扫描"]
   budget -.-> preview
-  preview --> coverage["按时间分层＋像素差异，最多12/24/48帧；可选4/6/12格/张"]
+  preview --> coverage["按时间分层＋像素差异，最多12/24/48帧；固定每张12格（4×3）"]
   coverage --> vision["视觉模型逐张理解实际分镜；本地思考与Token预算有界"]
   vision --> pool["保留全部有效已采样时间锚点：语义候选最多4/6/8；无语义最多4个技术回退"]
   vision --> signals["字幕 / ASR / PBP 热度仅为带来源的独立辅助线索"]

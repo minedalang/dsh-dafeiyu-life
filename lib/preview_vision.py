@@ -46,7 +46,7 @@ PREVIEW_BOARD_PROMPT = (
 )
 
 PREVIEW_BOARD_VERSION = 12
-PREVIEW_BOARD_TILE_OPTIONS = (4, 6, 12)  # independent of 12/24/48 sampled frames
+PREVIEW_BOARD_TILE_OPTIONS = (12,)  # 4×3 per board; 12/24/48 is the separate full-video frame budget
 # A complete source-index scan whenever the measured preview bandwidth allows.
 # The hard sheet/byte bounds prevent oversized sprite libraries from exhausting memory.
 PREVIEW_BOARD_MAX_SHEETS = 48
@@ -289,12 +289,8 @@ def _preview_board_plan(times, slots, count, focus):
 
 
 def _preview_board_tile_count(value=None):
-    """Only explicit, bounded presets; malformed configuration fails safely to legacy 12."""
-    try:
-        number=int(os.environ.get('BILI_VISION_BOARD_TILES','12') if value is None else value)
-    except (ValueError,TypeError):
-        return 12
-    return number if number in PREVIEW_BOARD_TILE_OPTIONS else 12
+    """Retired old 4/6 tile preferences: always emit 12 frames per 4×3 board."""
+    return 12
 
 
 def _make_preview_boards(items, tiles_per_board=12):
@@ -523,8 +519,8 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
         answer=data.get('message',{}).get('content','')
         if not isinstance(answer,str) or not answer.strip():
             if board_mode and data.get('done_reason') in ('length','max_tokens'):
-                raise ValueError('生成额度被耗尽，但没有可用画面描述（可能消耗在思考输出）；请使用4格分镜或检查Ollama版本')
-            raise ValueError('本地模型没有返回可用的图片观察（可尝试关闭思考、缩小分镜格数或升级Ollama）')
+                raise ValueError('生成额度被耗尽，但没有可用画面描述（可能消耗在思考输出）；请尝试关闭思考、缩短描述或检查Ollama版本')
+            raise ValueError('本地模型没有返回可用的图片观察（可尝试关闭思考、检查模型图像支持或升级Ollama）')
         if board_mode:
             if data.get('done_reason') in ('length','max_tokens') or data.get('done') is False:
                 raise ValueError('分镜描述因生成长度限制而中断，不视为完成')

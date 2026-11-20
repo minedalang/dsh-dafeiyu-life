@@ -2,6 +2,8 @@
 
 > **坚持鱼的自由发展。** 我们不想把鱼鱼做成一条只会听命执行的机器鱼。她可以陪你聊天、帮你做事，也会在得到允许的 B站生活中探索、认识人、积累经历，慢慢形成自己的兴趣与表达方式。她可以接受建议，也可以说“不想”、稍后再做，或安静休息。
 
+> **当前工作源码：2.8.2-dev.34（开发候选，尚未正式发布）。** 本轮视频分镜固定每张12格（4×3）；DSH Desktop 来源模型可以补充声明，Headless 可单独取消某个模型的同步；详细边界参见 [更新日志](CHANGELOG.md)。
+
 🎉 **已收录 [DSHMarket 插件市场](https://dshmarket.com/zh/)**。在 DSH 的 `dshmarket` 中搜索 **`dsh-dafeiyu-life`**（大肥鱼 · DSH 生活系统）即可找到本项目。若搜索不到，请刷新市场索引并确认市场显示的实际版本。
 
 [![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) [![npm 月下载](https://img.shields.io/npm/dm/dsh-dafeiyu-life)](https://www.npmjs.com/package/dsh-dafeiyu-life) [![npm 年下载](https://img.shields.io/npm/dy/dsh-dafeiyu-life)](https://www.npmjs.com/package/dsh-dafeiyu-life)
@@ -141,7 +143,7 @@
 
 ### 如何配置视觉模型与 Whisper？
 
-进入 **管理中心 → 快速设置 → 02B 视频视觉感知**，选择 DSH 多模态模型或本地 Ollama，并先进行固定图片验收。可独立选择每张低清分镜4/6/12格，不改变12/24/48总帧数预算；4格更容易看清，但会增加图片张数。本地 Ollama 有 Qwen3.5 2B/4B 可选，MiniCPM 1B 仅供低资源尝试，不建议常规使用。**没有独立显卡也可以通过 CPU + 系统内存运行 Ollama**，页面显存数字是 GPU 加速建议，不是可用门槛，CPU 模式可能明显变慢。选择本地 Ollama 时还可在「AI 模型 → 本地视觉模型」保存独立的思考设置，支持关、开、模型默认，以及本机模型明确支持的低/中/高档。开启视觉可能连续提交多张分镜图片并产生多次模型调用，**请优先根据自己的供应商收费和图片输入支持情况选择低成本模型或本地 Ollama**。不支持图片的文字模型不能代替视觉验收。
+进入 **管理中心 → 快速设置 → 02B 视频视觉感知**，选择 DSH 多模态模型或本地 Ollama，并先进行固定图片验收。低清分镜固定每张12格（4×3），轻量、均衡、详查仍分别使用12/24/48总采样帧预算。本地 Ollama 有 Qwen3.5 2B/4B 可选，MiniCPM 1B 只兼容旧用户已有安装，不再提供新下载，建议使用 Qwen3.5 2B/4B。**没有独立显卡也可以通过 CPU + 系统内存运行 Ollama**，页面显存数字是 GPU 加速建议，不是可用门槛，CPU 模式可能明显变慢。选择本地 Ollama 时还可在「AI 模型 → 本地视觉模型」保存独立的思考设置，支持关、开、模型默认，以及本机模型明确支持的低/中/高档。开启视觉可能连续提交多张分镜图片并产生多次模型调用，**请优先根据自己的供应商收费和图片输入支持情况选择低成本模型或本地 Ollama**。不支持图片的文字模型不能代替视觉验收。
 
 没有官方字幕时，你还可以在 **AI 模型 → 视觉识别模型** 按需启用本地 Whisper。安装时可看到依赖阶段、权重文件实际下载进度和自动更新日志；没有可信传输总量时仅显示阶段。可以通过 [faster-whisper 官方项目](https://github.com/SYSTRAN/faster-whisper)、[PyPI](https://pypi.org/project/faster-whisper/) 和 [Systran 模型列表](https://huggingface.co/Systran) 核对来源。默认自动检测语种（可明确选择中/英文），同一公开视频在本机同型号、同语种配置下会尝试复用短期转写缓存；中英混合仍需检查机器识别原文。安装成功**不代表**已经真实转写某条视频，仍需查看最近转写回执。
 

@@ -50,7 +50,7 @@ test('新增2B型号仍走固定Ollama白名单，页面显存为建议且包含
  assert.equal(LOCAL_VISION_MODELS.length,3)
  assert.equal(getLocalVisionModel('user-supplied:2b'),null)
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
- assert.match(html,/MiniCPM-V 4\.7 1B · 不建议常规使用/)
+ assert.match(html,/MiniCPM-V 4\.7 1B · 历史兼容/)
  assert.match(html,/无独立显卡、显存不足/)
  assert.match(html,/CPU.*系统内存运行/)
  assert.match(html,/id="local-vision-hardware-guide"/)
@@ -58,9 +58,10 @@ test('新增2B型号仍走固定Ollama白名单，页面显存为建议且包含
 test('独立视频方案保存不接触私信社交权限；模型ASR自动语言正确接线',()=>{
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(js,/request\('\/video-vision\/plan',\{visionFrames:frames,visionBoardTiles:tiles\}\)/)
+ assert.match(js,/request\('\/video-vision\/plan',\{visionFrames:frames\}\)/)
  const route=host.slice(host.indexOf("if (req.method === 'POST' && path === '/api/bili-duty/video-vision/plan')"),host.indexOf("if (req.method === 'GET' && path === '/api/bili-duty/config')"))
- assert.match(route,/persistCfg\(\{visionFrames:frames,visionBoardTiles:tiles\}\)/)
+ assert.match(route,/saveCfg\(\{visionFrames:frames,visionBoardTiles:12\}\)/)
+ assert.doesNotMatch(route,/persistCfg\(/)
  assert.doesNotMatch(route,/dmFollowAutonomyEnabled/) // no unrelated boolean write
  assert.match(host,/BILI_ASR_LANGUAGE:cfg.asrLanguage\|\|'auto'/)
 })

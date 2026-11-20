@@ -735,6 +735,11 @@
       "owner": "video-evidence-handoff-local-model",
       "kind": "security",
       "intent": "v12 4/6/12 tile validation, exact board provenance and Life transfer, fixed Ollama model whitelist and saving video plan without social grants."
+    },
+    "v282-dev34-closure.test.mjs": {
+      "owner": "headless-model-sync-and-video-vision-settings",
+      "kind": "security",
+      "intent": "Headless 逐模型取消同步只修改目标 YAML；来源模型能力补充严格预览且不扩散至 Headless；历史 MiniCPM 禁下载可删，12格分镜与诊断页不写权限。"
     }
   },
   "protected": [
