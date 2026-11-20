@@ -740,6 +740,11 @@
       "owner": "headless-model-sync-and-video-vision-settings",
       "kind": "security",
       "intent": "Headless 逐模型取消同步只修改目标 YAML；来源模型能力补充严格预览且不扩散至 Headless；历史 MiniCPM 禁下载可删，12格分镜与诊断页不写权限。"
+    },
+    "v282-dev35-dm-focus-closure.test.mjs": {
+      "owner": "private-inbox-sentinel-and-life-video-continuation",
+      "kind": "security",
+      "intent": "Keep the quiet DM list reconciliation at exactly 30 minutes; reject failed detail reads and cross-account stale sentinel writes; prevent null/stale Life focus candidates and verify decoded focus proofs with bounded metadata-only trace."
     }
   },
   "protected": [

@@ -106,7 +106,8 @@ test('production wiring only permits focused media read after the post-overview 
   assert.match(host,/focus_start_seconds:plan\.startSeconds/)
   assert.match(planner,/choice\.action==='focus_video'/)
   assert.match(planner,/verifyVideoFocusReview/)
-  assert.match(planner,/focusCandidates:visualObservation/)
+  assert.match(planner,/scopedLifeFocusContext\(live,visualObservation\)/)
+  assert.match(planner,/scopedLifeFocusContext\(fresh,visualObservation\)/)
 })
 
 // Execute the actual production Debug two-stage coordinator in an isolated
