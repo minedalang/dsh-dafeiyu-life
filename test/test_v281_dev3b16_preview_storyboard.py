@@ -41,7 +41,7 @@ class StoryboardTests(unittest.TestCase):
     def test_adaptive_fallback_contains_12_lowres_tiles_in_one_board(self):
         with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch('adaptive_video.acquire_adaptive_frames',side_effect=AdaptiveUnavailable('ffmpeg_not_installed',fallback=True)):
             result=pv.analyze_perception(BV,folder,perception_source='adaptive',enabled=False,return_frames=True,max_frames=24,view_depth='standard')
-        self.assertTrue(result['ok']);self.assertEqual(result['sampling']['sampler_version'],9)
+        self.assertTrue(result['ok']);self.assertEqual(result['sampling']['sampler_version'],10)
         self.assertEqual(result['sampling']['strategy'],'videoshot-storyboard-stratified')
         self.assertEqual(len(result['times']),12)
         self.assertEqual(result['sampling']['storyboard_count'],1)
@@ -85,7 +85,7 @@ class StoryboardTests(unittest.TestCase):
                   enabled=False,return_frames=True,focus_start=25,focus_end=55)
             legacy=pv.analyze_preview(BV,folder,enabled=False,return_frames=True,max_frames=3)
         self.assertTrue(result['ok']);self.assertTrue(all(25<=x<=55 for x in result['times']))
-        self.assertEqual(result['sampling']['sampler_version'],9)
+        self.assertEqual(result['sampling']['sampler_version'],10)
         self.assertLessEqual(len(legacy['times']),3)
         self.assertEqual(legacy['sampling']['sampler_version'],3)
 
@@ -99,13 +99,15 @@ class StoryboardTests(unittest.TestCase):
             result=pv.analyze_preview(BV,folder,storyboard=True,max_frames=24,
                   enabled=True,model='qwen3.5:4b',debug=True)
             self.assertTrue(result['ok']); self.assertEqual(result['status'],'analyzed')
-            self.assertEqual(len(model.call_args.args[0]),2)
+            self.assertEqual(model.call_count,2)
+            self.assertTrue(all(len(call.args[0])==1 for call in model.call_args_list))
+            self.assertEqual([r['status'] for r in result['visionBoardReceipts']],['analyzed','analyzed'])
             manifest=result['debugCapture']
             self.assertEqual(manifest['kind'],'storyboard')
             self.assertEqual(len(manifest['images']),2)
             for idx,piece in enumerate(manifest['images']):
                 saved=(Path(folder)/'vision-perception-captures'/manifest['id']/piece['file']).read_bytes()
-                self.assertEqual(saved,model.call_args.args[0][idx]['bytes'])
+                self.assertEqual(saved,model.call_args_list[idx].args[0][0]['bytes'])
                 self.assertIn('低清',piece['resolution'])
             self.assertNotIn('frames',result)
 

@@ -4,19 +4,19 @@ import {readFileSync} from 'node:fs'
 
 const read=f=>readFileSync(new URL('../'+f,import.meta.url),'utf8')
 
-test('DSH 原生大肥鱼设置在标题下展示简洁的 2.8.1 特性',()=>{
+test('DSH 原生大肥鱼设置在标题下展示简洁的 2.8.2 特性',()=>{
   const client=read('client.js')
   const start=client.indexOf('🐳 大肥鱼 · DSH 生活系统')
   assert.ok(start>0)
   const next=client.slice(start,start+2200)
-  for(const phrase of ['视觉配置与验收','记忆神经场','自主探索与互动','资源协调与全新 Headless 同步 UI'])
+  for(const phrase of ['多候选视频探索与分镜核验','可回溯的真实观察经历','Life 自主多选与随时停止','Whisper 安装进度与模型管理'])
     assert.ok(next.includes(phrase),`缺少 ${phrase}`)
   assert.match(client,/data-bd-281-intro/)
-  assert.match(client,/2\.8\.1 版本亮点/)
+  assert.match(client,/2\.8\.2 版本亮点/)
   assert.match(client,/大肥鱼的核心能力/)
 })
 
-test('首次打开管理中心按 2.8.1 引导状态弹出特色介绍，并能定位 02B',()=>{
+test('首次打开管理中心按 2.8.2 引导状态弹出特色介绍，并能定位 02B',()=>{
   const html=read('lib/management-console.html')
   const ui=read('lib/management-console.js')
   assert.match(html,/<dialog id="release-281-dialog"[^>]+aria-labelledby="release-281-title"/)
@@ -24,8 +24,8 @@ test('首次打开管理中心按 2.8.1 引导状态弹出特色介绍，并能�
   assert.match(html,/id="release-281-close"/)
   assert.match(html,/id="release-281-view-setup"/)
   assert.match(html,/release-281-feature/)
-  for(const text of ['视频视觉感知','记忆神经场','更连续的 Life','资源与配置管理'])assert.match(html,new RegExp(text))
-  assert.match(html,/2\.8\.1 · 新版本导览/)
+  for(const text of ['多候选自主视频探索','有来源的观察经历','Life 自主多选','Whisper 与预算管理'])assert.match(html,new RegExp(text))
+  assert.match(html,/2\.8\.2 · 新版本导览/)
   assert.match(ui,/const showRelease281IfNeeded=state=>/)
   assert.match(ui,/state\.quickSetupSeen===true\)return/)
   assert.match(ui,/sessionStorage\.getItem\(release281SessionKey\)/)

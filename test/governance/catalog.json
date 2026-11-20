@@ -720,6 +720,11 @@
       "owner": "video-focus-budget-and-debug",
       "kind": "security",
       "intent": "Post-overview independent Life batch chooses multiple trusted windows, consumes actual frame and network budgets, refuses forged times, and removes retired owner-model controls."
+    },
+    "v282-dev31-board-provenance.test.mjs": {
+      "owner": "video-visual-evidence-grounding",
+      "kind": "security",
+      "intent": "Verify v10 preview storyboard receipts list all independently processed JPEG boards, cannot expose incomplete or wrong-time partial output as verified Life visual evidence, and expose current version and per-board Debug status."
     }
   },
   "protected": [
@@ -905,6 +910,11 @@
       "owner": "adaptive-video-360p-focus",
       "kind": "security",
       "intent": "Focused original-media FFmpeg sampling uses bounded 640x360 output without forced upscaling and rejects forged remaining frame caps before network or decoder side effects."
+    },
+    "test_v282_dev31_board_receipts.py": {
+      "owner": "local-vision-board-grounding",
+      "kind": "behavior",
+      "intent": "A 24-frame official videoshot preview requires two separate bounded Ollama image calls and responses, explicitly rejects truncation and fabricated timestamps, and preserves exact JPEG/time receipts."
     }
   },
   "pythonProtected": [

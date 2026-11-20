@@ -41,7 +41,7 @@ class HybridPreview(unittest.TestCase):
                 enabled=False,return_frames=True)
         self.assertTrue(result['ok'],result)
         sampler=result['sampling']
-        self.assertEqual(sampler['sampler_version'],9)
+        self.assertEqual(sampler['sampler_version'],10)
         self.assertTrue(sampler['timeline_scan_complete'])
         self.assertEqual(sampler['index_frames_available'],91)
         self.assertEqual(sampler['candidates_examined'],91)
