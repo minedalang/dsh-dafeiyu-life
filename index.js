@@ -120,6 +120,7 @@ import {buildVideoPerceptionHandoff} from './lib/video-perception-handoff.mjs'
 import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview} from './lib/video-focus-review.mjs'
 import {ensureOllamaService} from './lib/ollama-service.mjs'
 import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
+import {listWhisperModels,deleteWhisperModel} from './lib/whisper-model-cache.mjs'
 import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-continuity.mjs'
 import {todoParentId} from './lib/todo-lineage.mjs'
 import {verifyLifeOutbound,lifeFactsFromCompletedTodos,lifeFactsFromCreatorSnapshot,lifeFactFromReceipt} from './lib/verified-life-facts.mjs'
@@ -7867,6 +7868,31 @@ logger:{warn:m=>log('社交意图：'+m)}
     } catch { /* 轮转失败不该影响跑一轮 */ }
   }
   let installingAsr = false
+  let asrProgress={phase:'idle',model:null,startedAt:null,finishedAt:null,reason:null,currentBytes:null,totalBytes:null,filename:''}
+  const setAsrProgress=(phase,values={})=>{asrProgress={...asrProgress,phase,...values}}
+  let asrTransferBuffer=''
+  const appendAsrDownload=(data)=>{
+    asrTransferBuffer=(asrTransferBuffer+String(data)).slice(-10000)
+    let index
+    while((index=asrTransferBuffer.indexOf('\n'))>=0){
+      const line=asrTransferBuffer.slice(0,index).trim();asrTransferBuffer=asrTransferBuffer.slice(index+1)
+      if(line.startsWith('ASR_PROGRESS:')){
+        try{
+          const row=JSON.parse(line.slice(13))
+          if(!['download-start','download','verify','ready','failed'].includes(row.phase))continue
+          const current=Number(row.currentBytes),total=Number(row.totalBytes)
+          const safeBytes=Number.isSafeInteger(current)&&Number.isSafeInteger(total)&&total>1024&&current>=0&&current<=total
+          setAsrProgress(row.phase,{currentBytes:safeBytes?current:null,totalBytes:safeBytes?total:null,
+            filename:String(row.filename||'').replace(/[\x00-\x1f]/g,'').slice(0,90),reason:row.phase==='failed'?'download-or-verification-failed':null})
+          if(row.phase==='download'&&safeBytes){
+            // Log real, per-file progress; no fabricated overall percentage.
+            appendAsr(`当前文件 ${Math.floor(current*100/total)}% (${current}/${total} 字节)\n`)
+          } else if(row.phase==='verify')appendAsr('下载已完成，正在校验并加载模型…\n')
+          else if(row.phase==='ready')appendAsr('模型权重已验证。\n')
+        }catch{appendAsr('模型下载状态格式无效\n')}
+      }else if(line)appendAsr(line+'\n')
+    }
+  }
 
   /** 找 uv：系统里的 → 插件家里下好的 → 自己下一份（给"两样都没有"的人）；主/转写两套安装共用 */
   const resolveUv = async () => {
@@ -7919,6 +7945,8 @@ logger:{warn:m=>log('社交意图：'+m)}
   const runAsrInstall = () => {
     if (installingAsr) return { ok: true, busy: true, log: asrLogFile, hint: '正在装转写依赖，别重复起' }
     installingAsr = true
+    asrTransferBuffer=''
+    asrProgress={phase:'environment',model:String(cfg.asrModel||'small'),startedAt:new Date().toISOString(),finishedAt:null,reason:null,currentBytes:null,totalBytes:null,filename:''}
     appendAsr(`\n=== ${new Date().toISOString()} 开始装"本地转写"依赖 ===\n`)
     ;(async () => {
       try {
@@ -7968,6 +7996,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           appendAsr('  ② 机器上没有可用的 uv 或 Python ⇒ 先点上面的「装依赖」，把主依赖装好再来。\n')
           log('转写：建环境失败'); return
         }
+        setAsrProgress('packages')
         appendAsr('安装 faster-whisper + yt-dlp + PyAV 依赖。\n')
         appendAsr('faster-whisper 项目：https://github.com/SYSTRAN/faster-whisper\n')
         appendAsr('PyPI 包与发行文件：https://pypi.org/project/faster-whisper/\n')
@@ -7993,17 +8022,27 @@ logger:{warn:m=>log('社交意图：'+m)}
         // 模型缓存必须放进插件家：默认的 ~/.cache 在本机拒绝写入（2026-10-14 实测 WinError 5）
         const hfHome = join(stateDir, '.hf-cache')
         try { mkdirSync(hfHome, { recursive: true }) } catch { /* 建不了后面会给报错 */ }
-        appendAsr(`下 Whisper 模型「${model}」（缓存在 ${hfHome}，源 ${hf}，几百 MB，只需要一次）…\n`)
-        const code2 = await spawnTo(py, ['-c',
-          'import os,sys;os.environ["HF_HUB_DISABLE_XET"]="1";from faster_whisper import WhisperModel;WhisperModel(sys.argv[1], device="cpu", compute_type="int8");print("模型就绪")',
-          model], { sink: appendAsr, env: { HF_ENDPOINT: hf, HF_HOME: hfHome, HF_HUB_DISABLE_XET: '1' },
-          idleTimeoutMs: 10 * 60_000, totalTimeoutMs: 90 * 60_000, timeoutAction: '正在终止模型下载；模型不会标记为就绪。' })
-        appendAsr(`=== 结束（装包 exit ${code}，模型 exit ${code2}，asrReady=${asrReadyNow()}）===\n`)
+        setAsrProgress('download-start',{model,currentBytes:null,totalBytes:null})
+        appendAsr(`下 Whisper 模型「${model}」（缓存在 ${hfHome}，源 ${hf}；真实文件下载进度显示在下方）…\n`)
+        const code2 = await spawnTo(py, ['-u', join(pluginDir,'scripts','download_whisper_model.py'),model],
+          {sink:appendAsrDownload, env:{HF_ENDPOINT:hf,HF_HOME:hfHome,HF_HUB_DISABLE_XET:'1'},
+           idleTimeoutMs:10*60_000,totalTimeoutMs:90*60_000,
+           timeoutAction:'正在终止模型下载；模型不会标记为就绪。'})
+        if(asrTransferBuffer.trim())appendAsrDownload('\n')
+        const modelReady=readWhisperReadiness({stateDir,model,pythonAvailable:existsSync(asrPython()),
+          packageAvailable:hasPkg(asrDir,'faster_whisper')}).modelCached
+        if(code2===0&&modelReady){setAsrProgress('finished',{finishedAt:new Date().toISOString(),reason:null})}
+        else setAsrProgress('failed',{finishedAt:new Date().toISOString(),reason:'model-download-or-load-failed'})
+        appendAsr(`=== 结束（装包 exit ${code}，模型 exit ${code2}，asrReady=${asrReadyNow()}，modelReady=${modelReady}）===\n`)
         log(`装转写依赖结束：exit=${code}/${code2}`)
       } catch (e) {
         appendAsr(`装转写依赖崩了：${e?.stack ?? e}\n`)
         log(`装转写依赖崩了：${e?.message ?? e}`)
-      } finally { installingAsr = false }
+      } finally {
+        if(asrProgress.phase!=='finished'&&asrProgress.phase!=='failed')
+          setAsrProgress('failed',{finishedAt:new Date().toISOString(),reason:'environment-or-package-install-failed'})
+        installingAsr=false
+      }
     })()
     return { ok: true, started: true, log: asrLogFile, hint: '正在后台装转写依赖 —— 进度显示在下面（要下几百 MB 模型，慢一点正常）' }
   }
@@ -8244,7 +8283,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
       path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
-      path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&path==='/api/bili-duty/video-dependencies/status') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/paths') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/ffmpeg/test')
+      path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&['/api/bili-duty/video-dependencies/status','/api/bili-duty/video-dependencies/whisper/status'].includes(path)) || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/whisper/delete') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/paths') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/ffmpeg/test')
     if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
     // ⭐ 2026-10-21：每条视频一份笔记 —— **宿主拆报告**，不让模型多写一个字（零 token、不会写错）
     const notesDir = join(stateDir, 'reports')
@@ -9605,14 +9644,40 @@ logger:{warn:m=>log('社交意图：'+m)}
       const started=await ensureOllamaService({probe:()=>localVisionModels.list()})
       return sendJson(res,started.ok?200:409,started)
     }
+    const whisperStatus=()=>({
+      ...readWhisperReadiness({stateDir,model:cfg.asrModel||'small',modelPath:cfg.asrModelPath||'',
+        pythonAvailable:existsSync(asrPython()),packageAvailable:hasPkg(asrDir,'faster_whisper')}),
+      enabled:cfg.transcribe===true,installing:installingAsr,installProgress:{...asrProgress},
+      installedModels:listWhisperModels({stateDir,selectedModel:cfg.asrModel||'small',modelPath:cfg.asrModelPath||''}),
+      installLogTail:(()=>{try{return readFileSync(asrLogFile,'utf8').slice(-6000)}catch{return ''}})()
+    })
+    if(req.method==='GET'&&path==='/api/bili-duty/video-dependencies/whisper/status')
+      return sendJson(res,200,{ok:true,whisper:whisperStatus()})
+    if(req.method==='POST'&&path==='/api/bili-duty/video-dependencies/whisper/delete'){
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')
+      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
+         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
+        return sendJson(res,403,{ok:false,error:'仅允许从本机 DSH 管理中心删除插件自有 Whisper 模型'})
+      const body=await readBody(req,1024)
+      // A still-running transcribe subprocess may have loaded the previous
+      // model just before the user switched the selected model. Respect the
+      // existing asr-last-run start receipt for the bounded ASR timeout too.
+      const activeReceipt=readWhisperReadiness({stateDir,model:cfg.asrModel||'small',
+        modelPath:cfg.asrModelPath||''}).lastRun
+      const sinceStart=Date.now()-Date.parse(activeReceipt?.at||'')
+      const activeTranscription=activeReceipt?.outcome==='started'&&Number.isFinite(sinceStart)&&
+        sinceStart>=0&&sinceStart<=10*60_000
+      const result=deleteWhisperModel({stateDir,model:body?.model,confirm:body?.confirm,
+        selectedModel:cfg.asrModel||'small',modelPath:cfg.asrModelPath||'',
+        installing:installingAsr,active:activeTranscription})
+      return sendJson(res,result.ok?200:409,result)
+    }
     if(req.method==='GET'&&path==='/api/bili-duty/video-dependencies/status'){
-      const whisper=readWhisperReadiness({stateDir,model:cfg.asrModel||'small',modelPath:cfg.asrModelPath||'',
-        pythonAvailable:existsSync(asrPython()),packageAvailable:hasPkg(asrDir,'faster_whisper')})
+      const whisper=whisperStatus()
       const ffmpeg=probeFFmpeg({binary:cfg.ffmpegPath||''})
       const decodeTest=ffmpeg.available?testFFmpegDecode({binary:cfg.ffmpegPath||''}):{ok:false,reason:ffmpeg.reason||'ffmpeg-not-found'}
-      return sendJson(res,200,{ok:true,ffmpeg:{...ffmpeg,decodeTest,selectedPath:cfg.ffmpegPath||''},ffmpegInstall:ffmpegInstallStatus(),whisper:{...whisper,
-        enabled:cfg.transcribe===true,installing:installingAsr,
-        installLogTail:(()=>{try{return readFileSync(asrLogFile,'utf8').slice(-700)}catch{return ''}})()}})
+      return sendJson(res,200,{ok:true,ffmpeg:{...ffmpeg,decodeTest,selectedPath:cfg.ffmpegPath||''},ffmpegInstall:ffmpegInstallStatus(),whisper})
     }
     if(req.method==='POST'&&['/api/bili-duty/video-dependencies/ffmpeg/install','/api/bili-duty/video-dependencies/ffmpeg/test'].includes(path)){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')

@@ -1,29 +1,15 @@
-# 2.8.2-dev.26 · Issue #11 修复交付说明
+# 大肥鱼 Plus · 2.8.2-dev.28 源码交付说明
 
-**基线：** 本轮上传的 `dsh-bili-scroll-plus2.zip`，`package.json` 版本为 `2.8.2-dev.25`。
-**交付：** `2.8.2-dev.26`。
-**范围：** 仅修复 GitHub Issue #11 的 faster-whisper 安装体验、快速分享保存异常、Life 决策状态读取被 Episode 作用域错误连带阻断。
-**未实施：** 多候选自主视频探索新方案；没有更改视频感知流程。
+**明确来源：** 用户上传的 `dsh-bili-scroll-plus2.zip`，`package.json` 版本为 `2.8.2-dev.26`。
 
-## 文件
+**交付版本：** `2.8.2-dev.28`，合并 dev.27 Whisper 安装管理和 dev.28 多候选自主视频探索两批实施，未曾自动 `git commit`、`git push` 或正式发布。
 
-- `source/`：完整 dev.26 源码。
-- `PATCH_FROM_2.8.2-dev.25_TO_2.8.2-dev.26.patch`：从本轮 dev.25 基线应用的增量补丁。
-- `COMMIT_MESSAGE.txt`：中文项目可直接采用的 Conventional Commit 文案。
-- `TESTING_2.8.2-dev.26.md`：Windows / DSH 人工验收步骤。
-- `TEST-RESULTS.md`：本轮真实执行的离线测试与未完成项目。
-- `APPLY.md`：补丁安全应用说明。
+## 包内结构
 
-## 三项修复
+- `source/`：完整目标版本源码（含新版 README、SVG/Mermaid、测试）。
+- `PATCH_FROM_2.8.2-dev.26_TO_2.8.2-dev.28.patch`：在上传基线独立回放核对的 Git 增量补丁。
+- `COMMIT_MESSAGE.txt`：可选的中文 Conventional Commit 文案（没有自动提交）。
+- `TESTING_2.8.2-dev.28.md`：Windows/DSH 逐项实测教程、发布门禁、回滚。
+- `TEST-RESULTS.md`：本次实际执行的离线测试/工程检查和待验事项。
 
-1. 快速分享保存不再引用未定义 `limit`，不重新引入已取消的每日分享硬上限。
-2. Life planner 核心决策计数/心跳独立返回；只有当前账号作用域合法且未阻断时才读取 Episode。Episode 文件损坏或附加诊断失败不再让整个 planner 状态接口返回500。
-3. faster-whisper 官方 GitHub、PyPI 包和模型权重入口在管理中心可见；PyPI 安装增加无进展检测、网络超时和 HTTPS 镜像回退，模型权重下载也有无进展与总时限。
-
-## 安全边界
-
-没有修改 Episode `scope()`，没有在账号未就绪时读取 Episode，没有跨账号迁移或恢复数据；没有新增外发授权或每日分享硬上限。ASR 仍需使用者明确点击安装，安装不会自动启用转写或触发视频观看。
-
-## 发布状态
-
-**dev.26 尚未正式发布。** 离线定向回归通过，但 Windows 普通/管理员 PowerShell full、真实 PyPI 镜像回退、真实 Hugging Face 模型下载与 DSH 管理中心端到端仍需维护者验收。
+**只能选一种方式使用源码或 Patch，不能同时覆盖并重放。** 请先备份工作区和用户数据，检查基线与工作区状态；尤其不要误删 `.hf-cache` 和 Life 记忆。变更说明见 `CHANGELOG.md` 和 `docs/architecture/2.8.2-dev28-multi-focus-and-whisper.md`。

@@ -1,22 +1,28 @@
 flowchart TB
-  life{🐟 Life 自主决定：要不要看画面？}
-  life -->|不看或略看| stop[仅文字资料／结束]
-  life -->|愿意全局看| preview[官方 videoshot 只读缩略时间线]
-  budget[主人设置的分镜预算 12／24／48] --> coverage
-  preview --> coverage[Python 资源受限扫描；时间分层＋像素差异去重]
-  coverage --> boards[全局最多12／24／48帧；每12格一张分镜图]
-  boards --> vision[视觉模型实际观察全局分镜]
-  vision --> semantic[视觉语义建议必须对应已采样的真实时间码]
-  coverage --> change[邻格像素变化，仅技术线索]
-  heat[官方 PBP 热度可用才采；只反映观众活跃] -.-> ranking
-  semantic --> ranking[模型语义与技术回退：最多8条已采样语义建议；无语义才用最多4条技术候选]
-  change --> ranking
-  ranking --> vote{🐟 Life 看后结合兴趣记忆自主挑一处或停止}
-  vote -->|跳过或延期| end[本轮不读取原视频]
-  vote -->|选择已核验窗口＋授权通过| decoded[原视频有界 MP4／DASH＋FFmpeg 局部取帧]
-  decoded --> second[第二次视觉模型精查：仅所选窗口]
-  second --> receipt[真实来源、结果、采样缺口分开记录]
-  classDef choice fill:#fff1d6,stroke:#daa520,color:#5d3c05,stroke-width:2px;
-  classDef signal fill:#e8f7f3,stroke:#3d9a91,color:#123b36;
-  class life,vote choice;
-  class semantic,change,heat signal;
+  budget["主人选择轻量 / 均衡 / 详查：全局分镜、候选和累计局部预算"]
+  life{"Life 自主意愿：要不要看画面？"}
+  life -->|不看、略看、休息| stop["只读文字资料 / 结束"]
+  life -->|愿意看| preview["官方 videoshot 全片可信时间线 · 资源有界扫描"]
+  budget -.-> preview
+  preview --> coverage["按时间分层＋像素差异，形成最多12/24/48帧的全局分镜"]
+  coverage --> vision["视觉模型理解已实际观察的全局画面"]
+  vision --> pool["保留全部有效已采样时间锚点：语义候选最多4/6/8；无语义最多4个技术回退"]
+  vision --> signals["字幕 / ASR / PBP 热度仅为带来源的独立辅助线索"]
+  signals -.-> pool
+  pool --> choose{"Life 自主一批选 0~N 个可信时间点；可停止或延期"}
+  budget -.-> choose
+  choose -->|横向| wide["一次关注多个独立事件，不被上一观察锁定"]
+  choose -->|纵向| deep["对已有事件继续探寻，但不自动重复"]
+  choose -->|停止| stop
+  wide --> merge["动态5~120秒窗口；同事件重叠可合并，不同事件分别观察"]
+  deep --> merge
+  merge --> gate["逐窗口核验账号、BV、时间码、MP4/DASH来源、权限与累计预算"]
+  budget -.-> gate
+  gate -->|授权与来源可用| ffmpeg["FFmpeg 有界原视频真实取帧＋视觉模型分析"]
+  gate -->|不满足| blocked["诚实记录限制，不伪装已观看"]
+  ffmpeg --> evidence["累积可信画面回执、时间缺口和历史；原始全局候选池不丢失"]
+  evidence -->|剩余预算与 Life 再次自主选择| choose
+  classDef life fill:#fff1d6,stroke:#d6a249,color:#523c14,stroke-width:2px;
+  classDef observed fill:#e3f4f0,stroke:#3d9c8a,color:#143c33;
+  class life,choose life;
+  class pool,ffmpeg,evidence observed;

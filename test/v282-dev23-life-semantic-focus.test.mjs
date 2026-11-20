@@ -48,7 +48,7 @@ test('eight verified semantic suggestions reach Life without being pre-cut to fo
   // The Episode Life model receives all eight as available options too.
   const episode=continuationMenu({id:ID,selectedBvid:BV,status:'ready',
     selectedTitle:'测试视频',metadataAt:Date.now()-1000,observedVideoBvids:[BV],expiresAt:Date.now()+3600000},
-  {focusCandidates:proposed})
+  {focusCandidates:proposed,focusFrames:48,focusDurationSeconds:1200})
   const row=episode.find(x=>x.action==='focus_video')
   assert.equal(row.candidates.length,8)
   assert.equal(parseContinuationDecision(JSON.stringify({action:'focus_video',id:ID,bvid:BV,

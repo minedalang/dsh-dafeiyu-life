@@ -705,6 +705,16 @@
       "owner": "issue11-asr-install-and-life-status",
       "kind": "behavior",
       "intent": "Verify Issue #11 production fixes: quick-share save no longer references removed daily limit; faster-whisper links and bounded HTTPS mirror failover are visible and tested; Life planner counters remain independent from strictly account-scoped Episode diagnostics."
+    },
+    "v282-dev27-whisper-model-cache.test.mjs": {
+      "owner": "asr-runtime-and-cache-management",
+      "kind": "security",
+      "intent": "Whisper local-owned cache enumeration and exact-model deletion require explicit confirmation, reject path traversal and symlinks, protect active selection, and keep install progress in the existing management origin."
+    },
+    "v282-dev28-multi-focus-budget.test.mjs": {
+      "owner": "life-video-exploration",
+      "kind": "security",
+      "intent": "Verify Life may batch independent verified focus points under three-tier per-Episode limits, merge overlapping time anchors, preserve history and global candidates, and reject fabricated points or unsafe inputs."
     }
   },
   "protected": [
@@ -880,6 +890,11 @@
       "owner": "preview-vision-full-timeline",
       "kind": "behavior",
       "intent": "Python scans all 91 indexed thumbnail candidates within byte/pixel caps, yields at most two vision boards, and discloses partial timeline scan coverage."
+    },
+    "test_v282_dev27_whisper_progress.py": {
+      "owner": "asr-install-progress",
+      "kind": "behavior",
+      "intent": "Offline install script emits real per-file model download byte totals and ready only after model load; rejects arbitrary model names without accessing network."
     }
   },
   "pythonProtected": [
@@ -1128,6 +1143,13 @@
       "newCheck": "assert.match(readme,/不是正式发布版本，也不代表已经上架/,",
       "reason": "The uploaded 2.8.2-dev.8 README uses a newer, equally explicit statement that a development source version is not a published version. Continue to verify both non-publication and external registry truth without requiring obsolete 2.8.1 wording.",
       "date": "2026-11-19"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "README requires ## 🆕 2.8.1 新特性 heading even in current 2.8.2 development README",
+      "newCheck": "'## 🆕 2.8.2 开发预览'",
+      "reason": "Current user homepage must introduce the current development candidate while keeping stable onboarding and flagship features; do not claim 2.8.1 is the latest release heading.",
+      "date": "2026-11-20"
     }
   ]
 }

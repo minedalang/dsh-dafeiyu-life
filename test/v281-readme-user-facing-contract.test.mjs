@@ -7,7 +7,7 @@ const agents=readFileSync(new URL('../AGENTS.md',import.meta.url),'utf8')
 const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
 
 test('README is a complete user homepage, not just this release changelog',()=>{
-  const headings=['## ✨ 鱼鱼能做什么','## 🆕 2.8.1 新特性','## 🚀 开始使用','## 🔒 让自由有边界','## 🌱 未来规划：让生活更有故事','## ❤️ 致谢']
+  const headings=['## ✨ 鱼鱼能做什么','## 🆕 2.8.2 开发预览','## 🚀 开始使用','## 🔒 让自由有边界','## 🌱 未来规划：让生活更有故事','## ❤️ 致谢']
   let prev=-1
   for(const heading of headings){const index=readme.indexOf(heading);assert.ok(index>prev,`${heading} is missing or out of order`);prev=index}
   assert.equal(readme.slice(readme.indexOf(headings[4])).match(/^## /gm).length,2,'future roadmap must be the final section immediately before acknowledgements')

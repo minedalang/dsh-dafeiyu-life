@@ -2065,12 +2065,16 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
       <label class="checkline"><input id="models-transcribe" type="checkbox">启用视频语音识别（无可用官方字幕时，鱼鱼可按需使用 Whisper）</label>
       <div class="fields"><div><label for="models-asr-model">Whisper 模型</label><select id="models-asr-model"><option value="tiny">tiny · 更省资源</option><option value="base">base</option><option value="small">small · 默认</option><option value="medium">medium</option><option value="large-v3">large-v3 · 更高资源占用</option></select></div></div>
       <p id="models-whisper-status" class="muted" role="status" aria-live="polite">正在检查转写依赖…</p>
-      <p class="setting-note">安装包：<a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener noreferrer">faster-whisper 官方源码</a> · <a href="https://pypi.org/project/faster-whisper/" target="_blank" rel="noopener noreferrer">PyPI 包／下载文件</a>；模型权重：<a href="https://huggingface.co/Systran" target="_blank" rel="noopener noreferrer">Systran 官方模型页</a>。依赖安装和模型下载是两个独立阶段，日志会显示当前镜像；PyPI 镜像连续 180 秒无输出会自动切换。</p>
+      <p class="setting-note">安装包：<a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener noreferrer">faster-whisper 官方源码</a> · <a href="https://pypi.org/project/faster-whisper/" target="_blank" rel="noopener noreferrer">PyPI 包／下载文件</a>；模型权重：<a id="models-whisper-repo-link" href="https://huggingface.co/Systran/faster-whisper-small" target="_blank" rel="noopener noreferrer">所选型号的官方模型页</a>。依赖安装和模型下载是两个独立阶段，日志会显示当前镜像；PyPI 镜像连续 180 秒无输出会自动切换。</p>
       <p id="models-whisper-last" class="setting-note" role="status">最近实际转写：暂无记录</p>
       <p class="muted">当视频没有可用字幕时，鱼鱼可自主选择使用语音识别。8 分钟及以上的长视频默认从本地下载的音轨均匀抽取 3 个各约 60 秒片段识别，减少 CPU 推理等待；这不是整段转写，时间码保留原视频位置。音频下载仍可能耗时；缺少本机 FFmpeg / ffprobe 则退回原先完整转写。需要完整语音覆盖时可由维护者设置环境变量 BILI_ASR_LONG_VIDEO_MODE=full。</p>
       <details class="visual-advanced"><summary>Whisper 使用已有模型目录（高级）</summary><div class="fields"><div><label for="models-whisper-model-path">使用现有 faster-whisper 模型文件夹（可选）</label><input id="models-whisper-model-path" type="text" autocomplete="off" placeholder="包含 model.bin 与 config.json 的绝对目录"><small class="setting-note">支持本机已下载的 CTranslate2 / faster-whisper 模型目录或 Hugging Face snapshot；不支持直接填 .pt 文件。模型已就绪则不重复下载，Python 转写运行环境仍需可用。</small></div></div><div class="toolbar"><button type="button" id="models-whisper-path-save">验证并使用模型目录</button><button type="button" id="models-whisper-path-clear">恢复默认模型缓存</button></div><p id="models-whisper-path-result" class="setting-note" role="status"></p></details>
-<div class="toolbar"><button type="button" id="models-whisper-install">安装所选 Whisper 模型</button><button type="button" id="models-whisper-refresh">刷新转写状态</button></div>
-      <details><summary>查看安装日志末尾（不含转写正文）</summary><pre id="models-whisper-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto"></pre></details>
+<p class="setting-note" id="models-whisper-progress-label" role="status" aria-live="polite">尚无进行中的模型安装</p>
+      <progress id="models-whisper-progress-bar" max="100" style="width:100%;display:none"></progress>
+      <div class="toolbar"><button type="button" id="models-whisper-install">安装所选 Whisper 模型</button><button type="button" id="models-whisper-refresh">刷新转写状态</button></div>
+      <details><summary>查看实时安装日志（不含转写正文）</summary><pre id="models-whisper-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto"></pre></details>
+      <div class="setting-note"><strong>已下载的 Whisper 模型</strong> · 只显示插件自己的缓存，外部模型目录不会被删除</div>
+      <div id="models-whisper-installed" role="region" aria-label="已安装 Whisper 模型"></div>
     </div>
   </div>
   <div class="toolbar"><button id="models-aux-save" type="button" class="primary">保存视频语音识别设置</button></div>

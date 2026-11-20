@@ -1,8 +1,7 @@
-fix(issue-11): harden ASR install and Life status diagnostics
+feat(video): dev.28 多候选自主视频探索与 Whisper 模型管理
 
-- remove the stale undefined limit check from quick-share save
-- isolate optional account-scoped Episode diagnostics from planner counters
-- preserve strict Episode account scope and avoid reads before account verification
-- add faster-whisper/PyPI/model links and bounded HTTPS mirror failover
-- add idle and total timeouts for ASR package/model installation
-- add Issue #11 regression coverage and update dev.26 documentation
+- Life 单次自主决策允许批量选择已核验时间点，动态观察窗口并保留原始全局候选。
+- 三档 Episode 共享窗口、帧、时长、网络和批次预算；真实原视频来源及账号许可不放宽。
+- Whisper 安装增加实际文件下载字节进度、管理页实时日志与模型缓存安全删除。
+- 更新面向用户的 README、视频感知 SVG/Mermaid 与四张 Life 架构图及预览。
+- 新增多候选预算、Whisper 缓存安全和离线下载进度测试，保留 Windows 实机发布门禁。

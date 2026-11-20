@@ -1,3 +1,5 @@
+> **2.8.2-dev.28（开发候选）**：[多候选视频探索及 Whisper 实时进度/安全模型管理](2.8.2-dev28-multi-focus-and-whisper.md)。视频图：[Mermaid 源](diagrams/video-perception-current.mmd) / [SVG 用户图](assets/video-perception-current.svg)；同步四张 Life 架构图与 GitHub 预览。Windows/DSH/B站实机尚待验收，非正式发布。
+
 > **2.8.2-dev.26（开发候选）**：[Issue #11 安装与 Life 状态可靠性修复](2.8.2-dev26-issue11-fixes.md)。faster-whisper 安装镜像无进展回退、快速分享保存异常修复、Life 调度状态与账号作用域 Episode 附加诊断隔离；Windows/DSH 实机待验，未实施新视频感知方案。
 
 > **2.8.2-dev.24（开发候选）**：[跨语言视觉提示词修复、全片扫描公平性、Life 看后兴趣接线与预算审计](2.8.2-dev24-audit-fixes.md)。仍需 Windows / DSH / B站实机及全量回归验证，非正式发布。
