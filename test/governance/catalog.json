@@ -715,6 +715,11 @@
       "owner": "life-video-exploration",
       "kind": "security",
       "intent": "Verify Life may batch independent verified focus points under three-tier per-Episode limits, merge overlapping time anchors, preserve history and global candidates, and reject fabricated points or unsafe inputs."
+    },
+    "v282-dev30-video-closure.test.mjs": {
+      "owner": "video-focus-budget-and-debug",
+      "kind": "security",
+      "intent": "Post-overview independent Life batch chooses multiple trusted windows, consumes actual frame and network budgets, refuses forged times, and removes retired owner-model controls."
     }
   },
   "protected": [
@@ -895,6 +900,11 @@
       "owner": "asr-install-progress",
       "kind": "behavior",
       "intent": "Offline install script emits real per-file model download byte totals and ready only after model load; rejects arbitrary model names without accessing network."
+    },
+    "test_v282_dev30_video_focus.py": {
+      "owner": "adaptive-video-360p-focus",
+      "kind": "security",
+      "intent": "Focused original-media FFmpeg sampling uses bounded 640x360 output without forced upscaling and rejects forged remaining frame caps before network or decoder side effects."
     }
   },
   "pythonProtected": [

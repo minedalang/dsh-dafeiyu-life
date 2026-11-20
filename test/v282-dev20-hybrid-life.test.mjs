@@ -2,7 +2,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {planGlobalPreviewFocusCandidates,verifyVideoFocusReview} from '../lib/video-focus-review.mjs'
-import {runLifePostOverviewReview,runLifeChosenVideoRead} from '../lib/life-video-read-admission.mjs'
+import {runLifePostOverviewReview,runLifeChosenVideoRead,runLifePostOverviewBatchReview,lifeFocusBatchPrompt} from '../lib/life-video-read-admission.mjs'
+import {videoExplorationTier} from '../lib/video-exploration-budget.mjs'
 import {continuationMenu,parseContinuationDecision,continuationPrompt} from '../lib/life-continuation.mjs'
 import {buildVideoEvidenceBundle} from '../lib/video-evidence-bundle.mjs'
 
@@ -99,7 +100,9 @@ test('production wiring only permits focused media read after the post-overview 
   const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   const planner=readFileSync(new URL('../lib/autonomous-planner.mjs',import.meta.url),'utf8')
   assert.match(host,/perception_source:lifeGlobalOverview\?'preview':'adaptive'/)
-  assert.match(host,/runLifePostOverviewReview\(/)
+  assert.match(host,/runLifePostOverviewBatchReview\(/)
+  assert.match(host,/frame_budget_limit:frameBudgetLimit/)
+  assert.match(host,/globalNetworkBytes:/)
   assert.match(host,/focus_start_seconds:plan\.startSeconds/)
   assert.match(planner,/choice\.action==='focus_video'/)
   assert.match(planner,/verifyVideoFocusReview/)
@@ -113,79 +116,86 @@ import {runInNewContext} from 'node:vm'
 const DEBUG_START='  async function runVideoDebugTwoStage({bvid,account,job,overview}){'
 const DEBUG_END='  // Follow-up video clarification:'
 const actualHost=readFileSync(new URL('../index.js',import.meta.url),'utf8')
-function debugTwoStageHarness({choice='decline',accountSwitch=false,invalidVisual=false}={}){
+function debugTwoStageHarness({choice='decline',accountSwitch=false,invalidVisual=false,targets}={}){
   const start=actualHost.indexOf(DEBUG_START),end=actualHost.indexOf(DEBUG_END,start)
-  assert.ok(start>=0&&end>start,'extract real owner Debug Life coordinator')
+  assert.ok(start>=0&&end>start,'extract production Debug Life coordinator')
   const job={account:'owner',lifeAccountTag:ACCOUNT,status:'running',images:[]}
   const reads=[];let account=ACCOUNT,decisions=0,receipts=[]
   const willingness={decide:async()=>{
     decisions++
     if(choice==='decline')return {ok:false,action:'skip',reason:'fish-chose-rest'}
     if(accountSwitch)account='1234567890abcdef'
-    return {ok:true,candidateId:'global-focus-0',proof:{ref:'verified-choice'}}
+    return {ok:true,candidateId:'batch-focus-review',proof:{ref:'verified-choice'}}
   },verify:()=>({ok:true}),receipt:(_proof,outcome)=>receipts.push(outcome.status)}
   const capture={id:'abcdef0123456789abcdef0123456789',kind:'focus',bvid:BV,
-    images:[{kind:'focus',file:'focus-01.jpg',times:[6],resolution:'384x216'}]}
+    images:[{kind:'focus',file:'focus-01.jpg',times:[6],resolution:'最高640x360'}]}
   const ctx={videoDebugJob:job,videoDebugAccount:()=> 'owner',
     trustedLifeAccountTag:()=>account,
     cfg:{visionEnabled:true,masterEnabled:true,visionFrames:24},
-    planGlobalPreviewFocusCandidates,runLifePostOverviewReview,
+    planGlobalPreviewFocusCandidates,runLifePostOverviewBatchReview,lifeFocusBatchPrompt,videoExplorationTier,
     verifyVideoFocusReview,lifeWillingness:willingness,
     accountBinding:{status:()=>({blocked:false})},Date,
+    invokeInteractionPrompt:async()=>JSON.stringify({focusTargets:targets||[
+      {atSeconds:candidates[0].atSeconds,durationSeconds:10},
+      {atSeconds:candidates[2].atSeconds,durationSeconds:10}]}),
     parseMaybeJson:x=>x,safeVideoDebugCapture:v=>v,
     call:async(_name,args)=>{
       reads.push(args)
-      const frame=6
       return {ok:true,bvid:BV,status:invalidVisual?'unavailable':'analyzed',
         image_source:'B站公开视频片段（离线解码）',
-        description:'这张真实视频画面里出现了新的事件。',times:[frame],
+        description:'来自可信原视频的抽样画面出现新事件。',times:[args.focus_start_seconds+1],
         focus_window:{startSeconds:args.focus_start_seconds,endSeconds:args.focus_end_seconds},
-        sampling:{input_bytes:65000,network_budget_bytes:args.network_budget_bytes},
+        sampling:{input_bytes:65000,network_budget_bytes:args.network_budget_bytes,
+          frame_budget_limit:args.frame_budget_limit},
         debugCapture:capture}
     },
     buildVideoEvidenceBundle:({visual})=>({bvid:BV,sources:[
-      {kind:'decoded_video_frames',status:'sampled',timePointsMs:[6000]},
-      {kind:'decoded_visual_analysis',status:'analyzed',timePointsMs:[6000]}]})}
+      {kind:'decoded_video_frames',status:'sampled',timePointsMs:[(visual.focus_window.startSeconds+1)*1000]},
+      {kind:'decoded_visual_analysis',status:'analyzed',timePointsMs:[(visual.focus_window.startSeconds+1)*1000]}]})}
   runInNewContext(`${actualHost.slice(start,end)}\nglobalThis.debugTwoStageTest=runVideoDebugTwoStage`,ctx)
   return {run:()=>ctx.debugTwoStageTest({bvid:BV,account:'owner',job,overview}),
     job,reads,get decisions(){return decisions},receipts}
 }
 
-test('owner full-chain Debug: Life declines after global preview, no adaptive download occurs',async()=>{
+test('owner full-chain Debug: Life declines after overview; never performs any original-video download',async()=>{
   const m=debugTwoStageHarness()
   const result=await m.run()
-  assert.equal(result.status,'life-declined')
-  assert.equal(m.decisions,1)
-  assert.equal(m.reads.length,0)
-  assert.equal(m.job.images.length,0)
+  assert.equal(result.status,'life-declined');assert.equal(m.decisions,1)
+  assert.equal(m.reads.length,0);assert.equal(m.job.images.length,0)
   assert.ok(result.candidates.length>=1)
 })
 
-test('owner full-chain Debug: real Life focus proof authorizes only a bounded verified local read',async()=>{
+test('owner full-chain Debug: Life chooses two independent verified moments and receives separate bounded receipts',async()=>{
   const m=debugTwoStageHarness({choice:'focus'})
   const result=await m.run()
-  assert.equal(result.status,'focused')
-  assert.equal(m.decisions,1)
-  assert.equal(m.reads.length,1)
+  assert.equal(result.status,'focused');assert.equal(m.decisions,1)
+  assert.equal(m.reads.length,2)
+  assert.equal(result.focusWindows.length,2)
+  assert.equal(result.reviews.length,2)
   assert.equal(m.reads[0].perception_source,'adaptive')
-  assert.equal(m.reads[0].view_depth,'deep')
+  assert.equal(m.reads[1].view_depth,'deep')
   assert.equal(m.reads[0].capture_for_debug,true)
-  assert.equal(m.reads[0].network_budget_bytes,50*1048576-1250000)
-  assert.equal(m.job.images.length,1)
-  assert.ok(result.review.frameTimesMs.length>0)
+  assert.ok(m.reads[1].network_budget_bytes<m.reads[0].network_budget_bytes)
+  assert.ok(m.reads[1].frame_budget_limit<m.reads[0].frame_budget_limit)
+  assert.equal(m.job.images.length,2)
+  assert.equal(result.usage.frames,2)
   assert.equal(m.receipts[0],'verified')
 })
 
-test('owner full-chain Debug: changed account or unverified decoding cannot create a successful local receipt',async()=>{
+test('owner full-chain Debug: account mismatch or unverified decoding never produces successful receipt',async()=>{
   const changed=debugTwoStageHarness({choice:'focus',accountSwitch:true})
-  assert.equal((await changed.run()).status,'stale-choice')
-  assert.equal(changed.reads.length,0)
+  assert.equal((await changed.run()).status,'stale-choice');assert.equal(changed.reads.length,0)
   const bad=debugTwoStageHarness({choice:'focus',invalidVisual:true})
   assert.equal((await bad.run()).status,'focus-unavailable')
-  assert.equal(bad.reads.length,1)
-  assert.equal(bad.receipts[0],'failed')
+  assert.equal(bad.reads.length,1);assert.equal(bad.receipts[0],'not-sent')
 })
 
+test('owner full-chain Debug: forged timestamp cannot reach video source or consume model image allowance',async()=>{
+  const m=debugTwoStageHarness({choice:'focus',targets:[{atSeconds:999999,durationSeconds:30}]})
+  const r=await m.run()
+  assert.equal(r.status,'invalid-focus-plan');assert.equal(m.reads.length,0)
+  assert.equal(m.receipts[0],'not-sent')
+})
 
 test('dev21 Python pixel-change hints are tied to independently verified preview times',()=>{
   const selected=candidates.slice(0,4)

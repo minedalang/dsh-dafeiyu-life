@@ -9,7 +9,9 @@ test('quota screen reads measured Python ledger, never estimates total bandwidth
   const client=read('lib/management-console.js');
   const host=read('index.js');
   assert.match(html,/次数与额度/);
-  assert.match(html,/不包含以前版本、Whisper 音频和其他 B站请求/);
+  assert.match(html,/并非每日流量上限/);
+  assert.match(client,/每条 Episode 共享上限/);
+  assert.match(html,/不含历史旧版、Whisper 音频和其他 B站请求/);
   assert.match(client,/request\('\/video-vision-traffic'\)/);
   assert.match(client,/视频视觉流量 · 今日/);
   assert.match(client,/视频视觉流量 · 累计/);

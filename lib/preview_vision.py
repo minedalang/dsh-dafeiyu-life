@@ -706,7 +706,7 @@ def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source
             target.write_bytes(contents)
             target.chmod(0o600)
             images.append({'file':filename,'times':verified_times,
-                           'kind':kind,'resolution':('B站原生低清预览分镜' if source=='B站低清预览' else '384×216 原始复查采样' if focus else '原始视频解码分镜拼图')})
+                           'kind':kind,'resolution':('B站原生低清预览分镜' if source=='B站低清预览' else '原视频解码·最高640×360采样（非源清晰度承诺）' if focus else '原始视频解码分镜拼图')})
         if not images:
             shutil.rmtree(folder,ignore_errors=True)
             return None
@@ -720,7 +720,7 @@ def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source
 
 def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled=None, debug=False,
                        max_frames=None, provider=None, model=None, return_frames=False,
-                       focus_start=None, focus_end=None, view_depth='standard', network_budget_bytes=None):
+                       focus_start=None, focus_end=None, view_depth='standard', network_budget_bytes=None, frame_budget_limit=None):
     """User-selected source: real bounded public video or existing videoshot fallback.
 
     The caller chooses the source, never an auto-escalation from missing subtitles.
@@ -757,14 +757,16 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     # A restricted follow-up may have a smaller remaining download budget.
     # Do not allow it to reuse a cache created under another quota identity.
     cap_suffix='-cap'+str(network_budget_bytes) if network_budget_bytes is not None else ''
-    cache=Path(home).resolve()/'vision-cache'/f'{bvid}-adaptive-v7-{view_depth}{suffix}{cap_suffix}.json'
+    if frame_budget_limit is not None: cap_suffix+='-frames'+str(frame_budget_limit)
+    cache=Path(home).resolve()/'vision-cache'/f'{bvid}-adaptive-v8-{view_depth}{suffix}{cap_suffix}.json'
     if enabled and not return_frames and not debug and cache.is_file():
         try:
             saved=json.loads(cache.read_text(encoding='utf8'))
-            if (saved.get('sampler_version')==7 and saved.get('model')==model
+            if (saved.get('sampler_version')==8 and saved.get('model')==model
                 and saved.get('provider')==provider and saved.get('frames_limit')==max_frames
                 and saved.get('view_depth')==view_depth
-                and saved.get('focus_window')==focus and saved.get('network_budget_override')==network_budget_bytes and saved.get('description')
+                and saved.get('focus_window')==focus and saved.get('network_budget_override')==network_budget_bytes
+                and saved.get('frame_budget_limit')==frame_budget_limit and saved.get('description')
                 and saved.get('image_source')=='B站公开视频片段（离线解码）'):
                 return {'ok':True,'bvid':bvid,'status':'cached',
                         'times':saved['times'],'description':saved['description'],
@@ -775,7 +777,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
         except (ValueError,OSError,KeyError,TypeError):pass
     from adaptive_video import acquire_adaptive_frames, AdaptiveUnavailable
     try:
-        result=acquire_adaptive_frames(bvid,max_frames=max_frames,focus=focus,depth=view_depth,network_budget_bytes=network_budget_bytes)
+        result=acquire_adaptive_frames(bvid,max_frames=max_frames,focus=focus,depth=view_depth,network_budget_bytes=network_budget_bytes,frame_budget_limit=frame_budget_limit)
     except AdaptiveUnavailable as exc:
         if not exc.fallback:
             explanations = {
@@ -829,9 +831,10 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
         result['description']=_call_local_ollama(frames,model,image_source=result['image_source'])
         result['status']='analyzed'
         record={'model':model,'provider':provider,'frames_limit':max_frames,
-                'sampler_version':7,'view_depth':view_depth,'times':result['times'],'description':result['description'],
+                'sampler_version':8,'view_depth':view_depth,'times':result['times'],'description':result['description'],
                 'sampling':result['sampling'],'ocr':result.get('ocr'),'focus_window':focus,
                 'image_source':result['image_source'],'network_budget_override':network_budget_bytes,
+                'frame_budget_limit':frame_budget_limit,
                 'debugCapture':result.get('debugCapture')}
         cache.parent.mkdir(parents=True,exist_ok=True)
         temp=cache.with_suffix('.tmp')
@@ -881,8 +884,15 @@ def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, pr
 def analyze_perception(bvid, home, **kwargs):
     # One scope spans adaptive attempts plus videoshot recovery; a failed full
     # transfer is not erased from the usage ledger when the source changes.
-    with traffic_scope(home):
-        return _analyze_perception_impl(bvid, home, **kwargs)
+    with traffic_scope(home) as traffic:
+        result=_analyze_perception_impl(bvid, home, **kwargs)
+        # Explicitly identify bytes downloaded by *this* invocation. Cached
+        # results have no new transport cost even if previous media is large.
+        if isinstance(result,dict):
+            sampling=result.get('sampling')
+            if isinstance(sampling,dict):
+                sampling['transport_response_bytes_this_run']=sum(traffic[k] for k in ('original','preview','metadata'))
+        return result
 
 
 if __name__=='__main__':

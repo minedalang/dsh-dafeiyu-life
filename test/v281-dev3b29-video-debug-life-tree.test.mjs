@@ -73,5 +73,5 @@ test('owner Debug source is an explicit allowlisted choice, preview by default; 
   assert.match(index,/if\(!dryRun&&args\.record_session!==false\)/)
   assert.match(html,/<option value="life-two-stage">完整两阶段/)
   assert.match(index,/runVideoDebugTwoStage\(\{bvid,account,job,overview:result\}\)/)
-  assert.match(ui,/Life 看后第二次选择/)
+  assert.match(ui,/Life 看后多候选自主探索/)
 })

@@ -51,9 +51,10 @@ NETWORK_BUDGETS = {12: 24 * 1024 * 1024, 24: 50 * 1024 * 1024,
 MAX_REMOTE_SIZE = 1024 * 1024 * 1024  # Limit sparse local media virtual length.
 MAX_INDEX_BYTES = 8 * 1024 * 1024
 FRAME_W, FRAME_H, FRAME_RATE = 192, 108, 2
+FOCUS_W, FOCUS_H = 640, 360  # Up to 360p; preserve aspect, never enlarge low-res source.
 MAX_WINDOW = 120
 MAX_FRAMES = MAX_WINDOW * FRAME_RATE
-SAMPLER_VERSION = 7
+SAMPLER_VERSION = 8
 MAX_SUPPORTED_DURATION = 4 * 3600  # 4-hour bounded index; network/frame budgets unchanged
 FRAME_PLANS = (12, 24, 48)
 
@@ -805,14 +806,16 @@ def _decode_samples(filename, *, start, length, focused=False):
         raise AdaptiveUnavailable('ffmpeg_not_installed')
     # Accept ONLY a known progressive container, not playlists or remote probes.
     container = 'flv' if str(filename).endswith('.flv') else 'mp4'
-    # Focus mode decodes ORIGINAL pixels at double resolution, not upscale
-    # of the 192x108 overview tiles. Work remains local and time-bounded.
-    width,height=(384,216) if focused else (FRAME_W,FRAME_H)
+    # Focus mode decodes the original media stream (never overview tiles).
+    # Scale down to at most 640x360 without upscaling a smaller source;
+    # output is padded to a fixed frame size for bounded RGB decoding.
+    width,height=(FOCUS_W,FOCUS_H) if focused else (FRAME_W,FRAME_H)
     # Strictly local input, offline decoder, bounded raw RGB output and runtime.
+    resize=(f'min({width},iw):min({height},ih)' if focused else f'{width}:{height}')
     cmd = [exe, '-nostdin', '-hide_banner', '-loglevel', 'error',
            '-protocol_whitelist', 'file,pipe', '-threads', '1',
            '-ss', str(start), '-f', container, '-i', str(filename), '-t', str(length),
-           '-vf', f'fps={FRAME_RATE},scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2',
+           '-vf', f'fps={FRAME_RATE},scale={resize}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2',
            '-an', '-sn', '-dn', '-frames:v', str(min(MAX_FRAMES, math.ceil(length * FRAME_RATE))),
            '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1']
     try:
@@ -1043,7 +1046,7 @@ def _make_storyboards(items):
     return output
 
 
-def _acquire_adaptive_frames_impl(bvid, *, max_frames=24, focus=None, depth='standard', network_budget_bytes=None):
+def _acquire_adaptive_frames_impl(bvid, *, max_frames=24, focus=None, depth='standard', network_budget_bytes=None, frame_budget_limit=None):
     """Return storyboards *of actual decoded moments* or an explicit fallback reason."""
     if not BV_RE.fullmatch(str(bvid or '')):
         raise AdaptiveUnavailable('invalid_bvid', fallback=False)
@@ -1057,6 +1060,12 @@ def _acquire_adaptive_frames_impl(bvid, *, max_frames=24, focus=None, depth='sta
     if configured not in FRAME_PLANS:
         raise AdaptiveUnavailable('invalid_frame_plan', fallback=False)
     limit = min(configured,12) if depth=='standard' else configured
+    # A remaining Episode frame allowance is an enforced tool-side ceiling.
+    if frame_budget_limit is not None:
+        if (focus is None or type(frame_budget_limit) is not int or
+                not 1 <= frame_budget_limit <= configured):
+            raise AdaptiveUnavailable('invalid_frame_budget_limit',fallback=False)
+        limit = min(limit,frame_budget_limit)
     if network_budget_bytes is not None:
         if (type(network_budget_bytes) is not int or not 1_048_576<=network_budget_bytes<=NETWORK_BUDGETS[configured]):
             raise AdaptiveUnavailable('invalid_network_budget', fallback=False)
@@ -1215,7 +1224,8 @@ def _acquire_adaptive_frames_impl(bvid, *, max_frames=24, focus=None, depth='sta
               'heat_source':heat['source'] if heat else 'unavailable',
               'viewer_heat_is_content_evidence':False,'depth':depth,
               'frame_plan':configured,'frame_budget':limit,'storyboard_count':len(boards),
-              'frame_pixel_size':[384,216] if focus else [FRAME_W,FRAME_H],
+              'frame_pixel_size':[FOCUS_W,FOCUS_H] if focus else [FRAME_W,FRAME_H],
+              'frame_budget_limit':frame_budget_limit,
               'sample_interval_seconds':1/FRAME_RATE,
               'note':'DURL MP4 或 DASH SIDX 仅按可信时间索引和网络预算采样；未完整播放、未读取原声音轨'}
     sampling.update(info)
@@ -1228,10 +1238,10 @@ def _acquire_adaptive_frames_impl(bvid, *, max_frames=24, focus=None, depth='sta
             'notice':'每张分镜拼图包含多个带时间码的公开视频采样时刻；未逐帧观看完整视频或听到音频'}
 
 
-def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard', network_budget_bytes=None):
+def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard', network_budget_bytes=None, frame_budget_limit=None):
     # For direct entrypoints, still enforce one shared physical-byte budget;
     # nested inside the public video tool this reuses its persisted scope.
     with traffic_scope(None):
         return _acquire_adaptive_frames_impl(
             bvid,max_frames=max_frames,focus=focus,depth=depth,
-            network_budget_bytes=network_budget_bytes)
+            network_budget_bytes=network_budget_bytes,frame_budget_limit=frame_budget_limit)

@@ -113,11 +113,12 @@ import { formatLocalLogTimestamp } from './lib/log-time.mjs'
 import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
 import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
 import {verifyEpisodeVideoVisual} from './lib/life-episode-video-visual.mjs'
-import {runLifeChosenVideoRead,runLifePostOverviewReview} from './lib/life-video-read-admission.mjs'
+import {runLifeChosenVideoRead,runLifePostOverviewReview,runLifePostOverviewBatchReview,lifeFocusBatchPrompt} from './lib/life-video-read-admission.mjs'
 import {buildVideoEvidenceBundle} from './lib/video-evidence-bundle.mjs'
 import {buildVideoPerceptionTimeline} from './lib/video-perception-timeline.mjs'
 import {buildVideoPerceptionHandoff} from './lib/video-perception-handoff.mjs'
 import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview} from './lib/video-focus-review.mjs'
+import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
 import {ensureOllamaService} from './lib/ollama-service.mjs'
 import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
 import {listWhisperModels,deleteWhisperModel} from './lib/whisper-model-cache.mjs'
@@ -2055,7 +2056,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         ...(args.explorationPurpose==='life-voluntary-focus-read'||
             args.explorationPurpose==='life-episode-voluntary-focus' ? {
           focus_start_seconds:args.focus_start_seconds,focus_end_seconds:args.focus_end_seconds,
-          network_budget_bytes:args.network_budget_bytes
+          network_budget_bytes:args.network_budget_bytes,frame_budget_limit:args.frame_budget_limit
         }:{}),
         ...(dryRun?{capture_for_debug:true}:{})}),elapsed=>{
           visionFinishedAt=Date.now();visualReadMs=elapsed
@@ -2295,14 +2296,22 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
          accountBinding.status().blocked||trustedLifeAccountTag()==='')return overview
       const candidates=planGlobalPreviewFocusCandidates({bvid,overview})
       if(!candidates.length)return {...overview,postOverviewFocus:{status:'not-offered'}}
-      const globalBytes=Math.max(0,Number(overview.visual?.sampling?.sprite_bytes)||0)
+      const globalBytes=Math.max(0,Number(overview.visual?.sampling?.transport_response_bytes_this_run)||
+        Number(overview.visual?.sampling?.sprite_bytes)||0)
       const totalBudget=(Number(cfg.visionFrames)>=48?100:Number(cfg.visionFrames)>=24?50:24)*1048576
       // Network already spent on the global preview is never granted again.
       const remaining=Math.floor(totalBudget-globalBytes)
       if(remaining<1048576)return {...overview,postOverviewFocus:{status:'network-budget-exhausted'}}
-      const postOverviewFocus=await runLifePostOverviewReview({
+      const postOverviewFocus=await runLifePostOverviewBatchReview({
         willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,bvid,overview,candidates,
-        readFocus:async({account,plan})=>{
+        tier:videoExplorationTier(cfg.visionFrames),globalNetworkBytes:globalBytes,
+        chooseBatch:async({account,candidates:available,tier,remaining:remainingBudget})=>{
+          if(account!==trustedLifeAccountTag()||accountBinding.status().blocked||cfg.masterEnabled!==true)
+            throw Error('account-changed')
+          return invokeInteractionPrompt(lifeFocusBatchPrompt({candidates:available,tier,
+            remaining:remainingBudget,overview}),1800,{modelRoute:'behaviorDecision'})
+        },
+        readFocus:async({account,plan,networkBudgetBytes,frameBudgetLimit})=>{
           if(account!==trustedLifeAccountTag()||accountBinding.status().blocked||
              cfg.masterEnabled!==true||cfg.visionEnabled!==true)return {ok:false,reason:'account-or-vision-changed'}
           const stop=liveLifeActivity.start('video-observe',account,{maxAgeMs:8*60_000,bvid})
@@ -2310,13 +2319,13 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           try{visual=parseMaybeJson(await call('bili_preview_vision',{
             bvid,perception_source:'adaptive',view_depth:'deep',
             focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
-            network_budget_bytes:remaining}))}
+            network_budget_bytes:networkBudgetBytes,frame_budget_limit:frameBudgetLimit}))}
           catch{return {ok:false,reason:'focus-read-failed'}}
           finally{stop()}
           if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
           const focusedEvidence=buildVideoEvidenceBundle({bvid,info:overview.info,visual})
           const review=verifyVideoFocusReview({bvid,
-            plan:{...plan,status:'ready',networkBudgetBytes:remaining},result:visual,evidence:focusedEvidence})
+            plan:{...plan,status:'ready',networkBudgetBytes},result:visual,evidence:focusedEvidence})
           if(!review)return {ok:false,reason:'focused-evidence-not-verified'}
           try{
             const event=buildVideoExplorationEvent({bvid,info:overview.info,visual,
@@ -2330,7 +2339,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         }})
       return {...overview,postOverviewFocus,
         // The raw focused model answer is not copied into other channels.
-        focusReviewStatus:postOverviewFocus.status==='focused'?'life-focused':
+        focusReviewStatus:['focused','partial-focused'].includes(postOverviewFocus.status)?'life-focused':
           postOverviewFocus.status==='life-declined'?'life-declined':
           postOverviewFocus.status==='life-deferred'?'life-deferred':'life-focus-unavailable'}
     }
@@ -2340,57 +2349,70 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // overview willingness proof, not a synthetic model selection or a forced
   // focus read. The overview/response remain volatile and do not write Life
   // experiences. Only the verified focus result can be shown as an observation.
+  // Owner read-only acceptance of the SAME multi-candidate planning contract:
+  // willingness -> Life-selected verified targets -> bounded independent reads.
+  // It does not insert experiences, call platform write tools or force Life to watch.
   async function runVideoDebugTwoStage({bvid,account,job,overview}){
     const noFocus=status=>({status,mode:'life-two-stage',
-      explanation:'本轮未读取原视频局部片段；Life 可以拒绝或本轮没有可信候选'})
+      explanation:'未启动局部复查：没有可信全局回执、候选或可用预算'})
     if(!overview?.ok||overview?.bvid!==bvid||
        overview?.perceptionHandoff?.video?.source!=='low-resolution-preview')return noFocus('overview-not-verified')
     if(videoDebugJob!==job||videoDebugAccount()!==account||
        trustedLifeAccountTag()!==job.lifeAccountTag)return noFocus('account-or-job-changed')
     const candidates=planGlobalPreviewFocusCandidates({bvid,overview})
     if(!candidates.length)return noFocus('no-verified-preview-candidates')
-    const globalBytes=Math.max(0,Number(overview.visual?.sampling?.sprite_bytes)||0)
-    const totalBudget=(Number(cfg.visionFrames)>=48?100:Number(cfg.visionFrames)>=24?50:24)*1048576
-    const remaining=Math.floor(totalBudget-globalBytes)
-    if(!Number.isSafeInteger(remaining)||remaining<1048576)return noFocus('network-budget-exhausted')
-    job.stage='全局预览已完成，等待 Life 根据可信时间候选决定是否深入'
+    const tier=videoExplorationTier(cfg.visionFrames)
+    job.stage='全局观察完成，Life 正在决定是否探索多个可信局部'
     job.updatedAt=Date.now()
-    const result=await runLifePostOverviewReview({
-      willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,bvid,overview,candidates,
-      readFocus:async({account:chosenAccount,plan})=>{
-        if(chosenAccount!==job.lifeAccountTag||trustedLifeAccountTag()!==chosenAccount||
+    const focusedVisuals=[]
+    const result=await runLifePostOverviewBatchReview({
+      willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,bvid,overview,candidates,tier,
+      globalNetworkBytes:Math.max(0,Number(overview.visual?.sampling?.transport_response_bytes_this_run)||
+        Number(overview.visual?.sampling?.sprite_bytes)||0),
+      chooseBatch:async({account:chosen,candidates:available,tier:budget,remaining})=>{
+        if(chosen!==job.lifeAccountTag||videoDebugJob!==job||videoDebugAccount()!==account)
+          throw Error('account-or-job-changed')
+        job.stage='Life 正在自主规划本批多个可信局部观察窗口'
+        job.updatedAt=Date.now()
+        return invokeInteractionPrompt(lifeFocusBatchPrompt({candidates:available,tier:budget,remaining,overview}),
+          1800,{modelRoute:'behaviorDecision'})
+      },
+      readFocus:async({account:chosen,plan,networkBudgetBytes,frameBudgetLimit})=>{
+        if(chosen!==job.lifeAccountTag||trustedLifeAccountTag()!==chosen||
            videoDebugAccount()!==account||videoDebugJob!==job||
            accountBinding.status().blocked||cfg.visionEnabled!==true)
           return {ok:false,reason:'account-or-vision-changed'}
-        job.stage='Life 已自主选择局部：受控下载 MP4 / DASH 真实视频片段'
+        job.stage='Life 已自主选中局部，正在逐段解码与识图（已完成 '+focusedVisuals.length+' 段）'
         job.updatedAt=Date.now()
         let visual
         try{visual=parseMaybeJson(await call('bili_preview_vision',{
           bvid,perception_source:'adaptive',view_depth:'deep',
           focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
-          network_budget_bytes:remaining,capture_for_debug:true}))}
+          network_budget_bytes:networkBudgetBytes,frame_budget_limit:frameBudgetLimit,
+          capture_for_debug:true}))}
         catch{return {ok:false,reason:'focus-tool-failed'}}
-        if(chosenAccount!==trustedLifeAccountTag()||videoDebugAccount()!==account||
+        if(chosen!==trustedLifeAccountTag()||videoDebugAccount()!==account||
            videoDebugJob!==job)return {ok:false,reason:'account-changed'}
         const captured=safeVideoDebugCapture(visual?.debugCapture,bvid)
         if(captured)job.images=[...(job.images||[]),captured]
         if(visual&&typeof visual==='object')delete visual.debugCapture
         const evidence=buildVideoEvidenceBundle({bvid,info:overview.info,visual})
-        const review=verifyVideoFocusReview({bvid,plan:{...plan,status:'ready',networkBudgetBytes:remaining},
-          result:visual,evidence})
+        const review=verifyVideoFocusReview({bvid,
+          plan:{...plan,status:'ready',networkBudgetBytes},result:visual,evidence})
         if(!review)return {ok:false,reason:'focused-evidence-not-verified'}
-        // The answer is shown only in this owner's volatile Debug response;
-        // keep the original handoff as an explicitly separate global overview.
-        job.focusVisual={status:visual.status,image_source:visual.image_source,
+        focusedVisuals.push({status:visual.status,image_source:visual.image_source,
           description:String(visual.description||'').slice(0,2800),
-          times:Array.isArray(visual.times)?visual.times.slice(0,12):[],
+          times:Array.isArray(visual.times)?visual.times.slice(0,48):[],
           sampling:{input_bytes:visual.sampling?.input_bytes,
-            network_budget_bytes:visual.sampling?.network_budget_bytes}}
+            network_budget_bytes:visual.sampling?.network_budget_bytes,
+            frame_budget_limit:visual.sampling?.frame_budget_limit,
+            frame_pixel_size:visual.sampling?.frame_pixel_size}})
         return {ok:true,review}
       }
     })
     return {mode:'life-two-stage',status:result.status,
-      candidates:candidates.map(p=>({atSeconds:p.atSeconds,startSeconds:p.startSeconds,endSeconds:p.endSeconds,
+      candidates:candidates.slice(0,tier.candidates).map(p=>({atSeconds:p.atSeconds,
+        startSeconds:p.startSeconds,endSeconds:p.endSeconds,
         ...(Number.isFinite(p.pixelChange)?{pixelChange:p.pixelChange}:{}),
         ...(p.semanticSuggested===true?{semanticSuggested:true}:{}),
         ...(Number.isFinite(p.heat)&&p.heatSource==='bili-pbp-heat-curve'?{heat:p.heat,heatSource:p.heatSource}:{}),
@@ -2398,9 +2420,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         ...(p.visualCue?{visualCue:String(p.visualCue).slice(0,110),visualCueSource:p.visualCueSource}:{}),
         selectionBasis:p.selectionBasis,scanCoverage:p.scanCoverage})),
       ...(result.reason?{reason:result.reason}:{}),
-      ...(result.focusWindow?{focusWindow:result.focusWindow}:{}),
-      ...(result.review?{review:result.review,visual:job.focusVisual}:{}),
-      note:'主人仅发起验收；Life 依据全局预览独立选择是否深入。第二阶段只读，不写入 Life 经历或公开发送。'}
+      selectedTargets:result.selectedTargets||[],focusWindows:result.focusWindows||[],
+      reviews:result.reviews||[],usage:result.usage||null,remaining:result.remaining||null,
+      visuals:focusedVisuals,
+      note:'仅主人发起只读验收；Life 自主决定是否深入和本批选择哪些可信时间点，按剩余额度逐段复查，不新增真实 Life 观看经历、不允许外发。'}
   }
 
   // Follow-up video clarification: the user may mention a minute or an
@@ -7558,7 +7581,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       ['independent_dsh','independent_local'].includes(resolvedVisionMode())&&
       lifeOpportunityAccountReady()&&!accountBinding.status().blocked},
     withLifeVisualObservationLease:(target,run)=>withLifeVideoVisualLease(stateDir,target,run),
-    executeLifeVideoObservation:async({bvid,viewDepth,accountTag,focusWindow,networkBudgetBytes})=>{
+    executeLifeVideoObservation:async({bvid,viewDepth,accountTag,focusWindow,networkBudgetBytes,frameBudgetLimit})=>{
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.lifeAgentMode!=='active'||cfg.visionEnabled!==true||
          !['independent_dsh','independent_local'].includes(resolvedVisionMode())||
@@ -7568,7 +7591,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         ()=>executeWatchVideo({bvid,record_session:false,include_comments:false,
           include_danmaku:false,view_depth:viewDepth,
           ...(focusWindow?{focus_start_seconds:focusWindow.startSeconds,
-            focus_end_seconds:focusWindow.endSeconds,network_budget_bytes:networkBudgetBytes}:{}),
+            focus_end_seconds:focusWindow.endSeconds,network_budget_bytes:networkBudgetBytes,
+            frame_budget_limit:frameBudgetLimit}:{}),
           explorationPurpose:focusWindow?'life-episode-voluntary-focus':'life-episode-voluntary-visual'},
           {lifeChoiceVerified:true})).catch(()=>({ok:false,reason:'life-vision-resource-unavailable'}))
     },

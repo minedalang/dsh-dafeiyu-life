@@ -1372,7 +1372,7 @@ async def bili_vision_selftest():
 # 每轮 headless 创建独立 MCP 进程；同一个 BV 重试不扩张上限。
 # 这道上限是实际后端闸，不只依赖 AI 遵守提示词。手动预览测试走单独的受限脚本。
 _VISION_BVS_PER_RUN = set()
-def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None):
+def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None, frame_budget_limit=None):
     """Reserve only frame acquisition, NEVER the outer/child DSH vision call.
 
     The independent visual DSH subprocess may itself call bili_preview_vision.
@@ -1381,7 +1381,7 @@ def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perce
     from preview_vision import analyze_perception
     with shared_read_budget(_DUTY_HOME,'bili_preview_frames') as receipt:
         with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
-            result=analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source,view_depth=view_depth,network_budget_bytes=network_budget_bytes)
+            result=analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source,view_depth=view_depth,network_budget_bytes=network_budget_bytes,frame_budget_limit=frame_budget_limit)
             receipt(result)
             return result
 
@@ -1420,7 +1420,7 @@ def _record_production_vision_attempt(result, mode, model, debug=False):
 
 
 @tool()
-async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0, capture_for_debug: bool = False):
+async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0, frame_budget_limit: int = 0, capture_for_debug: bool = False):
     """鱼鱼主动选画面来源：preview官方低清，adaptive受控公开视频采样；可指定3～120秒。"""
     if (e := _guard("bili_preview_vision")): return e
     if os.environ.get('BILI_VISION_ENABLED') != '1':
@@ -1437,7 +1437,11 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
     if (type(network_budget_bytes) is not int or network_budget_bytes<0 or network_budget_bytes>104857600
         or (network_budget_bytes and (network_budget_bytes<1048576 or perception_source!='adaptive'))):
         return json.dumps({'ok':False,'status':'invalid_network_budget','error':'网络读取预算无效'},ensure_ascii=False)
+    if (type(frame_budget_limit) is not int or frame_budget_limit<0 or frame_budget_limit>48 or
+        (frame_budget_limit and (perception_source!='adaptive' or focus_start_seconds<0 or focus_end_seconds<0))):
+        return json.dumps({'ok':False,'status':'invalid_frame_budget_limit'},ensure_ascii=False)
     budget_override=network_budget_bytes or None
+    frames_override=frame_budget_limit or None
     from preview_vision import _normalize_focus_window
     try:
         if focus_start_seconds==-1.0 and focus_end_seconds==-1.0:focus=None
@@ -1456,7 +1460,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                     result = await asyncio.to_thread(analyze_perception,bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
                         model=os.environ.get('BILI_VISION_MODEL',''),debug=capture_for_debug is True,
                         focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
-                        network_budget_bytes=budget_override)
+                        network_budget_bytes=budget_override,frame_budget_limit=frames_override)
                     receipt(result)
             result['mode']='independent_local'
             _record_production_vision_attempt(result, 'independent_local', os.environ.get('BILI_VISION_MODEL', ''), capture_for_debug)
@@ -1481,7 +1485,8 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                     request=json.dumps({'bvid':bvid,'perception_source':perception_source,
                         'focus_start':focus['startSeconds'] if focus else None,
                         'focus_end':focus['endSeconds'] if focus else None,'view_depth':view_depth,
-                        'network_budget_bytes':budget_override,'debug_capture':capture_for_debug is True})
+                        'network_budget_bytes':budget_override,'frame_budget_limit':frames_override,
+                        'debug_capture':capture_for_debug is True})
                     try:
                         run=subprocess.run([vision_python,str(script),'--describe-stdin','--home',str(_DUTY_HOME)],
                             input=request,encoding='utf8',stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
@@ -1498,7 +1503,8 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                 from vision_dsh import describe_with_dsh
                 result=await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
                     focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
-                    network_budget_bytes=budget_override,debug_capture=capture_for_debug is True)
+                    network_budget_bytes=budget_override,frame_budget_limit=frames_override,
+                    debug_capture=capture_for_debug is True)
             _record_production_vision_attempt(result, 'independent_dsh', os.environ.get('BILI_VISION_DSH_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='independent_dsh_result',ok=result.get('ok'),

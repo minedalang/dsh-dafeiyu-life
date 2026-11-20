@@ -280,7 +280,7 @@ def _decode_visual_instruction(env):
         raise ValueError('vision-instruction-invalid-content')
     return text.strip()
 
-def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None, debug_capture=False):
+def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None, frame_budget_limit=None, debug_capture=False):
     if not _BV.fullmatch(str(bvid)):
         return {'ok':False,'status':'invalid_bvid','error':'BV 号格式不正确'}
     if perception_source not in ('preview','adaptive'):
@@ -313,9 +313,10 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         prompt_hash=hashlib.sha256((VISION_PROMPT_REVISION+'\n'+perception_source+'\n'+visual_instruction).encode('utf8')).hexdigest()[:16]
         from preview_vision import _SAMPLER_VERSION, _FOCUS_SAMPLER_VERSION, PREVIEW_BOARD_VERSION, _normalize_focus_window
         focus=_normalize_focus_window(focus_start,focus_end)
-        sampler_version=7 if perception_source=='adaptive' else PREVIEW_BOARD_VERSION
+        sampler_version=8 if perception_source=='adaptive' else PREVIEW_BOARD_VERSION
         suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
         if network_budget_bytes is not None:suffix+='-cap'+str(network_budget_bytes)
+        if frame_budget_limit is not None:suffix+='-frames'+str(frame_budget_limit)
         source_suffix='-adaptive' if perception_source=='adaptive' else ''
         cached=home/'vision-cache'/f'{bvid}{source_suffix}-v{sampler_version}-{view_depth}{suffix}.json'
         if cached.is_file() and not debug_capture:
@@ -325,7 +326,8 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
                     and d.get('provider')==provider and d.get('frames_limit')==frames and d.get('view_depth')==view_depth
                     and d.get('prompt_hash')==prompt_hash
                     and d.get('sampler_version')==sampler_version
-                    and d.get('focus_window')==focus and d.get('network_budget_override')==network_budget_bytes and d.get('description')
+                    and d.get('focus_window')==focus and d.get('network_budget_override')==network_budget_bytes
+                    and d.get('frame_budget_limit')==frame_budget_limit and d.get('description')
                     and d.get('perception_source_requested','preview')==perception_source
                     and (perception_source!='adaptive' or d.get('image_source')=='B站公开视频片段（离线解码）')):
                     return {'ok':True,'status':'cached','bvid':bvid,'description':d['description'],
@@ -376,6 +378,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         focus_params=(f'，focus_start_seconds={focus["startSeconds"]}，focus_end_seconds={focus["endSeconds"]}' if focus else '')
         source_params=f'，perception_source={perception_source}，view_depth={view_depth}'
         if network_budget_bytes is not None:source_params+=f'，network_budget_bytes={network_budget_bytes}'
+        if frame_budget_limit is not None:source_params+=f'，frame_budget_limit={frame_budget_limit}'
         prompt=(f'你是独立的 B站公开视频采样帧观察助手。只处理 BV号 {bvid}。'
                 f'先调用 mcp__bilivision__bili_preview_vision，参数 bvid={bvid}{focus_params}{source_params}。'
                 '仅依据工具真正送达的 JPEG 分镜图，按照小格时间码概括主要场景、变化与可见文字，按时间先后分成可见事件区间，记录角色、动作、变化、可见文字和每段证据不足之处；不必逐帧凑描述，输出不超过1500字的中文观察。'
@@ -433,7 +436,8 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
                 'times':observed['times'][:48],'sampling':observed.get('sampling'),'ocr':observed.get('ocr'),'focus_window':focus,
                 'description':description,'image_source':observed.get('image_source','B站低清预览'),
                 'debugCapture':observed.get('debugCapture'),
-                'perception_source_requested':perception_source,'network_budget_override':network_budget_bytes}
+                'perception_source_requested':perception_source,'network_budget_override':network_budget_bytes,
+                'frame_budget_limit':frame_budget_limit}
         # Never cache a videoshot downgrade under an adaptive source identity.
         if perception_source=='adaptive' and record['image_source']!='B站公开视频片段（离线解码）':
             return {'ok':True,'status':'analyzed','bvid':bvid,'description':description,
@@ -975,12 +979,13 @@ if __name__=='__main__':
             if len(raw)>4096:raise ValueError('oversize')
             request=json.loads(raw.decode('utf8'))
             if not isinstance(request,dict) or not _BV.fullmatch(str(request.get('bvid',''))):raise ValueError('invalid_bvid')
-            if not {'perception_source','view_depth','debug_capture','network_budget_bytes','focus_start','focus_end'}.issuperset(request.keys()-{'bvid'}):
+            if not {'perception_source','view_depth','debug_capture','network_budget_bytes','frame_budget_limit','focus_start','focus_end'}.issuperset(request.keys()-{'bvid'}):
                 raise ValueError('bad_fields')
             if type(request.get('debug_capture',False)) is not bool:raise ValueError('bad_debug')
             result=describe_with_dsh(request['bvid'],args.home,perception_source=request.get('perception_source','preview'),
                 focus_start=request.get('focus_start'),focus_end=request.get('focus_end'),
                 view_depth=request.get('view_depth','standard'),network_budget_bytes=request.get('network_budget_bytes'),
+                frame_budget_limit=request.get('frame_budget_limit'),
                 debug_capture=request.get('debug_capture',False))
             print(json.dumps(result,ensure_ascii=False))
         except (OSError,ValueError,TypeError,UnicodeDecodeError,KeyError):
