@@ -1,7 +1,5 @@
-# 大肥鱼 Plus 2.8.2-dev.38 · 开发候选交付
+# 大肥鱼 Plus 2.8.2-dev.39 · 局部原视频 FFmpeg 解码修复
 
-基线为 **2.8.2-dev.37**。本轮只修主人局部原视频 Debug：保持工具原始安全机器错误码，不再将所有读取失败合并为 `tool-result-unavailable`；当原视频真实解码成功时，新增 `focus-00.jpg` 分镜拼图显示，保留最多12张独立采样帧。无可用解码帧时不生成拼图。
+本次基线为 **2.8.2-dev.38**。用户报告主人专项 `video_decode_failed`，全局24帧识图成功而局部0帧。代码确认 FFmpeg 的 `min(640,iw)` 表达式中逗号未转义；在本机 FFmpeg 复现原命令失败，修复后直接调用生产函数取得真实局部画面。
 
-完整 ZIP 包含 `source/`、`PATCH_FROM_2.8.2-dev.37_TO_2.8.2-dev.38.patch`、`COMMIT_MESSAGE.txt` 和 `TESTING_2.8.2-dev.38.md`。补丁与源码覆盖是两种**替代更新方式，不可叠加**。`TEST-RESULTS.md` 只记录离线测试；Windows/DSH 上的真实原视频 CDN、FFmpeg 和 Ollama 仍待用户实测，2.8.2 正式版不放行。
-
-没有更改 Life 自主权限、模型选择、视频流量/时长/帧预算、私信哨兵、30分钟 `get_sessions` 兜底、账户隔离或任何 B站外发许可，也没有更改现有日志导出 BAT。
+源码包 `source/` 与增量 Git Patch 是两种替代更新方式，**只能使用一种**。此次不修改现有日志导出 BAT、不发起 B站 请求、不影响私信30分钟兜底或 Life 自主意愿。本次回归不代表 Windows/DSH 原视频、CDN和本地视觉模型已实机全链路通过。详见 `TESTING_2.8.2-dev.39.md` 和顶层 `TEST-RESULTS.md`。

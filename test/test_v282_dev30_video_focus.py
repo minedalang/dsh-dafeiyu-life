@@ -24,7 +24,7 @@ class VideoFocusClosure(unittest.TestCase):
         self.assertEqual(imgs[0].size,(640,360))
         cmd=received[0]
         filter_cmd=cmd[cmd.index('-vf')+1]
-        self.assertIn('scale=min(640,iw):min(360,ih)',filter_cmd)
+        self.assertIn(r'scale=min(640\,iw):min(360\,ih)',filter_cmd)
         self.assertIn('pad=640:360',filter_cmd)
         self.assertIn('-protocol_whitelist',cmd)
         self.assertIn('file,pipe',cmd)

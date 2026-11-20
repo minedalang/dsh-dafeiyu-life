@@ -811,7 +811,9 @@ def _decode_samples(filename, *, start, length, focused=False):
     # output is padded to a fixed frame size for bounded RGB decoding.
     width,height=(FOCUS_W,FOCUS_H) if focused else (FRAME_W,FRAME_H)
     # Strictly local input, offline decoder, bounded raw RGB output and runtime.
-    resize=(f'min({width},iw):min({height},ih)' if focused else f'{width}:{height}')
+    # FFmpeg splits filterchains at unescaped commas. The min() commas are
+    # expression arguments, not filter separators; escape them for -vf.
+    resize=(f'min({width}\\,iw):min({height}\\,ih)' if focused else f'{width}:{height}')
     cmd = [exe, '-nostdin', '-hide_banner', '-loglevel', 'error',
            '-protocol_whitelist', 'file,pipe', '-threads', '1',
            '-ss', str(start), '-f', container, '-i', str(filename), '-t', str(length),

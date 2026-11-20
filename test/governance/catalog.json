@@ -960,6 +960,11 @@
       "owner": "adaptive-video-focus-coverage",
       "kind": "behavior",
       "intent": "10/15/20/30-second focus windows use distinct decoded timestamps and span full duration while preserving original global dedup, frame ceilings and no fake images; actual focused storyboard respects grid contract."
+    },
+    "test_v282_dev39_focus_ffmpeg_filter.py": {
+      "owner": "adaptive-video-real-ffmpeg-filter",
+      "kind": "behavior",
+      "intent": "Decode an actual locally generated MP4 with system FFmpeg in focus and overview modes, proving escaped scale min() expressions output bounded RGB frames with no upscaling."
     }
   },
   "pythonProtected": [
