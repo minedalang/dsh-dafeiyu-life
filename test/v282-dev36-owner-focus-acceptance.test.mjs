@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {runInNewContext} from 'node:vm'
-import {planGlobalPreviewFocusCandidates,verifyVideoFocusReview} from '../lib/video-focus-review.mjs'
+import {planGlobalPreviewFocusCandidates,verifyVideoFocusReview,diagnoseVideoFocusReceipt} from '../lib/video-focus-review.mjs'
 import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from '../lib/video-owner-focus-debug.mjs'
 import {videoExplorationTier} from '../lib/video-exploration-budget.mjs'
 import {runLifePostOverviewBatchReview} from '../lib/life-video-read-admission.mjs'
@@ -100,7 +100,7 @@ function focusHarness({body={jobId:'job-id',atSeconds:65,durationSeconds:15},acc
     trustedLifeAccountTag:()=>ACCT,
     cfg:{visionEnabled:true,visionFrames:24},refreshCfg:()=>{},
     accountBinding:{status:()=>({blocked:false})},resolvedVisionMode:()=> 'independent_local',
-    videoExplorationTier,planOwnerFocusDebugWindow,verifyVideoFocusReview,
+    videoExplorationTier,planOwnerFocusDebugWindow,verifyVideoFocusReview,diagnoseVideoFocusReceipt,
     sendJson:(_res,status,payload)=>({status,payload}),res:{},
     saveVideoDebugSummary:()=>{},stateDir:'/test',
     call:async(_tool,args)=>{

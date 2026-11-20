@@ -317,6 +317,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         focus=_normalize_focus_window(focus_start,focus_end)
         sampler_version=8 if perception_source=='adaptive' else PREVIEW_BOARD_VERSION
         suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
+        if focus and perception_source=='adaptive':suffix+='-timecover1'
         if network_budget_bytes is not None:suffix+='-cap'+str(network_budget_bytes)
         if frame_budget_limit is not None:suffix+='-frames'+str(frame_budget_limit)
         source_suffix='-adaptive' if perception_source=='adaptive' else ''

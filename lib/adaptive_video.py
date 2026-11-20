@@ -950,7 +950,7 @@ def _choose_windows(duration, budget, focus, heat=None):
     return sorted(windows)
 
 
-def _scene_candidates(images, starts, *, heat=None, limit=24):
+def _scene_candidates(images, starts, *, heat=None, limit=24, focus=False):
     """Coverage first; changes, motion and optional viewer activity rank extras.
 
     Input is only *locally decoded* frames, grouped by separate decode window.
@@ -974,6 +974,56 @@ def _scene_candidates(images, starts, *, heat=None, limit=24):
             buckets.append(entries)
     if not buckets:
         raise AdaptiveUnavailable('no_decoded_frames')
+    if focus:
+        # For a single real-video focus window, frame *coverage* comes before
+        # visual deduplication: a near-static 15/20/30-second shot may still
+        # contain important subtle movement. A distinct decoded timestamp is
+        # required for every selected tile; never duplicate still images to
+        # fill a 12-grid. Respect any smaller remaining Life frame quota.
+        entries=sorted((entry for bucket in buckets for entry in bucket),
+                       key=lambda item:item['second'])
+        desired=min(12,limit,len(entries))
+        if desired<1:
+            raise AdaptiveUnavailable('no_decoded_frames')
+        left,right=entries[0]['second'],entries[-1]['second']
+        span=max(.001,right-left+.5)
+        picked=[]
+        for index in range(desired):
+            start=left+span*index/desired
+            end=left+span*(index+1)/desired
+            center=(start+end)/2
+            options=[entry for entry in entries if entry not in picked and
+                     start<=entry['second']<(end if index<desired-1 else end+.001)]
+            if not options:continue
+            # A visible change is useful when candidates occupy one time slot,
+            # but not at the expense of losing broad temporal coverage.
+            chosen=max(options,key=lambda entry:(entry['score']*.2 -
+                     abs(entry['second']-center)/max(.5,span/desired),
+                     -entry['second']))
+            picked.append(chosen)
+        # Sparse decode timestamps can leave empty bins. Fill by maximal
+        # temporal separation, not by inventing timestamps or repeating tiles.
+        while len(picked)<desired:
+            choices=[item for item in entries if item not in picked and
+                     all(abs(item['second']-x['second'])>=.45 for x in picked)]
+            if not choices:break
+            item=max(choices,key=lambda x:(min(abs(x['second']-p['second']) for p in picked)
+                    if picked else span, x['score'], -x['second']))
+            picked.append(item)
+        picked.sort(key=lambda x:x['second'])
+        return picked, {
+            'scene_change_seconds':[x['second'] for x in entries if x['jump']][:24],
+            'motion_hotspots_seconds':[x['second'] for x in sorted(
+                (e for e in entries if e['diff']>.045),
+                key=lambda e:e['diff'],reverse=True)[:12]],
+            'heat_candidates_seconds':[x['second'] for x in picked if x['audience']>=.7][:12],
+            'candidates_examined':len(entries),
+            'windows_covered':len(buckets), 'frames_selected':len(picked),
+            'focus_selection_policy':'timeline-coverage-then-motion-v1',
+            'focus_target_frames':desired,
+            'focus_time_bins_filled':len(picked),
+            'focus_frame_shortfall_reason':('limited-decoded-frames' if len(entries)<min(12,limit)
+                else 'timestamp-spacing' if len(picked)<desired else 'none')}
     # Uniformly cover all sampled windows. A static shot needs one observation.
     chosen=[]
     def add(item):
@@ -1042,7 +1092,7 @@ def _make_storyboards(items):
         out=BytesIO();grid.save(out,format='JPEG',quality=86,optimize=True)
         output.append({'second':chunk[0]['second'],'bytes':out.getvalue(),
                        'rank':len(output),'tile_times':[x['second'] for x in chunk],
-                       'tile_count':len(chunk)})
+                       'tile_count':len(chunk),'grid_cols':4,'grid_rows':math.ceil(len(chunk)/4)})
     return output
 
 
@@ -1188,7 +1238,7 @@ def _acquire_adaptive_frames_impl(bvid, *, max_frames=24, focus=None, depth='sta
                     raise AdaptiveUnavailable(exc.code, fallback=False) from None
                 raise
     try:
-        moments,info=_scene_candidates(all_images,[start for start,_ in windows],heat=heat,limit=limit)
+        moments,info=_scene_candidates(all_images,[start for start,_ in windows],heat=heat,limit=limit,focus=focus is not None)
     except AdaptiveUnavailable as exc:
         if download_mode.startswith('indexed-'):
             raise AdaptiveUnavailable(exc.code, fallback=False) from None

@@ -79,7 +79,7 @@ test('bare official Ollama digest normalizes for human approval and survives a f
    assert.equal((await m.review('minicpm-v4.7-1b',{reviewId:probe.reviewId,accepted:true})).verified,true)
    assert.match(readFileSync(join(dir,'local-vision-approvals.json'),'utf8'),/sha256:c{64}/)
    m=createLocalVisionModelManager({stateDir:dir,fetchImpl})
-   assert.equal((await m.list()).models[1].verified,true)
+   assert.equal((await m.list()).models.find(x=>x.id==='minicpm-v4.7-1b').verified,true)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 

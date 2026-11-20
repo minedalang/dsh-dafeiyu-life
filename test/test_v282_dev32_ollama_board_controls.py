@@ -46,7 +46,9 @@ class OllamaBoardControls(unittest.TestCase):
 
     def test_independent_density_and_true_grid_size(self):
         items=[{'tile':Image.new('RGB',(80,45)),'second':i*10} for i in range(24)]
-        for amount,cols,rows,boards in [(4,2,2,6),(6,3,2,4),(12,4,3,2)]:
+        # dev.34 intentionally retired user-configurable 4/6-cell previews.
+        # Any legacy grid argument must now resolve to the fixed 12-cell board.
+        for amount,cols,rows,boards in [(4,4,3,2),(6,4,3,2),(12,4,3,2)]:
             rendered=pv._make_preview_boards(items,amount)
             self.assertEqual(len(rendered),boards)
             self.assertEqual(sum(x['tile_count'] for x in rendered),24)
@@ -55,15 +57,15 @@ class OllamaBoardControls(unittest.TestCase):
             with Image.open(BytesIO(rendered[0]['bytes'])) as jpg:
                 self.assertEqual(jpg.size,(80*cols,65*rows))
 
-    def test_debug_capture_keeps_all_six_storyboards_with_four_tile_mode(self):
+    def test_debug_capture_retains_all_fixed_twelve_tile_storyboards(self):
         from tempfile import TemporaryDirectory
         items=[{'tile':Image.new('RGB',(80,45)),'second':i*10} for i in range(24)]
         boards=pv._make_preview_boards(items,4)
         with TemporaryDirectory() as temp:
             receipt=pv._capture_actual_video_images(temp,'BV1Smsb6FEb6',boards,[],None,'B站低清预览')
             self.assertIsNotNone(receipt)
-            self.assertEqual(len(receipt['images']),6)
-            self.assertTrue(all(len(x['times'])==4 for x in receipt['images']))
+            self.assertEqual(len(receipt['images']),2)
+            self.assertTrue(all(len(x['times'])==12 for x in receipt['images']))
 
     def test_budget_scales_by_tiles_and_thinking_not_total_boards(self):
         self.assertEqual(pv._local_board_predict_budget(4,'off'),3072)

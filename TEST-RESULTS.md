@@ -1,19 +1,20 @@
-# 2.8.2-dev.36 · 离线定向测试与发布门禁
+# 2.8.2-dev.37 · 离线定向测试和发布门禁
 
-## 本次实际完成
+## 变更及来源限制
 
-- **Node 相关专项：85 / 85 PASS，0 FAIL**。在不包含缺失依赖的旧 Headless 测试文件的13个相关测试文件中执行，包括新 `test/v282-dev36-owner-focus-acceptance.test.mjs` 6项、原有 Life 两阶段、时间锚点、证据、调试入口和网络预算回归。新测试直接提取生产路由执行，验证真正的单窗口 FFmpeg 工具调用参数、账号隔离、防重复与失败不冒充成功。
-- **Python 局部视频专项：8 / 8 PASS**。`test_dev3a2_life_selected_focus.py`（2）、`test_v282_dev30_video_focus.py`（2）、`test_v282_dev15_video_diagnostics.py`（4），以 `PYTHONPATH=lib` 运行。
-- **真实用户回执离线重放**：使用用户 Qwen3.5 2B、BV1Smsb6FEb6 的真实只读 JSON；现有四个候选（65、70、120、186秒）全部提取出匹配采样时间的视觉描述，而旧实现只有纯时间/差异线索。新主人专项从同一份回执读出24个确证采样时间；选65秒、15秒，会规划57.5～72.5秒的受控窗口。该检查未连接用户 Ollama/FFmpeg。
-- **工程门禁 PASS**：`node selfcheck.mjs`、`npm run check:life-architecture`（4张 Mermaid 图、128节点）、`npm run check:video-tool-contract`、`npm run check:context-budget`、`npm run check:test-governance`；受影响 JS 文件静态语法检查通过。
-- **npm pack --dry-run --json PASS**：打包预检版本 `2.8.2-dev.36`，762个文件，包含 `scripts/download_whisper_model.py`。
+复核用户 `bili-duty-logs-20261120-215141-551.zip`：21:34主人专项记录了任务结束，旧导出只含任务阶段摘要而没有局部详细失败；此前 Debug JSON 返回 `focused-evidence-not-verified`，不能仅凭3帧推断失败根因。本轮新增未来失败的机器阶段码与脱敏报告，不声称追溯还原了旧失败原因。
 
-## 未通过／受环境影响
+## 自动化验证
 
-- 一次扩展定向 Node 运行共 **91项：87 PASS，4 FAIL**。四个 FAIL 全部来自旧 `test/v282-dev34-closure.test.mjs` 中真实 Headless YAML 专项：当前离线源码工作区没有安装 npm `yaml` 依赖，动态导入 `lib/headless-model-sync.mjs` 报 `ERR_MODULE_NOT_FOUND`。**没有把这4项记为已通过，也不能据此断言 Headless 逻辑正确。** 之后排除该缺失依赖的旧专项、重跑相关13个文件得到85/85 PASS。维护者应在依赖已安装的 Windows 项目里单独重跑该旧专项。
-- 本机未连接用户的 Windows/DSH、B站真实账号、FFmpeg/Ollama 运行环境；**未证明真实原视频局部解码、视觉模型响应及 Life 自主深入完整链路成功**。新路由仅完成离线生产代码模拟与真实历史 JSON 时间锚点核验。
-- 未运行 Windows 普通/管理员 `run-tests.ps1 -Mode full`，因此 **2.8.2 正式版仍不放行**。
+- Node 相关定向 39/39 通过；新增分层失败、安全导出和行动树专项3项通过。
+- Python 定向 27/27 通过；新增局部时长与选帧覆盖专项6项通过。
+- `node selfcheck.mjs`、`npm run check:video-tool-contract`、`npm run check:context-budget`、`npm run check:life-architecture`（4张图）、`npm run check:test-governance` 通过。
+- `npm pack --dry-run --json` 成功，预检包含 Whisper 模型下载脚本。
+- 确认不修改用户现有 `tools/导出B站日志.bat`；本轮不调用真实 B站写入或外发。
 
-## 安全范围
+## 未验证的发布门禁
 
-只读工程与模拟测试，无真实 B站外发；不假冒 Life 选择，不新增真实观看记忆，不修改私信30分钟兜底和原网络预算；未执行 Git 提交、推送、npm 发布。补丁 replay 与 ZIP 核验结果见最终交付回放记录。
+- 没有用户 Windows/DSH 环境、真实 FFmpeg 和本地视觉模型，不声称已证明局部原视频成功或看清画面。
+- 需要 Windows 15秒、20秒两次主人专项，核对返回的实际独立时间戳、模型完成、证据验证与新 `reports/video-focus-last-diagnostic.json`。
+- 需要 Life **真实自主**选择 `focus_video` 并通过端到端交接；主人专项成功不能替代。
+- 未跑 Windows full，正式2.8.2仍不放行；未执行 Git commit/push 或 npm publish。

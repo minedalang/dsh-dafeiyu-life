@@ -750,6 +750,11 @@
       "owner": "owner-video-focus-debug-and-life-visual-hypotheses",
       "kind": "security",
       "intent": "Owner selects only independently verified videoshot frame times, one read-only bounded FFmpeg focus is accepted without Life willingness/memory or platform writes; fake anchors, cross-account results, invalid visual receipts, and model R1C1 timestamps cannot bypass evidence checks."
+    },
+    "v282-dev37-focus-diagnostics.test.mjs": {
+      "owner": "focus-video-evidence-and-owner-debug-diagnostics",
+      "kind": "security",
+      "intent": "Diagnose decoded-video focus failure at tool, visual-model, provenance and time-budget verification boundaries; persist only redacted owner focus status through existing reports export; show real nested Life video action rather than parent metadata."
     }
   },
   "protected": [
@@ -950,6 +955,11 @@
       "owner": "whisper-asr-language-cache",
       "kind": "security",
       "intent": "Language auto mode, short-lived bounded local ASR transcript cache isolation by BV/model/language, expiry, path and symlink rejection."
+    },
+    "test_v282_dev37_focus_window_coverage.py": {
+      "owner": "adaptive-video-focus-coverage",
+      "kind": "behavior",
+      "intent": "10/15/20/30-second focus windows use distinct decoded timestamps and span full duration while preserving original global dedup, frame ceilings and no fake images; actual focused storyboard respects grid contract."
     }
   },
   "pythonProtected": [

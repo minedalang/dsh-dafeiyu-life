@@ -117,7 +117,7 @@ import {runLifeChosenVideoRead,runLifePostOverviewReview,runLifePostOverviewBatc
 import {buildVideoEvidenceBundle} from './lib/video-evidence-bundle.mjs'
 import {buildVideoPerceptionTimeline} from './lib/video-perception-timeline.mjs'
 import {buildVideoPerceptionHandoff} from './lib/video-perception-handoff.mjs'
-import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview} from './lib/video-focus-review.mjs'
+import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview,diagnoseVideoFocusReceipt} from './lib/video-focus-review.mjs'
 import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from './lib/video-owner-focus-debug.mjs'
 import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
 import {ensureOllamaService} from './lib/ollama-service.mjs'
@@ -2412,9 +2412,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         if(captured)job.images=[...(job.images||[]),captured]
         if(visual&&typeof visual==='object')delete visual.debugCapture
         const evidence=buildVideoEvidenceBundle({bvid,info:overview.info,visual})
-        const review=verifyVideoFocusReview({bvid,
-          plan:{...plan,status:'ready',networkBudgetBytes},result:visual,evidence})
-        if(!review)return {ok:false,reason:'focused-evidence-not-verified'}
+        const verifiedPlan={...plan,status:'ready',networkBudgetBytes}
+        const review=verifyVideoFocusReview({bvid,plan:verifiedPlan,result:visual,evidence})
+        if(!review)return {ok:false,reason:diagnoseVideoFocusReceipt({bvid,
+          plan:verifiedPlan,result:visual,evidence}).code}
         focusedVisuals.push({status:visual.status,image_source:visual.image_source,
           description:String(visual.description||'').slice(0,2800),
           times:Array.isArray(visual.times)?visual.times.slice(0,48):[],
@@ -8714,9 +8715,10 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(captured)job.images=[...(job.images||[]),captured]
           if(visual&&typeof visual==='object')delete visual.debugCapture
           const evidence=buildVideoEvidenceBundle({bvid,info:job.payload.info,visual})
+          const diagnosis=diagnoseVideoFocusReceipt({bvid,plan,result:visual,evidence})
           const review=verifyVideoFocusReview({bvid,plan,result:visual,evidence})
-          if(!review)return {ok:false,reason:'focused-evidence-not-verified'}
-          return {ok:true,review,visual:{status:visual.status,image_source:visual.image_source,
+          if(!review)return {ok:false,reason:diagnosis.code,diagnosis}
+          return {ok:true,review,diagnosis,visual:{status:visual.status,image_source:visual.image_source,
             description:String(visual.description||'').slice(0,2800),
             times:Array.isArray(visual.times)?visual.times.slice(0,48):[],
             sampling:{input_bytes:visual.sampling?.input_bytes,
@@ -8726,6 +8728,8 @@ logger:{warn:m=>log('社交意图：'+m)}
           const good=outcome?.ok===true
           job.ownerFocus={...job.ownerFocus,status:good?'focused':'focus-unavailable',
             ...(good?{}:{reason:String(outcome?.reason||'focus-failed').slice(0,70)}),
+            // Only fixed stage codes and counts are persisted; never model text.
+            focusDiagnosis:outcome?.diagnosis||{stage:'decode-or-tool',code:String(outcome?.reason||'focus-failed').slice(0,70)},
             focusWindows:good?[{startSeconds:plan.startSeconds,endSeconds:plan.endSeconds,
               frameCount:outcome.review.frameCount,inputBytes:outcome.review.inputBytes}]:[],
             reviews:good?[outcome.review]:[],visuals:good?[outcome.visual]:[]}
