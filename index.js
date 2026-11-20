@@ -2005,7 +2005,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const safeVideoDebugCapture=(value,bvid)=>{
     if(!value||value.bvid!==bvid||!(/^[a-f0-9]{32}$/).test(String(value.id||''))||
       !['storyboard','focus'].includes(value.kind)||!Array.isArray(value.images))return null
-    const images=value.images.slice(0,12).filter(x=>
+    const images=value.images.slice(0,value.kind==='focus'?13:12).filter(x=>
       x?.kind===value.kind&&/^(?:storyboard|focus)-\d{2}\.jpg$/.test(String(x.file||''))&&
       Array.isArray(x.times)&&x.times.length<=12&&x.times.every(t=>Number.isFinite(t)&&t>=0&&t<=2700))
       .map(x=>({kind:x.kind,file:x.file,times:x.times,resolution:String(x.resolution||'').slice(0,45)}))

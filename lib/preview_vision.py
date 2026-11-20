@@ -857,16 +857,22 @@ def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source
         return None
     # Diagnostic receipts must identify actual sampled times; isolated images
     # without any source-aligned frame timestamp cannot be called video boards.
-    items = boards if source == 'B站低清预览' else focus_images if focus else boards
+    # In a focused read the actual model receives a stitched storyboard,
+    # but previous diagnostic captures showed only separate sample JPEGs.
+    # Show the exact stitched input first (focus-00.jpg), followed by up to
+    # 12 individual *real* decoded frames. Never synthesize missing frames.
+    focused_actual=bool(focus and source=='B站公开视频片段（离线解码）')
+    if focused_actual:
+        items=[dict(boards[0],_board=True)] if boards else []
+        items += [dict(item,_board=False) for item in (focus_images or [])[:12]]
+    else:
+        items=list((boards or [])[:12 if source=='B站低清预览' else 4])
+    def sample_times(item):
+        return item.get('tile_times') if not focused_actual or item.get('_board') else [item.get('second')]
     if not any(
-        isinstance(item, dict) and any(
-            isinstance(t, (int, float)) and not isinstance(t, bool) and
-            0 <= t <= 86_400 and math.isfinite(t)
-            for t in (item.get('tile_times') if source == 'B站低清预览' or not focus
-                      else [item.get('second')]) or []
-        )
-        for item in (items or [])
-    ):
+        isinstance(item,dict) and any(isinstance(t,(int,float)) and not isinstance(t,bool)
+            and 0 <= t <= 86_400 and math.isfinite(t) for t in sample_times(item) or [])
+        for item in items):
         return None
     home=Path(home).resolve()
     root=home/'vision-perception-captures'
@@ -890,19 +896,35 @@ def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source
         folder.mkdir(mode=0o700)
         images=[]
         kind='focus' if focus else 'storyboard'
-        for i,item in enumerate((boards if source=='B站低清预览' else focus_images if focus else boards)[:12 if source=='B站低清预览' or focus else 4]):
+        for i,item in enumerate(items):
             contents=item.get('bytes')
-            if not isinstance(contents,bytes) or not 0<len(contents)<=600_000:continue
-            times=item.get('tile_times') if source=='B站低清预览' or not focus else [item.get('second')]
+            if not isinstance(contents,bytes) or not contents:continue
+            board_image=focused_actual and item.get('_board') is True
+            # Debug image serving retains its original 600 KiB limit. Large
+            # storyboard JPEGs can be re-encoded for *display only*; the model
+            # input and original decoding evidence are never changed.
+            if board_image and len(contents)>600_000:
+                try:
+                    from PIL import Image as _Image
+                    with _Image.open(BytesIO(contents)) as img:
+                        out=BytesIO()
+                        img.convert('RGB').save(out,format='JPEG',quality=70,optimize=True)
+                        contents=out.getvalue()
+                except (OSError,ValueError):
+                    continue
+            if len(contents)>600_000:continue
+            times=sample_times(item)
             verified_times=[float(t) for t in (times or []) if isinstance(t,(int,float)) and
                             not isinstance(t,bool) and 0 <= t <= 86_400 and math.isfinite(t)][:12]
             if not verified_times:continue
-            filename=f'{kind}-{i+1:02d}.jpg'
+            filename=f'{kind}-{0 if board_image else i:02d}.jpg' if focused_actual else f'{kind}-{i+1:02d}.jpg'
             target=folder/filename
             target.write_bytes(contents)
             target.chmod(0o600)
-            images.append({'file':filename,'times':verified_times,
-                           'kind':kind,'resolution':('B站原生低清预览分镜' if source=='B站低清预览' else '原视频解码·最高640×360采样（非源清晰度承诺）' if focus else '原始视频解码分镜拼图')})
+            resolution=('原视频局部12格分镜拼图（实际格数按已解码帧）' if board_image else
+                        'B站原生低清预览分镜' if source=='B站低清预览' else
+                        '原视频解码·最高640×360采样（非源清晰度承诺）' if focus else '原始视频解码分镜拼图')
+            images.append({'file':filename,'times':verified_times,'kind':kind,'resolution':resolution})
         if not images:
             shutil.rmtree(folder,ignore_errors=True)
             return None

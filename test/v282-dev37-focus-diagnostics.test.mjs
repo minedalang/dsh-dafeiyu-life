@@ -20,6 +20,10 @@ const accepted={sources:[
 
 test('focus failure distinguishes missing tool, model, frame provenance, and alignment',()=>{
  assert.equal(diagnoseVideoFocusReceipt({bvid:BV,plan,result:null,evidence:null}).code,'tool-result-unavailable')
+ assert.equal(diagnoseVideoFocusReceipt({bvid:BV,plan,result:{ok:false,status:'video_mp4_index_unavailable'},evidence:null}).code,'video_mp4_index_unavailable')
+ assert.equal(diagnoseVideoFocusReceipt({bvid:BV,plan,result:{ok:false,status:'video_decode_failed'},evidence:null}).code,'video_decode_failed')
+ assert.equal(diagnoseVideoFocusReceipt({bvid:BV,plan,result:{ok:false,status:'platform_rate_limited'},evidence:null}).code,'platform_rate_limited')
+ assert.equal(diagnoseVideoFocusReceipt({bvid:BV,plan,result:{ok:false,status:'user-secret-string'},evidence:null}).code,'tool-result-unavailable')
  assert.equal(diagnoseVideoFocusReceipt({bvid:BV,plan,result:{...v,status:'vision_unavailable'},evidence:accepted}).code,'visual-model-incomplete')
  assert.equal(diagnoseVideoFocusReceipt({bvid:BV,plan,result:v,evidence:{sources:[]}}).code,'decoded-frame-provenance-rejected')
  assert.equal(diagnoseVideoFocusReceipt({bvid:BV,plan,result:v,evidence:{sources:accepted.sources.slice(0,1)}}).code,'decoded-visual-receipt-rejected')
@@ -50,6 +54,14 @@ test('safe diagnosis is exported through existing reports/ without modifying own
   assert.equal(report.verifiedWindows,0)
   const raw=readFileSync(target,'utf8')
   for(const secret of ['PRIVATE_BV','secret','owner-account'])assert.equal(raw.includes(secret),false)
+  const withSourceStatus={...job,ownerFocus:{...job.ownerFocus,
+    focusDiagnosis:{stage:'decode-or-tool',code:'video_mp4_index_unavailable',
+      decodedFrames:0,frameBudget:0,decodedCandidates:0,samplerVersion:0,
+      error:'https://example.org/private.mp4'}}}
+  assert.equal(saveVideoDebugSummary(dir,withSourceStatus,'owner-account'),true)
+  const safeSource=JSON.parse(readFileSync(target,'utf8'))
+  assert.equal(safeSource.code,'video_mp4_index_unavailable')
+  assert.equal(JSON.stringify(safeSource).includes('private.mp4'),false)
   assert.equal(ownerFocusSafeReport({...job,status:'running'},'owner-account'),null)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
@@ -62,4 +74,5 @@ test('Life action tree prioritizes recent real executed video step above parent 
  assert.match(ui,/近期视频观察/)
  assert.match(ui,/focus_video','局部复查视频画面/)
  assert.match(ui,/decoded-frame-provenance-rejected/)
+ assert.match(ui,/真实局部视频分镜拼图/)
 })

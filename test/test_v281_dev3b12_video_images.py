@@ -53,10 +53,29 @@ class CaptureTests(unittest.TestCase):
                 r=pv.analyze_perception(BV,home,perception_source='adaptive',enabled=True,provider='ollama',model='qwen3.5:4b',focus_start=16,focus_end=20)
             receipt=r['debugCapture'];folder=Path(home)/'vision-perception-captures'/receipt['id']
             self.assertEqual(receipt['kind'],'focus')
-            self.assertEqual(len(receipt['images']),2)
+            self.assertEqual(len(receipt['images']),3)
+            self.assertEqual(receipt['images'][0]['file'],'focus-00.jpg')
+            self.assertEqual(receipt['images'][0]['times'],[17.,19.])
+            self.assertEqual((folder/'focus-00.jpg').read_bytes(),jpeg('gray',768,384))
             self.assertEqual((folder/'focus-01.jpg').read_bytes(),pics[0]['bytes'])
             self.assertEqual((folder/'focus-02.jpg').read_bytes(),pics[1]['bytes'])
             self.assertNotIn('debug_moments',r)
+    def test_focus_gallery_shows_one_true_storyboard_and_twelve_distinct_real_frames(self):
+        with tempfile.TemporaryDirectory() as home:
+            seconds=[42.0+i for i in range(12)]
+            stitched={'second':42.0,'bytes':jpeg('gray',768,384),'tile_times':seconds}
+            originals=[{'second':t,'bytes':jpeg((i*17%256,40,120))} for i,t in enumerate(seconds)]
+            receipt=pv._capture_actual_video_images(home,BV,[stitched],originals,
+                {'startSeconds':41.5,'endSeconds':56.5},'B站公开视频片段（离线解码）')
+            self.assertEqual(len(receipt['images']),13)
+            self.assertEqual(receipt['images'][0]['file'],'focus-00.jpg')
+            self.assertEqual(receipt['images'][0]['times'],seconds)
+            self.assertEqual(receipt['images'][-1]['file'],'focus-12.jpg')
+            self.assertEqual(receipt['images'][-1]['times'],[53.0])
+            root=Path(home)/'vision-perception-captures'/receipt['id']
+            self.assertEqual((root/'focus-00.jpg').read_bytes(),stitched['bytes'])
+            self.assertEqual((root/'focus-12.jpg').read_bytes(),originals[-1]['bytes'])
+            self.assertNotIn('bytes',json.dumps(receipt))
     def test_invalid_identity_or_source_is_not_persisted(self):
         with tempfile.TemporaryDirectory() as home:
             self.assertIsNone(pv._capture_actual_video_images(home,'/etc/passwd',[],[],None,'B站公开视频片段（离线解码）'))
