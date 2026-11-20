@@ -3761,6 +3761,8 @@ async def bili_transcribe_safe(bvid: str) -> str:
                            'text':payload['text'][:12000],
                            'timed_segments':payload['timed_segments'][:160],
                            'coverage':coverage,
+                           **({'cacheHit':True} if payload.get('cacheHit') is True else {}),
+                           **({'languageMode':payload['languageMode']} if payload.get('languageMode') in ('auto','zh','en') else {}),
                            **({'timings':timings} if timings else {}),
                            **({'mcpTimings':{**worker_timings,
                                'handlerMs':round((perf_counter()-handler_started)*1000)}}

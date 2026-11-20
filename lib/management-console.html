@@ -2035,14 +2035,20 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="contextual-memory-group" id="local-vision-controls">
 <div class="video-aux-heading"><h4>🖥️ 可选本地视频视觉模型</h4><span id="models-local-vision-active" class="pill pending">读取当前配置…</span></div>
 <p class="muted">本地视觉模型负责画面观察。下面提供一键安装，需本机有 Ollama 环境。也可直接在 DSH 中配置 Ollama Provider 调用本地模型。</p>
-<details class="visual-advanced"><summary>查看模型大小与硬件建议</summary><div class="fields" aria-label="可选本地视觉模型能力与硬件建议">
-<div class="setting-note"><strong>MiniCPM-V 4.7 1B · 轻量视觉</strong><p>适合图片、多图与视频片段的初步观察，注重低资源占用。<strong>Ollama 模型约 1.8 GB</strong>（量化版）；<strong>建议 4 GB 以上显存起试</strong>，也可考虑 CPU/系统内存运行，实际占用与上下文、图像数量有关。必须下载 <code>openbmb/minicpm-v4.7:1b</code>，不能省略 <code>:1b</code>；部分 Ollama 版本不支持其视觉投影器。</p></div>
-<div class="setting-note"><strong>Qwen3.5 4B · 中文与复杂画面</strong><p>适合中文场景、屏幕文字及多张图片之间的关联理解。<strong>Ollama 模型约 3.3～4.0 GB</strong>（制品不同大小有差异）；<strong>建议 6～8 GB 显存起试，优先 8 GB</strong>，多图/长上下文会增加显存需求。模型标识 <code>qwen3.5:4b</code>。</p></div>
-</div></details>
+<div class="setting-note" id="local-vision-hardware-guide" role="note" style="margin:10px 0;padding:13px;border-left:3px solid var(--primary,#4b94a8)">
+<strong>💻 选模型先看内存与显存（无需显卡也能运行）</strong>
+<p style="margin:7px 0">显存是<strong>GPU 加速建议</strong>，不是安装门槛。<strong>无独立显卡、显存不足</strong>也可以用 Ollama 的 CPU + 系统内存运行，可能更慢；有 GPU 时可能部分层卸载到系统内存。占用随量化、上下文和图片数变化，实际以 Ollama 加载情况为准。</p>
+<div class="fields" aria-label="本地模型 GPU 显存建议与 CPU 内存运行提示">
+<div><strong>Qwen3.5 2B · 中档</strong><p>建议 GPU 显存约 4～6 GB；也可 CPU 运行（系统内存建议 8 GB 起，留有余量）。</p></div>
+<div><strong>Qwen3.5 4B · 画面质量优先</strong><p>建议 GPU 显存约 6～8 GB；也可 CPU 运行（系统内存建议 12～16 GB 或更高）。</p></div>
+<div><strong>MiniCPM-V 4.7 1B · 不建议常规使用</strong><p>建议 GPU 显存约 4 GB；可 CPU 运行（系统内存建议 8 GB 起）。实测分镜描述容易遗漏细节，仅供低资源尝试。</p></div>
+</div>
+<p style="margin:5px 0 0">以上均是<strong>经验性起试建议，不是官方硬性最低配置</strong>；本机总内存和其他程序的占用也会影响能否顺利加载。</p>
+</div>
 <div class="local-vision-install-guide"><p><strong>简化下载和代理：</strong>本地视觉模型通过 <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">Ollama</a> 下载安装。需要保证 Ollama 有合适的网络环境。</p>
 <details class="visual-advanced"><summary>Windows 使用本地网络代理启动 Ollama 示例</summary><p>当前仅列举 Windows 环境下的方法：确认 Ollama 已完全退出，在 PowerShell 中执行下面两条命令，并保持该窗口运行：</p><pre><code>$env:HTTPS_PROXY = "http://127.0.0.1:7890" # 7890 是常见网络代理端口，具体请以实际端口为准
 ollama serve # 启动 Ollama 服务</code></pre></details></div>
-<div class="fields"><div><label for="local-vision-model">可选本地模型</label><select id="local-vision-model"><option value="qwen3.5-4b">Qwen3.5 4B</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B</option></select></div>
+<div class="fields"><div><label for="local-vision-model">可选本地模型</label><select id="local-vision-model"><option value="qwen3.5-4b">Qwen3.5 4B · 质量优先</option><option value="qwen3.5-2b">Qwen3.5 2B · 中档省资源</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B · 不建议常规使用</option></select></div>
 <div><label for="local-vision-thinking">本地识图思考深度</label><select id="local-vision-thinking"><option value="off">关闭思考（推荐用于逐格识图）</option><option value="default">模型默认</option><option value="on">开启思考</option><option value="low">低（模型支持时）</option><option value="medium">中（模型支持时）</option><option value="high">高（模型支持时）</option></select><small class="setting-note" id="local-vision-thinking-support">正在检查模型支持的思考档位…</small><div class="toolbar"><button type="button" id="local-vision-thinking-save">保存本地识图思考设置</button></div></div></div>
 <p class="setting-note">此设置仅影响本机 Ollama 视频逐帧识图，不改变 DSH 模型的思考深度。思考会消耗生成预算；每张分镜独立分配宽松 Token 上限，且保留总执行时间限制。</p>
 <div class="local-vision-status-line"><span id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</span><span id="local-vision-review-inline" class="local-vision-review-inline" hidden><strong id="local-vision-review-label">尚未人工验收</strong><button type="button" id="local-vision-review-jump" class="life-action local-vision-review-action">前往人工验收 ↑</button></span><span id="local-vision-status-tail" class="muted"></span></div>
@@ -2065,7 +2071,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <div class="video-aux-card">
       <div class="video-aux-heading"><strong>🎙️ 视频语音识别模型（推荐开启）</strong><span id="models-whisper-badge" class="pill pending">检测中</span></div>
       <label class="checkline"><input id="models-transcribe" type="checkbox">启用视频语音识别（无可用官方字幕时，鱼鱼可按需使用 Whisper）</label>
-      <div class="fields"><div><label for="models-asr-model">Whisper 模型</label><select id="models-asr-model"><option value="tiny">tiny · 更省资源</option><option value="base">base</option><option value="small">small · 默认</option><option value="medium">medium</option><option value="large-v3">large-v3 · 更高资源占用</option></select></div></div>
+      <div class="fields"><div><label for="models-asr-model">Whisper 模型</label><select id="models-asr-model"><option value="tiny">tiny · 更省资源</option><option value="base">base</option><option value="small">small · 默认</option><option value="medium">medium</option><option value="large-v3">large-v3 · 更高资源占用</option></select></div><div><label for="models-asr-language">转写语言</label><select id="models-asr-language"><option value="auto">自动检测（推荐，混合语音仍需核对）</option><option value="zh">中文</option><option value="en">英文</option></select></div></div>
       <p id="models-whisper-status" class="muted" role="status" aria-live="polite">正在检查转写依赖…</p>
       <p class="setting-note">安装包：<a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener noreferrer">faster-whisper 官方源码</a> · <a href="https://pypi.org/project/faster-whisper/" target="_blank" rel="noopener noreferrer">PyPI 包／下载文件</a>；模型权重：<a id="models-whisper-repo-link" href="https://huggingface.co/Systran/faster-whisper-small" target="_blank" rel="noopener noreferrer">所选型号的官方模型页</a>。依赖安装和模型下载是两个独立阶段，日志会显示当前镜像；PyPI 镜像连续 180 秒无输出会自动切换。</p>
       <p id="models-whisper-last" class="setting-note" role="status">最近实际转写：暂无记录</p>

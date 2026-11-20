@@ -201,19 +201,88 @@ def _asr_receipt(bvid, pieces, *, sampling=None):
     return result
 
 
+
+# Durable but short-lived local-only cache, for repeated *owner-authorized* BV
+# reads. A successful cache hit does not relax the MCP read/permission gate.
+_ASR_CACHE_VERSION=1
+_ASR_CACHE_TTL=7*24*3600
+
+def _asr_cache_file(bvid, model, lang):
+    if not re.fullmatch(r'BV[0-9A-Za-z]{10}', bvid) or not re.fullmatch(r'[A-Za-z0-9-]{1,24}', model) or lang not in ('auto','zh','en'):
+        return None
+    home_value=os.environ.get('BILI_DUTY_HOME','').strip()
+    if not home_value or os.environ.get('BILI_ASR_MODEL_PATH','').strip():return None # do not cache source-tree runs or mutable custom models
+    home=Path(home_value)
+    folder=home/'asr-transcript-cache'
+    if folder.is_symlink() or (folder.exists() and not folder.is_dir()):return None
+    return folder/(f'{bvid}-{model}-{lang}-v{_ASR_CACHE_VERSION}.json')
+
+def _read_asr_cache(bvid,model,lang):
+    path=_asr_cache_file(bvid,model,lang)
+    if path is None or path.is_symlink() or not path.is_file():return None
+    try:
+        if path.stat().st_size>64000:return None
+        item=json.loads(path.read_text(encoding='utf8'))
+        if (item.get('version')!=_ASR_CACHE_VERSION or item.get('bvid')!=bvid or
+            item.get('model')!=model or item.get('lang')!=lang or
+            not isinstance(item.get('createdAt'),(int,float)) or
+            not 0<=time.time()-item['createdAt']<=_ASR_CACHE_TTL):return None
+        receipt=item.get('receipt')
+        if (not isinstance(receipt,dict) or receipt.get('source')!='local-asr' or
+            receipt.get('bvid')!=bvid or not isinstance(receipt.get('text'),str) or
+            not receipt['text'].strip() or not isinstance(receipt.get('timed_segments'),list) or
+            len(receipt['timed_segments'])>160):return None
+        receipt=dict(receipt)
+        receipt['cacheHit']=True
+        receipt['languageMode']=lang
+        receipt['timings']={'schema':'life-asr-phase-timings/v1',
+            'audioDownloadMs':0,'modelLoadMs':0,'clipExtractionMs':0,
+            'inferenceMs':0,'receiptMs':0,'totalMs':0}
+        return receipt
+    except (OSError,ValueError,TypeError,KeyError):return None
+
+def _write_asr_cache(bvid,model,lang,receipt):
+    path=_asr_cache_file(bvid,model,lang)
+    if path is None or not isinstance(receipt,dict) or not receipt.get('text'):return
+    try:
+        path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+        if path.parent.is_symlink() or path.is_symlink():return
+        safe={k:receipt[k] for k in ('bvid','source','asr_evidence','text','timed_segments','coverage') if k in receipt}
+        for key in ('audioDurationSeconds','sampleWindows'):
+            if key in receipt:safe[key]=receipt[key]
+        if safe.get('source')!='local-asr' or len(safe.get('text',''))>12000:return
+        payload=json.dumps({'version':_ASR_CACHE_VERSION,'bvid':bvid,'model':model,
+                            'lang':lang,'createdAt':time.time(),'receipt':safe},ensure_ascii=False)
+        if len(payload.encode('utf8'))>64000:return
+        tmp=path.with_name(path.name+'.'+str(os.getpid())+'.tmp')
+        try:
+            with open(tmp,'x',encoding='utf8') as stream:stream.write(payload)
+            os.chmod(tmp,0o600)
+            os.replace(tmp,path)
+        finally:
+            if tmp.exists():tmp.unlink()
+    except (OSError,ValueError,TypeError):pass # cache failure never blocks speech
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description='把一条视频转成文字（默认中文）')
+    ap = argparse.ArgumentParser(description='把一条视频转成文字（默认自动检测语种）')
     ap.add_argument('target', help='BV 号 / B站链接 / 本地音视频文件')
     ap.add_argument('-o', '--out', help='写到这个文件（不给就打到标准输出）')
     ap.add_argument('--model', default=os.environ.get('BILI_DUTY_ASR_MODEL', 'small'),
                     help='Whisper 模型大小：tiny / base / small / medium（默认 small）')
-    ap.add_argument('--lang', default='zh', help='语言（默认 zh；不给就自动判断请传 auto）')
+    ap.add_argument('--lang', default=os.environ.get('BILI_ASR_LANGUAGE','auto'), choices=('auto','zh','en'), help='语种 auto（默认）/中文/英文')
     ap.add_argument('--json', action='store_true', help='输出带明确时间戳的 JSON 回执（只供受限 MCP 调用）')
     args = ap.parse_args()
 
     if args.json and not re.fullmatch(r'BV[0-9A-Za-z]{10}', args.target):
         print('[asr] JSON 模式仅允许精确 BV 号', file=sys.stderr)
         return 2
+    # Explicit language setting + account-safe gate are enforced by the MCP
+    # caller first. Cache only a validated public BV JSON result, never local files.
+    if args.json and os.environ.get('BILI_ASR_CACHE','1')!='0':
+        cached=_read_asr_cache(args.target,args.model,args.lang)
+        if cached is not None:
+            print(json.dumps(cached,ensure_ascii=False))
+            return 0
     src = args.target
     # ⚠️ 不用 mkdtemp：沙箱只允许写"子进程启动前就存在"的目录，新建的会被拒 ✗
     #    这个目录由宿主（插件）预先建好；文件名固定，跑完自己清掉
@@ -280,6 +349,9 @@ def main() -> int:
         phase_ms['receiptMs'] = round((clock()-phase_at)*1000)
         receipt['timings'] = {'schema':'life-asr-phase-timings/v1',
                               **phase_ms,'totalMs':round((clock()-started)*1000)}
+        receipt['languageMode']=args.lang
+        if args.json and receipt.get('text') and os.environ.get('BILI_ASR_CACHE','1')!='0':
+            _write_asr_cache(args.target,args.model,args.lang,receipt)
         text = receipt['text']
     finally:
         # 临时音频不留在磁盘上

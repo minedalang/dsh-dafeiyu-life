@@ -730,6 +730,11 @@
       "owner": "video-visual-evidence-grounding",
       "kind": "security",
       "intent": "Verify v10 preview storyboard receipts list all independently processed JPEG boards, cannot expose incomplete or wrong-time partial output as verified Life visual evidence, and expose current version and per-board Debug status."
+    },
+    "v282-dev33-closure.test.mjs": {
+      "owner": "video-evidence-handoff-local-model",
+      "kind": "security",
+      "intent": "v12 4/6/12 tile validation, exact board provenance and Life transfer, fixed Ollama model whitelist and saving video plan without social grants."
     }
   },
   "protected": [
@@ -925,6 +930,11 @@
       "owner": "local-vision-board-grounding",
       "kind": "behavior",
       "intent": "A 24-frame official videoshot preview requires two separate bounded Ollama image calls and responses, explicitly rejects truncation and fabricated timestamps, and preserves exact JPEG/time receipts."
+    },
+    "test_v282_dev33_asr_cache.py": {
+      "owner": "whisper-asr-language-cache",
+      "kind": "security",
+      "intent": "Language auto mode, short-lived bounded local ASR transcript cache isolation by BV/model/language, expiry, path and symlink rejection."
     }
   },
   "pythonProtected": [
