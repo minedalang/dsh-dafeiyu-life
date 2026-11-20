@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2-dev.24: Windows DSH/Python fixed visual prompt parity and verified semantic lines; cross-sheet video-wide fair scan under 1400 tiles; Life post-overview interests/recallable public memory/energy from existing scoped getters; no new permission; 50 MiB nominal focus cap remains distinct from 8 MiB videoshot sprite cap.
 %% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; Life chooses one or stops. No forced four slots, no focus grant; extra media still requires explicit Life proof.
 %% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
@@ -412,6 +413,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2-dev.24: Windows DSH/Python fixed visual prompt parity and verified semantic lines; cross-sheet video-wide fair scan under 1400 tiles; Life post-overview interests/recallable public memory/energy from existing scoped getters; no new permission; 50 MiB nominal focus cap remains distinct from 8 MiB videoshot sprite cap.
 %% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; Life chooses one or stops. No forced four slots, no focus grant; extra media still requires explicit Life proof.
 %% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
@@ -578,6 +580,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2-dev.24: Windows DSH/Python fixed visual prompt parity and verified semantic lines; cross-sheet video-wide fair scan under 1400 tiles; Life post-overview interests/recallable public memory/energy from existing scoped getters; no new permission; 50 MiB nominal focus cap remains distinct from 8 MiB videoshot sprite cap.
 %% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; Life chooses one or stops. No forced four slots, no focus grant; extra media still requires explicit Life proof.
 %% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
@@ -791,6 +794,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2-dev.24: Windows DSH/Python fixed visual prompt parity and verified semantic lines; cross-sheet video-wide fair scan under 1400 tiles; Life post-overview interests/recallable public memory/energy from existing scoped getters; no new permission; 50 MiB nominal focus cap remains distinct from 8 MiB videoshot sprite cap.
 %% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; Life chooses one or stops. No forced four slots, no focus grant; extra media still requires explicit Life proof.
 %% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
 %% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.

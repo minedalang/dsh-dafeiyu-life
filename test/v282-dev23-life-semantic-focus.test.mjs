@@ -97,3 +97,32 @@ test('vision costs warnings are directly near switch and in user-facing README',
   assert.match(ui.slice(pos-950,pos),/vision-cost-warning[\s\S]*gpt-luna-6[\s\S]*Ollama[\s\S]*DeepSeek/)
   assert.match(readme,/视频识别费用提醒[\s\S]*Ollama[\s\S]*DeepSeek/)
 })
+
+test('long videos can offer actual sampled timestamps beyond 45 minutes but never invented ones',()=>{
+  const time=6015,duration=7200
+  const src={...source,times:[time],sampling:{...source.sampling,
+    candidates_examined:1,frames_selected:1,frame_budget:12,storyboard_count:1,
+    index_frames_available:1,candidate_frames_scanned:1,source_sheets_available:1,
+    source_sheets_scanned:1,sheets_downloaded:1,
+    review_candidates_seconds:[time],review_candidate_hints:[{second:time,pixel_change:0.15,source:'python-videoshot-neighbor-diff'}],
+    frame_change_hints:[{second:time,pixel_change:.15,source:'python-videoshot-neighbor-diff'}]}}
+  const description='复查候选：[100:15] 这个采样时刻的画面存在需要核实的细节。'
+  const visual={...src,description}
+  const data={ok:true,bvid:BV,visual,info:{bvid:BV,title:'长视频',duration},
+    videoEvidence:buildVideoEvidenceBundle({bvid:BV,info:{bvid:BV,title:'长视频',duration},visual}),
+    perceptionHandoff:{video:{source:'low-resolution-preview',frameTimesMs:[time*1000],modelDescription:description}}}
+  const found=planGlobalPreviewFocusCandidates({bvid:BV,overview:data})
+  assert.equal(found[0]?.atSeconds,time)
+  assert.ok(found.every(x=>x.atSeconds===time))
+})
+
+import {continuationPrompt} from '../lib/life-continuation.mjs'
+test('Life post-overview context includes existing public interests and state, not private history',()=>{
+  const prompt=continuationPrompt([{action:'focus_video',id:ID,bvid:BV,candidates:[]}],
+    '鱼鱼的角色表述',{lifeSituation:{publicInterests:[{topic:'游戏机制',stage:'curious'}],
+      relatedPublicMemories:[],energy:41,curiosity:66,
+      evidence:'current-account-Life-world-and-current-state-not-video-proof'}})
+  assert.match(prompt,/游戏机制/)
+  assert.match(prompt,/energy/)
+  assert.match(prompt,/current-account-Life-world/)
+})

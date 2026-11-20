@@ -41,7 +41,7 @@ class HybridPreview(unittest.TestCase):
                 enabled=False,return_frames=True)
         self.assertTrue(result['ok'],result)
         sampler=result['sampling']
-        self.assertEqual(sampler['sampler_version'],7)
+        self.assertEqual(sampler['sampler_version'],8)
         self.assertTrue(sampler['timeline_scan_complete'])
         self.assertEqual(sampler['index_frames_available'],91)
         self.assertEqual(sampler['candidates_examined'],91)
@@ -90,5 +90,33 @@ class HybridPreview(unittest.TestCase):
                 enabled=False,return_frames=True,network_budget_bytes=100)
         self.assertFalse(result['ok'])
         self.assertNotIn('frames',result)
+
+    def test_large_scan_budget_samples_end_of_timeline_and_reports_partial(self):
+        # 30 sheets x 100 tiles: the 1400-tile cap must not stop at sheet 14
+        # and falsely declare the remaining half of the video unobserved.
+        from PIL import Image
+        from io import BytesIO
+        def large_api(url):
+            if '/view?' in url:return {'cid':123,'duration':3000}
+            if '/videoshot?' in url:
+                return {'image':[f'//i0.hdslb.com/bfs/videoshot/{i}.jpg' for i in range(30)],
+                        'index':[0]+list(range(3000)), 'img_x_len':10,'img_y_len':10,
+                        'img_x_size':48,'img_y_size':32}
+            raise AssertionError(url)
+        def download(url,**kw):
+            img=Image.new('RGB',(480,320),((int(url.split('/')[-1].split('.')[0])*7)%250,20,90))
+            stream=BytesIO();img.save(stream,format='JPEG');return stream.getvalue()
+        with TemporaryDirectory() as home,patch.object(pv,'_json_api',side_effect=large_api),             patch.object(pv,'_safe_api_get',side_effect=download),             patch.object(heat,'obtain_preview_heat_signal',return_value=None):
+            result=pv.analyze_preview(BV,home,storyboard=True,max_frames=24,
+                enabled=False,return_frames=True)
+        self.assertTrue(result['ok'],result)
+        sampling=result['sampling']
+        self.assertEqual(sampling['candidate_frames_scanned'],1400)
+        self.assertEqual(sampling['source_sheets_scanned'],30)
+        self.assertFalse(sampling['timeline_scan_complete'])
+        self.assertEqual(sampling['scan_limited_by'],'tile-cap')
+        self.assertGreater(max(result['times']),2400,'should inspect the end of the video')
+        self.assertLess(min(result['times']),600,'should inspect the beginning')
+
 
 if __name__=='__main__':unittest.main()
