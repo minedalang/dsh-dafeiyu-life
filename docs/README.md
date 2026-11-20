@@ -1,10 +1,11 @@
-> **现行发布审计入口（2026-11-17）**：当前源码已推进到 `2.8.1-dev.3b.33.23-indexed-dash-long-video`。下方历史导航标题保留其原先写作日期，不代表当前可正式发布。最新依据：[2.8.1 发布前全链路审计](architecture/2.8.1-release-audit-20261117.md) · [发布检查单](release/2.8.1-release-checklist.md) · [用户升级说明](release/2.8.1-user-upgrade-guide.md)。
+> **当前开发源码：`2.8.2-dev.26`（未发布）**。Issue #11 安装与 Life 状态修复记录：[dev.26 技术说明](architecture/2.8.2-dev26-issue11-fixes.md) · [dev.26 定向验收状态](release/2.8.2-dev.26-issue11-fixes.md)。Windows/DSH 实机与全量测试仍待维护者执行；不得将开发源码描述为已正式上架。
 
 - [2.8.1-dev.3b.33.11：视觉 Python 环境一键修复](architecture/2.8.1-dev3b3311-vision-one-click-repair.md)
-# 大肥鱼文档导航（2.8.1-dev.3b.33.23 开发版）
+# 大肥鱼文档导航（2.8.2-dev.26 开发版）
 
-**同步于 2026-11-18。** 当前工作源码基线为 `2.8.1-dev.3b.33.23-indexed-dash-long-video`；2.8.0 是上一正式版本历史，开发分支不能被解释为 npm/DSHMarket 已正式发布。旧版本技术文档中的“当前”“已实现”仅指写作时的历史版本。
+**同步于 2026-11-20。** 当前工作源码基线为 `2.8.2-dev.26`；开发分支不能被解释为 npm/DSHMarket 已正式发布。旧版本技术文档中的“当前”“已实现”仅指写作时的历史版本。
 
+- **当前 Issue #11 修复**：[faster-whisper 安装与 Life 状态可靠性](architecture/2.8.2-dev26-issue11-fixes.md) · [定向验收状态](release/2.8.2-dev.26-issue11-fixes.md)。
 - **当前源码审计与发布缺口**：[2.8.1 发布前全链路审计](architecture/2.8.1-release-audit-20261117.md) · [dev.3b.33.18 Life 决策自由与安全链接审计](architecture/2.8.1-dev3b18-life-decision-freedom-audit.md)
 - **首次使用与主要功能**：[项目 README](../README.md)
 - **面向使用者的未来计划**：[2.8.1 预计体验与长期方向](ROADMAP.md)

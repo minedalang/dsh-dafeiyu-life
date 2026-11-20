@@ -1,13 +1,29 @@
-# 2.8.2-dev.25 · 交付说明
+# 2.8.2-dev.26 · Issue #11 修复交付说明
 
-**基线**：用户于本次会话上传的 `2.8.2-dev.24` 完整源码 ZIP；交付源码标识为 `2.8.2-dev.25`，并非已经发布的正式版。
+**基线：** 本轮上传的 `dsh-bili-scroll-plus2.zip`，`package.json` 版本为 `2.8.2-dev.25`。
+**交付：** `2.8.2-dev.26`。
+**范围：** 仅修复 GitHub Issue #11 的 faster-whisper 安装体验、快速分享保存异常、Life 决策状态读取被 Episode 作用域错误连带阻断。
+**未实施：** 多候选自主视频探索新方案；没有更改视频感知流程。
 
-本批修复 Windows DSH 合法长视频局部时间窗口被 Host 错拒的问题、videoshot 原始时间索引超过3000格时截掉视频尾部的问题，及新采样协议在 Node 证据验证器中被误拒的连锁问题。未更改社交写权限、Life 独立意愿、原视频 CDN 安全和资源预算。**架构接线未变**。
+## 文件
 
-交付包含完整 `source/`、与本次上传 dev.24 完全一致的基线补丁、中文 Conventional Commit 文案、Windows/DSH 验收教程和实测结果。**源码覆盖与 Git Patch 是两种替代使用方式，不能同时应用。**
+- `source/`：完整 dev.26 源码。
+- `PATCH_FROM_2.8.2-dev.25_TO_2.8.2-dev.26.patch`：从本轮 dev.25 基线应用的增量补丁。
+- `COMMIT_MESSAGE.txt`：中文项目可直接采用的 Conventional Commit 文案。
+- `TESTING_2.8.2-dev.26.md`：Windows / DSH 人工验收步骤。
+- `TEST-RESULTS.md`：本轮真实执行的离线测试与未完成项目。
+- `APPLY.md`：补丁安全应用说明。
 
-应用前应先备份并核对版本、文件修改与 `git status --short`；补丁必须先 `git apply --check`。已经在原始 ZIP 重建的基线上通过实际 Patch 回放与文件逐一比对。由于压缩包不带本机 Git 历史，不能声称已经验证你的工作区与 Git HEAD。
+## 三项修复
 
-离线 Node 38/38、Python 26/26；`selfcheck`、架构、视频契约、上下文结构、测试治理及 npm 包预览通过。此统计**不是 Windows full**。Windows 普通/管理员完整回归、真实 DSH/视频播放回执及 M2/M3 验收仍然缺失，正式发布被阻断。
+1. 快速分享保存不再引用未定义 `limit`，不重新引入已取消的每日分享硬上限。
+2. Life planner 核心决策计数/心跳独立返回；只有当前账号作用域合法且未阻断时才读取 Episode。Episode 文件损坏或附加诊断失败不再让整个 planner 状态接口返回500。
+3. faster-whisper 官方 GitHub、PyPI 包和模型权重入口在管理中心可见；PyPI 安装增加无进展检测、网络超时和 HTTPS 镜像回退，模型权重下载也有无进展与总时限。
 
-详细操作参见交付包 `TESTING_2.8.2-dev.25.md`，结果参见 `TEST-RESULTS.md`，技术原因参见 `source/docs/architecture/2.8.2-dev25-long-focus-index-closure.md`。
+## 安全边界
+
+没有修改 Episode `scope()`，没有在账号未就绪时读取 Episode，没有跨账号迁移或恢复数据；没有新增外发授权或每日分享硬上限。ASR 仍需使用者明确点击安装，安装不会自动启用转写或触发视频观看。
+
+## 发布状态
+
+**dev.26 尚未正式发布。** 离线定向回归通过，但 Windows 普通/管理员 PowerShell full、真实 PyPI 镜像回退、真实 Hugging Face 模型下载与 DSH 管理中心端到端仍需维护者验收。

@@ -87,6 +87,8 @@ import { listRecommendationCandidates } from './lib/video-recommendations.mjs'
 import { intakeAiReadProposals } from './lib/social-todo-intake.mjs'
 import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/owner-todos.mjs'
 import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-planner.mjs'
+import {normalizeAsrMirrors,installAsrPythonPackages,ASR_INSTALL_TIMEOUT_EXIT_CODE} from './lib/asr-install.mjs'
+import {readLifePlannerDiagnostics} from './lib/life-planner-status.mjs'
 import { projectLifeIntegrationStatus,projectLifeWorldEvidence } from './lib/life-system-integration.mjs'
 import { createLifeAgentEvents } from './lib/life-agent-events.mjs'
 import {summarizeHomeFeedResult} from './lib/life-home-feed-evidence.mjs'
@@ -7877,19 +7879,40 @@ logger:{warn:m=>log('社交意图：'+m)}
     return got
   }
 
-  /** 跟 spawnLogged 一样，但可以写进别的日志、可以带环境变量 */
-  const spawnTo = (cmd, args, { sink = appendInstall, env = null } = {}) => new Promise((resolve) => {
+  /** 跟 spawnLogged 一样，但可以写进别的日志、带环境变量和可选无进展/总时限。 */
+  const spawnTo = (cmd, args, { sink = appendInstall, env = null, idleTimeoutMs = 0, totalTimeoutMs = 0, timeoutAction = '正在终止当前进程。' } = {}) => new Promise((resolve) => {
     sink(`\n$ ${cmd} ${args.join(' ')}\n`)
-    let c
+    let c, settled = false, timedOut = false, idleTimer = null, totalTimer = null, killTimer = null
+    const finish = code => {
+      if (settled) return
+      settled = true
+      clearTimeout(idleTimer); clearTimeout(totalTimer); clearTimeout(killTimer)
+      sink(`\n--- exit ${code} ---\n`)
+      resolve(code)
+    }
+    const stopForTimeout = reason => {
+      if (settled || timedOut) return
+      timedOut = true
+      sink(`\n安装进程${reason === 'idle' ? `连续 ${Math.round(idleTimeoutMs / 1000)} 秒没有输出` : `超过 ${Math.round(totalTimeoutMs / 60_000)} 分钟总时限`}，${timeoutAction}\n`)
+      try { c.kill() } catch { /* close/kill grace timer below resolves the attempt */ }
+      killTimer = setTimeout(() => finish(ASR_INSTALL_TIMEOUT_EXIT_CODE), 5000)
+    }
+    const armIdle = () => {
+      if (!idleTimeoutMs || settled || timedOut) return
+      clearTimeout(idleTimer)
+      idleTimer = setTimeout(() => stopForTimeout('idle'), idleTimeoutMs)
+    }
     try {
       c = spawn(cmd, args, { cwd: stateDir, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
         env: uvEnv(env || {}) })
-    } catch (e) { sink(`起不来：${e?.message ?? e}\n`); return resolve(1) }
-    const w = (b) => sink(String(b))
+    } catch (e) { sink(`起不来：${e?.message ?? e}\n`); return finish(1) }
+    const w = b => { sink(String(b)); armIdle() }
     c.stdout?.on('data', w)
     c.stderr?.on('data', w)
-    c.on('exit', (code) => { sink(`\n--- exit ${code} ---\n`); resolve(code) })
-    c.on('error', (e) => { sink(`起不来：${e?.message ?? e}\n`); resolve(1) })
+    c.once('close', code => finish(timedOut ? ASR_INSTALL_TIMEOUT_EXIT_CODE : (code ?? 1)))
+    c.once('error', e => { sink(`起不来：${e?.message ?? e}\n`); finish(1) })
+    armIdle()
+    if (totalTimeoutMs > 0) totalTimer = setTimeout(() => stopForTimeout('total'), totalTimeoutMs)
   })
 
   /** 装"本地转写"那一套：独立环境 + faster-whisper + yt-dlp + 先把 Whisper 模型下好 */
@@ -7945,22 +7968,26 @@ logger:{warn:m=>log('社交意图：'+m)}
           appendAsr('  ② 机器上没有可用的 uv 或 Python ⇒ 先点上面的「装依赖」，把主依赖装好再来。\n')
           log('转写：建环境失败'); return
         }
-        appendAsr('装 faster-whisper + yt-dlp（走国内镜像）…\n')
-        let code = 1
+        appendAsr('安装 faster-whisper + yt-dlp + PyAV 依赖。\n')
+        appendAsr('faster-whisper 项目：https://github.com/SYSTRAN/faster-whisper\n')
+        appendAsr('PyPI 包与发行文件：https://pypi.org/project/faster-whisper/\n')
+        appendAsr('模型权重目录：https://huggingface.co/Systran\n')
+        appendAsr('镜像策略：单个 PyPI 安装进程连续 180 秒无输出会终止并切换镜像；网络请求超时 20 秒、重试 1 次。\n')
         // ⚠️ av 必须钉在 17 以下：faster-whisper 1.2.1 会调 av.open(metadata_errors=…)，
         //    而 av 17+ 不再接受这个参数 ⇒ 装了最新的 av 反而转不了（2026-10-14 在主人机器上实证）
         const AV_PIN = process.env.BILI_DUTY_AV_PIN || 'av>=12,<17'
-        // ⭐ 2026-10-19（issue #27）：以前只走一个镜像，撞上清华 403 就整轮失败 ✗
-        //    改成跟主环境一样轮换三个镜像；每个镜像先 uv pip、失败再退回 python -m pip ✓
-        const mirrors = [mirror, 'https://mirrors.ustc.edu.cn/pypi/simple', 'https://mirrors.aliyun.com/pypi/simple']
+        const mirrors = normalizeAsrMirrors(mirror)
         const PKGS = ['faster-whisper', 'yt-dlp', AV_PIN]
-        for (const m of mirrors) {
-          if (code === 0) break
-          appendAsr(`\n—— 镜像：${m}\n`)
-          if (uvCmd) code = await spawnTo(uvCmd, ['pip', 'install', '--python', py, '-i', m, ...PKGS], { sink: appendAsr })
-          if (code !== 0) code = await spawnTo(py, ['-m', 'pip', 'install', '-i', m, ...PKGS], { sink: appendAsr })
+        const packageInstall = await installAsrPythonPackages({
+          mirrors, uvCmd, python: py, packages: PKGS, sink: appendAsr,
+          spawnTo: (cmd, args, options) => spawnTo(cmd, args, options)
+        })
+        const code = packageInstall.code
+        if (!packageInstall.ok) {
+          appendAsr(`装包失败 —— 已尝试所有可用 PyPI 镜像，最后退出码 ${code}；查看上方镜像和超时记录。\n`)
+          log('转写：装包失败'); return
         }
-        if (code !== 0) { appendAsr('装包失败 —— 看上面的报错\n'); log('转写：装包失败'); return }
+        appendAsr(`Python 依赖已安装：${packageInstall.runner} · ${packageInstall.mirror}\n`)
         // ⭐ 顺手把模型也下好（不然第一次跑那一轮会卡在下载上 ✗）；模型走 HuggingFace 国内镜像
         const model = String(cfg.asrModel || 'small')
         // 模型缓存必须放进插件家：默认的 ~/.cache 在本机拒绝写入（2026-10-14 实测 WinError 5）
@@ -7969,7 +7996,8 @@ logger:{warn:m=>log('社交意图：'+m)}
         appendAsr(`下 Whisper 模型「${model}」（缓存在 ${hfHome}，源 ${hf}，几百 MB，只需要一次）…\n`)
         const code2 = await spawnTo(py, ['-c',
           'import os,sys;os.environ["HF_HUB_DISABLE_XET"]="1";from faster_whisper import WhisperModel;WhisperModel(sys.argv[1], device="cpu", compute_type="int8");print("模型就绪")',
-          model], { sink: appendAsr, env: { HF_ENDPOINT: hf, HF_HOME: hfHome, HF_HUB_DISABLE_XET: '1' } })
+          model], { sink: appendAsr, env: { HF_ENDPOINT: hf, HF_HOME: hfHome, HF_HUB_DISABLE_XET: '1' },
+          idleTimeoutMs: 10 * 60_000, totalTimeoutMs: 90 * 60_000, timeoutAction: '正在终止模型下载；模型不会标记为就绪。' })
         appendAsr(`=== 结束（装包 exit ${code}，模型 exit ${code2}，asrReady=${asrReadyNow()}）===\n`)
         log(`装转写依赖结束：exit=${code}/${code2}`)
       } catch (e) {
@@ -9323,16 +9351,23 @@ logger:{warn:m=>log('社交意图：'+m)}
         refreshCfg()
         // Read-only poll only rearms the timer, never performs a model turn.
         autonomousPlanner.ensureStarted()
-        return sendJson(res,200,{...autonomousPlanner.status(),
-        lifeEpisodes:universalLifeEpisodes.list({limit:5,includeClosed:true}),
-        lifeActionAttribution:lifeActionAttribution.status(),
-        lifeResourceCoordination:lifeResourceScheduler.status(),
-        lifeEpisodeHealth:universalLifeEpisodes.health({eligibleSources:eligibleLifeEpisodeSources({
-          intentions:lifeOpportunities.continuations({limit:20}),
-          todos:ownerTodos.list({limit:100,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)),
-          opportunities:lifeOpportunities.list({limit:20}),now:Date.now()})}),
-        lifeSettingsPreview:projectLifeSettings(cfg),socialDecisionOwnership:socialDecisionOwnership.status(),socialSendTransaction:socialSendTransaction.inspect(),socialShadow:lifeSocialShadow.status()})}
-      catch(e){return sendJson(res,500,{ok:false,error:'读取自主调度状态失败：'+String(e?.message||e).slice(0,120)})}
+        const plannerStatus=autonomousPlanner.status()
+        // Episode is an optional account-scoped diagnostic, not a prerequisite
+        // for the planner's own counters/heartbeat. Never call the Episode
+        // ledger until the current account scope is verified and unblocked.
+        const diagnostics=readLifePlannerDiagnostics({
+          accountTag:trustedLifeAccountTag(),accountBlocked:accountBinding.status().blocked,
+          episodes:universalLifeEpisodes,
+          eligibleSources:()=>eligibleLifeEpisodeSources({
+            intentions:lifeOpportunities.continuations({limit:20}),
+            todos:ownerTodos.list({limit:100,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)),
+            opportunities:lifeOpportunities.list({limit:20}),now:Date.now()}),
+          attribution:lifeActionAttribution,resourceScheduler:lifeResourceScheduler,
+          projectSettings:()=>projectLifeSettings(cfg),
+          socialDecisionOwnership,socialSendTransaction,socialShadow:lifeSocialShadow
+        })
+        return sendJson(res,200,{...plannerStatus,...diagnostics})
+      }catch(e){return sendJson(res,500,{ok:false,error:'读取自主调度核心状态失败：'+String(e?.message||e).slice(0,120)})}
     }
     // 大肥鱼主 Session：只看当前 DSH 里活着的会话，不扫描磁盘上的 sessions 目录。
     if (req.method === 'GET' && path === '/api/bili-duty/main-session') {

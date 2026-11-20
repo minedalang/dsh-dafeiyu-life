@@ -700,6 +700,11 @@
       "owner": "life-video-hybrid-overview-focus",
       "kind": "security",
       "intent": "Model may offer up to eight genuinely sampled semantic timestamps; Life independently picks one or refuses, no fabricated timestamps, stale account/proof or unauthorized focus. UI warns about image-model cost."
+    },
+    "issue11-fixes.test.mjs": {
+      "owner": "issue11-asr-install-and-life-status",
+      "kind": "behavior",
+      "intent": "Verify Issue #11 production fixes: quick-share save no longer references removed daily limit; faster-whisper links and bounded HTTPS mirror failover are visible and tested; Life planner counters remain independent from strictly account-scoped Episode diagnostics."
     }
   },
   "protected": [

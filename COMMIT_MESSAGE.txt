@@ -1,7 +1,8 @@
-fix(video): dev.25 修复长视频局部复查与全片索引截断
+fix(issue-11): harden ASR install and Life status diagnostics
 
-- 修正 Windows DSH Host 绝对时间窗口校验，保留只读提示词和授权门禁
-- 全片 videoshot 索引不再截断前3000格，维持缩略图网络与解码资源上限
-- 升级低清采样缓存至 v9，同步可信证据校验与伪造回执拒绝
-- 补充跨语言、长视频、隐私与证据下游增量回归测试
-- 记录未完成的 Windows full、真实 DSH/CDN 和 M2/M3 验收门禁
+- remove the stale undefined limit check from quick-share save
+- isolate optional account-scoped Episode diagnostics from planner counters
+- preserve strict Episode account scope and avoid reads before account verification
+- add faster-whisper/PyPI/model links and bounded HTTPS mirror failover
+- add idle and total timeouts for ASR package/model installation
+- add Issue #11 regression coverage and update dev.26 documentation

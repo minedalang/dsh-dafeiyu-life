@@ -1,3 +1,5 @@
+> **当前开发候选 `2.8.2-dev.26`（未发布）**：[Issue #11 定向修复验收](2.8.2-dev.26-issue11-fixes.md) · [技术说明](../architecture/2.8.2-dev26-issue11-fixes.md)。Windows/DSH 实机与全量回归仍待维护者验收。
+
 > **2.8.1 发布资料（新代码待终验）**：[正式版发布检查单](2.8.1-release-checklist.md) · [新旧用户升级说明](2.8.1-user-upgrade-guide.md) · [2.8.1 更新说明](RELEASE_NOTES_v2.8.1.md) · [发布命令和验证步骤](2.8.1-publish-commands.md) · [全链路代码审计](../architecture/2.8.1-release-audit-20261117.md)。当前不能把 GitHub `dev` 安装与手动视觉验收当作正式上线。
 
 # 发布文档索引
