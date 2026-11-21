@@ -6,7 +6,7 @@ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url
 const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
 
 test('3b33 本地 Ollama 文案采用简短版本，代理示例按需展开',()=>{
-  assert.match(html,/本地视觉模型负责画面观察。下面提供一键安装，需本机有 Ollama 环境。也可直接在 DSH 中配置 Ollama Provider 调用本地模型。/)
+  assert.match(html,/本地视觉模型负责画面观察。<strong>推荐新用户优先试 Qwen3\.5 2B<\/strong>/)
   assert.match(html,/简化下载和代理：/)
   assert.match(html,/<details class="visual-advanced"><summary>Windows 使用本地网络代理启动 Ollama 示例<\/summary>/)
   assert.match(html,/\$env:HTTPS_PROXY = "http:\/\/127\.0\.0\.1:7890"/)
@@ -80,4 +80,96 @@ test('3b33 视觉用户进度：MCP 预检不得代替回答和人工认可',()=
   context.updateVisionJourney({local:true,ready:false})
   assert.deepEqual(steps.map(x=>x.dataset.state),['current','blocked','blocked'])
   assert.match(elements.get('vision-journey-next').textContent,/Ollama/)
+})
+
+
+test('2.8.2 视觉设置：快速设置介绍新 2B，旧 1B 限历史兼容',()=>{
+  const guide=html.slice(html.indexOf('id="fs-vision-guide"'),html.indexOf('id="quick-embedding-status"'))
+  assert.match(guide,/新增本地 Qwen3\.5 2B 视觉模型/)
+  assert.match(guide,/MiniCPM-V 4\.7 1B/)
+  assert.match(guide,/不建议继续作为常用模型/)
+  assert.match(guide,/仅保留旧安装兼容且不再提供新下载/)
+  assert.match(guide,/Qwen3\.5 4B/)
+  assert.match(guide,/已用 DSH 云端视觉模型的用户无需改用本地/)
+})
+
+test('2.8.2 视觉设置：下载/图片验收/启用都是普通操作，高风险删除才藏在高级区',()=>{
+  const base=html.indexOf('id="local-vision-controls"')
+  const start=html.indexOf('class="local-vision-activation-flow"',base)
+  const advance=html.indexOf('<details class="visual-advanced local-vision-maintenance">',base)
+  const download=html.indexOf('id="local-vision-install"',start)
+  const review=html.indexOf('id="local-vision-review-open"',start)
+  const enable=html.indexOf('id="local-vision-select"',start)
+  const deletion=html.indexOf('id="local-vision-delete"',advance)
+  assert.ok(base>=0&&start>base&&download>start&&review>download&&enable>review&&advance>enable&&deletion>advance)
+  assert.match(html,/id="local-vision-effective" role="status" aria-live="polite"/)
+  assert.match(html,/id="local-vision-selection-note" role="status" aria-live="polite"/)
+  assert.match(html,/id="local-vision-model" aria-describedby="local-vision-selection-note"/)
+  assert.match(js,/确认切换并开启视频观察/)
+  assert.match(js,/\$\('local-vision-refresh'\)\.addEventListener\('click',\(\)=>run\(loadLocalVisionStatus\)\)/)
+  assert.match(js,/if\(visionIsLocal\(\)\)\{ \$\('vision-runtime-alert'\)\.hidden=true;await loadLocalVisionStatus\(\);\}/)
+  assert.match(js,/设置尚未保存|summarizeSaveDrafts\(\)/)
+  assert.match(js,/settingDraftTracker\.committed\(\$\('models-vision-mode'\)\)/)
+})
+
+test('2.8.2 视觉设置：待选型号与后台实际启用严格分开，并区分未安装、未认可及离线',()=>{
+  const start=js.indexOf('  const describeLocalVisionChoice=')
+  const end=js.indexOf('  const loadLocalVisionStatus=',start)
+  assert.ok(start>0&&end>start)
+  const code=js.slice(start,end).replace('const describeLocalVisionChoice=','var describeLocalVisionChoice=')
+  const context={}
+  vm.runInNewContext(code,context)
+  const models=[
+    {id:'qwen3.5-4b',name:'Qwen3.5 4B',installed:true,verified:true,downloadable:true},
+    {id:'qwen3.5-2b',name:'Qwen3.5 2B',installed:true,verified:true,downloadable:true},
+    {id:'minicpm-v4.7-1b',name:'MiniCPM 1B',installed:false,verified:false,downloadable:false}
+  ]
+  const state={running:true,active:'qwen3.5-4b',visionEnabled:true,models}
+  const pending=context.describeLocalVisionChoice(state,'qwen3.5-2b')
+  assert.match(pending.effective,/当前后台已启用：Qwen3\.5 4B/)
+  assert.match(pending.selected,/待切换到 Qwen3\.5 2B/)
+  assert.equal(pending.canActivate,true)
+  assert.equal(pending.ready,false)
+  const active=context.describeLocalVisionChoice(state,'qwen3.5-4b')
+  assert.equal(active.ready,true)
+  assert.equal(active.canActivate,false)
+  assert.match(active.enableLabel,/已启用/)
+  const old=context.describeLocalVisionChoice(state,'minicpm-v4.7-1b')
+  assert.equal(old.canInstall,false)
+  assert.equal(old.canActivate,false)
+  assert.match(old.selected,/历史型号不再提供下载/)
+  const needReview=context.describeLocalVisionChoice({...state,models:[models[0],{...models[1],verified:false}]},'qwen3.5-2b')
+  assert.equal(needReview.canActivate,false)
+  assert.match(needReview.selected,/尚未人工认可/)
+  const disconnected=context.describeLocalVisionChoice({...state,running:false},'qwen3.5-2b')
+  assert.equal(disconnected.canActivate,false)
+  assert.match(disconnected.effective,/Ollama 未连接/)
+  const disabled=context.describeLocalVisionChoice({...state,visionEnabled:false},'qwen3.5-4b')
+  assert.equal(disabled.canActivate,true)
+  assert.match(disabled.effective,/视频观察开关关闭/)
+  const dsh=context.describeLocalVisionChoice({...state,active:''},'qwen3.5-2b')
+  assert.match(dsh.effective,/DSH 识图路线/)
+})
+
+test('2.8.2 已保存字段确认只清除自身草稿，不掩盖其他未保存模型配置',()=>{
+  const start=js.indexOf('  const createSettingDraftTracker=')
+  const end=js.indexOf('  const API=',start)
+  assert.ok(start>=0&&end>start)
+  const code=js.slice(start,end).replace('const createSettingDraftTracker=','var createSettingDraftTracker=')
+  const context={WeakMap,Map,Set,JSON,String}
+  vm.runInNewContext(code,context)
+  const draft=context.createSettingDraftTracker()
+  const save={id:'models-save'}
+  const route={value:'independent_dsh'}
+  const model={value:'cloud-a'}
+  draft.capture(route);draft.capture(model)
+  route.value='independent_local';model.value='cloud-b'
+  draft.change(route,save,'models');draft.change(model,save,'models')
+  assert.equal(draft.drafts.size,1)
+  draft.committed(route)
+  assert.equal(draft.drafts.size,1)
+  assert.ok(draft.drafts.get('models-save').fields.has(model))
+  assert.ok(!draft.drafts.get('models-save').fields.has(route))
+  draft.committed(model)
+  assert.equal(draft.drafts.size,0)
 })

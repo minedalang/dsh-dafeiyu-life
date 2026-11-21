@@ -36,7 +36,8 @@ test('UI: single unified visual panel with FFmpeg and Whisper; comment memes bel
  assert.match(html,/id="local-vision-ensure"/)
  assert.match(js,/local-vision-install'\)\.hidden=Boolean\(model\?\.installed\)/)
  assert.match(js,/local-vision-cancel'\)\.hidden=!downloading/)
- assert.match(js,/await restoreOllama\(\)/)
+ assert.match(js,/\$\('local-vision-ensure'\)\.addEventListener\('click',\(\)=>run\(restoreOllama\)\)/)
+ assert.match(js,/if\(visionIsLocal\(\)\)\{ \$\('vision-runtime-alert'\)\.hidden=true;await loadLocalVisionStatus\(\);\}/)
 })
 
 test('artificially interrupted Ollama service does not erase approval; restart restores same digest, never changed digest',async()=>{
