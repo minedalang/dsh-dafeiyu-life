@@ -2,6 +2,7 @@
 import sys
 from pathlib import Path
 import socket
+import ssl
 import unittest
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'lib'))
@@ -52,15 +53,20 @@ class PublicCDNPortTests(unittest.TestCase):
             def settimeout(self,x):pass
             def connect(self,address):self.connected=address
             def close(self):pass
-        class FakeContext:
-            def __init__(self):self.server=None;self.sock=None
-            def wrap_socket(self,sock,server_hostname=None):self.server=server_hostname;self.sock=sock;return sock
-        sock=FakeSocket();context=FakeContext()
+        # Use a real TLS context: Python 3.11's HTTPSConnection constructor
+        # reads verify_mode, which a minimal fake may not implement.
+        sock=FakeSocket();context=ssl.create_default_context()
+        self.assertEqual(context.verify_mode,ssl.CERT_REQUIRED)
+        self.assertTrue(context.check_hostname)
         conn=av._PinnedCDNHTTPS('safe.bilivideo.com',port=8443,context=context)
         rows=[(socket.AF_INET,socket.SOCK_STREAM,6,('8.8.8.8',8443))]
-        with patch.object(av,'_public_cdn_addresses',return_value=rows),patch.object(av.socket,'socket',return_value=sock):
+        # Mock only the network/TLS handshake boundary, never the security settings.
+        with patch.object(context,'wrap_socket',return_value=sock) as wrapped,\
+             patch.object(av,'_public_cdn_addresses',return_value=rows),\
+             patch.object(av.socket,'socket',return_value=sock):
             conn.connect()
         self.assertEqual(sock.connected,('8.8.8.8',8443))
-        self.assertEqual(context.server,'safe.bilivideo.com')
+        self.assertIs(conn.sock,sock)
+        wrapped.assert_called_once_with(sock,server_hostname='safe.bilivideo.com')
 
 if __name__=='__main__':unittest.main()
