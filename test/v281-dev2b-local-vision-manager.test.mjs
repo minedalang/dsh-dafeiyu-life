@@ -38,11 +38,11 @@ test('失败的模型自检不准标记为可用，保留错误供管理台排�
   const manager=createLocalVisionModelManager({logger:{warn:()=>{}},fetchImpl:async(url)=>{
     if(url.endsWith('/api/pull'))return ndjson([{status:'success'}])
     if(url.endsWith('/api/chat'))return json({error:'runtime unsupported'},500)
-    return json({models:[{name:'openbmb/minicpm-v4.7:1b'}]})
+    return json({models:[{name:'qwen3.5:4b'}]})
   }})
-  await assert.rejects(manager.start('minicpm-v4.7-1b'),/HTTP 500/)
+  await assert.rejects(manager.start('qwen3.5-4b'),/HTTP 500/)
   const data=await manager.list()
-  assert.equal(data.models.find(x=>x.id==='minicpm-v4.7-1b').verified,false)
+  assert.equal(data.models.find(x=>x.id==='qwen3.5-4b').verified,false)
   assert.equal(data.progress.phase,'error')
 })
 
@@ -121,8 +121,9 @@ test('MiniCPM 1B 必须锁定 :1b 标签，旧不带标签的 latest 不视为�
     throw Error('unexpected')
   }})
   assert.equal((await manager.list()).models.find(x=>x.id==='minicpm-v4.7-1b').installed,false)
-  await manager.start('minicpm-v4.7-1b')
-  assert.deepEqual(requested,['openbmb/minicpm-v4.7:1b','openbmb/minicpm-v4.7:1b'])
+  // Model is still recognized for legacy users, but new downloads were retired.
+  assert.throws(()=>manager.start('minicpm-v4.7-1b'),/历史模型仅允许继续使用或删除/)
+  assert.deepEqual(requested,[])
 })
 
 test('R2 下载失败提示保留末尾原因并提示 Ollama 代理而不是要求 DSH Provider',async()=>{

@@ -31,7 +31,7 @@ test('life action tree links only live verified-format BV and never invents a vi
   assert.match(ui,/currentVideoObservation\?\.bvid/)
   assert.match(ui,/videoTarget\.hidden=!targetBv/)
   assert.match(ui,/https:\/\/www\.bilibili\.com\/video\/['"]?\+targetBv/)
-  assert.match(server,/liveLifeActivity\.start\(\s*dryRun\?'video-observe-debug':'video-observe',initialLifeAccountTag,\s*\{maxAgeMs:8\*60_000,bvid\}\)/)
+  assert.match(server,/liveLifeActivity\.start\(\s*dryRun\?'video-observe-debug':'video-observe',initialLifeAccountTag,\s*\{maxAgeMs:10\*60_000,bvid\}\)/)
 })
 
 test('timeline metadata read is not called full video understanding and receipt chronology is unchanged',()=>{

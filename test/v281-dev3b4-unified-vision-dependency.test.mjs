@@ -52,7 +52,7 @@ test('artificially interrupted Ollama service does not erase approval; restart r
    const first=createLocalVisionModelManager({fetchImpl,stateDir:dir})
    const result=await first.verifyId('qwen3.5-4b')
    await first.review('qwen3.5-4b',{reviewId:result.reviewId,accepted:true})
-   assert.equal((await first.list()).models[0].verified,true)
+   assert.equal((await first.list()).models.find(x=>x.id==='qwen3.5-4b').verified,true)
    const receipt=readFileSync(join(dir,'local-vision-approvals.json'),'utf8')
    assert.doesNotMatch(receipt,/蓝色头发|白色裙子|base64|api.key/i)
    assert.match(receipt,/sha256:/)
@@ -60,13 +60,13 @@ test('artificially interrupted Ollama service does not erase approval; restart r
    assert.equal((await first.list()).running,false)
    online=true
    const restarted=createLocalVisionModelManager({fetchImpl,stateDir:dir})
-   assert.equal((await restarted.list()).models[0].verified,true)
-   assert.equal((await restarted.list()).models[0].verification.status,'approved')
+   assert.equal((await restarted.list()).models.find(x=>x.id==='qwen3.5-4b').verified,true)
+   assert.equal((await restarted.list()).models.find(x=>x.id==='qwen3.5-4b').verification.status,'approved')
    digest=sha('b')
-   const altered=(await restarted.list()).models[0]
+   const altered=(await restarted.list()).models.find(x=>x.id==='qwen3.5-4b')
    assert.equal(altered.verified,false)
    const third=createLocalVisionModelManager({fetchImpl,stateDir:dir})
-   assert.equal((await third.list()).models[0].verified,false)
+   assert.equal((await third.list()).models.find(x=>x.id==='qwen3.5-4b').verified,false)
    online=false;assert.equal((await third.list()).running,false)
    online=true;digest=sha('a');await third.list() // prior approval was already revoked when digest changed
  }finally{rmSync(dir,{recursive:true,force:true})}

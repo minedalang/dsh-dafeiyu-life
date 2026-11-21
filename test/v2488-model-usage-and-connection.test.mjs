@@ -64,13 +64,15 @@ test('模型测试的安全 overlay 禁止全部文件、Shell、B站和其他 M
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('页面每个模型都有调用统计和独立测试按钮，测试请求不记入正常任务次数',()=>{
+test('页面每个当前模型都有调用统计和独立测试按钮，旧路由统计仅作历史兼容',()=>{
   const html=read('lib/management-console.html'),ui=read('lib/management-console.js'),server=read('index.js')
-  for(const t of MODEL_TASKS){
+  for(const t of MODEL_TASKS.filter(t=>t!=='ownerDmAgent')){
     assert.match(html,new RegExp('id="models-'+t+'-usage"'))
     assert.match(html,new RegExp('id="models-'+t+'-test"'))
     assert.match(html,new RegExp('id="models-'+t+'-test-result"'))
   }
+  assert.doesNotMatch(html,/id="models-ownerDmAgent-test"/)
+  assert.match(server,/task==='ownerDmAgent'\) throw Error\('该独立模型路由已退役/)
   assert.match(ui,/await request\('\/model-usage'\)/)
   assert.match(ui,/await request\('\/model-test',\{task\}\)/)
   assert.match(server,/path === '\/api\/bili-duty\/model-test'/)

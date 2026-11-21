@@ -42,6 +42,19 @@ test('3b33 管理页高风险维护操作/高级路径折叠，原按钮 ID 和�
   assert.match(js,/visionRouteHasUnsavedChanges\(\)/)
 })
 
+test('2.8.2 收口：不复活主人私信独立模型卡片，历史配置只兼容不批量重写',()=>{
+  const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+  assert.doesNotMatch(html,/id="models-ownerDmAgent"/)
+  assert.doesNotMatch(js,/\['ownerDmAgent','ownerDmAgentModelProvider'/)
+  assert.doesNotMatch(js,/const modelTaskIds=\[[^\]]*'ownerDmAgent'/)
+  assert.match(html,/下面全部八项当前任务/)
+  assert.match(html,/行为决策模型（Life 的行动选择）/)
+  assert.match(html,/社交互动模型（私信与评论）/)
+  assert.match(host,/ownerDmAgentModelProvider: z\.string\(\)\.default\(''\)/)
+  assert.match(host,/task==='ownerDmAgent'\) throw Error\('该独立模型路由已退役/)
+  assert.match(js,/for\(const key of modelFields\)/) // no removed legacy field in modelFields
+})
+
 test('3b33 视觉用户进度：MCP 预检不得代替回答和人工认可',()=>{
   const start=js.indexOf('  const updateVisionJourney=')
   const end=js.indexOf('  const setVisionStage=',start)

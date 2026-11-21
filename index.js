@@ -4980,7 +4980,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     })
   }
   async function testConfiguredModel(task) {
-    if (!MODEL_TASKS.includes(task)) throw Error('未知模型测试类型')
+    if (!MODEL_TASKS.includes(task)||task==='ownerDmAgent') throw Error('该独立模型路由已退役；主人私信使用 Life 行为决策与社交互动模型')
     if (modelTestBusy) throw Error('已有模型测试在运行，请等待当前测试结束')
     modelTestBusy = true
     const started = Date.now()
