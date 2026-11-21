@@ -77,7 +77,7 @@ test('metadata-only diary explains recorded stop reason without inventing a visu
   explorationEvidence:[{at:t+80,action:'inspect-video',episodeRef:ref,bvid:BV,title:'仅核验资料'}]})
  const m=rows.find(x=>x.type==='life-read')
  assert.equal(m.label,'核验视频资料')
- assert.match(m.detail,/未继续观察画面的原因：Life 选择先休息/)
+ assert.match(m.detail,/Life 选择暂时结束探索：选择先休息/)
  assert.doesNotMatch(m.detail,/仅核对了公开视频资料|这次了解了视频公开资料|不代表已经完整观看或理解画面|画面已核验/)
 })
 test('metadata-only record without a confirmed stop reason does not invent a reason or show a template disclaimer',()=>{
@@ -87,7 +87,7 @@ test('metadata-only record without a confirmed stop reason does not invent a rea
   explorationEvidence:[{at:t+80,action:'inspect-video',episodeRef:ref,bvid:BV,title:'仅核验资料'}]})
  const m=rows.find(x=>x.type==='life-read')
  assert.equal(m.label,'核验视频资料')
- assert.equal(m.detail,'本轮没有记录继续观察画面的具体原因。')
+ assert.equal(m.detail,'旧记录没有保存本轮后续行动的选择状态。')
 })
 test('metadata and verified visual diary describes sampled imagery without speculating on audio or subtitles',()=>{
  const ref='f'.repeat(16),rows=buildLifeTimeline({now:t+20000,days:3,
@@ -163,4 +163,40 @@ test('new schema returns authentic persisted observation time without clock gues
   execFileSync('python',['-c',`import sqlite3,sys\nc=sqlite3.connect(sys.argv[1]);c.execute('CREATE TABLE selected_videos(account TEXT,bvid TEXT,day TEXT,round_id TEXT,status TEXT,recorded_at_ms INTEGER NOT NULL DEFAULT 0)');c.execute('CREATE TABLE seen_observations(account TEXT,bvid TEXT,day TEXT,title TEXT,up TEXT,status TEXT,recorded_at_ms INTEGER NOT NULL DEFAULT 0)');c.execute('CREATE TABLE comment_receipts(account TEXT,bvid TEXT,rpid TEXT,day TEXT)');c.execute('INSERT INTO selected_videos VALUES (?,?,?,?,?,?)',('12345','${BV}','2026-11-11','${R}','挑中',${t}));c.commit();c.close()`,join(home,'video-actions.sqlite3')])
   const got=readOwnedVideoLedger({home,uid:'12345'});assert.equal(got.ok,true);assert.equal(got.rows[0].observedAt,t)
  }finally{rmSync(home,{recursive:true,force:true})}
+})
+
+test('verified metadata diary distinguishes execution, voluntary stop, no subsequent choice and episode completion',()=>{
+ const ref='c'.repeat(16),base={at:t+100,mode:'active',action:'inspect_exploration',result:'verified-metadata',verifiedReadKind:'video-metadata',continuation:ref}
+ const evidence=[{at:t+80,action:'inspect-video',episodeRef:ref,bvid:BV,title:'有来源的视频'}]
+ const cases=[
+  ['continued','step-verified',/核验资料后，Life 继续探索了其他内容/],
+  ['life-ended','fish-chose-enough-evidence',/Life 选择暂时结束探索：认为现有资料已足够/],
+  ['life-ended','model-stop-reason-missing',/Life 选择暂时结束探索：选择结束，但模型没有/],
+  ['not-started','no-eligible-action',/本轮未进入后续行动选择：本轮没有符合条件/],
+  ['blocked','target-not-offered',/本轮后续行动未能执行：模型选择了本轮没有提供/],
+  ['completed','episode-step-limit',/已完成本轮探索，后续遇到新机会时可重新考虑/]
+ ]
+ for(const [continuationState,continuationResultCode,pattern] of cases){
+  const rows=buildLifeTimeline({now:t+3000,days:2,lifeDecisions:[{...base,continuationState,continuationResultCode}],explorationEvidence:evidence})
+  const row=rows.find(x=>x.type==='life-read')
+  assert.equal(row.bvid,BV)
+  assert.match(row.detail,pattern)
+  assert.doesNotMatch(row.detail,/未记录继续观察画面|已看完|未听原声/)
+ }
+})
+test('continuation stages survive the actual account-scoped journal, reject unknown values and preserve legacy records',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dsh-life-stage-'))
+ try{
+  let account='a'.repeat(16)
+  const events=createLifeAgentEvents({stateDir:dir,getAccountTag:()=>account,now:()=>t+100})
+  for(const [continuationState,continuationResultCode] of [['continued','step-verified'],['life-ended','fish-chose-rest'],['not-started','no-eligible-action'],['blocked','target-not-offered'],['completed','episode-step-limit'],['unknown','model-unavailable']]){
+   events.recordDecision({action:'inspect_exploration',mode:'active',result:'verified-metadata',verifiedReadKind:'video-metadata',continuationState,continuationResultCode})
+  }
+  assert.deepEqual(events.status().timeline.map(x=>x.continuationState),['','completed','blocked','not-started','life-ended','continued'])
+  // An arbitrary unverified action must never be upgraded to a verified video read.
+  events.recordDecision({action:'skip',mode:'active',result:'voluntary-rest',verifiedReadKind:'video-metadata',continuationState:'completed'})
+  assert.equal(events.status().timeline[0].continuationState,'')
+  account='b'.repeat(16)
+  assert.equal(events.status().timeline.length,0,'a different account cannot see the original decision states')
+ }finally{rmSync(dir,{recursive:true,force:true})}
 })
