@@ -4,6 +4,7 @@ import {mkdtempSync, rmSync, writeFileSync, readFileSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createHash} from 'node:crypto'
+import {runInNewContext} from 'node:vm'
 import {createFirstStart} from '../lib/first-start.mjs'
 
 const read=f=>readFileSync(new URL('../'+f,import.meta.url),'utf8')
@@ -46,7 +47,7 @@ test('首次配置页包含独立视觉模型流程，默认不启用、不自�
   assert.match(page,/data-open-tab="models" data-open-anchor="models-vision-settings"/)
   assert.match(page,/不自动下载安装/)
   assert.match(js,/renderFirstStartVision/)
-  assert.match(js,/const needsSetup=!state\.completed\|\|!state\.requiredReady\|\|!state\.quickSetupSeen/)
+  assert.match(js,/const needsSetup=\(state\.welcomeCompleted\?\?state\.completed\)!==true/)
   assert.match(server,/visionEnabled: z\.boolean\(\)\.default\(false\)/)
   assert.doesNotMatch(js,/\/onboarding\/vision\/autoenable/)
 })
@@ -55,7 +56,7 @@ test('旧用户升级但未确认新版引导时保持后台工作；只在管�
   const js=read('lib/management-console.js')
   const firstStart=read('lib/first-start.mjs')
   assert.match(firstStart,/isReady:\(\)=>status\(\)\.completed/)
-  assert.match(js,/fs-warning'\)\.hidden=unlocked&&quickAcknowledged/)
+  assert.match(js,/notice\.hidden=state\?\.ok!==true\|\|!\(needsReview\|\|needsRepair\|\|needsWelcome\)/)
   assert.match(js,/现有后台 Life 不会因此暂停/)
 })
 
@@ -92,4 +93,119 @@ test('2.8.1 快速设置入口定位 02B 且新版视觉卡片突出；模型开
   assert.match(read('docs\/release\/RELEASE_NOTES_v2.8.1.md'),/2\.8\.1/)
   // README must state the exact package version, including a stable release candidate.
   assert.match(read('README.md'),new RegExp(JSON.parse(read('package.json')).version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))
+})
+
+test('顶部提示栏按三种真实用户状态展示正确动作，不让新版确认替代首次校验',()=>{
+  const html=read('lib/management-console.html')
+  const js=read('lib/management-console.js')
+  assert.equal((html.match(/id="fs-quick-ack"/g)||[]).length,1)
+  assert.equal((html.match(/id="fs-complete"/g)||[]).length,1)
+  const global=html.slice(html.indexOf('<aside id="fs-warning"'),html.indexOf('<section id="panel-firststart"'))
+  assert.match(global,/id="fs-warning-open"/)
+  assert.match(global,/id="fs-quick-ack"/)
+  assert.match(global,/id="fs-complete"/)
+  const inside=html.slice(html.indexOf('<section id="panel-firststart"'),html.indexOf('<section id="panel-models"'))
+  assert.doesNotMatch(inside,/id="fs-quick-ack"|id="fs-complete"|id="fs-complete-skip"/)
+  assert.match(inside,/id="fs-required-overview"/)
+  assert.doesNotMatch(js,/已完成 '\+Object\.values\(progress\)/)
+  assert.match(js,/const current=await request\('\/onboarding\/status'\)/)
+  assert.match(js,/await request\('\/onboarding\/complete',\{skipped:\[\.\.\.skipFirstStart\]\}\)/)
+
+  // Exercise the real production render function with a minimal DOM double.
+  // No independent duplicate UI policy is reimplemented inside the test.
+  const begin=js.indexOf('  const renderFirstStart = state=>{')
+  const end=js.indexOf('  // All dependency *installation*',begin)
+  assert.ok(begin>=0&&end>begin)
+  const nodes=new Map()
+  const element=id=>{
+    if(!nodes.has(id))nodes.set(id,{id,hidden:false,disabled:false,dataset:{},textContent:'',className:'',title:'',attributes:{},
+      setAttribute(name,value){this.attributes[name]=String(value)}})
+    return nodes.get(id)
+  }
+  const context={
+    onboarding:null,mobileViewOnly:false,tabNames:['firststart','models','home','life','social'],
+    $:element,document:{querySelector:selector=>element(selector)}
+  }
+  const render=runInNewContext(js.slice(begin,end)+'\nrenderFirstStart',context)
+  const show=state=>{render(state);return element('fs-warning')}
+  const old={ok:true,welcomeCompleted:true,completed:true,requiredReady:true,quickSetupSeen:false,
+    biliVerified:true,headlessVerified:true,hasCredential:true,missing:[],skipped:[]}
+  let banner=show(old)
+  assert.equal(banner.hidden,false)
+  assert.equal(banner.dataset.kind,'update')
+  assert.equal(element('fs-quick-ack').hidden,false)
+  assert.equal(element('fs-complete').hidden,true)
+  assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-vision-guide')
+  assert.equal(element('[data-tab="life"]').hidden,false,'仅新版引导未确认，不得暂停老用户 Life')
+  assert.match(element('fs-warning-text').textContent,/后台 Life 不会因此暂停/)
+  banner=show({...old,quickSetupSeen:true})
+  assert.equal(banner.hidden,true,'老用户确认后只需关闭通知')
+
+  const fresh={ok:true,welcomeCompleted:false,completed:false,requiredReady:false,quickSetupSeen:false,
+    biliVerified:false,headlessVerified:false,hasCredential:false,missing:['B站登录验证','Headless 模型同步与验证'],skipped:[]}
+  banner=show(fresh)
+  assert.equal(banner.dataset.kind,'setup')
+  assert.equal(element('fs-quick-ack').hidden,true)
+  assert.equal(element('fs-complete').hidden,false)
+  assert.equal(element('fs-complete').disabled,false,'未完成的用户仍应点击得到准确缺项说明')
+  assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-bili-state')
+  assert.equal(element('[data-tab="life"]').hidden,true)
+  show({...fresh,biliVerified:true,missing:['Headless 模型同步与验证']})
+  assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-headless-state')
+  show({...fresh,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]})
+  assert.equal(element('fs-complete').hidden,false)
+  assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-final-stage')
+  banner=show({...old,completed:false,requiredReady:false,quickSetupSeen:true,headlessVerified:false,missing:['Headless 模型同步与验证']})
+  assert.equal(banner.dataset.kind,'repair')
+  assert.equal(element('fs-complete').hidden,true)
+  assert.equal(element('fs-quick-ack').hidden,true)
+  assert.equal(element('[data-tab="life"]').hidden,true,'实际模型验证失效不等于仅需确认版本')
+  context.mobileViewOnly=true
+  show(fresh)
+  assert.equal(element('fs-complete').disabled,true,'手机端只读不可获得写入权限')
+})
+
+
+test('新用户完成按钮先实时读取必需项，缺失时定位且不发送完成请求',async()=>{
+  const js=read('lib/management-console.js')
+  const begin=js.indexOf('  const completeFirstStart=async()=>{')
+  const end=js.indexOf("  $('fs-complete').addEventListener",begin)
+  assert.ok(begin>=0&&end>begin)
+  const create=(status)=>{
+    const calls=[],jumps=[]
+    const context={
+      skipFirstStart:new Set(['main-session']),active:'home',
+      request:async(path,body)=>{
+        calls.push([path,body]);
+        if(path==='/onboarding/status')return status
+        if(path==='/onboarding/complete')return {ok:true}
+        throw Error('unexpected request: '+path)
+      },
+      renderFirstStart:()=>{},
+      switchTab:async tab=>{jumps.push('tab:'+tab);context.active=tab},
+      $:id=>({id}),
+      revealTarget:node=>jumps.push('anchor:'+node.id),
+      loadFirstStart:async()=>status,
+      message:value=>jumps.push('message:'+value)
+    }
+    return {fn:runInNewContext(js.slice(begin,end)+'\ncompleteFirstStart',context),calls,jumps}
+  }
+  const missing=create({ok:true,welcomeCompleted:false,completed:false,requiredReady:false,biliVerified:false,
+    missing:['B站登录验证','Headless 模型同步与验证']})
+  await assert.rejects(missing.fn(),/B站登录验证.*Headless.*不能跳过/)
+  assert.deepEqual(missing.calls.map(x=>x[0]),['/onboarding/status'])
+  assert.deepEqual(missing.jumps,['tab:firststart','anchor:fs-bili-state'])
+  const headless=create({ok:true,welcomeCompleted:false,completed:false,requiredReady:false,biliVerified:true,
+    missing:['Headless 模型同步与验证']})
+  await assert.rejects(headless.fn(),/Headless/)
+  assert.deepEqual(headless.jumps,['tab:firststart','anchor:fs-headless-state'])
+  const ready=create({ok:true,welcomeCompleted:false,completed:false,requiredReady:true,biliVerified:true,
+    missing:[]})
+  await ready.fn()
+  assert.deepEqual(ready.calls.map(x=>x[0]),['/onboarding/status','/onboarding/complete'])
+  assert.equal(ready.calls[1][1].skipped[0],'main-session')
+  assert.ok(ready.jumps.includes('tab:home'))
+  const past=create({ok:true,welcomeCompleted:true,completed:true,requiredReady:true})
+  await assert.rejects(past.fn(),/已完成首次配置/)
+  assert.deepEqual(past.calls.map(x=>x[0]),['/onboarding/status'])
 })

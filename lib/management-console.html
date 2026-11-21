@@ -529,9 +529,19 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .mobile-only-note{color:var(--muted);font-size:12px;line-height:1.6;margin:6px 0}
 @media(max-width:570px){.headless-stages{grid-template-columns:1fr}.headless-next-action{width:100%}}
 .fs-footer{padding:17px;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.fs-footer .actions{display:flex;gap:8px;flex-wrap:wrap}
-.fs-warning{border:1px solid #cc3546;border-left:6px solid #cc3546;background:#ffebee;color:#912536;border-radius:12px;padding:13px 15px;display:flex;gap:15px;align-items:center;justify-content:space-between;margin-bottom:15px;font-weight:700;flex-wrap:wrap}.fs-warning[hidden]{display:none!important}
-@media(prefers-color-scheme:dark){.fs-hero{background:linear-gradient(120deg,#253957,#1d4038,#392949);border-color:#416580}.fs-hero h2{color:#e0f3ff}.fs-hero p{color:#c1dce5}.fs-pill{background:#263e50;color:#b7e7ff}.fs-state.bad{background:#4a222b;color:#ffc3cc}.fs-state.good{background:#1d4335;color:#b5f1c8}.fs-warning{background:#44262e;color:#ffd1d9}.fs-recommend-tip{background:linear-gradient(115deg,#2b294c,#22364c);border-color:#6265b4;border-left-color:#a394ff;color:#dbe3ff}.fs-recommend-tip strong{color:#cabfff}.fs-next-hint{background:#30294c;color:#e4d8ff!important;border-color:#7568aa}}
-@media(max-width:570px){.fs-hero{padding:19px}.fs-hero h2{font-size:21px}.fs-footer button{flex:1}}
+/* Upgrade reminder and first-install gate share one location, but never the same action. */
+.fs-warning{border:1px solid #d4a453;border-left:5px solid #d4a453;background:color-mix(in srgb,#ffdb9a 18%,var(--panel));color:var(--ink);border-radius:14px;padding:14px 17px;display:flex;gap:14px;align-items:center;justify-content:space-between;margin-bottom:15px;flex-wrap:wrap}
+.fs-warning[data-kind="update"]{border-color:#7fa9d7;border-left-color:#4b8ac1;background:color-mix(in srgb,#bfdbfb 22%,var(--panel))}
+.fs-warning[data-kind="repair"]{border-color:#d78e8e;border-left-color:#c25656;background:color-mix(in srgb,#ffd1d1 20%,var(--panel))}
+.fs-warning[hidden],.fs-warning button[hidden]{display:none!important}
+.fs-notice-copy{display:grid;gap:4px;flex:1 1 320px;line-height:1.55}.fs-notice-copy strong{font-size:15px}.fs-notice-copy span{font-weight:400;font-size:13px}
+.fs-notice-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.fs-notice-actions button{min-height:39px;white-space:normal;text-align:center}
+.fs-setup-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.fs-setup-overview>div{border:1px solid var(--stroke);border-radius:13px;background:var(--panel);padding:12px;display:grid;gap:5px}
+.fs-setup-overview strong{font-size:13px}.fs-setup-overview span{font-size:12px;color:var(--muted);line-height:1.55}
+.fs-warning:focus-within{outline:1px solid var(--action);outline-offset:2px}
+@media(prefers-color-scheme:dark){.fs-hero{background:linear-gradient(120deg,#253957,#1d4038,#392949);border-color:#416580}.fs-hero h2{color:#e0f3ff}.fs-hero p{color:#c1dce5}.fs-pill{background:#263e50;color:#b7e7ff}.fs-state.bad{background:#4a222b;color:#ffc3cc}.fs-state.good{background:#1d4335;color:#b5f1c8}.fs-warning{background:color-mix(in srgb,#916322 18%,var(--panel));color:var(--ink)}.fs-recommend-tip{background:linear-gradient(115deg,#2b294c,#22364c);border-color:#6265b4;border-left-color:#a394ff;color:#dbe3ff}.fs-recommend-tip strong{color:#cabfff}.fs-next-hint{background:#30294c;color:#e4d8ff!important;border-color:#7568aa}}
+@media(max-width:570px){.fs-hero{padding:19px}.fs-hero h2{font-size:21px}.fs-footer button{flex:1}.fs-setup-overview{grid-template-columns:1fr}.fs-notice-actions{width:100%}.fs-notice-actions button{flex:1 1 135px}}
 
 /* dev.12: one first-start journey; the cards and required validation share a
    single visual hierarchy rather than presenting two disconnected settings. */
@@ -845,7 +855,6 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .quick-setting-card{text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:9px;min-height:180px;padding:17px;border-radius:18px;border:1px solid color-mix(in srgb,#5d9fb6 28%,var(--stroke));background:var(--panel);color:var(--ink);box-shadow:0 6px 17px #2d638414}
 .quick-setting-card:hover{transform:translateY(-3px);border-color:#54a9c3}.quick-setting-card:focus-visible{outline:3px solid #4386bf}.quick-setting-card strong{font-size:16px}.quick-setting-card small{color:var(--muted);line-height:1.55;flex:1}.quick-setting-card em{font-style:normal;font-weight:700;color:var(--action);font-size:12px}
 .quick-card-icon{display:grid;place-items:center;width:39px;height:39px;border-radius:13px;background:color-mix(in srgb,#a5deec 50%,var(--panel));color:#276d99;font-size:24px}
-.quick-ack-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:17px}.quick-ack-row p{max-width:700px}
 #life-organic-presets{border:1px solid var(--stroke);border-radius:16px;background:color-mix(in srgb,var(--panel) 93%,#c5e8eb);padding:14px;margin:12px 0 20px}
 #life-organic-presets>summary{font-size:16px;font-weight:750;cursor:pointer}
 .preset-param-details{margin:13px 0}.preset-param-details>summary{cursor:pointer;font-size:13px;color:var(--action);font-weight:650}
@@ -1795,17 +1804,25 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div id="mobile-view-banner" class="mobile-view-banner" role="note" hidden><strong>📱 手机端 · 查看模式</strong><p>DSH Mobile 通过远程网关查看管理中心。配置保存、B站登录、Headless 同步与验证、备份恢复等需要在运行 DSH 的电脑端完成；这里的相关按钮已置灰。你仍可切换页面、展开内容及刷新可访问的状态。</p></div>
 <p id="message" role="status" aria-live="polite"></p>
 <aside id="settings-save-hint" role="status" aria-live="polite" hidden><span id="settings-save-hint-text">此处修改尚未保存。</span><button id="settings-save-hint-action" type="button" class="primary">保存本组设置</button></aside>
-<div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">快速设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开快速设置 ↗</button></div>
+<aside id="fs-warning" class="fs-warning" role="status" aria-live="polite" hidden>
+  <div class="fs-notice-copy"><strong id="fs-warning-title">正在检查快速设置</strong><span id="fs-warning-text">正在读取必需配置与版本引导状态…</span></div>
+  <div class="fs-notice-actions"><button type="button" id="fs-warning-open" data-open-tab="firststart">打开快速设置 ↗</button><button type="button" id="fs-quick-ack" class="primary" hidden>我已查看本版快速设置</button><button type="button" id="fs-complete" class="primary" hidden>完成快速设置</button></div>
+</aside>
 <section id="panel-firststart" hidden>
-  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 2.8.2</span><h2>快速设置 · 检查新版能力与已有配置</h2><p>首次使用或从旧版升级时，可在此检查当前设置；已完成快速设置的用户无需反复确认。<strong>已有登录、模型、Life 和记忆不会因此清空或重置</strong>；已有健康环境无需重装。B站主依赖与 Headless 文字模型验证属于基础必需项；视频画面识别需要另行配置视觉模型并完成图片验收，<strong>视频视觉可选且默认不开启</strong>。</p></div>
+  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 2.8.2</span><h2>快速设置 · 先完成必需项，再自由选择增强能力</h2><p>首次使用或从旧版升级时，可在此检查当前设置；已完成快速设置的用户无需反复确认。<strong>已有登录、模型、Life 和记忆不会因此清空或重置</strong>；已有健康环境无需重装。B站主依赖与 Headless 文字模型验证属于基础必需项；视频画面识别需要另行配置视觉模型并完成图片验收，<strong>视频视觉可选且默认不开启</strong>。</p></div>
 
   <div class="fs-journey" aria-label="统一快速设置流程">
+    <div class="fs-setup-overview" aria-label="设置类型说明">
+      <div><strong>① 必要配置</strong><span id="fs-required-overview">正在检查 B站登录和文字模型的实际验证状态…</span></div>
+      <div><strong>② 本版新增 · 可选</strong><span>视频视觉与转写按需安装，视觉图片验收不会自动开启观看。</span></div>
+      <div><strong>③ 更多个性化 · 可选</strong><span>主 Session、记忆、生活节奏和社交授权以后也能设置，修改须明确保存。</span></div>
+    </div>
     <div class="fs-progress" id="fs-progress" aria-label="快速设置进度">
       <a class="fs-progress-step" href="#fs-deps-card" data-fs-step="account"><span>01</span><strong>主依赖与 B站登录</strong><small>必须</small></a>
       <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="model"><span>02</span><strong>模型验证</strong><small>必须</small></a>
-      <a class="fs-progress-step" href="#fs-vision-guide" data-fs-step="preferences"><span>03</span><strong>新版设置检查</strong><small>需查看</small></a>
+      <a class="fs-progress-step" href="#fs-vision-guide" data-fs-step="preferences"><span>03</span><strong>视频视觉引导</strong><small>可选 · 升级了解</small></a>
       <a class="fs-progress-step" href="#fs-session-stage" data-fs-step="session"><span>04</span><strong>主会话</strong><small>可跳过</small></a>
-      <a class="fs-progress-step" href="#fs-final-stage" data-fs-step="finish"><span>05</span><strong>完成引导</strong><small>不重置设置</small></a>
+      <a class="fs-progress-step" href="#fs-final-stage" data-fs-step="finish"><span>05</span><strong>设置总结</strong><small>无需重置</small></a>
     </div>
     <p class="fs-progress-hint" id="fs-progress-hint" role="status" aria-live="polite">正在读取快速设置状态…</p>
     <div id="fs-verify-stage" class="fs-phase"><div class="fs-phase-title"><strong>连接鱼鱼的世界</strong><span>先准备运行环境，再完成两项必要验证；已有登录和模型不会自动重置</span></div>
@@ -1890,14 +1907,13 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 
       <section class="quick-config-section quick-model-link"><div class="quick-config-title"><span class="quick-card-icon">✧</span><div><h4>AI 模型与其他高级功能</h4><p>Provider、模型测试和精细参数较复杂，保留独立管理页面</p></div></div><div class="quick-config-actions"><button type="button" data-open-tab="models">前往 AI 模型配置 ↗</button><button type="button" data-open-tab="personality">人格成长设置 ↗</button></div></section>
     </div>
-    <div class="quick-ack-row"><p class="muted" id="fs-quick-ack-status">请检查当前设置后继续。老用户的原配置与后台生活不会因此暂停。</p><button type="button" id="fs-quick-ack" class="primary">我已查看本版快速设置</button></div>
   </section>
     </div>
     <div id="fs-session-stage" class="fs-phase fs-optional"><div class="fs-phase-title"><strong>可选的会话设置</strong><span>这项可以留到以后，不阻塞首次设置完成</span></div>
     <section class="fs-step optional"><h3>04 · 主 Session <span class="pill">可跳过</span></h3><p>绑定与鱼鱼交谈的session会话；以后可以在管理中心随时修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
     </div>
     <div id="fs-final-stage" class="fs-phase">
-  <div class="fs-footer"><div><strong id="fs-summary">请先完成两项必需配置</strong><p class="muted">完成后随时可以在管理中心重新打开快速设置，已有记忆、凭据和历史资料不会删除。</p></div><div class="actions"><button id="fs-complete" class="primary" type="button" disabled>完成快速设置</button><button id="fs-complete-skip" type="button" disabled>跳过可选项并完成</button></div></div>
+  <div class="fs-footer"><div><strong id="fs-summary">正在检查必需配置</strong><p class="muted">首次使用请在页面顶部提示栏点击「完成快速设置」。可选功能以后随时能调整；不会删除原有记忆、凭据和历史资料。</p></div></div>
     </div>
   </div>
 </section>

@@ -26,7 +26,10 @@ test('管理中心不再出现重复 2.8.2 宣传弹窗，快速设置入口和�
   assert.match(html,/id="fs-vision-guide"/)
   assert.match(html,/2\.8\.2 视频感知优化 · 可选/)
   assert.match(html,/2\.8\.2 优化了视频感知流程/)
-  assert.match(ui,/const needsSetup=!state\.completed\|\|!state\.requiredReady\|\|!state\.quickSetupSeen/)
+  // The informational update notice cannot force an already-unlocked owner
+  // back through first installation; real verification failures remain separate.
+  assert.match(ui,/const needsSetup=\(state\.welcomeCompleted\?\?state\.completed\)!==true/)
+  assert.match(ui,/const needsRepair=unlocked&&!ready/)
   assert.match(ui,/needsSetup\?switchTab\('firststart'\):switchTab/)
   assert.match(ui,/const state=await loadFirstStart\(\)/)
   assert.match(ui,/if\(!state\.welcomeSeen\)await request\('\/onboarding\/welcome'/)

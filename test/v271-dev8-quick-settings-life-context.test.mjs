@@ -75,6 +75,6 @@ test('快速设置统一入口不复制配置字段，记忆方案与记忆参�
  assert.match(server,/firstStart\.acknowledgeQuickSetup/)
  assert.match(server,/quickMemoryPlan/)
  assert.match(server,/quickSocialPlan/)
- assert.match(js,/!state\.quickSetupSeen/)
+ assert.match(js,/const needsReview=unlocked&&ready&&!quickAcknowledged/)
  assert.match(server,/degradedStages/)
 })
