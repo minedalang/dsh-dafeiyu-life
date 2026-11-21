@@ -112,9 +112,16 @@ _LIFE_VIDEO_WRITES = frozenset((
     'bili_video_like', 'bili_video_collect', 'bili_follow_creator',
     'bili_unfollow_creator', 'bili_favorite_folder_delete', 'bili_reply'))
 
+# The video Agent exposes a *single* optional watch action. These three tools
+# remain callable only by the trusted composite (and independently by other
+# non-video-Agent sessions). A tool name present in the MCP allowlist does not
+# make it model-visible in this explicitly staged headless process.
+_VIDEO_PICK_INTERNAL_TOOLS = frozenset(('bili_subtitle', 'bili_transcribe_safe', 'bili_preview_vision'))
+_VIDEO_PICK_POST_SELECTION_READS = frozenset(('bili_comments', 'bili_comment_thread', 'bili_discussion_note'))
+
 _VIDEO_FUNNEL_TOOLS = frozenset((
     'bili_search', 'bili_home_recommendations', 'bili_video_info',
-    'bili_subtitle', 'bili_comments', 'bili_transcribe_safe', 'bili_preview_vision', 'bili_ledger_mark'))
+    'bili_subtitle', 'bili_comments', 'bili_comment_thread', 'bili_discussion_note', 'bili_transcribe_safe', 'bili_preview_vision', 'bili_watch_video', 'bili_ledger_mark'))
 
 
 def _observe_video_tool(name, args, result, failed=False):
@@ -135,6 +142,8 @@ def _observe_video_tool(name, args, result, failed=False):
         if directory.is_symlink(): return
         path = directory / (round_id + '.jsonl')
         if path.is_symlink() or (path.exists() and path.stat().st_size > 90_000): return
+        if isinstance(getattr(result, 'content', None), list):
+            result = next((item.text for item in result.content if isinstance(getattr(item, 'text', None), str)), '{}')
         try: data = json.loads(result) if isinstance(result, str) else result
         except (TypeError, ValueError): data = {}
         if not isinstance(data, dict): data = {}
@@ -167,6 +176,14 @@ def _observe_video_tool(name, args, result, failed=False):
             row['content'] = bool(not failed and len(text_result.strip()) >= 35 and
                                   not text_result.startswith(('转写失败', '本地转写失败',
                                       '本轮未授权', '本地转写依赖未安装', '转写路径不安全')))
+        elif name == 'bili_watch_video':
+            speech = data.get('speech') if isinstance(data.get('speech'), dict) else {}
+            visual = data.get('visual') if isinstance(data.get('visual'), dict) else {}
+            row['speech'] = bool(speech.get('ok') is True)
+            row['subtitle'] = row['speech'] and speech.get('source') == 'official-subtitles'
+            row['visualAttempted'] = visual.get('attempted') is True
+            row['visual'] = visual.get('ok') is True
+            row['ok'] = bool(row['speech'] or row['visual'])
         elif name == 'bili_preview_vision':
             # Headless vision can happen before OR after selecting a video,
             # after discussion reads, or later in the same exploration round.
@@ -297,6 +314,11 @@ def tool():
     def deco(fn):
         if _ALLOWED and fn.__name__ not in _ALLOWED:
             return fn
+        if (os.environ.get('BILI_DUTY_VIDEO_PICK_FLOW') == '1' and
+            fn.__name__ in _VIDEO_PICK_INTERNAL_TOOLS):
+            # HIDE individual subtitle/ASR/vision tools from the video model.
+            # The combined watch tool executes their existing gated functions.
+            return fn
         if fn.__name__ not in _LIFE_VIDEO_WRITES:
             if fn.__name__ not in _VIDEO_FUNNEL_TOOLS:
                 return mcp.tool()(fn)
@@ -308,6 +330,13 @@ def tool():
                     bound.apply_defaults()
                     values = bound.arguments
                 except Exception: pass
+                if (os.environ.get('BILI_DUTY_VIDEO_PICK_FLOW') == '1' and
+                    fn.__name__ in _VIDEO_PICK_POST_SELECTION_READS and
+                    not _selected_in_current_video_round(str(values.get('bvid') or ''))):
+                    response = json.dumps({'ok': False, 'blocked': True,
+                        'reason': 'video-not-selected-in-current-round'}, ensure_ascii=False)
+                    _observe_video_tool(fn.__name__, values, response)
+                    return response
                 try:
                     response = await fn(*args, **kwargs)
                 except Exception:
@@ -1278,6 +1307,94 @@ async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
+# One Life/video-agent choice, two independent bounded observations. Only the
+# headless video exploration model sees this action; separate raw reads remain
+# available to owner/other authorized contexts without changing their gates.
+@tool()
+async def bili_watch_video(bvid: str, view_depth: str = 'standard') -> str:
+    """选中视频后自主观看：一次动作并行尝试采样画面与字幕，缺字幕再按配置尝试本地 ASR。
+
+    Returns separate visual and speech evidence, never a full-playback claim.
+    """
+    if (e := _guard('bili_watch_video')): return e
+    if os.environ.get('BILI_DUTY_VIDEO_PICK_FLOW') != '1':
+        return json.dumps({'ok': False, 'blocked': True, 'reason': 'video-watch-agent-only'}, ensure_ascii=False)
+    try:
+        bv = _valid_bv(bvid)
+    except ValueError:
+        return json.dumps({'ok': False, 'blocked': True, 'reason': 'invalid-bvid'}, ensure_ascii=False)
+    if view_depth not in ('standard', 'deep'):
+        return json.dumps({'ok': False, 'blocked': True, 'reason': 'invalid-view-depth'}, ensure_ascii=False)
+    if not _selected_in_current_video_round(bv):
+        return json.dumps({'ok': False, 'blocked': True,
+                           'reason': 'video-not-selected-in-current-round', 'bvid': bv}, ensure_ascii=False)
+
+    async def read_speech():
+        try:
+            raw = await bili_subtitle(bv, auto_vision_on_missing=False)
+            subtitle = json.loads(raw) if isinstance(raw, str) else {}
+            if (isinstance(subtitle, dict) and subtitle.get('bvid') == bv and
+                subtitle.get('subtitle_evidence') == 'caption_text' and
+                isinstance(subtitle.get('text'), str) and subtitle['text'].strip()):
+                return {'ok': True, 'source': 'official-subtitles',
+                        'text': subtitle['text'][:12000],
+                        'timed_segments': subtitle.get('timed_segments', [])[:160]}
+        except Exception:
+            pass
+        if os.environ.get('BILI_ASR_ENABLED') == '1':
+            try:
+                raw = await bili_transcribe_safe(bv)
+                asr = json.loads(raw) if isinstance(raw, str) else raw
+                if (isinstance(asr, dict) and asr.get('bvid') == bv and
+                    asr.get('source') == 'local-asr' and
+                    asr.get('asr_evidence') == 'faster-whisper-machine-transcript' and
+                    isinstance(asr.get('text'), str) and asr['text'].strip()):
+                    return {'ok': True, 'source': 'local-asr', 'text': asr['text'][:12000],
+                            'timed_segments': asr.get('timed_segments', [])[:160]}
+                return {'ok': False, 'source': 'none', 'reason': 'asr-no-verified-text'}
+            except Exception:
+                return {'ok': False, 'source': 'none', 'reason': 'asr-tool-failed'}
+        return {'ok': False, 'source': 'none',
+                'reason': 'subtitles-unavailable-asr-disabled'}
+
+    async def read_visual():
+        if os.environ.get('BILI_VISION_ENABLED') != '1':
+            return {'ok': False, 'attempted': False, 'reason': 'vision-disabled'}, []
+        try:
+            raw = await bili_preview_vision(bv, perception_source='adaptive', view_depth=view_depth)
+            images = []
+            if isinstance(raw, CallToolResult):
+                images = [item for item in raw.content if isinstance(item, ImageContent)][:12]
+                text_items = [item.text for item in raw.content if isinstance(item, TextContent)]
+                raw = next((x for x in text_items if x.lstrip().startswith('{')), '{}')
+            data = json.loads(raw) if isinstance(raw, str) else raw
+            if not isinstance(data, dict): data = {}
+            times = data.get('times')
+            verified = (data.get('ok') is True and data.get('bvid') == bv and
+                data.get('status') in ('analyzed', 'cached') and
+                data.get('image_source') in ('B站低清预览', 'B站公开视频片段（离线解码）') and
+                isinstance(times, list) and 1 <= len(times) <= 48 and
+                all(type(t) in (int, float) and 0 <= t <= 86400 for t in times) and
+                len(str(data.get('description') or '').strip()) >= 8)
+            if verified:
+                return {'ok': True, 'attempted': True, 'source': data['image_source'],
+                        'times': times, 'description': data['description'][:12000]}, []
+            return {'ok': False, 'attempted': True,
+                    'reason': str(data.get('status') or 'no-verified-visual-description')[:70],
+                    'sampleImagesAvailable': bool(images)}, images
+        except Exception:
+            return {'ok': False, 'attempted': True, 'reason': 'vision-tool-failed'}, []
+
+    (speech, (visual, images)) = await asyncio.gather(read_speech(), read_visual())
+    summary = {'ok': speech['ok'] is True or visual['ok'] is True,
+               'bvid': bv, 'speech': speech, 'visual': visual,
+               'can_claim_full_video_watched': False, 'can_claim_audio_listened': False}
+    text = TextContent(type='text', text=json.dumps(summary, ensure_ascii=False))
+    # For reuse-video-model mode, actual image blocks (if any) are passed to
+    # this very same tool response; frames alone are NOT marked as analyzed.
+    return CallToolResult(content=[text, *images]) if images else text.text
+
+
 # ========== Tool 4: 获取弹幕 ==========
 
 @tool()
@@ -1956,6 +2073,34 @@ async def bili_meme_observe(name: str,bvid: str,evidence: str,evidence_type: str
 # 所有行为需要显式主人开关 + MCP 白名单 + 本轮真实入选 BV + 本地限额。
 # 模型只能在视频被确实挑中后选择操作，不可指定收藏夹 ID，更不能修改主人既有收藏夹。
 _ACTION_DB_NAME = 'video-actions.sqlite3'
+
+
+def _selected_in_current_video_round(bv: str) -> bool:
+    """Read-only exact account/BV/current-round proof, never yesterday's pick."""
+    if not _BV_PATTERN.fullmatch(str(bv or '')):
+        return False
+    round_id = os.environ.get('BILI_DUTY_LIFE_ROUND_ID', '')
+    if not re.fullmatch(r'[a-f0-9]{24}', round_id):
+        return False
+    account = str(getattr(get_cred(), 'dedeuserid', '') or '')
+    if not account.isdigit() or int(account) <= 0:
+        return False
+    db = _DUTY_HOME / _ACTION_DB_NAME
+    if db.is_symlink() or not db.is_file():
+        return False
+    try:
+        con = sqlite3.connect(db.as_uri() + '?mode=ro', uri=True, timeout=3)
+        try:
+            # A valid exploration round may pass local midnight; the random
+            # host-issued round ID, account and exact BV are the proof.
+            return bool(con.execute("""SELECT 1 FROM selected_videos
+                WHERE account=? AND bvid=? AND round_id=?
+                  AND status='挑中' LIMIT 1""",
+                (account, bv, round_id)).fetchone())
+        finally:
+            con.close()
+    except (OSError, sqlite3.Error):
+        return False
 
 
 def _selected_owned(bv: str) -> bool:

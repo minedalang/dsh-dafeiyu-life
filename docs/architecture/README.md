@@ -8,6 +8,8 @@
 
 ## 历史开发记录（保留原始审计信息）
 
+> **2.8.2-dev.49（开发候选）**：[鱼鱼自然挑选与观看视频](2.8.2-dev49-natural-video-exploration.md)。选片单次模型决策同时参考热度与简介，入选后可自主调用统一观看动作尝试视觉与字幕/可选 ASR；不改变独立 Life/主人入口及外发权限，Windows/DSH 实机仍待验收。
+
 > **2.8.2-dev.34（开发候选）**：[模型双栏操作、固定12格分镜及诊断设置收口](../release/2.8.2-dev.34-model-and-video-closure.md)。Headless 单模型取消同步、Desktop/Web 来源能力声明均单独备份/回读；MiniCPM 1B 仅历史兼容。Windows/DSH 实机与全量测试尚待验收。
 
 > **2.8.2-dev.28（开发候选）**：[多候选视频探索及 Whisper 实时进度/安全模型管理](2.8.2-dev28-multi-focus-and-whisper.md)。视频图：[Mermaid 源](diagrams/video-perception-current.mmd) / [SVG 用户图](assets/video-perception-current.svg)；同步四张 Life 架构图与 GitHub 预览。Windows/DSH/B站实机尚待验收，非正式发布。

@@ -90,13 +90,16 @@ test('vision receipt is optional at any point in a video round, with per-BV dedu
  assert.equal(withoutVision.visualVerified,0,'selected does not imply watching')
 })
 
-test('video agent can still elect a visual tool after comments or picking; it is not a fixed next step',()=>{
+test('after picking, video agent can still elect unified watch; visual evidence still requires real receipts',()=>{
  const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const py=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
- assert.match(host,/已选片\/已读评论不是视觉选择机会的结束信号/)
- assert.match(host,/读评论区后、挑中视频后/)
+ assert.match(host,/已选片\/已读评论不是观看选择机会的结束信号/)
+ assert.match(host,/bili_watch_video/)
+ assert.match(host,/BILI_DUTY_VIDEO_PICK_FLOW/)
+ assert.match(py,/async def bili_watch_video/)
+ assert.match(py,/video-not-selected-in-current-round/)
  assert.match(host,/if \(cfg\.visionEnabled\) list\.push\('bili_preview_vision'\)/)
- assert.match(py,/_VIDEO_FUNNEL_TOOLS[\s\S]{0,180}'bili_preview_vision'/)
+ assert.match(py,/_VIDEO_FUNNEL_TOOLS[\s\S]{0,420}'bili_preview_vision'/)
  assert.match(py,/data\.get\('status'\) in \('analyzed', 'cached'\)/)
  assert.match(py,/len\(str\(data\.get\('description'\) or ''\)\.strip\(\)\) >= 8/)
 })

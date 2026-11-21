@@ -805,6 +805,11 @@
       "owner": "life-video-observation-diagnostics",
       "kind": "behavior",
       "intent": "Distinguish in-flight Life video visual actions, verified visual receipts, failed child image recognition and parent-only metadata success; keep read-only attempt diagnostics visible without inventing durable watch records, and reject null visualObservation focus."
+    },
+    "v282-dev49-video-selection-watch.test.mjs": {
+      "owner": "video-agent-selection-and-watch-staging",
+      "kind": "security",
+      "intent": "Enforce one metadata/description selection decision, hide individual speech/vision tools, require exact current-round selection for bundled watch, and aggregate only verified distinct evidence receipts."
     }
   },
   "protected": [
@@ -1025,6 +1030,11 @@
       "owner": "python-preview-vision-local-ollama",
       "kind": "contract",
       "intent": "Distinguish Ollama refused/HTTP 404/timeout/unreachable in true model request and preserve bounded board receipt codes."
+    },
+    "test_v282_dev49_staged_video_watch.py": {
+      "owner": "python-headless-video-staged-watch",
+      "kind": "behavior",
+      "intent": "Account/round-scoped SQLite selection proof, simultaneous independent visual and speech reads, ASR fallback only after missing subtitles, partial evidence success, and fail-closed unselected/wrong-scene behavior."
     }
   },
   "pythonProtected": [
