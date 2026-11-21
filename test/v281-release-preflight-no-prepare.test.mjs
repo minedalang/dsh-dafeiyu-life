@@ -14,7 +14,7 @@ test('git-hosted package must not run developer Git hooks during consumer instal
 })
 test('current 2.8.2 candidate, lockfile, README and historical release notes remain consistent',()=>{
  const p=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json'))
- assert.match(p.version,/^2\.8\.(?:1|2)(?:-dev\.\d+)?$/)
+ assert.match(p.version,/^2\.8\.(?:1|2|3)(?:-dev\.\d+)?$/)
  assert.equal(p.version,lock.version)
  assert.equal(p.version,lock.packages[''].version)
  assert.match(read('README.md'),/2\.8\.2/)

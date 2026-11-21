@@ -68,7 +68,7 @@ test('npm 安装包包含 2.8.1 升级指南、发布审计说明与检查单',(
     'docs/release/RELEASE_NOTES_v2.8.1.md']){
     assert.ok(manifest.files.includes(path),`安装包遗漏 ${path}`)
   }
-  assert.match(manifest.version,/^2\.8\.(?:1|2)(?:-dev\..+)?$/,'版本只能为 2.8.1 或同版开发候选')
+  assert.match(manifest.version,/^2\.8\.(?:1|2|3)(?:-dev\..+)?$/,'版本限当前维护的 2.8.x 稳定版或开发候选')
 })
 
 

@@ -26,6 +26,23 @@ test('visual failure explains offline/model/timeout before any visual-evidence v
   assert.equal(explainVideoVisionFailure({status:'vision_incomplete',visionBoardReceipts:[{status:'incomplete',errorCode:'unsafe-injection'}]}).code,'vision_incomplete')
 })
 
+test('partial batch failure surfaces only allowlisted technical codes, not model prose',()=>{
+  const response=explainVideoVisionFailure({status:'vision_incomplete',visionBoardReceipts:[
+    {index:1,status:'analyzed'},
+    {index:2,status:'incomplete',errorCode:'vision_board_truncated',description:'not trusted'}]})
+  assert.equal(response.code,'vision_board_truncated')
+  assert.match(response.message,/输出不完整/)
+  assert.equal(response.boardsFailed,1)
+  assert.equal(response.boardsTotal,2)
+  const ui=read('lib/management-console.js')
+  const planner=read('lib/autonomous-planner.mjs')
+  const trace=read('lib/life-decision-trace.mjs')
+  assert.match(planner,/visionFailureCode=explainVideoVisionFailure/)
+  assert.match(planner,/visionFailureCode:viewed.visionFailureCode/)
+  assert.match(trace,/trustedVideoVisionErrorCode\(fields\?\.visionFailureCode\)/)
+  assert.match(ui,/vision_board_truncated:'分镜输出截断'/)
+})
+
 test('local model outage after focus FFmpeg decode remains model-stage failure, not provenance rejection',()=>{
   const diagnosis=diagnoseVideoFocusReceipt({result:{ok:true,status:'vision_unavailable',
     errorCode:'ollama_service_offline',times:[60,61,62],sampling:{sampler_version:8}}})

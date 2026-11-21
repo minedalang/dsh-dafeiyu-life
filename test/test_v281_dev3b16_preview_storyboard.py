@@ -95,19 +95,23 @@ class StoryboardTests(unittest.TestCase):
         self.assertFalse(result['ok']);self.assertNotIn('frames',result)
 
     def test_debug_capture_is_exact_board_bytes_and_not_in_model_answer(self):
-        with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch.object(pv,'_call_local_ollama',side_effect=lambda frames,model: '\n'.join(f'R{i//4+1}C{i%4+1} [{pv._board_clock(t)}]：模糊场景；动作不确定；文字看不清。' for i,t in enumerate(frames[0]['tile_times']))) as model:
+        def infer(frames,model):
+            return '\n'.join(f'分镜图{i+1}：\n'+ '\n'.join(
+                f'R{k//4+1}C{k%4+1} [{pv._board_clock(t)}]：模糊场景；动作不确定；文字看不清。'
+                for k,t in enumerate(board['tile_times'])) for i,board in enumerate(frames))
+        with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch.object(pv,'_call_local_ollama',side_effect=infer) as model:
             result=pv.analyze_preview(BV,folder,storyboard=True,max_frames=24,
                   enabled=True,model='qwen3.5:4b',debug=True)
             self.assertTrue(result['ok']); self.assertEqual(result['status'],'analyzed')
-            self.assertEqual(model.call_count,2)
-            self.assertTrue(all(len(call.args[0])==1 for call in model.call_args_list))
+            self.assertEqual(model.call_count,1)
+            self.assertEqual(len(model.call_args_list[0].args[0]),2)
             self.assertEqual([r['status'] for r in result['visionBoardReceipts']],['analyzed','analyzed'])
             manifest=result['debugCapture']
             self.assertEqual(manifest['kind'],'storyboard')
             self.assertEqual(len(manifest['images']),2)
             for idx,piece in enumerate(manifest['images']):
                 saved=(Path(folder)/'vision-perception-captures'/manifest['id']/piece['file']).read_bytes()
-                self.assertEqual(saved,model.call_args_list[idx].args[0][0]['bytes'])
+                self.assertEqual(saved,model.call_args_list[0].args[0][idx]['bytes'])
                 self.assertIn('低清',piece['resolution'])
             self.assertNotIn('frames',result)
 

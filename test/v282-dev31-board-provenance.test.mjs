@@ -69,3 +69,22 @@ test('Life receives balanced local board information rather than only board one'
  assert.match(summary,/分镜图2/)
  assert.match(summary,/未核实语义/)
 })
+
+test('v14 paired-image results still require exact per-board proof at the Node evidence boundary',()=>{
+ const v=make()
+ v.sampling={...v.sampling,sampler_version:14,tiles_per_storyboard:12}
+ const valid=handoff(v)
+ assert.ok(valid.evidence.sources.some(s=>s.kind==='preview_visual_analysis'))
+ assert.equal(valid.handoff.video.boardInterpretations.length,2)
+ const wrong=make()
+ wrong.sampling={...wrong.sampling,sampler_version:14,tiles_per_storyboard:12}
+ wrong.visionBoardReceipts[1].status='incomplete'
+ wrong.visionBoardReceipts[1].errorCode='vision_board_truncated'
+ const rejected=handoff(wrong)
+ assert.equal(rejected.evidence.sources.some(s=>s.kind==='preview_visual_analysis'),false)
+ assert.equal(rejected.handoff.video.boardInterpretations.length,0)
+ const swapped=make()
+ swapped.sampling={...swapped.sampling,sampler_version:14,tiles_per_storyboard:12}
+ swapped.visionBoardReceipts[1].times[0]=10
+ assert.equal(handoff(swapped).evidence.sources.some(s=>s.kind==='preview_visual_analysis'),false)
+})

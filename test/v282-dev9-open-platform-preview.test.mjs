@@ -59,7 +59,7 @@ test('README showcases the long-term ecosystem with real local SVG assets and co
 })
 
 test('developer version identity is synchronized',()=>{
-  assert.match(manifest.version,/^2\.8\.2(?:-dev\.[1-9]\d+)?$/)
+  assert.match(manifest.version,/^2\.8\.(?:2|3)(?:-dev\.[1-9]\d*)?$/)
   assert.equal(lock.version,manifest.version)
   assert.equal(lock.packages[''].version,manifest.version)
   assert.ok(readme.includes('当前版本源码：'+manifest.version))

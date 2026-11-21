@@ -7,7 +7,7 @@ const pkg = JSON.parse(read('package.json'))
 const lock = JSON.parse(read('package-lock.json'))
 
 test('正式版与后续 dev 开发版都遵循 SemVer 并与锁文件、README 同步', () => {
-  assert.match(pkg.version, /^2\.8\.(?:0|1|2)(?:-dev\.[0-9A-Za-z.-]+)?$/)
+  assert.match(pkg.version, /^2\.8\.(?:0|1|2|3)(?:-dev\.[0-9A-Za-z.-]+)?$/)
   assert.equal(lock.version, pkg.version)
   assert.equal(lock.packages[''].version, pkg.version)
   const readme = read('README.md')
@@ -47,6 +47,10 @@ test('正式版与后续 dev 开发版都遵循 SemVer 并与锁文件、README 
     assert.match(read('CHANGELOG.md'),/^## \[2\.8\.2\] · 视频感知体验优化/m);
     assert.ok(pkg.files.includes('docs/release/RELEASE_NOTES_v2.8.2.md'));
     assert.doesNotMatch(readme,/尚未正式发布|开发预览/);
+  } else if (pkg.version.startsWith('2.8.3-dev.')) {
+    assert.match(readme,new RegExp('当前版本源码：'+pkg.version.replaceAll('.', '\\.')))
+    assert.match(readme,/尚未正式发布/)
+    assert.match(read('CHANGELOG.md'),new RegExp('^## '+pkg.version.replaceAll('.', '\\.'),'m'))
   } else if (pkg.version.startsWith('2.8.2-dev.')) {
     assert.match(readme,new RegExp('当前版本源码：'+pkg.version.replaceAll('.', '\\.')))
     assert.match(readme,new RegExp(pkg.version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))
