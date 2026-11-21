@@ -1362,6 +1362,13 @@
       "reason": "Stable section heading replaces development preview and preserves homepage order."
     },
     {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "'## 🆕 2.8.2 · 视频感知体验优化'",
+      "newCheck": "'## 🆕 2.8.2 视频感知体验优化'",
+      "date": "2026-11-21",
+      "reason": "The README heading removed the separator to fix the GitHub anchor; preserve the original audit and trace its next replacement."
+    },
+    {
       "file": "v281-release-core-feature-and-vision-permission-ux.test.mjs",
       "oldCheck": "视频视觉与转写均可选",
       "newCheck": "assert.match(md,/视频视觉与转写均为可选能力/)",

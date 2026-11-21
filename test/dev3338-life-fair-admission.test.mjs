@@ -20,7 +20,18 @@ test('DM preflight sees exact holder channel and release reason, with no UID in 
   assert.equal(busy.ok,false);assert.equal(busy.reason,'life-choice-in-progress')
   assert.equal(busy.ownerChannel,'dm')
   const stored=readFileSync(join(dir,'life-willingness-admission.json'),'utf8')
-  assert.equal(stored.includes('221'),false);assert.equal(stored.includes('message-1'),false)
+  // The raw substring '221' can occur in an opaque hash, UUID, PID or timestamp.
+  // Check the persisted schema and actual private-data fields instead.
+  const disk=JSON.parse(stored)
+  assert.equal(disk.version,1)
+  for(const claim of Object.values(disk.claims)){
+    assert.equal(claim.channel,'dm')
+    for(const field of Object.keys(claim))
+      assert.ok(['token','stage','at','until','pid','channel','used'].includes(field),
+        `Unexpected persisted claim field: ${field}`)
+    assert.match(claim.token,/^[a-f0-9-]{36}$/)
+  }
+  assert.doesNotMatch(stored,/dm:221:|message-1|我想回复|"(?:uid|sourceKey|messages|targetKey)"\s*:/)
   assert.equal(w.receipt(hold.proof,{status:'not-sent'}).ok,true)
   assert.equal(w.inspectSocialReadiness().ok,true)
   assert.equal(w.status().admission.lastReleaseReason,'not-sent')

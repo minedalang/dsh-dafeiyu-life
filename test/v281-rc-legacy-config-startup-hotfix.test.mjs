@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,readFileSync,writeFileSync,rmSync,existsSync} from 'node:fs'
+import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs'
+import {rm} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {Readable} from 'node:stream'
@@ -14,16 +15,31 @@ function fixture({saved={},hostSettings=null}={}){
   const file=join(home,'config.json')
   writeFileSync(file,JSON.stringify({masterEnabled:false,dmWatch:false,commentAtEnabled:false,commentWatchReplies:false,...saved}))
   let route
+  const disposers=[]
   const ctx={
     get:k=>k==='dshHomePath'?(...parts)=>join(root,...parts):undefined,
     logger:{info(){},warn(){},error(){}},tools:{register(){}},
     webServer:{register(spec){route=spec;return {dispose(){}}}},
     settings:{describe:()=>hostSettings?[{value:{perDay:50,mentionName:'',overlayMcp:true,...hostSettings},user:hostSettings}]:[]},
-    effect(fn){return fn()},
+    effect(fn){
+      const resource=fn()
+      if(typeof resource==='function')disposers.push(resource)
+      else if(typeof resource?.dispose==='function')disposers.push(()=>resource.dispose())
+      return resource
+    },
   }
-  const close=()=>rmSync(root,{recursive:true,force:true,maxRetries:3,retryDelay:100})
+  const close=async()=>{
+    // Dispose registered host effects before deleting the fixture's home.
+    // Some effects schedule account/vision bookkeeping writes asynchronously.
+    for(const dispose of disposers.reverse()){
+      try{await dispose()}catch{/* a best-effort host cleanup hook */}
+    }
+    // Do not ignore incomplete cleanup: bounded retries allow in-flight writes
+    // to settle on Linux CI, and still fail the test if the folder persists.
+    await rm(root,{recursive:true,force:true,maxRetries:10,retryDelay:150})
+  }
   try{apply(ctx,{});assert.ok(route?.handler,'Plugin must install config HTTP route')}
-  catch(e){close();throw e}
+  catch(e){rmSync(root,{recursive:true,force:true,maxRetries:10,retryDelay:150});throw e}
   async function request(method,path,body){
     const req=Readable.from(body!==undefined?[Buffer.from(JSON.stringify(body))]:[])
     req.method=method;req.url=path;req.headers={host:'localhost'}
@@ -47,7 +63,7 @@ test('升级以前保存的 2/15 分钟旧值不阻断插件激活或管理页',
   const invalid=await fx.request('POST','/api/bili-duty/config',{dmWatchMinutes:2})
   assert.notEqual(invalid.body?.config?.dmWatchMinutes,2,'Explicit user write must not bypass 5-minute floor')
   assert.equal(readFileSync(fx.file,'utf8'),before,'Rejected update must not alter old config')
- }finally{fx.close()}
+ }finally{await fx.close()}
 })
 
 test('以前保存的 1/1 分钟旧值安全提升生效值到 5/5 不污染存档',async()=>{
@@ -58,7 +74,7 @@ test('以前保存的 1/1 分钟旧值安全提升生效值到 5/5 不污染存�
   assert.equal(body.config.dmWatchMinutes,5)
   assert.equal(body.config.dmQuietMaxMinutes,5)
   assert.equal(readFileSync(fx.file,'utf8'),before)
- }finally{fx.close()}
+ }finally{await fx.close()}
 })
 
 test('已有合法设置 5/15 不被改变，主动保存合法设置成功',async()=>{
@@ -69,7 +85,7 @@ test('已有合法设置 5/15 不被改变，主动保存合法设置成功',asy
   assert.equal(body.config.dmQuietMaxMinutes,15)
   const accepted=await fx.request('POST','/api/bili-duty/config',{dmWatchMinutes:5,dmQuietMaxMinutes:20})
   assert.equal(accepted.body?.config?.dmQuietMaxMinutes,20)
- }finally{fx.close()}
+ }finally{await fx.close()}
 })
 
 test('旧 DSH 宿主设置 2/2 也能在加载时安全归一化',async()=>{
@@ -78,5 +94,5 @@ test('旧 DSH 宿主设置 2/2 也能在加载时安全归一化',async()=>{
   const {body}=await fx.request('GET','/api/bili-duty/config')
   assert.equal(body.config.dmWatchMinutes,5)
   assert.equal(body.config.dmQuietMaxMinutes,5)
- }finally{fx.close()}
+ }finally{await fx.close()}
 })
