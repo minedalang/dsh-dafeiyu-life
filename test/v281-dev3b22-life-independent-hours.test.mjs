@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {lifeSettingsV2,planLifeSettingsV2} from '../lib/life-settings-control.mjs'
 const config=()=>({masterEnabled:true,lifeAgentMode:'active',peakValley:false,autonomousPlannerEnabled:true,
-  autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:200,autonomousPlannerStartHour:9,autonomousPlannerEndHour:23,
+  autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:250,autonomousPlannerStartHour:9,autonomousPlannerEndHour:23,
   videoAgentMinIntervalMinutes:15,videoAgentReadTargetPerRound:8,videoAgentPickTargetPerRound:5,socialAutoSend:true})
 const plan=(cfg,rest={})=>planLifeSettingsV2(cfg,{schemaVersion:2,mode:'active',pace:'lively',revision:lifeSettingsV2(cfg).revision,previewOnly:true,...rest})
 test('independent hours change leaves lively pace and Video Agent unchanged',()=>{

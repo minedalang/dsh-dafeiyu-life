@@ -27,7 +27,7 @@ test('legacy timer is permanently retired on stale persisted configs and cannot 
 test('simple activation preserves unrelated hours, private data and every outbound consent',()=>{
  const c=old(),before=structuredClone(c)
  const preview=plan(c)
- assert.deepEqual(preview.patch,{lifeAgentMode:'active',peakValley:false,autonomousPlannerMinutes:30,autonomousPlannerDailyLimit:100,
+ assert.deepEqual(preview.patch,{lifeAgentMode:'active',peakValley:false,autonomousPlannerMinutes:20,autonomousPlannerDailyLimit:150,
  videoAgentMinIntervalMinutes:30,videoAgentReadTargetPerRound:5,videoAgentPickTargetPerRound:5})
  assert.deepEqual(c,before)
  const applied=plan(c,{previewOnly:false,confirm:'APPLY_LIFE_SETTINGS_V2'})

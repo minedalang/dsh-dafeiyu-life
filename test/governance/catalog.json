@@ -576,7 +576,11 @@
     "watched-merge.test.mjs"
   ],
   "registeredActive": {
-    "v282-closure-ai-visual-summary.test.mjs": {"owner":"life-video-visual-text-synthesis","kind":"security","intent":"Generate bounded visual summaries within existing image model calls; allow an extra tool-less video text-model synthesis only after verified novel Life focus; reuse existing video provider/model with no additional AI model page entry; preserve fallback, account isolation, natural decay and no raw answer archives."},
+    "v282-closure-ai-visual-summary.test.mjs": {
+      "owner": "life-video-visual-text-synthesis",
+      "kind": "security",
+      "intent": "Generate bounded visual summaries within existing image model calls; allow an extra tool-less video text-model synthesis only after verified novel Life focus; reuse existing video provider/model with no additional AI model page entry; preserve fallback, account isolation, natural decay and no raw answer archives."
+    },
     "v282-dev12-account-scope-and-grants.test.mjs": {
       "owner": "life-account-binding-and-social-permissions",
       "kind": "security",
@@ -1360,6 +1364,13 @@
       "newCheck": "assert.match(page,/也可以通过 DSH 配置 Ollama Provider/)",
       "date": "2026-11-21",
       "reason": "Current UI describes DSH Ollama Provider without the previous exact wording; preserve provider availability and local-model hardware advice contract."
+    },
+    {
+      "file": "v281-rc-life-tree-bv-and-new-user-install.test.mjs",
+      "oldCheck": "仅核对了公开视频资料",
+      "newCheck": "尚无与本轮对应的可信画面观察",
+      "date": "2026-11-21",
+      "reason": "Verified same-Episode metadata and visual receipts now merge into one diary entry; metadata-only entries explicitly explain the absence of a verified visual receipt while preserving their real source."
     }
   ]
 }

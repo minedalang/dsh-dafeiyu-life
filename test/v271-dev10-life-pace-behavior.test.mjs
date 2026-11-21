@@ -9,9 +9,9 @@ import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
 import {createLifeAgentEvents} from '../lib/life-agent-events.mjs'
 const A='a'.repeat(16),START=Date.parse('2026-11-06T08:00:00')
 const profiles={
-  quiet:{autonomousPlannerMinutes:80,autonomousPlannerDailyLimit:50,videoAgentMinIntervalMinutes:60},
-  natural:{autonomousPlannerMinutes:30,autonomousPlannerDailyLimit:100,videoAgentMinIntervalMinutes:30},
-  lively:{autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:200,videoAgentMinIntervalMinutes:15},
+  quiet:{autonomousPlannerMinutes:60,autonomousPlannerDailyLimit:80,videoAgentMinIntervalMinutes:60},
+  natural:{autonomousPlannerMinutes:20,autonomousPlannerDailyLimit:150,videoAgentMinIntervalMinutes:30},
+  lively:{autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:250,videoAgentMinIntervalMinutes:15},
   legacy:{autonomousPlannerMinutes:30,autonomousPlannerDailyLimit:20},
 }
 const cfg=pace=>({masterEnabled:true,autonomousPlannerEnabled:true,lifeAgentMode:'active',
@@ -19,7 +19,7 @@ const cfg=pace=>({masterEnabled:true,autonomousPlannerEnabled:true,lifeAgentMode
 const tmp=t=>{const dir=mkdtempSync(join(tmpdir(),'life-pace-dev10-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));return dir}
 
 test('生活档位只改变自主考虑窗口，任何档位都不能把视频工具限制为个位数',()=>{
- assert.deepEqual(['quiet','natural','lively','legacy'].map(x=>lifePacePolicy(cfg(x)).spontaneousWindowMinutes),[80,30,10,30])
+ assert.deepEqual(['quiet','natural','lively','legacy'].map(x=>lifePacePolicy(cfg(x)).spontaneousWindowMinutes),[60,20,10,30])
  assert.deepEqual(['quiet','natural','lively','legacy'].map(x=>lifePacePolicy(cfg(x)).videoStartsPerDay),[null,null,null,null])
  assert.deepEqual(['quiet','natural','lively','legacy'].map(x=>lifePacePolicy(cfg(x)).videoCooldownMinutes),[60,30,15,30])
  assert.equal(lifeVideoGate(cfg('lively'),{videoStartsToday:61,lastVideoAt:START},START+15*60_000).eligible,true)

@@ -23,11 +23,12 @@ test('6c: legacy mode and managed budgets cannot drift through generic save',()=
  assert.equal(assertLegacyLifeSettingsPatchCompatible(legacy,{autonomousPlannerMinutes:99}),true)
 })
 test('6c: new versioned settings can still explicitly change budget and never enable social permissions',()=>{
- const req={schemaVersion:2,revision:lifeSettingsV2(base).revision,mode:'active',pace:'quiet',confirm:'APPLY_LIFE_SETTINGS_V2'}
+ const req={schemaVersion:2,revision:lifeSettingsV2(base).revision,mode:'active',pace:'quiet',paceSelected:true,confirm:'APPLY_LIFE_SETTINGS_V2'}
  const plan=planLifeSettingsV2(base,req)
  assert.equal(plan.patch.lifeAgentMode,'active')
- assert.equal(plan.patch.autonomousPlannerMinutes,80)
- assert.equal(plan.after.budget.dailyLimit,50)
+ assert.equal(plan.patch.autonomousPlannerMinutes,undefined)
+ assert.equal(plan.after.budget.minutes,60)
+ assert.equal(plan.after.budget.dailyLimit,80)
  for(const k of ['socialAutoSend','dmStrangerAutonomyEnabled','masterEnabled'])assert.equal(Object.hasOwn(plan.patch,k),false)
  assert.deepEqual(lifeSettingsV2(base).legacyManagedFields,['lifeAgentMode','autonomousPlannerEnabled','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour'])
 })

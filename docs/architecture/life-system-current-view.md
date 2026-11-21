@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2-dev.46：Life 日记仅在匿名同一 Episode+同一 BV+独立可信视觉回执下合并资料核验与画面观察；时间先后按真实毫秒，不凭近似时间/标题推断；有固定原因码才解释未继续观察。2.8.3 深浅记忆/即时补看仍未实施。
 %% 2.8.2 当前增量：视觉模型同调用产出短摘要；Life 自选局部新增证据完成后，复用视频 Agent 模型以无工具文字路由整合有限笔记；无第二记忆库，不改变可衰减记忆与证据校验。
 %% 2.8.2-dev.37: FFmpeg focus windows 5-120s use decoded-frame timeline coverage (up to 12 distinct frames per window and remaining Life budget), motion as secondary; owner local redacted stage report in reports/ is NOT Life memory; action tree uses latest executed child and its own receipt.
 %% 2.8.2-dev.36: Owner-local focus diagnostic chooses only independently verified preview anchors; separate from Life willingness and memory; existing platform budgets/proof checks unchanged.
@@ -433,6 +434,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2-dev.46：Life 日记仅在匿名同一 Episode+同一 BV+独立可信视觉回执下合并资料核验与画面观察；时间先后按真实毫秒，不凭近似时间/标题推断；有固定原因码才解释未继续观察。2.8.3 深浅记忆/即时补看仍未实施。
 %% 2.8.2 当前增量：视觉模型同调用产出短摘要；Life 自选局部新增证据完成后，复用视频 Agent 模型以无工具文字路由整合有限笔记；无第二记忆库，不改变可衰减记忆与证据校验。
 %% 2.8.2-dev.37: FFmpeg focus windows 5-120s use decoded-frame timeline coverage (up to 12 distinct frames per window and remaining Life budget), motion as secondary; owner local redacted stage report in reports/ is NOT Life memory; action tree uses latest executed child and its own receipt.
 %% 2.8.2-dev.36: Owner-local focus diagnostic chooses only independently verified preview anchors; separate from Life willingness and memory; existing platform budgets/proof checks unchanged.
@@ -614,6 +616,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2-dev.46：Life 日记仅在匿名同一 Episode+同一 BV+独立可信视觉回执下合并资料核验与画面观察；时间先后按真实毫秒，不凭近似时间/标题推断；有固定原因码才解释未继续观察。2.8.3 深浅记忆/即时补看仍未实施。
 %% 2.8.2 当前增量：视觉模型同调用产出短摘要；Life 自选局部新增证据完成后，复用视频 Agent 模型以无工具文字路由整合有限笔记；无第二记忆库，不改变可衰减记忆与证据校验。
 %% 2.8.2-dev.37: FFmpeg focus windows 5-120s use decoded-frame timeline coverage (up to 12 distinct frames per window and remaining Life budget), motion as secondary; owner local redacted stage report in reports/ is NOT Life memory; action tree uses latest executed child and its own receipt.
 %% 2.8.2-dev.36: Owner-local focus diagnostic chooses only independently verified preview anchors; separate from Life willingness and memory; existing platform budgets/proof checks unchanged.
@@ -837,6 +840,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2-dev.46：Life 日记仅在匿名同一 Episode+同一 BV+独立可信视觉回执下合并资料核验与画面观察；时间先后按真实毫秒，不凭近似时间/标题推断；有固定原因码才解释未继续观察。2.8.3 深浅记忆/即时补看仍未实施。
 %% 2.8.2 当前增量：视觉模型同调用产出短摘要；Life 自选局部新增证据完成后，复用视频 Agent 模型以无工具文字路由整合有限笔记；无第二记忆库，不改变可衰减记忆与证据校验。
 %% 2.8.2-dev.37: FFmpeg focus windows 5-120s use decoded-frame timeline coverage (up to 12 distinct frames per window and remaining Life budget), motion as secondary; owner local redacted stage report in reports/ is NOT Life memory; action tree uses latest executed child and its own receipt.
 %% 2.8.2-dev.36: Owner-local focus diagnostic chooses only independently verified preview anchors; separate from Life willingness and memory; existing platform budgets/proof checks unchanged.

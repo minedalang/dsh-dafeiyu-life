@@ -18,11 +18,24 @@ test('new pace values are explicit and saved legacy presets are never silently m
     autonomousPlannerMinutes:30,autonomousPlannerDailyLimit:20,autonomousPlannerStartHour:9,autonomousPlannerEndHour:23,peakValley:false}
   assert.equal(lifeSettingsV2(config).pace,'legacy-lively')
   assert.deepEqual(settings(config,'legacy-lively',true).patch,{})
-  assert.deepEqual(settings(config,'lively',false).patch,{autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:200,videoAgentMinIntervalMinutes:15,videoAgentReadTargetPerRound:8,videoAgentPickTargetPerRound:5})
-  assert.deepEqual(settings(config,'natural').patch,{autonomousPlannerDailyLimit:100,videoAgentMinIntervalMinutes:30,videoAgentReadTargetPerRound:5,videoAgentPickTargetPerRound:5})
-  assert.deepEqual(settings(config,'quiet').patch,{autonomousPlannerMinutes:80,autonomousPlannerDailyLimit:50,videoAgentMinIntervalMinutes:60,videoAgentReadTargetPerRound:3,videoAgentPickTargetPerRound:3})
+  assert.deepEqual(settings(config,'lively',false).patch,{autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:250,videoAgentMinIntervalMinutes:15,videoAgentReadTargetPerRound:8,videoAgentPickTargetPerRound:5})
+  assert.deepEqual(settings(config,'natural').patch,{autonomousPlannerMinutes:20,autonomousPlannerDailyLimit:150,videoAgentMinIntervalMinutes:30,videoAgentReadTargetPerRound:5,videoAgentPickTargetPerRound:5})
+  assert.deepEqual(settings(config,'quiet').patch,{autonomousPlannerMinutes:60,autonomousPlannerDailyLimit:80,videoAgentMinIntervalMinutes:60,videoAgentReadTargetPerRound:3,videoAgentPickTargetPerRound:3})
   assert.throws(()=>settings(config,'legacy-quiet'),/只允许保留/)
   assert.equal(config.autonomousPlannerDailyLimit,20)
+})
+test('saved 2.8.2 presets remain unchanged until the user selects a new plan',()=>{
+ for(const [minutes,dailyLimit,oldName,newName,newValues] of [
+  [80,50,'legacy-282-quiet','quiet',[60,80]],
+  [30,100,'legacy-282-natural','natural',[20,150]],
+  [10,200,'legacy-282-lively','lively',[10,250]]]){
+  const cfg={masterEnabled:true,lifeAgentMode:'active',autonomousPlannerEnabled:true,
+   autonomousPlannerMinutes:minutes,autonomousPlannerDailyLimit:dailyLimit,peakValley:false}
+  assert.equal(lifeSettingsV2(cfg).pace,oldName)
+  assert.deepEqual(settings(cfg,oldName,false).patch,{})
+  assert.equal(settings(cfg,newName,false).patch.autonomousPlannerDailyLimit,newValues[1])
+  assert.equal(cfg.autonomousPlannerDailyLimit,dailyLimit)
+ }
 })
 function make(dir,{lifeLimit=1,mode='active',result=null,tag=TAG_A,video=false}={}){
   let current=AT,scope=tag,modelCalls=0,videoCalls=0
