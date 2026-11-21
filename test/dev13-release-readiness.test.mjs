@@ -101,7 +101,7 @@ test('默认值班提示词与正式文档不允许从任务审计档案绕过�
  assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/每日运行的 AI、自动反思与普通回忆工具不提供读取档案的 API/)
  assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/可选 AI 辅助回忆/)
  assert.match(source('docs/DEV13_DUAL_LIFE_MEMORY.md'),/Release 前必做验收/)
- assert.match(packageInfo.version,/^2\.8\.(?:1|2)(?:-[0-9A-Za-z.-]+)?$/) // SemVer 2.8.1 RC, no stale fixed suffix
+ assert.match(packageInfo.version,/^2\.8\.(?:1|2|3)(?:-[0-9A-Za-z.-]+)?$/) // 2.8.1/2.8.2 stable and 2.8.3 development versions; preserve forgetting guarantees
  assert.ok(packageInfo.files.includes('docs/release/archive/RELEASE_NOTES_v2.6.2.md'))
  assert.ok(!packageInfo.files.includes('RELEASE_NOTES_v2.5.0.md'))
 })
