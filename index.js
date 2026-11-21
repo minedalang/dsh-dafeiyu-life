@@ -112,6 +112,8 @@ import { validateOwnerRosterUpdate } from './lib/owner-identity.mjs'
 import { formatLocalLogTimestamp } from './lib/log-time.mjs'
 import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
 import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
+import {synthesizeFocusVisualMemory} from './lib/video-memory-synthesis.mjs'
+import {hasNewFocusFrameSample} from './lib/video-exploration-budget.mjs'
 import {verifyEpisodeVideoVisual} from './lib/life-episode-video-visual.mjs'
 import {runLifeChosenVideoRead,runLifePostOverviewReview,runLifePostOverviewBatchReview,lifeFocusBatchPrompt} from './lib/life-video-read-admission.mjs'
 import {buildVideoEvidenceBundle} from './lib/video-evidence-bundle.mjs'
@@ -2178,16 +2180,49 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     if(focusPlan?.status==='ready')focusReviewStatus='life-decision-required'
     else if(focusPlan)focusReviewStatus=focusPlan.reason
     }finally{stopLiveVideoObservation()}
+    // Only a verified, independently chosen Life focus may invoke the existing
+    // video TEXT model for synthesis. The model gets sanitized notes, not images,
+    // a URL, a tool, or archived/forgotten memories; failure is optional.
+    let integratedVisualNotes=[]
+    const isLifeEpisodeFocus=internal.lifeChoiceVerified===true&&
+      args.explorationPurpose==='life-episode-voluntary-focus'
+    let focusIsVerifiedAndNovel=false
+    if(!dryRun&&isLifeEpisodeFocus&&internal.lifeFocusAccountTag===initialLifeAccountTag&&
+       trustedLifeAccountTag()===initialLifeAccountTag&&cfg.masterEnabled===true){
+      const candidateVisual=parseMaybeJson(vision)
+      const focusedEvidence=buildVideoEvidenceBundle({bvid,info:parseMaybeJson(info),visual:candidateVisual})
+      const confirmed=verifyVideoFocusReview({bvid,plan:{status:'ready',
+        startSeconds:Number(args.focus_start_seconds),endSeconds:Number(args.focus_end_seconds),
+        networkBudgetBytes:Number(args.network_budget_bytes)},result:candidateVisual,evidence:focusedEvidence})
+      if(confirmed&&hasNewFocusFrameSample(confirmed.frameTimesMs,
+        Array.isArray(internal.previousVerifiedFocusWindows)?internal.previousVerifiedFocusWindows:[],
+        Number(parseMaybeJson(info)?.duration)||0)){
+        focusIsVerifiedAndNovel=true
+        if(Array.isArray(internal.lifeGlobalNotes)&&internal.lifeGlobalNotes.length>0){
+          const merged=await synthesizeFocusVisualMemory({
+            overviewNotes:internal.lifeGlobalNotes,focusDescription:confirmed.description,
+            invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'videoSummary'})})
+          if(merged.ok&&trustedLifeAccountTag()===initialLifeAccountTag&&cfg.masterEnabled===true){
+            integratedVisualNotes=merged.notes
+            log('Life 视觉记忆整合：新增局部证据核验后完成文字摘要（无工具调用）')
+          }else if(!merged.ok)log('Life 视觉记忆整合：本次未生成摘要，沿用已有可信观察笔记')
+        }else log('Life 视觉记忆整合：本轮全局笔记不足，跳过文字整合但保留已核验局部观察')
+      }
+    }
+    // A Life focus with no newly verified sample is not a new memory event.
+    // The planner's independent proof check will still explain its failure.
+    if(isLifeEpisodeFocus&&!focusIsVerifiedAndNovel)
+      log('Life 局部视觉：未取得可核验的新增采样，不登记新观看经历')
     // A successful, verifiable exploration is a B站 life experience even when
     // record_session=false. This is NOT a main-Session watch receipt.
     // No raw third-party comments, private text or model guesses are saved.
-    if(!dryRun)try{
+    if(!dryRun&&(!isLifeEpisodeFocus||focusIsVerifiedAndNovel))try{
       const normalized=x=>{if(typeof x!=='string')return x;try{return JSON.parse(x)}catch{return {text:x}}}
       const event=buildVideoExplorationEvent({bvid,info:normalized(info),
         subtitle:normalized(subtitle),comments:normalized(comments),
         danmaku:normalized(danmaku),visual:normalized(vision),
         source:args.record_session===false?'bili-life':'main-session',
-        accountTag:initialLifeAccountTag,focusReview,
+        accountTag:initialLifeAccountTag,focusReview,integratedVisualNotes,
         purpose:args.explorationPurpose||(args.record_session===false?'self-exploration':'main-session'),operationId:randomUUID(),
         autonomousSelected:internal.lifeChoiceVerified===true&&args.record_session===false})
       if(event){const synced=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(!synced)throw Error('人生记忆协调器尚未就绪');if(synced.ok===false)log('视频经历已进入待补偿队列：'+String(synced.lastError||synced.reason||'unknown').slice(0,100))}
@@ -3771,7 +3806,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   })
 
   const ensureOverlay = (dmSafe = false, modelPrefixOverride = '', videoSourceMode = 'mixed') => {
-    const file = join(stateDir, videoSourceMode === 'home' && !dmSafe ? 'headless-video-home-overlay.yml' : modelPrefixOverride === 'behaviorDecision' ? 'headless-life-decision-overlay.yml' : modelPrefixOverride === 'reflection' ? 'headless-reflection-overlay.yml' : modelPrefixOverride === 'dailyDynamic' ? 'headless-daily-dynamic-overlay.yml' : modelPrefixOverride === 'ownerDmAgent' ? 'headless-owner-dm-agent-overlay.yml' : (dmSafe ? 'headless-dm-overlay.yml' : 'headless-overlay.yml'))
+    const file = join(stateDir, videoSourceMode === 'home' && !dmSafe ? 'headless-video-home-overlay.yml' : modelPrefixOverride === 'behaviorDecision' ? 'headless-life-decision-overlay.yml' : modelPrefixOverride === 'reflection' ? 'headless-reflection-overlay.yml' : modelPrefixOverride === 'videoSummary' ? 'headless-video-summary-overlay.yml' : modelPrefixOverride === 'dailyDynamic' ? 'headless-daily-dynamic-overlay.yml' : modelPrefixOverride === 'ownerDmAgent' ? 'headless-owner-dm-agent-overlay.yml' : (dmSafe ? 'headless-dm-overlay.yml' : 'headless-overlay.yml'))
     const script = join(stateDir, 'mcp_server.py')
     if (!dmSafe && !assertSecureMcp()) return null
     if (!dmSafe && cfg.commentMemesEnabled) {
@@ -3818,7 +3853,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     //    ⇒ overlay 里补一条 agent-default-model，**优先跟随用户当前选的模型**；拿不到就不写（保持原行为）✓
     try {
       const sel = ctx.get('agentDefaultModel')?.currentSelection?.() ?? null
-      const prefix = modelPrefixOverride || (dmSafe ? 'interaction' : 'video')
+      const prefix = modelPrefixOverride === 'videoSummary'?'video':(modelPrefixOverride || (dmSafe ? 'interaction' : 'video'))
       const custom = prefix === 'dailyDynamic'
         ? {provider:cfg.dailyDynamicModelProvider||cfg.pluginDefaultModelProvider,model:cfg.dailyDynamicModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.dailyDynamicReasoningEffort}
         : prefix === 'reflection'
@@ -3949,7 +3984,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       )
     }
     try {
-      const overlayKind = videoSourceMode === 'home' && !dmSafe ? 'home' : modelPrefixOverride === 'behaviorDecision' ? 'behaviorDecision' : modelPrefixOverride === 'reflection' ? 'reflection' : modelPrefixOverride === 'dailyDynamic' ? 'dailyDynamic' : modelPrefixOverride === 'ownerDmAgent' ? 'ownerDmAgent' : (dmSafe ? 'dm' : 'main')
+      const overlayKind = videoSourceMode === 'home' && !dmSafe ? 'home' : modelPrefixOverride === 'behaviorDecision' ? 'behaviorDecision' : modelPrefixOverride === 'reflection' ? 'reflection' : modelPrefixOverride === 'videoSummary' ? 'videoSummary' : modelPrefixOverride === 'dailyDynamic' ? 'dailyDynamic' : modelPrefixOverride === 'ownerDmAgent' ? 'ownerDmAgent' : (dmSafe ? 'dm' : 'main')
       return writeSecureHeadlessOverlay(file, yml.join('\n'), { kind: overlayKind, stateDir })
     } catch (e) {
       log(`🔒 写安全 overlay 失败：${e?.message ?? e}`)
@@ -5091,22 +5126,24 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     const start=Date.now(),expectedScope=trustedLifeAccountTag(),route=options.modelRoute||'interaction',channel=lifeSocialScope.getStore()?.channel
     const trigger=channel==='dm'?'incoming-dm':channel==='comment'?'incoming-comment':'host'
     const lane=channel==='dm'||channel==='comment'||route==='ownerDmAgent'?'social':
-      route==='reflection'?'background':route==='behaviorDecision'?'continuation':'exploration'
+      route==='reflection'?'background':route==='videoSummary'?'background':route==='behaviorDecision'?'continuation':'exploration'
     try{const output=await lifeResourceScheduler.run({lane,resources:{model:1},waitMs:lane==='social'?15_000:25_000},
       ()=>invokeInteractionPromptRaw(promptText,maxChars,options))
-      modelInvocationJournal.record({scene:route,trigger,expectedScope,durationMs:Date.now()-start,
-        provider:route==='reflection'?cfg.mainSessionReflectionModelProvider||cfg.pluginDefaultModelProvider||'':
+      modelInvocationJournal.record({scene:route==='videoSummary'?'video-summary':route,trigger,expectedScope,durationMs:Date.now()-start,
+        provider:route==='videoSummary'?cfg.videoModelProvider||cfg.pluginDefaultModelProvider||'':
+          route==='reflection'?cfg.mainSessionReflectionModelProvider||cfg.pluginDefaultModelProvider||'':
           route==='dailyDynamic'?cfg.dailyDynamicModelProvider||cfg.pluginDefaultModelProvider||'':
           route==='ownerDmAgent'?cfg.ownerDmAgentModelProvider||cfg.pluginDefaultModelProvider||'':
           route==='behaviorDecision'?cfg.behaviorDecisionModelProvider||cfg.interactionModelProvider||cfg.pluginDefaultModelProvider||'':
           cfg.interactionModelProvider||cfg.pluginDefaultModelProvider||'',
-        model:route==='reflection'?cfg.mainSessionReflectionModelId||cfg.pluginDefaultModelId||'':
+        model:route==='videoSummary'?cfg.videoModelId||cfg.pluginDefaultModelId||'':
+          route==='reflection'?cfg.mainSessionReflectionModelId||cfg.pluginDefaultModelId||'':
           route==='dailyDynamic'?cfg.dailyDynamicModelId||cfg.pluginDefaultModelId||'':
           route==='ownerDmAgent'?cfg.ownerDmAgentModelId||cfg.pluginDefaultModelId||'':
           route==='behaviorDecision'?cfg.behaviorDecisionModelId||cfg.interactionModelId||cfg.pluginDefaultModelId||'':
           cfg.interactionModelId||cfg.pluginDefaultModelId||''})
       return output
-    }catch(error){modelInvocationJournal.record({scene:route,trigger,expectedScope,durationMs:Date.now()-start,error});throw error}
+    }catch(error){modelInvocationJournal.record({scene:route==='videoSummary'?'video-summary':route,trigger,expectedScope,durationMs:Date.now()-start,error});throw error}
   }
   async function invokeInteractionPromptRaw(promptText, maxChars = 450, { requireMasterEnabled = true, modelRoute = 'interaction' } = {}) {
     refreshCfg()
@@ -5115,25 +5152,27 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     if(native){
       let custom={provider:cfg.interactionModelProvider||cfg.pluginDefaultModelProvider,model:cfg.interactionModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.interactionReasoningEffort}
       if(modelRoute==='behaviorDecision')custom={provider:cfg.behaviorDecisionModelProvider||cfg.interactionModelProvider||cfg.pluginDefaultModelProvider,model:cfg.behaviorDecisionModelId||cfg.interactionModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.behaviorDecisionReasoningEffort||cfg.interactionReasoningEffort}
+      if(modelRoute==='videoSummary')custom={provider:cfg.videoModelProvider||cfg.pluginDefaultModelProvider,model:cfg.videoModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.videoReasoningEffort}
       if(modelRoute==='reflection')custom={provider:cfg.mainSessionReflectionModelProvider||cfg.pluginDefaultModelProvider,model:cfg.mainSessionReflectionModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.mainSessionReflectionReasoningEffort}
       if(modelRoute==='dailyDynamic')custom={provider:cfg.dailyDynamicModelProvider||cfg.pluginDefaultModelProvider,model:cfg.dailyDynamicModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.dailyDynamicReasoningEffort}
       if(modelRoute==='ownerDmAgent')custom={provider:cfg.ownerDmAgentModelProvider||cfg.pluginDefaultModelProvider,model:cfg.ownerDmAgentModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.ownerDmAgentReasoningEffort}
-      recordModelTask(stateDir,modelRoute)
+      recordModelTask(stateDir,modelRoute==='videoSummary'?'video':modelRoute)
       return hostText(native,promptText,custom,maxChars,120_000)
     }
     const dsh = resolveDsh()
     if (dsh.missing) throw new Error('DSH 命令不可用：' + dsh.hint)
     // 互动和人生反思使用各自的安全 headless overlay；两者都不挂载 B站 MCP、文件或 Shell 工具。
+    const summaryRoute = modelRoute === 'videoSummary'
     const reflectionRoute = modelRoute === 'reflection'
     const dynamicRoute = modelRoute === 'dailyDynamic'
     const ownerAgentRoute = modelRoute === 'ownerDmAgent'
     const behaviorRoute = modelRoute === 'behaviorDecision'
-    const modelLabel=reflectionRoute?'人生反思模型':dynamicRoute?'动态创作模型':ownerAgentRoute?'主人私信模型':behaviorRoute?'Life 行为决策模型':'互动模型'
-    const overlay = ensureOverlay(true, reflectionRoute ? 'reflection' : dynamicRoute ? 'dailyDynamic' : ownerAgentRoute ? 'ownerDmAgent' : behaviorRoute ? 'behaviorDecision' : 'interaction')
+    const modelLabel=summaryRoute?'视频证据文字整合模型':reflectionRoute?'人生反思模型':dynamicRoute?'动态创作模型':ownerAgentRoute?'主人私信模型':behaviorRoute?'Life 行为决策模型':'互动模型'
+    const overlay = ensureOverlay(true, summaryRoute ? 'videoSummary' : reflectionRoute ? 'reflection' : dynamicRoute ? 'dailyDynamic' : ownerAgentRoute ? 'ownerDmAgent' : behaviorRoute ? 'behaviorDecision' : 'interaction')
     if (!overlay) throw new Error('生成 '+modelLabel+' 安全 DSH overlay 失败')
     const args = [...dsh.args, '--profile', 'headless', '--patch', overlay, promptText]
-    assertVerifiedHeadless(args,overlay,{kind:reflectionRoute?'reflection':dynamicRoute?'dailyDynamic':ownerAgentRoute?'ownerDmAgent':behaviorRoute?'behaviorDecision':'dm',stateDir},modelRoute)
-    recordModelTask(stateDir,modelRoute)
+    assertVerifiedHeadless(args,overlay,{kind:summaryRoute?'videoSummary':reflectionRoute?'reflection':dynamicRoute?'dailyDynamic':ownerAgentRoute?'ownerDmAgent':behaviorRoute?'behaviorDecision':'dm',stateDir},modelRoute)
+    recordModelTask(stateDir,summaryRoute?'video':modelRoute)
     return new Promise((resolve, reject) => {
       const child = spawn(dsh.command, args, {
         cwd: stateDir, shell: dsh.shell, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
@@ -7603,7 +7642,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       ['independent_dsh','independent_local'].includes(resolvedVisionMode())&&
       lifeOpportunityAccountReady()&&!accountBinding.status().blocked},
     withLifeVisualObservationLease:(target,run)=>withLifeVideoVisualLease(stateDir,target,run),
-    executeLifeVideoObservation:async({bvid,viewDepth,accountTag,focusWindow,networkBudgetBytes,frameBudgetLimit})=>{
+    executeLifeVideoObservation:async({bvid,viewDepth,accountTag,focusWindow,globalVisualNotes,previousVerifiedFocusWindows,networkBudgetBytes,frameBudgetLimit})=>{
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.lifeAgentMode!=='active'||cfg.visionEnabled!==true||
          !['independent_dsh','independent_local'].includes(resolvedVisionMode())||
@@ -7616,7 +7655,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
             focus_end_seconds:focusWindow.endSeconds,network_budget_bytes:networkBudgetBytes,
             frame_budget_limit:frameBudgetLimit}:{}),
           explorationPurpose:focusWindow?'life-episode-voluntary-focus':'life-episode-voluntary-visual'},
-          {lifeChoiceVerified:true})).catch(()=>({ok:false,reason:'life-vision-resource-unavailable'}))
+          {lifeChoiceVerified:true,
+            lifeGlobalNotes:focusWindow?globalVisualNotes:undefined,
+            previousVerifiedFocusWindows:focusWindow?previousVerifiedFocusWindows:undefined,
+            lifeFocusAccountTag:accountTag})).catch(()=>({ok:false,reason:'life-vision-resource-unavailable'}))
     },
     recordLifeVideoVisual:(id,proof,tag)=>lifeOpportunities.recordVideoVisual(id,proof,tag),
     hasVerifiedLifeVideoVisual:(bvid,tag)=>lifeOpportunities.hasVerifiedVideoVisual(bvid,tag),

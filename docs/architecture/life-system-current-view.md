@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.2 当前增量：视觉模型同调用产出短摘要；Life 自选局部新增证据完成后，复用视频 Agent 模型以无工具文字路由整合有限笔记；无第二记忆库，不改变可衰减记忆与证据校验。
 %% 2.8.2-dev.37: FFmpeg focus windows 5-120s use decoded-frame timeline coverage (up to 12 distinct frames per window and remaining Life budget), motion as secondary; owner local redacted stage report in reports/ is NOT Life memory; action tree uses latest executed child and its own receipt.
 %% 2.8.2-dev.36: Owner-local focus diagnostic chooses only independently verified preview anchors; separate from Life willingness and memory; existing platform budgets/proof checks unchanged.
 %% 2.8.2-dev.28: Life may batch-select 0..N independently verified focus timestamps per decision; dynamic 5-120s windows, three-tier cumulative Episode budgets, initial global candidate pool persists across exploration; every subsequent decoded window still requires original account/host evidence gates. See lib/video-exploration-budget.mjs and lib/life-continuation.mjs.
@@ -34,6 +35,9 @@
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
+  visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
+  video -.->|可信分镜与Life自主局部新增证据| visualAiBrief
+  %% @code visualAiBrief | lib/video-memory-synthesis.mjs | export async function synthesizeFocusVisualMemory
   %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
   networkMeter["视频取帧总预算与已收字节；失败重试也计量"]
   video -.-> networkMeter
@@ -429,6 +433,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.2 当前增量：视觉模型同调用产出短摘要；Life 自选局部新增证据完成后，复用视频 Agent 模型以无工具文字路由整合有限笔记；无第二记忆库，不改变可衰减记忆与证据校验。
 %% 2.8.2-dev.37: FFmpeg focus windows 5-120s use decoded-frame timeline coverage (up to 12 distinct frames per window and remaining Life budget), motion as secondary; owner local redacted stage report in reports/ is NOT Life memory; action tree uses latest executed child and its own receipt.
 %% 2.8.2-dev.36: Owner-local focus diagnostic chooses only independently verified preview anchors; separate from Life willingness and memory; existing platform budgets/proof checks unchanged.
 %% 2.8.2-dev.28: Life may batch-select 0..N independently verified focus timestamps per decision; dynamic 5-120s windows, three-tier cumulative Episode budgets, initial global candidate pool persists across exploration; every subsequent decoded window still requires original account/host evidence gates. See lib/video-exploration-budget.mjs and lib/life-continuation.mjs.
@@ -457,6 +462,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% dev.71：继承 dev.70 动态核验恢复与可见 Life 额度；Life 授权证明消费/结算按 dev.71 账本契约执行。
 %% 生活候选细目字典：这是当前项目的真实 schema 类型/选择约束，不是泛化的 AI 心理推演。
 flowchart LR
+  visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
+  video -.->|自愿选择后才执行| visualAiBrief
+  %% @code visualAiBrief | lib/video-memory-synthesis.mjs | export async function synthesizeFocusVisualMemory
   %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
   videoRecovery["明确观看后先完整 DURL，失败按预算重试 MP4 / DASH"]
   video -.-> videoRecovery
@@ -606,6 +614,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.2 当前增量：视觉模型同调用产出短摘要；Life 自选局部新增证据完成后，复用视频 Agent 模型以无工具文字路由整合有限笔记；无第二记忆库，不改变可衰减记忆与证据校验。
 %% 2.8.2-dev.37: FFmpeg focus windows 5-120s use decoded-frame timeline coverage (up to 12 distinct frames per window and remaining Life budget), motion as secondary; owner local redacted stage report in reports/ is NOT Life memory; action tree uses latest executed child and its own receipt.
 %% 2.8.2-dev.36: Owner-local focus diagnostic chooses only independently verified preview anchors; separate from Life willingness and memory; existing platform budgets/proof checks unchanged.
 %% 2.8.2-dev.28: Life may batch-select 0..N independently verified focus timestamps per decision; dynamic 5-120s windows, three-tier cumulative Episode budgets, initial global candidate pool persists across exploration; every subsequent decoded window still requires original account/host evidence gates. See lib/video-exploration-budget.mjs and lib/life-continuation.mjs.
@@ -647,6 +656,10 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code bridge | index.js | const rememberVerifiedLifeAction
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
+  visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
+  videoReadHandoff -.->|核验后生成文字摘要| visualAiBrief
+  visualAiBrief -.->|只保存有限笔记并遵守遗忘| episode
+  %% @code visualAiBrief | lib/video-memory-synthesis.mjs | export async function synthesizeFocusVisualMemory
   %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
   videoTrafficReceipt["次数与额度只读流量展示；不冒充 Life 行为证据"]
   videoReadHandoff -.-> videoTrafficReceipt
@@ -824,6 +837,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.2 当前增量：视觉模型同调用产出短摘要；Life 自选局部新增证据完成后，复用视频 Agent 模型以无工具文字路由整合有限笔记；无第二记忆库，不改变可衰减记忆与证据校验。
 %% 2.8.2-dev.37: FFmpeg focus windows 5-120s use decoded-frame timeline coverage (up to 12 distinct frames per window and remaining Life budget), motion as secondary; owner local redacted stage report in reports/ is NOT Life memory; action tree uses latest executed child and its own receipt.
 %% 2.8.2-dev.36: Owner-local focus diagnostic chooses only independently verified preview anchors; separate from Life willingness and memory; existing platform budgets/proof checks unchanged.
 %% 2.8.2-dev.28: Life may batch-select 0..N independently verified focus timestamps per decision; dynamic 5-120s windows, three-tier cumulative Episode budgets, initial global candidate pool persists across exploration; every subsequent decoded window still requires original account/host evidence gates. See lib/video-exploration-budget.mjs and lib/life-continuation.mjs.
@@ -851,6 +865,10 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% dev.37 统一归属 + dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
 flowchart TB
+  visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
+  read -.->|可信新增局部采样才调用无工具文字模型| visualAiBrief
+  visualAiBrief -.->|账号隔离及原遗忘机制| memory
+  %% @code visualAiBrief | lib/video-memory-synthesis.mjs | export async function synthesizeFocusVisualMemory
   %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
   videoTransport["已授权视频取帧的受控流媒体恢复；不扩大 Life 意愿"]
   read -.-> videoTransport

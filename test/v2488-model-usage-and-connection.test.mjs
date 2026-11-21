@@ -132,7 +132,7 @@ test('真实连接测试可连续成功两次，未完成时仍拒绝第二次�
 
 test('视频、Life 决策、互动、反思、记忆检索等均独立记录；Python 子进程也记录',()=>{
   const server=read('index.js'),mcp=read('vendor/bilibili-mcp/mcp_server.py'),vision=read('lib/vision_dsh.py')
-  for(const expr of ["recordModelTask(stateDir,'video')","recordModelTask(stateDir,'memory')","recordModelTask(stateDir,modelRoute)"])assert.ok(server.includes(expr))
+  for(const expr of ["recordModelTask(stateDir,'video')","recordModelTask(stateDir,'memory')","recordModelTask(stateDir,summaryRoute?'video':modelRoute)"])assert.ok(server.includes(expr))
   assert.match(server,/modelRoute:'behaviorDecision'/)
   assert.match(mcp,/_record_model_launch\(home, 'memory'\)/)
   assert.match(vision,/_record_model_launch\(home, 'vision'\)/)
