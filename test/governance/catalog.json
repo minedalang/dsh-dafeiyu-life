@@ -1371,6 +1371,13 @@
       "newCheck": "尚无与本轮对应的可信画面观察",
       "date": "2026-11-21",
       "reason": "Verified same-Episode metadata and visual receipts now merge into one diary entry; metadata-only entries explicitly explain the absence of a verified visual receipt while preserving their real source."
+    },
+    {
+      "file": "v281-rc-life-tree-bv-and-new-user-install.test.mjs",
+      "oldCheck": "尚无与本轮对应的可信画面观察",
+      "newCheck": "assert.equal(m,undefined,'无法关联到可信 BV 的资料核验不显示为匿名视频记录')",
+      "date": "2026-11-21",
+      "reason": "The prior source-linked metadata-only assertion was retired because anonymous no-BV video cards are now omitted; preserve the original historical audit and keep its current replacement anchored to the active test."
     }
   ]
 }

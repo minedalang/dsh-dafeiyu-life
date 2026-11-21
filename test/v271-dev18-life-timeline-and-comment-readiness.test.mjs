@@ -20,7 +20,8 @@ test('生活时间线把同一天的全部类型按真实毫秒时间倒序，�
   watched:[{day:'2026-11-07',bvid:BV,title:'只有日期的记录',picked:true}]
  })
  assert.deepEqual(rows.map(x=>x.type),[
-  'life-reflection','comment','emotion','life-read','video-round','video-round','video'])
+  'life-reflection','comment','emotion','video-round','video-round','video'])
+ assert.equal(rows.some(x=>x.type==='life-read'),false,'缺少关联视频来源时不能制造无 BV 的核验卡片')
  assert.equal(rows.at(-1).dateOnly,true)
  const precise=rows.filter(x=>!x.dateOnly).map(x=>Date.parse(x.at))
  assert.deepEqual(precise,[...precise].sort((a,b)=>b-a))

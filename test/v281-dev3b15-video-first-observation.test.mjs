@@ -25,7 +25,7 @@ test('three B站 low-res preview screenshots preserve origin and true timeline w
  assert.equal(memory.autonomousSelected,true)
  const rows=buildLifeTimeline({explorationEvidence:[{action:'observe-video',bvid:BV,title:'耳机推荐',
   at:AT,frameCount:3,visualSource:'low-resolution-preview'}],now:AT+1000})
- assert.equal(rows.find(x=>x.type==='life-visual').detail.includes('未解码原视频'),true)
+ assert.match(rows.find(x=>x.type==='life-visual').detail,/B站低清预览采样画面/)
 })
 
 test('a frame without model analysis is not a genuine visual viewing memory',()=>{

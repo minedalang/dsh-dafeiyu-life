@@ -14,11 +14,50 @@ test('same-second metadata and verified visual receipts retain true millisecond 
   lifeDecisions:[{at:t+100,mode:'active',action:'inspect_exploration',verifiedReadKind:'video-metadata',result:'verified-metadata'}],
   explorationEvidence:[{at:t+650,action:'observe-video',bvid:BV,frameCount:12,title:'同一视频'}]})
  const actions=rows.filter(x=>['核验视频资料','观察视频画面'].includes(x.label))
- assert.deepEqual(actions.map(x=>x.label),['观察视频画面','核验视频资料'])
- assert.deepEqual(actions.map(x=>Date.parse(x.at)-t),[650,100])
+ assert.deepEqual(actions.map(x=>x.label),['观察视频画面'])
+ assert.equal(rows.some(x=>x.type==='life-read'),false,'没有同源视频回执的旧决策不得显示无 BV 卡片')
+ assert.deepEqual(actions.map(x=>Date.parse(x.at)-t),[650])
  assert.ok(actions.every(x=>!x.continuity),'同一秒不能伪造 Episode 关联')
 })
 
+test('verified BV without a stored title is labeled missing, not a fictional video title',()=>{
+ const ref='d'.repeat(16),at=t+1000
+ const rows=buildLifeTimeline({now:t+5000,days:2,
+  lifeDecisions:[{at,mode:'active',action:'inspect_opportunity',result:'verified-metadata',verifiedReadKind:'video-metadata',continuation:ref}],
+  explorationEvidence:[{at:at-200,action:'inspect-opportunity',cueRef:ref,bvid:BV,title:''}]})
+ const matched=rows.find(x=>x.type==='life-read')
+ assert.equal(matched?.bvid,BV);assert.match(matched?.title||'',/标题未记录/)
+ assert.equal(matched?.url,'https://www.bilibili.com/video/'+BV)
+ const visual=buildLifeTimeline({now:t+5000,days:2,explorationEvidence:[
+  {at:at+100,action:'observe-video',bvid:BV,title:'',frameCount:4,visualSource:'low-resolution-preview'}]})
+ assert.match(visual.find(x=>x.type==='life-visual')?.title||'',/标题未记录/)
+})
+test('verified opportunity uses the source-opaque key; other nearby video is never substituted',()=>{
+ const ref='a'.repeat(16),other='b'.repeat(16),now=t+30000;
+ const decisions=[{at:t+1000,mode:'active',action:'inspect_opportunity',result:'verified-metadata',
+  verifiedReadKind:'video-metadata',continuation:ref}]
+ const source=[{at:t+800,action:'inspect-opportunity',cueRef:other,bvid:'BV1abcde9999',title:'另一个视频'},
+  {at:t+900,action:'inspect-opportunity',cueRef:ref,bvid:BV,title:'真正核验的标题'}]
+ const matched=buildLifeTimeline({now,days:2,lifeDecisions:decisions,explorationEvidence:source}).find(x=>x.type==='life-read')
+ assert.equal(matched?.bvid,BV);assert.equal(matched?.title,'真正核验的标题')
+ const wrong=buildLifeTimeline({now,days:2,lifeDecisions:decisions,explorationEvidence:source.slice(0,1)})
+ assert.equal(wrong.find(x=>x.type==='life-read'),undefined)
+ const older=buildLifeTimeline({now,days:2,lifeDecisions:[{...decisions[0],continuation:''}],explorationEvidence:source})
+ assert.equal(older.find(x=>x.type==='life-read'),undefined,'legacy anonymous read must not attach by nearby timestamp')
+})
+test('same-episode successive metadata reads keep the latest *preceding* verified BV',()=>{
+ const ref='c'.repeat(16),other='BV1abcde1235',at=t+30000;
+ const diary=buildLifeTimeline({now:at+1000,days:2,
+  lifeDecisions:[{at,mode:'active',action:'inspect_exploration',result:'verified-metadata',verifiedReadKind:'video-metadata',continuation:ref}],
+  explorationEvidence:[{at:at-800,action:'inspect-video',episodeRef:ref,bvid:other,title:'上一条视频'},
+   {at:at-200,action:'inspect-video',episodeRef:ref,bvid:BV,title:'本次核验视频'}]})
+ assert.equal(diary.find(x=>x.type==='life-read')?.bvid,BV)
+ const ambiguous=buildLifeTimeline({now:at+1000,days:2,
+  lifeDecisions:[{at,mode:'active',action:'inspect_exploration',result:'verified-metadata',verifiedReadKind:'video-metadata',continuation:ref}],
+  explorationEvidence:[{at:at-200,action:'inspect-video',episodeRef:ref,bvid:other,title:'第一条'},
+   {at:at-200,action:'inspect-video',episodeRef:ref,bvid:BV,title:'第二条'}]})
+ assert.equal(ambiguous.find(x=>x.type==='life-read'),undefined,'same-millisecond ambiguity must not fabricate association')
+})
 test('only exact same-episode metadata and verified vision merge into one public diary event',()=>{
  const ref='e'.repeat(16),rows=buildLifeTimeline({now:t+20000,days:3,
   lifeDecisions:[{at:t+100,mode:'active',action:'inspect_exploration',result:'verified-metadata',
@@ -48,7 +87,27 @@ test('metadata-only record without a confirmed stop reason does not invent a rea
   explorationEvidence:[{at:t+80,action:'inspect-video',episodeRef:ref,bvid:BV,title:'仅核验资料'}]})
  const m=rows.find(x=>x.type==='life-read')
  assert.equal(m.label,'核验视频资料')
- assert.equal(m.detail,'未记录继续观察画面的具体原因；可查看 Life 决策诊断。')
+ assert.equal(m.detail,'这次没有保存可核实的后续画面观察原因；无法据此判断 Life 是否主动不想看。')
+})
+test('metadata and verified visual diary describes sampled imagery without speculating on audio or subtitles',()=>{
+ const ref='f'.repeat(16),rows=buildLifeTimeline({now:t+20000,days:3,
+  lifeDecisions:[{at:t+100,mode:'active',action:'inspect_exploration',result:'verified-metadata',verifiedReadKind:'video-metadata',continuation:ref}],
+  explorationEvidence:[{at:t+80,action:'inspect-video',episodeRef:ref,bvid:BV,title:'含字幕也可只读图像'},
+   {at:t+650,action:'observe-video',episodeRef:ref,bvid:BV,frameCount:24,visualSource:'low-resolution-preview',title:'含字幕也可只读图像'}]})
+ const row=rows.find(x=>x.type==='life-read')
+ assert.match(row.detail,/24 个 B站低清预览采样画面/)
+ assert.doesNotMatch(row.detail,/未听原声|没有字幕|未解码原视频/)
+})
+test('metadata-only diary renders actual voluntary and technical continuation reason without invented refusal',()=>{
+ const ref='f'.repeat(16),base={at:t+100,mode:'active',action:'inspect_exploration',result:'verified-metadata',verifiedReadKind:'video-metadata',continuation:ref}
+ const evidence=[{at:t+80,action:'inspect-video',episodeRef:ref,bvid:BV,title:'只读资料'}]
+ for(const [code,label] of [['fish-chose-prefer-text','想先阅读文字'],['fish-chose-enough-evidence','现有资料已足够'],
+   ['no-eligible-action','没有符合条件'],['continuation-not-started','未进入后续画面观察选择']]){
+  const row=buildLifeTimeline({now:t+20000,days:3,lifeDecisions:[{...base,continuationResultCode:code}],
+   explorationEvidence:evidence}).find(x=>x.type==='life-read')
+  assert.match(row.detail,new RegExp(label))
+  assert.doesNotMatch(row.detail,/未听原声|未记录继续观察/)
+ }
 })
 test('real account-scoped decision status exposes only a bounded verified-episode join key and genuine stop reason',()=>{
  const home=mkdtempSync(join(tmpdir(),'dsh-life-timeline-link-'))

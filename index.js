@@ -10287,7 +10287,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           videoRounds=ledger?.recentVideoRounds||[]
           lifeDecisions=ledger?.timeline||[]
           episodeRows=universalLifeEpisodes?.list({limit:20,includeClosed:true})||[]
-          explorationEvidence=lifeOpportunities?.timelineEvidence({days,limit:200})||[]
+          explorationEvidence=lifeOpportunities?.timelineEvidence({days,limit:300})||[]
         }}catch(e){log('Life 可信回执诊断暂不可用：'+String(e?.message||e).slice(0,80))}
         const watched=parseSeenTable()
         const rows=buildLifeTimeline({watched,videoRounds,lifeDecisions,comments,emotionHistory:emotion.history,relationshipRows:relationships,episodes:episodeRows,explorationEvidence,days,limit:160})
