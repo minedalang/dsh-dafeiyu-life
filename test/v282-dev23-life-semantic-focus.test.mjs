@@ -95,7 +95,8 @@ test('vision costs warnings are directly near switch and in user-facing README',
   const pos=ui.indexOf('id="models-vision-enabled"')
   assert.ok(pos>0)
   assert.match(ui.slice(pos-950,pos),/vision-cost-warning[\s\S]*gpt-luna-6[\s\S]*Ollama[\s\S]*DeepSeek/)
-  assert.match(readme,/视频识别费用提醒[\s\S]*Ollama[\s\S]*DeepSeek/)
+  assert.match(readme,/按需开启视频视觉[\s\S]*DSH 或 Ollama[\s\S]*不想配置视频视觉也可以使用/);
+  assert.match(readme,/采样不等于看完整段视频，模型识图也可能出错；云端模型可能产生费用/);
 })
 
 test('long videos can offer actual sampled timestamps beyond 45 minutes but never invented ones',()=>{
