@@ -86,7 +86,7 @@ test('owner choice can inspect 24 actual time anchors, never invented or mismatc
 const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
 const START="      if(req.method==='POST'&&path.endsWith('/video-perception-debug/focus')){"
 const END="      if(req.method==='POST'&&path.endsWith('/video-perception-debug/run')){"
-function focusHarness({body={jobId:'job-id',atSeconds:65,durationSeconds:15},accountChanged=false,invalidVisual=false}={}){
+function focusHarness({body={jobId:'job-id',atSeconds:65,durationSeconds:15},accountChanged=false,invalidVisual=false,offline=false}={}){
   const start=host.indexOf(START),end=host.indexOf(END,start)
   assert.ok(start>0&&end>start,'extract real owner-only route from index.js')
   const source=overview()
@@ -101,6 +101,7 @@ function focusHarness({body={jobId:'job-id',atSeconds:65,durationSeconds:15},acc
     cfg:{visionEnabled:true,visionFrames:24},refreshCfg:()=>{},
     accountBinding:{status:()=>({blocked:false})},resolvedVisionMode:()=> 'independent_local',
     videoExplorationTier,planOwnerFocusDebugWindow,verifyVideoFocusReview,diagnoseVideoFocusReceipt,
+    checkVideoDebugOllama:async()=>offline?{code:'ollama_service_offline',error:'Ollama 未启动'}:null,
     sendJson:(_res,status,payload)=>({status,payload}),res:{},
     saveVideoDebugSummary:()=>{},stateDir:'/test',
     call:async(_tool,args)=>{
@@ -155,6 +156,15 @@ test('owner route forbids fabricated time, second attempt, account mismatch and 
   assert.equal(invalid.job.ownerFocus.status,'focus-unavailable')
   assert.equal(invalid.job.ownerFocus.focusWindows.length,0)
   assert.equal((await invalid.run()).status,409)
+})
+
+test('owner focus rejects offline Ollama without creating a video read or losing the validated overview',async()=>{
+  const h=focusHarness({offline:true});const result=await h.run()
+  assert.equal(result.status,409)
+  assert.equal(result.payload.code,'ollama_service_offline')
+  assert.equal(h.reads,0)
+  assert.equal(h.job.status,'done')
+  assert.equal(h.job.ownerFocus.status,'awaiting-selection')
 })
 
 test('management UI visibly exposes two-step manual test without mixing Life choice or external writes',()=>{

@@ -479,6 +479,13 @@ def _local_check_named_thinking(model, mode):
         raise ValueError('当前模型不支持“'+mode+'”思考等级；请在管理中心选择模型支持的选项')
 
 
+class VisionServiceError(ValueError):
+    """Machine-readable, bounded local model error; never include request URLs or image contents."""
+    def __init__(self,code,message):
+        super().__init__(message)
+        self.code=code
+
+
 def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
     """Read-only fixed loopback inference; a model reply is NOT visual proof."""
     if model not in ('qwen3.5:2b','qwen3.5:4b','openbmb/minicpm-v4.7:1b'):
@@ -543,8 +550,19 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
                 raise ValueError('分镜描述引用了本张图片没有的时间点，不视为对齐')
         if len(answer)>16000:raise ValueError('单张分镜描述超过安全文本长度上限，不视为完整')
         return answer.strip()
-    except (URLError, TimeoutError):
-        raise ValueError('本地 Ollama 未运行、模型不兼容或响应超时') from None
+    except urllib.error.HTTPError as exc:
+        # HTTP 404 means the daemon answered, but this model is unavailable;
+        # never label an HTTP reply as an offline daemon.
+        code='ollama_model_missing' if exc.code==404 else 'ollama_http_error'
+        raise VisionServiceError(code, '本地 Ollama 未安装所选视觉模型' if exc.code==404 else f'本地 Ollama 返回 HTTP {exc.code}，图片识别未完成') from None
+    except (URLError, TimeoutError) as exc:
+        reason=getattr(exc,'reason',exc)
+        if isinstance(exc,TimeoutError) or isinstance(reason,TimeoutError):
+            raise VisionServiceError('ollama_request_timeout','本地 Ollama 图片识别请求超时') from None
+        import errno
+        if isinstance(reason,ConnectionRefusedError) or getattr(reason,'errno',None) in (errno.ECONNREFUSED,10061):
+            raise VisionServiceError('ollama_service_offline','本地 Ollama 未启动或未监听 127.0.0.1:11434，请先启动服务') from None
+        raise VisionServiceError('ollama_connection_failed','无法连接本地 Ollama 服务，请检查服务状态及本机网络') from None
 
 
 def _analyze_local_storyboards(frames,model):
@@ -576,6 +594,7 @@ def _analyze_local_storyboards(frames,model):
             receipt.update(status='analyzed',description=description)
         except Exception as exc:
             receipt['error']=str(exc)[:130] if isinstance(exc, ValueError) else '本张分镜模型调用异常'
+            if isinstance(exc,VisionServiceError):receipt['errorCode']=exc.code
         reports.append(receipt)
     completed=[r for r in reports if r['status']=='analyzed']
     text='\n\n'.join(f'分镜图{r["index"]}（模型生成；时间与画面语义未经逐帧核实）：\n{r["description"]}' for r in completed)
@@ -833,7 +852,9 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
             try:
                 description=_call_local_ollama(frames,model)
             except Exception as e:
-                answer.update(status='vision_unavailable',error=str(e)[:240]);return answer
+                answer.update(status='vision_unavailable',error=str(e)[:240])
+                if isinstance(e,VisionServiceError):answer['errorCode']=e.code
+                return answer
         answer.update(status='analyzed',description=description,model=model)
         cache.parent.mkdir(parents=True,exist_ok=True)
         temp=cache.with_suffix('.tmp')
@@ -1058,8 +1079,9 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
         temp=cache.with_suffix('.tmp')
         temp.write_text(json.dumps(record,ensure_ascii=False),encoding='utf8')
         os.replace(temp,cache)
-    except Exception:
+    except Exception as exc:
         result.update(status='vision_unavailable',error='自适应画面已解码，但本地模型未完成分析')
+        if isinstance(exc,VisionServiceError):result['errorCode']=exc.code
     return result
 
 

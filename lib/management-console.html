@@ -2599,6 +2599,8 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <p class="muted" id="video-debug-source-explain">单阶段模式只验收一次识图；选择「完整两阶段」会让 Life 决定是否深入；选择「主人局部识图专项」则在全局采样成功后由你选时刻直接技术验收，再自主选0～多个已核验时间锚点（受三档累计预算保护）。若 Life 拒绝或预算不足，局部视觉读取不会发生。主人测试不写 Life 观看经历、不会外发评论。</p>
 <button id="video-debug-refresh" type="button" class="life-action life-sky">刷新当前结果</button>
 </div>
+<p id="video-debug-service-status" class="setting-note" role="status" aria-live="polite">正在检查视频识图所需服务…</p>
+<button id="video-debug-open-vision-model" type="button" data-open-tab="models" data-open-anchor="models-vision-settings" class="life-action life-sky" hidden>前往视觉模型管理，启动 Ollama ↗</button>
 <progress id="video-debug-progressbar" max="6" style="width:100%;height:15px;display:none" aria-label="视频感知只读验收进行中"></progress>
 <p id="video-debug-progress" class="muted" role="status" aria-live="polite">尚未执行。新版本启用后请确认模型与 FFmpeg / Whisper 状态。</p>
 <div id="video-debug-summary" class="video-debug-summary" aria-live="polite"></div>

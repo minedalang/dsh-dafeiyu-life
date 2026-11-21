@@ -121,6 +121,7 @@ import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusRe
 import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from './lib/video-owner-focus-debug.mjs'
 import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
 import {ensureOllamaService} from './lib/ollama-service.mjs'
+import {explainVideoVisionFailure} from './lib/video-visual-failure.mjs'
 import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
 import {listWhisperModels,deleteWhisperModel} from './lib/whisper-model-cache.mjs'
 import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-continuity.mjs'
@@ -8660,11 +8661,22 @@ logger:{warn:m=>log('社交意图：'+m)}
         const last=lastLifeVideoDebug&&lastLifeVideoDebug.account===account&&now-lastLifeVideoDebug.at<videoDebugExpiry?lastLifeVideoDebug:null
         return sendJson(res,200,{ok:true,job:current&&{id:current.id,status:current.status,stage:current.stage,step:current.step,updatedAt:current.updatedAt,at:current.at,
           sourceMode:current.sourceMode,viewDepth:current.viewDepth,
+          ...(current.visionFailure?{visionFailure:current.visionFailure}:{}),
           ...(current.ownerFocus?{ownerFocus:current.ownerFocus}:{}),
           ...(current.status==='done'&&current.twoStage?{twoStage:current.twoStage}:{}),
           ...(current.status==='done'?{lifeInput:current.payload,images:current.images||[],visionOutcome:current.visionOutcome||'no_model_answer'}:{}),...(current.status==='error'?{error:current.error}:{})},
           lastLife:last&&{at:last.at,lifeInput:last.payload,images:last.images||[]},
-          lastSummary:previous,retention:'volatile-30m',source:'actual-bili-watch-video-return'})
+          lastSummary:previous,visionRoute:{mode:resolvedVisionMode(),enabled:cfg.visionEnabled===true},
+          retention:'volatile-30m',source:'actual-bili-watch-video-return'})
+      }
+      const checkVideoDebugOllama=async()=>{
+        if(cfg.visionEnabled!==true||resolvedVisionMode()!=='independent_local')return null
+        const service=await localVisionModels.list()
+        if(!service.running)return {code:'ollama_service_offline',error:'本地 Ollama 服务未启动。请先在「视觉模型管理」中恢复 Ollama，再开始视频感知验收。'}
+        const selected=getLocalVisionModel(cfg.visionLocalModel)
+        if(!selected||!service.models?.some(x=>x.id===selected.id&&x.installed))
+          return {code:'ollama_model_missing',error:'Ollama 已运行，但所选视觉模型未安装。请先在「视觉模型管理」中安装并测试。'}
+        return null
       }
       if(req.method==='POST'&&path.endsWith('/video-perception-debug/focus')){
         if(videoDebugWorkInFlight)return sendJson(res,409,{ok:false,error:'上一轮视频处理尚未完成，请勿重复启动'})
@@ -8686,6 +8698,8 @@ logger:{warn:m=>log('社交意图：'+m)}
           atSeconds:body?.atSeconds,durationSeconds:body?.durationSeconds,tier,globalNetworkBytes:usedBytes})
         if(!planResult.ok)return sendJson(res,400,{ok:false,error:'局部验收目标未通过校验：'+planResult.reason})
         const {plan,frameBudgetLimit,networkBudgetBytes}=planResult
+        const unavailable=await checkVideoDebugOllama()
+        if(unavailable)return sendJson(res,409,{ok:false,...unavailable})
         videoDebugWorkInFlight=true
         job.status='running';job.step=5;job.stage='主人专项：正在解码原视频选中窗口并独立识图';job.updatedAt=Date.now()
         job.ownerFocus={...job.ownerFocus,status:'running',
@@ -8760,6 +8774,11 @@ logger:{warn:m=>log('社交意图：'+m)}
         const requestedMode=body?.sourceMode==='life-two-stage'?'life-two-stage':body?.sourceMode==='owner-focus'?'owner-focus':body?.sourceMode==='adaptive'?'adaptive':'preview'
         const debugPerceptionSource=requestedMode==='adaptive'?'adaptive':'preview'
         if(['life-two-stage','owner-focus'].includes(requestedMode)&&depth==='skim')return sendJson(res,400,{ok:false,error:'两阶段验收必须先进行正常全局识图，不能选择略看'})
+        refreshCfg()
+        if(depth!=='skim'||['life-two-stage','owner-focus'].includes(requestedMode)){
+          const unavailable=await checkVideoDebugOllama()
+          if(unavailable)return sendJson(res,409,{ok:false,...unavailable})
+        }
         const job={id:randomUUID(),at:now,account,status:'running',stage:'已受理，只读任务开始',step:0,updatedAt:now,
           sourceMode:requestedMode,viewDepth:['life-two-stage','owner-focus'].includes(requestedMode)?'standard':depth,
           lifeAccountTag:trustedLifeAccountTag()}
@@ -8801,12 +8820,14 @@ logger:{warn:m=>log('社交意图：'+m)}
             job.stage=job.status==='done'?'完成，只读 Life 输入已生成':'只读感知失败'
             if(job.status==='done'){
               job.payload=result
+              job.visionFailure=explainVideoVisionFailure(result?.visual)
               job.visionOutcome=result?.visual?.status==='analyzed'&&Boolean(String(result?.perceptionHandoff?.video?.modelDescription||'').trim())?'model_answer_returned':'no_model_answer'
               job.stage=job.visionOutcome==='model_answer_returned'?'只读资料已整理且视觉模型返回了实际回答':'只读资料已整理，但尚无可信视觉模型回答'
               if(requestedMode==='life-two-stage')job.stage='两阶段验收：'+String(job.twoStage?.status||'未取得 Life 第二次选择')
               if(requestedMode==='owner-focus')job.stage=job.ownerFocus?.status==='awaiting-selection'
                 ?'全局分镜已验证；请在下面选择一个真实采样时刻，再开始局部识图'
-                :'全局分镜未通过证据验证，无法进入主人局部专项'
+                :job.visionFailure?.message||'全局分镜未通过证据验证，无法进入主人局部专项'
+              else if(job.visionFailure)job.stage=job.visionFailure.message
             }else job.error=String(result?.error||result?.visual?.error||'视频感知未完成').slice(0,240)
           }
           job.updatedAt=Date.now();saveVideoDebugSummary(stateDir,job,account)

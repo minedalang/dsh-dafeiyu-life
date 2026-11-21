@@ -770,6 +770,11 @@
       "owner": "public-release-documentation-and-owner-diagnostics",
       "kind": "contract",
       "intent": "User-facing 2.8.2 highlights, concise README, honest SVG future-platform preview and accurately enumerated ASR inference devices."
+    },
+    "v282-dev43-ollama-debug-readiness.test.mjs": {
+      "owner": "local-vision-availability-and-owner-video-debug",
+      "kind": "behavior",
+      "intent": "Before local owner video-read, reject offline/missing Ollama models; label model runtime failure separately from Life evidence verification."
     }
   },
   "protected": [
@@ -985,6 +990,11 @@
       "owner": "local-whisper-asr-device-selection",
       "kind": "behavior",
       "intent": "Prefer CUDA float16 only on real compatible CTranslate2 devices; safely fallback CPU int8 on CUDA load/lazy inference errors; cache hits do not claim fresh GPU inference."
+    },
+    "test_v282_dev43_ollama_errors.py": {
+      "owner": "python-preview-vision-local-ollama",
+      "kind": "contract",
+      "intent": "Distinguish Ollama refused/HTTP 404/timeout/unreachable in true model request and preserve bounded board receipt codes."
     }
   },
   "pythonProtected": [
