@@ -79,7 +79,7 @@ test('bare official Ollama digest normalizes for human approval and survives a f
    assert.equal((await m.review('minicpm-v4.7-1b',{reviewId:probe.reviewId,accepted:true})).verified,true)
    assert.match(readFileSync(join(dir,'local-vision-approvals.json'),'utf8'),/sha256:c{64}/)
    m=createLocalVisionModelManager({stateDir:dir,fetchImpl})
-   assert.equal((await m.list()).models[1].verified,true)
+   assert.equal((await m.list()).models.find(x=>x.id==='minicpm-v4.7-1b').verified,true)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
@@ -91,6 +91,6 @@ test('quick setup reflects real readiness and debug has an honest indeterminate 
  assert.match(js,/input\.disabled=ready/)
  assert.match(js,/实际 FFmpeg 合成视频帧解码自测通过/)
  const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- assert.match(server,/network_budget_bytes:focusPlan\.networkBudgetBytes/)
+ assert.match(server,/focusReviewSuggestion/); assert.match(server,/life-decision-required/)
  assert.match(server,/speechAttempt/)
 })

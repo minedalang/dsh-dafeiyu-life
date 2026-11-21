@@ -64,13 +64,15 @@ test('模型测试的安全 overlay 禁止全部文件、Shell、B站和其他 M
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('页面每个模型都有调用统计和独立测试按钮，测试请求不记入正常任务次数',()=>{
+test('页面每个当前模型都有调用统计和独立测试按钮，旧路由统计仅作历史兼容',()=>{
   const html=read('lib/management-console.html'),ui=read('lib/management-console.js'),server=read('index.js')
-  for(const t of MODEL_TASKS){
+  for(const t of MODEL_TASKS.filter(t=>t!=='ownerDmAgent')){
     assert.match(html,new RegExp('id="models-'+t+'-usage"'))
     assert.match(html,new RegExp('id="models-'+t+'-test"'))
     assert.match(html,new RegExp('id="models-'+t+'-test-result"'))
   }
+  assert.doesNotMatch(html,/id="models-ownerDmAgent-test"/)
+  assert.match(server,/task==='ownerDmAgent'\) throw Error\('该独立模型路由已退役/)
   assert.match(ui,/await request\('\/model-usage'\)/)
   assert.match(ui,/await request\('\/model-test',\{task\}\)/)
   assert.match(server,/path === '\/api\/bili-duty\/model-test'/)
@@ -82,7 +84,7 @@ test('页面每个模型都有调用统计和独立测试按钮，测试请求�
   assert.match(testing,/assertVerifiedHeadless\(args,overlay,\{kind:'model-test',stateDir\},task\)/)
   assert.match(testing,/DAFEIYU_MODEL_TEST_OK/)
   assert.match(html,/连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收/)
-  assert.match(html,/测试连接不计入统计/)
+  assert.match(html,/连接测试可能产生费用，不计入统计/)
 })
 
 test('同一模型两次顺序连接测试不设隐藏冷却，仍拒绝并行测试',()=>{
@@ -130,7 +132,7 @@ test('真实连接测试可连续成功两次，未完成时仍拒绝第二次�
 
 test('视频、Life 决策、互动、反思、记忆检索等均独立记录；Python 子进程也记录',()=>{
   const server=read('index.js'),mcp=read('vendor/bilibili-mcp/mcp_server.py'),vision=read('lib/vision_dsh.py')
-  for(const expr of ["recordModelTask(stateDir,'video')","recordModelTask(stateDir,'memory')","recordModelTask(stateDir,modelRoute)"])assert.ok(server.includes(expr))
+  for(const expr of ["recordModelTask(stateDir,'video')","recordModelTask(stateDir,'memory')","recordModelTask(stateDir,summaryRoute?'video':modelRoute)"])assert.ok(server.includes(expr))
   assert.match(server,/modelRoute:'behaviorDecision'/)
   assert.match(mcp,/_record_model_launch\(home, 'memory'\)/)
   assert.match(vision,/_record_model_launch\(home, 'vision'\)/)

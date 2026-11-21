@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="road-title road-desc">
+<title id="road-title">鱼鱼走出聊天窗口的未来计划</title><desc id="road-desc">当前为公开预告，之后希望依次开放连接、更多形态和3D世界，均无承诺日期。</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F4F6FF"/><stop offset="1" stop-color="#F1FCF8"/></linearGradient>
+<linearGradient id="line" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#7991EA"/><stop offset="1" stop-color="#66C7AB"/></linearGradient>
+<filter id="shadow" x="-20%" y="-30%" width="140%" height="170%"><feDropShadow dy="7" stdDeviation="10" flood-color="#445B77" flood-opacity=".12"/></filter>
+</defs>
+<rect width="1200" height="520" rx="30" fill="url(#bg)"/>
+<text x="64" y="85" fill="#2D4662" font-size="39" font-weight="700" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif'>从一个预告，慢慢走向更多陪伴</text>
+<text x="64" y="123" fill="#657C8D" font-size="19" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif'>未来的每一步，都在保留同一个鱼鱼</text>
+<path d="M140 277 H1060" stroke="#D6E0EE" stroke-width="14" stroke-linecap="round"/>
+<path d="M140 277 H390" stroke="url(#line)" stroke-width="14" stroke-linecap="round"/>
+<path d="M391 277 H1060" stroke="#90B6C8" stroke-width="5" stroke-dasharray="7 15" stroke-linecap="round"/>
+<g filter="url(#shadow)" fill="#fff"><rect x="56" y="320" width="246" height="137" rx="26"/><rect x="337" y="145" width="246" height="115" rx="26"/><rect x="618" y="320" width="246" height="137" rx="26"/><rect x="899" y="145" width="246" height="115" rx="26"/></g>
+<g font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif' text-anchor="middle">
+<circle cx="179" cy="277" r="24" fill="#7086E6"/><circle cx="179" cy="277" r="8" fill="#fff"/><text x="179" y="366" font-size="25" font-weight="700" fill="#344E6B">现在</text><text x="179" y="398" font-size="21" fill="#526B84">展示未来方向</text><text x="179" y="430" font-size="16" fill="#8A98A8">预告页已开放</text>
+<circle cx="460" cy="277" r="24" fill="#B0C4D9"/><circle cx="460" cy="277" r="8" fill="#fff"/><text x="460" y="192" font-size="25" font-weight="700" fill="#344E6B">接下来</text><text x="460" y="225" font-size="20" fill="#526B84">让桌宠连接 Life</text>
+<circle cx="741" cy="277" r="24" fill="#B0D9D2"/><circle cx="741" cy="277" r="8" fill="#fff"/><text x="741" y="366" font-size="25" font-weight="700" fill="#344E6B">再往后</text><text x="741" y="398" font-size="20" fill="#526B84">更多陪伴形态</text><text x="741" y="430" font-size="16" fill="#8A98A8">官方与社区一起创造</text>
+<circle cx="1022" cy="277" r="24" fill="#B0D9D2"/><circle cx="1022" cy="277" r="8" fill="#fff"/><text x="1022" y="192" font-size="25" font-weight="700" fill="#344E6B">更远的未来</text><text x="1022" y="225" font-size="20" fill="#526B84">鱼鱼的 3D 世界</text>
+</g>
+<text x="600" y="488" text-anchor="middle" fill="#73889B" font-size="17" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif'>2.9.0 之后逐步探索 · 不承诺具体时间，未来功能目前均未开放接入</text>
+</svg>

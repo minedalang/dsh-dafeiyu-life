@@ -42,6 +42,22 @@ test('archiving must contain evidence, replacement coverage, and no security mig
  assert.match(validateCatalog(root).errors.join('\n'),/Cannot archive protected test/);
 }));
 
+test('retired assertion history allows only a chain ending in a present assertion',()=>fixture((root,c)=>{
+ const first={file:'feature.test.mjs',oldCheck:'// obsolete invariant',newCheck:'// previous verified contract',reason:'The first check was rewritten to preserve behavior.',date:'2026-11-01'};
+ const next={file:'feature.test.mjs',oldCheck:first.newCheck,newCheck:'// current verified contract',reason:'The second check replaces the first while retaining safety coverage.',date:'2026-11-19'};
+ c.retiredAssertions=[first,next];
+ writeFileSync(join(root,'test/feature.test.mjs'),'// current verified contract\n');
+ writeFileSync(join(root,catalogPath),JSON.stringify(c));
+ assert.equal(validateCatalog(root).ok,true);
+ c.retiredAssertions=[first];
+ writeFileSync(join(root,catalogPath),JSON.stringify(c));
+ assert.match(validateCatalog(root).errors.join(' '),/Retired assertion replacement missing/);
+ c.retiredAssertions=[first,next];
+ writeFileSync(join(root,'test/feature.test.mjs'),'// unrelated statement\n');
+ writeFileSync(join(root,catalogPath),JSON.stringify(c));
+ assert.match(validateCatalog(root).errors.join(' '),/Retired assertion replacement missing/);
+}));
+
 test('impact report detects changed implementation references without requiring a commit',()=>fixture((root)=>{
  const report=impactedTests(root,['lib/action.mjs','docs/release/notes.md']);
  assert.deepEqual(report.changed,['lib/action.mjs']);

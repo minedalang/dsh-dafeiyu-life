@@ -28,5 +28,5 @@ test('不自动保存公开发送权限；只在确认成功提交时清除待�
  assert.match(js,/confirmedDiscardNavigation=true/)
  assert.match(js,/if\(tab!==active&&\[\.\.\.settingDrafts\.values\(\)\]/)
  assert.match(js,/mobileViewOnly\|\|!field\?\.matches/)
- assert.match(js,/field\.closest\('dialog,\.settings-finder,\.headless-sync-board'\)/)
+ assert.match(js,/field\.closest\('dialog,\.settings-finder,\.headless-sync-board,#panel-diagnostics'\)/)
 })

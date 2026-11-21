@@ -112,9 +112,16 @@ _LIFE_VIDEO_WRITES = frozenset((
     'bili_video_like', 'bili_video_collect', 'bili_follow_creator',
     'bili_unfollow_creator', 'bili_favorite_folder_delete', 'bili_reply'))
 
+# The video Agent exposes a *single* optional watch action. These three tools
+# remain callable only by the trusted composite (and independently by other
+# non-video-Agent sessions). A tool name present in the MCP allowlist does not
+# make it model-visible in this explicitly staged headless process.
+_VIDEO_PICK_INTERNAL_TOOLS = frozenset(('bili_subtitle', 'bili_transcribe_safe', 'bili_preview_vision'))
+_VIDEO_PICK_POST_SELECTION_READS = frozenset(('bili_comments', 'bili_comment_thread', 'bili_discussion_note'))
+
 _VIDEO_FUNNEL_TOOLS = frozenset((
     'bili_search', 'bili_home_recommendations', 'bili_video_info',
-    'bili_subtitle', 'bili_comments', 'bili_transcribe_safe', 'bili_ledger_mark'))
+    'bili_subtitle', 'bili_comments', 'bili_comment_thread', 'bili_discussion_note', 'bili_transcribe_safe', 'bili_preview_vision', 'bili_watch_video', 'bili_ledger_mark'))
 
 
 def _observe_video_tool(name, args, result, failed=False):
@@ -135,6 +142,8 @@ def _observe_video_tool(name, args, result, failed=False):
         if directory.is_symlink(): return
         path = directory / (round_id + '.jsonl')
         if path.is_symlink() or (path.exists() and path.stat().st_size > 90_000): return
+        if isinstance(getattr(result, 'content', None), list):
+            result = next((item.text for item in result.content if isinstance(getattr(item, 'text', None), str)), '{}')
         try: data = json.loads(result) if isinstance(result, str) else result
         except (TypeError, ValueError): data = {}
         if not isinstance(data, dict): data = {}
@@ -167,6 +176,27 @@ def _observe_video_tool(name, args, result, failed=False):
             row['content'] = bool(not failed and len(text_result.strip()) >= 35 and
                                   not text_result.startswith(('转写失败', '本地转写失败',
                                       '本轮未授权', '本地转写依赖未安装', '转写路径不安全')))
+        elif name == 'bili_watch_video':
+            speech = data.get('speech') if isinstance(data.get('speech'), dict) else {}
+            visual = data.get('visual') if isinstance(data.get('visual'), dict) else {}
+            row['speech'] = bool(speech.get('ok') is True)
+            row['subtitle'] = row['speech'] and speech.get('source') == 'official-subtitles'
+            row['visualAttempted'] = visual.get('attempted') is True
+            row['visual'] = visual.get('ok') is True
+            row['ok'] = bool(row['speech'] or row['visual'])
+        elif name == 'bili_preview_vision':
+            # Headless vision can happen before OR after selecting a video,
+            # after discussion reads, or later in the same exploration round.
+            # A model/tool status alone is not visual evidence: require the
+            # exact BV, bounded sample times and a real visual description.
+            times = data.get('times')
+            source = str(data.get('image_source') or '')
+            row['visual'] = bool(ok and data.get('ok') is True and data.get('bvid') == bv and
+                data.get('status') in ('analyzed', 'cached') and
+                source in ('B站低清预览', 'B站公开视频片段（离线解码）') and
+                isinstance(times, list) and 1 <= len(times) <= 48 and
+                all(type(t) in (int, float) and 0 <= t <= 86400 for t in times) and
+                len(str(data.get('description') or '').strip()) >= 8)
         elif name == 'bili_ledger_mark':
             status = str(args.get('status') or '')
             row['status'] = 'picked' if status == '挑中' else 'skipped' if '跳过' in status else 'other'
@@ -284,6 +314,11 @@ def tool():
     def deco(fn):
         if _ALLOWED and fn.__name__ not in _ALLOWED:
             return fn
+        if (os.environ.get('BILI_DUTY_VIDEO_PICK_FLOW') == '1' and
+            fn.__name__ in _VIDEO_PICK_INTERNAL_TOOLS):
+            # HIDE individual subtitle/ASR/vision tools from the video model.
+            # The combined watch tool executes their existing gated functions.
+            return fn
         if fn.__name__ not in _LIFE_VIDEO_WRITES:
             if fn.__name__ not in _VIDEO_FUNNEL_TOOLS:
                 return mcp.tool()(fn)
@@ -295,6 +330,13 @@ def tool():
                     bound.apply_defaults()
                     values = bound.arguments
                 except Exception: pass
+                if (os.environ.get('BILI_DUTY_VIDEO_PICK_FLOW') == '1' and
+                    fn.__name__ in _VIDEO_PICK_POST_SELECTION_READS and
+                    not _selected_in_current_video_round(str(values.get('bvid') or ''))):
+                    response = json.dumps({'ok': False, 'blocked': True,
+                        'reason': 'video-not-selected-in-current-round'}, ensure_ascii=False)
+                    _observe_video_tool(fn.__name__, values, response)
+                    return response
                 try:
                     response = await fn(*args, **kwargs)
                 except Exception:
@@ -1265,6 +1307,94 @@ async def bili_subtitle(bvid: str, auto_vision_on_missing: bool = False) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
+# One Life/video-agent choice, two independent bounded observations. Only the
+# headless video exploration model sees this action; separate raw reads remain
+# available to owner/other authorized contexts without changing their gates.
+@tool()
+async def bili_watch_video(bvid: str, view_depth: str = 'standard') -> str:
+    """选中视频后自主观看：一次动作并行尝试采样画面与字幕，缺字幕再按配置尝试本地 ASR。
+
+    Returns separate visual and speech evidence, never a full-playback claim.
+    """
+    if (e := _guard('bili_watch_video')): return e
+    if os.environ.get('BILI_DUTY_VIDEO_PICK_FLOW') != '1':
+        return json.dumps({'ok': False, 'blocked': True, 'reason': 'video-watch-agent-only'}, ensure_ascii=False)
+    try:
+        bv = _valid_bv(bvid)
+    except ValueError:
+        return json.dumps({'ok': False, 'blocked': True, 'reason': 'invalid-bvid'}, ensure_ascii=False)
+    if view_depth not in ('standard', 'deep'):
+        return json.dumps({'ok': False, 'blocked': True, 'reason': 'invalid-view-depth'}, ensure_ascii=False)
+    if not _selected_in_current_video_round(bv):
+        return json.dumps({'ok': False, 'blocked': True,
+                           'reason': 'video-not-selected-in-current-round', 'bvid': bv}, ensure_ascii=False)
+
+    async def read_speech():
+        try:
+            raw = await bili_subtitle(bv, auto_vision_on_missing=False)
+            subtitle = json.loads(raw) if isinstance(raw, str) else {}
+            if (isinstance(subtitle, dict) and subtitle.get('bvid') == bv and
+                subtitle.get('subtitle_evidence') == 'caption_text' and
+                isinstance(subtitle.get('text'), str) and subtitle['text'].strip()):
+                return {'ok': True, 'source': 'official-subtitles',
+                        'text': subtitle['text'][:12000],
+                        'timed_segments': subtitle.get('timed_segments', [])[:160]}
+        except Exception:
+            pass
+        if os.environ.get('BILI_ASR_ENABLED') == '1':
+            try:
+                raw = await bili_transcribe_safe(bv)
+                asr = json.loads(raw) if isinstance(raw, str) else raw
+                if (isinstance(asr, dict) and asr.get('bvid') == bv and
+                    asr.get('source') == 'local-asr' and
+                    asr.get('asr_evidence') == 'faster-whisper-machine-transcript' and
+                    isinstance(asr.get('text'), str) and asr['text'].strip()):
+                    return {'ok': True, 'source': 'local-asr', 'text': asr['text'][:12000],
+                            'timed_segments': asr.get('timed_segments', [])[:160]}
+                return {'ok': False, 'source': 'none', 'reason': 'asr-no-verified-text'}
+            except Exception:
+                return {'ok': False, 'source': 'none', 'reason': 'asr-tool-failed'}
+        return {'ok': False, 'source': 'none',
+                'reason': 'subtitles-unavailable-asr-disabled'}
+
+    async def read_visual():
+        if os.environ.get('BILI_VISION_ENABLED') != '1':
+            return {'ok': False, 'attempted': False, 'reason': 'vision-disabled'}, []
+        try:
+            raw = await bili_preview_vision(bv, perception_source='adaptive', view_depth=view_depth)
+            images = []
+            if isinstance(raw, CallToolResult):
+                images = [item for item in raw.content if isinstance(item, ImageContent)][:12]
+                text_items = [item.text for item in raw.content if isinstance(item, TextContent)]
+                raw = next((x for x in text_items if x.lstrip().startswith('{')), '{}')
+            data = json.loads(raw) if isinstance(raw, str) else raw
+            if not isinstance(data, dict): data = {}
+            times = data.get('times')
+            verified = (data.get('ok') is True and data.get('bvid') == bv and
+                data.get('status') in ('analyzed', 'cached') and
+                data.get('image_source') in ('B站低清预览', 'B站公开视频片段（离线解码）') and
+                isinstance(times, list) and 1 <= len(times) <= 48 and
+                all(type(t) in (int, float) and 0 <= t <= 86400 for t in times) and
+                len(str(data.get('description') or '').strip()) >= 8)
+            if verified:
+                return {'ok': True, 'attempted': True, 'source': data['image_source'],
+                        'times': times, 'description': data['description'][:12000]}, []
+            return {'ok': False, 'attempted': True,
+                    'reason': str(data.get('status') or 'no-verified-visual-description')[:70],
+                    'sampleImagesAvailable': bool(images)}, images
+        except Exception:
+            return {'ok': False, 'attempted': True, 'reason': 'vision-tool-failed'}, []
+
+    (speech, (visual, images)) = await asyncio.gather(read_speech(), read_visual())
+    summary = {'ok': speech['ok'] is True or visual['ok'] is True,
+               'bvid': bv, 'speech': speech, 'visual': visual,
+               'can_claim_full_video_watched': False, 'can_claim_audio_listened': False}
+    text = TextContent(type='text', text=json.dumps(summary, ensure_ascii=False))
+    # For reuse-video-model mode, actual image blocks (if any) are passed to
+    # this very same tool response; frames alone are NOT marked as analyzed.
+    return CallToolResult(content=[text, *images]) if images else text.text
+
+
 # ========== Tool 4: 获取弹幕 ==========
 
 @tool()
@@ -1372,7 +1502,7 @@ async def bili_vision_selftest():
 # 每轮 headless 创建独立 MCP 进程；同一个 BV 重试不扩张上限。
 # 这道上限是实际后端闸，不只依赖 AI 遵守提示词。手动预览测试走单独的受限脚本。
 _VISION_BVS_PER_RUN = set()
-def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None):
+def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None, frame_budget_limit=None):
     """Reserve only frame acquisition, NEVER the outer/child DSH vision call.
 
     The independent visual DSH subprocess may itself call bili_preview_vision.
@@ -1381,7 +1511,7 @@ def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perce
     from preview_vision import analyze_perception
     with shared_read_budget(_DUTY_HOME,'bili_preview_frames') as receipt:
         with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
-            result=analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source,view_depth=view_depth,network_budget_bytes=network_budget_bytes)
+            result=analyze_perception(bvid, _DUTY_HOME, enabled=False, return_frames=True,focus_start=focus_start,focus_end=focus_end,perception_source=perception_source,view_depth=view_depth,network_budget_bytes=network_budget_bytes,frame_budget_limit=frame_budget_limit)
             receipt(result)
             return result
 
@@ -1420,7 +1550,7 @@ def _record_production_vision_attempt(result, mode, model, debug=False):
 
 
 @tool()
-async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0, capture_for_debug: bool = False):
+async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0, frame_budget_limit: int = 0, capture_for_debug: bool = False):
     """鱼鱼主动选画面来源：preview官方低清，adaptive受控公开视频采样；可指定3～120秒。"""
     if (e := _guard("bili_preview_vision")): return e
     if os.environ.get('BILI_VISION_ENABLED') != '1':
@@ -1437,7 +1567,11 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
     if (type(network_budget_bytes) is not int or network_budget_bytes<0 or network_budget_bytes>104857600
         or (network_budget_bytes and (network_budget_bytes<1048576 or perception_source!='adaptive'))):
         return json.dumps({'ok':False,'status':'invalid_network_budget','error':'网络读取预算无效'},ensure_ascii=False)
+    if (type(frame_budget_limit) is not int or frame_budget_limit<0 or frame_budget_limit>48 or
+        (frame_budget_limit and (perception_source!='adaptive' or focus_start_seconds<0 or focus_end_seconds<0))):
+        return json.dumps({'ok':False,'status':'invalid_frame_budget_limit'},ensure_ascii=False)
     budget_override=network_budget_bytes or None
+    frames_override=frame_budget_limit or None
     from preview_vision import _normalize_focus_window
     try:
         if focus_start_seconds==-1.0 and focus_end_seconds==-1.0:focus=None
@@ -1456,7 +1590,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                     result = await asyncio.to_thread(analyze_perception,bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
                         model=os.environ.get('BILI_VISION_MODEL',''),debug=capture_for_debug is True,
                         focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
-                        network_budget_bytes=budget_override)
+                        network_budget_bytes=budget_override,frame_budget_limit=frames_override)
                     receipt(result)
             result['mode']='independent_local'
             _record_production_vision_attempt(result, 'independent_local', os.environ.get('BILI_VISION_MODEL', ''), capture_for_debug)
@@ -1481,7 +1615,8 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                     request=json.dumps({'bvid':bvid,'perception_source':perception_source,
                         'focus_start':focus['startSeconds'] if focus else None,
                         'focus_end':focus['endSeconds'] if focus else None,'view_depth':view_depth,
-                        'network_budget_bytes':budget_override,'debug_capture':capture_for_debug is True})
+                        'network_budget_bytes':budget_override,'frame_budget_limit':frames_override,
+                        'debug_capture':capture_for_debug is True})
                     try:
                         run=subprocess.run([vision_python,str(script),'--describe-stdin','--home',str(_DUTY_HOME)],
                             input=request,encoding='utf8',stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
@@ -1498,7 +1633,8 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                 from vision_dsh import describe_with_dsh
                 result=await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
                     focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
-                    network_budget_bytes=budget_override,debug_capture=capture_for_debug is True)
+                    network_budget_bytes=budget_override,frame_budget_limit=frames_override,
+                    debug_capture=capture_for_debug is True)
             _record_production_vision_attempt(result, 'independent_dsh', os.environ.get('BILI_VISION_DSH_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='independent_dsh_result',ok=result.get('ok'),
@@ -1937,6 +2073,34 @@ async def bili_meme_observe(name: str,bvid: str,evidence: str,evidence_type: str
 # 所有行为需要显式主人开关 + MCP 白名单 + 本轮真实入选 BV + 本地限额。
 # 模型只能在视频被确实挑中后选择操作，不可指定收藏夹 ID，更不能修改主人既有收藏夹。
 _ACTION_DB_NAME = 'video-actions.sqlite3'
+
+
+def _selected_in_current_video_round(bv: str) -> bool:
+    """Read-only exact account/BV/current-round proof, never yesterday's pick."""
+    if not _BV_PATTERN.fullmatch(str(bv or '')):
+        return False
+    round_id = os.environ.get('BILI_DUTY_LIFE_ROUND_ID', '')
+    if not re.fullmatch(r'[a-f0-9]{24}', round_id):
+        return False
+    account = str(getattr(get_cred(), 'dedeuserid', '') or '')
+    if not account.isdigit() or int(account) <= 0:
+        return False
+    db = _DUTY_HOME / _ACTION_DB_NAME
+    if db.is_symlink() or not db.is_file():
+        return False
+    try:
+        con = sqlite3.connect(db.as_uri() + '?mode=ro', uri=True, timeout=3)
+        try:
+            # A valid exploration round may pass local midnight; the random
+            # host-issued round ID, account and exact BV are the proof.
+            return bool(con.execute("""SELECT 1 FROM selected_videos
+                WHERE account=? AND bvid=? AND round_id=?
+                  AND status='挑中' LIMIT 1""",
+                (account, bv, round_id)).fetchone())
+        finally:
+            con.close()
+    except (OSError, sqlite3.Error):
+        return False
 
 
 def _selected_owned(bv: str) -> bool:
@@ -3630,6 +3794,48 @@ def _asr_failure_category(stderr):
     return 'process-failed', '本地转写子进程异常结束；缺少阶段回执'
 
 
+async def _run_bounded_asr_process(argv, *, cwd, timeout_seconds):
+    """Run the approved ASR interpreter without the shared asyncio thread pool.
+
+    The old asyncio.to_thread(subprocess.run) could queue behind unrelated
+    long-lived MCP reads; its 360s subprocess timeout did not cover queue time.
+    Direct async subprocess creation has a bounded child lifetime. Never emit
+    stdout/stderr in operational diagnostics (they can contain speech).
+    """
+    from time import perf_counter
+    clock = perf_counter
+    started = clock()
+    child = await asyncio.create_subprocess_exec(*argv, cwd=cwd,
+        stdin=subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE, **_hidden_windows_child())
+    spawned_at = clock()
+    stdout = stderr = b''
+    task = asyncio.create_task(child.communicate())
+    try:
+        stdout, stderr = await asyncio.wait_for(asyncio.shield(task), timeout_seconds)
+    except (asyncio.TimeoutError, asyncio.CancelledError) as err:
+        try:
+            if child.returncode is None: child.kill()
+        except ProcessLookupError:
+            pass
+        try:
+            stdout, stderr = await asyncio.wait_for(asyncio.shield(task), 8)
+        except (asyncio.TimeoutError, asyncio.CancelledError, OSError):
+            task.cancel()
+            try: await asyncio.wait_for(child.wait(), 2)
+            except (asyncio.TimeoutError, OSError): pass
+        if isinstance(err, asyncio.CancelledError): raise
+        raise subprocess.TimeoutExpired(argv, timeout_seconds, stderr=stderr) from None
+    ended = clock()
+    # Fixed, bounded operational numbers only, never the ASR content.
+    return (subprocess.CompletedProcess(argv, child.returncode,
+            stdout.decode('utf-8','replace'), stderr.decode('utf-8','replace')),
+            {'schema':'life-asr-mcp-worker-timings/v1',
+             'spawnMs':round((spawned_at-started)*1000),
+             'childAndPipeMs':round((ended-spawned_at)*1000),
+             'totalMs':round((ended-started)*1000)})
+
+
 @tool()
 async def bili_transcribe_safe(bvid: str) -> str:
     """Opt-in local ASR: fixed script, approved model, evidence-aware status."""
@@ -3644,7 +3850,10 @@ async def bili_transcribe_safe(bvid: str) -> str:
     # subprocess, and allow an operator-only override (never model-supplied).
     try: timeout_seconds = max(90, min(600, int(os.environ.get('BILI_ASR_TIMEOUT_SECONDS', '360'))))
     except (ValueError, TypeError): timeout_seconds = 360
+    from time import perf_counter
+    handler_started = perf_counter()
     _record_asr_attempt('started', model)
+    worker_timings = None
     try:
         bv = _valid_bv(bvid)
         asr = (_DUTY_HOME / "asr.py").resolve()
@@ -3655,11 +3864,9 @@ async def bili_transcribe_safe(bvid: str) -> str:
         if not asr.is_file() or not python.is_file():
             _record_asr_attempt('failed',model,reason='unavailable')
             return "本地转写依赖未安装"
-        res = await asyncio.to_thread(subprocess.run,
-                                      [str(python), str(asr), bv, '--json', '--model', model],
-                                      capture_output=True,text=True,encoding='utf-8',errors='replace',
-                                      timeout=timeout_seconds,cwd=str(_DUTY_HOME),
-                                      **_hidden_windows_child())
+        res, worker_timings = await _run_bounded_asr_process(
+            [str(python), str(asr), bv, '--json', '--model', model],
+            cwd=str(_DUTY_HOME), timeout_seconds=timeout_seconds)
         if res.returncode != 0 or len(res.stdout)>65000:
             code, hint = _asr_failure_category(res.stderr)
             if len(res.stdout)>65000: code, hint = 'output-too-large', '转写回执超出受控大小上限'
@@ -3682,11 +3889,46 @@ async def bili_transcribe_safe(bvid: str) -> str:
             not isinstance(payload.get('timed_segments'),list)):
             _record_asr_attempt('failed',model,reason='invalid-receipt')
             return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'本地语音转写回执不完整'},ensure_ascii=False)
+        coverage = payload.get('coverage', 'full-audio-attempt')
+        if coverage not in ('representative-windows', 'full-audio-attempt'):
+            _record_asr_attempt('failed',model,reason='invalid-receipt')
+            return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'语音覆盖范围无效'},ensure_ascii=False)
+        windows = payload.get('sampleWindows', []) if coverage == 'representative-windows' else []
+        duration = payload.get('audioDurationSeconds') if coverage == 'representative-windows' else None
+        if coverage == 'representative-windows' and (not isinstance(windows, list)
+            or not 1 <= len(windows) <= 3 or not isinstance(duration, (int,float))
+            or isinstance(duration, bool) or not 480 <= duration <= 14400 or any(
+                not isinstance(w, dict) or not isinstance(w.get('startSeconds'), (int,float))
+                or not isinstance(w.get('endSeconds'), (int,float))
+                or isinstance(w.get('startSeconds'), bool) or isinstance(w.get('endSeconds'), bool)
+                or not 0 <= w['startSeconds'] < w['endSeconds'] <= duration + .1
+                or w['endSeconds'] - w['startSeconds'] > 60.1 for w in windows)):
+            _record_asr_attempt('failed',model,reason='invalid-receipt')
+            return json.dumps({'ok':False,'status':'asr_invalid_receipt','error':'语音采样时间窗无效'},ensure_ascii=False)
+        timings = payload.get('timings')
+        timing_keys = ('audioDownloadMs','modelLoadMs','clipExtractionMs',
+                       'inferenceMs','receiptMs','totalMs')
+        if not (isinstance(timings, dict) and timings.get('schema')=='life-asr-phase-timings/v1'
+                and all(type(timings.get(k)) is int and 0 <= timings[k] <= 1_200_000
+                        for k in timing_keys)
+                and sum(timings[k] for k in timing_keys[:-1]) <= timings['totalMs'] + 2000):
+            timings = None  # Older script or malformed future receipt: omit, never trust.
         _record_asr_attempt('success',model,segments=len(payload['timed_segments']))
         return json.dumps({'bvid':bv,'source':'local-asr',
                            'asr_evidence':'faster-whisper-machine-transcript',
                            'text':payload['text'][:12000],
                            'timed_segments':payload['timed_segments'][:160],
+                           'coverage':coverage,
+                           **({'cacheHit':True} if payload.get('cacheHit') is True else {}),
+                           **({'inferenceDevice':payload['inferenceDevice']} if payload.get('inferenceDevice') in ('cpu','cuda','cache') else {}),
+                           **({'computeType':payload['computeType']} if payload.get('computeType') in ('int8','float16') else {}),
+                           **({'languageMode':payload['languageMode']} if payload.get('languageMode') in ('auto','zh','en') else {}),
+                           **({'timings':timings} if timings else {}),
+                           **({'mcpTimings':{**worker_timings,
+                               'handlerMs':round((perf_counter()-handler_started)*1000)}}
+                              if worker_timings else {}),
+                           **({'audioDurationSeconds':duration,'sampleWindows':windows}
+                              if coverage == 'representative-windows' else {}),
                            'can_claim_audio_listened':False,'can_claim_full_video_watched':False},ensure_ascii=False)
     except subprocess.TimeoutExpired as exc:
         # Only recognize *our own fixed phase markers* from stderr; never

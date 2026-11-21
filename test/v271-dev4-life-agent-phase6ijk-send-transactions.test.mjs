@@ -110,7 +110,7 @@ test('production endpoints are gated with stable source and separate bubble iden
   assert.match(index,/socialSendTransaction\.execute\(\{channel:'dm'/)
   assert.equal((index.match(/socialSendTransaction\.execute\(\{channel:'comment'/g)||[]).length,3,
     'dynamic, video and trusted comment agent share one cross-process send barrier')
-  assert.match(index,/socialSendTransaction:socialSendTransaction\.inspect\(\)/)
+  assert.match(index,/transactions:inspect\(\(\)=>socialSendTransaction\.inspect\(\)\)/)
   assert.doesNotMatch(comment,/replyIndex:i\+1/,'公开评论不得续发第二条')
   assert.match(comment,/replyIndex:0/,'公开评论只有首条平台发送')
   assert.match(comment,/socialOwnerProof,lifeWillingnessProof/) // first comment is still proof-bound

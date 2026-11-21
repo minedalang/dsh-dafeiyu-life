@@ -36,7 +36,7 @@ test('自主观看的精确时间与账号归因进入兴趣候选，但主人�
 test('实际图像通过本机受保护端点显示，不把图片正文注入 Life / 备份',()=>{
   assert.match(main,/safeVideoDebugCapture/)
   assert.match(main,/delete parsedVisual\.debugCapture/)
-  assert.match(main,/delete result\.debugCapture/)
+  assert.match(main,/delete parsedVisual\.debugCapture/)
   assert.match(main,/videoDebugJob\.images=debugImages/)
   assert.match(main,/video-perception-debug\/image/)
   assert.match(main,/local\)return sendJson\(res,403/)
@@ -51,4 +51,19 @@ test('未验收的本地视觉模型提供验收跳转高亮，已下载不再�
   assert.match(client,/vision-approval-flash/)
   assert.match(client,/local-vision-install'\)\.hidden=Boolean\(model\?\.installed\)/)
   assert.match(client,/local-vision-cancel'\)\.hidden=!downloading/)
+})
+
+test('视频分镜可点击放大、键盘关闭，且只复用已验证的同源诊断 JPEG',()=>{
+  assert.match(page,/id="video-debug-lightbox"[^>]*aria-label="视频分镜大图查看"/)
+  assert.match(page,/id="video-debug-lightbox-close"/)
+  assert.match(page,/id="video-debug-lightbox-image"/)
+  assert.match(page,/Esc 关闭/)
+  assert.match(page,/video-debug-image-zoom:focus-visible/)
+  assert.match(page,/video-debug-lightbox::backdrop/)
+  assert.match(client,/zoomButton\.addEventListener\('click'/)
+  assert.match(client,/enlarged\.src=img\.src/)
+  assert.match(client,/imageLightbox\.showModal\(\)/)
+  assert.match(client,/video-debug-lightbox-close'\)\.addEventListener\('click'/)
+  assert.match(client,/video-debug-lightbox-image'\)\.removeAttribute\('src'\)/)
+  assert.doesNotMatch(client,/window\.open\(img\.src/)
 })

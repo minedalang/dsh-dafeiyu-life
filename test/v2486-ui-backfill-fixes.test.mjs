@@ -39,6 +39,8 @@ test('真实模拟打开模型页刷新时不会因缺失 DOM 的 checked 属性
     addEventListener(name,fn){if(this.id)listeners.set(this.id+':'+name,fn)}
     appendChild(child){child.parentElement=this;this.children.push(child);return child}
     replaceChildren(...nodes){this.children=[];for(const node of nodes)this.appendChild(node)}
+    get options(){return this.children} // HTMLSelectElement.options is live and iterable
+    get selectedOptions(){return this.children.filter(x=>x.value===this.value)}
     querySelectorAll(){return []}
     querySelector(){return new Element()}
     setAttribute(){}

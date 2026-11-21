@@ -108,6 +108,6 @@ test('production wiring uses opt-in, verified callbacks, no send API and exposes
   assert.doesNotMatch(src,/lifeSocialShadow\.capture\(\{eventId:id,channel:'dm'/)
   assert.doesNotMatch(src,/lifeSocialShadow\.capture\(\{eventId:id,channel:'comment'/)
   assert.match(src,/getLifeSocialPreview:params=>lifeSocialShadow\.preview\(params\)/)
-  assert.match(src,/socialShadow:lifeSocialShadow\.status\(\)/)
+  assert.match(src,/shadow:inspect\(\(\)=>lifeSocialShadow\.status\(\)\)/)
   assert.doesNotMatch(readFileSync(new URL('../lib/life-social-shadow.mjs',import.meta.url),'utf8'),/bili_send_message|bili_reply/)
 })

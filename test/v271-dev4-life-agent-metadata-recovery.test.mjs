@@ -3,8 +3,10 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync,writeFileSync,mkdirSync,readFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import {createHash} from 'node:crypto'
 import {verifyLifePublicMetadata,classifyLifeMetadataFailure} from '../lib/life-public-metadata.mjs'
 import {createLifeOpportunities} from '../lib/life-opportunities.mjs'
+import {buildLifeTimeline} from '../lib/life-timeline.mjs'
 import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
 import {discussionAccountTag} from '../lib/video-discussion-diagnostics.mjs'
 
@@ -61,6 +63,12 @@ test('failed metadata is a diagnosed technical failure, not a fish defer or clai
   assert.equal((await other.tick({force:true,opportunitiesOnly:true})).result,'verified-metadata')
   assert.equal(system.store.status().opportunities[0].status,'inspect')
   assert.equal(system.store.recentReads()[0].title,'平台核实标题')
+  const ref=createHash('sha256').update('life-continuation\0'+id).digest('hex').slice(0,16)
+  const evidence=system.store.timelineEvidence({days:2,limit:20}).filter(e=>e.action==='inspect-opportunity')
+  assert.equal(evidence.length,1);assert.equal(evidence[0].cueRef,ref)
+  const diary=buildLifeTimeline({now:clock.value+1000,days:2,explorationEvidence:evidence,lifeDecisions:[
+    {at:clock.value+100,mode:'active',action:'inspect_opportunity',result:'verified-metadata',verifiedReadKind:'video-metadata',continuation:ref}]})
+  assert.equal(diary.find(x=>x.type==='life-read')?.bvid,BV)
 }))
 
 test('three consecutive failed opportunity reads cool down and recover without false memory',()=>home(async dir=>{

@@ -72,7 +72,7 @@ test('one home Life Episode can naturally continue through five verified steps, 
  ])
  const result=await x.planner.tick()
  assert.equal(result.action,'inspect_exploration')
- assert.deepEqual(result.continuation,{considered:3,executed:3,reason:'episode-step-limit'})
+ assert.deepEqual(result.continuation,{considered:3,executed:3,reason:'episode-step-limit',episodeCompleted:true})
  assert.equal(x.calls,4);assert.equal(x.reads,2);assert.equal(x.creators,2)
  const closed=life.status().intentions.find(x=>x.id===seed.id)
  assert.equal(closed.status,'completed');assert.equal(closed.episodeStatus,'completed');assert.equal(closed.episodeSteps,5)

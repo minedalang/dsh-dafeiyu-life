@@ -7,9 +7,10 @@ import {createLifeMemoryGateway,__test} from '../lib/life-memory-gateway.mjs'
 import {createLifeReflection} from '../lib/life-reflection.mjs'
 import {contentRef,contentUrl,validDynamicId,validCommentId} from '../lib/bili-content-ref.mjs'
 import {createBackup,restoreBackupFiles} from '../lib/data-backup.mjs'
+const ACCOUNT_TAG='a'.repeat(16)
 const start=Date.parse('2026-11-01T06:00:00Z'),DAY=86400000
 const createHome=()=>mkdtempSync(join(tmpdir(),'dsh-dev6-dynamic-'))
-const event={kind:'comment',contentType:'dynamic',dynamicId:'1264976926524571648',reply:true,text:'宿傩君，五条悟像开了外挂',rpid:'12649769265245716480',key:'comment:dynamic:1264976926524571648:12649769265245716480',time:new Date(start).toISOString()}
+const event={accountTag:ACCOUNT_TAG,kind:'comment',contentType:'dynamic',dynamicId:'1264976926524571648',reply:true,text:'宿傩君，五条悟像开了外挂',rpid:'12649769265245716480',key:'comment:dynamic:1264976926524571648:12649769265245716480',time:new Date(start).toISOString()}
 
 test('typed dynamic id and comment rpid stay strings above 2^53, never confused with BV',()=>{
  assert.deepEqual(contentRef(event),{type:'dynamic',id:event.dynamicId,dynamicId:event.dynamicId})
@@ -23,7 +24,7 @@ test('typed dynamic id and comment rpid stay strings above 2^53, never confused 
 })
 
 test('dynamic comment enters fading life memory; same receipt deduplicates; different media IDs isolate',()=>{
- const home=createHome();let clock=start;const gate=createLifeMemoryGateway({dataDir:home,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
+ const home=createHome();let clock=start;const gate=createLifeMemoryGateway({dataDir:home,now:()=>clock,getAccountTag:()=>ACCOUNT_TAG,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
  try{
   assert.equal(gate.recordEvents([event]).added,1)
   assert.equal(gate.recordEvents([event]).added,0)
@@ -55,8 +56,8 @@ test('dynamic comment enters fading life memory; same receipt deduplicates; diff
 
 test('dynamic comment creates reflection candidate; reflection uses only current fading memory evidence',()=>{
  const home=createHome();let clock=start
- const gateway=createLifeMemoryGateway({dataDir:home,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
- const reflection=createLifeReflection({dataDir:home,now:()=>clock,getConfig:()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true}),
+ const gateway=createLifeMemoryGateway({dataDir:home,now:()=>clock,getAccountTag:()=>ACCOUNT_TAG,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
+ const reflection=createLifeReflection({dataDir:home,now:()=>clock,getAccountTag:()=>ACCOUNT_TAG,getConfig:()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true}),
   memoryGateway:gateway,invokeModel:async()=>'{"memories":[],"note":"无重要领悟"}',commitMemories:async()=>({ok:true})})
  try {
   gateway.recordEvents([event])
@@ -89,7 +90,7 @@ test('manual reply is gated; Python validates actual dynamic type/oid, comments 
 
 test('portable backup can carry public dynamic receipt, but restoring an old clear snapshot cannot reanimate a faded dynamic id',()=>{
  const home=createHome();let clock=start
- const gate=createLifeMemoryGateway({dataDir:home,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
+ const gate=createLifeMemoryGateway({dataDir:home,now:()=>clock,getAccountTag:()=>ACCOUNT_TAG,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
  try {
   gate.recordEvents([event])
   const backup=createBackup({root:home,config:{},sqlite:{}})

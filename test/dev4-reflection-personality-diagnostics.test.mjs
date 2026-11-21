@@ -8,12 +8,13 @@ import {createLifeReflection,__test as refTest} from '../lib/life-reflection.mjs
 import {createPersonalityEvolution} from '../lib/personality-evolution.mjs'
 import {preparePrivateLifeEvent} from '../lib/life-private-policy.mjs'
 
+const ACCOUNT_TAG='a'.repeat(16)
 const NOW=Date.parse('2026-11-01T00:30:00Z')
 const config=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mainSessionReflectionAuto:true,mainSessionMemoryHalfLifeDays:30})
-const watch={kind:'watch',key:'watch:diag:1',bvid:'BV1234567890',title:'探索新事物',day:'2026-11-01',at:NOW}
+const watch={accountTag:ACCOUNT_TAG,kind:'watch',key:'watch:diag:1',bvid:'BV1234567890',title:'探索新事物',day:'2026-11-01',at:NOW}
 function withMemory(fn){
  const dataDir=mkdtempSync(join(tmpdir(),'fish-reflection-diagnostics-'))
- const gateway=createLifeMemoryGateway({dataDir,getConfig:config,now:()=>NOW})
+ const gateway=createLifeMemoryGateway({dataDir,getConfig:config,now:()=>NOW,getAccountTag:()=>ACCOUNT_TAG})
  return Promise.resolve().then(()=>fn({dataDir,gateway})).finally(()=>{gateway.close();rmSync(dataDir,{recursive:true,force:true})})
 }
 
@@ -57,7 +58,7 @@ test('公开批次报告候选提出与实际采纳条数；无需产生长期�
 }))
 
 test('私密反思开启时可考虑匿名特质；已成功执行后仍能查看最近技术失败',()=>withMemory(async({dataDir,gateway})=>{
- const friend=preparePrivateLifeEvent({source:'friend-dm',role:'friend',uid:'456',eventId:'diagfriend',text:'我不想你主动给我发私信',at:NOW})
+ const friend=preparePrivateLifeEvent({source:'friend-dm',role:'friend',uid:'456',accountTag:ACCOUNT_TAG,eventId:'diagfriend',text:'我不想你主动给我发私信',at:NOW})
  assert.ok(friend)
  gateway.recordEvents([friend])
  const reflection=createLifeReflection({dataDir,getConfig:config,memoryGateway:gateway,now:()=>NOW,

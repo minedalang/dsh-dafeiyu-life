@@ -1,9 +1,57 @@
+> **2.8.2-dev.50 时间线状态：** 原 Life 事件账本新增受控 `continuationState`，仅基于同账号已核验的元数据读取及真实续行执行状态写入；时间线区分继续行动、主动停止、未执行与 Episode 完成。旧记录无明确依据时只显示未知，不反推拒绝识图。无新增模型调用、权限或存储层。
+
+# 当前架构入口（2.8.2）
+
+**先看 [2.8.2 当前架构](2.8.2-current-architecture.md) 和 [自动生成的 Life 架构图](life-system-current-view.md)。** 2.8.2 的主线是「Life 自主观察机会 → 全局低清分镜 → Life 自愿只读局部选择 → 受控原视频取帧及证据校验」。主动跳过/延期不应与模型失败混淆。账号授权、读预算、遗忘和 B站外发证明保持独立。
+
+**下方 `dev.N` 条目均为当时的技术记录与验收快照，不再描述当前源码版本。** 历史阶段的“待验收”“未发布”等措辞应按记录发生时间理解。
+
+> **下一版专项规划：** [2.8.3 视频补看与深浅视觉记忆](./2.8.3-video-perception-memory-roadmap.md)（未实现）；[通用渐进式回忆方案](./future-layered-memory-progressive-recall-proposal.md)。原定 2.9.0 角色认知成长后移到视频/记忆基础验收之后。
+
+## 历史开发记录（保留原始审计信息）
+
+> **2.8.2-dev.49（开发候选）**：[鱼鱼自然挑选与观看视频](2.8.2-dev49-natural-video-exploration.md)。选片单次模型决策同时参考热度与简介，入选后可自主调用统一观看动作尝试视觉与字幕/可选 ASR；不改变独立 Life/主人入口及外发权限，Windows/DSH 实机仍待验收。
+
+> **2.8.2-dev.34（开发候选）**：[模型双栏操作、固定12格分镜及诊断设置收口](../release/2.8.2-dev.34-model-and-video-closure.md)。Headless 单模型取消同步、Desktop/Web 来源能力声明均单独备份/回读；MiniCPM 1B 仅历史兼容。Windows/DSH 实机与全量测试尚待验收。
+
+> **2.8.2-dev.28（开发候选）**：[多候选视频探索及 Whisper 实时进度/安全模型管理](2.8.2-dev28-multi-focus-and-whisper.md)。视频图：[Mermaid 源](diagrams/video-perception-current.mmd) / [SVG 用户图](assets/video-perception-current.svg)；同步四张 Life 架构图与 GitHub 预览。Windows/DSH/B站实机尚待验收，非正式发布。
+
+> **2.8.2-dev.26（开发候选）**：[Issue #11 安装与 Life 状态可靠性修复](2.8.2-dev26-issue11-fixes.md)。faster-whisper 安装镜像无进展回退、快速分享保存异常修复、Life 调度状态与账号作用域 Episode 附加诊断隔离；Windows/DSH 实机待验，未实施新视频感知方案。
+
+> **2.8.2-dev.24（开发候选）**：[跨语言视觉提示词修复、全片扫描公平性、Life 看后兴趣接线与预算审计](2.8.2-dev24-audit-fixes.md)。仍需 Windows / DSH / B站实机及全量回归验证，非正式发布。
+
+> **2.8.2-dev.23（历史候选）**：[Life 语义复查候选与视觉模型费用提醒](2.8.2-dev23-life-semantic-review-and-cost.md)。
+
+> **2.8.2-dev.22（开发候选）**：[首轮按档位全局分镜、视觉语义建议与PBP辅助候选](2.8.2-dev22-first-overview-budget-semantic.md)。Life 看或不看的意愿先于取帧，12/24/48 不再依赖看片前猜测深度；真正局部复查仍需要第二次 Life 决定。Windows/DSH 实机待验。
+
+> **2.8.2-dev.21（开发候选）**：[四个有内容的看后复查候选](2.8.2-dev21-evidence-rich-focus.md)。Python 邻近缩略帧差异与时间覆盖、同 BV 可信字幕/ASR 和按真实采样时间对齐的视觉模型假设一起进入现有 Life 意愿层；明确拒绝、延期、技术阻断分开显示。四个候选是采样时刻，不等于语义重要性排序；未 Windows/DSH 实机验证。
+
+> **2.8.2-dev.18（开发中）**：[官方媒体流动态授权与 Life 自主聚焦复查](2.8.2-dev18-video-source-life-focus.md)。原视频 CDN 不再按固定域名/路径前缀拒绝，官方主备地址仍受固定公网 IP、TLS、逐跳和 Range 预算保护；深入概览不再自动复查疑点，必须 Life 另行决定。未 Windows/DSH 实机验证。
+
+> **2.8.2-dev.12（开发中）**：当前已核验 B站 UID 的 Life 记忆来源标识在本地持久化，Cookie 更新不新建身份来源；现有社交设置只在当前 UID 的独立授权快照下生效，新账号不继承旧名单或外发许可。旧无归属记忆不自动重写、已遗忘内容不恢复，冷恢复不隐式继承旧授权。本轮只读与权限变更详见 [dev.12 说明](../release/2.8.2-dev.12-account-scope-and-social-grants.md)。[本地多记忆档案](future-local-multi-life-profile-management.md)仍是未来独立工程，不在 2.8.2 实施。
+
+> **2.8.2-dev.11（开发中）**：现有 Life 决策轨迹对同一动作的执行/结果回执新增匿名 `actionRef` 关联；跨动作未知与旧记录维持保守判定。旧关系熟悉度只作 Life 历史线索，当前账号互动阶段由该账号核验的渠道事实计算，不能据此推断对方已认出新账号或获得私信许可。完整身份迁移方案暂存 [未来计划](future-life-account-relationship-continuity.md)，未实施自动联系人转移、旧友告知或新权限。
+
+> **2.8.2-dev.9（开发中）**：管理中心新增 [桌宠开放生态预告页](../open-platform/README.md)（只读静态展示）；官方桌宠、社区自由接入、3D 游戏与预览 API 均为未来规划，未新增 Life 运行时接口或架构接线。实施与验收边界见 [dev.9 说明](../release/2.8.2-dev.9-open-platform-preview.md)。
+
+> **2.8.2-dev.8（开发中）**：现有 `life-decision-traces` 增加纯只读意愿／执行结果归类，管理中心区分 Life 自愿休息、无机会、技术阻断、已委派、平台核验及未知冻结，不写模型原文或第二事实库。详见 [dev.8 说明](2.8.2-dev8-life-decision-explanation.md)。Windows/真实 B站验收仍待完成。
+
+> **2.8.2-dev.7（视觉取帧并发与遗忘边界）**：[执行锁、生命周期与测试说明](2.8.2-dev7-video-visual-lease-and-forgetting.md)。仅限制 Life 自主完整采样，当前清晰记忆继续决定长期防重；尚未 Windows/DSH/B站实机验证。
+
+> **2.8.2-dev.6（读预算与网络退避只读解释）**：[实现、字段与安全边界](2.8.2-dev6-read-availability-diagnostics.md)。原共享读预算和通知网络退避不改变；管理中心显示分通道可用性/已知延期原因，不是平台成功保证。Windows/真实 B站仍待验。
+
+> **2.8.2-dev.5（视觉采样覆盖与去重）**：[方案、实现边界及测试](2.8.2-dev5-video-sampling-reuse.md)。同账号清晰视觉经历只读兜底现有防重账本；无新权限、无深层记忆库；真实 Windows/DSH 仍待验。
+
+> **2.8.2-dev.4（只读来源链）**：通过现有 LifeMemoryGateway 的清晰可衰减记忆、当前账号与精确 BV/记忆 ID 查询已记录来源类别和视觉采样回执；不读归档、不增加深层记忆库。未来分层回忆方案仅见 [后续架构提案](future-layered-memory-progressive-recall-proposal.md)。
+
+> **2.8.2 开发中（尚未验收）**：[实施方案](2.8.2-implementation-plan.md)、[PR-0 / PR-1A 基线与首批语义预算、视觉边界审计](2.8.2-pr0-pr1a-baseline.md)。此增量不改外发权限、不新增事实库；原 2.8.1 章节继续保留为历史代码资料。
+
 ## 当前 2.8.1 通知、视频与决策架构（2026-11-18）
 
 - [dev.3b.33.23 · 官方 DASH SIDX 长视频有限分段取帧](2.8.1-dev3b23-dash-indexed-long-video.md)：在 DURL 之外验证公开 DASH 的 `SegmentBase` 与时间索引、按 206 Range 有界取帧，真实回退原因透传、旧版证据兼容；Windows 实机待验。
 - [dev.3b.33.17 · B站私信与互动通知双哨兵](2.8.1-notification-sentinel-20261117.md)：以私信未读计数与互动通知计数作为后台消息发现入口，详情按需读取，保留 30 分钟一致性核对、活跃私信 60 秒定向检查及跨重启 `-509` 保护。
 - [dev.3b.33.18 · Life 决策自由与安全链接审计](2.8.1-dev3b18-life-decision-freedom-audit.md)：短链逐跳共享预算、多个私信链接由 Life 精确选择、执行时联系人权限复核、链接类型/AID 回执核验及视频元数据/观看语义区分。
-- [2.9.x · Life 通用注意力与跨平台活动系统未来计划](2.9.x-life-universal-attention-cross-platform-plan.md)：平台无关注意力、活动生命周期、Adapter 契约、打断与恢复、抖音/游戏平台分阶段接入。
+- [2.10.x · Life 通用注意力与活动系统未来计划](2.10.x-life-universal-attention-cross-platform-plan.md)：平台无关注意力、活动生命周期、Adapter 契约、打断与恢复、抖音/游戏平台分阶段接入。
 
 > **视觉环境能力基线（dev.3b.33.11）：** [Windows 一键自助视觉运行时修复](2.8.1-dev3b3311-vision-one-click-repair.md)。该能力继续保留；当前消息读取架构已在 dev.3b.33.17 更新为双通知哨兵。
 

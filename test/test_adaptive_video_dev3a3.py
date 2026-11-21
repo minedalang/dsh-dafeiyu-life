@@ -30,8 +30,8 @@ class AdaptiveTests(unittest.TestCase):
         good='https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/12/34/video.mp4?expires=777'
         self.assertEqual(av._cdn_url(good),good)
         for url in ('http://upos-sz-mirrorcos.bilivideo.com/upgcxcode/a.mp4',
-            'https://upos-sz-mirrorcos.bilivideo.com:444/upgcxcode/a.mp4',
-            'https://upos-sz-mirrorcos.bilivideo.com.evil.test/upgcxcode/a.mp4',
+            'https://user:pass@upos-sz-mirrorcos.bilivideo.com:444/upgcxcode/a.mp4',
+            'https://127.0.0.1:444/upgcxcode/a.mp4',
             'https://127.0.0.1/upgcxcode/a.mp4',
             'https://upos-sz-mirrorcos.bilivideo.com/admin/token',
             'https://user:pass@upos-sz-mirrorcos.bilivideo.com/upgcxcode/a.mp4',

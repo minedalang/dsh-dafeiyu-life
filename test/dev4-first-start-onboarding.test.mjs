@@ -116,7 +116,7 @@ test('完成必需设置后 HTTP 业务路由解锁（显式模拟已验证测�
   writeFileSync(join(headless,'cordis.patch.yml'),'[]\n')
   const hash=createHash('sha256').update(JSON.stringify(['desktop','[]\n','','[]\n'])).digest('hex')
   writeFileSync(join(stateDir,'headless-model-verified.json'),JSON.stringify({version:1,verified:[{profile:'desktop',provider:'fixture',model:'fixture-model',fingerprint:hash}]}))
-  const credential=join(stateDir,'bili_credential.json');writeFileSync(credential,'test-credential-placeholder')
+  const credential=join(stateDir,'bili_credential.json');writeFileSync(credential,JSON.stringify({dedeuserid:'10001',sessdata:'local-fixture-session',bili_jct:'local-fixture-csrf'}))
   const gate=createFirstStart({stateDir,credentialPath:credential,headlessSync:{hasAnyVerified:()=>true}})
   gate.verifyBili();gate.markWelcome();gate.complete([])
   const req=Readable.from([]);req.method='GET';req.url='/api/bili-duty/life-memory/status';req.headers={host:'127.0.0.1:8011'}

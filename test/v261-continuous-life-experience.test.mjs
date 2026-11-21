@@ -10,14 +10,15 @@ import {preparePrivateSelfExperience,preparePrivateLifeEvent} from '../lib/life-
 import {createOwnerTodoFollowup} from '../lib/owner-todo-followup.mjs'
 import {createOwnerDmAgent} from '../lib/owner-dm-agent.mjs'
 
+const ACCOUNT_TAG='a'.repeat(16)
 const T=Date.parse('2026-11-02T12:00:00Z'),uid='123456789',bv='BV1abc234567'
 const withDir=async fn=>{const dir=mkdtempSync(join(tmpdir(),'dsh-continuity-'));try{return await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
 const settings=()=>({masterEnabled:true,ownerTodoCompletionFollowupEnabled:true,dmOwnerUid:uid,ownerTodoFollowupQuietEnabled:false,ownerTodoFollowupCooldownMinutes:0,ownerTodoFollowupMinIntervalMinutes:0})
 const task={id:'t1',type:'watch_video',bvid:bv,title:'孙燕姿的歌',topic:'孙燕姿',origin:{kind:'owner-dm',uid,messageId:'msg01'},sourceKey:'manual:one'}
 
 test('所有公开视频查看入口共用衰减经历，可信自主待办只记录缘由类别、不写入私信原话',()=>withDir(async dir=>{
- const memory=createLifeMemoryGateway({dataDir:dir,now:()=>T})
- const event=buildVideoExplorationEvent({bvid:bv,info:{title:'孙燕姿相关作品'},source:'bili-life',purpose:'accepted-todo',operationId:'verified-0001',at:T})
+ const memory=createLifeMemoryGateway({dataDir:dir,now:()=>T,getAccountTag:()=>ACCOUNT_TAG})
+ const event=buildVideoExplorationEvent({bvid:bv,info:{title:'孙燕姿相关作品'},source:'bili-life',purpose:'accepted-todo',accountTag:ACCOUNT_TAG,operationId:'verified-0001',at:T})
  assert.ok(event)
  memory.recordEvents([event])
  const result=memory.recall({query:'孙燕姿',domain:'bili-dm',role:'owner',actorUid:uid})
@@ -29,8 +30,8 @@ test('所有公开视频查看入口共用衰减经历，可信自主待办只�
 
 test('连续经历只从仍清晰的衰减副本取证，不读取任务或永久档案；已遗忘不能重建',()=>withDir(async dir=>{
  let clock=T
- const memory=createLifeMemoryGateway({dataDir:dir,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
- const event=buildVideoExplorationEvent({bvid:bv,info:{title:'孙燕姿歌曲转场'},operationId:'verified-0002',at:T,purpose:'self-exploration'})
+ const memory=createLifeMemoryGateway({dataDir:dir,now:()=>clock,getAccountTag:()=>ACCOUNT_TAG,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
+ const event=buildVideoExplorationEvent({bvid:bv,info:{title:'孙燕姿歌曲转场'},operationId:'verified-0002',at:T,purpose:'self-exploration',accountTag:ACCOUNT_TAG})
  memory.recordEvents([event])
  assert.equal(liveExperienceEvidence({gateway:memory,uid,role:'owner',topic:'孙燕姿'}).length,1)
  clock=T+120*86400000

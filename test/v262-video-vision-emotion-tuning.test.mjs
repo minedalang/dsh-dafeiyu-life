@@ -53,13 +53,13 @@ test('历史已贴顶状态在新事件后自然回落，旧快照不重写或�
   assert.equal(snap.history[0].state.energy<100,true)
  }finally{rmSync(home,{recursive:true,force:true})}
 })
-test('视频 Agent 与值班章程明确两次自主意愿，不强制缺字幕就识图',()=>{
+test('视频 Agent 单次选片、入选后自主观看；其他 Life 入口仍按显式视觉深度选择',()=>{
  const idx=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const charter=readFileSync(new URL('../prompts/duty.md',import.meta.url),'utf8')
- assert.match(idx,/由鱼鱼自主选择观看与深度/)
+ assert.match(idx,/一次选片决策，逐步接触信息/)
  assert.doesNotMatch(idx,/没有可用字幕\/转写文本.*必须优先调用一次 bili_preview_vision/)
  assert.match(idx,/visionDecision\(\{subtitle,enabled:/)
- assert.match(charter,/鱼鱼先自主决定看不看，再自主选择略看、正常了解或深入探索/)
+ assert.match(charter,/入选后自由行动[\s\S]*bili_watch_video/)
  assert.match(idx,/view_depth:\{type:'string'/)
  const mcp=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
  assert.match(mcp,/async def bili_subtitle\(bvid: str, auto_vision_on_missing: bool = False\)/)

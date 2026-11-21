@@ -26,7 +26,7 @@ class LocalVision(unittest.TestCase):
             def open(self, req, timeout=None):
                 self_req=req
                 assert req.full_url=='http://127.0.0.1:11434/api/chat'
-                assert 0 < timeout <= 120  # Full local storyboard inference may use up to 110 s
+                assert 0 < timeout <= 140  # Current local storyboard inference hard cap
                 body=json.loads(self_req.data)
                 assert body['model']=='qwen3.5:4b'
                 assert body['stream'] is False

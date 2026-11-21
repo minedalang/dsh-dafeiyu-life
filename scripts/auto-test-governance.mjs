@@ -3,7 +3,7 @@
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {resolve, join} from 'node:path';
-import {impactedTests} from './test-governance.mjs';
+import {impactedTests,activeRetiredAssertionReplacement} from './test-governance.mjs';
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const nodeFile = /^[A-Za-z0-9_-]+\.test\.mjs$/;
@@ -80,7 +80,7 @@ export function validateStagedCatalog(root=projectRoot) {
     try {
       const content=stagedFile(root,'test/'+item.file);
       if(content.includes(item.oldCheck)) errors.push('Staged old assertion still present: '+item.file);
-      if(!content.includes(item.newCheck)) errors.push('Staged replacement assertion missing: '+item.file);
+      if (!activeRetiredAssertionReplacement(content,item,cat.retiredAssertions)) errors.push('Staged replacement assertion missing: '+item.file);
     } catch(e) {errors.push('Cannot inspect staged retired assertion '+item.file+': '+e.message);}
   }
   return {ok:errors.length===0,errors,stats:{node:currentNode.length,python:currentPy.length,archived:currentArchive.length}};

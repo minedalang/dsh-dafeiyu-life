@@ -23,27 +23,27 @@ test('MiniCPM approval remains after user-triggered recheck failure and temporar
    let manager=createLocalVisionModelManager({stateDir:dir,fetchImpl})
    const first=await manager.verifyId('minicpm-v4.7-1b')
    assert.equal((await manager.review('minicpm-v4.7-1b',{reviewId:first.reviewId,accepted:true})).verified,true)
-   assert.equal((await manager.list()).models[1].verified,true)
+   assert.equal((await manager.list()).models.find(x=>x.id==='minicpm-v4.7-1b').verified,true)
    retestFails=true
    await assert.rejects(manager.verifyId('minicpm-v4.7-1b'))
-   assert.equal((await manager.list()).models[1].verified,true)
+   assert.equal((await manager.list()).models.find(x=>x.id==='minicpm-v4.7-1b').verified,true)
    available=false
-   assert.equal((await manager.list()).models[1].verified,false)
+   assert.equal((await manager.list()).models.find(x=>x.id==='minicpm-v4.7-1b').verified,false)
    assert.match(readFileSync(join(dir,'local-vision-approvals.json'),'utf8'),/minicpm-v4.7-1b/)
    available=true;online=false
    assert.equal((await manager.list()).running,false)
    online=true
    manager=createLocalVisionModelManager({stateDir:dir,fetchImpl})
-   assert.equal((await manager.list()).models[1].verified,true)
-   assert.equal((await manager.list()).models[1].approvalStatus,'restored')
+   assert.equal((await manager.list()).models.find(x=>x.id==='minicpm-v4.7-1b').verified,true)
+   assert.equal((await manager.list()).models.find(x=>x.id==='minicpm-v4.7-1b').approvalStatus,'restored')
    digest=sha('b')
-   assert.equal((await manager.list()).models[1].verified,false)
+   assert.equal((await manager.list()).models.find(x=>x.id==='minicpm-v4.7-1b').verified,false)
    assert.doesNotMatch(readFileSync(join(dir,'local-vision-approvals.json'),'utf8'),/minicpm-v4.7-1b/)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 test('saved MiniCPM model is restored to the management dropdown on refresh; legacy Qwen default never wins',()=>{
  const js=read('lib/management-console.js')
- assert.match(js,/if\(\['qwen3\.5-4b','minicpm-v4\.7-1b'\]\.includes\(c\.visionLocalModel\)\)/)
+ assert.match(js,/if\(\['qwen3\.5-2b','qwen3\.5-4b','minicpm-v4\.7-1b'\]\.includes\(c\.visionLocalModel\)\)/)
  assert.match(js,/\$\('local-vision-model'\)\.value=c\.visionLocalModel/)
  assert.match(js,/已人工验收 · 相同模型版本/)
  const index=read('index.js')
@@ -59,5 +59,5 @@ test('人工认可持久化失败必须明确报错，不能标记为已认可',
  }})
  const probe=await manager.verifyId('minicpm-v4.7-1b')
  await assert.rejects(manager.review('minicpm-v4.7-1b',{reviewId:probe.reviewId,accepted:true}),/未能写入/)
- assert.equal((await manager.list()).models[1].verified,false)
+ assert.equal((await manager.list()).models.find(x=>x.id==='minicpm-v4.7-1b').verified,false)
 })

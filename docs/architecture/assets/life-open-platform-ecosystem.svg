@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="eco-title eco-desc">
+<title id="eco-title">同一个鱼鱼，未来可以有许多种陪伴方式</title>
+<desc id="eco-desc">中心是大肥鱼 Life；连接尚在规划中的桌面陪伴、社区桌宠、游戏房间和网页小伙伴。所有接入均未开放。</desc>
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F6F7FF"/><stop offset=".52" stop-color="#EFFAF9"/><stop offset="1" stop-color="#FCF8F1"/></linearGradient>
+ <linearGradient id="body" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7588E9"/><stop offset="1" stop-color="#47BBA8"/></linearGradient>
+ <filter id="shadow" x="-20%" y="-30%" width="140%" height="180%"><feDropShadow dx="0" dy="8" stdDeviation="13" flood-color="#33476C" flood-opacity=".12"/></filter>
+</defs>
+<rect width="1200" height="680" rx="30" fill="url(#bg)"/>
+<circle cx="1020" cy="80" r="180" fill="#DCE9FF" opacity=".35"/><circle cx="120" cy="585" r="156" fill="#DFF5EC" opacity=".55"/>
+<text x="66" y="88" fill="#263B59" font-size="40" font-weight="700" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif'>一条鱼，许多种陪伴</text>
+<text x="66" y="123" fill="#59718A" font-size="19" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif'>未来，希望鱼鱼能从聊天窗口游向更多世界</text>
+<rect x="1036" y="55" width="104" height="34" rx="17" fill="#FDEED6"/><text x="1088" y="78" text-anchor="middle" fill="#8D652F" font-size="16" font-weight="700" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif'>未来设想</text>
+<!-- connections, underneath cards -->
+<path d="M395 285 C345 285 360 240 314 240" fill="none" stroke="#B2C8E5" stroke-width="5" stroke-linecap="round" stroke-dasharray="8 12"/>
+<path d="M395 380 C352 380 355 466 314 466" fill="none" stroke="#B2C8E5" stroke-width="5" stroke-linecap="round" stroke-dasharray="8 12"/>
+<path d="M805 285 C850 285 838 240 886 240" fill="none" stroke="#A9DAD1" stroke-width="5" stroke-linecap="round" stroke-dasharray="8 12"/>
+<path d="M805 380 C850 380 838 466 886 466" fill="none" stroke="#A9DAD1" stroke-width="5" stroke-linecap="round" stroke-dasharray="8 12"/>
+<!-- center -->
+<g filter="url(#shadow)"><rect x="395" y="195" width="410" height="310" rx="40" fill="#fff"/></g>
+<circle cx="600" cy="300" r="76" fill="url(#body)"/>
+<!-- fish mascot -->
+<path d="M635 302 L680 270 Q688 300 680 330 Z" fill="#E3F5F1"/><ellipse cx="590" cy="301" rx="58" ry="39" fill="#E9FAF7"/>
+<circle cx="566" cy="289" r="5.5" fill="#2B506E"/><path d="M557 317 Q575 331 590 316" fill="none" stroke="#7DB5B0" stroke-width="4" stroke-linecap="round"/>
+<circle cx="581" cy="311" r="7" fill="#F1B2AB" opacity=".55"/>
+<text x="600" y="411" text-anchor="middle" fill="#2D4664" font-size="32" font-weight="700" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif'>大肥鱼 Life</text>
+<text x="600" y="442" text-anchor="middle" fill="#688097" font-size="18" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif'>同一份记忆、兴趣与性格</text>
+<!-- surrounding tiles -->
+<g filter="url(#shadow)" fill="#fff"><rect x="66" y="171" width="248" height="140" rx="27"/><rect x="66" y="396" width="248" height="140" rx="27"/><rect x="886" y="171" width="248" height="140" rx="27"/><rect x="886" y="396" width="248" height="140" rx="27"/></g>
+<g font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif' text-anchor="middle">
+<circle cx="190" cy="211" r="23" fill="#E9EDFF"/><g transform="translate(190 212)" fill="none" stroke="#6984D5" stroke-width="3" stroke-linecap="round"><rect x="-13" y="-10" width="26" height="19" rx="3"/><path d="M0 9 V14 M-8 15 H8"/></g><text x="190" y="254" fill="#314966" font-size="25" font-weight="700">桌面陪伴</text><text x="190" y="283" fill="#6B7C8B" font-size="16">随时看见鱼鱼</text>
+<circle cx="190" cy="436" r="23" fill="#FDEDE8"/><g transform="translate(190 436)" fill="none" stroke="#D99786" stroke-width="3" stroke-linecap="round"><path d="M-12 -3 C-8 -14 8 -14 13 -3 C15 5 6 13 -1 12 C-7 11 -4 4 -1 4"/><circle cx="-6" cy="-4" r="1"/><circle cx="3" cy="-7" r="1"/><circle cx="8" cy="0" r="1"/></g><text x="190" y="479" fill="#314966" font-size="25" font-weight="700">社区桌宠</text><text x="190" y="508" fill="#6B7C8B" font-size="16">你喜欢的样子</text>
+<circle cx="1010" cy="211" r="23" fill="#E5F7EE"/><g transform="translate(1010 212)" fill="none" stroke="#58B596" stroke-width="3" stroke-linecap="round"><path d="M-13 -2 Q-19 6 -13 13 Q-9 15 -4 8 H4 Q9 15 13 13 Q19 6 13 -2 Q12 -8 6 -7 H-6 Q-12 -8 -13 -2Z"/><path d="M-8 -1 V7 M-12 3 H-4"/><circle cx="8" cy="0" r="1"/></g><text x="1010" y="254" fill="#314966" font-size="25" font-weight="700">游戏房间</text><text x="1010" y="283" fill="#6B7C8B" font-size="16">一起探索新世界</text>
+<circle cx="1010" cy="436" r="23" fill="#E8F4FF"/><g transform="translate(1010 436)" fill="none" stroke="#63A4D8" stroke-width="3" stroke-linejoin="round"><path d="M0 -13 L4 -4 L13 0 L4 4 L0 13 L-4 4 L-13 0 L-4 -4Z"/></g><text x="1010" y="479" fill="#314966" font-size="25" font-weight="700">网页小伙伴</text><text x="1010" y="508" fill="#6B7C8B" font-size="16">更多自由的形态</text>
+</g>
+<text x="600" y="617" text-anchor="middle" fill="#71839A" font-size="17" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif'>以上均为未来方向 · 目前尚未开放真实接入</text>
+</svg>

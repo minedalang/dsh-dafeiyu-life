@@ -14,3 +14,10 @@
 lib/tmp/
 lib/tmp
 lib/tmp/**
+# Delivery-only assets are outside source/ and should never be published
+/TESTING_*.md
+/TEST-RESULTS*.md
+/COMMIT_MESSAGE.txt
+/APPLY.md
+/README-交付说明.md
+/README-#U*.md

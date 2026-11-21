@@ -1,44 +1,67 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" role="img" aria-labelledby="vtitle vdesc">
-<title id="vtitle">大肥鱼自主视频感知架构</title><desc id="vdesc">鱼鱼自主决定是否观看与深度，镜头变化、画面运动与弹幕热度共同生成候选分镜，配合时间覆盖、字幕对齐与局部复查。热度不等于视频事实。</desc>
-<defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="#8AA0B8"/></marker><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0F172A"/><stop offset="1" stop-color="#132A3C"/></linearGradient></defs>
-<rect width="1200" height="800" rx="28" fill="url(#bg)"/>
-<rect x="26" y="26" width="1148" height="748" rx="23" fill="none" stroke="#263C56"/>
-<text x="64" y="73" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="32" font-weight="700" text-anchor="start" fill="#F8FAFC">视频感知 · 从自主意愿到可信经历</text>
-<text x="66" y="110" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="600" text-anchor="start" fill="#91A9C3">VISION PERCEPTION  /  SCENE · MOTION · DANMAKU · TIMELINE</text>
-<rect x="192" y="143" width="816" height="86" rx="18" fill="#3D3440" stroke="#E3B75D" stroke-width="2"/>
-<text x="600" y="179" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#FFDB8A">鱼鱼决定：要不要看？了解多深？</text>
-<text x="600" y="209" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#E0DBD4">不看 / 略看  →  只读资料或结束探索     ·     主动选择视觉  →  进入下一步</text>
-<path d="M600 230 L600 263" fill="none" stroke="#8AA0B8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
-<text x="600" y="283" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" font-weight="500" text-anchor="middle" fill="#A9C3D3">三路候选信号 · 只决定“哪里值得看”，不代表已经理解</text>
-<rect x="60" y="311" width="320" height="115" rx="18" fill="#172D43" stroke="#6EE7B7" stroke-width="2"/>
-<circle cx="98" cy="350" r="19" fill="#6EE7B7" fill-opacity=".16" stroke="#6EE7B7"/>
-<text x="98" y="357" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="17" font-weight="700" text-anchor="middle" fill="#6EE7B7">01</text>
-<text x="132" y="355" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="start" fill="#F1F5F9">镜头变化</text>
-<text x="84" y="400" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#B9CBDC">发现新场景与切镜候选</text>
-<rect x="440" y="311" width="320" height="115" rx="18" fill="#172D43" stroke="#6DD5F7" stroke-width="2"/>
-<circle cx="478" cy="350" r="19" fill="#6DD5F7" fill-opacity=".16" stroke="#6DD5F7"/>
-<text x="478" y="357" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="17" font-weight="700" text-anchor="middle" fill="#6DD5F7">02</text>
-<text x="512" y="355" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="start" fill="#F1F5F9">画面运动</text>
-<text x="464" y="400" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#B9CBDC">发现动作过程与局部变化</text>
-<rect x="820" y="311" width="320" height="115" rx="18" fill="#172D43" stroke="#FBBF24" stroke-width="2"/>
-<circle cx="858" cy="350" r="19" fill="#FBBF24" fill-opacity=".16" stroke="#FBBF24"/>
-<text x="858" y="357" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="17" font-weight="700" text-anchor="middle" fill="#FBBF24">03</text>
-<text x="892" y="355" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="start" fill="#F1F5F9">弹幕热度</text>
-<text x="844" y="400" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="start" fill="#B9CBDC">发现观众反应与高能时间段</text>
-<path d="M220 428 L220 462" fill="none" stroke="#8AA0B8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
-<path d="M600 428 L600 462" fill="none" stroke="#8AA0B8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
-<path d="M980 428 L980 462" fill="none" stroke="#8AA0B8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
-<rect x="180" y="469" width="840" height="94" rx="18" fill="#1C3550" stroke="#4B9EB1" stroke-width="2"/>
-<text x="600" y="507" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="24" font-weight="700" text-anchor="middle" fill="#F8FAFC">联合候选片段排序</text>
-<text x="600" y="538" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="17" font-weight="400" text-anchor="middle" fill="#AACCDD">跨全片时间覆盖  ·  去重  ·  上下文连续  ·  热度信号可缺省</text>
-<path d="M600 564 L600 595" fill="none" stroke="#8AA0B8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)"/>
-<rect x="80" y="602" width="505" height="115" rx="18" fill="#1D3155" stroke="#6093DA" stroke-width="2"/>
-<text x="332" y="644" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#E5F0FF">自适应分镜 + 局部复查</text>
-<text x="332" y="674" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#B4D0F3">12 / 24 / 48 视觉预算仅是上限</text>
-<text x="332" y="699" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="middle" fill="#A7C2E9">由鱼鱼自主决定追加还是停止</text>
-<rect x="615" y="602" width="505" height="115" rx="18" fill="#194442" stroke="#42B5A7" stroke-width="2"/>
-<text x="868" y="644" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" font-weight="700" text-anchor="middle" fill="#DEFBF3">字幕时间轴 + 证据边界</text>
-<text x="868" y="674" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" font-weight="400" text-anchor="middle" fill="#BCE8DF">时间相邻 ≠ 内容互相证实</text>
-<text x="868" y="699" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" font-weight="400" text-anchor="middle" fill="#A8D4CC">保留来源、时间点与未确认内容</text>
-<text x="600" y="762" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" font-weight="400" text-anchor="middle" fill="#93A9BF">观众热度是辅助线索，不是视频事实、指令或外发授权  ·  示例架构</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1040" viewBox="0 0 1440 1040" role="img" aria-labelledby="t d">
+<title id="t">大肥鱼 Plus · 视频感知体验优化</title>
+<desc id="d">生命自主意愿、官方全局分镜、真实时间候选池、Life一批多选、横向探索与纵向探索、原视频受控FFmpeg局部取帧、可信证据和持续规划，底部有轻量均衡详查三档共享预算；本地分镜格数、思考档位与生成上限独立设置。</desc>
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0b1728"/><stop offset="1" stop-color="#162b39"/></linearGradient>
+<linearGradient id="aqua" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#3cc8b4"/><stop offset="1" stop-color="#50a5df"/></linearGradient>
+<marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#8ba8ba"/></marker>
+<filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="10" flood-color="#000" flood-opacity=".17"/></filter>
+</defs>
+<rect x="0" y="0" width="1440" height="1040" rx="28" fill="url(#bg)"/>
+<rect x="26" y="25" width="1388" height="990" rx="24" fill="none" stroke="#2c4660" stroke-width="1"/>
+
+<text x="75" y="78" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="33" fill="#F0FAFF" font-weight="700" text-anchor="start" letter-spacing="0">大肥鱼 Plus</text>
+<text x="268" y="78" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="28" fill="#69d0c2" font-weight="700" text-anchor="start" letter-spacing="0">·</text>
+<text x="302" y="78" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="32" fill="#F0FAFF" font-weight="700" text-anchor="start" letter-spacing="0">视频感知体验优化</text>
+<text x="76" y="111" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" fill="#8eaec4" font-weight="600" text-anchor="start" letter-spacing="1.2">GLOBAL CONTEXT  /  MULTI-CHOICE  /  BREADTH + DEPTH  /  EVIDENCE  /  SHARED BUDGET</text>
+<rect x="366" y="136" width="708" height="76" rx="20" fill="#322b35" stroke="#d6ac68" stroke-width="2" filter="url(#shadow)"/>
+<text x="720" y="169" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="22" fill="#ffe6b5" font-weight="700" text-anchor="middle" letter-spacing="0">Life 自己决定：这条视频要不要看画面？</text>
+<text x="720" y="194" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" fill="#d6c7b3" font-weight="400" text-anchor="middle" letter-spacing="0">不看 / 略看 / 休息可随时退出；愿意观察才启动真实画面证据</text>
+<path d="M720 212 L720 240" fill="none" stroke="#8ba8ba" stroke-width="2.3" stroke-linecap="round" marker-end="url(#arrow)"/>
+<text x="92" y="265" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="18" fill="#79d5ec" font-weight="700" text-anchor="start" letter-spacing="0">01  全局观察</text>
+<rect x="76" y="279" width="397" height="112" rx="18" fill="#142a3f" stroke="#467f9a" stroke-width="2" filter="url(#shadow)"/>
+<text x="274" y="316" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="21" fill="#f0fbff" font-weight="700" text-anchor="middle" letter-spacing="0">官方 videoshot 时间线</text>
+<text x="274" y="345" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" fill="#b1cbe0" font-weight="400" text-anchor="middle" letter-spacing="0">时间覆盖优先，受控扫描＋像素差异</text>
+<text x="274" y="369" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" fill="#90b0c2" font-weight="400" text-anchor="middle" letter-spacing="0">非完整逐帧视频，不冒充全片看完</text>
+<rect x="524" y="279" width="392" height="112" rx="18" fill="#142f46" stroke="#469cb8" stroke-width="2" filter="url(#shadow)"/>
+<text x="720" y="316" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="21" fill="#ecfaff" font-weight="700" text-anchor="middle" letter-spacing="0">全局分镜  12 / 24 / 48 帧</text>
+<text x="720" y="345" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" fill="#b1d3e4" font-weight="400" text-anchor="middle" letter-spacing="0">固定每张 12 格（4×3）· 逐张识图</text>
+<text x="720" y="369" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" fill="#90b0c2" font-weight="400" text-anchor="middle" letter-spacing="0">由主人所选轻量 / 均衡 / 详查决定</text>
+<rect x="967" y="279" width="397" height="112" rx="18" fill="#163934" stroke="#49b0a0" stroke-width="2" filter="url(#shadow)"/>
+<text x="1166" y="316" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="21" fill="#effff9" font-weight="700" text-anchor="middle" letter-spacing="0">视觉模型观察全局</text>
+<text x="1166" y="345" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" fill="#bce6dd" font-weight="400" text-anchor="middle" letter-spacing="0">提出与真实已采样时间码一致的候选</text>
+<text x="1166" y="369" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" fill="#a2cfc2" font-weight="400" text-anchor="middle" letter-spacing="0">字幕／ASR 仅作独立辅助证据</text>
+<path d="M474 335 L522 335" fill="none" stroke="#8ba8ba" stroke-width="2.3" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M917 335 L965 335" fill="none" stroke="#8ba8ba" stroke-width="2.3" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M720 392 L720 419" fill="none" stroke="#8ba8ba" stroke-width="2.3" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="181" y="421" width="1078" height="85" rx="18" fill="#1a3048" stroke="#4e91b6" stroke-width="2" filter="url(#shadow)"/>
+<text x="720" y="452" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="21" fill="#eaf7ff" font-weight="700" text-anchor="middle" letter-spacing="0">02  原始全局候选池 · 始终保留</text>
+<text x="720" y="482" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" fill="#b4d2e3" font-weight="400" text-anchor="middle" letter-spacing="0">可信采样锚点｜最多 4 / 6 / 8 个候选｜无可靠语义建议时最多 4 个技术线索｜不强行凑数</text>
+<path d="M720 507 L720 531" fill="none" stroke="#8ba8ba" stroke-width="2.3" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="277" y="534" width="886" height="85" rx="19" fill="#38313a" stroke="#e0b068" stroke-width="2" filter="url(#shadow)"/>
+<text x="720" y="569" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="23" fill="#ffe5af" font-weight="700" text-anchor="middle" letter-spacing="0">03  Life 先决定是否深入，再自主选 0～N 个</text>
+<text x="720" y="597" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="16" fill="#d5c8b2" font-weight="400" text-anchor="middle" letter-spacing="0">一次可选多个互不相关的事件；每个锚点可选 5～120 秒窗口；或停止 / 延期</text>
+<text x="76" y="659" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="18" fill="#80d7db" font-weight="700" text-anchor="start" letter-spacing="0">04  两种探索方向 · 自主选择而不是按固定顺序追查</text>
+<path d="M720 620 L720 650" fill="none" stroke="#8ba8ba" stroke-width="2.3" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M720 650 L387 650 L387 681" fill="none" stroke="#8ba8ba" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M720 650 L1053 650 L1053 681" fill="none" stroke="#8ba8ba" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="77" y="683" width="629" height="119" rx="19" fill="#173b37" stroke="#45bbaa" stroke-width="2" filter="url(#shadow)"/>
+<text x="392" y="719" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="21" fill="#d9fff4" font-weight="700" text-anchor="middle" letter-spacing="0">横向探索 · 发现多个独立事件</text>
+<text x="392" y="750" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="19" fill="#b6e8df" font-weight="600" text-anchor="middle" letter-spacing="0">事件 A   +   事件 C   +   事件 F</text>
+<text x="392" y="779" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" fill="#9dd3c7" font-weight="400" text-anchor="middle" letter-spacing="0">没有因先看 A 而丢失原本的 C、F</text>
+<rect x="732" y="683" width="632" height="119" rx="19" fill="#332e47" stroke="#a08bd8" stroke-width="2" filter="url(#shadow)"/>
+<text x="1048" y="719" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="21" fill="#f0e8ff" font-weight="700" text-anchor="middle" letter-spacing="0">纵向探索 · 继续深入某段事件</text>
+<text x="1048" y="750" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="19" fill="#d1c2f5" font-weight="600" text-anchor="middle" letter-spacing="0">局部线索   →   新疑问   →   自主复查</text>
+<text x="1048" y="779" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="15" fill="#b6a7d8" font-weight="400" text-anchor="middle" letter-spacing="0">有可信来源与预算时才追踪，不强制循环</text>
+<path d="M387 803 L387 826 L720 826 L720 840" fill="none" stroke="#86b2bd" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M1053 803 L1053 826 L720 826 L720 840" fill="none" stroke="#86b2bd" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="179" y="843" width="1081" height="62" rx="16" fill="#152d42" stroke="#417a96" stroke-width="1.8" filter="url(#shadow)"/>
+<text x="720" y="869" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="20" fill="#ecf8ff" font-weight="700" text-anchor="middle" letter-spacing="0">真实原视频 · MP4 / DASH + FFmpeg 有界局部取帧 + 视觉模型分析</text>
+<text x="720" y="894" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" fill="#a7c4d5" font-weight="400" text-anchor="middle" letter-spacing="0">原始来源 / 已核验时间 / 同账号 / 网络安全 / 调用权限逐次检查</text>
+<path d="M720 906 L720 928" fill="none" stroke="#8ba8ba" stroke-width="2.3" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="183" y="930" width="1075" height="48" rx="16" fill="#193d40" stroke="#4cafa6" stroke-width="1.8" filter="url(#shadow)"/>
+<text x="720" y="960" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="18" fill="#d9fff5" font-weight="700" text-anchor="middle" letter-spacing="0">05  可信证据累积 + 未观察候选保留 → Life 再次决定继续、转向、停止或休息</text>
+<path d="M1258 952 L1394 952 L1394 577 L1166 577" fill="none" stroke="#71b4b1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 6" marker-end="url(#arrow)"/>
+<text x="1390" y="650" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="13" fill="#86cfc7" font-weight="600" text-anchor="end" letter-spacing="0">保留全局</text>
+<rect x="77" y="990" width="1287" height="33" rx="12" fill="#223349" stroke="#455b76" stroke-width="1"/>
+<text x="720" y="1012" font-family="Noto Sans CJK SC,Microsoft YaHei,PingFang SC,sans-serif" font-size="14" fill="#c0d3e8" font-weight="600" text-anchor="middle" letter-spacing="0">共享预算：轻量 2 窗 / 30 秒 / 12 帧    ·    均衡 4 窗 / 90 秒 / 24 帧    ·    详查 6 窗 / 180 秒 / 48 帧</text>
 </svg>

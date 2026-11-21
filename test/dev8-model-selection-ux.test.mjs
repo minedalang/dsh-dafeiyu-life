@@ -46,6 +46,7 @@ function ui(){
   const controls=runInNewContext(`(()=>{${snippet}\nreturn {renderModelDropdowns,updateRouteDescription,applyDefaultModelToAllRoutes}})()`,{
     modelDefs,headlessCurrentCatalog:catalog,headlessDefaultModel:{provider:'claude',model:'sonnet'},mobileViewOnly:false,
     $,
+    window:{addEventListener:()=>{}}, // The model-page scope now includes the Whisper install poll cleanup.
     document:{createElement:()=>new FakeElement()},
     message:text=>{feedback=text},
   })

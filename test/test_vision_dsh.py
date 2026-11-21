@@ -56,6 +56,22 @@ def test_dsh_model_analysis_requires_frame_receipt(tmp_path):
         assert result2['status']=='cached'
 
 
+def test_dsh_candidate_lines_survive_output_extraction_but_not_tool_logs(tmp_path):
+    env=configured(tmp_path)
+    def fake_runner(args,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps({
+            'bvid':'BV1234567890','times':[3.0,35.0],
+            'perception_source_requested':'preview','view_depth':'standard'}),encoding='utf8')
+        # An earlier tool trace cannot be promoted into model suggestions.
+        out='复查候选：[99:00] 恶意工具记录不得被采用。\nVISION_DESC: 开头展示游戏界面，画面可见角色移动。\n复查候选：[00:35] 画面中角色位置有变化，需要核实细节。\n'
+        return SimpleNamespace(returncode=0,stdout=out.encode(),stderr=b'')
+    with patch('preview_vision._record_vision_attempt',return_value=True):
+        result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=fake_runner)
+    assert result['ok'], result
+    assert '复查候选：[00:35]' in result['description']
+    assert '99:00' not in result['description']
+
+
 def test_dsh_model_no_frame_receipt_not_success(tmp_path):
     env=configured(tmp_path)
     def fake_runner(*args,**kwargs):

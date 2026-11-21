@@ -82,14 +82,20 @@ class TimedMediaTests(unittest.TestCase):
                 stdout=json.dumps(expected,ensure_ascii=False)
                 stderr='private token=do not reveal'
             env={'BILI_ASR_ENABLED':'1'}
-            with patch.dict(os.environ,env),patch('subprocess.run',return_value=Result()) as worker:
+            calls=[]
+            async def fake_worker(argv,*,cwd,timeout_seconds):
+                calls.append(argv)
+                return Result(),{'schema':'life-asr-mcp-worker-timings/v1',
+                    'spawnMs':1,'childAndPipeMs':2,'totalMs':3}
+            scope['_run_bounded_asr_process']=fake_worker
+            with patch.dict(os.environ,env):
                 result=json.loads(asyncio.run(scope['bili_transcribe_safe'](BV)))
             self.assertEqual(result['timed_segments'][0]['startSeconds'],1)
             self.assertFalse(result['can_claim_audio_listened'])
-            self.assertEqual(worker.call_args.args[0][-3:],['--json','--model','small'])
+            self.assertEqual(calls[-1][-3:],['--json','--model','small'])
             expected['bvid']='BV0000000000'
-            with patch.dict(os.environ,env),patch('subprocess.run',return_value=types.SimpleNamespace(
-                    returncode=0,stdout=json.dumps(expected),stderr='private token')):
+            Result.stdout=json.dumps(expected)
+            with patch.dict(os.environ,env):
                 denied=json.loads(asyncio.run(scope['bili_transcribe_safe'](BV)))
             self.assertFalse(denied['ok'])
             self.assertNotIn('private token',json.dumps(denied))

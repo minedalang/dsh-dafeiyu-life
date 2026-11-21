@@ -7,6 +7,7 @@ import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createPersonalityEvolution} from '../lib/personality-evolution.mjs'
 import {parseFictionalJudgment,runFictionalAiDebug} from '../lib/personality-ai-debug.mjs'
 import {simulateJudgedFictionalChats} from '../lib/personality-evolution.mjs'
+const ACCOUNT='a'.repeat(16)
 const now=Date.parse('2026-10-31T12:00:00Z')
 const cfg=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mainSessionMemoryHalfLifeDays:90})
 const replyBase={incoming:'我不想再和你聊天了，别来找我！',reply:'',actor:1,day:'2026-01-02',tier:'stranger',outcome:'declined',declineReason:'respect-request'}
@@ -49,9 +50,9 @@ test('主人和好友影响不能被当成跨不同陌生人的一般外向程�
 })
 test('真实明确拒绝被保存为可衰减决定，重复记录幂等；遗忘不能复活',()=>{
  const dir=mkdtempSync(join(tmpdir(),'personality-decline-'))
- const gate=createLifeMemoryGateway({dataDir:dir,getConfig:cfg,now:()=>now})
+ const gate=createLifeMemoryGateway({dataDir:dir,getConfig:cfg,getAccountTag:()=>ACCOUNT,now:()=>now})
  const growth=createPersonalityEvolution({dataDir:dir,memoryGateway:gate,now:()=>now})
- const incoming={kind:'social',key:'social:10001:BV1234567890:20001',bvid:'BV1234567890',actorUid:'10001',socialTier:'stranger',text:'我不想再和你聊天了，别来找我！',at:now-86400000}
+ const incoming={kind:'social',accountTag:ACCOUNT,key:'social:10001:BV1234567890:20001',bvid:'BV1234567890',actorUid:'10001',socialTier:'stranger',text:'我不想再和你聊天了，别来找我！',at:now-86400000}
  try{
    gate.recordEvents([incoming]);growth.setEnabled(true)
    assert.equal(gate.recordSocialDecline({actorUid:'10001',bvid:incoming.bvid,incomingRpid:'20001',reason:'respect-request'}).ok,true)

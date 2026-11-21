@@ -110,5 +110,5 @@ test('生产接线要求每条社交回执携带真实平台 ID，待办与反�
  assert.match(todo,/taskId:r\.taskId/)
  assert.match(planner,/outcome\.canonicalReceiptId/)
  assert.match(reflection,/result\.receiptId=receiptId/)
- assert.match(idx,/lifeActionAttribution:lifeActionAttribution\.status\(\)/)
+ assert.match(idx,/attribution:lifeActionAttribution/,'planner diagnostics receive the original attribution ledger through the isolated status helper')
 })

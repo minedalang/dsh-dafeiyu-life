@@ -1,27 +1,31 @@
+%% 2.8.2-dev.49 视频 Agent 选中前只给标题/热度/简介，入选后自主统一观看（画面与字幕/可选 ASR 独立回执）；Life Episode 可独立规划。
 flowchart TB
-    V{"🐟 鱼鱼决定：看不看、看多深？"}
-    V -->|不看 / 略看| S["📖 仅了解文字资料或结束探索"]
-    V -->|正常了解 / 深入探索| GO["🎞️ 开始受控视觉采样"]
-    subgraph INPUT["三路候选线索 · 不代表已理解视频"]
-      direction LR
-      C["🎬 镜头变化<br/>发现新场景"]
-      M["🏃 画面运动<br/>发现动作变化"]
-      H["💬 弹幕热度<br/>发现观众反应"]
-    end
-    GO --> C & M & H
-    C & M & H --> R["🧩 联合排序<br/>时间覆盖 · 去重 · 上下文连续"]
-    R --> B["🖼️ 自适应分镜<br/>卡片预算只设上限，不强制看满"]
-    B --> T["📝 可选 Tesseract 静帧 OCR<br/>🎙️ 已启用时 Whisper 分段 ASR<br/>来源分别标注、只做时间邻接"]
-    CFG["⚙️ AI 模型页：FFmpeg 检测/自测 + 可选安装<br/>Whisper 选中模型/缓存/最近转写状态"]
-    CFG -.-> GO
-    CFG -.-> T
-    T --> Q{"鱼鱼还有疑问吗？"}
-    Q -->|有| F["🔎 指定时间窗复查"]
-    F --> R
-    Q -->|没有 / 不想继续| E["🧠 保存可追溯观察与未确认内容"]
-    classDef choice fill:#FFF1D6,stroke:#DAA520,color:#5D3C05,stroke-width:2px;
-    classDef signal fill:#E8F7F3,stroke:#3D9A91,color:#123B36,stroke-width:1.5px;
-    classDef action fill:#E8F0FF,stroke:#6588CF,color:#1B3763,stroke-width:1.5px;
-    class V,Q choice;
-    class C,M,H signal;
-    class GO,R,B,T,F,E,S,CFG action;
+  budget["主人选择轻量 / 均衡 / 详查：全局分镜、候选和累计局部预算"]
+  life{"Life 自主意愿：要不要看画面？"}
+  life -->|不看、略看、休息| stop["只读文字资料 / 结束"]
+  life -->|愿意看| preview["官方 videoshot 全片可信时间线 · 资源有界扫描"]
+  budget -.-> preview
+  preview --> coverage["按时间分层＋像素差异，最多12/24/48帧；固定每张12格（4×3）"]
+  coverage --> vision["视觉模型逐张理解实际分镜；本地思考与Token预算有界"]
+  vision --> pool["保留全部有效已采样时间锚点：语义候选最多4/6/8；无语义最多4个技术回退"]
+  vision --> signals["字幕 / ASR / PBP 热度仅为带来源的独立辅助线索"]
+  signals -.-> pool
+  pool --> interest{"Life 还想核实局部细节吗？只读意愿"}
+  interest -->|跳过或延期| stop
+  interest -->|愿意| choose{"Life 自主一批选 0~N 个可信时间点；可停止"}
+  budget -.-> choose
+  choose -->|横向| wide["一次关注多个独立事件，不被上一观察锁定"]
+  choose -->|纵向| deep["对已有事件继续探寻，但不自动重复"]
+  choose -->|停止| stop
+  wide --> merge["动态5~120秒窗口；同事件重叠可合并，不同事件分别观察"]
+  deep --> merge
+  merge --> gate["逐窗口核验账号、BV、时间码、MP4/DASH来源、权限与累计预算"]
+  budget -.-> gate
+  gate -->|授权与来源可用| ffmpeg["FFmpeg 有界原视频真实取帧＋视觉模型分析"]
+  gate -->|不满足| blocked["诚实记录限制，不伪装已观看"]
+  ffmpeg --> evidence["累积可信画面回执、时间缺口和历史；原始全局候选池不丢失"]
+  evidence -->|剩余预算与 Life 再次自主选择| choose
+  classDef life fill:#fff1d6,stroke:#d6a249,color:#523c14,stroke-width:2px;
+  classDef observed fill:#e3f4f0,stroke:#3d9c8a,color:#143c33;
+  class life,choose life;
+  class pool,ffmpeg,evidence observed;

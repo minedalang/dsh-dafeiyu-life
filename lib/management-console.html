@@ -15,7 +15,7 @@ input,textarea,select{background:var(--panel);color:var(--ink);border:1px solid 
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:11px}.fields>*{min-width:0}.fields input,.fields select{width:100%}.fields input[type=checkbox]{width:22px;height:22px}.settings-stack{display:grid;gap:12px;margin-top:12px}.settings-section{border:1px solid var(--stroke);border-radius:10px;padding:14px;min-width:0}.settings-section h4{margin:0 0 10px;font-size:14px}.diag-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.diag-switch{display:flex;align-items:center;gap:5px;margin:0;color:var(--muted);white-space:nowrap;font-weight:500}.diag-switch input{width:17px;height:17px}.quota-readout{display:block;margin:5px 0 0;font-size:12px;font-weight:500;color:var(--action)}.quota-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:9px;margin-top:9px}.quota-tile{border:1px solid var(--stroke);border-radius:9px;padding:10px 12px;background:var(--panel)}.quota-tile strong{display:block;font-size:19px}.quota-tile span{font-size:12px;color:var(--muted)}.settings-section>.muted{margin:9px 0 0}.inset{padding:12px 0;border-top:1px dashed var(--stroke);margin-top:13px}.queue-badge[hidden]{display:none!important}.queue-badge{display:inline-flex;min-width:20px;justify-content:center;background:#d54949;color:#fff;border-radius:12px;font-size:11px;padding:1px 5px}#growth-context{white-space:pre-wrap;max-height:440px;overflow:auto;font-size:12px;background:var(--tint);padding:12px;border-radius:8px}pre.output{white-space:pre-wrap;overflow:auto;max-height:65vh;background:var(--tint);border-radius:8px;padding:14px;font-size:12px}.records{display:grid;gap:9px}.record{border:1px solid var(--stroke);border-radius:9px;padding:11px;overflow-wrap:anywhere;background:color-mix(in srgb,var(--panel) 92%,var(--tint) 8%)}.record a{color:var(--action)}.checkline{display:flex;align-items:center;gap:8px}.checkline label{margin:0}.sticker-grid .sticker-preview{display:block;width:100%;height:170px;object-fit:contain;background:var(--tint);border-radius:8px}.sticker-grid .card h3{margin-top:10px}.diag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px}.diag-card{display:flex;flex-direction:column;min-height:365px}.diag-card>h3,.diag-card .diag-heading{flex:0 0 auto}.diag-card .muted{flex:0 0 auto}.records-scroll{margin-top:10px;max-height:270px;overflow:auto;padding-right:6px;scrollbar-gutter:stable both-edges}.records-scroll.tall{max-height:360px}.records-scroll:empty{margin-top:0}.records-scroll::-webkit-scrollbar{width:10px;height:10px}.records-scroll::-webkit-scrollbar-thumb{background:var(--stroke);border-radius:999px}.records-scroll::-webkit-scrollbar-track{background:transparent}.diag-block{background:var(--panel)}.record .title-line{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.record .meta-line{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}.record .preview{margin-top:7px;padding:8px 10px;border-radius:8px;background:var(--tint);font-size:12px;white-space:pre-wrap}.diag-fetch{margin:8px 0 0}.manual-reply-status{flex-basis:100%;margin:8px 0 0;padding:9px 10px;border:1px solid var(--stroke);border-radius:8px;background:var(--tint);white-space:pre-wrap;overflow-wrap:anywhere}.actions button:disabled{opacity:.65;cursor:wait}
 @media(max-width:580px){.wrap{padding:15px 12px 35px}.top h1{font-size:21px}.tabs button{flex:1}}
 
-.local-vision-status-line{display:flex;flex-wrap:wrap;align-items:center;gap:5px;line-height:1.8}.local-vision-review-inline{display:inline-flex;align-items:center;white-space:nowrap;gap:6px}.local-vision-review-inline strong{color:#c62828;font-weight:750}.local-vision-review-action{background:#fff0f0!important;border:1px solid #d32f2f!important;color:#b71c1c!important;font-weight:750!important}.local-vision-review-action:hover{background:#fbd7d7!important;box-shadow:0 0 0 2px #f6b8b8}.dependency-check-success{color:#168552!important;font-weight:700}.dependency-check-failed{color:var(--bad)!important;font-weight:650}.dependency-ready-badge{color:#087b42!important;border-color:#75ba9c!important;background:#e2f6e9!important}
+.local-vision-status-line{display:flex;flex-wrap:wrap;align-items:center;gap:5px;line-height:1.8}.local-vision-review-inline{display:inline-flex;align-items:center;white-space:nowrap;gap:6px}.local-vision-review-inline[hidden],.local-vision-review-action[hidden]{display:none!important}.local-vision-review-inline strong{color:#c62828;font-weight:750}.local-vision-review-action{background:#fff0f0!important;border:1px solid #d32f2f!important;color:#b71c1c!important;font-weight:750!important}.local-vision-review-action:hover{background:#fbd7d7!important;box-shadow:0 0 0 2px #f6b8b8}.dependency-check-success{color:#168552!important;font-weight:700}.dependency-check-failed{color:var(--bad)!important;font-weight:650}.dependency-ready-badge{color:#087b42!important;border-color:#75ba9c!important;background:#e2f6e9!important}
 .vision-budget-settings{grid-column:1 / -1}.vision-frame-plan-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin:9px 0}
 .vision-frame-plan{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:16px;min-height:126px;transition:border-color .12s,background .12s}
 .vision-frame-plan strong{font-size:17px}.vision-frame-plan span{font-size:13px;font-weight:600}.vision-frame-plan small{font-size:12px;line-height:1.5;color:var(--muted)}.vision-frame-plan em{font-style:normal;font-size:11px;padding:2px 6px;border-radius:7px;background:#DFEEE6;color:#23604B}
@@ -529,9 +529,19 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .mobile-only-note{color:var(--muted);font-size:12px;line-height:1.6;margin:6px 0}
 @media(max-width:570px){.headless-stages{grid-template-columns:1fr}.headless-next-action{width:100%}}
 .fs-footer{padding:17px;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.fs-footer .actions{display:flex;gap:8px;flex-wrap:wrap}
-.fs-warning{border:1px solid #cc3546;border-left:6px solid #cc3546;background:#ffebee;color:#912536;border-radius:12px;padding:13px 15px;display:flex;gap:15px;align-items:center;justify-content:space-between;margin-bottom:15px;font-weight:700;flex-wrap:wrap}.fs-warning[hidden]{display:none!important}
-@media(prefers-color-scheme:dark){.fs-hero{background:linear-gradient(120deg,#253957,#1d4038,#392949);border-color:#416580}.fs-hero h2{color:#e0f3ff}.fs-hero p{color:#c1dce5}.fs-pill{background:#263e50;color:#b7e7ff}.fs-state.bad{background:#4a222b;color:#ffc3cc}.fs-state.good{background:#1d4335;color:#b5f1c8}.fs-warning{background:#44262e;color:#ffd1d9}.fs-recommend-tip{background:linear-gradient(115deg,#2b294c,#22364c);border-color:#6265b4;border-left-color:#a394ff;color:#dbe3ff}.fs-recommend-tip strong{color:#cabfff}.fs-next-hint{background:#30294c;color:#e4d8ff!important;border-color:#7568aa}}
-@media(max-width:570px){.fs-hero{padding:19px}.fs-hero h2{font-size:21px}.fs-footer button{flex:1}}
+/* Upgrade reminder and first-install gate share one location, but never the same action. */
+.fs-warning{border:1px solid #d4a453;border-left:5px solid #d4a453;background:color-mix(in srgb,#ffdb9a 18%,var(--panel));color:var(--ink);border-radius:14px;padding:14px 17px;display:flex;gap:14px;align-items:center;justify-content:space-between;margin-bottom:15px;flex-wrap:wrap}
+.fs-warning[data-kind="update"]{border-color:#7fa9d7;border-left-color:#4b8ac1;background:color-mix(in srgb,#bfdbfb 22%,var(--panel))}
+.fs-warning[data-kind="repair"]{border-color:#d78e8e;border-left-color:#c25656;background:color-mix(in srgb,#ffd1d1 20%,var(--panel))}
+.fs-warning[hidden],.fs-warning button[hidden]{display:none!important}
+.fs-notice-copy{display:grid;gap:4px;flex:1 1 320px;line-height:1.55}.fs-notice-copy strong{font-size:15px}.fs-notice-copy span{font-weight:400;font-size:13px}
+.fs-notice-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.fs-notice-actions button{min-height:39px;white-space:normal;text-align:center}
+.fs-setup-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.fs-setup-overview>div{border:1px solid var(--stroke);border-radius:13px;background:var(--panel);padding:12px;display:grid;gap:5px}
+.fs-setup-overview strong{font-size:13px}.fs-setup-overview span{font-size:12px;color:var(--muted);line-height:1.55}
+.fs-warning:focus-within{outline:1px solid var(--action);outline-offset:2px}
+@media(prefers-color-scheme:dark){.fs-hero{background:linear-gradient(120deg,#253957,#1d4038,#392949);border-color:#416580}.fs-hero h2{color:#e0f3ff}.fs-hero p{color:#c1dce5}.fs-pill{background:#263e50;color:#b7e7ff}.fs-state.bad{background:#4a222b;color:#ffc3cc}.fs-state.good{background:#1d4335;color:#b5f1c8}.fs-warning{background:color-mix(in srgb,#916322 18%,var(--panel));color:var(--ink)}.fs-recommend-tip{background:linear-gradient(115deg,#2b294c,#22364c);border-color:#6265b4;border-left-color:#a394ff;color:#dbe3ff}.fs-recommend-tip strong{color:#cabfff}.fs-next-hint{background:#30294c;color:#e4d8ff!important;border-color:#7568aa}}
+@media(max-width:570px){.fs-hero{padding:19px}.fs-hero h2{font-size:21px}.fs-footer button{flex:1}.fs-setup-overview{grid-template-columns:1fr}.fs-notice-actions{width:100%}.fs-notice-actions button{flex:1 1 135px}}
 
 /* dev.12: one first-start journey; the cards and required validation share a
    single visual hierarchy rather than presenting two disconnected settings. */
@@ -845,7 +855,6 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .quick-setting-card{text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:9px;min-height:180px;padding:17px;border-radius:18px;border:1px solid color-mix(in srgb,#5d9fb6 28%,var(--stroke));background:var(--panel);color:var(--ink);box-shadow:0 6px 17px #2d638414}
 .quick-setting-card:hover{transform:translateY(-3px);border-color:#54a9c3}.quick-setting-card:focus-visible{outline:3px solid #4386bf}.quick-setting-card strong{font-size:16px}.quick-setting-card small{color:var(--muted);line-height:1.55;flex:1}.quick-setting-card em{font-style:normal;font-weight:700;color:var(--action);font-size:12px}
 .quick-card-icon{display:grid;place-items:center;width:39px;height:39px;border-radius:13px;background:color-mix(in srgb,#a5deec 50%,var(--panel));color:#276d99;font-size:24px}
-.quick-ack-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:17px}.quick-ack-row p{max-width:700px}
 #life-organic-presets{border:1px solid var(--stroke);border-radius:16px;background:color-mix(in srgb,var(--panel) 93%,#c5e8eb);padding:14px;margin:12px 0 20px}
 #life-organic-presets>summary{font-size:16px;font-weight:750;cursor:pointer}
 .preset-param-details{margin:13px 0}.preset-param-details>summary{cursor:pointer;font-size:13px;color:var(--action);font-weight:650}
@@ -1313,6 +1322,16 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .video-debug-image-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:12px;margin:10px 0 16px}
 .video-debug-image-grid figure{margin:0;min-width:0;padding:8px;border:1px solid var(--border,#aeb7c2);border-radius:12px}
 .video-debug-image-grid img{display:block;width:100%;height:auto;max-height:320px;object-fit:contain;background:#171b22;border-radius:7px}
+.video-debug-image-zoom{display:block;width:100%;padding:0;border:0;border-radius:8px;background:transparent;cursor:zoom-in}
+.video-debug-image-zoom:focus-visible{outline:3px solid var(--action,#428ee7);outline-offset:3px}
+.video-debug-lightbox{box-sizing:border-box;width:min(96vw,1500px);max-width:96vw;max-height:96vh;max-height:96dvh;padding:12px;border:1px solid var(--border,#aeb7c2);border-radius:14px;background:var(--panel,#171b22);color:var(--text,#eee);box-shadow:0 14px 70px #0009}
+.video-debug-lightbox::backdrop{background:rgba(0,0,0,.85)}
+.video-debug-lightbox-header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:0 2px 10px}
+.video-debug-lightbox-header strong{min-width:0;overflow-wrap:anywhere}
+.video-debug-lightbox-close{padding:8px 14px;cursor:pointer}
+.video-debug-lightbox img{display:block;max-width:100%;width:100%;height:auto;max-height:calc(96vh - 145px);object-fit:contain;margin:auto;background:#171b22}
+.video-debug-lightbox p{margin:9px 2px 0;overflow-wrap:anywhere;font-size:12px;line-height:1.5}
+@media(max-width:580px){.video-debug-lightbox{padding:8px;max-width:98vw;width:98vw}.video-debug-lightbox img{max-height:calc(96vh - 135px)}}
 .video-debug-image-grid figcaption{font-size:12px;line-height:1.45;overflow-wrap:anywhere;margin-top:6px;color:var(--text-muted,#7f8892)}
 
 /* dev.3b.21 — 统一显式保存提醒。保留各分组的后端事务和授权边界。 */
@@ -1357,6 +1376,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .vision-permission-copy{display:flex;flex-direction:column;gap:5px;min-width:0}
 .vision-permission-copy strong{font-size:13px}
 .vision-permission-copy small{font-size:12px;color:var(--muted);line-height:1.6}
+.vision-permission-copy .vision-cost-warning{display:block;font-size:12px;font-weight:700;line-height:1.6;color:var(--ink);background:color-mix(in srgb,var(--ui-amber) 14%,var(--panel));border:1px solid color-mix(in srgb,var(--ui-amber) 65%,var(--stroke));border-left:4px solid var(--ui-amber);border-radius:8px;padding:8px 10px;margin:5px 0 2px}
 .vision-usage-permission>.vision-toggle{flex-shrink:0;display:flex;align-items:center;gap:7px;white-space:nowrap}
 .vision-toggle-caption{font-size:12px;font-weight:650}
 /* 2.8.1: affirmative, accessible permission switches without inverting stored booleans. */
@@ -1379,23 +1399,16 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 @media(max-width:680px){.vision-usage-permission{align-items:flex-start;flex-direction:column;gap:10px}.vision-usage-permission>.vision-toggle{align-self:flex-start}}
 @media(prefers-reduced-motion:reduce){.management-jump-cue{animation:none;outline:3px solid #50bf8c;outline-offset:3px}}
 
-/* 2.8.1 one-time introduction shown before reviewing the new setup page. */
-#release-281-dialog{border:0;border-radius:22px;padding:0;max-width:min(660px,calc(100vw - 30px));width:100%;max-height:min(88vh,800px);overflow:auto;color:var(--ink);background:var(--panel);box-shadow:0 22px 78px #15283e6b}
-#release-281-dialog::backdrop{background:#0a1b2ab8;backdrop-filter:blur(5px)}
-.release-281-top{padding:23px 26px 18px;background:linear-gradient(120deg,color-mix(in srgb,#56ca9d 32%,var(--panel)),color-mix(in srgb,#81b6f2 28%,var(--panel)) 60%,color-mix(in srgb,#b9a0f8 21%,var(--panel)));border-bottom:1px solid var(--stroke)}
-.release-281-top .release-281-tag{font-size:11px;letter-spacing:.08em;color:#126446;font-weight:850;background:#daf9e5;padding:5px 10px;border-radius:999px;display:inline-block}
-.release-281-top h2{font-size:24px;margin:12px 0 7px;line-height:1.25}
-.release-281-top p{font-size:13px;color:var(--muted);margin:0;line-height:1.65}
-.release-281-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:16px 24px 5px}
-.release-281-feature{display:flex;gap:12px;min-width:0;padding:13px;border:1px solid var(--stroke);border-radius:15px;background:color-mix(in srgb,var(--tint) 27%,var(--panel));align-items:flex-start}
-.release-281-feature .release-281-icon{display:grid;place-items:center;width:43px;height:43px;flex:none;border-radius:12px;font-size:24px;background:linear-gradient(140deg,#d7f3ee,#dbe8fa)}
-.release-281-feature strong{display:block;font-size:13px;margin:1px 0 4px}
-.release-281-feature small{display:block;font-size:11px;line-height:1.55;color:var(--muted)}
-.release-281-note{font-size:12px;line-height:1.6;color:var(--muted);padding:12px 26px 0;margin:0}
-.release-281-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:19px 25px 23px}
-.release-281-actions button{min-height:39px}
-@media(max-width:590px){.release-281-grid{grid-template-columns:1fr;padding:12px 15px 0}.release-281-top{padding:20px 19px}.release-281-feature{padding:10px}.release-281-top h2{font-size:21px}.release-281-note{padding:12px 19px 0}.release-281-actions{padding:15px 18px 19px}}
-@media(prefers-reduced-motion:reduce){#release-281-dialog::backdrop{backdrop-filter:none}}
+
+/* 2.8.2: local vision selection is a draft choice, not the running model. */
+.fs-vision-model-tip{margin:10px 0 0;padding:10px 12px;border-left:3px solid var(--action);border-radius:7px;background:color-mix(in srgb,var(--panel) 91%,var(--tint) 9%);line-height:1.65}
+.local-vision-state-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:13px 0}
+.local-vision-state-board>div{padding:12px 14px;border:1px solid var(--stroke);border-radius:11px;background:var(--panel)}
+.local-vision-state-board strong{display:block;font-size:13px}.local-vision-state-board p{margin:7px 0 0;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.local-vision-activation-flow{padding:14px;margin:14px 0;border:1px solid var(--stroke);border-radius:12px}
+.local-vision-activation-flow>.muted{margin:7px 0 11px}.local-vision-primary-actions{margin-bottom:5px}
+.local-vision-primary-actions>button{min-height:40px}.local-vision-primary-actions>.primary{font-weight:700}
+@media(max-width:580px){.local-vision-primary-actions>button{width:100%}.local-vision-state-board{grid-template-columns:minmax(0,1fr)}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1579,6 +1592,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-life-agent #life-behavior-tree .life-tree-subtext{fill:var(--muted);font-size:10.5px}
 #panel-life-agent .life-tree-video-target{display:flex;align-items:center;flex-wrap:wrap;gap:5px 9px;padding:9px 13px;margin:8px 0;border:1px solid color-mix(in srgb,#57a995 50%,var(--stroke));background:color-mix(in srgb,#d0f3e9 25%,var(--panel));border-radius:12px;font-size:12px}
 #panel-life-agent .life-tree-video-target[hidden]{display:none}
+#panel-life-agent .life-visual-attempt-history:not([hidden]){padding:10px 13px;margin:9px 0;border-left:3px solid var(--action);border-radius:7px;background:var(--tint);line-height:1.8}
 #panel-life-agent .life-tree-video-target a{font-weight:700;overflow-wrap:anywhere;text-decoration:underline;text-underline-offset:3px}
 #panel-life-agent .life-tree-video-target small{color:var(--muted);font-size:11px}
 #panel-life-agent .life-behavior-status{color:var(--ink)}
@@ -1722,6 +1736,44 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #video-perception-final-debug .video-debug-panels summary{cursor:pointer;font-weight:700;font-size:12px}
 #video-perception-final-debug .video-debug-json{white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;max-height:580px;min-height:90px;padding:13px;line-height:1.55;border:1px solid var(--stroke);border-radius:12px;background:var(--panel);font-size:12px}
 </style>
+
+<style>
+/* Open Pet Platform preview page (2.8.2-dev) */
+#panel-open-platform .openpet-hero{position:relative;overflow:hidden;padding:24px 26px;border:1px solid var(--stroke);border-radius:24px;background:linear-gradient(135deg,color-mix(in srgb,#d8f0ff 38%,var(--panel)),color-mix(in srgb,#f0e3ff 20%,var(--panel)) 48%,var(--panel));box-shadow:0 14px 32px rgba(38,63,98,.08)}
+#panel-open-platform .openpet-hero:after{content:'';position:absolute;right:-50px;top:-30px;width:220px;height:220px;background:radial-gradient(circle at center,rgba(122,182,255,.28),rgba(122,182,255,0));pointer-events:none}
+#panel-open-platform .hero-eyebrow{display:inline-flex;gap:8px;align-items:center;padding:6px 12px;border-radius:999px;background:color-mix(in srgb,var(--ui-indigo) 10%,var(--panel));border:1px solid color-mix(in srgb,#7b91dd 35%,var(--stroke));font-size:12px;color:var(--action);font-weight:700}
+#panel-open-platform .openpet-hero h2{margin:10px 0 10px;font-size:30px;letter-spacing:-.02em}
+#panel-open-platform .openpet-hero p{max-width:900px;line-height:1.72}
+#panel-open-platform .hero-pills{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+#panel-open-platform .hero-pills span{display:inline-flex;align-items:center;padding:6px 11px;border-radius:999px;font-size:12px;font-weight:700;background:var(--panel);border:1px solid var(--stroke)}
+#panel-open-platform .openpet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:16px 0}
+#panel-open-platform .openpet-card{border:1px solid var(--stroke);border-radius:18px;padding:18px;background:linear-gradient(155deg,var(--panel),color-mix(in srgb,#d7eefe 14%,var(--panel)));box-shadow:0 8px 22px rgba(42,71,106,.05)}
+#panel-open-platform .openpet-card h3{margin:0 0 9px;font-size:17px}
+#panel-open-platform .openpet-card p{margin:7px 0;color:var(--muted);line-height:1.65}
+#panel-open-platform .openpet-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--ui-teal) 12%,var(--panel));color:var(--action);font-size:12px;font-weight:700;margin-bottom:9px}
+#panel-open-platform .openpet-note{border-left:4px solid #d9a54a;padding:12px 14px;background:linear-gradient(135deg,color-mix(in srgb,#e3ad5e 14%,var(--panel)),var(--panel));border-radius:15px;margin:14px 0;font-size:13px;line-height:1.7}
+#panel-open-platform .openpet-proto-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+#panel-open-platform .openpet-layer{border:1px solid var(--stroke);border-radius:18px;padding:17px;background:var(--panel)}
+#panel-open-platform .openpet-layer strong{display:block;font-size:15px;margin-bottom:8px}
+#panel-open-platform .openpet-layer ul{margin:0;padding-left:18px;color:var(--muted);line-height:1.7}
+#panel-open-platform .openpet-api{margin-top:14px;border:1px solid var(--stroke);border-radius:18px;background:linear-gradient(180deg,color-mix(in srgb,#dcebff 18%,var(--panel)),var(--panel));overflow:hidden}
+#panel-open-platform .openpet-api-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--stroke)}
+#panel-open-platform .openpet-api-head h3{margin:0;font-size:16px}
+#panel-open-platform .openpet-api pre{margin:0;padding:16px;white-space:pre-wrap;overflow:auto;font-size:12px;background:transparent}
+#panel-open-platform .openpet-api .muted{padding:0 16px 15px;margin:0}
+#panel-open-platform .openpet-roadmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px;margin-top:14px}
+#panel-open-platform .openpet-step{border:1px solid var(--stroke);border-radius:18px;padding:16px;background:var(--panel);position:relative}
+#panel-open-platform .openpet-step::before{content:attr(data-step);position:absolute;right:12px;top:10px;font-size:12px;color:var(--muted);font-weight:700}
+#panel-open-platform .openpet-step h4{margin:0 0 7px;font-size:15px}
+#panel-open-platform .openpet-step p{margin:0;color:var(--muted);line-height:1.65}
+#panel-open-platform .openpet-svg{width:100%;height:auto;margin:14px 0 4px;border:1px solid var(--stroke);border-radius:20px;background:linear-gradient(160deg,var(--panel),color-mix(in srgb,#dbeeff 11%,var(--panel)))}
+#panel-open-platform .openpet-future{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+#panel-open-platform .openpet-future .record{margin:0}
+#panel-open-platform .openpet-link-note{display:flex;gap:10px;align-items:flex-start;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg,color-mix(in srgb,var(--ui-indigo) 9%,var(--panel)),var(--panel));border:1px dashed color-mix(in srgb,#6d95d8 52%,var(--stroke));margin-top:14px}
+#panel-open-platform .openpet-link-note strong{display:block;margin-bottom:6px}
+@media(max-width:700px){#panel-open-platform .openpet-hero{padding:18px}#panel-open-platform .openpet-hero h2{font-size:24px}}
+</style>
+
 </head>
 <body><main class="wrap">
 <header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><a class="button mobile-back" href="/" aria-label="返回 DSH Mobile">← 返回 DSH</a><div class="settings-finder" role="search"><label for="settings-finder-input">查找设置</label><input id="settings-finder-input" type="search" placeholder="搜索设置…" autocomplete="off" aria-controls="settings-finder-results" aria-expanded="false"><div id="settings-finder-results" class="settings-finder-results" role="listbox" hidden></div></div><button id="refresh">刷新当前页</button></div></header>
@@ -1751,7 +1803,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <button data-tab="growth" aria-selected="false">行为与表达改进 <span id="growth-count" class="queue-badge" hidden></span></button>
 <button data-tab="models" aria-selected="false">AI 模型</button>
 <button data-tab="quotas" aria-selected="false">次数与额度</button>
-<button data-tab="polling" aria-selected="false">消息感知</button></div>
+<button data-tab="polling" aria-selected="false">消息感知</button>
+<button data-tab="open-platform" aria-selected="false">🧩 桌宠开放平台（开发中）</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">🗂️ 知识与维护</span>
 <button data-tab="meme" aria-selected="false">梗与网络文化 <span id="meme-count" class="queue-badge" hidden></span></button>
 <button data-tab="stickers" aria-selected="false">表情包管理</button>
@@ -1762,17 +1815,25 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div id="mobile-view-banner" class="mobile-view-banner" role="note" hidden><strong>📱 手机端 · 查看模式</strong><p>DSH Mobile 通过远程网关查看管理中心。配置保存、B站登录、Headless 同步与验证、备份恢复等需要在运行 DSH 的电脑端完成；这里的相关按钮已置灰。你仍可切换页面、展开内容及刷新可访问的状态。</p></div>
 <p id="message" role="status" aria-live="polite"></p>
 <aside id="settings-save-hint" role="status" aria-live="polite" hidden><span id="settings-save-hint-text">此处修改尚未保存。</span><button id="settings-save-hint-action" type="button" class="primary">保存本组设置</button></aside>
-<div id="fs-warning" class="fs-warning" role="alert" hidden><span id="fs-warning-text">快速设置未完成，全部业务功能暂时锁定。</span><button type="button" data-open-tab="firststart">打开快速设置 ↗</button></div>
+<aside id="fs-warning" class="fs-warning" role="status" aria-live="polite" hidden>
+  <div class="fs-notice-copy"><strong id="fs-warning-title">正在检查快速设置</strong><span id="fs-warning-text">正在读取必需配置与版本引导状态…</span></div>
+  <div class="fs-notice-actions"><button type="button" id="fs-warning-open" data-open-tab="firststart">打开快速设置 ↗</button><button type="button" id="fs-quick-ack" class="primary" hidden>我已查看本版快速设置</button><button type="button" id="fs-complete" class="primary" hidden>完成快速设置</button></div>
+</aside>
 <section id="panel-firststart" hidden>
-  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 2.8.1 升级必看</span><h2>快速设置 · 检查新版能力与已有配置</h2><p>2.8.1 首次打开管理中心时，新老用户都需要进入本页确认新版设置说明。<strong>已有登录、模型、Life 和记忆不会因此清空或重置</strong>；已有健康环境无需重装。B站主依赖与 Headless 文字模型验证属于基础必需项；视频画面识别需要另行配置视觉模型并完成图片验收，<strong>视频视觉可选且默认不开启</strong>。</p></div>
+  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 2.8.2</span><h2>快速设置 · 先完成必需项，再自由选择增强能力</h2><p>首次使用或从旧版升级时，可在此检查当前设置；已完成快速设置的用户无需反复确认。<strong>已有登录、模型、Life 和记忆不会因此清空或重置</strong>；已有健康环境无需重装。B站主依赖与 Headless 文字模型验证属于基础必需项；视频画面识别需要另行配置视觉模型并完成图片验收，<strong>视频视觉可选且默认不开启</strong>。</p></div>
 
   <div class="fs-journey" aria-label="统一快速设置流程">
+    <div class="fs-setup-overview" aria-label="设置类型说明">
+      <div><strong>① 必要配置</strong><span id="fs-required-overview">正在检查 B站登录和文字模型的实际验证状态…</span></div>
+      <div><strong>② 本版新增 · 可选</strong><span>视频视觉与转写按需安装，视觉图片验收不会自动开启观看。</span></div>
+      <div><strong>③ 更多个性化 · 可选</strong><span>主 Session、记忆、生活节奏和社交授权以后也能设置，修改须明确保存。</span></div>
+    </div>
     <div class="fs-progress" id="fs-progress" aria-label="快速设置进度">
       <a class="fs-progress-step" href="#fs-deps-card" data-fs-step="account"><span>01</span><strong>主依赖与 B站登录</strong><small>必须</small></a>
       <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="model"><span>02</span><strong>模型验证</strong><small>必须</small></a>
-      <a class="fs-progress-step" href="#fs-vision-guide" data-fs-step="preferences"><span>03</span><strong>新版设置检查</strong><small>需查看</small></a>
+      <a class="fs-progress-step" href="#fs-vision-guide" data-fs-step="preferences"><span>03</span><strong>视频视觉引导</strong><small>可选 · 升级了解</small></a>
       <a class="fs-progress-step" href="#fs-session-stage" data-fs-step="session"><span>04</span><strong>主会话</strong><small>可跳过</small></a>
-      <a class="fs-progress-step" href="#fs-final-stage" data-fs-step="finish"><span>05</span><strong>完成引导</strong><small>不重置设置</small></a>
+      <a class="fs-progress-step" href="#fs-final-stage" data-fs-step="finish"><span>05</span><strong>设置总结</strong><small>无需重置</small></a>
     </div>
     <p class="fs-progress-hint" id="fs-progress-hint" role="status" aria-live="polite">正在读取快速设置状态…</p>
     <div id="fs-verify-stage" class="fs-phase"><div class="fs-phase-title"><strong>连接鱼鱼的世界</strong><span>先准备运行环境，再完成两项必要验证；已有登录和模型不会自动重置</span></div>
@@ -1784,6 +1845,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <details><summary>查看主依赖安装日志末尾</summary><pre id="fs-main-deps-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto">暂无安装记录</pre></details>
     <div class="video-aux-heading" style="margin-top:16px"><strong>② 视频增强组件 · 自愿勾选</strong><span class="pill">不影响首次设置必需项</span></div>
     <p class="muted">FFmpeg 预计下载约 40 MB～1 GB+（依平台与系统依赖变化）；Whisper tiny / base / small / medium / large-v3 模型预计约 75 MB / 145 MB / 485 MB / 1.5 GB / 3 GB，另需 Python 环境与磁盘缓存。安装不会自动开启语音转写或触发视频观看。</p>
+    <p class="setting-note">Whisper 依赖与模型来源：<a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener noreferrer">faster-whisper 官方项目</a> · <a href="https://pypi.org/project/faster-whisper/" target="_blank" rel="noopener noreferrer">PyPI 包与发行文件</a> · <a href="https://huggingface.co/Systran" target="_blank" rel="noopener noreferrer">Whisper 模型权重</a>。本插件通过所选 PyPI 镜像安装依赖，并单独下载模型权重。</p>
     <div class="fields"><label class="checkline"><input id="fs-install-ffmpeg" type="checkbox">安装 FFmpeg（Windows / macOS / 支持的 Linux 包管理器）</label><label class="checkline"><input id="fs-install-whisper" type="checkbox">安装 Whisper 转写环境及当前已保存的模型（下载可能超过数百 MB）</label></div>
     <p id="fs-addons-status" class="quick-current" role="status" aria-live="polite">正在检查视频增强组件…</p>
     <div class="quick-config-actions"><button id="fs-addons-install" type="button">安装勾选的视频组件</button><button type="button" data-open-tab="models" data-open-anchor="video-aux-dependencies">选择 Whisper 模型与启用转写 ↗</button></div>
@@ -1794,8 +1856,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <section class="fs-step"><h3>02 · Headless 模型验证 <span class="pill pending">至少验证一个模型</span></h3><p>在 DSH 中配置好模型后，官方内置模型直接进行 Headless 真实连接验证；自定义 Provider 如果配置不同，先在左栏同步再验证。<strong>快速设置只需任选一个模型验证成功，不必验证全部 Provider。</strong></p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后请在右侧 Headless 模型卡片点击「验证文字连接」完成真实请求；图片能力还需单独实测。</p><div class="actions"><button class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">同步并验证模型 ↗</button></div></section>
   </div>
     </div>
-    <section class="quick-config-section fs-version-highlight" id="fs-vision-guide" aria-label="2.8.1 视频视觉模型配置引导">
-      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>02B · 视频视觉感知 <span class="pill fs-new-281-badge">2.8.1 新功能 · 推荐体验</span></h4><p>Headless 文字连接通过，不代表鱼鱼能看懂视频画面。2.8.1 将模型选择、依赖修复和真实图片验收集中在「AI 模型 → 视觉识别模型」。</p></div></div>
+    <section class="quick-config-section fs-version-highlight" id="fs-vision-guide" aria-label="2.8.2 视频视觉模型配置引导">
+      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>02B · 视频视觉感知 <span class="pill fs-new-281-badge">2.8.2 视频感知优化 · 可选</span></h4><p>2.8.2 优化了视频感知流程：鱼鱼可以先了解视频大概，再自己决定是否细看某些片段。选择视觉模型并通过图片测试后，可按需开启；不要求每条视频都观看。</p><p class="fs-vision-model-tip"><strong>🆕 本版新增本地 Qwen3.5 2B 视觉模型，推荐优先尝试。</strong>旧 MiniCPM-V 4.7 1B 的分镜描述容易遗漏细节，<strong>不建议继续作为常用模型</strong>，仅保留旧安装兼容且不再提供新下载；另可选 Qwen3.5 4B，偏向画面理解质量。已用 DSH 云端视觉模型的用户无需改用本地。</p></div></div>
       <p id="fs-vision-state" class="quick-current" role="status" aria-live="polite">正在读取当前视觉设置…</p>
       <div class="fs-vision-steps" aria-label="视觉模型配置三步">
         <div><strong>① 选择识图来源</strong><p>可选 DSH 多模态 Provider / 模型，或本地 Ollama 视觉模型。仅使用文字功能的用户可以不配置。</p></div>
@@ -1822,9 +1884,9 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
           <label class="quick-option"><input type="radio" name="quick-life-mode" value="active"><strong>✦ 开启自主生活</strong><small>通过必需验证后按所选节奏自主考虑，不代表强制评论或关注</small></label>
           <label class="quick-option"><input type="radio" name="quick-life-mode" value="off"><strong>☾ 暂停自主探索</strong><small>暂停启动新的生活决策，不撤销其他已授权社交渠道</small></label></div>
         <h5>生活活跃度</h5><div class="quick-choice-grid" role="radiogroup" aria-label="快速设置生活活跃程度">
-          <label class="quick-option"><input type="radio" name="quick-life-pace" value="quiet"><strong>🌙 安静</strong><small>80 分 / 50 次生活考虑；视频 Agent 60 分钟 / 阅读 3 / 挑选 3</small></label>
-          <label class="quick-option"><input type="radio" name="quick-life-pace" value="natural"><strong>🍃 自然</strong><small>30 分 / 100 次生活考虑；视频 Agent 30 分钟 / 阅读 5 / 挑选 5</small></label>
-          <label class="quick-option"><input type="radio" name="quick-life-pace" value="lively"><strong>✨ 活跃</strong><small>10 分 / 200 次生活考虑；视频 Agent 15 分钟 / 阅读 8 / 挑选 5</small></label>
+          <label class="quick-option"><input type="radio" name="quick-life-pace" value="quiet"><strong>🌙 安静</strong><small>60 分 / 80 次生活考虑；视频 Agent 60 分钟 / 阅读 3 / 挑选 3</small></label>
+          <label class="quick-option"><input type="radio" name="quick-life-pace" value="natural"><strong>🍃 自然</strong><small>20 分 / 150 次生活考虑；视频 Agent 30 分钟 / 阅读 5 / 挑选 5</small></label>
+          <label class="quick-option"><input type="radio" name="quick-life-pace" value="lively"><strong>✨ 活跃</strong><small>10 分 / 250 次生活考虑；视频 Agent 15 分钟 / 阅读 8 / 挑选 5</small></label>
           <label class="quick-option"><input type="radio" name="quick-life-pace" value="custom"><strong>🎛️ 自定义／旧设置</strong><small>保留当前参数，到生活页精细设置</small></label></div>
         <p id="quick-life-current" class="quick-current" role="status">读取生活参数…</p><div class="quick-config-actions"><button type="button" class="primary" id="quick-life-save">确认保存生活设置</button><button type="button" data-open-tab="life-agent" data-open-anchor="life-settings-v2-panel">高级生活设置 ↗</button></div>
       </section>
@@ -1856,19 +1918,18 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 
       <section class="quick-config-section quick-model-link"><div class="quick-config-title"><span class="quick-card-icon">✧</span><div><h4>AI 模型与其他高级功能</h4><p>Provider、模型测试和精细参数较复杂，保留独立管理页面</p></div></div><div class="quick-config-actions"><button type="button" data-open-tab="models">前往 AI 模型配置 ↗</button><button type="button" data-open-tab="personality">人格成长设置 ↗</button></div></section>
     </div>
-    <div class="quick-ack-row"><p class="muted" id="fs-quick-ack-status">请检查当前设置后继续。老用户的原配置与后台生活不会因此暂停。</p><button type="button" id="fs-quick-ack" class="primary">我已查看本版快速设置</button></div>
   </section>
     </div>
     <div id="fs-session-stage" class="fs-phase fs-optional"><div class="fs-phase-title"><strong>可选的会话设置</strong><span>这项可以留到以后，不阻塞首次设置完成</span></div>
     <section class="fs-step optional"><h3>04 · 主 Session <span class="pill">可跳过</span></h3><p>绑定与鱼鱼交谈的session会话；以后可以在管理中心随时修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
     </div>
     <div id="fs-final-stage" class="fs-phase">
-  <div class="fs-footer"><div><strong id="fs-summary">请先完成两项必需配置</strong><p class="muted">完成后随时可以在管理中心重新打开快速设置，已有记忆、凭据和历史资料不会删除。</p></div><div class="actions"><button id="fs-complete" class="primary" type="button" disabled>完成快速设置</button><button id="fs-complete-skip" type="button" disabled>跳过可选项并完成</button></div></div>
+  <div class="fs-footer"><div><strong id="fs-summary">正在检查必需配置</strong><p class="muted">首次使用请在页面顶部提示栏点击「完成快速设置」。可选功能以后随时能调整；不会删除原有记忆、凭据和历史资料。</p></div></div>
     </div>
   </div>
 </section>
 <section id="panel-models" hidden>
-<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择一个默认模型，可应用到所有任务；需要时再展开单独调整。连接测试会实际调用模型，可能产生费用；测试连接不计入统计。</p><p><a href="#models-vision" style="font-weight:650">🎞️ 视觉模型、FFmpeg 与 Whisper 已统一收纳在「视觉识别模型」中 ↓</a></p></div></div>
+<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>文字模型：选择后请点「保存 AI 模型设置」，再验证真实连接。视觉模型：还需要图片实测与人工认可。<strong>本地 Ollama 下拉框只用于挑选模型，不会自动切换后台；点击「启用此已认可模型」并成功回读后才生效。</strong>连接测试可能产生费用，不计入统计。</p><p><a href="#models-vision" style="font-weight:650">🎞️ 视觉模型、FFmpeg 与 Whisper 已统一收纳在「视觉识别模型」中 ↓</a></p></div></div>
 <div class="settings-stack">
 <div class="settings-section" id="headless-model-sync-panel">
 <div class="headless-panel-heading"><h4>🔐 模型同步与能力管理</h4><span id="headless-provider-summary">检测 Desktop 模型中…</span></div>
@@ -1909,21 +1970,21 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button></div>
 <p class="model-verify-guide"><strong>模型怎样才能使用？</strong> 在左栏选模型并同步，在右栏验证文字连接；如需图片识别，再到「视觉识别模型」进行图片实测并人工确认。</p>
 </div>
-<div class="settings-section model-default-panel"><h4>✨ 默认模型 <span class="help-tip" title="选择后同步所有 9 个任务并重置思考深度。若模型不支持视觉或工具任务，相应能力可能不可用。之后仍可单项调整。">?</span></h4><p class="muted">选择后，下面全部九项任务会变成同一个模型，思考深度使用模型默认值。</p><div class="fields"><div><label for="models-default-provider">默认 Provider</label><select id="models-default-provider"></select></div><div><label for="models-default-model">默认模型</label><select id="models-default-model"></select></div></div><p id="models-default-summary" class="muted">正在读取可用模型…</p><p id="models-catalog-diagnostic" class="setting-note" role="status">Provider 下拉框只显示已发现的目录、当前宿主模型或已保存设置；显示不代表连接已通过。遇到 502 请先检查中转站，不会自动切换供应商。</p><small id="models-recommendation-note" class="setting-note">保存后生效，仍可单独调整每项任务。</small></div>
+<div class="settings-section model-default-panel"><h4>✨ 默认模型 <span class="help-tip" title="选择后同步所有 8 个当前任务并重置思考深度。若模型不支持视觉或工具任务，相应能力可能不可用。之后仍可单项调整。">?</span></h4><p class="muted">选择后，下面全部八项当前任务会变成同一个模型，思考深度使用模型默认值。</p><div class="fields"><div><label for="models-default-provider">默认 Provider</label><select id="models-default-provider"></select></div><div><label for="models-default-model">默认模型</label><select id="models-default-model"></select></div></div><p id="models-default-summary" class="muted">正在读取可用模型…</p><p id="models-catalog-diagnostic" class="setting-note" role="status">Provider 下拉框只显示已发现的目录、当前宿主模型或已保存设置；显示不代表连接已通过。遇到 502 请先检查中转站，不会自动切换供应商。</p><small id="models-recommendation-note" class="setting-note">保存后生效，仍可单独调整每项任务。</small></div>
 <details class="settings-section"><summary><strong>最近模型调用归因（仅本地宿主，零额外 AI 调用）</strong></summary>
 <p class="muted">仅记录已核验账号的宿主模型请求：场景、耗时、模型标识和脱敏失败类型，不保存提示词、输出或私信。视频 Headless 内部调用尚未覆盖；Token 和费用数据如未由宿主提供则显示「未知」，不能用调用次数推断费用。</p>
 <pre id="models-invocation-recent" class="setting-note" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere">暂未读取模型调用归因</pre></details>
 <div class="settings-section" id="models-role-guide"><details class="visual-advanced"><summary>按任务选择模型的建议（可选）</summary><p class="muted"><strong>高频决策重视成本：</strong>Life 行为决策、私信和评论优先稳定、能够遵循结构化指令的均衡模型；记忆检索还需基本的语义判断能力。<strong>按需任务重视质量：</strong>主人 Agent 的复杂操作规划可选较强模型。<strong>低频任务优先质量：</strong>人生反思、生活动态和手动表情规则优化调用较少，可使用更强的模型。</p><p class="muted">模型页统计的是插件任务启动次数，不是 Token 或费用；支持什么模型以 DSH 已注册目录和实测为准。下方视觉默认使用<strong>上面指定的 DSH 视觉 Provider / 模型</strong>；或选择已安装并人工验收的本地 Ollama 模型。只有真正需要观察画面时才调用。</p></details></div>
-<h4 class="model-role-group">① Life 行为与交流 · 先配置这三项</h4>
+<h4 class="model-role-group">① Life 行为与交流 · 先配置这两项</h4>
 <details class="settings-section model-task" open><summary><strong>行为决策模型（Life 的行动选择） <span class="help-tip" title="专门负责 Life 自主规划、视频经历续行与统一行动意愿；不负责普通私信文案。">?</span></strong><span class="muted">高频 · 推荐均衡模型</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-behaviorDecision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-behaviorDecision-test" class="model-test-button">测试连接</button><span id="models-behaviorDecision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">决定 Life 的探索、互动与休息等行动。建议使用响应稳定的均衡模型；旧用户未单独设置时仍沿用互动模型。</p><div class="fields" id="models-behaviorDecision"></div></div></details>
 <details class="settings-section model-task"><summary><strong>社交互动模型（私信与评论） <span class="help-tip" title="用于普通私信、评论回复和自然表达；Life 规划与意愿可单独选用「行为决策模型」。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-interaction-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-interaction-test" class="model-test-button">测试连接</button><span id="models-interaction-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">主要处理普通私信、评论回复和社交上下文组织。调用相对频繁，建议选择响应快、表达自然的均衡模型；不宜仅追求最低成本。Life 的关键动作由独立的「行为决策模型」负责；未单独设置行为模型时，仍兼容沿用此模型。发言授权和回执不变。</p><div class="fields" id="models-interaction"></div><div class="fields"><div><label for="models-interaction-context-mode">B站后台互动 · 对话上下文模式</label><select id="models-interaction-context-mode"><option value="compact">精简按需（默认；模型自主请求时才检索记忆/画像/梗）</option><option value="full">原始完整（兼容旧版；一次提供所有已准备的上下文）</option></select><small class="setting-note">选择后台互动一次携带多少资料；精简模式更省成本。不会改变权限，所有符合处理条件的私信均由统一 Life 决策入口处理。</small><div class="toolbar"><button type="button" id="models-interaction-context-refresh">刷新真实调用统计</button></div><small id="models-interaction-context-status" class="setting-note">调用统计尚未读取</small><div id="models-interaction-context-recent" class="setting-note" style="white-space:pre-wrap" role="status" aria-live="polite">最近 12 个互动批次：尚未读取（不含 UID 与聊天正文）</div></div></div></div></details>
-<details class="settings-section model-task"><summary><strong>旧版主人 Agent 模型（兼容配置） <span class="help-tip" title="无任意文件/Shell/平台写入能力，工具由白名单校验。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-ownerDmAgent-usage" class="muted">今日调用次数：读取中…</span><button type="button" id="models-ownerDmAgent-test" class="model-test-button">测试连接</button><span id="models-ownerDmAgent-test-result" class="muted" role="status"></span></div><p class="muted">保留旧设置便于兼容；新版主人私信已统一进入 Life 决策，不再由此模型独立接管。</p><div class="fields" id="models-ownerDmAgent"></div></div></details>
+
 <h4 class="model-role-group">② 视频、视觉与长期认识 · 按实际能力配置</h4>
-<details class="settings-section model-task"><summary><strong>视频 Agent 模型（选片与内容分析） <span class="help-tip" title="用于独立视频 Agent 的选片与内容分析；Life 是否委派由行为决策模型自主决定。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">视频 Agent 启动后，使用此模型进行自主选片、内容阅读与分析。Life 是否逛首页及是否委派 Agent，由「行为决策模型」决定。此模型主要阅读文字线索、调用搜索与字幕工具；只有在需要看画面时才按下方「视觉识别」配置使用多模态能力。不会强制启动或评论。独立视频 Agent 需完成 Headless 模型验证。</p><div class="fields" id="models-video"></div></div></details>
+<details class="settings-section model-task"><summary><strong>视频 Agent 模型（选片、内容分析与视觉摘要整合） <span class="help-tip" title="用于独立视频 Agent 的选片与内容分析；Life 是否委派由行为决策模型自主决定。">?</span></strong><span class="muted">展开设置</span></summary><div class="model-task-body"><div class="model-activity"><span id="models-video-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-video-test" class="model-test-button">测试连接</button><span id="models-video-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">视频 Agent 启动后，使用此模型进行自主选片、内容阅读与分析。Life 是否逛首页及是否委派 Agent，由「行为决策模型」决定。此模型也负责 Life 已核验局部画面后的文字摘要整合：只读取本次允许使用的全局及局部笔记，使用独立无工具调用，不授予 B站读写能力；未取得新增局部证据时不触发。视频 Agent 常规任务主要阅读文字线索、调用搜索与字幕工具；只有在需要看画面时才按下方「视觉识别」配置使用多模态能力。不会强制启动或评论。独立视频 Agent 需完成 Headless 模型验证。</p><div class="fields" id="models-video"></div></div></details>
 <section id="vision-runtime-alert" class="vision-runtime-alert" role="status" aria-live="polite" hidden><strong>视觉环境检查</strong><span id="vision-runtime-alert-text">正在检查…</span><button type="button" id="vision-runtime-alert-open" hidden>定位自动修复</button></section>
 <div class="vision-settings-shell" id="models-vision-shell"><details class="settings-section model-task" id="models-vision-settings"><summary aria-controls="models-vision-settings-body"><strong>视觉识别模型 <span class="help-tip" title="本区只负责配置识图模型与图片验收；视频自主观察与社交图片识别分别有自己的授权开关。">?</span></strong><span id="models-vision-collapse-hint" class="muted">设置模型、验收图片与管理用途授权</span></summary><div class="model-task-body" id="models-vision-settings-body">
 <div class="vision-usage-permissions" aria-label="视觉能力用途与权限">
-  <div class="vision-usage-permission vision-usage-video"><div class="vision-permission-copy"><strong>🎬 自主视频画面观察</strong><small>允许 Life 在视频探索时主动调用已配置的视觉模型；与「视频探索」页同步，开启不会强制观看。开关操作直接保存。</small><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">查看视频探索设置 ↗</a></div><label class="vision-toggle" for="models-vision-enabled"><input id="models-vision-enabled" type="checkbox" role="switch" aria-label="允许 Life 自主观察视频画面"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span class="vision-toggle-caption">允许视频观察</span></label></div>
+  <div class="vision-usage-permission vision-usage-video"><div class="vision-permission-copy"><strong>🎬 自主视频画面观察</strong><small>允许 Life 在视频探索时主动调用已配置的视觉模型；与「视频探索」页同步，开启不会强制观看。开关操作直接保存。</small><small class="vision-cost-warning" role="note">⚠️ 开启视频识别可能多次传入图片并产生费用！强烈建议选择经实测支持图片的 gpt-luna-6 等低成本模型，或本地 Ollama；DeepSeek 等云端模型可能较烧钱，实际价格以所选 Provider 计费为准。</small><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">查看视频探索设置 ↗</a></div><label class="vision-toggle" for="models-vision-enabled"><input id="models-vision-enabled" type="checkbox" role="switch" aria-label="允许 Life 自主观察视频画面"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span class="vision-toggle-caption">允许视频观察</span></label></div>
   <div class="vision-usage-permission"><div class="vision-permission-copy"><strong>💬 私信与评论图片／表情包识别</strong><small>独立控制社交图片理解，不受视频观察开关影响。开关操作直接保存。</small><a href="?tab=bili#bili-social-image-permission" data-open-tab="bili" data-open-anchor="bili-social-image-permission">前往视频探索页 ↗</a></div><label class="vision-toggle" for="models-incoming-image-enabled"><input id="models-incoming-image-enabled" type="checkbox" role="switch" aria-label="私信与评论图片表情包识别"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span class="vision-toggle-caption">允许图片识别</span></label></div>
 </div>
 <div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">选择 DSH 视觉模型或本地 Ollama 视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><p class="muted"><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">🎞️ 选择视频感知方案（轻量／均衡／详查） ↗</a></p><div class="fields" id="models-vision"></div>
@@ -1983,19 +2044,30 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </section>
 <div class="contextual-memory-group" id="local-vision-controls">
 <div class="video-aux-heading"><h4>🖥️ 可选本地视频视觉模型</h4><span id="models-local-vision-active" class="pill pending">读取当前配置…</span></div>
-<p class="muted">本地视觉模型负责画面观察。下面提供一键安装，需本机有 Ollama 环境。也可直接在 DSH 中配置 Ollama Provider 调用本地模型。</p>
-<details class="visual-advanced"><summary>查看模型大小与硬件建议</summary><div class="fields" aria-label="可选本地视觉模型能力与硬件建议">
-<div class="setting-note"><strong>MiniCPM-V 4.7 1B · 轻量视觉</strong><p>适合图片、多图与视频片段的初步观察，注重低资源占用。<strong>Ollama 模型约 1.8 GB</strong>（量化版）；<strong>建议 4 GB 以上显存起试</strong>，也可考虑 CPU/系统内存运行，实际占用与上下文、图像数量有关。必须下载 <code>openbmb/minicpm-v4.7:1b</code>，不能省略 <code>:1b</code>；部分 Ollama 版本不支持其视觉投影器。</p></div>
-<div class="setting-note"><strong>Qwen3.5 4B · 中文与复杂画面</strong><p>适合中文场景、屏幕文字及多张图片之间的关联理解。<strong>Ollama 模型约 3.3～4.0 GB</strong>（制品不同大小有差异）；<strong>建议 6～8 GB 显存起试，优先 8 GB</strong>，多图/长上下文会增加显存需求。模型标识 <code>qwen3.5:4b</code>。</p></div>
+<p class="muted">本地视觉模型负责画面观察。<strong>推荐新用户优先试 Qwen3.5 2B</strong>；Qwen3.5 4B 适合追求画面质量。旧 MiniCPM 1B 仅兼容旧安装，已不建议日常使用。需本机运行 Ollama；也可以通过 DSH 配置 Ollama Provider。</p>
+<details class="visual-advanced"><summary>查看模型大小与硬件建议</summary>
+<div class="setting-note" id="local-vision-hardware-guide" role="note" style="margin:10px 0;padding:13px;border-left:3px solid var(--primary,#4b94a8)">
+<strong>💻 选模型先看内存与显存（无需显卡也能运行）</strong>
+<p style="margin:7px 0">显存是<strong>GPU 加速建议</strong>，不是安装门槛。<strong>无独立显卡、显存不足</strong>也可以用 Ollama 的 CPU + 系统内存运行，可能更慢；有 GPU 时可能部分层卸载到系统内存。占用随量化、上下文和图片数变化，实际以 Ollama 加载情况为准。</p>
+<div class="fields" aria-label="本地模型 GPU 显存建议与 CPU 内存运行提示">
+<div><strong>Qwen3.5 2B · 中档</strong><p>建议 GPU 显存约 4～6 GB；也可 CPU 运行（系统内存建议 8 GB 起，留有余量）。</p></div>
+<div><strong>Qwen3.5 4B · 画面质量优先</strong><p>建议 GPU 显存约 6～8 GB；也可 CPU 运行（系统内存建议 12～16 GB 或更高）。</p></div>
+<div><strong>MiniCPM-V 4.7 1B · 不建议常规使用</strong><p>建议 GPU 显存约 4 GB；可 CPU 运行（系统内存建议 8 GB 起）。实测分镜描述容易遗漏细节，仅供低资源尝试。</p></div>
+</div>
+<p style="margin:5px 0 0">以上均是<strong>经验性起试建议，不是官方硬性最低配置</strong>；本机总内存和其他程序的占用也会影响能否顺利加载。</p>
 </div></details>
 <div class="local-vision-install-guide"><p><strong>简化下载和代理：</strong>本地视觉模型通过 <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">Ollama</a> 下载安装。需要保证 Ollama 有合适的网络环境。</p>
 <details class="visual-advanced"><summary>Windows 使用本地网络代理启动 Ollama 示例</summary><p>当前仅列举 Windows 环境下的方法：确认 Ollama 已完全退出，在 PowerShell 中执行下面两条命令，并保持该窗口运行：</p><pre><code>$env:HTTPS_PROXY = "http://127.0.0.1:7890" # 7890 是常见网络代理端口，具体请以实际端口为准
 ollama serve # 启动 Ollama 服务</code></pre></details></div>
-<div class="fields"><div><label for="local-vision-model">可选本地模型</label><select id="local-vision-model"><option value="qwen3.5-4b">Qwen3.5 4B</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B</option></select></div></div>
+<div class="local-vision-state-board" aria-label="本地模型后台状态与待选型号"><div><strong>后台已保存的实际配置</strong><p id="local-vision-effective" role="status" aria-live="polite">正在读取后台生效模型…</p></div><div><strong>当前下拉框选择（尚不等于启用）</strong><p id="local-vision-selection-note" role="status" aria-live="polite">请选择型号，再根据下方步骤操作。</p></div></div>
+<div class="fields"><div><label for="local-vision-model">想要使用的本地模型</label><select id="local-vision-model" aria-describedby="local-vision-selection-note"><option value="qwen3.5-2b">Qwen3.5 2B · 新版推荐</option><option value="qwen3.5-4b">Qwen3.5 4B · 质量优先</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B · 历史兼容（不推荐 / 不可下载）</option></select><small class="setting-note">仅切换下拉框不会保存，也不会触发「设置尚未保存」横幅。<strong>已认可模型仍需点击下方「启用」才能切换后台。</strong></small></div>
+<div><label for="local-vision-thinking">本地识图思考深度</label><select id="local-vision-thinking"><option value="off">关闭思考（推荐用于逐格识图）</option><option value="default">模型默认</option><option value="on">开启思考</option><option value="low">低（模型支持时）</option><option value="medium">中（模型支持时）</option><option value="high">高（模型支持时）</option></select><small class="setting-note" id="local-vision-thinking-support">正在检查模型支持的思考档位…</small><div class="toolbar"><button type="button" id="local-vision-thinking-save">保存本地识图思考设置</button></div></div></div>
+<p class="setting-note">此设置仅影响本机 Ollama 视频逐帧识图，不改变 DSH 模型的思考深度。思考会消耗生成预算；每张分镜独立分配宽松 Token 上限，且保留总执行时间限制。</p>
+<div class="local-vision-activation-flow" aria-label="本地模型安装、验收与启用"><strong>配置新模型的三步</strong><p class="muted">① 下载选中模型（已有模型可跳过） → ② 用固定原图做图片测试、检查回答并人工认可 → ③ <strong>点击启用</strong>，成功回读后才切换后台。只有选择型号不会生效。</p><div class="toolbar local-vision-primary-actions"><button type="button" id="local-vision-install" disabled>① 下载选中模型</button><button type="button" id="local-vision-review-open" disabled>② 前往图片验收 ↑</button><button type="button" id="local-vision-select" class="primary" disabled>③ 启用此已认可模型</button></div><p class="setting-note">启用会将识图方式切到本地，并同时开启「允许视频观察」；如果暂时不想观看画面，可随后关闭上方视频观察开关。不会授予点赞、评论或其他外发权限。</p></div>
 <div class="local-vision-status-line"><span id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</span><span id="local-vision-review-inline" class="local-vision-review-inline" hidden><strong id="local-vision-review-label">尚未人工验收</strong><button type="button" id="local-vision-review-jump" class="life-action local-vision-review-action">前往人工验收 ↑</button></span><span id="local-vision-status-tail" class="muted"></span></div>
-<p class="muted">需先安装并运行 Ollama。选择模型并下载，识图成功且人工认可后再启用。</p><progress id="local-vision-progress" max="100" value="0" hidden></progress>
-<div class="toolbar"><button type="button" id="local-vision-ensure">检查并恢复 Ollama 服务</button><button type="button" id="local-vision-install">下载本地模型</button><button type="button" id="local-vision-cancel">取消下载</button><button type="button" id="local-vision-select">启用选中模型</button></div><details class="visual-advanced local-vision-maintenance"><summary>更多管理操作</summary><div class="toolbar"><button type="button" id="local-vision-delete" class="danger">删除选中模型</button><button type="button" id="local-vision-refresh">刷新状态</button></div><p class="muted">删除会影响这台电脑上其他使用同一 Ollama 模型的程序，执行前会再次确认。</p></details>
-<p class="muted">已安装的模型不必重复下载；请在上方识图验收区确认结果。</p>
+<progress id="local-vision-progress" max="100" value="0" hidden></progress>
+<div class="toolbar"><button type="button" id="local-vision-ensure">检查并恢复 Ollama 服务</button><button type="button" id="local-vision-refresh">刷新后台状态</button><button type="button" id="local-vision-cancel" hidden>取消下载</button></div>
+<details class="visual-advanced local-vision-maintenance"><summary>高级维护：删除 Ollama 全局模型（危险操作）</summary><p class="muted">删除操作会影响使用同一 Ollama 模型库的其他程序。必须确认后才执行，普通下载、测试和启用无需展开这里。</p><div class="toolbar"><button type="button" id="local-vision-delete" class="danger">删除选中模型</button></div><p class="muted">已安装的旧 MiniCPM 1B 仍可删除，但不提供重新下载。</p></details>
 </div>
 <div class="video-aux-section" id="video-aux-dependencies" aria-label="视频感知依赖与辅助能力">
   <h4>🎞️ 视频感知 · 解码和语音能力</h4>
@@ -2012,13 +2084,18 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <div class="video-aux-card">
       <div class="video-aux-heading"><strong>🎙️ 视频语音识别模型（推荐开启）</strong><span id="models-whisper-badge" class="pill pending">检测中</span></div>
       <label class="checkline"><input id="models-transcribe" type="checkbox">启用视频语音识别（无可用官方字幕时，鱼鱼可按需使用 Whisper）</label>
-      <div class="fields"><div><label for="models-asr-model">Whisper 模型</label><select id="models-asr-model"><option value="tiny">tiny · 更省资源</option><option value="base">base</option><option value="small">small · 默认</option><option value="medium">medium</option><option value="large-v3">large-v3 · 更高资源占用</option></select></div></div>
+      <div class="fields"><div><label for="models-asr-model">Whisper 模型</label><select id="models-asr-model"><option value="tiny">tiny · 更省资源</option><option value="base">base</option><option value="small">small · 默认</option><option value="medium">medium</option><option value="large-v3">large-v3 · 更高资源占用</option></select></div><div><label for="models-asr-language">转写语言</label><select id="models-asr-language"><option value="auto">自动检测（推荐，混合语音仍需核对）</option><option value="zh">中文</option><option value="en">英文</option></select></div></div>
       <p id="models-whisper-status" class="muted" role="status" aria-live="polite">正在检查转写依赖…</p>
+      <p class="setting-note">安装包：<a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener noreferrer">faster-whisper 官方源码</a> · <a href="https://pypi.org/project/faster-whisper/" target="_blank" rel="noopener noreferrer">PyPI 包／下载文件</a>；模型权重：<a id="models-whisper-repo-link" href="https://huggingface.co/Systran/faster-whisper-small" target="_blank" rel="noopener noreferrer">所选型号的官方模型页</a>。依赖安装和模型下载是两个独立阶段，日志会显示当前镜像；PyPI 镜像连续 180 秒无输出会自动切换。</p>
       <p id="models-whisper-last" class="setting-note" role="status">最近实际转写：暂无记录</p>
-      <p class="muted">当视频没有可用字幕时，鱼鱼可自主选择使用语音识别。</p>
+      <p class="muted">当视频没有可用字幕时，鱼鱼可自主选择使用语音识别。8 分钟及以上的长视频默认从本地下载的音轨均匀抽取 3 个各约 60 秒片段识别，减少 CPU 推理等待；这不是整段转写，时间码保留原视频位置。音频下载仍可能耗时；缺少本机 FFmpeg / ffprobe 则退回原先完整转写。需要完整语音覆盖时可由维护者设置环境变量 BILI_ASR_LONG_VIDEO_MODE=full。</p>
       <details class="visual-advanced"><summary>Whisper 使用已有模型目录（高级）</summary><div class="fields"><div><label for="models-whisper-model-path">使用现有 faster-whisper 模型文件夹（可选）</label><input id="models-whisper-model-path" type="text" autocomplete="off" placeholder="包含 model.bin 与 config.json 的绝对目录"><small class="setting-note">支持本机已下载的 CTranslate2 / faster-whisper 模型目录或 Hugging Face snapshot；不支持直接填 .pt 文件。模型已就绪则不重复下载，Python 转写运行环境仍需可用。</small></div></div><div class="toolbar"><button type="button" id="models-whisper-path-save">验证并使用模型目录</button><button type="button" id="models-whisper-path-clear">恢复默认模型缓存</button></div><p id="models-whisper-path-result" class="setting-note" role="status"></p></details>
-<div class="toolbar"><button type="button" id="models-whisper-install">安装所选 Whisper 模型</button><button type="button" id="models-whisper-refresh">刷新转写状态</button></div>
-      <details><summary>查看安装日志末尾（不含转写正文）</summary><pre id="models-whisper-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto"></pre></details>
+<p class="setting-note" id="models-whisper-progress-label" role="status" aria-live="polite">尚无进行中的模型安装</p>
+      <progress id="models-whisper-progress-bar" max="100" style="width:100%;display:none"></progress>
+      <div class="toolbar"><button type="button" id="models-whisper-install">安装所选 Whisper 模型</button><button type="button" id="models-whisper-refresh">刷新转写状态</button></div>
+      <details><summary>查看实时安装日志（不含转写正文）</summary><pre id="models-whisper-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto"></pre></details>
+      <div class="setting-note"><strong>已下载的 Whisper 模型</strong> · 只显示插件自己的缓存，外部模型目录不会被删除</div>
+      <div id="models-whisper-installed" role="region" aria-label="已安装 Whisper 模型"></div>
     </div>
   </div>
   <div class="toolbar"><button id="models-aux-save" type="button" class="primary">保存视频语音识别设置</button></div>
@@ -2051,16 +2128,17 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <label class="checkline"><input id="bili-home-recommend" type="checkbox">允许独立的首页漫游</label>
 <p class="muted">不需要在这里重复维护搜索关键词。主人设定的核心兴趣可前往「人生记忆 → 兴趣编辑」调整；旧额外关键词数据保留但不再作为新的选片控制入口。</p>
 <div class="toolbar"><button type="button" data-open-tab="life" data-open-anchor="life-interest-section">打开兴趣管理 ↗</button></div></div>
-<div class="settings-section" id="bili-video-perception-plans"><div class="video-aux-heading"><strong>🎞️ 视频感知方案 · 深入探索采样预算</strong><span class="pill">选择上限 · 非强制观看</span></div><p class="muted">由鱼鱼决定是否观看以及略看／正常／深入。卡片控制深入探索的真实解码取帧预算，不改变模型授权或外发权限；不设独立视觉每日调用上限。超过当前方案的单视频网络预算时优先使用受控 MP4 索引分段读取真实窗口；Range / 容器不兼容时明确报错，不以 3 张低清图假装深入探索。</p>
+<div class="settings-section" id="bili-video-perception-plans"><div class="video-aux-heading"><strong>🎞️ 视频感知方案 · 选择看得多细</strong><span class="pill">选择上限 · 非强制观看</span></div><p class="muted">2.8.2 优化了视频观察方式：先了解全貌，再由鱼鱼决定是否细看。选择轻量、均衡或详查，只是设置观察上限，不强制看完，也不会改变原有互动权限。</p>
 <div class="bili-switch-row" id="bili-video-observation-permission"><div class="bili-switch-copy"><strong>🎬 自主视频画面观察</strong><small>允许 Life 使用已配置视觉模型采样理解视频画面；开启不等于强制观看。与 AI 模型页同步，开关操作立即保存。</small></div><label class="vision-toggle" for="bili-video-vision-enabled"><input id="bili-video-vision-enabled" type="checkbox" role="switch" aria-label="允许自主视频画面观察"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span></label></div>
 <div class="bili-switch-row" id="bili-social-image-permission"><div class="bili-switch-copy"><strong>💬 私信与评论图片／表情包识别</strong><small>独立的社交图片理解权限，不影响视频观察；开关操作立即保存。</small></div><label class="vision-toggle" for="bili-disable-incoming-vision"><input id="bili-disable-incoming-vision" type="checkbox" role="switch" aria-label="允许私信与评论图片表情包识别"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span></label></div>
-<div class="vision-budget-settings"><h4>🎞️ 自适应分镜预算 · 自选档位</h4>
+<div class="vision-budget-settings"><h4>🎞️ 选择观察档位</h4>
+<p class="setting-note" id="bili-board-fixed-hint">每张分镜固定12格；三档分别最多查看12、24、48个采样画面。</p>
 <input id="quota-vision-frames" type="hidden" value="24">
 <div id="vision-frame-plan-cards" class="vision-frame-plan-cards" role="group" aria-label="选择深入探索时每条视频的采样帧预算">
-<button type="button" class="vision-frame-plan" data-vision-frame-plan="12" aria-pressed="false"><strong>轻量档 · 12</strong><span>短视频 / 轻度探索</span><small>最多1张分镜图 · 单视频最多24 MiB网络读取</small></button>
-<button type="button" class="vision-frame-plan" data-vision-frame-plan="24" aria-pressed="true"><strong>均衡档 · 24 <em>默认</em></strong><span>常见中短视频的深入了解</span><small>最多2张分镜图 · 单视频最多50 MiB网络读取</small></button>
-<button type="button" class="vision-frame-plan" data-vision-frame-plan="48" aria-pressed="false"><strong>详查档 · 48</strong><span>非电影长度的高信息量视频</span><small>最多4张分镜图 · 单视频最多100 MiB网络读取</small></button>
-</div><p class="muted">卡片设置上限而非强制使用量；略看为0、正常了解最多12个时刻，深入探索可用本档上限。支持≤45分钟的受控公开单段视频。文件超过预算并不直接拒绝：可借助 MP4 索引按时间窗口请求 Range；实际支持情况取决于 CDN、容器与 FFprobe，所有失败都应在 Debug 中说明。</p></div>
+<button type="button" class="vision-frame-plan" data-vision-frame-plan="12" aria-pressed="false"><strong>轻量档 · 12</strong><span>短视频 / 轻度探索</span><small>最多12个采样时刻 · 单视频最多24 MiB网络读取</small></button>
+<button type="button" class="vision-frame-plan" data-vision-frame-plan="24" aria-pressed="true"><strong>均衡档 · 24 <em>默认</em></strong><span>常见中短视频的深入了解</span><small>最多24个采样时刻 · 单视频最多50 MiB网络读取</small></button>
+<button type="button" class="vision-frame-plan" data-vision-frame-plan="48" aria-pressed="false"><strong>详查档 · 48</strong><span>非电影长度的高信息量视频</span><small>最多48个采样时刻 · 单视频最多100 MiB网络读取</small></button>
+</div><p class="muted">这些数字只是观察上限，鱼鱼可以少看或不看。技术限制、流量与失败原因可在「运行诊断」查看。</p></div>
 <div class="toolbar"><button type="button" id="bili-vision-plan-save" class="primary">保存视频感知方案</button><button type="button" data-open-tab="models" data-open-anchor="models-vision-settings">配置视觉识别模型 ↗</button><button type="button" data-open-tab="models" data-open-anchor="video-aux-dependencies">FFmpeg / Whisper 依赖 ↗</button></div><p id="bili-vision-plan-status" class="setting-note" role="status">尚未读取方案。</p></div>
 <div class="settings-section"><h4>🐟 鱼鱼怎样与视频互动</h4><p class="muted">选择一个方案，鱼鱼自己决定做不做。不会自动发布或改变你的旧授权。</p>
 <div class="choice-presets" role="radiogroup" aria-label="视频互动方案">
@@ -2356,12 +2434,12 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <h3>🌿 鱼鱼的生活</h3>
 <p class="muted">鱼鱼自己选择何时探索、聊天或休息；对外互动仍遵守你的授权。日常生活自动考虑遵守设定的最短间隔；新私信／评论等实时事件由独立通道及时处理，不被该间隔延迟。提高每日额度只提高可用模型预算，不强迫鱼鱼行动。旧版已保存额度不会自动上调；请重新选档并确认保存。</p>
 <div class="life-native-settings"><div><label for="life-v2-mode">自主生活</label><select id="life-v2-mode"><option value="off">暂停</option><option value="active">开启生活探索</option><option value="shadow" hidden>历史观察模式（兼容旧配置）</option></select></div>
-<div><label for="life-v2-pace">活跃程度</label><select id="life-v2-pace"><option value="quiet">安静（80 分钟 / 50 次）</option><option value="natural">自然（30 分钟 / 100 次）</option><option value="lively">活跃（10 分钟 / 200 次）</option><option value="custom">自定义（高级）</option></select></div></div><small id="life-legacy-pace-note" class="setting-note" hidden>正在保留你以前的活跃度设置；需要改动时再选安静、自然或活跃。</small>
+<div><label for="life-v2-pace">活跃程度</label><select id="life-v2-pace"><option value="quiet">安静（60 分钟 / 80 次）</option><option value="natural">自然（20 分钟 / 150 次）</option><option value="lively">活跃（10 分钟 / 250 次）</option><option value="custom">自定义（高级）</option></select></div></div><small id="life-legacy-pace-note" class="setting-note" hidden>正在保留你以前的活跃度设置；需要改动时再选安静、自然或活跃。</small>
 <div class="life-mode-switch" role="radiogroup" aria-label="自主生活开关"><label class="life-select-card"><input type="radio" name="life-mode-card" value="active"><span class="life-select-icon">✦</span><span><strong>开启自主生活</strong><small>鱼鱼自行决定探索、互动或休息</small></span></label><label class="life-select-card"><input type="radio" name="life-mode-card" value="off"><span class="life-select-icon">☾</span><span><strong>暂停自主探索</strong><small>不再启动新生活决策</small></span></label></div>
 <div class="life-runtime-meter" aria-live="polite"><div class="toolbar"><strong>🧭 今日 Life 模型决策</strong><b id="life-decision-usage">读取中…</b><button type="button" id="life-decision-refresh" class="life-action life-sky">刷新状态（不调用模型）</button></div>
   <progress id="life-decision-progress" max="100" value="0" aria-label="本日自主生活模型决策额度使用百分比"></progress>
   <p id="life-decision-next" class="muted" role="status">正在读取调度心跳…</p><p class="muted">每日额度限制 Life 日常模型考虑机会，不直接限制评论／私信发送次数，也不是视频 Agent 的轮次数。子 Agent 还有自己的独立准入和发送限制。网络故障、冷却、无候选或自主休息均不应显示为“已经发表”。</p></div>
-<div class="life-pace-heading"><h4>活跃程度</h4><p class="muted">这是日常自主规划的考虑间隔与每日预算，不是每天必须执行的次数；社交事件有独立处理节奏。</p></div><div class="life-pace-cards" role="radiogroup" aria-label="生活活跃程度"><label class="life-select-card"><input type="radio" name="life-pace-card" value="quiet"><span class="life-select-icon">☾</span><span><strong>安静</strong><small>80 分 / 50 次考虑；视频 60 分钟 / 阅读 3 / 挑选 3</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="natural"><span class="life-select-icon">❀</span><span><strong>自然</strong><small>30 分 / 100 次考虑；视频 30 分钟 / 阅读 5 / 挑选 5</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="lively"><span class="life-select-icon">✧</span><span><strong>活跃</strong><small>10 分 / 200 次考虑；视频 15 分钟 / 阅读 8 / 挑选 5</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="custom"><span class="life-select-icon">⚙</span><span><strong>自定义</strong><small>自行调整生活和视频节奏</small></span></label></div>
+<div class="life-pace-heading"><h4>活跃程度</h4><p class="muted">这是日常自主规划的考虑间隔与每日预算，不是每天必须执行的次数；社交事件有独立处理节奏。</p></div><div class="life-pace-cards" role="radiogroup" aria-label="生活活跃程度"><label class="life-select-card"><input type="radio" name="life-pace-card" value="quiet"><span class="life-select-icon">☾</span><span><strong>安静</strong><small>60 分 / 80 次考虑；视频 60 分钟 / 阅读 3 / 挑选 3</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="natural"><span class="life-select-icon">❀</span><span><strong>自然</strong><small>20 分 / 150 次考虑；视频 30 分钟 / 阅读 5 / 挑选 5</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="lively"><span class="life-select-icon">✧</span><span><strong>活跃</strong><small>10 分 / 250 次考虑；视频 15 分钟 / 阅读 8 / 挑选 5</small></span></label><label class="life-select-card"><input type="radio" name="life-pace-card" value="custom"><span class="life-select-icon">⚙</span><span><strong>自定义</strong><small>自行调整生活和视频节奏</small></span></label></div>
 <section class="life-hours-card" id="life-hours-card" aria-labelledby="life-hours-title">
   <div class="life-hours-head"><div><span class="life-hours-kicker">DAILY RHYTHM · 独立设置</span><h4 id="life-hours-title">🕰️ 每天什么时候自由活动？</h4><p class="muted">只决定普通 Life 自主生活的活动时段；安静、自然、活跃决定的是活动节奏，两者互不影响。</p></div><output id="life-hours-display" class="life-hours-display" aria-live="polite">09:00 — 23:00</output></div>
   <div class="life-hours-timeline" id="life-hours-timeline" role="img" aria-label="活动时段：09:00 至 23:00"></div>
@@ -2407,6 +2485,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div id="life-timeline-live-activity" class="life-timeline-live-activity" role="status" aria-live="polite" hidden></div>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar life-timeline-controls"><span class="life-timeline-live-dot" aria-hidden="true"></span><span class="life-timeline-update-state" id="life-timeline-update-state" role="status">实时同步 · 每 4 秒对账</span><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新列表</button></div>
 <p id="life-timeline-summary" class="muted" role="status" hidden></p>
+<p id="life-video-attempt-history" class="muted life-visual-attempt-history" role="status" aria-live="polite" hidden></p>
 <details id="life-release-evidence-section" class="contextual-settings"><summary>🧪 发布验收 · 只读匿名快照</summary>
 <p class="muted">用于检查原创主评论准入 · 最近视频轮次、未知发送冻结与尚待人工核验的发布门禁；不会调用模型、读取私信或触发平台写入。快照并不代表已通过 Windows 实机验收。</p>
 <button id="life-release-evidence-export" type="button" class="life-action life-sky">生成发布验收快照（只读）</button><p id="life-release-evidence-status" class="muted" role="status">尚未采集。</p><pre id="life-release-evidence-result" class="video-debug-json" aria-label="脱敏发布验收快照" hidden></pre>
@@ -2534,20 +2613,37 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <section id="panel-diagnostics" hidden><details class="settings-section life-section" id="video-perception-final-debug" open>
 <summary>🎞️ 视频感知全链路 · Life 最终输入 Debug</summary>
 <div class="inset">
-<p class="muted">本机只读验收：输入一个真实 BV，分步骤查看画面、字幕／Whisper、OCR 和证据时间轴。试运行不会登记 Life 经历或观看历史，也不会点赞／评论；可能产生 B站读取和视觉模型成本。下方「真实 Life」展示最近一次实际观看工具返回给 Life 的<strong>同一份数据</strong>，不是测试替身。</p>
+<p class="muted">本机只读验收：输入真实 BV，可选择<strong>单阶段官方 videoshot 全局概览</strong>、<strong>完整两阶段（全局预览 → Life 自主多候选规划 → 逐段原视频复查）</strong>，或单独排障原视频 FFmpeg。只有完整两阶段会在真实全局识图后由 Life 先决定是否深入、再自主选择0～多处可信时间点和观察时长；并不是主人指定看片。验收不会登记 Life 视频观看经历或公开互动，但会产生实际的 Life 意愿选择记录，并可能消耗 B站读取流量与视觉模型费用。</p>
 <div class="toolbar video-debug-toolbar">
 <label>BV 视频号 <input id="video-debug-bvid" type="text" placeholder="BV1xxxxxxxxxx" maxlength="12" autocomplete="off" spellcheck="false" aria-label="测试视频 BV 号"></label>
-<label>本次主人测试深度 <select id="video-debug-depth" aria-label="试运行理解深度"><option value="skim">略看 · 不识图</option><option value="standard">正常了解</option><option value="deep" selected>深入探索</option></select></label>
+<label>读取来源 <select id="video-debug-source" aria-label="试运行视觉来源"><option value="preview" selected>单阶段 · 官方 videoshot 全局预览</option><option value="life-two-stage">完整两阶段 · videoshot → Life 多候选规划 → FFmpeg</option><option value="adaptive">单阶段专项 · 原视频 FFmpeg</option><option value="owner-focus">主人局部识图专项 · 不需 Life 同意</option></select></label>
+<label>单阶段测试深度（两阶段固定先正常了解） <select id="video-debug-depth" aria-label="试运行理解深度"><option value="skim">略看 · 不识图</option><option value="standard" selected>正常了解 · 最多12帧</option><option value="deep">深入预览 · 按档位最多24帧</option></select></label>
 <button id="video-debug-run" type="button" class="life-action life-purple">开始只读视频感知验收</button>
+<div id="video-debug-owner-focus-panel" class="setting-note" style="display:none;flex-basis:100%;margin:10px 0" aria-live="polite">
+  <strong>🔎 主人局部识图专项 · 从已验证时间中选择</strong>
+  <p class="muted" id="video-debug-owner-focus-help">先生成全局分镜，再选一处真实采样时刻。</p>
+  <label>已核验时间点 <select id="video-debug-owner-focus-anchor" aria-label="主人局部识图的可信时间点"></select></label>
+  <label>观察时长（秒） <select id="video-debug-owner-focus-duration" aria-label="主人局部识图时长"><option value="10">10秒</option><option value="15" selected>15秒</option><option value="20">20秒</option><option value="30">30秒</option></select></label>
+  <button id="video-debug-owner-focus-run" type="button" class="life-action life-sky">开始所选局部原视频识图</button>
+  <p class="muted">本功能仅属于主人技术验收：直接读取已验证时间附近的原视频，不调用 Life 意愿、不形成 Life 经历、不进行 B站互动。</p>
+</div>
+<p class="muted" id="video-debug-source-explain">单阶段模式只验收一次识图；选择「完整两阶段」会让 Life 决定是否深入；选择「主人局部识图专项」则在全局采样成功后由你选时刻直接技术验收，再自主选0～多个已核验时间锚点（受三档累计预算保护）。若 Life 拒绝或预算不足，局部视觉读取不会发生。主人测试不写 Life 观看经历、不会外发评论。</p>
 <button id="video-debug-refresh" type="button" class="life-action life-sky">刷新当前结果</button>
 </div>
+<p id="video-debug-service-status" class="setting-note" role="status" aria-live="polite">正在检查视频识图所需服务…</p>
+<button id="video-debug-open-vision-model" type="button" data-open-tab="models" data-open-anchor="models-vision-settings" class="life-action life-sky" hidden>前往视觉模型管理，启动 Ollama ↗</button>
 <progress id="video-debug-progressbar" max="6" style="width:100%;height:15px;display:none" aria-label="视频感知只读验收进行中"></progress>
 <p id="video-debug-progress" class="muted" role="status" aria-live="polite">尚未执行。新版本启用后请确认模型与 FFmpeg / Whisper 状态。</p>
 <div id="video-debug-summary" class="video-debug-summary" aria-live="polite"></div>
-<section class="setting-note" aria-label="真实视频采样图像" style="margin-top:12px"><strong>🖼️ 真实分镜拼图与高清局部复查</strong><p class="muted">仅展示本机实际送入视觉模型的 JPEG；图片按本轮回执显示，最多保留 30 分钟。时间戳是抽样瞬间，不代表连续观看。若命中旧缓存且原图已过期，会明确提示没有可复看的图像。</p><div id="video-debug-images" class="video-debug-images" aria-live="polite">尚无本轮图像回执</div></section>
+<section class="setting-note" aria-label="视频采样图像" style="margin-top:12px"><strong>🖼️ 视觉模型全局输入分镜与原视频局部采样</strong><p class="muted">全局区域显示官方低清 videoshot 分镜；局部区域显示 FFmpeg 从原视频解码的独立采样帧（最高 640×360 / 360p），不是原视频的全部画面，也不是视觉模型收到的独立图片次数。局部视觉模型会使用这些帧拼成分镜再观察。<strong>点击图片可放大查看，Esc 关闭。</strong>调试图片最多保留 30 分钟。时间戳是抽样瞬间，不代表完整观看；命中旧缓存且原图已过期时如实提示。</p><div id="video-debug-images" class="video-debug-images" aria-live="polite">尚无本轮图像回执</div></section>
+<dialog id="video-debug-lightbox" class="video-debug-lightbox" aria-label="视频分镜大图查看">
+  <div class="video-debug-lightbox-header"><strong>🖼️ 视觉分镜与局部采样 · 放大查看</strong><button id="video-debug-lightbox-close" class="life-action life-sky video-debug-lightbox-close" type="button" aria-label="关闭分镜大图">关闭 ✕</button></div>
+  <img id="video-debug-lightbox-image" alt="" decoding="async">
+  <p id="video-debug-lightbox-caption"></p>
+</dialog>
 <div class="toolbar"><button id="video-debug-show-test" type="button" class="life-action life-sky">查看试运行输入</button><button id="video-debug-show-life" type="button" class="life-action life-sky">查看最近真实 Life 输入</button><button id="video-debug-copy" type="button" class="life-action life-sky">复制当前完整 JSON</button></div>
 <div class="video-debug-panels">
-<details><summary>🖼️ 视觉模型实际回执 · 来源、时间与描述</summary><pre id="video-debug-visual" class="video-debug-json">暂无结果</pre></details>
+<details><summary>🖼️ 视觉模型逐张分镜回执 · 来源、采样时刻与未核实描述</summary><pre id="video-debug-visual" class="video-debug-json">暂无结果</pre></details>
 <details><summary>🎙️ B站字幕／Whisper 语音识别回执</summary><pre id="video-debug-speech" class="video-debug-json">暂无结果</pre></details>
 <details><summary>🔎 OCR 结果与可信时间轴</summary><pre id="video-debug-timeline" class="video-debug-json">暂无结果</pre></details>
 </div>
@@ -2595,7 +2691,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="toolbar"><h2 style="margin:0">次数与额度</h2><button id="quota-refresh">重新读取</button></div>
 <p class="muted">所有次数集中设置，各种时间窗口不会互相替代。只有点击「保存次数与额度」才会写入；读取不改变历史账本。公开评论全局每日硬上限和后台评论滚动 24 小时上限是两个不同的数值，不会自动联动；后台回复同时受两者约束。修改任意一个不会自动修改另一个。</p>
 
-<div class="card" style="margin-bottom:13px"><h3>今日额度概览</h3><p id="quota-usage-summary" class="muted">正在读取…</p><div id="quota-usage-tiles" class="quota-tiles" aria-live="polite"></div><p class="muted">自然日按本机日期重置；后台评论额外使用滚动24小时窗口。用量来自真实本地账本，不可核实时显示“暂不可读”，不会猜测。</p></div>
+<div class="card" style="margin-bottom:13px"><h3>今日互动额度与视频流量实测</h3><p id="quota-usage-summary" class="muted">正在读取…</p><div id="quota-usage-tiles" class="quota-tiles" aria-live="polite"></div><p class="muted">自然日按本机日期重置；后台评论额外使用滚动24小时窗口。视频视觉流量是历史已接收 HTTP 字节的统计，**并非每日流量上限或运营商流量**；按原视频、官方预览图及相关接口分开核算，失败、重试也计入；不含历史旧版、Whisper 音频和其他 B站请求。实际读取受单视频/单Episode三档预算保护，不随自然日流量计数重置。任务运行中约每 1 MiB 刷新账本，可点「重新读取」查看。无法核实时显示“暂不可读”。</p></div>
 <div class="quota-plan-picker" id="quota-plan-picker"><div class="quota-plan-heading"><span>QUOTA PRESETS · 便捷方案</span><h3>挑选鱼鱼的互动节奏</h3><p class="muted">选择方案会同步其全部预设数值并标记所选卡片；手动更改任一额度即切换为「自定义」。点击保存后记录方案状态，不开启任何额外发送权限。鱼鱼可以选择不行动。</p></div><div class="quota-plan-cards" role="group" aria-label="次数与额度预设方案"><button type="button" data-quota-preset="gentle" aria-pressed="false"><span>🌙</span><strong>轻松生活</strong><small>公开评论 100 · 每日自动私信 50</small></button><button type="button" data-quota-preset="natural" aria-pressed="false"><span>🍃</span><strong>自然生活 · 推荐</strong><small>公开评论 500 · 每日自动私信 200</small></button><button type="button" data-quota-preset="active" aria-pressed="false"><span>✨</span><strong>活跃生活</strong><small>公开评论 800 · 每日自动私信 300</small></button><button type="button" data-quota-preset="custom" aria-pressed="true"><span>🎛️</span><strong>自定义</strong><small>保留当前手动修改值</small></button></div><p id="quota-preset-preview" class="muted" role="status">当前方案将在读取配置后显示；修改额度会自动切换为自定义，保存后才生效。</p></div>
 <div class="settings-stack">
 <div class="settings-section"><h4>公开评论与动态 · 自然日</h4><div class="fields" id="quota-fields-public">
@@ -2657,7 +2753,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </div>
 <div class="settings-section"><h4>🐳 大肥鱼人设</h4><p class="muted">用于刷视频、公开评论和私信的角色语气。空配置使用内置默认；不在公开评论里发布提示词原文。</p><textarea id="persona-text" maxlength="18000" rows="13"></textarea><p id="persona-compat-status" class="muted" role="status">粘贴后会检查长度、外部工具指令和实际提示词预算。</p><div class="toolbar"><button id="persona-save" class="primary">保存大肥鱼人设</button><button id="persona-reset">恢复默认</button><span id="persona-status" class="muted"></span></div></div>
 <div class="settings-section"><h4>AI 选图提示词</h4><p class="muted">决定什么时候给顶层评论配表情包；硬限额与真实文件校验不会被提示词修改。</p><textarea id="meme-prompt-text" maxlength="4000" rows="12"></textarea><div class="toolbar"><button id="meme-prompt-save" class="primary">保存选图提示词</button><button id="meme-prompt-reset">恢复默认</button><span id="meme-prompt-status" class="muted"></span></div></div>
-<div class="settings-section"><h4>视觉识图提示词</h4><p class="muted">判断何时需要识图和如何描述真实预览帧，不会绕过图片来源安全检查。</p><textarea id="vision-prompt-text" maxlength="4000" rows="10"></textarea><div class="toolbar"><button id="vision-prompt-save" class="primary">保存识图提示词</button><button id="vision-prompt-reset">恢复默认</button><span id="vision-prompt-status" class="muted"></span></div></div>
+<div class="settings-section"><h4>视觉观察重点（可选）</h4><p class="muted">仅影响独立视觉模型对已选取分镜的观察重点，不负责决定选哪个视频、是否取帧或观看深度；旧设置中的选片判断语句不再生效。不会增加采样预算或绕过真实图片回执。</p><textarea id="vision-prompt-text" maxlength="4000" rows="10"></textarea><div class="toolbar"><button id="vision-prompt-save" class="primary">保存识图提示词</button><button id="vision-prompt-reset">恢复默认</button><span id="vision-prompt-status" class="muted"></span></div></div>
 <div class="settings-section"><h4>虚构角色背景与关系</h4><p class="muted">单独补充世界观；与主人自定义人设共同生效。</p><textarea id="lore-text" maxlength="4000" rows="8"></textarea><div class="toolbar"><button id="lore-save" class="primary">保存角色背景</button><button id="lore-reset">恢复默认</button><span id="lore-status" class="muted"></span></div></div>
 
 </div>
@@ -2747,7 +2843,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <h4>🧠 主人专用 Agent · 历史兼容设置</h4>
 <p class="muted">主人可用自然语言连续委托搜索、观看和获授权的 B站操作；只在核验主人 UID 后启用。不向模型挂载 B站 MCP、Shell、文件工具；模型只能提议动作，每步由插件后端验证。dev.3b.32 起所有入站私信都由统一 Life 模型决定回复、沉默和只读探查；本区旧 Agent 不再抢先消费主人消息，相关字段暂保留以兼容已保存设置。</p>
 <label class="checkline"><input id="owner-dm-agent-enabled" type="checkbox">启用主人私信受限 Agent（新安装默认开启）</label>
-<p class="muted">专用模型统一在「AI 模型配置 → 主人私信受限 Agent」设置；留空继承私信互动模型。</p>
+<p class="muted">新收到的主人私信已由统一 Life 私信流程处理：行动意愿使用「行为决策模型」，自然回复使用「社交互动模型」。旧 Agent 专用模型字段只为历史配置兼容保留，不再提供独立模型设置入口。</p>
 <label class="checkline"><input id="owner-dm-agent-read-main" type="checkbox">允许 Agent 读取已选择的在线主 Session 近期对话（默认关闭）</label>
 <small class="setting-note">只读取有限的用户/助手可见文本，排除工具、系统消息和明显敏感内容；在线主 Session 不可用时仍可独立聊天。不会获得主 Session 工具权限。</small>
 <div class="fields"><div><label for="owner-dm-agent-turns">主 Session 上下文轮数（1–20）</label><input type="number" id="owner-dm-agent-turns" min="1" max="20" value="6"></div><div><label for="owner-dm-agent-chars">上下文字符上限（200–4000）</label><input type="number" id="owner-dm-agent-chars" min="200" max="4000" value="1500"></div></div>
@@ -2905,6 +3001,137 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="card" style="margin-top:14px"><h3>当前附加到提示词的内容（只读）</h3>
 <p class="muted">这里仅预览行为与表达规则，不检索兴趣、经历和关系；后者请到「人生记忆」。</p>
 <pre id="growth-context"></pre></div></section>
+
+<section id="panel-open-platform" hidden>
+  <div class="openpet-hero">
+    <span class="hero-eyebrow">🧩 LIFE RUNTIME OPEN PLATFORM · 开发中</span>
+    <h2>桌宠开放平台 <span class="pill pending">开发中</span></h2>
+    <p>这里预告的是一个面向未来的开放生态：<strong>同一个大肥鱼 Life</strong>，既可以驱动官方桌面陪伴客户端，也可以让社区开发者使用自己的 2D 桌宠、3D 游戏、Live2D 角色、虚拟世界或其他终端来自由接入。<strong>当前页面仅用于展示规划、协议草案和未来方向，暂不开放接入，也不会对外提供真实令牌或设备授权。</strong></p>
+    <div class="hero-pills"><span>预计 2.9.0 之后逐步开放</span><span>统一人格与记忆核心</span><span>支持官方客户端与社区接入</span><span>面向未来 3D 生命世界</span></div>
+  </div>
+
+  <div class="openpet-grid" aria-label="开放生态概览">
+    <article class="openpet-card">
+      <div class="openpet-badge">官方计划</div>
+      <h3>鱼鱼在场 · 官方桌面陪伴</h3>
+      <p>未来计划重启官方桌宠，让鱼鱼以更独立的桌面客户端陪伴主人。短期仍会保留现有动画思路；长期希望升级到更流畅的渲染与身体系统，甚至走向 3D 引擎实时表现。</p>
+      <p><strong>这里的重点不是限定一种表现形式</strong>，而是让鱼鱼的人格、记忆、情绪和生活轨迹保持统一。</p>
+    </article>
+    <article class="openpet-card">
+      <div class="openpet-badge">社区生态</div>
+      <h3>你的桌宠、你的世界</h3>
+      <p>我们希望第三方开发者也能基于统一协议接入大肥鱼 Life：你可以做 PySide6 小桌宠、Godot / Unity 3D 角色、网页挂件、Live2D 看板娘，甚至让鱼鱼住进一个真正的虚拟房间。</p>
+      <p>只要遵守统一的运行时协议和权限边界，就能自由定义“身体”和“世界”。</p>
+    </article>
+    <article class="openpet-card">
+      <div class="openpet-badge">设计原则</div>
+      <h3>Life 是大脑，客户端是身体</h3>
+      <p>Life 负责人格、记忆、情绪、自主生活与授权边界；桌宠或游戏负责外观、动作、场景、摄像机、骨骼和交互表现。</p>
+      <p>这意味着未来即便更换官方桌宠引擎，也不需要推翻整套生命系统。</p>
+    </article>
+  </div>
+
+  <svg class="openpet-svg" viewBox="0 0 1100 320" role="img" aria-label="开放生态示意图">
+    <defs>
+      <linearGradient id="op1" x1="0" x2="1"><stop offset="0" stop-color="#5f7ce2"/><stop offset="1" stop-color="#41b0a1"/></linearGradient>
+      <linearGradient id="op2" x1="0" x2="1"><stop offset="0" stop-color="#eff6ff"/><stop offset="1" stop-color="#eef9f7"/></linearGradient>
+    </defs>
+    <rect x="0" y="0" width="1100" height="320" rx="26" fill="url(#op2)"/>
+    <rect x="440" y="70" width="220" height="180" rx="26" fill="url(#op1)" opacity="0.95"/>
+    <text x="550" y="125" text-anchor="middle" fill="#fff" font-size="28" font-weight="700">大肥鱼 Life</text>
+    <text x="550" y="160" text-anchor="middle" fill="#eef7ff" font-size="16">人格 · 记忆 · 情绪 · 自主生活</text>
+    <text x="550" y="188" text-anchor="middle" fill="#eef7ff" font-size="16">统一授权边界 · 统一表达意图</text>
+    <rect x="90" y="55" width="230" height="86" rx="20" fill="#ffffff" stroke="#8fb2d8"/>
+    <text x="205" y="92" text-anchor="middle" fill="#35507a" font-size="22" font-weight="700">官方桌宠</text>
+    <text x="205" y="118" text-anchor="middle" fill="#56738d" font-size="14">鱼鱼在场 · 桌面陪伴</text>
+    <rect x="90" y="180" width="230" height="86" rx="20" fill="#ffffff" stroke="#8fb2d8"/>
+    <text x="205" y="217" text-anchor="middle" fill="#35507a" font-size="22" font-weight="700">社区桌宠</text>
+    <text x="205" y="243" text-anchor="middle" fill="#56738d" font-size="14">2D 桌宠 · Live2D · 网页挂件</text>
+    <rect x="780" y="55" width="230" height="86" rx="20" fill="#ffffff" stroke="#8fb2d8"/>
+    <text x="895" y="92" text-anchor="middle" fill="#35507a" font-size="22" font-weight="700">3D 游戏</text>
+    <text x="895" y="118" text-anchor="middle" fill="#56738d" font-size="14">Godot / Unity / Unreal</text>
+    <rect x="780" y="180" width="230" height="86" rx="20" fill="#ffffff" stroke="#8fb2d8"/>
+    <text x="895" y="217" text-anchor="middle" fill="#35507a" font-size="22" font-weight="700">虚拟世界</text>
+    <text x="895" y="243" text-anchor="middle" fill="#56738d" font-size="14">VR / 房间 / 多终端共存</text>
+    <path d="M320 98 C370 98 390 126 440 126" stroke="#6f8fce" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M320 223 C370 223 390 194 440 194" stroke="#6f8fce" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M660 126 C710 126 730 98 780 98" stroke="#55a89a" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M660 194 C710 194 730 223 780 223" stroke="#55a89a" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <text x="550" y="278" text-anchor="middle" fill="#4e6a82" font-size="14">统一开放运行时协议（预览） · 当前仅展示，不开放调用</text>
+  </svg>
+
+  <div class="openpet-note"><strong>当前状态说明：</strong>本页的接口、事件和开放生态都还在设计与实现中。这里展示的是<strong>预告版蓝图</strong>，用于让社区开发者提前理解方向；当前管理中心不会对外发放接入凭据，也不承诺这些草案已经稳定。</div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3>统一开放运行时协议（预览）</h3>
+    <p class="muted">未来的开放接口会尽量做到<strong>引擎无关、表现无关</strong>：不要求社区使用固定的动画格式、桌面框架或 3D 引擎，只共享鱼鱼的统一人格与生活状态。</p>
+    <div class="openpet-proto-list">
+      <div class="openpet-layer"><strong>Runtime Core · 第一阶段</strong><ul><li>只读生命状态快照：情绪、精力、当前活动、公开表达状态</li><li>实时事件流：Life 状态变化、表达意图、提醒与未来扩展事件</li><li>授权与设备配对：未来开放后由主人明确批准</li><li>互动回传：点击、摸头、场景互动等由客户端上报</li></ul></div>
+      <div class="openpet-layer"><strong>Companion Layer · 桌宠层</strong><ul><li>语义动作提示，而不是强绑定某个动画文件</li><li>统一聊天入口：未来由 Life 决定对话人格与可调用记忆</li><li>多种表现：WebM、Live2D、Spine、粒子、UI 气泡均可自定义</li><li>允许官方桌宠与第三方桌宠并行发展</li></ul></div>
+      <div class="openpet-layer"><strong>World Layer · 3D 世界扩展</strong><ul><li>面向未来的世界观察与空间交互协议</li><li>支持物体、场景、角色、位置和意图执行反馈</li><li>Life 决定“想做什么”，游戏决定“如何真实执行”</li><li>为多人空间、房间系统和虚拟经历沉淀预留可能性</li></ul></div>
+    </div>
+  </div>
+
+  <div class="openpet-api">
+    <div class="openpet-api-head"><h3>接口预览（草案）</h3><span class="pill pending">仅供阅读 · 暂未开放</span></div>
+    <pre>GET    /api/bili-duty/pet-bridge/v1/snapshot
+GET    /api/bili-duty/pet-bridge/v1/events
+POST   /api/bili-duty/pet-bridge/v1/interactions
+POST   /api/bili-duty/pet-bridge/v1/chat/turns
+POST   /api/bili-duty/pet-bridge/v1/expression-acks
+POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世界扩展</pre>
+    <p class="muted">正式开放前，这些路径、字段和权限范围都可能继续调整。页面中的草案用于说明方向，不代表当前插件已经提供这些可调用服务。</p>
+  </div>
+
+  <div class="openpet-api" style="margin-top:14px">
+    <div class="openpet-api-head"><h3>示例 JSON（草案）</h3><span class="pill">展示统一语义，而非具体动画文件名</span></div>
+    <pre>{
+  "version": "preview",
+  "life": {
+    "activity": "exploring_video",
+    "mood": "curious",
+    "energy": 0.72,
+    "sociality": 0.41
+  },
+  "presentation": {
+    "intent": "observe",
+    "speech": null,
+    "animationHint": "curious_idle"
+  },
+  "world": {
+    "future3d": true,
+    "notes": "3D 世界扩展将允许客户端汇报场景、物体和执行反馈。"
+  }
+}</pre>
+    <p class="muted">未来客户端只需要理解这些开放语义，就能把同一个鱼鱼接入成不同形态的桌宠或 3D 角色。</p>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>未来支持的官方与社区形态</h3>
+    <div class="openpet-future">
+      <div class="record"><strong>🐟 官方桌面陪伴</strong><div class="preview">计划中的官方客户端会优先验证“同一个 Life 驱动桌面陪伴”的体验，短期仍可沿用现有动画资源，长期希望升级渲染与身体系统。</div></div>
+      <div class="record"><strong>🧪 社区 2D 桌宠</strong><div class="preview">任何人都可以使用自己熟悉的桌面技术栈，只要遵守统一协议，就能把鱼鱼接入自己的角色外观和动作系统。</div></div>
+      <div class="record"><strong>🎮 3D 游戏世界</strong><div class="preview">未来希望支持让鱼鱼住进真正的场景：走路、看东西、和环境互动，甚至拥有自己的房间与生活节奏。</div></div>
+      <div class="record"><strong>🌐 更多终端</strong><div class="preview">包括网页挂件、直播伴侣、VR 或其他实验性客户端。核心目标是：同一条鱼，不同的身体与世界。</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>开放路线图（预览）</h3>
+    <div class="openpet-roadmap">
+      <div class="openpet-step" data-step="Phase 0"><h4>现在：生态预告页</h4><p>先在管理中心公开愿景、协议草案与未来方向，帮助社区开发者理解大肥鱼 Life 未来将如何支持官方桌宠和第三方客户端。</p></div>
+      <div class="openpet-step" data-step="Phase 1"><h4>2.9.0 之后：逐步开放</h4><p>计划逐步实现生命状态读取、SSE 事件、设备授权和基础互动回传。开放范围会以正式发布说明为准。</p></div>
+      <div class="openpet-step" data-step="Phase 2"><h4>统一聊天与表达</h4><p>让桌宠或游戏能够在明确授权下使用同一个鱼鱼人格、记忆与表达系统，而不是各自维护独立的 AI 角色。</p></div>
+      <div class="openpet-step" data-step="Phase 3"><h4>3D 生命世界</h4><p>探索面向 3D 引擎的世界观察、空间交互和多终端延续能力，让鱼鱼能够拥有真正“生活过”的虚拟世界体验。</p></div>
+    </div>
+  </div>
+
+  <div class="openpet-link-note">
+    <span aria-hidden="true">💡</span>
+    <div><strong>给未来开发者的话</strong><div class="muted">如果你也想为鱼鱼做自己的桌宠、3D 房间或其他终端，这里就是未来的入口。现在它还是预告页，但我们希望从一开始就把方向讲清楚：<strong>Life 做统一大脑，身体与世界留给社区自由创作。</strong></div></div>
+  </div>
+</section>
+
 <section id="panel-meme" hidden><div class="feature-intro"><div><span class="live-badge" id="meme-learning-status">● 大肥鱼正在收集梗知识</span><h2>梗知识库</h2><p class="muted">大肥鱼看视频时会自动收集并启用有真实证据的新梗，无需逐条审核；「待核实」释义只能作为线索，不能当确定事实。</p></div></div><div class="card" style="margin-bottom:14px"><h3>梗与网络文化学习</h3><label class="checkline"><input id="meme-auto-enabled" type="checkbox">启用梗知识检索、刷视频收集线索和跨视频反思</label><div class="toolbar"><button id="meme-auto-save" class="primary">保存梗学习开关</button></div></div><div class="card" style="margin-bottom:14px"><h3>主人手动补充梗知识</h3><p class="muted">你手动保存后直接获批、可以被 AI 搜到；但“是否已批准”和“释义是否有证据”是两件事。没有可靠证据的梗会保留为待核实线索。</p>
 <div class="fields"><div><label for="meme-new-name">名称</label><input id="meme-new-name" maxlength="48" placeholder="例如 某个新梗"></div><div><label for="meme-new-aliases">别名（可选）</label><input id="meme-new-aliases" maxlength="140"></div>
 <div><label for="meme-new-kind">知识类别</label><select id="meme-new-kind"><option>梗</option><option>角色</option><option>人物</option><option>系列</option><option>其他</option></select></div><div><label for="meme-new-confidence">释义证据</label><select id="meme-new-confidence"><option value="待核实">待核实 · 只有线索</option><option value="有文字依据">有文字依据 · 已核对</option></select><small class="field-help">“待核实”仍可作为理解线索，但大肥鱼不能当成确定事实；“有文字依据”表示你核对过可靠的字幕、评论或来源。此选项不代替“批准使用”。</small></div></div>
@@ -3020,17 +3247,6 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </main>
 <div id="request-indicator" class="request-indicator" role="status" aria-live="polite" hidden><span class="spinner"></span><span>正在与大肥鱼通信…</span></div>
 <div id="action-toast" class="action-toast" role="status" aria-live="polite" hidden></div>
-<dialog id="release-281-dialog" aria-labelledby="release-281-title" aria-describedby="release-281-description">
-  <div class="release-281-top"><span class="release-281-tag">🐟 2.8.1 · 新版本导览</span><h2 id="release-281-title">鱼鱼的生活，多了一双看世界的眼睛</h2><p id="release-281-description">本次更新带来视频视觉模型、真实证据驱动的探索与更方便的管理工具。升级后请查看一次新版快速设置，已有配置和记忆不会被清除。</p></div>
-  <div class="release-281-grid" aria-label="2.8.1 特色功能">
-    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">🎬</span><div><strong>视频视觉感知</strong><small>可选 DSH / 本地 Ollama；按需观察真实画面，先完成图片验收。</small></div></div>
-    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">🧠</span><div><strong>记忆神经场</strong><small>五类记忆筛选、旋转、缩放及右键平移，经历更易查看。</small></div></div>
-    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">🐟</span><div><strong>更连续的 Life</strong><small>依照真实经历与关系自主选择探索、交流、延期或休息。</small></div></div>
-    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">⚙️</span><div><strong>资源与配置管理</strong><small>进程内资源协调；Headless 同步、环境检查与模型验证分步操作。</small></div></div>
-  </div>
-  <p class="release-281-note">视频视觉默认不会替你开启；环境健康的老用户无需重复修复。查看新功能不等于授权模型调用或 B站发送。</p>
-  <div class="release-281-actions"><button type="button" id="release-281-close">先浏览设置</button><button type="button" id="release-281-view-setup" class="primary">查看 02B 视频视觉设置</button></div>
-</dialog>
 <dialog id="action-confirm-dialog" class="action-confirm-dialog" aria-labelledby="action-confirm-title" aria-describedby="action-confirm-description">
   <div class="confirm-head"><span class="confirm-sparkle">✦</span><div><h3 id="action-confirm-title">确认操作</h3><p id="action-confirm-kicker">请确认后继续</p></div></div>
   <p id="action-confirm-description"></p>
@@ -3043,7 +3259,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </dialog>
 <dialog id="headless-capability-dialog" class="action-confirm-dialog headless-capability-dialog" aria-labelledby="headless-capability-title">
   <div class="confirm-head"><span class="confirm-sparkle">◇</span><div><h3 id="headless-capability-title">配置 Headless 能力声明</h3><p id="headless-capability-route">仅补充已确认的模型能力</p></div></div>
-  <p class="muted">请只勾选你确认该模型及第三方中转站实际支持的能力。这里写入的是 Headless 配置声明，不代表实测成功；Desktop 原配置不会修改。</p>
+  <p class="muted" id="headless-capability-scope-note">只补充确知支持的能力声明，不是图片/思考能力实测。请确认页面所示修改目标（Desktop 来源或 Headless），其他配置不变。</p>
   <fieldset class="headless-capability-fieldset"><legend>输入能力</legend>
     <label><input id="headless-capability-text" type="checkbox"> 文字输入</label>
     <label><input id="headless-capability-image" type="checkbox"> 图片输入</label>
@@ -3060,7 +3276,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <small class="setting-note">只添加来源配置中尚未声明的档位；按 DSH 常见映射写入 off:null、其余同名值。若中转站要求自定义参数映射，本向导尚不支持；off 不保证关闭上游推理。</small>
   </fieldset>
   <p id="headless-capability-dialog-status" class="setting-note" role="status" aria-live="polite"></p>
-  <div class="confirm-footer"><button type="button" id="headless-capability-reset">恢复来源声明</button><button type="button" id="headless-capability-cancel">取消</button><button type="button" id="headless-capability-apply" class="primary">仅应用到 Headless</button></div>
+  <div class="confirm-footer"><button type="button" id="headless-capability-reset">恢复来源声明</button><button type="button" id="headless-capability-cancel">取消</button><button type="button" id="headless-capability-apply" class="primary">确认能力声明</button></div>
 </dialog>
 </body></html>
 

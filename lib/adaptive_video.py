@@ -9,6 +9,9 @@ from io import BytesIO
 import json
 import bisect
 import math
+import http.client
+import ipaddress
+import socket
 import os
 from pathlib import Path
 import re
@@ -39,6 +42,7 @@ from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
 from PIL import Image, ImageChops, ImageStat, ImageDraw
+from video_traffic import count_bytes, original_bytes, traffic_scope
 
 BV_RE = re.compile(r'BV[0-9A-Za-z]{10}\Z')
 VIDEO_FILE_MAX = 24 * 1024 * 1024  # Legacy small-file threshold, not a video-size gate.
@@ -47,36 +51,134 @@ NETWORK_BUDGETS = {12: 24 * 1024 * 1024, 24: 50 * 1024 * 1024,
 MAX_REMOTE_SIZE = 1024 * 1024 * 1024  # Limit sparse local media virtual length.
 MAX_INDEX_BYTES = 8 * 1024 * 1024
 FRAME_W, FRAME_H, FRAME_RATE = 192, 108, 2
+FOCUS_W, FOCUS_H = 640, 360  # Up to 360p; preserve aspect, never enlarge low-res source.
 MAX_WINDOW = 120
 MAX_FRAMES = MAX_WINDOW * FRAME_RATE
-SAMPLER_VERSION = 7
+SAMPLER_VERSION = 8
 MAX_SUPPORTED_DURATION = 4 * 3600  # 4-hour bounded index; network/frame budgets unchanged
 FRAME_PLANS = (12, 24, 48)
 
 
 class AdaptiveUnavailable(ValueError):
-    def __init__(self, code, *, fallback=True):
+    def __init__(self, code, *, fallback=True, authority_detail=None, track=None):
         super().__init__(code)
         self.code = code
         self.fallback = fallback
+        # Static enumerations only: no signed URL, hostname or raw parser error.
+        allowed = {'userinfo', 'reserved-port', 'url-fragment', 'malformed-authority'}
+        self.authority_detail = authority_detail if authority_detail in allowed else None
+        self.track = track if track in ('durl', 'dash') else None
 
 
 def _cdn_url(url):
-    """Refuse third-party URLs, ports, alternate schemes, and non-media paths."""
-    if not isinstance(url, str) or len(url) > 4096:
+    """Validate one HTTPS media-shaped URL from the current official PlayURL.
+
+    This is deliberately NOT a global CDN-domain whitelist. Authorization is
+    contextual: callers only obtain candidates from the official authenticated
+    HTTPS playurl lookup, never from users, Life text or a persisted URL. Every
+    actual request also pins a public DNS address and verifies TLS/redirects.
+    """
+    if not isinstance(url, str) or not 12 <= len(url) <= 4096 or url != url.strip():
+        raise AdaptiveUnavailable('unsafe_video_source')
+    if any(ord(ch) < 33 or ord(ch) > 126 for ch in url) or "\\" in url:
         raise AdaptiveUnavailable('unsafe_video_source')
     if url.startswith('//'):
         url = 'https:' + url
-    p = parse.urlsplit(url)
-    host = (p.hostname or '').lower()
-    if (p.scheme != 'https' or p.username or p.password or p.port is not None
-        or p.fragment or not re.fullmatch(r'(?:[a-z0-9-]+\.){1,5}bilivideo\.com', host)
-        or not p.path.startswith('/upgcxcode/') or '%' in p.path
-        or any(x in ('.', '..') for x in p.path.split('/'))
-        or not re.fullmatch(r'/[A-Za-z0-9_./-]{1,512}\.(?:mp4|m4v|flv|m4s)', p.path, re.I)):
-        raise AdaptiveUnavailable('unsafe_video_source')
+    try:
+        parsed = parse.urlsplit(url)
+        host = (parsed.hostname or '').lower()
+        port = parsed.port
+        userinfo = parsed.username is not None or parsed.password is not None
+    except ValueError:
+        raise AdaptiveUnavailable('video_source_authority_rejected',
+                                  authority_detail='malformed-authority') from None
+    if parsed.scheme != 'https':
+        raise AdaptiveUnavailable('video_source_scheme_rejected')
+    if userinfo:
+        raise AdaptiveUnavailable('video_source_authority_rejected', authority_detail='userinfo')
+    if parsed.fragment:
+        raise AdaptiveUnavailable('video_source_authority_rejected', authority_detail='url-fragment')
+    # Any valid HTTPS port can be used by the official CDN. There is no user-
+    # supplied URL path into this transport. IP literals are not accepted:
+    # original DNS name is required for verified TLS and pinned global IP.
+    if not host or len(host) > 253 or not re.fullmatch(
+        r'[a-z0-9-]+(?:\.[a-z0-9-]+)+', host) or any(
+        len(label) > 63 or label.startswith('-') or label.endswith('-')
+        for label in host.split('.')):
+        raise AdaptiveUnavailable('video_source_domain_rejected')
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        raise AdaptiveUnavailable('video_source_domain_rejected')
+    if port is not None and not 1 <= port <= 65535:
+        raise AdaptiveUnavailable('video_source_authority_rejected', authority_detail='malformed-authority')
+    # Keep an unambiguous path and familiar media file signature. This is a
+    # shape check, not an ossified CDN path-prefix allowlist.
+    path = parsed.path
+    if (not 1 <= len(path) <= 1024 or not path.startswith('/') or
+        '%' in path or '//' in path or any(part in ('.','..') for part in path.split('/'))):
+        raise AdaptiveUnavailable('video_source_path_rejected')
+    if not re.fullmatch(r'/[A-Za-z0-9_./-]{1,1023}\.(?:mp4|m4v|flv|m4s)', path, re.I):
+        raise AdaptiveUnavailable('video_source_format_rejected')
     return url
 
+
+# Do not trust DNS resolution as authorization: an approved CDN name can still
+# resolve to an internal address in a compromised DNS environment. Resolve and
+# connect to the SAME public address (no DNS rebinding window), while TLS still
+# authenticates the original hostname. No ambient HTTP(S) proxy is inherited.
+def _public_cdn_addresses(host, port):
+    try:
+        rows = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except (socket.gaierror, OSError):
+        raise AdaptiveUnavailable('video_source_dns_unavailable') from None
+    if not rows or len(rows) > 32:
+        raise AdaptiveUnavailable('video_source_dns_unavailable')
+    safe = []
+    for family, kind, proto, _, sockaddr in rows:
+        if family not in (socket.AF_INET, socket.AF_INET6):
+            raise AdaptiveUnavailable('video_source_ip_rejected', fallback=False)
+        try:
+            addr = ipaddress.ip_address(sockaddr[0])
+        except ValueError:
+            raise AdaptiveUnavailable('video_source_ip_rejected', fallback=False) from None
+        if not addr.is_global:
+            raise AdaptiveUnavailable('video_source_ip_rejected', fallback=False)
+        safe.append((family, kind, proto, sockaddr))
+    return safe
+
+
+class _PinnedCDNHTTPS(http.client.HTTPSConnection):
+    def connect(self):
+        # The full URL must already have passed _cdn_url(). HTTPS hostname
+        # verification and SNI use self.host, never the resolved numeric IP.
+        candidates = _public_cdn_addresses(self.host, self.port)
+        last_error = None
+        for family, kind, proto, sockaddr in candidates[:8]:
+            sock = socket.socket(family, kind, proto)
+            try:
+                sock.settimeout(self.timeout)
+                if self.source_address:
+                    sock.bind(self.source_address)
+                sock.connect(sockaddr)
+                self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+                return
+            except (OSError, TimeoutError) as exc:
+                last_error = exc
+                sock.close()
+        raise AdaptiveUnavailable('video_cdn_connection_failed') from None
+
+
+class _PinnedCDNHandler(request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_PinnedCDNHTTPS, req)
+
+
+def _cdn_opener(redirect_handler):
+    # An environment HTTP_PROXY must never substitute an unverified target.
+    return request.build_opener(request.ProxyHandler({}), _PinnedCDNHandler(), redirect_handler)
 
 def _dash_ranges(stream):
     """Only literal DASH SegmentBase byte intervals supplied by official playurl."""
@@ -98,32 +200,61 @@ def _dash_ranges(stream):
     return initial, index
 
 
+def _official_track_urls(stream):
+    """Finite candidate URLs exclusively from ONE official DASH track."""
+    raw = [stream.get('baseUrl') or stream.get('base_url')]
+    backups = stream.get('backupUrl') or stream.get('backup_url') or []
+    if isinstance(backups, list):
+        raw.extend(backups[:4])
+    valid, rejections = [], []
+    for candidate in raw:
+        try:
+            checked = _cdn_url(candidate)
+            if parse.urlsplit(checked).path.lower().endswith('.m4s') and checked not in valid:
+                valid.append(checked)
+        except AdaptiveUnavailable as exc:
+            rejections.append(exc)
+    return valid[:3],rejections
+
+
 def _choose_dash_video(data):
     dash = data.get('dash') or {}
     if not isinstance(dash, dict) or not isinstance(dash.get('video'), list):
         raise AdaptiveUnavailable('dash_stream_unavailable')
     supported = []
+    rejections = []
     for stream in dash['video'][:20]:
         if not isinstance(stream, dict):
             continue
-        url = stream.get('baseUrl') or stream.get('base_url')
+        urls, failures = _official_track_urls(stream)
+        rejections.extend(failures)
+        if not urls:
+            continue
         try:
-            url = _cdn_url(url)
-            if parse.urlsplit(url).path.lower().endswith('.m4s'):
-                initial, index = _dash_ranges(stream)
-                bandwidth = int(stream.get('bandwidth') or 0)
-                if bandwidth < 0: continue
-                supported.append((bandwidth, url, initial, index))
-        except (AdaptiveUnavailable, ValueError, TypeError):
+            initial, index = _dash_ranges(stream)
+            bandwidth = int(stream.get('bandwidth') or 0)
+            if bandwidth < 0:
+                continue
+            supported.append((bandwidth, urls, initial, index))
+        except AdaptiveUnavailable as exc:
+            rejections.append(exc)
+        except (ValueError, TypeError):
             continue
     if not supported:
+        source_rejections = [r for r in rejections if r.code.startswith('video_source_')]
+        if source_rejections and len(source_rejections) == len(rejections):
+            first=source_rejections[0]
+            raise AdaptiveUnavailable(first.code, authority_detail=first.authority_detail, track='dash')
         raise AdaptiveUnavailable('dash_indexed_video_unavailable')
-    supported.sort(key=lambda x: x[0])
-    _, url, initial, index = supported[0]
-    return {'kind':'dash', 'url':url, 'initial':initial, 'index':index}
+    # Prefer least bandwidth when visual detail is sufficient. Higher resolution
+    # is selected only for an explicit Life focus operation, not automatically.
+    supported.sort(key=lambda item: item[0])
+    _, urls, initial, index = supported[0]
+    return {'kind':'dash','url':urls[0], 'urls':urls, 'initial':initial,'index':index,
+            'track_selection':'lowest-bandwidth'}
 
 
-def _playurl(bvid):
+def _playurl(bvid, *, force_dash=False, expected_cid=None):
     """Use official public DURL first; if absent/unsupported, request indexed DASH.
 
     Never derive a CDN URL from the video title, model output or a third-party URL.
@@ -148,6 +279,8 @@ def _playurl(bvid):
         raise AdaptiveUnavailable('video_duration_unavailable') from None
     if not cid or not math.isfinite(duration) or duration < 3 or duration > MAX_SUPPORTED_DURATION:
         raise AdaptiveUnavailable('video_duration_outside_supported_range')
+    if expected_cid is not None and int(cid) != expected_cid:
+        raise AdaptiveUnavailable('video_identity_mismatch',fallback=False)
     def playurl(fnval):
         try:
             return _json_api('https://api.bilibili.com/x/player/playurl?' + parse.urlencode({
@@ -156,25 +289,37 @@ def _playurl(bvid):
             if '-509' in str(exc) or '-412' in str(exc):
                 raise AdaptiveUnavailable('platform_rate_limited', fallback=False) from None
             raise AdaptiveUnavailable('public_playurl_unavailable') from None
-    progressive = playurl(1)
-    durls = progressive.get('durl') or []
-    if len(durls) == 1 and isinstance(durls[0], dict):
-        stream = durls[0]
-        try:
-            size = int(stream['size'])
-        except (ValueError, KeyError, TypeError):
-            raise AdaptiveUnavailable('video_size_unavailable') from None
-        if size <= 0 or size > MAX_REMOTE_SIZE:
-            raise AdaptiveUnavailable('video_size_outside_supported_range', fallback=False)
-        url = _cdn_url(stream.get('url'))
-        # MP4 is already seekable. Small FLV is supported by bounded full download;
-        # large FLV is not and needs a separate DASH track instead.
-        if not url.lower().split('?',1)[0].endswith('.flv') or size <= NETWORK_BUDGETS[12]:
-            return url, size, duration, int(cid)
-    else:
-        url = None
+    progressive_rejection = None
+    if not force_dash:
+        progressive = playurl(1)
+        durls = progressive.get('durl') or []
+        if len(durls) == 1 and isinstance(durls[0], dict):
+            stream = durls[0]
+            try:
+                size = int(stream['size'])
+            except (ValueError, KeyError, TypeError):
+                raise AdaptiveUnavailable('video_size_unavailable') from None
+            if size <= 0 or size > MAX_REMOTE_SIZE:
+                raise AdaptiveUnavailable('video_size_outside_supported_range', fallback=False)
+            try:
+                url = _cdn_url(stream.get('url'))
+            except AdaptiveUnavailable as exc:
+                # A rejected progressive CDN URL must not stop us inspecting the
+                # *separate, official* DASH listing. Never fetch the rejected URL.
+                exc.track = 'durl'
+                progressive_rejection = exc
+            else:
+                # MP4 is seekable. Large FLV needs an indexed DASH track.
+                if not url.lower().split('?',1)[0].endswith('.flv') or size <= NETWORK_BUDGETS[12]:
+                    return url, size, duration, int(cid)
     data = playurl(16)
-    dash = _choose_dash_video(data)
+    try:
+        dash = _choose_dash_video(data)
+    except AdaptiveUnavailable as exc:
+        # Preserve the original cause if DASH is absent; no URLs or tokens leak.
+        if progressive_rejection and exc.code == 'dash_stream_unavailable':
+            raise progressive_rejection from None
+        raise
     dash.update(duration=duration, cid=int(cid))
     return dash
 
@@ -194,7 +339,7 @@ def _dash_probe_size(url):
         'User-Agent':'Mozilla/5.0','Referer':'https://www.bilibili.com/',
         'Accept-Encoding':'identity','Range':'bytes=0-0'})
     try:
-        with request.build_opener(Redirect()).open(req, timeout=8) as resp:
+        with _cdn_opener(Redirect()).open(req, timeout=8) as resp:
             _cdn_url(resp.url)
             if resp.status != 206:
                 raise AdaptiveUnavailable('video_range_not_supported', fallback=False)
@@ -204,7 +349,9 @@ def _dash_probe_size(url):
             size = int(match.group(1))
             if not 1024 <= size <= MAX_REMOTE_SIZE:
                 raise AdaptiveUnavailable('video_size_outside_supported_range',fallback=False)
-            if len(resp.read(2)) != 1:
+            probe = resp.read(2)
+            count_bytes('original', len(probe))
+            if len(probe) != 1:
                 raise AdaptiveUnavailable('video_range_truncated',fallback=False)
             return size, resp.headers.get('ETag',''), resp.headers.get('Last-Modified','')
     except HTTPError as exc:
@@ -282,19 +429,38 @@ def _dash_sample_refs(entries, windows, *, focus=None):
     return wanted
 
 
-def _download_dash_samples(source, folder, windows, focus, budget):
+def _download_dash_samples(source, folder, windows, focus, budget, deadline=None):
     """Download only validated fMP4 fragments, decode from disposable local files.
 
     SIDX positions and SAP flags are official signed-track metadata, not freeform
     model decisions. FFmpeg never receives a network URL. Budget includes the
     one-byte size probe, initialization and index ranges, and each fragment.
     """
-    size, etag, modified = _dash_probe_size(source['url'])
-    media = _SparseRangeVideo(source['url'],Path(folder)/'dash-remote.sparse',size,budget)
+    urls = source.get('urls') or [source['url']]
+    if not isinstance(urls, list) or not 1 <= len(urls) <= 3:
+        raise AdaptiveUnavailable('dash_stream_unavailable')
+    last_probe_error = None
+    # Attempt one signed primary and up to two official same-track backups.
+    # Only a failed one-byte probe retries; NEVER retry a failed body/range
+    # identity or budget check against another host.
+    probes = 0
+    for url in urls:
+        probes += 1
+        try:
+            size, etag, modified = _dash_probe_size(url)
+            break
+        except AdaptiveUnavailable as exc:
+            if exc.code not in ('video_cdn_connection_failed', 'dash_range_probe_failed',
+                                'dash_range_probe_http_error'):
+                raise
+            last_probe_error = exc
+    else:
+        raise last_probe_error or AdaptiveUnavailable('dash_range_probe_failed')
+    media = _SparseRangeVideo(url,Path(folder)/'dash-remote.sparse',size,budget,**({'deadline':deadline} if deadline is not None else {}))
     media.etag,media.modified=etag,modified
     # Count the range size probe as received network data (re-fetched byte 0
     # stays outside the cached data regions).
-    media.downloaded = 1
+    media.downloaded = probes  # Conservatively count all backup probes.
     initial, index = source['initial'],source['index']
     if index[1]>=size:
         raise AdaptiveUnavailable('dash_segmentbase_invalid',fallback=False)
@@ -341,7 +507,7 @@ def _download_dash_samples(source, folder, windows, focus, budget):
     return jobs, media.downloaded, len(media.ranges)+1, size
 
 
-def _download_video(url, path, expected_size, *, budget=VIDEO_FILE_MAX):
+def _download_video(url, path, expected_size, *, budget=VIDEO_FILE_MAX, deadline=None):
     """Streaming hard cap, verified redirect chain, no auth headers or cookies."""
     url = _cdn_url(url)
     class SecureRedirect(request.HTTPRedirectHandler):
@@ -358,26 +524,36 @@ def _download_video(url, path, expected_size, *, budget=VIDEO_FILE_MAX):
         'Referer': 'https://www.bilibili.com/',
         'Accept-Encoding': 'identity',
     })
-    started = time.monotonic()
     total = 0
     try:
-        with request.build_opener(SecureRedirect()).open(req, timeout=8) as resp:
+        with _cdn_opener(SecureRedirect()).open(req, timeout=8) as resp:
             _cdn_url(resp.url)
             length = resp.headers.get('Content-Length')
             if length and int(length) > budget:
                 raise AdaptiveUnavailable('video_network_budget_exhausted', fallback=False)
             if resp.status != 200:
                 raise AdaptiveUnavailable('video_http_error')
+            # Require no more than ~1 MiB/s of useful transfer; connection
+            # setup is separately bounded by the HTTPS 8s timeout.
+            transfer_seconds = max(8, math.ceil(expected_size / (1024 * 1024)))
+            transfer_end = time.monotonic() + transfer_seconds
+            if deadline is not None:
+                transfer_end = min(transfer_end, deadline)
             with open(path, 'xb') as handle:
                 while True:
-                    if time.monotonic() - started > 25:
+                    if time.monotonic() > transfer_end:
                         raise AdaptiveUnavailable('video_download_timeout')
-                    chunk = resp.read(min(65536, budget + 1 - total))
+                    if total >= budget:
+                        # A verified exact-size download may legitimately use
+                        # the entire budget, but never read an extra byte.
+                        if expected_size and total == expected_size:
+                            break
+                        raise AdaptiveUnavailable('video_network_budget_exhausted', fallback=False)
+                    chunk = resp.read(min(65536, budget - total))
                     if not chunk:
                         break
+                    count_bytes('original', len(chunk))
                     total += len(chunk)
-                    if total > budget:
-                        raise AdaptiveUnavailable('video_network_budget_exhausted', fallback=False)
                     handle.write(chunk)
     except HTTPError as exc:
         if exc.code in (429, 412):
@@ -398,7 +574,7 @@ class _SparseRangeVideo:
     A sparse, disposable local MP4 carries container metadata plus byte ranges
     covering the selected real time windows. No HTTP URL reaches FFmpeg.
     """
-    def __init__(self, url, path, size, budget):
+    def __init__(self, url, path, size, budget, deadline=None):
         self.url = _cdn_url(url)
         self.path = Path(path)
         self.size = size
@@ -407,7 +583,7 @@ class _SparseRangeVideo:
         self.ranges = []
         self.etag = ''
         self.modified = ''
-        self.deadline = time.monotonic() + 85
+        self.deadline = min(time.monotonic() + 85, deadline) if deadline is not None else time.monotonic() + 85
         with open(path, 'xb') as handle:
             # Sparse on normal filesystems: logical media offsets remain correct.
             handle.truncate(size)
@@ -448,7 +624,7 @@ class _SparseRangeVideo:
             elif self.modified: headers['If-Range'] = self.modified
             try:
                 req = request.Request(self.url, headers=headers)
-                with request.build_opener(SecureRedirect()).open(req, timeout=8) as resp:
+                with _cdn_opener(SecureRedirect()).open(req, timeout=8) as resp:
                     _cdn_url(resp.url)
                     # An HTTP 200 means Range was ignored. Never accept its body.
                     if resp.status != 206:
@@ -474,6 +650,7 @@ class _SparseRangeVideo:
                             raise AdaptiveUnavailable('video_sampling_budget_exhausted', fallback=False)
                         chunk = resp.read(min(65536, count-len(body)))
                         if not chunk: break
+                        count_bytes('original', len(chunk))
                         body.extend(chunk)
                     if len(body) != count:
                         raise AdaptiveUnavailable('video_range_truncated', fallback=False)
@@ -585,8 +762,8 @@ def _window_byte_ranges(packets, windows, size):
     return merged
 
 
-def _download_sparse_mp4(url, filename, size, windows, budget):
-    media = _SparseRangeVideo(url, filename, size, budget)
+def _download_sparse_mp4(url, filename, size, windows, budget, deadline=None):
+    media = _SparseRangeVideo(url, filename, size, budget, **({'deadline':deadline} if deadline is not None else {}))
     _mp4_index(media)
     packets = _packet_index(filename)
     # If the selected windows exceed the budget, preserve the temporal spread
@@ -629,14 +806,18 @@ def _decode_samples(filename, *, start, length, focused=False):
         raise AdaptiveUnavailable('ffmpeg_not_installed')
     # Accept ONLY a known progressive container, not playlists or remote probes.
     container = 'flv' if str(filename).endswith('.flv') else 'mp4'
-    # Focus mode decodes ORIGINAL pixels at double resolution, not upscale
-    # of the 192x108 overview tiles. Work remains local and time-bounded.
-    width,height=(384,216) if focused else (FRAME_W,FRAME_H)
+    # Focus mode decodes the original media stream (never overview tiles).
+    # Scale down to at most 640x360 without upscaling a smaller source;
+    # output is padded to a fixed frame size for bounded RGB decoding.
+    width,height=(FOCUS_W,FOCUS_H) if focused else (FRAME_W,FRAME_H)
     # Strictly local input, offline decoder, bounded raw RGB output and runtime.
+    # FFmpeg splits filterchains at unescaped commas. The min() commas are
+    # expression arguments, not filter separators; escape them for -vf.
+    resize=(f'min({width}\\,iw):min({height}\\,ih)' if focused else f'{width}:{height}')
     cmd = [exe, '-nostdin', '-hide_banner', '-loglevel', 'error',
            '-protocol_whitelist', 'file,pipe', '-threads', '1',
            '-ss', str(start), '-f', container, '-i', str(filename), '-t', str(length),
-           '-vf', f'fps={FRAME_RATE},scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2',
+           '-vf', f'fps={FRAME_RATE},scale={resize}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2',
            '-an', '-sn', '-dn', '-frames:v', str(min(MAX_FRAMES, math.ceil(length * FRAME_RATE))),
            '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1']
     try:
@@ -771,7 +952,7 @@ def _choose_windows(duration, budget, focus, heat=None):
     return sorted(windows)
 
 
-def _scene_candidates(images, starts, *, heat=None, limit=24):
+def _scene_candidates(images, starts, *, heat=None, limit=24, focus=False):
     """Coverage first; changes, motion and optional viewer activity rank extras.
 
     Input is only *locally decoded* frames, grouped by separate decode window.
@@ -795,6 +976,56 @@ def _scene_candidates(images, starts, *, heat=None, limit=24):
             buckets.append(entries)
     if not buckets:
         raise AdaptiveUnavailable('no_decoded_frames')
+    if focus:
+        # For a single real-video focus window, frame *coverage* comes before
+        # visual deduplication: a near-static 15/20/30-second shot may still
+        # contain important subtle movement. A distinct decoded timestamp is
+        # required for every selected tile; never duplicate still images to
+        # fill a 12-grid. Respect any smaller remaining Life frame quota.
+        entries=sorted((entry for bucket in buckets for entry in bucket),
+                       key=lambda item:item['second'])
+        desired=min(12,limit,len(entries))
+        if desired<1:
+            raise AdaptiveUnavailable('no_decoded_frames')
+        left,right=entries[0]['second'],entries[-1]['second']
+        span=max(.001,right-left+.5)
+        picked=[]
+        for index in range(desired):
+            start=left+span*index/desired
+            end=left+span*(index+1)/desired
+            center=(start+end)/2
+            options=[entry for entry in entries if entry not in picked and
+                     start<=entry['second']<(end if index<desired-1 else end+.001)]
+            if not options:continue
+            # A visible change is useful when candidates occupy one time slot,
+            # but not at the expense of losing broad temporal coverage.
+            chosen=max(options,key=lambda entry:(entry['score']*.2 -
+                     abs(entry['second']-center)/max(.5,span/desired),
+                     -entry['second']))
+            picked.append(chosen)
+        # Sparse decode timestamps can leave empty bins. Fill by maximal
+        # temporal separation, not by inventing timestamps or repeating tiles.
+        while len(picked)<desired:
+            choices=[item for item in entries if item not in picked and
+                     all(abs(item['second']-x['second'])>=.45 for x in picked)]
+            if not choices:break
+            item=max(choices,key=lambda x:(min(abs(x['second']-p['second']) for p in picked)
+                    if picked else span, x['score'], -x['second']))
+            picked.append(item)
+        picked.sort(key=lambda x:x['second'])
+        return picked, {
+            'scene_change_seconds':[x['second'] for x in entries if x['jump']][:24],
+            'motion_hotspots_seconds':[x['second'] for x in sorted(
+                (e for e in entries if e['diff']>.045),
+                key=lambda e:e['diff'],reverse=True)[:12]],
+            'heat_candidates_seconds':[x['second'] for x in picked if x['audience']>=.7][:12],
+            'candidates_examined':len(entries),
+            'windows_covered':len(buckets), 'frames_selected':len(picked),
+            'focus_selection_policy':'timeline-coverage-then-motion-v1',
+            'focus_target_frames':desired,
+            'focus_time_bins_filled':len(picked),
+            'focus_frame_shortfall_reason':('limited-decoded-frames' if len(entries)<min(12,limit)
+                else 'timestamp-spacing' if len(picked)<desired else 'none')}
     # Uniformly cover all sampled windows. A static shot needs one observation.
     chosen=[]
     def add(item):
@@ -863,11 +1094,11 @@ def _make_storyboards(items):
         out=BytesIO();grid.save(out,format='JPEG',quality=86,optimize=True)
         output.append({'second':chunk[0]['second'],'bytes':out.getvalue(),
                        'rank':len(output),'tile_times':[x['second'] for x in chunk],
-                       'tile_count':len(chunk)})
+                       'tile_count':len(chunk),'grid_cols':4,'grid_rows':math.ceil(len(chunk)/4)})
     return output
 
 
-def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard', network_budget_bytes=None):
+def _acquire_adaptive_frames_impl(bvid, *, max_frames=24, focus=None, depth='standard', network_budget_bytes=None, frame_budget_limit=None):
     """Return storyboards *of actual decoded moments* or an explicit fallback reason."""
     if not BV_RE.fullmatch(str(bvid or '')):
         raise AdaptiveUnavailable('invalid_bvid', fallback=False)
@@ -881,6 +1112,12 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
     if configured not in FRAME_PLANS:
         raise AdaptiveUnavailable('invalid_frame_plan', fallback=False)
     limit = min(configured,12) if depth=='standard' else configured
+    # A remaining Episode frame allowance is an enforced tool-side ceiling.
+    if frame_budget_limit is not None:
+        if (focus is None or type(frame_budget_limit) is not int or
+                not 1 <= frame_budget_limit <= configured):
+            raise AdaptiveUnavailable('invalid_frame_budget_limit',fallback=False)
+        limit = min(limit,frame_budget_limit)
     if network_budget_bytes is not None:
         if (type(network_budget_bytes) is not int or not 1_048_576<=network_budget_bytes<=NETWORK_BUDGETS[configured]):
             raise AdaptiveUnavailable('invalid_network_budget', fallback=False)
@@ -902,28 +1139,101 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
     windows = _choose_windows(duration,limit,focus,heat=heat)
     all_images=[]
     started=time.monotonic()
+    # One end-to-end budget across complete transfer, recovered MP4 and DASH;
+    # preserve time for offline decoding + restricted vision model (220s outer).
+    download_deadline = started + 170
     with tempfile.TemporaryDirectory(prefix='dafeiyu-scene-') as folder:
         budget = min(NETWORK_BUDGETS[configured], network_budget_bytes) if network_budget_bytes is not None else NETWORK_BUDGETS[configured]
+        observed_start = original_bytes()
+        attempted = []
+        original_failure = None
+        def remaining():
+            return max(0, budget - (original_bytes() - observed_start))
+        def dash_download():
+            nonlocal source, windows
+            attempted.append('dash-indexed')
+            try:
+                if not isinstance(source, dict):
+                    source = _playurl(bvid,force_dash=True,expected_cid=cid)
+                if not isinstance(source,dict):
+                    raise AdaptiveUnavailable('dash_indexed_video_unavailable')
+                jobs_, count_, ranges_, size_ = _download_dash_samples(
+                    source,folder,windows,focus,remaining(),deadline=download_deadline-20)
+            except AdaptiveUnavailable as exc:
+                exc.attempted_stages = tuple(attempted)
+                exc.previous_failure = original_failure
+                exc.measured_original_bytes = original_bytes() - observed_start
+                raise
+            windows = [(start,start+length) for _,start,length,_ in jobs_]
+            return jobs_,count_,ranges_,size_
         if isinstance(source, dict):
-            jobs, count, range_count, size = _download_dash_samples(source,folder,windows,focus,budget)
-            windows = [(start,start+length) for _,start,length,_ in jobs]
+            jobs,count,range_count,size = dash_download()
             download_mode = 'indexed-dash-sidx-byte-ranges'
             source_type = 'bili-public-playurl-dash'
         else:
             ext = '.flv' if parse.urlsplit(url).path.lower().endswith('.flv') else '.mp4'
             filename = Path(folder) / ('public-video' + ext)
+            original_failure = None
+            use_dash = False
             if size <= budget:
-                count = _download_video(url, filename, size, budget=budget)
-                download_mode, range_count = 'complete-bounded', 1
+                attempted.append('durl-complete')
+                try:
+                    count = _download_video(url, filename, size, budget=remaining(),
+                                            deadline=download_deadline-25)
+                    download_mode, range_count = 'complete-bounded',1
+                except AdaptiveUnavailable as exc:
+                    if exc.code not in ('video_download_timeout','video_download_failed') or not exc.fallback:
+                        exc.attempted_stages = tuple(attempted)
+                        raise
+                    original_failure = exc.code
+            if size > budget or original_failure:
+                if ext == '.mp4':
+                    attempted.append('durl-mp4-indexed')
+                    try:
+                        if remaining() < 1_048_576:
+                            raise AdaptiveUnavailable('video_network_budget_exhausted',fallback=False)
+                        # New sparse file: never assume the incomplete whole-file
+                        # transfer has a valid index, identity, or byte ranges.
+                        sparse = Path(folder) / 'public-sparse.mp4'
+                        count,windows,range_count = _download_sparse_mp4(
+                            url,sparse,size,windows,remaining(),deadline=download_deadline-20)
+                        filename = sparse
+                        download_mode = 'indexed-mp4-byte-ranges'
+                    except AdaptiveUnavailable as exc:
+                        # Unsafe identity, rate-limit, or budget failures do not
+                        # authorize switching source. The remaining set is a
+                        # *different official track*, freshly bound to same CID.
+                        recoverable = {'video_range_not_supported',
+                                       'video_range_download_failed',
+                                       'video_mp4_index_unavailable','video_mp4_keyframes_unavailable',
+                                       'video_window_budget_insufficient',
+                                       'ffprobe_not_installed'}
+                        if exc.code not in recoverable or remaining() < 1_048_576:
+                            exc.attempted_stages = tuple(attempted)
+                            exc.previous_failure = original_failure
+                            exc.measured_original_bytes = original_bytes() - observed_start
+                            raise
+                        original_failure = exc.code
+                        use_dash = True
+                else:
+                    # The ordinary PlayURL selector already bypasses oversized
+                    # FLV. Preserve the fail-closed contract for injected tracks.
+                    if size > budget:
+                        raise AdaptiveUnavailable('video_range_container_unsupported',fallback=False)
+                    use_dash = True
+            if isinstance(source,dict) or use_dash:
+                jobs,count,range_count,size = dash_download()
+                download_mode = 'indexed-dash-sidx-byte-ranges'
+                source_type = 'bili-public-playurl-dash'
             else:
-                if ext != '.mp4':
-                    raise AdaptiveUnavailable('video_range_container_unsupported', fallback=False)
-                count, windows, range_count = _download_sparse_mp4(url, filename, size, windows, budget)
-                download_mode = 'indexed-mp4-byte-ranges'
-            source_type = 'bili-public-playurl-durl'
-            jobs = [(filename,start,end-start,start) for start,end in windows]
+                source_type = 'bili-public-playurl-durl'
+                jobs = [(filename,start,end-start,start) for start,end in windows]
+        # This is the final signed track only, NOT the cumulative traffic
+        # from earlier (possibly failed) official DURL/DASH attempts.
+        selected_track_input_bytes = count
+        count = original_bytes()-observed_start
         for filename,start,length,decode_start in jobs:
-            if time.monotonic()-started>95:
+            if time.monotonic()>=download_deadline:
                 raise AdaptiveUnavailable('video_sampling_budget_exhausted')
             try:
                 all_images.append(_decode_samples(filename,start=decode_start,length=length,focused=True) if focus
@@ -933,7 +1243,7 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
                     raise AdaptiveUnavailable(exc.code, fallback=False) from None
                 raise
     try:
-        moments,info=_scene_candidates(all_images,[start for start,_ in windows],heat=heat,limit=limit)
+        moments,info=_scene_candidates(all_images,[start for start,_ in windows],heat=heat,limit=limit,focus=focus is not None)
     except AdaptiveUnavailable as exc:
         if download_mode.startswith('indexed-'):
             raise AdaptiveUnavailable(exc.code, fallback=False) from None
@@ -959,15 +1269,19 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
     coverage=round(sum(end-start for start,end in windows),1)
     sampling={'strategy':'decoded-storyboard-stratified-2fps','sampler_version':SAMPLER_VERSION,
               'source_type':source_type,'input_bytes':count,
+              'selected_track_input_bytes':selected_track_input_bytes,
+              'source_attempts':attempted,
               'network_budget_bytes':budget,'remote_video_bytes':size,
               'download_mode':download_mode,'download_ranges':range_count,
+              'track_selection':source.get('track_selection') if isinstance(source,dict) else 'progressive-low-quality',
               'clip_window':focus if focus else {'startSeconds':0.,'endSeconds':duration},
               'sampled_windows':[{'startSeconds':a,'endSeconds':b} for a,b in windows],
               'sampled_duration_seconds':coverage,'video_duration_seconds':duration,
               'heat_source':heat['source'] if heat else 'unavailable',
               'viewer_heat_is_content_evidence':False,'depth':depth,
               'frame_plan':configured,'frame_budget':limit,'storyboard_count':len(boards),
-              'frame_pixel_size':[384,216] if focus else [FRAME_W,FRAME_H],
+              'frame_pixel_size':[FOCUS_W,FOCUS_H] if focus else [FRAME_W,FRAME_H],
+              'frame_budget_limit':frame_budget_limit,
               'sample_interval_seconds':1/FRAME_RATE,
               'note':'DURL MP4 或 DASH SIDX 仅按可信时间索引和网络预算采样；未完整播放、未读取原声音轨'}
     sampling.update(info)
@@ -978,3 +1292,12 @@ def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard'
             'times':[x['second'] for x in moments], 'sampling':sampling, 'ocr':ocr,
             'focus_window':focus, 'image_source':'B站公开视频片段（离线解码）',
             'notice':'每张分镜拼图包含多个带时间码的公开视频采样时刻；未逐帧观看完整视频或听到音频'}
+
+
+def acquire_adaptive_frames(bvid, *, max_frames=24, focus=None, depth='standard', network_budget_bytes=None, frame_budget_limit=None):
+    # For direct entrypoints, still enforce one shared physical-byte budget;
+    # nested inside the public video tool this reuses its persisted scope.
+    with traffic_scope(None):
+        return _acquire_adaptive_frames_impl(
+            bvid,max_frames=max_frames,focus=focus,depth=depth,
+            network_budget_bytes=network_budget_bytes,frame_budget_limit=frame_budget_limit)

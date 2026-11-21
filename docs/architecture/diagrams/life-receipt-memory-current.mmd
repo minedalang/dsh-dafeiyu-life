@@ -1,3 +1,29 @@
+%% 2.8.2-dev.50：Life 已核验视频资料后，将同账号执行结果的受控 continuationState 写入现有 Life 事件账本；日记区分已继续行动、自主停止、后续动作未执行与 Episode 完成。旧记录只读保守显示，不补造 BV/画面/模型原因，不增模型调用或新账本。
+%% 2.8.2-dev.49：仅视频 Agent 本轮，单次选片读标题/热度/简介；当前账号+轮次真实入选后才提供统一看视频动作，同步尝试画面及字幕/可选 ASR 且各自验收；Life 独立 Episode、评论自由选择与外发门禁不变。
+%% 2.8.2 开发增量：本轮视频探索任何阶段均可由模型自主选用已授权视觉工具；现有匿名视频轮次记录仅追加有真实采样与描述的视觉数量统计，不生成单 BV Life 观看回执；Life Episode 菜单持续按当前已核实 BV/步骤预算重新提供观看选项。
+%% 2.8.2-dev.46：Life 日记仅在匿名同一 Episode+同一 BV+独立可信视觉回执下合并资料核验与画面观察；时间先后按真实毫秒，不凭近似时间/标题推断；有固定原因码才解释未继续观察。2.8.3 深浅记忆/即时补看仍未实施。
+%% Life continuation stop/skip reason is a bounded model category; technical stop codes remain distinct, no raw model rationale persists.
+%% 2.8.2 当前增量：视觉模型同调用产出短摘要；Life 自选局部新增证据完成后，复用视频 Agent 模型以无工具文字路由整合有限笔记；无第二记忆库，不改变可衰减记忆与证据校验。
+%% 2.8.2-dev.37: FFmpeg focus windows 5-120s use decoded-frame timeline coverage (up to 12 distinct frames per window and remaining Life budget), motion as secondary; owner local redacted stage report in reports/ is NOT Life memory; action tree uses latest executed child and its own receipt.
+%% 2.8.2-dev.36: Owner-local focus diagnostic chooses only independently verified preview anchors; separate from Life willingness and memory; existing platform budgets/proof checks unchanged.
+%% 2.8.2-dev.28: Life may batch-select 0..N independently verified focus timestamps per decision; dynamic 5-120s windows, three-tier cumulative Episode budgets, initial global candidate pool persists across exploration; every subsequent decoded window still requires original account/host evidence gates. See lib/video-exploration-budget.mjs and lib/life-continuation.mjs.
+%% 2.8.2-dev.34：低清分镜 v12 固定每张12格（4×3），逐张核验时间/来源后才交 Life；Whisper 按 BV/模型/语种授权复用本机短期机器转写。来源模型能力与 Headless 逐模型取消同步分属独立配置，不新增权限或语义确认证据。
+%% 2.8.2-dev.24: Windows DSH/Python fixed visual prompt parity and verified semantic lines; cross-sheet video-wide fair scan under 1400 tiles; Life post-overview interests/recallable public memory/energy from existing scoped getters; no new permission; 50 MiB nominal focus cap remains distinct from 8 MiB videoshot sprite cap.
+%% dev.23: Python budgeted videoshot scan (12/24/48 by owner); vision proposes up to 8 timestamps tied to sampled frames; historically Life chose one (superseded by dev.28 batch choice). No forced four slots, no focus grant; extra media still requires explicit Life proof.
+%% dev.22: Life decides first whether to view; owner 12/24/48 controls low-res overview (not speculative pre-watch deep). Vision model suggests only verified sampled timestamps; optional PBP heat is a hint. Focus still needs a second Life proof.
+%% dev.21: four verified focus windows include Python neighbor pixel change, matched caption/ASR and clearly unverified vision guesses; skip/defer/error are distinct; no new focus grant.
+%% 2.8.2-dev.20: Life voluntary video overview first; Python full videoshot thumbnail candidate scan is bounded, model sees <=48 frames in the selected tier; only AFTER trusted overview Life may separately choose verified-time real-video focus (MP4/DASH + FFmpeg).
+%% 2.8.2-dev.18：真实视频低码率取帧仅由官方 PlayURL 当前响应授权；概览疑点只产候选，Life 须独立通过既有意愿门禁再选择局部复查，不能执行器自动补帧。
+%% 2.8.2-dev.12: Life 来源 tag 在同一可信 UID 下稳定复用，账号社交名单/外发授权逐 UID 保存；多记忆档案管理仅归档未来，不参与当前运行。
+%% 2.8.2-dev.11: Life 历史熟悉感与当前账号互动阶段分开；同一动作的执行回执仅按匿名 actionRef 精确关联，旧日志保守显示。
+%% 2.8.2-dev.10: public evidence is same-account/public-event only; poll network backoff handles pre-budget DNS/timeout failures; trace terminal labels share one proof classifier.
+%% 2.8.2-dev.8：原 Life 决策步骤只读解释自主选择/技术阻断/平台回执；不写入新账本，不替 Life 行动。
+%% 2.8.2-dev.7：Life 完整视觉采样在账号/BV 上跨进程互斥，回执持久化前不放锁；短期账本不覆盖记忆遗忘，长期依据仅当前清晰记忆。
+%% 2.8.2-dev.6：原 B站读预算与通知网络退避仅生成按账号状态的只读诊断；无新预算、无重试调度或 Life 决策权。
+%% 2.8.2-dev.5：Episode 识图前复用当前账号仍清晰的已核验视觉记忆；采样时间间隔仅表示证据缺口，不代表连续观看。
+%% 2.8.2-dev.4：仅当前账号/清晰记忆的精确来源只读追溯；未来浅深分层记忆仍为未实施提案。
+%% 2.8.2-dev.3：Episode/视觉证据提供脱敏缺失说明；字幕只标原文字符范围；Reflection 节选禁止独立生成事实；记忆只标未入模数量。
+%% 2.8.2-dev.2：选中 BV 仅核实元数据；取帧必须由 Life 续行明确选择 observe_video 和深度，受原账号/视觉/证据门禁约束。
 %% dev.12：经核验阅读增量仅作可观测收益，跨日兴趣与反思人格计数只读归因
 %% dev.10：可信回复通过统一意愿密封与原发送事务核验；未尝试和未知送达分离。
 %% dev.74：社交自然熟悉度只读成长；私人联系资格必须与原发送事务分离。
@@ -19,6 +45,14 @@
 %% @code bridge | index.js | const rememberVerifiedLifeAction
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
+  visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
+  videoReadHandoff -.->|核验后生成文字摘要| visualAiBrief
+  visualAiBrief -.->|只保存有限笔记并遵守遗忘| episode
+  %% @code visualAiBrief | lib/video-memory-synthesis.mjs | export async function synthesizeFocusVisualMemory
+  %% dev.19: 已授权真实视频读取可按剩余总预算回退 MP4 Range / 官方 DASH；只读流量账本不构成 Life 授权。
+  videoTrafficReceipt["次数与额度只读流量展示；不冒充 Life 行为证据"]
+  videoReadHandoff -.-> videoTrafficReceipt
+  %% @code videoTrafficReceipt | lib/management-console.js | 视频视觉流量 · 今日
   bundle["Life 组合意愿：同 BV 兼容多子动作；父凭据 + 精确子票据"]
   bundleGuard["逐项核验：原 Python 写入 + 原平台回读；未知冻结剩余"]
   source["真实平台操作｜原视频/评论/DM 事务"]
@@ -50,6 +84,16 @@ flowchart TB
   receipt -.-> commentOutcome
   receipt -->|独立确认成功| verified
   receipt -->|失败或未知| unknown
+  linkedReceipts["匿名 actionRef｜同一动作的原回执可关联；缺失标识的旧轨迹保持保守"]
+  %% @code linkedReceipts | lib/life-decision-trace.mjs | export function lifeTraceExplanation
+  traceProjection["现有 Life 决策轨迹只读归类｜不改变平台事实或记忆"]
+  linkedReceipts -.-> traceProjection
+  ownerDiagnostics["管理中心：意愿/技术/平台回执分层说明"]
+  receipt -.-> traceProjection
+  unknown -.-> traceProjection
+  traceProjection -.-> ownerDiagnostics
+  %% @code traceProjection | lib/life-decision-trace.mjs | export function lifeTraceExplanation
+  %% @code ownerDiagnostics | lib/management-console.js | const explanations={
   verified --> catalog
   verified --> universalCausal
   verified --> wake
@@ -58,6 +102,17 @@ flowchart TB
   outbox --> episode
   outbox -->|已排队但投影暂失败| pending
   episode --> recall
+  videoTrace["精确 BV／记忆 ID 的只读视频来源追溯｜仅当前账号清晰记忆；不加载深层详情"]
+  episode -.->|只读，不复原遗忘| videoTrace
+  videoTrace -.->|事实引用，不产生新记忆或行为| recall
+  visualReuse["视觉防重兜底：现存清晰且本账号的可信观察记忆；不读永久档案或模糊细节"]
+  videoTrace -.->|精确 BV + 当前账号的已核验回执| visualReuse
+  visualReuse -.->|现存清晰观察可阻止冗余取帧，不替代 Life 选择| planner
+  visualLease["真实采样期间账号/BV跨进程互斥；仅短期账本不代替可遗忘记忆"]
+  videoFocusHint["全局缩略帧与最多8条待核实语义候选（无语义最多4条技术候选）｜Life 独立选一处，非授权"]
+  videoFocusHint -.->|Life 第二轮独立选择；再用原视频 FFmpeg 核验| planner
+  planner -.->|明确选中完整视觉读取| visualLease
+  %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]
   privateBuffer["短期对话片段：跨进程原子短锁+认领；按账号/UID隔离；原文限期"]
   privateBatch["安静期/话题收尾/容量触发：模型批量提炼；失败退避、成功删除原文"]
@@ -159,3 +214,10 @@ growthReadOnly["dev.12 匿名探索收益 + 原跨日兴趣 + 人格反思事实
 只读诊断，不修改偏好或发布权限"]
 verified -.->|事实归因，而非新兴趣证明| growthReadOnly
 %% @code growthReadOnly | lib/life-growth-attribution.mjs | export function projectLifeGrowthAttribution
+%% 2.8.2 PR-1A: bounded *prompt-only* context delivery; never a permission,
+%% receipt, memory fact or autonomous decision. The original Life route stays.
+contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
+contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
+%% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
+
+%% @code videoTrace | lib/life-memory-gateway.mjs | function videoEvidenceTrace

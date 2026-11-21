@@ -33,6 +33,19 @@ test('bounded freeform observations preserve unseen subjects but reject external
  assert.equal(noView.experience.visualSceneNotes,undefined)
 })
 
+test('storyboard metadata with internal semicolons never displaces actual observed scene notes',()=>{
+ const model='分镜图1（模型生成；；时间与画面语义未经逐帧核实）：；画面中有几位穿着不同服饰的动画人物。\n分镜图2（模型生成；；时间与画面语义未经逐帧核实）：；人物在画面中央站成一排。'
+ const notes=deriveVideoObservationNotes(model)
+ assert.deepEqual(notes,['画面中有几位穿着不同服饰的动画人物。','人物在画面中央站成一排。'])
+ assert.deepEqual(deriveVideoObservationNotes('分镜图1（模型生成；；时间与画面语义未经逐帧核实）：；'),[])
+ assert.deepEqual(safeVideoObservationNotes(['分镜图1（模型生成；','时间与画面语义未经逐帧核实）：；',
+   '画面中有几位穿着不同服饰的动画人物。']),['画面中有几位穿着不同服饰的动画人物。'])
+ const event=vid(model)
+ assert.deepEqual(event.experience.visualSceneNotes,notes)
+ const noScene=vid('分镜图1（模型生成；；时间与画面语义未经逐帧核实）：；')
+ assert.equal(noScene.experience.visualSceneNotes,undefined,'format-only output must not invent a scene')
+})
+
 test('verified free-language scene notes reach fading Life memory and a restarted later Episode, account-isolated',()=>tmp(async dir=>{
  let clock=T+1_000,account=A
  const memory=()=>createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>account,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})

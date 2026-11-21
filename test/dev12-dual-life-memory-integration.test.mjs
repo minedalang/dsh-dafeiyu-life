@@ -9,19 +9,20 @@ import { validateDailyDraft } from '../lib/daily-dynamic.mjs'
 import { createLifeReflection } from '../lib/life-reflection.mjs'
 import { createMemoryRetriever } from '../lib/memory-retriever.mjs'
 
+const ACCOUNT_TAG='a'.repeat(16) // Verified current account for public-model fixture
 const home=()=>mkdtempSync(join(tmpdir(),'dafeiyu-dual-memory-'))
 const BV='BV1234567890'
 const t0=Date.parse('2026-10-30T12:00:00.000Z')
 const config=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryHalfLifeDays:15,mainSessionMemoryMaxItems:6,mainSessionMemoryMaxChars:1000,
   mainSessionReflectionAuto:true,mainSessionReflectionMinCandidates:2,mainSessionReflectionBatchSize:6,mainSessionReflectionIntervalHours:1,mainSessionReflectionDailyBatches:2})
-const event=(at=t0)=>({kind:'watch',bvid:BV,day:'2026-10-30',at,title:'真实的独立游戏制作视频',key:'watch:one',note:'我对这个话题产生了好奇'})
+const event=(at=t0)=>({accountTag:ACCOUNT_TAG,kind:'watch',bvid:BV,day:'2026-10-30',at,title:'真实的独立游戏制作视频',key:'watch:one',note:'我对这个话题产生了好奇'})
 
 // Absolute data separation: no exported archive-recall API, no old details in
 // the fading copy once decay has advanced, and no restore-based reanimation.
 test('真实档案永久留存；可用记忆丢细节且遗忘不可逆',()=>{
  const dir=home();let clock=t0
  try{
-  const gateway=createLifeMemoryGateway({dataDir:dir,getConfig:config,now:()=>clock})
+  const gateway=createLifeMemoryGateway({getAccountTag:()=>ACCOUNT_TAG,dataDir:dir,getConfig:config,now:()=>clock})
   gateway.recordEvents([event()]);assert.equal(gateway.recall({query:''})[0].stage,'clear')
   assert.equal(typeof gateway.readArchive,'undefined')
   const archive=join(dir,'life-memory','archive','2026-10.jsonl')
@@ -46,9 +47,9 @@ test('真实档案永久留存；可用记忆丢细节且遗忘不可逆',()=>{
 test('经过验证的 UID 只能回忆自己的公开互动，陌生人也可记得自己的经历',()=>{
  const dir=home()
  try{
-  const gate=createLifeMemoryGateway({dataDir:dir,getConfig:config,now:()=>t0})
-  gate.recordEvents([{kind:'social',bvid:BV,key:'social:101:thread:1',actorUid:'101',at:t0,text:'你明天还记得我吗？'},
-    {kind:'social',bvid:BV,key:'social:202:thread:1',actorUid:'202',at:t0,text:'一起聊聊料理吧'}])
+  const gate=createLifeMemoryGateway({getAccountTag:()=>ACCOUNT_TAG,dataDir:dir,getConfig:config,now:()=>t0})
+  gate.recordEvents([{accountTag:ACCOUNT_TAG,kind:'social',bvid:BV,key:'social:101:thread:1',actorUid:'101',at:t0,text:'你明天还记得我吗？'},
+    {accountTag:ACCOUNT_TAG,kind:'social',bvid:BV,key:'social:202:thread:1',actorUid:'202',at:t0,text:'一起聊聊料理吧'}])
   const a=gate.recall({query:'',domain:'bili-life',role:'friend',actorUid:'101'})
   assert.equal(a.length,1);assert.match(a[0].summary,/明天还记得/);assert.doesNotMatch(a[0].summary,/料理/)
   assert.equal(gate.recall({query:'',domain:'bili-life',role:'stranger',actorUid:'101'}).length,1)
@@ -66,7 +67,7 @@ test('经过验证的 UID 只能回忆自己的公开互动，陌生人也可记
 test('新完整备份有永久档案清单和 SHA-256，篡改与路径伪造都会拒绝',()=>{
  const dir=home(),target=home()
  try{
-  const gate=createLifeMemoryGateway({dataDir:dir,getConfig:config,now:()=>t0});gate.recordEvents([event()])
+  const gate=createLifeMemoryGateway({getAccountTag:()=>ACCOUNT_TAG,dataDir:dir,getConfig:config,now:()=>t0});gate.recordEvents([event()])
   const backup=createBackup({root:dir,config:{mainSessionMemoryEnabled:true},sqlite:{}})
   assert.equal(backup.schema,2)
   assert.ok(backup.files['life-memory/archive/2026-10.jsonl'])
@@ -86,7 +87,7 @@ test('新完整备份有永久档案清单和 SHA-256，篡改与路径伪造都
 test('恢复旧的清晰备份，不能让当前已遗忘细节复活；人生记忆独立备份有校验',()=>{
  const dir=home();let clock=t0
  try{
-  const gate=createLifeMemoryGateway({dataDir:dir,getConfig:config,now:()=>clock})
+  const gate=createLifeMemoryGateway({getAccountTag:()=>ACCOUNT_TAG,dataDir:dir,getConfig:config,now:()=>clock})
   gate.recordEvents([event()])
   const older=createBackup({root:dir,config:{},sqlite:{}})
   const standalone=createLifeMemoryBackup(dir)
@@ -104,7 +105,7 @@ test('恢复旧的清晰备份，不能让当前已遗忘细节复活；人生�
 test('反思只能使用衰减证据，并要求领悟 + 行为变化，不会强行生成流水账',async()=>{
  const dir=home();let clock=t0,usedPrompt='',committed=[]
  try{
-  const gate=createLifeMemoryGateway({dataDir:dir,getConfig:config,now:()=>clock})
+  const gate=createLifeMemoryGateway({getAccountTag:()=>ACCOUNT_TAG,dataDir:dir,getConfig:config,now:()=>clock})
   gate.recordEvents([event()]);const reflect=createLifeReflection({dataDir:dir,getConfig:config,memoryGateway:gate,now:()=>clock,
    invokeModel:async prompt=>{usedPrompt=prompt;return JSON.stringify({memories:[{candidate_ids:[reflect.list('pending')[0].id],insight:'我发现真实交流比重复流水账更有意义。',behavior:'以后我希望更珍惜新的共同经历。',importance:.7,tags:['理解']}],note:'形成了认识'})},
    commitMemories:items=>{committed=items;return {added:1,rows:items.map((i,n)=>({id:'m'+n,candidateIds:i.candidateIds}))}}})

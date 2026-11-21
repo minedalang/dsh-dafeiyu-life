@@ -29,8 +29,13 @@ test('management UI distinguishes debug file saving from tool calls, current tri
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  assert.match(html,/预览识图诊断/);assert.match(js,/vision-diagnostics/)
- assert.match(source,/由鱼鱼自主选择观看与深度/)
+ // Debug file saving is separate from whether Life/Video Agent chose to watch.
+ // The current agent exposes one bundled watch choice, not the old direct vision tool.
+ assert.match(source,/mcpWhitelist\(sourceMode\)\.filter\(name=>!\['bili_subtitle','bili_transcribe_safe','bili_preview_vision'\]/)
+ assert.match(source,/list = \[\.\.\.\(sourceMode==='home'\?\[\]:\['bili_search'\]\), 'bili_watch_video'/)
  assert.match(source,/bili_comments\(bvid,num=10\)/)
+ assert.match(js,/本地已保存/)
+ assert.match(js,/今日自动识图调用记录/)
 })
 test('catalog can provide representative images across folders even with a large folder',()=>{
  const home=mkdtempSync(join(tmpdir(),'bili-vision-'))

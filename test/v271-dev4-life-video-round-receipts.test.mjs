@@ -106,3 +106,21 @@ test('视频 Agent 生成提示词时不再引用不存在的旧 kws，启动异
  assert.match(source,/视频启动失败回执收口异常/);
  assert.match(source,/recordVideoRoundFinish\(videoRoundReceiptId,\{exitCode:null\}\)/);
 });
+
+
+test('round sensory tool counts survive the account ledger, without inventing per-BV Life view cards',()=>home(dir=>{
+ const events=createLifeAgentEvents({stateDir:dir,getAccountTag:()=>A,now:()=>TIME})
+ const id=events.recordVideoRoundStart({source:'life-agent'}).id
+ events.recordVideoRoundFinish(id,{exitCode:0,pickedCount:1,funnel:{
+   source:'tool-receipts-not-complete-watching',visualAttempted:3,visualVerified:1,selected:1,toolErrors:2}})
+ const round=events.status().recentVideoRounds[0]
+ assert.equal(round.funnel.visualAttempted,3)
+ assert.equal(round.funnel.visualVerified,1)
+ const timeline=buildLifeTimeline({videoRounds:[round],now:TIME+1000})
+ const complete=timeline.find(x=>x.type==='video-round')
+ assert.match(complete.detail,/对 3 条视频尝试画面观察，其中 1 条取得采样画面描述回执/)
+ assert.equal(timeline.some(x=>x.type==='life-visual'),false)
+ assert.equal(timeline.some(x=>x.bvid),false)
+ const stored=readFileSync(join(dir,'life-agent-events',A+'.json'),'utf8')
+ assert.doesNotMatch(stored,/BV[0-9A-Za-z]{10}|description|subtitleText/)
+}) )

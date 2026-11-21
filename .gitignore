@@ -36,3 +36,10 @@ __pycache__/
 *.patch
 # Generated local vision/ASR preview scratch files
 lib/tmp/
+# Per-version delivery artifacts belong in the delivery ZIP, never in Git source
+/TESTING_*.md
+/TEST-RESULTS*.md
+/COMMIT_MESSAGE.txt
+/APPLY.md
+/README-交付说明.md
+/README-#U*.md

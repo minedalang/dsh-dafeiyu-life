@@ -576,6 +576,21 @@
     "watched-merge.test.mjs"
   ],
   "registeredActive": {
+    "v282-closure-ai-visual-summary.test.mjs": {
+      "owner": "life-video-visual-text-synthesis",
+      "kind": "security",
+      "intent": "Generate bounded visual summaries within existing image model calls; allow an extra tool-less video text-model synthesis only after verified novel Life focus; reuse existing video provider/model with no additional AI model page entry; preserve fallback, account isolation, natural decay and no raw answer archives."
+    },
+    "v282-dev12-account-scope-and-grants.test.mjs": {
+      "owner": "life-account-binding-and-social-permissions",
+      "kind": "security",
+      "intent": "Stable verified UID Life source across Cookie updates; fail-closed account switch and corrupt state; per-UID social recipient permissions never silently move across accounts; future multi-profile remains docs-only."
+    },
+    "v282-dev11-action-account-continuity.test.mjs": {
+      "owner": "life-trace-and-account-continuity",
+      "kind": "security",
+      "intent": "Correlate only exact anonymous action receipts, fail closed on legacy/unknown outcomes, preserve Life identity on account switch, and keep old friends separate from current-account interaction and permissions."
+    },
     "test-governance-contract.test.mjs": {
       "owner": "test infrastructure",
       "kind": "security",
@@ -591,10 +606,210 @@
       "kind": "security",
       "intent": "Require bounded model context to preserve valid JSON, recent evidence, balanced candidates, and the end of long subtitles without changing authoritative source data."
     },
+    "v282-dev3-semantic-coverage.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Verify subtitle source coverage, actual Episode context delivery, conservative reflection on incomplete fading evidence, and memory omission disclosure without private-data or write-permission expansion."
+    },
+    "v282-context-delivery.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Verify prompt-only actual delivery reports are bounded, content-free and distinguish complete, partial and unavailable Life evidence without changing Life permissions."
+    },
+    "v282-vision-instruction-boundary.test.mjs": {
+      "owner": "vision-dsh-host",
+      "kind": "security",
+      "intent": "Require host-side production visual instructions to reject oversize input rather than silently truncate untrusted guidance."
+    },
     "v281-release-preflight-no-prepare.test.mjs": {
       "owner": "release",
       "kind": "contract",
       "intent": "Ensure consumer git installs have no prepare/build hook, stable package metadata and release notes path agree, and README future growth features are clearly marked not implemented."
+    },
+    "v282-dev4-video-memory-provenance.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Current-account and exact-video memory evidence tracing must use only clear fading records, respect forgetting and scope, avoid archives and deep storage, and preserve independent observations."
+    },
+    "v282-dev5-video-visual-coverage-dedup.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Require current account clear public visual memory fallback for missing visual ledger receipts and bounded sample timestamp coverage, without archives, private data, forced visual reads or external writes."
+    },
+    "v282-dev7-visual-read-lease.test.mjs": {
+      "owner": "life-context-and-evidence",
+      "kind": "security",
+      "intent": "Serialize full visual observations across independent processes by account and exact BV, fail closed for unsafe claims, recover provably dead read-only owners, and honor clear-memory versus 24-hour technical anti-repeat receipt lifetime."
+    },
+    "v282-dev6-read-availability-projection.test.mjs": {
+      "owner": "life-read-diagnostics",
+      "kind": "security",
+      "intent": "Verify non-authorizing budget and network read-defer projection, account isolation, typed causes, and UI diagnostics"
+    },
+    "v282-dev8-life-decision-explanation.test.mjs": {
+      "owner": "life-decision-diagnostics",
+      "kind": "security",
+      "intent": "Project actual account-scoped Life choices, technical blocks, uncertain outcomes and verified platform receipts into bounded read-only explanations without revealing model prose or granting execution."
+    },
+    "v282-dev9-open-platform-preview.test.mjs": {
+      "owner": "management-console-and-readme",
+      "kind": "ui",
+      "intent": "Verify preview tab is actually navigable, API examples remain clearly nonfunctional, README SVG roadmap assets exist, upstream attribution remains, and dev version metadata agrees."
+    },
+    "v282-dev10-public-memory-network-trace.test.mjs": {
+      "owner": "life-memory-and-read-gates",
+      "kind": "security",
+      "intent": "Ensure public-only current-account memories cannot leak private or foreign episodes, outbox replay binds original scope, terminal Life results remain consistent, and failed DNS/timeout polls trigger bounded network backoff without extra read budget or sends."
+    },
+    "v282-dev13-video-visual-receipt-order.test.mjs": {
+      "owner": "life-video-opportunities",
+      "kind": "security",
+      "intent": "Ensure a real Life Episode visual receipt can be registered after the same observation was saved in fading memory, while pre-read repeat guards, receipt replay, account ownership and invalid frame proofs remain denied."
+    },
+    "v282-dev14-video-source-asr-visibility.test.mjs": {
+      "owner": "video-perception-handoff-console",
+      "kind": "ui",
+      "intent": "Read-only UI identifies actual source downgrade and partial ASR, never claiming full transcript or playback."
+    },
+    "v282-dev15-video-concurrent-perception.test.mjs": {
+      "owner": "video-observation-read-life-console",
+      "kind": "behavior",
+      "intent": "A verified standard/deep Life choice launches a read-only visual call independently of ASR and keeps truthful fallback and stage-time UI diagnostics."
+    },
+    "v282-dev16-video-asr-diagnostics.test.mjs": {
+      "owner": "video-asr-mcp-observability",
+      "kind": "behavior",
+      "intent": "Whisper internal cost differs from MCP tool wall-clock; ASR is opt-in and full duration by default with bounded async worker and separate diagnostics."
+    },
+    "v282-dev17-rate-limit-incident.test.mjs": {
+      "owner": "bili-read-budget",
+      "kind": "security",
+      "intent": "-509 creates persistent redacted incident snapshots and 48-hour count bins without weakening read budgets, DM intervals or account isolation."
+    },
+    "v282-dev18-life-focus-consent.test.mjs": {
+      "owner": "life-video-choice",
+      "kind": "security",
+      "intent": "An ambiguous deep overview only suggests time-bounded follow-up; actual video focus read requires separate Life willingness and verified current-account read action."
+    },
+    "v282-dev19-video-traffic-ui.test.mjs": {
+      "owner": "video-traffic-management-ui",
+      "kind": "ui",
+      "intent": "Quota page displays measured today/since-install video visual HTTP receive bytes with explicit excluded routes, never estimated sizes or private URLs."
+    },
+    "v282-dev20-hybrid-life.test.mjs": {
+      "owner": "life-video-hybrid-overview-focus",
+      "kind": "security",
+      "intent": "Video global preview must be proof-bounded and followed by an independent Life decision before any real-video focus window or second vision invocation."
+    },
+    "v282-dev23-life-semantic-focus.test.mjs": {
+      "owner": "life-video-hybrid-overview-focus",
+      "kind": "security",
+      "intent": "Model may offer up to eight genuinely sampled semantic timestamps; Life independently picks one or refuses, no fabricated timestamps, stale account/proof or unauthorized focus. UI warns about image-model cost."
+    },
+    "issue11-fixes.test.mjs": {
+      "owner": "issue11-asr-install-and-life-status",
+      "kind": "behavior",
+      "intent": "Verify Issue #11 production fixes: quick-share save no longer references removed daily limit; faster-whisper links and bounded HTTPS mirror failover are visible and tested; Life planner counters remain independent from strictly account-scoped Episode diagnostics."
+    },
+    "v282-dev27-whisper-model-cache.test.mjs": {
+      "owner": "asr-runtime-and-cache-management",
+      "kind": "security",
+      "intent": "Whisper local-owned cache enumeration and exact-model deletion require explicit confirmation, reject path traversal and symlinks, protect active selection, and keep install progress in the existing management origin."
+    },
+    "v282-dev28-multi-focus-budget.test.mjs": {
+      "owner": "life-video-exploration",
+      "kind": "security",
+      "intent": "Verify Life may batch independent verified focus points under three-tier per-Episode limits, merge overlapping time anchors, preserve history and global candidates, and reject fabricated points or unsafe inputs."
+    },
+    "v282-dev30-video-closure.test.mjs": {
+      "owner": "video-focus-budget-and-debug",
+      "kind": "security",
+      "intent": "Post-overview independent Life batch chooses multiple trusted windows, consumes actual frame and network budgets, refuses forged times, and removes retired owner-model controls."
+    },
+    "v282-dev32-local-vision-controls.test.mjs": {
+      "owner": "local-vision-model-and-storyboard-settings",
+      "kind": "security",
+      "intent": "Local Ollama thinking capability is discovered from only allowlisted models and independently stored; 4/6/12 storyboard density is separately controlled from sampling limits; output token and MCP budgets remain bounded."
+    },
+    "v282-dev31-board-provenance.test.mjs": {
+      "owner": "video-visual-evidence-grounding",
+      "kind": "security",
+      "intent": "Verify v10 preview storyboard receipts list all independently processed JPEG boards, cannot expose incomplete or wrong-time partial output as verified Life visual evidence, and expose current version and per-board Debug status."
+    },
+    "v282-dev33-closure.test.mjs": {
+      "owner": "video-evidence-handoff-local-model",
+      "kind": "security",
+      "intent": "v12 4/6/12 tile validation, exact board provenance and Life transfer, fixed Ollama model whitelist and saving video plan without social grants."
+    },
+    "v282-dev34-closure.test.mjs": {
+      "owner": "headless-model-sync-and-video-vision-settings",
+      "kind": "security",
+      "intent": "Headless 逐模型取消同步只修改目标 YAML；来源模型能力补充严格预览且不扩散至 Headless；历史 MiniCPM 禁下载可删，12格分镜与诊断页不写权限。"
+    },
+    "v282-dev35-dm-focus-closure.test.mjs": {
+      "owner": "private-inbox-sentinel-and-life-video-continuation",
+      "kind": "security",
+      "intent": "Keep the quiet DM list reconciliation at exactly 30 minutes; reject failed detail reads and cross-account stale sentinel writes; prevent null/stale Life focus candidates and verify decoded focus proofs with bounded metadata-only trace."
+    },
+    "v282-dev36-owner-focus-acceptance.test.mjs": {
+      "owner": "owner-video-focus-debug-and-life-visual-hypotheses",
+      "kind": "security",
+      "intent": "Owner selects only independently verified videoshot frame times, one read-only bounded FFmpeg focus is accepted without Life willingness/memory or platform writes; fake anchors, cross-account results, invalid visual receipts, and model R1C1 timestamps cannot bypass evidence checks."
+    },
+    "v282-dev37-focus-diagnostics.test.mjs": {
+      "owner": "focus-video-evidence-and-owner-debug-diagnostics",
+      "kind": "security",
+      "intent": "Diagnose decoded-video focus failure at tool, visual-model, provenance and time-budget verification boundaries; persist only redacted owner focus status through existing reports export; show real nested Life video action rather than parent metadata."
+    },
+    "v282-dev40-decoded-provenance.test.mjs": {
+      "owner": "video-decoded-frame-provenance",
+      "kind": "security",
+      "intent": "Accept bounded multi-track fallback only with exact final-track download-byte proof, and report which deterministic provenance gate rejected a receipt without exposing private data."
+    },
+    "v282-dev40-source-root-hygiene.test.mjs": {
+      "owner": "release-artifacts-and-repository-hygiene",
+      "kind": "contract",
+      "intent": "Keep historical testing guides and one-off delivery files outside Git source and npm package; fail if they reappear in root or ignore rules regress."
+    },
+    "v282-dev41-readme-release-ux.test.mjs": {
+      "owner": "public-release-documentation-and-owner-diagnostics",
+      "kind": "contract",
+      "intent": "User-facing 2.8.2 highlights, concise README, honest SVG future-platform preview and accurately enumerated ASR inference devices."
+    },
+    "v282-dev43-ollama-debug-readiness.test.mjs": {
+      "owner": "local-vision-availability-and-owner-video-debug",
+      "kind": "behavior",
+      "intent": "Before local owner video-read, reject offline/missing Ollama models; label model runtime failure separately from Life evidence verification."
+    },
+    "v282-dev44-life-decision-reason-debug.test.mjs": {
+      "owner": "life-video-two-stage-debug-and-user-facing-explanations",
+      "kind": "behavior",
+      "intent": "Show existing Life decline or defer reasons early in read-only Debug without extra model calls, keep technical failures distinct, and treat untrusted reason as text."
+    },
+    "v282-release-life-video-admission.test.mjs": {
+      "owner": "life-read-only-video-interest-and-autonomy",
+      "kind": "security",
+      "intent": "Life post-overview voluntary read-only opportunity is distinct from social writes; skip/defer remain valid, focus selection allows empty arrays, verified anchors and external permissions unchanged."
+    },
+    "v282-closure-bv-lookup-24h.test.mjs": {
+      "owner": "life-video-neural-search-and-reuse",
+      "kind": "security",
+      "intent": "Keep optional Embedding offline fallback; permit current-account clear BV exact lookup through the neural graph even beyond the recent node cap; never surface faded BV; guard verified full observation against unnecessary repeat for 24 hours without changing memory decay or focus evidence policy."
+    },
+    "v282-closure-visual-reuse-novelty.test.mjs": {
+      "owner": "life-video-visual-evidence-reuse",
+      "kind": "security",
+      "intent": "Reject shorter, shifted or completely covered focus windows using verified episode intervals; require actually novel frame timestamps before success; diagnostic provenance is bounded and excludes video IDs, model output and unverified billing claims."
+    },
+    "v282-closure-video-attempt-visibility.test.mjs": {
+      "owner": "life-video-observation-diagnostics",
+      "kind": "behavior",
+      "intent": "Distinguish in-flight Life video visual actions, verified visual receipts, failed child image recognition and parent-only metadata success; keep read-only attempt diagnostics visible without inventing durable watch records, and reject null visualObservation focus."
+    },
+    "v282-dev49-video-selection-watch.test.mjs": {
+      "owner": "video-agent-selection-and-watch-staging",
+      "kind": "security",
+      "intent": "Enforce one metadata/description selection decision, hide individual speech/vision tools, require exact current-round selection for bundled watch, and aggregate only verified distinct evidence receipts."
     }
   },
   "protected": [
@@ -725,7 +940,103 @@
     "test_vision_events_v2439.py",
     "test_vision_host_owned_dev33314.py"
   ],
-  "registeredPython": {},
+  "registeredPython": {
+    "test_v282_vision_instruction_boundary.py": {
+      "owner": "vision-dsh-host",
+      "kind": "security",
+      "intent": "Reject Python DSH vision instructions exceeding the exact host UTF-16 boundary and fail safely on invalid encoding."
+    },
+    "test_v282_dev13_video_audit.py": {
+      "owner": "video-diagnostics",
+      "kind": "behavior",
+      "intent": "Verify a read-only exported-log auditor distinguishes legacy preview frame events from newer Life verified visual action receipts and never prints private video identifiers or payloads."
+    },
+    "test_v282_dev14_video_source_asr.py": {
+      "owner": "adaptive-video-asr",
+      "kind": "security",
+      "intent": "Progressive rejected CDN URL may only fall back to a separately validated official DASH track; long ASR windows are bounded and original timestamps preserved."
+    },
+    "test_v282_dev15_video_diagnostics.py": {
+      "owner": "adaptive-video-asr",
+      "kind": "security",
+      "intent": "userinfo, fragments and malformed authorities are rejected without leaking signed URLs; ASR timings remain bounded, and dynamic official ports do not waive hostname/TLS/IP pinning."
+    },
+    "test_v282_dev16_asr_worker.py": {
+      "owner": "asr-mcp-adaptive-video",
+      "kind": "security",
+      "intent": "Full-video ASR remains default and async MCP worker avoids thread pool queue; userinfo/private IP/fragment/path escapes remain denied while official nonstandard HTTPS media ports may be used."
+    },
+    "test_v282_dev17_cdn_public_port.py": {
+      "owner": "adaptive-video-cdn",
+      "kind": "security",
+      "intent": "Official PlayURL HTTPS media transport uses pinned globally routable DNS resolutions and no implicit proxy; private DNS addresses and malformed authorities remain blocked independent of CDN host suffix."
+    },
+    "test_v282_dev18_official_dynamic_stream.py": {
+      "owner": "adaptive-video-dynamic-playurl",
+      "kind": "security",
+      "intent": "Official PlayURL-only dynamic HTTPS media candidates, low-bandwidth DASH selection, bounded same-track backup probes, public pinned IP checks and no limit/broken-identity retry."
+    },
+    "test_v282_dev19_video_recovery_traffic.py": {
+      "owner": "adaptive-video-recovery-and-traffic",
+      "kind": "security",
+      "intent": "Full download uses 1MiB/s deadline; timeouts recover to sparse MP4 then same-identity official DASH without double-budget, security rejection blocks retry and failed bytes reach durable privacy-preserving ledger."
+    },
+    "test_v282_dev20_hybrid_preview.py": {
+      "owner": "preview-vision-full-timeline",
+      "kind": "behavior",
+      "intent": "Python scans all 91 indexed thumbnail candidates within byte/pixel caps, yields at most two vision boards, and discloses partial timeline scan coverage."
+    },
+    "test_v282_dev27_whisper_progress.py": {
+      "owner": "asr-install-progress",
+      "kind": "behavior",
+      "intent": "Offline install script emits real per-file model download byte totals and ready only after model load; rejects arbitrary model names without accessing network."
+    },
+    "test_v282_dev30_video_focus.py": {
+      "owner": "adaptive-video-360p-focus",
+      "kind": "security",
+      "intent": "Focused original-media FFmpeg sampling uses bounded 640x360 output without forced upscaling and rejects forged remaining frame caps before network or decoder side effects."
+    },
+    "test_v282_dev32_ollama_board_controls.py": {
+      "owner": "local-storyboard-layout-thinking-output",
+      "kind": "security",
+      "intent": "4/6/12 panel layouts stay within total frame budget, explicit thinking choice is honored, per-board predict token allowance expands but remains bounded, missing output and invented rows fail closed."
+    },
+    "test_v282_dev31_board_receipts.py": {
+      "owner": "local-vision-board-grounding",
+      "kind": "behavior",
+      "intent": "A 24-frame official videoshot preview requires two separate bounded Ollama image calls and responses, explicitly rejects truncation and fabricated timestamps, and preserves exact JPEG/time receipts."
+    },
+    "test_v282_dev33_asr_cache.py": {
+      "owner": "whisper-asr-language-cache",
+      "kind": "security",
+      "intent": "Language auto mode, short-lived bounded local ASR transcript cache isolation by BV/model/language, expiry, path and symlink rejection."
+    },
+    "test_v282_dev37_focus_window_coverage.py": {
+      "owner": "adaptive-video-focus-coverage",
+      "kind": "behavior",
+      "intent": "10/15/20/30-second focus windows use distinct decoded timestamps and span full duration while preserving original global dedup, frame ceilings and no fake images; actual focused storyboard respects grid contract."
+    },
+    "test_v282_dev39_focus_ffmpeg_filter.py": {
+      "owner": "adaptive-video-real-ffmpeg-filter",
+      "kind": "behavior",
+      "intent": "Decode an actual locally generated MP4 with system FFmpeg in focus and overview modes, proving escaped scale min() expressions output bounded RGB frames with no upscaling."
+    },
+    "test_v282_dev41_asr_cuda.py": {
+      "owner": "local-whisper-asr-device-selection",
+      "kind": "behavior",
+      "intent": "Prefer CUDA float16 only on real compatible CTranslate2 devices; safely fallback CPU int8 on CUDA load/lazy inference errors; cache hits do not claim fresh GPU inference."
+    },
+    "test_v282_dev43_ollama_errors.py": {
+      "owner": "python-preview-vision-local-ollama",
+      "kind": "contract",
+      "intent": "Distinguish Ollama refused/HTTP 404/timeout/unreachable in true model request and preserve bounded board receipt codes."
+    },
+    "test_v282_dev49_staged_video_watch.py": {
+      "owner": "python-headless-video-staged-watch",
+      "kind": "behavior",
+      "intent": "Account/round-scoped SQLite selection proof, simultaneous independent visual and speech reads, ASR fallback only after missing subtitles, partial evidence success, and fail-closed unselected/wrong-scene behavior."
+    }
+  },
   "pythonProtected": [
     "test_v271_three_phase_outbound_gate.py",
     "test_v271_subtitle_visual_evidence.py",
@@ -735,6 +1046,13 @@
     "test_dev3b3_whisper_status.py"
   ],
   "retiredAssertions": [
+    {
+      "file": "v282-dev23-life-semantic-focus.test.mjs",
+      "oldCheck": "assert.match(readme,/视频识别费用提醒[\\s\\S]*Ollama[\\s\\S]*DeepSeek/)",
+      "newCheck": "assert.match(readme,/采样不等于看完整段视频",
+      "date": "2026-11-21",
+      "reason": "dev.41 用户友好 README 已把技术厂商列表简化为使用建议，但仍保留用户可见的云端费用提醒；更新过时的匹配而不删除费用提示验收。"
+    },
     {
       "file": "home-recommendations.test.mjs",
       "oldCheck": "assert.match(ui,/兴趣档案主导搜索/)",
@@ -925,6 +1243,13 @@
       "date": "2026-11-18"
     },
     {
+      "file": "v281-dev3a3-adaptive-source-contract.test.mjs",
+      "oldCheck": "assert.match(watch,/const willInvokeVision=visionPlan\\.attempt&&\\['independent_dsh','independent_local'\\]/)",
+      "newCheck": "assert.match(watch,/const willInvokeVision=earlyVisionPlan\\.attempt&&\\s*\\['independent_dsh','independent_local'\\]/)",
+      "reason": "After Life overview separation, update the adaptive preview gate assertion while preserving the prior audited no-look/skim invariant and independent DSH coverage.",
+      "date": "2026-11-19"
+    },
+    {
       "file": "v281-dev3b21-management-save-feedback.test.mjs",
       "oldCheck": "item.save.click() exact call",
       "newCheck": "assert.match(js,/own\\[0\\]\\.save\\.click\\(\\)/)",
@@ -951,6 +1276,118 @@
       "newCheck": "offline QR route uses the plugin-local Python on Windows/Linux without network or credential leakage",
       "reason": "Windows was silently skipped despite a valid Python runtime, hiding the QR bridge under the full-suite contract; real QR encoding remains an explicit real-install requirement.",
       "date": "2026-11-18"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.match(readme,/当前源码标识为.*`2\\.8\\.1`/)",
+      "newCheck": "assert.ok(readme.includes('当前源码标识为 **`'",
+      "reason": "The uploaded 2.8.2-dev.8 baseline README already advertised the current dev version, so a hardcoded 2.8.1 fixed-version requirement failed before this change. Preserve version disclosure by binding the assertion to package.json instead of restoring historical version text.",
+      "date": "2026-11-19"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.match(readme,/Git 提交或版本号本身不代表已经上架.*以 npm、DSHMarket 与 GitHub Release 实际显示的版本为准/)",
+      "newCheck": "assert.match(readme,/不是正式发布版本，也不代表已经上架/,",
+      "reason": "The uploaded 2.8.2-dev.8 README uses a newer, equally explicit statement that a development source version is not a published version. Continue to verify both non-publication and external registry truth without requiring obsolete 2.8.1 wording.",
+      "date": "2026-11-19"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "README requires ## 🆕 2.8.1 新特性 heading even in current 2.8.2 development README",
+      "newCheck": "'## 🆕 2.8.2 开发预览'",
+      "reason": "Current user homepage must introduce the current development candidate while keeping stable onboarding and flagship features; do not claim 2.8.1 is the latest release heading.",
+      "date": "2026-11-20"
+    },
+    {
+      "file": "v281-release-core-feature-and-vision-permission-ux.test.mjs",
+      "oldCheck": "多候选视频探索与分镜核验",
+      "newCheck": "先看视频全貌，再细看喜欢的片段",
+      "date": "2026-11-20",
+      "reason": "面向使用者的新版本文案改为具体体验表达，旧术语测试断言已过时；保留对应的可见版本入口和无授权安全检查。"
+    },
+    {
+      "file": "v281-release-core-feature-and-vision-permission-ux.test.mjs",
+      "oldCheck": "自主视频画面观察",
+      "newCheck": "视频视觉与转写均可选",
+      "date": "2026-11-20",
+      "reason": "面向使用者的新版本文案改为具体体验表达，旧术语测试断言已过时；保留对应的可见版本入口和无授权安全检查。"
+    },
+    {
+      "file": "v281-release-welcome-features.test.mjs",
+      "oldCheck": "可回溯的真实观察经历",
+      "newCheck": "看过哪些画面，有时间和记录可查",
+      "date": "2026-11-20",
+      "reason": "面向使用者的新版本文案改为具体体验表达，旧术语测试断言已过时；保留对应的可见版本入口和无授权安全检查。"
+    },
+    {
+      "file": "v281-release-welcome-features.test.mjs",
+      "oldCheck": "多候选自主视频探索",
+      "newCheck": "先看全貌，再看细节",
+      "date": "2026-11-20",
+      "reason": "面向使用者的新版本文案改为具体体验表达，旧术语测试断言已过时；保留对应的可见版本入口和无授权安全检查。"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.ok(readme.includes('当前源码标识为 **`'",
+      "newCheck": "assert.ok(readme.includes('当前源码：'+pkg.version+'，仍是测试版本。')",
+      "date": "2026-11-20",
+      "reason": "README 当前版本明确使用开发预览标记，版本与 package.json 联动；废弃旧的源码标识格式但保留真实版本自检。"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.match(readme,/不是正式发布版本，也不代表已经上架/,",
+      "newCheck": "assert.match(readme,/尚未正式发布/,",
+      "date": "2026-11-20",
+      "reason": "以当前 README 明确的尚未正式发布提醒验证发布状态，不依赖旧版措辞。"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.ok(readme.includes('当前源码：'+pkg.version+'，仍是测试版本。')",
+      "newCheck": "assert.ok(readme.includes('当前版本源码：'+pkg.version)",
+      "date": "2026-11-21",
+      "reason": "Formal 2.8.2 source metadata replaces development candidate label without claiming channel availability."
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.match(readme,/尚未正式发布/,",
+      "newCheck": "assert.match(readme,/以 GitHub Release、npm 和 DSHMarket 的实际版本为准/",
+      "date": "2026-11-21",
+      "reason": "Formal-source README avoids expired dev-only label while preserving external registry truth."
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "'## 🆕 2.8.2 开发预览'",
+      "newCheck": "'## 🆕 2.8.2 · 视频感知体验优化'",
+      "date": "2026-11-21",
+      "reason": "Stable section heading replaces development preview and preserves homepage order."
+    },
+    {
+      "file": "v281-release-core-feature-and-vision-permission-ux.test.mjs",
+      "oldCheck": "视频视觉与转写均可选",
+      "newCheck": "assert.match(md,/视频视觉与转写均为可选能力/)",
+      "date": "2026-11-21",
+      "reason": "Keep optional visual and ASR boundary check under current user-facing wording."
+    },
+    {
+      "file": "v281-dev2b-local-vision-manager.test.mjs",
+      "oldCheck": "assert.match(page,/也可直接在 DSH 中配置 Ollama Provider 调用本地模型/)",
+      "newCheck": "assert.match(page,/也可以通过 DSH 配置 Ollama Provider/)",
+      "date": "2026-11-21",
+      "reason": "Current UI describes DSH Ollama Provider without the previous exact wording; preserve provider availability and local-model hardware advice contract."
+    },
+    {
+      "file": "v281-rc-life-tree-bv-and-new-user-install.test.mjs",
+      "oldCheck": "仅核对了公开视频资料",
+      "newCheck": "尚无与本轮对应的可信画面观察",
+      "date": "2026-11-21",
+      "reason": "Verified same-Episode metadata and visual receipts now merge into one diary entry; metadata-only entries explicitly explain the absence of a verified visual receipt while preserving their real source."
+    },
+    {
+      "file": "v281-rc-life-tree-bv-and-new-user-install.test.mjs",
+      "oldCheck": "尚无与本轮对应的可信画面观察",
+      "newCheck": "assert.equal(m,undefined,'无法关联到可信 BV 的资料核验不显示为匿名视频记录')",
+      "date": "2026-11-21",
+      "reason": "The prior source-linked metadata-only assertion was retired because anonymous no-BV video cards are now omitted; preserve the original historical audit and keep its current replacement anchored to the active test."
     }
   ]
 }

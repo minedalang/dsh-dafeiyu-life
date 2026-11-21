@@ -22,6 +22,11 @@ from pathlib import Path
 import re
 import sys
 import tempfile
+import shutil
+import subprocess
+import secrets
+import time
+from types import SimpleNamespace
 
 # ⭐ Windows 上 Python 默认按 GBK 编/解码标准输出 —— 中文或 emoji 打进管道会直接炸
 #    （有用户反馈装依赖 / 跑转写时报 UnicodeDecodeError 或乱码）⇒ 这里钉死 UTF-8
@@ -87,7 +92,87 @@ def fetch_audio(url: str, tmp: str, tag: str) -> str:
         return ydl.prepare_filename(info)
 
 
-def _asr_receipt(bvid, pieces):
+# Full-duration ASR is the default, including videos longer than eight minutes.
+# An operator-only environment override may opt into representative clips.
+# Full-audio-attempt means audio was submitted to ASR; it is NOT a claim
+# of understanding every sentence or watching the complete video.
+LONG_ASR_THRESHOLD_SECONDS = 8 * 60
+LONG_ASR_SAMPLE_WINDOWS = 3
+LONG_ASR_WINDOW_SECONDS = 60
+
+
+def _audio_duration(src):
+    """Probe local audio only; never pass a URL or model-supplied command."""
+    ffprobe = shutil.which('ffprobe')
+    if not ffprobe:
+        return None
+    try:
+        result = subprocess.run([ffprobe, '-v', 'error', '-show_entries',
+            'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', src],
+            capture_output=True, text=True, timeout=12)
+        value = float(result.stdout.strip()) if result.returncode == 0 else 0
+        return value if math.isfinite(value) and 3 <= value <= 4 * 3600 else None
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return None
+
+
+def _clip_windows(duration):
+    """Three separated bounded windows, with original video timeline offsets."""
+    if not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration < LONG_ASR_THRESHOLD_SECONDS:
+        return []
+    span = LONG_ASR_WINDOW_SECONDS
+    centers = (span / 2, duration / 2, duration - span / 2)
+    windows = [(round(max(0., min(duration-span, c-span/2)), 3), span) for c in centers]
+    # Do not unintentionally duplicate a clip near the threshold.
+    return list(dict.fromkeys(windows))
+
+
+def _sample_audio_windows(src, tmp, tag):
+    """Return safe local WAV excerpts, or None if sampling cannot be used.
+
+    Missing FFmpeg/probe falls back to the existing full transcription rather
+    than pretending the model heard an unknown number of seconds.
+    """
+    # Fail toward full ASR on unknown config: a sample must be explicitly chosen.
+    if os.environ.get('BILI_ASR_LONG_VIDEO_MODE', 'full').strip().lower() != 'sample':
+        return None
+    ffmpeg = shutil.which('ffmpeg')
+    duration = _audio_duration(src)
+    windows = _clip_windows(duration)
+    if not ffmpeg or not windows:
+        return None
+    samples = []
+    try:
+        for i, (start, length) in enumerate(windows):
+            out = os.path.join(tmp, tag + '.sample%d.wav' % i)
+            result = subprocess.run([ffmpeg, '-hide_banner', '-loglevel', 'error',
+                '-nostdin', '-ss', str(start), '-i', src, '-t', str(length),
+                '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', '-y', out],
+                capture_output=True, timeout=35, **_hidden_windows_child())
+            if result.returncode != 0 or not os.path.isfile(out) or os.path.getsize(out) < 512:
+                return None
+            samples.append((out, start, length))
+        return {'duration':duration,'samples':samples,'windows':windows}
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _hidden_windows_child():
+    if os.name != 'nt':
+        return {}
+    return {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+
+
+def _offset_segments(segments, offset):
+    """Whisper clip-relative seconds become truthful original-audio seconds."""
+    for item in segments:
+        start, end = getattr(item, 'start', None), getattr(item, 'end', None)
+        yield SimpleNamespace(text=getattr(item, 'text', ''),
+            start=(start + offset) if isinstance(start, (int,float)) else None,
+            end=(end + offset) if isinstance(end, (int,float)) else None)
+
+
+def _asr_receipt(bvid, pieces, *, sampling=None):
     """Keep only explicitly timed Whisper spans; never infer time from plain text."""
     rows = []
     text_parts = []
@@ -105,24 +190,154 @@ def _asr_receipt(bvid, pieces):
             break
     if len(rows) > 160:
         rows = [rows[round(i * (len(rows) - 1) / 159)] for i in range(160)]
-    return {'bvid': bvid, 'source': 'local-asr', 'asr_evidence': 'faster-whisper-machine-transcript',
+    result = {'bvid': bvid, 'source': 'local-asr', 'asr_evidence': 'faster-whisper-machine-transcript',
             'text': ' '.join(text_parts)[:12000], 'timed_segments': rows,
-            'can_claim_audio_listened': False, 'can_claim_full_video_watched': False}
+            'can_claim_audio_listened': False, 'can_claim_full_video_watched': False,
+            'coverage': 'representative-windows' if sampling else 'full-audio-attempt'}
+    if sampling:
+        result['audioDurationSeconds'] = round(sampling['duration'], 3)
+        result['sampleWindows'] = [{'startSeconds':start, 'endSeconds':round(start+length,3)}
+                                   for start, length in sampling['windows']]
+    return result
+
+
+
+# Durable but short-lived local-only cache, for repeated *owner-authorized* BV
+# reads. A successful cache hit does not relax the MCP read/permission gate.
+_ASR_CACHE_VERSION=1
+_ASR_CACHE_TTL=7*24*3600
+
+def _asr_cache_file(bvid, model, lang):
+    if not re.fullmatch(r'BV[0-9A-Za-z]{10}', bvid) or not re.fullmatch(r'[A-Za-z0-9-]{1,24}', model) or lang not in ('auto','zh','en'):
+        return None
+    home_value=os.environ.get('BILI_DUTY_HOME','').strip()
+    if not home_value or os.environ.get('BILI_ASR_MODEL_PATH','').strip():return None # do not cache source-tree runs or mutable custom models
+    home=Path(home_value)
+    folder=home/'asr-transcript-cache'
+    if folder.is_symlink() or (folder.exists() and not folder.is_dir()):return None
+    return folder/(f'{bvid}-{model}-{lang}-v{_ASR_CACHE_VERSION}.json')
+
+def _read_asr_cache(bvid,model,lang):
+    path=_asr_cache_file(bvid,model,lang)
+    if path is None or path.is_symlink() or not path.is_file():return None
+    try:
+        if path.stat().st_size>64000:return None
+        item=json.loads(path.read_text(encoding='utf8'))
+        if (item.get('version')!=_ASR_CACHE_VERSION or item.get('bvid')!=bvid or
+            item.get('model')!=model or item.get('lang')!=lang or
+            not isinstance(item.get('createdAt'),(int,float)) or
+            not 0<=time.time()-item['createdAt']<=_ASR_CACHE_TTL):return None
+        receipt=item.get('receipt')
+        if (not isinstance(receipt,dict) or receipt.get('source')!='local-asr' or
+            receipt.get('bvid')!=bvid or not isinstance(receipt.get('text'),str) or
+            not receipt['text'].strip() or not isinstance(receipt.get('timed_segments'),list) or
+            len(receipt['timed_segments'])>160):return None
+        receipt=dict(receipt)
+        receipt['cacheHit']=True
+        receipt['languageMode']=lang
+        receipt['inferenceDevice']='cache'
+        receipt['timings']={'schema':'life-asr-phase-timings/v1',
+            'audioDownloadMs':0,'modelLoadMs':0,'clipExtractionMs':0,
+            'inferenceMs':0,'receiptMs':0,'totalMs':0}
+        return receipt
+    except (OSError,ValueError,TypeError,KeyError):return None
+
+def _write_asr_cache(bvid,model,lang,receipt):
+    path=_asr_cache_file(bvid,model,lang)
+    if path is None or not isinstance(receipt,dict) or not receipt.get('text'):return
+    try:
+        path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+        if path.parent.is_symlink() or path.is_symlink():return
+        safe={k:receipt[k] for k in ('bvid','source','asr_evidence','text','timed_segments','coverage') if k in receipt}
+        for key in ('audioDurationSeconds','sampleWindows'):
+            if key in receipt:safe[key]=receipt[key]
+        if safe.get('source')!='local-asr' or len(safe.get('text',''))>12000:return
+        payload=json.dumps({'version':_ASR_CACHE_VERSION,'bvid':bvid,'model':model,
+                            'lang':lang,'createdAt':time.time(),'receipt':safe},ensure_ascii=False)
+        if len(payload.encode('utf8'))>64000:return
+        tmp=path.with_name(path.name+'.'+str(os.getpid())+'.tmp')
+        try:
+            with open(tmp,'x',encoding='utf8') as stream:stream.write(payload)
+            os.chmod(tmp,0o600)
+            os.replace(tmp,path)
+        finally:
+            if tmp.exists():tmp.unlink()
+    except (OSError,ValueError,TypeError):pass # cache failure never blocks speech
+
+def _load_whisper_auto(model_source, factory, *, ctranslate2_module=None):
+    """Prefer actual CUDA inference where available; transparently retain CPU support.
+
+    Never infer GPU availability from the presence of a display adapter alone.
+    Missing/misconfigured CTranslate2, CUDA libraries or insufficient VRAM must
+    not make the optional ASR capability unusable on an otherwise healthy host.
+    """
+    device_pref = os.environ.get('BILI_ASR_DEVICE', 'auto').strip().lower()
+    if device_pref not in ('auto', 'cpu'):
+        device_pref = 'auto'  # unknown operator setting cannot force unsafe modes
+    if device_pref == 'auto':
+        try:
+            if ctranslate2_module is None:
+                import ctranslate2 as ctranslate2_module
+            if ctranslate2_module.get_cuda_device_count() > 0:
+                for gpu_type in ('float16', 'int8'):
+                    try:
+                        model = factory(model_source, device='cuda', compute_type=gpu_type)
+                        print('[asr] GPU CUDA 已加载，使用 %s 推理' % gpu_type, file=sys.stderr)
+                        return model, 'cuda', gpu_type
+                    except (RuntimeError, OSError, ValueError):
+                        continue
+                print('[asr] CUDA 模型加载不可用，自动使用 CPU int8', file=sys.stderr)
+        except (ImportError, RuntimeError, OSError, ValueError, AttributeError):
+            pass
+    model = factory(model_source, device='cpu', compute_type='int8')
+    print('[asr] 当前使用 CPU int8 推理', file=sys.stderr)
+    return model, 'cpu', 'int8'
+
+
+def _whisper_segments(model, source, lang):
+    return model.transcribe(source,
+        language=None if lang == 'auto' else lang,
+        vad_filter=True, beam_size=1, condition_on_previous_text=False)[0]
+
+
+def _run_whisper_segments(model, sources, lang, *, sampling=None):
+    """Materialize lazy inference; never return partial GPU results as a success.
+
+    If a CUDA runtime fails after loading, retry the bounded transcription once
+    from the beginning on CPU rather than losing the user's video transcription.
+    """
+    from itertools import islice, chain
+    def collect(loaded_model):
+        if sampling:
+            segments = chain.from_iterable(_offset_segments(
+                _whisper_segments(loaded_model, filename, lang), offset)
+                for filename, offset, _length in sampling['samples'])
+        else:
+            segments = _whisper_segments(loaded_model, sources, lang)
+        return list(islice(segments, 2500))
+    return collect(model)
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description='把一条视频转成文字（默认中文）')
+    ap = argparse.ArgumentParser(description='把一条视频转成文字（默认自动检测语种）')
     ap.add_argument('target', help='BV 号 / B站链接 / 本地音视频文件')
     ap.add_argument('-o', '--out', help='写到这个文件（不给就打到标准输出）')
     ap.add_argument('--model', default=os.environ.get('BILI_DUTY_ASR_MODEL', 'small'),
                     help='Whisper 模型大小：tiny / base / small / medium（默认 small）')
-    ap.add_argument('--lang', default='zh', help='语言（默认 zh；不给就自动判断请传 auto）')
+    ap.add_argument('--lang', default=os.environ.get('BILI_ASR_LANGUAGE','auto'), choices=('auto','zh','en'), help='语种 auto（默认）/中文/英文')
     ap.add_argument('--json', action='store_true', help='输出带明确时间戳的 JSON 回执（只供受限 MCP 调用）')
     args = ap.parse_args()
 
     if args.json and not re.fullmatch(r'BV[0-9A-Za-z]{10}', args.target):
         print('[asr] JSON 模式仅允许精确 BV 号', file=sys.stderr)
         return 2
+    # Explicit language setting + account-safe gate are enforced by the MCP
+    # caller first. Cache only a validated public BV JSON result, never local files.
+    if args.json and os.environ.get('BILI_ASR_CACHE','1')!='0':
+        cached=_read_asr_cache(args.target,args.model,args.lang)
+        if cached is not None:
+            print(json.dumps(cached,ensure_ascii=False))
+            return 0
     src = args.target
     # ⚠️ 不用 mkdtemp：沙箱只允许写"子进程启动前就存在"的目录，新建的会被拒 ✗
     #    这个目录由宿主（插件）预先建好；文件名固定，跑完自己清掉
@@ -130,11 +345,17 @@ def main() -> int:
     # ⭐ 每个视频用**自己的**文件名：以前写死 audio.m4a ⇒ 两轮同时跑会互相覆盖，
     #    上一轮转出来的其实是另一个视频的内容（2026-10-14 值班那轮亲踩 ✗）
     tag = os.path.basename(src).rsplit('.', 1)[0] or 'clip'
-    tag = re.sub(r'[^0-9A-Za-z_-]', '_', tag)[:40] or 'clip'
+    tag = (re.sub(r'[^0-9A-Za-z_-]', '_', tag)[:32] or 'clip') + '-' + secrets.token_hex(4)
+    clock = time.perf_counter
+    started = clock()
+    phase_ms = {'audioDownloadMs':0, 'modelLoadMs':0,
+                'clipExtractionMs':0, 'inferenceMs':0, 'receiptMs':0}
     try:
+        phase_at = clock()
         if src.lower().startswith('http') or src.upper().startswith('BV'):
             print('[asr] 先下音频…', file=sys.stderr)
             src = fetch_audio(to_url(src), tmp, tag)
+        phase_ms['audioDownloadMs'] = round((clock()-phase_at)*1000)
         if not os.path.exists(src):
             print('[asr] 找不到文件：' + src, file=sys.stderr)
             return 2
@@ -150,18 +371,39 @@ def main() -> int:
             model_source = str(model_dir.resolve())
         else:
             model_source = args.model
+        phase_at = clock()
         from faster_whisper import WhisperModel
         print('[asr] 加载模型 %s（第一次会自动下模型，之后就是本地读）…' % args.model, file=sys.stderr)
-        model = WhisperModel(model_source, device='cpu', compute_type='int8')
+        model, inference_device, compute_type = _load_whisper_auto(model_source, WhisperModel)
+        phase_ms['modelLoadMs'] = round((clock()-phase_at)*1000)
+        phase_at = clock()
+        sampling = _sample_audio_windows(src, tmp, tag)
+        phase_ms['clipExtractionMs'] = round((clock()-phase_at)*1000)
         print('[asr] 开始转写…', file=sys.stderr)
-        segments, _info = model.transcribe(
-            src,
-            language=None if args.lang == 'auto' else args.lang,
-            vad_filter=True,          # 掐掉静音段，省时间也少出错
-            beam_size=1,              # CPU 上优先按时完成；不宣称改变模型准确率保证
-            condition_on_previous_text=False,
-        )
-        receipt = _asr_receipt(args.target, segments)
+        if sampling:
+            print('[asr] 按操作者设置：仅转写 3 个代表性窗口（非整段转写）', file=sys.stderr)
+        inference_at = clock()
+        try:
+            parts = _run_whisper_segments(model, src, args.lang, sampling=sampling)
+        except (RuntimeError, OSError, ValueError):
+            if inference_device != 'cuda':
+                raise  # A genuine CPU failure is not a reason to loop or mask errors.
+            print('[asr] CUDA 推理不可用，重新使用 CPU int8 完整转写', file=sys.stderr)
+            del model
+            model = WhisperModel(model_source, device='cpu', compute_type='int8')
+            inference_device, compute_type = 'cpu', 'int8'
+            parts = _run_whisper_segments(model, src, args.lang, sampling=sampling)
+        phase_ms['inferenceMs'] = round((clock()-inference_at)*1000)
+        phase_at = clock()
+        receipt = _asr_receipt(args.target, parts, sampling=sampling)
+        phase_ms['receiptMs'] = round((clock()-phase_at)*1000)
+        receipt['timings'] = {'schema':'life-asr-phase-timings/v1',
+                              **phase_ms,'totalMs':round((clock()-started)*1000)}
+        receipt['languageMode']=args.lang
+        receipt['inferenceDevice']=inference_device
+        receipt['computeType']=compute_type
+        if args.json and receipt.get('text') and os.environ.get('BILI_ASR_CACHE','1')!='0':
+            _write_asr_cache(args.target,args.model,args.lang,receipt)
         text = receipt['text']
     finally:
         # 临时音频不留在磁盘上

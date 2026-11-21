@@ -8,7 +8,7 @@ const json=(value,status=200)=>new Response(JSON.stringify(value),{status,header
 const ndjson=(rows)=>new Response(rows.map(x=>JSON.stringify(x)+'\n').join(''),{status:200})
 const mockDigest='sha256:'+'e'.repeat(64)
 
-test('只接受两种固定模型 ID，所有请求只访问 127.0.0.1 Ollama',async()=>{
+test('只接受三个固定模型 ID，所有请求只访问 127.0.0.1 Ollama',async()=>{
   const urls=[]
   const stateDir=mkdtempSync(join(tmpdir(),'vision-catalog-'))
   try{
@@ -20,9 +20,9 @@ test('只接受两种固定模型 ID，所有请求只访问 127.0.0.1 Ollama',a
     throw Error('unexpected URL')
   }})
   assert.equal(getLocalVisionModel('../malicious'),null)
-  assert.equal(LOCAL_VISION_MODELS.length,2)
+  assert.equal(LOCAL_VISION_MODELS.length,3)
   assert.throws(()=>manager.start('user/evil'),'不支持')
-  assert.equal((await manager.list()).models[0].installed,true)
+  assert.equal((await manager.list()).models.find(m=>m.id==='qwen3.5-4b').installed,true)
   const result=await manager.start('qwen3.5-4b')
   assert.equal(result.verified,false)
   assert.equal(result.awaitingReview,true)
@@ -38,11 +38,11 @@ test('失败的模型自检不准标记为可用，保留错误供管理台排�
   const manager=createLocalVisionModelManager({logger:{warn:()=>{}},fetchImpl:async(url)=>{
     if(url.endsWith('/api/pull'))return ndjson([{status:'success'}])
     if(url.endsWith('/api/chat'))return json({error:'runtime unsupported'},500)
-    return json({models:[{name:'openbmb/minicpm-v4.7:1b'}]})
+    return json({models:[{name:'qwen3.5:4b'}]})
   }})
-  await assert.rejects(manager.start('minicpm-v4.7-1b'),/HTTP 500/)
+  await assert.rejects(manager.start('qwen3.5-4b'),/HTTP 500/)
   const data=await manager.list()
-  assert.equal(data.models.find(x=>x.id==='minicpm-v4.7-1b').verified,false)
+  assert.equal(data.models.find(x=>x.id==='qwen3.5-4b').verified,false)
   assert.equal(data.progress.phase,'error')
 })
 
@@ -81,13 +81,13 @@ test('不做颜色关键词判定；图片有最终回答时必须等待用户�
   }})
   const result=await manager.start('qwen3.5-4b')
   assert.equal(result.awaitingReview,true)
-  const state=(await manager.list()).models[0]
+  const state=(await manager.list()).models.find(m=>m.id==='qwen3.5-4b')
   assert.equal(state.verified,false)
   assert.equal(state.verification.answer,'我无法判断这是什么图片')
   assert.equal(state.verification.status,'awaiting_review')
   const rejected=await manager.review('qwen3.5-4b',{reviewId:result.reviewId,accepted:false})
   assert.equal(rejected.verified,false)
-  assert.equal((await manager.list()).models[0].verification.status,'rejected')
+  assert.equal((await manager.list()).models.find(m=>m.id==='qwen3.5-4b').verification.status,'rejected')
 })
 
 test('下载进行中时禁止另开自检，以免覆盖安装状态',async()=>{
@@ -104,7 +104,7 @@ test('下载进行中时禁止另开自检，以免覆盖安装状态',async()=>
 test('生产调用与通用设置不能绕过本地模式的检查',async()=>{
   const {readFileSync}=await import('node:fs')
   const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
-  assert.match(source,/visionPlan\.attempt&&\['independent_dsh','independent_local'\]\.includes/)
+  assert.match(source,/earlyVisionPlan\.attempt&&\s*\['independent_dsh','independent_local'\]\.includes/)
   assert.match(source,/body\.visionLocalModel!==cfg\.visionLocalModel/)
   assert.match(source,/await localVisionModels\.review\(id,/ )
   assert.match(source,/models\.find\(x=>x\.id===id\)\?\.verified/)
@@ -121,8 +121,9 @@ test('MiniCPM 1B 必须锁定 :1b 标签，旧不带标签的 latest 不视为�
     throw Error('unexpected')
   }})
   assert.equal((await manager.list()).models.find(x=>x.id==='minicpm-v4.7-1b').installed,false)
-  await manager.start('minicpm-v4.7-1b')
-  assert.deepEqual(requested,['openbmb/minicpm-v4.7:1b','openbmb/minicpm-v4.7:1b'])
+  // Model is still recognized for legacy users, but new downloads were retired.
+  assert.throws(()=>manager.start('minicpm-v4.7-1b'),/历史模型仅允许继续使用或删除/)
+  assert.deepEqual(requested,[])
 })
 
 test('R2 下载失败提示保留末尾原因并提示 Ollama 代理而不是要求 DSH Provider',async()=>{
@@ -137,16 +138,17 @@ test('R2 下载失败提示保留末尾原因并提示 Ollama 代理而不是要
   assert.doesNotMatch(p.error,/DSH Provider/)
 })
 
-test('管理中心说明两种模型能力、体积、显存与 Windows Ollama 代理检查',async()=>{
+test('管理中心展示三种模型的GPU显存建议和CPU内存备选',async()=>{
   const {readFileSync}=await import('node:fs')
   const page=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   const python=readFileSync(new URL('../lib/preview_vision.py',import.meta.url),'utf8')
-  assert.match(page,/MiniCPM-V 4\.7 1B · 轻量视觉/)
-  assert.match(page,/Qwen3\.5 4B · 中文与复杂画面/)
-  assert.match(page,/约 1\.8 GB/)
-  assert.match(page,/3\.3～4\.0 GB/)
+  assert.match(page,/MiniCPM-V 4\.7 1B · 不建议常规使用/)
+  assert.match(page,/Qwen3\.5 4B · 画面质量优先/)
+  assert.match(page,/Qwen3\.5 2B · 中档/)
+  assert.match(page,/无独立显卡、显存不足/)
+  assert.match(page,/CPU.*系统内存运行/)
   assert.match(page,/HTTPS_PROXY/)
-  assert.match(page,/也可直接在 DSH 中配置 Ollama Provider 调用本地模型/)
+  assert.match(page,/也可以通过 DSH 配置 Ollama Provider/)
   assert.match(python,/openbmb\/minicpm-v4\.7:1b/)
 })
 
@@ -189,13 +191,13 @@ test('管理台测试图片和 Ollama 输入是用户上传的同一份原始 PN
   assert.equal(result.awaitingReview,true)
   assert.deepEqual(Buffer.from(sentImage,'base64'),original)
   const state=await manager.list()
-  assert.equal(state.models[0].verification.answer,answer)
-  assert.equal(state.models[0].verification.status,'awaiting_review')
-  assert.equal(state.models[0].verified,false)
+  assert.equal(state.models.find(m=>m.id==='qwen3.5-4b').verification.answer,answer)
+  assert.equal(state.models.find(m=>m.id==='qwen3.5-4b').verification.status,'awaiting_review')
+  assert.equal(state.models.find(m=>m.id==='qwen3.5-4b').verified,false)
   assert.equal(body.think,false)
-  assert.equal(Object.hasOwn(body.options,'num_predict'),false)
+  assert.equal(body.options.num_predict,4096,'图片自检采用独立有界输出预算，不截断最终文字')
   assert.match(body.messages[0].content,/大肥鱼/)
-  assert.equal(state.models[0].verification.doneReason,'stop')
+  assert.equal(state.models.find(m=>m.id==='qwen3.5-4b').verification.doneReason,'stop')
 })
 
 test('人工确认结果后才能通过；拒绝与过期确认不可复用',async()=>{
@@ -207,18 +209,18 @@ test('人工确认结果后才能通过；拒绝与过期确认不可复用',asy
   await assert.rejects(manager.review('minicpm-v4.7-1b',{reviewId:v1.reviewId,accepted:true}),/失效/)
   await assert.rejects(manager.review('qwen3.5-4b',{reviewId:'stale',accepted:true}),/失效/)
   await assert.rejects(manager.review('qwen3.5-4b',{reviewId:v1.reviewId,accepted:'true'}),/必须明确/)
-  assert.equal((await manager.list()).models[0].verified,false)
+  assert.equal((await manager.list()).models.find(m=>m.id==='qwen3.5-4b').verified,false)
   const accepted=await manager.review('qwen3.5-4b',{reviewId:v1.reviewId,accepted:true})
   assert.equal(accepted.verified,true)
-  assert.equal((await manager.list()).models[0].verification.status,'approved')
+  assert.equal((await manager.list()).models.find(m=>m.id==='qwen3.5-4b').verification.status,'approved')
   await assert.rejects(manager.review('qwen3.5-4b',{reviewId:v1.reviewId,accepted:true}),/失效/)
   const v2=await manager.verifyId('qwen3.5-4b')
   // 重新识图是自愿复测；摘要未改变时原有人工认可继续有效。
-  assert.equal((await manager.list()).models[0].verified,true)
+  assert.equal((await manager.list()).models.find(m=>m.id==='qwen3.5-4b').verified,true)
   await assert.rejects(manager.review('qwen3.5-4b',{reviewId:v1.reviewId,accepted:true}),/失效/)
   await manager.review('qwen3.5-4b',{reviewId:v2.reviewId,accepted:false})
   // 只有主人明确拒绝（而非重新测试）才撤销。
-  assert.equal((await manager.list()).models[0].verified,false)
+  assert.equal((await manager.list()).models.find(m=>m.id==='qwen3.5-4b').verified,false)
   }finally{rmSync(stateDir,{recursive:true,force:true})}
 })
 
@@ -226,7 +228,7 @@ test('Ollama 报错或只有内部 thinking 时不能供用户人工验收',asyn
   const manager=createLocalVisionModelManager({logger:{warn:()=>{}},fetchImpl:async url=>
     url.endsWith('/api/chat')?json({message:{content:'',thinking:'internal'}}):json({models:[{name:'qwen3.5:4b'}]})})
   await assert.rejects(manager.verifyId('qwen3.5-4b'),/没有可供用户查看的最终文字/)
-  const record=(await manager.list()).models[0].verification
+  const record=(await manager.list()).models.find(m=>m.id==='qwen3.5-4b').verification
   assert.equal(record.status,'failed')
   assert.equal(record.hadThinking,true)
   assert.doesNotMatch(JSON.stringify(record),/internal/)
@@ -237,7 +239,7 @@ test('Ollama 视觉投影器加载失败时保留具体原因',async()=>{
   const manager=createLocalVisionModelManager({logger:{warn:()=>{}},fetchImpl:async url=>
     url.endsWith('/api/chat')?json({error:'Failed to load CLIP model'},500):json({models:[{name:'openbmb/minicpm-v4.7:1b'}]})})
   await assert.rejects(manager.verifyId('minicpm-v4.7-1b'),/Failed to load CLIP model/)
-  const record=(await manager.list()).models[1].verification
+  const record=(await manager.list()).models.find(m=>m.id==='minicpm-v4.7-1b').verification
   assert.match(record.error,/HTTP 500/)
   assert.match(record.error,/Failed to load CLIP model/)
   assert.equal(record.status,'failed')

@@ -7,19 +7,20 @@ import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createLifeReflection,__test as reflTest} from '../lib/life-reflection.mjs'
 import {createPersonalityEvolution} from '../lib/personality-evolution.mjs'
 
+const ACCOUNT='a'.repeat(16)
 const DAY=86400000, NOW=Date.parse('2026-10-31T00:00:00Z')
 const cfg=()=>({mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mainSessionMemoryHalfLifeDays:90,mainSessionReflectionMinCandidates:2,mainSessionReflectionBatchSize:10})
 async function withStore(fn){
   const dataDir=mkdtempSync(join(tmpdir(),'fish-quality-'))
   const clock={at:NOW}
   // Established contacts in these cross-day evidence tests; still stranger permissions.
-  const gate=createLifeMemoryGateway({dataDir,getConfig:cfg,now:()=>clock.at,getRelationship:()=>({stage:'familiar',permissionRole:'stranger',whitelisted:false})})
+  const gate=createLifeMemoryGateway({dataDir,getConfig:cfg,getAccountTag:()=>ACCOUNT,now:()=>clock.at,getRelationship:()=>({stage:'familiar',permissionRole:'stranger',whitelisted:false})})
   const growth=createPersonalityEvolution({dataDir,memoryGateway:gate,now:()=>clock.at})
   try{return await fn({dataDir,clock,gate,growth})}finally{gate.close();rmSync(dataDir,{recursive:true,force:true})}
 }
 function incoming(i,uid='10001',delta=i){
   const at=NOW-(6-delta)*DAY
-  return {kind:'social',key:`social:${uid}:BV1234567890:${20001+i}`,bvid:'BV1234567890',actorUid:uid,
+  return {kind:'social',accountTag:ACCOUNT,key:`social:${uid}:BV1234567890:${20001+i}`,bvid:'BV1234567890',actorUid:uid,
     text:'鱼鱼，谢谢你认真回复！以后还想和你聊天',socialTier:'stranger',at}
 }
 function proposal(rows,confidence=.8,strength=2,quote='谢谢你认真回复'){

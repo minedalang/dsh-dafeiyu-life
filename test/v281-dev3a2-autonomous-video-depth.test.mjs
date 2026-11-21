@@ -24,7 +24,7 @@ test('Life 同一次 TODO 选择可携带视频深度，不向非视频动作扩
  const idx=source('index.js'), planner=source('lib/autonomous-planner.mjs')
  assert.match(idx,/view_depth:readActionContext.getStore\(\)\?\.viewDepth/)
  assert.match(planner,/executeRead\(fresh.id,\{viewDepth:outcome.viewDepth\}\)/)
- assert.match(source('prompts/duty.md'),/先自主决定看不看/)
+ assert.match(source('prompts/duty.md'),/入选后自由行动[\s\S]*bili_watch_video/)
 })
 test('重点复查只建立有时间锚点的低清证据，不假装看完视频',()=>{
  const ev=buildVideoEvidenceBundle({bvid,info:{bvid,title:'虚构测试视频'},

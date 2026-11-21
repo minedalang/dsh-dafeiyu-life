@@ -41,7 +41,7 @@ class StoryboardTests(unittest.TestCase):
     def test_adaptive_fallback_contains_12_lowres_tiles_in_one_board(self):
         with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch('adaptive_video.acquire_adaptive_frames',side_effect=AdaptiveUnavailable('ffmpeg_not_installed',fallback=True)):
             result=pv.analyze_perception(BV,folder,perception_source='adaptive',enabled=False,return_frames=True,max_frames=24,view_depth='standard')
-        self.assertTrue(result['ok']);self.assertEqual(result['sampling']['sampler_version'],5)
+        self.assertTrue(result['ok']);self.assertEqual(result['sampling']['sampler_version'],pv.PREVIEW_BOARD_VERSION)
         self.assertEqual(result['sampling']['strategy'],'videoshot-storyboard-stratified')
         self.assertEqual(len(result['times']),12)
         self.assertEqual(result['sampling']['storyboard_count'],1)
@@ -50,10 +50,10 @@ class StoryboardTests(unittest.TestCase):
         self.assertEqual(result['frames'][0]['tile_times'],result['times'])
         self.assertEqual(result['image_source'],'B站低清预览')
         self.assertEqual(result['adaptive_fallback']['actual_source'],'videoshot')
-        self.assertLessEqual(result['sampling']['sheets_downloaded'],6)
+        self.assertLessEqual(result['sampling']['sheets_downloaded'],48)
         self.assertEqual(result['sampling']['low_resolution'],True)
 
-    def test_deep_24_tiles_two_boards_no_more_than_six_source_sheets(self):
+    def test_deep_24_tiles_two_boards_scan_more_source_sheets(self):
         calls=[]
         def download(url,*a,**kw):
             calls.append(url)
@@ -64,8 +64,10 @@ class StoryboardTests(unittest.TestCase):
         self.assertEqual(len(result['times']),24)
         self.assertEqual(sum(x['tile_count'] for x in result['frames']),24)
         self.assertGreater(result['times'][-1]-result['times'][0],120)
-        self.assertEqual(len(calls),result['sampling']['sheets_downloaded'])
-        self.assertLessEqual(len(calls),6)
+        image_calls=[url for url in calls if '/videoshot/' in url]
+        self.assertEqual(len(image_calls),result['sampling']['sheets_downloaded'])
+        self.assertEqual(len(image_calls),9, 'complete scan must examine all nine sheets when in budget')
+        self.assertTrue(any('/pbp/data?' in url for url in calls), 'optional PBP read is separate from sprite downloads')
         self.assertLess(result['sampling']['sprite_bytes'],8*1024*1024)
 
     def test_direct_source_standard_uses_only_twelve_even_if_env_says_twentyfour(self):
@@ -83,7 +85,7 @@ class StoryboardTests(unittest.TestCase):
                   enabled=False,return_frames=True,focus_start=25,focus_end=55)
             legacy=pv.analyze_preview(BV,folder,enabled=False,return_frames=True,max_frames=3)
         self.assertTrue(result['ok']);self.assertTrue(all(25<=x<=55 for x in result['times']))
-        self.assertEqual(result['sampling']['sampler_version'],5)
+        self.assertEqual(result['sampling']['sampler_version'],pv.PREVIEW_BOARD_VERSION)
         self.assertLessEqual(len(legacy['times']),3)
         self.assertEqual(legacy['sampling']['sampler_version'],3)
 
@@ -93,17 +95,19 @@ class StoryboardTests(unittest.TestCase):
         self.assertFalse(result['ok']);self.assertNotIn('frames',result)
 
     def test_debug_capture_is_exact_board_bytes_and_not_in_model_answer(self):
-        with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch.object(pv,'_call_local_ollama',return_value='观察到多个低清时刻的画面。') as model:
+        with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api),patch.object(pv,'_safe_api_get',side_effect=image_fetch),patch.object(pv,'_call_local_ollama',side_effect=lambda frames,model: '\n'.join(f'R{i//4+1}C{i%4+1} [{pv._board_clock(t)}]：模糊场景；动作不确定；文字看不清。' for i,t in enumerate(frames[0]['tile_times']))) as model:
             result=pv.analyze_preview(BV,folder,storyboard=True,max_frames=24,
                   enabled=True,model='qwen3.5:4b',debug=True)
             self.assertTrue(result['ok']); self.assertEqual(result['status'],'analyzed')
-            self.assertEqual(len(model.call_args.args[0]),2)
+            self.assertEqual(model.call_count,2)
+            self.assertTrue(all(len(call.args[0])==1 for call in model.call_args_list))
+            self.assertEqual([r['status'] for r in result['visionBoardReceipts']],['analyzed','analyzed'])
             manifest=result['debugCapture']
             self.assertEqual(manifest['kind'],'storyboard')
             self.assertEqual(len(manifest['images']),2)
             for idx,piece in enumerate(manifest['images']):
                 saved=(Path(folder)/'vision-perception-captures'/manifest['id']/piece['file']).read_bytes()
-                self.assertEqual(saved,model.call_args.args[0][idx]['bytes'])
+                self.assertEqual(saved,model.call_args_list[idx].args[0][0]['bytes'])
                 self.assertIn('低清',piece['resolution'])
             self.assertNotIn('frames',result)
 

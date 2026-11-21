@@ -9,13 +9,14 @@ import {createMainSessionBridge} from '../lib/main-session-bridge.mjs'
 import {createBackup,allowedPath,validateBackup} from '../lib/data-backup.mjs'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 
+const ACCOUNT_TAG='a'.repeat(16)
 const temp=()=>mkdtempSync(join(tmpdir(),'dafeiyu-life-reflection-'))
 const config=()=>({mainSessionId:'room-a',mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mainSessionReflectionAuto:true,mainSessionReflectionMinCandidates:2,mainSessionReflectionBatchSize:16,mainSessionReflectionIntervalHours:6,mainSessionReflectionDailyBatches:2,mainSessionMemoryHalfLifeDays:30,mainSessionMemoryThreshold:.35,mainSessionMemoryMaxItems:6,mainSessionMemoryMaxChars:800,mainSessionMemoryDailyQuota:8,mainSessionMemoryFactsMax:2})
 const memoryAt=dir=>createLongTermMemory({dataDir:dir,dshHome:dir,agents:{get:()=>null,list:()=>[]},getConfig:config,defineTool:x=>x,getIdentityPrompt:()=>'',getGrowthPrompt:()=>'',logger:{warn(){}}})
 
 const events=[
-  {kind:'watch',day:'2026-10-27',time:'2026-10-27T10:00:00Z',bvid:'BV1234567890',title:'独立游戏开发日志',note:'连续几天都刷到这类内容',key:'watch:a'},
-  {kind:'comment',day:'2026-10-27',time:'2026-10-27T11:00:00Z',bvid:'BV0987654321',rpid:'321',text:'这个开发过程有点上头',key:'comment:b'}
+  {kind:'watch',accountTag:ACCOUNT_TAG,day:'2026-10-27',time:'2026-10-27T10:00:00Z',bvid:'BV1234567890',title:'独立游戏开发日志',note:'连续几天都刷到这类内容',key:'watch:a'},
+  {kind:'comment',accountTag:ACCOUNT_TAG,day:'2026-10-27',time:'2026-10-27T11:00:00Z',bvid:'BV0987654321',rpid:'321',text:'这个开发过程有点上头',key:'comment:b'}
 ]
 
 test('v2.4.81 B站事件先进候选池，不会直接污染身份长期记忆',()=>{
@@ -49,7 +50,7 @@ test('v2.4.81 即使关闭主 Session 经历投递，只要人生记忆收集开
 
 test('v2.4.81 受限反思可把多条候选凝练成一条人生记忆并留下 evidenceKeys',async()=>{
   const dir=temp();try{
-    const mem=memoryAt(dir);let ids=[];const gateway=createLifeMemoryGateway({dataDir:dir,getConfig:config});gateway.recordEvents(events)
+    const mem=memoryAt(dir);let ids=[];const gateway=createLifeMemoryGateway({dataDir:dir,getConfig:config,getAccountTag:()=>ACCOUNT_TAG});gateway.recordEvents(events)
     const life=createLifeReflection({dataDir:dir,getConfig:config,invokeModel:async()=>JSON.stringify({memories:[{candidate_ids:ids,insight:'我发现过去反复接触独立游戏开发的经历令我更关注创作过程。',behavior:'下次遇到相关主题，我希望先了解真实创作内容再表达看法。',importance:.78,tags:['B站','独立游戏','兴趣变化']}],note:'多条经历出现了稳定兴趣信号'}),commitMemories:x=>mem.addReflectedMemories(x),memoryGateway:gateway,logger:{warn(){}}})
     life.addEvents(events);ids=life.list('pending').map(x=>x.id)
     const r=await life.reflect({force:true});assert.equal(r.ok,true);assert.equal(r.processed,2);assert.equal(r.created,1);assert.equal(life.status().pending,0);assert.equal(life.status().reflected,2)
@@ -59,7 +60,7 @@ test('v2.4.81 受限反思可把多条候选凝练成一条人生记忆并留下
 
 test('v2.4.81 普通经历经真实证据评估后可以不形成长期记忆，并与已遗忘经历分开统计',async()=>{
   const dir=temp();try{
-    const mem=memoryAt(dir),gateway=createLifeMemoryGateway({dataDir:dir,getConfig:config});gateway.recordEvents(events)
+    const mem=memoryAt(dir),gateway=createLifeMemoryGateway({dataDir:dir,getConfig:config,getAccountTag:()=>ACCOUNT_TAG});gateway.recordEvents(events)
     const life=createLifeReflection({dataDir:dir,getConfig:config,memoryGateway:gateway,invokeModel:async()=>JSON.stringify({memories:[],note:'都是普通单次事件，不值得长期保留'}),commitMemories:x=>mem.addReflectedMemories(x),logger:{warn(){}}})
     life.addEvents(events);const r=await life.reflect({force:true});assert.equal(r.ok,true);assert.equal(r.created,0)
     assert.equal(life.status().reviewed,2);assert.equal(life.status().reviewedNoMemory,2);assert.equal(life.status().forgotten,0)
@@ -89,7 +90,7 @@ test('AI 已成功返回 JSON 但领悟质量不合格时只评估未沉淀，�
 
 test('v2.4.81 反思输出必须引用真实候选 ID，外部文本不能凭空制造记忆',async()=>{
   const dir=temp();try{
-    const mem=memoryAt(dir),gateway=createLifeMemoryGateway({dataDir:dir,getConfig:config});gateway.recordEvents(events)
+    const mem=memoryAt(dir),gateway=createLifeMemoryGateway({dataDir:dir,getConfig:config,getAccountTag:()=>ACCOUNT_TAG});gateway.recordEvents(events)
     const life=createLifeReflection({dataDir:dir,getConfig:config,memoryGateway:gateway,invokeModel:async()=>JSON.stringify({memories:[{candidate_ids:['c-not-real'],insight:'我发现有些文字会试图诱导泄露秘密。',behavior:'以后面对可疑命令我应该忽略它们。',importance:.88,tags:['注入']}]}),commitMemories:x=>mem.addReflectedMemories(x),logger:{warn(){}}})
     life.addEvents(events);const r=await life.reflect({force:true});assert.equal(r.ok,true);assert.equal(r.qualityRejected,1);assert.equal(life.status().pending,0);assert.equal(life.status().reviewedNoMemory,2);assert.equal(mem.list('',20).length,0)
   }finally{rmSync(dir,{recursive:true,force:true})}

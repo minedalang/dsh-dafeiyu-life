@@ -19,7 +19,7 @@ def load_observer():
     functions = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in names]
     env = {'os': os, 're': re, 'json': json, 'Path': Path,
            '_VIDEO_FUNNEL_TOOLS': frozenset(('bili_search', 'bili_video_info',
-               'bili_transcribe_safe', 'bili_ledger_mark'))}
+               'bili_transcribe_safe', 'bili_ledger_mark', 'bili_preview_vision', 'bili_comments'))}
     exec(compile(ast.Module(body=functions, type_ignores=[]), str(SOURCE), 'exec'), env)
     return env['_observe_video_tool']
 
@@ -49,6 +49,30 @@ class VideoRoundFunnelPythonTest(unittest.TestCase):
             for secret in ('private query', 'external injected command', 'private description',
                            '真实字幕内容'):
                 self.assertNotIn(secret, raw)
+
+    def test_vision_tool_receipts_are_optional_and_verified_by_real_sample_metadata(self):
+        observer = load_observer()
+        bvid = 'BV1abcDEF123'
+        with tempfile.TemporaryDirectory() as home:
+            round_id = 'b' * 24
+            with patch.dict(os.environ, {'BILI_DUTY_HOME': home,
+                                          'BILI_DUTY_LIFE_ROUND_ID': round_id}):
+                observer('bili_comments', {'bvid': bvid}, json.dumps({'ok': True, 'comments': [{'text': 'private'}]}))
+                observer('bili_ledger_mark', {'bvid': bvid, 'status': '挑中'},
+                         json.dumps({'ok': True, 'recorded_selection': True}))
+                trusted = {'ok': True, 'bvid': bvid, 'status': 'analyzed',
+                           'image_source': 'B站低清预览', 'times': [0, 17],
+                           'description': '从分镜采样中实际识别到了人物动作'}
+                observer('bili_preview_vision', {'bvid': bvid}, json.dumps(trusted, ensure_ascii=False))
+                observer('bili_preview_vision', {'bvid': bvid}, json.dumps({**trusted, 'times': []}, ensure_ascii=False))
+                observer('bili_preview_vision', {'bvid': bvid}, json.dumps({'ok': False, 'status': 'model-failed'}))
+            file = Path(home) / 'video-round-observations' / (round_id + '.jsonl')
+            rows = [json.loads(x) for x in file.read_text(encoding='utf8').splitlines()]
+            self.assertEqual(len(rows), 5)
+            self.assertEqual([x.get('visual') for x in rows[2:]], [True, False, False])
+            raw = file.read_text(encoding='utf8')
+            self.assertNotIn('从分镜采样中实际识别到了', raw)
+            self.assertNotIn('private', raw)
 
     def test_invalid_round_does_not_write(self):
         observer = load_observer()

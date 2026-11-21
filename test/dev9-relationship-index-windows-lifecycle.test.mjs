@@ -6,6 +6,7 @@ import {join} from 'node:path'
 import {Readable} from 'node:stream'
 import {apply} from '../index.js'
 import {seedCompletedFirstStart} from './helpers/ready-host.mjs'
+import {createSocialRelationshipIndex} from '../lib/social-relationship-index.mjs'
 
 function fixture(home, {collectCleanup = false} = {}) {
   const cleanups = []
@@ -75,6 +76,33 @@ test('relationship index opens on first use and closes when the real host dispos
   }
 })
 
+
+test('closed relationship index is terminal and fails with a clear error before SQLite statements can execute',()=>{
+ const home=mkdtempSync(join(tmpdir(),'dafeiyu-relationship-closed-'))
+ try{
+  const idx=createSocialRelationshipIndex({dataDir:home})
+  assert.equal(idx.get('123456'),null)
+  idx.close();idx.close()
+  assert.throws(()=>idx.get('123456'),/relationship-index-closed/)
+  assert.throws(()=>idx.list({limit:1}),/relationship-index-closed/)
+  assert.throws(()=>idx.observe({uid:'123456',eventId:'e1'}),/relationship-index-closed/)
+  assert.throws(()=>idx.cacheNickname('123456','name'),/relationship-index-closed/)
+ }finally{rmSync(home,{recursive:true,force:true})}
+})
+
+test('host teardown cannot silently reopen the relationship index',async()=>{
+ const home=mkdtempSync(join(tmpdir(),'dafeiyu-relationship-no-reopen-'))
+ try{
+  seedCompletedFirstStart(home)
+  const host=fixture(home,{collectCleanup:true})
+  apply(host.ctx,{})
+  assert.equal((await host.get('/api/bili-duty/relationships?limit=1')).status,200)
+  host.cleanup()
+  const after=await host.get('/api/bili-duty/relationships?limit=1')
+  assert.equal(after.status,503,'tearing down must not recreate a closed index')
+  const moved=host.file+'.closed';renameSync(host.file,moved);renameSync(moved,host.file)
+ }finally{rmSync(home,{recursive:true,force:true})}
+})
 
 test('公开昵称仅由同源的管理页查询；未登录时安全回退 UID 且不打开外部网络', async () => {
   const home = mkdtempSync(join(tmpdir(), 'dafeiyu-dev9-nickname-'))

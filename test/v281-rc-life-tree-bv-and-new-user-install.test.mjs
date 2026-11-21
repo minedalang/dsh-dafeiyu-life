@@ -31,7 +31,7 @@ test('life action tree links only live verified-format BV and never invents a vi
   assert.match(ui,/currentVideoObservation\?\.bvid/)
   assert.match(ui,/videoTarget\.hidden=!targetBv/)
   assert.match(ui,/https:\/\/www\.bilibili\.com\/video\/['"]?\+targetBv/)
-  assert.match(server,/liveLifeActivity\.start\(dryRun\?'video-observe-debug':'video-observe',initialLifeAccountTag,\{maxAgeMs:8\*60_000,bvid\}\)/)
+  assert.match(server,/liveLifeActivity\.start\(\s*dryRun\?'video-observe-debug':'video-observe',initialLifeAccountTag,\s*\{maxAgeMs:10\*60_000,bvid\}\)/)
 })
 
 test('timeline metadata read is not called full video understanding and receipt chronology is unchanged',()=>{
@@ -39,13 +39,10 @@ test('timeline metadata read is not called full video understanding and receipt 
   const rows=buildLifeTimeline({now,days:7,lifeDecisions:[{at:now-3000,mode:'active',action:'inspect_exploration',result:'verified-metadata',verifiedReadKind:'video-metadata'}],
     explorationEvidence:[{action:'observe-video',at:now-11000,bvid:BV,frameCount:12,title:'元宝AI拟人',visualSource:'low-resolution-preview'}]})
   const m=rows.find(row=>row.type==='life-read'),v=rows.find(row=>row.type==='life-visual')
-  assert.equal(m.label,'核验视频资料')
-  assert.match(m.detail,/仅核对了公开视频资料/)
-  assert.match(m.detail,/不代表已经完整观看或理解画面/)
-  assert.doesNotMatch(m.detail,/公开资料读取回执|内部审计|操作回执/)
+  assert.equal(m,undefined,'无法关联到可信 BV 的资料核验不显示为匿名视频记录')
   assert.equal(v.label,'观察视频画面')
-  assert.ok(Date.parse(m.at)>Date.parse(v.at),'historical receipts must not be backdated or reordered for a story')
-  assert.doesNotMatch(m.detail,/已看完|完整观看成功/)
+  assert.equal(Date.parse(v.at),now-11000,'real visual receipt keeps its original timestamp')
+  assert.doesNotMatch(v.detail,/已看完|完整观看成功/)
 })
 
 test('fresh DSH settings has explicit dependency install entry routing to real setup install card',()=>{
