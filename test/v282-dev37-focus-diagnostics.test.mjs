@@ -2,6 +2,7 @@ import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync,readFileSync,existsSync,rmSync} from 'node:fs'
 import {join} from 'node:path'
+import vm from 'node:vm'
 import {tmpdir} from 'node:os'
 import {diagnoseVideoFocusReceipt,verifyVideoFocusReview} from '../lib/video-focus-review.mjs'
 import {ownerFocusSafeReport,saveVideoDebugSummary} from '../lib/video-debug-receipt.mjs'
@@ -71,8 +72,37 @@ test('Life action tree prioritizes recent real executed video step above parent 
  assert.match(ui,/const startedActions=steps\.filter\(x=>x\.type==='action-start'\)/)
  assert.match(ui,/const actions=\[actionStep\?\.action,actionStep\?\.kind,plan\?\.action/)
  assert.match(ui,/x\.action===selected/)
- assert.match(ui,/近期视频观察/)
+ assert.match(ui,/最近视觉尝试（不是已观看列表）/)
+ assert.match(ui,/recentVideoRows\.map\(formatVideoAttempt\)/)
  assert.match(ui,/focus_video','局部复查视频画面/)
  assert.match(ui,/decoded-frame-provenance-rejected/)
  assert.match(ui,/真实局部视频分镜拼图/)
+})
+
+// Exercise the actual read-only selection logic, not merely UI copy/regex.
+// A nested Life observe_video/focus_video start must outrank its parent plan;
+// a live observation is an in-flight overlay, never a verified watch.
+test('Life action tree selects newest executed video step, preserving live override',()=>{
+ const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+ const start=ui.indexOf("      const startedActions=steps.filter(x=>x.type==='action-start');")
+ const end=ui.indexOf('      const result=steps.slice().reverse()',start)
+ assert.ok(start>0&&end>start,'missing runtime Life action selection block')
+ const logic=ui.slice(start,end)
+ const choose=vm.runInNewContext(`(steps,plan,lifeTreeGroups,liveVideoObserve)=>{
+   let selected='';
+   const latest={origin:'self-choice'};
+   const liveOwnerVideoDebug=null;
+   const $=()=>null;
+   const lifeOriginLabel=()=>'';
+   ${logic}
+   return selected;
+ }`)
+ const groups=[{items:[['inspect_exploration','核实视频'],['observe_video','观看视频画面'],['focus_video','局部复查视频画面']]}]
+ const plan={action:'inspect_exploration'}
+ const one=[{type:'action-start',action:'inspect_exploration'},
+            {type:'action-start',action:'observe_video'}]
+ assert.equal(choose(one,plan,groups,null),'observe_video')
+ assert.equal(choose([...one,{type:'action-start',action:'focus_video'}],plan,groups,null),'focus_video')
+ assert.equal(choose([one[0]],plan,groups,null),'inspect_exploration')
+ assert.equal(choose([one[0]],plan,groups,{kind:'video-observe'}),'observe_video')
 })
