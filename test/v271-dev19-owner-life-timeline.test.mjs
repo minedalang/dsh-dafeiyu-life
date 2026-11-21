@@ -42,9 +42,22 @@ test('只读、反思、视频探索、心情仅展示生活行为，不显示�
   {at:T+100,mode:'active',action:'reflect',result:'completed'}],
   videoRounds:[{ref:'a'.repeat(12),source:'life-agent',state:'completed',pickedCount:2,endedAt:T+200}],
   emotionHistory:[{at:T+300,mood:'joyful',label:'开心'}]})
- assert.equal(rows.length,4)
+ assert.equal(rows.length,3,'没有可信 BV 来源的核验不应成为匿名视频卡片')
+ assert.equal(rows.filter(x=>x.type==='life-read').length,0)
  assert.ok(rows.some(x=>x.title==='这一轮挑中了 2 条视频'))
  assert.ok(rows.some(x=>x.title==='梳理了一次自己的想法'))
+ assert.doesNotMatch(JSON.stringify(rows),forbidden)
+})
+
+test('资料核验有同一 Episode 的真实 BV 回执时才显示视频卡片',()=>{
+ const ref='b'.repeat(16)
+ const rows=buildLifeTimeline({now:T+2000,days:1,lifeDecisions:[
+  {at:T,mode:'active',action:'inspect_exploration',verifiedReadKind:'video-metadata',result:'verified-metadata',continuation:ref}],
+  explorationEvidence:[{action:'inspect-video',episodeRef:ref,at:T-100,bvid:BV,title:'可追溯的视频标题'}]})
+ assert.equal(rows.length,1)
+ assert.equal(rows[0].type,'life-read')
+ assert.equal(rows[0].bvid,BV)
+ assert.equal(rows[0].title,'可追溯的视频标题')
  assert.doesNotMatch(JSON.stringify(rows),forbidden)
 })
 

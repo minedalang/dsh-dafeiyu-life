@@ -87,7 +87,7 @@ test('metadata-only record without a confirmed stop reason does not invent a rea
   explorationEvidence:[{at:t+80,action:'inspect-video',episodeRef:ref,bvid:BV,title:'仅核验资料'}]})
  const m=rows.find(x=>x.type==='life-read')
  assert.equal(m.label,'核验视频资料')
- assert.equal(m.detail,'当前记录缺少有效的续行选择回执，无法追溯当时原因。')
+ assert.equal(m.detail,'本轮没有记录继续观察画面的具体原因。')
 })
 test('metadata and verified visual diary describes sampled imagery without speculating on audio or subtitles',()=>{
  const ref='f'.repeat(16),rows=buildLifeTimeline({now:t+20000,days:3,
