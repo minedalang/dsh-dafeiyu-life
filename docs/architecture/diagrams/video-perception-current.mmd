@@ -9,7 +9,9 @@ flowchart TB
   vision --> pool["保留全部有效已采样时间锚点：语义候选最多4/6/8；无语义最多4个技术回退"]
   vision --> signals["字幕 / ASR / PBP 热度仅为带来源的独立辅助线索"]
   signals -.-> pool
-  pool --> choose{"Life 自主一批选 0~N 个可信时间点；可停止或延期"}
+  pool --> interest{"Life 还想核实局部细节吗？只读意愿"}
+  interest -->|跳过或延期| stop
+  interest -->|愿意| choose{"Life 自主一批选 0~N 个可信时间点；可停止"}
   budget -.-> choose
   choose -->|横向| wide["一次关注多个独立事件，不被上一观察锁定"]
   choose -->|纵向| deep["对已有事件继续探寻，但不自动重复"]

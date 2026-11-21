@@ -29,5 +29,6 @@ test('public README has no dev branch install step',()=>{
  const md=read('README.md')
  assert.doesNotMatch(md,/从 GitHub `dev` 分支测试开发候选时可使用/)
  assert.doesNotMatch(md,/github:minedalang\/dsh-dafeiyu-life#dev/)
- assert.match(md,/视频视觉与转写均可选/)
+ assert.match(md,/2.8.2 重点优化了视频感知流程/)
+ assert.match(md,/视频视觉与转写均为可选能力/)
 })

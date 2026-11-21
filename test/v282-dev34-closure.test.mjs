@@ -105,7 +105,7 @@ test('历史 MiniCPM 可使用和删除但禁止重新下载；其他本地模�
 test('分镜固定12格、视频计划不提交社交权限、诊断BV不触发未保存提示',()=>{
  const html=src('lib/management-console.html'),ui=src('lib/management-console.js'),host=src('index.js'),py=src('lib/preview_vision.py')
  assert.doesNotMatch(html,/id="bili-vision-board-tiles"/)
- assert.match(html,/低清分镜固定每张12格/)
+ assert.match(html,/每张分镜固定12格/)
  assert.match(ui,/request\('\/video-vision\/plan',\{visionFrames:frames\}\)/)
  assert.match(ui,/headless-sync-board,#panel-diagnostics/)
  assert.match(host,/saveCfg\(\{visionFrames:frames,visionBoardTiles:12\}\)/)

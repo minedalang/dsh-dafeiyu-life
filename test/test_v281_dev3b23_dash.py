@@ -76,7 +76,7 @@ class EndToEndDash(unittest.TestCase):
             result=av.acquire_adaptive_frames(BV,max_frames=24,depth='deep',network_budget_bytes=1_048_576)
         self.assertTrue(result['ok'])
         sample=result['sampling']
-        self.assertEqual(sample['sampler_version'],7)
+        self.assertEqual(sample['sampler_version'],av.SAMPLER_VERSION)
         self.assertEqual(sample['source_type'],'bili-public-playurl-dash')
         self.assertEqual(sample['download_mode'],'indexed-dash-sidx-byte-ranges')
         self.assertLess(sample['input_bytes'],len(self.data))

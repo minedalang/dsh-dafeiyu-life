@@ -42,6 +42,11 @@ test('正式版与后续 dev 开发版都遵循 SemVer 并与锁文件、README 
     assert.match(read('docs/release/archive/RELEASE_NOTES_v2.7.0.md'), /^# 大肥鱼 2\.7\.0 · 正式版/m)
     assert.doesNotMatch(read('docs/release/archive/RELEASE_NOTES_v2.7.0.md'), /开发预览，尚未发布/)
     assert.ok(pkg.files.includes('docs/release/archive/RELEASE_NOTES_v2.7.0.md'))
+  } else if (pkg.version === '2.8.2') {
+    assert.match(readme,/当前版本源码：2\.8\.2/);
+    assert.match(read('CHANGELOG.md'),/^## \[2\.8\.2\] · 视频感知体验优化/m);
+    assert.ok(pkg.files.includes('docs/release/RELEASE_NOTES_v2.8.2.md'));
+    assert.doesNotMatch(readme,/尚未正式发布|开发预览/);
   } else if (pkg.version.startsWith('2.8.2-dev.')) {
     assert.match(readme,/当前源码标识为/)
     assert.match(readme,new RegExp(pkg.version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))

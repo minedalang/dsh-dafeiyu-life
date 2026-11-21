@@ -2,13 +2,13 @@
 
 > **坚持鱼的自由发展。** 我们不想把鱼鱼做成一条只会听命执行的机器鱼。她可以陪你聊天、帮你做事，也会在得到允许的 B站生活中探索、认识人、积累经历，慢慢形成自己的兴趣与表达方式。她可以接受建议，也可以说“不想”、稍后再做，或安静休息。
 
-> **当前源码：2.8.2-dev.44，仍是测试版本。** 新功能见下方 [2.8.2 预览](#-282-开发预览尚未正式发布)，详细更新见 [更新日志](CHANGELOG.md)。
+> **当前版本源码：2.8.2。** 本次重点优化视频感知流程。具体变化见下方 [2.8.2 更新内容](#-282-视频感知体验优化)和 [更新日志](CHANGELOG.md)。
 
 🎉 **已收录 [DSHMarket 插件市场](https://dshmarket.com/zh/)**。在 DSH 的 `dshmarket` 中搜索 **`dsh-dafeiyu-life`**（大肥鱼 · DSH 生活系统）即可找到本项目。若搜索不到，请刷新市场索引并确认市场显示的实际版本。
 
 [![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) [![npm 月下载](https://img.shields.io/npm/dm/dsh-dafeiyu-life)](https://www.npmjs.com/package/dsh-dafeiyu-life) [![npm 年下载](https://img.shields.io/npm/dy/dsh-dafeiyu-life)](https://www.npmjs.com/package/dsh-dafeiyu-life)
 
-[✨ 特色功能](#-鱼鱼能做什么) · [🌊 自主成长体系](#-一条鱼慢慢长成自己的样子) · [🧩 桌宠开放平台](#-桌宠开放平台开发中) · [🆕 2.8.2 开发预览](#-282-开发预览尚未正式发布) · [🚀 开始使用](#-开始使用) · [🌱 未来规划](#-未来规划让生活更有故事) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)
+[✨ 特色功能](#-鱼鱼能做什么) · [🌊 自主成长体系](#-一条鱼慢慢长成自己的样子) · [🧩 桌宠开放平台](#-桌宠开放平台开发中) · [🆕 2.8.2 更新内容](#-282-视频感知体验优化) · [🚀 开始使用](#-开始使用) · [🌱 未来规划](#-未来规划让生活更有故事) · [完整更新记录](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)
 
 大肥鱼（鱼鱼）是运行于 **DeepSeek Harness（DSH）** 的开源 AI 角色生活插件。她不只是收到指令后完成一次任务的助手，也在尝试把一次次真实的观看、交流、回忆和选择连成持续的生活。
 
@@ -56,7 +56,7 @@
 
 我们希望在 **2.9.0 之后**逐步探索开放接入，具体时间尚未确定。想了解接入设计，可阅读 [桌宠开放平台预告文档](docs/open-platform/README.md)。
 
-## 🆕 2.8.2 开发预览（尚未正式发布）
+## 🆕 2.8.2 · 视频感知体验优化
 
 **2.8.2 重点优化了视频感知流程。** 鱼鱼可以先了解视频大概，再自主决定是否细看感兴趣的部分；观看记录、语音转写和模型管理也更方便。
 
@@ -68,7 +68,7 @@
 | 🎧 **没字幕，也能尝试听懂** | 优化本地语音转写：兼容时尝试 GPU 加速，不可用则用 CPU。 |
 | ⚙️ **模型管理更方便** | 优化视觉与语音模型的选择、安装和管理。 |
 
-以上仍是**开发测试功能**；视频视觉与转写均可选，也不会自动改变公开互动权限。
+视频视觉与转写均为可选能力，不会自动改变公开互动权限；实际观看和模型理解仍受运行环境与证据检查约束。
 
 ## 🎥 视频感知与模型选择
 
@@ -80,9 +80,11 @@
 
 **开启位置：** 管理中心 → 快速设置 → **02B 视频视觉感知**。选择模型、测试图片、认可结果后再开启。
 
+[Life 架构可视化图](docs/architecture/life-system-current-view.md) · [视频感知技术流程](docs/architecture/diagrams/video-perception-current.mmd)
+
 采样不等于看完整段视频，模型识图也可能出错；云端模型可能产生费用。详见 [2.8.2 使用与升级指南](docs/release/2.8.2-user-upgrade-guide.md)。
 
-> **版本提醒：** 当前源码 **`2.8.2-dev.44`** 尚未正式发布；Life 自主局部观察与 Windows 全量测试仍待维护者验收；以 GitHub Release、npm、DSHMarket 实际版本为准。
+> **安装提醒：** 不同渠道可能同步时间不同，请以 GitHub Release、npm 和 DSHMarket 的实际版本为准。
 
 ## 🚀 开始使用
 

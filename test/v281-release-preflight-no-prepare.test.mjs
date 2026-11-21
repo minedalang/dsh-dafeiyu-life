@@ -18,7 +18,7 @@ test('current 2.8.2 candidate, lockfile, README and historical release notes rem
  assert.equal(p.version,lock.version)
  assert.equal(p.version,lock.packages[''].version)
  assert.match(read('README.md'),/2\.8\.2/)
- assert.ok(read('CHANGELOG.md').split(/\r?\n/).some(line=>line.startsWith('## '+p.version+'（')||line.startsWith('## '+p.version+' ·')))
+ assert.ok(read('CHANGELOG.md').split(/\r?\n/).some(line=>line.startsWith('## ['+p.version+']')||line.startsWith('## '+p.version+'（')||line.startsWith('## '+p.version+' ·')))
  const workflow=read('.github/workflows/release.yml')
  assert.match(workflow,/note_file="docs\/release\/RELEASE_NOTES_\$\{GITHUB_REF_NAME\}\.md"/)
  assert.ok(existsSync(resolve(root,'docs/release/RELEASE_NOTES_v2.8.1.md')))

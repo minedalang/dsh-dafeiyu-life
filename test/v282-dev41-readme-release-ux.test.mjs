@@ -11,7 +11,7 @@ test('2.8.2 video-perception optimization is clear in README, DSH settings and r
   for (const value of ['多候选视频探索与分镜核验','可回溯的真实观察经历','Life 自主多选与随时停止'])assert.ok(!client.includes(value),value);
   assert.ok(doc.length<12000, 'README is a short product homepage, not a full technical protocol');
   assert.ok(doc.includes('2.8.2 重点优化了视频感知流程'))
-  assert.match(read('docs/release/RELEASE_NOTES_v2.8.2-draft.md'),/当前仅为开发候选版文案/)
+  assert.match(read('docs/release/RELEASE_NOTES_v2.8.2.md'),/本次重点\*\*优化视频感知流程\*\*/)
   assert.ok(doc.indexOf('## 🌱 未来规划：让生活更有故事')<doc.indexOf('## ❤️ 致谢'));
 });
 

@@ -780,6 +780,11 @@
       "owner": "life-video-two-stage-debug-and-user-facing-explanations",
       "kind": "behavior",
       "intent": "Show existing Life decline or defer reasons early in read-only Debug without extra model calls, keep technical failures distinct, and treat untrusted reason as text."
+    },
+    "v282-release-life-video-admission.test.mjs": {
+      "owner": "life-read-only-video-interest-and-autonomy",
+      "kind": "security",
+      "intent": "Life post-overview voluntary read-only opportunity is distinct from social writes; skip/defer remain valid, focus selection allows empty arrays, verified anchors and external permissions unchanged."
     }
   },
   "protected": [
@@ -1304,6 +1309,34 @@
       "newCheck": "assert.match(readme,/尚未正式发布/,",
       "date": "2026-11-20",
       "reason": "以当前 README 明确的尚未正式发布提醒验证发布状态，不依赖旧版措辞。"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.ok(readme.includes('当前源码：'+pkg.version+'，仍是测试版本。')",
+      "newCheck": "assert.ok(readme.includes('当前版本源码：'+pkg.version)",
+      "date": "2026-11-21",
+      "reason": "Formal 2.8.2 source metadata replaces development candidate label without claiming channel availability."
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.match(readme,/尚未正式发布/,",
+      "newCheck": "assert.match(readme,/以 GitHub Release、npm 和 DSHMarket 的实际版本为准/",
+      "date": "2026-11-21",
+      "reason": "Formal-source README avoids expired dev-only label while preserving external registry truth."
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "'## 🆕 2.8.2 开发预览'",
+      "newCheck": "'## 🆕 2.8.2 · 视频感知体验优化'",
+      "date": "2026-11-21",
+      "reason": "Stable section heading replaces development preview and preserves homepage order."
+    },
+    {
+      "file": "v281-release-core-feature-and-vision-permission-ux.test.mjs",
+      "oldCheck": "视频视觉与转写均可选",
+      "newCheck": "assert.match(md,/视频视觉与转写均为可选能力/)",
+      "date": "2026-11-21",
+      "reason": "Keep optional visual and ASR boundary check under current user-facing wording."
     }
   ]
 }

@@ -1,3 +1,11 @@
+# 当前架构入口（2.8.2）
+
+**先看 [2.8.2 当前架构](2.8.2-current-architecture.md) 和 [自动生成的 Life 架构图](life-system-current-view.md)。** 2.8.2 的主线是「Life 自主观察机会 → 全局低清分镜 → Life 自愿只读局部选择 → 受控原视频取帧及证据校验」。主动跳过/延期不应与模型失败混淆。账号授权、读预算、遗忘和 B站外发证明保持独立。
+
+**下方 `dev.N` 条目均为当时的技术记录与验收快照，不再描述当前源码版本。** 历史阶段的“待验收”“未发布”等措辞应按记录发生时间理解。
+
+## 历史开发记录（保留原始审计信息）
+
 > **2.8.2-dev.34（开发候选）**：[模型双栏操作、固定12格分镜及诊断设置收口](../release/2.8.2-dev.34-model-and-video-closure.md)。Headless 单模型取消同步、Desktop/Web 来源能力声明均单独备份/回读；MiniCPM 1B 仅历史兼容。Windows/DSH 实机与全量测试尚待验收。
 
 > **2.8.2-dev.28（开发候选）**：[多候选视频探索及 Whisper 实时进度/安全模型管理](2.8.2-dev28-multi-focus-and-whisper.md)。视频图：[Mermaid 源](diagrams/video-perception-current.mmd) / [SVG 用户图](assets/video-perception-current.svg)；同步四张 Life 架构图与 GitHub 预览。Windows/DSH/B站实机尚待验收，非正式发布。

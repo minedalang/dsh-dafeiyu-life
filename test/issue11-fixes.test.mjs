@@ -9,7 +9,7 @@ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8')
 test('quick share save no longer references the removed daily limit and validates only the selected mode',()=>{
   const ui=read('lib/management-console.js')
   const start=ui.indexOf("$('quick-share-save').addEventListener")
-  const end=ui.indexOf('// Release introduction',start)
+  const end=ui.indexOf('// First Start: versioned welcome gate',start)
   assert.ok(start>=0&&end>start)
   const handler=ui.slice(start,end)
   assert.doesNotMatch(handler,/\blimit\b/)

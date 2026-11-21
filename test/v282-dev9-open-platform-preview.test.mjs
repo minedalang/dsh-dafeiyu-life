@@ -48,10 +48,10 @@ test('README showcases the long-term ecosystem with real local SVG assets and co
     assert.match(svg,/<title\b/)
     assert.match(svg,/<desc\b/)
   }
-  assert.match(readme,/社区开发者也可以自由接入自己的桌宠/)
+  assert.match(readme,/社区做的桌宠/)
   assert.ok(manifest.files.includes('docs/open-platform'),'npm package must ship developer preview docs linked by README')
-  assert.match(readme,/3D 引擎/)
-  assert.match(readme,/现在只能看，暂不能用/)
+  assert.match(readme,/3D 房间/)
+  assert.match(readme,/尚不能连接实际桌宠或第三方客户端/)
   assert.ok(readme.indexOf('## 🌱 未来规划：让生活更有故事')<readme.indexOf('## ❤️ 致谢'))
   assert.equal(readme.slice(readme.indexOf('## 🌱 未来规划：让生活更有故事')).match(/^## /gm)?.length,2)
   assert.match(readme,/c1overzz\/dsh-bili-scroll/)
@@ -59,9 +59,9 @@ test('README showcases the long-term ecosystem with real local SVG assets and co
 })
 
 test('developer version identity is synchronized',()=>{
-  assert.match(manifest.version,/^2\.8\.2-dev\.(?:9|[1-9]\d+)$/)
+  assert.match(manifest.version,/^2\.8\.2(?:-dev\.[1-9]\d+)?$/)
   assert.equal(lock.version,manifest.version)
   assert.equal(lock.packages[''].version,manifest.version)
-  assert.ok(readme.includes('当前源码标识为 **`'+manifest.version+'`**'))
-  assert.ok(read('CHANGELOG.md').startsWith('## '+manifest.version))
+  assert.ok(readme.includes('当前版本源码：'+manifest.version))
+  assert.ok(read('CHANGELOG.md').startsWith('## [2.8.2]'))
 })
