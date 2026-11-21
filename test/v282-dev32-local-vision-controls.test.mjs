@@ -19,6 +19,23 @@ test('local Ollama thinking settings remain independent while low-res boards sta
   assert.match(js,/boardReports\.slice\(0,12\)/)
 })
 
+test('local visual acceptance displays a single truthful status and hides the warning after approval',()=>{
+  const html=load('lib/management-console.html')
+  const js=load('lib/management-console.js')
+  for(const id of ['local-vision-status','local-vision-review-inline','local-vision-review-label','local-vision-review-jump','local-vision-status-tail']){
+    assert.equal([...html.matchAll(new RegExp('\\bid="'+id+'"','g'))].length,1,`duplicate DOM id: ${id}`)
+  }
+  assert.match(html,/class="local-vision-review-inline" hidden/, 'review banner starts hidden')
+  assert.match(html,/\.local-vision-review-inline\[hidden\][^}]*\{display:none!important\}/, 'CSS must not override hidden state')
+  assert.match(js,/const needsReview=state\.running===true&&model\?\.installed===true&&model\?\.verified!==true/)
+  assert.match(js,/\$\('local-vision-review-inline'\)\.hidden=!needsReview/)
+  assert.match(js,/await request\('\/local-vision\/review',\{model:id,reviewId:record\.reviewId,accepted\}\)/)
+  assert.match(js,/await loadLocalVisionStatus\(\)/)
+  assert.match(js,/本地视觉状态读取失败；请检查连接后刷新。/)
+  assert.match(js,/\$\('local-vision-review-inline'\)\.hidden=true/)
+  assert.match(js,/badge\.textContent='后台状态读取失败 · 无法确认已启用'/)
+})
+
 test('Ollama thinking capability metadata controls named levels; missing metadata remains unknown',async()=>{
   let mode='known'
   const manager=createLocalVisionModelManager({fetchImpl:async(url,opts)=>({

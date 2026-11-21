@@ -785,6 +785,11 @@
       "owner": "life-read-only-video-interest-and-autonomy",
       "kind": "security",
       "intent": "Life post-overview voluntary read-only opportunity is distinct from social writes; skip/defer remain valid, focus selection allows empty arrays, verified anchors and external permissions unchanged."
+    },
+    "v282-closure-video-attempt-visibility.test.mjs": {
+      "owner": "life-video-observation-diagnostics",
+      "kind": "behavior",
+      "intent": "Distinguish in-flight Life video visual actions, verified visual receipts, failed child image recognition and parent-only metadata success; keep read-only attempt diagnostics visible without inventing durable watch records, and reject null visualObservation focus."
     }
   },
   "protected": [
@@ -1337,6 +1342,13 @@
       "newCheck": "assert.match(md,/视频视觉与转写均为可选能力/)",
       "date": "2026-11-21",
       "reason": "Keep optional visual and ASR boundary check under current user-facing wording."
+    },
+    {
+      "file": "v281-dev2b-local-vision-manager.test.mjs",
+      "oldCheck": "assert.match(page,/也可直接在 DSH 中配置 Ollama Provider 调用本地模型/)",
+      "newCheck": "assert.match(page,/也可以通过 DSH 配置 Ollama Provider/)",
+      "date": "2026-11-21",
+      "reason": "Current UI describes DSH Ollama Provider without the previous exact wording; preserve provider availability and local-model hardware advice contract."
     }
   ]
 }

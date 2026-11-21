@@ -148,7 +148,7 @@ test('管理中心展示三种模型的GPU显存建议和CPU内存备选',async(
   assert.match(page,/无独立显卡、显存不足/)
   assert.match(page,/CPU.*系统内存运行/)
   assert.match(page,/HTTPS_PROXY/)
-  assert.match(page,/也可直接在 DSH 中配置 Ollama Provider 调用本地模型/)
+  assert.match(page,/也可以通过 DSH 配置 Ollama Provider/)
   assert.match(python,/openbmb\/minicpm-v4\.7:1b/)
 })
 
