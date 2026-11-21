@@ -1,57 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="t d">
-  <title id="t">未来 3D 生命世界示意图</title>
-  <desc id="d">展示大肥鱼在未来 3D 游戏或虚拟房间中的生活方式，以及 Life 与世界之间的分工。</desc>
-  <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#edf8ff"/>
-      <stop offset="100%" stop-color="#f6fbff"/>
-    </linearGradient>
-    <linearGradient id="room" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#eef7f6"/>
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="760" rx="34" fill="url(#sky)"/>
-  <text x="70" y="88" fill="#274968" font-size="42" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif" font-weight="700">未来计划：鱼鱼的 3D 生命世界</text>
-  <text x="70" y="125" fill="#557189" font-size="21" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">不是现在就要实现的功能，而是开放平台长期希望支持的形态</text>
-
-  <g>
-    <rect x="90" y="180" width="690" height="470" rx="34" fill="url(#room)" stroke="#d3e5f0" stroke-width="2"/>
-    <rect x="120" y="470" width="630" height="150" rx="18" fill="#eef5ec"/>
-    <rect x="130" y="240" width="180" height="120" rx="20" fill="#dbeeff"/>
-    <circle cx="550" cy="290" r="48" fill="#9fc4ff" opacity="0.33"/>
-    <rect x="520" y="500" width="120" height="40" rx="16" fill="#d7c5ff"/>
-    <rect x="615" y="410" width="94" height="94" rx="20" fill="#f8e2c5"/>
-    <rect x="365" y="380" width="130" height="95" rx="18" fill="#cde7d8"/>
-    <path d="M270 535 Q345 470 450 490" fill="none" stroke="#c2d7b8" stroke-width="8" stroke-linecap="round"/>
-    <g>
-      <ellipse cx="310" cy="525" rx="84" ry="54" fill="#74a7f2"/>
-      <ellipse cx="276" cy="517" rx="18" ry="18" fill="#fff"/>
-      <ellipse cx="271" cy="517" rx="7" ry="7" fill="#32506d"/>
-      <ellipse cx="338" cy="545" rx="52" ry="34" fill="#5c90de"/>
-      <path d="M386 546 q44 -38 72 -8 q-25 38 -72 20 z" fill="#5c90de"/>
-      <circle cx="297" cy="549" r="6" fill="#fff" opacity="0.62"/>
-      <text x="310" y="605" text-anchor="middle" fill="#42627f" font-size="18" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">鱼鱼的 3D 身体</text>
-    </g>
-  </g>
-
-  <g>
-    <rect x="835" y="190" width="275" height="128" rx="26" fill="#ffffff" stroke="#c9dcf0"/>
-    <text x="972" y="238" text-anchor="middle" fill="#355977" font-size="28" font-weight="700" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">Life 决定意图</text>
-    <text x="972" y="273" text-anchor="middle" fill="#58758d" font-size="17" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">想休息、想观察、想聊天</text>
-  </g>
-  <g>
-    <rect x="835" y="360" width="275" height="128" rx="26" fill="#ffffff" stroke="#c9dcf0"/>
-    <text x="972" y="408" text-anchor="middle" fill="#355977" font-size="28" font-weight="700" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">游戏负责执行</text>
-    <text x="972" y="443" text-anchor="middle" fill="#58758d" font-size="17" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">寻路、动画、物理、场景交互</text>
-  </g>
-  <g>
-    <rect x="835" y="530" width="275" height="128" rx="26" fill="#ffffff" stroke="#c9dcf0"/>
-    <text x="972" y="578" text-anchor="middle" fill="#355977" font-size="28" font-weight="700" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">结果再回到 Life</text>
-    <text x="972" y="613" text-anchor="middle" fill="#58758d" font-size="17" font-family="Arial, PingFang SC, Microsoft YaHei, sans-serif">经过验证后，才可能形成经历</text>
-  </g>
-
-  <path d="M780 255 C808 255 815 255 835 255" fill="none" stroke="#6b8bd9" stroke-width="7" stroke-linecap="round"/>
-  <path d="M780 425 C808 425 815 425 835 425" fill="none" stroke="#55af9c" stroke-width="7" stroke-linecap="round"/>
-  <path d="M780 594 C808 594 815 594 835 594" fill="none" stroke="#55af9c" stroke-width="7" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="710" viewBox="0 0 1200 710" role="img" aria-labelledby="fw-title fw-desc">
+<title id="fw-title">鱼鱼未来可能拥有的小房间</title><desc id="fw-desc">温暖的未来桌宠场景示意。鱼鱼在房间里，旁边展示了观察、休息、交流三种生活状态。此功能仍为未来设想。</desc>
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F1F4FF"/><stop offset=".6" stop-color="#F4FBF7"/><stop offset="1" stop-color="#FDF8EE"/></linearGradient>
+<linearGradient id="wall" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#E8F0FF"/></linearGradient>
+<linearGradient id="fish" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#72A8F3"/><stop offset="1" stop-color="#6DD4C3"/></linearGradient>
+<filter id="shadow" x="-30%" y="-40%" width="160%" height="190%"><feDropShadow dx="0" dy="9" stdDeviation="12" flood-color="#35466B" flood-opacity=".15"/></filter>
+</defs>
+<rect width="1200" height="710" rx="30" fill="url(#sky)"/>
+<text x="65" y="88" font-size="40" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif' fill="#2B4362" font-weight="700">如果鱼鱼有自己的小房间</text>
+<text x="65" y="124" font-size="19" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif' fill="#60758B">以后，她也许能在这里看看世界、聊天，或者安静休息</text>
+<rect x="1040" y="56" width="103" height="36" rx="18" fill="#FBE9CF"/><text x="1091" y="80" text-anchor="middle" font-size="16" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif' font-weight="700" fill="#966B32">未来设想</text>
+<!-- room corner and warm floor -->
+<g filter="url(#shadow)"><path d="M91 254 L418 155 L779 255 L779 523 L435 650 L91 533 Z" fill="#fff"/></g>
+<path d="M91 254 L418 155 L418 443 L91 533 Z" fill="#E7F2F4"/>
+<path d="M418 155 L779 255 L779 523 L418 443 Z" fill="url(#wall)"/>
+<path d="M91 533 L418 443 L779 523 L435 650 Z" fill="#D9E5D9"/>
+<path d="M91 533 L418 443 L779 523" fill="none" stroke="#CADBCF" stroke-width="4"/>
+<!-- window -->
+<path d="M505 271 L701 324 L701 426 L505 375 Z" fill="#F9FFFF" stroke="#B2D7DE" stroke-width="8"/>
+<path d="M514 282 L693 330 L693 409 L514 360Z" fill="#CCE8F6"/>
+<path d="M602 303 L602 386" stroke="#FFF" stroke-width="5"/><path d="M515 322 L691 371" stroke="#FFF" stroke-width="5"/>
+<circle cx="648" cy="341" r="18" fill="#FFF5CB" opacity=".9"/>
+<!-- rug -->
+<path d="M203 516 Q356 465 544 523 Q599 572 429 619 Q270 624 203 570 Z" fill="#F1E6FF"/>
+<path d="M250 542 Q368 493 493 543" fill="none" stroke="#DFCFF8" stroke-width="5"/>
+<!-- desk + warm lamp -->
+<path d="M141 350 L307 309 L348 330 L179 377 Z" fill="#D5AC88"/><path d="M179 377 L348 330 L348 354 L180 397 Z" fill="#B68C6D"/>
+<path d="M184 394 L184 481 M325 360 L325 443" stroke="#8B796A" stroke-width="13" stroke-linecap="round"/>
+<path d="M239 340 L263 328 L286 344 L264 359 Z" fill="#FFF0C5"/><path d="M263 339 L263 306" stroke="#C0A584" stroke-width="6"/><path d="M239 310 L287 310 L277 286 L251 286 Z" fill="#F7D78A"/>
+<!-- plant -->
+<path d="M675 459 L721 470 L711 506 L670 496 Z" fill="#D7B99F"/>
+<path d="M693 477 C658 451 663 433 677 425 M692 478 C727 446 737 436 723 419 M692 476 C698 428 690 410 694 401" fill="none" stroke="#5B9E79" stroke-width="10" stroke-linecap="round"/>
+<!-- fish in room -->
+<ellipse cx="380" cy="521" rx="116" ry="72" fill="url(#fish)"/><path d="M466 523 L541 465 Q557 520 537 576 Z" fill="#68BCCC"/>
+<path d="M337 458 Q351 422 397 461" fill="#78BEDE"/>
+<ellipse cx="350" cy="504" rx="15" ry="18" fill="#fff"/><circle cx="346" cy="505" r="7" fill="#273D5F"/>
+<circle cx="346" cy="533" r="11" fill="#F2B5AB" opacity=".7"/><path d="M354 544 Q373 554 390 541" fill="none" stroke="#316681" stroke-width="5" stroke-linecap="round"/>
+<ellipse cx="389" cy="559" rx="37" ry="20" fill="#559DB9" opacity=".35"/>
+<circle cx="299" cy="474" r="9" fill="#FFF" opacity=".65"/><circle cx="275" cy="496" r="5" fill="#FFF" opacity=".45"/>
+<!-- statuses -->
+<g filter="url(#shadow)" fill="#fff"><rect x="852" y="198" width="278" height="124" rx="25"/><rect x="852" y="344" width="278" height="124" rx="25"/><rect x="852" y="490" width="278" height="124" rx="25"/></g>
+<g font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif'>
+<circle cx="900" cy="258" r="28" fill="#ECF0FE"/><g transform="translate(900 258)" fill="none" stroke="#7186D5" stroke-width="3" stroke-linecap="round"><path d="M-16 0 Q0 -15 16 0 Q0 15 -16 0Z"/><circle cx="0" cy="0" r="5"/></g><text x="943" y="250" fill="#344D6A" font-size="25" font-weight="700">好奇的时候</text><text x="943" y="280" fill="#697D90" font-size="17">看看外面的世界</text>
+<circle cx="900" cy="404" r="28" fill="#E8F6F0"/><g transform="translate(900 404)" fill="none" stroke="#62B79D" stroke-width="3" stroke-linecap="round"><path d="M5 -15 A17 17 0 1 0 15 7 A13 13 0 0 1 5 -15Z"/></g><text x="943" y="396" fill="#344D6A" font-size="25" font-weight="700">想休息的时候</text><text x="943" y="426" fill="#697D90" font-size="17">就安静待一会儿</text>
+<circle cx="900" cy="550" r="28" fill="#FFF1E4"/><g transform="translate(900 550)" fill="none" stroke="#DDA778" stroke-width="3" stroke-linecap="round"><path d="M-14 -12 H13 Q17 -12 17 -7 V5 Q17 10 12 10 H-2 L-11 16 V10 H-14 Q-17 10 -17 6 V-7 Q-17 -12 -14 -12Z"/><path d="M-8 -1 H8"/></g><text x="943" y="542" fill="#344D6A" font-size="25" font-weight="700">有人找她的时候</text><text x="943" y="572" fill="#697D90" font-size="17">愿意再聊一聊</text>
+</g>
+<text x="607" y="682" text-anchor="middle" font-size="16" font-family='"Noto Sans CJK SC", "Microsoft YaHei", sans-serif' fill="#7A8C9D">3D 身体与房间尚未实现 · 仅展示未来方向</text>
 </svg>

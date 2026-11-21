@@ -235,6 +235,7 @@ def _read_asr_cache(bvid,model,lang):
         receipt=dict(receipt)
         receipt['cacheHit']=True
         receipt['languageMode']=lang
+        receipt['inferenceDevice']='cache'
         receipt['timings']={'schema':'life-asr-phase-timings/v1',
             'audioDownloadMs':0,'modelLoadMs':0,'clipExtractionMs':0,
             'inferenceMs':0,'receiptMs':0,'totalMs':0}
@@ -262,6 +263,60 @@ def _write_asr_cache(bvid,model,lang,receipt):
         finally:
             if tmp.exists():tmp.unlink()
     except (OSError,ValueError,TypeError):pass # cache failure never blocks speech
+
+def _load_whisper_auto(model_source, factory, *, ctranslate2_module=None):
+    """Prefer actual CUDA inference where available; transparently retain CPU support.
+
+    Never infer GPU availability from the presence of a display adapter alone.
+    Missing/misconfigured CTranslate2, CUDA libraries or insufficient VRAM must
+    not make the optional ASR capability unusable on an otherwise healthy host.
+    """
+    device_pref = os.environ.get('BILI_ASR_DEVICE', 'auto').strip().lower()
+    if device_pref not in ('auto', 'cpu'):
+        device_pref = 'auto'  # unknown operator setting cannot force unsafe modes
+    if device_pref == 'auto':
+        try:
+            if ctranslate2_module is None:
+                import ctranslate2 as ctranslate2_module
+            if ctranslate2_module.get_cuda_device_count() > 0:
+                for gpu_type in ('float16', 'int8'):
+                    try:
+                        model = factory(model_source, device='cuda', compute_type=gpu_type)
+                        print('[asr] GPU CUDA 已加载，使用 %s 推理' % gpu_type, file=sys.stderr)
+                        return model, 'cuda', gpu_type
+                    except (RuntimeError, OSError, ValueError):
+                        continue
+                print('[asr] CUDA 模型加载不可用，自动使用 CPU int8', file=sys.stderr)
+        except (ImportError, RuntimeError, OSError, ValueError, AttributeError):
+            pass
+    model = factory(model_source, device='cpu', compute_type='int8')
+    print('[asr] 当前使用 CPU int8 推理', file=sys.stderr)
+    return model, 'cpu', 'int8'
+
+
+def _whisper_segments(model, source, lang):
+    return model.transcribe(source,
+        language=None if lang == 'auto' else lang,
+        vad_filter=True, beam_size=1, condition_on_previous_text=False)[0]
+
+
+def _run_whisper_segments(model, sources, lang, *, sampling=None):
+    """Materialize lazy inference; never return partial GPU results as a success.
+
+    If a CUDA runtime fails after loading, retry the bounded transcription once
+    from the beginning on CPU rather than losing the user's video transcription.
+    """
+    from itertools import islice, chain
+    def collect(loaded_model):
+        if sampling:
+            segments = chain.from_iterable(_offset_segments(
+                _whisper_segments(loaded_model, filename, lang), offset)
+                for filename, offset, _length in sampling['samples'])
+        else:
+            segments = _whisper_segments(loaded_model, sources, lang)
+        return list(islice(segments, 2500))
+    return collect(model)
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(description='把一条视频转成文字（默认自动检测语种）')
@@ -319,30 +374,25 @@ def main() -> int:
         phase_at = clock()
         from faster_whisper import WhisperModel
         print('[asr] 加载模型 %s（第一次会自动下模型，之后就是本地读）…' % args.model, file=sys.stderr)
-        model = WhisperModel(model_source, device='cpu', compute_type='int8')
+        model, inference_device, compute_type = _load_whisper_auto(model_source, WhisperModel)
         phase_ms['modelLoadMs'] = round((clock()-phase_at)*1000)
         phase_at = clock()
         sampling = _sample_audio_windows(src, tmp, tag)
         phase_ms['clipExtractionMs'] = round((clock()-phase_at)*1000)
         print('[asr] 开始转写…', file=sys.stderr)
-        def transcribe(audio):
-            return model.transcribe(audio,
-                language=None if args.lang == 'auto' else args.lang,
-                vad_filter=True,
-                beam_size=1,
-                condition_on_previous_text=False)[0]
-        inference_at = clock()
         if sampling:
             print('[asr] 按操作者设置：仅转写 3 个代表性窗口（非整段转写）', file=sys.stderr)
-            from itertools import chain
-            segments = chain.from_iterable(_offset_segments(transcribe(filename), offset)
-                for filename, offset, _length in sampling['samples'])
-        else:
-            segments = transcribe(src)
-        # Whisper returns lazy segment iterators; consuming the receipt is
-        # when inference actually happens, not when transcribe() is invoked.
-        from itertools import islice
-        parts = list(islice(segments, 2500))
+        inference_at = clock()
+        try:
+            parts = _run_whisper_segments(model, src, args.lang, sampling=sampling)
+        except (RuntimeError, OSError, ValueError):
+            if inference_device != 'cuda':
+                raise  # A genuine CPU failure is not a reason to loop or mask errors.
+            print('[asr] CUDA 推理不可用，重新使用 CPU int8 完整转写', file=sys.stderr)
+            del model
+            model = WhisperModel(model_source, device='cpu', compute_type='int8')
+            inference_device, compute_type = 'cpu', 'int8'
+            parts = _run_whisper_segments(model, src, args.lang, sampling=sampling)
         phase_ms['inferenceMs'] = round((clock()-inference_at)*1000)
         phase_at = clock()
         receipt = _asr_receipt(args.target, parts, sampling=sampling)
@@ -350,6 +400,8 @@ def main() -> int:
         receipt['timings'] = {'schema':'life-asr-phase-timings/v1',
                               **phase_ms,'totalMs':round((clock()-started)*1000)}
         receipt['languageMode']=args.lang
+        receipt['inferenceDevice']=inference_device
+        receipt['computeType']=compute_type
         if args.json and receipt.get('text') and os.environ.get('BILI_ASR_CACHE','1')!='0':
             _write_asr_cache(args.target,args.model,args.lang,receipt)
         text = receipt['text']
