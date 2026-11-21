@@ -62,14 +62,18 @@ test('suspicious lock content and invalid targets fail closed without running ca
  release();await assert.rejects(held,/video-visual-lease-release-failed/)
 }))
 
-test('old visual receipts only prevent immediate retries; clear current memory remains authoritative',()=>runInDir(async dir=>{
+test('verified visual receipts block unnecessary full rewatch for 24 hours; clear memory remains authoritative thereafter',()=>runInDir(async dir=>{
  let at=NOW
  const state=createLifeOpportunities({stateDir:dir,getCredential:()=>cred,now:()=>at})
  const proof={ok:true,bvid:BV,depth:'standard',frameCount:12,source:'decoded-public-video'}
  assert.equal(state.rememberVerifiedVideoVisual(proof,account).recorded,true)
  assert.equal(state.hasVerifiedVideoVisual(BV,account),true)
  at+=31*60_000
- assert.equal(state.hasVerifiedVideoVisual(BV,account),false,'expired receipt cannot be a permanent history blacklist')
+ assert.equal(state.hasVerifiedVideoVisual(BV,account),true,'do not rewatch after only 31 minutes')
+ at=NOW+24*60*60_000-1
+ assert.equal(state.hasVerifiedVideoVisual(BV,account),true,'the 24-hour technical guard survives until expiry')
+ at=NOW+24*60*60_000
+ assert.equal(state.hasVerifiedVideoVisual(BV,account),false,'expired receipt cannot become a permanent history blacklist')
  let clear=true
  const memoryAware=createLifeOpportunities({stateDir:dir,getCredential:()=>cred,now:()=>at,
    getCurrentVisualMemoryEvidence:()=>clear?[{readOnly:true,bvid:BV,sources:['visual-model-observation'],visual:{source:'decoded-public-video',frameCount:12}}]:[]})

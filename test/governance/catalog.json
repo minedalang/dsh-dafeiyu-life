@@ -634,7 +634,7 @@
     "v282-dev7-visual-read-lease.test.mjs": {
       "owner": "life-context-and-evidence",
       "kind": "security",
-      "intent": "Serialize full visual observations across independent processes by account and exact BV, fail closed for unsafe claims, recover provably dead read-only owners, and honor clear-memory versus short execution receipt lifetime."
+      "intent": "Serialize full visual observations across independent processes by account and exact BV, fail closed for unsafe claims, recover provably dead read-only owners, and honor clear-memory versus 24-hour technical anti-repeat receipt lifetime."
     },
     "v282-dev6-read-availability-projection.test.mjs": {
       "owner": "life-read-diagnostics",
@@ -785,6 +785,11 @@
       "owner": "life-read-only-video-interest-and-autonomy",
       "kind": "security",
       "intent": "Life post-overview voluntary read-only opportunity is distinct from social writes; skip/defer remain valid, focus selection allows empty arrays, verified anchors and external permissions unchanged."
+    },
+    "v282-closure-bv-lookup-24h.test.mjs": {
+      "owner": "life-video-neural-search-and-reuse",
+      "kind": "security",
+      "intent": "Keep optional Embedding offline fallback; permit current-account clear BV exact lookup through the neural graph even beyond the recent node cap; never surface faded BV; guard verified full observation against unnecessary repeat for 24 hours without changing memory decay or focus evidence policy."
     },
     "v282-closure-visual-reuse-novelty.test.mjs": {
       "owner": "life-video-visual-evidence-reuse",

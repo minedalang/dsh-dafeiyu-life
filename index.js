@@ -9710,7 +9710,11 @@ logger:{warn:m=>log('社交意图：'+m)}
           // would cap to 12 and filter nonmatches; neither behavior is suitable
           // for a dimmed whole-memory background. semanticCandidates does not
           // reinforce forgotten records, read archives or send to Bilibili.
-          const episodes=lifeMemory?.semanticCandidates({query:'',domain:'main-session',
+          // Exact BV lookup must search the CURRENT fading memory first, even
+          // when that episode is older than the normal graph node cap. The
+          // Gateway still enforces account and forgetting scope; never read archives.
+          const exactVideoQuery=/^BV[0-9A-Za-z]{10}$/.test(q)?q:''
+          const episodes=lifeMemory?.semanticCandidates({query:exactVideoQuery,domain:'main-session',
             kinds:['watch','comment','social'],limit:Math.min(3200,limit)})||[]
           const allRows=[...result.rows,...episodes.map(m=>({...m,gardenKind:'experience',gardenEvidence:'fading-life-episode'}))]
           const pre=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true})
