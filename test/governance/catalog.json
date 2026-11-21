@@ -1268,6 +1268,20 @@
       "newCheck": "先看全貌，再看细节",
       "date": "2026-11-20",
       "reason": "面向使用者的新版本文案改为具体体验表达，旧术语测试断言已过时；保留对应的可见版本入口和无授权安全检查。"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.ok(readme.includes('当前源码标识为 **`'",
+      "newCheck": "assert.ok(readme.includes('当前源码：'+pkg.version+'，仍是测试版本。')",
+      "date": "2026-11-20",
+      "reason": "README 当前版本明确使用开发预览标记，版本与 package.json 联动；废弃旧的源码标识格式但保留真实版本自检。"
+    },
+    {
+      "file": "v281-readme-user-facing-contract.test.mjs",
+      "oldCheck": "assert.match(readme,/不是正式发布版本，也不代表已经上架/,",
+      "newCheck": "assert.match(readme,/尚未正式发布/,",
+      "date": "2026-11-20",
+      "reason": "以当前 README 明确的尚未正式发布提醒验证发布状态，不依赖旧版措辞。"
     }
   ]
 }

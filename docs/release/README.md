@@ -4,6 +4,8 @@
 
 # 发布文档索引
 
+- **2.8.2 视频感知体验优化：** [发布说明草稿（未发布）](RELEASE_NOTES_v2.8.2-draft.md) · [使用与升级指南](2.8.2-user-upgrade-guide.md)。
+
 **当前源码版本以根目录 `package.json` 为准；仓库代码、Tag、GitHub Release、npm 与 DSHMarket 的上线状态必须分别核对。** 最新定向回归不能替代新的 Windows full 与真实视频验收。
 
 - **最后一轮正式版审计：** [2.8.0 发布阻断与检查表](../architecture/2.8.0-final-release-audit-20261114.md)。

@@ -15,11 +15,11 @@ test('README is a complete user homepage, not just this release changelog',()=>{
     assert.ok(readme.includes(feature),`User-facing capability or entrypoint missing: ${feature}`)
   // A release-candidate README must disclose that a source version is not
   // evidence of availability in external registries; avoid obsolete labels.
-  assert.ok(readme.includes('当前源码标识为 **`'+pkg.version+'`**'),
+  assert.ok(readme.includes('当前源码：'+pkg.version+'，仍是测试版本。'),
     'README must identify the package.json version rather than a historical fixed release')
-  assert.match(readme,/不是正式发布版本，也不代表已经上架/,
+  assert.match(readme,/尚未正式发布/,
     'a dev candidate must not claim official publication')
-  assert.match(readme,/以 npm、DSHMarket 与 GitHub Release 实际显示的版本为准/,
+  assert.match(readme,/以 GitHub Release、npm、DSHMarket 实际版本为准/,
     'registry and release pages remain the actual availability source')
 })
 

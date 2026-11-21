@@ -1390,23 +1390,6 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 @media(max-width:680px){.vision-usage-permission{align-items:flex-start;flex-direction:column;gap:10px}.vision-usage-permission>.vision-toggle{align-self:flex-start}}
 @media(prefers-reduced-motion:reduce){.management-jump-cue{animation:none;outline:3px solid #50bf8c;outline-offset:3px}}
 
-/* 2.8.1 one-time introduction shown before reviewing the new setup page. */
-#release-281-dialog{border:0;border-radius:22px;padding:0;max-width:min(660px,calc(100vw - 30px));width:100%;max-height:min(88vh,800px);overflow:auto;color:var(--ink);background:var(--panel);box-shadow:0 22px 78px #15283e6b}
-#release-281-dialog::backdrop{background:#0a1b2ab8;backdrop-filter:blur(5px)}
-.release-281-top{padding:23px 26px 18px;background:linear-gradient(120deg,color-mix(in srgb,#56ca9d 32%,var(--panel)),color-mix(in srgb,#81b6f2 28%,var(--panel)) 60%,color-mix(in srgb,#b9a0f8 21%,var(--panel)));border-bottom:1px solid var(--stroke)}
-.release-281-top .release-281-tag{font-size:11px;letter-spacing:.08em;color:#126446;font-weight:850;background:#daf9e5;padding:5px 10px;border-radius:999px;display:inline-block}
-.release-281-top h2{font-size:24px;margin:12px 0 7px;line-height:1.25}
-.release-281-top p{font-size:13px;color:var(--muted);margin:0;line-height:1.65}
-.release-281-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:16px 24px 5px}
-.release-281-feature{display:flex;gap:12px;min-width:0;padding:13px;border:1px solid var(--stroke);border-radius:15px;background:color-mix(in srgb,var(--tint) 27%,var(--panel));align-items:flex-start}
-.release-281-feature .release-281-icon{display:grid;place-items:center;width:43px;height:43px;flex:none;border-radius:12px;font-size:24px;background:linear-gradient(140deg,#d7f3ee,#dbe8fa)}
-.release-281-feature strong{display:block;font-size:13px;margin:1px 0 4px}
-.release-281-feature small{display:block;font-size:11px;line-height:1.55;color:var(--muted)}
-.release-281-note{font-size:12px;line-height:1.6;color:var(--muted);padding:12px 26px 0;margin:0}
-.release-281-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:19px 25px 23px}
-.release-281-actions button{min-height:39px}
-@media(max-width:590px){.release-281-grid{grid-template-columns:1fr;padding:12px 15px 0}.release-281-top{padding:20px 19px}.release-281-feature{padding:10px}.release-281-top h2{font-size:21px}.release-281-note{padding:12px 19px 0}.release-281-actions{padding:15px 18px 19px}}
-@media(prefers-reduced-motion:reduce){#release-281-dialog::backdrop{backdrop-filter:none}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -1846,7 +1829,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   </div>
     </div>
     <section class="quick-config-section fs-version-highlight" id="fs-vision-guide" aria-label="2.8.2 视频视觉模型配置引导">
-      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>02B · 视频视觉感知 <span class="pill fs-new-281-badge">2.8.2 视频探索 · 可选</span></h4><p>Headless 文字连接通过，不代表鱼鱼能看懂视频画面。2.8.2 支持全局分镜后的多候选自主探索；模型选择、依赖修复和真实图片验收在「AI 模型 → 视觉识别模型」。模型对时间码的文字描述仍需核对，不自动等同于语义准确。</p></div></div>
+      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>02B · 视频视觉感知 <span class="pill fs-new-281-badge">2.8.2 视频感知优化 · 可选</span></h4><p>2.8.2 优化了视频感知流程：鱼鱼可以先了解视频大概，再自己决定是否细看某些片段。选择视觉模型并通过图片测试后，可按需开启；不要求每条视频都观看。</p></div></div>
       <p id="fs-vision-state" class="quick-current" role="status" aria-live="polite">正在读取当前视觉设置…</p>
       <div class="fs-vision-steps" aria-label="视觉模型配置三步">
         <div><strong>① 选择识图来源</strong><p>可选 DSH 多模态 Provider / 模型，或本地 Ollama 视觉模型。仅使用文字功能的用户可以不配置。</p></div>
@@ -2115,17 +2098,17 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <label class="checkline"><input id="bili-home-recommend" type="checkbox">允许独立的首页漫游</label>
 <p class="muted">不需要在这里重复维护搜索关键词。主人设定的核心兴趣可前往「人生记忆 → 兴趣编辑」调整；旧额外关键词数据保留但不再作为新的选片控制入口。</p>
 <div class="toolbar"><button type="button" data-open-tab="life" data-open-anchor="life-interest-section">打开兴趣管理 ↗</button></div></div>
-<div class="settings-section" id="bili-video-perception-plans"><div class="video-aux-heading"><strong>🎞️ 视频感知方案 · 深入探索采样预算</strong><span class="pill">选择上限 · 非强制观看</span></div><p class="muted">由鱼鱼决定是否观看以及略看／正常／深入。卡片控制深入探索的真实解码取帧预算，不改变模型授权或外发权限；不设独立视觉每日调用上限。超过当前方案的单视频网络预算时优先使用受控 MP4 索引分段读取真实窗口；Range / 容器不兼容时明确报错，不以 3 张低清图假装深入探索。</p>
+<div class="settings-section" id="bili-video-perception-plans"><div class="video-aux-heading"><strong>🎞️ 视频感知方案 · 选择看得多细</strong><span class="pill">选择上限 · 非强制观看</span></div><p class="muted">2.8.2 优化了视频观察方式：先了解全貌，再由鱼鱼决定是否细看。选择轻量、均衡或详查，只是设置观察上限，不强制看完，也不会改变原有互动权限。</p>
 <div class="bili-switch-row" id="bili-video-observation-permission"><div class="bili-switch-copy"><strong>🎬 自主视频画面观察</strong><small>允许 Life 使用已配置视觉模型采样理解视频画面；开启不等于强制观看。与 AI 模型页同步，开关操作立即保存。</small></div><label class="vision-toggle" for="bili-video-vision-enabled"><input id="bili-video-vision-enabled" type="checkbox" role="switch" aria-label="允许自主视频画面观察"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span></label></div>
 <div class="bili-switch-row" id="bili-social-image-permission"><div class="bili-switch-copy"><strong>💬 私信与评论图片／表情包识别</strong><small>独立的社交图片理解权限，不影响视频观察；开关操作立即保存。</small></div><label class="vision-toggle" for="bili-disable-incoming-vision"><input id="bili-disable-incoming-vision" type="checkbox" role="switch" aria-label="允许私信与评论图片表情包识别"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span></label></div>
-<div class="vision-budget-settings"><h4>🎞️ 自适应分镜预算 · 自选档位</h4>
-<p class="setting-note" id="bili-board-fixed-hint">低清分镜固定每张12格（4×3），按轻量/均衡/详查分别生成1/2/4张分镜；仅总采样帧数可调。</p>
+<div class="vision-budget-settings"><h4>🎞️ 选择观察档位</h4>
+<p class="setting-note" id="bili-board-fixed-hint">每张分镜固定12格；三档分别最多查看12、24、48个采样画面。</p>
 <input id="quota-vision-frames" type="hidden" value="24">
 <div id="vision-frame-plan-cards" class="vision-frame-plan-cards" role="group" aria-label="选择深入探索时每条视频的采样帧预算">
 <button type="button" class="vision-frame-plan" data-vision-frame-plan="12" aria-pressed="false"><strong>轻量档 · 12</strong><span>短视频 / 轻度探索</span><small>最多12个采样时刻 · 单视频最多24 MiB网络读取</small></button>
 <button type="button" class="vision-frame-plan" data-vision-frame-plan="24" aria-pressed="true"><strong>均衡档 · 24 <em>默认</em></strong><span>常见中短视频的深入了解</span><small>最多24个采样时刻 · 单视频最多50 MiB网络读取</small></button>
 <button type="button" class="vision-frame-plan" data-vision-frame-plan="48" aria-pressed="false"><strong>详查档 · 48</strong><span>非电影长度的高信息量视频</span><small>最多48个采样时刻 · 单视频最多100 MiB网络读取</small></button>
-</div><p class="muted">卡片设置上限而非强制使用量；略看为0、正常了解最多12个时刻，深入探索可用本档上限。支持≤45分钟的受控公开单段视频。文件超过预算并不直接拒绝：可借助 MP4 索引按时间窗口请求 Range；实际支持情况取决于 CDN、容器与 FFprobe，所有失败都应在 Debug 中说明。</p></div>
+</div><p class="muted">这些数字只是观察上限，鱼鱼可以少看或不看。技术限制、流量与失败原因可在「运行诊断」查看。</p></div>
 <div class="toolbar"><button type="button" id="bili-vision-plan-save" class="primary">保存视频感知方案</button><button type="button" data-open-tab="models" data-open-anchor="models-vision-settings">配置视觉识别模型 ↗</button><button type="button" data-open-tab="models" data-open-anchor="video-aux-dependencies">FFmpeg / Whisper 依赖 ↗</button></div><p id="bili-vision-plan-status" class="setting-note" role="status">尚未读取方案。</p></div>
 <div class="settings-section"><h4>🐟 鱼鱼怎样与视频互动</h4><p class="muted">选择一个方案，鱼鱼自己决定做不做。不会自动发布或改变你的旧授权。</p>
 <div class="choice-presets" role="radiogroup" aria-label="视频互动方案">
@@ -3231,17 +3214,6 @@ POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世�
 </main>
 <div id="request-indicator" class="request-indicator" role="status" aria-live="polite" hidden><span class="spinner"></span><span>正在与大肥鱼通信…</span></div>
 <div id="action-toast" class="action-toast" role="status" aria-live="polite" hidden></div>
-<dialog id="release-281-dialog" aria-labelledby="release-281-title" aria-describedby="release-281-description">
-  <div class="release-281-top"><span class="release-281-tag">🐟 2.8.2 · 新版本导览</span><h2 id="release-281-title">鱼鱼的生活，多了一双看世界的眼睛</h2><p id="release-281-description">这次鱼鱼可以试着看见视频画面，也能自己决定要不要继续看。语音转写和模型管理更方便；原有记忆与权限不变。</p></div>
-  <div class="release-281-grid" aria-label="2.8.2 特色功能">
-    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">🎬</span><div><strong>先看全貌，再看细节</strong><small>先了解整段视频，再选择感兴趣的画面深入看看。</small></div></div>
-    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">🧠</span><div><strong>看过什么，有迹可循</strong><small>可以查到看过的片段和时间；没看到的内容不会假装看过。</small></div></div>
-    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">🐟</span><div><strong>鱼鱼可以自己决定看多久</strong><small>可以多看几段，也可以跳过、停下或休息。</small></div></div>
-    <div class="release-281-feature"><span class="release-281-icon" aria-hidden="true">⚙️</span><div><strong>没字幕也能尝试听懂</strong><small>可选本地语音转写；模型安装、切换和清理更方便。</small></div></div>
-  </div>
-  <p class="release-281-note">视频视觉默认不会替你开启；环境健康的老用户无需重复修复。查看新功能不等于授权模型调用或 B站发送。</p>
-  <div class="release-281-actions"><button type="button" id="release-281-close">先浏览设置</button><button type="button" id="release-281-view-setup" class="primary">查看 02B 视频视觉设置</button></div>
-</dialog>
 <dialog id="action-confirm-dialog" class="action-confirm-dialog" aria-labelledby="action-confirm-title" aria-describedby="action-confirm-description">
   <div class="confirm-head"><span class="confirm-sparkle">✦</span><div><h3 id="action-confirm-title">确认操作</h3><p id="action-confirm-kicker">请确认后继续</p></div></div>
   <p id="action-confirm-description"></p>

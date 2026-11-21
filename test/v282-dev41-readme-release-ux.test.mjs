@@ -3,13 +3,15 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=n=>readFileSync(new URL('../'+n,import.meta.url),'utf8');
 
-test('2.8.2 highlights describe user benefit on both entry points, without technical jargon',()=>{
+test('2.8.2 video-perception optimization is clear in README, DSH settings and relevant management sections',()=>{
   const client=read('client.js'), html=read('lib/management-console.html'), doc=read('README.md');
-  for (const value of ['先看视频全貌','看过哪些画面','鱼鱼自己决定看几段'])assert.ok(client.includes(value),value);
-  for (const value of ['先看全貌，再看细节','看过什么，有迹可循','鱼鱼可以自己决定看多久'])assert.ok(html.includes(value),value);
+  for (const value of ['2.8.2 版本亮点 · 视频感知体验优化','先看视频全貌','看过哪些画面','鱼鱼自己决定看几段'])assert.ok(client.includes(value),value);
+  for (const value of ['2.8.2 优化了视频感知流程','2.8.2 优化了视频观察方式','选择看得多细'])assert.ok(html.includes(value),value);
   for (const value of ['先看全貌，再看细节','看几段，由鱼鱼自己决定','看过什么，有迹可循'])assert.ok(doc.includes(value),value);
   for (const value of ['多候选视频探索与分镜核验','可回溯的真实观察经历','Life 自主多选与随时停止'])assert.ok(!client.includes(value),value);
   assert.ok(doc.length<12000, 'README is a short product homepage, not a full technical protocol');
+  assert.ok(doc.includes('2.8.2 重点优化了视频感知流程'))
+  assert.match(read('docs/release/RELEASE_NOTES_v2.8.2-draft.md'),/当前仅为开发候选版文案/)
   assert.ok(doc.indexOf('## 🌱 未来规划：让生活更有故事')<doc.indexOf('## ❤️ 致谢'));
 });
 
