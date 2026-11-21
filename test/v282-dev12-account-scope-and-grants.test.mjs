@@ -63,8 +63,28 @@ test('damaged or unsafe Life scope files fail closed rather than generating a ne
  assert.throws(()=>currentLifeAccountScope({dataDir:dir,accountBinding:account,credential:c('10001')}),/损坏/)
  writeFileSync(file,JSON.stringify({version:1,uid:'20002',tag:scope}))
  assert.throws(()=>currentLifeAccountScope({dataDir:dir,accountBinding:account,credential:c('10001')}),/不匹配/)
- rmSync(file);symlinkSync(join(dir,'bili_credential.json'),file)
+ rmSync(file)
+ // A file symlink requires special Windows privileges; exercise that case where
+ // available, but do not make a normal Windows full run fail in test setup.
+ let fileLink=false
+ try {symlinkSync(join(dir,'bili_credential.json'),file,'file');fileLink=true}
+ catch(error) {
+  if(process.platform!=='win32'||!['EPERM','EACCES','ENOTSUP'].includes(error?.code))throw error
+ }
+ if(fileLink) {
+  assert.throws(()=>currentLifeAccountScope({dataDir:dir,accountBinding:account,credential:c('10001')}),/不安全/)
+  rmSync(file)
+ }
+ // Windows directory junctions need no file-symlink privilege. They are real
+ // reparse-point traversal attempts and MUST be rejected by the same scope gate.
+ const folder=join(dir,'accounts','10001'),outside=join(dir,'outside-life-scope')
+ mkdirSync(outside)
+ const sentinel=join(outside,'life-account-scope.json'),trusted={version:1,uid:'10001',tag:scope}
+ writeFileSync(sentinel,JSON.stringify(trusted))
+ rmSync(folder,{recursive:true,force:true})
+ symlinkSync(outside,folder,process.platform==='win32'?'junction':'dir')
  assert.throws(()=>currentLifeAccountScope({dataDir:dir,accountBinding:account,credential:c('10001')}),/不安全/)
+ assert.deepEqual(JSON.parse(readFileSync(sentinel,'utf8')),trusted,'must not rewrite linked target')
 }))
 
 test('first legacy account retains explicit friend grants, B starts denied and restores own grants on return',()=>home(async dir=>{

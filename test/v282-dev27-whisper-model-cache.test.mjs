@@ -32,9 +32,12 @@ test('path traversal, malformed name and symlinked cache folders cannot be delet
    make('tiny')
    assert.equal(deleteWhisperModel({stateDir:root,model:'../tiny',selectedModel:'small',confirm:'DELETE_WHISPER_../tiny'}).ok,false)
    assert.equal(deleteWhisperModel({stateDir:root,model:'tiny',selectedModel:'small',confirm:'NO'}).ok,false)
-   symlinkSync(elsewhere,join(hub,'models--Systran--faster-whisper-base'),'dir')
+   // Windows directory junctions are usable without file-symlink privilege,
+   // and must be refused just like a Unix symlinked model repository.
+   const sentinel=join(elsewhere,'DO-NOT-DELETE');writeFileSync(sentinel,'keep')
+   symlinkSync(elsewhere,join(hub,'models--Systran--faster-whisper-base'),process.platform==='win32'?'junction':'dir')
    assert.equal(deleteWhisperModel({stateDir:root,model:'base',selectedModel:'small',confirm:'DELETE_WHISPER_base'}).ok,false)
-   assert.ok(existsSync(elsewhere))
+   assert.equal(readFileSync(sentinel,'utf8'),'keep','must not delete the external model directory')
  }finally{rmSync(root,{recursive:true,force:true});rmSync(elsewhere,{recursive:true,force:true})}
 })
 test('production API is protected by local origin and only calls the owned cache manager',()=>{
