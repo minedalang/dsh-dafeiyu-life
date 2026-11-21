@@ -218,3 +218,20 @@ test('Life Episode 续行保留获授权的长人格、成长和情绪上下文�
  const context=long.split('当前 Life Voice（风格与情绪只用于判断，并非公开事实或发送许可）：')[1].split('\n')[0];
  assert.equal(context.length,1900,'单次 Life Voice 输入必须有明确长度界限');
 });
+
+
+test('video vision stays a voluntary choice after inspecting discussion and creator, until proof or Episode cap',()=>{
+ const id='a'.repeat(24)
+ const eligible={id,status:'inspected',expiresAt:T+60_000,nextAt:T,episodeSteps:3,episodeMaxSteps:5,
+   selectedBvid:BV,selectedTitle:'真实视频标题',metadataAt:T-10_000,
+   discussionReadBvids:[BV],creatorExploredBvids:[BV],observedVideoBvids:[],visitedBvids:[BV]}
+ const menu=continuationMenu(eligible,{at:T,writeActions:[]})
+ assert.ok(menu.some(x=>x.action==='observe_video'&&x.bvid===BV),'reading comments did not use the opportunity')
+ assert.ok(!menu.some(x=>x.action==='inspect_video_discussion'))
+ assert.equal(parseContinuationDecision(JSON.stringify({action:'observe_video',id,bvid:BV,viewDepth:'standard'}),menu).action,'observe_video')
+ assert.ok(continuationMenu({...eligible,episodeSteps:4},{at:T}).some(x=>x.action==='observe_video'))
+ assert.deepEqual(continuationMenu({...eligible,episodeSteps:5},{at:T}),[],'keep existing five-step budget')
+ assert.ok(!continuationMenu({...eligible,observedVideoBvids:[BV]},{at:T}).some(x=>x.action==='observe_video'))
+ assert.ok(!continuationMenu(eligible,{at:T,previouslyObservedBvids:[BV]}).some(x=>x.action==='observe_video'))
+ assert.match(continuationPrompt(menu),/之前选择看评论、看作者或其他动作并不等于拒绝观看/)
+})

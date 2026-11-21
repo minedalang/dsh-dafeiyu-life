@@ -114,7 +114,7 @@ _LIFE_VIDEO_WRITES = frozenset((
 
 _VIDEO_FUNNEL_TOOLS = frozenset((
     'bili_search', 'bili_home_recommendations', 'bili_video_info',
-    'bili_subtitle', 'bili_comments', 'bili_transcribe_safe', 'bili_ledger_mark'))
+    'bili_subtitle', 'bili_comments', 'bili_transcribe_safe', 'bili_preview_vision', 'bili_ledger_mark'))
 
 
 def _observe_video_tool(name, args, result, failed=False):
@@ -167,6 +167,19 @@ def _observe_video_tool(name, args, result, failed=False):
             row['content'] = bool(not failed and len(text_result.strip()) >= 35 and
                                   not text_result.startswith(('转写失败', '本地转写失败',
                                       '本轮未授权', '本地转写依赖未安装', '转写路径不安全')))
+        elif name == 'bili_preview_vision':
+            # Headless vision can happen before OR after selecting a video,
+            # after discussion reads, or later in the same exploration round.
+            # A model/tool status alone is not visual evidence: require the
+            # exact BV, bounded sample times and a real visual description.
+            times = data.get('times')
+            source = str(data.get('image_source') or '')
+            row['visual'] = bool(ok and data.get('ok') is True and data.get('bvid') == bv and
+                data.get('status') in ('analyzed', 'cached') and
+                source in ('B站低清预览', 'B站公开视频片段（离线解码）') and
+                isinstance(times, list) and 1 <= len(times) <= 48 and
+                all(type(t) in (int, float) and 0 <= t <= 86400 for t in times) and
+                len(str(data.get('description') or '').strip()) >= 8)
         elif name == 'bili_ledger_mark':
             status = str(args.get('status') or '')
             row['status'] = 'picked' if status == '挑中' else 'skipped' if '跳过' in status else 'other'

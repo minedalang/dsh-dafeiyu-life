@@ -64,3 +64,39 @@ test('repair and runtime gate require identical reviewed Python modules',()=>{
   }
   assert.equal(typeof mcpIntegrity,'function')
 })
+
+
+test('vision receipt is optional at any point in a video round, with per-BV dedup and no fabricated view',()=>{
+ const visual=(bv,ok)=>({tool:'bili_preview_vision',bvid:bv,ok,visual:ok})
+ const events=[
+  {tool:'bili_video_info',bvid:a,ok:true,stat:{view:3000,like:50,reply:12}},
+  {tool:'bili_comments',bvid:a,ok:true,content:true},
+  {tool:'bili_ledger_mark',bvid:a,ok:true,status:'picked',recorded:true},
+  visual(a,true),visual(a,true), // visual choice after selecting and reading discussion
+  {tool:'bili_video_info',bvid:b,ok:true,stat:{view:5000,like:55,reply:20}},
+  visual(b,false), // failed frames are attempts, not verified observations
+  visual(c,true) // a curious, genuinely observed BV need not be selected
+ ]
+ const result=summarizeVideoFunnel(events,{views:1000,likes:10,replies:3})
+ assert.equal(result.selected,1)
+ assert.equal(result.visualAttempted,3)
+ assert.equal(result.visualVerified,2)
+ assert.equal(result.contentRead,1,'visual proof is not confused with subtitle/comment evidence')
+ assert.equal(result.toolErrors,1)
+ assert.match(videoFunnelReport(result),/视觉观察 3 条 BV，其中 2 条/)
+ assert.equal(result.rows.find(x=>x.bvid===b).visualVerified,false)
+ assert.ok(result.rows.some(x=>x.bvid===c&&x.visualVerified===true))
+ const withoutVision=summarizeVideoFunnel([{tool:'bili_ledger_mark',bvid:a,ok:true,status:'picked',recorded:true}])
+ assert.equal(withoutVision.visualVerified,0,'selected does not imply watching')
+})
+
+test('video agent can still elect a visual tool after comments or picking; it is not a fixed next step',()=>{
+ const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ const py=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
+ assert.match(host,/已选片\/已读评论不是视觉选择机会的结束信号/)
+ assert.match(host,/读评论区后、挑中视频后/)
+ assert.match(host,/if \(cfg\.visionEnabled\) list\.push\('bili_preview_vision'\)/)
+ assert.match(py,/_VIDEO_FUNNEL_TOOLS[\s\S]{0,180}'bili_preview_vision'/)
+ assert.match(py,/data\.get\('status'\) in \('analyzed', 'cached'\)/)
+ assert.match(py,/len\(str\(data\.get\('description'\) or ''\)\.strip\(\)\) >= 8/)
+})

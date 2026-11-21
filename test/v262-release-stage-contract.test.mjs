@@ -48,7 +48,7 @@ test('正式版与后续 dev 开发版都遵循 SemVer 并与锁文件、README 
     assert.ok(pkg.files.includes('docs/release/RELEASE_NOTES_v2.8.2.md'));
     assert.doesNotMatch(readme,/尚未正式发布|开发预览/);
   } else if (pkg.version.startsWith('2.8.2-dev.')) {
-    assert.match(readme,/当前源码标识为/)
+    assert.match(readme,new RegExp('当前版本源码：'+pkg.version.replaceAll('.', '\\.')))
     assert.match(readme,new RegExp(pkg.version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))
     assert.match(read('CHANGELOG.md'),new RegExp('^## '+pkg.version.replaceAll('.', '\\.'),'m'))
   } else if (pkg.version.includes('-dev.')) {

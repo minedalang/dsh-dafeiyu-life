@@ -63,5 +63,5 @@ test('developer version identity is synchronized',()=>{
   assert.equal(lock.version,manifest.version)
   assert.equal(lock.packages[''].version,manifest.version)
   assert.ok(readme.includes('当前版本源码：'+manifest.version))
-  assert.ok(read('CHANGELOG.md').startsWith('## [2.8.2]'))
+  assert.ok(read('CHANGELOG.md').startsWith('## '+manifest.version+' ·'))
 })
