@@ -786,6 +786,11 @@
       "kind": "security",
       "intent": "Life post-overview voluntary read-only opportunity is distinct from social writes; skip/defer remain valid, focus selection allows empty arrays, verified anchors and external permissions unchanged."
     },
+    "v282-closure-visual-reuse-novelty.test.mjs": {
+      "owner": "life-video-visual-evidence-reuse",
+      "kind": "security",
+      "intent": "Reject shorter, shifted or completely covered focus windows using verified episode intervals; require actually novel frame timestamps before success; diagnostic provenance is bounded and excludes video IDs, model output and unverified billing claims."
+    },
     "v282-closure-video-attempt-visibility.test.mjs": {
       "owner": "life-video-observation-diagnostics",
       "kind": "behavior",
