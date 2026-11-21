@@ -87,7 +87,7 @@ test('metadata-only record without a confirmed stop reason does not invent a rea
   explorationEvidence:[{at:t+80,action:'inspect-video',episodeRef:ref,bvid:BV,title:'仅核验资料'}]})
  const m=rows.find(x=>x.type==='life-read')
  assert.equal(m.label,'核验视频资料')
- assert.equal(m.detail,'这次没有保存可核实的后续画面观察原因；无法据此判断 Life 是否主动不想看。')
+ assert.equal(m.detail,'当前记录缺少有效的续行选择回执，无法追溯当时原因。')
 })
 test('metadata and verified visual diary describes sampled imagery without speculating on audio or subtitles',()=>{
  const ref='f'.repeat(16),rows=buildLifeTimeline({now:t+20000,days:3,
@@ -102,7 +102,9 @@ test('metadata-only diary renders actual voluntary and technical continuation re
  const ref='f'.repeat(16),base={at:t+100,mode:'active',action:'inspect_exploration',result:'verified-metadata',verifiedReadKind:'video-metadata',continuation:ref}
  const evidence=[{at:t+80,action:'inspect-video',episodeRef:ref,bvid:BV,title:'只读资料'}]
  for(const [code,label] of [['fish-chose-prefer-text','想先阅读文字'],['fish-chose-enough-evidence','现有资料已足够'],
-   ['no-eligible-action','没有符合条件'],['continuation-not-started','未进入后续画面观察选择']]){
+   ['no-eligible-action','没有符合条件'],['continuation-not-started','未进入后续画面观察选择'],
+   ['target-not-offered','选择了本轮没有提供'],['model-stop-reason-missing','模型没有按要求返回'],
+   ['model-nonvisual-reason-missing','没有按要求返回不看画面的原因'],['fish-chose-other-action','更想先做其他探索动作']]){
   const row=buildLifeTimeline({now:t+20000,days:3,lifeDecisions:[{...base,continuationResultCode:code}],
    explorationEvidence:evidence}).find(x=>x.type==='life-read')
   assert.match(row.detail,new RegExp(label))

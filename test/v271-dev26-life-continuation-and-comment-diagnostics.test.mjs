@@ -54,9 +54,38 @@ test('Life may give a bounded true stop category without storing its unconstrain
  assert.equal(parseContinuationDecision(JSON.stringify({action:'stop',stopReasonCode:'enough_evidence'}),menu).reason,'fish-chose-enough-evidence')
  assert.equal(parseContinuationDecision(JSON.stringify({action:'stop',stopReasonCode:'invalid-category'}),menu).reason,'invalid-stop-reason')
  assert.equal(parseContinuationDecision(JSON.stringify({action:'stop'}),menu).reason,'fish-chose-rest','legacy model response remains supported')
+ assert.equal(parseContinuationDecision(JSON.stringify({action:'stop'}),menu).stopReasonMissing,true,'unknown reason must not be presented as confirmed rest')
+ assert.match(continuationPrompt(menu),/必须额外返回一个短枚举字段 stopReasonCode/)
  assert.equal(parseContinuationDecision(JSON.stringify({action:'observe_video',stopReasonCode:'rest'}),menu).reason,'unexpected-stop-reason')
  assert.match(continuationPrompt(menu),/stopReasonCode/)
 })
+test('an invalid unoffered continuation choice remains a technical rejection rather than an invented refusal to watch',()=>home(async dir=>{
+ const x=harness(dir,{answers:[
+   life=>({action:'begin_exploration',id:life.explorationCues()[0].id,goal:'想了解更多视频'}),
+   life=>({action:'inspect_exploration',id:life.continuations()[0].id,bvid:BV}),
+   {action:'observe_video',id:'wrong-id',bvid:BV,viewDepth:'standard'}
+ ]})
+ const result=await x.planner.tick()
+ assert.equal(result.result,'verified-search-results')
+ assert.equal(result.continuation.reason,'target-not-offered')
+ assert.equal(result.continuation.executed,1)
+ assert.equal(x.reads,1)
+ assert.equal(x.calls,3,'no extra model call is made for explaining an invalid choice')
+}))
+
+test('non-visual Life choice carries only a bounded enum when video observation was actually offered',()=>{
+ const id='a'.repeat(24),menu=[{action:'observe_video',id,bvid:BV,viewDepths:['standard']},
+   {action:'inspect_creator_space',id}]
+ const picked=parseContinuationDecision(JSON.stringify({action:'inspect_creator_space',id,nonVisualReasonCode:'other_action'}),menu)
+ assert.equal(picked.action,'inspect_creator_space')
+ assert.equal(picked.nonVisualReasonCode,'fish-chose-other-action')
+ const missing=parseContinuationDecision(JSON.stringify({action:'inspect_creator_space',id}),menu)
+ assert.equal(missing.action,'inspect_creator_space')
+ assert.equal(missing.nonVisualReasonCode,'model-nonvisual-reason-missing')
+ assert.equal(parseContinuationDecision(JSON.stringify({action:'observe_video',id,bvid:BV,viewDepth:'standard'}),menu).nonVisualReasonCode,undefined)
+ assert.match(continuationPrompt(menu),/必须额外返回 nonVisualReasonCode/)
+})
+
 test('a verified search can lead to a verified video and creator read in one Life turn; no outbound writes',()=>home(async dir=>{
  const x=harness(dir,{answers:[
    life=>({action:'begin_exploration',id:life.explorationCues()[0].id,goal:'我想了解更多真实的配乐作品'}),
@@ -66,7 +95,7 @@ test('a verified search can lead to a verified video and creator read in one Lif
  const result=await x.planner.tick()
  assert.equal(result.action,'begin_exploration')
  assert.equal(result.result,'verified-search-results')
- assert.deepEqual(result.continuation,{considered:3,executed:2,reason:'fish-chose-rest'})
+ assert.deepEqual(result.continuation,{considered:3,executed:2,reason:'fish-chose-rest',stopReasonMissing:true})
  assert.equal(x.calls,4);assert.equal(x.reads,1);assert.equal(x.creators,1)
  assert.equal(x.life.status().intentions.find(row=>row.source==='interest-milestone').receipt,'fish-chose-rest')
  const state=x.planner.status()
@@ -101,11 +130,11 @@ test('Life voluntary text-first stop is paused and keeps its bounded reason thro
 }))
 test('Life decision ledger exposes only allowlisted voluntary or technical continuation categories',()=>home(async dir=>{
  const x=createLifeAgentEvents({stateDir:dir,getAccountTag:()=> 'a'.repeat(16),now:()=>T})
- for(const code of ['fish-chose-prefer-text','fish-chose-enough-evidence','no-eligible-action','continuation-not-started']){
+ for(const code of ['fish-chose-prefer-text','fish-chose-enough-evidence','no-eligible-action','continuation-not-started','target-not-offered','model-stop-reason-missing','fish-chose-other-action']){
   x.recordDecision({action:'inspect_exploration',mode:'active',result:'verified-metadata',verifiedReadKind:'video-metadata',continuationResultCode:code})
  }
  assert.deepEqual(x.status().timeline.map(x=>x.continuationResultCode),[
-  'continuation-not-started','no-eligible-action','fish-chose-enough-evidence','fish-chose-prefer-text'])
+  'fish-chose-other-action','model-stop-reason-missing','target-not-offered','continuation-not-started','no-eligible-action','fish-chose-enough-evidence','fish-chose-prefer-text'])
 }))
 test('failure cannot create a verified continuation or move the model to further targets',()=>home(async dir=>{
  const x=harness(dir,{answers:[life=>({action:'begin_exploration',id:life.explorationCues()[0].id,goal:'想看看作品'}),

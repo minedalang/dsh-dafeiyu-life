@@ -1178,14 +1178,22 @@ function reportMeta() {
   // Open only on first relationship read/write. Most host integrations (including
   // test fixtures) never touch this feature, and eager node:sqlite handles keep
   // Windows TEMP directories locked when a host stops without invoking effects.
-  let socialRelationships=null,relationshipIndexFailed=false
+  let socialRelationships=null,relationshipIndexFailed=false,relationshipIndexStopped=false
   const relationshipIndex=()=>{
+    // Host teardown is terminal for this plugin instance. Never reopen SQLite
+    // from an asynchronous Life reader while the same host is disposing.
+    if(relationshipIndexStopped)return null
     if(socialRelationships||relationshipIndexFailed)return socialRelationships
     try{socialRelationships=createSocialRelationshipIndex({dataDir:stateDir,logger:{warn:m=>log('社交关系：'+m)}})}
     catch(e){relationshipIndexFailed=true;log('社交关系索引不可用：'+String(e?.message||e))}
     return socialRelationships
   }
-  ctx.effect(()=>()=>socialRelationships?.close(),'bili-duty: 关闭社交熟悉度索引')
+  ctx.effect(()=>()=>{
+    relationshipIndexStopped=true
+    const index=socialRelationships
+    socialRelationships=null
+    index?.close()
+  },'bili-duty: 关闭社交熟悉度索引')
   const relationshipOptions=()=>({friendDirectory:cfg.friendDirectory,ownerUid:cfg.dmOwnerUid})
   // dev.74: the legacy relationship index remains readable for historical
   // familiarity, while only NEW, proven, per-account channel observations may
@@ -1238,7 +1246,7 @@ function reportMeta() {
   // Preserve dev.9's Windows lazy-SQLite lifetime: a pure agency test or a
   // planner tick must not create an empty, still-open DB in an ephemeral home.
   // Actual verified interaction recording initializes the index when needed.
-  const existingRelationshipIndex=()=>socialRelationships||
+  const existingRelationshipIndex=()=>relationshipIndexStopped?null:socialRelationships||
     (existsSync(join(stateDir,'social-relationships','relationships.sqlite3'))?relationshipIndex():null)
   const relationshipText=uid=>{const r=existingRelationshipIndex()?.get(uid,relationshipOptions())||null
     const local=relationshipChannels()?.get(uid)||null
@@ -6748,7 +6756,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     runTodo: (id) => runOwnerTodoWithFollowup(id),
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
   })
-  lifeMemory=createLifeMemoryGateway({dataDir:stateDir,getConfig:()=>cfg,getRelationship:uid=>relationshipIndex()?.get(uid,relationshipOptions()),getAccountTag:trustedLifeAccountTag,onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'episode:'+String(id)))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},logger:{warn:m=>log('人生记忆：'+m)}})
+  lifeMemory=createLifeMemoryGateway({dataDir:stateDir,getConfig:()=>cfg,getRelationship:uid=>{
+    // An unavailable/closed index is NOT evidence that a known person is new.
+    // Throw into the memory gateway's safe previous-half-life fallback.
+    if(relationshipIndexStopped)throw Error('relationship-index-closed')
+    const index=relationshipIndex()
+    if(!index)throw Error('relationship-index-unavailable')
+    return index.get(uid,relationshipOptions())
+  },getAccountTag:trustedLifeAccountTag,onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'episode:'+String(id)))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},logger:{warn:m=>log('人生记忆：'+m)}})
   ctx.effect(()=>()=>lifeMemory?.close(),'bili-duty: 只读内存 FTS 关闭')
   embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,logger:{warn:m=>log('本地语义运行时：'+m)}})
   embeddingIndex=createEmbeddingMemoryIndex({dataDir:stateDir,provider:embeddingRuntime,logger:{warn:m=>log('本地语义索引：'+m)}})

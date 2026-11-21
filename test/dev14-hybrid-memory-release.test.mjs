@@ -81,6 +81,32 @@ test('检索前按已核实 UID 限权，混合 FTS 候选和 ID 二次校验不
  for(const invalid of ['101 OR 1=1','../101','',null])assert.deepEqual(gate.semanticCandidates({query:'',domain:'bili-life',role:'friend',actorUid:invalid}),[])
 }))
 
+test('closed relationship reader leaves existing memory half-lives intact and logs once for a whole decay batch',()=>{
+ const dir=home(),clock={at:START},warnings=[]
+ let broken=false,lookups=0
+ const gate=createLifeMemoryGateway({dataDir:dir,now:()=>clock.at,getConfig:cfg,
+  getAccountTag:()=>ACCOUNT_TAG,getRelationship:()=>{
+   lookups++
+   if(broken)throw Error('relationship-index-closed')
+   return {stage:'familiar',permissionRole:'stranger',whitelisted:false}
+  },logger:{warn:message=>warnings.push(message)}})
+ try{
+  gate.recordEvents(Array.from({length:100},(_,i)=>social('101',String(10000+i),'我们聊过视频画面',START)))
+  const saved=JSON.parse(readFileSync(gate.file,'utf8')).episodes
+  const halfLives=saved.map(e=>e.relationHalfLifeDays)
+  assert.equal(saved.length,100)
+  broken=true;lookups=0
+  gate.status()
+  const after=JSON.parse(readFileSync(gate.file,'utf8')).episodes
+  assert.deepEqual(after.map(e=>e.relationHalfLifeDays),halfLives)
+  assert.ok(lookups<=2,'one failing read per batch, including next-fuzzy calculation')
+  assert.equal(warnings.length,1,'100 failed reads must be aggregated into one diagnostic')
+  assert.match(warnings[0],/100 条沿用已存半衰期/)
+  gate.status()
+  assert.equal(warnings.length,1,'rapid UI polling does not flood logs')
+ }finally{gate.close();rmSync(dir,{recursive:true,force:true})}
+})
+
 test('新收到互动不能当成旧记忆；好友/陌生人跨天再见可自然回忆，情绪和关系传给一次 AI',async()=>{
  const dir=home(),clock={at:START},uid='101',key=`social:${uid}:${BV}:2001`
  try{
