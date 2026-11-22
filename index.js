@@ -73,10 +73,13 @@ import {verifyRelocatedModelRuntime} from './lib/storage-model-runtime-check.mjs
 import {verifyPythonCachePaths} from './lib/storage-python-cache-check.mjs'
 import {verifyRelocatedLifeMemory} from './lib/storage-life-runtime-check.mjs'
 import {inspectRetainedLifeCopies} from './lib/storage-life-retained.mjs'
-import {queueLifeCleanup,readLifeCleanupJob} from './lib/storage-life-cleanup-queue.mjs'
+import {queueLifeCleanup,queueExternalLifeCleanup,readLifeCleanupJob} from './lib/storage-life-cleanup-queue.mjs'
+import {inspectExternalLifeCopy} from './lib/storage-external-life-retired.mjs'
 import {queueModelCleanup,readCleanupJob} from './lib/storage-cleanup-queue.mjs'
 import {queueDomainMigration,readMigrationJob,assertMigrationStartupSafe} from './lib/storage-migration-queue.mjs'
 import {storageTargetSuggestions} from './lib/storage-platform.mjs'
+import {storageArchiveInventory} from './lib/storage-archive-inventory.mjs'
+import {readLifeReturnEvidence} from './lib/storage-life-return-evidence.mjs'
 import { VIDEO_PICK_POLICY } from './lib/video-pick-policy.mjs'
 import {effectiveVideoCharter} from './lib/video-charter.mjs'
 import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
@@ -8418,7 +8421,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
   }
 
-  let storageModelVerification=null,storageModelVerificationBusy=false,storageLifeVerification=null
+  let storageModelVerification=null,storageModelVerificationBusy=false,storageLifeVerification=null,storageExternalLifeVerification=null
   const handle = async (req, res, url) => {
     refreshCfg()
     const path = url.pathname
@@ -8522,11 +8525,11 @@ logger:{warn:m=>log('社交意图：'+m)}
     // is NEVER performed by this HTTP handler: the button schedules a detached
     // worker that waits for DSH shutdown and rechecks all copies offline.
     if ((req.method==='GET'&&path==='/api/bili-duty/storage/location')||
-        (req.method==='POST'&&['/api/bili-duty/storage/check','/api/bili-duty/storage/verify-retained-model','/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/verify-python-cache','/api/bili-duty/storage/verify-life-memory','/api/bili-duty/storage/schedule-life-cleanup','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path))) {
+        (req.method==='POST'&&['/api/bili-duty/storage/check','/api/bili-duty/storage/verify-retained-model','/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/verify-python-cache','/api/bili-duty/storage/verify-life-memory','/api/bili-duty/storage/verify-external-life-copy','/api/bili-duty/storage/schedule-life-cleanup','/api/bili-duty/storage/schedule-external-life-cleanup','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path))) {
       const peer=String(req.socket?.remoteAddress||'')
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||
-         (req.method==='POST'&&['/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/verify-python-cache','/api/bili-duty/storage/verify-life-memory','/api/bili-duty/storage/schedule-life-cleanup','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path)&&(!origin||!host))||
+         (req.method==='POST'&&['/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/verify-python-cache','/api/bili-duty/storage/verify-life-memory','/api/bili-duty/storage/verify-external-life-copy','/api/bili-duty/storage/schedule-life-cleanup','/api/bili-duty/storage/schedule-external-life-cleanup','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path)&&(!origin||!host))||
          origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin))||
          String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'存储位置仅允许电脑本机同源管理中心查看和预检'})
@@ -8536,7 +8539,10 @@ logger:{warn:m=>log('社交意图：'+m)}
           currentDir:stateDir,defaultDir:location.defaultDir,relocated:location.relocated,
           usage:storageCategories(stateDir),domains:storageDomainsUsage(stateDir),groups:storageMigrationGroups(stateDir),
           retainedModel:inspectRetainedModelCopies({root:stateDir}),cleanupJob:readCleanupJob(stateDir),
-          retainedLife:inspectRetainedLifeCopies({root:stateDir}),lifeCleanupJob:readLifeCleanupJob(stateDir),migrationJob:readMigrationJob(stateDir),platform:process.platform,
+          retainedLife:inspectRetainedLifeCopies({root:stateDir}),lifeCleanupJob:readLifeCleanupJob(stateDir),
+          migrationJob:readMigrationJob(stateDir),lifeReturnEvidence:readLifeReturnEvidence(stateDir,{migrationJob:readMigrationJob(stateDir)}),
+          archives:storageArchiveInventory({root:stateDir,migrationJob:readMigrationJob(stateDir),
+            lifeReturnEvidence:readLifeReturnEvidence(stateDir,{migrationJob:readMigrationJob(stateDir)})}),platform:process.platform,
           suggestedTargets:storageTargetSuggestions(process.platform,homedir()),
           visionPythonPath:String(cfg.visionPythonPath||''),offlineMigrationOnly:true})
         if(path==='/api/bili-duty/storage/verify-retained-model')return sendJson(res,200,{
@@ -8556,17 +8562,29 @@ logger:{warn:m=>log('社交意图：'+m)}
           return sendJson(res,200,{...result,retainedCopy:{eligible:copies.eligible===true&&copies.verified===true,
             reason:copies.reason||''}})
         }
+        if(path==='/api/bili-duty/storage/verify-external-life-copy'){
+          storageExternalLifeVerification=null
+          if(['waiting','running'].includes(readMigrationJob(stateDir).status))throw Error('迁移尚未结束，不能验证旧 D 盘')
+          const result=inspectExternalLifeCopy({root:stateDir,verify:true})
+          storageExternalLifeVerification={ready:true,at:Date.now(),target:result.target,fingerprint:result.fingerprint}
+          return sendJson(res,200,result)
+        }
         if(path==='/api/bili-duty/storage/verify-python-cache'){
           if(['waiting','running'].includes(readMigrationJob(stateDir).status))
             throw Error('离线迁移任务尚未结束，请退出 DSH 并等待迁移完成后再验证')
           return sendJson(res,200,verifyPythonCachePaths({root:stateDir}))
         }
         if(path==='/api/bili-duty/storage/verify-model-runtime'){
+          if(['waiting','running'].includes(readMigrationJob(stateDir).status)||
+             ['waiting','running'].includes(readCleanupJob(stateDir).status))
+            throw Error('离线迁移或旧副本清理尚未结束，暂停模型实测')
           if(storageModelVerificationBusy)throw Error('迁移实测已经在进行，请勿重复启动')
           storageModelVerificationBusy=true;storageModelVerification=null
           try{
+            // Runtime verification belongs to the ACTIVE model partition, not
+            // to the existence of its already-deleted historical C-drive copy.
             const copies=inspectRetainedModelCopies({root:stateDir,verify:true})
-            if(!copies.eligible||!copies.verified)throw Error('旧副本 SHA-256 校验未通过：'+copies.reason)
+            const canCleanup=copies.eligible===true&&copies.verified===true
             const configBefore=JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])
             const result=await verifyRelocatedModelRuntime({root:stateDir,asrPython:asrPython(),
               asrModel:cfg.asrModel||'small',asrModelPath:cfg.asrModelPath||'',embeddingRuntime,
@@ -8576,12 +8594,13 @@ logger:{warn:m=>log('社交意图：'+m)}
             const configKey=JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])
             if(configKey!==configBefore)throw Error('实测期间模型配置改变，结果作废，请重新验证')
             const ticket=randomUUID()
-            storageModelVerification={ticket,at:Date.now(),target:result.target,ready:result.ready,
-              checks:result.checks,configKey}
+            storageModelVerification={ticket,at:Date.now(),target:result.target,ready:result.ready&&canCleanup,
+              checks:result.checks,configKey,canCleanup}
             const vision=result.checks.vision
             const evidence=vision.pendingReview?(vision.mode==='independent_dsh'?dshVisionReview.status():
               localVisionModels.reviewEvidence(vision.model)):null
-            return sendJson(res,200,{...result,ticket,bytes:copies.bytes,files:copies.files,
+            return sendJson(res,200,{...result,ticket,cleanupEligible:result.ready&&canCleanup,
+              oldCopyReason:copies.reason||'',bytes:copies.bytes,files:copies.files,
               review:vision.pendingReview?{reviewId:vision.reviewId,answer:String(evidence?.answer||''),mode:vision.mode}:null})
           }finally{storageModelVerificationBusy=false}
         }
@@ -8597,8 +8616,18 @@ logger:{warn:m=>log('社交意图：'+m)}
             :await localVisionModels.review(vision.model,{reviewId:vision.reviewId,accepted:body.accepted})
           vision.ok=reply.verified===true;vision.pendingReview=false
           vision.reason=vision.ok?'本人已检查并认可本轮真实图片识别':'图片识别未被认可，禁止清理旧副本'
-          storageModelVerification.ready=Object.values(storageModelVerification.checks).every(x=>x.ok===true)
-          return sendJson(res,200,{ok:true,ready:storageModelVerification.ready,checks:storageModelVerification.checks})
+          const runtimeReady=Object.values(storageModelVerification.checks).every(x=>x.ok===true)
+          storageModelVerification.ready=runtimeReady&&storageModelVerification.canCleanup===true
+          return sendJson(res,200,{ok:true,ready:runtimeReady,cleanupEligible:storageModelVerification.ready,
+            checks:storageModelVerification.checks})
+        }
+        if(path==='/api/bili-duty/storage/schedule-external-life-cleanup'){
+          if(body?.confirm!=='DELETE_VERIFIED_EXTERNAL_LIFE_COPY')throw Error('必须明确确认删除回迁后保留的旧 D 盘 Life 分区')
+          if(!storageExternalLifeVerification?.ready)throw Error('请先独立验证旧 D 盘副本')
+          const result=queueExternalLifeCleanup({root:stateDir,verification:storageExternalLifeVerification,
+            workerScript:join(pluginDir,'scripts','cleanup-retained-life-after-exit.mjs'),parentPid:process.pid})
+          storageExternalLifeVerification=null
+          return sendJson(res,200,result)
         }
         if(path==='/api/bili-duty/storage/schedule-life-cleanup'){
           if(body?.confirm!=='DELETE_RETAINED_LIFE_COPIES')throw Error('必须确认永久删除原位置 Life 旧副本')

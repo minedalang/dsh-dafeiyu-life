@@ -1798,7 +1798,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-backup .storage-choice-current small{line-height:1.55}
 #panel-backup #storage-target-suggestion{overflow-wrap:anywhere}
 #panel-backup #storage-python-cache-hint[hidden]{display:none!important}
-#panel-backup #storage-retained-model-cleanup[hidden],#panel-backup #storage-retained-model-vision-review[hidden],#panel-backup #storage-life-verify-panel[hidden],#panel-backup #storage-life-undo[hidden],#panel-backup #storage-life-cleanup[hidden]{display:none!important}
+#panel-backup #storage-retained-model-cleanup[hidden],#panel-backup #storage-retained-model-vision-review[hidden],#panel-backup #storage-life-verify-panel[hidden],#panel-backup #storage-life-undo[hidden],#panel-backup #storage-life-cleanup[hidden],#panel-backup #storage-external-life-panel[hidden],#panel-backup #storage-external-life-delete[hidden]{display:none!important}
 #panel-backup .storage-mode-option{display:grid;grid-template-columns:18px minmax(0,1fr);gap:8px;align-items:start;margin:0!important;padding:8px;border-radius:8px;background:var(--panel)}
 #panel-backup .storage-mode-option input{margin-top:3px}
 #panel-backup .storage-mode-option strong{display:block;font-size:12px}
@@ -2344,10 +2344,10 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     </div>
   </section>
 
-  <div class="storage-metric storage-retained-card" id="storage-retained-model-panel" aria-label="迁移后旧模型副本">
-    <div class="storage-retained-heading"><strong>🧹 迁移后保留的旧模型副本</strong><span class="storage-retained-tag">验证后可申请清理</span></div><span id="storage-retained-model-info">正在读取…</span>
-    <p class="muted">先一键实际加载 Whisper、运行 Embedding 向量推理及可用的视觉识别；校验前后模型文件 SHA-256。视觉识别若开启，需本人确认真实图片回答。全部通过后可点击清理按钮预约停机删除；绝不清理 Python、Life 记忆或未知文件。</p>
-    <button id="storage-retained-model-check" type="button">一键实测迁移结果</button>
+  <div class="storage-metric storage-retained-card" id="storage-retained-model-panel" aria-label="模型分盘运行实测和旧副本清理">
+    <div class="storage-retained-heading"><strong>🧪 模型分盘 · 一键运行实测</strong><span class="storage-retained-tag">独立于旧副本清理</span></div><span id="storage-retained-model-info">正在读取…</span>
+    <p class="muted">可随时验证当前生效模型目录的 Whisper 本地加载、Embedding 向量推理，以及已开启的视觉识别（需本人确认回答）。即使原 C 盘模型旧副本已清理，实测按钮仍可使用。只有旧副本独立通过 SHA-256 与功能检查时，才显示清理按钮。不会清理 Python、Life 或未知文件。</p>
+    <button id="storage-retained-model-check" type="button">一键验证当前模型运行</button>
     <div id="storage-retained-model-tests" class="muted" role="status" aria-live="polite"></div>
     <div id="storage-retained-model-vision-review" hidden>
       <p class="storage-alert">视觉识别已返回真实图片结果。请检查下方回答是否与测试图片一致；识图内容必须由本人确认。</p>
@@ -2361,6 +2361,21 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     </div>
     <div id="storage-retained-model-check-result" class="storage-status" data-state="neutral" role="status" aria-live="polite" aria-atomic="true"></div>
   </div>
+  <section class="storage-metric storage-retained-card" id="storage-archive-panel" aria-label="迁移回迁后隔离的历史副本">
+    <div class="storage-retained-heading"><strong>📦 历史隔离副本</strong><span class="storage-retained-tag">非当前生效目录 · 不自动删除</span></div>
+    <p class="muted">回迁时旧默认目录会隔离为 <code>.dafeiyu-return-old-*</code>。原外置 Life 分区会保留在旧位置，可能占用磁盘空间。旧目录绝不会被新迁移自动复用或覆盖；先核对副本，再明确决定是否删除。已有的其他隔离档案不自动清理。</p>
+    <div id="storage-archive-inventory" class="storage-status" data-state="neutral" role="status" aria-live="polite">正在读取历史副本…</div>
+    <div id="storage-external-life-panel" hidden>
+      <div class="storage-retained-heading"><strong>回迁后遗留的 D 盘 Life 分区</strong><span class="storage-retained-tag">单独验证 · 用户明确删除</span></div>
+      <p class="muted">如果需要再次迁往这个位置，请先检查旧 D 盘内容，并自行确认清理。<strong>不会自动接管或转移未知文件。</strong> 未留下回迁快照指纹的旧记录，必须证明旧 D 盘每个文件都在当前默认 Life 目录存在相同副本，否则禁止自动删除；<strong>仅凭相同内容无法判断文件是什么时候加入的，必须由使用者再确认历史目录没有需要单独保留的资料。</strong></p>
+      <button id="storage-external-life-check" type="button">检查旧 D 盘 Life 分区能否安全删除</button>
+      <div id="storage-external-life-result" class="storage-status" data-state="neutral" role="status" aria-live="polite">尚未检查旧 D 盘历史分区。</div>
+      <div id="storage-external-life-delete" hidden>
+        <p class="storage-alert">这是永久删除而不是迁移或撤回；只处理页面检查通过的旧 D 盘 Life 分区。点击后仍须再次确认，完整退出 DSH 后由离线助手复核。<strong>有回迁快照时，新增或变化均会被 SHA 检查拦截；旧版无快照时只能证明 C 盘存在相同文件，仍需要您人工审查。</strong>请自行确认已经有独立备份。</p>
+        <button id="storage-external-life-delete-button" class="danger" type="button">预约停机删除旧 D 盘 Life 分区</button>
+      </div>
+    </div>
+  </section>
   <details class="storage-relocate" id="storage-relocate">
     <summary>更改数据保存位置 <span>· 安全停机迁移</span></summary>
     <p class="muted">选择模型或 Python 缓存后，可直接预约退出后的安全迁移，无需复制命令。请正常完全退出 DSH，独立助手确认停机后才执行，之后重启查看结果；Life 记忆也支持一键预约严格停机迁移；整体 bili-duty 仍采用手动停机流程。Python 仅迁移包管理缓存，不重建依赖。</p>
@@ -2369,7 +2384,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <p class="muted" id="storage-domain-help" role="status" aria-live="polite">模型与影音视觉缓存：按整组安全迁移，不涉及 Python 环境重建。</p>
     <p class="muted" id="storage-python-cache-hint" hidden>仅迁移 uv-cache 与 pip-cache；不会重建、移动或重新安装 Python 解释器、虚拟环境和依赖。</p></div>
     <div class="storage-choice-current"><span>所选项目当前位置（按实际生效路径）</span><strong id="storage-domain-current">正在读取…</strong><small id="storage-domain-current-parts"></small></div></div>
-    <label for="storage-target">新目录（本机磁盘的空文件夹）</label>
+    <label for="storage-target">新目录（必须为空，不允许自动复用历史分区）</label>
     <p class="muted">建议目录（示例，请按实际磁盘修改）：<code id="storage-target-suggestion">正在读取平台路径…</code> <button id="storage-use-suggestion" type="button">使用建议目录</button>。请按实际磁盘修改，不会自动创建或迁移。</p>
     <div class="storage-controls"><input id="storage-target" type="text" autocomplete="off" spellcheck="false" placeholder="请输入本机绝对路径"><button id="storage-check" type="button">检查路径</button><button id="storage-return-check" type="button" hidden>迁回默认目录 · 安全预检</button></div>
     <div class="storage-status storage-inline-status" id="storage-check-result" data-state="neutral" role="status" aria-live="polite">仅检查路径，不移动或删除文件。</div>
