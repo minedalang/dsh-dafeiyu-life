@@ -4,6 +4,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symli
 import {join,dirname} from 'node:path'
 import {tmpdir} from 'node:os'
 import {spawnSync} from 'node:child_process'
+import {fileURLToPath} from 'node:url'
 import {migrateDomainOffline,storageDataPath,rollbackDomainOffline} from '../lib/storage-layout.mjs'
 import {inspectRetainedModelCopies,cleanupRetainedModelCopies} from '../lib/storage-maintenance.mjs'
 import {storageTargetSuggestions,storageOfflineCommand} from '../lib/storage-platform.mjs'
@@ -98,15 +99,15 @@ test('UI renders distinct root disk usage, active partitions, old-copy preview a
 
 test('CLI inspection is read-only and advanced Python rebuild is refused on every platform',()=>run(({temp,root})=>{
  setup({temp,root})
- const cli=new URL('../scripts/migrate-bili-duty-domain.mjs',import.meta.url)
- const result=spawnSync(process.execPath,[cli.pathname,'--root',root,'--inspect-retained-model'],{encoding:'utf8'})
- assert.equal(result.status,0)
+ const cli=fileURLToPath(new URL('../scripts/migrate-bili-duty-domain.mjs',import.meta.url))
+ const result=spawnSync(process.execPath,[cli,'--root',root,'--inspect-retained-model'],{encoding:'utf8'})
+ assert.equal(result.status,0,`inspect failed: ${result.error?.message||result.stderr||result.stdout}`)
  assert.match(result.stdout,/"verified": true/)
  assert.equal(existsSync(join(root,'.hf-cache','hub','model.bin')),true)
  {
-  const denied=spawnSync(process.execPath,[cli.pathname,'--root',root,'--domain','python','--mode','rebuild',
+  const denied=spawnSync(process.execPath,[cli,'--root',root,'--domain','python','--mode','rebuild',
    '--to',join(temp,'pythonData'),'--confirm-stopped'],{encoding:'utf8'})
-  assert.equal(denied.status,1)
+  assert.equal(denied.status,1,`rebuild refusal returned unexpected status: ${denied.error?.message||denied.stderr||denied.stdout}`)
   assert.match(denied.stderr,/仅可迁移 uv\/pip 包管理缓存/)
   assert.equal(existsSync(join(temp,'pythonData')),false)
  }

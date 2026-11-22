@@ -8594,7 +8594,7 @@ logger:{warn:m=>log('社交意图：'+m)}
             workerScript:script,parentPid:process.pid}))
         }
         if(path==='/api/bili-duty/storage/schedule-migration'){
-          if(!['model','python'].includes(body?.domain))throw Error('Life 记忆迁移仍必须停机执行，不允许通过管理页自动排队')
+          if(!['model','python','memory'].includes(body?.domain))throw Error('仅允许预约模型、Python 缓存和 Life 记忆分区的停机迁移')
           if(body?.confirm!=='SCHEDULE_STOPPED_MIGRATION')throw Error('请明确确认退出 DSH 后执行迁移')
           return sendJson(res,200,queueDomainMigration({root:stateDir,domain:body.domain,
             target:body?.target,mode:body?.mode,returnHome:body?.returnHome===true,

@@ -56,10 +56,66 @@ test('Python one-click moves only uv/pip caches, never rebuilds environments',()
  assert.equal(storageLayoutStatus(root).domains.python.mode,'cache')
 }))
 
-test('Life-memory auto scheduling is rejected and root data unaffected',()=>fixture(async({temp,root})=>{
- assert.throws(()=>queueDomainMigration({root,domain:'memory',target:join(temp,'lifeData'),workerScript:'worker.mjs'}),/Life 记忆/)
+test('Life memory is queued only; after full stop, deep details, revocations and index move together',()=>fixture(async({temp,root})=>{
+ put(join(root,'life-memory','deep','fragment.json'),'newest-life')
+ put(join(root,'long-term-memory','facts.json'),'newest-long-term')
+ put(join(root,'detail-protection','revoked.json'),'forgotten-id')
+ put(join(root,'embedding-memory-index','index.bin'),'current-index')
+ const target=join(temp,'different drive','lifeData')
+ const queued=queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:88888,spawnImpl:spawnFake})
+ assert.equal(queued.scheduled,true)
+ assert.equal(existsSync(target),false)
+ assert.throws(()=>assertMigrationStartupSafe(root),/waiting/)
+ assert.equal(readMigrationJob(root).domain,'memory')
+ const res=await runQueuedMigration({root,parentPid:88888,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ assert.equal(res.ok,true)
+ assert.equal(readMigrationJob(root).status,'completed')
+ assert.equal(storageLayoutStatus(root).domains.memory.root,target)
+ for(const [rel,expected] of [
+  ['life-memory/deep/fragment.json','newest-life'],
+  ['long-term-memory/facts.json','newest-long-term'],
+  ['detail-protection/revoked.json','forgotten-id'],
+  ['embedding-memory-index/index.bin','current-index']]){
+  assert.equal(readFileSync(join(target,...rel.split('/')),'utf8'),expected)
+  assert.equal(readFileSync(join(root,...rel.split('/')),'utf8'),expected)
+ }
+ assert.match(readMigrationJob(root).notice,/遗忘保护/)
  assert.throws(()=>queueDomainMigration({root,domain:'python',mode:'rebuild',target:join(temp,'py'),workerScript:'worker.mjs'}),/仅支持 uv\/pip|不提供/)
+}))
+
+test('Life memory return-home takes current authoritative copy, not stale root history',()=>fixture(async({temp,root})=>{
+ put(join(root,'long-term-memory','facts.json'),'old-long-term')
+ put(join(root,'detail-protection','revoked.json'),'old-revocations')
+ const target=join(temp,'external','lifeData')
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:5111,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:5111,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ put(join(target,'life-memory','unique.json'),'new-life-while-external')
+ put(join(target,'detail-protection','revoked.json'),'new-revocations')
+ queueDomainMigration({root,domain:'memory',returnHome:true,workerScript:'worker.mjs',parentPid:5112,spawnImpl:spawnFake})
+ assert.equal(readMigrationJob(root).operation,'return-home')
+ const result=await runQueuedMigration({root,parentPid:5112,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ assert.equal(result.ok,true)
+ assert.equal(storageLayoutStatus(root).domains.memory.configured,false)
+ assert.equal(readFileSync(join(root,'life-memory','unique.json'),'utf8'),'new-life-while-external')
+ assert.equal(readFileSync(join(root,'detail-protection','revoked.json'),'utf8'),'new-revocations')
+ assert.equal(readFileSync(join(target,'detail-protection','revoked.json'),'utf8'),'new-revocations')
+}))
+
+test('Life memory refuses changed source or non-stopped processes, preserving old memory and pointer',()=>fixture(async({temp,root})=>{
+ const target=join(temp,'lifeData')
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:6677,spawnImpl:spawnFake})
+ put(join(root,'detail-protection','just-forgot.json'),'forgotten')
+ const result=await runQueuedMigration({root,parentPid:6677,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ assert.equal(result.ok,false)
+ assert.match(result.reason,/发生变化/)
+ assert.equal(existsSync(target),false)
  assert.equal(existsSync(join(root,'storage-layout-v1.json')),false)
+ assert.equal(readFileSync(join(root,'detail-protection','just-forgot.json'),'utf8'),'forgotten')
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:6678,spawnImpl:spawnFake})
+ const denied=await runQueuedMigration({root,parentPid:6678,jobId:readMigrationJob(root).id,processIsAlive:()=>false,
+  inspectProcesses:()=>({ok:false,conflicts:['dsh-headless']})})
+ assert.equal(denied.ok,false)
+ assert.equal(existsSync(target),false)
 }))
 
 test('conflicting processes fail closed without changing source or destination',()=>fixture(async({temp,root})=>{
@@ -116,7 +172,7 @@ test('in-progress or expired running job blocks DSH startup to prevent concurren
  assert.throws(()=>queueDomainMigration({root,domain:'model',target,workerScript:'worker.mjs',spawnImpl:spawnFake}),/已有待处理/)
 }))
 
-test('management UI uses a shutdown queue, retains separate manual Life workflow, and never HTTP-copies',()=>{
+test('management UI queues all three domain groups but keeps root migration offline, never HTTP-copies',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const script=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
@@ -124,8 +180,10 @@ test('management UI uses a shutdown queue, retains separate manual Life workflow
  for(const id of ['storage-schedule-migration','storage-scheduled-steps','storage-migration-job-status','storage-offline-steps'])
   assert.ok(html.includes(`id="${id}"`),id)
  assert.match(script,/request\('\/storage\/schedule-migration'/)
- assert.match(script,/domain==='model'\|\|domain==='python'/)
- assert.match(script,/if\(domain==='model'\|\|domain==='python'\)/)
+ assert.match(script,/\['model','python','memory'\]\.includes\(domain\)/)
+ assert.match(script,/Life 记忆已迁移 · 请核验回忆与遗忘保护/)
+ assert.match(script,/Life 记忆、深层详情、遗忘保护与向量索引必须一致迁移/)
+ assert.match(host,/\['model','python','memory'\]\.includes\(body\?\.domain\)/)
  assert.match(host,/assertMigrationStartupSafe\(stateDir\)/)
  assert.match(host,/SCHEDULE_STOPPED_MIGRATION/)
  assert.match(host,/仅允许电脑本机同源/)
