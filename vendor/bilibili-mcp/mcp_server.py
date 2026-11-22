@@ -1743,15 +1743,16 @@ async def bili_preview_observation(bvid: str, description: str) -> str:
         note = _safe_line(description, 240)
         if len(note) < 8:
             raise ValueError('请填写8字以上的具体可见画面描述')
-        cache = _DUTY_HOME/'vision-cache'/f'{bv}.json'
-        cache.parent.mkdir(parents=True,exist_ok=True)
+        cache = _VISION_CACHE_HOME/'vision-cache'/f'{bv}.json'
         record = {'model':os.environ.get('BILI_VIDEO_MODEL_ID') or 'DSH视频模型',
                   'provider':'dsh-video-agent', 'frames_limit':len(_VISION_FRAMES_SERVED[bv]),
                   'times':_VISION_FRAMES_SERVED[bv], 'description':note,
                   'origin':'video_agent_self_report_unverified'}
-        temp = cache.with_suffix('.tmp')
-        temp.write_text(json.dumps(record,ensure_ascii=False),encoding='utf8')
-        os.replace(temp,cache)
+        from preview_vision import _save_vision_cache
+        cache_error=_save_vision_cache(cache,record)
+        if cache_error:
+            return json.dumps({'ok':False,'errorCode':cache_error,
+                               'error':'视觉观察缓存写入失败；本次观察没有持久化'},ensure_ascii=False)
         return json.dumps({'ok':True,'status':'agent_observation_unverified','bvid':bv,
                            'description':note,'notice':'视频模型自述观察，未独立核验；只用于低清梗线索'},ensure_ascii=False)
     except Exception as exc:
@@ -1761,6 +1762,9 @@ async def bili_preview_observation(bvid: str, description: str) -> str:
 # ========== v2.4.0: 最小文件能力（只能访问插件自己的固定文件） ==========
 # 注意：Agent 不再加载任何通用 FS/Shell 工具。这里的输入都不能提供文件名或路径。
 _DUTY_HOME = Path(os.environ.get("BILI_DUTY_HOME") or Path(__file__).resolve().parent).resolve()
+# Media/visual cache can be an independently migrated storage partition.
+# Do not silently read the old root after the user moved modelData.
+_VISION_CACHE_HOME = Path(os.environ.get('DSH_MEDIA_CACHE_HOME') or _DUTY_HOME).resolve()
 _BV_PATTERN = re.compile(r"^BV[0-9A-Za-z]{10}$")
 
 
@@ -1908,7 +1912,7 @@ def _meme_save(name, meaning, bvid, evidence, aliases="", kind="梗", evidence_t
     if source_type in ('标题','低清预览') and trust == '有文字依据': trust='待核实'
     if source_type == '低清预览':
         # 防止模型只是声称看见画面就写入知识库：必须是本视频真实视觉请求缓存的片段。
-        cache=_DUTY_HOME / 'vision-cache' / f'{bv}.json'
+        cache=_VISION_CACHE_HOME / 'vision-cache' / f'{bv}.json'
         try: raw=json.loads(cache.read_text('utf8'))
         except (ValueError,OSError): raise ValueError('未找到成功的视觉识别缓存，不能建立外观记忆')
         if ev not in str(raw.get('description') or ''):
@@ -2084,7 +2088,7 @@ def _meme_observe(name,bvid,evidence,evidence_type='字幕'):
     ev=_meme_clean(evidence,180)
     source_type=evidence_type if evidence_type in ('字幕','评论','简介','标题','弹幕','其他文字','低清预览') else '其他文字'
     if source_type=='低清预览':
-        cache=_DUTY_HOME/'vision-cache'/f'{bv}.json'
+        cache=_VISION_CACHE_HOME/'vision-cache'/f'{bv}.json'
         try: raw=json.loads(cache.read_text('utf8'))
         except (ValueError,OSError): raise ValueError('没有有效视觉缓存，不能记录视觉梗线索')
         if ev not in str(raw.get('description') or ''):raise ValueError('视觉证据必须引用实际缓存描述')

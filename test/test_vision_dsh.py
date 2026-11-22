@@ -350,3 +350,51 @@ class TestDshImageSelftestDiagnostics(unittest.TestCase):
             self.assertEqual(result['diagnosticCode'],'provider_api')
             self.assertEqual(result['diagnostics']['providerApi']['diagnosticCode'],'provider_api')
             self.assertEqual(result['diagnostics']['modelAnswer']['status'],'not_returned')
+
+
+
+def test_dsh_migrated_cache_uses_effective_child_env_not_process_env(tmp_path):
+    """The explicit media partition must own all reads/writes after relocation."""
+    env=configured(tmp_path)
+    target=tmp_path/'modelData'
+    other=tmp_path/'stale-root'
+    env['DSH_MEDIA_CACHE_HOME']=str(target)
+    def runner(args,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(
+            json.dumps({'bvid':'BV1234567890','times':[3.0],
+                        'perception_source_requested':'preview','view_depth':'standard'}),
+            encoding='utf8')
+        return SimpleNamespace(returncode=0,
+            stdout='VISION_DESC: 画面中绿色动画角色在街道上挥手。'.encode(),stderr=b'')
+    with patch.dict('os.environ',{'DSH_MEDIA_CACHE_HOME':str(other)}), \
+         patch('preview_vision._record_vision_attempt',return_value=True):
+        result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=runner)
+        assert result['ok'] is True and result['cacheSaved'] is True
+        assert list((target/'vision-cache').glob('*.json'))
+        assert not (other/'vision-cache').exists()
+        # A subsequent call must read the same chosen partition, never old cache.
+        cached=module.describe_with_dsh('BV1234567890',tmp_path,env=env,
+            runner=lambda *a,**kw:1/0)
+        assert cached['status']=='cached'
+
+
+def test_dsh_migrated_cache_permission_failure_does_not_discard_visual_receipt(tmp_path):
+    env=configured(tmp_path)
+    env['DSH_MEDIA_CACHE_HOME']=str(tmp_path/'modelData')
+    def runner(args,**kwargs):
+        Path(kwargs['env']['BILI_VISION_PROOF_FILE']).write_text(
+            json.dumps({'bvid':'BV1234567890','times':[4.0],
+                        'perception_source_requested':'preview','view_depth':'standard'}),
+            encoding='utf8')
+        return SimpleNamespace(returncode=0,
+            stdout='VISION_DESC: 蓝色房间内可见一个卡通人物。'.encode(),stderr=b'')
+    with patch('preview_vision._record_vision_attempt',return_value=True), \
+         patch('preview_vision._save_vision_cache',return_value='vision_cache_permission_denied') as saver:
+        result=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=runner)
+    assert result['ok'] is True and result['status']=='analyzed'
+    assert result['cacheSaved'] is False
+    assert result['cacheErrorCode']=='vision_cache_permission_denied'
+    assert '蓝色房间' in result['description']
+    assert saver.call_args.args[0].parent==tmp_path/'modelData'/'vision-cache'
+    # Read-only evidence is not silently persisted to the old C-drive root.
+    assert not (tmp_path/'vision-cache').exists()

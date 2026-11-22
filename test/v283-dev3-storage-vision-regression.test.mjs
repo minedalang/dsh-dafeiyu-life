@@ -118,3 +118,16 @@ test('video health labels CURRENT selected Ollama model, never last DSH model; f
   const v3=switched.channels.find(c=>c.id==='video-vision')
   assert.equal(v3.state,'unknown');assert.match(v3.detail,/已更换/)
 })
+
+
+
+test('migrated media partition is shared by standalone DSH and reused-video visual observations',()=>{
+  const isolated=source('lib/vision_dsh.py')
+  const mcp=source('vendor/bilibili-mcp/mcp_server.py')
+  assert.match(isolated,/cached=Path\(env\.get\('DSH_MEDIA_CACHE_HOME'\) or home\)/)
+  assert.match(isolated,/cache_error=_save_vision_cache\(cached,record\)/)
+  assert.match(mcp,/_VISION_CACHE_HOME = Path\(os\.environ\.get\('DSH_MEDIA_CACHE_HOME'\) or _DUTY_HOME\)/)
+  assert.equal((mcp.match(/_VISION_CACHE_HOME\s*\/\s*'vision-cache'/g)||[]).length,3)
+  assert.doesNotMatch(mcp,/cache\s*=\s*_DUTY_HOME\s*\/\s*'vision-cache'/)
+  assert.match(mcp,/_save_vision_cache\(cache,record\)/)
+})

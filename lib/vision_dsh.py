@@ -321,7 +321,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         if network_budget_bytes is not None:suffix+='-cap'+str(network_budget_bytes)
         if frame_budget_limit is not None:suffix+='-frames'+str(frame_budget_limit)
         source_suffix='-adaptive' if perception_source=='adaptive' else ''
-        cached=Path(os.environ.get('DSH_MEDIA_CACHE_HOME') or home)/'vision-cache'/f'{bvid}{source_suffix}-v{sampler_version}-{view_depth}{suffix}.json'
+        cached=Path(env.get('DSH_MEDIA_CACHE_HOME') or home)/'vision-cache'/f'{bvid}{source_suffix}-v{sampler_version}-{view_depth}{suffix}.json'
         if cached.is_file() and not debug_capture:
             try:
                 d=json.loads(cached.read_text(encoding='utf8'))
@@ -459,14 +459,18 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
                     'perception_source_requested':perception_source,
                     'adaptive_fallback':_verified_adaptive_fallback(observed),
                     'notice':'真实视频不可用，仅据官方低清预览得到观察'}
-        cached.parent.mkdir(parents=True,exist_ok=True)
-        tmp=cached.with_suffix('.tmp')
-        tmp.write_text(json.dumps(record,ensure_ascii=False),encoding='utf8')
-        os.replace(tmp,cached)
+        # The migrated vision cache is optional storage, not a condition for a
+        # verified model receipt. Reuse the unique-file atomic writer from the
+        # local Ollama path; never race on a shared <BV>.tmp or lose evidence
+        # because the target disk denied a cache write.
+        from preview_vision import _save_vision_cache
+        cache_error=_save_vision_cache(cached,record)
         return {'ok':True,'status':'analyzed','bvid':bvid,'description':description,
                 'times':record['times'],'sampling':record.get('sampling'),'ocr':record.get('ocr'),'focus_window':focus,
                 'image_source':record['image_source'],'debugCapture':record.get('debugCapture'),
                 'perception_source_requested':perception_source,
+                'cacheSaved':cache_error is None,
+                **({'cacheErrorCode':cache_error} if cache_error else {}),
                 'notice':'独立 DSH 视觉模型根据采样图片自述观察，尚未独立核实'}
     except Exception as exc:
         return {'ok':False,'status':'vision_config_error','error':str(exc)[:180]}
