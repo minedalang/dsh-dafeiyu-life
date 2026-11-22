@@ -321,7 +321,7 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         if network_budget_bytes is not None:suffix+='-cap'+str(network_budget_bytes)
         if frame_budget_limit is not None:suffix+='-frames'+str(frame_budget_limit)
         source_suffix='-adaptive' if perception_source=='adaptive' else ''
-        cached=home/'vision-cache'/f'{bvid}{source_suffix}-v{sampler_version}-{view_depth}{suffix}.json'
+        cached=Path(os.environ.get('DSH_MEDIA_CACHE_HOME') or home)/'vision-cache'/f'{bvid}{source_suffix}-v{sampler_version}-{view_depth}{suffix}.json'
         if cached.is_file() and not debug_capture:
             try:
                 d=json.loads(cached.read_text(encoding='utf8'))

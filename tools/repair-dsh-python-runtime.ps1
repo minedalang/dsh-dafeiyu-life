@@ -54,12 +54,18 @@ try {
   $BasePython=(Resolve-Path -LiteralPath $BasePython).Path
   Write-Host '检查普通权限基础 Python 的可写性与版本…'
   Assert-HealthyPython $BasePython $false
-  $venv=Join-Path $DutyHome '.venv'
+  $resolver=Join-Path $PSScriptRoot '..\scripts\resolve-bili-duty-storage.mjs'
+  if (!(Test-Path -LiteralPath $resolver -PathType Leaf)) { throw '没有找到与当前版本匹配的安全分区路径解析器。' }
+  $node=Get-Command node -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $node) { throw '需要可用的 Node.js 来解析已迁移的 Python 存储位置；拒绝误写旧 C 盘路径。' }
+  $resolved=(& $node.Source $resolver '--root' $DutyHome '--item' '.venv' 2>&1 | Out-String).Trim()
+  if ($LASTEXITCODE -ne 0 -or !$resolved -or ![IO.Path]::IsPathRooted($resolved)) { throw ('安全解析 Python 位置失败：' + $resolved) }
+  $venv=$resolved
   $candidate=Join-Path $venv 'Scripts\python.exe'
   $stamp=(Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0,8)
   if (Test-Path -LiteralPath $venv) {
     if ((Get-Item -LiteralPath $venv).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw '拒绝修改符号链接虚拟环境。' }
-    $old=Join-Path $DutyHome ('.venv.backup-'+$stamp)
+    $old=Join-Path (Split-Path -Parent $venv) ('.venv.backup-'+$stamp)
     Move-Item -LiteralPath $venv -Destination $old -ErrorAction Stop
     Write-Host '旧 .venv 已备份；没有清理 B站账号或 Life 账本。'
   }
@@ -86,7 +92,7 @@ try {
   if ($old -and (Test-Path -LiteralPath $old)) {
     try {
       if ($venv -and (Test-Path -LiteralPath $venv)) {
-        $failed=Join-Path $DutyHome ('.venv.failed-'+[guid]::NewGuid().ToString('N').Substring(0,8))
+        $failed=Join-Path (Split-Path -Parent $venv) ('.venv.failed-'+[guid]::NewGuid().ToString('N').Substring(0,8))
         Move-Item -LiteralPath $venv -Destination $failed
       }
       Move-Item -LiteralPath $old -Destination $venv -ErrorAction Stop

@@ -1,3 +1,4 @@
+%% 2.8.3-dev.3：模型 / Python / 影音缓存 / Life 记忆均经可信 storageDataPath 解析；离线迁移保留旧件。dev.4 补看与深浅记忆自动写入尚未实现。
 %% 2.8.3-dev.2：DSH 业务目录仅经独立冷迁移引导切换；LifeMemoryGateway 已增加受控清晰记忆详情附件接口、fuzzy 失效、遗忘保护与备份一致性；真实视频深层写入和自然回忆尚未接入。
 %% 2.8.2-dev.50：Life 已核验视频资料后，将同账号执行结果的受控 continuationState 写入现有 Life 事件账本；日记区分已继续行动、自主停止、后续动作未执行与 Episode 完成。旧记录只读保守显示，不补造 BV/画面/模型原因，不增模型调用或新账本。
 %% 2.8.2-dev.49：仅视频 Agent 本轮，单次选片读标题/热度/简介；当前账号+轮次真实入选后才提供统一看视频动作，同步尝试画面及字幕/可选 ASR 且各自验收；Life 独立 Episode、评论自由选择与外发门禁不变。
@@ -41,6 +42,9 @@ flowchart LR
   videoRecovery["明确观看后先完整 DURL，失败按预算重试 MP4 / DASH"]
   video -.-> videoRecovery
   %% @code videoRecovery | lib/adaptive_video.py | def _acquire_adaptive_frames_impl
+  storageOptions["Life 候选不因数据分盘获得新权限；只改变资源的可信路径"]
+  %% @code storageOptions | lib/storage-layout.mjs | export function storageDataPath
+  video -.-> storageOptions
   subgraph inputs["有事实来源，才能构成候选"]
     sourceTodo["原 accepted TODO：open/deferred 且到期"]
     sourceInterest["LifeInterests：账号绑定、跨日自主选片兴趣及有时效的开放式好奇"]

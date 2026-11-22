@@ -75,12 +75,18 @@ try {
   }
   $req=Join-Path $PSScriptRoot '..\vendor\bilibili-mcp\requirements.txt'
   if (-not (Test-Path -LiteralPath $req -PathType Leaf)) { throw '找不到随完整源码交付的 MCP requirements.txt。' }
-  $target=Join-Path $DutyHome '.vision-venv'
+  $resolver=Join-Path $PSScriptRoot '..\scripts\resolve-bili-duty-storage.mjs'
+  if (!(Test-Path -LiteralPath $resolver -PathType Leaf)) { throw '没有找到与当前版本匹配的安全分区路径解析器。' }
+  $node=Get-Command node -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $node) { throw '需要可用的 Node.js 来解析已迁移的 Python 存储位置；拒绝误写旧 C 盘路径。' }
+  $resolved=(& $node.Source $resolver '--root' $DutyHome '--item' '.vision-venv' 2>&1 | Out-String).Trim()
+  if ($LASTEXITCODE -ne 0 -or !$resolved -or ![IO.Path]::IsPathRooted($resolved)) { throw ('安全解析 Python 位置失败：' + $resolved) }
+  $target=$resolved
   $candidate=Join-Path $target 'Scripts\python.exe'
   $stamp=(Get-Date -Format 'yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,8)
   if (Test-Path -LiteralPath $target) {
     if ((Get-Item -LiteralPath $target).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw '拒绝修改符号链接视觉环境。' }
-    $backup=Join-Path $DutyHome ('.vision-venv.backup-'+$stamp)
+    $backup=Join-Path (Split-Path -Parent $target) ('.vision-venv.backup-'+$stamp)
     Move-Item -LiteralPath $target -Destination $backup -ErrorAction Stop
     Write-Host '已保留旧视觉环境的备份；主 .venv 未改动。'
   }
@@ -113,7 +119,7 @@ try {
   Write-Warning $_.Exception.Message
   if ($target -and (Test-Path -LiteralPath $target)) {
     try {
-      $failed=Join-Path $DutyHome ('.vision-venv.failed-'+[guid]::NewGuid().ToString('N').Substring(0,8))
+      $failed=Join-Path (Split-Path -Parent $target) ('.vision-venv.failed-'+[guid]::NewGuid().ToString('N').Substring(0,8))
       Move-Item -LiteralPath $target -Destination $failed -ErrorAction Stop
       Write-Warning '未通过检查的视觉环境已隔离为 .vision-venv.failed-*。'
     } catch { Write-Warning '无法隔离未通过检查的新视觉环境，请不要将它填写到配置中。' }

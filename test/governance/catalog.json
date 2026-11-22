@@ -820,6 +820,11 @@
       "owner": "life-memory-gateway",
       "kind": "security",
       "intent": "Deep detail admission closed by default, bounded fragments, account isolation, clear-to-fuzzy revocation, backup orphan reconciliation and provenance."
+    },
+    "v283-dev3-storage-domains.test.mjs": {
+      "owner": "storage-layout-and-migration",
+      "kind": "security",
+      "intent": "Fail-closed per-domain storage identity, offline copy and rollback, HF snapshots, memory backup continuity, Python rebuild, and management preflight."
     }
   },
   "protected": [

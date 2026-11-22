@@ -11,7 +11,9 @@ test('visual interpreter configured by user outranks unhealthy main venv',()=>{
   assert.match(index,/missing_mcp_dependencies|missingModules/)
 })
 test('isolated visual repair never renames or deletes the main .venv and requires native copies',()=>{
-  assert.match(repair,/Join-Path \$DutyHome '\.vision-venv'/)
+  assert.match(repair,/resolve-bili-duty-storage\.mjs/)
+  assert.match(repair,/'--item' '\.vision-venv'/)
+  assert.match(repair,/\$target=\$resolved/)
   assert.match(repair,/'-m' 'venv' '--copies'/)
   assert.match(repair,/\[switch\]\$ProbeOnly/)
   assert.match(repair,/Inspect-Python \$candidate \$DutyHome \$true/)

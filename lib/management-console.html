@@ -2230,16 +2230,20 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="storage-compact" id="storage-location-panel" aria-label="本地存储管理">
   <div class="storage-heading"><div><h3>📂 存储位置</h3><p class="muted">业务数据、运行环境和缓存都从当前目录读取。迁移不会重置鱼鱼的记忆。</p></div><button id="storage-refresh" type="button">刷新占用</button></div>
   <p class="storage-current"><span>当前数据目录</span><strong id="storage-current-path">正在读取…</strong></p>
-  <div class="storage-metrics" id="storage-metrics" aria-label="数据占用类别"></div>
+  <div class="storage-metrics" id="storage-metrics" aria-label="原业务根目录物理占用（含迁移后保留的旧副本）"></div>
+  <p class="muted">上方显示当前业务根目录物理占用（可能包含保留的旧副本），下方是每个分区实际正在使用的位置。</p>
+  <div id="storage-domain-list" class="storage-domains" aria-label="独立存储分区"></div>
   <details class="storage-relocate" id="storage-relocate">
     <summary>更改数据保存位置 <span>· 安全冷迁移</span></summary>
-    <p class="muted">新位置将接收整个大肥鱼业务目录（含记忆和 AI 运行环境）。为了保护账号与数据，必须完全退出 DSH 后才真正迁移。</p>
+    <p class="muted">选择要迁移的部分，也可以继续整体迁移。所有更改必须完全退出 DSH 后执行；仅通过只读检查不会搬走或删除任何内容。Python 环境采用目标目录重建，不直接复制虚拟环境。</p>
+    <label for="storage-domain">迁移哪一部分</label>
+    <select id="storage-domain"><option value="">整个 bili-duty 业务目录（现有冷迁移）</option><option value="whisper">Whisper 语音模型缓存</option><option value="embedding">Embedding 模型和运行时</option><option value="python">Python 虚拟环境与 uv 缓存（重建）</option><option value="media">音视频与视觉缓存</option><option value="memory">Life 记忆、深层附件与遗忘保护</option></select>
     <label for="storage-target">新目录（本机磁盘的空文件夹）</label>
     <div class="storage-controls"><input id="storage-target" type="text" autocomplete="off" spellcheck="false" placeholder="例如 D:\DSHData\bili-duty"><button id="storage-check" type="button">检查路径</button></div>
     <p class="muted" id="storage-check-result" role="status" aria-live="polite">仅检查，不会移动或删除现有文件。</p>
     <div id="storage-offline-steps" hidden><p class="storage-alert">请先退出 DSH Desktop、Headless 和相关 Python 进程，再在 PowerShell 执行以下命令；迁移完成后重新启动 DSH。原目录不会自动删除。</p><pre id="storage-offline-command" class="storage-command"></pre><button id="storage-copy-command" type="button">复制迁移命令</button></div>
   </details>
-  <p class="storage-footnote">如果改的是整个 DSH 的 HOME，请使用 DSH 自身的路径设置；本功能只迁移大肥鱼。缓存独立分盘会在后续专项评估，不会自动清理模型与环境。</p>
+  <p class="storage-footnote">迁移后需要重启、逐项验证模型及记忆。保留的旧目录不会自动清理；完整离线快照应覆盖当前各个数据分区。Ollama 模型由 Ollama 自己管理，插件不会擅自迁移或删除。</p>
 </div>
 <div class="backup-layout">
   <div class="settings-section backup-main-card">

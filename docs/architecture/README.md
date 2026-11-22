@@ -6,7 +6,7 @@
 
 **下方 `dev.N` 条目均为当时的技术记录与验收快照，不再描述当前源码版本。** 历史阶段的“待验收”“未发布”等措辞应按记录发生时间理解。
 
-> **下一版专项规划：** [2.8.3 视频补看与深浅视觉记忆](./2.8.3-video-perception-memory-roadmap.md)（未实现）；[通用渐进式回忆方案](./future-layered-memory-progressive-recall-proposal.md)。原定 2.9.0 角色认知成长后移到视频/记忆基础验收之后。
+> **2.8.3 三阶段实施：** [dev.3 分区存储与安全迁移](./2.8.3-dev3-storage-domains.md)（候选待实机）→ dev.4 [视频补看与深浅视觉记忆](./2.8.3-video-perception-memory-roadmap.md)（未实现）；[通用渐进式回忆方案](./future-layered-memory-progressive-recall-proposal.md)。原定 2.9.0 角色认知成长后移到视频/记忆基础验收之后。
 
 ## 历史开发记录（保留原始审计信息）
 

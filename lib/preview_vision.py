@@ -746,7 +746,7 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
     if enabled and not return_frames and not model:
         return {'ok':False,'error':'视觉模型 ID 尚未配置'}
     suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
-    cache=home/'vision-cache'/f'{bvid}{f"-preview-board-v{PREVIEW_BOARD_VERSION}" if storyboard else ""}{suffix}.json'
+    cache=Path(os.environ.get('DSH_MEDIA_CACHE_HOME') or home)/'vision-cache'/f'{bvid}{f"-preview-board-v{PREVIEW_BOARD_VERSION}" if storyboard else ""}{suffix}.json'
     sampler_version=PREVIEW_BOARD_VERSION if storyboard else (_FOCUS_SAMPLER_VERSION if focus else _SAMPLER_VERSION)
     if enabled and not debug and not return_frames and cache.exists():
         try:
@@ -1101,7 +1101,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     # Do not allow it to reuse a cache created under another quota identity.
     cap_suffix='-cap'+str(network_budget_bytes) if network_budget_bytes is not None else ''
     if frame_budget_limit is not None: cap_suffix+='-frames'+str(frame_budget_limit)
-    cache=Path(home).resolve()/'vision-cache'/f'{bvid}-adaptive-v8-{view_depth}{suffix}{"-timecover1" if focus else ""}{cap_suffix}.json'
+    cache=Path(os.environ.get('DSH_MEDIA_CACHE_HOME') or home).resolve()/'vision-cache'/f'{bvid}-adaptive-v8-{view_depth}{suffix}{"-timecover1" if focus else ""}{cap_suffix}.json'
     if enabled and not return_frames and not debug and cache.is_file():
         try:
             saved=json.loads(cache.read_text(encoding='utf8'))

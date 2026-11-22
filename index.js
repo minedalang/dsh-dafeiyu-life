@@ -66,6 +66,7 @@ import { McpClient } from './lib/mcp.mjs'
 import { verifyRecent, appendVerifyToReport } from './lib/verify.mjs'
 import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charterPath, dayKey } from './lib/state.mjs'
 import {originalStateDir,storageLocationStatus,inspectStorageTarget,storageCategories} from './lib/storage-location.mjs'
+import {storageDataPath,storageDomainRoot,storageLayoutStatus,inspectDomainMigration,storageDomainsUsage} from './lib/storage-layout.mjs'
 import { VIDEO_PICK_POLICY } from './lib/video-pick-policy.mjs'
 import {effectiveVideoCharter} from './lib/video-charter.mjs'
 import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
@@ -604,6 +605,12 @@ export function apply(ctx, config) {
     return myVer
   }
   const stateDir = stateDirOf(ctx)
+  // Verify every configured storage domain before any write/identity creation.
+  const storageLayout = storageLayoutStatus(stateDir)
+  const storagePyEnv = (extra={})=>pyEnv({
+    HF_HOME:storageDataPath(stateDir,'.hf-cache'),
+    DSH_MEDIA_CACHE_HOME:storageDomainRoot(stateDir,'media'),...extra,
+  })
   // Determine whether this is an upgrade BEFORE allocating the vision TEMP folder.
   // Otherwise the folder itself makes a pristine installation look like a legacy one,
   // silently applying old defaults and changing first-start permissions/experience.
@@ -611,7 +618,7 @@ export function apply(ctx, config) {
   // Pre-create the vision-only TEMP at host startup, before DSH/MCP sandboxing.
   // Entering the models page remains read-only and never installs dependencies.
   try{ensureVisionTempDir(stateDir,{create:true})}catch{/* health/repair will report unavailable */}
-  const visionEnv=extra=>visionPythonTempEnv({home:stateDir,env:pyEnv(extra),create:false})
+  const visionEnv=extra=>visionPythonTempEnv({home:stateDir,env:storagePyEnv(extra),create:false})
   // Character identity is stable; B站 UID is a replaceable, verified transport identity.
   const accountBinding = createAccountBinding({dataDir:stateDir})
   const accountRuntimeDir = accountBinding.runtimeDir()
@@ -705,10 +712,10 @@ export function apply(ctx, config) {
    *   ⇒ 把 uv 的缓存 / 工具 / 解释器目录**全部钉在插件家里**（那儿一定可写）✓ ——
    *   跟 `HF_HOME` 那次是同一类："环境差异由插件自己消掉，别让用户碰"。
    */
-  const uvEnv = (extra = {}) => pyEnv({
-    UV_CACHE_DIR: join(stateDir, 'uv-cache'),
-    UV_TOOL_DIR: join(stateDir, 'uv-tools'),
-    UV_PYTHON_INSTALL_DIR: join(stateDir, 'uv-python'),
+  const uvEnv = (extra = {}) => storagePyEnv({
+    UV_CACHE_DIR: storageDataPath(stateDir,'uv-cache'),
+    UV_TOOL_DIR: storageDataPath(stateDir,'uv-tools'),
+    UV_PYTHON_INSTALL_DIR: storageDataPath(stateDir,'uv-python'),
     ...extra,
   })
 
@@ -734,7 +741,7 @@ export function apply(ctx, config) {
   //    ⇒ 原判据**只查了 bilibili_api**（0.1.2 修"假就绪"时留下的口子）⇒ 缺 `mcp` / `qrcode` 也照样说就绪 ✗
   //    ⇒ 三个都得有：bilibili_api（查数据）· mcp（跑那一轮的 MCP 服务器）· qrcode（画登录二维码）
   const VENV_DEPS = ['bilibili_api', 'mcp', 'qrcode']
-  const missingVenvDeps = () => VENV_DEPS.filter((n) => !hasPkg(join(stateDir, '.venv'), n))
+  const missingVenvDeps = () => VENV_DEPS.filter((n) => !hasPkg(storageDataPath(stateDir,'.venv'), n))
   const venvReadyNow = () => existsSync(venvPython()) && missingVenvDeps().length === 0
   const asrReadyNow = () => existsSync(asrPython()) && hasPkg(asrDir, 'faster_whisper')
   const cfgFile = join(stateDir, 'config.json')
@@ -3649,6 +3656,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       '          BILI_MCP_TOOLS: '+yq(isSelftest?'bili_vision_selftest':'bili_preview_vision'),
       ...(isSelftest?['          BILI_VISION_SELFTEST_ALLOWED: '+yq('1'), '          BILI_VISION_TEST_ASSET: '+yq(posix(join(pluginDir,'lib','assets','local-vision-selftest-dafeiyu.png')))]:['          BILI_VISION_CHILD: '+yq('1')]),
       '          BILI_DUTY_HOME: '+yq(posix(stateDir)),
+      '          HF_HOME: '+yq(posix(storageDataPath(stateDir,'.hf-cache'))),
+      '          DSH_MEDIA_CACHE_HOME: '+yq(posix(storageDomainRoot(stateDir,'media'))),
       '          TEMP: '+yq(posix(visionTempPath(stateDir))),
       '          TMP: '+yq(posix(visionTempPath(stateDir))),
       '          TMPDIR: '+yq(posix(visionTempPath(stateDir))),
@@ -3947,6 +3956,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         '          BILI_COMMENT_DAILY_LIMIT: ' + yq(cfg.commentDailyLimit),
         '          BILI_DUTY_AUTO_COMMENT_REVIEW: ' + yq(cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0 && lifeVideoActionBridge?.status().ready===true ? '1':'0'),
         '          BILI_DUTY_HOME: ' + yq(posix(stateDir)),
+        '          HF_HOME: ' + yq(posix(storageDataPath(stateDir,'.hf-cache'))),
+        '          DSH_MEDIA_CACHE_HOME: ' + yq(posix(storageDomainRoot(stateDir,'media'))),
         '          BILI_SHARED_READ_MINUTE_LIMIT: ' + yq(cfg.biliReadMinuteLimit),
         '          BILI_SHARED_READ_HOUR_LIMIT: ' + yq(cfg.biliReadHourLimit),
         ...(cfg.visionEnabled ? [
@@ -5228,7 +5239,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     dataDir: stateDir,
     isEnabled: () => {refreshCfg();return cfg.memeMemoryEnabled===true},
     readEntries: () => readReplyMemeSnapshot({python:cfg.pythonPath||'python',
-      script:join(pluginDir,'lib','meme-memory-admin.py'),dataDir:stateDir,env:pyEnv()}),
+      script:join(pluginDir,'lib','meme-memory-admin.py'),dataDir:stateDir,env:storagePyEnv()}),
     logger:{warn:(msg)=>log('互动梗检索：'+msg),info:(msg)=>log('互动梗检索：'+msg)},
   })
   const buildInteractionPersona=(batch=[])=>{
@@ -6525,8 +6536,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   })
 
   const venvPython = () => process.platform === 'win32'
-    ? join(stateDir, '.venv', 'Scripts', 'python.exe')
-    : join(stateDir, '.venv', 'bin', 'python')
+    ? storageDataPath(stateDir, '.venv', 'Scripts', 'python.exe')
+    : storageDataPath(stateDir, '.venv', 'bin', 'python')
 
   /**
    * 建 venv + 装依赖 —— ⭐ **起完就返回，不等它装完**。
@@ -6582,14 +6593,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   })
 
   // ───────── 本地转写（ASR）：**独立环境**，别把主 venv 撑成 1GB ─────────
-  const asrDir = join(stateDir, '.venv-asr')
+  const asrDir = storageDataPath(stateDir,'.venv-asr')
   const asrLogFile = join(stateDir, 'asr-install.log')
   const asrPython = () => join(asrDir, process.platform === 'win32' ? 'Scripts' : 'bin',
     process.platform === 'win32' ? 'python.exe' : 'python')
   const appendAsr = (s) => { try { appendFileSync(asrLogFile, String(s)) } catch { /* 日志写不了也不能炸 */ } }
   // ⭐ 转写的临时目录必须由**宿主**预先建好：值班那一轮跑在沙箱里，
   //    而沙箱只允许写"该子进程启动前就已存在"的目录（2026-10-14 那一轮自己挖出来的规则）
-  const asrTmp = join(stateDir, 'tmp', 'asr')
+  const asrTmp = storageDataPath(stateDir,'tmp','asr')
   try { mkdirSync(asrTmp, { recursive: true }) } catch { /* 建不了也别拦着插件加载 */ }
 
   // ⭐ 判重表也由**宿主**预先建好（两个原因）：
@@ -6631,7 +6642,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     try {
       const py = String(cfg.pythonPath || 'python')
       const child = spawn(py, [join(stateDir, 'favops.py'), ...args], {
-        cwd: stateDir, env: pyEnv(), stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+        cwd: stateDir, env: storagePyEnv(), stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
       })
       let outTxt = '', errTxt = ''
       const timer = setTimeout(() => { try { child.kill() } catch { /* 已退出 */ } resolve({ ok: false, error: 'favops 超时（30 秒）' }) }, 30_000)
@@ -6775,7 +6786,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     return index.get(uid,relationshipOptions())
   },getAccountTag:trustedLifeAccountTag,onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'episode:'+String(id)))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},logger:{warn:m=>log('人生记忆：'+m)}})
   ctx.effect(()=>()=>lifeMemory?.close(),'bili-duty: 只读内存 FTS 关闭')
-  embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,logger:{warn:m=>log('本地语义运行时：'+m)}})
+  embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,rootDir:storageDataPath(stateDir,'embedding-runtime'),logger:{warn:m=>log('本地语义运行时：'+m)}})
   embeddingIndex=createEmbeddingMemoryIndex({dataDir:stateDir,provider:embeddingRuntime,logger:{warn:m=>log('本地语义索引：'+m)}})
   ctx.effect(()=>()=>embeddingRuntime?.stop(),'bili-duty: 本地 Embedding Runtime 关闭')
   personalityEvolution=createPersonalityEvolution({dataDir:stateDir,memoryGateway:lifeMemory,logger:{warn:m=>log('人格成长：'+m)}})
@@ -7103,7 +7114,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       let child
       try{child=spawn(cfg.pythonPath||'python',[join(pluginDir,'lib','video-action-verify.py'),
         join(stateDir,'bili_credential.json'),kind,target,uid,...(kind==='video_comment'?[receiptId]:[])],{
-        cwd:stateDir,env:pyEnv(),shell:false,windowsHide:true,
+        cwd:stateDir,env:storagePyEnv(),shell:false,windowsHide:true,
         stdio:[kind==='video_comment'?'pipe':'ignore','pipe','pipe']})}
       catch{return resolve(false)}
       let out='',done=false
@@ -7289,7 +7300,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     let result
     try{
       child=spawn(cfg.pythonPath||'python',[join(pluginDir,'lib','life-shared-dynamic-write.py')],{
-        cwd:stateDir,windowsHide:true,shell:false,stdio:['pipe','pipe','ignore'],env:pyEnv({
+        cwd:stateDir,windowsHide:true,shell:false,stdio:['pipe','pipe','ignore'],env:storagePyEnv({
           BILI_DUTY_HOME:stateDir,BILI_MCP_TOOLS:tool,BILI_LIFE_SHARED_DYNAMIC_RUNNER:'1',
           BILI_LIFE_SHARED_DYNAMIC_ACTION_ENABLED:'1',BILI_LIFE_EXPECT_UID:uid,
           BILI_LIFE_PUBLIC_INTERACTION_ENABLED:cfg.lifePublicInteractionEnabled?'1':'0',
@@ -7347,7 +7358,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     if(!permitted[action]||cfg.masterEnabled!==true)return resolve({ok:false,status:'unavailable',attempted:false})
     let child
     try{child=spawn(cfg.pythonPath||'python',[join(pluginDir,'lib','life-continuation-write.py')],{
-      cwd:stateDir,windowsHide:true,shell:false,stdio:['pipe','pipe','ignore'],env:pyEnv({
+      cwd:stateDir,windowsHide:true,shell:false,stdio:['pipe','pipe','ignore'],env:storagePyEnv({
         BILI_DUTY_HOME:stateDir,BILI_MCP_TOOLS:tool,BILI_LIFE_CONTINUATION_RUNNER:'1',
         BILI_LIFE_EXPECT_UID:accountUid,BILI_JS_MCP_ADAPTER:'0',BILI_DUTY_TOP_LEVEL_ONLY:'1',
         BILI_SYNC_DYNAMIC:'0',BILI_MENTION_MODE:'off',BILI_DM_TARGET_UID:'0',
@@ -7883,7 +7894,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       let child
       try{child=spawn(cfg.pythonPath||'python',[join(pluginDir,'lib','daily-dynamic-verify.py'),
         join(stateDir,'bili_credential.json'),dynamicId,String(identity.activeUid)],{
-        cwd:stateDir,env:pyEnv(),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']})}
+        cwd:stateDir,env:storagePyEnv(),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']})}
       catch{return resolve({verified:false})}
       let out='',done=false
       const finish=v=>{if(done)return;done=true;clearTimeout(timeout);resolve(v)}
@@ -7916,7 +7927,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const script=join(pluginDir,'lib','daily-dynamic-publish.py')
       const cred=join(stateDir,'bili_credential.json')
       const child=spawn(cfg.pythonPath||'python',[script,stateDir,cred,String(limit),'1'],{
-        cwd:stateDir,env:pyEnv(),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']})
+        cwd:stateDir,env:storagePyEnv(),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']})
       let out='',err='';const timeout=setTimeout(()=>{try{child.kill()}catch{}},20_000);timeout.unref?.()
       child.stdout.on('data',b=>{out=(out+String(b)).slice(0,4000)})
       child.stderr.on('data',b=>{err=(err+String(b)).slice(-500)})
@@ -7932,7 +7943,7 @@ logger:{warn:m=>log('社交意图：'+m)}
   const memeLearningScript=(mode,payload)=>new Promise((resolve,reject)=>{
     const script=join(pluginDir,'lib','meme-learning-admin.py')
     const child=spawn(cfg.pythonPath||'python',[script,stateDir,mode],{
-      cwd:stateDir,env:pyEnv(),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']})
+      cwd:stateDir,env:storagePyEnv(),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']})
     // Preserve the full bounded JSON response. Truncating at 25,000 characters
     // corrupted valid meme-learning lists and caused JSON.parse position 25000.
     const chunks=[];let total=0,overflow=false,settled=false,err=''
@@ -8133,7 +8144,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         // ⭐ 顺手把模型也下好（不然第一次跑那一轮会卡在下载上 ✗）；模型走 HuggingFace 国内镜像
         const model = String(cfg.asrModel || 'small')
         // 模型缓存必须放进插件家：默认的 ~/.cache 在本机拒绝写入（2026-10-14 实测 WinError 5）
-        const hfHome = join(stateDir, '.hf-cache')
+        const hfHome = storageDataPath(stateDir,'.hf-cache')
         try { mkdirSync(hfHome, { recursive: true }) } catch { /* 建不了后面会给报错 */ }
         setAsrProgress('download-start',{model,currentBytes:null,totalBytes:null})
         appendAsr(`下 Whisper 模型「${model}」（缓存在 ${hfHome}，源 ${hf}；真实文件下载进度显示在下方）…\n`)
@@ -8184,8 +8195,8 @@ logger:{warn:m=>log('社交意图：'+m)}
         const restoreIfFailed=()=>{
           if(!repairBackup.path||repairBackup.done)return
           try{
-            const current=join(stateDir,'.venv')
-            if(existsSync(current))renameSync(current,join(stateDir,'.venv.failed-'+Date.now()))
+            const current=storageDataPath(stateDir,'.venv')
+            if(existsSync(current))renameSync(current,storageDataPath(stateDir,'.venv') + '.failed-'+Date.now())
             renameSync(repairBackup.path,current)
             appendInstall('已恢复原有 Python 虚拟环境；未清理历史凭据或依赖。\n')
             repairBackup.done=true
@@ -8204,13 +8215,13 @@ logger:{warn:m=>log('社交意图：'+m)}
       //    而 venv 一旦建好就不再重建 ⇒ 每次装依赖都在 brotli/pyyaml 上编译失败，用户只能自己删目录 ✗
       //    ⇒ 点「装主依赖」时先看现役环境是哪个版本，太高就改名换个新的（不删，留着回滚）✓
       try {
-        const pyv = readFileSync(join(stateDir, '.venv', 'pyvenv.cfg'), 'utf8')
+        const pyv = readFileSync(storageDataPath(stateDir, '.venv', 'pyvenv.cfg'), 'utf8')
         const mv = /version\s*=\s*(\d+)\.(\d+)/.exec(pyv)
         if (mv && existsSync(venvPy) && Number(mv[2]) >= 14) {
           const tagV = mv[1] + '.' + mv[2]
-          const bad = join(stateDir, '.venv.bad-' + tagV + '-' + Date.now())
+          const bad = storageDataPath(stateDir,'.venv') + '.bad-' + tagV + '-' + Date.now()
           appendInstall('当前环境是 Python ' + tagV + '（太高，brotli / pyyaml 没有现成的包）⇒ 改名重建 3.12\n')
-          try { renameSync(join(stateDir, '.venv'), bad) } catch (e2) { appendInstall('改名没成功：' + String(e2?.message ?? e2) + '\n') }
+          try { renameSync(storageDataPath(stateDir,'.venv'), bad) } catch (e2) { appendInstall('改名没成功：' + String(e2?.message ?? e2) + '\n') }
         }
       } catch { /* 没有 pyvenv.cfg 就算了 */ }
         // A Python installed by uv can be blocked by a per-executable Windows
@@ -8219,15 +8230,15 @@ logger:{warn:m=>log('社交意图：'+m)}
         const currentHealth=process.platform!=='win32'
           ?{ok:existsSync(venvPy),reason:'platform_not_checked'}
           :existsSync(venvPy)
-            ?probeVisionPython(venvPy,{home:stateDir,env:pyEnv(),requiresMcp:false})
+            ?probeVisionPython(venvPy,{home:stateDir,env:storagePyEnv(),requiresMcp:false})
             :{ok:false,reason:'missing_runtime'}
         const explicitlyRequested=String(process.env.BILI_DUTY_VENV_PYTHON||'').trim()
         const baseChoice=process.platform==='win32'&&(!currentHealth.ok||!existsSync(venvPy))
           ?selectVisionPython({preferred:explicitlyRequested||cfg.visionPythonPath,configured:cfg.visionPythonPath,
-              home:stateDir,workdir:process.cwd(),env:pyEnv(),requiresMcp:false})
+              home:stateDir,workdir:process.cwd(),env:storagePyEnv(),requiresMcp:false})
           :null
         if(explicitlyRequested && !currentHealth.ok && !probeVisionPython(explicitlyRequested,
-          {home:stateDir,env:pyEnv(),requiresMcp:false}).ok){
+          {home:stateDir,env:storagePyEnv(),requiresMcp:false}).ok){
           appendInstall('指定的 BILI_DUTY_VENV_PYTHON 没有通过普通权限写入检查，拒绝创建环境。\n')
           installOutcome='failed';installFailureHint='指定 Python 不健康；未修改现有环境';return
         }
@@ -8236,8 +8247,8 @@ logger:{warn:m=>log('社交意图：'+m)}
           installOutcome='failed';installFailureHint='Python 运行时没有文件写入权限；原环境已保留';return
         }
         if(existsSync(venvPy)&&!currentHealth.ok){
-          const backup=join(stateDir,'.venv.unhealthy-'+Date.now())
-          try{renameSync(join(stateDir,'.venv'),backup);repairBackup.path=backup}
+          const backup=storageDataPath(stateDir,'.venv') + '.unhealthy-'+Date.now()
+          try{renameSync(storageDataPath(stateDir,'.venv'),backup);repairBackup.path=backup}
           catch{appendInstall('旧虚拟环境正在占用或不可重命名；请完整退出 DSH 后再修复，旧环境未删除。\n');
             installOutcome='failed';installFailureHint='现有虚拟环境不可安全备份';return}
           appendInstall('已将不可写的旧虚拟环境保留为独立备份，不修改其权限。\n')
@@ -8246,16 +8257,16 @@ logger:{warn:m=>log('社交意图：'+m)}
           // uv's --python selects an interpreter. It does NOT grant admin
           // rights or bypass Windows per-program access control.
           const spec=baseChoice?.ok?baseChoice.path:String(explicitlyRequested||'3.12')
-          const venvArgs=['venv','--seed','--python',spec,join(stateDir,'.venv')]
+          const venvArgs=['venv','--seed','--python',spec,storageDataPath(stateDir,'.venv')]
           const createCode=uvCmd?await spawnLogged(uvCmd,venvArgs)
-            :baseChoice?.ok?await spawnLogged(baseChoice.path,['-m','venv',join(stateDir,'.venv')]):1
+            :baseChoice?.ok?await spawnLogged(baseChoice.path,['-m','venv',storageDataPath(stateDir,'.venv')]):1
           if(createCode!==0||!existsSync(venvPy)){
             appendInstall('建 venv 失败，拒绝使用尚未验证的解释器。\n');restoreIfFailed()
             installOutcome='failed';installFailureHint='Python 环境创建失败';return
           }
         }
         const afterCreation=process.platform==='win32'
-          ?probeVisionPython(venvPy,{home:stateDir,env:pyEnv(),requiresMcp:false})
+          ?probeVisionPython(venvPy,{home:stateDir,env:storagePyEnv(),requiresMcp:false})
           :{ok:existsSync(venvPy),reason:'platform_not_checked'}
         if(!afterCreation.ok){
           appendInstall('新建的 Python 在普通权限下仍无法写入：'+afterCreation.reason+'；拒绝把它标记为就绪。\n')
@@ -8272,7 +8283,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           if (code !== 0) code = await spawnLogged(venvPy, ['-m', 'pip', 'install', '-i', m, '-r', reqFile])
         }
         const installedHealthy=code===0 && (process.platform!=='win32'||
-          probeVisionPython(venvPy,{home:stateDir,env:pyEnv(),requiresMcp:true}).ok)
+          probeVisionPython(venvPy,{home:stateDir,env:storagePyEnv(),requiresMcp:true}).ok)
         if (installedHealthy) {
           // ⚠️ 光写 config.json 不够：DSH 原生设置里那份旧值（"python"）会在 loadCfg 时压回来
           //    （已由 loadCfg 的 HOST_WINS_EXCLUDED 解决 ✓）；这里再把宿主的同步结果说清楚，
@@ -8507,8 +8518,12 @@ logger:{warn:m=>log('社交意图：'+m)}
         const location=storageLocationStatus(originalStateDir(ctx))
         if(req.method==='GET')return sendJson(res,200,{ok:true,
           currentDir:stateDir,defaultDir:location.defaultDir,relocated:location.relocated,
-          usage:storageCategories(stateDir),offlineMigrationOnly:true})
+          usage:storageCategories(stateDir),domains:storageDomainsUsage(stateDir),offlineMigrationOnly:true})
         const body=await readBody(req,2048)
+        if(body?.domain){
+          const result=inspectDomainMigration({root:stateDir,domain:body.domain,target:body?.target})
+          return sendJson(res,200,{...result,offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
+        }
         const result=inspectStorageTarget({source:stateDir,target:body?.target})
         return sendJson(res,200,{...result,offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-storage.mjs')})
       }catch(error){return sendJson(res,400,{ok:false,error:String(error?.message||error).slice(0,180)})}
@@ -8683,7 +8698,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         : String(id)
       const commandArgs = [py, stateDir, operation, mutation ? data : keyword]
       const result = await new Promise(resolve => {
-        const child = spawn(cfg.pythonPath || 'python',commandArgs,{cwd:stateDir,shell:false,windowsHide:true,env:pyEnv(),stdio:['ignore','pipe','pipe']})
+        const child = spawn(cfg.pythonPath || 'python',commandArgs,{cwd:stateDir,shell:false,windowsHide:true,env:storagePyEnv(),stdio:['ignore','pipe','pipe']})
         // Keep a bounded *complete* JSON document, never the trailing bytes of a
         // larger JSON stream. The old slice(-22000) made a healthy meme library
         // unreadable as soon as enough entries/sources were returned.
@@ -8991,7 +9006,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       // URLs or account/private media data are persisted or returned.
       const result = await new Promise(resolve => {
         const child = spawn(cfg.pythonPath || 'python', [join(pluginDir,'lib','video_traffic.py'),'--home',stateDir,'--summary'], {
-          cwd:stateDir,shell:false,windowsHide:true,env:pyEnv(),stdio:['ignore','pipe','pipe']
+          cwd:stateDir,shell:false,windowsHide:true,env:storagePyEnv(),stdio:['ignore','pipe','pipe']
         })
         let output='',finished=false
         const complete=data=>{if(finished)return;finished=true;clearTimeout(timer);resolve(data)}
@@ -9008,7 +9023,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const getQuota = () => new Promise((resolve) => {
         const child = spawn(cfg.pythonPath || 'python', [script, stateDir], {
           cwd: stateDir, shell: false, windowsHide: true,
-          env: pyEnv(), stdio: ['ignore', 'pipe', 'pipe'],
+          env: storagePyEnv(), stdio: ['ignore', 'pipe', 'pipe'],
         })
         let out = '', done = false
         const finish = (r) => { if (done) return; done = true; clearTimeout(timer); resolve(r) }
@@ -9122,7 +9137,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         const py=existsSync(venvPython())?venvPython():String(cfg.pythonPath||'python')
         const script=join(pluginDir,'lib','comment-meme-rule-preview.py')
         const result=await new Promise(resolve=>{
-          const child=spawn(py,[script,stateDir,query],{cwd:stateDir,shell:false,windowsHide:true,env:pyEnv(),stdio:['pipe','pipe','pipe']})
+          const child=spawn(py,[script,stateDir,query],{cwd:stateDir,shell:false,windowsHide:true,env:storagePyEnv(),stdio:['pipe','pipe','pipe']})
           child.stdin.on('error',()=>{})
           child.stdin.end(previewRules?JSON.stringify(previewRules):'')
           let output='',finished=false
@@ -9159,7 +9174,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         const py=existsSync(venvPython())?venvPython():String(cfg.pythonPath||'python')
         const helper=join(pluginDir,'lib','sticker-archive.py')
         const result=await new Promise(resolve=>{
-          const child=spawn(py,[helper,stateDir,'export'],{cwd:stateDir,shell:false,windowsHide:true,env:pyEnv(),stdio:['ignore','pipe','pipe']})
+          const child=spawn(py,[helper,stateDir,'export'],{cwd:stateDir,shell:false,windowsHide:true,env:storagePyEnv(),stdio:['ignore','pipe','pipe']})
           const chunks=[];let bytes=0,err='',done=false
           const finish=v=>{if(done)return;done=true;clearTimeout(timer);resolve(v)}
           const timer=setTimeout(()=>{try{child.kill()}catch{};finish({ok:false,error:'表情包 ZIP 导出超时'})},90000)
@@ -9184,7 +9199,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         const py=existsSync(venvPython())?venvPython():String(cfg.pythonPath||'python')
         const helper=join(pluginDir,'lib','sticker-archive.py')
         const result=await new Promise(resolve=>{
-          const child=spawn(py,[helper,stateDir,'import'],{cwd:stateDir,shell:false,windowsHide:true,env:pyEnv(),stdio:['pipe','pipe','pipe']})
+          const child=spawn(py,[helper,stateDir,'import'],{cwd:stateDir,shell:false,windowsHide:true,env:storagePyEnv(),stdio:['pipe','pipe','pipe']})
           let out='',err='',done=false
           const finish=v=>{if(done)return;done=true;clearTimeout(timer);resolve(v)}
           const timer=setTimeout(()=>{try{child.kill()}catch{};finish({ok:false,error:'表情包 ZIP 导入超时'})},120000)
@@ -9207,7 +9222,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const py=join(pluginDir,'lib','sticker-admin.py')
       const result=await new Promise(resolve=>{
         const child=spawn(cfg.pythonPath||'python',[py,stateDir,operation],
-          {cwd:stateDir,shell:false,windowsHide:true,env:pyEnv(),stdio:['pipe','pipe','pipe']})
+          {cwd:stateDir,shell:false,windowsHide:true,env:storagePyEnv(),stdio:['pipe','pipe','pipe']})
         let out='',done=false
         const finish=(value)=>{if(done)return;done=true;clearTimeout(timer);resolve(value)}
         const timer=setTimeout(()=>{try{child.kill()}catch{};finish({ok:false,error:'表情包操作超时'})},20000)
@@ -11165,7 +11180,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         'headless profile：headless（无人值守安全固定值；旧 headlessProfile 配置仅保留兼容）',
         'pythonPath：' + cfg.pythonPath,
         'venv 就绪：' + (venvReadyNow() ? '是' : '否') + (missingVenvDeps().length ? '（缺：' + missingVenvDeps().join(' / ') + '）' : ''),
-        '转写环境：' + (existsSync(join(stateDir, '.venv-asr')) ? '在' : '没装'),
+        '转写环境：' + (existsSync(storageDataPath(stateDir,'.venv-asr')) ? '在' : '没装'),
         'B站 登录：' + (hasCredential() ? '有凭证' : '没有凭证'),
         '报告投递：旧视频清单私信已退役；本地日报继续保存，Life 自主分享独立控制',
         '跑一轮原创评论：' + (cfg.autoComment ? '开' : '关') + ' · 后台评论回复：' + (cfg.commentWatchReplies ? '开' : '关'),

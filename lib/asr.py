@@ -40,7 +40,7 @@ except Exception:
 #    yt-dlp 默认往 %TEMP% 写、会被直接拒掉（2026-10-14 在主人机器上实证：
 #    yt_dlp DownloadError: unable to open for writing: [Errno 13] Permission denied）
 _HOME = os.path.dirname(os.path.abspath(__file__))
-_TMP = os.path.join(_HOME, 'tmp', 'asr')
+_TMP = os.path.join(os.environ.get('DSH_MEDIA_CACHE_HOME') or _HOME, 'tmp', 'asr')
 try:
     os.makedirs(_TMP, exist_ok=True)
     tempfile.tempdir = _TMP
@@ -213,7 +213,7 @@ def _asr_cache_file(bvid, model, lang):
     home_value=os.environ.get('BILI_DUTY_HOME','').strip()
     if not home_value or os.environ.get('BILI_ASR_MODEL_PATH','').strip():return None # do not cache source-tree runs or mutable custom models
     home=Path(home_value)
-    folder=home/'asr-transcript-cache'
+    folder=Path(os.environ.get('DSH_MEDIA_CACHE_HOME') or home)/'asr-transcript-cache'
     if folder.is_symlink() or (folder.exists() and not folder.is_dir()):return None
     return folder/(f'{bvid}-{model}-{lang}-v{_ASR_CACHE_VERSION}.json')
 

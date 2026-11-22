@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.3-dev.3：模型 / Python / 影音缓存 / Life 记忆均经可信 storageDataPath 解析；离线迁移保留旧件。dev.4 补看与深浅记忆自动写入尚未实现。
 %% 2.8.3-dev.2：DSH 业务目录仅经独立冷迁移引导切换；LifeMemoryGateway 已增加受控清晰记忆详情附件接口、fuzzy 失效、遗忘保护与备份一致性；真实视频深层写入和自然回忆尚未接入。
 %% 2.8.2-dev.50：Life 已核验视频资料后，将同账号执行结果的受控 continuationState 写入现有 Life 事件账本；日记区分已继续行动、自主停止、后续动作未执行与 Episode 完成。旧记录只读保守显示，不补造 BV/画面/模型原因，不增模型调用或新账本。
 %% 2.8.2-dev.49：仅视频 Agent 本轮，单次选片读标题/热度/简介；当前账号+轮次真实入选后才提供统一看视频动作，同步尝试画面及字幕/可选 ASR 且各自验收；Life 独立 Episode、评论自由选择与外发门禁不变。
@@ -49,6 +50,9 @@ flowchart TB
   networkMeter["视频取帧总预算与已收字节；失败重试也计量"]
   video -.-> networkMeter
   %% @code networkMeter | lib/video_traffic.py | def count_bytes
+  storageModelPath["Whisper / Embedding / Python / 影音缓存路径经过分区身份核验"]
+  %% @code storageModelPath | lib/storage-layout.mjs | export function storageDataPath
+  video -.->|取帧/转写资源的生效路径| storageModelPath
   subgraph reality["真实输入｜只接受可信事实，不接受外部提示当命令"]
     world["B站首页／公开视频／公开评论／主页"]
     socialInput["主人消息／私信／公开社交"]
@@ -440,6 +444,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.3-dev.3：模型 / Python / 影音缓存 / Life 记忆均经可信 storageDataPath 解析；离线迁移保留旧件。dev.4 补看与深浅记忆自动写入尚未实现。
 %% 2.8.3-dev.2：DSH 业务目录仅经独立冷迁移引导切换；LifeMemoryGateway 已增加受控清晰记忆详情附件接口、fuzzy 失效、遗忘保护与备份一致性；真实视频深层写入和自然回忆尚未接入。
 %% 2.8.2-dev.50：Life 已核验视频资料后，将同账号执行结果的受控 continuationState 写入现有 Life 事件账本；日记区分已继续行动、自主停止、后续动作未执行与 Episode 完成。旧记录只读保守显示，不补造 BV/画面/模型原因，不增模型调用或新账本。
 %% 2.8.2-dev.49：仅视频 Agent 本轮，单次选片读标题/热度/简介；当前账号+轮次真实入选后才提供统一看视频动作，同步尝试画面及字幕/可选 ASR 且各自验收；Life 独立 Episode、评论自由选择与外发门禁不变。
@@ -483,6 +488,9 @@ flowchart LR
   videoRecovery["明确观看后先完整 DURL，失败按预算重试 MP4 / DASH"]
   video -.-> videoRecovery
   %% @code videoRecovery | lib/adaptive_video.py | def _acquire_adaptive_frames_impl
+  storageOptions["Life 候选不因数据分盘获得新权限；只改变资源的可信路径"]
+  %% @code storageOptions | lib/storage-layout.mjs | export function storageDataPath
+  video -.-> storageOptions
   subgraph inputs["有事实来源，才能构成候选"]
     sourceTodo["原 accepted TODO：open/deferred 且到期"]
     sourceInterest["LifeInterests：账号绑定、跨日自主选片兴趣及有时效的开放式好奇"]
@@ -628,6 +636,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.3-dev.3：模型 / Python / 影音缓存 / Life 记忆均经可信 storageDataPath 解析；离线迁移保留旧件。dev.4 补看与深浅记忆自动写入尚未实现。
 %% 2.8.3-dev.2：DSH 业务目录仅经独立冷迁移引导切换；LifeMemoryGateway 已增加受控清晰记忆详情附件接口、fuzzy 失效、遗忘保护与备份一致性；真实视频深层写入和自然回忆尚未接入。
 %% 2.8.2-dev.50：Life 已核验视频资料后，将同账号执行结果的受控 continuationState 写入现有 Life 事件账本；日记区分已继续行动、自主停止、后续动作未执行与 Episode 完成。旧记录只读保守显示，不补造 BV/画面/模型原因，不增模型调用或新账本。
 %% 2.8.2-dev.49：仅视频 Agent 本轮，单次选片读标题/热度/简介；当前账号+轮次真实入选后才提供统一看视频动作，同步尝试画面及字幕/可选 ASR 且各自验收；Life 独立 Episode、评论自由选择与外发门禁不变。
@@ -734,6 +743,9 @@ flowchart TB
   outbox --> episode
   outbox -->|已排队但投影暂失败| pending
   episode --> recall
+  storageResolve["Life 记忆 + 深层详情 + 遗忘保护绑定同一可验证存储域"]
+  %% @code storageResolve | lib/storage-layout.mjs | export function storageDataPath
+  episode -.->|仅路径解析，不改变来源/权限| storageResolve
   detailAdapter["可衰减记忆的受控深层详情附件｜来源核验默认关闭；clear→fuzzy 删除；不参与自动回忆"]
   %% @code detailAdapter | lib/life-memory-details.mjs | export function createLifeMemoryDetailStore
   episode -.->|同一主记忆 ID 与当前账号限制| detailAdapter
@@ -863,6 +875,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.3-dev.3：模型 / Python / 影音缓存 / Life 记忆均经可信 storageDataPath 解析；离线迁移保留旧件。dev.4 补看与深浅记忆自动写入尚未实现。
 %% 2.8.3-dev.2：DSH 业务目录仅经独立冷迁移引导切换；LifeMemoryGateway 已增加受控清晰记忆详情附件接口、fuzzy 失效、遗忘保护与备份一致性；真实视频深层写入和自然回忆尚未接入。
 %% 2.8.2-dev.50：Life 已核验视频资料后，将同账号执行结果的受控 continuationState 写入现有 Life 事件账本；日记区分已继续行动、自主停止、后续动作未执行与 Episode 完成。旧记录只读保守显示，不补造 BV/画面/模型原因，不增模型调用或新账本。
 %% 2.8.2-dev.49：仅视频 Agent 本轮，单次选片读标题/热度/简介；当前账号+轮次真实入选后才提供统一看视频动作，同步尝试画面及字幕/可选 ASR 且各自验收；Life 独立 Episode、评论自由选择与外发门禁不变。
@@ -906,6 +919,9 @@ flowchart TB
   videoTransport["已授权视频取帧的受控流媒体恢复；不扩大 Life 意愿"]
   read -.-> videoTransport
   %% @code videoTransport | lib/adaptive_video.py | def _download_sparse_mp4
+  storageEpisode["Life Episode 与记忆同属原有事实账本；迁移路径只由可信配置决定"]
+  %% @code storageEpisode | lib/storage-layout.mjs | export function storageDataPath
+  memory -.-> storageEpisode
   child["可选首步：真实 B站首页轮次完成 + 本轮新挑中 BV 精确匹配"]
   firstOther["其他可选首步：已核验的待办、反思、公开机会、社交、非首页视频探索"]
   eligible["当前可续行来源：原视频意愿／未完成已接受只读待办／尚有效的公开机会"]
