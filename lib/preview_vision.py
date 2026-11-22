@@ -772,7 +772,7 @@ def _mark_cache_write_result(answer, code):
         answer['cacheSaved']=True
 
 
-def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None, storyboard=False, network_budget_bytes=None, board_tiles=None):
+def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None, storyboard=False, network_budget_bytes=None, board_tiles=None, before_model=None):
     """返回经过长度钳制的结构化文本；debug 才保存 JPEG，缓存只存分析文字。"""
     if not BV_RE.fullmatch(str(bvid or '')):return {'ok':False,'error':'BV号格式不正确'}
     home=Path(home).resolve()
@@ -989,6 +989,9 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
             answer['frames']=frames
             return answer
         if prefetch_only or not enabled:return answer
+        # The platform frames are complete. The caller may settle and release
+        # its durable Bilibili read reservation before any slow Ollama request.
+        if before_model is not None:before_model(answer)
         _record_vision_attempt(home)
         if storyboard:
             description,receipts=_analyze_local_storyboards(frames,model)
@@ -1107,7 +1110,7 @@ def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source
 
 def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled=None, debug=False,
                        max_frames=None, provider=None, model=None, board_tiles=None, return_frames=False,
-                       focus_start=None, focus_end=None, view_depth='standard', network_budget_bytes=None, frame_budget_limit=None):
+                       focus_start=None, focus_end=None, view_depth='standard', network_budget_bytes=None, frame_budget_limit=None, before_model=None):
     """User-selected source: real bounded public video or existing videoshot fallback.
 
     The caller chooses the source, never an auto-escalation from missing subtitles.
@@ -1126,7 +1129,8 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
         return analyze_preview(bvid, home, enabled=enabled, debug=debug,
                                max_frames=chosen, provider=provider, model=model,
                                return_frames=return_frames, focus_start=focus_start,
-                               focus_end=focus_end,storyboard=board,board_tiles=board_tiles)
+                               focus_end=focus_end,storyboard=board,board_tiles=board_tiles,
+                               before_model=before_model)
     if not BV_RE.fullmatch(str(bvid or '')):
         return {'ok':False,'status':'invalid_bvid','error':'BV号格式不正确'}
     try:
@@ -1188,7 +1192,8 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
                                 max_frames=min(12,max_frames) if view_depth=='standard' else max_frames,
                                 provider=provider, model=model,
                                 return_frames=return_frames,focus_start=focus_start,
-                                focus_end=focus_end,storyboard=True,network_budget_bytes=network_budget_bytes,board_tiles=board_tiles)
+                                focus_end=focus_end,storyboard=True,network_budget_bytes=network_budget_bytes,board_tiles=board_tiles,
+                                before_model=before_model)
         preview['perception_source_requested']='adaptive'
         preview['adaptive_fallback']={'reason':exc.code,'actual_source':'videoshot',
             **({'attemptedStages':list(exc.attempted_stages)} if getattr(exc,'attempted_stages',None) else {}),
@@ -1212,6 +1217,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     if provider!='ollama' or not model:
         return {'ok':False,'bvid':bvid,'status':'vision_model_unavailable',
                 'error':'自适应画面识图需要已配置的本地视觉模型'}
+    if before_model is not None:before_model(result)
     _record_vision_attempt(home)
     frames=result.pop('frames')
     try:
@@ -1251,7 +1257,7 @@ def record_vision_event(home, bvid, status, *, source='preview', ok=False, debug
         pass  # diagnostics must never prevent the read-only vision tool
 
 
-def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None, storyboard=False, network_budget_bytes=None, board_tiles=None):
+def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None, storyboard=False, network_budget_bytes=None, board_tiles=None, before_model=None):
     # The manual preview button and the actual vision tool share this receipt.
     source='manual_preview' if prefetch_only else ('video_agent_frames' if return_frames else 'vision_provider')
     with traffic_scope(home):
@@ -1259,7 +1265,8 @@ def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, pr
                                      max_frames=max_frames,provider=provider,
                                      model=model,return_frames=return_frames,
                                      prefetch_only=prefetch_only,focus_start=focus_start,focus_end=focus_end,
-                                     storyboard=storyboard,network_budget_bytes=network_budget_bytes,board_tiles=board_tiles)
+                                     storyboard=storyboard,network_budget_bytes=network_budget_bytes,board_tiles=board_tiles,
+                                     before_model=before_model)
     record_vision_event(home,bvid,result.get('status') or ('preview_failed' if not result.get('ok') else 'preview_only'),
                         source=source,ok=result.get('ok'),debug_saved=bool(result.get('debug_dir')),
                         error=result.get('error') or result.get('cacheErrorCode') or '',times=result.get('times'))

@@ -127,5 +127,6 @@ test('production wiring includes the common JS MCP dispatch, pre-running TODO re
   assert.match(js,/await loadReadActionExecutions\(\)/)
   assert.match(js,/read-action-executions-section\'\)\.scrollIntoView/)
   assert.match(js,/request\('\/read-action-executions'\)/)
-  assert.match(js,/request\('\/read-action-executions\/acknowledge'/)
+  assert.doesNotMatch(js,/request\('\/read-action-executions\/acknowledge'/)
+  assert.match(index,/readActionGate\.acknowledge/)
 })

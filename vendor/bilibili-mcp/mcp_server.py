@@ -1599,13 +1599,28 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
         mode = os.environ.get('BILI_VISION_MODE', 'separate')
         if mode == 'independent_local':
             from preview_vision import record_vision_event
-            with shared_read_budget(_DUTY_HOME,'bili_preview_frames') as receipt:
-                with public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME):
-                    result = await asyncio.to_thread(analyze_perception,bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
+            def run_local_vision():
+                # The B站 reservation covers network frame acquisition only.
+                # Close both scopes *in the same worker thread* immediately
+                # before Ollama inference starts. On early return or failure,
+                # the finally block settles them without marking vision success.
+                from contextlib import ExitStack
+                with ExitStack() as platform_read:
+                    receipt = platform_read.enter_context(shared_read_budget(_DUTY_HOME,'bili_preview_frames'))
+                    platform_read.enter_context(public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME))
+                    read_settled = False
+                    def frames_ready(frame_result):
+                        nonlocal read_settled
+                        receipt(frame_result)
+                        platform_read.close()
+                        read_settled = True
+                    result = analyze_perception(bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
                         model=os.environ.get('BILI_VISION_MODEL',''),debug=capture_for_debug is True,
                         focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
-                        network_budget_bytes=budget_override,frame_budget_limit=frames_override)
-                    receipt(result)
+                        network_budget_bytes=budget_override,frame_budget_limit=frames_override,before_model=frames_ready)
+                    if not read_settled:receipt(result)
+                    return result
+            result = await asyncio.to_thread(run_local_vision)
             result['mode']='independent_local'
             _record_production_vision_attempt(result, 'independent_local', os.environ.get('BILI_VISION_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),

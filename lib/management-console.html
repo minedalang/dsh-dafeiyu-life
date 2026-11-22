@@ -2812,7 +2812,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <label>BV 视频号 <input id="video-debug-bvid" type="text" placeholder="BV1xxxxxxxxxx" maxlength="12" autocomplete="off" spellcheck="false" aria-label="测试视频 BV 号"></label>
 <label>读取来源 <select id="video-debug-source" aria-label="试运行视觉来源"><option value="preview" selected>单阶段 · 官方 videoshot 全局预览</option><option value="life-two-stage">完整两阶段 · videoshot → Life 多候选规划 → FFmpeg</option><option value="adaptive">单阶段专项 · 原视频 FFmpeg</option><option value="owner-focus">主人局部识图专项 · 不需 Life 同意</option></select></label>
 <label>单阶段测试深度（两阶段固定先正常了解） <select id="video-debug-depth" aria-label="试运行理解深度"><option value="skim">略看 · 不识图</option><option value="standard" selected>正常了解 · 最多12帧</option><option value="deep">深入预览 · 按档位最多24帧</option></select></label>
-<button id="video-debug-run" type="button" class="life-action life-purple">开始只读视频感知验收</button><button id="video-debug-read-review" type="button" class="life-action life-sky">🔒 检查中断的 B站读取预约</button>
+<button id="video-debug-run" type="button" class="life-action life-purple">开始只读视频感知验收</button><button id="video-debug-read-review" type="button" class="life-action life-sky">🔒 查看只读任务恢复状态</button>
 <div id="video-debug-owner-focus-panel" class="setting-note" style="display:none;flex-basis:100%;margin:10px 0" aria-live="polite">
   <strong>🔎 主人局部识图专项 · 从已验证时间中选择</strong>
   <p class="muted" id="video-debug-owner-focus-help">先生成全局分镜，再选一处真实采样时刻。</p>
@@ -2855,7 +2855,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </div>
 <div id="read-action-executions-section" class="settings-section life-section">
 <div class="toolbar"><h4 style="margin:0">🔒 平台读取预约与中断核查</h4><button id="read-action-executions-refresh" type="button" class="life-action life-sky">刷新真实动作回执</button></div>
-<p class="muted">Node/Python 共享公开读取及账号读取预约；字幕、弹幕和低清预览帧均区分实际内容与模型理解。<strong>重启后提示“相同的只读动作正在执行或等待人工核查”时，请在这里查看。</strong>已中断预约必须超过 30 分钟、原进程确已退出并由你人工确认后才能解除；解除不代表曾经读取成功，也不会自动重新访问 B站。账号私有读取仅在当前核验账号下展示；只读回执不等于视频识图成功。</p>
+<p class="muted">Node/Python 共享公开读取及账号读取预约；字幕、弹幕和低清预览帧均区分实际内容与模型理解。<strong>遇到中断或超时后，程序自动复核只读任务，无需手动解锁。</strong>只有经过安全时间、确认原进程已退出且记录可信，系统才自动关闭旧预约；不明状态持续隔离，不冒充成功，也不会自动重发 B站请求。账号私有读取仅在当前核验账号下展示；只读回执不等于视频识图成功。</p>
 <p id="read-action-executions-status" class="muted" role="status">尚未读取共享动作状态</p><div id="read-action-executions-list" class="records records-scroll" aria-live="polite"></div>
 </div>
 <div id="outbound-action-executions-section" hidden data-retired-internal="true" class="settings-section life-section">

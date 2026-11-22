@@ -2,7 +2,8 @@
 
 Only verified public read actions are coordinated. Existing JS-owned calls may
 enter through a *verified parent reservation*, but an independent Python process
-must first acquire its own reservation. Stale/unknown actions are never replayed.
+must first acquire its own reservation. Stale/unknown actions are never replayed. Proven-dead, aged preview-frame
+reservations may be marked unverified and released without replay.
 This module has no Bilibili/network imports so it is independently testable.
 """
 import contextlib
@@ -250,6 +251,82 @@ def _pid_alive(pid):
         return False
 
 
+def _owner_definitely_exited(pid):
+    """Conservative, cross-platform death proof. Access denied is UNKNOWN."""
+    if type(pid) is not int or pid <= 0 or pid == os.getpid():
+        return False
+    if os.name == 'nt':
+        try:
+            import ctypes
+            from ctypes import wintypes
+            kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+            kernel.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+            kernel.OpenProcess.restype = wintypes.HANDLE
+            handle = kernel.OpenProcess(0x1000, False, pid)
+            if not handle:
+                # 87 = ERROR_INVALID_PARAMETER (no such process). 5 = access
+                # denied, and all other errors are deliberately inconclusive.
+                return ctypes.get_last_error() == 87
+            try:
+                status = wintypes.DWORD()
+                kernel.GetExitCodeProcess.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+                kernel.GetExitCodeProcess.restype = wintypes.BOOL
+                return bool(kernel.GetExitCodeProcess(handle, ctypes.byref(status))) and status.value != 259
+            finally:
+                kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
+                kernel.CloseHandle(handle)
+        except (OSError, AttributeError, TypeError, ValueError):
+            return False
+    try:
+        os.kill(pid, 0)
+        return False
+    except ProcessLookupError:
+        return True
+    except (PermissionError, OSError):
+        return False
+
+
+def _recover_abandoned_preview(folder, receipts, key, scope):
+    """Close a *dead* old preview-read reservation, never replay its network call.
+
+    Only valid, aged preview records with proven-dead owners qualify. A shared
+    creation-exclusive claim serializes recovery between Python and Node.
+    Unknown records, live processes and other tools remain completely locked.
+    """
+    claim = folder / 'recovery.claim'
+    try:
+        _safe_dir(folder)
+        entry = _safe_read(folder / 'entry.json', 4096)
+        at, pid = entry.get('at'), entry.get('pid')
+        if (entry.get('version') != 1 or entry.get('id') != key or
+            entry.get('scopeHash') != _sha(scope)[:20] or
+            entry.get('operation') != 'bili_preview_frames' or
+            entry.get('state') != 'executing' or
+            type(at) is not int or type(pid) is not int or
+            at <= 0 or int(time.time()*1000) - at < 30*60_000 or
+            not _owner_definitely_exited(pid)):
+            return False
+        _write_once(claim, {'v': 1})
+        try:
+            if _safe_read(folder / 'entry.json', 4096) != entry or not _owner_definitely_exited(pid):
+                return False
+            ended = int(time.time()*1000)
+            row = {'version': 1, 'id': key, 'scopeHash': entry['scopeHash'],
+                   'operation': 'bili_preview_frames', 'source': entry.get('source', 'unknown'),
+                   'at': ended, 'finishedAt': ended, 'state': 'auto-recovered-unverified'}
+            path = receipts / (str(ended).zfill(15)+'-'+str(uuid.uuid4())+'.json')
+            _write_once(path, row)
+            (folder / 'entry.json').unlink()
+        finally:
+            claim.unlink(missing_ok=True)
+        folder.rmdir()
+        return True
+    except (OSError, ValueError, TypeError, KeyError):
+        # Never delete a lock if there is any question about its owner, record,
+        # permission, file type or concurrent recovery.
+        return False
+
+
 @contextlib.contextmanager
 def public_read_reservation(tool, args, *, home=None, adapter=False):
     """Fail closed on blocked reservation. `adapter` is only trusted for
@@ -275,42 +352,46 @@ def public_read_reservation(tool, args, *, home=None, adapter=False):
         folder.mkdir(mode=0o700)
         acquired = True
     except FileExistsError:
-        entry = None
-        try:
-            entry = _safe_read(folder / 'entry.json', 4096)
-        except (OSError, ValueError, TypeError, KeyError):
-            pass
-        # A Node-owned read and the nested Python call must share exactly one
-        # reservation. Some Windows Python launchers introduce an extra PID, so
-        # direct-parent equality alone can reject a legitimate nested tool.
-        # A per-MCP 256-bit secret proves that the child was spawned by this
-        # adapter; the lock stores only an HMAC keyed by that secret. Never
-        # accept the adapter environment flag alone as proof.
-        common = bool(adapter and entry and entry.get('id') == key and
-                      entry.get('operation') == operation and
-                      entry.get('scopeHash') == _sha(scope)[:20] and
-                      entry.get('state') == 'executing')
-        owner = entry.get('pid') if isinstance(entry, dict) else None
-        if not common:
-            raise ReadReservationHeld('相同的只读动作正在执行或等待人工核查，未重复访问 B站',
-                                      'record-invalid' if adapter and entry else 'other-reservation')
-        if not _pid_alive(owner):
-            raise ReadReservationHeld('原预约进程已退出或不可核验，必须停机人工复核', 'owner-not-running')
-        proof = entry.get('adapterProof')
-        if proof is not None:
-            token = os.environ.get('BILI_JS_READ_GATE_TOKEN', '')
-            expected = (hmac.new(bytes.fromhex(token), key.encode('ascii'), hashlib.sha256).hexdigest()
-                        if re.fullmatch(r'[0-9a-f]{64}', token) else '')
-            if not (isinstance(proof, str) and re.fullmatch(r'[0-9a-f]{64}', proof)
-                    and expected and hmac.compare_digest(proof, expected)):
-                raise ReadReservationHeld('内置 Python 读取器未通过本次预约身份核验', 'adapter-proof-mismatch')
-        elif owner != os.getppid():
-            # Older Node reservations without an adapter proof retain strict
-            # parent matching, never silently widening legacy permissions.
-            raise ReadReservationHeld('旧版嵌套读取无法核验直接父进程', 'legacy-parent-mismatch')
-        # Node handles receipt and release after this verified nested MCP call.
-        yield True
-        return
+        if operation == 'bili_preview_frames' and _recover_abandoned_preview(folder, receipts, key, scope):
+            folder.mkdir(mode=0o700)
+            acquired = True
+        if not acquired:
+            entry = None
+            try:
+                entry = _safe_read(folder / 'entry.json', 4096)
+            except (OSError, ValueError, TypeError, KeyError):
+                pass
+            # A Node-owned read and the nested Python call must share exactly one
+            # reservation. Some Windows Python launchers introduce an extra PID, so
+            # direct-parent equality alone can reject a legitimate nested tool.
+            # A per-MCP 256-bit secret proves that the child was spawned by this
+            # adapter; the lock stores only an HMAC keyed by that secret. Never
+            # accept the adapter environment flag alone as proof.
+            common = bool(adapter and entry and entry.get('id') == key and
+                          entry.get('operation') == operation and
+                          entry.get('scopeHash') == _sha(scope)[:20] and
+                          entry.get('state') == 'executing')
+            owner = entry.get('pid') if isinstance(entry, dict) else None
+            if not common:
+                raise ReadReservationHeld('相同的只读动作正在执行或等待人工核查，未重复访问 B站',
+                                          'record-invalid' if adapter and entry else 'other-reservation')
+            if not _pid_alive(owner):
+                raise ReadReservationHeld('原预约进程已退出或不可核验，系统将在确认安全后自动恢复', 'owner-not-running')
+            proof = entry.get('adapterProof')
+            if proof is not None:
+                token = os.environ.get('BILI_JS_READ_GATE_TOKEN', '')
+                expected = (hmac.new(bytes.fromhex(token), key.encode('ascii'), hashlib.sha256).hexdigest()
+                            if re.fullmatch(r'[0-9a-f]{64}', token) else '')
+                if not (isinstance(proof, str) and re.fullmatch(r'[0-9a-f]{64}', proof)
+                        and expected and hmac.compare_digest(proof, expected)):
+                    raise ReadReservationHeld('内置 Python 读取器未通过本次预约身份核验', 'adapter-proof-mismatch')
+            elif owner != os.getppid():
+                # Older Node reservations without an adapter proof retain strict
+                # parent matching, never silently widening legacy permissions.
+                raise ReadReservationHeld('旧版嵌套读取无法核验直接父进程', 'legacy-parent-mismatch')
+            # Node handles receipt and release after this verified nested MCP call.
+            yield True
+            return
     at = int(time.time() * 1000)
     record = dict(version=1, id=key, scopeHash=_sha(scope)[:20], operation=operation,
                   source='python-video-agent', sourceHash='', obligationHash='', at=at,

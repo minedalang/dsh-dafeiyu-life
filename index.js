@@ -9037,7 +9037,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         saveVideoDebugSummary(stateDir,job,account)
         const watchdog=setTimeout(()=>{
           if(videoDebugJob===job&&job.status==='running'){
-            job.status='error';job.stage='视频感知处理超出 8 分钟';job.error='本轮超过 8 分钟未取得最终视觉回执；这是界面等待超时，不代表后台 Ollama/Python 已结束。禁止立即重复读取；如重启后提示读取预约占用，请在视频 Debug 点击「检查中断的 B站读取预约」，确认原进程退出并按安全规则人工核查。';job.updatedAt=Date.now()
+            job.status='error';job.stage='视频感知处理超出 8 分钟';job.error='本轮超过 8 分钟未取得最终视觉回执；这是界面等待超时，不代表后台 Ollama/Python 已结束。系统将自动核查中断的只读预约；确认可安全释放前不会重复读取 B站，无需手动解锁。';job.updatedAt=Date.now()
             saveVideoDebugSummary(stateDir,job,account)
           }
         },8*60_000);watchdog.unref?.()
@@ -9632,6 +9632,9 @@ logger:{warn:m=>log('社交意图：'+m)}
       catch(e){return sendJson(res,500,{ok:false,error:'只读动作执行诊断不可用：'+String(e?.message||e).slice(0,100)})}
     }
     if(req.method==='POST'&&path==='/api/bili-duty/read-action-executions/acknowledge'){
+      // Developer emergency tool only. Never expose an ordinary-user release
+      // path or accept a browser unlock without explicit host startup opt-in.
+      if(process.env.DSH_DEV_READ_ACTION_UNLOCK!=='1')return sendJson(res,403,{ok:false,error:'仅限开发者临时维护；普通视频读取由系统自动恢复'})
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'仅允许管理中心同源复核'})
       if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站复核'})

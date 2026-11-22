@@ -855,6 +855,11 @@
       "owner": "storage-management-and-vision-routing",
       "kind": "security",
       "intent": "Regression of post-migration storage UI load error and old-copy check separation; verify local Ollama vision route and privacy-safe diagnostics do not mix DSH primary model with last vision attempt."
+    },
+    "v283-dev3-preview-automatic-recovery.test.mjs": {
+      "owner": "platform-read-gates",
+      "kind": "security",
+      "intent": "Only proven-dead old video-frame reservations recover automatically, without platform replay or manual user controls; live, unknown and cross-account locks remain protected."
     }
   },
   "protected": [
@@ -1080,6 +1085,11 @@
       "owner": "python-headless-video-staged-watch",
       "kind": "behavior",
       "intent": "Account/round-scoped SQLite selection proof, simultaneous independent visual and speech reads, ASR fallback only after missing subtitles, partial evidence success, and fail-closed unselected/wrong-scene behavior."
+    },
+    "test_v283_dev3_preview_auto_recovery.py": {
+      "owner": "video-perception-read-gates",
+      "kind": "security",
+      "intent": "Python and Node share conservative dead-owner auto-recovery of aged preview reads; frame acquisition completes and releases its gate before local Ollama inference."
     }
   },
   "pythonProtected": [
