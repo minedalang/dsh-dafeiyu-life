@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync,writeFileSync,mkdirSync,existsSync,rmSync,readFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
-import {join} from 'node:path'
+import {join,dirname} from 'node:path'
 import {createVisionEnvironmentRepair} from '../lib/vision-environment-repair.mjs'
 import {visionPythonCandidates} from '../lib/vision-python-runtime.mjs'
 
@@ -46,6 +46,45 @@ test('unhealthy main Python is skipped; native copies and deps are verified befo
     assert.ok(invocations.some(x=>x.args[0]==='-m'&&x.args[1]==='venv'&&x.args[2]==='--copies'))
     assert.ok(invocations.every(x=>x.opts.cwd===f.home))
     assert.equal(existsSync(f.main),true);assert.ok(invocations.every(x=>x.cmd!==f.main))
+  }finally{f.clean()}
+})
+
+test('advanced Python storage partition creates the rebuilt vision environment on the selected runtime disk',async()=>{
+  const f=setup(),runtimeRoot=join(f.root,'D-drive','DSHData','pythonData');let published='',packages=false
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,runtimeRoot,requirementsFile:f.req,
+      preferred:()=>f.main,configured:()=>f.base,
+      probe:(p,{requiresMcp})=>p===f.main?status(false):p===f.base?status(!requiresMcp):status(!requiresMcp||packages),
+      run:async(_cmd,args)=>{
+        if(args[0]==='-m'&&args[1]==='venv'){
+          const target=args[3];mkdirSync(join(target,'Scripts'),{recursive:true});writeFileSync(join(target,'Scripts','python.exe'),'new visual runtime')
+        }else if(args[0]==='-m'&&args[1]==='pip')packages=true
+        return {ok:true}
+      },persist:async path=>{published=path;return true}})
+    const result=await repair.run()
+    assert.equal(result.state,'ready');assert.ok(published.startsWith(runtimeRoot))
+    assert.equal(existsSync(dirname(dirname(published))),true)
+    assert.equal(existsSync(f.base),true);assert.equal(existsSync(f.main),true)
+  }finally{f.clean()}
+})
+
+test('advanced rebuild does not reuse the previous plugin-owned vision venv from the old home',async()=>{
+  const f=setup(),runtimeRoot=join(f.root,'external-python');let saved='',packages=false
+  const oldManaged=join(f.home,'.vision-env-old','Scripts','python.exe')
+  mkdirSync(join(f.home,'.vision-env-old','Scripts'),{recursive:true});writeFileSync(oldManaged,'old managed python')
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,runtimeRoot,requirementsFile:f.req,
+      preferred:()=>oldManaged,configured:()=>f.base,
+      probe:(p,{requiresMcp})=>p===oldManaged?status(true):p===f.base?status(!requiresMcp):status(!requiresMcp||packages),
+      run:async(_cmd,args)=>{
+        if(args[0]==='-m'&&args[1]==='venv'){
+          const target=args[3];mkdirSync(join(target,'Scripts'),{recursive:true});writeFileSync(join(target,'Scripts','python.exe'),'new managed python')
+        }else if(args[0]==='-m'&&args[1]==='pip')packages=true
+        return {ok:true}
+      },persist:async path=>{saved=path;return true}})
+    const result=await repair.run()
+    assert.equal(result.state,'ready');assert.ok(saved.startsWith(runtimeRoot))
+    assert.equal(readFileSync(oldManaged,'utf8'),'old managed python')
   }finally{f.clean()}
 })
 

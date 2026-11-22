@@ -66,7 +66,7 @@ import { McpClient } from './lib/mcp.mjs'
 import { verifyRecent, appendVerifyToReport } from './lib/verify.mjs'
 import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charterPath, dayKey } from './lib/state.mjs'
 import {originalStateDir,storageLocationStatus,inspectStorageTarget,storageCategories} from './lib/storage-location.mjs'
-import {storageDataPath,storageDomainRoot,storageLayoutStatus,inspectDomainMigration,storageDomainsUsage} from './lib/storage-layout.mjs'
+import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,storageDomainsUsage,storageMigrationGroups} from './lib/storage-layout.mjs'
 import { VIDEO_PICK_POLICY } from './lib/video-pick-policy.mjs'
 import {effectiveVideoCharter} from './lib/video-charter.mjs'
 import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
@@ -706,14 +706,15 @@ export function apply(ctx, config) {
     }})
   const firstStart=createFirstStart({stateDir,credentialPath:join(stateDir,'bili_credential.json'),headlessSync})
   /**
-   * ⚠️ 2026-10-19（用户 `天文星球` 的截图）：装转写依赖时 uv 直接 exit 2 ——
-   *   `error: Could not acquire lock / failed to open file C:\Users\AP\AppData\Local\uv\cache\.lock: 拒绝访问 (os error 5)`
-   *   ⇒ **uv 默认把缓存放在 `%LOCALAPPDATA%\uv\cache`**，那地方一旦没权限（企业策略 / 杀软 / 别的用户建的）就彻底装不动 ✗
-   *   ⇒ 把 uv 的缓存 / 工具 / 解释器目录**全部钉在插件家里**（那儿一定可写）✓ ——
-   *   跟 `HF_HOME` 那次是同一类："环境差异由插件自己消掉，别让用户碰"。
+   * uv/pip 下载缓存默认固定在插件数据目录，允许用户安全迁移缓存；
+   * uv 工具环境和下载的 Python 解释器只有在用户明确选择高级重建时才切换，
+   * 普通缓存迁移不会改变任何现有虚拟环境的绝对路径。
    */
   const uvEnv = (extra = {}) => storagePyEnv({
+    // uv/pip download caches may move independently without changing any live interpreter.
+    PIP_CACHE_DIR: storageDataPath(stateDir,'pip-cache'),
     UV_CACHE_DIR: storageDataPath(stateDir,'uv-cache'),
+    // Tool environments and downloaded Python interpreters move only in explicit rebuild mode.
     UV_TOOL_DIR: storageDataPath(stateDir,'uv-tools'),
     UV_PYTHON_INSTALL_DIR: storageDataPath(stateDir,'uv-python'),
     ...extra,
@@ -3547,7 +3548,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // Explicit one-click repair from the management UI; never runs installers
   // on boot, never modifies the main .venv or sends Bilibili requests.
   const visionEnvironmentRepair=createVisionEnvironmentRepair({
-    home:stateDir,workdir:process.cwd(),
+    home:stateDir,workdir:process.cwd(),runtimeRoot:storagePythonRuntimeRoot(stateDir),
     requirementsFile:join(pluginDir,'vendor','bilibili-mcp','requirements.txt'),
     env:uvEnv(),
     configured:()=>cfg.pythonPath||'',preferred:()=>cfg.visionPythonPath||'',
@@ -8518,10 +8519,11 @@ logger:{warn:m=>log('社交意图：'+m)}
         const location=storageLocationStatus(originalStateDir(ctx))
         if(req.method==='GET')return sendJson(res,200,{ok:true,
           currentDir:stateDir,defaultDir:location.defaultDir,relocated:location.relocated,
-          usage:storageCategories(stateDir),domains:storageDomainsUsage(stateDir),offlineMigrationOnly:true})
+          usage:storageCategories(stateDir),domains:storageDomainsUsage(stateDir),groups:storageMigrationGroups(stateDir),
+          visionPythonPath:String(cfg.visionPythonPath||''),offlineMigrationOnly:true})
         const body=await readBody(req,2048)
         if(body?.domain){
-          const result=inspectDomainMigration({root:stateDir,domain:body.domain,target:body?.target})
+          const result=inspectDomainMigration({root:stateDir,domain:body.domain,target:body?.target,mode:body?.mode})
           return sendJson(res,200,{...result,offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         }
         const result=inspectStorageTarget({source:stateDir,target:body?.target})
