@@ -46,12 +46,15 @@ test('视频权限改为正向推拉开关，仍写回原有配置键而不重�
  assert.match(html,/自主关注／取关 UP 主/)
  assert.match(read('index.js'),/agentFollowEnabled: z\.boolean\(\)\.default\(true\)/)
 })
-test('视频兴趣私信仍显示独立链路，旧四项内部调试卡不向普通用户显示',()=>{
+test('视频兴趣私信仍独立，允许用户手动核查中断的只读预约，其余旧内部诊断保持隐藏',()=>{
  assert.match(js,/request\('\/social-intentions'\)/)
  assert.match(html,/id="life-link-sharing"/)
- for(const id of ['read-action-executions-section','outbound-action-executions-section','todo-transactions-section','video-discussion-acceptance']){
+ for(const id of ['outbound-action-executions-section','todo-transactions-section','video-discussion-acceptance']){
   assert.match(html,new RegExp('id="'+id+'"[^>]*\\bhidden\\b'))
  }
+ assert.match(html,/id="read-action-executions-section" class="settings-section life-section"/);
+ assert.match(html,/id="video-debug-read-review"/);
+ assert.match(js,/read-action-executions-section\'\)\.scrollIntoView/);
  assert.match(html,/\[hidden\]\[data-retired-internal\]/)
 })
 test('默认人格不再强行规定兴趣领域，但保留原人物设定',()=>{
