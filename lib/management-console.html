@@ -1849,6 +1849,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-backup .storage-status[data-state="success"]{border-color:#44a576;background:#e7f7ee;color:#174e35}
 #panel-backup .storage-status[data-state="progress"]{border-color:#6287dc;background:#eaf0ff;color:#1a4385}
 #panel-backup .storage-retained-card{margin-top:13px;padding:16px}
+#panel-backup #storage-python-cache-check-panel[hidden]{display:none!important}
 #panel-backup .storage-retained-heading{display:flex;justify-content:space-between;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
 #panel-backup .storage-retained-heading strong{font-size:14px}
 #panel-backup .storage-retained-tag{font-size:11px;font-weight:700;border-radius:8px;padding:4px 8px;background:var(--tint);color:var(--action)}
@@ -2319,6 +2320,14 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   <p class="muted">上方仅统计原业务根目录的物理占用（包括迁移后保留的旧模型副本、未迁移的 Python），不等于当前生效模型位置。下方显示各分区实际生效目录和占用。</p>
   <div class="storage-section-label"><strong>迁移与旧副本清理</strong><span>先确认任务状态，再进行实测或清理</span></div>
   <div id="storage-migration-job-status" class="storage-status" data-state="neutral" role="status" aria-live="polite" aria-atomic="true">尚无预约的自动迁移任务。</div>
+  <section id="storage-python-cache-check-panel" class="storage-metric storage-retained-card" hidden aria-label="Python 包管理缓存迁移验证">
+    <div class="storage-retained-heading"><strong>✓ Python 包管理缓存已配置分盘</strong><span class="storage-retained-tag">不涉及 Python 环境重建</span></div>
+    <p id="storage-python-cache-check-info" class="muted">正在读取缓存存储位置…</p>
+    <p class="muted">点击后检查 uv / pip 实际缓存路由和目标目录读写能力。不下载软件、不安装依赖、不移动解释器，也不自动删除原缓存。</p>
+    <button type="button" id="storage-python-cache-check">一键验证包管理缓存</button>
+    <div id="storage-python-cache-check-result" class="storage-status" data-state="neutral" role="status" aria-live="polite" aria-atomic="true"></div>
+  </section>
+
   <div class="storage-metric storage-retained-card" id="storage-retained-model-panel" aria-label="迁移后旧模型副本">
     <div class="storage-retained-heading"><strong>🧹 迁移后保留的旧模型副本</strong><span class="storage-retained-tag">验证后可申请清理</span></div><span id="storage-retained-model-info">正在读取…</span>
     <p class="muted">先一键实际加载 Whisper、运行 Embedding 向量推理及可用的视觉识别；校验前后模型文件 SHA-256。视觉识别若开启，需本人确认真实图片回答。全部通过后可点击清理按钮预约停机删除；绝不清理 Python、Life 记忆或未知文件。</p>

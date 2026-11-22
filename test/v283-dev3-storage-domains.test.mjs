@@ -1,9 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync} from 'node:fs'
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync,readdirSync} from 'node:fs'
 import {join,dirname} from 'node:path'
 import {tmpdir} from 'node:os'
 import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,migrateDomainOffline,rollbackDomainOffline,storageDomainsUsage,storageMigrationGroups} from '../lib/storage-layout.mjs'
+import {verifyPythonCachePaths} from '../lib/storage-python-cache-check.mjs'
 import {readWhisperReadiness} from '../lib/video-dependencies.mjs'
 import {listWhisperModels} from '../lib/whisper-model-cache.mjs'
 import {collectBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
@@ -109,14 +110,21 @@ test('Python cache-only is the default and never redirects or copies live runtim
  assert.equal(storageDataPath(root,'uv-python','python.exe'),path('uv-python','python.exe'))
  assert.equal(storagePythonRuntimeRoot(root),root)
  const usage=storageDomainsUsage(root).find(x=>x.key==='python')
- assert.equal(usage.partial,true)
+ assert.equal(usage.partial,false)
  assert.ok(usage.paths.includes(join(destination,'uv-cache')))
- assert.ok(usage.paths.includes(path('.venv')))
+ assert.equal(usage.paths.includes(path('.venv')),false)
  assert.equal(readFileSync(join(outside,'python.exe'),'utf8'),'outside-interpreter')
  assert.equal(existsSync(join(destination,'.venv')),false)
  const group=storageMigrationGroups(root).find(x=>x.key==='python')
  assert.equal(group.parts.find(x=>x.label.includes('包管理')).root,destination)
- assert.equal(group.parts.find(x=>x.label.includes('Python 运行环境')).root,root)
+ assert.equal(group.pythonRuntimeRoot,root)
+ assert.equal(group.parts.length,1)
+ const verification=verifyPythonCachePaths({root})
+ assert.equal(verification.ok,true)
+ assert.equal(verification.target,destination)
+ assert.equal(verification.checks.length,2)
+ assert.ok(verification.checks.every(x=>x.hasDirectory))
+ assert.equal(readFileSync(path('uv-cache','archive-v1'),'utf8'),'uv-download-cache')
 }))
 test('Python runtime rebuild mode is rejected before creating or moving any data',()=>fixture(({t,root,path})=>{
  put(path('uv-cache','cache.bin'),'download-cache')
@@ -308,3 +316,40 @@ test('storage page displays cache-only explanation exclusively for Python, with 
  assert.match(script,/const mode=domain==='python'\?'cache':undefined/)
  for(const line of ['不复制或重建 Python 环境','不涉及模型安装或 Python 环境重建','不会重建','不重新安装 Python 依赖'])assert.ok((script+html).includes(line))
 })
+
+test('Python cache verification is denied before migration and never creates new Python environments',()=>fixture(({t,root,path})=>{
+ put(path('.venv','pyvenv.cfg'),'unchanged')
+ assert.throws(()=>verifyPythonCachePaths({root}),/尚未配置独立位置/)
+ put(path('uv-cache','entry.bin'),'bytes')
+ const dest=join(t,'target')
+ migrateDomainOffline({root,domain:'python',target:dest,confirmedStopped:true})
+ const verified=verifyPythonCachePaths({root})
+ assert.equal(verified.checks[0].hasDirectory,true)
+ assert.equal(verified.checks[1].hasDirectory,false)
+ assert.equal(readFileSync(path('.venv','pyvenv.cfg'),'utf8'),'unchanged')
+ assert.equal(existsSync(join(dest,'.venv')),false)
+ assert.deepEqual(requireNoProbeFiles(dest),[])
+}))
+function requireNoProbeFiles(dir){
+ const items=[]
+ const scan=current=>{
+  for(const file of readdirSync(current,{withFileTypes:true})){
+   const path=join(current,file.name)
+   if(file.name.startsWith('.dafeiyu-cache-write-probe-'))items.push(path)
+   if(file.isDirectory())scan(path)
+  }
+ }
+ scan(dir);return items
+}
+
+test('Python cache verifier refuses symlinked cache paths instead of following external files',()=>fixture(({t,root,path})=>{
+ put(path('uv-cache','entry.bin'),'cache')
+ const dest=join(t,'cache-target')
+ migrateDomainOffline({root,domain:'python',target:dest,confirmedStopped:true})
+ const outside=join(t,'outside');mkdirSync(outside)
+ rmSync(join(dest,'uv-cache'),{recursive:true})
+ try{symlinkSync(outside,join(dest,'uv-cache'),process.platform==='win32'?'junction':'dir')}
+ catch(e){if(['EPERM','EACCES'].includes(e?.code))return;throw e}
+ assert.throws(()=>verifyPythonCachePaths({root}),/链接|目录|路径/)
+ assert.equal(readFileSync(path('uv-cache','entry.bin'),'utf8'),'cache')
+}))

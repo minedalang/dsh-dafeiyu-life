@@ -110,3 +110,20 @@ test('status announcements use text nodes rather than HTML and expose correct st
   assert.deepEqual(el.children.map(v=>v.tag),['strong','span'])
   assert.equal(el.children[1].text,'<script>alert(1)</script>')
 })
+
+test('Python cache migration has a dedicated verification button and honest cache-only status',()=>{
+ const index=readFileSync(join(root,'index.js'),'utf8')
+ for(const id of ['storage-python-cache-check-panel','storage-python-cache-check',
+   'storage-python-cache-check-info','storage-python-cache-check-result'])
+   assert.equal([...page.matchAll(new RegExp(`id="${id}"`,'g'))].length,1)
+ assert.match(page,/一键验证包管理缓存/)
+ assert.match(page,/#storage-python-cache-check-panel\[hidden\]\{display:none!important\}/)
+ assert.match(script,/storage-python-cache-check.*addEventListener\('click'/)
+ assert.match(script,/\/storage\/verify-python-cache/)
+ assert.match(script,/uv \/ pip 缓存已迁移 · 可一键验证缓存路径/)
+ assert.match(index,/verifyPythonCachePaths\(\{root:stateDir\}\)/)
+ const u=ui()
+ u.storageOverview(data({status:'completed',domain:'python'}))
+ assert.match(snapshot(u).title,/uv \/ pip 包缓存已迁至独立目录/)
+ assert.doesNotMatch(snapshot(u).detail,/模型实测通过/)
+})

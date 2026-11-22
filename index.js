@@ -70,6 +70,7 @@ import {originalStateDir,storageLocationStatus,inspectStorageTarget,storageCateg
 import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,storageDomainsUsage,storageMigrationGroups} from './lib/storage-layout.mjs'
 import {inspectRetainedModelCopies} from './lib/storage-maintenance.mjs'
 import {verifyRelocatedModelRuntime} from './lib/storage-model-runtime-check.mjs'
+import {verifyPythonCachePaths} from './lib/storage-python-cache-check.mjs'
 import {queueModelCleanup,readCleanupJob} from './lib/storage-cleanup-queue.mjs'
 import {queueDomainMigration,readMigrationJob,assertMigrationStartupSafe} from './lib/storage-migration-queue.mjs'
 import {storageTargetSuggestions} from './lib/storage-platform.mjs'
@@ -8518,11 +8519,11 @@ logger:{warn:m=>log('社交意图：'+m)}
     // is NEVER performed by this HTTP handler: the button schedules a detached
     // worker that waits for DSH shutdown and rechecks all copies offline.
     if ((req.method==='GET'&&path==='/api/bili-duty/storage/location')||
-        (req.method==='POST'&&['/api/bili-duty/storage/check','/api/bili-duty/storage/verify-retained-model','/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path))) {
+        (req.method==='POST'&&['/api/bili-duty/storage/check','/api/bili-duty/storage/verify-retained-model','/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/verify-python-cache','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path))) {
       const peer=String(req.socket?.remoteAddress||'')
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||
-         (req.method==='POST'&&['/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path)&&(!origin||!host))||
+         (req.method==='POST'&&['/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/verify-python-cache','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path)&&(!origin||!host))||
          origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin))||
          String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'存储位置仅允许电脑本机同源管理中心查看和预检'})
@@ -8538,6 +8539,11 @@ logger:{warn:m=>log('社交意图：'+m)}
           ...inspectRetainedModelCopies({root:stateDir,verify:true}),
           offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         const body=await readBody(req,2048)
+        if(path==='/api/bili-duty/storage/verify-python-cache'){
+          if(['waiting','running'].includes(readMigrationJob(stateDir).status))
+            throw Error('离线迁移任务尚未结束，请退出 DSH 并等待迁移完成后再验证')
+          return sendJson(res,200,verifyPythonCachePaths({root:stateDir}))
+        }
         if(path==='/api/bili-duty/storage/verify-model-runtime'){
           if(storageModelVerificationBusy)throw Error('迁移实测已经在进行，请勿重复启动')
           storageModelVerificationBusy=true;storageModelVerification=null
