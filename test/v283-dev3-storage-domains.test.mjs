@@ -298,3 +298,20 @@ test('management UI exposes three migration groups, safe/default and advanced Py
  assert.match(backend,/visionPythonPath:String\(cfg\.visionPythonPath\|\|''\)/)
  assert.match(backend,/PIP_CACHE_DIR: storageDataPath\(stateDir,'pip-cache'\)/)
 })
+
+test('storage page isolates Python-only modes from model and memory groups (reported UI bug)',()=>{
+ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
+ const script=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+ assert.match(html,/id="storage-python-mode-wrap"[^>]*\bhidden\b/)
+ assert.match(html,/#panel-backup \.storage-python-mode\[hidden\]\{display:none!important\}/)
+ assert.match(html,/id="storage-domain-help"/)
+ assert.match(script,/\$\('storage-python-mode-wrap'\)\.hidden=!isPython/)
+ assert.match(script,/for\(const input of pythonModeInputs\)input\.disabled=!isPython/)
+ assert.match(script,/if\(!isPython\)\{/)
+ assert.match(script,/const mode=domain==='python'\?selectedStoragePythonMode\(\):undefined/)
+ for(const line of [
+   '不复制或重建 Python 环境',
+   '只有主动选择高级模式',
+   '不涉及模型安装或 Python 环境重建'
+ ])assert.ok(script.includes(line))
+})

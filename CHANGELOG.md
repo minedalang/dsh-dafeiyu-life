@@ -1,3 +1,9 @@
+## 2.8.3-dev.3 · 迁移项说明和 Python 模式隔离修补（增量补丁，版本号不变）
+
+- 修复管理中心 Python 模式容器的 CSS `display:grid` 覆盖 HTML `hidden` 导致选择 Whisper/模型或 Life 迁移时仍显示 Python 缓存与高级重建选项的问题。
+- 三组迁移分别显示专属说明和预检结果；只有 Python 迁移项展示且允许选择 Python 缓存/重建模式，切换到其他项时复位隐藏的高级模式选择，模型和 Life 命令不传递 `--mode`。
+- 保留原停机迁移、安全校验、模型组原子迁移、记忆遗忘保护、旧数据留存；未改动实际迁移引擎或视频功能。Windows/DSH 实机仍待验证。
+
 ## 2.8.3-dev.3 · Python 存储迁移安全重设计（增量补丁，版本号不变）
 
 - **默认安全迁移：** Python 分组默认只迁移可再下载的 `uv-cache` / `pip-cache`，显式设置 `UV_CACHE_DIR` 与 `PIP_CACHE_DIR`；`.venv`、`.venv-asr`、视觉环境、`uv-python` 与 `uv-tools` 继续使用当前路径，不复制、不重命名、不扫描目录联接，现有插件 Python 功能不受缓存迁移影响。
