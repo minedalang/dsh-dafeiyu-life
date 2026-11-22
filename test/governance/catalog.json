@@ -830,6 +830,16 @@
       "owner": "storage-layout-and-migration",
       "kind": "security",
       "intent": "Read-only current-vs-retained model audit; strict legacy-only SHA cleanup; three operator confirmations; protect Python/Life; Windows/macOS/Linux suggestions and shell quoting."
+    },
+    "v283-dev3-oneclick-cleanup.test.mjs": {
+      "owner": "storage-layout-and-migration",
+      "kind": "security",
+      "intent": "One-click model inference and owner image review; after-exit cleanup queue refuses running processes and changed SHA copies, protecting Python/Life."
+    },
+    "v283-dev3-offline-ui-migration.test.mjs": {
+      "owner": "storage-layout-and-migration",
+      "kind": "security",
+      "intent": "One-click shutdown migration queue is local-only and fail-closed: no HTTP file copy, parent/process exit proof, changed-source refusal, restart barrier, and Python/Life isolation across OSes."
     }
   },
   "protected": [

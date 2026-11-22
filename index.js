@@ -69,6 +69,9 @@ import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charte
 import {originalStateDir,storageLocationStatus,inspectStorageTarget,storageCategories} from './lib/storage-location.mjs'
 import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,storageDomainsUsage,storageMigrationGroups} from './lib/storage-layout.mjs'
 import {inspectRetainedModelCopies} from './lib/storage-maintenance.mjs'
+import {verifyRelocatedModelRuntime} from './lib/storage-model-runtime-check.mjs'
+import {queueModelCleanup,readCleanupJob} from './lib/storage-cleanup-queue.mjs'
+import {queueDomainMigration,readMigrationJob,assertMigrationStartupSafe} from './lib/storage-migration-queue.mjs'
 import {storageTargetSuggestions} from './lib/storage-platform.mjs'
 import { VIDEO_PICK_POLICY } from './lib/video-pick-policy.mjs'
 import {effectiveVideoCharter} from './lib/video-charter.mjs'
@@ -608,6 +611,8 @@ export function apply(ctx, config) {
     return myVer
   }
   const stateDir = stateDirOf(ctx)
+  // If a detached worker is still migrating, refuse to open active data.
+  assertMigrationStartupSafe(stateDir)
   // Verify every configured storage domain before any write/identity creation.
   const storageLayout = storageLayoutStatus(stateDir)
   const storagePyEnv = (extra={})=>pyEnv({
@@ -8409,6 +8414,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
   }
 
+  let storageModelVerification=null,storageModelVerificationBusy=false
   const handle = async (req, res, url) => {
     refreshCfg()
     const path = url.pathname
@@ -8508,13 +8514,15 @@ logger:{warn:m=>log('社交意图：'+m)}
         'cache-control':'no-store','x-content-type-options':'nosniff'})
       return res.end(body)
     }
-    // dev.2 storage overview is read-only. Moving a live DSH home is unsafe:
-    // all changing operations are deliberately restricted to an offline script.
+    // Verification is an explicit local-only runtime test. Old model deletion
+    // is NEVER performed by this HTTP handler: the button schedules a detached
+    // worker that waits for DSH shutdown and rechecks all copies offline.
     if ((req.method==='GET'&&path==='/api/bili-duty/storage/location')||
-        (req.method==='POST'&&['/api/bili-duty/storage/check','/api/bili-duty/storage/verify-retained-model'].includes(path))) {
+        (req.method==='POST'&&['/api/bili-duty/storage/check','/api/bili-duty/storage/verify-retained-model','/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path))) {
       const peer=String(req.socket?.remoteAddress||'')
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||
+         (req.method==='POST'&&['/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path)&&(!origin||!host))||
          origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin))||
          String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'存储位置仅允许电脑本机同源管理中心查看和预检'})
@@ -8523,13 +8531,69 @@ logger:{warn:m=>log('社交意图：'+m)}
         if(req.method==='GET')return sendJson(res,200,{ok:true,
           currentDir:stateDir,defaultDir:location.defaultDir,relocated:location.relocated,
           usage:storageCategories(stateDir),domains:storageDomainsUsage(stateDir),groups:storageMigrationGroups(stateDir),
-          retainedModel:inspectRetainedModelCopies({root:stateDir}),platform:process.platform,
+          retainedModel:inspectRetainedModelCopies({root:stateDir}),cleanupJob:readCleanupJob(stateDir),migrationJob:readMigrationJob(stateDir),platform:process.platform,
           suggestedTargets:storageTargetSuggestions(process.platform,homedir()),
           visionPythonPath:String(cfg.visionPythonPath||''),offlineMigrationOnly:true})
         if(path==='/api/bili-duty/storage/verify-retained-model')return sendJson(res,200,{
           ...inspectRetainedModelCopies({root:stateDir,verify:true}),
           offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         const body=await readBody(req,2048)
+        if(path==='/api/bili-duty/storage/verify-model-runtime'){
+          if(storageModelVerificationBusy)throw Error('迁移实测已经在进行，请勿重复启动')
+          storageModelVerificationBusy=true;storageModelVerification=null
+          try{
+            const copies=inspectRetainedModelCopies({root:stateDir,verify:true})
+            if(!copies.eligible||!copies.verified)throw Error('旧副本 SHA-256 校验未通过：'+copies.reason)
+            const configBefore=JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])
+            const result=await verifyRelocatedModelRuntime({root:stateDir,asrPython:asrPython(),
+              asrModel:cfg.asrModel||'small',asrModelPath:cfg.asrModelPath||'',embeddingRuntime,
+              visionEnabled:cfg.visionEnabled===true,visionMode:resolvedVisionMode(),
+              visionDshReview:dshVisionReview,visionLocalModels:localVisionModels,
+              visionLocalModel:cfg.visionLocalModel||'',visionThinking:cfg.visionLocalThinking||'off'})
+            const configKey=JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])
+            if(configKey!==configBefore)throw Error('实测期间模型配置改变，结果作废，请重新验证')
+            const ticket=randomUUID()
+            storageModelVerification={ticket,at:Date.now(),target:result.target,ready:result.ready,
+              checks:result.checks,configKey}
+            const vision=result.checks.vision
+            const evidence=vision.pendingReview?(vision.mode==='independent_dsh'?dshVisionReview.status():
+              localVisionModels.reviewEvidence(vision.model)):null
+            return sendJson(res,200,{...result,ticket,bytes:copies.bytes,files:copies.files,
+              review:vision.pendingReview?{reviewId:vision.reviewId,answer:String(evidence?.answer||''),mode:vision.mode}:null})
+          }finally{storageModelVerificationBusy=false}
+        }
+        if(path==='/api/bili-duty/storage/review-model-vision'){
+          const ticket=String(body?.ticket||'')
+          if(!storageModelVerification||storageModelVerification.ticket!==ticket||Date.now()-storageModelVerification.at>10*60_000||
+             JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])!==storageModelVerification.configKey)
+            throw Error('迁移实测已过期或模型配置改变，请重新验证')
+          const vision=storageModelVerification.checks.vision
+          if(!vision.pendingReview||body?.accepted!==true&&body?.accepted!==false)throw Error('没有待人工确认的真实图片识别结果')
+          const reply=vision.mode==='independent_dsh'
+            ?dshVisionReview.review({reviewId:vision.reviewId,accepted:body.accepted})
+            :await localVisionModels.review(vision.model,{reviewId:vision.reviewId,accepted:body.accepted})
+          vision.ok=reply.verified===true;vision.pendingReview=false
+          vision.reason=vision.ok?'本人已检查并认可本轮真实图片识别':'图片识别未被认可，禁止清理旧副本'
+          storageModelVerification.ready=Object.values(storageModelVerification.checks).every(x=>x.ok===true)
+          return sendJson(res,200,{ok:true,ready:storageModelVerification.ready,checks:storageModelVerification.checks})
+        }
+        if(path==='/api/bili-duty/storage/schedule-model-cleanup'){
+          if(['waiting','running'].includes(readMigrationJob(stateDir).status))throw Error('迁移助手尚未结束，不能同时清理旧副本')
+          if(!storageModelVerification||body?.ticket!==storageModelVerification.ticket||
+             JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])!==storageModelVerification.configKey)
+            throw Error('模型配置或验证身份已变化，请重新实测')
+          if(body?.confirm!=='DELETE_RETAINED_MODEL_COPIES')throw Error('必须明确确认失去旧模型副本回退能力')
+          const script=join(pluginDir,'scripts','cleanup-retained-model-after-exit.mjs')
+          return sendJson(res,200,queueModelCleanup({root:stateDir,verification:storageModelVerification,
+            workerScript:script,parentPid:process.pid}))
+        }
+        if(path==='/api/bili-duty/storage/schedule-migration'){
+          if(!['model','python'].includes(body?.domain))throw Error('Life 记忆迁移仍必须停机执行，不允许通过管理页自动排队')
+          if(body?.confirm!=='SCHEDULE_STOPPED_MIGRATION')throw Error('请明确确认退出 DSH 后执行迁移')
+          return sendJson(res,200,queueDomainMigration({root:stateDir,domain:body.domain,
+            target:body?.target,mode:body?.mode,
+            workerScript:join(pluginDir,'scripts','migrate-bili-duty-after-exit.mjs'),parentPid:process.pid}))
+        }
         if(body?.domain){
           if(body.domain==='python'&&body.mode&&body.mode!=='cache')
             throw Error('Python 迁移仅支持 uv/pip 包缓存；不提供环境重建')
