@@ -1797,8 +1797,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-backup .storage-choice-current strong{font-size:12px;overflow-wrap:anywhere}
 #panel-backup .storage-choice-current small{line-height:1.55}
 #panel-backup #storage-target-suggestion{overflow-wrap:anywhere}
-#panel-backup .storage-python-mode{display:grid;gap:8px;margin:10px 0;padding:11px;border:1px solid var(--stroke);border-radius:11px}
-#panel-backup .storage-python-mode[hidden]{display:none!important}
+#panel-backup #storage-python-cache-hint[hidden]{display:none!important}
 #panel-backup .storage-mode-option{display:grid;grid-template-columns:18px minmax(0,1fr);gap:8px;align-items:start;margin:0!important;padding:8px;border-radius:8px;background:var(--panel)}
 #panel-backup .storage-mode-option input{margin-top:3px}
 #panel-backup .storage-mode-option strong{display:block;font-size:12px}
@@ -2257,14 +2256,11 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   <div id="storage-domain-list" class="storage-domains" aria-label="三组存储分区"></div>
   <details class="storage-relocate" id="storage-relocate">
     <summary>更改数据保存位置 <span>· 安全冷迁移</span></summary>
-    <p class="muted">选择要迁移的三类数据；整体 bili-duty 搬迁仍使用独立离线命令。所有更改必须完全退出 DSH 后执行；只读检查不会搬走或删除任何内容。选择数据类别后将显示对应的迁移说明；只有 Python 类别包含运行环境重建模式。</p>
+    <p class="muted">选择要迁移的三类数据；整体 bili-duty 搬迁仍使用独立离线命令。所有更改必须完全退出 DSH 后执行；只读检查不会搬走或删除任何内容。选择数据类别后只显示对应的迁移说明；Python 类别仅迁移包管理缓存，不重建依赖和解释器。</p>
     <div class="storage-choose-row"><div><label for="storage-domain">迁移哪一部分</label>
-    <select id="storage-domain"><option value="model">Whisper 模型、Embedding 模型与运行时、影音与视觉可再生缓存</option><option value="python">Python 环境及包管理缓存</option><option value="memory">Life 记忆、深层详情、遗忘保护与向量索引</option></select>
+    <select id="storage-domain"><option value="model">Whisper 模型、Embedding 模型与运行时、影音与视觉可再生缓存</option><option value="python">Python 包管理缓存（uv / pip）</option><option value="memory">Life 记忆、深层详情、遗忘保护与向量索引</option></select>
     <p class="muted" id="storage-domain-help" role="status" aria-live="polite">模型与影音视觉缓存：按整组安全迁移，不涉及 Python 环境重建。</p>
-    <div id="storage-python-mode-wrap" class="storage-python-mode" hidden aria-label="Python 迁移方式">
-      <label class="storage-mode-option"><input type="radio" name="storage-python-mode" value="cache" checked><span><strong>仅迁移包管理缓存（推荐）</strong><small>只搬运 uv / pip 下载缓存；主 .venv、ASR、视觉环境、uv Python 解释器和工具环境完全不动，插件可继续使用现有 Python。</small></span></label>
-      <label class="storage-mode-option"><input type="radio" name="storage-python-mode" value="rebuild"><span><strong>高级：切换运行环境位置（随后重建）</strong><small>不复制旧虚拟环境；主依赖、ASR 和视觉环境需在新位置重新安装/修复。旧环境完整保留，失败可停机回退。</small></span></label>
-    </div></div>
+    <p class="muted" id="storage-python-cache-hint" hidden>仅迁移 uv-cache 与 pip-cache；不会重建、移动或重新安装 Python 解释器、虚拟环境和依赖。</p></div>
     <div class="storage-choice-current"><span>所选项目当前位置（按实际生效路径）</span><strong id="storage-domain-current">正在读取…</strong><small id="storage-domain-current-parts"></small></div></div>
     <label for="storage-target">新目录（本机磁盘的空文件夹）</label>
     <p class="muted">建议目录（示例，请按实际磁盘修改）：<code id="storage-target-suggestion">正在读取平台路径…</code> <button id="storage-use-suggestion" type="button">使用建议目录</button>。请按实际磁盘修改，不会自动创建或迁移。</p>

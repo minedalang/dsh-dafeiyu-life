@@ -7,6 +7,8 @@ import {spawnSync} from 'node:child_process'
 import {migrateDomainOffline,storageDataPath,rollbackDomainOffline} from '../lib/storage-layout.mjs'
 import {inspectRetainedModelCopies,cleanupRetainedModelCopies} from '../lib/storage-maintenance.mjs'
 import {storageTargetSuggestions,storageOfflineCommand} from '../lib/storage-platform.mjs'
+import {getEmbeddingRuntimeAsset} from '../lib/embedding-runtime-manager.mjs'
+import {ffmpegInstallCommand} from '../lib/video-dependencies.mjs'
 const run=fn=>{const temp=mkdtempSync(join(tmpdir(),'dev3-storage-跨平台-')),root=join(temp,'bili-duty');mkdirSync(root);try{return fn({temp,root})}finally{rmSync(temp,{recursive:true,force:true})}}
 const put=(file,content)=>{mkdirSync(dirname(file),{recursive:true});writeFileSync(file,content)}
 const setup=({temp,root})=>{
@@ -92,18 +94,18 @@ test('UI renders distinct root disk usage, active partitions, old-copy preview a
  assert.match(backend,/suggestedTargets:storageTargetSuggestions/)
 })
 
-test('CLI inspection is read-only and non-Windows advanced Python rebuild is refused before any mutation',()=>run(({temp,root})=>{
+test('CLI inspection is read-only and advanced Python rebuild is refused on every platform',()=>run(({temp,root})=>{
  setup({temp,root})
  const cli=new URL('../scripts/migrate-bili-duty-domain.mjs',import.meta.url)
  const result=spawnSync(process.execPath,[cli.pathname,'--root',root,'--inspect-retained-model'],{encoding:'utf8'})
  assert.equal(result.status,0)
  assert.match(result.stdout,/"verified": true/)
  assert.equal(existsSync(join(root,'.hf-cache','hub','model.bin')),true)
- if(process.platform!=='win32'){
+ {
   const denied=spawnSync(process.execPath,[cli.pathname,'--root',root,'--domain','python','--mode','rebuild',
    '--to',join(temp,'pythonData'),'--confirm-stopped'],{encoding:'utf8'})
   assert.equal(denied.status,1)
-  assert.match(denied.stderr,/仅可迁移 uv\/pip 包缓存/)
+  assert.match(denied.stderr,/仅可迁移 uv\/pip 包管理缓存/)
   assert.equal(existsSync(join(temp,'pythonData')),false)
  }
 }))
@@ -119,3 +121,32 @@ test('HF internal blob file symlinks materialized on new storage remain verifiab
  assert.equal(report.eligible,true)
  assert.equal(readFileSync(join(target,'.hf-cache','hub','models--example','snapshots','main','weights.bin'),'utf8'),'the-blob')
 }))
+
+// Audits installation *contracts* without network downloads, native executables or device assertions.
+test('Python cache-only CLI generation refuses rebuild on Windows, macOS and Linux',()=>{
+ for(const platform of ['win32','darwin','linux']){
+  const args={platform,script:'/tmp/migrate.mjs',root:'/tmp/bili-duty',domain:'python',target:'/tmp/pythonData'}
+  assert.match(storageOfflineCommand({...args,mode:'cache'}),/--mode 'cache'/)
+  assert.throws(()=>storageOfflineCommand({...args,mode:'rebuild'}),/仅支持.*缓存/)
+ }
+})
+test('Embedding installer maps six common OS/architecture combinations to pinned hashes and expected packages',()=>{
+ for(const platform of ['win32','darwin','linux'])for(const arch of ['x64','arm64']){
+  const asset=getEmbeddingRuntimeAsset(platform,arch)
+  assert.match(asset.sha256,/^[0-9a-f]{64}$/)
+  assert.match(asset.url,/^https:\/\/github\.com\/ggml-org\/llama\.cpp\/releases\/download\/b12110\//)
+  assert.ok(asset.file.startsWith('llama-b12110-'))
+  assert.ok(asset.file.endsWith(platform==='win32'?'.zip':'.tar.gz'))
+ }
+ assert.throws(()=>getEmbeddingRuntimeAsset('freebsd','x64'),/暂不支持/)
+ assert.throws(()=>getEmbeddingRuntimeAsset('linux','ia32'),/暂不支持/)
+})
+test('FFmpeg installation contracts select platform package managers or return actionable refusal',()=>{
+ const mac=ffmpegInstallCommand({platform:'darwin',exists:x=>x==='/opt/homebrew/bin/brew',run:()=>({status:0})})
+ assert.equal(mac.label,'macOS Homebrew')
+ const linux=ffmpegInstallCommand({platform:'linux',run:x=>({status:['pkexec','apt-get'].includes(x)?0:1})})
+ assert.equal(linux.binary,'pkexec')
+ assert.deepEqual(linux.args,['apt-get','install','-y','ffmpeg'])
+ const manual=ffmpegInstallCommand({platform:'linux',run:()=>({status:1})})
+ assert.match(manual.error,/手动|缺少/)
+})

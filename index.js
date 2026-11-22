@@ -8531,8 +8531,8 @@ logger:{warn:m=>log('社交意图：'+m)}
           offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         const body=await readBody(req,2048)
         if(body?.domain){
-          if(body.domain==='python'&&body.mode==='rebuild'&&process.platform!=='win32')
-            throw Error('当前平台尚未完成 Python 视觉环境自动重建验收；只能安全迁移 uv/pip 包缓存')
+          if(body.domain==='python'&&body.mode&&body.mode!=='cache')
+            throw Error('Python 迁移仅支持 uv/pip 包缓存；不提供环境重建')
           const result=inspectDomainMigration({root:stateDir,domain:body.domain,target:body?.target,mode:body?.mode})
           return sendJson(res,200,{...result,offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         }
