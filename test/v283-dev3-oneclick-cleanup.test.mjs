@@ -6,7 +6,7 @@ import {join,dirname} from 'node:path'
 import {migrateDomainOffline,storageDataPath} from '../lib/storage-layout.mjs'
 import {inspectRetainedModelCopies} from '../lib/storage-maintenance.mjs'
 import {verifyRelocatedModelRuntime,findLocalWhisperModel} from '../lib/storage-model-runtime-check.mjs'
-import {queueModelCleanup,runQueuedCleanup,readCleanupJob,runtimeProcessesStopped} from '../lib/storage-cleanup-queue.mjs'
+import {queueModelCleanup,runQueuedCleanup,readCleanupJob,runtimeProcessesStopped,provenExternalOllamaRunner} from '../lib/storage-cleanup-queue.mjs'
 const put=(p,text)=>{mkdirSync(dirname(p),{recursive:true});writeFileSync(p,text)}
 const withMigration=async fn=>{
  const temp=mkdtempSync(join(tmpdir(),'oneclick-存储-')),root=join(temp,'bili-duty');mkdirSync(root)
@@ -91,3 +91,41 @@ test('cross-platform process scan blocks Python/DSH and fails closed on unsuppor
  assert.equal(runtimeProcessesStopped({platform:'win32',exec:windows,selfPid:100}).ok,false)
  assert.throws(()=>runtimeProcessesStopped({platform:'freebsd'}),/尚未验证/)
 })
+
+const winRoot='C:\\Users\\dalang\\.dsh\\bili-duty'
+const ollamaProvenance={
+ pid:321,exe:'C:\\Users\\dalang\\AppData\\Local\\Programs\\Ollama\\lib\\ollama\\runners\\cpu\\llama-server.exe',
+ command:'"C:\\Users\\dalang\\AppData\\Local\\Programs\\Ollama\\lib\\ollama\\runners\\cpu\\llama-server.exe" --model "D:\\Ollama Models\\blobs\\sha256-model" --ctx-size 4096',
+ parentName:'ollama.exe',parentExe:'C:\\Users\\dalang\\AppData\\Local\\Programs\\Ollama\\ollama.exe',
+}
+test('external Ollama runner classification requires trusted parent, bundle and model outside old DSH root',()=>{
+ assert.equal(provenExternalOllamaRunner(ollamaProvenance,{root:winRoot}),true)
+ assert.equal(provenExternalOllamaRunner({...ollamaProvenance,parentName:'node.exe'},{root:winRoot}),false)
+ assert.equal(provenExternalOllamaRunner({...ollamaProvenance,exe:winRoot+'\\embedding-runtime\\runtime\\llama-server.exe'},{root:winRoot}),false)
+ assert.equal(provenExternalOllamaRunner({...ollamaProvenance,command:'llama-server.exe --model '+winRoot+'\\embedding-runtime\\model.gguf'},{root:winRoot}),false)
+ assert.equal(provenExternalOllamaRunner({...ollamaProvenance,command:'llama-server.exe --ctx-size 4096'},{root:winRoot}),false)
+ assert.equal(provenExternalOllamaRunner({...ollamaProvenance,command:ollamaProvenance.command+' --lora '+winRoot+'\\.hf-cache\\file'},{root:winRoot}),false)
+ assert.equal(provenExternalOllamaRunner({...ollamaProvenance,parentExe:'C:\\External\\ollama.exe'},{root:winRoot}),false)
+})
+test('Windows cleanup process scan only ignores proven external Ollama llama-server; migration remains strict',()=>{
+ const windowsTaskList={status:0,stdout:'"llama-server.exe","321","Console","1","123,456 K"\n"node.exe","100","Console","1","10,000 K"'}
+ const exec=(command)=>command==='tasklist.exe'?windowsTaskList:({status:0,stdout:JSON.stringify(ollamaProvenance)})
+ assert.equal(runtimeProcessesStopped({platform:'win32',exec,selfPid:100}).ok,false)
+ const scoped=runtimeProcessesStopped({platform:'win32',exec,selfPid:100,root:winRoot})
+ assert.equal(scoped.ok,true)
+ const failClosed=runtimeProcessesStopped({platform:'win32',exec:(command)=>command==='tasklist.exe'?windowsTaskList:{status:1,stdout:''},selfPid:100,root:winRoot})
+ assert.equal(failClosed.ok,false)
+ assert.deepEqual(failClosed.conflicts,['llama-server.exe'])
+})
+
+test('a model process starting after SHA verification blocks cleanup before deletion',()=>withMigration(async({root,target})=>{
+ queueModelCleanup({root,verification:{ready:true,at:Date.now(),target},workerScript:'worker.mjs',parentPid:123456,spawnImpl:()=>({pid:444,unref(){}})})
+ let checks=0
+ const denied=await runQueuedCleanup({root,parentPid:123456,jobId:readCleanupJob(root).id,processIsAlive:()=>false,
+  inspectProcesses:()=>++checks===1?{ok:true,conflicts:[]}:{ok:false,conflicts:['llama-server.exe']}})
+ assert.equal(checks,2)
+ assert.equal(denied.ok,false)
+ assert.equal(readCleanupJob(root).status,'failed')
+ assert.equal(existsSync(join(root,'.hf-cache')),true)
+ assert.equal(existsSync(join(target,'.hf-cache')),true)
+}))
