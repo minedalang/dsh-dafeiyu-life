@@ -1810,6 +1810,69 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-backup .storage-alert{font-size:12px;line-height:1.65;margin-top:12px}
 #panel-backup .storage-footnote{font-size:11px;color:var(--muted);line-height:1.65;margin:13px 0 0}
 @media(max-width:600px){#panel-backup .storage-compact{padding:13px}#panel-backup .storage-controls>*{width:100%}}
+
+/* dev.3 storage UX: visible state, location-first cards, separate task actions.
+   The palette uses distinct icon/text labels as well as color (WCAG-friendly). */
+#panel-backup .storage-eyebrow{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--action);margin-bottom:7px}
+#panel-backup .storage-section-label{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:19px 0 9px}
+#panel-backup .storage-section-label strong{font-size:14px}
+#panel-backup .storage-section-label span{font-size:12px;color:var(--muted)}
+#panel-backup .storage-overview{display:flex;align-items:center;gap:14px;padding:17px 18px;margin:16px 0;border:1.5px solid var(--stroke);border-radius:14px;background:var(--tint)}
+#panel-backup .storage-overview-symbol{flex:none;display:grid;place-items:center;width:39px;height:39px;border-radius:12px;font-weight:900;font-size:20px;background:var(--panel)}
+#panel-backup .storage-overview-copy{flex:1;min-width:0}
+#panel-backup .storage-overview-copy strong{font-size:16px;line-height:1.4;display:block}
+#panel-backup .storage-overview-copy p{font-size:13px;line-height:1.6;margin:4px 0 0;overflow-wrap:anywhere}
+#panel-backup .storage-overview button{flex-shrink:0}
+#panel-backup .storage-overview[data-state="success"]{background:#e7f7ee;border-color:#44a576;color:#174e35}
+#panel-backup .storage-overview[data-state="attention"]{background:#fff1d7;border-color:#ce8820;color:#70410a}
+#panel-backup .storage-overview[data-state="danger"]{background:#ffebea;border-color:#d95d58;color:#84221e}
+#panel-backup .storage-overview[data-state="progress"]{background:#eaf0ff;border-color:#6287dc;color:#1a4385}
+#panel-backup .storage-domains{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:11px}
+#panel-backup .storage-partition{min-width:0;padding:15px;border:1px solid var(--stroke);border-radius:13px;background:var(--panel);display:flex;flex-direction:column;gap:10px}
+#panel-backup .storage-partition[data-state="success"]{border-color:#61b78b;background:#f0faf4}
+#panel-backup .storage-partition[data-state="partial"]{border-color:#d4a156;background:#fff7e9}
+#panel-backup .storage-partition-head{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+#panel-backup .storage-partition-head strong{font-size:14px;line-height:1.4}
+#panel-backup .storage-partition-status{flex-shrink:0;border-radius:99px;padding:4px 9px;font-size:12px;font-weight:800;border:1px solid var(--stroke);background:var(--tint)}
+#panel-backup .storage-partition-status[data-state="success"]{color:#11633e;border-color:#77c6a0;background:#d8f2e5}
+#panel-backup .storage-partition-status[data-state="partial"]{color:#81490d;border-color:#ddb67f;background:#ffedce}
+#panel-backup .storage-partition-location{display:grid;gap:5px}
+#panel-backup .storage-partition-location span{font-size:11px;color:var(--muted);font-weight:650}
+#panel-backup .storage-partition-location code{background:var(--tint);border:1px solid var(--stroke);padding:7px 9px;border-radius:8px;font-size:12px;overflow-wrap:anywhere;word-break:break-word;white-space:normal}
+#panel-backup .storage-partition-foot{font-size:12px;color:var(--muted);line-height:1.5}
+#panel-backup .storage-status{display:block;min-width:0;border:1px solid var(--stroke);border-left:4px solid var(--stroke);border-radius:10px;background:var(--tint);padding:11px 13px;margin:10px 0;line-height:1.6;overflow-wrap:anywhere;font-size:13px}
+#panel-backup .storage-status:empty{display:none}
+#panel-backup .storage-status strong{display:block;font-size:14px;font-weight:800}
+#panel-backup .storage-status span{display:block}
+#panel-backup .storage-status[data-state="attention"]{border-color:#ce8820;background:#fff1d7;color:#70410a}
+#panel-backup .storage-status[data-state="danger"]{border-color:#d95d58;background:#ffebea;color:#84221e}
+#panel-backup .storage-status[data-state="success"]{border-color:#44a576;background:#e7f7ee;color:#174e35}
+#panel-backup .storage-status[data-state="progress"]{border-color:#6287dc;background:#eaf0ff;color:#1a4385}
+#panel-backup .storage-retained-card{margin-top:13px;padding:16px}
+#panel-backup .storage-retained-heading{display:flex;justify-content:space-between;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
+#panel-backup .storage-retained-heading strong{font-size:14px}
+#panel-backup .storage-retained-tag{font-size:11px;font-weight:700;border-radius:8px;padding:4px 8px;background:var(--tint);color:var(--action)}
+#panel-backup .storage-relocate{border:1px solid var(--stroke);background:var(--panel);border-radius:12px;padding:0;margin-top:16px}
+#panel-backup .storage-relocate>summary{padding:14px 16px;font-size:15px}
+#panel-backup .storage-relocate[open]{padding-bottom:16px}
+#panel-backup .storage-relocate[open]>:not(summary){margin-left:16px;margin-right:16px}
+#panel-backup .backup-main-card{margin-top:20px}
+#panel-backup .storage-status:focus-visible,#panel-backup .storage-overview button:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+@media(prefers-color-scheme:dark){
+ #panel-backup .storage-overview[data-state="success"],#panel-backup .storage-status[data-state="success"]{background:#16392c;border-color:#3da577;color:#b9f5d7}
+ #panel-backup .storage-overview[data-state="attention"],#panel-backup .storage-status[data-state="attention"]{background:#49320f;border-color:#d79a3f;color:#ffe0a2}
+ #panel-backup .storage-overview[data-state="danger"],#panel-backup .storage-status[data-state="danger"]{background:#482222;border-color:#e37670;color:#ffcecb}
+ #panel-backup .storage-overview[data-state="progress"],#panel-backup .storage-status[data-state="progress"]{background:#19345a;border-color:#6e97ed;color:#cde0ff}
+ #panel-backup .storage-partition[data-state="success"]{background:#193729;border-color:#4ca67b}
+ #panel-backup .storage-partition[data-state="partial"]{background:#403015;border-color:#c89542}
+ #panel-backup .storage-partition-status[data-state="success"]{background:#20543c;border-color:#4ca67b;color:#c9ffe0}
+ #panel-backup .storage-partition-status[data-state="partial"]{background:#5b3e19;border-color:#d2a159;color:#ffe6b8}
+}
+@media(max-width:640px){
+ #panel-backup .storage-overview{align-items:flex-start;flex-wrap:wrap;padding:13px}
+ #panel-backup .storage-overview button{margin-left:52px}
+ #panel-backup .storage-partition{padding:12px}
+}
 </style>
 </head>
 <body><main class="wrap">
@@ -2237,17 +2300,27 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </section>
 <section id="panel-backup" hidden>
 <div class="backup-hero">
-  <div class="backup-hero-kicker">🛡️ 本地数据守护</div>
-  <div class="backup-hero-head"><div><h2>💾 数据备份</h2><p>给鱼鱼的记忆与生活留一份安全副本。日常只需设置保存位置，然后点击「创建备份」。</p></div><span class="backup-hero-label">🔒 仅存本机</span></div>
-  <div class="backup-steps" aria-label="日常备份步骤"><span><b>①</b> 选择目录</span><span><b>②</b> 创建备份</span><span><b>③</b> 妥善保存</span></div>
+  <div class="backup-hero-kicker">本机数据 · 存储与安全备份</div>
+  <div class="backup-hero-head"><div><h2>💾 数据与存储</h2><p>先确认数据存在哪里、是否已经迁移，再按需要验证旧副本或创建备份。迁移和清理需要退出 DSH 才会执行。</p></div><span class="backup-hero-label">🔒 本机操作</span></div>
+  <div class="backup-steps" aria-label="数据管理流程"><span><b>①</b> 查看当前存储</span><span><b>②</b> 迁移并验证</span><span><b>③</b> 按需清理与备份</span></div>
 </div>
 <div class="storage-compact" id="storage-location-panel" aria-label="本地存储管理">
-  <div class="storage-heading"><div><h3>📂 存储位置</h3><p class="muted">业务数据、运行环境和缓存都从当前目录读取。迁移不会重置鱼鱼的记忆。</p></div><button id="storage-refresh" type="button">刷新占用</button></div>
+  <div class="storage-heading"><div><span class="storage-eyebrow">01 / 存储与迁移</span><h3>📂 数据存在哪里？</h3><p class="muted">各分区显示的是实际生效位置；原目录可能仍保留旧副本。迁移不会重置鱼鱼的记忆。</p></div><button id="storage-refresh" type="button">刷新状态与占用</button></div>
+  <div id="storage-overview" class="storage-overview" data-state="neutral" role="status" aria-live="polite" aria-atomic="true">
+    <span class="storage-overview-symbol" aria-hidden="true">◎</span>
+    <div class="storage-overview-copy"><strong id="storage-overview-title">正在检查存储状态…</strong><p id="storage-overview-detail">加载分区、迁移及清理任务信息。</p></div>
+    <button id="storage-open-relocate" type="button">管理存储位置</button>
+  </div>
+  <div class="storage-section-label"><strong>三个存储分区</strong><span>绿色表示已配置独立位置；未分盘不代表异常</span></div>
+  <div id="storage-domain-list" class="storage-domains" aria-label="三组存储分区"></div>
+  <div class="storage-section-label"><strong>原数据目录的物理占用</strong><span>包含旧模型副本，不代表新目录未生效</span></div>
   <p class="storage-current"><span>当前数据目录</span><strong id="storage-current-path">正在读取…</strong></p>
   <div class="storage-metrics" id="storage-metrics" aria-label="原业务根目录物理占用（含迁移后保留的旧副本）"></div>
   <p class="muted">上方仅统计原业务根目录的物理占用（包括迁移后保留的旧模型副本、未迁移的 Python），不等于当前生效模型位置。下方显示各分区实际生效目录和占用。</p>
-  <div class="storage-metric" id="storage-retained-model-panel" aria-label="迁移后旧模型副本">
-    <strong>迁移后保留的旧模型副本</strong><span id="storage-retained-model-info">正在读取…</span>
+  <div class="storage-section-label"><strong>迁移与旧副本清理</strong><span>先确认任务状态，再进行实测或清理</span></div>
+  <div id="storage-migration-job-status" class="storage-status" data-state="neutral" role="status" aria-live="polite" aria-atomic="true">尚无预约的自动迁移任务。</div>
+  <div class="storage-metric storage-retained-card" id="storage-retained-model-panel" aria-label="迁移后旧模型副本">
+    <div class="storage-retained-heading"><strong>🧹 迁移后保留的旧模型副本</strong><span class="storage-retained-tag">验证后可申请清理</span></div><span id="storage-retained-model-info">正在读取…</span>
     <p class="muted">先一键实际加载 Whisper、运行 Embedding 向量推理及可用的视觉识别；校验前后模型文件 SHA-256。视觉识别若开启，需本人确认真实图片回答。全部通过后可点击清理按钮预约停机删除；绝不清理 Python、Life 记忆或未知文件。</p>
     <button id="storage-retained-model-check" type="button">一键实测迁移结果</button>
     <div id="storage-retained-model-tests" class="muted" role="status" aria-live="polite"></div>
@@ -2258,12 +2331,11 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
       <button type="button" id="storage-retained-model-vision-reject">识图错误</button>
     </div>
     <div id="storage-retained-model-cleanup" hidden>
-      <p class="storage-alert">实测通过。清理旧副本会永久释放原位置空间，并取消直接使用旧模型副本回退的能力。点击后只预约任务，**不会在 DSH 运行时删除**；请完整退出 DSH 与 Python 进程，离线助手将再次逐文件校验后自动清理。</p>
+      <p class="storage-alert">实测通过。清理旧副本会永久释放原位置空间，并取消直接使用旧模型副本回退的能力。点击后只预约任务，不会在 DSH 运行时删除；请完整退出 DSH 与 Python 进程，离线助手将再次逐文件校验后自动清理。</p>
       <button id="storage-retained-model-confirm-clean" type="button" class="danger">清理旧副本（退出后自动执行）</button>
     </div>
-    <p id="storage-retained-model-check-result" role="status" class="muted"></p>
+    <div id="storage-retained-model-check-result" class="storage-status" data-state="neutral" role="status" aria-live="polite" aria-atomic="true"></div>
   </div>
-  <div id="storage-domain-list" class="storage-domains" aria-label="三组存储分区"></div>
   <details class="storage-relocate" id="storage-relocate">
     <summary>更改数据保存位置 <span>· 安全停机迁移</span></summary>
     <p class="muted">选择模型或 Python 缓存后，可直接预约退出后的安全迁移，无需复制命令。请正常完全退出 DSH，独立助手确认停机后才执行，之后重启查看结果；Life 记忆和整体 bili-duty 仍采用严格手动停机流程。Python 仅迁移包管理缓存，不重建依赖。</p>
@@ -2275,18 +2347,18 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <label for="storage-target">新目录（本机磁盘的空文件夹）</label>
     <p class="muted">建议目录（示例，请按实际磁盘修改）：<code id="storage-target-suggestion">正在读取平台路径…</code> <button id="storage-use-suggestion" type="button">使用建议目录</button>。请按实际磁盘修改，不会自动创建或迁移。</p>
     <div class="storage-controls"><input id="storage-target" type="text" autocomplete="off" spellcheck="false" placeholder="请输入本机绝对路径"><button id="storage-check" type="button">检查路径</button></div>
-    <p class="muted" id="storage-check-result" role="status" aria-live="polite">仅检查，不会移动或删除现有文件。</p>
+    <div class="storage-status storage-inline-status" id="storage-check-result" data-state="neutral" role="status" aria-live="polite">仅检查路径，不移动或删除文件。</div>
     <div id="storage-scheduled-steps" hidden>
       <p class="storage-alert">仅预约，不会在 DSH 运行时复制。预约后请正常退出 DSH Desktop/Headless 和相关 Python、模型进程；助手复核停机和数据未变后执行，旧目录始终保留。迁移期间不要重新启动 DSH。</p>
       <button id="storage-schedule-migration" type="button">一键预约安全迁移（退出后自动执行）</button>
     </div>
-    <p id="storage-migration-job-status" class="muted" role="status" aria-live="polite"></p>
     <div id="storage-offline-steps" hidden><p class="storage-alert" id="storage-offline-warning">请先完全退出 DSH Desktop、Headless 和相关 Python 进程，再在对应平台的终端运行下面的命令；迁移完成后重启 DSH。原目录不会自动删除。</p><pre id="storage-offline-command" class="storage-command"></pre><button id="storage-copy-command" type="button">复制迁移命令</button></div>
   </details>
   <p class="storage-footnote">Windows 使用 PowerShell；macOS / Linux 使用终端（sh/zsh/bash）。建议目录未必位于另一块磁盘；若要释放系统盘空间，请选择真实的其他本地磁盘。网络共享、同步盘、符号链接和文件系统权限等差异需按目标平台单独验收。迁移后需要重启、逐项验证模型及记忆。保留的旧目录不会自动清理；完整离线快照应覆盖当前各个数据分区。Ollama 模型由 Ollama 自己管理，插件不会擅自迁移或删除。</p>
 </div>
 <div class="backup-layout">
   <div class="settings-section backup-main-card">
+    <div class="storage-eyebrow">02 / 备份与恢复</div>
     <div class="backup-card-title"><span class="backup-card-icon backup-icon-blue">📁</span><div><h3>保存到哪里？</h3><p>选择当前电脑上有写入权限的文件夹，设好后下次直接备份。</p></div></div>
     <label for="backup-directory">本地备份目录</label>
     <div class="backup-path-row"><input id="backup-directory" type="text" placeholder="请选择本机备份目录" autocomplete="off"><button id="backup-directory-save" type="button">确认备份目录</button></div>
@@ -2296,7 +2368,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
       <button id="backup-export" class="primary" type="button">备份全部业务数据</button>
     </div>
     <p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
-    <p class="backup-footnote">这是便携业务备份，**不是整套 DSH 运行目录快照**：不包含 B站 Cookie、登录凭证、部分私密账号运行账本、Life Agent 短期时间线、密钥、缓存与日志，也不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。重要：**老用户跨版本迁移前，必须停机制作并校验完整本地快照**；便携业务备份及「人生记忆专项备份」均不能替代完整快照。请按 docs/architecture/2.8.0-dev2-old-user-backup-safety.md 的停机备份说明操作；完整快照包含账号凭证和私密数据，严禁上传分享。</p>
+    <p class="backup-footnote">这是便携业务备份，不是整套 DSH 运行目录快照：不包含 B站 Cookie、登录凭证、部分私密账号运行账本、Life Agent 短期时间线、密钥、缓存与日志，也不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。重要：**老用户跨版本迁移前，必须停机制作并校验完整本地快照**；便携业务备份及「人生记忆专项备份」均不能替代完整快照。请按 docs/architecture/2.8.0-dev2-old-user-backup-safety.md 的停机备份说明操作；完整快照包含账号凭证和私密数据，严禁上传分享。</p>
   </div>
   <div class="backup-more-grid">
     <details class="backup-fold" id="backup-memory-tools">

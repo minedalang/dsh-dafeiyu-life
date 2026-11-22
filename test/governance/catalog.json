@@ -840,6 +840,11 @@
       "owner": "storage-layout-and-migration",
       "kind": "security",
       "intent": "One-click shutdown migration queue is local-only and fail-closed: no HTTP file copy, parent/process exit proof, changed-source refusal, restart barrier, and Python/Life isolation across OSes."
+    },
+    "v283-dev3-backup-storage-ux.test.mjs": {
+      "owner": "storage-management-ux",
+      "kind": "behavior",
+      "intent": "Ensure the backup management page visibly distinguishes partitioned/default storage, pending shutdown migration/cleanup, failed protected copies and completed cleanup; retain backup/restore controls and safe text-only status updates."
     }
   },
   "protected": [
