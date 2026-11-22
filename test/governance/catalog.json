@@ -825,6 +825,11 @@
       "owner": "storage-layout-and-migration",
       "kind": "security",
       "intent": "Fail-closed per-domain storage identity, offline copy and rollback, HF snapshots, memory backup continuity, Python rebuild, and management preflight."
+    },
+    "v283-dev3-storage-cleanup-crossplatform.test.mjs": {
+      "owner": "storage-layout-and-migration",
+      "kind": "security",
+      "intent": "Read-only current-vs-retained model audit; strict legacy-only SHA cleanup; three operator confirmations; protect Python/Life; Windows/macOS/Linux suggestions and shell quoting."
     }
   },
   "protected": [

@@ -2245,7 +2245,15 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   <div class="storage-heading"><div><h3>📂 存储位置</h3><p class="muted">业务数据、运行环境和缓存都从当前目录读取。迁移不会重置鱼鱼的记忆。</p></div><button id="storage-refresh" type="button">刷新占用</button></div>
   <p class="storage-current"><span>当前数据目录</span><strong id="storage-current-path">正在读取…</strong></p>
   <div class="storage-metrics" id="storage-metrics" aria-label="原业务根目录物理占用（含迁移后保留的旧副本）"></div>
-  <p class="muted">上方显示当前业务根目录物理占用（可能包含保留的旧副本），下方是每个分区实际正在使用的位置。</p>
+  <p class="muted">上方仅统计原业务根目录的物理占用（包括迁移后保留的旧模型副本、未迁移的 Python），不等于当前生效模型位置。下方显示各分区实际生效目录和占用。</p>
+  <div class="storage-metric" id="storage-retained-model-panel" aria-label="迁移后旧模型副本">
+    <strong>迁移后保留的旧模型副本</strong><span id="storage-retained-model-info">正在读取…</span>
+    <p class="muted">只清理由本次模型分组迁移完整保留、经过逐文件 SHA-256 比对的原始模型目录；绝不清理 Python、Life 记忆或未知文件。清理会失去直接使用旧模型副本回退的能力。</p>
+    <button id="storage-retained-model-check" type="button">校验旧模型副本（只读）</button>
+    <div id="storage-retained-model-cleanup" hidden><p class="storage-alert">请先在新位置实测 Whisper / Embedding / 视觉功能，再完全退出 DSH 与 Python 进程。以下命令会永久删除已经确认的原位置模型副本，仅在显式确认后手动执行。</p>
+      <pre id="storage-retained-model-command" class="storage-command"></pre><button id="storage-retained-model-copy" type="button">复制离线清理命令</button></div>
+    <p id="storage-retained-model-check-result" role="status" class="muted"></p>
+  </div>
   <div id="storage-domain-list" class="storage-domains" aria-label="三组存储分区"></div>
   <details class="storage-relocate" id="storage-relocate">
     <summary>更改数据保存位置 <span>· 安全冷迁移</span></summary>
@@ -2259,18 +2267,18 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     </div></div>
     <div class="storage-choice-current"><span>所选项目当前位置（按实际生效路径）</span><strong id="storage-domain-current">正在读取…</strong><small id="storage-domain-current-parts"></small></div></div>
     <label for="storage-target">新目录（本机磁盘的空文件夹）</label>
-    <p class="muted">建议目录：<code id="storage-target-suggestion">D:\DSHData\bili-duty\modelData</code> <button id="storage-use-suggestion" type="button">使用建议目录</button>。请按实际磁盘修改，不会自动创建或迁移。</p>
-    <div class="storage-controls"><input id="storage-target" type="text" autocomplete="off" spellcheck="false" placeholder="例如 D:\DSHData\bili-duty\modelData"><button id="storage-check" type="button">检查路径</button></div>
+    <p class="muted">建议目录（示例，请按实际磁盘修改）：<code id="storage-target-suggestion">正在读取平台路径…</code> <button id="storage-use-suggestion" type="button">使用建议目录</button>。请按实际磁盘修改，不会自动创建或迁移。</p>
+    <div class="storage-controls"><input id="storage-target" type="text" autocomplete="off" spellcheck="false" placeholder="请输入本机绝对路径"><button id="storage-check" type="button">检查路径</button></div>
     <p class="muted" id="storage-check-result" role="status" aria-live="polite">仅检查，不会移动或删除现有文件。</p>
-    <div id="storage-offline-steps" hidden><p class="storage-alert" id="storage-offline-warning">请先退出 DSH Desktop、Headless 和相关 Python 进程，再在 PowerShell 执行以下命令；迁移完成后重新启动 DSH。原目录不会自动删除。</p><pre id="storage-offline-command" class="storage-command"></pre><button id="storage-copy-command" type="button">复制迁移命令</button></div>
+    <div id="storage-offline-steps" hidden><p class="storage-alert" id="storage-offline-warning">请先完全退出 DSH Desktop、Headless 和相关 Python 进程，再在对应平台的终端运行下面的命令；迁移完成后重启 DSH。原目录不会自动删除。</p><pre id="storage-offline-command" class="storage-command"></pre><button id="storage-copy-command" type="button">复制迁移命令</button></div>
   </details>
-  <p class="storage-footnote">迁移后需要重启、逐项验证模型及记忆。保留的旧目录不会自动清理；完整离线快照应覆盖当前各个数据分区。Ollama 模型由 Ollama 自己管理，插件不会擅自迁移或删除。</p>
+  <p class="storage-footnote">Windows 使用 PowerShell；macOS / Linux 使用终端（sh/zsh/bash）。建议目录未必位于另一块磁盘；若要释放系统盘空间，请选择真实的其他本地磁盘。网络共享、同步盘、符号链接和文件系统权限等差异需按目标平台单独验收。迁移后需要重启、逐项验证模型及记忆。保留的旧目录不会自动清理；完整离线快照应覆盖当前各个数据分区。Ollama 模型由 Ollama 自己管理，插件不会擅自迁移或删除。</p>
 </div>
 <div class="backup-layout">
   <div class="settings-section backup-main-card">
     <div class="backup-card-title"><span class="backup-card-icon backup-icon-blue">📁</span><div><h3>保存到哪里？</h3><p>选择当前电脑上有写入权限的文件夹，设好后下次直接备份。</p></div></div>
     <label for="backup-directory">本地备份目录</label>
-    <div class="backup-path-row"><input id="backup-directory" type="text" placeholder="例如：D:\大肥鱼备份" autocomplete="off"><button id="backup-directory-save" type="button">确认备份目录</button></div>
+    <div class="backup-path-row"><input id="backup-directory" type="text" placeholder="请选择本机备份目录" autocomplete="off"><button id="backup-directory-save" type="button">确认备份目录</button></div>
     <p id="backup-directory-status" class="muted backup-status" role="status" aria-live="polite">尚未设置备份目录</p>
     <div class="backup-primary-action">
       <div><strong>✨ 备份鱼鱼的生活数据</strong><span>包含设置、业务账本、人生记忆、成长、梗知识；包含表情包检索规则，使用 SHA-256 校验。</span></div>

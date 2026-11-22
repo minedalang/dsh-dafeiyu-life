@@ -60,6 +60,7 @@ import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
+import { homedir } from 'node:os'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { McpClient } from './lib/mcp.mjs'
@@ -67,6 +68,8 @@ import { verifyRecent, appendVerifyToReport } from './lib/verify.mjs'
 import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charterPath, dayKey } from './lib/state.mjs'
 import {originalStateDir,storageLocationStatus,inspectStorageTarget,storageCategories} from './lib/storage-location.mjs'
 import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,storageDomainsUsage,storageMigrationGroups} from './lib/storage-layout.mjs'
+import {inspectRetainedModelCopies} from './lib/storage-maintenance.mjs'
+import {storageTargetSuggestions} from './lib/storage-platform.mjs'
 import { VIDEO_PICK_POLICY } from './lib/video-pick-policy.mjs'
 import {effectiveVideoCharter} from './lib/video-charter.mjs'
 import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
@@ -8508,7 +8511,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     // dev.2 storage overview is read-only. Moving a live DSH home is unsafe:
     // all changing operations are deliberately restricted to an offline script.
     if ((req.method==='GET'&&path==='/api/bili-duty/storage/location')||
-        (req.method==='POST'&&path==='/api/bili-duty/storage/check')) {
+        (req.method==='POST'&&['/api/bili-duty/storage/check','/api/bili-duty/storage/verify-retained-model'].includes(path))) {
       const peer=String(req.socket?.remoteAddress||'')
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||
@@ -8520,9 +8523,16 @@ logger:{warn:m=>log('社交意图：'+m)}
         if(req.method==='GET')return sendJson(res,200,{ok:true,
           currentDir:stateDir,defaultDir:location.defaultDir,relocated:location.relocated,
           usage:storageCategories(stateDir),domains:storageDomainsUsage(stateDir),groups:storageMigrationGroups(stateDir),
+          retainedModel:inspectRetainedModelCopies({root:stateDir}),platform:process.platform,
+          suggestedTargets:storageTargetSuggestions(process.platform,homedir()),
           visionPythonPath:String(cfg.visionPythonPath||''),offlineMigrationOnly:true})
+        if(path==='/api/bili-duty/storage/verify-retained-model')return sendJson(res,200,{
+          ...inspectRetainedModelCopies({root:stateDir,verify:true}),
+          offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         const body=await readBody(req,2048)
         if(body?.domain){
+          if(body.domain==='python'&&body.mode==='rebuild'&&process.platform!=='win32')
+            throw Error('当前平台尚未完成 Python 视觉环境自动重建验收；只能安全迁移 uv/pip 包缓存')
           const result=inspectDomainMigration({root:stateDir,domain:body.domain,target:body?.target,mode:body?.mode})
           return sendJson(res,200,{...result,offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         }

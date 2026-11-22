@@ -293,7 +293,7 @@ test('management UI exposes three migration groups, safe/default and advanced Py
  assert.match(html,/高级：切换运行环境位置（随后重建）/)
  assert.match(script,/selectedStoragePythonMode/)
  assert.match(script,/--mode/)
- for(const hint of ['modelData','pythonData','lifeData'])assert.ok(script.includes(hint))
+ for(const hint of ['modelData','pythonData','lifeData'])assert.ok(readFileSync(new URL('../lib/storage-platform.mjs',import.meta.url),'utf8').includes(hint))
  assert.match(backend,/storageMigrationGroups\(stateDir\)/)
  assert.match(backend,/visionPythonPath:String\(cfg\.visionPythonPath\|\|''\)/)
  assert.match(backend,/PIP_CACHE_DIR: storageDataPath\(stateDir,'pip-cache'\)/)
