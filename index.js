@@ -8545,9 +8545,22 @@ logger:{warn:m=>log('社交意图：'+m)}
             lifeReturnEvidence:readLifeReturnEvidence(stateDir,{migrationJob:readMigrationJob(stateDir)})}),platform:process.platform,
           suggestedTargets:storageTargetSuggestions(process.platform,homedir()),
           visionPythonPath:String(cfg.visionPythonPath||''),offlineMigrationOnly:true})
-        if(path==='/api/bili-duty/storage/verify-retained-model')return sendJson(res,200,{
-          ...inspectRetainedModelCopies({root:stateDir,verify:true}),
-          offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
+        if(path==='/api/bili-duty/storage/verify-retained-model'){
+          const body=await readBody(req,2048)
+          if(!storageModelVerification||body?.ticket!==storageModelVerification.ticket||
+             Date.now()-storageModelVerification.at>10*60_000||
+             JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])!==storageModelVerification.configKey)
+            throw Error('请先完成本次模型实测，旧副本检查不能复用过期验收')
+          const runtimeReady=Object.values(storageModelVerification.checks).every(x=>x.ok===true)
+          if(!runtimeReady)throw Error('当前模型运行实测未全部通过，不允许验证后清理旧副本')
+          let copies
+          try{copies=inspectRetainedModelCopies({root:stateDir,verify:true})}
+          catch(error){copies={eligible:false,verified:false,reason:'旧副本检查异常：'+String(error?.message||error).slice(0,120)}}
+          storageModelVerification.canCleanup=copies.eligible===true&&copies.verified===true
+          storageModelVerification.ready=runtimeReady&&storageModelVerification.canCleanup
+          return sendJson(res,200,{ok:true,cleanupEligible:storageModelVerification.ready,
+            reason:copies.reason||'无可清理旧模型',bytes:copies.bytes||0,files:copies.files||0})
+        }
         const body=await readBody(req,2048)
         if(path==='/api/bili-duty/storage/verify-life-memory'){
           const migration=readMigrationJob(stateDir)
@@ -8581,10 +8594,8 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(storageModelVerificationBusy)throw Error('迁移实测已经在进行，请勿重复启动')
           storageModelVerificationBusy=true;storageModelVerification=null
           try{
-            // Runtime verification belongs to the ACTIVE model partition, not
-            // to the existence of its already-deleted historical C-drive copy.
-            const copies=inspectRetainedModelCopies({root:stateDir,verify:true})
-            const canCleanup=copies.eligible===true&&copies.verified===true
+            // Model runtime verification NEVER reads or hashes historical old copies.
+            // Old-copy deletion eligibility is a separate explicit owner action.
             const configBefore=JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])
             const result=await verifyRelocatedModelRuntime({root:stateDir,asrPython:asrPython(),
               asrModel:cfg.asrModel||'small',asrModelPath:cfg.asrModelPath||'',embeddingRuntime,
@@ -8594,13 +8605,13 @@ logger:{warn:m=>log('社交意图：'+m)}
             const configKey=JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])
             if(configKey!==configBefore)throw Error('实测期间模型配置改变，结果作废，请重新验证')
             const ticket=randomUUID()
-            storageModelVerification={ticket,at:Date.now(),target:result.target,ready:result.ready&&canCleanup,
-              checks:result.checks,configKey,canCleanup}
+            storageModelVerification={ticket,at:Date.now(),target:result.target,ready:false,
+              checks:result.checks,configKey,canCleanup:false}
             const vision=result.checks.vision
             const evidence=vision.pendingReview?(vision.mode==='independent_dsh'?dshVisionReview.status():
               localVisionModels.reviewEvidence(vision.model)):null
-            return sendJson(res,200,{...result,ticket,cleanupEligible:result.ready&&canCleanup,
-              oldCopyReason:copies.reason||'',bytes:copies.bytes,files:copies.files,
+            return sendJson(res,200,{...result,ticket,cleanupEligible:false,
+              oldCopyReason:'旧副本尚未执行独立核验',
               review:vision.pendingReview?{reviewId:vision.reviewId,answer:String(evidence?.answer||''),mode:vision.mode}:null})
           }finally{storageModelVerificationBusy=false}
         }
@@ -8904,7 +8915,8 @@ logger:{warn:m=>log('社交意图：'+m)}
           ...(current.status==='done'&&current.twoStage?{twoStage:current.twoStage}:{}),
           ...(current.status==='done'?{lifeInput:current.payload,images:current.images||[],visionOutcome:current.visionOutcome||'no_model_answer'}:{}),...(current.status==='error'?{error:current.error}:{})},
           lastLife:last&&{at:last.at,lifeInput:last.payload,images:last.images||[]},
-          lastSummary:previous,visionRoute:{mode:resolvedVisionMode(),enabled:cfg.visionEnabled===true},
+          lastSummary:previous,visionRoute:{mode:resolvedVisionMode(),enabled:cfg.visionEnabled===true,
+            localModel:resolvedVisionMode()==='independent_local'?cfg.visionLocalModel||'':null},
           retention:'volatile-30m',source:'actual-bili-watch-video-return'})
       }
       const checkVideoDebugOllama=async()=>{
@@ -10707,9 +10719,12 @@ logger:{warn:m=>log('社交意图：'+m)}
         vision:{configured:cfg.visionEnabled===true&&(resolvedVisionMode()==='independent_local'
             ?Boolean(getLocalVisionModel(cfg.visionLocalModel))
             :Boolean(cfg.visionModelId||cfg.pluginDefaultModelId)),
-          model:resolvedVisionMode()==='independent_local'?getLocalVisionModel(cfg.visionLocalModel)?.name||'本地模型':
+          mode:resolvedVisionMode(),
+          backendModel:resolvedVisionMode()==='independent_local'?getLocalVisionModel(cfg.visionLocalModel)?.ollama||'':'',
+          model:resolvedVisionMode()==='independent_local'?getLocalVisionModel(cfg.visionLocalModel)?.name||'未选择本地视觉模型':
             String(cfg.visionModelId||cfg.pluginDefaultModelId||'DSH 视觉模型'),
-            ...((readProductionVisionStatus(stateDir)||lastLifeVisionActivity)||{})},
+          ...((attempt)=>attempt?{at:attempt.at,ok:attempt.ok,status:attempt.status,lastAttempt:attempt}:{})(
+            readProductionVisionStatus(stateDir)||lastLifeVisionActivity)},
         schedulerExpected:cfg.masterEnabled===true&&(cfg.dmWatch===true||cfg.commentWatchReplies===true||cfg.commentAtEnabled===true),
         lifeExpected:cfg.masterEnabled===true&&cfg.autonomousPlannerEnabled===true&&cfg.lifeAgentMode==='active',
         now:Date.now()}))}

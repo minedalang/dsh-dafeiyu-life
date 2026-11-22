@@ -140,6 +140,16 @@ def safe_config(d):
 
 cfg = read_json(root/'config.json')
 override = read_json(root/'local-override.json')
+def vision_config_diag(config):
+    if not isinstance(config, dict):
+        return {'present': False}
+    mode = config.get('visionMode')
+    local_id = config.get('visionLocalModel')
+    allowed_local = ('qwen3.5-2b', 'qwen3.5-4b', 'minicpm-v4.7-1b')
+    return {'present': True, 'enabled': config.get('visionEnabled') is True,
+            'mode': mode if mode in ('independent_local','independent_dsh') else 'unknown',
+            'localModel': local_id if local_id in allowed_local else 'unset_or_unsupported'}
+
 snapshot = {'sources': {'configFilePresent': (root/'config.json').is_file(),
                         'localOverridePresent': (root/'local-override.json').is_file()},
             'persistedConfig': safe_config(cfg),
@@ -169,6 +179,8 @@ if isinstance(planner, dict):
         (k, v) for k in ['at','action','result','status','code','mode','reason','blocked']
         if (v := x.get(k)) is not None and (number(v) is not None or code(v) is not None))
         for x in recent[-20:] if isinstance(x, dict)] if isinstance(recent, list) else []
+snapshot['visionSelection'] = {'persisted': vision_config_diag(cfg),
+    'localOverride': vision_config_diag(override)}
 dump('life-video-launch-state.json', snapshot)
 
 # This was previously absent from exported bundles. Include only a closed,
@@ -180,12 +192,18 @@ if isinstance(vision, dict) and vision.get('version') == 1:
     allowed_status = ('analyzed','vision_unavailable','timeout','subagent_error',
                       'no_vision_result','empty_result','no_images_confirmed')
     allowed_mode = ('independent_local','independent_dsh')
+    allowed_error = ('ollama_service_offline','ollama_model_missing','ollama_http_error',
+                     'ollama_request_timeout','ollama_connection_failed',
+                     'vision_board_deadline','vision_board_time_mismatch','vision_board_grid_mismatch',
+                     'vision_board_truncated','vision_board_empty_answer','vision_board_unsegmented',
+                     'vision_board_unclassified')
     at = number(vision.get('at'))
     if (at is not None and isinstance(vision.get('ok'), bool)
             and vision.get('status') in allowed_status
             and vision.get('mode') in allowed_mode):
         vision_status = {'present': True, 'at': at, 'ok': vision['ok'],
-                         'status': vision['status'], 'mode': vision['mode']}
+                         'status': vision['status'], 'mode': vision['mode'],
+                         'errorCode': vision.get('errorCode') if vision.get('errorCode') in allowed_error else 'unknown'}
 dump('visual-model-last-run.json', vision_status)
 
 video_job=read_json(root/'video-perception-debug-last-run.json',limit=2048)

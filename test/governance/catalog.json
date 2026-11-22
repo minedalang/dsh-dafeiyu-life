@@ -845,11 +845,16 @@
       "owner": "storage-management-ux",
       "kind": "behavior",
       "intent": "Ensure the backup management page visibly distinguishes partitioned/default storage, pending shutdown migration/cleanup, failed protected copies and completed cleanup; retain backup/restore controls and safe text-only status updates."
-        },
+    },
     "v283-dev3-external-life-explicit-cleanup.test.mjs": {
       "owner": "storage-layout-and-migration",
       "kind": "security",
       "intent": "An occupied historical Life target is never implicitly reused; explicit user-confirmed offline cleanup requires return-home provenance, SHA-256 snapshot or legacy strict byte equality, current Life verification, process stop and unchanged data; user-added files refuse deletion."
+    },
+    "v283-dev3-storage-vision-regression.test.mjs": {
+      "owner": "storage-management-and-vision-routing",
+      "kind": "security",
+      "intent": "Regression of post-migration storage UI load error and old-copy check separation; verify local Ollama vision route and privacy-safe diagnostics do not mix DSH primary model with last vision attempt."
     }
   },
   "protected": [

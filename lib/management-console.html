@@ -2346,8 +2346,9 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 
   <div class="storage-metric storage-retained-card" id="storage-retained-model-panel" aria-label="模型分盘运行实测和旧副本清理">
     <div class="storage-retained-heading"><strong>🧪 模型分盘 · 一键运行实测</strong><span class="storage-retained-tag">独立于旧副本清理</span></div><span id="storage-retained-model-info">正在读取…</span>
-    <p class="muted">可随时验证当前生效模型目录的 Whisper 本地加载、Embedding 向量推理，以及已开启的视觉识别（需本人确认回答）。即使原 C 盘模型旧副本已清理，实测按钮仍可使用。只有旧副本独立通过 SHA-256 与功能检查时，才显示清理按钮。不会清理 Python、Life 或未知文件。</p>
+    <p class="muted">可随时验证当前生效模型目录的 Whisper 本地加载、Embedding 向量推理，以及已开启的视觉识别（需本人确认回答）。即使原 C 盘模型旧副本已清理，实测按钮仍可使用。运行实测与旧模型 SHA-256 校验是两个独立操作：实测通过后可按需单独核验旧副本；已有清理记录不会阻止模型再次实测。不会清理 Python、Life 或未知文件。</p>
     <button id="storage-retained-model-check" type="button">一键验证当前模型运行</button>
+    <button id="storage-retained-model-copy-check" type="button" hidden>单独校验旧模型副本 SHA-256（可选）</button>
     <div id="storage-retained-model-tests" class="muted" role="status" aria-live="polite"></div>
     <div id="storage-retained-model-vision-review" hidden>
       <p class="storage-alert">视觉识别已返回真实图片结果。请检查下方回答是否与测试图片一致；识图内容必须由本人确认。</p>

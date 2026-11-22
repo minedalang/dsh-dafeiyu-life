@@ -77,7 +77,7 @@ test('3b.22 文字验证/同步/声明修改刷新真实图片状态；不允许
  assert.doesNotMatch(js,/verifyButton\.disabled=mobileViewOnly;verifyButton\.title/)
  assert.match(js,/const seq=\+\+dshVisionStatusRequestSeq/)
  assert.match(js,/if\(seq!==dshVisionStatusRequestSeq\)return null/)
- assert.match(js,/const timeoutMs=path==='\/dsh-vision\/verify'\?240000:120000/)
+ assert.match(js,/const timeoutMs=path==='\/dsh-vision\/verify'\?240000:.*420000:120000/)
  assert.match(js,/dshVisionStatus\?\.route\?\.headlessVerified!==true/)
  assert.match(python,/async def _probe_mcp_stdio_tool/)
  assert.match(python,/await session\.list_tools\(\)/)

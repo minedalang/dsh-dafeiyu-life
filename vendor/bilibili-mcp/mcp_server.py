@@ -1537,9 +1537,22 @@ def _record_production_vision_attempt(result, mode, model, debug=False):
         target = (_DUTY_HOME / 'vision-production-last.json')
         if target.parent != _DUTY_HOME or (target.exists() and target.is_symlink()):
             return
+        allowed_codes = ('ollama_service_offline', 'ollama_model_missing', 'ollama_http_error',
+                         'ollama_request_timeout', 'ollama_connection_failed',
+                         'vision_board_deadline', 'vision_board_time_mismatch',
+                         'vision_board_grid_mismatch', 'vision_board_truncated',
+                         'vision_board_empty_answer', 'vision_board_unsegmented',
+                         'vision_board_unclassified')
+        reason = result.get('errorCode')
+        if reason not in allowed_codes:
+            for board in result.get('visionBoardReceipts', []) if isinstance(result.get('visionBoardReceipts'), list) else []:
+                if isinstance(board, dict) and board.get('status') != 'analyzed' and board.get('errorCode') in allowed_codes:
+                    reason = board['errorCode']
+                    break
         payload = {'version': 1, 'at': int(time.time() * 1000),
                    'ok': status == 'analyzed' and bool(str(result.get('description') or '').strip()),
-                   'status': status, 'mode': mode, 'model': str(model or '')[:90]}
+                   'status': status, 'mode': mode, 'model': str(model or '')[:90],
+                   'errorCode': reason if reason in allowed_codes else 'unclassified'}
         temp = target.with_name('vision-production-last-' + str(os.getpid()) + '.tmp')
         if temp.exists() and temp.is_symlink():
             return
