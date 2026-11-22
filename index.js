@@ -65,6 +65,7 @@ import { fileURLToPath } from 'node:url'
 import { McpClient } from './lib/mcp.mjs'
 import { verifyRecent, appendVerifyToReport } from './lib/verify.mjs'
 import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charterPath, dayKey } from './lib/state.mjs'
+import {originalStateDir,storageLocationStatus,inspectStorageTarget,storageCategories} from './lib/storage-location.mjs'
 import { VIDEO_PICK_POLICY } from './lib/video-pick-policy.mjs'
 import {effectiveVideoCharter} from './lib/video-charter.mjs'
 import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
@@ -8491,6 +8492,26 @@ logger:{warn:m=>log('社交意图：'+m)}
       res.writeHead(200,{'content-type':'application/javascript; charset=utf-8',
         'cache-control':'no-store','x-content-type-options':'nosniff'})
       return res.end(body)
+    }
+    // dev.2 storage overview is read-only. Moving a live DSH home is unsafe:
+    // all changing operations are deliberately restricted to an offline script.
+    if ((req.method==='GET'&&path==='/api/bili-duty/storage/location')||
+        (req.method==='POST'&&path==='/api/bili-duty/storage/check')) {
+      const peer=String(req.socket?.remoteAddress||'')
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||
+         origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin))||
+         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+        return sendJson(res,403,{ok:false,error:'存储位置仅允许电脑本机同源管理中心查看和预检'})
+      try{
+        const location=storageLocationStatus(originalStateDir(ctx))
+        if(req.method==='GET')return sendJson(res,200,{ok:true,
+          currentDir:stateDir,defaultDir:location.defaultDir,relocated:location.relocated,
+          usage:storageCategories(stateDir),offlineMigrationOnly:true})
+        const body=await readBody(req,2048)
+        const result=inspectStorageTarget({source:stateDir,target:body?.target})
+        return sendJson(res,200,{...result,offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-storage.mjs')})
+      }catch(error){return sendJson(res,400,{ok:false,error:String(error?.message||error).slice(0,180)})}
     }
     // v2.4.69: user-configured backup directory and SQLite memory snapshots; never use OS Temp.
     if (req.method === 'POST' && ['/api/bili-duty/data-backup/location', '/api/bili-duty/data-backup/export', '/api/bili-duty/data-backup/inspect', '/api/bili-duty/data-backup/restore'].includes(path)) {

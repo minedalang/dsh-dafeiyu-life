@@ -1,3 +1,4 @@
+%% 2.8.3-dev.2：DSH 业务目录仅经独立冷迁移引导切换；LifeMemoryGateway 已增加受控清晰记忆详情附件接口、fuzzy 失效、遗忘保护与备份一致性；真实视频深层写入和自然回忆尚未接入。
 %% 2.8.2-dev.50：Life 已核验视频资料后，将同账号执行结果的受控 continuationState 写入现有 Life 事件账本；日记区分已继续行动、自主停止、后续动作未执行与 Episode 完成。旧记录只读保守显示，不补造 BV/画面/模型原因，不增模型调用或新账本。
 %% 2.8.2-dev.49：仅视频 Agent 本轮，单次选片读标题/热度/简介；当前账号+轮次真实入选后才提供统一看视频动作，同步尝试画面及字幕/可选 ASR 且各自验收；Life 独立 Episode、评论自由选择与外发门禁不变。
 %% 2.8.3-dev.1 模型输入调整：相邻两张12格分镜优先同次本地 Ollama 多图请求，仍逐张校验格号/时间码；只补救失败分镜，不放宽可信视觉回执、预算、权限或记忆边界。
@@ -103,6 +104,11 @@ flowchart TB
   outbox --> episode
   outbox -->|已排队但投影暂失败| pending
   episode --> recall
+  detailAdapter["可衰减记忆的受控深层详情附件｜来源核验默认关闭；clear→fuzzy 删除；不参与自动回忆"]
+  %% @code detailAdapter | lib/life-memory-details.mjs | export function createLifeMemoryDetailStore
+  episode -.->|同一主记忆 ID 与当前账号限制| detailAdapter
+  detailAdapter -.->|后续 dev.3/4 再启用可信来源及按需展开| recall
+
   videoTrace["精确 BV／记忆 ID 的只读视频来源追溯｜仅当前账号清晰记忆；不加载深层详情"]
   episode -.->|只读，不复原遗忘| videoTrace
   videoTrace -.->|事实引用，不产生新记忆或行为| recall

@@ -1774,6 +1774,29 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 @media(max-width:700px){#panel-open-platform .openpet-hero{padding:18px}#panel-open-platform .openpet-hero h2{font-size:24px}}
 </style>
 
+<style>
+#panel-backup .storage-compact{border:1px solid var(--stroke);background:var(--panel);border-radius:17px;padding:18px;margin:14px 0;box-shadow:var(--lift)}
+#panel-backup .storage-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+#panel-backup .storage-heading h3{margin:0;font-size:17px}
+#panel-backup .storage-heading p{margin:5px 0 0;font-size:12px;line-height:1.6}
+#panel-backup .storage-current{display:grid;gap:6px;margin:14px 0 12px;padding:13px;border-radius:11px;background:var(--tint)}
+#panel-backup .storage-current span{font-size:12px;color:var(--muted)}
+#panel-backup .storage-current strong{font-size:13px;overflow-wrap:anywhere;font-weight:650}
+#panel-backup .storage-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px}
+#panel-backup .storage-metric{border:1px solid var(--stroke);border-radius:11px;padding:11px;background:var(--panel)}
+#panel-backup .storage-metric span{display:block;font-size:11px;color:var(--muted)}
+#panel-backup .storage-metric strong{display:block;margin-top:5px;font-size:16px}
+#panel-backup .storage-relocate{margin-top:13px;border-top:1px solid var(--stroke);padding-top:13px}
+#panel-backup .storage-relocate>summary{cursor:pointer;font-weight:700;color:var(--action);font-size:13px}
+#panel-backup .storage-relocate>summary span{color:var(--muted);font-weight:400}
+#panel-backup .storage-relocate label{display:block;margin:14px 0 6px}
+#panel-backup .storage-controls{display:flex;gap:9px;flex-wrap:wrap}
+#panel-backup .storage-controls input{min-width:180px;flex:1;padding:10px;box-sizing:border-box}
+#panel-backup .storage-command{white-space:pre-wrap;overflow-wrap:anywhere;border-radius:10px;padding:12px;background:var(--tint);font-size:12px;max-height:160px;overflow:auto}
+#panel-backup .storage-alert{font-size:12px;line-height:1.65;margin-top:12px}
+#panel-backup .storage-footnote{font-size:11px;color:var(--muted);line-height:1.65;margin:13px 0 0}
+@media(max-width:600px){#panel-backup .storage-compact{padding:13px}#panel-backup .storage-controls>*{width:100%}}
+</style>
 </head>
 <body><main class="wrap">
 <header class="top"><div><h1>🐳 大肥鱼 · DSH 生活系统</h1><p class="muted">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><a class="button mobile-back" href="/" aria-label="返回 DSH Mobile">← 返回 DSH</a><div class="settings-finder" role="search"><label for="settings-finder-input">查找设置</label><input id="settings-finder-input" type="search" placeholder="搜索设置…" autocomplete="off" aria-controls="settings-finder-results" aria-expanded="false"><div id="settings-finder-results" class="settings-finder-results" role="listbox" hidden></div></div><button id="refresh">刷新当前页</button></div></header>
@@ -2203,6 +2226,20 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   <div class="backup-hero-kicker">🛡️ 本地数据守护</div>
   <div class="backup-hero-head"><div><h2>💾 数据备份</h2><p>给鱼鱼的记忆与生活留一份安全副本。日常只需设置保存位置，然后点击「创建备份」。</p></div><span class="backup-hero-label">🔒 仅存本机</span></div>
   <div class="backup-steps" aria-label="日常备份步骤"><span><b>①</b> 选择目录</span><span><b>②</b> 创建备份</span><span><b>③</b> 妥善保存</span></div>
+</div>
+<div class="storage-compact" id="storage-location-panel" aria-label="本地存储管理">
+  <div class="storage-heading"><div><h3>📂 存储位置</h3><p class="muted">业务数据、运行环境和缓存都从当前目录读取。迁移不会重置鱼鱼的记忆。</p></div><button id="storage-refresh" type="button">刷新占用</button></div>
+  <p class="storage-current"><span>当前数据目录</span><strong id="storage-current-path">正在读取…</strong></p>
+  <div class="storage-metrics" id="storage-metrics" aria-label="数据占用类别"></div>
+  <details class="storage-relocate" id="storage-relocate">
+    <summary>更改数据保存位置 <span>· 安全冷迁移</span></summary>
+    <p class="muted">新位置将接收整个大肥鱼业务目录（含记忆和 AI 运行环境）。为了保护账号与数据，必须完全退出 DSH 后才真正迁移。</p>
+    <label for="storage-target">新目录（本机磁盘的空文件夹）</label>
+    <div class="storage-controls"><input id="storage-target" type="text" autocomplete="off" spellcheck="false" placeholder="例如 D:\DSHData\bili-duty"><button id="storage-check" type="button">检查路径</button></div>
+    <p class="muted" id="storage-check-result" role="status" aria-live="polite">仅检查，不会移动或删除现有文件。</p>
+    <div id="storage-offline-steps" hidden><p class="storage-alert">请先退出 DSH Desktop、Headless 和相关 Python 进程，再在 PowerShell 执行以下命令；迁移完成后重新启动 DSH。原目录不会自动删除。</p><pre id="storage-offline-command" class="storage-command"></pre><button id="storage-copy-command" type="button">复制迁移命令</button></div>
+  </details>
+  <p class="storage-footnote">如果改的是整个 DSH 的 HOME，请使用 DSH 自身的路径设置；本功能只迁移大肥鱼。缓存独立分盘会在后续专项评估，不会自动清理模型与环境。</p>
 </div>
 <div class="backup-layout">
   <div class="settings-section backup-main-card">

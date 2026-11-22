@@ -1,6 +1,6 @@
 # 通用浅层／深层记忆与渐进式回忆 · 初步架构提案
 
-> **状态：2.8.3 视频先行的开发计划，现仍未实施。** 2.8.2 继续仅有有限 AI 视频摘要和有界识图；深层记忆及随时有理由补看放入 [2.8.3 路线图](./2.8.3-video-perception-memory-roadmap.md)。通用的其他重信息后续再推广。本提案不是当前 Deep Memory API；实施前仍需按最新 `AGENTS.md` 审查迁移、权限、遗忘与容量。
+> **状态：2.8.3 开发中；dev.2 已建立受控附件内核与目录迁移基础，但真实视频深层写入、自然回忆和自主补看尚未实现。** 2.8.2 继续仅有有限 AI 视频摘要和有界识图；深层记忆及随时有理由补看放入 [2.8.3 路线图](./2.8.3-video-perception-memory-roadmap.md)。通用的其他重信息后续再推广。本提案不是当前 Deep Memory API；实施前仍需按最新 `AGENTS.md` 审查迁移、权限、遗忘与容量。
 
 ## 1. 目标与用户体验
 
@@ -66,7 +66,7 @@
 3. **核实**：仅当事实争议或当前具体画面疑问确有必要，先核验已有证据、账号、权限与遗忘状态；如果现有可用细节不足，交给 Life 自主选择继续/补看/拒绝/延期。离线读细节与联网补看严格分离；不能仅因为摘要/缓存没命中就自动取帧。
 4. **结束**：浅层足以回答就结束；没有细节或细节矛盾，正常告知模糊/不确定，绝不为了表现得聪明而补造事实，也不要求无意义的多轮 AI 内部调用。
 
-候选接口（名称仅示例）：`recallSummary(query, scope)`、`expandMemory(memoryId, question, scope)`、`verifyMemoryEvidence(memoryId, sourceRef, scope)`；其中后两项**目前不存在**。未来必须通过 Gateway，不能暴露文件路径、BV 直接读或绕过 `SocialContextAssembler` 进行权限提升。
+候选接口（名称仅示例）：`recallSummary(query, scope)`、`expandMemory(memoryId, question, scope)`、`verifyMemoryEvidence(memoryId, sourceRef, scope)`；其中深层读取适配在 dev.2 仅提供受限内部接口，尚未接入正常 Life 聊天或自主补看。未来必须通过 Gateway，不能暴露文件路径、BV 直接读或绕过 `SocialContextAssembler` 进行权限提升。
 
 ## 5. 深度与衰减的联动
 

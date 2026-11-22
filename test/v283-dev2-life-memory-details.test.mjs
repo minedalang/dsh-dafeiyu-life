@@ -1,0 +1,89 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {mkdtempSync,rmSync,existsSync,readFileSync,writeFileSync} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
+import {createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
+const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',BV='BV1234567890'
+const NOW=Date.parse('2026-11-18T12:00:00Z'),DAY=86_400_000
+const event={kind:'watch',key:'video-explore:dev2-integration',bvid:BV,title:'已观察片段',at:NOW,accountTag:A,
+ experience:{source:'bili-life',metadata:true,preview:true,vision:true,evidenceSchema:'life-video-evidence/v1',
+  visualReceipt:{source:'low-resolution-preview',frameCount:2,firstAtMs:1000,lastAtMs:9000},
+  visualSceneNotes:['画面里出现两个角色'],purpose:'自主探索'}}
+const fragments=[{fragmentId:'frame-0001',type:'observed-scene',content:'在 1–9 秒内实际采样时出现两个人物。',certainty:'model-observation',sourceRef:'verified:observation:sample1',timeAnchorMs:[1000,9000],uncertainties:['角色身份不确定']}]
+const setup=fn=>{const dir=mkdtempSync(join(tmpdir(),'dafeiyu-detail-'));let at=NOW+5000,account=A;const gateway=createLifeMemoryGateway({dataDir:dir,now:()=>at,getAccountTag:()=>account,getConfig:()=>({mainSessionMemoryHalfLifeDays:15}),
+ admitMemoryDetails:({episode,sourceProof})=>sourceProof?.internalToken==='test-only'&&episode.bvid===BV,logger:{warn(){}}});
+ try{gateway.recordEvents([event]);const memoryId=gateway.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId;fn({dir,gateway,memoryId,setTime:t=>at=t,setAccount:t=>account=t})}
+ finally{gateway.close();rmSync(dir,{recursive:true,force:true})}}
+
+test('dev.2 default production Gateway never accepts forged details, even with verified=true',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dafeiyu-detail-closed-'))
+ try{const gate=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>A,now:()=>NOW+5000});gate.recordEvents([event]);const id=gate.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId
+  assert.equal(gate.attachMemoryDetails({memoryId:id,accountTag:A,fragments,verified:true}).reason,'source-not-admitted')
+  assert.equal(gate.memoryDetailInfo({memoryId:id,accountTag:A}).available,false);gate.close()
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('detail attachment stores actual bounded fragments, honors read budget and never changes summary',()=>setup(({gateway,memoryId})=>{
+ const sourceProof={internalToken:'test-only'}
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof}).ok,true)
+ assert.equal(gateway.memoryDetailInfo({memoryId,accountTag:A}).available,true)
+ const result=gateway.expandMemoryDetail({memoryId,accountTag:A,maxBytes:4096})
+ assert.equal(result.ok,true);assert.equal(result.totalFragments,1);assert.match(result.fragments[0].content,/两个人物/)
+ assert.equal(gateway.videoEvidenceTrace({accountTag:A,bvid:BV})[0].detailStorage,'available')
+ assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:B}).reason,'memory-unavailable')
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:B,fragments,sourceProof}).reason,'memory-unavailable')
+ assert.equal(gateway.expandMemoryDetail({memoryId:'../../../archive',accountTag:A}).reason,'memory-unavailable')
+ assert.equal(gateway.status().details.attachments,1)
+}))
+
+test('oversize, no timestamps, duplicate IDs and private source do not enter deep details',()=>setup(({gateway,memoryId})=>{
+ const sourceProof={internalToken:'test-only'}
+ for(const invalid of [[{...fragments[0],content:'x'.repeat(34*1024)}], [{...fragments[0],timeAnchorMs:undefined}], [...fragments,...fragments]]){
+  assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments:invalid,sourceProof}).ok,false)
+ }
+ assert.equal(gateway.memoryDetailInfo({memoryId,accountTag:A}).available,false)
+}))
+
+test('clear to fuzzy revokes detail before any future read, persists irreversible tombstone outside life-memory backup',()=>setup(({dir,gateway,memoryId,setTime})=>{
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:{internalToken:'test-only'}}).ok,true)
+ setTime(NOW+14*DAY)
+ assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:A}).reason,'memory-unavailable')
+ const doc=JSON.parse(readFileSync(join(dir,'detail-protection','revocations-v1.json'),'utf8'))
+ assert.ok(doc.ids.includes(memoryId))
+ assert.equal(gateway.status().details.attachments,0)
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:{internalToken:'test-only'}}).ok,false)
+}))
+
+test('reconciliation purges orphan details after parent replacement and does not use archives',()=>setup(({dir,gateway,memoryId})=>{
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:{internalToken:'test-only'}}).ok,true)
+ const path=join(dir,'life-memory','episodic.json')
+ const data=JSON.parse(readFileSync(path,'utf8'));data.episodes=[]
+ writeFileSync(path,JSON.stringify(data),'utf8')
+ const result=gateway.reconcileMemoryDetails()
+ assert.equal(result.ok,true)
+ assert.equal(gateway.status().details.attachments,0)
+ assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:A}).reason,'memory-unavailable')
+}))
+
+test('standalone memory backup includes detail attachments and does not resurrect a detail after fuzzy restore',()=>setup(({dir,gateway,memoryId,setTime})=>{
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:{internalToken:'test-only'}}).ok,true)
+ const pack=createLifeMemoryBackup(dir)
+ const detailKey=`life-memory/details/v1/${A}/${memoryId}.json`
+ assert.ok(pack.files[detailKey])
+ const destination=mkdtempSync(join(tmpdir(),'detail-backup-dest-'))
+ try{
+  assert.ok(restoreLifeMemoryBackup(destination,pack)>0)
+  const restored=createLifeMemoryGateway({dataDir:destination,getAccountTag:()=>A,now:()=>NOW+5000})
+  assert.equal(restored.expandMemoryDetail({memoryId,accountTag:A}).ok,true)
+  restored.close()
+  // The current source forgets after the backup was created.
+  setTime(NOW+14*DAY)
+  assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:A}).ok,false)
+  // An older snapshot must not revive details on the same device.
+  restoreLifeMemoryBackup(dir,pack)
+  assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:A}).ok,false)
+  assert.equal(gateway.status().details.attachments,0)
+ }finally{rmSync(destination,{recursive:true,force:true})}
+}))
