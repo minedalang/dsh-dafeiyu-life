@@ -104,6 +104,9 @@ function focusHarness({body={jobId:'job-id',atSeconds:65,durationSeconds:15},acc
     checkVideoDebugOllama:async()=>offline?{code:'ollama_service_offline',error:'Ollama 未启动'}:null,
     sendJson:(_res,status,payload)=>({status,payload}),res:{},
     saveVideoDebugSummary:()=>{},stateDir:'/test',
+    // Owner Debug now runs this same visual operation through a separate,
+    // single-tool MCP worker. Preserve the original business receipt assertions.
+    callOwnerVideoDebugVision:async args=>ctx.call('bili_preview_vision',args),
     call:async(_tool,args)=>{
       reads++;calls.push(args)
       if(accountChanged)account='different-owner'

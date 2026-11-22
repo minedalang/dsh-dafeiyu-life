@@ -67,7 +67,7 @@ test('only debug visibility changes: no user-facing manual release, developer en
   assert.doesNotMatch(ui,/已检查，解除这条中断的只读预约/)
   assert.match(ui,/auto-recovered-unverified/)
   assert.match(html,/无需手动解锁/)
-  assert.match(server,/系统将自动核查中断的只读预约/)
+  assert.match(server,/ownerDebugTimeoutMessage\(job\)/)
   assert.match(server,/readActionGate\.acknowledge/)
   assert.match(server,/DSH_DEV_READ_ACTION_UNLOCK!=='1'/)
 })

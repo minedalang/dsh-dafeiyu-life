@@ -161,6 +161,7 @@ import { createSocialIntentEngine } from './lib/social-intentions.mjs'
 import { createEmotionalState } from './lib/emotional-state.mjs'
 import {visionDecision} from './lib/video-vision-policy.mjs'
 import {beginVideoObservationRead} from './lib/video-observation-read.mjs'
+import {ownerDebugLocalVision,ownerDebugTimeoutMessage} from './lib/owner-video-debug-local-vision.mjs'
 import { createConversationLifeFeedback } from './lib/conversation-life-feedback.mjs'
 import { createDualContextAgency, classifyBiliOwnerRequest, agencyDeclineMessage } from './lib/dual-context-agency.mjs'
 import { createSocialCognition } from './lib/social-cognition.mjs'
@@ -1908,6 +1909,44 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     } finally {release()}
   }
 
+  // Owner-only Debug uses an isolated one-shot Python MCP for local Ollama.
+  // A timed-out Debug may stop only its own worker, never the shared Life/MCP.
+  // The existing Python platform read budget and reservation remain mandatory.
+  const callOwnerVideoDebugVision=async (args,{onStage}={})=>{
+    if(resolvedVisionMode()!=='independent_local')return call('bili_preview_vision',args)
+    const release=accountBinding.enterPlatformOperation()
+    const originalAccount=trustedLifeAccountTag()
+    try{
+      accountBinding.assertReady()
+      if(!originalAccount||!firstStart.isReady()||!hasCredential())throw Error('视频调试账号未核验')
+      refreshCfg()
+      if(cfg.masterEnabled!==true||cfg.visionEnabled!==true||resolvedVisionMode()!=='independent_local')
+        throw Error('视频调试的本地视觉路由已改变')
+      const startedAt=Date.now()
+      onStage?.('worker-starting')
+      const source=await ensureMcp() // verified production executable and environment
+      // Leave time for owned-process cleanup and the 8m page watchdog.
+      const remainingMs=450_000-(Date.now()-startedAt)
+      if(remainingMs<1000)throw Error('视频 Debug 启动阶段已超过安全等待上限，未启动本次独立识图')
+      let result
+      try{result=await ownerDebugLocalVision(source,args,{onStage,timeoutMs:Math.min(420_000,Math.floor(remainingMs))})}
+      catch(error){
+        // A JSON-RPC timeout is not a completed visual receipt. The one-shot
+        // worker's finally has already requested its process shutdown.
+        if(error?.code==='owner_debug_worker_deadline'||/MCP .*超时/.test(String(error?.message||''))){
+          const failure=Error('本地视频 Debug 超过 7 分钟总时限（含 Python 启动与识图），已终止本次专用工作进程的等待；没有取得完整视觉回执。')
+          failure.code='owner_debug_visual_timeout'
+          failure.phase=error?.phase||'unknown'
+          throw failure
+        }
+        throw error
+      }
+      if(originalAccount!==trustedLifeAccountTag()||accountBinding.status().blocked)
+        throw Error('视频调试期间账号已切换，拒绝使用旧账号视觉结果')
+      return result
+    }finally{release()}
+  }
+
   const hasCredential = () => existsSync(join(stateDir, 'bili_credential.json'))
 
   /* ─────────────── 工具 ─────────────── */
@@ -2056,7 +2095,17 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const dryRun=args.__debugDryRun===true
     const initialAccount=videoDebugAccount()
     const initialLifeAccountTag=trustedLifeAccountTag()
-    const stage=(label,step)=>{if(dryRun&&videoDebugJob?.status==='running'){videoDebugJob.stage=label;if(Number.isInteger(step))videoDebugJob.step=step;videoDebugJob.updatedAt=Date.now();saveVideoDebugSummary(stateDir,videoDebugJob,initialAccount)}}
+    const activeDebugJob=dryRun?videoDebugJob:null
+    const stage=(label,step)=>{if(activeDebugJob&&videoDebugJob===activeDebugJob&&activeDebugJob.status==='running'){
+      activeDebugJob.stage=label;if(Number.isInteger(step))activeDebugJob.step=step
+      activeDebugJob.updatedAt=Date.now();saveVideoDebugSummary(stateDir,activeDebugJob,initialAccount)}}
+    const onVisualStage=phase=>{
+      if(!activeDebugJob||videoDebugJob!==activeDebugJob||activeDebugJob.status!=='running'||
+         videoDebugAccount()!==initialAccount)return
+      activeDebugJob.visualDiagnostic={phase,at:Date.now()}
+      activeDebugJob.updatedAt=Date.now()
+      saveVideoDebugSummary(stateDir,activeDebugJob,initialAccount)
+    }
     refreshCfg()
     if(cfg.masterEnabled!==true&&!dryRun)return {ok:false,blocked:true,error:'大肥鱼总开关已关闭'}
     if(!hasCredential())return {ok:false,loggedIn:false,error:'B站尚未登录，请先扫码登录'}
@@ -2096,7 +2145,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       willInvokeVision&&earlyVisionPlan.depth!=='skim'
     const samplerDepth=fullGlobalPreview?'deep':earlyVisionPlan.depth
     const visualPromise=willInvokeVision?beginVideoObservationRead(()=>
-      call('bili_preview_vision',{bvid,
+      (dryRun?args=>callOwnerVideoDebugVision(args,{onStage:onVisualStage}):args=>call('bili_preview_vision',args))({bvid,
         perception_source:lifeGlobalOverview?'preview':'adaptive',view_depth:samplerDepth,
         // Only the localhost owner Debug endpoint may choose a different
         // source; real Life and main-Session reads retain their existing gates.
@@ -2108,7 +2157,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         }:{}),
         ...(dryRun?{capture_for_debug:true}:{})}),elapsed=>{
           visionFinishedAt=Date.now();visualReadMs=elapsed
-        }).catch(e=>({ok:false,error:String(e?.message||e).slice(0,140)}))
+        }).catch(e=>({ok:false,...(dryRun&&e?.code==='owner_debug_visual_timeout'?{
+          status:'vision_unavailable',errorCode:'owner_debug_visual_timeout'}:{}),
+          error:String(e?.message||e).slice(0,180)}))
       :Promise.resolve(null)
     stage(willInvokeVision?'字幕／Whisper 与已获授权的视觉读取并行中':'读取字幕／检查本地 Whisper 转写条件',2)
     const speechStartedAt=Date.now()
@@ -2472,7 +2523,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         job.stage='Life 已自主选中局部，正在逐段解码与识图（已完成 '+focusedVisuals.length+' 段）'
         job.updatedAt=Date.now()
         let visual
-        try{visual=parseMaybeJson(await call('bili_preview_vision',{
+        try{visual=parseMaybeJson(await callOwnerVideoDebugVision({
           bvid,perception_source:'adaptive',view_depth:'deep',
           focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
           network_budget_bytes:networkBudgetBytes,frame_budget_limit:frameBudgetLimit,
@@ -8911,6 +8962,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         return sendJson(res,200,{ok:true,job:current&&{id:current.id,status:current.status,stage:current.stage,step:current.step,updatedAt:current.updatedAt,at:current.at,
           sourceMode:current.sourceMode,viewDepth:current.viewDepth,
           ...(current.visionFailure?{visionFailure:current.visionFailure}:{}),
+          ...(current.visualDiagnostic?{visualDiagnostic:current.visualDiagnostic}:{}),
           ...(current.ownerFocus?{ownerFocus:current.ownerFocus}:{}),
           ...(current.status==='done'&&current.twoStage?{twoStage:current.twoStage}:{}),
           ...(current.status==='done'?{lifeInput:current.payload,images:current.images||[],visionOutcome:current.visionOutcome||'no_model_answer'}:{}),...(current.status==='error'?{error:current.error}:{})},
@@ -8958,7 +9010,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         saveVideoDebugSummary(stateDir,job,account)
         const watchdog=setTimeout(()=>{
           if(videoDebugJob===job&&job.status==='running'){
-            job.status='error';job.error='局部视频验收超过8分钟，未取得完成回执；底层任务可能仍在结束中';
+            job.status='error';job.error='局部视频验收超过8分钟，未取得完成回执；程序会自动收尾本轮受限任务，未核验的 B站读取不重放';
             job.stage=job.error;job.updatedAt=Date.now();saveVideoDebugSummary(stateDir,job,account)
           }
         },8*60_000);watchdog.unref?.()
@@ -8968,11 +9020,15 @@ logger:{warn:m=>log('社交意图：'+m)}
         Promise.resolve().then(async()=>{
           if(!safeScope())return {ok:false,reason:'account-or-job-changed'}
           let visual
-          try{visual=parseMaybeJson(await call('bili_preview_vision',{
+          try{visual=parseMaybeJson(await callOwnerVideoDebugVision({
             bvid,perception_source:'adaptive',view_depth:'deep',
             focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
             network_budget_bytes:networkBudgetBytes,frame_budget_limit:frameBudgetLimit,
-            capture_for_debug:true}))}
+            capture_for_debug:true},{onStage:phase=>{
+              if(videoDebugJob!==job||job.status!=='running')return
+              job.visualDiagnostic={phase,at:Date.now()};job.updatedAt=Date.now()
+              saveVideoDebugSummary(stateDir,job,account)
+            }}))}
           catch{return {ok:false,reason:'focus-tool-failed'}}
           if(!safeScope())return {ok:false,reason:'account-or-job-changed'}
           const captured=safeVideoDebugCapture(visual?.debugCapture,bvid)
@@ -9037,7 +9093,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         saveVideoDebugSummary(stateDir,job,account)
         const watchdog=setTimeout(()=>{
           if(videoDebugJob===job&&job.status==='running'){
-            job.status='error';job.stage='视频感知处理超出 8 分钟';job.error='本轮超过 8 分钟未取得最终视觉回执；这是界面等待超时，不代表后台 Ollama/Python 已结束。系统将自动核查中断的只读预约；确认可安全释放前不会重复读取 B站，无需手动解锁。';job.updatedAt=Date.now()
+            job.status='error';job.stage='视频感知处理超出 8 分钟';job.error=ownerDebugTimeoutMessage(job);job.updatedAt=Date.now()
             saveVideoDebugSummary(stateDir,job,account)
           }
         },8*60_000);watchdog.unref?.()
@@ -9066,8 +9122,12 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(videoDebugJob!==job||job.status!=='running')return
           if(videoDebugAccount()!==job.account){job.status='error';job.stage='账号已切换';job.error='账号变化，已丢弃本轮诊断结果'}
           else {
-            job.status=result?.ok===true?'done':'error'
-            job.stage=job.status==='done'?'完成，只读 Life 输入已生成':'只读感知失败'
+            // Page timeout and backend visual timeout are distinct. Never
+            // turn a real MCP timeout into a misleading 'Debug completed'.
+            const visualTimedOut=result?.visual?.errorCode==='owner_debug_visual_timeout'
+            job.status=result?.ok===true&&!visualTimedOut?'done':'error'
+            job.stage=visualTimedOut?'本地 Ollama 视觉读取超时':
+              job.status==='done'?'完成，只读 Life 输入已生成':'只读感知失败'
             if(job.status==='done'){
               job.payload=result
               job.visionFailure=explainVideoVisionFailure(result?.visual)
@@ -9078,7 +9138,17 @@ logger:{warn:m=>log('社交意图：'+m)}
                 ?'全局分镜已验证；请在下面选择一个真实采样时刻，再开始局部识图'
                 :job.visionFailure?.message||'全局分镜未通过证据验证，无法进入主人局部专项'
               else if(job.visionFailure)job.stage=job.visionFailure.message
-            }else job.error=String(result?.error||result?.visual?.error||'视频感知未完成').slice(0,240)
+            }else{
+              job.error=String(result?.visual?.error||result?.error||'视频感知未完成').slice(0,240)
+              if(visualTimedOut){
+                const phase=job.visualDiagnostic?.phase
+                job.error+=' 最后确认阶段：'+({
+                  'worker-starting':'Python 进程启动','tool-started':'工具已启动',
+                  'reservation-waiting':'等待只读预约','frames-reading':'视频取帧',
+                  'frames-settled':'取帧已结算','model-running':'Ollama 推理',
+                  'tool-finished':'工具已返回'}[phase]||'无底层阶段回执')+'；具体根因尚未确认。'
+              }
+            }
           }
           job.updatedAt=Date.now();saveVideoDebugSummary(stateDir,job,account)
         }).catch(error=>{if(videoDebugJob===job&&job.status==='running'){job.status='error';job.stage='执行失败';

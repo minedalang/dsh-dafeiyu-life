@@ -856,6 +856,11 @@
       "kind": "security",
       "intent": "Regression of post-migration storage UI load error and old-copy check separation; verify local Ollama vision route and privacy-safe diagnostics do not mix DSH primary model with last vision attempt."
     },
+    "v283-dev3-owner-debug-bounded-worker.test.mjs": {
+      "owner": "owner-video-debug-and-vision-read-gate",
+      "kind": "security",
+      "intent": "Owner-only local Ollama video Debug isolates each invocation in a bounded read-only Python MCP, never borrows the JS adapter identity or kills the shared Life worker; timeout and failure close owned worker, preserve lock gates, and yield an explicit diagnostic error."
+    },
     "v283-dev3-preview-automatic-recovery.test.mjs": {
       "owner": "platform-read-gates",
       "kind": "security",
@@ -991,6 +996,11 @@
     "test_vision_host_owned_dev33314.py"
   ],
   "registeredPython": {
+    "test_v283_dev3_owner_debug_stages.py": {
+      "owner": "owner-video-debug-and-vision-read-gate",
+      "kind": "security",
+      "intent": "Only a dedicated owner Debug worker emits fixed stage-only stderr progress; ordinary MCP and untrusted phase content remain silent and never expose credentials or video content."
+    },
     "test_v282_vision_instruction_boundary.py": {
       "owner": "vision-dsh-host",
       "kind": "security",

@@ -1501,6 +1501,21 @@ async def bili_vision_selftest():
 # ========== 预览帧识图（Agent 自主选择；由已公开配置的后台预算与平台风控保护） ==========
 # 每轮 headless 创建独立 MCP 进程；同一个 BV 重试不扩张上限。
 # 这道上限是实际后端闸，不只依赖 AI 遵守提示词。手动预览测试走单独的受限脚本。
+def _owner_debug_stage(phase):
+    # Only the one-shot owner Debug MCP enables these fixed stage markers.
+    # Never include BV, account, model output, file paths or credentials.
+    if os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE') != '1':
+        return
+    if phase not in ('tool-started','reservation-waiting','frames-reading',
+                     'frames-settled','model-running','tool-finished'):
+        return
+    try:
+        import sys
+        sys.stderr.write('DSH_OWNER_DEBUG_STAGE:' + phase + '\n')
+        sys.stderr.flush()
+    except (OSError, ValueError):
+        pass
+
 _VISION_BVS_PER_RUN = set()
 def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perception_source="preview", view_depth="standard", network_budget_bytes=None, frame_budget_limit=None):
     """Reserve only frame acquisition, NEVER the outer/child DSH vision call.
@@ -1598,6 +1613,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
         from preview_vision import analyze_perception
         mode = os.environ.get('BILI_VISION_MODE', 'separate')
         if mode == 'independent_local':
+            _owner_debug_stage('tool-started')
             from preview_vision import record_vision_event
             def run_local_vision():
                 # The B站 reservation covers network frame acquisition only.
@@ -1605,15 +1621,19 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                 # before Ollama inference starts. On early return or failure,
                 # the finally block settles them without marking vision success.
                 from contextlib import ExitStack
+                _owner_debug_stage('reservation-waiting')
                 with ExitStack() as platform_read:
                     receipt = platform_read.enter_context(shared_read_budget(_DUTY_HOME,'bili_preview_frames'))
                     platform_read.enter_context(public_read_reservation('bili_preview_frames', {'bvid': bvid}, home=_DUTY_HOME))
+                    _owner_debug_stage('frames-reading')
                     read_settled = False
                     def frames_ready(frame_result):
                         nonlocal read_settled
                         receipt(frame_result)
                         platform_read.close()
                         read_settled = True
+                        _owner_debug_stage('frames-settled')
+                        _owner_debug_stage('model-running')
                     result = analyze_perception(bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
                         model=os.environ.get('BILI_VISION_MODEL',''),debug=capture_for_debug is True,
                         focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
@@ -1621,6 +1641,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                     if not read_settled:receipt(result)
                     return result
             result = await asyncio.to_thread(run_local_vision)
+            _owner_debug_stage('tool-finished')
             result['mode']='independent_local'
             _record_production_vision_attempt(result, 'independent_local', os.environ.get('BILI_VISION_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
