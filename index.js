@@ -8544,10 +8544,15 @@ logger:{warn:m=>log('社交意图：'+m)}
           offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         const body=await readBody(req,2048)
         if(path==='/api/bili-duty/storage/verify-life-memory'){
-          if(['waiting','running'].includes(readMigrationJob(stateDir).status))throw Error('迁移任务尚未结束，不能核验 Life 记忆')
-          const result=verifyRelocatedLifeMemory({root:stateDir})
-          storageLifeVerification=result.ready?{ready:true,at:Date.now(),target:result.target}:null
-          const copies=result.ready?inspectRetainedLifeCopies({root:stateDir,verify:true}):{eligible:false,reason:'请先完成 Life 一键验证'}
+          const migration=readMigrationJob(stateDir)
+          if(['waiting','running'].includes(migration.status))throw Error('迁移任务尚未结束，不能核验 Life 记忆')
+          const relocated=storageLayoutStatus(stateDir).domains.memory.configured===true
+          const returnedHome=!relocated&&migration.status==='completed'&&migration.domain==='memory'&&migration.operation==='return-home'
+          const result=verifyRelocatedLifeMemory({root:stateDir,allowDefaultHome:returnedHome})
+          // A verified DEFAULT root is not an external partition and must never authorize old-root cleanup.
+          storageLifeVerification=result.ready&&relocated?{ready:true,at:Date.now(),target:result.target}:null
+          const copies=result.ready&&relocated?inspectRetainedLifeCopies({root:stateDir,verify:true}):
+            {eligible:false,reason:returnedHome?'默认目录为当前生效位置，不能按外置 Life 的旧副本流程清理':'请先完成 Life 一键验证'}
           return sendJson(res,200,{...result,retainedCopy:{eligible:copies.eligible===true&&copies.verified===true,
             reason:copies.reason||''}})
         }

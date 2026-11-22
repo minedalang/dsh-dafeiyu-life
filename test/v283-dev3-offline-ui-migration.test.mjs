@@ -291,6 +291,36 @@ test('Life undo is rejected if current authoritative memory vanished, leaving po
  assert.equal(storageLayoutStatus(root).domains.memory.root,target)
 }))
 
+test('Life return-home supports read-only verification of CURRENT default directory without exposing external-copy deletion',()=>fixture(async({temp,root})=>{
+ const id='e-'+'d'.repeat(18),target=join(temp,'lifeData')
+ put(join(root,'life-memory','episodic.json'),JSON.stringify({version:1,episodes:[
+  {id,kind:'watch',stage:'clear',at:Date.now(),text:'一条可回忆的安全测试经历',visibility:'public-event'}
+ ],archiveKeys:[],updatedAt:1}))
+ put(join(root,'long-term-memory','dafeiyu.json'),JSON.stringify({version:3,scope:'dafeiyu-identity',memories:[],deleted:[]}))
+ put(join(root,'detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[]}))
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:9901,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9901,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ queueDomainMigration({root,domain:'memory',returnHome:true,workerScript:'worker.mjs',parentPid:9902,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9902,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ assert.equal(readMigrationJob(root).operation,'return-home')
+ assert.equal(storageLayoutStatus(root).domains.memory.configured,false)
+ const current=join(root,'life-memory','episodic.json'),before=readFileSync(current,'utf8')
+ assert.equal(verifyRelocatedLifeMemory({root}).ready,false,'default-home verification must remain opt-in')
+ const verified=verifyRelocatedLifeMemory({root,allowDefaultHome:true})
+ assert.equal(verified.ready,true,JSON.stringify(verified.checks))
+ assert.equal(verified.target,root)
+ assert.equal(verified.checks.identity.returnedHome,true)
+ assert.equal(verified.checks.recall.ok,true)
+ assert.equal(readFileSync(current,'utf8'),before,'return-home check must never rewrite memory')
+ assert.equal(inspectRetainedLifeCopies({root,verify:true}).eligible,false,'default home must never be treated as retained old C copy')
+ const episodes=JSON.parse(before);episodes.episodes[0].stage='forgotten'
+ put(current,JSON.stringify(episodes))
+ const failed=verifyRelocatedLifeMemory({root,allowDefaultHome:true})
+ assert.equal(failed.ready,false)
+ assert.match(failed.checks.episodes.reason,/遗忘/)
+ assert.equal(storageLayoutStatus(root).domains.memory.root,root,'failed verification must not switch sources')
+}))
+
 test('Life verification and explicit safe-undo controls are gated in same-origin management UI',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const script=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
@@ -300,7 +330,10 @@ test('Life verification and explicit safe-undo controls are gated in same-origin
  assert.match(script,/storage\/verify-life-memory/)
  assert.match(script,/domain:'memory',returnHome:true/)
  assert.match(script,/Life 存储位置/)
- assert.match(index,/verifyRelocatedLifeMemory\(\{root:stateDir\}\)/)
+ assert.match(index,/verifyRelocatedLifeMemory\(\{root:stateDir,allowDefaultHome:returnedHome\}\)/)
+ assert.match(index,/migration\.domain==='memory'&&migration\.operation==='return-home'/)
+ assert.match(script,/lifeReturnedHome/)
+ assert.match(script,/storageLifeCheckLocation==='default'/)
  assert.match(index,/sec-fetch-site/)
  assert.doesNotMatch(index,/returnDomainHomeOffline\(\{root:stateDir/)
 })
