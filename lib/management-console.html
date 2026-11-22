@@ -2355,7 +2355,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <div class="storage-choice-current"><span>所选项目当前位置（按实际生效路径）</span><strong id="storage-domain-current">正在读取…</strong><small id="storage-domain-current-parts"></small></div></div>
     <label for="storage-target">新目录（本机磁盘的空文件夹）</label>
     <p class="muted">建议目录（示例，请按实际磁盘修改）：<code id="storage-target-suggestion">正在读取平台路径…</code> <button id="storage-use-suggestion" type="button">使用建议目录</button>。请按实际磁盘修改，不会自动创建或迁移。</p>
-    <div class="storage-controls"><input id="storage-target" type="text" autocomplete="off" spellcheck="false" placeholder="请输入本机绝对路径"><button id="storage-check" type="button">检查路径</button></div>
+    <div class="storage-controls"><input id="storage-target" type="text" autocomplete="off" spellcheck="false" placeholder="请输入本机绝对路径"><button id="storage-check" type="button">检查路径</button><button id="storage-return-check" type="button" hidden>迁回默认目录 · 安全预检</button></div>
     <div class="storage-status storage-inline-status" id="storage-check-result" data-state="neutral" role="status" aria-live="polite">仅检查路径，不移动或删除文件。</div>
     <div id="storage-scheduled-steps" hidden>
       <p class="storage-alert">仅预约，不会在 DSH 运行时复制。预约后请正常退出 DSH Desktop/Headless 和相关 Python、模型进程；助手复核停机和数据未变后执行，旧目录始终保留。迁移期间不要重新启动 DSH。</p>
@@ -2363,7 +2363,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     </div>
     <div id="storage-offline-steps" hidden><p class="storage-alert" id="storage-offline-warning">请先完全退出 DSH Desktop、Headless 和相关 Python 进程，再在对应平台的终端运行下面的命令；迁移完成后重启 DSH。原目录不会自动删除。</p><pre id="storage-offline-command" class="storage-command"></pre><button id="storage-copy-command" type="button">复制迁移命令</button></div>
   </details>
-  <p class="storage-footnote">Windows 使用 PowerShell；macOS / Linux 使用终端（sh/zsh/bash）。建议目录未必位于另一块磁盘；若要释放系统盘空间，请选择真实的其他本地磁盘。网络共享、同步盘、符号链接和文件系统权限等差异需按目标平台单独验收。迁移后需要重启、逐项验证模型及记忆。保留的旧目录不会自动清理；完整离线快照应覆盖当前各个数据分区。Ollama 模型由 Ollama 自己管理，插件不会擅自迁移或删除。</p>
+  <p class="storage-footnote">Windows 使用 PowerShell；macOS / Linux 使用终端（sh/zsh/bash）。建议目录未必位于另一块磁盘；若要释放系统盘空间，请选择真实的其他本地磁盘。网络共享、同步盘、符号链接和文件系统权限等差异需按目标平台单独验收。迁移或回迁后需要重启、逐项验证模型及记忆。回迁始终以当前生效数据为准，不用 C 盘旧副本覆盖记忆；旧副本会隔离保留。分盘后的旧版单目录冷快照暂不支持，不能误以为已经完整备份。Ollama 模型由 Ollama 自己管理，插件不会擅自迁移或删除。</p>
 </div>
 <div class="backup-layout">
   <div class="settings-section backup-main-card">
@@ -2377,7 +2377,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
       <button id="backup-export" class="primary" type="button">备份全部业务数据</button>
     </div>
     <p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
-    <p class="backup-footnote">这是便携业务备份，不是整套 DSH 运行目录快照：不包含 B站 Cookie、登录凭证、部分私密账号运行账本、Life Agent 短期时间线、密钥、缓存与日志，也不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。重要：**老用户跨版本迁移前，必须停机制作并校验完整本地快照**；便携业务备份及「人生记忆专项备份」均不能替代完整快照。请按 docs/architecture/2.8.0-dev2-old-user-backup-safety.md 的停机备份说明操作；完整快照包含账号凭证和私密数据，严禁上传分享。</p>
+    <p class="backup-footnote">分盘后仍从当前生效的 Life/业务数据目录导出，不会退回 C 盘历史副本。Life 私密经历请使用下方专项备份；向量索引和模型缓存均不随便携备份导出。<strong>分盘后的整套运行目录冷备份仍未实现，不可把这两类 JSON 备份冒充完整快照。</strong> 这是便携业务备份，不是整套 DSH 运行目录快照：不包含 B站 Cookie、登录凭证、部分私密账号运行账本、Life Agent 短期时间线、密钥、缓存与日志，也不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。重要：老用户跨版本迁移前必须确保独立保存全部现役分区；便携业务备份及「人生记忆专项备份」均不能替代完整快照。请按 docs/architecture/2.8.0-dev2-old-user-backup-safety.md 的停机备份说明操作；完整快照包含账号凭证和私密数据，严禁上传分享。</p>
   </div>
   <div class="backup-more-grid">
     <details class="backup-fold" id="backup-memory-tools">

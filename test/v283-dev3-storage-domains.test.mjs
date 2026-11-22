@@ -3,11 +3,11 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync,readdirSync} from 'node:fs'
 import {join,dirname} from 'node:path'
 import {tmpdir} from 'node:os'
-import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,migrateDomainOffline,rollbackDomainOffline,storageDomainsUsage,storageMigrationGroups} from '../lib/storage-layout.mjs'
+import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,migrateDomainOffline,rollbackDomainOffline,inspectDomainReturnHome,returnDomainHomeOffline,storageDomainsUsage,storageMigrationGroups} from '../lib/storage-layout.mjs'
 import {verifyPythonCachePaths} from '../lib/storage-python-cache-check.mjs'
 import {readWhisperReadiness} from '../lib/video-dependencies.mjs'
 import {listWhisperModels} from '../lib/whisper-model-cache.mjs'
-import {collectBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
+import {collectBackupFiles,createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
 import {createColdSnapshot} from '../lib/cold-state-snapshot.mjs'
 const fixture=fn=>{const t=mkdtempSync(join(tmpdir(),'dafeiyu-dev3-')),root=join(t,'bili-duty');mkdirSync(root);try{fn({t,root,path:(...x)=>join(root,...x)})}finally{rmSync(t,{recursive:true,force:true})}}
 const put=(path,text)=>{mkdirSync(dirname(path),{recursive:true});writeFileSync(path,text)}
@@ -352,4 +352,94 @@ test('Python cache verifier refuses symlinked cache paths instead of following e
  catch(e){if(['EPERM','EACCES'].includes(e?.code))return;throw e}
  assert.throws(()=>verifyPythonCachePaths({root}),/链接|目录|路径/)
  assert.equal(readFileSync(path('uv-cache','entry.bin'),'utf8'),'cache')
+}))
+
+// Returning home is a forward migration of the current authoritative copy, not
+// an unsafe rollback to the retained pre-migration snapshot.
+test('model group can return HOME after its old C copy was deleted or became stale',()=>fixture(({t,root,path})=>{
+ put(path('.hf-cache','data.bin'),'original-model')
+ put(path('embedding-runtime','model.gguf'),'original-embedding')
+ const outside=join(t,'modelData')
+ migrateDomainOffline({root,domain:'model',target:outside,confirmedStopped:true})
+ put(join(outside,'.hf-cache','data.bin'),'updated-model')
+ put(path('.hf-cache','data.bin'),'stale-model')
+ assert.throws(()=>rollbackDomainOffline({root,domain:'model',confirmedStopped:true}),/已有变化/)
+ const plan=inspectDomainReturnHome({root,domain:'model'})
+ assert.equal(plan.returnHome,true)
+ assert.equal(plan.target,root)
+ assert.throws(()=>returnDomainHomeOffline({root,domain:'model'}),/退出/)
+ const result=returnDomainHomeOffline({root,domain:'model',confirmedStopped:true})
+ assert.equal(result.returnedHome,true)
+ assert.equal(storageDataPath(root,'.hf-cache','data.bin'),path('.hf-cache','data.bin'))
+ assert.equal(readFileSync(path('.hf-cache','data.bin'),'utf8'),'updated-model')
+ assert.equal(readFileSync(join(outside,'.hf-cache','data.bin'),'utf8'),'updated-model')
+ assert.equal(readFileSync(join(result.oldRootCopyArchive,'.hf-cache','data.bin'),'utf8'),'stale-model')
+ assert.equal(storageLayoutStatus(root).configured,0)
+}))
+test('Python package caches return HOME without touching any installed environments',()=>fixture(({t,root,path})=>{
+ put(path('.venv','pyvenv.cfg'),'working-runtime')
+ put(path('uv-cache','wheel.data'),'old-cache')
+ const target=join(t,'pythonData')
+ migrateDomainOffline({root,domain:'python',target,confirmedStopped:true})
+ put(join(target,'uv-cache','wheel.data'),'newer-cache')
+ rmSync(path('uv-cache'),{recursive:true})
+ const returned=returnDomainHomeOffline({root,domain:'python',confirmedStopped:true})
+ assert.equal(returned.returnedHome,true)
+ assert.equal(readFileSync(path('uv-cache','wheel.data'),'utf8'),'newer-cache')
+ assert.equal(readFileSync(path('.venv','pyvenv.cfg'),'utf8'),'working-runtime')
+ assert.equal(storageDataPath(root,'uv-cache'),path('uv-cache'))
+ assert.equal(existsSync(join(target,'uv-cache','wheel.data')),true)
+}))
+test('Life memory return HOME never revives stale episodes or revocations from old C copy',()=>fixture(({t,root,path})=>{
+ const archive='e-'+'b'.repeat(18)
+ put(path('life-memory','episodic.json'),JSON.stringify({version:1,episodes:[],archiveKeys:[],updatedAt:0}))
+ put(path('long-term-memory','dafeiyu.json'),JSON.stringify({version:3,scope:'dafeiyu-identity',policy:{},memories:[],traces:[],deleted:[],migration:{legacySessionFiles:[]}}))
+ put(path('detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[]}))
+ const target=join(t,'lifeData')
+ migrateDomainOffline({root,domain:'memory',target,confirmedStopped:true})
+ put(join(target,'detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[archive]}))
+ put(path('life-memory','episodic.json'),'STALE C COPY')
+ const before=createBackup({root,config:{},sqlite:{}})
+ const memory=createLifeMemoryBackup(root)
+ assert.deepEqual(JSON.parse(before.files['detail-protection/revocations-v1.json']).ids,[archive])
+ assert.deepEqual(JSON.parse(memory.files['detail-protection/revocations-v1.json']).ids,[archive])
+ const returned=returnDomainHomeOffline({root,domain:'memory',confirmedStopped:true})
+ assert.equal(JSON.parse(readFileSync(path('life-memory','episodic.json'),'utf8')).version,1)
+ assert.deepEqual(JSON.parse(readFileSync(path('detail-protection','revocations-v1.json'),'utf8')).ids,[archive])
+ assert.equal(readFileSync(join(returned.oldRootCopyArchive,'life-memory','episodic.json'),'utf8'),'STALE C COPY')
+ // A portable backup after moving home still includes the same current identity-scoped data.
+ const after=createBackup({root,config:{},sqlite:{}})
+ assert.deepEqual(JSON.parse(after.files['detail-protection/revocations-v1.json']).ids,[archive])
+ restoreBackupFiles(root,before)
+ assert.deepEqual(JSON.parse(readFileSync(path('detail-protection','revocations-v1.json'),'utf8')).ids,[archive])
+}))
+test('backup and restore of split business and Life data follow the active external memory location',()=>fixture(({t,root,path})=>{
+ const id='e-'+'c'.repeat(18)
+ put(path('state.json'),'{}')
+ put(path('life-memory','episodic.json'),JSON.stringify({version:1,episodes:[],archiveKeys:[],updatedAt:0}))
+ put(path('long-term-memory','dafeiyu.json'),JSON.stringify({version:3,scope:'dafeiyu-identity',policy:{},memories:[],traces:[],deleted:[],migration:{legacySessionFiles:[]}}))
+ put(path('detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[id]}))
+ const dest=join(t,'life');migrateDomainOffline({root,domain:'memory',target:dest,confirmedStopped:true})
+ const business=createBackup({root,config:{masterEnabled:false},sqlite:{}})
+ const life=createLifeMemoryBackup(root)
+ assert.equal(business.files['state.json'],'{}')
+ assert.equal(life.files['life-memory/episodic.json']!==undefined,true)
+ put(join(dest,'detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[id,'e-'+'d'.repeat(18)]}))
+ restoreBackupFiles(root,business)
+ restoreLifeMemoryBackup(root,life)
+ assert.deepEqual(JSON.parse(readFileSync(join(dest,'detail-protection','revocations-v1.json'),'utf8')).ids,[id,'e-'+'d'.repeat(18)])
+ // The obsolete default root is never used for a successful restore.
+ assert.equal(existsSync(path('detail-protection','revocations-v1.json')),true)
+ assert.deepEqual(JSON.parse(readFileSync(path('detail-protection','revocations-v1.json'),'utf8')).ids,[id])
+}))
+
+test('return HOME refuses missing active memory instead of replacing it with a stale C copy',()=>fixture(({t,root,path})=>{
+ put(path('life-memory','episodic.json'),JSON.stringify({version:1,episodes:[],archiveKeys:[],updatedAt:0}))
+ put(path('long-term-memory','dafeiyu.json'),JSON.stringify({version:3,scope:'dafeiyu-identity',policy:{},memories:[],traces:[],deleted:[],migration:{legacySessionFiles:[]}}))
+ const target=join(t,'active-memory')
+ migrateDomainOffline({root,domain:'memory',target,confirmedStopped:true})
+ rmSync(join(target,'life-memory'),{recursive:true,force:true})
+ assert.throws(()=>inspectDomainReturnHome({root,domain:'memory'}),/缺少关键数据/)
+ assert.equal(storageLayoutStatus(root).domains.memory.root,target)
+ assert.equal(readFileSync(path('life-memory','episodic.json'),'utf8').includes('episodes'),true)
 }))

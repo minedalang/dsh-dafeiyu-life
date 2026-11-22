@@ -67,7 +67,7 @@ import { McpClient } from './lib/mcp.mjs'
 import { verifyRecent, appendVerifyToReport } from './lib/verify.mjs'
 import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charterPath, dayKey } from './lib/state.mjs'
 import {originalStateDir,storageLocationStatus,inspectStorageTarget,storageCategories} from './lib/storage-location.mjs'
-import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,storageDomainsUsage,storageMigrationGroups} from './lib/storage-layout.mjs'
+import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,inspectDomainReturnHome,storageDomainsUsage,storageMigrationGroups} from './lib/storage-layout.mjs'
 import {inspectRetainedModelCopies} from './lib/storage-maintenance.mjs'
 import {verifyRelocatedModelRuntime} from './lib/storage-model-runtime-check.mjs'
 import {verifyPythonCachePaths} from './lib/storage-python-cache-check.mjs'
@@ -8597,13 +8597,15 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(!['model','python'].includes(body?.domain))throw Error('Life 记忆迁移仍必须停机执行，不允许通过管理页自动排队')
           if(body?.confirm!=='SCHEDULE_STOPPED_MIGRATION')throw Error('请明确确认退出 DSH 后执行迁移')
           return sendJson(res,200,queueDomainMigration({root:stateDir,domain:body.domain,
-            target:body?.target,mode:body?.mode,
+            target:body?.target,mode:body?.mode,returnHome:body?.returnHome===true,
             workerScript:join(pluginDir,'scripts','migrate-bili-duty-after-exit.mjs'),parentPid:process.pid}))
         }
         if(body?.domain){
           if(body.domain==='python'&&body.mode&&body.mode!=='cache')
             throw Error('Python 迁移仅支持 uv/pip 包缓存；不提供环境重建')
-          const result=inspectDomainMigration({root:stateDir,domain:body.domain,target:body?.target,mode:body?.mode})
+          const result=body?.returnHome===true
+            ?inspectDomainReturnHome({root:stateDir,domain:body.domain})
+            :inspectDomainMigration({root:stateDir,domain:body.domain,target:body?.target,mode:body?.mode})
           return sendJson(res,200,{...result,offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         }
         const result=inspectStorageTarget({source:stateDir,target:body?.target})
@@ -8700,7 +8702,7 @@ logger:{warn:m=>log('社交意图：'+m)}
               // Remove files introduced solely by the failed restore. Never
               // follow symlinks; leave other unrelated files untouched.
               for(const name of Object.keys(data.files))if(!Object.hasOwn(safeguard.files,name)){
-                const file=join(stateDir,...name.split('/'))
+                const file=storageDataPath(stateDir,...name.split('/'))
                 if(existsSync(file)&&lstatSync(file).isFile()&&!lstatSync(file).isSymbolicLink())rmSync(file)
               }
             }catch(e){rollbackErrors.push('文件：'+String(e?.message||e).slice(0,100))}
