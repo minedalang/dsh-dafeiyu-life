@@ -1,10 +1,12 @@
 """Regression: two observed JPEG boards cannot collapse into one incomplete local model receipt."""
 import json
 import sys
+import random
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'lib'))
@@ -26,6 +28,74 @@ class PerBoardVision(unittest.TestCase):
             output = pv.analyze_preview(BV, home, storyboard=True, max_frames=24,
                                         enabled=True, model='openbmb/minicpm-v4.7:1b',debug=True)
             return output, worker.call_args_list
+
+    def test_ollama_transport_timeout_is_not_retried_for_each_board(self):
+        boards=[{'rank':i,'second':i*12,'bytes':b'fake-jpeg',
+                 'tile_count':12,'tile_times':list(range(i*12,i*12+12)),
+                 'grid_cols':4,'grid_rows':3} for i in range(4)]
+        error=pv.VisionServiceError('ollama_request_timeout','本地模型请求超时')
+        with patch.object(pv,'_call_local_ollama',side_effect=error) as worker:
+            description,reports=pv._analyze_local_storyboards(boards,'qwen3.5:4b')
+        self.assertEqual(worker.call_count,1,'a slow two-board request must not trigger three more slow calls')
+        self.assertEqual(description,'')
+        self.assertEqual([x['modelAttempts'] for x in reports],[1,1,0,0])
+        self.assertEqual([x['errorCode'] for x in reports],['ollama_request_timeout']*4)
+        self.assertFalse(any(x['status']=='analyzed' for x in reports))
+        self.assertTrue(all(x.get('skippedAfterFailure') for x in reports[2:]))
+
+    def test_single_board_transport_failure_stops_following_repair(self):
+        boards=[{'rank':i,'second':i*12,'bytes':b'fake-jpeg',
+                 'tile_count':12,'tile_times':list(range(i*12,i*12+12)),
+                 'grid_cols':4,'grid_rows':3} for i in range(2)]
+        def infer(frames,_model):
+            if len(frames)==2:raise ValueError('批量分镜标题缺失或重复')
+            raise pv.VisionServiceError('ollama_connection_failed','服务连接中断')
+        with patch.object(pv,'_call_local_ollama',side_effect=infer) as worker:
+            _,reports=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
+        self.assertEqual(worker.call_count,2,'a broken service cannot be fixed by retrying the next board')
+        self.assertEqual([r['modelAttempts'] for r in reports],[2,1])
+        self.assertEqual(reports[1]['errorCode'],'vision_board_unsegmented')
+        self.assertEqual(reports[0]['errorCode'],'ollama_connection_failed')
+
+    def test_cached_thumbnail_novelty_matches_legacy_greedy_choice(self):
+        rng=random.Random(2048)
+        rows=[]
+        for i in range(65):
+            tile=Image.new('RGB',(60,36),tuple(rng.randrange(256) for _ in range(3)))
+            rows.append({'index':i,'second':i*3.0,'tile':tile})
+        anchors=[0,5,10,15,20,25,30,35,40,45,50,55]
+        wanted=24
+        # Exact previous greedy algorithm, used only as an oracle to ensure
+        # caching minimum distances does not change which evidence was sampled.
+        by_idx={x['index']:x for x in rows}
+        chosen=list(dict.fromkeys(anchors))[:wanted]
+        thumbs={k:v['tile'].resize((24,24),Image.Resampling.BILINEAR).convert('RGB')
+                for k,v in by_idx.items()}
+        span=max(1.,max(x['second'] for x in rows)-min(x['second'] for x in rows))
+        while len(chosen)<wanted:
+            options=[]
+            for k,v in by_idx.items():
+                if k in chosen:continue
+                novelty=min((pv._thumb_difference(thumbs[k],thumbs[old]) for old in chosen),default=1.)
+                if novelty<0.012:continue
+                separation=min((abs(v['second']-by_idx[old]['second']) for old in chosen),default=span)
+                score=novelty+0.065*min(1.,separation/(span/max(1,wanted)))
+                options.append((score,novelty,-k,k))
+            if not options:break
+            chosen.append(max(options)[-1])
+        optimized=pv._select_board_tiles(rows,anchors,slots=30,wanted=wanted)
+        self.assertEqual([x['index'] for x in optimized],sorted(chosen))
+
+    def test_thumbnail_comparison_count_is_linear_in_selected_frames(self):
+        rng=random.Random(42)
+        rows=[{'index':i,'second':i,'tile':Image.new('RGB',(40,22),
+                tuple(rng.randrange(256) for _ in range(3)))} for i in range(280)]
+        original=pv._thumb_difference
+        with patch.object(pv,'_thumb_difference',wraps=original) as counter:
+            result=pv._select_board_tiles(rows,list(range(12)),slots=100,wanted=48)
+        self.assertLessEqual(len(result),48)
+        self.assertLess(counter.call_count,280*50,
+            'recomputing differences for all selected pairs would be quadratic')
 
     def test_both_boards_get_one_bounded_request_and_independent_receipts(self):
         def infer(boards, model):

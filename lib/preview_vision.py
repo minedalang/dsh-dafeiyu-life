@@ -349,17 +349,37 @@ def _select_board_tiles(available, primary, slots, wanted):
     last=max(x['second'] for x in available)
     first=min(x['second'] for x in available)
     span=max(1.,last-first)
+    chosen_set=set(chosen)
+    # A candidate's minimum novelty/separation can only decrease as a tile is
+    # selected. Update each candidate once per new tile instead of recomputing
+    # all previous ImageStat comparisons on every iteration (quadratic in the
+    # number of selected tiles). Scores, thresholds and tie-breaks stay exact.
+    novelty_min={k:1. for k in by_idx if k not in chosen_set}
+    distance_min={k:span for k in novelty_min}
+
+    def update_from(selected):
+        at=by_idx[selected]['second']
+        image=thumbs[selected]
+        for k in novelty_min:
+            if k in chosen_set:continue
+            novelty_min[k]=min(novelty_min[k],_thumb_difference(thumbs[k],image))
+            distance_min[k]=min(distance_min[k],abs(by_idx[k]['second']-at))
+
+    for key in chosen:update_from(key)
     while len(chosen)<wanted:
         options=[]
-        for k,v in by_idx.items():
-            if k in chosen:continue
-            novelty=min((_thumb_difference(thumbs[k],thumbs[old]) for old in chosen),default=1.)
+        for k in novelty_min:
+            if k in chosen_set:continue
+            novelty=novelty_min[k]
             if novelty<0.012:continue
-            separation=min((abs(v['second']-by_idx[old]['second']) for old in chosen),default=span)
+            separation=distance_min[k]
             score=novelty+0.065*min(1.,separation/(span/max(1,wanted)))
             options.append((score,novelty,-k,k))
         if not options:break
-        chosen.append(max(options)[-1])
+        picked=max(options)[-1]
+        chosen.append(picked)
+        chosen_set.add(picked)
+        update_from(picked)
     return sorted((by_idx[k] for k in chosen),key=lambda x:(x['second'],x['index']))
 
 
@@ -672,9 +692,22 @@ def _analyze_local_storyboards(frames,model):
         }
         receipt['error']=hints.get(receipt['errorCode'],'分镜模型调用或校验未完成')
 
+    # A timed-out/offline Ollama call is not a malformed model answer. Retrying
+    # the same slow/unavailable service once per board can consume the entire
+    # owner Debug deadline without ever adding a verified frame observation.
+    # Preserve selective single-board repair ONLY for malformed/incomplete
+    # replies; fail fast on verified transport/model service failures.
+    terminal_codes=frozenset(('ollama_request_timeout','ollama_service_offline',
+        'ollama_model_missing','ollama_connection_failed','ollama_http_error'))
+    terminal_error=None
     # Batch at most two images: a large 48-frame overview forms two separate
     # bounded batches. The provider/model, account and sample gate are unchanged.
     for start in range(0,len(frames),2):
+        if terminal_error is not None:
+            for i in range(start,min(start+2,len(frames))):
+                fail(i,terminal_error)
+                reports[i]['skippedAfterFailure']=True
+            continue
         batch=frames[start:start+2]
         if len(batch)>1 and deadline-time.monotonic()>=4:
             current=[{**b,'_inference_timeout_seconds':min(140,deadline-time.monotonic())} for b in batch]
@@ -688,9 +721,18 @@ def _analyze_local_storyboards(frames,model):
             except Exception as exc:
                 for i in range(start,start+len(batch)):
                     if reports[i]['status']!='analyzed':fail(i,exc)
+                if isinstance(exc,VisionServiceError) and exc.code in terminal_codes:
+                    terminal_error=exc
         # Selective repair: successful boards never consume another model call.
+        # Service transport failures are terminal for THIS read, not permanent
+        # circuit breakers. Subsequent independent user/Life reads remain gated.
         for i in range(start,start+len(batch)):
             if reports[i]['status']=='analyzed':continue
+            if terminal_error is not None:
+                if reports[i]['modelAttempts']==0:
+                    fail(i,terminal_error)
+                    reports[i]['skippedAfterFailure']=True
+                continue
             remaining=deadline-time.monotonic()
             if remaining<4:
                 fail(i,ValueError('逐张分镜总时限已到，后续图片未完成识图'))
@@ -702,6 +744,8 @@ def _analyze_local_storyboards(frames,model):
                 validate(i,text,'single-recovery' if len(batch)>1 else 'single',current.get('_model_receipt'))
             except Exception as exc:
                 fail(i,exc)
+                if isinstance(exc,VisionServiceError) and exc.code in terminal_codes:
+                    terminal_error=exc
     completed=[r for r in reports if r['status']=='analyzed']
     text='\n\n'.join(f'分镜图{r["index"]}（模型生成；时间与画面语义未经逐帧核实）：\n{r["description"]}' for r in completed)
     return text,reports
