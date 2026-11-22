@@ -94,6 +94,26 @@ class StoryboardTests(unittest.TestCase):
             result=pv.analyze_preview(BV,folder,storyboard=True,max_frames=24,enabled=False,return_frames=True,network_budget_bytes=90)
         self.assertFalse(result['ok']);self.assertNotIn('frames',result)
 
+    def test_successful_storyboard_not_reported_as_failed_on_cache_permission(self):
+        def infer(frames,model):
+            text='\n'.join(f'分镜图{i+1}：\n'+'\n'.join(
+                f'R{k//4+1}C{k%4+1} [{pv._board_clock(t)}]：画面可见但较模糊；动作与文字未确认。'
+                for k,t in enumerate(board['tile_times'])) for i,board in enumerate(frames))
+            return text
+        with TemporaryDirectory() as folder, patch.object(pv,'_json_api',side_effect=fake_api), \
+             patch.object(pv,'_safe_api_get',side_effect=image_fetch), \
+             patch.object(pv,'_call_local_ollama',side_effect=infer), \
+             patch.object(pv,'_save_vision_cache',return_value='vision_cache_permission_denied'):
+            result=pv.analyze_preview(BV,folder,storyboard=True,max_frames=12,
+                                       enabled=True,model='qwen3.5:4b')
+        self.assertTrue(result['ok'],result)
+        self.assertEqual(result['status'],'analyzed')
+        self.assertEqual(result['model'],'qwen3.5:4b')
+        self.assertFalse(result['cacheSaved'])
+        self.assertEqual(result['cacheErrorCode'],'vision_cache_permission_denied')
+        self.assertTrue(result['visionBoardReceipts'])
+        self.assertTrue(all(x['status']=='analyzed' for x in result['visionBoardReceipts']))
+
     def test_debug_capture_is_exact_board_bytes_and_not_in_model_answer(self):
         def infer(frames,model):
             return '\n'.join(f'分镜图{i+1}：\n'+ '\n'.join(

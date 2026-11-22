@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import json
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 from PIL import Image
 
@@ -21,6 +22,67 @@ class PreviewTests(unittest.TestCase):
     def test_uniform_preview_fallback_never_reads_heat_curve(self):
         self.assertEqual(pv._pick_indices([0,10,20,30,40,50,60],2),[1,4])
         self.assertEqual(len(pv._pick_indices([0,10,20,30,40,50,60],3)),3)
+
+    def test_cache_write_uses_unique_stage_and_preserves_legacy_temp(self):
+        with TemporaryDirectory() as home:
+            cache=Path(home)/'vision-cache'/'BV1234567890-preview-board-v14.json'
+            cache.parent.mkdir()
+            old=cache.with_suffix('.tmp')
+            old.write_text('legacy temp owned by an older run',encoding='utf8')
+            self.assertIsNone(pv._save_vision_cache(cache,{'model':'ollama','seq':0}))
+            self.assertEqual(old.read_text(encoding='utf8'),'legacy temp owned by an older run')
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                result=list(pool.map(lambda n:pv._save_vision_cache(cache,{'seq':n}),range(24)))
+            self.assertEqual(result,[None]*24)
+            self.assertIn(json.loads(cache.read_text(encoding='utf8'))['seq'],range(24))
+            self.assertEqual(list(cache.parent.glob('.BV1234567890-preview-board-v14-*.tmp')),[])
+
+    def test_adaptive_cache_permission_does_not_become_ollama_unavailable(self):
+        frames=[{'second':12.,'tile_times':[12.],'bytes':b'jpeg-not-read'}]
+        decoded={'ok':True,'bvid':'BV1234567890','status':'frames_ready',
+                 'image_source':'B站公开视频片段（离线解码）','times':[12.],
+                 'sampling':{'frame_plan':12},'frames':frames}
+        with TemporaryDirectory() as home, \
+             patch('adaptive_video.acquire_adaptive_frames',return_value=decoded), \
+             patch.object(pv,'_capture_actual_video_images',return_value=None), \
+             patch.object(pv,'_call_local_ollama',return_value='真实的本地模型回执'), \
+             patch.object(pv,'_save_vision_cache',return_value='vision_cache_permission_denied'):
+            result=pv._analyze_perception_impl('BV1234567890',home,
+                perception_source='adaptive',enabled=True,model='qwen3.5:4b')
+        self.assertTrue(result['ok'],result)
+        self.assertEqual(result['status'],'analyzed')
+        self.assertEqual(result['description'],'真实的本地模型回执')
+        self.assertFalse(result['cacheSaved'])
+        self.assertEqual(result['cacheErrorCode'],'vision_cache_permission_denied')
+        self.assertNotIn('error',result)
+
+    def test_cache_disk_full_or_invalid_record_never_leaves_temp(self):
+        import errno
+        with TemporaryDirectory() as home:
+            cache=Path(home)/'vision-cache'/'BV1234567890.json'
+            with patch.object(pv.tempfile,'NamedTemporaryFile',side_effect=OSError(errno.ENOSPC,'disk full')):
+                self.assertEqual(pv._save_vision_cache(cache,{'x':1}),'vision_cache_disk_full')
+            self.assertEqual(pv._save_vision_cache(cache,{'not_json':object()}),
+                             'vision_cache_write_failed')
+            self.assertFalse(cache.exists())
+            self.assertEqual(list(cache.parent.glob('*.tmp')),[])
+
+    def test_cache_permission_error_is_bounded_and_cleans_unique_temp(self):
+        with TemporaryDirectory() as home:
+            cache=Path(home)/'vision-cache'/'BV1234567890-preview-board-v14.json'
+            cache.parent.mkdir()
+            cache.write_text('original data',encoding='utf8')
+            with patch.object(pv.os,'replace',side_effect=PermissionError(13,'Windows share or ACL denied')):
+                code=pv._save_vision_cache(cache,{'description':'not persisted'})
+            self.assertEqual(code,'vision_cache_permission_denied')
+            self.assertEqual(cache.read_text(encoding='utf8'),'original data')
+            self.assertEqual(list(cache.parent.glob('*.tmp')),[])
+            answer={'ok':True,'status':'analyzed','description':'genuine visual reply'}
+            pv._mark_cache_write_result(answer,code)
+            self.assertTrue(answer['ok'])
+            self.assertEqual(answer['status'],'analyzed')
+            self.assertFalse(answer['cacheSaved'])
+            self.assertNotIn(str(cache),answer['cacheWarning'])
 
     def test_reject_invalid_bv(self):
         self.assertFalse(pv.analyze_preview('../secrets','/tmp',enabled=True,model='foo')['ok'])

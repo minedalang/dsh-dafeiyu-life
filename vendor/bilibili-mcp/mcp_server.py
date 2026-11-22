@@ -1542,8 +1542,9 @@ def _record_production_vision_attempt(result, mode, model, debug=False):
                          'vision_board_deadline', 'vision_board_time_mismatch',
                          'vision_board_grid_mismatch', 'vision_board_truncated',
                          'vision_board_empty_answer', 'vision_board_unsegmented',
-                         'vision_board_unclassified')
-        reason = result.get('errorCode')
+                         'vision_board_unclassified', 'vision_cache_permission_denied',
+                         'vision_cache_disk_full', 'vision_cache_write_failed')
+        reason = result.get('cacheErrorCode') or result.get('errorCode')
         if reason not in allowed_codes:
             for board in result.get('visionBoardReceipts', []) if isinstance(result.get('visionBoardReceipts'), list) else []:
                 if isinstance(board, dict) and board.get('status') != 'analyzed' and board.get('errorCode') in allowed_codes:
@@ -1609,7 +1610,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
             _record_production_vision_attempt(result, 'independent_local', os.environ.get('BILI_VISION_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='adaptive_local_result' if perception_source=='adaptive' else 'independent_local_result',
-                                ok=result.get('ok'),error=result.get('error',''),times=result.get('times'))
+                                ok=result.get('ok'),error=result.get('error') or result.get('cacheErrorCode') or '',times=result.get('times'))
             return json.dumps(result,ensure_ascii=False)
         if mode == 'independent_dsh':
             from preview_vision import record_vision_event

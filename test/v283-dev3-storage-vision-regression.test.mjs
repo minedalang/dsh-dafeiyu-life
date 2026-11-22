@@ -11,6 +11,20 @@ const ui=source('lib/management-console.js')
 const html=source('lib/management-console.html')
 const server=source('index.js')
 
+// A migrated cache write failure must not be mistaken for DSH model routing.
+test('video Debug labels saved Ollama route separately from actual visual result and cache failure',()=>{
+  const py=source('lib/preview_vision.py')
+  const worker=source('vendor/bilibili-mcp/mcp_server.py')
+  assert.match(ui,/当前视觉模型配置（不是 DSH 主对话模型）/)
+  assert.match(ui,/本轮视觉回执（与当前配置分开）/)
+  assert.match(ui,/observedVisual\.cacheSaved===false/)
+  assert.match(py,/NamedTemporaryFile\(mode='w'/)
+  assert.match(py,/cacheErrorCode/)
+  assert.match(worker,/result\.get\('cacheErrorCode'\) or result\.get\('errorCode'\)/)
+  assert.match(worker,/result\['mode'\]='independent_local'/)
+})
+
+
 function storageHarness(response){
   const start=ui.indexOf('  const loadStorageLocation=async()=>{')
   const end=ui.indexOf("  $('storage-refresh').addEventListener",start)

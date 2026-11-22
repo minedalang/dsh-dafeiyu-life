@@ -4,6 +4,7 @@
 视觉图像低清，仅作粗略视觉提示，不代表已看完整视频。
 """
 import argparse
+import errno
 import base64
 from datetime import datetime
 from io import BytesIO
@@ -13,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import tempfile
 from contextlib import closing
 import struct
 import time
@@ -726,6 +728,50 @@ def _record_vision_attempt(home):
         pass
 
 
+
+def _save_vision_cache(cache, record):
+    """Best-effort atomic cache: unique staging files, never a shared *.tmp.
+
+    A cache write is not an Ollama inference. Its failure must not discard an
+    already verified in-memory visual receipt. Keep paths out of error codes.
+    """
+    cache=Path(cache)
+    staged=None
+    try:
+        cache.parent.mkdir(parents=True,exist_ok=True)
+        # On Windows, a stale/read-only/locked legacy ``<BV>.tmp`` can remain
+        # after relocation. Do not overwrite it or share a temp name across jobs.
+        with tempfile.NamedTemporaryFile(mode='w',encoding='utf8',
+                dir=cache.parent,prefix=f'.{cache.stem}-',suffix='.tmp',
+                delete=False) as handle:
+            staged=Path(handle.name)
+            json.dump(record,handle,ensure_ascii=False)
+        os.replace(staged,cache)
+        return None
+    except (OSError,TypeError,ValueError) as exc:
+        err=getattr(exc,'errno',None)
+        if isinstance(exc,PermissionError) or err in (errno.EACCES,errno.EPERM):
+            return 'vision_cache_permission_denied'
+        if err==errno.ENOSPC:
+            return 'vision_cache_disk_full'
+        return 'vision_cache_write_failed'
+    finally:
+        if staged is not None:
+            try: staged.unlink(missing_ok=True)
+            except OSError: pass
+
+
+def _mark_cache_write_result(answer, code):
+    if code is not None:
+        answer['cacheSaved']=False
+        answer['cacheErrorCode']=code
+        answer['cacheWarning']=('模型已返回视觉识别结果，但视觉缓存无法写入；'
+                                '请检查当前缓存目录的权限、剩余空间或文件占用。'
+                                '这不是模型自动切换，也不代表结果已经持久保存。')
+    else:
+        answer['cacheSaved']=True
+
+
 def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None, storyboard=False, network_budget_bytes=None, board_tiles=None):
     """返回经过长度钳制的结构化文本；debug 才保存 JPEG，缓存只存分析文字。"""
     if not BV_RE.fullmatch(str(bvid or '')):return {'ok':False,'error':'BV号格式不正确'}
@@ -960,11 +1006,9 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
                 if isinstance(e,VisionServiceError):answer['errorCode']=e.code
                 return answer
         answer.update(status='analyzed',description=description,model=model)
-        cache.parent.mkdir(parents=True,exist_ok=True)
-        temp=cache.with_suffix('.tmp')
-        temp.write_text(json.dumps({'model':model,'provider':provider,'frames_limit':max_frames,'board_tiles':board_tiles,'local_thinking':local_thinking,'sampler_version':sampler_version,'times':answer['times'],'sampling':sampling,'focus_window':focus,'network_budget_override':network_budget_bytes,'description':description,
-            'visionBoardReceipts':answer.get('visionBoardReceipts',[])},ensure_ascii=False),encoding='utf8')
-        os.replace(temp,cache)
+        code=_save_vision_cache(cache,{'model':model,'provider':provider,'frames_limit':max_frames,'board_tiles':board_tiles,'local_thinking':local_thinking,'sampler_version':sampler_version,'times':answer['times'],'sampling':sampling,'focus_window':focus,'network_budget_override':network_budget_bytes,'description':description,
+            'visionBoardReceipts':answer.get('visionBoardReceipts',[])})
+        _mark_cache_write_result(answer,code)
         return answer
     except Exception as e:
         return {'ok':False,'bvid':bvid,'error':str(e)[:240]}
@@ -1172,20 +1216,18 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     frames=result.pop('frames')
     try:
         result['description']=_call_local_ollama(frames,model,image_source=result['image_source'])
-        result['status']='analyzed'
-        record={'model':model,'provider':provider,'frames_limit':max_frames,
-                'sampler_version':8,'view_depth':view_depth,'times':result['times'],'description':result['description'],
-                'sampling':result['sampling'],'ocr':result.get('ocr'),'focus_window':focus,
-                'image_source':result['image_source'],'network_budget_override':network_budget_bytes,
-                'frame_budget_limit':frame_budget_limit,
-                'debugCapture':result.get('debugCapture')}
-        cache.parent.mkdir(parents=True,exist_ok=True)
-        temp=cache.with_suffix('.tmp')
-        temp.write_text(json.dumps(record,ensure_ascii=False),encoding='utf8')
-        os.replace(temp,cache)
     except Exception as exc:
         result.update(status='vision_unavailable',error='自适应画面已解码，但本地模型未完成分析')
         if isinstance(exc,VisionServiceError):result['errorCode']=exc.code
+        return result
+    result['status']='analyzed'
+    record={'model':model,'provider':provider,'frames_limit':max_frames,
+            'sampler_version':8,'view_depth':view_depth,'times':result['times'],'description':result['description'],
+            'sampling':result['sampling'],'ocr':result.get('ocr'),'focus_window':focus,
+            'image_source':result['image_source'],'network_budget_override':network_budget_bytes,
+            'frame_budget_limit':frame_budget_limit,
+            'debugCapture':result.get('debugCapture')}
+    _mark_cache_write_result(result,_save_vision_cache(cache,record))
     return result
 
 
@@ -1220,7 +1262,7 @@ def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, pr
                                      storyboard=storyboard,network_budget_bytes=network_budget_bytes,board_tiles=board_tiles)
     record_vision_event(home,bvid,result.get('status') or ('preview_failed' if not result.get('ok') else 'preview_only'),
                         source=source,ok=result.get('ok'),debug_saved=bool(result.get('debug_dir')),
-                        error=result.get('error',''),times=result.get('times'))
+                        error=result.get('error') or result.get('cacheErrorCode') or '',times=result.get('times'))
     return result
 
 
