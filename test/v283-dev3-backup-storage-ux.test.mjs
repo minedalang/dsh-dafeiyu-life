@@ -127,3 +127,25 @@ test('Python cache migration has a dedicated verification button and honest cach
  assert.match(snapshot(u).title,/uv \/ pip 包缓存已迁至独立目录/)
  assert.doesNotMatch(snapshot(u).detail,/模型实测通过/)
 })
+
+
+test('Life post-migration UI has separate readonly verification, cleanup and safe undo controls',()=>{
+ for(const id of ['storage-life-verify-panel','storage-life-verify','storage-life-verify-tests',
+   'storage-life-verify-result','storage-life-undo','storage-life-undo-button','storage-life-cleanup','storage-life-cleanup-button'])
+  assert.equal([...page.matchAll(new RegExp(`id="${id}"`,'g'))].length,1,id)
+ assert.match(script,/request\('\/storage\/verify-life-memory'/)
+ assert.match(script,/request\('\/storage\/schedule-life-cleanup'/)
+ assert.match(script,/domain:'memory',returnHome:true/)
+ assert.match(page,/不会触发衰减/)
+ assert.match(page,/不是直接启用 C 盘的过期副本/)
+ assert.match(page,/完全退出 DSH/)
+ assert.match(page,/storage-life-cleanup\[hidden\]/)
+})
+
+test('pending stopped-instance Life cleanup shows an explicit next action, not deletion success',()=>{
+ const u=ui()
+ u.storageOverview({...data(),lifeCleanupJob:{status:'waiting'}})
+ assert.equal(snapshot(u).state,'attention')
+ assert.match(snapshot(u).title,/退出 DSH/)
+ assert.match(snapshot(u).detail,/未删除 Life 文件/)
+})

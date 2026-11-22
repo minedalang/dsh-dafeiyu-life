@@ -71,6 +71,9 @@ import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayout
 import {inspectRetainedModelCopies} from './lib/storage-maintenance.mjs'
 import {verifyRelocatedModelRuntime} from './lib/storage-model-runtime-check.mjs'
 import {verifyPythonCachePaths} from './lib/storage-python-cache-check.mjs'
+import {verifyRelocatedLifeMemory} from './lib/storage-life-runtime-check.mjs'
+import {inspectRetainedLifeCopies} from './lib/storage-life-retained.mjs'
+import {queueLifeCleanup,readLifeCleanupJob} from './lib/storage-life-cleanup-queue.mjs'
 import {queueModelCleanup,readCleanupJob} from './lib/storage-cleanup-queue.mjs'
 import {queueDomainMigration,readMigrationJob,assertMigrationStartupSafe} from './lib/storage-migration-queue.mjs'
 import {storageTargetSuggestions} from './lib/storage-platform.mjs'
@@ -8415,7 +8418,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
   }
 
-  let storageModelVerification=null,storageModelVerificationBusy=false
+  let storageModelVerification=null,storageModelVerificationBusy=false,storageLifeVerification=null
   const handle = async (req, res, url) => {
     refreshCfg()
     const path = url.pathname
@@ -8519,11 +8522,11 @@ logger:{warn:m=>log('社交意图：'+m)}
     // is NEVER performed by this HTTP handler: the button schedules a detached
     // worker that waits for DSH shutdown and rechecks all copies offline.
     if ((req.method==='GET'&&path==='/api/bili-duty/storage/location')||
-        (req.method==='POST'&&['/api/bili-duty/storage/check','/api/bili-duty/storage/verify-retained-model','/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/verify-python-cache','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path))) {
+        (req.method==='POST'&&['/api/bili-duty/storage/check','/api/bili-duty/storage/verify-retained-model','/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/verify-python-cache','/api/bili-duty/storage/verify-life-memory','/api/bili-duty/storage/schedule-life-cleanup','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path))) {
       const peer=String(req.socket?.remoteAddress||'')
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||
-         (req.method==='POST'&&['/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/verify-python-cache','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path)&&(!origin||!host))||
+         (req.method==='POST'&&['/api/bili-duty/storage/verify-model-runtime','/api/bili-duty/storage/verify-python-cache','/api/bili-duty/storage/verify-life-memory','/api/bili-duty/storage/schedule-life-cleanup','/api/bili-duty/storage/review-model-vision','/api/bili-duty/storage/schedule-model-cleanup','/api/bili-duty/storage/schedule-migration'].includes(path)&&(!origin||!host))||
          origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin))||
          String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'存储位置仅允许电脑本机同源管理中心查看和预检'})
@@ -8532,13 +8535,22 @@ logger:{warn:m=>log('社交意图：'+m)}
         if(req.method==='GET')return sendJson(res,200,{ok:true,
           currentDir:stateDir,defaultDir:location.defaultDir,relocated:location.relocated,
           usage:storageCategories(stateDir),domains:storageDomainsUsage(stateDir),groups:storageMigrationGroups(stateDir),
-          retainedModel:inspectRetainedModelCopies({root:stateDir}),cleanupJob:readCleanupJob(stateDir),migrationJob:readMigrationJob(stateDir),platform:process.platform,
+          retainedModel:inspectRetainedModelCopies({root:stateDir}),cleanupJob:readCleanupJob(stateDir),
+          retainedLife:inspectRetainedLifeCopies({root:stateDir}),lifeCleanupJob:readLifeCleanupJob(stateDir),migrationJob:readMigrationJob(stateDir),platform:process.platform,
           suggestedTargets:storageTargetSuggestions(process.platform,homedir()),
           visionPythonPath:String(cfg.visionPythonPath||''),offlineMigrationOnly:true})
         if(path==='/api/bili-duty/storage/verify-retained-model')return sendJson(res,200,{
           ...inspectRetainedModelCopies({root:stateDir,verify:true}),
           offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         const body=await readBody(req,2048)
+        if(path==='/api/bili-duty/storage/verify-life-memory'){
+          if(['waiting','running'].includes(readMigrationJob(stateDir).status))throw Error('迁移任务尚未结束，不能核验 Life 记忆')
+          const result=verifyRelocatedLifeMemory({root:stateDir})
+          storageLifeVerification=result.ready?{ready:true,at:Date.now(),target:result.target}:null
+          const copies=result.ready?inspectRetainedLifeCopies({root:stateDir,verify:true}):{eligible:false,reason:'请先完成 Life 一键验证'}
+          return sendJson(res,200,{...result,retainedCopy:{eligible:copies.eligible===true&&copies.verified===true,
+            reason:copies.reason||''}})
+        }
         if(path==='/api/bili-duty/storage/verify-python-cache'){
           if(['waiting','running'].includes(readMigrationJob(stateDir).status))
             throw Error('离线迁移任务尚未结束，请退出 DSH 并等待迁移完成后再验证')
@@ -8582,6 +8594,12 @@ logger:{warn:m=>log('社交意图：'+m)}
           vision.reason=vision.ok?'本人已检查并认可本轮真实图片识别':'图片识别未被认可，禁止清理旧副本'
           storageModelVerification.ready=Object.values(storageModelVerification.checks).every(x=>x.ok===true)
           return sendJson(res,200,{ok:true,ready:storageModelVerification.ready,checks:storageModelVerification.checks})
+        }
+        if(path==='/api/bili-duty/storage/schedule-life-cleanup'){
+          if(body?.confirm!=='DELETE_RETAINED_LIFE_COPIES')throw Error('必须确认永久删除原位置 Life 旧副本')
+          if(!storageLifeVerification?.ready)throw Error('请先重新执行 Life 一键验证')
+          return sendJson(res,200,queueLifeCleanup({root:stateDir,verification:storageLifeVerification,
+            workerScript:join(pluginDir,'scripts','cleanup-retained-life-after-exit.mjs'),parentPid:process.pid}))
         }
         if(path==='/api/bili-duty/storage/schedule-model-cleanup'){
           if(['waiting','running'].includes(readMigrationJob(stateDir).status))throw Error('迁移助手尚未结束，不能同时清理旧副本')

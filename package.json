@@ -53,6 +53,7 @@
     "scripts/migrate-bili-duty-storage.mjs",
     "scripts/migrate-bili-duty-domain.mjs",
     "scripts/cleanup-retained-model-after-exit.mjs",
+    "scripts/cleanup-retained-life-after-exit.mjs",
     "scripts/migrate-bili-duty-after-exit.mjs",
     "scripts/resolve-bili-duty-storage.mjs",
     "tools/dev4-cold-state-backup.mjs",

@@ -4,6 +4,9 @@ import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync} from
 import {join,dirname} from 'node:path'
 import {tmpdir} from 'node:os'
 import {storageLayoutStatus} from '../lib/storage-layout.mjs'
+import {verifyRelocatedLifeMemory} from '../lib/storage-life-runtime-check.mjs'
+import {inspectRetainedLifeCopies} from '../lib/storage-life-retained.mjs'
+import {queueLifeCleanup,readLifeCleanupJob,runQueuedLifeCleanup} from '../lib/storage-life-cleanup-queue.mjs'
 import {queueDomainMigration,runQueuedMigration,readMigrationJob,assertMigrationStartupSafe} from '../lib/storage-migration-queue.mjs'
 
 const put=(name,text)=>{mkdirSync(dirname(name),{recursive:true});writeFileSync(name,text)}
@@ -230,4 +233,174 @@ test('failed return HOME keeps external model as live source and old root copy u
  assert.equal(result.ok,false)
  assert.equal(storageLayoutStatus(root).domains.whisper.root,target)
  assert.equal(readFileSync(join(root,'.hf-cache','model.bin'),'utf8'),'whisper-source')
+}))
+
+
+test('Life post-migration check is read-only, verifies live recall, revocations and optional index',()=>fixture(async({temp,root})=>{
+ const id='e-'+'a'.repeat(18),target=join(temp,'lifeData')
+ const episodic={version:1,episodes:[{id,kind:'watch',stage:'clear',at:Date.now(),text:'我曾经看过一段有意义的视频',visibility:'public-event'}],archiveKeys:[],updatedAt:1}
+ put(join(root,'life-memory','episodic.json'),JSON.stringify(episodic))
+ put(join(root,'detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[]}))
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:9081,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9081,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ const before=readFileSync(join(target,'life-memory','episodic.json'),'utf8')
+ const good=verifyRelocatedLifeMemory({root})
+ assert.equal(good.ready,true,JSON.stringify(good.checks))
+ assert.equal(good.checks.recall.ok,true)
+ assert.equal(good.checks.vectors.notApplicable,true)
+ assert.equal(readFileSync(join(target,'life-memory','episodic.json'),'utf8'),before,'Life verification must never decay or update memory')
+ episodic.episodes[0].stage='forgotten'
+ put(join(target,'life-memory','episodic.json'),JSON.stringify(episodic))
+ const failed=verifyRelocatedLifeMemory({root})
+ assert.equal(failed.ready,false)
+ assert.match(failed.checks.episodes.reason,/遗忘/)
+ assert.equal(storageLayoutStatus(root).domains.memory.root,target,'failure must never change the active pointer')
+}))
+
+test('Life failed check may queue safe undo using newest external memory, never revive stale C copy',()=>fixture(async({temp,root})=>{
+ const id='e-'+'b'.repeat(18),target=join(temp,'lifeData')
+ put(join(root,'long-term-memory','sample.json'),JSON.stringify({version:1,rows:[]}))
+ put(join(root,'embedding-memory-index','old.bin'),'index bytes')
+ put(join(root,'life-memory','episodic.json'),JSON.stringify({version:1,episodes:[],archiveKeys:[],updatedAt:1}))
+ put(join(root,'detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[]}))
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:9082,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9082,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ const newest={version:1,episodes:[{id,stage:'forgotten',text:'PRIVATE TEXT MUST NOT BE READ',at:Date.now()}],archiveKeys:[],updatedAt:2}
+ put(join(target,'life-memory','episodic.json'),JSON.stringify(newest))
+ put(join(target,'detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[id]}))
+ assert.equal(verifyRelocatedLifeMemory({root}).ready,false)
+ queueDomainMigration({root,domain:'memory',returnHome:true,workerScript:'worker.mjs',parentPid:9083,spawnImpl:spawnFake})
+ assert.equal(storageLayoutStatus(root).domains.memory.root,target,'undo must remain queued until DSH exits')
+ assert.equal(readMigrationJob(root).operation,'return-home')
+ const done=await runQueuedMigration({root,parentPid:9083,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ assert.equal(done.ok,true)
+ assert.equal(storageLayoutStatus(root).domains.memory.configured,false)
+ assert.deepEqual(JSON.parse(readFileSync(join(root,'detail-protection','revocations-v1.json'))).ids,[id])
+ assert.equal(JSON.parse(readFileSync(join(root,'life-memory','episodic.json'))).episodes[0].stage,'forgotten')
+ assert.equal(existsSync(join(target,'life-memory','episodic.json')),true,'external copy retained for safety')
+ assert.ok(done.oldRootCopyArchive,'stale root copy is quarantined, never merged')
+}))
+
+test('Life undo is rejected if current authoritative memory vanished, leaving pointer untouched',()=>fixture(async({temp,root})=>{
+ const target=join(temp,'lifeData')
+ put(join(root,'life-memory','episodic.json'),JSON.stringify({version:1,episodes:[],archiveKeys:[]}))
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:9084,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9084,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ rmSync(join(target,'life-memory','episodic.json'))
+ assert.throws(()=>queueDomainMigration({root,domain:'memory',returnHome:true,workerScript:'worker.mjs',spawnImpl:spawnFake}),/缺少关键数据/)
+ assert.equal(storageLayoutStatus(root).domains.memory.root,target)
+}))
+
+test('Life verification and explicit safe-undo controls are gated in same-origin management UI',()=>{
+ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
+ const script=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+ const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ for(const id of ['storage-life-verify-panel','storage-life-verify','storage-life-undo','storage-life-undo-button','storage-life-verify-result'])
+  assert.match(html,new RegExp(`id="${id}"`))
+ assert.match(script,/storage\/verify-life-memory/)
+ assert.match(script,/domain:'memory',returnHome:true/)
+ assert.match(script,/Life 存储位置/)
+ assert.match(index,/verifyRelocatedLifeMemory\(\{root:stateDir\}\)/)
+ assert.match(index,/sec-fetch-site/)
+ assert.doesNotMatch(index,/returnDomainHomeOffline\(\{root:stateDir/)
+})
+
+
+test('Life one-click verification can schedule verified old-copy cleanup, but only after actual shutdown',()=>fixture(async({temp,root})=>{
+ const target=join(temp,'lifeData'),id='e-'+'c'.repeat(18)
+ put(join(root,'life-memory','episodic.json'),JSON.stringify({version:1,episodes:[],archiveKeys:[],updatedAt:1}))
+ put(join(root,'detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[]}))
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:9191,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9191,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ put(join(target,'life-memory','episodic.json'),JSON.stringify({version:1,episodes:[{id,stage:'forgotten',text:'',at:Date.now()}],archiveKeys:[],updatedAt:2}))
+ put(join(target,'detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[id]}))
+ const probe=verifyRelocatedLifeMemory({root})
+ assert.equal(probe.ready,true,JSON.stringify(probe.checks))
+ const old=inspectRetainedLifeCopies({root,verify:true})
+ assert.equal(old.verified,true,old.reason)
+ const action=queueLifeCleanup({root,verification:{ready:true,at:Date.now(),target},workerScript:'worker.mjs',parentPid:9192,spawnImpl:spawnFake})
+ assert.equal(action.scheduled,true)
+ assert.equal(existsSync(join(root,'life-memory','episodic.json')),true)
+ assert.throws(()=>assertMigrationStartupSafe(root),/Life 旧副本清理/)
+ const result=await runQueuedLifeCleanup({root,parentPid:9192,jobId:readLifeCleanupJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ assert.equal(result.ok,true)
+ assert.equal(readLifeCleanupJob(root).status,'completed')
+ assert.equal(existsSync(join(root,'life-memory')),false,'only old root Life files deleted')
+ assert.equal(existsSync(join(target,'life-memory','episodic.json')),true)
+ assert.equal(storageLayoutStatus(root).domains.memory.root,target)
+ assert.deepEqual(JSON.parse(readFileSync(join(target,'detail-protection','revocations-v1.json'))).ids,[id])
+ assert.equal(existsSync(join(root,'.dafeiyu-life-cleanup-v1.json')),true)
+}))
+
+test('Life cleanup is cancelled on current/old content drift; never deletes stale root automatically',()=>fixture(async({temp,root})=>{
+ const target=join(temp,'lifeData')
+ put(join(root,'life-memory','episodic.json'),JSON.stringify({version:1,episodes:[],archiveKeys:[],updatedAt:1}))
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:9291,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9291,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ queueLifeCleanup({root,verification:{ready:true,at:Date.now(),target},workerScript:'worker.mjs',parentPid:9292,spawnImpl:spawnFake})
+ put(join(target,'life-memory','new.json'),'changed after UI verification')
+ const result=await runQueuedLifeCleanup({root,parentPid:9292,jobId:readLifeCleanupJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ assert.equal(result.ok,false)
+ assert.equal(existsSync(join(root,'life-memory','episodic.json')),true)
+ assert.equal(existsSync(join(target,'life-memory','new.json')),true)
+ assert.equal(storageLayoutStatus(root).domains.memory.root,target)
+ assert.equal(readLifeCleanupJob(root).status,'failed')
+}))
+
+test('a stale root forgetting revocation not present in target prevents Life cleanup',()=>fixture(async({temp,root})=>{
+ const target=join(temp,'lifeData'),id='e-'+'d'.repeat(18)
+ put(join(root,'life-memory','episodic.json'),JSON.stringify({version:1,episodes:[],archiveKeys:[]}))
+ put(join(root,'detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[id]}))
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:9391,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9391,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ put(join(target,'detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:[]}))
+ const report=inspectRetainedLifeCopies({root,verify:true})
+ assert.equal(report.eligible,false)
+ assert.match(report.reason,/遗忘撤销/)
+ assert.equal(existsSync(join(root,'detail-protection','revocations-v1.json')),true)
+}))
+
+
+test('Life cleanup never deletes while parent remains alive, and safely times out',()=>fixture(async({temp,root})=>{
+ const target=join(temp,'lifeData')
+ put(join(root,'life-memory','episodic.json'),JSON.stringify({version:1,episodes:[],archiveKeys:[]}))
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:9491,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9491,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ queueLifeCleanup({root,verification:{ready:true,at:Date.now(),target},workerScript:'worker.mjs',parentPid:9492,spawnImpl:spawnFake})
+ let clock=Date.now()
+ const result=await runQueuedLifeCleanup({root,parentPid:9492,jobId:readLifeCleanupJob(root).id,
+  processIsAlive:()=>true,inspectProcesses:()=>{throw Error('must not inspect/delete while parent lives')},
+  now:()=>clock,pause:async()=>{clock+=31*60*1000}})
+ assert.equal(result.ok,false)
+ assert.equal(readLifeCleanupJob(root).status,'failed')
+ assert.equal(existsSync(join(root,'life-memory','episodic.json')),true)
+ assert.equal(storageLayoutStatus(root).domains.memory.root,target)
+}))
+
+test('Life cleanup refuses to delete a unique long-term fact missing from active memory',()=>fixture(async({temp,root})=>{
+ const target=join(temp,'lifeData')
+ put(join(root,'life-memory','episodic.json'),JSON.stringify({version:1,episodes:[],archiveKeys:[]}))
+ put(join(root,'long-term-memory','dafeiyu.json'),JSON.stringify({version:3,scope:'dafeiyu-identity',memories:[{id:'long-unique',text:'唯一的长期记忆'}],deleted:[]}))
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:9910,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9910,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ put(join(target,'long-term-memory','dafeiyu.json'),JSON.stringify({version:3,scope:'dafeiyu-identity',memories:[],deleted:[]}))
+ assert.equal(verifyRelocatedLifeMemory({root}).ready,true,'file-level Life read verification alone is insufficient for deletion')
+ const report=inspectRetainedLifeCopies({root,verify:true})
+ assert.equal(report.eligible,false)
+ assert.match(report.reason,/长期事实/)
+ assert.equal(existsSync(join(root,'long-term-memory','dafeiyu.json')),true)
+}))
+
+test('Life cleanup refuses when active still-clear deep detail is missing',()=>fixture(async({temp,root})=>{
+ const target=join(temp,'lifeData'),id='e-'+'f'.repeat(18),account='a'.repeat(16)
+ put(join(root,'life-memory','episodic.json'),JSON.stringify({version:1,episodes:[{id,stage:'clear',text:'在视频中看到的情节',kind:'watch',visibility:'public-event',accountTag:account,at:1000,bvid:'BV1'}],archiveKeys:[]}))
+ const oldDetail=join(root,'life-memory','details','v1',account,id+'.json')
+ put(oldDetail,JSON.stringify({schema:'life-memory-detail/v1'}))
+ queueDomainMigration({root,domain:'memory',target,workerScript:'worker.mjs',parentPid:9911,spawnImpl:spawnFake})
+ await runQueuedMigration({root,parentPid:9911,jobId:readMigrationJob(root).id,processIsAlive:()=>false,inspectProcesses:clear})
+ rmSync(join(target,'life-memory','details','v1',account,id+'.json'))
+ const report=inspectRetainedLifeCopies({root,verify:true})
+ assert.equal(report.eligible,false)
+ assert.match(report.reason,/可回忆深层详情/)
+ assert.equal(existsSync(oldDetail),true)
 }))
