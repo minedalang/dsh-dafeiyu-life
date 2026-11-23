@@ -576,6 +576,11 @@
     "watched-merge.test.mjs"
   ],
   "registeredActive": {
+    "v283-dev3-vision-cache-access.test.mjs": {
+      "owner": "storage-layout-and-vision-cache",
+      "kind": "security",
+      "intent": "Migration checks visual cache create/atomic replace/delete before publishing a new pointer; denied writes preserve the original source, and no other cache records or ACLs are touched."
+    },
     "v282-closure-ai-visual-summary.test.mjs": {
       "owner": "life-video-visual-text-synthesis",
       "kind": "security",

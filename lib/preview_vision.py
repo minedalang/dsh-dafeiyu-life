@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import stat
 import tempfile
 from contextlib import closing
 import struct
@@ -891,7 +892,23 @@ def _save_vision_cache(cache, record):
                 delete=False) as handle:
             staged=Path(handle.name)
             json.dump(record,handle,ensure_ascii=False)
-        os.replace(staged,cache)
+        # Never overwrite a symbolic link or an unexpected directory.
+        if cache.is_symlink() or (cache.exists() and not cache.is_file()):
+            return 'vision_cache_write_failed'
+        try:
+            os.replace(staged,cache)
+        except PermissionError:
+            # A copied Windows cache file can retain its read-only attribute.
+            # Repair ONLY that individual regenerable cache file, and retry
+            # the same atomic replacement once. Never alter directory ACLs,
+            # permissions of model weights or any Life memory.
+            if cache.is_symlink() or not cache.is_file():
+                raise
+            mode=cache.stat().st_mode
+            if mode & stat.S_IWRITE:
+                raise
+            cache.chmod(mode | stat.S_IWRITE)
+            os.replace(staged,cache)
         return None
     except (OSError,TypeError,ValueError) as exc:
         err=getattr(exc,'errno',None)

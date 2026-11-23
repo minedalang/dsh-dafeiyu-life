@@ -1,5 +1,6 @@
 """Regression: two observed JPEG boards cannot collapse into one incomplete local model receipt."""
 import json
+import errno
 import sys
 import random
 import os
@@ -101,6 +102,36 @@ class PerBoardVision(unittest.TestCase):
             self.assertTrue(output['description'])
             self.assertEqual(infer.call_count,1)
             save.assert_not_called()
+
+    def test_existing_read_only_cache_file_retries_one_atomic_replace(self):
+        with TemporaryDirectory() as folder:
+            cache=Path(folder)/'vision-cache'/'BV-readonly.json'
+            cache.parent.mkdir()
+            cache.write_text('{"prior":true}',encoding='utf8')
+            cache.chmod(0o400)
+            actual_replace=pv.os.replace
+            attempts=[]
+            def deny_first_then_replace(src,dst):
+                attempts.append((src,dst))
+                if len(attempts)==1:
+                    raise PermissionError(errno.EACCES,'simulated legacy read-only flag')
+                return actual_replace(src,dst)
+            with patch.object(pv.os,'replace',side_effect=deny_first_then_replace):
+                self.assertIsNone(pv._save_vision_cache(cache,{'updated':True}))
+            self.assertEqual(len(attempts),2)
+            self.assertEqual(json.loads(cache.read_text(encoding='utf8')),{'updated':True})
+            self.assertEqual(list(cache.parent.glob('.*.tmp')),[])
+
+    def test_permission_denial_on_writable_cache_never_changes_its_acl(self):
+        with TemporaryDirectory() as folder:
+            cache=Path(folder)/'vision-cache'/'BV-denied.json'
+            cache.parent.mkdir()
+            cache.write_text('{"prior":true}',encoding='utf8')
+            with patch.object(pv.os,'replace',side_effect=PermissionError(errno.EACCES,'ACL denied')) as replace:
+                with patch.object(Path,'chmod',side_effect=AssertionError('must not chmod writable cache')):
+                    self.assertEqual(pv._save_vision_cache(cache,{'updated':True}),'vision_cache_permission_denied')
+            replace.assert_called_once()
+            self.assertEqual(cache.read_text(encoding='utf8'),'{"prior":true}')
 
     def test_normal_read_still_commits_model_cache(self):
         with TemporaryDirectory() as home, \

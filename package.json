@@ -56,6 +56,7 @@
     "scripts/cleanup-retained-life-after-exit.mjs",
     "scripts/migrate-bili-duty-after-exit.mjs",
     "scripts/resolve-bili-duty-storage.mjs",
+    "scripts/check-vision-cache-access.mjs",
     "tools/dev4-cold-state-backup.mjs",
     "tools/dev4-life-planner-offline-recovery.mjs",
     "tools/dev4-life-events-offline-review.mjs",
