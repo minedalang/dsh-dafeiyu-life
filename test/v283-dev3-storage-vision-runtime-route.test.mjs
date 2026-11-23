@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,mkdirSync,copyFileSync,existsSync,readdirSync,rmSync,writeFileSync,readFileSync} from 'node:fs'
 import {join,dirname} from 'node:path'
 import {tmpdir} from 'node:os'
-import {spawnSync} from 'node:child_process'
+import {spawn,spawnSync} from 'node:child_process'
 import {migrateDomainOffline} from '../lib/storage-layout.mjs'
 import {verifyVisionPythonCacheRoute} from '../lib/storage-vision-runtime-check.mjs'
 import {verifyRelocatedModelRuntime} from '../lib/storage-model-runtime-check.mjs'
@@ -42,6 +42,20 @@ test('real Python preview cache writer round trips only on relocated modelData',
  assert.deepEqual(readdirSync(join(target,'vision-cache')).sort(),['cached.json'])
  assert.equal(existsSync(join(root,'vision-cache','cached.json')),true,'retained source is never touched')
 }))
+test('slow Windows-style Python import reports its last stage instead of calling the route broken',()=>run(async({root,target})=>{
+ put(join(root,'preview_vision.py'),'# present')
+ const result=await verifyVisionPythonCacheRoute({root,python:'python',env:{BILI_DUTY_HOME:root,DSH_MEDIA_CACHE_HOME:target},
+  timeoutMs:1100,
+  spawnImpl:()=>spawn(process.execPath,['-e',
+   "process.stdout.write('VISION_ROUTE_STAGE:python_started\\nVISION_ROUTE_STAGE:routes_validated\\nVISION_ROUTE_STAGE:pillow_imported\\n');setInterval(()=>{},1000)"],
+   {stdio:['ignore','pipe','ignore']})})
+ assert.equal(result.ok,false)
+ assert.equal(result.code,'python_timeout')
+ assert.equal(result.stage,'pillow_imported')
+ assert.match(result.reason,/准备导入预览模块/)
+ assert.doesNotMatch(result.reason,new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))
+}))
+
 test('separate Ollama image success can no longer pass migration readiness if Python video route fails',()=>run(async({root})=>{
  const result=await verifyRelocatedModelRuntime({root,asrPython:'none',asrModel:'small',visionEnabled:true,
   embeddingRuntime:null,visionMode:'independent_local',visionPipelineProbe:async()=>({ok:false,code:'media_route_mismatch',reason:'mismatch'}),
