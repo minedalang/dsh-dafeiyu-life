@@ -2,6 +2,7 @@
 import json
 import sys
 import random
+import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -60,6 +61,58 @@ class PerBoardVision(unittest.TestCase):
         self.assertEqual(receipts[0]['status'],'incomplete')
         self.assertEqual(receipts[0]['errorCode'],'vision_board_grid_mismatch')
         self.assertNotIn('description',receipts[0])
+
+    def test_owner_debug_returns_verified_board_without_durable_cache_commit(self):
+        """A post-Ollama cache failure used to erase a valid Debug receipt."""
+        with TemporaryDirectory() as home, \
+             patch.object(pv, '_json_api', side_effect=fake_api), \
+             patch.object(pv, '_safe_api_get', side_effect=image_fetch), \
+             patch.dict(os.environ, {'DSH_OWNER_VIDEO_DEBUG_STAGE':'1', 'DSH_OWNER_DEBUG_VISION_BUDGET_SEC':'300'}), \
+             patch.object(pv, '_save_vision_cache', side_effect=PermissionError('simulated migrated cache denied')) as save:
+            def infer(frames, _model):
+                self.assertEqual(len(frames), 1)
+                return self.render_board(frames[0])
+            with patch.object(pv, '_call_local_ollama', side_effect=infer) as model:
+                output = pv.analyze_preview(BV, home, storyboard=True, max_frames=12,
+                    enabled=True, model='qwen3.5:2b', debug=True)
+            self.assertEqual(model.call_count, 1)
+            self.assertEqual(output['status'], 'analyzed')
+            self.assertTrue(output['description'])
+            self.assertEqual(output['visionBoardReceipts'][0]['status'], 'analyzed')
+            save.assert_not_called()
+            self.assertFalse((Path(home)/'vision-cache').exists(),
+                'owner Debug must not commit a production vision cache')
+
+    def test_owner_adaptive_debug_does_not_commit_migrated_cache(self):
+        result={'ok':True,'status':'frames_ready','bvid':BV,'times':[3.0],
+            'frames':[{'second':3.0,'bytes':b'fake-jpeg'}],
+            'sampling':{'strategy':'synthetic'},
+            'image_source':'B站公开视频片段（离线解码）'}
+        with TemporaryDirectory() as home, \
+             patch.dict(os.environ, {'DSH_OWNER_VIDEO_DEBUG_STAGE':'1',
+                                     'DSH_OWNER_DEBUG_VISION_BUDGET_SEC':'300'}), \
+             patch('adaptive_video.acquire_adaptive_frames',return_value=result), \
+             patch.object(pv,'_capture_actual_video_images',return_value=None), \
+             patch.object(pv,'_call_local_ollama',return_value='在采样画面中可见颜色变化。') as infer, \
+             patch.object(pv,'_save_vision_cache',side_effect=PermissionError('D: cache denied')) as save:
+            output=pv.analyze_perception(BV,home,perception_source='adaptive',debug=True,
+                enabled=True,model='qwen3.5:2b',max_frames=12)
+            self.assertEqual(output['status'],'analyzed')
+            self.assertTrue(output['description'])
+            self.assertEqual(infer.call_count,1)
+            save.assert_not_called()
+
+    def test_normal_read_still_commits_model_cache(self):
+        with TemporaryDirectory() as home, \
+             patch.object(pv, '_json_api', side_effect=fake_api), \
+             patch.object(pv, '_safe_api_get', side_effect=image_fetch), \
+             patch.object(pv, '_save_vision_cache', return_value='vision_cache_permission_denied') as save:
+            with patch.object(pv, '_call_local_ollama', side_effect=lambda frames,_model:self.render_board(frames[0])):
+                output = pv.analyze_preview(BV,home,storyboard=True,max_frames=12,
+                    enabled=True, model='qwen3.5:2b',debug=False)
+            self.assertEqual(output['status'],'analyzed')
+            self.assertEqual(output['cacheErrorCode'],'vision_cache_permission_denied')
+            save.assert_called_once()
 
     def test_non_image_board_does_not_trigger_new_calls(self):
         board={'rank':0,'second':0,'bytes':b'not-jpeg','tile_count':12,

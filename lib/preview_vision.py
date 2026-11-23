@@ -1154,6 +1154,11 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
                 if isinstance(e,VisionServiceError):answer['errorCode']=e.code
                 return answer
         answer.update(status='analyzed',description=description,model=model)
+        # Owner diagnostics must not commit durable model cache entries.
+        # They still return the verified in-memory answer and the separate
+        # short-lived debug capture; normal Life reads retain the cache.
+        if debug and os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE') == '1':
+            return answer
         code=_save_vision_cache(cache,{'model':model,'provider':provider,'frames_limit':max_frames,'board_tiles':board_tiles,'local_thinking':local_thinking,'sampler_version':sampler_version,'times':answer['times'],'sampling':sampling,'focus_window':focus,'network_budget_override':network_budget_bytes,'description':description,
             'visionBoardReceipts':answer.get('visionBoardReceipts',[])})
         _mark_cache_write_result(answer,code)
@@ -1372,6 +1377,11 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
         if isinstance(exc,VisionServiceError):result['errorCode']=exc.code
         return result
     result['status']='analyzed'
+    # Debug is a read-only verification, not a durable vision-cache commit.
+    # In particular, a migrated cache directory must not block its final MCP
+    # response after Ollama has produced an acceptable observation.
+    if debug and os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE') == '1':
+        return result
     record={'model':model,'provider':provider,'frames_limit':max_frames,
             'sampler_version':8,'view_depth':view_depth,'times':result['times'],'description':result['description'],
             'sampling':result['sampling'],'ocr':result.get('ocr'),'focus_window':focus,
