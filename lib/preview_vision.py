@@ -497,18 +497,44 @@ def _local_board_response_complete(answer):
     return True
 
 
+# A tile observation is a *line*, not every mention of a tile ID in a
+# closing summary. A model may format lines as Markdown, but every accepted
+# line still needs its own printed time and nonempty visual description.
+_BOARD_OBSERVATION_LINE = re.compile(
+    r'(?mi)^[ \t]*(?:[-*][ \t]+)?(?:\*\*)?'
+    r'R(\d{1,2})C(\d{1,2})[ \t]*\[([0-9]{1,3}):([0-5][0-9])\]'
+    r'(?:\*\*)?(?:[ \t]*[：:][ \t]*|[ \t]+)(\S[^\r\n]*)'
+)
+
+
+def _board_observation_lines(answer):
+    return list(_BOARD_OBSERVATION_LINE.finditer(answer))
+
+
 def _local_board_grid_valid(answer, board):
-    """Reject extra rows/columns and duplicate tile IDs, not semantic correctness."""
+    """Require one real observation line per tile; ignore summary citations.
+
+    Unknown tile IDs are still prohibited anywhere in the answer, including
+    summaries. Repeating a *valid* ID in prose does not duplicate an observed
+    frame. Exact ordering and source timestamps are checked separately.
+    """
     cols=int(board.get('grid_cols') or 4)
     n=len(board.get('tile_times') or [])
-    cells=re.findall(r'(?<![A-Za-z0-9])R(\d{1,2})C(\d{1,2})(?!\d)',answer,re.I)
+    if cols<1 or n<1:return False
+    def valid_cell(row, col):
+        r,c=int(row),int(col)
+        return r>=1 and 1<=c<=cols and (r-1)*cols+c<=n
+    for row,col in re.findall(r'(?<![A-Za-z0-9])R(\d{1,2})C(\d{1,2})(?!\d)',answer,re.I):
+        if not valid_cell(row,col):return False
+    observed=_board_observation_lines(answer)
+    if len(observed)!=n:return False
     used=set()
-    for row,col in cells:
+    for m in observed:
+        row,col=m.group(1),m.group(2)
+        if not valid_cell(row,col):return False
         offset=(int(row)-1)*cols+(int(col)-1)
-        if int(row)<1 or int(col)<1 or int(col)>cols or offset>=n or offset in used:
-            return False
+        if offset in used:return False
         used.add(offset)
-    # A sparse reply cannot count as complete observation of every tile.
     return len(used)==n
 
 
@@ -700,12 +726,13 @@ def _split_storyboard_batch(response, boards):
 
 
 def _local_board_cell_times_valid(answer, board):
-    """A covered cell must cite its *own* printed sample time, in grid order."""
+    """Only grounded observation lines count; enforce original tile order."""
     cols=int(board.get('grid_cols') or 4)
     expected=list(board.get('tile_times') or [board['second']])
-    anchors=re.findall(r'(?mi)^\s*R(\d{1,2})C(\d{1,2})\s*\[(\d{1,3}):([0-5]\d)\]',answer)
+    anchors=_board_observation_lines(answer)
     if len(anchors)!=len(expected):return False
-    for idx,(row,col,minute,second) in enumerate(anchors):
+    for idx,match in enumerate(anchors):
+        row,col,minute,second=match.groups()[:4]
         if (int(row),int(col))!=(idx//cols+1,idx%cols+1):return False
         if int(minute)*60+int(second)!=int(float(expected[idx])):return False
     return True

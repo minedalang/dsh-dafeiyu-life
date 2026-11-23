@@ -29,6 +29,47 @@ class PerBoardVision(unittest.TestCase):
                                         enabled=True, model='openbmb/minicpm-v4.7:1b',debug=True)
             return output, worker.call_args_list
 
+    def test_summary_citing_a_real_cell_does_not_invalidate_complete_grid(self):
+        board={'second':10,'tile_times':list(range(10,22)),'grid_cols':4,'grid_rows':3}
+        answer=self.render_board(board)+'\n视觉记忆摘要：R1C1 与 R3C4 显示相似场景。'
+        self.assertTrue(pv._local_board_grid_valid(answer,board))
+        self.assertTrue(pv._local_board_cell_times_valid(answer,board))
+        self.assertFalse(pv._local_board_grid_valid(
+            answer+'\n视觉记忆摘要：不存在的 R4C1 画面。',board))
+
+    def test_markdown_cell_format_and_summary_still_need_true_clock_anchors(self):
+        board={'second':10,'tile_times':list(range(10,22)),'grid_cols':4,'grid_rows':3}
+        rows=[f'- **R{i//4+1}C{i%4+1} [{pv._board_clock(t)}]**：清晰可见的独立画面。'
+              for i,t in enumerate(board['tile_times'])]
+        answer='\n'.join(rows)+'\n视觉记忆摘要：场景多次变化。'
+        self.assertTrue(pv._local_board_grid_valid(answer,board))
+        self.assertTrue(pv._local_board_cell_times_valid(answer,board))
+        self.assertFalse(pv._local_board_cell_times_valid(answer.replace('[00:10]','[00:11]',1),board))
+        self.assertFalse(pv._local_board_grid_valid(answer.replace('R2C1','R1C1',1),board))
+        self.assertFalse(pv._local_board_grid_valid(answer.replace('：清晰可见的独立画面。','：',1),board))
+
+    def test_real_missing_cells_remain_incomplete_without_new_calls(self):
+        items=[{'second':float(i),'tile':Image.new('RGB',(32,18),'gray')}
+               for i in range(12)]
+        board=pv._make_preview_boards(items)[0]
+        with patch.object(pv,'_call_local_ollama',return_value='R1C1 [00:00]：只描述一格。') as worker:
+            description,receipts=pv._analyze_local_storyboards([board],'qwen3.5:2b')
+        self.assertEqual(worker.call_count,1,'missing tiles must not trigger extra Ollama requests')
+        self.assertEqual(description,'')
+        self.assertEqual(receipts[0]['modelAttempts'],1)
+        self.assertEqual(receipts[0]['status'],'incomplete')
+        self.assertEqual(receipts[0]['errorCode'],'vision_board_grid_mismatch')
+        self.assertNotIn('description',receipts[0])
+
+    def test_non_image_board_does_not_trigger_new_calls(self):
+        board={'rank':0,'second':0,'bytes':b'not-jpeg','tile_count':12,
+               'tile_times':list(range(12)),'grid_cols':4,'grid_rows':3}
+        with patch.object(pv,'_call_local_ollama',return_value='R1C1 [00:00]：不完整。') as infer:
+            description,receipts=pv._analyze_local_storyboards([board],'qwen3.5:2b')
+        self.assertEqual(infer.call_count,1)
+        self.assertEqual(description,'')
+        self.assertEqual(receipts[0]['status'],'incomplete')
+
     def test_ollama_transport_timeout_is_not_retried_for_each_board(self):
         boards=[{'rank':i,'second':i*12,'bytes':b'fake-jpeg',
                  'tile_count':12,'tile_times':list(range(i*12,i*12+12)),
@@ -114,6 +155,19 @@ class PerBoardVision(unittest.TestCase):
         self.assertEqual(out['visionBoardReceipts'][1]['times'],out['times'][12:24])
         self.assertIn('分镜图1',out['description'])
         self.assertIn('分镜图2',out['description'])
+
+    def test_complete_paired_response_with_summary_citations_is_not_retried(self):
+        def infer(boards,_model):
+            self.assertEqual(len(boards),2)
+            return '\n'.join(
+                f'分镜图{b["rank"]+1}：\n{self.render_board(b)}\n'
+                '视觉记忆摘要：R1C1 与 R3C4 的画面有可见变化。'
+                for b in boards)
+        result,calls=self.run_preview(infer)
+        self.assertEqual(result['status'],'analyzed',result)
+        self.assertEqual([r['status'] for r in result['visionBoardReceipts']],['analyzed']*2)
+        self.assertEqual([r['modelAttempts'] for r in result['visionBoardReceipts']],[1,1])
+        self.assertEqual(len(calls),1,'summary references must not cause another Ollama request')
 
     def test_truncated_second_board_recovers_only_second_and_never_uses_partial(self):
         def infer(boards,model):
