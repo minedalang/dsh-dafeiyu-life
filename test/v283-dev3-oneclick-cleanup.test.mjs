@@ -46,6 +46,7 @@ test('embedding verification rejects a healthy server still bound to its old mod
 test('image result must be reviewed by owner; a model response alone cannot authorize deletion',()=>withMigration(async({root})=>{
  const result=await verifyRelocatedModelRuntime({root,asrPython:process.execPath,embeddingRuntime:fakeEmbed(root),
   pythonProbe:async()=>({ok:true}),visionEnabled:true,visionMode:'independent_dsh',
+  visionPipelineProbe:async()=>({ok:true}),
   visionDshReview:{verify:async()=>({ok:true,awaitingReview:true,reviewId:'review-1'})}})
  assert.equal(result.ready,false)
  assert.equal(result.checks.vision.pendingReview,true)

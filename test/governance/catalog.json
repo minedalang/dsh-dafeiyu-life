@@ -875,6 +875,11 @@
       "owner": "storage-migration-maintenance",
       "kind": "security",
       "intent": "Ensure restarted DSH enters read-only migration waiting mode, shows cancellation UI, uses cross-process cancel checkpoints, confirms worker death before recovery, and never allows plugin writers during migration."
+    },
+    "v283-dev3-storage-vision-runtime-route.test.mjs": {
+      "owner": "storage-management-and-vision-routing",
+      "kind": "security",
+      "intent": "验证 modelData 迁移后视频 Python 缓存路径一致、读写回收与未通过时禁止误报识图就绪"
     }
   },
   "protected": [

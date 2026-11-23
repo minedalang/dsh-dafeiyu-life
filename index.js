@@ -628,8 +628,11 @@ export function apply(ctx, config) {
   // Verify every configured storage domain before any write/identity creation.
   const storageLayout = storageLayoutStatus(stateDir)
   const storagePyEnv = (extra={})=>pyEnv({
+    ...extra,
+    // The published partition is authoritative. A stale inherited or DSH CLI
+    // environment must never quietly move a child back to the old C cache.
     HF_HOME:storageDataPath(stateDir,'.hf-cache'),
-    DSH_MEDIA_CACHE_HOME:storageDomainRoot(stateDir,'media'),...extra,
+    DSH_MEDIA_CACHE_HOME:storageDomainRoot(stateDir,'media'),
   })
   // Determine whether this is an upgrade BEFORE allocating the vision TEMP folder.
   // Otherwise the folder itself makes a pristine installation look like a legacy one,
@@ -3804,7 +3807,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         if(process.platform!=='win32')return null
         return startProductionVisionHostExecutor({
           home:stateDir,exe:dsh.command,cli:dsh.args[1],baseOverlay:overlay,
-          workdir:process.cwd(),env:{...visionEnv({BILI_DUTY_HOME:stateDir}),...(dsh.env||{})},
+          workdir:process.cwd(),env:visionEnv({...dsh.env,BILI_DUTY_HOME:stateDir}),
           visualInstruction:visionObservationFocus(cfg.visionPrompt),
           allowRequest:()=>trustedLifeAccountTag()===account&&!accountBinding.status().blocked&&
             cfg.visionEnabled===true&&resolvedVisionMode()==='independent_dsh',
@@ -4409,7 +4412,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(!expectedAccount||accountBinding.status().blocked)throw Error('视觉启动时账号未通过验证')
       productionVisionExecutor=await startProductionVisionHostExecutor({
         home:stateDir,exe:route.command,cli:route.args[1],baseOverlay:baseVisionOverlay,
-        workdir:process.cwd(),env:{...visionEnv({BILI_DUTY_HOME:stateDir}),...(route.env||{})},
+        workdir:process.cwd(),env:visionEnv({...route.env,BILI_DUTY_HOME:stateDir}),
         visualInstruction:visionObservationFocus(cfg.visionPrompt),
         allowRequest:()=>trustedLifeAccountTag()===expectedAccount&&!accountBinding.status().blocked,
       })
@@ -8660,7 +8663,10 @@ logger:{warn:m=>log('社交意图：'+m)}
             // Model runtime verification NEVER reads or hashes historical old copies.
             // Old-copy deletion eligibility is a separate explicit owner action.
             const configBefore=JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])
+            const selectedVisionRuntime=selectHealthyVisionPython({fresh:true})
             const result=await verifyRelocatedModelRuntime({root:stateDir,asrPython:asrPython(),
+              visionPython:selectedVisionRuntime.ok?selectedVisionRuntime.path:'',
+              visionPythonEnv:visionEnv({BILI_DUTY_HOME:stateDir}),
               asrModel:cfg.asrModel||'small',asrModelPath:cfg.asrModelPath||'',embeddingRuntime,
               visionEnabled:cfg.visionEnabled===true,visionMode:resolvedVisionMode(),
               visionDshReview:dshVisionReview,visionLocalModels:localVisionModels,
