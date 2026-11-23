@@ -53,6 +53,7 @@ test('source diagnostics are bounded enums and do not claim exact model billing'
   assert.deepEqual(visualAttemptDiagnostic({action:'focus_video',status:'analyzed',verified:true}),
     {attemptKind:'new-focus-evidence',modelRun:'analysis-reported',verification:'verified'})
   assert.equal(visualAttemptDiagnostic({action:'observe_video',status:'bad',previousFailure:true}).attemptKind,'retry-after-failure')
+  assert.equal(visualAttemptDiagnostic({action:'observe_video',status:'vision_incomplete',modelAttempted:true}).modelRun,'attempt-reported')
   assert.equal(visualAttemptDiagnostic({action:'observe_video',existingMemory:true}).modelRun,'not-invoked')
   assert.equal(visualAttemptDiagnostic({action:'inject-unsafe'}),null)
 })
@@ -92,4 +93,23 @@ test('failed new focus never appears in owner UI as already acquired new evidenc
   assert.match(shown.result,/未取得新增时间点/)
   assert.match(shown.result,/未核验成功/)
   assert.doesNotMatch(shown.result,/已取得可信视觉回执/)
+})
+
+test('failed 1-of-2 boards reports attempted model work rather than unknown or verified',()=>{
+  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+  const from=js.indexOf('  const describeLifeVideoAttempt=run=>{')
+  const to=js.indexOf('  let lastLifeTreeId=',from)
+  const describe=vm.runInNewContext(js.slice(from,to)+'\ndescribeLifeVideoAttempt',{})
+  const attempt={at:100,state:'finished',steps:[
+    {type:'action-start',at:100,action:'observe_video'},
+    {type:'video-visual-attempt',at:101,action:'observe_video',attemptKind:'new-overview',
+      verification:'unverified',modelRun:'attempt-reported'},
+    {type:'blocked',at:102,action:'observe_video',code:'visual-read-unverified',
+      visualStatus:'vision_incomplete',visionFailureCode:'vision_board_grid_mismatch',
+      visionBoardsTotal:2,visionBoardsFailed:1}]}
+  const shown=describe(attempt)
+  assert.equal(shown.success,false)
+  assert.match(shown.result,/分镜完成 1\/2/)
+  assert.match(shown.result,/已报告尝试识图/)
+  assert.doesNotMatch(shown.result,/模型调用情况未知|已取得可信视觉回执/)
 })

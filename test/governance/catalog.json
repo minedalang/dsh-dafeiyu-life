@@ -1110,6 +1110,11 @@
       "owner": "video-perception-read-gates",
       "kind": "security",
       "intent": "Python and Node share conservative dead-owner auto-recovery of aged preview reads; frame acquisition completes and releases its gate before local Ollama inference."
+    },
+    "test_v283_dev3_visual_board_alignment.py": {
+      "owner": "local-vision-adaptive-board-grounding",
+      "kind": "security",
+      "intent": "Require exact visual cell/time receipts for original decoded storyboard frames, preserve safe error codes, reject partial answers and recognize harmless Markdown cell layout."
     }
   },
   "pythonProtected": [

@@ -502,8 +502,8 @@ def _local_board_response_complete(answer):
 # closing summary. A model may format lines as Markdown, but every accepted
 # line still needs its own printed time and nonempty visual description.
 _BOARD_OBSERVATION_LINE = re.compile(
-    r'(?mi)^[ \t]*(?:[-*][ \t]+)?(?:\*\*)?'
-    r'R(\d{1,2})C(\d{1,2})[ \t]*\[([0-9]{1,3}):([0-5][0-9])\]'
+    r'(?mi)^[ \t]*(?:[-*][ \t]+|[0-9]{1,2}[.)][ \t]+)?(?:\*\*)?'
+    r'R(\d{1,2})C(\d{1,2})(?:\*\*)?[ \t]*\[([0-9]{1,3}):([0-5][0-9])\]'
     r'(?:\*\*)?(?:[ \t]*[：:][ \t]*|[ \t]+)(\S[^\r\n]*)'
 )
 
@@ -739,8 +739,8 @@ def _local_board_cell_times_valid(answer, board):
     return True
 
 
-def _analyze_local_storyboards(frames,model):
-    """Try paired JPEGs once; selectively recover failures, never relax proof."""
+def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
+    """Verify each sampled board; selectively recover malformed replies without relaxing proof."""
     deadline=time.monotonic()+540
     owner_deadline=_owner_debug_deadline()
     if owner_deadline is not None:
@@ -816,7 +816,8 @@ def _analyze_local_storyboards(frames,model):
             for i in range(start,start+len(batch)):
                 reports[i]['modelAttempts']+=1
             try:
-                combined=_call_local_ollama(current,model)
+                combined=(_call_local_ollama(current,model,image_source=image_source)
+                          if image_source!="B站低清预览" else _call_local_ollama(current,model))
                 chunks=_split_storyboard_batch(combined,batch)
                 for offset,chunk in enumerate(chunks):
                     validate(start+offset,chunk,'paired',current[0].get('_model_receipt'),current[0].get('_debug_attempt_id',0))
@@ -842,7 +843,8 @@ def _analyze_local_storyboards(frames,model):
             current={**frames[i],'_inference_timeout_seconds':min(140,remaining)}
             reports[i]['modelAttempts']+=1
             try:
-                text=_call_local_ollama([current],model)
+                text=(_call_local_ollama([current],model,image_source=image_source)
+                      if image_source!="B站低清预览" else _call_local_ollama([current],model))
                 validate(i,text,'single-recovery' if len(batch)>1 else 'single',current.get('_model_receipt'),current.get('_debug_attempt_id',0))
             except Exception as exc:
                 fail(i,exc,current.get('_debug_attempt_id',0))
@@ -1316,11 +1318,11 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     # Do not allow it to reuse a cache created under another quota identity.
     cap_suffix='-cap'+str(network_budget_bytes) if network_budget_bytes is not None else ''
     if frame_budget_limit is not None: cap_suffix+='-frames'+str(frame_budget_limit)
-    cache=Path(os.environ.get('DSH_MEDIA_CACHE_HOME') or home).resolve()/'vision-cache'/f'{bvid}-adaptive-v8-{view_depth}{suffix}{"-timecover1" if focus else ""}{cap_suffix}.json'
+    cache=Path(os.environ.get('DSH_MEDIA_CACHE_HOME') or home).resolve()/'vision-cache'/f'{bvid}-adaptive-v9-{view_depth}{suffix}{"-timecover1" if focus else ""}{cap_suffix}.json'
     if enabled and not return_frames and not debug and cache.is_file():
         try:
             saved=json.loads(cache.read_text(encoding='utf8'))
-            if (saved.get('sampler_version')==8 and saved.get('model')==model
+            if (saved.get('vision_receipt_version')==1 and saved.get('sampler_version')==8 and saved.get('model')==model
                 and saved.get('provider')==provider and saved.get('frames_limit')==max_frames
                 and saved.get('view_depth')==view_depth
                 and saved.get('focus_window')==focus and saved.get('network_budget_override')==network_budget_bytes
@@ -1329,6 +1331,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
                 return {'ok':True,'bvid':bvid,'status':'cached',
                         'times':saved['times'],'description':saved['description'],
                         'sampling':saved['sampling'],'ocr':saved.get('ocr'),'focus_window':focus,
+                        'visionBoardReceipts':saved.get('visionBoardReceipts',[]),
                         'image_source':saved['image_source'],
                         'debugCapture':saved.get('debugCapture'),
                         'notice':'缓存的公开视频采样帧描述，并非完整视频观看'}
@@ -1387,12 +1390,40 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     if before_model is not None:before_model(result)
     _record_vision_attempt(home)
     frames=result.pop('frames')
-    try:
-        result['description']=_call_local_ollama(frames,model,image_source=result['image_source'])
-    except Exception as exc:
-        result.update(status='vision_unavailable',error='自适应画面已解码，但本地模型未完成分析')
-        if isinstance(exc,VisionServiceError):result['errorCode']=exc.code
+    # Decoded video usually arrives as 12-cell boards. Unlike the old direct
+    # _call_local_ollama route, require exact per-board/timestamp evidence.
+    # A partial answer is diagnostic only and never becomes a Life observation.
+    has_board_metadata=bool(result.get('sampling',{}).get('storyboard_count')) or any(
+        isinstance(f,dict) and f.get('tile_count',1)!=1
+        for f in frames)
+    structured=bool(frames) and all(
+        isinstance(f,dict) and type(f.get('tile_count')) is int and
+        1 < f['tile_count'] <= 12 and isinstance(f.get('tile_times'),list) and
+        len(f['tile_times'])==f['tile_count'] and
+        isinstance(f.get('bytes'),bytes) and bool(f['bytes'])
+        for f in frames)
+    if has_board_metadata and not structured:
+        result.update(status='vision_incomplete',errorCode='vision_board_unclassified',
+            error='原视频分镜元数据不完整，拒绝未经逐格校验的视觉描述')
         return result
+    if structured:
+        description,receipts=_analyze_local_storyboards(
+            frames,model,image_source=result['image_source'])
+        result['visionBoardReceipts']=receipts
+        if len(receipts)!=len(frames) or any(r['status']!='analyzed' for r in receipts):
+            result.update(status='vision_incomplete',
+                visionPartialDescription=description[:4800],
+                error='真实解码画面未全部取得逐格、时间对齐的模型回执；不能当作完整视觉证据')
+            return result
+        result['description']=description
+    else:
+        # Keep the legacy single-image/non-board path for older callers.
+        try:
+            result['description']=_call_local_ollama(frames,model,image_source=result['image_source'])
+        except Exception as exc:
+            result.update(status='vision_unavailable',error='自适应画面已解码，但本地模型未完成分析',
+                errorCode=_vision_board_error_code(exc))
+            return result
     result['status']='analyzed'
     # Debug is a read-only verification, not a durable vision-cache commit.
     # In particular, a migrated cache directory must not block its final MCP
@@ -1400,6 +1431,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     if debug and os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE') == '1':
         return result
     record={'model':model,'provider':provider,'frames_limit':max_frames,
+            'vision_receipt_version':1,'visionBoardReceipts':result.get('visionBoardReceipts',[]),
             'sampler_version':8,'view_depth':view_depth,'times':result['times'],'description':result['description'],
             'sampling':result['sampling'],'ocr':result.get('ocr'),'focus_window':focus,
             'image_source':result['image_source'],'network_budget_override':network_budget_bytes,
