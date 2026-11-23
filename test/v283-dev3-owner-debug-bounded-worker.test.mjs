@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-import {ownerDebugLocalVision,ownerDebugTimeoutMessage,OWNER_DEBUG_LOCAL_VISION_TIMEOUT_MS} from '../lib/owner-video-debug-local-vision.mjs'
+import {ownerDebugLocalVision,ownerDebugTimeoutMessage,ownerDebugOllamaSummary,OWNER_DEBUG_LOCAL_VISION_TIMEOUT_MS} from '../lib/owner-video-debug-local-vision.mjs'
 
 const sourceClient={cfg:{command:'python3',args:['/trusted/bili-duty/mcp_server.py'],cwd:'/trusted/bili-duty',
   env:{BILI_DUTY_HOME:'/trusted/bili-duty',BILI_VISION_ENABLED:'1',BILI_VISION_MODE:'independent_local',
@@ -11,13 +11,20 @@ const BV='BV1234567890'
 test('owner local video Debug creates a one-shot vision-only MCP, without borrowing the shared adapter proof',async()=>{
   let launched,calls=0,stops=0,opts
   const original=JSON.stringify(sourceClient.cfg)
-  const stages=[]
-  const result=await ownerDebugLocalVision(sourceClient,{bvid:BV},{onStage:phase=>stages.push(phase),makeClient:c=>{
+  const stages=[],diagnostics=[]
+  const result=await ownerDebugLocalVision(sourceClient,{bvid:BV},{onStage:phase=>stages.push(phase),
+    onDiagnostic:row=>diagnostics.push(row),makeClient:c=>{
     launched=c
     return {async call(tool,args,options){calls++;opts={tool,args,options};
       c.onStderr('DSH_OWNER_DEBUG_STAGE:frames-rea');
       c.onStderr('ding\nDSH_OWNER_DEBUG_STAGE:model-running\n');
       c.onStderr('DSH_OWNER_DEBUG_STAGE:password=PRIVATE\n');
+      c.onStderr('DSH_OWNER_DEBUG_OLLAMA:1:request-start:none:0\n');
+      c.onStderr('DSH_OWNER_DEBUG_OLLAMA:1:http-rec');
+      c.onStderr('eived:none:6420\nDSH_OWNER_DEBUG_OLLAMA:1:response-parsed:none:6424\n');
+      c.onStderr('DSH_OWNER_DEBUG_OLLAMA:1:board-invalid:vision_board_grid_mismatch:6426\n');
+      c.onStderr('DSH_OWNER_DEBUG_OLLAMA:1:board-invalid:password-secret:1\n');
+      c.onStderr('DSH_OWNER_DEBUG_OLLAMA:41:response-parsed:none:0\n');
       return {ok:true,bvid:BV,status:'analyzed'}},
       async stopAndWait(x){stops++;assert.equal(x.timeoutMs,3000)}}
   }})
@@ -28,7 +35,15 @@ test('owner local video Debug creates a one-shot vision-only MCP, without borrow
   assert.equal(opts.options.timeoutMs,420000)
   assert.equal(OWNER_DEBUG_LOCAL_VISION_TIMEOUT_MS,420000)
   assert.deepEqual(stages,['worker-starting','frames-reading','model-running'])
+  assert.deepEqual(diagnostics,[
+    {attempt:1,event:'request-start',code:'none',elapsedMs:0},
+    {attempt:1,event:'http-received',code:'none',elapsedMs:6420},
+    {attempt:1,event:'response-parsed',code:'none',elapsedMs:6424},
+    {attempt:1,event:'board-invalid',code:'vision_board_grid_mismatch',elapsedMs:6426}])
+  assert.match(ownerDebugOllamaSummary(diagnostics.at(-1)),/格号/)
+  assert.equal(ownerDebugOllamaSummary({attempt:2,event:'SECRET',code:'none',elapsedMs:0}),'')
   assert.equal(launched.env.DSH_OWNER_VIDEO_DEBUG_STAGE,'1')
+  assert.equal(launched.env.DSH_OWNER_DEBUG_VISION_BUDGET_SEC,'360')
   assert.equal(launched.env.BILI_MCP_TOOLS,'bili_preview_vision')
   assert.equal(launched.env.BILI_JS_MCP_ADAPTER,'0')
   assert.equal(launched.env.BILI_JS_READ_GATE_TOKEN,'')
@@ -57,11 +72,14 @@ test('owner local Debug fails closed for unverified environment and invalid time
 test('production owner Debug pathways use one-shot worker; Life still uses normal gated call',()=>{
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
-  assert.match(index,/const callOwnerVideoDebugVision=async \(args,\{onStage\}=\{\}\)=>/)
+  assert.match(index,/const callOwnerVideoDebugVision=async \(args,\{onStage,onDiagnostic\}=\{\}\)=>/)
   assert.match(index,/if\(resolvedVisionMode\(\)!=='independent_local'\)return call\('bili_preview_vision',args\)/)
   assert.match(index,/const source=await ensureMcp\(\).*verified production executable/)
-  assert.match(index,/ownerDebugLocalVision\(source,args,\{onStage,timeoutMs:/)
-  assert.match(index,/dryRun\?args=>callOwnerVideoDebugVision\(args,\{onStage:onVisualStage\}\)/)
+  assert.match(index,/ownerDebugLocalVision\(source,args,\{onStage,onDiagnostic,timeoutMs:/)
+  assert.match(index,/onDiagnostic:onVisualDiagnostic/)
+  assert.match(index,/ownerDebugOllamaSummary\(job.visualDiagnostic\?\.ollama\)/)
+  assert.match(ui,/Ollama 请求/)
+  assert.match(index,/dryRun\?args=>callOwnerVideoDebugVision\(args,\{onStage:onVisualStage,onDiagnostic:onVisualDiagnostic\}\)/)
   assert.match(index,/try\{visual=parseMaybeJson\(await callOwnerVideoDebugVision\(/)
   assert.match(index,/setTimeout\(\(\)=>\{[\s\S]*?job\.status='error';job\.stage='视频感知处理超出 8 分钟'/)
   assert.match(index,/job\.error=ownerDebugTimeoutMessage\(job\)/)
@@ -79,6 +97,9 @@ test('8m watchdog reports only the last verified phase, never fabricates root ca
   assert.match(model,/Ollama 视觉推理/)
   assert.match(model,/200 秒/)
   assert.match(model,/不能据此断言模型自身故障/)
+  const withReceipt=ownerDebugTimeoutMessage({visualDiagnostic:{phase:'model-running',at:400_000,
+    ollama:{attempt:2,event:'response-parsed',code:'none',elapsedMs:2300}}},now)
+  assert.match(withReceipt,/已解析 Ollama JSON/)
   const unknown=ownerDebugTimeoutMessage({visualDiagnostic:{phase:'video:SECRET',at:400_000}},now)
   assert.doesNotMatch(unknown,/SECRET/)
   assert.match(unknown,/原因|底层错误/)
@@ -90,6 +111,15 @@ test('whole-worker deadline includes Python startup, terminates only owned worke
     makeClient:()=>({call:()=>new Promise(()=>{}),stopAndWait:async()=>{stops++}})}),
     error=>error.code==='owner_debug_worker_deadline'&&error.phase==='worker-starting')
   assert.equal(stops,1)
+})
+
+test('owner Debug has smaller Python budget than outer watchdog even for shortened tests',async()=>{
+  let value
+  await ownerDebugLocalVision(sourceClient,{bvid:BV},{timeoutMs:50_000,makeClient:c=>{
+    value=c.env.DSH_OWNER_DEBUG_VISION_BUDGET_SEC
+    return {call:async()=>({ok:true}),stopAndWait:async()=>{}}
+  }})
+  assert.equal(value,'1')
 })
 
 test('Python reports fixed operational stages only for the one-shot Debug',()=>{

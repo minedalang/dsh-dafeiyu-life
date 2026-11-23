@@ -161,7 +161,7 @@ import { createSocialIntentEngine } from './lib/social-intentions.mjs'
 import { createEmotionalState } from './lib/emotional-state.mjs'
 import {visionDecision} from './lib/video-vision-policy.mjs'
 import {beginVideoObservationRead} from './lib/video-observation-read.mjs'
-import {ownerDebugLocalVision,ownerDebugTimeoutMessage} from './lib/owner-video-debug-local-vision.mjs'
+import {ownerDebugLocalVision,ownerDebugTimeoutMessage,ownerDebugOllamaSummary} from './lib/owner-video-debug-local-vision.mjs'
 import { createConversationLifeFeedback } from './lib/conversation-life-feedback.mjs'
 import { createDualContextAgency, classifyBiliOwnerRequest, agencyDeclineMessage } from './lib/dual-context-agency.mjs'
 import { createSocialCognition } from './lib/social-cognition.mjs'
@@ -1912,7 +1912,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // Owner-only Debug uses an isolated one-shot Python MCP for local Ollama.
   // A timed-out Debug may stop only its own worker, never the shared Life/MCP.
   // The existing Python platform read budget and reservation remain mandatory.
-  const callOwnerVideoDebugVision=async (args,{onStage}={})=>{
+  const callOwnerVideoDebugVision=async (args,{onStage,onDiagnostic}={})=>{
     if(resolvedVisionMode()!=='independent_local')return call('bili_preview_vision',args)
     const release=accountBinding.enterPlatformOperation()
     const originalAccount=trustedLifeAccountTag()
@@ -1929,7 +1929,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const remainingMs=450_000-(Date.now()-startedAt)
       if(remainingMs<1000)throw Error('视频 Debug 启动阶段已超过安全等待上限，未启动本次独立识图')
       let result
-      try{result=await ownerDebugLocalVision(source,args,{onStage,timeoutMs:Math.min(420_000,Math.floor(remainingMs))})}
+      try{result=await ownerDebugLocalVision(source,args,{onStage,onDiagnostic,timeoutMs:Math.min(420_000,Math.floor(remainingMs))})}
       catch(error){
         // A JSON-RPC timeout is not a completed visual receipt. The one-shot
         // worker's finally has already requested its process shutdown.
@@ -2099,10 +2099,18 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const stage=(label,step)=>{if(activeDebugJob&&videoDebugJob===activeDebugJob&&activeDebugJob.status==='running'){
       activeDebugJob.stage=label;if(Number.isInteger(step))activeDebugJob.step=step
       activeDebugJob.updatedAt=Date.now();saveVideoDebugSummary(stateDir,activeDebugJob,initialAccount)}}
+    const onVisualDiagnostic=diagnostic=>{
+      if(!activeDebugJob||videoDebugJob!==activeDebugJob||activeDebugJob.status!=='running'||
+         videoDebugAccount()!==initialAccount)return
+      activeDebugJob.visualDiagnostic={...activeDebugJob.visualDiagnostic,
+        phase:activeDebugJob.visualDiagnostic?.phase||'model-running',at:Date.now(),ollama:diagnostic}
+      activeDebugJob.updatedAt=Date.now()
+      saveVideoDebugSummary(stateDir,activeDebugJob,initialAccount)
+    }
     const onVisualStage=phase=>{
       if(!activeDebugJob||videoDebugJob!==activeDebugJob||activeDebugJob.status!=='running'||
          videoDebugAccount()!==initialAccount)return
-      activeDebugJob.visualDiagnostic={phase,at:Date.now()}
+      activeDebugJob.visualDiagnostic={...activeDebugJob.visualDiagnostic,phase,at:Date.now()}
       activeDebugJob.updatedAt=Date.now()
       saveVideoDebugSummary(stateDir,activeDebugJob,initialAccount)
     }
@@ -2145,7 +2153,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       willInvokeVision&&earlyVisionPlan.depth!=='skim'
     const samplerDepth=fullGlobalPreview?'deep':earlyVisionPlan.depth
     const visualPromise=willInvokeVision?beginVideoObservationRead(()=>
-      (dryRun?args=>callOwnerVideoDebugVision(args,{onStage:onVisualStage}):args=>call('bili_preview_vision',args))({bvid,
+      (dryRun?args=>callOwnerVideoDebugVision(args,{onStage:onVisualStage,onDiagnostic:onVisualDiagnostic}):args=>call('bili_preview_vision',args))({bvid,
         perception_source:lifeGlobalOverview?'preview':'adaptive',view_depth:samplerDepth,
         // Only the localhost owner Debug endpoint may choose a different
         // source; real Life and main-Session reads retain their existing gates.
@@ -9026,7 +9034,7 @@ logger:{warn:m=>log('社交意图：'+m)}
             network_budget_bytes:networkBudgetBytes,frame_budget_limit:frameBudgetLimit,
             capture_for_debug:true},{onStage:phase=>{
               if(videoDebugJob!==job||job.status!=='running')return
-              job.visualDiagnostic={phase,at:Date.now()};job.updatedAt=Date.now()
+              job.visualDiagnostic={...job.visualDiagnostic,phase,at:Date.now()};job.updatedAt=Date.now()
               saveVideoDebugSummary(stateDir,job,account)
             }}))}
           catch{return {ok:false,reason:'focus-tool-failed'}}
@@ -9142,7 +9150,7 @@ logger:{warn:m=>log('社交意图：'+m)}
               job.error=String(result?.visual?.error||result?.error||'视频感知未完成').slice(0,240)
               if(visualTimedOut){
                 const phase=job.visualDiagnostic?.phase
-                job.error+=' 最后确认阶段：'+({
+                job.error+=' '+ownerDebugOllamaSummary(job.visualDiagnostic?.ollama)+' 最后确认阶段：'+({
                   'worker-starting':'Python 进程启动','tool-started':'工具已启动',
                   'reservation-waiting':'等待只读预约','frames-reading':'视频取帧',
                   'frames-settled':'取帧已结算','model-running':'Ollama 推理',

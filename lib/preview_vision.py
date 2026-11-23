@@ -50,6 +50,49 @@ PREVIEW_BOARD_PROMPT = (
 )
 
 PREVIEW_BOARD_VERSION = 14
+# Owner Debug has a single bounded worker. Its internal visual budget starts
+# when the trusted Python module is loaded, not only after B站 frame acquisition.
+# The normal Life watcher retains its existing limit and behavior.
+_OWNER_DEBUG_IMPORT_AT = time.monotonic()
+_OWNER_DEBUG_OLLAMA_SEQ = 0
+_OWNER_DEBUG_OLLAMA_EVENTS = frozenset((
+    'request-start', 'http-received', 'response-parsed', 'response-validated',
+    'request-failed', 'board-verified', 'board-invalid'))
+_OWNER_DEBUG_OLLAMA_CODES = frozenset((
+    'none', 'ollama_request_timeout', 'ollama_service_offline',
+    'ollama_connection_failed', 'ollama_http_error', 'ollama_model_missing',
+    'vision_board_deadline', 'vision_board_time_mismatch',
+    'vision_board_grid_mismatch', 'vision_board_truncated',
+    'vision_board_empty_answer', 'vision_board_unsegmented',
+    'vision_board_unclassified'))
+
+
+def _owner_debug_deadline():
+    if os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE') != '1':
+        return None
+    raw = os.environ.get('DSH_OWNER_DEBUG_VISION_BUDGET_SEC', '')
+    if not re.fullmatch(r'[1-9][0-9]{0,2}', raw):
+        return _OWNER_DEBUG_IMPORT_AT + 1  # fail closed: no unbounded Debug task
+    budget = int(raw)
+    return _OWNER_DEBUG_IMPORT_AT + (budget if budget <= 360 else 1)
+
+
+def _owner_debug_ollama(event, attempt, code='none', elapsed_ms=0):
+    # No video ID, account, model text, images, prompts, filesystem paths,
+    # HTTP bodies or arbitrary exception messages enter the diagnostics.
+    if os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE') != '1':
+        return
+    if (event not in _OWNER_DEBUG_OLLAMA_EVENTS or
+            code not in _OWNER_DEBUG_OLLAMA_CODES or
+            type(attempt) is not int or not 1 <= attempt <= 40):
+        return
+    ms = max(0, min(9999999, int(elapsed_ms)))
+    try:
+        sys.stderr.write(f'DSH_OWNER_DEBUG_OLLAMA:{attempt}:{event}:{code}:{ms}\n')
+        sys.stderr.flush()
+    except (OSError, ValueError):
+        pass
+
 PREVIEW_BOARD_TILE_OPTIONS = (12,)  # 4×3 per board; 12/24/48 is the separate full-video frame budget
 # A complete source-index scan whenever the measured preview bandwidth allows.
 # The hard sheet/byte bounds prevent oversized sprite libraries from exhausting memory.
@@ -558,11 +601,29 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
     req=urllib.request.Request(url,json.dumps(payload).encode('utf8'),
                                headers={'content-type':'application/json'},method='POST')
     timeout_seconds=max(2,min(140,float(frames[0].get('_inference_timeout_seconds',140))))
+    owner_deadline=_owner_debug_deadline()
+    if owner_deadline is not None:
+        remaining=owner_deadline-time.monotonic()
+        if remaining<2:
+            raise VisionServiceError('vision_board_deadline','本次调试的视觉预算已用尽，未发起新的 Ollama 请求')
+        timeout_seconds=min(timeout_seconds,remaining)
+    global _OWNER_DEBUG_OLLAMA_SEQ
+    attempt=0
+    if os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE') == '1':
+        _OWNER_DEBUG_OLLAMA_SEQ += 1
+        attempt=_OWNER_DEBUG_OLLAMA_SEQ
+        frames[0]['_debug_attempt_id']=attempt
+    started=time.monotonic()
+    def mark(event, code='none'):
+        _owner_debug_ollama(event,attempt,code,round((time.monotonic()-started)*1000))
+    mark('request-start')
     try:
         with urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect()).open(req,timeout=timeout_seconds) as response:
             raw=response.read(300_001)
+        mark('http-received')
         if len(raw)>300_000: raise ValueError('本地视觉模型返回内容过大')
         data=json.loads(raw)
+        mark('response-parsed')
         # Keep diagnostics independent of generated reasoning text or user content.
         frames[0]['_model_receipt']={'doneReason':str(data.get('done_reason') or '')[:40],
                                      'outputTokens':int(data.get('eval_count') or 0),
@@ -582,20 +643,28 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
             if len(frames)==1 and not _local_board_time_valid(answer,frames[0]['tile_times']):
                 raise ValueError('分镜描述引用了本张图片没有的时间点，不视为对齐')
         if len(answer)>16000*len(frames):raise ValueError('分镜描述超过安全文本长度上限，不视为完整')
+        mark('response-validated')
         return answer.strip()
     except urllib.error.HTTPError as exc:
         # HTTP 404 means the daemon answered, but this model is unavailable;
         # never label an HTTP reply as an offline daemon.
         code='ollama_model_missing' if exc.code==404 else 'ollama_http_error'
+        mark('request-failed',code)
         raise VisionServiceError(code, '本地 Ollama 未安装所选视觉模型' if exc.code==404 else f'本地 Ollama 返回 HTTP {exc.code}，图片识别未完成') from None
     except (URLError, TimeoutError) as exc:
         reason=getattr(exc,'reason',exc)
         if isinstance(exc,TimeoutError) or isinstance(reason,TimeoutError):
+            mark('request-failed','ollama_request_timeout')
             raise VisionServiceError('ollama_request_timeout','本地 Ollama 图片识别请求超时') from None
         import errno
         if isinstance(reason,ConnectionRefusedError) or getattr(reason,'errno',None) in (errno.ECONNREFUSED,10061):
+            mark('request-failed','ollama_service_offline')
             raise VisionServiceError('ollama_service_offline','本地 Ollama 未启动或未监听 127.0.0.1:11434，请先启动服务') from None
+        mark('request-failed','ollama_connection_failed')
         raise VisionServiceError('ollama_connection_failed','无法连接本地 Ollama 服务，请检查服务状态及本机网络') from None
+    except Exception as exc:
+        mark('request-failed',_vision_board_error_code(exc))
+        raise
 
 
 def _vision_board_error_code(exc):
@@ -645,6 +714,9 @@ def _local_board_cell_times_valid(answer, board):
 def _analyze_local_storyboards(frames,model):
     """Try paired JPEGs once; selectively recover failures, never relax proof."""
     deadline=time.monotonic()+540
+    owner_deadline=_owner_debug_deadline()
+    if owner_deadline is not None:
+        deadline=min(deadline,owner_deadline)
     reports=[]
     for idx,board in enumerate(frames):
         times=list(board.get('tile_times') or [board['second']])[:12]
@@ -653,7 +725,7 @@ def _analyze_local_storyboards(frames,model):
             'gridRows':int(board.get('grid_rows') or 3),
             'status':'incomplete','modelAttempts':0})
 
-    def validate(idx,description,path,model_receipt=None):
+    def validate(idx,description,path,model_receipt=None,attempt=0):
         board=frames[idx]
         receipt=reports[idx]
         if model_receipt:receipt.update(model_receipt)
@@ -669,12 +741,14 @@ def _analyze_local_storyboards(frames,model):
             receipt.update(status='analyzed',description=description,inferencePath=path)
             receipt.pop('error',None)
             receipt.pop('errorCode',None)
+            _owner_debug_ollama('board-verified',attempt)
         except ValueError as exc:
-            fail(idx,exc)
+            fail(idx,exc,attempt)
 
-    def fail(idx,exc):
+    def fail(idx,exc,attempt=0):
         receipt=reports[idx]
         receipt['errorCode']=_vision_board_error_code(exc)
+        _owner_debug_ollama('board-invalid',attempt,receipt['errorCode'])
         # Safe, fixed descriptions only: never serialize exception content or
         # a model reply in diagnostic error fields.
         hints={
@@ -717,10 +791,10 @@ def _analyze_local_storyboards(frames,model):
                 combined=_call_local_ollama(current,model)
                 chunks=_split_storyboard_batch(combined,batch)
                 for offset,chunk in enumerate(chunks):
-                    validate(start+offset,chunk,'paired',current[0].get('_model_receipt'))
+                    validate(start+offset,chunk,'paired',current[0].get('_model_receipt'),current[0].get('_debug_attempt_id',0))
             except Exception as exc:
                 for i in range(start,start+len(batch)):
-                    if reports[i]['status']!='analyzed':fail(i,exc)
+                    if reports[i]['status']!='analyzed':fail(i,exc,current[0].get('_debug_attempt_id',0))
                 if isinstance(exc,VisionServiceError) and exc.code in terminal_codes:
                     terminal_error=exc
         # Selective repair: successful boards never consume another model call.
@@ -741,9 +815,9 @@ def _analyze_local_storyboards(frames,model):
             reports[i]['modelAttempts']+=1
             try:
                 text=_call_local_ollama([current],model)
-                validate(i,text,'single-recovery' if len(batch)>1 else 'single',current.get('_model_receipt'))
+                validate(i,text,'single-recovery' if len(batch)>1 else 'single',current.get('_model_receipt'),current.get('_debug_attempt_id',0))
             except Exception as exc:
-                fail(i,exc)
+                fail(i,exc,current.get('_debug_attempt_id',0))
                 if isinstance(exc,VisionServiceError) and exc.code in terminal_codes:
                     terminal_error=exc
     completed=[r for r in reports if r['status']=='analyzed']
