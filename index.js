@@ -77,6 +77,7 @@ import {queueLifeCleanup,queueExternalLifeCleanup,readLifeCleanupJob} from './li
 import {inspectExternalLifeCopy} from './lib/storage-external-life-retired.mjs'
 import {queueModelCleanup,readCleanupJob} from './lib/storage-cleanup-queue.mjs'
 import {queueDomainMigration,readMigrationJob,assertMigrationStartupSafe} from './lib/storage-migration-queue.mjs'
+import {registerMigrationMaintenance} from './lib/storage-migration-maintenance.mjs'
 import {storageTargetSuggestions} from './lib/storage-platform.mjs'
 import {storageArchiveInventory} from './lib/storage-archive-inventory.mjs'
 import {readLifeReturnEvidence} from './lib/storage-life-return-evidence.mjs'
@@ -619,7 +620,10 @@ export function apply(ctx, config) {
     return myVer
   }
   const stateDir = stateDirOf(ctx)
-  // If a detached worker is still migrating, refuse to open active data.
+  // Migration maintenance is a deliberately read-only activation. No Life,
+  // Python, MCP, cache initialization or authoritative data write may follow
+  // until the detached worker has safely settled and DSH restarts once more.
+  if(registerMigrationMaintenance(ctx,{root:stateDir,pluginDir}))return
   assertMigrationStartupSafe(stateDir)
   // Verify every configured storage domain before any write/identity creation.
   const storageLayout = storageLayoutStatus(stateDir)

@@ -865,6 +865,11 @@
       "owner": "platform-read-gates",
       "kind": "security",
       "intent": "Only proven-dead old video-frame reservations recover automatically, without platform replay or manual user controls; live, unknown and cross-account locks remain protected."
+    },
+    "v283-dev3-migration-maintenance.test.mjs": {
+      "owner": "storage-migration-maintenance",
+      "kind": "security",
+      "intent": "Ensure restarted DSH enters read-only migration waiting mode, shows cancellation UI, uses cross-process cancel checkpoints, confirms worker death before recovery, and never allows plugin writers during migration."
     }
   },
   "protected": [

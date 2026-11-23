@@ -87,6 +87,8 @@ window.__ModuleLoader__.load({
   background:var(--dsw-alias-bg-layer-4,rgba(128,128,128,.12));color:var(--dsw-alias-label-tertiary,#9aa0a6);}
 [data-bd-msg][data-warn]{color:#f59e0b;}
 [data-bd-msg][data-good]{color:#22c55e;}
+[data-bd-migration-spin]{display:inline-block;width:20px;height:20px;margin-right:10px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:middle;animation:bd-migration-rotate .8s linear infinite}
+@keyframes bd-migration-rotate{to{transform:rotate(360deg)}}
 [data-bd-qr]{display:flex;gap:14px;align-items:flex-start;}
 [data-bd-qr] img{width:150px;height:150px;border-radius:8px;background:#fff;padding:6px;}
 [data-bd-pre]{margin:6px 0 0;padding:8px 9px;border-radius:8px;max-height:170px;overflow:auto;font-size:11px;
@@ -199,26 +201,35 @@ window.__ModuleLoader__.load({
       // ⭐ 2026-10-19（用户报"没有开关这一项，只能让 ai 帮我开"）：读不到配置时界面只显示"读设置中…"，
       //    用户会以为是开关坏了 ✗ ⇒ 数一下连续失败次数，交给界面把话说清楚（版本太旧 / 没重启 / 读不到）
       const [fails, setFails] = React.useState(0)
+      const [maintenance, setMaintenance] = React.useState(null)
       React.useEffect(() => {
         let alive = true
         const tick = async () => {
           try {
             const d = await jget('/status')
             if (!alive) return
-            if (d && d.ok) { setSt(d); setFails(0) } else setFails((n) => n + 1)
-          } catch { if (alive) setFails((n) => n + 1) }
+            if (d && d.ok) { setSt(d); setFails(0); setMaintenance(null); return }
+          } catch { /* Try the independent maintenance-only endpoint below. */ }
+          try {
+            const m = await jget('/migration/status')
+            if (!alive) return
+            if (m?.ok && (m.maintenance || ['completed','cancelled','failed'].includes(m.status))) {
+              setMaintenance(m);setFails(0);return
+            }
+          } catch { /* No maintenance route means a normal startup issue. */ }
+          if (alive) {setMaintenance(null);setFails(n=>n+1)}
         }
         tick()
-        const t = setInterval(tick, intervalMs || 5000)
+        const t = setInterval(tick, 2500)
         return () => { alive = false; clearInterval(t) }
       }, [intervalMs])
-      return [st, setSt, fails]
+      return [st, setSt, fails, maintenance, setMaintenance]
     }
 
     /* ────────────── 设置页正文 ────────────── */
 
     function Panel() {
-      const [st, setSt, fails] = useStatus(5000)
+      const [st, setSt, fails, maintenance, setMaintenance] = useStatus(5000)
       const [busy, setBusy] = React.useState('')
       const [msg, setMsg] = React.useState('')
       const [manageError, setManageError] = React.useState('')
@@ -605,6 +616,34 @@ window.__ModuleLoader__.load({
         await patch({ keywords: list, clear: list.length ? [] : ['keywords'] }, '主人额外关注词')
       }
 
+      if (maintenance && !cfg) {
+        const pending=maintenance.status==='waiting'||maintenance.status==='running'
+        const label=({python:'Python 包管理缓存',model:'模型与视觉缓存',memory:'Life 记忆'})[maintenance.domain]||'数据'
+        const cancel=async()=>{
+          if(!pending||maintenance.cancelRequested)return
+          if(!window.confirm('取消这次迁移？系统只会请求安全停止，不删除旧数据或强制切换目录。'))return
+          setBusy('migration-cancel')
+          try {
+            await jpost('/migration/cancel',{jobId:maintenance.id,confirm:true})
+            setMaintenance(old=>({...old,cancelRequested:true}))
+            setMsg('取消请求已提交，等待离线助手安全结算')
+          }catch(e){setMsg('取消请求失败：'+String(e?.message||e))}
+          finally{setBusy('')}
+        }
+        return h('div',{'data-bd-page':'','data-bd-sec':'',role:'status','aria-live':'polite'},
+          h('div',{'data-bd-msg':'',style:{padding:'16px',borderRadius:'12px'}},
+            pending?h('span',{'data-bd-migration-spin':'','aria-hidden':'true'}):null,
+            h('strong',null,label+' · '+(pending?'正在安全迁移':maintenance.status==='completed'?'迁移完成':maintenance.status==='cancelled'?'已安全取消':'迁移已停止')),
+            h('div',{'data-bd-note':'',style:{marginTop:'12px'}},pending?
+              maintenance.cancelRequested?'已请求取消，正在等待安全检查点结算。':
+              'DSH 处于迁移维护模式：业务模块暂停，进度每约 2.5 秒自动刷新。'+(maintenance.status==='waiting'?'当前仍在等待旧进程退出。':'正在复制或验证数据。'):
+              (maintenance.reason||'当前迁移已结算。')+' 请重新启动 DSH，恢复完整插件。'),
+            h('div',{'data-bd-row':'',style:{marginTop:'12px'}},
+              pending?h('button',{type:'button','data-bd-btn':'',disabled:!!maintenance.cancelRequested||busy==='migration-cancel',onClick:cancel},
+                maintenance.cancelRequested?'等待安全取消…':'取消迁移'):null,
+              h('button',{type:'button','data-bd-btn':'',onClick:()=>window.open(API+'/manage','_blank','noopener')},'查看迁移等待页 ↗')),
+            h('div',{'data-bd-note':'',style:{marginTop:'10px'}},'原数据保留，绝不拿未完成的副本接管缓存；取消不能中断已进入最终提交的步骤。')))
+      }
       if (!cfg) {
         return h('div', { 'data-bd-page': '' },
           h('div', { 'data-bd-note': '' }, fails >= 3

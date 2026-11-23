@@ -59,12 +59,11 @@ test('Python one-click moves only uv/pip caches, never rebuilds environments',()
  assert.equal(storageLayoutStatus(root).domains.python.mode,'cache')
 }))
 
-test('Python cache-only waiting job cannot prevent plugin startup; model/Life still block',()=>fixture(async({temp,root})=>{
+test('Python cache waiting job enters read-only maintenance; model/Life also block writes',()=>fixture(async({temp,root})=>{
  const target=join(temp,'pythonData')
  queueDomainMigration({root,domain:'python',mode:'cache',target,workerScript:'worker.mjs',parentPid:88888,spawnImpl:spawnFake})
- const startup=assertMigrationStartupSafe(root)
- assert.equal(startup.startupAllowed,true)
- assert.equal(startup.status,'waiting')
+ assert.throws(()=>assertMigrationStartupSafe(root),/维护页面/)
+ assert.equal(readMigrationJob(root).status,'waiting')
  assert.equal(storageLayoutStatus(root).domains.python.configured,false)
  assert.equal(readFileSync(join(root,'.venv','pyvenv.cfg'),'utf8'),'keep old interpreter')
  assert.equal(readFileSync(join(root,'uv-cache','download.whl'),'utf8'),'cached wheels')
@@ -81,13 +80,12 @@ test('power loss during Python cache return-home never locks plugin or elects pa
  writeFileSync(stateFile,JSON.stringify({...row,status:'running',startedAt:new Date(0).toISOString(),expiresAt:new Date(0).toISOString()})+'\n')
  // Simulate an interrupted copy after an old root cache was partially moved.
  put(join(root,'uv-cache','partial.whl'),'partial legacy copy')
- const startup=assertMigrationStartupSafe(root)
- assert.equal(startup.startupAllowed,true)
- assert.equal(startup.status,'running')
+ assert.throws(()=>assertMigrationStartupSafe(root),/维护页面/)
+ assert.equal(readMigrationJob(root).status,'running')
  assert.equal(storageLayoutStatus(root).domains.python.root,target)
  assert.equal(readFileSync(join(target,'uv-cache','download.whl'),'utf8'),'cached wheels')
  assert.equal(readFileSync(join(root,'.venv','pyvenv.cfg'),'utf8'),'keep old interpreter')
- assert.match(readMigrationJob(root).notice,/超时或中断/)
+ assert.match(readMigrationJob(root).notice,/超过预约期限|中断/)
 }))
 
 test('cache-only job marked running after pointer publication still loads verified current storage',()=>fixture(async({temp,root})=>{
@@ -97,15 +95,15 @@ test('cache-only job marked running after pointer publication still loads verifi
  const stateFile=join(root,'.dafeiyu-domain-migration-job-v1.json')
  const done=readMigrationJob(root)
  writeFileSync(stateFile,JSON.stringify({...done,status:'running',startedAt:new Date(0).toISOString()})+'\n')
- assert.equal(assertMigrationStartupSafe(root).startupAllowed,true)
+ assert.throws(()=>assertMigrationStartupSafe(root),/维护页面/)
  assert.equal(storageLayoutStatus(root).domains.python.root,target)
  assert.equal(readFileSync(join(target,'pip-cache','sdist.tar'),'utf8'),'pip download')
 }))
 
-test('management page distinguishes safe cache-only restart from strict Life/model stop',()=>{
+test('management page labels cache migration as maintenance-only rather than allowing writes',()=>{
  const script=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
- assert.match(script,/migration\.domain==='python'\?'Python 缓存迁移已预约 · 不阻止插件启动'/)
- assert.match(script,/migration\.domain==='python'\?'Python 缓存迁移尚未结算 · 插件可正常使用'/)
+ assert.match(script,/migration\.domain==='python'\?'Python 缓存迁移已预约 · 重启后进入维护模式'/)
+ assert.match(script,/migration\.domain==='python'\?'Python 缓存迁移尚未结算 · 业务读写暂停'/)
  assert.match(script,/迁移进行中 · 暂勿启动 DSH/)
 })
 
