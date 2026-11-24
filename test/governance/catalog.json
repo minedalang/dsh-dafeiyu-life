@@ -576,6 +576,21 @@
     "watched-merge.test.mjs"
   ],
   "registeredActive": {
+    "v283-dev4-auto-backup-rotation.test.mjs": {
+      "owner": "data-backup-and-retention",
+      "kind": "security",
+      "intent": "每日便携业务备份只生成一份并仅保留最近五天自动文件，手动与恢复前备份不被清理，预览前校验SHA-256。"
+    },
+    "v283-dev4-life-video-gallery.test.mjs": {
+      "owner": "life-video-observation",
+      "kind": "security",
+      "intent": "已核验真实分镜的24小时只读回放，账号和BV隔离、图片路径白名单、失效与清理、禁止未经核验图片入库。"
+    },
+    "v283-dev4-life-gallery-console-contract.test.mjs": {
+      "owner": "life-video-observation",
+      "kind": "security",
+      "intent": "行动树画面回放与时间点预留UI的后端只读接线，不得将界面图片误判为模型记忆或提前触发补看。"
+    },
     "v283-dev3-vision-cache-access.test.mjs": {
       "owner": "storage-layout-and-vision-cache",
       "kind": "security",

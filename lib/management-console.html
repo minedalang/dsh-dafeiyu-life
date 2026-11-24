@@ -1613,6 +1613,52 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 @media(prefers-reduced-motion:reduce){#panel-life-agent #life-behavior-tree .is-executing,#panel-life-agent #life-behavior-tree .is-thinking,#panel-life-agent #life-behavior-tree .is-completed{animation:none!important}}
 
 
+/* dev.4 current-account 24h frame gallery; read-only until explicit focus consent is implemented */
+#panel-life-agent .life-gallery{margin:16px 0;padding:18px;background:linear-gradient(130deg,color-mix(in srgb,#a9e6db 16%,var(--panel)),var(--panel) 70%);border:1px solid var(--stroke);border-radius:20px}
+#panel-life-agent .life-gallery-heading{display:flex;align-items:start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#panel-life-agent .life-gallery-heading h4{margin:3px 0;font-size:19px}
+#panel-life-agent .life-gallery-heading p{margin:5px 0;max-width:640px;font-size:12px}
+#panel-life-agent .life-gallery-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:11px;margin-top:12px}
+#panel-life-agent .life-gallery-entry{color:var(--ink);text-align:left;display:grid;gap:7px;padding:14px;background:var(--panel);border:1px solid var(--stroke);border-radius:15px;cursor:pointer;transition:transform .22s,box-shadow .22s,border-color .22s}
+#panel-life-agent .life-gallery-entry:hover,#panel-life-agent .life-gallery-entry:focus-visible{transform:translateY(-2px);border-color:#62b9a9;box-shadow:0 10px 26px #164b4420}
+#panel-life-agent .life-gallery-entry strong{font-size:13px}
+#panel-life-agent .life-gallery-entry small{font-size:11px;color:var(--muted)}
+#panel-life-agent .life-gallery-entry .life-gallery-chip{display:inline-block;justify-self:start;border-radius:100px;background:color-mix(in srgb,#69cbb5 28%,var(--panel));padding:3px 9px;font-size:10px;font-weight:750}
+#panel-life-agent .life-gallery-future{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:11px 0 0;font-size:11px;color:var(--muted)}
+#panel-life-agent .life-gallery-future strong{color:var(--ink)}
+.life-gallery-overlay:not([hidden]){position:fixed;inset:0;z-index:10000;background:#071b29c9;display:grid;place-items:center;padding:18px;backdrop-filter:blur(9px);animation:life-gallery-fade .2s ease-out}
+.life-gallery-overlay[hidden],.life-gallery-zoom[hidden]{display:none!important}
+.life-gallery-dialog{width:min(1050px,96vw);max-height:min(860px,94vh);display:flex;flex-direction:column;background:var(--panel);color:var(--ink);border:1px solid var(--stroke);border-radius:22px;box-shadow:0 18px 70px #0005;overflow:hidden;animation:life-gallery-in .26s ease both}
+.life-gallery-dialog-header,.life-gallery-dialog-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;background:color-mix(in srgb,var(--panel) 85%,#d6f3eb)}
+.life-gallery-dialog-header h3{margin:2px 0 4px;font-size:20px}.life-gallery-dialog-header p{margin:0;font-size:12px}
+.life-gallery-close{border:1px solid var(--stroke);background:var(--panel);border-radius:100%;font-size:20px;width:40px;height:40px;cursor:pointer;color:var(--ink)}
+.life-gallery-dialog-body{padding:18px;min-height:140px;overflow:auto}
+.life-gallery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:14px}
+.life-gallery-grid button{border:1px solid var(--stroke);border-radius:14px;background:var(--panel);padding:8px;cursor:zoom-in;text-align:left;color:var(--ink);transition:transform .2s}
+.life-gallery-grid button:hover,.life-gallery-grid button:focus-visible{transform:scale(1.015)}
+.life-gallery-grid img{display:block;width:100%;height:auto;max-height:285px;object-fit:contain;background:#17222c;border-radius:9px}
+.life-gallery-grid small{display:block;margin-top:7px;color:var(--muted)}
+.life-gallery-zoom img{display:block;max-width:100%;max-height:65vh;margin:15px auto;object-fit:contain}
+.life-gallery-zoom button{border:1px solid var(--stroke);border-radius:9px;background:var(--panel);padding:9px 12px;cursor:pointer;color:var(--ink)}
+.life-gallery-dialog-footer{font-size:10px;color:var(--muted);flex-wrap:wrap}
+@keyframes life-gallery-fade{from{opacity:0}to{opacity:1}}@keyframes life-gallery-in{from{transform:translateY(18px) scale(.985);opacity:.3}to{transform:translateY(0) scale(1);opacity:1}}
+@media(prefers-reduced-motion:reduce){.life-gallery-overlay,.life-gallery-dialog,#panel-life-agent .life-gallery-entry{animation:none!important;transition:none!important}}
+
+/* dev.4 daily backup & read-only memory catalogue */
+#panel-backup .backup-auto-section{margin-top:20px;padding:16px;border:1px solid var(--stroke);border-radius:17px;background:var(--panel)}
+#panel-backup .backup-auto-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+#panel-backup .backup-auto-heading h4{font-size:17px;margin:0 0 5px}
+#panel-backup .backup-auto-heading p{font-size:12px;margin:0;max-width:550px}
+#panel-backup .backup-browser-grid{display:grid;grid-template-columns:minmax(200px,.83fr) minmax(0,1.4fr);gap:14px;margin-top:10px}
+#panel-backup .backup-file-list{border:1px solid var(--stroke);border-radius:13px;max-height:360px;min-height:140px;overflow:auto;padding:8px;display:grid;align-content:start;gap:6px}
+#panel-backup .backup-file-entry{text-align:left;padding:11px;border:1px solid var(--stroke);background:var(--panel);border-radius:10px;display:grid;gap:3px;cursor:pointer;color:var(--ink);white-space:normal;overflow-wrap:anywhere}
+#panel-backup .backup-file-entry[aria-pressed=true]{border-color:var(--action);background:var(--tint)}
+#panel-backup .backup-file-entry small{color:var(--muted);font-weight:400}
+#panel-backup .backup-preview-panel{border:1px solid var(--stroke);border-radius:13px;padding:14px;min-width:0}
+#panel-backup .backup-memory-list{max-height:320px;overflow:auto;display:grid;gap:8px;margin-top:8px}
+#panel-backup .backup-memory-card{border-radius:10px;border:1px solid var(--stroke);padding:9px 11px;background:var(--tint);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+#panel-backup .backup-memory-card h5{margin:0 0 5px;font-size:13px}
+@media(max-width:800px){#panel-backup .backup-browser-grid{grid-template-columns:1fr}}
 /* 2.8.0 backup + to-do management: rebuilt layout after moving into Plans. */
 #panel-plans .life-plan-admin-inner{display:block;min-width:0;padding:18px 20px 22px}
 #panel-plans #life-now-todos,#panel-plans #life-todo-section{display:block;width:100%;min-width:0;box-sizing:border-box}
@@ -2363,6 +2409,14 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
       <button id="backup-export" class="primary" type="button">备份全部业务数据</button>
     </div>
     <p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
+    <section class="backup-auto-section" aria-labelledby="backup-auto-heading">
+      <div class="backup-auto-heading"><div><h4 id="backup-auto-heading">📆 每日自动备份</h4><p class="muted">默认每天生成 1 份便携业务备份，自动保留最近 5 天；手动备份与恢复前快照不参与自动清理。</p></div><label class="checkline"><input type="checkbox" id="backup-auto-enabled" checked> 开启自动备份</label></div>
+      <p id="backup-auto-status" class="muted" role="status">正在读取自动备份状态…</p>
+      <div class="toolbar"><button id="backup-list-refresh" type="button">刷新备份清单</button></div>
+      <div class="backup-browser-grid"><div id="backup-list" class="backup-file-list" role="list" aria-label="可查看的本地备份文件"></div>
+        <div class="backup-preview-panel"><strong>🧠 备份内容预览</strong><p id="backup-preview-status" class="muted" role="status">选择左侧文件后将校验 SHA-256，并展示业务分类和记忆条目摘要，不会修改当前记忆。</p><div id="backup-preview-memory" class="backup-memory-list"></div></div></div>
+      <p class="backup-footnote">自动备份使用现有便携业务格式，不含登录凭证和专属私密记忆。若要完整保存仅管理员可见的生命经历，仍需使用下方「人生记忆专项备份」。备份文件有历史信息，不代表当前 Life 可重新回忆已遗忘内容。</p>
+    </section>
     <p class="backup-footnote">分盘后仍从当前生效的 Life/业务数据目录导出，不会退回 C 盘历史副本。Life 私密经历请使用下方专项备份；向量索引和模型缓存均不随便携备份导出。<strong>分盘后的整套运行目录冷备份仍未实现，不可把这两类 JSON 备份冒充完整快照。</strong> 这是便携业务备份，不是整套 DSH 运行目录快照：不包含 B站 Cookie、登录凭证、部分私密账号运行账本、Life Agent 短期时间线、密钥、缓存与日志，也不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。重要：老用户跨版本迁移前必须确保独立保存全部现役分区；便携业务备份及「人生记忆专项备份」均不能替代完整快照。请按 docs/architecture/2.8.0-dev2-old-user-backup-safety.md 的停机备份说明操作；完整快照包含账号凭证和私密数据，严禁上传分享。</p>
   </div>
   <div class="backup-more-grid">
@@ -2626,7 +2680,18 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
  <div class="life-choice-stage" data-stage="receipt"><small>04 · 核对结果</small><strong>尚无回执</strong></div>
 </div>
 <div class="life-tree-viewport"><svg id="life-behavior-tree" viewBox="0 0 970 400" role="img" aria-label="Life 五类基础行为与当前真实动作，动态入场"></svg></div>
-<div id="life-tree-video-target" class="life-tree-video-target" hidden><span>当前画面观察目标 · </span><a id="life-tree-video-link" target="_blank" rel="noopener noreferrer"></a><small>仅表示正在尝试读取该 BV；不是已经看完或识图成功</small></div>
+<div id="life-tree-video-target" class="life-tree-video-target" hidden><span>当前画面观察目标 · </span><a id="life-tree-video-link" target="_blank" rel="noopener noreferrer"></a><small>仅表示正在尝试读取该 BV；不是已经看完或识图成功</small><button id="life-gallery-open-current" type="button" class="life-action life-sky" disabled>查看已核验画面</button></div>
+<section class="life-gallery" id="life-gallery" aria-labelledby="life-gallery-title">
+<div class="life-gallery-heading"><div><span class="page-eyebrow">VISUAL JOURNAL · 最近 24 小时</span><h4 id="life-gallery-title">🎞️ 鱼鱼看见的画面</h4><p class="muted">仅展示本账号已核验的真实分镜和高清局部；点击观察记录先看拼图，再点开单张大图。新图须等真实视觉回执完成后出现。</p></div><button type="button" class="life-action life-sky" id="life-gallery-refresh">刷新画面</button></div>
+<p id="life-gallery-status" class="muted" role="status">尚未读取可回放画面。</p>
+<div id="life-gallery-list" class="life-gallery-list" aria-live="polite"></div>
+<div class="life-gallery-future"><strong>即将开放：指定局部补看</strong><span>未来可从某张帧图选择附近高清片段，或指定视频时间点；补看通过核验后才更新浅层摘要与深层记忆，不会仅凭选中时间点修改记忆。</span></div>
+</section>
+<div id="life-gallery-modal" class="life-gallery-overlay" role="dialog" aria-modal="true" aria-labelledby="life-gallery-modal-title" hidden>
+<div class="life-gallery-dialog"><div class="life-gallery-dialog-header"><div><span class="page-eyebrow">VIDEO OBSERVATION · VISUAL EVIDENCE</span><h3 id="life-gallery-modal-title">画面观察回放</h3><p id="life-gallery-modal-subtitle" class="muted">全局拼图与局部采样</p></div><button type="button" id="life-gallery-close" class="life-gallery-close" aria-label="关闭画面回放">✕</button></div>
+<div class="life-gallery-dialog-body"><div id="life-gallery-grid" class="life-gallery-grid"></div><div id="life-gallery-zoom" class="life-gallery-zoom" hidden><button type="button" id="life-gallery-back">← 返回全部拼图</button><img id="life-gallery-large-image" alt="已核验的视觉观察图片"/><p id="life-gallery-image-caption" class="muted"></p></div></div>
+<div class="life-gallery-dialog-footer"><span>图片仅保存 24 小时 · 按当前账号隔离 · 非永久记忆</span><span>选择时间点与请求补看将在后续版本开放</span></div></div>
+</div>
 <div class="life-tree-legend"><span>◎ 五类常驻行为</span><span>◉ 真正发生的动作才显示分支</span><span>≈ 运行中动态</span><span>✓ 结果须有真实回执</span></div>
 <p class="muted">行为树展示的是源码支持的动作类别及最近的匿名真实决策，不等同于每一轮可用的完整动作菜单。只有合格候选才进入实际模型菜单；视频 Agent 的下游动作由专业工具与发送门禁执行。下方生活记录按真实回执时间排序；并行读取的完成顺序不代表先后决定了看什么。</p>
 <div class="life-now-timeline life-behavior-timeline" aria-label="行动树关联的实时生活记录">

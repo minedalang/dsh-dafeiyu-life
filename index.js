@@ -58,6 +58,8 @@ import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
 import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup } from './lib/data-backup.mjs'
 import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
+import {listBackupFiles,inspectBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup} from './lib/backup-rotation.mjs'
+import {addLifeVideoGallery,listLifeVideoGallery,readLifeVideoGalleryImage,pruneLifeVideoGallery,pruneAllLifeVideoGalleries} from './lib/life-video-gallery.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
@@ -453,6 +455,7 @@ export const Config = !z ? undefined : z.object({
   commentReplyHotCount: z.natural().default(12).extra('volatile', true),
   /** 用户自己选择的数据备份目录；不使用系统 Temp。 */
   backupDirectory: z.string().default('').extra('volatile', true),
+  backupAutoEnabled: z.boolean().default(true).extra('volatile', true),
   commentAllowGeneralTop: z.boolean().default(false).extra('volatile', true),
   commentReplyPerPoll: z.natural().default(12).extra('volatile', true),
   commentReplyPerDay: z.natural().default(1000).extra('volatile', true),
@@ -867,7 +870,7 @@ function reportMeta() {
     dmWhitelist: '', dmStrangerOnce: false, dmStrangerAutonomyEnabled: false, dmP6Enabled: true, dmP6MaxBubbles: 3, naturalThoughtOwnerMinutes:2, naturalThoughtIntimateMinutes:5, naturalThoughtFamiliarMinutes:10, naturalThoughtStrangerMinutes:30, naturalThoughtChancePercent:25, dmStrangerMaxReplies: 1, dmStrangerFirstFixed: false,
     dmApprovalEnabled: false, dmApprovalPhrase: '白饭🍚',
     pluginDefaultModelProvider: '', pluginDefaultModelId: '', videoModelProvider: '', videoModelId: '', videoReasoningEffort: '', behaviorDecisionModelProvider: '', behaviorDecisionModelId: '', behaviorDecisionReasoningEffort: '', interactionModelProvider: '', interactionModelId: '', interactionReasoningEffort: '', interactionContextMode: 'compact', memeRulesModelProvider:'', memeRulesModelId:'', memeRulesReasoningEffort:'', memeRulesPrompt:'',
-    commentWatchReplies: false, commentWatchTop: false, commentAtEnabled: true, socialRhythmCrossChannelMinutes: 30, socialRhythmDailyPerPerson: 0, friendAtFeedbackEnabled:false, strangerInspirationEnabled:false, socialInvitationEnabled:false, socialInvitationAutoInspectEnabled:false, ownerCommentAgentEnabled:false, ownerCommentLikeEnabled:false, ownerCommentDraftEnabled:false, ownerCommentPublishEnabled:false, ownerCommentSocialPublishEnabled:false, ownerCommentNaturalAckEnabled:false, commentAtMode:'whitelist', commentAtWhitelist:'', commentTopCount: 5, commentTopVideoCount: 3, commentReplyHotCount: 12, backupDirectory: '',
+    commentWatchReplies: false, commentWatchTop: false, commentAtEnabled: true, socialRhythmCrossChannelMinutes: 30, socialRhythmDailyPerPerson: 0, friendAtFeedbackEnabled:false, strangerInspirationEnabled:false, socialInvitationEnabled:false, socialInvitationAutoInspectEnabled:false, ownerCommentAgentEnabled:false, ownerCommentLikeEnabled:false, ownerCommentDraftEnabled:false, ownerCommentPublishEnabled:false, ownerCommentSocialPublishEnabled:false, ownerCommentNaturalAckEnabled:false, commentAtMode:'whitelist', commentAtWhitelist:'', commentTopCount: 5, commentTopVideoCount: 3, commentReplyHotCount: 12, backupDirectory: '', backupAutoEnabled: true,
     commentAllowGeneralTop: false, commentReplyPerPoll: 12, commentReplyPerDay: 1000, commentOwnTopPerUser: 5, commentOwnNestedPerUser: 3,
     mainSessionBridgeEnabled: false, ownerSpontaneousChatEnabled:true, ownerContactPreset:'natural', ownerContactStartHour:9,ownerContactEndHour:22,ownerContactCooldownMinutes:240,ownerContactDailyLimit:2,ownerContactSilenceMinutes:45,mainSessionSilenceFollowupEnabled:true,mainSessionShortPauseEnabled:true,mainSessionShortPauseSeconds:90,ownerDmSilenceFollowupEnabled:true, mainSessionId: '', mainSessionAutoSync: true, mainSessionSyncMinutes: 60, mainSessionDailyBatches: 4, mainSessionBatchSize: 8, mainSessionIncludeComments: true,
     mainSessionMemoryEnabled: true, mainSessionMemoryAutoBili: true, mainSessionMemorySemanticEnabled: false, mainSessionMemoryEmbeddingEnabled: false, mainSessionMemoryModelProvider: '', mainSessionMemoryModelId: '', mainSessionMemoryReasoningEffort: '', mainSessionMemoryCandidates: RECOMMENDED_EXPERIENCE_GROUPS.retrieval.mainSessionMemoryCandidates, mainSessionMemorySearchDailyLimit: RECOMMENDED_EXPERIENCE_GROUPS.retrieval.mainSessionMemorySearchDailyLimit, socialOutreachEnabled:true, socialLifeIntentEnabled:true, lifeProactiveFriendDmEnabled:false, lifeNaturalDmOutreachEnabled:false, lifePublicInteractionEnabled:false, socialVideoRecommendationsAuthorizedV2:true, emotionSystemEnabled:true, socialAutoSend:true, socialOutreachDailyLimit:0, ownerTodoAutoReviewEnabled:false, ownerTodoReviewMinutes:60, ownerTodoCompletionFollowupEnabled:false, socialTodoCompletionFollowupEnabled:false, ownerTodoFollowupCooldownMinutes:60, ownerTodoFollowupDailyLimit:12, ownerTodoFollowupMinIntervalMinutes:5, ownerTodoFollowupPollMinutes:2, ownerTodoFollowupQuietEnabled:true, ownerTodoFollowupQuietStartHour:22, ownerTodoFollowupQuietEndHour:9, autonomousPlannerEnabled:true, emotionRecallEnabled:false, emotionRecallMainEnabled:false, emotionRecallDmEnabled:false, emotionRecallUnlimited:false, emotionRecallDailyLimit:1, emotionRecallCooldownHours:24, emotionRecallStartHour:9, emotionRecallEndHour:22, ownerDmAgentEnabled:true, ownerDmAgentReadMainContext:false, ownerDmAgentSyncMain:false, ownerDmAgentContextTurns:6, ownerDmAgentContextChars:1500, ownerDmAgentModelProvider:'', ownerDmAgentModelId:'', ownerDmAgentReasoningEffort:'', ownerDmReadCommandsEnabled:true, ownerDmActionsEnabled:true, ownerDmLikeEnabled:true, ownerDmCollectEnabled:true, ownerDmFollowEnabled:true, ownerDmCommentDraftEnabled:true, ownerDmCommentPublishEnabled:true, ownerDmDynamicDraftEnabled:true, ownerDmDynamicPublishEnabled:true, ownerDmFriendMessageEnabled:true, emotionRecallCandidateLimit:12, emotionRecallHistoryLimit:300, emotionRecallRecentDays:3, emotionRecallMinAgeDays:2, emotionRecallEmotionMinIntensity:30, emotionRecallEmotionMaxAgeHours:12, autonomousPlannerMinutes:180, autonomousPlannerDailyLimit:4, autonomousPlannerStartHour:9, autonomousPlannerEndHour:23, mainSessionReflectionAuto: true, mainSessionReflectionModelProvider: '', mainSessionReflectionModelId: '', mainSessionReflectionReasoningEffort: '', mainSessionReflectionMinCandidates: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionMinCandidates, mainSessionReflectionBatchSize: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionBatchSize, mainSessionReflectionIntervalHours: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionIntervalHours, mainSessionReflectionDailyBatches: RECOMMENDED_EXPERIENCE_GROUPS.reflection.mainSessionReflectionDailyBatches, mainSessionMemoryHalfLifeDays: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryHalfLifeDays, socialMemoryHalfLifeNewDays:1.3, socialMemoryHalfLifeKnownDays:3, socialMemoryHalfLifeFamiliarDays:10, socialMemoryHalfLifeFriendDays:24, socialMemoryHalfLifeWhitelistDays:30, socialMemoryHalfLifeOwnerDays:50, mainSessionMemoryThreshold: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryThreshold, mainSessionMemoryMaxItems: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryMaxItems, mainSessionMemoryMaxChars: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryMaxChars, mainSessionMemoryDailyQuota: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryDailyQuota, mainSessionMemoryConsolidationEnabled:true, mainSessionMemoryFactsMax: RECOMMENDED_EXPERIENCE_GROUPS.recall.mainSessionMemoryFactsMax,
@@ -945,6 +948,7 @@ function reportMeta() {
       p.peakIntervalMinutes = Number.isFinite(n) && n >= 1 ? Math.min(720, n) : DEFAULT_PEAK_INTERVAL_MINUTES
     }
     if ('backupDirectory' in p) p.backupDirectory = String(p.backupDirectory || '').trim().slice(0,420)
+    if ('backupAutoEnabled' in p) p.backupAutoEnabled = p.backupAutoEnabled===true
     if ('mainSessionBridgeEnabled' in p) p.mainSessionBridgeEnabled = p.mainSessionBridgeEnabled === true
     if ('ownerSpontaneousChatEnabled' in p) p.ownerSpontaneousChatEnabled = p.ownerSpontaneousChatEnabled === true
     for(const key of ['mainSessionSilenceFollowupEnabled','mainSessionShortPauseEnabled','ownerDmSilenceFollowupEnabled'])if(key in p)p[key]=p[key]===true
@@ -2185,7 +2189,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           focus_start_seconds:args.focus_start_seconds,focus_end_seconds:args.focus_end_seconds,
           network_budget_bytes:args.network_budget_bytes,frame_budget_limit:args.frame_budget_limit
         }:{}),
-        ...(dryRun?{capture_for_debug:true}:{})}),elapsed=>{
+        ...(dryRun?{capture_for_debug:true}:internal.lifeChoiceVerified===true&&args.record_session===false?{capture_for_gallery:true}:{})}),elapsed=>{
           visionFinishedAt=Date.now();visualReadMs=elapsed
         }).catch(e=>({ok:false,...(dryRun&&e?.code==='owner_debug_visual_timeout'?{
           status:'vision_unavailable',errorCode:'owner_debug_visual_timeout'}:{}),
@@ -2423,6 +2427,23 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const retire=setTimeout(()=>{if(lastLifeVideoDebug===record)lastLifeVideoDebug=null},videoDebugExpiry)
       retire.unref?.()
     }
+    // dev.4: genuine Life observation JPEG copies are display-only, scoped to
+    // the verified current account and automatically expire within 24h.
+    // A gallery entry is never treated as a durable or recallable memory.
+    if(!dryRun&&internal.lifeChoiceVerified===true&&args.record_session===false&&debugImages.length&&
+       initialLifeAccountTag&&initialLifeAccountTag===trustedLifeAccountTag()&&
+       initialAccount===videoDebugAccount()){
+      try{
+        const proof=verifyEpisodeVideoVisual({result:lifePayload,bvid,depth:visionPlan.depth})
+        if(proof||focusIsVerifiedAndNovel){
+          const result=addLifeVideoGallery(stateDir,{account:initialLifeAccountTag,bvid,
+            captures:debugImages,verified:true,phase:args.explorationPurpose?.includes('focus')?'focus':'global',
+            groupId:String(internal.lifeGalleryGroupId||''),
+            note:String(perceptionHandoff?.video?.modelDescription||'').slice(0,380)})
+          if(result.ok!==true)log('Life 视觉回放图片未保存：'+String(result.reason||'unknown'))
+        }
+      }catch(error){log('Life 视觉回放图片异常：'+String(error.message||error).slice(0,100))}
+    }
     if(dryRun&&videoDebugJob?.account===initialAccount)videoDebugJob.images=debugImages
     stage('Life 输入已生成（调试试运行：未记账、未写记忆）',6)
     return lifePayload
@@ -2447,12 +2468,13 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(cfg.masterEnabled!==true||!hasCredential())return {ok:false,reason:'video-unavailable'}
       const bvid=String(args.bvid||'').trim()
       if(!validBv(bvid))return {ok:false,reason:'invalid-bv'}
+      const visualGroupId=randomUUID().replaceAll('-','')
       const overview=await runLifeChosenVideoRead({willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,
         bvid,mode:'new',read:async({viewDepth,account})=>{
           if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
           const read=()=>executeWatchVideo({bvid,include_comments:true,include_danmaku:true,
             record_session:false,view_depth:viewDepth,explorationPurpose:'life-voluntary-new-video'},
-            {lifeChoiceVerified:true})
+            {lifeChoiceVerified:true,lifeGalleryGroupId:visualGroupId})
           if(!['standard','deep'].includes(viewDepth))return read()
           return withLifeVideoVisualLease(stateDir,{accountTag:account,bvid},async()=>{
             if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
@@ -2487,14 +2509,21 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           try{visual=parseMaybeJson(await call('bili_preview_vision',{
             bvid,perception_source:'adaptive',view_depth:'deep',
             focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
-            network_budget_bytes:networkBudgetBytes,frame_budget_limit:frameBudgetLimit}))}
+            network_budget_bytes:networkBudgetBytes,frame_budget_limit:frameBudgetLimit,
+            capture_for_gallery:true}))}
           catch{return {ok:false,reason:'focus-read-failed'}}
           finally{stop()}
           if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
+          const focusCapture=safeVideoDebugCapture(visual?.debugCapture,bvid)
+          if(visual&&typeof visual==='object')delete visual.debugCapture
           const focusedEvidence=buildVideoEvidenceBundle({bvid,info:overview.info,visual})
           const review=verifyVideoFocusReview({bvid,
             plan:{...plan,status:'ready',networkBudgetBytes},result:visual,evidence:focusedEvidence})
           if(!review)return {ok:false,reason:'focused-evidence-not-verified'}
+          if(focusCapture)try{
+            addLifeVideoGallery(stateDir,{account,bvid,captures:[focusCapture],verified:true,groupId:visualGroupId,
+              phase:'focus',note:String(review.description||'').slice(0,380)})
+          }catch(e){log('Life 局部图片展示副本保存失败：'+String(e?.message||e).slice(0,100))}
           try{
             const event=buildVideoExplorationEvent({bvid,info:overview.info,visual,
               source:'bili-life',purpose:'life-voluntary-focus-read',
@@ -2628,14 +2657,20 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           const stopVideoObserve=liveLifeActivity.start('video-observe',account,{maxAgeMs:8*60_000,bvid})
           try{visual=parseMaybeJson(await call('bili_preview_vision',{bvid,perception_source:'adaptive',
             view_depth:'deep',focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
-            network_budget_bytes:budget}))}
+            network_budget_bytes:budget,capture_for_gallery:true}))}
           catch(e){return {ok:false,reason:'focus-read-failed',error:String(e?.message||e).slice(0,160)}}
           finally{stopVideoObserve()}
           if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
+          const focusCapture=safeVideoDebugCapture(visual?.debugCapture,bvid)
+          if(visual&&typeof visual==='object')delete visual.debugCapture
           const evidence=buildVideoEvidenceBundle({bvid,info,visual})
           const confirmed=verifyVideoFocusReview({bvid,plan:{...plan,networkBudgetBytes:budget},result:visual,evidence})
           if(!confirmed)return {ok:false,reason:'focus-receipt-unverified',
             error:String(visual?.error||visual?.status||'未取得可信复查结果').slice(0,130)}
+          if(focusCapture)try{
+            addLifeVideoGallery(stateDir,{account,bvid,captures:[focusCapture],verified:true,
+              phase:'focus',note:String(confirmed.description||'').slice(0,380)})
+          }catch(e){log('Life 指定时刻回放图片保存失败：'+String(e?.message||e).slice(0,100))}
           // Save only a bounded factual provenance receipt. Raw model answers,
           // image bytes, uncertain descriptions and third-party text remain
           // transient; a follow-up cannot rewrite the original experience.
@@ -8511,6 +8546,56 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
   }
 
+  // dev.4: one portable business snapshot per local day; never includes credentials or private-memory-only archives.
+  // An unsuccessful snapshot never advances the day or removes older backups.
+    // SQLite snapshot is made in memory, not in Windows / Python temp directories.
+    const py = existsSync(venvPython()) ? venvPython() : String(cfg.pythonPath || 'python')
+    const sqliteHelper = join(pluginDir, 'lib', 'data-backup-sqlite.py')
+    const runSqlite = (op, data) => new Promise((resolve, reject) => {
+      const child = spawn(py, [sqliteHelper, op, stateDir], {windowsHide:true, stdio:['pipe','pipe','pipe']})
+      let stdout='',stderr='',settled=false
+      const fail=e=>{if(!settled){settled=true;reject(e)}}
+      child.on('error', e=>fail(Error('无法启动 SQLite 备份工具：'+String(e?.message||e))))
+      child.stdin.on('error', e=>fail(Error('向 SQLite 备份工具写数据失败：'+String(e?.message||e))))
+      child.stdout.on('data', chunk => {stdout+=chunk.toString();if(stdout.length>45_000_000){child.kill();fail(Error('SQLite 备份数据过大'))}})
+      child.stderr.on('data', chunk => {stderr+=chunk.toString().slice(0,800)})
+      child.on('close', code => {if(settled)return;settled=true;try{const result=JSON.parse(stdout||'{}');if(code!==0||!result.ok)throw Error(result.error||stderr||'SQLite 工具异常');resolve(result)}catch(e){reject(e)}})
+      try{child.stdin.end(data ? JSON.stringify(data):'')}catch(e){fail(e)}
+    })
+    const snapshotBusinessBackup = async () => {
+      refreshCfg()
+      const socialPending=socialInteractionCoordinator?.status().pending||0
+      if(socialPending)throw Error('仍有 '+socialPending+' 条社交事件等待补偿；为避免备份恢复产生跨系统数据不一致，请先修复同步错误再备份或恢复')
+      const lifePending=lifeMemoryCoordinator?.status()?.pending||0
+      if(lifePending)throw Error('仍有 '+lifePending+' 条人生事件等待补偿；请先修复同步后备份或恢复')
+      const sqlite = (await runSqlite('export')).sqlite
+      // All effective settings, including relationships, prompts and quotas.
+      const effective = Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, cfg[k]]))
+      return createBackup({root:stateDir,config:effective,sqlite,version:myVersion()})
+    }
+
+  let autoBackupBusy=false
+  let autoBackupState={lastAttemptAt:'',lastError:'',lastSuccessAt:''}
+  const runDailyBackup=async()=>{
+    if(autoBackupBusy)return
+    refreshCfg()
+    if(cfg.backupAutoEnabled!==true||!cfg.backupDirectory||!firstStart.isReady())return
+    autoBackupBusy=true
+    try{
+      const dir=requireBackupDirectory(cfg.backupDirectory)
+      if(hasTodaysAutomatic(dir)){pruneAutomaticBackups(dir);return}
+      autoBackupState.lastAttemptAt=new Date().toISOString()
+      const backup=await snapshotBusinessBackup()
+      const result=saveAutomaticBackup(dir,backup)
+      if(result.created){autoBackupState.lastSuccessAt=new Date().toISOString();autoBackupState.lastError='';log('每日自动业务备份完成，保留最近5天：'+result.filePath)}
+    }catch(error){autoBackupState.lastError=String(error?.message||error).slice(0,180);log('每日自动备份暂未完成：'+autoBackupState.lastError)}
+    finally{autoBackupBusy=false}
+  }
+  const dailyBackupTimer=setInterval(()=>{void runDailyBackup();try{pruneAllLifeVideoGalleries(stateDir)}catch(e){log('24小时画面回放清理暂未完成：'+String(e?.message||e).slice(0,100))}},15*60_000)
+  dailyBackupTimer.unref?.()
+  const dailyBackupStart=setTimeout(()=>{void runDailyBackup()},90_000)
+  dailyBackupStart.unref?.()
+  ctx.effect(()=>()=>{clearTimeout(dailyBackupStart);clearInterval(dailyBackupTimer)},'bili-duty: 每日业务备份任务关闭')
   let storageModelVerification=null,storageModelVerificationBusy=false,storageLifeVerification=null,storageExternalLifeVerification=null
   const handle = async (req, res, url) => {
     refreshCfg()
@@ -8690,7 +8775,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       }catch(error){return sendJson(res,400,{ok:false,error:String(error?.message||error).slice(0,180)})}
     }
     // v2.4.69: user-configured backup directory and SQLite memory snapshots; never use OS Temp.
-    if (req.method === 'POST' && ['/api/bili-duty/data-backup/location', '/api/bili-duty/data-backup/export', '/api/bili-duty/data-backup/inspect', '/api/bili-duty/data-backup/restore'].includes(path)) {
+    if (req.method === 'POST' && ['/api/bili-duty/data-backup/location', '/api/bili-duty/data-backup/export', '/api/bili-duty/data-backup/inspect', '/api/bili-duty/data-backup/restore','/api/bili-duty/data-backup/list','/api/bili-duty/data-backup/preview','/api/bili-duty/data-backup/auto'].includes(path)) {
       const origin = String(req.headers.origin || '')
       const host = String(req.headers.host || '')
       if (origin && (!host || ![ `http://${host}`, `https://${host}` ].includes(origin)))
@@ -8698,6 +8783,11 @@ logger:{warn:m=>log('社交意图：'+m)}
       if (String(req.headers['sec-fetch-site'] || '').toLowerCase() === 'cross-site')
         return sendJson(res, 403, {ok:false,error:'拒绝来自其他网站的备份请求'})
       const action = path.split('/').pop()
+      // Backup browsing returns memory texts and file inventory; the local
+      // desktop session is the only authorized reader of these new endpoints.
+      if(['preview','list','auto'].includes(action)&&
+         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(String(req.socket?.remoteAddress||'')))
+        return sendJson(res,403,{ok:false,error:'备份内容仅允许本机管理中心查看'})
       try {
         if (action === 'location') {
           const body = await readBody(req, 12_000)
@@ -8706,35 +8796,27 @@ logger:{warn:m=>log('社交意图：'+m)}
           const {host} = await persistCfg({backupDirectory:folder})
           return sendJson(res, 200, {ok:true,directory:folder,hostSynced:host.ok})
         }
-        // SQLite snapshot is made in memory, not in Windows / Python temp directories.
-        const py = existsSync(venvPython()) ? venvPython() : String(cfg.pythonPath || 'python')
-        const sqliteHelper = join(pluginDir, 'lib', 'data-backup-sqlite.py')
-        const runSqlite = (op, data) => new Promise((resolve, reject) => {
-          const child = spawn(py, [sqliteHelper, op, stateDir], {windowsHide:true, stdio:['pipe','pipe','pipe']})
-          let stdout='',stderr='',settled=false
-          const fail=e=>{if(!settled){settled=true;reject(e)}}
-          child.on('error', e=>fail(Error('无法启动 SQLite 备份工具：'+String(e?.message||e))))
-          child.stdin.on('error', e=>fail(Error('向 SQLite 备份工具写数据失败：'+String(e?.message||e))))
-          child.stdout.on('data', chunk => {stdout+=chunk.toString();if(stdout.length>45_000_000){child.kill();fail(Error('SQLite 备份数据过大'))}})
-          child.stderr.on('data', chunk => {stderr+=chunk.toString().slice(0,800)})
-          child.on('close', code => {if(settled)return;settled=true;try{const result=JSON.parse(stdout||'{}');if(code!==0||!result.ok)throw Error(result.error||stderr||'SQLite 工具异常');resolve(result)}catch(e){reject(e)}})
-          try{child.stdin.end(data ? JSON.stringify(data):'')}catch(e){fail(e)}
-        })
-        const snapshot = async () => {
+        if (action === 'auto') {
+          const body=await readBody(req,1024)
+          if(typeof body?.enabled!=='boolean')throw Error('自动备份开关必须明确选择')
+          const result=await persistCfg({backupAutoEnabled:body.enabled})
+          if(body.enabled)void runDailyBackup()
+          return sendJson(res,200,{ok:true,enabled:body.enabled,hostSynced:result.host.ok})
+        }
+        if (action === 'list') {
           refreshCfg()
-          const socialPending=socialInteractionCoordinator?.status().pending||0
-          if(socialPending)throw Error('仍有 '+socialPending+' 条社交事件等待补偿；为避免备份恢复产生跨系统数据不一致，请先修复同步错误再备份或恢复')
-          const lifePending=lifeMemoryCoordinator?.status()?.pending||0
-          if(lifePending)throw Error('仍有 '+lifePending+' 条人生事件等待补偿；请先修复同步后备份或恢复')
-          const sqlite = (await runSqlite('export')).sqlite
-          // All effective settings, including relationships, prompts and quotas.
-          const effective = Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, cfg[k]]))
-          return createBackup({root:stateDir,config:effective,sqlite,version:myVersion()})
+          const dir=requireBackupDirectory(cfg.backupDirectory)
+          return sendJson(res,200,{ok:true,directory:dir,autoEnabled:cfg.backupAutoEnabled!==false,files:listBackupFiles(dir),lastAttempt: autoBackupState.lastAttemptAt,lastSuccess:autoBackupState.lastSuccessAt,lastError:autoBackupState.lastError,retentionDays:5})
+        }
+        if (action === 'preview') {
+          const body=await readBody(req,2048)
+          refreshCfg()
+          return sendJson(res,200,{ok:true,...inspectBackupInDirectory(requireBackupDirectory(cfg.backupDirectory),body?.name)})
         }
         if (action === 'export') {
           refreshCfg()
           const folder = requireBackupDirectory(cfg.backupDirectory)
-          const backup = await snapshot()
+          const backup = await snapshotBusinessBackup()
           const filePath = saveBackupJson(folder, backup)
           log('用户数据已备份到：'+filePath)
           return sendJson(res, 200, {ok:true,filePath,summary:validateBackup(backup)})
@@ -8756,7 +8838,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         // User-chosen destination: no system Temp fallback, never overwrite prior snapshots.
         refreshCfg()
         const folder = requireBackupDirectory(cfg.backupDirectory)
-        const safeguard = await snapshot()
+        const safeguard = await snapshotBusinessBackup()
         const safeguardPath = saveBackupJson(folder, safeguard, 'pre-restore')
         const backupName = safeguardPath.split(/[\\/]/).at(-1)
         // Full restore is a three-part operation. Keep the verified pre-restore
@@ -8885,6 +8967,33 @@ logger:{warn:m=>log('社交意图：'+m)}
       // Local read-only acceptance evidence. No Bilibili fetch or model call.
       // The helper binds results to the CURRENT login (HMAC; no UID or cookie returned).
       return sendJson(res,200,readVideoDiscussionDiagnostics({stateDir,credential:dmCred(stateDir)}))
+    }
+    // dev.4: current-account 24-hour Life image gallery; not the Debug endpoint,
+    // never serves arbitrary paths, old accounts or expired files.
+    if(req.method==='GET'&&(path==='/api/bili-duty/life-video-gallery'||
+       path.startsWith('/api/bili-duty/life-video-gallery/image/'))){
+      const peer=String(req.socket?.remoteAddress||'')
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||
+         origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin))||
+         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+        return sendJson(res,403,{ok:false,error:'视觉回放仅限本机同源管理中心'})
+      const account=trustedLifeAccountTag()
+      if(!hasCredential()||!account||accountBinding.status().blocked)
+        return sendJson(res,401,{ok:false,error:'当前 B站账号尚未完成可信核验'})
+      try{
+        if(path==='/api/bili-duty/life-video-gallery'){
+          pruneLifeVideoGallery(stateDir,account)
+          return sendJson(res,200,{ok:true,retentionHours:24,rows:listLifeVideoGallery(stateDir,account)})
+        }
+        const match=/^\/api\/bili-duty\/life-video-gallery\/image\/([a-f0-9]{32})\/((?:storyboard|focus)-\d{2}\.jpg)$/.exec(path)
+        if(!match)return sendJson(res,404,{ok:false,error:'图片不存在'})
+        const bytes=readLifeVideoGalleryImage(stateDir,account,match[1],match[2])
+        if(!bytes)return sendJson(res,404,{ok:false,error:'图片不存在或已过期'})
+        res.writeHead(200,{'Content-Type':'image/jpeg','Content-Length':bytes.length,
+          'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'})
+        return res.end(bytes)
+      }catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,150)})}
     }
     if (path === '/api/bili-duty/video-perception-debug' || path === '/api/bili-duty/video-perception-debug/run' ||
         path === '/api/bili-duty/video-perception-debug/focus' ||

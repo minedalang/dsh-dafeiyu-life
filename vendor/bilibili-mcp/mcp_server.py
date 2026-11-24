@@ -1579,7 +1579,7 @@ def _record_production_vision_attempt(result, mode, model, debug=False):
 
 
 @tool()
-async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0, frame_budget_limit: int = 0, capture_for_debug: bool = False):
+async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0, frame_budget_limit: int = 0, capture_for_debug: bool = False, capture_for_gallery: bool = False):
     """鱼鱼主动选画面来源：preview官方低清，adaptive受控公开视频采样；可指定3～120秒。"""
     if (e := _guard("bili_preview_vision")): return e
     if os.environ.get('BILI_VISION_ENABLED') != '1':
@@ -1635,7 +1635,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                         _owner_debug_stage('frames-settled')
                         _owner_debug_stage('model-running')
                     result = analyze_perception(bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
-                        model=os.environ.get('BILI_VISION_MODEL',''),debug=capture_for_debug is True,
+                        model=os.environ.get('BILI_VISION_MODEL',''),debug=capture_for_debug is True or capture_for_gallery is True,
                         focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
                         network_budget_bytes=budget_override,frame_budget_limit=frames_override,before_model=frames_ready)
                     if not read_settled:receipt(result)
@@ -1666,7 +1666,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                         'focus_start':focus['startSeconds'] if focus else None,
                         'focus_end':focus['endSeconds'] if focus else None,'view_depth':view_depth,
                         'network_budget_bytes':budget_override,'frame_budget_limit':frames_override,
-                        'debug_capture':capture_for_debug is True})
+                        'debug_capture':capture_for_debug is True or capture_for_gallery is True})
                     try:
                         run=subprocess.run([vision_python,str(script),'--describe-stdin','--home',str(_DUTY_HOME)],
                             input=request,encoding='utf8',stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
@@ -1684,7 +1684,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                 result=await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
                     focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
                     network_budget_bytes=budget_override,frame_budget_limit=frames_override,
-                    debug_capture=capture_for_debug is True)
+                    debug_capture=capture_for_debug is True or capture_for_gallery is True)
             _record_production_vision_attempt(result, 'independent_dsh', os.environ.get('BILI_VISION_DSH_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='independent_dsh_result',ok=result.get('ok'),
