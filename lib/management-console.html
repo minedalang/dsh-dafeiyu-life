@@ -1782,7 +1782,12 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 .life-gallery-revisit-actions button:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 5px 16px #233b4d21}
 .life-gallery-revisit-actions input{height:38px;max-width:155px;width:145px;font-size:13px}
 .life-gallery-revisit-result{border:1px solid var(--stroke);border-radius:12px;min-height:46px;padding:12px 14px;background:var(--panel);font-size:13px;line-height:1.65;color:var(--ink);flex-basis:auto;overflow-wrap:anywhere}
-.life-gallery-revisit-result[data-state="running"]{border-color:#79b8c7;background:color-mix(in srgb,#ccecf3 26%,var(--panel))}
+.life-gallery-revisit-result[data-state="running"]{position:relative;display:flex;align-items:center;gap:12px;min-height:58px;padding-bottom:18px;border:2px solid #529bab;background:color-mix(in srgb,#ccecf3 32%,var(--panel));font-weight:650;box-shadow:0 0 0 3px color-mix(in srgb,#79b8c7 18%,transparent);overflow:hidden}
+.life-gallery-revisit-result[data-state="running"]::before{content:"";display:block;width:23px;height:23px;flex:0 0 23px;border:3px solid #79b8c7;border-right-color:transparent;border-radius:50%;animation:life-gallery-wait-spin .85s linear infinite}
+.life-gallery-revisit-result[data-state="running"]::after{content:"";position:absolute;bottom:0;left:0;width:36%;height:3px;background:#529bab;animation:life-gallery-wait-slide 1.8s ease-in-out infinite}
+@keyframes life-gallery-wait-spin{to{transform:rotate(360deg)}}
+@keyframes life-gallery-wait-slide{0%{transform:translateX(-100%)}100%{transform:translateX(280%)}}
+@media(prefers-reduced-motion:reduce){.life-gallery-revisit-result[data-state="running"]::before,.life-gallery-revisit-result[data-state="running"]::after{animation:none}}
 .life-gallery-revisit-result[data-state="error"]{border-color:#dca4a4;background:color-mix(in srgb,#f8dddd 32%,var(--panel))}
 .life-gallery-revisit-result[data-state="success"]{border-color:#78bb9d;background:color-mix(in srgb,#d9f3e5 33%,var(--panel))}
 #panel-life-agent .life-timeline-gallery-open{border-color:color-mix(in srgb,#68bfb2 65%,var(--stroke));background:color-mix(in srgb,#dff7f0 52%,var(--panel));color:var(--ink);padding:7px 13px;font-weight:720;transition:transform .18s,background .18s,box-shadow .18s}
@@ -2853,7 +2858,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   <button type="button" id="life-gallery-revisit-time" class="life-action life-sky">请求补看</button>
   </div><div class="life-gallery-revisit-result" id="life-gallery-revisit-status" role="status" aria-live="polite" data-state="idle">仅主人明确发起；成功后复核原记忆并追加细节，不会评论或点赞。</div>
 </div>
-<div class="life-gallery-dialog-footer"><span>拼图与局部图保存 24 小时 · 只读回放</span><span>补看须实际重新解码并通过核验，模型解释不是客观事实；旧记忆不会直接覆盖</span></div></div>
+<div class="life-gallery-dialog-footer"><span>拼图与局部图保存 12 小时 · 只读回放</span><span>补看须实际重新解码并通过核验，模型解释不是客观事实；旧记忆不会直接覆盖</span></div></div>
 </div>
 <div class="life-tree-legend"><span>◎ 五类常驻行为</span><span>◉ 真正发生的动作才显示分支</span><span>≈ 运行中动态</span><span>✓ 结果须有真实回执</span></div>
 <p class="muted">行为树展示的是源码支持的动作类别及最近的匿名真实决策，不等同于每一轮可用的完整动作菜单。只有合格候选才进入实际模型菜单；视频 Agent 的下游动作由专业工具与发送门禁执行。下方生活记录按真实回执时间排序；并行读取的完成顺序不代表先后决定了看什么。</p>

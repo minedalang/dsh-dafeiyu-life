@@ -226,7 +226,7 @@ def _read_asr_cache(bvid,model,lang):
         if (item.get('version')!=_ASR_CACHE_VERSION or item.get('bvid')!=bvid or
             item.get('model')!=model or item.get('lang')!=lang or
             not isinstance(item.get('createdAt'),(int,float)) or
-            not 0<=time.time()-item['createdAt']<=_ASR_CACHE_TTL):return None
+            not 0<=time.time()-item['createdAt']<_ASR_CACHE_TTL):return None
         receipt=item.get('receipt')
         if (not isinstance(receipt,dict) or receipt.get('source')!='local-asr' or
             receipt.get('bvid')!=bvid or not isinstance(receipt.get('text'),str) or

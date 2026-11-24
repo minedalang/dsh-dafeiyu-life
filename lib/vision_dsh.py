@@ -322,10 +322,11 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         if frame_budget_limit is not None:suffix+='-frames'+str(frame_budget_limit)
         source_suffix='-adaptive' if perception_source=='adaptive' else ''
         cached=Path(env.get('DSH_MEDIA_CACHE_HOME') or home)/'vision-cache'/f'{bvid}{source_suffix}-v{sampler_version}-{view_depth}{suffix}.json'
-        if cached.is_file() and not debug_capture:
+        from preview_vision import _vision_cache_is_fresh, _vision_cache_record_is_fresh
+        if _vision_cache_is_fresh(cached) and not debug_capture:
             try:
                 d=json.loads(cached.read_text(encoding='utf8'))
-                if (d.get('origin')=='dsh-independent-unverified' and d.get('model')==model
+                if (_vision_cache_record_is_fresh(d) and d.get('origin')=='dsh-independent-unverified' and d.get('model')==model
                     and d.get('provider')==provider and d.get('frames_limit')==frames and d.get('board_tiles',12)==board_tiles and d.get('view_depth')==view_depth
                     and d.get('prompt_hash')==prompt_hash
                     and d.get('sampler_version')==sampler_version

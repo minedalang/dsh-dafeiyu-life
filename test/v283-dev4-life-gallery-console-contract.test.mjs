@@ -6,7 +6,7 @@ import {neuralProjectionKey} from '../lib/memory-neural-projection.mjs'
 const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
 const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
 const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
-test('行动节点/时间线关联24小时画面，拼图按视频时间排序并支持逐格放大',()=>{
+test('行动节点/时间线关联12小时画面，拼图按视频时间排序并支持逐格放大',()=>{
   for(const id of ['life-gallery-open-latest','life-gallery-modal','life-gallery-grid','life-gallery-zoom','life-gallery-close','life-gallery-open-current','life-gallery-back','life-gallery-large-image','life-gallery-tile-canvas','life-gallery-view-frames','life-gallery-view-boards','life-gallery-boards'])
     assert.match(html,new RegExp('id="'+id+'"'))
   assert.match(js,/const openLifeGallery=row=>/)
@@ -111,6 +111,10 @@ test('dev6 画廊首行是单帧／原始拼图两种互斥模式；下方仅有
   assert.match(js,/life-gallery-boards'\)\.hidden=lifeGalleryViewMode!=='boards'/);
   assert.match(js,/const renderLifeGalleryBoards=row=>/);
   assert.match(js,/figure\.appendChild\(image\)/);
+  assert.match(html,/拼图与局部图保存 12 小时/);
+  assert.match(server,/retentionHours:LIFE_GALLERY_RETENTION_HOURS/);
+  assert.match(html,/life-gallery-wait-spin/);
+  assert.match(js,/el\.setAttribute\('aria-busy',String\(state==='running'\)\)/);
   assert.doesNotMatch(js,/figure\.addEventListener\('click'/,'完整拼图仅查看，不能误选单帧');
   assert.match(js,/clearGalleryTile\(\);\$\('life-gallery-zoom'\)\.hidden=false/,
     '选择单帧时下方显示大图，上方两种浏览模式保持挂载');
@@ -131,4 +135,34 @@ test('dev6 画廊首行是单帧／原始拼图两种互斥模式；下方仅有
   assert.doesNotMatch(js,/可重新打开本次画面查看新增局部图/,'成功后不应要求用户重新打开弹窗');
   assert.match(html,/prefers-reduced-motion:reduce[^{]*\{[^}]*life-gallery-frame-tile\.life-gallery-verified-source/,
     '尊重系统减少动画设置');
+})
+
+
+test('原始拼图仅展示真实多时间点文件，局部单帧不重复显示',()=>{
+  const start=js.indexOf('  const renderLifeGalleryBoards=row=>{');
+  const end=js.indexOf('  const setLifeGalleryTileLock=',start);
+  assert.ok(start>=0&&end>start);
+  const node=(tag,text='')=>({tag,text,children:[],appendChild(child){this.children.push(child)},replaceChildren(fragment){this.children=fragment.children}});
+  const boards=node('div');
+  const entry={at:1,images:[{file:'global.jpg',kind:'storyboard',times:[1,2,3]},
+    {file:'focus-board.jpg',kind:'focus',times:[5,6,7]},
+    {file:'focus-single.jpg',kind:'focus',times:[6]},
+    {file:'focus-single2.jpg',kind:'focus',times:[7]}]};
+  const ctx={$:()=>boards,node,document:{createDocumentFragment:()=>node('fragment')},
+    lifeGalleryRelatedRows:()=>[entry],lifeGalleryImageUrl:(_entry,item)=>item.file,videoClock:String};
+  runInNewContext(js.slice(start,end)+'\n globalThis.render=renderLifeGalleryBoards;',ctx);
+  ctx.render(entry);
+  assert.deepEqual(boards.children.map(card=>card.children[0].src),['global.jpg','focus-board.jpg']);
+  entry.images=[{file:'focus-single.jpg',kind:'focus',times:[6]}];
+  ctx.render(entry);
+  assert.equal(boards.children.length,1);assert.equal(boards.children[0].tag,'p');
+})
+
+test('video cache expiry starts independently of backup and retries periodically; expired captures cannot renew gallery retention',()=>{
+ assert.match(server,/const runVideoCacheCleanup=\(\)=>\{/)
+ assert.match(server,/setInterval\(runVideoCacheCleanup,VIDEO_CACHE_RETENTION\.interval\)/)
+ assert.match(server,/setTimeout\(runVideoCacheCleanup,30_000\)/)
+ assert.match(server,/clearTimeout\(videoCacheStart\);clearInterval\(videoCacheTimer\)/)
+ assert.match(server,/Date\.now\(\)-value\.createdAt>=videoDebugExpiry/)
+ assert.match(server,/const result=pruneVideoCaches\(stateDir\)/)
 })

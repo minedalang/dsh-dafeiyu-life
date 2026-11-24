@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync,readdirSync} from 'node:fs'
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync,readdirSync,utimesSync} from 'node:fs'
 import {join,dirname} from 'node:path'
 import {tmpdir} from 'node:os'
 import {largeDataStatus,inspectLargeDataMigration,migrateLargeDataOffline} from '../lib/storage-large-data-v2.mjs'
@@ -126,4 +126,16 @@ test('V2 leaves an existing external Life V1 partition at its verified original 
  assert.equal(storageDataPath(root,'life-memory','episodic.json'),before)
  assert.equal(readFileSync(before,'utf8'),'irreplaceable-memory')
  assert.equal(storageLayoutStatus(root).domains.memory.configured,true)
+}))
+
+import {pruneVideoCaches} from '../lib/video-cache-retention.mjs'
+test('V2 cache expiry follows actual runtime-media-v2, never deletes retained migration sources or library',()=>fixture(({t,root,at})=>{
+ baseModels(at)
+ const target=join(t,'external','data');assert.equal(migrate(root,target).ok,true)
+ const bv='BV1234567890.json',old=at('vision-cache',bv),active=storageDataPath(root,'vision-cache',bv)
+ for(const file of [old,active]){put(file,'{}');utimesSync(file,0,0)}
+ assert.equal(pruneVideoCaches(root).removed,1)
+ assert.equal(existsSync(active),false);assert.equal(existsSync(old),true)
+ assert.equal(existsSync(join(target,'embedding-model','Qwen3-Embedding-0.6B-Q8_0.gguf')),true)
+ assert.equal(existsSync(at('life-memory','episodic.json')),true)
 }))

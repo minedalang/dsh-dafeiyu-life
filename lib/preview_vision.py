@@ -877,6 +877,21 @@ def _record_vision_attempt(home):
 
 
 
+_VISION_CACHE_TTL=24*3600
+
+def _vision_cache_is_fresh(path):
+    try:
+        path=Path(path)
+        return (not path.is_symlink() and not path.parent.is_symlink() and path.is_file()
+                and 0<=time.time()-path.stat().st_mtime<_VISION_CACHE_TTL)
+    except OSError:
+        return False
+
+def _vision_cache_record_is_fresh(record):
+    created=record.get('createdAt')
+    return created is None or (isinstance(created,(int,float)) and not isinstance(created,bool)
+                              and 0<=time.time()-created<_VISION_CACHE_TTL)
+
 def _save_vision_cache(cache, record, *, progress=None):
     """Best-effort atomic cache: unique staging files, never a shared *.tmp.
 
@@ -893,6 +908,8 @@ def _save_vision_cache(cache, record, *, progress=None):
                 pass  # diagnostics must never interfere with cache writes
 
     cache=Path(cache)
+    if re.fullmatch(r'BV[0-9A-Za-z]{10}(?:-[A-Za-z0-9-]+)?\.json',cache.name):
+        record={**record,'createdAt':time.time()}
     staged=None
     try:
         mark('writer_dir_create')
@@ -990,10 +1007,10 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
     suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
     cache=Path(os.environ.get('DSH_MEDIA_CACHE_HOME') or home)/'vision-cache'/f'{bvid}{f"-preview-board-v{PREVIEW_BOARD_VERSION}" if storyboard else ""}{suffix}.json'
     sampler_version=PREVIEW_BOARD_VERSION if storyboard else (_FOCUS_SAMPLER_VERSION if focus else _SAMPLER_VERSION)
-    if enabled and not debug and not return_frames and cache.exists():
+    if enabled and not debug and not return_frames and _vision_cache_is_fresh(cache):
         try:
             d=json.loads(cache.read_text('utf8'))
-            if d.get('provider')==provider and d.get('model')==model and d.get('frames_limit')==max_frames and d.get('board_tiles',12)==board_tiles and d.get('local_thinking','off')==local_thinking and d.get('sampler_version')==sampler_version and d.get('focus_window')==focus and d.get('network_budget_override')==network_budget_bytes and d.get('description'):
+            if _vision_cache_record_is_fresh(d) and d.get('provider')==provider and d.get('model')==model and d.get('frames_limit')==max_frames and d.get('board_tiles',12)==board_tiles and d.get('local_thinking','off')==local_thinking and d.get('sampler_version')==sampler_version and d.get('focus_window')==focus and d.get('network_budget_override')==network_budget_bytes and d.get('description'):
                 return {'ok':True,'bvid':bvid,'status':'cached','description':d['description'],'times':d.get('times',[]),'sampling':d.get('sampling'),'focus_window':focus,'image_source':'B站低清预览','visionBoardReceipts':d.get('visionBoardReceipts',[]),
                         'notice':'缓存的快照描述，不能代表完整视频'}
         except (ValueError,OSError):pass
@@ -1366,10 +1383,10 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     cap_suffix='-cap'+str(network_budget_bytes) if network_budget_bytes is not None else ''
     if frame_budget_limit is not None: cap_suffix+='-frames'+str(frame_budget_limit)
     cache=Path(os.environ.get('DSH_MEDIA_CACHE_HOME') or home).resolve()/'vision-cache'/f'{bvid}-adaptive-v9-{view_depth}{suffix}{"-timecover1" if focus else ""}{cap_suffix}.json'
-    if enabled and not return_frames and not debug and cache.is_file():
+    if enabled and not return_frames and not debug and _vision_cache_is_fresh(cache):
         try:
             saved=json.loads(cache.read_text(encoding='utf8'))
-            if (saved.get('vision_receipt_version')==1 and saved.get('sampler_version')==8 and saved.get('model')==model
+            if (_vision_cache_record_is_fresh(saved) and saved.get('vision_receipt_version')==1 and saved.get('sampler_version')==8 and saved.get('model')==model
                 and saved.get('provider')==provider and saved.get('frames_limit')==max_frames
                 and saved.get('view_depth')==view_depth
                 and saved.get('focus_window')==focus and saved.get('network_budget_override')==network_budget_bytes

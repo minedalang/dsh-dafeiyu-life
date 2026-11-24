@@ -1913,7 +1913,11 @@ def _meme_save(name, meaning, bvid, evidence, aliases="", kind="梗", evidence_t
     if source_type == '低清预览':
         # 防止模型只是声称看见画面就写入知识库：必须是本视频真实视觉请求缓存的片段。
         cache=_VISION_CACHE_HOME / 'vision-cache' / f'{bv}.json'
-        try: raw=json.loads(cache.read_text('utf8'))
+        from preview_vision import _vision_cache_is_fresh, _vision_cache_record_is_fresh
+        try:
+            if not _vision_cache_is_fresh(cache):raise ValueError('expired-cache')
+            raw=json.loads(cache.read_text('utf8'))
+            if not _vision_cache_record_is_fresh(raw):raise ValueError('expired-cache')
         except (ValueError,OSError): raise ValueError('未找到成功的视觉识别缓存，不能建立外观记忆')
         if ev not in str(raw.get('description') or ''):
             raise ValueError('低清预览证据必须引用视觉模型的原始描述片段')
@@ -2089,7 +2093,11 @@ def _meme_observe(name,bvid,evidence,evidence_type='字幕'):
     source_type=evidence_type if evidence_type in ('字幕','评论','简介','标题','弹幕','其他文字','低清预览') else '其他文字'
     if source_type=='低清预览':
         cache=_VISION_CACHE_HOME/'vision-cache'/f'{bv}.json'
-        try: raw=json.loads(cache.read_text('utf8'))
+        from preview_vision import _vision_cache_is_fresh, _vision_cache_record_is_fresh
+        try:
+            if not _vision_cache_is_fresh(cache):raise ValueError('expired-cache')
+            raw=json.loads(cache.read_text('utf8'))
+            if not _vision_cache_record_is_fresh(raw):raise ValueError('expired-cache')
         except (ValueError,OSError): raise ValueError('没有有效视觉缓存，不能记录视觉梗线索')
         if ev not in str(raw.get('description') or ''):raise ValueError('视觉证据必须引用实际缓存描述')
     con=_meme_conn()

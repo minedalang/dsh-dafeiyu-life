@@ -59,7 +59,8 @@ import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFil
 import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import {listBackupFiles,inspectBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
-import {addLifeVideoGallery,listLifeVideoGallery,readLifeVideoGalleryImage,pruneLifeVideoGallery,pruneAllLifeVideoGalleries} from './lib/life-video-gallery.mjs'
+import {pruneVideoCaches,VIDEO_CACHE_RETENTION} from './lib/video-cache-retention.mjs'
+import {addLifeVideoGallery,listLifeVideoGallery,readLifeVideoGalleryImage,pruneLifeVideoGallery,LIFE_GALLERY_RETENTION_HOURS} from './lib/life-video-gallery.mjs'
 import {planOwnerGalleryRevisit,matchOwnerGalleryMemory} from './lib/owner-video-revisit.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -2103,11 +2104,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const row=recentVideoFocusCues.get(videoDebugAccount()+':'+bvid)
     return row&&row.expiresAt>Date.now()?row.observations:[]
   }
-  const videoDebugExpiry=30*60*1000
+  const videoDebugExpiry=VIDEO_CACHE_RETENTION.capture
   const videoDebugAccount=()=>String(accountBinding.accountUid()||'')
   const safeVideoDebugCapture=(value,bvid)=>{
     if(!value||value.bvid!==bvid||!(/^[a-f0-9]{32}$/).test(String(value.id||''))||
-      !['storyboard','focus'].includes(value.kind)||!Array.isArray(value.images))return null
+      !['storyboard','focus'].includes(value.kind)||!Array.isArray(value.images)||
+      !Number.isSafeInteger(value.createdAt)||value.createdAt>Date.now()+60_000||Date.now()-value.createdAt>=videoDebugExpiry)return null
     const images=value.images.slice(0,value.kind==='focus'?13:12).filter(x=>
       x?.kind===value.kind&&/^(?:storyboard|focus)-\d{2}\.jpg$/.test(String(x.file||''))&&
       Array.isArray(x.times)&&x.times.length<=12&&x.times.every(t=>Number.isFinite(t)&&t>=0&&t<=14400))
@@ -2118,11 +2120,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         return {kind:x.kind,file:x.file,times:x.times,resolution:String(x.resolution||'').slice(0,45),...grid}
       })
     if(!images.length)return null
-    // Best-effort automatic expiry while DSH is running. Python also sweeps
-    // stale captures on the next observation after a process restart.
-    const purge=setTimeout(()=>{try{rmSync(join(stateDir,'vision-perception-captures',value.id),
-      {recursive:true,force:true})}catch{}},videoDebugExpiry)
-    purge.unref?.()
+    // Physical expiry is handled by the startup/periodic cache sweeper.
     return {id:value.id,kind:value.kind,createdAt:Number(value.createdAt)||0,images}
   }
   const executeWatchVideo = async(args={},internal={}) => {
@@ -8610,7 +8608,17 @@ logger:{warn:m=>log('社交意图：'+m)}
     }catch(error){autoBackupState.lastError=String(error?.message||error).slice(0,180);log('每日自动备份暂未完成：'+autoBackupState.lastError)}
     finally{autoBackupBusy=false}
   }
-  const dailyBackupTimer=setInterval(()=>{void runDailyBackup();try{pruneAllLifeVideoGalleries(stateDir)}catch(e){log('24小时画面回放清理暂未完成：'+String(e?.message||e).slice(0,100))}},15*60_000)
+  const runVideoCacheCleanup=()=>{
+    for(const [key,row] of recentVideoFocusCues)if(row.expiresAt<=Date.now())recentVideoFocusCues.delete(key)
+    const result=pruneVideoCaches(stateDir)
+    if(result.failed||result.skipped)log('音视频缓存清理：已删除 '+result.removed+' 项，待重试 '+result.failed+' 项，安全跳过 '+result.skipped+' 项')
+  }
+  const videoCacheTimer=setInterval(runVideoCacheCleanup,VIDEO_CACHE_RETENTION.interval)
+  videoCacheTimer.unref?.()
+  const videoCacheStart=setTimeout(runVideoCacheCleanup,30_000)
+  videoCacheStart.unref?.()
+  ctx.effect(()=>()=>{clearTimeout(videoCacheStart);clearInterval(videoCacheTimer)},'bili-duty: 音视频缓存清理任务关闭')
+  const dailyBackupTimer=setInterval(()=>{void runDailyBackup()},15*60_000)
   dailyBackupTimer.unref?.()
   const dailyBackupStart=setTimeout(()=>{void runDailyBackup()},90_000)
   dailyBackupStart.unref?.()
@@ -9104,7 +9112,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       return sendJson(res,202,{ok:true,id,status:'running',bvid,
         anchorSeconds:plan.anchorSeconds,notice:'只读视频补看已受理；仅核验成功才写入已绑定的未遗忘记忆'})
     }
-    // dev.4: current-account 24-hour Life image gallery; not the Debug endpoint,
+    // dev.4: current-account 12-hour Life image gallery; not the Debug endpoint,
     // never serves arbitrary paths, old accounts or expired files.
     if(req.method==='GET'&&(path==='/api/bili-duty/life-video-gallery'||
        path.startsWith('/api/bili-duty/life-video-gallery/image/'))){
@@ -9120,7 +9128,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       try{
         if(path==='/api/bili-duty/life-video-gallery'){
           pruneLifeVideoGallery(stateDir,account)
-          return sendJson(res,200,{ok:true,retentionHours:24,rows:listLifeVideoGallery(stateDir,account)})
+          return sendJson(res,200,{ok:true,retentionHours:LIFE_GALLERY_RETENTION_HOURS,rows:listLifeVideoGallery(stateDir,account)})
         }
         const match=/^\/api\/bili-duty\/life-video-gallery\/image\/([a-f0-9]{32})\/((?:storyboard|focus)-\d{2}\.jpg)$/.exec(path)
         if(!match)return sendJson(res,404,{ok:false,error:'图片不存在'})
@@ -9156,7 +9164,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         const root=join(stateDir,'vision-perception-captures'),folder=join(root,id),target=join(folder,file)
         try{
           if(lstatSync(root).isSymbolicLink()||lstatSync(folder).isSymbolicLink()||lstatSync(target).isSymbolicLink())throw Error('unsafe')
-          if(now-statSync(folder).mtimeMs>videoDebugExpiry||statSync(target).size>600000)throw Error('expired')
+          if(now-statSync(folder).mtimeMs>=videoDebugExpiry||statSync(target).size>600000)throw Error('expired')
           const contents=readFileSync(target)
           if(contents.length<4||contents[0]!==0xff||contents[1]!==0xd8)throw Error('invalid')
           res.writeHead(200,{'Content-Type':'image/jpeg','Content-Length':contents.length,

@@ -13,6 +13,19 @@ spec=importlib.util.spec_from_file_location('pv',ROOT/'lib'/'preview_vision.py')
 pv=importlib.util.module_from_spec(spec);spec.loader.exec_module(pv)
 
 class PreviewTests(unittest.TestCase):
+    def test_vision_cache_generation_and_legacy_mtime_expire_at_24_hours(self):
+        with TemporaryDirectory() as home:
+            cache=Path(home)/'vision-cache'/'BV1234567890.json'
+            self.assertIsNone(pv._save_vision_cache(cache,{'description':'sample'}))
+            data=json.loads(cache.read_text('utf8'))
+            self.assertTrue(pv._vision_cache_is_fresh(cache))
+            self.assertTrue(pv._vision_cache_record_is_fresh(data))
+            with patch.object(pv.time,'time',return_value=data['createdAt']+24*3600):
+                self.assertFalse(pv._vision_cache_record_is_fresh(data))
+            old=pv.time.time()-24*3600-2
+            pv.os.utime(cache,(old,old))
+            self.assertFalse(pv._vision_cache_is_fresh(cache))
+
     def test_domain_restrictions(self):
         for url in ['https://evil.invalid/sprite.jpg','http://i0.hdslb.com/x.jpg','https://i0.hdslb.com.evil.invalid/x.jpg']:
             with self.assertRaises(ValueError):pv._image_url(url)
