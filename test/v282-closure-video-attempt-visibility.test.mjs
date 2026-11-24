@@ -49,8 +49,9 @@ test('For multi-window focus show last unsuccessful window, not an older success
   assert.match(result.result,/视觉模型未返回有效结果/)
 })
 test('Tree and timeline surface recent attempts separately from durable Life experiences',()=>{
-  assert.match(html,/id="life-video-attempt-history"[^>]+hidden/)
-  assert.match(ui,/最近视觉尝试（不是已观看列表）/)
+  assert.match(html,/id="life-video-attempt-panel"[^>]+hidden/)
+  assert.match(html,/id="life-video-attempt-history"/)
+  assert.match(ui,/const history=\$\('life-video-attempt-history'\),attemptPanel=\$\('life-video-attempt-panel'\)/)
   assert.match(ui,/视觉子动作：/)
   assert.match(ui,/上层元数据成功不代表这次识图成功/)
   assert.match(planner,/if\(!visualObservation\|\|visualObservation\.bvid!==choice\.bvid/)

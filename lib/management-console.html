@@ -1488,6 +1488,7 @@ input.ui-toggle[type="checkbox"]:disabled{opacity:.55;cursor:not-allowed}
 #panel-plans .life-plan-overview-cta{font-size:11px;margin-top:1px}
 #panel-plans .life-plan-overview-context{margin:2px 16px 7px;font-size:11px}
 @media(max-width:900px){#panel-plans .life-plan-overview-card:last-child{min-height:0}}
+
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -2631,8 +2632,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="toolbar memory-search-bar"><input id="main-session-history-query" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="输入视频标题 / BV号 / 聊天关键词，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div>
 <section class="neural-recall-board" aria-label="神经回忆场：只读的真实记忆关系">
   <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4><div id="neural-memory-stats" class="neural-memory-stats" aria-label="可衰减记忆账本统计" role="status"><span id="neural-fading-total">衰减副本 · 读取中</span><span id="neural-fading-new">今日新增 · 读取中</span><span id="neural-fading-forgot">今日遗忘 · 读取中</span></div></div><span id="neural-memory-count" class="neural-counter">等待读取</span></div>
-  <p class="muted">拖动旋转、滚轮缩放。彩色证据线＝已核验共享来源；搜索后由「查询向量」发出的青色线＝高维余弦相似度，不是 3D 距离。</p>
-  <p class="muted neural-search-boundary">仅在启用并成功连接<strong>本地 Embedding 模型</strong>时，这是语义搜索；否则只是明确标记的关键词匹配，不会假装生成向量。真实肥鱼的回忆流程不同：<strong>场景理解 → 回忆意图 → 权限／遗忘过滤 → 候选召回 → （可选向量排序／模型甄别）→ 读取真实记忆 → 自主组织回应</strong>。此图仅演示可视化检索，不是模型内部思考的录像。</p>
+  <details class="neural-guidance"><summary>操作提示与证据说明 <span>拖动旋转 · 滚轮缩放 · 点击记忆点</span></summary><p class="muted">彩色连线只表示已核验共享来源；搜索后青色连线对应本地向量余弦相似度，不是画面中的三维距离。</p><p class="muted neural-search-boundary">本地 Embedding 模型已连接时才进行语义检索，否则为标注清楚的关键词匹配。真实回忆仍需经过场景理解、回忆意图、权限与遗忘过滤、召回及核验；这个视图不是内部思考录像。</p></details>
   <div class="neural-recall-controls"><label><input id="neural-show-all" type="checkbox" checked> 显示全部可回忆节点（未命中变灰）</label><label for="neural-node-limit">最多显示</label><select id="neural-node-limit" aria-label="最多绘制的记忆节点数"><option value="500">500</option><option value="1000" selected>1000</option><option value="2000">2000</option><option value="10000">10000（高负载）</option></select></div>
   <div class="neural-recall-controls"><label title="仅显示真实共享证据，数量为 0 时不会凭空画线"><input id="neural-show-interest" type="checkbox" checked> 兴趣证据连线 <small id="neural-interest-edge-count">(0)</small></label><label><input id="neural-show-relationship" type="checkbox" checked> 互动证据连线 <small id="neural-relationship-edge-count">(0)</small></label><label><input id="neural-show-source" type="checkbox" checked> 共享来源连线 <small id="neural-source-edge-count">(0)</small></label><label><input id="neural-show-emotion" type="checkbox" checked> 当时情绪回声（有证据时）</label></div>
   <p class="muted" id="neural-evidence-explanation">连线必须由两个节点共享已核验的来源证据；若显示 (0)，开关不会改变画面，绝不伪造关联。</p>
@@ -2646,7 +2646,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   <div class="neural-legend" aria-label="记忆布局状态">
   <strong id="neural-layout-mode">结构布局 · 非语义坐标</strong>
 </div>
-  <p class="muted neural-clarity-key" aria-label="记忆衰减亮度图例">节点深浅代表已记录的记忆清晰程度：<strong>清晰</strong>（明亮） · <strong>模糊</strong>（中等） · <strong>印象</strong>（较淡）；未标注不凭日期推算衰减。类别由颜色区分，衰减由明暗区分。</p>
+  <p class="muted neural-clarity-key" aria-label="记忆衰减亮度图例">节点亮度：清晰 · 模糊 · 印象（仅按已有标注，不凭日期推断）。</p>
 <div class="neural-recall-layout">
     <div class="neural-recall-field"><div class="neural-query-toolbar" role="search"><label for="neural-search-input">在回忆场内搜索</label><input id="neural-search-input" maxlength="120" placeholder="例如：游戏、绘画、朋友…" autocomplete="off"><button type="button" id="neural-search-apply" class="life-action life-sky">唤起回忆</button><span id="neural-query-stage" role="status" aria-live="polite">等待输入关键词</span></div><div id="neural-memory-viewport" class="neural-memory-viewport"><div class="neural-viewport-actions"><button id="neural-memory-reset" type="button" title="回到初始视角">⟲ 重置视角</button><button id="neural-memory-fullscreen" type="button" aria-pressed="false" aria-label="全屏打开神经回忆场">⛶ 全屏</button></div><canvas id="neural-memory-canvas" aria-hidden="true"></canvas><svg id="neural-semantic-overlay" viewBox="0 0 1000 570" aria-hidden="true"><g id="neural-semantic-beams"></g></svg><svg id="neural-memory-svg" viewBox="0 0 1000 570" role="group" aria-label="可旋转平移的三维记忆节点空间，左键拖动旋转，右键拖动平移，滚轮缩放，点击节点查看详情" tabindex="0"><defs><radialGradient id="neural-haze"><stop offset="0" stop-color="#a6dfe3" stop-opacity=".16"/><stop offset="1" stop-color="#a6dfe3" stop-opacity="0"/></radialGradient></defs><circle cx="500" cy="285" r="255" fill="url(#neural-haze)"/><g id="neural-memory-edges"></g><g id="neural-memory-signals"></g><g id="neural-memory-nodes"></g></svg></div><div id="neural-embedding-mask" class="neural-embedding-mask" role="status" aria-live="polite"><div class="neural-embedding-message"><strong>🔒 本地语义回忆暂未开启</strong><p id="neural-embedding-mask-hint">正在核对本地模型、运行时与向量索引。已安装并不等于当前已启动；下方真实记忆列表不受影响。</p></div></div><p id="neural-memory-status" class="muted" role="status" aria-live="polite">等待读取当前记忆；不会生成虚构节点。</p></div>
     <div class="neural-recall-side"><h5>被唤起的记忆</h5><div id="neural-memory-results" class="neural-memory-results"><p class="muted">输入关键词并搜索，或留空查看最近。</p></div><div id="neural-memory-detail" class="neural-memory-detail" tabindex="-1" aria-live="polite">点击节点或结果卡片查看真实来源和清晰程度。</div></div>
@@ -2768,7 +2768,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
  <div class="life-choice-stage" data-stage="receipt"><small>04 · 核对结果</small><strong>尚无回执</strong></div>
 </div>
 <div class="life-tree-viewport"><svg id="life-behavior-tree" viewBox="0 0 970 400" role="img" aria-label="Life 五类基础行为与当前真实动作，动态入场"></svg></div>
-<div id="life-tree-video-target" class="life-tree-video-target" hidden><span>当前画面观察目标 · </span><a id="life-tree-video-link" target="_blank" rel="noopener noreferrer"></a><small>仅表示正在尝试读取该 BV；不是已经看完或识图成功</small><button id="life-gallery-open-current" type="button" class="life-action life-sky" disabled>查看已核验画面</button></div>
+<div id="life-tree-video-target" class="life-tree-video-target" hidden><span>当前画面观察目标 · </span><a id="life-tree-video-link" target="_blank" rel="noopener noreferrer"></a><small id="life-tree-video-stage">正在等待可信视觉回执</small><button id="life-gallery-open-current" type="button" class="life-action life-sky" disabled>查看已核验画面</button></div>
 <div class="life-gallery-compact" id="life-gallery" aria-label="上一条已核验视频观察">
   <div><strong>最近一次已核验的视频画面</strong><span id="life-gallery-status" role="status">正在读取…</span></div>
   <button type="button" id="life-gallery-open-latest" class="life-action life-sky" disabled>查看拼图与时间线</button>
@@ -2782,14 +2782,9 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="life-tree-legend"><span>◎ 五类常驻行为</span><span>◉ 真正发生的动作才显示分支</span><span>≈ 运行中动态</span><span>✓ 结果须有真实回执</span></div>
 <p class="muted">行为树展示的是源码支持的动作类别及最近的匿名真实决策，不等同于每一轮可用的完整动作菜单。只有合格候选才进入实际模型菜单；视频 Agent 的下游动作由专业工具与发送门禁执行。下方生活记录按真实回执时间排序；并行读取的完成顺序不代表先后决定了看什么。</p>
 <div class="life-now-timeline life-behavior-timeline" aria-label="行动树关联的实时生活记录">
-<div id="life-timeline-live-activity" class="life-timeline-live-activity" role="status" aria-live="polite" hidden></div>
 <div id="life-timeline-section" class="settings-section life-section"><div class="toolbar life-timeline-controls"><span class="life-timeline-live-dot" aria-hidden="true"></span><span class="life-timeline-update-state" id="life-timeline-update-state" role="status">实时同步 · 每 4 秒对账</span><select id="life-timeline-days" aria-label="时间线范围"><option value="7">最近 7 天</option><option value="30" selected>最近 30 天</option><option value="90">最近 90 天</option></select><button id="life-timeline-refresh" class="life-action life-sky">刷新列表</button></div>
 <p id="life-timeline-summary" class="muted" role="status" hidden></p>
-<p id="life-video-attempt-history" class="muted life-visual-attempt-history" role="status" aria-live="polite" hidden></p>
-<details id="life-release-evidence-section" class="contextual-settings"><summary>🧪 发布验收 · 只读匿名快照</summary>
-<p class="muted">用于检查原创主评论准入 · 最近视频轮次、未知发送冻结与尚待人工核验的发布门禁；不会调用模型、读取私信或触发平台写入。快照并不代表已通过 Windows 实机验收。</p>
-<button id="life-release-evidence-export" type="button" class="life-action life-sky">生成发布验收快照（只读）</button><p id="life-release-evidence-status" class="muted" role="status">尚未采集。</p><pre id="life-release-evidence-result" class="video-debug-json" aria-label="脱敏发布验收快照" hidden></pre>
-</details>
+<details id="life-video-attempt-panel" class="life-visual-attempt-panel" hidden><summary>最近视觉尝试 <span>诊断记录 · 不代表已看懂</span></summary><p id="life-video-attempt-history" class="muted life-visual-attempt-history" role="status" aria-live="polite"></p></details>
 <div id="life-timeline-list" class="records records-scroll tall" aria-label="真实生活时间线滚动列表" aria-live="polite" aria-relevant="additions"></div></div>
 </div>
 </section>
@@ -3631,4 +3626,39 @@ POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世�
 #panel-life-agent #life-video-agent-interval-setting{margin-top:14px;border:1px solid var(--stroke);background:var(--tint);border-radius:17px;padding:15px}
 #panel-diagnostics #life-video-manual-diagnostics{margin:14px 0;padding:15px 18px}
 #panel-diagnostics #life-video-manual-diagnostics>summary{cursor:pointer;font-weight:750}
+
+/* dev.5: evidence-driven motion and compact memory controls. No simulated actions. */
+#panel-life-agent .life-visual-attempt-panel{margin:8px 0;border:1px solid var(--stroke);background:color-mix(in srgb,var(--tint) 35%,var(--panel));border-radius:11px}
+#panel-life-agent .life-visual-attempt-panel[hidden]{display:none}
+#panel-life-agent .life-visual-attempt-panel>summary{cursor:pointer;padding:8px 12px;font-size:12px;font-weight:700;color:var(--ink);list-style-position:inside}
+#panel-life-agent .life-visual-attempt-panel>summary span{font-size:11px;font-weight:450;color:var(--muted);margin-left:7px}
+#panel-life-agent .life-visual-attempt-panel .life-visual-attempt-history{margin:0;padding:3px 12px 10px;border:none;background:transparent;line-height:1.7;font-size:12px}
+#panel-life-agent #life-behavior-tree .life-tree-edge.is-growing{stroke-dasharray:var(--life-edge-length) var(--life-edge-length);stroke-dashoffset:0;animation:life-edge-grow .7s cubic-bezier(.22,.62,.12,1) both;animation-delay:var(--life-edge-delay)}
+#panel-life-agent #life-behavior-tree .life-tree-flow-overlay{stroke:#3fa18a;stroke-width:2.2;stroke-dasharray:6 13;fill:none;pointer-events:none;animation:life-stream-travel 1.2s linear infinite}
+#panel-life-agent #life-behavior-tree .life-tree-flow-overlay.is-delayed{opacity:0;animation:none}
+#panel-life-agent #life-behavior-tree .life-tree-action-group.is-entering .life-tree-active-branch{animation:life-action-in .48s cubic-bezier(.2,.72,.25,1) .34s both;transform-box:fill-box;transform-origin:center}
+#panel-life-agent #life-behavior-tree .life-tree-action-group.is-entering .life-tree-active-leaf{animation:life-action-in .52s cubic-bezier(.2,.72,.25,1) 1.03s both;transform-box:fill-box;transform-origin:center}
+#panel-life-agent #life-behavior-tree .life-tree-action-group.is-leaving,#panel-life-agent #life-behavior-tree .life-tree-edge.is-leaving{pointer-events:none;animation:life-action-out .38s ease both}
+#panel-life-agent #life-timeline-list>.life-timeline-exit-ghost{position:absolute!important;z-index:3;pointer-events:none!important;margin:0!important;animation:life-card-exit .34s ease-in both!important}
+#panel-life-agent #life-timeline-list{position:relative}
+#panel-life-agent .life-choice-stage.is-transitioning{animation:life-step-update .42s ease both}
+@keyframes life-step-update{from{opacity:.63;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes life-edge-grow{from{stroke-dashoffset:var(--life-edge-length)}to{stroke-dashoffset:0}}
+@keyframes life-action-in{from{opacity:0;transform:translateY(9px) scale(.96);filter:blur(2px)}to{opacity:1;transform:none;filter:none}}
+@keyframes life-action-out{to{opacity:0;transform:translateY(-7px) scale(.94)}}
+@keyframes life-card-exit{to{opacity:0;transform:translateY(-13px) scale(.965)}}
+#panel-life .neural-recall-board{padding:13px 15px}
+#panel-life .neural-recall-head h4{font-size:18px;margin:0 0 3px}
+#panel-life .neural-recall-head{gap:8px}
+#panel-life .neural-memory-stats{gap:4px}
+#panel-life .neural-recall-controls{gap:6px 13px;margin:7px 0;font-size:11px}
+#panel-life .neural-kind-filters{margin:7px 0;padding:6px 9px}
+#panel-life .neural-controls-hint,#panel-life .neural-clarity-key,#panel-life .neural-recall-board #neural-evidence-explanation{font-size:11px;line-height:1.45;margin:4px 0}
+#panel-life .neural-guidance{border:1px solid var(--stroke);border-radius:9px;margin:7px 0;padding:0 9px;background:color-mix(in srgb,var(--tint) 18%,var(--panel))}
+#panel-life .neural-guidance>summary{cursor:pointer;padding:6px 0;font-size:11px;color:var(--ink);font-weight:680}
+#panel-life .neural-guidance>summary span{font-weight:400;color:var(--muted);margin-left:7px}
+#panel-life .neural-guidance p{font-size:11px;line-height:1.55;margin:5px 0 9px}
+#panel-life .neural-node.is-appearing{animation:neural-star-bloom .62s cubic-bezier(.16,.72,.3,1) var(--neural-stagger,0ms) both;transform-box:fill-box;transform-origin:center}
+@keyframes neural-star-bloom{from{opacity:0;transform:translateY(6px) scale(.5);filter:brightness(2.2)}65%{opacity:1;transform:translateY(-1px) scale(1.08)}to{opacity:1;transform:none;filter:none}}
+@media(prefers-reduced-motion:reduce){#panel-life-agent #life-behavior-tree .life-tree-edge.is-growing,#panel-life-agent #life-behavior-tree .life-tree-action-group.is-entering :is(.life-tree-active-branch,.life-tree-active-leaf),#panel-life-agent #life-behavior-tree .is-leaving,#panel-life-agent #life-behavior-tree .life-tree-flow-overlay,#panel-life-agent #life-timeline-list>.life-timeline-exit-ghost,#panel-life-agent .life-choice-stage.is-transitioning,#panel-life .neural-node.is-appearing{animation:none!important;transform:none!important;filter:none!important}}
 </style>

@@ -73,12 +73,10 @@ test('S0 未知视频轮次、账号缺失、不可信输入必须 fail closed',
  assert.equal(r.releaseReady,false)
 })
 
-test('S0/S1 发布快照使用 GET 只读接口且不增添写入权限、私信对象或模型调用',()=>{
+test('S0/S1 export remains GET-only backend; no duplicated user-facing control or write path',()=>{
  const idx=source('index.js'),ui=source('lib/management-console.js'),html=source('lib/management-console.html')
  assert.match(idx,/req\.method === 'GET' && path === '\/api\/bili-duty\/life-agent\/release-acceptance-evidence'/)
  assert.match(idx,/releaseAcceptanceEvidence\(/)
- assert.match(html,/id="life-release-evidence-export"/)
- assert.match(ui,/request\('\/life-agent\/release-acceptance-evidence'\)/)
- assert.match(ui,/evidence\?\.readOnly!==true/)
- assert.match(ui,/evidence\?\.releaseReady!==false/)
+ assert.doesNotMatch(html,/id="life-release-evidence-export"/)
+ assert.doesNotMatch(ui,/\$\('life-release-evidence-export'\)/)
 })

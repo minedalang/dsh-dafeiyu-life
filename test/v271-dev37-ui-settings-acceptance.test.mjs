@@ -7,18 +7,12 @@ const html=source('lib/management-console.html')
 const script=source('lib/management-console.js')
 const backend=source('index.js')
 
-test('S0/S1 导出在可见生活时间线并且只有一个真实执行按钮',()=>{
- const lifePanel=html.indexOf('id="panel-life-agent"')
- const timeline=html.indexOf('id="life-timeline-section"')
- const button=html.indexOf('id="life-release-evidence-export"')
- assert.ok(lifePanel>=0&&lifePanel<timeline)
- assert.ok(timeline<button,'导出应留在正常生活时间线内')
+test('S0/S1 read-only evidence endpoint is retained but developer snapshot controls are not in the Life user view',()=>{
+ assert.match(backend,/release-acceptance-evidence/)
+ assert.doesNotMatch(html,/id="life-release-evidence-export"|id="life-release-evidence-section"/)
+ assert.doesNotMatch(script,/\$\('life-release-evidence-export'\)/)
+ assert.match(html,/id="life-timeline-list"/)
  assert.doesNotMatch(html,/life-agent-expert-settings|life-developer-diagnostics/)
- assert.equal(html.split('id="life-release-evidence-export"').length-1,1)
- assert.match(html,/原创主评论准入 · 最近视频轮次/)
- assert.match(script,/request\('\/life-agent\/release-acceptance-evidence'\)/)
- assert.match(script,/life-timeline-summary/)
- assert.match(script,/evidence\?\.readOnly!==true\|\|evidence\?\.releaseReady!==false/)
 })
 
 test('删除同时改动两种公开评论额度的旧预设，保留两个独立硬边界',()=>{

@@ -50,7 +50,7 @@ test('neural canvas uses uniform high-DPI geometry and retains invisible SVG int
 
 test('AGENTS fixes the packaging and concise Chinese Conventional Commit contract',()=>{
  const guide=src('AGENTS.md')
- assert.match(guide,/单个完整 ZIP/)
+ assert.match(guide,/准备单个 ZIP/)
  assert.match(guide,/Git Patch/)
  assert.match(guide,/COMMIT_MESSAGE\.txt/)
  assert.match(guide,/`<type>\(<scope>\): dev\.N/)

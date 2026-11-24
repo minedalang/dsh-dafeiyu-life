@@ -45,7 +45,8 @@ test('read-only video debug has a completion watchdog and does not count metadat
   assert.match(ui,/lastSummary/)
   assert.match(ui,/当前.*视频|本次资料整理已结束/)
   assert.match(ui,/const branches=\[/)
-  assert.match(html,/life-timeline-live-activity/)
+  assert.doesNotMatch(html,/id="life-timeline-live-activity"/)
+  assert.match(html,/id="life-tree-video-stage"/)
   assert.equal((ui.match(/title:'生活安排'/g)||[]).length,1)
 })
 test('local vision reuse uses bounded warm keep alive rather than forced unload on each call',()=>{
