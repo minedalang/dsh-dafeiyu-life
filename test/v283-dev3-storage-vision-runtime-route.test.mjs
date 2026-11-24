@@ -4,7 +4,8 @@ import {mkdtempSync,mkdirSync,copyFileSync,existsSync,readdirSync,rmSync,writeFi
 import {join,dirname} from 'node:path'
 import {tmpdir} from 'node:os'
 import {spawn,spawnSync} from 'node:child_process'
-import {migrateDomainOffline} from '../lib/storage-layout.mjs'
+import {migrateDomainOffline,storageLayoutStatus,storageDomainRoot} from '../lib/storage-layout.mjs'
+import {migrateLargeDataOffline,largeDataStatus} from '../lib/storage-large-data-v2.mjs'
 import {verifyVisionPythonCacheRoute} from '../lib/storage-vision-runtime-check.mjs'
 import {verifyRelocatedModelRuntime} from '../lib/storage-model-runtime-check.mjs'
 
@@ -41,6 +42,53 @@ test('real Python preview cache writer round trips only on relocated modelData',
  assert.ok(existsSync(join(target,'vision-cache','cached.json')))
  assert.deepEqual(readdirSync(join(target,'vision-cache')).sort(),['cached.json'])
  assert.equal(existsSync(join(root,'vision-cache','cached.json')),true,'retained source is never touched')
+}))
+test('V2 core media route runs real Python probe instead of demanding a relocated V1 media partition',()=>run(async({root,tmp})=>{
+ put(join(root,'preview_vision.py'),'# present')
+ const target=join(tmp,'v2','data')
+ migrateLargeDataOffline({root,target,legacy:storageLayoutStatus(root),confirmedStopped:true,
+  python:process.execPath,runtimeProbe:()=>true})
+ assert.equal(largeDataStatus(root).configured,true)
+ assert.equal(storageLayoutStatus(root).domains.media.configured,false)
+ const media=storageDomainRoot(root,'media')
+ assert.equal(media,join(root,'runtime-media-v2'))
+ let started=false
+ const result=await verifyVisionPythonCacheRoute({root,python:process.execPath,
+  env:{BILI_DUTY_HOME:root,DSH_MEDIA_CACHE_HOME:media},
+  spawnImpl:()=>{started=true;return spawn(process.execPath,['-e',
+   "process.stdout.write('VISION_ROUTE_PROBE:ok\\n')"],{stdio:['ignore','pipe','ignore']})}})
+ assert.equal(started,true,'V2 must reach Python instead of failing on retired V1 media status')
+ assert.equal(result.ok,true,JSON.stringify(result))
+ assert.match(result.reason,/当前生效缓存目录/)
+}))
+test('V2 real Python cache writer round trips in core sandbox, not in external model library',t=>run(async({root,tmp})=>{
+ const py=process.platform==='win32'?'python':'python3'
+ if(spawnSync(py,['-c','from PIL import Image'],{timeout:5000}).status!==0){
+  t.skip('Python and Pillow not installed in test runner');return
+ }
+ for(const name of ['preview_vision.py','video_traffic.py'])copyFileSync(new URL('../lib/'+name,import.meta.url),join(root,name))
+ const target=join(tmp,'v2','data')
+ migrateLargeDataOffline({root,target,legacy:storageLayoutStatus(root),confirmedStopped:true,
+  python:process.execPath,runtimeProbe:()=>true})
+ const media=storageDomainRoot(root,'media')
+ mkdirSync(media,{recursive:true})
+ const result=await verifyVisionPythonCacheRoute({root,python:py,
+  env:{...process.env,BILI_DUTY_HOME:root,DSH_MEDIA_CACHE_HOME:media}})
+ assert.equal(result.ok,true,JSON.stringify(result))
+ assert.equal(existsSync(join(target,'vision-cache')),false,'V2 must never write the external model library')
+ assert.equal(existsSync(join(root,'vision-cache','cached.json')),true,'old cache remains untouched')
+}))
+test('V2 rejects old external cache route before launching Python',()=>run(async({root,tmp,target:legacy})=>{
+ put(join(root,'preview_vision.py'),'# present')
+ migrateLargeDataOffline({root,target:join(tmp,'v2','data'),legacy:storageLayoutStatus(root),
+  confirmedStopped:true,python:process.execPath,runtimeProbe:()=>true})
+ let started=false
+ const result=await verifyVisionPythonCacheRoute({root,python:process.execPath,
+  env:{BILI_DUTY_HOME:root,DSH_MEDIA_CACHE_HOME:legacy},
+  spawnImpl:()=>{started=true;throw Error('wrong route must not launch')}})
+ assert.equal(result.ok,false)
+ assert.equal(result.code,'media_route_mismatch')
+ assert.equal(started,false)
 }))
 test('slow Windows-style Python import reports its last stage instead of calling the route broken',()=>run(async({root,target})=>{
  put(join(root,'preview_vision.py'),'# present')
