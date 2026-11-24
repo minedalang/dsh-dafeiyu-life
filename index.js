@@ -68,6 +68,7 @@ import { verifyRecent, appendVerifyToReport } from './lib/verify.mjs'
 import { stateDirOf, readJson, writeJson, ensureHomeFiles, ensureCharter, charterPath, dayKey } from './lib/state.mjs'
 import {originalStateDir,storageLocationStatus,inspectStorageTarget,storageCategories} from './lib/storage-location.mjs'
 import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,inspectDomainReturnHome,storageDomainsUsage,storageMigrationGroups} from './lib/storage-layout.mjs'
+import {largeDataStatus,inspectLargeDataMigration} from './lib/storage-large-data-v2.mjs'
 import {inspectRetainedModelCopies} from './lib/storage-maintenance.mjs'
 import {verifyRelocatedModelRuntime} from './lib/storage-model-runtime-check.mjs'
 import {verifyPythonCachePaths} from './lib/storage-python-cache-check.mjs'
@@ -632,6 +633,7 @@ export function apply(ctx, config) {
     // The published partition is authoritative. A stale inherited or DSH CLI
     // environment must never quietly move a child back to the old C cache.
     HF_HOME:storageDataPath(stateDir,'.hf-cache'),
+    DSH_WHISPER_LIBRARY_HOME:largeDataStatus(stateDir).whisperHome||'',
     DSH_MEDIA_CACHE_HOME:storageDomainRoot(stateDir,'media'),
   })
   // Determine whether this is an upgrade BEFORE allocating the vision TEMP folder.
@@ -3758,6 +3760,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       ...(isSelftest?['          BILI_VISION_SELFTEST_ALLOWED: '+yq('1'), '          BILI_VISION_TEST_ASSET: '+yq(posix(join(pluginDir,'lib','assets','local-vision-selftest-dafeiyu.png')))]:['          BILI_VISION_CHILD: '+yq('1')]),
       '          BILI_DUTY_HOME: '+yq(posix(stateDir)),
       '          HF_HOME: '+yq(posix(storageDataPath(stateDir,'.hf-cache'))),
+      '          DSH_WHISPER_LIBRARY_HOME: '+yq(posix(largeDataStatus(stateDir).whisperHome||'')),
       '          DSH_MEDIA_CACHE_HOME: '+yq(posix(storageDomainRoot(stateDir,'media'))),
       '          TEMP: '+yq(posix(visionTempPath(stateDir))),
       '          TMP: '+yq(posix(visionTempPath(stateDir))),
@@ -4058,6 +4061,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         '          BILI_DUTY_AUTO_COMMENT_REVIEW: ' + yq(cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0 && lifeVideoActionBridge?.status().ready===true ? '1':'0'),
         '          BILI_DUTY_HOME: ' + yq(posix(stateDir)),
         '          HF_HOME: ' + yq(posix(storageDataPath(stateDir,'.hf-cache'))),
+        '          DSH_WHISPER_LIBRARY_HOME: ' + yq(posix(largeDataStatus(stateDir).whisperHome||'')),
         '          DSH_MEDIA_CACHE_HOME: ' + yq(posix(storageDomainRoot(stateDir,'media'))),
         '          BILI_SHARED_READ_MINUTE_LIMIT: ' + yq(cfg.biliReadMinuteLimit),
         '          BILI_SHARED_READ_HOUR_LIMIT: ' + yq(cfg.biliReadHourLimit),
@@ -6887,7 +6891,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     return index.get(uid,relationshipOptions())
   },getAccountTag:trustedLifeAccountTag,onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'episode:'+String(id)))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},logger:{warn:m=>log('人生记忆：'+m)}})
   ctx.effect(()=>()=>lifeMemory?.close(),'bili-duty: 只读内存 FTS 关闭')
-  embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,rootDir:storageDataPath(stateDir,'embedding-runtime'),logger:{warn:m=>log('本地语义运行时：'+m)}})
+  embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,rootDir:storageDataPath(stateDir,'embedding-runtime'),
+    modelDir:largeDataStatus(stateDir).embeddingModelDir||undefined,logger:{warn:m=>log('本地语义运行时：'+m)}})
   embeddingIndex=createEmbeddingMemoryIndex({dataDir:stateDir,provider:embeddingRuntime,logger:{warn:m=>log('本地语义索引：'+m)}})
   ctx.effect(()=>()=>embeddingRuntime?.stop(),'bili-duty: 本地 Embedding Runtime 关闭')
   personalityEvolution=createPersonalityEvolution({dataDir:stateDir,memoryGateway:lifeMemory,logger:{warn:m=>log('人格成长：'+m)}})
@@ -8623,6 +8628,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         if(req.method==='GET')return sendJson(res,200,{ok:true,
           currentDir:stateDir,defaultDir:location.defaultDir,relocated:location.relocated,
           usage:storageCategories(stateDir),domains:storageDomainsUsage(stateDir),groups:storageMigrationGroups(stateDir),
+          largeDataV2:largeDataStatus(stateDir),
           retainedModel:inspectRetainedModelCopies({root:stateDir}),cleanupJob:readCleanupJob(stateDir),
           retainedLife:inspectRetainedLifeCopies({root:stateDir}),lifeCleanupJob:readLifeCleanupJob(stateDir),
           migrationJob:readMigrationJob(stateDir),lifeReturnEvidence:readLifeReturnEvidence(stateDir,{migrationJob:readMigrationJob(stateDir)}),
@@ -8631,6 +8637,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           suggestedTargets:storageTargetSuggestions(process.platform,homedir()),
           visionPythonPath:String(cfg.visionPythonPath||''),offlineMigrationOnly:true})
         if(path==='/api/bili-duty/storage/verify-retained-model'){
+          if(largeDataStatus(stateDir).configured)throw Error('V2 不允许调用旧版模型副本清理预检，请保留历史副本')
           const body=await readBody(req,2048)
           if(!storageModelVerification||body?.ticket!==storageModelVerification.ticket||
              Date.now()-storageModelVerification.at>10*60_000||
@@ -8737,6 +8744,7 @@ logger:{warn:m=>log('社交意图：'+m)}
             workerScript:join(pluginDir,'scripts','cleanup-retained-life-after-exit.mjs'),parentPid:process.pid}))
         }
         if(path==='/api/bili-duty/storage/schedule-model-cleanup'){
+          if(largeDataStatus(stateDir).configured)throw Error('V2 大型数据禁止沿用旧版模型副本清理；请保留旧副本')
           if(['waiting','running'].includes(readMigrationJob(stateDir).status))throw Error('迁移助手尚未结束，不能同时清理旧副本')
           if(!storageModelVerification||body?.ticket!==storageModelVerification.ticket||
              JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])!==storageModelVerification.configKey)
@@ -8747,22 +8755,25 @@ logger:{warn:m=>log('社交意图：'+m)}
             workerScript:script,parentPid:process.pid}))
         }
         if(path==='/api/bili-duty/storage/schedule-migration'){
-          if(!['model','python','memory'].includes(body?.domain))throw Error('仅允许预约模型、Python 缓存和 Life 记忆分区的停机迁移')
+          if(!['model','python','memory','large'].includes(body?.domain))throw Error('未知的存储迁移分区')
+          if(body.domain!=='large'&&body?.returnHome!==true)throw Error('V2 已停用旧版分类新迁移；请选择大型数据统一迁移')
           if(body?.confirm!=='SCHEDULE_STOPPED_MIGRATION')throw Error('请明确确认退出 DSH 后执行迁移')
           return sendJson(res,200,queueDomainMigration({root:stateDir,domain:body.domain,
             target:body?.target,mode:body?.mode,returnHome:body?.returnHome===true,
             workerScript:join(pluginDir,'scripts','migrate-bili-duty-after-exit.mjs'),parentPid:process.pid}))
         }
         if(body?.domain){
+          if(body.domain!=='large'&&body?.returnHome!==true)throw Error('V2 已停用旧版分类新迁移；请选择大型数据统一迁移')
           if(body.domain==='python'&&body.mode&&body.mode!=='cache')
             throw Error('Python 迁移仅支持 uv/pip 包缓存；不提供环境重建')
-          const result=body?.returnHome===true
+          const result=body?.domain==='large'
+            ?inspectLargeDataMigration({root:stateDir,target:body?.target,legacy:storageLayoutStatus(stateDir)})
+            :body?.returnHome===true
             ?inspectDomainReturnHome({root:stateDir,domain:body.domain})
             :inspectDomainMigration({root:stateDir,domain:body.domain,target:body?.target,mode:body?.mode})
           return sendJson(res,200,{...result,offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-domain.mjs')})
         }
-        const result=inspectStorageTarget({source:stateDir,target:body?.target})
-        return sendJson(res,200,{...result,offlineMigrationOnly:true,migrationScript:join(pluginDir,'scripts','migrate-bili-duty-storage.mjs')})
+        throw Error('V2 存储管理已停用整个 bili-duty 目录的新迁移；请使用大型数据一键迁移')
       }catch(error){return sendJson(res,400,{ok:false,error:String(error?.message||error).slice(0,180)})}
     }
     // v2.4.69: user-configured backup directory and SQLite memory snapshots; never use OS Temp.

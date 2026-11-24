@@ -370,7 +370,20 @@ def main() -> int:
                 return 2
             model_source = str(model_dir.resolve())
         else:
+            # V2 model library is read-only to the Low-integrity Python worker.
+            # HF_HOME remains the original sandbox-writable download cache.
             model_source = args.model
+            library = os.environ.get('DSH_WHISPER_LIBRARY_HOME', '').strip()
+            if library and re.fullmatch(r'(tiny|base|small|medium|large-v3)', args.model):
+                snapshots = Path(library) / 'hub' / ('models--Systran--faster-whisper-' + args.model) / 'snapshots'
+                try:
+                    candidates = sorted((p for p in snapshots.iterdir() if p.is_dir()), key=lambda p: p.name)
+                    for snapshot in candidates:
+                        if (snapshot / 'model.bin').is_file() and (snapshot / 'config.json').is_file():
+                            model_source = str(snapshot)
+                            break
+                except (OSError, PermissionError):
+                    pass
         phase_at = clock()
         from faster_whisper import WhisperModel
         print('[asr] 加载模型 %s（第一次会自动下模型，之后就是本地读）…' % args.model, file=sys.stderr)

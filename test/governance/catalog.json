@@ -880,6 +880,11 @@
       "owner": "storage-management-and-vision-routing",
       "kind": "security",
       "intent": "验证 modelData 迁移后视频 Python 缓存路径一致、读写回收与未通过时禁止误报识图就绪"
+    },
+    "v283-dev3-large-storage-v2.test.mjs": {
+      "owner": "storage-management",
+      "kind": "security",
+      "intent": "验证分层存储V2大型模型迁移、路径切换与安全回滚"
     }
   },
   "protected": [

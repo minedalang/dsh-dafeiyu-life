@@ -2312,7 +2312,20 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <div class="storage-overview-copy"><strong id="storage-overview-title">正在检查存储状态…</strong><p id="storage-overview-detail">加载分区、迁移及清理任务信息。</p></div>
     <button id="storage-open-relocate" type="button">管理存储位置</button>
   </div>
-  <div class="storage-section-label"><strong>三个存储分区</strong><span>绿色表示已配置独立位置；未分盘不代表异常</span></div>
+  <section class="storage-metric storage-retained-card" id="storage-large-v2-panel" aria-label="大型数据统一迁移">
+    <div class="storage-retained-heading"><strong>大型数据区 · 一键整体迁移</strong><span class="storage-retained-tag">存储 V2 · 不迁 Python 环境</span></div>
+    <p class="muted">只需选择一个目标目录（空目录或已验证的 V2 历史位置）。系统自动迁移已下载的 Whisper 模型与 Embedding GGUF 模型；Python、uv/pip、视觉和音视频工作缓存保持在沙箱可写的核心运行区。Life 及遗忘保护暂不参与自动迁移，避免无权限写入或记忆丢失。</p>
+    <p class="storage-current"><span>大型数据生效位置</span><strong id="storage-large-v2-current">尚未配置（模型留在原位置）</strong></p>
+    <label for="storage-large-v2-target">新的大型数据文件夹（空目录或经过核验的历史 V2 目录）</label>
+    <div class="storage-controls"><input id="storage-large-v2-target" type="text" autocomplete="off" spellcheck="false" placeholder="例如 D:\DSHData\bili-duty\data"><button id="storage-large-v2-check" type="button">检查大型数据迁移</button></div>
+    <div id="storage-large-v2-result" class="storage-status" data-state="neutral" role="status" aria-live="polite">尚未检查，不会移动或删除文件。</div>
+    <div id="storage-large-v2-confirm" hidden>
+      <p class="storage-alert">只预约离线迁移，须完全退出 DSH。迁移前会再次核对文件、生产 Python 在核心目录的写入能力和源数据一致性；失败不发布新路径。旧模型及 Life 数据均不自动删除。</p>
+      <button id="storage-large-v2-schedule" type="button">预约一键迁移全部安全大型数据</button>
+    </div>
+  </section>
+  <div class="storage-section-label" id="storage-legacy-title"><strong>旧版分区状态与回迁</strong><span>仅用于历史迁移恢复，新迁移统一使用上方大型数据区</span></div>
+    <div class="storage-section-label" id="storage-legacy-subtitle"><strong>旧版三个存储分区</strong><span>仅用于已有旧分区的安全回迁，不参与新的大型数据迁移</span></div>
   <div id="storage-domain-list" class="storage-domains" aria-label="三组存储分区"></div>
   <div class="storage-section-label"><strong>原数据目录的物理占用</strong><span>包含旧模型副本，不代表新目录未生效</span></div>
   <p class="storage-current"><span>当前数据目录</span><strong id="storage-current-path">正在读取…</strong></p>
@@ -2377,7 +2390,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
       </div>
     </div>
   </section>
-  <details class="storage-relocate" id="storage-relocate">
+  <details class="storage-relocate" id="storage-relocate" hidden>
     <summary>更改数据保存位置 <span>· 安全停机迁移</span></summary>
     <p class="muted">选择模型或 Python 缓存后，可直接预约退出后的安全迁移，无需复制命令。请正常完全退出 DSH，独立助手确认停机后才执行，之后重启查看结果；Life 记忆也支持一键预约严格停机迁移；整体 bili-duty 仍采用手动停机流程。Python 仅迁移包管理缓存，不重建依赖。</p>
     <div class="storage-choose-row"><div><label for="storage-domain">迁移哪一部分</label>

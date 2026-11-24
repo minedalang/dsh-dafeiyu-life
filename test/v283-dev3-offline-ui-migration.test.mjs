@@ -223,7 +223,7 @@ test('in-progress or expired running job blocks DSH startup to prevent concurren
  assert.throws(()=>queueDomainMigration({root,domain:'model',target,workerScript:'worker.mjs',spawnImpl:spawnFake}),/已有待处理/)
 }))
 
-test('management UI queues all three domain groups but keeps root migration offline, never HTTP-copies',()=>{
+test('management UI supports V2 unified large data plus legacy return-home, never HTTP-copies',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const script=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
@@ -234,7 +234,9 @@ test('management UI queues all three domain groups but keeps root migration offl
  assert.match(script,/\['model','python','memory'\]\.includes\(domain\)/)
  assert.match(script,/Life 记忆已迁移 · 请核验回忆与遗忘保护/)
  assert.match(script,/Life 记忆、深层详情、遗忘保护与向量索引必须一致迁移/)
- assert.match(host,/\['model','python','memory'\]\.includes\(body\?\.domain\)/)
+ assert.match(host,/\['model','python','memory','large'\]\.includes\(body\?\.domain\)/)
+ assert.match(host,/body.domain!=='large'&&body\?\.returnHome!==true/)
+ assert.ok(html.includes('id="storage-large-v2-panel"'))
  assert.match(host,/assertMigrationStartupSafe\(stateDir\)/)
  assert.match(host,/SCHEDULE_STOPPED_MIGRATION/)
  assert.match(host,/仅允许电脑本机同源/)
