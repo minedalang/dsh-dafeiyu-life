@@ -18,7 +18,7 @@ test('video Debug labels saved Ollama route separately from actual visual result
   assert.match(ui,/当前视觉模型配置（不是 DSH 主对话模型）/)
   assert.match(ui,/本轮视觉回执（与当前配置分开）/)
   assert.match(ui,/observedVisual\.cacheSaved===false/)
-  assert.match(py,/NamedTemporaryFile\(mode='w'/)
+  assert.match(py,/os\.open\(/)
   assert.match(py,/cacheErrorCode/)
   assert.match(worker,/result\.get\('cacheErrorCode'\) or result\.get\('errorCode'\)/)
   assert.match(worker,/result\['mode'\]='independent_local'/)
@@ -28,7 +28,7 @@ test('video Debug labels saved Ollama route separately from actual visual result
 function storageHarness(response){
   const start=ui.indexOf('  const loadStorageLocation=async()=>{')
   const end=ui.indexOf("  $('storage-refresh').addEventListener",start)
-  assert.ok(start>0&&end>start,'actual management loader found')
+  assert.ok(start>0&&end>start,'actual V2 management loader found')
   const script=ui.slice(start,end)
   const elements=new Map(),notices=[]
   const $=id=>{
@@ -38,35 +38,34 @@ function storageHarness(response){
   }
   const request=async()=>{if(response instanceof Error)throw response;return response}
   const storageNotice=(...args)=>notices.push(args)
-  const runner=new Function('$','request','storageNotice',`${'let storageGroups=[],storagePlatform="win32",storageSuggestedTargets={},storageVisionPythonPath="",storageModelCheckTicket="",storageLifeCheckLocation=null;'}
-    const storageSize=n=>String(n||0);const node=()=>({appendChild(){}});const add=()=>{};
-    const updateStorageDomainChoice=()=>{};const storageOverview=()=>{};
+  const runner=new Function('$','request','storageNotice',`let storageModelCheckTicket='';
+    const node=()=>({});const add=()=>{};const storageSize=n=>String(n||0);
     ${script}
     return loadStorageLocation;`)
   return {load:runner($,request,storageNotice),$,notices}
 }
-
-test('storage loader displays archive status without ReferenceError; errors exit the loading placeholder',async()=>{
-  const x={currentDir:'root',domains:[],groups:[],archives:{items:[],totalBytes:0},usage:{buckets:[]}}
+test('V2 storage loader renders the actual core/model paths and reports read errors, without legacy archive actions',async()=>{
+  const x={currentDir:'C:/core',largeDataV2:{configured:true,target:'D:/large'},migrationJob:{status:'idle'},usage:{buckets:[]}}
   const h=storageHarness(x)
   await h.load()
-  assert.equal(h.$('storage-current-path').textContent,'root')
-  assert.ok(h.notices.some(n=>n[0]==='storage-archive-inventory'&&n[2].includes('暂无')))
+  assert.equal(h.$('storage-current-path').textContent,'C:/core')
+  assert.equal(h.$('storage-large-v2-current').textContent,'D:/large')
+  assert.equal(h.$('storage-retained-model-check').disabled,false)
+  assert.ok(h.notices.some(n=>n[0]==='storage-migration-job-status'))
   const failed=storageHarness(new Error('storage temporarily unavailable'))
   await assert.rejects(failed.load(),/temporarily unavailable/)
-  assert.ok(failed.notices.some(n=>n[0]==='storage-archive-inventory'&&n[1]==='danger'))
+  assert.ok(failed.notices.some(n=>n[0]==='storage-migration-job-status'&&n[1]==='danger'))
+  assert.equal(failed.$('storage-overview').dataset.state,'danger')
 })
 
-test('model runtime check and old-copy SHA are separate user actions',()=>{
+test('V2 actual model runtime verification is independent from retired old-copy cleanup routes',()=>{
   const runtime=server.slice(server.indexOf("if(path==='/api/bili-duty/storage/verify-model-runtime')"),
     server.indexOf("if(path==='/api/bili-duty/storage/review-model-vision')"))
   assert.match(runtime,/verifyRelocatedModelRuntime\(/)
   assert.doesNotMatch(runtime,/inspectRetainedModelCopies\(/)
-  const copyCheck=server.slice(server.indexOf("if(path==='/api/bili-duty/storage/verify-retained-model')"),
-    server.indexOf("if(path==='/api/bili-duty/storage/verify-model-runtime')",server.indexOf("if(path==='/api/bili-duty/storage/verify-retained-model')")))
-  assert.match(copyCheck,/inspectRetainedModelCopies\(\{root:stateDir,verify:true\}\)/)
-  assert.match(html,/id="storage-retained-model-copy-check"[^>]*hidden/)
-  assert.match(ui,/request\('\/storage\/verify-retained-model',\{ticket:storageModelCheckTicket\}\)/)
+  assert.doesNotMatch(html,/id="storage-retained-model-copy-check"/)
+  assert.doesNotMatch(ui,/request\('\/storage\/verify-retained-model'/)
+  assert.doesNotMatch(server,/\/api\/bili-duty\/storage\/schedule-model-cleanup/)
 })
 
 test('production vision status separates current route from last model attempt with safe error codes',()=>{

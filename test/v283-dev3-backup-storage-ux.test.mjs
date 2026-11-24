@@ -1,151 +1,28 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-import {join} from 'node:path'
-import {fileURLToPath} from 'node:url'
-const root=join(fileURLToPath(new URL('.',import.meta.url)),'..')
-const page=readFileSync(join(root,'lib/management-console.html'),'utf8')
-const script=readFileSync(join(root,'lib/management-console.js'),'utf8')
-
-function ui() {
-  const start=script.indexOf('  const storageNotice=(id,state,title,detail=')
-  const end=script.indexOf("  $('storage-open-relocate').addEventListener",start)
-  assert.ok(start>=0&&end>start,'must find live production status renderer')
-  const elements=new Map()
-  const symbol={textContent:''}
-  const $=id=>{
-    if(!elements.has(id))elements.set(id,{
-      dataset:{},textContent:'',children:[],
-      replaceChildren(...nodes){this.children=nodes},
-      querySelector(selector){assert.equal(selector,'.storage-overview-symbol');return symbol},
-    })
-    return elements.get(id)
-  }
-  const node=(tag,text)=>({tag,text})
-  const {storageOverview,storageNotice}=new Function('node','$',script.slice(start,end)+'return {storageOverview,storageNotice}') (node,$)
-  return {storageOverview,storageNotice,$,symbol}
-}
-const groups=[
-  {key:'model',parts:[{domain:'whisper'},{domain:'embedding'},{domain:'media'}]},
-  {key:'python',parts:[{domain:'python'}]},
-  {key:'memory',parts:[{domain:'memory'}]},
-]
-const domains=[
-  {key:'whisper',configured:true},{key:'embedding',configured:true},{key:'media',configured:true},
-  {key:'python',configured:false},{key:'memory',configured:false},
-]
-const data=(migrationJob={},cleanupJob={},custom=domains)=>({groups,domains:custom,migrationJob,cleanupJob})
-const snapshot=u=>({
-  state:u.$('storage-overview').dataset.state,
-  title:u.$('storage-overview-title').textContent,
-  detail:u.$('storage-overview-detail').textContent,
+const source=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
+const ui=source('lib/management-console.js'),html=source('lib/management-console.html'),host=source('index.js')
+test('V2 storage page uses accessible two-zone layout and a single large-data target',()=>{
+ for(const id of ['storage-location-panel','storage-current-path','storage-large-v2-current','storage-large-v2-target','storage-large-v2-check','storage-large-v2-result','storage-large-v2-schedule'])assert.ok(html.includes(`id="${id}"`),id)
+ assert.match(html,/核心运行区/);assert.match(html,/大型数据区/)
+ assert.match(html,/@media\(max-width:760px\)/)
+ assert.match(html,/aria-live="polite"/)
 })
-
-test('backup UI keeps existing backup/restore controls and has one state overview',()=>{
-  for(const id of ['storage-overview','storage-overview-title','storage-overview-detail',
-    'storage-domain-list','storage-migration-job-status','storage-retained-model-check-result',
-    'storage-retained-model-check','storage-retained-model-confirm-clean',
-    'storage-domain','storage-target','storage-check','storage-schedule-migration',
-    'backup-directory','backup-export','memory-backup-export','backup-restore','memory-backup-restore']){
-    assert.equal([...page.matchAll(new RegExp(`id="${id}"`,'g'))].length,1,`duplicate or missing ${id}`)
-  }
-  assert.match(page,/数据与存储/)
-  assert.match(page,/原数据目录的物理占用/)
-  assert.match(page,/实际生效位置/)
-  assert.match(page,/storage-partition-status\[data-state="success"\]/)
-  assert.match(page,/@media\(prefers-color-scheme:dark\)/)
-  assert.match(page,/aria-atomic="true"/)
-  assert.doesNotMatch(page,/onclick=|onload=/i,'no inline handlers')
+test('backup and restore remain available and separate from data migration',()=>{
+ for(const id of ['backup-directory','backup-directory-save','backup-export','backup-recovery-tools','memory-backup-export','life-memory-health'])assert.ok(html.includes(`id="${id}"`),id)
+ assert.match(ui,/const loadBackupDirectory=async/)
+ assert.match(host,/\/api\/bili-duty\/data-backup\/export/)
 })
-
-test('scheduled cleanup is high-visibility amber and explicitly says nothing deleted yet',()=>{
-  const u=ui()
-  u.storageOverview(data({status:'completed'},{status:'waiting'}))
-  const state=snapshot(u)
-  assert.equal(state.state,'attention')
-  assert.match(state.title,/退出 DSH/)
-  assert.match(state.detail,/尚未删除任何文件/)
-  assert.equal(u.symbol.textContent,'!')
+test('V2 models can be tested without old-copy SHA/delete workflows',()=>{
+ assert.match(ui,/request\('\/storage\/verify-model-runtime'/)
+ assert.match(ui,/request\('\/storage\/review-model-vision'/)
+ assert.doesNotMatch(ui,/request\('\/storage\/(verify-retained-model|schedule-model-cleanup)'/)
+ assert.doesNotMatch(html,/id="storage-retained-model-copy-check"/)
+ assert.doesNotMatch(html,/id="storage-retained-model-cleanup"/)
 })
-
-test('scheduled migration is amber and different from successful relocation',()=>{
-  const u=ui()
-  u.storageOverview(data({status:'waiting'}))
-  assert.equal(snapshot(u).state,'attention')
-  assert.match(snapshot(u).detail,/尚未复制迁移数据/)
-  u.storageOverview(data({status:'completed'}))
-  assert.equal(snapshot(u).state,'progress')
-  assert.match(snapshot(u).title,/验证新位置/)
-  assert.doesNotMatch(snapshot(u).title,/实测通过/)
-})
-
-test('failed cleanup is danger, never promises deletion or automatic retry',()=>{
-  const u=ui()
-  u.storageOverview(data({},{status:'failed',reason:'llama-server.exe 未退出'}))
-  const state=snapshot(u)
-  assert.equal(state.state,'danger')
-  assert.match(state.title,/旧副本仍保留/)
-  assert.match(state.detail,/llama-server\.exe/)
-  assert.match(state.detail,/不会自动重试/)
-})
-
-test('verified cleanup-completion is green; idle configured state clearly shows partition count',()=>{
-  const u=ui()
-  u.storageOverview(data({status:'completed'},{status:'completed'}))
-  assert.equal(snapshot(u).state,'success')
-  assert.match(snapshot(u).title,/清理已完成/)
-  u.storageOverview(data())
-  assert.equal(snapshot(u).state,'success')
-  assert.match(snapshot(u).title,/已独立分盘 1\/3/)
-  u.storageOverview(data({}, {},domains.map(x=>({...x,configured:false}))))
-  assert.equal(snapshot(u).state,'neutral')
-  assert.match(snapshot(u).detail,/默认目录/)
-})
-
-test('status announcements use text nodes rather than HTML and expose correct state',()=>{
-  const u=ui()
-  u.storageNotice('storage-retained-model-check-result','attention','已预约清理','<script>alert(1)</script>')
-  const el=u.$('storage-retained-model-check-result')
-  assert.equal(el.dataset.state,'attention')
-  assert.deepEqual(el.children.map(v=>v.tag),['strong','span'])
-  assert.equal(el.children[1].text,'<script>alert(1)</script>')
-})
-
-test('Python cache migration has a dedicated verification button and honest cache-only status',()=>{
- const index=readFileSync(join(root,'index.js'),'utf8')
- for(const id of ['storage-python-cache-check-panel','storage-python-cache-check',
-   'storage-python-cache-check-info','storage-python-cache-check-result'])
-   assert.equal([...page.matchAll(new RegExp(`id="${id}"`,'g'))].length,1)
- assert.match(page,/一键验证包管理缓存/)
- assert.match(page,/#storage-python-cache-check-panel\[hidden\]\{display:none!important\}/)
- assert.match(script,/storage-python-cache-check.*addEventListener\('click'/)
- assert.match(script,/\/storage\/verify-python-cache/)
- assert.match(script,/uv \/ pip 缓存已迁移 · 可一键验证缓存路径/)
- assert.match(index,/verifyPythonCachePaths\(\{root:stateDir\}\)/)
- const u=ui()
- u.storageOverview(data({status:'completed',domain:'python'}))
- assert.match(snapshot(u).title,/uv \/ pip 包缓存已迁至独立目录/)
- assert.doesNotMatch(snapshot(u).detail,/模型实测通过/)
-})
-
-
-test('Life post-migration UI has separate readonly verification, cleanup and safe undo controls',()=>{
- for(const id of ['storage-life-verify-panel','storage-life-verify','storage-life-verify-tests',
-   'storage-life-verify-result','storage-life-undo','storage-life-undo-button','storage-life-cleanup','storage-life-cleanup-button'])
-  assert.equal([...page.matchAll(new RegExp(`id="${id}"`,'g'))].length,1,id)
- assert.match(script,/request\('\/storage\/verify-life-memory'/)
- assert.match(script,/request\('\/storage\/schedule-life-cleanup'/)
- assert.match(script,/domain:'memory',returnHome:true/)
- assert.match(page,/不会触发衰减/)
- assert.match(page,/不是直接启用 C 盘的过期副本/)
- assert.match(page,/完全退出 DSH/)
- assert.match(page,/storage-life-cleanup\[hidden\]/)
-})
-
-test('pending stopped-instance Life cleanup shows an explicit next action, not deletion success',()=>{
- const u=ui()
- u.storageOverview({...data(),lifeCleanupJob:{status:'waiting'}})
- assert.equal(snapshot(u).state,'attention')
- assert.match(snapshot(u).title,/退出 DSH/)
- assert.match(snapshot(u).detail,/未删除 Life 文件/)
+test('legacy partition picker, undo, python migration and stale-copy cleanup no longer render',()=>{
+ for(const word of ['storage-domain-list','storage-domain-help','storage-relocate','storage-life-verify-panel','storage-python-cache-check-panel','storage-archive-panel','storage-offline-steps'])
+  assert.doesNotMatch(html,new RegExp(`id="${word}"`),word)
+ assert.doesNotMatch(ui,/request\('\/storage\/(verify-life-memory|schedule-life-cleanup|schedule-external-life-cleanup)'/)
 })

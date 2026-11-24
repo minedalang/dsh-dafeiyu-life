@@ -83,34 +83,22 @@ test('escaping links in old Whisper directory prevent cleanup, even when source 
  assert.throws(()=>cleanupRetainedModelCopies({root,confirmedStopped:true,confirmedRuntimeVerified:true,confirmedDeleteOldCopy:true}),/安全拒绝/)
  assert.equal(existsSync(join(temp,'private','sensitive.bin')),true)
 }))
-test('UI renders distinct root disk usage, active partitions, old-copy preview and platform-specific shell instructions',()=>{
+test('V2 screen separates core usage, large data, verification and independent backups without copy cleanup',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const backend=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- for(const id of ['storage-retained-model-info','storage-retained-model-check','storage-retained-model-confirm-clean','storage-retained-model-vision-answer'])assert.ok(html.includes(`id="${id}"`))
- assert.match(html,/上方仅统计原业务根目录的物理占用/)
- assert.match(js,/storagePlatform==='win32'/)
- assert.match(js,/storage\/schedule-model-cleanup/)
- assert.doesNotMatch(js,/--cleanup-retained-model/)
+ for(const id of ['storage-metrics','storage-large-v2-current','storage-retained-model-check','storage-retained-model-vision-answer','backup-export'])assert.ok(html.includes(`id="${id}"`))
+ assert.doesNotMatch(html,/id="storage-retained-model-confirm-clean"/)
+ assert.doesNotMatch(js,/storage\/schedule-model-cleanup/)
  assert.match(backend,/storage\/verify-model-runtime/)
- assert.match(backend,/storage\/schedule-model-cleanup/)
- assert.match(backend,/suggestedTargets:storageTargetSuggestions/)
+ assert.doesNotMatch(backend,/storage\/schedule-model-cleanup/)
 })
-
-test('CLI inspection is read-only and advanced Python rebuild is refused on every platform',()=>run(({temp,root})=>{
- setup({temp,root})
- const cli=fileURLToPath(new URL('../scripts/migrate-bili-duty-domain.mjs',import.meta.url))
- const result=spawnSync(process.execPath,[cli,'--root',root,'--inspect-retained-model'],{encoding:'utf8'})
- assert.equal(result.status,0,`inspect failed: ${result.error?.message||result.stderr||result.stdout}`)
- assert.match(result.stdout,/"verified": true/)
- assert.equal(existsSync(join(root,'.hf-cache','hub','model.bin')),true)
- {
-  const denied=spawnSync(process.execPath,[cli,'--root',root,'--domain','python','--mode','rebuild',
-   '--to',join(temp,'pythonData'),'--confirm-stopped'],{encoding:'utf8'})
-  assert.equal(denied.status,1,`rebuild refusal returned unexpected status: ${denied.error?.message||denied.stderr||denied.stdout}`)
-  assert.match(denied.stderr,/仅可迁移 uv\/pip 包管理缓存/)
-  assert.equal(existsSync(join(temp,'pythonData')),false)
- }
+test('old offline migration CLI was removed; V2 worker remains for shutdown-only migration',()=>run(({temp,root})=>{
+ const obsolete=fileURLToPath(new URL('../scripts/migrate-bili-duty-domain.mjs',import.meta.url))
+ assert.equal(existsSync(obsolete),false)
+ const current=fileURLToPath(new URL('../scripts/migrate-bili-duty-after-exit.mjs',import.meta.url))
+ assert.equal(existsSync(current),true)
+ assert.equal(existsSync(join(temp,'pythonData')),false)
 }))
 test('HF internal blob file symlinks materialized on new storage remain verifiable before cleanup',t=>run(({temp,root})=>{
  const cache=join(root,'.hf-cache','hub','models--example')

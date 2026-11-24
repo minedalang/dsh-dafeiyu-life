@@ -209,12 +209,15 @@ test('Windows offline Python/vision repair scripts use the validated active part
  const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
  assert.ok(pkg.files.includes('scripts/resolve-bili-duty-storage.mjs'))
 })
-test('management endpoints are read-only and delegate actual migration to an offline script',()=>{
+test('V2 HTTP only schedules large models and never copies files while host runs',()=>{
  const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
- assert.match(host,/inspectDomainMigration\(/)
+ assert.match(host,/inspectLargeDataMigration\(/)
+ assert.match(host,/body\?\.domain!=='large'/)
  assert.doesNotMatch(host,/migrateDomainOffline\(/)
- for(const id of ['storage-domain','storage-domain-list','storage-target','storage-offline-steps'])assert.ok(html.includes(`id="${id}"`))
+ assert.doesNotMatch(host,/inspectDomainMigration\(/)
+ assert.match(html,/id="storage-large-v2-target"/)
+ assert.doesNotMatch(html,/id="storage-domain"/)
 })
 test('model migration is a single atomic group: Whisper, embedding, media and existing Life stay isolated',()=>fixture(({t,root,path})=>{
  put(path('.hf-cache','hub','weights.bin'),'whisper')
@@ -291,32 +294,26 @@ test('model group identity marker loss fails closed without returning C-drive mo
  assert.throws(()=>storageDataPath(root,'.hf-cache','weights.bin'),/不存在|缺失|身份/)
  assert.equal(readFileSync(path('.hf-cache','weights.bin'),'utf8'),'real-weight')
 }))
-test('management UI exposes three migration groups with a single cache-only Python operation',()=>{
+test('storage V2 screen has only one target, with Python/uv caches kept in sandbox',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const script=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const backend=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- for(const value of ['model','python','memory'])assert.match(html,new RegExp(`<option value="${value}"`))
- for(const id of ['storage-domain-current','storage-domain-current-parts','storage-target-suggestion','storage-use-suggestion','storage-python-cache-hint'])assert.ok(html.includes(`id="${id}"`))
- assert.match(html,/Python 包管理缓存（uv \/ pip）/)
- assert.doesNotMatch(html,/storage-python-mode-wrap|name="storage-python-mode"|高级：切换运行环境位置/)
- assert.doesNotMatch(script,/selectedStoragePythonMode|storage-python-mode-wrap/)
- assert.match(script,/const mode=domain==='python'\?'cache':undefined/)
- assert.match(backend,/storageMigrationGroups\(stateDir\)/)
- assert.match(backend,/visionPythonPath:String\(cfg\.visionPythonPath\|\|''\)/)
+ assert.match(html,/id="storage-large-v2-target"/)
+ assert.match(html,/核心运行区/)
+ assert.match(html,/大型数据区/)
+ assert.doesNotMatch(html,/<select id="storage-domain"/)
+ assert.doesNotMatch(script,/storage-python-mode-wrap|selectedStoragePythonMode/)
+ assert.match(backend,/body\?\.domain!=='large'/)
  assert.match(backend,/PIP_CACHE_DIR: storageDataPath\(stateDir,'pip-cache'\)/)
- for(const hint of ['modelData','pythonData','lifeData'])assert.ok(readFileSync(new URL('../lib/storage-platform.mjs',import.meta.url),'utf8').includes(hint))
 })
-
-test('storage page displays cache-only explanation exclusively for Python, with no hidden rebuild choice',()=>{
+test('V2 never exposes Python interpreter rebuilding or cache migration actions',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const script=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
- assert.match(html,/id="storage-python-cache-hint"[^>]*\bhidden\b/)
- assert.match(html,/#panel-backup #storage-python-cache-hint\[hidden\]\{display:none!important\}/)
- assert.match(script,/\$\('storage-python-cache-hint'\)\.hidden=domain!=='python'/)
- assert.match(script,/const mode=domain==='python'\?'cache':undefined/)
- for(const line of ['不复制或重建 Python 环境','不涉及模型安装或 Python 环境重建','不会重建','不重新安装 Python 依赖'])assert.ok((script+html).includes(line))
+ assert.match(html,/Python、uv\/pip、虚拟环境/)
+ for(const id of ['storage-python-cache-check','storage-python-cache-hint','storage-return-check','storage-life-undo'])
+  assert.doesNotMatch(html,new RegExp(`id="${id}"`))
+ assert.doesNotMatch(script,/request\('\/storage\/verify-python-cache'/)
 })
-
 test('Python cache verification is denied before migration and never creates new Python environments',()=>fixture(({t,root,path})=>{
  put(path('.venv','pyvenv.cfg'),'unchanged')
  assert.throws(()=>verifyPythonCachePaths({root}),/尚未配置独立位置/)

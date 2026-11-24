@@ -1775,6 +1775,18 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </style>
 
 <style>
+
+#panel-backup .storage-v2-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.18fr);gap:14px;margin:16px 0}
+#panel-backup .storage-v2-area{min-width:0;border:1px solid var(--stroke);border-radius:15px;padding:18px;background:var(--panel);display:flex;flex-direction:column;gap:12px}
+#panel-backup .storage-v2-primary{border-color:var(--action);background:var(--tint)}
+#panel-backup .storage-v2-area-title{display:flex;gap:12px;align-items:center}
+#panel-backup .storage-v2-area-title h4{margin:0 0 3px;font-size:16px}
+#panel-backup .storage-v2-area-title p{margin:0;font-size:12px}
+#panel-backup .storage-v2-mark{border:1px solid var(--stroke);border-radius:10px;padding:8px;font-size:12px;font-weight:800;flex:none}
+#panel-backup .storage-v2-path{display:block;white-space:normal;overflow-wrap:anywhere;word-break:break-word;padding:12px;border:1px solid var(--stroke);border-radius:10px;background:var(--panel);font-size:12px}
+#panel-backup .storage-v2-small{font-size:12px;color:var(--muted);font-weight:650}
+#panel-backup .storage-v2-area .storage-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:760px){#panel-backup .storage-v2-grid{grid-template-columns:minmax(0,1fr)}}
 #panel-backup .storage-compact{border:1px solid var(--stroke);background:var(--panel);border-radius:17px;padding:18px;margin:14px 0;box-shadow:var(--lift)}
 #panel-backup .storage-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
 #panel-backup .storage-heading h3{margin:0;font-size:17px}
@@ -2302,113 +2314,42 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <section id="panel-backup" hidden>
 <div class="backup-hero">
   <div class="backup-hero-kicker">本机数据 · 存储与安全备份</div>
-  <div class="backup-hero-head"><div><h2>💾 数据与存储</h2><p>先确认数据存在哪里、是否已经迁移，再按需要验证旧副本或创建备份。迁移和清理需要退出 DSH 才会执行。</p></div><span class="backup-hero-label">🔒 本机操作</span></div>
-  <div class="backup-steps" aria-label="数据管理流程"><span><b>①</b> 查看当前存储</span><span><b>②</b> 迁移并验证</span><span><b>③</b> 按需清理与备份</span></div>
+  <div class="backup-hero-head"><div><h2>💾 存储与备份</h2><p>两个存储位置，一次迁移全部安全大型模型；原始数据保留，备份独立管理。</p></div><span class="backup-hero-label">🔒 本机操作</span></div>
+  <div class="backup-steps" aria-label="数据管理流程"><span><b>①</b> 查看数据位置</span><span><b>②</b> 一键迁移大型模型</span><span><b>③</b> 实测与备份</span></div>
 </div>
-<div class="storage-compact" id="storage-location-panel" aria-label="本地存储管理">
-  <div class="storage-heading"><div><span class="storage-eyebrow">01 / 存储与迁移</span><h3>📂 数据存在哪里？</h3><p class="muted">各分区显示的是实际生效位置；原目录可能仍保留旧副本。迁移不会重置鱼鱼的记忆。</p></div><button id="storage-refresh" type="button">刷新状态与占用</button></div>
-  <div id="storage-overview" class="storage-overview" data-state="neutral" role="status" aria-live="polite" aria-atomic="true">
-    <span class="storage-overview-symbol" aria-hidden="true">◎</span>
-    <div class="storage-overview-copy"><strong id="storage-overview-title">正在检查存储状态…</strong><p id="storage-overview-detail">加载分区、迁移及清理任务信息。</p></div>
-    <button id="storage-open-relocate" type="button">管理存储位置</button>
-  </div>
-  <section class="storage-metric storage-retained-card" id="storage-large-v2-panel" aria-label="大型数据统一迁移">
-    <div class="storage-retained-heading"><strong>大型数据区 · 一键整体迁移</strong><span class="storage-retained-tag">存储 V2 · 不迁 Python 环境</span></div>
-    <p class="muted">只需选择一个目标目录（空目录或已验证的 V2 历史位置）。系统自动迁移已下载的 Whisper 模型与 Embedding GGUF 模型；Python、uv/pip、视觉和音视频工作缓存保持在沙箱可写的核心运行区。Life 及遗忘保护暂不参与自动迁移，避免无权限写入或记忆丢失。</p>
-    <p class="storage-current"><span>大型数据生效位置</span><strong id="storage-large-v2-current">尚未配置（模型留在原位置）</strong></p>
-    <label for="storage-large-v2-target">新的大型数据文件夹（空目录或经过核验的历史 V2 目录）</label>
-    <div class="storage-controls"><input id="storage-large-v2-target" type="text" autocomplete="off" spellcheck="false" placeholder="例如 D:\DSHData\bili-duty\data"><button id="storage-large-v2-check" type="button">检查大型数据迁移</button></div>
-    <div id="storage-large-v2-result" class="storage-status" data-state="neutral" role="status" aria-live="polite">尚未检查，不会移动或删除文件。</div>
-    <div id="storage-large-v2-confirm" hidden>
-      <p class="storage-alert">只预约离线迁移，须完全退出 DSH。迁移前会再次核对文件、生产 Python 在核心目录的写入能力和源数据一致性；失败不发布新路径。旧模型及 Life 数据均不自动删除。</p>
-      <button id="storage-large-v2-schedule" type="button">预约一键迁移全部安全大型数据</button>
-    </div>
+<div class="storage-compact" id="storage-location-panel" aria-label="存储管理 V2">
+ <div class="storage-heading"><div><span class="storage-eyebrow">01 / 存储管理 V2</span><h3>💾 你的数据，两个位置</h3><p class="muted">只需决定大型模型存在哪里。Python、运行缓存和 Life 记忆由程序安全管理，不随本次迁移移动。</p></div><button id="storage-refresh" type="button">刷新状态</button></div>
+ <div class="storage-overview" id="storage-overview" data-state="neutral" role="status" aria-live="polite" aria-atomic="true">
+   <span class="storage-overview-symbol" aria-hidden="true">◎</span><div class="storage-overview-copy"><strong id="storage-overview-title">正在检查…</strong><p id="storage-overview-detail">正在读取实际生效目录与迁移状态。</p></div><button id="storage-open-relocate" type="button">更改大型数据位置</button>
+ </div>
+ <div class="storage-v2-grid">
+  <section class="storage-v2-area" aria-label="核心运行区">
+   <div class="storage-v2-area-title"><span class="storage-v2-mark">01</span><div><h4>核心运行区</h4><p class="muted">自动管理 · 不参与模型迁移</p></div></div>
+   <code class="storage-v2-path" id="storage-current-path">正在读取…</code>
+   <p class="muted">Python、uv/pip、虚拟环境、视觉与音视频工作缓存留在已验证的可写目录。</p>
+   <div class="storage-metrics" id="storage-metrics" aria-label="核心运行区占用"></div>
   </section>
-  <div class="storage-section-label" id="storage-legacy-title"><strong>旧版分区状态与回迁</strong><span>仅用于历史迁移恢复，新迁移统一使用上方大型数据区</span></div>
-    <div class="storage-section-label" id="storage-legacy-subtitle"><strong>旧版三个存储分区</strong><span>仅用于已有旧分区的安全回迁，不参与新的大型数据迁移</span></div>
-  <div id="storage-domain-list" class="storage-domains" aria-label="三组存储分区"></div>
-  <div class="storage-section-label"><strong>原数据目录的物理占用</strong><span>包含旧模型副本，不代表新目录未生效</span></div>
-  <p class="storage-current"><span>当前数据目录</span><strong id="storage-current-path">正在读取…</strong></p>
-  <div class="storage-metrics" id="storage-metrics" aria-label="原业务根目录物理占用（含迁移后保留的旧副本）"></div>
-  <p class="muted">上方仅统计原业务根目录的物理占用（包括迁移后保留的旧模型副本、未迁移的 Python），不等于当前生效模型位置。下方显示各分区实际生效目录和占用。</p>
-  <div class="storage-section-label"><strong>迁移与旧副本清理</strong><span>先确认任务状态，再进行实测或清理</span></div>
-  <div id="storage-migration-job-status" class="storage-status" data-state="neutral" role="status" aria-live="polite" aria-atomic="true">尚无预约的自动迁移任务。</div>
-  <section id="storage-python-cache-check-panel" class="storage-metric storage-retained-card" hidden aria-label="Python 包管理缓存迁移验证">
-    <div class="storage-retained-heading"><strong>✓ Python 包管理缓存已配置分盘</strong><span class="storage-retained-tag">不涉及 Python 环境重建</span></div>
-    <p id="storage-python-cache-check-info" class="muted">正在读取缓存存储位置…</p>
-    <p class="muted">点击后检查 uv / pip 实际缓存路由和目标目录读写能力。不下载软件、不安装依赖、不移动解释器，也不自动删除原缓存。</p>
-    <button type="button" id="storage-python-cache-check">一键验证包管理缓存</button>
-    <div id="storage-python-cache-check-result" class="storage-status" data-state="neutral" role="status" aria-live="polite" aria-atomic="true"></div>
+  <section class="storage-v2-area storage-v2-primary" id="storage-large-v2-panel" aria-label="大型数据统一迁移">
+   <div class="storage-v2-area-title"><span class="storage-v2-mark">02</span><div><h4>大型数据区</h4><p class="muted">你选择位置 · Whisper 与 Embedding 模型一键迁移</p></div></div>
+   <span class="storage-v2-small">当前实际生效目录</span><code class="storage-v2-path" id="storage-large-v2-current">正在读取…</code>
+   <label for="storage-large-v2-target">新的大型数据文件夹</label>
+   <div class="storage-controls"><input id="storage-large-v2-target" type="text" autocomplete="off" spellcheck="false" placeholder="例如 D:\DSHData\bili-duty\data"><button id="storage-large-v2-check" type="button">检查目标目录</button></div>
+   <p class="muted">选择空目录或可信的 V2 历史目录；自动复制所有已登记且符合安全条件的模型文件。不会删除源文件。</p>
+   <div id="storage-large-v2-result" class="storage-status" data-state="neutral" role="status" aria-live="polite">尚未检查目标目录。</div>
+   <div id="storage-large-v2-confirm" hidden><button id="storage-large-v2-schedule" type="button" class="primary">预约一键迁移全部大型模型</button><p class="muted">预约后请完整退出 DSH，离线助手确认停机并完成校验后才切换生效路径。</p></div>
   </section>
-
-  <section id="storage-life-verify-panel" class="storage-metric storage-retained-card" hidden aria-label="Life 记忆迁移及回迁后验证">
-    <div class="storage-retained-heading"><strong>🧠 Life 记忆 · 当前生效目录验证</strong><span class="storage-retained-tag">只读，不修改记忆</span></div>
-    <p class="muted">检查当前生效路径、主情节读取、只读检索、深层详情与遗忘撤销、现有向量索引。不会触发衰减、重建索引或写入新记忆；文件核验通过不等于所有实际聊天场景都已验收。</p>
-    <button id="storage-life-verify" type="button">一键验证当前 Life 记忆</button>
-    <div id="storage-life-verify-tests" class="muted" role="status" aria-live="polite"></div>
-    <div id="storage-life-verify-result" class="storage-status" data-state="neutral" role="status" aria-live="polite" aria-atomic="true"></div>
-    <div id="storage-life-cleanup" hidden>
-      <p class="storage-alert">Life 只读验证和遗忘保护对照均已通过。旧副本清理会永久删除原默认目录中保留的 Life、深层详情、撤销记录与索引，且不影响当前独立分盘。点击仅预约；完全退出 DSH 后助手还会复核，不满足条件就保留旧副本。</p>
-      <button id="storage-life-cleanup-button" type="button" class="danger">清理 Life 旧副本（退出 DSH 后执行）</button>
-    </div>
-    <div id="storage-life-undo" hidden>
-      <p class="storage-alert">验证未通过。可预约安全撤回：不是直接启用 C 盘的过期副本，而是在 DSH 停机后把当前生效目录的最新数据复制回默认位置并隔离旧副本。撤回存储位置不等于修复损坏的记忆；如果当前数据不可安全读取或复制，助手会拒绝切换。</p>
-      <button id="storage-life-undo-button" type="button">撤回本次 Life 迁移（退出 DSH 后执行）</button>
-    </div>
-  </section>
-
-  <div class="storage-metric storage-retained-card" id="storage-retained-model-panel" aria-label="模型分盘运行实测和旧副本清理">
-    <div class="storage-retained-heading"><strong>🧪 模型分盘 · 一键运行实测</strong><span class="storage-retained-tag">独立于旧副本清理</span></div><span id="storage-retained-model-info">正在读取…</span>
-    <p class="muted">可随时验证当前生效模型目录的 Whisper 本地加载、Embedding 向量推理，以及已开启的视觉识别（需本人确认回答）。即使原 C 盘模型旧副本已清理，实测按钮仍可使用。运行实测与旧模型 SHA-256 校验是两个独立操作：实测通过后可按需单独核验旧副本；已有清理记录不会阻止模型再次实测。不会清理 Python、Life 或未知文件。</p>
-    <button id="storage-retained-model-check" type="button">一键验证当前模型运行</button>
-    <button id="storage-retained-model-copy-check" type="button" hidden>单独校验旧模型副本 SHA-256（可选）</button>
-    <div id="storage-retained-model-tests" class="muted" role="status" aria-live="polite"></div>
-    <div id="storage-retained-model-vision-review" hidden>
-      <p class="storage-alert">视觉识别已返回真实图片结果。请检查下方回答是否与测试图片一致；识图内容必须由本人确认。</p>
-      <pre id="storage-retained-model-vision-answer" class="storage-command"></pre>
-      <button type="button" id="storage-retained-model-vision-accept">我已查看，识图正确</button>
-      <button type="button" id="storage-retained-model-vision-reject">识图错误</button>
-    </div>
-    <div id="storage-retained-model-cleanup" hidden>
-      <p class="storage-alert">实测通过。清理旧副本会永久释放原位置空间，并取消直接使用旧模型副本回退的能力。点击后只预约任务，不会在 DSH 运行时删除；请完整退出 DSH 与 Python 进程，离线助手将再次逐文件校验后自动清理。</p>
-      <button id="storage-retained-model-confirm-clean" type="button" class="danger">清理旧副本（退出后自动执行）</button>
-    </div>
-    <div id="storage-retained-model-check-result" class="storage-status" data-state="neutral" role="status" aria-live="polite" aria-atomic="true"></div>
-  </div>
-  <section class="storage-metric storage-retained-card" id="storage-archive-panel" aria-label="迁移回迁后隔离的历史副本">
-    <div class="storage-retained-heading"><strong>📦 历史隔离副本</strong><span class="storage-retained-tag">非当前生效目录 · 不自动删除</span></div>
-    <p class="muted">回迁时旧默认目录会隔离为 <code>.dafeiyu-return-old-*</code>。原外置 Life 分区会保留在旧位置，可能占用磁盘空间。旧目录绝不会被新迁移自动复用或覆盖；先核对副本，再明确决定是否删除。已有的其他隔离档案不自动清理。</p>
-    <div id="storage-archive-inventory" class="storage-status" data-state="neutral" role="status" aria-live="polite">正在读取历史副本…</div>
-    <div id="storage-external-life-panel" hidden>
-      <div class="storage-retained-heading"><strong>回迁后遗留的 D 盘 Life 分区</strong><span class="storage-retained-tag">单独验证 · 用户明确删除</span></div>
-      <p class="muted">如果需要再次迁往这个位置，请先检查旧 D 盘内容，并自行确认清理。<strong>不会自动接管或转移未知文件。</strong> 未留下回迁快照指纹的旧记录，必须证明旧 D 盘每个文件都在当前默认 Life 目录存在相同副本，否则禁止自动删除；<strong>仅凭相同内容无法判断文件是什么时候加入的，必须由使用者再确认历史目录没有需要单独保留的资料。</strong></p>
-      <button id="storage-external-life-check" type="button">检查旧 D 盘 Life 分区能否安全删除</button>
-      <div id="storage-external-life-result" class="storage-status" data-state="neutral" role="status" aria-live="polite">尚未检查旧 D 盘历史分区。</div>
-      <div id="storage-external-life-delete" hidden>
-        <p class="storage-alert">这是永久删除而不是迁移或撤回；只处理页面检查通过的旧 D 盘 Life 分区。点击后仍须再次确认，完整退出 DSH 后由离线助手复核。<strong>有回迁快照时，新增或变化均会被 SHA 检查拦截；旧版无快照时只能证明 C 盘存在相同文件，仍需要您人工审查。</strong>请自行确认已经有独立备份。</p>
-        <button id="storage-external-life-delete-button" class="danger" type="button">预约停机删除旧 D 盘 Life 分区</button>
-      </div>
-    </div>
-  </section>
-  <details class="storage-relocate" id="storage-relocate" hidden>
-    <summary>更改数据保存位置 <span>· 安全停机迁移</span></summary>
-    <p class="muted">选择模型或 Python 缓存后，可直接预约退出后的安全迁移，无需复制命令。请正常完全退出 DSH，独立助手确认停机后才执行，之后重启查看结果；Life 记忆也支持一键预约严格停机迁移；整体 bili-duty 仍采用手动停机流程。Python 仅迁移包管理缓存，不重建依赖。</p>
-    <div class="storage-choose-row"><div><label for="storage-domain">迁移哪一部分</label>
-    <select id="storage-domain"><option value="model">Whisper 模型、Embedding 模型与运行时、影音与视觉可再生缓存</option><option value="python">Python 包管理缓存（uv / pip）</option><option value="memory">Life 记忆、深层详情、遗忘保护与向量索引</option></select>
-    <p class="muted" id="storage-domain-help" role="status" aria-live="polite">模型与影音视觉缓存：按整组安全迁移，不涉及 Python 环境重建。</p>
-    <p class="muted" id="storage-python-cache-hint" hidden>仅迁移 uv-cache 与 pip-cache；不会重建、移动或重新安装 Python 解释器、虚拟环境和依赖。</p></div>
-    <div class="storage-choice-current"><span>所选项目当前位置（按实际生效路径）</span><strong id="storage-domain-current">正在读取…</strong><small id="storage-domain-current-parts"></small></div></div>
-    <label for="storage-target">新目录（必须为空，不允许自动复用历史分区）</label>
-    <p class="muted">建议目录（示例，请按实际磁盘修改）：<code id="storage-target-suggestion">正在读取平台路径…</code> <button id="storage-use-suggestion" type="button">使用建议目录</button>。请按实际磁盘修改，不会自动创建或迁移。</p>
-    <div class="storage-controls"><input id="storage-target" type="text" autocomplete="off" spellcheck="false" placeholder="请输入本机绝对路径"><button id="storage-check" type="button">检查路径</button><button id="storage-return-check" type="button" hidden>迁回默认目录 · 安全预检</button></div>
-    <div class="storage-status storage-inline-status" id="storage-check-result" data-state="neutral" role="status" aria-live="polite">仅检查路径，不移动或删除文件。</div>
-    <div id="storage-scheduled-steps" hidden>
-      <p class="storage-alert">仅预约，不会在 DSH 运行时复制。预约后请正常退出 DSH Desktop/Headless 和相关 Python、模型进程；助手复核停机和数据未变后执行，旧目录始终保留。迁移期间不要重新启动 DSH。</p>
-      <button id="storage-schedule-migration" type="button">一键预约安全迁移（退出后自动执行）</button>
-    </div>
-    <div id="storage-offline-steps" hidden><p class="storage-alert" id="storage-offline-warning">请先完全退出 DSH Desktop、Headless 和相关 Python 进程，再在对应平台的终端运行下面的命令；迁移完成后重启 DSH。原目录不会自动删除。</p><pre id="storage-offline-command" class="storage-command"></pre><button id="storage-copy-command" type="button">复制迁移命令</button></div>
-  </details>
-  <p class="storage-footnote">Windows 使用 PowerShell；macOS / Linux 使用终端（sh/zsh/bash）。建议目录未必位于另一块磁盘；若要释放系统盘空间，请选择真实的其他本地磁盘。网络共享、同步盘、符号链接和文件系统权限等差异需按目标平台单独验收。迁移或回迁后需要重启、逐项验证模型及记忆。回迁始终以当前生效数据为准，不用 C 盘旧副本覆盖记忆；旧副本会隔离保留。分盘后的旧版单目录冷快照暂不支持，不能误以为已经完整备份。Ollama 模型由 Ollama 自己管理，插件不会擅自迁移或删除。</p>
+ </div>
+ <div class="storage-section-label"><strong>迁移任务</strong><span>只运行 V2 大型数据迁移，不提供旧分区迁移、回迁或旧副本删除功能</span></div>
+ <div id="storage-migration-job-status" class="storage-status" data-state="neutral" role="status" aria-live="polite">暂无待处理迁移任务。</div>
+ <section class="storage-metric storage-retained-card" id="storage-retained-model-panel" aria-label="当前模型真实运行验证">
+  <div class="storage-retained-heading"><strong>🧪 验证当前模型运行</strong><span class="storage-retained-tag">不清理任何数据</span></div>
+  <p class="muted">实际加载 Whisper、推理 Embedding、检查视频 Python 缓存，并验证开启的视觉识别。测试当前生效目录，与旧副本无关。</p>
+  <button id="storage-retained-model-check" type="button">一键验证当前模型运行</button>
+  <div id="storage-retained-model-tests" class="muted" role="status" aria-live="polite"></div>
+  <div id="storage-retained-model-vision-review" hidden><p class="storage-alert">请确认本轮图片识别结果是否正确。</p><pre id="storage-retained-model-vision-answer" class="storage-command"></pre><button type="button" id="storage-retained-model-vision-accept">识图正确</button><button type="button" id="storage-retained-model-vision-reject">识图错误</button></div>
+  <div id="storage-retained-model-check-result" class="storage-status" data-state="neutral" role="status" aria-live="polite">尚未执行实测。</div>
+ </section>
+ <p class="storage-footnote">Life 记忆、遗忘保护与备份继续使用各自生效目录，不纳入大型模型迁移。模型旧副本不会被程序自动删除。Ollama 模型由 Ollama 管理；跨盘备份请使用下方独立备份功能。</p>
 </div>
 <div class="backup-layout">
   <div class="settings-section backup-main-card">

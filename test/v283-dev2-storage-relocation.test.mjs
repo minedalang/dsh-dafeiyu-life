@@ -49,13 +49,13 @@ test('symbolic links cannot hide in migration source or target',t=>withRoot(root
  assert.throws(()=>migrateStorageOffline({source,target:join(root,'new-location'),confirmedStopped:true}),/链接/)
 }))
 
-test('management UI offers read-only status and offline-only copy without live relocation',()=>{
+test('storage UI only schedules V2 large-data migration, no live root relocation',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
- for(const id of ['storage-location-panel','storage-current-path','storage-metrics','storage-target','storage-check','storage-offline-steps','storage-copy-command'])assert.ok(html.includes(`id="${id}"`))
- assert.match(js,/storage-offline-command/)
- assert.match(js,/offline-steps'\)\.hidden=false/)
+ for(const id of ['storage-location-panel','storage-current-path','storage-metrics','storage-large-v2-target','storage-large-v2-check','storage-retained-model-check'])assert.ok(html.includes(`id="${id}"`))
+ assert.match(js,/request\('\/storage\/schedule-migration',\{domain:'large'/)
+ assert.doesNotMatch(html,/id="storage-offline-steps"/)
  assert.match(host,/storage\/check/)
  assert.doesNotMatch(host,/migrateStorageOffline\(/)
 })
