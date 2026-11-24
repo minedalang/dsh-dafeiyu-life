@@ -1435,23 +1435,28 @@ input.ui-toggle[type="checkbox"]:disabled{opacity:.55;cursor:not-allowed}
 #panel-comments .comments-record-grid>.record:hover{transform:translateY(-2px);box-shadow:0 12px 25px #12283e17}
 #panel-comments .comments-record-grid>.record>div:first-child{font-weight:680;line-height:1.6}
 #panel-comments .comments-record-grid>.record>div:not(:first-child){margin-top:9px}
-#panel-plans .life-plan-map{padding:5px 21px 8px;background:color-mix(in srgb,var(--panel) 92%,#d8f2ef)}
-#panel-plans .life-plan-flow-svg{display:block;width:100%;height:auto;max-height:290px;overflow:visible;color:var(--ink)}
-#panel-plans .life-plan-svg-title{fill:var(--ink);font-size:18px;font-weight:760}
-#panel-plans .life-plan-svg-caption{fill:var(--muted);font-size:14px}
-#panel-plans .life-plan-svg-copy{fill:var(--ink);font-size:14px;font-weight:560}
-#panel-plans .life-plan-svg-note{fill:var(--muted);font-size:13px}
-#panel-plans .life-plan-svg-foot{fill:var(--muted);font-size:13px;font-weight:550}
-#panel-plans .life-plan-svg-card{transform-origin:center;animation:life-plan-flow-appear .55s ease backwards}
-#panel-plans .life-plan-svg-card:nth-of-type(2){animation-delay:.09s}
-#panel-plans .life-plan-svg-card:nth-of-type(3){animation-delay:.18s}
-#panel-plans .life-plan-route{animation:life-plan-route-flow 15s linear infinite}
-#panel-plans .life-plan-flow-fallback{display:none;font-size:13px;color:var(--muted);margin:0}
-@keyframes life-plan-flow-appear{from{opacity:.5;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-@keyframes life-plan-route-flow{to{stroke-dashoffset:-160}}
-@media(max-width:760px){#panel-comments .comments-record-grid{grid-template-columns:1fr}#panel-plans .life-plan-flow-svg{max-height:none}#panel-plans .life-plan-map{padding:10px}#panel-plans .life-plan-flow-fallback{display:block}}
-@media(prefers-reduced-motion:reduce){input.ui-toggle[type="checkbox"],input.ui-toggle[type="checkbox"]::before,#panel-comments .comment-meme-fold>summary:after,#panel-comments .comments-record-grid>.record{transition:none!important}#panel-plans .life-plan-svg-card,#panel-plans .life-plan-route{animation:none!important}}
-
+/* The three life categories are parallel, not a numbered conversion funnel. */
+#panel-plans .life-plan-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:15px 20px 8px;background:color-mix(in srgb,var(--panel) 94%,#e0eff1)}
+#panel-plans .life-plan-overview-card{--plan-accent:#378d7b;--plan-pale:#e4f5ee;position:relative;isolation:isolate;display:flex;flex-direction:column;gap:11px;min-width:0;min-height:235px;padding:19px 18px 16px;border:1px solid color-mix(in srgb,var(--plan-accent) 28%,var(--stroke));border-radius:19px;background:linear-gradient(160deg,color-mix(in srgb,var(--panel) 88%,var(--plan-pale)),var(--panel) 58%);color:var(--ink);text-align:left;cursor:pointer;box-shadow:0 5px 18px #2745650a;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+#panel-plans .life-plan-overview-card[data-life-plan-overview="opportunity"]{--plan-accent:#587fc1;--plan-pale:#e8eefc}
+#panel-plans .life-plan-overview-card[data-life-plan-overview="todo"]{--plan-accent:#9373bb;--plan-pale:#f0eafb}
+#panel-plans .life-plan-overview-card:before{content:"";position:absolute;inset:0 auto 0 0;width:4px;border-radius:19px 0 0 19px;background:var(--plan-accent)}
+#panel-plans .life-plan-overview-card:hover{transform:translateY(-3px);box-shadow:0 14px 27px #2745651c;border-color:var(--plan-accent)}
+#panel-plans .life-plan-overview-card:focus-visible{outline:3px solid var(--plan-accent);outline-offset:3px}
+#panel-plans .life-plan-overview-card[aria-pressed="true"]{border-color:var(--plan-accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--plan-accent) 23%,transparent),0 10px 23px #27456512}
+#panel-plans .life-plan-overview-head{display:flex;align-items:center;gap:10px;min-width:0}
+#panel-plans .life-plan-overview-symbol{display:grid;place-items:center;flex:0 0 39px;width:39px;height:39px;border-radius:13px;background:color-mix(in srgb,var(--plan-accent) 14%,var(--panel));font-size:21px}
+#panel-plans .life-plan-overview-title{font-size:17px;font-weight:800;letter-spacing:-.02em;min-width:0}
+#panel-plans .life-plan-overview-count{margin-left:auto;flex-shrink:0;padding:5px 9px;border-radius:999px;background:color-mix(in srgb,var(--plan-accent) 11%,var(--panel));font-size:12px;font-weight:780;color:var(--plan-accent)}
+#panel-plans .life-plan-overview-lead{display:block;font-size:13px;font-weight:750;line-height:1.6}
+#panel-plans .life-plan-overview-origin{display:block;font-size:12px;line-height:1.72;color:var(--muted);overflow-wrap:anywhere}
+#panel-plans .life-plan-overview-origin strong{display:block;color:var(--plan-accent);font-size:11px;letter-spacing:.03em;margin-bottom:2px}
+#panel-plans .life-plan-overview-note{font-size:11px;line-height:1.6;color:var(--muted);padding-top:9px;margin-top:auto;border-top:1px solid var(--stroke)}
+#panel-plans .life-plan-overview-cta{display:flex;align-items:center;justify-content:space-between;font-weight:750;font-size:12px;color:var(--plan-accent)}
+#panel-plans .life-plan-overview-context{margin:1px 20px 12px;padding:0 2px;font-size:12px;line-height:1.7;color:var(--muted)}
+@media(max-width:900px){#panel-plans .life-plan-overview{grid-template-columns:repeat(2,minmax(0,1fr))}#panel-plans .life-plan-overview-card:last-child{grid-column:1/-1;min-height:170px}}
+@media(max-width:610px){#panel-comments .comments-record-grid{grid-template-columns:1fr}#panel-plans .life-plan-overview{grid-template-columns:1fr;padding:12px;gap:10px}#panel-plans .life-plan-overview-card:last-child{grid-column:auto}#panel-plans .life-plan-overview-card{min-height:0;padding:15px 16px;gap:8px}#panel-plans .life-plan-overview-context{margin:0 13px 12px}}
+@media(prefers-reduced-motion:reduce){input.ui-toggle[type="checkbox"],input.ui-toggle[type="checkbox"]::before,#panel-comments .comment-meme-fold>summary:after,#panel-comments .comments-record-grid>.record,#panel-plans .life-plan-overview-card{transition:none!important;animation:none!important}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -2811,19 +2816,31 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <section id="panel-plans" hidden class="life-plans-page">
 <div class="life-hero todo-page-hero"><div><span class="page-eyebrow">LIFE INTENTIONS · 真实的自主选择</span><h2>🧭 鱼鱼想做</h2><p class="muted">生活线索、值得留意的契机和已经接下的待办，在这里一起查看。不要求每条都执行，也不把模型批准当作完成。</p></div><button type="button" data-open-tab="life-agent" class="life-action life-indigo">看看鱼鱼正在做什么</button></div>
 <div class="life-plan-hub" id="life-plan-hub" aria-label="统一生活意向面板">
-  <div class="life-plan-hub-top"><div><span class="page-eyebrow">MY LIFE · 有据可查的生活打算</span><h3>想法与行动，一起看</h3><p>从真实来源到 Life 的选择，再到核验结果；历史决定与当前可否继续分开显示。来源链接只指向确有凭据的视频或公开主页。</p></div><div id="life-plan-hub-total" class="life-plan-count">正在读取…</div></div>
-  <div class="life-plan-map" role="img" aria-label="生活线索：遇到有趣的事；生活契机：核实真实来源并自主判断；已接待办：真正接下的事，等待行动与结果。不是所有线索都会变成待办，行动完成只认真实回执。">
-    <svg class="life-plan-flow-svg" viewBox="0 0 1030 242" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-      <defs><linearGradient id="lifePlanFlow" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#36aa9c"/><stop offset=".54" stop-color="#5b83cc"/><stop offset="1" stop-color="#a18bd3"/></linearGradient></defs>
-      <path class="life-plan-route" d="M308 106 H368 M662 106 H723" fill="none" stroke="url(#lifePlanFlow)" stroke-width="3" stroke-linecap="round" stroke-dasharray="7 8"/>
-      <path d="m356 96 13 10-13 10 M711 96l13 10-13 10" fill="none" stroke="currentColor" stroke-opacity=".55" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      <g class="life-plan-svg-card"><rect x="8" y="16" width="300" height="172" rx="20" fill="var(--panel)" stroke="#65b9a7" stroke-width="1.5"/><circle cx="46" cy="57" r="21" fill="#d9f4e9"/><path d="M37 60c7-16 19-13 17 0-2 8-11 12-17 4" fill="none" stroke="#268f74" stroke-width="3" stroke-linecap="round"/><text x="77" y="52" class="life-plan-svg-title">01 · 生活线索</text><text x="77" y="76" class="life-plan-svg-caption">忽然感兴趣的想法</text><text x="28" y="118" class="life-plan-svg-copy">看见、听见、想到一个可能性</text><text x="28" y="145" class="life-plan-svg-note">只是好奇，不代表决定去做</text></g>
-      <g class="life-plan-svg-card"><rect x="368" y="16" width="294" height="172" rx="20" fill="var(--panel)" stroke="#86a2dc" stroke-width="1.5"/><circle cx="406" cy="57" r="21" fill="#e4ebfc"/><path d="M398 57l6 6 11-13" fill="none" stroke="#537cc4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><text x="436" y="52" class="life-plan-svg-title">02 · 生活契机</text><text x="436" y="76" class="life-plan-svg-caption">有真实来源的机会</text><text x="387" y="118" class="life-plan-svg-copy">先核实，再由鱼鱼自己决定</text><text x="387" y="145" class="life-plan-svg-note">可以继续、推迟，也可以放下</text></g>
-      <g class="life-plan-svg-card"><rect x="724" y="16" width="298" height="172" rx="20" fill="var(--panel)" stroke="#b2a0dc" stroke-width="1.5"/><circle cx="762" cy="57" r="21" fill="#efe8ff"/><path d="M754 57h16m-16 7h12m-12-14h15" fill="none" stroke="#8d6bbb" stroke-width="3" stroke-linecap="round"/><text x="792" y="52" class="life-plan-svg-title">03 · 已接待办</text><text x="792" y="76" class="life-plan-svg-caption">真正确认要处理</text><text x="743" y="118" class="life-plan-svg-copy">安排执行，保留过程与状态</text><text x="743" y="145" class="life-plan-svg-note">只有实际回执才算完成</text></g>
-      <text x="515" y="225" text-anchor="middle" class="life-plan-svg-foot">不是强制的流水线 · 不必每条都执行 · 核验优先于想象</text>
-    </svg>
-    <p class="life-plan-flow-fallback">🌿 线索是好奇 → 🔎 契机需要证据 → 📝 待办是已经接下的事。任何一步都可以暂停或放下。</p>
+  <div class="life-plan-hub-top"><div><span class="page-eyebrow">MY LIFE · 有来源的真实生活记录</span><h3>鱼鱼最近在想什么</h3><p>好奇的线索、从经历中发现的契机，以及已经接下的任务，是并列的三类记录。它们各有来源，不要求按顺序发生。</p></div><div id="life-plan-hub-total" class="life-plan-count">正在读取…</div></div>
+  <div class="life-plan-overview" role="group" aria-label="并列的生活记录类别，可点击筛选；不表示先后顺序">
+    <button type="button" class="life-plan-overview-card" data-life-plan-overview="cue" aria-pressed="false" aria-controls="life-plan-hub-grid">
+      <span class="life-plan-overview-head"><span class="life-plan-overview-symbol" aria-hidden="true">✳</span><span class="life-plan-overview-title">生活线索</span><span class="life-plan-overview-count" id="life-flow-cues">读取中</span></span>
+      <span class="life-plan-overview-lead">从接触过的内容里，留下一个疑问或兴趣</span>
+      <span class="life-plan-overview-origin"><strong>从哪里来</strong>真实评论阅读后的好奇、多日自主选片的兴趣变化、公开交流中的观察。</span>
+      <span class="life-plan-overview-note">只是值得留意的可能性，不代表鱼鱼承诺探索或行动。</span>
+      <span class="life-plan-overview-cta">筛选生活线索记录</span>
+    </button>
+    <button type="button" class="life-plan-overview-card" data-life-plan-overview="opportunity" aria-pressed="false" aria-controls="life-plan-hub-grid">
+      <span class="life-plan-overview-head"><span class="life-plan-overview-symbol" aria-hidden="true">◈</span><span class="life-plan-overview-title">生活契机</span><span class="life-plan-overview-count" id="life-flow-opportunities">读取中</span></span>
+      <span class="life-plan-overview-lead">从已有经历中，发现值得再了解的机会</span>
+      <span class="life-plan-overview-origin"><strong>从哪里来</strong>此前评论和公开资料的核实、首页探索、自主选片后产生的探索意愿。</span>
+      <span class="life-plan-overview-note">可以由鱼鱼独立产生、继续或放下，不必先经过「生活线索」。</span>
+      <span class="life-plan-overview-cta">筛选生活契机记录</span>
+    </button>
+    <button type="button" class="life-plan-overview-card" data-life-plan-overview="todo" aria-pressed="false" aria-controls="life-plan-hub-grid">
+      <span class="life-plan-overview-head"><span class="life-plan-overview-symbol" aria-hidden="true">▤</span><span class="life-plan-overview-title">已接待办</span><span class="life-plan-overview-count" id="life-flow-todos">读取中</span></span>
+      <span class="life-plan-overview-lead">已经明确接下、需要跟进的事情</span>
+      <span class="life-plan-overview-origin"><strong>从哪里来</strong>主人提出并被接受的建议，或其他已明确接下的任务。</span>
+      <span class="life-plan-overview-note">执行、延期和完成分别记录；只有实际回执才能确认结果。</span>
+      <span class="life-plan-overview-cta">筛选已接待办记录</span>
+    </button>
   </div>
+  <p class="life-plan-overview-context">三类记录彼此独立、可以并存；出现记录不等于必须执行。点击卡片直接查看该类当前记录。</p>
   <div id="life-plan-hub-filter" class="life-plan-hub-filters" role="group" aria-label="筛选生活记录"><button type="button" data-life-plan-filter="all" aria-pressed="true">全部</button><button type="button" data-life-plan-filter="cue" aria-pressed="false">生活线索</button><button type="button" data-life-plan-filter="opportunity" aria-pressed="false">生活契机</button><button type="button" data-life-plan-filter="todo" aria-pressed="false">已接待办</button></div>
   <div id="life-plan-hub-grid" class="life-plan-hub-grid" aria-live="polite"><div class="life-plan-empty">正在读取当前账号的生活记录…</div></div>
   <div class="life-plan-hub-foot"><span>🌿 想到一件事，不代表一定要做；只有真实回执才算完成。</span>

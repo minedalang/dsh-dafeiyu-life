@@ -26,7 +26,7 @@ test('评论跨页搜索：BV / 正文 / rpid / 当前接收人可信昵称与 U
   assert.equal(recentComments(home,{search:'藏宝图',day:'2026-11-02'}).total,0)
  }finally{rmSync(home,{recursive:true,force:true})}
 })
-test('评论页默认折叠、双列搜索、动态开关、意向 SVG 可访问，旧导航已移除',()=>{
+test('评论页默认折叠、双列搜索、动态开关、意向来源并列卡片可访问，旧导航已移除',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
@@ -34,7 +34,7 @@ test('评论页默认折叠、双列搜索、动态开关、意向 SVG 可访问
  assert.match(html,/id="comments-search" type="search"/)
  assert.match(html,/id="recent-comments-list" class="records comments-record-grid"/)
  assert.doesNotMatch(html,/<nav class="context-jump" aria-label="评论页分区">/)
- assert.match(html,/<svg class="life-plan-flow-svg"/)
+ assert.match(html,/class="life-plan-overview" role="group"/)
  assert.match(html,/prefers-reduced-motion:reduce/)
  for(const id of ['models-comment-memes','comment-watch-replies','comment-at-enabled','backup-auto-enabled','diag-mention-enabled','dm-active-enabled','personality-evolution-enabled']){
   assert.match(html,new RegExp(`<input[^>]*\\brole="switch"[^>]*\\bid="${id}"`))

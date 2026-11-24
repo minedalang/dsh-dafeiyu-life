@@ -8,7 +8,7 @@ const panel=html.slice(html.indexOf('<section id="panel-life-agent"'),html.index
 const plans=html.slice(html.indexOf('<section id="panel-plans"'),html.indexOf('</section>',html.indexOf('<section id="panel-plans"')))
 
 test('action tree and day timeline share one life card with real chronology below the tree',()=>{
-  const card=panel.slice(panel.indexOf('<section class="life-behavior-card"'),panel.indexOf('</section>',panel.indexOf('<section class="life-behavior-card"')))
+  const card=panel.slice(panel.indexOf('<section class="life-behavior-card"'),panel.indexOf('<div id="life-now-recent"'))
   assert.match(card,/id="life-behavior-tree"/)
   assert.match(card,/class="life-now-timeline life-behavior-timeline"/)
   assert.match(card,/id="life-timeline-list"/)
@@ -31,14 +31,19 @@ test('timeline remains independently refreshable using existing read-only busine
   assert.match(js,/setInterval\(\(\)=>\{void reconcileVisibleLife\(\)\},4000\)/)
 })
 
-test('the three stages are explained by an accessible SVG, not a mandatory execution funnel',()=>{
-  assert.match(plans,/class="life-plan-map" role="img"/)
-  assert.match(plans,/<svg class="life-plan-flow-svg"/)
-  for(const label of ['生活线索','生活契机','已接待办'])assert.match(plans,new RegExp(label))
-  assert.match(plans,/不是强制的流水线/)
-  assert.match(plans,/只有实际回执才算完成/)
-  for(const kind of ['cue','opportunity','todo'])assert.match(plans,new RegExp('data-life-plan-filter="'+kind+'"'))
-  assert.match(plans,/id="life-plan-hub-grid"/)
-  assert.match(html,/#panel-plans \.life-plan-flow-svg/)
+test('life records are parallel source-explained selectable categories, not a funnel',()=>{
+  assert.match(plans,/class="life-plan-overview" role="group"/)
+  assert.doesNotMatch(plans,/<svg class="life-plan-flow-svg"/)
+  assert.doesNotMatch(plans,/0[123] · (生活线索|生活契机|已接待办)/)
+  for(const kind of ['cue','opportunity','todo']){
+    assert.match(plans,new RegExp('data-life-plan-overview="'+kind+'"[^>]*aria-controls="life-plan-hub-grid"'))
+    assert.match(plans,new RegExp('data-life-plan-filter="'+kind+'"'))
+  }
+  for(const text of ['从哪里来','从已有经历中','真实评论阅读','自主选片','主人提出并被接受','只有实际回执','彼此独立、可以并存'])
+    assert.match(plans,new RegExp(text))
+  for(const id of ['life-flow-cues','life-flow-opportunities','life-flow-todos'])assert.equal(count(id),1)
+  assert.match(js,/button\.dataset\.lifePlanOverview/)
+  assert.match(js,/overviewCounts=\{cue:'life-flow-cues',opportunity:'life-flow-opportunities',todo:'life-flow-todos'\}/)
+  assert.match(html,/#panel-plans \.life-plan-overview-card\[aria-pressed="true"\]/)
   assert.match(html,/@media\(prefers-reduced-motion:reduce\)/)
 })
