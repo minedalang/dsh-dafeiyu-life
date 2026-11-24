@@ -208,7 +208,7 @@ import { fetchBiliCover } from './lib/bili-cover-proxy.mjs'
 import {createDmPollCursor} from './lib/dm-poll-cursor.mjs'
 import {createDmDetailQueue} from './lib/dm-detail-queue.mjs'
 import {createDmDetailSingleflight} from './lib/dm-detail-singleflight.mjs'
-import {selectVisionPython,probeVisionPython,visionPythonCandidates,ensureVisionTempDir,visionTempPath,visionPythonTempEnv} from './lib/vision-python-runtime.mjs'
+import {selectVisionPython,probeVisionPython,visionPythonCandidates,ensureVisionTempDir,visionTempPath,visionPythonTempEnv,productionVisionPython} from './lib/vision-python-runtime.mjs'
 import {createVisionEnvironmentRepair,probeVisionPythonAsync} from './lib/vision-environment-repair.mjs'
 import {dmContinuationPrompt,parseDmContinuationReply} from './lib/dm-progressive-expression.mjs'
 import { listCommentMemes, getCommentMemePreview } from './lib/comment-meme-library.mjs'
@@ -1894,6 +1894,19 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // through an isolated, read-only MCP with an ephemeral host instead.
     const scopedDshVision=toolName==='bili_preview_vision'&&cfg.visionEnabled===true&&
       resolvedVisionMode()==='independent_dsh'
+    // The local Ollama video tool runs INSIDE the primary MCP (cfg.pythonPath).
+    // Fail before fetching B站 frames when that actual interpreter cannot write
+    // the published external cache. A healthy unrelated vision venv is not proof.
+    if(toolName==='bili_preview_vision'&&cfg.visionEnabled===true&&
+       resolvedVisionMode()==='independent_local'&&process.platform==='win32'&&
+       storageLayout.domains.media.configured){
+      let check
+      try{check=await probeVisionPythonAsync(cfg.pythonPath||'',{home:stateDir,env:visionEnv(),requiresMcp:true,timeoutMs:5000})}
+      catch{check={ok:false,reason:'vision_temp_unavailable'}}
+      if(!check.ok)throw Error('视频实际 MCP Python 未通过外迁目录读写/依赖检查（'+
+        String(check.reason||'runtime_execution_failed')+' / '+String(check.stage||'unknown')+
+        '）；已阻止本轮取帧，等待可信宿主运行时修复')
+    }
     const client=scopedDshVision?null:await ensureMcp()
     if(scopedDshVision&&!assertSecureMcp())throw Error('DSH 视频识图 Python MCP 安全版本校验失败')
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
@@ -3655,8 +3668,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       let environment
       try{environment=visionEnv()}
       catch{return {status:'unhealthy',reason:'vision_temp_unavailable',checked:0}}
-      const candidates=visionPythonCandidates({preferred:cfg.visionPythonPath||'',configured:cfg.pythonPath||'',
-        home:stateDir,workdir:process.cwd(),env:environment,platform:'win32'}).slice(0,4)
+      // Ollama executes in cfg.pythonPath inside the primary MCP. A healthy
+      // independent vision candidate must not make this production route green.
+      const candidates=resolvedVisionMode()==='independent_local'
+        ?[cfg.pythonPath||'']
+        :visionPythonCandidates({preferred:cfg.visionPythonPath||'',configured:cfg.pythonPath||'',
+          home:stateDir,workdir:process.cwd(),env:environment,platform:'win32'}).slice(0,4)
       let reason='missing_runtime',stage='',checked=0
       for(const python of candidates){
         const check=await probeVisionPythonAsync(python,{home:stateDir,env:environment,requiresMcp:true,timeoutMs:3000})
@@ -8667,7 +8684,9 @@ logger:{warn:m=>log('社交意图：'+m)}
             const configBefore=JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])
             const selectedVisionRuntime=selectHealthyVisionPython({fresh:true})
             const result=await verifyRelocatedModelRuntime({root:stateDir,asrPython:asrPython(),
-              visionPython:selectedVisionRuntime.ok?selectedVisionRuntime.path:'',
+              // independent_local runs in the primary MCP, not visionPythonPath.
+              visionPython:productionVisionPython({mode:resolvedVisionMode(),mainPython:cfg.pythonPath,
+                selectedVisionPython:selectedVisionRuntime.ok?selectedVisionRuntime.path:''}),
               visionPythonEnv:visionEnv({BILI_DUTY_HOME:stateDir}),
               asrModel:cfg.asrModel||'small',asrModelPath:cfg.asrModelPath||'',embeddingRuntime,
               visionEnabled:cfg.visionEnabled===true,visionMode:resolvedVisionMode(),

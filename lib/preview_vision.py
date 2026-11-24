@@ -901,10 +901,21 @@ def _save_vision_cache(cache, record, *, progress=None):
         # On Windows, a stale/read-only/locked legacy ``<BV>.tmp`` can remain
         # after relocation. Do not overwrite it or share a temp name across jobs.
         mark('writer_temp_open')
-        with tempfile.NamedTemporaryFile(mode='w',encoding='utf8',
-                dir=cache.parent,prefix=f'.{cache.stem}-',suffix='.tmp',
-                delete=False) as handle:
-            staged=Path(handle.name)
+        # CPython tempfile on Windows can retry EACCES as if it were a
+        # filename collision. Under a Low-integrity executable that causes an
+        # immediate MIC denial to look like a minutes-long hang. Use bounded
+        # exclusive creates: retry only FileExistsError, never PermissionError.
+        for _ in range(4):
+            candidate=cache.parent / (f'.{cache.stem}-{os.urandom(16).hex()}.tmp')
+            try:
+                fd=os.open(candidate, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                staged=candidate
+                break
+            except FileExistsError:
+                continue
+        else:
+            return 'vision_cache_write_failed'
+        with os.fdopen(fd,'w',encoding='utf8') as handle:
             mark('writer_temp_opened')
             json.dump(record,handle,ensure_ascii=False)
             mark('writer_json_written')

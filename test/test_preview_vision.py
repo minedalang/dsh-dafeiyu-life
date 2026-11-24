@@ -37,6 +37,19 @@ class PreviewTests(unittest.TestCase):
             self.assertIn(json.loads(cache.read_text(encoding='utf8'))['seq'],range(24))
             self.assertEqual(list(cache.parent.glob('.BV1234567890-preview-board-v14-*.tmp')),[])
 
+    def test_cache_low_integrity_write_denial_returns_immediately_without_tempfile_retries(self):
+        with TemporaryDirectory() as home:
+            cache=Path(home)/'vision-cache'/'new.json'
+            with patch.object(pv.os,'open',side_effect=PermissionError(13,'Access denied')) as mock_open, \
+                 patch.object(pv.tempfile,'NamedTemporaryFile',side_effect=AssertionError('must not use tempfile')):
+                events=[]
+                code=pv._save_vision_cache(cache,{'record':True},progress=events.append)
+            self.assertEqual(code,'vision_cache_permission_denied')
+            self.assertEqual(mock_open.call_count,1)
+            self.assertIn('writer_temp_open',events)
+            self.assertNotIn('writer_temp_opened',events)
+            self.assertEqual(list(cache.parent.iterdir()),[])
+
     def test_probe_progress_identifies_real_cache_writer_operations(self):
         with TemporaryDirectory() as home:
             cache=Path(home)/'vision-cache'/'probe.json'
@@ -73,7 +86,7 @@ class PreviewTests(unittest.TestCase):
         import errno
         with TemporaryDirectory() as home:
             cache=Path(home)/'vision-cache'/'BV1234567890.json'
-            with patch.object(pv.tempfile,'NamedTemporaryFile',side_effect=OSError(errno.ENOSPC,'disk full')):
+            with patch.object(pv.os,'open',side_effect=OSError(errno.ENOSPC,'disk full')):
                 self.assertEqual(pv._save_vision_cache(cache,{'x':1}),'vision_cache_disk_full')
             self.assertEqual(pv._save_vision_cache(cache,{'not_json':object()}),
                              'vision_cache_write_failed')

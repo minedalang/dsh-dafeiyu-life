@@ -231,32 +231,23 @@ test('when Conda base is healthy but lacks ensurepip, uv fallback touches only t
   }finally{f.clean()}
 })
 
-test('repair keeps migrated media cache route in base, new venv, and final validation',async()=>{
-  const f=setup(),media=join(f.root,'relocated-modelData')
+test('Windows external modelData cannot repair with an unattested arbitrary runtime directory',async()=>{
+  const f=setup(),media=join(f.root,'relocated-modelData'),runtimeRoot=join(f.root,'custom-python-root')
   mkdirSync(media)
-  let installed=false,saved='',visited=0
+  let probes=0,installs=0,saved=0
   try{
-    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,runtimeRoot,requirementsFile:f.req,
       env:{DSH_MEDIA_CACHE_HOME:media,BILI_DUTY_HOME:f.home},preferred:()=>f.base,
-      probe:(python,opts)=>{
-        assert.equal(opts.env.DSH_MEDIA_CACHE_HOME,media)
-        assert.equal(opts.env.BILI_DUTY_HOME,f.home)
-        visited++
-        return {ok:!opts.requiresMcp||python!==f.base&&installed,reason:'healthy'}
-      },
-      run:async(_cmd,args,opts)=>{
-        assert.equal(opts.env.DSH_MEDIA_CACHE_HOME,media)
-        if(args[0]==='-m'&&args[1]==='venv'){
-          mkdirSync(join(args[3],'Scripts'),{recursive:true})
-          writeFileSync(join(args[3],'Scripts','python.exe'),'fixture')
-        }
-        if(args[0]==='-m'&&args[1]==='pip')installed=true
-        return {ok:true}
-      },persist:async python=>{saved=python;return true}})
+      probe:()=>{probes++;return {ok:true}},run:async()=>{installs++;return {ok:true}},
+      persist:async()=>{saved++;return true}})
     const result=await repair.run()
-    assert.equal(result.state,'ready')
-    assert.ok(saved.includes('.vision-env-'))
-    assert.ok(visited>=4)
+    assert.equal(result.state,'failed')
+    assert.equal(result.reason,'trusted_host_runtime_required')
+    assert.equal(result.stage,'prepare_runtime')
+    assert.equal(probes,0)
+    assert.equal(installs,0)
+    assert.equal(saved,0)
+    assert.equal(existsSync(runtimeRoot),false)
   }finally{f.clean()}
 })
 
@@ -279,4 +270,20 @@ test('repeated unsuccessful repair is throttled without creating more environmen
     assert.equal((await repair.run()).state,'failed')
     assert.equal(attempt,2)
   }finally{f.clean()}
+})
+
+test('Windows external modelData forbids rebuilding another Low-inheriting environment inside Duty Home',async()=>{
+ const f=setup();let installs=0
+ try{
+  const external=join(f.root,'external-modelData');mkdirSync(external)
+  const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,runtimeRoot:f.home,
+    requirementsFile:f.req,env:{DSH_MEDIA_CACHE_HOME:external},
+    preferred:()=>f.base,probe:()=>status(true),run:async()=>{installs++;return {ok:true}}})
+  const result=await repair.run()
+  assert.equal(result.state,'failed')
+  assert.equal(result.reason,'trusted_host_runtime_required')
+  assert.equal(result.stage,'prepare_runtime')
+  assert.equal(installs,0)
+  assert.equal(existsSync(join(f.home,'.vision-env-')),false)
+ }finally{f.clean()}
 })

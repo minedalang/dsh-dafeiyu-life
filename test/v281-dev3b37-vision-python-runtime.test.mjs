@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,writeFileSync,mkdirSync,rmSync,existsSync,readdirSync} from 'node:fs'
+import {mkdtempSync,writeFileSync,mkdirSync,rmSync,existsSync,readdirSync,readFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {spawnSync} from 'node:child_process'
-import {VISION_PYTHON_PROBE_SOURCE,visionPythonCandidates,probeVisionPython,selectVisionPython} from '../lib/vision-python-runtime.mjs'
+import {VISION_PYTHON_PROBE_SOURCE,visionPythonCandidates,probeVisionPython,selectVisionPython,productionVisionPython} from '../lib/vision-python-runtime.mjs'
 
 const root=mkdtempSync(join(tmpdir(),'dsh-python-gate-'))
 const home=join(root,'home');mkdirSync(home)
@@ -97,4 +97,14 @@ test('isolated Python health source rejects unwritable migrated cache without cr
  assert.equal(yes.ok,true)
  assert.equal(yes.writes.media_cache,true)
  assert.equal(readdirSync(missingMedia).length,0,'no probe data left in cache')
+})
+
+test('local Ollama verifies its actual main MCP interpreter, never an unrelated healthy vision fallback',()=>{
+ assert.equal(productionVisionPython({mode:'independent_local',mainPython:bad,selectedVisionPython:good}),bad)
+ assert.equal(productionVisionPython({mode:'independent_dsh',mainPython:bad,selectedVisionPython:good}),good)
+ assert.equal(productionVisionPython({mode:'independent_local',mainPython:'',selectedVisionPython:good}),'')
+ const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ assert.match(source,/visionPython:productionVisionPython\(\{mode:resolvedVisionMode\(\),mainPython:cfg\.pythonPath/)
+ assert.match(source,/toolName==='bili_preview_vision'[\s\S]*?storageLayout\.domains\.media\.configured[\s\S]*?probeVisionPythonAsync\(cfg\.pythonPath/)
+ assert.match(source,/const candidates=resolvedVisionMode\(\)==='independent_local'[\s\S]*?\[cfg\.pythonPath\|\|'']\s*:/)
 })
