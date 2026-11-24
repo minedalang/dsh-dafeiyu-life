@@ -46,7 +46,7 @@ flowchart TB
   %% dev.6 owner-only branch; separate from Life's autonomous decision and social action rights.
   dev6OwnerFrame["主人明确选帧或秒数：只读局部补看，非自主意愿授权"]
   dev6OwnerGate["本机同源/当前账号/真实图片时间锚点/BV 预算/局部视觉核验"]
-  dev6OwnerMemory["唯一未遗忘视频主记忆：浅摘要版本 + 深层局部附件；无唯一匹配不写"]
+  dev6OwnerMemory["本次真实补看经历 ID：浅摘要版本 + 深层局部附件"]
   dev6OwnerFrame --> dev6OwnerGate
   dev6OwnerGate -.->|仅内部一次性可信回执| dev6OwnerMemory
   %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
@@ -449,7 +449,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 
 %% dev.6: explicit main-session progressive recall; voluntary revisit keeps Life agency.
-  focusRecall283["主 Session 按需展开当前清晰 BV 深层片段；不联网"]
+  focusRecall283["主 Session 按需聚合当前清晰 BV 深层片段；不联网"]
   focusRecall283 -.->|不增加后台机会或外发权限| planner
 %% @code focusRecall283 | lib/life-memory-gateway.mjs | function recallVideoDetails
 ```
@@ -497,9 +497,9 @@ flowchart LR
   %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
   dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
   dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
-  dev6OwnerMemory["唯一未遗忘视频主记忆：浅摘要版本与深层新增片段"]
+  dev6OwnerMemory["本次真实补看经历 ID：浅摘要版本与深层新增片段"]
   dev6OwnerFrame --> dev6OwnerGate
-  dev6OwnerGate -.->|一次性可信回执；无唯一记忆则不写| dev6OwnerMemory
+  dev6OwnerGate -.->|一次性可信回执；本次新经历 ID 精确绑定| dev6OwnerMemory
   %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
   %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
 
@@ -716,9 +716,9 @@ flowchart TB
   %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
   dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
   dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
-  dev6OwnerMemory["唯一未遗忘视频主记忆：浅摘要版本与深层新增片段"]
+  dev6OwnerMemory["本次真实补看经历 ID：浅摘要版本与深层新增片段"]
   dev6OwnerFrame --> dev6OwnerGate
-  dev6OwnerGate -.->|一次性可信回执；无唯一记忆则不写| dev6OwnerMemory
+  dev6OwnerGate -.->|一次性可信回执；本次新经历 ID 精确绑定| dev6OwnerMemory
   %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
   %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
 
@@ -908,9 +908,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code videoTrace | lib/life-memory-gateway.mjs | function videoEvidenceTrace
 
 %% dev.6: new verified focus attaches to its exact new episode; cached result cannot create it.
-  focusDeep283["本次真实补看唯一经历 → 有界深层局部片段"]
+  focusDeep283["本次真实观察／补看唯一经历 → 有界深层片段"]
   episode --> focusDeep283
-  focusDeep283 -.->|显式 BV 与 ID；清晰且未撤销| recall
+  focusDeep283 -.->|同账号 BV 聚合；各自清晰且未撤销| recall
 %% @code focusDeep283 | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
 ```
 
@@ -956,9 +956,9 @@ flowchart TB
   %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
   dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
   dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
-  dev6OwnerMemory["唯一未遗忘视频主记忆：浅摘要版本与深层新增片段"]
+  dev6OwnerMemory["本次真实补看经历 ID：浅摘要版本与深层新增片段"]
   dev6OwnerFrame --> dev6OwnerGate
-  dev6OwnerGate -.->|一次性可信回执；无唯一记忆则不写| dev6OwnerMemory
+  dev6OwnerGate -.->|一次性可信回执；本次新经历 ID 精确绑定| dev6OwnerMemory
   %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
   %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
 

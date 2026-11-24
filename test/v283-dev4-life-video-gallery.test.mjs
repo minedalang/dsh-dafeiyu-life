@@ -55,8 +55,10 @@ test('dev.6 owner focus requires matching account gallery and exact captured fra
  assert.equal(planOwnerGalleryRevisit({...hourLong,mode:'frame'}).reason,'frame-not-in-gallery',
    'arbitrary time cannot impersonate a previously verified frame')
 
- const selected=matchOwnerGalleryMemory([{memoryId:'e-'+'a'.repeat(18),bvid,at:now+1500}],{bvid,at:now})
- assert.equal(selected,'e-'+'a'.repeat(18))
+ const chosenId='e-'+'a'.repeat(18)
+ const selected=matchOwnerGalleryMemory([{memoryId:chosenId,bvid,at:now+1500},{memoryId:'e-'+'b'.repeat(18),bvid,at:now}],{bvid,memoryId:chosenId})
+ assert.equal(selected,chosenId)
+ assert.equal(matchOwnerGalleryMemory([{memoryId:chosenId,bvid,at:now}],{bvid,at:now}),null)
  assert.equal(matchOwnerGalleryMemory([{memoryId:'e-'+'a'.repeat(18),bvid,at:now},
   {memoryId:'e-'+'b'.repeat(18),bvid,at:now+20}],{bvid,at:now}),null)
 })

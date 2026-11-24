@@ -142,17 +142,42 @@ test('dev.6 one-hour video focus updates both shallow and deep at a real minute-
  assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:B}).ok,false)
 }))
 
-test('progressive recall requires exact current-account BV and explicit identity when ambiguous',()=>setup(({gateway,memoryId,setAccount,setTime})=>{
+test('progressive recall groups exact current-account BV and preserves exact episode identity',()=>setup(({gateway,memoryId,setAccount,setTime})=>{
  const sourceProof={internalToken:'test-only'}
  assert.equal(gateway.recallVideoDetails({bvid:BV,accountTag:A}).reason,'no-detail')
  assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof}).ok,true)
  assert.equal(gateway.recallVideoDetails({bvid:BV,accountTag:A}).fragments[0].fragmentId,'frame-0001')
  gateway.recordEvents([{...event,key:'video-explore:second-observation',at:NOW+1000}])
- const ambiguous=gateway.recallVideoDetails({bvid:BV,accountTag:A})
- assert.equal(ambiguous.reason,'ambiguous-video-memory');assert.equal(ambiguous.candidates.length,2)
- assert.equal(ambiguous.fragments,undefined)
+ const group=gateway.recallVideoDetails({bvid:BV,accountTag:A})
+ assert.equal(group.ok,true);assert.equal(group.fragments.length,1);assert.equal(group.fragments[0].memoryId,memoryId)
+ const second=gateway.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId
+ assert.notEqual(second,memoryId)
+ assert.equal(gateway.attachMemoryDetails({memoryId:second,accountTag:A,fragments:[{...fragments[0],fragmentId:'frame-0002',sourceRef:'verified:observation:sample2'}],sourceProof}).ok,true)
+ const both=gateway.recallVideoDetails({bvid:BV,accountTag:A})
+ assert.equal(both.fragments.length,2);assert.equal(both.sources.length,2)
+ const rows=gateway.semanticCandidates({query:BV,limit:3200})
+ assert.equal(gateway.videoRecallGroups(rows).filter(e=>e.bvid===BV).length,1)
+ assert.equal(gateway.videoEvidenceTrace({accountTag:A,bvid:BV}).length,2)
  assert.equal(gateway.recallVideoDetails({bvid:BV,accountTag:A,memoryId}).ok,true)
  assert.equal(gateway.recallVideoDetails({bvid:'BV0987654321',accountTag:A,memoryId}).ok,false)
  setAccount(B);assert.equal(gateway.recallVideoDetails({bvid:BV,accountTag:A,memoryId}).ok,false)
  setAccount(A);setTime(NOW+14*DAY);assert.equal(gateway.recallVideoDetails({bvid:BV,accountTag:A,memoryId}).ok,false)
 }))
+
+ test('group recall preserves each observation lifetime; new observation cannot revive an old attachment',()=>setup(({gateway,memoryId,setTime})=>{
+  const sourceProof={internalToken:'test-only'}
+  assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof}).ok,true)
+  setTime(NOW+10*DAY)
+  gateway.recordEvents([{...event,key:'video-explore:later-observation',at:NOW+10*DAY}])
+  const later=gateway.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId
+  assert.equal(gateway.attachMemoryDetails({memoryId:later,accountTag:A,fragments:[{...fragments[0],fragmentId:'frame-later',sourceRef:'verified:observation:later'}],sourceProof}).ok,true)
+  setTime(NOW+14*DAY)
+  const grouped=gateway.recallVideoDetails({bvid:BV,accountTag:A})
+  assert.equal(grouped.ok,true);assert.deepEqual(grouped.fragments.map(x=>x.memoryId),[later]);assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:A}).ok,false)
+ }))
+ test('group recall searches past twelve new shallow-only episodes without inventing attachments',()=>setup(({gateway,memoryId})=>{
+  assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:{internalToken:'test-only'}}).ok,true)
+  gateway.recordEvents(Array.from({length:13},(_,i)=>({...event,key:'video-explore:no-detail-'+i,at:NOW+1000+i})))
+  const result=gateway.recallVideoDetails({bvid:BV,accountTag:A})
+  assert.equal(result.ok,true);assert.equal(result.fragments.length,1);assert.equal(result.fragments[0].memoryId,memoryId)
+ }))

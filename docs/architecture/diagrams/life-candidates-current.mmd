@@ -38,9 +38,9 @@ flowchart LR
   %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
   dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
   dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
-  dev6OwnerMemory["唯一未遗忘视频主记忆：浅摘要版本与深层新增片段"]
+  dev6OwnerMemory["本次真实补看经历 ID：浅摘要版本与深层新增片段"]
   dev6OwnerFrame --> dev6OwnerGate
-  dev6OwnerGate -.->|一次性可信回执；无唯一记忆则不写| dev6OwnerMemory
+  dev6OwnerGate -.->|一次性可信回执；本次新经历 ID 精确绑定| dev6OwnerMemory
   %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
   %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
 

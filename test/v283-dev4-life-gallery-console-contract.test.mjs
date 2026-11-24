@@ -60,7 +60,7 @@ test('neural detail timeline only opens authorized current clear memories in rea
  assert.match(server,/m\.stage==='clear'&&m\.kind==='watch'/)
  assert.match(server,/lifeMemory\.videoEvidenceTrace\(\{accountTag:account,memoryId:matches\[0\]\.id,limit:1\}\)/)
  assert.match(server,/neuralProjectionKey\(\{\.\.\.m,gardenKind:'experience'/)
- assert.match(server,/expandMemoryDetail\(\{memoryId:matches\[0\]\.id,accountTag:account,maxBytes:8192\}\)/)
+ assert.match(server,/recallVideoDetails\(\{bvid:matches\[0\]\.bvid,accountTag:account,maxBytes:8192\}\)/)
  assert.doesNotMatch(server.slice(server.indexOf('on-demand deep memory'),server.indexOf('// Owner\'s read-only management view')),/sendComment|readArchive|restoreBackup/)
 })
 
@@ -73,8 +73,8 @@ test('neural deep endpoint binds opaque current node to the Life Gateway rather 
     summary:'真实公开视频经历',at:'2026-11-24T08:00:00.000Z',bvid:bv}
   const nodeId=neuralProjectionKey({...record,gardenKind:'experience',gardenEvidence:'fading-life-episode'})
   let expandCalls=0,traceProof=true
-  const lifeMemory={semanticCandidates:()=>[record],videoEvidenceTrace:()=>traceProof?[{bvid:bv,detailStorage:'available'}]:[],
-    expandMemoryDetail:()=>{expandCalls++;return {ok:true,totalFragments:1,truncated:false,
+  const lifeMemory={semanticCandidates:()=>[record],videoRecallGroups:rows=>rows,videoEvidenceTrace:()=>traceProof?[{bvid:bv,detailStorage:'available'}]:[],
+    recallVideoDetails:()=>{expandCalls++;return {ok:true,totalFragments:1,truncated:false,
       fragments:[{type:'focused-observation',certainty:'model-observation',
         content:'真实采样到一张海报',timeAnchorMs:[3000000,3012000],uncertainties:['人物身份不确定'],sourceRef:'private-internal-source'}]}}}
   const create=(node,peer='127.0.0.1')=>{

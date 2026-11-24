@@ -61,7 +61,7 @@ import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.m
 import {listBackupFiles,inspectBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
 import {pruneVideoCaches,VIDEO_CACHE_RETENTION} from './lib/video-cache-retention.mjs'
 import {addLifeVideoGallery,listLifeVideoGallery,readLifeVideoGalleryImage,pruneLifeVideoGallery,LIFE_GALLERY_RETENTION_HOURS} from './lib/life-video-gallery.mjs'
-import {planOwnerGalleryRevisit,matchOwnerGalleryMemory} from './lib/owner-video-revisit.mjs'
+import {planOwnerGalleryRevisit} from './lib/owner-video-revisit.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
@@ -132,7 +132,7 @@ import {observedVideoFromRead,verifiedVideoObservation,unifiedLegacySocialChoice
 import { validateOwnerRosterUpdate } from './lib/owner-identity.mjs'
 import { formatLocalLogTimestamp } from './lib/log-time.mjs'
 import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
-import {buildVideoExplorationEvent} from './lib/video-experience.mjs'
+import {buildVideoExplorationEvent,buildFreshVideoDetails} from './lib/video-experience.mjs'
 import {synthesizeFocusVisualMemory} from './lib/video-memory-synthesis.mjs'
 import {hasNewFocusFrameSample} from './lib/video-exploration-budget.mjs'
 import {verifyEpisodeVideoVisual} from './lib/life-episode-video-visual.mjs'
@@ -2123,6 +2123,21 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // Physical expiry is handled by the startup/periodic cache sweeper.
     return {id:value.id,kind:value.kind,createdAt:Number(value.createdAt)||0,images}
   }
+  // Called only with fresh platform/model receipts inside verified read paths.
+  // Exact event identity; no time/BV heuristic and no permanent archive fallback.
+  const persistFreshVideoDetail=({event,bvid,info,visual,account})=>{
+    if(!lifeMemory||!event||event.accountTag!==account||account!==trustedLifeAccountTag()||
+       accountBinding.status().blocked||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential())
+      return {ok:false,reason:'account-or-permission-changed'}
+    const memoryId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18)
+    const sourceRef='observation:'+createHash('sha256').update(event.key).digest('hex').slice(0,32)
+    const fragments=buildFreshVideoDetails({bvid,info,visual,event,sourceRef})
+    if(!fragments.length)return {ok:false,reason:'no-fresh-detail-evidence'}
+    const proof=Object.freeze({memoryId,accountTag:account,bvid,sourceRef,fragmentCount:fragments.length,at:Date.now()})
+    admittedOwnerFocusProofs.add(proof)
+    try{return {...lifeMemory.attachMemoryDetails({memoryId,accountTag:account,fragments,sourceProof:proof}),memoryId}}
+    finally{admittedOwnerFocusProofs.delete(proof)}
+  }
   const executeWatchVideo = async(args={},internal={}) => {
     const dryRun=args.__debugDryRun===true
     const initialAccount=videoDebugAccount()
@@ -2339,7 +2354,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // A successful, verifiable exploration is a B站 life experience even when
     // record_session=false. This is NOT a main-Session watch receipt.
     // No raw third-party comments, private text or model guesses are saved.
-    if(!dryRun&&(!isLifeEpisodeFocus||focusIsVerifiedAndNovel))try{
+    if(!dryRun&&(!isLifeEpisodeFocus||focusIsVerifiedAndNovel)&&
+       !(args.record_session===false&&parseMaybeJson(vision)?.status==='cached'))try{
       const normalized=x=>{if(typeof x!=='string')return x;try{return JSON.parse(x)}catch{return {text:x}}}
       const event=buildVideoExplorationEvent({bvid,info:normalized(info),
         subtitle:normalized(subtitle),comments:normalized(comments),
@@ -2348,7 +2364,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         accountTag:initialLifeAccountTag,focusReview,integratedVisualNotes,
         purpose:args.explorationPurpose||(args.record_session===false?'self-exploration':'main-session'),operationId:randomUUID(),
         autonomousSelected:internal.lifeChoiceVerified===true&&args.record_session===false})
-      if(event){const synced=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(!synced)throw Error('人生记忆协调器尚未就绪');if(synced.ok===false)log('视频经历已进入待补偿队列：'+String(synced.lastError||synced.reason||'unknown').slice(0,100))}
+      if(event&&(!initialLifeAccountTag||initialLifeAccountTag===trustedLifeAccountTag())){const synced=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(!synced)throw Error('人生记忆协调器尚未就绪');if(synced.ok===false)log('视频经历已进入待补偿队列：'+String(synced.lastError||synced.reason||'unknown').slice(0,100))
+        if(args.record_session===false&&internal.lifeChoiceVerified===true&&normalized(vision)?.status==='analyzed'){
+          const detail=persistFreshVideoDetail({event,bvid,info:normalized(info),visual:normalized(vision),account:initialLifeAccountTag})
+          log('Life 深层观察附件：'+(detail.ok?'已写入 '+detail.memoryId:String(detail.reason||'write-failed')))
+        }
+      }
       else log('视频探索没有可验证的标题/资料，不生成生活观看经历：'+bvid)
     }catch(e){log('视频探索经历写入失败（不影响只读查看）：'+String(e?.message||e).slice(0,120))}
     // Evidence provenance is read-only; it never grants a video write action.
@@ -2533,10 +2554,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           try{
             const event=buildVideoExplorationEvent({bvid,info:overview.info,visual,
               source:'bili-life',purpose:'life-voluntary-focus-read',
-              operationId:randomUUID(),autonomousSelected:true})
-            if(event){event.experience.focusWindow={startMs:review.startMs,endMs:review.endMs,
+              operationId:randomUUID(),autonomousSelected:true,accountTag:account})
+            if(event&&visual?.status==='analyzed'&&account===trustedLifeAccountTag()){event.experience.focusWindow={startMs:review.startMs,endMs:review.endMs,
               frames:review.frameTimesMs.length,source:review.source}
-              await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})}
+              await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
+              const detail=persistFreshVideoDetail({event,bvid,info:overview.info,visual,account})
+              log('Life 批量局部深层附件：'+(detail.ok?'已写入 '+detail.memoryId:String(detail.reason||'write-failed')))}
           }catch{log('Life 真实局部复查记忆待补偿；不影响只读视觉回执')}
           return {ok:true,review}
         }})
@@ -6955,9 +6978,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     return index.get(uid,relationshipOptions())
   },getAccountTag:trustedLifeAccountTag,admitMemoryDetails:({episode,fragments,sourceProof})=>{
     if(!sourceProof||typeof sourceProof!=='object'||!admittedOwnerFocusProofs.has(sourceProof)||
-       !Array.isArray(fragments)||fragments.length!==1||
+       !Array.isArray(fragments)||fragments.length!==(sourceProof.fragmentCount||1)||fragments.length<1||fragments.length>48||
        episode?.id!==sourceProof.memoryId||episode?.accountTag!==sourceProof.accountTag||
-       episode?.bvid!==sourceProof.bvid||fragments[0]?.sourceRef!==sourceProof.sourceRef||
+       episode?.bvid!==sourceProof.bvid||fragments.some(f=>f?.sourceRef!==sourceProof.sourceRef)||
        sourceProof.accountTag!==trustedLifeAccountTag()||
        !Number.isFinite(sourceProof.at)||Date.now()-sourceProof.at>60_000||
        accountBinding.status().blocked)return false
@@ -6979,6 +7002,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     invokeModel:(prompt,maxChars)=>invokeMemoryPrompt(prompt,maxChars),
     getEpisodes:(query,options)=>lifeMemory?.recall({query,domain:options?.domain||'main-session',role:options?.role||'owner',actorUid:options?.actorUid||'',excludeEventKey:options?.excludeEventKey||'',kinds:options?.kinds||null,maxItems:options?.maxItems||6,maxChars:options?.maxChars||800})||[],
     getEpisodeCandidates:(options)=>lifeMemory?.semanticCandidates(options)||[],
+    groupVideoEpisodes:rows=>lifeMemory?.videoRecallGroups(rows)||rows,
     getPrivateInsights:(opts)=>lifeMemory?.privateInsights(opts)||[],
     getPrivateInsightCandidates:(opts)=>lifeMemory?.privateInsightCandidates(opts)||[],
     semanticSearch:(query,candidates,options)=>embeddingIndex?.search(query,candidates,options)||{ready:false,reason:'index-not-ready',items:[]},
@@ -9100,20 +9124,30 @@ logger:{warn:m=>log('社交意图：'+m)}
             verified:true,phase:'focus',groupId:gallery.groupId||gallery.id,
             note:String(review.description||'').slice(0,360)})
             gallerySaved=saved.ok===true}
-          let memory={status:'not-linked',reason:'no-unique-current-episode'}
-          if(visual?.status==='analyzed'&&lifeMemory){
-            const traces=lifeMemory.videoEvidenceTrace({accountTag:account,bvid,visualOnly:true,limit:12})
-            const memoryId=matchOwnerGalleryMemory(traces,{bvid,at:gallery.at})
-            if(memoryId&&scope()){
-              const sourceRef='focus:'+id
-              const proof=Object.freeze({memoryId,accountTag:account,bvid,sourceRef,at:Date.now()})
-              admittedOwnerFocusProofs.add(proof)
-              const result=lifeMemory.recordVerifiedFocusRevision({memoryId,accountTag:account,
-                bvid,review,sourceProof:proof,sourceRef})
-              admittedOwnerFocusProofs.delete(proof)
-              memory=result.ok?{status:'updated',memoryId,shallowVersion:result.shallowVersion,
-                deepFragments:result.deepFragments}:result.detailPersisted?
-                {status:'partial',reason:result.reason,deepPersisted:true}:{status:'not-updated',reason:result.reason}
+          let memory={status:'not-linked',reason:'no-fresh-detail-evidence'}
+          if(visual?.status==='analyzed'&&lifeMemory&&scope()){
+            // This is a NEW verified read. Preserve its own lifetime and bind
+            // the attachment to the exact new episode, even for legacy galleries.
+            // BV aggregation is a read projection, not a guessed parent match.
+            const event=buildVideoExplorationEvent({bvid,info,visual,source:'bili-life',
+              purpose:'owner-manual-revisit',operationId:id,accountTag:account})
+            if(event){
+              event.experience.focusWindow={startMs:review.startMs,endMs:review.endMs,
+                frames:review.frameTimesMs.length,source:review.source}
+              await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
+              if(scope()){
+                const memoryId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18)
+                const sourceRef='focus:'+id
+                const proof=Object.freeze({memoryId,accountTag:account,bvid,sourceRef,at:Date.now()})
+                admittedOwnerFocusProofs.add(proof)
+                try{
+                  const result=lifeMemory.recordVerifiedFocusRevision({memoryId,accountTag:account,
+                    bvid,review,sourceProof:proof,sourceRef})
+                  memory=result.ok?{status:'updated',memoryId,shallowVersion:result.shallowVersion,
+                    deepFragments:result.deepFragments}:result.detailPersisted?
+                    {status:'partial',reason:result.reason,deepPersisted:true}:{status:'not-updated',reason:result.reason}
+                }finally{admittedOwnerFocusProofs.delete(proof)}
+              }
             }
           }else if(visual?.status==='cached')memory={status:'not-updated',reason:'cached-no-new-evidence'}
           return {ok:true,review,mem:memory,gallerySaved}
@@ -9133,7 +9167,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         log('主人视频补看执行失败：'+String(error?.message||error).slice(0,120))
       }).finally(()=>{ownerGalleryFocusBusy=false})
       return sendJson(res,202,{ok:true,id,status:'running',bvid,
-        anchorSeconds:plan.anchorSeconds,notice:'只读视频补看已受理；仅核验成功才写入已绑定的未遗忘记忆'})
+        anchorSeconds:plan.anchorSeconds,notice:'只读视频补看已受理；仅真实新观察核验成功才写入本次经历及深层附件'})
     }
     // dev.4: current-account 12-hour Life image gallery; not the Debug endpoint,
     // never serves arbitrary paths, old accounts or expired files.
@@ -10248,8 +10282,8 @@ logger:{warn:m=>log('社交意图：'+m)}
         return sendJson(res,401,{ok:false,reason:'account-not-verified'})
       // Same current-fading-memory projection as the neural map. Limit is
       // bounded and no unbounded search or external retrieval is performed.
-      const candidates=lifeMemory.semanticCandidates({query:'',domain:'main-session',
-        kinds:['watch'],limit:3200})||[]
+      const candidates=lifeMemory.videoRecallGroups(lifeMemory.semanticCandidates({query:'',domain:'main-session',
+        kinds:['watch'],limit:3200})||[])
       const matches=candidates.filter(m=>m.stage==='clear'&&m.kind==='watch'&&validBv(String(m.bvid||''))&&
         neuralProjectionKey({...m,gardenKind:'experience',gardenEvidence:'fading-life-episode'})===nodeId)
       if(matches.length!==1)return sendJson(res,404,{ok:false,reason:'memory-unavailable'})
@@ -10258,14 +10292,13 @@ logger:{warn:m=>log('社交意图：'+m)}
       const trace=lifeMemory.videoEvidenceTrace({accountTag:account,memoryId:matches[0].id,limit:1})
       if(trace.length!==1||trace[0].bvid!==matches[0].bvid)
         return sendJson(res,404,{ok:false,reason:'memory-unavailable'})
-      if(trace[0].detailStorage!=='available')
-        return sendJson(res,200,{ok:true,available:false,fragments:[],reason:'no-detail'})
       if(account!==trustedLifeAccountTag()||accountBinding.status().blocked)
         return sendJson(res,409,{ok:false,reason:'account-changed'})
-      const expanded=lifeMemory.expandMemoryDetail({memoryId:matches[0].id,accountTag:account,maxBytes:8192})
+      const expanded=lifeMemory.recallVideoDetails({bvid:matches[0].bvid,accountTag:account,maxBytes:8192})
       if(expanded?.ok!==true)return sendJson(res,200,{ok:true,available:false,fragments:[],reason:expanded?.reason||'no-detail'})
       const fragments=(expanded.fragments||[]).slice(0,12).map(item=>({
         type:item.type,content:String(item.content||'').slice(0,1600),certainty:item.certainty,
+        ...(Number.isSafeInteger(item.observedAt)?{observedAt:item.observedAt}:{}),
         ...(Array.isArray(item.timeAnchorMs)?{timeAnchorMs:item.timeAnchorMs}:{}),
         uncertainties:Array.isArray(item.uncertainties)?item.uncertainties.slice(0,4).map(x=>String(x).slice(0,200)):[]}))
       return sendJson(res,200,{ok:true,available:true,fragments,
@@ -10318,8 +10351,9 @@ logger:{warn:m=>log('社交意图：'+m)}
           // when that episode is older than the normal graph node cap. The
           // Gateway still enforces account and forgetting scope; never read archives.
           const exactVideoQuery=/^BV[0-9A-Za-z]{10}$/.test(q)?q:''
-          const episodes=lifeMemory?.semanticCandidates({query:exactVideoQuery,domain:'main-session',
-            kinds:['watch','comment','social'],limit:Math.min(3200,limit)})||[]
+          const rawEpisodes=lifeMemory?.semanticCandidates({query:exactVideoQuery,domain:'main-session',
+            kinds:['watch','comment','social'],limit:3200})||[]
+          const episodes=lifeMemory?.videoRecallGroups(rawEpisodes)||rawEpisodes
           const allRows=[...result.rows,...episodes.map(m=>({...m,gardenKind:'experience',gardenEvidence:'fading-life-episode'}))]
           const pre=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true})
           const allowedIds=new Set(pre.nodes.map(m=>m.id))
