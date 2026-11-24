@@ -48,6 +48,15 @@
 %% @code bridge | index.js | const rememberVerifiedLifeAction
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
+  %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
+  dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
+  dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
+  dev6OwnerMemory["唯一未遗忘视频主记忆：浅摘要版本与深层新增片段"]
+  dev6OwnerFrame --> dev6OwnerGate
+  dev6OwnerGate -.->|一次性可信回执；无唯一记忆则不写| dev6OwnerMemory
+  %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
+  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
+
   visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
   videoReadHandoff -.->|核验后生成文字摘要| visualAiBrief
   visualAiBrief -.->|只保存有限笔记并遵守遗忘| episode

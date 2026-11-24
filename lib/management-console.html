@@ -1721,6 +1721,11 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 .life-gallery-zoom img{display:block;max-width:100%;max-height:65vh;margin:15px auto;object-fit:contain}
 .life-gallery-zoom button{border:1px solid var(--stroke);border-radius:9px;background:var(--panel);padding:9px 12px;cursor:pointer;color:var(--ink)}
 .life-gallery-dialog-footer{font-size:10px;color:var(--muted);flex-wrap:wrap}
+.life-gallery-revisit-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;border-top:1px solid var(--stroke);padding:12px 18px;background:var(--panel)}
+.life-gallery-revisit-toolbar label{font-size:11px;color:var(--muted)}
+.life-gallery-revisit-toolbar input{max-width:110px;width:105px;min-height:32px;padding:5px 8px;border:1px solid var(--stroke);border-radius:9px;background:var(--panel);color:var(--ink)}
+.life-gallery-revisit-toolbar [role=status]{font-size:11px;color:var(--muted);flex-basis:100%}
+.life-gallery-revisit-toolbar button:disabled{opacity:.48;cursor:not-allowed}
 @keyframes life-gallery-fade{from{opacity:0}to{opacity:1}}@keyframes life-gallery-in{from{transform:translateY(18px) scale(.985);opacity:.3}to{transform:translateY(0) scale(1);opacity:1}}
 @media(prefers-reduced-motion:reduce){.life-gallery-overlay,.life-gallery-dialog,#panel-life-agent .life-gallery-entry{animation:none!important;transition:none!important}}
 
@@ -2777,7 +2782,14 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div id="life-gallery-modal" class="life-gallery-overlay" role="dialog" aria-modal="true" aria-labelledby="life-gallery-modal-title" hidden>
 <div class="life-gallery-dialog"><div class="life-gallery-dialog-header"><div><span class="page-eyebrow">VIDEO OBSERVATION · VISUAL EVIDENCE</span><h3 id="life-gallery-modal-title">画面观察回放</h3><p id="life-gallery-modal-subtitle" class="muted">全局拼图与局部采样</p></div><button type="button" id="life-gallery-close" class="life-gallery-close" aria-label="关闭画面回放">✕</button></div>
 <div class="life-gallery-dialog-body"><div class="life-gallery-view-note">按视频时间顺序排列。先看全局拼图，再点击图片放大；带逐格元数据的分镜还可以单独查看每个时间点。</div><div id="life-gallery-grid" class="life-gallery-grid"></div><div id="life-gallery-zoom" class="life-gallery-zoom" hidden><button type="button" id="life-gallery-back">← 返回全部拼图</button><img id="life-gallery-large-image" alt="已核验的视觉观察图片"/><canvas id="life-gallery-tile-canvas" hidden aria-label="单独放大的已采样视频帧"></canvas><button id="life-gallery-show-board" type="button" hidden>返回整张拼图</button><div id="life-gallery-tile-times" class="life-gallery-tile-times" aria-label="逐帧时间线"></div><p id="life-gallery-image-caption" class="muted"></p></div></div>
-<div class="life-gallery-dialog-footer"><span>图片仅保存 24 小时 · 按当前账号隔离 · 非永久记忆</span><span>指定时间点／附近高清补看后续开放；当前操作只读，不更新记忆</span></div></div>
+<div class="life-gallery-revisit-toolbar" aria-label="主人只读补看">
+  <button type="button" id="life-gallery-revisit-frame" class="life-action life-sky" disabled>补看选中的帧附近</button>
+  <label for="life-gallery-revisit-seconds">或指定视频时间（秒）</label>
+  <input id="life-gallery-revisit-seconds" type="number" min="0" max="2700" step="0.1" placeholder="例如 85.5" inputmode="decimal" aria-label="补看视频时间秒数">
+  <button type="button" id="life-gallery-revisit-time" class="life-action life-sky">请求补看</button>
+  <span id="life-gallery-revisit-status" role="status" aria-live="polite">仅主人明确发起；成功后复核原记忆并追加细节，不会评论或点赞。</span>
+</div>
+<div class="life-gallery-dialog-footer"><span>拼图与局部图保存 24 小时 · 只读回放</span><span>补看须实际重新解码并通过核验，模型解释不是客观事实；旧记忆不会直接覆盖</span></div></div>
 </div>
 <div class="life-tree-legend"><span>◎ 五类常驻行为</span><span>◉ 真正发生的动作才显示分支</span><span>≈ 运行中动态</span><span>✓ 结果须有真实回执</span></div>
 <p class="muted">行为树展示的是源码支持的动作类别及最近的匿名真实决策，不等同于每一轮可用的完整动作菜单。只有合格候选才进入实际模型菜单；视频 Agent 的下游动作由专业工具与发送门禁执行。下方生活记录按真实回执时间排序；并行读取的完成顺序不代表先后决定了看什么。</p>

@@ -87,3 +87,41 @@ test('standalone memory backup includes detail attachments and does not resurrec
   assert.equal(gateway.status().details.attachments,0)
  }finally{rmSync(destination,{recursive:true,force:true})}
 }))
+
+test('dev.6 verified owner focus appends deep fragments and publishes bounded shallow revisions',()=>setup(({gateway,memoryId})=>{
+ const sourceProof={internalToken:'test-only'}
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof}).ok,true)
+ const verified={reviewStatus:'model-observation-not-independent-semantic-proof',
+  startMs:2000,endMs:8000,frameTimesMs:[2300,5500],description:'这段原视频画面出现一张写着菜单的桌面。'}
+ const result=gateway.recordVerifiedFocusRevision({memoryId,accountTag:A,bvid:BV,
+  sourceProof,sourceRef:'focus:'+'c'.repeat(32),review:verified})
+ assert.equal(result.ok,true)
+ assert.equal(result.shallowVersion,1)
+ assert.equal(result.deepFragments,2,'已有深层片段必须保留')
+ const memo=gateway.recall({query:BV,maxItems:4,maxChars:3000}).find(x=>x.id===memoryId)
+ assert.match(memo?.summary||'',/后来在/)
+ assert.match(memo?.summary||'',/未独立核实/)
+ const deep=gateway.expandMemoryDetail({memoryId,accountTag:A,maxBytes:8192})
+ assert.equal(deep.totalFragments,2)
+ assert.ok(deep.fragments.some(x=>x.type==='focused-observation'&&x.timeAnchorMs[0]===2000))
+ assert.ok(deep.fragments.some(x=>x.fragmentId==='frame-0001'))
+ const updated=gateway.recordVerifiedFocusRevision({memoryId,accountTag:A,bvid:BV,
+  sourceProof,sourceRef:'focus:'+'d'.repeat(32),review:{...verified,description:'画面中出现了绿色的广告牌'}})
+ assert.equal(updated.shallowVersion,2)
+ assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:A}).totalFragments,3)
+}))
+
+test('dev.6 focus rejects unverified evidence, wrong account and forgotten parents',()=>setup(({gateway,memoryId,setTime})=>{
+ const proof={internalToken:'test-only'},review={reviewStatus:'model-observation-not-independent-semantic-proof',
+  startMs:1000,endMs:8000,frameTimesMs:[3000],description:'有树木的街角'}
+ assert.equal(gateway.recordVerifiedFocusRevision({memoryId,accountTag:B,bvid:BV,review,sourceProof:proof,
+  sourceRef:'focus:'+'c'.repeat(32)}).reason,'memory-unavailable')
+ assert.equal(gateway.recordVerifiedFocusRevision({memoryId,accountTag:A,bvid:BV,review:{...review,reviewStatus:'unknown'},
+  sourceProof:proof,sourceRef:'focus:'+'c'.repeat(32)}).reason,'invalid-verified-window')
+ assert.equal(gateway.recordVerifiedFocusRevision({memoryId,accountTag:A,bvid:BV,review,
+  sourceProof:{internalToken:'untrusted'},sourceRef:'focus:'+'c'.repeat(32)}).reason,'source-not-admitted')
+ assert.equal(gateway.memoryDetailInfo({memoryId,accountTag:A}).available,false)
+ setTime(NOW+14*DAY)
+ assert.equal(gateway.recordVerifiedFocusRevision({memoryId,accountTag:A,bvid:BV,review,
+  sourceProof:proof,sourceRef:'focus:'+'c'.repeat(32)}).reason,'memory-unavailable')
+}))

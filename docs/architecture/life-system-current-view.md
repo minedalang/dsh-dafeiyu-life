@@ -43,6 +43,14 @@
 %% S = 有生产代码接线（非 Windows / B站实机验收）；P = 部分接线；G = 尚无完整闭环
 %% 数据行只读与外发分路；不允许把权限/记忆/回执画成万能单系统。
 flowchart TB
+  %% dev.6 owner-only branch; separate from Life's autonomous decision and social action rights.
+  dev6OwnerFrame["主人明确选帧或秒数：只读局部补看，非自主意愿授权"]
+  dev6OwnerGate["本机同源/当前账号/真实图片时间锚点/BV 预算/局部视觉核验"]
+  dev6OwnerMemory["唯一未遗忘视频主记忆：浅摘要版本 + 深层局部附件；无唯一匹配不写"]
+  dev6OwnerFrame --> dev6OwnerGate
+  dev6OwnerGate -.->|仅内部一次性可信回执| dev6OwnerMemory
+  %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
+  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
   visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
   video -.->|可信分镜与Life自主局部新增证据| visualAiBrief
   %% @code visualAiBrief | lib/video-memory-synthesis.mjs | export async function synthesizeFocusVisualMemory
@@ -481,6 +489,15 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% dev.71：继承 dev.70 动态核验恢复与可见 Life 额度；Life 授权证明消费/结算按 dev.71 账本契约执行。
 %% 生活候选细目字典：这是当前项目的真实 schema 类型/选择约束，不是泛化的 AI 心理推演。
 flowchart LR
+  %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
+  dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
+  dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
+  dev6OwnerMemory["唯一未遗忘视频主记忆：浅摘要版本与深层新增片段"]
+  dev6OwnerFrame --> dev6OwnerGate
+  dev6OwnerGate -.->|一次性可信回执；无唯一记忆则不写| dev6OwnerMemory
+  %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
+  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
+
   visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
   video -.->|自愿选择后才执行| visualAiBrief
   %% @code visualAiBrief | lib/video-memory-synthesis.mjs | export async function synthesizeFocusVisualMemory
@@ -686,6 +703,15 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code bridge | index.js | const rememberVerifiedLifeAction
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
 flowchart TB
+  %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
+  dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
+  dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
+  dev6OwnerMemory["唯一未遗忘视频主记忆：浅摘要版本与深层新增片段"]
+  dev6OwnerFrame --> dev6OwnerGate
+  dev6OwnerGate -.->|一次性可信回执；无唯一记忆则不写| dev6OwnerMemory
+  %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
+  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
+
   visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
   videoReadHandoff -.->|核验后生成文字摘要| visualAiBrief
   visualAiBrief -.->|只保存有限笔记并遵守遗忘| episode
@@ -911,6 +937,15 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% 管理页只读并列展示线索、契机与待办；Life 已批准不等于平台送达，待回执不能标为中断。
 %% dev.37 统一归属 + dev.36 Universal Episode：有意义的自主动作共享因果归属，不改变原平台授权
 flowchart TB
+  %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
+  dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
+  dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
+  dev6OwnerMemory["唯一未遗忘视频主记忆：浅摘要版本与深层新增片段"]
+  dev6OwnerFrame --> dev6OwnerGate
+  dev6OwnerGate -.->|一次性可信回执；无唯一记忆则不写| dev6OwnerMemory
+  %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
+  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
+
   visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
   read -.->|可信新增局部采样才调用无工具文字模型| visualAiBrief
   visualAiBrief -.->|账号隔离及原遗忘机制| memory

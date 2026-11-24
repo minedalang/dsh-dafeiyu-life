@@ -33,3 +33,20 @@ test('相册仅保存真实 JPG、账号隔离、过24小时失效',()=>{
   assert.equal(existsSync(join(root,'life-video-gallery',tag,saved.id)),false)
  }finally{rmSync(root,{recursive:true,force:true})}
 })
+
+import {planOwnerGalleryRevisit,matchOwnerGalleryMemory} from '../lib/owner-video-revisit.mjs'
+test('dev.6 owner focus requires matching account gallery and exact captured frame time',()=>{
+ const row={id:'c'.repeat(32),bvid,verified:true,at:now,images:[{file:'storyboard-00.jpg',times:[4,12.5]}]}
+ const args={row,account:tag,bvid,mode:'frame',atSeconds:12.5,imageFile:'storyboard-00.jpg',durationSeconds:150,now:now+1000}
+ assert.equal(planOwnerGalleryRevisit(args).ok,true)
+ assert.equal(planOwnerGalleryRevisit({...args,atSeconds:13}).reason,'frame-not-in-gallery')
+ assert.equal(planOwnerGalleryRevisit({...args,imageFile:'../../bad.jpg'}).reason,'frame-not-in-gallery')
+ assert.equal(planOwnerGalleryRevisit({...args,account:'invalid'}).reason,'gallery-unavailable')
+ assert.equal(planOwnerGalleryRevisit({...args,now:now+86400_000}).reason,'gallery-unavailable')
+ assert.equal(planOwnerGalleryRevisit({...args,mode:'time',atSeconds:149,imageFile:''}).ok,true)
+ assert.equal(planOwnerGalleryRevisit({...args,mode:'time',atSeconds:151}).reason,'time-out-of-range')
+ const selected=matchOwnerGalleryMemory([{memoryId:'e-'+'a'.repeat(18),bvid,at:now+1500}],{bvid,at:now})
+ assert.equal(selected,'e-'+'a'.repeat(18))
+ assert.equal(matchOwnerGalleryMemory([{memoryId:'e-'+'a'.repeat(18),bvid,at:now},
+  {memoryId:'e-'+'b'.repeat(18),bvid,at:now+20}],{bvid,at:now}),null)
+})

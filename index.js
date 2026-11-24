@@ -60,6 +60,7 @@ import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import {listBackupFiles,inspectBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
 import {addLifeVideoGallery,listLifeVideoGallery,readLifeVideoGalleryImage,pruneLifeVideoGallery,pruneAllLifeVideoGalleries} from './lib/life-video-gallery.mjs'
+import {planOwnerGalleryRevisit,matchOwnerGalleryMemory} from './lib/owner-video-revisit.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
@@ -1620,6 +1621,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let memoryRetriever = null
   let lifeReflection = null
   let lifeMemoryCoordinator = null
+  const admittedOwnerFocusProofs=new WeakSet()
+  let ownerGalleryFocusJob=null,ownerGalleryFocusBusy=false
   let privateConversationExperiences = null
   let socialInteractionCoordinator = null
   let socialContextAssembler = null
@@ -6929,7 +6932,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     const index=relationshipIndex()
     if(!index)throw Error('relationship-index-unavailable')
     return index.get(uid,relationshipOptions())
-  },getAccountTag:trustedLifeAccountTag,onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'episode:'+String(id)))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},logger:{warn:m=>log('人生记忆：'+m)}})
+  },getAccountTag:trustedLifeAccountTag,admitMemoryDetails:({episode,fragments,sourceProof})=>{
+    if(!sourceProof||typeof sourceProof!=='object'||!admittedOwnerFocusProofs.has(sourceProof)||
+       !Array.isArray(fragments)||fragments.length!==1||
+       episode?.id!==sourceProof.memoryId||episode?.accountTag!==sourceProof.accountTag||
+       episode?.bvid!==sourceProof.bvid||fragments[0]?.sourceRef!==sourceProof.sourceRef||
+       sourceProof.accountTag!==trustedLifeAccountTag()||
+       !Number.isFinite(sourceProof.at)||Date.now()-sourceProof.at>60_000||
+       accountBinding.status().blocked)return false
+    admittedOwnerFocusProofs.delete(sourceProof)
+    return true
+  },onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'episode:'+String(id)))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},logger:{warn:m=>log('人生记忆：'+m)}})
   ctx.effect(()=>()=>lifeMemory?.close(),'bili-duty: 只读内存 FTS 关闭')
   embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,rootDir:storageDataPath(stateDir,'embedding-runtime'),
     modelDir:largeDataStatus(stateDir).embeddingModelDir||undefined,logger:{warn:m=>log('本地语义运行时：'+m)}})
@@ -8972,6 +8985,121 @@ logger:{warn:m=>log('社交意图：'+m)}
       // Local read-only acceptance evidence. No Bilibili fetch or model call.
       // The helper binds results to the CURRENT login (HMAC; no UID or cookie returned).
       return sendJson(res,200,readVideoDiscussionDiagnostics({stateDir,credential:dmCred(stateDir)}))
+    }
+    // dev.6: explicit owner-only, read-only video revisit. The selected gallery
+    // record is a time anchor, not permission to assert a visual conclusion.
+    if(path==='/api/bili-duty/life-video-gallery/focus'||
+       path==='/api/bili-duty/life-video-gallery/focus/status'){
+      const peer=String(req.socket?.remoteAddress||'')
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||
+         origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin))||
+         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+        return sendJson(res,403,{ok:false,reason:'local-same-origin-required'})
+      const account=trustedLifeAccountTag()
+      if(!hasCredential()||!account||accountBinding.status().blocked)
+        return sendJson(res,401,{ok:false,reason:'account-not-verified'})
+      if(req.method==='GET'&&path.endsWith('/status')){
+        const job=ownerGalleryFocusJob
+        return sendJson(res,200,{ok:true,job:job?.account===account?{
+          id:job.id,bvid:job.bvid,status:job.status,reason:job.reason||'',
+          anchorSeconds:job.anchorSeconds,memory:job.memory||null,
+          updatedAt:job.updatedAt}:null})
+      }
+      if(req.method!=='POST'||path.endsWith('/status'))return sendJson(res,405,{ok:false,reason:'method-not-allowed'})
+      if(ownerGalleryFocusBusy)return sendJson(res,409,{ok:false,reason:'focus-already-running',error:'当前已有视频补看正在进行'})
+      refreshCfg()
+      if(cfg.masterEnabled!==true||cfg.visionEnabled!==true||
+         !['independent_dsh','independent_local'].includes(resolvedVisionMode()))
+        return sendJson(res,409,{ok:false,reason:'vision-not-enabled'})
+      const body=await readBody(req,1600)
+      if(body?.confirm!=='OWNER_READ_ONLY_REVISIT'||
+         !/^[a-f0-9]{32}$/.test(String(body.galleryId||''))||
+         !validBv(String(body.bvid||'')))return sendJson(res,400,{ok:false,reason:'invalid-owner-confirmation'})
+      let gallery
+      try{gallery=listLifeVideoGallery(stateDir,account).find(row=>row.id===body.galleryId&&row.bvid===body.bvid)}
+      catch{return sendJson(res,409,{ok:false,reason:'gallery-unavailable'})}
+      if(!gallery)return sendJson(res,404,{ok:false,reason:'gallery-not-found-or-expired'})
+      const bvid=gallery.bvid
+      let info
+      try{info=parseMaybeJson(await call('bili_video_info',{bvid}))}
+      catch{return sendJson(res,409,{ok:false,reason:'video-metadata-unavailable'})}
+      if(account!==trustedLifeAccountTag()||accountBinding.status().blocked)
+        return sendJson(res,409,{ok:false,reason:'account-changed'})
+      const durationSeconds=Number(info?.duration)
+      const plan=planOwnerGalleryRevisit({row:gallery,account,bvid,mode:body.mode,
+        atSeconds:body.atSeconds,imageFile:body.imageFile,durationSeconds})
+      if(!plan.ok)return sendJson(res,400,{ok:false,reason:plan.reason})
+      const id=randomUUID().replaceAll('-',''),startedAt=Date.now()
+      const job={id,account,bvid,galleryId:gallery.id,anchorSeconds:plan.anchorSeconds,
+        status:'running',updatedAt:startedAt,reason:'',memory:null}
+      ownerGalleryFocusJob=job;ownerGalleryFocusBusy=true
+      // Keep the worker's identity fixed across asynchronous network / model calls.
+      const scope=()=>ownerGalleryFocusJob===job&&account===trustedLifeAccountTag()&&
+        !accountBinding.status().blocked&&cfg.visionEnabled===true&&hasCredential()
+      Promise.resolve().then(async()=>{
+        if(!scope())return {ok:false,reason:'account-changed'}
+        return withLifeVideoVisualLease(stateDir,{accountTag:account,bvid},async()=>{
+          if(!scope())return {ok:false,reason:'account-changed'}
+          const budget=Number(cfg.visionFrames)>=48?100*1048576:
+            Number(cfg.visionFrames)>=24?50*1048576:24*1048576
+          const stop=liveLifeActivity.start('video-observe',account,{maxAgeMs:8*60_000,bvid})
+          let visual
+          try{visual=parseMaybeJson(await call('bili_preview_vision',{
+            bvid,perception_source:'adaptive',view_depth:'deep',
+            focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
+            network_budget_bytes:budget,frame_budget_limit:Math.min(12,Math.max(4,Number(cfg.visionFrames)||12)),
+            capture_for_gallery:true}))}
+          catch{return {ok:false,reason:'focus-tool-failed'}}
+          finally{stop()}
+          if(!scope())return {ok:false,reason:'account-changed'}
+          const capture=safeVideoDebugCapture(visual?.debugCapture,bvid)
+          if(visual&&typeof visual==='object')delete visual.debugCapture
+          const evidence=buildVideoEvidenceBundle({bvid,info,visual})
+          const review=verifyVideoFocusReview({bvid,plan:{...plan,networkBudgetBytes:budget},
+            result:visual,evidence})
+          if(!review)return {ok:false,reason:diagnoseVideoFocusReceipt({bvid,
+            plan:{...plan,networkBudgetBytes:budget},result:visual,evidence}).code}
+          if(!scope())return {ok:false,reason:'account-changed'}
+          let gallerySaved=false
+          if(capture){const saved=addLifeVideoGallery(stateDir,{account,bvid,captures:[capture],
+            verified:true,phase:'focus',groupId:gallery.groupId||gallery.id,
+            note:String(review.description||'').slice(0,360)})
+            gallerySaved=saved.ok===true}
+          let memory={status:'not-linked',reason:'no-unique-current-episode'}
+          if(visual?.status==='analyzed'&&lifeMemory){
+            const traces=lifeMemory.videoEvidenceTrace({accountTag:account,bvid,visualOnly:true,limit:12})
+            const memoryId=matchOwnerGalleryMemory(traces,{bvid,at:gallery.at})
+            if(memoryId&&scope()){
+              const sourceRef='focus:'+id
+              const proof=Object.freeze({memoryId,accountTag:account,bvid,sourceRef,at:Date.now()})
+              admittedOwnerFocusProofs.add(proof)
+              const result=lifeMemory.recordVerifiedFocusRevision({memoryId,accountTag:account,
+                bvid,review,sourceProof:proof,sourceRef})
+              admittedOwnerFocusProofs.delete(proof)
+              memory=result.ok?{status:'updated',memoryId,shallowVersion:result.shallowVersion,
+                deepFragments:result.deepFragments}:result.detailPersisted?
+                {status:'partial',reason:result.reason,deepPersisted:true}:{status:'not-updated',reason:result.reason}
+            }
+          }else if(visual?.status==='cached')memory={status:'not-updated',reason:'cached-no-new-evidence'}
+          return {ok:true,review,mem:memory,gallerySaved}
+        })
+      }).then(outcome=>{
+        if(!scope()){
+          if(ownerGalleryFocusJob===job){job.status='failed';job.reason='account-changed';job.updatedAt=Date.now()}
+          return
+        }
+        job.status=outcome?.ok===true?'verified':'failed'
+        job.reason=outcome?.ok===true?(outcome.gallerySaved?'verified-new-focus':'verified-images-unavailable'):
+          String(outcome?.reason||'focus-unverified').slice(0,90)
+        job.memory=outcome?.mem||null;job.updatedAt=Date.now()
+      }).catch(error=>{
+        if(ownerGalleryFocusJob!==job)return
+        job.status='failed';job.reason='focus-execution-failed';job.updatedAt=Date.now()
+        log('主人视频补看执行失败：'+String(error?.message||error).slice(0,120))
+      }).finally(()=>{ownerGalleryFocusBusy=false})
+      return sendJson(res,202,{ok:true,id,status:'running',bvid,
+        anchorSeconds:plan.anchorSeconds,notice:'只读视频补看已受理；仅核验成功才写入已绑定的未遗忘记忆'})
     }
     // dev.4: current-account 24-hour Life image gallery; not the Debug endpoint,
     // never serves arbitrary paths, old accounts or expired files.
