@@ -78,3 +78,15 @@ test('neural memory categories are only shown in interactive filters, without du
   assert.match(html,/id="neural-layout-mode"/)
   assert.match(html,/class="neural-kind-filters"/)
 })
+
+test('Ollama video observation retains Python repair and relocated-cache health alert',()=>{
+  const root=new URL('../',import.meta.url)
+  const ui=readFileSync(new URL('lib/management-console.js',root),'utf8')
+  const index=readFileSync(new URL('index.js',root),'utf8')
+  assert.match(ui,/\$\('vision-python-auto-repair'\)\.hidden=false/)
+  assert.doesNotMatch(ui,/if\(visionIsLocal\(\)\)throw Error\('当前为 Ollama/)
+  assert.match(ui,/local Ollama model still needs the same Python frame worker/)
+  assert.match(ui,/result\.stage/)
+  assert.match(index,/env:storagePyEnv\(\{BILI_DUTY_HOME:stateDir\}\)/)
+  assert.match(index,/stage=check\.stage\|\|''/)
+})

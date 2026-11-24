@@ -1,9 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,writeFileSync,mkdirSync,rmSync} from 'node:fs'
+import {mkdtempSync,writeFileSync,mkdirSync,rmSync,existsSync,readdirSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {visionPythonCandidates,probeVisionPython,selectVisionPython} from '../lib/vision-python-runtime.mjs'
+import {spawnSync} from 'node:child_process'
+import {VISION_PYTHON_PROBE_SOURCE,visionPythonCandidates,probeVisionPython,selectVisionPython} from '../lib/vision-python-runtime.mjs'
 
 const root=mkdtempSync(join(tmpdir(),'dsh-python-gate-'))
 const home=join(root,'home');mkdirSync(home)
@@ -64,4 +65,36 @@ test('missing required modules are included only from the fixed allowlist',()=>{
  const r=probeVisionPython(good,{home,execute:()=>({status:0,stdout:'VISION_PYTHON_CHECK:'+
    JSON.stringify({ok:true,version:[3,12],deps:false,missingModules:['mcp','secret_user_path','bilibili_api']})+'\n'})})
  assert.deepEqual(r,{ok:false,reason:'missing_mcp_dependencies',missingModules:['mcp','bilibili_api']})
+})
+
+test('published relocated modelData is a mandatory Python write probe stage',()=>{
+ const env={TEMP:home,TMP:home,DSH_MEDIA_CACHE_HOME:join(root,'external-modelData')}
+ let received
+ const result=probeVisionPython(good,{home,env,requiresMcp:false,execute:(_cmd,_args,opts)=>{
+   received=opts.env.DSH_MEDIA_CACHE_HOME
+   return {status:0,stdout:'VISION_PYTHON_CHECK:'+JSON.stringify({ok:false,version:[3,12],deps:true,stage:'media_cache'})+'\n'}
+ }})
+ assert.equal(received,env.DSH_MEDIA_CACHE_HOME)
+ assert.deepEqual(result,{ok:false,reason:'runtime_permission_error',stage:'media_cache'})
+})
+
+test('isolated Python health source rejects unwritable migrated cache without creating data',t=>{
+ const py=process.platform==='win32'?'python':'python3'
+ const available=spawnSync(py,['-c','import sys'],{timeout:2500})
+ if(available.status!==0){t.skip('Python not installed in test runner');return}
+ const missingMedia=join(root,'external-missing-modelData')
+ const env={...process.env,TEMP:home,TMP:home,DSH_MEDIA_CACHE_HOME:missingMedia}
+ const exec=()=>spawnSync(py,['-I','-'],{cwd:home,env,input:VISION_PYTHON_PROBE_SOURCE,encoding:'utf8',timeout:4000})
+ const out=exec()
+ assert.equal(out.status,0,out.stderr)
+ const raw=out.stdout.trim().split('VISION_PYTHON_CHECK:')[1]
+ const payload=JSON.parse(raw)
+ assert.equal(payload.ok,false)
+ assert.equal(payload.stage,'media_cache')
+ assert.equal(existsSync(missingMedia),false,'probe must never create a cache destination')
+ mkdirSync(missingMedia)
+ const yes=JSON.parse(exec().stdout.trim().split('VISION_PYTHON_CHECK:')[1])
+ assert.equal(yes.ok,true)
+ assert.equal(yes.writes.media_cache,true)
+ assert.equal(readdirSync(missingMedia).length,0,'no probe data left in cache')
 })

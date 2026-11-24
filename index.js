@@ -3613,7 +3613,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let visionPythonCache=null
   const selectHealthyVisionPython=({fresh=false}={})=>{
     if(process.platform!=='win32')return {ok:true,path:cfg.pythonPath||'python',source:'configured',reason:'healthy'}
-    const key=JSON.stringify([cfg.pythonPath,cfg.visionPythonPath,process.env.BILI_DUTY_VISION_PYTHON])
+    const key=JSON.stringify([cfg.pythonPath,cfg.visionPythonPath,process.env.BILI_DUTY_VISION_PYTHON,storageDomainRoot(stateDir,'media')])
     if(!fresh&&visionPythonCache?.key===key&&Date.now()-visionPythonCache.at<120000)return visionPythonCache.result
     // The user-selected vision interpreter is the first candidate. Do not let
     // an unhealthy main .venv mask a missing MCP package in the chosen Conda Python.
@@ -3631,7 +3631,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const visionEnvironmentRepair=createVisionEnvironmentRepair({
     home:stateDir,workdir:process.cwd(),runtimeRoot:storagePythonRuntimeRoot(stateDir),
     requirementsFile:join(pluginDir,'vendor','bilibili-mcp','requirements.txt'),
-    env:uvEnv(),
+    // Repair and real video MCP must probe the same published modelData cache.
+    env:storagePyEnv({BILI_DUTY_HOME:stateDir}),
     configured:()=>cfg.pythonPath||'',preferred:()=>cfg.visionPythonPath||'',
     persist:async path=>{
       const saved=await persistCfg({visionPythonPath:path})
@@ -3656,14 +3657,15 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       catch{return {status:'unhealthy',reason:'vision_temp_unavailable',checked:0}}
       const candidates=visionPythonCandidates({preferred:cfg.visionPythonPath||'',configured:cfg.pythonPath||'',
         home:stateDir,workdir:process.cwd(),env:environment,platform:'win32'}).slice(0,4)
-      let reason='missing_runtime',checked=0
+      let reason='missing_runtime',stage='',checked=0
       for(const python of candidates){
         const check=await probeVisionPythonAsync(python,{home:stateDir,env:environment,requiresMcp:true,timeoutMs:3000})
         checked++
         if(check.ok)return {status:'healthy',reason:'healthy',checked}
         reason=check.reason||reason
+        stage=check.stage||''
       }
-      return {status:'unhealthy',reason,checked}
+      return {status:'unhealthy',reason,stage,checked}
     })().catch(()=>({status:'unhealthy',reason:'runtime_execution_failed',checked:0}))
     visualHealthCheck={at:Date.now(),promise}
     return promise
@@ -8443,7 +8445,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       activityFeed:activityFeed.list({limit:8}),
       venvReady: venvReadyNow(),
       visionPythonRuntime:(()=>{const r=visionPythonCache?.result;return {status:r?.ok?'healthy':r?'unhealthy':'unchecked',
-        source:r?.source||'none',reason:r?.reason||'not_run'}})(),
+        source:r?.source||'none',reason:r?.reason||'not_run',stage:r?.stage||''}})(),
       version: myVersion(),
       // 2026-10-22：缺哪个 Python 包装不上，得能一眼看出来（出不了二维码 =09 缺 qrcode）
       missingDeps: (() => { try { return missingVenvDeps() } catch { return [] } })(),
@@ -10119,7 +10121,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     if(req.method==='GET'&&path==='/api/bili-duty/dsh-vision/runtime-health')
       return sendJson(res,200,{ok:true,...await checkVisualHealthOnEntry()})
     if(req.method==='GET'&&path==='/api/bili-duty/dsh-vision/status')
-      return sendJson(res,200,{ok:true,...dshVisionReview.status(),pythonRuntime:(()=>{const r=visionPythonCache?.result;return {status:r?.ok?'healthy':r?'unhealthy':'unchecked',source:r?.source||'none',reason:r?.reason||'not_run'}})(),visionRepair:visionEnvironmentRepair.status(),imageUrl:'/api/bili-duty/local-vision/selftest-image'})
+      return sendJson(res,200,{ok:true,...dshVisionReview.status(),pythonRuntime:(()=>{const r=visionPythonCache?.result;return {status:r?.ok?'healthy':r?'unhealthy':'unchecked',source:r?.source||'none',reason:r?.reason||'not_run',stage:r?.stage||''}})(),visionRepair:visionEnvironmentRepair.status(),imageUrl:'/api/bili-duty/local-vision/selftest-image'})
     if(req.method==='POST'&&path==='/api/bili-duty/dsh-vision/repair'){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')
       if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||

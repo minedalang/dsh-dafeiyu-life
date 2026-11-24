@@ -230,3 +230,53 @@ test('when Conda base is healthy but lacks ensurepip, uv fallback touches only t
     assert.ok(published.includes('.vision-env-'));assert.equal(existsSync(f.base),true)
   }finally{f.clean()}
 })
+
+test('repair keeps migrated media cache route in base, new venv, and final validation',async()=>{
+  const f=setup(),media=join(f.root,'relocated-modelData')
+  mkdirSync(media)
+  let installed=false,saved='',visited=0
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      env:{DSH_MEDIA_CACHE_HOME:media,BILI_DUTY_HOME:f.home},preferred:()=>f.base,
+      probe:(python,opts)=>{
+        assert.equal(opts.env.DSH_MEDIA_CACHE_HOME,media)
+        assert.equal(opts.env.BILI_DUTY_HOME,f.home)
+        visited++
+        return {ok:!opts.requiresMcp||python!==f.base&&installed,reason:'healthy'}
+      },
+      run:async(_cmd,args,opts)=>{
+        assert.equal(opts.env.DSH_MEDIA_CACHE_HOME,media)
+        if(args[0]==='-m'&&args[1]==='venv'){
+          mkdirSync(join(args[3],'Scripts'),{recursive:true})
+          writeFileSync(join(args[3],'Scripts','python.exe'),'fixture')
+        }
+        if(args[0]==='-m'&&args[1]==='pip')installed=true
+        return {ok:true}
+      },persist:async python=>{saved=python;return true}})
+    const result=await repair.run()
+    assert.equal(result.state,'ready')
+    assert.ok(saved.includes('.vision-env-'))
+    assert.ok(visited>=4)
+  }finally{f.clean()}
+})
+
+test('repeated unsuccessful repair is throttled without creating more environments',async()=>{
+  const f=setup();let attempt=0,now=100000
+  try{
+    const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
+      clock:()=>now,cooldownMs:600000,
+      preferred:()=>f.base,probe:(_python,opts)=>({ok:!opts.requiresMcp,reason:'missing_mcp_dependencies'}),
+      run:async(_cmd,args)=>{
+        if(args[0]==='-m'&&args[1]==='venv')attempt++
+        return {ok:false}
+      },persist:async()=>{throw Error('must never publish')}})
+    assert.equal((await repair.run()).state,'failed')
+    assert.equal(attempt,1)
+    assert.equal(repair.start().reason,'repair_retry_cooldown')
+    assert.equal((await repair.run()).reason,'repair_retry_cooldown')
+    assert.equal(attempt,1)
+    now+=600001
+    assert.equal((await repair.run()).state,'failed')
+    assert.equal(attempt,2)
+  }finally{f.clean()}
+})
