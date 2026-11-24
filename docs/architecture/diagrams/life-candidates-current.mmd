@@ -194,3 +194,8 @@ dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验�
 contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
+
+%% dev.6: existing explicit revisit tool, no new automatic opportunity.
+  revisit283["已有可信时间锚点的自主补看：Life 意愿与同账号同 BV 视觉租约"]
+  video -.->|仅显式入口；独立意愿| revisit283
+%% @code revisit283 | index.js | name:'bili_video_revisit_moment'

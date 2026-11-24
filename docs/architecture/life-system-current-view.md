@@ -447,6 +447,11 @@ planner -.->|仅节省重复调用，不代替模型决定喜恶| localNovelty
 contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
+
+%% dev.6: explicit main-session progressive recall; voluntary revisit keeps Life agency.
+  focusRecall283["主 Session 按需展开当前清晰 BV 深层片段；不联网"]
+  focusRecall283 -.->|不增加后台机会或外发权限| planner
+%% @code focusRecall283 | lib/life-memory-gateway.mjs | function recallVideoDetails
 ```
 
 ## 二、八类候选细目
@@ -648,6 +653,11 @@ dmFollowCandidate -.->|同一社交模型已明确愿意 + 人物/授权核验�
 contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
+
+%% dev.6: existing explicit revisit tool, no new automatic opportunity.
+  revisit283["已有可信时间锚点的自主补看：Life 意愿与同账号同 BV 视觉租约"]
+  video -.->|仅显式入口；独立意愿| revisit283
+%% @code revisit283 | index.js | name:'bili_video_revisit_moment'
 ```
 
 ## 三、可信回执与记忆闭环
@@ -896,6 +906,12 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 
 %% @code videoTrace | lib/life-memory-gateway.mjs | function videoEvidenceTrace
+
+%% dev.6: new verified focus attaches to its exact new episode; cached result cannot create it.
+  focusDeep283["本次真实补看唯一经历 → 有界深层局部片段"]
+  episode --> focusDeep283
+  focusDeep283 -.->|显式 BV 与 ID；清晰且未撤销| recall
+%% @code focusDeep283 | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
 ```
 
 ## 四、统一 Life Episode 因果持续性
@@ -1087,4 +1103,9 @@ commenterChoice -.->|候选非强制动作| menu
 contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
+
+%% dev.6: main-session progressive recall is local read only, not an autonomous wake.
+  localRecall283["主 Session 浅层不足时显式深层回忆；没有证据则保留未知"]
+  localRecall283 -.->|仅现有显式自主补看入口；不新增调度| menu
+%% @code localRecall283 | lib/long-term-memory.mjs | detail_bvid
 ```

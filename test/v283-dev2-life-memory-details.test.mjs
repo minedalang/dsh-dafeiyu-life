@@ -141,3 +141,18 @@ test('dev.6 one-hour video focus updates both shallow and deep at a real minute-
  assert.deepEqual(deep.fragments[0].timeAnchorMs,[3000000,3012000])
  assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:B}).ok,false)
 }))
+
+test('progressive recall requires exact current-account BV and explicit identity when ambiguous',()=>setup(({gateway,memoryId,setAccount,setTime})=>{
+ const sourceProof={internalToken:'test-only'}
+ assert.equal(gateway.recallVideoDetails({bvid:BV,accountTag:A}).reason,'no-detail')
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof}).ok,true)
+ assert.equal(gateway.recallVideoDetails({bvid:BV,accountTag:A}).fragments[0].fragmentId,'frame-0001')
+ gateway.recordEvents([{...event,key:'video-explore:second-observation',at:NOW+1000}])
+ const ambiguous=gateway.recallVideoDetails({bvid:BV,accountTag:A})
+ assert.equal(ambiguous.reason,'ambiguous-video-memory');assert.equal(ambiguous.candidates.length,2)
+ assert.equal(ambiguous.fragments,undefined)
+ assert.equal(gateway.recallVideoDetails({bvid:BV,accountTag:A,memoryId}).ok,true)
+ assert.equal(gateway.recallVideoDetails({bvid:'BV0987654321',accountTag:A,memoryId}).ok,false)
+ setAccount(B);assert.equal(gateway.recallVideoDetails({bvid:BV,accountTag:A,memoryId}).ok,false)
+ setAccount(A);setTime(NOW+14*DAY);assert.equal(gateway.recallVideoDetails({bvid:BV,accountTag:A,memoryId}).ok,false)
+}))

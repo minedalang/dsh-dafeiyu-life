@@ -440,3 +440,8 @@ planner -.->|仅节省重复调用，不代替模型决定喜恶| localNovelty
 contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planner
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
+
+%% dev.6: explicit main-session progressive recall; voluntary revisit keeps Life agency.
+  focusRecall283["主 Session 按需展开当前清晰 BV 深层片段；不联网"]
+  focusRecall283 -.->|不增加后台机会或外发权限| planner
+%% @code focusRecall283 | lib/life-memory-gateway.mjs | function recallVideoDetails

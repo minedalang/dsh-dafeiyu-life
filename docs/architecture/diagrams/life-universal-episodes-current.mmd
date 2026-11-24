@@ -184,3 +184,8 @@ commenterChoice -.->|候选非强制动作| menu
 contextDelivery282["模型实收上下文｜Episode/字幕/反思/记忆标记覆盖与缺失；只读、不存原文"]
 contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
+
+%% dev.6: main-session progressive recall is local read only, not an autonomous wake.
+  localRecall283["主 Session 浅层不足时显式深层回忆；没有证据则保留未知"]
+  localRecall283 -.->|仅现有显式自主补看入口；不新增调度| menu
+%% @code localRecall283 | lib/long-term-memory.mjs | detail_bvid

@@ -27,3 +27,33 @@ test('actual revisit runs the existing Life vote and verification first',()=>{
   assert.match(admission,/willingness\.verify\(/)
   assert.match(revisit,/verifyVideoFocusReview/)
 })
+
+test('actual autonomous revisit handler runs without owner job, uses lease, and records only fresh evidence',async()=>{
+  const {runInNewContext}=await import('node:vm')
+  const {randomUUID,createHash}=await import('node:crypto')
+  const {runLifeChosenVideoRead}=await import('../lib/life-video-read-admission.mjs')
+  const {withLifeVideoVisualLease}=await import('../lib/life-planner-atomic.mjs')
+  const {mkdtempSync,rmSync}=await import('node:fs');const {tmpdir}=await import('node:os');const {join}=await import('node:path')
+  const dir=mkdtempSync(join(tmpdir(),'life-revisit-actual-')),account='a'.repeat(16),bvid='BV1234567890'
+  let spec,visualStatus='analyzed',observations=0,events=0,updates=0,choice='act',activeAccount=account,receipt
+  const proofSet=new WeakSet(),plan={ok:true,status:'ready',startSeconds:1,endSeconds:13,anchorSeconds:7,origin:'explicit-time'}
+  const context={tool:x=>{spec=x},cfg:{masterEnabled:true,visionEnabled:true,visionFrames:12},refreshCfg(){},hasCredential:()=>true,
+    resolvedVisionMode:()=> 'independent_local',validBv:()=>true,accountBinding:{status:()=>({blocked:false})},trustedLifeAccountTag:()=>activeAccount,
+    parseMaybeJson:x=>x,call:async(name)=>{if(name==='bili_video_info')return {duration:60};observations++;return {status:visualStatus}},
+    planVideoMomentFollowup:()=>plan,recallVideoFocusCues:()=>[],runLifeChosenVideoRead,withLifeVideoVisualLease,stateDir:dir,
+    lifeWillingness:{decide:async()=>choice==='act'?{ok:true,candidateId:'focus-read',proof:{}}:{ok:false,reason:'life-deferred'},verify:()=>({ok:true}),receipt:(_p,r)=>{receipt=r.status}},
+    liveLifeActivity:{start:()=>()=>{}},safeVideoDebugCapture:()=>null,buildVideoEvidenceBundle:()=>({}),
+    verifyVideoFocusReview:()=>({startMs:1000,endMs:13000,frameTimesMs:[7000],description:'局部画面'}),
+    buildVideoExplorationEvent:({operationId,accountTag})=>({key:'video-explore:'+operationId,accountTag,experience:{}}),
+    lifeMemoryCoordinator:{recordEvents:async([event])=>{events++;assert.equal(event.accountTag,account);context.expectedId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18);return {ok:true}}},
+    randomUUID,createHash,admittedOwnerFocusProofs:proofSet,lifeMemory:{recordVerifiedFocusRevision:({memoryId,sourceProof})=>{
+      assert.equal(memoryId,context.expectedId);assert.ok(proofSet.has(sourceProof));updates++;return {ok:true,shallowVersion:1,deepFragments:1}}},log(){}}
+  const start=server.lastIndexOf('  tool({',server.indexOf("name:'bili_video_revisit_moment'")),end=server.indexOf('  tool({',start+8)
+  try{
+    runInNewContext(server.slice(start,end),context)
+    const first=await spec.execute({bvid,at_seconds:7});assert.equal(first.ok,true,JSON.stringify(first));assert.equal(first.deepMemory.status,'updated');assert.equal(events,1);assert.equal(updates,1);assert.equal(receipt,'verified')
+    visualStatus='cached';const cached=await spec.execute({bvid,at_seconds:7});assert.equal(cached.status,'reused-cached-window');assert.equal(events,1);assert.equal(updates,1)
+    choice='defer';const refused=await spec.execute({bvid,at_seconds:7});assert.equal(refused.ok,false);assert.equal(observations,2)
+    choice='act';const busy=await withLifeVideoVisualLease(dir,{accountTag:account,bvid},()=>spec.execute({bvid,at_seconds:7}));assert.equal(busy.ok,false);assert.equal(observations,2)
+  }finally{rmSync(dir,{recursive:true,force:true})}
+})
