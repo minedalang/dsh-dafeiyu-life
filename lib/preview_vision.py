@@ -1051,6 +1051,7 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
         decoded_pixels=0
         scan_incomplete=False
         scan_limit='none'
+        skip_new_sheets=False
         for i in candidates:
             if len(available)>=PREVIEW_BOARD_MAX_TILES:
                 scan_incomplete=True
@@ -1059,18 +1060,26 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
             sheet=i//slots
             if sheet>=len(images):continue
             if sheet not in images_by_sheet:
+                # A full network/pixel budget blocks NEW source sheets, not
+                # untouched tiles on sheets already paid for. Otherwise the
+                # overview can report only 5 frames despite having 12+ genuine
+                # indexed tiles in the downloaded sheets.
+                if skip_new_sheets:
+                    continue
                 cap=min(6_000_000,board_network_cap-sprite_bytes) if storyboard else 6_000_000
                 if cap<=0:
                     scan_incomplete=True
                     scan_limit='network-budget'
-                    break
+                    skip_new_sheets=True
+                    continue
                 try:
                     raw_sheet=_safe_api_get(_image_url(images[sheet]),image=True,max_bytes=cap)
                 except ValueError as exc:
                     if '超过大小限制' in str(exc) and available:
                         scan_incomplete=True
                         scan_limit='network-budget'
-                        break
+                        skip_new_sheets=True
+                        continue
                     raise
                 if storyboard:sprite_bytes+=len(raw_sheet)
                 if len(raw_sheet)>cap:raise ValueError('官方预览分镜资源超过当前网络预算')
@@ -1079,7 +1088,8 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
                 if decoded_pixels+img.width*img.height>PREVIEW_BOARD_MAX_PIXELS:
                     scan_incomplete=True
                     scan_limit='pixel-cap'
-                    break
+                    skip_new_sheets=True
+                    continue
                 decoded_pixels+=img.width*img.height
                 img.load()
                 images_by_sheet[sheet]=img.convert('RGB')

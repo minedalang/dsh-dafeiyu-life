@@ -2110,7 +2110,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       !['storyboard','focus'].includes(value.kind)||!Array.isArray(value.images))return null
     const images=value.images.slice(0,value.kind==='focus'?13:12).filter(x=>
       x?.kind===value.kind&&/^(?:storyboard|focus)-\d{2}\.jpg$/.test(String(x.file||''))&&
-      Array.isArray(x.times)&&x.times.length<=12&&x.times.every(t=>Number.isFinite(t)&&t>=0&&t<=2700))
+      Array.isArray(x.times)&&x.times.length<=12&&x.times.every(t=>Number.isFinite(t)&&t>=0&&t<=14400))
       .map(x=>{
         const cols=Number(x.gridCols),rows=Number(x.gridRows)
         const grid=Number.isSafeInteger(cols)&&Number.isSafeInteger(rows)&&cols>=1&&cols<=4&&rows>=1&&rows<=4&&
@@ -2660,6 +2660,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       return runLifeChosenVideoRead({willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,
         bvid,mode:'revisit',read:async({account})=>{
           if(account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
+          job.stage='video-read';job.updatedAt=Date.now();
           const budget=Number(cfg.visionFrames)>=48?100*1048576:Number(cfg.visionFrames)>=24?50*1048576:24*1048576
           let visual
           const stopVideoObserve=liveLifeActivity.start('video-observe',account,{maxAgeMs:8*60_000,bvid})
@@ -9002,7 +9003,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(req.method==='GET'&&path.endsWith('/status')){
         const job=ownerGalleryFocusJob
         return sendJson(res,200,{ok:true,job:job?.account===account?{
-          id:job.id,bvid:job.bvid,status:job.status,reason:job.reason||'',
+          id:job.id,bvid:job.bvid,status:job.status,stage:job.stage||'unknown',reason:job.reason||'',
           anchorSeconds:job.anchorSeconds,memory:job.memory||null,
           updatedAt:job.updatedAt}:null})
       }
@@ -9023,16 +9024,16 @@ logger:{warn:m=>log('社交意图：'+m)}
       const bvid=gallery.bvid
       let info
       try{info=parseMaybeJson(await call('bili_video_info',{bvid}))}
-      catch{return sendJson(res,409,{ok:false,reason:'video-metadata-unavailable'})}
+      catch(error){log('主人补看预检失败：video-metadata-unavailable '+String(error?.code||'').slice(0,45));return sendJson(res,409,{ok:false,reason:'video-metadata-unavailable'})}
       if(account!==trustedLifeAccountTag()||accountBinding.status().blocked)
         return sendJson(res,409,{ok:false,reason:'account-changed'})
       const durationSeconds=Number(info?.duration)
       const plan=planOwnerGalleryRevisit({row:gallery,account,bvid,mode:body.mode,
         atSeconds:body.atSeconds,imageFile:body.imageFile,durationSeconds})
-      if(!plan.ok)return sendJson(res,400,{ok:false,reason:plan.reason})
+      if(!plan.ok){log('主人补看拒绝：'+String(plan.reason||'invalid-plan').slice(0,70));return sendJson(res,400,{ok:false,reason:plan.reason})}
       const id=randomUUID().replaceAll('-',''),startedAt=Date.now()
       const job={id,account,bvid,galleryId:gallery.id,anchorSeconds:plan.anchorSeconds,
-        status:'running',updatedAt:startedAt,reason:'',memory:null}
+        status:'running',stage:'queued',updatedAt:startedAt,reason:'',memory:null}
       ownerGalleryFocusJob=job;ownerGalleryFocusBusy=true
       // Keep the worker's identity fixed across asynchronous network / model calls.
       const scope=()=>ownerGalleryFocusJob===job&&account===trustedLifeAccountTag()&&
@@ -9050,9 +9051,10 @@ logger:{warn:m=>log('社交意图：'+m)}
             focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
             network_budget_bytes:budget,frame_budget_limit:Math.min(12,Math.max(4,Number(cfg.visionFrames)||12)),
             capture_for_gallery:true}))}
-          catch{return {ok:false,reason:'focus-tool-failed'}}
+          catch(error){log('主人补看视觉读取失败：'+String(error?.code||error?.message||'unknown').slice(0,120));return {ok:false,reason:'focus-tool-failed'}}
           finally{stop()}
           if(!scope())return {ok:false,reason:'account-changed'}
+          job.stage='verification';job.updatedAt=Date.now()
           const capture=safeVideoDebugCapture(visual?.debugCapture,bvid)
           if(visual&&typeof visual==='object')delete visual.debugCapture
           const evidence=buildVideoEvidenceBundle({bvid,info,visual})
@@ -9061,6 +9063,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(!review)return {ok:false,reason:diagnoseVideoFocusReceipt({bvid,
             plan:{...plan,networkBudgetBytes:budget},result:visual,evidence}).code}
           if(!scope())return {ok:false,reason:'account-changed'}
+          job.stage='memory-write';job.updatedAt=Date.now()
           let gallerySaved=false
           if(capture){const saved=addLifeVideoGallery(stateDir,{account,bvid,captures:[capture],
             verified:true,phase:'focus',groupId:gallery.groupId||gallery.id,
@@ -9089,13 +9092,13 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(ownerGalleryFocusJob===job){job.status='failed';job.reason='account-changed';job.updatedAt=Date.now()}
           return
         }
-        job.status=outcome?.ok===true?'verified':'failed'
+        job.status=outcome?.ok===true?'verified':'failed';job.stage='finished'
         job.reason=outcome?.ok===true?(outcome.gallerySaved?'verified-new-focus':'verified-images-unavailable'):
           String(outcome?.reason||'focus-unverified').slice(0,90)
         job.memory=outcome?.mem||null;job.updatedAt=Date.now()
       }).catch(error=>{
         if(ownerGalleryFocusJob!==job)return
-        job.status='failed';job.reason='focus-execution-failed';job.updatedAt=Date.now()
+        job.status='failed';job.stage='finished';job.reason='focus-execution-failed';job.updatedAt=Date.now()
         log('主人视频补看执行失败：'+String(error?.message||error).slice(0,120))
       }).finally(()=>{ownerGalleryFocusBusy=false})
       return sendJson(res,202,{ok:true,id,status:'running',bvid,
@@ -10196,6 +10199,48 @@ logger:{warn:m=>log('社交意图：'+m)}
       }catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,300)})}
     }
 
+    // dev.6 read-only, on-demand deep memory for a SELECTED neural node.
+    // Opaque node IDs are re-derived from currently recallable clear episodes.
+    // No archive lookup, no cross-account read, no fuzzy similarity join.
+    if(req.method==='GET'&&path==='/api/bili-duty/main-session/memory/neural/deep'){
+      const peer=String(req.socket?.remoteAddress||'')
+      const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||
+         origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin))||
+         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+        return sendJson(res,403,{ok:false,reason:'owner-local-only'})
+      res.setHeader?.('Cache-Control','private, no-store')
+      const nodeId=String(url.searchParams.get('node')||'')
+      if(!/^[a-f0-9]{16}$/.test(nodeId))return sendJson(res,400,{ok:false,reason:'invalid-memory-node'})
+      const account=trustedLifeAccountTag()
+      if(!hasCredential()||!/^[a-f0-9]{16}$/.test(String(account||''))||accountBinding.status().blocked||!lifeMemory)
+        return sendJson(res,401,{ok:false,reason:'account-not-verified'})
+      // Same current-fading-memory projection as the neural map. Limit is
+      // bounded and no unbounded search or external retrieval is performed.
+      const candidates=lifeMemory.semanticCandidates({query:'',domain:'main-session',
+        kinds:['watch'],limit:3200})||[]
+      const matches=candidates.filter(m=>m.stage==='clear'&&m.kind==='watch'&&validBv(String(m.bvid||''))&&
+        neuralProjectionKey({...m,gardenKind:'experience',gardenEvidence:'fading-life-episode'})===nodeId)
+      if(matches.length!==1)return sendJson(res,404,{ok:false,reason:'memory-unavailable'})
+      // semanticCandidates exposes intentionally redacted public fields;
+      // ONLY the Gateway can re-prove current account/public/clear ownership.
+      const trace=lifeMemory.videoEvidenceTrace({accountTag:account,memoryId:matches[0].id,limit:1})
+      if(trace.length!==1||trace[0].bvid!==matches[0].bvid)
+        return sendJson(res,404,{ok:false,reason:'memory-unavailable'})
+      if(trace[0].detailStorage!=='available')
+        return sendJson(res,200,{ok:true,available:false,fragments:[],reason:'no-detail'})
+      if(account!==trustedLifeAccountTag()||accountBinding.status().blocked)
+        return sendJson(res,409,{ok:false,reason:'account-changed'})
+      const expanded=lifeMemory.expandMemoryDetail({memoryId:matches[0].id,accountTag:account,maxBytes:8192})
+      if(expanded?.ok!==true)return sendJson(res,200,{ok:true,available:false,fragments:[],reason:expanded?.reason||'no-detail'})
+      const fragments=(expanded.fragments||[]).slice(0,12).map(item=>({
+        type:item.type,content:String(item.content||'').slice(0,1600),certainty:item.certainty,
+        ...(Array.isArray(item.timeAnchorMs)?{timeAnchorMs:item.timeAnchorMs}:{}),
+        uncertainties:Array.isArray(item.uncertainties)?item.uncertainties.slice(0,4).map(x=>String(x).slice(0,200)):[]}))
+      return sendJson(res,200,{ok:true,available:true,fragments,
+        totalFragments:expanded.totalFragments,truncated:expanded.truncated||fragments.length<expanded.totalFragments,
+        certainty:'recorded-sampled-evidence-not-independent-semantic-proof'})
+    }
     if (req.method === 'GET' && (path === '/api/bili-duty/main-session/memory/garden' || path === '/api/bili-duty/main-session/memory/neural')) {
       // Owner's read-only management view. It is never injected into social
       // prompts, cannot revive archived events and must not create contacts.

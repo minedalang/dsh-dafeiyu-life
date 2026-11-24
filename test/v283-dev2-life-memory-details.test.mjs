@@ -125,3 +125,19 @@ test('dev.6 focus rejects unverified evidence, wrong account and forgotten paren
  assert.equal(gateway.recordVerifiedFocusRevision({memoryId,accountTag:A,bvid:BV,review,
   sourceProof:proof,sourceRef:'focus:'+'c'.repeat(32)}).reason,'memory-unavailable')
 }))
+
+
+test('dev.6 one-hour video focus updates both shallow and deep at a real minute-50 anchor',()=>setup(({gateway,memoryId})=>{
+ const sourceProof={internalToken:'test-only'}
+ const review={reviewStatus:'model-observation-not-independent-semantic-proof',
+  startMs:3000000,endMs:3012000,frameTimesMs:[3000500,3006000],
+  description:'50分钟附近真实解码的局部画面中看见一块蓝色标牌。'}
+ const result=gateway.recordVerifiedFocusRevision({memoryId,accountTag:A,bvid:BV,
+  sourceProof,sourceRef:'focus:'+'b'.repeat(32),review})
+ assert.equal(result.ok,true,JSON.stringify(result))
+ assert.equal(result.shallowVersion,1)
+ const deep=gateway.expandMemoryDetail({memoryId,accountTag:A,maxBytes:8192})
+ assert.equal(deep.totalFragments,1)
+ assert.deepEqual(deep.fragments[0].timeAnchorMs,[3000000,3012000])
+ assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:B}).ok,false)
+}))

@@ -45,6 +45,13 @@ test('dev.6 owner focus requires matching account gallery and exact captured fra
  assert.equal(planOwnerGalleryRevisit({...args,now:now+86400_000}).reason,'gallery-unavailable')
  assert.equal(planOwnerGalleryRevisit({...args,mode:'time',atSeconds:149,imageFile:''}).ok,true)
  assert.equal(planOwnerGalleryRevisit({...args,mode:'time',atSeconds:151}).reason,'time-out-of-range')
+ const hourLong={...args,durationSeconds:3600,mode:'time',atSeconds:3000,imageFile:''}
+ assert.equal(planOwnerGalleryRevisit(hourLong).ok,true,'45 minutes must not block 60-minute video')
+ assert.equal(planOwnerGalleryRevisit({...hourLong,atSeconds:3601}).reason,'time-out-of-range')
+ assert.equal(planOwnerGalleryRevisit({...hourLong,durationSeconds:14401}).reason,'unverified-video-target')
+ assert.equal(planOwnerGalleryRevisit({...hourLong,mode:'frame'}).reason,'frame-not-in-gallery',
+   'arbitrary time cannot impersonate a previously verified frame')
+
  const selected=matchOwnerGalleryMemory([{memoryId:'e-'+'a'.repeat(18),bvid,at:now+1500}],{bvid,at:now})
  assert.equal(selected,'e-'+'a'.repeat(18))
  assert.equal(matchOwnerGalleryMemory([{memoryId:'e-'+'a'.repeat(18),bvid,at:now},

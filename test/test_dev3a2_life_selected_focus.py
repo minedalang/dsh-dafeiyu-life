@@ -15,6 +15,37 @@ spec.loader.exec_module(pv)
 BV='BV1234567890'
 
 class FocusedPreviewTest(unittest.TestCase):
+    def test_storyboard_budget_exhaustion_reuses_already_downloaded_real_tiles(self):
+        # Source supplies two actual 4x3 sheets, but the second is over the
+        # byte budget. The first sheet must still contribute its remaining
+        # indexed tiles instead of the sampler returning only a few anchors.
+        sprite=Image.new('RGB',(48*4,32*3),'white')
+        for i in range(12):
+            sprite.paste(((i*19)%255,(i*43)%255,(i*71)%255),
+                         ((i%4)*48,(i//4)*32,(i%4+1)*48,(i//4+1)*32))
+        buf=BytesIO();sprite.save(buf,format='JPEG',quality=90)
+        def json_api(url):
+            if '/view?' in url:return {'cid':42,'duration':3600}
+            if '/videoshot?' in url:return {'image':['//i0.hdslb.com/bfs/videoshot/first.jpg','//i0.hdslb.com/bfs/videoshot/second.jpg'],
+                'index':[0,*[i*150 for i in range(24)]],
+                'img_x_len':4,'img_y_len':3,'img_x_size':48,'img_y_size':32}
+            raise AssertionError(url)
+        def safe_get(url,*a,**k):
+            if 'first.jpg' in url:return buf.getvalue()
+            if 'second.jpg' in url:raise ValueError('官方预览资源超过大小限制')
+            raise AssertionError(url)
+        with TemporaryDirectory() as home,patch.object(pv,'_json_api',side_effect=json_api),\
+             patch.object(pv,'_safe_api_get',side_effect=safe_get):
+            result=pv._analyze_preview_core(BV,home,enabled=False,debug=False,max_frames=12,
+                storyboard=True,board_tiles=12,prefetch_only=True)
+        self.assertTrue(result['ok'],result)
+        self.assertEqual(result['sampling']['frames_selected'],12)
+        self.assertEqual(result['sampling']['sheets_downloaded'],1)
+        self.assertEqual(result['sampling']['scan_limited_by'],'network-budget')
+        self.assertFalse(result['sampling']['timeline_scan_complete'])
+        self.assertEqual(len(result['times']),12)
+        self.assertEqual(len(set(result['times'])),12)
+
     def test_window_rejects_malformed_values_without_network(self):
         for a,b in [(30,30),(1,3),(-1,5),(0,180),(float('nan'),30),('12',20),(0,None)]:
             with patch.object(pv,'_json_api',side_effect=AssertionError('no network')):
