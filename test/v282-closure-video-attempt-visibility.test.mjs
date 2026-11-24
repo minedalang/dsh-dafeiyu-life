@@ -11,7 +11,7 @@ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url
 const planner=readFileSync(new URL('../lib/autonomous-planner.mjs',import.meta.url),'utf8')
 // Execute only the isolated pure description function, not the DOM or API UI.
 const start=ui.indexOf('  const describeLifeVideoAttempt=run=>{')
-const stop=ui.indexOf('  let lastLifeTreeId=',start)
+const stop=ui.indexOf('  // Gallery evidence is read-only',start)
 assert.ok(start>0&&stop>start)
 const describe=vm.runInNewContext(ui.slice(start,stop)+'\ndescribeLifeVideoAttempt',Object.freeze({}))
 const event=(type,extra={},at=100)=>({type,at,...extra})

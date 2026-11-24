@@ -25,3 +25,31 @@ test('每日最多一份自动业务备份；保留五日；不清理手动文�
   assert.equal(existsSync(join(dir,'pre-restore-2026-11-10T10-00-00-000Z-01234567.json')),true)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
+
+test('自动备份设置独立，统一清单可组合筛选内容与自动/手动来源',()=>{
+ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
+ const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+ const start=html.indexOf('<section class="backup-auto-section"'),end=html.indexOf('<section class="backup-library-section"')
+ assert.ok(start>=0&&end>start)
+ assert.match(html.slice(start,end),/id="backup-auto-enabled"/)
+ assert.doesNotMatch(html.slice(start,end),/id="backup-list"/)
+ assert.match(html,/id="backup-content-filter"/)
+ assert.match(html,/id="backup-origin-filter"/)
+ assert.match(js,/contentFilter===kind/)
+ assert.match(js,/originFilter===origin/)
+})
+
+test('恢复前人生记忆备份按记忆+恢复前保护筛选，业务备份不会混入',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dsh-backup-types-'))
+ try{
+  for(const name of ['dafeiyu-memory','pre-memory-restore','dafeiyu-auto','dafeiyu-backup','pre-restore']){
+   writeFileSync(join(dir,name+'-2026-11-24T01-02-03-000Z-01234567.json'),'{}')
+  }
+  const found=listBackupFiles(dir,{limit:50})
+  assert.equal(found.length,5)
+  for(const row of found){
+   assert.equal(row.contentType,['dafeiyu-memory','pre-memory-restore'].some(x=>row.name.startsWith(x+'-'))?'memory':'business')
+   assert.equal(row.origin,row.name.startsWith('dafeiyu-auto-')?'automatic':row.name.startsWith('pre-')?'recovery':'manual')
+  }
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})

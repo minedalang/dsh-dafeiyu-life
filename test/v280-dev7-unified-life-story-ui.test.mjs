@@ -31,7 +31,7 @@ test('timeline remains independently refreshable using existing read-only busine
   assert.match(js,/setInterval\(\(\)=>\{void reconcileVisibleLife\(\)\},4000\)/)
 })
 
-test('life records are parallel source-explained selectable categories, not a funnel',()=>{
+test('life records are parallel, compact selectable categories, not a funnel',()=>{
   assert.match(plans,/class="life-plan-overview" role="group"/)
   assert.doesNotMatch(plans,/<svg class="life-plan-flow-svg"/)
   assert.doesNotMatch(plans,/0[123] · (生活线索|生活契机|已接待办)/)
@@ -39,8 +39,12 @@ test('life records are parallel source-explained selectable categories, not a fu
     assert.match(plans,new RegExp('data-life-plan-overview="'+kind+'"[^>]*aria-controls="life-plan-hub-grid"'))
     assert.match(plans,new RegExp('data-life-plan-filter="'+kind+'"'))
   }
-  for(const text of ['从哪里来','从已有经历中','真实评论阅读','自主选片','主人提出并被接受','只有实际回执','彼此独立、可以并存'])
+  for(const text of ['从已有经历中','已经明确接下','彼此独立、可以并存'])
     assert.match(plans,new RegExp(text))
+  assert.doesNotMatch(plans,/life-plan-overview-origin/, '卡片不再重复展示过长的来源解释')
+  assert.match(html,/#panel-plans \.life-plan-overview-card::before\{display:none!important\}/)
+  assert.match(html,/#panel-plans \.life-plan-overview-card\{min-height:0/)
+
   for(const id of ['life-flow-cues','life-flow-opportunities','life-flow-todos'])assert.equal(count(id),1)
   assert.match(js,/button\.dataset\.lifePlanOverview/)
   assert.match(js,/overviewCounts=\{cue:'life-flow-cues',opportunity:'life-flow-opportunities',todo:'life-flow-todos'\}/)

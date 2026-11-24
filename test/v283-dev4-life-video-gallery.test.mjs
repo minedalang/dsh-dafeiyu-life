@@ -11,11 +11,12 @@ test('相册仅保存真实 JPG、账号隔离、过24小时失效',()=>{
  try{
   const captureId='b'.repeat(32),captureDir=join(root,'vision-perception-captures',captureId)
   mkdirSync(captureDir,{recursive:true});writeFileSync(join(captureDir,'storyboard-01.jpg'),jpeg)
-  const captures=[{id:captureId,kind:'storyboard',images:[{file:'storyboard-01.jpg',times:[1,2],resolution:'官方低清拼图'}]}]
+  const captures=[{id:captureId,kind:'storyboard',images:[{file:'storyboard-01.jpg',times:[1,2],resolution:'官方低清拼图',gridCols:2,gridRows:1}]}]
   assert.equal(addLifeVideoGallery(root,{account:tag,bvid,captures,verified:false,at:now}).ok,false)
   const saved=addLifeVideoGallery(root,{account:tag,bvid,captures,verified:true,at:now})
   assert.equal(saved.ok,true)
   assert.equal(listLifeVideoGallery(root,tag,{now:now+1000}).length,1)
+  assert.equal(listLifeVideoGallery(root,tag,{now:now+1000})[0].images[0].gridCols,2)
   const file=listLifeVideoGallery(root,tag,{now:now+1000})[0].images[0].file
   assert.deepEqual(readLifeVideoGalleryImage(root,tag,saved.id,file,{now:now+1000}),jpeg)
   const focusId='d'.repeat(32),groupId='e'.repeat(32)

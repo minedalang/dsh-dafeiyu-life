@@ -1297,7 +1297,12 @@ def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source
             resolution=('原视频局部12格分镜拼图（实际格数按已解码帧）' if board_image else
                         'B站原生低清预览分镜' if source=='B站低清预览' else
                         '原视频解码·最高640×360采样（非源清晰度承诺）' if focus else '原始视频解码分镜拼图')
-            images.append({'file':filename,'times':verified_times,'kind':kind,'resolution':resolution})
+            image_record={'file':filename,'times':verified_times,'kind':kind,'resolution':resolution}
+            if len(verified_times)>1 and isinstance(item.get('grid_cols'),int) and isinstance(item.get('grid_rows'),int):
+                cols,rows=item['grid_cols'],item['grid_rows']
+                if 1<=cols<=4 and 1<=rows<=4 and cols*rows>=len(verified_times):
+                    image_record.update(gridCols=cols,gridRows=rows)
+            images.append(image_record)
         if not images:
             shutil.rmtree(folder,ignore_errors=True)
             return None

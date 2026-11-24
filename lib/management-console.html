@@ -1457,6 +1457,37 @@ input.ui-toggle[type="checkbox"]:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:900px){#panel-plans .life-plan-overview{grid-template-columns:repeat(2,minmax(0,1fr))}#panel-plans .life-plan-overview-card:last-child{grid-column:1/-1;min-height:170px}}
 @media(max-width:610px){#panel-comments .comments-record-grid{grid-template-columns:1fr}#panel-plans .life-plan-overview{grid-template-columns:1fr;padding:12px;gap:10px}#panel-plans .life-plan-overview-card:last-child{grid-column:auto}#panel-plans .life-plan-overview-card{min-height:0;padding:15px 16px;gap:8px}#panel-plans .life-plan-overview-context{margin:0 13px 12px}}
 @media(prefers-reduced-motion:reduce){input.ui-toggle[type="checkbox"],input.ui-toggle[type="checkbox"]::before,#panel-comments .comment-meme-fold>summary:after,#panel-comments .comments-record-grid>.record,#panel-plans .life-plan-overview-card{transition:none!important;animation:none!important}}
+
+/* dev.5 owner refinement: evidence belongs to actions, never a giant standalone journal. */
+#panel-life-agent .life-gallery-compact{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 14px;margin:8px 0 12px;border:1px solid var(--stroke);border-radius:13px;background:color-mix(in srgb,var(--panel) 91%,#e1f4ed)}
+#panel-life-agent #life-behavior-tree text{pointer-events:none}
+#panel-life-agent .life-gallery-compact>div{display:grid;gap:3px;flex:1;min-width:180px}
+#panel-life-agent .life-gallery-compact strong{font-size:12px}
+#panel-life-agent .life-gallery-compact span{font-size:11px;color:var(--muted);line-height:1.5}
+#panel-life-agent .life-gallery-view-note{font-size:12px;color:var(--muted);padding:0 0 12px}
+#panel-life-agent .life-gallery-tile-times{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0}
+#panel-life-agent .life-gallery-tile-times button{font-variant-numeric:tabular-nums;border:1px solid var(--stroke);padding:6px 10px;border-radius:999px;background:var(--panel);color:var(--ink);cursor:pointer}
+#panel-life-agent .life-gallery-tile-times button[aria-pressed=true]{background:var(--tint);border-color:var(--action)}
+#panel-life-agent #life-gallery-tile-canvas:not([hidden]){display:block;max-width:100%;max-height:58vh;object-fit:contain;margin:12px auto}
+#panel-life-agent #life-gallery-large-image[hidden],#panel-life-agent #life-gallery-show-board[hidden]{display:none!important}
+#panel-life-agent .life-timeline-gallery-open{border:1px solid var(--stroke);background:var(--panel);color:var(--ink);border-radius:999px;padding:6px 10px;cursor:pointer;font-size:12px}
+#panel-life-agent .life-timeline-gallery-open:disabled{opacity:.55;cursor:default}
+#panel-backup .backup-library-section{border:1px solid var(--stroke);border-radius:17px;background:var(--panel);padding:16px;margin:14px 0}
+#panel-backup .backup-library-head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;align-items:start}
+#panel-backup .backup-library-head h4{font-size:17px;margin:0 0 5px}
+#panel-backup .backup-library-head p{max-width:500px;margin:0;font-size:12px}
+#panel-backup .backup-library-filters{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+#panel-backup .backup-library-filters label{font-size:11px;color:var(--muted);display:grid;gap:3px}
+#panel-backup .backup-library-filters select{min-width:115px;padding:7px 9px;border:1px solid var(--stroke);border-radius:9px;background:var(--panel);color:var(--ink)}
+#panel-plans .life-plan-overview{gap:10px;padding:10px 15px 6px;background:transparent}
+#panel-plans .life-plan-overview-card{min-height:0;gap:7px;padding:12px 14px;border-radius:14px;box-shadow:none;background:var(--panel)}
+#panel-plans .life-plan-overview-card::before{display:none!important}
+#panel-plans .life-plan-overview-symbol{width:29px;height:29px;flex-basis:29px;font-size:16px;border-radius:9px}
+#panel-plans .life-plan-overview-title{font-size:14px}
+#panel-plans .life-plan-overview-lead{font-size:12px;line-height:1.5;font-weight:550}
+#panel-plans .life-plan-overview-cta{font-size:11px;margin-top:1px}
+#panel-plans .life-plan-overview-context{margin:2px 16px 7px;font-size:11px}
+@media(max-width:900px){#panel-plans .life-plan-overview-card:last-child{min-height:0}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -2460,9 +2491,18 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <section class="backup-auto-section" aria-labelledby="backup-auto-heading">
       <div class="backup-auto-heading"><div><h4 id="backup-auto-heading">📆 每日自动备份</h4><p class="muted">默认每天生成 1 份便携业务备份，自动保留最近 5 天；业务备份使用压缩 JSON 减少空间，手动备份与恢复前快照不参与自动清理。</p></div><label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="backup-auto-enabled" checked> 开启自动备份</label></div>
       <p id="backup-auto-status" class="muted" role="status">正在读取自动备份状态…</p>
+    </section>
+    <section class="backup-library-section" aria-label="全部备份文件">
+      <div class="backup-library-head"><div><h4>备份文件管理</h4><p class="muted">查看此目录中的全部备份，支持内容与生成方式组合筛选。选择文件只读预览，不执行恢复。</p></div>
+      <div class="backup-library-filters">
+        <label>备份内容<select id="backup-content-filter"><option value="all">全部内容</option><option value="business">全部业务数据</option><option value="memory">人生记忆</option></select></label>
+        <label>生成方式<select id="backup-origin-filter"><option value="all">全部方式</option><option value="automatic">自动备份</option><option value="manual">手动备份</option><option value="recovery">恢复前保护</option></select></label>
+      </div></div>
       <div class="toolbar"><button id="backup-list-refresh" type="button">刷新备份清单</button></div>
       <div class="backup-browser-grid"><div id="backup-list" class="backup-file-list" role="list" aria-label="可查看的本地备份文件"></div>
         <div class="backup-preview-panel"><strong>🧠 备份内容预览</strong><p id="backup-preview-status" class="muted" role="status">选择左侧文件后将校验 SHA-256，并展示业务分类和记忆条目摘要，不会修改当前记忆。</p><div id="backup-preview-memory" class="backup-memory-list"></div></div></div>
+    </section>
+    <section class="backup-auto-footnote" aria-label="自动备份说明">
       <p class="backup-footnote">自动备份使用现有便携业务格式，不含登录凭证和专属私密记忆。若要完整保存仅管理员可见的生命经历，仍需使用下方「人生记忆专项备份」。备份文件有历史信息，不代表当前 Life 可重新回忆已遗忘内容。</p>
     </section>
     <p class="backup-footnote">分盘后仍从当前生效的 Life/业务数据目录导出，不会退回 C 盘历史副本。Life 私密经历请使用下方专项备份；向量索引和模型缓存均不随便携备份导出。<strong>分盘后的整套运行目录冷备份仍未实现，不可把这两类 JSON 备份冒充完整快照。</strong> 这是便携业务备份，不是整套 DSH 运行目录快照：不包含 B站 Cookie、登录凭证、部分私密账号运行账本、Life Agent 短期时间线、密钥、缓存与日志，也不包含表情包图片本体。表情包图片请在「表情包管理」单独导出。重要：老用户跨版本迁移前必须确保独立保存全部现役分区；便携业务备份及「人生记忆专项备份」均不能替代完整快照。请按 docs/architecture/2.8.0-dev2-old-user-backup-safety.md 的停机备份说明操作；完整快照包含账号凭证和私密数据，严禁上传分享。</p>
@@ -2729,16 +2769,15 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </div>
 <div class="life-tree-viewport"><svg id="life-behavior-tree" viewBox="0 0 970 400" role="img" aria-label="Life 五类基础行为与当前真实动作，动态入场"></svg></div>
 <div id="life-tree-video-target" class="life-tree-video-target" hidden><span>当前画面观察目标 · </span><a id="life-tree-video-link" target="_blank" rel="noopener noreferrer"></a><small>仅表示正在尝试读取该 BV；不是已经看完或识图成功</small><button id="life-gallery-open-current" type="button" class="life-action life-sky" disabled>查看已核验画面</button></div>
-<section class="life-gallery" id="life-gallery" aria-labelledby="life-gallery-title">
-<div class="life-gallery-heading"><div><span class="page-eyebrow">VISUAL JOURNAL · 最近 24 小时</span><h4 id="life-gallery-title">🎞️ 鱼鱼看见的画面</h4><p class="muted">仅展示本账号已核验的真实分镜和高清局部；点击观察记录先看拼图，再点开单张大图。新图须等真实视觉回执完成后出现。</p></div><button type="button" class="life-action life-sky" id="life-gallery-refresh">刷新画面</button></div>
-<p id="life-gallery-status" class="muted" role="status">尚未读取可回放画面。</p>
-<div id="life-gallery-list" class="life-gallery-list" aria-live="polite"></div>
-<div class="life-gallery-future"><strong>即将开放：指定局部补看</strong><span>未来可从某张帧图选择附近高清片段，或指定视频时间点；补看通过核验后才更新浅层摘要与深层记忆，不会仅凭选中时间点修改记忆。</span></div>
-</section>
+<div class="life-gallery-compact" id="life-gallery" aria-label="上一条已核验视频观察">
+  <div><strong>最近一次已核验的视频画面</strong><span id="life-gallery-status" role="status">正在读取…</span></div>
+  <button type="button" id="life-gallery-open-latest" class="life-action life-sky" disabled>查看拼图与时间线</button>
+  <button type="button" id="life-gallery-refresh" class="life-action" aria-label="刷新最近画面">↻</button>
+</div>
 <div id="life-gallery-modal" class="life-gallery-overlay" role="dialog" aria-modal="true" aria-labelledby="life-gallery-modal-title" hidden>
 <div class="life-gallery-dialog"><div class="life-gallery-dialog-header"><div><span class="page-eyebrow">VIDEO OBSERVATION · VISUAL EVIDENCE</span><h3 id="life-gallery-modal-title">画面观察回放</h3><p id="life-gallery-modal-subtitle" class="muted">全局拼图与局部采样</p></div><button type="button" id="life-gallery-close" class="life-gallery-close" aria-label="关闭画面回放">✕</button></div>
-<div class="life-gallery-dialog-body"><div id="life-gallery-grid" class="life-gallery-grid"></div><div id="life-gallery-zoom" class="life-gallery-zoom" hidden><button type="button" id="life-gallery-back">← 返回全部拼图</button><img id="life-gallery-large-image" alt="已核验的视觉观察图片"/><p id="life-gallery-image-caption" class="muted"></p></div></div>
-<div class="life-gallery-dialog-footer"><span>图片仅保存 24 小时 · 按当前账号隔离 · 非永久记忆</span><span>选择时间点与请求补看将在后续版本开放</span></div></div>
+<div class="life-gallery-dialog-body"><div class="life-gallery-view-note">按视频时间顺序排列。先看全局拼图，再点击图片放大；带逐格元数据的分镜还可以单独查看每个时间点。</div><div id="life-gallery-grid" class="life-gallery-grid"></div><div id="life-gallery-zoom" class="life-gallery-zoom" hidden><button type="button" id="life-gallery-back">← 返回全部拼图</button><img id="life-gallery-large-image" alt="已核验的视觉观察图片"/><canvas id="life-gallery-tile-canvas" hidden aria-label="单独放大的已采样视频帧"></canvas><button id="life-gallery-show-board" type="button" hidden>返回整张拼图</button><div id="life-gallery-tile-times" class="life-gallery-tile-times" aria-label="逐帧时间线"></div><p id="life-gallery-image-caption" class="muted"></p></div></div>
+<div class="life-gallery-dialog-footer"><span>图片仅保存 24 小时 · 按当前账号隔离 · 非永久记忆</span><span>指定时间点／附近高清补看后续开放；当前操作只读，不更新记忆</span></div></div>
 </div>
 <div class="life-tree-legend"><span>◎ 五类常驻行为</span><span>◉ 真正发生的动作才显示分支</span><span>≈ 运行中动态</span><span>✓ 结果须有真实回执</span></div>
 <p class="muted">行为树展示的是源码支持的动作类别及最近的匿名真实决策，不等同于每一轮可用的完整动作菜单。只有合格候选才进入实际模型菜单；视频 Agent 的下游动作由专业工具与发送门禁执行。下方生活记录按真实回执时间排序；并行读取的完成顺序不代表先后决定了看什么。</p>
@@ -2821,23 +2860,17 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <button type="button" class="life-plan-overview-card" data-life-plan-overview="cue" aria-pressed="false" aria-controls="life-plan-hub-grid">
       <span class="life-plan-overview-head"><span class="life-plan-overview-symbol" aria-hidden="true">✳</span><span class="life-plan-overview-title">生活线索</span><span class="life-plan-overview-count" id="life-flow-cues">读取中</span></span>
       <span class="life-plan-overview-lead">从接触过的内容里，留下一个疑问或兴趣</span>
-      <span class="life-plan-overview-origin"><strong>从哪里来</strong>真实评论阅读后的好奇、多日自主选片的兴趣变化、公开交流中的观察。</span>
-      <span class="life-plan-overview-note">只是值得留意的可能性，不代表鱼鱼承诺探索或行动。</span>
-      <span class="life-plan-overview-cta">筛选生活线索记录</span>
+      <span class="life-plan-overview-cta">查看记录 →</span>
     </button>
     <button type="button" class="life-plan-overview-card" data-life-plan-overview="opportunity" aria-pressed="false" aria-controls="life-plan-hub-grid">
       <span class="life-plan-overview-head"><span class="life-plan-overview-symbol" aria-hidden="true">◈</span><span class="life-plan-overview-title">生活契机</span><span class="life-plan-overview-count" id="life-flow-opportunities">读取中</span></span>
       <span class="life-plan-overview-lead">从已有经历中，发现值得再了解的机会</span>
-      <span class="life-plan-overview-origin"><strong>从哪里来</strong>此前评论和公开资料的核实、首页探索、自主选片后产生的探索意愿。</span>
-      <span class="life-plan-overview-note">可以由鱼鱼独立产生、继续或放下，不必先经过「生活线索」。</span>
-      <span class="life-plan-overview-cta">筛选生活契机记录</span>
+      <span class="life-plan-overview-cta">查看记录 →</span>
     </button>
     <button type="button" class="life-plan-overview-card" data-life-plan-overview="todo" aria-pressed="false" aria-controls="life-plan-hub-grid">
       <span class="life-plan-overview-head"><span class="life-plan-overview-symbol" aria-hidden="true">▤</span><span class="life-plan-overview-title">已接待办</span><span class="life-plan-overview-count" id="life-flow-todos">读取中</span></span>
       <span class="life-plan-overview-lead">已经明确接下、需要跟进的事情</span>
-      <span class="life-plan-overview-origin"><strong>从哪里来</strong>主人提出并被接受的建议，或其他已明确接下的任务。</span>
-      <span class="life-plan-overview-note">执行、延期和完成分别记录；只有实际回执才能确认结果。</span>
-      <span class="life-plan-overview-cta">筛选已接待办记录</span>
+      <span class="life-plan-overview-cta">查看记录 →</span>
     </button>
   </div>
   <p class="life-plan-overview-context">三类记录彼此独立、可以并存；出现记录不等于必须执行。点击卡片直接查看该类当前记录。</p>

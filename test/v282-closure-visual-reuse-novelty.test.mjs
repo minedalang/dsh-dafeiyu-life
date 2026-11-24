@@ -80,7 +80,7 @@ test('Life trace persists provenance category only, never BV, model text or secr
 test('failed new focus never appears in owner UI as already acquired new evidence',()=>{
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   const from=js.indexOf('  const describeLifeVideoAttempt=run=>{')
-  const to=js.indexOf('  let lastLifeTreeId=',from)
+  const to=js.indexOf('  // Gallery evidence is read-only',from)
   assert.ok(from>0&&to>from)
   const describe=vm.runInNewContext(js.slice(from,to)+'\ndescribeLifeVideoAttempt',{})
   const run={at:100,state:'finished',steps:[
@@ -98,7 +98,7 @@ test('failed new focus never appears in owner UI as already acquired new evidenc
 test('failed 1-of-2 boards reports attempted model work rather than unknown or verified',()=>{
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   const from=js.indexOf('  const describeLifeVideoAttempt=run=>{')
-  const to=js.indexOf('  let lastLifeTreeId=',from)
+  const to=js.indexOf('  // Gallery evidence is read-only',from)
   const describe=vm.runInNewContext(js.slice(from,to)+'\ndescribeLifeVideoAttempt',{})
   const attempt={at:100,state:'finished',steps:[
     {type:'action-start',at:100,action:'observe_video'},

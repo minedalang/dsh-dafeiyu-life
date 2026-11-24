@@ -2108,7 +2108,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const images=value.images.slice(0,value.kind==='focus'?13:12).filter(x=>
       x?.kind===value.kind&&/^(?:storyboard|focus)-\d{2}\.jpg$/.test(String(x.file||''))&&
       Array.isArray(x.times)&&x.times.length<=12&&x.times.every(t=>Number.isFinite(t)&&t>=0&&t<=2700))
-      .map(x=>({kind:x.kind,file:x.file,times:x.times,resolution:String(x.resolution||'').slice(0,45)}))
+      .map(x=>{
+        const cols=Number(x.gridCols),rows=Number(x.gridRows)
+        const grid=Number.isSafeInteger(cols)&&Number.isSafeInteger(rows)&&cols>=1&&cols<=4&&rows>=1&&rows<=4&&
+          cols*rows>=x.times.length?{gridCols:cols,gridRows:rows}:{}
+        return {kind:x.kind,file:x.file,times:x.times,resolution:String(x.resolution||'').slice(0,45),...grid}
+      })
     if(!images.length)return null
     // Best-effort automatic expiry while DSH is running. Python also sweeps
     // stale captures on the next observation after a process restart.
