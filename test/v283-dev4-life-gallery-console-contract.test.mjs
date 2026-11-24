@@ -7,7 +7,7 @@ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url
 const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
 const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
 test('行动节点/时间线关联24小时画面，拼图按视频时间排序并支持逐格放大',()=>{
-  for(const id of ['life-gallery-open-latest','life-gallery-modal','life-gallery-grid','life-gallery-zoom','life-gallery-close','life-gallery-open-current','life-gallery-back','life-gallery-large-image','life-gallery-tile-canvas','life-gallery-tile-times','life-gallery-show-board'])
+  for(const id of ['life-gallery-open-latest','life-gallery-modal','life-gallery-grid','life-gallery-zoom','life-gallery-close','life-gallery-open-current','life-gallery-back','life-gallery-large-image','life-gallery-tile-canvas','life-gallery-view-frames','life-gallery-view-boards','life-gallery-boards'])
     assert.match(html,new RegExp('id="'+id+'"'))
   assert.match(js,/const openLifeGallery=row=>/)
   assert.match(js,/const galleryForAction=\(bvid,at\)=>/)
@@ -95,4 +95,40 @@ test('neural deep endpoint binds opaque current node to the Life Gateway rather 
   assert.equal((await create(nodeId,'192.0.2.1')).status,403)
   assert.equal((await create('f'.repeat(16))).status,404)
   assert.equal(expandCalls,1,'failed identity checks must not touch deep memory content')
+})
+
+test('dev6 画廊首行是单帧／原始拼图两种互斥模式；下方仅有一处大图；补看原位插入',()=>{
+  assert.match(html,/id="life-gallery-view-frames" aria-pressed="true"/);
+  assert.match(html,/id="life-gallery-view-boards" aria-pressed="false"/);
+  assert.match(html,/id="life-gallery-grid"[^>]*>[\s\S]*?id="life-gallery-boards"[^>]*hidden/,
+    '拼图模式应直接替换第一行缩略图浏览区');
+  assert.match(html,/id="life-gallery-boards"[^>]*hidden[\s\S]*?id="life-gallery-zoom"[^>]*hidden/,
+    '选中单帧的大图是下面独立的一块区域');
+  assert.doesNotMatch(html,/id="life-gallery-show-board"|id="life-gallery-tile-times"/,
+    '下方大图不得再叠加原拼图切换按钮或重复时间码行');
+  assert.match(js,/const setLifeGalleryViewMode=mode=>/);
+  assert.match(js,/life-gallery-grid'\)\.hidden=lifeGalleryViewMode!=='frames'/);
+  assert.match(js,/life-gallery-boards'\)\.hidden=lifeGalleryViewMode!=='boards'/);
+  assert.match(js,/const renderLifeGalleryBoards=row=>/);
+  assert.match(js,/figure\.appendChild\(image\)/);
+  assert.doesNotMatch(js,/figure\.addEventListener\('click'/,'完整拼图仅查看，不能误选单帧');
+  assert.match(js,/clearGalleryTile\(\);\$\('life-gallery-zoom'\)\.hidden=false/,
+    '选择单帧时下方显示大图，上方两种浏览模式保持挂载');
+  assert.match(html,/#panel-life-agent #life-gallery-tile-canvas\[hidden\][^}]*display:none!important/);
+  assert.match(html,/#panel-life-agent #life-gallery-large-image\[hidden\]/);
+  assert.match(js,/const renderLifeGalleryTiles=\(row,\{animateNew=false\}=\{\}\)=>/);
+  assert.match(js,/const oldCards=new Map/);
+  assert.match(js,/let button=oldCards\.get\(key\)/,'已有帧 DOM 必须复用，不能每次重新创建');
+  assert.match(js,/grid\.replaceChildren\(fragment\)/,'旧卡片重用，新局部卡片按真实时间重排');
+  assert.match(js,/button\.classList\.add\('life-gallery-new-frame'\)/);
+  assert.match(js,/setLifeGalleryTileLock\(true\)/,'请求中采样图应禁用、置灰');
+  assert.match(js,/context\.mode==='frame'\?\[\.\.\.grid\.querySelectorAll/,'只有选帧补看才闪绿目标帧');
+  assert.match(js,/source\.classList\.add\('life-gallery-verified-source'\)/);
+  assert.match(js,/await loadLifeVideoGallery\(\)/,'必须从服务端重新读取真实新图');
+  assert.match(js,/renderLifeGalleryTiles\(updated,\{animateNew:true\}\)/);
+  assert.match(js,/isLifeGalleryFocusContextCurrent\(context\)/,'弹窗关闭或其他观察组不能错误回填图片');
+  assert.match(js,/已在当前时间线新增 /);
+  assert.doesNotMatch(js,/可重新打开本次画面查看新增局部图/,'成功后不应要求用户重新打开弹窗');
+  assert.match(html,/prefers-reduced-motion:reduce[^{]*\{[^}]*life-gallery-frame-tile\.life-gallery-verified-source/,
+    '尊重系统减少动画设置');
 })
