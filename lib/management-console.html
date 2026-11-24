@@ -1409,6 +1409,49 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .local-vision-activation-flow>.muted{margin:7px 0 11px}.local-vision-primary-actions{margin-bottom:5px}
 .local-vision-primary-actions>button{min-height:40px}.local-vision-primary-actions>.primary{font-weight:700}
 @media(max-width:580px){.local-vision-primary-actions>button{width:100%}.local-vision-state-board{grid-template-columns:minmax(0,1fr)}}
+
+/* 2.8.3-dev.4: unified animated BINARY settings switches. Leave multi-select
+   filters/install selections and legacy vision-toggle markup unchanged. */
+input.ui-toggle[type="checkbox"]{appearance:none!important;-webkit-appearance:none!important;display:inline-block!important;position:relative!important;vertical-align:middle;flex:0 0 45px!important;width:45px!important;min-width:45px;height:26px!important;margin:0 5px 0 0;padding:0!important;border-radius:99px!important;border:1px solid color-mix(in srgb,var(--muted) 54%,var(--stroke))!important;background:#8a96a5!important;cursor:pointer;box-shadow:inset 0 1px 3px #14283d20;transition:background .22s ease,border-color .22s ease,box-shadow .22s ease}
+input.ui-toggle[type="checkbox"]::before{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 5px #12263b45;transition:transform .24s cubic-bezier(.2,.85,.25,1)}
+input.ui-toggle[type="checkbox"]:checked{background:#23987f!important;border-color:#238d7b!important;box-shadow:inset 0 1px 3px #12634d3b}
+input.ui-toggle[type="checkbox"]:checked::before{transform:translateX(19px)}
+input.ui-toggle[type="checkbox"]:focus-visible{outline:3px solid var(--action)!important;outline-offset:3px}
+input.ui-toggle[type="checkbox"]:disabled{opacity:.55;cursor:not-allowed}
+#panel-comments .comment-meme-fold{margin:16px 0 20px;border-radius:17px;padding:0;overflow:hidden;background:color-mix(in srgb,var(--panel) 95%,#87bddf)}
+#panel-comments .comment-meme-fold>summary{display:flex;justify-content:space-between;gap:15px;align-items:center;cursor:pointer;list-style:none;padding:16px 20px;font-weight:760}
+#panel-comments .comment-meme-fold>summary::-webkit-details-marker{display:none}
+#panel-comments .comment-meme-fold>summary:after{content:'⌄';font-size:20px;color:var(--action);transition:transform .2s}
+#panel-comments .comment-meme-fold[open]>summary:after{transform:rotate(180deg)}
+#panel-comments .comment-meme-fold>summary small{font-weight:450;font-size:12px;color:var(--muted)}
+#panel-comments .comment-meme-body{padding:3px 20px 18px;display:grid;gap:11px}
+#panel-comments .comment-meme-body .checkline{justify-content:flex-start;gap:13px;background:var(--panel);padding:11px 13px;border-radius:12px;border:1px solid var(--stroke)}
+#panel-comments .comments-record-toolbar{background:color-mix(in srgb,var(--panel) 91%,#b0d7ee);border:1px solid var(--stroke);padding:16px;border-radius:18px;gap:10px}
+#panel-comments .comments-record-toolbar h2{font-size:18px;width:100%}
+#panel-comments .comments-search-field{display:flex;flex-direction:column;flex:1 1 270px;min-width:210px;margin:0;gap:3px}
+#panel-comments .comments-search-field input{width:100%;min-width:0;padding-left:14px;border-radius:12px}
+#panel-comments .comments-record-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start;margin-top:15px}
+#panel-comments .comments-record-grid>.record{border-radius:16px;padding:18px 18px 15px;box-shadow:0 5px 14px #12283e0b;transition:transform .2s ease,box-shadow .2s ease;border-color:color-mix(in srgb,var(--stroke) 75%,#8db8d5);min-width:0}
+#panel-comments .comments-record-grid>.record:hover{transform:translateY(-2px);box-shadow:0 12px 25px #12283e17}
+#panel-comments .comments-record-grid>.record>div:first-child{font-weight:680;line-height:1.6}
+#panel-comments .comments-record-grid>.record>div:not(:first-child){margin-top:9px}
+#panel-plans .life-plan-map{padding:5px 21px 8px;background:color-mix(in srgb,var(--panel) 92%,#d8f2ef)}
+#panel-plans .life-plan-flow-svg{display:block;width:100%;height:auto;max-height:290px;overflow:visible;color:var(--ink)}
+#panel-plans .life-plan-svg-title{fill:var(--ink);font-size:18px;font-weight:760}
+#panel-plans .life-plan-svg-caption{fill:var(--muted);font-size:14px}
+#panel-plans .life-plan-svg-copy{fill:var(--ink);font-size:14px;font-weight:560}
+#panel-plans .life-plan-svg-note{fill:var(--muted);font-size:13px}
+#panel-plans .life-plan-svg-foot{fill:var(--muted);font-size:13px;font-weight:550}
+#panel-plans .life-plan-svg-card{transform-origin:center;animation:life-plan-flow-appear .55s ease backwards}
+#panel-plans .life-plan-svg-card:nth-of-type(2){animation-delay:.09s}
+#panel-plans .life-plan-svg-card:nth-of-type(3){animation-delay:.18s}
+#panel-plans .life-plan-route{animation:life-plan-route-flow 15s linear infinite}
+#panel-plans .life-plan-flow-fallback{display:none;font-size:13px;color:var(--muted);margin:0}
+@keyframes life-plan-flow-appear{from{opacity:.5;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes life-plan-route-flow{to{stroke-dashoffset:-160}}
+@media(max-width:760px){#panel-comments .comments-record-grid{grid-template-columns:1fr}#panel-plans .life-plan-flow-svg{max-height:none}#panel-plans .life-plan-map{padding:10px}#panel-plans .life-plan-flow-fallback{display:block}}
+@media(prefers-reduced-motion:reduce){input.ui-toggle[type="checkbox"],input.ui-toggle[type="checkbox"]::before,#panel-comments .comment-meme-fold>summary:after,#panel-comments .comments-record-grid>.record{transition:none!important}#panel-plans .life-plan-svg-card,#panel-plans .life-plan-route{animation:none!important}}
+
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -2149,7 +2192,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">选择 DSH 视觉模型或本地 Ollama 视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><p class="muted"><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">🎞️ 选择视频感知方案（轻量／均衡／详查） ↗</a></p><div class="fields" id="models-vision"></div>
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="independent_dsh">DSH 识图模型（使用上方 Provider / 模型）</option><option value="independent_local">本地 Ollama 视觉模型（下方一键安装）</option></select></div>
 
-<div><details class="visual-advanced"><summary>调试选项</summary><label class="checkline"><input id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></details></div></div>
+<div><details class="visual-advanced"><summary>调试选项</summary><label class="checkline"><input role="switch" class="ui-toggle" id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></details></div></div>
 <details class="visual-advanced"><summary>高级：视频 Python 运行时（可选，适用于 Ollama 和 DSH）</summary><label for="models-vision-python-path">视觉专用 Python 完整路径（留空自动选择通过健康检查的环境）</label><input id="models-vision-python-path" type="text" autocomplete="off" spellcheck="false" placeholder="高级用法：可留空自动选择" maxlength="500" style="width:100%;max-width:640px"><p class="muted">必须能以普通权限写入临时目录及工作目录，并安装 mcp、bilibili_api、qrcode、Pillow。同时适用于本地 Ollama 与 DSH 的视频取帧／视觉 MCP；不会更改其他 Life/私信 Python。请在本组“保存”后执行验收。</p></details>
 <section class="setting-note" id="vision-unified-probe-panel" aria-label="视觉模型图片人工验收" style="margin-top:14px;border-radius:14px;padding:16px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
@@ -2242,7 +2285,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     </div>
     <div class="video-aux-card">
       <div class="video-aux-heading"><strong>🎙️ 视频语音识别模型（推荐开启）</strong><span id="models-whisper-badge" class="pill pending">检测中</span></div>
-      <label class="checkline"><input id="models-transcribe" type="checkbox">启用视频语音识别（无可用官方字幕时，鱼鱼可按需使用 Whisper）</label>
+      <label class="checkline"><input role="switch" class="ui-toggle" id="models-transcribe" type="checkbox">启用视频语音识别（无可用官方字幕时，鱼鱼可按需使用 Whisper）</label>
       <div class="fields"><div><label for="models-asr-model">Whisper 模型</label><select id="models-asr-model"><option value="tiny">tiny · 更省资源</option><option value="base">base</option><option value="small">small · 默认</option><option value="medium">medium</option><option value="large-v3">large-v3 · 更高资源占用</option></select></div><div><label for="models-asr-language">转写语言</label><select id="models-asr-language"><option value="auto">自动检测（推荐，混合语音仍需核对）</option><option value="zh">中文</option><option value="en">英文</option></select></div></div>
       <p id="models-whisper-status" class="muted" role="status" aria-live="polite">正在检查转写依赖…</p>
       <p class="setting-note">安装包：<a href="https://github.com/SYSTRAN/faster-whisper" target="_blank" rel="noopener noreferrer">faster-whisper 官方源码</a> · <a href="https://pypi.org/project/faster-whisper/" target="_blank" rel="noopener noreferrer">PyPI 包／下载文件</a>；模型权重：<a id="models-whisper-repo-link" href="https://huggingface.co/Systran/faster-whisper-small" target="_blank" rel="noopener noreferrer">所选型号的官方模型页</a>。依赖安装和模型下载是两个独立阶段，日志会显示当前镜像；PyPI 镜像连续 180 秒无输出会自动切换。</p>
@@ -2284,7 +2327,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <small class="setting-note">切换后请重启 DSH；账号切换本身不会自动转移好友联系授权或旧账号未发送的回访。需要再次使用旧账号时仍请重新扫码核验。</small>
 </div>
 <div class="settings-section"><h4>探索来源</h4><p class="muted">鱼鱼的自主探索有两条独立来源：日常首页漫游只使用当前 B站账号的真实首页推荐；关键词探索只根据可信兴趣、已核验的生活线索与 Life 决策进行，不会把两条来源混在同一轮补选。</p>
-<label class="checkline"><input id="bili-home-recommend" type="checkbox">允许独立的首页漫游</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="bili-home-recommend" type="checkbox">允许独立的首页漫游</label>
 <p class="muted">不需要在这里重复维护搜索关键词。主人设定的核心兴趣可前往「人生记忆 → 兴趣编辑」调整；旧额外关键词数据保留但不再作为新的选片控制入口。</p>
 <div class="toolbar"><button type="button" data-open-tab="life" data-open-anchor="life-interest-section">打开兴趣管理 ↗</button></div></div>
 <div class="settings-section" id="bili-video-perception-plans"><div class="video-aux-heading"><strong>🎞️ 视频感知方案 · 选择看得多细</strong><span class="pill">选择上限 · 非强制观看</span></div><p class="muted">2.8.2 优化了视频观察方式：先了解全貌，再由鱼鱼决定是否细看。选择轻量、均衡或详查，只是设置观察上限，不强制看完，也不会改变原有互动权限。</p>
@@ -2314,7 +2357,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="bili-switch-row"><div class="bili-switch-copy"><strong>自主清理自建主题收藏夹</strong><small>仅操作插件记录且核验归属的自建收藏夹；不可逆</small></div><label class="vision-toggle" for="bili-favorite-delete"><input id="bili-favorite-delete" type="checkbox" role="switch" aria-label="自主清理自建主题收藏夹"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span></label></div>
 <p class="muted">只允许删除本插件账本记录、且已核验为当前账号自己的收藏夹；每日最多 1 次，不会删除其他收藏夹或默认收藏夹。删除是不可逆的外部操作。</p>
 <div class="bili-switch-row"><div class="bili-switch-copy"><strong>自主关注／取关 UP 主</strong><small>尊重关系、额度、授权和安全回执</small></div><label class="vision-toggle" for="bili-agent-follow"><input id="bili-agent-follow" type="checkbox" role="switch" aria-label="自主关注／取关 UP 主"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span></label></div>
-<p class="muted" id="bili-agent-follow-explain">自主关注／取关的候选由已核实的真实经历提供，好友身份不是权限门槛；是否行动由 Life 决定，执行仍需账号、授权与平台回执。已有用户明确关闭的设置不会被升级覆盖。</p><label class="checkline"><input id="bili-dm-follow" type="checkbox">允许 Life 对已核验私信联系人自主考虑关注或取关（默认开启；实际行动由鱼鱼依据关系与兴趣自主决定）</label>
+<p class="muted" id="bili-agent-follow-explain">自主关注／取关的候选由已核实的真实经历提供，好友身份不是权限门槛；是否行动由 Life 决定，执行仍需账号、授权与平台回执。已有用户明确关闭的设置不会被升级覆盖。</p><label class="checkline"><input role="switch" class="ui-toggle" id="bili-dm-follow" type="checkbox">允许 Life 对已核验私信联系人自主考虑关注或取关（默认开启；实际行动由鱼鱼依据关系与兴趣自主决定）</label>
 <p class="muted">不存在单独的授权对象白名单。鱼鱼可综合是否合拍、双方交流意愿、兴趣契合、真实经历与边界自行判断；普通来信不是必须互关的理由。仅对当前登录账号真实收到且已核验的私信联系人开放候选，禁止对主人或拒联对象执行；关注／取关由原平台工具检查、回执确认，取关仍须本插件自主关注满七天。</p>
 <p class="muted">关注对象不再按好友／陌生人划授权范围。真实来信只提供考虑机会；是否合拍、交流是否友善、共同兴趣与边界变化由鱼鱼自主判断，不会因为被要求互关就直接执行。仍保留当前账号和目标 UID 核验、拒联保护、平台回执及最多每日 3 次关注额度。</p>
 <p class="muted" id="bili-agent-follow-readiness" role="status">自主关注状态：读取中…</p>
@@ -2342,12 +2385,12 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <input id="daily-dynamic-limit" type="number" min="0" max="10" step="1" value="1">
 <p class="muted">默认 1 条；0 表示禁止发布。这里是动态发布数量唯一设置位置，也是每日公开发布的硬上限，不要求鱼鱼凑满。额度增大后，自主构思有机会多次运行，但模型仍可选择沉默；自动发布需单独授权，发布前仍通过独立额度闸门。</p></div>
 <div class="settings-section"><h4>生活动态构思</h4>
-<label class="checkline"><input id="bili-daily-enabled" type="checkbox" checked>允许大肥鱼生成自己的生活动态</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="bili-daily-enabled" type="checkbox" checked>允许大肥鱼生成自己的生活动态</label>
 <p class="muted">新安装默认开启自主构思；只使用可核验的公开证据生成草稿，符合授权与安全门禁时才允许自动发布。提高每日额度后有机会多次构思，但不是发帖任务。未勾选「仅生成草稿」且鱼鱼自主选择发布时，只有通过外发授权、素材证据与安全检查才可能自动公开。</p>
-<label class="checkline"><input id="bili-daily-draft" type="checkbox">仅生成草稿，不自动发布（可选；勾选后草稿会出现在下方列表，供手动核对并点击发布）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="bili-daily-draft" type="checkbox">仅生成草稿，不自动发布（可选；勾选后草稿会出现在下方列表，供手动核对并点击发布）</label>
 <p class="muted">仅根据公开、真实的已选视频经历创作。持续情绪状态可在「人生记忆 → 情绪与心情」查看；它只影响表达节奏，不会成为公开发布私人聊天的理由。</p></div>
 <div class="settings-section"><h4>评论同步为动态</h4>
-<label class="checkline"><input id="bili-sync-comment" type="checkbox" checked>可将值得分享的评论同步为动态</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="bili-sync-comment" type="checkbox" checked>可将值得分享的评论同步为动态</label>
 <p class="muted">不会把所有评论自动同步。同步动态与独立生活动态有各自的每日额度。</p></div>
 <div class="toolbar contextual-footer"><button type="button" id="bili-dynamic-save" class="primary">保存动态创作设置</button></div>
 </details>
@@ -2410,7 +2453,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     </div>
     <p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
     <section class="backup-auto-section" aria-labelledby="backup-auto-heading">
-      <div class="backup-auto-heading"><div><h4 id="backup-auto-heading">📆 每日自动备份</h4><p class="muted">默认每天生成 1 份便携业务备份，自动保留最近 5 天；手动备份与恢复前快照不参与自动清理。</p></div><label class="checkline"><input type="checkbox" id="backup-auto-enabled" checked> 开启自动备份</label></div>
+      <div class="backup-auto-heading"><div><h4 id="backup-auto-heading">📆 每日自动备份</h4><p class="muted">默认每天生成 1 份便携业务备份，自动保留最近 5 天；业务备份使用压缩 JSON 减少空间，手动备份与恢复前快照不参与自动清理。</p></div><label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="backup-auto-enabled" checked> 开启自动备份</label></div>
       <p id="backup-auto-status" class="muted" role="status">正在读取自动备份状态…</p>
       <div class="toolbar"><button id="backup-list-refresh" type="button">刷新备份清单</button></div>
       <div class="backup-browser-grid"><div id="backup-list" class="backup-file-list" role="list" aria-label="可查看的本地备份文件"></div>
@@ -2439,9 +2482,9 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
         <p class="backup-warning">⚠️ 恢复会更改现有数据，请先暂停后台任务。系统会先在已配置的目录保存当前数据安全快照，验证校验值后才允许恢复；完成后必须完全重启 DSH。</p>
         <div class="backup-recovery-choice">
           <h4>恢复全部业务数据</h4>
-          <p class="muted">覆盖选定备份中包含的设置、账本、数据库及相关记忆文件。仅接受兼容的 schema 2 JSON 备份。</p>
+          <p class="muted">覆盖选定备份中包含的设置、账本、数据库及相关记忆文件。支持兼容的 schema 2 JSON 或 gzip 压缩备份。</p>
           <label for="backup-import-file">选择完整备份文件</label>
-          <input id="backup-import-file" type="file" accept=".json,application/json" aria-label="选择大肥鱼数据备份文件">
+          <input id="backup-import-file" type="file" accept=".json,.gz,.json.gz,application/json,application/gzip" aria-label="选择大肥鱼数据备份文件">
           <p id="backup-inspect" class="muted backup-status" role="status" aria-live="polite">尚未选择文件</p>
           <button id="backup-restore" class="danger backup-danger-action" type="button" disabled>确认恢复全部数据</button>
         </div>
@@ -2470,10 +2513,10 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <p class="muted"><strong>主 Session 是鱼鱼当前使用的聊天房间，不等于鱼鱼本人。</strong> 切换房间不会清空她已经形成的身份记忆，也不会让主 Session 自动获得后台任务权限；这里仅配置当前连接。同步间隔可在本板块下方展开设置；每日总额度仍在「次数与额度」。</p>
 <div class="settings-stack">
 <div class="settings-section"><h4>1. 选择大肥鱼当前的聊天房间（主 Session）</h4><p class="muted"><strong>💬 自然聊天已与主人私信共用多气泡协议。</strong> 主 Session 可由鱼鱼自行决定是否用 2～3 条独立气泡表达，不需每次拆句；新主人消息可取消尚未发送的续步。此处使用原 DSH Chat 的真实 assistant 消息，不是模拟插入。<strong>目前支持同一回复预先规划的分条表达</strong>；不把它宣称为首条送达后重新生成第二条。开关和条数沿用「私信互动」页面的共享配置，不额外启用私信授权。</p>
-<div class="fields"><div><label for="main-session-enabled">启用当前房间的经历同步桥</label><input id="main-session-enabled" type="checkbox"></div>
+<div class="fields"><div><label for="main-session-enabled">启用当前房间的经历同步桥</label><input role="switch" class="ui-toggle" id="main-session-enabled" type="checkbox"></div>
 <div style="grid-column:span 2"><label for="main-session-id">当前在线的 DSH 会话</label><select id="main-session-id"><option value="">尚未选择</option></select></div>
-<div><label for="main-session-auto">有新经历时自动同步</label><input id="main-session-auto" type="checkbox" checked></div>
-<div><label for="owner-spontaneous-chat-enabled">允许肥鱼自主找主人聊天</label><input id="owner-spontaneous-chat-enabled" type="checkbox" checked></div></div>
+<div><label for="main-session-auto">有新经历时自动同步</label><input role="switch" class="ui-toggle" id="main-session-auto" type="checkbox" checked></div>
+<div><label for="owner-spontaneous-chat-enabled">允许肥鱼自主找主人聊天</label><input role="switch" class="ui-toggle" id="owner-spontaneous-chat-enabled" type="checkbox" checked></div></div>
 <div class="settings-section" id="owner-contact-plan-section"><h4>💬 主人交流机会 · 安静时间与节奏</h4>
 <p class="muted">只设置主人允许被联系的边界，不指定肥鱼的性格、情绪或必须发言。主 Session 与主人 B站私信共用主动联系额度；一轮多个气泡仍只算一次联系。</p>
 <fieldset id="owner-contact-options" aria-label="主人交流计划与续聊权限" style="border:0;padding:0;margin:0;min-width:0"><div class="choice-presets" role="radiogroup" aria-label="主动联系主人节奏卡片">
@@ -2489,8 +2532,8 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div><label for="owner-contact-daily">每日最多联系（1–24 次）</label><input id="owner-contact-daily" type="number" min="1" max="24" value="2"></div>
 <div><label for="owner-contact-silence">主人沉默达到（5–1440 分钟）</label><input id="owner-contact-silence" type="number" min="5" max="1440" value="45"></div>
 </div></div>
-<div class="fields"><div><label for="main-session-silence-enabled">主 Session：较长时间没有新对话时，Life 可考虑重新联系</label><input id="main-session-silence-enabled" type="checkbox" checked></div>
-<div><label for="owner-dm-silence-enabled">主人 B站私信：较长时间沉默后，Life 可考虑重新联系</label><input id="owner-dm-silence-enabled" type="checkbox" checked></div></div>
+<div class="fields"><div><label for="main-session-silence-enabled">主 Session：较长时间没有新对话时，Life 可考虑重新联系</label><input role="switch" class="ui-toggle" id="main-session-silence-enabled" type="checkbox" checked></div>
+<div><label for="owner-dm-silence-enabled">主人 B站私信：较长时间沉默后，Life 可考虑重新联系</label><input role="switch" class="ui-toggle" id="owner-dm-silence-enabled" type="checkbox" checked></div></div>
 <p class="muted">上方 20／45／120 分钟属于<strong>长时间主动联系</strong>；聊天内短暂停顿续聊纳入 Life 自然交流的既有机制，不再提供重复设置。以上仅为允许联系的边界，肥鱼仍可选择不说话；必须有已连接的主 Session / 授权的主人私信才能实际发送。</p>
 <p id="owner-contact-status" class="muted" role="status">当前交流边界未读取。关闭上方总开关时，下方方案与两个续聊权限都不能编辑或生效。</p></fieldset>
 </div>
@@ -2505,7 +2548,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div><label for="main-session-minutes">两次提醒主 Session 至少间隔多久（15–720 分钟）</label><input id="main-session-minutes" type="number" min="15" max="720" value="60"></div>
 <div><label for="main-session-daily">每天最多给主 Session 汇报几次（1–24 次）</label><input id="main-session-daily" type="number" min="1" max="24" value="4"></div>
 <div><label for="main-session-batch">每次最多汇报多少条经历（1–20 条）</label><input id="main-session-batch" type="number" min="1" max="20" value="8"></div>
-<div><label for="main-session-comments">汇报时也告诉主 Session 我发过的评论/回复</label><input id="main-session-comments" type="checkbox" checked></div></div>
+<div><label for="main-session-comments">汇报时也告诉主 Session 我发过的评论/回复</label><input role="switch" class="ui-toggle" id="main-session-comments" type="checkbox" checked></div></div>
 <p class="muted">自动汇报优先通过 DSH 非唤醒注入传递给主 Session，不会每小时触发 AI 回复“收到生活经历更新”。没有新经历时不投递；宿主不支持非唤醒注入时保留本地队列，不自动改用会唤醒模型的发送方式。只有主动点击“现在把新经历告诉主 Session”才会请求即时回复。跳过的视频仍保存在任务日志/视频归档供管理员核对；它们不会仅凭被记录就自动变成大肥鱼的可用记忆。</p></div>
 
 <div class="toolbar"><button id="main-session-sync-save" class="primary" type="button">保存主 Session 同步频率</button></div></div>
@@ -2610,7 +2653,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div id="settings-memory"><div class="settings-section"><h4>记忆与检索设置</h4>
 <p class="muted">这里调整鱼鱼怎样记住、反思和找回仍可回忆的经历。默认只展示常用开关；细节按需展开，模型账号与 ID 在「AI 模型」页集中管理。</p>
 <p class="muted">新安装默认开启本地记忆与有限反思；主 Session 需由主人自行绑定。记录可能包含聊天信息，数据保存在插件家目录。<strong>升级不会自动改变老用户原有参数。</strong> 建议老用户查看各组与最新版推荐值的差异；点击「使用推荐值」只会填入这一组的建议数字，仍需点击「保存记忆与反思设置」才会生效。不会恢复账号、身份、自动发送或模型开关。</p>
-<div class="contextual-memory-groups"><div class="contextual-memory-group"><h5>默认开启的记忆能力</h5><p class="muted">跨 Session 身份长期记忆、可信经历进入待反思列表，以及自动人生反思均为生活基础能力，默认保持开启；实际记忆仍受主人会话绑定、权限、遗忘与模型可用性限制。</p></div><details class="contextual-memory-group contextual-subdetails"><summary>🌿 人生反思调度</summary><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="reflection">使用推荐值</button><span class="muted">推荐：候选门槛 6 · 每批 24 · 间隔 1 小时 · 每日最多 16 批。先预览，保存后生效。</span></div><div class="fields"><div><label for="main-reflection-min">至少积累多少候选再自动反思（2–30）</label><input id="main-reflection-min" max="100" min="2" type="number" value="6"/><small class="setting-note">数字越小，积累较少经历就会启动反思；越大则更耐心地等待足够素材。</small></div><div><label for="main-reflection-batch">每批最多反思候选（4–24）</label><input id="main-reflection-batch" max="24" min="4" type="number" value="24"/><small class="setting-note">这是候选数量上限，不是固定数量；系统会根据积压量和当前可衰减证据长度动态缩小批次，并控制单批证据文本预算。</small></div><div><label for="main-reflection-hours">两次自动反思至少间隔（1–48 小时）</label><input id="main-reflection-hours" max="48" min="1" step="0.5" type="number" value="1"/><small class="setting-note">默认至少间隔 1 小时；积压较大时按 1 小时调度，避免每天只处理少量经历。</small></div><div><label for="main-reflection-daily">每天最多自动反思（1–16 批）</label><input id="main-reflection-daily" max="16" min="1" type="number" value="16"/><small class="setting-note">默认最多 16 批/天；按每批最多 24 条计算，理论上限 384 条候选/天，实际会受证据长度、积压量和模型费用影响。</small></div></div></details><details class="contextual-memory-group contextual-subdetails"><summary>🕰️ 遗忘与召回质量</summary><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="recall">使用推荐值</button><span class="muted">推荐：半衰期 30 天 · 证据门槛 0.35 · 8 条 / 1200 字 · 新增 30 条/天 · 稳定事实 2 条。先预览，保存后生效。</span></div><div class="fields"><div><label for="main-memory-half-life">普通记忆半衰期（15–120 天）</label><input id="main-memory-half-life" max="120" min="15" type="number" value="30"/><small class="setting-note">影响普通经历从清晰、模糊、印象到遗忘的阶段变化，不只是排序。天数越大，通常越久才忘记；已遗忘的细节不能靠调大数值恢复。</small></div><div><label for="main-memory-threshold">召回证据门槛（0.10–0.80）</label><input id="main-memory-threshold" max="0.8" min="0.1" step="0.05" type="number" value="0.35"/><small class="setting-note">控制记忆与当前话题必须有多相关才会被召回；越高越严格、误召回更少。</small></div><div><label for="main-memory-max-items">每轮最多召回（1–12 条）</label><input id="main-memory-max-items" max="12" min="1" type="number" value="8"/><small class="setting-note">主 Session 本轮可用记忆的统一上限：长期事实、反思认识与可衰减经历合计，不包含单独配置的人设提示词。默认本地检索，启用后可选 AI 重排。</small></div><div><label for="main-memory-max-chars">每轮记忆字数上限（200–3000）</label><input id="main-memory-max-chars" max="3000" min="200" type="number" value="1200"/><small class="setting-note">每轮检索记忆可占的总字数；越大保留更多细节，也占更多上下文。</small></div><div><label for="main-memory-daily">主人聊天语义记忆每日新增最多（1–100 条）</label><input id="main-memory-daily" max="100" min="1" type="number" value="30"/><small class="setting-note">限制从主人聊天中每天新增的语义记忆数量，避免把普通聊天全记下。</small></div><div><label for="main-memory-facts">长期事实最多占召回（0–6 条）</label><input id="main-memory-facts" max="6" min="0" type="number" value="2"/><small class="setting-note">限制每轮召回中长期稳定事实最多占多少条（包括常驻身份事实）；设为 0 则不注入长期事实，其他回忆仍可使用。</small></div></div></details><details class="contextual-memory-group contextual-subdetails"><summary>🗂️ 主人聊天记忆整理（新安装默认开启）</summary><div class="fields"><div><label for="main-memory-consolidation-enabled">按需自动整理重复的主人聊天认识</label><input type="checkbox" id="main-memory-consolidation-enabled" checked/><small class="setting-note">仅处理来自主 Session、已保存且可整理的普通语义记忆，至少三条同主题才会尝试 AI 凝练。不会改写稳定事实、反思领悟、私信或人生经历。开启后每日最多自动尝试一次，原记录以来源关联保留。</small></div></div><p id="main-memory-consolidation-status" class="muted" role="status">等待整理状态…</p><button id="main-memory-consolidation-run" type="button" class="life-action life-purple">手动检查并凝练记忆</button></details><details class="contextual-memory-group contextual-subdetails"><summary>🧠 本地语义回忆（无需安装 Ollama / Python）</summary><p class="muted">可选安装开源 Qwen3-Embedding-0.6B 本地模型（Q8_0，约 639 MB）和 DSH 管理的 llama.cpp CPU 运行时。启用后，主人私信、主 Session、好友/陌生人私信与普通评论的统一记忆召回可使用语义向量补充词法检索；不调用云端 Embedding API，不上传记忆原文。模型只负责把文本变成向量，真正返回哪些记忆仍由现有权限、账号、衰减和遗忘规则决定。首次启用需要下载运行时和模型，索引在本机后台建立；索引未就绪时继续使用原有本地词法检索。</p><p id="embedding-status" class="muted" role="status" aria-live="polite">正在读取本地模型状态…</p><div class="fields"><div><label for="embedding-progress">进行中的安装 / 索引任务</label><progress id="embedding-progress" max="100" value="0"></progress><small id="embedding-progress-label" class="setting-note">尚未安装</small></div></div><div class="toolbar"><button id="embedding-install" type="button" class="life-action life-purple">启用并下载模型</button><button id="embedding-cancel" type="button">取消下载</button><button id="embedding-disable" type="button">暂停语义回忆</button><button id="embedding-rebuild" type="button">重建语义索引</button><button id="embedding-delete" type="button" class="danger">删除模型与向量索引</button></div><div class="fields"><div><label for="embedding-import-file">导入已下载的 Qwen3 Q8_0 模型文件（可选）</label><input id="embedding-import-file" type="file" accept=".gguf,application/octet-stream"/><small class="setting-note">仅接受官方模型文件，并验证固定 SHA-256。导入可绕过 Hugging Face 模型下载；首次仍需下载匹配平台的 llama.cpp 运行时。</small></div><div><button id="embedding-import" type="button">校验并导入模型文件</button> <a href="https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF/resolve/370f27d7550e0def9b39c1f16d3fbaa13aa67728/Qwen3-Embedding-0.6B-Q8_0.gguf" target="_blank" rel="noopener noreferrer">官方模型下载</a></div></div><p class="muted">向量索引仅保存记忆 ID、内容摘要哈希和 1024 维浮点向量，不保存原文；每次召回都重新从当前记忆账本取得候选并执行权限与遗忘校验。暂停会停止本地推理进程但保留模型和索引；删除会清除本地模型、运行时与向量索引，不删除原始人生记忆。</p></details><details class="contextual-memory-group contextual-subdetails"><summary>🤖 可选 AI 检索与用量</summary><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="retrieval">使用推荐值</button><span class="muted">推荐：候选 48 · 每日最多 80 次；不会打开 AI 检索开关或更换模型。先预览，保存后生效。</span></div><div class="fields"><div><label for="main-memory-semantic">启用独立低成本模型进行语义检索（默认关闭）</label><input id="main-memory-semantic" type="checkbox"/><small class="setting-note">打开后含糊的主动回忆可由现有低成本模型同时检索仍可使用的经历与长期认识；普通 B站评论仍走本地 UID 记忆，不额外请求模型。</small></div><div><label for="main-memory-candidates">低成本模型最多看到的候选记忆（12–80）</label><input id="main-memory-candidates" max="80" min="12" type="number" value="48"/><small class="setting-note">让检索模型最多从多少段真实记忆中挑选；越大覆盖越广、提示词越长。</small></div><div><label for="main-memory-search-daily">每日低成本检索调用上限（0–500，0=禁止）</label><input id="main-memory-search-daily" max="500" min="0" type="number" value="80"/><small class="setting-note">语义检索的每日模型任务启动上限；优先沿用本地持久化统计，重启不会正常清零。统计文件丢失或不可写时不保证跨重启硬限额；设为 0 禁止调用。</small></div><div><label for="main-memory-model-provider">检索模型 Provider（从 DSH 下拉选择）</label><select id="main-memory-model-provider"></select><small class="setting-note">选择 DSH 已注册的 Provider；如保持默认，保存模型页时会自动填入当前 DSH 默认模型。不会自动开启 AI 语义检索。</small></div><div><label for="main-memory-model-id">检索模型（下拉选择）</label><select id="main-memory-model-id"></select><small class="setting-note">从实际可用模型中选择；默认沿用 DSH 当前模型。可自行选择低成本模型，但不会猜测具体计费。</small></div><div><label for="main-memory-model-effort">检索模型思考深度（可留空）</label><input id="main-memory-model-effort" maxlength="160" placeholder="如 low / medium / high，或该模型支持的 JSON" type="text"/><small class="setting-note">控制检索模型的推理预算；留空用默认，值越高通常更慢也可能更贵。</small></div></div></details></div>
+<div class="contextual-memory-groups"><div class="contextual-memory-group"><h5>默认开启的记忆能力</h5><p class="muted">跨 Session 身份长期记忆、可信经历进入待反思列表，以及自动人生反思均为生活基础能力，默认保持开启；实际记忆仍受主人会话绑定、权限、遗忘与模型可用性限制。</p></div><details class="contextual-memory-group contextual-subdetails"><summary>🌿 人生反思调度</summary><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="reflection">使用推荐值</button><span class="muted">推荐：候选门槛 6 · 每批 24 · 间隔 1 小时 · 每日最多 16 批。先预览，保存后生效。</span></div><div class="fields"><div><label for="main-reflection-min">至少积累多少候选再自动反思（2–30）</label><input id="main-reflection-min" max="100" min="2" type="number" value="6"/><small class="setting-note">数字越小，积累较少经历就会启动反思；越大则更耐心地等待足够素材。</small></div><div><label for="main-reflection-batch">每批最多反思候选（4–24）</label><input id="main-reflection-batch" max="24" min="4" type="number" value="24"/><small class="setting-note">这是候选数量上限，不是固定数量；系统会根据积压量和当前可衰减证据长度动态缩小批次，并控制单批证据文本预算。</small></div><div><label for="main-reflection-hours">两次自动反思至少间隔（1–48 小时）</label><input id="main-reflection-hours" max="48" min="1" step="0.5" type="number" value="1"/><small class="setting-note">默认至少间隔 1 小时；积压较大时按 1 小时调度，避免每天只处理少量经历。</small></div><div><label for="main-reflection-daily">每天最多自动反思（1–16 批）</label><input id="main-reflection-daily" max="16" min="1" type="number" value="16"/><small class="setting-note">默认最多 16 批/天；按每批最多 24 条计算，理论上限 384 条候选/天，实际会受证据长度、积压量和模型费用影响。</small></div></div></details><details class="contextual-memory-group contextual-subdetails"><summary>🕰️ 遗忘与召回质量</summary><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="recall">使用推荐值</button><span class="muted">推荐：半衰期 30 天 · 证据门槛 0.35 · 8 条 / 1200 字 · 新增 30 条/天 · 稳定事实 2 条。先预览，保存后生效。</span></div><div class="fields"><div><label for="main-memory-half-life">普通记忆半衰期（15–120 天）</label><input id="main-memory-half-life" max="120" min="15" type="number" value="30"/><small class="setting-note">影响普通经历从清晰、模糊、印象到遗忘的阶段变化，不只是排序。天数越大，通常越久才忘记；已遗忘的细节不能靠调大数值恢复。</small></div><div><label for="main-memory-threshold">召回证据门槛（0.10–0.80）</label><input id="main-memory-threshold" max="0.8" min="0.1" step="0.05" type="number" value="0.35"/><small class="setting-note">控制记忆与当前话题必须有多相关才会被召回；越高越严格、误召回更少。</small></div><div><label for="main-memory-max-items">每轮最多召回（1–12 条）</label><input id="main-memory-max-items" max="12" min="1" type="number" value="8"/><small class="setting-note">主 Session 本轮可用记忆的统一上限：长期事实、反思认识与可衰减经历合计，不包含单独配置的人设提示词。默认本地检索，启用后可选 AI 重排。</small></div><div><label for="main-memory-max-chars">每轮记忆字数上限（200–3000）</label><input id="main-memory-max-chars" max="3000" min="200" type="number" value="1200"/><small class="setting-note">每轮检索记忆可占的总字数；越大保留更多细节，也占更多上下文。</small></div><div><label for="main-memory-daily">主人聊天语义记忆每日新增最多（1–100 条）</label><input id="main-memory-daily" max="100" min="1" type="number" value="30"/><small class="setting-note">限制从主人聊天中每天新增的语义记忆数量，避免把普通聊天全记下。</small></div><div><label for="main-memory-facts">长期事实最多占召回（0–6 条）</label><input id="main-memory-facts" max="6" min="0" type="number" value="2"/><small class="setting-note">限制每轮召回中长期稳定事实最多占多少条（包括常驻身份事实）；设为 0 则不注入长期事实，其他回忆仍可使用。</small></div></div></details><details class="contextual-memory-group contextual-subdetails"><summary>🗂️ 主人聊天记忆整理（新安装默认开启）</summary><div class="fields"><div><label for="main-memory-consolidation-enabled">按需自动整理重复的主人聊天认识</label><input role="switch" class="ui-toggle" type="checkbox" id="main-memory-consolidation-enabled" checked/><small class="setting-note">仅处理来自主 Session、已保存且可整理的普通语义记忆，至少三条同主题才会尝试 AI 凝练。不会改写稳定事实、反思领悟、私信或人生经历。开启后每日最多自动尝试一次，原记录以来源关联保留。</small></div></div><p id="main-memory-consolidation-status" class="muted" role="status">等待整理状态…</p><button id="main-memory-consolidation-run" type="button" class="life-action life-purple">手动检查并凝练记忆</button></details><details class="contextual-memory-group contextual-subdetails"><summary>🧠 本地语义回忆（无需安装 Ollama / Python）</summary><p class="muted">可选安装开源 Qwen3-Embedding-0.6B 本地模型（Q8_0，约 639 MB）和 DSH 管理的 llama.cpp CPU 运行时。启用后，主人私信、主 Session、好友/陌生人私信与普通评论的统一记忆召回可使用语义向量补充词法检索；不调用云端 Embedding API，不上传记忆原文。模型只负责把文本变成向量，真正返回哪些记忆仍由现有权限、账号、衰减和遗忘规则决定。首次启用需要下载运行时和模型，索引在本机后台建立；索引未就绪时继续使用原有本地词法检索。</p><p id="embedding-status" class="muted" role="status" aria-live="polite">正在读取本地模型状态…</p><div class="fields"><div><label for="embedding-progress">进行中的安装 / 索引任务</label><progress id="embedding-progress" max="100" value="0"></progress><small id="embedding-progress-label" class="setting-note">尚未安装</small></div></div><div class="toolbar"><button id="embedding-install" type="button" class="life-action life-purple">启用并下载模型</button><button id="embedding-cancel" type="button">取消下载</button><button id="embedding-disable" type="button">暂停语义回忆</button><button id="embedding-rebuild" type="button">重建语义索引</button><button id="embedding-delete" type="button" class="danger">删除模型与向量索引</button></div><div class="fields"><div><label for="embedding-import-file">导入已下载的 Qwen3 Q8_0 模型文件（可选）</label><input id="embedding-import-file" type="file" accept=".gguf,application/octet-stream"/><small class="setting-note">仅接受官方模型文件，并验证固定 SHA-256。导入可绕过 Hugging Face 模型下载；首次仍需下载匹配平台的 llama.cpp 运行时。</small></div><div><button id="embedding-import" type="button">校验并导入模型文件</button> <a href="https://huggingface.co/Qwen/Qwen3-Embedding-0.6B-GGUF/resolve/370f27d7550e0def9b39c1f16d3fbaa13aa67728/Qwen3-Embedding-0.6B-Q8_0.gguf" target="_blank" rel="noopener noreferrer">官方模型下载</a></div></div><p class="muted">向量索引仅保存记忆 ID、内容摘要哈希和 1024 维浮点向量，不保存原文；每次召回都重新从当前记忆账本取得候选并执行权限与遗忘校验。暂停会停止本地推理进程但保留模型和索引；删除会清除本地模型、运行时与向量索引，不删除原始人生记忆。</p></details><details class="contextual-memory-group contextual-subdetails"><summary>🤖 可选 AI 检索与用量</summary><div class="recommend-group-tools"><button type="button" class="recommended-reset" data-recommend-group="retrieval">使用推荐值</button><span class="muted">推荐：候选 48 · 每日最多 80 次；不会打开 AI 检索开关或更换模型。先预览，保存后生效。</span></div><div class="fields"><div><label for="main-memory-semantic">启用独立低成本模型进行语义检索（默认关闭）</label><input role="switch" class="ui-toggle" id="main-memory-semantic" type="checkbox"/><small class="setting-note">打开后含糊的主动回忆可由现有低成本模型同时检索仍可使用的经历与长期认识；普通 B站评论仍走本地 UID 记忆，不额外请求模型。</small></div><div><label for="main-memory-candidates">低成本模型最多看到的候选记忆（12–80）</label><input id="main-memory-candidates" max="80" min="12" type="number" value="48"/><small class="setting-note">让检索模型最多从多少段真实记忆中挑选；越大覆盖越广、提示词越长。</small></div><div><label for="main-memory-search-daily">每日低成本检索调用上限（0–500，0=禁止）</label><input id="main-memory-search-daily" max="500" min="0" type="number" value="80"/><small class="setting-note">语义检索的每日模型任务启动上限；优先沿用本地持久化统计，重启不会正常清零。统计文件丢失或不可写时不保证跨重启硬限额；设为 0 禁止调用。</small></div><div><label for="main-memory-model-provider">检索模型 Provider（从 DSH 下拉选择）</label><select id="main-memory-model-provider"></select><small class="setting-note">选择 DSH 已注册的 Provider；如保持默认，保存模型页时会自动填入当前 DSH 默认模型。不会自动开启 AI 语义检索。</small></div><div><label for="main-memory-model-id">检索模型（下拉选择）</label><select id="main-memory-model-id"></select><small class="setting-note">从实际可用模型中选择；默认沿用 DSH 当前模型。可自行选择低成本模型，但不会猜测具体计费。</small></div><div><label for="main-memory-model-effort">检索模型思考深度（可留空）</label><input id="main-memory-model-effort" maxlength="160" placeholder="如 low / medium / high，或该模型支持的 JSON" type="text"/><small class="setting-note">控制检索模型的推理预算；留空用默认，值越高通常更慢也可能更贵。</small></div></div></details></div>
 <p class="muted">主 Session 的基础角色人设独立配置；存储的长期身份事实也遵守本轮统一召回数量、字数及长期事实上限。其他记忆先本地搜索，必要时由专用低成本模型挑选真实 ID，再读取正文。检索模型优先通过 DSH 当前宿主已注册的模型适配器直接发起无工具请求；旧宿主不支持时才使用隔离的 headless 兼容路径。未配置或请求失败会回退本地记忆；不会用模型生成的文字充当过去的事实。</p>
 <p id="main-memory-recommend-status" class="muted recommend-feedback" role="status" aria-live="polite">加载后会提示与最新推荐配置不同的参数组。</p><div class="toolbar"><button class="primary" id="main-memory-save">保存记忆与反思设置</button></div><p class="muted" id="main-memory-status" role="status">正在读取…</p></div></div>
 <div id="settings-model-link" class="settings-section"><h4>🤖 模型配置独立管理</h4><p class="muted">记忆语义检索、人生反思等模型的 Provider、模型 ID 和思考深度统一在「AI 模型」页设置。默认关闭的能力不会因为调整界面而被启用。</p><button type="button" data-open-tab="models">前往 AI 模型</button></div>
@@ -2713,7 +2756,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <details class="life-now-emotion" open><summary>💗 现在的心情</summary>
 <div id="life-emotion-section" class="settings-section life-section"><div class="toolbar"><h4 style="margin:0">💗 鱼鱼现在的心情</h4><span id="emotion-status" class="live-badge">● 正在读取情绪状态</span></div>
 <p class="muted">心情随经历变化；角色模拟状态，不是生理测量或真实意识证明。</p>
-<label class="checkline"><input id="emotion-enabled" type="checkbox" checked>持续记录心情</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="emotion-enabled" type="checkbox" checked>持续记录心情</label>
 <div id="emotion-current" class="grid emotion-grid" aria-live="polite"></div>
 <div id="emotion-agency-activity" class="emotion-trend" aria-live="polite"><strong>🐟 社交意愿与最近决策</strong><p class="muted">正在读取最近 7 天的意愿评估…</p></div>
 <div class="toolbar"><button id="emotion-save" class="life-action life-green">保存情绪设置</button><button id="emotion-reset" class="life-action life-amber">重置为平稳</button></div>
@@ -2769,10 +2812,17 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="life-hero todo-page-hero"><div><span class="page-eyebrow">LIFE INTENTIONS · 真实的自主选择</span><h2>🧭 鱼鱼想做</h2><p class="muted">生活线索、值得留意的契机和已经接下的待办，在这里一起查看。不要求每条都执行，也不把模型批准当作完成。</p></div><button type="button" data-open-tab="life-agent" class="life-action life-indigo">看看鱼鱼正在做什么</button></div>
 <div class="life-plan-hub" id="life-plan-hub" aria-label="统一生活意向面板">
   <div class="life-plan-hub-top"><div><span class="page-eyebrow">MY LIFE · 有据可查的生活打算</span><h3>想法与行动，一起看</h3><p>从真实来源到 Life 的选择，再到核验结果；历史决定与当前可否继续分开显示。来源链接只指向确有凭据的视频或公开主页。</p></div><div id="life-plan-hub-total" class="life-plan-count">正在读取…</div></div>
-  <div class="life-plan-meaning" role="list" aria-label="三种生活事项的区别">
-    <p role="listitem"><strong>💡 生活线索</strong><span>从真实经历冒出的好奇和想法，还不是必须完成的事。</span></p>
-    <p role="listitem"><strong>🧭 生活契机</strong><span>有可核对的来源，鱼鱼可以决定核实、稍后考虑或放下。</span></p>
-    <p role="listitem"><strong>📝 已接待办</strong><span>已经接下的事，等鱼鱼安排和执行；只有真实回执才算完成。</span></p>
+  <div class="life-plan-map" role="img" aria-label="生活线索：遇到有趣的事；生活契机：核实真实来源并自主判断；已接待办：真正接下的事，等待行动与结果。不是所有线索都会变成待办，行动完成只认真实回执。">
+    <svg class="life-plan-flow-svg" viewBox="0 0 1030 242" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <defs><linearGradient id="lifePlanFlow" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#36aa9c"/><stop offset=".54" stop-color="#5b83cc"/><stop offset="1" stop-color="#a18bd3"/></linearGradient></defs>
+      <path class="life-plan-route" d="M308 106 H368 M662 106 H723" fill="none" stroke="url(#lifePlanFlow)" stroke-width="3" stroke-linecap="round" stroke-dasharray="7 8"/>
+      <path d="m356 96 13 10-13 10 M711 96l13 10-13 10" fill="none" stroke="currentColor" stroke-opacity=".55" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <g class="life-plan-svg-card"><rect x="8" y="16" width="300" height="172" rx="20" fill="var(--panel)" stroke="#65b9a7" stroke-width="1.5"/><circle cx="46" cy="57" r="21" fill="#d9f4e9"/><path d="M37 60c7-16 19-13 17 0-2 8-11 12-17 4" fill="none" stroke="#268f74" stroke-width="3" stroke-linecap="round"/><text x="77" y="52" class="life-plan-svg-title">01 · 生活线索</text><text x="77" y="76" class="life-plan-svg-caption">忽然感兴趣的想法</text><text x="28" y="118" class="life-plan-svg-copy">看见、听见、想到一个可能性</text><text x="28" y="145" class="life-plan-svg-note">只是好奇，不代表决定去做</text></g>
+      <g class="life-plan-svg-card"><rect x="368" y="16" width="294" height="172" rx="20" fill="var(--panel)" stroke="#86a2dc" stroke-width="1.5"/><circle cx="406" cy="57" r="21" fill="#e4ebfc"/><path d="M398 57l6 6 11-13" fill="none" stroke="#537cc4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><text x="436" y="52" class="life-plan-svg-title">02 · 生活契机</text><text x="436" y="76" class="life-plan-svg-caption">有真实来源的机会</text><text x="387" y="118" class="life-plan-svg-copy">先核实，再由鱼鱼自己决定</text><text x="387" y="145" class="life-plan-svg-note">可以继续、推迟，也可以放下</text></g>
+      <g class="life-plan-svg-card"><rect x="724" y="16" width="298" height="172" rx="20" fill="var(--panel)" stroke="#b2a0dc" stroke-width="1.5"/><circle cx="762" cy="57" r="21" fill="#efe8ff"/><path d="M754 57h16m-16 7h12m-12-14h15" fill="none" stroke="#8d6bbb" stroke-width="3" stroke-linecap="round"/><text x="792" y="52" class="life-plan-svg-title">03 · 已接待办</text><text x="792" y="76" class="life-plan-svg-caption">真正确认要处理</text><text x="743" y="118" class="life-plan-svg-copy">安排执行，保留过程与状态</text><text x="743" y="145" class="life-plan-svg-note">只有实际回执才算完成</text></g>
+      <text x="515" y="225" text-anchor="middle" class="life-plan-svg-foot">不是强制的流水线 · 不必每条都执行 · 核验优先于想象</text>
+    </svg>
+    <p class="life-plan-flow-fallback">🌿 线索是好奇 → 🔎 契机需要证据 → 📝 待办是已经接下的事。任何一步都可以暂停或放下。</p>
   </div>
   <div id="life-plan-hub-filter" class="life-plan-hub-filters" role="group" aria-label="筛选生活记录"><button type="button" data-life-plan-filter="all" aria-pressed="true">全部</button><button type="button" data-life-plan-filter="cue" aria-pressed="false">生活线索</button><button type="button" data-life-plan-filter="opportunity" aria-pressed="false">生活契机</button><button type="button" data-life-plan-filter="todo" aria-pressed="false">已接待办</button></div>
   <div id="life-plan-hub-grid" class="life-plan-hub-grid" aria-live="polite"><div class="life-plan-empty">正在读取当前账号的生活记录…</div></div>
@@ -2890,14 +2940,14 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <p class="muted">最近 7 天、当前 B站账号的真实工具回执。不额外调用 AI 或 B站接口。成功阅读、空评论、失败、楼中楼、暂时感受及保存请求被拒分别显示。0 条感受不代表功能已失败；有可能鱼鱼并未请求记录。<strong>暂无记录不代表鱼鱼不想探索</strong>，也不代表失败；视频轮可能没有运行或模型没有选择阅读。可刷新本页检查真实回执或在生活诊断页查看调度心跳。不会显示评论正文、用户 UID 或私信。</p>
 <p id="discussion-read-summary" class="muted" role="status">尚未读取…</p><div id="discussion-read-list" class="records records-scroll tall" role="status" aria-live="polite"></div></div>
 <div class="diag-grid">
-<article class="card diag-card"><div class="diag-heading"><h3>今日 @ 诊断</h3><label class="diag-switch"><input type="checkbox" id="diag-mention-enabled" checked> 记录诊断</label></div><p class="muted">记录顶层评论的 @ 决策原因。尝试 @ 不保证 B站 一定通知送达。</p><div id="mention-summary" class="muted">正在读取…</div><div id="mention-list" class="records records-scroll" role="status" aria-live="polite"></div></article>
-<article class="card diag-card"><div class="diag-heading"><h3>今日动态同步诊断</h3><label class="diag-switch"><input type="checkbox" id="diag-dynamic-enabled" checked> 记录诊断</label></div><p class="muted">区分 AI 是否选择同步、设置／额度是否允许、B站接口是否接受；接口接受不等于动态已公开可见。</p><div id="dynamic-summary" class="muted">正在读取…</div><div id="dynamic-list" class="records records-scroll" role="status" aria-live="polite"></div></article>
-<article class="card diag-card"><div class="diag-heading"><h3>预览识图诊断</h3><label class="diag-switch"><input type="checkbox" id="diag-vision-enabled" checked> 记录诊断</label></div><p class="muted">Debug 只会保存真正取到的 JPEG；勾选开关不等于 AI 一定调用。可以用设置页的「测试预览」手动验证取帧。高能时间点不可用时会退回均匀取帧。</p><div id="vision-summary" class="muted">正在读取…</div><div id="vision-list" class="records records-scroll" role="status" aria-live="polite"></div></article>
-<article class="card diag-card"><div class="diag-heading"><h3>今日表情包诊断</h3><label class="diag-switch"><input type="checkbox" id="diag-meme-enabled" checked> 记录诊断</label></div><p class="muted">显示 AI 是否选图、附图回执与本地原因；工具接受不等于图片一定公开展示。</p><div id="meme-summary" class="muted">正在读取…</div><div id="meme-diag-list" class="records records-scroll" role="status" aria-live="polite"></div></article>
+<article class="card diag-card"><div class="diag-heading"><h3>今日 @ 诊断</h3><label class="diag-switch"><input role="switch" class="ui-toggle" type="checkbox" id="diag-mention-enabled" checked> 记录诊断</label></div><p class="muted">记录顶层评论的 @ 决策原因。尝试 @ 不保证 B站 一定通知送达。</p><div id="mention-summary" class="muted">正在读取…</div><div id="mention-list" class="records records-scroll" role="status" aria-live="polite"></div></article>
+<article class="card diag-card"><div class="diag-heading"><h3>今日动态同步诊断</h3><label class="diag-switch"><input role="switch" class="ui-toggle" type="checkbox" id="diag-dynamic-enabled" checked> 记录诊断</label></div><p class="muted">区分 AI 是否选择同步、设置／额度是否允许、B站接口是否接受；接口接受不等于动态已公开可见。</p><div id="dynamic-summary" class="muted">正在读取…</div><div id="dynamic-list" class="records records-scroll" role="status" aria-live="polite"></div></article>
+<article class="card diag-card"><div class="diag-heading"><h3>预览识图诊断</h3><label class="diag-switch"><input role="switch" class="ui-toggle" type="checkbox" id="diag-vision-enabled" checked> 记录诊断</label></div><p class="muted">Debug 只会保存真正取到的 JPEG；勾选开关不等于 AI 一定调用。可以用设置页的「测试预览」手动验证取帧。高能时间点不可用时会退回均匀取帧。</p><div id="vision-summary" class="muted">正在读取…</div><div id="vision-list" class="records records-scroll" role="status" aria-live="polite"></div></article>
+<article class="card diag-card"><div class="diag-heading"><h3>今日表情包诊断</h3><label class="diag-switch"><input role="switch" class="ui-toggle" type="checkbox" id="diag-meme-enabled" checked> 记录诊断</label></div><p class="muted">显示 AI 是否选图、附图回执与本地原因；工具接受不等于图片一定公开展示。</p><div id="meme-summary" class="muted">正在读取…</div><div id="meme-diag-list" class="records records-scroll" role="status" aria-live="polite"></div></article>
 </div>
 <div class="settings-stack" style="margin-top:16px">
-<article class="settings-section diag-block"><div class="diag-heading"><h3>@ 邀请处理诊断（最近 30 条）</h3><label class="diag-switch"><input type="checkbox" id="diag-at-invite-enabled" checked> 记录诊断</label></div><p class="muted">分别显示对方发送通知的时间和本地诊断记录时间；接口读取时间不是对方@的时间。有效解析不等于近24小时可回复。与上方「大肥鱼主动 @ 好友」的诊断不同。</p><p id="comment-at-fetch" class="muted diag-fetch">尚未检查</p><div id="comment-at-events" class="records records-scroll tall" role="status" aria-live="polite"></div></article>
-<article class="settings-section diag-block"><div class="diag-heading"><h3>收到评论回复处理诊断（最近 30 条）</h3><label class="diag-switch"><input type="checkbox" id="diag-reply-inbox-enabled" checked> 记录诊断</label></div><p class="muted">用于排查同一视频下别人回复大肥鱼而大肥鱼没有接话：查看接口识别、首次基线、限额、AI 沉默与发送结果。</p><p id="comment-reply-fetch" class="muted diag-fetch">尚未检查</p><div id="comment-reply-events" class="records records-scroll tall" role="status" aria-live="polite"></div></article>
+<article class="settings-section diag-block"><div class="diag-heading"><h3>@ 邀请处理诊断（最近 30 条）</h3><label class="diag-switch"><input role="switch" class="ui-toggle" type="checkbox" id="diag-at-invite-enabled" checked> 记录诊断</label></div><p class="muted">分别显示对方发送通知的时间和本地诊断记录时间；接口读取时间不是对方@的时间。有效解析不等于近24小时可回复。与上方「大肥鱼主动 @ 好友」的诊断不同。</p><p id="comment-at-fetch" class="muted diag-fetch">尚未检查</p><div id="comment-at-events" class="records records-scroll tall" role="status" aria-live="polite"></div></article>
+<article class="settings-section diag-block"><div class="diag-heading"><h3>收到评论回复处理诊断（最近 30 条）</h3><label class="diag-switch"><input role="switch" class="ui-toggle" type="checkbox" id="diag-reply-inbox-enabled" checked> 记录诊断</label></div><p class="muted">用于排查同一视频下别人回复大肥鱼而大肥鱼没有接话：查看接口识别、首次基线、限额、AI 沉默与发送结果。</p><p id="comment-reply-fetch" class="muted diag-fetch">尚未检查</p><div id="comment-reply-events" class="records records-scroll tall" role="status" aria-live="polite"></div></article>
 </div>
 </section>
 <section id="panel-quotas" hidden>
@@ -2944,7 +2994,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div><label>限流与异常处理</label><p class="setting-note">两个哨兵及所有详情读取统一经过账号隔离、跨重启请求预算和 -509 自适应退避。接口失败不会当作未读数为 0，也不会回退到高频详情轮询。</p></div>
 </div></div>
 <div class="settings-section"><h4>活跃私信定向检查</h4><div class="fields">
-<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">只针对最近真实确认活跃的联系人，不扫描全部私信。无新消息时自动放慢为 60 → 120 → 180 秒；收到新消息后恢复 60 秒。仍受统一请求预算与平台限流保护。</small></div>
+<div><label for="dm-active-enabled">活跃对话快速检查</label><label class="switch-row"><input role="switch" class="ui-toggle" id="dm-active-enabled" type="checkbox" checked> 开启当前正在聊天联系人的定向检查</label><small class="setting-note">只针对最近真实确认活跃的联系人，不扫描全部私信。无新消息时自动放慢为 60 → 120 → 180 秒；收到新消息后恢复 60 秒。仍受统一请求预算与平台限流保护。</small></div>
 <div><label for="dm-active-seconds">活跃会话基础检查间隔（秒，10–60）</label><input id="dm-active-seconds" type="number" min="10" max="60" value="60"><p id="dm-fast-levels" class="muted">自适应档位：60 秒 → 120 秒 → 180 秒</p></div>
 <div><label for="dm-detail-max-sessions">新增通知后每轮最多读取联系人详情（1–12）</label><input id="dm-detail-max-sessions" type="number" min="1" max="12" value="3"></div>
 <div><label for="dm-detail-spacing-ms">两次详情读取之间的等待（毫秒，500–5000）</label><input id="dm-detail-spacing-ms" type="number" min="500" max="5000" step="250" value="1500"><p class="muted">仅在哨兵发现新增私信、首次基线或 30 分钟一致性核对时生效。</p></div>
@@ -2987,13 +3037,13 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <p class="muted">这里只管理白名单用户的私信、主动推荐和 @ 特殊许可；自然产生的友情请前往「生活与成长 → 逐渐熟悉的人」查看，关系成长本身不取决于这份名册。<strong>默认推荐渠道为私信</strong>，主动 @ 视频推荐仍需该好友的独立授权；接收别人 @ 鱼鱼不看好友白名单。原有的三套名单会兼容合并，不会自动替已有好友增加权限。昵称只是备注；勾选唯一授权主人会直接更改主人 UID，具体点赞与公开发布仍需单独开启权限。</p>
 <details class="inset social-advanced"><summary>🌱 社会认知 · 候选灵感与好友邀请</summary>
 <p class="muted">陌生人的私信视频心愿只是短期探索灵感，不回信、不建陌生人画像、不产生任务或公开 @；好友分享 BV / 通过 @ 请求“有空看看”，会形成可到期的只读观看邀请。大肥鱼好奇心充足时可选择审阅，<strong>默认不自动查看，不保证已观看</strong>。</p>
-<label class="checkline"><input id="social-stranger-inspiration" type="checkbox">允许读取陌生人私信里的短期视频灵感（默认关闭）</label>
-<label class="checkline"><input id="social-friend-invitations" type="checkbox">允许记录可信好友的只读视频邀请（默认关闭）</label>
-<label class="checkline"><input id="social-invitation-auto" type="checkbox">当好奇心充足时，最多每 4 小时考虑自动只读查看一条（默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="social-stranger-inspiration" type="checkbox">允许读取陌生人私信里的短期视频灵感（默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="social-friend-invitations" type="checkbox">允许记录可信好友的只读视频邀请（默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="social-invitation-auto" type="checkbox">当好奇心充足时，最多每 4 小时考虑自动只读查看一条（默认关闭）</label>
 <div class="toolbar"><button id="social-dev5-save" type="button" class="primary">保存社会认知权限</button><button id="social-dev5-refresh" type="button">刷新意愿状态</button><span id="social-dev5-status" class="muted">尚未加载</span></div>
 <div id="social-dev5-records" class="records records-scroll"></div></details>
 <div class="inset"><h4>好友意愿监听</h4>
-<label class="checkline"><input id="friend-at-feedback-enabled" type="checkbox">只读收取白名单好友的 @ 意愿（默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="friend-at-feedback-enabled" type="checkbox">只读收取白名单好友的 @ 意愿（默认关闭）</label>
 <p class="muted">开启后可记录他们通过 @ 提出的“别推这类”“多推某类”等明确反馈，<strong>不会因为收取意见而公开回复</strong>。公开回复仍需在「最近评论」页面单独开启，且遵守额度；首次读取只建立历史基线，不重放旧通知。</p></div>
 <details class="inset social-advanced"><summary>公开 @ 的额外策略（仅对选用公开 @ 渠道的好友生效）</summary>
 <label for="friends-mode">何时考虑公开 @</label><select id="friends-mode"><option value="off">关闭公开 @（推荐）</option><option value="ai_select">AI 根据真实内容选择个别好友</option><option value="ai">AI 判断是否 @ 所有允许的好友</option><option value="always">每次 @ 全部允许好友（容易打扰，不推荐）</option></select>
@@ -3022,7 +3072,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </div><p id="social-share-choice-status" class="choice-review" role="status">正在读取原有推荐权限…</p>
 <fieldset class="outreach-permissions"><legend>🐟 鱼鱼的自主分享</legend>
 <details id="social-share-advanced" class="choice-advanced"><summary>⚙️ 自定义推荐规则</summary><p class="muted">只发给已授权的主人和好友，仍受权限、跨渠道冷却与防重保护。</p>
-<label class="checkline"><input id="social-life-intent-enabled" type="checkbox">启用自主视频兴趣推荐（新安装默认开启）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="social-life-intent-enabled" type="checkbox">启用自主视频兴趣推荐（新安装默认开启）</label>
 <p class="muted">只在有新入选的真实视频后考虑推荐，模型可以选择不联系；已保存的旧开关状态保持不变。未启用时不会生成新草稿或私信。</p>
 <input id="social-auto-send" type="checkbox" hidden aria-hidden="true" tabindex="-1">
 <p class="muted">没有逐条审核或人工代发。仅在鱼鱼自主决定、收件人允许且通过全部安全门禁时发送；关闭推荐即停止新推荐。历史仅草稿配置不会被自动升级为发送授权。</p>
@@ -3036,15 +3086,15 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="card" id="life-public-interaction-card" style="margin-top:12px">
 <h4>🌱 Life 连续探索与公开互动</h4>
 <p class="muted">主人或好友分享的动态、官方确认的转发原帖和关联视频都会成为独立的自主选择：了解外层 → 决定是否继续查看原帖、视频或作者。不是自动递归抓取，也不会将视频标题误写成已看画面。</p>
-<label class="checkline"><input id="life-public-interaction-enabled" type="checkbox">允许 Life 对已核验的公开动态自主考虑点赞与原创评论（默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="life-public-interaction-enabled" type="checkbox">允许 Life 对已核验的公开动态自主考虑点赞与原创评论（默认关闭）</label>
 <p class="muted">这是统一的公开写入授权，不再区分“好友本人动态”与“转发第三方动态”。开启后仍须 Life 独立决定、核验真实作者与目标、遵守全局评论额度和平台读写预算，未知回执绝不重发。旧版两个专属开关不会自动升级为此授权。关闭时只读探索仍可运行。</p>
 <div class="toolbar"><button type="button" id="life-public-interaction-save" class="primary">保存统一公开互动授权</button><span id="life-public-interaction-status" class="muted">尚未读取</span></div>
 </div>
 <div class="card" id="life-friend-outreach-card" style="margin-top:12px">
 <h4>熟人自主联系 · 区分评论与私信关系</h4>
 <p class="muted">评论区熟悉仅影响自然认识，不授予主动私信资格。必须有当前账号真实、跨日、双向的私人交流记录，且独立主人授权、未拒联并通过发送门禁，才可考虑主动私信。旧版关系资料不自动升级成私信许可。</p>
-<label class="checkline"><input type="checkbox" id="life-friend-dm-enabled">保留原有白名单主动联系授权（也须先建立双向私信关系）</label>
-<label class="checkline"><input type="checkbox" id="life-natural-dm-enabled">允许鱼鱼向有持续双向私信习惯的人自主联系（可不在白名单；默认关闭，独立确认）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="life-friend-dm-enabled">保留原有白名单主动联系授权（也须先建立双向私信关系）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="life-natural-dm-enabled">允许鱼鱼向有持续双向私信习惯的人自主联系（可不在白名单；默认关闭，独立确认）</label>
 <div class="toolbar"><button type="button" id="life-friend-dm-save" class="primary">保存熟人自主联系授权</button><span id="life-friend-dm-status" class="muted">尚未读取</span></div>
 </div>
 </details>
@@ -3055,28 +3105,28 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="settings-section" style="border-left:3px solid #91a8ef">
 <h4>🧠 主人专用 Agent · 历史兼容设置</h4>
 <p class="muted">主人可用自然语言连续委托搜索、观看和获授权的 B站操作；只在核验主人 UID 后启用。不向模型挂载 B站 MCP、Shell、文件工具；模型只能提议动作，每步由插件后端验证。dev.3b.32 起所有入站私信都由统一 Life 模型决定回复、沉默和只读探查；本区旧 Agent 不再抢先消费主人消息，相关字段暂保留以兼容已保存设置。</p>
-<label class="checkline"><input id="owner-dm-agent-enabled" type="checkbox">启用主人私信受限 Agent（新安装默认开启）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-agent-enabled" type="checkbox">启用主人私信受限 Agent（新安装默认开启）</label>
 <p class="muted">新收到的主人私信已由统一 Life 私信流程处理：行动意愿使用「行为决策模型」，自然回复使用「社交互动模型」。旧 Agent 专用模型字段只为历史配置兼容保留，不再提供独立模型设置入口。</p>
-<label class="checkline"><input id="owner-dm-agent-read-main" type="checkbox">允许 Agent 读取已选择的在线主 Session 近期对话（默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-agent-read-main" type="checkbox">允许 Agent 读取已选择的在线主 Session 近期对话（默认关闭）</label>
 <small class="setting-note">只读取有限的用户/助手可见文本，排除工具、系统消息和明显敏感内容；在线主 Session 不可用时仍可独立聊天。不会获得主 Session 工具权限。</small>
 <div class="fields"><div><label for="owner-dm-agent-turns">主 Session 上下文轮数（1–20）</label><input type="number" id="owner-dm-agent-turns" min="1" max="20" value="6"></div><div><label for="owner-dm-agent-chars">上下文字符上限（200–4000）</label><input type="number" id="owner-dm-agent-chars" min="200" max="4000" value="1500"></div></div>
-<label class="checkline"><input id="owner-dm-agent-sync-main" type="checkbox">将已确认的私信任务结果写回主 Session（默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-agent-sync-main" type="checkbox">将已确认的私信任务结果写回主 Session（默认关闭）</label>
 <small class="setting-note">仅注入简短的任务结果摘要，不发送陌生人私信正文；不会主动唤醒主 Session。</small>
 <p id="owner-dm-agent-status" class="muted">Agent 尚未启用；开启后查看执行记录。</p>
 </div>
-<label class="checkline"><input id="owner-dm-read-commands" type="checkbox">历史主人私信只读指令授权（兼容设置；当前统一 Life 不按关键词直接执行）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-read-commands" type="checkbox">历史主人私信只读指令授权（兼容设置；当前统一 Life 不按关键词直接执行）</label>
 <p class="muted">收到 B站安全链接时，Life 可自主决定是否通过现有只读执行器查看真实公开内容；纯文本请求亦可自主建立待办，不再有自动指令分流。</p>
 <div class="settings-section" style="margin-top:12px"><h4>🔐 允许 Agent 使用的 B站能力</h4>
 <p class="muted">新安装默认勾选下列 B站能力，旧安装保留原有勾选；dev.3b.32 不再按关键词自动执行主人远程写入；旧授权设置仅保留兼容，不等于收到私信即可外发。之后若开放 Life 写入候选，必须再经过独立当轮授权、账号核验、操作额度、去重和平台回执。建议按自己的信任范围取消不需要的权限。主 Session 对话读取继续默认关闭。</p>
 <div class="fields" style="margin-top:10px">
-<div><label class="checkline"><input id="owner-dm-like" type="checkbox">点赞指定 BV 视频</label><small class="setting-note">示例：大肥鱼 点赞 BV1xxxxxxxxx；使用现有每日点赞额度及去重账本。</small></div>
-<div><label class="checkline"><input id="owner-dm-collect" type="checkbox">收藏指定 BV 视频</label><small class="setting-note">示例：大肥鱼 收藏 BV1xxxxxxxxx 到 我的收藏夹；必须指定已存在的收藏夹。</small></div>
-<div><label class="checkline"><input id="owner-dm-follow" type="checkbox">关注／取关 UP 主</label><small class="setting-note">示例：大肥鱼 关注 BV1xxxxxxxxx，或 大肥鱼 取关 UID12345；取关仍限大肥鱼自己关注满 7 天的账号。</small></div>
-<div><label class="checkline"><input id="owner-dm-comment-draft" type="checkbox">构思评论草稿</label><small class="setting-note">示例：大肥鱼 生成评论 BV1xxxxxxxxx；只用专用无 B站工具的模型生成本地草稿，不会公开。</small></div>
-<div><label class="checkline"><input id="owner-dm-comment-publish" type="checkbox">公开发表评论</label><small class="setting-note">示例：大肥鱼 发表评论 BV1xxxxxxxxx：我的评论正文；或先生成草稿，再「大肥鱼 发布评论草稿 草稿ID」。受评论模式与每日额度限制。</small></div>
-<div><label class="checkline"><input id="owner-dm-dynamic-draft" type="checkbox">构思 B站生活动态草稿</label><small class="setting-note">示例：大肥鱼 构思动态；只使用真实公开视频经历，保存本地草稿。</small></div>
-<div><label class="checkline"><input id="owner-dm-dynamic-publish" type="checkbox">公开发布已有动态草稿</label><small class="setting-note">示例：大肥鱼 发布动态草稿 草稿ID；沿用现有动态启用开关、每日额度及不确定结果禁止重试规则。</small></div>
-<div><label class="checkline"><input id="owner-dm-friend-message" type="checkbox">给指定白名单好友发私信</label><small class="setting-note">示例：大肥鱼 给 UID12345 发私信：你好；对方须在白名单用户名册开启允许私信权限。</small></div>
+<div><label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-like" type="checkbox">点赞指定 BV 视频</label><small class="setting-note">示例：大肥鱼 点赞 BV1xxxxxxxxx；使用现有每日点赞额度及去重账本。</small></div>
+<div><label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-collect" type="checkbox">收藏指定 BV 视频</label><small class="setting-note">示例：大肥鱼 收藏 BV1xxxxxxxxx 到 我的收藏夹；必须指定已存在的收藏夹。</small></div>
+<div><label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-follow" type="checkbox">关注／取关 UP 主</label><small class="setting-note">示例：大肥鱼 关注 BV1xxxxxxxxx，或 大肥鱼 取关 UID12345；取关仍限大肥鱼自己关注满 7 天的账号。</small></div>
+<div><label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-comment-draft" type="checkbox">构思评论草稿</label><small class="setting-note">示例：大肥鱼 生成评论 BV1xxxxxxxxx；只用专用无 B站工具的模型生成本地草稿，不会公开。</small></div>
+<div><label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-comment-publish" type="checkbox">公开发表评论</label><small class="setting-note">示例：大肥鱼 发表评论 BV1xxxxxxxxx：我的评论正文；或先生成草稿，再「大肥鱼 发布评论草稿 草稿ID」。受评论模式与每日额度限制。</small></div>
+<div><label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-dynamic-draft" type="checkbox">构思 B站生活动态草稿</label><small class="setting-note">示例：大肥鱼 构思动态；只使用真实公开视频经历，保存本地草稿。</small></div>
+<div><label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-dynamic-publish" type="checkbox">公开发布已有动态草稿</label><small class="setting-note">示例：大肥鱼 发布动态草稿 草稿ID；沿用现有动态启用开关、每日额度及不确定结果禁止重试规则。</small></div>
+<div><label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-friend-message" type="checkbox">给指定白名单好友发私信</label><small class="setting-note">示例：大肥鱼 给 UID12345 发私信：你好；对方须在白名单用户名册开启允许私信权限。</small></div>
 </div>
 <p class="muted">“生成”与“发布”是两套独立权限；没有通过主人精确命令明确要求公开发送，就不会自动发。只有已有安全接口支持的操作才能使用；不开放上传视频、转账、删稿、任意网页命令或不受控工具执行。</p></div>
 <div class="actions"><button type="button" class="primary" id="owner-dm-agent-save">保存主人私信 Agent 与权限</button><button type="button" id="owner-dm-agent-reload">重新读取</button></div>
@@ -3087,10 +3137,10 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="card" id="social-owner-comment"><h4>🐳 主人公开评论 · 受限 Agent</h4>
 <p id="owner-comment-authorized-uid" class="muted">唯一授权主人 UID：读取中…</p>
 <p class="muted">从平台通知核验真实主人 UID 和当前 BV。主人可以自然地邀请大肥鱼来看视频，大肥鱼自行决定是否有话想说，不需要主人逐句审核；点赞仍要明确请求和独立授权。公开评论区不接受“指定正文发表”或“生成草稿”这类技术命令。所有公开写入都受额度、隐私校验和去重保护，不读取主 Session 私密信息。</p>
-<label class="checkline"><input id="owner-comment-agent-enabled" type="checkbox">启用主人评论 Agent（默认关闭；独立于普通 @ 回复）</label>
-<label class="checkline"><input id="owner-comment-like" type="checkbox">允许主人在当前视频下请求点赞</label>
-<label class="checkline"><input id="owner-comment-publish" type="checkbox">允许主人自然邀请后，由大肥鱼自主决定是否公开发表评论（高风险，升级后需重新授权，默认关闭）</label>
-<label class="checkline"><input id="owner-comment-ack" type="checkbox">点赞成功后自然回复一句（默认静默；自主选择不评论时的简短答复独立于此开关）</label><p class="muted">主人自然邀请后，大肥鱼即使决定不发表评论，也会在权限和回复额度允许时尝试回复原 @，说明这次想偷懒、暂无想法或资料不足；不会额外发顶层评论。</p>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-comment-agent-enabled" type="checkbox">启用主人评论 Agent（默认关闭；独立于普通 @ 回复）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-comment-like" type="checkbox">允许主人在当前视频下请求点赞</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-comment-publish" type="checkbox">允许主人自然邀请后，由大肥鱼自主决定是否公开发表评论（高风险，升级后需重新授权，默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-comment-ack" type="checkbox">点赞成功后自然回复一句（默认静默；自主选择不评论时的简短答复独立于此开关）</label><p class="muted">主人自然邀请后，大肥鱼即使决定不发表评论，也会在权限和回复额度允许时尝试回复原 @，说明这次想偷懒、暂无想法或资料不足；不会额外发顶层评论。</p>
 <p id="owner-comment-agent-status" class="muted">Agent 状态尚未读取。</p>
 <div class="toolbar"><button type="button" class="primary" id="owner-comment-settings-save">保存主人公开评论权限</button><button type="button" id="owner-comment-settings-reload">重新读取</button></div>
 </div>
@@ -3100,11 +3150,11 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <p id="emotion-recall-status" class="muted" role="status">尚未读取自主回忆状态</p><div class="inset"><h4>🫧 最近回忆评估 · 为什么想起或保持安静</h4><p class="muted">看看大肥鱼最近是否真正做过内部分析、能不能从仍清晰的经历中唤起旧事，以及为何选择沉默。不会展示私信正文或私人聊天。</p><div id="emotion-recall-flow" class="recall-flow" role="group" aria-label="情绪触发回忆的进展"></div><div id="emotion-recall-overview" class="recall-overview" aria-live="polite"></div><div id="emotion-recall-diagnostics" class="records records-scroll recall-diagnostics" aria-label="最近回忆评估记录，可滚动"><p class="muted">尚无诊断记录。</p></div></div>
 <details class="life-subdetails emotion-options"><summary>查看已停用的旧版情绪分享设置（只读）</summary><div class="inset" style="margin-top:18px"><h4>💌 情绪驱动的自主回忆与分享 · 让过去自然浮现</h4>
 <p class="muted">例如今天再次刷到一个以前看过的系列，开心或怀念的模拟情绪变化，让大肥鱼想起有真实 BV 证据的旧经历；它可以决定沉默，也可以在已授权的渠道主动找主人聊聊。不是每次情绪波动都会分享。<strong>总开关与两个渠道默认全部关闭。</strong></p>
-<label class="checkline"><input type="checkbox" id="emotion-recall-enabled">允许情绪触发自主分析与回忆（需同时开启长期记忆；不等于授权发送）</label>
-<div class="fields"><div><label class="checkline"><input id="emotion-recall-main" type="checkbox">允许在指定 DSH 主 Session 主动开口</label><p class="muted">需要先在「告诉主 Session」选好会话，并保持目标会话在线。</p></div>
-<div><label class="checkline"><input id="emotion-recall-dm" type="checkbox">允许给主人发送 B站回忆私信</label><p class="muted">只会发送到「社交互动 → 白名单用户权限」中勾选并保存的唯一授权主人 UID（dmOwnerUid）；不会发送给其他人。</p></div>
+<label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="emotion-recall-enabled">允许情绪触发自主分析与回忆（需同时开启长期记忆；不等于授权发送）</label>
+<div class="fields"><div><label class="checkline"><input role="switch" class="ui-toggle" id="emotion-recall-main" type="checkbox">允许在指定 DSH 主 Session 主动开口</label><p class="muted">需要先在「告诉主 Session」选好会话，并保持目标会话在线。</p></div>
+<div><label class="checkline"><input role="switch" class="ui-toggle" id="emotion-recall-dm" type="checkbox">允许给主人发送 B站回忆私信</label><p class="muted">只会发送到「社交互动 → 白名单用户权限」中勾选并保存的唯一授权主人 UID（dmOwnerUid）；不会发送给其他人。</p></div>
 <div><label for="emotion-recall-daily">每天最多发送（0=禁止，可填任意正整数）</label><input id="emotion-recall-daily" type="number" min="0" step="1" value="1"><small class="setting-note">只限制实际主动发出的消息；设为 0 表示禁止。可填任意非负安全整数，两个渠道合计。</small></div>
-<div><label class="checkline"><input id="emotion-recall-unlimited" type="checkbox">不限制每天的发送次数</label><small class="setting-note">仅在每日上限大于 0 时忽略次数上限；0 始终禁止发送。仍必须符合时间窗口、独立授权、评估间隔、记忆证据和去重条件；可能增加模型开销和打扰。</small></div>
+<div><label class="checkline"><input role="switch" class="ui-toggle" id="emotion-recall-unlimited" type="checkbox">不限制每天的发送次数</label><small class="setting-note">仅在每日上限大于 0 时忽略次数上限；0 始终禁止发送。仍必须符合时间窗口、独立授权、评估间隔、记忆证据和去重条件；可能增加模型开销和打扰。</small></div>
 <div><label for="emotion-recall-cooldown">两次评估间隔（小时，1–48）</label><input id="emotion-recall-cooldown" type="number" min="1" max="48" value="24"><small class="setting-note">至少隔这么久才重新让模型考虑是否分享；评估不是发送，调小可能增加模型调用。</small></div>
 <div><label for="emotion-recall-candidates">每次最多考虑的相关记忆（1–100）</label><input id="emotion-recall-candidates" type="number" min="1" max="100" value="12"><small class="setting-note">候选越多可能发现更多相关旧事，但会增加决策模型的输入长度。只从有原始证据的经历中取。</small></div>
 <div><label for="emotion-recall-history">历史经历检索条数（20–1000）</label><input id="emotion-recall-history" type="number" min="20" max="1000" value="300"><small class="setting-note">从较大范围的本地历史里寻找线索，不再隐式锁在前 20 条。</small></div>
@@ -3126,9 +3176,14 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </section>
 <section id="panel-comments" hidden>
 <div class="feature-intro"><div><h2>💬 最近评论</h2><p>这里查看鱼鱼已经发送的公开评论。回复授权统一仍在本页保存；也可以从「社交互动」首页一键跳到对应设置。</p></div></div>
-<div class="settings-section" id="comments-meme-settings"><h4>🖼️ 评论梗图及调试</h4><p class="setting-note">此设置在「最近评论」页面，不在 AI 模型页；本地图片库在「表情包管理」页面。</p><label class="checkline"><input id="models-comment-memes" type="checkbox">评论时允许鱼鱼自主选择本地表情包</label><label class="checkline"><input id="models-comment-memes-debug" type="checkbox">记录表情包选择原因（调试用）</label><p class="muted">图片素材在「表情包图库」管理；这里只保存评论梗图权限，不改变评论额度。</p><div class="toolbar"><button id="models-memes-save" class="primary" type="button">保存评论梗图设置</button></div><p id="models-memes-save-status" class="setting-note" role="status"></p></div>
+<details class="settings-section comment-meme-fold" id="comments-meme-settings">
+<summary><span>🖼️ 评论梗图及调试</span><small>梗图权限与选择原因 · 点击展开设置</small></summary>
+<div class="comment-meme-body"><p class="setting-note">本地图片库在「表情包管理」页面；此处仅控制梗图授权和调试。</p>
+<label class="checkline"><input role="switch" class="ui-toggle" id="models-comment-memes" type="checkbox">评论时允许鱼鱼自主选择本地表情包</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="models-comment-memes-debug" type="checkbox">记录表情包选择原因（调试用）</label>
+<p class="muted">不改变评论发送权限和额度。</p><div class="toolbar"><button id="models-memes-save" class="primary" type="button">保存评论梗图设置</button></div>
+<p id="models-memes-save-status" class="setting-note" role="status"></p></div></details>
 
-<nav class="context-jump" aria-label="评论页分区"><a href="#comments-records">最近记录</a><a href="#comments-configuration">回复规则与授权</a><a href="#comment-at-section">被 @ 回复开关</a></nav>
 <details id="comments-settings-collapse" class="settings-category"><summary><strong>⚙️ 后台评论互动设置</strong><span>展开修改回复权限、自然续聊与额度</span></summary>
 <div id="comments-configuration" class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between"><h3>后台评论互动设置</h3><button id="comments-refresh">刷新状态与记录</button></div><p id="comments-status" class="muted">正在读取状态…</p>
 <div class="grid" style="margin:12px 0">
@@ -3144,20 +3199,20 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </div></div>
 <div class="settings-section"><h4>自然续聊采用统一 Life 表达机制</h4><p class="muted">公开评论与 @ 共用同一轮模型决定回复、沉默或拆成短消息；不再单独设置旧版 P6 开关。每条发送仍核验真实通知、对象、账号、授权、节奏与平台回执。读取已核验评论者公开投稿属于只读能力，不授予关注或外发权限。</p></div>
 <div class="settings-section"><h4>公开留言回复授权</h4><div class="fields">
-<div class="checkline"><input id="comment-watch-replies" type="checkbox"><label for="comment-watch-replies">允许鱼鱼自主考虑回复收到的公开留言</label></div>
+<div class="checkline"><input role="switch" class="ui-toggle" id="comment-watch-replies" type="checkbox"><label for="comment-watch-replies">允许鱼鱼自主考虑回复收到的公开留言</label></div>
 <div><label for="comment-own-top-per-user">我的顶层评论下：同一人近24小时最多回复（1–1000）</label><input id="comment-own-top-per-user" type="number" min="1" max="1000" value="5"></div>
 <div><label for="comment-own-nested-per-user">我的楼中楼回复下：同一人近24小时最多回复（1–1000）</label><input id="comment-own-nested-per-user" type="number" min="1" max="1000" value="3"></div>
 </div><p class="muted">同一 UID 在不同评论场景中的限额，已移至「次数与额度」。已核验的评论留言会进入统一自然回复判断；仍受每次轮询、近24小时总上限和公开评论全局自然日硬上限约束。广告、刷屏、恶意攻击等仍可跳过。</p></div>
 <div class="settings-section" id="comment-at-section"><h4>被 @ 邀请（新安装默认开启）</h4>
 <p class="muted">开启后，来自任何已核实 UID 的新 @ 都可以进入鱼鱼的自主回复判断；并不保证回复。仍遵守时效、上下文核验、评论额度及发送权限。<strong>只读收集授权好友的视频偏好不需要开启公开回复</strong>。首次开启不回复历史通知；鱼鱼不会因此获得主动 @ 别人的权限。</p>
-<div class="checkline"><input type="checkbox" id="comment-at-enabled" checked><label for="comment-at-enabled">开启收到 @ 后的自主回复判断</label></div>
+<div class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="comment-at-enabled" checked><label for="comment-at-enabled">开启收到 @ 后的自主回复判断</label></div>
 <p class="muted">回复对象不再需要白名单；好友名册中的 @ 意愿开关只控制已授权好友的只读偏好观察。<strong>通知是否被识别、为什么没有回复</strong>，请到「运行诊断 → @ 邀请处理诊断」查看。</p>
 </div>
 </div><div class="actions"><button id="comments-settings-save" class="primary">保存评论互动设置</button></div></div>
 </details>
-<div id="comments-records" class="toolbar"><h2 style="margin:0">最近公开评论记录</h2><label for="comments-kind">评论分类</label><select id="comments-kind" aria-label="筛选主评论和回复别人评论"><option value="">全部评论</option><option value="top">主评论</option><option value="reply">回复别人评论</option></select><label for="comments-day">日期</label><input id="comments-day" type="date" title="留空显示全部日期"><button id="comments-day-clear">全部日期</button><select id="comments-limit"><option value="20">每页20条</option><option value="50" selected>每页50条</option><option value="100">每页100条</option><option value="200">每页200条</option></select><button id="comments-load">刷新记录</button></div>
+<div id="comments-records" class="toolbar comments-record-toolbar"><h2 style="margin:0">最近公开评论记录</h2><label class="comments-search-field" for="comments-search"><span>搜索评论记录</span><input id="comments-search" type="search" maxlength="120" autocomplete="off" placeholder="BV号 / 评论ID / 正文 / 昵称 / UID" aria-label="按BV号、评论ID、内容或回复对象搜索"></label><label for="comments-kind">评论分类</label><select id="comments-kind" aria-label="筛选主评论和回复别人评论"><option value="">全部评论</option><option value="top">主评论</option><option value="reply">回复别人评论</option></select><label for="comments-day">日期</label><input id="comments-day" type="date" title="留空显示全部日期"><button id="comments-day-clear">全部日期</button><select id="comments-limit"><option value="20">每页20条</option><option value="50" selected>每页50条</option><option value="100">每页100条</option><option value="200">每页200条</option></select><button id="comments-load">刷新记录</button></div>
 <p class="muted">评论列表只读取主判重表 seen.md 及月度归档，不从诊断日志实时拼接；回复对象身份仅从已确认成功的互动状态补充，缺失时不猜测。成功回执不代表 B站 当前公开可见；新评论正文按有界长度保存并展示；旧版已截断正文无法凭账本恢复。梗图为提交回执状态，不能证明平台公开显示。</p>
-<p id="comments-summary" class="muted" role="status">读取中…</p><div id="recent-comments-list" class="records"></div>
+<p id="comments-summary" class="muted" role="status">读取中…</p><div id="recent-comments-list" class="records comments-record-grid"></div>
 <div class="toolbar"><button id="comments-prev">上一页</button><span id="comments-page-info" class="muted"></span><button id="comments-next">下一页</button></div>
 
 </section>
@@ -3165,7 +3220,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="card" id="personality-evolution-card" style="margin-bottom:16px">
 <div class="personality-page-heading"><span class="personality-orb" aria-hidden="true">🌱</span><div><span class="page-eyebrow">CHARACTER GROWTH</span><h3>鱼鱼的人格成长花园</h3><p class="muted">五种倾向都需要可信经历；没有证据不代表鱼鱼不会表达、没有耐心或没有边界。</p></div></div>
 <p class="muted">主人设置的初始人设仍是起点；随着真实经历的积累，鱼鱼可以逐渐形成不同的交流倾向。这里展示的是有依据的<strong>性格变化假设</strong>，不表示真实心理测量，也不能修改安全、权限与隐私约束。</p>
-<label class="checkline"><input type="checkbox" id="personality-evolution-enabled"> 开启成长性人格（关闭不会删除已有证据）</label><p class="muted" id="personality-evidence-guidance">探索和交友往往更容易获得弱证据。表达、耐心和边界必须有真实成功回复或明确尊重停止交流的可核验证据，不能凭模型感受凑数；可以在「人生记忆」查看是否有待反思经历。</p>
+<label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="personality-evolution-enabled"> 开启成长性人格（关闭不会删除已有证据）</label><p class="muted" id="personality-evidence-guidance">探索和交友往往更容易获得弱证据。表达、耐心和边界必须有真实成功回复或明确尊重停止交流的可核验证据，不能凭模型感受凑数；可以在「人生记忆」查看是否有待反思经历。</p>
 <div class="toolbar"><button id="personality-evolution-save" class="primary">保存人格成长开关</button><button id="personality-evolution-refresh">刷新真实成长轨迹</button><button id="personality-evolution-sandbox-run" type="button">🧪 播放模拟成长</button><button id="personality-evolution-sandbox-exit" type="button" hidden>退出沙盒，返回真实记录</button><span class="muted" id="personality-evolution-status" role="status">等待加载…</span></div>
 <div id="personality-evolution-sandbox-area" class="card" hidden style="border:1px dashed var(--border, #888);margin:10px 0"><strong>🧪 连续成长沙盒 · 纯虚构经历</strong>
 <div class="toolbar" style="margin-top:10px">
@@ -3345,7 +3400,7 @@ POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世�
   </div>
 </section>
 
-<section id="panel-meme" hidden><div class="feature-intro"><div><span class="live-badge" id="meme-learning-status">● 大肥鱼正在收集梗知识</span><h2>梗知识库</h2><p class="muted">大肥鱼看视频时会自动收集并启用有真实证据的新梗，无需逐条审核；「待核实」释义只能作为线索，不能当确定事实。</p></div></div><div class="card" style="margin-bottom:14px"><h3>梗与网络文化学习</h3><label class="checkline"><input id="meme-auto-enabled" type="checkbox">启用梗知识检索、刷视频收集线索和跨视频反思</label><div class="toolbar"><button id="meme-auto-save" class="primary">保存梗学习开关</button></div></div><div class="card" style="margin-bottom:14px"><h3>主人手动补充梗知识</h3><p class="muted">你手动保存后直接获批、可以被 AI 搜到；但“是否已批准”和“释义是否有证据”是两件事。没有可靠证据的梗会保留为待核实线索。</p>
+<section id="panel-meme" hidden><div class="feature-intro"><div><span class="live-badge" id="meme-learning-status">● 大肥鱼正在收集梗知识</span><h2>梗知识库</h2><p class="muted">大肥鱼看视频时会自动收集并启用有真实证据的新梗，无需逐条审核；「待核实」释义只能作为线索，不能当确定事实。</p></div></div><div class="card" style="margin-bottom:14px"><h3>梗与网络文化学习</h3><label class="checkline"><input role="switch" class="ui-toggle" id="meme-auto-enabled" type="checkbox">启用梗知识检索、刷视频收集线索和跨视频反思</label><div class="toolbar"><button id="meme-auto-save" class="primary">保存梗学习开关</button></div></div><div class="card" style="margin-bottom:14px"><h3>主人手动补充梗知识</h3><p class="muted">你手动保存后直接获批、可以被 AI 搜到；但“是否已批准”和“释义是否有证据”是两件事。没有可靠证据的梗会保留为待核实线索。</p>
 <div class="fields"><div><label for="meme-new-name">名称</label><input id="meme-new-name" maxlength="48" placeholder="例如 某个新梗"></div><div><label for="meme-new-aliases">别名（可选）</label><input id="meme-new-aliases" maxlength="140"></div>
 <div><label for="meme-new-kind">知识类别</label><select id="meme-new-kind"><option>梗</option><option>角色</option><option>人物</option><option>系列</option><option>其他</option></select></div><div><label for="meme-new-confidence">释义证据</label><select id="meme-new-confidence"><option value="待核实">待核实 · 只有线索</option><option value="有文字依据">有文字依据 · 已核对</option></select><small class="field-help">“待核实”仍可作为理解线索，但大肥鱼不能当成确定事实；“有文字依据”表示你核对过可靠的字幕、评论或来源。此选项不代替“批准使用”。</small></div></div>
 <label for="meme-new-meaning">释义（须由主人自行核对）</label><textarea id="meme-new-meaning" maxlength="220" placeholder="描述它是什么意思、适合什么语境"></textarea><div class="toolbar"><button id="meme-new-save" class="primary">新增并启用</button></div></div>
@@ -3408,9 +3463,9 @@ POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世�
 </div><p id="dm-conversation-choice-status" class="choice-review" role="status">正在读取原有私信设置…</p>
 <details id="dm-conversation-advanced" class="choice-advanced"><summary>⚙️ 自定义私信权限与节奏</summary><div class="settings-stack">
 <div class="settings-section"><h4>监听与可回复对象</h4><div class="fields">
-<div class="checkline"><input id="dm-watch" type="checkbox"><label for="dm-watch">启用后台私信监听</label></div>
+<div class="checkline"><input role="switch" class="ui-toggle" id="dm-watch" type="checkbox"><label for="dm-watch">启用后台私信监听</label></div>
 <!-- 兼容旧配置的持久字段。陌生人回复授权仅由上方交流方案显式切换，避免重复授权入口。 -->
-<div hidden aria-hidden="true"><input id="dm-stranger-enabled" type="checkbox"></div>
+<div hidden aria-hidden="true"><input role="switch" class="ui-toggle" id="dm-stranger-enabled" type="checkbox"></div>
 <p class="muted">选择「自由交流」时才会申请陌生人回复授权，并在保存前再次确认；「熟人优先」不包含该权限。原有自定义授权会保留，不会自动放宽。</p>
 <p id="dm-stranger-legacy-note" class="muted" role="status"></p>
 <div hidden><label for="dm-whitelist">后台私信白名单（由可信白名单用户名册同步）</label><textarea id="dm-whitelist" maxlength="5000"></textarea></div>
@@ -3421,7 +3476,7 @@ POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世�
 <div><label for="dm-context-messages">每次回复保留/读取的普通私信上下文条数（0–80，0=不保存、不读历史）</label><input id="dm-context-messages" type="number" min="0" max="80" value="40"></div>
 
 </div></div>
-<div hidden aria-hidden="true"><input id="dm-stranger-max" type="number" min="1" max="20" value="1"><input id="dm-approval-enabled" type="checkbox"><label for="dm-phrase">历史申请暗号</label><input id="dm-phrase" maxlength="60"></div>
+<div hidden aria-hidden="true"><input id="dm-stranger-max" type="number" min="1" max="20" value="1"><input role="switch" class="ui-toggle" id="dm-approval-enabled" type="checkbox"><label for="dm-phrase">历史申请暗号</label><input id="dm-phrase" maxlength="60"></div>
 </div></details><section id="dm-natural-section" class="settings-section" aria-label="自然表达与续聊方案">
 <h4>🌱 自然表达与续聊 · 独立方案</h4><p class="muted">只影响模型组织气泡及额外思考机会，不决定鱼鱼允许给谁发私信。修改这些参数不会将上方「自由交流」切换成「自己设定」。</p>
 <div class="choice-presets" role="radiogroup" aria-label="自然表达与续聊方案">
@@ -3430,7 +3485,7 @@ POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世�
 <label class="choice-card"><input type="radio" name="dm-natural-choice" value="lively"><span class="choice-icon" aria-hidden="true">🌻</span><strong>更爱分享</strong><small>较短冷却，偶尔多想一句</small></label>
 <label class="choice-card"><input type="radio" name="dm-natural-choice" value="custom"><span class="choice-icon" aria-hidden="true">🎛️</span><strong>自己设定</strong><small>独立调整四档关系与机会比例</small></label>
 </div><p class="choice-review" role="status" id="dm-natural-choice-status">正在读取自然表达设置…</p>
-<label class="checkline"><input id="dm-p6-enabled" type="checkbox" checked> 启用自然多气泡与额外自主续想（普通私信、主人私信、主 Session 共用；不增加联系权限）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="dm-p6-enabled" type="checkbox" checked> 启用自然多气泡与额外自主续想（普通私信、主人私信、主 Session 共用；不增加联系权限）</label>
 <div><label for="dm-p6-max-bubbles">每轮最多独立气泡数（1–3；模型自主组织，不机械分句）</label><input id="dm-p6-max-bubbles" type="number" min="1" max="3" value="3"></div>
 <details id="dm-natural-advanced" class="choice-advanced"><summary>⚙️ 查看／自定义关系冷却与机会比例</summary><div class="settings-stack"><div class="fields">
 <div><label for="natural-owner-minutes">主人自主续想冷却（分钟，1–1440）</label><input id="natural-owner-minutes" type="number" min="1" max="1440" value="2"></div>

@@ -31,14 +31,14 @@ test('timeline remains independently refreshable using existing read-only busine
   assert.match(js,/setInterval\(\(\)=>\{void reconcileVisibleLife\(\)\},4000\)/)
 })
 
-test('the three explanations are concise, singular, and paired with original filters',()=>{
-  assert.match(plans,/class="life-plan-meaning"/)
-  for(const [label,keyword] of [['生活线索','真实经历'],['生活契机','可核对的来源'],['已接待办','真实回执']]){
-    assert.match(plans,new RegExp(label+'[^<]*<\/strong><span>[^<]*'+keyword))
-  }
-  assert.equal((plans.match(/role="listitem"/g)||[]).length,3)
+test('the three stages are explained by an accessible SVG, not a mandatory execution funnel',()=>{
+  assert.match(plans,/class="life-plan-map" role="img"/)
+  assert.match(plans,/<svg class="life-plan-flow-svg"/)
+  for(const label of ['生活线索','生活契机','已接待办'])assert.match(plans,new RegExp(label))
+  assert.match(plans,/不是强制的流水线/)
+  assert.match(plans,/只有实际回执才算完成/)
   for(const kind of ['cue','opportunity','todo'])assert.match(plans,new RegExp('data-life-plan-filter="'+kind+'"'))
   assert.match(plans,/id="life-plan-hub-grid"/)
-  assert.match(html,/#panel-plans \.life-plan-meaning/)
-  assert.match(html,/@media\(max-width:760px\)/)
+  assert.match(html,/#panel-plans \.life-plan-flow-svg/)
+  assert.match(html,/@media\(prefers-reduced-motion:reduce\)/)
 })

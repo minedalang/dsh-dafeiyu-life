@@ -576,6 +576,16 @@
     "watched-merge.test.mjs"
   ],
   "registeredActive": {
+    "v283-dev5-expanded-business-backup.test.mjs": {
+      "owner": "data-backup-and-retention",
+      "kind": "security",
+      "intent": "超越旧48MB与3000文件阈值的完整业务快照压缩、预览哈希校验、恢复及五天轮换；失败不得漏备份或误删手动备份。"
+    },
+    "v283-dev5-comments-ui-search.test.mjs": {
+      "owner": "management-console-and-readme",
+      "kind": "ui",
+      "intent": "最近评论跨页BV/评论ID/正文/已核实接收人检索、UI两列卡片、二元滑动开关和生活意向SVG可访问性。"
+    },
     "v283-dev4-auto-backup-rotation.test.mjs": {
       "owner": "data-backup-and-retention",
       "kind": "security",

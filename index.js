@@ -58,7 +58,7 @@ import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
 import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup } from './lib/data-backup.mjs'
 import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
-import {listBackupFiles,inspectBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup} from './lib/backup-rotation.mjs'
+import {listBackupFiles,inspectBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
 import {addLifeVideoGallery,listLifeVideoGallery,readLifeVideoGalleryImage,pruneLifeVideoGallery,pruneAllLifeVideoGalleries} from './lib/life-video-gallery.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -8821,7 +8821,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           log('用户数据已备份到：'+filePath)
           return sendJson(res, 200, {ok:true,filePath,summary:validateBackup(backup)})
         }
-        const body = await readBackupBody(req, 90_000_000)
+        const body = await readBackupBody(req, 320_000_000)
         const data = body?.backup
         const summary = validateBackup(data)
         if (action === 'restore') validateRestoreIdentity(stateDir,data)
@@ -11283,6 +11283,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         offset: url.searchParams.get('offset'),
         day: url.searchParams.get('day'),
         kind: url.searchParams.get('kind'),
+        search: url.searchParams.get('search'),
         recipientMetadataDir: accountRuntimeDir,
       }))
     }

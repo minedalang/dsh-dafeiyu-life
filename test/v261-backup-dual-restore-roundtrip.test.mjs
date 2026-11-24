@@ -144,7 +144,7 @@ test('大备份：旧用户 seen.md 与专项候选可同时存在；两种恢�
     const server=fileURLToPath(new URL('../index.js',import.meta.url))
     const code=readFileSync(server,'utf8')
     assert.match(code,/const readBackupBody = \(req, maxBytes\) => readJsonRequest\(req, maxBytes, \{strict:true\}\)/)
-    assert.match(code,/const body = await readBackupBody\(req, 90_000_000\)/)
+    assert.match(code,/const body = await readBackupBody\(req, 320_000_000\)/)
     assert.match(code,/const body=await readBackupBody\(req,65_000_000\),backup=body\?\.backup/)
   }finally{for(const dir of [root,dest])rmSync(dir,{recursive:true,force:true})}
 })
