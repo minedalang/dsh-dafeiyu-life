@@ -877,26 +877,43 @@ def _record_vision_attempt(home):
 
 
 
-def _save_vision_cache(cache, record):
+def _save_vision_cache(cache, record, *, progress=None):
     """Best-effort atomic cache: unique staging files, never a shared *.tmp.
 
     A cache write is not an Ollama inference. Its failure must not discard an
     already verified in-memory visual receipt. Keep paths out of error codes.
+    The optional, fixed-token progress hook is used only by an offline route
+    probe; ordinary visual observations never emit file-operation trace data.
     """
+    def mark(stage):
+        if progress is not None:
+            try:
+                progress(stage)
+            except Exception:
+                pass  # diagnostics must never interfere with cache writes
+
     cache=Path(cache)
     staged=None
     try:
+        mark('writer_dir_create')
         cache.parent.mkdir(parents=True,exist_ok=True)
+        mark('writer_dir_ready')
         # On Windows, a stale/read-only/locked legacy ``<BV>.tmp`` can remain
         # after relocation. Do not overwrite it or share a temp name across jobs.
+        mark('writer_temp_open')
         with tempfile.NamedTemporaryFile(mode='w',encoding='utf8',
                 dir=cache.parent,prefix=f'.{cache.stem}-',suffix='.tmp',
                 delete=False) as handle:
             staged=Path(handle.name)
+            mark('writer_temp_opened')
             json.dump(record,handle,ensure_ascii=False)
+            mark('writer_json_written')
+        mark('writer_temp_closed')
         # Never overwrite a symbolic link or an unexpected directory.
+        mark('writer_target_stat')
         if cache.is_symlink() or (cache.exists() and not cache.is_file()):
             return 'vision_cache_write_failed'
+        mark('writer_replace_start')
         try:
             os.replace(staged,cache)
         except PermissionError:
@@ -904,6 +921,7 @@ def _save_vision_cache(cache, record):
             # Repair ONLY that individual regenerable cache file, and retry
             # the same atomic replacement once. Never alter directory ACLs,
             # permissions of model weights or any Life memory.
+            mark('writer_replace_retry')
             if cache.is_symlink() or not cache.is_file():
                 raise
             mode=cache.stat().st_mode
@@ -911,6 +929,7 @@ def _save_vision_cache(cache, record):
                 raise
             cache.chmod(mode | stat.S_IWRITE)
             os.replace(staged,cache)
+        mark('writer_replace_done')
         return None
     except (OSError,TypeError,ValueError) as exc:
         err=getattr(exc,'errno',None)
@@ -921,8 +940,10 @@ def _save_vision_cache(cache, record):
         return 'vision_cache_write_failed'
     finally:
         if staged is not None:
+            mark('writer_cleanup_start')
             try: staged.unlink(missing_ok=True)
             except OSError: pass
+            mark('writer_cleanup_done')
 
 
 def _mark_cache_write_result(answer, code):

@@ -37,6 +37,19 @@ class PreviewTests(unittest.TestCase):
             self.assertIn(json.loads(cache.read_text(encoding='utf8'))['seq'],range(24))
             self.assertEqual(list(cache.parent.glob('.BV1234567890-preview-board-v14-*.tmp')),[])
 
+    def test_probe_progress_identifies_real_cache_writer_operations(self):
+        with TemporaryDirectory() as home:
+            cache=Path(home)/'vision-cache'/'probe.json'
+            events=[]
+            self.assertIsNone(pv._save_vision_cache(cache,{'probe':True},progress=events.append))
+            self.assertEqual(json.loads(cache.read_text(encoding='utf8')),{'probe':True})
+            self.assertEqual(events,[
+                'writer_dir_create','writer_dir_ready','writer_temp_open',
+                'writer_temp_opened','writer_json_written','writer_temp_closed',
+                'writer_target_stat','writer_replace_start','writer_replace_done',
+                'writer_cleanup_start','writer_cleanup_done'])
+            self.assertFalse(list(cache.parent.glob('*.tmp')))
+
     def test_adaptive_cache_permission_does_not_become_ollama_unavailable(self):
         frames=[{'second':12.,'tile_times':[12.],'bytes':b'jpeg-not-read'}]
         decoded={'ok':True,'bvid':'BV1234567890','status':'frames_ready',

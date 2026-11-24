@@ -56,6 +56,18 @@ test('slow Windows-style Python import reports its last stage instead of calling
  assert.doesNotMatch(result.reason,new RegExp(root.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))
 }))
 
+test('blocked Python cache atomic replacement reports the actual file operation',()=>run(async({root,target})=>{
+ put(join(root,'preview_vision.py'),'# present')
+ const result=await verifyVisionPythonCacheRoute({root,python:'python',env:{BILI_DUTY_HOME:root,DSH_MEDIA_CACHE_HOME:target},
+  timeoutMs:1100,
+  spawnImpl:()=>spawn(process.execPath,['-e',
+   "process.stdout.write('VISION_ROUTE_STAGE:python_started\\nVISION_ROUTE_STAGE:preview_imported\\nVISION_ROUTE_STAGE:writer_replace_start\\n');setInterval(()=>{},1000)"],
+   {stdio:['ignore','pipe','ignore']})})
+ assert.equal(result.code,'python_timeout')
+ assert.equal(result.stage,'writer_replace_start')
+ assert.match(result.reason,/Python 原子替换/)
+}))
+
 test('separate Ollama image success can no longer pass migration readiness if Python video route fails',()=>run(async({root})=>{
  const result=await verifyRelocatedModelRuntime({root,asrPython:'none',asrModel:'small',visionEnabled:true,
   embeddingRuntime:null,visionMode:'independent_local',visionPipelineProbe:async()=>({ok:false,code:'media_route_mismatch',reason:'mismatch'}),
