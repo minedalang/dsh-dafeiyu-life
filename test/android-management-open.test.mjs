@@ -9,20 +9,20 @@ import {apply} from '../index.js'
 
 const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
 // Exercise the real button handler without loading the entire React/settings host.
-const start = source.indexOf("      const onOpenManage = async (tab = '', anchor = '', inside = false) => {")
+const start = source.indexOf("      const openExternalManagementLink = href => {")
 const end = source.indexOf('\n\n      const patch = async (p, what) => {', start)
 assert.ok(start > 0 && end > start, 'management handler exists')
 const handlerSource = source.slice(start, end)
 function browser({userAgent = 'Android', protocol = 'https:', fetchImpl, postImpl, maxTouchPoints = 0, innerWidth = 1024} = {}) {
-  const navigated = [], errors = [], posts = [], requests = []
+  const navigated = [], errors = [], posts = [], requests = [], results = [], expanded = []; let nonce=0
   const window = {navigator: {userAgent, maxTouchPoints}, innerWidth, location: {protocol, host: protocol==='dsh-app:'?'app':'localhost', assign(url) {navigated.push(url)}}}
   const fetch = async (...args) => {requests.push(args); return fetchImpl?.(...args)}
   const jpost = async (...args) => {posts.push(args); return postImpl?.(...args)}
   const openManage = runInNewContext(handlerSource + '\nonOpenManage', {
-    window, fetch, jpost, URL, setManageBrowser() {}, setPairCode(){},setPairResult(){},pairAbort:{current:null}, document:{body:{appendChild(){}},createElement(){return {click(){navigated.push(this.href)},remove(){}}}}, setManageError: text => errors.push(text), say() {},
+    window, fetch, jpost, URL, crypto:{randomUUID:()=>`rpc-${++nonce}`}, AbortController, AbortSignal, setTimeout, clearTimeout, manageOpenAbort:{current:null},setManageOpening(){},setManageNotice:v=>results.push(v),setBrowserAuthExpanded:v=>expanded.push(v),setManageBrowser() {}, setPairCode(){},setPairResult:v=>results.push(v),pairAbort:{current:null}, document:{body:{appendChild(){}},createElement(){return {click(){navigated.push(this.href)},remove(){}}}}, setManageError: text => errors.push(text), say() {},
   })
   const openLogin = runInNewContext(handlerSource + '\nonOpenBrowserLogin', {window, fetch, jpost, URL, document:{body:{appendChild(){}},createElement(){return {click(){navigated.push(this.href)},remove(){}}}}, setManageError: text => errors.push(text)})
-  return {openManage, openLogin, navigated, errors, posts, requests}
+  return {openManage, openLogin, navigated, errors, posts, requests, results, expanded}
 }
 
 test('安卓 HTTPS 同源入口：由当前 WebView 打开，不触发后台系统浏览器', async () => {
@@ -74,13 +74,13 @@ test('平板触控设备采用网关同源导航，即使 UA 不包含 Android',
   assert.equal(app.posts.length, 0)
 })
 
-test('Desktop 默认打开干净的外部浏览器入口，不占用主聊天窗口', async () => {
+test('Desktop 不支持官方登录时仍打开干净的外部浏览器入口，不占用主聊天窗口', async () => {
   const app = browser({protocol:'dsh-app:',userAgent:'Windows',fetchImpl:()=>({ok:true,headers:{get:name=>name==='content-type'?'text/html':'1'}}),postImpl:()=>({ok:true,openIn:'external-browser',path:'/api/bili-duty/manage?tab=firststart#fs-deps-card',url:'http://127.0.0.1:8603/api/bili-duty/browser?tab=firststart#fs-deps-card'})})
   await app.openManage('firststart','fs-deps-card')
   assert.equal(app.posts.length,1)
   assert.equal(app.posts[0][1].external,true)
   assert.deepEqual(app.navigated,['http://127.0.0.1:8603/api/bili-duty/browser?tab=firststart#fs-deps-card'])
-  assert.equal(app.requests[0][1].referrerPolicy,'no-referrer')
+  assert.equal(app.requests[0][1].referrerPolicy,'no-referrer');assert.equal(app.requests[1][0],'/api/remoteConnection/loginUrl');assert.ok(app.expanded.at(-1))
   await app.openManage('firststart','fs-deps-card',true)
   assert.equal(app.posts.length,1)
   assert.equal(app.navigated.at(-1),'/api/bili-duty/manage?tab=firststart#fs-deps-card')
@@ -316,7 +316,7 @@ test('pairing approval uses the actual host HTTP RPC envelope without injected R
       const result=entry.denied?{ok:false,error:{code:'remote-connection/owner-required',message:'do not expose',details:{}}}:{ok:true,value:b.method.endsWith('/pairingRequests')?{requests:entry.rows,pollIntervalMs:2000}:entry.decisionFail?'unavailable':'approved'}
       return {ok:true,headers:{get:()=>entry.html?'text/html':'application/json'},json:async()=>({type:'server-response',rpcId:entry.badId?'wrong':b.rpcId,result})}
     }
-    const approve=runInNewContext(approveSource+'\napproveBrowser',{URL,window:{location:{protocol:entry.protocol||'dsh-app:',host:'app'}},crypto:{randomUUID:()=>`rpc-${++n}`},fetch,jpost:async()=>entry.response||trusted,pairPending:{current:false},pairAbort:{current:null},pairCode:entry.code||'ABCD 2345',manageBrowser:null,setPairBusy(){},setManageError:e=>errors.push(e),setPairCode(){},setPairResult:m=>messages.push(m),AbortController,setTimeout,clearTimeout})
+    const approve=runInNewContext(approveSource+'\napproveBrowser',{URL,window:{location:{protocol:entry.protocol||'dsh-app:',host:'app'}},crypto:{randomUUID:()=>`rpc-${++n}`},fetch,jpost:async()=>entry.response||trusted,pairPending:{current:false},pairAbort:{current:null},pairCode:entry.code||'ABCD 2345',manageBrowser:null,setPairBusy(){},setManageNotice(){},setManageError:e=>errors.push(e),setPairCode(){},setPairResult:m=>messages.push(m),AbortController,setTimeout,clearTimeout})
     await approve();assert.deepEqual(decisions,entry.valid||entry.decisionFail?[['request','allow']]:[])
     if(entry.valid){assert.deepEqual(calls,['remoteConnection/pairingRequests','remoteConnection/decidePairing']);assert.match(messages.at(-1),/DSH 已批准/)}else{assert.ok(errors.at(-1));assert.doesNotMatch(errors.at(-1),/do not expose/);assert.ok(calls.length<=2)}
     if(entry.http===404)assert.match(errors.at(-1),/未提供浏览器配对接口/)
@@ -336,10 +336,52 @@ test('fresh and established Desktop users render the same full native settings, 
     runInNewContext(src,{window:{...host,__ModuleLoader__:{load:spec=>{panel=spec.factory(()=>react).Panel}}},testStatus:st,URL,AbortController,setTimeout,clearTimeout})
     assert.equal(typeof panel,'function');const tree=panel(),nodes=all(tree),text=JSON.stringify(tree)
     const auth=nodes.findIndex(n=>n.props?.['aria-label']==='管理中心浏览器授权')
-    assert.ok(auth>=0);assert.match(text,/打开 DSH 官方登录页/);assert.match(text,/八位浏览器配对码/);assert.match(text,/在 DSH 内打开管理中心/);assert.match(text,/不用另一台设备/);assert.doesNotMatch(text,/欢迎来到大肥鱼 · 首次配置/)
-    if(st){const master=nodes.findIndex(n=>n.props?.label==='🐳 大肥鱼总开关');assert.ok(master>auth);assert.match(text,/账号与运行环境/);if(!st.onboarding.welcomeCompleted)assert.match(text,/首次使用：先按上方步骤完成浏览器授权/)}
+    assert.ok(auth>=0);assert.match(text,/浏览器授权与故障恢复/);assert.ok(nodes.some(n=>n.props?.['aria-expanded']===false));assert.match(text,/打开 DSH 官方登录页/);assert.match(text,/八位浏览器配对码/);assert.match(text,/在 DSH 内打开管理中心/);assert.match(text,/不用另一台设备/);assert.doesNotMatch(text,/欢迎来到大肥鱼 · 首次配置/)
+    if(st){const master=nodes.findIndex(n=>n.props?.label==='🐳 大肥鱼总开关');assert.ok(master>auth);assert.match(text,/账号与运行环境/);if(!st.onboarding.welcomeCompleted)assert.match(text,/首次使用：点击打开管理中心/)}
     else assert.match(text,/在独立浏览器中打开管理中心/)
   }
   assert.match(source,/onOpenManage\(setupTab,setupAnchor\)/)
   assert.match(source,/setupAnchor=needsSetup&&!st\.venvReady\?'fs-deps-card'/)
+})
+
+
+test('Desktop official owner login is requested only on explicit open; a changed port obtains a new link; clean management URL carries no credential',async()=>{
+  let origin='http://127.0.0.1:4498', secret='synthetic-first';const calls=[]
+  const app=browser({protocol:'dsh-app:',fetchImpl:(path,opts)=>{
+    if(path!=='/api/remoteConnection/loginUrl')return {ok:true,headers:{get:n=>n==='content-type'?'text/html':'1'}}
+    const b=JSON.parse(opts.body);calls.push(b);assert.equal(opts.credentials,'same-origin');assert.equal(opts.redirect,'error');assert.equal(opts.cache,'no-store');assert.equal(opts.referrerPolicy,'no-referrer');assert.deepEqual(b.payload,{args:{}})
+    return {ok:true,headers:{get:()=> 'application/json'},json:async()=>({type:'server-response',rpcId:b.rpcId,result:{ok:true,value:origin+'/?token='+secret}})}
+  },postImpl:(_,b)=>({ok:true,openIn:'external-browser',path:'/api/bili-duty/manage?tab='+b.tab,url:origin+'/api/bili-duty/browser?tab='+b.tab})})
+  assert.equal(calls.length,0)
+  await app.openManage('models');assert.deepEqual(app.navigated,[origin+'/?token='+secret,origin+'/api/bili-duty/browser?tab=models&auto=1'])
+  origin='http://127.0.0.1:7823';secret='synthetic-next';await app.openManage('models');assert.deepEqual(app.navigated.slice(-2),[origin+'/?token='+secret,origin+'/api/bili-duty/browser?tab=models&auto=1'])
+  assert.equal(calls.length,2);assert.notEqual(calls[0].rpcId,calls[1].rpcId);assert.doesNotMatch(JSON.stringify([app.errors,app.results,app.posts]),/synthetic-/)
+  await app.openManage('models','',true);assert.equal(calls.length,2);assert.equal(app.navigated.at(-1),'/api/bili-duty/manage?tab=models')
+})
+
+test('owner login failure, wrong origin/path or extra URL fields fall back without exposing returned data',async()=>{
+  const origin='http://127.0.0.1:4498', clean=origin+'/api/bili-duty/browser'
+  const bad=[{value:'https://example.com/?token=synthetic-secret'},{value:'http://127.0.0.1:9999/?token=synthetic-secret'},{value:origin+'/api/bili-duty/manage?token=synthetic-secret'},{value:origin+'/?token=synthetic-secret&next=/'},{value:origin+'/?token=synthetic-secret&token=other'},{value:origin+'/?token=synthetic-secret#x'},{value:'http://u:p@127.0.0.1:4498/?token=synthetic-secret'},{value:origin+'/?token='},{value:42},{badId:true},{http:401},{http:403},{http:404},{http:503},{denied:true},{network:true}]
+  for(const c of bad){
+    const app=browser({protocol:'dsh-app:',fetchImpl:(path,opts)=>{
+      if(path!=='/api/remoteConnection/loginUrl')return {ok:true,headers:{get:n=>n==='content-type'?'text/html':'1'}}
+      if(c.network)throw Error('synthetic-secret')
+      if(c.http)return {ok:false,status:c.http}
+      const b=JSON.parse(opts.body);return {ok:true,headers:{get:()=> 'application/json'},json:async()=>({type:'server-response',rpcId:c.badId?'bad':b.rpcId,result:c.denied?{ok:false,error:{code:'remote-connection/token-unavailable',message:'synthetic-secret'}}:{ok:true,value:c.value}})}
+    },postImpl:()=>({ok:true,openIn:'external-browser',path:'/api/bili-duty/manage',url:clean})})
+    await app.openManage();assert.deepEqual(app.navigated,[clean]);assert.ok(app.expanded.at(-1));assert.doesNotMatch(JSON.stringify([app.errors,app.results,app.posts]),/synthetic-secret/)
+  }
+})
+
+test('automatic launcher waits for real owner HTML, never treats a login response as success, stops on denial or timeout',async()=>{
+  const {managementBrowserLanding}=await import('../lib/management-host-auth.mjs');let html
+  managementBrowserLanding({method:'GET'},{writeHead(){},end(x){html=x}})
+  const script=html.match(/<script>([\s\S]+)<\/script>/)[1]
+  for(const outcome of ['success','denial','timeout','wrong-html']){
+    let tick=null,now=0,response=401;const navigated=[],nodes={status:{},login:{addEventListener(){}},retry:{addEventListener(){}}}
+    runInNewContext(script,{URL,AbortSignal,Date:{now:()=>now},location:{href:'http://127.0.0.1:4498/api/bili-duty/browser?tab=firststart&auto=1#fs-deps-card',replace:p=>navigated.push(p)},document:{getElementById:id=>nodes[id]},fetch:async(path,opts)=>{assert.equal(path,'/api/bili-duty/manage?tab=firststart');assert.equal(opts.credentials,'same-origin');return {ok:response===200,status:response,headers:{get:n=>n==='x-dafeiyu-management'?(outcome==='wrong-html'?'':'1'):'text/html'}}},setInterval(fn){tick=fn;return 1},clearInterval(){tick=null}})
+    await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(navigated,[]);assert.equal(typeof tick,'function')
+    if(outcome==='timeout')now=30001;else response=outcome==='denial'?403:200
+    tick();await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(navigated,outcome==='success'?['/api/bili-duty/manage?tab=firststart#fs-deps-card']:[]);assert.equal(tick,null)
+  }
 })

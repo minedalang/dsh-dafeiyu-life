@@ -46,8 +46,8 @@ window.__ModuleLoader__.load({
       throw new Error('HTTP ' + res.status + (reason ? '：' + reason : '（本地接口拒绝，原因未返回）'))
     }
     const jget = async (p) => asJson(await fetch(API + p, { credentials: 'same-origin', referrerPolicy:'no-referrer' }))
-    const jpost = async (p, body) => asJson(await fetch(API + p, {
-      method: 'POST',
+    const jpost = async (p, body, signal) => asJson(await fetch(API + p, {
+      method: 'POST', signal,
       credentials: 'same-origin',
       referrerPolicy:'no-referrer',
       headers: { 'content-type': 'application/json', 'x-dafeiyu-management-intent':'1' },
@@ -211,6 +211,7 @@ window.__ModuleLoader__.load({
 [data-bd-btn][data-primary]{background:#187c63;border-color:#187c63;color:#fff;}
 [data-bd-browser-auth]{display:flex;flex-direction:column;gap:10px;padding:13px;border:1px solid rgba(24,124,99,.48);border-radius:12px;background:rgba(24,124,99,.065);margin:4px 0;}
 [data-bd-browser-auth] [data-bd-note]{font-size:12px;line-height:1.65;color:var(--dsw-alias-label-secondary,inherit)}
+[data-bd-browser-recovery]:not([hidden]){display:flex;flex-direction:column;gap:10px}
 [data-bd-browser-auth] [data-bd-label]{font-size:14px;font-weight:750}
 [data-bd-browser-auth] [data-bd-input]{max-width:180px;font-size:14px;letter-spacing:.08em}
 [data-bd-tabs]{border-radius:12px;}
@@ -286,7 +287,11 @@ window.__ModuleLoader__.load({
       const [pairResult,setPairResult] = React.useState('')
       const pairPending=React.useRef(false)
       const pairAbort=React.useRef(null)
-      React.useEffect(()=>()=>pairAbort.current?.abort(),[])
+      const manageOpenAbort=React.useRef(null)
+      const [manageOpening,setManageOpening]=React.useState(false)
+      const [manageNotice,setManageNotice]=React.useState('')
+      const [browserAuthExpanded,setBrowserAuthExpanded]=React.useState(false)
+      React.useEffect(()=>()=>{pairAbort.current?.abort();manageOpenAbort.current?.abort()},[])
       const [msgTone, setMsgTone] = React.useState('')
       const [kws, setKws] = React.useState(null)
       const [favFolders, setFavFolders] = React.useState(null)   // 收藏夹列表（下拉用，null = 还没读）
@@ -404,10 +409,33 @@ window.__ModuleLoader__.load({
         setRunNote(text ? { t: text, tone: tone || '' } : null)   // ⭐ 同时镜像到顶部，免得提示掉到页面最底下看不见
       }
 
+      // Official login links confer full Host owner access. Read only on an
+      // explicit Desktop open action; never put the link into React state, plugin
+      // API responses, logs, clipboard, management URL or persistent storage.
+      const openExternalManagementLink = href => {
+        const link=document.createElement('a');link.href=href;link.target='_blank';link.rel='noopener noreferrer';link.referrerPolicy='no-referrer';link.hidden=true
+        document.body.appendChild(link);try{link.click()}finally{link.remove()}
+      }
+      const tryOfficialBrowserLogin = async (origin, signal) => {
+        try {
+          const raw=await pairingRpc('loginUrl',{},AbortSignal.any([signal,AbortSignal.timeout(4000)]))
+          signal.throwIfAborted()
+          if(typeof raw!=='string'||raw.length>8192)return false
+          const login=new URL(raw)
+          // Do not rewrite a credential for another authority, accept extra
+          // query parameters, or forward it to a custom/plugin route.
+          if(login.origin!==origin||login.pathname!=='/'||login.username||login.password||login.hash||login.searchParams.getAll('token').length!==1||!login.searchParams.get('token')||Array.from(login.searchParams.keys()).length!==1)return false
+          openExternalManagementLink(login.href)
+          return true
+        }catch {return false} // never surface a credential-bearing exception
+      }
       // Desktop opens a clean external launcher; mobile/web keep their authenticated carrier.
       // The optional internal fallback is explicit, never silently replaces the chat window.
       const onOpenManage = async (tab = '', anchor = '', inside = false) => {
-        setManageError('')
+        if(manageOpenAbort.current)return
+        const controller=new AbortController();manageOpenAbort.current=controller;setManageOpening(true)
+        const timeout=setTimeout(()=>controller.abort(),12000)
+        setManageError('');setPairResult('');setManageNotice('')
         try {
           const safeTab = ['firststart', 'models', 'home', 'life', 'life-agent'].includes(tab) ? tab : ''
           const safeAnchor=safeTab==='firststart'&&anchor==='fs-deps-card'?'fs-deps-card':''
@@ -416,7 +444,8 @@ window.__ModuleLoader__.load({
           if (!desktop&&!/^https?:$/i.test(protocol))
             throw new Error('当前不是受支持的 DSH Desktop 或 HTTP(S) 登录/配对页面')
           const path = '/api/bili-duty/manage' + (safeTab ? '?tab=' + encodeURIComponent(safeTab) : '')
-          const probe = await fetch(path, {credentials: 'same-origin', redirect: 'manual', cache:'no-store', referrerPolicy:'no-referrer'})
+          const probe = await fetch(path, {credentials: 'same-origin', redirect: 'manual', cache:'no-store', referrerPolicy:'no-referrer',signal:controller.signal})
+          controller.signal.throwIfAborted()
           if (!probe.ok) {
             const reason=({401:'DSH 宿主尚未登录；无需重新扫码 B站',403:'当前来源或主人权限被拒绝',503:'宿主认证服务暂不可用'})[probe.status]||'没有获得管理中心页面，请检查插件是否已加载'
             throw new Error('HTTP '+probe.status+'：'+reason)
@@ -429,15 +458,22 @@ window.__ModuleLoader__.load({
             isManage = html.includes('<meta name="dafeiyu-management" content="1">')
           }
           if (!isManage) throw new Error('当前访问通道返回的不是大肥鱼管理中心；请检查 DSH 登录或配对状态')
+          controller.signal.throwIfAborted()
           const target=path+(safeAnchor?'#'+safeAnchor:'')
           if(desktop&&!inside){
-            const result=await jpost('/open',{what:'manage',tab:safeTab,anchor:safeAnchor,external:true})
+            const result=await jpost('/open',{what:'manage',tab:safeTab,anchor:safeAnchor,external:true},controller.signal)
+            controller.signal.throwIfAborted()
             const external=new URL(result.url)
             if(result.ok!==true||result.openIn!=='external-browser'||result.path!==target||!['http:','https:'].includes(external.protocol)||!['127.0.0.1','localhost','[::1]'].includes(external.hostname)||external.username||external.password||external.pathname+external.search+external.hash!==target.replace('/manage','/browser'))throw Error('未取得可信本机浏览器入口')
             pairAbort.current?.abort();setPairCode('');setPairResult('');setManageBrowser({origin:external.origin,tab:safeTab,anchor:safeAnchor})
-            // DSH Desktop's supported HTTP(S) external-link handler opens the system browser.
-            const link=document.createElement('a');link.href=external.href;link.target='_blank';link.rel='noopener noreferrer';link.referrerPolicy='no-referrer';link.hidden=true
-            document.body.appendChild(link);try{link.click()}finally{link.remove()}
+            // The official exchange is rooted at /, not at the management path.
+            // Launch it separately; the clean landing page confirms the actual
+            // owner session and navigates after the browser has the cookie.
+            const auto=await tryOfficialBrowserLogin(external.origin,controller.signal)
+            controller.signal.throwIfAborted()
+            if(auto){external.searchParams.set('auto','1');setManageNotice('已请求官方登录；如同时打开 DSH 首页，请切换到大肥鱼管理中心标签页，登录结果以该页为准。')}
+            else {setBrowserAuthExpanded(true);setManageNotice('当前宿主未提供可用的一键登录链接；已有浏览器会话可直接进入，否则请按下方步骤手动配对。')}
+            openExternalManagementLink(external.href)
           }else if(desktop){
             // Main-frame navigation preserves the official Desktop bridge. A
             // no-referrer link avoids forwarding the private scheme as Referer.
@@ -445,11 +481,10 @@ window.__ModuleLoader__.load({
             document.body.appendChild(link);try{link.click()}finally{link.remove()}
           }else window.location.assign(target)
         } catch (e) {
-          const message = '打开管理中心失败：' + String(e?.message || e) +
+          const message = '打开管理中心失败：' + (controller.signal.aborted?'请求已取消或超时':String(e?.message || e)) +
             '。请在当前 DSH 内重新登录或重启；手机请检查配对，不要直接将电脑本机 DSH 端口暴露到公网。'
-          setManageError(message)
-          say(message, 'warn')
-        }
+          setManageError(message);setBrowserAuthExpanded(true);say(message, 'warn')
+        } finally {clearTimeout(timeout);manageOpenAbort.current=null;setManageOpening(false)}
       }
 
 
@@ -470,10 +505,11 @@ window.__ModuleLoader__.load({
 
       // Alpha's official HTTP Remote wire contract. Desktop hides the Remote settings
       // component; the already authenticated same-origin bridge is independent of it.
-      // No synthesized identity, raw token, generic RPC proxy or retry of a decision.
+      // No synthesized identity, generic RPC proxy or retry of a decision. The
+      // official loginUrl response is handled only by tryOfficialBrowserLogin.
       const pairingRpc = async (method, args, signal) => {
         if(window.location?.protocol!=='dsh-app:'||window.location?.host!=='app')throw Error('请在本机 DSH 原生设置中批准浏览器登录')
-        if(!['pairingRequests','decidePairing'].includes(method))throw Error('未知配对操作')
+        if(!['loginUrl','pairingRequests','decidePairing'].includes(method))throw Error('未知配对操作')
         signal.throwIfAborted()
         const endpoint='remoteConnection/'+method
         const rpcId=crypto.randomUUID()
@@ -498,7 +534,7 @@ window.__ModuleLoader__.load({
         if(!/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/.test(code)){
           setPairResult('');setManageError('请输入浏览器「配对此设备」显示的八位配对码（可含空格）。');return
         }
-        pairPending.current=true;setPairBusy(true);setManageError('');setPairResult('')
+        pairPending.current=true;setPairBusy(true);setManageError('');setPairResult('');setManageNotice('')
         const controller=new AbortController();pairAbort.current=controller
         const timer=setTimeout(()=>controller.abort(),10000)
         try{
@@ -520,16 +556,19 @@ window.__ModuleLoader__.load({
         finally{clearTimeout(timer);pairAbort.current=null;pairPending.current=false;setPairBusy(false)}
       }
       const browserRecovery=({statusPending=false}={})=>window.location?.protocol==='dsh-app:'&&window.location?.host==='app'?h('div',{'data-bd-browser-auth':'','aria-label':'管理中心浏览器授权'},
-        h('div',{'data-bd-label':''},'管理中心 · 浏览器授权（首次使用）'),
-        statusPending?h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'',onClick:()=>onOpenManage()},'在独立浏览器中打开管理中心 ↗')):null,
+        h('div',{'data-bd-note':''},'点击「打开管理中心」时尝试使用当前 DSH 主人身份登录默认浏览器（该浏览器获得完整 DSH 主人权限）。不支持时仍可手动配对。'),
+        statusPending?h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'','data-primary':'',disabled:manageOpening,onClick:()=>onOpenManage()},manageOpening?'正在打开…':'在独立浏览器中打开管理中心 ↗')):null,
+        manageNotice?h('div',{'data-bd-note':'',role:'status'},manageNotice):null,
+        pairResult?h('div',{'data-bd-msg':'','data-good':'',role:'status'},pairResult):null,
+        manageError?h('div',{'data-bd-msg':'','data-warn':'',role:'alert'},manageError):null,
+        h('button',{'data-bd-btn':'',type:'button','aria-expanded':browserAuthExpanded,onClick:()=>setBrowserAuthExpanded(v=>!v)},(browserAuthExpanded?'▾ ':'▸ ')+'浏览器授权与故障恢复'),
+        h('div',{'data-bd-browser-recovery':'',hidden:!browserAuthExpanded},
         h('div',{'data-bd-note':''},'① 直接打开 DSH 官方登录页，在浏览器选择「配对此设备」。已经登录的浏览器无需重复授权。'),
         h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'',type:'button',onClick:onOpenBrowserLogin},'打开 DSH 官方登录页 ↗')),
         h('div',{'data-bd-note':''},'② 看到八位配对码后，回到这里输入并批准（不用找 DSH 的远程连接设置，也不用另一台设备）。'),
         h('div',{'data-bd-row':''},h('input',{'data-bd-input':'','aria-label':'八位浏览器配对码',autoComplete:'off',spellCheck:false,value:pairCode,maxLength:16,placeholder:'如 ABCD EFGH',onChange:e=>{setPairCode(e.target.value);setPairResult('');setManageError('')}}),h('button',{'data-bd-btn':'','data-primary':'',disabled:pairBusy||!pairCode.trim(),onClick:approveBrowser},pairBusy?'正在核对…':'核对并批准浏览器登录')),
         h('div',{'data-bd-note':''},'③ 浏览器登录成功后，再点击「打开管理中心」。仅批准自己刚发起的请求；浏览器将获得完整 DSH 主人权限。此操作与 B站 登录无关。'),
-        pairResult?h('div',{'data-bd-msg':'','data-good':'',role:'status'},pairResult):null,
-        manageError?h('div',{'data-bd-msg':'','data-warn':'',role:'alert'},manageError):null,
-        h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'',onClick:()=>onOpenManage(manageBrowser?.tab||(st?.onboarding&&!(st.onboarding.welcomeCompleted??st.onboarding.completed)?'firststart':''),manageBrowser?.anchor||'',true)},'在 DSH 内打开管理中心'),h('span',{'data-bd-note':''},'浏览器暂时无法登录时使用；页面顶部可返回 DSH 主界面。'))):null
+        h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'',onClick:()=>onOpenManage(manageBrowser?.tab||(st?.onboarding&&!(st.onboarding.welcomeCompleted??st.onboarding.completed)?'firststart':''),manageBrowser?.anchor||'',true)},'在 DSH 内打开管理中心'),h('span',{'data-bd-note':''},'浏览器暂时无法登录时使用；页面顶部可返回 DSH 主界面。')))):null
 
       const patch = async (p, what) => {
         setBusy(JSON.stringify(p))
@@ -865,9 +904,9 @@ window.__ModuleLoader__.load({
                   npmUpdateState.status==='error'?'更新检查失败 · 重试':'检查更新',
                 newVer?h('span',{title:'npm 检测到更高版本',style:{display:'inline-block',position:'absolute',right:'-5px',top:'-5px',
                   width:'11px',height:'11px',borderRadius:'50%',background:'#e53935',boxShadow:'0 0 0 2px white'}}):null),
-              h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage(setupTab,setupAnchor)},'打开管理中心 ↗'))),
+              h('button',{type:'button','data-bd-btn':'','data-primary':'',disabled:manageOpening,onClick:()=>onOpenManage(setupTab,setupAnchor)},manageOpening?'正在打开…':'打开管理中心 ↗'))),
           browserRecovery(),
-          needsSetup?h('div',{'data-bd-note':'','role':'status'},window.location?.protocol==='dsh-app:'?'首次使用：先按上方步骤完成浏览器授权，再在管理中心完成 B站账号与 Headless 模型验证。认证不便时可使用 DSH 内打开管理中心。完成必需配置前，后台业务仍不会启动。':'首次使用：请在管理中心完成 B站账号与 Headless 模型验证。完成必需配置前，后台业务仍不会启动。'):null,
+          needsSetup?h('div',{'data-bd-note':'','role':'status'},window.location?.protocol==='dsh-app:'?'首次使用：点击打开管理中心，登录后完成 B站账号与 Headless 模型验证。自动登录不可用时，展开浏览器授权与故障恢复。完成必需配置前，后台业务仍不会启动。':'首次使用：请在管理中心完成 B站账号与 Headless 模型验证。完成必需配置前，后台业务仍不会启动。'):null,
           window.location?.protocol!=='dsh-app:' && manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null,
           h('div',{'data-bd-feature-panel':'release','aria-label':'2.8.2 版本新增特性'},
             h('div',{'data-bd-feature-heading':''},'✨ 2.8.2 版本亮点 · 视频感知体验优化'),
