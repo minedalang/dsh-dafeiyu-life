@@ -210,6 +210,10 @@ window.__ModuleLoader__.load({
 [data-bd-btn]{border-radius:10px;font-weight:650;transition:filter .15s,transform .15s;}
 [data-bd-btn]:not(:disabled):hover{transform:translateY(-1px);}
 [data-bd-btn][data-primary]{background:#187c63;border-color:#187c63;color:#fff;}
+[data-bd-browser-auth]{display:flex;flex-direction:column;gap:10px;padding:13px;border:1px solid rgba(24,124,99,.48);border-radius:12px;background:rgba(24,124,99,.065);margin:4px 0;}
+[data-bd-browser-auth] [data-bd-note]{font-size:12px;line-height:1.65;color:var(--dsw-alias-label-secondary,inherit)}
+[data-bd-browser-auth] [data-bd-label]{font-size:14px;font-weight:750}
+[data-bd-browser-auth] [data-bd-input]{max-width:180px;font-size:14px;letter-spacing:.08em}
 [data-bd-tabs]{border-radius:12px;}
 [data-bd-tab][aria-selected=true]{box-shadow:0 3px 10px rgba(40,88,160,.1);}
 [data-bd-item]{box-shadow:0 5px 18px rgba(26,57,98,.07);border-radius:14px;}
@@ -280,6 +284,7 @@ window.__ModuleLoader__.load({
       const [manageBrowser,setManageBrowser] = React.useState(null)
       const [pairCode,setPairCode] = React.useState('')
       const [pairBusy,setPairBusy] = React.useState(false)
+      const [pairResult,setPairResult] = React.useState('')
       const pairPending=React.useRef(false)
       const pairAbort=React.useRef(null)
       React.useEffect(()=>()=>pairAbort.current?.abort(),[])
@@ -430,7 +435,7 @@ window.__ModuleLoader__.load({
             const result=await jpost('/open',{what:'manage',tab:safeTab,anchor:safeAnchor,external:true})
             const external=new URL(result.url)
             if(result.ok!==true||result.openIn!=='external-browser'||result.path!==target||!['http:','https:'].includes(external.protocol)||!['127.0.0.1','localhost','[::1]'].includes(external.hostname)||external.username||external.password||external.pathname+external.search+external.hash!==target.replace('/manage','/browser'))throw Error('未取得可信本机浏览器入口')
-            pairAbort.current?.abort();setPairCode('');setManageBrowser({origin:external.origin,tab:safeTab,anchor:safeAnchor})
+            pairAbort.current?.abort();setPairCode('');setPairResult('');setManageBrowser({origin:external.origin,tab:safeTab,anchor:safeAnchor})
             // DSH Desktop's supported HTTP(S) external-link handler opens the system browser.
             const link=document.createElement('a');link.href=external.href;link.target='_blank';link.rel='noopener noreferrer';link.referrerPolicy='no-referrer';link.hidden=true
             document.body.appendChild(link);try{link.click()}finally{link.remove()}
@@ -452,28 +457,42 @@ window.__ModuleLoader__.load({
       // Request list and decision stay on the official authenticated Remote.
       // The human compares the code; never approve automatically, or pass a token.
       const approveBrowser = async () => {
-        if(pairPending.current||!manageBrowser||!pairCode.trim())return
-        pairPending.current=true;setPairBusy(true);setManageError('')
+        if(pairPending.current)return
+        const code=pairCode.trim().replace(/\s+/g,'').toUpperCase()
+        if(!/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/.test(code)){
+          setPairResult('');setManageError('请输入浏览器「配对此设备」显示的八位配对码（可含空格）。');return
+        }
+        pairPending.current=true;setPairBusy(true);setManageError('');setPairResult('')
         const controller=new AbortController();pairAbort.current=controller
         const timer=setTimeout(()=>controller.abort(),10000)
         try{
           const remote=pairingRemote
-          if(!remote)throw Error('当前宿主未提供浏览器配对服务，请使用宿主官方登录入口或在 DSH 内打开')
+          if(!remote)throw Error('当前宿主的配对服务未就绪；可重启 DSH 或在 DSH 内打开管理中心')
+          // Resolve the current authority even after leaving/reopening settings.
+          // Only an authenticated /open response supplies this origin.
+          const result=await jpost('/open',{what:'manage',external:true})
+          const external=new URL(result.url)
+          if(result.ok!==true||result.openIn!=='external-browser'||result.path!=='/api/bili-duty/manage'||!['http:','https:'].includes(external.protocol)||!['127.0.0.1','localhost','[::1]'].includes(external.hostname)||external.username||external.password||external.pathname!=='/api/bili-duty/browser'||external.search||external.hash)throw Error('未取得可信本机浏览器入口')
+          if(controller.signal.aborted||pairingRemote!==remote)throw Error('配对上下文已变化，请重试')
           const listed=await remote.pairingRequests(controller.signal)
           if(!listed?.ok||!Array.isArray(listed.value?.requests))throw Error('无法读取宿主配对申请')
-          const matches=listed.value.requests.filter(row=>row.code===pairCode.trim()&&row.authority===manageBrowser.origin&&row.expiresInMs>0)
-          if(matches.length!==1)throw Error('未找到唯一有效的本机配对码，请核对浏览器并重试')
+          const matches=listed.value.requests.filter(row=>row.code===code&&row.authority===external.origin&&row.expiresInMs>0)
+          if(matches.length!==1)throw Error('未找到唯一有效的本机配对码；请在浏览器重新申请后核对八位码')
           if(controller.signal.aborted||pairingRemote!==remote)throw Error('配对上下文已变化，请重试')
-          const result=await remote.decidePairing(matches[0].id,'allow',controller.signal)
-          if(!result?.ok||result.value!=='approved')throw Error('宿主尚未确认配对，请核对浏览器状态')
-          if(!controller.signal.aborted){setPairCode('');say('DSH 已批准浏览器登录；请返回浏览器查看管理中心。','ok')}
+          const approved=await remote.decidePairing(matches[0].id,'allow',controller.signal)
+          if(!approved?.ok||approved.value!=='approved')throw Error('宿主尚未确认配对，请核对浏览器状态')
+          if(!controller.signal.aborted){setPairCode('');setPairResult('DSH 已批准。请返回最初的大肥鱼浏览器标签页，等待自动进入管理中心，或点击「重新检查登录状态」。')}
         }catch(e){if(!controller.signal.aborted)setManageError('浏览器配对未确认：'+String(e?.message||e).slice(0,160));else setManageError('配对结果尚未确认，请先核对浏览器状态。')}
         finally{clearTimeout(timer);pairAbort.current=null;pairPending.current=false;setPairBusy(false)}
       }
-      const browserRecovery=()=>window.location?.protocol==='dsh-app:'?h('div',{'data-bd-sub':''},
-        manageBrowser?h('div',{'data-bd-note':''},'首次使用系统浏览器时，请在浏览器官方 DSH 登录页申请配对；仅输入自己浏览器显示的配对码。批准后该浏览器获得完整 DSH 主人权限。'):null,
-        manageBrowser?h('div',{'data-bd-row':''},h('input',{'data-bd-input':'',style:{width:140},value:pairCode,maxLength:40,placeholder:'浏览器配对码',onChange:e=>setPairCode(e.target.value)}),h('button',{'data-bd-btn':'',disabled:pairBusy||!pairCode.trim(),onClick:approveBrowser},pairBusy?'确认中…':'确认本人浏览器配对')):null,
-        h('button',{'data-bd-btn':'',onClick:()=>onOpenManage(manageBrowser?.tab||'',manageBrowser?.anchor||'',true)},'在 DSH 内打开（备用）')):null
+      const browserRecovery=()=>window.location?.protocol==='dsh-app:'?h('div',{'data-bd-browser-auth':'','aria-label':'管理中心浏览器授权'},
+        h('div',{'data-bd-label':''},'管理中心 · 浏览器授权（首次使用）'),
+        h('div',{'data-bd-note':''},'① 点击上方管理中心入口，在浏览器登录页选择「配对此设备」。② 看到八位配对码后，回到这里输入并批准（不用找 DSH 的远程连接设置，也不用另一台设备）。③ 回到最初的大肥鱼浏览器标签页。'),
+        h('div',{'data-bd-row':''},h('input',{'data-bd-input':'','aria-label':'八位浏览器配对码',autoComplete:'off',spellCheck:false,value:pairCode,maxLength:16,placeholder:'如 ABCD EFGH',onChange:e=>{setPairCode(e.target.value);setPairResult('');setManageError('')}}),h('button',{'data-bd-btn':'','data-primary':'',disabled:pairBusy||!pairCode.trim(),onClick:approveBrowser},pairBusy?'正在核对…':'核对并批准浏览器登录')),
+        h('div',{'data-bd-note':''},'仅批准自己刚发起的请求；浏览器将获得完整 DSH 主人权限。此操作与 B站 登录无关。'),
+        pairResult?h('div',{'data-bd-msg':'','data-good':'',role:'status'},pairResult):null,
+        manageError?h('div',{'data-bd-msg':'','data-warn':'',role:'alert'},manageError):null,
+        h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'',onClick:()=>onOpenManage(manageBrowser?.tab||(st?.onboarding&&!(st.onboarding.welcomeCompleted??st.onboarding.completed)?'firststart':''),manageBrowser?.anchor||'',true)},'在 DSH 内打开管理中心'),h('span',{'data-bd-note':''},'浏览器暂时无法登录时使用；页面顶部可返回 DSH 主界面。'))):null
 
       const patch = async (p, what) => {
         setBusy(JSON.stringify(p))
@@ -813,9 +832,9 @@ window.__ModuleLoader__.load({
               !st.venvReady?h('div',{'data-bd-note':''},'① B站/MCP 主依赖尚未就绪：请从下面的安装入口开始。安装完成后才能扫码，不需要事先安装 Conda。'):null,
               !st.venvReady?h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('firststart','fs-deps-card')},st.installing?'查看主依赖安装进度 ↗':'① 安装／修复主依赖 ↗'):null,
               h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},st.venvReady?'打开管理中心，开始配置 · 登录及模型 ↗':'② 打开管理中心，开始配置 ↗')),
-            h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。'),
             browserRecovery(),
-            manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
+            h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。'),
+            window.location?.protocol!=='dsh-app:' && manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
           nativeAccountRecovery())
       }
 
@@ -837,6 +856,8 @@ window.__ModuleLoader__.load({
                 newVer?h('span',{title:'npm 检测到更高版本',style:{display:'inline-block',position:'absolute',right:'-5px',top:'-5px',
                   width:'11px',height:'11px',borderRadius:'50%',background:'#e53935',boxShadow:'0 0 0 2px white'}}):null),
               h('button',{type:'button','data-bd-btn':'',onClick:()=>onOpenManage()},'打开管理中心 ↗'))),
+          browserRecovery(),
+          window.location?.protocol!=='dsh-app:' && manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null,
           h('div',{'data-bd-feature-panel':'release','aria-label':'2.8.2 版本新增特性'},
             h('div',{'data-bd-feature-heading':''},'✨ 2.8.2 版本亮点 · 视频感知体验优化'),
             h('div',{'data-bd-note':''},'本次重点优化了鱼鱼看视频的流程、观看记录与自主选择，语音转写和模型管理也更方便。'),
@@ -858,9 +879,7 @@ window.__ModuleLoader__.load({
             npmUpdateState.status==='available'?'npm 发现新版本 v'+newVer+'；点击上方按钮更新并重启 DSH。':
               npmUpdateState.status==='checking'?'正在查询 npm 仓库版本（不会自动更新）…':
               npmUpdateState.status==='error'?'npm 查询失败：'+npmUpdateState.error+'。请检查网络后手动重试。':
-              'npm 未发现更高正式版（本地 v'+(st.version||'?')+'；仓库 v'+(npmUpdateState.latest||'?')+'）。'),
-          browserRecovery(),
-          manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
+              'npm 未发现更高正式版（本地 v'+(st.version||'?')+'；仓库 v'+(npmUpdateState.latest||'?')+'）。')),
 
         /* ── 大肥鱼总开关：永久展示，不隐藏设置，不清除历史 ── */
         h('div', { 'data-bd-sec': '', style: {padding:'12px',border:'1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.24))',borderRadius:'12px'} },

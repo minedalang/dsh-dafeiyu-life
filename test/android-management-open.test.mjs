@@ -19,7 +19,7 @@ function browser({userAgent = 'Android', protocol = 'https:', fetchImpl, postImp
   const fetch = async (...args) => {requests.push(args); return fetchImpl?.(...args)}
   const jpost = async (...args) => {posts.push(args); return postImpl?.(...args)}
   const openManage = runInNewContext(handlerSource + '\nonOpenManage', {
-    window, fetch, jpost, URL, setManageBrowser() {}, setPairCode(){},pairAbort:{current:null}, document:{body:{appendChild(){}},createElement(){return {click(){navigated.push(this.href)},remove(){}}}}, setManageError: text => errors.push(text), say() {},
+    window, fetch, jpost, URL, setManageBrowser() {}, setPairCode(){},setPairResult(){},pairAbort:{current:null}, document:{body:{appendChild(){}},createElement(){return {click(){navigated.push(this.href)},remove(){}}}}, setManageError: text => errors.push(text), say() {},
   })
   return {openManage, navigated, errors, posts, requests}
 }
@@ -141,7 +141,8 @@ test('DSH Mobile 网关的已配对同源代理可访问 HTML/JS，跨站和伪�
     assert.equal(page.status, 200)
     assert.equal(page.headers['x-dafeiyu-management'], '1')
     assert.match(page.body, /meta name="dafeiyu-management" content="1"/)
-    assert.match(page.body, /href="\/" aria-label="返回 DSH"/)
+    assert.match(page.body, /href="\/" aria-label="返回 DSH 主界面"/)
+    assert.match(page.body, /\.manage-return-bar\{position:sticky;top:0/)
     assert.match(page.headers['content-security-policy'], /frame-ancestors 'none'/)
     const js = await call('/api/bili-duty/manage.js', upstreamHeaders)
     assert.equal(js.status, 200)
@@ -258,8 +259,12 @@ test('public browser launcher is static and isolated from all owner routes',asyn
     const page=await call(guide,'GET',guide.path,host)
     assert.equal(page.status,200);assert.match(page.text,/href="\/"/);assert.doesNotMatch(page.text,/dafeiyu-management" content="1"/)
     assert.match(page.out['content-security-policy'],/script-src 'sha256-/)
+    assert.match(page.text,/无需另一台设备/)
+    assert.match(page.text,/重新检查登录状态/)
     const script=page.text.match(/<script>([\s\S]+)<\/script>/)[1]
     const {createHash}=await import('node:crypto');assert.ok(page.out['content-security-policy'].includes(createHash('sha256').update(script).digest('base64')))
+    const style=page.text.match(/<style>([\s\S]+)<\/style>/)[1]
+    assert.ok(page.out['content-security-policy'].includes("style-src 'sha256-"+createHash('sha256').update(style).digest('base64')+"'"))
     assert.equal((await call(guide,'POST',guide.path,host)).status,405)
     assert.equal((await call(guide,'GET',guide.path,{...host,'sec-fetch-site':'cross-site'})).status,403)
     assert.equal((await call(prefix,'GET','/api/bili-duty/config',host)).status,401)
@@ -281,13 +286,25 @@ test('external target is derived only from the trusted host origin',async()=>{
   for(const bad of ['https://example.org','http://127.0.0.1:8603/?token=x','http://user:pw@localhost:8603','file:///a']) assert.throws(()=>managementBrowserUrl({getOrigin:()=>bad}))
 })
 
-test('pairing approval only accepts one live matching code and exact authority',async()=>{
+test('pairing approval works after reopening settings, normalizes displayed code and requires unique exact authority',async()=>{
   const approveSource=source.slice(source.indexOf('      const approveBrowser = async () => {'),source.indexOf('      const browserRecovery='))
-  const live={id:'request',code:'TEST-CODE',authority:'http://127.0.0.1:8603',expiresInMs:5000}
-  for(const rows of [[live],[{...live,expiresInMs:0}],[{...live,authority:'http://localhost:8603'}],[live,live],[{...live,code:'WRONG'}]]){
-    const decisions=[],errors=[];const pairingRemote={pairingRequests:async()=>({ok:true,value:{requests:rows}}),decidePairing:async(id,decision)=>{decisions.push([id,decision]);return {ok:true,value:'approved'}}}
-    const approve=runInNewContext(approveSource+'\napproveBrowser',{pairingRemote,pairPending:{current:false},pairAbort:{current:null},pairCode:'TEST-CODE',manageBrowser:{origin:live.authority},setPairBusy(){},setManageError:e=>errors.push(e),setPairCode(){},say(){},AbortController,setTimeout,clearTimeout})
-    await approve();const valid=rows.length===1&&rows[0]===live
-    assert.deepEqual(decisions,valid?[['request','allow']]:[]);if(!valid)assert.match(errors.at(-1),/未找到唯一有效/)
+  const live={id:'request',code:'ABCD2345',authority:'http://127.0.0.1:8603',expiresInMs:5000}
+  const trusted={ok:true,openIn:'external-browser',path:'/api/bili-duty/manage',url:live.authority+'/api/bili-duty/browser'}
+  const cases=[{rows:[live],valid:true},{rows:[live],code:'abcd2345',valid:true},{rows:[{...live,expiresInMs:0}]},{rows:[{...live,authority:'http://localhost:8603'}]},{rows:[live,live]},{rows:[{...live,code:'ABCDEFGH'}]},{rows:[live],code:'ABCD2340'},{rows:[live],response:{...trusted,url:trusted.url+'?token=bad'}},{rows:[live],response:{...trusted,url:'https://evil.example/api/bili-duty/browser'}}]
+  for(const entry of cases){
+    const decisions=[],errors=[],messages=[];const pairingRemote={pairingRequests:async()=>({ok:true,value:{requests:entry.rows}}),decidePairing:async(id,decision)=>{decisions.push([id,decision]);return {ok:true,value:'approved'}}}
+    const approve=runInNewContext(approveSource+'\napproveBrowser',{URL,jpost:async()=>entry.response||trusted,pairingRemote,pairPending:{current:false},pairAbort:{current:null},pairCode:entry.code||'ABCD 2345',manageBrowser:null,setPairBusy(){},setManageError:e=>errors.push(e),setPairCode(){},setPairResult:m=>messages.push(m),AbortController,setTimeout,clearTimeout})
+    await approve();assert.deepEqual(decisions,entry.valid?[['request','allow']]:[])
+    if(entry.valid)assert.match(messages.at(-1),/DSH 已批准/);else assert.ok(errors.at(-1))
   }
+})
+
+test('desktop browser approval controls are visible before opening and after settings remount; backup is clearly labeled',()=>{
+  const snippet=source.slice(source.indexOf('      const browserRecovery='),source.indexOf('      const patch = async'))
+  const h=(tag,props,...children)=>({tag,props,children})
+  const tree=runInNewContext(snippet+'\nbrowserRecovery()',{h,window:{location:{protocol:'dsh-app:'}},manageBrowser:null,st:{},pairCode:'',pairBusy:false,pairResult:'',manageError:'',approveBrowser(){},onOpenManage(){}})
+  assert.equal(tree.props['aria-label'],'管理中心浏览器授权')
+  const text=JSON.stringify(tree);assert.match(text,/八位浏览器配对码/);assert.match(text,/在 DSH 内打开管理中心/);assert.match(text,/不用另一台设备/)
+  const header=source.indexOf("'打开管理中心 ↗'))),")
+  assert.ok(header>0);assert.ok(source.indexOf('browserRecovery()',header)<source.indexOf("'data-bd-feature-panel':'release'",header))
 })
