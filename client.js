@@ -471,8 +471,8 @@ window.__ModuleLoader__.load({
             // owner session and navigates after the browser has the cookie.
             const auto=await tryOfficialBrowserLogin(external.origin,controller.signal)
             controller.signal.throwIfAborted()
-            if(auto){external.searchParams.set('auto','1');setManageNotice('已请求官方登录；如同时打开 DSH 首页，请切换到大肥鱼管理中心标签页，登录结果以该页为准。')}
-            else {setBrowserAuthExpanded(true);setManageNotice('当前宿主未提供可用的一键登录链接；已有浏览器会话可直接进入，否则请按下方步骤手动配对。')}
+            if(auto){external.searchParams.set('auto','1');setManageNotice('正在登录，请查看大肥鱼管理中心标签页。')}
+            else {setBrowserAuthExpanded(true);setManageNotice('若未能进入管理中心，请按下方步骤登录。')}
             openExternalManagementLink(external.href)
           }else if(desktop){
             // Main-frame navigation preserves the official Desktop bridge. A
@@ -556,7 +556,7 @@ window.__ModuleLoader__.load({
         finally{clearTimeout(timer);pairAbort.current=null;pairPending.current=false;setPairBusy(false)}
       }
       const browserRecovery=({statusPending=false}={})=>window.location?.protocol==='dsh-app:'&&window.location?.host==='app'?h('div',{'data-bd-browser-auth':'','aria-label':'管理中心浏览器授权'},
-        h('div',{'data-bd-note':''},'点击「打开管理中心」时尝试使用当前 DSH 主人身份登录默认浏览器（该浏览器获得完整 DSH 主人权限）。不支持时仍可手动配对。'),
+        h('div',{'data-bd-note':''},'在自己的浏览器中打开管理中心，通常无需手动登录。'),
         statusPending?h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'','data-primary':'',disabled:manageOpening,onClick:()=>onOpenManage()},manageOpening?'正在打开…':'在独立浏览器中打开管理中心 ↗')):null,
         manageNotice?h('div',{'data-bd-note':'',role:'status'},manageNotice):null,
         pairResult?h('div',{'data-bd-msg':'','data-good':'',role:'status'},pairResult):null,
@@ -567,7 +567,7 @@ window.__ModuleLoader__.load({
         h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'',type:'button',onClick:onOpenBrowserLogin},'打开 DSH 官方登录页 ↗')),
         h('div',{'data-bd-note':''},'② 看到八位配对码后，回到这里输入并批准（不用找 DSH 的远程连接设置，也不用另一台设备）。'),
         h('div',{'data-bd-row':''},h('input',{'data-bd-input':'','aria-label':'八位浏览器配对码',autoComplete:'off',spellCheck:false,value:pairCode,maxLength:16,placeholder:'如 ABCD EFGH',onChange:e=>{setPairCode(e.target.value);setPairResult('');setManageError('')}}),h('button',{'data-bd-btn':'','data-primary':'',disabled:pairBusy||!pairCode.trim(),onClick:approveBrowser},pairBusy?'正在核对…':'核对并批准浏览器登录')),
-        h('div',{'data-bd-note':''},'③ 浏览器登录成功后，再点击「打开管理中心」。仅批准自己刚发起的请求；浏览器将获得完整 DSH 主人权限。此操作与 B站 登录无关。'),
+        h('div',{'data-bd-note':''},'③ 登录成功后，点击「打开管理中心」。仅批准自己的请求；授权后，浏览器也能访问完整的 DSH 功能，无需重新登录 B站。'),
         h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'',onClick:()=>onOpenManage(manageBrowser?.tab||(st?.onboarding&&!(st.onboarding.welcomeCompleted??st.onboarding.completed)?'firststart':''),manageBrowser?.anchor||'',true)},'在 DSH 内打开管理中心'),h('span',{'data-bd-note':''},'浏览器暂时无法登录时使用；页面顶部可返回 DSH 主界面。')))):null
 
       const patch = async (p, what) => {
@@ -906,7 +906,7 @@ window.__ModuleLoader__.load({
                   width:'11px',height:'11px',borderRadius:'50%',background:'#e53935',boxShadow:'0 0 0 2px white'}}):null),
               h('button',{type:'button','data-bd-btn':'','data-primary':'',disabled:manageOpening,onClick:()=>onOpenManage(setupTab,setupAnchor)},manageOpening?'正在打开…':'打开管理中心 ↗'))),
           browserRecovery(),
-          needsSetup?h('div',{'data-bd-note':'','role':'status'},window.location?.protocol==='dsh-app:'?'首次使用：点击打开管理中心，登录后完成 B站账号与 Headless 模型验证。自动登录不可用时，展开浏览器授权与故障恢复。完成必需配置前，后台业务仍不会启动。':'首次使用：请在管理中心完成 B站账号与 Headless 模型验证。完成必需配置前，后台业务仍不会启动。'):null,
+          needsSetup?h('div',{'data-bd-note':'','role':'status'},window.location?.protocol==='dsh-app:'?'首次使用：点击打开管理中心，完成 B站账号与模型验证。登录遇到问题时，展开浏览器授权与故障恢复。完成配置后才会启动后台功能。':'首次使用：请在管理中心完成 B站账号与 Headless 模型验证。完成必需配置前，后台业务仍不会启动。'):null,
           window.location?.protocol!=='dsh-app:' && manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null,
           h('div',{'data-bd-feature-panel':'release','aria-label':'2.8.2 版本新增特性'},
             h('div',{'data-bd-feature-heading':''},'✨ 2.8.2 版本亮点 · 视频感知体验优化'),

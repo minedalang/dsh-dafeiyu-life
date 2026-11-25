@@ -336,7 +336,7 @@ test('fresh and established Desktop users render the same full native settings, 
     runInNewContext(src,{window:{...host,__ModuleLoader__:{load:spec=>{panel=spec.factory(()=>react).Panel}}},testStatus:st,URL,AbortController,setTimeout,clearTimeout})
     assert.equal(typeof panel,'function');const tree=panel(),nodes=all(tree),text=JSON.stringify(tree)
     const auth=nodes.findIndex(n=>n.props?.['aria-label']==='管理中心浏览器授权')
-    assert.ok(auth>=0);assert.match(text,/浏览器授权与故障恢复/);assert.ok(nodes.some(n=>n.props?.['aria-expanded']===false));assert.match(text,/打开 DSH 官方登录页/);assert.match(text,/八位浏览器配对码/);assert.match(text,/在 DSH 内打开管理中心/);assert.match(text,/不用另一台设备/);assert.doesNotMatch(text,/欢迎来到大肥鱼 · 首次配置/)
+    assert.ok(auth>=0);assert.match(text,/在自己的浏览器中打开管理中心，通常无需手动登录。/);assert.doesNotMatch(text,/当前 DSH 主人身份/);assert.match(text,/浏览器也能访问完整的 DSH 功能/);assert.match(text,/浏览器授权与故障恢复/);assert.ok(nodes.some(n=>n.props?.['aria-expanded']===false));assert.match(text,/打开 DSH 官方登录页/);assert.match(text,/八位浏览器配对码/);assert.match(text,/在 DSH 内打开管理中心/);assert.match(text,/不用另一台设备/);assert.doesNotMatch(text,/欢迎来到大肥鱼 · 首次配置/)
     if(st){const master=nodes.findIndex(n=>n.props?.label==='🐳 大肥鱼总开关');assert.ok(master>auth);assert.match(text,/账号与运行环境/);if(!st.onboarding.welcomeCompleted)assert.match(text,/首次使用：点击打开管理中心/)}
     else assert.match(text,/在独立浏览器中打开管理中心/)
   }
@@ -353,7 +353,7 @@ test('Desktop official owner login is requested only on explicit open; a changed
     return {ok:true,headers:{get:()=> 'application/json'},json:async()=>({type:'server-response',rpcId:b.rpcId,result:{ok:true,value:origin+'/?token='+secret}})}
   },postImpl:(_,b)=>({ok:true,openIn:'external-browser',path:'/api/bili-duty/manage?tab='+b.tab,url:origin+'/api/bili-duty/browser?tab='+b.tab})})
   assert.equal(calls.length,0)
-  await app.openManage('models');assert.deepEqual(app.navigated,[origin+'/?token='+secret,origin+'/api/bili-duty/browser?tab=models&auto=1'])
+  await app.openManage('models');assert.deepEqual(app.navigated,[origin+'/?token='+secret,origin+'/api/bili-duty/browser?tab=models&auto=1']);assert.equal(app.results.at(-1),'正在登录，请查看大肥鱼管理中心标签页。')
   origin='http://127.0.0.1:7823';secret='synthetic-next';await app.openManage('models');assert.deepEqual(app.navigated.slice(-2),[origin+'/?token='+secret,origin+'/api/bili-duty/browser?tab=models&auto=1'])
   assert.equal(calls.length,2);assert.notEqual(calls[0].rpcId,calls[1].rpcId);assert.doesNotMatch(JSON.stringify([app.errors,app.results,app.posts]),/synthetic-/)
   await app.openManage('models','',true);assert.equal(calls.length,2);assert.equal(app.navigated.at(-1),'/api/bili-duty/manage?tab=models')
@@ -369,7 +369,7 @@ test('owner login failure, wrong origin/path or extra URL fields fall back witho
       if(c.http)return {ok:false,status:c.http}
       const b=JSON.parse(opts.body);return {ok:true,headers:{get:()=> 'application/json'},json:async()=>({type:'server-response',rpcId:c.badId?'bad':b.rpcId,result:c.denied?{ok:false,error:{code:'remote-connection/token-unavailable',message:'synthetic-secret'}}:{ok:true,value:c.value}})}
     },postImpl:()=>({ok:true,openIn:'external-browser',path:'/api/bili-duty/manage',url:clean})})
-    await app.openManage();assert.deepEqual(app.navigated,[clean]);assert.ok(app.expanded.at(-1));assert.doesNotMatch(JSON.stringify([app.errors,app.results,app.posts]),/synthetic-secret/)
+    await app.openManage();assert.deepEqual(app.navigated,[clean]);assert.ok(app.expanded.at(-1));assert.equal(app.results.at(-1),'若未能进入管理中心，请按下方步骤登录。');assert.doesNotMatch(JSON.stringify([app.errors,app.results,app.posts]),/synthetic-secret/)
   }
 })
 
@@ -380,7 +380,7 @@ test('automatic launcher waits for real owner HTML, never treats a login respons
   for(const outcome of ['success','denial','timeout','wrong-html']){
     let tick=null,now=0,response=401;const navigated=[],nodes={status:{},login:{addEventListener(){}},retry:{addEventListener(){}}}
     runInNewContext(script,{URL,AbortSignal,Date:{now:()=>now},location:{href:'http://127.0.0.1:4498/api/bili-duty/browser?tab=firststart&auto=1#fs-deps-card',replace:p=>navigated.push(p)},document:{getElementById:id=>nodes[id]},fetch:async(path,opts)=>{assert.equal(path,'/api/bili-duty/manage?tab=firststart');assert.equal(opts.credentials,'same-origin');return {ok:response===200,status:response,headers:{get:n=>n==='x-dafeiyu-management'?(outcome==='wrong-html'?'':'1'):'text/html'}}},setInterval(fn){tick=fn;return 1},clearInterval(){tick=null}})
-    await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(navigated,[]);assert.equal(typeof tick,'function')
+    await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(navigated,[]);assert.equal(typeof tick,'function');assert.equal(nodes.status.textContent,'正在登录，请留在此页。')
     if(outcome==='timeout')now=30001;else response=outcome==='denial'?403:200
     tick();await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(navigated,outcome==='success'?['/api/bili-duty/manage?tab=firststart#fs-deps-card']:[]);assert.equal(tick,null)
   }
