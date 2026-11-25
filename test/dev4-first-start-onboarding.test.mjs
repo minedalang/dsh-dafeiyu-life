@@ -69,7 +69,10 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
   const mainSetup=await call('GET','main-session')
   assert.equal(mainSetup.status,200)
   assert.equal(typeof mainSetup.json().config,'object')
-  const sessionDirectory=await call('GET','main-session/sessions');assert.equal(sessionDirectory.status,200);assert.equal(sessionDirectory.json().creationAvailable,true)
+  const sessionDirectory=await call('GET','main-session?directory=1');assert.equal(sessionDirectory.status,200);assert.equal(sessionDirectory.json().creationAvailable,true)
+  assert.equal(sessionDirectory.json().directoryProtocol,2);assert.equal(sessionDirectory.json().history,undefined);assert.equal(sessionDirectory.json().config,undefined)
+  assert.deepEqual((await call('GET','main-session/sessions')).json(),sessionDirectory.json())
+  assert.equal((await call('GET','main-session?directory=1',undefined,'https://outside.invalid')).status,403)
   assert.equal((await call('POST','main-session/create',{})).status,400)
   const createBody={confirm:'CREATE_AND_BIND_MAIN_SESSION',expectedId:''}
   assert.equal((await call('POST','main-session/create',createBody,'https://outside.invalid')).status,403)

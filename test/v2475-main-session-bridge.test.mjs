@@ -112,6 +112,7 @@ test('主人新建真实空白宿主会话，仅绑定已核验的新 ID，保�
 test('未提供宿主创建能力或当前绑定已变化，拒绝新建且不修改设置',async()=>{
   const h=sessionCreationHarness({controller:false});try{
     assert.equal(h.bridge.sessionDirectory().creationAvailable,false)
+    assert.equal(h.bridge.sessionDirectory().creationUnavailableReason,'host-create-unavailable')
     assert.equal((await h.bridge.createAndBindSession({expectedId:'abc'})).reason,'unsupported')
     assert.equal((await h.bridge.createAndBindSession({expectedId:'different'})).reason,'target-changed')
     assert.equal(h.calls.length,0);assert.equal(h.writes.length,0)
@@ -142,7 +143,7 @@ function sessionPickerHarness(){
   const document={activeElement:null};let response;const api=runInNewContext(js.slice(start,end)+`\n({renderMainSessionDirectory,refreshMainSessionDirectory,updateMainSessionDraft,invalidate:()=>mainSessionEpoch++})`,{$,document,mobileViewOnly:false,node:(tag,label)=>({tag,label,value:''}),settingDraftTracker:{committed:field=>committed.push(field.id)},summarizeSaveDrafts(){},request:async path=>{requests.push(path);if(typeof response==='function')return response();if(response instanceof Error)throw response;return response}})
   return {...api,$,document,committed,requests,respond:x=>{response=x}}
 }
-const directory=(id,rows,extra={})=>({selectedId:id,sessions:rows.map(x=>({id:x,label:x})),targetLive:rows.includes(id),creationAvailable:true,...extra})
+const directory=(id,rows,extra={})=>({directoryProtocol:2,selectedId:id,sessions:rows.map(x=>({id:x,label:x})),targetLive:rows.includes(id),creationAvailable:true,...extra})
 test('主页实际列表渲染保留未保存选择与离线目标，刷新失败不清空',async()=>{
   const h=sessionPickerHarness(),select=h.$('main-session-id');h.renderMainSessionDirectory(directory('abc',['abc','def']));assert.equal(select.value,'abc')
   select.value='def';h.updateMainSessionDraft();assert.equal(h.$('main-session-draft-status').dataset.pending,'true')
@@ -161,11 +162,22 @@ test('列表请求去重且丢弃旧世代回执；聚焦选择器时不重建�
 })
 
 
+test('旧运行后端的状态回执仍可刷新会话目录，但不会误启用新建；升级后恢复能力',async()=>{
+  const h=sessionPickerHarness();h.respond({config:{id:'old'},targetLive:true,sessions:[{id:'old',label:'旧房间'}]});await h.refreshMainSessionDirectory()
+  assert.equal(h.requests[0],'/main-session?directory=1');assert.equal(h.$('main-session-id').value,'old');assert.equal(h.$('main-session-create').disabled,true)
+  assert.match(h.$('main-session-create-hint').textContent,/旧版.*重启/);assert.match(h.$('main-session-list-status').textContent,/兼容列表/)
+  h.respond(directory('old',['old','new'],{creationAvailable:false,creationUnavailableReason:'host-create-unavailable'}));await h.refreshMainSessionDirectory()
+  assert.match(h.$('main-session-create-hint').textContent,/sessionController.create/);assert.equal(h.$('main-session-create').disabled,true)
+  h.respond(directory('old',['old','new']));await h.refreshMainSessionDirectory();assert.equal(h.$('main-session-create').disabled,false)
+  h.respond(new Error('offline'));await h.refreshMainSessionDirectory();assert.equal(h.$('main-session-create').disabled,true);assert.equal(h.$('main-session-id').value,'old')
+  h.respond(directory('old',['old','new']));await h.refreshMainSessionDirectory();assert.equal(h.$('main-session-create').disabled,false)
+})
+
 test('主页独立列表每4秒刷新且隐藏或切换页面时不轮询，离开页面清除定时器',()=>{
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8'),html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   assert.match(js,/const mainSessionListTimer=.*setInterval\(\(\)=>\{if\(!document\.hidden&&active==='home'\)void refreshMainSessionDirectory\(\)\},4000\)/)
   assert.match(js,/clearInterval\(mainSessionListTimer\)/)
-  assert.match(js,/request\('\/main-session\/sessions'\)/)
+  assert.match(js,/request\('\/main-session\?directory=1'\)/)
   assert.match(html,/id="main-session-create"[^>]*disabled/)
   for(const id of ['main-session-bound-label','main-session-bound-state','main-session-list-status','main-session-draft-status'])assert.ok(html.includes(`id="${id}"`))
 })

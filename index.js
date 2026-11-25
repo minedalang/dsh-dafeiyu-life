@@ -10229,7 +10229,9 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     // 大肥鱼主 Session：只看当前 DSH 里活着的会话，不扫描磁盘上的 sessions 目录。
     if (req.method === 'GET' && path === '/api/bili-duty/main-session') {
-      return sendJson(res,200,mainSessionBridge.status())
+      // Reuse the established status URL for the light directory projection.
+      // Older running plugin instances ignore the query and return legacy status.
+      return sendJson(res,200,url.searchParams.get('directory')==='1'?mainSessionBridge.sessionDirectory({strict:true}):mainSessionBridge.status())
     }
     if (req.method === 'GET' && path === '/api/bili-duty/main-session/sessions') {
       return sendJson(res,200,mainSessionBridge.sessionDirectory({strict:true}))

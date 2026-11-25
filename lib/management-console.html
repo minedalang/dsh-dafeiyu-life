@@ -587,6 +587,13 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 .main-session-picker-fields{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}
 .main-session-picker-fields select{width:100%;min-width:0}.main-session-picker p{margin:0;font-size:12px}.main-session-picker-foot{font-size:12px}
 #main-session-draft-status[data-pending="true"]{color:var(--action);font-weight:600}
+.main-session-controls{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:10px;min-width:0}
+.main-session-control{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0;border:1px solid var(--stroke);border-radius:12px;padding:13px 14px;background:var(--panel);cursor:pointer;margin:0}
+.main-session-control-copy{display:grid;gap:4px;min-width:0;text-align:left}.main-session-control-copy strong{font-size:13px;line-height:1.45;color:var(--ink)}.main-session-control-copy small{font-size:11px;font-weight:400;line-height:1.5;color:var(--muted)}
+.main-session-control:focus-within{border-color:var(--action)}.main-session-control:has(input:checked){border-color:#23987f66}.main-session-control:has(input:disabled){opacity:.65;cursor:default}
+.main-session-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--stroke)}
+.main-session-actions button,.main-session-picker button{border-radius:10px;min-height:38px;padding:8px 15px;font-weight:600}.main-session-picker-head button{white-space:nowrap}.main-session-picker-fields button{white-space:nowrap}
+
 @media(max-width:640px){.main-session-picker{padding:12px}.main-session-picker-head{align-items:stretch}.main-session-picker-head button{width:100%}}
 
 
@@ -2669,9 +2676,11 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="main-session-picker-foot"><span id="main-session-list-status" class="muted" role="status">正在读取在线会话 · 每4秒自动刷新</span><span id="main-session-draft-status" class="muted" role="status"></span></div>
 <p id="main-session-create-hint" class="muted">创建真实空白会话并保存绑定，不发送消息，不改变原有权限及记忆。使用宿主默认位置和预设。</p>
 </div>
-<div><label for="main-session-enabled">启用当前房间的经历同步桥</label><input role="switch" class="ui-toggle" id="main-session-enabled" type="checkbox"></div>
-<div><label for="main-session-auto">有新经历时自动同步</label><input role="switch" class="ui-toggle" id="main-session-auto" type="checkbox" checked></div>
-<div><label for="owner-spontaneous-chat-enabled">允许肥鱼自主找主人聊天</label><input role="switch" class="ui-toggle" id="owner-spontaneous-chat-enabled" type="checkbox" checked></div></div>
+<div class="main-session-controls">
+<label class="main-session-control" for="main-session-enabled"><span class="main-session-control-copy"><strong>经历同步桥</strong><small>启用当前房间的经历同步桥</small></span><input role="switch" class="ui-toggle" id="main-session-enabled" type="checkbox"></label>
+<label class="main-session-control" for="main-session-auto"><span class="main-session-control-copy"><strong>自动同步新经历</strong><small>有新经历时按设定节奏汇报</small></span><input role="switch" class="ui-toggle" id="main-session-auto" type="checkbox" checked></label>
+<label class="main-session-control" for="owner-spontaneous-chat-enabled"><span class="main-session-control-copy"><strong>允许自主联系</strong><small>肥鱼可以自己决定是否找主人聊天</small></span><input role="switch" class="ui-toggle" id="owner-spontaneous-chat-enabled" type="checkbox" checked></label>
+</div></div>
 <div class="settings-section" id="owner-contact-plan-section"><h4>💬 主人交流机会 · 安静时间与节奏</h4>
 <p class="muted">只设置主人允许被联系的边界，不指定肥鱼的性格、情绪或必须发言。主 Session 与主人 B站私信共用主动联系额度；一轮多个气泡仍只算一次联系。</p>
 <fieldset id="owner-contact-options" aria-label="主人交流计划与续聊权限" style="border:0;padding:0;margin:0;min-width:0"><div class="choice-presets" role="radiogroup" aria-label="主动联系主人节奏卡片">
@@ -2687,13 +2696,15 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div><label for="owner-contact-daily">每日最多联系（1–24 次）</label><input id="owner-contact-daily" type="number" min="1" max="24" value="2"></div>
 <div><label for="owner-contact-silence">主人沉默达到（5–1440 分钟）</label><input id="owner-contact-silence" type="number" min="5" max="1440" value="45"></div>
 </div></div>
-<div class="fields"><div><label for="main-session-silence-enabled">主 Session：较长时间没有新对话时，Life 可考虑重新联系</label><input role="switch" class="ui-toggle" id="main-session-silence-enabled" type="checkbox" checked></div>
-<div><label for="owner-dm-silence-enabled">主人 B站私信：较长时间沉默后，Life 可考虑重新联系</label><input role="switch" class="ui-toggle" id="owner-dm-silence-enabled" type="checkbox" checked></div></div>
+<div class="main-session-controls">
+<label class="main-session-control" for="main-session-silence-enabled"><span class="main-session-control-copy"><strong>主 Session · 沉默后联系</strong><small>较长时间没有新对话时，Life 可考虑重新联系</small></span><input role="switch" class="ui-toggle" id="main-session-silence-enabled" type="checkbox" checked></label>
+<label class="main-session-control" for="owner-dm-silence-enabled"><span class="main-session-control-copy"><strong>主人私信 · 沉默后联系</strong><small>较长时间沉默后，Life 可考虑重新联系</small></span><input role="switch" class="ui-toggle" id="owner-dm-silence-enabled" type="checkbox" checked></label>
+</div>
 <p class="muted">上方 20／45／120 分钟属于<strong>长时间主动联系</strong>；聊天内短暂停顿续聊纳入 Life 自然交流的既有机制，不再提供重复设置。以上仅为允许联系的边界，肥鱼仍可选择不说话；必须有已连接的主 Session / 授权的主人私信才能实际发送。</p>
 <p id="owner-contact-status" class="muted" role="status">当前交流边界未读取。关闭上方总开关时，下方方案与两个续聊权限都不能编辑或生效。</p></fieldset>
 </div>
 <p class="muted">这里只列出当前 DSH 中活着的会话，不从硬盘猜“最近会话”。可直接新建并绑定，也可选择已有会话后保存。切换不会清空大肥鱼的身份级长期记忆。</p>
-<div class="toolbar"><button id="main-session-save" class="primary">保存主 Session 设置</button><button id="main-session-test">发送连接测试</button></div>
+<div class="toolbar main-session-actions"><button id="main-session-save" class="primary">保存主 Session 设置</button><button id="main-session-test">发送连接测试</button></div>
 <p id="main-session-target-status" class="muted" role="status">尚未读取</p></div>
 </div>
 <details id="home-sync-settings" class="contextual-settings">
