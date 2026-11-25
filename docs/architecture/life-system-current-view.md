@@ -449,8 +449,8 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 
 %% dev.6: explicit main-session progressive recall; voluntary revisit keeps Life agency.
-  focusRecall283["主 Session 按需聚合当前清晰 BV 深层片段；不联网"]
-  focusRecall283 -.->|不增加后台机会或外发权限| planner
+  focusRecall283["主 Session／普通后台 Life 按需聚合当前清晰 BV 深层片段；不联网"]
+  focusRecall283 -.->|一次自主展开；原模型预算与原菜单；不增加外发权限| planner
 %% @code focusRecall283 | lib/life-memory-gateway.mjs | function recallVideoDetails
 ```
 
@@ -558,6 +558,9 @@ flowchart LR
   intentions --> resume
   visibleVisualHistory["清晰视觉回执：当前账号精确 BV，只读、不检索遗忘档案"]
   visibleVisualHistory -.->|仅复核续行视频取帧菜单| resume
+  progressiveRecall283["普通 Life：相关浅印象优先，按需一次深层回忆；非行动候选"]
+  visibleVisualHistory -.->|当前账号及精确 BV；旧模型观察| progressiveRecall283
+  %% @code progressiveRecall283 | lib/autonomous-planner.mjs | recallVideoBvid
   visualLease["执行期：账号/BV取帧互斥，不是候选与记忆来源"]
   resume -.->|模型明确要视觉采样才执行| visualLease
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
@@ -910,7 +913,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% dev.6: new verified focus attaches to its exact new episode; cached result cannot create it.
   focusDeep283["本次真实观察／补看唯一经历 → 有界深层片段"]
   episode --> focusDeep283
-  focusDeep283 -.->|同账号 BV 聚合；各自清晰且未撤销| recall
+  focusDeep283 -.->|同账号 BV 聚合；各自清晰且未撤销；后台按需一次展开| recall
 %% @code focusDeep283 | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
 ```
 
@@ -1105,7 +1108,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 
 %% dev.6: main-session progressive recall is local read only, not an autonomous wake.
-  localRecall283["主 Session 浅层不足时显式深层回忆；没有证据则保留未知"]
-  localRecall283 -.->|仅现有显式自主补看入口；不新增调度| menu
+  localRecall283["主 Session／普通后台 Life：浅层不足时主动展开已有深层；未知不补造"]
+  localRecall283 -.->|已有模型预算；仅本轮思考；不新增调度或补看权限| menu
 %% @code localRecall283 | lib/long-term-memory.mjs | detail_bvid
 ```

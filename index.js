@@ -7740,6 +7740,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // additional tool. Model calls still use the existing daily Life budget.
     getLifeEpisodeContext:()=>universalLifeEpisodes.list({limit:3}),
     getRecentLifeVideoMemory:opts=>lifeMemory?.recentVisualExperienceContext(opts)||[],
+    getLifeVideoDetailRecall:opts=>lifeMemory?.recallVideoDetails(opts)||{ok:false,reason:'memory-unavailable'},
     // Video is not a mandatory Episode first step. For early, *optional*
     // reconsideration, match the SAME original source for an existing active
     // verified Episode against CURRENTLY executable public intentions,

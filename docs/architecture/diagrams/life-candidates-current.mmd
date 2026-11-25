@@ -99,6 +99,9 @@ flowchart LR
   intentions --> resume
   visibleVisualHistory["清晰视觉回执：当前账号精确 BV，只读、不检索遗忘档案"]
   visibleVisualHistory -.->|仅复核续行视频取帧菜单| resume
+  progressiveRecall283["普通 Life：相关浅印象优先，按需一次深层回忆；非行动候选"]
+  visibleVisualHistory -.->|当前账号及精确 BV；旧模型观察| progressiveRecall283
+  %% @code progressiveRecall283 | lib/autonomous-planner.mjs | recallVideoBvid
   visualLease["执行期：账号/BV取帧互斥，不是候选与记忆来源"]
   resume -.->|模型明确要视觉采样才执行| visualLease
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease

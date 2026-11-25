@@ -121,3 +121,80 @@ test('real MemoryCoordinator admission persists bounded visual mentions through 
  assert.doesNotMatch(archive,/随意指令/)
  assert.doesNotMatch(archive,/图像上写有/)
 }))
+
+// Progressive recall is a deliberation step, never a new Life action. Use
+// the actual fading Gateway and planner, with no external media or platform.
+async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
+ await tmp(async dir=>{
+  let clock=T+2000,account=A,reads=0,executions=0
+  const prompts=[],steps=[]
+  const gateway=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>account,now:()=>clock,
+   getConfig:()=>({mainSessionMemoryHalfLifeDays:15}),admitMemoryDetails:()=>true})
+  try{
+   gateway.recordEvents([vid()])
+   const memoryId=gateway.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId
+   if(hasDetail)assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,sourceProof:{},fragments:[{
+    fragmentId:'actual-0001',type:'observed-scene',content:'桌面左侧有一副红色耳机，旁边摆放黑色收纳盒。',
+    certainty:'model-observation',sourceRef:'verified:observation:sample1',timeAnchorMs:[8000,8000],uncertainties:[]}]}).ok,true)
+   const planner=createAutonomousPlanner({dataDir:dir,now:()=>clock,getConfig:()=>({masterEnabled:true,
+    autonomousPlannerEnabled:true,lifeAgentMode:'active',autonomousPlannerDailyLimit:limit,
+    autonomousPlannerMinutes:1,autonomousPlannerStartHour:0,autonomousPlannerEndHour:24}),
+    getLifeAccountTag:()=>account,getLifeOpportunities:()=>[{id:'op-1',source:'interest-milestone',bvid:BV,eligible:true}],
+    getRecentLifeVideoMemory:opts=>gateway.recentVisualExperienceContext(opts),
+    getLifeVideoDetailRecall:opts=>{reads++;return gateway.recallVideoDetails(opts)},
+    getTodos:()=>[],executeRead:async()=>{executions++;return {ok:false}},
+    executeLifeVideoObservation:async()=>{executions++;return {ok:false}},updateTodo:()=>({ok:false}),reflect:async()=>({ok:false}),
+    beginDecisionTrace:()=>({step:(type,fields)=>steps.push({type,...fields}),finish(){}}),
+    invokeModel:async prompt=>{
+     prompts.push(prompt)
+     if(prompts.length===1){
+      if(mode==='shallow')return '{"action":"skip"}'
+      if(mode==='switch-before')account=B
+      if(mode==='foreign')return '{"recallVideoBvid":"BV0987654321"}'
+      if(mode==='mixed')return JSON.stringify({recallVideoBvid:BV,action:'inspect_opportunity',id:'op-1'})
+      return JSON.stringify({recallVideoBvid:BV})
+     }
+     if(mode==='switch-after')account=B
+     if(mode==='forget-after')clock+=14*86400000
+     if(mode==='repeat')return JSON.stringify({recallVideoBvid:BV})
+     return '{"action":"skip","reason":"想起来了，暂时不看"}'
+    }})
+   const result=await planner.tick()
+   assert.equal(executions,0)
+   assert.doesNotMatch(prompts[0],/红色耳机/,'deep evidence must never enter the first prompt')
+   if(mode==='shallow'||mode==='foreign'||mode==='mixed'||mode==='switch-before'||limit===1){
+    assert.equal(prompts.length,1);assert.equal(reads,0)
+    if(mode!=='shallow')assert.equal(result.result,'invalid-decision')
+   }else{
+    assert.equal(prompts.length,2)
+    assert.ok(prompts[1].includes('"recalledVideoMemory"'))
+    assert.match(prompts[1],/不得再次请求 recallVideoBvid/)
+    if(hasDetail){assert.match(prompts[1],/红色耳机/);assert.match(prompts[1],/"timeAnchorMs":\[8000,8000\]/)}
+    else{assert.match(prompts[1],/"state":"no-detail"/);assert.doesNotMatch(prompts[1],/红色耳机/)}
+    if(['repeat','switch-after','forget-after'].includes(mode))assert.equal(result.result,'invalid-decision')
+    else assert.equal(result.result,'voluntary-rest')
+    assert.ok(steps.some(s=>s.type==='quota-reserved'&&s.kind==='video-memory-recall'&&s.charged===1))
+   }
+  }finally{gateway.close()}
+ })
+}
+test('background Life first sees shallow evidence and voluntarily expands one real local deep memory',()=>progressiveScenario())
+test('shallow evidence suffices: no extra model call or deep read',()=>progressiveScenario({mode:'shallow'}))
+test('missing deep attachment remains unknown; never auto-downloads or fabricates',()=>progressiveScenario({hasDetail:false}))
+test('foreign BV, mixed recall and action, and account change before read fail closed',async()=>{
+ for(const mode of ['foreign','mixed','switch-before'])await progressiveScenario({mode})
+})
+test('extra recall cannot bypass quota or recurse; concurrent switch/forget prevents action',async()=>{
+ await progressiveScenario({limit:1})
+ for(const mode of ['repeat','switch-after','forget-after'])await progressiveScenario({mode})
+})
+test('shallow recall ranks exact current video and related topic before unrelated recent observations',()=>tmp(async dir=>{
+ const g=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>A,now:()=>T+10000})
+ try{
+  g.recordEvents([vid(),vid('画面展示了钢桥上的火车和河岸风景。',{bvid:'BV0987654321',operationId:'train-observation-1',at:T+1000,info:{ok:true,bvid:'BV0987654321',title:'蒸汽火车'},visual:{ok:true,bvid:'BV0987654321',status:'analyzed',image_source:'B站低清预览',times:[2,8,15],description:'画面展示了钢桥上的火车和河岸风景。'}})])
+  assert.equal(g.recentVisualExperienceContext({accountTag:A,limit:1})[0].bvid,'BV0987654321')
+  assert.equal(g.recentVisualExperienceContext({accountTag:A,limit:1,bvids:[BV]})[0].bvid,BV)
+  assert.equal(g.recentVisualExperienceContext({accountTag:A,limit:1,queries:['耳机推荐']})[0].bvid,BV)
+  assert.deepEqual(g.recentVisualExperienceContext({accountTag:B,bvids:[BV]}),[])
+ }finally{g.close()}
+}))
