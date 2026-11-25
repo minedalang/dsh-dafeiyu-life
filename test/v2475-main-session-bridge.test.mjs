@@ -91,51 +91,39 @@ test('实际源码只通过 ctx.agents 绑定主 Session，并提供管理中心
 })
 
 
-function sessionCreationHarness({create,bind,controller=true,attach=true,now=Date.now}={}){
-  const dir=temp(),cfg=baseConfig(),messages=[],calls=[],writes=[]
+function sessionBindingHarness({bind}={}){
+  const dir=temp(),cfg=baseConfig(),messages=[],writes=[]
   const rows=[{id:'session-abc',title:'旧房间',followup:async m=>messages.push(m),inject:async m=>messages.push(m)}]
-  const ws={id:'fish-workspace',title:'大肥鱼',sessionIds:['session-abc']},archived=[];const registry={list:()=>[ws],archivedSessionIds:archived};
-  const add=id=>{if(attach)ws.sessionIds.push('session-'+id);rows.push({id:'session-'+id,followup:async m=>messages.push(m),inject:async m=>messages.push(m)});return {sessionId:'session-'+id}}
+  const ws={id:'fish-workspace',title:'大肥鱼',sessionIds:['session-abc','session-blank']},archived=[];const registry={list:()=>[ws],archivedSessionIds:archived}
   const bridge=createMainSessionBridge({dataDir:dir,agents:{list:()=>rows},getConfig:()=>cfg,getWatched:()=>[],getComments:()=>({rows:[]}),
-    getWorkspaceRegistry:()=>registry,now,
-    getSessionController:()=>controller?{async create(request){calls.push(request);return create?create({add,cfg,rows}):add('new-room')}}:undefined,
-    bindSession:async(id,expected)=>{writes.push([id,expected]);if(bind)return bind({id,expected,cfg});cfg.mainSessionId=id}})
-  return {dir,cfg,rows,add,bridge,messages,calls,writes,ws,archived,registry,close:()=>rmSync(dir,{recursive:true,force:true})}
+    getWorkspaceRegistry:()=>registry,bindSession:async(id,expected)=>{writes.push([id,expected]);if(bind)return bind({id,expected,cfg});cfg.mainSessionId=id}})
+  return {dir,cfg,rows,bridge,messages,writes,ws,archived,registry,close:()=>rmSync(dir,{recursive:true,force:true})}
 }
-test('主人新建真实空白宿主会话，仅绑定已核验的新 ID，保留权限与历史，不发送消息',async()=>{
-  const h=sessionCreationHarness();try{
-    const before={...h.cfg};assert.equal(h.bridge.sessionDirectory().creationAvailable,true)
-    const r=await h.bridge.createAndBindSession({expectedId:'abc'})
-    assert.equal(r.ok,true);assert.equal(r.createdId,'new-room');assert.equal(r.selectedId,'new-room');assert.equal(r.targetLive,true)
-    assert.deepEqual(h.calls,[{workspaceId:'fish-workspace'}]);assert.deepEqual(h.writes,[['new-room','abc']]);assert.deepEqual(h.cfg,{...before,mainSessionId:'new-room'})
-    assert.equal(h.messages.length,0);assert.equal(h.rows.length,2);assert.equal(existsSync(h.bridge.file),false)
+test('原生菜单仅绑定真实已有会话，空白会话未驻留也可登记，不修改其他配置或发送消息',async()=>{
+  const h=sessionBindingHarness();try{
+    const before={...h.cfg};assert.equal(h.bridge.sessionDirectory().nativeBindingAvailable,true)
+    const r=await h.bridge.bindExistingSession({sessionId:'session-blank',expectedId:'abc'})
+    assert.deepEqual(r,{ok:true,selectedId:'blank',targetLive:false});assert.deepEqual(h.writes,[['blank','abc']]);assert.deepEqual(h.cfg,{...before,mainSessionId:'blank'})
+    assert.equal(h.bridge.sessionDirectory().selectedId,'blank');assert.equal(h.messages.length,0);assert.equal(h.rows.length,1);assert.equal(existsSync(h.bridge.file),false)
+    assert.equal((await h.bridge.bindExistingSession({sessionId:'blank',expectedId:'blank'})).ok,true);assert.equal(h.writes.length,1)
+    h.rows.push({id:'session-blank',followup:async m=>h.messages.push(m)});assert.equal(h.bridge.sessionDirectory().targetLive,true)
   }finally{h.close()}
 })
-test('未提供宿主创建能力或当前绑定已变化，拒绝新建且不修改设置',async()=>{
-  const h=sessionCreationHarness({controller:false});try{
-    assert.equal(h.bridge.sessionDirectory().creationAvailable,false)
-    assert.equal(h.bridge.sessionDirectory().creationUnavailableReason,'host-create-unavailable')
-    assert.equal((await h.bridge.createAndBindSession({expectedId:'abc'})).reason,'unsupported')
-    assert.equal((await h.bridge.createAndBindSession({expectedId:'different'})).reason,'target-changed')
-    assert.equal(h.calls.length,0);assert.equal(h.writes.length,0)
+test('未知、已归档、非法、旧绑定与归档状态未知均拒绝原生绑定',async()=>{
+  const h=sessionBindingHarness();try{
+    for(const args of [{sessionId:'missing',expectedId:'abc'},{sessionId:' session-blank',expectedId:'abc'},{sessionId:'session-blank',expectedId:'old'}])assert.equal((await h.bridge.bindExistingSession(args)).ok,false)
+    h.archived.push('session-blank');assert.equal((await h.bridge.bindExistingSession({sessionId:'session-blank',expectedId:'abc'})).ok,false)
+    delete h.registry.archivedSessionIds;assert.equal(h.bridge.sessionDirectory().nativeBindingAvailable,false);assert.equal((await h.bridge.bindExistingSession({sessionId:'abc',expectedId:'abc'})).ok,false)
+    assert.deepEqual(h.writes,[]);assert.equal(h.cfg.mainSessionId,'abc')
   }finally{h.close()}
 })
-test('并发创建仅调用一次宿主，等待期间原绑定变更不会被覆盖',async()=>{
-  let resume;const h=sessionCreationHarness({create:async({add})=>{await new Promise(resolve=>{resume=resolve});return add('fresh')}})
-  try{
-    const first=h.bridge.createAndBindSession({expectedId:'abc'});assert.equal(h.bridge.sessionDirectory().creatingSession,true)
-    assert.equal((await h.bridge.createAndBindSession({expectedId:'abc'})).reason,'busy');h.cfg.mainSessionId='another';resume()
-    const r=await first;assert.equal(r.reason,'target-changed');assert.equal(r.createdId,'fresh');assert.equal(h.cfg.mainSessionId,'another');assert.equal(h.writes.length,0);assert.equal(h.calls.length,1);assert.equal(h.bridge.sessionDirectory().creatingSession,false)
-  }finally{h.close()}
-})
-test('无效、已有或未在线宿主回执不能自动绑定；绑定异常不重新创建',async()=>{
-  for(const [create,reason] of [[()=>({sessionId:'session-abc'}),'invalid-receipt'],[()=>({sessionId:'session-missing'}),'not-live'],[()=>({sessionId:' session-fake'}),'invalid-receipt'],[()=>{throw Error('host failure')},'create-failed']]){
-    const h=sessionCreationHarness({create});try{const r=await h.bridge.createAndBindSession({expectedId:'abc'});assert.equal(r.reason,reason);assert.equal(h.writes.length,0);assert.equal(h.cfg.mainSessionId,'abc');assert.equal(h.calls.length,1)}finally{h.close()}
-  }
-  const h=sessionCreationHarness({bind:()=>{throw Error('save failed')}});try{const r=await h.bridge.createAndBindSession({expectedId:'abc'});assert.equal(r.reason,'binding-unconfirmed');assert.equal(r.createdId,'new-room');assert.equal(h.calls.length,1);assert.equal(h.cfg.mainSessionId,'abc');assert.equal(h.messages.length,0)}finally{h.close()}
+test('原生绑定并发保护和未确认写入不伪报成功',async()=>{
+  let resume;const h=sessionBindingHarness({bind:async({id,cfg})=>{await new Promise(r=>{resume=r});cfg.mainSessionId=id}})
+  try{const first=h.bridge.bindExistingSession({sessionId:'blank',expectedId:'abc'});assert.equal((await h.bridge.bindExistingSession({sessionId:'blank',expectedId:'abc'})).ok,false);resume();assert.equal((await first).ok,true);assert.equal(h.writes.length,1)}finally{h.close()}
+  const failed=sessionBindingHarness({bind:()=>{throw Error('disk')}});try{assert.equal((await failed.bridge.bindExistingSession({sessionId:'blank',expectedId:'abc'})).ok,false);assert.equal(failed.cfg.mainSessionId,'abc')}finally{failed.close()}
 })
 test('轻量列表不读取经历文件，宿主读取失败不伪装空会话列表',()=>{
-  const h=sessionCreationHarness();try{assert.equal(h.bridge.sessionDirectory({strict:true}).sessions.length,1);assert.equal(existsSync(h.bridge.file),false)}finally{h.close()}
+  const h=sessionBindingHarness();try{assert.equal(h.bridge.sessionDirectory({strict:true}).sessions.length,1);assert.equal(existsSync(h.bridge.file),false)}finally{h.close()}
   const dir=temp();try{const bridge=createMainSessionBridge({dataDir:dir,agents:{list(){throw Error('transport')}},getConfig:baseConfig,getWatched:()=>[],getComments:()=>({rows:[]})});assert.throws(()=>bridge.sessionDirectory({strict:true}),/列表读取失败/)}finally{rmSync(dir,{recursive:true,force:true})}
 })
 function sessionPickerHarness(){
@@ -145,7 +133,7 @@ function sessionPickerHarness(){
   const document={activeElement:null};let response;const api=runInNewContext(js.slice(start,end)+`\n({renderMainSessionDirectory,refreshMainSessionDirectory,updateMainSessionDraft,invalidate:()=>mainSessionEpoch++})`,{$,document,mobileViewOnly:false,node:(tag,label)=>({tag,label,value:''}),settingDraftTracker:{committed:field=>committed.push(field.id)},summarizeSaveDrafts(){},request:async path=>{requests.push(path);if(typeof response==='function')return response();if(response instanceof Error)throw response;return response}})
   return {...api,$,document,committed,requests,respond:x=>{response=x}}
 }
-const directory=(id,rows,extra={})=>({directoryProtocol:3,archiveKnown:true,preferredWorkspaceId:'fish-workspace',workspaces:[{id:'fish-workspace',label:'大肥鱼'}],selectedId:id,sessions:rows.map(x=>({id:x,label:x})),targetLive:rows.includes(id),creationAvailable:true,...extra})
+const directory=(id,rows,extra={})=>({directoryProtocol:4,archiveKnown:true,workspaces:[{id:'fish-workspace',label:'大肥鱼'}],selectedId:id,sessions:rows.map(x=>({id:x,label:x})),targetLive:rows.includes(id),nativeBindingAvailable:true,...extra})
 test('主页实际列表渲染保留未保存选择与离线目标，刷新失败不清空',async()=>{
   const h=sessionPickerHarness(),select=h.$('main-session-id');h.renderMainSessionDirectory(directory('abc',['abc','def']));assert.equal(select.value,'abc')
   select.value='def';h.updateMainSessionDraft();assert.equal(h.$('main-session-draft-status').dataset.pending,'true')
@@ -164,15 +152,10 @@ test('列表请求去重且丢弃旧世代回执；聚焦选择器时不重建�
 })
 
 
-test('旧运行后端的状态回执仍可刷新会话目录，但不会误启用新建；升级后恢复能力',async()=>{
+test('旧运行后端的状态回执仍可刷新会话目录，原生绑定后列表自动采用新绑定',async()=>{
   const h=sessionPickerHarness();h.respond({config:{id:'old'},targetLive:true,sessions:[{id:'old',label:'旧房间'}]});await h.refreshMainSessionDirectory()
-  assert.equal(h.requests[0],'/main-session?directory=1');assert.equal(h.$('main-session-id').value,'old');assert.equal(h.$('main-session-create').disabled,true)
-  assert.match(h.$('main-session-create-hint').textContent,/旧版.*重启/);assert.match(h.$('main-session-list-status').textContent,/兼容列表/)
-  h.respond(directory('old',['old','new'],{creationAvailable:false,creationUnavailableReason:'host-create-unavailable'}));await h.refreshMainSessionDirectory()
-  assert.match(h.$('main-session-create-hint').textContent,/sessionController.create/);assert.equal(h.$('main-session-create').disabled,true)
-  h.respond(directory('old',['old','new']));await h.refreshMainSessionDirectory();assert.equal(h.$('main-session-create').disabled,false)
-  h.respond(new Error('offline'));await h.refreshMainSessionDirectory();assert.equal(h.$('main-session-create').disabled,true);assert.equal(h.$('main-session-id').value,'old')
-  h.respond(directory('old',['old','new']));await h.refreshMainSessionDirectory();assert.equal(h.$('main-session-create').disabled,false)
+  assert.equal(h.requests[0],'/main-session?directory=1');assert.equal(h.$('main-session-id').value,'old');assert.match(h.$('main-session-list-status').textContent,/兼容列表/)
+  h.respond(directory('new',['old','new']));await h.refreshMainSessionDirectory();assert.equal(h.$('main-session-id').value,'new');assert.match(h.$('main-session-list-status').textContent,/已排除归档/)
 })
 
 test('主页独立列表每4秒刷新且隐藏或切换页面时不轮询，离开页面清除定时器',()=>{
@@ -180,63 +163,36 @@ test('主页独立列表每4秒刷新且隐藏或切换页面时不轮询，离�
   assert.match(js,/const mainSessionListTimer=.*setInterval\(\(\)=>\{if\(!document\.hidden&&active==='home'\)void refreshMainSessionDirectory\(\)\},4000\)/)
   assert.match(js,/clearInterval\(mainSessionListTimer\)/)
   assert.match(js,/request\('\/main-session\?directory=1'\)/)
-  assert.match(html,/id="main-session-create"[^>]*disabled/)
+  assert.match(html,/也可以在 DSH 原生界面指定主 Session/);assert.match(html,/设为大肥鱼主 Session/);assert.doesNotMatch(html,/id="main-session-(?:create|open|workspace)"/)
   for(const id of ['main-session-bound-label','main-session-bound-state','main-session-list-status','main-session-draft-status'])assert.ok(html.includes(`id="${id}"`))
 })
 
 
 test('归档从在线目录排除，已绑定归档目标保留身份但不能投递',async()=>{
-  const h=sessionCreationHarness();try{
+  const h=sessionBindingHarness();try{
     h.archived.push('session-abc');assert.equal(h.bridge.sessionDirectory().targetArchived,true);assert.equal(h.bridge.sessionDirectory().targetLive,false)
     assert.equal(h.bridge.sessions().length,0);assert.equal(h.bridge.canShare(),false);assert.equal((await h.bridge.test()).ok,false);assert.equal(h.messages.length,0);assert.equal(h.cfg.mainSessionId,'abc')
   }finally{h.close()}
 })
-test('新建必须核验工作区成员登记，不绑定未分组会话；不自动重试',async()=>{
-  const h=sessionCreationHarness({attach:false});try{
-    const r=await h.bridge.createAndBindSession({expectedId:'abc',workspaceId:'fish-workspace'});assert.equal(r.reason,'workspace-unconfirmed');assert.equal(r.createdId,'new-room');assert.equal(h.writes.length,0);assert.equal(h.calls.length,1)
-    assert.equal(h.bridge.sessions().find(x=>x.id==='new-room').workspaceLabel,'未分组')
-  }finally{h.close()}
-})
-test('新建复用当前工作区、默认或唯一已有工作区；多工作区无确定归属需手选',async()=>{
-  const h=sessionCreationHarness();try{
-    const other={id:'default',title:'默认',sessionIds:[]};h.registry.list=()=>[h.ws,other];h.registry.defaultWorkspaceId='default';assert.equal(h.bridge.sessionDirectory().preferredWorkspaceId,'fish-workspace')
-    h.cfg.mainSessionId='';assert.equal(h.bridge.sessionDirectory().preferredWorkspaceId,'default');delete h.registry.defaultWorkspaceId;assert.equal(h.bridge.sessionDirectory().preferredWorkspaceId,'')
-    assert.equal((await h.bridge.createAndBindSession({expectedId:''})).reason,'workspace-required');assert.equal((await h.bridge.createAndBindSession({expectedId:'',workspaceId:'invalid'})).reason,'workspace-required');assert.equal(h.calls.length,0)
-    assert.equal((await h.bridge.createAndBindSession({expectedId:'',workspaceId:'fish-workspace'})).ok,true);assert.deepEqual(h.calls,[{workspaceId:'fish-workspace'}])
-  }finally{h.close()}
-})
-test('管理页显示归档绑定与工作区，自动刷新保留工作区选择',()=>{
-  const h=sessionPickerHarness(),ws=h.$('main-session-workspace');const d=directory('abc',['abc'],{workspaces:[{id:'a',label:'默认'},{id:'b',label:'大肥鱼'}],preferredWorkspaceId:'a'});h.renderMainSessionDirectory(d);ws.value='b';h.renderMainSessionDirectory({...d,targetArchived:true,targetLive:false,sessions:[]});assert.equal(ws.value,'b');assert.equal(h.$('main-session-bound-state').textContent,'已归档');assert.match(h.$('main-session-target-status').textContent,/暂停同步/)
+test('管理页显示归档绑定，继续保留工作区标签和离线绑定',()=>{
+  const h=sessionPickerHarness();const d=directory('abc',['abc']);d.sessions[0].workspaceLabel='大肥鱼';h.renderMainSessionDirectory(d);assert.match(h.$('main-session-id').children[1].label,/大肥鱼/)
+  h.renderMainSessionDirectory({...d,targetArchived:true,targetLive:false,sessions:[]});assert.equal(h.$('main-session-bound-state').textContent,'已归档');assert.match(h.$('main-session-target-status').textContent,/暂停同步/)
 })
 
-
-test('原生导航仅针对当前真实绑定，一次领取，过期与归档拒绝，不发送消息',async()=>{
-  let clock=1000;const h=sessionCreationHarness({now:()=>clock});try{
-    assert.equal(h.bridge.publicNavigation().state,'idle');assert.equal(h.bridge.requestNavigation({expectedId:'other'}).ok,false)
-    const created=await h.bridge.createAndBindSession({expectedId:'abc',openAfterCreate:true});assert.equal(created.navigation.state,'pending');assert.equal(created.navigation.sessionId,'new-room')
-    const id=created.navigation.id;const c=h.bridge.claimNavigation({id});assert.equal(c.ok,true);assert.equal(h.bridge.claimNavigation({id}).ok,false);assert.equal(h.bridge.publicNavigation().claimToken,undefined)
-    assert.equal(h.bridge.requestNavigation({expectedId:'new-room'}).navigation.claimToken,undefined)
-    assert.equal(h.bridge.completeNavigation({id,claimToken:'fake',outcome:'requested'}).ok,false)
-    assert.equal(h.bridge.completeNavigation({id,claimToken:c.claimToken,outcome:'requested'}).navigation.state,'requested')
-    const again=h.bridge.requestNavigation({expectedId:'new-room'});assert.notEqual(again.navigation.id,id)
-    clock+=45000;assert.equal(h.bridge.claimNavigation({id:again.navigation.id}).ok,false);assert.equal(h.bridge.publicNavigation().state,'expired')
-    const pending=h.bridge.requestNavigation({expectedId:'new-room'});h.archived.push('session-new-room');assert.equal(h.bridge.claimNavigation({id:pending.navigation.id}).ok,false);assert.equal(h.bridge.publicNavigation().state,'cancelled');assert.equal(h.bridge.requestNavigation({expectedId:'new-room'}).ok,false)
-    assert.equal(h.calls.length,1);assert.deepEqual(h.messages,[])
-  }finally{h.close()}
-})
-test('登记在工作区的非驻留旧主 Session 也能申请导航；绑定变化取消请求',()=>{
-  const h=sessionCreationHarness();try{h.rows.length=0;assert.equal(h.bridge.sessionDirectory().targetLive,false);assert.equal(h.bridge.sessionDirectory().navigationAvailable,true)
-    const nav=h.bridge.requestNavigation({expectedId:'abc'}).navigation;h.cfg.mainSessionId='different';assert.equal(h.bridge.claimNavigation({id:nav.id}).ok,false);assert.equal(h.bridge.publicNavigation().state,'cancelled')
-  }finally{h.close()}
-})
-test('原生客户端真实导航代码等待目录、处理宿主前缀、只打开一次，卸载停止',async()=>{
-  const h=sessionCreationHarness();try{
-    const source=readFileSync(new URL('../client.js',import.meta.url),'utf8'),begin=source.indexOf('    const localNavigationClient='),end=source.indexOf('    const CSS =',begin);assert.ok(begin>=0&&end>begin)
-    const calls=[];let tick,cleared=false,snapshot={phase:'loading',byId:{}},refreshes=0;
-    const scope={sessions:{list:{getSnapshot:()=>snapshot},refresh:async()=>{refreshes++}},uiWorkspace:{openSession:id=>calls.push(id)}}
-    const install=runInNewContext(source.slice(begin,end)+'\ninstallSessionNavigation',{window:{location:{hostname:'127.0.0.1'}},setInterval:fn=>{tick=fn;return 1},clearInterval:()=>{cleared=true},jget:async()=>({ok:true,navigation:h.bridge.publicNavigation()}),jpost:async(_p,b)=>b.action==='claim'?h.bridge.claimNavigation(b):h.bridge.completeNavigation(b)})
-    h.bridge.requestNavigation({expectedId:'abc'});const dispose=install(scope);await new Promise(r=>setImmediate(r));assert.equal(refreshes,1);assert.deepEqual(calls,[])
-    snapshot={phase:'ready',byId:{'session-abc':{}}};await tick();await tick();assert.deepEqual(calls,['session-abc']);assert.equal(h.bridge.publicNavigation().state,'requested');assert.deepEqual(h.messages,[])
-    h.bridge.requestNavigation({expectedId:'abc'});dispose();await tick();assert.equal(cleared,true);assert.equal(calls.length,1)
+test('客户端注册官方会话菜单 slot，绑定准确的行 ID，不启动导航轮询；旧后端不提交',async()=>{
+  const h=sessionBindingHarness();try{
+    const source=readFileSync(new URL('../client.js',import.meta.url),'utf8')
+    const calls=[],alerts=[],slots=new Map();let module
+    let protocol=4
+    const React={createElement:(type,props,...children)=>({type,props,children}),useRef:v=>({current:v}),useState:v=>[v,()=>{}]}
+    const window={__ModuleLoader__:{load:m=>{module=m}},alert:m=>alerts.push(m)}
+    const context={window,document:{createElement:()=>({setAttribute(){},remove(){}}),head:{appendChild(){}}},fetch:async(url,opts)=>{calls.push([url,opts?.body]);const data=opts?.method==='POST'?await h.bridge.bindExistingSession(JSON.parse(opts.body)):{...h.bridge.sessionDirectory(),directoryProtocol:protocol};return {ok:data.ok,status:data.ok?200:409,json:async()=>data}}}
+    runInNewContext(source,context);const plugin=module.factory(name=>{if(name==='react')return React;throw Error('optional primitive unavailable')})
+    const service={inject:(_name,fn)=>fn(),register:(spec,component)=>slots.set(spec.name,{spec,component})}
+    plugin.apply({get:()=>service,effect:fn=>fn()});assert.equal(slots.get('sidebar.workspaces.session.menu.item').spec.id,'dafeiyu-life.bind-main-session');assert.ok(slots.has('settings.section'))
+    let closed=false;const row=slots.get('sidebar.workspaces.session.menu.item').component({sessionId:'session-blank',useMenuOpenState:()=>[true,v=>{closed=!v}]})
+    assert.equal(row.children[0],'设为大肥鱼主 Session');await row.props.onClick();assert.equal(closed,true);assert.equal(h.cfg.mainSessionId,'blank');assert.match(alerts.at(-1),/已设为/);assert.deepEqual(calls.map(x=>x[0]),['/api/bili-duty/main-session?directory=1','/api/bili-duty/main-session/bind']);assert.equal(JSON.parse(calls[1][1]).sessionId,'session-blank');assert.equal(h.messages.length,0)
+    protocol=3;const old=slots.get('sidebar.workspaces.session.menu.item').component({sessionId:'session-abc',useMenuOpenState:()=>[true,()=>{}]});await old.props.onClick();assert.equal(calls.length,3);assert.match(alerts.at(-1),/管理页手动选择/);assert.equal(h.cfg.mainSessionId,'blank')
+    assert.doesNotMatch(source,/installSessionNavigation|openSession\(target\)/)
   }finally{h.close()}
 })

@@ -53,41 +53,33 @@ window.__ModuleLoader__.load({
       body: JSON.stringify(body || {}),
     }))
 
-    // Optional client services: don't make the settings plugin fail to mount on
-    // older DSH builds. Only the native workspace service owns navigation.
-    const localNavigationClient=()=>['127.0.0.1','localhost','[::1]'].includes(String(window.location?.hostname||'').toLowerCase())
-    const resolveNavigationTarget=async(sessions,id)=>{
-      const lookup=()=>{
-        const snapshot=sessions.list.getSnapshot()
-        if(snapshot.phase!=='ready')return ''
-        const candidates=[id,'session-'+id].filter(key=>Object.hasOwn(snapshot.byId||{},key))
-        return candidates.length===1?candidates[0]:''
-      }
-      let target=lookup()
-      if(!target&&typeof sessions.refresh==='function'){await sessions.refresh();target=lookup()}
-      return target
+    // Official optional sidebar slot. No session creation/navigation or DOM hacks.
+    // Resolve the optional primitive only when the row actually renders.
+    const bindNativeMainSession=async(sessionId)=>{
+      const current=await jget('/main-session?directory=1')
+      if(current?.directoryProtocol!==4||current.nativeBindingAvailable!==true||typeof current.selectedId!=='string')throw Error('当前后端或宿主不支持原生绑定，请使用管理页手动选择。')
+      const result=await jpost('/main-session/bind',{confirm:'BIND_EXISTING_MAIN_SESSION',sessionId,expectedId:current.selectedId})
+      if(result?.ok!==true||result.selectedId!==String(sessionId).replace(/^session-/,''))throw Error('绑定未获确认，请在管理页核对。')
+      return result
     }
-    const installSessionNavigation=(scope)=>{
-      if(!localNavigationClient())return
-      let alive=true,busy=false
-      const tick=async()=>{
-        if(!alive||busy)return
-        busy=true
+    function BindMainSessionMenu({sessionId,useMenuOpenState}){
+      const [,setMenuOpen]=useMenuOpenState()
+      const pending=React.useRef(false)
+      const [busy,setBusy]=React.useState(false)
+      let MenuItemButton
+      try{MenuItemButton=require('@deepseek-ai/dsh-client-ui-primitives').MenuItemButton}catch{}
+      const select=async()=>{
+        if(pending.current||typeof sessionId!=='string'||!sessionId)return
+        pending.current=true;setBusy(true)
         try{
-          const result=await jget('/main-session/navigation'),nav=result?.navigation
-          if(!alive||result?.ok!==true||nav?.state!=='pending'||typeof nav.sessionId!=='string'||typeof nav.id!=='string')return
-          const target=await resolveNavigationTarget(scope.sessions,nav.sessionId)
-          if(!alive||!target)return // catalog may be late; request expires on host
-          const claimed=await jpost('/main-session/navigation',{action:'claim',id:nav.id})
-          if(!alive||claimed?.ok!==true||claimed.sessionId!==nav.sessionId||!claimed.claimToken||Date.now()>=claimed.expiresAt)return
-          let outcome='failed'
-          try{await scope.uiWorkspace.openSession(target);outcome='requested'}catch{}
-          if(alive)await jpost('/main-session/navigation',{action:'complete',id:nav.id,claimToken:claimed.claimToken,outcome})
-        }catch{/* old backend, unavailable catalog or another client won; no retries of a claimed request */}
-        finally{busy=false}
+          const result=await bindNativeMainSession(sessionId)
+          setMenuOpen(false)
+          window.alert('已设为大肥鱼主 Session。'+(result.targetLive?'':'会话尚未驻留，待 DSH 激活后可同步。')+' 未改变其他设置。')
+        }catch(e){window.alert('主 Session 绑定未确认：'+String(e?.message||e).slice(0,200)+' 可在管理页手动选择。')}
+        finally{pending.current=false;setBusy(false)}
       }
-      const timer=setInterval(tick,2000);void tick()
-      return ()=>{alive=false;clearInterval(timer)}
+      const label=busy?'正在绑定…':'设为大肥鱼主 Session'
+      return MenuItemButton?h(MenuItemButton,{separatorBefore:true,disabled:busy,onSelect:select},label):h('button',{type:'button',role:'menuitem','data-bd-btn':'',disabled:busy,onClick:select},label)
     }
     const CSS = `
 [data-bd-page]{display:flex;flex-direction:column;gap:18px;padding:2px 2px 8px;max-width:640px;}
@@ -1047,10 +1039,6 @@ window.__ModuleLoader__.load({
         style.textContent = CSS
         document.head.appendChild(style)
         ctx.effect(() => () => style.remove(), 'dsh-dafeiyu-life: 设置页样式')
-        if(typeof ctx.inject==='function')ctx.inject(['sessions','uiWorkspace'],scope=>{
-          scope.effect(()=>installSessionNavigation(scope),'dsh-dafeiyu-life: 主 Session 原生导航')
-        },'dsh-dafeiyu-life: 可选原生导航服务')
-
         // ⭐ 进「设置」：label 就是左侧导航里那一项（抄 dsh-meme 的写法）
         const slots = (typeof ctx.get === 'function' ? ctx.get('slots') : undefined) || ctx.slots
         if (!slots) return
@@ -1058,6 +1046,12 @@ window.__ModuleLoader__.load({
           { name: 'settings.section', id: 'dafeiyu-life', order: 30, label: '大肥鱼' },
           () => h(Panel),
         ))
+
+        // Slot may not exist on older Desktop builds. Settings/manual binding
+        // remain available independently; the host owns the row and its identity.
+        try{slots.inject('sidebar.workspaces.session.menu.item',()=>slots.register({
+          name:'sidebar.workspaces.session.menu.item',id:'dafeiyu-life.bind-main-session',order:500,
+        },BindMainSessionMenu))}catch{/* optional host slot */}
 
   // 会话视图保持为原生 Chat；视频与已确认评论足迹仍可在管理中心查看。
       },

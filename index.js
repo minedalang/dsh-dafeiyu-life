@@ -8085,7 +8085,6 @@ logger:{warn:m=>log('社交意图：'+m)}
   mainSessionBridge = createMainSessionBridge({
     dataDir: stateDir,
     agents: ctx.agents,
-    getSessionController:()=>ctx.get('sessionController'),
     getWorkspaceRegistry:()=>ctx.get('workspaceRegistry'),
     bindSession:async(id,expectedId)=>{
       refreshCfg()
@@ -8733,7 +8732,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     // unlock business APIs merely because the user can load the settings UI.
     const setupAccess = (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || (req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot') || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
-      path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || (req.method==='GET' && path==='/api/bili-duty/main-session/sessions') || (req.method==='POST' && path==='/api/bili-duty/main-session/create') || path==='/api/bili-duty/main-session/navigation' || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
+      path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || (req.method==='GET' && path==='/api/bili-duty/main-session/sessions') || (req.method==='POST' && path==='/api/bili-duty/main-session/bind') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
       path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&['/api/bili-duty/video-dependencies/status','/api/bili-duty/video-dependencies/whisper/status'].includes(path)) || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/whisper/delete') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/paths') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/ffmpeg/test')
     if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
@@ -10239,21 +10238,11 @@ logger:{warn:m=>log('社交意图：'+m)}
     if (req.method === 'GET' && path === '/api/bili-duty/main-session/sessions') {
       return sendJson(res,200,mainSessionBridge.sessionDirectory({strict:true}))
     }
-    if (req.method === 'POST' && path === '/api/bili-duty/main-session/create') {
+    if (req.method === 'POST' && path === '/api/bili-duty/main-session/bind') {
       const body=await readBody(req)
-      if(body?.confirm!=='CREATE_AND_BIND_MAIN_SESSION')return sendJson(res,400,{ok:false,error:'请明确确认新建并绑定主 Session'})
-      const result=await mainSessionBridge.createAndBindSession({expectedId:body.expectedId,workspaceId:body.workspaceId,openAfterCreate:body.openAfterCreate===true})
+      if(body?.confirm!=='BIND_EXISTING_MAIN_SESSION')return sendJson(res,400,{ok:false,error:'请明确确认绑定已有主 Session'})
+      const result=await mainSessionBridge.bindExistingSession({sessionId:body.sessionId,expectedId:body.expectedId})
       return sendJson(res,result.ok?200:409,result)
-    }
-    if (path === '/api/bili-duty/main-session/navigation') {
-      // Existing same-origin/loopback management guard applies. No general
-      // remote command channel: only the explicitly bound, unarchived Session.
-      if(req.method==='GET')return sendJson(res,200,{ok:true,navigation:mainSessionBridge.publicNavigation()})
-      if(req.method==='POST'){
-        const body=await readBody(req)
-        const result=body?.action==='open'&&body.confirm==='OPEN_BOUND_MAIN_SESSION'?mainSessionBridge.requestNavigation(body):body?.action==='claim'?mainSessionBridge.claimNavigation(body):body?.action==='complete'?mainSessionBridge.completeNavigation(body):{ok:false,error:'未知导航操作'}
-        return sendJson(res,result.ok?200:409,result)
-      }
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-memory/status') {
       return sendJson(res,200,lifeMemory?.status()||{ok:false,error:'记忆网关尚未就绪'})
