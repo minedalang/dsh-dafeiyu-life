@@ -17,7 +17,7 @@ function harness({ existing = null } = {}) {
   const ctx = {
     get: k => k === 'dshHomePath' ? (...segments) => join(root, ...segments) : undefined,
     logger: { info() {}, warn() {} }, tools: { register() {} },
-    webServer: { register(spec) { handler = spec.handler; return { dispose() {} } } },
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer: { register(spec) { handler = spec.handler; return { dispose() {} } } },
     effect: fn => fn(), settings: { describe() { return [] } },
     slots: { register() {}, inject() {} },
   }

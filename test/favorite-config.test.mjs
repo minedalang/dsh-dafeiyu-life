@@ -39,7 +39,7 @@ test('POST /config persists selected favorite folder and allows clearing it', as
     get(key) { return key === 'dshHomePath' ? (...parts) => join(home, ...parts) : undefined },
     logger: { info() {}, warn() {} },
     tools: { register() {} },
-    webServer: { register(spec) { route = spec; return { dispose() {} } } },
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer: { register(spec) { route = spec; return { dispose() {} } } },
     effect(callback) { return callback() },
     settings: { describe() { return [] } },
     slots: { inject() {}, register() {} },

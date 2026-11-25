@@ -18,7 +18,7 @@ function setup() {
   const ctx={
     get:k=>k==='dshHomePath'?(...parts)=>join(home,...parts):undefined,
     logger:{info(){},warn(){}},tools:{register(){}},
-    webServer:{register(x){handler=x.handler;return {dispose(){}}}},
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},
     effect:f=>f(),settings:{describe(){return []}}
   }
   apply(ctx,{})
@@ -87,7 +87,7 @@ test('native DSH settings exposes a compact entry and management center owns gro
   assert.ok(client.includes('她会自己去 B站、把重要经历带回主 Session'))
   assert.ok(host.includes("path === '/api/bili-duty/persona-growth'"))
   assert.ok(host.includes("+ growthDoc"))
-  assert.ok(client.includes("what: 'manage'"))
+  assert.ok(client.includes("const path = '/api/bili-duty/manage'"))
   assert.ok(host.includes("what === 'manage'"))
   assert.ok(host.includes("path === '/api/bili-duty/manage'"))
 })

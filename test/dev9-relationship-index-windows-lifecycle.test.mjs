@@ -15,7 +15,7 @@ function fixture(home, {collectCleanup = false} = {}) {
     get: key => key === 'dshHomePath' ? (...parts) => join(home, ...parts) : undefined,
     logger: {info() {}, warn() {}},
     tools: {register() {}},
-    webServer: {register(route) {handler = route.handler; return {dispose() {}}}},
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer: {register(route) {handler = route.handler; return {dispose() {}}}},
     // Simulates old HTTP test fixtures that do not run plugin shutdown effects.
     effect(callback) {
       const cleanup = callback()

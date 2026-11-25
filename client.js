@@ -45,11 +45,12 @@ window.__ModuleLoader__.load({
       } catch { /* 不是 JSON 时保留明确 HTTP 状态 */ }
       throw new Error('HTTP ' + res.status + (reason ? '：' + reason : '（本地接口拒绝，原因未返回）'))
     }
-    const jget = async (p) => asJson(await fetch(API + p, { credentials: 'same-origin' }))
+    const jget = async (p) => asJson(await fetch(API + p, { credentials: 'same-origin', referrerPolicy:'no-referrer' }))
     const jpost = async (p, body) => asJson(await fetch(API + p, {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'content-type': 'application/json' },
+      referrerPolicy:'no-referrer',
+      headers: { 'content-type': 'application/json', 'x-dafeiyu-management-intent':'1' },
       body: JSON.stringify(body || {}),
     }))
 
@@ -392,50 +393,41 @@ window.__ModuleLoader__.load({
         setRunNote(text ? { t: text, tone: tone || '' } : null)   // ⭐ 同时镜像到顶部，免得提示掉到页面最底下看不见
       }
 
-      // DSH Mobile 是手机上运行的已配对 HTTPS WebView，实际业务仍在电脑端。
-      // 后台调用系统浏览器只会在电脑上打开页面，不能作为手机的管理入口。
-      // 始终使用当前 WebView 的同源路径；不要从 Host 推断、拼接或返回本机地址。
+      // Use the existing authenticated DSH carrier (Desktop custom scheme,
+      // Web or paired Mobile). Never launch the external OS browser for management.
       const onOpenManage = async (tab = '', anchor = '') => {
         setManageError('')
         try {
           const safeTab = ['firststart', 'models', 'home', 'life', 'life-agent'].includes(tab) ? tab : ''
           const safeAnchor=safeTab==='firststart'&&anchor==='fs-deps-card'?'fs-deps-card':''
-          const ua = String(window.navigator?.userAgent || '')
-          const smallTouch = Number(window.navigator?.maxTouchPoints || 0) > 0 &&
-            Number(window.innerWidth || 1024) <= 900
-          const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || smallTouch
-          if (!isMobile) {
-            const result = await jpost('/open', {what: 'manage', tab: safeTab, anchor: safeAnchor})
-            if (result?.ok !== true) throw new Error(result?.error || '宿主没有确认打开管理中心')
-            return
-          }
-
-          // 通过 DSH Mobile 同源 HTTPS 入口时，配对、TLS 和代理 CSRF 校验由网关执行。
-          // 非 HTTP(S)（例如不带已配对网关的私有 scheme）不可跳转 127.0.0.1。
-          if (!/^https?:$/i.test(String(window.location?.protocol || '')))
-            throw new Error('当前不是 DSH Mobile 的 HTTP(S) 配对页面；请在已配对设备内打开 DSH')
+          const protocol=String(window.location?.protocol||'')
+          const desktop=protocol==='dsh-app:'&&window.location?.host==='app'
+          if (!desktop&&!/^https?:$/i.test(protocol))
+            throw new Error('当前不是受支持的 DSH Desktop 或 HTTP(S) 登录/配对页面')
           const path = '/api/bili-duty/manage' + (safeTab ? '?tab=' + encodeURIComponent(safeTab) : '')
-          const probe = await fetch(path, {credentials: 'same-origin', redirect: 'follow'})
+          const probe = await fetch(path, {credentials: 'same-origin', redirect: 'manual', cache:'no-store', referrerPolicy:'no-referrer'})
           if (!probe.ok) {
-            let reason = ''
-            try {const json = await probe.json();if (typeof json?.error === 'string') reason = json.error.slice(0, 120)} catch {}
-            throw new Error('HTTP ' + probe.status + (reason ? '：' + reason : '：管理页面被当前移动通道拒绝'))
+            const reason=({401:'DSH 宿主尚未登录；无需重新扫码 B站',403:'当前来源或主人权限被拒绝',503:'宿主认证服务暂不可用'})[probe.status]||'没有获得管理中心页面，请检查插件是否已加载'
+            throw new Error('HTTP '+probe.status+'：'+reason)
           }
           if (!/text\/html/i.test(String(probe.headers?.get?.('content-type') || '')))
-            throw new Error('移动网关未返回管理中心 HTML 页面')
-          // 代理或认证层可能在返回 200 后显示通用登录页；必须确认响应来自本插件。
+            throw new Error('宿主未返回管理中心 HTML 页面')
           let isManage = probe.headers?.get?.('x-dafeiyu-management') === '1'
           if (!isManage && typeof probe.text === 'function') {
             const html = await probe.text()
             isManage = html.includes('<meta name="dafeiyu-management" content="1">')
           }
-          if (!isManage) throw new Error('移动访问通道返回的不是大肥鱼管理中心；请检查配对登录状态')
-          // 同一个已配对 HTTPS Origin 打开，不触发电脑浏览器、不暴露独立管理端口。
-          window.location.assign(path+(safeAnchor?'#'+safeAnchor:''))
+          if (!isManage) throw new Error('当前访问通道返回的不是大肥鱼管理中心；请检查 DSH 登录或配对状态')
+          const target=path+(safeAnchor?'#'+safeAnchor:'')
+          if(desktop){
+            // Main-frame navigation preserves the official Desktop bridge. A
+            // no-referrer link avoids forwarding the private scheme as Referer.
+            const link=document.createElement('a');link.href=target;link.target='_self';link.rel='noreferrer';link.referrerPolicy='no-referrer';link.hidden=true
+            document.body.appendChild(link);try{link.click()}finally{link.remove()}
+          }else window.location.assign(target)
         } catch (e) {
-          const detail = String(e?.message || e)
-          const message = '打开管理中心失败：' + detail +
-            '。请确认手机已通过 DSH Mobile 配对并连接到电脑；不要直接将电脑本机 DSH 端口暴露到公网。'
+          const message = '打开管理中心失败：' + String(e?.message || e) +
+            '。请在当前 DSH 内重新登录或重启；手机请检查配对，不要直接将电脑本机 DSH 端口暴露到公网。'
           setManageError(message)
           say(message, 'warn')
         }

@@ -58,7 +58,7 @@ test('管理 API 原子更新真实主人 UID，缺少名册的越权修改拒�
  const home=mkdtempSync(join(tmpdir(),'dafeiyu-owner-uid-check-'))
  try{
   let route
-  const ctx={get(k){return k==='dshHomePath'?(...parts)=>join(home,...parts):undefined},logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){route=x;return {dispose(){}}}},effect(f){return f()},settings:{describe(){return []}}}
+  const ctx={get(k){return k==='dshHomePath'?(...parts)=>join(home,...parts):undefined},logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){route=x;return {dispose(){}}}},effect(f){return f()},settings:{describe(){return []}}}
   apply(ctx,{})
   const call=async (body)=>{
    const req=Readable.from([Buffer.from(JSON.stringify(body))]);req.method='POST';req.url='/api/bili-duty/config';req.headers={host:'localhost'}

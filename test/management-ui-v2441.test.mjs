@@ -36,7 +36,7 @@ test('三段首次安装默认提示词及恢复默认接口被保留',async()=>
   try{
     let route
     apply({get(k){return k==='dshHomePath'?(...x)=>join(home,...x):undefined},logger:{info(){},warn(){}},
-      tools:{register(){}},webServer:{register(x){route=x;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{})
+      tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){route=x;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{})
     async function call(method,path,body){
       const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])
       req.method=method;req.url=path;req.headers={host:'localhost'}

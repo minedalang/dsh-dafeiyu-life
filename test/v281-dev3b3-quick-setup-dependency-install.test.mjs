@@ -61,7 +61,7 @@ test('unverified onboarding can read dependency status, while remote-origin Whis
   let handler
   try{
     const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
-      logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+      logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
     apply(ctx,{})
     const send=async(method,path,origin='http://127.0.0.1:8761')=>{
       const req=Readable.from(method==='POST'?[Buffer.from('{}')]:[])

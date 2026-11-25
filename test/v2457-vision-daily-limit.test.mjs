@@ -11,7 +11,7 @@ const src=path=>readFileSync(new URL(path,root),'utf8');
 test('旧每日视觉限额不再影响取帧卡片，历史字段写入无效',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'v2457-test-'));let route;
  try{
-  apply({get(key){return key==='dshHomePath'?(...names)=>join(dir,...names):undefined},logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(def){route=def;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{});
+  apply({get(key){return key==='dshHomePath'?(...names)=>join(dir,...names):undefined},logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(def){route=def;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{});
   const ask=async(method,path,body)=>{
    const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);req.url=path;req.method=method;req.headers={host:'localhost'};
    let out;const res={writeHead(){},end(data){out=JSON.parse(data)}};await route.handler(req,res);return out;

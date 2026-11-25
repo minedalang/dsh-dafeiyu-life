@@ -25,7 +25,7 @@ test('导航待审角标隐藏样式生效，四种诊断都有可保存开关',
 test('服务端四个诊断开关默认开启，允许独立关停和重新开启',async()=>{
   const root=home();let route;
   try{
-    apply({get(k){return k==='dshHomePath'?(...x)=>join(root,...x):undefined},logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){route=x;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{});
+    apply({get(k){return k==='dshHomePath'?(...x)=>join(root,...x):undefined},logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){route=x;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{});
     const req=async(method,path,body)=>{
       const r=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);r.method=method;r.url=path;r.headers={host:'localhost'};
       let value;const res={writeHead(){},end(text){value=JSON.parse(text)}};await route.handler(r,res);return value;

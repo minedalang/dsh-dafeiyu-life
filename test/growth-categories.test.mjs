@@ -49,7 +49,7 @@ test('video recall MCP is read-only and never edits the manually configured keyw
   const all=new Map()
   const ctx={get:key=>key==='dshHomePath'?(...parts)=>join(home,...parts):undefined,
    logger:{info(){},warn(){}},tools:{register(spec){all.set(spec.name,spec)}},
-   webServer:{register(){return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+   connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(){return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
   apply(ctx,{keywords:['手动设置的搜索词']})
   const recall=all.get('bili_growth_recall')
   assert.ok(recall,'工具已注册')

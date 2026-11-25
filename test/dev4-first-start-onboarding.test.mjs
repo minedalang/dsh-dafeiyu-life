@@ -48,7 +48,7 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
  try{
   const messages=[],archived=[],agents=[{id:'session-native-test',followup:async m=>messages.push(m),inject:async m=>messages.push(m)}];const ws={id:'default-workspace',title:'默认工作区',sessionIds:['session-native-test']};const registry={list:()=>[ws],archivedSessionIds:archived}
   const ctx={get:k=>k==='dshHomePath'?(...p)=>join(home,...p):k==='workspaceRegistry'?registry:undefined,agents:{list:()=>agents},
-    logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+    logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
   apply(ctx,{})
   const call=async(method,path,body,origin='http://127.0.0.1:8011')=>{
     const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])
@@ -132,7 +132,7 @@ test('完成必需设置后 HTTP 业务路由解锁（显式模拟已验证测�
  let handler
  try{
   const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
-    logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+    logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
   apply(ctx,{})
   const stateDir=join(home,'bili-duty')
   const desktop=join(home,'profiles','desktop'),headless=join(home,'profiles','headless')
@@ -204,7 +204,7 @@ test('fresh install HTTP: staged scan, exact UID confirmation, restart, explicit
    if(path==='https://api.bilibili.com/x/web-interface/nav'){navCalls++;return {ok:true,json:async()=>({code:0,data:{isLogin:true,mid:Number(uid),uname:'fixture'}})}}
    throw Error('offline fixture: unexpected fetch')
  }
- const start=()=>apply({get:k=>k==='dshHomePath'?(...p)=>join(home,...p):undefined,agents:{list:()=>[]},logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>{const r=f();if(typeof r==='function')cleanups.push(r);else if(r?.dispose)cleanups.push(()=>r.dispose());return r},settings:{describe(){return []}}},{})
+ const start=()=>apply({get:k=>k==='dshHomePath'?(...p)=>join(home,...p):undefined,agents:{list:()=>[]},logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>{const r=f();if(typeof r==='function')cleanups.push(r);else if(r?.dispose)cleanups.push(()=>r.dispose());return r},settings:{describe(){return []}}},{})
  const stop=()=>{for(const fn of cleanups.reverse())try{fn()}catch{};cleanups=[]}
  const call=async(method,path,body,origin='http://127.0.0.1:8011')=>{
    const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);req.method=method;req.url='/api/bili-duty/'+path;req.headers={host:'127.0.0.1:8011',origin}

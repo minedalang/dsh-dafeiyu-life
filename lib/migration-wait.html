@@ -1,5 +1,5 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>大肥鱼 · 存储迁移维护模式</title><style>
+<meta name="dafeiyu-management" content="1"><title>大肥鱼 · 存储迁移维护模式</title><style>
 :root{color-scheme:light dark;font-family:system-ui,-apple-system,'Segoe UI',sans-serif}body{margin:0;min-height:100vh;display:grid;place-items:center;background:Canvas;color:CanvasText}
 main{box-sizing:border-box;width:min(94vw,540px);padding:32px;border:1px solid color-mix(in srgb,CanvasText 20%,transparent);border-radius:18px}
 h1{font-size:1.35rem;margin:0 0 14px}.spin{display:inline-block;width:22px;height:22px;border:3px solid #777;border-right-color:transparent;border-radius:50%;animation:turn .9s linear infinite;vertical-align:middle;margin-right:12px}@keyframes turn{to{transform:rotate(360deg)}}
@@ -8,6 +8,6 @@ p{line-height:1.7}small{opacity:.78}button{padding:11px 18px;border-radius:9px;b
 <h1><span class="spin" id="spinner" aria-hidden="true"></span><span id="heading">正在检查迁移任务…</span></h1>
 <p id="detail" role="status" aria-live="polite">大肥鱼暂时不启动读写数据的业务模块，正在安全核查离线迁移。</p>
 <p><small id="elapsed">正在读取迁移进度…</small></p>
-<div class="actions"><button type="button" id="cancel" disabled>取消迁移</button><button type="button" id="refresh">刷新状态</button></div>
+<div class="actions"><a href="/">← 返回 DSH</a><button type="button" id="cancel" disabled>取消迁移</button><button type="button" id="refresh">刷新状态</button></div>
 <p><small id="hint">不会删除原数据或半成品；取消仅在安全检查点生效。已进入最终切换的任务可能仍会完成。</small></p>
 </main></body></html>

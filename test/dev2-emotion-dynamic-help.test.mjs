@@ -11,7 +11,7 @@ function apiFixture(){
   const dir=mkdtempSync(join(tmpdir(),'dafeiyu-dev2-api-'))
   let handle
   const ctx={get:k=>k==='dshHomePath'?(...args)=>join(dir,...args):undefined,
-    logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handle=x.handler;return {dispose(){}}}},effect:fn=>fn(),settings:{describe(){return []}}}
+    logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handle=x.handler;return {dispose(){}}}},effect:fn=>fn(),settings:{describe(){return []}}}
   apply(ctx,{})
   const call=async(method,path,body)=>{
     const req=Readable.from(body===undefined?[]:[Buffer.from(JSON.stringify(body))])

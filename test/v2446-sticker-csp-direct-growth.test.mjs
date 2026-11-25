@@ -13,7 +13,7 @@ function setup() {
   const ctx = {
     get: k => k === 'dshHomePath' ? (...parts) => join(home, ...parts) : undefined,
     logger: { info() {}, warn() {} }, tools: { register() {} },
-    webServer: { register(spec) { handler = spec.handler; return { dispose() {} } } },
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer: { register(spec) { handler = spec.handler; return { dispose() {} } } },
     effect: f => f(), settings: { describe() {} },
   }
   apply(ctx, {})

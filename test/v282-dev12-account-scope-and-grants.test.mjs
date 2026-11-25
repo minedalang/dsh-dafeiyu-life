@@ -172,7 +172,7 @@ test('real management GET and POST reflect current UID grants, not the global pr
  account=await switchAccount(dir,account,'20002')
  let route
  const ctx={get(k){return k==='dshHomePath'?(...parts)=>join(dir,...(parts[0]==='bili-duty'?parts.slice(1):parts)):undefined},logger:{info(){},warn(){}},
-  tools:{register(){}},webServer:{register(x){route=x;return {dispose(){}}}},effect(f){return f()},settings:{describe(){return []}}}
+  tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){route=x;return {dispose(){}}}},effect(f){return f()},settings:{describe(){return []}}}
  apply(ctx,{})
  const call=async(method,url,body)=>{
   const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])

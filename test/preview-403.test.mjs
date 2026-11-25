@@ -11,7 +11,7 @@ function createHost(home) {
   const ctx={
     get(k){return k==='dshHomePath' ? (...p)=>join(home,...p) : undefined},
     logger:{info(){},warn(){}}, tools:{register(){}},
-    webServer:{register(spec){route=spec;return {dispose(){}}}},
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec;return {dispose(){}}}},
     effect(cb){return cb()}, settings:{describe(){return []}},
   }
   apply(ctx,{})

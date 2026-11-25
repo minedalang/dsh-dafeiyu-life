@@ -19,7 +19,7 @@ const home=()=>mkdtempSync(join(tmpdir(),'dsh-v2444-'))
 const apiSetup=(base)=>{
  let route
  apply({get(k){return k==='dshHomePath'?(...parts)=>join(base,...parts):undefined},logger:{info(){},warn(){}},tools:{register(){}},
-   webServer:{register(spec){route=spec;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{})
+   connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{})
  return async(method,path,body)=>{
    const req=Readable.from(body===undefined?[]:[Buffer.from(JSON.stringify(body))]);req.method=method;req.url=path;req.headers={host:'localhost'}
    let code,result,headers;const res={writeHead(c,h){code=c;headers=h},end(data){try{result=JSON.parse(data)}catch{result=data}}}

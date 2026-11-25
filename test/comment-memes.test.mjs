@@ -12,7 +12,7 @@ test('评论附梗图的设置、host白名单与调度配置一致',async()=>{
   try {
     let route
     const ctx={get(k){return k==='dshHomePath'?(...parts)=>join(home,...parts):undefined},logger:{info(){},warn(){}},
-      tools:{register(){}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(cb){return cb()},settings:{describe(){return []}}}
+      tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(cb){return cb()},settings:{describe(){return []}}}
     apply(ctx,{})
     async function call(method,path,body){const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);
       req.method=method;req.url=path;req.headers={host:'localhost'}
@@ -55,7 +55,7 @@ test('WebP 在本地梗图库 HTTP 列表中可见，并允许中文文件名',a
     writeFileSync(join(home,'bili-duty','comment-memes','奶龙大笑.webp'),Buffer.from('RIFF----WEBP'))
     let route
     const ctx={get(k){return k==='dshHomePath'?(...parts)=>join(home,...parts):undefined},logger:{info(){},warn(){}},
-      tools:{register(){}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(cb){return cb()},settings:{describe(){return []}}}
+      tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(cb){return cb()},settings:{describe(){return []}}}
     apply(ctx,{})
     const req=Readable.from([]);req.method='GET';req.url='/api/bili-duty/comment-memes';req.headers={host:'localhost'}
     let status,value;const res={writeHead(s){status=s},end(data){value=JSON.parse(data)}}

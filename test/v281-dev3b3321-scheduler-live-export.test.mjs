@@ -86,7 +86,7 @@ test('runtime scheduler endpoint reports the actual timer without ensureStarted 
  let handler
  apply({get:key=>key==='dshHomePath'?(...p)=>join(home,...p):undefined,
   logger:{info(){},warn(){}},tools:{register(){}},
-  webServer:{register(x){handler=x.handler;return {dispose(){}}}},
+  connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},
   effect:fn=>fn(),settings:{describe(){return []}}},{})
  const request=async path=>{
   const req=Readable.from([]);req.method='GET';req.url='/api/bili-duty/'+path

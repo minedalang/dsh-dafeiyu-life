@@ -83,6 +83,7 @@ import {inspectExternalLifeCopy} from './lib/storage-external-life-retired.mjs'
 import {queueModelCleanup,readCleanupJob} from './lib/storage-cleanup-queue.mjs'
 import {queueDomainMigration,readMigrationJob,assertMigrationStartupSafe} from './lib/storage-migration-queue.mjs'
 import {registerMigrationMaintenance} from './lib/storage-migration-maintenance.mjs'
+import {managementOwnerStatus,managementAuthError,explicitManagementIntent,managementPath} from './lib/management-host-auth.mjs'
 import {storageTargetSuggestions} from './lib/storage-platform.mjs'
 import {storageArchiveInventory} from './lib/storage-archive-inventory.mjs'
 import {readLifeReturnEvidence} from './lib/storage-life-return-evidence.mjs'
@@ -268,7 +269,7 @@ import { interestMemoryRows, selectionInterests, listLifeInterests, scopedIntere
 import { readModelTaskUsage, recordModelTask, MODEL_TASKS } from './lib/model-task-usage.mjs'
 
 export const name = 'dafeiyu-life'
-export const inject = ['webServer', 'tools', 'settings', 'agents', 'sessionTitle', 'systemPrompt']
+export const inject = ['webServer', 'connection', 'tools', 'settings', 'agents', 'sessionTitle', 'systemPrompt']
 
 /**
  * 🔴 每个字段都要 `.extra('volatile', true)`：DSH 的 settings.update() 只认 volatile 字段
@@ -8801,7 +8802,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     if (req.method === 'GET' && path === '/api/bili-duty/manage') {
       const body=readFileSync(join(pluginDir,'lib','management-console.html'),'utf8')
       res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
-        'x-dafeiyu-management':'1','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"})
+        'x-dafeiyu-management':'1','referrer-policy':'no-referrer','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"})
       return res.end(body)
     }
     // Bundled character art for management UI. Constant filename; no user path input.
@@ -8820,7 +8821,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(req.method === 'POST') {
         const host=String(req.headers.host||'')
         const origin=String(req.headers.origin||'')
-        if(!host||!origin||!['http://'+host,'https://'+host].includes(origin)||
+        if(!explicitManagementIntent(req)||
           String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
           return sendJson(res,403,{ok:false,error:'只能由电脑本机管理中心同源确认 MCP 安全修复'})
         try {
@@ -8857,7 +8858,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const peer=String(req.socket?.remoteAddress||'')
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||
-         (req.method==='POST'&&path!=='/api/bili-duty/storage/check'&&(!origin||!host))||
+         (req.method==='POST'&&path!=='/api/bili-duty/storage/check'&&!explicitManagementIntent(req))||
          origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin))||
          String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'仅允许电脑本机同源管理中心操作存储'})
@@ -10531,7 +10532,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       return sendJson(res,200,{ok:true,...dshVisionReview.status(),pythonRuntime:(()=>{const r=visionPythonCache?.result;return {status:r?.ok?'healthy':r?'unhealthy':'unchecked',source:r?.source||'none',reason:r?.reason||'not_run',stage:r?.stage||''}})(),visionRepair:visionEnvironmentRepair.status(),imageUrl:'/api/bili-duty/local-vision/selftest-image'})
     if(req.method==='POST'&&path==='/api/bili-duty/dsh-vision/repair'){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+      if(!explicitManagementIntent(req)||
         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
         return sendJson(res,403,{ok:false,error:'仅允许本机管理中心明确发起视觉环境修复'})
@@ -10539,7 +10540,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if(req.method==='POST'&&['/api/bili-duty/dsh-vision/verify','/api/bili-duty/dsh-vision/review'].includes(path)){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+      if(!explicitManagementIntent(req)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'DSH 图片验收仅允许管理中心同源操作'})
       try{
         if(path.endsWith('/verify'))return sendJson(res,200,await dshVisionReview.verify())
@@ -10556,7 +10557,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     if(req.method==='POST'&&path==='/api/bili-duty/local-vision/ensure'){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       const ip=String(req.socket?.remoteAddress||'')
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+      if(!explicitManagementIntent(req)||
         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
         return sendJson(res,403,{ok:false,error:'仅允许在本机 DSH 管理中心恢复 Ollama'})
@@ -10576,7 +10577,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       return sendJson(res,200,{ok:true,whisper:whisperStatus()})
     if(req.method==='POST'&&path==='/api/bili-duty/video-dependencies/whisper/delete'){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+      if(!explicitManagementIntent(req)||
          String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
          !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
         return sendJson(res,403,{ok:false,error:'仅允许从本机 DSH 管理中心删除插件自有 Whisper 模型'})
@@ -10602,7 +10603,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if(req.method==='POST'&&['/api/bili-duty/video-dependencies/ffmpeg/install','/api/bili-duty/video-dependencies/ffmpeg/test'].includes(path)){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+      if(!explicitManagementIntent(req)||
         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
         return sendJson(res,403,{ok:false,error:'仅允许从本机 DSH 管理中心安装或验证 FFmpeg'})
@@ -10615,7 +10616,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if(req.method==='POST'&&path==='/api/bili-duty/video-dependencies/paths'){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+      if(!explicitManagementIntent(req)||
         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
         return sendJson(res,403,{ok:false,error:'仅允许本机 DSH 管理中心选择已安装程序或模型目录'})
@@ -10649,7 +10650,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if(req.method==='POST'&&['/api/bili-duty/local-vision/install','/api/bili-duty/local-vision/cancel','/api/bili-duty/local-vision/select','/api/bili-duty/local-vision/verify','/api/bili-duty/local-vision/review','/api/bili-duty/local-vision/delete'].includes(path)){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+      if(!explicitManagementIntent(req)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'本地视觉模型管理仅允许电脑端同源操作'})
       try{
         const data=await readBody(req,1024)
@@ -10696,7 +10697,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if (req.method === 'POST' && ['/api/bili-duty/embedding/install','/api/bili-duty/embedding/disable','/api/bili-duty/embedding/rebuild','/api/bili-duty/embedding/cancel','/api/bili-duty/embedding/delete','/api/bili-duty/embedding/import-model'].includes(path)) {
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+      if(!explicitManagementIntent(req)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'本地语义模型管理只允许电脑端管理中心同源操作'})
       try{
         if(path.endsWith('/install')){
@@ -11507,7 +11508,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     // This must not clear seen IDs or force any platform send.
     if(req.method==='POST'&&(path==='/api/bili-duty/dm-contact-check'||path==='/api/bili-duty/dm-contact-reconsider')){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'')
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+      if(!explicitManagementIntent(req)||
         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
         return sendJson(res,403,{ok:false,error:'仅可在本机管理中心检查指定联系人'})
@@ -11574,7 +11575,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     // 建 venv + 装依赖（**不等它**：几分钟的活，进度写 install.log）
     if (req.method === 'POST' && path === '/api/bili-duty/install') {
       const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'');
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+      if(!explicitManagementIntent(req)||
         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
         return sendJson(res,403,{ok:false,error:'仅允许在本机管理中心明确操作 B站主依赖安装'});
@@ -11585,7 +11586,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     if (req.method === 'POST' && path === '/api/bili-duty/install-asr') {
       // Initial setup permits optional downloads only on the local management origin.
       const origin=String(req.headers.origin||''),host=String(req.headers.host||''),ip=String(req.socket?.remoteAddress||'');
-      if(!host||!origin||![`http://${host}`,`https://${host}`].includes(origin)||
+      if(!explicitManagementIntent(req)||
         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
         return sendJson(res,403,{ok:false,error:'仅允许从本机 DSH 管理中心安装 Whisper'});
@@ -11660,22 +11661,12 @@ logger:{warn:m=>log('社交意图：'+m)}
       const body = await readBody(req)
       const what = String(body?.what || 'out')
       if(!firstStart.isReady() && what!=='manage')return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
-      // 管理中心必须由宿主构造绝对 HTTP URL：设置页所在的 DSH scheme 不是 http(s)，
-      // 直接 new URL(..., window.location.href) 会把自定义 scheme 传进来而被拒绝。
-      if (what === 'manage' || what === 'url') {
-        let u = ''
-        if (what === 'manage') {
-          const host = String(req.headers?.host || '')
-          if (!/^(?:127\.0\.0\.1|localhost|\[::1\])(?::\d{1,5})?$/i.test(host))
-            return sendJson(res, 200, { ok: false, error: '管理中心只允许从本机 DSH 服务打开' })
-          const tab=String(body?.tab||'');u = `http://${host}/api/bili-duty/manage${['firststart','models','home','life'].includes(tab)?'?tab='+encodeURIComponent(tab):''}`;
-          if(tab==='firststart'&&body?.anchor==='fs-deps-card')u+='#fs-deps-card'
-          // 安卓客户端可以仅获取地址并由 WebView 导航，避免尝试在宿主系统弹窗。
-          if (body?.resolveOnly === true) return sendJson(res, 200, { ok: true, url: u })
-        } else {
-          u = String(body?.u || '')
-          if (!/^https?:\/\//i.test(u)) return sendJson(res, 200, { ok: false, error: '只接受 http(s) 链接' })
-        }
+      // Management must stay on the authenticated carrier. No owner credential
+      // or absolute Host URL is handed to an external browser by this route.
+      if (what === 'manage') return sendJson(res, 200, {ok:true, path:managementPath(body?.tab,body?.anchor), openIn:'current-dsh'})
+      if (what === 'url') {
+        const u = String(body?.u || '')
+        if (!/^https?:\/\//i.test(u)) return sendJson(res, 200, { ok: false, error: '只接受 http(s) 链接' })
         if (process.platform !== 'win32') {
           const opener = process.platform === 'darwin' ? 'open' : 'xdg-open'
           const child = spawn(opener, [u], { detached: true, stdio: 'ignore' })
@@ -11987,10 +11978,10 @@ logger:{warn:m=>log('社交意图：'+m)}
     try {
       const host = String(req.headers.host || '')
       if (String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site') return false
-      if (!host) return true   // 没有 Host 头 = 不是浏览器/不是外来的 HTTP 请求
+      if (!host) return false  // Host 缺失不能证明本机或主人身份
       if (!/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(host)) return false
       const pick = String(req.headers.origin || req.headers.referer || '')
-      if (!pick) return true   // 不是浏览器发的（本机脚本/宿主内部）—— 本机进程本来就有权限
+      if (!pick) return true   // Desktop 转发可能移除来源头；仍必须通过宿主 owner 鉴权
       try {
         const u = new URL(pick)
         return u.host.toLowerCase() === host.toLowerCase()
@@ -12000,13 +11991,16 @@ logger:{warn:m=>log('社交意图：'+m)}
     ctx.effect(() => ctx.webServer.register({
       kind: 'prefix',
       path: '/api/bili-duty',
+      auth: 'required',
   // ⭐ 2026-10-23 安全加固（审计点名"未鉴权的控制接口"）：**只接受本机同源请求** ——
   //    别的网页在你浏览器里也能打到 127.0.0.1，所以要比对 Host 与本机、Origin/Referer 与同源 ✓
-      handler: async (req, res) => {
+      handler: async (req, res, peer) => {
     if (!sameOriginOk(req)) {
       try { sendJson(res, 403, { ok: false, error: '只接受本机同源请求' }) } catch { /* 忽略 */ }
       return
     }
+        const status = await managementOwnerStatus(ctx, req, peer)
+        if (status !== 200) return sendJson(res, status, managementAuthError(status))
         try { await handle(req, res, new URL(req.url, 'http://127.0.0.1')) } catch (e) {
           sendJson(res, 500, { ok: false, error: e?.message ?? String(e) })
         }

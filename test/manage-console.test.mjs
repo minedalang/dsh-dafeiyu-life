@@ -10,7 +10,7 @@ function fixture(){
  const home=mkdtempSync(join(tmpdir(),'bili-console-'))
  let handler=null
  const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
-   logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+   logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
  apply(ctx,{})
  async function call(method,path,body,headers={host:'127.0.0.1:7012'}){
    const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])
@@ -65,7 +65,7 @@ test('manage HTML and JS are served from same DSH route without extra port or pr
    const client=await import('node:fs').then(m=>m.readFileSync(new URL('../client.js',import.meta.url),'utf8'))
    assert.match(client,/const onOpenManage = async/)
    assert.match(client,/fetch\(path, \{credentials: 'same-origin'/)
-   assert.match(client,/window\.location\.assign\(path\+\(safeAnchor/)
+   assert.match(client,/window\.location\.assign\(target\)/)
  }finally{fx.close()}
 })
 

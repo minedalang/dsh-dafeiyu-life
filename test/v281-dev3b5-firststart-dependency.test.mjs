@@ -26,7 +26,7 @@ test('fresh install: status remains unready and QR start is blocked before depen
   try{
     const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
       logger:{info(){},warn(){}},tools:{register(){}},
-      webServer:{register(opts){handler=opts.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+      connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(opts){handler=opts.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
     apply(ctx,{})
     const call=async(method,path)=>{
       const req=Readable.from(method==='POST'?[Buffer.from('{}')]:[])
@@ -73,7 +73,7 @@ test('main dependency installation endpoint is restricted to a local same-origin
   let handler
   try{
     const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
-      logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+      logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
     apply(ctx,{})
     const call=async(origin,remote='::1')=>{
       const req=Readable.from([Buffer.from('{}')]);req.method='POST';req.url='/api/bili-duty/install';
@@ -94,7 +94,7 @@ test('a fake package directory is insufficient to assert a working QR: failure g
   let handler
   try{
     const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
-      logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+      logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
     apply(ctx,{})
     const state=join(home,'bili-duty'),venv=join(state,'.venv')
     const packages=process.platform==='win32'?join(venv,'Lib','site-packages'):join(venv,'lib','python3.12','site-packages')
@@ -131,7 +131,7 @@ test('offline QR route uses the plugin-local Python on Windows/Linux without net
   let handler
   try{
     const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
-      logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+      logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
     apply(ctx,{})
     const state=join(home,'bili-duty'),venv=join(state,'.venv')
     // A real local venv supplies the actual native executable. No Windows symlink,

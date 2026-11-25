@@ -55,7 +55,7 @@ test('HTTP 实际保存新时间段、间隔 1 分钟、拒绝无效数据且保
   const home=mkdtempSync(join(tmpdir(),'dsh-multi-window-'))
   let route
   const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
-    logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(spec){route=spec.handler;return{dispose(){}}}},
+    logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec.handler;return{dispose(){}}}},
     effect:f=>f(),settings:{describe(){return[]}}}
   try {
     apply(ctx,{})

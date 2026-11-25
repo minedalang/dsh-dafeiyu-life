@@ -75,7 +75,7 @@ test('新增动态开关与每日上限可通过管理中心接口保存，默�
  const {Readable}=await import('node:stream')
  const dir=mkdtempSync(join(tmpdir(),'v2485-config-'));let handler
  const ctx={get:k=>k==='dshHomePath'?(...p)=>join(dir,...p):undefined,
-  logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(spec){handler=spec.handler;return{dispose(){}}}},
+  logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){handler=spec.handler;return{dispose(){}}}},
   effect:x=>x(),settings:{describe(){return[]}},slots:{register(){},inject(){}}}
  try{
   apply(ctx,{})

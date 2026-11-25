@@ -13,7 +13,7 @@ test('旧回复设置不会恢复：配置、UI 与提示词均不再开启跑�
   const ctx={
     get(k){return k==='dshHomePath' ? (...xs)=>join(home,...xs) : undefined},
     logger:{info(){},warn(){}}, tools:{register(){}},
-    webServer:{register(spec){route=spec;return {dispose(){}}}},
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec;return {dispose(){}}}},
     effect(cb){return cb()}, settings:{describe(){return []}},
   }
   try{

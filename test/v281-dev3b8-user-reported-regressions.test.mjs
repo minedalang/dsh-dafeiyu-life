@@ -66,7 +66,7 @@ test('首次设置期间允许本机选择现有 Whisper 模型目录，禁止�
   let handler
   try{
     const ctx={get:k=>k==='dshHomePath'?(...parts)=>join(home,...parts):undefined,
-      logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(o){handler=o.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+      logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(o){handler=o.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
     apply(ctx,{})
     const model=join(home,'custom-whisper');mkdirSync(model)
     writeFileSync(join(model,'model.bin'),'test');writeFileSync(join(model,'config.json'),'{}')

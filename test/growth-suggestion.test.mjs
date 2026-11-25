@@ -89,7 +89,7 @@ function mockHost({modelExit=0,personaPrompt='',characterLore='',badFirst=false}
   writeFileSync(join(home,'bili-duty','config.json'),JSON.stringify({dshBin:fakeBin,personaPrompt,characterLore}))
   let handler
   const ctx={get:k=>k==='dshHomePath'?(...parts)=>join(home,...parts):k==='agentDefaultModel'?{currentSelection:()=>({provider:'fixture',model:'fixture-model'})}:undefined,
-    logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+    logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
   apply(ctx,{dshBin:fakeBin})
   async function call(action,body={}){
    const req=Readable.from([Buffer.from(JSON.stringify({action,...body}))]);req.method='POST';req.url='/api/bili-duty/persona-growth';req.headers={host:'localhost'}

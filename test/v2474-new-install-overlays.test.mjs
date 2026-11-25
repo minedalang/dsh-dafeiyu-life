@@ -17,7 +17,7 @@ test('fresh install creates main and DM security overlays during plugin apply',(
     },
     logger:{info(){},warn(){}},
     tools:{register(){}},
-    webServer:{register(){return {dispose(){}}}},
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(){return {dispose(){}}}},
     effect(cb){ effects.push(cb); try{return cb()}catch{return undefined}},
     settings:{register(){return {}}},
     slots:{inject(){},register(){return {}}},

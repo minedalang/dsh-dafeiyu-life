@@ -57,7 +57,7 @@ test('main Session new reply tool is separate from ordinary whitelist-only manua
  const registered=[]
  const ctx={get(key){return key==='dshHomePath'?(...parts)=>join(home,...parts):undefined},
   logger:{info(){},warn(){}},tools:{register(spec){registered.push(spec);return spec}},
-  webServer:{register(){return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}},slots:{inject(){},register(){}}}
+  connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(){return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}},slots:{inject(){},register(){}}}
  apply(ctx,{})
  const by=Object.fromEntries(registered.map(t=>[t.name,t]))
  assert.ok(by.bili_dm_contact_lookup);assert.ok(by.bili_reply_existing_dm_manual)

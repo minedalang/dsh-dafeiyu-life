@@ -56,7 +56,7 @@ test('管理页只保存活跃私信定向参数，旧配置项不会被静默�
 test('插件配置 API 保留旧轮询字段的读取与保存兼容',async()=>{
   const home=mkdtempSync(join(tmpdir(),'v2453-ui-'));let route
   try{
-    apply({get(k){return k==='dshHomePath'?(...x)=>join(home,...x):undefined},logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){route=x;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{})
+    apply({get(k){return k==='dshHomePath'?(...x)=>join(home,...x):undefined},logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){route=x;return {dispose(){}}}},effect(fn){return fn()},settings:{describe(){return []}}},{})
     async function req(method,path,body){const request=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])
       request.method=method;request.url=path;request.headers={host:'localhost'}
       let out;const response={writeHead(){},end(v){out=JSON.parse(v)}};await route.handler(request,response);return out}

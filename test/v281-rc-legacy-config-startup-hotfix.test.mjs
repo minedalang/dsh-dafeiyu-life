@@ -19,7 +19,7 @@ function fixture({saved={},hostSettings=null}={}){
   const ctx={
     get:k=>k==='dshHomePath'?(...parts)=>join(root,...parts):undefined,
     logger:{info(){},warn(){},error(){}},tools:{register(){}},
-    webServer:{register(spec){route=spec;return {dispose(){}}}},
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec;return {dispose(){}}}},
     settings:{describe:()=>hostSettings?[{value:{perDay:50,mentionName:'',overlayMcp:true,...hostSettings},user:hostSettings}]:[]},
     effect(fn){
       const resource=fn()

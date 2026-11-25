@@ -115,7 +115,7 @@ test('only fresh maintenance lease PID can be exempted; other Python/DSH process
 test('maintenance-only plugin registers status/cancel surface without activating business API',()=>fixture(async({root,temp})=>{
  queue({root,temp})
  let handler;const disposers=[]
- const ctx={webServer:{register(spec){assert.equal(spec.path,'/api/bili-duty');handler=spec.handler;return ()=>{}}},effect(fn){disposers.push(fn())}}
+ const ctx={connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){assert.equal(spec.path,'/api/bili-duty');handler=spec.handler;return ()=>{}}},effect(fn){disposers.push(fn())}}
  try{
   assert.equal(registerMigrationMaintenance(ctx,{root,pluginDir:new URL('..',import.meta.url).pathname}),true)
   const row=migrationMaintenanceView(root);assert.equal(row.maintenance,true)

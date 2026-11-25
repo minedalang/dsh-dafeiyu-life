@@ -122,7 +122,7 @@ test('统一好友设置保存时派生兼容名单，公开 @ 与只读意愿�
  try{
    let route
    const ctx={get(k){return k==='dshHomePath'?(...parts)=>join(home,...parts):undefined},logger:{info(){},warn(){}},
-     tools:{register(){}},webServer:{register(x){route=x;return {dispose(){}}}},effect(f){return f()},settings:{describe(){return []}}}
+     tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){route=x;return {dispose(){}}}},effect(f){return f()},settings:{describe(){return []}}}
    apply(ctx,{})
    const call=async(method,path,body)=>{
      const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])

@@ -67,7 +67,7 @@ test('真实 HTTP：首次设置可保存非外发配置，新增社交和自主
   t.after(()=>rmSync(home,{recursive:true,force:true}))
   let handle
   apply({get:k=>k==='dshHomePath'?(...p)=>join(home,...p):undefined,
-    logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handle=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}},{})
+    logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handle=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}},{})
   const call=async(method,path,body,origin='http://127.0.0.1:8011')=>{
     const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])
     req.method=method;req.url='/api/bili-duty/'+path;req.headers={host:'127.0.0.1:8011',origin}

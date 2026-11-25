@@ -12,7 +12,7 @@ test('diagnostics reads actual preview receipts from fixed home directories',asy
  try{
   let route
   const ctx={get(k){return k==='dshHomePath'?(...parts)=>join(home,...parts):undefined},logger:{info(){},warn(){}},
-    tools:{register(){}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(cb){return cb()},settings:{describe(){return []}}}
+    tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(cb){return cb()},settings:{describe(){return []}}}
   apply(ctx,{visionDebug:true,visionEnabled:true})
   const day=new Date().toLocaleDateString('sv-SE')
   const events=join(home,'bili-duty','vision-events');mkdirSync(events,{recursive:true})

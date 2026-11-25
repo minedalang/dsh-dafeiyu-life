@@ -13,7 +13,7 @@ function setup(){
   writeFileSync(join(duty,'bili_credential.json'),JSON.stringify({dedeuserid:'12345'}))
   const registered=[]
   const ctx={get(key){return key==='dshHomePath'?(...parts)=>join(home,...parts):undefined},logger:{info(){},warn(){}},
-    tools:{register(spec){registered.push(spec);return spec}},webServer:{register(spec){return {dispose(){}}}},effect(callback){return callback()},settings:{describe(){return []}},slots:{inject(){},register(){}}}
+    tools:{register(spec){registered.push(spec);return spec}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){return {dispose(){}}}},effect(callback){return callback()},settings:{describe(){return []}},slots:{inject(){},register(){}}}
   apply(ctx,{})
   return {home,duty,registered}
 }

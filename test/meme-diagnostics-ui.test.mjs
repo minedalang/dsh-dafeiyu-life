@@ -34,7 +34,7 @@ test('今日表情包诊断只读取固定日期 JSONL，统计发送和图片�
   try{
     let route
     const ctx={get(k){return k==='dshHomePath'?(...parts)=>join(home,...parts):undefined},logger:{info(){},warn(){}},
-      tools:{register(){}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(cb){return cb()},settings:{describe(){return []}}}
+      tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(cb){return cb()},settings:{describe(){return []}}}
     apply(ctx,{})
     const day=new Date().toLocaleDateString('sv-SE') // local date in test env
     const folder=join(home,'bili-duty','meme-diagnostics')

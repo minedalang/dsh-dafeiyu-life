@@ -73,7 +73,7 @@ test('date filter, total, offset/limit pagination, and zero record day',()=>{
 test('real HTTP route reads migrated seen ledger and exposes counts',async()=>{
  const home=mkdtempSync(join(tmpdir(),'bili-recent-http-'));let handler
  try{
-  const ctx={get:k=>k==='dshHomePath'?(...p)=>join(home,...p):undefined,logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+  const ctx={get:k=>k==='dshHomePath'?(...p)=>join(home,...p):undefined,logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
   const dir=join(home,'bili-duty');makeSources(dir)
   apply(ctx,{}) // 启动即迁移，之后 HTTP 只读 seen 账本
   async function get(path){
@@ -98,7 +98,7 @@ test('旧评论记录归档到同一判重账本的月度文件后仍可查询',
    '## 看过的视频',
    '| 2025-09-14 | BV1234567891 | 古老视频 | UP | 已看 |'
   ].join('\n'),'utf8')
-  const ctx={get:k=>k==='dshHomePath'?(...p)=>join(home,...p):undefined,logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+  const ctx={get:k=>k==='dshHomePath'?(...p)=>join(home,...p):undefined,logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
   apply(ctx,{})
   const req=Readable.from([]);req.url='/api/bili-duty/status';req.method='GET';req.headers={host:'127.0.0.1:8917'}
   const res={writeHead(){},end(){}}

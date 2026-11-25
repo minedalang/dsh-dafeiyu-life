@@ -13,7 +13,7 @@ test('主 Session 注册单条手动点赞工具，并要求真实 BV、总开�
     get(key){return key==='dshHomePath'?(...parts)=>join(home,...parts):undefined},
     logger:{info(){},warn(){}},
     tools:{register(spec){registered.push(spec);return spec}},
-    webServer:{register(spec){route=spec;return {dispose(){}}}},
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec;return {dispose(){}}}},
     effect(callback){return callback()},settings:{describe(){return []}},slots:{inject(){},register(){}},
   }
   try{

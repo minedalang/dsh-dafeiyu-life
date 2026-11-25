@@ -40,7 +40,7 @@ test('settings write and prompt endpoints, reject agent editing private profile'
   try {
     let route
     const ctx={get(k){return k==='dshHomePath'?(...parts)=>join(home,...parts):undefined},logger:{info(){},warn(){}},
-      tools:{register(){}},webServer:{register(x){route=x;return {dispose(){}}}},effect(f){return f()},settings:{describe(){return []}}}
+      tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){route=x;return {dispose(){}}}},effect(f){return f()},settings:{describe(){return []}}}
     apply(ctx,{})
     const call=async(method,path,body)=>{
       const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])

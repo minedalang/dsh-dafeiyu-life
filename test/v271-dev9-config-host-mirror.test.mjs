@@ -16,7 +16,7 @@ async function fixture(t,{hostMode='none'}={}){
     async update(ns,patch){assert.equal(ns,'dafeiyu-life');updates++;if(hostMode==='stale')return;Object.assign(user,patch)}
   }
   apply({get:key=>key==='dshHomePath'?(...parts)=>join(home,...parts):undefined,
-    logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:callback=>callback(),settings},{})
+    logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:callback=>callback(),settings},{})
   async function call(method,path,body){
     const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])
     req.method=method;req.url='/api/bili-duty/'+path;req.headers={host:'127.0.0.1:8855',origin:'http://127.0.0.1:8855'}

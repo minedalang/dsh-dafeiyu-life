@@ -71,7 +71,7 @@ test('HTTP 接口支持评论类别并组合日期过滤',async()=>{
  }catch{mkdirSync(join(dir,'bili-duty'),{recursive:true});writeSeen(join(dir,'bili-duty'))}
  try{
   const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(dir,...xs):undefined,
-   logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}};
+   logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}};
   apply(ctx,{});
   const req=Readable.from([]);req.method='GET';req.url='/api/bili-duty/recent-comments?kind=reply&day=2026-10-25&limit=20';req.headers={host:'127.0.0.1:11409'};
   let code=0,body;const res={writeHead(c){code=c},end(v){body=String(v??'')}};

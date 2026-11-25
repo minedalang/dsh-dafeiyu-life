@@ -49,7 +49,7 @@ test('fresh DSH settings has explicit dependency install entry routing to real s
   const client=read('client.js'),server=read('index.js'),html=read('lib/management-console.html'),ui=read('lib/management-console.js')
   assert.match(client,/① 安装／修复主依赖/)
   assert.match(client,/onOpenManage\('firststart','fs-deps-card'\)/)
-  assert.match(server,/tab==='firststart'&&body\?\.anchor==='fs-deps-card'/)
+  assert.match(read('lib/management-host-auth.mjs'),/safeTab==='firststart'&&anchor==='fs-deps-card'/)
   assert.match(html,/href="#fs-deps-card" data-fs-step="account"/)
   assert.match(html,/id="fs-main-deps-install"/)
   assert.match(ui,/location\.hash==='#fs-deps-card'/)
@@ -68,7 +68,7 @@ test('server only allows the fixed first-start dependency anchor, even before on
   let handler
   try{
     const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
-      logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return{dispose(){}}}},
+      logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return{dispose(){}}}},
       effect:fn=>fn(),settings:{describe(){return[]}}}
     apply(ctx,{})
     const open=async anchor=>{
@@ -80,8 +80,8 @@ test('server only allows the fixed first-start dependency anchor, even before on
     }
     const safe=await open('fs-deps-card')
     assert.equal(safe.code,200);assert.equal(safe.result.ok,true)
-    assert.equal(safe.result.url,'http://127.0.0.1:5596/api/bili-duty/manage?tab=firststart#fs-deps-card')
+    assert.equal(safe.result.path,'/api/bili-duty/manage?tab=firststart#fs-deps-card')
     const attacker=await open('javascript:alert(1)')
-    assert.equal(attacker.result.url,'http://127.0.0.1:5596/api/bili-duty/manage?tab=firststart')
+    assert.equal(attacker.result.path,'/api/bili-duty/manage?tab=firststart')
   }finally{rmSync(home,{recursive:true,force:true})}
 })

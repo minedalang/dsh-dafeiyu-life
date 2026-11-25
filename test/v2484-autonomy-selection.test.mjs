@@ -14,7 +14,7 @@ test('新安装视频互动默认允许，旧版关闭仍可恢复；设置路�
   const tmp=mkdtempSync(join(tmpdir(),'dafeiyu-v2484-config-'))
   let handler
   const ctx={get:k=>k==='dshHomePath'?(...p)=>join(tmp,...p):undefined,
-    logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(spec){handler=spec.handler;return{dispose(){}}}},
+    logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){handler=spec.handler;return{dispose(){}}}},
     effect:x=>x(),settings:{describe(){return[]}},slots:{register(){},inject(){}}}
   try{
     apply(ctx,{})

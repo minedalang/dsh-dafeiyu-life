@@ -23,7 +23,7 @@ test('按分类递归扫描，完整名称区分不同文件夹里的同名梗�
    assert.deepEqual(listCommentMemes(folder,{category:'其他'}).names,['其他/奶龙大笑'])
    let route
    const ctx={get(k){return k==='dshHomePath'?(...parts)=>join(home,...parts):undefined},logger:{info(){},warn(){}},
-     tools:{register(){}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(cb){return cb()},settings:{describe(){return []}}}
+     tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){route=spec;return {dispose(){}}}},effect(cb){return cb()},settings:{describe(){return []}}}
    apply(ctx,{})
    const req=Readable.from([]);req.method='GET';req.url='/api/bili-duty/comment-memes';req.headers={host:'localhost'}
    let value;const res={writeHead(){},end(s){value=JSON.parse(s)}}

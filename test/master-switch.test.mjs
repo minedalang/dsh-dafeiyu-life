@@ -15,7 +15,7 @@ test('总开关可关闭/重启后保持/恢复：关闭时不能跑一轮，旧
     get(key) { return key === 'dshHomePath' ? (...parts) => join(home, ...parts) : undefined },
     logger: {info(){},warn(){}},
     tools: {register(){}},
-    webServer: {register(spec) {route=spec;return {dispose(){}}}},
+    connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer: {register(spec) {route=spec;return {dispose(){}}}},
     effect(callback) {return callback()},
     settings: {describe(){return []}},
   }

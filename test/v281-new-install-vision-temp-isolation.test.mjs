@@ -15,7 +15,7 @@ test('new install is classified before the vision Python scratch directory is al
     const ctx={
       get:key=>key==='dshHomePath'?(...parts)=>join(home,...parts):undefined,
       logger:{info(){},warn(){}},tools:{register(){}},
-      webServer:{register(route){handler=route.handler;return {dispose(){}}}},
+      connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(route){handler=route.handler;return {dispose(){}}}},
       effect:fn=>fn(),settings:{describe(){return []}},slots:{register(){},inject(){}},
     }
     apply(ctx,{})

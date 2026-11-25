@@ -127,7 +127,7 @@ test('真实管理 HTTP：B站人物有平台标识；陌生平台/未知 UID/�
   idx.close()
   const ctx={get:key=>key==='dshHomePath'?(...parts)=>join(home,...parts):undefined,
    logger:{info(){},warn(){}},tools:{register(){}},settings:{describe(){return[]}},
-   webServer:{register(route){handler=route.handler;return{dispose(){}}}},
+   connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(route){handler=route.handler;return{dispose(){}}}},
    effect(fn){const clean=fn();if(typeof clean==='function')closed.push(clean)}}
   apply(ctx,{})
   async function get(path,headers={}){
