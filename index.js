@@ -7034,6 +7034,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getEpisodeCandidates:(options)=>lifeMemory?.semanticCandidates(options)||[],
     getVisualExperiences:options=>lifeMemory?.recentVisualExperienceContext(options)||[],
     getVisualDetailCandidates:options=>lifeMemory?.visualDetailCandidates(options)||[],
+    getAssociations:options=>lifeMemory?.associationCandidates(options)||[],
+    validateAssociationPath:options=>lifeMemory?.validateAssociationPath(options)===true,
     groupVideoEpisodes:rows=>lifeMemory?.videoRecallGroups(rows)||rows,
     getPrivateInsights:(opts)=>lifeMemory?.privateInsights(opts)||[],
     getPrivateInsightCandidates:(opts)=>lifeMemory?.privateInsightCandidates(opts)||[],

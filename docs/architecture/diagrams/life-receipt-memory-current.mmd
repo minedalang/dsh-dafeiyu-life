@@ -254,3 +254,8 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   assocProjection283["同库深浅联想投影及派生向量；账号与遗忘复核"]
   assocProjection283 -.->|只读思考素材| recall
 %% @code assocProjection283 | lib/memory-retriever.mjs | const validateContextualVisualRecall=
+
+  persistentAssoc283["同库关系边：源身份和指纹，独立衰减"]
+  episode -.->|公开清晰源| persistentAssoc283
+  persistentAssoc283 -.->|全路径复核| assocProjection283
+%% @code persistentAssoc283 | lib/life-memory-gateway.mjs | function validateAssociationPath

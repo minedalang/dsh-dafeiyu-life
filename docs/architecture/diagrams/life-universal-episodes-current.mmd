@@ -196,3 +196,8 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
   episodeAssoc283["原创评论可参考其他视频的真实印象；不强制引用"]
   episodeAssoc283 -.->|只读思考素材| menu
 %% @code episodeAssoc283 | lib/autonomous-planner.mjs | let choice,associationSources=[],pastVideoAssociations=[]
+
+  persistentAssoc283["模型提议关系；当前源核验，非事实或授权"]
+  memory -.-> persistentAssoc283
+  persistentAssoc283 -.->|有界只读激活| episodeAssoc283
+%% @code persistentAssoc283 | lib/life-memory-gateway.mjs | function associationCandidates

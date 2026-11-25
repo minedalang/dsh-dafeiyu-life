@@ -459,6 +459,11 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   unifiedAssoc283["统一记忆层：深浅反向激活、跨经历联想及私信按需回忆；非授权"]
   unifiedAssoc283 -.->|只读思考素材| planner
 %% @code unifiedAssoc283 | lib/memory-retriever.mjs | const contextualVisualRecall=
+
+  persistentAssoc283["同一 Gateway：反思模型可选关系提议，公开清晰源与衰减核验"]
+  reflection -.->|同一次反思，可不建立| persistentAssoc283
+  persistentAssoc283 -.->|有界两跳，只读| unifiedAssoc283
+%% @code persistentAssoc283 | lib/life-memory-gateway.mjs | function recordAssociations
 ```
 
 ## 二、八类候选细目
@@ -675,6 +680,11 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   assocCandidates283["统一混合检索：浅印象、深层反向激活与一跳联想"]
   assocCandidates283 -.->|只读思考素材| planner
 %% @code assocCandidates283 | lib/memory-retriever.mjs | const contextualVisualRecall=
+
+  persistentAssoc283["已存模型提议关系：只读激活，非授权"]
+  reflection -.-> persistentAssoc283
+  persistentAssoc283 -.->|有界两跳| assocCandidates283
+%% @code persistentAssoc283 | lib/life-memory-associations.mjs | function activateAssociations
 ```
 
 ## 三、可信回执与记忆闭环
@@ -936,6 +946,11 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   assocProjection283["同库深浅联想投影及派生向量；账号与遗忘复核"]
   assocProjection283 -.->|只读思考素材| recall
 %% @code assocProjection283 | lib/memory-retriever.mjs | const validateContextualVisualRecall=
+
+  persistentAssoc283["同库关系边：源身份和指纹，独立衰减"]
+  episode -.->|公开清晰源| persistentAssoc283
+  persistentAssoc283 -.->|全路径复核| assocProjection283
+%% @code persistentAssoc283 | lib/life-memory-gateway.mjs | function validateAssociationPath
 ```
 
 ## 四、统一 Life Episode 因果持续性
@@ -1139,4 +1154,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
   episodeAssoc283["原创评论可参考其他视频的真实印象；不强制引用"]
   episodeAssoc283 -.->|只读思考素材| menu
 %% @code episodeAssoc283 | lib/autonomous-planner.mjs | let choice,associationSources=[],pastVideoAssociations=[]
+
+  persistentAssoc283["模型提议关系；当前源核验，非事实或授权"]
+  memory -.-> persistentAssoc283
+  persistentAssoc283 -.->|有界只读激活| episodeAssoc283
+%% @code persistentAssoc283 | lib/life-memory-gateway.mjs | function associationCandidates
 ```

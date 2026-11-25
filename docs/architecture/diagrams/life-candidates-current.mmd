@@ -209,3 +209,8 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   assocCandidates283["统一混合检索：浅印象、深层反向激活与一跳联想"]
   assocCandidates283 -.->|只读思考素材| planner
 %% @code assocCandidates283 | lib/memory-retriever.mjs | const contextualVisualRecall=
+
+  persistentAssoc283["已存模型提议关系：只读激活，非授权"]
+  reflection -.-> persistentAssoc283
+  persistentAssoc283 -.->|有界两跳| assocCandidates283
+%% @code persistentAssoc283 | lib/life-memory-associations.mjs | function activateAssociations

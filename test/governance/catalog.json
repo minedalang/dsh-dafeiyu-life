@@ -576,6 +576,11 @@
     "watched-merge.test.mjs"
   ],
   "registeredActive": {
+    "v283-dev6-persistent-association.test.mjs": {
+      "owner": "life-memory-associations",
+      "kind": "security",
+      "intent": "Verify model-proposed public relationships, live provenance, account scope, expiry and bounded spreading activation without external side effects."
+    },
     "v283-dev5-expanded-business-backup.test.mjs": {
       "owner": "data-backup-and-retention",
       "kind": "security",
