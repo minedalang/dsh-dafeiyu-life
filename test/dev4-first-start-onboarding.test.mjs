@@ -46,12 +46,14 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
  const home=mkdtempSync(join(tmpdir(),'fish-firststart-http-'))
  let handler
  try{
-  const ctx={get:k=>k==='dshHomePath'?(...p)=>join(home,...p):undefined,
+  const agents=[],messages=[],createCalls=[]
+  const controller={async create(request){createCalls.push(request);agents.push({id:'session-created-test',followup:async m=>messages.push(m),inject:async m=>messages.push(m)});return {sessionId:'session-created-test'}}}
+  const ctx={get:k=>k==='dshHomePath'?(...p)=>join(home,...p):k==='sessionController'?controller:undefined,agents:{list:()=>agents},
     logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
   apply(ctx,{})
-  const call=async(method,path,body)=>{
+  const call=async(method,path,body,origin='http://127.0.0.1:8011')=>{
     const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])
-    req.method=method;req.url='/api/bili-duty/'+path;req.headers={host:'127.0.0.1:8011',origin:'http://127.0.0.1:8011'}
+    req.method=method;req.url='/api/bili-duty/'+path;req.headers={host:'127.0.0.1:8011',origin}
     let status=200,payload=''
     await handler(req,{writeHead(x){status=x},end(x){payload=String(x||'')}})
     return {status,payload,json:()=>JSON.parse(payload)}
@@ -67,6 +69,13 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
   const mainSetup=await call('GET','main-session')
   assert.equal(mainSetup.status,200)
   assert.equal(typeof mainSetup.json().config,'object')
+  const sessionDirectory=await call('GET','main-session/sessions');assert.equal(sessionDirectory.status,200);assert.equal(sessionDirectory.json().creationAvailable,true)
+  assert.equal((await call('POST','main-session/create',{})).status,400)
+  const createBody={confirm:'CREATE_AND_BIND_MAIN_SESSION',expectedId:''}
+  assert.equal((await call('POST','main-session/create',createBody,'https://outside.invalid')).status,403)
+  const created=await call('POST','main-session/create',createBody);assert.equal(created.status,200);assert.equal(created.json().createdId,'created-test');assert.equal(created.json().selectedId,'created-test')
+  assert.deepEqual(createCalls,[{}]);assert.deepEqual(messages,[]);assert.equal((await call('GET','main-session')).json().config.id,'created-test')
+  assert.equal((await call('POST','main-session/create',createBody)).status,409);assert.equal(createCalls.length,1)
   const sessionTest=await call('POST','main-session/test',{})
   assert.equal(sessionTest.status,423)
   const sessionSave=await call('POST','config',{mainSessionBridgeEnabled:false,mainSessionAutoSync:false})

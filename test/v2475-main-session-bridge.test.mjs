@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,readFileSync,rmSync} from 'node:fs'
+import {mkdtempSync,readFileSync,rmSync,existsSync} from 'node:fs'
+import {runInNewContext} from 'node:vm'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createMainSessionBridge,__test} from '../lib/main-session-bridge.mjs'
@@ -87,4 +88,84 @@ test('实际源码只通过 ctx.agents 绑定主 Session，并提供管理中心
   assert.match(bridge,/agent\.followup|\.followup\(/)
   assert.match(bridge,/plugin:dsh-dafeiyu-life/)
   assert.match(index,/name: 'bili_experience_recall'/)
+})
+
+
+function sessionCreationHarness({create,bind,controller=true}={}){
+  const dir=temp(),cfg=baseConfig(),messages=[],calls=[],writes=[]
+  const rows=[{id:'session-abc',title:'旧房间',followup:async m=>messages.push(m),inject:async m=>messages.push(m)}]
+  const add=id=>{rows.push({id:'session-'+id,followup:async m=>messages.push(m),inject:async m=>messages.push(m)});return {sessionId:'session-'+id}}
+  const bridge=createMainSessionBridge({dataDir:dir,agents:{list:()=>rows},getConfig:()=>cfg,getWatched:()=>[],getComments:()=>({rows:[]}),
+    getSessionController:()=>controller?{async create(request){calls.push(request);return create?create({add,cfg,rows}):add('new-room')}}:undefined,
+    bindSession:async(id,expected)=>{writes.push([id,expected]);if(bind)return bind({id,expected,cfg});cfg.mainSessionId=id}})
+  return {dir,cfg,rows,add,bridge,messages,calls,writes,close:()=>rmSync(dir,{recursive:true,force:true})}
+}
+test('主人新建真实空白宿主会话，仅绑定已核验的新 ID，保留权限与历史，不发送消息',async()=>{
+  const h=sessionCreationHarness();try{
+    const before={...h.cfg};assert.equal(h.bridge.sessionDirectory().creationAvailable,true)
+    const r=await h.bridge.createAndBindSession({expectedId:'abc'})
+    assert.equal(r.ok,true);assert.equal(r.createdId,'new-room');assert.equal(r.selectedId,'new-room');assert.equal(r.targetLive,true)
+    assert.deepEqual(h.calls,[{}]);assert.deepEqual(h.writes,[['new-room','abc']]);assert.deepEqual(h.cfg,{...before,mainSessionId:'new-room'})
+    assert.equal(h.messages.length,0);assert.equal(h.rows.length,2);assert.equal(existsSync(h.bridge.file),false)
+  }finally{h.close()}
+})
+test('未提供宿主创建能力或当前绑定已变化，拒绝新建且不修改设置',async()=>{
+  const h=sessionCreationHarness({controller:false});try{
+    assert.equal(h.bridge.sessionDirectory().creationAvailable,false)
+    assert.equal((await h.bridge.createAndBindSession({expectedId:'abc'})).reason,'unsupported')
+    assert.equal((await h.bridge.createAndBindSession({expectedId:'different'})).reason,'target-changed')
+    assert.equal(h.calls.length,0);assert.equal(h.writes.length,0)
+  }finally{h.close()}
+})
+test('并发创建仅调用一次宿主，等待期间原绑定变更不会被覆盖',async()=>{
+  let resume;const h=sessionCreationHarness({create:async({add})=>{await new Promise(resolve=>{resume=resolve});return add('fresh')}})
+  try{
+    const first=h.bridge.createAndBindSession({expectedId:'abc'});assert.equal(h.bridge.sessionDirectory().creatingSession,true)
+    assert.equal((await h.bridge.createAndBindSession({expectedId:'abc'})).reason,'busy');h.cfg.mainSessionId='another';resume()
+    const r=await first;assert.equal(r.reason,'target-changed');assert.equal(r.createdId,'fresh');assert.equal(h.cfg.mainSessionId,'another');assert.equal(h.writes.length,0);assert.equal(h.calls.length,1);assert.equal(h.bridge.sessionDirectory().creatingSession,false)
+  }finally{h.close()}
+})
+test('无效、已有或未在线宿主回执不能自动绑定；绑定异常不重新创建',async()=>{
+  for(const [create,reason] of [[()=>({sessionId:'session-abc'}),'invalid-receipt'],[()=>({sessionId:'session-missing'}),'not-live'],[()=>({sessionId:' session-fake'}),'invalid-receipt'],[()=>{throw Error('host failure')},'create-failed']]){
+    const h=sessionCreationHarness({create});try{const r=await h.bridge.createAndBindSession({expectedId:'abc'});assert.equal(r.reason,reason);assert.equal(h.writes.length,0);assert.equal(h.cfg.mainSessionId,'abc');assert.equal(h.calls.length,1)}finally{h.close()}
+  }
+  const h=sessionCreationHarness({bind:()=>{throw Error('save failed')}});try{const r=await h.bridge.createAndBindSession({expectedId:'abc'});assert.equal(r.reason,'binding-unconfirmed');assert.equal(r.createdId,'new-room');assert.equal(h.calls.length,1);assert.equal(h.cfg.mainSessionId,'abc');assert.equal(h.messages.length,0)}finally{h.close()}
+})
+test('轻量列表不读取经历文件，宿主读取失败不伪装空会话列表',()=>{
+  const h=sessionCreationHarness();try{assert.equal(h.bridge.sessionDirectory({strict:true}).sessions.length,1);assert.equal(existsSync(h.bridge.file),false)}finally{h.close()}
+  const dir=temp();try{const bridge=createMainSessionBridge({dataDir:dir,agents:{list(){throw Error('transport')}},getConfig:baseConfig,getWatched:()=>[],getComments:()=>({rows:[]})});assert.throws(()=>bridge.sessionDirectory({strict:true}),/列表读取失败/)}finally{rmSync(dir,{recursive:true,force:true})}
+})
+function sessionPickerHarness(){
+  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8'),start=js.indexOf("  let mainSessionSavedId="),end=js.indexOf('  const loadMainSession=',start)
+  assert.ok(start>=0&&end>start);const fields=new Map(),committed=[],requests=[]
+  const $=id=>{if(!fields.has(id))fields.set(id,{id,value:'',dataset:{},children:[],replaceChildren(){this.children=[];this.value=''},appendChild(row){this.children.push(row)}});return fields.get(id)}
+  const document={activeElement:null};let response;const api=runInNewContext(js.slice(start,end)+`\n({renderMainSessionDirectory,refreshMainSessionDirectory,updateMainSessionDraft,invalidate:()=>mainSessionEpoch++})`,{$,document,mobileViewOnly:false,node:(tag,label)=>({tag,label,value:''}),settingDraftTracker:{committed:field=>committed.push(field.id)},summarizeSaveDrafts(){},request:async path=>{requests.push(path);if(typeof response==='function')return response();if(response instanceof Error)throw response;return response}})
+  return {...api,$,document,committed,requests,respond:x=>{response=x}}
+}
+const directory=(id,rows,extra={})=>({selectedId:id,sessions:rows.map(x=>({id:x,label:x})),targetLive:rows.includes(id),creationAvailable:true,...extra})
+test('主页实际列表渲染保留未保存选择与离线目标，刷新失败不清空',async()=>{
+  const h=sessionPickerHarness(),select=h.$('main-session-id');h.renderMainSessionDirectory(directory('abc',['abc','def']));assert.equal(select.value,'abc')
+  select.value='def';h.updateMainSessionDraft();assert.equal(h.$('main-session-draft-status').dataset.pending,'true')
+  h.respond(directory('abc',['abc','fresh']));await h.refreshMainSessionDirectory();assert.equal(select.value,'def');assert.ok(select.children.some(x=>x.value==='def'));assert.equal(h.$('main-session-draft-status').dataset.pending,'true');assert.deepEqual(h.committed,['main-session-id'])
+  h.respond(new Error('offline'));await h.refreshMainSessionDirectory();assert.equal(select.value,'def');assert.match(h.$('main-session-list-status').textContent,/保留上次结果/)
+  // Explicitly choosing no target is a draft too; no blank option auto-select fallback.
+  select.value='';h.renderMainSessionDirectory(directory('abc',['abc','fresh']));assert.equal(select.value,'');assert.equal(h.$('main-session-draft-status').dataset.pending,'true')
+  h.renderMainSessionDirectory(directory('fresh',['abc','fresh']),{forceSelection:true});assert.equal(select.value,'fresh');assert.equal(h.$('main-session-draft-status').dataset.pending,'false');assert.equal(h.committed.at(-1),'main-session-id')
+})
+test('列表请求去重且丢弃旧世代回执；聚焦选择器时不重建选项',async()=>{
+  const h=sessionPickerHarness(),select=h.$('main-session-id');h.renderMainSessionDirectory(directory('abc',['abc']))
+  let resume;h.respond(()=>new Promise(r=>{resume=r}));const old=h.refreshMainSessionDirectory();await h.refreshMainSessionDirectory();assert.equal(h.requests.length,1)
+  h.invalidate();h.renderMainSessionDirectory(directory('fresh',['fresh']),{forceSelection:true});resume(directory('abc',['abc']));await old;assert.equal(select.value,'fresh')
+  h.document.activeElement=select;h.renderMainSessionDirectory(directory('abc',['abc']));assert.equal(select.value,'fresh')
+  h.document.activeElement=null;h.renderMainSessionDirectory(directory('abc',['abc']));assert.equal(select.value,'abc')
+})
+
+
+test('主页独立列表每4秒刷新且隐藏或切换页面时不轮询，离开页面清除定时器',()=>{
+  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8'),html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
+  assert.match(js,/const mainSessionListTimer=.*setInterval\(\(\)=>\{if\(!document\.hidden&&active==='home'\)void refreshMainSessionDirectory\(\)\},4000\)/)
+  assert.match(js,/clearInterval\(mainSessionListTimer\)/)
+  assert.match(js,/request\('\/main-session\/sessions'\)/)
+  assert.match(html,/id="main-session-create"[^>]*disabled/)
+  for(const id of ['main-session-bound-label','main-session-bound-state','main-session-list-status','main-session-draft-status'])assert.ok(html.includes(`id="${id}"`))
 })
