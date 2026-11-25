@@ -8086,6 +8086,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     dataDir: stateDir,
     agents: ctx.agents,
     getSessionController:()=>ctx.get('sessionController'),
+    getWorkspaceRegistry:()=>ctx.get('workspaceRegistry'),
     bindSession:async(id,expectedId)=>{
       refreshCfg()
       if(String(cfg.mainSessionId||'').replace(/^session-/,'')!==expectedId)throw Error('主 Session 已改变')
@@ -10241,7 +10242,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     if (req.method === 'POST' && path === '/api/bili-duty/main-session/create') {
       const body=await readBody(req)
       if(body?.confirm!=='CREATE_AND_BIND_MAIN_SESSION')return sendJson(res,400,{ok:false,error:'请明确确认新建并绑定主 Session'})
-      const result=await mainSessionBridge.createAndBindSession({expectedId:body.expectedId})
+      const result=await mainSessionBridge.createAndBindSession({expectedId:body.expectedId,workspaceId:body.workspaceId})
       return sendJson(res,result.ok?200:409,result)
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-memory/status') {

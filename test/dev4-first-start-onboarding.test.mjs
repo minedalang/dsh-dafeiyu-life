@@ -46,9 +46,9 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
  const home=mkdtempSync(join(tmpdir(),'fish-firststart-http-'))
  let handler
  try{
-  const agents=[],messages=[],createCalls=[]
-  const controller={async create(request){createCalls.push(request);agents.push({id:'session-created-test',followup:async m=>messages.push(m),inject:async m=>messages.push(m)});return {sessionId:'session-created-test'}}}
-  const ctx={get:k=>k==='dshHomePath'?(...p)=>join(home,...p):k==='sessionController'?controller:undefined,agents:{list:()=>agents},
+  const agents=[],messages=[],createCalls=[],archived=[];const ws={id:'default-workspace',title:'默认工作区',sessionIds:[]};const registry={list:()=>[ws],archivedSessionIds:archived}
+  const controller={async create(request){createCalls.push(request);ws.sessionIds.push('session-created-test');agents.push({id:'session-created-test',followup:async m=>messages.push(m),inject:async m=>messages.push(m)});return {sessionId:'session-created-test'}}}
+  const ctx={get:k=>k==='dshHomePath'?(...p)=>join(home,...p):k==='sessionController'?controller:k==='workspaceRegistry'?registry:undefined,agents:{list:()=>agents},
     logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
   apply(ctx,{})
   const call=async(method,path,body,origin='http://127.0.0.1:8011')=>{
@@ -70,15 +70,16 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
   assert.equal(mainSetup.status,200)
   assert.equal(typeof mainSetup.json().config,'object')
   const sessionDirectory=await call('GET','main-session?directory=1');assert.equal(sessionDirectory.status,200);assert.equal(sessionDirectory.json().creationAvailable,true)
-  assert.equal(sessionDirectory.json().directoryProtocol,2);assert.equal(sessionDirectory.json().history,undefined);assert.equal(sessionDirectory.json().config,undefined)
+  assert.equal(sessionDirectory.json().directoryProtocol,3);assert.equal(sessionDirectory.json().history,undefined);assert.equal(sessionDirectory.json().config,undefined)
   assert.deepEqual((await call('GET','main-session/sessions')).json(),sessionDirectory.json())
   assert.equal((await call('GET','main-session?directory=1',undefined,'https://outside.invalid')).status,403)
   assert.equal((await call('POST','main-session/create',{})).status,400)
   const createBody={confirm:'CREATE_AND_BIND_MAIN_SESSION',expectedId:''}
   assert.equal((await call('POST','main-session/create',createBody,'https://outside.invalid')).status,403)
   const created=await call('POST','main-session/create',createBody);assert.equal(created.status,200);assert.equal(created.json().createdId,'created-test');assert.equal(created.json().selectedId,'created-test')
-  assert.deepEqual(createCalls,[{}]);assert.deepEqual(messages,[]);assert.equal((await call('GET','main-session')).json().config.id,'created-test')
+  assert.deepEqual(createCalls,[{workspaceId:'default-workspace'}]);assert.deepEqual(messages,[]);assert.equal((await call('GET','main-session')).json().config.id,'created-test')
   assert.equal((await call('POST','main-session/create',createBody)).status,409);assert.equal(createCalls.length,1)
+  archived.push('session-created-test');const afterArchive=(await call('GET','main-session?directory=1')).json();assert.equal(afterArchive.targetArchived,true);assert.equal(afterArchive.targetLive,false);assert.deepEqual(afterArchive.sessions,[])
   const sessionTest=await call('POST','main-session/test',{})
   assert.equal(sessionTest.status,423)
   const sessionSave=await call('POST','config',{mainSessionBridgeEnabled:false,mainSessionAutoSync:false})

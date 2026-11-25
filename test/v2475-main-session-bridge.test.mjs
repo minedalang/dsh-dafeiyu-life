@@ -91,21 +91,23 @@ test('实际源码只通过 ctx.agents 绑定主 Session，并提供管理中心
 })
 
 
-function sessionCreationHarness({create,bind,controller=true}={}){
+function sessionCreationHarness({create,bind,controller=true,attach=true}={}){
   const dir=temp(),cfg=baseConfig(),messages=[],calls=[],writes=[]
   const rows=[{id:'session-abc',title:'旧房间',followup:async m=>messages.push(m),inject:async m=>messages.push(m)}]
-  const add=id=>{rows.push({id:'session-'+id,followup:async m=>messages.push(m),inject:async m=>messages.push(m)});return {sessionId:'session-'+id}}
+  const ws={id:'fish-workspace',title:'大肥鱼',sessionIds:['session-abc']},archived=[];const registry={list:()=>[ws],archivedSessionIds:archived};
+  const add=id=>{if(attach)ws.sessionIds.push('session-'+id);rows.push({id:'session-'+id,followup:async m=>messages.push(m),inject:async m=>messages.push(m)});return {sessionId:'session-'+id}}
   const bridge=createMainSessionBridge({dataDir:dir,agents:{list:()=>rows},getConfig:()=>cfg,getWatched:()=>[],getComments:()=>({rows:[]}),
+    getWorkspaceRegistry:()=>registry,
     getSessionController:()=>controller?{async create(request){calls.push(request);return create?create({add,cfg,rows}):add('new-room')}}:undefined,
     bindSession:async(id,expected)=>{writes.push([id,expected]);if(bind)return bind({id,expected,cfg});cfg.mainSessionId=id}})
-  return {dir,cfg,rows,add,bridge,messages,calls,writes,close:()=>rmSync(dir,{recursive:true,force:true})}
+  return {dir,cfg,rows,add,bridge,messages,calls,writes,ws,archived,registry,close:()=>rmSync(dir,{recursive:true,force:true})}
 }
 test('主人新建真实空白宿主会话，仅绑定已核验的新 ID，保留权限与历史，不发送消息',async()=>{
   const h=sessionCreationHarness();try{
     const before={...h.cfg};assert.equal(h.bridge.sessionDirectory().creationAvailable,true)
     const r=await h.bridge.createAndBindSession({expectedId:'abc'})
     assert.equal(r.ok,true);assert.equal(r.createdId,'new-room');assert.equal(r.selectedId,'new-room');assert.equal(r.targetLive,true)
-    assert.deepEqual(h.calls,[{}]);assert.deepEqual(h.writes,[['new-room','abc']]);assert.deepEqual(h.cfg,{...before,mainSessionId:'new-room'})
+    assert.deepEqual(h.calls,[{workspaceId:'fish-workspace'}]);assert.deepEqual(h.writes,[['new-room','abc']]);assert.deepEqual(h.cfg,{...before,mainSessionId:'new-room'})
     assert.equal(h.messages.length,0);assert.equal(h.rows.length,2);assert.equal(existsSync(h.bridge.file),false)
   }finally{h.close()}
 })
@@ -143,7 +145,7 @@ function sessionPickerHarness(){
   const document={activeElement:null};let response;const api=runInNewContext(js.slice(start,end)+`\n({renderMainSessionDirectory,refreshMainSessionDirectory,updateMainSessionDraft,invalidate:()=>mainSessionEpoch++})`,{$,document,mobileViewOnly:false,node:(tag,label)=>({tag,label,value:''}),settingDraftTracker:{committed:field=>committed.push(field.id)},summarizeSaveDrafts(){},request:async path=>{requests.push(path);if(typeof response==='function')return response();if(response instanceof Error)throw response;return response}})
   return {...api,$,document,committed,requests,respond:x=>{response=x}}
 }
-const directory=(id,rows,extra={})=>({directoryProtocol:2,selectedId:id,sessions:rows.map(x=>({id:x,label:x})),targetLive:rows.includes(id),creationAvailable:true,...extra})
+const directory=(id,rows,extra={})=>({directoryProtocol:3,archiveKnown:true,preferredWorkspaceId:'fish-workspace',workspaces:[{id:'fish-workspace',label:'大肥鱼'}],selectedId:id,sessions:rows.map(x=>({id:x,label:x})),targetLive:rows.includes(id),creationAvailable:true,...extra})
 test('主页实际列表渲染保留未保存选择与离线目标，刷新失败不清空',async()=>{
   const h=sessionPickerHarness(),select=h.$('main-session-id');h.renderMainSessionDirectory(directory('abc',['abc','def']));assert.equal(select.value,'abc')
   select.value='def';h.updateMainSessionDraft();assert.equal(h.$('main-session-draft-status').dataset.pending,'true')
@@ -180,4 +182,29 @@ test('主页独立列表每4秒刷新且隐藏或切换页面时不轮询，离�
   assert.match(js,/request\('\/main-session\?directory=1'\)/)
   assert.match(html,/id="main-session-create"[^>]*disabled/)
   for(const id of ['main-session-bound-label','main-session-bound-state','main-session-list-status','main-session-draft-status'])assert.ok(html.includes(`id="${id}"`))
+})
+
+
+test('归档从在线目录排除，已绑定归档目标保留身份但不能投递',async()=>{
+  const h=sessionCreationHarness();try{
+    h.archived.push('session-abc');assert.equal(h.bridge.sessionDirectory().targetArchived,true);assert.equal(h.bridge.sessionDirectory().targetLive,false)
+    assert.equal(h.bridge.sessions().length,0);assert.equal(h.bridge.canShare(),false);assert.equal((await h.bridge.test()).ok,false);assert.equal(h.messages.length,0);assert.equal(h.cfg.mainSessionId,'abc')
+  }finally{h.close()}
+})
+test('新建必须核验工作区成员登记，不绑定未分组会话；不自动重试',async()=>{
+  const h=sessionCreationHarness({attach:false});try{
+    const r=await h.bridge.createAndBindSession({expectedId:'abc',workspaceId:'fish-workspace'});assert.equal(r.reason,'workspace-unconfirmed');assert.equal(r.createdId,'new-room');assert.equal(h.writes.length,0);assert.equal(h.calls.length,1)
+    assert.equal(h.bridge.sessions().find(x=>x.id==='new-room').workspaceLabel,'未分组')
+  }finally{h.close()}
+})
+test('新建复用当前工作区、默认或唯一已有工作区；多工作区无确定归属需手选',async()=>{
+  const h=sessionCreationHarness();try{
+    const other={id:'default',title:'默认',sessionIds:[]};h.registry.list=()=>[h.ws,other];h.registry.defaultWorkspaceId='default';assert.equal(h.bridge.sessionDirectory().preferredWorkspaceId,'fish-workspace')
+    h.cfg.mainSessionId='';assert.equal(h.bridge.sessionDirectory().preferredWorkspaceId,'default');delete h.registry.defaultWorkspaceId;assert.equal(h.bridge.sessionDirectory().preferredWorkspaceId,'')
+    assert.equal((await h.bridge.createAndBindSession({expectedId:''})).reason,'workspace-required');assert.equal((await h.bridge.createAndBindSession({expectedId:'',workspaceId:'invalid'})).reason,'workspace-required');assert.equal(h.calls.length,0)
+    assert.equal((await h.bridge.createAndBindSession({expectedId:'',workspaceId:'fish-workspace'})).ok,true);assert.deepEqual(h.calls,[{workspaceId:'fish-workspace'}])
+  }finally{h.close()}
+})
+test('管理页显示归档绑定与工作区，自动刷新保留工作区选择',()=>{
+  const h=sessionPickerHarness(),ws=h.$('main-session-workspace');const d=directory('abc',['abc'],{workspaces:[{id:'a',label:'默认'},{id:'b',label:'大肥鱼'}],preferredWorkspaceId:'a'});h.renderMainSessionDirectory(d);ws.value='b';h.renderMainSessionDirectory({...d,targetArchived:true,targetLive:false,sessions:[]});assert.equal(ws.value,'b');assert.equal(h.$('main-session-bound-state').textContent,'已归档');assert.match(h.$('main-session-target-status').textContent,/暂停同步/)
 })
