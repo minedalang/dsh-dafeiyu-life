@@ -59,6 +59,15 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
   }
   const state=await call('GET','onboarding/status')
   assert.equal(state.status,200);assert.equal(state.json().requiredReady,false)
+  const unbound=await call('POST','onboarding/bili/verify',{})
+  assert.equal(unbound.status,400);assert.match(unbound.json().error,/冻结/)
+  assert.equal((await call('GET','onboarding/status')).json().biliVerified,false)
+  const stateDir=join(home,'bili-duty')
+  writeFileSync(join(stateDir,'bili_credential.json'),JSON.stringify({dedeuserid:'10001',sessdata:'fixture',bili_jct:'fixture'}))
+  const mismatch=await call('POST','onboarding/bili/verify',{})
+  assert.equal(mismatch.status,400);assert.match(mismatch.json().error,/uid-mismatch/)
+  assert.equal((await call('GET','onboarding/status')).json().biliVerified,false)
+  rmSync(join(stateDir,'bili_credential.json'))
   assert.equal((await call('GET','manage')).status,200)
   assert.equal((await call('GET','manage.js')).status,200)
   assert.equal((await call('GET','status')).status,200)
@@ -169,4 +178,60 @@ test('首次设置主 Session 入口不跳回欢迎页：允许配置但隐藏�
   assert.match(server,/req\.method==='GET' && path==='\/api\/bili-duty\/main-session'/)
   assert.match(page,/id="quick-memory-section"/)
   assert.match(page,/id="quick-dm-save"/)
+})
+
+
+test('native settings account recovery reuses explicit same-origin endpoints without external browser',()=>{
+ const client=readFileSync(new URL('../client.js',import.meta.url),'utf8')
+ const block=client.slice(client.indexOf('const recoverAccount ='),client.indexOf('const onFavToday ='))
+ assert.match(block,/jget\('\/account\/status'\)/)
+ assert.match(block,/window\.confirm\([\s\S]*?jpost\('\/account\/confirm',\{uid:a\.pendingUid\}\)/)
+ assert.match(block,/window\.confirm\([\s\S]*?jpost\('\/account\/resume',\{uid:a\.activeUid\}\)/)
+ assert.match(block,/jpost\('\/onboarding\/bili\/verify',\{\}\)/)
+ assert.doesNotMatch(block,/cookie|window\.open|\/open'|localStorage/i)
+ assert.equal((client.match(/nativeAccountRecovery\(\)/g)||[]).length,2)
+})
+
+
+test('fresh install HTTP: staged scan, exact UID confirmation, restart, explicit review and online verification',async()=>{
+ const home=mkdtempSync(join(tmpdir(),'fish-fresh-account-http-')),stateDir=join(home,'bili-duty')
+ const originalFetch=globalThis.fetch;let handler,cleanups=[],navCalls=0
+ const uid='10001'
+ globalThis.fetch=async url=>{
+   const path=String(url)
+   if(path.startsWith('https://passport.bilibili.com/x/passport-login/web/qrcode/poll?'))return {
+     headers:{getSetCookie:()=>['SESSDATA=fixture-session; Path=/','bili_jct=fixture-jct; Path=/','DedeUserID='+uid+'; Path=/','buvid3=fixture-buvid; Path=/']},json:async()=>({data:{code:0}})}
+   if(path==='https://api.bilibili.com/x/web-interface/nav'){navCalls++;return {ok:true,json:async()=>({code:0,data:{isLogin:true,mid:Number(uid),uname:'fixture'}})}}
+   throw Error('offline fixture: unexpected fetch')
+ }
+ const start=()=>apply({get:k=>k==='dshHomePath'?(...p)=>join(home,...p):undefined,agents:{list:()=>[]},logger:{info(){},warn(){}},tools:{register(){}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>{const r=f();if(typeof r==='function')cleanups.push(r);else if(r?.dispose)cleanups.push(()=>r.dispose());return r},settings:{describe(){return []}}},{})
+ const stop=()=>{for(const fn of cleanups.reverse())try{fn()}catch{};cleanups=[]}
+ const call=async(method,path,body,origin='http://127.0.0.1:8011')=>{
+   const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);req.method=method;req.url='/api/bili-duty/'+path;req.headers={host:'127.0.0.1:8011',origin}
+   let status=200,payload='';await handler(req,{writeHead(x){status=x},end(x){payload=String(x||'')}});return {status,data:JSON.parse(payload)}
+ }
+ try{
+   start()
+   assert.equal((await call('GET','account/status')).data.reason,'unbound')
+   assert.equal((await call('POST','onboarding/bili/verify',{})).status,400)
+   const staged=await call('POST','login/poll',{key:'fixture'})
+   assert.equal(staged.status,200);assert.equal(staged.data.state,'staged');assert.equal(staged.data.pendingUid,uid)
+   assert.equal((await call('GET','account/status')).data.activeUid,'');assert.equal(navCalls,0)
+   assert.equal((await call('POST','account/confirm',{uid},'https://outside.invalid')).status,403)
+   assert.notEqual((await call('POST','account/confirm',{uid:'20002'})).status,200);assert.equal(navCalls,0)
+   const confirmed=await call('POST','account/confirm',{uid});assert.equal(confirmed.status,200);assert.equal(confirmed.data.verifiedUid,uid);assert.equal(navCalls,1)
+   assert.equal((await call('GET','account/status')).data.reason,'restart-required')
+   assert.notEqual((await call('POST','account/resume',{uid})).status,200)
+   stop();start()
+   assert.equal((await call('GET','account/status')).data.reason,'review-required')
+   assert.equal((await call('POST','onboarding/bili/verify',{})).status,400)
+   assert.notEqual((await call('POST','account/resume',{uid:'20002'})).status,200)
+   assert.equal((await call('POST','account/resume',{uid})).data.blocked,false)
+   assert.equal((await call('GET','account/status')).data.reason,'ready')
+   const verified=await call('POST','onboarding/bili/verify',{});assert.equal(verified.status,200);assert.equal(verified.data.biliVerified,true);assert.equal(navCalls,2)
+   assert.equal((await call('GET','onboarding/status')).data.biliVerified,true)
+   assert.equal((await call('POST','onboarding/complete',{skipped:[]})).status,400,'headless model still required')
+   assert.equal((await call('GET','life-memory/status')).status,423,'unfinished setup cannot access business APIs')
+   const ledger=JSON.parse(readFileSync(join(stateDir,'account-binding.json'),'utf8'));assert.equal(ledger.activeUid,uid);assert.equal(ledger.accounts.length,1)
+ }finally{stop();globalThis.fetch=originalFetch;rmSync(home,{recursive:true,force:true})}
 })

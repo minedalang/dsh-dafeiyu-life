@@ -21,7 +21,7 @@
  * 这一页要满足使用者 2026-10-14 说的形状：
  *   · **总开关 → 打开之后配置自定义自动刷时间段**（支持跨午夜和多时段）
  *   · **数字项要能自己填**（定量刷：每天几条）
- *   · B站账号绑定及扫码登录统一由管理中心 → 首次设置管理。
+ *   · B站账号常规登录由管理中心管理；原生设置保留显式安全恢复入口。
  *   · 会发东西出去的（自动评论）、要下大模型的（本地转写）**默认关**
  * ============================================================================
  */
@@ -613,16 +613,19 @@ window.__ModuleLoader__.load({
           if (!r.qr) { setLoginTone('warn'); setLoginState('没画出二维码 —— 先点上面的「重装依赖」（venv 里要有 qrcode）') }
           else setLoginState('用手机 B站 扫这张码')
           if (loginTimer.current) { clearInterval(loginTimer.current); loginTimer.current = null }   // 重复点：先把上一轮停掉
-          let n = 0
+          let n = 0, polling=false
           const stop = () => { clearInterval(timer); if (loginTimer.current === timer) loginTimer.current = null }
           const timer = setInterval(async () => {
             if (!alive.current) { stop(); return }        // 已经切走设置页了：别再问、别再 setState
-            n += 1
+            if(polling)return
+            polling=true;n += 1
             try {
               const p = await jpost('/login/poll', { key: r.key })
+              if(!alive.current||loginTimer.current!==timer)return
               if (p?.state === 'staged') {
                 stop(); setLogin(null)
-                setLoginTone('warn'); setLoginState('扫码成功但尚未启用：请进入管理中心「B站视频探索 → 鱼鱼的身份与 B站账号」，确认 UID 并在线核验。换号后需重启 DSH。')
+                setLoginTone('warn'); setLoginState('扫码成功但尚未启用：请确认待绑定 UID 并在线核验。换号后需重启 DSH。')
+                try{const account=await jget('/account/status');if(alive.current)setSt(old=>({...old,account}))}catch{}
               } else if (p?.state === 'scanned') { setLoginTone(''); setLoginState('扫到了，请在手机上确认') }
               else if (p?.state === 'expired') { stop(); setLogin(null); setLoginTone('warn'); setLoginState('二维码过期了，再点一次「扫码登录」') }
               // ⚠️ 扫码成功但响应里没有 SESSDATA 时服务端回 state='unknown'：原来没这个分支
@@ -633,11 +636,66 @@ window.__ModuleLoader__.load({
               }
               else { setLoginTone(''); setLoginState('等扫码…') }
             } catch { /* 抖动就下次再问 */ }
-            if (n > 90) { stop(); setLogin(null); setLoginTone('warn'); setLoginState('超时了，再点一次「扫码登录」') }
+            finally{polling=false}
+            if (loginTimer.current===timer&&n > 90) { stop(); setLogin(null); setLoginTone('warn'); setLoginState('超时了，再点一次「扫码登录」') }
           }, 2000)
           loginTimer.current = timer
         } catch (e) { setLoginTone('warn'); setLoginState(String(e?.message ?? e)) }
         finally { setBusy('') }
+      }
+
+      // Authenticated native settings recovery, independent of the external
+      // management browser. Reuse the exact existing explicit account gates.
+      const recoverAccount = async (action) => {
+        setBusy('account-recovery');setLoginTone('');setLoginState('正在核验账号状态…')
+        try {
+          const a=await jget('/account/status')
+          if(a?.ok!==true)throw Error('无法读取账号状态')
+          let result
+          if(action==='confirm'){
+            if(!a.pendingUid)throw Error('没有待确认的扫码账号')
+            if(!window.confirm('在线核验并绑定 UID '+a.pendingUid+'？切换账号后必须重启 DSH，旧账号任务不会自动转移。')){setLoginState('已取消确认');return}
+            result=await jpost('/account/confirm',{uid:a.pendingUid})
+            if(result?.ok!==true||result.verifiedUid!==a.pendingUid)throw Error('未获得账号绑定确认')
+          }else if(action==='cancel'){
+            if(!a.pendingUid||!window.confirm('取消待确认的扫码凭证？原账号不变。')){setLoginState('未取消扫码');return}
+            result=await jpost('/account/cancel',{})
+            if(result?.ok!==true)throw Error('未获得取消确认')
+          }else if(action==='resume'){
+            if(!a.activeUid||a.restartRequired||!a.reviewRequired)throw Error('请先完成账号确认并按提示重启')
+            if(!window.confirm('仅在已复核 UID '+a.activeUid+' 的私信、评论、发布授权后才恢复；无法复核请取消并保持冻结。旧账号任务不会转移。本操作不修改授权。确认恢复？')){setLoginState('保持冻结');return}
+            result=await jpost('/account/resume',{uid:a.activeUid})
+            if(result?.ok!==true||result.blocked!==false)throw Error('账号仍处于安全冻结状态')
+          }else if(action==='verify'){
+            if(a.blocked)throw Error('请先完成账号确认、重启和权限复核')
+            result=await jpost('/onboarding/bili/verify',{})
+            if(result?.biliVerified!==true)throw Error('首次设置尚未确认 B站验证成功')
+          }
+          const fresh=await jget('/account/status')
+          setSt(old=>({...old,account:fresh,...(action==='verify'?{onboarding:result}:{})}))
+          setLoginTone(fresh.blocked?'warn':'good')
+          setLoginState(fresh.restartRequired?'已绑定，请完全退出并重启 DSH 后复核授权。':fresh.blocked?'账号仍处于冻结状态，请按下方提示继续。':'账号绑定已就绪；首次设置的 B站验证及其他必需项目请按状态完成。')
+        }catch(e){setLoginTone('warn');setLoginState(String(e?.message||e))}
+        finally{setBusy('')}
+      }
+      const nativeAccountRecovery = () => {
+        const a=st?.account
+        if(!a||(!a.blocked&&st?.onboarding?.biliVerified===true))return null
+        const labels={unbound:'尚未绑定','credential-missing':'缺少凭证','uid-mismatch':'身份不匹配','login-staged':'扫码待确认','restart-required':'必须重启 DSH','review-required':'等待权限复核','restore-review-required':'恢复后等待权限复核',ready:'账号已就绪'}
+        return h('div',{'data-bd-sec':'',style:{border:'1px solid var(--dsw-alias-bg-layer-3,rgba(127,127,127,.24))',borderRadius:'12px',padding:'12px'}},
+          h('div',{'data-bd-label':''},'B站账号安全恢复 · 管理中心打不开时可在此操作'),
+          h('div',{'data-bd-note':''},'状态：'+(labels[a.reason]||a.reason)+' · 当前 UID：'+(a.activeUid||'未绑定')+' · 待确认 UID：'+(a.pendingUid||'无')),
+          h('div',{'data-bd-row':''},
+            a.pendingUid?h('button',{'data-bd-btn':'',disabled:!!busy,onClick:()=>recoverAccount('confirm')},'核验并确认 UID '+a.pendingUid):null,
+            a.pendingUid?h('button',{'data-bd-btn':'',disabled:!!busy,onClick:()=>recoverAccount('cancel')},'取消待确认扫码'):null,
+            !a.pendingUid&&!a.restartRequired&&a.reviewRequired?h('button',{'data-bd-btn':'',disabled:!!busy,onClick:()=>recoverAccount('resume')},'已复核权限，恢复账号'):null,
+            a.blocked&&!a.pendingUid&&!a.restartRequired&&!a.reviewRequired&&st.venvReady?h('button',{'data-bd-btn':'',disabled:!!busy||!!login,onClick:onLoginStart},'重新扫码登录'):null,
+            !a.blocked&&st?.onboarding?.biliVerified!==true?h('button',{'data-bd-btn':'',disabled:!!busy,onClick:()=>recoverAccount('verify')},'验证 B站登录'):null,
+            h('button',{'data-bd-btn':'',disabled:!!busy,onClick:()=>recoverAccount('refresh')},'刷新账号状态')),
+          login?.qr?h('img',{src:login.qr,alt:'B站登录二维码',style:{width:'180px',maxWidth:'100%'}}):null,
+          loginState?h('div',{'data-bd-note':'',role:'status',style:{color:loginTone==='warn'?'#c74351':undefined}},loginState):null,
+          a.restartRequired?h('div',{'data-bd-note':''},'请完全退出并重新启动 DSH，再返回本页。重启不会自动解除授权冻结。'):null,
+          a.blocked&&!st.venvReady?h('div',{'data-bd-note':''},'扫码需要主依赖就绪；已暂存的账号仍可尝试在线核验。'):null)
       }
 
       const onFavToday = async () => {
@@ -723,7 +781,8 @@ window.__ModuleLoader__.load({
               !st.venvReady?h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('firststart','fs-deps-card')},st.installing?'查看主依赖安装进度 ↗':'① 安装／修复主依赖 ↗'):null,
               h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},st.venvReady?'打开管理中心，开始配置 · 登录及模型 ↗':'② 打开管理中心，开始配置 ↗')),
             h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。'),
-            manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null))
+            manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
+          nativeAccountRecovery())
       }
 
       const sw = (k) => Boolean(cfg[k])
@@ -983,6 +1042,7 @@ window.__ModuleLoader__.load({
           h('div',{'data-bd-note':''},'后台互动沿用原有统一批量生成队列：私信与评论共享一个互动模型，节省重复人设提示词。'),
           h('div', { 'data-bd-sep': '' }),
           h('div', { 'data-bd-h': '' }, '环境与账号'),
+          nativeAccountRecovery(),
           h('div', { 'data-bd-row': '' },
             h('button', { 'data-bd-btn': '', onClick:()=>onOpenManage('firststart') }, '安装／修复主依赖 ↗'),
             h('button', { 'data-bd-btn': '', disabled: busy === 'check', onClick: onCheck }, '测一下'),
@@ -991,7 +1051,7 @@ window.__ModuleLoader__.load({
             h('div', { 'data-bd-note': '' },
               !st.venvReady ? (st.installFailed ? '上次安装失败 → 到首次设置修复' : '主依赖未就绪 → 前往首次设置安装')
                 : (st.loggedIn ? '已有 B站凭据，可在管理中心重新验证' : '环境好了 → 去管理中心登录 B站'))),
-          h('div', { 'data-bd-note': '' }, '运行环境安装与账号登录均已统一到管理中心 → 快速设置；本页只显示只读状态。'),
+          h('div', { 'data-bd-note': '' }, '常规安装与登录在管理中心 → 快速设置；账号被冻结时可在本页安全恢复。'),
           h('div', { 'data-bd-note': '' }, '安装进度和主依赖日志集中在管理中心 → 首次设置，避免设置页重复显示。'),
           h('div', { 'data-bd-note': '' }, '如需重新登录，请前往大肥鱼管理中心 → 首次设置。')),
           (Array.isArray(st.missingDeps) && st.missingDeps.length)

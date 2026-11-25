@@ -11047,18 +11047,20 @@ logger:{warn:m=>log('社交意图：'+m)}
           return sendJson(res,200,{ok:true,localVerified:result.localVerified,host:result.host})
         }
         if(path.endsWith('/bili/verify')){
-          const client=await ensureMcp()
-          const raw=await client.call('bili_check_credential',{})
-          // MCP clients return either direct text, a wrapper or content blocks.
-          const unwrapped=typeof raw==='string'?raw:
-            (raw?.content?.find?.(b=>b.type==='text')?.text??raw?.result??raw)
-          const result=typeof unwrapped==='string'?JSON.parse(unwrapped):unwrapped
-          if(result?.logged_in!==true)throw Error(String(result?.message||'B站登录状态无效'))
+          const bound=accountBinding.assertReady()
+          const scope=trustedLifeAccountTag()
+          if(!scope)throw Error('Life 账号尚未核验，请先确认账号并完成重启与授权复核')
+          const result=await accountBinding.verifyCurrent()
+          const current=accountBinding.assertReady()
+          if(current.activeUid!==bound.activeUid||current.generation!==bound.generation||trustedLifeAccountTag()!==scope)
+            throw Error('核验期间账号已变化，请重新验证')
           const updated=firstStart.verifyBili();syncPauseState(true)
           return sendJson(res,200,{...updated,username:String(result.username||'').slice(0,80)})
         }
         if(path.endsWith('/complete')){
           const body=await readBody(req)
+          accountBinding.assertReady()
+          if(!trustedLifeAccountTag())throw Error('Life 账号尚未核验，请先完成账号确认')
           const updated=firstStart.complete(Array.isArray(body?.skipped)?body.skipped:[]);syncPauseState(true)
           return sendJson(res,200,updated)
         }

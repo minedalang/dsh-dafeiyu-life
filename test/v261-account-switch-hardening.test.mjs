@@ -156,3 +156,27 @@ test('核验失败、错误 UID、HTTP 异常不得切换；不需要真实账�
   a.cancel()
   assert.equal(a.status().reason,'ready')
 }))
+
+
+test('first login requires real UID confirmation, restart and review; online recheck cannot bless unbound or changed credentials',()=>fixture(async dir=>{
+  let calls=0,finish
+  const verifier=c=>{calls++;return Promise.resolve({uid:c.dedeuserid,username:'fixture'})}
+  const a=binding(dir,{verifier})
+  await assert.rejects(()=>a.verifyCurrent(),/冻结/);assert.equal(calls,0)
+  a.stage(credential('10001'))
+  assert.equal(a.status().reason,'login-staged');assert.equal(a.status().activeUid,'')
+  await assert.rejects(()=>a.verifyCurrent(),/冻结/);assert.equal(calls,0)
+  await a.activate({expectedUid:'10001'});assert.equal(calls,1)
+  await assert.rejects(()=>a.verifyCurrent(),/冻结/)
+  const restarted=binding(dir,{verifier});restarted.acknowledgeRestart()
+  await assert.rejects(()=>restarted.verifyCurrent(),/冻结/)
+  restarted.resume({expectedUid:'10001'})
+  assert.equal((await restarted.verifyCurrent()).uid,'10001');assert.equal(calls,2)
+  const wrong=binding(dir,{verifier:async()=>({uid:'20002'})})
+  await assert.rejects(()=>wrong.verifyCurrent(),/身份或凭证已变化/)
+  const delayed=binding(dir,{verifier:()=>new Promise(resolve=>{finish=resolve})})
+  const check=delayed.verifyCurrent()
+  writeFileSync(join(dir,'bili_credential.json'),JSON.stringify({...credential('10001'),sessdata:'rotated'}))
+  finish({uid:'10001'})
+  await assert.rejects(check,/身份或凭证已变化/)
+}))
