@@ -9,7 +9,7 @@ import {apply} from '../index.js'
 
 const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n')
 // Exercise the real button handler without loading the entire React/settings host.
-const start = source.indexOf("      const onOpenManage = async (tab = '', anchor = '') => {")
+const start = source.indexOf("      const onOpenManage = async (tab = '', anchor = '', inside = false) => {")
 const end = source.indexOf('\n\n      const patch = async (p, what) => {', start)
 assert.ok(start > 0 && end > start, 'management handler exists')
 const handlerSource = source.slice(start, end)
@@ -19,7 +19,7 @@ function browser({userAgent = 'Android', protocol = 'https:', fetchImpl, postImp
   const fetch = async (...args) => {requests.push(args); return fetchImpl?.(...args)}
   const jpost = async (...args) => {posts.push(args); return postImpl?.(...args)}
   const openManage = runInNewContext(handlerSource + '\nonOpenManage', {
-    window, fetch, jpost, document:{body:{appendChild(){}},createElement(){return {click(){navigated.push(this.href)},remove(){}}}}, setManageError: text => errors.push(text), say() {},
+    window, fetch, jpost, URL, setManageBrowser() {}, setPairCode(){},pairAbort:{current:null}, document:{body:{appendChild(){}},createElement(){return {click(){navigated.push(this.href)},remove(){}}}}, setManageError: text => errors.push(text), say() {},
   })
   return {openManage, navigated, errors, posts, requests}
 }
@@ -73,12 +73,23 @@ test('平板触控设备采用网关同源导航，即使 UA 不包含 Android',
   assert.equal(app.posts.length, 0)
 })
 
-test('Desktop 在已认证的同源主窗口打开，不向外部浏览器传递身份', async () => {
-  const app = browser({protocol:'dsh-app:',userAgent:'Windows',fetchImpl:()=>({ok:true,headers:{get:name=>name==='content-type'?'text/html':'1'}})})
+test('Desktop 默认打开干净的外部浏览器入口，不占用主聊天窗口', async () => {
+  const app = browser({protocol:'dsh-app:',userAgent:'Windows',fetchImpl:()=>({ok:true,headers:{get:name=>name==='content-type'?'text/html':'1'}}),postImpl:()=>({ok:true,openIn:'external-browser',path:'/api/bili-duty/manage?tab=firststart#fs-deps-card',url:'http://127.0.0.1:8603/api/bili-duty/browser?tab=firststart#fs-deps-card'})})
   await app.openManage('firststart','fs-deps-card')
-  assert.equal(app.posts.length,0)
-  assert.deepEqual(app.navigated,['/api/bili-duty/manage?tab=firststart#fs-deps-card'])
+  assert.equal(app.posts.length,1)
+  assert.equal(app.posts[0][1].external,true)
+  assert.deepEqual(app.navigated,['http://127.0.0.1:8603/api/bili-duty/browser?tab=firststart#fs-deps-card'])
   assert.equal(app.requests[0][1].referrerPolicy,'no-referrer')
+  await app.openManage('firststart','fs-deps-card',true)
+  assert.equal(app.posts.length,1)
+  assert.equal(app.navigated.at(-1),'/api/bili-duty/manage?tab=firststart#fs-deps-card')
+})
+
+test('Desktop refuses an unexpected or credential-bearing external URL', async()=>{
+  const app=browser({protocol:'dsh-app:',fetchImpl:()=>({ok:true,headers:{get:name=>name==='content-type'?'text/html':'1'}}),postImpl:()=>({ok:true,openIn:'external-browser',path:'/api/bili-duty/manage',url:'http://127.0.0.1:8603/api/bili-duty/browser?token=secret'})})
+  await app.openManage()
+  assert.equal(app.navigated.length,0)
+  assert.match(app.errors.at(-1),/可信本机浏览器入口/)
 })
 
 test('后端仅返回 URL 时不打开系统浏览器，非本机来源仍拒绝', async () => {
@@ -229,4 +240,54 @@ test('V2 migration maintenance requires authenticated owner and explicit cancell
     assert.equal(await call('migration/cancel',undefined,'POST',true),401)
     assert.equal(await call('migration/cancel',owner,'POST',true),202)
   }finally{for(const dispose of disposers)if(typeof dispose==='function')dispose();rmSync(home,{recursive:true,force:true})}
+})
+
+
+test('public browser launcher is static and isolated from all owner routes',async()=>{
+  const home=mkdtempSync(join(tmpdir(),'fish-browser-guide-'));const routes=[]
+  try{
+    const ctx={get:k=>k==='dshHomePath'?(...p)=>join(home,...p):undefined,logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {rejection:401}}},webServer:{getOrigin(){return 'http://127.0.0.1:8603'},register(x){routes.push(x);return{dispose(){}}}},effect:f=>f(),settings:{describe(){return[]}}}
+    apply(ctx,{})
+    const guide=routes.find(r=>r.path==='/api/bili-duty/browser'), prefix=routes.find(r=>r.path==='/api/bili-duty')
+    assert.equal(guide.kind,'exact');assert.equal(guide.auth,'anonymous');assert.equal(prefix.auth,'required')
+    const call=async(route,method,url,headers,peer,body)=>{
+      const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);Object.assign(req,{method,url,headers})
+      let status,out,text;await route.handler(req,{writeHead(n,h){status=n;out=h},end(v){text=String(v??'')}},peer);return {status,out,text}
+    }
+    const host={host:'127.0.0.1:8603'}, owner={principal:{kind:'owner'}}
+    const page=await call(guide,'GET',guide.path,host)
+    assert.equal(page.status,200);assert.match(page.text,/href="\/"/);assert.doesNotMatch(page.text,/dafeiyu-management" content="1"/)
+    assert.match(page.out['content-security-policy'],/script-src 'sha256-/)
+    const script=page.text.match(/<script>([\s\S]+)<\/script>/)[1]
+    const {createHash}=await import('node:crypto');assert.ok(page.out['content-security-policy'].includes(createHash('sha256').update(script).digest('base64')))
+    assert.equal((await call(guide,'POST',guide.path,host)).status,405)
+    assert.equal((await call(guide,'GET',guide.path,{...host,'sec-fetch-site':'cross-site'})).status,403)
+    assert.equal((await call(prefix,'GET','/api/bili-duty/config',host)).status,401)
+    const open=await call(prefix,'POST','/api/bili-duty/open',{...host,'x-dafeiyu-management-intent':'1'},owner,{what:'manage',external:true,tab:'models'})
+    assert.equal(open.status,200);assert.equal(JSON.parse(open.text).url,'http://127.0.0.1:8603/api/bili-duty/browser?tab=models')
+    assert.equal((await call(prefix,'POST','/api/bili-duty/open',host,owner,{what:'manage',external:true})).status,403)
+    for(const status of [200,401,403]){
+      const nodes={status:{},login:{addEventListener(){}},retry:{addEventListener(){}}}, navigated=[]
+      runInNewContext(script,{URL,AbortSignal,location:{href:'http://127.0.0.1:8603/api/bili-duty/browser?tab=models',replace:p=>navigated.push(p)},document:{getElementById:id=>nodes[id]},fetch:async()=>({ok:status===200,status,headers:{get:n=>n==='x-dafeiyu-management'?'1':'text/html'}}),clearInterval,setInterval})
+      await new Promise(resolve=>setImmediate(resolve));assert.deepEqual(navigated,status===200?['/api/bili-duty/manage?tab=models']:[])
+      if(status!==200)assert.equal(nodes.login.hidden,status!==401)
+    }
+  }finally{rmSync(home,{recursive:true,force:true})}
+})
+
+test('external target is derived only from the trusted host origin',async()=>{
+  const {managementBrowserUrl}=await import('../lib/management-host-auth.mjs')
+  assert.equal(managementBrowserUrl({getOrigin:()=> 'http://127.0.0.1:8603'},'firststart','fs-deps-card'),'http://127.0.0.1:8603/api/bili-duty/browser?tab=firststart#fs-deps-card')
+  for(const bad of ['https://example.org','http://127.0.0.1:8603/?token=x','http://user:pw@localhost:8603','file:///a']) assert.throws(()=>managementBrowserUrl({getOrigin:()=>bad}))
+})
+
+test('pairing approval only accepts one live matching code and exact authority',async()=>{
+  const approveSource=source.slice(source.indexOf('      const approveBrowser = async () => {'),source.indexOf('      const browserRecovery='))
+  const live={id:'request',code:'TEST-CODE',authority:'http://127.0.0.1:8603',expiresInMs:5000}
+  for(const rows of [[live],[{...live,expiresInMs:0}],[{...live,authority:'http://localhost:8603'}],[live,live],[{...live,code:'WRONG'}]]){
+    const decisions=[],errors=[];const pairingRemote={pairingRequests:async()=>({ok:true,value:{requests:rows}}),decidePairing:async(id,decision)=>{decisions.push([id,decision]);return {ok:true,value:'approved'}}}
+    const approve=runInNewContext(approveSource+'\napproveBrowser',{pairingRemote,pairPending:{current:false},pairAbort:{current:null},pairCode:'TEST-CODE',manageBrowser:{origin:live.authority},setPairBusy(){},setManageError:e=>errors.push(e),setPairCode(){},say(){},AbortController,setTimeout,clearTimeout})
+    await approve();const valid=rows.length===1&&rows[0]===live
+    assert.deepEqual(decisions,valid?[['request','allow']]:[]);if(!valid)assert.match(errors.at(-1),/未找到唯一有效/)
+  }
 })

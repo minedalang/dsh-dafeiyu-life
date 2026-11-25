@@ -32,6 +32,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
 
     const API = '/api/bili-duty'
+    let pairingRemote = null // Optional official alpha Remote; no synthesized owner.
     /* ⚠️ 原来 jget/jpost 直接 .json()、从不看 res.ok ⇒ HTTP 500 的 {ok:false,error}
      *    会被调用方当成「已保存 / 成功」，绿色提示把故障盖掉。（2026-10-16 审查修） */
     const asJson = async (res) => {
@@ -276,6 +277,12 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = React.useState('')
       const [msg, setMsg] = React.useState('')
       const [manageError, setManageError] = React.useState('')
+      const [manageBrowser,setManageBrowser] = React.useState(null)
+      const [pairCode,setPairCode] = React.useState('')
+      const [pairBusy,setPairBusy] = React.useState(false)
+      const pairPending=React.useRef(false)
+      const pairAbort=React.useRef(null)
+      React.useEffect(()=>()=>pairAbort.current?.abort(),[])
       const [msgTone, setMsgTone] = React.useState('')
       const [kws, setKws] = React.useState(null)
       const [favFolders, setFavFolders] = React.useState(null)   // 收藏夹列表（下拉用，null = 还没读）
@@ -393,9 +400,9 @@ window.__ModuleLoader__.load({
         setRunNote(text ? { t: text, tone: tone || '' } : null)   // ⭐ 同时镜像到顶部，免得提示掉到页面最底下看不见
       }
 
-      // Use the existing authenticated DSH carrier (Desktop custom scheme,
-      // Web or paired Mobile). Never launch the external OS browser for management.
-      const onOpenManage = async (tab = '', anchor = '') => {
+      // Desktop opens a clean external launcher; mobile/web keep their authenticated carrier.
+      // The optional internal fallback is explicit, never silently replaces the chat window.
+      const onOpenManage = async (tab = '', anchor = '', inside = false) => {
         setManageError('')
         try {
           const safeTab = ['firststart', 'models', 'home', 'life', 'life-agent'].includes(tab) ? tab : ''
@@ -419,7 +426,15 @@ window.__ModuleLoader__.load({
           }
           if (!isManage) throw new Error('当前访问通道返回的不是大肥鱼管理中心；请检查 DSH 登录或配对状态')
           const target=path+(safeAnchor?'#'+safeAnchor:'')
-          if(desktop){
+          if(desktop&&!inside){
+            const result=await jpost('/open',{what:'manage',tab:safeTab,anchor:safeAnchor,external:true})
+            const external=new URL(result.url)
+            if(result.ok!==true||result.openIn!=='external-browser'||result.path!==target||!['http:','https:'].includes(external.protocol)||!['127.0.0.1','localhost','[::1]'].includes(external.hostname)||external.username||external.password||external.pathname+external.search+external.hash!==target.replace('/manage','/browser'))throw Error('未取得可信本机浏览器入口')
+            pairAbort.current?.abort();setPairCode('');setManageBrowser({origin:external.origin,tab:safeTab,anchor:safeAnchor})
+            // DSH Desktop's supported HTTP(S) external-link handler opens the system browser.
+            const link=document.createElement('a');link.href=external.href;link.target='_blank';link.rel='noopener noreferrer';link.referrerPolicy='no-referrer';link.hidden=true
+            document.body.appendChild(link);try{link.click()}finally{link.remove()}
+          }else if(desktop){
             // Main-frame navigation preserves the official Desktop bridge. A
             // no-referrer link avoids forwarding the private scheme as Referer.
             const link=document.createElement('a');link.href=target;link.target='_self';link.rel='noreferrer';link.referrerPolicy='no-referrer';link.hidden=true
@@ -433,6 +448,32 @@ window.__ModuleLoader__.load({
         }
       }
 
+
+      // Request list and decision stay on the official authenticated Remote.
+      // The human compares the code; never approve automatically, or pass a token.
+      const approveBrowser = async () => {
+        if(pairPending.current||!manageBrowser||!pairCode.trim())return
+        pairPending.current=true;setPairBusy(true);setManageError('')
+        const controller=new AbortController();pairAbort.current=controller
+        const timer=setTimeout(()=>controller.abort(),10000)
+        try{
+          const remote=pairingRemote
+          if(!remote)throw Error('当前宿主未提供浏览器配对服务，请使用宿主官方登录入口或在 DSH 内打开')
+          const listed=await remote.pairingRequests(controller.signal)
+          if(!listed?.ok||!Array.isArray(listed.value?.requests))throw Error('无法读取宿主配对申请')
+          const matches=listed.value.requests.filter(row=>row.code===pairCode.trim()&&row.authority===manageBrowser.origin&&row.expiresInMs>0)
+          if(matches.length!==1)throw Error('未找到唯一有效的本机配对码，请核对浏览器并重试')
+          if(controller.signal.aborted||pairingRemote!==remote)throw Error('配对上下文已变化，请重试')
+          const result=await remote.decidePairing(matches[0].id,'allow',controller.signal)
+          if(!result?.ok||result.value!=='approved')throw Error('宿主尚未确认配对，请核对浏览器状态')
+          if(!controller.signal.aborted){setPairCode('');say('DSH 已批准浏览器登录；请返回浏览器查看管理中心。','ok')}
+        }catch(e){if(!controller.signal.aborted)setManageError('浏览器配对未确认：'+String(e?.message||e).slice(0,160));else setManageError('配对结果尚未确认，请先核对浏览器状态。')}
+        finally{clearTimeout(timer);pairAbort.current=null;pairPending.current=false;setPairBusy(false)}
+      }
+      const browserRecovery=()=>window.location?.protocol==='dsh-app:'?h('div',{'data-bd-sub':''},
+        manageBrowser?h('div',{'data-bd-note':''},'首次使用系统浏览器时，请在浏览器官方 DSH 登录页申请配对；仅输入自己浏览器显示的配对码。批准后该浏览器获得完整 DSH 主人权限。'):null,
+        manageBrowser?h('div',{'data-bd-row':''},h('input',{'data-bd-input':'',style:{width:140},value:pairCode,maxLength:40,placeholder:'浏览器配对码',onChange:e=>setPairCode(e.target.value)}),h('button',{'data-bd-btn':'',disabled:pairBusy||!pairCode.trim(),onClick:approveBrowser},pairBusy?'确认中…':'确认本人浏览器配对')):null,
+        h('button',{'data-bd-btn':'',onClick:()=>onOpenManage(manageBrowser?.tab||'',manageBrowser?.anchor||'',true)},'在 DSH 内打开（备用）')):null
 
       const patch = async (p, what) => {
         setBusy(JSON.stringify(p))
@@ -773,6 +814,7 @@ window.__ModuleLoader__.load({
               !st.venvReady?h('button',{'data-bd-btn':'','data-primary':'',onClick:()=>onOpenManage('firststart','fs-deps-card')},st.installing?'查看主依赖安装进度 ↗':'① 安装／修复主依赖 ↗'):null,
               h('button',{'data-bd-btn':'',onClick:()=>onOpenManage('firststart')},st.venvReady?'打开管理中心，开始配置 · 登录及模型 ↗':'② 打开管理中心，开始配置 ↗')),
             h('div',{'data-bd-note':''},'主 Session、人生记忆、人格成长与社交偏好可以先跳过；设置以后都能在管理中心修改。'),
+            browserRecovery(),
             manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
           nativeAccountRecovery())
       }
@@ -817,6 +859,7 @@ window.__ModuleLoader__.load({
               npmUpdateState.status==='checking'?'正在查询 npm 仓库版本（不会自动更新）…':
               npmUpdateState.status==='error'?'npm 查询失败：'+npmUpdateState.error+'。请检查网络后手动重试。':
               'npm 未发现更高正式版（本地 v'+(st.version||'?')+'；仓库 v'+(npmUpdateState.latest||'?')+'）。'),
+          browserRecovery(),
           manageError ? h('div',{'data-bd-msg':'','data-warn':''},manageError) : null),
 
         /* ── 大肥鱼总开关：永久展示，不隐藏设置，不清除历史 ── */
@@ -1100,6 +1143,12 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots'],
       apply(ctx) {
+        // Official Remote Connection mounts this service before hiding its
+        // default settings section on Desktop. Optional injection keeps rc.5 alive.
+        try{ctx.inject(['remote.remoteConnection'],scope=>{
+          const remote=scope.remote.remoteConnection;pairingRemote=remote
+          scope.effect(()=>()=>{if(pairingRemote===remote)pairingRemote=null},'dafeiyu: browser pairing lifetime')
+        })}catch{/* older host or absent provider: use internal fallback */}
         const style = document.createElement('style')
         style.setAttribute('data-plugin-css', 'dsh-dafeiyu-life')
         style.textContent = CSS

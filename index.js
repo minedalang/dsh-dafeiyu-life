@@ -83,7 +83,7 @@ import {inspectExternalLifeCopy} from './lib/storage-external-life-retired.mjs'
 import {queueModelCleanup,readCleanupJob} from './lib/storage-cleanup-queue.mjs'
 import {queueDomainMigration,readMigrationJob,assertMigrationStartupSafe} from './lib/storage-migration-queue.mjs'
 import {registerMigrationMaintenance} from './lib/storage-migration-maintenance.mjs'
-import {managementOwnerStatus,managementAuthError,explicitManagementIntent,managementPath} from './lib/management-host-auth.mjs'
+import {managementOwnerStatus,managementAuthError,explicitManagementIntent,managementPath,managementBrowserUrl,managementBrowserLanding} from './lib/management-host-auth.mjs'
 import {storageTargetSuggestions} from './lib/storage-platform.mjs'
 import {storageArchiveInventory} from './lib/storage-archive-inventory.mjs'
 import {readLifeReturnEvidence} from './lib/storage-life-return-evidence.mjs'
@@ -11661,9 +11661,17 @@ logger:{warn:m=>log('社交意图：'+m)}
       const body = await readBody(req)
       const what = String(body?.what || 'out')
       if(!firstStart.isReady() && what!=='manage')return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
-      // Management must stay on the authenticated carrier. No owner credential
-      // or absolute Host URL is handed to an external browser by this route.
-      if (what === 'manage') return sendJson(res, 200, {ok:true, path:managementPath(body?.tab,body?.anchor), openIn:'current-dsh'})
+      // Only an authenticated, explicit owner operation can request the clean launcher URL.
+      // The external browser establishes its own session with the official DSH login page.
+      if (what === 'manage') {
+        const path=managementPath(body?.tab,body?.anchor)
+        if(body?.external===true){
+          if(!explicitManagementIntent(req))return sendJson(res,403,{ok:false,error:'需要明确的主人操作'})
+          try{return sendJson(res,200,{ok:true,path,openIn:'external-browser',url:managementBrowserUrl(ctx.webServer,body?.tab,body?.anchor)})}
+          catch{return sendJson(res,503,{ok:false,error:'宿主未提供可信本机浏览器地址，请在 DSH 内打开'})}
+        }
+        return sendJson(res,200,{ok:true,path,openIn:'current-dsh'})
+      }
       if (what === 'url') {
         const u = String(body?.u || '')
         if (!/^https?:\/\//i.test(u)) return sendJson(res, 200, { ok: false, error: '只接受 http(s) 链接' })
@@ -11988,6 +11996,13 @@ logger:{warn:m=>log('社交意图：'+m)}
       } catch { return false }
     } catch { return false }
   }
+    // A public, exact, static login guide only. No business handler, data,
+    // credential issuance, or owner exemption is reachable through this path.
+    ctx.effect(() => ctx.webServer.register({kind:'exact',path:'/api/bili-duty/browser',auth:'anonymous',
+      handler:(req,res)=>{
+        if(!sameOriginOk(req))return sendJson(res,403,{ok:false,error:'只接受本机同源请求'})
+        return managementBrowserLanding(req,res)
+      }}), 'bili-duty: browser login guide')
     ctx.effect(() => ctx.webServer.register({
       kind: 'prefix',
       path: '/api/bili-duty',
