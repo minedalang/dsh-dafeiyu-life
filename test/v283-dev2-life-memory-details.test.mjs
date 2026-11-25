@@ -436,3 +436,26 @@ test('paged deep recall continues beyond twelve observation sources and keeps th
  assert.equal(new Set([...first.fragments,...second.fragments].map(f=>f.memoryId)).size,14)
  assert.ok(JSON.stringify(first).length<16000)
 }))
+
+
+test('release compatibility: more than 100 verified deep attachments can be exported, restored and reopened without losing grouped observation identities',()=>setup(({dir,gateway,memoryId})=>{
+ const events=Array.from({length:100},(_,i)=>({...event,key:'video-explore:release-compat-'+i,at:NOW+i+1}))
+ assert.equal(gateway.recordEvents(events).added,100)
+ const root=JSON.parse(readFileSync(gateway.file,'utf8')).episodes.find(e=>e.id===memoryId)
+ assert.equal(root.visualObservations.length,100)
+ const ids=[memoryId,...root.visualObservations.map(e=>e.id)]
+ for(const id of ids)assert.equal(gateway.attachMemoryDetails({memoryId:id,accountTag:A,fragments,sourceProof:{internalToken:'test-only'}}).ok,true)
+ const bundle=createLifeMemoryBackup(dir)
+ assert.equal(Object.keys(bundle.files).filter(name=>name.startsWith('life-memory/details/v1/')).length,101)
+ const dest=mkdtempSync(join(tmpdir(),'detail-release-upgrade-'))
+ try{
+  restoreLifeMemoryBackup(dest,bundle)
+  const reopened=createLifeMemoryGateway({dataDir:dest,getAccountTag:()=>A,now:()=>NOW+5000})
+  try{
+   assert.equal(reopened.status().nestedVisualObservations,100)
+   assert.equal(reopened.status().details.attachments,101)
+   for(const id of ids)assert.equal(reopened.expandMemoryDetail({memoryId:id,accountTag:A}).ok,true)
+   assert.equal(reopened.expandMemoryDetail({memoryId:ids.at(-1),accountTag:B}).ok,false)
+  }finally{reopened.close()}
+ }finally{rmSync(dest,{recursive:true,force:true})}
+}))

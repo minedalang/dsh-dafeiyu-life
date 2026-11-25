@@ -5,6 +5,7 @@ import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createHash} from 'node:crypto'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
+import {createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
 import {createLifeReflection,__test as reflectionTest} from '../lib/life-reflection.mjs'
 import {createMemoryRetriever,publicVisualAssociationContext} from '../lib/memory-retriever.mjs'
 import {createNeuralActivationTracker,projectNeuralActivation,memoryNeuralProjection} from '../lib/memory-neural-projection.mjs'
@@ -125,4 +126,24 @@ test('two-hop path projection preserves actual order; no invented bridge or priv
  assert.equal(projectNeuralActivation(receipt,steps.slice().reverse(),episodes),null)
  assert.deepEqual(x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:episodes.filter(e=>e.id!==src(x.g,2).id)}),[])
  x.setAccount(B);assert.deepEqual(x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:episodes}),[])
+}))
+
+
+test('release compatibility: existing association identities survive both schema-2 backups and reopen, without cross-account activation',()=>setup(async x=>{
+ const p=propose(x.g,1,2);assert.equal(add(x.g,[p]).added,1)
+ const before=JSON.parse(readFileSync(x.g.file,'utf8')).associations
+ const business=createBackup({root:x.dir,config:{},version:'2.8.3-dev.12'})
+ const memory=createLifeMemoryBackup(x.dir)
+ for(const [bundle,restore] of [[business,restoreBackupFiles],[memory,restoreLifeMemoryBackup]]){
+  const dest=mkdtempSync(join(tmpdir(),'dsh-assoc-upgrade-'))
+  let restored,tag=A
+  try{
+   restore(dest,bundle);restored=createLifeMemoryGateway({dataDir:dest,getConfig:()=>cfg,getAccountTag:()=>tag,now:()=>NOW})
+   assert.deepEqual(JSON.parse(readFileSync(restored.file,'utf8')).associations,before)
+   assert.equal(restored.status().associations.active,1)
+   assert.equal(link(restored,1)[0].memoryId,src(restored,2).id)
+   tag=B;assert.equal(restored.status().associations.active,0)
+   assert.deepEqual(restored.associationCandidates({accountTag:A,seedIds:before[0].ends,eligibleIds:before[0].ends,limit:2}),[])
+  }finally{restored?.close();rmSync(dest,{recursive:true,force:true})}
+ }
 }))

@@ -471,8 +471,8 @@ window.__ModuleLoader__.load({
             // owner session and navigates after the browser has the cookie.
             const auto=await tryOfficialBrowserLogin(external.origin,controller.signal)
             controller.signal.throwIfAborted()
-            if(auto){external.searchParams.set('auto','1');setManageNotice('正在登录，请查看大肥鱼管理中心标签页。')}
-            else {setBrowserAuthExpanded(true);setManageNotice('若未能进入管理中心，请按下方步骤登录。')}
+            if(auto){external.searchParams.set('auto','1');setManageNotice('请查看大肥鱼管理中心标签页。')}
+            else {setBrowserAuthExpanded(true);setManageNotice('若未能打开管理中心，请按下方指引授权。')}
             openExternalManagementLink(external.href)
           }else if(desktop){
             // Main-frame navigation preserves the official Desktop bridge. A
@@ -556,7 +556,6 @@ window.__ModuleLoader__.load({
         finally{clearTimeout(timer);pairAbort.current=null;pairPending.current=false;setPairBusy(false)}
       }
       const browserRecovery=({statusPending=false}={})=>window.location?.protocol==='dsh-app:'&&window.location?.host==='app'?h('div',{'data-bd-browser-auth':'','aria-label':'管理中心浏览器授权'},
-        h('div',{'data-bd-note':''},'在自己的浏览器中打开管理中心，通常无需手动登录。'),
         statusPending?h('div',{'data-bd-row':''},h('button',{'data-bd-btn':'','data-primary':'',disabled:manageOpening,onClick:()=>onOpenManage()},manageOpening?'正在打开…':'在独立浏览器中打开管理中心 ↗')):null,
         manageNotice?h('div',{'data-bd-note':'',role:'status'},manageNotice):null,
         pairResult?h('div',{'data-bd-msg':'','data-good':'',role:'status'},pairResult):null,
