@@ -997,6 +997,19 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life .neural-edge[data-type="interest"]{stroke:var(--neural-int)}
 #panel-life .neural-edge[data-type="relationship"]{stroke:var(--neural-rel)}
 #panel-life .neural-edge[data-type="source"]{stroke:#7397ae}
+#panel-life .neural-edge[data-type="association"]{stroke-dasharray:none;animation:none;cursor:pointer;pointer-events:stroke}
+#panel-life #neural-association-types{gap:8px;font-size:11px;flex-wrap:wrap}
+#panel-life #neural-association-types label{border-bottom:2px solid var(--association-color,#789bb6)}
+#panel-life #neural-association-types label:nth-child(1){--association-color:#16a6a0}
+#panel-life #neural-association-types label:nth-child(2){--association-color:#528ddd}
+#panel-life #neural-association-types label:nth-child(3){--association-color:#9972cf}
+#panel-life #neural-association-types label:nth-child(4){--association-color:#d99a3a}
+#panel-life #neural-association-types label:nth-child(5){--association-color:#789bb6}
+#panel-life .neural-relation-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+#panel-life .neural-relation-list button{white-space:normal;text-align:left;font-size:11px;padding:5px 8px;border-radius:8px}
+#neural-association-dialog{box-sizing:border-box;width:min(660px,92vw);max-height:80vh;overflow:auto;border:1px solid var(--stroke);border-radius:16px;background:var(--panel);color:var(--ink);padding:20px}
+#neural-association-dialog::backdrop{background:#071b29a8}
+#neural-association-dialog p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
 #panel-life .neural-emotion-link{stroke:var(--neural-emo)}
 #panel-life .neural-emotion-echo{fill:var(--neural-emo);stroke:var(--panel)}
 #panel-life .neural-emotion-note{fill:var(--ink)}
@@ -2754,14 +2767,15 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4><div id="neural-memory-stats" class="neural-memory-stats" aria-label="可衰减记忆账本统计" role="status"><span id="neural-fading-total">衰减副本 · 读取中</span><span id="neural-fading-new">今日新增 · 读取中</span><span id="neural-fading-forgot">今日遗忘 · 读取中</span></div></div><span id="neural-memory-count" class="neural-counter">等待读取</span></div>
   <details class="neural-guidance"><summary>操作提示与证据说明 <span>拖动旋转 · 滚轮缩放 · 点击记忆点</span></summary><p class="muted">彩色连线只表示已核验共享来源；搜索后青色连线对应本地向量余弦相似度，不是画面中的三维距离。</p><p class="muted neural-search-boundary">本地 Embedding 模型已连接时才进行语义检索，否则为标注清楚的关键词匹配。真实回忆仍需经过场景理解、回忆意图、权限与遗忘过滤、召回及核验；这个视图不是内部思考录像。</p></details>
   <div class="neural-recall-controls"><label><input id="neural-show-all" type="checkbox" checked> 显示全部可回忆节点（未命中变灰）</label><label for="neural-node-limit">最多显示</label><select id="neural-node-limit" aria-label="最多绘制的记忆节点数"><option value="500">500</option><option value="1000" selected>1000</option><option value="2000">2000</option><option value="10000">10000（高负载）</option></select></div>
-  <div class="neural-recall-controls"><label title="仅显示真实共享证据，数量为 0 时不会凭空画线"><input id="neural-show-interest" type="checkbox" checked> 兴趣证据连线 <small id="neural-interest-edge-count">(0)</small></label><label><input id="neural-show-relationship" type="checkbox" checked> 互动证据连线 <small id="neural-relationship-edge-count">(0)</small></label><label><input id="neural-show-source" type="checkbox" checked> 共享来源连线 <small id="neural-source-edge-count">(0)</small></label><label><input id="neural-show-emotion" type="checkbox" checked> 当时情绪回声（有证据时）</label></div>
-  <p class="muted" id="neural-evidence-explanation">连线必须由两个节点共享已核验的来源证据；若显示 (0)，开关不会改变画面，绝不伪造关联。</p>
+  <div class="neural-recall-controls"><label title="仅显示真实共享证据，数量为 0 时不会凭空画线"><input id="neural-show-interest" type="checkbox" checked> 兴趣证据连线 <small id="neural-interest-edge-count">(0)</small></label><label><input id="neural-show-relationship" type="checkbox" checked> 互动证据连线 <small id="neural-relationship-edge-count">(0)</small></label><label><input id="neural-show-source" type="checkbox" checked> 共享来源连线 <small id="neural-source-edge-count">(0)</small></label><label><input id="neural-show-association" type="checkbox" checked> 联想记忆连线 <small id="neural-association-edge-count">(0)</small></label><label><input id="neural-show-emotion" type="checkbox" checked> 当时情绪回声（有证据时） <small id="neural-emotion-count">(0)</small></label></div>
+  <div class="neural-recall-controls" id="neural-association-types" aria-label="持久联想类型"><label><input type="checkbox" data-association-type="similarity" checked> 相似</label><label><input type="checkbox" data-association-type="context" checked> 情境</label><label><input type="checkbox" data-association-type="concept" checked> 概念</label><label><input type="checkbox" data-association-type="contrast" checked> 对比</label><label><input type="checkbox" data-association-type="temporal" checked> 时间</label><small class="muted">情绪联想待接通（情绪回声不等于情绪关系）</small></div>
+  <p class="muted" id="neural-evidence-explanation">证据连线来自可核验来源；联想连线来自模型已保存的关系。数字：当前可见 / 本次读取范围内有效，缺失证据不补画。</p>
   <fieldset class="neural-kind-filters" aria-label="按真实记忆类型筛选"><legend>记忆筛选 · 可多选</legend>
   <label><input id="neural-filter-experience" type="checkbox" checked><i class="neural-swatch experience"></i>蓝 · 生活经历</label>
   <label><input id="neural-filter-relationship" type="checkbox" checked><i class="neural-swatch relationship"></i>粉 · 人物互动</label>
   <label><input id="neural-filter-interest" type="checkbox" checked><i class="neural-swatch interest"></i>绿 · 后天兴趣</label>
   <label><input id="neural-filter-fact" type="checkbox" checked><i class="neural-swatch fact"></i>金 · 事实认识</label>
-  <label title="仅包含具备原始证据的情绪回声，不新增记忆节点"><input id="neural-filter-emotion" type="checkbox" checked><i class="neural-swatch emotion"></i>紫 · 当时情绪</label>
+  <label title="仅包含具备原始证据的情绪回声，不新增记忆节点"><input id="neural-filter-emotion" type="checkbox" checked><i class="neural-swatch emotion"></i>紫 · 当时情绪 <small id="neural-emotion-filter-count">(0)</small></label>
   </fieldset><p class="muted neural-controls-hint">左键拖动旋转 · 右键拖动平移 · 滚轮缩放 · 五类筛选可组合使用</p>
   <div class="neural-legend" aria-label="记忆布局状态">
   <strong id="neural-layout-mode">结构布局 · 非语义坐标</strong>

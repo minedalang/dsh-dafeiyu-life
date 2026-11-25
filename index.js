@@ -253,6 +253,7 @@ import {createLifeManagementEvents} from './lib/life-management-events.mjs'
 import {describeIncomingBiliImage,verifiedBiliImageUrl} from './lib/incoming-image-vision.mjs'
 import {favoriteStyleFromPersona,publicFavoriteTopics} from './lib/favorite-style.mjs'
 import { createLifeMemoryGateway, relationshipMemoryHalfLifeDays } from './lib/life-memory-gateway.mjs'
+import {interestNeuralEvidence} from './lib/life-interests.mjs'
 import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import { memoryNeuralProjection, neuralProjectionKey } from './lib/memory-neural-projection.mjs'
 import { systemHealthSnapshot } from './lib/system-health-projection.mjs'
@@ -5613,7 +5614,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       }))
     },
     onEmotion:({mood,intensity,source})=>{try{return emotionalState.update({mood,intensity,source})}catch(e){log('情绪状态更新失败：'+String(e?.message||e).slice(0,100))}},
-    onEmotionContext:({at,source,incoming,generated})=>{try{emotionalState.attachContext({at,source,incoming,generated})}catch(e){log('情绪来源片段记录失败：'+String(e?.message||e).slice(0,100))}},
+    onEmotionContext:({at,source,incoming,generated,observation})=>{try{emotionalState.attachContext({at,source,incoming,generated})}catch(e){log('情绪来源片段记录失败：'+String(e?.message||e).slice(0,100))}
+      if(observation&&!accountBinding.status().blocked)try{lifeMemory?.recordEpisodeEmotion(observation)}catch(e){log('经历情绪证据保存失败：'+String(e?.message||e).slice(0,100))}},
     invoke:prompt=>invokeInteractionPrompt(prompt,24000),
     getPersona:batch=>buildInteractionPersona(batch),
     logger:{warn:m=>log('互动 AI：'+m)},
@@ -6512,11 +6514,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const owner=routedSocialOwner('comment')
       if(!owner.ok)throw Error('评论决策所有权检查失败：'+owner.reason)
       return runLifeSocialOperation({channel:'comment',expectedScope:owner.scope,phase:'decision',requester:owner.owner,expectedGeneration:owner.generation},async()=>{
+      const emotionAccountTag=trustedLifeAccountTag()
       const visualReq=await addIncomingPictureObservation(req)
       const commentEpisodeContext=lifeSubagentHandoff({agent:'comment',episodes:universalLifeEpisodes,
         sourceRef:'comment-thread:'+String(req.bvid||'')+':'+String(req.uid||''),
         linkedPublicBvid:String(req.bvid||'')});
-      const generated=await interactionBatcher.generate({...visualReq,lifeCommentMessages:true,lifeEpisodeContext:commentEpisodeContext,
+      const generated=await interactionBatcher.generate({...visualReq,lifeCommentMessages:true,lifeEpisodeContext:commentEpisodeContext,emotionAccountTag,
         verifiedCommentSource:/^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))&&/^[1-9]\d{0,18}$/.test(String(req.uid||''))&&/^[1-9]\d{0,19}$/.test(String(req.rpid||'')),
         identityContext:'',incomingRpid:req.rpid,
       p6MaxBubbles:1, // public comment/@ always one message
@@ -10407,11 +10410,11 @@ logger:{warn:m=>log('社交意图：'+m)}
           }
         }catch(e){peopleError='关系观察索引暂不可用：'+String(e?.message||e).slice(0,90)}
         const sharedGardenArgs={interests:interestMemoryRows(stateDir),people,
-          query:neuralView?'':q,kind:neuralView?'':kind,limit,peopleError}
+          query:neuralView?'':q,kind:neuralView?'':kind,limit:neuralView?10000:limit,peopleError}
         // Preserve the original bounded garden contract while the neural graph
         // explicitly opts in to its separate, high-density read-only view.
         const result=neuralView
-          ?memoryGardenSnapshot({memories:longTermMemory.listForVisualization(limit),...sharedGardenArgs})
+          ?memoryGardenSnapshot({memories:longTermMemory.listForVisualization(10000),...sharedGardenArgs})
           :memoryGardenSnapshot({memories:longTermMemory.list('',300),...sharedGardenArgs})
         if(neuralView){
           // The graph is a bounded view of the CURRENT fading copy. `recall()`
@@ -10422,6 +10425,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           // when that episode is older than the normal graph node cap. The
           // Gateway still enforces account and forgetting scope; never read archives.
           const exactVideoQuery=/^BV[0-9A-Za-z]{10}$/.test(q)?q:''
+          const graphAccount=trustedLifeAccountTag()
           const rawEpisodes=lifeMemory?.semanticCandidates({query:exactVideoQuery,domain:'main-session',
             kinds:['watch','comment','social'],limit:3200})||[]
           const episodes=lifeMemory?.videoRecallGroups(rawEpisodes)||rawEpisodes
@@ -10468,7 +10472,9 @@ logger:{warn:m=>log('社交意图：'+m)}
               }else semanticWarning='向量查询没有可用索引，本次只使用关键词命中。'
             }catch(error){semanticWarning='向量查询暂不可用，本次退回关键词命中。'}
           }
-          const projection=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true,semanticMatchIds:semanticMatches,semanticScores})
+          if(graphAccount!==trustedLifeAccountTag()||(graphAccount&&accountBinding.status().blocked))return sendJson(res,409,{ok:false,error:'账号状态已改变，重新读取神经回忆场'})
+          const verifiedGraph=lifeMemory?.neuralEvidenceSnapshot({accountTag:graphAccount,gardenRows:result.rows,interestEvidence:interestNeuralEvidence(stateDir,graphAccount),episodeRows:episodes})||{links:[],emotions:[]}
+          const projection=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true,semanticMatchIds:semanticMatches,semanticScores,verifiedGraph})
           const layout=cfg.mainSessionMemoryEmbeddingEnabled===true?embeddingIndex?.projectPoints(corpus,{query:semanticReady?q:''}):null
           const positions=layout?.coordinates||{}
           return sendJson(res,200,{...projection,

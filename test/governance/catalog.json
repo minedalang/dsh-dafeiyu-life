@@ -576,6 +576,11 @@
     "watched-merge.test.mjs"
   ],
   "registeredActive": {
+    "v283-dev6-neural-evidence-graph.test.mjs": {
+      "owner": "life-memory-neural-evidence",
+      "kind": "security",
+      "intent": "Verify exact live evidence projection, model emotion binding, account isolation, expiry, aggregation and association visualization metadata."
+    },
     "v283-dev6-persistent-association.test.mjs": {
       "owner": "life-memory-associations",
       "kind": "security",
