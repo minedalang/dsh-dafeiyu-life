@@ -111,3 +111,20 @@ test('unsafe cache directory is skipped independently and retried after repair',
   assert.equal(existsSync(target),true)
  }finally{rmSync(root,{recursive:true,force:true})}
 })
+
+
+test('gallery binds frame captions only to one exact verified storyboard receipt in the same observation',()=>{
+ const root=mkdtempSync(join(tmpdir(),'dsh-frame-result-'))
+ try{
+  const id='c'.repeat(32),dir=join(root,'vision-perception-captures',id);mkdirSync(dir,{recursive:true})
+  writeFileSync(join(dir,'storyboard-01.jpg'),jpeg);writeFileSync(join(dir,'storyboard-02.jpg'),jpeg)
+  const images=[{file:'storyboard-01.jpg',times:[0,5.5],gridCols:2,gridRows:1},{file:'storyboard-02.jpg',times:[10,15.5],gridCols:2,gridRows:1}]
+  const captures=[{id,kind:'storyboard',images}]
+  const first={index:1,status:'analyzed',times:[0,5.5],gridCols:2,gridRows:1,description:'R1C1 [00:00]：真实第一格。\nR1C2 [00:05]：真实第二格。'}
+  const second={index:2,status:'analyzed',times:[10,15.5],gridCols:2,gridRows:1,description:'R1C1 [00:10]：第二板第一格。\nR1C2 [00:15]：第二板第二格。'}
+  const put=receipts=>{const result=addLifeVideoGallery(root,{account:tag,bvid,captures,verified:true,at:now,boardReceipts:receipts});assert.ok(result.ok);return listLifeVideoGallery(root,tag,{now}).find(r=>r.id===result.id)}
+  const verified=put([second,first]);assert.deepEqual(verified.images[0].frameDescriptions.map(x=>x.text),['真实第一格。','真实第二格。']);assert.equal(verified.images[1].frameDescriptions[1].text,'第二板第二格。')
+  for(const receipts of [[{...first,times:[0,5]}],[{...first,description:'R1C1 [00:00]：不完整'}],[first,first],[{...first,gridRows:2}],[]])assert.equal(put(receipts).images[0].frameDescriptions,undefined)
+  assert.equal(listLifeVideoGallery(root,'a'.repeat(15)+'b',{now}).length,0)
+ }finally{rmSync(root,{recursive:true,force:true})}
+})

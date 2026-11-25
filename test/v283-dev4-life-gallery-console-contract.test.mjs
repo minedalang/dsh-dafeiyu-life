@@ -169,3 +169,14 @@ test('video cache expiry starts independently of backup and retries periodically
  assert.match(server,/Date\.now\(\)-value\.createdAt>=videoDebugExpiry/)
  assert.match(server,/const result=pruneVideoCaches\(stateDir\)/)
 })
+
+
+test('gallery frame zoom uses exact selected cell text and keeps full visual result tab',()=>{
+ assert.match(html,/id="life-gallery-view-analysis"[^>]*>视觉结果/)
+ assert.match(html,/id="life-gallery-image-caption"[\s\S]*?id="life-gallery-frame-result-text"/)
+ assert.match(js,/const frameResult=item\.frameDescriptions\?\.\[index\]/)
+ assert.match(js,/zoomToken!==lifeGalleryZoomToken/)
+ assert.match(js,/此画廊没有可精确对应本帧的视觉文字回执/)
+ assert.match(js,/条带＝多格或区间合并描述（非连续观看）/)
+ assert.equal((server.match(/boardReceipts:(?:parseMaybeJson\(vision\)|visual)\?\.visionBoardReceipts/g)||[]).length,4)
+})

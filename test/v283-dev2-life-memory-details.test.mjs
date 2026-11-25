@@ -358,3 +358,36 @@ test('owner inspection reads complete bounded attachments by source without expa
  setAccount(B);assert.equal(gateway.inspectVideoDetails(args).ok,false);setAccount(A)
  setTime(NOW+14*DAY);assert.equal(gateway.inspectVideoDetails(args).ok,false)
 }))
+
+
+test('time-targeted deep recall selects earlier evidence BEFORE the model byte cap and never replays forgotten data',()=>setup(({gateway,memoryId,setAccount,setTime})=>{
+ const sourceProof={internalToken:'test-only'}
+ const early=[{...fragments[0],fragmentId:'early-zero',content:'最初的红色椅子。',timeAnchorMs:[0,0]},
+   {...fragments[0],fragmentId:'early-twenty',content:'二十秒的蓝色杯子。',timeAnchorMs:[20000,20000]},
+   {...fragments[0],fragmentId:'outside-range',content:'另一个时间的独特内容。',timeAnchorMs:[21000,21000]}]
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments:early,sourceProof}).ok,true)
+ gateway.recordEvents([{...event,key:'video-explore:latest-long-focus',at:NOW+1000,
+  experience:{...event.experience,visualReceipt:{source:'decoded-public-video',frameCount:12,firstAtMs:98000,lastAtMs:112000}}}])
+ const other=gateway.videoEvidenceTrace({accountTag:A,bvid:BV}).find(e=>e.memoryId!==memoryId).memoryId
+ const late=Array.from({length:12},(_,i)=>({...fragments[0],fragmentId:'late-'+i,sourceRef:'verified:observation:late',content:('后段场景详细描述。'.repeat(139)),timeAnchorMs:[98000+i*1000,98000+i*1000]}))
+ assert.equal(gateway.attachMemoryDetails({memoryId:other,accountTag:A,fragments:late,sourceProof}).ok,true)
+ const opts={bvid:BV,accountTag:A,maxBytes:4096}
+ const untargeted=gateway.recallVideoDetails(opts)
+ assert.equal(untargeted.truncated,true);assert.ok(!untargeted.fragments.some(f=>f.fragmentId==='early-zero'))
+ const targeted=gateway.recallVideoDetails({...opts,startMs:0,endMs:20000,firstObservation:true})
+ assert.equal(targeted.ok,true);assert.deepEqual(targeted.requestedRangeMs,[0,20000]);assert.equal(targeted.firstCurrentObservation,true)
+ assert.deepEqual(targeted.fragments.map(f=>f.fragmentId),['early-zero','early-twenty']);assert.ok(targeted.bytes<=4096)
+ const all=gateway.recallVideoDetails({...opts,startMs:0,endMs:20000});assert.deepEqual(all.fragments.map(f=>f.fragmentId),['early-zero','early-twenty'])
+ assert.equal(gateway.recallVideoDetails({...opts,startMs:30000,endMs:31000}).reason,'no-detail-in-time-range')
+ assert.equal(gateway.recallVideoDetails({...opts,startMs:20000,endMs:0}).reason,'invalid-detail-time-range')
+ assert.equal(gateway.recallVideoDetails({...opts,startMs:0}).reason,'invalid-detail-time-range')
+ setAccount(B);assert.equal(gateway.recallVideoDetails({...opts,startMs:0,endMs:20000}).ok,false);setAccount(A)
+ setTime(NOW+14*DAY);assert.equal(gateway.recallVideoDetails({...opts,startMs:0,endMs:20000}).ok,false)
+}))
+
+test('time-targeted recall sees a legacy appended focus outside the original parent envelope without inventing a single frame',()=>setup(({gateway,memoryId})=>{
+ const review={reviewStatus:'model-observation-not-independent-semantic-proof',startMs:49000,endMs:61000,frameTimesMs:[49500,50500,60500],description:'实际采样的合并分镜描述。'}
+ assert.equal(gateway.recordVerifiedFocusRevision({memoryId,accountTag:A,bvid:BV,sourceProof:{internalToken:'test-only'},sourceRef:'focus:'+'c'.repeat(32),review}).ok,true)
+ const found=gateway.recallVideoDetails({bvid:BV,accountTag:A,startMs:50000,endMs:50000})
+ assert.equal(found.ok,true);assert.deepEqual(found.fragments[0].timeAnchorMs,[49000,61000])
+}))

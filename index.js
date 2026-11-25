@@ -2472,7 +2472,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
             captures:debugImages,verified:true,phase:args.explorationPurpose?.includes('focus')?'focus':'global',
             groupId:String(internal.lifeGalleryGroupId||''),
             note:String(perceptionHandoff?.video?.modelDescription||'').slice(0,380),
-            analysis:parseMaybeJson(vision)?.description,memoryWrite})
+            analysis:parseMaybeJson(vision)?.description,boardReceipts:parseMaybeJson(vision)?.visionBoardReceipts,memoryWrite})
           if(result.ok!==true)log('Life 视觉回放图片未保存：'+String(result.reason||'unknown'))
         }
       }catch(error){log('Life 视觉回放图片异常：'+String(error.message||error).slice(0,100))}
@@ -2568,7 +2568,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           }catch{memoryWrite={status:'write-failed'};log('Life 真实局部复查记忆待补偿；不影响只读视觉回执')}
           if(focusCapture&&account===trustedLifeAccountTag()&&!accountBinding.status().blocked)try{
             addLifeVideoGallery(stateDir,{account,bvid,captures:[focusCapture],verified:true,groupId:visualGroupId,
-              phase:'focus',note:String(review.description||'').slice(0,380),analysis:visual?.description,memoryWrite})
+              phase:'focus',note:String(review.description||'').slice(0,380),analysis:visual?.description,boardReceipts:visual?.visionBoardReceipts,memoryWrite})
           }catch(e){log('Life 局部图片展示副本保存失败：'+String(e?.message||e).slice(0,100))}
           return {ok:true,review}
         }})
@@ -2744,7 +2744,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
             }catch(e){log('Life 补看证据记账暂不可用：'+String(e?.message||e).slice(0,90))}
             if(focusCapture&&account===trustedLifeAccountTag()&&!accountBinding.status().blocked)try{
               addLifeVideoGallery(stateDir,{account,bvid,captures:[focusCapture],verified:true,
-                phase:'focus',note:String(confirmed.description||'').slice(0,380),analysis:visual?.description,memoryWrite:{status:memoryState,detailStatus:deepMemory.status,detailReason:deepMemory.reason}})
+                phase:'focus',note:String(confirmed.description||'').slice(0,380),analysis:visual?.description,boardReceipts:visual?.visionBoardReceipts,memoryWrite:{status:memoryState,detailStatus:deepMemory.status,detailReason:deepMemory.reason}})
             }catch(e){log('Life 指定时刻回放图片保存失败：'+String(e?.message||e).slice(0,100))}
             return {ok:true,bvid,source:'decoded-public-video-focus',status:'observed-new-window',
               anchorSeconds:plan.anchorSeconds,origin:plan.origin,review:confirmed,experienceState:memoryState,deepMemory,
@@ -6984,7 +6984,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:false,recentFallback:false})
       return scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows})?publicVisualAssociationContext(rows):[]
     },
-    getVideoDetailRecall:({bvid,memoryId})=>lifeMemory?.recallVideoDetails({bvid,memoryId,accountTag:trustedLifeAccountTag(),ownerSession:true})||{ok:false,reason:'memory-not-ready'},
+    getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation})=>lifeMemory?.recallVideoDetails({bvid,memoryId,startMs,endMs,firstObservation,accountTag:trustedLifeAccountTag(),ownerSession:true})||{ok:false,reason:'memory-not-ready'},
     getTodoEngine: () => ownerTodos,
     runTodo: (id) => runOwnerTodoWithFollowup(id),
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
@@ -9198,7 +9198,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           }catch(error){memoryState='write-failed';memory={status:'not-updated',reason:'memory-write-exception'};log('主人补看记忆保存失败：'+String(error?.message||error).slice(0,100))}
           if(capture&&scope()){const saved=addLifeVideoGallery(stateDir,{account,bvid,captures:[capture],
             verified:true,phase:'focus',groupId:gallery.groupId||gallery.id,
-            note:String(review.description||'').slice(0,360),analysis:visual?.description,memoryWrite:{status:memoryState,detailStatus:memory.status,detailReason:memory.reason}})
+            note:String(review.description||'').slice(0,360),analysis:visual?.description,boardReceipts:visual?.visionBoardReceipts,memoryWrite:{status:memoryState,detailStatus:memory.status,detailReason:memory.reason}})
             gallerySaved=saved.ok===true}
           return {ok:true,review,mem:memory,gallerySaved}
         })
