@@ -2133,9 +2133,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const sourceRef='observation:'+createHash('sha256').update(event.key).digest('hex').slice(0,32)
     const fragments=buildFreshVideoDetails({bvid,info,visual,event,sourceRef})
     if(!fragments.length)return {ok:false,reason:'no-fresh-detail-evidence'}
-    const proof=Object.freeze({memoryId,accountTag:account,bvid,sourceRef,fragmentCount:fragments.length,at:Date.now()})
+    const ownerSession=event.experience?.source==='main-session'
+    const proof=Object.freeze({memoryId,accountTag:account,bvid,sourceRef,fragmentCount:fragments.length,
+      visibility:ownerSession?'private-session':'public-event',at:Date.now()})
     admittedOwnerFocusProofs.add(proof)
-    try{return {...lifeMemory.attachMemoryDetails({memoryId,accountTag:account,fragments,sourceProof:proof}),memoryId}}
+    try{return {...lifeMemory.attachMemoryDetails({memoryId,accountTag:account,fragments,sourceProof:proof,ownerSession}),memoryId}}
     finally{admittedOwnerFocusProofs.delete(proof)}
   }
   const executeWatchVideo = async(args={},internal={}) => {
@@ -2354,6 +2356,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // A successful, verifiable exploration is a B站 life experience even when
     // record_session=false. This is NOT a main-Session watch receipt.
     // No raw third-party comments, private text or model guesses are saved.
+    let memoryWrite={status:dryRun?'not-recorded-debug':parseMaybeJson(vision)?.status==='cached'?'not-recorded-cached':'not-recorded'}
     if(!dryRun&&(!isLifeEpisodeFocus||focusIsVerifiedAndNovel)&&
        !(args.record_session===false&&parseMaybeJson(vision)?.status==='cached'))try{
       const normalized=x=>{if(typeof x!=='string')return x;try{return JSON.parse(x)}catch{return {text:x}}}
@@ -2364,14 +2367,16 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         accountTag:initialLifeAccountTag,focusReview,integratedVisualNotes,
         purpose:args.explorationPurpose||(args.record_session===false?'self-exploration':'main-session'),operationId:randomUUID(),
         autonomousSelected:internal.lifeChoiceVerified===true&&args.record_session===false})
-      if(event&&(!initialLifeAccountTag||initialLifeAccountTag===trustedLifeAccountTag())){const synced=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(!synced)throw Error('人生记忆协调器尚未就绪');if(synced.ok===false)log('视频经历已进入待补偿队列：'+String(synced.lastError||synced.reason||'unknown').slice(0,100))
-        if(args.record_session===false&&internal.lifeChoiceVerified===true&&normalized(vision)?.status==='analyzed'){
+      if(event&&(!initialLifeAccountTag||initialLifeAccountTag===trustedLifeAccountTag())){const synced=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(!synced)throw Error('人生记忆协调器尚未就绪');memoryWrite={status:synced.skipped==='cached-visual'?'not-recorded-cached':synced.ok===false?'coordination-pending':'recorded',detailStatus:'not-recorded'}
+        if(synced.ok===false)log('视频经历已进入待补偿队列：'+String(synced.lastError||synced.reason||'unknown').slice(0,100))
+        if((args.record_session!==false||internal.lifeChoiceVerified===true)&&normalized(vision)?.status==='analyzed'){
           const detail=persistFreshVideoDetail({event,bvid,info:normalized(info),visual:normalized(vision),account:initialLifeAccountTag})
+          memoryWrite={...memoryWrite,detailStatus:detail.ok?'recorded':'not-recorded',...(detail.ok?{memoryId:detail.memoryId}:{detailReason:detail.reason||'write-failed'})}
           log('Life 深层观察附件：'+(detail.ok?'已写入 '+detail.memoryId:String(detail.reason||'write-failed')))
         }
       }
       else log('视频探索没有可验证的标题/资料，不生成生活观看经历：'+bvid)
-    }catch(e){log('视频探索经历写入失败（不影响只读查看）：'+String(e?.message||e).slice(0,120))}
+    }catch(e){memoryWrite={status:'write-failed'};log('视频探索经历写入失败（不影响只读查看）：'+String(e?.message||e).slice(0,120))}
     // Evidence provenance is read-only; it never grants a video write action.
     stage('校验画面来源、整合多模态证据与 Life 输入',5)
     const assemblyStartedAt=Date.now()
@@ -2407,7 +2412,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       try{await call('bili_ledger_mark',{bvid,title:String(info?.title||bvid),up:String(info?.author||''),status:'主 Session 指定观看'})}catch(e){log('主 Session 指定观看判重记账失败：'+String(e?.message||e).slice(0,100))}
       try{await call('bili_session_watch_mark',{bvid,title:String(info?.title||bvid),up:String(info?.author||'')})}catch(e){log('主 Session 指定观看经历记账失败：'+String(e?.message||e).slice(0,100))}
     }
-    const lifePayload={ok:true,action:'watch',bvid,viewDepth:visionPlan.depth,visionDecision:visionPlan.reason,info,videoEvidence,perceptionTimeline,perceptionHandoff,subtitle:subtitle||{message:'未取得字幕'},comments:comments||{message:'未读取评论'},danmaku:danmaku||{message:'未读取弹幕'},visual:vision||{status:cfg.visionEnabled?'视觉模式未提供独立文本结果':'未启用可供主 Session 使用的独立视觉识别'},
+    const lifePayload={ok:true,action:'watch',bvid,memoryWrite,viewDepth:visionPlan.depth,visionDecision:visionPlan.reason,info,videoEvidence,perceptionTimeline,perceptionHandoff,subtitle:subtitle||{message:'未取得字幕'},comments:comments||{message:'未读取评论'},danmaku:danmaku||{message:'未读取弹幕'},visual:vision||{status:cfg.visionEnabled?'视觉模式未提供独立文本结果':'未启用可供主 Session 使用的独立视觉识别'},
       focusReviewStatus:focusReviewStatus||'not-needed',
       ...(focusPlan?.status==='ready' ? {focusReviewSuggestion:{
         kind:'life-choice-only',at_seconds:Math.round((focusPlan.startSeconds+focusPlan.endSeconds)*50)/100,
@@ -6974,7 +6979,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:true,recentFallback:false})
       return scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows})?publicVisualAssociationContext(rows):[]
     },
-    getVideoDetailRecall:({bvid,memoryId})=>lifeMemory?.recallVideoDetails({bvid,memoryId,accountTag:trustedLifeAccountTag()})||{ok:false,reason:'memory-not-ready'},
+    getVideoDetailRecall:({bvid,memoryId})=>lifeMemory?.recallVideoDetails({bvid,memoryId,accountTag:trustedLifeAccountTag(),ownerSession:true})||{ok:false,reason:'memory-not-ready'},
     getTodoEngine: () => ownerTodos,
     runTodo: (id) => runOwnerTodoWithFollowup(id),
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
@@ -6990,6 +6995,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     if(!sourceProof||typeof sourceProof!=='object'||!admittedOwnerFocusProofs.has(sourceProof)||
        !Array.isArray(fragments)||fragments.length!==(sourceProof.fragmentCount||1)||fragments.length<1||fragments.length>48||
        episode?.id!==sourceProof.memoryId||episode?.accountTag!==sourceProof.accountTag||
+       episode?.visibility!==(sourceProof.visibility||'public-event')||
        episode?.bvid!==sourceProof.bvid||fragments.some(f=>f?.sourceRef!==sourceProof.sourceRef)||
        sourceProof.accountTag!==trustedLifeAccountTag()||
        !Number.isFinite(sourceProof.at)||Date.now()-sourceProof.at>60_000||
@@ -10324,13 +10330,13 @@ logger:{warn:m=>log('社交意图：'+m)}
         neuralProjectionKey({...m,gardenKind:'experience',gardenEvidence:'fading-life-episode'})===nodeId)
       if(matches.length!==1)return sendJson(res,404,{ok:false,reason:'memory-unavailable'})
       // semanticCandidates exposes intentionally redacted public fields;
-      // ONLY the Gateway can re-prove current account/public/clear ownership.
-      const trace=lifeMemory.videoEvidenceTrace({accountTag:account,memoryId:matches[0].id,limit:1})
-      if(trace.length!==1||trace[0].bvid!==matches[0].bvid)
+      // ONLY the Gateway can re-prove current account, scope and clear ownership.
+      const trace=lifeMemory.videoEvidenceTrace({accountTag:account,memoryId:matches[0].id,limit:1,ownerSession:true})
+      if(trace.length!==1||trace[0].bvid!==matches[0].bvid||!['public-event','private-session'].includes(trace[0].visibility))
         return sendJson(res,404,{ok:false,reason:'memory-unavailable'})
       if(account!==trustedLifeAccountTag()||accountBinding.status().blocked)
         return sendJson(res,409,{ok:false,reason:'account-changed'})
-      const expanded=lifeMemory.recallVideoDetails({bvid:matches[0].bvid,accountTag:account,maxBytes:8192})
+      const expanded=lifeMemory.recallVideoDetails({bvid:matches[0].bvid,accountTag:account,maxBytes:8192,ownerSession:true,visibility:trace[0].visibility})
       if(expanded?.ok!==true)return sendJson(res,200,{ok:true,available:false,fragments:[],reason:expanded?.reason||'no-detail'})
       const fragments=(expanded.fragments||[]).slice(0,12).map(item=>({
         type:item.type,content:String(item.content||'').slice(0,1600),certainty:item.certainty,

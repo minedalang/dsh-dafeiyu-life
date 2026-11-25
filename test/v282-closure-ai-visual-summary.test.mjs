@@ -147,6 +147,7 @@ test('new preview v13 requires exactly the same verified per-board receipts as v
   const event=buildVideoExplorationEvent({bvid:BV,info,visual:actual,operationId:'fresh-observation-001',accountTag:A})
   const args={bvid:BV,info,visual:actual,event,sourceRef:'observation:'+'a'.repeat(32)}
   const [result]=buildFreshVideoDetails(args)
+  assert.equal(buildFreshVideoDetails({...args,event:{...event,experience:{...event.experience,source:'main-session'}}}).length,1)
   assert.ok(result);assert.deepEqual(result.timeAnchorMs,[18000,23000]);assert.match(result.content,/转身/);assert.doesNotMatch(result.content,/视觉记忆摘要/)
   assert.deepEqual(buildFreshVideoDetails({...args,visual:{...actual,status:'cached'}}),[])
   assert.deepEqual(buildFreshVideoDetails({...args,visual:{...actual,description:'视觉记忆摘要：人物交流。'}}),[])
@@ -166,3 +167,26 @@ test('new preview v13 requires exactly the same verified per-board receipts as v
   const invalid={...actual,visionBoardReceipts:[{...actual.visionBoardReceipts[0],description:[lines[1],lines[0],...lines.slice(2)].join('\n')}]}
   assert.deepEqual(buildFreshVideoDetails({...args,visual:invalid}),[])
  })
+
+
+test('production fresh detail adapter preserves main-session visibility and cannot grant public recall',async()=>{
+ const {runInNewContext}=await import('node:vm'),{createHash}=await import('node:crypto')
+ const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ const start=server.indexOf('  const persistFreshVideoDetail=')
+ const end=server.indexOf('  const executeWatchVideo = async',start)
+ assert.ok(start>0&&end>start)
+ const dir=mkdtempSync(join(tmpdir(),'owner-visual-adapter-')),proofs=new WeakSet();let account=A
+ const gate=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>account,admitMemoryDetails:({episode,fragments,sourceProof:p})=>proofs.has(p)&&p.visibility===episode.visibility&&p.memoryId===episode.id&&p.accountTag===episode.accountTag&&p.bvid===episode.bvid&&fragments.every(f=>f.sourceRef===p.sourceRef)})
+ try{
+  const context={lifeMemory:gate,trustedLifeAccountTag:()=>account,accountBinding:{status:()=>({blocked:false})},cfg:{masterEnabled:true,visionEnabled:true},hasCredential:()=>true,createHash,buildFreshVideoDetails,admittedOwnerFocusProofs:proofs}
+  runInNewContext(server.slice(start,end)+';globalThis.persist=persistFreshVideoDetail',context)
+  const event=buildVideoExplorationEvent({bvid:BV,info,visual,operationId:'owner-fresh-adapter',accountTag:A,source:'main-session'})
+  gate.recordEvents([event]);const args={event,bvid:BV,info,visual,account:A}
+  assert.equal(context.persist(args).ok,true)
+  assert.equal(gate.recallVideoDetails({bvid:BV,accountTag:A,ownerSession:true}).ok,true)
+  assert.equal(gate.recallVideoDetails({bvid:BV,accountTag:A}).ok,false)
+  assert.equal(context.persist({...args,visual:{...visual,status:'cached'}}).reason,'no-fresh-detail-evidence')
+  account='b'.repeat(16);assert.equal(context.persist(args).reason,'account-or-permission-changed')
+  assert.match(server.slice(end,server.indexOf('const lifePayload=',end)),/args\.record_session!==false\|\|internal\.lifeChoiceVerified===true/)
+ }finally{gate.close();rmSync(dir,{recursive:true,force:true})}
+})

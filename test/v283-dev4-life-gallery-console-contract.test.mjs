@@ -58,9 +58,9 @@ test('neural detail timeline only opens authorized current clear memories in rea
  assert.match(js,/neuralDeepSelected=m\.clarity==='clear'/)
  assert.match(server,/path==='\/api\/bili-duty\/main-session\/memory\/neural\/deep'/)
  assert.match(server,/m\.stage==='clear'&&m\.kind==='watch'/)
- assert.match(server,/lifeMemory\.videoEvidenceTrace\(\{accountTag:account,memoryId:matches\[0\]\.id,limit:1\}\)/)
+ assert.match(server,/lifeMemory\.videoEvidenceTrace\(\{accountTag:account,memoryId:matches\[0\]\.id,limit:1,ownerSession:true\}\)/)
  assert.match(server,/neuralProjectionKey\(\{\.\.\.m,gardenKind:'experience'/)
- assert.match(server,/recallVideoDetails\(\{bvid:matches\[0\]\.bvid,accountTag:account,maxBytes:8192\}\)/)
+ assert.match(server,/recallVideoDetails\(\{bvid:matches\[0\]\.bvid,accountTag:account,maxBytes:8192,ownerSession:true,visibility:trace\[0\]\.visibility\}\)/)
  assert.doesNotMatch(server.slice(server.indexOf('on-demand deep memory'),server.indexOf('// Owner\'s read-only management view')),/sendComment|readArchive|restoreBackup/)
 })
 
@@ -72,9 +72,9 @@ test('neural deep endpoint binds opaque current node to the Life Gateway rather 
   const bv='BV1234567890',record={id:'e-'+'a'.repeat(18),kind:'watch',stage:'clear',
     summary:'真实公开视频经历',at:'2026-11-24T08:00:00.000Z',bvid:bv}
   const nodeId=neuralProjectionKey({...record,gardenKind:'experience',gardenEvidence:'fading-life-episode'})
-  let expandCalls=0,traceProof=true
-  const lifeMemory={semanticCandidates:()=>[record],videoRecallGroups:rows=>rows,videoEvidenceTrace:()=>traceProof?[{bvid:bv,detailStorage:'available'}]:[],
-    recallVideoDetails:()=>{expandCalls++;return {ok:true,totalFragments:1,truncated:false,
+  let expandCalls=0,traceProof=true,visibility='private-session'
+  const lifeMemory={semanticCandidates:()=>[record],videoRecallGroups:rows=>rows,videoEvidenceTrace:()=>traceProof?[{bvid:bv,detailStorage:'available',visibility}]:[],
+    recallVideoDetails:opts=>{assert.equal(opts.ownerSession,true);assert.equal(opts.visibility,visibility);expandCalls++;return {ok:true,totalFragments:1,truncated:false,
       fragments:[{type:'focused-observation',certainty:'model-observation',
         content:'真实采样到一张海报',timeAnchorMs:[3000000,3012000],uncertainties:['人物身份不确定'],sourceRef:'private-internal-source'}]}}}
   const create=(node,peer='127.0.0.1')=>{
@@ -90,6 +90,7 @@ test('neural deep endpoint binds opaque current node to the Life Gateway rather 
   assert.equal(success.status,200);assert.equal(success.payload.fragments.length,1)
   assert.equal(success.payload.fragments[0].content,'真实采样到一张海报')
   assert.equal(success.payload.fragments[0].sourceRef,undefined,'source IDs never exposed')
+  visibility='unknown';assert.equal((await create(nodeId)).status,404)
   traceProof=false
   assert.equal((await create(nodeId)).status,404)
   assert.equal((await create(nodeId,'192.0.2.1')).status,403)

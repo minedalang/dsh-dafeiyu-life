@@ -1,13 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,rmSync,existsSync,readFileSync,writeFileSync} from 'node:fs'
+import {mkdtempSync,rmSync,existsSync,readFileSync,writeFileSync,mkdirSync,utimesSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
-import {createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
+import {createLifeMemoryBackup,restoreLifeMemoryBackup,collectBackupFiles,createBackup,restoreBackupFiles} from '../lib/data-backup.mjs'
 import {buildVideoExplorationEvent} from '../lib/video-experience.mjs'
 import {createLifeMemoryCoordinator} from '../lib/life-memory-coordinator.mjs'
-import {execFile} from 'node:child_process'
+import {execFile,execFileSync} from 'node:child_process'
 import {promisify} from 'node:util'
 const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',BV='BV1234567890'
 const NOW=Date.parse('2026-11-18T12:00:00Z'),DAY=86_400_000
@@ -42,7 +42,7 @@ test('detail attachment stores actual bounded fragments, honors read budget and 
  assert.equal(gateway.status().details.attachments,1)
 }))
 
-test('oversize, no timestamps, duplicate IDs and private source do not enter deep details',()=>setup(({gateway,memoryId})=>{
+test('oversize, no timestamps and duplicate IDs do not enter deep details',()=>setup(({gateway,memoryId})=>{
  const sourceProof={internalToken:'test-only'}
  for(const invalid of [[{...fragments[0],content:'x'.repeat(34*1024)}], [{...fragments[0],timeAnchorMs:undefined}], [...fragments,...fragments]]){
   assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments:invalid,sourceProof}).ok,false)
@@ -295,3 +295,48 @@ test('two independent processes cannot create two fresh same-account BV slots',a
   try{const raw=JSON.parse(readFileSync(gate.file,'utf8'));assert.equal(raw.episodes.length,1);assert.equal(raw.episodes[0].visualObservations.length,1);assert.equal(gate.videoEvidenceTrace({accountTag:A,bvid:BV}).length,2)}finally{gate.close()}
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
+
+
+test('owner-only visual details use the same store, exclude public recall, survive owner backup and forget independently',()=>setup(({dir,gateway,setAccount,setTime})=>{
+ const olderPortable=createBackup({root:dir,config:{}})
+ const privateEvent={...event,key:'video-explore:owner-private-detail',experience:{...event.experience,source:'main-session'}}
+ gateway.recordEvents([privateEvent]);const opts={accountTag:A,bvid:BV,ownerSession:true}
+ const privateRow=gateway.videoEvidenceTrace(opts).find(x=>x.visibility==='private-session')
+ assert.ok(privateRow);const id=privateRow.memoryId
+ const part={...fragments[0],fragmentId:'private-frame-1',content:'仅主人会话记录的蓝色雨伞画面。'}
+ const proof={internalToken:'test-only'}
+ assert.equal(gateway.attachMemoryDetails({memoryId:id,accountTag:A,fragments:[part],sourceProof:proof}).reason,'memory-unavailable')
+ assert.equal(gateway.attachMemoryDetails({memoryId:id,accountTag:A,fragments:[part],ownerSession:true,verified:true}).reason,'source-not-admitted')
+ assert.equal(gateway.attachMemoryDetails({memoryId:id,accountTag:A,fragments:[part],sourceProof:proof,ownerSession:true}).ok,true)
+ assert.equal(gateway.recallVideoDetails(opts).fragments[0].content,part.content)
+ assert.equal(gateway.recallVideoDetails({...opts,ownerSession:false}).ok,false)
+ assert.equal(gateway.expandMemoryDetail({memoryId:id,accountTag:A}).ok,false)
+ assert.equal(gateway.videoEvidenceTrace({accountTag:A,memoryId:id}).length,0)
+ assert.equal(gateway.visualDetailCandidates({accountTag:A,ids:[id]}).length,0)
+ assert.equal(gateway.reconcileMemoryDetails().removed,0)
+ setAccount(B);assert.equal(gateway.recallVideoDetails(opts).ok,false);setAccount(A)
+ const detailKey=`life-memory/details/v1/${A}/${id}.json`
+ assert.equal(collectBackupFiles(dir)[detailKey],undefined)
+ restoreBackupFiles(dir,olderPortable)
+ assert.equal(gateway.recallVideoDetails(opts).fragments[0].content,part.content,'ordinary restore must not orphan a newer local private detail')
+ const pack=createLifeMemoryBackup(dir);assert.ok(pack.files[detailKey])
+ const dst=mkdtempSync(join(tmpdir(),'private-detail-restore-'))
+ try{restoreLifeMemoryBackup(dst,pack);const gate=createLifeMemoryGateway({dataDir:dst,getAccountTag:()=>A,now:()=>NOW+5000})
+  try{assert.equal(gate.recallVideoDetails(opts).ok,true);assert.equal(gate.recallVideoDetails({...opts,ownerSession:false}).ok,false)}finally{gate.close()}
+ }finally{rmSync(dst,{recursive:true,force:true})}
+ setTime(NOW+14*DAY);assert.equal(gateway.recallVideoDetails(opts).ok,false);assert.equal(existsSync(join(dir,detailKey)),false)
+}))
+
+
+test('deep attachment lock reclaims a proven dead PID but refuses live and legacy locks',()=>setup(({dir,gateway,memoryId})=>{
+ const proof={internalToken:'test-only'}
+ const args={memoryId,accountTag:A,fragments,sourceProof:proof}
+ assert.equal(gateway.attachMemoryDetails(args).ok,true)
+ const lock=join(dir,'life-memory','details','v1',A,memoryId+'.json.lock')
+ const dead=Number(execFileSync(process.execPath,['-e','console.log(process.pid)'],{encoding:'utf8'}).trim())
+ const old=new Date(Date.now()-120000)
+ const claim=pid=>{writeFileSync(lock,JSON.stringify({pid,token:'a'.repeat(32),at:+old}));utimesSync(lock,old,old)}
+ claim(process.pid);assert.equal(gateway.attachMemoryDetails(args).ok,false);assert.equal(existsSync(lock),true);rmSync(lock)
+ claim(dead);assert.equal(gateway.attachMemoryDetails(args).ok,true);assert.equal(existsSync(lock),false)
+ mkdirSync(lock);assert.equal(gateway.attachMemoryDetails(args).ok,false);assert.equal(existsSync(lock),true)
+}))
