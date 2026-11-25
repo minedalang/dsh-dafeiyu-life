@@ -391,3 +391,48 @@ test('time-targeted recall sees a legacy appended focus outside the original par
  const found=gateway.recallVideoDetails({bvid:BV,accountTag:A,startMs:50000,endMs:50000})
  assert.equal(found.ok,true);assert.deepEqual(found.fragments[0].timeAnchorMs,[49000,61000])
 }))
+
+
+test('paged deep recall returns all currently valid fragments without repeating or confusing unread evidence with forgetting',()=>setup(({gateway,memoryId,setAccount,setTime})=>{
+ const proof={internalToken:'test-only'}
+ const parts=Array.from({length:24},(_,i)=>({...fragments[0],fragmentId:'page-'+String(i).padStart(2,'0'),content:'片段'+i+'：'+('实际采样的画面描述。'.repeat(30)),timeAnchorMs:[i*1000,i*1000]}))
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments:parts,sourceProof:proof}).ok,true)
+ const opts={bvid:BV,accountTag:A,ownerSession:true,order:'earliest',maxBytes:4096}
+ const first=gateway.recallVideoDetails(opts);assert.equal(first.ok,true);assert.equal(first.totalFragments,24);assert.ok(first.hasMore&&first.nextCursor);assert.ok(first.bytes<=4096)
+ assert.equal(gateway.recallVideoDetails({...opts,cursor:first.nextCursor.slice(0,-1)+'z'}).reason,'invalid-detail-cursor')
+ assert.equal(gateway.recallVideoDetails({...opts,cursor:first.nextCursor,ownerSession:false}).reason,'invalid-detail-cursor')
+ assert.equal(gateway.recallVideoDetails({...opts,cursor:first.nextCursor,startMs:0,endMs:2000}).reason,'invalid-detail-cursor')
+ setAccount(B);assert.equal(gateway.recallVideoDetails({...opts,cursor:first.nextCursor}).ok,false);setAccount(A)
+ let page=first,ids=first.fragments.map(f=>f.fragmentId),calls=1
+ while(page.hasMore&&calls++<30){page=gateway.recallVideoDetails({...opts,maxBytes:8192,cursor:page.nextCursor});assert.equal(page.ok,true);assert.equal(page.totalFragments,24);assert.ok(page.bytes<=8192);ids.push(...page.fragments.map(f=>f.fragmentId))}
+ assert.deepEqual(ids,parts.map(f=>f.fragmentId));assert.equal(page.remainingFragments,0);assert.equal(page.hasMore,false)
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments:[{...parts[0],fragmentId:'new-page-evidence',content:'new verified evidence'}],sourceProof:proof}).ok,true)
+ assert.equal(gateway.recallVideoDetails({...opts,cursor:first.nextCursor}).reason,'detail-cursor-stale')
+ setTime(NOW+14*DAY);assert.equal(gateway.recallVideoDetails({...opts,cursor:first.nextCursor}).ok,false)
+}))
+
+test('oversize legacy evidence is paged as Unicode-safe text of the same observation, never skipped or split into fake times',()=>setup(({gateway,memoryId})=>{
+ const content='画面𠮷🌧️描述'.repeat(1000)
+ const part={...fragments[0],content,fragmentId:'long-board',timeAnchorMs:[1000,9000]}
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments:[part],sourceProof:{internalToken:'test-only'}}).ok,true)
+ const opts={bvid:BV,accountTag:A,ownerSession:true,maxBytes:4096}
+ let page=gateway.recallVideoDetails(opts),text='',offset=0,calls=0
+ do{assert.equal(page.ok,true);assert.equal(page.totalFragments,1);assert.equal(page.fragments.length,1);assert.ok(page.bytes<=4096);const f=page.fragments[0];assert.equal(f.fragmentId,part.fragmentId);assert.deepEqual(f.timeAnchorMs,part.timeAnchorMs);assert.equal(f.contentCharRange[0],offset);offset=f.contentCharRange[1];text+=f.content;assert.ok(++calls<30);if(!page.hasMore)break;page=gateway.recallVideoDetails({...opts,cursor:page.nextCursor})}while(true)
+ assert.equal(text,content);assert.equal(offset,Array.from(content).length);assert.equal(page.remainingFragments,0)
+}))
+
+
+test('paged deep recall continues beyond twelve observation sources and keeps the total accurate',()=>setup(({gateway,memoryId})=>{
+ const proof={internalToken:'test-only'}
+ const attach=id=>assert.equal(gateway.attachMemoryDetails({memoryId:id,accountTag:A,fragments:[{...fragments[0],content:'本次真实观察。'}],sourceProof:proof}).ok,true)
+ attach(memoryId)
+ for(let i=0;i<13;i++){
+  gateway.recordEvents([{...event,key:'video-explore:page-source-'+i,at:NOW+1000+i}])
+  attach(gateway.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId)
+ }
+ const opts={bvid:BV,accountTag:A,ownerSession:true,maxBytes:12288}
+ const first=gateway.recallVideoDetails(opts);assert.equal(first.totalFragments,14);assert.equal(first.sources.length,12);assert.equal(first.remainingFragments,2);assert.ok(first.nextCursor)
+ const second=gateway.recallVideoDetails({...opts,cursor:first.nextCursor});assert.equal(second.sources.length,2);assert.equal(second.remainingFragments,0);assert.equal(second.hasMore,false)
+ assert.equal(new Set([...first.fragments,...second.fragments].map(f=>f.memoryId)).size,14)
+ assert.ok(JSON.stringify(first).length<16000)
+}))

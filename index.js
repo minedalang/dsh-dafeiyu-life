@@ -6984,7 +6984,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:false,recentFallback:false})
       return scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows})?publicVisualAssociationContext(rows):[]
     },
-    getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation})=>lifeMemory?.recallVideoDetails({bvid,memoryId,startMs,endMs,firstObservation,accountTag:trustedLifeAccountTag(),ownerSession:true})||{ok:false,reason:'memory-not-ready'},
+    getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor})=>lifeMemory?.recallVideoDetails({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor,accountTag:trustedLifeAccountTag(),ownerSession:true})||{ok:false,reason:'memory-not-ready'},
     getTodoEngine: () => ownerTodos,
     runTodo: (id) => runOwnerTodoWithFollowup(id),
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},

@@ -21,7 +21,7 @@ test('选定主 Session 即使关闭身份长期记忆，也能回忆真实经�
  const todos=createOwnerTodoEngine({dataDir:home})
  const memory=createLongTermMemory({dataDir:home,dshHome:home,agents,getConfig:()=>({mainSessionId:'main-test',mainSessionMemoryEnabled:false}),defineTool:x=>x,
   getVideoAssociationRecall:async query=>{assert.equal(query,'朱红雨伞');return [{bvid:BV,historicalDetail:{note:'朱红雨伞靠在玻璃门旁边。',timeAnchorMs:[2000,2000]}}]},
-  getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation})=>({ok:true,bvid,memoryId,startMs,endMs,firstObservation,fragments:[{content:"真实保存的片段"}]}),
+  getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor})=>({ok:true,recallPage:true,bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor,fragments:[{content:"真实保存的片段"}]}),
   getExperienceRecall:(query,limit)=>[{kind:'watch',day:'2026-10-27',bvid:BV,summary:'之前看过猫咪视频'}],getTodoEngine:()=>todos,
   runTodo:id=>todos.run(id,async()=>({ok:true,summary:'已读取'})),logger:{warn(){},info(){}}})
  try{
@@ -33,13 +33,19 @@ test('选定主 Session 即使关闭身份长期记忆，也能回忆真实经�
   const deep=await byName.dafeiyu_life_recall.execute({query:'具体画面',detail_bvid:BV,detail_memory_id:'e-'+'a'.repeat(18)})
   assert.equal(deep.ok,true);assert.equal(deep.fragments[0].content,'真实保存的片段')
   const range=await byName.dafeiyu_life_recall.execute({query:'第一次观察 '+BV+' 开头到20秒之间'})
-  assert.equal(range.bvid,BV);assert.equal(range.startMs,0);assert.equal(range.endMs,20000);assert.equal(range.firstObservation,true)
+  assert.equal(range.fragments,undefined,'自然语言本身不隐式开启深层召回')
   listeners.get('agent/inbox/inserted')?.({message:{role:'user',content:'鱼鱼，你还记得 '+BV+' 吗？我尤其想听听你第一次观察视频时，开头到20秒之间实际看见了哪些画面。'}})
   const shortened=await byName.dafeiyu_life_recall.execute({query:'最初的画面细节'})
-  assert.equal(shortened.bvid,BV);assert.equal(shortened.startMs,0);assert.equal(shortened.endMs,20000);assert.equal(shortened.firstObservation,true)
+  assert.equal(shortened.fragments,undefined,'不使用上一条主人消息暗中推断时间和BV')
+  const selected=await byName.dafeiyu_life_recall.execute({query:"第一次观察",detail_bvid:BV,detail_start_ms:0,detail_end_ms:20000,detail_first_observation:true,detail_order:"earliest",detail_budget_bytes:8192,detail_cursor:"opaque"})
+  assert.equal(selected.bvid,BV);assert.equal(selected.startMs,0);assert.equal(selected.endMs,20000);assert.equal(selected.firstObservation,true);assert.equal(selected.maxBytes,8192);assert.equal(selected.cursor,"opaque");assert.equal(selected.order,"earliest")
+  assert.equal(JSON.parse(byName.dafeiyu_life_recall.output.render({},selected)[0].text).cursor,"opaque")
+  assert.equal(JSON.parse(byName.dafeiyu_life_recall.output.render({}, {...selected,fragments:[{content:"x".repeat(20000)}]})[0].text).reason,"detail-render-budget-exceeded")
+  assert.equal((await byName.dafeiyu_life_recall.execute({query:BV,detail_start_ms:0,detail_end_ms:20000})).reason,"invalid-detail-target")
+  assert.equal((await byName.dafeiyu_life_recall.execute({query:BV,detail_bvid:BV,detail_budget_bytes:999999})).reason,"invalid-detail-selector")
   const precise=await byName.dafeiyu_life_recall.execute({query:'指定画面',detail_bvid:BV,detail_start_ms:99500,detail_end_ms:100500,detail_first_observation:false})
   assert.equal(precise.startMs,99500);assert.equal(precise.endMs,100500);assert.equal(precise.firstObservation,false)
-  assert.equal((await byName.dafeiyu_life_recall.execute({query:BV,detail_start_ms:0})).reason,'invalid-detail-time-range')
+  assert.equal((await byName.dafeiyu_life_recall.execute({query:BV,detail_bvid:BV,detail_start_ms:0})).reason,'invalid-detail-time-range')
   listeners.get('agent/inbox/inserted')?.({message:{role:'user',content:'以后有空看看这个视频'}})
 
   assert.equal(recall.fragments,undefined,'普通浅层召回不应附带深层数据')
