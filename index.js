@@ -255,7 +255,7 @@ import {favoriteStyleFromPersona,publicFavoriteTopics} from './lib/favorite-styl
 import { createLifeMemoryGateway, relationshipMemoryHalfLifeDays } from './lib/life-memory-gateway.mjs'
 import {interestNeuralEvidence} from './lib/life-interests.mjs'
 import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
-import { memoryNeuralProjection, neuralProjectionKey } from './lib/memory-neural-projection.mjs'
+import { memoryNeuralProjection, neuralProjectionKey, createNeuralActivationTracker, projectNeuralActivation } from './lib/memory-neural-projection.mjs'
 import { systemHealthSnapshot } from './lib/system-health-projection.mjs'
 import {readProductionVisionStatus} from './lib/vision-production-status.mjs'
 import {planVideoMomentFollowup} from './lib/video-moment-followup.mjs'
@@ -7046,6 +7046,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getDailyUsage:()=>{const usage=readModelTaskUsage(stateDir);return {day:usage.day,used:usage.tasks.memory.today}},
     logger:{warn:m=>log('⚠️ '+m)},
   })
+  const neuralActivationTracker=createNeuralActivationTracker({
+    getAccountTag:()=>accountBinding.status().blocked?'':trustedLifeAccountTag(),
+    validateRecall:opts=>memoryRetriever?.validateContextualVisualRecall(opts)===true,
+    validatePath:opts=>lifeMemory?.validateAssociationPath(opts)===true,
+  })
   longTermMemory.start()
   ctx.effect(() => () => longTermMemory.stop(), 'bili-duty: 内置长期记忆')
   // Optional local semantic recall is strictly opt-in. Startup never downloads
@@ -7798,7 +7803,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // The planner can prioritize a real ongoing episode without granting any
     // additional tool. Model calls still use the existing daily Life budget.
     getLifeEpisodeContext:()=>universalLifeEpisodes.list({limit:3}),
-    getRecentLifeVideoMemory:opts=>memoryRetriever?.contextualVisualRecall({...opts,associate:true})||[],
+    getRecentLifeVideoMemory:async opts=>{
+      const rows=await (memoryRetriever?.contextualVisualRecall({...opts,associate:true})||[])
+      // Observe only the public autonomous planner return, not private/owner
+      // recall or a model's inner thoughts. A diagnostic failure never alters recall.
+      if(neuralActivationTracker.record({accountTag:opts?.accountTag,rows}))lifeManagementEvents.publish('memory-recall')
+      return rows
+    },
     validateLifeVideoMemory:opts=>memoryRetriever?.validateContextualVisualRecall(opts)===true,
     getLifeVideoDetailRecall:opts=>lifeMemory?.recallVideoDetails(opts)||{ok:false,reason:'memory-unavailable'},
     // Video is not a mandatory Episode first step. For early, *optional*
@@ -10348,6 +10359,23 @@ logger:{warn:m=>log('社交意图：'+m)}
     // dev.6 read-only, on-demand deep memory for a SELECTED neural node.
     // Opaque node IDs are re-derived from currently recallable clear episodes.
     // No archive lookup, no cross-account read, no fuzzy similarity join.
+    if(req.method==='GET'&&path==='/api/bili-duty/main-session/memory/neural/activation'){
+      const peer=String(req.socket?.remoteAddress||''),origin=String(req.headers.origin||''),host=String(req.headers.host||'')
+      if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(peer)||origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin))||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+        return sendJson(res,403,{ok:false,reason:'owner-local-only'})
+      res.setHeader?.('Cache-Control','private, no-store')
+      const scope=trustedLifeAccountTag()
+      if(!scope||accountBinding.status().blocked||!lifeMemory||cfg.mainSessionMemoryEnabled!==true)return sendJson(res,200,{ok:true,activation:null})
+      try{
+        const receipt=neuralActivationTracker.read(scope)
+        if(!receipt)return sendJson(res,200,{ok:true,activation:null})
+        const episodes=lifeMemory.videoRecallGroups(lifeMemory.semanticCandidates({query:'',domain:'main-session',kinds:['watch','comment','social'],limit:3200})||[])
+        const steps=lifeMemory.associationActivationSteps({accountTag:scope,receipt,episodeRows:episodes})
+        const activation=projectNeuralActivation(receipt,steps,episodes)
+        if(scope!==trustedLifeAccountTag()||accountBinding.status().blocked)return sendJson(res,409,{ok:false,reason:'account-changed'})
+        return sendJson(res,200,{ok:true,activation,reason:activation?'':'path-not-in-current-projection'})
+      }catch{return sendJson(res,200,{ok:true,activation:null,reason:'activation-unavailable'})}
+    }
     if(req.method==='GET'&&path==='/api/bili-duty/main-session/memory/neural/deep'){
       const peer=String(req.socket?.remoteAddress||'')
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')

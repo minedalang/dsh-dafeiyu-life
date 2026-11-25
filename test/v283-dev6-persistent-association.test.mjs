@@ -7,6 +7,7 @@ import {createHash} from 'node:crypto'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createLifeReflection,__test as reflectionTest} from '../lib/life-reflection.mjs'
 import {createMemoryRetriever,publicVisualAssociationContext} from '../lib/memory-retriever.mjs'
+import {createNeuralActivationTracker,projectNeuralActivation,memoryNeuralProjection} from '../lib/memory-neural-projection.mjs'
 const A='a'.repeat(16),B='b'.repeat(16),DAY=86400000,NOW=Date.parse('2026-11-25T10:00:00Z')
 const cfg={mainSessionMemoryEnabled:true,mainSessionMemoryHalfLifeDays:120,mainSessionMemoryAutoBili:true,mainSessionReflectionAuto:true,mainSessionReflectionMinCandidates:2}
 const bv=i=>'BV'+String(i).padStart(10,'0')
@@ -94,4 +95,34 @@ test('semantic history can select beyond the old 96 pointer sample, never rank m
 
 test('asynchronous local history ranking revalidates source before the public model and records true selected count',()=>setup(async x=>{
  let calls=0,rankCalls=0;const life=createLifeReflection({dataDir:x.dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:x.g,now:()=>NOW,commitMemories:()=>({added:0,rows:[]}),rankAssociationHistory:async(seeds,history)=>{rankCalls++;assert.equal(seeds.length,1);assert.equal(history.length,2);const deleted=history.find(e=>e.key==='assoc-test:1'),kept=history.find(e=>e.key==='assoc-test:2');const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==deleted.id);writeFileSync(x.g.file,JSON.stringify(doc));return {ready:true,indexed:2,items:[{id:'episode:'+deleted.id,score:1},{id:'episode:'+kept.id,score:.9}]}},invokeModel:async prompt=>{if(++calls===1)return JSON.stringify({memories:[]});const history=JSON.parse(prompt.split('<association_history>').at(-1).split('</association_history>')[0]);assert.equal(history.length,1);assert.match(history[0].text,/旧车站/);assert.ok(!history[0].text.includes(events[0].title));return JSON.stringify({memories:[]})},logger:{warn(){}}});life.addEvents(events.slice(0,2));assert.equal((await life.reflect({force:true})).ok,true);life.addEvents([events[2]]);const r=await life.reflect({force:true});assert.equal(r.ok,true,JSON.stringify(r));assert.equal(r.associationSemanticInput,1);assert.equal(r.associationHistoryInput,1);assert.equal(rankCalls,1);assert.equal(calls,2);assert.equal(life.status().recentPublicRun.associationSemanticInput,1)
+}))
+
+
+test('real public visual recall returns a bounded activation receipt; graph projects only live paths, never raw identities',()=>setup(async x=>{
+ assert.equal(add(x.g,[propose(x.g,1,3,'contrast')]).added,1)
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(query,o)=>x.g.recall({query,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o)})
+ let tag=A,clock=NOW;const tracker=createNeuralActivationTracker({getAccountTag:()=>tag,validateRecall:o=>retriever.validateContextualVisualRecall(o),validatePath:o=>x.g.validateAssociationPath(o),now:()=>clock})
+ const input={accountTag:A,bvids:[bv(1)],limit:2,recentFallback:false};assert.equal(tracker.read(A),null)
+ const direct=await retriever.contextualVisualRecall({...input,associate:false});assert.equal(tracker.record({accountTag:A,rows:direct}),false)
+ const rows=await retriever.contextualVisualRecall({...input,associate:true});assert.equal(rows[1].recallRoute,'association');assert.equal(tracker.record({accountTag:B,rows}),false)
+ const forged=[rows[0],{...rows[1],associationProof:{...rows[1].associationProof,types:['context']}}];assert.equal(tracker.record({accountTag:A,rows:forged}),false)
+ assert.equal(tracker.record({accountTag:A,rows}),true);assert.equal(tracker.record({accountTag:A,rows}),false)
+ const receipt=tracker.read(A);assert.equal(receipt.at,NOW);assert.ok(!JSON.stringify(receipt).includes(events[0].title));assert.deepEqual(receipt.types,['contrast'])
+ const episodes=x.g.videoRecallGroups(x.g.semanticCandidates({domain:'main-session',limit:3200}));const steps=x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:episodes});const projected=projectNeuralActivation(receipt,steps,episodes)
+ assert.equal(projected.steps.length,1);assert.equal(projected.steps[0].associationType,'contrast');assert.ok(!JSON.stringify(projected).includes(receipt.fromId));assert.ok(!JSON.stringify(projected).includes(A));assert.ok(!JSON.stringify(projected).includes(receipt.edgeIds[0]));
+ const graph=memoryNeuralProjection({episodes,showAll:true,limit:10000,verifiedGraph:x.g.neuralEvidenceSnapshot({accountTag:A,episodeRows:episodes})});const step=projected.steps[0];assert.ok(graph.edges.some(e=>e.type==='association'&&e.associationType===step.associationType&&[e.from,e.to].includes(step.from)&&[e.from,e.to].includes(step.to)))
+ assert.deepEqual(x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:[]}),[]);assert.equal(projectNeuralActivation(receipt,[],episodes),null)
+ // After 5 minutes, account changes or forgetting, nothing can be replayed.
+ clock=NOW+5*60_000;assert.equal(tracker.read(A),null);clock=NOW;assert.equal(tracker.record({accountTag:A,rows:[...rows]}),true);tag=B;assert.equal(tracker.read(B),null);tag=A;assert.equal(tracker.read(A),null)
+ assert.equal(tracker.record({accountTag:A,rows:[...rows]}),true);const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==receipt.memoryId);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal(tracker.read(A),null);assert.deepEqual(x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:episodes}),[])
+}))
+
+test('two-hop path projection preserves actual order; no invented bridge or private representative',()=>setup(x=>{
+ assert.equal(add(x.g,[propose(x.g,1,2,'context'),propose(x.g,2,3,'contrast')]).added,2)
+ const path=link(x.g,1).find(p=>p.memoryId===src(x.g,3).id);const receipt={...path,accountTag:A,at:NOW,id:'receipt'}
+ const episodes=x.g.videoRecallGroups(x.g.semanticCandidates({domain:'main-session',limit:3200}));const steps=x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:episodes});assert.deepEqual(steps.map(p=>p.type),['context','contrast']);assert.equal(steps[0].to,steps[1].from)
+ const projected=projectNeuralActivation(receipt,steps,episodes);assert.equal(projected.steps[0].to,projected.steps[1].from)
+ assert.equal(projectNeuralActivation(receipt,steps.slice().reverse(),episodes),null)
+ assert.deepEqual(x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:episodes.filter(e=>e.id!==src(x.g,2).id)}),[])
+ x.setAccount(B);assert.deepEqual(x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:episodes}),[])
 }))
