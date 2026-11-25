@@ -340,3 +340,21 @@ test('deep attachment lock reclaims a proven dead PID but refuses live and legac
  claim(dead);assert.equal(gateway.attachMemoryDetails(args).ok,true);assert.equal(existsSync(lock),false)
  mkdirSync(lock);assert.equal(gateway.attachMemoryDetails(args).ok,false);assert.equal(existsSync(lock),true)
 }))
+
+
+test('owner inspection reads complete bounded attachments by source without expanding model recall budget',()=>setup(({gateway,memoryId,setTime,setAccount})=>{
+ const second={...event,key:'video-explore:dev6-long-full-detail',at:NOW+1000}
+ gateway.recordEvents([second]);const other=gateway.videoEvidenceTrace({accountTag:A,bvid:BV}).find(e=>e.memoryId!==memoryId).memoryId
+ const many=Array.from({length:24},(_,i)=>({...fragments[0],fragmentId:'frame-'+String(i).padStart(4,'0'),timeAnchorMs:[1000+i*250,1000+i*250],content:i===23?'独特的朱红色雨伞立在门框旁。':'实际观察片段 '+i+'：'+('人物动作与暖色场景，'.repeat(45))}))
+ for(const [id,parts] of [[memoryId,many],[other,fragments]])assert.equal(gateway.attachMemoryDetails({memoryId:id,accountTag:A,fragments:parts,sourceProof:{internalToken:'test-only'}}).ok,true)
+ const args={bvid:BV,accountTag:A,visibility:'public-event'},index=gateway.inspectVideoDetails(args)
+ assert.equal(index.ok,true);assert.equal(index.sources.length,2);assert.equal(index.totalFragments,25)
+ const full=gateway.inspectVideoDetails({...args,sourceMemoryId:memoryId})
+ assert.equal(full.fragments.length,24);assert.equal(full.truncated,false);assert.equal(full.fragments.at(-1).timeAnchorMs[0],6750)
+ assert.match(full.fragments.at(-1).content,/朱红色雨伞/)
+ assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:A,maxBytes:8192}).truncated,true)
+ assert.ok(gateway.visualDetailCandidates({accountTag:A,ids:[memoryId]})[0].parts.some(p=>p.note.includes('朱红色雨伞')))
+ assert.equal(gateway.inspectVideoDetails({...args,visibility:'private-session',sourceMemoryId:memoryId}).ok,false)
+ setAccount(B);assert.equal(gateway.inspectVideoDetails(args).ok,false);setAccount(A)
+ setTime(NOW+14*DAY);assert.equal(gateway.inspectVideoDetails(args).ok,false)
+}))

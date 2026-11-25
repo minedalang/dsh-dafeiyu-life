@@ -54,13 +54,15 @@ test('dev6 long-video owner revisit shows rejected reason and actual worker stag
 test('neural detail timeline only opens authorized current clear memories in read-only mode',()=>{
  for(const id of ['neural-deep-expand','neural-deep-fragments'])assert.match(html,new RegExp('id="'+id+'"'))
  assert.match(js,/const openNeuralDeep=async/)
- assert.match(js,/request\('\/main-session\/memory\/neural\/deep\?node='/)
+ assert.match(js,/const base='\/main-session\/memory\/neural\/deep\?node='/)
+ assert.match(html,/<dialog id="neural-deep-dialog"/)
+ assert.match(js,/request\(base\+'&source='/)
  assert.match(js,/neuralDeepSelected=m\.clarity==='clear'/)
  assert.match(server,/path==='\/api\/bili-duty\/main-session\/memory\/neural\/deep'/)
  assert.match(server,/m\.stage==='clear'&&m\.kind==='watch'/)
  assert.match(server,/lifeMemory\.videoEvidenceTrace\(\{accountTag:account,memoryId:matches\[0\]\.id,limit:1,ownerSession:true\}\)/)
  assert.match(server,/neuralProjectionKey\(\{\.\.\.m,gardenKind:'experience'/)
- assert.match(server,/recallVideoDetails\(\{bvid:matches\[0\]\.bvid,accountTag:account,maxBytes:8192,ownerSession:true,visibility:trace\[0\]\.visibility\}\)/)
+ assert.match(server,/inspectVideoDetails\(\{bvid:matches\[0\]\.bvid,accountTag:account,visibility:trace\[0\]\.visibility,sourceMemoryId\}\)/)
  assert.doesNotMatch(server.slice(server.indexOf('on-demand deep memory'),server.indexOf('// Owner\'s read-only management view')),/sendComment|readArchive|restoreBackup/)
 })
 
@@ -74,12 +76,12 @@ test('neural deep endpoint binds opaque current node to the Life Gateway rather 
   const nodeId=neuralProjectionKey({...record,gardenKind:'experience',gardenEvidence:'fading-life-episode'})
   let expandCalls=0,traceProof=true,visibility='private-session'
   const lifeMemory={semanticCandidates:()=>[record],videoRecallGroups:rows=>rows,videoEvidenceTrace:()=>traceProof?[{bvid:bv,detailStorage:'available',visibility}]:[],
-    recallVideoDetails:opts=>{assert.equal(opts.ownerSession,true);assert.equal(opts.visibility,visibility);expandCalls++;return {ok:true,totalFragments:1,truncated:false,
+    inspectVideoDetails:opts=>{assert.equal(opts.visibility,visibility);assert.equal(opts.sourceMemoryId,record.id);expandCalls++;return {ok:true,totalFragments:1,truncated:false,
       fragments:[{type:'focused-observation',certainty:'model-observation',
         content:'真实采样到一张海报',timeAnchorMs:[3000000,3012000],uncertainties:['人物身份不确定'],sourceRef:'private-internal-source'}]}}}
   const create=(node,peer='127.0.0.1')=>{
     const ctx={req:{method:'GET',socket:{remoteAddress:peer},headers:{host:'127.0.0.1:8000',origin:'http://127.0.0.1:8000'}},
-      path:'/api/bili-duty/main-session/memory/neural/deep',url:new URL('http://127.0.0.1:8000/x?node='+node),
+      path:'/api/bili-duty/main-session/memory/neural/deep',url:new URL('http://127.0.0.1:8000/x?node='+node+'&source='+record.id),
       res:{setHeader(){}},trustedLifeAccountTag:()=> 'a'.repeat(16),hasCredential:()=>true,
       accountBinding:{status:()=>({blocked:false})},lifeMemory,neuralProjectionKey,validBv:x=>/^BV[A-Za-z0-9]{10}$/.test(x),
       sendJson:(_res,status,payload)=>({status,payload})}

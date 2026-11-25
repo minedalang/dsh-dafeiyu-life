@@ -45,3 +45,17 @@ test('selected main Session exposes the same P6-A burst contract and emits separ
     assert.deepEqual(h.agent.inbox.nextStep,[])
   }finally{memory.stop();rmSync(dir,{recursive:true,force:true})}
 })
+
+
+test('main Session ordinary successful answer never queues an optional empty visible turn',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'main-session-no-empty-turn-')),h=makeAgent()
+ const memory=createLongTermMemory({dataDir:dir,dshHome:dir,agents:{get:id=>id==='main'?h.agent:null,list:()=>[h.agent]},
+   getConfig:()=>({mainSessionId:'main',dmP6Enabled:true,dmP6MaxBubbles:3,naturalThoughtChancePercent:100,naturalThoughtOwnerMinutes:1}),
+   defineTool:spec=>spec,logger:{warn(){}}})
+ try{memory.start();h.emit('session/event',null,{type:'turn/start',data:{turn:1}})
+   h.emit('session/event',null,{type:'user/message',data:{turn:1,message:{content:[{type:'text',text:'你在想什么？'}]}}})
+   h.emit('session/event',null,{type:'assistant/message',data:{turn:1,message:{content:[{type:'text',text:'我已经回答完了。'}]}}})
+   h.emit('agent/turn-stopping',{turn:1,signal:new AbortController().signal})
+   assert.deepEqual(h.followups,[]);assert.deepEqual(h.agent.inbox.nextTurn,[])
+ }finally{memory.stop();rmSync(dir,{recursive:true,force:true})}
+})

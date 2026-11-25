@@ -238,6 +238,13 @@ test('unified public visual recall uses semantic hit then one cross-experience c
   x.forget();assert.equal(x.retriever.validateContextualVisualRecall({accountTag:A,rows}),false)
  }finally{x.gateway.close()}
 }))
+test('explicit visual lookup does not automatically add a second-hop video',()=>tmp(async dir=>{
+ const x=await associativeFixture(dir)
+ try{
+  const rows=await x.retriever.contextualVisualRecall({accountTag:A,queries:['逐帧拍摄的角色表现'],limit:2,associate:false,recentFallback:false})
+  assert.deepEqual(rows.map(r=>r.bvid),[x.seedBV]);assert.equal(x.searches.length,1)
+ }finally{x.gateway.close()}
+}))
 test('comment recall excludes current BV, has no arbitrary recent fallback, and respects disabled/offline embedding',()=>tmp(async dir=>{
  const x=await associativeFixture(dir,{mode:'offline'})
  try{

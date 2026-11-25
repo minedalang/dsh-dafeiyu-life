@@ -44,6 +44,7 @@ test('actual autonomous revisit handler runs without owner job, uses lease, and 
     lifeWillingness:{decide:async()=>choice==='act'?{ok:true,candidateId:'focus-read',proof:{}}:{ok:false,reason:'life-deferred'},verify:()=>({ok:true}),receipt:(_p,r)=>{receipt=r.status}},
     liveLifeActivity:{start:()=>()=>{}},safeVideoDebugCapture:()=>null,buildVideoEvidenceBundle:()=>({}),
     verifyVideoFocusReview:()=>({startMs:1000,endMs:13000,frameTimesMs:[7000],description:'局部画面'}),
+    buildFreshVideoDetails:({sourceRef})=>[{fragmentId:'frame-1',type:'observed-scene',sourceRef,certainty:'model-observation',content:'局部画面',timeAnchorMs:[7000,7000]}],
     buildVideoExplorationEvent:({operationId,accountTag})=>({key:'video-explore:'+operationId,accountTag,experience:{}}),
     lifeMemoryCoordinator:{recordEvents:async([event])=>{events++;assert.equal(event.accountTag,account);context.expectedId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18);return {ok:true}}},
     randomUUID,createHash,admittedOwnerFocusProofs:proofSet,lifeMemory:{recordVerifiedFocusRevision:({memoryId,sourceProof})=>{

@@ -163,6 +163,7 @@ test('new preview v13 requires exactly the same verified per-board receipts as v
   const event=buildVideoExplorationEvent({bvid:BV,info,visual:actual,operationId:'fresh-board-observation',accountTag:A})
   const args={bvid:BV,info,visual:actual,event,sourceRef:'observation:'+'b'.repeat(32)}
   const fragments=buildFreshVideoDetails(args)
+  assert.deepEqual(buildFreshVideoDetails({...args,sourceRef:'focus:'+'c'.repeat(32)}).map(f=>f.timeAnchorMs),fragments.map(f=>f.timeAnchorMs))
   assert.equal(fragments.length,6);assert.deepEqual(fragments.map(f=>f.timeAnchorMs),times.map(t=>[t*1000,t*1000]));assert.ok(fragments.every(f=>f.content.includes('抬起手臂')))
   const invalid={...actual,visionBoardReceipts:[{...actual.visionBoardReceipts[0],description:[lines[1],lines[0],...lines.slice(2)].join('\n')}]}
   assert.deepEqual(buildFreshVideoDetails({...args,visual:invalid}),[])
