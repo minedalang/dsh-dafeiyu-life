@@ -184,7 +184,7 @@ test('客户端注册官方会话菜单 slot，绑定准确的行 ID，不启动
     const source=readFileSync(new URL('../client.js',import.meta.url),'utf8')
     const calls=[],alerts=[],slots=new Map();let module
     let protocol=4
-    const React={createElement:(type,props,...children)=>({type,props,children}),useRef:v=>({current:v}),useState:v=>[v,()=>{}]}
+    const React={createElement:(type,props,...children)=>({type,props,children}),useRef:v=>({current:v}),useState:v=>[v,()=>{}],useEffect:()=>{}}
     const window={__ModuleLoader__:{load:m=>{module=m}},alert:m=>alerts.push(m)}
     const context={window,document:{createElement:()=>({setAttribute(){},remove(){}}),head:{appendChild(){}}},fetch:async(url,opts)=>{calls.push([url,opts?.body]);const data=opts?.method==='POST'?await h.bridge.bindExistingSession(JSON.parse(opts.body)):{...h.bridge.sessionDirectory(),directoryProtocol:protocol};return {ok:data.ok,status:data.ok?200:409,json:async()=>data}}}
     runInNewContext(source,context);const plugin=module.factory(name=>{if(name==='react')return React;throw Error('optional primitive unavailable')})
@@ -195,4 +195,17 @@ test('客户端注册官方会话菜单 slot，绑定准确的行 ID，不启动
     protocol=3;const old=slots.get('sidebar.workspaces.session.menu.item').component({sessionId:'session-abc',useMenuOpenState:()=>[true,()=>{}]});await old.props.onClick();assert.equal(calls.length,3);assert.match(alerts.at(-1),/管理页手动选择/);assert.equal(h.cfg.mainSessionId,'blank')
     assert.doesNotMatch(source,/installSessionNavigation|openSession\(target\)/)
   }finally{h.close()}
+})
+
+test('原生菜单每次打开读取真实绑定；当前主 Session 有标记，换行或旧后端不保留旧标记',async()=>{
+ const h=sessionBindingHarness();try{
+  const source=readFileSync(new URL('../client.js',import.meta.url),'utf8'),slots=new Map();let module,protocol=4,open=true,index=0,effectCleanup,effectDeps,runEffect;const state=[];let fetches=0;
+  const React={createElement:(type,props,...children)=>({type,props,children}),useRef:v=>({current:v}),useState:v=>{const i=index++;if(!(i in state))state[i]=v;return [state[i],x=>{state[i]=x}]},useEffect:(fn,deps)=>{if(!effectDeps||deps.some((v,i)=>v!==effectDeps[i])){effectDeps=deps;runEffect=()=>{effectCleanup?.();effectCleanup=fn()}}}};
+  const window={__ModuleLoader__:{load:m=>{module=m}},alert(){}};
+  runInNewContext(source,{window,document:{createElement:()=>({setAttribute(){},remove(){}}),head:{appendChild(){}}},fetch:async()=>{fetches++;return {ok:true,json:async()=>({...h.bridge.sessionDirectory(),directoryProtocol:protocol})}}});const plugin=module.factory(name=>{if(name==='react')return React;throw Error('optional primitive unavailable')});plugin.apply({get:()=>({inject:(_n,fn)=>fn(),register:(spec,component)=>slots.set(spec.name,component)}),effect:fn=>fn()});
+  const component=slots.get('sidebar.workspaces.session.menu.item');const render=id=>{index=0;const row=component({sessionId:id,useMenuOpenState:()=>[open,()=>{}]});const f=runEffect;runEffect=null;f?.();return row};const flush=()=>new Promise(resolve=>setImmediate(resolve));
+  render('session-abc');await flush();let row=render('session-abc');assert.match(row.children[0],/当前大肥鱼主 Session/);assert.equal(row.props.disabled,true);await row.props.onClick();assert.equal(fetches,1);
+  open=false;render('session-abc');h.cfg.mainSessionId='blank';open=true;render('session-blank');await flush();row=render('session-blank');assert.match(row.children[0],/当前大肥鱼主 Session/);assert.equal(row.props.disabled,true);
+  open=false;render('session-blank');protocol=3;open=true;render('session-blank');await flush();row=render('session-blank');assert.equal(row.children[0],'设为大肥鱼主 Session');assert.equal(row.props.disabled,false);assert.equal(fetches,3);
+ }finally{h.close()}
 })

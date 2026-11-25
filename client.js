@@ -63,13 +63,27 @@ window.__ModuleLoader__.load({
       return result
     }
     function BindMainSessionMenu({sessionId,useMenuOpenState}){
-      const [,setMenuOpen]=useMenuOpenState()
+      const [menuOpen,setMenuOpen]=useMenuOpenState()
       const pending=React.useRef(false)
       const [busy,setBusy]=React.useState(false)
+      const [binding,setBinding]=React.useState(null)
+      // Read fresh when this native menu opens. A failed/old backend never
+      // supplies a misleading bound badge; no list polling or host mutation.
+      React.useEffect(()=>{
+        let active=true
+        if(menuOpen){
+          setBinding(null)
+          jget('/main-session?directory=1').then(data=>{
+            if(active&&data?.directoryProtocol===4&&typeof data.selectedId==='string')setBinding({row:sessionId,selectedId:data.selectedId})
+          }).catch(()=>{})
+        }else setBinding(null)
+        return ()=>{active=false}
+      },[menuOpen,sessionId])
+      const isBound=menuOpen&&binding?.row===sessionId&&typeof sessionId==='string'&&!!sessionId&&binding.selectedId===sessionId.replace(/^session-/,'')
       let MenuItemButton
       try{MenuItemButton=require('@deepseek-ai/dsh-client-ui-primitives').MenuItemButton}catch{}
       const select=async()=>{
-        if(pending.current||typeof sessionId!=='string'||!sessionId)return
+        if(pending.current||isBound||typeof sessionId!=='string'||!sessionId)return
         pending.current=true;setBusy(true)
         try{
           const result=await bindNativeMainSession(sessionId)
@@ -78,8 +92,8 @@ window.__ModuleLoader__.load({
         }catch(e){window.alert('主 Session 绑定未确认：'+String(e?.message||e).slice(0,200)+' 可在管理页手动选择。')}
         finally{pending.current=false;setBusy(false)}
       }
-      const label=busy?'正在绑定…':'设为大肥鱼主 Session'
-      return MenuItemButton?h(MenuItemButton,{separatorBefore:true,disabled:busy,onSelect:select},label):h('button',{type:'button',role:'menuitem','data-bd-btn':'',disabled:busy,onClick:select},label)
+      const label=busy?'正在绑定…':isBound?'★ 当前大肥鱼主 Session':'设为大肥鱼主 Session'
+      return MenuItemButton?h(MenuItemButton,{separatorBefore:true,disabled:busy||isBound,onSelect:select},label):h('button',{type:'button',role:'menuitem','data-bd-btn':'',disabled:busy||isBound,onClick:select},label)
     }
     const CSS = `
 [data-bd-page]{display:flex;flex-direction:column;gap:18px;padding:2px 2px 8px;max-width:640px;}
