@@ -7066,6 +7066,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     dataDir: stateDir,
     getConfig: () => cfg,
     memoryGateway:lifeMemory,
+    rankAssociationHistory:(seeds,history)=>{
+      if(cfg.mainSessionMemoryEmbeddingEnabled!==true||embeddingIndex?.status()?.ready!==true)return {ready:false,items:[],indexed:0}
+      // Same summary normalization as Gateway.semanticCandidates / embeddingCorpus.
+      // The reflection path supplies exclusively revalidated current-account public episodes.
+      const rows=values=>values.map(e=>({id:'episode:'+e.id,text:String(e.text??'').replace(/[\u0000-\u001f\u007f]+/g,' ').replace(/\s+/g,' ').trim().slice(0,330)}))
+      return embeddingIndex.rankRelatedEpisodesWithQuery(rows(seeds),rows(history),{limit:12,minScore:.30})
+    },
     getAccountTag:trustedLifeAccountTag,
     getPublicEpisodeContext:()=>lifeSubagentHandoff({agent:'reflection',episodes:universalLifeEpisodes}),
     getPersonalityEnabled:()=>{try{return personalityEvolution?.status().enabled===true}catch{return false}},

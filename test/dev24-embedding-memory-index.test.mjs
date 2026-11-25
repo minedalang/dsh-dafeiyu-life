@@ -168,3 +168,22 @@ test('existing index capacity protects ordinary memory; unindexed visual fragmen
   assert.deepEqual(result.items.map(x=>x.id),[next.id]);assert.equal(index.status().indexed,10000)
  }finally{await rm(dir,{recursive:true,force:true})}
 })
+
+test('historical association ranks only supplied current hash-matched episode vectors without embedding again',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'dsh-related-'));try{
+  let calls=0;const index=createEmbeddingMemoryIndex({dataDir:dir,provider:{embedDocuments:async texts=>{calls++;return texts.map(makeVector)},embedQuery:async()=>{throw Error('no query embedding allowed')}}});
+  const row=(n,text)=>({id:'episode:e-'+String(n).padStart(18,'0'),text});const seed=row(1,'猫'),related=row(2,'小猫'),stale=row(3,'猫咪'),foreign=row(4,'猫'),music=row(5,'音乐');
+  assert.equal((await index.rebuild([seed,related,stale,foreign,music])).ok,true);const before=calls;
+  const result=index.rankRelatedEpisodes([seed],[seed,related,{...stale,text:'已经修改的猫咪'},music]);assert.equal(result.ready,true);assert.equal(result.indexed,3);assert.deepEqual(result.items.map(x=>x.id),[related.id]);assert.equal(calls,before);
+  assert.equal(index.rankRelatedEpisodes([{...seed,text:'已变更'}],[related]).ready,false);assert.equal(calls,before);
+ }finally{await rm(dir,{recursive:true,force:true})}
+})
+
+test('fresh unindexed seed uses exactly one local read-only query without persisting new vectors',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'dsh-related-fresh-'));try{
+  let docs=0,queries=0;const index=createEmbeddingMemoryIndex({dataDir:dir,provider:{embedDocuments:async texts=>{docs++;return texts.map(makeVector)},embedQuery:async text=>{queries++;return makeVector(text)}}});
+  const row=(n,text)=>({id:'episode:e-'+String(n).padStart(18,'0'),text});const seed=row(1,'新遇见的猫'),related=row(2,'小猫'),music=row(3,'音乐'),stale=row(4,'猫');await index.rebuild([related,music,stale]);const before=docs;
+  const result=await index.rankRelatedEpisodesWithQuery([seed],[related,music,{...stale,text:'改变后的猫'}]);assert.equal(result.ready,true);assert.equal(result.indexed,2);assert.deepEqual(result.items.map(x=>x.id),[related.id]);assert.equal(queries,1);assert.equal(docs,before);assert.equal(index.status().indexed,3);
+  await index.rankRelatedEpisodesWithQuery([seed],[{...stale,text:'改变后的猫'}]);assert.equal(queries,1);
+ }finally{await rm(dir,{recursive:true,force:true})}
+})
