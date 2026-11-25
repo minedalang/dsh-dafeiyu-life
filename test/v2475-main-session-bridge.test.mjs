@@ -91,13 +91,13 @@ test('实际源码只通过 ctx.agents 绑定主 Session，并提供管理中心
 })
 
 
-function sessionCreationHarness({create,bind,controller=true,attach=true}={}){
+function sessionCreationHarness({create,bind,controller=true,attach=true,now=Date.now}={}){
   const dir=temp(),cfg=baseConfig(),messages=[],calls=[],writes=[]
   const rows=[{id:'session-abc',title:'旧房间',followup:async m=>messages.push(m),inject:async m=>messages.push(m)}]
   const ws={id:'fish-workspace',title:'大肥鱼',sessionIds:['session-abc']},archived=[];const registry={list:()=>[ws],archivedSessionIds:archived};
   const add=id=>{if(attach)ws.sessionIds.push('session-'+id);rows.push({id:'session-'+id,followup:async m=>messages.push(m),inject:async m=>messages.push(m)});return {sessionId:'session-'+id}}
   const bridge=createMainSessionBridge({dataDir:dir,agents:{list:()=>rows},getConfig:()=>cfg,getWatched:()=>[],getComments:()=>({rows:[]}),
-    getWorkspaceRegistry:()=>registry,
+    getWorkspaceRegistry:()=>registry,now,
     getSessionController:()=>controller?{async create(request){calls.push(request);return create?create({add,cfg,rows}):add('new-room')}}:undefined,
     bindSession:async(id,expected)=>{writes.push([id,expected]);if(bind)return bind({id,expected,cfg});cfg.mainSessionId=id}})
   return {dir,cfg,rows,add,bridge,messages,calls,writes,ws,archived,registry,close:()=>rmSync(dir,{recursive:true,force:true})}
@@ -207,4 +207,36 @@ test('新建复用当前工作区、默认或唯一已有工作区；多工作�
 })
 test('管理页显示归档绑定与工作区，自动刷新保留工作区选择',()=>{
   const h=sessionPickerHarness(),ws=h.$('main-session-workspace');const d=directory('abc',['abc'],{workspaces:[{id:'a',label:'默认'},{id:'b',label:'大肥鱼'}],preferredWorkspaceId:'a'});h.renderMainSessionDirectory(d);ws.value='b';h.renderMainSessionDirectory({...d,targetArchived:true,targetLive:false,sessions:[]});assert.equal(ws.value,'b');assert.equal(h.$('main-session-bound-state').textContent,'已归档');assert.match(h.$('main-session-target-status').textContent,/暂停同步/)
+})
+
+
+test('原生导航仅针对当前真实绑定，一次领取，过期与归档拒绝，不发送消息',async()=>{
+  let clock=1000;const h=sessionCreationHarness({now:()=>clock});try{
+    assert.equal(h.bridge.publicNavigation().state,'idle');assert.equal(h.bridge.requestNavigation({expectedId:'other'}).ok,false)
+    const created=await h.bridge.createAndBindSession({expectedId:'abc',openAfterCreate:true});assert.equal(created.navigation.state,'pending');assert.equal(created.navigation.sessionId,'new-room')
+    const id=created.navigation.id;const c=h.bridge.claimNavigation({id});assert.equal(c.ok,true);assert.equal(h.bridge.claimNavigation({id}).ok,false);assert.equal(h.bridge.publicNavigation().claimToken,undefined)
+    assert.equal(h.bridge.requestNavigation({expectedId:'new-room'}).navigation.claimToken,undefined)
+    assert.equal(h.bridge.completeNavigation({id,claimToken:'fake',outcome:'requested'}).ok,false)
+    assert.equal(h.bridge.completeNavigation({id,claimToken:c.claimToken,outcome:'requested'}).navigation.state,'requested')
+    const again=h.bridge.requestNavigation({expectedId:'new-room'});assert.notEqual(again.navigation.id,id)
+    clock+=45000;assert.equal(h.bridge.claimNavigation({id:again.navigation.id}).ok,false);assert.equal(h.bridge.publicNavigation().state,'expired')
+    const pending=h.bridge.requestNavigation({expectedId:'new-room'});h.archived.push('session-new-room');assert.equal(h.bridge.claimNavigation({id:pending.navigation.id}).ok,false);assert.equal(h.bridge.publicNavigation().state,'cancelled');assert.equal(h.bridge.requestNavigation({expectedId:'new-room'}).ok,false)
+    assert.equal(h.calls.length,1);assert.deepEqual(h.messages,[])
+  }finally{h.close()}
+})
+test('登记在工作区的非驻留旧主 Session 也能申请导航；绑定变化取消请求',()=>{
+  const h=sessionCreationHarness();try{h.rows.length=0;assert.equal(h.bridge.sessionDirectory().targetLive,false);assert.equal(h.bridge.sessionDirectory().navigationAvailable,true)
+    const nav=h.bridge.requestNavigation({expectedId:'abc'}).navigation;h.cfg.mainSessionId='different';assert.equal(h.bridge.claimNavigation({id:nav.id}).ok,false);assert.equal(h.bridge.publicNavigation().state,'cancelled')
+  }finally{h.close()}
+})
+test('原生客户端真实导航代码等待目录、处理宿主前缀、只打开一次，卸载停止',async()=>{
+  const h=sessionCreationHarness();try{
+    const source=readFileSync(new URL('../client.js',import.meta.url),'utf8'),begin=source.indexOf('    const localNavigationClient='),end=source.indexOf('    const CSS =',begin);assert.ok(begin>=0&&end>begin)
+    const calls=[];let tick,cleared=false,snapshot={phase:'loading',byId:{}},refreshes=0;
+    const scope={sessions:{list:{getSnapshot:()=>snapshot},refresh:async()=>{refreshes++}},uiWorkspace:{openSession:id=>calls.push(id)}}
+    const install=runInNewContext(source.slice(begin,end)+'\ninstallSessionNavigation',{window:{location:{hostname:'127.0.0.1'}},setInterval:fn=>{tick=fn;return 1},clearInterval:()=>{cleared=true},jget:async()=>({ok:true,navigation:h.bridge.publicNavigation()}),jpost:async(_p,b)=>b.action==='claim'?h.bridge.claimNavigation(b):h.bridge.completeNavigation(b)})
+    h.bridge.requestNavigation({expectedId:'abc'});const dispose=install(scope);await new Promise(r=>setImmediate(r));assert.equal(refreshes,1);assert.deepEqual(calls,[])
+    snapshot={phase:'ready',byId:{'session-abc':{}}};await tick();await tick();assert.deepEqual(calls,['session-abc']);assert.equal(h.bridge.publicNavigation().state,'requested');assert.deepEqual(h.messages,[])
+    h.bridge.requestNavigation({expectedId:'abc'});dispose();await tick();assert.equal(cleared,true);assert.equal(calls.length,1)
+  }finally{h.close()}
 })

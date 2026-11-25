@@ -53,6 +53,42 @@ window.__ModuleLoader__.load({
       body: JSON.stringify(body || {}),
     }))
 
+    // Optional client services: don't make the settings plugin fail to mount on
+    // older DSH builds. Only the native workspace service owns navigation.
+    const localNavigationClient=()=>['127.0.0.1','localhost','[::1]'].includes(String(window.location?.hostname||'').toLowerCase())
+    const resolveNavigationTarget=async(sessions,id)=>{
+      const lookup=()=>{
+        const snapshot=sessions.list.getSnapshot()
+        if(snapshot.phase!=='ready')return ''
+        const candidates=[id,'session-'+id].filter(key=>Object.hasOwn(snapshot.byId||{},key))
+        return candidates.length===1?candidates[0]:''
+      }
+      let target=lookup()
+      if(!target&&typeof sessions.refresh==='function'){await sessions.refresh();target=lookup()}
+      return target
+    }
+    const installSessionNavigation=(scope)=>{
+      if(!localNavigationClient())return
+      let alive=true,busy=false
+      const tick=async()=>{
+        if(!alive||busy)return
+        busy=true
+        try{
+          const result=await jget('/main-session/navigation'),nav=result?.navigation
+          if(!alive||result?.ok!==true||nav?.state!=='pending'||typeof nav.sessionId!=='string'||typeof nav.id!=='string')return
+          const target=await resolveNavigationTarget(scope.sessions,nav.sessionId)
+          if(!alive||!target)return // catalog may be late; request expires on host
+          const claimed=await jpost('/main-session/navigation',{action:'claim',id:nav.id})
+          if(!alive||claimed?.ok!==true||claimed.sessionId!==nav.sessionId||!claimed.claimToken||Date.now()>=claimed.expiresAt)return
+          let outcome='failed'
+          try{await scope.uiWorkspace.openSession(target);outcome='requested'}catch{}
+          if(alive)await jpost('/main-session/navigation',{action:'complete',id:nav.id,claimToken:claimed.claimToken,outcome})
+        }catch{/* old backend, unavailable catalog or another client won; no retries of a claimed request */}
+        finally{busy=false}
+      }
+      const timer=setInterval(tick,2000);void tick()
+      return ()=>{alive=false;clearInterval(timer)}
+    }
     const CSS = `
 [data-bd-page]{display:flex;flex-direction:column;gap:18px;padding:2px 2px 8px;max-width:640px;}
     [data-bd-page][data-bd-wide]{max-width:none;width:100%;}
@@ -1011,6 +1047,9 @@ window.__ModuleLoader__.load({
         style.textContent = CSS
         document.head.appendChild(style)
         ctx.effect(() => () => style.remove(), 'dsh-dafeiyu-life: 设置页样式')
+        if(typeof ctx.inject==='function')ctx.inject(['sessions','uiWorkspace'],scope=>{
+          scope.effect(()=>installSessionNavigation(scope),'dsh-dafeiyu-life: 主 Session 原生导航')
+        },'dsh-dafeiyu-life: 可选原生导航服务')
 
         // ⭐ 进「设置」：label 就是左侧导航里那一项（抄 dsh-meme 的写法）
         const slots = (typeof ctx.get === 'function' ? ctx.get('slots') : undefined) || ctx.slots

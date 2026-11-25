@@ -74,11 +74,16 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
   assert.deepEqual((await call('GET','main-session/sessions')).json(),sessionDirectory.json())
   assert.equal((await call('GET','main-session?directory=1',undefined,'https://outside.invalid')).status,403)
   assert.equal((await call('POST','main-session/create',{})).status,400)
-  const createBody={confirm:'CREATE_AND_BIND_MAIN_SESSION',expectedId:''}
+  const createBody={confirm:'CREATE_AND_BIND_MAIN_SESSION',expectedId:'',openAfterCreate:true}
   assert.equal((await call('POST','main-session/create',createBody,'https://outside.invalid')).status,403)
   const created=await call('POST','main-session/create',createBody);assert.equal(created.status,200);assert.equal(created.json().createdId,'created-test');assert.equal(created.json().selectedId,'created-test')
   assert.deepEqual(createCalls,[{workspaceId:'default-workspace'}]);assert.deepEqual(messages,[]);assert.equal((await call('GET','main-session')).json().config.id,'created-test')
   assert.equal((await call('POST','main-session/create',createBody)).status,409);assert.equal(createCalls.length,1)
+  const nav=(await call('GET','main-session/navigation')).json().navigation;assert.equal(nav.state,'pending');assert.equal(nav.sessionId,'created-test');assert.equal(nav.claimToken,undefined)
+  assert.equal((await call('POST','main-session/navigation',{action:'claim',id:nav.id},'https://outside.invalid')).status,403)
+  const claim=(await call('POST','main-session/navigation',{action:'claim',id:nav.id})).json();assert.equal(claim.ok,true)
+  assert.equal((await call('POST','main-session/navigation',{action:'claim',id:nav.id})).status,409)
+  const ack=(await call('POST','main-session/navigation',{action:'complete',id:nav.id,claimToken:claim.claimToken,outcome:'requested'})).json();assert.equal(ack.navigation.state,'requested');assert.deepEqual(messages,[])
   archived.push('session-created-test');const afterArchive=(await call('GET','main-session?directory=1')).json();assert.equal(afterArchive.targetArchived,true);assert.equal(afterArchive.targetLive,false);assert.deepEqual(afterArchive.sessions,[])
   const sessionTest=await call('POST','main-session/test',{})
   assert.equal(sessionTest.status,423)
