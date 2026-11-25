@@ -452,6 +452,10 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   focusRecall283["主 Session／普通后台 Life 按需聚合当前清晰 BV 深层片段；不联网"]
   focusRecall283 -.->|一次自主展开；原模型预算与原菜单；不增加外发权限| planner
 %% @code focusRecall283 | lib/life-memory-gateway.mjs | function recallVideoDetails
+
+  unifiedAssoc283["统一记忆层：公开印象与跨经历联想；非授权"]
+  unifiedAssoc283 -.->|只读思考素材| planner
+%% @code unifiedAssoc283 | lib/memory-retriever.mjs | const contextualVisualRecall=
 ```
 
 ## 二、八类候选细目
@@ -661,6 +665,10 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   revisit283["已有可信时间锚点的自主补看：Life 意愿与同账号同 BV 视觉租约"]
   video -.->|仅显式入口；独立意愿| revisit283
 %% @code revisit283 | index.js | name:'bili_video_revisit_moment'
+
+  assocCandidates283["统一混合检索：有界相关印象与一跳联想"]
+  assocCandidates283 -.->|只读思考素材| planner
+%% @code assocCandidates283 | lib/memory-retriever.mjs | const contextualVisualRecall=
 ```
 
 ## 三、可信回执与记忆闭环
@@ -915,6 +923,10 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   episode --> focusDeep283
   focusDeep283 -.->|同账号 BV 聚合；各自清晰且未撤销；后台按需一次展开| recall
 %% @code focusDeep283 | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
+
+  assocProjection283["同库浅层联想投影；当前账号与遗忘复核"]
+  assocProjection283 -.->|只读思考素材| recall
+%% @code assocProjection283 | lib/memory-retriever.mjs | const validateContextualVisualRecall=
 ```
 
 ## 四、统一 Life Episode 因果持续性
@@ -1111,4 +1123,8 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
   localRecall283["主 Session／普通后台 Life：浅层不足时主动展开已有深层；未知不补造"]
   localRecall283 -.->|已有模型预算；仅本轮思考；不新增调度或补看权限| menu
 %% @code localRecall283 | lib/long-term-memory.mjs | detail_bvid
+
+  episodeAssoc283["原创评论可参考其他视频的真实印象；不强制引用"]
+  episodeAssoc283 -.->|只读思考素材| menu
+%% @code episodeAssoc283 | lib/autonomous-planner.mjs | let choice,associationSources=[],pastVideoAssociations=[]
 ```

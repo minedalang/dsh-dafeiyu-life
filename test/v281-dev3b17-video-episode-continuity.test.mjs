@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {buildVideoExplorationEvent} from '../lib/video-experience.mjs'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
+import {createMemoryRetriever} from '../lib/memory-retriever.mjs'
 import {createLifeMemoryCoordinator} from '../lib/life-memory-coordinator.mjs'
 import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
 import {deriveVideoObservationNotes,safeVideoObservationNotes} from '../lib/video-scene-cues.mjs'
@@ -198,3 +199,64 @@ test('shallow recall ranks exact current video and related topic before unrelate
   assert.deepEqual(g.recentVisualExperienceContext({accountTag:B,bvids:[BV]}),[])
  }finally{g.close()}
 }))
+
+// Use real public episode gateway and existing lexical path; the controlled
+// vector provider isolates ranking behavior, not a claim about a real model.
+async function associativeFixture(dir,{embedding=true,onSearch=()=>{},mode='normal'}={}){
+ let tag=A,clock=T+2000,enabled=true
+ const gateway=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>tag,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:1})})
+ const seedBV=BV,linkBV='BV0987654321',recentBV='BV0987654322',foreignBV='BV0987654323'
+ const event=(bvid,title,description,at,accountTag=A)=>vid(description,{bvid,operationId:'association-observation-'+bvid,at,accountTag,
+   info:{ok:true,bvid,title},visual:{ok:true,bvid,status:'analyzed',image_source:'B站低清预览',times:[2,8,15],description}})
+ gateway.recordEvents([event(seedBV,'纸质定格动画','纸质角色旋转后出现皮影戏舞台。',T),
+  event(linkBV,'传统皮影戏','皮影人物借光源投射轮廓。',T+100),event(recentBV,'蒸汽机车','蒸汽机车穿越河谷。',T+1000),
+  event(foreignBV,'异账号影戏','异账号的皮影舞台。',T+1200,B)])
+ let searches=[]
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({mainSessionMemoryEnabled:enabled,mainSessionMemoryEmbeddingEnabled:embedding}),
+  getEpisodes:(query,options)=>gateway.recall({query,...options}),getEpisodeCandidates:opts=>gateway.semanticCandidates(opts),
+  getVisualExperiences:opts=>gateway.recentVisualExperienceContext(opts),semanticSearch:async(query,candidates)=>{
+   searches.push({query,candidates})
+   const wanted=query.includes('定格动画')?['传统皮影戏']:['纸质定格动画']
+   const items=candidates.filter(e=>wanted.some(x=>e.text.includes(x))).map(e=>({id:e.id,score:.88}))
+   onSearch({count:searches.length,setTag:x=>tag=x,forget:()=>clock+=14*86400000,disable:()=>enabled=false})
+   if(mode==='offline')return {ready:false,items:[]}
+   return {ready:true,items}
+  }})
+ return {gateway,retriever,searches,seedBV,linkBV,recentBV,foreignBV,forget:()=>clock+=14*86400000,setTag:x=>tag=x}
+}
+test('unified public visual recall uses semantic hit then one cross-experience cue, without unrelated recent or foreign memory',()=>tmp(async dir=>{
+ const x=await associativeFixture(dir)
+ try{
+  const rows=await x.retriever.contextualVisualRecall({accountTag:A,queries:['逐帧拍摄的角色表现'],limit:2,associate:true,recentFallback:false})
+  assert.deepEqual(rows.map(r=>r.bvid),[x.seedBV,x.linkBV])
+  assert.equal(rows[0].recallRoute,'direct');assert.equal(rows[1].recallRoute,'association')
+  assert.equal(rows[1].associatedFromBvid,x.seedBV)
+  assert.equal(x.searches.length,2)
+  assert.match(x.searches[1].query,/皮影戏舞台/)
+  assert.ok(x.searches.every(s=>s.candidates.every(c=>!c.text.includes('异账号'))))
+  assert.equal(x.retriever.validateContextualVisualRecall({accountTag:A,rows}),true)
+  x.forget();assert.equal(x.retriever.validateContextualVisualRecall({accountTag:A,rows}),false)
+ }finally{x.gateway.close()}
+}))
+test('comment recall excludes current BV, has no arbitrary recent fallback, and respects disabled/offline embedding',()=>tmp(async dir=>{
+ const x=await associativeFixture(dir,{mode:'offline'})
+ try{
+  const rows=await x.retriever.contextualVisualRecall({accountTag:A,queries:['纸质定格动画'],limit:2,associate:true,excludeBvids:[x.seedBV],recentFallback:false})
+  assert.ok(rows.every(r=>r.bvid!==x.seedBV&&r.bvid!==x.foreignBV))
+  const none=await x.retriever.contextualVisualRecall({accountTag:A,queries:['完全无关的深海鱼类'],limit:2,associate:true,recentFallback:false})
+  assert.deepEqual(none,[])
+  const exact=await x.retriever.contextualVisualRecall({accountTag:A,bvids:[x.seedBV],limit:1})
+  assert.equal(exact[0].bvid,x.seedBV);assert.equal(exact[0].recallRoute,'exact')
+  const lexical=await x.retriever.contextualVisualRecall({accountTag:A,queries:['传统皮影戏'],limit:1,recentFallback:false})
+  assert.equal(lexical[0].bvid,x.linkBV)
+  const fallback=await x.retriever.contextualVisualRecall({accountTag:A,queries:['完全无关的深海鱼类'],limit:1})
+  assert.equal(fallback[0].recallRoute,'recent')
+  assert.equal(x.retriever.validateContextualVisualRecall({accountTag:A,rows:fallback}),true)
+ }finally{x.gateway.close()}
+}))
+test('asynchronous contextual association never restores revoked or other-account source',async()=>{
+ for(const change of ['switch','forget','disable'])await tmp(async dir=>{
+  const x=await associativeFixture(dir,{onSearch:({count,setTag,forget,disable})=>{if(count===2){if(change==='switch')setTag(B);else if(change==='forget')forget();else disable()}}})
+  try{const rows=await x.retriever.contextualVisualRecall({accountTag:A,queries:['逐帧拍摄的角色表现'],limit:2,associate:true,recentFallback:false});assert.deepEqual(rows,[],change)}finally{x.gateway.close()}
+ })
+})

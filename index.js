@@ -239,7 +239,7 @@ import {callScopedDshVision} from './lib/scoped-dsh-vision-read.mjs'
 import { mergeWatchedRows } from './lib/watched.mjs'
 import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
 import { createLongTermMemory } from './lib/long-term-memory.mjs'
-import { createMemoryRetriever } from './lib/memory-retriever.mjs'
+import { createMemoryRetriever,publicVisualAssociationContext } from './lib/memory-retriever.mjs'
 import {createEmbeddingRuntimeManager} from './lib/embedding-runtime-manager.mjs'
 import {createLocalVisionModelManager,getLocalVisionModel,getLocalVisionTestImage} from './lib/local-vision-model-manager.mjs'
 import {createEmbeddingMemoryIndex} from './lib/embedding-memory-index.mjs'
@@ -7002,6 +7002,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     invokeModel:(prompt,maxChars)=>invokeMemoryPrompt(prompt,maxChars),
     getEpisodes:(query,options)=>lifeMemory?.recall({query,domain:options?.domain||'main-session',role:options?.role||'owner',actorUid:options?.actorUid||'',excludeEventKey:options?.excludeEventKey||'',kinds:options?.kinds||null,maxItems:options?.maxItems||6,maxChars:options?.maxChars||800})||[],
     getEpisodeCandidates:(options)=>lifeMemory?.semanticCandidates(options)||[],
+    getVisualExperiences:options=>lifeMemory?.recentVisualExperienceContext(options)||[],
     groupVideoEpisodes:rows=>lifeMemory?.videoRecallGroups(rows)||rows,
     getPrivateInsights:(opts)=>lifeMemory?.privateInsights(opts)||[],
     getPrivateInsightCandidates:(opts)=>lifeMemory?.privateInsightCandidates(opts)||[],
@@ -7157,7 +7158,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&firstStart.isReady()&&!accountBinding.status().blocked},
     beginTrace:params=>lifeDecisionTrace.begin(params),
     onActionState:event=>{lifeActionRecords.update(event)},
-    getContext:({scene,uid,evidence})=>{
+    getContext:async({scene,uid,evidence,sourceKey,kind})=>{
       // Optional world projections cannot suppress an entire voluntary Life turn.
       // Only an unbuildable base identity remains fail-closed; degraded categories
       // are recorded without private text, UIDs, or underlying file paths.
@@ -7170,9 +7171,24 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         if(topic&&cfg.mainSessionMemoryEnabled&&lifeMemory)
           publicMemory=lifeMemory.recall({query:topic,domain:'bili-explore',kinds:['watch'],maxItems:2,maxChars:360,reinforce:false})||[]
       }catch{degradedStages.push('public-memory');log('Life 上下文：可回忆视频线索暂不可用')}
-      let world={}
+      let world={},validateRecall=null
       try{world=projectLifeWorldEvidence({interests,episodes:publicMemory})}
       catch{degradedStages.push('public-memory');log('Life 上下文：公开记忆摘要暂不可用，使用基本人格继续')}
+      // Original top-level comment only: sourceKey came from the checked
+      // video action bridge. The agent's observation is an untrusted cue, not
+      // a grant or a receipt. Do not query private or same-video memories.
+      if(scene==='comment'&&kind==='video_comment')try{
+        const target=/^video-comment:[a-f0-9]{24}:(BV[0-9A-Za-z]{10})$/.exec(String(sourceKey||''))?.[1]
+        const scope=trustedLifeAccountTag()
+        if(target&&scope&&cfg.mainSessionMemoryEnabled&&memoryRetriever){
+          const cue=String(evidence?.publicVideoComment?.evidence||'').slice(0,540)
+          const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[cue],limit:2,associate:true,excludeBvids:[target],recentFallback:false})
+          if(scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&rows.length){
+            validateRecall=()=>scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows})
+            world={...world,optionalPastVideoAssociations:publicVisualAssociationContext(rows,target)}
+          }
+        }
+      }catch{degradedStages.push('public-memory');log('Life 上下文：公开视频联想暂不可用')}
       try{
         const own=lifeMemory?.publicSocialEvidence(3)||[]
         world.recentConfirmedPublicSpeech=own.filter(row=>typeof row.ownText==='string')
@@ -7210,7 +7226,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         catch{throw Error('life-base-identity-unavailable')}
       }
       if(!voice.trim())throw Error('life-base-identity-unavailable')
-      return {voice,world,experience,degradedStages}
+      return {voice,world,experience,degradedStages,validateRecall}
     },
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'behaviorDecision'}),
     // Completion notifications are non-executing, account-bound and de-duped
@@ -7739,7 +7755,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // The planner can prioritize a real ongoing episode without granting any
     // additional tool. Model calls still use the existing daily Life budget.
     getLifeEpisodeContext:()=>universalLifeEpisodes.list({limit:3}),
-    getRecentLifeVideoMemory:opts=>lifeMemory?.recentVisualExperienceContext(opts)||[],
+    getRecentLifeVideoMemory:opts=>memoryRetriever?.contextualVisualRecall({...opts,associate:true})||[],
+    validateLifeVideoMemory:opts=>memoryRetriever?.validateContextualVisualRecall(opts)===true,
     getLifeVideoDetailRecall:opts=>lifeMemory?.recallVideoDetails(opts)||{ok:false,reason:'memory-unavailable'},
     // Video is not a mandatory Episode first step. For early, *optional*
     // reconsideration, match the SAME original source for an existing active

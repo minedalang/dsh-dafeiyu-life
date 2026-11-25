@@ -92,7 +92,7 @@ test('executor recognizes ONLY independently verified write result, not raw ok',
   {ok:true,status:'verified',code:'verified-platform-write'})
 })
 
-function makeLife(dir,answers,writer=async()=>({ok:true,status:'verified'})){
+function makeLife(dir,answers,writer=async()=>({ok:true,status:'verified'}),memory={}){
  let modelCalls=0,writeCalls=0
  const cred={dedeuserid:'1020304',sessdata:'dev27-credential'}
  const interest={source:'interest-milestone',topic:'电影配乐',stage:'growing',bvid:BV,
@@ -112,8 +112,9 @@ function makeLife(dir,answers,writer=async()=>({ok:true,status:'verified'})){
   executeLifeSearch:async topic=>({ok:true,topic,videos:[{bvid:BV,title:'公开视频标题'}]}),
   executeOpportunityRead:async bvid=>({ok:true,bvid,title:'公开视频标题'}),
   getLifeWriteEvidence:async()=>evidence,executeLifeWrite:async(...args)=>{writeCalls++;return writer(...args)},
+  ...memory,
   recordLifeExplorationWrite:(...args)=>life.recordExplorationWrite(...args),
-  invokeModel:async()=>JSON.stringify(answers[modelCalls++]?.(life)||{action:'stop'}),
+  invokeModel:async prompt=>JSON.stringify(answers[modelCalls++]?.(life,prompt)||{action:'stop'}),
   executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
  return {planner,life,get calls(){return modelCalls},get writes(){return writeCalls}}
 }
@@ -150,3 +151,22 @@ test('uncertain platform status blocks the same action on later Life ticks, no h
  assert.equal(entry.writeOutcomes[0].status,'uncertain')
  assert.equal(continuationMenu(entry,{at:T,writeActions:['like_video']}).some(x=>x.action==='like_video'),false)
 }))
+
+ test('Episode original comment uses optional other-video associations; stale sources stop a write without a second model',async()=>{
+ for(const stale of [false,true])await home(async dir=>{
+  let read=0,valid=true,commentPrompt=''
+  const rows=[{bvid:OTHER,title:'皮影戏舞台',sceneNotes:['光线投射出角色轮廓。'],recallRoute:'direct'}]
+  const x=makeLife(dir,[
+   life=>({action:'begin_exploration',id:life.explorationCues()[0].id,goal:'想了解真实公开作品'}),
+   life=>({action:'inspect_exploration',id:life.continuations()[0].id,bvid:BV}),
+   (life,prompt)=>{commentPrompt=prompt;if(stale)valid=false;return {action:'comment_video',id:life.continuations()[0].id,bvid:BV,reason:'想谈谈不同作品的创作方式',text:'这样的表现手法挺有意思'}}],
+   async()=>({ok:true,status:'verified'}),{
+    getRecentLifeVideoMemory:async opts=>{if(!opts.recentFallback&&opts.excludeBvids?.includes(BV)){read++;return rows}return []},
+    validateLifeVideoMemory:()=>valid})
+  const result=await x.planner.tick()
+  assert.equal(read,1);assert.match(commentPrompt,/可忽略的其他公开视频旧印象/);assert.match(commentPrompt,/皮影戏舞台/)
+  assert.equal(x.writes,stale?0:1)
+  if(stale)assert.equal(result.continuation.reason,'video-recall-evidence-changed')
+  else assert.equal(x.calls,4,'no additional decision model for association')
+ })
+ })
