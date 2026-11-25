@@ -4,6 +4,9 @@ import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync} from
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {Readable} from 'node:stream'
+import {fileURLToPath} from 'node:url'
+import {spawnPython} from './helpers/python-sqlite-runner.mjs'
+import {largeDataStatus} from '../lib/storage-large-data-v2.mjs'
 import {queueDomainMigration,readMigrationJob,runQueuedMigration,assertMigrationStartupSafe,
  requestMigrationCancellation,readMigrationCancellation,reconcileInterruptedMigration} from '../lib/storage-migration-queue.mjs'
 import {migrationMaintenanceView,registerMigrationMaintenance} from '../lib/storage-migration-maintenance.mjs'
@@ -19,14 +22,18 @@ const fixture=async fn=>{
  ['life-memory/fact.json','irreversible memory'],['.hf-cache/model.bin','model'],['embedding-runtime/model.bin','embed']]){
   const dest=join(root,file);mkdirSync(join(dest,'..'),{recursive:true});writeFileSync(dest,data)
  }
+ const py=spawnPython(['-c','import sys; print(sys.executable)'],{encoding:'utf8'})
+ assert.equal(py.status,0,py.stderr)
+ writeFileSync(join(root,'config.json'),JSON.stringify({pythonPath:py.stdout.trim()}))
  try{return await fn({root,temp})}finally{rmSync(temp,{recursive:true,force:true})}
 }
-const queue=({root,temp,domain='python',returnHome=false})=>queueDomainMigration({root,domain,
+const queue=({root,temp,domain='large',returnHome=false})=>queueDomainMigration({root,domain,
  target:join(temp,domain+'-target'),mode:domain==='python'?'cache':undefined,returnHome,
  parentPid:91231,workerScript:'fake-worker.mjs',spawnImpl:spawnFake})
 
-test('restart with active Python/model/Life migration blocks business code and offers maintenance state',()=>fixture(async({root,temp})=>{
- for(const domain of ['python','model','memory']){
+test('restart with active V2 large-model migration blocks business code and rejects new V1 jobs',()=>fixture(async({root,temp})=>{
+ for(const domain of ['python','model','memory'])assert.throws(()=>queue({root,temp,domain}),/旧版数据迁移已移除/)
+ for(const domain of ['large']){
   queue({root,temp,domain})
   const row=migrationMaintenanceView(root)
   assert.equal(row.status,'waiting');assert.equal(row.maintenance,true);assert.equal(row.domain,domain)
@@ -47,6 +54,7 @@ test('cancel during waiting is cooperative, durable and does not copy or switch 
  assert.equal(result.status,'cancelled')
  assert.equal(readMigrationJob(root).status,'cancelled')
  assert.equal(existsSync(target),false)
+ assert.equal(largeDataStatus(root).configured,false)
  assert.equal(storageLayoutStatus(root).domains.python.configured,false)
  assert.equal(readFileSync(join(root,'.venv/pyvenv.cfg'),'utf8'),'keep runtime')
  assert.doesNotThrow(()=>assertMigrationStartupSafe(root))
@@ -54,7 +62,7 @@ test('cancel during waiting is cooperative, durable and does not copy or switch 
 }))
 
 test('cancel while copying is observed before publication; no half data becomes active',()=>fixture(async({root,temp})=>{
- queue({root,temp,domain:'model'})
+ queue({root,temp,domain:'large'})
  const job=readMigrationJob(root)
  let checks=0
  const result=await runQueuedMigration({root,parentPid:91231,jobId:job.id,processIsAlive:()=>false,
@@ -65,11 +73,12 @@ test('cancel while copying is observed before publication; no half data becomes 
   }})
  assert.equal(result.status,'cancelled')
  assert.equal(readMigrationJob(root).status,'cancelled')
+ assert.equal(largeDataStatus(root).configured,false)
  assert.equal(storageLayoutStatus(root).domains.whisper.configured,false)
  assert.equal(readFileSync(join(root,'.hf-cache/model.bin'),'utf8'),'model')
 }))
 
-test('interrupted worker with no pointer publication recovers old Python cache after process exit',()=>fixture(async({root,temp})=>{
+test('interrupted V2 worker with no pointer publication retains local data after process exit',()=>fixture(async({root,temp})=>{
  queue({root,temp})
  const job=readMigrationJob(root),old=new Date(Date.now()-90000).toISOString()
  writeFileSync(join(root,'.dafeiyu-domain-migration-job-v1.json'),JSON.stringify({...job,
@@ -78,6 +87,7 @@ test('interrupted worker with no pointer publication recovers old Python cache a
   'a live or uncertain worker must never be released by timeout')
  assert.equal(reconcileInterruptedMigration(root,{processIsAlive:()=>false}).status,'failed')
  assert.doesNotThrow(()=>assertMigrationStartupSafe(root))
+ assert.equal(largeDataStatus(root).configured,false)
  assert.equal(storageLayoutStatus(root).domains.python.configured,false)
 }))
 
@@ -90,7 +100,10 @@ test('worker died after pointer publication: verified identity reconciles comple
  writeFileSync(join(root,'.dafeiyu-domain-migration-job-v1.json'),JSON.stringify({...finished,
   workerPid:99990,workerStartedAt:old,status:'running',startedAt:old})+'\n')
  assert.equal(reconcileInterruptedMigration(root,{processIsAlive:()=>false}).status,'completed')
- assert.equal(storageLayoutStatus(root).domains.python.root,job.target)
+ assert.equal(largeDataStatus(root).target,job.target)
+ assert.equal(storageLayoutStatus(root).domains.python.configured,false)
+ assert.equal(readFileSync(join(root,'.venv/pyvenv.cfg'),'utf8'),'keep runtime')
+ assert.equal(readFileSync(join(root,'life-memory/fact.json'),'utf8'),'irreversible memory')
 }))
 
 test('only fresh maintenance lease PID can be exempted; other Python/DSH processes still block',()=>fixture(async({root})=>{
@@ -117,7 +130,7 @@ test('maintenance-only plugin registers status/cancel surface without activating
  let handler;const disposers=[]
  const ctx={connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(spec){assert.equal(spec.path,'/api/bili-duty');handler=spec.handler;return ()=>{}}},effect(fn){disposers.push(fn())}}
  try{
-  assert.equal(registerMigrationMaintenance(ctx,{root,pluginDir:new URL('..',import.meta.url).pathname}),true)
+  assert.equal(registerMigrationMaintenance(ctx,{root,pluginDir:fileURLToPath(new URL('..',import.meta.url))}),true)
   const row=migrationMaintenanceView(root);assert.equal(row.maintenance,true)
   assert.equal(row.status,'waiting')
   assert.equal(typeof handler,'function')

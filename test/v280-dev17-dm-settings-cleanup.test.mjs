@@ -8,7 +8,7 @@ const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'u
 test('陌生人自主回复授权只有交流方案可见入口，保留旧配置字段但不重复展示',()=>{
   assert.match(html,/name="dm-conversation-choice" value="free"/)
   assert.match(html,/name="dm-conversation-choice" value="friends"/)
-  assert.match(html,/<div hidden aria-hidden="true"><input id="dm-stranger-enabled" type="checkbox"><\/div>/)
+  assert.match(html,/<div hidden aria-hidden="true"><input role="switch" class="ui-toggle" id="dm-stranger-enabled" type="checkbox"><\/div>/)
   assert.doesNotMatch(html,/允许鱼鱼自主考虑并多轮回复陌生人（新增授权，默认关闭）/)
   assert.match(js,/dmStrangerAutonomyEnabled:\$\('dm-stranger-enabled'\)\.checked/)
   assert.match(js,/确认开放陌生人私信/)

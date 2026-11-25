@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-import {planGlobalPreviewFocusCandidates,verifyVideoFocusReview} from '../lib/video-focus-review.mjs'
+import {planGlobalPreviewFocusCandidates,verifyVideoFocusReview,diagnoseVideoFocusReceipt} from '../lib/video-focus-review.mjs'
 import {runLifePostOverviewReview,runLifeChosenVideoRead,runLifePostOverviewBatchReview,lifeFocusBatchPrompt} from '../lib/life-video-read-admission.mjs'
 import {videoExplorationTier} from '../lib/video-exploration-budget.mjs'
 import {continuationMenu,parseContinuationDecision,continuationPrompt} from '../lib/life-continuation.mjs'
@@ -134,7 +134,7 @@ function debugTwoStageHarness({choice='decline',accountSwitch=false,invalidVisua
     trustedLifeAccountTag:()=>account,
     cfg:{visionEnabled:true,masterEnabled:true,visionFrames:24},
     planGlobalPreviewFocusCandidates,runLifePostOverviewBatchReview,lifeFocusBatchPrompt,videoExplorationTier,
-    verifyVideoFocusReview,lifeWillingness:willingness,
+    verifyVideoFocusReview,diagnoseVideoFocusReceipt,lifeWillingness:willingness,
     accountBinding:{status:()=>({blocked:false})},Date,
     invokeInteractionPrompt:async()=>JSON.stringify({focusTargets:targets||[
       {atSeconds:candidates[0].atSeconds,durationSeconds:10},
@@ -150,6 +150,7 @@ function debugTwoStageHarness({choice='decline',accountSwitch=false,invalidVisua
           frame_budget_limit:args.frame_budget_limit},
         debugCapture:capture}
     },
+    callOwnerVideoDebugVision:async args=>ctx.call('bili_preview_vision',args),
     buildVideoEvidenceBundle:({visual})=>({bvid:BV,sources:[
       {kind:'decoded_video_frames',status:'sampled',timePointsMs:[(visual.focus_window.startSeconds+1)*1000]},
       {kind:'decoded_visual_analysis',status:'analyzed',timePointsMs:[(visual.focus_window.startSeconds+1)*1000]}]})}

@@ -26,7 +26,7 @@ test('评论和 @ 设置只保留一套并且跳转到开关后即可保存',()=
     assert.ok(!social.includes(`id="${id}"`),id+' must not be cloned to social');
     assert.equal(html.split(`id="${id}"`).length-1,1,id+' must be unique');
   }
-  assert.match(comments,/href="#comment-at-section"/);
+  assert.match(social,/data-open-tab="comments" data-open-anchor="comment-at-section"/);
   assert.ok(comments.indexOf('id="comment-at-section"') < comments.indexOf('id="comments-settings-save"'));
   assert.ok(comments.indexOf('id="comment-at-section"')>comments.indexOf('id="comment-watch-replies"'));
   assert.match(js,/commentAtEnabled:\$\('comment-at-enabled'\)\.checked/);

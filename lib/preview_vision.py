@@ -942,21 +942,36 @@ def _save_vision_cache(cache, record, *, progress=None):
         if cache.is_symlink() or (cache.exists() and not cache.is_file()):
             return 'vision_cache_write_failed'
         mark('writer_replace_start')
-        try:
-            os.replace(staged,cache)
-        except PermissionError:
-            # A copied Windows cache file can retain its read-only attribute.
-            # Repair ONLY that individual regenerable cache file, and retry
-            # the same atomic replacement once. Never alter directory ACLs,
-            # permissions of model weights or any Life memory.
-            mark('writer_replace_retry')
-            if cache.is_symlink() or not cache.is_file():
-                raise
-            mode=cache.stat().st_mode
-            if mode & stat.S_IWRITE:
-                raise
-            cache.chmod(mode | stat.S_IWRITE)
-            os.replace(staged,cache)
+        # A successful staging write is not proof that a Windows destination
+        # is immediately replaceable: concurrent readers/writers can briefly
+        # hold the file without FILE_SHARE_DELETE. Retry only the replace,
+        # never the exclusive create (which must fail fast on MIC denial).
+        delays=(0.02,0.04,0.08,0.12,0.16)
+        readonly_repaired=False
+        for attempt in range(len(delays)+1):
+            try:
+                if cache.is_symlink() or (cache.exists() and not cache.is_file()):
+                    return 'vision_cache_write_failed'
+                os.replace(staged,cache)
+                break
+            except PermissionError as exc:
+                mark('writer_replace_retry')
+                if cache.is_symlink() or not cache.is_file():
+                    raise
+                mode=cache.stat().st_mode
+                if not mode & stat.S_IWRITE and not readonly_repaired:
+                    # Repair only an individual regenerable read-only cache,
+                    # preserving the existing rule: never change an ACL.
+                    cache.chmod(mode | stat.S_IWRITE)
+                    readonly_repaired=True
+                    continue
+                if (not mode & stat.S_IWRITE or
+                    getattr(exc,'winerror',None) not in (5,32,33) or
+                    attempt>=len(delays)):
+                    raise
+                time.sleep(delays[attempt])
+        else:
+            return 'vision_cache_write_failed'
         mark('writer_replace_done')
         return None
     except (OSError,TypeError,ValueError) as exc:

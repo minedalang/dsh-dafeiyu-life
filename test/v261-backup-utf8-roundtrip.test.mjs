@@ -1,4 +1,5 @@
 import test from 'node:test'
+import {gunzipSync} from 'node:zlib'
 import assert from 'node:assert/strict'
 import { PassThrough } from 'node:stream'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs'
@@ -35,7 +36,7 @@ test('备份文件保存后再次读取：旧版业务备份原样有效、中�
     assert.equal(backup.files['character-identity.json'],undefined,'老用户没有新角色 ID 时仍然兼容')
     assert.deepEqual(validateRestoreIdentity(output,backup),{ok:true,legacyBackup:true})
     const saved=saveBackupJson(dest,backup)
-    const reread=JSON.parse(readFileSync(saved,'utf8'))
+    const reread=JSON.parse(gunzipSync(readFileSync(saved)).toString('utf8'))
     assert.equal(validateBackup(reread).integrity,'sha256-verified')
     assert.equal(reread.files['seen.md'],backup.files['seen.md'])
     restoreBackupFiles(output,reread)

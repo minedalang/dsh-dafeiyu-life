@@ -255,8 +255,8 @@ test('repeated unsuccessful repair is throttled without creating more environmen
   const f=setup();let attempt=0,now=100000
   try{
     const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,
-      clock:()=>now,cooldownMs:600000,
-      preferred:()=>f.base,probe:(_python,opts)=>({ok:!opts.requiresMcp,reason:'missing_mcp_dependencies'}),
+      clock:()=>now,cooldownMs:600000,env:{},
+      preferred:()=>f.base,probe:(python,opts)=>({ok:python===f.base&&!opts.requiresMcp,reason:'missing_mcp_dependencies'}),
       run:async(_cmd,args)=>{
         if(args[0]==='-m'&&args[1]==='venv')attempt++
         return {ok:false}

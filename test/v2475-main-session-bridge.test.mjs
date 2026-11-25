@@ -79,7 +79,7 @@ test('实际源码只通过 ctx.agents 绑定主 Session，并提供管理中心
   const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   const bridge=readFileSync(new URL('../lib/main-session-bridge.mjs',import.meta.url),'utf8')
-  assert.match(index,/inject = \['webServer', 'tools', 'settings', 'agents', 'sessionTitle', 'systemPrompt'\]/)
+  assert.match(index,/inject = \['webServer', 'connection', 'tools', 'settings', 'agents', 'sessionTitle', 'systemPrompt'\]/)
   assert.match(index,/createMainSessionBridge\(/)
   assert.match(index,/\/api\/bili-duty\/main-session\/sync/)
   assert.match(html,/data-tab="home"/);assert.match(html,/大肥鱼的家/);assert.match(js,/loadMainSession/)

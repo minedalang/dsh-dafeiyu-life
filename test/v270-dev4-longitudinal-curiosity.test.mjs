@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs'
+import {mkdtempSync,mkdirSync,rmSync,readFileSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createSocialPortraitGateway} from '../lib/social-portrait-gateway.mjs'
@@ -76,7 +76,9 @@ test('短期好奇：主人排除 30 天、拒绝重复主题、可恢复未来�
   assert.equal(recordInterestEvents(dir,[event('BV1ab1234567','古生物化石挖掘：再出发',t+2*day)],t+2*day).curiosityAdded,1)
   assert.equal(listCuriosityReview(dir,t+34*day).dismissed.length,0)
   assert.throws(()=>curiosityReview(dir,{action:'dismiss',bvid:'BV0000000000',now:t}),/找不到/)
-  assert.deepEqual(listCuriosityReview(join(dir,'other-account'),t).candidates,[])
+  const other=join(dir,'other-account');mkdirSync(other)
+   assert.deepEqual(listCuriosityReview(other,t).candidates,[])
+   assert.throws(()=>listCuriosityReview(join(dir,'missing-account'),t),/存储目录不存在/)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 

@@ -17,6 +17,6 @@ test('management action tree reads live activity and distinguishes watching from
  const ui=readFileSync('lib/management-console.js','utf8'),host=readFileSync('index.js','utf8')
  assert.match(ui,/\['observe_video','观看视频画面'\]/)
  assert.match(ui,/request\('\/live-activity'\)/)
- assert.match(ui,/不代表已理解/)
- assert.match(host,/liveLifeActivity\.start\('video-observe'/)
+ assert.match(ui,/不代表已识图/)
+ assert.match(host,/liveLifeActivity\.start\(\s*dryRun\?'video-observe-debug':'video-observe'/)
 })

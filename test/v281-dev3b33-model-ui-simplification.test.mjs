@@ -107,7 +107,7 @@ test('2.8.2 视觉设置：下载/图片验收/启用都是普通操作，高风
   assert.match(html,/id="local-vision-model" aria-describedby="local-vision-selection-note"/)
   assert.match(js,/确认切换并开启视频观察/)
   assert.match(js,/\$\('local-vision-refresh'\)\.addEventListener\('click',\(\)=>run\(loadLocalVisionStatus\)\)/)
-  assert.match(js,/if\(visionIsLocal\(\)\)\{ \$\('vision-runtime-alert'\)\.hidden=true;await loadLocalVisionStatus\(\);\}/)
+  assert.match(js,/await \(visionIsLocal\(\)&&c\.visionEnabled===true\?restoreOllama\(\):loadLocalVisionStatus\(\)\)\.catch/)
   assert.match(js,/设置尚未保存|summarizeSaveDrafts\(\)/)
   assert.match(js,/settingDraftTracker\.committed\(\$\('models-vision-mode'\)\)/)
 })

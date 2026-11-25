@@ -32,6 +32,7 @@ function mockWatch({vision=true,dryRun=true}={}){
       if(name==='bili_danmaku')return {items:[]}
       return {ok:true}
     },
+    callOwnerVideoDebugVision:async args=>ctx.call('bili_preview_vision',args),
     visionDecision:()=>({attempt:vision,kind:vision?'enabled':'unavailable',depth:vision?'standard':'skim',reason:'fixture'}),
     resolvedVisionMode:()=> 'independent_local',
     liveLifeActivity:{start:()=>()=>{}},parseMaybeJson:x=>x,

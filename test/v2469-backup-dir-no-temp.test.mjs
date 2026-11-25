@@ -1,4 +1,5 @@
 import test from 'node:test'
+import {gunzipSync} from 'node:zlib'
 import assert from 'node:assert/strict'
 import {mkdtempSync,mkdirSync,existsSync,readFileSync,readdirSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
@@ -24,7 +25,7 @@ test('备份目录必须由用户指定，且必须可写、不能是磁盘根�
     const content=createBackup({root,config:{personaPrompt:'喜欢吃白饭'},sqlite:{}})
     const file=saveBackupJson(dest,content)
     assert.equal(existsSync(file),true)
-    assert.equal(JSON.parse(readFileSync(file,'utf8')).config.personaPrompt,'喜欢吃白饭')
+    assert.equal(JSON.parse(gunzipSync(readFileSync(file)).toString('utf8')).config.personaPrompt,'喜欢吃白饭')
     const safeguard=saveBackupJson(dest,content,'pre-restore')
     assert.notEqual(file,safeguard)
     assert.equal(readdirSync(dest).length,2)

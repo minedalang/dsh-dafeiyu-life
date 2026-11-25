@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,readdirSync,rmSync,chmodSync,statSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
+import {fileURLToPath} from 'node:url'
 import {spawnSync} from 'node:child_process'
 import {probeVisionCacheAccess} from '../lib/storage-vision-cache-access.mjs'
 import {migrateDomainOffline,storageLayoutStatus,storageDataPath,returnDomainHomeOffline} from '../lib/storage-layout.mjs'
@@ -82,13 +83,13 @@ test('an absent vision cache stays absent after migration and remains rollback-c
 }))
 
 test('installed cache CLI refuses unknown roots and does not create any data directory',()=>withRoot(({root,base})=>{
- const script=new URL('../scripts/check-vision-cache-access.mjs',import.meta.url).pathname
+ const script=fileURLToPath(new URL('../scripts/check-vision-cache-access.mjs',import.meta.url))
  const wrong=join(base,'not-installed-root')
  const denied=spawnSync(process.execPath,[script,'--root',wrong],{encoding:'utf8'})
  assert.notEqual(denied.status,0)
  assert.equal(existsSync(wrong),false)
  const good=spawnSync(process.execPath,[script,'--root',root],{encoding:'utf8'})
- assert.equal(good.status,0)
+ assert.equal(good.status,0,good.stderr)
  assert.equal(JSON.parse(good.stdout).checks.atomicReplace,true)
  assert.equal(existsSync(join(root,'vision-cache')),false)
 }))

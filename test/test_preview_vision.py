@@ -50,6 +50,39 @@ class PreviewTests(unittest.TestCase):
             self.assertIn(json.loads(cache.read_text(encoding='utf8'))['seq'],range(24))
             self.assertEqual(list(cache.parent.glob('.BV1234567890-preview-board-v14-*.tmp')),[])
 
+    def test_windows_replace_contention_is_bounded_without_chmod_or_data_loss(self):
+        with TemporaryDirectory() as home:
+            cache=Path(home)/'vision-cache'/'probe.json'
+            cache.parent.mkdir()
+            cache.write_text('{"prior":true}',encoding='utf8')
+            real_replace=pv.os.replace
+            error=PermissionError(13,'simulated Windows sharing violation')
+            error.winerror=32
+            calls=[]
+            def transient(src,dst):
+                calls.append(src)
+                if len(calls)<3:
+                    raise error
+                return real_replace(src,dst)
+            with patch.object(pv.os,'replace',side_effect=transient), \
+                 patch.object(pv.time,'sleep') as sleep, \
+                 patch.object(Path,'chmod',side_effect=AssertionError('must not chmod writable cache')):
+                self.assertIsNone(pv._save_vision_cache(cache,{'new':True}))
+                self.assertEqual(len(calls),3)
+                self.assertEqual(sleep.call_count,2)
+                self.assertEqual(len(set(calls)),1)
+            self.assertEqual(json.loads(cache.read_text(encoding='utf8')),{'new':True})
+            error.winerror=5
+            with patch.object(pv.os,'replace',side_effect=error) as replace, \
+                 patch.object(pv.time,'sleep') as sleep, \
+                 patch.object(Path,'chmod',side_effect=AssertionError('must not chmod writable cache')):
+                self.assertEqual(pv._save_vision_cache(cache,{'lost':True}),'vision_cache_permission_denied')
+                self.assertEqual(replace.call_count,6)
+                self.assertEqual(sleep.call_count,5)
+                self.assertLess(sum(c.args[0] for c in sleep.call_args_list),0.5)
+            self.assertEqual(json.loads(cache.read_text(encoding='utf8')),{'new':True})
+            self.assertEqual(list(cache.parent.glob('.*.tmp')),[])
+
     def test_cache_low_integrity_write_denial_returns_immediately_without_tempfile_retries(self):
         with TemporaryDirectory() as home:
             cache=Path(home)/'vision-cache'/'new.json'
