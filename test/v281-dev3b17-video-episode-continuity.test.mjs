@@ -260,3 +260,27 @@ test('asynchronous contextual association never restores revoked or other-accoun
   try{const rows=await x.retriever.contextualVisualRecall({accountTag:A,queries:['逐帧拍摄的角色表现'],limit:2,associate:true,recentFallback:false});assert.deepEqual(rows,[],change)}finally{x.gateway.close()}
  })
 })
+
+test('deep-only cue reverse activates current video without BV, verifies actual anchor and invalidates on decay',()=>tmp(async dir=>{
+ let clock=T+2000,tag=A,invalidated=[],indexed=[]
+ const g=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>tag,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:1}),
+  admitMemoryDetails:()=>true,onDetailsInvalidated:ids=>invalidated.push(...ids),onDetailsChanged:id=>indexed.push(id)})
+ try{
+  g.recordEvents([vid('一段室内人物的静态展示。'),vid('另一段室内人物的静态展示。',{operationId:'evidence-timeline-xyz',at:T+1000})])
+  const id=g.videoEvidenceTrace({accountTag:A,bvid:BV})[1].memoryId
+  assert.equal(g.attachMemoryDetails({memoryId:id,accountTag:A,fragments:[{fragmentId:'frame-0001',type:'observed-scene',sourceRef:'verified:frame:0001',certainty:'model-observation',content:'朱红雨伞靠在玻璃门旁边，人物缓慢转身。',timeAnchorMs:[2000,2000]}]}).ok,true)
+  assert.deepEqual(indexed,[id]);assert.equal(g.visualDetailCandidates({accountTag:A})[0].id,id)
+  const search=[];const r=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({mainSessionMemoryEnabled:true,mainSessionMemoryEmbeddingEnabled:true}),getEpisodes:(q,o)=>g.recall({query:q,...o}),getEpisodeCandidates:o=>g.semanticCandidates(o),getVisualExperiences:o=>g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>g.visualDetailCandidates(o),groupVideoEpisodes:rows=>g.videoRecallGroups(rows),semanticSearch:async(q,c,o)=>{search.push(o);return {ready:true,items:q.includes('挡水')?c.filter(e=>e.id==='visual-detail:'+id).map(e=>({id:e.id,score:.89})):[]}}})
+  assert.ok(r.embeddingCorpus().some(x=>x.id==='visual-detail:'+id&&x.text.includes('朱红雨伞')))
+  for(const q of ['朱红雨伞','下雨时挡水的用具']){
+   const rows=await r.contextualVisualRecall({accountTag:A,queries:[q],limit:2,recentFallback:false})
+   assert.equal(rows.length,1);assert.equal(rows[0].bvid,BV);assert.equal(rows[0].memoryId,id);assert.deepEqual(rows[0].detailCue.part.timeAnchorMs,[2000,2000]);assert.match(rows[0].detailCue.part.note,/朱红雨伞/);assert.equal(r.validateContextualVisualRecall({accountTag:A,rows}),true)
+   tag=B;assert.equal(r.validateContextualVisualRecall({accountTag:A,rows}),false);tag=A
+  }
+  const owner=await r.ownerContextualSearch(['朱红雨伞'],{accountTag:A,isCurrent:()=>tag===A,beforeAt:clock+1})
+  assert.equal(owner.ok,true);assert.match(owner.items[0].summary,/朱红雨伞/);assert.equal(owner.validateRecall(),true);assert.equal(owner.items.filter(x=>x.summary.includes(BV)).length,1)
+  assert.ok(search.length>=2);assert.equal(g.recall({query:'静态展示',domain:'main-session',maxItems:12}).filter(e=>e.bvid===BV).length,1)
+  const rows=await r.contextualVisualRecall({accountTag:A,queries:['朱红雨伞'],limit:2,recentFallback:false})
+  clock+=14*86400000;assert.equal(r.validateContextualVisualRecall({accountTag:A,rows}),false);assert.ok(invalidated.includes(id));assert.ok(!r.embeddingCorpus().some(x=>x.id==='visual-detail:'+id))
+ }finally{g.close()}
+}))

@@ -150,10 +150,10 @@ test('统一意愿模型接收受信任的结构化 Episode/关系证据，但�
   const dir=mkdtempSync(join(tmpdir(),'life-association-'));t.after(()=>rmSync(dir,{recursive:true,force:true}))
   let valid=true,calls=0,prompt=''
   const actor=createLifeWillingness({dataDir:dir,getAccountTag:()=>A,
-   getContext:()=>({voice:'鱼鱼',world:{optionalPastVideoAssociations:[{bvid:'BV1234567890',title:'皮影舞台',certainty:'historical-model-observation-not-current-video-fact'}]},validateRecall:()=>valid}),
+   getContext:()=>({voice:'鱼鱼',world:{optionalPastVideoAssociations:[{bvid:'BV1234567890',title:'皮影舞台',historicalDetail:{note:'朱红雨伞靠在玻璃门旁边。',timeAnchorMs:[1000,1000]},certainty:'historical-model-observation-not-current-video-fact'}]},validateRecall:()=>valid}),
    invokeModel:async p=>{calls++;prompt=p;valid=false;return JSON.stringify({action:'act',candidateId:'comment_on_video',reason:'有感想',publicCommentText:'光影的变化很有意思'})}})
   const result=await actor.decide({trigger:'video-comment-consideration',scene:'comment',sourceKey:'video-comment:'+ 'c'.repeat(24)+':BV0987654321',
    candidates:[{id:'comment_on_video',kind:'video_comment',label:'是否愿意评论？'}],evidence:{publicVideoComment:{evidence:'当前作品中的角色表现',draft:''}}})
-  assert.equal(calls,1);assert.match(prompt,/皮影舞台/);assert.match(prompt,/禁止把别的视频画面当作当前画面/)
+  assert.equal(calls,1);assert.match(prompt,/皮影舞台/);assert.match(prompt,/朱红雨伞/);assert.match(prompt,/禁止把别的视频画面当作当前画面/)
   assert.equal(result.ok,false);assert.equal(result.reason,'video-recall-evidence-changed');assert.equal(result.proof,null)
  })

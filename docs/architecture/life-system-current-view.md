@@ -453,7 +453,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   focusRecall283 -.->|一次自主展开；原模型预算与原菜单；不增加外发权限| planner
 %% @code focusRecall283 | lib/life-memory-gateway.mjs | function recallVideoDetails
 
-  unifiedAssoc283["统一记忆层：公开印象与跨经历联想；非授权"]
+  unifiedAssoc283["统一记忆层：深浅反向激活、跨经历联想及私信按需回忆；非授权"]
   unifiedAssoc283 -.->|只读思考素材| planner
 %% @code unifiedAssoc283 | lib/memory-retriever.mjs | const contextualVisualRecall=
 ```
@@ -666,7 +666,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   video -.->|仅显式入口；独立意愿| revisit283
 %% @code revisit283 | index.js | name:'bili_video_revisit_moment'
 
-  assocCandidates283["统一混合检索：有界相关印象与一跳联想"]
+  assocCandidates283["统一混合检索：浅印象、深层反向激活与一跳联想"]
   assocCandidates283 -.->|只读思考素材| planner
 %% @code assocCandidates283 | lib/memory-retriever.mjs | const contextualVisualRecall=
 ```
@@ -924,7 +924,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   focusDeep283 -.->|同账号 BV 聚合；各自清晰且未撤销；后台按需一次展开| recall
 %% @code focusDeep283 | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
 
-  assocProjection283["同库浅层联想投影；当前账号与遗忘复核"]
+  assocProjection283["同库深浅联想投影及派生向量；账号与遗忘复核"]
   assocProjection283 -.->|只读思考素材| recall
 %% @code assocProjection283 | lib/memory-retriever.mjs | const validateContextualVisualRecall=
 ```
@@ -1120,7 +1120,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
 %% @code contextDelivery282 | lib/context-delivery.mjs | export function deliverJsonContext
 
 %% dev.6: main-session progressive recall is local read only, not an autonomous wake.
-  localRecall283["主 Session／普通后台 Life：浅层不足时主动展开已有深层；未知不补造"]
+  localRecall283["主 Session／后台 Life／受控私信：按需深浅回忆、无需BV的反向激活；未知不补造"]
   localRecall283 -.->|已有模型预算；仅本轮思考；不新增调度或补看权限| menu
 %% @code localRecall283 | lib/long-term-memory.mjs | detail_bvid
 

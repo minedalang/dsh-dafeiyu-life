@@ -118,3 +118,16 @@ test('删除索引与后台重建串行化，删除后不得恢复旧向量',asy
     assert.equal(await restored.initialize(),false)
   }finally{await rm(dir,{recursive:true,force:true})}
 })
+
+test('deep derived vectors are explicitly indexed, never lazily recreated by stale query candidates',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'dsh-visual-vector-'))
+ try{
+  const index=createEmbeddingMemoryIndex({dataDir:dir,provider:fakeProvider}),deep={id:'visual-detail:e-123456789012345678',text:'画面中的小猫'}
+  assert.equal((await index.rebuild([{id:'episode:old',text:'计划'}])).ok,true)
+  const ordinary={id:'episode:new',text:'猫咪'}
+  assert.ok((await index.search('猫咪',[ordinary,deep],{minScore:.1})).items.some(x=>x.id===ordinary.id))
+  assert.equal(index.status().indexed,2)
+  await index.upsert([deep]);assert.ok((await index.search('猫咪',[deep],{minScore:.1})).items.some(x=>x.id===deep.id))
+  await index.remove([deep.id]);assert.equal((await index.search('猫咪',[deep],{minScore:.1})).items.length,0);assert.equal(index.status().indexed,2)
+ }finally{await rm(dir,{recursive:true,force:true})}
+})

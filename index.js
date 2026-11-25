@@ -4997,7 +4997,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(String(uid)!==String(cfg.dmOwnerUid||'')||cfg.ownerDmAgentEnabled!==true||!trustedLifeAccountTag()||accountBinding.status()?.blocked)
         return {ok:false,reason:'account-not-verified',items:[]}
       if(action==='public_comments')return recallOwnerPublicComments({uid,query,beforeAt})
-      if(action==='memory_search')return await (memoryRetriever?.ownerSearchAsync?.(query,{history,limit:6,beforeAt})||memoryRetriever?.ownerSearch(query,{history,limit:6,beforeAt})||{ok:false,reason:'memory-not-ready',items:[]})
+      if(action==='memory_search'){
+        const scope=trustedLifeAccountTag(),retriever=memoryRetriever
+        if(!retriever)return {ok:false,reason:'memory-not-ready',items:[]}
+        const isCurrent=()=>scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&String(uid)===String(cfg.dmOwnerUid||'')&&cfg.ownerDmAgentEnabled===true
+        return retriever.ownerContextualSearch(query,{accountTag:scope,isCurrent,history,limit:6,beforeAt})
+      }
       if(action==='memory_detail'){
         const item=memoryRetriever?.ownerDetail(id)
         return {ok:true,items:item?[item]:[]}
@@ -6069,7 +6074,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     logger:{warn:(msg)=>log('评论上下文：'+msg)},
   })
   socialContextAssembler=createSocialContextAssembler({
-    policy:socialPolicyGate,memoryRetriever,
+    policy:socialPolicyGate,memoryRetriever,getMemoryRetriever:()=>memoryRetriever,getAccountTag:()=>accountBinding.status().blocked?'':trustedLifeAccountTag(),
     getMeme:async(item)=>(await interactionMemeLookup.forBatch([item]))?.[0]||'',
     getPersona:batch=>buildInteractionPersona(batch),
     getIdentity:uid=>replyIdentityContext(uid),
@@ -6964,6 +6969,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人主 Session 经历待补偿：'+String(result.lastError||result.reason||''))}
     },
     getExperienceRecall: (query,limit) => lifeMemory?.recall({query,domain:'main-session',maxItems:limit,maxChars:3000}).map(x=>({kind:x.kind,time:x.at,bvid:x.bvid,summary:x.summary}))||[],
+    getVideoAssociationRecall:async query=>{
+      const scope=trustedLifeAccountTag();if(!scope||accountBinding.status().blocked||!memoryRetriever)return []
+      const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:true,recentFallback:false})
+      return scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows})?publicVisualAssociationContext(rows):[]
+    },
     getVideoDetailRecall:({bvid,memoryId})=>lifeMemory?.recallVideoDetails({bvid,memoryId,accountTag:trustedLifeAccountTag()})||{ok:false,reason:'memory-not-ready'},
     getTodoEngine: () => ownerTodos,
     runTodo: (id) => runOwnerTodoWithFollowup(id),
@@ -6986,7 +6996,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
        accountBinding.status().blocked)return false
     admittedOwnerFocusProofs.delete(sourceProof)
     return true
-  },onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'episode:'+String(id)))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},logger:{warn:m=>log('人生记忆：'+m)}})
+  },onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.flatMap(id=>['episode:'+String(id),'visual-detail:'+String(id)]))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},onDetailsInvalidated:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'visual-detail:'+String(id)))).catch(error=>log('深层向量清理失败：'+String(error?.message||error).slice(0,140)))},
+  onDetailsChanged:id=>{
+    if(cfg.mainSessionMemoryEmbeddingEnabled!==true||!embeddingIndex?.status().ready)return
+    const scope=trustedLifeAccountTag(),row=lifeMemory?.visualDetailCandidates({accountTag:scope,ids:[id]})[0]
+    if(row)void embeddingIndex.upsert([{id:'visual-detail:'+id,text:row.text}]).then(()=>{
+      if(scope===trustedLifeAccountTag()&&!lifeMemory?.visualDetailCandidates({accountTag:scope,ids:[id]})[0])return embeddingIndex.remove(['visual-detail:'+id])
+    }).catch(error=>log('深层向量增量更新失败：'+String(error?.message||error).slice(0,140)))
+  },logger:{warn:m=>log('人生记忆：'+m)}})
   ctx.effect(()=>()=>lifeMemory?.close(),'bili-duty: 只读内存 FTS 关闭')
   embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,rootDir:storageDataPath(stateDir,'embedding-runtime'),
     modelDir:largeDataStatus(stateDir).embeddingModelDir||undefined,logger:{warn:m=>log('本地语义运行时：'+m)}})
@@ -7003,6 +7020,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getEpisodes:(query,options)=>lifeMemory?.recall({query,domain:options?.domain||'main-session',role:options?.role||'owner',actorUid:options?.actorUid||'',excludeEventKey:options?.excludeEventKey||'',kinds:options?.kinds||null,maxItems:options?.maxItems||6,maxChars:options?.maxChars||800})||[],
     getEpisodeCandidates:(options)=>lifeMemory?.semanticCandidates(options)||[],
     getVisualExperiences:options=>lifeMemory?.recentVisualExperienceContext(options)||[],
+    getVisualDetailCandidates:options=>lifeMemory?.visualDetailCandidates(options)||[],
     groupVideoEpisodes:rows=>lifeMemory?.videoRecallGroups(rows)||rows,
     getPrivateInsights:(opts)=>lifeMemory?.privateInsights(opts)||[],
     getPrivateInsightCandidates:(opts)=>lifeMemory?.privateInsightCandidates(opts)||[],

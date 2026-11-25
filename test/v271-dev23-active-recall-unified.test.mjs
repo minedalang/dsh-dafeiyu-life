@@ -124,3 +124,24 @@ test('受信好友公开评论仅能回忆公开安全证据，第二轮不能�
   recallMemory:async()=>({ok:true,items:[]}),invoke:async()=>JSON.stringify(++actions===1?{intent:'chat',reply:'稍等',recallQueries:['那次聊天']}:{intent:'like',decision:'allow',reply:'点赞啦'})})
  assert.equal(refused.ok,false);assert.equal(refused.reason,'public-recall-reply-invalid')
 })
+
+test('friend DM lazy visual reverse recall uses live unified retriever without BV, excludes duplicate video and rejects revoked context',async()=>{
+ let reads=0,current=true;const scope='a'.repeat(16),policy={actor:()=>({role:'friend'}),memoryScope:()=> 'public',canViewIdentity:()=>false,canViewRelationship:()=>false}
+ const retriever={contextualVisualRecall:async o=>{reads++;assert.deepEqual(o.queries,['朱红雨伞']);return [{memoryId:'e-123456789012345678',bvid:BV,title:'旧视频',sceneNotes:['室内人物'],recallRoute:'direct',detailCue:{part:{note:'朱红雨伞靠在玻璃门旁边。',timeAnchorMs:[2000,2000]}}}]},validateContextualVisualRecall:()=>current,socialContextAsync:async(q,o)=>{assert.deepEqual(o.excludeVideoBvids,[BV]);return '其他公开记忆'}}
+ const a=createSocialContextAssembler({policy,getMemoryRetriever:()=>retriever,getAccountTag:()=>scope,logger:{warn(){}}})
+ const input={uid:FRIEND,kind:'dm',text:'这把伞好看',recallQueries:['朱红雨伞']}
+ assert.equal((await a.message(input,{mode:'compact'})).memoryContext,'');assert.equal(reads,0)
+ const hit=await a.message(input,{mode:'compact',requested:['memory']});assert.match(hit.memoryContext,/朱红雨伞/);assert.equal(hit.validateRecall(),true);assert.equal(reads,1)
+ current=false;assert.equal(hit.validateRecall(),false)
+ const guarded=await a.message({...input,privacyGuard:true},{mode:'compact',requested:['memory']});assert.equal(guarded.memoryContext,'');assert.equal(reads,1)
+})
+test('revoked visual evidence during friend reply generation blocks batch output',async()=>{
+ let calls=0,live=true
+ const b=createInteractionBatcher({delayMs:0,getContextMode:()=> 'compact',getPersona:()=>'',prepareContexts:async rows=>rows.map(()=>({availableContexts:['memory']})),loadRequestedContexts:async rows=>rows.map(()=>({memoryContext:'历史画面',validateRecall:()=>live})),invoke:async()=>{if(++calls===1)return output({action:'skip',reply:'',contextRequests:['memory'],recallQueries:['朱红雨伞']});live=false;return output({reply:'历史画面'})},logger:{warn(){}}})
+ try{await assert.rejects(b.generate({uid:FRIEND,kind:'dm',text:'那把伞'}),/video-recall-evidence-changed/)}finally{b.stop()}
+})
+test('owner DM cannot send after a recalled visual source becomes invalid',()=>withDir(async dir=>{
+ let calls=0,live=true,sends=0
+ const a=makeOwner(dir,{recallMemory:async()=>({ok:true,items:[{id:'episode:known',kind:'watch',summary:'朱红雨伞'}],validateRecall:()=>live}),invokeModel:async()=>{if(++calls===1)return {action:'memory_search',queries:['朱红雨伞']};live=false;return {action:'reply',text:'我记得那把伞'}},send:async()=>{sends++;return {ok:true}}})
+ await a.processMessage(ownerMsg('那把伞呢','m-revoke'));assert.equal(sends,0)
+}))

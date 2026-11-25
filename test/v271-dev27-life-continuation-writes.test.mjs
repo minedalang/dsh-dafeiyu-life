@@ -155,7 +155,7 @@ test('uncertain platform status blocks the same action on later Life ticks, no h
  test('Episode original comment uses optional other-video associations; stale sources stop a write without a second model',async()=>{
  for(const stale of [false,true])await home(async dir=>{
   let read=0,valid=true,commentPrompt=''
-  const rows=[{bvid:OTHER,title:'皮影戏舞台',sceneNotes:['光线投射出角色轮廓。'],recallRoute:'direct'}]
+  const rows=[{bvid:OTHER,title:'皮影戏舞台',sceneNotes:['光线投射出角色轮廓。'],detailCue:{part:{note:'朱红雨伞靠在玻璃门旁边。',timeAnchorMs:[2000,2000]}},recallRoute:'direct'}]
   const x=makeLife(dir,[
    life=>({action:'begin_exploration',id:life.explorationCues()[0].id,goal:'想了解真实公开作品'}),
    life=>({action:'inspect_exploration',id:life.continuations()[0].id,bvid:BV}),
@@ -164,7 +164,7 @@ test('uncertain platform status blocks the same action on later Life ticks, no h
     getRecentLifeVideoMemory:async opts=>{if(!opts.recentFallback&&opts.excludeBvids?.includes(BV)){read++;return rows}return []},
     validateLifeVideoMemory:()=>valid})
   const result=await x.planner.tick()
-  assert.equal(read,1);assert.match(commentPrompt,/可忽略的其他公开视频旧印象/);assert.match(commentPrompt,/皮影戏舞台/)
+  assert.equal(read,1);assert.match(commentPrompt,/可忽略的其他公开视频旧印象/);assert.match(commentPrompt,/皮影戏舞台/);assert.match(commentPrompt,/朱红雨伞/)
   assert.equal(x.writes,stale?0:1)
   if(stale)assert.equal(result.continuation.reason,'video-recall-evidence-changed')
   else assert.equal(x.calls,4,'no additional decision model for association')
