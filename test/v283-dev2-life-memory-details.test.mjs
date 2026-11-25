@@ -5,6 +5,10 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
+import {buildVideoExplorationEvent} from '../lib/video-experience.mjs'
+import {createLifeMemoryCoordinator} from '../lib/life-memory-coordinator.mjs'
+import {execFile} from 'node:child_process'
+import {promisify} from 'node:util'
 const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',BV='BV1234567890'
 const NOW=Date.parse('2026-11-18T12:00:00Z'),DAY=86_400_000
 const event={kind:'watch',key:'video-explore:dev2-integration',bvid:BV,title:'已观察片段',at:NOW,accountTag:A,
@@ -181,3 +185,113 @@ test('progressive recall groups exact current-account BV and preserves exact epi
   const result=gateway.recallVideoDetails({bvid:BV,accountTag:A})
   assert.equal(result.ok,true);assert.equal(result.fragments.length,1);assert.equal(result.fragments[0].memoryId,memoryId)
  }))
+
+// New observations use one physical shallow slot, while the individual trusted
+// source identities remain valid for independent decay and reverse activation.
+test('new verified same-BV observations nest under one durable shallow slot, including after restart',()=>setup(({dir,gateway,memoryId,setTime})=>{
+ const proof={internalToken:'test-only'}
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:proof}).ok,true)
+ const next={...event,key:'video-explore:new-fresh-observation',at:NOW+2000,experience:{...event.experience,visualSceneNotes:['新片段中有朱红雨伞']}}
+ const written=gateway.recordEvents([next]);assert.equal(written.shallowAdded,0);assert.equal(written.visualAppended,1)
+ const raw=JSON.parse(readFileSync(gateway.file,'utf8'))
+ assert.equal(raw.episodes.length,1);assert.equal(raw.episodes[0].id,memoryId);assert.equal(raw.episodes[0].visualObservations.length,1)
+ const child=raw.episodes[0].visualObservations[0];assert.notEqual(child.id,memoryId)
+ for(const key of ['bvid','kind','accountTag','visibility'])assert.ok(!Object.hasOwn(child,key))
+ assert.equal(gateway.attachMemoryDetails({memoryId:child.id,accountTag:A,fragments:[{...fragments[0],fragmentId:'fresh-umbrella',content:'画面中一位行人撑着朱红色雨伞。',sourceRef:'verified:observation:fresh'}],sourceProof:proof}).ok,true)
+ assert.equal(gateway.recordEvents([next]).added,0,'same operation is idempotent')
+ const fresh=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>A,now:()=>NOW+5000})
+ try{
+  assert.equal(fresh.recall({query:BV}).length,1)
+  assert.equal(fresh.recallVideoDetails({bvid:BV,accountTag:A}).fragments.length,2)
+  assert.ok(fresh.visualDetailCandidates({accountTag:A}).some(x=>x.id===child.id&&x.text.includes('朱红色雨伞')))
+  assert.equal(fresh.status().shallowSlots,1);assert.equal(fresh.status().nestedVisualObservations,1)
+ }finally{fresh.close()}
+}))
+
+test('historical duplicate roots are not migrated or overwritten; new writes use one existing root and keep account/privacy separate',()=>setup(({gateway,memoryId})=>{
+ const legacy={...event,key:'video-explore:legacy-other-root',at:NOW+1000}
+ gateway.recordEvents([legacy],{migration:true})
+ const before=JSON.parse(readFileSync(gateway.file,'utf8')).episodes
+ assert.equal(before.length,2)
+ gateway.recordEvents([{...event,key:'video-explore:new-public-source',at:NOW+2000}])
+ const after=JSON.parse(readFileSync(gateway.file,'utf8')).episodes
+ assert.equal(after.length,2);assert.equal(after[0].id,memoryId)
+ assert.equal(after[0].visualObservations.length,1)
+ const {visualObservations,...unchanged}=after[0];assert.deepEqual(unchanged,before[0]);assert.deepEqual(after[1],before[1])
+ gateway.recordEvents([{...event,key:'video-explore:other-account-source',accountTag:B},{...event,key:'video-explore:private-source-one',experience:{...event.experience,source:'main-session'}},{...event,key:'video-explore:private-source-two',experience:{...event.experience,source:'main-session'}}])
+ const rows=JSON.parse(readFileSync(gateway.file,'utf8')).episodes
+ assert.equal(rows.length,4)
+ assert.equal(rows.find(e=>e.visibility==='private-session').visualObservations.length,1)
+ assert.equal(rows.find(e=>e.accountTag===B).visualObservations,undefined)
+ assert.equal(gateway.videoEvidenceTrace({accountTag:A,bvid:BV,limit:12}).length,3)
+ assert.equal(gateway.recall({query:BV,domain:'bili-life',role:'friend',actorUid:'123'}).length,1)
+}))
+
+test('nested evidence survives backup and the fading root is replaced without restoring old details',()=>setup(({dir,gateway,memoryId,setTime})=>{
+ const proof={internalToken:'test-only'}
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:proof}).ok,true)
+ setTime(NOW+10*DAY)
+ const next={...event,key:'video-explore:later-independent-source',at:NOW+10*DAY}
+ gateway.recordEvents([next])
+ const later=JSON.parse(readFileSync(gateway.file,'utf8')).episodes[0].visualObservations[0].id
+ assert.equal(gateway.attachMemoryDetails({memoryId:later,accountTag:A,fragments:[{...fragments[0],fragmentId:'fresh-later',sourceRef:'verified:observation:later'}],sourceProof:proof}).ok,true)
+ const backup=createLifeMemoryBackup(dir)
+ assert.ok(backup.files[`life-memory/details/v1/${A}/${later}.json`])
+ const dest=mkdtempSync(join(tmpdir(),'dafeiyu-nested-restore-'))
+ try{
+  restoreLifeMemoryBackup(dest,backup)
+  const gate=createLifeMemoryGateway({dataDir:dest,getAccountTag:()=>A,now:()=>NOW+10*DAY})
+  try{assert.equal(gate.recallVideoDetails({bvid:BV,accountTag:A}).fragments.length,2);assert.equal(gate.reconcileMemoryDetails().removed,0)}finally{gate.close()}
+ }finally{rmSync(dest,{recursive:true,force:true})}
+ setTime(NOW+14*DAY)
+ assert.deepEqual(gateway.recallVideoDetails({bvid:BV,accountTag:A}).fragments.map(f=>f.memoryId),[later])
+ let persisted=JSON.parse(readFileSync(gateway.file,'utf8')).episodes
+ assert.equal(persisted.filter(e=>e.bvid===BV).length,1)
+ assert.equal(persisted.find(e=>e.bvid===BV).id,later)
+ restoreLifeMemoryBackup(dir,backup)
+ assert.deepEqual(gateway.recallVideoDetails({bvid:BV,accountTag:A}).fragments.map(f=>f.memoryId),[later])
+ assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:A}).ok,false)
+}))
+
+test('expired group root rehomes fresh child under an existing clear legacy root rather than adding another BV',()=>setup(({gateway,setTime})=>{
+ setTime(NOW+5*DAY)
+ gateway.recordEvents([{...event,key:'video-explore:legacy-still-clear',at:NOW+5*DAY}],{migration:true})
+ setTime(NOW+10*DAY)
+ gateway.recordEvents([{...event,key:'video-explore:latest-clear-child',at:NOW+10*DAY}])
+ setTime(NOW+14*DAY);gateway.decay()
+ const rows=JSON.parse(readFileSync(gateway.file,'utf8')).episodes.filter(e=>e.bvid===BV)
+ assert.equal(rows.length,1);assert.equal(rows[0].key,'video-explore:legacy-still-clear');assert.equal(rows[0].visualObservations[0].key,'video-explore:latest-clear-child')
+}))
+
+
+test('production event builder and coordinator do not turn reused cached visuals into another observation',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dafeiyu-visual-cache-slot-'))
+ const gate=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>A,now:()=>NOW+5000})
+ try{
+  let reflected=0
+  const coordinator=createLifeMemoryCoordinator({dataDir:dir,memoryGateway:gate,lifeReflection:{addEvents:()=>{reflected++;return {ok:true}}},getAccountTag:()=>A,now:()=>NOW+5000})
+  const build=(id,status)=>buildVideoExplorationEvent({bvid:BV,operationId:id,at:NOW,source:'bili-life',accountTag:A,
+   info:{ok:true,bvid:BV,title:'真实视觉采样'},visual:{ok:true,bvid:BV,status,image_source:'B站低清预览',times:[2,8,15],description:'画面中有一个蓝色的盒子。'}})
+  const first=build('fresh-observation-one','analyzed'),second=build('fresh-observation-two','analyzed'),cached=build('cached-observation-one','cached')
+  assert.equal(first.visualObservationState,'fresh');assert.equal(cached.visualObservationState,'cached')
+  assert.equal((await coordinator.recordEvents([first])).ok,true)
+  assert.equal((await coordinator.recordEvents([second])).ok,true)
+  const before=readFileSync(gate.file,'utf8');assert.equal(JSON.parse(before).episodes[0].visualObservations.length,1)
+  assert.equal((await coordinator.recordEvents([cached])).skipped,'cached-visual');assert.equal(reflected,2)
+  assert.equal(gate.recordEvents([cached]).added,0);assert.equal(readFileSync(gate.file,'utf8'),before)
+ }finally{gate.close();rmSync(dir,{recursive:true,force:true})}
+})
+
+test('two independent processes cannot create two fresh same-account BV slots',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dafeiyu-visual-slot-race-'))
+ const gatewayUrl=new URL('../lib/life-memory-gateway.mjs',import.meta.url).href
+ const execute=promisify(execFile)
+ const code=`import {createLifeMemoryGateway} from ${JSON.stringify(gatewayUrl)};
+ const event=JSON.parse(process.argv[2]);const dir=process.argv[1];
+ for(let i=0;i<200;i++){let gate;try{gate=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>event.accountTag,now:()=>${NOW+5000}});gate.recordEvents([event]);break}catch(e){if(e.code!=='LEDGER_BUSY'||i===199)throw e;await new Promise(r=>setTimeout(r,10))}finally{gate?.close()}}`
+ try{
+  await Promise.all(['process-observation-one','process-observation-two'].map(id=>execute(process.execPath,['--input-type=module','-e',code,dir,JSON.stringify({...event,key:'video-explore:'+id})],{timeout:10000})))
+  const gate=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>A,now:()=>NOW+5000})
+  try{const raw=JSON.parse(readFileSync(gate.file,'utf8'));assert.equal(raw.episodes.length,1);assert.equal(raw.episodes[0].visualObservations.length,1);assert.equal(gate.videoEvidenceTrace({accountTag:A,bvid:BV}).length,2)}finally{gate.close()}
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
