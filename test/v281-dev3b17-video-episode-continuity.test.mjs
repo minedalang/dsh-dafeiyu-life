@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {buildVideoExplorationEvent} from '../lib/video-experience.mjs'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
+import {createEmbeddingMemoryIndex} from '../lib/embedding-memory-index.mjs'
 import {createMemoryRetriever} from '../lib/memory-retriever.mjs'
 import {createLifeMemoryCoordinator} from '../lib/life-memory-coordinator.mjs'
 import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
@@ -277,8 +278,9 @@ test('deep-only cue reverse activates current video without BV, verifies actual 
   const id=g.videoEvidenceTrace({accountTag:A,bvid:BV})[1].memoryId
   assert.equal(g.attachMemoryDetails({memoryId:id,accountTag:A,fragments:[{fragmentId:'frame-0001',type:'observed-scene',sourceRef:'verified:frame:0001',certainty:'model-observation',content:'朱红雨伞靠在玻璃门旁边，人物缓慢转身。',timeAnchorMs:[2000,2000]}]}).ok,true)
   assert.deepEqual(indexed,[id]);assert.equal(g.visualDetailCandidates({accountTag:A})[0].id,id)
-  const search=[];const r=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({mainSessionMemoryEnabled:true,mainSessionMemoryEmbeddingEnabled:true}),getEpisodes:(q,o)=>g.recall({query:q,...o}),getEpisodeCandidates:o=>g.semanticCandidates(o),getVisualExperiences:o=>g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>g.visualDetailCandidates(o),groupVideoEpisodes:rows=>g.videoRecallGroups(rows),semanticSearch:async(q,c,o)=>{search.push(o);return {ready:true,items:q.includes('挡水')?c.filter(e=>e.id==='visual-detail:'+id).map(e=>({id:e.id,score:.89})):[]}}})
+  const search=[];const r=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({mainSessionMemoryEnabled:true,mainSessionMemoryEmbeddingEnabled:true}),getEpisodes:(q,o)=>g.recall({query:q,...o}),getEpisodeCandidates:o=>g.semanticCandidates(o),getVisualExperiences:o=>g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>g.visualDetailCandidates(o),groupVideoEpisodes:rows=>g.videoRecallGroups(rows),semanticSearch:async(q,c,o)=>{search.push(o);return {ready:true,items:q.includes('挡水')?c.filter(e=>e.id==='visual-fragment:'+id+':frame-0001').map(e=>({id:e.id,score:.89})):[]}}})
   assert.ok(r.embeddingCorpus().some(x=>x.id==='visual-detail:'+id&&x.text.includes('朱红雨伞')))
+  assert.ok(r.embeddingCorpus().some(x=>x.id==='visual-fragment:'+id+':frame-0001'&&x.text.includes('朱红雨伞')))
   for(const q of ['朱红雨伞','下雨时挡水的用具']){
    const rows=await r.contextualVisualRecall({accountTag:A,queries:[q],limit:2,recentFallback:false})
    assert.equal(rows.length,1);assert.equal(rows[0].bvid,BV);assert.equal(rows[0].memoryId,id);assert.deepEqual(rows[0].detailCue.part.timeAnchorMs,[2000,2000]);assert.match(rows[0].detailCue.part.note,/朱红雨伞/);assert.equal(r.validateContextualVisualRecall({accountTag:A,rows}),true)
@@ -289,5 +291,48 @@ test('deep-only cue reverse activates current video without BV, verifies actual 
   assert.ok(search.length>=2);assert.equal(g.recall({query:'静态展示',domain:'main-session',maxItems:12}).filter(e=>e.bvid===BV).length,1)
   const rows=await r.contextualVisualRecall({accountTag:A,queries:['朱红雨伞'],limit:2,recentFallback:false})
   clock+=14*86400000;assert.equal(r.validateContextualVisualRecall({accountTag:A,rows}),false);assert.ok(invalidated.includes(id));assert.ok(!r.embeddingCorpus().some(x=>x.id==='visual-detail:'+id))
+ }finally{g.close()}
+}))
+
+
+test('older than 128 parents and a late fragment absent from overview are retrievable in live Gateway, with exact semantic anchor',()=>tmp(async dir=>{
+ let clock=T+100000,tag=A
+ const g=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>tag,now:()=>clock,admitMemoryDetails:()=>true})
+ // Controlled provider tests the real persisted index and routing, NOT the
+ // quality of the installed Qwen model. No shared lexical terms in paraphrase.
+ const v=text=>/朱红雨伞|避雨器具/.test(text)?[0,1,0]:/聚合词/.test(text)?[0,0,1]:[1,0,0]
+ const idx=createEmbeddingMemoryIndex({dataDir:dir,dimension:3,provider:{embedDocuments:async texts=>texts.map(v),embedQuery:async text=>v(text)}})
+ try{
+  assert.equal(g.recordEvents([vid('室内橙发角色在桌旁整理文件。')]).added,1)
+  const id=g.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId
+  const more=Array.from({length:130},(_,i)=>{
+   const bvid='BV'+String(i+1).padStart(10,'0')
+   return vid('室内蓝色桌椅与窗户。',{bvid,operationId:'newer-evidence-'+i,at:T+1000+i,
+    info:{ok:true,bvid,title:'普通室内展示'+i},visual:{ok:true,bvid,status:'analyzed',image_source:'B站低清预览',times:[2,8,15],description:'室内蓝色桌椅与窗户。'}})
+  })
+  assert.equal(g.recordEvents(more).added,130)
+  const parts=Array.from({length:24},(_,i)=>({fragmentId:'frame-'+String(i).padStart(4,'0'),type:'observed-scene',sourceRef:'verified:frame:'+String(i).padStart(4,'0'),certainty:'model-observation',timeAnchorMs:[i*500,i*500],content:i===23?'朱红雨伞靠在玻璃门旁边。':'木桌旁有一排蓝色座椅，橙发人物低头整理书本和文件。室内墙壁带有淡绿色条纹，背景百叶窗投下细密阴影。另一侧灯光照亮长廊，画面右侧有几个装饰物与方形的柜子。'}))
+  assert.equal(g.attachMemoryDetails({memoryId:id,accountTag:A,fragments:parts}).ok,true)
+  assert.equal(g.visualDetailCandidates({accountTag:A,limit:128}).some(x=>x.id===id),false,'old limited path would have missed the source')
+  const deep=g.visualDetailCandidates({accountTag:A}).find(x=>x.id===id)
+  assert.ok(deep);assert.equal(deep.parts.length,24);assert.doesNotMatch(deep.text,/朱红雨伞/)
+  const cfg={mainSessionMemoryEnabled:true,mainSessionMemoryEmbeddingEnabled:true}
+  const r=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodes:(q,o)=>g.recall({query:q,...o}),getEpisodeCandidates:o=>g.semanticCandidates(o),getVisualExperiences:o=>g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>g.visualDetailCandidates(o),semanticSearch:(q,c,o)=>idx.search(q,c,o)})
+  const corpus=r.embeddingCorpus();assert.equal(corpus.filter(x=>x.id.startsWith('visual-fragment:'+id+':')).length,24)
+  assert.equal((await idx.sync(corpus)).ok,true)
+  for(const [q,match] of [['朱红雨伞','lexical-cue'],['避雨器具','semantic-fragment']]){
+   cfg.mainSessionMemoryEmbeddingEnabled=match==='semantic-fragment'
+   const rows=await r.contextualVisualRecall({accountTag:A,queries:[q],limit:2,recentFallback:false})
+   const hit=rows.find(x=>x.bvid===BV);assert.ok(hit,q);assert.equal(hit.memoryId,id);assert.equal(hit.detailCue.match,match)
+   assert.equal(hit.detailCue.part.fragmentId,'frame-0023');assert.deepEqual(hit.detailCue.part.timeAnchorMs,[11500,11500]);assert.ok(r.validateContextualVisualRecall({accountTag:A,rows:[hit]}))
+   tag=B;assert.equal(r.validateContextualVisualRecall({accountTag:A,rows:[hit]}),false);tag=A
+  }
+  assert.equal(r.embeddingCorpus({includeVisualDetails:false}).some(x=>x.id.startsWith('visual-fragment:')),false)
+  // Parent-only semantic hit may recover the impression, never arbitrarily
+  // claim a particular time point as a match.
+  const parentOnly=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodeCandidates:o=>g.semanticCandidates(o),getVisualExperiences:o=>g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>g.visualDetailCandidates(o),semanticSearch:async()=>({ready:true,items:[{id:'visual-detail:'+id,score:.8}]})})
+  const overview=await parentOnly.contextualVisualRecall({accountTag:A,queries:['抽象认知概念'],recentFallback:false});assert.equal(overview[0].bvid,BV);assert.equal(overview[0].detailCue,undefined);assert.ok(parentOnly.validateContextualVisualRecall({accountTag:A,rows:overview}))
+  await idx.removeVisualParents([id]);assert.equal(idx.status().visualFragmentsIndexed,0)
+  const absent=await idx.search('避雨器具',corpus.filter(x=>x.id.includes(id)),{minScore:.9});assert.deepEqual(absent.items,[])
  }finally{g.close()}
 }))

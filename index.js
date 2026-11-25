@@ -242,7 +242,7 @@ import { createLongTermMemory } from './lib/long-term-memory.mjs'
 import { createMemoryRetriever,publicVisualAssociationContext } from './lib/memory-retriever.mjs'
 import {createEmbeddingRuntimeManager} from './lib/embedding-runtime-manager.mjs'
 import {createLocalVisionModelManager,getLocalVisionModel,getLocalVisionTestImage} from './lib/local-vision-model-manager.mjs'
-import {createEmbeddingMemoryIndex} from './lib/embedding-memory-index.mjs'
+import {createEmbeddingMemoryIndex,visualParentIndexRows} from './lib/embedding-memory-index.mjs'
 import {verifiedLifeActionEvent} from './lib/life-action-memory.mjs'
 import {verifiedShareMemoryEvents} from './lib/confirmed-video-share.mjs'
 import { createLifeReflection } from './lib/life-reflection.mjs'
@@ -7007,12 +7007,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
        accountBinding.status().blocked)return false
     admittedOwnerFocusProofs.delete(sourceProof)
     return true
-  },onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.flatMap(id=>['episode:'+String(id),'visual-detail:'+String(id)]))).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},onDetailsInvalidated:ids=>{void Promise.resolve(embeddingIndex?.remove?.(ids.map(id=>'visual-detail:'+String(id)))).catch(error=>log('深层向量清理失败：'+String(error?.message||error).slice(0,140)))},
+  },onEpisodesRemoved:ids=>{void Promise.resolve(embeddingIndex?.removeVisualParents?.(ids,{includeEpisode:true})).catch(error=>log('遗忘向量清理失败：'+String(error?.message||error).slice(0,140)))},onDetailsInvalidated:ids=>{void Promise.resolve(embeddingIndex?.removeVisualParents?.(ids)).catch(error=>log('深层向量清理失败：'+String(error?.message||error).slice(0,140)))},
   onDetailsChanged:id=>{
-    if(cfg.mainSessionMemoryEmbeddingEnabled!==true||!embeddingIndex?.status().ready)return
+    if(cfg.mainSessionMemoryEmbeddingEnabled!==true||!embeddingIndex)return
+    const state=embeddingIndex.status();if(!state.ready&&!['syncing','indexing'].includes(state.phase))return
     const scope=trustedLifeAccountTag(),row=lifeMemory?.visualDetailCandidates({accountTag:scope,ids:[id]})[0]
-    if(row)void embeddingIndex.upsert([{id:'visual-detail:'+id,text:row.text}]).then(()=>{
-      if(scope===trustedLifeAccountTag()&&!lifeMemory?.visualDetailCandidates({accountTag:scope,ids:[id]})[0])return embeddingIndex.remove(['visual-detail:'+id])
+    if(row)void embeddingIndex.replaceVisualParent(id,visualParentIndexRows(row)).then(result=>{
+      if(!result.ok)log('深层向量增量更新失败：'+String(result.error||'未知错误').slice(0,140))
+      if(scope!==trustedLifeAccountTag()||!lifeMemory?.visualDetailCandidates({accountTag:scope,ids:[id]})[0])return embeddingIndex.removeVisualParents([id])
     }).catch(error=>log('深层向量增量更新失败：'+String(error?.message||error).slice(0,140)))
   },logger:{warn:m=>log('人生记忆：'+m)}})
   ctx.effect(()=>()=>lifeMemory?.close(),'bili-duty: 只读内存 FTS 关闭')
@@ -10429,7 +10431,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           // index intentionally uses privacy-filtered wording, not the
           // display label; hashing the display text made ALL those vectors
           // appear missing even when the local model was ready.
-          const indexedText=new Map(memoryRetriever.embeddingCorpus().map(row=>[row.id,row.text]))
+          const indexedText=new Map(memoryRetriever.embeddingCorpus({includeVisualDetails:false}).map(row=>[row.id,row.text]))
           const foodIntent=/(?:喜欢吃|爱吃|想吃|吃什么|吃的|美食|食物|口味|零食|水果|饭菜|好吃)/i.test(q)
           const foodTopic=/(?:美食|食物|饮食|口味|零食|水果|蔬菜|饭|菜|甜点|饮料|肉|蛋|鱼|米|面|早餐|午餐|晚餐|小吃|烹饪|做饭)/i
           const corpus=allRows.filter(m=>{

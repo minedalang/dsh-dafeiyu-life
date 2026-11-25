@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtemp,readFile,readdir,rm} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {createEmbeddingMemoryIndex} from '../lib/embedding-memory-index.mjs'
+import {createEmbeddingMemoryIndex,visualParentIndexRows,visualCorpusRows} from '../lib/embedding-memory-index.mjs'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 
 const makeVector=text=>{
@@ -129,5 +129,42 @@ test('deep derived vectors are explicitly indexed, never lazily recreated by sta
   assert.equal(index.status().indexed,2)
   await index.upsert([deep]);assert.ok((await index.search('猫咪',[deep],{minScore:.1})).items.some(x=>x.id===deep.id))
   await index.remove([deep.id]);assert.equal((await index.search('猫咪',[deep],{minScore:.1})).items.length,0);assert.equal(index.status().indexed,2)
+ }finally{await rm(dir,{recursive:true,force:true})}
+})
+
+
+test('fragment derivatives have independent stable keys, grouped search and atomic parent replacement/removal',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'dsh-fragment-vectors-'))
+ try{
+  const index=createEmbeddingMemoryIndex({dataDir:dir,provider:fakeProvider}),a='e-'+'a'.repeat(18),b='e-'+'b'.repeat(18)
+  const part=(fragmentId,note)=>({fragmentId,note})
+  const A={id:a,text:'室内猫咪',parts:[part('frame-01','小猫靠着门'),part('frame-02','猫咪睡觉')]},B={id:b,text:'另一只猫咪',parts:[part('frame-01','猫咪喝水')]}
+  const corpus=visualCorpusRows([A,B]);assert.deepEqual(corpus.map(x=>x.id),['visual-detail:'+a,'visual-detail:'+b,'visual-fragment:'+a+':frame-01','visual-fragment:'+b+':frame-01','visual-fragment:'+a+':frame-02'])
+  assert.equal((await index.sync([{id:'episode:'+a,text:'猫咪'},...corpus])).ok,true)
+  assert.equal(index.status().visualFragmentsIndexed,3);assert.equal(index.status().visualFragmentsRequestedAtSync,3)
+  const result=await index.search('猫咪',corpus,{groupVisualFragments:true,limit:10,minScore:.1,readOnly:true})
+  assert.equal(result.items.filter(x=>x.id.startsWith('visual-fragment:'+a+':')).length,1);assert.equal(result.items.filter(x=>x.id.startsWith('visual-fragment:'+b+':')).length,1)
+  const changed={...A,parts:[part('frame-03','猫咪坐在木桌上')]}
+  assert.equal((await index.replaceVisualParent(a,visualParentIndexRows(changed))).ok,true)
+  assert.equal(index.status().visualFragmentsIndexed,2)
+  assert.deepEqual((await index.search('猫咪',visualParentIndexRows(A).filter(x=>x.id.startsWith('visual-fragment:')),{minScore:.1})).items,[],'query cannot recreate removed fragment vectors')
+  assert.equal((await index.removeVisualParents([a],{includeEpisode:true})).removed,3)
+  assert.equal(index.status().visualFragmentsIndexed,1)
+  const loaded=createEmbeddingMemoryIndex({dataDir:dir,provider:fakeProvider});assert.equal(await loaded.initialize(),true);assert.equal(loaded.status().visualFragmentsIndexed,1)
+  assert.equal((await loaded.search('猫咪',visualParentIndexRows(B),{minScore:.1})).items.length,2)
+ }finally{await rm(dir,{recursive:true,force:true})}
+})
+
+test('existing index capacity protects ordinary memory; unindexed visual fragments cannot crowd out stored search rows',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'dsh-fragment-capacity-'))
+ try{
+  const provider={embedDocuments:async texts=>texts.map(()=>[1,0]),embedQuery:async()=>[1,0]}
+  const index=createEmbeddingMemoryIndex({dataDir:dir,dimension:2,provider}),a='e-'+'a'.repeat(18)
+  const base=Array.from({length:9999},(_,i)=>({id:'episode:'+i,text:'普通经历'+i})),frag={id:'visual-fragment:'+a+':frame-01',text:'猫咪'}
+  assert.equal((await index.sync([...base,frag])).ok,true);assert.equal(index.status().indexed,10000)
+  const next={id:'episode:next',text:'新普通经历'};assert.equal((await index.upsert([next])).ok,true);assert.equal(index.status().indexed,10000);assert.equal(index.status().visualFragmentsIndexed,0)
+  const unindexed=Array.from({length:10002},(_,i)=>({id:'visual-fragment:'+a+':missing-'+i,text:'不存在的向量'}))
+  const result=await index.search('经历',[...unindexed,next],{minScore:.1,readOnly:true})
+  assert.deepEqual(result.items.map(x=>x.id),[next.id]);assert.equal(index.status().indexed,10000)
  }finally{await rm(dir,{recursive:true,force:true})}
 })
