@@ -21,7 +21,8 @@ function browser({userAgent = 'Android', protocol = 'https:', fetchImpl, postImp
   const openManage = runInNewContext(handlerSource + '\nonOpenManage', {
     window, fetch, jpost, URL, setManageBrowser() {}, setPairCode(){},setPairResult(){},pairAbort:{current:null}, document:{body:{appendChild(){}},createElement(){return {click(){navigated.push(this.href)},remove(){}}}}, setManageError: text => errors.push(text), say() {},
   })
-  return {openManage, navigated, errors, posts, requests}
+  const openLogin = runInNewContext(handlerSource + '\nonOpenBrowserLogin', {window, fetch, jpost, URL, document:{body:{appendChild(){}},createElement(){return {click(){navigated.push(this.href)},remove(){}}}}, setManageError: text => errors.push(text)})
+  return {openManage, openLogin, navigated, errors, posts, requests}
 }
 
 test('安卓 HTTPS 同源入口：由当前 WebView 打开，不触发后台系统浏览器', async () => {
@@ -83,6 +84,18 @@ test('Desktop 默认打开干净的外部浏览器入口，不占用主聊天窗
   await app.openManage('firststart','fs-deps-card',true)
   assert.equal(app.posts.length,1)
   assert.equal(app.navigated.at(-1),'/api/bili-duty/manage?tab=firststart#fs-deps-card')
+})
+
+test('Desktop direct official login uses the actual local Host root without opening or probing management', async()=>{
+  for(const origin of ['http://127.0.0.1:4498','http://localhost:8603','http://[::1]:8603']){
+    const app=browser({protocol:'dsh-app:',postImpl:()=>({ok:true,openIn:'external-browser',path:'/api/bili-duty/manage',url:origin+'/api/bili-duty/browser'})})
+    await app.openLogin();assert.deepEqual(app.navigated,[origin+'/']);assert.equal(app.requests.length,0);assert.equal(app.posts.length,1)
+  }
+  for(const url of ['https://evil.example/api/bili-duty/browser','http://127.0.0.1:4498/api/bili-duty/browser?token=bad','http://user:pw@localhost:4498/api/bili-duty/browser']){
+    const app=browser({protocol:'dsh-app:',postImpl:()=>({ok:true,openIn:'external-browser',path:'/api/bili-duty/manage',url})})
+    await app.openLogin();assert.deepEqual(app.navigated,[]);assert.match(app.errors.at(-1),/可信本机浏览器入口/)
+  }
+  const mobile=browser({protocol:'https:'});await mobile.openLogin();assert.equal(mobile.posts.length,0);assert.deepEqual(mobile.navigated,[])
 })
 
 test('Desktop refuses an unexpected or credential-bearing external URL', async()=>{
@@ -286,25 +299,47 @@ test('external target is derived only from the trusted host origin',async()=>{
   for(const bad of ['https://example.org','http://127.0.0.1:8603/?token=x','http://user:pw@localhost:8603','file:///a']) assert.throws(()=>managementBrowserUrl({getOrigin:()=>bad}))
 })
 
-test('pairing approval works after reopening settings, normalizes displayed code and requires unique exact authority',async()=>{
-  const approveSource=source.slice(source.indexOf('      const approveBrowser = async () => {'),source.indexOf('      const browserRecovery='))
+test('pairing approval uses the actual host HTTP RPC envelope without injected Remote, only after exact code and authority',async()=>{
+  const approveSource=source.slice(source.indexOf('      const pairingRpc ='),source.indexOf('      const browserRecovery='))
   const live={id:'request',code:'ABCD2345',authority:'http://127.0.0.1:8603',expiresInMs:5000}
   const trusted={ok:true,openIn:'external-browser',path:'/api/bili-duty/manage',url:live.authority+'/api/bili-duty/browser'}
-  const cases=[{rows:[live],valid:true},{rows:[live],code:'abcd2345',valid:true},{rows:[{...live,expiresInMs:0}]},{rows:[{...live,authority:'http://localhost:8603'}]},{rows:[live,live]},{rows:[{...live,code:'ABCDEFGH'}]},{rows:[live],code:'ABCD2340'},{rows:[live],response:{...trusted,url:trusted.url+'?token=bad'}},{rows:[live],response:{...trusted,url:'https://evil.example/api/bili-duty/browser'}}]
+  const cases=[{rows:[live],valid:true},{rows:[live],code:'abcd2345',valid:true},{rows:[{...live,expiresInMs:0}]},{rows:[{...live,authority:'http://localhost:8603'}]},{rows:[live,live]},{rows:[{...live,code:'ABCDEFGH'}]},{rows:[live],code:'ABCD2340'},{rows:[live],response:{...trusted,url:trusted.url+'?token=bad'}},{rows:[live],response:{...trusted,url:'https://evil.example/api/bili-duty/browser'}},{rows:[live],http:401},{rows:[live],http:403},{rows:[live],http:404},{rows:[live],http:503},{rows:[live],badId:true},{rows:[live],html:true},{rows:[live],denied:true},{rows:[live],decisionFail:true},{rows:[live],protocol:'https:'}]
   for(const entry of cases){
-    const decisions=[],errors=[],messages=[];const pairingRemote={pairingRequests:async()=>({ok:true,value:{requests:entry.rows}}),decidePairing:async(id,decision)=>{decisions.push([id,decision]);return {ok:true,value:'approved'}}}
-    const approve=runInNewContext(approveSource+'\napproveBrowser',{URL,jpost:async()=>entry.response||trusted,pairingRemote,pairPending:{current:false},pairAbort:{current:null},pairCode:entry.code||'ABCD 2345',manageBrowser:null,setPairBusy(){},setManageError:e=>errors.push(e),setPairCode(){},setPairResult:m=>messages.push(m),AbortController,setTimeout,clearTimeout})
-    await approve();assert.deepEqual(decisions,entry.valid?[['request','allow']]:[])
-    if(entry.valid)assert.match(messages.at(-1),/DSH 已批准/);else assert.ok(errors.at(-1))
+    const decisions=[],errors=[],messages=[],calls=[];let n=0
+    const fetch=async(path,opts)=>{
+      const b=JSON.parse(opts.body);calls.push(b.method)
+      assert.equal(path,'/api/'+b.method);assert.equal(b.type,'client-request');assert.equal(opts.credentials,'same-origin');assert.equal(opts.redirect,'error');assert.equal(opts.method,'POST');assert.equal(opts.headers['content-type'],'application/json')
+      assert.ok(opts.signal instanceof AbortSignal);assert.ok(!opts.signal.aborted);assert.match(b.rpcId,/^rpc-/)
+      if(entry.http)return {ok:false,status:entry.http}
+      if(b.method==='remoteConnection/pairingRequests')assert.deepEqual(b.payload,{args:{}})
+      else{assert.equal(b.method,'remoteConnection/decidePairing');assert.deepEqual(b.payload,{args:{id:'request',decision:'allow'}});decisions.push([b.payload.args.id,b.payload.args.decision])}
+      const result=entry.denied?{ok:false,error:{code:'remote-connection/owner-required',message:'do not expose',details:{}}}:{ok:true,value:b.method.endsWith('/pairingRequests')?{requests:entry.rows,pollIntervalMs:2000}:entry.decisionFail?'unavailable':'approved'}
+      return {ok:true,headers:{get:()=>entry.html?'text/html':'application/json'},json:async()=>({type:'server-response',rpcId:entry.badId?'wrong':b.rpcId,result})}
+    }
+    const approve=runInNewContext(approveSource+'\napproveBrowser',{URL,window:{location:{protocol:entry.protocol||'dsh-app:',host:'app'}},crypto:{randomUUID:()=>`rpc-${++n}`},fetch,jpost:async()=>entry.response||trusted,pairPending:{current:false},pairAbort:{current:null},pairCode:entry.code||'ABCD 2345',manageBrowser:null,setPairBusy(){},setManageError:e=>errors.push(e),setPairCode(){},setPairResult:m=>messages.push(m),AbortController,setTimeout,clearTimeout})
+    await approve();assert.deepEqual(decisions,entry.valid||entry.decisionFail?[['request','allow']]:[])
+    if(entry.valid){assert.deepEqual(calls,['remoteConnection/pairingRequests','remoteConnection/decidePairing']);assert.match(messages.at(-1),/DSH 已批准/)}else{assert.ok(errors.at(-1));assert.doesNotMatch(errors.at(-1),/do not expose/);assert.ok(calls.length<=2)}
+    if(entry.http===404)assert.match(errors.at(-1),/未提供浏览器配对接口/)
+    if(entry.http===401)assert.match(errors.at(-1),/原生会话未认证/)
   }
+  assert.doesNotMatch(source,/pairingRemote|ctx\.inject\(\['remote\.remoteConnection'\]/)
 })
 
-test('desktop browser approval controls are visible before opening and after settings remount; backup is clearly labeled',()=>{
-  const snippet=source.slice(source.indexOf('      const browserRecovery='),source.indexOf('      const patch = async'))
+test('fresh and established Desktop users render the same full native settings, with browser auth first',()=>{
   const h=(tag,props,...children)=>({tag,props,children})
-  const tree=runInNewContext(snippet+'\nbrowserRecovery()',{h,window:{location:{protocol:'dsh-app:'}},manageBrowser:null,st:{},pairCode:'',pairBusy:false,pairResult:'',manageError:'',approveBrowser(){},onOpenManage(){}})
-  assert.equal(tree.props['aria-label'],'管理中心浏览器授权')
-  const text=JSON.stringify(tree);assert.match(text,/八位浏览器配对码/);assert.match(text,/在 DSH 内打开管理中心/);assert.match(text,/不用另一台设备/)
-  const header=source.indexOf("'打开管理中心 ↗'))),")
-  assert.ok(header>0);assert.ok(source.indexOf('browserRecovery()',header)<source.indexOf("'data-bd-feature-panel':'release'",header))
+  const react={createElement:h,useState:v=>[v,()=>{}],useRef:v=>({current:v}),useEffect(){}}
+  const all=node=>node&&typeof node==='object'?[node,...(node.children||[]).flatMap(c=>Array.isArray(c)?c.flatMap(all):all(c))]:[]
+  for(const st of [null,{config:{},venvReady:false,onboarding:{welcomeCompleted:false}},{config:{},venvReady:true,onboarding:{welcomeCompleted:false}},{config:{},venvReady:true,onboarding:{welcomeCompleted:true}}]){
+    // Execute real Panel using synthetic status, not a mock of the first-start branch.
+    const src=source.replace('const [st, setSt, fails, maintenance, setMaintenance] = useStatus(5000)','const [st, setSt, fails, maintenance, setMaintenance] = [testStatus,()=>{},0,null,()=>{}]').replace("    return {\n      inject: ['slots'],","    return {Panel,\n      inject: ['slots'],")
+    const host={location:{protocol:'dsh-app:',host:'app'}};let panel
+    runInNewContext(src,{window:{...host,__ModuleLoader__:{load:spec=>{panel=spec.factory(()=>react).Panel}}},testStatus:st,URL,AbortController,setTimeout,clearTimeout})
+    assert.equal(typeof panel,'function');const tree=panel(),nodes=all(tree),text=JSON.stringify(tree)
+    const auth=nodes.findIndex(n=>n.props?.['aria-label']==='管理中心浏览器授权')
+    assert.ok(auth>=0);assert.match(text,/打开 DSH 官方登录页/);assert.match(text,/八位浏览器配对码/);assert.match(text,/在 DSH 内打开管理中心/);assert.match(text,/不用另一台设备/);assert.doesNotMatch(text,/欢迎来到大肥鱼 · 首次配置/)
+    if(st){const master=nodes.findIndex(n=>n.props?.label==='🐳 大肥鱼总开关');assert.ok(master>auth);assert.match(text,/账号与运行环境/);if(!st.onboarding.welcomeCompleted)assert.match(text,/首次使用：先按上方步骤完成浏览器授权/)}
+    else assert.match(text,/在独立浏览器中打开管理中心/)
+  }
+  assert.match(source,/onOpenManage\(setupTab,setupAnchor\)/)
+  assert.match(source,/setupAnchor=needsSetup&&!st\.venvReady\?'fs-deps-card'/)
 })

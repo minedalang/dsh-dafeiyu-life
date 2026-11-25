@@ -47,7 +47,7 @@ test('timeline metadata read is not called full video understanding and receipt 
 
 test('fresh DSH settings has explicit dependency install entry routing to real setup install card',()=>{
   const client=read('client.js'),server=read('index.js'),html=read('lib/management-console.html'),ui=read('lib/management-console.js')
-  assert.match(client,/① 安装／修复主依赖/)
+  assert.match(client,/安装／修复主依赖 ↗/)
   assert.match(client,/onOpenManage\('firststart','fs-deps-card'\)/)
   assert.match(read('lib/management-host-auth.mjs'),/safeTab==='firststart'&&anchor==='fs-deps-card'/)
   assert.match(html,/href="#fs-deps-card" data-fs-step="account"/)

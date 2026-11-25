@@ -123,7 +123,7 @@ test('管理中心与 DSH 插件页都提供醒目 First Start 入口及强制�
  assert.doesNotMatch(page,/id="quick-reflection-enabled"/)
  assert.match(js,/onboarding\/welcome/)
  assert.match(js,/onboarding\/bili\/verify/)
- assert.match(client,/打开管理中心，开始配置/)
+ assert.match(client,/onOpenManage\(setupTab,setupAnchor\)/)
 })
 
 
@@ -189,7 +189,7 @@ test('native settings account recovery reuses explicit same-origin endpoints wit
  assert.match(block,/window\.confirm\([\s\S]*?jpost\('\/account\/resume',\{uid:a\.activeUid\}\)/)
  assert.match(block,/jpost\('\/onboarding\/bili\/verify',\{\}\)/)
  assert.doesNotMatch(block,/cookie|window\.open|\/open'|localStorage/i)
- assert.equal((client.match(/nativeAccountRecovery\(\)/g)||[]).length,2)
+ assert.equal((client.match(/nativeAccountRecovery\(\)/g)||[]).length,1)
 })
 
 

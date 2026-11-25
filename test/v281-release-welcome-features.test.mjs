@@ -14,7 +14,7 @@ test('DSH 原生大肥鱼设置在标题下展示简洁的 2.8.2 特性',()=>{
   assert.match(client,/data-bd-281-intro/)
   assert.match(client,/2\.8\.2 版本亮点/)
   assert.match(client,/大肥鱼的核心能力/)
-  assert.match(client,/首次设置检查项目/)
+  assert.match(client,/首次使用：先按上方步骤完成浏览器授权/)
   assert.doesNotMatch(client,/aria-label':'2.8.2 特色功能'/)
   assert.match(read('README.md'),/先看全貌，再看细节/)
 })
