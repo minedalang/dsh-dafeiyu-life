@@ -663,7 +663,11 @@ export function apply(ctx, config) {
   const sessionIntegration=createHostSessionIntegration({dataDir:stateDir})
   const getSessionIntegration=sessionIntegration.getPolicy
   const integrationAvailable=()=>getSessionIntegration().mode!=='unavailable'
-  const memoryFoundation=()=>getSessionIntegration().mode==='memory-foundation'
+  const memoryFoundation=()=>getSessionIntegration().mode==='memory-foundation' // legacy UI projection only
+  const localMemoryReady=()=>integrationAvailable()
+  const platformReady=()=>sessionIntegration.getCapabilities()?.platform===true&&firstStart.isReady()
+  const platformMessage=()=>sessionIntegration.getCapabilities()?.platform===false?'B站平台接入已关闭；本地记忆仍可使用。':firstStart.message()
+  const bridgePolicy=()=>{const p=getSessionIntegration(),c=sessionIntegration.getCapabilities();return {...p,mode:p.mode==='unavailable'?'unavailable':c?.bridge&&c?.persona&&c?.autonomous&&platformReady()?'autonomous-life':'memory-foundation'}}
   const automaticSession=createAutomaticSessionScope(getSessionIntegration)
   const sessionChildEnv=()=>{const p=getSessionIntegration(),scoped=automaticSession.scopedRevision();return {BILI_SESSION_INTEGRATION_REVISION:String(scoped??p.revision),BILI_SESSION_INTEGRATION_MODE:scoped===undefined?p.mode:'autonomous-life'}}
   // An ephemeral proof ties nested Python MCP reads to this exact Node adapter.
@@ -1722,7 +1726,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let lastPauseState = null
   let cancelActiveDuty = () => {}
   const syncPauseState = (force = false) => {
-    const paused = cfg.masterEnabled !== true || !firstStart.isReady() || !integrationAvailable()
+    const paused = cfg.masterEnabled !== true || !platformReady() || !integrationAvailable()
     if (!force && lastPauseState === paused) return
     // 同一目录中的 Python MCP 进程，每次对外发送前也检查这个文件。
     if (paused) writeFileSync(pauseFile, 'paused\n', 'utf8')
@@ -1792,7 +1796,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const quotaPatch=resolveQuotaPresetPatch(cfg,mergedPatch)
     const clean = clampPatch('mentionProfiles' in quotaPatch ? {...quotaPatch, mentionTargets: quotaPatch.mentionTargets ?? cfg.mentionTargets, friendDirectory: quotaPatch.friendDirectory ?? cfg.friendDirectory, mentionName: quotaPatch.mentionName ?? cfg.mentionName} : quotaPatch)
     assertLegacyVideoPatchCompatible(cfg,clean)
-    if (clean.masterEnabled===true && !firstStart.isReady())throw Error(firstStart.message())
+    if (clean.masterEnabled===true && !platformReady())throw Error(platformMessage())
     if ('masterEnabled' in clean) {
       // 先同步文件，再持久化；写入失败必须报错，不能出现界面显示已暂停而 Python 仍可外发。
       const previous = cfg.masterEnabled
@@ -1921,7 +1925,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const release = toolName==='bili_check_credential'?()=>{}:accountBinding.enterPlatformOperation()
     try {
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
-    if(!firstStart.isReady())throw Error(firstStart.message())
+    if(!platformReady())throw Error(platformMessage())
     if(!integrationAvailable())throw sessionIntegrationPaused()
     const startMode=getSessionIntegration()
     const currentDispatch=()=>{const p=getSessionIntegration();return p.mode===startMode.mode&&p.revision===startMode.revision&&automaticSession.current()}
@@ -1979,7 +1983,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const originalAccount=trustedLifeAccountTag()
     try{
       accountBinding.assertReady()
-      if(!originalAccount||!firstStart.isReady()||!hasCredential())throw Error('视频调试账号未核验')
+      if(!originalAccount||!platformReady()||!hasCredential())throw Error('视频调试账号未核验')
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.visionEnabled!==true||resolvedVisionMode()!=='independent_local')
         throw Error('视频调试的本地视觉路由已改变')
@@ -2033,7 +2037,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     ...spec,
     output: textOutput,
     async execute(args, exec) {
-      if(!firstStart.isReady())return {ok:false,blocked:true,error:firstStart.message()};
+      if(!platformReady())return {ok:false,blocked:true,error:platformMessage()};
       if(!integrationAvailable())return {ok:false,blocked:true,error:'模式切换待重启或不可用'};
       return safe(await spec.execute(args, exec))
     },
@@ -3506,7 +3510,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       model:String(selected.model||current.model||current.modelId||'')}
   }
   function assertVerifiedHeadless(args,overlay,meta,task) {
-    if(!firstStart.isReady())throw Error(firstStart.message())
+    if(!platformReady())throw Error(platformMessage())
     headlessSync.assertReady(headlessSelection(task))
     return assertSafeHeadlessLaunch(args,overlay,meta)
   }
@@ -4278,7 +4282,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
    */
   let verifying = false
   const runVerify = async (why = 'manual') => {
-    if(!integrationAvailable()||!firstStart.isReady()||accountBinding.status().blocked)return {ok:false,blocked:true,error:'当前模式或平台验证未就绪'}
+    if(!integrationAvailable()||!platformReady()||accountBinding.status().blocked)return {ok:false,blocked:true,error:'当前模式或平台验证未就绪'}
     if (verifying) return { ok: false, error: '上一次复核还没跑完，等它完事' }
     verifying = true
     try {
@@ -4414,7 +4418,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const ensureUnifiedLifeOwner=()=>{
     const expectedScope=trustedLifeAccountTag()
     if(!/^[a-f0-9]{16}$/.test(String(expectedScope||''))||
-       accountBinding.status().blocked||!firstStart.isReady())
+       accountBinding.status().blocked||!platformReady())
       return {ok:false,reason:'life-migration-account-not-ready'}
     const current=socialHandoffFence.inspect()
     if(current?.ok!==true)return {ok:false,reason:'life-owner-ledger-unavailable'}
@@ -4545,7 +4549,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       }
     refreshCfg()          // ⭐ 设置页刚改过的值要立刻生效（config 是就地改的，快照会过期）
     if (cfg.masterEnabled !== true) return { started: false, why, paused: true, error: '总开关已关闭，无法跑一轮' }
-    if(!firstStart.isReady())return {started:false,blocked:true,error:firstStart.message()}
+    if(!platformReady())return {started:false,blocked:true,error:platformMessage()}
     if(accountBinding.status().blocked)return {started:false,blocked:true,error:'账号已冻结：需完成身份切换确认及权限复核'}
     const dsh = resolveDsh()
     // ⭐ 找不到 dsh 就别硬跑：以前会退化成裸 `dsh` ⇒ spawn 失败、只留 exit 1 + 一串乱码 ✗
@@ -5261,7 +5265,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   const hostModel = () => hostLlmService(ctx)
   const hostSelection = () => ctx.get('agentDefaultModel')?.currentSelection?.() ?? null
   const hostText = (llm, prompt, custom, maxChars, timeoutMs) => {
-    if(!firstStart.isReady())throw Error(firstStart.message())
+    if(!platformReady())throw Error(platformMessage())
     return runHostModelText({
     llm, prompt, selection:hostSelection(), custom, maxChars, timeoutMs,
   })
@@ -5377,12 +5381,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // no prompts or responses, and makes unknown token/price data explicit.
   const modelInvocationJournal=createModelInvocationJournal({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
   function standaloneMemoryModelReady(){
-    if(!memoryFoundation()||firstStart.isReady()||cfg.mainSessionMemorySemanticEnabled!==true)return false
+    if(!localMemoryReady()||platformReady()||cfg.mainSessionMemorySemanticEnabled!==true)return false
     try{headlessSync.assertReady(headlessSelection('memory'));return Boolean((cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider)&&(cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId))}catch{return false}
   }
   async function invokeMemoryPrompt(promptText,maxChars=4200) {
     const start=Date.now(),expectedScope=trustedLifeAccountTag(),mode=getSessionIntegration(),epoch=accountBinding.generation()
-    const standalone=memoryFoundation()&&!firstStart.isReady()
+    const standalone=localMemoryReady()&&!platformReady()
     const stillCurrent=()=>{const p=getSessionIntegration();return p.mode===mode.mode&&p.revision===mode.revision&&accountBinding.generation()===epoch&&automaticSession.current()}
     const work=()=>{if(!stillCurrent()||standalone&&!standaloneMemoryModelReady())throw sessionIntegrationPaused();return invokeMemoryPromptRaw(promptText,maxChars,{standalone})}
     try{const output=standalone?await lifeResourceScheduler.runOwnerMemory(work,{waitMs:20_000}):await lifeResourceScheduler.run({lane:'background',resources:{model:1},waitMs:20_000},work)
@@ -5724,7 +5728,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },logger:{warn:m=>log('社交同步：'+m)},
   })
   // Start recovery only after the Life Memory sink is fully constructed.
-  const socialCognitionTimer=setInterval(()=>{if(!firstStart.isReady()||accountBinding.status().blocked)return;void socialCognition.tick().catch(e=>log('社会邀请检查失败：'+String(e?.message||e).slice(0,120)))},60*60_000)
+  const socialCognitionTimer=setInterval(()=>{if(!platformReady()||accountBinding.status().blocked)return;void socialCognition.tick().catch(e=>log('社会邀请检查失败：'+String(e?.message||e).slice(0,120)))},60*60_000)
   socialCognitionTimer.unref?.()
   ctx.effect(()=>()=>clearInterval(socialCognitionTimer),'bili-duty: dev5 社会邀请只读审阅')
   const dmVideoRecommendationContext=createDmVideoRecommendationContext({stateDir})
@@ -7030,6 +7034,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // Local memory admission is separate from B站 platform readiness.
   longTermMemory = createLongTermMemory({
     getSessionIntegration,
+    getSessionCapabilities:sessionIntegration.getCapabilities,
     dataDir: stateDir,
     dshHome: dirname(stateDir),
     agents: ctx.agents,
@@ -7037,19 +7042,19 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     defineTool:(options)=>defineTool({...options,async execute(...args){
       if(!integrationAvailable())return {ok:false,blocked:true,error:'模式切换待重启或不可用'}
       const localMemory=['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall'].includes(options.name)
-      if(!firstStart.isReady()&&!(memoryFoundation()&&localMemory))return {ok:false,blocked:true,error:firstStart.message()}
+      if(!platformReady()&&!localMemory&&!(options.name==='dafeiyu_feel'&&sessionIntegration.getCapabilities()?.persona===true))return {ok:false,blocked:true,error:platformMessage()}
       return options.execute(...args)
     }}),
     onOwnerEmotion:({sessionId,mood,intensity})=>{
       refreshCfg()
-      if(cfg.masterEnabled!==true||String(cfg.mainSessionId||'').replace(/^session-/,'')!==sessionId)return {ok:false,skipped:'not-selected'}
+      if(sessionIntegration.getCapabilities()?.persona!==true||cfg.masterEnabled!==true||String(cfg.mainSessionId||'').replace(/^session-/,'')!==sessionId)return {ok:false,skipped:'not-selected'}
       return emotionalState.update({mood,intensity,source:'main-session'})
     },
     onOwnerMessage:async({sessionId,text,eventId,at})=>{
       // This callback only originates in the explicitly mounted main Session's
       // real user inbox, never from generated assistant content or a headless agent.
       refreshCfg()
-      if(cfg.masterEnabled!==true||String(cfg.mainSessionId||'').replace(/^session-/,'')!==sessionId)return
+      if(!platformReady()||getSessionIntegration().mode!=='autonomous-life'||cfg.masterEnabled!==true||String(cfg.mainSessionId||'').replace(/^session-/,'')!==sessionId)return
       try{conversationLifeFeedback.observe({source:'main-session',role:'owner',sessionId,eventId,text,at})}
       catch(e){log('主 Session 情绪反馈失败：'+String(e?.message||e).slice(0,100))}
       if(cfg.mainSessionMemoryEnabled!==true)return
@@ -7064,6 +7069,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     getRetriever: () => memoryRetriever,
     onOwnerMemorySaved:async({text,eventId,at})=>{
+      if(!platformReady()||getSessionIntegration().mode!=='autonomous-life')return
       const event=preparePrivateLifeEvent({source:'owner-session',role:'owner',eventId,text,at,validated:true,accountTag:trustedLifeAccountTag()})
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人主 Session 经历待补偿：'+String(result.lastError||result.reason||''))}
     },
@@ -7134,7 +7140,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   if(!existsSync(join(stateDir,'personality-evolution','v1.json')))try{personalityEvolution.setEnabled(true)}catch(e){log('初始化人格成长设置失败：'+String(e?.message||e))}
   let personalityAiDebugBusy=false,personalityAiDebugNextAt=0
   memoryRetriever=createMemoryRetriever({
-    getMemories:()=>[...longTermMemory.activeMemories(),...listLegacyLifeFacts(stateDir),...interestMemoryRows(stateDir)],getSelfMemories:()=>longTermMemory.selfRecallMemories(),getConfig:()=>memoryFoundation()&&!firstStart.isReady()&&!standaloneMemoryModelReady()?{...cfg,mainSessionMemorySemanticEnabled:false}:cfg,
+    getMemories:()=>[...longTermMemory.activeMemories(),...listLegacyLifeFacts(stateDir),...interestMemoryRows(stateDir)],getSelfMemories:()=>longTermMemory.selfRecallMemories(),getConfig:()=>localMemoryReady()&&!platformReady()&&!standaloneMemoryModelReady()?{...cfg,mainSessionMemorySemanticEnabled:false}:cfg,
     getAccount:()=>accountBinding.status(),
     invokeModel:(prompt,maxChars)=>invokeMemoryPrompt(prompt,maxChars),
     getEpisodes:(query,options)=>lifeMemory?.recall({query,domain:options?.domain||'main-session',role:options?.role||'owner',actorUid:options?.actorUid||'',excludeEventKey:options?.excludeEventKey||'',kinds:options?.kinds||null,maxItems:options?.maxItems||6,maxChars:options?.maxChars||800})||[],
@@ -7261,7 +7267,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   ctx.effect(()=>()=>socialInteractionCoordinator?.stop(),'bili-duty: 社交事件协调器')
   memoryConsolidator=createMemoryConsolidator({dataDir:stateDir,getMemories:()=>longTermMemory.activeMemories(),commit:input=>longTermMemory.consolidate(input),
     invokeModel:(prompt,maxChars)=>invokeMemoryPrompt(prompt,maxChars),getConfig:()=>cfg,logger:{warn:m=>log('记忆凝练：'+m)}})
-  const consolidationTimer=setInterval(()=>{if(!integrationAvailable()||(!firstStart.isReady()&&!standaloneMemoryModelReady()))return;void memoryConsolidator.run().catch(e=>log('记忆凝练评估失败：'+String(e?.message||e)))},60*60_000)
+  const consolidationTimer=setInterval(()=>{if(!integrationAvailable()||(!platformReady()&&!standaloneMemoryModelReady()))return;void memoryConsolidator.run().catch(e=>log('记忆凝练评估失败：'+String(e?.message||e)))},60*60_000)
   consolidationTimer.unref?.();ctx.effect(()=>()=>clearInterval(consolidationTimer),'bili-duty: 主人聊天记忆整理')
 
   // Bounded independent agent decision. It never sends a main-Session follow-up,
@@ -7274,7 +7280,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     description:'自主选择运行原 B站视频 Agent；原有点赞/评论/关注等权限与审计不变',
     available:()=>{
       refreshCfg()
-      if(!firstStart.isReady()||accountBinding.status().blocked||!trustedLifeAccountTag())return {ok:false,reason:'account-not-ready'}
+      if(!platformReady()||accountBinding.status().blocked||!trustedLifeAccountTag())return {ok:false,reason:'account-not-ready'}
       if(cfg.masterEnabled!==true||cfg.autonomousPlannerEnabled!==true)return {ok:false,reason:'disabled'}
       if(dutyChild&&dutyChild.exitCode===null&&!dutyChild.killed)return {ok:false,reason:'video-busy'}
       // Do not advertise a video delegation while its configured launch
@@ -7292,7 +7298,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // technical/privacy checks: account, configuration, live capability,
       // process state and launch cooldown.
       const scopeBefore=trustedLifeAccountTag()
-      if(!scopeBefore||!firstStart.isReady()||accountBinding.status().blocked)
+      if(!scopeBefore||!platformReady()||accountBinding.status().blocked)
         return {started:false,reason:'account-not-ready'}
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.autonomousPlannerEnabled!==true)
@@ -7320,7 +7326,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   lifeWillingness=createLifeWillingness({
     dataDir:stateDir,
     getAccountTag:trustedLifeAccountTag,
-    enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&firstStart.isReady()&&!accountBinding.status().blocked},
+    enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&platformReady()&&!accountBinding.status().blocked},
     beginTrace:params=>lifeDecisionTrace.begin(params),
     onActionState:event=>{lifeActionRecords.update(event)},
     getContext:async({scene,uid,evidence,sourceKey,kind})=>{
@@ -7434,7 +7440,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   lifeVideoActionBridge=createLifeVideoActionBridge({
     getAccountUid:()=>{try{const status=accountBinding.status();return status.blocked?'':status.activeUid}catch{return ''}},
     getAccountTag:trustedLifeAccountTag,
-    enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&firstStart.isReady()&&!accountBinding.status().blocked},
+    enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&platformReady()&&!accountBinding.status().blocked},
     choose:params=>lifeWillingness.decide(params,{queueIfBusy:true}),
     verify:(proof,kind,payload,options)=>lifeWillingness.verify(proof,kind,payload,options),
     receipt:(proof,result)=>lifeWillingness.receipt(proof,result),
@@ -8122,7 +8128,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     ownerFollowupTimer=setTimeout(async()=>{
       if(ownerFollowupRunning){scheduleOwnerFollowup(followupPollMs());return}
       ownerFollowupRunning=true
-      try{if(firstStart.isReady()&&!accountBinding.status().blocked)await ownerTodoFollowup.tick()}
+      try{if(platformReady()&&!accountBinding.status().blocked)await ownerTodoFollowup.tick()}
       catch(e){log('统一待办回访检查失败：'+String(e?.message||e).slice(0,100))}
       finally{ownerFollowupRunning=false;refreshCfg();scheduleOwnerFollowup(followupPollMs())}
     },ms)
@@ -8143,7 +8149,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   const collectAutomaticLife=async()=>automaticSession.dispatch(collectRealLife)
   // First scan is idempotent, doesn't need an online Session and doesn't send messages.
   try{void collectAutomaticLife().catch(e=>log('本地经历初次同步失败：'+String(e?.message||e).slice(0,120)))}catch{}
-  const lifeCollectTimer=setInterval(()=>{if(!firstStart.isReady()||accountBinding.status().blocked)return;try{void collectAutomaticLife().catch(e=>log('本地经历定时同步失败：'+String(e?.message||e).slice(0,120)))}catch{}},10*60_000)
+  const lifeCollectTimer=setInterval(()=>{if(!platformReady()||accountBinding.status().blocked)return;try{void collectAutomaticLife().catch(e=>log('本地经历定时同步失败：'+String(e?.message||e).slice(0,120)))}catch{}},10*60_000)
   lifeCollectTimer.unref?.()
   ctx.effect(()=>()=>clearInterval(lifeCollectTimer),'bili-duty: 独立人生经历候选收集')
 
@@ -8229,7 +8235,7 @@ logger:{warn:m=>log('社交意图：'+m)}
   })
 
   mainSessionBridge = createMainSessionBridge({
-    getSessionIntegration,
+    getSessionIntegration:bridgePolicy,
     dataDir: stateDir,
     agents: ctx.agents,
     getWorkspaceRegistry:()=>ctx.get('workspaceRegistry'),
@@ -8850,7 +8856,7 @@ logger:{warn:m=>log('社交意图：'+m)}
   const runDailyBackup=async()=>{
     if(autoBackupBusy)return
     refreshCfg()
-    if(cfg.backupAutoEnabled!==true||!cfg.backupDirectory||!integrationAvailable()||(!firstStart.isReady()&&!memoryFoundation()))return
+    if(cfg.backupAutoEnabled!==true||!cfg.backupDirectory||!integrationAvailable()||(!platformReady()&&!localMemoryReady()))return
     autoBackupBusy=true
     try{
       const dir=requireBackupDirectory(cfg.backupDirectory)
@@ -8888,8 +8894,9 @@ logger:{warn:m=>log('社交意图：'+m)}
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || (req.method==='GET' && path==='/api/bili-duty/main-session/sessions') || (req.method==='POST' && path==='/api/bili-duty/main-session/bind') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
       path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&['/api/bili-duty/video-dependencies/status','/api/bili-duty/video-dependencies/whisper/status'].includes(path)) || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/whisper/delete') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/paths') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/ffmpeg/test')
-    const localMemoryAccess=memoryFoundation()&&((req.method==='GET'&&path==='/api/bili-duty/main-session/memory')||(req.method==='POST'&&['/api/bili-duty/main-session/memory/recall','/api/bili-duty/main-session/memory/add','/api/bili-duty/main-session/memory/delete','/api/bili-duty/main-session/memory/consolidate','/api/bili-duty/embedding/install','/api/bili-duty/embedding/disable','/api/bili-duty/embedding/rebuild','/api/bili-duty/embedding/cancel','/api/bili-duty/embedding/delete','/api/bili-duty/embedding/import-model'].includes(path)))
-    if(!firstStart.isReady() && !setupAccess&&!localMemoryAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
+    if(req.method==='POST'&&sessionIntegration.getCapabilities()?.platform!==true&&(path.startsWith('/api/bili-duty/login/')||path==='/api/bili-duty/account/confirm'||path==='/api/bili-duty/account/resume'||path==='/api/bili-duty/onboarding/bili/verify'||path==='/api/bili-duty/onboarding/complete'))return sendJson(res,423,{ok:false,blocked:true,error:'平台接入未启用或能力配置待重启'})
+    const localMemoryAccess=localMemoryReady()&&((req.method==='GET'&&path==='/api/bili-duty/main-session/memory')||(req.method==='POST'&&['/api/bili-duty/main-session/memory/recall','/api/bili-duty/main-session/memory/add','/api/bili-duty/main-session/memory/delete','/api/bili-duty/main-session/memory/consolidate','/api/bili-duty/embedding/install','/api/bili-duty/embedding/disable','/api/bili-duty/embedding/rebuild','/api/bili-duty/embedding/cancel','/api/bili-duty/embedding/delete','/api/bili-duty/embedding/import-model'].includes(path)))
+    if(!platformReady() && !setupAccess&&!localMemoryAccess)return sendJson(res,423,{ok:false,blocked:true,error:platformMessage()})
     if(!integrationAvailable()&&!setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:'模式切换待重启或不可用'})
     // ⭐ 2026-10-21：每条视频一份笔记 —— **宿主拆报告**，不让模型多写一个字（零 token、不会写错）
     const notesDir = join(stateDir, 'reports')
@@ -9162,8 +9169,8 @@ logger:{warn:m=>log('社交意图：'+m)}
       } catch(e) {return sendJson(res,400,{ok:false,error:'数据备份操作失败：'+String(e?.message||e).slice(0,300)})}
     }
     if (req.method === 'GET' && path === '/api/bili-duty/status') {
-      if(firstStart.isReady())try { rollSeen() } catch (e) { /* 归档失败不影响状态接口 */ }
-      if(firstStart.isReady())try { syncNotes() } catch (e) { /* 笔记失败不影响状态接口 */ }
+      if(platformReady())try { rollSeen() } catch (e) { /* 归档失败不影响状态接口 */ }
+      if(platformReady())try { syncNotes() } catch (e) { /* 笔记失败不影响状态接口 */ }
       return sendJson(res, 200, status())
     }
     if (req.method === 'GET' && path === '/api/bili-duty/mention-diagnostics') {
@@ -10118,12 +10125,12 @@ logger:{warn:m=>log('社交意图：'+m)}
           return sendJson(res,r.ok?200:409,r)
         }
         if(body?.action==='check'){
-          if(!firstStart.isReady())return sendJson(res,409,{ok:false,error:'首次设置尚未完成'})
+          if(!platformReady())return sendJson(res,409,{ok:false,error:'首次设置尚未完成'})
           const r=await ownerTodoFollowup.tick()
           return sendJson(res,200,r)
         }
         if(body?.action==='debug-reconsider'){
-          if(!firstStart.isReady())return sendJson(res,409,{ok:false,error:'首次设置尚未完成'})
+          if(!platformReady())return sendJson(res,409,{ok:false,error:'首次设置尚未完成'})
           if(body.key!=null&&(typeof body.key!=='string'||body.key.length>350))return sendJson(res,400,{ok:false,error:'无效的回访标识'})
           const r=await ownerTodoFollowup.debugReconsider(body.key||'')
           return sendJson(res,r.ok||r.skipped?200:409,r)
@@ -10200,7 +10207,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站自主决策'})
       try{
         await readBody(req)
-        if(!firstStart.isReady())return sendJson(res,409,{ok:false,error:'首次设置尚未完成'})
+        if(!platformReady())return sendJson(res,409,{ok:false,error:'首次设置尚未完成'})
         refreshCfg()
         autonomousPlanner.ensureStarted()
         const result=await autonomousPlanner.tick({force:true,opportunitiesOnly:true})
@@ -10229,7 +10236,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       try{
         await readBody(req)
         refreshCfg()
-        if(cfg.masterEnabled!==true||!firstStart.isReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
+        if(cfg.masterEnabled!==true||!platformReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
           return sendJson(res,409,{ok:false,code:'metadata-account-unavailable',error:'当前账号或生活总开关未准备好'})
         const evidence=[...lifeOpportunities.explorationCues({limit:6}),...lifeOpportunities.list({includeClosed:true,limit:12})]
           .find(row=>/^BV[0-9A-Za-z]{10}$/.test(String(row?.bvid||'')))
@@ -10254,7 +10261,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       try{
         await readBody(req)
         refreshCfg()
-        if(!firstStart.isReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
+        if(!platformReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
           return sendJson(res,409,{ok:false,error:'尚无已确认可用的当前 B站账号'})
         if(!['shadow','active'].includes(cfg.lifeAgentMode)||cfg.masterEnabled!==true||cfg.autonomousPlannerEnabled!==true)return sendJson(res,409,{ok:false,error:'Life 自主调度已暂停；请先在管理中心启用'})
         const schedulerRestart=autonomousPlanner.ensureStarted()
@@ -10280,7 +10287,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           return sendJson(res,409,{ok:false,error:'需要开启 Life 自主生活与自主调度，影子模式和暂停模式不能启动真实视频 Agent'})
         if(cfg.homeRecommendationsEnabled!==true)
           return sendJson(res,409,{ok:false,reason:'home-recommendations-disabled',error:'首页推荐读取未开启；为避免测试入口与实际探索模式不一致，本轮未启动'})
-        if(!firstStart.isReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
+        if(!platformReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
           return sendJson(res,409,{ok:false,error:'当前 B站账号或首次设置尚未通过核验'})
         const result=await lifeCapabilities.run('bilibili.video-explore',{entryMode:'home',manualTrigger:true})
         const started=result?.started===true
@@ -10299,7 +10306,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       try{
         await readBody(req)
         refreshCfg()
-        if(!firstStart.isReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
+        if(!platformReady()||accountBinding.status().blocked||!trustedLifeAccountTag())
           return sendJson(res,409,{ok:false,skipped:'account-not-ready',error:'当前 B站账号尚未完成身份核验'})
         const result=await autonomousPlanner.auditRecentEvidence()
         if(result.ok===false){
@@ -10876,7 +10883,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if (req.method === 'POST' && path === '/api/bili-duty/main-session/memory/consolidate') {
       const body=await readBody(req)
-      if(!firstStart.isReady()&&!standaloneMemoryModelReady())return sendJson(res,423,{ok:false,error:'需先启用并独立验证记忆模型'});
+      if(!platformReady()&&!standaloneMemoryModelReady())return sendJson(res,423,{ok:false,error:'需先启用并独立验证记忆模型'});
       if(body?.confirm!=='CONSOLIDATE_OWNER_CHAT')return sendJson(res,400,{ok:false,error:'需确认主人聊天记忆整理操作'})
       try{const r=await memoryConsolidator.run({force:true});return sendJson(res,r.ok?200:400,r)}catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,180)})}
     }
@@ -11130,17 +11137,20 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
 
     if(req.method==='GET' && path==='/api/bili-duty/onboarding/status')
-      return sendJson(res,200,{...firstStart.status(),sessionIntegration:sessionIntegration.status(),memoryFoundationReady:memoryFoundation(),standaloneMemoryModelReady:standaloneMemoryModelReady(),memoryModelEnabled:cfg.mainSessionMemorySemanticEnabled===true})
+      return sendJson(res,200,{...firstStart.status(),sessionIntegration:sessionIntegration.status(),capabilities:sessionIntegration.capabilityStatus(),localMemoryReady:localMemoryReady(),platformReady:platformReady(),memoryFoundationReady:memoryFoundation(),standaloneMemoryModelReady:standaloneMemoryModelReady(),memoryModelEnabled:cfg.mainSessionMemorySemanticEnabled===true})
+    if(req.method==='GET' && path==='/api/bili-duty/onboarding/capabilities')
+      return sendJson(res,200,sessionIntegration.capabilityStatus())
     if(req.method==='GET' && path==='/api/bili-duty/onboarding/integration-mode')
       return sendJson(res,200,sessionIntegration.status())
-    if(req.method==='POST' && path==='/api/bili-duty/onboarding/integration-mode'){
+    if(req.method==='POST' && path==='/api/bili-duty/onboarding/integration-mode')return sendJson(res,409,{ok:false,error:'旧使用模式入口已退役，请使用独立能力设置'})
+    if(req.method==='POST' && path==='/api/bili-duty/onboarding/capabilities'){
       if(!explicitManagementIntent(req)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'需要明确的主人同源操作'})
       try{
         const body=await readBody(req)
         const resources=lifeResourceScheduler.status()
         if(verifying||autoBackupBusy||modelTestBusy||memoryConsolidator?.status().busy||Object.values(resources.active).some(Boolean)||Object.values(resources.pending).some(Boolean)||accountBinding.status().activeOperations>0||dutyChild&&dutyChild.exitCode===null&&!dutyChild.killed||automaticSession.inFlight()>0)
           return sendJson(res,409,{ok:false,error:'仍有自主或平台任务在途，请等真实结果结算后再切换；不会强制终止'})
-        const next=sessionIntegration.requestMode(body)
+        const next=sessionIntegration.requestCapabilities(body)
         if(next.restartRequired){
           try{syncPauseState(true);longTermMemory.refreshSessionMount();mainSessionBridge.refreshIntegration();lifeSocialShadow.revoke()}catch(e){log('模式切换已持久保存，退出重启前保持门禁：'+String(e?.message||e).slice(0,100))}
         }
@@ -11149,7 +11159,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if(req.method==='GET' && path==='/api/bili-duty/onboarding/quick/options'){
       refreshCfg()
-      return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),memory:quickMemoryState(cfg),social:quickSocialState(cfg),requiredReady:firstStart.status().requiredReady})
+      return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),recommendLife:!legacyInstall&&!touchedKeys.has('lifeAgentMode')&&cfg.lifeAgentMode==='off',memory:quickMemoryState(cfg),social:quickSocialState(cfg),requiredReady:firstStart.status().requiredReady})
     }
     if(req.method==='POST' && path.startsWith('/api/bili-duty/onboarding/')){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
@@ -11165,7 +11175,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(body?.kind==='life'){
             const current=lifeSettingsV2(cfg)
             if(body.revision!==current.revision)throw Error('生活设置已变化，请刷新后重新选择')
-            if(body.mode==='active'&&!firstStart.status().requiredReady)throw Error('先完成 B站登录与模型验证，才能开启自主生活')
+            if(body.mode==='active'&&(sessionIntegration.getCapabilities()?.platform!==true||sessionIntegration.getCapabilities()?.autonomous!==true||!firstStart.status().requiredReady))throw Error('先完成 B站登录与模型验证，才能开启自主生活')
             const enableMaster=body.mode==='active'&&body.enableMaster===true
             if(enableMaster&&!firstStart.status().requiredReady)throw Error('先完成 B站登录与模型验证，才能开启自主生活')
             const effective=enableMaster?{...cfg,masterEnabled:true}:cfg
@@ -11447,7 +11457,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         return sendJson(res,400,{ok:false,error:'旧系统不再可作为生产决策器；请选择 Life 并明确确认'})
       refreshCfg()
       if(cfg.masterEnabled===true||cfg.lifeAgentMode!=='active'||
-        accountBinding.status().blocked||!firstStart.isReady())
+        accountBinding.status().blocked||!platformReady())
         return sendJson(res,409,{ok:false,error:'请先停用生活总开关，启用 Life active 并完成账号核验'})
       const expectedScope=trustedLifeAccountTag()
       const result=socialHandoffFence.migrateAllToLife({expectedScope,lifeReady:true,
@@ -11514,15 +11524,15 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(body?.socialVideoRecommendationsAuthorizedV2===true && (body?.confirm!=='ENABLE_VIDEO_RECOMMENDATIONS'||body?.socialOutreachEnabled!==true||body?.socialLifeIntentEnabled!==true))
         return sendJson(res,400,{ok:false,error:'启用主动视频推荐需要明确确认并同时开启草稿和兴趣匹配权限'})
       if(body?.lifeNaturalDmOutreachEnabled===true&&cfg.lifeNaturalDmOutreachEnabled!==true){
-        if(body?.confirmNaturalDm!=='ENABLE_ESTABLISHED_PRIVATE_OUTREACH'||!firstStart.isReady()||accountBinding.status().blocked)
+        if(body?.confirmNaturalDm!=='ENABLE_ESTABLISHED_PRIVATE_OUTREACH'||!platformReady()||accountBinding.status().blocked)
           return sendJson(res,403,{ok:false,error:'开启非白名单自然私信主动联系需要单独确认，并完成账号核验'})
       }
       if(body?.lifeProactiveFriendDmEnabled===true&&cfg.lifeProactiveFriendDmEnabled!==true){
-        if(body?.confirmFriendDm!=='ENABLE_LIFE_FRIEND_CHAT'||!firstStart.isReady()||accountBinding.status().blocked)
+        if(body?.confirmFriendDm!=='ENABLE_LIFE_FRIEND_CHAT'||!platformReady()||accountBinding.status().blocked)
           return sendJson(res,409,{ok:false,error:'开启熟人主动私信需要完成账号/模型验证并单独确认；不允许借视频推荐授权直接开启'})
       }
       if(body?.lifePublicInteractionEnabled===true&&cfg.lifePublicInteractionEnabled!==true){
-        if(body?.confirmPublicInteraction!=='ENABLE_LIFE_PUBLIC_INTERACTION'||!firstStart.isReady()||accountBinding.status().blocked)
+        if(body?.confirmPublicInteraction!=='ENABLE_LIFE_PUBLIC_INTERACTION'||!platformReady()||accountBinding.status().blocked)
           return sendJson(res,409,{ok:false,error:'开启统一公开互动需要当前账号核验及明确确认；旧分享动态开关不会迁移为授权'})
       }
       if(body?.lifeAgentSocialContextOptIn===true&&cfg.lifeAgentSocialContextOptIn!==true&&
@@ -11799,7 +11809,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     if (req.method === 'POST' && path === '/api/bili-duty/open') {
       const body = await readBody(req)
       const what = String(body?.what || 'out')
-      if(!firstStart.isReady() && what!=='manage')return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
+      if(!platformReady() && what!=='manage')return sendJson(res,423,{ok:false,blocked:true,error:platformMessage()})
       // Only an authenticated, explicit owner operation can request the clean launcher URL.
       // The external browser establishes its own session with the official DSH login page.
       if (what === 'manage') {

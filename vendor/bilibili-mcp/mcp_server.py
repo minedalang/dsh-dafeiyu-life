@@ -387,11 +387,10 @@ def _host_session_current(home: Path) -> bool:
     # legacy invocations keep the existing pause and tool-authorization gates.
     expected = os.environ.get("BILI_SESSION_INTEGRATION_REVISION", "")
     mode = os.environ.get("BILI_SESSION_INTEGRATION_MODE", "")
-    if not expected and not mode:
-        return True
-    if mode not in ("autonomous-life", "memory-foundation"):
+    unscoped = not expected and not mode
+    if not unscoped and mode not in ("autonomous-life", "memory-foundation"):
         return False
-    if not expected.isascii() or not expected.isdecimal() or len(expected) > 16:
+    if not unscoped and (not expected.isascii() or not expected.isdecimal() or len(expected) > 16):
         return False
     file = home / "session-integration-v1.json"
     try:
@@ -400,14 +399,23 @@ def _host_session_current(home: Path) -> bool:
         try:
             st = file.stat()
         except FileNotFoundError:
-            return expected == "0" and mode == "autonomous-life"
+            return unscoped or (expected == "0" and mode == "autonomous-life")
         if not file.is_file() or st.st_size > 4096:
             return False
         row = json.loads(file.read_text(encoding="utf-8"))
+        if type(row.get("version")) is int and row["version"] == 2:
+            caps = row.get("capabilities")
+            keys = {"platform", "autonomous", "persona", "automaticMemory", "bridge"}
+            if not isinstance(caps, dict) or set(caps) != keys or not all(type(caps[k]) is bool for k in keys):
+                return False
+            projected = "autonomous-life" if caps["platform"] and caps["autonomous"] else "memory-foundation"
+            return (not unscoped and caps["platform"] and mode == projected
+                    and type(row.get("revision")) is int
+                    and str(row["revision"]) == expected and row.get("pending", False) is None)
         return (type(row.get("version")) is int and row["version"] == 1
-                and row.get("mode") == mode
+                and (unscoped or row.get("mode") == mode)
                 and type(row.get("revision")) is int
-                and str(row["revision"]) == expected and row.get("pending", False) is None)
+                and (unscoped or str(row["revision"]) == expected) and row.get("pending", False) is None)
     except (OSError, ValueError, AttributeError):
         return False
 

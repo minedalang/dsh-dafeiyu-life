@@ -340,3 +340,7 @@ Life 自动调度仍由唯一 `AutonomousPlanner` 管理；状态轮询和手动
 dev.24 收口候选：主人同源确认的持久模式事务，保存即阻止新派发，真实在途操作先结算；彻底退出旧 DSH 后由新进程激活下一代际。记忆基座无 B站登录可用本地记忆、绑定主 Session、显式词法/已安装本地向量召回；私密分类自述仅进入显式本地召回预算，不进入共享索引或社交上下文。平台显式工具仍走原登录、模型和账号权限；自主视频整轮（含手动唤醒）仅自主生活。无 B站账号默认本地召回；明确启用文字模型且所选 Provider/模型独立验证后，复用同一资源队列进行无工具检索与符合条件的凝练，验证失效回退本地。真实模型待验收。Windows/DSH 实机待验收。
 
 `createHostSessionIntegration` 独立保存 `session-integration-v1.json`，以持久文件锁、原子替换、启动 PID 和启动代际为约束。`createAutomaticSessionScope` 统计在途；平台操作、视频轮、复核、凝练和备份忙时拒绝切换。Python/MCP 入口复核启动环境中的模式与代际；已进入网络的操作不宣称可撤回，保留原回执/未知冻结。缓存、索引、遗忘及既有回执维护不依赖自主派发。
+
+### dev.24 统一能力配置候选（取代双模式产品设计）
+
+`createHostSessionIntegration` v2 保存 platform/autonomous/persona/automaticMemory/bridge；旧 mode 仅为原代际消费者适配。`localMemoryReady` 与 `platformReady` 分开；主 Session 人格和自动回忆分别挂载，显式记忆仍保留，经历桥保守复用原平台与自主准入。旧文件名和原代际保护继续有效。历史图谱及手工备份独立准入、旧协议清理和真实宿主验收仍待完成。详见 [统一能力架构](2.8.3-dev24-unified-capabilities-plan.md)。

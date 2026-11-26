@@ -199,13 +199,13 @@ test('dev.23 混合身份记忆达容量不驱逐任何旧记录，普通工具�
 // The trusted host policy is deliberately injected, not read from model args or
 // unrecognized saved configuration. No production caller enables it until the
 // whole host's background dispatch and synchronization gates are implemented.
-function integrationFixture(home){
+function integrationFixture(home,capabilities=null){
  let policy={mode:'autonomous-life',revision:0},retrieval=null,ownerMessages=0,ownerWrites=0,emotionWrites=0,identityReads=0
  const tools=new Map(),sections=new Map(),contexts=new Map(),listeners=new Map()
  const register=map=>spec=>{map.set(spec.name,spec);return()=>map.delete(spec.name)}
  const agent={id:'main',sessionId:'main',session:{snapshotEvents:()=>[]},ctx:{on(name,fn){listeners.set(name,fn);return()=>listeners.delete(name)},systemPrompt:{section:register(sections),context:register(contexts)},tools:{register:register(tools)}}}
  const todos=createOwnerTodoEngine({dataDir:home})
- const memory=createLongTermMemory({dataDir:home,dshHome:home,agents:{get:id=>id==='main'?agent:null},getConfig:()=>({mainSessionId:'main',mainSessionMemoryDailyQuota:30,mainSessionMemoryMaxItems:6,mainSessionMemoryMaxChars:800}),getSessionIntegration:()=>policy,defineTool:x=>x,
+ const memory=createLongTermMemory({dataDir:home,dshHome:home,agents:{get:id=>id==='main'?agent:null},getConfig:()=>({mainSessionId:'main',mainSessionMemoryDailyQuota:30,mainSessionMemoryMaxItems:6,mainSessionMemoryMaxChars:800}),getSessionIntegration:()=>policy,...(capabilities?{getSessionCapabilities:capabilities}:{}),defineTool:x=>x,
  getIdentityPrompt:()=>{identityReads++;return '测试人格'},getRetriever:()=>({localContext:()=> '旧自动上下文',retrieve:async()=>retrieval?await retrieval():{context:'既有记忆',ids:[],episodeIds:[],episodes:[],reason:'local'}}),
  getVideoDetailRecall:async()=>({ok:true,fragments:[]}),getTodoEngine:()=>todos,onOwnerMessage:()=>{ownerMessages++},onOwnerMemorySaved:()=>{ownerWrites++},onOwnerEmotion:()=>{emotionWrites++;return {ok:true}},logger:{warn(){}}})
  memory.start()
@@ -268,4 +268,20 @@ test('dev.24 协作写入的自主记录和既有事实经过业务及双层备�
   g=integrationFixture(business);h=integrationFixture(life)
   for(const other of [g,h]){assert.equal(other.memory.status().integrationMode,'autonomous-life');assert.ok(other.memory.activeMemories().some(m=>m.id===fact.id));assert.ok(!other.memory.activeMemories().some(m=>m.id===self.id));assert.match((await other.tools.get('dafeiyu_memory_recall').execute({query:'浏览器书签管理',memory_kind:'learning'})).context,/书签管理/)}
  }finally{f?.memory.stop();g?.memory.stop();h?.memory.stop();for(const dir of [home,business,life])rmSync(dir,{recursive:true,force:true})}
+})
+
+
+test('统一能力独立人格和自动上下文，保留显式记忆工具',async()=>{
+ const home=mkdtempSync(join(tmpdir(),'dafeiyu-cap-mount-'));let f
+ try{
+  let prefs={persona:false,automaticMemory:true};f=integrationFixture(home,()=>prefs)
+  assert.equal(f.sections.has('dafeiyu-main-identity'),false)
+  assert.equal(f.contexts.has('dafeiyu-memory'),true)
+  f.message('主人喜欢乌龙茶');assert.equal(f.contexts.get('dafeiyu-memory').text(),'旧自动上下文')
+  const old=f.tools.get('dafeiyu_remember');assert.equal((await old.execute({text:'主人喜欢乌龙茶',fact_key:'主人.偏好.饮料'})).ok,true)
+  prefs={persona:true,automaticMemory:false};f.change({mode:'memory-foundation',revision:1})
+  assert.equal(f.sections.has('dafeiyu-main-identity'),true);assert.equal(f.contexts.has('dafeiyu-memory'),false)
+  assert.equal(f.tools.has('dafeiyu_memory_recall'),true);assert.equal((await old.execute({text:'主人喜欢红茶'})).ok,false)
+  assert.equal(f.memory.status().identityMounted,true);assert.equal(f.memory.status().automaticMemoryMounted,false)
+ }finally{f?.memory.stop();rmSync(home,{recursive:true,force:true})}
 })

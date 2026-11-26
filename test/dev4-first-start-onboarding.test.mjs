@@ -60,6 +60,8 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
   }
   const state=await call('GET','onboarding/status')
   assert.equal(state.status,200);assert.equal(state.json().requiredReady,false)
+  assert.equal(state.json().localMemoryReady,true);assert.equal(state.json().capabilities.active.platform,true);assert.equal(state.json().capabilities.active.autonomous,true)
+  assert.equal((await call('POST','main-session/memory/add',{text:'主人正在验证独立记忆',importance:.8})).status,200)
   const unbound=await call('POST','onboarding/bili/verify',{})
   assert.equal(unbound.status,400);assert.match(unbound.json().error,/冻结/)
   assert.equal((await call('GET','onboarding/status')).json().biliVerified,false)
@@ -277,7 +279,7 @@ test('真实宿主路由：无 B站凭证的记忆基座可写入及回忆，平
  const llm={listProviders:()=>[{id:'claude'}],async *stream(req){requests.push(req);const rows=JSON.parse(req.messages[0].content[0].text.split('<memory_index>')[1].split('</memory_index>')[0]);yield {type:'text-delta',text:JSON.stringify({memory_ids:[rows[0].id],confidence:.9})};yield {type:'finish',reason:{kind:'stop'}}}}
  try{
   const stateDir=join(home,'bili-duty');mkdirSync(stateDir,{recursive:true})
-  writeFileSync(join(stateDir,SESSION_INTEGRATION_FILE),JSON.stringify({version:1,mode:'memory-foundation',revision:1,pending:null}))
+  writeFileSync(join(stateDir,SESSION_INTEGRATION_FILE),JSON.stringify({version:2,capabilities:{platform:false,autonomous:false,persona:false,automaticMemory:true,bridge:false},revision:1,pending:null}))
   const ctx={get:k=>k==='llm'?llm:k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
     logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
   apply(ctx,{mainSessionMemorySemanticEnabled:true,mainSessionMemoryModelProvider:'claude',mainSessionMemoryModelId:'claude-haiku-5-5'})
@@ -288,7 +290,8 @@ test('真实宿主路由：无 B站凭证的记忆基座可写入及回忆，平
   }
   assert.equal((await call('POST','config',{mainSessionMemorySemanticEnabled:true,mainSessionMemoryModelProvider:'claude',mainSessionMemoryModelId:'claude-haiku-5-5'})).status,200)
   const state=(await call('GET','onboarding/status')).json()
-  assert.equal(state.memoryFoundationReady,true);assert.equal(state.requiredReady,false)
+  assert.equal(state.memoryFoundationReady,true);assert.equal(state.requiredReady,false);assert.equal(state.localMemoryReady,true);assert.equal(state.platformReady,false)
+  assert.equal((await call('POST','login/start',{})).status,423)
   assert.equal((await call('GET','life-memory/status')).status,423)
   assert.equal((await call('POST','main-session/memory/add',{text:'主人正在研究珍珠贝母工艺',importance:.8})).status,200)
   const recalled=await call('POST','main-session/memory/recall',{query:'珍珠贝母'})
@@ -304,13 +307,43 @@ test('真实宿主路由：无 B站凭证的记忆基座可写入及回忆，平
   const remote=await call('POST','main-session/memory/recall',{query:'远洋油轮'})
   assert.equal(remote.status,200);assert.equal(remote.json().reason,'semantic');assert.equal(requests.length,1);assert.deepEqual(requests[0].tools,[])
   assert.equal((await call('GET','life-memory/status')).status,423)
+  const credential=JSON.stringify({dedeuserid:'10001',sessdata:'fixture-only',bili_jct:'fixture-only'});writeFileSync(join(stateDir,'bili_credential.json'),credential)
+  writeFileSync(join(stateDir,'first-start-v1.json'),JSON.stringify({version:1,completed:true,biliCredentialHash:createHash('sha256').update(credential).digest('hex')}))
+  const verified=(await call('GET','onboarding/status')).json();assert.equal(verified.requiredReady,true);assert.equal(verified.platformReady,false);assert.equal(verified.localMemoryReady,true)
+  assert.equal((await call('POST','login/start',{})).status,423);assert.equal((await call('GET','life-memory/status')).status,423)
+  rmSync(join(stateDir,'bili_credential.json'))
   writeFileSync(target,'# changed\n[]\n')
   assert.equal((await call('GET','onboarding/status')).json().standaloneMemoryModelReady,false)
   assert.equal((await call('POST','main-session/memory/recall',{query:'另一主题'})).json().usedModel,false);assert.equal(requests.length,1)
-  const request={mode:'autonomous-life',expectedRevision:1,confirm:'REQUEST_SESSION_INTEGRATION_RESTART'}
-  assert.equal((await call('POST','onboarding/integration-mode',request,'https://outside.invalid')).status,403)
-  const next=await call('POST','onboarding/integration-mode',request);assert.equal(next.status,200);assert.equal(next.json().restartRequired,true)
+  const request={capabilities:{platform:true,autonomous:false,persona:false,automaticMemory:true,bridge:false},expectedRevision:1,confirm:'REQUEST_CAPABILITIES_RESTART'}
+  assert.equal((await call('POST','onboarding/capabilities',request,'https://outside.invalid')).status,403)
+  const next=await call('POST','onboarding/capabilities',request);assert.equal(next.status,200);assert.equal(next.json().restartRequired,true)
   assert.equal((await call('POST','main-session/memory/recall',{query:'珍珠贝母'})).status,423)
-  assert.equal((await call('GET','onboarding/status')).json().memoryFoundationReady,false)
+  assert.equal((await call('POST','login/start',{})).status,423)
+  assert.equal((await call('GET','onboarding/status')).json().localMemoryReady,false)
+ }finally{rmSync(home,{recursive:true,force:true})}
+})
+
+
+test('独立能力代际：旧模式保守映射、待重启、关闭平台和过时代际',()=>{
+ const home=mkdtempSync(join(tmpdir(),'fish-capability-'))
+ try{
+  writeFileSync(join(home,SESSION_INTEGRATION_FILE),JSON.stringify({version:1,mode:'memory-foundation',revision:4,pending:null}))
+  let alive=true
+  const old=createHostSessionIntegration({dataDir:home,pid:1001,isPidAlive:()=>alive})
+  assert.deepEqual(old.getCapabilities(),{platform:true,autonomous:false,persona:false,automaticMemory:false,bridge:false})
+  const capabilities={...old.getCapabilities(),platform:false,automaticMemory:true}
+  const req={capabilities,expectedRevision:4,confirm:'REQUEST_CAPABILITIES_RESTART'}
+  assert.throws(()=>old.requestCapabilities({...req,capabilities:{...capabilities,persona:'true'}}))
+  assert.throws(()=>old.requestCapabilities({...req,expectedRevision:3}))
+  assert.equal(old.requestCapabilities(req).restartRequired,true)
+  assert.equal(old.getCapabilities(),null)
+  assert.equal(createHostSessionIntegration({dataDir:home,pid:1002,isPidAlive:()=>alive}).getCapabilities(),null)
+  alive=false
+  const next=createHostSessionIntegration({dataDir:home,pid:1002,isPidAlive:()=>alive})
+  assert.deepEqual(next.getCapabilities(),capabilities)
+  assert.equal(next.getPolicy().revision,5)
+  assert.equal(old.getCapabilities(),null)
+  assert.throws(()=>next.requestMode({mode:'autonomous-life',expectedRevision:5,confirm:'REQUEST_SESSION_INTEGRATION_RESTART'}))
  }finally{rmSync(home,{recursive:true,force:true})}
 })

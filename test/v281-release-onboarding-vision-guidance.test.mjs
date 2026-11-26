@@ -113,7 +113,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
 
   // Exercise the real production render function with a minimal DOM double.
   // No independent duplicate UI policy is reimplemented inside the test.
-  const begin=js.indexOf('  const integrationLabel=mode=>')
+  const begin=js.indexOf('  const selectedCapabilities=')
   const end=js.indexOf('  // All dependency *installation*',begin)
   assert.ok(begin>=0&&end>begin)
   const nodes=new Map()
@@ -126,11 +126,11 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
     onboarding:null,mobileViewOnly:false,firstNavigation:true,active:'firststart',tabNames:['firststart','models','home','life','social','life-agent','plans','backup'],
     $:element,document:{querySelector:selector=>element(selector)}
   }
-  const policy=js.slice(js.indexOf('  const workspaceView=state=>'),js.indexOf('  const skipFirstStart='));
+  const policy=js.slice(js.indexOf('  const capabilityKeys='),js.indexOf('  const skipFirstStart='));
   const render=runInNewContext(policy+js.slice(begin,end)+'\nrenderFirstStart',context)
   const show=state=>{render(state);return element('fs-warning')}
   const old={ok:true,welcomeCompleted:true,completed:true,requiredReady:true,quickSetupSeen:false,
-    biliVerified:true,headlessVerified:true,hasCredential:true,missing:[],skipped:[],sessionIntegration:{ok:true,activeMode:'autonomous-life',requestedMode:'autonomous-life',revision:0,restartRequired:false}}
+    biliVerified:true,headlessVerified:true,hasCredential:true,missing:[],skipped:[],localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},requested:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},revision:0,restartRequired:false}}
   let banner=show(old)
   assert.equal(banner.hidden,false)
   assert.equal(banner.dataset.kind,'update')
@@ -143,7 +143,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(banner.hidden,true,'老用户确认后只需关闭通知')
 
   const fresh={ok:true,welcomeCompleted:false,completed:false,requiredReady:false,quickSetupSeen:false,
-    biliVerified:false,headlessVerified:false,hasCredential:false,missing:['B站登录验证','Headless 模型同步与验证'],skipped:[],sessionIntegration:old.sessionIntegration}
+    biliVerified:false,headlessVerified:false,hasCredential:false,missing:['B站登录验证','Headless 模型同步与验证'],skipped:[],localMemoryReady:true,capabilities:old.capabilities}
   banner=show(fresh)
   assert.equal(banner.dataset.kind,'setup')
   assert.equal(element('fs-quick-ack').hidden,true)
@@ -161,48 +161,44 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('fs-complete').hidden,true)
   assert.equal(element('fs-quick-ack').hidden,true)
   assert.equal(element('[data-tab="life"]').hidden,true,'实际模型验证失效不等于仅需确认版本')
-  const foundation={...fresh,memoryFoundationReady:true,sessionIntegration:{ok:true,activeMode:'memory-foundation',requestedMode:'memory-foundation',revision:1,restartRequired:false}}
-  show({...old,...{memoryFoundationReady:true,sessionIntegration:foundation.sessionIntegration}})
+  const local={...fresh,localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:false,autonomous:false,persona:false,automaticMemory:false,bridge:false},requested:{platform:false,autonomous:false,persona:false,automaticMemory:false,bridge:false},revision:1,restartRequired:false}}
+  show({...old,capabilities:local.capabilities})
   assert.equal(element('management-shell').dataset.workspace,'foundation')
-  for(const tab of ['social','life-agent','plans'])assert.equal(element(`[data-tab="${tab}"]`).hidden,true)
-  for(const tab of ['home','models','life','backup','firststart'])assert.equal(element(`[data-tab="${tab}"]`).hidden,false)
+  for(const tab of ['social','life-agent','plans','life','backup'])assert.equal(element(`[data-tab="${tab}"]`).hidden,true)
+  for(const tab of ['home','models','firststart'])assert.equal(element(`[data-tab="${tab}"]`).hidden,false)
   assert.equal(element('life-system-health').hidden,true)
-  show(foundation)
-  assert.equal(element('[data-tab="backup"]').hidden,true)
-  assert.equal(element('fs-mode-foundation').checked,true)
-  assert.equal(element('fs-mode-autonomous').checked,false)
+  show(local)
+  assert.equal(element('fs-cap-platform').checked,false)
+  assert.equal(element('fs-cap-autonomous').checked,false)
   assert.equal(element('fs-integration-current').dataset.state,'active')
-  assert.equal(element('fs-integration-save').disabled,true,'当前模式无需重复保存')
-  assert.equal(element('fs-platform-setup').open,false,'平台设置在独立记忆工作区默认折叠')
-  assert.equal(element('fs-platform-summary').hidden,false)
+  assert.equal(element('fs-integration-save').disabled,true)
   element('fs-platform-setup').open=true
-  show(foundation)
-  assert.equal(element('fs-platform-setup').open,true,'状态刷新不折叠用户已展开的设置')
-  element('fs-mode-foundation').checked=false;element('fs-mode-autonomous').checked=true
-  show(foundation)
-  assert.equal(element('fs-mode-autonomous').checked,true,'相同代际的状态刷新保留待保存选择')
+  show(local)
+  assert.equal(element('fs-platform-setup').open,true)
+  element('fs-cap-platform').checked=true
+  show(local)
+  assert.equal(element('fs-cap-platform').checked,true,'相同代际保留草稿')
   assert.equal(element('fs-integration-save').disabled,false)
   assert.match(element('fs-integration-state').textContent,/尚未保存/)
-  assert.match(element('fs-integration-current').textContent,/记忆基座/,'草稿选择不能冒充当前生效模式')
+  assert.match(element('fs-integration-current').textContent,/当前配置已生效/)
   assert.equal(element('fs-foundation-memory').hidden,false)
   assert.equal(element('fs-complete').hidden,true)
   assert.match(element('fs-summary').textContent,/记忆入口/)
-  assert.equal(element('[data-tab="life"]').hidden,true)
-  show({...fresh,sessionIntegration:{ok:true,activeMode:'autonomous-life',requestedMode:'memory-foundation',revision:0,restartRequired:true}})
+  show({...fresh,localMemoryReady:false,capabilities:{...old.capabilities,available:false,requested:local.capabilities.active,restartRequired:true}})
   assert.equal(element('fs-integration-save').disabled,true)
   assert.equal(element('fs-foundation-memory').hidden,true)
   assert.match(element('fs-integration-state').textContent,/退出 DSH/)
-  assert.equal(element('fs-mode-autonomous').disabled,true)
-  assert.equal(element('fs-mode-foundation').disabled,true)
+  assert.equal(element('fs-cap-platform').disabled,true)
+  assert.equal(element('fs-cap-autonomous').disabled,true)
   assert.equal(element('fs-integration-current').dataset.state,'pending')
   assert.equal(element('management-shell').dataset.workspace,'restricted')
   for(const tab of ['home','models','life','backup','life-agent','social'])assert.equal(element(`[data-tab="${tab}"]`).hidden,true)
-  show({...fresh,sessionIntegration:{ok:true,activeMode:'unknown',requestedMode:'memory-foundation',revision:0,restartRequired:false}})
+  show({...fresh,capabilities:{ok:false}})
   assert.equal(element('fs-integration-current').dataset.state,'error')
   assert.equal(element('fs-integration-save').disabled,true)
   context.mobileViewOnly=true
-  show(foundation)
-  assert.equal(element('fs-mode-foundation').disabled,true)
+  show(local)
+  assert.equal(element('fs-cap-platform').disabled,true)
   assert.equal(element('fs-integration-save').disabled,true)
   show(fresh)
   assert.equal(element('fs-complete').disabled,true,'手机端只读不可获得写入权限')

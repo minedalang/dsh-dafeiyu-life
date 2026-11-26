@@ -64,3 +64,20 @@ def test_host_child_generation_cannot_replay_after_switch(monkeypatch, tmp_path)
     monkeypatch.setenv('BILI_SESSION_INTEGRATION_REVISION','1');monkeypatch.setenv('BILI_SESSION_INTEGRATION_MODE','memory-foundation')
     assert guard('bili_reply')==''
     file.write_text('broken');assert json.loads(guard('bili_reply'))['blocked']
+
+
+def test_capability_generation_fails_closed(monkeypatch, tmp_path):
+    src=ast.parse((ROOT/'vendor/bilibili-mcp/mcp_server.py').read_text(encoding='utf-8'))
+    module=ast.Module(body=[n for n in src.body if isinstance(n,ast.FunctionDef) and n.name=='_host_session_current'],type_ignores=[])
+    scope={'Path':Path,'os':os,'json':json}
+    exec(compile(ast.fix_missing_locations(module),'<guard>','exec'),scope)
+    check=scope['_host_session_current'];file=tmp_path/'session-integration-v1.json'
+    caps={'platform':True,'autonomous':False,'persona':False,'automaticMemory':True,'bridge':False}
+    row={'version':2,'capabilities':caps,'revision':5,'pending':None}
+    def write():file.write_text(json.dumps(row))
+    monkeypatch.setenv('BILI_SESSION_INTEGRATION_REVISION','5');monkeypatch.setenv('BILI_SESSION_INTEGRATION_MODE','memory-foundation')
+    write();assert check(tmp_path)
+    caps['platform']=False;write();assert not check(tmp_path)
+    caps['platform']=True;row['pending']={'capabilities':caps,'pid':123};write();assert not check(tmp_path)
+    row['pending']=None;row['revision']=6;write();assert not check(tmp_path)
+    monkeypatch.delenv('BILI_SESSION_INTEGRATION_REVISION');monkeypatch.delenv('BILI_SESSION_INTEGRATION_MODE');assert not check(tmp_path)

@@ -50,7 +50,7 @@ test('clicking real Life tab runs the production switchTab path and reveals its 
     'const $=id=>panels[id]',
     'const refresh=()=>{loads.push(active);return Promise.resolve()}',
     'const run=fn=>fn()',
-    switchTabSource,"onboarding={ok:true,welcomeCompleted:true,requiredReady:true,sessionIntegration:{ok:true,activeMode:'autonomous-life',requestedMode:'autonomous-life',restartRequired:false}}",registration[0]
+    switchTabSource,"onboarding={ok:true,welcomeCompleted:true,requiredReady:true,localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},requested:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},revision:0,restartRequired:false}}",registration[0]
   ].join('\n'),{
     panels,document,loads,URL,
     location:{href:'http://localhost/manage?tab=home'},
@@ -73,9 +73,11 @@ test('direct Life link accepts same registered route and is not removed by the o
   assert.ok(tabs.includes(saved))
   assert.match(js,/else if\(tabNames\.includes\(saved\)\)initialTab=saved/)
   assert.match(js,/if\(!tabAvailable\(tab\)\)tab='firststart'/)
-  const start=js.indexOf('  const workspaceView=state=>'),end=js.indexOf('  const skipFirstStart=',start);const allowed=runInNewContext(js.slice(start,end)+'\ntabAvailable',{tabNames:tabs})
-  const foundation={ok:true,welcomeCompleted:true,requiredReady:true,memoryFoundationReady:true,sessionIntegration:{ok:true,activeMode:'memory-foundation',requestedMode:'memory-foundation',restartRequired:false}}
-  assert.equal(allowed('life-agent',foundation),false);assert.equal(allowed('life',foundation),true);assert.equal(allowed('life',{...foundation,requiredReady:false}),false);assert.equal(allowed('home',foundation),true)
-  assert.equal(allowed('life-agent',{...foundation,sessionIntegration:{...foundation.sessionIntegration,restartRequired:true}}),false)
+  const start=js.indexOf('  const capabilityKeys='),end=js.indexOf('  const skipFirstStart=',start);const allowed=runInNewContext(js.slice(start,end)+'\ntabAvailable',{tabNames:tabs})
+  const local={ok:true,welcomeCompleted:true,requiredReady:true,localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:false,autonomous:false,persona:false,automaticMemory:false,bridge:false},requested:{platform:false,autonomous:false,persona:false,automaticMemory:false,bridge:false},revision:0,restartRequired:false}}
+  assert.equal(allowed('life-agent',local),false);assert.equal(allowed('life',local),false);assert.equal(allowed('home',local),true)
+  const paused={...local,capabilities:{ok:true,available:true,active:{...local.capabilities.active,platform:true},requested:{...local.capabilities.active,platform:true},revision:0,restartRequired:false}}
+  assert.equal(allowed('life-agent',paused),false);assert.equal(allowed('life',paused),true);assert.equal(allowed('bili',paused),true)
+  assert.equal(allowed('life-agent',{...paused,capabilities:{...paused.capabilities,restartRequired:true}}),false)
   assert.match(html,/data-open-tab="life-agent"/)
 })
