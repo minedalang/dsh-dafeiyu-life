@@ -1,5 +1,7 @@
 # 发布说明与升级资料
 
+**当前开发候选（未发布）：** [2.8.3-dev.24 主 Session 桥接续与剩余门禁](2.8.3-dev.24-session-bridge-continuation.md)。
+
 **2.8.2 正式版本资料：** [正式版更新说明](RELEASE_NOTES_v2.8.2.md) · [使用与升级指南](2.8.2-user-upgrade-guide.md) · [源码/架构对照](../architecture/2.8.2-current-architecture.md)。
 
 **正式发布操作：** [维护者发布命令](2.8.2-publish-commands.md)。Git Tag、GitHub Release、npm 与 DSHMarket 是不同的发布渠道；发布前必须完成完整回归和 Windows/DSH 实机验收。

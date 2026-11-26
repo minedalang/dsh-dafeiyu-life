@@ -10,14 +10,14 @@ import {createEmbeddingMemoryIndex} from '../lib/embedding-memory-index.mjs'
 const scope='1234567890abcdef'
 const at=()=>new Date('2026-11-10T12:00:00').getTime()
 const withDir=async fn=>{const dir=mkdtempSync(join(tmpdir(),'dsh-dev51-'));try{await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
-function shortPauseHarness(dir,{choice='act',seconds=90,onDecide=()=>{}}={}){
+function shortPauseHarness(dir,{choice='act',seconds=90,onDecide=()=>{},getSessionIntegration}={}){
   let t=at(),requests=0,decisions=0,receipts=[]
   const handlers=new Map(),calls=[]
   const agent={id:'main',status:'idle',followup:async message=>{requests++;calls.push(message)},ctx:{on:(event,fn)=>{handlers.set(event,fn);return ()=>handlers.delete(event)}}}
   const cfg={masterEnabled:true,lifeAgentMode:'active',mainSessionBridgeEnabled:true,mainSessionId:'main',mainSessionShortPauseEnabled:true,
     mainSessionShortPauseSeconds:seconds,ownerContactPreset:'natural',ownerSpontaneousChatEnabled:false}
   const bridge=createMainSessionBridge({dataDir:dir,agents:{get:()=>agent,list:()=>[agent]},getConfig:()=>cfg,
-    getAccountTag:()=>scope,getWatched:()=>[],getComments:()=>({rows:[]}),now:()=>t,
+    getSessionIntegration,getAccountTag:()=>scope,getWatched:()=>[],getComments:()=>({rows:[]}),now:()=>t,
     shouldShortPause:async()=>{decisions++;await onDecide({handlers});return {ok:choice==='act',action:choice,settle:status=>receipts.push(status)}},logger:{warn(){}}})
   bridge.shortPauseReadiness()
   const incoming=id=>handlers.get('agent/inbox/inserted')({message:{role:'user',id,source:{kind:'dsh-chat'}}})
@@ -134,3 +134,20 @@ test('UI no longer duplicates short-pause controls, graph cap and evidence view 
  assert.match(index,/shouldShortPause:async/)
  assert.match(index,/mainSessionShortPauseSeconds: z\.natural\(\)\.default\(90\)/)
 })
+
+
+test('短暂停顿在 Life 意愿等待期间切换代际，旧观察器与续聊均失效',async()=>withDir(async dir=>{
+ let policy={mode:'full',revision:0};let oldInbox,oldEvent
+ const h=shortPauseHarness(dir,{getSessionIntegration:()=>policy,onDecide:async({handlers})=>{
+   oldInbox=handlers.get('agent/inbox/inserted');oldEvent=handlers.get('session/event')
+   policy={mode:'cooperative',revision:1};h.bridge.refreshIntegration()
+   policy={mode:'full',revision:2};h.bridge.refreshIntegration()
+   oldInbox({message:{role:'user',id:'stale',source:{kind:'dsh-chat'}}});oldEvent(null,{type:'assistant/message'})
+ }})
+ h.incoming('previous');h.answered();h.tick(90_000)
+ const result=await h.bridge.considerShortPause()
+ assert.equal(result.reason,'integration-paused');assert.equal(h.callsMade,0);assert.deepEqual(h.receipts,['not-sent'])
+ assert.equal(h.bridge.shortPauseReadiness().reason,'no-completed-owner-turn')
+ const state=JSON.parse(readFileSync(join(dir,'main-session-memory.json'),'utf8'))
+ assert.equal(state.shortPauseAttempts[0].status,'blocked');h.bridge.stop()
+}))

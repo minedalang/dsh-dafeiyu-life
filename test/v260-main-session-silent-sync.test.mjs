@@ -81,3 +81,56 @@ test('定时同步入口明确调用 silent 模式，不直接唤醒主 Session'
   const src=readFileSync(new URL('../lib/main-session-bridge.mjs',import.meta.url),'utf8')
   assert.match(src,/const tick=async\(\)=>[\s\S]*?await deliver\(\{silent:true\}\)/)
 })
+
+
+test('协作模式阻断所有主 Session 自动桥接入口且保留旧队列；恢复不重复同步',async()=>{
+  const dir=tmp(),rows={value:[]},calls=[];let policy={mode:'full',revision:0},reads=0
+  const agent={id:'abc',inject:async()=>calls.push('inject'),followup:async()=>calls.push('followup'),session:{deriveMessages:()=>{reads++;return []}}}
+  try{
+    const bridge=createMainSessionBridge({dataDir:dir,agents:{get:()=>agent,list:()=>[agent]},getConfig:cfg,getWatched:()=>{reads++;return rows.value},getComments:()=>({rows:[]}),getSessionIntegration:()=>policy,now:()=>Date.parse('2026-10-31T11:00:00+08:00')})
+    bridge.collect();rows.value=[watched('BV1234567890')];bridge.collect()
+    const before=readFileSync(bridge.file),readCount=reads
+    policy={mode:'cooperative',revision:1};bridge.refreshIntegration()
+    assert.equal(bridge.status().integrationMode,'cooperative');assert.equal(bridge.status().pending,1)
+    assert.equal(bridge.sessionDirectory().selectedId,'abc');assert.equal(bridge.recall().length,1)
+    assert.equal(bridge.collect({forceQueue:true,backfillDays:7}).ok,false)
+    assert.equal((await bridge.deliver({force:true})).skipped,'integration-paused')
+    assert.equal((await bridge.deliver({silent:true})).skipped,'integration-paused')
+    assert.equal(bridge.canShare(),false);assert.equal((await bridge.shareRecall('回忆')).ok,false)
+    assert.equal(bridge.ownerChatReadiness().eligible,false);assert.equal(bridge.mainSilenceCandidate().eligible,false)
+    assert.equal((await bridge.considerShortPause()).reason,'integration-paused')
+    assert.equal(bridge.reserveOwnerContact({sourceKey:'1234567890abcdef:idle:2026-10-31'}).reason,'integration-paused')
+    assert.equal((await bridge.initiateOwnerChat()).ok,false)
+    assert.equal((await bridge.ownerDmContext()).available,false)
+    assert.equal((await bridge.injectOwnerDmExperience({type:'watch',summary:'已看'})).ok,false)
+    assert.equal((await bridge.test()).ok,false)
+    assert.equal(reads,readCount);assert.deepEqual(calls,[]);assert.deepEqual(readFileSync(bridge.file),before)
+    policy={mode:'full',revision:-1};assert.equal(bridge.status().integrationMode,'unavailable');assert.equal((await bridge.deliver({force:true})).ok,false)
+    policy={mode:'full',revision:2};bridge.refreshIntegration()
+    assert.equal((await bridge.deliver({silent:true})).sent,1);assert.equal((await bridge.deliver({silent:true})).sent,0)
+    assert.deepEqual(calls,['inject']);bridge.stop()
+  }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('私信上下文异步读取遇到模式 ABA 不返回旧主 Session 内容',async()=>{
+  const dir=tmp();let policy={mode:'full',revision:0},release
+  const agent={id:'abc',followup:async()=>{},session:{deriveMessages:()=>new Promise(resolve=>release=resolve)}}
+  try{
+    const bridge=createMainSessionBridge({dataDir:dir,agents:{get:()=>agent,list:()=>[agent]},getConfig:cfg,getWatched:()=>[],getComments:()=>({rows:[]}),getSessionIntegration:()=>policy})
+    const waiting=bridge.ownerDmContext();policy={mode:'cooperative',revision:1};bridge.refreshIntegration();policy={mode:'full',revision:2};bridge.refreshIntegration()
+    release([{role:'user',content:[{type:'text',text:'私密历史'}]}]);const result=await waiting
+    assert.equal(result.available,false);assert.deepEqual(result.lines,[]);assert.equal(result.reason,'session-integration-changed');bridge.stop()
+  }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('已交给宿主的非唤醒注入允许结算，不因模式切换重放',async()=>{
+  const dir=tmp(),rows={value:[]};let policy={mode:'full',revision:0},release,calls=0
+  const agent={id:'abc',followup:async()=>{},inject:()=>{calls++;return new Promise(resolve=>release=resolve)}}
+  try{
+    const bridge=createMainSessionBridge({dataDir:dir,agents:{get:()=>agent,list:()=>[agent]},getConfig:cfg,getWatched:()=>rows.value,getComments:()=>({rows:[]}),getSessionIntegration:()=>policy,now:()=>Date.parse('2026-10-31T11:00:00+08:00')})
+    bridge.collect();rows.value=[watched('BV1234567890')];const sending=bridge.deliver({silent:true})
+    policy={mode:'cooperative',revision:1};bridge.refreshIntegration();assert.equal((await bridge.deliver({force:true})).ok,false)
+    release();assert.equal((await sending).sent,1);assert.equal(bridge.status().pending,0)
+    policy={mode:'full',revision:2};assert.equal((await bridge.deliver({silent:true})).sent,0);assert.equal(calls,1);bridge.stop()
+  }finally{rmSync(dir,{recursive:true,force:true})}
+})

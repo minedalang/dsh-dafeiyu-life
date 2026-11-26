@@ -240,6 +240,7 @@ import {callScopedDshVision} from './lib/scoped-dsh-vision-read.mjs'
 import { mergeWatchedRows } from './lib/watched.mjs'
 import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
 import { createLongTermMemory } from './lib/long-term-memory.mjs'
+import { fullSessionIntegration } from './lib/session-integration-policy.mjs'
 import { createMemoryRetriever,publicVisualAssociationContext } from './lib/memory-retriever.mjs'
 import {createEmbeddingRuntimeManager} from './lib/embedding-runtime-manager.mjs'
 import {createLocalVisionModelManager,getLocalVisionModel,getLocalVisionTestImage} from './lib/local-vision-model-manager.mjs'
@@ -6956,7 +6957,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // v2.4.81：长期记忆属于“大肥鱼本人”，主 Session 只是她当前聊天的房间。
   // 主人明确长期事实由当前聊天中的语义记忆工具保存；B站生活经历不再逐条直塞长期记忆，
   // 而是保留精确档案 → 进入候选池 → 由受限反思模型凝练后，才进入 dafeiyu.json。
+  // Both main Session consumers must read the same trusted host policy.
+  // Until background admission and owner-only switching are fully wired,
+  // production deliberately has no mode selection or persisted mode field.
+  const getSessionIntegration=fullSessionIntegration
   longTermMemory = createLongTermMemory({
+    getSessionIntegration,
     dataDir: stateDir,
     dshHome: dirname(stateDir),
     agents: ctx.agents,
@@ -8143,6 +8149,7 @@ logger:{warn:m=>log('社交意图：'+m)}
   })
 
   mainSessionBridge = createMainSessionBridge({
+    getSessionIntegration,
     dataDir: stateDir,
     agents: ctx.agents,
     getWorkspaceRegistry:()=>ctx.get('workspaceRegistry'),
@@ -10323,6 +10330,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const target=mainSessionBridge.status().config?.id
       if(!target)return sendJson(res,409,{ok:false,error:'请先在「大肥鱼的家」选择并保存主 Session，再补充过去的经历'})
       const result=mainSessionBridge.collect({backfillDays:days,forceQueue:true})
+      if(result.ok===false)return sendJson(res,409,result)
       return sendJson(res,200,{ok:true,...mainSessionBridge.status(),days,added:result.added})
     }
 
