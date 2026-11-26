@@ -1622,6 +1622,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let mainSessionBridge = null
   let longTermMemory = null
   let memoryRetriever = null
+  let neuralActivationTracker = null
+  // Diagnostics are optional; do not let recording/publishing affect the read.
+  const observePublicRecall=(accountTag,rows,channel)=>{
+    try{if(neuralActivationTracker?.record({accountTag,rows,channel}))lifeManagementEvents.publish('memory-recall')}catch{}
+  }
   let lifeReflection = null
   let lifeMemoryCoordinator = null
   const admittedOwnerFocusProofs=new WeakSet()
@@ -5014,10 +5019,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         return {ok:false,reason:'account-not-verified',items:[]}
       if(action==='public_comments')return recallOwnerPublicComments({uid,query,beforeAt})
       if(action==='memory_search'){
-        const scope=trustedLifeAccountTag(),retriever=memoryRetriever
+        const scope=trustedLifeAccountTag(),retriever=memoryRetriever,epoch=accountBinding.generation()
         if(!retriever)return {ok:false,reason:'memory-not-ready',items:[]}
-        const isCurrent=()=>scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&String(uid)===String(cfg.dmOwnerUid||'')&&cfg.ownerDmAgentEnabled===true
-        return retriever.ownerContextualSearch(query,{accountTag:scope,isCurrent,history,limit:6,beforeAt})
+        const isCurrent=()=>epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&String(uid)===String(cfg.dmOwnerUid||'')&&cfg.ownerDmAgentEnabled===true
+        return retriever.ownerContextualSearch(query,{accountTag:scope,isCurrent,history,limit:6,beforeAt,onVisualRecall:rows=>{if(isCurrent())observePublicRecall(scope,rows,'owner-dm')}})
       }
       if(action==='memory_detail'){
         const item=memoryRetriever?.ownerDetail(id)
@@ -6092,6 +6097,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   })
   socialContextAssembler=createSocialContextAssembler({
     policy:socialPolicyGate,memoryRetriever,getMemoryRetriever:()=>memoryRetriever,getAccountTag:()=>accountBinding.status().blocked?'':trustedLifeAccountTag(),
+    getAccountEpoch:()=>accountBinding.generation(),onVisualRecall:({accountTag,rows})=>observePublicRecall(accountTag,rows,'friend-dm'),
     getMeme:async(item)=>(await interactionMemeLookup.forBatch([item]))?.[0]||'',
     getPersona:batch=>buildInteractionPersona(batch),
     getIdentity:uid=>replyIdentityContext(uid),
@@ -6987,10 +6993,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人主 Session 经历待补偿：'+String(result.lastError||result.reason||''))}
     },
     getExperienceRecall: (query,limit) => lifeMemory?.recall({query,domain:'main-session',maxItems:limit,maxChars:3000}).map(x=>({kind:x.kind,time:x.at,bvid:x.bvid,summary:x.summary}))||[],
-    getVideoAssociationRecall:async query=>{
-      const scope=trustedLifeAccountTag();if(!scope||accountBinding.status().blocked||!memoryRetriever)return []
-      const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:false,recentFallback:false})
-      return scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows})?publicVisualAssociationContext(rows):[]
+    getVideoAssociationRecall:async (query,{isCurrent=()=>false}={})=>{
+      const scope=trustedLifeAccountTag(),epoch=accountBinding.generation();if(!scope||accountBinding.status().blocked||!memoryRetriever||!isCurrent())return []
+      const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:true,recentFallback:false})
+      if(!isCurrent()||epoch!==accountBinding.generation()||scope!==trustedLifeAccountTag()||accountBinding.status().blocked||!memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows}))return []
+      const projected=publicVisualAssociationContext(rows)
+      if(projected.length===rows.length)observePublicRecall(scope,rows,'main-chat')
+      return projected
     },
     getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor})=>{
       const accountTag=trustedLifeAccountTag();
@@ -7061,7 +7070,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getDailyUsage:()=>{const usage=readModelTaskUsage(stateDir);return {day:usage.day,used:usage.tasks.memory.today}},
     logger:{warn:m=>log('⚠️ '+m)},
   })
-  const neuralActivationTracker=createNeuralActivationTracker({
+  neuralActivationTracker=createNeuralActivationTracker({
+    getEpoch:()=>accountBinding.generation(),
     getAccountTag:()=>accountBinding.status().blocked?'':trustedLifeAccountTag(),
     validateRecall:opts=>memoryRetriever?.validateContextualVisualRecall(opts)===true,
     validatePath:opts=>lifeMemory?.validateAssociationPath(opts)===true,
@@ -7819,10 +7829,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // additional tool. Model calls still use the existing daily Life budget.
     getLifeEpisodeContext:()=>universalLifeEpisodes.list({limit:3}),
     getRecentLifeVideoMemory:async opts=>{
+      const epoch=accountBinding.generation()
       const rows=await (memoryRetriever?.contextualVisualRecall({...opts,associate:true})||[])
-      // Observe only the public autonomous planner return, not private/owner
-      // recall or a model's inner thoughts. A diagnostic failure never alters recall.
-      if(neuralActivationTracker.record({accountTag:opts?.accountTag,rows}))lifeManagementEvents.publish('memory-recall')
+      if(epoch!==accountBinding.generation()||opts?.accountTag!==trustedLifeAccountTag()||accountBinding.status().blocked)return []
+      // Observe only verified public memory candidates, not model adoption.
+      observePublicRecall(opts?.accountTag,rows,'life')
       return rows
     },
     validateLifeVideoMemory:opts=>memoryRetriever?.validateContextualVisualRecall(opts)===true,

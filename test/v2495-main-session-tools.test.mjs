@@ -19,8 +19,9 @@ test('选定主 Session 即使关闭身份长期记忆，也能回忆真实经�
  }}
  const agents={get(id){return ['main-test','session-main-test'].includes(id)?agent:null},list(){return [agent]}}
  const todos=createOwnerTodoEngine({dataDir:home})
- const memory=createLongTermMemory({dataDir:home,dshHome:home,agents,getConfig:()=>({mainSessionId:'main-test',mainSessionMemoryEnabled:false}),defineTool:x=>x,
-  getVideoAssociationRecall:async query=>{assert.equal(query,'朱红雨伞');return [{bvid:BV,historicalDetail:{note:'朱红雨伞靠在玻璃门旁边。',timeAnchorMs:[2000,2000]}}]},
+ let selectedSession='main-test',reverseGuard=null,blockReverse=false
+ const memory=createLongTermMemory({dataDir:home,dshHome:home,agents,getConfig:()=>({mainSessionId:selectedSession,mainSessionMemoryEnabled:false}),defineTool:x=>x,
+  getVideoAssociationRecall:async (query,{isCurrent})=>{assert.equal(query,'朱红雨伞');reverseGuard=isCurrent;assert.equal(isCurrent(),true);if(blockReverse)selectedSession='other-session';return [{bvid:BV,historicalDetail:{note:'朱红雨伞靠在玻璃门旁边。',timeAnchorMs:[2000,2000]}}]},
   getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor})=>({ok:true,recallPage:true,bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor,fragments:[{content:"真实保存的片段"}]}),
   getExperienceRecall:(query,limit)=>[{kind:'watch',day:'2026-10-27',bvid:BV,summary:'之前看过猫咪视频'}],getTodoEngine:()=>todos,
   runTodo:id=>todos.run(id,async()=>({ok:true,summary:'已读取'})),logger:{warn(){},info(){}}})
@@ -72,5 +73,8 @@ test('选定主 Session 即使关闭身份长期记忆，也能回忆真实经�
   assert.equal(badLike.ok,false)
   assert.ok(contexts.some(x=>x.name==='dafeiyu-owner-todos'))
   assert.ok(sections.some(x=>x.name==='dafeiyu-life-recall-hint'))
+  assert.equal(reverseGuard(),true);blockReverse=true
+  const staleReverse=await byName.dafeiyu_life_recall.execute({query:'雨伞',visual_query:'朱红雨伞'})
+  assert.equal(reverseGuard(),false);assert.equal(staleReverse.reason,'session-not-current');assert.equal(staleReverse.visualAssociations,undefined)
  }finally{memory.stop();rmSync(home,{recursive:true,force:true})}
 })

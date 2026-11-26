@@ -147,3 +147,45 @@ test('release compatibility: existing association identities survive both schema
   }finally{restored?.close();rmSync(dest,{recursive:true,force:true})}
  }
 }))
+
+test('owner and friend on-demand public recalls publish the same verified path, never private text or an actor identity',()=>setup(async x=>{
+ const {createSocialContextAssembler}=await import('../lib/social-context-assembler.mjs')
+ assert.equal(add(x.g,[propose(x.g,1,3,'contrast')]).added,1)
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o)})
+ let epoch=1,role='friend',tag=A,calls=0
+ const tracker=createNeuralActivationTracker({getAccountTag:()=>tag,getEpoch:()=>epoch,validateRecall:o=>retriever.validateContextualVisualRecall(o),validatePath:o=>x.g.validateAssociationPath(o),now:()=>NOW})
+ const q=events[0].title,opts={accountTag:A,isCurrent:()=>tag===A&&epoch===1,limit:6,onVisualRecall:rows=>{calls++;assert.equal(tracker.record({accountTag:A,rows,channel:'owner-dm'}),true)}}
+ const owner=await retriever.ownerContextualSearch([q],opts)
+ assert.equal(owner.ok,true);assert.ok(owner.items.some(e=>e.summary.includes(bv(3))));assert.equal(calls,1);assert.equal(tracker.read(A).channel,'owner-dm')
+ await retriever.ownerContextualSearch([q],{...opts,limit:1});assert.equal(calls,1,'truncated endpoint must not publish')
+ const policy={actor:()=>({role}),memoryScope:()=> 'public',canViewIdentity:()=>false,canViewRelationship:()=>false}
+ let privateRead=async()=> '仅私信上下文文字'
+ const assembler=createSocialContextAssembler({policy,memoryRetriever:retriever,getAccountTag:()=>tag,getAccountEpoch:()=>epoch,getPrivateLifeContext:(...args)=>privateRead(...args),onVisualRecall:({accountTag,rows})=>{calls++;assert.equal(tracker.record({accountTag,rows,channel:'friend-dm'}),true)},logger:{warn(){}}})
+ const input={uid:'123456789',kind:'dm',text:q,recallQueries:[q],timestampMs:NOW+1}
+ const run=extra=>assembler.message({...input,...extra},{mode:'compact',requested:['memory']})
+ const dm=await run({});assert.match(dm.memoryContext,new RegExp(bv(3)));assert.equal(calls,2)
+ const receipt=tracker.read(A);assert.equal(receipt.channel,'friend-dm');assert.doesNotMatch(JSON.stringify(receipt),/123456789|仅私信上下文文字|雨后的城市街道/)
+ const episodes=x.g.videoRecallGroups(x.g.semanticCandidates({domain:'main-session',limit:3200}));const projected=projectNeuralActivation(receipt,x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:episodes}),episodes)
+ assert.equal(projected.channel,'friend-dm');assert.doesNotMatch(JSON.stringify(projected),/123456789|仅私信上下文文字/)
+ await run({privacyGuard:true});assert.equal(calls,2)
+ await assembler.message(input,{mode:'compact',requested:[]});assert.equal(calls,2)
+ role='stranger';await run({});assert.equal(calls,2);role='friend'
+ privateRead=async()=>{epoch++;return 'scope changed'}
+ const stale=await run({});assert.equal(stale.memoryContext,'');assert.equal(calls,2);assert.equal(tracker.read(A),null,'same account but changed binding generation')
+}))
+
+test('main chat uses explicit visual recall only, verified receipt source stays bounded; epoch invalidates even same account',()=>setup(async x=>{
+ assert.equal(add(x.g,[propose(x.g,1,3,'contrast')]).added,1)
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o)})
+ const rows=await retriever.contextualVisualRecall({accountTag:A,queries:[events[0].title],limit:2,associate:true,recentFallback:false})
+ assert.equal(rows.length,2);assert.equal(rows[1].recallRoute,'association')
+ let epoch=1;const tracker=createNeuralActivationTracker({getAccountTag:()=>A,getEpoch:()=>epoch,validateRecall:o=>retriever.validateContextualVisualRecall(o),validatePath:o=>x.g.validateAssociationPath(o),now:()=>NOW})
+ assert.equal(tracker.record({accountTag:A,rows,channel:'arbitrary text'}),false)
+ assert.equal(tracker.record({accountTag:A,rows,channel:'main-chat'}),true);assert.equal(tracker.read(A).channel,'main-chat')
+ epoch++;assert.equal(tracker.read(A),null)
+ const code=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ const main=code.slice(code.indexOf('getVideoAssociationRecall:async (query'),code.indexOf('getVideoDetailRecall:',code.indexOf('getVideoAssociationRecall:async (query')))
+ assert.match(main,/associate:true,recentFallback:false/);assert.match(main,/!isCurrent\(\)\|\|epoch!==accountBinding\.generation\(\)/);assert.match(main,/observePublicRecall\(scope,rows,'main-chat'\)/)
+ assert.match(code,/onVisualRecall:rows=>\{if\(isCurrent\(\)\)observePublicRecall\(scope,rows,'owner-dm'\)\}/)
+ assert.match(code,/onVisualRecall:\(\{accountTag,rows\}\)=>observePublicRecall\(accountTag,rows,'friend-dm'\)/)
+}))
