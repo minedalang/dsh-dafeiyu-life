@@ -240,7 +240,7 @@ import {callScopedDshVision} from './lib/scoped-dsh-vision-read.mjs'
 import { mergeWatchedRows } from './lib/watched.mjs'
 import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
 import { createLongTermMemory } from './lib/long-term-memory.mjs'
-import { fullSessionIntegration } from './lib/session-integration-policy.mjs'
+import { fullSessionIntegration,createAutomaticSessionScope,sessionIntegrationPaused } from './lib/session-integration-policy.mjs'
 import { createMemoryRetriever,publicVisualAssociationContext } from './lib/memory-retriever.mjs'
 import {createEmbeddingRuntimeManager} from './lib/embedding-runtime-manager.mjs'
 import {createLocalVisionModelManager,getLocalVisionModel,getLocalVisionTestImage} from './lib/local-vision-model-manager.mjs'
@@ -658,6 +658,9 @@ export function apply(ctx, config) {
   // Cross-process gate for reads that pass the shared JS MCP adapter.
   // Independent Python Headless MCP tools do not pass here yet.
   const readActionContext=new AsyncLocalStorage()
+  // Still fixed full until all mode-switch gates and real-host acceptance exist.
+  const getSessionIntegration=fullSessionIntegration
+  const automaticSession=createAutomaticSessionScope(getSessionIntegration)
   // An ephemeral proof ties nested Python MCP reads to this exact Node adapter.
   // The token is never stored on disk or sent back to the UI.
   const readAdapterToken=randomBytes(32).toString('hex')
@@ -1584,6 +1587,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     if(socialTodoIntakeRecent.length>30)socialTodoIntakeRecent.splice(0,socialTodoIntakeRecent.length-30)
   }
   const intakeAiSocialTodo=async({request={},channel,todoDisposition,todoTiming='later',suggestedTodo,suggestedTodos,decisionMode='agency'}={})=>{
+    if(!automaticSession.current())return {ok:false,skipped:'session-integration-paused'}
     const messages=Array.isArray(request.messages)?request.messages.slice(-12).map(x=>String(x||'')):[String(request.text||'')]
     const messageIds=Array.isArray(request.messageIds)?request.messageIds.map(String):[]
     const messageId=String(request.messageId||request.id||messageIds.at(-1)||request.rpid||'')
@@ -1686,15 +1690,16 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // never themselves publish a dynamic or bypass the existing draft quota.
   let commentDynamicWakeTimer=null
   const wakeDynamicAfterConfirmedComment=()=>{
-    if(cfg.commentSyncDynamic!==true||commentDynamicWakeTimer)return
+    const policy=automaticSession.capture()
+    if(!automaticSession.current()||!automaticSession.isCurrent(policy)||cfg.commentSyncDynamic!==true||commentDynamicWakeTimer)return
     const scope=trustedLifeAccountTag()
     if(!scope)return
     commentDynamicWakeTimer=setTimeout(()=>{
       commentDynamicWakeTimer=null
       try{
         refreshCfg()
-        if(trustedLifeAccountTag()!==scope||accountBinding.status().blocked||cfg.commentSyncDynamic!==true)return
-        void dailyDynamic?.tick({trigger:'confirmed-public-comment'}).catch(e=>log('公开回复触发生活动态候选失败：'+String(e?.message||e).slice(0,120)))
+        if(!automaticSession.isCurrent(policy)||!automaticSession.current()||trustedLifeAccountTag()!==scope||accountBinding.status().blocked||cfg.commentSyncDynamic!==true)return
+        void automaticSession.run(policy,()=>dailyDynamic?.tick({trigger:'confirmed-public-comment'}))?.catch(e=>log('公开回复触发生活动态候选失败：'+String(e?.message||e).slice(0,120)))
       }catch{}
     },45_000)
     commentDynamicWakeTimer.unref?.()
@@ -1925,16 +1930,21 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         String(check.reason||'runtime_execution_failed')+' / '+String(check.stage||'unknown')+
         '）；已阻止本轮取帧，等待可信宿主运行时修复')
     }
+    const modeCheckedRead=monitoredReadTools.has(toolName)||toolName==='bili_preview_vision'
+    const modeCheckedFollow=toolName==='bili_follow_dm_contact'||toolName==='bili_unfollow_dm_contact'
+    if((modeCheckedRead||modeCheckedFollow)&&!automaticSession.current())throw sessionIntegrationPaused()
     const client=scopedDshVision?null:await ensureMcp()
     if(scopedDshVision&&!assertSecureMcp())throw Error('DSH 视频识图 Python MCP 安全版本校验失败')
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
     const callOptions=toolName==='bili_preview_vision'&&resolvedVisionMode()==='independent_local'
       ? {...(opts||{}),timeoutMs:600000}:opts
+    // Do not cancel already-admitted writes: the durable sender must settle
+    // their actual receipt. Only new monitored reads are refused here.
     const originalDispatch=()=>scopedDshVision
-      ? callPluginScopedDshVision(args,opts)
+      ? (()=>{if(!automaticSession.current())throw sessionIntegrationPaused();return callPluginScopedDshVision(args,opts)})()
       : monitoredReadTools.has(toolName)
-      ? biliReadBudget.guard('mcp:'+toolName,()=>client.call(toolName,args,callOptions))
-      : client.call(toolName,args,callOptions)
+      ? biliReadBudget.guard('mcp:'+toolName,()=>{if(!automaticSession.current())throw sessionIntegrationPaused();return client.call(toolName,args,callOptions)})
+      : (()=>{if((modeCheckedRead||modeCheckedFollow)&&!automaticSession.current())throw sessionIntegrationPaused();return client.call(toolName,args,callOptions)})()
     const dispatch=()=>toolName==='bili_video_info'&&opts===undefined&&
       /^BV[0-9A-Za-z]{10}$/.test(String(args?.bvid||''))
       ? publicVideoReadCoalescer.run({scope:verifiedActionScope(),bvid:args.bvid,
@@ -4309,17 +4319,24 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // A one-shot notifier for VERIFIED social signals. The normal Life timer
   // remains the fallback; no independent social decision agent is introduced.
   let wakeSocialLife = null, socialWakeTimer = null
-  let wakeAcceptedSocialTodo = null, socialTodoWakeTimer = null;const queuedAcceptedTodoIds=new Set()
+  let wakeAcceptedSocialTodo = null, socialTodoWakeTimer = null,queuedTodoPolicy=null;const queuedAcceptedTodoIds=new Set()
   const queueLifeSocialAttention = () => {
-    if(!wakeSocialLife||socialWakeTimer)return
+    const policy=automaticSession.capture()
+    if(!automaticSession.current()||!automaticSession.isCurrent(policy)||!wakeSocialLife||socialWakeTimer)return
     socialWakeTimer=setTimeout(()=>{
       socialWakeTimer=null
-      void wakeSocialLife().catch(e=>log('Life 社交快速考虑失败：'+String(e?.message||e).slice(0,75)))
+      if(!automaticSession.isCurrent(policy)||!wakeSocialLife)return
+      void automaticSession.run(policy,wakeSocialLife).catch(e=>log('Life 社交快速考虑失败：'+String(e?.message||e).slice(0,75)))
     },1000)
     socialWakeTimer.unref?.()
   }
   queueAcceptedSocialTodoWake=id=>{
-    if(!/^[0-9a-f-]{36}$/i.test(String(id||''))||!wakeAcceptedSocialTodo)return
+    const policy=automaticSession.capture()
+    if(!automaticSession.current()||!automaticSession.isCurrent(policy)||!/^[0-9a-f-]{36}$/i.test(String(id||''))||!wakeAcceptedSocialTodo)return
+    if(socialTodoWakeTimer&&!automaticSession.isCurrent(queuedTodoPolicy)){
+      clearTimeout(socialTodoWakeTimer);socialTodoWakeTimer=null;queuedAcceptedTodoIds.clear()
+    }
+    queuedTodoPolicy=policy
     if(queuedAcceptedTodoIds.size>=3&&!queuedAcceptedTodoIds.has(id))return
     queuedAcceptedTodoIds.add(id)
     if(socialTodoWakeTimer)return
@@ -4329,7 +4346,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       // Separate original TODO IDs share one Life run lease and are processed
       // sequentially. A skipped busy task stays in its canonical TODO ledger.
       void (async()=>{for(const target of pending){
-        try{const result=await wakeAcceptedSocialTodo(target)
+        if(!automaticSession.isCurrent(policy)||!wakeAcceptedSocialTodo)break
+        try{const result=await automaticSession.run(policy,()=>wakeAcceptedSocialTodo(target))
           if(['busy','planner-already-running'].includes(result?.skipped))
             log('Life 已接受的即时只读意愿等待安全执行：当前 Life 正忙，任务保留在原待办中')
         }catch(e){log('Life 只读待办快速执行失败：'+String(e?.message||e).slice(0,85))}
@@ -4339,7 +4357,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   }
   ctx.effect(()=>()=>{if(socialWakeTimer)clearTimeout(socialWakeTimer);if(socialTodoWakeTimer)clearTimeout(socialTodoWakeTimer)},'bili-duty: Life 社交快速通知清理')
   const socialHandoffFence=createSocialHandoffFence({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
-  const socialSendTransaction=createSocialSendTransaction({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
+  const socialSendTransaction=createSocialSendTransaction({dataDir:stateDir,getAccountTag:trustedLifeAccountTag,canStart:automaticSession.current})
   const socialDecisionOwnership=createSocialDecisionOwnership({
     handoffFence:socialHandoffFence,
     getAccountTag:trustedLifeAccountTag,getLifeAgentMode:()=>cfg.lifeAgentMode,
@@ -4358,6 +4376,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // A Life decision reuses the verified social batcher + Life Voice context;
   // the old automatic owner can no longer decide on that promoted channel.
   const runLifeSocialOperation=async({channel,expectedScope,phase,requester='life-agent',expectedGeneration},work)=>{
+    if(!automaticSession.current())return phase==='decision'?Promise.reject(sessionIntegrationPaused()):
+      {ok:false,notAttempted:true,reason:'session-integration-paused'}
     // Never construct a production Life social decision for an unknown account.
     if(!/^[a-f0-9]{16}$/.test(String(expectedScope||'')))
       return phase==='decision'?Promise.reject(Error('Life 社交账号未核验')):
@@ -5111,8 +5131,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // Only coalesce concurrent identical authorized reads. No TTL caching:
   // a fresh send preflight must still observe newly arrived platform messages.
   const readDmDetail=(cred,uid,limit=50)=>dmDetailSingleflight.read({uid:String(uid),limit},
-    ()=>dmFetch(cred,String(uid),limit,{readBudget:biliReadBudget}))
+    ()=>{if(!automaticSession.current())throw sessionIntegrationPaused();return dmFetch(cred,String(uid),limit,{readBudget:biliReadBudget})})
   const readScopedUnreadCounts=async reader=>{
+    if(!automaticSession.current())throw sessionIntegrationPaused()
     const release=accountBinding.enterPlatformOperation()
     try{
       accountBinding.assertReady()
@@ -5129,6 +5150,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const readSocialUnreadSentinel=()=>readScopedUnreadCounts(readInteractionUnreadCounts)
 
   async function getNewDmMessages({probeOnly=false,forceUid='',fastUid=''}={}) {
+    if(!automaticSession.current())throw sessionIntegrationPaused()
     const releaseDmRead=accountBinding.enterPlatformOperation()
     try {
     const cred = dmCred(stateDir)
@@ -5370,12 +5392,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   }
 
   async function invokeInteractionPrompt(promptText,maxChars=450,options={}){
+    if(!automaticSession.current())throw sessionIntegrationPaused()
     const start=Date.now(),expectedScope=trustedLifeAccountTag(),route=options.modelRoute||'interaction',channel=lifeSocialScope.getStore()?.channel
     const trigger=channel==='dm'?'incoming-dm':channel==='comment'?'incoming-comment':'host'
     const lane=channel==='dm'||channel==='comment'||route==='ownerDmAgent'?'social':
       route==='reflection'?'background':route==='videoSummary'?'background':route==='behaviorDecision'?'continuation':'exploration'
     try{const output=await lifeResourceScheduler.run({lane,resources:{model:1},waitMs:lane==='social'?15_000:25_000},
-      ()=>invokeInteractionPromptRaw(promptText,maxChars,options))
+      ()=>{if(!automaticSession.current())throw sessionIntegrationPaused();return invokeInteractionPromptRaw(promptText,maxChars,options)})
       modelInvocationJournal.record({scene:route==='videoSummary'?'video-summary':route,trigger,expectedScope,durationMs:Date.now()-start,
         provider:route==='videoSummary'?cfg.videoModelProvider||cfg.pluginDefaultModelProvider||'':
           route==='reflection'?cfg.mainSessionReflectionModelProvider||cfg.pluginDefaultModelProvider||'':
@@ -5769,6 +5792,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   let dmRecoveryNetworkGate=()=>({allowed:false,retryAt:0})
   const dmAutoreply = createDmAutoReply({
     dataDir: accountRuntimeDir,
+    canProcess:automaticSession.current,
     getConfig: dmConfig,
     canSendDm: args=>socialPolicyGate.canSendDm(args),
     canContinue:(uid,channel)=>socialPortrait.continuationAllowed(uid,{channel}),
@@ -5787,7 +5811,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         // after spending a B站 request. Read-only preflight only; normal
         // get_sessions discovery and actual Life/send admission remain intact.
         const life=lifeWillingness?.inspectSocialReadiness({kind:'dm_reply'})
-        return {allowed:!pause.blocked&&network.allowed===true&&life?.ok===true,
+        return {allowed:automaticSession.current()&&!pause.blocked&&network.allowed===true&&life?.ok===true,
           // Life claim expiry is not a promised release time: retry on the
           // next normal due cycle, while retaining true network cooldown.
           retryAt:Math.max(Number(pause.retryAt)||0,Number(network.retryAt)||0)}
@@ -5828,7 +5852,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         return rows;
       } finally { release(); }
     },
-    onScanSettled:()=>dmPollCursor.commit(),
+    onScanSettled:()=>{if(automaticSession.current())return dmPollCursor.commit();dmPollCursor.discard()},
     // A sealed Life DM choice that never reached any platform sender is
     // abandoned by the original decision holder, not replayed or force-sent.
     // The original proof/account fence still verifies the release; uncertain
@@ -5978,6 +6002,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         onTodoProposal:proposal=>intakeAiSocialTodo({...proposal,request:{...req,recommendationContext},channel:'dm'}),
         onTodoConsistency:onSocialTodoConsistency,
         recommendationContext,verifiedSharedVideoContext,sharedVideoEvidence:share,todoProgressContext,identityContext:replyIdentityContext(req.uid)})
+      if(!automaticSession.current())throw sessionIntegrationPaused()
       const checked=socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
       if(!checked.ok)throw Error('私信决策期间账号或归属已变化：'+checked.reason)
       // The existing interaction batch has already invoked the Life Voice
@@ -5990,17 +6015,19 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const sealed=await lifeWillingness?.adoptSocialDecisionQueued({kind:'dm_reply',uid:String(req.uid),
         sourceKey:'dm:'+String(req.uid)+':'+String(req.messageId||''),messages:lines,targetKey:''})
       if(sealed?.ok!==true)throw Error('Life 私信表达授权不可用：'+String(sealed?.reason||'missing'))
+      if(!automaticSession.current()){lifeProofSettler(sealed.proof)('not-sent');throw sessionIntegrationPaused()}
       return attachSocialProof(generated,owner,sealed.proof)
       })}finally{dmPlanningPreference?.release?.()}
       } finally {stopLiveDm()}
     },
     generateContinuation:async({uid,first,thoughtCue,recent,lifeWillingnessProof})=>{
+      if(!automaticSession.current())return ''
       refreshCfg()
       if(cfg.dmP6Enabled===false||!trustedLifeAccountTag()||accountBinding.status().blocked)return ''
       const reply=parseDmContinuationReply(await invokeInteractionPrompt(dmContinuationPrompt({
         first,cue:thoughtCue,recent,persona:lifeVoiceContext({scene:'dm',uid,query:recent,maxChars:500})
       }),900,{modelRoute:'interaction'}))
-      if(!reply)return ''
+      if(!reply||!automaticSession.current())return ''
       // The first bubble MUST already have a verified platform receipt.
       // Extend the same Life choice by ONE exact new text; no second vote.
       const extended=lifeWillingness?.extendConfirmedDmExpression(lifeWillingnessProof,reply)
@@ -6046,6 +6073,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     onPendingAction:event=>{lifeActionRecords.update(event)},
     onVerifiedReply:async({uid,messageId,nextAction,singleIntentVerified=false,history,optedOut,trusted,approved:dmApproved})=>{
+      if(!automaticSession.current())return {ok:false,reason:'session-integration-paused'}
       refreshCfg()
       const scope=trustedLifeAccountTag()
       const candidates=dmContactFollowCandidates({enabled:cfg.masterEnabled===true&&
@@ -6065,14 +6093,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const approved=await lifeWillingness?.adoptSocialDecisionQueued({kind:intentKind,uid:String(uid),
         sourceKey:(wantUnfollow?'dm-unfollow:':'dm-follow:')+String(uid)+':'+String(messageId),messages:[]})
       if(approved?.ok!==true)return {ok:false,reason:approved?.reason||'life-declined'}
-      const valid=()=>cfg.masterEnabled===true&&cfg.agentFollowEnabled===true&&cfg.dmFollowAutonomyEnabled===true&&
+      const valid=()=>automaticSession.current()&&cfg.masterEnabled===true&&cfg.agentFollowEnabled===true&&cfg.dmFollowAutonomyEnabled===true&&
         scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&
         !['owner','blocked'].includes(socialPolicyGate.actor(uid).role)&&
         lifeWillingness?.verify(approved.proof,intentKind,{uid:String(uid)})?.ok===true
-      if(!valid()){lifeWillingness?.receipt(approved.proof,{status:'not-sent'});return {ok:false,reason:'authorization-changed'}}
+      if(!valid()){lifeWillingness?.receipt(approved.proof,{status:'not-sent'});return {ok:false,reason:automaticSession.current()?'authorization-changed':'session-integration-paused'}}
       let result
       try{result=await call(wantUnfollow?'bili_unfollow_dm_contact':'bili_follow_dm_contact',{uid:Number(uid),reason:action.reason})}
-      catch(e){lifeWillingness?.receipt(approved.proof,{status:'uncertain'});return {ok:false,reason:'platform-uncertain'}}
+      catch(e){if(e?.code==='session-integration-paused'){lifeWillingness?.receipt(approved.proof,{status:'not-sent'});return {ok:false,reason:e.code}}
+        lifeWillingness?.receipt(approved.proof,{status:'uncertain'});return {ok:false,reason:'platform-uncertain'}}
       if(result?.ok===true&&result?.action===(wantUnfollow?'unfollow':'follow')&&String(result.uid)===String(uid)&&scope===trustedLifeAccountTag()){
         lifeActionAttribution.verified({accountTag:scope,channel:'dm',owner:'life',sourceRef:'dm-conversation:'+String(uid),
           receiptId:'bili-relation-'+(wantUnfollow?'unfollow:':'follow:')+String(uid),action:intentKind,kind:'social'})
@@ -6376,6 +6405,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },logger:{warn:m=>log('主人评论 Agent：'+m)}
   })
   const commentInteract = createCommentInteract({
+    canProcess:automaticSession.current,onUnsentLifeDecision:proof=>lifeProofSettler(proof)('not-sent'),
     getVerifiedFacts:verifiedFactsFor,
     dataDir: accountRuntimeDir,
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
@@ -6538,6 +6568,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       allowTodoIntake:req.forceReply!==true&&req.todoIntake!==false,
       onTodoProposal:req.forceReply===true||req.todoIntake===false?undefined:proposal=>intakeAiSocialTodo({...proposal,request:req,channel:'comment'}),
       onTodoConsistency:onSocialTodoConsistency})
+      if(!automaticSession.current())throw sessionIntegrationPaused()
       const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
       if(!checked.ok)throw Error('评论决策期间账号或归属已变化：'+checked.reason)
       const sourceKey=req.contentType==='dynamic'?'dynamic:'+String(req.dynamicId||'')+':'+String(req.rpid||''):
@@ -6571,6 +6602,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         }
         throw Error('Life 评论表达授权不可用：'+String(sealed?.reason||'missing'))
       }
+      if(!automaticSession.current()){lifeProofSettler(sealed.proof)('not-sent');throw sessionIntegrationPaused()}
       return attachSocialProof(normalized,owner,sealed.proof)
       })
       } finally {stopLiveComment()}
@@ -6707,6 +6739,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     }, comments: commentInteract, readPrivateUnread:readPrivateUnreadSentinel,
     readSocialUnread:readSocialUnreadSentinel,readBudget:biliReadBudget, dmCursor:dmPollCursor,
     dataDir:accountRuntimeDir,getAccountTag:trustedLifeAccountTag,
+    getSessionIntegration,runAutomatic:automaticSession.run,
     getConfig: () => {refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     logger: {error:(msg)=>log(msg)},
   })
@@ -6960,7 +6993,6 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // Both main Session consumers must read the same trusted host policy.
   // Until background admission and owner-only switching are fully wired,
   // production deliberately has no mode selection or persisted mode field.
-  const getSessionIntegration=fullSessionIntegration
   longTermMemory = createLongTermMemory({
     getSessionIntegration,
     dataDir: stateDir,

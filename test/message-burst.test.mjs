@@ -122,3 +122,18 @@ test('new owner input removes a queued followup bubble before its next Turn',()=
   assert.deepEqual(controller.status(),{active:false})
   controller.dispose()
 })
+
+
+test('明确本地未调用平台的拒绝不计作外发尝试，已确认气泡仍保留',async()=>{
+  const denied={ok:false,notAttempted:true,reason:'session-integration-paused'}
+  const first=await deliverMessageBurst({messages:['一','二'],send:async()=>denied})
+  assert.equal(first.status,'blocked');assert.equal(first.attempted,0);assert.equal(first.confirmed,0)
+  const second=await deliverMessageBurst({messages:['一','二','三'],send:async({index})=>index===0?{ok:true,receiptId:'one'}:denied})
+  assert.equal(second.status,'partial');assert.equal(second.attempted,1);assert.deepEqual(second.receipts,['one'])
+  const unknown=await deliverMessageBurst({messages:['一'],send:async()=>({...denied,no_retry:true})})
+  assert.equal(unknown.status,'unknown');assert.equal(unknown.attempted,1)
+  for(const contradictory of [{accepted:true},{receiptId:'unexpected'},{reason:'different-preflight'}]){
+    const result=await deliverMessageBurst({messages:['一'],send:async()=>({...denied,...contradictory})})
+    assert.equal(result.status,'unknown');assert.equal(result.attempted,1)
+  }
+})

@@ -153,3 +153,20 @@ test('parser v2 upgrade baselines previously excluded @ without replaying old pu
   await engine.poll({notifications:false,top:false,mentions:true});
   assert.equal(sent,1);
 }));
+
+
+test('模式代际失效的评论模型结果不消耗来信且结算未使用证明',async()=>fixture(async dir=>{
+  let notices=[],active=true,sends=0,decisions=0,settled=0;
+  const engine=createCommentInteract({dataDir:dir,now:()=>clock,selfUid:()=>me,getConfig:()=>config,
+    canProcess:()=>active,onUnsentLifeDecision:()=>{settled++},
+    getAtNotifications:async()=>wrap(notices),getOwnComments:async()=>({top:[],nested:[]}),socialTier:()=> 'friend',
+    getAtSource:async x=>({ok:true,uid:x.uid,rpid:x.rpid,bvid:x.bvid,topLevel:true,text:'@大肥鱼 请看看这个视频'}),
+    getVideoContext:async()=>({usable:true,text:'本轮视频评论上下文已核实'}),
+    generateReply:async()=>{decisions++;if(decisions===1){active=false;return {action:'defer',lifeWillingnessProof:{id:'unused'}}}return '我先看看视频'},
+    send:async()=>{sends++;return {ok:true,rpid:'89232'}}});
+  const options={notifications:false,top:false,mentions:true};
+  await engine.poll(options);notices=[payload(91)];
+  assert.equal((await engine.poll(options)).skipped,'session-integration-paused');
+  assert.equal(settled,1);assert.equal(sends,0);
+  active=true;await engine.poll(options);assert.equal(decisions,2);assert.equal(sends,1);
+}));

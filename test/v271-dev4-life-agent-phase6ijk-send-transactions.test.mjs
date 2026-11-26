@@ -127,3 +127,33 @@ test('offline review may clear only prepared, never attempted or confirmed trans
   await active
   assert.equal(tx.reviewNoAttempt({channel:'dm',eventKey:key,confirmation:'我已停机核实此消息从未开始平台发送'}).reason,'platform-attempt-cannot-be-cleared')
 })
+
+
+test('自动代际拒绝不占用发送事务；在途未知仍冻结，已确认仍结算',async t=>{
+  const {createAutomaticSessionScope}=await import('../lib/session-integration-policy.mjs')
+  const x=setup(t);let policy={mode:'full',revision:0},calls=0
+  const scope=createAutomaticSessionScope(()=>policy)
+  const tx=createSocialSendTransaction({dataDir:x.dir,getAccountTag:()=>A,now:()=>1000000,canStart:scope.current})
+  const send=async()=>{calls++;return {ok:true,receiptId:'receipt'}}
+  const old=scope.capture()
+  await scope.run(old,async()=>{
+    await Promise.resolve();policy={mode:'cooperative',revision:1};policy={mode:'full',revision:2}
+    assert.equal(scope.current(),false)
+    assert.throws(()=>scope.run(scope.capture(),send),/session-integration-paused/)
+    const denied=await tx.execute({channel:'dm',eventKey:key},send)
+    assert.equal(denied.notAttempted,true);assert.equal(calls,0)
+    assert.equal(tx.inspect().channels.dm.confirmed||0,0)
+  })
+  assert.equal(scope.current(),true)
+  let finish
+  const pending=scope.run(scope.capture(),()=>tx.execute({channel:'dm',eventKey:key},()=>new Promise(r=>{finish=r})))
+  policy={mode:'cooperative',revision:3};finish({ok:true,receiptId:'verified'})
+  assert.equal((await pending).ok,true);assert.equal(tx.inspect().channels.dm.confirmed,1)
+  // Explicit unscoped command still passes the ORIGINAL transaction checks.
+  assert.equal((await tx.execute({channel:'dm',eventKey:key},send)).reason,'social-send-already-reserved')
+  policy={mode:'full',revision:4};const unknown=scope.run(scope.capture(),()=>tx.execute({channel:'dm',eventKey:key+'-unknown'},()=>new Promise(r=>{finish=r})))
+  policy={mode:'cooperative',revision:5};finish({ok:false})
+  assert.equal((await unknown).no_retry,true);assert.equal(tx.inspect().channels.dm.uncertain,1)
+  assert.equal((await tx.execute({channel:'dm',eventKey:key+'-unknown'},send)).reason,'social-send-already-reserved')
+  assert.equal(calls,0)
+})

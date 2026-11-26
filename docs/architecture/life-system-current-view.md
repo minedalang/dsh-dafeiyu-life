@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。宿主固定 full/0，持久切换、普通 Life 调度及 UI 仍待接线。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
@@ -133,6 +134,12 @@ flowchart TB
     detailsOnChange["按需读取详情｜计数增加/首次基线/30 分钟核对"]
     activeDmSentinel["已确认活跃私信｜60 秒定向读取，空闲逐步放缓"]
   end
+  autoSessionScope24["完整生活代际：通知、社交快唤醒与未开始发送门禁"]
+  autoSessionScope24 -.-> dmSentinel
+  autoSessionScope24 -.-> socialSentinel
+  autoSessionScope24 -.-> activeDmSentinel
+  autoSessionScope24 -.-> socialWrite
+%% @code autoSessionScope24 | lib/session-integration-policy.mjs | export function createAutomaticSessionScope
   dmSentinel --> counterCompare
   socialSentinel --> counterCompare
   counterCompare -->|私信计数增加| detailsOnChange
@@ -491,6 +498,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。宿主固定 full/0，持久切换、普通 Life 调度及 UI 仍待接线。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
@@ -591,6 +599,9 @@ flowchart LR
   end
   acceptedDm["刚接受的 DM/评论只读待办｜同一社交模型 now/later"]
   acceptedNow["now：一次性执行原已接受只读动作；不再投第二票"]
+  wakeScope24["自动快唤醒捕获完整生活代际；旧唤醒失效，原待办保留"]
+  wakeScope24 -.-> acceptedNow
+%% @code wakeScope24 | index.js | queueAcceptedSocialTodoWake=id=>
   acceptedDm -->|now + 新入账 + 当前账号有效| acceptedNow
   acceptedDm -.->|later 与旧无 timing：正常自主规划| todos
   acceptedNow -.->|原执行器+权限+回执；不增加 AI 调用| sourceTodo
@@ -724,6 +735,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。宿主固定 full/0，持久切换、普通 Life 调度及 UI 仍待接线。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
@@ -832,6 +844,10 @@ flowchart TB
   commentReview -.->|自愿提出评论，仍需原外发门禁| source
   commentReview -.-> commentOutcome
   dmQualify -.->|仅在允许后进入原 DM 事务| source
+  sessionSendGate24["自动事务入场复核模式代际；明确未调用平台可延期"]
+  sessionSendGate24 -.-> source
+  sessionSendGate24 -.->|已启动仍按原结果结算| receipt
+%% @code sessionSendGate24 | lib/social-send-transaction.mjs | canStart()===true
   source --> receipt
   verified -.-> postWrite -.->|安全限制，不是写授权| planner
   receipt -.-> commentOutcome
@@ -1008,6 +1024,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。宿主固定 full/0，持久切换、普通 Life 调度及 UI 仍待接线。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
@@ -1234,6 +1251,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
   coopPolicy24["宿主统一模式策略：固定 full/0，未开放切换"]
   coopBridge24["经历桥：收集/同步/主动联系/私信上下文门禁"]
   coopPolicy24 --> coopMount24
+  coopAuto24["通知哨兵与社交快唤醒：完整生活代际，已有事务正常结算"]
+  coopPolicy24 --> coopAuto24
+%% @code coopAuto24 | index.js | runAutomatic:automaticSession.run
   coopPolicy24 --> coopBridge24
 %% @code coopPolicy24 | index.js | const getSessionIntegration=fullSessionIntegration
 %% @code coopBridge24 | lib/main-session-bridge.mjs | const currentFull=
