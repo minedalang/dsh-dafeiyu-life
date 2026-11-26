@@ -7098,6 +7098,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getConfig: () => cfg,
     memoryGateway:lifeMemory,
     getAssociationHints:()=>neuralActivationTracker?.reflectionHints(trustedLifeAccountTag())||[],
+    claimAssociationHint:(tag,hint)=>neuralActivationTracker?.claimReflectionHint(tag,hint)||null,
+    validateAssociationClaim:claim=>neuralActivationTracker?.validateReflectionClaim(claim)===true,
     rankAssociationHistory:(seeds,history)=>{
       if(cfg.mainSessionMemoryEmbeddingEnabled!==true||embeddingIndex?.status()?.ready!==true)return {ready:false,items:[],indexed:0}
       // Same summary normalization as Gateway.semanticCandidates / embeddingCorpus.

@@ -221,3 +221,46 @@ test('immediate recall prioritizes a live reviewed endpoint in existing reflecti
  const rows=await retriever.contextualVisualRecall({accountTag:A,bvids:[bv(1)],limit:2,associate:true,recentFallback:false});assert.equal(rows[1].memoryId,b.id);assert.equal(tracker.record({accountTag:A,rows}),true);assert.deepEqual(tracker.reflectionHints(A),[{fromId:a.id,memoryId:b.id}]);assert.equal(x.g.status().associations.active,0)
  life.addEvents([other]);const result=await life.reflect({force:true});assert.equal(result.ok,true,JSON.stringify(result));assert.equal(result.associationAdded,1);assert.equal(calls,2);assert.equal(x.g.status().associations.active,1)
 }))
+
+// Real retrieval + tracker + reviewed candidates; model alone decides whether
+// to retain a relation. No old candidate is reset or fed to insight generation.
+async function reviewedPairFixture(x,decide,{config={},clock=NOW}={}){
+ const other=watch(6,'雨后的城市街道与路灯倒影');x.g.recordEvents([other])
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o)})
+ let at=clock,epoch=0,tag=A,calls=0,insights=0,moods=0,traits=0
+ const settings={...cfg,...config},tracker=createNeuralActivationTracker({getAccountTag:()=>tag,getEpoch:()=>epoch,validateRecall:o=>retriever.validateContextualVisualRecall(o),validateImmediate:o=>retriever.validateImmediateRecall(o),now:()=>at})
+ const life=createLifeReflection({dataDir:x.dir,getConfig:()=>settings,getAccountTag:()=>tag,memoryGateway:x.g,now:()=>at,commitMemories:()=>{insights++;return {added:0,rows:[]}},onEmotion:()=>{moods++},getPersonalityEnabled:()=>true,onPersonalityObservations:()=>{traits++},getAssociationHints:()=>tracker.reflectionHints(tag),claimAssociationHint:(t,h)=>tracker.claimReflectionHint(t,h),validateAssociationClaim:c=>tracker.validateReflectionClaim(c),invokeModel:async prompt=>{calls++;if(!prompt.includes('【旧记忆联想评估】'))return JSON.stringify({memories:[]});const rows=JSON.parse(prompt.split('<association_history>')[1].split('</association_history>')[0]);assert.equal(rows.length,2);return decide(rows,{switchAwayAndBack:()=>{epoch+=2},settings,life})},logger:{warn(){}}})
+ life.addEvents([events[0],other]);assert.equal((await life.reflect({force:true})).ok,true)
+ const recall=async()=>{const rows=await retriever.contextualVisualRecall({accountTag:A,bvids:[bv(1)],limit:2,associate:true,recentFallback:false});assert.equal(rows[1]?.bvid,bv(6));return tracker.record({accountTag:A,rows})}
+ assert.equal(await recall(),true)
+ const proposal=rows=>JSON.stringify({associations:[{type:'context',candidate_ids:rows.map(r=>r.id),evidence_quotes:rows.map(r=>r.text.includes(other.title)?other.title:events[0].title)}]})
+ return {life,tracker,settings,recall,proposal,setTime:t=>{at=t;x.setTime(t)},counts:()=>({calls,insights,moods,traits})}
+}
+test('two already reviewed episodes get one relation-only model turn under normal interval, unchanged old candidates and no growth side effects',()=>setup(async x=>{
+ const f=await reviewedPairFixture(x,rows=>f.proposal(rows));const before=JSON.parse(readFileSync(f.life.file,'utf8')).candidates
+ assert.equal(f.life.status().pending,0);assert.equal(f.life.status().associationReviewPending,true);assert.equal(f.life.status().canAutoReflect,false);assert.equal(f.life.status().autoReflectBlockedReason,'interval')
+ assert.equal((await f.life.reflect()).skipped,'interval');f.setTime(NOW+3600001);assert.equal(f.life.status().canAutoReflect,true)
+ const r=await f.life.reflect();assert.equal(r.associationAdded,1,JSON.stringify(r));assert.equal(r.associationOnly,true);assert.equal(x.g.status().associations.active,1);assert.deepEqual(JSON.parse(readFileSync(f.life.file,'utf8')).candidates,before)
+ assert.deepEqual(f.counts(),{calls:2,insights:1,moods:0,traits:1});assert.equal(f.life.status().associationReviewPending,false);assert.equal(f.life.status().recentAssociationRun.added,1);assert.equal(f.life.status().recentPublicRun.processed,2)
+ assert.equal((await f.life.reflect({force:true})).processed,0);assert.equal(f.counts().calls,2)
+}))
+test('old relation review respects quota/disabled auto; declined pair is not retried on repeated recall',()=>setup(async x=>{
+ const f=await reviewedPairFixture(x,()=>JSON.stringify({associations:[]}),{config:{mainSessionReflectionDailyBatches:1}});f.setTime(NOW+3600001)
+ f.settings.mainSessionReflectionAuto=false;assert.equal((await f.life.reflect()).skipped,'manual');f.settings.mainSessionReflectionAuto=true
+ const r=await f.life.reflect();assert.equal(r.diagnosis,'association-no-relation');assert.equal(f.life.status().runsToday,1);assert.equal(await f.recall(),true);assert.equal(f.life.status().associationReviewPending,false);assert.equal(x.g.status().associations.active,0);assert.equal(f.counts().calls,2)
+}))
+test('old relation review rejects scope generation changes even when account returns to same value',()=>setup(async x=>{
+ const f=await reviewedPairFixture(x,(rows,ctx)=>{ctx.switchAwayAndBack();return f.proposal(rows)});const r=await f.life.reflect({force:true});assert.equal(r.skipped,'association-source-changed');assert.equal(x.g.status().associations.active,0);assert.equal(f.life.status().associationReviewPending,false);assert.deepEqual(f.counts(),{calls:2,insights:1,moods:0,traits:1})
+}))
+test('old relation malformed model output consumes existing slot without applying insights or retrying',()=>setup(async x=>{
+ const f=await reviewedPairFixture(x,()=>JSON.stringify({associations:[],memories:[{insight:'不应写入'}],mood_update:{mood:'joyful',intensity:3}}));f.setTime(NOW+3600001);const r=await f.life.reflect();assert.equal(r.skipped,'association-review-failed');assert.equal(f.life.status().failedRunsToday,1);assert.equal(f.life.status().associationReviewPending,false);assert.equal(await f.recall(),true);assert.equal(f.life.status().associationReviewPending,false);assert.equal(x.g.status().associations.active,0);assert.deepEqual(f.counts(),{calls:2,insights:1,moods:0,traits:1})
+}))
+test('ordinary new batch has priority over old relation-only review; source deletion before review cancels',()=>setup(async x=>{
+ const f=await reviewedPairFixture(x,()=>{throw Error('old model must not run')});f.life.addEvents(events.slice(1,3));f.setTime(NOW+3600001);const r=await f.life.reflect();assert.equal(r.processed,2);assert.equal(f.counts().calls,2);assert.equal(f.life.status().associationReviewPending,true)
+ const d=JSON.parse(readFileSync(x.g.file,'utf8'));d.episodes=d.episodes.filter(e=>e.key!=='assoc-test:6');writeFileSync(x.g.file,JSON.stringify(d));assert.equal(f.life.status().associationReviewPending,false);assert.equal((await f.life.reflect({force:true})).processed,0)
+}))
+test('old relation review refuses forged evidence; new ordinary batch can exhaust the shared daily limit',()=>setup(async x=>{
+ const f=await reviewedPairFixture(x,rows=>JSON.stringify({associations:[{type:'concept',candidate_ids:rows.map(r=>r.id),evidence_quotes:['从未出现的伪造文字','从未出现的伪造文字']}]}),{config:{mainSessionReflectionDailyBatches:1}})
+ f.life.addEvents(events.slice(1,3));f.setTime(NOW+3600001);assert.equal((await f.life.reflect()).processed,2);f.setTime(NOW+7200002);assert.equal(f.life.status().autoReflectBlockedReason,'daily-limit');assert.equal((await f.life.reflect()).skipped,'daily-limit');assert.equal(f.counts().calls,2)
+ const r=await f.life.reflect({force:true});assert.equal(r.associationRejected,1);assert.equal(x.g.status().associations.active,0)
+}))
