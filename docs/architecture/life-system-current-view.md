@@ -5,11 +5,8 @@
 ## 一、系统全景
 
 ```mermaid
-%% dev.26 封存恢复只重建缺失分区；普通历史救援不参与 Life 召回、授权或外发。
-%% dev.26 恢复前审查：完整核验隔离资料后只读比较来源差异及实际记忆域已知深层撤销并集；不证明新鲜度、不合并/激活、不参与 Life。
-%% dev.26 灾难救援：冷快照与可读同身份原分区候选分开抢救到隔离对象库；不激活、不合并、不写现役数据、不参与 Life；缺根旧冷恢复拒绝。历史业务可运行恢复待完成。
+%% dev.27：退役整盘冷备份产品入口；保留历史未结维护启动保护，业务备份不复制模型。
 %% dev.26 实机修复：首次基础设置不集中授予社交权限，沿用各项设置显式授权；主人私信真实任务回执由 AI 摘要并复核目标和代际后非唤醒注入。
-%% 2.8.3-dev.26：离线全分区快照、同拓扑安全修复与 V2 模型换盘；核心及现役 Life 完好才允许模型恢复。未结恢复启动冻结，不参与 Life 决策、记忆或外发；历史业务合并和实机尚待。
 %% dev.24 第七批：持久主人确认与退出重启事务；旧代际失效，独立本地记忆与显式跨类别召回；实机待验收。
 %% 2.8.3-dev.25 跨轮复访候选：主 Session 原入口不变；主人私信、已授权好友私信、后台 Life 按需回忆后，可一次选择同账号清晰公开 BV 的有界缺口。已存观察优先；私信明确时间或唯一活体事件锚点，后台可自主指定新采样位置。复用原 Life 意愿、视觉租约与共享预算；新观察独立记录，缓存不新增经历。原来信/原菜单继续，证据及账号权限代际变化拒绝陈旧续接；不增外发或持久任务。Windows/DSH 真实模型待验。
 %% dev.24 第六批：唯一模式 autonomous-life / memory-foundation；情绪唤醒及跨视频梗学习复核代际，已入场操作原结算，情绪外发原暂停不变。
@@ -85,34 +82,11 @@ flowchart TB
   storageModelPath["Whisper / Embedding / Python / 影音缓存路径经过分区身份核验"]
   %% @code storageModelPath | lib/storage-layout.mjs | export function storageDataPath
   video -.->|取帧/转写资源的生效路径| storageModelPath
-  coldSnapshot["停机完整分区快照 / 同拓扑修复（不回退业务）"]
-%% @code coldSnapshot | lib/cold-state-snapshot.mjs | export function createSplitColdSnapshot
-  coldRestoreFence["未结冷恢复：启动冻结，保留原件"]
+  coldRestoreFence["历史未结维护：禁止直接启动"]
 %% @code coldRestoreFence | lib/cold-restore-fence.mjs | export function assertColdRestoreClear
-  storageModelPath -.->|维护时读取现役分区| coldSnapshot
-  coldSnapshot -.->|恢复事务| coldRestoreFence
-  coldModelRecover["旧快照 V2 模型换盘：现役业务不回退"]
-%% @code coldModelRecover | lib/cold-state-snapshot.mjs | export function recoverSnapshotModels
-  coldSnapshot -.->|只取已知模型文件| coldModelRecover
-  coldModelRecover -.->|新目录与原子路由，异常回退| coldRestoreFence
-  disasterRescue["核心/Life 丢盘：离线隔离救援，不激活"]
-%% @code disasterRescue | lib/cold-state-snapshot.mjs | export function createDisasterRescue
-  coldSnapshot -.->|历史与原盘候选分别保留| disasterRescue
-  disasterRescue -.->|禁止作为角色启动| coldRestoreFence
-  rescueReview["离线恢复差异审查：不合并或激活"]
-%% @code rescueReview | lib/cold-state-snapshot.mjs | export function planDisasterReconciliation
-  disasterRescue -.->|完整核验、比较与撤销记录统计| rescueReview
-  coldCheckpoint["停机封存检查点：宿主引导外部见证"]
-%% @code coldCheckpoint | lib/cold-state-snapshot.mjs | export function sealSplitColdSnapshot
-  sealedRecovery["封存恢复：只重建缺失原路径"]
-%% @code sealedRecovery | lib/cold-state-snapshot.mjs | export function recoverSealedSnapshot
-  recoveryPlan["统一只读恢复预检"]
-%% @code recoveryPlan | lib/cold-state-snapshot.mjs | export function planColdRecovery
-  coldSnapshot -.->|仅完全一致且停机| coldCheckpoint
-  coldCheckpoint -.->|未结禁止启动| coldRestoreFence
-  coldCheckpoint -.->|完整见证及幸存一致| sealedRecovery
-  sealedRecovery -.->|核验与账号复核| coldRestoreFence
-  rescueReview -.->|仅审查，不激活历史| recoveryPlan
+  businessBackup["手动与每日业务备份：只读现役业务数据"]
+%% @code businessBackup | lib/data-backup.mjs | export function createBackup
+  storageModelPath -.->|读取实际数据位置| businessBackup
   subgraph reality["真实输入｜只接受可信事实，不接受外部提示当命令"]
     world["B站首页／公开视频／公开评论／主页"]
     socialInput["主人消息／私信／公开社交"]
@@ -586,9 +560,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
-%% dev.26 封存恢复只重建缺失分区；普通历史救援不参与 Life 召回、授权或外发。
-%% dev.26 恢复前审查：完整核验隔离资料后只读比较来源差异及实际记忆域已知深层撤销并集；不证明新鲜度、不合并/激活、不参与 Life。
-%% dev.26 灾难救援：冷快照与可读同身份原分区候选分开抢救到隔离对象库；不激活、不合并、不写现役数据、不参与 Life；缺根旧冷恢复拒绝。历史业务可运行恢复待完成。
+%% dev.27：业务备份不回放旧授权、外发或遗忘状态；整盘冷备份退出用户产品。
 %% dev.26 实机修复：首次基础设置不集中授予社交权限，沿用各项设置显式授权；主人私信真实任务回执由 AI 摘要并复核目标和代际后非唤醒注入。
 %% 2.8.3-dev.26：离线全分区快照、同拓扑安全修复与 V2 模型换盘；核心及现役 Life 完好才允许模型恢复。未结恢复启动冻结，不参与 Life 决策、记忆或外发；历史业务合并和实机尚待。
 %% dev.24 第七批：持久主人确认与退出重启事务；旧代际失效，独立本地记忆与显式跨类别召回；实机待验收。
@@ -850,9 +822,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
-%% dev.26 封存恢复只重建缺失分区；普通历史救援不参与 Life 召回、授权或外发。
-%% dev.26 恢复前审查：完整核验隔离资料后只读比较来源差异及实际记忆域已知深层撤销并集；不证明新鲜度、不合并/激活、不参与 Life。
-%% dev.26 灾难救援：冷快照与可读同身份原分区候选分开抢救到隔离对象库；不激活、不合并、不写现役数据、不参与 Life；缺根旧冷恢复拒绝。历史业务可运行恢复待完成。
+%% dev.27：业务备份不回放旧授权、外发或遗忘状态；整盘冷备份退出用户产品。
 %% dev.26 实机修复：首次基础设置不集中授予社交权限，沿用各项设置显式授权；主人私信真实任务回执由 AI 摘要并复核目标和代际后非唤醒注入。
 %% 2.8.3-dev.26：离线全分区快照、同拓扑安全修复与 V2 模型换盘；核心及现役 Life 完好才允许模型恢复。未结恢复启动冻结，不参与 Life 决策、记忆或外发；历史业务合并和实机尚待。
 %% dev.24 第七批：持久主人确认与退出重启事务；旧代际失效，独立本地记忆与显式跨类别召回；实机待验收。
@@ -1170,9 +1140,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
-%% dev.26 封存恢复只重建缺失分区；普通历史救援不参与 Life 召回、授权或外发。
-%% dev.26 恢复前审查：完整核验隔离资料后只读比较来源差异及实际记忆域已知深层撤销并集；不证明新鲜度、不合并/激活、不参与 Life。
-%% dev.26 灾难救援：冷快照与可读同身份原分区候选分开抢救到隔离对象库；不激活、不合并、不写现役数据、不参与 Life；缺根旧冷恢复拒绝。历史业务可运行恢复待完成。
+%% dev.27：业务备份不回放旧授权、外发或遗忘状态；整盘冷备份退出用户产品。
 %% dev.26 实机修复：首次基础设置不集中授予社交权限，沿用各项设置显式授权；主人私信真实任务回执由 AI 摘要并复核目标和代际后非唤醒注入。
 %% 2.8.3-dev.26：离线全分区快照、同拓扑安全修复与 V2 模型换盘；核心及现役 Life 完好才允许模型恢复。未结恢复启动冻结，不参与 Life 决策、记忆或外发；历史业务合并和实机尚待。
 %% dev.24 第七批：持久主人确认与退出重启事务；旧代际失效，独立本地记忆与显式跨类别召回；实机待验收。

@@ -9,9 +9,10 @@ import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import {
   createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup,
-  createBackup, validateBackup, restoreBackupFiles,
+  createBackup, validateBackup, restoreBackupFiles, planBusinessRestore, planPortableMemoryRepair, repairPortableMemoryDetails,
 } from '../lib/data-backup.mjs'
 import { saveBackupJson } from '../lib/backup-directory.mjs'
+import {createLifeMemoryDetailStore} from '../lib/life-memory-details.mjs'
 import { readJsonRequest } from '../lib/http-json-body.mjs'
 
 const temp=()=>mkdtempSync(join(tmpdir(),'dafeiyu-dual-restore-'))
@@ -222,4 +223,55 @@ test('业务备份不能携带私密社交候选；专项备份可独立保留�
     restoreLifeMemoryBackup(dst,memory)
     assert.equal(readFileSync(join(dst,'life-memory/private-insights.json'),'utf8'),memory.files['life-memory/private-insights.json'])
   }finally{for(const dir of [src,dst])rmSync(dir,{recursive:true,force:true})}
+})
+
+
+test('用户业务恢复保留现有授权、会话绑定与任务账本，只应用明确安全的设置和规则',()=>{
+  const root=temp(),old=temp()
+  try{
+    put(root,'owner-todos.json','{"version":1,"items":[]}');put(old,'owner-todos.json','{"version":1,"items":[]}')
+    put(root,'duty.md','现行用户章程');put(old,'duty.md','旧用户章程')
+    const current=createBackup({root,config:{personaPrompt:'现有人格',ownerDmActionsEnabled:false,mainSessionId:'current',masterEnabled:false}})
+    const previous=createBackup({root:old,config:{personaPrompt:'历史人格',ownerDmActionsEnabled:true,mainSessionId:'old',masterEnabled:true}})
+    const plan=planBusinessRestore(current,previous)
+    assert.deepEqual(plan.patch,{personaPrompt:'历史人格'});assert.equal(plan.retainedSettings,3)
+    assert.deepEqual(plan.names,['duty.md']);assert.deepEqual(plan.restore.sqlite,{})
+    restoreBackupFiles(root,plan.restore,{reconcileDetails:false})
+    assert.equal(readFileSync(join(root,'duty.md'),'utf8'),'旧用户章程')
+    assert.equal(readFileSync(join(root,'owner-todos.json'),'utf8'),'{"version":1,"items":[]}')
+    restoreBackupFiles(root,plan.rollback,{reconcileDetails:false})
+    assert.equal(readFileSync(join(root,'duty.md'),'utf8'),'现行用户章程')
+    put(old,'owner-todos.json','{"version":1,"items":[{"id":"old","type":"search_videos","status":"open","ownerAuthorized":true}]}')
+    const diverged=planBusinessRestore(current,createBackup({root:old,config:{}}));assert.equal(diverged.retainedRecords,1);assert.ok(!Object.hasOwn(diverged.restore.files,'owner-todos.json'))
+    assert.equal(readFileSync(join(root,'owner-todos.json'),'utf8'),'{"version":1,"items":[]}')
+  }finally{for(const dir of [root,old])rmSync(dir,{recursive:true,force:true})}
+})
+test('现役记忆恢复保留历史差异，核对一致时不重写记忆',()=>{
+  const root=temp(),old=temp()
+  try{
+    makeLifeFixture(root);makeLifeFixture(old)
+    const current=createLifeMemoryBackup(root)
+    assert.deepEqual(planPortableMemoryRepair(current,createLifeMemoryBackup(old)),{repairs:[],retainedRecords:0,requiredRevocations:[]})
+    put(old,'life-memory/episodic.json',{version:1,episodes:[],archiveKeys:[],updatedAt:0})
+    assert.deepEqual(planPortableMemoryRepair(current,createLifeMemoryBackup(old)),{repairs:[],retainedRecords:1,requiredRevocations:[]})
+    assert.equal(createLifeMemoryBackup(root).files['life-memory/episodic.json'],current.files['life-memory/episodic.json'])
+  }finally{for(const dir of [root,old])rmSync(dir,{recursive:true,force:true})}
+})
+
+
+test('仅补回仍清晰且当前未撤销的同源缺失细节；已遗忘或缺账本绝不激活',()=>{
+  const root=temp()
+  try{
+    const ep={id:'e-'+'a'.repeat(18),kind:'watch',stage:'clear',visibility:'public-event',accountTag:'a'.repeat(16),at:1772450000000,bvid:'BV1pXHK6mE6z',text:'真实画面概况'}
+    put(root,'life-memory/episodic.json',{version:1,episodes:[ep],archiveKeys:[],updatedAt:ep.at})
+    put(root,'detail-protection/revocations-v1.json',{version:1,ids:[]})
+    const store=createLifeMemoryDetailStore({dataDir:root})
+    store.write({episode:ep,verified:true,fragments:[{fragmentId:'frame-001',type:'observed-scene',certainty:'model-observation',sourceRef:'receipt-0001',timeAnchorMs:[0,1000],content:'真实画面'}]})
+    const older=createLifeMemoryBackup(root),file=join(root,'life-memory','details','v1',ep.accountTag,ep.id+'.json')
+    assert.ok(existsSync(file));rmSync(file)
+    let plan=planPortableMemoryRepair(createLifeMemoryBackup(root),older);assert.equal(plan.repairs.length,1)
+    assert.equal(repairPortableMemoryDetails(root,plan),1);assert.equal(store.read(ep).ok,true)
+    store.purge([ep.id]);plan=planPortableMemoryRepair(createLifeMemoryBackup(root),older);assert.equal(plan.repairs.length,0);assert.equal(store.read(ep).ok,false)
+    rmSync(join(root,'detail-protection','revocations-v1.json'));assert.equal(planPortableMemoryRepair(createLifeMemoryBackup(root),older).repairs.length,0)
+  }finally{rmSync(root,{recursive:true,force:true})}
 })

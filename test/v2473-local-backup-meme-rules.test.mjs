@@ -51,7 +51,7 @@ test('备份按钮只写入指定目录、无浏览器下载，预览发送编�
   const j=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   assert.match(h,/>确认备份目录</)
-  assert.match(h,/>备份全部业务数据</)
+  assert.match(h,/>立即备份</)
   assert.doesNotMatch(h,/下载完整数据备份|保存并检测目录|并可另行下载一份/)
   const backupHandler=j.slice(j.indexOf("$('backup-export').addEventListener"),j.indexOf("$('backup-import-file').addEventListener"))
   assert.doesNotMatch(backupHandler,/Blob|createObjectURL|link\.click/)

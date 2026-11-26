@@ -55,7 +55,7 @@ import {resolveExistingDmContact} from './lib/manual-dm-contact.mjs'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
 import { randomUUID, createHash, randomBytes } from 'node:crypto'
 import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
-import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup } from './lib/data-backup.mjs'
+import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, planBusinessRestore, planPortableMemoryRepair, repairPortableMemoryDetails, createLifeMemoryBackup, inspectLifeMemoryBackup } from './lib/data-backup.mjs'
 import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import {listBackupFiles,inspectBackupInDirectory,deleteBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
@@ -9155,7 +9155,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const action = path.split('/').pop()
       // Backup browsing returns memory texts and file inventory; the local
       // desktop session is the only authorized reader of these new endpoints.
-      if(['preview','list','auto','delete'].includes(action)&&
+      if(['preview','list','auto','delete','export','restore','inspect','location'].includes(action)&&
          !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(String(req.socket?.remoteAddress||'')))
         return sendJson(res,403,{ok:false,error:'备份内容仅允许本机管理中心查看'})
       try {
@@ -9213,46 +9213,39 @@ logger:{warn:m=>log('社交意图：'+m)}
           return sendJson(res,400,{ok:false,error:'第一代旧备份无原始完整性签名及可靠角色身份，需单独确认后恢复'})
         if (!summary.legacyUnscoped && body.confirm !== 'RESTORE_VERIFIED_DATA')
           return sendJson(res,400,{ok:false,error:'未完成恢复前人工确认'})
-        const patch = Object.fromEntries(Object.keys(DEFAULTS).filter(k=>k!=='backupDirectory'&&Object.hasOwn(data.config,k)).map(k=>[k,data.config[k]]))
-        if (Object.keys(patch).length < 10) return sendJson(res,400,{ok:false,error:'设置项不足，不能执行整包恢复'})
-        // User-chosen destination: no system Temp fallback, never overwrite prior snapshots.
+        // A historical portable backup cannot attest to the latest grants,
+        // completed tasks, forgotten memory or platform receipts. Check before
+        // writing any file; only explicitly editable settings/rules may change.
         refreshCfg()
         const folder = requireBackupDirectory(cfg.backupDirectory)
         const safeguard = await snapshotBusinessBackup()
+        const plan=planBusinessRestore(safeguard,data)
+        const patch=Object.fromEntries(Object.keys(DEFAULTS).filter(k=>Object.hasOwn(plan.patch,k)).map(k=>[k,plan.patch[k]]))
+        if(!plan.names.length&&!Object.keys(patch).length)return sendJson(res,200,{ok:true,restoredFiles:0,restoredDbs:0,retainedSettings:plan.retainedSettings,retainedRecords:plan.retainedRecords,unchanged:true,restartRequired:false})
         const safeguardPath = saveBackupJson(folder, safeguard, 'pre-restore')
-        const backupName = safeguardPath.split(/[\\/]/).at(-1)
-        // Full restore is a three-part operation. Keep the verified pre-restore
-        // snapshot and make a best-effort rollback across files, SQLite and
-        // configuration when any of the steps fails. Files alone are atomic.
-        let restoredDbs=0,restoredFiles=0,configTouched=false
+        let restoredFiles=0,configTouched=false
         try {
-          restoredDbs=(await runSqlite('restore',{sqlite:data.sqlite})).count
-          restoredFiles=restoreBackupFiles(stateDir,data)
-          configTouched=true
-          const {host}=await persistCfg(patch)
+          restoredFiles=restoreBackupFiles(stateDir,plan.restore,{reconcileDetails:false})
+          configTouched=Object.keys(patch).length>0
+          const host=configTouched?(await persistCfg(patch)).host:{ok:true}
           refreshCfg()
-          log(`数据备份恢复成功：${restoredFiles}个文件 / ${restoredDbs}个数据库；已有数据安全快照：${backupName}`)
-          return sendJson(res,200,{ok:true,restoredFiles,restoredDbs,safeguardPath,hostSynced:host.ok,restartRequired:true})
+          return sendJson(res,200,{ok:true,restoredFiles,restoredDbs:0,retainedSettings:plan.retainedSettings,retainedRecords:plan.retainedRecords,safeguardPath,hostSynced:host.ok,restartRequired:true})
         } catch (restoreError) {
           const rollbackErrors=[]
           if(restoredFiles){
             try{
-              restoreBackupFiles(stateDir,safeguard)
-              // Remove files introduced solely by the failed restore. Never
-              // follow symlinks; leave other unrelated files untouched.
-              for(const name of Object.keys(data.files))if(!Object.hasOwn(safeguard.files,name)){
+              restoreBackupFiles(stateDir,plan.rollback,{reconcileDetails:false})
+              for(const name of plan.names)if(!Object.hasOwn(plan.rollback.files,name)){
                 const file=storageDataPath(stateDir,...name.split('/'))
                 if(existsSync(file)&&lstatSync(file).isFile()&&!lstatSync(file).isSymbolicLink())rmSync(file)
               }
             }catch(e){rollbackErrors.push('文件：'+String(e?.message||e).slice(0,100))}
           }
-          try{await runSqlite('restore',{sqlite:safeguard.sqlite})}
-          catch(e){rollbackErrors.push('数据库：'+String(e?.message||e).slice(0,100))}
           if(configTouched){
-            try{await persistCfg(Object.fromEntries(Object.keys(patch).filter(k=>Object.hasOwn(safeguard.config,k)).map(k=>[k,safeguard.config[k]])))}
+            try{await persistCfg(Object.fromEntries(Object.keys(patch).map(k=>[k,safeguard.config[k]])))}
             catch(e){rollbackErrors.push('设置：'+String(e?.message||e).slice(0,100))}
           }
-          throw Error('恢复失败；'+(rollbackErrors.length?'部分回滚未完成，请从恢复前快照手动恢复：'+rollbackErrors.join('；'):'已尝试恢复至先前快照')+'；原始错误：'+String(restoreError?.message||restoreError).slice(0,100))
+          throw Error('恢复失败；'+(rollbackErrors.length?'部分回滚未完成，恢复前备份已保留：'+rollbackErrors.join('；'):'已尝试恢复操作前的设置与文件')+'；原始错误：'+String(restoreError?.message||restoreError).slice(0,100))
         }
       } catch(e) {return sendJson(res,400,{ok:false,error:'数据备份操作失败：'+String(e?.message||e).slice(0,300)})}
     }
@@ -11003,6 +10996,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(origin&&(!host||![`http://${host}`,`https://${host}`].includes(origin)))return sendJson(res,403,{ok:false,error:'仅允许管理中心同源访问记忆备份接口'})
       if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝来自其他网站的记忆备份请求'})
       const action=path.split('/').pop()
+      if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(String(req.socket?.remoteAddress||'')))return sendJson(res,403,{ok:false,error:'记忆备份仅允许本机管理中心操作'})
       try{
         refreshCfg()
         if(action==='export'){
@@ -11015,11 +11009,12 @@ logger:{warn:m=>log('社交意图：'+m)}
         const summary=inspectLifeMemoryBackup(backup)
         if(action==='inspect')return sendJson(res,200,{ok:true,summary})
         if(body?.confirm!=='RESTORE_DAFEIYU_MEMORY')return sendJson(res,400,{ok:false,error:'未完成记忆恢复前人工确认'})
-        const folder=requireBackupDirectory(cfg.backupDirectory)
-        const safeguard=createLifeMemoryBackup(stateDir),safeguardPath=saveBackupJson(folder,safeguard,'pre-memory-restore')
-        const restoredFiles=restoreLifeMemoryBackup(stateDir,backup)
-        log('大肥鱼双层人生记忆恢复成功；需要重启；恢复前快照：'+safeguardPath)
-        return sendJson(res,200,{ok:true,summary:{...summary,restoredFiles},safeguardPath,restartRequired:true})
+        const safeguard=createLifeMemoryBackup(stateDir)
+        const plan=planPortableMemoryRepair(safeguard,backup)
+        if(!plan.repairs.length)return sendJson(res,200,{ok:true,summary:{...summary,restoredFiles:0},retainedRecords:plan.retainedRecords,unchanged:true,restartRequired:false})
+        const folder=requireBackupDirectory(cfg.backupDirectory),safeguardPath=saveBackupJson(folder,safeguard,'pre-memory-restore')
+        const restoredFiles=repairPortableMemoryDetails(stateDir,plan)
+        return sendJson(res,200,{ok:true,summary:{...summary,restoredFiles},retainedRecords:plan.retainedRecords+plan.repairs.length-restoredFiles,safeguardPath,unchanged:restoredFiles===0,restartRequired:restoredFiles>0})
       }catch(e){return sendJson(res,400,{ok:false,error:'长期记忆备份操作失败：'+String(e?.message||e).slice(0,300)})}
     }
 

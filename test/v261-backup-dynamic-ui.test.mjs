@@ -80,7 +80,7 @@ test('伪造/混用动态与 BV 标识、错误来源类型仍拒绝备份',()=>
 test('备份页面主操作直接可见，专项和危险恢复默认折叠且保留现有按钮事件 ID',()=>{
   const html=readFileSync(fileURLToPath(new URL('../lib/management-console.html',import.meta.url)),'utf8')
   const section=html.slice(html.indexOf('<section id="panel-backup" hidden>'),html.indexOf('<section id="panel-home" hidden>'))
-  assert.match(section,/id="backup-export"[^>]*>备份全部业务数据/)
+  assert.match(section,/id="backup-export"[^>]*>立即备份/)
   assert.match(section,/id="backup-directory"/)
   assert.match(section,/<details class="backup-fold" id="backup-memory-tools">/)
   assert.match(section,/<details class="backup-fold backup-restore-fold" id="backup-recovery-tools">/)

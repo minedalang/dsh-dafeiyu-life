@@ -26,3 +26,12 @@ test('legacy partition picker, undo, python migration and stale-copy cleanup no 
   assert.doesNotMatch(html,new RegExp(`id="${word}"`),word)
  assert.doesNotMatch(ui,/request\('\/storage\/(verify-life-memory|schedule-life-cleanup|schedule-external-life-cleanup)'/)
 })
+
+
+test('普通用户备份不暴露冷快照命令，npm 不分发旧冷快照工具',()=>{
+ const section=html.slice(html.indexOf('<section id="panel-backup" hidden>'),html.indexOf('<section id="panel-home" hidden>'))
+ assert.doesNotMatch(section,/plan-recovery|dev4-cold-state-backup|停机封存|分盘完整冷备份|cold-guide/)
+ assert.doesNotMatch(ui,/cold-guide|plan-recovery/)
+ const pkg=JSON.parse(source('package.json'));assert.ok(!pkg.files.includes('tools/dev4-cold-state-backup.mjs'));assert.ok(pkg.files.includes('!lib/cold-state-snapshot.mjs'))
+ assert.match(html,/#fs-wizard-content #headless-model-sync-panel \.headless-provider-stack\{min-height:290px;max-height:720px;overflow:auto\}/)
+})

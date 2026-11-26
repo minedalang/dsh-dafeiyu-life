@@ -670,9 +670,6 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-backup .backup-path-row input{flex:1;min-width:180px}
 #panel-backup .backup-path-row button{background:#325bb8;border-color:#325bb8;color:#fff;font-weight:650;min-height:42px}
 #panel-backup .backup-path-row button:hover{background:#234b9f}
-#panel-backup .cold-guide-fields{display:grid;gap:9px;margin:12px 0;min-width:0}
-#panel-backup .cold-guide-fields label{display:grid;gap:4px;min-width:0;font-size:13px}
-#panel-backup .cold-guide-fields input,#panel-backup #backup-cold-guide-command{box-sizing:border-box;width:100%;min-width:0;max-width:100%}
 #panel-backup .backup-status{overflow-wrap:anywhere;margin:8px 0 0}
 #panel-backup .backup-primary-action{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:18px;border:1px solid #c3e7d8;border-radius:16px;background:linear-gradient(110deg,#e8faf2,#e6f6ff);padding:17px}
 #panel-backup .backup-primary-action strong{display:block;font-size:16px;color:#176c5d}
@@ -2654,7 +2651,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   <div id="storage-retained-model-vision-review" hidden><p class="storage-alert">请确认本轮图片识别结果是否正确。</p><pre id="storage-retained-model-vision-answer" class="storage-command"></pre><button type="button" id="storage-retained-model-vision-accept">识图正确</button><button type="button" id="storage-retained-model-vision-reject">识图错误</button></div>
   <div id="storage-retained-model-check-result" class="storage-status" data-state="neutral" role="status" aria-live="polite">尚未执行实测。</div>
  </section>
- <p class="storage-footnote">Life 记忆、遗忘保护与备份继续使用各自生效目录，不纳入大型模型迁移。模型旧副本不会被程序自动删除。Ollama 模型由 Ollama 管理；跨盘备份请使用下方独立备份功能。</p>
+ <p class="storage-footnote">Life 记忆、遗忘保护与备份继续使用各自生效目录，不纳入大型模型迁移。模型旧副本不会被程序自动删除。Ollama 模型由 Ollama 管理，丢失后可重新下载。</p>
 </div>
 <div class="backup-layout">
   <div class="settings-section backup-main-card">
@@ -2664,12 +2661,12 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <div class="backup-path-row"><input id="backup-directory" type="text" placeholder="请选择本机备份目录" autocomplete="off"><button id="backup-directory-save" type="button">确认备份目录</button></div>
     <p id="backup-directory-status" class="muted backup-status" role="status" aria-live="polite">尚未设置备份目录</p>
     <div class="backup-primary-action">
-      <div><strong>✨ 备份鱼鱼的生活数据</strong><span>包含设置、业务账本、人生记忆、成长、梗知识；包含表情包检索规则，使用 SHA-256 校验。</span></div>
-      <button id="backup-export" class="primary" type="button">备份全部业务数据</button>
+      <div><strong>✨ 完整业务备份</strong><span>保存日常设置、公开经历、成长、梗知识和业务记录。不复制模型或运行环境。</span></div>
+      <button id="backup-export" class="primary" type="button">立即备份</button>
     </div>
     <p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
     <section class="backup-auto-section" aria-labelledby="backup-auto-heading">
-      <div class="backup-auto-heading"><div><h4 id="backup-auto-heading">📆 每日自动备份</h4><p class="muted">默认每天生成 1 份便携业务备份，自动保留最近 2 天；业务备份使用压缩 JSON 减少空间，手动备份与恢复前快照不参与自动清理。</p></div><label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="backup-auto-enabled" checked> 开启自动备份</label></div>
+      <div class="backup-auto-heading"><div><h4 id="backup-auto-heading">📆 每日自动备份</h4><p class="muted">每天保存一份业务备份，保留最近两天。手动备份和恢复前备份不会自动删除。</p></div><label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="backup-auto-enabled" checked> 开启自动备份</label></div>
       <p id="backup-auto-status" class="muted" role="status">正在读取自动备份状态…</p>
     </section>
     <section class="backup-library-section" aria-label="全部备份文件">
@@ -2680,34 +2677,17 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
       </div></div>
       <div class="toolbar"><button id="backup-list-refresh" type="button">刷新备份清单</button></div>
       <div class="backup-browser-grid"><div id="backup-list" class="backup-file-list" role="list" aria-label="可查看的本地备份文件"></div>
-        <div class="backup-preview-panel"><strong>🧠 备份内容预览</strong><p id="backup-preview-status" class="muted" role="status">选择左侧文件后将校验 SHA-256，并展示业务分类和记忆条目摘要，不会修改当前记忆。</p><div id="backup-preview-memory" class="backup-memory-list"></div></div></div>
+        <div class="backup-preview-panel"><strong>🧠 备份内容预览</strong><p id="backup-preview-status" class="muted" role="status">选择文件查看备份内容，不会修改当前记忆。</p><div id="backup-preview-memory" class="backup-memory-list"></div></div></div>
     </section>
     <section class="backup-auto-footnote" aria-label="自动备份说明">
-      <p class="backup-footnote">自动备份使用现有便携业务格式，不含登录凭证和专属私密记忆。若要完整保存仅管理员可见的生命经历，仍需使用下方「人生记忆专项备份」。备份文件有历史信息，不代表当前 Life 可重新回忆已遗忘内容。</p>
+      <p class="backup-footnote">每日自动备份与手动业务备份保存相同内容，默认只保留最近两天；手动备份不会自动删除。</p>
     </section>
-    <p class="backup-footnote">分盘后仍从当前生效的 Life/业务数据目录导出，不会退回 C 盘历史副本。便携业务备份不包含 B站 Cookie、登录凭证、部分私密账本、短期时间线、密钥、缓存、日志和表情包图片本体；私密经历请使用下方人生记忆专项备份，表情包图片请单独导出。两种 JSON 备份均不能替代完整冷快照。</p>
-    <p class="backup-footnote" id="backup-cold-offline-note"><strong>分盘完整冷备份（开发候选）</strong>：跨版本迁移前应独立保存全部现役分区。完全退出 DSH 后，可在源码目录使用 <code>tools/dev4-cold-state-backup.mjs</code> 的 <code>backup-full</code> 与 <code>verify-full</code> 命令，详见 dev.26 冷备份说明。当前不可重建业务状态变化时拒绝完整历史恢复。完整快照包含账号凭证和私密数据，严禁上传分享。</p>
-    <p class="backup-footnote" id="backup-model-recovery-note"><strong>模型盘损坏或更换</strong>：核心与现役 Life 完好时，完全退出 DSH，使用 <code>plan-model-recovery</code> 预检及 <code>recover-models</code> 恢复已知 V2 模型到新目录；不覆盖当前记忆或权限。核心/Life 整盘丢失时不能直接激活旧业务快照。</p>
-    <p class="backup-footnote" id="backup-disaster-rescue-note"><strong>核心盘或记忆盘损坏</strong>：请先完全退出 DSH，使用 <code>plan-disaster-rescue</code> 预检、<code>rescue-disaster</code> 抢救历史快照与尚可读取的核心/记忆分区，再用 <code>verify-rescue</code> 校验新隔离目录。救援资料不是可启动的角色，保留两种来源，不自动合并或恢复旧授权、记忆；无有效停机封存凭据时不能激活历史数据。救援目录同样包含私密数据，请勿上传。<br><strong>恢复前审查</strong>：使用 <code>plan-rescue-merge --to 隔离目录</code> 核验两份来源的文件差异、缺项及已知深层遗忘记录数量；不输出私人正文，不认定候选为最新，不合并或激活。</p>
-    <details class="backup-fold" id="backup-cold-guide" style="margin-top:14px">
-      <summary><span class="backup-card-icon backup-icon-blue">🛟</span><span class="backup-summary-text"><strong>完整冷备份与恢复向导（停机操作）</strong><small>根据真实分区、备份与封存状态选择恢复路径</small></span><span class="backup-chevron" aria-hidden="true">⌄</span></summary>
-      <div class="backup-fold-body">
-        <p class="muted">先生成只读预检命令，再完全退出 DSH，在源码目录的 PowerShell 中执行。向导不会在线执行备份、恢复或改动授权；即使管理中心无法启动，也可直接使用离线工具。</p>
-        <div class="cold-guide-fields">
-          <label>原生效核心运行目录<input id="backup-cold-guide-root" type="text" autocomplete="off" placeholder="例如 C:\Users\你\.dsh\bili-duty"></label>
-          <label>完整冷快照目录<input id="backup-cold-guide-snapshot" type="text" autocomplete="off" placeholder="例如 E:\大肥鱼完整备份"></label>
-          <label>新模型或隔离救援目录（可选）<input id="backup-cold-guide-target" type="text" autocomplete="off" placeholder="必须尚不存在"></label>
-        </div>
-        <div class="toolbar"><button id="backup-cold-guide-build" type="button">生成预检命令</button><button id="backup-cold-guide-copy" type="button" disabled>复制命令</button></div>
-        <textarea id="backup-cold-guide-command" readonly rows="3" aria-label="只读预检命令"></textarea>
-        <p class="muted backup-status" id="backup-cold-guide-status" role="status" aria-live="polite">填写原核心和快照目录；不会上传路径。</p>
-        <p class="backup-footnote"><strong>维护前封存：</strong>停机完成 <code>backup-full</code> 后，<code>seal-full</code> 核验全量现役文件并冻结正常启动。磁盘故障后 <code>recover-sealed</code> 只重建缺失原路径，保留幸存分区；无故障使用 <code>release-seal</code> 解除。解除后普通历史快照不能再用于封存恢复。原宿主封存凭据必须仍在，不能复制旧凭据或手动删除冻结。详见 dev.26 冷备份说明。</p>
-      </div>
-    </details>
+    <p class="backup-footnote">自动备份鱼鱼当前使用的业务数据，不复制可重新安装的模型、程序或临时文件。登录信息不随备份转移。</p>
+    <p class="backup-footnote">私密经历可使用下方「人生记忆」单独保存，表情包图片可在「表情包管理」导出。备份中可能含个人信息，请保存在自己的电脑上，不要公开分享。</p>
   </div>
   <div class="backup-more-grid">
     <details class="backup-fold" id="backup-memory-tools">
-      <summary><span class="backup-card-icon backup-icon-purple">🧠</span><span class="backup-summary-text"><strong>人生记忆专项备份</strong><small>仅需单独保存完整记忆时使用</small></span><span class="backup-chevron" aria-hidden="true">⌄</span></summary>
+      <summary><span class="backup-card-icon backup-icon-purple">🧠</span><span class="backup-summary-text"><strong>人生记忆</strong><small>仅需单独保存完整记忆时使用</small></span><span class="backup-chevron" aria-hidden="true">⌄</span></summary>
       <div class="backup-fold-body">
         <p class="muted">单独保存永久真实档案、可衰减经历、反思候选及长期认识，可能包含仅管理员可见的敏感历史。永久档案不会因此变成日常 AI 可读取的记忆。</p>
         <button id="memory-backup-export" class="backup-accent-btn" type="button">单独备份人生记忆</button>
@@ -2722,22 +2702,22 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <details class="backup-fold backup-restore-fold" id="backup-recovery-tools">
       <summary><span class="backup-card-icon backup-icon-amber">🔄</span><span class="backup-summary-text"><strong>从备份恢复</strong><small>不常用 · 需要确认与重启</small></span><span class="backup-chevron" aria-hidden="true">⌄</span></summary>
       <div class="backup-fold-body">
-        <p class="backup-warning">⚠️ 恢复会更改现有数据，请先暂停后台任务。系统会先在已配置的目录保存当前数据安全快照，验证校验值后才允许恢复；完成后必须完全重启 DSH。</p>
+        <p class="backup-warning">⚠️ 恢复前请暂停自主生活。程序会检查备份，只有安全的改动才会保存；如有改动，完成后请重启 DSH。</p>
         <div class="backup-recovery-choice">
-          <h4>恢复全部业务数据</h4>
-          <p class="muted">覆盖选定备份中包含的设置、账本、数据库及相关记忆文件。支持兼容的 schema 2 JSON 或 gzip 压缩备份。</p>
-          <label for="backup-import-file">选择完整备份文件</label>
+          <h4>恢复业务数据</h4>
+          <p class="muted">恢复可安全找回的设置和用户规则。与现有数据冲突的经历、权限和任务会保留原状。</p>
+          <label for="backup-import-file">选择业务备份文件</label>
           <input id="backup-import-file" type="file" accept=".json,.gz,.json.gz,application/json,application/gzip" aria-label="选择大肥鱼数据备份文件">
           <p id="backup-inspect" class="muted backup-status" role="status" aria-live="polite">尚未选择文件</p>
-          <button id="backup-restore" class="danger backup-danger-action" type="button" disabled>确认恢复全部数据</button>
+          <button id="backup-restore" class="danger backup-danger-action" type="button" disabled>确认恢复</button>
         </div>
         <div class="backup-recovery-choice">
-          <h4>仅恢复人生记忆</h4>
-          <p class="muted">不修改普通设置或登录凭证；恢复前会备份当前完整人生记忆。</p>
+          <h4>恢复人生记忆</h4>
+          <p class="muted">如果鱼鱼仍记得这段经历，可以补回核验通过的缺失细节。不同的历史记忆不会直接覆盖现有记忆。</p>
           <label for="memory-backup-import-file">选择人生记忆备份文件</label>
           <input id="memory-backup-import-file" type="file" accept=".json,application/json" aria-label="选择大肥鱼长期记忆备份文件">
           <p id="memory-backup-inspect" class="muted backup-status" role="status" aria-live="polite">尚未选择记忆备份</p>
-          <button id="memory-backup-restore" class="danger backup-danger-action" type="button" disabled>确认恢复人生记忆</button>
+          <button id="memory-backup-restore" class="danger backup-danger-action" type="button" disabled>恢复可找回的记忆</button>
         </div>
       </div>
     </details>
@@ -4192,7 +4172,7 @@ button.primary:not(:disabled):hover{filter:brightness(1.1)}button:disabled{opaci
 .wizard-footer button{min-height:42px}.wizard-footer #fs-wizard-exit{margin-left:auto}
 #fs-wizard-feedback{font-size:13px;color:var(--muted);margin:10px 0 0}
 #fs-wizard-content .fs-step{width:100%}#fs-wizard-content .video-aux-card{padding:14px;border:1px solid var(--stroke);border-radius:12px}
-#fs-wizard-content #headless-model-sync-panel .headless-provider-stack{max-height:360px;overflow:auto}
+#fs-wizard-content #headless-model-sync-panel .headless-provider-stack{min-height:290px;max-height:720px;overflow:auto}
 #fs-wizard-content #headless-journey{margin-bottom:12px}
 #fs-wizard-content #memory-model-route>summary,#fs-wizard-content #models-vision-settings>summary{display:none}
 #fs-wizard-content .vision-settings-shell{min-width:0}
