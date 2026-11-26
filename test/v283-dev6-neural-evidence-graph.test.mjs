@@ -62,3 +62,16 @@ test('已有评论模型回执绑定准确事件，无额外模型调用，不�
  x.reopen();assert.equal(proof(x).emotions.length,1);x.clock(NOW+500*DAY);assert.equal(proof(x).emotions.length,0);assert.equal(projection(x,[],[]).emotionCount,0)
  }finally{batch.stop()}
 }))
+
+test('emotion relation needs two independent live same-mood comment receipts and an explicit reflected proposal; removal revokes only that edge',()=>setup(async x=>{
+ const a=social(),b={...social('4321'),key:`social:4321:${bv(2)}:5679`,bvid:bv(2),text:'今天的这段交流让我想起有趣的作品'};x.g.recordEvents([a,b]);const batchId=h('emotion-pair');
+ const sources=()=>[a,b].map(e=>{const row=x.g.reflectionEvidence([e.key])[0];return {...row,quote:e.text,...(row.associationEmotion?{emotion:row.associationEmotion}:{})}})
+ const record=(type='emotion',s=sources(),id=batchId)=>x.g.recordAssociations({accountTag:A,proposals:[{type,sources:s}],batchId:id})
+ assert.equal(record().rejected,1);assert.equal(x.g.recordEpisodeEmotion({accountTag:A,eventKey:a.key,mood:'joyful',intensity:2,at:NOW}).ok,true);assert.equal(record().rejected,1)
+ assert.equal(x.g.recordEpisodeEmotion({accountTag:A,eventKey:b.key,mood:'joyful',intensity:1,at:NOW}).ok,true)
+ assert.equal(record('emotion',sources().map(({emotion,...e})=>e)).rejected,1)
+ assert.equal(record('emotion',sources().map(e=>({...e,emotion:{...e.emotion,mood:'sad'}}))).rejected,1)
+ assert.equal(record('emotion').added,1);assert.equal(record('concept',sources(),h('normal-pair')).added,1)
+ assert.equal(projection(x,[],[]).associationTypes.emotion,1);x.reopen();assert.equal(projection(x,[],[]).associationTypes.emotion,1)
+ const doc=JSON.parse(readFileSync(x.g.file,'utf8'));delete doc.episodes.find(e=>e.key===b.key).emotionObservation;writeFileSync(x.g.file,JSON.stringify(doc));const p=projection(x,[],[]);assert.equal(p.associationTypes.emotion,0);assert.equal(p.associationTypes.concept,1)
+}))

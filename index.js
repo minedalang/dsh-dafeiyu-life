@@ -7108,6 +7108,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return embeddingIndex.rankRelatedEpisodesWithQuery(rows(seeds),rows(history),{limit:12,minScore:.30})
     },
     getAccountTag:trustedLifeAccountTag,
+    getAccountEpoch:()=>accountBinding.generation(),
     getPublicEpisodeContext:()=>lifeSubagentHandoff({agent:'reflection',episodes:universalLifeEpisodes}),
     getPersonalityEnabled:()=>{try{return personalityEvolution?.status().enabled===true}catch{return false}},
     onPersonalityProposals:(proposals,batch)=>personalityEvolution?.applyProposals(proposals,batch),

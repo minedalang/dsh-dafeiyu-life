@@ -51,9 +51,9 @@ test('actual reflection reuses one model call; optional associations survive zer
  let calls=0;const life=createLifeReflection({dataDir:x.dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:x.g,now:()=>NOW,commitMemories:()=>({added:0,rows:[]}),invokeModel:async prompt=>{calls++;assert.match(prompt,/可选关联记忆/);const rows=JSON.parse(prompt.split('<candidate_data>').at(-1).split('</candidate_data>')[0]);const a=rows.find(r=>r.text.includes(events[0].title)),b=rows.find(r=>r.text.includes(events[1].title));assert.ok(a.associationTime&&b.associationTime);return JSON.stringify({memories:[],associations:[{type:'concept',candidate_ids:[a.id,b.id],evidence_quotes:[events[0].title,events[1].title]}]})},logger:{warn(){}}})
  life.addEvents(events.slice(0,2));const result=await life.reflect({force:true});assert.equal(result.ok,true,JSON.stringify(result));assert.equal(result.created,0);assert.equal(result.associationAdded,1);assert.equal(calls,1);assert.equal(x.g.status().associations.active,1);assert.equal(life.status().recentPublicRun.associationAdded,1)
 }))
-test('reflection source changes during model call reject association independently of ordinary reflection',()=>setup(async x=>{
+test('reflection source changes during model call reject the entire stale batch before any writes',()=>setup(async x=>{
  const life=createLifeReflection({dataDir:x.dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:x.g,now:()=>NOW,commitMemories:()=>({added:0,rows:[]}),invokeModel:async prompt=>{const rows=JSON.parse(prompt.split('<candidate_data>').at(-1).split('</candidate_data>')[0]);const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.key!=='assoc-test:2');writeFileSync(x.g.file,JSON.stringify(doc));return JSON.stringify({memories:[],associations:[{type:'concept',candidate_ids:rows.map(r=>r.id),evidence_quotes:[events[0].title,events[1].title]}]})},logger:{warn(){}}})
- life.addEvents(events.slice(0,2));const r=await life.reflect({force:true});assert.equal(r.ok,true);assert.equal(r.associationAdded,0);assert.equal(x.g.status().associations.active,0)
+ life.addEvents(events.slice(0,2));const r=await life.reflect({force:true});assert.equal(r.ok,false);assert.equal(r.failureCode,'reflection-validation-failed');assert.equal(life.status().pending,2);assert.equal(x.g.status().associations.active,0)
 }))
 test('unified visual retrieval uses persisted relation only in association-enabled scene and revalidates proof',()=>setup(async x=>{
  assert.equal(add(x.g,[propose(x.g,1,3,'contrast')]).added,1)
@@ -199,6 +199,7 @@ test('real immediate second search yields transient dashed path; no persistent e
  const projection=publicVisualAssociationContext(rows);assert.equal(projection[1].associationBasis,undefined);assert.ok(!Object.hasOwn(projection[1],'immediateProof'))
  let clock=NOW,epoch=1;const tracker=createNeuralActivationTracker({getAccountTag:()=>A,getEpoch:()=>epoch,validateRecall:o=>retriever.validateContextualVisualRecall(o),validatePath:o=>x.g.validateAssociationPath(o),validateImmediate:o=>retriever.validateImmediateRecall(o),now:()=>clock})
  const fake=[rows[0],{...rows[1],immediateProof:{...rows[1].immediateProof}}];assert.equal(tracker.record({accountTag:A,rows:fake}),false)
+ const {immediateProof:discarded,...unproved}=rows[1];assert.equal(retriever.validateContextualVisualRecall({accountTag:A,rows:[rows[0],unproved]}),false);assert.equal(retriever.validateContextualVisualRecall({accountTag:A,rows:[rows[1]]}),false)
  assert.equal(tracker.record({accountTag:A,rows,channel:'main-chat'}),true);const r=tracker.read(A);assert.equal(r.mode,'immediate');assert.deepEqual(r.edgeIds,[]);assert.doesNotMatch(JSON.stringify(r),/雨后|路灯/)
  const episodes=x.g.videoRecallGroups(x.g.semanticCandidates({domain:'main-session',limit:3200}));const steps=x.g.associationActivationSteps({accountTag:A,receipt:r,episodeRows:episodes});const projected=projectNeuralActivation(r,steps,episodes);assert.equal(projected.mode,'immediate');assert.equal(projected.steps[0].associationType,'immediate');assert.doesNotMatch(JSON.stringify(projected),new RegExp(r.fingerprint+'|'+r.fromId+'|'+A))
  assert.equal(x.g.status().associations.active,0);const graph=memoryNeuralProjection({episodes,showAll:true,limit:10000,verifiedGraph:x.g.neuralEvidenceSnapshot({accountTag:A,episodeRows:episodes})});assert.ok(!graph.edges.some(e=>e.type==='association'))
@@ -263,4 +264,21 @@ test('old relation review refuses forged evidence; new ordinary batch can exhaus
  const f=await reviewedPairFixture(x,rows=>JSON.stringify({associations:[{type:'concept',candidate_ids:rows.map(r=>r.id),evidence_quotes:['从未出现的伪造文字','从未出现的伪造文字']}]}),{config:{mainSessionReflectionDailyBatches:1}})
  f.life.addEvents(events.slice(1,3));f.setTime(NOW+3600001);assert.equal((await f.life.reflect()).processed,2);f.setTime(NOW+7200002);assert.equal(f.life.status().autoReflectBlockedReason,'daily-limit');assert.equal((await f.life.reflect()).skipped,'daily-limit');assert.equal(f.counts().calls,2)
  const r=await f.life.reflect({force:true});assert.equal(r.associationRejected,1);assert.equal(x.g.status().associations.active,0)
+}))
+
+test('ordinary public reflection retains concurrently arriving candidates and rejects changed account generation before writes',()=>setup(async x=>{
+ let epoch=0,commits=0,moods=0,traits=0,stage=0
+ const life=createLifeReflection({dataDir:x.dir,getConfig:()=>cfg,getAccountTag:()=>A,getAccountEpoch:()=>epoch,memoryGateway:x.g,now:()=>NOW,commitMemories:()=>{commits++;return {added:0,rows:[]}},onEmotion:()=>{moods++},getPersonalityEnabled:()=>true,onPersonalityObservations:()=>{traits++},invokeModel:async()=>{
+  if(stage===0){life.addEvents([events[2]]);return JSON.stringify({memories:[]})}
+  epoch+=2;return JSON.stringify({memories:[],mood_update:{mood:'joyful',intensity:2}})
+ },logger:{warn(){}}})
+ life.addEvents(events.slice(0,2));const first=await life.reflect({force:true});assert.equal(first.ok,true);assert.equal(first.pending,1);assert.equal(life.list('pending')[0].key,events[2].key)
+ stage=1;const second=await life.reflect({force:true});assert.equal(second.ok,false);assert.equal(life.status().pending,1);assert.equal(commits,1);assert.equal(moods,0);assert.equal(traits,1)
+}))
+
+test('ordinary reflection receives per-interaction emotion receipts and can propose a genuine sixth relation without extra model calls',()=>setup(async x=>{
+ const a={kind:'social',key:`social:1234:${bv(7)}:12345`,actorUid:'1234',bvid:bv(7),at:NOW-1000,text:'这次讨论的场景很令人愉快',accountTag:A},b={...a,key:`social:4321:${bv(8)}:12346`,actorUid:'4321',bvid:bv(8),text:'这次交流里的发现非常有趣'}
+ x.g.recordEvents([a,b]);for(const e of [a,b])assert.equal(x.g.recordEpisodeEmotion({accountTag:A,eventKey:e.key,mood:'joyful',intensity:2,at:NOW}).ok,true)
+ let calls=0;const life=createLifeReflection({dataDir:x.dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:x.g,now:()=>NOW,commitMemories:()=>({added:0,rows:[]}),invokeModel:async prompt=>{calls++;const rows=JSON.parse(prompt.split('<candidate_data>').at(-1).split('</candidate_data>')[0]);assert.equal(rows.length,2);assert.ok(rows.every(r=>r.associationEmotion?.mood==='joyful'));return JSON.stringify({memories:[],associations:[{type:'emotion',candidate_ids:rows.map(r=>r.id),evidence_quotes:[a.text,b.text]}]})},logger:{warn(){}}})
+ life.addEvents([a,b]);const r=await life.reflect({force:true});assert.equal(r.ok,true,JSON.stringify(r));assert.equal(r.associationAdded,1);assert.equal(calls,1);assert.equal(x.g.status().associations.active,1)
 }))

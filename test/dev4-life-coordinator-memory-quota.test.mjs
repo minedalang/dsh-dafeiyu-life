@@ -65,3 +65,13 @@ test('记忆压缩：不达标不删除、正常凝练必须保留源 ID、不�
  assert.deepEqual(commits[0].sourceIds,['a','b','c'])
  assert.ok(!commits[0].sourceIds.includes('hidden'))
 })
+
+test('queued event account is captured before asynchronous serialization, never inferred from later login',async()=>{
+ const dir=temp(),A='a'.repeat(16),B='b'.repeat(16);let tag=A;const scopes=[]
+ try{
+  const c=createLifeMemoryCoordinator({dataDir:dir,getAccountTag:()=>tag,memoryGateway:{recordEvents:rows=>{scopes.push(rows[0].accountTag||'');return {added:1}}},lifeReflection:{addEvents:()=>({added:1})},logger:{warn(){}}})
+  const event=i=>({kind:'watch',key:'queue-account:'+i,bvid:'BV1bWHT6xEJg',title:'公开观察',at:Date.now()})
+  const a=c.recordEvents([event(1)]);tag=B;const b=c.recordEvents([event(2)]);tag='';const unknown=c.recordEvents([event(3)]);tag=B
+  await Promise.all([a,b,unknown]);assert.deepEqual(scopes,[A,B,'']);c.stop()
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
