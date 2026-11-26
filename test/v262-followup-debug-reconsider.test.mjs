@@ -108,3 +108,53 @@ test('管理中心有显式手动重新考虑入口、一次一条和确认，�
  assert.doesNotMatch(ui,/DEBUG/)
  assert.doesNotMatch(js,/DEBUG：|DEBUG 此条/)
 })
+
+
+test('dev.24 协作禁止回访与 DEBUG；旧代际的意愿不消费待办或发消息',()=>space(async dir=>{
+ let mode={mode:'cooperative',revision:1},calls=0,sends=0,released=[]
+ const f=createOwnerTodoFollowup({dataDir:dir,getConfig:defaults,now:()=>T,hourOf:()=>13,
+   getSessionIntegration:()=>mode,releaseDecision:p=>released.push(p),
+   chooseReply:async()=>{calls++;if(calls===1){mode={mode:'cooperative',revision:3};mode={mode:'full',revision:4}}
+     return {decision:'reply',text:'我找到了一点公开视频资料。',lifeWillingnessProof:'proof'}},
+   send:async()=>{sends++;return {ok:true}}})
+ f.queue(task('a','m1'),{ok:true})
+ assert.equal((await f.tick()).skipped,'session-integration-paused')
+ assert.equal((await f.debugReconsider(f.status().recent[0].key)).skipped,'session-integration-paused')
+ assert.equal(calls,0)
+ mode={mode:'full',revision:2}
+ const before=ledger(dir).items[0]
+ assert.equal((await f.tick()).skipped,'session-integration-paused')
+ const after=ledger(dir).items[0]
+ assert.equal(after.status,'pending');assert.equal(after.attempts,before.attempts)
+ assert.equal(after.lastDecision,before.lastDecision);assert.deepEqual(released,['proof']);assert.equal(sends,0)
+ assert.equal((await f.tick()).status,'sent');assert.equal(sends,1)
+}))
+
+test('dev.24 回访权限异步核验期间切换不消费待办、不误记未授权',()=>space(async dir=>{
+ let mode={mode:'full',revision:0},sends=0,released=0
+ const f=createOwnerTodoFollowup({dataDir:dir,getConfig:defaults,now:()=>T,hourOf:()=>13,
+   getSessionIntegration:()=>mode,releaseDecision:()=>released++,
+   chooseReply:()=>({decision:'reply',text:'我找到了一点公开视频资料。',lifeWillingnessProof:'proof'}),
+   canContact:async()=>{mode={mode:'cooperative',revision:1};return false},send:async()=>{sends++;return {ok:true}}})
+ f.queue(task('a','m1'),{ok:true})
+ assert.equal((await f.tick()).skipped,'session-integration-paused')
+ assert.equal(f.status().pending,1);assert.equal(sends,0);assert.equal(released,1)
+}))
+
+test('dev.24 回访明确本地拒绝才可恢复 pending；矛盾及未知回执冻结，已发送仍结算',async()=>{
+ for(const [receipt,expected] of [
+  [{ok:false,notAttempted:true,reason:'session-integration-paused'},'pending'],
+  [{ok:false,notAttempted:true,reason:'session-integration-paused',receiptId:'contradiction'},'uncertain'],
+  [{ok:false,notAttempted:true,reason:'session-integration-paused',attempted:true},'uncertain'],
+  [{ok:false},'uncertain'],[{ok:true,receiptId:'verified'},'sent']])await space(async dir=>{
+   let mode={mode:'full',revision:0},sends=0,settled=0
+   const f=createOwnerTodoFollowup({dataDir:dir,getConfig:defaults,now:()=>T,hourOf:()=>13,
+     getSessionIntegration:()=>mode,chooseReply:()=>({decision:'reply',text:'我找到了一点公开视频资料。'}),
+     send:async()=>{sends++;mode={mode:'cooperative',revision:1};return receipt},onSent:()=>settled++})
+   f.queue(task('a','m1'),{ok:true});await f.tick()
+   assert.equal(ledger(dir).items[0].status,expected)
+   assert.equal(settled,expected==='sent'?1:0)
+   if(expected==='pending'){assert.equal(ledger(dir).items[0].startedAt,undefined);assert.equal(ledger(dir).items[0].lastDecision,undefined)}
+   else{mode={mode:'full',revision:2};await f.tick();assert.equal(sends,1)}
+ })
+})

@@ -1374,7 +1374,8 @@ function reportMeta() {
       return json.target_found===true&&Array.isArray(json.replies)&&json.replies.some(x=>String(x.rpid)===String(rpid)&&String(x.mid)===String(uid))
     }catch(e){log('原评论回访核验未通过：'+String(e?.message||e).slice(0,90));return false}
   }
-  const ownerTodoFollowup=createOwnerTodoFollowup({dataDir:accountRuntimeDir,getConfig:()=>{refreshCfg();return {...cfg,accountTag:trustedLifeAccountTag(),masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
+  const ownerTodoFollowup=createOwnerTodoFollowup({getSessionIntegration,runAutomatic:automaticSession.run,
+    releaseDecision:proof=>lifeWillingness?.receipt(proof,{status:'not-sent'}),dataDir:accountRuntimeDir,getConfig:()=>{refreshCfg();return {...cfg,accountTag:trustedLifeAccountTag(),masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     getTodos:()=>ownerTodos.list({includeClosed:true,limit:500}),
     getVerifiedFacts:verifiedFactsFor,
     canContact:todoFollowupContact,verifyComment:verifyTodoComment,
@@ -1385,6 +1386,7 @@ function reportMeta() {
         sourceKey:'followup:'+createHash('sha256').update(String(originalMessageId||taskId||'')+':'+String(groupRoot||'')+':'+String(channel||'')).digest('hex'),
         candidates:[{id:'followup',kind:'followup',label:'在合适时机向原请求者自然谈谈已确认的待办进展'}],
         hint:'来自已有完成待办与可信回执；可以不联系对方。'},{queueIfBusy:true})
+      if(!automaticSession.current()){if(lifeChoice?.proof)lifeWillingness?.receipt(lifeChoice.proof,{status:'not-sent'});throw sessionIntegrationPaused()}
       if(lifeChoice?.ok!==true)return {decision:lifeChoice?.action==='skip'?'skip':'defer',
         channel,modelInvoked:lifeChoice?.action==='skip',diagnosticReason:'Life 意愿决定不联系或稍后再考虑'}
       const todoEpisode=lifeSubagentHandoff({agent:'todo',episodes:universalLifeEpisodes,sourceRef:'todo:'+String(taskId||'')})
@@ -1471,6 +1473,7 @@ function reportMeta() {
     send:async({uid,channel,text,commentBvid,commentRpid,commentRoot,social,eventId,taskId,lifeWillingnessProof})=>{
       const settleProof=lifeProofSettler(lifeWillingnessProof)
       try{
+        if(!automaticSession.current()){settleProof('not-sent');return {ok:false,notAttempted:true,reason:'session-integration-paused'}}
         const intention=lifeWillingness?.verify(lifeWillingnessProof,'followup')
         if(intention?.ok!==true){settleProof('not-sent');return {ok:false,no_retry:true,error:'Life 回访意愿已失效，未发送'}}
         const factCheck=outboundFactCheck(text,{uid,channel})
@@ -1499,7 +1502,8 @@ function reportMeta() {
           if(result?.ok!==true&&result?.no_retry===true&&taskId)
             lifeActionAttribution.unknown({accountTag:scope,channel:'todo-followup',owner:'life',
               sourceRef:'todo:'+taskId,receiptId:'followup-unknown:'+eventId,action:'followup',kind:'social'})
-          return {ok:result?.ok===true,sentRpid:String(result?.rpid||''),no_retry:result?.no_retry===true}
+          return {ok:result?.ok===true,sentRpid:String(result?.rpid||''),no_retry:result?.no_retry===true,
+            notAttempted:result?.notAttempted===true,reason:result?.reason,accepted:result?.accepted,receiptId:result?.receiptId,attempted:result?.attempted,sent:result?.sent}
         }
         if(typeof eventId!=='string'||eventId.length<3||eventId.length>600||/[\u0000-\u001f]/.test(eventId)){
           settleProof('not-sent');return {ok:false,no_retry:true,reason:'missing-stable-social-source'}
@@ -1512,7 +1516,8 @@ function reportMeta() {
         if(result?.ok!==true&&result?.no_retry===true&&taskId)
           lifeActionAttribution.unknown({accountTag:trustedLifeAccountTag(),channel:'todo-followup',owner:'life',
             sourceRef:'todo:'+taskId,receiptId:'followup-unknown:'+eventId,action:'followup',kind:'social'})
-        return {ok:result?.ok===true,no_retry:result?.no_retry===true,receiptId:result?.ok===true?String(result.receiptId||''):''}
+        return {ok:result?.ok===true,no_retry:result?.no_retry===true,receiptId:result?.receiptId,
+          notAttempted:result?.notAttempted===true,reason:result?.reason,accepted:result?.accepted,rpid:result?.rpid,rpid_str:result?.rpid_str,attempted:result?.attempted,sent:result?.sent}
       }catch(e){settleProof('uncertain');throw e}
       finally{settleProof('not-sent')}
     },
@@ -5360,7 +5365,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   async function invokeMemoryPrompt(promptText,maxChars=4200) {
     const start=Date.now(),expectedScope=trustedLifeAccountTag()
     try{const output=await lifeResourceScheduler.run({lane:'background',resources:{model:1},waitMs:20_000},
-      ()=>invokeMemoryPromptRaw(promptText,maxChars))
+      ()=>{if(!automaticSession.current())throw sessionIntegrationPaused();return invokeMemoryPromptRaw(promptText,maxChars)})
       modelInvocationJournal.record({scene:'memory',trigger:'memory',expectedScope,durationMs:Date.now()-start,
         provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider||'',
         model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId||''})
@@ -7187,7 +7192,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // interaction model summarizes only closed/idle/capacity-bounded segments;
   // Life Reflection independently decides what becomes long-term knowledge.
   privateConversationExperiences=createPrivateConversationExperiences({
-    dataDir:stateDir,getAccountTag:trustedLifeAccountTag,getConfig:()=>cfg,
+    getSessionIntegration,runAutomatic:automaticSession.run,dataDir:stateDir,getAccountTag:trustedLifeAccountTag,getConfig:()=>cfg,
     invokeModel:(prompt,maxChars)=>cfg.mainSessionMemorySemanticEnabled===true
       ?invokeMemoryPrompt(prompt,maxChars)
       :invokeInteractionPrompt(prompt,maxChars,{modelRoute:'interaction'}),

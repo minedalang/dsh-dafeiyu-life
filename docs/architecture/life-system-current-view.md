@@ -5,7 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
-%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际，已启动调用保留结算；宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
@@ -141,6 +141,13 @@ flowchart TB
   autoSessionScope24 -.-> socialWrite
   autoSessionScope24 -.-> planner
   autoSessionScope24 -.-> reflection
+  todoFollowup24["待办完成回访：含检查/DEBUG，原意愿与回执"]
+  privateExtract24["私信片段提炼：原代际、短锁认领、记忆协调器"]
+  autoSessionScope24 -.-> todoFollowup24
+  autoSessionScope24 -.-> privateExtract24
+  todoFollowup24 -.->|仅当前代际可发起；已发送照常结算| socialWrite
+%% @code todoFollowup24 | lib/owner-todo-followup.mjs | const tickScoped=async
+%% @code privateExtract24 | lib/private-conversation-experiences.mjs | async function tickScoped
 %% @code autoSessionScope24 | lib/session-integration-policy.mjs | export function createAutomaticSessionScope
   dmSentinel --> counterCompare
   socialSentinel --> counterCompare
@@ -500,7 +507,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
-%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际，已启动调用保留结算；宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
@@ -586,6 +593,9 @@ flowchart LR
     sourceReflect["LifeReflection.status().canAutoReflect"]
     sourceOwner["主人联系卡片/自定义额度 + 明确绑定且在线的主 Session + 可选沉默续聊"]
   end
+  todoFollowupCandidate24["原待办完成回访候选：协作不自动评估，不改待办状态"]
+  sourceTodo -.->|独立回访队列，不是计划员候选| todoFollowupCandidate24
+%% @code todoFollowupCandidate24 | lib/owner-todo-followup.mjs | const tickScoped=async
   subgraph candidates["本轮实际类型 / 内容边界"]
     todos["todos：已接待办｜新任务由 Life 自主安排，已确定动作只做技术复核"]
     cues["cues：interest-milestone / discussion-read / selection-curiosity"]
@@ -740,7 +750,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
-%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际，已启动调用保留结算；宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
@@ -897,12 +907,15 @@ flowchart TB
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   verifiedDmInput["真实主人/好友私信：已核验入站与已确认外发"]
   privateBuffer["短期对话片段：跨进程原子短锁+认领；按账号/UID隔离；原文限期"]
-  privateBatch["安静期/话题收尾/容量触发：模型批量提炼；失败退避、成功删除原文"]
+  privateBatch["安静期/话题收尾/容量触发：完整生活代际提炼；暂停释放原认领，失败退避、成功删除原文"]
   privateFading["原 private-social 可衰减记忆：账号标记 + 私密域/UID 隔离"]
   privateReflection["私密反思：有来源的共同话题 → 受限 privateInsights；不写公开长期记忆"]
   privateUnderstanding["compact 公开评论：同账号同 UID 的私下熟悉线索；按需回忆"]
   publicReplyFence["公开表达边界：可自然熟悉，禁止透露私聊；原发送权限与回执不变"]
+  privateMode24["原代际复核：暂停保留原片段和期限；已接受经历照常结算"]
+  privateMode24 -.-> privateBatch
   verifiedDmInput --> privateBuffer --> privateBatch --> privateFading
+%% @code privateMode24 | lib/private-conversation-experiences.mjs | const releasePaused=
   privateFading -.-> privateReflection
   privateFading -.->|未遗忘且可访问| privateUnderstanding
   privateReflection -.->|受限认识，只用于内部理解| privateUnderstanding
@@ -1032,7 +1045,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
-%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际，已启动调用保留结算；宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
@@ -1126,6 +1139,9 @@ flowchart TB
   child --> canonical --> attribution --> record
   socialContact -.->|许可仅在原 DM 事务生效| socialReceipt
   socialReceipt --> attribution
+  followupMode24["回访代际：未发送延期；已发送回执与未知冻结不改写"]
+  followupMode24 -.-> todoReceipt
+%% @code followupMode24 | lib/owner-todo-followup.mjs | isSessionPauseBeforeSend(receipt)
   todoReceipt --> attribution
   reflectionReceipt --> attribution
   firstOther -->|已有真实回执；无需经过首页| record
