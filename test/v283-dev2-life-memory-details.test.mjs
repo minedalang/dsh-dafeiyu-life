@@ -4,6 +4,7 @@ import {mkdtempSync,rmSync,existsSync,readFileSync,writeFileSync,mkdirSync,utime
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
+import {createMemoryRetriever,publicVisualAssociationContext} from '../lib/memory-retriever.mjs'
 import {createLifeMemoryBackup,restoreLifeMemoryBackup,collectBackupFiles,createBackup,restoreBackupFiles} from '../lib/data-backup.mjs'
 import {buildVideoExplorationEvent} from '../lib/video-experience.mjs'
 import {createLifeMemoryCoordinator} from '../lib/life-memory-coordinator.mjs'
@@ -541,3 +542,56 @@ test('conflicting fragment identities are rejected before staging; a forged fres
  assert.equal(gateway.recordEvents([bad],{detailAdmission:{fragments,sourceProof:{internalToken:'forged'}}}).detailWrite.ok,false)
  assert.equal(gateway.recoverPendingVisualDetails().pending,0);assert.equal(gateway.status().details.attachments,1)
 }))
+
+
+test('owner private reverse lookup without BV stays local, scoped and excluded from public projection',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dafeiyu-private-reverse-'));let tag=A,enabled=true,at=NOW+5000,current=true,semanticCalls=0
+ const cfg=()=>({mainSessionMemoryEnabled:enabled,mainSessionMemoryEmbeddingEnabled:true,mainSessionMemoryHalfLifeDays:15})
+ const gateway=createLifeMemoryGateway({dataDir:dir,now:()=>at,getAccountTag:()=>tag,getConfig:cfg,admitMemoryDetails:()=>true})
+ try{
+  gateway.recordEvents([event,{...event,key:'video-explore:private-reverse',experience:{...event.experience,source:'main-session'}}])
+  const trace=gateway.videoEvidenceTrace({accountTag:A,bvid:BV,ownerSession:true}),priv=trace.find(e=>e.visibility==='private-session'),pub=trace.find(e=>e.visibility==='public-event')
+  assert.ok(priv&&pub)
+  const part={...fragments[0],content:'画面中一只朱红雨伞靠在玻璃门旁。'}
+  assert.equal(gateway.attachMemoryDetails({memoryId:priv.memoryId,accountTag:A,ownerSession:true,fragments:[part]}).ok,true)
+  assert.equal(gateway.attachMemoryDetails({memoryId:pub.memoryId,accountTag:A,fragments}).ok,true)
+  const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:cfg,getOwnerPrivateVisualCandidates:o=>gateway.ownerPrivateVisualCandidates(o),getVisualDetailCandidates:o=>gateway.visualDetailCandidates(o),semanticSearch:async()=>{semanticCalls++;throw Error('private data must not enter embedding')}})
+  const args={accountTag:A,query:'朱红雨伞',isCurrent:()=>current}
+  const rows=retriever.ownerPrivateVisualRecall(args)
+  assert.equal(rows.length,1);assert.equal(rows[0].memoryId,priv.memoryId);assert.equal(rows[0].visibility,'private-session');assert.match(rows[0].historicalDetail.note,/朱红雨伞/);assert.deepEqual(rows[0].historicalDetail.timeAnchorMs,[1000,9000])
+  assert.equal(semanticCalls,0);assert.deepEqual(publicVisualAssociationContext([{...rows[0],recallRoute:'direct'}]),[])
+  assert.deepEqual(gateway.visualDetailCandidates({accountTag:A,ids:[priv.memoryId],visibility:'private-session',ownerSession:true}),[])
+  assert.deepEqual(gateway.ownerPrivateVisualCandidates({accountTag:A,ids:[pub.memoryId]}),[])
+  assert.deepEqual(retriever.ownerPrivateVisualRecall({...args,query:'火星探测器'}),[])
+  current=false;assert.deepEqual(retriever.ownerPrivateVisualRecall(args),[]);current=true
+  assert.deepEqual(retriever.ownerPrivateVisualRecall({...args,isCurrent:undefined}),[])
+  tag=B;assert.deepEqual(retriever.ownerPrivateVisualRecall(args),[]);tag=A
+  enabled=false;assert.deepEqual(retriever.ownerPrivateVisualRecall(args),[]);assert.deepEqual(gateway.ownerPrivateVisualCandidates({accountTag:A}),[]);enabled=true
+  at=NOW+14*DAY;assert.deepEqual(retriever.ownerPrivateVisualRecall(args),[])
+ }finally{gateway.close();rmSync(dir,{recursive:true,force:true})}
+})
+
+test('private reverse lookup rejects changed snapshots and session switch during live recheck',()=>{
+ const row={id:'e-'+'a'.repeat(18),bvid:BV,visibility:'private-session',title:'旧视频',parts:[{note:'朱红雨伞',timeAnchorMs:[1000,1000]}]}
+ let reads=0,current=true,change=true
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({mainSessionMemoryEnabled:true}),getOwnerPrivateVisualCandidates:()=>{reads++;if(reads===1)return [row];if(change)return [{...row,title:'changed'}];current=false;return [row]}})
+ const args={accountTag:A,query:'朱红雨伞',isCurrent:()=>current}
+ assert.deepEqual(retriever.ownerPrivateVisualRecall(args),[]);reads=0;change=false;current=true
+ assert.deepEqual(retriever.ownerPrivateVisualRecall(args),[])
+})
+
+
+test('actual main Session recall adapter keeps private hits out of public activation and respects account epoch',async()=>{
+ const code=readFileSync(new URL('../index.js',import.meta.url),'utf8'),start=code.indexOf('getVideoAssociationRecall:async (query'),end=code.indexOf('getVideoDetailRecall:',start)
+ const source=code.slice(start,end).trim().replace(/,$/,'')
+ let epoch=1,blocked=false,recorded=0,privateHit=true,changeDuringRecall=false
+ const pub=[{bvid:'BV1234567891',recallRoute:'direct'},{bvid:'BV1234567892',recallRoute:'association'}]
+ const priv={bvid:BV,visibility:'private-session',route:'direct',memoryId:'e-'+'a'.repeat(18)}
+ const retriever={contextualVisualRecall:async()=>{if(changeDuringRecall)epoch++;return pub},validateContextualVisualRecall:()=>true,ownerPrivateVisualRecall:({isCurrent})=>{assert.equal(isCurrent(),true);return privateHit?[priv]:[]}}
+ const adapter=new Function('trustedLifeAccountTag','accountBinding','memoryRetriever','publicVisualAssociationContext','observePublicRecall','return ({'+source+'}).getVideoAssociationRecall')(()=>A,{generation:()=>epoch,status:()=>({blocked})},retriever,publicVisualAssociationContext,()=>recorded++)
+ const args={isCurrent:()=>true}
+ const mixed=await adapter('朱红雨伞',args);assert.deepEqual(mixed.map(e=>e.bvid),[BV,pub[0].bvid]);assert.equal(recorded,0)
+ privateHit=false;assert.equal((await adapter('其他场景',args)).length,2);assert.equal(recorded,1)
+ privateHit=true;changeDuringRecall=true;assert.deepEqual(await adapter('朱红雨伞',args),[]);assert.equal(recorded,1)
+ blocked=true;assert.deepEqual(await adapter('朱红雨伞',args),[]);assert.equal(recorded,1)
+})

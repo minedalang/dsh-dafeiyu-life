@@ -6998,6 +6998,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:true,recentFallback:false})
       if(!isCurrent()||epoch!==accountBinding.generation()||scope!==trustedLifeAccountTag()||accountBinding.status().blocked||!memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows}))return []
       const projected=publicVisualAssociationContext(rows)
+      const current=()=>isCurrent()&&epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked
+      const privateRows=memoryRetriever.ownerPrivateVisualRecall({accountTag:scope,query,isCurrent:current,limit:2})
+      if(!current()||!memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows}))return []
+      // Never record private hits or a clipped public association path.
+      if(privateRows.length)return [...privateRows,...projected.filter(e=>e.route!=='association'&&!privateRows.some(p=>p.bvid===e.bvid))].slice(0,2)
       if(projected.length===rows.length)observePublicRecall(scope,rows,'main-chat')
       return projected
     },
@@ -7061,6 +7066,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getEpisodeCandidates:(options)=>lifeMemory?.semanticCandidates(options)||[],
     getVisualExperiences:options=>lifeMemory?.recentVisualExperienceContext(options)||[],
     getVisualDetailCandidates:options=>lifeMemory?.visualDetailCandidates(options)||[],
+    getOwnerPrivateVisualCandidates:options=>lifeMemory?.ownerPrivateVisualCandidates(options)||[],
     getAssociations:options=>lifeMemory?.associationCandidates(options)||[],
     validateAssociationPath:options=>lifeMemory?.validateAssociationPath(options)===true,
     groupVideoEpisodes:rows=>lifeMemory?.videoRecallGroups(rows)||rows,
