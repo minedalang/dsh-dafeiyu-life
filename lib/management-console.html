@@ -2236,7 +2236,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   </div>
     </div>
     <div class="toolbar setup-shortcuts"><a class="button" href="#quick-life-section">设置生活节奏 ↗</a><button type="button" data-open-tab="life">查看记忆 ↗</button></div>
-    <section class="quick-config-section" id="fs-session-stage"><div class="quick-config-title"><span class="quick-card-icon">💬</span><div><h4>主 Session <span class="pill">可选</span></h4><p>绑定 DSH 中的聊天会话，让鱼鱼与会话共享记忆。</p></div></div><div class="quick-config-actions"><button type="button" id="fs-wizard-session">选择主 Session</button></div></section>
+    <section class="quick-config-section" id="fs-session-stage"><div class="quick-config-title"><span class="quick-card-icon">💬</span><div><h4>主 Session <span class="pill">可选</span></h4><p>绑定 DSH 中的聊天会话，让鱼鱼与会话共享记忆。</p></div></div><div class="quick-config-actions"><button type="button" id="fs-wizard-session" data-open-tab="home" data-open-anchor="main-session-binding-section">选择主 Session</button></div></section>
     <section id="fs-enhancements" class="setup-disclosure"><div class="fs-phase-title"><strong>推荐增强</strong><span>本地语义、视觉、语音</span></div>
       <section class="quick-config-section" id="quick-embedding-section" aria-label="可选本地语义回忆安装">
         <div class="quick-config-title"><span class="quick-card-icon">🧠</span><div><h4>本地语义回忆 <span class="pill quick-strong-recommend">强烈推荐 · 可选</span></h4><p>优先安装：能按语义找到不同说法所指的同一段经历，让聊天更容易衔接旧记忆。</p></div></div>
@@ -2262,7 +2262,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
       <div class="quick-config-actions"><button type="button" class="primary" id="fs-wizard-video">配置视频感知与语音</button></div>
     </section>
     </section>
-    <details id="fs-advanced-settings" class="setup-disclosure"><summary><strong>个性化与高级设置</strong><span>主人身份、生活节奏、记忆与社交</span></summary>
+    <section id="fs-advanced-settings" class="setup-disclosure"><div class="fs-phase-title"><strong>个性化与高级设置</strong><span>主人身份、生活节奏、记忆与社交</span></div>
     <div class="fs-setup-overview" aria-label="设置类型说明" hidden>
       <div><strong>① 必要配置</strong><span id="fs-required-overview">正在检查 B站登录和文字模型的实际验证状态…</span></div>
       <div><strong>② 本版新增 · 可选</strong><span>视频视觉与转写按需安装，视觉图片验收不会自动开启观看。</span></div>
@@ -2325,7 +2325,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <div id="fs-final-stage" class="fs-phase">
   <div class="fs-footer"><div><strong id="fs-summary">正在检查必需配置</strong><p class="muted">首次使用请在页面顶部引导点击「完成快速设置」。可选功能以后随时能调整；不会删除原有记忆、凭据和历史资料。</p></div></div>
     </div>
-    </details>
+    </section>
   </div>
 </details>
   <section class="card integration-card" id="fs-session-integration" aria-labelledby="fs-integration-title">
@@ -2683,7 +2683,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <p class="backup-footnote">分盘后仍从当前生效的 Life/业务数据目录导出，不会退回 C 盘历史副本。便携业务备份不包含 B站 Cookie、登录凭证、部分私密账本、短期时间线、密钥、缓存、日志和表情包图片本体；私密经历请使用下方人生记忆专项备份，表情包图片请单独导出。两种 JSON 备份均不能替代完整冷快照。</p>
     <p class="backup-footnote" id="backup-cold-offline-note"><strong>分盘完整冷备份（开发候选）</strong>：跨版本迁移前应独立保存全部现役分区。完全退出 DSH 后，可在源码目录使用 <code>tools/dev4-cold-state-backup.mjs</code> 的 <code>backup-full</code> 与 <code>verify-full</code> 命令，详见 dev.26 冷备份说明。当前不可重建业务状态变化时拒绝完整历史恢复。完整快照包含账号凭证和私密数据，严禁上传分享。</p>
     <p class="backup-footnote" id="backup-model-recovery-note"><strong>模型盘损坏或更换</strong>：核心与现役 Life 完好时，完全退出 DSH，使用 <code>plan-model-recovery</code> 预检及 <code>recover-models</code> 恢复已知 V2 模型到新目录；不覆盖当前记忆或权限。核心/Life 整盘丢失时不能直接激活旧业务快照。</p>
-    <p class="backup-footnote" id="backup-disaster-rescue-note"><strong>核心盘或记忆盘损坏</strong>：请先完全退出 DSH，使用 <code>plan-disaster-rescue</code> 预检、<code>rescue-disaster</code> 抢救历史快照与尚可读取的核心/记忆分区，再用 <code>verify-rescue</code> 校验新隔离目录。救援资料不是可启动的角色，保留两种来源，不自动合并或恢复旧授权、记忆；完整激活恢复仍待支持。救援目录同样包含私密数据，请勿上传。</p>
+    <p class="backup-footnote" id="backup-disaster-rescue-note"><strong>核心盘或记忆盘损坏</strong>：请先完全退出 DSH，使用 <code>plan-disaster-rescue</code> 预检、<code>rescue-disaster</code> 抢救历史快照与尚可读取的核心/记忆分区，再用 <code>verify-rescue</code> 校验新隔离目录。救援资料不是可启动的角色，保留两种来源，不自动合并或恢复旧授权、记忆；完整激活恢复仍待支持。救援目录同样包含私密数据，请勿上传。<br><strong>恢复前审查</strong>：使用 <code>plan-rescue-merge --to 隔离目录</code> 核验两份来源的文件差异、缺项及已知深层遗忘记录数量；不输出私人正文，不认定候选为最新，不合并或激活。</p>
   </div>
   <div class="backup-more-grid">
     <details class="backup-fold" id="backup-memory-tools">
@@ -2735,7 +2735,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="toolbar"><h2 style="margin:0">Session 接入</h2></div>
 <p class="muted autonomous-only"><strong>主 Session 是鱼鱼当前使用的聊天房间，不等于鱼鱼本人。</strong> 切换房间不会清空她已经形成的身份记忆，也不会让主 Session 自动获得后台任务权限；这里仅配置当前连接。同步间隔可在本板块下方展开设置；每日总额度仍在「次数与额度」。</p>
 <div class="settings-stack">
-<div class="settings-section"><h4>选择已有会话</h4><p class="muted autonomous-only"><strong>💬 自然聊天已与主人私信共用多气泡协议。</strong> 主 Session 可由鱼鱼自行决定是否用 2～3 条独立气泡表达，不需每次拆句；新主人消息可取消尚未发送的续步。此处使用原 DSH Chat 的真实 assistant 消息，不是模拟插入。<strong>目前支持同一回复预先规划的分条表达</strong>；不把它宣称为首条送达后重新生成第二条。开关和条数沿用「私信互动」页面的共享配置，不额外启用私信授权。</p>
+<div class="settings-section" id="main-session-binding-section"><h4>选择已有会话</h4><p class="muted autonomous-only"><strong>💬 自然聊天已与主人私信共用多气泡协议。</strong> 主 Session 可由鱼鱼自行决定是否用 2～3 条独立气泡表达，不需每次拆句；新主人消息可取消尚未发送的续步。此处使用原 DSH Chat 的真实 assistant 消息，不是模拟插入。<strong>目前支持同一回复预先规划的分条表达</strong>；不把它宣称为首条送达后重新生成第二条。开关和条数沿用「私信互动」页面的共享配置，不额外启用私信授权。</p>
 <div class="fields"><div class="main-session-picker" style="grid-column:1/-1">
 <div class="main-session-picker-head"><div class="main-session-current"><span class="main-session-kicker">★ 当前主 Session</span><strong id="main-session-bound-label">等待读取会话…</strong><span id="main-session-bound-state" class="main-session-live" data-state="unknown">未读取</span></div></div>
 <div class="main-session-picker-fields"><div><label for="main-session-id">切换现有在线会话（未归档）</label><select id="main-session-id"><option value="">不绑定主 Session</option></select></div><button id="main-session-refresh" type="button">刷新列表</button></div>
@@ -4195,7 +4195,7 @@ button.primary:not(:disabled):hover{filter:brightness(1.1)}button:disabled{opaci
 @media(max-width:850px){#fs-wizard-content .headless-sync-board{grid-template-columns:minmax(0,1fr)}}
 #fs-advanced-settings .fs-setup-overview,#fs-advanced-settings .fs-progress,#fs-advanced-settings .fs-progress-hint{display:none!important}
 #fs-advanced-settings .quick-settings-heading{padding:12px 0}#fs-advanced-settings .quick-settings-heading p{display:none}
-#fs-advanced-settings .fs-phase-title{display:none}
+#fs-advanced-settings .fs-phase .fs-phase-title{display:none}
 #fs-advanced-settings .quick-settings-home{padding:0;background:none;border:0;box-shadow:none}
 #fs-enhancements{display:block}#fs-enhancements>summary{list-style:none;cursor:default}#fs-enhancements>summary::-webkit-details-marker{display:none}
 .tabs{position:sticky;top:0;z-index:20;max-height:40vh;overflow:auto;background:var(--panel)}

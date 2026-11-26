@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {Readable} from 'node:stream'
 import {createFirstStart} from '../lib/first-start.mjs'
+import {recommendFirstLifeSetup} from '../lib/quick-setup-options.mjs'
 import {createHostSessionIntegration,createAutomaticSessionScope,SESSION_INTEGRATION_FILE} from '../lib/session-integration-policy.mjs'
 import {apply} from '../index.js'
 import {createHash} from 'node:crypto'
@@ -60,6 +61,10 @@ test('服务端初始状态禁止业务 API，保留管理页面、状态、扫�
   }
   const state=await call('GET','onboarding/status')
   assert.equal(state.status,200);assert.equal(state.json().requiredReady,false)
+  const firstLife=(await call('GET','onboarding/quick/options')).json();assert.equal(firstLife.recommendLife,true);assert.equal(firstLife.life.mode,'off')
+  assert.equal(state.json().lifeSetupPending,true)
+  // Re-creating the actual gate after the mandatory restart must retain the recommendation.
+  assert.equal(createFirstStart({stateDir:join(home,'bili-duty'),credentialPath:join(home,'bili-duty','bili_credential.json'),headlessSync:{hasAnyVerified:()=>false}}).status().lifeSetupPending,true)
   assert.equal(state.json().localMemoryReady,true);assert.equal(state.json().capabilities.active.platform,true);assert.equal(state.json().capabilities.active.autonomous,true)
   assert.equal((await call('POST','main-session/memory/add',{text:'主人正在验证独立记忆',importance:.8})).status,200)
   const unbound=await call('POST','onboarding/bili/verify',{})
@@ -364,4 +369,21 @@ test('legacy initial social offer is inert; onboarding completion does not expos
  const source=readFileSync(new URL('../index.js',import.meta.url),'utf8');const completion=source.slice(source.indexOf("if(path.endsWith('/complete'))"),source.indexOf("return sendJson(res,404,{ok:false,error:'未知的首次设置操作'}"));
  assert.ok(completion.includes('firstStart.complete(skipped)'));assert.doesNotMatch(completion,/initialSocial|scopedSocialGrants|saveExplicit/);
  }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+
+test('fresh Life recommendation persists across restart, without changing saved modes or treating a legacy installation as fresh',()=>{
+ const home=mkdtempSync(join(tmpdir(),'fish-life-first-restart-'));try{
+ const args={stateDir:home,credentialPath:join(home,'bili_credential.json'),headlessSync:{hasAnyVerified:()=>true}}
+ const config={lifeAgentMode:'off',autonomousPlannerMinutes:180,autonomousPlannerDailyLimit:4};const old=JSON.stringify(config)
+ const fresh=createFirstStart({...args,newInstall:true});assert.equal(fresh.status().lifeSetupPending,true);fresh.markWelcome();writeFileSync(args.credentialPath,'credential');fresh.verifyBili();fresh.complete([])
+ const restarted=createFirstStart(args);assert.equal(restarted.status().lifeSetupPending,true);assert.equal(recommendFirstLifeSetup({pending:restarted.status().lifeSetupPending,config}),true)
+ assert.equal(JSON.stringify(config),old);assert.equal(recommendFirstLifeSetup({pending:true,config,touchedKeys:new Set(['lifeAgentMode'])}),false)
+ assert.equal(recommendFirstLifeSetup({pending:true,config,touchedKeys:new Set(['autonomousPlannerMinutes'])}),false)
+ assert.equal(recommendFirstLifeSetup({pending:true,config,nativeUser:{lifeAgentMode:'off'}}),false)
+ assert.equal(recommendFirstLifeSetup({pending:true,config:{...config,lifeAgentMode:'active'}}),false)
+ restarted.finishLifeSetup();assert.equal(createFirstStart(args).status().lifeSetupPending,false)
+ writeFileSync(join(home,'first-start-v1.json'),JSON.stringify({version:1,completed:true}));assert.equal(createFirstStart(args).status().lifeSetupPending,false)
+ assert.equal(recommendFirstLifeSetup({pending:false,config}),false)
+ }finally{rmSync(home,{recursive:true,force:true})}
 })

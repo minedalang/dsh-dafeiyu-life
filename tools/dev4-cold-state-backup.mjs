@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Run only with DSH Desktop stopped. Snapshot includes credentials and secrets. */
-import {createColdSnapshot,restoreColdSnapshot,verifyColdSnapshot,inspectSplitColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,rollbackSplitColdRestore,inspectModelRecovery,recoverSnapshotModels,inspectDisasterRescue,createDisasterRescue,verifyDisasterRescue} from '../lib/cold-state-snapshot.mjs'
+import {createColdSnapshot,restoreColdSnapshot,verifyColdSnapshot,inspectSplitColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,rollbackSplitColdRestore,inspectModelRecovery,recoverSnapshotModels,inspectDisasterRescue,createDisasterRescue,verifyDisasterRescue,planDisasterReconciliation} from '../lib/cold-state-snapshot.mjs'
 const [command,...argv]=process.argv.slice(2)
 const get=flag=>{const i=argv.indexOf(flag);return i>=0?argv[i+1]:null}
 const args={root:get('--root'),destination:get('--to'),snapshot:get('--snapshot'),stoppedConfirmed:argv.includes('--stopped'),confirm:get('--confirm')}
@@ -15,10 +15,11 @@ try{
   else if(command==='plan-disaster-rescue')result=inspectDisasterRescue(args)
   else if(command==='rescue-disaster')result=createDisasterRescue(args)
   else if(command==='verify-rescue')result=verifyDisasterRescue(args.destination)
+  else if(command==='plan-rescue-merge')result=planDisasterReconciliation(args.destination)
   else if(command==='rollback-full')result=rollbackSplitColdRestore(args)
   else if(command==='backup')result=createColdSnapshot(args)
   else if(command==='verify')result=verifyColdSnapshot(args.snapshot)
   else if(command==='restore')result=restoreColdSnapshot(args)
-  else throw Error('用法：plan-full --root 生效核心目录 | backup-full --root 生效核心目录 --to 备份目录 --stopped | verify-full --snapshot 目录 | restore-full --snapshot 目录 --root 生效核心目录 --stopped --confirm RESTORE_FULL_DSH_STATE | rollback-full --root 生效核心目录 --stopped --confirm ROLLBACK_FULL_DSH_STATE | plan-model-recovery --root 生效核心目录 --snapshot 快照 --to 新模型目录 | recover-models --root 生效核心目录 --snapshot 快照 --to 新模型目录 --stopped --confirm RECOVER_DSH_MODELS_ONLY | plan-disaster-rescue --snapshot 快照 --to 新隔离目录 | rescue-disaster --snapshot 快照 --to 新隔离目录 --stopped --confirm RESCUE_DSH_OFFLINE_ONLY | verify-rescue --to 隔离目录；原 backup/verify/restore 仅支持旧单根格式')
+  else throw Error('用法：plan-full --root 生效核心目录 | backup-full --root 生效核心目录 --to 备份目录 --stopped | verify-full --snapshot 目录 | restore-full --snapshot 目录 --root 生效核心目录 --stopped --confirm RESTORE_FULL_DSH_STATE | rollback-full --root 生效核心目录 --stopped --confirm ROLLBACK_FULL_DSH_STATE | plan-model-recovery --root 生效核心目录 --snapshot 快照 --to 新模型目录 | recover-models --root 生效核心目录 --snapshot 快照 --to 新模型目录 --stopped --confirm RECOVER_DSH_MODELS_ONLY | plan-disaster-rescue --snapshot 快照 --to 新隔离目录 | rescue-disaster --snapshot 快照 --to 新隔离目录 --stopped --confirm RESCUE_DSH_OFFLINE_ONLY | verify-rescue --to 隔离目录 | plan-rescue-merge --to 隔离目录；原 backup/verify/restore 仅支持旧单根格式')
   console.log(JSON.stringify(result))
 }catch(e){console.error('操作未完成：'+String(e?.message||e));process.exitCode=1}

@@ -10,7 +10,7 @@ import {verifyPythonCachePaths} from '../lib/storage-python-cache-check.mjs'
 import {readWhisperReadiness} from '../lib/video-dependencies.mjs'
 import {listWhisperModels} from '../lib/whisper-model-cache.mjs'
 import {collectBackupFiles,createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
-import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,rollbackSplitColdRestore,inspectSplitColdSnapshot,restoreColdSnapshot,inspectDisasterRescue,createDisasterRescue,verifyDisasterRescue} from '../lib/cold-state-snapshot.mjs'
+import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,rollbackSplitColdRestore,inspectSplitColdSnapshot,restoreColdSnapshot,inspectDisasterRescue,createDisasterRescue,verifyDisasterRescue,planDisasterReconciliation} from '../lib/cold-state-snapshot.mjs'
 import {coldRestoreFencePath} from '../lib/cold-restore-fence.mjs'
 import {stateDirOf} from '../lib/state.mjs'
 const fixture=fn=>{const t=mkdtempSync(join(tmpdir(),'dafeiyu-dev3-')),root=join(t,'bili-duty');mkdirSync(root);try{fn({t,root,path:(...x)=>join(root,...x)})}finally{rmSync(t,{recursive:true,force:true})}}
@@ -681,4 +681,37 @@ test('dev.26 both business disks missing: rescue remains offline and CLI plan/ve
  const verify=spawnSync(process.execPath,[...cli,'verify-rescue','--to',destination],{encoding:'utf8'})
  assert.equal(verify.status,0,verify.stderr);assert.equal(JSON.parse(verify.stdout).activationAllowed,false)
  assert.equal(rescueManifest(destination).rows.every(r=>r.kind==='historical'),true)
+}))
+
+
+test('dev.26 reconciliation compares verified candidates without exposing or activating data',()=>fixture(({t,root,path})=>{
+ const a='e-'+'a'.repeat(18),b='e-'+'b'.repeat(18),stale='e-'+'c'.repeat(18)
+ put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}))
+ const ledger=ids=>JSON.stringify({version:1,ids})
+ put(path('detail-protection','revocations-v1.json'),ledger([a]));put(path('life-memory','episodic.json'),'secret historical text')
+ put(path('state.json'),'old');put(path('removed.json'),'only historical');put(path('type-change'),'old file')
+ const life=join(t,'life'),snapshot=join(t,'snapshot'),destination=join(t,'rescue')
+ migrateDomainOffline({root,domain:'memory',target:life,confirmedStopped:true})
+ // The obsolete local copy must not contribute any additional revocations.
+ put(path('detail-protection','revocations-v1.json'),ledger([stale]));splitBackup(root,snapshot)
+ put(join(life,'detail-protection','revocations-v1.json'),ledger([a,b,b]))
+ put(join(life,'life-memory','episodic.json'),'secret current text');put(path('state.json'),'new');rmSync(path('removed.json'));rmSync(path('type-change'));mkdirSync(path('type-change'));put(path('added.json'),'candidate only')
+ createDisasterRescue(rescueArgs(snapshot,destination));const before=rescueManifest(destination)
+ const review=planDisasterReconciliation(destination),core=review.comparisons.find(r=>r.id==='core'),memory=review.comparisons.find(r=>r.id==='v1-memory')
+ assert.equal(core.counts.typeOrNameConflict,1);assert.equal(core.counts.historicalOnly,1);assert.equal(core.counts.candidateOnly,1);assert.ok(core.counts.different>=1);assert.ok(memory.counts.different>=2)
+ assert.equal(review.deepRevocations.partition,'v1-memory');assert.equal(review.deepRevocations.knownUnionCount,2);assert.equal(review.deepRevocations.candidate.known,2);assert.equal(review.deepRevocations.complete,false)
+ assert.equal(review.activationAllowed,false);assert.equal(review.mergeAllowed,false);assert.equal(review.freshnessProven,false);assert.equal(review.changesNow,false)
+ assert.doesNotMatch(JSON.stringify(review),/secret|removed.json|state.json|e-aaaaaaaa|11111111/);assert.deepEqual(rescueManifest(destination),before)
+ const cli=spawnSync(process.execPath,['tools/dev4-cold-state-backup.mjs','plan-rescue-merge','--to',destination],{encoding:'utf8'});assert.equal(cli.status,0,cli.stderr);assert.deepEqual(JSON.parse(cli.stdout),review)
+}))
+test('dev.26 reconciliation treats missing and invalid revocation evidence as unknown, never as permission to restore',()=>fixture(({t,root,path})=>{
+ put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}))
+ put(path('detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:['e-'+'a'.repeat(18)]}))
+ const snapshot=join(t,'snapshot'),destination=join(t,'rescue');splitBackup(root,snapshot)
+ put(path('detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:['malformed']}))
+ createDisasterRescue(rescueArgs(snapshot,destination));const r=planDisasterReconciliation(destination)
+ assert.equal(r.deepRevocations.candidate.status,'invalid');assert.equal(r.deepRevocations.candidate.known,null);assert.equal(r.deepRevocations.knownUnionCount,1);assert.equal(r.mergeAllowed,false)
+ renameSync(root,root+'-lost');const missing=join(t,'missing-rescue');createDisasterRescue(rescueArgs(snapshot,missing));const q=planDisasterReconciliation(missing)
+ assert.equal(q.deepRevocations.candidate.status,'source-unavailable');assert.ok(q.comparisons[0].counts.uncomparedHistorical>0);assert.equal(q.comparisons[0].counts.historicalOnly,0);assert.equal(q.activationAllowed,false)
+ const m=rescueManifest(missing);put(join(missing,'objects',m.rows[0].files[0].sha256),'tampered');assert.throws(()=>planDisasterReconciliation(missing),/对象校验失败/)
 }))

@@ -84,7 +84,7 @@ test('unverified onboarding can read dependency status, while remote-origin Whis
 })
 
 
-test('必要配置逐步展示，推荐增强默认可见，高级配置折叠',()=>{
+test('必要配置逐步展示，推荐增强与个性化高级配置始终展开',()=>{
   const panel=html.slice(html.indexOf('<section id="panel-firststart"'),html.indexOf('<section id="panel-models"'))
   for(const id of ['fs-guide-runtime','fs-guide-account','fs-guide-model','fs-guide-next'])assert.match(panel,new RegExp('id="'+id+'"'))
   assert.ok(panel.indexOf('id="fs-deps-card"')<panel.indexOf('id="fs-enhancements"'))
@@ -92,7 +92,10 @@ test('必要配置逐步展示，推荐增强默认可见，高级配置折叠',
   assert.ok(panel.indexOf('id="fs-headless-state"')<panel.indexOf('id="fs-enhancements"'))
   assert.match(panel,/<section id="fs-enhancements" class="setup-disclosure">/)
   assert.ok(panel.indexOf('id="fs-session-stage"')<panel.indexOf('id="fs-enhancements"'))
-  assert.match(panel,/<details id="fs-advanced-settings" class="setup-disclosure">/)
+  assert.match(panel,/<section id="fs-advanced-settings" class="setup-disclosure">/)
+  assert.match(panel,/id="fs-wizard-session" data-open-tab="home" data-open-anchor="main-session-binding-section"/)
+  assert.match(html,/id="main-session-binding-section"/)
+  assert.doesNotMatch(ui,/launchWizard\('session'\)/)
   assert.match(ui,/setupMainReady=mainReady;setupMainInstalling=main.installing===true;renderSetupGuide\(onboarding\)/)
   assert.match(ui,/state.requiredReady!==true\|\|setupMainReady!==true/);assert.match(ui,/await request\('\/onboarding\/complete'/)
   assert.match(html,/@media\(prefers-reduced-motion:reduce\)\{\.guided-track span\{transition:none\}/)

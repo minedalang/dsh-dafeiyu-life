@@ -115,7 +115,7 @@ import { projectLifeIntegrationStatus,projectLifeWorldEvidence } from './lib/lif
 import { createLifeAgentEvents } from './lib/life-agent-events.mjs'
 import {summarizeHomeFeedResult} from './lib/life-home-feed-evidence.mjs'
 import {consumeVideoFunnel,videoFunnelReport} from './lib/video-round-funnel.mjs'
-import {quickMemoryState,quickSocialState,quickMemoryPlan,quickSocialPlan} from './lib/quick-setup-options.mjs'
+import {quickMemoryState,quickSocialState,recommendFirstLifeSetup,quickMemoryPlan,quickSocialPlan} from './lib/quick-setup-options.mjs'
 import { createSocialDecisionOwnership } from './lib/social-decision-ownership.mjs'
 import { createSocialHandoffFence } from './lib/social-handoff-fence.mjs'
 import { createSocialSendTransaction } from './lib/social-send-transaction.mjs'
@@ -752,7 +752,7 @@ export function apply(ctx, config) {
         (typeof llm?.listProviders==='function'&&
         providerIds(llm.listProviders()).includes(id))
     }})
-  const firstStart=createFirstStart({stateDir,credentialPath:join(stateDir,'bili_credential.json'),headlessSync})
+  const firstStart=createFirstStart({stateDir,credentialPath:join(stateDir,'bili_credential.json'),headlessSync,newInstall:!legacyInstallAtEntry})
   /**
    * uv/pip 下载缓存默认固定在插件数据目录，允许用户安全迁移缓存；
    * uv 工具环境和下载的 Python 解释器只有在用户明确选择高级重建时才切换，
@@ -11238,7 +11238,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if(req.method==='GET' && path==='/api/bili-duty/onboarding/quick/options'){
       refreshCfg()
-      return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),recommendLife:!legacyInstall&&!touchedKeys.has('lifeAgentMode')&&cfg.lifeAgentMode==='off',memory:quickMemoryState(cfg),social:quickSocialState(cfg),requiredReady:firstStart.status().requiredReady})
+      return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),recommendLife:recommendFirstLifeSetup({pending:firstStart.status().lifeSetupPending,config:cfg,touchedKeys,nativeUser:settingsDesc()?.user}),memory:quickMemoryState(cfg),social:quickSocialState(cfg),requiredReady:firstStart.status().requiredReady})
     }
     if(req.method==='POST' && path.startsWith('/api/bili-duty/onboarding/')){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
@@ -11266,6 +11266,7 @@ logger:{warn:m=>log('社交意图：'+m)}
             if(body.confirm!=='APPLY_QUICK_LIFE')throw Error('必须明确确认生活设置')
             const result=Object.keys(patch).length?await persistCfg(patch):{host:{ok:true},localVerified:true}
             if(patch.lifeAgentMode==='off')lifeSocialShadow.revoke()
+            if(result.localVerified===true)firstStart.finishLifeSetup()
             return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),localVerified:result.localVerified,host:result.host})
           }
           if(body?.kind==='memory')plan=quickMemoryPlan(cfg,body)
@@ -11564,8 +11565,9 @@ logger:{warn:m=>log('社交意图：'+m)}
       catch(e){ return sendJson(res,400,{ok:false,error:String(e?.message||e)}) }
       if(plan.preview)return sendJson(res,200,{ok:true,plan})
       // A mode change never grants social send rights or forces a video start.
-      if(!Object.keys(plan.patch).length)return sendJson(res,200,{ok:true,unchanged:true,settings:lifeSettingsV2(cfg),plan})
+      if(!Object.keys(plan.patch).length){firstStart.finishLifeSetup();return sendJson(res,200,{ok:true,unchanged:true,settings:lifeSettingsV2(cfg),plan})}
       const persisted=await persistCfg(plan.patch)
+      if(persisted.localVerified===true)firstStart.finishLifeSetup()
       if(plan.patch.lifeAgentMode==='off')lifeSocialShadow.revoke()
       return sendJson(res,200,{ok:true,settings:lifeSettingsV2(cfg),changed:plan.changed,host:persisted.host,
         warning:persisted.host.ok||persisted.host.skipped?'':'原生 DSH 设置未同步；插件 config.json 已保存，建议重启后核对'})
