@@ -24,13 +24,13 @@ test('管理中心不再出现重复 2.8.2 宣传弹窗，快速设置入口和�
   assert.doesNotMatch(html,/release-281-dialog|release-281-feature|release-281-top|release-281-actions/)
   assert.doesNotMatch(ui,/release281|release-281|intro-dismissed|showRelease281IfNeeded/)
   assert.match(html,/id="fs-vision-guide"/)
-  assert.match(html,/2\.8\.2 视频感知优化 · 可选/)
-  assert.match(html,/2\.8\.2 优化了视频感知流程/)
+  assert.match(html,/id="fs-wizard-video"/)
+  assert.match(html,/配置视频感知与语音/)
   // The informational update notice cannot force an already-unlocked owner
   // back through first installation; real verification failures remain separate.
   assert.match(ui,/const needsSetup=\(state\.welcomeCompleted\?\?state\.completed\)!==true/)
   assert.match(ui,/const needsRepair=unlocked&&!ready/)
-  assert.match(ui,/switchTab\(needsSetup&&platformEnabled\(state\)&&!explicitTab\?'firststart':initialTab&&tabAvailable\(initialTab,state\)\?initialTab:needsSetup\|\|!platformUIReady\(state\)\?'firststart':'home'\)/)
+  assert.match(ui,/switchTab\(\(needsSetup\|\|wizardOptional\)&&platformEnabled\(state\)&&!explicitTab\?'firststart':initialTab&&tabAvailable\(initialTab,state\)\?initialTab:needsSetup\|\|!platformUIReady\(state\)\?'firststart':'home'\)/)
   assert.match(ui,/const state=await loadFirstStart\(\)/)
   assert.match(ui,/if\(!state\.welcomeSeen\)await request\('\/onboarding\/welcome'/)
 })

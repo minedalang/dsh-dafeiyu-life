@@ -70,7 +70,7 @@ test('3b.22 同源虚线只按真实 Provider/model 匹配；移动端使用标�
 
 test('3b.22 文字验证/同步/声明修改刷新真实图片状态；不允许未同步模型绕过禁用',()=>{
  const js=source('lib/management-console.js'),python=source('lib/vision_dsh.py'),index=source('index.js')
- assert.match(js,/await loadHeadlessModels\(\);if\(!platformSettingsUnavailable\(\)\)await loadDshVisionStatus\(\);await loadFirstStart\(\)/)
+ assert.match(js,/await loadHeadlessModels\(\);const setupState=await loadFirstStart\(\);[^\n]*if\(!platformSettingsUnavailable\(\)\)await loadDshVisionStatus\(\)\.catch/)
  assert.match(js,/await loadHeadlessModels\(\);await loadDshVisionStatus\(\);syncMessage/)
  assert.match(js,/verifyButton\.disabled=mobileViewOnly\|\|!routeSynced/)
  assert.match(js,/routeSynced=detail\.routeSynced===true\|\|p\.synced===true/)

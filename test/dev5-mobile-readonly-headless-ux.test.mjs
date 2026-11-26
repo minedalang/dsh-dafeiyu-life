@@ -46,6 +46,7 @@ test('Headless 状态机：检测 → 同步 → 验证，未验证不能显示�
   assert.equal(app.$('headless-journey').dataset.stage,'verified')
   assert.equal(app.$('headless-stage-verify').dataset.state,'done')
   assert.equal(app.$('headless-next-action').hidden,true)
+  app.fn([{id:'p',models:['m'],synced:true,verifiedModels:['m']},{id:'legacy',kind:'custom',models:['old'],synced:false,verifiedModels:[]}]);assert.equal(app.$('headless-journey').dataset.stage,'verified','其他 Provider 差异不得覆盖已验证状态');
   const base=journey(false,true);base.fn([{id:'p',models:['m'],synced:true,verifiedModels:['m']}]);assert.match(base.$('headless-next-description').textContent,/记忆模型/);assert.doesNotMatch(base.$('headless-next-description').textContent,/图片/)
 })
 test('Android 查看模式不提供验证主按钮，仍展示所需电脑端操作',()=>{

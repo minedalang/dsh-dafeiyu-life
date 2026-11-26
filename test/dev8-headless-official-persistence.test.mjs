@@ -139,7 +139,7 @@ test('宿主模型发现与官方直接验证已接入实际 HTTP 和 First Star
   assert.match(host,/registeredModels:listLiveModels/)
   assert.match(host,/headlessSync\.verified/)
   assert.match(host,/assertSafeHeadlessLaunch/)
-  assert.match(html,/官方内置模型直接进行 Headless 真实连接验证/)
+  assert.match(js,/官方已注册模型无需同步/)
   assert.match(js,/p\.kind==='registered'/)
   assert.match(js,/Headless 请求/)
 })

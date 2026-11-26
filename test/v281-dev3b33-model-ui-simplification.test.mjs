@@ -84,13 +84,13 @@ test('3b33 视觉用户进度：MCP 预检不得代替回答和人工认可',()=
 
 
 test('2.8.2 视觉设置：快速设置介绍新 2B，旧 1B 限历史兼容',()=>{
-  const guide=html.slice(html.indexOf('id="fs-vision-guide"'),html.indexOf('id="fs-advanced-settings"'))
-  assert.match(guide,/新增本地 Qwen3\.5 2B 视觉模型/)
-  assert.match(guide,/MiniCPM-V 4\.7 1B/)
-  assert.match(guide,/不建议继续作为常用模型/)
-  assert.match(guide,/仅保留旧安装兼容且不再提供新下载/)
+  const guide=html.slice(html.indexOf('id="local-vision-model"'),html.indexOf('id="local-vision-thinking"'))
+  assert.match(guide,/Qwen3\.5 2B · 新版推荐/)
   assert.match(guide,/Qwen3\.5 4B/)
-  assert.match(guide,/已用 DSH 云端视觉模型的用户无需改用本地/)
+  assert.match(guide,/MiniCPM-V 4\.7 1B · 历史兼容（不推荐 \/ 不可下载）/)
+  assert.match(js,/moveWizardControl\(\$\('models-vision-shell'\)\)/)
+  assert.match(js,/wizardMounted==='vision'&&!wizardFfmpegReady/)
+  assert.match(html,/id="fs-wizard-video"/)
 })
 
 test('2.8.2 视觉设置：下载/图片验收/启用都是普通操作，高风险删除才藏在高级区',()=>{
@@ -107,7 +107,7 @@ test('2.8.2 视觉设置：下载/图片验收/启用都是普通操作，高风
   assert.match(html,/id="local-vision-model" aria-describedby="local-vision-selection-note"/)
   assert.match(js,/确认切换并开启视频观察/)
   assert.match(js,/\$\('local-vision-refresh'\)\.addEventListener\('click',\(\)=>run\(loadLocalVisionStatus\)\)/)
-  assert.match(js,/await \(visionIsLocal\(\)&&c\.visionEnabled===true\?restoreOllama\(\):loadLocalVisionStatus\(\)\)\.catch/)
+  assert.match(js,/await \(!wizard&&visionIsLocal\(\)&&c\.visionEnabled===true\?restoreOllama\(\):loadLocalVisionStatus\(\)\)\.catch/)
   assert.match(js,/设置尚未保存|summarizeSaveDrafts\(\)/)
   assert.match(js,/settingDraftTracker\.committed\(\$\('models-vision-mode'\)\)/)
 })

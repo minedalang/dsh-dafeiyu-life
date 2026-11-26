@@ -41,11 +41,11 @@ test('首次配置页包含独立视觉模型流程，默认不启用、不自�
   const server=read('index.js')
   assert.match(page,/id="fs-vision-guide"/)
   assert.match(page,/id="fs-vision-state"/)
-  assert.match(page,/DSH 多模态 Provider \/ 模型/)
+  assert.match(page,/id="models-vision-mode"/)
   assert.match(page,/自动修复视觉运行环境/)
-  assert.match(page,/人工认可并启用/)
-  assert.match(page,/data-open-tab="models" data-open-anchor="models-vision-settings"/)
-  assert.match(page,/不自动下载安装/)
+  assert.match(page,/人工认可/)
+  assert.match(page,/id="fs-wizard-video"/);assert.match(js,/moveWizardControl\(\$\('models-vision-shell'\)\)/)
+  assert.match(js,/await confirmAction\(\{title:'安装 FFmpeg？'/)
   assert.match(js,/renderFirstStartVision/)
   assert.match(js,/const needsSetup=\(state\.welcomeCompleted\?\?state\.completed\)!==true/)
   assert.match(server,/visionEnabled: z\.boolean\(\)\.default\(false\)/)
@@ -118,7 +118,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.ok(begin>=0&&end>begin)
   const nodes=new Map()
   const element=id=>{
-    if(!nodes.has(id))nodes.set(id,{id,hidden:false,disabled:false,dataset:{},textContent:'',className:'',title:'',attributes:{},
+    if(!nodes.has(id))nodes.set(id,{id,hidden:false,disabled:false,dataset:{},textContent:'',className:'',title:'',attributes:{},style:{},classList:{add(){},remove(){}},addEventListener(){},replaceChildren(){},removeAttribute(){},removeAttribute(name){delete this.attributes[name]},
       setAttribute(name,value){this.attributes[name]=String(value)},appendChild(child){child.parentElement=this},after(child){child.parentElement=null},before(child){child.parentElement=null}})
     return nodes.get(id)
   }
@@ -127,7 +127,8 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
     $:element,document:{querySelector:selector=>element(selector)}
   }
   const policy=js.slice(js.indexOf('  const capabilityKeys='),js.indexOf('  const skipFirstStart='));
-  const render=runInNewContext(policy+js.slice(begin,end)+'\n({renderFirstStart,setRuntimeReady:value=>{setupMainReady=value;renderSetupGuide(onboarding)},setQuickOptions:value=>{quickOptions=value;renderSetupGuide(onboarding)}})',context)
+  const production=js.slice(begin,end).replace(/const mountWizardPage=stage=>\{[\s\S]*?\r?\n  \};\r?\n  const renderSetupGuide=/,'const mountWizardPage=stage=>{wizardMounted=stage};\n  const renderSetupGuide=');
+  const render=runInNewContext(policy+production+'\n({renderFirstStart,getStep:()=>wizardMounted,setRuntimeReady:value=>{setupMainReady=value;renderSetupGuide(onboarding)},setQuickOptions:value=>{quickOptions=value;renderSetupGuide(onboarding)}})',context)
   const show=state=>{render.renderFirstStart(state);return element('fs-warning')}
   const old={ok:true,welcomeCompleted:true,completed:true,requiredReady:true,quickSetupSeen:false,
     biliVerified:true,headlessVerified:true,hasCredential:true,missing:[],skipped:[],localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},requested:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},revision:0,restartRequired:false}}
@@ -146,34 +147,27 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
     biliVerified:false,headlessVerified:false,hasCredential:false,missing:['B站登录验证','Headless 模型同步与验证'],skipped:[],localMemoryReady:true,capabilities:old.capabilities}
   banner=show(fresh)
   assert.equal(banner.dataset.kind,'setup')
-  assert.equal(element('fs-guide-next').dataset.target,'fs-deps-card')
+  assert.equal(render.getStep(),'runtime')
   render.setRuntimeReady(true)
-  assert.equal(element('fs-guide-next').dataset.target,'fs-bili-state')
-  assert.equal(element('fs-guide-fill').dataset.progress,'1')
+  assert.equal(render.getStep(),'account')
+  assert.equal(element('fs-guide-runtime').dataset.state,'done')
   assert.equal(element('fs-quick-ack').hidden,true)
   assert.equal(element('fs-complete').hidden,false)
-  assert.equal(element('fs-complete').disabled,false,'未完成的用户仍应点击得到准确缺项说明')
+  assert.equal(element('fs-complete').disabled,false)
   assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-bili-state')
   assert.equal(element('[data-tab="life"]').hidden,false)
   show({...fresh,biliVerified:true,missing:['Headless 模型同步与验证']})
   assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-headless-state')
-  assert.equal(element('fs-guide-next').dataset.target,'fs-headless-state')
+  assert.equal(render.getStep(),'model')
   show({...fresh,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]})
-  assert.equal(element('fs-complete').hidden,false)
-  assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-final-stage')
-  assert.equal(element('fs-guide-next').dataset.target,'finish')
-  assert.equal(element('fs-guide-fill').dataset.progress,'3')
-  assert.equal(element('fs-guide-life').hidden,false)
-  render.setQuickOptions({recommendLife:true})
-  assert.equal(element('fs-guide-next').dataset.target,'quick-life-section')
-  assert.equal(element('fs-guide-finish-later').hidden,false)
-  render.setQuickOptions({recommendLife:false})
-  assert.equal(element('fs-guide-next').dataset.target,'finish')
-  assert.equal(element('fs-guide-finish-later').hidden,true)
+  assert.equal(render.getStep(),'core')
+  assert.equal(element('fs-wizard-continue').disabled,false)
+  assert.equal(element('fs-guide-count').textContent,'3 / 3 必要项就绪')
   show({...fresh,requiredReady:false,biliVerified:true,headlessVerified:true})
-  assert.equal(element('fs-guide-next').dataset.target,'fs-verify-stage','三项展示状态不能绕过服务端总准入')
+  assert.equal(render.getStep(),'core')
+  assert.equal(element('fs-wizard-continue').disabled,true,'展示检查不能绕过服务端总准入')
   render.setRuntimeReady(null)
-  assert.equal(element('fs-guide-next').dataset.target,'fs-deps-card','依赖状态失效不能继续显示已就绪')
+  assert.equal(render.getStep(),'runtime','依赖状态失效不能继续显示已就绪')
   render.setRuntimeReady(true)
   banner=show({...old,completed:false,requiredReady:false,quickSetupSeen:true,headlessVerified:false,missing:['Headless 模型同步与验证']})
   assert.equal(banner.dataset.kind,'repair')

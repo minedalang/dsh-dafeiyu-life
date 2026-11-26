@@ -2199,17 +2199,17 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="fs-notice-actions"><button type="button" id="fs-warning-open" data-open-tab="firststart">打开快速设置 ↗</button><button type="button" id="fs-quick-ack" class="primary" hidden>我已查看本版快速设置</button><button type="button" id="fs-complete" class="primary" hidden>完成快速设置</button></div>
 </aside>
 <section id="panel-firststart" hidden>
-  <div class="fs-hero" id="fs-integration-hero"><h2>快速设置</h2><p>完成必要配置，其他能力随时调整。</p></div>
+  <div class="fs-hero" id="fs-integration-hero"><h2>快速设置</h2><p>完成必要配置，其他能力随时调整。</p><button id="fs-wizard-launch" type="button">打开逐步配置引导</button></div>
   <section id="fs-guided-setup" class="card guided-setup" aria-labelledby="fs-guide-title" hidden>
-    <div class="guided-head"><div><span id="fs-guide-kicker" class="guided-kicker">首次使用</span><h3 id="fs-guide-title">开始使用大肥鱼</h3></div><span id="fs-guide-count" class="guided-count" role="status">检测中</span></div>
+    <div class="guided-head"><div><span id="fs-guide-kicker" class="guided-kicker">首次使用</span><h3 id="fs-guide-title">开始使用大肥鱼</h3></div><div class="wizard-head-actions"><span id="fs-guide-count" class="guided-count" role="status">检测中</span><button id="fs-wizard-exit" type="button">退出引导 / 调整能力</button></div></div>
     <div class="guided-track" aria-hidden="true"><span id="fs-guide-fill" data-progress="0"></span></div>
     <ol class="guided-steps" aria-label="必要配置进度">
       <li id="fs-guide-runtime" data-state="waiting"><span class="guided-index" aria-hidden="true">1</span><div><strong>运行环境</strong><small id="fs-guide-runtime-status">检测中</small></div></li>
       <li id="fs-guide-account" data-state="waiting"><span class="guided-index" aria-hidden="true">2</span><div><strong>B站登录</strong><small id="fs-guide-account-status">待验证</small></div></li>
       <li id="fs-guide-model" data-state="waiting"><span class="guided-index" aria-hidden="true">3</span><div><strong>文字模型</strong><small id="fs-guide-model-status">待验证</small></div></li>
     </ol>
-    <div class="guided-action"><div><strong id="fs-guide-next-title">正在检查设置</strong><p id="fs-guide-next-detail" role="status" aria-live="polite">根据实际状态继续。</p></div><button type="button" id="fs-guide-next" class="primary" disabled>正在检测…</button></div>
-    <div class="guided-links"><a href="#quick-life-section" id="fs-guide-life" hidden>查看生活节奏 ↗</a><button type="button" id="fs-guide-finish-later" hidden>稍后设置，完成引导</button><a href="#fs-session-integration" class="guided-alternative">只使用记忆？调整能力开关 ↗</a></div>
+    <div id="fs-wizard-page" class="wizard-page" role="region" aria-labelledby="fs-guide-next-title"><div class="wizard-heading"><span id="fs-wizard-icon" aria-hidden="true">✦</span><span id="fs-wizard-step">步骤 1</span></div><div class="guided-action"><div><strong id="fs-guide-next-title" tabindex="-1">正在检查设置</strong><p id="fs-guide-next-detail" role="status" aria-live="polite">根据实际状态继续。</p></div><button type="button" id="fs-guide-next" class="primary" disabled>正在检测…</button></div>
+    <div id="fs-wizard-content" class="wizard-content"></div><p id="fs-wizard-feedback" role="status" aria-live="polite"></p></div><div class="wizard-footer"><button id="fs-wizard-back" type="button" hidden>上一步</button><button id="fs-wizard-continue" class="primary" type="button" hidden>继续</button><button id="fs-wizard-skip" type="button" hidden>稍后设置</button></div><div class="guided-links"><a href="#quick-life-section" id="fs-guide-life" hidden>查看生活节奏 ↗</a><button type="button" id="fs-guide-finish-later" hidden>稍后设置，完成引导</button><a href="#fs-session-integration" class="guided-alternative">只使用记忆？调整能力开关 ↗</a></div>
   </section>
   <details id="fs-platform-setup" class="integration-platform" open><summary id="fs-platform-summary" hidden>平台设置</summary>
   <p id="fs-platform-context" class="setting-note" hidden>记忆不需要 B站登录；平台能力在能力开关中配置。</p>
@@ -2224,12 +2224,12 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <details id="fs-main-deps-details"><summary>查看主依赖安装日志末尾</summary><pre id="fs-main-deps-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto">暂无安装记录</pre></details>
   </section>
   <div class="fs-grid">
-    <section class="fs-step"><h3>B站登录 <span id="fs-bili-badge" class="pill pending">必须完成</span></h3><p>建议使用鱼鱼专用账号；已有登录先检测。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button" disabled>扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>🔐 在线核验并确认当前扫码账号</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>✅ 重启后复核并恢复账号</button></div></section>
+    <section class="fs-step"><h3>B站登录 <span id="fs-bili-badge" class="pill pending">必须完成</span></h3><p>建议使用鱼鱼专用账号；已有登录先检测。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button" disabled>扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>确认登录</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>重启后继续验证</button></div></section>
     <section class="fs-step"><h3>文字模型验证 <span id="fs-headless-badge" class="pill pending">至少验证一个模型</span></h3><p>选择一个 DSH 模型，完成后台文字连接验证。</p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后请在右侧 Headless 模型卡片点击「验证文字连接」完成真实请求；图片能力还需单独实测。</p><div class="actions"><button id="fs-headless-open" class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">配置并验证模型 ↗</button></div></section>
   </div>
     </div>
     <div class="toolbar setup-shortcuts"><a class="button" href="#quick-life-section">设置生活节奏 ↗</a><button type="button" data-open-tab="home">绑定 Session ↗</button><button type="button" data-open-tab="life">查看记忆 ↗</button></div>
-    <details id="fs-enhancements" class="setup-disclosure"><summary><strong>推荐增强</strong><span>本地语义、视觉、语音</span></summary>
+    <details id="fs-enhancements" class="setup-disclosure" open><summary><strong>推荐增强</strong><span>本地语义、视觉、语音</span></summary>
       <section class="quick-config-section" id="quick-embedding-section" aria-label="可选本地语义回忆安装">
         <div class="quick-config-title"><span class="quick-card-icon">🧠</span><div><h4>本地语义回忆 <span class="pill quick-strong-recommend">强烈推荐 · 可选</span></h4><p>优先安装：能按语义找到不同说法所指的同一段经历，让聊天更容易衔接旧记忆。</p></div></div>
         <details><summary>下载大小与记忆隐私</summary><p class="muted">下载 Qwen3-Embedding-0.6B Q8_0 模型（约 639 MB）及匹配系统的 llama.cpp CPU 运行时。全部在本机运行，原始记忆不上传。建议设备有充足磁盘空间与内存；不开启时仍可用词法回忆，但换一种说法、同义词或隐含关联的过往经历更容易漏召回；鱼鱼可能记得这件事，却无法在当前对话里准确想起。随时可再安装。</p></details>
@@ -2237,7 +2237,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
         <progress id="quick-embedding-progress" max="100" value="0" style="width:100%" aria-label="本地语义模型安装进度"></progress>
         <div class="quick-config-actions"><button type="button" class="primary" id="quick-embedding-install">推荐 · 启用并安装本地语义回忆</button><button type="button" id="quick-embedding-later">暂不安装，使用默认词法回忆</button><button type="button" data-open-tab="life" data-open-anchor="life-memory-settings">查看本地模型高级设置 ↗</button></div>
       </section>
-      <section class="quick-config-section" aria-label="可选视频组件">
+      <section class="quick-config-section" id="fs-legacy-video-install" aria-label="旧视频组件安装入口" hidden>
     <div class="video-aux-heading" style="margin-top:16px"><strong>视频增强组件</strong><span class="pill">不影响首次设置必需项</span></div>
     <details><summary>下载大小与来源</summary>
     <p class="muted">FFmpeg 预计下载约 40 MB～1 GB+（依平台与系统依赖变化）；Whisper tiny / base / small / medium / large-v3 模型预计约 75 MB / 145 MB / 485 MB / 1.5 GB / 3 GB，另需 Python 环境与磁盘缓存。安装不会自动开启语音转写或触发视频观看。</p>
@@ -2249,15 +2249,9 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <p id="fs-addons-detail" class="setting-note" role="status">安装 FFmpeg 后可能需重启 DSH；Whisper 转写是否生效，请到 AI 模型页查看最近真实运行回执。</p>
       </section>
     <section class="quick-config-section fs-version-highlight" id="fs-vision-guide" aria-label="2.8.2 视频视觉模型配置引导">
-      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>02B · 视频视觉感知 <span class="pill fs-new-281-badge">2.8.2 视频感知优化 · 可选</span></h4><p>2.8.2 优化了视频感知流程：鱼鱼可以先了解视频大概，再自己决定是否细看某些片段。选择视觉模型并通过图片测试后，可按需开启；不要求每条视频都观看。</p><p class="fs-vision-model-tip"><strong>🆕 本版新增本地 Qwen3.5 2B 视觉模型，推荐优先尝试。</strong>旧 MiniCPM-V 4.7 1B 的分镜描述容易遗漏细节，<strong>不建议继续作为常用模型</strong>，仅保留旧安装兼容且不再提供新下载；另可选 Qwen3.5 4B，偏向画面理解质量。已用 DSH 云端视觉模型的用户无需改用本地。</p></div></div>
+      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>视频感知 <span class="pill">推荐 · 可选</span></h4><p>选择视觉模型并验证图片；启用画面观察前需通过 FFmpeg 解码检查。语音识别按需配置。</p></div></div>
       <p id="fs-vision-state" class="quick-current" role="status" aria-live="polite">正在读取当前视觉设置…</p>
-      <div class="fs-vision-steps" aria-label="视觉模型配置三步">
-        <div><strong>① 选择识图来源</strong><p>可选 DSH 多模态 Provider / 模型，或本地 Ollama 视觉模型。仅使用文字功能的用户可以不配置。</p></div>
-        <div><strong>② 准备依赖并验证</strong><p>DSH 识图 Python 环境异常时才点击「自动修复视觉运行环境」；随后让模型识别固定原图，检查真实图片回执与回答。</p></div>
-        <div><strong>③ 人工认可并启用</strong><p>核对描述正确，再在视觉模型页认可结果、开启「启用视频视觉感知」并保存。只有鱼鱼主动选择看画面时才会调用，不会自动授予点赞或评论权限。</p></div>
-      </div>
-      <div class="quick-config-actions"><button type="button" class="primary" data-open-tab="models" data-open-anchor="models-vision-settings">配置视觉模型并进行图片验收 ↗</button><button type="button" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">选择视频采样方案 ↗</button></div>
-      <p class="setting-note">本步骤不会修改已有模型，不自动下载安装，不强制开启视频视觉；可在完成快速设置后随时返回。</p>
+      <div class="quick-config-actions"><button type="button" class="primary" id="fs-wizard-video">配置视频感知与语音</button></div>
     </section>
     </details>
     <details id="fs-advanced-settings" class="setup-disclosure"><summary><strong>个性化与高级设置</strong><span>主人身份、生活节奏、记忆与社交</span></summary>
@@ -2401,7 +2395,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="vision-usage-permission vision-usage-video"><div class="vision-permission-copy"><strong>🎬 自主视频画面观察</strong><small>允许 Life 在视频探索时主动调用已配置的视觉模型；与「视频探索」页同步，开启不会强制观看。开关操作直接保存。</small><small class="vision-cost-warning" role="note">⚠️ 开启视频识别可能多次传入图片并产生费用！强烈建议选择经实测支持图片的 gpt-luna-6 等低成本模型，或本地 Ollama；DeepSeek 等云端模型可能较烧钱，实际价格以所选 Provider 计费为准。</small><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">查看视频探索设置 ↗</a></div><label class="vision-toggle" for="models-vision-enabled"><input id="models-vision-enabled" type="checkbox" role="switch" aria-label="允许 Life 自主观察视频画面"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span class="vision-toggle-caption">允许视频观察</span></label></div>
   <div class="vision-usage-permission"><div class="vision-permission-copy"><strong>💬 私信与评论图片／表情包识别</strong><small>独立控制社交图片理解，不受视频观察开关影响。开关操作直接保存。</small><a href="?tab=bili#bili-social-image-permission" data-open-tab="bili" data-open-anchor="bili-social-image-permission">前往视频探索页 ↗</a></div><label class="vision-toggle" for="models-incoming-image-enabled"><input id="models-incoming-image-enabled" type="checkbox" role="switch" aria-label="私信与评论图片表情包识别"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span class="vision-toggle-caption">允许图片识别</span></label></div>
 </div>
-<div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">选择 DSH 视觉模型或本地 Ollama 视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><p class="muted"><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">🎞️ 选择视频感知方案（轻量／均衡／详查） ↗</a></p><div class="fields" id="models-vision"></div>
+<div class="model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p class="muted">选择 DSH 视觉模型或本地 Ollama 视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><div class="fields" id="models-vision"></div>
 <div class="fields"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="independent_dsh">DSH 识图模型（使用上方 Provider / 模型）</option><option value="independent_local">本地 Ollama 视觉模型（下方一键安装）</option></select></div>
 
 <div><details class="visual-advanced"><summary>调试选项</summary><label class="checkline"><input role="switch" class="ui-toggle" id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></details></div></div>
@@ -4138,4 +4132,50 @@ button.primary:not(:disabled):hover{filter:brightness(1.1)}button:disabled{opaci
 .guided-links{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}.guided-links a{font-size:12px;color:var(--action);font-weight:600;margin:0}.guided-links{align-items:center}.guided-links button{font-size:12px}.guided-setup[data-complete="true"] .guided-kicker{display:none}.guided-setup[data-complete="true"] .guided-head h3{font-size:18px}.guided-setup[data-complete="true"] .guided-action{padding:8px 12px}
 @media(max-width:520px){.guided-steps{grid-template-columns:1fr}.guided-steps li{padding:7px 10px}.guided-steps li>div{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:1}.guided-action button{width:100%}#panel-firststart .setup-disclosure>summary span{display:block;margin:4px 0 0 14px}}
 @media(prefers-reduced-motion:reduce){.guided-track span{transition:none}.guided-steps li[data-state="current"]{animation:none}}
+
+#fs-wizard-content #video-aux-dependencies{display:none!important}
+#fs-wizard-content #models-vision-shell [data-open-tab="bili"]{display:none!important}
+#fs-wizard-content .video-aux-card{margin-bottom:12px}
+#management-shell:has(#panel-firststart:not([hidden]) #fs-guided-setup:not([hidden]))>.tabs,#management-shell:has(#panel-firststart:not([hidden]) #fs-guided-setup:not([hidden]))>#fs-warning,#management-shell:has(#panel-firststart:not([hidden]) #fs-guided-setup:not([hidden]))>#life-system-health,#management-shell:has(#panel-firststart:not([hidden]) #fs-guided-setup:not([hidden])) .settings-finder{display:none!important}
+.wizard-head-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px}.wizard-head-actions button{font-size:12px;padding:6px 10px}
+#fs-guided-setup[data-wizard="true"] .guided-steps{margin-bottom:10px}
+#fs-wizard-content #headless-journey .headless-stages,#fs-wizard-content #headless-journey h5{display:none}
+#fs-wizard-content .vision-usage-permission:not(.vision-usage-video){display:none}
+#fs-wizard-content #headless-sync-links,#fs-wizard-content .headless-sync-flow{display:none!important}
+#fs-wizard-content #models-memory-usage,#fs-wizard-content #models-memory-test{display:none!important}
+/* Progressive first use: real existing controls are mounted one at a time. */
+#panel-firststart[data-progressive="true"] > :not(#fs-guided-setup){display:none!important}
+#fs-legacy-video-install[hidden],#fs-wizard-content [hidden],#fs-wizard-content details:not([open])> :not(summary){display:none!important}
+#fs-guided-setup[data-wizard="true"]{max-width:1100px;margin-inline:auto;padding:clamp(16px,3vw,32px);overflow:hidden}
+#fs-guided-setup[data-wizard="true"] .guided-head h3{font-size:clamp(20px,3vw,28px)}
+#fs-guided-setup[data-wizard="true"] .guided-track{height:7px;margin:18px 0}
+#fs-guided-setup[data-wizard="true"] .guided-steps{margin-bottom:20px}
+.wizard-heading{display:flex;align-items:center;gap:10px;margin:4px 0 12px;color:var(--action);font-weight:700;font-size:13px}
+#fs-wizard-icon{display:grid;place-items:center;background:color-mix(in srgb,var(--action) 13%,var(--panel));border:1px solid color-mix(in srgb,var(--action) 25%,var(--stroke));border-radius:14px;width:46px;height:46px;font-size:24px}
+#fs-guided-setup[data-wizard="true"] .guided-action{padding:0;background:none;margin-bottom:12px;align-items:start}
+#fs-guided-setup[data-wizard="true"] #fs-guide-next-title{font-size:clamp(20px,3vw,27px);line-height:1.35;display:block}
+#fs-guided-setup[data-wizard="true"] .guided-action p{font-size:14px;line-height:1.6}
+.wizard-content{min-width:0;display:grid;gap:12px}.wizard-content>*{min-width:0;margin:0!important}
+.wizard-page.wizard-arrive{animation:wizard-enter .36s cubic-bezier(.2,.75,.25,1) both}
+@keyframes wizard-enter{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+.wizard-footer{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:15px;border-top:1px solid var(--stroke)}
+.wizard-footer button{min-height:42px}.wizard-footer #fs-wizard-exit{margin-left:auto}
+#fs-wizard-feedback{font-size:13px;color:var(--muted);margin:10px 0 0}
+#fs-wizard-content .fs-step{width:100%}#fs-wizard-content .video-aux-card{padding:14px;border:1px solid var(--stroke);border-radius:12px}
+#fs-wizard-content #headless-model-sync-panel .headless-provider-stack{max-height:360px;overflow:auto}
+#fs-wizard-content #headless-journey{margin-bottom:12px}
+#fs-wizard-content #memory-model-route>summary,#fs-wizard-content #models-vision-settings>summary{display:none}
+#fs-wizard-content .vision-settings-shell{min-width:0}
+#fs-wizard-content a[data-open-tab],#fs-wizard-content button[data-open-tab]{display:none!important}
+#fs-wizard-content .wizard-provider-details{padding:12px;border:1px solid var(--stroke);border-radius:12px}
+#fs-wizard-content .wizard-provider-details>summary{cursor:pointer;font-weight:650}
+#fs-wizard-content[aria-busy="true"]{opacity:.65;pointer-events:none}
+#fs-guided-setup .guided-track span{transition:width .45s cubic-bezier(.2,.8,.2,1)}
+#fs-wizard-content .fs-step h3{margin-top:0}
+
+#fs-wizard-content .wizard-inline-toolbar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 0}
+#fs-guided-setup[data-wizard="true"] .guided-links{display:none}
+#fs-guided-setup[data-wizard="true"] .guided-steps li[data-state="current"]{animation:none}
+@media(max-width:620px){.wizard-footer button{flex:1 1 auto}.wizard-footer #fs-wizard-exit{margin-left:0}.wizard-content .headless-sync-board{grid-template-columns:1fr!important}.wizard-content .headless-sync-flow,.wizard-content .headless-sync-links{display:none!important}#fs-guided-setup[data-wizard="true"] .guided-steps{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}#fs-guided-setup[data-wizard="true"] .guided-steps li{padding:6px;flex-direction:column;gap:3px;text-align:center}#fs-guided-setup[data-wizard="true"] .guided-steps li>div{display:block}.wizard-content .fields{grid-template-columns:1fr!important}}
+@media(prefers-reduced-motion:reduce){.wizard-page.wizard-arrive{animation:none!important}#fs-guided-setup .guided-track span{transition:none!important}}
 </style>
