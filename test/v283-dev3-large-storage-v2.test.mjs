@@ -8,7 +8,7 @@ import {storageDataPath,storageDomainRoot,migrateDomainOffline,storageLayoutStat
 import {inspectStorageTarget} from '../lib/storage-location.mjs'
 import {readWhisperReadiness} from '../lib/video-dependencies.mjs'
 import {createEmbeddingRuntimeManager} from '../lib/embedding-runtime-manager.mjs'
-import {createColdSnapshot} from '../lib/cold-state-snapshot.mjs'
+import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot} from '../lib/cold-state-snapshot.mjs'
 import {spawnSync} from 'node:child_process'
 import {probeCoreMediaPython} from '../lib/storage-large-data-v2.mjs'
 const fixture=fn=>{const t=mkdtempSync(join(tmpdir(),'dsh-v2-')),root=join(t,'bili-duty');mkdirSync(root);try{fn({t,root,at:(...x)=>join(root,...x)})}finally{rmSync(t,{recursive:true,force:true})}}
@@ -138,4 +138,23 @@ test('V2 cache expiry follows actual runtime-media-v2, never deletes retained mi
  assert.equal(existsSync(active),false);assert.equal(existsSync(old),true)
  assert.equal(existsSync(join(target,'embedding-model','Qwen3-Embedding-0.6B-Q8_0.gguf')),true)
  assert.equal(existsSync(at('life-memory','episodic.json')),true)
+}))
+
+
+test('dev.26 V2 full snapshot ignores retired V1 model path, includes active V1 Life and V2 model store',()=>fixture(({t,root,at})=>{
+ baseModels(at)
+ const retired=join(t,'retired'),life=join(t,'life'),large=join(t,'large'),snapshot=join(t,'snapshot')
+ migrateDomainOffline({root,domain:'model',target:retired,confirmedStopped:true})
+ migrateDomainOffline({root,domain:'memory',target:life,confirmedStopped:true})
+ migrate(root,large)
+ rmSync(retired,{recursive:true,force:true})
+ const checkStopped=()=>({ok:true})
+ assert.equal(createSplitColdSnapshot({root,destination:snapshot,stoppedConfirmed:true,checkStopped}).partitions,3)
+ assert.equal(verifySplitColdSnapshot(snapshot).partitions,3)
+ assert.equal(readFileSync(join(snapshot,'partitions','v1-memory','life-memory','episodic.json'),'utf8'),'irreplaceable-memory')
+ assert.equal(readFileSync(join(snapshot,'partitions','v2-large','embedding-model','Qwen3-Embedding-0.6B-Q8_0.gguf'),'utf8'),'gguf-weight')
+ put(join(large,'embedding-model','Qwen3-Embedding-0.6B-Q8_0.gguf'),'broken')
+ assert.equal(restoreSplitColdSnapshot({root,snapshot,stoppedConfirmed:true,confirm:'RESTORE_FULL_DSH_STATE',checkStopped}).restored,true)
+ assert.equal(readFileSync(join(large,'embedding-model','Qwen3-Embedding-0.6B-Q8_0.gguf'),'utf8'),'gguf-weight')
+ assert.equal(existsSync(retired),false)
 }))

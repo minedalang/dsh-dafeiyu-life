@@ -1,14 +1,18 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync,readdirSync} from 'node:fs'
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,rmSync,symlinkSync,readdirSync,renameSync} from 'node:fs'
 import {join,dirname} from 'node:path'
 import {tmpdir} from 'node:os'
+import {spawnSync} from 'node:child_process'
+import {migrateStorageOffline} from '../lib/storage-location.mjs'
 import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,migrateDomainOffline,rollbackDomainOffline,inspectDomainReturnHome,returnDomainHomeOffline,storageDomainsUsage,storageMigrationGroups} from '../lib/storage-layout.mjs'
 import {verifyPythonCachePaths} from '../lib/storage-python-cache-check.mjs'
 import {readWhisperReadiness} from '../lib/video-dependencies.mjs'
 import {listWhisperModels} from '../lib/whisper-model-cache.mjs'
 import {collectBackupFiles,createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
-import {createColdSnapshot} from '../lib/cold-state-snapshot.mjs'
+import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,rollbackSplitColdRestore,inspectSplitColdSnapshot} from '../lib/cold-state-snapshot.mjs'
+import {coldRestoreFencePath} from '../lib/cold-restore-fence.mjs'
+import {stateDirOf} from '../lib/state.mjs'
 const fixture=fn=>{const t=mkdtempSync(join(tmpdir(),'dafeiyu-dev3-')),root=join(t,'bili-duty');mkdirSync(root);try{fn({t,root,path:(...x)=>join(root,...x)})}finally{rmSync(t,{recursive:true,force:true})}}
 const put=(path,text)=>{mkdirSync(dirname(path),{recursive:true});writeFileSync(path,text)}
 test('no layout leaves all default legacy locations identical',()=>fixture(({root})=>{
@@ -439,4 +443,139 @@ test('return HOME refuses missing active memory instead of replacing it with a s
  assert.throws(()=>inspectDomainReturnHome({root,domain:'memory'}),/缺少关键数据/)
  assert.equal(storageLayoutStatus(root).domains.memory.root,target)
  assert.equal(readFileSync(path('life-memory','episodic.json'),'utf8').includes('episodes'),true)
+}))
+
+
+const offline=()=>({ok:true})
+const splitBackup=(root,destination,opts={})=>createSplitColdSnapshot({root,destination,stoppedConfirmed:true,checkStopped:offline,...opts})
+const splitRestore=(root,snapshot,opts={})=>restoreSplitColdSnapshot({root,snapshot,stoppedConfirmed:true,confirm:'RESTORE_FULL_DSH_STATE',checkStopped:offline,...opts})
+test('dev.26 V1 shared model and memory snapshot includes each active physical root once; safe restore retains all originals',()=>fixture(({t,root,path})=>{
+ put(path('.hf-cache','hub','models--fixture','snapshots','r1','model.bin'),'model')
+ put(path('embedding-runtime','model.gguf'),'embedding')
+ put(path('life-memory','episodic.json'),'memory-private')
+ put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}))
+ put(path('accounts','123','credential.json'),'secret')
+ const model=join(t,'models'),memory=join(t,'memory'),backup=join(t,'snapshot')
+ migrateDomainOffline({root,domain:'model',target:model,confirmedStopped:true})
+ migrateDomainOffline({root,domain:'memory',target:memory,confirmedStopped:true})
+ const plan=inspectSplitColdSnapshot(root)
+ assert.equal(plan.parts.length,3);assert.deepEqual(plan.parts.find(p=>p.root===model).domains,['whisper','embedding','media'])
+ assert.equal(splitBackup(root,backup).partitions,3)
+ assert.equal(verifySplitColdSnapshot(backup).partitions,3)
+ assert.equal(readFileSync(join(backup,'partitions','v1-memory','life-memory','episodic.json'),'utf8'),'memory-private')
+ assert.equal(readFileSync(join(backup,'partitions','core','accounts','123','credential.json'),'utf8'),'secret')
+ put(join(model,'.hf-cache','hub','models--fixture','snapshots','r1','model.bin'),'damaged model')
+ const result=splitRestore(root,backup)
+ assert.equal(result.restored,true);assert.equal(result.safeguardPaths.length,3)
+ assert.equal(readFileSync(join(model,'.hf-cache','hub','models--fixture','snapshots','r1','model.bin'),'utf8'),'model')
+ assert.equal(readFileSync(join(result.safeguardPaths[1],'.hf-cache','hub','models--fixture','snapshots','r1','model.bin'),'utf8'),'damaged model')
+ assert.equal(readFileSync(storageDataPath(root,'life-memory','episodic.json'),'utf8'),'memory-private')
+ assert.equal(JSON.parse(readFileSync(path('restore-freeze.json'),'utf8')).reviewRequired,true)
+ assert.equal(existsSync(coldRestoreFencePath(root)),false)
+}))
+test('dev.26 rejects missing partition, forgotten memory changes, and tampered payload without touching current bytes',()=>fixture(({t,root,path})=>{
+ put(path('life-memory','episodic.json'),'remembered')
+ const target=join(t,'memory'),snapshot=join(t,'snapshot')
+ migrateDomainOffline({root,domain:'memory',target,confirmedStopped:true})
+ splitBackup(root,snapshot)
+ put(join(target,'life-memory','episodic.json'),'forgotten')
+ assert.throws(()=>splitRestore(root,snapshot),/不能安全回退/)
+ assert.equal(readFileSync(join(target,'life-memory','episodic.json'),'utf8'),'forgotten')
+ assert.equal(existsSync(coldRestoreFencePath(root)),false)
+ put(join(snapshot,'partitions','v1-memory','life-memory','episodic.json'),'tamper')
+ assert.throws(()=>verifySplitColdSnapshot(snapshot),/校验失败/)
+ rmSync(target,{recursive:true})
+ assert.throws(()=>splitBackup(root,join(t,'second')),/不存在|标记/)
+ assert.equal(existsSync(join(t,'second')),false)
+ assert.equal(readFileSync(path('life-memory','episodic.json'),'utf8'),'remembered')
+}))
+test('dev.26 interrupted multi-root switch rolls back external and core originals; pending fence blocks blank startup',()=>fixture(({t,root,path})=>{
+ put(path('.hf-cache','hub','models--fixture','snapshots','r1','model.bin'),'old')
+ const model=join(t,'models'),snapshot=join(t,'snapshot')
+ migrateDomainOffline({root,domain:'whisper',target:model,confirmedStopped:true})
+ splitBackup(root,snapshot)
+ put(join(model,'.hf-cache','hub','models--fixture','snapshots','r1','model.bin'),'current')
+ let scans=0
+ assert.throws(()=>splitRestore(root,snapshot,{checkStopped:()=>{
+   if(++scans===2){
+     const j=JSON.parse(readFileSync(coldRestoreFencePath(root),'utf8'))
+     assert.throws(()=>stateDirOf({get:()=>()=>root}),/冷恢复事务/)
+     // Remove only the synthetic core stage to provoke failure AFTER the external rename.
+     rmSync(root+'.cold-stage-'+j.id,{recursive:true})
+   }
+   return {ok:true}
+ }}),/已回退/)
+ assert.equal(readFileSync(join(model,'.hf-cache','hub','models--fixture','snapshots','r1','model.bin'),'utf8'),'current')
+ assert.equal(readFileSync(path('.hf-cache','hub','models--fixture','snapshots','r1','model.bin'),'utf8'),'old')
+ assert.equal(existsSync(coldRestoreFencePath(root)),false)
+ assert.equal(storageLayoutStatus(root).domains.whisper.root,model)
+}))
+test('dev.26 fails closed on competing processes, non-HF links, and overlapping destinations',()=>fixture(({t,root,path})=>{
+ put(path('x'),'safe')
+ assert.throws(()=>splitBackup(root,join(t,'running'),{checkStopped:()=>({ok:false})}),/仍有/)
+ assert.throws(()=>splitBackup(root,path('inside')),/重叠/)
+ const backup=join(t,'snapshot');splitBackup(root,backup)
+ assert.throws(()=>splitRestore(root,backup,{checkStopped:()=>({ok:false})}),/仍有/)
+ assert.throws(()=>rollbackSplitColdRestore({root,stoppedConfirmed:true,confirm:'wrong',checkStopped:offline}),/确认/)
+}))
+
+
+test('dev.26 process exit leaves durable startup fence; explicit rollback recovers a partial switch',()=>fixture(({t,root,path})=>{
+ const model=join(t,'models'),snapshot=join(t,'snapshot')
+ const rel=['.hf-cache','hub','models--fixture','snapshots','r1','model.bin']
+ put(path(...rel),'original');migrateDomainOffline({root,domain:'whisper',target:model,confirmedStopped:true})
+ splitBackup(root,snapshot);put(join(model,...rel),'current')
+ // A real child exits before commit after staging; manually simulate the
+ // first completed rename pair to reproduce the on-disk crash boundary.
+ const code=`import {restoreSplitColdSnapshot} from ${JSON.stringify(new URL('../lib/cold-state-snapshot.mjs',import.meta.url).href)};let scans=0;restoreSplitColdSnapshot({root:${JSON.stringify(root)},snapshot:${JSON.stringify(snapshot)},stoppedConfirmed:true,confirm:'RESTORE_FULL_DSH_STATE',checkStopped:()=>{if(++scans===2)process.exit(75);return {ok:true}}})`
+ const result=spawnSync(process.execPath,['--input-type=module','-e',code],{encoding:'utf8'})
+ assert.equal(result.status,75,result.stderr)
+ const j=JSON.parse(readFileSync(coldRestoreFencePath(root),'utf8'))
+ renameSync(model,model+'.pre-restore-'+j.id);renameSync(model+'.cold-stage-'+j.id,model)
+ assert.equal(readFileSync(join(model,...rel),'utf8'),'original')
+ assert.throws(()=>stateDirOf({get:()=>()=>root}),/冷恢复事务/)
+ assert.throws(()=>splitBackup(root,join(t,'other')),/冷恢复事务/)
+ assert.equal(rollbackSplitColdRestore({root,stoppedConfirmed:true,confirm:'ROLLBACK_FULL_DSH_STATE',checkStopped:offline}).rolledBack,true)
+ assert.equal(readFileSync(join(model,...rel),'utf8'),'current')
+ assert.equal(stateDirOf({get:()=>()=>root}),root)
+}))
+test('dev.26 valid HF relative file links are materialised, unknown links are refused',t=>fixture(({t:tmp,root,path})=>{
+ const blob=path('.hf-cache','hub','models--fixture','blobs','weight'),link=path('.hf-cache','hub','models--fixture','snapshots','r1','model.bin')
+ put(blob,'weight');mkdirSync(dirname(link),{recursive:true})
+ try{symlinkSync('../../blobs/weight',link,'file')}catch(e){if(['EPERM','EACCES'].includes(e.code)){t.skip('Windows symlink privilege unavailable');return}throw e}
+ const snapshot=join(tmp,'snapshot');splitBackup(root,snapshot)
+ const rel=['.hf-cache','hub','models--fixture','snapshots','r1','model.bin']
+ assert.equal(readFileSync(join(snapshot,'partitions','core',...rel),'utf8'),'weight')
+ const secret=join(tmp,'external');put(secret,'outside');symlinkSync(secret,path('unknown-link'),'file')
+ assert.throws(()=>splitBackup(root,join(tmp,'bad')),/链接/)
+ assert.equal(existsSync(join(tmp,'bad')),false)
+}))
+test('dev.26 rejects the old core after whole-root relocation; only active core snapshot is accepted',()=>fixture(({t,root,path})=>{
+ put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}))
+ const target=join(t,'external','bili-duty');migrateStorageOffline({source:root,target,confirmedStopped:true})
+ assert.throws(()=>splitBackup(root,join(t,'old')),/实际生效/)
+ assert.equal(splitBackup(target,join(t,'active')).partitions,1)
+}))
+test('dev.26 rejects backup when source state changes between scans, and protects HF credentials',()=>fixture(({t,root,path})=>{
+ put(path('.hf-cache','token'),'secret')
+ const snapshot=join(t,'snapshot');let calls=0
+ assert.throws(()=>splitBackup(root,join(t,'raced'),{checkStopped:()=>{if(++calls===2)put(path('new-state'),'changed');return {ok:true}}}),/发生变化|文件变化/)
+ assert.equal(existsSync(join(t,'raced')),false)
+ splitBackup(root,snapshot);put(path('.hf-cache','token'),'new secret')
+ assert.throws(()=>splitRestore(root,snapshot),/不能安全回退/)
+ assert.equal(readFileSync(path('.hf-cache','token'),'utf8'),'new secret')
+}))
+
+
+test('dev.26 independent verification rejects removing both a whole partition and its manifest row',()=>fixture(({t,root,path})=>{
+ put(path('life-memory','episodic.json'),'private')
+ const target=join(t,'memory'),snapshot=join(t,'snapshot')
+ migrateDomainOffline({root,domain:'memory',target,confirmedStopped:true});splitBackup(root,snapshot)
+ rmSync(target,{recursive:true})
+ // Verification is deliberately independent of the live disk.
+ assert.equal(verifySplitColdSnapshot(snapshot).partitions,2)
+ const manifestFile=join(snapshot,'manifest.json'),manifest=JSON.parse(readFileSync(manifestFile,'utf8'))
+ manifest.parts=manifest.parts.filter(p=>p.id!=='v1-memory');put(manifestFile,JSON.stringify(manifest))
+ rmSync(join(snapshot,'partitions','v1-memory'),{recursive:true})
+ assert.throws(()=>verifySplitColdSnapshot(snapshot),/缺少生效 V1 分区/)
 }))
