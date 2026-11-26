@@ -7075,6 +7075,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getAccountTag:()=>accountBinding.status().blocked?'':trustedLifeAccountTag(),
     validateRecall:opts=>memoryRetriever?.validateContextualVisualRecall(opts)===true,
     validatePath:opts=>lifeMemory?.validateAssociationPath(opts)===true,
+    validateImmediate:opts=>memoryRetriever?.validateImmediateRecall(opts)===true,
   })
   longTermMemory.start()
   ctx.effect(() => () => longTermMemory.stop(), 'bili-duty: 内置长期记忆')
@@ -7096,6 +7097,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     dataDir: stateDir,
     getConfig: () => cfg,
     memoryGateway:lifeMemory,
+    getAssociationHints:()=>neuralActivationTracker?.reflectionHints(trustedLifeAccountTag())||[],
     rankAssociationHistory:(seeds,history)=>{
       if(cfg.mainSessionMemoryEmbeddingEnabled!==true||embeddingIndex?.status()?.ready!==true)return {ready:false,items:[],indexed:0}
       // Same summary normalization as Gateway.semanticCandidates / embeddingCorpus.
@@ -10387,7 +10389,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         if(!receipt)return sendJson(res,200,{ok:true,activation:null})
         const episodes=lifeMemory.videoRecallGroups(lifeMemory.semanticCandidates({query:'',domain:'main-session',kinds:['watch','comment','social'],limit:3200})||[])
         const steps=lifeMemory.associationActivationSteps({accountTag:scope,receipt,episodeRows:episodes})
-        const activation=projectNeuralActivation(receipt,steps,episodes)
+        const activation=receipt.mode==='immediate'&&!memoryRetriever.validateImmediateRecall(receipt)?null:projectNeuralActivation(receipt,steps,episodes)
         if(scope!==trustedLifeAccountTag()||accountBinding.status().blocked)return sendJson(res,409,{ok:false,reason:'account-changed'})
         return sendJson(res,200,{ok:true,activation,reason:activation?'':'path-not-in-current-projection'})
       }catch{return sendJson(res,200,{ok:true,activation:null,reason:'activation-unavailable'})}

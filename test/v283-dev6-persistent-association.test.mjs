@@ -189,3 +189,35 @@ test('main chat uses explicit visual recall only, verified receipt source stays 
  assert.match(code,/onVisualRecall:rows=>\{if\(isCurrent\(\)\)observePublicRecall\(scope,rows,'owner-dm'\)\}/)
  assert.match(code,/onVisualRecall:\(\{accountTag,rows\}\)=>observePublicRecall\(accountTag,rows,'friend-dm'\)/)
 }))
+
+test('real immediate second search yields transient dashed path; no persistent edge, no forged proof, expires or revokes',()=>setup(async x=>{
+ const other=watch(6,'雨后的城市街道与路灯倒影');x.g.recordEvents([other])
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o)})
+ const rows=await retriever.contextualVisualRecall({accountTag:A,bvids:[bv(1)],limit:2,associate:true,recentFallback:false})
+ assert.equal(rows.length,2,JSON.stringify(rows));assert.equal(rows[1].bvid,bv(6));assert.ok(rows[1].immediateProof);assert.equal(rows[1].associationProof,undefined)
+ assert.equal(retriever.validateContextualVisualRecall({accountTag:A,rows}),true)
+ const projection=publicVisualAssociationContext(rows);assert.equal(projection[1].associationBasis,undefined);assert.ok(!Object.hasOwn(projection[1],'immediateProof'))
+ let clock=NOW,epoch=1;const tracker=createNeuralActivationTracker({getAccountTag:()=>A,getEpoch:()=>epoch,validateRecall:o=>retriever.validateContextualVisualRecall(o),validatePath:o=>x.g.validateAssociationPath(o),validateImmediate:o=>retriever.validateImmediateRecall(o),now:()=>clock})
+ const fake=[rows[0],{...rows[1],immediateProof:{...rows[1].immediateProof}}];assert.equal(tracker.record({accountTag:A,rows:fake}),false)
+ assert.equal(tracker.record({accountTag:A,rows,channel:'main-chat'}),true);const r=tracker.read(A);assert.equal(r.mode,'immediate');assert.deepEqual(r.edgeIds,[]);assert.doesNotMatch(JSON.stringify(r),/雨后|路灯/)
+ const episodes=x.g.videoRecallGroups(x.g.semanticCandidates({domain:'main-session',limit:3200}));const steps=x.g.associationActivationSteps({accountTag:A,receipt:r,episodeRows:episodes});const projected=projectNeuralActivation(r,steps,episodes);assert.equal(projected.mode,'immediate');assert.equal(projected.steps[0].associationType,'immediate');assert.doesNotMatch(JSON.stringify(projected),new RegExp(r.fingerprint+'|'+r.fromId+'|'+A))
+ assert.equal(x.g.status().associations.active,0);const graph=memoryNeuralProjection({episodes,showAll:true,limit:10000,verifiedGraph:x.g.neuralEvidenceSnapshot({accountTag:A,episodeRows:episodes})});assert.ok(!graph.edges.some(e=>e.type==='association'))
+ assert.deepEqual(x.g.associationActivationSteps({accountTag:A,receipt:r,episodeRows:[]}),[])
+ clock+=300000;assert.equal(tracker.read(A),null);assert.equal(tracker.reflectionHints(A).length,1)
+ epoch++;assert.deepEqual(tracker.reflectionHints(A),[]);assert.equal(tracker.record({accountTag:A,rows:[...rows]}),true)
+ const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==r.memoryId);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal(tracker.read(A),null);assert.deepEqual(tracker.reflectionHints(A),[])
+}))
+
+test('immediate recall prioritizes a live reviewed endpoint in existing reflection, only a model proposal can persist it',()=>setup(async x=>{
+ const other=watch(6,'雨后的城市街道与路灯倒影');x.g.recordEvents([other]);const a=src(x.g,1),b=x.g.reflectionEvidence([other.key])[0]
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o)})
+ const tracker=createNeuralActivationTracker({getAccountTag:()=>A,validateRecall:o=>retriever.validateContextualVisualRecall(o),validateImmediate:o=>retriever.validateImmediateRecall(o),now:()=>NOW})
+ let calls=0;const life=createLifeReflection({dataDir:x.dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:x.g,now:()=>NOW,commitMemories:()=>({added:0,rows:[]}),getAssociationHints:()=>tracker.reflectionHints(A),rankAssociationHistory:()=>({ready:true,indexed:2,items:[{id:'episode:'+src(x.g,2).id,score:.99}]}),invokeModel:async prompt=>{
+  calls++;if(calls===1)return JSON.stringify({memories:[]})
+  const history=JSON.parse(prompt.split('<association_history>').at(-1).split('</association_history>')[0]),current=JSON.parse(prompt.split('<candidate_data>').at(-1).split('</candidate_data>')[0]);assert.ok(history[0].text.includes(events[0].title));assert.equal(current.length,1);assert.equal(x.g.status().associations.active,0)
+  return JSON.stringify({memories:[],associations:[{type:'context',candidate_ids:[current[0].id,history[0].id],evidence_quotes:[other.title,events[0].title]}]})
+ },logger:{warn(){}}})
+ life.addEvents(events.slice(0,2));assert.equal((await life.reflect({force:true})).ok,true)
+ const rows=await retriever.contextualVisualRecall({accountTag:A,bvids:[bv(1)],limit:2,associate:true,recentFallback:false});assert.equal(rows[1].memoryId,b.id);assert.equal(tracker.record({accountTag:A,rows}),true);assert.deepEqual(tracker.reflectionHints(A),[{fromId:a.id,memoryId:b.id}]);assert.equal(x.g.status().associations.active,0)
+ life.addEvents([other]);const result=await life.reflect({force:true});assert.equal(result.ok,true,JSON.stringify(result));assert.equal(result.associationAdded,1);assert.equal(calls,2);assert.equal(x.g.status().associations.active,1)
+}))
