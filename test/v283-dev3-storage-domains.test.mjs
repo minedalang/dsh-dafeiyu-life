@@ -10,7 +10,7 @@ import {verifyPythonCachePaths} from '../lib/storage-python-cache-check.mjs'
 import {readWhisperReadiness} from '../lib/video-dependencies.mjs'
 import {listWhisperModels} from '../lib/whisper-model-cache.mjs'
 import {collectBackupFiles,createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
-import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,rollbackSplitColdRestore,inspectSplitColdSnapshot} from '../lib/cold-state-snapshot.mjs'
+import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,rollbackSplitColdRestore,inspectSplitColdSnapshot,restoreColdSnapshot,inspectDisasterRescue,createDisasterRescue,verifyDisasterRescue} from '../lib/cold-state-snapshot.mjs'
 import {coldRestoreFencePath} from '../lib/cold-restore-fence.mjs'
 import {stateDirOf} from '../lib/state.mjs'
 const fixture=fn=>{const t=mkdtempSync(join(tmpdir(),'dafeiyu-dev3-')),root=join(t,'bili-duty');mkdirSync(root);try{fn({t,root,path:(...x)=>join(root,...x)})}finally{rmSync(t,{recursive:true,force:true})}}
@@ -578,4 +578,107 @@ test('dev.26 independent verification rejects removing both a whole partition an
  manifest.parts=manifest.parts.filter(p=>p.id!=='v1-memory');put(manifestFile,JSON.stringify(manifest))
  rmSync(join(snapshot,'partitions','v1-memory'),{recursive:true})
  assert.throws(()=>verifySplitColdSnapshot(snapshot),/缺少生效 V1 分区/)
+}))
+
+
+const rescueArgs=(snapshot,destination)=>({snapshot,destination,stoppedConfirmed:true,confirm:'RESCUE_DSH_OFFLINE_ONLY',checkStopped:offline})
+const rescueManifest=destination=>JSON.parse(readFileSync(join(destination,'offline-rescue-only.json'),'utf8'))
+const rescueRead=(destination,id,kind,path)=>{
+ const row=rescueManifest(destination).rows.find(r=>r.id===id&&r.kind===kind),f=row.files.find(f=>f.path===path)
+ return readFileSync(join(destination,'objects',f.sha256),'utf8')
+}
+test('dev.26 disaster rescue with lost core preserves surviving Life separately without reviving historical content',()=>fixture(({t,root,path})=>{
+ put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}))
+ put(path('life-memory','episodic.json'),'historical experience')
+ put(path('detail-protection','revocations-v1.json'),'old revocations')
+ put(path('accounts','123','credential.json'),'private credential')
+ const life=join(t,'life'),snapshot=join(t,'snapshot'),destination=join(t,'rescue')
+ migrateDomainOffline({root,domain:'memory',target:life,confirmedStopped:true})
+ splitBackup(root,snapshot)
+ put(join(life,'life-memory','episodic.json'),'current memory')
+ put(join(life,'detail-protection','revocations-v1.json'),'new revocations')
+ renameSync(root,root+'-lost')
+ const plan=inspectDisasterRescue({snapshot,destination})
+ assert.equal(plan.changesNow,false);assert.equal(plan.activationAllowed,false);assert.equal(existsSync(destination),false)
+ assert.deepEqual(plan.partitions,[{id:'core',status:'missing'},{id:'v1-memory',status:'same-identity-unconfirmed-freshness'}])
+ const result=createDisasterRescue(rescueArgs(snapshot,destination))
+ assert.equal(result.created,true);assert.equal(result.historyMergeRequired,true);assert.equal(existsSync(root),false)
+ assert.equal(rescueRead(destination,'v1-memory','historical','life-memory/episodic.json'),'historical experience')
+ assert.equal(rescueRead(destination,'v1-memory','surviving-candidate','life-memory/episodic.json'),'current memory')
+ assert.equal(rescueRead(destination,'v1-memory','surviving-candidate','detail-protection/revocations-v1.json'),'new revocations')
+ assert.equal(rescueRead(destination,'core','historical','accounts/123/credential.json'),'private credential')
+ assert.equal(existsSync(join(destination,'character-identity.json')),false)
+ assert.equal(existsSync(join(destination,'life-memory')),false)
+ assert.equal(readFileSync(join(life,'detail-protection','revocations-v1.json'),'utf8'),'new revocations')
+ renameSync(life,life+'-lost');renameSync(snapshot,snapshot+'-lost')
+ assert.equal(verifyDisasterRescue(destination).verified,true)
+ // The actual host startup gate rejects even a rescue bundle renamed to the home.
+ renameSync(destination,root)
+ assert.throws(()=>stateDirOf({get:()=>()=>root}),/隔离救援资料/)
+}))
+test('dev.26 lost Life disk keeps current core receipts and grants separate; mismatched partition is not imported',()=>fixture(({t,root,path})=>{
+ put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}))
+ put(path('life-memory','episodic.json'),'historical')
+ put(path('account-binding.json'),'old grants')
+ const life=join(t,'life'),snapshot=join(t,'snapshot'),destination=join(t,'rescue')
+ migrateDomainOffline({root,domain:'memory',target:life,confirmedStopped:true});splitBackup(root,snapshot)
+ put(path('account-binding.json'),'new grants');put(path('outbound-action-executions','unknown.json'),'unknown receipt')
+ renameSync(life,life+'-lost');assert.equal(inspectDisasterRescue({snapshot,destination}).partitions[1].status,'missing')
+ mkdirSync(life);put(join(life,'life-memory','secret.json'),'unrelated fish')
+ const result=createDisasterRescue(rescueArgs(snapshot,destination))
+ assert.equal(result.partitions[1].status,'identity-or-route-mismatch')
+ assert.equal(rescueRead(destination,'core','surviving-candidate','account-binding.json'),'new grants')
+ assert.equal(rescueRead(destination,'core','surviving-candidate','outbound-action-executions/unknown.json'),'unknown receipt')
+ assert.equal(rescueManifest(destination).rows.some(r=>r.id==='v1-memory'&&r.kind==='surviving-candidate'),false)
+ assert.equal(readFileSync(path('account-binding.json'),'utf8'),'new grants')
+ assert.equal(readFileSync(join(life,'life-memory','secret.json'),'utf8'),'unrelated fish')
+}))
+test('dev.26 disaster rescue rejects overlapping targets, races, damaged objects and unconfirmed writes',()=>fixture(({t,root,path})=>{
+ put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}));put(path('state.json'),'before')
+ const snapshot=join(t,'snapshot'),destination=join(t,'rescue');splitBackup(root,snapshot)
+ assert.throws(()=>inspectDisasterRescue({snapshot,destination:join(root,'nested')}),/重叠/)
+ assert.throws(()=>createDisasterRescue({...rescueArgs(snapshot,destination),confirm:'RESTORE_FULL_DSH_STATE'}),/确认/)
+ let n=0;assert.throws(()=>createDisasterRescue({...rescueArgs(snapshot,destination),checkStopped:()=>{if(++n===2)put(path('state.json'),'after');return {ok:true}}}),/来源或分区状态变化/)
+ assert.equal(existsSync(destination),false);assert.equal(readFileSync(path('state.json'),'utf8'),'after')
+ const result=createDisasterRescue(rescueArgs(snapshot,destination));assert.equal(result.verified,true)
+ assert.throws(()=>createDisasterRescue(rescueArgs(snapshot,destination)),/尚不存在/)
+ const m=rescueManifest(destination),sha=m.rows[0].files[0].sha256
+ put(join(destination,'objects',sha),'tampered');assert.throws(()=>verifyDisasterRescue(destination),/对象校验失败/)
+}))
+test('dev.26 legacy missing root cannot bypass historical protection; its backup can be rescued offline',()=>fixture(({t,root,path})=>{
+ put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}));put(path('life-memory','episodic.json'),'historical')
+ const snapshot=join(t,'legacy'),destination=join(t,'rescue')
+ createColdSnapshot({root,destination:snapshot,stoppedConfirmed:true});renameSync(root,root+'-lost')
+ assert.throws(()=>restoreColdSnapshot({root,snapshot,stoppedConfirmed:true,confirm:'RESTORE_FULL_DSH_STATE'}),/原业务目录不存在/)
+ assert.equal(existsSync(root),false)
+ const result=createDisasterRescue(rescueArgs(snapshot,destination));assert.equal(result.sourceFormat,'dsh-cold-state-v1')
+ assert.equal(result.partitions[0].status,'original-path-not-recorded');assert.equal(result.activationAllowed,false)
+ assert.equal(rescueRead(destination,'core','historical','life-memory/episodic.json'),'historical')
+}))
+
+test('dev.26 rescue verification derives Life requirement from historical core even if an entire row and its objects are removed',()=>fixture(({t,root,path})=>{
+ put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}));put(path('life-memory','episodic.json'),'old')
+ const life=join(t,'life'),snapshot=join(t,'snapshot'),destination=join(t,'rescue')
+ migrateDomainOffline({root,domain:'memory',target:life,confirmedStopped:true});splitBackup(root,snapshot)
+ createDisasterRescue(rescueArgs(snapshot,destination));const manifest=rescueManifest(destination)
+ manifest.rows=manifest.rows.filter(r=>r.id!=='v1-memory');manifest.statuses=manifest.statuses.filter(r=>r.id!=='v1-memory')
+ const keep=new Set(manifest.rows.flatMap(r=>r.files.map(f=>f.sha256)))
+ for(const f of readdirSync(join(destination,'objects')))if(!keep.has(f))rmSync(join(destination,'objects',f))
+ put(join(destination,'offline-rescue-only.json'),JSON.stringify(manifest))
+ assert.throws(()=>verifyDisasterRescue(destination),/缺少历史 Life 分区/)
+}))
+
+test('dev.26 both business disks missing: rescue remains offline and CLI plan/verify use original snapshot and new bundle',()=>fixture(({t,root,path})=>{
+ put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}));put(path('life-memory','episodic.json'),'old');put(path('.hf-cache','hub','models--test','blobs','weights'),'model')
+ const life=join(t,'life'),model=join(t,'models'),snapshot=join(t,'snapshot'),destination=join(t,'rescue')
+ migrateDomainOffline({root,domain:'model',target:model,confirmedStopped:true});migrateDomainOffline({root,domain:'memory',target:life,confirmedStopped:true});splitBackup(root,snapshot)
+ renameSync(root,root+'-lost');renameSync(life,life+'-lost')
+ const cli=['tools/dev4-cold-state-backup.mjs'],plan=spawnSync(process.execPath,[...cli,'plan-disaster-rescue','--snapshot',snapshot,'--to',destination],{encoding:'utf8'})
+ assert.equal(plan.status,0,plan.stderr);assert.deepEqual(JSON.parse(plan.stdout).partitions,[{id:'core',status:'missing'},{id:'v1-memory',status:'missing'}])
+ assert.equal(existsSync(destination),false)
+ const result=createDisasterRescue(rescueArgs(snapshot,destination));assert.deepEqual(result.omittedModelAndRuntimePartitions,['v1-whisper'])
+ assert.equal(existsSync(root),false);assert.equal(existsSync(life),false)
+ const verify=spawnSync(process.execPath,[...cli,'verify-rescue','--to',destination],{encoding:'utf8'})
+ assert.equal(verify.status,0,verify.stderr);assert.equal(JSON.parse(verify.stdout).activationAllowed,false)
+ assert.equal(rescueManifest(destination).rows.every(r=>r.kind==='historical'),true)
 }))

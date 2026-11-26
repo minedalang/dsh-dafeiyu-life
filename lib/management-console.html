@@ -2682,7 +2682,8 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     </section>
     <p class="backup-footnote">分盘后仍从当前生效的 Life/业务数据目录导出，不会退回 C 盘历史副本。便携业务备份不包含 B站 Cookie、登录凭证、部分私密账本、短期时间线、密钥、缓存、日志和表情包图片本体；私密经历请使用下方人生记忆专项备份，表情包图片请单独导出。两种 JSON 备份均不能替代完整冷快照。</p>
     <p class="backup-footnote" id="backup-cold-offline-note"><strong>分盘完整冷备份（开发候选）</strong>：跨版本迁移前应独立保存全部现役分区。完全退出 DSH 后，可在源码目录使用 <code>tools/dev4-cold-state-backup.mjs</code> 的 <code>backup-full</code> 与 <code>verify-full</code> 命令，详见 dev.26 冷备份说明。当前不可重建业务状态变化时拒绝完整历史恢复。完整快照包含账号凭证和私密数据，严禁上传分享。</p>
-    <p class="backup-footnote" id="backup-model-recovery-note"><strong>模型盘损坏或更换</strong>：核心与现役 Life 完好时，完全退出 DSH，使用 <code>plan-model-recovery</code> 预检及 <code>recover-models</code> 恢复已知 V2 模型到新目录；不覆盖当前记忆或权限。核心/Life 整盘丢失仍不支持。</p>
+    <p class="backup-footnote" id="backup-model-recovery-note"><strong>模型盘损坏或更换</strong>：核心与现役 Life 完好时，完全退出 DSH，使用 <code>plan-model-recovery</code> 预检及 <code>recover-models</code> 恢复已知 V2 模型到新目录；不覆盖当前记忆或权限。核心/Life 整盘丢失时不能直接激活旧业务快照。</p>
+    <p class="backup-footnote" id="backup-disaster-rescue-note"><strong>核心盘或记忆盘损坏</strong>：请先完全退出 DSH，使用 <code>plan-disaster-rescue</code> 预检、<code>rescue-disaster</code> 抢救历史快照与尚可读取的核心/记忆分区，再用 <code>verify-rescue</code> 校验新隔离目录。救援资料不是可启动的角色，保留两种来源，不自动合并或恢复旧授权、记忆；完整激活恢复仍待支持。救援目录同样包含私密数据，请勿上传。</p>
   </div>
   <div class="backup-more-grid">
     <details class="backup-fold" id="backup-memory-tools">
