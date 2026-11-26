@@ -260,7 +260,7 @@ import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import { memoryNeuralProjection, neuralProjectionKey, createNeuralActivationTracker, projectNeuralActivation } from './lib/memory-neural-projection.mjs'
 import { systemHealthSnapshot } from './lib/system-health-projection.mjs'
 import {readProductionVisionStatus} from './lib/vision-production-status.mjs'
-import {planVideoMomentFollowup,proposeVideoRecallFollowup} from './lib/video-moment-followup.mjs'
+import {planVideoMomentFollowup,proposeVideoRecallFollowup,resolveLiveVideoCue,validateVideoRecallGap} from './lib/video-moment-followup.mjs'
 import {modelTestFailure} from './lib/model-failure-diagnostics.mjs'
 import {providerIds,modelIds} from './lib/model-catalog.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
@@ -2135,11 +2135,6 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // for 30 minutes; JPEG snapshots are isolated, short-lived local diagnostics only.
   let lastLifeVideoDebug=null,videoDebugJob=null,videoDebugWorkInFlight=false
   let lastLifeVisionActivity=null // in-process operational metadata, no BV/visual text/UID
-  const recentVideoFocusCues=new Map() // account-scoped, short-lived, no durable model text
-  const recallVideoFocusCues=bvid=>{
-    const row=recentVideoFocusCues.get(videoDebugAccount()+':'+bvid)
-    return row&&row.expiresAt>Date.now()?row.observations:[]
-  }
   const videoDebugExpiry=VIDEO_CACHE_RETENTION.capture
   const videoDebugAccount=()=>String(accountBinding.accountUid()||'')
   const safeVideoDebugCapture=(value,bvid)=>{
@@ -2443,13 +2438,6 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       perceptionHandoff.review.verifiedAgreement=false
       perceptionHandoff.review.verifiedContradiction=false
     }
-    if(!dryRun&&focusReview&&initialAccount&&initialAccount===videoDebugAccount()){
-      const key=initialAccount+':'+bvid
-      recentVideoFocusCues.set(key,{expiresAt:Date.now()+30*60_000,
-        observations:[{fromMs:focusReview.startMs,toMs:focusReview.endMs,
-          description:String(focusReview.description||'').slice(0,400)}]})
-      if(recentVideoFocusCues.size>10)recentVideoFocusCues.delete(recentVideoFocusCues.keys().next().value)
-    }
     if(perceptionHandoff?.speech)perceptionHandoff.speech.attempt=speechAttempt
     // Debug probes never write memory, owner task ledger or session watch history.
     // Only explicit main-Session watches may create main-Session history.
@@ -2714,8 +2702,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     parameters:{bvid:{type:'string',description:'从当前消息或可信记忆找到的真实 BV，不可猜'},
       at_seconds:{type:'number',description:'明确提及或已核实观察到的时间（秒）'},
       after_seconds:{type:'number',description:'请求了解这个已确认时刻之后多少秒，最多60，默认0'},
-      event_cue:{type:'string',description:'若没明确时间，可用当前账号本机近期真实局部复查中已明确描述过的事件短语；没有唯一锚点则拒绝推断时间'},
-      recall_memory_id:{type:'string',description:'仅使用回忆工具返回的补看候选中的公开经历 ID；不可猜测'}},
+      event_cue:{type:'string',description:'若没有明确时间，可用当前账号仍清晰的公开深层观察中的精确事件短语；必须完整核验唯一时间锚点，否则询问，不猜测'},
+      recall_memory_id:{type:'string',description:'仅使用回忆工具返回的补看候选中的公开经历 ID；不可猜测'},
+      recall_start_ms:{type:'number',description:'原补看候选的 recall_start_ms，原样填写'},
+      recall_end_ms:{type:'number',description:'原补看候选的 recall_end_ms，原样填写'}},
     async execute(args={}){
       refreshCfg()
       if(cfg.masterEnabled!==true||!hasCredential())return {ok:false,error:'B站当前不可读取'}
@@ -2723,29 +2713,47 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         return {ok:false,reason:'vision-not-enabled',error:'尚未启用独立视觉识别'}
       const bvid=String(args.bvid||'').trim()
       if(!validBv(bvid))return {ok:false,reason:'invalid-bv'}
-      const requestedAccount=trustedLifeAccountTag()
-      if(!requestedAccount||accountBinding.status().blocked)return {ok:false,reason:'video-account-not-ready'}
-      // A cross-round suggestion is not an authorization. Re-prove its live
-      // public source before any platform read and again before the visual read.
-      const recallId=args.recall_memory_id;
-      const recallStillValid=()=>recallId===undefined||(/^[a-f0-9]{16}$/.test(requestedAccount)&&/^e-[a-f0-9]{18}$/.test(String(recallId))&&lifeMemory?.videoEvidenceTrace({accountTag:requestedAccount,bvid,memoryId:recallId,visualOnly:true,limit:1,ownerSession:false})?.length===1);
+      const requestedAccount=trustedLifeAccountTag(),requestedEpoch=accountBinding.generation(),requestedPolicy=getSessionIntegration()
+      const scopeCurrent=()=>{
+        const policy=getSessionIntegration()
+        return requestedAccount===trustedLifeAccountTag()&&requestedEpoch===accountBinding.generation()&&
+          requestedPolicy.revision===policy.revision&&requestedPolicy.mode===policy.mode&&integrationAvailable()&&platformReady()&&!accountBinding.status().blocked
+      }
+      if(!requestedAccount||!scopeCurrent())return {ok:false,reason:'video-account-not-ready'}
+      const readPublicDetails=options=>lifeMemory?.recallVideoDetails({bvid,accountTag:requestedAccount,ownerSession:false,visibility:'public-event',maxBytes:8192,...options})
+      const recallId=args.recall_memory_id
+      const gapRequested=recallId!==undefined||args.recall_start_ms!==undefined||args.recall_end_ms!==undefined
+      const gapStillValid=()=>!gapRequested||validateVideoRecallGap({bvid,memoryId:recallId,startMs:args.recall_start_ms,endMs:args.recall_end_ms,
+        atSeconds:args.at_seconds,afterSeconds:args.after_seconds,eventCue:args.event_cue,
+        trace:lifeMemory?.videoEvidenceTrace({accountTag:requestedAccount,bvid,memoryId:recallId,visualOnly:true,limit:1,ownerSession:false}),
+        result:readPublicDetails({startMs:args.recall_start_ms,endMs:args.recall_end_ms})})
+      if(!gapStillValid())return {ok:false,reason:'recall-source-unavailable'}
+      // A natural cross-turn cue comes only from live, complete public detail.
+      // Re-read it after every asynchronous boundary before issuing new reads.
+      const cueRequested=args.at_seconds===undefined&&typeof args.event_cue==='string'&&args.event_cue.trim()!==''
+      const resolveCue=()=>resolveLiveVideoCue({bvid,description:args.event_cue,result:readPublicDetails({})})
+      const cue=cueRequested?resolveCue():null
+      if(cueRequested&&!cue)return {ok:false,reason:'time-anchor-required'}
+      const recallStillValid=()=>scopeCurrent()&&gapStillValid()&&(!cueRequested||resolveCue()?.proof===cue.proof)
       if(!recallStillValid())return {ok:false,reason:'recall-source-unavailable'}
       let info
       try{info=parseMaybeJson(await call('bili_video_info',{bvid}))}
       catch{return {ok:false,reason:'video-metadata-unavailable'}}
-      if(requestedAccount!==trustedLifeAccountTag()||accountBinding.status().blocked)return {ok:false,reason:'account-changed'}
+      if(!scopeCurrent())return {ok:false,reason:'account-changed'}
+      if(!recallStillValid())return {ok:false,reason:'recall-source-unavailable'}
       const durationSeconds=Number(info?.duration)
       const plan=planVideoMomentFollowup({bvid,atSeconds:args.at_seconds,
         afterSeconds:args.after_seconds,description:args.event_cue,
-        priorObservations:recallVideoFocusCues(bvid),durationSeconds})
+        priorObservations:cue?[cue]:[],durationSeconds})
       if(!plan.ok)return {ok:false,...plan}
       return runLifeChosenVideoRead({willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,
-        bvid,mode:'revisit',read:async({account})=>{
-          if(account!==requestedAccount||account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
+        bvid,mode:'revisit',revisitContext:{origin:gapRequested?'recalled-gap':cueRequested?'live-event-anchor':'explicit-time',
+          startSeconds:plan.startSeconds,endSeconds:plan.endSeconds},read:async({account})=>{
+          if(account!==requestedAccount||!scopeCurrent())return {ok:false,reason:'account-changed'}
           if(!recallStillValid())return {ok:false,reason:'recall-source-unavailable'}
           return withLifeVideoVisualLease(stateDir,{accountTag:account,bvid},async()=>{
             refreshCfg()
-            if(account!==trustedLifeAccountTag()||accountBinding.status().blocked||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential()||!['independent_dsh','independent_local'].includes(resolvedVisionMode()))return {ok:false,reason:'video-read-no-longer-authorized'}
+            if(account!==requestedAccount||!scopeCurrent()||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential()||!['independent_dsh','independent_local'].includes(resolvedVisionMode()))return {ok:false,reason:'video-read-no-longer-authorized'}
             if(!recallStillValid())return {ok:false,reason:'recall-source-unavailable'}
             const budget=Number(cfg.visionFrames)>=48?100*1048576:Number(cfg.visionFrames)>=24?50*1048576:24*1048576
             let visual
@@ -2756,7 +2764,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
             catch(e){return {ok:false,reason:'focus-read-failed',error:String(e?.message||e).slice(0,160)}}
             finally{stopVideoObserve()}
             refreshCfg()
-            if(account!==trustedLifeAccountTag()||accountBinding.status().blocked||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential()||!['independent_dsh','independent_local'].includes(resolvedVisionMode()))return {ok:false,reason:'video-read-no-longer-authorized'}
+            if(account!==requestedAccount||!scopeCurrent()||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential()||!['independent_dsh','independent_local'].includes(resolvedVisionMode()))return {ok:false,reason:'video-read-no-longer-authorized'}
             if(!recallStillValid())return {ok:false,reason:'recall-source-unavailable'}
             const focusCapture=safeVideoDebugCapture(visual?.debugCapture,bvid)
             if(visual&&typeof visual==='object')delete visual.debugCapture
@@ -2782,7 +2790,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
                   {status:result.pending?'pending':'not-updated',reason:result.reason}
               }
             }catch(e){log('Life 补看证据记账暂不可用：'+String(e?.message||e).slice(0,90))}
-            if(focusCapture&&account===trustedLifeAccountTag()&&!accountBinding.status().blocked)try{
+            if(!scopeCurrent())return {ok:false,reason:'video-read-no-longer-authorized'}
+            if(focusCapture&&scopeCurrent())try{
               addLifeVideoGallery(stateDir,{account,bvid,captures:[focusCapture],verified:true,
                 phase:'focus',note:String(confirmed.description||'').slice(0,380),analysis:visual?.description,boardReceipts:visual?.visionBoardReceipts,memoryWrite:{status:memoryState,detailStatus:deepMemory.status,detailReason:deepMemory.reason}})
             }catch(e){log('Life 指定时刻回放图片保存失败：'+String(e?.message||e).slice(0,100))}
@@ -7096,7 +7105,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(result.ok!==false||!['no-detail','no-detail-in-time-range'].includes(result.reason)||firstObservation||cursor||!Number.isSafeInteger(startMs)||!Number.isSafeInteger(endMs)||endMs-startMs>12000||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential())return result;
       const trace=lifeMemory.videoEvidenceTrace({bvid,memoryId,accountTag,visualOnly:true,limit:1,ownerSession:false});
       if(accountTag!==trustedLifeAccountTag()||accountBinding.status().blocked)return {ok:false,reason:'account-changed'};
-      const revisitCandidate=proposeVideoRecallFollowup({result,bvid,startMs,endMs,firstObservation,cursor,trace});
+      const publicGap=lifeMemory.recallVideoDetails({bvid,accountTag,ownerSession:false,visibility:'public-event',startMs,endMs,maxBytes:4096});
+      const revisitCandidate=proposeVideoRecallFollowup({result:publicGap,bvid,startMs,endMs,firstObservation,cursor,trace});
       return revisitCandidate?{...result,revisitCandidate}:result;
     },
     getTodoEngine: () => ownerTodos,
@@ -8896,7 +8906,6 @@ logger:{warn:m=>log('社交意图：'+m)}
     finally{autoBackupBusy=false}
   }
   const runVideoCacheCleanup=()=>{
-    for(const [key,row] of recentVideoFocusCues)if(row.expiresAt<=Date.now())recentVideoFocusCues.delete(key)
     const result=pruneVideoCaches(stateDir)
     if(result.failed||result.skipped)log('音视频缓存清理：已删除 '+result.removed+' 项，待重试 '+result.failed+' 项，安全跳过 '+result.skipped+' 项')
   }

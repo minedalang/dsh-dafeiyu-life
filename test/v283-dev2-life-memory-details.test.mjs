@@ -595,3 +595,28 @@ test('actual main Session recall adapter keeps private hits out of public activa
  privateHit=true;changeDuringRecall=true;assert.deepEqual(await adapter('朱红雨伞',args),[]);assert.equal(recorded,1)
  blocked=true;assert.deepEqual(await adapter('朱红雨伞',args),[]);assert.equal(recorded,1)
 })
+
+
+test('dev.25 跨进程生命周期使用真实已存公开片段，衰减和新证据阻止旧补看候选',async()=>{
+ const {resolveLiveVideoCue,validateVideoRecallGap}=await import('../lib/video-moment-followup.mjs')
+ const dir=mkdtempSync(join(tmpdir(),'dafeiyu-cross-turn-revisit-'))
+ let at=NOW+5000,account=A,gateway
+ const open=()=>createLifeMemoryGateway({dataDir:dir,now:()=>at,getAccountTag:()=>account,getConfig:()=>({mainSessionMemoryHalfLifeDays:15}),admitMemoryDetails:()=>true,logger:{warn(){}}})
+ try{
+  gateway=open();gateway.recordEvents([event]);const memoryId=gateway.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId
+  assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:{}}).ok,true)
+  gateway.close();gateway=open();at+=DAY
+  const read=options=>gateway.recallVideoDetails({bvid:BV,accountTag:A,visibility:'public-event',ownerSession:false,maxBytes:8192,...options})
+  const cue=()=>resolveLiveVideoCue({result:read({}),bvid:BV,description:'出现两个人物'})
+  assert.equal(cue()?.toMs,9000)
+  const gap=()=>validateVideoRecallGap({bvid:BV,memoryId,startMs:10000,endMs:12000,atSeconds:11,trace:gateway.videoEvidenceTrace({bvid:BV,memoryId,accountTag:A,visualOnly:true}),result:read({startMs:10000,endMs:12000})})
+  assert.equal(gap(),true)
+  const next={...event,key:'video-explore:dev25-next',at,experience:{...event.experience,visualReceipt:{source:'low-resolution-preview',frameCount:2,firstAtMs:10000,lastAtMs:12000}}}
+  gateway.recordEvents([next]);const nextId=gateway.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId
+  assert.notEqual(nextId,memoryId)
+  assert.equal(gateway.attachMemoryDetails({memoryId:nextId,accountTag:A,fragments:[{...fragments[0],fragmentId:'frame-0002',sourceRef:'verified:observation:sample2',timeAnchorMs:[10000,12000],content:'窗边的白色杯子。'}],sourceProof:{}}).ok,true)
+  assert.equal(gap(),false,'同 BV 的新经历已有证据，不应按旧经历再次补看')
+  account=B;assert.equal(cue(),null);account=A
+  at=NOW+14*DAY;assert.equal(cue(),null);assert.equal(gap(),false)
+ }finally{gateway?.close();rmSync(dir,{recursive:true,force:true})}
+})

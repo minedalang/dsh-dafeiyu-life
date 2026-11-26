@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-import {planVideoMomentFollowup,proposeVideoRecallFollowup} from '../lib/video-moment-followup.mjs'
+import {planVideoMomentFollowup,proposeVideoRecallFollowup,resolveLiveVideoCue,validateVideoRecallGap} from '../lib/video-moment-followup.mjs'
 import {systemHealthSnapshot} from '../lib/system-health-projection.mjs'
 const BV='BV1bkW86bEkj'
 test('明确时间能触发新视频局部复查，且不能越出视频真实时长',()=>{
@@ -56,7 +56,23 @@ test('视频补看工具、固定 ASR 上下游超时与运行 UI 已接入，�
 
 test('explicit current short window with missing evidence can offer a public recall follow-up, never historical reconstruction',()=>{
  const row={bvid:BV,memoryId:'e-'+'a'.repeat(18),visibility:'public-event',visual:{source:'decoded-public-video'},sources:['visual-model-observation']};const opt={result:{ok:false,reason:'no-detail-in-time-range'},bvid:BV,startMs:2000,endMs:8000,trace:[row]};
- const c=proposeVideoRecallFollowup(opt);assert.equal(c.tool,'bili_video_revisit_moment');assert.equal(c.args.at_seconds,5);assert.equal(c.args.recall_memory_id,row.memoryId);assert.match(c.note,/新观察不能回答当时/);
+ const c=proposeVideoRecallFollowup(opt);assert.equal(c.tool,'bili_video_revisit_moment');assert.equal(c.args.at_seconds,5);assert.equal(c.args.recall_memory_id,row.memoryId);assert.equal(c.args.recall_start_ms,2000);assert.equal(c.args.recall_end_ms,8000);assert.match(c.note,/新观察不能回答当时/);
  for(const change of [{firstObservation:true},{cursor:'old'},{trace:[]},{trace:[{...row,visibility:'private-session'}]},{trace:[{...row,bvid:'BV1234567890'}]},{result:{ok:true,hasMore:true}},{result:{ok:false,reason:'detail-budget-too-small'}},{result:{ok:false,reason:'detail-invalid'}},{result:{ok:false,reason:'memory-unavailable'}},{endMs:15001},{startMs:undefined}])assert.equal(proposeVideoRecallFollowup({...opt,...change}),null);
  const server=readFileSync(new URL('../index.js',import.meta.url),'utf8');assert.match(server,/revisitCandidate=proposeVideoRecallFollowup/);assert.match(server,/videoEvidenceTrace\(\{bvid,memoryId,accountTag,visualOnly:true,limit:1,ownerSession:false\}\)/);
+})
+
+
+test('跨轮事件锚点只来自完整唯一的现行公开深层片段',()=>{
+ const part={visibility:'public-event',certainty:'model-observation',memoryId:'e-'+'a'.repeat(18),sourceRef:'verified:sample',fragmentId:'frame-1',content:'看见桌上的红色风筝',timeAnchorMs:[1000,2000]}
+ const result={ok:true,bvid:BV,hasMore:false,missingSources:0,totalFragments:1,fragments:[part]}
+ const resolve=changes=>resolveLiveVideoCue({result:{...result,...changes},bvid:BV,description:'红色风筝'})
+ assert.equal(resolve({}).toMs,2000)
+ for(const change of [{hasMore:true},{missingSources:1},{partialSources:true},{fragments:[{...part,visibility:'private-session'}]},{fragments:[{...part,contentComplete:false}]},{fragments:[{...part,timeAnchorMs:[0,20000]}]},{totalFragments:2,fragments:[part,{...part,fragmentId:'frame-2'}]},{totalFragments:2,fragments:[part,{...part,timeAnchorMs:[0,20000]}]}])assert.equal(resolve(change),null)
+})
+
+test('补看候选的时间窗不得被平移且已有其他证据时不复读',()=>{
+ const memoryId='e-'+'a'.repeat(18),trace=[{bvid:BV,memoryId,visibility:'public-event',visual:{source:'decoded-public-video'},sources:['visual-model-observation']}]
+ const options={bvid:BV,memoryId,trace,startMs:2000,endMs:8000,atSeconds:5,result:{ok:false,reason:'no-detail-in-time-range'}}
+ assert.equal(validateVideoRecallGap(options),true)
+ for(const change of [{atSeconds:6},{afterSeconds:2},{eventCue:'另一段'},{startMs:undefined},{trace:[]},{result:{ok:true}},{result:{ok:false,reason:'detail-write-pending'}}])assert.equal(validateVideoRecallGap({...options,...change}),false)
 })
