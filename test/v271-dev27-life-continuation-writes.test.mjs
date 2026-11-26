@@ -174,12 +174,12 @@ test('uncertain platform status blocks the same action on later Life ticks, no h
 
 test('dev.24 continuation writer rechecks mode after queued intent and still settles already-started receipt',async()=>{
  const {createAutomaticSessionScope}=await import('../lib/session-integration-policy.mjs')
- let policy={mode:'full',revision:0},cancelled=0,writes=0,changeAt='intent'
+ let policy={mode:'autonomous-life',revision:0},cancelled=0,writes=0,changeAt='intent'
  const auto=createAutomaticSessionScope(()=>policy)
  const run=createLifeContinuationWriteExecutor({canStart:auto.current,hasVerifiedVisual:()=>true,getConfig:()=>cfg,getAccountTag:()=>scope,getAccountUid:()=> '1234',
   getIntention:()=>selected,getPublicEvidence:async()=>evidence,markSelected:()=>({ok:true}),
-  prepareIntent:async()=>{if(changeAt==='intent')policy={mode:'full',revision:policy.revision+2};return {ok:true,ticket:'trusted-ticket'}},
-  cancelIntent:()=>{cancelled++},runWriter:async()=>{writes++;policy={mode:'cooperative',revision:policy.revision+1};return {ok:true,status:'verified',attempted:true}},now:()=>T})
+  prepareIntent:async()=>{if(changeAt==='intent')policy={mode:'autonomous-life',revision:policy.revision+2};return {ok:true,ticket:'trusted-ticket'}},
+  cancelIntent:()=>{cancelled++},runWriter:async()=>{writes++;policy={mode:'memory-foundation',revision:policy.revision+1};return {ok:true,status:'verified',attempted:true}},now:()=>T})
  const action={action:'like_video',id:ID,bvid:BV,reason:'确实欣赏这个视频公开呈现的主题'}
  const blocked=await auto.dispatch(()=>run(action,scope));assert.equal(blocked.status,'blocked');assert.equal(blocked.attempted,false);assert.equal(writes,0);assert.equal(cancelled,1)
  changeAt='writer';const confirmed=await auto.dispatch(()=>run(action,scope));assert.equal(confirmed.status,'verified');assert.equal(writes,1);assert.equal(cancelled,2)

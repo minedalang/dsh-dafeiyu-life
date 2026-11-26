@@ -144,16 +144,16 @@ test('dev.3 同一天准确时间事件排在日期级视频记录之前，不�
 
 test('dev.24 automatic reflection pause retains candidates and charges only the started model attempt',async()=>{
  const {createAutomaticSessionScope}=await import('../lib/session-integration-policy.mjs')
- const dir=temp();let policy={mode:'cooperative',revision:1},release,started,calls=0,commits=0
+ const dir=temp();let policy={mode:'memory-foundation',revision:1},release,started,calls=0,commits=0
  const entered=new Promise(r=>started=r),model=new Promise(r=>release=r)
  try{
   const life=createLifeReflection({automaticSession:createAutomaticSessionScope(()=>policy),dataDir:dir,getConfig:baseConfig,memoryGateway:gateway,
    now:()=>Date.parse('2026-10-31T10:00:00Z'),invokeModel:async()=>{calls++;if(calls===1){started();return model}return '{"memories":[]}'},commitMemories:()=>{commits++;return {added:0,rows:[]}}})
   life.addEvents(events(1,2));assert.equal((await life.reflect()).skipped,'session-integration-paused');assert.equal(calls,0)
-  policy={mode:'full',revision:2};const work=life.reflect();await entered;policy={mode:'cooperative',revision:3};policy={mode:'full',revision:4};release('{"memories":[]}')
+  policy={mode:'autonomous-life',revision:2};const work=life.reflect();await entered;policy={mode:'memory-foundation',revision:3};policy={mode:'autonomous-life',revision:4};release('{"memories":[]}')
   const result=await work;assert.equal(result.skipped,'session-integration-paused');assert.equal(result.modelCalled,true)
   assert.equal(life.status().pending,2);assert.equal(life.status().retrying,0);assert.equal(life.status().lastError,'');assert.equal(commits,0)
   assert.equal((await life.reflect()).skipped,'interval')
-  policy={mode:'cooperative',revision:5};assert.equal((await life.reflect({force:true})).ok,true);assert.equal(commits,1)
+  policy={mode:'memory-foundation',revision:5};assert.equal((await life.reflect({force:true})).ok,true);assert.equal(commits,1)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })

@@ -5,8 +5,9 @@
 ## 一、系统全景
 
 ```mermaid
-%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
-%% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
+%% dev.24 第六批：唯一模式 autonomous-life / memory-foundation；情绪唤醒及跨视频梗学习复核代际，已入场操作原结算，情绪外发原暂停不变。
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。宿主固定 autonomous-life/0，持久切换、其他后台入口及 UI 仍待接线。
+%% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 autonomous-life/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
 %% dev.21：仅已选主 Session 的显式 visual_query 本地词法匹配私密深层片段；复核会话、账号代际、活体附件；不进入公共索引、联想回放或反思。
@@ -516,8 +517,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
-%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
-%% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
+%% dev.24 第六批：唯一模式 autonomous-life / memory-foundation；情绪唤醒及跨视频梗学习复核代际，已入场操作原结算，情绪外发原暂停不变。
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。宿主固定 autonomous-life/0，持久切换、其他后台入口及 UI 仍待接线。
+%% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 autonomous-life/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
 %% dev.21：仅已选主 Session 的显式 visual_query 本地词法匹配私密深层片段；复核会话、账号代际、活体附件；不进入公共索引、联想回放或反思。
@@ -762,8 +764,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
-%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
-%% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
+%% dev.24 第六批：唯一模式 autonomous-life / memory-foundation；情绪唤醒及跨视频梗学习复核代际，已入场操作原结算，情绪外发原暂停不变。
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。宿主固定 autonomous-life/0，持久切换、其他后台入口及 UI 仍待接线。
+%% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 autonomous-life/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
 %% dev.21：仅已选主 Session 的显式 visual_query 本地词法匹配私密深层片段；复核会话、账号代际、活体附件；不进入公共索引、联想回放或反思。
@@ -1060,8 +1063,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
-%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。宿主固定 full/0，持久切换、其他后台入口及 UI 仍待接线。
-%% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 full/0，持久切换、其余后台调度和 UI 未接线。
+%% dev.24 第六批：唯一模式 autonomous-life / memory-foundation；情绪唤醒及跨视频梗学习复核代际，已入场操作原结算，情绪外发原暂停不变。
+%% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。宿主固定 autonomous-life/0，持久切换、其他后台入口及 UI 仍待接线。
+%% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；宿主固定 autonomous-life/0，持久切换、其余后台调度和 UI 未接线。
 %% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
 %% dev.21：仅已选主 Session 的显式 visual_query 本地词法匹配私密深层片段；复核会话、账号代际、活体附件；不进入公共索引、联想回放或反思。
@@ -1289,20 +1293,29 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
 %% @code selfReport22 | lib/long-term-memory.mjs | function appendSelfRecord
 %% @code selfRecall22 | lib/long-term-memory.mjs | function selfRecordContext
 
-  coopMount24["主 Session 协作挂载候选：可信策略代际"]
-  coopPolicy24["宿主统一模式策略：固定 full/0，未开放切换"]
-  coopBridge24["经历桥：收集/同步/主动联系/私信上下文门禁"]
-  coopPolicy24 --> coopMount24
-  coopAuto24["通知哨兵与社交快唤醒：完整生活代际，已有事务正常结算"]
-  coopPolicy24 --> coopAuto24
-%% @code coopAuto24 | index.js | runAutomatic:automaticSession.run
-  coopPolicy24 --> coopBridge24
-%% @code coopPolicy24 | index.js | const getSessionIntegration=fullSessionIntegration
-%% @code coopBridge24 | lib/main-session-bridge.mjs | const currentFull=
-  coopMount24 -->|显式工具，原权限| selfRecall22
-  coopMount24 -->|同一身份库| selfReport22
-%% @code coopMount24 | lib/long-term-memory.mjs | const refreshSessionMount=
+  foundationMount24["主 Session 协作挂载候选：可信策略代际"]
+  foundationPolicy24["宿主统一模式策略：固定 autonomous-life/0，未开放切换"]
+  foundationBridge24["经历桥：收集/同步/主动联系/私信上下文门禁"]
+  foundationPolicy24 --> foundationMount24
+  foundationAuto24["通知哨兵与社交快唤醒：完整生活代际，已有事务正常结算"]
+  foundationPolicy24 --> foundationAuto24
+%% @code foundationAuto24 | index.js | runAutomatic:automaticSession.run
+  foundationPolicy24 --> foundationBridge24
+%% @code foundationPolicy24 | index.js | const getSessionIntegration=autonomousLifeSessionIntegration
+%% @code foundationBridge24 | lib/main-session-bridge.mjs | const currentAutonomousLife=
+  foundationMount24 -->|显式工具，原权限| selfRecall22
+  foundationMount24 -->|同一身份库| selfReport22
+%% @code foundationMount24 | lib/long-term-memory.mjs | const refreshSessionMount=
   reflectionEpoch24["反思复核原代际；暂停不生成成功回执"]
   reflectionEpoch24 -.-> reflectionReceipt
 %% @code reflectionEpoch24 | lib/life-reflection.mjs | const reflect=async
+
+  foundationEmotion24["情绪回忆与延迟唤醒：复核代际，既有暂停不变"]
+  foundationMeme24["跨视频梗学习：旧评估不入账；只读状态保留"]
+  foundationPolicy24 --> foundationEmotion24
+  foundationPolicy24 --> foundationMeme24
+%% @code foundationEmotion24 | index.js | const scheduleEmotionRecall=
+%% @code foundationEmotion24 | lib/emotion-recall.mjs | const deferred=
+%% @code foundationMeme24 | lib/meme-learning.mjs | const deferred=
+%% @code foundationMeme24 | index.js | const memeLearningScript=
 ```

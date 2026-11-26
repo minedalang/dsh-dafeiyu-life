@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
+import {createAutomaticSessionScope,readSessionIntegration} from '../lib/session-integration-policy.mjs'
 import {createEmotionRecall,relatedPairs,parseDecision,__test} from '../lib/emotion-recall.mjs'
 const T=Date.parse('2026-10-28T12:00:00Z')
 const NEW='BV1Q541167Qg',OLD='BV1Q541167Qp'
@@ -14,9 +15,9 @@ const feel={enabled:true,mood:'warm',intensity:74,updatedAt:new Date(T-15000).to
 const setup=(partial={},opts={})=>{
  const dir=mkdtempSync(join(tmpdir(),'dafeiyu-emotion-recall-'));mkdirSync(join(dir,'life-memory'),{recursive:true});writeFileSync(join(dir,'life-memory/candidates.json'),JSON.stringify({candidates:[old]}))
  const calls=[],messages=[];let decisions=0
- const x=createEmotionRecall({dataDir:dir,getConfig:()=>({...config,...partial}),getEmotion:()=>opts.emotion||feel,getRecentEvents:()=>opts.events||[fresh],getMemories:()=>opts.memories||[record],canMain:()=>opts.online!==false,now:()=>T,
+ const x=createEmotionRecall({dataDir:dir,automaticSession:opts.automaticSession,getConfig:()=>({...config,...partial}),getEmotion:()=>opts.emotion||feel,getRecentEvents:()=>opts.events||[fresh],getMemories:()=>opts.memories||[record],canMain:()=>opts.online!==false,now:()=>T,
  invokeModel:async(prompt)=>{decisions++;if(prompt.includes('<public_events>'))return JSON.stringify({action:'note',note:'想起一点轻轻的好奇，不过今天没有旧事能对上。'});const found=JSON.parse(prompt.split('<verified_candidates>')[1].split('</verified_candidates>')[0]);return opts.decision?.(found)||JSON.stringify({action:'share',key:found[0].key,memory_id:found[0].memoryId,channel:opts.channel||'dm'})},
- sendDm:async(value)=>{calls.push(value);return opts.dmResult||{ok:true}},sendMain:async(value)=>{messages.push(value);return {ok:true}},logger:{warn:()=>{}}})
+ sendDm:async(value)=>{calls.push(value);return opts.sendDm?opts.sendDm(value):opts.dmResult||{ok:true}},sendMain:async(value)=>{messages.push(value);return {ok:true}},logger:{warn:()=>{}}})
  return {dir,x,calls,messages,decisions:()=>decisions,cleanup:()=>rmSync(dir,{recursive:true,force:true})}
 }
 test('old evidence-backed life experience matches a genuinely recent related video',()=>{
@@ -75,4 +76,29 @@ test('suspicious pseudo-titles cannot be considered a recurrent experience',()=>
  const fake={...old,title:'[外部标题含疑似指令文本，已省略；精确标题仍保留在插件档案]'}
  const recent={...fresh,title:'[外部标题含疑似指令文本，已省略；精确标题仍保留在插件档案]'}
  assert.equal(relatedPairs([recent],[record],new Map([[fake.id,fake]]),T).length,0)
+})
+
+
+test('dev.24 canonical mode values reject old development aliases and invalid generations',()=>{
+ assert.deepEqual(readSessionIntegration(),{mode:'autonomous-life',revision:0})
+ for(const mode of ['full','cooperative','memory-foundation','autonomous-life']){
+   const result=readSessionIntegration(()=>({mode,revision:1}))
+   assert.equal(result.mode,['full','cooperative'].includes(mode)?'unavailable':mode)
+ }
+ assert.equal(readSessionIntegration(()=>({mode:'autonomous-life',revision:-1})).mode,'unavailable')
+})
+test('dev.24 emotional recall ignores stale model output without consuming evaluation',async()=>{
+ let policy={mode:'memory-foundation',revision:1}
+ const scope=createAutomaticSessionScope(()=>policy)
+ const q=setup({}, {automaticSession:scope,decision:found=>{policy={mode:'memory-foundation',revision:3};policy={mode:'autonomous-life',revision:4};return JSON.stringify({action:'share',key:found[0].key,memory_id:found[0].memoryId,channel:'dm'})}})
+ try{
+   assert.equal((await q.x.tick()).skipped,'session-integration-paused');assert.equal(q.decisions(),0)
+   policy={mode:'autonomous-life',revision:2};assert.equal((await q.x.tick()).skipped,'session-integration-paused')
+   assert.equal(q.decisions(),1);assert.equal(q.calls.length,0);assert.equal(q.x.status().checks,0);assert.equal(q.x.status().lastEmotionAt,0)
+ }finally{q.cleanup()}
+})
+test('dev.24 accepted emotional share settles when mode changes during sender',async()=>{
+ let policy={mode:'autonomous-life',revision:0}
+ const q=setup({}, {automaticSession:createAutomaticSessionScope(()=>policy),sendDm:async()=>{policy={mode:'memory-foundation',revision:1};return {ok:true}}})
+ try{assert.equal((await q.x.tick()).sent,true);assert.equal(q.x.status().sent,1);assert.equal(q.x.status().recentKeys.length,1)}finally{q.cleanup()}
 })

@@ -200,7 +200,7 @@ test('dev.23 混合身份记忆达容量不驱逐任何旧记录，普通工具�
 // unrecognized saved configuration. No production caller enables it until the
 // whole host's background dispatch and synchronization gates are implemented.
 function integrationFixture(home){
- let policy={mode:'full',revision:0},retrieval=null,ownerMessages=0,ownerWrites=0,emotionWrites=0,identityReads=0
+ let policy={mode:'autonomous-life',revision:0},retrieval=null,ownerMessages=0,ownerWrites=0,emotionWrites=0,identityReads=0
  const tools=new Map(),sections=new Map(),contexts=new Map(),listeners=new Map()
  const register=map=>spec=>{map.set(spec.name,spec);return()=>map.delete(spec.name)}
  const agent={id:'main',sessionId:'main',session:{snapshotEvents:()=>[]},ctx:{on(name,fn){listeners.set(name,fn);return()=>listeners.delete(name)},systemPrompt:{section:register(sections),context:register(contexts)},tools:{register:register(tools)}}}
@@ -219,11 +219,11 @@ test('dev.24 协作挂载只保留显式工具，不注入人格、自动回忆�
   assert.equal(oldPrompt.text(),'测试人格');f.message('主人喜欢乌龙茶');assert.equal(oldContext.text(),'旧自动上下文')
   assert.equal((await old.execute({text:'主人喜欢乌龙茶',fact_key:'主人.偏好.饮料',importance:.98})).ok,true)
   const oldId=f.memory.list()[0].id,oldBytes=readFileSync(join(f.memory.storeDir,'dafeiyu.json'),'utf8')
-  const before=f.counts();f.change({mode:'cooperative',revision:1},false)
+  const before=f.counts();f.change({mode:'memory-foundation',revision:1},false)
   assert.equal(oldPrompt.text(),'');assert.equal(oldContext.text(),'');assert.equal((await oldFeel.execute({mood:'warm',intensity:1})).ok,false)
   assert.equal((await old.execute({text:'主人喜欢红茶'})).ok,false)
   f.memory.refreshSessionMount();assert.equal(f.sections.size,0);assert.equal(f.contexts.size,0);assert.equal(readFileSync(join(f.memory.storeDir,'dafeiyu.json'),'utf8'),oldBytes)
-  assert.equal(f.memory.status().integrationMode,'cooperative');assert.equal(f.memory.status().identityMounted,false);assert.equal(f.memory.status().mounted,true)
+  assert.equal(f.memory.status().integrationMode,'memory-foundation');assert.equal(f.memory.status().identityMounted,false);assert.equal(f.memory.status().mounted,true)
   assert.equal(f.memory.flushPending().reason,'integration-paused')
   assert.deepEqual([...f.tools.keys()],['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall','dafeiyu_todo_list','dafeiyu_todo_add','dafeiyu_todo_update','dafeiyu_todo_execute'])
   const write=f.tools.get('dafeiyu_remember'),recall=f.tools.get('dafeiyu_memory_recall')
@@ -238,7 +238,7 @@ test('dev.24 协作挂载只保留显式工具，不注入人格、自动回忆�
   assert.equal(f.memory.list().some(m=>m.id===oldId),true);assert.match((await recall.execute({query:'CSS Grid',memory_kind:'all_self'})).context,/CSS Grid/)
   f.message('以后有空看看这个视频');const added=await f.tools.get('dafeiyu_todo_add').execute({type:'watch_video',bvid:BV,title:'以后看看'});assert.equal(added.ok,true)
   assert.equal((await f.tools.get('dafeiyu_todo_add').execute({type:'like_video',bvid:BV,title:'点赞'})).ok,false)
-  f.change({mode:'full',revision:2});assert.equal(f.memory.status().identityMounted,true);assert.equal(f.memory.list().some(m=>m.id===typed.id),true)
+  f.change({mode:'autonomous-life',revision:2});assert.equal(f.memory.status().identityMounted,true);assert.equal(f.memory.list().some(m=>m.id===typed.id),true)
   assert.equal((await recall.execute({query:'CSS Grid'})).ok,false);assert.equal((await old.execute({text:'主人喜欢红茶'})).ok,false)
  }finally{f?.memory.stop();rmSync(home,{recursive:true,force:true})}
 })
@@ -248,7 +248,7 @@ test('dev.24 模式代际改变使等待中的召回与旧待办句柄失效；�
  try{
   f=integrationFixture(home);const recall=f.tools.get('dafeiyu_memory_recall'),todo=f.tools.get('dafeiyu_todo_list'),oldHandler=f.listeners.get('agent/inbox/inserted')
   let finish;f.retrieve(()=>new Promise(resolve=>{finish=resolve}));const pending=recall.execute({query:'旧事实'})
-  f.change({mode:'cooperative',revision:1},false);f.change({mode:'full',revision:2},false)
+  f.change({mode:'memory-foundation',revision:1},false);f.change({mode:'autonomous-life',revision:2},false)
   finish({context:'不应返回的旧召回',ids:[],episodeIds:[],reason:'local'});assert.deepEqual(await pending,{ok:false,context:'',source:'disabled'})
   assert.equal((await todo.execute({})).ok,false);oldHandler({message:{role:'user',content:'旧事件'}});assert.equal(f.counts().ownerMessages,0)
   f.memory.refreshSessionMount();assert.equal(f.memory.status().identityMounted,true)
@@ -262,10 +262,10 @@ test('dev.24 协作写入的自主记录和既有事实经过业务及双层备�
  const home=mkdtempSync(join(tmpdir(),'dafeiyu-coop-backup-')),business=mkdtempSync(join(tmpdir(),'dafeiyu-coop-business-')),life=mkdtempSync(join(tmpdir(),'dafeiyu-coop-life-'));let f,g,h
  try{
   f=integrationFixture(home);f.message('主人喜欢乌龙茶');const fact=await f.tools.get('dafeiyu_remember').execute({text:'主人喜欢乌龙茶',fact_key:'主人.偏好.饮料',importance:.98});assert.equal(fact.ok,true)
-  f.change({mode:'cooperative',revision:1});const self=await f.tools.get('dafeiyu_remember').execute({memory_kind:'learning',text:'我练习了浏览器书签管理'});assert.equal(self.ok,true)
+  f.change({mode:'memory-foundation',revision:1});const self=await f.tools.get('dafeiyu_remember').execute({memory_kind:'learning',text:'我练习了浏览器书签管理'});assert.equal(self.ok,true)
   const raw=readFileSync(join(f.memory.storeDir,'dafeiyu.json'),'utf8');restoreBackupFiles(business,createBackup({root:home,config:{}}));restoreLifeMemoryBackup(life,createLifeMemoryBackup(home))
   for(const dir of [business,life])assert.equal(readFileSync(join(dir,'long-term-memory','dafeiyu.json'),'utf8'),raw)
   g=integrationFixture(business);h=integrationFixture(life)
-  for(const other of [g,h]){assert.equal(other.memory.status().integrationMode,'full');assert.ok(other.memory.activeMemories().some(m=>m.id===fact.id));assert.ok(!other.memory.activeMemories().some(m=>m.id===self.id));assert.match((await other.tools.get('dafeiyu_memory_recall').execute({query:'浏览器书签管理',memory_kind:'learning'})).context,/书签管理/)}
+  for(const other of [g,h]){assert.equal(other.memory.status().integrationMode,'autonomous-life');assert.ok(other.memory.activeMemories().some(m=>m.id===fact.id));assert.ok(!other.memory.activeMemories().some(m=>m.id===self.id));assert.match((await other.tools.get('dafeiyu_memory_recall').execute({query:'浏览器书签管理',memory_kind:'learning'})).context,/书签管理/)}
  }finally{f?.memory.stop();g?.memory.stop();h?.memory.stop();for(const dir of [home,business,life])rmSync(dir,{recursive:true,force:true})}
 })

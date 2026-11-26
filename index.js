@@ -240,7 +240,7 @@ import {callScopedDshVision} from './lib/scoped-dsh-vision-read.mjs'
 import { mergeWatchedRows } from './lib/watched.mjs'
 import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
 import { createLongTermMemory } from './lib/long-term-memory.mjs'
-import { fullSessionIntegration,createAutomaticSessionScope,sessionIntegrationPaused } from './lib/session-integration-policy.mjs'
+import { autonomousLifeSessionIntegration,createAutomaticSessionScope,sessionIntegrationPaused } from './lib/session-integration-policy.mjs'
 import { createMemoryRetriever,publicVisualAssociationContext } from './lib/memory-retriever.mjs'
 import {createEmbeddingRuntimeManager} from './lib/embedding-runtime-manager.mjs'
 import {createLocalVisionModelManager,getLocalVisionModel,getLocalVisionTestImage} from './lib/local-vision-model-manager.mjs'
@@ -658,8 +658,8 @@ export function apply(ctx, config) {
   // Cross-process gate for reads that pass the shared JS MCP adapter.
   // Independent Python Headless MCP tools do not pass here yet.
   const readActionContext=new AsyncLocalStorage()
-  // Still fixed full until all mode-switch gates and real-host acceptance exist.
-  const getSessionIntegration=fullSessionIntegration
+  // Still fixed autonomous-life until all mode-switch gates and real-host acceptance exist.
+  const getSessionIntegration=autonomousLifeSessionIntegration
   const automaticSession=createAutomaticSessionScope(getSessionIntegration)
   // An ephemeral proof ties nested Python MCP reads to this exact Node adapter.
   // The token is never stored on disk or sent back to the UI.
@@ -4743,7 +4743,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         if(newlyWatched.length&&socialIntentEngine)void socialIntentEngine.reflectOnWatched(newlyWatched).catch(e=>log('社交反思失败：'+String(e?.message||e)))
         // Real picked BV + report title only. Automatically collect tentative culture
         // names (no invented meaning, no image/appearance claim, no private DM data).
-        if(newlyWatched.length&&cfg.memeMemoryEnabled===true)void memeLearningScript('observe',{
+        if(newlyWatched.length&&cfg.memeMemoryEnabled===true&&automaticSession.current()&&automaticSession.isCurrent(automaticSession.capture()))void memeLearningScript('observe',{
           videos:newlyWatched.slice(0,15).map(x=>({bvid:x.bvid,title:String(x.title||'').slice(0,200)})),
         }).catch(e=>log('跨视频文字线索收集失败：'+String(e?.message||e).slice(0,120)))
       }catch(e){log('新经历/社交观察失败：'+String(e?.message||e))}
@@ -7148,6 +7148,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     }catch(error){log('本地语义回忆未启动，继续使用原有词法回忆：'+String(error?.message||error).slice(0,180))}
   })()
 
+  const scheduleEmotionRecall=()=>{
+    const policy=automaticSession.capture()
+    if(!automaticSession.current()||!automaticSession.isCurrent(policy))return
+    const wake=setTimeout(()=>{if(automaticSession.isCurrent(policy))void automaticSession.run(policy,()=>emotionRecall?.tick())?.catch(e=>log('情绪回忆唤醒失败：'+String(e?.message||e).slice(0,100)))},8000);wake.unref?.()
+  }
   let emotionRecall=null // dev.3: receive real event/emotion triggers after recall engine starts
   lifeReflection = createLifeReflection({
     automaticSession,
@@ -7183,7 +7188,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     invokeModel: (prompt,maxChars,opt={}) => invokeInteractionPrompt(prompt,maxChars,{...opt,modelRoute:'reflection'}),
     commitMemories: (items) => longTermMemory.addReflectedMemories(items),
-    onEmotion: ({mood,intensity,source='life-reflection',summary=''})=>{try{emotionalState.update({mood,intensity,source,summary});if(emotionRecall){const wake=setTimeout(()=>void emotionRecall.tick(),8000);wake.unref?.()}}catch(e){log('人生反思情绪更新失败：'+String(e?.message||e).slice(0,100))}},
+    onEmotion: ({mood,intensity,source='life-reflection',summary=''})=>{try{emotionalState.update({mood,intensity,source,summary});if(emotionRecall){scheduleEmotionRecall()}}catch(e){log('人生反思情绪更新失败：'+String(e?.message||e).slice(0,100))}},
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
   })
   lifeReflection.start()
@@ -8224,7 +8229,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     getComments: (opt) => recentComments(stateDir,{...opt,recipientMetadataDir:accountRuntimeDir}),
     onNewEvents: (_sid,events) => {
       void lifeMemoryCoordinator?.recordEvents(events,{reflect:true}).catch(e=>log('主 Session 经历同步待补偿：'+String(e?.message||e).slice(0,130)));
-      if(emotionRecall&&events.some(x=>['watch','comment'].includes(x.kind))){const wake=setTimeout(()=>void emotionRecall.tick(),8000);wake.unref?.()}
+      if(emotionRecall&&events.some(x=>['watch','comment'].includes(x.kind))){scheduleEmotionRecall()}
     },
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
   })
@@ -8233,6 +8238,7 @@ logger:{warn:m=>log('社交意图：'+m)}
   // 情绪触发自主回忆独立于自主待办：主人分别授权主 Session 和 B站私信。
   // 决策模型没有写入工具；实际发送只能通过这里固定的主人目标和宿主 Session。
   emotionRecall=createEmotionRecall({
+    automaticSession,
     paused:true, // 2.6.0: outgoing emotion/recollection outreach suspended until 2.6.1
     dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},getEmotion:()=>emotionalState.snapshot(),
     getRecentEvents:()=>lifeMemory?.recentEmotionEvents(120)||[],
@@ -8320,6 +8326,7 @@ logger:{warn:m=>log('社交意图：'+m)}
   ctx.effect(()=>()=>dailyDynamic.stop(),'bili-duty: 自主生活动态')
 
   const memeLearningScript=(mode,payload)=>new Promise((resolve,reject)=>{
+    if(mode!=='list'&&(!automaticSession.current()||!automaticSession.isCurrent(automaticSession.capture())))return reject(sessionIntegrationPaused())
     const script=join(pluginDir,'lib','meme-learning-admin.py')
     const child=spawn(cfg.pythonPath||'python',[script,stateDir,mode],{
       cwd:stateDir,env:storagePyEnv(),shell:false,windowsHide:true,stdio:['pipe','pipe','pipe']})
@@ -8344,6 +8351,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     child.stdin.end(payload?JSON.stringify(payload):'')
   })
   memeLearning=createMemeLearning({
+    automaticSession,
     getConfig:()=>{refreshCfg();return cfg},
     read:()=>memeLearningScript('list'),
     commit:data=>memeLearningScript('commit',data),

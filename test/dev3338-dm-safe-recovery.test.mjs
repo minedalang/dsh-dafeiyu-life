@@ -44,7 +44,7 @@ test('shared read pause prevents due continuation reads without clearing deferre
 test('old automatic DM model output is deferred on mode generation change without sending or consuming an attempt',async()=>{
  const {createAutomaticSessionScope}=await import('../lib/session-integration-policy.mjs')
  const {rm}=await import('node:fs/promises')
- const dir=await mkdtemp(join(tmpdir(),'dev24-dm-pause-'));let t=1_800_000_000_000,input=[],policy={mode:'full',revision:0},finish,entered,sends=0,models=0
+ const dir=await mkdtemp(join(tmpdir(),'dev24-dm-pause-'));let t=1_800_000_000_000,input=[],policy={mode:'autonomous-life',revision:0},finish,entered,sends=0,models=0
  const scope=createAutomaticSessionScope(()=>policy),started=new Promise(r=>entered=r)
  const dm=createDmAutoReply({dataDir:dir,selfUid:'999',now:()=>t,getConfig:()=>({enabled:true,whitelist:['221'],whitelistCooldownSeconds:0}),
   canProcess:scope.current,fetchIncoming:async()=>input,generateReply:async()=>{models++;if(models===1){entered();return new Promise(r=>finish=r)}return '收到消息'},
@@ -52,7 +52,7 @@ test('old automatic DM model output is deferred on mode generation change withou
  try{
   await scope.run(scope.capture(),()=>dm.poll());input=[msg('one')]
   const pending=scope.run(scope.capture(),()=>dm.poll());await started
-  policy={mode:'cooperative',revision:1};policy={mode:'full',revision:2};finish('旧模式的回复')
+  policy={mode:'memory-foundation',revision:1};policy={mode:'autonomous-life',revision:2};finish('旧模式的回复')
   const old=await pending;assert.equal(old.deferred,1);assert.equal(sends,0)
   const db=JSON.parse(await readFile(join(dir,'dm-life-inbox.json'),'utf8'))
   assert.equal(db.rows[0].status,'technical-deferred');assert.equal(db.rows[0].attempts,0)
@@ -63,13 +63,13 @@ test('old automatic DM model output is deferred on mode generation change withou
 test('mode pause after inbox read does not establish stale baseline, explicit unscoped inspection retains original contract',async()=>{
  const {createAutomaticSessionScope}=await import('../lib/session-integration-policy.mjs')
  const {rm}=await import('node:fs/promises')
- const dir=await mkdtemp(join(tmpdir(),'dev24-dm-baseline-'));let policy={mode:'full',revision:0},finish,entered,reads=0,settles=0
+ const dir=await mkdtemp(join(tmpdir(),'dev24-dm-baseline-'));let policy={mode:'autonomous-life',revision:0},finish,entered,reads=0,settles=0
  const scope=createAutomaticSessionScope(()=>policy),started=new Promise(r=>entered=r)
  const dm=createDmAutoReply({dataDir:dir,selfUid:'999',getConfig:()=>({enabled:true,whitelist:['221']}),canProcess:scope.current,
   fetchIncoming:async()=>{reads++;if(reads===1){entered();return new Promise(r=>finish=r)}return []},onScanSettled:()=>settles++,
   generateReply:async()=>{throw Error('must not generate')},send:async()=>{throw Error('must not send')},logger:{warn(){},error(){}}})
  try{
-  const pending=scope.run(scope.capture(),()=>dm.poll());await started;policy={mode:'cooperative',revision:1};finish([msg('one')]);
+  const pending=scope.run(scope.capture(),()=>dm.poll());await started;policy={mode:'memory-foundation',revision:1};finish([msg('one')]);
   assert.equal((await pending).skipped,'session-integration-paused');assert.equal(settles,0);assert.equal(await dm.needsBootstrap(),true)
   assert.equal((await dm.poll()).initialized,true);assert.equal(settles,1)
  }finally{await rm(dir,{recursive:true,force:true})}

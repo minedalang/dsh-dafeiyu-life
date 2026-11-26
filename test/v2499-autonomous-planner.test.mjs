@@ -71,7 +71,7 @@ test('外部推荐原话保留给管理中心，但绝不进入自主计划员�
 
 test('dev.24 planner pauses before reading candidates or spending model quota, including forced wake',async()=>{
  const {createAutomaticSessionScope}=await import('../lib/session-integration-policy.mjs')
- const dir=home();let policy={mode:'cooperative',revision:1},calls=0,reads=0
+ const dir=home();let policy={mode:'memory-foundation',revision:1},calls=0,reads=0
  try{
   const p=createAutonomousPlanner({automaticSession:createAutomaticSessionScope(()=>policy),dataDir:dir,now:()=>tickTime,getConfig:()=>cfg,
    getTodos:()=>{reads++;return []},invokeModel:async()=>{calls++;return '{"action":"skip"}'},executeRead:()=>{throw Error('must not execute')},updateTodo:()=>{},reflect:()=>{}})
@@ -79,19 +79,19 @@ test('dev.24 planner pauses before reading candidates or spending model quota, i
   assert.equal((await p.considerChildren('00000000-0000-0000-0000-000000000000')).skipped,'session-integration-paused')
   assert.equal(calls,0);assert.equal(reads,0);assert.equal(p.status().runs,0)
   assert.equal(p.status().nextDecisionReason,'session-integration-paused')
-  policy={mode:'full',revision:2};assert.equal((await p.tick()).skipped,'nothing-to-do')
+  policy={mode:'autonomous-life',revision:2};assert.equal((await p.tick()).skipped,'nothing-to-do')
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
-test('dev.24 stale planner model result after full-cooperative-full cannot dismiss a task or consume a new decision',async()=>{
+test('dev.24 stale planner model result after autonomous-life → memory-foundation → autonomous-life cannot dismiss a task or consume a new decision',async()=>{
  const {createAutomaticSessionScope}=await import('../lib/session-integration-policy.mjs')
- const dir=home();let policy={mode:'full',revision:0},release,started,now=tickTime,calls=0,updates=0
+ const dir=home();let policy={mode:'autonomous-life',revision:0},release,started,now=tickTime,calls=0,updates=0
  const entered=new Promise(r=>started=r),model=new Promise(r=>release=r)
  try{
   const todo=createOwnerTodoEngine({dataDir:dir,now:()=>now});const row=todo.add({type:'watch_video',bvid:BV}).item
   const p=createAutonomousPlanner({automaticSession:createAutomaticSessionScope(()=>policy),dataDir:dir,now:()=>now,getConfig:()=>cfg,getTodos:()=>todo.context(8),
    invokeModel:async()=>{calls++;if(calls===1){started();return model}return JSON.stringify({action:'dismiss',id:row.id})},executeRead:()=>{throw Error('must not execute')},updateTodo:(...a)=>{updates++;return todo.update(...a)},reflect:()=>{}})
-  const work=p.tick();await entered;policy={mode:'cooperative',revision:1};policy={mode:'full',revision:2};release(JSON.stringify({action:'dismiss',id:row.id}))
+  const work=p.tick();await entered;policy={mode:'memory-foundation',revision:1};policy={mode:'autonomous-life',revision:2};release(JSON.stringify({action:'dismiss',id:row.id}))
   const paused=await work;assert.equal(paused.skipped,'session-integration-paused');assert.equal(paused.modelCalled,true)
   assert.equal(updates,0);assert.equal(todo.list()[0].status,'open');assert.equal(p.status().runs,1);assert.equal(p.status().modelFailureStreak,0)
   now+=16*60_000;assert.equal((await p.tick()).action,'dismiss');assert.equal(updates,1);assert.equal(calls,2)
@@ -100,11 +100,11 @@ test('dev.24 stale planner model result after full-cooperative-full cannot dismi
 
 test('dev.24 expired outer scope cannot start a nested planner even after full mode returns',async()=>{
  const {createAutomaticSessionScope}=await import('../lib/session-integration-policy.mjs')
- const dir=home();let policy={mode:'full',revision:0},models=0
+ const dir=home();let policy={mode:'autonomous-life',revision:0},models=0
  const scope=createAutomaticSessionScope(()=>policy)
  try{
   const p=createAutonomousPlanner({automaticSession:scope,dataDir:dir,getConfig:()=>cfg,getTodos:()=>[],invokeModel:()=>{models++;return '{}'},executeRead:()=>{},updateTodo:()=>{},reflect:()=>{}})
-  const result=await scope.run(scope.capture(),async()=>{await Promise.resolve();policy={mode:'full',revision:2};return p.tick({force:true})})
+  const result=await scope.run(scope.capture(),async()=>{await Promise.resolve();policy={mode:'autonomous-life',revision:2};return p.tick({force:true})})
   assert.equal(result.skipped,'session-integration-paused');assert.equal(models,0)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })

@@ -137,11 +137,11 @@ test('UI no longer duplicates short-pause controls, graph cap and evidence view 
 
 
 test('短暂停顿在 Life 意愿等待期间切换代际，旧观察器与续聊均失效',async()=>withDir(async dir=>{
- let policy={mode:'full',revision:0};let oldInbox,oldEvent
+ let policy={mode:'autonomous-life',revision:0};let oldInbox,oldEvent
  const h=shortPauseHarness(dir,{getSessionIntegration:()=>policy,onDecide:async({handlers})=>{
    oldInbox=handlers.get('agent/inbox/inserted');oldEvent=handlers.get('session/event')
-   policy={mode:'cooperative',revision:1};h.bridge.refreshIntegration()
-   policy={mode:'full',revision:2};h.bridge.refreshIntegration()
+   policy={mode:'memory-foundation',revision:1};h.bridge.refreshIntegration()
+   policy={mode:'autonomous-life',revision:2};h.bridge.refreshIntegration()
    oldInbox({message:{role:'user',id:'stale',source:{kind:'dsh-chat'}}});oldEvent(null,{type:'assistant/message'})
  }})
  h.incoming('previous');h.answered();h.tick(90_000)

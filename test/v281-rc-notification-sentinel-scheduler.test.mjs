@@ -147,7 +147,7 @@ test('DM 收件箱账本缺失时，在有计数基线/待续办证据后重新�
 
 
 test('协作模式和无效宿主策略禁止通知、详情、快速及手动哨兵派发；恢复不清空原快照',async()=>{
-  const f=fixture();let policy={mode:'cooperative',revision:1},reads=0,details=0
+  const f=fixture();let policy={mode:'memory-foundation',revision:1},reads=0,details=0
   const s=createInteractionScheduler({dataDir:f.dir,getAccountTag:()=> '0123456789abcdef',
     getSessionIntegration:()=>policy,getConfig:()=>({masterEnabled:true,dmWatch:true,commentWatchReplies:true}),
     readPrivateUnread:async()=>{reads++;return dmCounts()},readSocialUnread:async()=>{reads++;return socialCounts()},
@@ -155,22 +155,22 @@ test('协作模式和无效宿主策略禁止通知、详情、快速及手动�
     comments:{poll:async()=>{details++;return {ok:true}}},logger:{error:()=>{}},now:()=>1_800_000_000_000})
   try{s.start();await s.tick();assert.equal((await s.checkNow()).skipped,'session-integration-paused')
     assert.equal(s.status().checks.dm.enabled,false);assert.equal(reads+details,0)
-    policy={mode:'full',revision:-1};await s.tick();assert.equal(reads+details,0)
-    policy={mode:'full',revision:2};await s.tick();assert.equal(reads,1);assert.ok(details>0)
-    const snapshot=s.status().sentinels.private.unread;policy={mode:'cooperative',revision:3};await s.tick()
+    policy={mode:'autonomous-life',revision:-1};await s.tick();assert.equal(reads+details,0)
+    policy={mode:'autonomous-life',revision:2};await s.tick();assert.equal(reads,1);assert.ok(details>0)
+    const snapshot=s.status().sentinels.private.unread;policy={mode:'memory-foundation',revision:3};await s.tick()
     assert.equal(s.status().sentinels.private.unread,snapshot)
   }finally{s.stop();rmSync(f.dir,{recursive:true,force:true})}
 })
 
 test('在途哨兵可结算真实计数，但切走再切回不允许旧轮派发详情',async()=>{
-  const f=fixture();let policy={mode:'full',revision:0},finish,reads=0,details=0
+  const f=fixture();let policy={mode:'autonomous-life',revision:0},finish,reads=0,details=0
   const pending=new Promise(resolve=>{finish=resolve})
   const s=createInteractionScheduler({dataDir:f.dir,getAccountTag:()=> '0123456789abcdef',
     getSessionIntegration:()=>policy,getConfig:()=>({masterEnabled:true,dmWatch:true,commentWatchReplies:true}),
     readPrivateUnread:async()=>{reads++;return pending},readSocialUnread:async()=>{reads++;return socialCounts()},
     dm:{poll:async()=>{details++;return {ok:true}},nextFastUid:()=> '123'},comments:{poll:async()=>{details++;return {ok:true}}},
     logger:{error:()=>{}},now:()=>1_800_000_000_000})
-  try{s.start();assert.equal(reads,1);policy={mode:'cooperative',revision:1};policy={mode:'full',revision:2}
+  try{s.start();assert.equal(reads,1);policy={mode:'memory-foundation',revision:1};policy={mode:'autonomous-life',revision:2}
     finish(dmCounts(4));await wait();assert.equal(reads,1);assert.equal(details,0)
     assert.equal(s.status().sentinels.private.unread,4);assert.equal(s.status().sentinels.private.pending,true)
     await s.tick();assert.ok(details>0);assert.equal(reads,1)

@@ -165,15 +165,15 @@ test('记忆提炼数量和成功时间只显示当前账号的统计，不混�
 
 
 test('dev.24 私信提炼在协作模式不读模型；旧代际返回后释放原 claim，非失败、非空摘要',async()=>{
- let mode={mode:'cooperative',revision:1}
+ let mode={mode:'memory-foundation',revision:1}
  const s=setup({getSessionIntegration:()=>mode,answer:({prompt,invokeCount})=>{
-  if(invokeCount===1){mode={mode:'cooperative',revision:3};mode={mode:'full',revision:4}}return replyFor(prompt)}})
+  if(invokeCount===1){mode={mode:'memory-foundation',revision:3};mode={mode:'autonomous-life',revision:4}}return replyFor(prompt)}})
  try{
   await s.worker.observe({uid:'123',role:'friend',eventId:'one',text:'小猫晒太阳'})
   await s.worker.observe({uid:'123',role:'friend',direction:'outgoing',eventId:'two',text:'很有意思'})
   s.advance(21*60_000)
   assert.equal((await s.worker.tick()).skipped,'session-integration-paused');assert.equal(s.invoked(),0)
-  mode={mode:'full',revision:2};assert.equal((await s.worker.tick()).skipped,'session-integration-paused')
+  mode={mode:'autonomous-life',revision:2};assert.equal((await s.worker.tick()).skipped,'session-integration-paused')
   assert.equal(s.events.length,0);assert.equal(s.worker.status().modelFailures,0)
   assert.equal(s.worker.status().emptySummaries,0);assert.equal(s.worker.status().readySegments,1)
   const row=JSON.parse(readFileSync(s.worker.file,'utf8')).rows[0]
@@ -183,21 +183,21 @@ test('dev.24 私信提炼在协作模式不读模型；旧代际返回后释放�
 })
 
 test('dev.24 已交给可信记忆协调器的私信经历在切换后仍结算，不重新提炼',async()=>{
- let mode={mode:'full',revision:0}
+ let mode={mode:'autonomous-life',revision:0}
  const s=setup({getSessionIntegration:()=>mode,answer:({prompt})=>replyFor(prompt),record:async()=>{
-  mode={mode:'cooperative',revision:1};return {ok:true}}})
+  mode={mode:'memory-foundation',revision:1};return {ok:true}}})
  try{
   await s.worker.observe({uid:'123',role:'friend',eventId:'one',text:'小猫晒太阳'})
   await s.worker.observe({uid:'123',role:'friend',direction:'outgoing',eventId:'two',text:'很有意思'})
   s.advance(21*60_000);assert.equal((await s.worker.tick()).created,1)
   assert.equal(s.worker.status().pendingMessages,0);assert.equal(s.events.length,1)
-  mode={mode:'full',revision:2};assert.equal((await s.worker.tick()).processed,0);assert.equal(s.invoked(),1)
+  mode={mode:'autonomous-life',revision:2};assert.equal((await s.worker.tick()).processed,0);assert.equal(s.invoked(),1)
  }finally{s.dispose()}
 })
 
 
 test('dev.24 排队中的私信提炼捕获入队代际，不会借恢复后的新代际执行',async()=>{
- let mode={mode:'full',revision:0},entered,finish
+ let mode={mode:'autonomous-life',revision:0},entered,finish
  const started=new Promise(resolve=>{entered=resolve}),hold=new Promise(resolve=>{finish=resolve})
  const s=setup({getSessionIntegration:()=>mode,answer:async({prompt})=>{entered();await hold;return replyFor(prompt)}})
  try{
@@ -205,7 +205,7 @@ test('dev.24 排队中的私信提炼捕获入队代际，不会借恢复后的�
   await s.worker.observe({uid:'123',role:'friend',direction:'outgoing',eventId:'two',text:'很有意思'})
   s.advance(21*60_000)
   const first=s.worker.tick();await started;const queued=s.worker.tick()
-  mode={mode:'cooperative',revision:1};mode={mode:'full',revision:2};finish()
+  mode={mode:'memory-foundation',revision:1};mode={mode:'autonomous-life',revision:2};finish()
   assert.equal((await first).skipped,'session-integration-paused')
   assert.equal((await queued).skipped,'session-integration-paused')
   assert.equal(s.invoked(),1);assert.equal(s.worker.status().readySegments,1)
