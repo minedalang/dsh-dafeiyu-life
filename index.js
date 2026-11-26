@@ -58,7 +58,7 @@ import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
 import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup } from './lib/data-backup.mjs'
 import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
-import {listBackupFiles,inspectBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
+import {listBackupFiles,inspectBackupInDirectory,deleteBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
 import {pruneVideoCaches,VIDEO_CACHE_RETENTION} from './lib/video-cache-retention.mjs'
 import {addLifeVideoGallery,listLifeVideoGallery,readLifeVideoGalleryImage,pruneLifeVideoGallery,LIFE_GALLERY_RETENTION_HOURS} from './lib/life-video-gallery.mjs'
 import {planOwnerGalleryRevisit} from './lib/owner-video-revisit.mjs'
@@ -1654,7 +1654,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let neuralActivationTracker = null
   // Diagnostics are optional; do not let recording/publishing affect the read.
   const observePublicRecall=(accountTag,rows,channel)=>{
-    try{if(neuralActivationTracker?.record({accountTag,rows,channel}))lifeManagementEvents.publish('memory-recall')}catch{}
+    try{if(neuralActivationTracker){neuralActivationTracker.record({accountTag,rows,channel});lifeManagementEvents.publish('memory-recall')}}catch{}
   }
   let lifeReflection = null
   let lifeMemoryCoordinator = null
@@ -8943,7 +8943,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       autoBackupState.lastAttemptAt=new Date().toISOString()
       const backup=await snapshotBusinessBackup()
       const result=saveAutomaticBackup(dir,backup)
-      if(result.created){autoBackupState.lastSuccessAt=new Date().toISOString();autoBackupState.lastError='';log('每日自动业务备份完成，保留最近5天：'+result.filePath)}
+      if(result.created){autoBackupState.lastSuccessAt=new Date().toISOString();autoBackupState.lastError='';log('每日自动业务备份完成，保留最近2天：'+result.filePath)}
     }catch(error){autoBackupState.lastError=String(error?.message||error).slice(0,180);log('每日自动备份暂未完成：'+autoBackupState.lastError)}
     finally{autoBackupBusy=false}
   }
@@ -9145,7 +9145,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       }catch(error){return sendJson(res,400,{ok:false,error:String(error?.message||error).slice(0,180)})}
     }
     // v2.4.69: user-configured backup directory and SQLite memory snapshots; never use OS Temp.
-    if (req.method === 'POST' && ['/api/bili-duty/data-backup/location', '/api/bili-duty/data-backup/export', '/api/bili-duty/data-backup/inspect', '/api/bili-duty/data-backup/restore','/api/bili-duty/data-backup/list','/api/bili-duty/data-backup/preview','/api/bili-duty/data-backup/auto'].includes(path)) {
+    if (req.method === 'POST' && ['/api/bili-duty/data-backup/location', '/api/bili-duty/data-backup/export', '/api/bili-duty/data-backup/inspect', '/api/bili-duty/data-backup/restore','/api/bili-duty/data-backup/list','/api/bili-duty/data-backup/preview','/api/bili-duty/data-backup/auto','/api/bili-duty/data-backup/delete'].includes(path)) {
       const origin = String(req.headers.origin || '')
       const host = String(req.headers.host || '')
       if (origin && (!host || ![ `http://${host}`, `https://${host}` ].includes(origin)))
@@ -9155,7 +9155,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const action = path.split('/').pop()
       // Backup browsing returns memory texts and file inventory; the local
       // desktop session is the only authorized reader of these new endpoints.
-      if(['preview','list','auto'].includes(action)&&
+      if(['preview','list','auto','delete'].includes(action)&&
          !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(String(req.socket?.remoteAddress||'')))
         return sendJson(res,403,{ok:false,error:'备份内容仅允许本机管理中心查看'})
       try {
@@ -9176,7 +9176,17 @@ logger:{warn:m=>log('社交意图：'+m)}
         if (action === 'list') {
           refreshCfg()
           const dir=requireBackupDirectory(cfg.backupDirectory)
-          return sendJson(res,200,{ok:true,directory:dir,autoEnabled:cfg.backupAutoEnabled!==false,files:listBackupFiles(dir),lastAttempt: autoBackupState.lastAttemptAt,lastSuccess:autoBackupState.lastSuccessAt,lastError:autoBackupState.lastError,retentionDays:5})
+          return sendJson(res,200,{ok:true,directory:dir,autoEnabled:cfg.backupAutoEnabled!==false,files:listBackupFiles(dir),lastAttempt: autoBackupState.lastAttemptAt,lastSuccess:autoBackupState.lastSuccessAt,lastError:autoBackupState.lastError,retentionDays:2})
+        }
+        if (action === 'delete') {
+          if(!explicitManagementIntent(req))return sendJson(res,403,{ok:false,error:'需要明确的主人同源操作'})
+          const body=await readBody(req,4096);refreshCfg()
+          if(body?.confirm!=='DELETE_BACKUP_FILE')throw Error('必须明确确认删除备份')
+          if(autoBackupBusy)throw Error('自动备份正在进行，请稍后刷新')
+          const dir=requireBackupDirectory(cfg.backupDirectory)
+          if(body.directory!==dir)throw Error('备份目录已变化，请刷新后重试')
+          deleteBackupInDirectory(dir,body.name,{size:body.size,createdAt:body.createdAt})
+          return sendJson(res,200,{ok:true,deleted:true})
         }
         if (action === 'preview') {
           const body=await readBody(req,2048)
@@ -10573,15 +10583,15 @@ logger:{warn:m=>log('社交意图：'+m)}
         return sendJson(res,403,{ok:false,reason:'owner-local-only'})
       res.setHeader?.('Cache-Control','private, no-store')
       const scope=trustedLifeAccountTag()
-      if(!scope||accountBinding.status().blocked||!lifeMemory||cfg.mainSessionMemoryEnabled!==true)return sendJson(res,200,{ok:true,activation:null})
+      if(!scope||accountBinding.status().blocked||!lifeMemory||cfg.mainSessionMemoryEnabled!==true)return sendJson(res,200,{ok:true,activation:null,reason:'unavailable'})
       try{
         const receipt=neuralActivationTracker.read(scope)
-        if(!receipt)return sendJson(res,200,{ok:true,activation:null})
+        if(!receipt){const diagnostic=neuralActivationTracker.diagnostic(scope);return sendJson(res,200,{ok:true,activation:null,diagnostic,reason:diagnostic.state})}
         const episodes=lifeMemory.videoRecallGroups(lifeMemory.semanticCandidates({query:'',domain:'main-session',kinds:['watch','comment','social'],limit:3200})||[])
         const steps=lifeMemory.associationActivationSteps({accountTag:scope,receipt,episodeRows:episodes})
         const activation=receipt.mode==='immediate'&&!memoryRetriever.validateImmediateRecall(receipt)?null:projectNeuralActivation(receipt,steps,episodes)
         if(scope!==trustedLifeAccountTag()||accountBinding.status().blocked)return sendJson(res,409,{ok:false,reason:'account-changed'})
-        return sendJson(res,200,{ok:true,activation,reason:activation?'':'path-not-in-current-projection'})
+        return sendJson(res,200,{ok:true,activation,diagnostic:neuralActivationTracker.diagnostic(scope),reason:activation?'':'path-not-in-current-projection'})
       }catch{return sendJson(res,200,{ok:true,activation:null,reason:'activation-unavailable'})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/main-session/memory/neural/deep'){
@@ -11246,6 +11256,12 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(String(req.headers['sec-fetch-site']||'')==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝跨站设置'})
       try{
         if(path.endsWith('/welcome'))return sendJson(res,200,firstStart.markWelcome())
+        if(path.endsWith('/quick/finish')){
+          if(!explicitManagementIntent(req))return sendJson(res,403,{ok:false,error:'需要明确的主人同源操作'})
+          const body=await readBody(req,2048),caps=sessionIntegration.capabilityStatus()
+          if(!caps.available||caps.restartRequired)throw Error('能力配置待重启或暂不可用')
+          return sendJson(res,200,firstStart.finishGuide(body,{platform:caps.active.platform===true}))
+        }
         if(path.endsWith('/quick/seen'))return sendJson(res,200,firstStart.acknowledgeQuickSetup())
         if(path.endsWith('/quick/save')){
           const body=await readBody(req)

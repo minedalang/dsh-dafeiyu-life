@@ -1871,14 +1871,16 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 #panel-backup .backup-auto-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 #panel-backup .backup-auto-heading h4{font-size:17px;margin:0 0 5px}
 #panel-backup .backup-auto-heading p{font-size:12px;margin:0;max-width:550px}
-#panel-backup .backup-browser-grid{display:grid;grid-template-columns:minmax(200px,.83fr) minmax(0,1.4fr);gap:14px;margin-top:10px}
-#panel-backup .backup-file-list{border:1px solid var(--stroke);border-radius:13px;max-height:360px;min-height:140px;overflow:auto;padding:8px;display:grid;align-content:start;gap:6px}
-#panel-backup .backup-file-entry{text-align:left;padding:11px;border:1px solid var(--stroke);background:var(--panel);border-radius:10px;display:grid;gap:3px;cursor:pointer;color:var(--ink);white-space:normal;overflow-wrap:anywhere}
+#panel-backup .backup-browser-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px;margin-top:10px}
+#panel-backup .backup-file-list{border:1px solid var(--stroke);border-radius:13px;max-height:420px;min-height:140px;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+#panel-backup .backup-file-row{flex:none;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start;min-width:0;margin:0;padding:8px;border:1px solid var(--stroke);border-radius:12px;background:var(--panel)}
+#panel-backup .backup-file-row .backup-delete{margin:0;white-space:nowrap;align-self:center}
+#panel-backup .backup-file-entry{min-width:0;width:100%;margin:0;text-align:left;padding:11px;border:1px solid var(--stroke);background:var(--panel);border-radius:10px;display:grid;gap:3px;cursor:pointer;color:var(--ink);white-space:normal;overflow-wrap:anywhere}
 #panel-backup .backup-file-entry[aria-pressed=true]{border-color:var(--action);background:var(--tint)}
 #panel-backup .backup-file-entry small{color:var(--muted);font-weight:400}
 #panel-backup .backup-preview-panel{border:1px solid var(--stroke);border-radius:13px;padding:14px;min-width:0}
-#panel-backup .backup-memory-list{max-height:320px;overflow:auto;display:grid;gap:8px;margin-top:8px}
-#panel-backup .backup-memory-card{border-radius:10px;border:1px solid var(--stroke);padding:9px 11px;background:var(--tint);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+#panel-backup .backup-memory-list{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-top:8px}
+#panel-backup .backup-memory-card{flex:none;border-radius:10px;border:1px solid var(--stroke);padding:9px 11px;background:var(--tint);font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
 #panel-backup .backup-memory-card h5{margin:0 0 5px;font-size:13px}
 @media(max-width:800px){#panel-backup .backup-browser-grid{grid-template-columns:1fr}}
 /* 2.8.0 backup + to-do management: rebuilt layout after moving into Plans. */
@@ -2667,11 +2669,11 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     </div>
     <p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
     <section class="backup-auto-section" aria-labelledby="backup-auto-heading">
-      <div class="backup-auto-heading"><div><h4 id="backup-auto-heading">📆 每日自动备份</h4><p class="muted">默认每天生成 1 份便携业务备份，自动保留最近 5 天；业务备份使用压缩 JSON 减少空间，手动备份与恢复前快照不参与自动清理。</p></div><label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="backup-auto-enabled" checked> 开启自动备份</label></div>
+      <div class="backup-auto-heading"><div><h4 id="backup-auto-heading">📆 每日自动备份</h4><p class="muted">默认每天生成 1 份便携业务备份，自动保留最近 2 天；业务备份使用压缩 JSON 减少空间，手动备份与恢复前快照不参与自动清理。</p></div><label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="backup-auto-enabled" checked> 开启自动备份</label></div>
       <p id="backup-auto-status" class="muted" role="status">正在读取自动备份状态…</p>
     </section>
     <section class="backup-library-section" aria-label="全部备份文件">
-      <div class="backup-library-head"><div><h4>备份文件管理</h4><p class="muted">查看此目录中的全部备份，支持内容与生成方式组合筛选。选择文件只读预览，不执行恢复。</p></div>
+      <div class="backup-library-head"><div><h4>备份文件管理</h4><p class="muted">查看此目录中的全部备份，支持内容与生成方式组合筛选。选择文件只读预览；也可确认删除单个备份文件，不执行恢复。</p></div>
       <div class="backup-library-filters">
         <label>备份内容<select id="backup-content-filter"><option value="all">全部内容</option><option value="business">全部业务数据</option><option value="memory">人生记忆</option></select></label>
         <label>生成方式<select id="backup-origin-filter"><option value="all">全部方式</option><option value="automatic">自动备份</option><option value="manual">手动备份</option><option value="recovery">恢复前保护</option></select></label>
@@ -2708,7 +2710,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
       <summary><span class="backup-card-icon backup-icon-purple">🧠</span><span class="backup-summary-text"><strong>人生记忆专项备份</strong><small>仅需单独保存完整记忆时使用</small></span><span class="backup-chevron" aria-hidden="true">⌄</span></summary>
       <div class="backup-fold-body">
         <p class="muted">单独保存永久真实档案、可衰减经历、反思候选及长期认识，可能包含仅管理员可见的敏感历史。永久档案不会因此变成日常 AI 可读取的记忆。</p>
-        <button id="memory-backup-export" class="backup-accent-btn" type="button">单独备份完整人生记忆</button>
+        <button id="memory-backup-export" class="backup-accent-btn" type="button">单独备份人生记忆</button>
         <p id="memory-backup-export-status" class="muted backup-status" role="status" aria-live="polite">尚未执行专项备份</p>
         <div class="backup-divider"></div>
         <div class="backup-subheading">🩺 记忆健康概览</div>
@@ -2848,12 +2850,8 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="life-hero life-memory-hero"><div class="life-memory-hero-copy"><span class="page-eyebrow">MEMORY GARDEN · 逐渐长大的回忆</span><div class="status-line"><span id="life-learning-status" class="live-badge">● 正在整理真实经历</span></div><h2>鱼鱼的记忆花园</h2><p class="muted">每一次真实相遇，都可能留下些小小的印象。她会记住一些，也会慢慢忘记一些。</p><button id="main-life-refresh" class="life-action life-indigo">↻ 刷新记忆</button></div><img class="life-memory-character" src="/api/bili-duty/life-character.png" alt="" loading="lazy" decoding="async" aria-hidden="true"><span class="life-memory-bubble" aria-hidden="true"></span></div>
 <nav class="memory-journey-nav" aria-label="记忆花园分区"><a href="#life-interest-section"><span>🌱</span><strong>最近兴趣</strong><small>真实积累的喜好</small></a><a href="#life-recall-section"><span>🧠</span><strong>经历与体会</strong><small>现在还能想起的事</small></a></nav>
 <div id="life-recall-section" class="settings-section life-section memory-home">
-<div class="memory-garden-heading"><div class="memory-garden-mark" aria-hidden="true">🧠</div><div><span class="page-eyebrow">LIFE MEMORY · 真实而会变化</span><h4>此刻还记得的事</h4><p class="muted">搜索当前还记得的经历与认识，或留空查看最近记录。</p></div></div>
-<div class="memory-filter-pills" role="group" aria-label="筛选记忆花园中的经历和长期认识"><button type="button" data-memory-kind="" aria-pressed="true">✨ 全部</button><button type="button" data-memory-kind="experience" aria-pressed="false">🎬 经历</button><button type="button" data-memory-kind="relationship" aria-pressed="false">💞 人物</button><button type="button" data-memory-kind="interest" aria-pressed="false">🌱 兴趣</button><button type="button" data-memory-kind="fact" aria-pressed="false">📜 事实</button></div>
-<div class="toolbar memory-search-bar"><input id="main-session-history-query" type="search" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="搜索记忆，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div><div class="toolbar memory-primary-actions"><button type="button" data-open-settings="neural-recall-board" data-target-tab="life">神经回忆场</button><button type="button" class="primary" data-open-settings="memory-manage" data-target-tab="life">管理记忆</button><button type="button" data-open-settings="life-memory-settings" data-target-tab="life">记忆设置</button><button type="button" data-open-tab="models" data-open-anchor="memory-model-route">记忆模型</button></div><details id="memory-add-details" class="memory-quick-add"><summary>＋ 添加记忆</summary><div class="toolbar"><input id="main-memory-add-text" maxlength="1000" placeholder="输入要记住的事实或约定"><button id="main-memory-add" class="life-action life-purple">保存记忆</button></div></details><p id="memory-local-scope" class="muted" hidden>当前仅显示本地身份记忆；平台经历需完成原账号验证。</p>
-<p id="main-session-history-status" class="muted" role="status">等待读取鱼鱼当前还能回忆的经历与认识…</p><div id="main-session-history" class="records records-scroll memory-search-results" aria-live="polite"></div>
 <section id="neural-recall-board" class="neural-recall-board" aria-label="神经回忆场：只读的真实记忆关系">
-  <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4><div id="neural-memory-stats" class="neural-memory-stats" aria-label="可衰减记忆账本统计" role="status"><span id="neural-fading-total">衰减副本 · 读取中</span><span id="neural-fading-new">今日新增 · 读取中</span><span id="neural-fading-forgot">今日遗忘 · 读取中</span></div></div><div class="neural-head-actions"><span id="neural-memory-count" class="neural-counter">等待读取</span><button id="neural-side-toggle" type="button" aria-controls="neural-recall-inspector" aria-expanded="true">收起详情</button><details class="neural-guidance"><summary>操作指南</summary><div class="neural-guidance-body"><p class="muted">证据线表示已核验来源，持久联想线表示模型已保存且仍有效的关系；搜索后青色连线对应本地向量余弦相似度，不是画面中的三维距离。</p><p class="muted neural-search-boundary">本地 Embedding 模型已连接时才进行语义检索，否则为标注清楚的关键词匹配。真实回忆仍需经过场景理解、回忆意图、权限与遗忘过滤、召回及核验；这个视图不是内部思考录像。</p></div></details></div></div>
+  <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4><p id="neural-recall-diagnostic" class="muted" role="status">等待读取真实联想诊断（不调用模型）。</p><div id="neural-memory-stats" class="neural-memory-stats" aria-label="可衰减记忆账本统计" role="status"><span id="neural-fading-total">衰减副本 · 读取中</span><span id="neural-fading-new">今日新增 · 读取中</span><span id="neural-fading-forgot">今日遗忘 · 读取中</span></div></div><div class="neural-head-actions"><span id="neural-memory-count" class="neural-counter">等待读取</span><button id="neural-side-toggle" type="button" aria-controls="neural-recall-inspector" aria-expanded="true">收起详情</button><details class="neural-guidance"><summary>操作指南</summary><div class="neural-guidance-body"><p class="muted">证据线表示已核验来源，持久联想线表示模型已保存且仍有效的关系；搜索后青色连线对应本地向量余弦相似度，不是画面中的三维距离。</p><p class="muted neural-search-boundary">本地 Embedding 模型已连接时才进行语义检索，否则为标注清楚的关键词匹配。真实回忆仍需经过场景理解、回忆意图、权限与遗忘过滤、召回及核验；这个视图不是内部思考录像。</p></div></details></div></div>
 
 <div class="neural-recall-layout">
     <div class="neural-recall-field"><div class="neural-query-toolbar" role="search"><label for="neural-search-input">在回忆场内搜索</label><input id="neural-search-input" maxlength="120" placeholder="例如：游戏、绘画、朋友…" autocomplete="off"><button type="button" id="neural-search-apply" class="life-action life-sky">唤起回忆</button><button id="neural-legend-toggle" type="button" aria-controls="neural-canvas-controls" aria-expanded="true">收起图例</button><span id="neural-query-stage" role="status" aria-live="polite">等待输入关键词</span></div><div class="neural-legend-slot"><div class="neural-canvas-legend" id="neural-canvas-controls" aria-label="画布图例和筛选">
@@ -2875,6 +2873,11 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
   </div>
 
 </section>
+<div class="memory-garden-heading"><div class="memory-garden-mark" aria-hidden="true">🧠</div><div><span class="page-eyebrow">LIFE MEMORY · 真实而会变化</span><h4>此刻还记得的事</h4><p class="muted">搜索当前还记得的经历与认识，或留空查看最近记录。</p></div></div>
+<div class="memory-filter-pills" role="group" aria-label="筛选记忆花园中的经历和长期认识"><button type="button" data-memory-kind="" aria-pressed="true">✨ 全部</button><button type="button" data-memory-kind="experience" aria-pressed="false">🎬 经历</button><button type="button" data-memory-kind="relationship" aria-pressed="false">💞 人物</button><button type="button" data-memory-kind="interest" aria-pressed="false">🌱 兴趣</button><button type="button" data-memory-kind="fact" aria-pressed="false">📜 事实</button></div>
+<div class="toolbar memory-search-bar"><input id="main-session-history-query" type="search" maxlength="120" aria-label="搜索鱼鱼现在记得的经历" placeholder="搜索记忆，或留空看最近"><button id="main-session-history-search" class="life-action life-sky">搜索当前记忆</button></div><div class="toolbar memory-primary-actions"><button type="button" data-open-settings="neural-recall-board" data-target-tab="life">神经回忆场</button><button type="button" class="primary" data-open-settings="memory-manage" data-target-tab="life">管理记忆</button><button type="button" data-open-settings="life-memory-settings" data-target-tab="life">记忆设置</button><button type="button" data-open-tab="models" data-open-anchor="memory-model-route">记忆模型</button></div><details id="memory-add-details" class="memory-quick-add"><summary>＋ 添加记忆</summary><div class="toolbar"><input id="main-memory-add-text" maxlength="1000" placeholder="输入要记住的事实或约定"><button id="main-memory-add" class="life-action life-purple">保存记忆</button></div></details><p id="memory-local-scope" class="muted" hidden>当前仅显示本地身份记忆；平台经历需完成原账号验证。</p>
+<p id="main-session-history-status" class="muted" role="status">等待读取鱼鱼当前还能回忆的经历与认识…</p><div id="main-session-history" class="records records-scroll memory-search-results" aria-live="polite"></div>
+
 <div id="life-lessons" class="memory-lessons"><span id="memory-manage"></span><h4>长期记忆管理</h4><p class="muted" id="main-memory-status" role="status">正在读取…</p><p class="muted">查看、搜索或删除已保存的记忆。</p>
 <div class="toolbar"><select id="main-memory-kind" aria-label="筛选留下的认识"><option value="">全部认识</option><option value="experience">经历带来的体会</option><option value="relationship">人物关系</option><option value="interest">兴趣变化</option><option value="fact">事实和约定</option></select><span id="memory-lessons-summary" class="muted" role="status">正在读取…</span></div>
 <input id="main-memory-query" maxlength="120" hidden aria-label="同步搜索认识的关键词"><button id="main-memory-search" hidden>搜索认识</button>
@@ -4165,6 +4168,7 @@ button.primary:not(:disabled):hover{filter:brightness(1.1)}button:disabled{opaci
 #management-shell:has(#panel-firststart:not([hidden]) #fs-guided-setup:not([hidden]))>.tabs,#management-shell:has(#panel-firststart:not([hidden]) #fs-guided-setup:not([hidden]))>#fs-warning,#management-shell:has(#panel-firststart:not([hidden]) #fs-guided-setup:not([hidden]))>#life-system-health,#management-shell:has(#panel-firststart:not([hidden]) #fs-guided-setup:not([hidden])) .settings-finder{display:none!important}
 .wizard-head-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px}.wizard-head-actions button{font-size:12px;padding:6px 10px}
 #fs-guided-setup[data-wizard="true"] .guided-steps{margin-bottom:10px}
+#fs-guided-setup .guided-steps.local-guide-steps{display:none!important}
 #fs-wizard-content #headless-journey .headless-stages,#fs-wizard-content #headless-journey h5{display:none}
 #fs-wizard-content .vision-usage-permission:not(.vision-usage-video){display:none}
 #fs-wizard-content #headless-sync-links,#fs-wizard-content .headless-sync-flow{display:none!important}

@@ -278,3 +278,17 @@ test('记忆基座 Session 指南与正式文档一致，复制仅本地且保�
   assert.match(copy,/navigator\.clipboard\.writeText\(guide\.value\)/);assert.match(copy,/guide\.select\(\)/);assert.doesNotMatch(copy,/request\(|fetch\(/);
   assert.match(js,/mobileReadOnlySelector=.*#fs-foundation-guide-copy/);assert.match(js,/#fs-foundation-guide-text\[readonly\]/);
 })
+
+
+test('最新完整引导使用独立版本凭据：旧查看或基础完成不解除新版管理中心引导',t=>{
+ const dir=mkdtempSync(join(tmpdir(),'bili-guide-6-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));const cred=join(dir,'bili_credential.json');writeFileSync(cred,'fixture')
+ const f=()=>createFirstStart({stateDir:dir,credentialPath:cred,headlessSync:{hasAnyVerified:()=>true}})
+ let gate=f();assert.equal(gate.status().guideRequired,true);gate.verifyBili();gate.complete([]);gate.acknowledgeQuickSetup()
+ gate=f();assert.equal(gate.status().guideRequired,true);assert.equal(gate.isReady(),true)
+ assert.throws(()=>gate.finishGuide({revision:5,confirm:'FINISH_GUIDE'}),/明确/)
+ assert.throws(()=>gate.finishGuide({revision:6}),/明确/)
+ gate.finishGuide({revision:6,confirm:'FINISH_GUIDE'});assert.equal(f().status().guideRequired,false);assert.equal(f().isReady(),true)
+ const local=join(dir,'local');const l=createFirstStart({stateDir:local,credentialPath:join(local,'none'),headlessSync:{hasAnyVerified:()=>false}})
+ assert.throws(()=>l.finishGuide({revision:6,confirm:'FINISH_GUIDE'}),/核验/)
+ l.finishGuide({revision:6,confirm:'FINISH_GUIDE'},{platform:false});assert.equal(l.status().guideRequired,false);assert.equal(l.isReady(),false)
+})

@@ -573,6 +573,14 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   revisitTurn25 -.-> ownerDmAI26
 %% @code ownerDmAI26 | lib/owner-dm-agent.mjs | const stillAllowed=
 %% @code ownerDmAI26 | lib/main-session-bridge.mjs | const ownerDmWriteReady=
+
+  guide27["新版一次性配置复核：不覆盖既有设置"]
+%% @code guide27 | lib/first-start.mjs | const finishGuide=
+  backupBrowser27["主人本机单文件备份管理：明确确认、只删选中文件"]
+%% @code backupBrowser27 | lib/backup-rotation.mjs | export function deleteBackupInDirectory
+  recallDiag27["真实召回诊断：本次运行状态、短期路径、无虚构"]
+  neuralEvidence283 -.-> recallDiag27
+%% @code recallDiag27 | lib/memory-neural-projection.mjs | const diagnostic=
 ```
 
 ## 二、八类候选细目
@@ -1153,6 +1161,10 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   receipt -.->|主人任务与投递均确认| ownerDmAI26
 %% @code ownerDmAI26 | lib/owner-dm-agent.mjs | const stillAllowed=
 %% @code ownerDmAI26 | lib/main-session-bridge.mjs | const ownerDmWriteReady=
+
+  recallDiag27["公开召回返回后的本次运行诊断；不改变召回/遗忘"]
+  neuralView -.-> recallDiag27
+%% @code recallDiag27 | lib/memory-neural-projection.mjs | const diagnostic=
 ```
 
 ## 四、统一 Life Episode 因果持续性

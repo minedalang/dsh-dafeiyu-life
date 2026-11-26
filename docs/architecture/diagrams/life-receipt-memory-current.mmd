@@ -309,3 +309,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   receipt -.->|主人任务与投递均确认| ownerDmAI26
 %% @code ownerDmAI26 | lib/owner-dm-agent.mjs | const stillAllowed=
 %% @code ownerDmAI26 | lib/main-session-bridge.mjs | const ownerDmWriteReady=
+
+  recallDiag27["公开召回返回后的本次运行诊断；不改变召回/遗忘"]
+  neuralView -.-> recallDiag27
+%% @code recallDiag27 | lib/memory-neural-projection.mjs | const diagnostic=

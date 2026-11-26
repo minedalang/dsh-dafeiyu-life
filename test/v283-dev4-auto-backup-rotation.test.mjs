@@ -1,12 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,existsSync,rmSync,writeFileSync,readFileSync} from 'node:fs'
+import {mkdtempSync,existsSync,rmSync,writeFileSync,readFileSync,utimesSync,symlinkSync,mkdirSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createBackup} from '../lib/data-backup.mjs'
-import {saveAutomaticBackup,listBackupFiles,inspectBackupInDirectory,pruneAutomaticBackups} from '../lib/backup-rotation.mjs'
+import {saveAutomaticBackup,listBackupFiles,inspectBackupInDirectory,pruneAutomaticBackups,deleteBackupInDirectory} from '../lib/backup-rotation.mjs'
 
-test('每日最多一份自动业务备份；保留五日；不清理手动文件',()=>{
+test('每日最多一份自动业务备份；保留两日；不清理手动文件',()=>{
  const dir=mkdtempSync(join(tmpdir(),'dsh-auto-'))
  try{
   const backup=createBackup({root:dir,config:{masterEnabled:true},sqlite:{},version:'2.8.3-dev.4'})
@@ -16,8 +16,8 @@ test('每日最多一份自动业务备份；保留五日；不清理手动文�
    assert.equal(saveAutomaticBackup(dir,backup,{now:at(day)}).created,false)
   }
   const rows=listBackupFiles(dir)
-  assert.equal(rows.length,5)
-  assert.deepEqual(rows.map(x=>x.day),['2026-11-16','2026-11-15','2026-11-14','2026-11-13','2026-11-12'])
+  assert.equal(rows.length,2)
+  assert.deepEqual(rows.map(x=>x.day),['2026-11-16','2026-11-15'])
   assert.equal(inspectBackupInDirectory(dir,rows[0].name).summary.integrity,'sha256-verified')
   assert.throws(()=>inspectBackupInDirectory(dir,'../config.json'),/有效/)
   writeFileSync(join(dir,'pre-restore-2026-11-10T10-00-00-000Z-01234567.json'),'{}')
@@ -51,5 +51,23 @@ test('恢复前人生记忆备份按记忆+恢复前保护筛选，业务备份�
    assert.equal(row.contentType,['dafeiyu-memory','pre-memory-restore'].some(x=>row.name.startsWith(x+'-'))?'memory':'business')
    assert.equal(row.origin,row.name.startsWith('dafeiyu-auto-')?'automatic':row.name.startsWith('pre-')?'recovery':'manual')
   }
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+
+test('备份跨类型按实际文件时间排序，删除须匹配原文件且拒绝任意路径',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dsh-delete-backup-'))
+ try{
+  const names=['dafeiyu-memory-2026-11-24T01-02-03-000Z-01234567.json','dafeiyu-backup-2026-11-24T01-02-03-000Z-01234567.json','pre-restore-2026-11-24T01-02-03-000Z-01234567.json']
+  for(const [i,n] of names.entries()){writeFileSync(join(dir,n),'{}');utimesSync(join(dir,n),100+i,100+i)}
+  const rows=listBackupFiles(dir);assert.deepEqual(rows.map(x=>x.name),names.slice().reverse())
+  const selected=rows[1];assert.throws(()=>deleteBackupInDirectory(dir,selected.name,{...selected,size:999}),/已变化/)
+  assert.throws(()=>deleteBackupInDirectory(dir,'../config.json',selected),/有效/)
+  assert.equal(deleteBackupInDirectory(dir,selected.name,selected),true);assert.equal(existsSync(join(dir,selected.name)),false)
+  assert.equal(listBackupFiles(dir).length,2);assert.equal(existsSync(join(dir,names[2])),true)
+  const unsafe='dafeiyu-auto-2026-11-24T01-02-03-000Z-01234567.json'
+  // Windows may require developer mode for symbolic links. The directory case is universal.
+  try{symlinkSync(join(dir,names[2]),join(dir,unsafe));assert.throws(()=>deleteBackupInDirectory(dir,unsafe,rows[0]),/不安全/)}catch(e){if(!['EPERM','EACCES','ENOSYS'].includes(e.code))throw e}
+  const unsafeDir='dafeiyu-auto-2026-11-24T01-02-03-000Z-01234568.json';mkdirSync(join(dir,unsafeDir));assert.throws(()=>deleteBackupInDirectory(dir,unsafeDir,rows[0]),/不安全/);assert.equal(existsSync(join(dir,unsafeDir)),true)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })

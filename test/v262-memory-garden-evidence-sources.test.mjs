@@ -83,3 +83,12 @@ test('跨私信引用旧搜索 BV 不能作为新回复证据；本轮已核验�
  assert.equal(verifyOutboundVideoLinks(link(bv),{ownerText:'这条 '+link(bv)+' 是什么',readRecords:[]}).ok,true)
  assert.equal(verifyOutboundVideoLinks('没有附链接',{}).ok,true)
 })
+
+
+test('记忆花园按实际经历时间而非导入时间排序，先排序后截断，未知时间在最后',()=>{
+ const rows=[{id:'old',text:'旧经历',at:'2026-10-01T00:00:00Z',createdAt:'2026-11-26T00:00:00Z'},
+ {id:'unknown',text:'无时间的回忆'}, {id:'new',text:'新经历',at:'2026-11-25T00:00:00Z',createdAt:'2026-11-25T00:00:00Z'},
+ {id:'mid',text:'中间经历',at:Date.parse('2026-11-01T00:00:00Z')}];
+ assert.deepEqual(memoryGardenSnapshot({memories:rows,limit:2}).rows.map(r=>r.id),['new','mid']);
+ assert.deepEqual(memoryGardenSnapshot({memories:rows}).rows.map(r=>r.id),['new','mid','old','unknown']);
+})

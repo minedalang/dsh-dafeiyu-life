@@ -29,7 +29,7 @@ test('历史业务文件超过旧 48 MiB 与 3000 条后仍完整导出、压缩
   assert.equal(readFileSync(join(dest,'reports','report_3019.md'),'utf8'),payload)
  }finally{for(const dir of [root,out,dest])rmSync(dir,{recursive:true,force:true})}
 })
-test('gzip 备份损坏拒绝预览；手动与恢复前快照不受自动五日轮换影响',()=>{
+test('gzip 备份损坏拒绝预览；手动与恢复前快照不受自动两日轮换影响',()=>{
  const source=fresh(),dir=fresh()
  try{
   const snapshot=createBackup({root:source,config:{},sqlite:{}})
@@ -40,7 +40,7 @@ test('gzip 备份损坏拒绝预览；手动与恢复前快照不受自动五日
   for(let d=1;d<=9;d++)saveAutomaticBackup(dir,snapshot,{now:new Date(2026,10,d,12)})
   pruneAutomaticBackups(dir,{now:new Date(2026,10,9,12)})
   const all=listBackupFiles(dir)
-  assert.equal(all.filter(r=>r.type==='automatic').length,5)
+  assert.equal(all.filter(r=>r.type==='automatic').length,2)
   assert.ok(all.some(r=>r.name===manual))
   assert.ok(all.some(r=>r.name===recovery))
   writeFileSync(join(dir,manual),Buffer.from('not a gzip'))

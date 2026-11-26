@@ -75,7 +75,7 @@ test('v2.4.80 sticker ZIP batch import refuses traversal and overwrite',()=>{
 test('v2.4.80 management console explains standalone memory backup and ZIP behavior',()=>{
   const html=readFileSync(join(root,'lib','management-console.html'),'utf8')
   const js=readFileSync(join(root,'lib','management-console.js'),'utf8')
-  assert.match(html,/单独备份完整人生记忆/)
+  assert.match(html,/单独备份人生记忆/)
   assert.match(html,/导出全部表情包 ZIP/)
   assert.match(html,/导出全部表情包 ZIP/)
   assert.match(html,/导入名称（可修改，不含扩展名）/)
