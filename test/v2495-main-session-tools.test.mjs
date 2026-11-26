@@ -4,7 +4,7 @@ import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createLongTermMemory} from '../lib/long-term-memory.mjs'
-import {createBackup} from '../lib/data-backup.mjs'
+import {createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
 import {createOwnerTodoEngine} from '../lib/owner-todos.mjs'
 
 const BV='BV19SJi6VEj1'
@@ -20,10 +20,10 @@ test('选定主 Session 即使关闭身份长期记忆，也能回忆真实经�
  }}
  const agents={get(id){return ['main-test','session-main-test'].includes(id)?agent:null},list(){return [agent]}}
  const todos=createOwnerTodoEngine({dataDir:home})
- let selectedSession='main-test',reverseGuard=null,blockReverse=false
+ let selectedSession='main-test',reverseGuard=null,blockReverse=false,blockDetail=false
  const memory=createLongTermMemory({dataDir:home,dshHome:home,agents,getConfig:()=>({mainSessionId:selectedSession,mainSessionMemoryEnabled:false}),defineTool:x=>x,
   getVideoAssociationRecall:async (query,{isCurrent})=>{assert.equal(query,'朱红雨伞');reverseGuard=isCurrent;assert.equal(isCurrent(),true);if(blockReverse)selectedSession='other-session';return [{bvid:BV,historicalDetail:{note:'朱红雨伞靠在玻璃门旁边。',timeAnchorMs:[2000,2000]}}]},
-  getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor})=>({ok:true,recallPage:true,bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor,fragments:[{content:"真实保存的片段"}]}),
+  getVideoDetailRecall:async ({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor})=>{if(blockDetail)selectedSession="other-session";return {ok:true,recallPage:true,bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor,fragments:[{content:"真实保存的片段"}]}},
   getExperienceRecall:(query,limit)=>[{kind:'watch',day:'2026-10-27',bvid:BV,summary:'之前看过猫咪视频'}],getTodoEngine:()=>todos,
   runTodo:id=>todos.run(id,async()=>({ok:true,summary:'已读取'})),logger:{warn(){},info(){}}})
  try{
@@ -77,6 +77,8 @@ test('选定主 Session 即使关闭身份长期记忆，也能回忆真实经�
   assert.equal(reverseGuard(),true);blockReverse=true
   const staleReverse=await byName.dafeiyu_life_recall.execute({query:'雨伞',visual_query:'朱红雨伞'})
   assert.equal(reverseGuard(),false);assert.equal(staleReverse.reason,'session-not-current');assert.equal(staleReverse.visualAssociations,undefined)
+  selectedSession='main-test';blockDetail=true
+  const staleDetail=await byName.dafeiyu_life_recall.execute({query:'具体画面',detail_bvid:BV});assert.equal(staleDetail.reason,'session-not-current');assert.equal(staleDetail.fragments,undefined)
  }finally{memory.stop();rmSync(home,{recursive:true,force:true})}
 })
 
@@ -145,5 +147,50 @@ test('自主记录格式、敏感内容、证据字段与共享额度保护；�
   const backup=createBackup({root:home,config:{}});assert.equal(JSON.parse(backup.files['long-term-memory/dafeiyu.json']).memories.length,3)
   const file=join(f.memory.storeDir,'dafeiyu.json'),raw=JSON.parse(readFileSync(file,'utf8'));raw.memories[0].publicApproved=true;writeFileSync(file,JSON.stringify(raw));assert.throws(()=>createBackup({root:home,config:{}}),/自主记录格式/)
   f.memory.stop();assert.equal((await f.remember.execute({memory_kind:'creation',text:'我画了新的插画'})).ok,false)
+ }finally{f?.memory.stop();rmSync(home,{recursive:true,force:true})}
+})
+
+
+test('dev.23 三种备份还原分类和旧事实，拒绝篡改分类来源；原反思 experience 仍可读取',async()=>{
+ const home=mkdtempSync(join(tmpdir(),'dafeiyu-mixed-backup-')),business=mkdtempSync(join(tmpdir(),'dafeiyu-business-restore-')),life=mkdtempSync(join(tmpdir(),'dafeiyu-life-restore-'));let f,g,h
+ try{
+  f=selfRecordFixture(home)
+  const owner=await f.remember.execute({text:'主人喜欢喝乌龙茶',importance:.98,fact_key:'主人.偏好.饮料'});assert.equal(owner.ok,true)
+  const typed=await f.remember.execute({memory_kind:'browsing',text:'我阅读了 CSS Grid 的布局指南'});assert.equal(typed.ok,true)
+  assert.equal(f.memory.addReflectedMemories([{text:'我过去在公开作品中认识了海洋生物',kind:'experience',candidateIds:['real-test-candidate'],sourceKey:'test-reflection'}]).added,1)
+  const orig=f.memory.exportBackup(),file=join(f.memory.storeDir,'dafeiyu.json'),raw=readFileSync(file,'utf8')
+  assert.equal(f.memory.activeMemories().length,2)
+  for(const mutate of [m=>delete m.source,m=>{delete m.source;delete m.memoryKind},m=>{m.id=owner.id},m=>{m.reinforceCount=4},m=>{m.createdAt='invalid'}]){
+   const bad=structuredClone(orig);mutate(bad.memory.memories.find(m=>m.id===typed.id));assert.throws(()=>f.memory.restoreBackup(bad),/自主记录格式/);assert.equal(readFileSync(file,'utf8'),raw)
+  }
+  const b=createBackup({root:home,config:{}});restoreBackupFiles(business,b)
+  const l=createLifeMemoryBackup(home);restoreLifeMemoryBackup(life,l)
+  for(const dest of [business,life])assert.equal(readFileSync(join(dest,'long-term-memory','dafeiyu.json'),'utf8'),raw)
+  g=selfRecordFixture(business);h=selfRecordFixture(life)
+  for(const other of [g,h]){
+   assert.match((await other.recall.execute({query:'CSS Grid 布局指南',memory_kind:'browsing'})).context,/CSS Grid/)
+   assert.equal(other.memory.activeMemories().length,2)
+   assert.ok(other.memory.activeMemories().some(m=>m.memoryKind==='experience'&&m.source==='life-reflection'))
+  }
+  f.memory.remove(typed.id);f.memory.restoreBackup(orig);assert.match((await f.recall.execute({query:'CSS Grid 布局指南',memory_kind:'browsing'})).context,/CSS Grid/)
+  writeFileSync(file,raw+' '.repeat(8*1024*1024));assert.throws(()=>createBackup({root:home,config:{}}),/8MB/);assert.throws(()=>createLifeMemoryBackup(home),/8MB/)
+ }finally{f?.memory.stop();g?.memory.stop();h?.memory.stop();for(const d of [home,business,life])rmSync(d,{recursive:true,force:true})}
+})
+
+test('dev.23 混合身份记忆达容量不驱逐任何旧记录，普通工具旧句柄在停止后拒绝',async()=>{
+ const home=mkdtempSync(join(tmpdir(),'dafeiyu-mixed-cap-'));let f
+ try{
+  f=selfRecordFixture(home)
+  const typed=await f.remember.execute({memory_kind:'learning',text:'我学习了网格布局'});assert.equal(typed.ok,true)
+  const file=join(f.memory.storeDir,'dafeiyu.json'),raw=JSON.parse(readFileSync(file,'utf8'))
+  for(let i=0;i<4999;i++)raw.memories.push({id:'legacy-'+i,text:'旧记录 '+i,category:'event',importance:.4,tags:[]})
+  writeFileSync(file,JSON.stringify(raw));const before=readFileSync(file,'utf8')
+  const refused=f.memory.addManual('新加入一条完全不相关的事实',.7);assert.equal(refused.capacityExceeded,true);assert.equal(readFileSync(file,'utf8'),before)
+  assert.equal(f.memory.addReflectedMemories([{text:'我在海边观看日出',candidateIds:['real-test'],kind:'experience'}]).added,0);assert.equal(readFileSync(file,'utf8'),before)
+  f.memory.stop()
+  assert.equal((await f.recall.execute({query:'普通历史记忆'})).ok,false)
+  assert.equal((await f.life.execute({query:'普通历史经历'})).ok,false)
+  assert.equal((await f.remember.execute({text:'主人明确喜欢山间散步',importance:.98,fact_key:'主人.偏好.散步'})).ok,false)
+  f.memory.start();assert.equal((await f.recall.execute({query:'普通历史记忆'})).ok,false,'同一 agent 重启挂载，旧工具仍失效')
  }finally{f?.memory.stop();rmSync(home,{recursive:true,force:true})}
 })

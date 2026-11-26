@@ -38,3 +38,13 @@ test('2.8.3 user-facing feature introduction is honest and uses a self-contained
  assert.match(readme,/跨聊天场景自主补看的完整体验仍在开发/);assert.ok(readme.length<10000);
  const svg=readFileSync(new URL('../docs/architecture/assets/283-perception-memory.svg',import.meta.url),'utf8');assert.match(svg,/<svg[^>]+viewBox=/);assert.match(svg,/<title /);assert.match(svg,/<desc /);assert.match(svg,/非实机截图/);assert.doesNotMatch(svg,/<script|<foreignObject|<image|(?:href=|xlink:href=)["']https?:\/\//);
 })
+
+
+test('four-core product illustration is local and explicitly separates the planned workbench',()=>{
+ const name='docs/architecture/assets/dafeiyu-four-cores.svg'
+ assert.ok(readme.includes(']('+name+')'))
+ const svg=readFileSync(new URL('../'+name,import.meta.url),'utf8')
+ assert.match(svg,/<svg[^>]+viewBox=/);assert.match(svg,/自由工作台为规划中/);assert.match(svg,/非实机截图/)
+ assert.doesNotMatch(svg,/<script|<foreignObject|<image|(?:href=|xlink:href=)["']https?:\/\//)
+ assert.match(readme,/自由工作台仍处于规划阶段/)
+})
