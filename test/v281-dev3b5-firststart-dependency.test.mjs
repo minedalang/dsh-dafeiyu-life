@@ -61,7 +61,7 @@ test('fresh install: status remains unready and QR start is blocked before depen
 test('core dependency probe is independent of optional FFmpeg/Whisper probes',()=>{
   const js=read('lib/management-console.js')
   const section=js.slice(js.indexOf('const refreshSetupDependencies=async()=>{'),js.indexOf("$('fs-main-deps-refresh').addEventListener"))
-  assert.match(section,/const main=await request\('\/status'\)/)
+  assert.match(section,/try\{main=await request\('\/status'\)\}catch\(e\)\{setupMainReady=null;setupMainInstalling=false;\$\('fs-bili-start'\)\.disabled=true;renderSetupGuide\(onboarding\);throw e\}/)
   assert.match(section,/\$\('fs-bili-start'\)\.disabled=!mainReady/)
   assert.match(section,/try\{[\s\S]*?request\('\/video-dependencies\/status'\)/)
   assert.match(section,/catch\(e\)\{[\s\S]*?不影响主依赖安装与 B站扫码/)

@@ -113,7 +113,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
 
   // Exercise the real production render function with a minimal DOM double.
   // No independent duplicate UI policy is reimplemented inside the test.
-  const begin=js.indexOf('  const selectedCapabilities=')
+  const begin=js.indexOf('  // UI-only dependency observation.')
   const end=js.indexOf('  // All dependency *installation*',begin)
   assert.ok(begin>=0&&end>begin)
   const nodes=new Map()
@@ -123,12 +123,12 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
     return nodes.get(id)
   }
   const context={
-    onboarding:null,mobileViewOnly:false,firstNavigation:true,active:'firststart',tabNames:['firststart','models','home','life','social','life-agent','plans','backup'],
+    onboarding:null,quickOptions:null,mobileViewOnly:false,firstNavigation:true,active:'firststart',tabNames:['firststart','models','home','life','social','life-agent','plans','backup'],
     $:element,document:{querySelector:selector=>element(selector)}
   }
   const policy=js.slice(js.indexOf('  const capabilityKeys='),js.indexOf('  const skipFirstStart='));
-  const render=runInNewContext(policy+js.slice(begin,end)+'\nrenderFirstStart',context)
-  const show=state=>{render(state);return element('fs-warning')}
+  const render=runInNewContext(policy+js.slice(begin,end)+'\n({renderFirstStart,setRuntimeReady:value=>{setupMainReady=value;renderSetupGuide(onboarding)},setQuickOptions:value=>{quickOptions=value;renderSetupGuide(onboarding)}})',context)
+  const show=state=>{render.renderFirstStart(state);return element('fs-warning')}
   const old={ok:true,welcomeCompleted:true,completed:true,requiredReady:true,quickSetupSeen:false,
     biliVerified:true,headlessVerified:true,hasCredential:true,missing:[],skipped:[],localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},requested:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},revision:0,restartRequired:false}}
   let banner=show(old)
@@ -146,6 +146,10 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
     biliVerified:false,headlessVerified:false,hasCredential:false,missing:['B站登录验证','Headless 模型同步与验证'],skipped:[],localMemoryReady:true,capabilities:old.capabilities}
   banner=show(fresh)
   assert.equal(banner.dataset.kind,'setup')
+  assert.equal(element('fs-guide-next').dataset.target,'fs-deps-card')
+  render.setRuntimeReady(true)
+  assert.equal(element('fs-guide-next').dataset.target,'fs-bili-state')
+  assert.equal(element('fs-guide-fill').dataset.progress,'1')
   assert.equal(element('fs-quick-ack').hidden,true)
   assert.equal(element('fs-complete').hidden,false)
   assert.equal(element('fs-complete').disabled,false,'未完成的用户仍应点击得到准确缺项说明')
@@ -153,9 +157,24 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('[data-tab="life"]').hidden,false)
   show({...fresh,biliVerified:true,missing:['Headless 模型同步与验证']})
   assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-headless-state')
+  assert.equal(element('fs-guide-next').dataset.target,'fs-headless-state')
   show({...fresh,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]})
   assert.equal(element('fs-complete').hidden,false)
   assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-final-stage')
+  assert.equal(element('fs-guide-next').dataset.target,'finish')
+  assert.equal(element('fs-guide-fill').dataset.progress,'3')
+  assert.equal(element('fs-guide-life').hidden,false)
+  render.setQuickOptions({recommendLife:true})
+  assert.equal(element('fs-guide-next').dataset.target,'quick-life-section')
+  assert.equal(element('fs-guide-finish-later').hidden,false)
+  render.setQuickOptions({recommendLife:false})
+  assert.equal(element('fs-guide-next').dataset.target,'finish')
+  assert.equal(element('fs-guide-finish-later').hidden,true)
+  show({...fresh,requiredReady:false,biliVerified:true,headlessVerified:true})
+  assert.equal(element('fs-guide-next').dataset.target,'fs-verify-stage','三项展示状态不能绕过服务端总准入')
+  render.setRuntimeReady(null)
+  assert.equal(element('fs-guide-next').dataset.target,'fs-deps-card','依赖状态失效不能继续显示已就绪')
+  render.setRuntimeReady(true)
   banner=show({...old,completed:false,requiredReady:false,quickSetupSeen:true,headlessVerified:false,missing:['Headless 模型同步与验证']})
   assert.equal(banner.dataset.kind,'repair')
   assert.equal(element('fs-complete').hidden,true)
@@ -168,6 +187,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   for(const tab of ['home','models','life','firststart'])assert.equal(element(`[data-tab="${tab}"]`).hidden,false)
   assert.equal(element('life-system-health').hidden,true)
   show(local)
+  assert.equal(element('fs-guided-setup').hidden,true)
   assert.equal(element('fs-cap-platform').checked,false)
   assert.equal(element('fs-cap-autonomous').checked,false)
   assert.equal(element('fs-integration-current').dataset.state,'active')

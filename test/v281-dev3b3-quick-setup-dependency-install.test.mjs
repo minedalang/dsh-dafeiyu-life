@@ -82,3 +82,17 @@ test('unverified onboarding can read dependency status, while remote-origin Whis
     assert.equal((await send('GET','life-memory/status')).code,423)
   }finally{rmSync(home,{recursive:true,force:true})}
 })
+
+
+test('必需运行环境与账号模型先展示，增强和高级配置才折叠',()=>{
+  const panel=html.slice(html.indexOf('<section id="panel-firststart"'),html.indexOf('<section id="panel-models"'))
+  for(const id of ['fs-guide-runtime','fs-guide-account','fs-guide-model','fs-guide-next'])assert.match(panel,new RegExp('id="'+id+'"'))
+  assert.ok(panel.indexOf('id="fs-deps-card"')<panel.indexOf('id="fs-enhancements"'))
+  assert.ok(panel.indexOf('id="fs-bili-verify"')<panel.indexOf('id="fs-enhancements"'))
+  assert.ok(panel.indexOf('id="fs-headless-state"')<panel.indexOf('id="fs-enhancements"'))
+  assert.match(panel,/<details id="fs-enhancements" class="setup-disclosure">/)
+  assert.match(panel,/<details id="fs-advanced-settings" class="setup-disclosure">/)
+  assert.match(ui,/setupMainReady=mainReady;setupMainInstalling=main.installing===true;renderSetupGuide\(onboarding\)/)
+  assert.match(ui,/if\(target==='finish'\)\{if\(!mobileViewOnly\)void run\(completeFirstStart\)/)
+  assert.match(html,/@media\(prefers-reduced-motion:reduce\)\{\.guided-track span\{transition:none\}/)
+})

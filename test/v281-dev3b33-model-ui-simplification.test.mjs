@@ -84,7 +84,7 @@ test('3b33 视觉用户进度：MCP 预检不得代替回答和人工认可',()=
 
 
 test('2.8.2 视觉设置：快速设置介绍新 2B，旧 1B 限历史兼容',()=>{
-  const guide=html.slice(html.indexOf('id="fs-vision-guide"'),html.indexOf('id="quick-embedding-status"'))
+  const guide=html.slice(html.indexOf('id="fs-vision-guide"'),html.indexOf('id="fs-advanced-settings"'))
   assert.match(guide,/新增本地 Qwen3\.5 2B 视觉模型/)
   assert.match(guide,/MiniCPM-V 4\.7 1B/)
   assert.match(guide,/不建议继续作为常用模型/)

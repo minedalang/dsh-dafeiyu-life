@@ -27,9 +27,9 @@ test('the Life action tree and responsive two-column diary are one permanently v
  assert.match(js,/lifeTimelineFingerprint=''/)
 })
 
-test('03 begins with strongly recommended semantic memory and 04 has the requested session copy',()=>{
- const first=html.indexOf('id="quick-embedding-section"'),third=html.indexOf('<h3>03 · ')
- assert.ok(first>third)
+test('推荐增强优先展示本地语义回忆，独立会话文案保留',()=>{
+ const first=html.indexOf('id="quick-embedding-section"'),recommended=html.indexOf('id="fs-enhancements"')
+ assert.ok(first>recommended&&first<html.indexOf('id="fs-advanced-settings"'))
  assert.ok(first<html.indexOf('id="quick-life-section"'))
  assert.match(html,/强烈推荐 · 可选/)
  assert.match(html,/不开启时仍可用词法回忆，但换一种说法/)
