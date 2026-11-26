@@ -32,8 +32,9 @@ test('行动节点/时间线关联12小时画面，拼图按视频时间排序�
   assert.match(js,/request\('\/life-video-gallery\/focus'/)
   assert.match(js,/request\('\/life-video-gallery\/focus\/status'/)
   assert.match(server,/planOwnerGalleryRevisit/)
-  assert.match(server,/recordVerifiedFocusRevision/)
-  assert.match(server,/detailPersisted\?/, 'deep-only partial failures must never claim fully updated memory')
+  assert.match(server,/persistFreshVideoDetail\(\{event,bvid,info,visual,account,review\}\)/)
+  assert.match(server,/status:result.pending\?'pending':'not-updated'/, 'pending details must never claim fully updated memory')
+  assert.match(js,/memory.status==='pending'/, 'owner receives recovery status')
   assert.match(js,/memory\.status==='partial'/, 'owner must be warned about partial deep-only persistence')
 })
 

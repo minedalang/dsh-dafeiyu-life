@@ -2127,20 +2127,27 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   }
   // Called only with fresh platform/model receipts inside verified read paths.
   // Exact event identity; no time/BV heuristic and no permanent archive fallback.
-  const persistFreshVideoDetail=({event,bvid,info,visual,account})=>{
+  const persistFreshVideoDetail=async({event,bvid,info,visual,account,review=null})=>{
+    refreshCfg()
     if(!lifeMemory||!event||event.accountTag!==account||account!==trustedLifeAccountTag()||
        accountBinding.status().blocked||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential())
-      return {ok:false,reason:'account-or-permission-changed'}
+      return {ok:false,reason:'account-or-permission-changed',eventStatus:'not-recorded'}
     const memoryId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18)
-    const sourceRef='observation:'+createHash('sha256').update(event.key).digest('hex').slice(0,32)
+    const sourceRef=(review?'focus:':'observation:')+createHash('sha256').update(event.key).digest('hex').slice(0,32)
     const fragments=buildFreshVideoDetails({bvid,info,visual,event,sourceRef})
-    if(!fragments.length)return {ok:false,reason:'no-fresh-detail-evidence'}
     const ownerSession=event.experience?.source==='main-session'
     const proof=Object.freeze({memoryId,accountTag:account,bvid,sourceRef,fragmentCount:fragments.length,
       visibility:ownerSession?'private-session':'public-event',at:Date.now()})
     admittedOwnerFocusProofs.add(proof)
-    try{return {...lifeMemory.attachMemoryDetails({memoryId,accountTag:account,fragments,sourceProof:proof,ownerSession}),memoryId}}
-    finally{admittedOwnerFocusProofs.delete(proof)}
+    try{
+      // The proof is in-process only. The Gateway atomically commits the
+      // parent + already admitted fragments before its separate attachment write.
+      const stored=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true,
+        ...(fragments.length?{detailAdmission:{fragments,sourceProof:proof,review,sourceRef}}:{})})
+      if(!stored)throw Error('人生记忆协调器尚未就绪')
+      return {...(stored.detailWrite||{ok:false,reason:fragments.length?'detail-not-admitted':'no-fresh-detail-evidence'}),memoryId,
+        eventStatus:stored.skipped==='cached-visual'?'not-recorded-cached':stored.ok===false?'coordination-pending':'recorded'}
+    }finally{admittedOwnerFocusProofs.delete(proof)}
   }
   const executeWatchVideo = async(args={},internal={}) => {
     const dryRun=args.__debugDryRun===true
@@ -2369,12 +2376,14 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         accountTag:initialLifeAccountTag,focusReview,integratedVisualNotes,
         purpose:args.explorationPurpose||(args.record_session===false?'self-exploration':'main-session'),operationId:randomUUID(),
         autonomousSelected:internal.lifeChoiceVerified===true&&args.record_session===false})
-      if(event&&(!initialLifeAccountTag||initialLifeAccountTag===trustedLifeAccountTag())){const synced=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(!synced)throw Error('人生记忆协调器尚未就绪');memoryWrite={status:synced.skipped==='cached-visual'?'not-recorded-cached':synced.ok===false?'coordination-pending':'recorded',detailStatus:'not-recorded'}
-        if(synced.ok===false)log('视频经历已进入待补偿队列：'+String(synced.lastError||synced.reason||'unknown').slice(0,100))
+      if(event&&(!initialLifeAccountTag||initialLifeAccountTag===trustedLifeAccountTag())){
         if((args.record_session!==false||internal.lifeChoiceVerified===true)&&normalized(vision)?.status==='analyzed'){
-          const detail=persistFreshVideoDetail({event,bvid,info:normalized(info),visual:normalized(vision),account:initialLifeAccountTag})
-          memoryWrite={...memoryWrite,detailStatus:detail.ok?'recorded':'not-recorded',...(detail.ok?{memoryId:detail.memoryId}:{detailReason:detail.reason||'write-failed'})}
+          const detail=await persistFreshVideoDetail({event,bvid,info:normalized(info),visual:normalized(vision),account:initialLifeAccountTag})
+          memoryWrite={status:detail.eventStatus,detailStatus:detail.ok?'recorded':detail.pending?'pending':'not-recorded',...(detail.ok?{memoryId:detail.memoryId}:{detailReason:detail.reason||'write-failed'})}
           log('Life 深层观察附件：'+(detail.ok?'已写入 '+detail.memoryId:String(detail.reason||'write-failed')))
+        }else{
+          const synced=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(!synced)throw Error('人生记忆协调器尚未就绪')
+          memoryWrite={status:synced.skipped==='cached-visual'?'not-recorded-cached':synced.ok===false?'coordination-pending':'recorded',detailStatus:'not-recorded'}
         }
       }
       else log('视频探索没有可验证的标题/资料，不生成生活观看经历：'+bvid)
@@ -2562,10 +2571,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
               operationId:randomUUID(),autonomousSelected:true,accountTag:account})
             if(event&&visual?.status==='analyzed'&&account===trustedLifeAccountTag()){event.experience.focusWindow={startMs:review.startMs,endMs:review.endMs,
               frames:review.frameTimesMs.length,source:review.source}
-              const stored=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
-              memoryWrite={status:stored?.ok===true?'recorded':'coordination-pending'}
-              const detail=persistFreshVideoDetail({event,bvid,info:overview.info,visual,account})
-              memoryWrite={...memoryWrite,detailStatus:detail.ok?'recorded':'not-recorded',detailReason:detail.reason||''}
+              const detail=await persistFreshVideoDetail({event,bvid,info:overview.info,visual,account})
+              memoryWrite={status:detail.eventStatus,detailStatus:detail.ok?'recorded':detail.pending?'pending':'not-recorded',detailReason:detail.reason||''}
               log('Life 批量局部深层附件：'+(detail.ok?'已写入 '+detail.memoryId:String(detail.reason||'write-failed')))}
           }catch{memoryWrite={status:'write-failed'};log('Life 真实局部复查记忆待补偿；不影响只读视觉回执')}
           if(focusCapture&&account===trustedLifeAccountTag()&&!accountBinding.status().blocked)try{
@@ -2735,22 +2742,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
                 event.note='自主补看一个已核实的公开视频时间窗口'
                 event.experience.focusWindow={startMs:confirmed.startMs,endMs:confirmed.endMs,
                   frames:confirmed.frameTimesMs.length,source:'decoded-public-video-focus'}
-                const stored=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
-                memoryState=stored?.ok===true?'recorded': 'pending-retry'
-                refreshCfg()
-                // Use the exact newly persisted event identity, never a nearby BV match.
-                if(stored?.ok===true&&account===trustedLifeAccountTag()&&!accountBinding.status().blocked&&cfg.masterEnabled===true&&cfg.visionEnabled===true&&hasCredential()&&lifeMemory){
-                  const memoryId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18)
-                  const sourceRef='focus:'+randomUUID().replaceAll('-','')
-                  const verifiedFragments=buildFreshVideoDetails({bvid,info,visual,event,sourceRef})
-                  const proof=Object.freeze({memoryId,accountTag:account,bvid,sourceRef,fragmentCount:verifiedFragments.length,at:Date.now()})
-                  admittedOwnerFocusProofs.add(proof)
-                  try{
-                    const result=lifeMemory.recordVerifiedFocusRevision({memoryId,accountTag:account,bvid,review:confirmed,sourceProof:proof,sourceRef,verifiedFragments})
-                    deepMemory=result.ok?{status:'updated',memoryId,shallowVersion:result.shallowVersion,deepFragments:result.deepFragments}:
-                      {status:result.detailPersisted?'partial':'not-updated',reason:result.reason}
-                  }finally{admittedOwnerFocusProofs.delete(proof)}
-                }
+                const result=await persistFreshVideoDetail({event,bvid,info,visual,account,review:confirmed})
+                memoryState=result.eventStatus
+                deepMemory=result.ok?{status:'updated',memoryId:result.memoryId,shallowVersion:result.shallowVersion,deepFragments:result.deepFragments}:
+                  {status:result.pending?'pending':'not-updated',reason:result.reason}
               }
             }catch(e){log('Life 补看证据记账暂不可用：'+String(e?.message||e).slice(0,90))}
             if(focusCapture&&account===trustedLifeAccountTag()&&!accountBinding.status().blocked)try{
@@ -7019,12 +7014,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     if(!index)throw Error('relationship-index-unavailable')
     return index.get(uid,relationshipOptions())
   },getAccountTag:trustedLifeAccountTag,admitMemoryDetails:({episode,fragments,sourceProof})=>{
+    refreshCfg()
     if(!sourceProof||typeof sourceProof!=='object'||!admittedOwnerFocusProofs.has(sourceProof)||
        !Array.isArray(fragments)||fragments.length!==(sourceProof.fragmentCount||1)||fragments.length<1||fragments.length>48||
        episode?.id!==sourceProof.memoryId||episode?.accountTag!==sourceProof.accountTag||
        episode?.visibility!==(sourceProof.visibility||'public-event')||
        episode?.bvid!==sourceProof.bvid||fragments.some(f=>f?.sourceRef!==sourceProof.sourceRef)||
-       sourceProof.accountTag!==trustedLifeAccountTag()||
+       sourceProof.accountTag!==trustedLifeAccountTag()||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential()||
        !Number.isFinite(sourceProof.at)||Date.now()-sourceProof.at>60_000||
        accountBinding.status().blocked)return false
     admittedOwnerFocusProofs.delete(sourceProof)
@@ -9229,22 +9225,10 @@ logger:{warn:m=>log('社交意图：'+m)}
             if(event){
               event.experience.focusWindow={startMs:review.startMs,endMs:review.endMs,
                 frames:review.frameTimesMs.length,source:review.source}
-              const stored=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
-              memoryState=stored?.ok===true?'recorded':'coordination-pending'
-              if(scope()){
-                const memoryId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18)
-                const sourceRef='focus:'+id
-                const verifiedFragments=buildFreshVideoDetails({bvid,info,visual,event,sourceRef})
-                const proof=Object.freeze({memoryId,accountTag:account,bvid,sourceRef,fragmentCount:verifiedFragments.length,at:Date.now()})
-                admittedOwnerFocusProofs.add(proof)
-                try{
-                  const result=lifeMemory.recordVerifiedFocusRevision({memoryId,accountTag:account,
-                    bvid,review,sourceProof:proof,sourceRef,verifiedFragments})
-                  memory=result.ok?{status:'updated',memoryId,shallowVersion:result.shallowVersion,
-                    deepFragments:result.deepFragments}:result.detailPersisted?
-                    {status:'partial',reason:result.reason,deepPersisted:true}:{status:'not-updated',reason:result.reason}
-                }finally{admittedOwnerFocusProofs.delete(proof)}
-              }
+              const result=await persistFreshVideoDetail({event,bvid,info,visual,account,review})
+              memoryState=result.eventStatus
+              memory=result.ok?{status:'updated',memoryId:result.memoryId,shallowVersion:result.shallowVersion,deepFragments:result.deepFragments}:
+                {status:result.pending?'pending':'not-updated',reason:result.reason}
             }
           }else if(visual?.status==='cached'){memoryState='not-recorded-cached';memory={status:'not-updated',reason:'cached-no-new-evidence'}}
           }catch(error){memoryState='write-failed';memory={status:'not-updated',reason:'memory-write-exception'};log('主人补看记忆保存失败：'+String(error?.message||error).slice(0,100))}

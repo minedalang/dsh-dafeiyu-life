@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% 2.8.3-dev.16：原 Gateway 的浅层与已核验详情待写同快照提交；沿用当前账号、清晰度及撤销保护恢复，不新增调度器；待写不可召回，便携备份拒绝未结状态。
 %% 2.8.3-dev.7：管理 HTTP 入口先核验宿主 owner（alpha 由路由 Peer，rc.5 由 admit）；管理页在当前已登录 DSH 同源打开，不转移认证凭证。Life 内部意愿、数据与调度职责不变。
 %% 2.8.3-dev.6：现有账号绑定先于 Life 调度诊断及模型候选；未就绪为心跳等待，首次配置用同一在线 UID 核验，原生设置仅复用现有显式确认和复核，不新增授权。
 %% 2.8.3-dev.6：真实联想召回回放：仅记录公开后台 Life 规划入口实际返回、通过完整证据核验的持久联想候选路径；进程内最近一条，展示期限5分钟，非模型采用或内部思考。主人本地同源只读接口再次校验当前账号、有效关系、清晰端点并映射图节点；不保存文本或查询，不含私密经历，不新增模型调用或改变召回/意愿。筛选、缺失节点、遗忘或失效时不绘制。
@@ -54,11 +55,11 @@ flowchart TB
   %% dev.6 owner-only branch; separate from Life's autonomous decision and social action rights.
   dev6OwnerFrame["主人明确选帧或秒数：只读局部补看，非自主意愿授权"]
   dev6OwnerGate["本机同源/当前账号/真实图片时间锚点/BV 预算/局部视觉核验"]
-  dev6OwnerMemory["账号/BV/隐私唯一浅层槽；真实观察 ID 独立深层与遗忘"]
+  dev6OwnerMemory["真实观察 ID；浅层与待写同提交；核验恢复深层"]
   dev6OwnerFrame --> dev6OwnerGate
   dev6OwnerGate -.->|仅内部一次性可信回执| dev6OwnerMemory
   %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
-  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
+  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function stageDetails
   visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
   video -.->|可信分镜与Life自主局部新增证据| visualAiBrief
   %% @code visualAiBrief | lib/video-memory-synthesis.mjs | export async function synthesizeFocusVisualMemory
@@ -484,6 +485,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% 2.8.3-dev.16：原 Gateway 的浅层与已核验详情待写同快照提交；沿用当前账号、清晰度及撤销保护恢复，不新增调度器；待写不可召回，便携备份拒绝未结状态。
 %% 2.8.3-dev.7：管理 HTTP 入口先核验宿主 owner（alpha 由路由 Peer，rc.5 由 admit）；管理页在当前已登录 DSH 同源打开，不转移认证凭证。Life 内部意愿、数据与调度职责不变。
 %% 2.8.3-dev.6：现有账号绑定先于 Life 调度诊断及模型候选；未就绪为心跳等待，首次配置用同一在线 UID 核验，原生设置仅复用现有显式确认和复核，不新增授权。
 %% 2.8.3-dev.6：真实联想召回回放：仅记录公开后台 Life 规划入口实际返回、通过完整证据核验的持久联想候选路径；进程内最近一条，展示期限5分钟，非模型采用或内部思考。主人本地同源只读接口再次校验当前账号、有效关系、清晰端点并映射图节点；不保存文本或查询，不含私密经历，不新增模型调用或改变召回/意愿。筛选、缺失节点、遗忘或失效时不绘制。
@@ -532,11 +534,11 @@ flowchart LR
   %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
   dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
   dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
-  dev6OwnerMemory["账号/BV/隐私唯一浅层槽；真实观察 ID 独立深层与遗忘"]
+  dev6OwnerMemory["真实观察 ID；浅层与待写同提交；核验恢复深层"]
   dev6OwnerFrame --> dev6OwnerGate
   dev6OwnerGate -.->|一次性可信回执；本次新经历 ID 精确绑定| dev6OwnerMemory
   %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
-  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
+  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function stageDetails
 
   visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
   video -.->|自愿选择后才执行| visualAiBrief
@@ -710,6 +712,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% 2.8.3-dev.16：原 Gateway 的浅层与已核验详情待写同快照提交；沿用当前账号、清晰度及撤销保护恢复，不新增调度器；待写不可召回，便携备份拒绝未结状态。
 %% 2.8.3-dev.7：管理 HTTP 入口先核验宿主 owner（alpha 由路由 Peer，rc.5 由 admit）；管理页在当前已登录 DSH 同源打开，不转移认证凭证。Life 内部意愿、数据与调度职责不变。
 %% 2.8.3-dev.6：现有账号绑定先于 Life 调度诊断及模型候选；未就绪为心跳等待，首次配置用同一在线 UID 核验，原生设置仅复用现有显式确认和复核，不新增授权。
 %% 2.8.3-dev.6：真实联想召回回放：仅记录公开后台 Life 规划入口实际返回、通过完整证据核验的持久联想候选路径；进程内最近一条，展示期限5分钟，非模型采用或内部思考。主人本地同源只读接口再次校验当前账号、有效关系、清晰端点并映射图节点；不保存文本或查询，不含私密经历，不新增模型调用或改变召回/意愿。筛选、缺失节点、遗忘或失效时不绘制。
@@ -771,11 +774,11 @@ flowchart TB
   %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
   dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
   dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
-  dev6OwnerMemory["账号/BV/隐私唯一浅层槽；真实观察 ID 独立深层与遗忘"]
+  dev6OwnerMemory["真实观察 ID；浅层与待写同提交；核验恢复深层"]
   dev6OwnerFrame --> dev6OwnerGate
   dev6OwnerGate -.->|一次性可信回执；本次新经历 ID 精确绑定| dev6OwnerMemory
   %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
-  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
+  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function stageDetails
 
   visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
   videoReadHandoff -.->|核验后生成文字摘要| visualAiBrief
@@ -987,6 +990,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% 2.8.3-dev.16：原 Gateway 的浅层与已核验详情待写同快照提交；沿用当前账号、清晰度及撤销保护恢复，不新增调度器；待写不可召回，便携备份拒绝未结状态。
 %% 2.8.3-dev.7：管理 HTTP 入口先核验宿主 owner（alpha 由路由 Peer，rc.5 由 admit）；管理页在当前已登录 DSH 同源打开，不转移认证凭证。Life 内部意愿、数据与调度职责不变。
 %% 2.8.3-dev.6：现有账号绑定先于 Life 调度诊断及模型候选；未就绪为心跳等待，首次配置用同一在线 UID 核验，原生设置仅复用现有显式确认和复核，不新增授权。
 %% 2.8.3-dev.6：真实联想召回回放：仅记录公开后台 Life 规划入口实际返回、通过完整证据核验的持久联想候选路径；进程内最近一条，展示期限5分钟，非模型采用或内部思考。主人本地同源只读接口再次校验当前账号、有效关系、清晰端点并映射图节点；不保存文本或查询，不含私密经历，不新增模型调用或改变召回/意愿。筛选、缺失节点、遗忘或失效时不绘制。
@@ -1034,11 +1038,11 @@ flowchart TB
   %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
   dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
   dev6OwnerGate["同源、账号、BV、时间锚点、视觉核验"]
-  dev6OwnerMemory["账号/BV/隐私唯一浅层槽；真实观察 ID 独立深层与遗忘"]
+  dev6OwnerMemory["真实观察 ID；浅层与待写同提交；核验恢复深层"]
   dev6OwnerFrame --> dev6OwnerGate
   dev6OwnerGate -.->|一次性可信回执；本次新经历 ID 精确绑定| dev6OwnerMemory
   %% @code dev6OwnerGate | lib/owner-video-revisit.mjs | export function planOwnerGalleryRevisit
-  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function recordVerifiedFocusRevision
+  %% @code dev6OwnerMemory | lib/life-memory-gateway.mjs | function stageDetails
 
   visualAiBrief["视频有限记忆：全局识图同调用AI摘要；新增可信局部证据时复用视频模型无工具文字整合；失败保留已核验观察"]
   read -.->|可信新增局部采样才调用无工具文字模型| visualAiBrief

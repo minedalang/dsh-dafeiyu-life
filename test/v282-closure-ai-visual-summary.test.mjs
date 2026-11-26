@@ -179,15 +179,17 @@ test('production fresh detail adapter preserves main-session visibility and cann
  const dir=mkdtempSync(join(tmpdir(),'owner-visual-adapter-')),proofs=new WeakSet();let account=A
  const gate=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>account,admitMemoryDetails:({episode,fragments,sourceProof:p})=>proofs.has(p)&&p.visibility===episode.visibility&&p.memoryId===episode.id&&p.accountTag===episode.accountTag&&p.bvid===episode.bvid&&fragments.every(f=>f.sourceRef===p.sourceRef)})
  try{
-  const context={lifeMemory:gate,trustedLifeAccountTag:()=>account,accountBinding:{status:()=>({blocked:false})},cfg:{masterEnabled:true,visionEnabled:true},hasCredential:()=>true,createHash,buildFreshVideoDetails,admittedOwnerFocusProofs:proofs}
+  const {createLifeMemoryCoordinator}=await import('../lib/life-memory-coordinator.mjs')
+  const lifeMemoryCoordinator=createLifeMemoryCoordinator({dataDir:dir,memoryGateway:gate,getAccountTag:()=>account,lifeReflection:{addEvents:()=>({ok:true})}})
+  const context={lifeMemory:gate,lifeMemoryCoordinator,refreshCfg(){},trustedLifeAccountTag:()=>account,accountBinding:{status:()=>({blocked:false})},cfg:{masterEnabled:true,visionEnabled:true},hasCredential:()=>true,createHash,buildFreshVideoDetails,admittedOwnerFocusProofs:proofs}
   runInNewContext(server.slice(start,end)+';globalThis.persist=persistFreshVideoDetail',context)
   const event=buildVideoExplorationEvent({bvid:BV,info,visual,operationId:'owner-fresh-adapter',accountTag:A,source:'main-session'})
-  gate.recordEvents([event]);const args={event,bvid:BV,info,visual,account:A}
-  assert.equal(context.persist(args).ok,true)
+  const args={event,bvid:BV,info,visual,account:A}
+  assert.equal((await context.persist(args)).ok,true)
   assert.equal(gate.recallVideoDetails({bvid:BV,accountTag:A,ownerSession:true}).ok,true)
   assert.equal(gate.recallVideoDetails({bvid:BV,accountTag:A}).ok,false)
-  assert.equal(context.persist({...args,visual:{...visual,status:'cached'}}).reason,'no-fresh-detail-evidence')
-  account='b'.repeat(16);assert.equal(context.persist(args).reason,'account-or-permission-changed')
+  assert.equal((await context.persist({...args,visual:{...visual,status:'cached'}})).reason,'no-fresh-detail-evidence')
+  account='b'.repeat(16);assert.equal((await context.persist(args)).reason,'account-or-permission-changed')
   assert.match(server.slice(end,server.indexOf('const lifePayload=',end)),/args\.record_session!==false\|\|internal\.lifeChoiceVerified===true/)
  }finally{gate.close();rmSync(dir,{recursive:true,force:true})}
 })

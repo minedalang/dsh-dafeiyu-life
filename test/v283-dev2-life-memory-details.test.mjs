@@ -459,3 +459,85 @@ test('release compatibility: more than 100 verified deep attachments can be expo
   }finally{reopened.close()}
  }finally{rmSync(dest,{recursive:true,force:true})}
 }))
+
+// dev.16: verify the durable parent+detail transaction through real files,
+// not a fabricated successful return from the storage layer.
+test('fresh verified observation and pending detail survive restart, account switch and backup refusal',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'detail-transaction-'));let account=A,clock=NOW+5000
+ const options={dataDir:dir,getAccountTag:()=>account,now:()=>clock,admitMemoryDetails:({episode,sourceProof})=>sourceProof?.internalToken==='test-only'&&episode.accountTag===account,logger:{warn(){}}}
+ let g=createLifeMemoryGateway(options)
+ try{
+  const {createHash}=await import('node:crypto')
+  const fresh={...event,key:'video-explore:dev16-fresh-transaction',visualObservationState:'fresh'}
+  const id='e-'+createHash('sha256').update(fresh.key).digest('hex').slice(0,18)
+  const folder=join(dir,'life-memory','details','v1',A),lock=join(folder,id+'.json.lock');mkdirSync(folder,{recursive:true})
+  writeFileSync(lock,JSON.stringify({pid:process.pid,token:'a'.repeat(32),at:Date.now()}))
+  const old=createLifeMemoryBackup(dir)
+  const coordinator=createLifeMemoryCoordinator({dataDir:dir,memoryGateway:g,getAccountTag:()=>account,now:()=>clock,lifeReflection:{addEvents:()=>({ok:true})},logger:{warn(){}}})
+  const stored=await coordinator.recordEvents([fresh],{detailAdmission:{fragments,sourceProof:{internalToken:'test-only'}}})
+  assert.equal(stored.ok,true);assert.equal(stored.detailWrite.pending,true)
+  const snapshot=JSON.parse(readFileSync(g.file,'utf8'))
+  assert.equal(snapshot.pendingVisualDetails.length,1);assert.equal(snapshot.pendingVisualDetails[0].memoryId,id)
+  assert.equal(g.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId,id)
+  assert.equal(g.expandMemoryDetail({memoryId:id,accountTag:A}).ok,false)
+  assert.equal(g.recallVideoDetails({bvid:BV,accountTag:A,startMs:1000,endMs:9000}).reason,'detail-write-pending')
+  assert.equal(g.inspectVideoDetails({bvid:BV,accountTag:A,visibility:'public-event',sourceMemoryId:id}).reason,'detail-write-pending')
+  assert.deepEqual(g.visualDetailCandidates({accountTag:A,ids:[id]}),[])
+  assert.equal(g.memoryDetailInfo({memoryId:id,accountTag:A}).available,false)
+  assert.throws(()=>createLifeMemoryBackup(dir),/待写记录/)
+  assert.throws(()=>collectBackupFiles(dir),/待写记录/)
+  assert.throws(()=>restoreLifeMemoryBackup(dir,old),/待写记录/)
+  assert.doesNotMatch(readFileSync(coordinator.file,'utf8'),/frame-0001|internalToken/,'proof and detailed source must not enter event outbox')
+  g.close();account=B;rmSync(lock);g=createLifeMemoryGateway(options)
+  assert.equal(g.recoverPendingVisualDetails().pending,1);assert.equal(g.expandMemoryDetail({memoryId:id,accountTag:B}).ok,false)
+  account=A;assert.equal(g.recoverPendingVisualDetails().pending,0)
+  const deep=g.expandMemoryDetail({memoryId:id,accountTag:A});assert.equal(deep.ok,true);assert.equal(deep.totalFragments,1)
+  assert.equal(g.recordEvents([fresh]).added,0);assert.equal(g.recoverPendingVisualDetails().pending,0)
+  assert.equal(createLifeMemoryBackup(dir).files[`life-memory/details/v1/${A}/${id}.json`].includes('frame-0001'),true)
+ }finally{g.close();rmSync(dir,{recursive:true,force:true})}
+})
+
+test('process exit immediately after atomic deep replacement recovers the exact shallow revision once',()=>setup(({dir,gateway,memoryId})=>{
+ const {status}=(()=>{try{
+  const moduleUrl=new URL('../lib/life-memory-gateway.mjs',import.meta.url).href
+  const code=`import fs from 'node:fs';import {syncBuiltinESMExports} from 'node:module';import {createLifeMemoryGateway} from ${JSON.stringify(moduleUrl)};const [dir,id]=process.argv.slice(1);const g=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>${JSON.stringify(A)},now:()=>${NOW+5000},admitMemoryDetails:()=>true,logger:{warn(){}}});const orig=fs.renameSync;fs.renameSync=(a,b)=>{orig(a,b);if(String(b).endsWith(id+'.json'))process.exit(71)};syncBuiltinESMExports();g.recordVerifiedFocusRevision({memoryId:id,accountTag:${JSON.stringify(A)},bvid:${JSON.stringify(BV)},sourceProof:{},sourceRef:'focus:'+'e'.repeat(32),review:{reviewStatus:'model-observation-not-independent-semantic-proof',startMs:1000,endMs:8000,frameTimesMs:[3000],description:'已核验局部观察'}});process.exit(72);`
+  execFileSync(process.execPath,['--input-type=module','-e',code,dir,memoryId]);return {status:0}
+ }catch(error){return error}})()
+ assert.equal(status,71,'child must exit at actual attachment replacement')
+ const folder=join(dir,'life-memory','details','v1',A),detailFile=join(folder,memoryId+'.json')
+ assert.equal(JSON.parse(readFileSync(detailFile,'utf8')).fragments.length,1)
+ const pending=JSON.parse(readFileSync(gateway.file,'utf8'));assert.equal(pending.pendingVisualDetails.length,1)
+ assert.equal(pending.episodes[0].focusRevision,undefined)
+ // Age only locks of the known exited child; exercise real dead-owner reclaim.
+ for(const lock of [gateway.file+'.lock',detailFile+'.lock']){assert.ok(existsSync(lock));utimesSync(lock,new Date(Date.now()-60_000),new Date(Date.now()-60_000))}
+ const reopened=createLifeMemoryGateway({dataDir:dir,now:()=>NOW+5000,getAccountTag:()=>A,logger:{warn(){}}})
+ try{
+  assert.equal(reopened.recoverPendingVisualDetails().pending,0)
+  assert.equal(reopened.expandMemoryDetail({memoryId,accountTag:A}).totalFragments,1)
+  assert.equal(JSON.parse(readFileSync(reopened.file,'utf8')).episodes[0].focusRevision.version,1)
+  assert.equal(reopened.recoverPendingVisualDetails().pending,0)
+  assert.equal(JSON.parse(readFileSync(reopened.file,'utf8')).episodes[0].focusRevision.version,1)
+ }finally{reopened.close()}
+}))
+
+test('pending deep evidence is revoked on fading, never replayed from an older backup',()=>setup(({dir,gateway,memoryId,setTime})=>{
+ const old=createLifeMemoryBackup(dir),folder=join(dir,'life-memory','details','v1',A),lock=join(folder,memoryId+'.json.lock')
+ mkdirSync(folder,{recursive:true});writeFileSync(lock,JSON.stringify({pid:process.pid,token:'a'.repeat(32),at:Date.now()}))
+ const result=gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:{internalToken:'test-only'}})
+ assert.equal(result.pending,true)
+ setTime(NOW+14*DAY);assert.equal(gateway.recoverPendingVisualDetails().pending,0)
+ rmSync(lock);assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:A}).ok,false)
+ restoreLifeMemoryBackup(dir,old);assert.equal(gateway.recoverPendingVisualDetails().pending,0)
+ assert.equal(gateway.expandMemoryDetail({memoryId,accountTag:A}).ok,false)
+ assert.equal(gateway.status().details.attachments,0)
+}))
+
+test('conflicting fragment identities are rejected before staging; a forged fresh admission cannot create pending evidence',()=>setup(({gateway,memoryId})=>{
+ const proof={internalToken:'test-only'}
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:proof}).ok,true)
+ const conflict=gateway.attachMemoryDetails({memoryId,accountTag:A,fragments:[{...fragments[0],content:'不同的证据'}],sourceProof:proof})
+ assert.equal(conflict.ok,false);assert.equal(gateway.recoverPendingVisualDetails().pending,0)
+ const bad={...event,key:'video-explore:forged-admission',visualObservationState:'fresh'}
+ assert.equal(gateway.recordEvents([bad],{detailAdmission:{fragments,sourceProof:{internalToken:'forged'}}}).detailWrite.ok,false)
+ assert.equal(gateway.recoverPendingVisualDetails().pending,0);assert.equal(gateway.status().details.attachments,1)
+}))
