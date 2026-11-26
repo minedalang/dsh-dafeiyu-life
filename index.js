@@ -4510,6 +4510,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     }
   }
   const runDuty = async (why = 'window',entryMode = 'mixed') => {
+   if(!automaticSession.current())return {started:false,why,paused:true,reason:'session-integration-paused'}
    let videoResourceRelease=()=>{}
    let productionVisionExecutor=null
    let videoRoundReceiptId=''
@@ -4567,6 +4568,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         visualInstruction:visionObservationFocus(cfg.visionPrompt),
         allowRequest:()=>trustedLifeAccountTag()===expectedAccount&&!accountBinding.status().blocked,
       })
+    }
+    if(!automaticSession.current()){
+      if(productionVisionExecutor){void productionVisionExecutor.close().catch(()=>{});productionVisionExecutor=null}
+      videoResourceRelease()
+      return {started:false,why,paused:true,reason:'session-integration-paused'}
     }
     const beforeOwnedSelection=ownedSelectionSnapshot()
     const watchedBeforeRun=new Set((beforeOwnedSelection.ok?beforeOwnedSelection.rows:[]).filter(x=>x.picked).map(x=>x.bvid))
@@ -7138,6 +7144,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
 
   let emotionRecall=null // dev.3: receive real event/emotion triggers after recall engine starts
   lifeReflection = createLifeReflection({
+    automaticSession,
     dataDir: stateDir,
     getConfig: () => cfg,
     memoryGateway:lifeMemory,
@@ -7634,6 +7641,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       kind,target:row.dynamicId,commentText})
     if(choice?.ok!==true)return {ok:false,status:'not-sent',attempted:false,reason:choice?.reason||'life-choice-unavailable'}
     const proof=choice.proof,payload={target:row.dynamicId,commentText}
+    if(!automaticSession.current()){lifeWillingness.receipt(proof,{status:'not-sent',kind});return {ok:false,status:'not-sent',attempted:false,reason:'session-integration-paused'}}
     const sealed=lifeWillingness.verify(proof,kind,payload,{requireSealed:true})
     if(sealed?.ok!==true){lifeWillingness.receipt(proof,{status:'not-sent',kind});return {ok:false,status:'not-sent',attempted:false,reason:'life-proof-invalid'}}
     const tool=like?'bili_dynamic_like_life':'bili_dynamic_comment_life'
@@ -7686,7 +7694,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       String(accountBinding.status().activeUid||'')===accountUid&&!accountBinding.status().blocked
     const action=proposal.action,tool={like_video:'bili_video_like',collect_video:'bili_video_collect',
       follow_creator:'bili_follow_creator',comment_video:'bili_reply'}[action]
-    if(!tool||!current()||lifeVideoActionBridge?.status().ready!==true||!/^[-a-f0-9]{36}$/i.test(String(intentTicket||'')))return resolve({ok:false,status:'unavailable',attempted:false})
+    if(!automaticSession.current()||!tool||!current()||lifeVideoActionBridge?.status().ready!==true||!/^[-a-f0-9]{36}$/i.test(String(intentTicket||'')))return resolve({ok:false,status:'unavailable',attempted:false})
     const bridge=lifeVideoActionBridge.env()
     if(!bridge.BILI_LIFE_ACTION_URL||!bridge.BILI_LIFE_ACTION_TOKEN)return resolve({ok:false,status:'unavailable',attempted:false})
     const payload=JSON.stringify(proposal)
@@ -7728,6 +7736,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     try{child.stdin.end(payload)}catch{try{child.kill()}catch{};finish({ok:false,status:'unconfirmed',attempted:true})}
   })
   const lifeContinuationWrite=createLifeContinuationWriteExecutor({
+    canStart:automaticSession.current,
     getConfig:()=>{refreshCfg();return cfg},getAccountTag:trustedLifeAccountTag,
     getAccountUid:()=>accountBinding.status().blocked?'':String(accountBinding.status().activeUid||''),
     getIntention:id=>lifeOpportunities.continuations({limit:20}).find(x=>x.id===id),
@@ -7814,6 +7823,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       reason:sent?.no_retry===true?'friend-send-outcome-unknown':'friend-send-not-started'}
   }
   const autonomousPlanner=createAutonomousPlanner({
+    automaticSession,
     beginDecisionTrace:({trigger,mode})=>lifeDecisionTrace.begin({trigger,mode}),
     dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     getTodos:(limit)=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)&&READ_TODO_TYPES.has(x.type)&&(!x.dueAt||x.dueAt<=Date.now())).slice(0,limit),
@@ -8036,7 +8046,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
          !lifeOpportunityAccountReady()||trustedLifeAccountTag()!==accountTag||
          accountBinding.status().blocked)return {ok:false,reason:'life-video-vision-unavailable'}
       return lifeResourceScheduler.run({lane:'continuation',resources:{vision:1},waitMs:12_000},
-        ()=>executeWatchVideo({bvid,record_session:false,include_comments:false,
+        ()=>{if(!automaticSession.current())return {ok:false,reason:'session-integration-paused'};return executeWatchVideo({bvid,record_session:false,include_comments:false,
           include_danmaku:false,view_depth:viewDepth,
           ...(focusWindow?{focus_start_seconds:focusWindow.startSeconds,
             focus_end_seconds:focusWindow.endSeconds,network_budget_bytes:networkBudgetBytes,
@@ -8045,7 +8055,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           {lifeChoiceVerified:true,
             lifeGlobalNotes:focusWindow?globalVisualNotes:undefined,
             previousVerifiedFocusWindows:focusWindow?previousVerifiedFocusWindows:undefined,
-            lifeFocusAccountTag:accountTag,lifeGalleryGroupId:galleryGroupId})).catch(()=>({ok:false,reason:'life-vision-resource-unavailable'}))
+            lifeFocusAccountTag:accountTag,lifeGalleryGroupId:galleryGroupId})}).catch(()=>({ok:false,reason:'life-vision-resource-unavailable'}))
     },
     recordLifeVideoVisual:(id,proof,tag)=>lifeOpportunities.recordVideoVisual(id,proof,tag),
     hasVerifiedLifeVideoVisual:(bvid,tag)=>lifeOpportunities.hasVerifiedVideoVisual(bvid,tag),
