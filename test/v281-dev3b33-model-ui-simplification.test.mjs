@@ -48,7 +48,7 @@ test('2.8.2 收口：不复活主人私信独立模型卡片，历史配置只�
   assert.doesNotMatch(js,/\['ownerDmAgent','ownerDmAgentModelProvider'/)
   assert.doesNotMatch(js,/const modelTaskIds=\[[^\]]*'ownerDmAgent'/)
   assert.match(html,/首次配置只设置默认模型及明确选择的反思模型/)
-  assert.match(js,/wizardMounted!=='defaults'\)applyDefaultModelToAllRoutes/)
+  assert.match(js,/!\['model','defaults'\]\.includes\(wizardMounted\)\)applyDefaultModelToAllRoutes/)
   assert.match(html,/行为决策模型（Life 的行动选择）/)
   assert.match(html,/社交互动模型（私信与评论）/)
   assert.match(host,/ownerDmAgentModelProvider: z\.string\(\)\.default\(''\)/)

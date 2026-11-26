@@ -122,3 +122,11 @@ test('视觉验收状态绑定完整 Headless 路由，模型声明与实测不�
   assert.match(review,/diagnostics:mergeDiagnostics/)
   assert.match(mcp,/byteLength':len\(contents\),'mimeType':'image\/png','imageBlocks':1/)
 })
+
+test('插件默认思考等级继承与视觉独立档位',()=>{
+ const cfg={pluginDefaultModelProvider:'p',pluginDefaultModelId:'m'};
+ assert.equal(resolveVisionModelRoute(cfg).reasoningEffort,'medium');
+ assert.equal(resolveVisionModelRoute({...cfg,pluginDefaultModelReasoningEffort:'high'}).reasoningEffort,'high');
+ assert.equal(resolveVisionModelRoute({...cfg,pluginDefaultModelReasoningEffort:'high',visionReasoningEffort:'low'}).reasoningEffort,'low');
+ assert.equal(resolveVisionModelRoute({...cfg,visionModelProvider:'other',visionModelId:'v'}).reasoningEffort,'');
+});

@@ -8,7 +8,7 @@ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url
 const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
 
 class FakeElement {
-  constructor(){this.value='';this.textContent='';this.children=[];this.events=new Map();this.disabled=false;this.parentNode=null}
+  constructor(){this.value='';this.textContent='';this.children=[];this.events=new Map();this.disabled=false;this.parentNode=null;this.dataset={}}
   appendChild(child){
     // Real DOM re-parents existing <option> nodes instead of copying them.
     if(child.parentNode){
@@ -43,14 +43,14 @@ function ui(wizardMounted=''){
   ]
   const snippet=js.slice(js.indexOf('  const modelRouteControls='),js.indexOf('  const loadInteractionContextUsage='))
   let feedback=''
-  const controls=runInNewContext(`(()=>{${snippet}\nreturn {renderModelDropdowns,updateRouteDescription,applyDefaultModelToAllRoutes}})()`,{
+  const controls=runInNewContext(`(()=>{${snippet}\nreturn {renderModelDropdowns,updateRouteDescription,applyDefaultModelToAllRoutes,refreshWizardVerifiedChoices}})()`,{
     modelDefs,wizardMounted,headlessProviders:catalog,headlessCurrentCatalog:catalog,headlessDefaultModel:{provider:'claude',model:'sonnet'},mobileViewOnly:false,
     $,
     window:{addEventListener:()=>{}}, // The model-page scope now includes the Whisper install poll cleanup.
     document:{createElement:()=>new FakeElement()},
     message:text=>{feedback=text},
   })
-  return {controls,$,feedback:()=>feedback}
+  return {controls,$,catalog,feedback:()=>feedback}
 }
 
 test('官方 Provider 不是必做清单：仅首次设置要求一个真实连接回执',()=>{
@@ -68,6 +68,7 @@ test('实际模型目录生成明确的默认模型与独立任务下拉框',()=
  const {$,controls}=ui();controls.renderModelDropdowns({})
  assert.equal($('models-default-provider').value,'claude')
  assert.equal($('models-default-model').value,'sonnet')
+ assert.equal($('models-default-effort').value,'medium')
  assert.equal($('model-videoModelProvider').value,'claude')
  assert.equal($('model-videoModelId').value,'sonnet')
  const ids=['models-default-provider','model-videoModelProvider','model-interactionModelProvider',
@@ -123,3 +124,11 @@ test('首次默认模型只显示可验证路线，选择不会批量覆盖历�
  $('models-default-model').value='haiku';$('models-default-model').trigger('change');
  assert.equal($('model-videoModelProvider').value,'legacy');assert.equal($('model-videoModelId').value,'old-video');
 })
+
+test('文字模型引导继续验证第二个 Provider 后保留待保存默认选择与思考等级',()=>{
+ const {$,controls,catalog}=ui('model');controls.renderModelDropdowns({pluginDefaultModelProvider:'claude',pluginDefaultModelId:'haiku',pluginDefaultModelReasoningEffort:'high'});
+ catalog[1].verifiedModels.push('v4-pro');controls.refreshWizardVerifiedChoices();
+ assert.deepEqual($('models-default-provider').children.map(x=>x.value),['','claude','deepseek-official']);
+ assert.equal($('models-default-model').value,'haiku');assert.equal($('models-default-effort').value,'high');
+ $('models-default-provider').value='deepseek-official';$('models-default-provider').trigger('change');assert.deepEqual($('models-default-model').children.map(x=>x.value),['','v4-pro']);
+});

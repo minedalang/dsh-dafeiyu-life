@@ -33,6 +33,7 @@ test('clicking real Life tab runs the production switchTab path and reveals its 
   const registration=js.match(/  document\.querySelectorAll\('\[data-tab\]'\)\.forEach\(b=>b\.addEventListener\('click',\(\)=>switchTab\(b\.dataset\.tab\)\)\);/)
   assert.ok(registration,'production click registration must be present')
   const panels=Object.fromEntries(tabs.map(t=>['panel-'+t,{hidden:t!=='persona'}]))
+  panels['management-shell']={dataset:{setupWizard:'true'}}
   const buttons=Object.fromEntries(tabs.map(t=>[t,{
     dataset:{tab:t},attributes:{},setAttribute(name,value){this.attributes[name]=value},
     addEventListener(name,fn){this[name]=fn}
@@ -45,6 +46,7 @@ test('clicking real Life tab runs the production switchTab path and reveals its 
   runInNewContext([
     "let active='persona',firstNavigation=false",
     'const haltSandboxTimer=()=>{}',
+    'const restoreWizardControls=()=>{loads.push("restore-wizard")}',
     'const message=()=>{}',
     'const settingDrafts=new Map()',
     'const $=id=>panels[id]',
@@ -61,7 +63,8 @@ test('clicking real Life tab runs the production switchTab path and reveals its 
   assert.equal(panels['panel-life-agent'].hidden,false,'Life page must become visible')
   assert.equal(panels['panel-persona'].hidden,true,'previous page must become hidden')
   assert.equal(buttons['life-agent'].attributes['aria-selected'],'true')
-  assert.deepEqual(loads,['life-agent'],'Life loader must be invoked')
+  assert.equal(panels['management-shell'].dataset.setupWizard,'false')
+  assert.deepEqual(loads,['restore-wizard','life-agent'],'Life loader must be invoked')
   assert.ok(urls.at(-1).includes('tab=life-agent'),'deep link must preserve Life tab')
   buttons.life.click()
   assert.equal(panels['panel-life-agent'].hidden,true)
@@ -80,4 +83,23 @@ test('direct Life link accepts same registered route and is not removed by the o
   assert.equal(allowed('life-agent',paused),false);assert.equal(allowed('life',paused),true);assert.equal(allowed('bili',paused),true)
   assert.equal(allowed('life-agent',{...paused,capabilities:{...paused.capabilities,restartRequired:true}}),false)
   assert.match(html,/data-open-tab="life-agent"/)
+})
+
+
+test('custom favorites retain one canonical route and never duplicate settings or bypass navigation guards',()=>{
+  const primary=html.split('<div class="tab-cluster tab-primary">')[1].split('</div>')[0]
+  assert.deepEqual([...primary.matchAll(/data-(?:favorite-)?tab="([^"]+)"/g)].map(m=>m[1]),['home','firststart','models','life-agent','life'])
+  const other=html.slice(html.indexOf('<div class="tab-cluster"><span class="tab-cluster-label">🏠'),html.indexOf('</nav>',html.indexOf('<div class="tab-cluster tab-primary">')))
+  for(const tab of ['models','life-agent','life'])assert.match(other,new RegExp(`data-tab="${tab}"`))
+  assert.doesNotMatch(other,/data-tab="(?:home|firststart)"/)
+  const start=js.indexOf('fixedFavorites=new Set('),end=js.indexOf(';',start)
+  const fixed=js.slice(start,end),normalize=js.match(/const normalizeFavorites=items=>[^;]+;/)[0]
+  const cleaned=runInNewContext('const '+fixed+';'+normalize+'normalizeFavorites(items)',{tabNames:tabs,items:['home','firststart','models','life','life-agent','diagnostics','unknown','backup','diagnostics',4]})
+  assert.deepEqual([...cleaned],['diagnostics','backup'])
+  assert.match(js,/localStorage\.setItem\(favoriteKey,JSON\.stringify\(customFavorites\)\)/)
+  assert.match(js,/b\.hidden=!tabAvailable\(t\)/)
+  assert.match(js,/if\(tabAvailable\(link\.dataset\.favoriteTab\)\)switchTab\(link\.dataset\.favoriteTab\)/)
+  assert.match(js,/link\.dataset\.tab\|\|link\.dataset\.favoriteTab/)
+  assert.match(js,/favoriteHost\.replaceChildren\(\)/)
+  assert.match(js,/primaryNav\?\.addEventListener\('drop'/)
 })

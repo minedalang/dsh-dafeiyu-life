@@ -2162,14 +2162,24 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <p id="life-health-detail">仅依据本机已有调度记录，不额外请求 B站。</p>
   <div id="life-health-channels" class="health-channel-list" aria-label="各监听渠道状态"></div>
 </aside>
+<div id="management-nav-marker" aria-hidden="true"></div>
 <nav class="tabs" aria-label="管理分类">
 <div class="tab-cluster tab-primary"><span class="tab-cluster-label">常用</span>
-<button data-tab="home" aria-selected="false">大肥鱼的家</button>
-<button data-tab="life" aria-selected="false">🧠 鱼的记忆</button>
+<button data-tab="home" aria-selected="false">Session 接入</button>
 <button data-tab="firststart" aria-selected="false">🚀 快速设置</button>
-<button data-tab="models" aria-selected="false">AI 模型</button></div>
+<button type="button" data-favorite-tab="models">AI 模型</button>
+<button type="button" data-favorite-tab="life-agent">🐟 鱼鱼正在做</button>
+<button type="button" data-favorite-tab="life">🧠 鱼的记忆</button>
+<span id="management-nav-favorites" class="nav-favorites"></span>
+<button type="button" id="management-nav-customize" aria-expanded="false" aria-controls="management-nav-editor">⚙ 常用设置</button></div>
+<div id="management-nav-editor" class="nav-favorites-editor" hidden>
+  <div class="toolbar"><strong>自定义常用导航</strong><button type="button" data-favorite-action="reset">恢复默认</button><button type="button" data-favorite-action="close">完成</button></div>
+  <p class="muted">前五项固定保留（受当前功能权限限制）。可将下方原分类入口拖到常用栏，或点击添加；原入口始终保留。额外快捷方式可拖动排序，也可用左右按钮调整。设置仅保存在当前浏览器。</p>
+  <div id="management-nav-editor-items" class="nav-favorites-editor-items"></div>
+</div>
 <div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
 <button data-tab="life-agent" aria-selected="false">🐟 鱼鱼正在做</button>
+<button data-tab="life" aria-selected="false">🧠 鱼的记忆</button>
 <button data-tab="plans" aria-selected="false">🧭 鱼鱼想做</button>
 
 <button data-tab="relationships" aria-selected="false">👥 逐渐熟悉的人</button>
@@ -2181,6 +2191,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <button data-tab="dm" aria-selected="false">后台私信 <span id="dm-count" class="queue-badge" hidden></span></button>
 <button data-tab="dynamic" aria-selected="false">动态创作</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">🎭 角色与系统</span>
+<button data-tab="models" aria-selected="false">AI 模型</button>
 <button data-tab="persona" aria-selected="true">角色人设</button>
 <button data-tab="growth" aria-selected="false">行为与表达改进 <span id="growth-count" class="queue-badge" hidden></span></button>
 <button data-tab="quotas" aria-selected="false">次数与额度</button>
@@ -2192,6 +2203,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <button data-tab="reports" aria-selected="false">每日报告</button>
 <button data-tab="diagnostics" aria-selected="false">运行诊断</button>
 <button data-tab="backup" aria-selected="false">数据备份</button></div>
+<button id="management-nav-toggle" type="button" aria-expanded="true" hidden>收起 ▴</button>
 </nav>
 <div id="mobile-view-banner" class="mobile-view-banner" role="note" hidden><strong>📱 手机端 · 查看模式</strong><p>DSH Mobile 通过远程网关查看管理中心。配置保存、B站登录、Headless 同步与验证、备份恢复等需要在运行 DSH 的电脑端完成；这里的相关按钮已置灰。你仍可切换页面、展开内容及刷新可访问的状态。</p></div>
 <p id="message" role="status" aria-live="polite"></p>
@@ -2238,7 +2250,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
         <details><summary>下载大小与记忆隐私</summary><p class="muted">下载 Qwen3-Embedding-0.6B Q8_0 模型（约 639 MB）及匹配系统的 llama.cpp CPU 运行时。全部在本机运行，原始记忆不上传。建议设备有充足磁盘空间与内存；不开启时仍可用词法回忆，但换一种说法、同义词或隐含关联的过往经历更容易漏召回；鱼鱼可能记得这件事，却无法在当前对话里准确想起。随时可再安装。</p></details>
         <p class="quick-current" id="quick-embedding-status" role="status" aria-live="polite">正在检查本地模型…</p>
         <progress id="quick-embedding-progress" max="100" value="0" style="width:100%" aria-label="本地语义模型安装进度"></progress>
-        <div class="quick-config-actions"><button type="button" class="primary" id="quick-embedding-install">推荐 · 启用并安装本地语义回忆</button><button type="button" id="quick-embedding-later">暂不安装，使用默认词法回忆</button></div>
+        <div class="quick-config-actions"><button type="button" class="primary" id="quick-embedding-install">推荐 · 启用并安装本地语义回忆</button></div>
       </section>
       <section class="quick-config-section" id="fs-legacy-video-install" aria-label="旧视频组件安装入口" hidden>
     <div class="video-aux-heading" style="margin-top:16px"><strong>视频增强组件</strong><span class="pill">不影响首次设置必需项</span></div>
@@ -2337,7 +2349,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="toolbar" id="core-quick-links"><button type="button" data-open-tab="home">绑定 Session / 使用指南</button><button type="button" data-open-tab="life">查看与管理记忆</button><button type="button" data-open-tab="models">配置模型</button></div>
 </section>
 <section id="panel-models" hidden>
-<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择模型、保存，再完成连接验证。连接测试可能产生费用。</p><p class="autonomous-only"><a href="#models-vision" style="font-weight:650">🎞️ 视觉模型、FFmpeg 与 Whisper 已统一收纳在「视觉识别模型」中 ↓</a></p></div></div>
+<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择模型、保存，再完成连接验证。连接测试可能产生费用，不计入统计。</p><p class="autonomous-only"><a href="#models-vision" style="font-weight:650">🎞️ 视觉模型、FFmpeg 与 Whisper 已统一收纳在「视觉识别模型」中 ↓</a></p></div></div>
 <div class="settings-stack">
 <div class="settings-section" id="headless-model-sync-panel">
 <div class="headless-panel-heading"><h4>🔐 模型同步与能力管理</h4><span id="headless-provider-summary">检测 Desktop 模型中…</span></div>
@@ -2378,7 +2390,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button></div>
 <p class="model-verify-guide autonomous-only"><strong>模型怎样才能使用？</strong> 在左栏选模型并同步，在右栏验证文字连接；如需图片识别，再到「视觉识别模型」进行图片实测并人工确认。</p>
 </div>
-<div class="settings-section model-default-panel" id="wizard-default-model-panel"><h4>✨ 默认模型 <span class="help-tip" title="选择后同步所有 8 个当前任务并重置思考深度。若模型不支持视觉或工具任务，相应能力可能不可用。之后仍可单项调整。">?</span></h4><p class="muted">日常管理中选择后可统一调整各任务；首次配置只设置默认模型及明确选择的反思模型。</p><div class="fields"><div><label for="models-default-provider">默认 Provider</label><select id="models-default-provider"></select></div><div><label for="models-default-model">默认模型</label><select id="models-default-model"></select></div></div><p id="models-default-summary" class="muted">正在读取可用模型…</p><p id="models-catalog-diagnostic" class="setting-note" role="status">Provider 下拉框只显示已发现的目录、当前宿主模型或已保存设置；显示不代表连接已通过。遇到 502 请先检查中转站，不会自动切换供应商。</p><small id="models-recommendation-note" class="setting-note">保存后生效，仍可单独调整每项任务。</small></div>
+<div class="settings-section model-default-panel" id="wizard-default-model-panel"><h4>✨ 默认模型 <span class="help-tip" title="日常选择模型时可同步所有 8 个当前任务；未单独指定思考等级的同一默认模型继承此设置。若模型不支持视觉或工具任务，相应能力可能不可用。之后仍可单项调整。">?</span></h4><p class="muted">日常管理中选择后可统一调整各任务；首次配置只设置默认模型及明确选择的反思模型。</p><div class="fields"><div><label for="models-default-provider">默认 Provider</label><select id="models-default-provider"></select></div><div><label for="models-default-model">默认模型</label><select id="models-default-model"></select></div><div><label for="models-default-effort">默认思考等级</label><input id="models-default-effort" maxlength="160" list="models-default-effort-options" value="medium" placeholder="medium"><datalist id="models-default-effort-options"><option value="medium">中（默认）</option><option value="low">低</option><option value="high">高</option><option value="none">无（模型支持时）</option><option value="minimal">极低</option><option value="xhigh">极高</option></datalist><small class="setting-note">默认 medium（中）；独立任务可覆盖。实际支持档位由模型供应商决定。</small></div></div><p id="models-default-summary" class="muted">正在读取可用模型…</p><p id="models-catalog-diagnostic" class="setting-note" role="status">Provider 下拉框只显示已发现的目录、当前宿主模型或已保存设置；显示不代表连接已通过。遇到 502 请先检查中转站，不会自动切换供应商。</p><small id="models-recommendation-note" class="setting-note">保存后生效，仍可单独调整每项任务。</small></div>
 <details class="settings-section"><summary><strong>最近模型调用归因（仅本地宿主，零额外 AI 调用）</strong></summary>
 <p class="muted">仅记录已核验账号的宿主模型请求：场景、耗时、模型标识和脱敏失败类型，不保存提示词、输出或私信。视频 Headless 内部调用尚未覆盖；Token 和费用数据如未由宿主提供则显示「未知」，不能用调用次数推断费用。</p>
 <pre id="models-invocation-recent" class="setting-note" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere">暂未读取模型调用归因</pre></details>
@@ -2471,8 +2483,8 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="fields"><div><label for="local-vision-model">想要使用的本地模型</label><select id="local-vision-model" aria-describedby="local-vision-selection-note"><option value="qwen3.5-2b">Qwen3.5 2B · 新版推荐</option><option value="qwen3.5-4b">Qwen3.5 4B · 质量优先</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B · 历史兼容（不推荐 / 不可下载）</option></select><small class="setting-note">仅切换下拉框不会保存，也不会触发「设置尚未保存」横幅。<strong>已认可模型仍需点击下方「启用」才能切换后台。</strong></small></div>
 <div><label for="local-vision-thinking">本地识图思考深度</label><select id="local-vision-thinking"><option value="off">关闭思考（推荐用于逐格识图）</option><option value="default">模型默认</option><option value="on">开启思考</option><option value="low">低（模型支持时）</option><option value="medium">中（模型支持时）</option><option value="high">高（模型支持时）</option></select><small class="setting-note" id="local-vision-thinking-support">正在检查模型支持的思考档位…</small><div class="toolbar"><button type="button" id="local-vision-thinking-save">保存本地识图思考设置</button></div></div></div>
 <p class="setting-note">此设置仅影响本机 Ollama 视频逐帧识图，不改变 DSH 模型的思考深度。思考会消耗生成预算；每张分镜独立分配宽松 Token 上限，且保留总执行时间限制。</p>
-<div class="local-vision-activation-flow" aria-label="本地模型安装、验收与启用"><strong>配置新模型的三步</strong><p class="muted">① 下载选中模型（已有模型可跳过） → ② 用固定原图做图片测试、检查回答并人工认可 → ③ <strong>点击启用</strong>，成功回读后才切换后台。只有选择型号不会生效。</p><div class="toolbar local-vision-primary-actions"><button type="button" id="local-vision-install" disabled>① 下载选中模型</button><button type="button" id="local-vision-review-open" disabled>② 前往图片验收 ↑</button><button type="button" id="local-vision-select" class="primary" disabled>③ 启用此已认可模型</button></div><p class="setting-note">启用会将识图方式切到本地，并同时开启「允许视频观察」；如果暂时不想观看画面，可随后关闭上方视频观察开关。不会授予点赞、评论或其他外发权限。</p></div>
-<div class="local-vision-status-line"><span id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</span><span id="local-vision-review-inline" class="local-vision-review-inline" hidden><strong id="local-vision-review-label">尚未人工验收</strong><button type="button" id="local-vision-review-jump" class="life-action local-vision-review-action">前往人工验收 ↑</button></span><span id="local-vision-status-tail" class="muted"></span></div>
+<div class="local-vision-activation-flow" aria-label="本地模型安装、验收与启用"><strong>配置新模型的三步</strong><p class="muted">① 下载选中模型（已有模型可跳过） → ② 用固定原图做图片测试、检查回答并人工认可 → ③ <strong>点击启用</strong>，成功回读后才切换后台。只有选择型号不会生效。</p><div class="toolbar local-vision-primary-actions"><button type="button" id="local-vision-install" disabled>① 下载选中模型</button><button type="button" id="local-vision-review-open" disabled>② 前往图片验收 ↓</button><button type="button" id="local-vision-select" class="primary" disabled>③ 启用此已认可模型</button></div><p class="setting-note">启用会将识图方式切到本地，并同时开启「允许视频观察」；如果暂时不想观看画面，可随后关闭上方视频观察开关。不会授予点赞、评论或其他外发权限。</p></div>
+<div class="local-vision-status-line"><span id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</span><span id="local-vision-review-inline" class="local-vision-review-inline" hidden><strong id="local-vision-review-label">尚未人工验收</strong><button type="button" id="local-vision-review-jump" class="life-action local-vision-review-action">前往人工验收 ↓</button></span><span id="local-vision-status-tail" class="muted"></span></div>
 <progress id="local-vision-progress" max="100" value="0" hidden></progress>
 <div class="toolbar"><button type="button" id="local-vision-ensure">检查并恢复 Ollama 服务</button><button type="button" id="local-vision-refresh">刷新后台状态</button><button type="button" id="local-vision-cancel" hidden>取消下载</button></div>
 <details class="visual-advanced local-vision-maintenance"><summary>高级维护：删除 Ollama 全局模型（危险操作）</summary><p class="muted">删除操作会影响使用同一 Ollama 模型库的其他程序。必须确认后才执行，普通下载、测试和启用无需展开这里。</p><div class="toolbar"><button type="button" id="local-vision-delete" class="danger">删除选中模型</button></div><p class="muted">已安装的旧 MiniCPM 1B 仍可删除，但不提供重新下载。</p></details>
@@ -2732,7 +2744,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="main-session-picker-head"><div class="main-session-current"><span class="main-session-kicker">★ 当前主 Session</span><strong id="main-session-bound-label">等待读取会话…</strong><span id="main-session-bound-state" class="main-session-live" data-state="unknown">未读取</span></div></div>
 <div class="main-session-picker-fields"><div><label for="main-session-id">切换现有在线会话（未归档）</label><select id="main-session-id"><option value="">不绑定主 Session</option></select></div><button id="main-session-refresh" type="button">刷新列表</button></div>
 <div class="main-session-picker-foot"><span id="main-session-list-status" class="muted" role="status">正在读取在线会话 · 每4秒自动刷新</span><span id="main-session-draft-status" class="muted" role="status"></span></div>
-<div class="main-session-binding-help" style="border:1px solid var(--stroke);border-radius:10px;padding:12px;display:grid;gap:6px"><strong>也可以在 DSH 原生界面指定主 Session</strong><p>在 DSH 中正常新建或打开会话，点击侧栏该会话的「…」菜单，选择「设为大肥鱼主 Session」。绑定后本页每4秒自动更新。</p><p class="muted">若当前 DSH 版本没有该菜单，仍可在上方选择已有在线会话，再点击下方「保存主 Session 设置」。空白会话若尚未出现在在线目录中，请先在 DSH 打开它。不要求专用工作区。</p></div>
+<div class="main-session-binding-help" style="border:1px solid var(--stroke);border-radius:10px;padding:12px;display:grid;gap:6px"><strong>也可以在 DSH 原生界面指定主 Session</strong><p>在 DSH 中正常新建或打开会话，点击侧栏该会话的「…」菜单，选择「设为大肥鱼主 Session」。绑定后本页每4秒自动更新。</p><p class="muted">若当前 DSH 版本没有该菜单，仍可在上方选择已有在线会话，再点击下方「保存主 Session 设置」。列表仅显示当前在线且未归档的会话。如果找不到目标 Session，请在 DSH 打开该会话，返回此处点击「刷新列表」。不要求专用工作区。</p></div>
 </div>
 <div class="main-session-controls autonomous-only">
 <label class="main-session-control" for="main-session-enabled"><span class="main-session-control-copy"><strong>经历同步桥</strong><small>启用当前房间的经历同步桥</small></span><input role="switch" class="ui-toggle" id="main-session-enabled" type="checkbox"></label>
@@ -4203,4 +4215,31 @@ html{scroll-padding-top:var(--management-nav-offset,180px)}@media(max-width:700p
 .tabs .tab-primary{position:sticky;top:0;z-index:1;background:var(--panel);padding-block:4px;border-bottom:1px solid var(--stroke)}
 #management-shell[data-setup-wizard="true"] .tabs .tab-primary{border:0}
 @media(max-width:700px){.tabs .tab-primary{position:static;border-bottom:0}}
+/* Sticky navigation collapses only after crossing its original position. */
+#management-nav-marker{height:0;pointer-events:none}
+#management-shell{min-height:var(--management-min-scroll-height,0px)}
+html:has(.tabs[data-pinned="true"]){overflow-anchor:none}
+.tabs[data-pinned="true"]{padding-right:88px;max-height:40vh;overflow:auto}
+#management-nav-toggle{position:absolute;right:8px;top:9px;z-index:3;white-space:nowrap;min-height:32px;padding:5px 9px;background:var(--panel)}
+#management-nav-toggle[hidden]{display:none!important}
+.tabs[data-compact="true"]{flex-direction:row!important;flex-wrap:nowrap!important;overflow:hidden;gap:0;padding-block:5px;max-height:none}
+.tabs[data-compact="true"]>.tab-cluster:not(.tab-primary){display:none!important}
+.tabs[data-compact="true"]>.tab-primary{display:flex;position:static;flex:1 1 0!important;min-width:0;width:auto!important;flex-wrap:nowrap!important;overflow-x:auto;white-space:nowrap;border:0;padding:0;scrollbar-width:thin}
+.tabs[data-compact="true"]>.tab-primary>*{flex:0 0 auto}
+.tabs[data-pinned="false"]{max-height:none}
+#fs-wizard-content .wizard-finish-models{background:#157e60;border-color:#157e60;color:white}
+#local-vision-select.vision-enable-cue{outline:3px solid #299b72;outline-offset:3px;animation:visionApprovalPulse .8s ease-in-out 4}
+@media(prefers-reduced-motion:reduce){#local-vision-select.vision-enable-cue{animation:none}}
+@media(max-width:700px){.tabs[data-pinned="true"][data-compact="false"]{flex-wrap:wrap;overflow:auto}.tabs[data-pinned="false"]{flex-wrap:wrap;overflow:visible}.tabs[data-pinned="false"] .tab-cluster,.tabs[data-pinned="true"][data-compact="false"] .tab-cluster{flex-wrap:wrap!important;width:100%!important;white-space:normal}.tabs[data-pinned="false"] .tab-cluster-label{width:auto!important}.tabs[data-compact="true"]>.tab-primary{padding:0!important}}
+
+/* Favorite links are copies, not moved controls; the original route registry stays unique. */
+.nav-favorites{display:contents}.tabs [data-favorite-tab][aria-current="page"]{background:var(--action);color:var(--panel);border-color:var(--action)}
+.tabs [data-favorite-tab][hidden],.tabs #management-nav-editor[hidden],.tabs #management-nav-customize[hidden]{display:none!important}
+.tabs[data-compact="true"] .nav-favorites>button{flex:0 0 auto}.tabs[data-compact="true"] #management-nav-editor{display:none!important}
+.tabs #management-nav-customize{border:1px dashed var(--stroke);font-size:12px}.tabs[data-favorite-edit="true"] .tab-primary{outline:2px dashed var(--action);outline-offset:-2px}
+.tabs[data-favorite-edit="true"] button[draggable="true"]{cursor:grab}.tabs .nav-favorite-drop{outline:2px solid var(--action);outline-offset:-2px}
+.nav-favorites-editor{width:100%;min-width:0;border:1px solid var(--stroke);border-radius:10px;padding:8px 12px;background:var(--panel)}
+.nav-favorites-editor-items{display:flex;gap:5px;flex-wrap:wrap;max-height:24vh;overflow:auto;overscroll-behavior:contain;align-content:start}.nav-favorites-editor-items>div{display:flex;align-items:center;gap:2px;border:1px solid var(--stroke);border-radius:8px;padding:2px}.nav-favorites-editor-items button{white-space:normal}
+#management-shell[data-setup-wizard="true"] .tabs [data-favorite-tab="life"]:not([hidden]){display:inline-flex!important}
+#management-shell[data-setup-wizard="true"] .tabs .tab-cluster:not(.tab-primary){display:none!important}
 </style>

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { effectiveModelSelection } from '../lib/model-routing.mjs'
+import { effectiveModelSelection, withDefaultModelEffort } from '../lib/model-routing.mjs'
 
 test('主人私信 Agent 运行路由与连接测试一致：未单独配置时使用默认模型', () => {
   const server = readFileSync(new URL('../index.js', import.meta.url), 'utf8')
@@ -17,3 +17,14 @@ test('主人私信 Agent 运行路由与连接测试一致：未单独配置时�
   assert.ok(rows.includes('    provider: "configured-interaction-provider"'))
   assert.ok(rows.includes('    model: "configured-interaction-model"'))
 })
+
+test('默认文字模型思考档位只沿实际默认模型继承，显式任务档位优先',()=>{
+ const cfg={pluginDefaultModelProvider:'p',pluginDefaultModelId:'m'};
+ const route={provider:'p',model:'m',reasoningEffort:''};
+ assert.equal(withDefaultModelEffort(cfg,route).reasoningEffort,'medium');
+ const high=withDefaultModelEffort({...cfg,pluginDefaultModelReasoningEffort:'high'},route);
+ assert.equal(high.reasoningEffort,'high');assert.match(effectiveModelSelection({},high).join('\n'),/reasoningEffort: "high"/);
+ assert.equal(withDefaultModelEffort(cfg,{...route,reasoningEffort:'low'}).reasoningEffort,'low');
+ assert.equal(withDefaultModelEffort(cfg,{...route,model:'other'}).reasoningEffort,'');
+ assert.equal(withDefaultModelEffort({},route).reasoningEffort,'');
+});

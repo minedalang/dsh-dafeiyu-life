@@ -228,7 +228,7 @@ import { parseMentionTargets, decideMentions } from './lib/mentions.mjs'
 import { DEFAULT_CHARACTER_LORE, normalizeCharacterLore, normalizeMentionProfiles, buildMentionProfilePrompt, buildSenderRelationshipContext } from './lib/character-social.mjs'
 import { normalizeFriendDirectory, directoryToLegacy } from './lib/friend-directory.mjs'
 import { shouldRunWindow, parsePeakWindows, readPeakWindows, activePeakWindow, DEFAULT_PEAK_INTERVAL_MINUTES } from './lib/peak-schedule.mjs'
-import { effectiveModelSelection } from './lib/model-routing.mjs'
+import { effectiveModelSelection, withDefaultModelEffort } from './lib/model-routing.mjs'
 import { createHeadlessModelSync } from './lib/headless-model-sync.mjs'
 import { resolveVisionModelRoute } from './lib/vision-model-route.mjs'
 import { createFirstStart } from './lib/first-start.mjs'
@@ -360,6 +360,7 @@ export const Config = !z ? undefined : z.object({
   /** AI 可选择 @ 部分好友（0/1/2/...人），与旧 ai=全体兼容 */
   pluginDefaultModelProvider: z.string().default('').extra('volatile',true),
   pluginDefaultModelId: z.string().default('').extra('volatile',true),
+  pluginDefaultModelReasoningEffort: z.string().default('medium').extra('volatile',true),
   videoModelProvider: z.string().default('').extra('volatile',true),
   videoModelId: z.string().default('').extra('volatile',true),
   videoReasoningEffort: z.string().default('').extra('volatile',true),
@@ -888,7 +889,7 @@ function reportMeta() {
     dmWatch: true, dmWatchMinutes: 5, dmQuietMaxMinutes: 5, dmActivePollEnabled:true, dmActivePollSeconds:60, dmDetailMaxSessions:3, dmDetailSpacingMs:1500, dmActiveWindowSeconds:180, commentReplyWatchMinutes: 2, commentAtWatchMinutes: 2, commentTopWatchMinutes: 5, dmReplyPerDay: 200, quotaPreset:'custom', dmContextMessages: 40, dmOwnerUid: 0,
     dmWhitelist: '', dmStrangerOnce: false, dmStrangerAutonomyEnabled: false, dmP6Enabled: true, dmP6MaxBubbles: 3, naturalThoughtOwnerMinutes:2, naturalThoughtIntimateMinutes:5, naturalThoughtFamiliarMinutes:10, naturalThoughtStrangerMinutes:30, naturalThoughtChancePercent:25, dmStrangerMaxReplies: 1, dmStrangerFirstFixed: false,
     dmApprovalEnabled: false, dmApprovalPhrase: '白饭🍚',
-    pluginDefaultModelProvider: '', pluginDefaultModelId: '', videoModelProvider: '', videoModelId: '', videoReasoningEffort: '', behaviorDecisionModelProvider: '', behaviorDecisionModelId: '', behaviorDecisionReasoningEffort: '', interactionModelProvider: '', interactionModelId: '', interactionReasoningEffort: '', interactionContextMode: 'compact', memeRulesModelProvider:'', memeRulesModelId:'', memeRulesReasoningEffort:'', memeRulesPrompt:'',
+    pluginDefaultModelProvider: '', pluginDefaultModelId: '', pluginDefaultModelReasoningEffort: 'medium', videoModelProvider: '', videoModelId: '', videoReasoningEffort: '', behaviorDecisionModelProvider: '', behaviorDecisionModelId: '', behaviorDecisionReasoningEffort: '', interactionModelProvider: '', interactionModelId: '', interactionReasoningEffort: '', interactionContextMode: 'compact', memeRulesModelProvider:'', memeRulesModelId:'', memeRulesReasoningEffort:'', memeRulesPrompt:'',
     commentWatchReplies: false, commentWatchTop: false, commentAtEnabled: true, socialRhythmCrossChannelMinutes: 30, socialRhythmDailyPerPerson: 0, friendAtFeedbackEnabled:false, strangerInspirationEnabled:false, socialInvitationEnabled:false, socialInvitationAutoInspectEnabled:false, ownerCommentAgentEnabled:false, ownerCommentLikeEnabled:false, ownerCommentDraftEnabled:false, ownerCommentPublishEnabled:false, ownerCommentSocialPublishEnabled:false, ownerCommentNaturalAckEnabled:false, commentAtMode:'whitelist', commentAtWhitelist:'', commentTopCount: 5, commentTopVideoCount: 3, commentReplyHotCount: 12, backupDirectory: '', backupAutoEnabled: true,
     commentAllowGeneralTop: false, commentReplyPerPoll: 12, commentReplyPerDay: 1000, commentOwnTopPerUser: 5, commentOwnNestedPerUser: 3,
     mainSessionBridgeEnabled: false, ownerSpontaneousChatEnabled:true, ownerContactPreset:'natural', ownerContactStartHour:9,ownerContactEndHour:22,ownerContactCooldownMinutes:240,ownerContactDailyLimit:2,ownerContactSilenceMinutes:45,mainSessionSilenceFollowupEnabled:true,mainSessionShortPauseEnabled:true,mainSessionShortPauseSeconds:90,ownerDmSilenceFollowupEnabled:true, mainSessionId: '', mainSessionAutoSync: true, mainSessionSyncMinutes: 60, mainSessionDailyBatches: 4, mainSessionBatchSize: 8, mainSessionIncludeComments: true,
@@ -1040,6 +1041,7 @@ function reportMeta() {
     if ('mainSessionMemoryDailyQuota' in p) p.mainSessionMemoryDailyQuota = Math.max(1,Math.min(100,Math.floor(Number(p.mainSessionMemoryDailyQuota)||30)))
     if ('mainSessionMemoryFactsMax' in p) { const n=Number(p.mainSessionMemoryFactsMax); p.mainSessionMemoryFactsMax=Number.isFinite(n)?Math.max(0,Math.min(6,Math.floor(n))):2 }
     if ('reportLevel' in p) p.reportLevel = ['full', 'brief', 'off'].includes(String(p.reportLevel)) ? String(p.reportLevel) : 'full'
+    if ('pluginDefaultModelReasoningEffort' in p) p.pluginDefaultModelReasoningEffort=String(p.pluginDefaultModelReasoningEffort||'medium').trim().slice(0,160).replace(/[\r\n\0]/g,'')||'medium'
     for (const k of ['pluginDefaultModelProvider','pluginDefaultModelId','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','videoModelProvider','videoModelId','videoReasoningEffort','behaviorDecisionModelProvider','behaviorDecisionModelId','behaviorDecisionReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','interactionContextMode','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort']) if(k in p) p[k]=String(p[k]||'').trim().slice(0,160).replace(/[\r\n\0]/g,'')
     if ('personaPrompt' in p) p.personaPrompt = String(p.personaPrompt || '').slice(0, 18000)
     if ('characterLore' in p) p.characterLore = normalizeCharacterLore(p.characterLore)
@@ -4156,7 +4158,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         : prefix === 'ownerDmAgent'
         ? { provider:cfg.ownerDmAgentModelProvider||cfg.pluginDefaultModelProvider, model:cfg.ownerDmAgentModelId||cfg.pluginDefaultModelId, reasoningEffort:cfg.ownerDmAgentReasoningEffort }
         : { provider:cfg[prefix+'ModelProvider']||cfg.pluginDefaultModelProvider, model:cfg[prefix+'ModelId']||cfg.pluginDefaultModelId, reasoningEffort:cfg[prefix+'ReasoningEffort'] }
-      yml.push(...effectiveModelSelection(sel,custom,yq))
+      yml.push(...effectiveModelSelection(sel,withDefaultModelEffort(cfg,custom),yq))
     } catch (e) {
       log('⚠️ '+(dmSafe?'后台互动':'视频')+'模型配置无效：'+String(e?.message||e))
       // 不降级到另一个未经确认的模型。让 DSH 自身选用其 profile 配置。
@@ -5285,7 +5287,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     const rows=[]
     for(const id of HEADLESS_DENY_TOOLS)rows.push('- id: '+id,'  disabled: true','')
     for(const id of ['credentials','authorization','deepseek-account'])rows.push('- id: '+id,'  disabled: false','')
-    rows.push(...effectiveModelSelection({}, {provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider,model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.mainSessionMemoryReasoningEffort},yq))
+    rows.push(...effectiveModelSelection({}, withDefaultModelEffort(cfg,{provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider,model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.mainSessionMemoryReasoningEffort}),yq))
     return writeSecureHeadlessOverlay(file,rows.join('\n'),{kind:'memory',stateDir})
   }
   // Prefer the active HOST's registered model adapters for tool-free tasks.
@@ -5296,7 +5298,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   const hostText = (llm, prompt, custom, maxChars, timeoutMs) => {
     if(!platformReady())throw Error(platformMessage())
     return runHostModelText({
-    llm, prompt, selection:hostSelection(), custom, maxChars, timeoutMs,
+    llm, prompt, selection:hostSelection(), custom:withDefaultModelEffort(cfg,custom), maxChars, timeoutMs,
   })
   }
   // UI model connection checks: deliberately do not mount Bilibili, filesystem, shell,
@@ -5321,11 +5323,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     const rows=[]
     for(const id of HEADLESS_DENY_TOOLS)rows.push('- id: '+id,'  disabled: true','')
     for(const id of ['credentials','authorization','deepseek-account'])rows.push('- id: '+id,'  disabled: false','')
-    const customRoute=Boolean(cfg.memeRulesModelProvider||cfg.memeRulesModelId)
+    const customRoute=Boolean(cfg.memeRulesModelProvider||cfg.memeRulesModelId||cfg.pluginDefaultModelProvider&&cfg.pluginDefaultModelId)
     const customSelection=customRoute
       ? {provider:cfg.memeRulesModelProvider||cfg.pluginDefaultModelProvider,model:cfg.memeRulesModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.memeRulesReasoningEffort}
       : (cfg.memeRulesReasoningEffort ? {provider:current?.provider||current?.providerId||'',model:current?.model||current?.modelId||'',reasoningEffort:cfg.memeRulesReasoningEffort} : {})
-    rows.push(...effectiveModelSelection(current,customSelection,yq))
+    rows.push(...effectiveModelSelection(current,withDefaultModelEffort(cfg,customSelection),yq))
     const overlay=writeSecureHeadlessOverlay(join(stateDir,'headless-model-test-overlay.yml'),rows.join('\n'),{kind:'model-test',stateDir})
     const args=[...dsh.args,'--profile','headless','--patch',overlay,promptText]
     assertVerifiedHeadless(args,overlay,{kind:'model-test',stateDir},'memeRules')
@@ -5385,7 +5387,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const rows=[]
       for(const id of HEADLESS_DENY_TOOLS)rows.push('- id: '+id,'  disabled: true','')
       for(const id of ['credentials','authorization','deepseek-account'])rows.push('- id: '+id,'  disabled: false','')
-      rows.push(...effectiveModelSelection(task==='memory'?{}:current,selection,yq))
+      rows.push(...effectiveModelSelection(task==='memory'?{}:current,withDefaultModelEffort(cfg,selection),yq))
       const overlay=writeSecureHeadlessOverlay(join(stateDir,'headless-model-test-overlay.yml'),rows.join('\n'),{kind:'model-test',stateDir})
       const prompt='这是一个只读模型连接自检。不要调用任何工具，不要讲解，只回复：DAFEIYU_MODEL_TEST_OK'
       const args=[...dsh.args,'--profile','headless','--patch',overlay,prompt]
@@ -5437,7 +5439,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!(cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider)||!(cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId))throw Error('请填写独立记忆检索模型的 Provider 与模型 ID')
       recordModelTask(stateDir,'memory')
       const prompt=boundedText(String(promptText),16500),custom={provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider,model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.mainSessionMemoryReasoningEffort}
-      return standalone?runHostModelText({llm:native,prompt,selection:hostSelection(),custom,maxChars,timeoutMs:35_000}):hostText(native,prompt,custom,maxChars,35_000)
+      return standalone?runHostModelText({llm:native,prompt,selection:hostSelection(),custom:withDefaultModelEffort(cfg,custom),maxChars,timeoutMs:35_000}):hostText(native,prompt,custom,maxChars,35_000)
     }
     if(cfg.mainSessionMemoryEnabled!==true||cfg.mainSessionMemorySemanticEnabled!==true)throw Error('独立记忆检索没有开启')
     if(!(cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider)||!(cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId))throw Error('请在管理中心填写专用检索模型的 Provider 与模型 ID')
@@ -5808,9 +5810,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const observed=await biliReadBudget.guard('incoming-image',()=>{
           recordModelTask(stateDir,'vision') // Count attempts, not only successes.
           return describeIncomingBiliImage({url,llm:native,selection:hostSelection(),
-            custom:{provider:cfg.interactionModelProvider||cfg.pluginDefaultModelProvider,
+            custom:withDefaultModelEffort(cfg,{provider:cfg.interactionModelProvider||cfg.pluginDefaultModelProvider,
               model:cfg.interactionModelId||cfg.pluginDefaultModelId,
-              reasoningEffort:cfg.interactionReasoningEffort}})
+              reasoningEffort:cfg.interactionReasoningEffort})})
         })
         if(trustedLifeAccountTag()!==scope||accountBinding.status().blocked)break
         if(observed)observations.push(String(observed).slice(0,100))
@@ -11617,7 +11619,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const patch = {}
       for (const k of ['masterEnabled', 'peakValley', 'lifeAgentMode', 'lifeAgentSocialContextOptIn', 'peakWindows', 'peakIntervalMinutes', 'autoComment', 'transcribe', 'asrModel', 'asrLanguage',
         'diagMentionEnabled','diagDynamicEnabled','diagVisionEnabled','diagMemeEnabled','diagAtInviteEnabled','diagReplyInboxEnabled','commentMemesEnabled','commentMemesDebug','commentMemesPerDay','commentMemesPerRound','commentMemePrompt','visionPrompt','memeMemoryEnabled', 'memeMemoryMaxEntries', 'visionEnabled', 'visionDebug', 'visionMode', 'visionModelProvider', 'visionModelId', 'visionLocalModel', 'visionLocalThinking', 'visionReasoningEffort', 'visionFrames', 'visionBoardTiles', 'commentPerRound', 'mentionName', 'mentionTargets', 'mentionProfiles', 'friendDirectory', 'mentionMode', 'commentSyncDynamic', 'dynamicDailyLimit', 'commentDailyLimit',
-        'pluginDefaultModelProvider','pluginDefaultModelId','videoModelProvider','videoModelId','videoReasoningEffort','behaviorDecisionModelProvider','behaviorDecisionModelId','behaviorDecisionReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','interactionContextMode','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort','memeRulesPrompt',
+        'pluginDefaultModelProvider','pluginDefaultModelId','pluginDefaultModelReasoningEffort','videoModelProvider','videoModelId','videoReasoningEffort','behaviorDecisionModelProvider','behaviorDecisionModelId','behaviorDecisionReasoningEffort','interactionModelProvider','interactionModelId','interactionReasoningEffort','interactionContextMode','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort','memeRulesPrompt',
         'keywords', 'coreInterestTopics', 'pythonPath', 'visionPythonPath', 'dshBin', 'headlessProfile', 'workspace', 'reportLevel', 'personaPrompt', 'characterLore', 'dmWatch', 'dmWatchMinutes', 'dmQuietMaxMinutes', 'dmActivePollEnabled', 'dmActivePollSeconds', 'dmDetailMaxSessions', 'dmDetailSpacingMs', 'dmActiveWindowSeconds', 'commentReplyWatchMinutes', 'commentAtWatchMinutes', 'commentTopWatchMinutes', 'dmReplyPerDay', 'quotaPreset', 'dmContextMessages', 'dmOwnerUid', 'dmWhitelist', 'dmStrangerOnce', 'dmStrangerAutonomyEnabled', 'dmP6Enabled', 'dmP6MaxBubbles', 'naturalThoughtOwnerMinutes','naturalThoughtIntimateMinutes','naturalThoughtFamiliarMinutes','naturalThoughtStrangerMinutes','naturalThoughtChancePercent', 'dmStrangerText', 'dmStrangerMaxReplies', 'dmStrangerFirstFixed', 'dmApprovalEnabled','dmApprovalPhrase',
         'commentWatchReplies', 'commentWatchTop', 'commentAtEnabled', 'socialRhythmCrossChannelMinutes', 'socialRhythmDailyPerPerson', 'friendAtFeedbackEnabled', 'strangerInspirationEnabled','socialInvitationEnabled','socialInvitationAutoInspectEnabled','ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentDraftEnabled','ownerCommentPublishEnabled','ownerCommentSocialPublishEnabled','ownerCommentNaturalAckEnabled', 'commentAtMode', 'commentAtWhitelist', 'commentTopCount', 'commentTopVideoCount', 'commentReplyHotCount', 'commentAllowGeneralTop', 'commentReplyPerPoll', 'commentReplyPerDay', 'commentOwnTopPerUser', 'commentOwnNestedPerUser', 'mainSessionBridgeEnabled', 'ownerSpontaneousChatEnabled', 'ownerContactPreset','ownerContactStartHour','ownerContactEndHour','ownerContactCooldownMinutes','ownerContactDailyLimit','ownerContactSilenceMinutes','mainSessionSilenceFollowupEnabled','mainSessionShortPauseEnabled','mainSessionShortPauseSeconds','ownerDmSilenceFollowupEnabled','mainSessionId', 'mainSessionAutoSync', 'mainSessionSyncMinutes', 'mainSessionDailyBatches', 'mainSessionBatchSize', 'mainSessionIncludeComments', 'mainSessionMemoryEnabled', 'mainSessionMemoryAutoBili', 'mainSessionMemorySemanticEnabled', 'mainSessionMemoryEmbeddingEnabled', 'mainSessionMemoryModelProvider', 'mainSessionMemoryModelId', 'mainSessionMemoryReasoningEffort', 'mainSessionMemoryCandidates', 'mainSessionMemorySearchDailyLimit', 'socialOutreachEnabled', 'socialLifeIntentEnabled', 'lifeProactiveFriendDmEnabled','lifeNaturalDmOutreachEnabled','lifePublicInteractionEnabled', 'socialVideoRecommendationsAuthorizedV2', 'emotionSystemEnabled', 'socialAutoSend', 'socialOutreachDailyLimit', 'ownerTodoAutoReviewEnabled','ownerTodoReviewMinutes','ownerTodoCompletionFollowupEnabled','socialTodoCompletionFollowupEnabled','ownerTodoFollowupCooldownMinutes','ownerTodoFollowupDailyLimit','ownerTodoFollowupMinIntervalMinutes','ownerTodoFollowupPollMinutes','ownerTodoFollowupQuietEnabled','ownerTodoFollowupQuietStartHour','ownerTodoFollowupQuietEndHour','autonomousPlannerEnabled','videoAgentMinIntervalMinutes','videoAgentReadTargetPerRound','videoAgentPickTargetPerRound','emotionRecallEnabled','emotionRecallMainEnabled','emotionRecallDmEnabled','emotionRecallUnlimited','emotionRecallDailyLimit','emotionRecallCooldownHours','emotionRecallStartHour','emotionRecallEndHour','emotionRecallCandidateLimit','emotionRecallHistoryLimit','emotionRecallRecentDays','emotionRecallMinAgeDays','emotionRecallEmotionMinIntensity','emotionRecallEmotionMaxAgeHours','ownerDmAgentEnabled','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','ownerDmAgentContextTurns','ownerDmAgentContextChars','ownerDmAgentModelProvider','ownerDmAgentModelId','ownerDmAgentReasoningEffort','ownerDmReadCommandsEnabled','ownerDmActionsEnabled','ownerDmLikeEnabled','ownerDmCollectEnabled','ownerDmFollowEnabled','ownerDmCommentDraftEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicDraftEnabled','ownerDmDynamicPublishEnabled','ownerDmFriendMessageEnabled','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort','autonomousPlannerMinutes','autonomousPlannerDailyLimit','autonomousPlannerStartHour','autonomousPlannerEndHour', 'mainSessionReflectionAuto', 'mainSessionReflectionModelProvider', 'mainSessionReflectionModelId', 'mainSessionReflectionReasoningEffort', 'mainSessionReflectionMinCandidates', 'mainSessionReflectionBatchSize', 'mainSessionReflectionIntervalHours', 'mainSessionReflectionDailyBatches', 'mainSessionMemoryHalfLifeDays', 'socialMemoryHalfLifeNewDays', 'socialMemoryHalfLifeKnownDays', 'socialMemoryHalfLifeFamiliarDays', 'socialMemoryHalfLifeFriendDays', 'socialMemoryHalfLifeWhitelistDays', 'socialMemoryHalfLifeOwnerDays', 'mainSessionMemoryThreshold', 'mainSessionMemoryMaxItems', 'mainSessionMemoryMaxChars', 'mainSessionMemoryDailyQuota', 'mainSessionMemoryConsolidationEnabled', 'mainSessionMemoryFactsMax', 'favFolderId','autoVideoLike','autoVideoLikeDailyLimit','autoVideoCollect','autoFavoriteVisibility','autoFavoriteDelete','agentFollowEnabled','dmFollowAutonomyEnabled','incomingImageRecognitionEnabled','dailyDynamicEnabled','dailyDynamicDailyLimit','dailyDynamicDraftOnly']) {
         if (k in body) patch[k] = body[k]

@@ -123,7 +123,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
     return nodes.get(id)
   }
   const context={
-    onboarding:null,quickOptions:null,mobileViewOnly:false,firstNavigation:true,active:'firststart',tabNames:['firststart','models','home','life','social','life-agent','plans','backup'],
+    syncFavoriteNav:()=>{},onboarding:null,quickOptions:null,mobileViewOnly:false,firstNavigation:true,active:'firststart',tabNames:['firststart','models','home','life','social','life-agent','plans','backup'],
     $:element,document:{querySelector:selector=>element(selector)}
   }
   const policy=js.slice(js.indexOf('  const capabilityKeys='),js.indexOf('  const skipFirstStart='));
@@ -160,7 +160,8 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-headless-state')
   assert.equal(render.getStep(),'model')
   show({...fresh,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]})
-  assert.equal(render.getStep(),'defaults')
+  assert.equal(render.getStep(),'model','验证后保留同步与默认模型的同一实际面板')
+  assert.equal(element('fs-wizard-step').textContent,'步骤 4 / 12')
   render.setDefaultDone()
   assert.equal(render.getStep(),'core')
   assert.equal(element('fs-wizard-continue').disabled,false)
