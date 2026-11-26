@@ -23,10 +23,11 @@ test('Claude/Anthropic 可见的长期记忆工具 schema 只有 ASCII 参数名
     const mem=createLongTermMemory({dataDir:dir,dshHome:dsh,agents:{get:()=>f.agent,list:()=>[f.agent]},getConfig:cfg,defineTool,getRetriever:()=>({localContext:()=>"【长期记忆｜统一检索】\n"+mem.activeMemories().map(x=>x.text).join("\n")})})
     mem.start();assert.equal(f.tools.length,7)
     assert.equal(f.tools[1].name,'dafeiyu_memory_recall');
-    assert.deepEqual(f.tools.slice(2).map(x=>x.name),['dafeiyu_life_recall','dafeiyu_todo_list','dafeiyu_todo_add','dafeiyu_todo_update','dafeiyu_todo_execute']);assert.deepEqual(Object.keys(f.tools[1].parameters),['query'])
+    assert.deepEqual(f.tools.slice(2).map(x=>x.name),['dafeiyu_life_recall','dafeiyu_todo_list','dafeiyu_todo_add','dafeiyu_todo_update','dafeiyu_todo_execute']);assert.deepEqual(Object.keys(f.tools[1].parameters),['memory_kind','query'])
     const tool=f.tools[0];assert.equal(tool.name,'dafeiyu_remember')
-    assert.deepEqual(Object.keys(tool.parameters),['text','importance','tags','supersedes','fact_key'])
-    for(const k of Object.keys(tool.parameters))assert.match(k,/^[a-zA-Z0-9_-]{1,64}$/)
+    assert.deepEqual(Object.keys(tool.parameters),['memory_kind','text','importance','tags','supersedes','fact_key'])
+    assert.notEqual(tool.parameters.memory_kind.required,true);assert.notEqual(f.tools[1].parameters.memory_kind.required,true)
+    for(const k of [...Object.keys(tool.parameters),...Object.keys(f.tools[1].parameters)])assert.match(k,/^[a-zA-Z0-9_-]{1,64}$/)
     assert.equal('取代' in tool.parameters,false);assert.equal('事实键' in tool.parameters,false)
     mem.stop()
   }finally{rmSync(dir,{recursive:true,force:true});rmSync(dsh,{recursive:true,force:true})}

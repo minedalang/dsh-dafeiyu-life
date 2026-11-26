@@ -1,3 +1,4 @@
+%% dev.22：主 Session 可选分类自主记录使用原身份库私密来源及独立本地召回；不进入公开 Life 证据、反思、共享向量与神经投影。自由协作宿主模式尚未接线。
 %% 2.8.3-dev.20：经历协调器入队时捕获账号，普通反思返回后复核账号代际、活体原文与候选状态并合并最新候选快照；关联召回必须有有效来源证明。第六类情绪关联限两条公开社交评论经历的独立当时模型情绪证据，由原反思提案，双端核验，原关系格式和衰减不变；不支持视频或私密情绪关联，不增加模型额度。dev.15–20 尚待 Windows/DSH 实机验收。
 %% dev.21：仅已选主 Session 的显式 visual_query 本地词法匹配私密深层片段；复核会话、账号代际、活体附件；不进入公共索引、联想回放或反思。
 %% 2.8.3-dev.19：两段均已评估的公开清晰视觉经历可在普通批次不就绪时，复用原反思调度的空闲批次进行仅联想评估；共享原冷却、自动每日次数及模型路由。每轮最多一对、一条模型提案，复核当前账号代际、即时凭据和双端活体原文；不重置原候选、不写长期认识、情绪或人格。不成立或技术失败不自动重试，同进程同对24小时最多尝试一次，最多128个尝试标记；候选和标记均不落盘。管理页显示待整理及最近评估结果。旧数据格式不变。私密视觉、情绪关系、完整跨轮补看仍待实现。
@@ -211,3 +212,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
   memory -.-> persistentAssoc283
   persistentAssoc283 -.->|有界只读激活| episodeAssoc283
 %% @code persistentAssoc283 | lib/life-memory-gateway.mjs | function associationCandidates
+
+  selfReport22["主 Session 分类自主记录：原身份库，非观察回执"]
+  selfRecall22["显式分类本地回忆：私密、有界"]
+  selfReport22 -->|同一身份记忆| selfRecall22
+%% @code selfReport22 | lib/long-term-memory.mjs | function appendSelfRecord
+%% @code selfRecall22 | lib/long-term-memory.mjs | function selfRecordContext

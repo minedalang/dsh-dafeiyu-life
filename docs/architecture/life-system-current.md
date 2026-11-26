@@ -296,3 +296,8 @@ Life 自动调度仍由唯一 `AutonomousPlanner` 管理；状态轮询和手动
 ### dev.21 主人私密视觉反向回忆
 
 已选主 Session 的显式 visual_query 复用 Memory Retriever 与 Gateway：只在当前账号、未遗忘且已完整保存的 private-session 深层观察中本地词法匹配片段；原观察 ID 与时间锚点返回给主人。会话/账号代际/授权及原附件复核，不进共享向量、公开回放、反思或私信，不新增模型调用、持久格式或补看授权。公开关联未完整返回时不记录路径。纯语义无词法重合、跨轮自主补看、分盘冷备份仍待开发；Windows 实机待验收。
+
+
+### dev.22：分类自主记录（身份记忆，不是 Life 观察回执）
+
+主 Session 的 `dafeiyu_remember` 可选 `memory_kind` 写入原 identity v3 文件，标为私密自主记录；普通事实路径不变。显式 `dafeiyu_memory_recall` 可按类别本地查找，普通显式回忆有预算余位时可补充。自主记录不进入共享 activeMemories、向量索引、公开神经投影、Life 观察证据或反思，不可赋予权限或覆盖事实。独立与业务备份共同校验格式。自由协作模式和工作台为待实现规划，见 [路线图](free-workbench-plan.md)。
