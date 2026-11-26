@@ -58,3 +58,20 @@ test('activation overlay only draws a loaded typed association path with enabled
  context.neuralAssociationEnabled=()=>false;assert.equal(draw([step]),false);context.neuralAssociationEnabled=()=>true;context.$=()=>({checked:false});assert.equal(draw([step]),false)
  assert.doesNotMatch(ui,/animateNeuralSignal/);assert.match(ui,/request\('\/main-session\/memory\/neural\/activation'\)/)
 })
+
+
+test('recent mode keeps only a real path, respects filters and expiry; full graph is independent',async()=>{
+ const {runInNewContext}=await import('node:vm');
+ assert.match(html,/<select id="neural-view-mode"[^>]*><option value="recent" selected>/)
+ const scene=ui.slice(ui.indexOf('  const renderNeuralScene='),ui.indexOf('  const drawNeuralMemory='));assert.match(scene,/const fullGraph=\$\('neural-view-mode'\)\.value==='graph'/);assert.equal((scene.match(/if\(!showType\[e\.type\]/g)||[]).length,2);assert.equal((scene.match(/fullGraph&&hit&&m\.emotion/g)||[]).length,2);assert.match(scene,/drawRecentNeuralActivation\(\)/)
+ const a=ui.indexOf('  let neuralActivationToken='),b=ui.indexOf('  const sceneSVG=neuralViewport;',a);
+ const edge={type:'association',associationType:'concept',from:'a',to:'b'},steps=[{from:'a',to:'b',associationType:'concept'}],activation={id:'real',at:1000,steps};let now=1000,elapsed=0,children=[],callbacks=[],expiry=null,visible=true,mode='recent',response={activation},reloads=0;const status={};
+ const group={replaceChildren(){children=[]},append(...items){children.push(...items)}};const els={'neural-activation-path':group,'neural-activation-status':status,'neural-view-mode':{get value(){return mode},set value(v){mode=v},addEventListener(){}},'neural-show-association':{get checked(){return visible}},'neural-activation-replay':{addEventListener(){}},'main-session-history-query':{value:''}};
+ const context={$:id=>els[id],neuralScene:{positions:new Map([['a',{x:0,y:0}],['b',{x:10,y:0}]])},neuralEdges:[edge],neuralAssociationEnabled:()=>true,neuralAssociationColors:{concept:'#00aabb'},neuralRequestVersion:1,document:{hidden:false},window:{matchMedia:()=>({matches:false})},performance:{now:()=>elapsed},Date:{now:()=>now},requestAnimationFrame:fn=>callbacks.push(fn),setTimeout:fn=>{expiry=fn;return 1},clearTimeout(){expiry=null},svgEl:(tag,props)=>({tag,props,style:{}}),request:async()=>response,formatLocalTime:()=>'',renderNeuralScene(){},renderNeuralMemory(){reloads++}};
+ const f=runInNewContext(ui.slice(a,b)+'\n({refreshNeuralActivation,drawRecentNeuralActivation,clearNeuralActivation})',context);
+ await f.refreshNeuralActivation();assert.equal(children.length,0);elapsed=800;callbacks.shift()();assert.equal(children.filter(x=>x.tag==='line').length,1);assert.equal(callbacks.length,0);
+ elapsed=6000;f.drawRecentNeuralActivation();assert.equal(children.filter(x=>x.tag==='line').length,1,'path remains after animation');
+ mode='graph';f.drawRecentNeuralActivation();assert.equal(children.length,0);mode='recent';visible=false;f.drawRecentNeuralActivation();assert.equal(children.length,0);visible=true;f.drawRecentNeuralActivation();assert.equal(children.length,3);
+ expiry();assert.equal(children.length,0);assert.match(status.textContent,/暂无/);response={activation:null};await f.refreshNeuralActivation();assert.equal(children.length,0);
+ response={activation:{...activation,id:'new-edge',steps:[{from:'a',to:'c',associationType:'concept'}]}};await f.refreshNeuralActivation();assert.equal(reloads,1);await f.refreshNeuralActivation();assert.equal(reloads,1);assert.equal(children.length,0);
+})

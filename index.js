@@ -259,7 +259,7 @@ import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import { memoryNeuralProjection, neuralProjectionKey, createNeuralActivationTracker, projectNeuralActivation } from './lib/memory-neural-projection.mjs'
 import { systemHealthSnapshot } from './lib/system-health-projection.mjs'
 import {readProductionVisionStatus} from './lib/vision-production-status.mjs'
-import {planVideoMomentFollowup} from './lib/video-moment-followup.mjs'
+import {planVideoMomentFollowup,proposeVideoRecallFollowup} from './lib/video-moment-followup.mjs'
 import {modelTestFailure} from './lib/model-failure-diagnostics.mjs'
 import {providerIds,modelIds} from './lib/model-catalog.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
@@ -2673,7 +2673,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     parameters:{bvid:{type:'string',description:'从当前消息或可信记忆找到的真实 BV，不可猜'},
       at_seconds:{type:'number',description:'明确提及或已核实观察到的时间（秒）'},
       after_seconds:{type:'number',description:'请求了解这个已确认时刻之后多少秒，最多60，默认0'},
-      event_cue:{type:'string',description:'若没明确时间，可用当前账号本机近期真实局部复查中已明确描述过的事件短语；没有唯一锚点则拒绝推断时间'}},
+      event_cue:{type:'string',description:'若没明确时间，可用当前账号本机近期真实局部复查中已明确描述过的事件短语；没有唯一锚点则拒绝推断时间'},
+      recall_memory_id:{type:'string',description:'仅使用回忆工具返回的补看候选中的公开经历 ID；不可猜测'}},
     async execute(args={}){
       refreshCfg()
       if(cfg.masterEnabled!==true||!hasCredential())return {ok:false,error:'B站当前不可读取'}
@@ -2683,6 +2684,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(!validBv(bvid))return {ok:false,reason:'invalid-bv'}
       const requestedAccount=trustedLifeAccountTag()
       if(!requestedAccount||accountBinding.status().blocked)return {ok:false,reason:'video-account-not-ready'}
+      // A cross-round suggestion is not an authorization. Re-prove its live
+      // public source before any platform read and again before the visual read.
+      const recallId=args.recall_memory_id;
+      const recallStillValid=()=>recallId===undefined||(/^[a-f0-9]{16}$/.test(requestedAccount)&&/^e-[a-f0-9]{18}$/.test(String(recallId))&&lifeMemory?.videoEvidenceTrace({accountTag:requestedAccount,bvid,memoryId:recallId,visualOnly:true,limit:1,ownerSession:false})?.length===1);
+      if(!recallStillValid())return {ok:false,reason:'recall-source-unavailable'}
       let info
       try{info=parseMaybeJson(await call('bili_video_info',{bvid}))}
       catch{return {ok:false,reason:'video-metadata-unavailable'}}
@@ -2695,9 +2701,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       return runLifeChosenVideoRead({willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,
         bvid,mode:'revisit',read:async({account})=>{
           if(account!==requestedAccount||account!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
+          if(!recallStillValid())return {ok:false,reason:'recall-source-unavailable'}
           return withLifeVideoVisualLease(stateDir,{accountTag:account,bvid},async()=>{
             refreshCfg()
             if(account!==trustedLifeAccountTag()||accountBinding.status().blocked||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential()||!['independent_dsh','independent_local'].includes(resolvedVisionMode()))return {ok:false,reason:'video-read-no-longer-authorized'}
+            if(!recallStillValid())return {ok:false,reason:'recall-source-unavailable'}
             const budget=Number(cfg.visionFrames)>=48?100*1048576:Number(cfg.visionFrames)>=24?50*1048576:24*1048576
             let visual
             const stopVideoObserve=liveLifeActivity.start('video-observe',account,{maxAgeMs:8*60_000,bvid})
@@ -2708,6 +2716,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
             finally{stopVideoObserve()}
             refreshCfg()
             if(account!==trustedLifeAccountTag()||accountBinding.status().blocked||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential()||!['independent_dsh','independent_local'].includes(resolvedVisionMode()))return {ok:false,reason:'video-read-no-longer-authorized'}
+            if(!recallStillValid())return {ok:false,reason:'recall-source-unavailable'}
             const focusCapture=safeVideoDebugCapture(visual?.debugCapture,bvid)
             if(visual&&typeof visual==='object')delete visual.debugCapture
             const evidence=buildVideoEvidenceBundle({bvid,info,visual})
@@ -6988,7 +6997,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:false,recentFallback:false})
       return scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows})?publicVisualAssociationContext(rows):[]
     },
-    getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor})=>lifeMemory?.recallVideoDetails({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor,accountTag:trustedLifeAccountTag(),ownerSession:true})||{ok:false,reason:'memory-not-ready'},
+    getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor})=>{
+      const accountTag=trustedLifeAccountTag();
+      if(!accountTag||accountBinding.status().blocked||!lifeMemory)return {ok:false,reason:'memory-not-ready'}
+      const result=lifeMemory.recallVideoDetails({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor,accountTag,ownerSession:true});
+      if(result.ok!==false||!['no-detail','no-detail-in-time-range'].includes(result.reason)||firstObservation||cursor||!Number.isSafeInteger(startMs)||!Number.isSafeInteger(endMs)||endMs-startMs>12000||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential())return result;
+      const trace=lifeMemory.videoEvidenceTrace({bvid,memoryId,accountTag,visualOnly:true,limit:1,ownerSession:false});
+      if(accountTag!==trustedLifeAccountTag()||accountBinding.status().blocked)return {ok:false,reason:'account-changed'};
+      const revisitCandidate=proposeVideoRecallFollowup({result,bvid,startMs,endMs,firstObservation,cursor,trace});
+      return revisitCandidate?{...result,revisitCandidate}:result;
+    },
     getTodoEngine: () => ownerTodos,
     runTodo: (id) => runOwnerTodoWithFollowup(id),
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
@@ -8800,7 +8818,9 @@ logger:{warn:m=>log('社交意图：'+m)}
     // 管理中心随 DSH 插件自动提供，不启动独立端口或子进程。
     // 与 API 同源；所有脚本、样式均为插件内置静态资源，禁用外部请求。
     if (req.method === 'GET' && path === '/api/bili-duty/manage') {
-      const body=readFileSync(join(pluginDir,'lib','management-console.html'),'utf8')
+      const template=readFileSync(join(pluginDir,'lib','management-console.html'),'utf8')
+      // This flag only changes navigation chrome; host owner checks are unchanged.
+      const body=url.searchParams.get('inside')==='1'?template.replace('<div class="manage-return-bar" hidden>','<div class="manage-return-bar">'):template
       res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
         'x-dafeiyu-management':'1','referrer-policy':'no-referrer','x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"})
       return res.end(body)

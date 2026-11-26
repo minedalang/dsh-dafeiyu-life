@@ -460,6 +460,8 @@ window.__ModuleLoader__.load({
           if (!isManage) throw new Error('当前访问通道返回的不是大肥鱼管理中心；请检查 DSH 登录或配对状态')
           controller.signal.throwIfAborted()
           const target=path+(safeAnchor?'#'+safeAnchor:'')
+          // Presentation-only marker: same-tab navigation needs a route back.
+          const insideTarget=path+(safeTab?'&':'?')+'inside=1'+(safeAnchor?'#'+safeAnchor:'')
           if(desktop&&!inside){
             const result=await jpost('/open',{what:'manage',tab:safeTab,anchor:safeAnchor,external:true},controller.signal)
             controller.signal.throwIfAborted()
@@ -477,9 +479,9 @@ window.__ModuleLoader__.load({
           }else if(desktop){
             // Main-frame navigation preserves the official Desktop bridge. A
             // no-referrer link avoids forwarding the private scheme as Referer.
-            const link=document.createElement('a');link.href=target;link.target='_self';link.rel='noreferrer';link.referrerPolicy='no-referrer';link.hidden=true
+            const link=document.createElement('a');link.href=insideTarget;link.target='_self';link.rel='noreferrer';link.referrerPolicy='no-referrer';link.hidden=true
             document.body.appendChild(link);try{link.click()}finally{link.remove()}
-          }else window.location.assign(target)
+          }else window.location.assign(insideTarget)
         } catch (e) {
           const message = '打开管理中心失败：' + (controller.signal.aborted?'请求已取消或超时':String(e?.message || e)) +
             '。请在当前 DSH 内重新登录或重启；手机请检查配对，不要直接将电脑本机 DSH 端口暴露到公网。'

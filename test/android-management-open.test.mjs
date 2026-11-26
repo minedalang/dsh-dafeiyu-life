@@ -28,7 +28,7 @@ function browser({userAgent = 'Android', protocol = 'https:', fetchImpl, postImp
 test('安卓 HTTPS 同源入口：由当前 WebView 打开，不触发后台系统浏览器', async () => {
   const app = browser({fetchImpl: () => ({ok: true, headers: {get: name => name === 'content-type' ? 'text/html; charset=utf-8' : name === 'x-dafeiyu-management' ? '1' : ''}})})
   await app.openManage('firststart')
-  assert.deepEqual(app.navigated, ['/api/bili-duty/manage?tab=firststart'])
+  assert.deepEqual(app.navigated, ['/api/bili-duty/manage?tab=firststart&inside=1'])
   assert.equal(app.posts.length, 0)
   assert.equal(app.requests.length, 1)
   assert.equal(app.requests[0][1].credentials, 'same-origin')
@@ -63,14 +63,14 @@ test('DSH Mobile 响应 200 但跳转到了登录 HTML 时拒绝静默导航', a
 test('网关剥离非必要自定义响应头时，通过管理页标记确认，不将 HTML 误当登录页', async () => {
   const app = browser({fetchImpl: () => ({ok: true, headers: {get: name => name === 'content-type' ? 'text/html' : ''}, text: async () => '<meta name="dafeiyu-management" content="1">很长的管理中心页面'})})
   await app.openManage('models')
-  assert.deepEqual(app.navigated, ['/api/bili-duty/manage?tab=models'])
+  assert.deepEqual(app.navigated, ['/api/bili-duty/manage?tab=models&inside=1'])
 })
 
 test('平板触控设备采用网关同源导航，即使 UA 不包含 Android', async () => {
   const app = browser({userAgent: 'Mozilla/5.0 (Linux; Tablet)', innerWidth: 690, maxTouchPoints: 5,
     fetchImpl: () => ({ok: true, headers: {get: name => name === 'content-type' ? 'text/html' : '1'}})})
   await app.openManage()
-  assert.deepEqual(app.navigated, ['/api/bili-duty/manage'])
+  assert.deepEqual(app.navigated, ['/api/bili-duty/manage?inside=1'])
   assert.equal(app.posts.length, 0)
 })
 
@@ -83,7 +83,7 @@ test('Desktop 不支持官方登录时仍打开干净的外部浏览器入口，
   assert.equal(app.requests[0][1].referrerPolicy,'no-referrer');assert.equal(app.requests[1][0],'/api/remoteConnection/loginUrl');assert.ok(app.expanded.at(-1))
   await app.openManage('firststart','fs-deps-card',true)
   assert.equal(app.posts.length,1)
-  assert.equal(app.navigated.at(-1),'/api/bili-duty/manage?tab=firststart#fs-deps-card')
+  assert.equal(app.navigated.at(-1),'/api/bili-duty/manage?tab=firststart&inside=1#fs-deps-card')
 })
 
 test('Desktop direct official login uses the actual local Host root without opening or probing management', async()=>{
@@ -154,7 +154,10 @@ test('DSH Mobile 网关的已配对同源代理可访问 HTML/JS，跨站和伪�
     assert.equal(page.status, 200)
     assert.equal(page.headers['x-dafeiyu-management'], '1')
     assert.match(page.body, /meta name="dafeiyu-management" content="1"/)
-    assert.match(page.body, /href="\/" aria-label="返回 DSH 主界面"/)
+    assert.match(page.body, /<div class="manage-return-bar" hidden>/)
+    const inside=await call('/api/bili-duty/manage?tab=firststart&inside=1',upstreamHeaders)
+    assert.equal(inside.status,200);assert.match(inside.body,/<div class="manage-return-bar"><a/)
+    assert.match(inside.body, /href="\/" aria-label="返回 DSH 主界面"/)
     assert.match(page.body, /\.manage-return-bar\{position:sticky;top:0/)
     assert.match(page.headers['content-security-policy'], /frame-ancestors 'none'/)
     const js = await call('/api/bili-duty/manage.js', upstreamHeaders)
@@ -356,7 +359,7 @@ test('Desktop official owner login is requested only on explicit open; a changed
   await app.openManage('models');assert.deepEqual(app.navigated,[origin+'/?token='+secret,origin+'/api/bili-duty/browser?tab=models&auto=1']);assert.equal(app.results.at(-1),'请查看大肥鱼管理中心标签页。')
   origin='http://127.0.0.1:7823';secret='synthetic-next';await app.openManage('models');assert.deepEqual(app.navigated.slice(-2),[origin+'/?token='+secret,origin+'/api/bili-duty/browser?tab=models&auto=1'])
   assert.equal(calls.length,2);assert.notEqual(calls[0].rpcId,calls[1].rpcId);assert.doesNotMatch(JSON.stringify([app.errors,app.results,app.posts]),/synthetic-/)
-  await app.openManage('models','',true);assert.equal(calls.length,2);assert.equal(app.navigated.at(-1),'/api/bili-duty/manage?tab=models')
+  await app.openManage('models','',true);assert.equal(calls.length,2);assert.equal(app.navigated.at(-1),'/api/bili-duty/manage?tab=models&inside=1')
 })
 
 test('owner login failure, wrong origin/path or extra URL fields fall back without exposing returned data',async()=>{

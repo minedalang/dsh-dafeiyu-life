@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-import {planVideoMomentFollowup} from '../lib/video-moment-followup.mjs'
+import {planVideoMomentFollowup,proposeVideoRecallFollowup} from '../lib/video-moment-followup.mjs'
 import {systemHealthSnapshot} from '../lib/system-health-projection.mjs'
 const BV='BV1bkW86bEkj'
 test('明确时间能触发新视频局部复查，且不能越出视频真实时长',()=>{
@@ -51,4 +51,12 @@ test('视频补看工具、固定 ASR 上下游超时与运行 UI 已接入，�
  assert.match(ui,/health-channel-chip\[data-state="failed"\]/)
  assert.match(client,/Array\.isArray\(data\.channels\)/)
  assert.match(client,/chip\.title=detail/)
+})
+
+
+test('explicit current short window with missing evidence can offer a public recall follow-up, never historical reconstruction',()=>{
+ const row={bvid:BV,memoryId:'e-'+'a'.repeat(18),visibility:'public-event',visual:{source:'decoded-public-video'},sources:['visual-model-observation']};const opt={result:{ok:false,reason:'no-detail-in-time-range'},bvid:BV,startMs:2000,endMs:8000,trace:[row]};
+ const c=proposeVideoRecallFollowup(opt);assert.equal(c.tool,'bili_video_revisit_moment');assert.equal(c.args.at_seconds,5);assert.equal(c.args.recall_memory_id,row.memoryId);assert.match(c.note,/新观察不能回答当时/);
+ for(const change of [{firstObservation:true},{cursor:'old'},{trace:[]},{trace:[{...row,visibility:'private-session'}]},{trace:[{...row,bvid:'BV1234567890'}]},{result:{ok:true,hasMore:true}},{result:{ok:false,reason:'detail-budget-too-small'}},{result:{ok:false,reason:'detail-invalid'}},{result:{ok:false,reason:'memory-unavailable'}},{endMs:15001},{startMs:undefined}])assert.equal(proposeVideoRecallFollowup({...opt,...change}),null);
+ const server=readFileSync(new URL('../index.js',import.meta.url),'utf8');assert.match(server,/revisitCandidate=proposeVideoRecallFollowup/);assert.match(server,/videoEvidenceTrace\(\{bvid,memoryId,accountTag,visualOnly:true,limit:1,ownerSession:false\}\)/);
 })

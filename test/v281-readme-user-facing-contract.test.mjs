@@ -11,8 +11,8 @@ test('README is a complete user homepage, not just this release changelog',()=>{
   let prev=-1
   for(const heading of headings){const index=readme.indexOf(heading);assert.ok(index>prev,`${heading} is missing or out of order`);prev=index}
   assert.equal(readme.slice(readme.indexOf(headings[4])).match(/^## /gm).length,2,'future roadmap must be the final section immediately before acknowledgements')
-  assert.match(readme,/\[🆕 2\.8\.2 更新内容\]\(#-282-视频感知体验优化\)/,
-    'the current-version navigation must link to the real GitHub heading anchor')
+  if(pkg.version.startsWith('2.8.3'))assert.match(readme,/\[🆕 2\.8\.3 版本亮点\]\(#-283-让经历成为记忆\)/, 'current-version navigation must link to the real heading');
+  else assert.match(readme,/\[🆕 2\.8\.2 更新内容\]\(#-282-视频感知体验优化\)/, 'current-version navigation must link to the real heading')
   for(const feature of ['Life','B站','私信','评论','人物关系','记忆','兴趣','情绪','主 Session','三维神经回忆场','快速设置','DSHMarket','MIT','GitHub Issues'])
     assert.ok(readme.includes(feature),`User-facing capability or entrypoint missing: ${feature}`)
   // Official-version source is not proof that every channel has completed distribution.
@@ -28,4 +28,13 @@ test('AGENTS retains mandatory user README editorial rule',()=>{
   assert.match(agents,/长期特色功能/)
   assert.match(agents,/未来规划须固定在致谢正上方/)
   assert.match(agents,/README 的读者是安装与使用大肥鱼的人/)
+})
+
+
+test('2.8.3 user-facing feature introduction is honest and uses a self-contained SVG',()=>{
+ if(!pkg.version.startsWith('2.8.3'))return;
+ const title='## 🆕 2.8.3 让经历成为记忆';assert.ok(readme.indexOf(title)>readme.indexOf('## ✨ 鱼鱼能做什么'));assert.ok(readme.indexOf(title)<readme.indexOf('## 🚀 开始使用'));
+ assert.match(readme,/\[🆕 2\.8\.3 版本亮点\]\(#-283-让经历成为记忆\)/);for(const feature of ['神经回忆场升级','看得见的视频感知','深浅双层记忆','更自然的联想回忆','分层存储与自动备份'])assert.ok(readme.includes(feature),feature);
+ assert.match(readme,/跨聊天场景自主补看的完整体验仍在开发/);assert.ok(readme.length<10000);
+ const svg=readFileSync(new URL('../docs/architecture/assets/283-perception-memory.svg',import.meta.url),'utf8');assert.match(svg,/<svg[^>]+viewBox=/);assert.match(svg,/<title /);assert.match(svg,/<desc /);assert.match(svg,/非实机截图/);assert.doesNotMatch(svg,/<script|<foreignObject|<image|(?:href=|xlink:href=)["']https?:\/\//);
 })

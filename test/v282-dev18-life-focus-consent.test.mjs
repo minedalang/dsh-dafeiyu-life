@@ -47,12 +47,13 @@ test('actual autonomous revisit handler runs without owner job, uses lease, and 
     buildFreshVideoDetails:({sourceRef})=>[{fragmentId:'frame-1',type:'observed-scene',sourceRef,certainty:'model-observation',content:'局部画面',timeAnchorMs:[7000,7000]}],
     buildVideoExplorationEvent:({operationId,accountTag})=>({key:'video-explore:'+operationId,accountTag,experience:{}}),
     lifeMemoryCoordinator:{recordEvents:async([event])=>{events++;assert.equal(event.accountTag,account);context.expectedId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18);return {ok:true}}},
-    randomUUID,createHash,admittedOwnerFocusProofs:proofSet,lifeMemory:{recordVerifiedFocusRevision:({memoryId,sourceProof})=>{
+    randomUUID,createHash,admittedOwnerFocusProofs:proofSet,lifeMemory:{videoEvidenceTrace:()=>context.validRecall?[{memoryId:'e-'+'a'.repeat(18)}]:[],recordVerifiedFocusRevision:({memoryId,sourceProof})=>{
       assert.equal(memoryId,context.expectedId);assert.ok(proofSet.has(sourceProof));updates++;return {ok:true,shallowVersion:1,deepFragments:1}}},log(){}}
   const start=server.lastIndexOf('  tool({',server.indexOf("name:'bili_video_revisit_moment'")),end=server.indexOf('  tool({',start+8)
   try{
     runInNewContext(server.slice(start,end),context)
-    const first=await spec.execute({bvid,at_seconds:7});assert.equal(first.ok,true,JSON.stringify(first));assert.equal(first.deepMemory.status,'updated');assert.equal(events,1);assert.equal(updates,1);assert.equal(receipt,'verified')
+    context.validRecall=false;const rejected=await spec.execute({bvid,at_seconds:7,recall_memory_id:'e-'+'a'.repeat(18)});assert.equal(rejected.reason,'recall-source-unavailable');assert.equal(observations,0);
+    context.validRecall=true;const first=await spec.execute({bvid,at_seconds:7,recall_memory_id:'e-'+'a'.repeat(18)});assert.equal(first.ok,true,JSON.stringify(first));assert.equal(first.deepMemory.status,'updated');assert.equal(events,1);assert.equal(updates,1);assert.equal(receipt,'verified')
     visualStatus='cached';const cached=await spec.execute({bvid,at_seconds:7});assert.equal(cached.status,'reused-cached-window');assert.equal(events,1);assert.equal(updates,1)
     choice='defer';const refused=await spec.execute({bvid,at_seconds:7});assert.equal(refused.ok,false);assert.equal(observations,2)
     choice='act';const busy=await withLifeVideoVisualLease(dir,{accountTag:account,bvid},()=>spec.execute({bvid,at_seconds:7}));assert.equal(busy.ok,false);assert.equal(observations,2)
