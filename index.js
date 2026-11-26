@@ -260,7 +260,7 @@ import { memoryGardenSnapshot } from './lib/memory-garden-view.mjs'
 import { memoryNeuralProjection, neuralProjectionKey, createNeuralActivationTracker, projectNeuralActivation } from './lib/memory-neural-projection.mjs'
 import { systemHealthSnapshot } from './lib/system-health-projection.mjs'
 import {readProductionVisionStatus} from './lib/vision-production-status.mjs'
-import {planVideoMomentFollowup,proposeVideoRecallFollowup,resolveLiveVideoCue,validateVideoRecallGap} from './lib/video-moment-followup.mjs'
+import {planVideoMomentFollowup,proposeVideoRecallFollowup,resolveLiveVideoCue,validateVideoRecallGap,runContextualVideoRevisit,hasExplicitVideoTime} from './lib/video-moment-followup.mjs'
 import {modelTestFailure} from './lib/model-failure-diagnostics.mjs'
 import {providerIds,modelIds} from './lib/model-catalog.mjs'
 import {contentRef, validDynamicId, validCommentId} from './lib/bili-content-ref.mjs'
@@ -2696,7 +2696,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // Follow-up video clarification: the user may mention a minute or an
   // already evidenced event AFTER the first observation. This is an isolated
   // new read, not a rewrite of past memories or automatic social write.
-  tool({
+  const videoRevisitSpec={
     name:'bili_video_revisit_moment',
     description:'只读补看之前视频中没有观察清楚的一段。Life 可自主考虑上次真正观察结果的 focusReviewSuggestion.at_seconds，必须重新通过 Life 意愿决策，可拒绝或延期；主人明确给出的时间点也可传 at_seconds。没有可靠锚点不能猜测时间。重新解码公开视频时间窗，不会评论、点赞或覆盖旧记忆。',
     parameters:{bvid:{type:'string',description:'从当前消息或可信记忆找到的真实 BV，不可猜'},
@@ -2706,7 +2706,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       recall_memory_id:{type:'string',description:'仅使用回忆工具返回的补看候选中的公开经历 ID；不可猜测'},
       recall_start_ms:{type:'number',description:'原补看候选的 recall_start_ms，原样填写'},
       recall_end_ms:{type:'number',description:'原补看候选的 recall_end_ms，原样填写'}},
-    async execute(args={}){
+    async execute(args={},channel={}){
       refreshCfg()
       if(cfg.masterEnabled!==true||!hasCredential())return {ok:false,error:'B站当前不可读取'}
       if(cfg.visionEnabled!==true||!['independent_dsh','independent_local'].includes(resolvedVisionMode()))
@@ -2714,9 +2714,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const bvid=String(args.bvid||'').trim()
       if(!validBv(bvid))return {ok:false,reason:'invalid-bv'}
       const requestedAccount=trustedLifeAccountTag(),requestedEpoch=accountBinding.generation(),requestedPolicy=getSessionIntegration()
-      const scopeCurrent=()=>{
+      const scopeCurrent=(afterObservation=false)=>{
         const policy=getSessionIntegration()
-        return requestedAccount===trustedLifeAccountTag()&&requestedEpoch===accountBinding.generation()&&
+        return (afterObservation?channel.afterCurrent?.()!==false:channel.current?.()!==false)&&requestedAccount===trustedLifeAccountTag()&&requestedEpoch===accountBinding.generation()&&
           requestedPolicy.revision===policy.revision&&requestedPolicy.mode===policy.mode&&integrationAvailable()&&platformReady()&&!accountBinding.status().blocked
       }
       if(!requestedAccount||!scopeCurrent())return {ok:false,reason:'video-account-not-ready'}
@@ -2747,7 +2747,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         priorObservations:cue?[cue]:[],durationSeconds})
       if(!plan.ok)return {ok:false,...plan}
       return runLifeChosenVideoRead({willingness:lifeWillingness,getAccountTag:trustedLifeAccountTag,
-        bvid,mode:'revisit',revisitContext:{origin:gapRequested?'recalled-gap':cueRequested?'live-event-anchor':'explicit-time',
+        bvid,mode:'revisit',scene:channel.scene,uid:channel.uid,revisitContext:{origin:gapRequested?'recalled-gap':cueRequested?'live-event-anchor':'explicit-time',
           startSeconds:plan.startSeconds,endSeconds:plan.endSeconds},read:async({account})=>{
           if(account!==requestedAccount||!scopeCurrent())return {ok:false,reason:'account-changed'}
           if(!recallStillValid())return {ok:false,reason:'recall-source-unavailable'}
@@ -2790,8 +2790,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
                   {status:result.pending?'pending':'not-updated',reason:result.reason}
               }
             }catch(e){log('Life 补看证据记账暂不可用：'+String(e?.message||e).slice(0,90))}
-            if(!scopeCurrent())return {ok:false,reason:'video-read-no-longer-authorized'}
-            if(focusCapture&&scopeCurrent())try{
+            if(!scopeCurrent(true))return {ok:false,reason:'video-read-no-longer-authorized'}
+            if(focusCapture&&scopeCurrent(true))try{
               addLifeVideoGallery(stateDir,{account,bvid,captures:[focusCapture],verified:true,
                 phase:'focus',note:String(confirmed.description||'').slice(0,380),analysis:visual?.description,boardReceipts:visual?.visionBoardReceipts,memoryWrite:{status:memoryState,detailStatus:deepMemory.status,detailReason:deepMemory.reason}})
             }catch(e){log('Life 指定时刻回放图片保存失败：'+String(e?.message||e).slice(0,100))}
@@ -2802,7 +2802,24 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           })
         }})
     }
-  })
+  }
+  tool({...videoRevisitSpec,execute:args=>videoRevisitSpec.execute(args)})
+  // Host-only adapters for the original in-flight DM/Planner turn. Model JSON
+  // is just a request; channel, identity and generation are captured here.
+  const contextualRevisit=({request,offeredBvids,scene='main',uid='',incomingText='',authorized})=>{
+    const account=trustedLifeAccountTag(),epoch=accountBinding.generation(),policy=getSessionIntegration()
+    const isCurrent=()=>{
+      refreshCfg();const p=getSessionIntegration()
+      return Boolean(account)&&account===trustedLifeAccountTag()&&epoch===accountBinding.generation()&&
+        p.revision===policy.revision&&p.mode===policy.mode&&p.mode==='autonomous-life'&&automaticSession.current()&&platformReady()&&
+        !accountBinding.status().blocked&&cfg.masterEnabled===true&&cfg.mainSessionMemoryEnabled===true&&cfg.lifeAgentMode==='active'&&authorized()===true
+    }
+    return runContextualVideoRevisit({request,offeredBvids,isCurrent,
+      allowRange:({startMs,endMs})=>scene==='main'||hasExplicitVideoTime(incomingText,startMs,endMs),
+      readDetails:opts=>lifeMemory?.recallVideoDetails({...opts,accountTag:account,visibility:'public-event',ownerSession:false,maxBytes:8192}),
+      readTrace:opts=>lifeMemory?.videoEvidenceTrace({...opts,accountTag:account,ownerSession:false,visualOnly:true,limit:6})||[],
+      execute:(args,current,afterCurrent)=>videoRevisitSpec.execute(args,{current,afterCurrent,scene,uid})})
+  }
 
   tool({
     name:'bili_video_collect_manual',
@@ -5038,6 +5055,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       oldestAt:binding.generation>1?binding.cutoverAt:0,limit:6})
   }
   const ownerDmAgent=createOwnerDmAgent({
+    getAccountEpoch:()=>accountBinding.generation(),
     dataDir:accountRuntimeDir,
     getAccountTag:trustedLifeAccountTag,
     probeOwnerIncoming:uid=>getNewDmMessages({probeOnly:true,forceUid:uid}),
@@ -5089,6 +5107,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       }
       return {ok:false,reason:'unsupported-read',items:[]}
     },
+    revisitVideo:({uid,request,offeredBvids,isCurrent,incomingText})=>contextualRevisit({request,offeredBvids,scene:'dm',uid,incomingText,
+      authorized:()=>isCurrent()&&cfg.dmWatch===true&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===String(uid)}),
     onTodoSuggested:async({uid,messageId,at,task})=>{
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.dmWatch!==true||cfg.ownerDmAgentEnabled!==true||cfg.ownerDmReadCommandsEnabled!==true||String(cfg.dmOwnerUid||'')!==String(uid))return {ok:false,error:'主人只读待办权限未启用'}
@@ -6039,7 +6059,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         uid:String(req.uid),role:tier,history:req.history,incomingText:String(req.text||''),
         verifiedIncoming:req.trigger==='incoming'&&String(req.messageId||'').length>0,now:Date.now(),optedOut:socialPortrait?.contactBoundary?.(req.uid)==='stop'})
       const linkContexts=[...(sharedLinkCandidates.length?['shared_link']:[]),...(sharedOriginal?['shared_original']:[])]
+      const revisitEpoch=accountBinding.generation(),revisitPolicy=getSessionIntegration()
+      const friendRevisitCurrent=()=>{
+        const dm=dmConfig(),p=getSessionIntegration()
+        return automaticSession.current()&&revisitEpoch===accountBinding.generation()&&p.revision===revisitPolicy.revision&&p.mode===revisitPolicy.mode&&
+          trustedLifeAccountTag()===linkScope&&socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation}).ok&&
+          socialPolicyGate.actor(req.uid).role==='friend'&&dm.enabled&&dm.whitelist.includes(String(req.uid))&&socialPortrait?.contactBoundary?.(req.uid)!=='stop'
+      }
       const generated=await interactionBatcher.generate({kind:'dm',role:tier,...visualReq,socialAutonomy:true,
+        ...(tier==='friend'&&req.trigger==='incoming'&&String(req.messageId||'')&&friendRevisitCurrent()?{
+          revisitVideo:({request,offeredBvids,isCurrent})=>contextualRevisit({request,offeredBvids,scene:'dm',uid:String(req.uid),incomingText:req.text,authorized:()=>friendRevisitCurrent()&&isCurrent()})}:{}),
         ...(linkContexts.length?{sharedLinkScope:linkScope,availableContexts:linkContexts,
           ...(linkRow?{sharedLinkId:linkRow.id}:{}),
           ...(sharedLinkCandidates.length?{sharedLinkCandidates}:{})}:{}),
@@ -6061,6 +6090,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         return attachSocialProof(generated,owner)
       const lines=Array.isArray(generated?.messages)&&generated.messages.length?generated.messages:
         typeof generated?.reply==='string'&&generated.reply.trim()?[generated.reply]:[]
+      if(generated?.validateRevisit&&generated.validateRevisit()!==true)throw Error('video-recall-evidence-changed')
       const sealed=await lifeWillingness?.adoptSocialDecisionQueued({kind:'dm_reply',uid:String(req.uid),
         sourceKey:'dm:'+String(req.uid)+':'+String(req.messageId||''),messages:lines,targetKey:''})
       if(sealed?.ok!==true)throw Error('Life 私信表达授权不可用：'+String(sealed?.reason||'missing'))
@@ -7950,7 +7980,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return rows
     },
     validateLifeVideoMemory:opts=>memoryRetriever?.validateContextualVisualRecall(opts)===true,
-    getLifeVideoDetailRecall:opts=>lifeMemory?.recallVideoDetails(opts)||{ok:false,reason:'memory-unavailable'},
+    getLifeVideoDetailRecall:opts=>lifeMemory?.recallVideoDetails({...opts,ownerSession:false,visibility:'public-event'})||{ok:false,reason:'memory-unavailable'},
+    revisitVideo:({request,offeredBvids,isCurrent})=>contextualRevisit({request,offeredBvids,
+      authorized:()=>isCurrent()&&cfg.autonomousPlannerEnabled===true}),
     // Video is not a mandatory Episode first step. For early, *optional*
     // reconsideration, match the SAME original source for an existing active
     // verified Episode against CURRENTLY executable public intentions,

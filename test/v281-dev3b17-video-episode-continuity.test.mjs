@@ -128,7 +128,7 @@ test('real MemoryCoordinator admission persists bounded visual mentions through 
 // the actual fading Gateway and planner, with no external media or platform.
 async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
  await tmp(async dir=>{
-  let clock=T+2000,account=A,reads=0,executions=0
+  let clock=T+2000,account=A,reads=0,executions=0,revisits=0
   const prompts=[],steps=[]
   const gateway=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>account,now:()=>clock,
    getConfig:()=>({mainSessionMemoryHalfLifeDays:15}),admitMemoryDetails:()=>true})
@@ -143,7 +143,8 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
     autonomousPlannerMinutes:1,autonomousPlannerStartHour:0,autonomousPlannerEndHour:24}),
     getLifeAccountTag:()=>account,getLifeOpportunities:()=>[{id:'op-1',source:'interest-milestone',bvid:BV,eligible:true}],
     getRecentLifeVideoMemory:opts=>gateway.recentVisualExperienceContext(opts),
-    getLifeVideoDetailRecall:opts=>{reads++;return gateway.recallVideoDetails(opts)},
+    getLifeVideoDetailRecall:opts=>{if(!opts.memoryId)reads++;return gateway.recallVideoDetails(opts)},
+    ...(mode.startsWith('revisit')?{revisitVideo:async({offeredBvids,isCurrent})=>{revisits++;assert.deepEqual(offeredBvids,[BV]);return {evidence:{ok:true,description:'新的局部观察'},validate:isCurrent}}}:{}),
     getTodos:()=>[],executeRead:async()=>{executions++;return {ok:false}},
     executeLifeVideoObservation:async()=>{executions++;return {ok:false}},updateTodo:()=>({ok:false}),reflect:async()=>({ok:false}),
     beginDecisionTrace:()=>({step:(type,fields)=>steps.push({type,...fields}),finish(){}}),
@@ -156,6 +157,8 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
       if(mode==='mixed')return JSON.stringify({recallVideoBvid:BV,action:'inspect_opportunity',id:'op-1'})
       return JSON.stringify({recallVideoBvid:BV})
      }
+     if(mode.startsWith('revisit')&&prompts.length===2)return JSON.stringify({videoRevisit:{bvid:BV,startMs:12000,endMs:14000}})
+     if(mode==='revisit-stale'&&prompts.length===3)account=B
      if(mode==='switch-after')account=B
      if(mode==='forget-after')clock+=14*86400000
      if(mode==='repeat')return JSON.stringify({recallVideoBvid:BV})
@@ -168,12 +171,13 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
     assert.equal(prompts.length,1);assert.equal(reads,0)
     if(mode!=='shallow')assert.equal(result.result,'invalid-decision')
    }else{
-    assert.equal(prompts.length,2)
+    assert.equal(prompts.length,mode.startsWith('revisit')&&limit>2?3:2)
+    if(mode.startsWith('revisit')){assert.equal(revisits,limit>2?1:0);if(limit>2)assert.match(prompts[2],/新的局部观察/)}
     assert.ok(prompts[1].includes('"recalledVideoMemory"'))
     assert.match(prompts[1],/不得再次请求 recallVideoBvid/)
     if(hasDetail){assert.match(prompts[1],/红色耳机/);assert.match(prompts[1],/"timeAnchorMs":\[8000,8000\]/)}
     else{assert.match(prompts[1],/"state":"no-detail"/);assert.doesNotMatch(prompts[1],/红色耳机/)}
-    if(['repeat','switch-after','forget-after'].includes(mode))assert.equal(result.result,'invalid-decision')
+    if(['repeat','switch-after','forget-after','revisit-stale'].includes(mode)||mode.startsWith('revisit')&&limit===2)assert.equal(result.result,'invalid-decision')
     else assert.equal(result.result,'voluntary-rest')
     assert.ok(steps.some(s=>s.type==='quota-reserved'&&s.kind==='video-memory-recall'&&s.charged===1))
    }
@@ -336,3 +340,5 @@ test('older than 128 parents and a late fragment absent from overview are retrie
   const absent=await idx.search('避雨器具',corpus.filter(x=>x.id.includes(id)),{minScore:.9});assert.deepEqual(absent.items,[])
  }finally{g.close()}
 }))
+
+test('planner cross-turn revisit resumes original menu, charges continuation, and rejects account change',async()=>{await progressiveScenario({mode:'revisit'});await progressiveScenario({mode:'revisit-stale'});await progressiveScenario({mode:'revisit',limit:2})})

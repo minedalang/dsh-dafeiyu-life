@@ -146,3 +146,15 @@ test('owner-DM uses the shared P6-A off switch and falls back to one bubble',()=
   assert.deepEqual(sent.map(x=>x.text),['只发第一条'])
   assert.equal(result.burst.planned,1)
 }))
+
+test('owner DM cross-turn public revisit resumes the same message once without granting writes',()=>withDir(async dir=>{
+ let calls=0,reads=0,writes=0;const sent=[]
+ const agent=createOwnerDmAgent({dataDir:dir,getConfig:()=>config(),getAccountTag:()=> 'a'.repeat(16),
+ invokeModel:async prompt=>{calls++;if(calls===1)return JSON.stringify({action:'memory_search',queries:['旧视频']});if(calls===2){assert.match(prompt,/video_revisit/);return JSON.stringify({action:'video_revisit',videoRevisit:{bvid:bv,startMs:6000,endMs:8000}})}assert.match(prompt,/新的局部观察/);return JSON.stringify({action:'reply',text:'这次的新画面有风筝'})},
+ recallMemory:async()=>({ok:true,items:[{id:'episode:test',kind:'watch',summary:bv+' 旧视频'}],publicVideoBvids:[bv],validateRecall:()=>true}),
+ revisitVideo:async({offeredBvids,isCurrent})=>{reads++;assert.deepEqual(offeredBvids,[bv]);return {evidence:{ok:true,description:'新的局部观察'},validate:isCurrent}},
+ executeRead:async()=>{throw Error('not generic read')},executeWrite:async()=>{writes++;return {ok:true}},send:async msg=>{sent.push(msg.text);return {ok:true}}})
+ agent.primeInbox([]);await agent.processMessage(row('之前那个视频后来是什么画面？','revisit1'))
+ assert.equal(calls,3);assert.equal(reads,1);assert.equal(writes,0);assert.deepEqual(sent,['这次的新画面有风筝'])
+ assert.equal((await agent.processMessage(row('之前那个视频后来是什么画面？','revisit1'))).skipped,'duplicate')
+}))

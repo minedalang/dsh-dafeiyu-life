@@ -6,7 +6,7 @@
 
 ```mermaid
 %% dev.24 第七批：持久主人确认与退出重启事务；旧代际失效，独立本地记忆与显式跨类别召回；实机待验收。
-%% 2.8.3-dev.25 首批：主 Session 显式事件短语只从现行同账号、完整唯一且有界的公开深层观察定位；已选缺口保留原毫秒范围并对同 BV 全组复核。账号/能力代际、证据变化、已有新证据、歧义或遗忘停止。原 Life 意愿、视觉租约、共享读取预算及真实回执不变；缓存不新增经历，真实新观察独立记录。主人私信、好友私信及后台跨轮续接尚待接入，Windows 实机待验。
+%% 2.8.3-dev.25 跨轮复访候选：主 Session 原入口不变；主人私信、已授权好友私信、后台 Life 按需回忆后，可一次选择同账号清晰公开 BV 的有界缺口。已存观察优先；私信明确时间或唯一活体事件锚点，后台可自主指定新采样位置。复用原 Life 意愿、视觉租约与共享预算；新观察独立记录，缓存不新增经历。原来信/原菜单继续，证据及账号权限代际变化拒绝陈旧续接；不增外发或持久任务。Windows/DSH 真实模型待验。
 %% dev.24 第六批：唯一模式 autonomous-life / memory-foundation；情绪唤醒及跨视频梗学习复核代际，已入场操作原结算，情绪外发原暂停不变。
 %% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。前批宿主固定模式（历史）；第七批接入重启切换。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；前批宿主固定模式（历史）；第七批接入重启切换。
@@ -524,13 +524,24 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   ownerMemorySlot24["独立主人记忆：同一模型资源队列，无平台资源"]
   hostRestart24 --> ownerMemorySlot24
 %% @code ownerMemorySlot24 | lib/life-resource-scheduler.mjs | const runOwnerMemory=
+
+  revisitTurn25["跨轮原任务：主人/好友私信或 Life；一次可选公开缺口；旧观察优先"]
+  focusRecall283 -.-> revisitTurn25
+  unifiedAssoc283 -.-> revisitTurn25
+  revisitTurn25 -.->|原菜单继续；重新核验| planner
+%% @code revisitTurn25 | lib/video-moment-followup.mjs | export async function runContextualVideoRevisit
+%% @code revisitTurn25 | index.js | const contextualRevisit=
+%% @code revisitTurn25 | lib/owner-dm-agent.mjs | const priorGuards=
+%% @code revisitTurn25 | lib/interaction-batch.mjs | row.revisitGuard=
+%% @code revisitTurn25 | lib/autonomous-planner.mjs | const offeredRevisit=
+%% @code revisitTurn25 | lib/dm-autoreply.mjs | const evidenceCurrent=
 ```
 
 ## 二、八类候选细目
 
 ```mermaid
 %% dev.24 第七批：持久主人确认与退出重启事务；旧代际失效，独立本地记忆与显式跨类别召回；实机待验收。
-%% 2.8.3-dev.25 首批：主 Session 显式事件短语只从现行同账号、完整唯一且有界的公开深层观察定位；已选缺口保留原毫秒范围并对同 BV 全组复核。账号/能力代际、证据变化、已有新证据、歧义或遗忘停止。原 Life 意愿、视觉租约、共享读取预算及真实回执不变；缓存不新增经历，真实新观察独立记录。主人私信、好友私信及后台跨轮续接尚待接入，Windows 实机待验。
+%% 2.8.3-dev.25 跨轮复访候选：主 Session 原入口不变；主人私信、已授权好友私信、后台 Life 按需回忆后，可一次选择同账号清晰公开 BV 的有界缺口。已存观察优先；私信明确时间或唯一活体事件锚点，后台可自主指定新采样位置。复用原 Life 意愿、视觉租约与共享预算；新观察独立记录，缓存不新增经历。原来信/原菜单继续，证据及账号权限代际变化拒绝陈旧续接；不增外发或持久任务。Windows/DSH 真实模型待验。
 %% dev.24 第六批：唯一模式 autonomous-life / memory-foundation；情绪唤醒及跨视频梗学习复核代际，已入场操作原结算，情绪外发原暂停不变。
 %% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。前批宿主固定模式（历史）；第七批接入重启切换。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；前批宿主固定模式（历史）；第七批接入重启切换。
@@ -759,7 +770,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 
 %% dev.6: existing explicit revisit tool, no new automatic opportunity.
   revisit283["现行公开深层锚点/精确缺口复核：Life 意愿与同账号同 BV 视觉租约"]
-  video -.->|仅显式入口；独立意愿| revisit283
+  video -.->|既有入口；独立意愿| revisit283
 %% @code revisit283 | index.js | name:'bili_video_revisit_moment'
 %% @code revisit283 | lib/video-moment-followup.mjs | export function resolveLiveVideoCue
 
@@ -774,13 +785,17 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   plannerEpoch24["普通计划复核原代际；暂停保留任务"]
   plannerEpoch24 -.-> planner
 %% @code plannerEpoch24 | lib/autonomous-planner.mjs | const tick=async options=>automaticSession.dispatch
+
+  revisitTurn25["跨轮原任务：主人/好友私信或 Life；一次可选公开缺口；旧观察优先"]
+  revisitTurn25 -.->|真实缺口才入原意愿| revisit283
+%% @code revisitTurn25 | lib/video-moment-followup.mjs | export async function runContextualVideoRevisit
 ```
 
 ## 三、可信回执与记忆闭环
 
 ```mermaid
 %% dev.24 第七批：持久主人确认与退出重启事务；旧代际失效，独立本地记忆与显式跨类别召回；实机待验收。
-%% 2.8.3-dev.25 首批：主 Session 显式事件短语只从现行同账号、完整唯一且有界的公开深层观察定位；已选缺口保留原毫秒范围并对同 BV 全组复核。账号/能力代际、证据变化、已有新证据、歧义或遗忘停止。原 Life 意愿、视觉租约、共享读取预算及真实回执不变；缓存不新增经历，真实新观察独立记录。主人私信、好友私信及后台跨轮续接尚待接入，Windows 实机待验。
+%% 2.8.3-dev.25 跨轮复访候选：主 Session 原入口不变；主人私信、已授权好友私信、后台 Life 按需回忆后，可一次选择同账号清晰公开 BV 的有界缺口。已存观察优先；私信明确时间或唯一活体事件锚点，后台可自主指定新采样位置。复用原 Life 意愿、视觉租约与共享预算；新观察独立记录，缓存不新增经历。原来信/原菜单继续，证据及账号权限代际变化拒绝陈旧续接；不增外发或持久任务。Windows/DSH 真实模型待验。
 %% dev.24 第六批：唯一模式 autonomous-life / memory-foundation；情绪唤醒及跨视频梗学习复核代际，已入场操作原结算，情绪外发原暂停不变。
 %% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。前批宿主固定模式（历史）；第七批接入重启切换。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；前批宿主固定模式（历史）；第七批接入重启切换。
@@ -1075,13 +1090,18 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   continuationEpoch24["连续写入复核代际；已开始操作仍结算"]
   continuationEpoch24 -.-> planner
 %% @code continuationEpoch24 | lib/life-continuation-write.mjs | if(canStart()!==true)return
+
+  revisitTurn25["跨轮原任务：主人/好友私信或 Life；一次可选公开缺口；旧观察优先"]
+  recall -.-> revisitTurn25
+  revisitTurn25 -.->|仅新真实观察独立入账| focusDeep283
+%% @code revisitTurn25 | lib/video-moment-followup.mjs | export async function runContextualVideoRevisit
 ```
 
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
 %% dev.24 第七批：持久主人确认与退出重启事务；旧代际失效，独立本地记忆与显式跨类别召回；实机待验收。
-%% 2.8.3-dev.25 首批：主 Session 显式事件短语只从现行同账号、完整唯一且有界的公开深层观察定位；已选缺口保留原毫秒范围并对同 BV 全组复核。账号/能力代际、证据变化、已有新证据、歧义或遗忘停止。原 Life 意愿、视觉租约、共享读取预算及真实回执不变；缓存不新增经历，真实新观察独立记录。主人私信、好友私信及后台跨轮续接尚待接入，Windows 实机待验。
+%% 2.8.3-dev.25 跨轮复访候选：主 Session 原入口不变；主人私信、已授权好友私信、后台 Life 按需回忆后，可一次选择同账号清晰公开 BV 的有界缺口。已存观察优先；私信明确时间或唯一活体事件锚点，后台可自主指定新采样位置。复用原 Life 意愿、视觉租约与共享预算；新观察独立记录，缓存不新增经历。原来信/原菜单继续，证据及账号权限代际变化拒绝陈旧续接；不增外发或持久任务。Windows/DSH 真实模型待验。
 %% dev.24 第六批：唯一模式 autonomous-life / memory-foundation；情绪唤醒及跨视频梗学习复核代际，已入场操作原结算，情绪外发原暂停不变。
 %% dev.24：本批通知哨兵、私信/评论自动处理、社交及待办快唤醒复核完整生活代际；未开始外发延期，已开始事务保留原回执或未知冻结。普通 Life 计划、连续探索与自动反思亦复核原代际；待办回访（含检查/DEBUG）及私信片段自动提炼共享代际，暂停不消费待办或模型失败次数，已接受回执/经历继续结算。生活动态、社会邀请自动审阅和独立经历定时收集亦复用完整生活代际；旧动态模型结果不保存，已开始发送照常结算，未核验回执在有效代际再核验；邀请暂停保留原候选。前批宿主固定模式（历史）；第七批接入重启切换。
 %% dev.24：主 Session 挂载与经历桥共享可信宿主策略及代际，协作仅保留显式记忆/待办工具，暂停自动提示、同步及主动联系；前批宿主固定模式（历史）；第七批接入重启切换。
@@ -1341,4 +1361,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
   foundationSelf24["显式跨类别本地召回：私密自述"]
   foundationPolicy24 --> foundationSelf24
 %% @code foundationSelf24 | lib/long-term-memory.mjs | selfRecallMemories
+
+  revisitTurn25["跨轮原任务：主人/好友私信或 Life；一次可选公开缺口；旧观察优先"]
+  memory -.-> revisitTurn25
+  revisitTurn25 -.->|仅合法缺口| read
+%% @code revisitTurn25 | lib/video-moment-followup.mjs | export async function runContextualVideoRevisit
 ```

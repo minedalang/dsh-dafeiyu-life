@@ -87,3 +87,22 @@ test('配置及管理界面开关在真实读写路径上接通，并精确说�
   assert.match(ui,/所有符合处理条件的私信均由统一 Life 决策入口处理/)
   assert.match(js,/payload\.interactionContextMode/)
 })
+
+test('friend DM continuation uses delivered public recall once and original message',async()=>{
+ const bvid='BV1234567890';let calls=0,reads=0,intakes=0
+ const b=make(async prompt=>{calls++;if(calls===1)return answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:['风筝']});if(calls===2){assert.match(prompt,/publicVideoRevisitTargets/);return answer({action:'skip',reply:'',videoRevisit:{bvid,startMs:6000,endMs:8000}})}assert.match(prompt,/新的观察/);assert.match(prompt,/今天好吗/);return answer({reply:'这次看到风筝'})},
+ {loadRequestedContexts:async()=>[{memoryContext:bvid+' 旧观察',publicVideoBvids:[bvid],validateRecall:()=>true}]})
+ try{const result=await b.generate({...base,role:'friend',trigger:'incoming',revisitVideo:async({offeredBvids,isCurrent})=>{reads++;assert.deepEqual(offeredBvids,[bvid]);assert.equal(isCurrent(),true);return {evidence:{description:'新的观察'},validate:isCurrent}},allowTodoIntake:true,onTodoProposal:()=>{intakes++}})
+ assert.equal(result,'这次看到风筝');assert.equal(calls,3);assert.equal(reads,1);assert.equal(intakes,0)}finally{b.stop()}
+})
+test('friend DM cannot request a guessed BV before a real recall or combine a revisit with an outgoing draft',async()=>{
+ let reads=0;const b=make(async()=>answer({videoRevisit:{bvid:'BV1234567890',startMs:6000,endMs:8000}}))
+ try{await assert.rejects(b.generate({...base,role:'friend',revisitVideo:async()=>{reads++}}));assert.equal(reads,0)}finally{b.stop()}
+})
+
+test('friend real social decision keeps the live evidence guard until sending',async()=>{
+ const bvid='BV1234567890';let calls=0,live=true
+ const b=make(async prompt=>{calls++;if(calls===1)return answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:['风筝']});if(calls===2)return answer({action:'skip',reply:'',videoRevisit:{bvid,startMs:6000,endMs:8000}});assert.doesNotMatch(prompt,/publicVideoRevisitTargets/);return answer({reply:'',messages:['这次看到风筝']})},
+ {loadRequestedContexts:async()=>[{memoryContext:bvid+' 旧观察',publicVideoBvids:[bvid],validateRecall:()=>live}]})
+ try{const result=await b.generate({...base,role:'friend',socialAutonomy:true,trigger:'incoming',threadKey:'dm:1234',canSkip:true,revisitVideo:async({isCurrent})=>({evidence:{description:'新的观察'},validate:isCurrent})});assert.equal(result.action,'reply');assert.deepEqual(result.messages,['这次看到风筝']);assert.equal(result.validateRevisit(),true);live=false;assert.equal(result.validateRevisit(),false);assert.equal(calls,3)}finally{b.stop()}
+})
