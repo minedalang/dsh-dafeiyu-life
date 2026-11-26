@@ -505,7 +505,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code persistentAssoc283 | lib/life-memory-gateway.mjs | function recordAssociations
 
   unifiedAssoc283 -.->|已核验公开召回候选返回；短期只读投影| neuralEvidence283
-  neuralEvidence283["主人神经场：证据与模型关联分层；无来源不回填"]
+  neuralEvidence283["主人神经场：本地身份记忆；平台证据按准入；无来源不回填"]
   persistentAssoc283 -.-> neuralEvidence283
   growth -.-> neuralEvidence283
 %% @code neuralEvidence283 | lib/life-memory-gateway.mjs | function neuralEvidenceSnapshot

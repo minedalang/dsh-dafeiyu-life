@@ -8895,7 +8895,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&['/api/bili-duty/video-dependencies/status','/api/bili-duty/video-dependencies/whisper/status'].includes(path)) || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/whisper/delete') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/paths') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/ffmpeg/test')
     if(req.method==='POST'&&sessionIntegration.getCapabilities()?.platform!==true&&(path.startsWith('/api/bili-duty/login/')||path==='/api/bili-duty/account/confirm'||path==='/api/bili-duty/account/resume'||path==='/api/bili-duty/onboarding/bili/verify'||path==='/api/bili-duty/onboarding/complete'))return sendJson(res,423,{ok:false,blocked:true,error:'平台接入未启用或能力配置待重启'})
-    const localMemoryAccess=localMemoryReady()&&((req.method==='GET'&&path==='/api/bili-duty/main-session/memory')||(req.method==='POST'&&['/api/bili-duty/main-session/memory/recall','/api/bili-duty/main-session/memory/add','/api/bili-duty/main-session/memory/delete','/api/bili-duty/main-session/memory/consolidate','/api/bili-duty/embedding/install','/api/bili-duty/embedding/disable','/api/bili-duty/embedding/rebuild','/api/bili-duty/embedding/cancel','/api/bili-duty/embedding/delete','/api/bili-duty/embedding/import-model'].includes(path)))
+    const localMemoryAccess=localMemoryReady()&&((req.method==='GET'&&['/api/bili-duty/main-session/memory','/api/bili-duty/main-session/memory/garden','/api/bili-duty/main-session/memory/neural'].includes(path))||(req.method==='POST'&&['/api/bili-duty/main-session/memory/recall','/api/bili-duty/main-session/memory/add','/api/bili-duty/main-session/memory/delete','/api/bili-duty/main-session/memory/consolidate','/api/bili-duty/embedding/install','/api/bili-duty/embedding/disable','/api/bili-duty/embedding/rebuild','/api/bili-duty/embedding/cancel','/api/bili-duty/embedding/delete','/api/bili-duty/embedding/import-model'].includes(path)))
     if(!platformReady() && !setupAccess&&!localMemoryAccess)return sendJson(res,423,{ok:false,blocked:true,error:platformMessage()})
     if(!integrationAvailable()&&!setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:'模式切换待重启或不可用'})
     // ⭐ 2026-10-21：每条视频一份笔记 —— **宿主拆报告**，不让模型多写一个字（零 token、不会写错）
@@ -10558,11 +10558,12 @@ logger:{warn:m=>log('社交意图：'+m)}
         const requestedLimit=Number(url.searchParams.get('limit'))
         const limit=neuralView?Math.min(10000,Math.max(1,Number.isFinite(requestedLimit)?Math.floor(requestedLimit):1000)):
           Math.min(120,Math.max(1,requestedLimit||90))
+        const platformView=platformReady()
         let people=[],peopleError=''
         try{
           // An index that does not exist must not be created just by browsing
           // the garden (unlike the full relationship management page).
-          const index=existingRelationshipIndex()
+          const index=platformView?existingRelationshipIndex():null
           if(index){
             let cursor=''
             for(let pageNo=0;pageNo<(neuralView?200:4);pageNo++){
@@ -10574,13 +10575,13 @@ logger:{warn:m=>log('社交意图：'+m)}
             }
           }
         }catch(e){peopleError='关系观察索引暂不可用：'+String(e?.message||e).slice(0,90)}
-        const sharedGardenArgs={interests:interestMemoryRows(stateDir),people,
+        const sharedGardenArgs={interests:platformView?interestMemoryRows(stateDir):[],people,
           query:neuralView?'':q,kind:neuralView?'':kind,limit:neuralView?10000:limit,peopleError}
         // Preserve the original bounded garden contract while the neural graph
         // explicitly opts in to its separate, high-density read-only view.
         const result=neuralView
           ?memoryGardenSnapshot({memories:longTermMemory.listForVisualization(10000),...sharedGardenArgs})
-          :memoryGardenSnapshot({memories:longTermMemory.list('',300),...sharedGardenArgs})
+          :memoryGardenSnapshot({memories:platformView?longTermMemory.list('',300):longTermMemory.listForVisualization(300),...sharedGardenArgs})
         if(neuralView){
           // The graph is a bounded view of the CURRENT fading copy. `recall()`
           // would cap to 12 and filter nonmatches; neither behavior is suitable
@@ -10590,10 +10591,10 @@ logger:{warn:m=>log('社交意图：'+m)}
           // when that episode is older than the normal graph node cap. The
           // Gateway still enforces account and forgetting scope; never read archives.
           const exactVideoQuery=/^BV[0-9A-Za-z]{10}$/.test(q)?q:''
-          const graphAccount=trustedLifeAccountTag()
-          const rawEpisodes=lifeMemory?.semanticCandidates({query:exactVideoQuery,domain:'main-session',
-            kinds:['watch','comment','social'],limit:3200})||[]
-          const episodes=lifeMemory?.videoRecallGroups(rawEpisodes)||rawEpisodes
+          const graphAccount=platformView?trustedLifeAccountTag():''
+          const rawEpisodes=platformView?(lifeMemory?.semanticCandidates({query:exactVideoQuery,domain:'main-session',
+            kinds:['watch','comment','social'],limit:3200})||[]):[]
+          const episodes=platformView?(lifeMemory?.videoRecallGroups(rawEpisodes)||rawEpisodes):[]
           const allRows=[...result.rows,...episodes.map(m=>({...m,gardenKind:'experience',gardenEvidence:'fading-life-episode'}))]
           const pre=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true})
           const allowedIds=new Set(pre.nodes.map(m=>m.id))
@@ -10602,7 +10603,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           // index intentionally uses privacy-filtered wording, not the
           // display label; hashing the display text made ALL those vectors
           // appear missing even when the local model was ready.
-          const indexedText=new Map(memoryRetriever.embeddingCorpus({includeVisualDetails:false}).map(row=>[row.id,row.text]))
+          const indexedText=new Map(platformView?memoryRetriever.embeddingCorpus({includeVisualDetails:false}).map(row=>[row.id,row.text]):result.rows.map(row=>['memory:'+String(row.id),row.text]))
           const foodIntent=/(?:喜欢吃|爱吃|想吃|吃什么|吃的|美食|食物|口味|零食|水果|饭菜|好吃)/i.test(q)
           const foodTopic=/(?:美食|食物|饮食|口味|零食|水果|蔬菜|饭|菜|甜点|饮料|肉|蛋|鱼|米|面|早餐|午餐|晚餐|小吃|烹饪|做饭)/i
           const corpus=allRows.filter(m=>{
@@ -10637,8 +10638,8 @@ logger:{warn:m=>log('社交意图：'+m)}
               }else semanticWarning='向量查询没有可用索引，本次只使用关键词命中。'
             }catch(error){semanticWarning='向量查询暂不可用，本次退回关键词命中。'}
           }
-          if(graphAccount!==trustedLifeAccountTag()||(graphAccount&&accountBinding.status().blocked))return sendJson(res,409,{ok:false,error:'账号状态已改变，重新读取神经回忆场'})
-          const verifiedGraph=lifeMemory?.neuralEvidenceSnapshot({accountTag:graphAccount,gardenRows:result.rows,interestEvidence:interestNeuralEvidence(stateDir,graphAccount),episodeRows:episodes})||{links:[],emotions:[]}
+          if(platformView!==platformReady()||!localMemoryReady()||(platformView&&(graphAccount!==trustedLifeAccountTag()||(graphAccount&&accountBinding.status().blocked))))return sendJson(res,409,{ok:false,error:'账号状态已改变，重新读取神经回忆场'})
+          const verifiedGraph=platformView?(lifeMemory?.neuralEvidenceSnapshot({accountTag:graphAccount,gardenRows:result.rows,interestEvidence:interestNeuralEvidence(stateDir,graphAccount),episodeRows:episodes})||{links:[],emotions:[]}):{links:[],emotions:[]}
           const projection=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true,semanticMatchIds:semanticMatches,semanticScores,verifiedGraph})
           const layout=cfg.mainSessionMemoryEmbeddingEnabled===true?embeddingIndex?.projectPoints(corpus,{query:semanticReady?q:''}):null
           const positions=layout?.coordinates||{}

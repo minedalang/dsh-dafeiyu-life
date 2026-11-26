@@ -150,7 +150,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('fs-complete').hidden,false)
   assert.equal(element('fs-complete').disabled,false,'未完成的用户仍应点击得到准确缺项说明')
   assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-bili-state')
-  assert.equal(element('[data-tab="life"]').hidden,true)
+  assert.equal(element('[data-tab="life"]').hidden,false)
   show({...fresh,biliVerified:true,missing:['Headless 模型同步与验证']})
   assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-headless-state')
   show({...fresh,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]})
@@ -160,12 +160,12 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(banner.dataset.kind,'repair')
   assert.equal(element('fs-complete').hidden,true)
   assert.equal(element('fs-quick-ack').hidden,true)
-  assert.equal(element('[data-tab="life"]').hidden,true,'实际模型验证失效不等于仅需确认版本')
+  assert.equal(element('[data-tab="life"]').hidden,false,'独立记忆不受模型验证失效影响')
   const local={...fresh,localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:false,autonomous:false,persona:false,automaticMemory:false,bridge:false},requested:{platform:false,autonomous:false,persona:false,automaticMemory:false,bridge:false},revision:1,restartRequired:false}}
   show({...old,capabilities:local.capabilities})
-  assert.equal(element('management-shell').dataset.workspace,'foundation')
-  for(const tab of ['social','life-agent','plans','life','backup'])assert.equal(element(`[data-tab="${tab}"]`).hidden,true)
-  for(const tab of ['home','models','firststart'])assert.equal(element(`[data-tab="${tab}"]`).hidden,false)
+  assert.equal(element('management-shell').dataset.platform,'off')
+  for(const tab of ['social','life-agent','plans','backup'])assert.equal(element(`[data-tab="${tab}"]`).hidden,true)
+  for(const tab of ['home','models','life','firststart'])assert.equal(element(`[data-tab="${tab}"]`).hidden,false)
   assert.equal(element('life-system-health').hidden,true)
   show(local)
   assert.equal(element('fs-cap-platform').checked,false)
@@ -181,17 +181,17 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('fs-integration-save').disabled,false)
   assert.match(element('fs-integration-state').textContent,/尚未保存/)
   assert.match(element('fs-integration-current').textContent,/当前配置已生效/)
-  assert.equal(element('fs-foundation-memory').hidden,false)
+  assert.equal(element('core-quick-links').hidden,false)
   assert.equal(element('fs-complete').hidden,true)
-  assert.match(element('fs-summary').textContent,/记忆入口/)
+  assert.match(element('fs-summary').textContent,/鱼的记忆/)
   show({...fresh,localMemoryReady:false,capabilities:{...old.capabilities,available:false,requested:local.capabilities.active,restartRequired:true}})
   assert.equal(element('fs-integration-save').disabled,true)
-  assert.equal(element('fs-foundation-memory').hidden,true)
+  assert.equal(element('core-quick-links').hidden,true)
   assert.match(element('fs-integration-state').textContent,/退出 DSH/)
   assert.equal(element('fs-cap-platform').disabled,true)
   assert.equal(element('fs-cap-autonomous').disabled,true)
   assert.equal(element('fs-integration-current').dataset.state,'pending')
-  assert.equal(element('management-shell').dataset.workspace,'restricted')
+  assert.equal(element('management-shell').dataset.platform,'checking')
   for(const tab of ['home','models','life','backup','life-agent','social'])assert.equal(element(`[data-tab="${tab}"]`).hidden,true)
   show({...fresh,capabilities:{ok:false}})
   assert.equal(element('fs-integration-current').dataset.state,'error')
@@ -255,7 +255,7 @@ test('记忆基座 Session 指南与正式文档一致，复制仅本地且保�
   const text=html.match(/<textarea id="fs-foundation-guide-text"[^>]*readonly[^>]*>([\s\S]*?)<\/textarea>/)?.[1].replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
   assert.equal(text?.replace(/\r\n/g,'\n'),doc.match(/```text\n([\s\S]*?)\n```/)?.[1]);
   for(const name of ['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall'])assert.ok(text.includes(name)&&read('lib/long-term-memory.mjs').includes("name:'"+name+"'"));
-  const copy=js.slice(js.indexOf("$('fs-foundation-guide-copy').addEventListener"),js.indexOf("$('fs-foundation-memory-recall').addEventListener"));
+  const copy=js.slice(js.indexOf("$('fs-foundation-guide-copy').addEventListener"),js.indexOf('const renderSessionMount='));
   assert.match(copy,/navigator\.clipboard\.writeText\(guide\.value\)/);assert.match(copy,/guide\.select\(\)/);assert.doesNotMatch(copy,/request\(|fetch\(/);
   assert.match(js,/mobileReadOnlySelector=.*#fs-foundation-guide-copy/);assert.match(js,/#fs-foundation-guide-text\[readonly\]/);
 })

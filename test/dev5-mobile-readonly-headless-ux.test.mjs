@@ -27,7 +27,7 @@ function journey(mobileViewOnly=false,foundation=false){
   const start=js.indexOf('  const renderHeadlessJourney=providers=>{')
   const end=js.indexOf("  $('headless-next-action').addEventListener",start)
   assert.ok(start>=0&&end>start)
-  const fn=runInNewContext(js.slice(start,end)+'\nrenderHeadlessJourney',{ $,mobileViewOnly,foundationWorkspace:()=>foundation })
+  const fn=runInNewContext(js.slice(start,end)+'\nrenderHeadlessJourney',{ $,mobileViewOnly,platformSettingsUnavailable:()=>foundation })
   return {fn,$}
 }
 test('Headless 状态机：检测 → 同步 → 验证，未验证不能显示完成',()=>{

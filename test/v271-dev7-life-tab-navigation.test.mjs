@@ -75,7 +75,7 @@ test('direct Life link accepts same registered route and is not removed by the o
   assert.match(js,/if\(!tabAvailable\(tab\)\)tab='firststart'/)
   const start=js.indexOf('  const capabilityKeys='),end=js.indexOf('  const skipFirstStart=',start);const allowed=runInNewContext(js.slice(start,end)+'\ntabAvailable',{tabNames:tabs})
   const local={ok:true,welcomeCompleted:true,requiredReady:true,localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:false,autonomous:false,persona:false,automaticMemory:false,bridge:false},requested:{platform:false,autonomous:false,persona:false,automaticMemory:false,bridge:false},revision:0,restartRequired:false}}
-  assert.equal(allowed('life-agent',local),false);assert.equal(allowed('life',local),false);assert.equal(allowed('home',local),true)
+  assert.equal(allowed('life-agent',local),false);assert.equal(allowed('life',local),true);assert.equal(allowed('home',local),true)
   const paused={...local,capabilities:{ok:true,available:true,active:{...local.capabilities.active,platform:true},requested:{...local.capabilities.active,platform:true},revision:0,restartRequired:false}}
   assert.equal(allowed('life-agent',paused),false);assert.equal(allowed('life',paused),true);assert.equal(allowed('bili',paused),true)
   assert.equal(allowed('life-agent',{...paused,capabilities:{...paused.capabilities,restartRequired:true}}),false)

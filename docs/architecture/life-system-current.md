@@ -344,3 +344,8 @@ dev.24 收口候选：主人同源确认的持久模式事务，保存即阻止�
 ### dev.24 统一能力配置候选（取代双模式产品设计）
 
 `createHostSessionIntegration` v2 保存 platform/autonomous/persona/automaticMemory/bridge；旧 mode 仅为原代际消费者适配。`localMemoryReady` 与 `platformReady` 分开；主 Session 人格和自动回忆分别挂载，显式记忆仍保留，经历桥保守复用原平台与自主准入。旧文件名和原代际保护继续有效。历史图谱及手工备份独立准入、旧协议清理和真实宿主验收仍待完成。详见 [统一能力架构](2.8.3-dev24-unified-capabilities-plan.md)。
+
+
+### dev.24 管理入口整合补充
+
+统一能力配置不再维护基座工作区或二分视图。原记忆页承担搜索、添加、管理与本地只读图谱；Session 接入承载工具挂载和使用指南，AI 模型承载检索模型配置。未验证平台时只提供原允许的本地身份记忆投影，不解锁平台历史、关系、深层证据或完整备份。dev.26 分盘备份、dev.27 审计及 2.9.x 统一认知学习计划不变。
