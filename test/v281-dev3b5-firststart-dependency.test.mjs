@@ -181,3 +181,64 @@ test('offline QR route uses the plugin-local Python on Windows/Linux without net
     assert.doesNotMatch(raw,/example\.invalid/)
   }finally{global.fetch=originalFetch;rmSync(home,{recursive:true,force:true})}
 })
+
+
+// Exercise the production runInstall body on a simulated Windows host. No
+// network access, real package install, system ACL modification or real user data.
+async function runColdInstall({uv='uv',explicit='',base='',old=false,failProbe='',failPackages=false,failCreate=false,highVersion=false}={}){
+  const {runInNewContext}=await import('node:vm')
+  const source=read('index.js'),body=source.slice(source.indexOf('  const runInstall = () => {'),source.indexOf('  /** 「测一下」'))
+  const home='C:/fixture',root=home+'/.venv',py=root+'/Scripts/python.exe';let files=new Set(old?[root,py]:[]),logs=[],calls=[],stages=[],published=[],renames=[]
+  let depReady=old,created=false
+  const rename=(from,to)=>{assert.ok(files.has(from),from);assert.ok(!files.has(to),to);files=new Set([...files].map(f=>f===from||f.startsWith(from+'/')?to+f.slice(from.length):f));renames.push([from,to])}
+  const sandbox={process:{platform:'win32',env:explicit?{BILI_DUTY_VENV_PYTHON:explicit}:{},cwd:()=>home},join:(...xs)=>xs.join('/'),pluginDir:'C:/plugin',stateDir:home,cfg:{pythonPath:'python'},
+    storageDataPath:(_home,...xs)=>home+'/'+xs.join('/'),venvPython:()=>py,existsSync:f=>files.has(f),
+    readFileSync:()=>{if(highVersion)return 'version = 3.14.1';throw Error('absent')},renameSync:rename,
+    resolveUv:async()=>uv,probeCmd:async()=>!!base,storagePyEnv:()=>({}),
+    selectVisionPython:()=>base?{ok:true,path:base}:{ok:false,reason:'missing_runtime'},
+    probeVisionPython:(p,{requiresMcp})=>{calls.push(['probe',p,requiresMcp]);if(p!==py)return {ok:p===base,reason:p===base?'healthy':'missing_runtime'};
+      if(!created)return {ok:false,reason:'runtime_permission_error',stage:'temp'};
+      return failProbe===(requiresMcp?'final':'initial')?{ok:false,reason:'runtime_permission_error',stage:'media_cache'}:{ok:true,reason:'healthy'}},
+    spawnLogged:async(cmd,args)=>{calls.push([cmd,...args]);if(args[0]==='venv'||args[1]==='venv'){created=true;files.add(root);files.add(py);depReady=false;return failCreate?1:0}
+      if(failPackages)return 1;depReady=true;return 0},persistCfg:async v=>{published.push(v);return {host:{ok:true}}},missingVenvDeps:()=>depReady?[]:['mcp'],venvReadyNow:()=>files.has(py)&&depReady,
+    installLogFile:'fixture.log',appendInstall:s=>logs.push(s),log:()=>{},installing:false,installOutcome:'',installFailureHint:'',installProgress:{phase:'idle',completed:0},visionPythonCache:null,
+    installStage:(phase,completed)=>{sandbox.installProgress={phase,completed};stages.push([phase,completed])}}
+  const accepted=runInNewContext(body+'\nrunInstall()',sandbox);assert.equal(accepted.started,true)
+  for(let n=0;sandbox.installing&&n<100;n++)await new Promise(resolve=>setImmediate(resolve))
+  assert.equal(sandbox.installing,false)
+  return {sandbox,calls,stages,logs:logs.join(''),published,renames,files,root,py}
+}
+
+test('Windows clean install provisions pinned managed Python through uv and checks exact new executable before packages',async()=>{
+  const r=await runColdInstall()
+  assert.deepEqual(r.stages,[['checking',0],['environment',1],['packages',2],['verifying',3],['ready',4]])
+  assert.equal(r.sandbox.installOutcome,'ready')
+  assert.deepEqual([...r.calls[0]],['uv','venv','--seed','--python','3.12','--managed-python',r.root])
+  assert.deepEqual([...r.calls[1]],['probe',r.py,false]);assert.equal(r.calls[2][1],'pip');assert.deepEqual([...r.calls.at(-1)],['probe',r.py,true])
+  assert.equal(r.published[0].pythonPath,r.py)
+})
+test('failed managed Python probe never installs packages or publishes readiness; failed candidate is preserved',async()=>{
+  const r=await runColdInstall({failProbe:'initial'})
+  assert.equal(r.sandbox.installOutcome,'failed');assert.deepEqual(r.stages.at(-1),['failed',1]);assert.equal(r.published.length,0)
+  assert.equal(r.calls.some(c=>c.includes('pip')),false);assert.match(r.logs,/runtime_permission_error \/ media_cache/)
+  assert.equal(r.files.has(r.root),false);assert.ok(r.renames[0][1].startsWith(r.root+'.failed-'))
+})
+test('unhealthy old environment restored when replacement creation or final validation fails',async()=>{
+  for(const params of [{old:true,failCreate:true},{old:true,failProbe:'final'},{old:true,highVersion:true,failPackages:true}]){
+    const r=await runColdInstall(params)
+    assert.equal(r.sandbox.installOutcome,'failed');assert.equal(r.published.length,0);assert.equal(r.files.has(r.py),true)
+    assert.ok(r.renames[0][1].startsWith(r.root+'.'));assert.equal(r.renames.at(-1)[1],r.root);assert.notEqual(r.stages.at(-1)[1],4)
+  }
+})
+test('explicit invalid interpreter is not silently replaced, missing uv fails safely, supported version selector provisions via uv',async()=>{
+  for(const params of [{explicit:'C:/invalid/python.exe'},{uv:''}]){
+    const r=await runColdInstall(params);assert.equal(r.sandbox.installOutcome,'failed');assert.equal(r.calls.some(c=>c.includes('venv')),false);assert.equal(r.published.length,0)
+  }
+  const r=await runColdInstall({explicit:'3.11'});assert.equal(r.sandbox.installOutcome,'ready');assert.equal(r.calls[0][4],'3.11')
+})
+test('main dependency progress has a dedicated real-stage bar and failure log disclosure',()=>{
+  const html=read('lib/management-console.html'),js=read('lib/management-console.js')
+  for(const id of ['fs-main-deps-progress-wrap','fs-main-deps-progress','fs-main-deps-stage','fs-main-deps-count','fs-main-deps-details'])assert.equal((html.match(new RegExp('id="'+id+'"','g'))||[]).length,1)
+  assert.match(js,/const p=main\.installProgress\|\|\{\}/);assert.match(js,/phase==='ready'\?4:steps/)
+  assert.match(js,/lastMainInstallPhase!=='failed'\)\$\('fs-main-deps-details'\)\.open=true/)
+})

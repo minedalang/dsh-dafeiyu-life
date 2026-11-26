@@ -6846,6 +6846,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   let installing = false
   let installOutcome = '' // started | ready | failed; never treat queued work as installed
   let installFailureHint = ''
+  let installProgress = {phase:'idle',completed:0}
+  const installStage = (phase,completed) => {installProgress={phase,completed}}
   const installLogFile = join(stateDir, 'install.log')
   const appendInstall = (s) => { try { appendFileSync(installLogFile, s, 'utf8') } catch { /* 写不进去就算了 */ } }
 
@@ -8601,6 +8603,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     installing = true
     installOutcome = 'started'
     installFailureHint = ''
+    installStage('checking',0)
     appendInstall(`\n=== ${new Date().toISOString()} 开始装依赖 ===\n`)
     ;(async () => {
       let rollbackRepair=()=>{}
@@ -8609,21 +8612,23 @@ logger:{warn:m=>log('社交意图：'+m)}
         const mirror = process.env.BILI_DUTY_PIP_MIRROR || 'https://pypi.tuna.tsinghua.edu.cn/simple'
         const venvPy = venvPython()
         const py = String(cfg.pythonPath || 'python')
-        const repairBackup={path:'',done:false}
+        const repairBackup={path:'',done:false,creating:false}
         const restoreIfFailed=()=>{
-          if(!repairBackup.path||repairBackup.done)return
+          if((!repairBackup.path&&!repairBackup.creating)||repairBackup.done)return
           try{
             const current=storageDataPath(stateDir,'.venv')
-            if(existsSync(current))renameSync(current,storageDataPath(stateDir,'.venv') + '.failed-'+Date.now())
-            renameSync(repairBackup.path,current)
-            appendInstall('已恢复原有 Python 虚拟环境；未清理历史凭据或依赖。\n')
+            if(existsSync(current))renameSync(current,current+'.failed-'+Date.now())
+            if(repairBackup.path){
+              renameSync(repairBackup.path,current)
+              appendInstall('已恢复原有 Python 虚拟环境；未清理历史凭据或依赖。\n')
+            }else appendInstall('未通过检查的新环境已隔离保留，可重新安装。\n')
             repairBackup.done=true
           }catch{appendInstall('Python 环境恢复需要人工检查；原有环境备份仍被保留。\n')}
         }
         rollbackRepair=restoreIfFailed
 
           const uvCmd = await resolveUv()   // ⭐ 系统里的 → 家里下好的 → 自己下一份
-        if (!existsSync(venvPy) && !uvCmd && !(await probeCmd(py))) {
+        if (process.platform!=='win32' && !existsSync(venvPy) && !uvCmd && !(await probeCmd(py))) {
           const msg = '这台机器上没有 uv，也没有可用的 python（试过 "' + py + '"），而且我自动下 uv 也没成功'
             + '（大概是网络到不了 GitHub / PyPI 镜像）。⇒ 请手动装 uv（单个 exe：https://docs.astral.sh/uv/）'
             + '或 Python 3.10+（安装时勾 Add to PATH），然后回来再点一次「装依赖」。'
@@ -8639,7 +8644,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           const tagV = mv[1] + '.' + mv[2]
           const bad = storageDataPath(stateDir,'.venv') + '.bad-' + tagV + '-' + Date.now()
           appendInstall('当前环境是 Python ' + tagV + '（太高，brotli / pyyaml 没有现成的包）⇒ 改名重建 3.12\n')
-          try { renameSync(storageDataPath(stateDir,'.venv'), bad) } catch (e2) { appendInstall('改名没成功：' + String(e2?.message ?? e2) + '\n') }
+          try { renameSync(storageDataPath(stateDir,'.venv'), bad);repairBackup.path=bad } catch (e2) { appendInstall('改名没成功：' + String(e2?.message ?? e2) + '\n') }
         }
       } catch { /* 没有 pyvenv.cfg 就算了 */ }
         // A Python installed by uv can be blocked by a per-executable Windows
@@ -8651,35 +8656,48 @@ logger:{warn:m=>log('社交意图：'+m)}
             ?probeVisionPython(venvPy,{home:stateDir,env:storagePyEnv(),requiresMcp:false})
             :{ok:false,reason:'missing_runtime'}
         const explicitlyRequested=String(process.env.BILI_DUTY_VENV_PYTHON||'').trim()
-        const baseChoice=process.platform==='win32'&&(!currentHealth.ok||!existsSync(venvPy))
-          ?selectVisionPython({preferred:explicitlyRequested||cfg.visionPythonPath,configured:cfg.visionPythonPath,
+        // A version selector is not a path to an existing executable. A clean
+        // install may provision a pinned managed interpreter, then must probe
+        // that exact venv before installing any MCP packages or publishing it.
+        const requestedVersion=/^3\.(10|11|12|13)(?:\.\d+)?$/.test(explicitlyRequested)?explicitlyRequested:''
+        const explicitPath=explicitlyRequested&&!requestedVersion?explicitlyRequested:''
+        const baseChoice=process.platform==='win32'&&!currentHealth.ok&&!requestedVersion
+          ?selectVisionPython({preferred:explicitPath||cfg.pythonPath,configured:cfg.visionPythonPath,
               home:stateDir,workdir:process.cwd(),env:storagePyEnv(),requiresMcp:false})
           :null
-        if(explicitlyRequested && !currentHealth.ok && !probeVisionPython(explicitlyRequested,
-          {home:stateDir,env:storagePyEnv(),requiresMcp:false}).ok){
-          appendInstall('指定的 BILI_DUTY_VENV_PYTHON 没有通过普通权限写入检查，拒绝创建环境。\n')
-          installOutcome='failed';installFailureHint='指定 Python 不健康；未修改现有环境';return
+        const explicitHealth=explicitPath&&!currentHealth.ok
+          ?probeVisionPython(explicitPath,{home:stateDir,env:storagePyEnv(),requiresMcp:false}):null
+        if(explicitHealth&&!explicitHealth.ok){
+          appendInstall('指定 Python 未通过普通权限检查：'+explicitHealth.reason+(explicitHealth.stage?' / '+explicitHealth.stage:'')+'；未采用其他解释器。\n')
+          restoreIfFailed();installOutcome='failed';installFailureHint='指定 Python 未通过检查，请查看日志';return
         }
-        if(process.platform==='win32'&&!currentHealth.ok&&!baseChoice?.ok){
-          appendInstall('本机没有通过普通权限写入检查的 Python。请先修复 Python 执行策略，或指定经验证的本机 Python。\n')
-          installOutcome='failed';installFailureHint='Python 运行时没有文件写入权限；原环境已保留';return
+        const verifiedBase=explicitHealth?.ok?explicitPath:baseChoice?.ok?baseChoice.path:''
+        const managedProvision=process.platform==='win32'&&!currentHealth.ok&&!verifiedBase&&!!uvCmd&&!explicitPath
+        if(process.platform==='win32'&&!currentHealth.ok&&!verifiedBase&&!managedProvision){
+          appendInstall('没有可用 Python 或 uv；本机解释器检查结果：'+(baseChoice?.reason||'missing_runtime')+(baseChoice?.stage?' / '+baseChoice.stage:'')+'。请安装 Python 3.12 或 uv，或核对明确的写入失败位置。\n')
+          restoreIfFailed();installOutcome='failed';installFailureHint='未找到可用 Python 或 uv；请查看检查结果';return
         }
-        if(existsSync(venvPy)&&!currentHealth.ok){
-          const backup=storageDataPath(stateDir,'.venv') + '.unhealthy-'+Date.now()
-          try{renameSync(storageDataPath(stateDir,'.venv'),backup);repairBackup.path=backup}
+        installStage('environment',1)
+        const venvRoot=storageDataPath(stateDir,'.venv')
+        if(existsSync(venvRoot)&&!currentHealth.ok){
+          const backup=venvRoot+'.unhealthy-'+Date.now()
+          try{renameSync(venvRoot,backup);repairBackup.path=backup}
           catch{appendInstall('旧虚拟环境正在占用或不可重命名；请完整退出 DSH 后再修复，旧环境未删除。\n');
             installOutcome='failed';installFailureHint='现有虚拟环境不可安全备份';return}
-          appendInstall('已将不可写的旧虚拟环境保留为独立备份，不修改其权限。\n')
+          appendInstall('已将原虚拟环境保留为独立备份，不修改其权限。\n')
         }
         if (!existsSync(venvPy)) {
-          // uv's --python selects an interpreter. It does NOT grant admin
-          // rights or bypass Windows per-program access control.
-          const spec=baseChoice?.ok?baseChoice.path:String(explicitlyRequested||'3.12')
-          const venvArgs=['venv','--seed','--python',spec,storageDataPath(stateDir,'.venv')]
+          repairBackup.creating=true
+          const spec=verifiedBase||requestedVersion||'3.12'
+          // Provisioning does not grant admin rights or bypass executable policy.
+          // Do not fall back to an arbitrary newer interpreter on failure.
+          if(managedProvision)appendInstall('未发现可用本机解释器；正在通过 uv 准备受管理的 Python '+spec+'，创建后再检查普通权限。\n')
+          const venvArgs=['venv','--seed','--python',spec,...(managedProvision?['--managed-python']:[]),venvRoot]
           const createCode=uvCmd?await spawnLogged(uvCmd,venvArgs)
-            :baseChoice?.ok?await spawnLogged(baseChoice.path,['-m','venv',storageDataPath(stateDir,'.venv')]):1
+            :verifiedBase?await spawnLogged(verifiedBase,['-m','venv',venvRoot])
+            :process.platform!=='win32'?await spawnLogged(py,['-m','venv',venvRoot]):1
           if(createCode!==0||!existsSync(venvPy)){
-            appendInstall('建 venv 失败，拒绝使用尚未验证的解释器。\n');restoreIfFailed()
+            appendInstall('建 venv 失败，未通过环境校验；请查看上方下载或命令错误。\n');restoreIfFailed()
             installOutcome='failed';installFailureHint='Python 环境创建失败';return
           }
         }
@@ -8687,9 +8705,10 @@ logger:{warn:m=>log('社交意图：'+m)}
           ?probeVisionPython(venvPy,{home:stateDir,env:storagePyEnv(),requiresMcp:false})
           :{ok:existsSync(venvPy),reason:'platform_not_checked'}
         if(!afterCreation.ok){
-          appendInstall('新建的 Python 在普通权限下仍无法写入：'+afterCreation.reason+'；拒绝把它标记为就绪。\n')
+          appendInstall('Python 环境普通权限检查未通过：'+afterCreation.reason+(afterCreation.stage?' / '+afterCreation.stage:'')+'；拒绝把它标记为就绪。\n')
           restoreIfFailed();installOutcome='failed';installFailureHint='新 Python 运行时未通过写入检查';return
         }
+        installStage('packages',2)
         let code = 1
         // ⭐ 2026-10-17（issue #8②）：镜像也会整站拒绝（清华对部分 IP 回 403，而 pip 的报错写成"这个包不存在"，很误导）
         //    ⇒ 一个镜像失败就换下一个，别让用户在一个死镜像上反复撞
@@ -8700,8 +8719,11 @@ logger:{warn:m=>log('社交意图：'+m)}
           if (uvCmd) code = await spawnLogged(uvCmd, ['pip', 'install', '--python', venvPy, '-i', m, '-r', reqFile])
           if (code !== 0) code = await spawnLogged(venvPy, ['-m', 'pip', 'install', '-i', m, '-r', reqFile])
         }
-        const installedHealthy=code===0 && (process.platform!=='win32'||
-          probeVisionPython(venvPy,{home:stateDir,env:storagePyEnv(),requiresMcp:true}).ok)
+        if(code===0)installStage('verifying',3)
+        const finalHealth=code===0&&process.platform==='win32'
+          ?probeVisionPython(venvPy,{home:stateDir,env:storagePyEnv(),requiresMcp:true}):null
+        if(finalHealth&&!finalHealth.ok)appendInstall('最终 Python 检查未通过：'+finalHealth.reason+(finalHealth.stage?' / '+finalHealth.stage:'')+'\n')
+        const installedHealthy=code===0 && (process.platform!=='win32'||finalHealth?.ok===true)
         if (installedHealthy) {
           // ⚠️ 光写 config.json 不够：DSH 原生设置里那份旧值（"python"）会在 loadCfg 时压回来
           //    （已由 loadCfg 的 HOST_WINS_EXCLUDED 解决 ✓）；这里再把宿主的同步结果说清楚，
@@ -8723,7 +8745,11 @@ logger:{warn:m=>log('社交意图：'+m)}
         appendInstall(`装依赖崩了：${e?.stack ?? e}\n`)
         log(`装依赖崩了：${e?.message ?? e}`)
         installOutcome = 'failed'; installFailureHint = '安装器出现异常，请查看主依赖日志'
-      } finally { installing = false; visionPythonCache=null }
+      } finally {
+        if(installOutcome==='ready')installStage('ready',4)
+        else installStage('failed',installProgress.completed)
+        installing = false; visionPythonCache=null
+      }
     })()
     return { ok: true, started: true, log: installLogFile, hint: '正在后台装依赖 —— 进度就显示在下面（走国内镜像，通常几十秒到一两分钟）' }
   }
@@ -8807,7 +8833,8 @@ logger:{warn:m=>log('社交意图：'+m)}
       installFailed: !installing && !venvReadyNow() && (() => { try { return readFileSync(installLogFile, 'utf8').length > 0 } catch { return false } })(),
       installing,
       installPhase: installing ? 'installing' : venvReadyNow() ? 'ready' : installOutcome === 'failed' ? 'failed' : 'not-ready',
-      installFailureHint: !installing && !venvReadyNow() ? installFailureHint : '',
+      installFailureHint: !installing && installOutcome==='failed' ? installFailureHint : '',
+      installProgress:{...installProgress},
       // ── 本地转写那一套的状态（设置页要显示进度）──
       asrReady: asrReadyNow(),
       // 模型下没下（免得界面写"就绪"、其实还得现下）
