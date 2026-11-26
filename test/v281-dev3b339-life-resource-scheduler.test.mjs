@@ -118,3 +118,22 @@ test('Bili read slot precedes original persistent budget and preserves -509 cool
     assert.equal(requests,1,'scheduler priority cannot bypass persisted -509 cooldown')
   }finally{s.close();rmSync(dir,{recursive:true,force:true})}
 })
+
+
+test('standalone owner memory shares model slot without admitting platform resources; stale local scope never starts',async()=>{
+  let platform='',local='owner-memory:1:0',ran=false
+  const s=createLifeResourceScheduler({getAccountTag:()=>platform,getOwnerMemoryScope:()=>local})
+  await assert.rejects(s.acquire({resources:{biliRead:1}}),/account-not-ready/)
+  await assert.rejects(s.run({resources:{model:1}},async()=>true),/account-not-ready/)
+  let release;const hold=new Promise(r=>release=r)
+  const first=s.runOwnerMemory(async()=>{await hold;return 1})
+  await tick();assert.equal(s.status().active.model,1)
+  const second=s.runOwnerMemory(async()=>{ran=true})
+  const rejected=assert.rejects(second,/account-changed/)
+  platform=S
+  const ordinary=s.run({lane:'social',resources:{model:1}},async()=>{assert.equal(s.status().active.model,1);return 2})
+  assert.equal(s.status().pending.social,1)
+  local='owner-memory:2:0';release()
+  assert.equal(await first,1);assert.equal(await ordinary,2);await rejected;assert.equal(ran,false)
+  assert.equal(s.status().active.model,0);s.close()
+})

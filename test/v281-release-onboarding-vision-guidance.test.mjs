@@ -113,7 +113,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
 
   // Exercise the real production render function with a minimal DOM double.
   // No independent duplicate UI policy is reimplemented inside the test.
-  const begin=js.indexOf('  const renderFirstStart = state=>{')
+  const begin=js.indexOf('  const renderIntegration=state=>{')
   const end=js.indexOf('  // All dependency *installation*',begin)
   assert.ok(begin>=0&&end>begin)
   const nodes=new Map()
@@ -160,6 +160,16 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('fs-complete').hidden,true)
   assert.equal(element('fs-quick-ack').hidden,true)
   assert.equal(element('[data-tab="life"]').hidden,true,'实际模型验证失效不等于仅需确认版本')
+  const foundation={...fresh,memoryFoundationReady:true,sessionIntegration:{ok:true,activeMode:'memory-foundation',requestedMode:'memory-foundation',revision:1,restartRequired:false}}
+  show(foundation)
+  assert.equal(element('fs-foundation-memory').hidden,false)
+  assert.equal(element('fs-complete').hidden,true)
+  assert.match(element('fs-summary').textContent,/记忆入口/)
+  assert.equal(element('[data-tab="life"]').hidden,true)
+  show({...fresh,sessionIntegration:{ok:true,activeMode:'autonomous-life',requestedMode:'memory-foundation',revision:0,restartRequired:true}})
+  assert.equal(element('fs-integration-save').disabled,true)
+  assert.equal(element('fs-foundation-memory').hidden,true)
+  assert.match(element('fs-integration-state').textContent,/退出 DSH/)
   context.mobileViewOnly=true
   show(fresh)
   assert.equal(element('fs-complete').disabled,true,'手机端只读不可获得写入权限')

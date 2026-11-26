@@ -85,3 +85,20 @@ test('语义检索候选被删除后，异步返回不会复活旧记忆',async(
  assert.equal(result.context.includes('橘子宠物'),false)
  assert.equal(result.memories.some(x=>x.id==='m-owner'),false)
 })
+
+
+test('显式跨类别回忆共享预算，自述不进入共享向量或自动上下文，等待后重读活跃自述',async()=>{
+ let rows=[{id:'self-1',text:'【自主记录·技能学习】学习珍珠贝母绘本装帧',source:'main-session-self-report',visibility:'private-session',publicApproved:false,importance:.8}]
+ let observed=[],release
+ const wait=new Promise(r=>release=r)
+ const config={mainSessionMemoryEnabled:true,mainSessionMemoryEmbeddingEnabled:true,mainSessionMemoryMaxItems:2,mainSessionMemoryMaxChars:800}
+ const retriever=createMemoryRetriever({getMemories:()=>baseMemories,getSelfMemories:()=>rows,getConfig:()=>config,
+  semanticSearch:async(q,candidates)=>{observed=candidates;await wait;return {ready:true,items:[{id:'memory:m-owner',score:.9}]}}})
+ const pending=retriever.retrieve('珍珠贝母','chat',{includeSelf:true});release()
+ const result=await pending
+ assert.ok(result.ids.includes('self-1'));assert.match(result.context,/未独立核验/);assert.ok(result.ids.length+result.episodeIds.length<=2);assert.ok(result.context.length<=800)
+ assert.ok(observed.every(x=>!x.text.includes('珍珠贝母')))
+ assert.doesNotMatch(retriever.localContext('珍珠贝母','chat'),/珍珠贝母/)
+ const ordinary=await retriever.retrieve('珍珠贝母','video',{includeSelf:true});assert.doesNotMatch(ordinary.context,/珍珠贝母/)
+ rows=[];assert.doesNotMatch((await retriever.retrieve('珍珠贝母','manual',{includeSelf:true})).context,/珍珠贝母/)
+})

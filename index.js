@@ -240,7 +240,7 @@ import {callScopedDshVision} from './lib/scoped-dsh-vision-read.mjs'
 import { mergeWatchedRows } from './lib/watched.mjs'
 import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
 import { createLongTermMemory } from './lib/long-term-memory.mjs'
-import { autonomousLifeSessionIntegration,createAutomaticSessionScope,sessionIntegrationPaused } from './lib/session-integration-policy.mjs'
+import { createHostSessionIntegration,createAutomaticSessionScope,sessionIntegrationPaused } from './lib/session-integration-policy.mjs'
 import { createMemoryRetriever,publicVisualAssociationContext } from './lib/memory-retriever.mjs'
 import {createEmbeddingRuntimeManager} from './lib/embedding-runtime-manager.mjs'
 import {createLocalVisionModelManager,getLocalVisionModel,getLocalVisionTestImage} from './lib/local-vision-model-manager.mjs'
@@ -638,6 +638,7 @@ export function apply(ctx, config) {
   const storageLayout = storageLayoutStatus(stateDir)
   const storagePyEnv = (extra={})=>pyEnv({
     ...extra,
+    ...sessionChildEnv(),
     // The published partition is authoritative. A stale inherited or DSH CLI
     // environment must never quietly move a child back to the old C cache.
     HF_HOME:storageDataPath(stateDir,'.hf-cache'),
@@ -658,9 +659,13 @@ export function apply(ctx, config) {
   // Cross-process gate for reads that pass the shared JS MCP adapter.
   // Independent Python Headless MCP tools do not pass here yet.
   const readActionContext=new AsyncLocalStorage()
-  // Still fixed autonomous-life until all mode-switch gates and real-host acceptance exist.
-  const getSessionIntegration=autonomousLifeSessionIntegration
+  // Owner-confirmed restart transaction. Pending/invalid settings stop new automatic work.
+  const sessionIntegration=createHostSessionIntegration({dataDir:stateDir})
+  const getSessionIntegration=sessionIntegration.getPolicy
+  const integrationAvailable=()=>getSessionIntegration().mode!=='unavailable'
+  const memoryFoundation=()=>getSessionIntegration().mode==='memory-foundation'
   const automaticSession=createAutomaticSessionScope(getSessionIntegration)
+  const sessionChildEnv=()=>{const p=getSessionIntegration(),scoped=automaticSession.scopedRevision();return {BILI_SESSION_INTEGRATION_REVISION:String(scoped??p.revision),BILI_SESSION_INTEGRATION_MODE:scoped===undefined?p.mode:'autonomous-life'}}
   // An ephemeral proof ties nested Python MCP reads to this exact Node adapter.
   // The token is never stored on disk or sent back to the UI.
   const readAdapterToken=randomBytes(32).toString('hex')
@@ -685,6 +690,8 @@ export function apply(ctx, config) {
   // Life intention, Bilibili reads, or public/private sends.
   const lifeResourceScheduler=createLifeResourceScheduler({getAccountTag:()=>{
     try{return trustedLifeAccountTag()}catch{return ''}
+  },getOwnerMemoryScope:()=>{
+    try{return standaloneMemoryModelReady()?'owner-memory:'+getSessionIntegration().revision+':'+accountBinding.generation():''}catch{return ''}
   }})
   ctx.effect(()=>()=>lifeResourceScheduler.close(),'bili-duty: Life 资源调度清理')
   const publicVideoReadCoalescer=createLifePublicReadCoalescer()
@@ -1715,7 +1722,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let lastPauseState = null
   let cancelActiveDuty = () => {}
   const syncPauseState = (force = false) => {
-    const paused = cfg.masterEnabled !== true || !firstStart.isReady()
+    const paused = cfg.masterEnabled !== true || !firstStart.isReady() || !integrationAvailable()
     if (!force && lastPauseState === paused) return
     // 同一目录中的 Python MCP 进程，每次对外发送前也检查这个文件。
     if (paused) writeFileSync(pauseFile, 'paused\n', 'utf8')
@@ -1915,6 +1922,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     try {
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
     if(!firstStart.isReady())throw Error(firstStart.message())
+    if(!integrationAvailable())throw sessionIntegrationPaused()
+    const startMode=getSessionIntegration()
+    const currentDispatch=()=>{const p=getSessionIntegration();return p.mode===startMode.mode&&p.revision===startMode.revision&&automaticSession.current()}
     refreshCfg()
     if (cfg.masterEnabled !== true) throw new Error('大肥鱼已暂停：请先开启总开关')
     // The ordinary in-process MCP is deliberately route-less. Its environment
@@ -1935,9 +1945,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         String(check.reason||'runtime_execution_failed')+' / '+String(check.stage||'unknown')+
         '）；已阻止本轮取帧，等待可信宿主运行时修复')
     }
-    const modeCheckedRead=monitoredReadTools.has(toolName)||toolName==='bili_preview_vision'
-    const modeCheckedFollow=toolName==='bili_follow_dm_contact'||toolName==='bili_unfollow_dm_contact'
-    if((modeCheckedRead||modeCheckedFollow)&&!automaticSession.current())throw sessionIntegrationPaused()
+    if(!currentDispatch())throw sessionIntegrationPaused()
     const client=scopedDshVision?null:await ensureMcp()
     if(scopedDshVision&&!assertSecureMcp())throw Error('DSH 视频识图 Python MCP 安全版本校验失败')
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
@@ -1946,10 +1954,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // Do not cancel already-admitted writes: the durable sender must settle
     // their actual receipt. Only new monitored reads are refused here.
     const originalDispatch=()=>scopedDshVision
-      ? (()=>{if(!automaticSession.current())throw sessionIntegrationPaused();return callPluginScopedDshVision(args,opts)})()
+      ? (()=>{if(!currentDispatch())throw sessionIntegrationPaused();return callPluginScopedDshVision(args,opts)})()
       : monitoredReadTools.has(toolName)
-      ? biliReadBudget.guard('mcp:'+toolName,()=>{if(!automaticSession.current())throw sessionIntegrationPaused();return client.call(toolName,args,callOptions)})
-      : (()=>{if((modeCheckedRead||modeCheckedFollow)&&!automaticSession.current())throw sessionIntegrationPaused();return client.call(toolName,args,callOptions)})()
+      ? biliReadBudget.guard('mcp:'+toolName,()=>{if(!currentDispatch())throw sessionIntegrationPaused();return client.call(toolName,args,callOptions)})
+      : (()=>{if(!currentDispatch())throw sessionIntegrationPaused();return client.call(toolName,args,callOptions)})()
     const dispatch=()=>toolName==='bili_video_info'&&opts===undefined&&
       /^BV[0-9A-Za-z]{10}$/.test(String(args?.bvid||''))
       ? publicVideoReadCoalescer.run({scope:verifiedActionScope(),bvid:args.bvid,
@@ -2026,6 +2034,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     output: textOutput,
     async execute(args, exec) {
       if(!firstStart.isReady())return {ok:false,blocked:true,error:firstStart.message()};
+      if(!integrationAvailable())return {ok:false,blocked:true,error:'模式切换待重启或不可用'};
       return safe(await spec.execute(args, exec))
     },
   }))
@@ -3882,6 +3891,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       '          BILI_MCP_TOOLS: '+yq(isSelftest?'bili_vision_selftest':'bili_preview_vision'),
       ...(isSelftest?['          BILI_VISION_SELFTEST_ALLOWED: '+yq('1'), '          BILI_VISION_TEST_ASSET: '+yq(posix(join(pluginDir,'lib','assets','local-vision-selftest-dafeiyu.png')))]:['          BILI_VISION_CHILD: '+yq('1')]),
       '          BILI_DUTY_HOME: '+yq(posix(stateDir)),
+      ...Object.entries(sessionChildEnv()).map(([key,value])=>'          '+key+': '+yq(value)),
       '          HF_HOME: '+yq(posix(storageDataPath(stateDir,'.hf-cache'))),
       '          DSH_WHISPER_LIBRARY_HOME: '+yq(posix(largeDataStatus(stateDir).whisperHome||'')),
       '          DSH_MEDIA_CACHE_HOME: '+yq(posix(storageDomainRoot(stateDir,'media'))),
@@ -4183,6 +4193,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         '          BILI_COMMENT_DAILY_LIMIT: ' + yq(cfg.commentDailyLimit),
         '          BILI_DUTY_AUTO_COMMENT_REVIEW: ' + yq(cfg.autoComment && Number(cfg.commentPerRound)>0 && Number(cfg.commentDailyLimit)>0 && lifeVideoActionBridge?.status().ready===true ? '1':'0'),
         '          BILI_DUTY_HOME: ' + yq(posix(stateDir)),
+        ...Object.entries(sessionChildEnv()).map(([key,value])=>'          '+key+': '+yq(value)),
         '          HF_HOME: ' + yq(posix(storageDataPath(stateDir,'.hf-cache'))),
         '          DSH_WHISPER_LIBRARY_HOME: ' + yq(posix(largeDataStatus(stateDir).whisperHome||'')),
         '          DSH_MEDIA_CACHE_HOME: ' + yq(posix(storageDomainRoot(stateDir,'media'))),
@@ -4267,6 +4278,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
    */
   let verifying = false
   const runVerify = async (why = 'manual') => {
+    if(!integrationAvailable()||!firstStart.isReady()||accountBinding.status().blocked)return {ok:false,blocked:true,error:'当前模式或平台验证未就绪'}
     if (verifying) return { ok: false, error: '上一次复核还没跑完，等它完事' }
     verifying = true
     try {
@@ -4484,7 +4496,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   }
   const lifeSocialShadow=createLifeSocialShadow({
     getAccountTag:trustedLifeAccountTag,
-    getConsent:()=>cfg.lifeAgentSocialContextOptIn===true&&cfg.masterEnabled===true&&
+    getConsent:()=>getSessionIntegration().mode==='autonomous-life'&&cfg.lifeAgentSocialContextOptIn===true&&cfg.masterEnabled===true&&
       ['shadow','active'].includes(cfg.lifeAgentMode)&&!accountBinding.status().blocked
   })
   // One account-scoped wake adapter for verified DM and public comment inputs.
@@ -4493,7 +4505,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const offerSocialLifeWake = ({kind,uid,eventId,verified=false}) => {
     if(!verified||!lifeAgentEvents||!['dm-received','comment-received'].includes(kind))return
     refreshCfg()
-    if(cfg.lifeAgentMode==='off'||cfg.masterEnabled!==true||accountBinding.status().blocked)return
+    if(getSessionIntegration().mode!=='autonomous-life'||cfg.lifeAgentMode==='off'||cfg.masterEnabled!==true||accountBinding.status().blocked)return
     if(!/^[1-9]\d{0,18}$/.test(String(uid||''))||!String(eventId||'').trim())return
     const scope=trustedLifeAccountTag()
     if(!/^[a-f0-9]{16}$/.test(String(scope||'')))return
@@ -4515,7 +4527,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     }
   }
   const runDuty = async (why = 'window',entryMode = 'mixed') => {
-   if(!automaticSession.current())return {started:false,why,paused:true,reason:'session-integration-paused'}
+   const initialMode=getSessionIntegration()
+   const currentVideoMode=()=>{const p=getSessionIntegration();return p.mode==='autonomous-life'&&p.revision===initialMode.revision&&automaticSession.current()}
+   if(!currentVideoMode())return {started:false,why,paused:true,reason:'session-integration-paused'}
    let videoResourceRelease=()=>{}
    let productionVisionExecutor=null
    let videoRoundReceiptId=''
@@ -4571,10 +4585,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         home:stateDir,exe:route.command,cli:route.args[1],baseOverlay:baseVisionOverlay,
         workdir:process.cwd(),env:visionEnv({...route.env,BILI_DUTY_HOME:stateDir}),
         visualInstruction:visionObservationFocus(cfg.visionPrompt),
-        allowRequest:()=>trustedLifeAccountTag()===expectedAccount&&!accountBinding.status().blocked,
+        allowRequest:()=>currentVideoMode()&&trustedLifeAccountTag()===expectedAccount&&!accountBinding.status().blocked,
       })
     }
-    if(!automaticSession.current()){
+    if(!currentVideoMode()){
       if(productionVisionExecutor){void productionVisionExecutor.close().catch(()=>{});productionVisionExecutor=null}
       videoResourceRelease()
       return {started:false,why,paused:true,reason:'session-integration-paused'}
@@ -5362,10 +5376,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // Host-only model-call telemetry. It never makes another model call, stores
   // no prompts or responses, and makes unknown token/price data explicit.
   const modelInvocationJournal=createModelInvocationJournal({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
+  function standaloneMemoryModelReady(){
+    if(!memoryFoundation()||firstStart.isReady()||cfg.mainSessionMemorySemanticEnabled!==true)return false
+    try{headlessSync.assertReady(headlessSelection('memory'));return Boolean((cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider)&&(cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId))}catch{return false}
+  }
   async function invokeMemoryPrompt(promptText,maxChars=4200) {
-    const start=Date.now(),expectedScope=trustedLifeAccountTag()
-    try{const output=await lifeResourceScheduler.run({lane:'background',resources:{model:1},waitMs:20_000},
-      ()=>{if(!automaticSession.current())throw sessionIntegrationPaused();return invokeMemoryPromptRaw(promptText,maxChars)})
+    const start=Date.now(),expectedScope=trustedLifeAccountTag(),mode=getSessionIntegration(),epoch=accountBinding.generation()
+    const standalone=memoryFoundation()&&!firstStart.isReady()
+    const stillCurrent=()=>{const p=getSessionIntegration();return p.mode===mode.mode&&p.revision===mode.revision&&accountBinding.generation()===epoch&&automaticSession.current()}
+    const work=()=>{if(!stillCurrent()||standalone&&!standaloneMemoryModelReady())throw sessionIntegrationPaused();return invokeMemoryPromptRaw(promptText,maxChars,{standalone})}
+    try{const output=standalone?await lifeResourceScheduler.runOwnerMemory(work,{waitMs:20_000}):await lifeResourceScheduler.run({lane:'background',resources:{model:1},waitMs:20_000},work)
+      if(!stillCurrent())throw sessionIntegrationPaused()
       modelInvocationJournal.record({scene:'memory',trigger:'memory',expectedScope,durationMs:Date.now()-start,
         provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider||'',
         model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId||''})
@@ -5374,21 +5395,24 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider||'',
         model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId||'',error});throw error}
   }
-  async function invokeMemoryPromptRaw(promptText,maxChars=4200) {
+  async function invokeMemoryPromptRaw(promptText,maxChars=4200,{standalone=false}={}) {
     refreshCfg()
     if(cfg.mainSessionMemoryEnabled!==true||cfg.mainSessionMemorySemanticEnabled!==true)throw Error('独立记忆检索没有开启')
+    if(standalone&&!standaloneMemoryModelReady())throw Error('独立记忆模型尚未验证，使用本地回忆')
     const native=hostModel()
     if(native){
       if(!(cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider)||!(cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId))throw Error('请填写独立记忆检索模型的 Provider 与模型 ID')
       recordModelTask(stateDir,'memory')
-      return hostText(native,boundedText(String(promptText),16500),{provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider,model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.mainSessionMemoryReasoningEffort},maxChars,35_000)
+      const prompt=boundedText(String(promptText),16500),custom={provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider,model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId,reasoningEffort:cfg.mainSessionMemoryReasoningEffort}
+      return standalone?runHostModelText({llm:native,prompt,selection:hostSelection(),custom,maxChars,timeoutMs:35_000}):hostText(native,prompt,custom,maxChars,35_000)
     }
     if(cfg.mainSessionMemoryEnabled!==true||cfg.mainSessionMemorySemanticEnabled!==true)throw Error('独立记忆检索没有开启')
     if(!(cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider)||!(cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId))throw Error('请在管理中心填写专用检索模型的 Provider 与模型 ID')
     const dsh=resolveDsh();if(dsh.missing)throw Error('独立记忆检索 DSH 命令不可用')
     const overlay=ensureMemoryOverlay()
     const args=[...dsh.args,'--profile','headless','--patch',overlay,boundedText(String(promptText),16500)]
-    assertVerifiedHeadless(args,overlay,{kind:'memory',stateDir},'memory')
+    if(standalone){headlessSync.assertReady(headlessSelection('memory'));assertSafeHeadlessLaunch(args,overlay,{kind:'memory',stateDir})}
+    else assertVerifiedHeadless(args,overlay,{kind:'memory',stateDir},'memory')
     recordModelTask(stateDir,'memory')
     return new Promise((resolve,reject)=>{
       const child=spawn(dsh.command,args,{cwd:stateDir,shell:dsh.shell,windowsHide:true,stdio:['ignore','pipe','pipe'],env:uvEnv({BILI_DUTY_HOME:stateDir,...(process.versions.electron?{ELECTRON_RUN_AS_NODE:'1'}:{}),...(dsh.env||{})})})
@@ -7003,8 +7027,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // 主人明确长期事实由当前聊天中的语义记忆工具保存；B站生活经历不再逐条直塞长期记忆，
   // 而是保留精确档案 → 进入候选池 → 由受限反思模型凝练后，才进入 dafeiyu.json。
   // Both main Session consumers must read the same trusted host policy.
-  // Until background admission and owner-only switching are fully wired,
-  // production deliberately has no mode selection or persisted mode field.
+  // Local memory admission is separate from B站 platform readiness.
   longTermMemory = createLongTermMemory({
     getSessionIntegration,
     dataDir: stateDir,
@@ -7012,7 +7035,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     agents: ctx.agents,
     getConfig: () => cfg,
     defineTool:(options)=>defineTool({...options,async execute(...args){
-      if(!firstStart.isReady())return {ok:false,blocked:true,error:firstStart.message()}
+      if(!integrationAvailable())return {ok:false,blocked:true,error:'模式切换待重启或不可用'}
+      const localMemory=['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall'].includes(options.name)
+      if(!firstStart.isReady()&&!(memoryFoundation()&&localMemory))return {ok:false,blocked:true,error:firstStart.message()}
       return options.execute(...args)
     }}),
     onOwnerEmotion:({sessionId,mood,intensity})=>{
@@ -7109,7 +7134,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   if(!existsSync(join(stateDir,'personality-evolution','v1.json')))try{personalityEvolution.setEnabled(true)}catch(e){log('初始化人格成长设置失败：'+String(e?.message||e))}
   let personalityAiDebugBusy=false,personalityAiDebugNextAt=0
   memoryRetriever=createMemoryRetriever({
-    getMemories:()=>[...longTermMemory.activeMemories(),...listLegacyLifeFacts(stateDir),...interestMemoryRows(stateDir)],getConfig:()=>cfg,
+    getMemories:()=>[...longTermMemory.activeMemories(),...listLegacyLifeFacts(stateDir),...interestMemoryRows(stateDir)],getSelfMemories:()=>longTermMemory.selfRecallMemories(),getConfig:()=>memoryFoundation()&&!firstStart.isReady()&&!standaloneMemoryModelReady()?{...cfg,mainSessionMemorySemanticEnabled:false}:cfg,
     getAccount:()=>accountBinding.status(),
     invokeModel:(prompt,maxChars)=>invokeMemoryPrompt(prompt,maxChars),
     getEpisodes:(query,options)=>lifeMemory?.recall({query,domain:options?.domain||'main-session',role:options?.role||'owner',actorUid:options?.actorUid||'',excludeEventKey:options?.excludeEventKey||'',kinds:options?.kinds||null,maxItems:options?.maxItems||6,maxChars:options?.maxChars||800})||[],
@@ -7236,7 +7261,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   ctx.effect(()=>()=>socialInteractionCoordinator?.stop(),'bili-duty: 社交事件协调器')
   memoryConsolidator=createMemoryConsolidator({dataDir:stateDir,getMemories:()=>longTermMemory.activeMemories(),commit:input=>longTermMemory.consolidate(input),
     invokeModel:(prompt,maxChars)=>invokeMemoryPrompt(prompt,maxChars),getConfig:()=>cfg,logger:{warn:m=>log('记忆凝练：'+m)}})
-  const consolidationTimer=setInterval(()=>{if(!firstStart.isReady())return;void memoryConsolidator.run().catch(e=>log('记忆凝练评估失败：'+String(e?.message||e)))},60*60_000)
+  const consolidationTimer=setInterval(()=>{if(!integrationAvailable()||(!firstStart.isReady()&&!standaloneMemoryModelReady()))return;void memoryConsolidator.run().catch(e=>log('记忆凝练评估失败：'+String(e?.message||e)))},60*60_000)
   consolidationTimer.unref?.();ctx.effect(()=>()=>clearInterval(consolidationTimer),'bili-duty: 主人聊天记忆整理')
 
   // Bounded independent agent decision. It never sends a main-Session follow-up,
@@ -8825,7 +8850,7 @@ logger:{warn:m=>log('社交意图：'+m)}
   const runDailyBackup=async()=>{
     if(autoBackupBusy)return
     refreshCfg()
-    if(cfg.backupAutoEnabled!==true||!cfg.backupDirectory||!firstStart.isReady())return
+    if(cfg.backupAutoEnabled!==true||!cfg.backupDirectory||!integrationAvailable()||(!firstStart.isReady()&&!memoryFoundation()))return
     autoBackupBusy=true
     try{
       const dir=requireBackupDirectory(cfg.backupDirectory)
@@ -8863,7 +8888,9 @@ logger:{warn:m=>log('社交意图：'+m)}
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || (req.method==='GET' && path==='/api/bili-duty/main-session/sessions') || (req.method==='POST' && path==='/api/bili-duty/main-session/bind') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
       path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&['/api/bili-duty/video-dependencies/status','/api/bili-duty/video-dependencies/whisper/status'].includes(path)) || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/whisper/delete') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/paths') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/ffmpeg/test')
-    if(!firstStart.isReady() && !setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
+    const localMemoryAccess=memoryFoundation()&&((req.method==='GET'&&path==='/api/bili-duty/main-session/memory')||(req.method==='POST'&&['/api/bili-duty/main-session/memory/recall','/api/bili-duty/main-session/memory/add','/api/bili-duty/main-session/memory/delete','/api/bili-duty/main-session/memory/consolidate','/api/bili-duty/embedding/install','/api/bili-duty/embedding/disable','/api/bili-duty/embedding/rebuild','/api/bili-duty/embedding/cancel','/api/bili-duty/embedding/delete','/api/bili-duty/embedding/import-model'].includes(path)))
+    if(!firstStart.isReady() && !setupAccess&&!localMemoryAccess)return sendJson(res,423,{ok:false,blocked:true,error:firstStart.message()})
+    if(!integrationAvailable()&&!setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:'模式切换待重启或不可用'})
     // ⭐ 2026-10-21：每条视频一份笔记 —— **宿主拆报告**，不让模型多写一个字（零 token、不会写错）
     const notesDir = join(stateDir, 'reports')
     let notesSig = ''
@@ -10849,6 +10876,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if (req.method === 'POST' && path === '/api/bili-duty/main-session/memory/consolidate') {
       const body=await readBody(req)
+      if(!firstStart.isReady()&&!standaloneMemoryModelReady())return sendJson(res,423,{ok:false,error:'需先启用并独立验证记忆模型'});
       if(body?.confirm!=='CONSOLIDATE_OWNER_CHAT')return sendJson(res,400,{ok:false,error:'需确认主人聊天记忆整理操作'})
       try{const r=await memoryConsolidator.run({force:true});return sendJson(res,r.ok?200:400,r)}catch(e){return sendJson(res,400,{ok:false,error:String(e?.message||e).slice(0,180)})}
     }
@@ -10856,7 +10884,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const body=await readBody(req)
       const query=String(body?.query||'').slice(0,180)
       if(!query.trim())return sendJson(res,400,{ok:false,error:'请输入记忆检索主题'})
-      const r=await memoryRetriever.retrieve(query,'manual')
+      const r=await memoryRetriever.retrieve(query,'manual',{includeSelf:true})
       return sendJson(res,200,{ok:true,...r,diagnostic:memoryRetriever.status()})
     }
     if (req.method === 'POST' && path === '/api/bili-duty/main-session/memory/add') {
@@ -11102,7 +11130,23 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
 
     if(req.method==='GET' && path==='/api/bili-duty/onboarding/status')
-      return sendJson(res,200,firstStart.status())
+      return sendJson(res,200,{...firstStart.status(),sessionIntegration:sessionIntegration.status(),memoryFoundationReady:memoryFoundation(),standaloneMemoryModelReady:standaloneMemoryModelReady(),memoryModelEnabled:cfg.mainSessionMemorySemanticEnabled===true})
+    if(req.method==='GET' && path==='/api/bili-duty/onboarding/integration-mode')
+      return sendJson(res,200,sessionIntegration.status())
+    if(req.method==='POST' && path==='/api/bili-duty/onboarding/integration-mode'){
+      if(!explicitManagementIntent(req)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'需要明确的主人同源操作'})
+      try{
+        const body=await readBody(req)
+        const resources=lifeResourceScheduler.status()
+        if(verifying||autoBackupBusy||modelTestBusy||memoryConsolidator?.status().busy||Object.values(resources.active).some(Boolean)||Object.values(resources.pending).some(Boolean)||accountBinding.status().activeOperations>0||dutyChild&&dutyChild.exitCode===null&&!dutyChild.killed||automaticSession.inFlight()>0)
+          return sendJson(res,409,{ok:false,error:'仍有自主或平台任务在途，请等真实结果结算后再切换；不会强制终止'})
+        const next=sessionIntegration.requestMode(body)
+        if(next.restartRequired){
+          try{syncPauseState(true);longTermMemory.refreshSessionMount();mainSessionBridge.refreshIntegration();lifeSocialShadow.revoke()}catch(e){log('模式切换已持久保存，退出重启前保持门禁：'+String(e?.message||e).slice(0,100))}
+        }
+        return sendJson(res,200,next)
+      }catch(e){return sendJson(res,409,{ok:false,error:String(e?.message||e).slice(0,160)})}
+    }
     if(req.method==='GET' && path==='/api/bili-duty/onboarding/quick/options'){
       refreshCfg()
       return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),memory:quickMemoryState(cfg),social:quickSocialState(cfg),requiredReady:firstStart.status().requiredReady})

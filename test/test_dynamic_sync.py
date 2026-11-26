@@ -13,7 +13,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 SRC=(ROOT/'vendor/bilibili-mcp/mcp_server.py').read_text(encoding='utf-8')
 _ast=ast.parse(SRC)
-FUNCS={'_dynamic_after_comment','_dynamic_enabled','_dynamic_daily_limit','_reserve_dynamic_attempt','_valid_bv'}
+FUNCS={'_host_session_current','_dynamic_after_comment','_dynamic_enabled','_dynamic_daily_limit','_reserve_dynamic_attempt','_valid_bv'}
 _subset=ast.Module(body=[n for n in _ast.body if isinstance(n,(ast.AsyncFunctionDef,ast.FunctionDef)) and n.name in FUNCS],type_ignores=[])
 ns={'asyncio':asyncio,'os':os,'datetime':__import__('datetime').datetime,'json':json,
     'urllib':__import__('urllib'),'re':__import__('re'),'Path':Path, 'sqlite3':__import__('sqlite3'), '_BV_PATTERN':__import__('re').compile(r'^BV[0-9A-Za-z]{10}$')}

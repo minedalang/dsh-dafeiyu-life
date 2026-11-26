@@ -2199,7 +2199,26 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="fs-notice-actions"><button type="button" id="fs-warning-open" data-open-tab="firststart">打开快速设置 ↗</button><button type="button" id="fs-quick-ack" class="primary" hidden>我已查看本版快速设置</button><button type="button" id="fs-complete" class="primary" hidden>完成快速设置</button></div>
 </aside>
 <section id="panel-firststart" hidden>
-  <div class="fs-hero"><span class="fs-pill">🐟 QUICK SETUP · 2.8.2</span><h2>快速设置 · 先完成必需项，再自由选择增强能力</h2><p>首次使用或从旧版升级时，可在此检查当前设置；已完成快速设置的用户无需反复确认。<strong>已有登录、模型、Life 和记忆不会因此清空或重置</strong>；已有健康环境无需重装。B站主依赖与 Headless 文字模型验证属于基础必需项；视频画面识别需要另行配置视觉模型并完成图片验收，<strong>视频视觉可选且默认不开启</strong>。</p></div>
+  <div class="fs-hero" id="fs-integration-hero"><span class="fs-pill">🐟 QUICK SETUP · 2.8.2</span><h2>快速设置 · 先完成必需项，再自由选择增强能力</h2><p>首次使用或从旧版升级时，可在此检查当前设置；已完成快速设置的用户无需反复确认。<strong>已有登录、模型、Life 和记忆不会因此清空或重置</strong>；已有健康环境无需重装。B站主依赖与 Headless 文字模型验证属于基础必需项；视频画面识别需要另行配置视觉模型并完成图片验收，<strong>视频视觉可选且默认不开启</strong>。</p></div>
+  <section class="card" id="fs-session-integration" style="margin-bottom:16px">
+    <h3>使用模式 · 自主生活 / 记忆基座</h3>
+    <p>自主生活：保留原 B站生活与自主调度。记忆基座：按需使用记忆，不自动开展生活活动，不要求登录 B站。两种方式共享同一身份与记忆。</p>
+    <label for="fs-integration-mode">选择模式（需彻底退出并重启 DSH）</label>
+    <select id="fs-integration-mode" disabled><option value="autonomous-life">自主生活模式</option><option value="memory-foundation">记忆基座模式</option></select>
+    <button id="fs-integration-save" type="button" disabled>保存模式并准备重启</button>
+    <p id="fs-integration-state" role="status">正在读取模式…</p>
+    <div id="fs-foundation-memory" hidden>
+      <p>记忆基座已生效。可先绑定一个在线主 Session，再使用 dafeiyu_remember / dafeiyu_memory_recall / dafeiyu_life_recall。B站工具仍需原验证与权限。</p>
+      <button type="button" data-open-tab="home" data-open-anchor="main-session-id">绑定主 Session ↗</button>
+      <label for="fs-foundation-memory-query">按需回忆</label><input id="fs-foundation-memory-query" maxlength="180" placeholder="回忆主题">
+      <button id="fs-foundation-memory-recall" type="button">检索记忆</button>
+      <pre id="fs-foundation-memory-results" style="white-space:pre-wrap;overflow-wrap:anywhere" aria-live="polite"></pre>
+      <label for="fs-foundation-memory-text">手动记录主人事实</label><textarea id="fs-foundation-memory-text" maxlength="500" rows="3"></textarea>
+      <button id="fs-foundation-memory-add" type="button">加入记忆</button>
+      <p id="fs-foundation-model-state" role="status"></p><label><input type="checkbox" id="fs-foundation-model-enabled">启用可选文字模型记忆检索与整理</label><button type="button" id="fs-foundation-model-save">保存模型记忆选项</button><button type="button" data-open-tab="models" data-open-anchor="models-memory">配置并验证记忆模型 ↗</button>
+      <button id="fs-foundation-memory-list" type="button">查看本地记忆</button><div id="fs-foundation-memory-rows" aria-live="polite"></div>
+    </div>
+  </section>
 
   <div class="fs-journey" aria-label="统一快速设置流程">
     <div class="fs-setup-overview" aria-label="设置类型说明">

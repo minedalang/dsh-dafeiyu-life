@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {Readable} from 'node:stream'
 import {createFirstStart} from '../lib/first-start.mjs'
+import {createHostSessionIntegration,createAutomaticSessionScope,SESSION_INTEGRATION_FILE} from '../lib/session-integration-policy.mjs'
 import {apply} from '../index.js'
 import {createHash} from 'node:crypto'
 
@@ -234,4 +235,80 @@ test('fresh install HTTP: staged scan, exact UID confirmation, restart, explicit
    assert.equal((await call('GET','life-memory/status')).status,423,'unfinished setup cannot access business APIs')
    const ledger=JSON.parse(readFileSync(join(stateDir,'account-binding.json'),'utf8'));assert.equal(ledger.activeUid,uid);assert.equal(ledger.accounts.length,1)
  }finally{stop();globalThis.fetch=originalFetch;rmSync(home,{recursive:true,force:true})}
+})
+
+
+test('持久模式请求即时失效旧代际，只有退出旧宿主后的新进程才激活',async()=>{
+ const home=mkdtempSync(join(tmpdir(),'fish-integration-'))
+ try{
+  let alive=true
+  const old=createHostSessionIntegration({dataDir:home,pid:1001,isPidAlive:()=>alive})
+  const scope=createAutomaticSessionScope(old.getPolicy),prior=scope.capture()
+  let release;const wait=new Promise(r=>release=r)
+  const inFlight=scope.run(prior,async()=>{await wait;return scope.current()})
+  assert.equal(scope.inFlight(),1)
+  assert.throws(()=>old.requestMode({mode:'memory-foundation',expectedRevision:1,confirm:'REQUEST_SESSION_INTEGRATION_RESTART'}))
+  assert.throws(()=>old.requestMode({mode:'memory-foundation',expectedRevision:0}))
+  const request={mode:'memory-foundation',expectedRevision:0,confirm:'REQUEST_SESSION_INTEGRATION_RESTART'}
+  assert.equal(old.requestMode(request).restartRequired,true)
+  assert.equal(old.getPolicy().mode,'unavailable')
+  release();assert.equal(await inFlight,false);assert.equal(scope.inFlight(),0)
+  assert.equal(createHostSessionIntegration({dataDir:home,pid:1001,isPidAlive:()=>false}).getPolicy().mode,'unavailable')
+  assert.equal(createHostSessionIntegration({dataDir:home,pid:1002,isPidAlive:()=>alive}).getPolicy().mode,'unavailable')
+  alive=false
+  const next=createHostSessionIntegration({dataDir:home,pid:1002,isPidAlive:()=>alive})
+  assert.deepEqual(next.getPolicy(),{mode:'memory-foundation',revision:1})
+  assert.equal(old.getPolicy().mode,'unavailable')
+  assert.equal(next.requestMode({...request,mode:'autonomous-life',expectedRevision:1}).restartRequired,true)
+  const restored=createHostSessionIntegration({dataDir:home,pid:1003,isPidAlive:()=>false})
+  assert.deepEqual(restored.getPolicy(),{mode:'autonomous-life',revision:2})
+  assert.equal(scope.isCurrent(prior),false)
+  writeFileSync(join(home,SESSION_INTEGRATION_FILE),'broken')
+  assert.equal(restored.getPolicy().mode,'unavailable')
+  assert.equal(createHostSessionIntegration({dataDir:home}).getPolicy().mode,'unavailable')
+ }finally{rmSync(home,{recursive:true,force:true})}
+})
+
+test('真实宿主路由：无 B站凭证的记忆基座可写入及回忆，平台业务仍锁定',async()=>{
+ const home=mkdtempSync(join(tmpdir(),'fish-foundation-http-'))
+ let handler;const requests=[]
+ const llm={listProviders:()=>[{id:'claude'}],async *stream(req){requests.push(req);const rows=JSON.parse(req.messages[0].content[0].text.split('<memory_index>')[1].split('</memory_index>')[0]);yield {type:'text-delta',text:JSON.stringify({memory_ids:[rows[0].id],confidence:.9})};yield {type:'finish',reason:{kind:'stop'}}}}
+ try{
+  const stateDir=join(home,'bili-duty');mkdirSync(stateDir,{recursive:true})
+  writeFileSync(join(stateDir,SESSION_INTEGRATION_FILE),JSON.stringify({version:1,mode:'memory-foundation',revision:1,pending:null}))
+  const ctx={get:k=>k==='llm'?llm:k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
+    logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
+  apply(ctx,{mainSessionMemorySemanticEnabled:true,mainSessionMemoryModelProvider:'claude',mainSessionMemoryModelId:'claude-haiku-5-5'})
+  const call=async(method,path,body,origin='http://127.0.0.1:8011')=>{
+    const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);req.method=method;req.url='/api/bili-duty/'+path;req.headers={host:'127.0.0.1:8011',origin}
+    let status=200,payload='';await handler(req,{writeHead(x){status=x},end(x){payload=String(x||'')}})
+    return {status,json:()=>JSON.parse(payload)}
+  }
+  assert.equal((await call('POST','config',{mainSessionMemorySemanticEnabled:true,mainSessionMemoryModelProvider:'claude',mainSessionMemoryModelId:'claude-haiku-5-5'})).status,200)
+  const state=(await call('GET','onboarding/status')).json()
+  assert.equal(state.memoryFoundationReady,true);assert.equal(state.requiredReady,false)
+  assert.equal((await call('GET','life-memory/status')).status,423)
+  assert.equal((await call('POST','main-session/memory/add',{text:'主人正在研究珍珠贝母工艺',importance:.8})).status,200)
+  const recalled=await call('POST','main-session/memory/recall',{query:'珍珠贝母'})
+  assert.equal(recalled.status,200);assert.match(recalled.json().context,/珍珠贝母/)
+  assert.equal(state.standaloneMemoryModelReady,false)
+  assert.equal(requests.length,0)
+  const desktop=join(home,'profiles','desktop','cordis.patch.yml'),target=join(home,'profiles','headless','cordis.patch.yml')
+  mkdirSync(join(home,'profiles','desktop'),{recursive:true});mkdirSync(join(home,'profiles','headless'),{recursive:true})
+  writeFileSync(desktop,'- id: llm-pi-ai\n  config:\n    providers:\n      claude:\n        api: anthropic-messages\n        models: [{id: claude-haiku-5-5}]\n');writeFileSync(target,'[]\n')
+  const fingerprint=createHash('sha256').update(JSON.stringify(['desktop',readFileSync(desktop,'utf8'),'',readFileSync(target,'utf8')])).digest('hex')
+  writeFileSync(join(stateDir,'headless-model-verified.json'),JSON.stringify({version:1,verified:[{profile:'desktop',provider:'claude',model:'claude-haiku-5-5',fingerprint}]}))
+  assert.equal((await call('GET','onboarding/status')).json().standaloneMemoryModelReady,true)
+  const remote=await call('POST','main-session/memory/recall',{query:'远洋油轮'})
+  assert.equal(remote.status,200);assert.equal(remote.json().reason,'semantic');assert.equal(requests.length,1);assert.deepEqual(requests[0].tools,[])
+  assert.equal((await call('GET','life-memory/status')).status,423)
+  writeFileSync(target,'# changed\n[]\n')
+  assert.equal((await call('GET','onboarding/status')).json().standaloneMemoryModelReady,false)
+  assert.equal((await call('POST','main-session/memory/recall',{query:'另一主题'})).json().usedModel,false);assert.equal(requests.length,1)
+  const request={mode:'autonomous-life',expectedRevision:1,confirm:'REQUEST_SESSION_INTEGRATION_RESTART'}
+  assert.equal((await call('POST','onboarding/integration-mode',request,'https://outside.invalid')).status,403)
+  const next=await call('POST','onboarding/integration-mode',request);assert.equal(next.status,200);assert.equal(next.json().restartRequired,true)
+  assert.equal((await call('POST','main-session/memory/recall',{query:'珍珠贝母'})).status,423)
+  assert.equal((await call('GET','onboarding/status')).json().memoryFoundationReady,false)
+ }finally{rmSync(home,{recursive:true,force:true})}
 })

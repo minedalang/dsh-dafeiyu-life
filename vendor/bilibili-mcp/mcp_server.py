@@ -382,9 +382,41 @@ def tool():
 # ⭐⭐ 2026-10-23 安全加固（issue #39）：**白名单以前只挡"注册"，不挡"直接调用"** ——
 #    agent 手里有 python/shell，可以自己写脚本 import 这个文件再调函数 ⇒ 闸门形同虚设。
 #    ⇒ 每个"会往 B站 写东西"的函数入口都过一遍 _guard()；没开就直接返回、什么都不做 ✓
+def _host_session_current(home: Path) -> bool:
+    # All host-spawned MCP children retain their launch generation. Standalone
+    # legacy invocations keep the existing pause and tool-authorization gates.
+    expected = os.environ.get("BILI_SESSION_INTEGRATION_REVISION", "")
+    mode = os.environ.get("BILI_SESSION_INTEGRATION_MODE", "")
+    if not expected and not mode:
+        return True
+    if mode not in ("autonomous-life", "memory-foundation"):
+        return False
+    if not expected.isascii() or not expected.isdecimal() or len(expected) > 16:
+        return False
+    file = home / "session-integration-v1.json"
+    try:
+        if file.is_symlink():
+            return False
+        try:
+            st = file.stat()
+        except FileNotFoundError:
+            return expected == "0" and mode == "autonomous-life"
+        if not file.is_file() or st.st_size > 4096:
+            return False
+        row = json.loads(file.read_text(encoding="utf-8"))
+        return (type(row.get("version")) is int and row["version"] == 1
+                and row.get("mode") == mode
+                and type(row.get("revision")) is int
+                and str(row["revision"]) == expected and row.get("pending", False) is None)
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def _guard(name: str) -> str:
     """写入工具还受共享的暂停标记约束；即便是已启动的 MCP 进程也能立即观察。"""
     pause_home = Path(os.environ.get("BILI_DUTY_HOME") or Path(__file__).resolve().parent)
+    if not _host_session_current(pause_home):
+        return json.dumps({"success": False, "blocked": True, "error": "session-integration-paused"}, ensure_ascii=False)
     if (pause_home / ".bili-duty-paused").exists():
         return json.dumps({"success": False, "blocked": True, "error": "大肥鱼总开关已关闭，拒绝对外操作"}, ensure_ascii=False)
     if _ALLOWED and name not in _ALLOWED:
@@ -653,6 +685,8 @@ def _gate_read(name):
             params = inspect.signature(function).bind(*args, **kwargs)
             params.apply_defaults()
             home = os.environ.get('BILI_DUTY_HOME')
+            if not _host_session_current(Path(home or Path(__file__).resolve().parent)):
+                return json.dumps({'ok': False, 'blocked': True, 'reason': 'session-integration-paused'}, ensure_ascii=False)
             try:
                 if os.environ.get('BILI_JS_MCP_ADAPTER') == '1':
                     # Only a verified parent reservation authorizes the Node-owned debit.
@@ -4362,7 +4396,7 @@ def _reserve_dynamic_attempt(bvid, limit):
 
 
 async def _dynamic_after_comment(bvid, text, credential, requested=False, daily_limit=3):
-    if (_DUTY_HOME / ".bili-duty-paused").exists():
+    if not _host_session_current(_DUTY_HOME) or (_DUTY_HOME / ".bili-duty-paused").exists():
         return {"status": "paused"}
     # 未授权时不占额度也不发；用户总开关优先于模型选择。
     if not _dynamic_enabled(requested):
