@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /** 在插件仓库根目录执行：node tools/persona-growth-cli.mjs list|add|approve|reject|delete|undo|sync|context */
+import {assertCheckpointClear} from '../lib/cold-restore-fence.mjs'
 import {join} from 'node:path'
 import {homedir} from 'node:os'
 import {readFileSync} from 'node:fs'
@@ -7,6 +8,7 @@ import {listGrowth,proposeGrowth,reviewGrowth,deleteGrowth,undoGrowth,syncReport
 const dir=process.env.BILI_DUTY_HOME||join(process.env.DSH_HOME||join(homedir(),'.dsh'),'bili-duty')
 const [command,...args]=process.argv.slice(2)
 try{
+ assertCheckpointClear(dir)
  let out
  switch(command){
   case 'list': out=listGrowth(dir,{status:args[0]||''});break

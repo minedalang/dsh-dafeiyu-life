@@ -10,8 +10,8 @@ import {verifyPythonCachePaths} from '../lib/storage-python-cache-check.mjs'
 import {readWhisperReadiness} from '../lib/video-dependencies.mjs'
 import {listWhisperModels} from '../lib/whisper-model-cache.mjs'
 import {collectBackupFiles,createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
-import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,rollbackSplitColdRestore,inspectSplitColdSnapshot,restoreColdSnapshot,inspectDisasterRescue,createDisasterRescue,verifyDisasterRescue,planDisasterReconciliation} from '../lib/cold-state-snapshot.mjs'
-import {coldRestoreFencePath} from '../lib/cold-restore-fence.mjs'
+import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,rollbackSplitColdRestore,inspectSplitColdSnapshot,restoreColdSnapshot,inspectDisasterRescue,createDisasterRescue,verifyDisasterRescue,planDisasterReconciliation,sealSplitColdSnapshot,inspectSealedRecovery,recoverSealedSnapshot,releaseSealedSnapshot,planColdRecovery} from '../lib/cold-state-snapshot.mjs'
+import {coldRestoreFencePath,coldCheckpointPath} from '../lib/cold-restore-fence.mjs'
 import {stateDirOf} from '../lib/state.mjs'
 const fixture=fn=>{const t=mkdtempSync(join(tmpdir(),'dafeiyu-dev3-')),root=join(t,'bili-duty');mkdirSync(root);try{fn({t,root,path:(...x)=>join(root,...x)})}finally{rmSync(t,{recursive:true,force:true})}}
 const put=(path,text)=>{mkdirSync(dirname(path),{recursive:true});writeFileSync(path,text)}
@@ -88,7 +88,7 @@ test('memory bundle still reads one migrated location and preserves revocation w
 test('legacy root-only cold snapshot fails closed after splitting stores',()=>fixture(({t,root,path})=>{
  put(path('life-memory','episodic.json'),'only-source-of-truth')
  migrateDomainOffline({root,domain:'memory',target:join(t,'life'),confirmedStopped:true})
- assert.throws(()=>createColdSnapshot({root,destination:join(t,'backup'),stoppedConfirmed:true}),/外置数据|不完整快照/)
+ assert.throws(()=>createColdSnapshot({root,destination:join(t,'backup'),stoppedConfirmed:true,checkStopped:()=>({ok:true})}),/外置数据|不完整快照/)
 }))
 test('Python cache-only is the default and never redirects or copies live runtimes',()=>fixture(({t,root,path})=>{
  put(path('uv-cache','archive-v1'),'uv-download-cache')
@@ -648,8 +648,8 @@ test('dev.26 disaster rescue rejects overlapping targets, races, damaged objects
 test('dev.26 legacy missing root cannot bypass historical protection; its backup can be rescued offline',()=>fixture(({t,root,path})=>{
  put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}));put(path('life-memory','episodic.json'),'historical')
  const snapshot=join(t,'legacy'),destination=join(t,'rescue')
- createColdSnapshot({root,destination:snapshot,stoppedConfirmed:true});renameSync(root,root+'-lost')
- assert.throws(()=>restoreColdSnapshot({root,snapshot,stoppedConfirmed:true,confirm:'RESTORE_FULL_DSH_STATE'}),/原业务目录不存在/)
+ createColdSnapshot({root,destination:snapshot,stoppedConfirmed:true,checkStopped:()=>({ok:true})});renameSync(root,root+'-lost')
+ assert.throws(()=>restoreColdSnapshot({root,snapshot,stoppedConfirmed:true,checkStopped:()=>({ok:true}),confirm:'RESTORE_FULL_DSH_STATE'}),/原业务目录不存在/)
  assert.equal(existsSync(root),false)
  const result=createDisasterRescue(rescueArgs(snapshot,destination));assert.equal(result.sourceFormat,'dsh-cold-state-v1')
  assert.equal(result.partitions[0].status,'original-path-not-recorded');assert.equal(result.activationAllowed,false)
@@ -714,4 +714,137 @@ test('dev.26 reconciliation treats missing and invalid revocation evidence as un
  renameSync(root,root+'-lost');const missing=join(t,'missing-rescue');createDisasterRescue(rescueArgs(snapshot,missing));const q=planDisasterReconciliation(missing)
  assert.equal(q.deepRevocations.candidate.status,'source-unavailable');assert.ok(q.comparisons[0].counts.uncomparedHistorical>0);assert.equal(q.comparisons[0].counts.historicalOnly,0);assert.equal(q.activationAllowed,false)
  const m=rescueManifest(missing);put(join(missing,'objects',m.rows[0].files[0].sha256),'tampered');assert.throws(()=>planDisasterReconciliation(missing),/对象校验失败/)
+}))
+
+
+const sealArgs=(root,snapshot,opts={})=>({root,snapshot,stoppedConfirmed:true,checkStopped:offline,confirm:'SEAL_DSH_COLD_CHECKPOINT',...opts})
+const recoverArgs=(root,snapshot,opts={})=>sealArgs(root,snapshot,{confirm:'RECOVER_SEALED_DSH_STATE',...opts})
+const releaseArgs=(root,snapshot,opts={})=>sealArgs(root,snapshot,{confirm:'RELEASE_DSH_COLD_CHECKPOINT',...opts})
+const seedCheckpoint=(root,path)=>{
+ put(path('character-identity.json'),JSON.stringify({version:1,id:'11111111-1111-1111-1111-111111111111',createdAt:1}))
+ put(path('life-memory','episodic.json'),'current life')
+ put(path('detail-protection','revocations-v1.json'),JSON.stringify({version:1,ids:['e-'+'a'.repeat(18)]}))
+ put(path('owner-todos.json'),'completed todo')
+ put(path('accounts','123','authorization.json'),'withdrawn permission')
+ put(path('outbound-action-executions','unknown.json'),'unknown result')
+ put(path('future-business.bin'),'unknown opaque ledger')
+}
+test('dev.26 sealed cold checkpoint restores lost core and Life paths without rolling back or reauthorizing',()=>fixture(({t,root,path})=>{
+ seedCheckpoint(root,path)
+ const life=join(t,'life'),model=join(t,'models'),snapshot=join(t,'snapshot')
+ put(path('.hf-cache','hub','models--fixture','snapshots','v1','model.bin'),'weight')
+ migrateDomainOffline({root,domain:'memory',target:life,confirmedStopped:true})
+ migrateDomainOffline({root,domain:'whisper',target:model,confirmedStopped:true})
+ splitBackup(root,snapshot)
+ assert.equal(sealSplitColdSnapshot(sealArgs(root,snapshot)).sealed,true)
+ assert.ok(existsSync(coldCheckpointPath(root)))
+ assert.throws(()=>stateDirOf({get:()=>()=>root}),/封存检查点/)
+ assert.throws(()=>migrateDomainOffline({root,domain:'embedding',target:join(t,'other'),confirmedStopped:true}),/封存检查点/)
+ assert.throws(()=>restoreBackupFiles(root,{}),/封存检查点/)
+ assert.throws(()=>restoreLifeMemoryBackup(root,{}),/封存检查点/)
+ renameSync(root,root+'-lost');renameSync(life,life+'-lost')
+ assert.throws(()=>stateDirOf({get:()=>()=>root}),/封存检查点/);assert.equal(existsSync(root),false)
+ const plan=inspectSealedRecovery({root,snapshot});assert.equal(plan.recoverAllowed,true);assert.equal(plan.releaseAllowed,false)
+ assert.deepEqual(plan.parts.filter(x=>x.status==='missing').map(x=>x.id),['core','v1-memory'])
+ assert.throws(()=>releaseSealedSnapshot(releaseArgs(root,snapshot)),/不存在|分区/)
+ const result=recoverSealedSnapshot(recoverArgs(root,snapshot));assert.equal(result.restored,true);assert.equal(result.accountReviewRequired,true)
+ assert.deepEqual(result.restoredPartitions,['core','v1-memory']);assert.equal(existsSync(coldCheckpointPath(root)),false)
+ assert.equal(stateDirOf({get:()=>()=>root}),root)
+ assert.equal(readFileSync(join(life,'life-memory','episodic.json'),'utf8'),'current life')
+ assert.equal(readFileSync(join(life,'detail-protection','revocations-v1.json'),'utf8'),readFileSync(join(life+'-lost','detail-protection','revocations-v1.json'),'utf8'))
+ for(const name of ['owner-todos.json','accounts/123/authorization.json','outbound-action-executions/unknown.json','future-business.bin'])assert.equal(readFileSync(join(root,name),'utf8'),readFileSync(join(root+'-lost',name),'utf8'))
+ assert.equal(JSON.parse(readFileSync(path('restore-freeze.json'),'utf8')).reviewRequired,true)
+ assert.equal(readFileSync(join(model,'.hf-cache','hub','models--fixture','snapshots','v1','model.bin'),'utf8'),'weight')
+ assert.throws(()=>recoverSealedSnapshot(recoverArgs(root,snapshot)),/ENOENT/)
+}))
+test('dev.26 ordinary history cannot be retroactively sealed, and release consumes the witness',()=>fixture(({t,root,path})=>{
+ seedCheckpoint(root,path);const snapshot=join(t,'snapshot');splitBackup(root,snapshot)
+ put(path('owner-todos.json'),'newer todo')
+ assert.throws(()=>sealSplitColdSnapshot(sealArgs(root,snapshot)),/完全一致/);assert.equal(existsSync(coldCheckpointPath(root)),false)
+ assert.throws(()=>recoverSealedSnapshot(recoverArgs(root,snapshot)),/ENOENT/)
+ put(path('owner-todos.json'),'completed todo');sealSplitColdSnapshot(sealArgs(root,snapshot))
+ const cli=spawnSync(process.execPath,['tools/dev4-cold-state-backup.mjs','plan-sealed-recovery','--root',root,'--snapshot',snapshot],{encoding:'utf8'})
+ assert.equal(cli.status,0,cli.stderr);assert.equal(JSON.parse(cli.stdout).releaseAllowed,true)
+ assert.equal(releaseSealedSnapshot(releaseArgs(root,snapshot)).checkpointReusable,false)
+ assert.equal(existsSync(path('restore-freeze.json')),false);assert.equal(stateDirOf({get:()=>()=>root}),root)
+ renameSync(root,root+'-lost');assert.throws(()=>recoverSealedSnapshot(recoverArgs(root,snapshot)),/ENOENT/);assert.equal(existsSync(root),false)
+}))
+test('dev.26 checkpoint refuses changed surviving business, snapshot or missing host witness',()=>fixture(({t,root,path})=>{
+ seedCheckpoint(root,path);const life=join(t,'life'),snapshot=join(t,'snapshot')
+ migrateDomainOffline({root,domain:'memory',target:life,confirmedStopped:true});splitBackup(root,snapshot);sealSplitColdSnapshot(sealArgs(root,snapshot))
+ put(path('owner-todos.json'),'changed after seal');renameSync(life,life+'-lost')
+ assert.equal(inspectSealedRecovery({root,snapshot}).recoverAllowed,false)
+ assert.throws(()=>recoverSealedSnapshot(recoverArgs(root,snapshot)),/现存分区/);assert.equal(existsSync(life),false)
+ assert.equal(readFileSync(path('owner-todos.json'),'utf8'),'changed after seal');assert.ok(existsSync(coldCheckpointPath(root)))
+ const file=join(snapshot,'manifest.json'),old=readFileSync(file,'utf8');put(file,old+' ')
+ assert.throws(()=>inspectSealedRecovery({root,snapshot}),/凭据不匹配/)
+ put(file,old);renameSync(coldCheckpointPath(root),coldCheckpointPath(root)+'-lost')
+ assert.throws(()=>recoverSealedSnapshot(recoverArgs(root,snapshot)),/ENOENT/);assert.equal(existsSync(life),false)
+}))
+test('dev.26 interrupted seal stays preparing and cannot authorize recovery; interrupted restore retries without touching survivors',()=>fixture(({t,root,path})=>{
+ seedCheckpoint(root,path);const life=join(t,'life'),snapshot=join(t,'snapshot')
+ migrateDomainOffline({root,domain:'memory',target:life,confirmedStopped:true});splitBackup(root,snapshot)
+ let calls=0
+ assert.throws(()=>sealSplitColdSnapshot(sealArgs(root,snapshot,{checkStopped:()=>({ok:++calls===1})})),/未完成封存/)
+ assert.equal(inspectSealedRecovery({root,snapshot}).sealed,false)
+ assert.throws(()=>recoverSealedSnapshot(recoverArgs(root,snapshot)),/尚未完成封存/)
+ releaseSealedSnapshot(releaseArgs(root,snapshot));sealSplitColdSnapshot(sealArgs(root,snapshot))
+ renameSync(root,root+'-lost');renameSync(life,life+'-lost');calls=0
+ // Fail after the external partition is published, before publishing core.
+ assert.throws(()=>recoverSealedSnapshot(recoverArgs(root,snapshot,{checkStopped:()=>({ok:++calls<3})})),/仍有 DSH/)
+ assert.equal(existsSync(life),true);assert.equal(existsSync(root),false);assert.ok(existsSync(coldCheckpointPath(root)))
+ assert.throws(()=>stateDirOf({get:()=>()=>root}),/封存检查点/)
+ assert.throws(()=>releaseSealedSnapshot(releaseArgs(root,snapshot)),/恢复已开始/)
+ assert.deepEqual(recoverSealedSnapshot(recoverArgs(root,snapshot)).restoredPartitions,['core'])
+ assert.equal(readFileSync(join(life,'life-memory','episodic.json'),'utf8'),'current life')
+}))
+test('dev.26 relocated core uses original host bootstrap seal; missing relocated core is restored without rewriting pointer',()=>fixture(({t,root,path})=>{
+ seedCheckpoint(root,path);const core=join(t,'relocated'),snapshot=join(t,'snapshot')
+ migrateStorageOffline({source:root,target:core,confirmedStopped:true});splitBackup(core,snapshot)
+ sealSplitColdSnapshot(sealArgs(core,snapshot))
+ const pointer=join(t,'.bili-duty-location-v1.json'),before=readFileSync(pointer,'utf8')
+ assert.equal(existsSync(coldCheckpointPath(root)),true);assert.equal(existsSync(coldCheckpointPath(core)),false)
+ assert.throws(()=>stateDirOf({get:()=>()=>root}),/封存检查点/)
+ assert.throws(()=>migrateDomainOffline({root:core,domain:'memory',target:join(t,'blocked'),confirmedStopped:true}),/封存检查点/)
+ renameSync(core,core+'-lost');assert.equal(inspectSealedRecovery({root:core,snapshot}).recoverAllowed,true)
+ assert.equal(recoverSealedSnapshot(recoverArgs(core,snapshot)).restored,true)
+ assert.equal(stateDirOf({get:()=>()=>root}),core);assert.equal(readFileSync(pointer,'utf8'),before)
+}))
+
+
+test('dev.26 unified preflight is read-only and distinguishes ordinary, sealed, pending and historical states',()=>fixture(({t,root,path})=>{
+ seedCheckpoint(root,path);const snapshot=join(t,'snapshot'),life=join(t,'life'),destination=join(t,'rescue')
+ migrateDomainOffline({root,domain:'memory',target:life,confirmedStopped:true});splitBackup(root,snapshot)
+ assert.equal(planColdRecovery({root,snapshot}).nextAction,'restore-full')
+ put(path('future-business.bin'),'new ledger')
+ assert.equal(planColdRecovery({root,snapshot}).nextAction,'plan-disaster-rescue')
+ const report=planColdRecovery({root,snapshot,destination});assert.equal(report.nextAction,'rescue-disaster');assert.equal(report.plan.activationAllowed,false);assert.equal(existsSync(destination),false)
+ assert.equal(planColdRecovery({root,snapshot,destination:path('inside')}).nextAction,'none')
+ put(path('future-business.bin'),'unknown opaque ledger');sealSplitColdSnapshot(sealArgs(root,snapshot))
+ assert.equal(planColdRecovery({root,snapshot}).nextAction,'release-seal')
+ renameSync(life,life+'-lost');assert.equal(planColdRecovery({root,snapshot}).nextAction,'recover-sealed')
+ const cli=spawnSync(process.execPath,['tools/dev4-cold-state-backup.mjs','plan-recovery','--root',root,'--snapshot',snapshot],{encoding:'utf8'})
+ assert.equal(cli.status,0,cli.stderr);assert.equal(JSON.parse(cli.stdout).nextAction,'recover-sealed')
+ assert.equal(existsSync(life),false);recoverSealedSnapshot(recoverArgs(root,snapshot))
+ put(coldRestoreFencePath(root),'{}');assert.equal(planColdRecovery({root,snapshot}).nextAction,'rollback-full')
+}))
+test('dev.26 interrupted checkpoint after all partitions published cannot bypass account review',()=>fixture(({t,root,path})=>{
+ seedCheckpoint(root,path);const snapshot=join(t,'snapshot');splitBackup(root,snapshot);sealSplitColdSnapshot(sealArgs(root,snapshot))
+ renameSync(root,root+'-lost');let calls=0
+ assert.throws(()=>recoverSealedSnapshot(recoverArgs(root,snapshot,{checkStopped:()=>({ok:++calls<3})})),/仍有 DSH/)
+ assert.equal(existsSync(root),true);assert.equal(existsSync(path('restore-freeze.json')),false)
+ const plan=inspectSealedRecovery({root,snapshot});assert.equal(plan.recovering,true);assert.equal(plan.missing,false);assert.equal(plan.releaseAllowed,false)
+ assert.equal(planColdRecovery({root,snapshot}).nextAction,'recover-sealed')
+ assert.throws(()=>releaseSealedSnapshot(releaseArgs(root,snapshot)),/恢复已开始/)
+ assert.equal(recoverSealedSnapshot(recoverArgs(root,snapshot)).restored,true)
+ assert.equal(JSON.parse(readFileSync(path('restore-freeze.json'),'utf8')).reviewRequired,true)
+}))
+test('dev.26 cold recovery protects opaque empty business directories and checks real stop requirement for legacy commands',()=>fixture(({t,root,path})=>{
+ seedCheckpoint(root,path);mkdirSync(path('unknown-empty-state'));const snapshot=join(t,'legacy')
+ assert.throws(()=>createColdSnapshot({root,destination:snapshot,stoppedConfirmed:true,checkStopped:()=>({ok:false})}),/仍有 DSH/)
+ createColdSnapshot({root,destination:snapshot,stoppedConfirmed:true,checkStopped:offline});rmSync(path('unknown-empty-state'),{recursive:true})
+ assert.throws(()=>restoreColdSnapshot({root,snapshot,stoppedConfirmed:true,confirm:'RESTORE_FULL_DSH_STATE',checkStopped:offline}),/不能安全回退/)
+ assert.equal(planColdRecovery({root,snapshot}).nextAction,'plan-disaster-rescue');assert.equal(existsSync(path('unknown-empty-state')),false)
+ mkdirSync(path('unknown-empty-state'));assert.equal(planColdRecovery({root,snapshot}).nextAction,'restore')
+ assert.throws(()=>restoreColdSnapshot({root,snapshot,stoppedConfirmed:true,confirm:'RESTORE_FULL_DSH_STATE',checkStopped:()=>({ok:false})}),/仍有 DSH/)
 }))

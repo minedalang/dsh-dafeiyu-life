@@ -670,6 +670,9 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-backup .backup-path-row input{flex:1;min-width:180px}
 #panel-backup .backup-path-row button{background:#325bb8;border-color:#325bb8;color:#fff;font-weight:650;min-height:42px}
 #panel-backup .backup-path-row button:hover{background:#234b9f}
+#panel-backup .cold-guide-fields{display:grid;gap:9px;margin:12px 0;min-width:0}
+#panel-backup .cold-guide-fields label{display:grid;gap:4px;min-width:0;font-size:13px}
+#panel-backup .cold-guide-fields input,#panel-backup #backup-cold-guide-command{box-sizing:border-box;width:100%;min-width:0;max-width:100%}
 #panel-backup .backup-status{overflow-wrap:anywhere;margin:8px 0 0}
 #panel-backup .backup-primary-action{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:18px;border:1px solid #c3e7d8;border-radius:16px;background:linear-gradient(110deg,#e8faf2,#e6f6ff);padding:17px}
 #panel-backup .backup-primary-action strong{display:block;font-size:16px;color:#176c5d}
@@ -2683,7 +2686,22 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
     <p class="backup-footnote">分盘后仍从当前生效的 Life/业务数据目录导出，不会退回 C 盘历史副本。便携业务备份不包含 B站 Cookie、登录凭证、部分私密账本、短期时间线、密钥、缓存、日志和表情包图片本体；私密经历请使用下方人生记忆专项备份，表情包图片请单独导出。两种 JSON 备份均不能替代完整冷快照。</p>
     <p class="backup-footnote" id="backup-cold-offline-note"><strong>分盘完整冷备份（开发候选）</strong>：跨版本迁移前应独立保存全部现役分区。完全退出 DSH 后，可在源码目录使用 <code>tools/dev4-cold-state-backup.mjs</code> 的 <code>backup-full</code> 与 <code>verify-full</code> 命令，详见 dev.26 冷备份说明。当前不可重建业务状态变化时拒绝完整历史恢复。完整快照包含账号凭证和私密数据，严禁上传分享。</p>
     <p class="backup-footnote" id="backup-model-recovery-note"><strong>模型盘损坏或更换</strong>：核心与现役 Life 完好时，完全退出 DSH，使用 <code>plan-model-recovery</code> 预检及 <code>recover-models</code> 恢复已知 V2 模型到新目录；不覆盖当前记忆或权限。核心/Life 整盘丢失时不能直接激活旧业务快照。</p>
-    <p class="backup-footnote" id="backup-disaster-rescue-note"><strong>核心盘或记忆盘损坏</strong>：请先完全退出 DSH，使用 <code>plan-disaster-rescue</code> 预检、<code>rescue-disaster</code> 抢救历史快照与尚可读取的核心/记忆分区，再用 <code>verify-rescue</code> 校验新隔离目录。救援资料不是可启动的角色，保留两种来源，不自动合并或恢复旧授权、记忆；完整激活恢复仍待支持。救援目录同样包含私密数据，请勿上传。<br><strong>恢复前审查</strong>：使用 <code>plan-rescue-merge --to 隔离目录</code> 核验两份来源的文件差异、缺项及已知深层遗忘记录数量；不输出私人正文，不认定候选为最新，不合并或激活。</p>
+    <p class="backup-footnote" id="backup-disaster-rescue-note"><strong>核心盘或记忆盘损坏</strong>：请先完全退出 DSH，使用 <code>plan-disaster-rescue</code> 预检、<code>rescue-disaster</code> 抢救历史快照与尚可读取的核心/记忆分区，再用 <code>verify-rescue</code> 校验新隔离目录。救援资料不是可启动的角色，保留两种来源，不自动合并或恢复旧授权、记忆；无有效停机封存凭据时不能激活历史数据。救援目录同样包含私密数据，请勿上传。<br><strong>恢复前审查</strong>：使用 <code>plan-rescue-merge --to 隔离目录</code> 核验两份来源的文件差异、缺项及已知深层遗忘记录数量；不输出私人正文，不认定候选为最新，不合并或激活。</p>
+    <details class="backup-fold" id="backup-cold-guide" style="margin-top:14px">
+      <summary><span class="backup-card-icon backup-icon-blue">🛟</span><span class="backup-summary-text"><strong>完整冷备份与恢复向导（停机操作）</strong><small>根据真实分区、备份与封存状态选择恢复路径</small></span><span class="backup-chevron" aria-hidden="true">⌄</span></summary>
+      <div class="backup-fold-body">
+        <p class="muted">先生成只读预检命令，再完全退出 DSH，在源码目录的 PowerShell 中执行。向导不会在线执行备份、恢复或改动授权；即使管理中心无法启动，也可直接使用离线工具。</p>
+        <div class="cold-guide-fields">
+          <label>原生效核心运行目录<input id="backup-cold-guide-root" type="text" autocomplete="off" placeholder="例如 C:\Users\你\.dsh\bili-duty"></label>
+          <label>完整冷快照目录<input id="backup-cold-guide-snapshot" type="text" autocomplete="off" placeholder="例如 E:\大肥鱼完整备份"></label>
+          <label>新模型或隔离救援目录（可选）<input id="backup-cold-guide-target" type="text" autocomplete="off" placeholder="必须尚不存在"></label>
+        </div>
+        <div class="toolbar"><button id="backup-cold-guide-build" type="button">生成预检命令</button><button id="backup-cold-guide-copy" type="button" disabled>复制命令</button></div>
+        <textarea id="backup-cold-guide-command" readonly rows="3" aria-label="只读预检命令"></textarea>
+        <p class="muted backup-status" id="backup-cold-guide-status" role="status" aria-live="polite">填写原核心和快照目录；不会上传路径。</p>
+        <p class="backup-footnote"><strong>维护前封存：</strong>停机完成 <code>backup-full</code> 后，<code>seal-full</code> 核验全量现役文件并冻结正常启动。磁盘故障后 <code>recover-sealed</code> 只重建缺失原路径，保留幸存分区；无故障使用 <code>release-seal</code> 解除。解除后普通历史快照不能再用于封存恢复。原宿主封存凭据必须仍在，不能复制旧凭据或手动删除冻结。详见 dev.26 冷备份说明。</p>
+      </div>
+    </details>
   </div>
   <div class="backup-more-grid">
     <details class="backup-fold" id="backup-memory-tools">

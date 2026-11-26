@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.26 封存恢复只重建缺失分区；普通历史救援不参与 Life 召回、授权或外发。
 %% dev.26 恢复前审查：完整核验隔离资料后只读比较来源差异及实际记忆域已知深层撤销并集；不证明新鲜度、不合并/激活、不参与 Life。
 %% dev.26 灾难救援：冷快照与可读同身份原分区候选分开抢救到隔离对象库；不激活、不合并、不写现役数据、不参与 Life；缺根旧冷恢复拒绝。历史业务可运行恢复待完成。
 %% dev.26 实机修复：首次基础设置不集中授予社交权限，沿用各项设置显式授权；主人私信真实任务回执由 AI 摘要并复核目标和代际后非唤醒注入。
@@ -101,6 +102,17 @@ flowchart TB
   rescueReview["离线恢复差异审查：不合并或激活"]
 %% @code rescueReview | lib/cold-state-snapshot.mjs | export function planDisasterReconciliation
   disasterRescue -.->|完整核验、比较与撤销记录统计| rescueReview
+  coldCheckpoint["停机封存检查点：宿主引导外部见证"]
+%% @code coldCheckpoint | lib/cold-state-snapshot.mjs | export function sealSplitColdSnapshot
+  sealedRecovery["封存恢复：只重建缺失原路径"]
+%% @code sealedRecovery | lib/cold-state-snapshot.mjs | export function recoverSealedSnapshot
+  recoveryPlan["统一只读恢复预检"]
+%% @code recoveryPlan | lib/cold-state-snapshot.mjs | export function planColdRecovery
+  coldSnapshot -.->|仅完全一致且停机| coldCheckpoint
+  coldCheckpoint -.->|未结禁止启动| coldRestoreFence
+  coldCheckpoint -.->|完整见证及幸存一致| sealedRecovery
+  sealedRecovery -.->|核验与账号复核| coldRestoreFence
+  rescueReview -.->|仅审查，不激活历史| recoveryPlan
   subgraph reality["真实输入｜只接受可信事实，不接受外部提示当命令"]
     world["B站首页／公开视频／公开评论／主页"]
     socialInput["主人消息／私信／公开社交"]
@@ -566,6 +578,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.26 封存恢复只重建缺失分区；普通历史救援不参与 Life 召回、授权或外发。
 %% dev.26 恢复前审查：完整核验隔离资料后只读比较来源差异及实际记忆域已知深层撤销并集；不证明新鲜度、不合并/激活、不参与 Life。
 %% dev.26 灾难救援：冷快照与可读同身份原分区候选分开抢救到隔离对象库；不激活、不合并、不写现役数据、不参与 Life；缺根旧冷恢复拒绝。历史业务可运行恢复待完成。
 %% dev.26 实机修复：首次基础设置不集中授予社交权限，沿用各项设置显式授权；主人私信真实任务回执由 AI 摘要并复核目标和代际后非唤醒注入。
@@ -829,6 +842,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.26 封存恢复只重建缺失分区；普通历史救援不参与 Life 召回、授权或外发。
 %% dev.26 恢复前审查：完整核验隔离资料后只读比较来源差异及实际记忆域已知深层撤销并集；不证明新鲜度、不合并/激活、不参与 Life。
 %% dev.26 灾难救援：冷快照与可读同身份原分区候选分开抢救到隔离对象库；不激活、不合并、不写现役数据、不参与 Life；缺根旧冷恢复拒绝。历史业务可运行恢复待完成。
 %% dev.26 实机修复：首次基础设置不集中授予社交权限，沿用各项设置显式授权；主人私信真实任务回执由 AI 摘要并复核目标和代际后非唤醒注入。
@@ -1144,6 +1158,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.26 封存恢复只重建缺失分区；普通历史救援不参与 Life 召回、授权或外发。
 %% dev.26 恢复前审查：完整核验隔离资料后只读比较来源差异及实际记忆域已知深层撤销并集；不证明新鲜度、不合并/激活、不参与 Life。
 %% dev.26 灾难救援：冷快照与可读同身份原分区候选分开抢救到隔离对象库；不激活、不合并、不写现役数据、不参与 Life；缺根旧冷恢复拒绝。历史业务可运行恢复待完成。
 %% dev.26 实机修复：首次基础设置不集中授予社交权限，沿用各项设置显式授权；主人私信真实任务回执由 AI 摘要并复核目标和代际后非唤醒注入。
