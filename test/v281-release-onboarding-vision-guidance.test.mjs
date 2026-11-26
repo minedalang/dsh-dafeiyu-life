@@ -243,3 +243,14 @@ test('新用户完成按钮先实时读取必需项，缺失时定位且不发�
   await assert.rejects(past.fn(),/已完成首次配置/)
   assert.deepEqual(past.calls.map(x=>x[0]),['/onboarding/status'])
 })
+
+
+test('记忆基座 Session 指南与正式文档一致，复制仅本地且保留移动端只读',()=>{
+  const html=read('lib/management-console.html'),js=read('lib/management-console.js'),doc=read('docs/SESSION_INTEGRATION.md');
+  const text=html.match(/<textarea id="fs-foundation-guide-text"[^>]*readonly[^>]*>([\s\S]*?)<\/textarea>/)?.[1].replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+  assert.equal(text?.replace(/\r\n/g,'\n'),doc.match(/```text\n([\s\S]*?)\n```/)?.[1]);
+  for(const name of ['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall'])assert.ok(text.includes(name)&&read('lib/long-term-memory.mjs').includes("name:'"+name+"'"));
+  const copy=js.slice(js.indexOf("$('fs-foundation-guide-copy').addEventListener"),js.indexOf("$('fs-foundation-memory-recall').addEventListener"));
+  assert.match(copy,/navigator\.clipboard\.writeText\(guide\.value\)/);assert.match(copy,/guide\.select\(\)/);assert.doesNotMatch(copy,/request\(|fetch\(/);
+  assert.match(js,/mobileReadOnlySelector=.*#fs-foundation-guide-copy/);assert.match(js,/#fs-foundation-guide-text\[readonly\]/);
+})
