@@ -158,9 +158,9 @@ test('旧运行后端的状态回执仍可刷新会话目录，原生绑定后�
   h.respond(directory('new',['old','new']));await h.refreshMainSessionDirectory();assert.equal(h.$('main-session-id').value,'new');assert.match(h.$('main-session-list-status').textContent,/已排除归档/)
 })
 
-test('主页独立列表每4秒刷新且隐藏或切换页面时不轮询，离开页面清除定时器',()=>{
+test('主页及首次 Session 步骤每4秒刷新，其他页面或隐藏时不轮询，离开页面清除定时器',()=>{
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8'),html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
-  assert.match(js,/const mainSessionListTimer=.*setInterval\(\(\)=>\{if\(!document\.hidden&&active==='home'\)void refreshMainSessionDirectory\(\)\},4000\)/)
+  assert.match(js,/const mainSessionListTimer=.*setInterval\(\(\)=>\{if\(!document\.hidden&&\(active==='home'\|\|wizardMounted==='session'\)\)void refreshMainSessionDirectory\(\)\},4000\)/)
   assert.match(js,/clearInterval\(mainSessionListTimer\)/)
   assert.match(js,/request\('\/main-session\?directory=1'\)/)
   assert.match(html,/也可以在 DSH 原生界面指定主 Session/);assert.match(html,/设为大肥鱼主 Session/);assert.doesNotMatch(html,/id="main-session-(?:create|open|workspace)"/)

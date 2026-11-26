@@ -36,9 +36,12 @@ test('自动继承仅来自默认或上游任务，不强行写入首个已验�
  assert.doesNotMatch(html,/一键使用已验证模型/)
  assert.doesNotMatch(js,/models-use-recommended/)
  assert.match(js,/models-.*-effective/)
- assert.match(html,/选择后，下面全部八项当前任务会变成同一个模型/)
+ assert.match(html,/选择后同步所有 8 个当前任务并重置思考深度/)
+ assert.match(html,/首次配置只设置默认模型及明确选择的反思模型/)
+ assert.match(js,/if\(wizardMounted!=='defaults'\)applyDefaultModelToAllRoutes\(\)/)
  assert.match(js,/未单独指定：继承/)
- assert.match(html,/连接测试可能产生费用，不计入统计/)
+ assert.match(html,/连接测试可能产生费用/)
+ assert.match(html,/模型页统计的是插件任务启动次数，不是 Token 或费用/)
 })
 
 test('真实可衰减副本响应运行时关系记忆参数变化，同时不复活已模糊的 UID',async()=>{

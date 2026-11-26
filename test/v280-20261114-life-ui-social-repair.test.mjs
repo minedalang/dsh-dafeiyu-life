@@ -33,7 +33,7 @@ test('推荐增强优先展示本地语义回忆，独立会话文案保留',()=
  assert.ok(first<html.indexOf('id="quick-life-section"'))
  assert.match(html,/强烈推荐 · 可选/)
  assert.match(html,/不开启时仍可用词法回忆，但换一种说法/)
- assert.match(html,/绑定与鱼鱼交谈的session会话；以后可以在管理中心随时修改。/)
+ assert.match(html,/绑定 DSH 中的聊天会话，让鱼鱼与会话共享记忆。/)
 })
 
 test('verified B站 comment pictures preserve up to three independent images without external URLs',()=>{

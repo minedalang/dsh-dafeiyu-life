@@ -2151,6 +2151,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
  #panel-backup .storage-overview button{margin-left:52px}
  #panel-backup .storage-partition{padding:12px}
 }
+
 </style>
 </head>
 <body><main class="wrap" id="management-shell" data-platform="checking" data-platform-ready="false">
@@ -2162,11 +2163,14 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div id="life-health-channels" class="health-channel-list" aria-label="各监听渠道状态"></div>
 </aside>
 <nav class="tabs" aria-label="管理分类">
-<div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
+<div class="tab-cluster tab-primary"><span class="tab-cluster-label">常用</span>
 <button data-tab="home" aria-selected="false">大肥鱼的家</button>
+<button data-tab="life" aria-selected="false">🧠 鱼的记忆</button>
+<button data-tab="firststart" aria-selected="false">🚀 快速设置</button>
+<button data-tab="models" aria-selected="false">AI 模型</button></div>
+<div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
 <button data-tab="life-agent" aria-selected="false">🐟 鱼鱼正在做</button>
 <button data-tab="plans" aria-selected="false">🧭 鱼鱼想做</button>
-<button data-tab="life" aria-selected="false">🧠 鱼的记忆</button>
 
 <button data-tab="relationships" aria-selected="false">👥 逐渐熟悉的人</button>
 <button data-tab="personality" aria-selected="false">🌱 人格成长（实验性）</button></div>
@@ -2177,10 +2181,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <button data-tab="dm" aria-selected="false">后台私信 <span id="dm-count" class="queue-badge" hidden></span></button>
 <button data-tab="dynamic" aria-selected="false">动态创作</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">🎭 角色与系统</span>
-<button data-tab="firststart" aria-selected="false">🚀 快速设置</button>
 <button data-tab="persona" aria-selected="true">角色人设</button>
 <button data-tab="growth" aria-selected="false">行为与表达改进 <span id="growth-count" class="queue-badge" hidden></span></button>
-<button data-tab="models" aria-selected="false">AI 模型</button>
 <button data-tab="quotas" aria-selected="false">次数与额度</button>
 <button data-tab="polling" aria-selected="false">消息感知</button>
 <button data-tab="open-platform" aria-selected="false">🧩 桌宠开放平台（开发中）</button></div>
@@ -2224,18 +2226,19 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <details id="fs-main-deps-details"><summary>查看主依赖安装日志末尾</summary><pre id="fs-main-deps-log" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto">暂无安装记录</pre></details>
   </section>
   <div class="fs-grid">
-    <section class="fs-step"><h3>B站登录 <span id="fs-bili-badge" class="pill pending">必须完成</span></h3><p>建议使用鱼鱼专用账号；已有登录先检测。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button" disabled>扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>确认登录</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>重启后继续验证</button></div></section>
-    <section class="fs-step"><h3>文字模型验证 <span id="fs-headless-badge" class="pill pending">至少验证一个模型</span></h3><p>选择一个 DSH 模型，完成后台文字连接验证。</p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后请在右侧 Headless 模型卡片点击「验证文字连接」完成真实请求；图片能力还需单独实测。</p><div class="actions"><button id="fs-headless-open" class="primary" type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">配置并验证模型 ↗</button></div></section>
+    <section class="fs-step"><h3>B站登录 <span id="fs-bili-badge" class="pill pending">必须完成</span></h3><p>建议使用鱼鱼专用账号；已有登录先检测。</p><div id="fs-bili-state" class="fs-state bad">尚未验证登录状态</div><div class="actions"><button id="fs-bili-verify" type="button">检测已有登录</button><button id="fs-bili-start" class="primary" type="button" disabled>扫码登录 B站</button></div><div id="fs-qr" class="fs-qr" hidden><img id="fs-qr-image" alt="B站登录二维码"><span id="fs-qr-status">用手机 B站扫描二维码并确认</span></div><div id="fs-account-state" class="fs-next-hint" role="status">账号绑定状态加载中…</div><div class="actions" style="flex-wrap:wrap"><button id="fs-account-confirm" class="primary" type="button" hidden>确认登录</button><button id="fs-account-cancel" type="button" hidden>取消待确认扫码</button><button id="fs-account-resume" class="primary" type="button" hidden>确认登录并继续</button></div></section>
+    <section class="fs-step"><h3>文字模型验证 <span id="fs-headless-badge" class="pill pending">至少验证一个模型</span></h3><p>选择一个 DSH 模型，完成后台文字连接验证。</p><div id="fs-headless-state" class="fs-state bad">尚未验证后台模型</div><p id="fs-headless-next" class="fs-next-hint">注意：同步成功 ≠ 验证成功。同步后请在右侧 Headless 模型卡片点击「验证文字连接」完成真实请求；图片能力还需单独实测。</p><div class="actions"><button id="fs-headless-open" class="primary" type="button">配置并验证模型</button></div></section>
   </div>
     </div>
-    <div class="toolbar setup-shortcuts"><a class="button" href="#quick-life-section">设置生活节奏 ↗</a><button type="button" data-open-tab="home">绑定 Session ↗</button><button type="button" data-open-tab="life">查看记忆 ↗</button></div>
-    <details id="fs-enhancements" class="setup-disclosure" open><summary><strong>推荐增强</strong><span>本地语义、视觉、语音</span></summary>
+    <div class="toolbar setup-shortcuts"><a class="button" href="#quick-life-section">设置生活节奏 ↗</a><button type="button" data-open-tab="life">查看记忆 ↗</button></div>
+    <section class="quick-config-section" id="fs-session-stage"><div class="quick-config-title"><span class="quick-card-icon">💬</span><div><h4>主 Session <span class="pill">可选</span></h4><p>绑定 DSH 中的聊天会话，让鱼鱼与会话共享记忆。</p></div></div><div class="quick-config-actions"><button type="button" id="fs-wizard-session">选择主 Session</button></div></section>
+    <section id="fs-enhancements" class="setup-disclosure"><div class="fs-phase-title"><strong>推荐增强</strong><span>本地语义、视觉、语音</span></div>
       <section class="quick-config-section" id="quick-embedding-section" aria-label="可选本地语义回忆安装">
         <div class="quick-config-title"><span class="quick-card-icon">🧠</span><div><h4>本地语义回忆 <span class="pill quick-strong-recommend">强烈推荐 · 可选</span></h4><p>优先安装：能按语义找到不同说法所指的同一段经历，让聊天更容易衔接旧记忆。</p></div></div>
         <details><summary>下载大小与记忆隐私</summary><p class="muted">下载 Qwen3-Embedding-0.6B Q8_0 模型（约 639 MB）及匹配系统的 llama.cpp CPU 运行时。全部在本机运行，原始记忆不上传。建议设备有充足磁盘空间与内存；不开启时仍可用词法回忆，但换一种说法、同义词或隐含关联的过往经历更容易漏召回；鱼鱼可能记得这件事，却无法在当前对话里准确想起。随时可再安装。</p></details>
         <p class="quick-current" id="quick-embedding-status" role="status" aria-live="polite">正在检查本地模型…</p>
         <progress id="quick-embedding-progress" max="100" value="0" style="width:100%" aria-label="本地语义模型安装进度"></progress>
-        <div class="quick-config-actions"><button type="button" class="primary" id="quick-embedding-install">推荐 · 启用并安装本地语义回忆</button><button type="button" id="quick-embedding-later">暂不安装，使用默认词法回忆</button><button type="button" data-open-tab="life" data-open-anchor="life-memory-settings">查看本地模型高级设置 ↗</button></div>
+        <div class="quick-config-actions"><button type="button" class="primary" id="quick-embedding-install">推荐 · 启用并安装本地语义回忆</button><button type="button" id="quick-embedding-later">暂不安装，使用默认词法回忆</button></div>
       </section>
       <section class="quick-config-section" id="fs-legacy-video-install" aria-label="旧视频组件安装入口" hidden>
     <div class="video-aux-heading" style="margin-top:16px"><strong>视频增强组件</strong><span class="pill">不影响首次设置必需项</span></div>
@@ -2253,25 +2256,25 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
       <p id="fs-vision-state" class="quick-current" role="status" aria-live="polite">正在读取当前视觉设置…</p>
       <div class="quick-config-actions"><button type="button" class="primary" id="fs-wizard-video">配置视频感知与语音</button></div>
     </section>
-    </details>
+    </section>
     <details id="fs-advanced-settings" class="setup-disclosure"><summary><strong>个性化与高级设置</strong><span>主人身份、生活节奏、记忆与社交</span></summary>
-    <div class="fs-setup-overview" aria-label="设置类型说明">
+    <div class="fs-setup-overview" aria-label="设置类型说明" hidden>
       <div><strong>① 必要配置</strong><span id="fs-required-overview">正在检查 B站登录和文字模型的实际验证状态…</span></div>
       <div><strong>② 本版新增 · 可选</strong><span>视频视觉与转写按需安装，视觉图片验收不会自动开启观看。</span></div>
       <div><strong>③ 更多个性化 · 可选</strong><span>主 Session、记忆、生活节奏和社交授权以后也能设置，修改须明确保存。</span></div>
     </div>
-    <div class="fs-progress" id="fs-progress" aria-label="快速设置进度">
+    <div class="fs-progress" id="fs-progress" aria-label="快速设置进度" hidden>
       <a class="fs-progress-step" href="#fs-deps-card" data-fs-step="account"><span>01</span><strong>主依赖与 B站登录</strong><small>必须</small></a>
       <a class="fs-progress-step" href="#fs-verify-stage" data-fs-step="model"><span>02</span><strong>模型验证</strong><small>必须</small></a>
       <a class="fs-progress-step" href="#fs-vision-guide" data-fs-step="preferences"><span>03</span><strong>视频视觉引导</strong><small>可选 · 升级了解</small></a>
       <a class="fs-progress-step" href="#fs-session-stage" data-fs-step="session"><span>04</span><strong>主会话</strong><small>可跳过</small></a>
       <a class="fs-progress-step" href="#fs-final-stage" data-fs-step="finish"><span>05</span><strong>设置总结</strong><small>无需重置</small></a>
     </div>
-    <p class="fs-progress-hint" id="fs-progress-hint" role="status" aria-live="polite">正在读取快速设置状态…</p>
+    <p class="fs-progress-hint" id="fs-progress-hint" hidden role="status" aria-live="polite">正在读取快速设置状态…</p>
     <section class="quick-config-section" id="fs-owner-uid-section" aria-label="首次设置 B站主人身份"><div class="quick-config-title"><span class="quick-card-icon">👑</span><div><h4>主人 B站 UID <span class="pill">可选 · 建议现在配置</span></h4><p>决定谁可以通过真实 B站私信或 @ 身份被认作唯一授权主人。主人 UID 不等于鱼鱼登录的 UID。</p></div></div><div class="fields"><div><label for="fs-owner-uid">主人自己的 B站 UID（纯数字）</label><input id="fs-owner-uid" type="text" inputmode="numeric" pattern="[1-9][0-9]{0,18}" maxlength="19" placeholder="你的 B站个人空间 UID" autocomplete="off"/><small class="setting-note">仅保存主人身份；不会自动开启点赞、公开发表评论、关注或私信他人等权限。已有主人身份不会被页面自动更换。</small></div></div><div class="quick-config-actions"><button id="fs-owner-uid-save" type="button" class="primary">确认并保存唯一主人 UID</button><button type="button" data-open-tab="social" data-open-anchor="friend-directory-editor">高级主人／好友权限 ↗</button></div><p id="fs-owner-uid-status" class="quick-current" role="status">读取当前主人身份…</p></section>
     <div id="fs-choices-stage" class="fs-phase"><div class="fs-phase-title"><strong>定制鱼鱼的生活</strong><span>可直接选择、预览并保存；不保存就不会更改已有参数</span></div>
   <section class="quick-settings-home" aria-label="快速设置卡片操作">
-    <div class="quick-settings-heading"><div><h3>03 · 生活、记忆与社交</h3><p class="muted">直接选择并保存，所有卡片都读取现有设置；未点击保存不会生效。已有设置不匹配预设时显示「自定义／保留原值」。</p></div><span class="pill">可选 · 直接保存</span></div>
+    <div class="quick-settings-heading"><div><h3>生活、记忆与社交</h3><p class="muted">直接选择并保存，所有卡片都读取现有设置；未点击保存不会生效。已有设置不匹配预设时显示「自定义／保留原值」。</p></div><span class="pill">可选 · 直接保存</span></div>
     <div class="quick-setup-stack">
       <section class="quick-config-section" id="quick-life-section"><div class="quick-config-title"><span class="quick-card-icon">✦</span><div><h4>自主生活</h4><p>鱼鱼是否主动探索，以及每天考虑生活的节奏</p></div></div>
         <h5>生活开关</h5><div class="quick-choice-grid two" role="radiogroup" aria-label="快速设置自主生活开关">
@@ -2313,9 +2316,6 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
       <section class="quick-config-section quick-model-link"><div class="quick-config-title"><span class="quick-card-icon">✧</span><div><h4>AI 模型与其他高级功能</h4><p>Provider、模型测试和精细参数较复杂，保留独立管理页面</p></div></div><div class="quick-config-actions"><button type="button" data-open-tab="models">前往 AI 模型配置 ↗</button><button type="button" data-open-tab="personality">人格成长设置 ↗</button></div></section>
     </div>
   </section>
-    </div>
-    <div id="fs-session-stage" class="fs-phase fs-optional"><div class="fs-phase-title"><strong>可选的会话设置</strong><span>这项可以留到以后，不阻塞首次设置完成</span></div>
-    <section class="fs-step optional"><h3>04 · 主 Session <span class="pill">可跳过</span></h3><p>绑定与鱼鱼交谈的session会话；以后可以在管理中心随时修改。</p><div class="actions"><button type="button" data-open-tab="home">现在设置</button><button type="button" data-firststart-skip="main-session">先跳过</button></div></section>
     </div>
     <div id="fs-final-stage" class="fs-phase">
   <div class="fs-footer"><div><strong id="fs-summary">正在检查必需配置</strong><p class="muted">首次使用请在页面顶部引导点击「完成快速设置」。可选功能以后随时能调整；不会删除原有记忆、凭据和历史资料。</p></div></div>
@@ -2378,7 +2378,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <div class="toolbar"><button type="button" id="headless-sync-refresh">重新检测</button></div>
 <p class="model-verify-guide autonomous-only"><strong>模型怎样才能使用？</strong> 在左栏选模型并同步，在右栏验证文字连接；如需图片识别，再到「视觉识别模型」进行图片实测并人工确认。</p>
 </div>
-<div class="settings-section model-default-panel"><h4>✨ 默认模型 <span class="help-tip" title="选择后同步所有 8 个当前任务并重置思考深度。若模型不支持视觉或工具任务，相应能力可能不可用。之后仍可单项调整。">?</span></h4><p class="muted">选择后，下面全部八项当前任务会变成同一个模型，思考深度使用模型默认值。</p><div class="fields"><div><label for="models-default-provider">默认 Provider</label><select id="models-default-provider"></select></div><div><label for="models-default-model">默认模型</label><select id="models-default-model"></select></div></div><p id="models-default-summary" class="muted">正在读取可用模型…</p><p id="models-catalog-diagnostic" class="setting-note" role="status">Provider 下拉框只显示已发现的目录、当前宿主模型或已保存设置；显示不代表连接已通过。遇到 502 请先检查中转站，不会自动切换供应商。</p><small id="models-recommendation-note" class="setting-note">保存后生效，仍可单独调整每项任务。</small></div>
+<div class="settings-section model-default-panel" id="wizard-default-model-panel"><h4>✨ 默认模型 <span class="help-tip" title="选择后同步所有 8 个当前任务并重置思考深度。若模型不支持视觉或工具任务，相应能力可能不可用。之后仍可单项调整。">?</span></h4><p class="muted">日常管理中选择后可统一调整各任务；首次配置只设置默认模型及明确选择的反思模型。</p><div class="fields"><div><label for="models-default-provider">默认 Provider</label><select id="models-default-provider"></select></div><div><label for="models-default-model">默认模型</label><select id="models-default-model"></select></div></div><p id="models-default-summary" class="muted">正在读取可用模型…</p><p id="models-catalog-diagnostic" class="setting-note" role="status">Provider 下拉框只显示已发现的目录、当前宿主模型或已保存设置；显示不代表连接已通过。遇到 502 请先检查中转站，不会自动切换供应商。</p><small id="models-recommendation-note" class="setting-note">保存后生效，仍可单独调整每项任务。</small></div>
 <details class="settings-section"><summary><strong>最近模型调用归因（仅本地宿主，零额外 AI 调用）</strong></summary>
 <p class="muted">仅记录已核验账号的宿主模型请求：场景、耗时、模型标识和脱敏失败类型，不保存提示词、输出或私信。视频 Headless 内部调用尚未覆盖；Token 和费用数据如未由宿主提供则显示「未知」，不能用调用次数推断费用。</p>
 <pre id="models-invocation-recent" class="setting-note" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere">暂未读取模型调用归因</pre></details>
@@ -2451,7 +2451,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <p class="muted">测试使用固定图片，不会发布到 B站。仅当回答与图片内容一致时，点击「识别正确，认可」。</p>
 </section>
 <div class="contextual-memory-group" id="local-vision-controls">
-<div class="video-aux-heading"><h4>🖥️ 可选本地视频视觉模型</h4><span id="models-local-vision-active" class="pill pending">读取当前配置…</span></div>
+<div class="video-aux-heading"><h4>🖥️ 本地视频视觉模型</h4><span id="models-local-vision-active" class="pill pending">读取当前配置…</span></div>
 <p class="muted">本地视觉模型负责画面观察。<strong>推荐新用户优先试 Qwen3.5 2B</strong>；Qwen3.5 4B 适合追求画面质量。旧 MiniCPM 1B 仅兼容旧安装，已不建议日常使用。需本机运行 Ollama；也可以通过 DSH 配置 Ollama Provider。</p>
 <details class="visual-advanced"><summary>查看模型大小与硬件建议</summary>
 <div class="setting-note" id="local-vision-hardware-guide" role="note" style="margin:10px 0;padding:13px;border-left:3px solid var(--primary,#4b94a8)">
@@ -2464,7 +2464,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </div>
 <p style="margin:5px 0 0">以上均是<strong>经验性起试建议，不是官方硬性最低配置</strong>；本机总内存和其他程序的占用也会影响能否顺利加载。</p>
 </div></details>
-<div class="local-vision-install-guide"><p><strong>简化下载和代理：</strong>本地视觉模型通过 <a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">Ollama</a> 下载安装。需要保证 Ollama 有合适的网络环境。</p>
+<div class="local-vision-install-guide"><p><strong>首次使用：</strong>如未安装 Ollama，请先<a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">下载并安装 Ollama</a>，再点击「检查并恢复 Ollama 服务」并下载所选模型。</p>
 <details class="visual-advanced"><summary>Windows 使用本地网络代理启动 Ollama 示例</summary><p>当前仅列举 Windows 环境下的方法：确认 Ollama 已完全退出，在 PowerShell 中执行下面两条命令，并保持该窗口运行：</p><pre><code>$env:HTTPS_PROXY = "http://127.0.0.1:7890" # 7890 是常见网络代理端口，具体请以实际端口为准
 ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="local-vision-state-board" aria-label="本地模型后台状态与待选型号"><div><strong>后台已保存的实际配置</strong><p id="local-vision-effective" role="status" aria-live="polite">正在读取后台生效模型…</p></div><div><strong>当前下拉框选择（尚不等于启用）</strong><p id="local-vision-selection-note" role="status" aria-live="polite">请选择型号，再根据下方步骤操作。</p></div></div>
@@ -4178,4 +4178,29 @@ button.primary:not(:disabled):hover{filter:brightness(1.1)}button:disabled{opaci
 #fs-guided-setup[data-wizard="true"] .guided-steps li[data-state="current"]{animation:none}
 @media(max-width:620px){.wizard-footer button{flex:1 1 auto}.wizard-footer #fs-wizard-exit{margin-left:0}.wizard-content .headless-sync-board{grid-template-columns:1fr!important}.wizard-content .headless-sync-flow,.wizard-content .headless-sync-links{display:none!important}#fs-guided-setup[data-wizard="true"] .guided-steps{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}#fs-guided-setup[data-wizard="true"] .guided-steps li{padding:6px;flex-direction:column;gap:3px;text-align:center}#fs-guided-setup[data-wizard="true"] .guided-steps li>div{display:block}.wizard-content .fields{grid-template-columns:1fr!important}}
 @media(prefers-reduced-motion:reduce){.wizard-page.wizard-arrive{animation:none!important}#fs-guided-setup .guided-track span{transition:none!important}}
+/* First-run layout: two columns when the connector column is hidden. */
+#fs-wizard-content .headless-sync-board{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#fs-wizard-content .headless-sync-column>header{flex-wrap:wrap;overflow-wrap:anywhere}
+#fs-wizard-content .headless-sync-column>header span{white-space:normal}
+#fs-wizard-content .headless-provider-stack{min-width:0;overflow-x:hidden}
+#fs-wizard-content .headless-provider-stack>*{min-width:0;overflow-wrap:anywhere}
+@media(max-width:850px){#fs-wizard-content .headless-sync-board{grid-template-columns:minmax(0,1fr)}}
+#fs-advanced-settings .fs-setup-overview,#fs-advanced-settings .fs-progress,#fs-advanced-settings .fs-progress-hint{display:none!important}
+#fs-advanced-settings .quick-settings-heading{padding:12px 0}#fs-advanced-settings .quick-settings-heading p{display:none}
+#fs-advanced-settings .fs-phase-title{display:none}
+#fs-advanced-settings .quick-settings-home{padding:0;background:none;border:0;box-shadow:none}
+#fs-enhancements{display:block}#fs-enhancements>summary{list-style:none;cursor:default}#fs-enhancements>summary::-webkit-details-marker{display:none}
+.tabs{position:sticky;top:0;z-index:20;max-height:40vh;overflow:auto;background:var(--panel)}
+.manage-return-bar:not([hidden])~.tabs{top:56px}
+#management-shell:has(#panel-firststart:not([hidden]) #fs-guided-setup:not([hidden]))>.tabs{display:flex!important}
+#management-shell[data-setup-wizard="true"] .tabs button:not([data-tab="firststart"]):not([data-tab="home"]):not([data-tab="life"]){display:none!important}
+#management-shell[data-setup-wizard="true"] .tabs .tab-cluster-label{display:none}
+#management-shell[data-setup-wizard="true"] .tabs{padding:4px 10px;flex-direction:row;flex-wrap:nowrap;overflow-x:auto}#management-shell[data-setup-wizard="true"] .tabs .tab-cluster{width:auto;flex:0 0 auto;flex-wrap:nowrap}#management-shell[data-setup-wizard="true"] .tabs .tab-cluster:not(:has(button[data-tab="firststart"],button[data-tab="home"],button[data-tab="life"])){display:none!important}
+html{scroll-padding-top:var(--management-nav-offset,180px)}@media(max-width:700px){html{scroll-padding-top:var(--management-nav-offset,112px)}.tabs{max-height:none;overflow-x:auto;overflow-y:hidden}}
+#fs-wizard-content #local-vision-controls .local-vision-maintenance,#fs-wizard-content #models-vision-settings-body>.model-activity,#fs-wizard-content #models-vision-settings-body>#models-vision,#fs-wizard-content #models-vision-settings-body>.fields,#fs-wizard-content #models-vision-settings-body>.visual-advanced,#fs-wizard-content #models-vision-settings-body>.muted,#fs-wizard-content #models-vision-settings-body>.vision-usage-permissions{display:none!important}
+#fs-wizard-content #local-vision-controls{order:-1}#fs-wizard-content #local-vision-thinking,#fs-wizard-content #local-vision-thinking-save,#fs-wizard-content #local-vision-thinking-support,#fs-wizard-content label[for="local-vision-thinking"]{display:none!important}#fs-wizard-content #local-vision-controls .fields:has(#local-vision-thinking)>div:has(#local-vision-thinking){display:none}#fs-wizard-content #local-vision-controls .fields:has(#local-vision-thinking){grid-template-columns:1fr}#fs-wizard-content #models-vision-settings-body{display:flex;flex-direction:column}
+#fs-wizard-content .model-default-panel .help-tip,#fs-wizard-content #models-catalog-diagnostic{display:none}
+.tabs .tab-primary{position:sticky;top:0;z-index:1;background:var(--panel);padding-block:4px;border-bottom:1px solid var(--stroke)}
+#management-shell[data-setup-wizard="true"] .tabs .tab-primary{border:0}
+@media(max-width:700px){.tabs .tab-primary{position:static;border-bottom:0}}
 </style>

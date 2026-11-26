@@ -128,7 +128,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   }
   const policy=js.slice(js.indexOf('  const capabilityKeys='),js.indexOf('  const skipFirstStart='));
   const production=js.slice(begin,end).replace(/const mountWizardPage=stage=>\{[\s\S]*?\r?\n  \};\r?\n  const renderSetupGuide=/,'const mountWizardPage=stage=>{wizardMounted=stage};\n  const renderSetupGuide=');
-  const render=runInNewContext(policy+production+'\n({renderFirstStart,getStep:()=>wizardMounted,setRuntimeReady:value=>{setupMainReady=value;renderSetupGuide(onboarding)},setQuickOptions:value=>{quickOptions=value;renderSetupGuide(onboarding)}})',context)
+  const render=runInNewContext(policy+production+'\n({renderFirstStart,getStep:()=>wizardMounted,setDefaultDone:()=>{wizardDefaultDone=true;renderSetupGuide(onboarding)},setRuntimeReady:value=>{setupMainReady=value;renderSetupGuide(onboarding)},setQuickOptions:value=>{quickOptions=value;renderSetupGuide(onboarding)}})',context)
   const show=state=>{render.renderFirstStart(state);return element('fs-warning')}
   const old={ok:true,welcomeCompleted:true,completed:true,requiredReady:true,quickSetupSeen:false,
     biliVerified:true,headlessVerified:true,hasCredential:true,missing:[],skipped:[],localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},requested:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},revision:0,restartRequired:false}}
@@ -160,6 +160,8 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('fs-warning-open').dataset.openAnchor,'fs-headless-state')
   assert.equal(render.getStep(),'model')
   show({...fresh,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]})
+  assert.equal(render.getStep(),'defaults')
+  render.setDefaultDone()
   assert.equal(render.getStep(),'core')
   assert.equal(element('fs-wizard-continue').disabled,false)
   assert.equal(element('fs-guide-count').textContent,'3 / 3 必要项就绪')
@@ -238,6 +240,7 @@ test('新用户完成按钮先实时读取必需项，缺失时定位且不发�
       switchTab:async tab=>{jumps.push('tab:'+tab);context.active=tab},
       $:id=>({id}),
       revealTarget:node=>jumps.push('anchor:'+node.id),
+      launchWizard:()=>jumps.push('wizard'),
       loadFirstStart:async()=>status,
       message:value=>jumps.push('message:'+value)
     }
@@ -255,9 +258,8 @@ test('新用户完成按钮先实时读取必需项，缺失时定位且不发�
   const ready=create({ok:true,welcomeCompleted:false,completed:false,requiredReady:true,biliVerified:true,
     missing:[]})
   await ready.fn()
-  assert.deepEqual(ready.calls.map(x=>x[0]),['/onboarding/status','/onboarding/complete'])
-  assert.equal(ready.calls[1][1].skipped[0],'main-session')
-  assert.ok(ready.jumps.includes('tab:home'))
+  assert.deepEqual(ready.calls.map(x=>x[0]),['/onboarding/status'])
+  assert.deepEqual(ready.jumps,['tab:firststart','wizard'])
   const past=create({ok:true,welcomeCompleted:true,completed:true,requiredReady:true})
   await assert.rejects(past.fn(),/已完成首次配置/)
   assert.deepEqual(past.calls.map(x=>x[0]),['/onboarding/status'])
@@ -267,7 +269,7 @@ test('新用户完成按钮先实时读取必需项，缺失时定位且不发�
 test('记忆基座 Session 指南与正式文档一致，复制仅本地且保留移动端只读',()=>{
   const html=read('lib/management-console.html'),js=read('lib/management-console.js'),doc=read('docs/SESSION_INTEGRATION.md');
   const text=html.match(/<textarea id="fs-foundation-guide-text"[^>]*readonly[^>]*>([\s\S]*?)<\/textarea>/)?.[1].replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
-  assert.equal(text?.replace(/\r\n/g,'\n'),doc.match(/```text\n([\s\S]*?)\n```/)?.[1]);
+  assert.equal(text?.replace(/\r\n/g,'\n'),doc.replace(/\r\n/g,'\n').match(/```text\n([\s\S]*?)\n```/)?.[1]);
   for(const name of ['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall'])assert.ok(text.includes(name)&&read('lib/long-term-memory.mjs').includes("name:'"+name+"'"));
   const copy=js.slice(js.indexOf("$('fs-foundation-guide-copy').addEventListener"),js.indexOf('const renderSessionMount='));
   assert.match(copy,/navigator\.clipboard\.writeText\(guide\.value\)/);assert.match(copy,/guide\.select\(\)/);assert.doesNotMatch(copy,/request\(|fetch\(/);

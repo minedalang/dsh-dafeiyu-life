@@ -26,13 +26,13 @@ class FakeElement {
   addEventListener(name,handler){this.events.set(name,handler)}
   trigger(name){this.events.get(name)?.()}
 }
-function ui(){
+function ui(wizardMounted=''){
   const elements=new Map(), $=id=>{if(!elements.has(id))elements.set(id,new FakeElement());return elements.get(id)}
   const modelDefs=[
     ['video','videoModelProvider','videoModelId','videoReasoningEffort'],
     ['interaction','interactionModelProvider','interactionModelId','interactionReasoningEffort'],
     ['dailyDynamic','dailyDynamicModelProvider','dailyDynamicModelId','dailyDynamicReasoningEffort'],
-    ['ownerDmAgent','ownerDmAgentModelProvider','ownerDmAgentModelId','ownerDmAgentReasoningEffort'],
+    ['behaviorDecision','behaviorDecisionModelProvider','behaviorDecisionModelId','behaviorDecisionReasoningEffort'],
     ['reflection','mainSessionReflectionModelProvider','mainSessionReflectionModelId','mainSessionReflectionReasoningEffort'],
     ['vision','visionModelProvider','visionModelId','visionReasoningEffort'],
     ['memeRules','memeRulesModelProvider','memeRulesModelId','memeRulesReasoningEffort'],
@@ -41,10 +41,10 @@ function ui(){
     {id:'claude',models:['haiku','sonnet'],kind:'custom',verifiedModels:['haiku']},
     {id:'deepseek-official',models:['flash','v4-pro'],kind:'registered',verifiedModels:[]},
   ]
-  const snippet=js.slice(js.indexOf('  const modelRouteControls='),js.indexOf('  const loadModels=async()=>{'))
+  const snippet=js.slice(js.indexOf('  const modelRouteControls='),js.indexOf('  const loadInteractionContextUsage='))
   let feedback=''
   const controls=runInNewContext(`(()=>{${snippet}\nreturn {renderModelDropdowns,updateRouteDescription,applyDefaultModelToAllRoutes}})()`,{
-    modelDefs,headlessCurrentCatalog:catalog,headlessDefaultModel:{provider:'claude',model:'sonnet'},mobileViewOnly:false,
+    modelDefs,wizardMounted,headlessProviders:catalog,headlessCurrentCatalog:catalog,headlessDefaultModel:{provider:'claude',model:'sonnet'},mobileViewOnly:false,
     $,
     window:{addEventListener:()=>{}}, // The model-page scope now includes the Whisper install poll cleanup.
     document:{createElement:()=>new FakeElement()},
@@ -54,9 +54,9 @@ function ui(){
 }
 
 test('官方 Provider 不是必做清单：仅首次设置要求一个真实连接回执',()=>{
-  assert.match(html,/快速设置只需任选一个模型验证成功，不必验证全部 Provider/)
+  assert.match(js,/快速设置只需任选一个模型完成真实连接验证/)
   assert.match(js,/headlessGlobalVerified=r\.anyVerified===true/)
-  assert.match(html,/data-open-anchor="headless-model-sync-panel"/)
+  assert.match(js,/moveWizardControl\(\$\('headless-model-sync-panel'\)\)/)
   assert.match(js,/headless-next-action/)
   assert.doesNotMatch(js,/必须点击验证，才能完成首次设置/)
   assert.match(js,/文字连接验证 · 待验证/)
@@ -71,7 +71,7 @@ test('实际模型目录生成明确的默认模型与独立任务下拉框',()=
  assert.equal($('model-videoModelProvider').value,'claude')
  assert.equal($('model-videoModelId').value,'sonnet')
  const ids=['models-default-provider','model-videoModelProvider','model-interactionModelProvider',
-   'model-dailyDynamicModelProvider','model-ownerDmAgentModelProvider',
+   'model-dailyDynamicModelProvider','model-behaviorDecisionModelProvider',
    'model-mainSessionReflectionModelProvider','model-visionModelProvider',
    'model-memeRulesModelProvider','main-memory-model-provider'];
  for(const id of ids){
@@ -89,7 +89,7 @@ test('历史 Provider 回填在默认及全部任务下拉中均保持可见，�
    interactionModelProvider:'backup-gateway',interactionModelId:'backup-model',
  });
  const ids=['models-default-provider','model-videoModelProvider','model-interactionModelProvider',
-   'model-dailyDynamicModelProvider','model-ownerDmAgentModelProvider',
+   'model-dailyDynamicModelProvider','model-behaviorDecisionModelProvider',
    'model-mainSessionReflectionModelProvider','model-visionModelProvider',
    'model-memeRulesModelProvider','main-memory-model-provider'];
  for(const id of ids){
@@ -104,7 +104,7 @@ test('一键同步全部八项任务，同时重置思考深度',()=>{
  const {$,controls}=ui();controls.renderModelDropdowns({})
  $('models-default-provider').value='deepseek-official';$('models-default-provider').trigger('change')
  $('models-default-model').value='v4-pro';$('models-default-model').trigger('change')
- for(const group of ['video','interaction','dailyDynamic','ownerDmAgent','reflection','vision','memeRules']){
+ for(const group of ['video','interaction','dailyDynamic','behaviorDecision','reflection','vision','memeRules']){
   const def=group==='reflection'?'mainSessionReflection':group
   assert.equal($('model-'+def+'ModelProvider').value,'deepseek-official',group)
   assert.equal($('model-'+def+'ModelId').value,'v4-pro',group)
@@ -113,4 +113,13 @@ test('一键同步全部八项任务，同时重置思考深度',()=>{
  assert.equal($('main-memory-model-provider').value,'deepseek-official')
  assert.equal($('main-memory-model-id').value,'v4-pro')
  assert.equal($('main-memory-model-effort').value,'')
+})
+
+test('首次默认模型只显示可验证路线，选择不会批量覆盖历史独立配置',()=>{
+ const {$,controls}=ui('defaults');controls.renderModelDropdowns({videoModelProvider:'legacy',videoModelId:'old-video'});
+ assert.deepEqual($('models-default-provider').children.map(x=>x.value),['','claude']);
+ $('models-default-provider').value='claude';$('models-default-provider').trigger('change');
+ assert.deepEqual($('models-default-model').children.map(x=>x.value),['','haiku']);
+ $('models-default-model').value='haiku';$('models-default-model').trigger('change');
+ assert.equal($('model-videoModelProvider').value,'legacy');assert.equal($('model-videoModelId').value,'old-video');
 })
