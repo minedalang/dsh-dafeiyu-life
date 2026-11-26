@@ -27,6 +27,7 @@ test('only a confirmed public reply queues a bounded Life dynamic opportunity, n
   assert.match(index,/trustedLifeAccountTag\(\)!==scope/)
   assert.match(index,/cfg\.commentSyncDynamic!==true/)
   assert.match(index,/dailyDynamic\?\.tick\(\{trigger:'confirmed-public-comment'\}\)/)
-  assert.match(dynamic,/const tick=async\(\{trigger='spontaneous-window'\}/)
+  assert.match(dynamic,/const tick=async\(options=\{\}\)=>automaticSession\.dispatch\(\(\)=>tickScoped\(options\),paused\)/)
+  assert.match(dynamic,/const tickScoped=async\(\{trigger='spontaneous-window'\}/)
   assert.match(dynamic,/const choice=await chooseLife\(\{trigger,sourceKey:/)
 })

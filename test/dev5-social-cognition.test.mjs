@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,readFileSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import {createAutomaticSessionScope} from '../lib/session-integration-policy.mjs'
 import {createSocialCognition,parseFriendWatchInvitation} from '../lib/social-cognition.mjs'
 import {observeFriendInterest,friendRecommendationGuard,listFriendLearning} from '../lib/friend-learning.mjs'
 
@@ -80,4 +81,27 @@ test('vague rejection never globally unsubscribes a friend',()=>{
   assert.equal(friendRecommendationGuard(e.home,'123',directory,{bvid:'BV1AAAAAAAAA',channel:'dm'}).blocked,false)
   assert.equal(friendRecommendationGuard(e.home,'123',directory,{bvid:BV,channel:'dm'}).blocked,true)
  }finally{e.close()}
+})
+
+test('dev24 invitation pauses before reading; diagnostic remains local; stale failed read restores candidate',async t=>{
+ const home=mkdtempSync(join(tmpdir(),'dev24-invite-'));t.after(()=>rmSync(home,{recursive:true,force:true}))
+ let policy={mode:'cooperative',revision:1},calls=0,time=1_790_000_000_000
+ const engine=createSocialCognition({dataDir:home,now:()=>time,automaticSession:createAutomaticSessionScope(()=>policy),
+   getConfig:()=>({masterEnabled:true,friendDirectory:directory,socialInvitationEnabled:true,socialInvitationAutoInspectEnabled:true}),
+   getEmotion:()=>({enabled:true,curiosity:81,energy:70}),inspectVideo:async()=>{calls++;policy={mode:'cooperative',revision:3};policy={mode:'full',revision:4};return {ok:false,error:'paused'}}})
+ engine.observe({uid:'123',eventId:'mode-1',source:'dm',text:'抽空看看 '+BV,timestampMs:time})
+ assert.equal((await engine.tick()).skipped,'session-integration-paused');assert.equal(calls,0)
+ assert.equal((await engine.tick({dryRun:true})).candidate.bvid,BV);assert.equal(calls,0)
+ policy={mode:'full',revision:2};assert.equal((await engine.tick()).skipped,'session-integration-paused')
+ assert.equal(engine.status().items[0].status,'candidate');assert.equal(engine.status().lastReviewAt,time)
+ assert.equal((await engine.tick()).skipped,'cooldown');assert.equal(calls,1)
+})
+test('dev24 completed invitation metadata read preserves actual successful result after switch',async t=>{
+ const home=mkdtempSync(join(tmpdir(),'dev24-invite-'));t.after(()=>rmSync(home,{recursive:true,force:true}))
+ let policy={mode:'full',revision:0};const time=1_790_000_000_000
+ const engine=createSocialCognition({dataDir:home,now:()=>time,automaticSession:createAutomaticSessionScope(()=>policy),
+   getConfig:()=>({masterEnabled:true,friendDirectory:directory,socialInvitationEnabled:true,socialInvitationAutoInspectEnabled:true}),
+   getEmotion:()=>({enabled:true,curiosity:81,energy:70}),inspectVideo:async()=>{policy={mode:'cooperative',revision:1};return {ok:true,result:{summary:'真实只读结果'}}}})
+ engine.observe({uid:'123',eventId:'mode-2',source:'dm',text:'抽空看看 '+BV,timestampMs:time})
+ assert.equal((await engine.tick()).status,'inspected-metadata');assert.equal(engine.status().items[0].status,'inspected-metadata')
 })

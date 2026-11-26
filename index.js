@@ -5667,6 +5667,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   })
 
   const socialCognition=createSocialCognition({
+    automaticSession,
     dataDir:stateDir,getConfig:()=>{refreshCfg();return cfg},getEmotion:()=>emotionalState.snapshot(),
     inspectVideo:async(bvid)=>executeOwnerTodo({type:'watch_video',bvid}),
     logger:{warn:m=>log('社会意愿：'+m)}
@@ -8108,9 +8109,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const events=collectLocalLifeEvents({watched,comments,days:14});return lifeMemoryCoordinator.recordEvents(events,{reflect:true})
     }catch(e){log('本地经历反思收集失败：'+String(e?.message||e).slice(0,120));return {added:0,error:String(e?.message||e)}}
   }
+  // Periodic backfill is autonomous; confirmed video completion still uses collectRealLife directly.
+  const collectAutomaticLife=async()=>automaticSession.dispatch(collectRealLife)
   // First scan is idempotent, doesn't need an online Session and doesn't send messages.
-  try{void collectRealLife().catch(e=>log('本地经历初次同步失败：'+String(e?.message||e).slice(0,120)))}catch{}
-  const lifeCollectTimer=setInterval(()=>{if(!firstStart.isReady()||accountBinding.status().blocked)return;try{void collectRealLife().catch(e=>log('本地经历定时同步失败：'+String(e?.message||e).slice(0,120)))}catch{}},10*60_000)
+  try{void collectAutomaticLife().catch(e=>log('本地经历初次同步失败：'+String(e?.message||e).slice(0,120)))}catch{}
+  const lifeCollectTimer=setInterval(()=>{if(!firstStart.isReady()||accountBinding.status().blocked)return;try{void collectAutomaticLife().catch(e=>log('本地经历定时同步失败：'+String(e?.message||e).slice(0,120)))}catch{}},10*60_000)
   lifeCollectTimer.unref?.()
   ctx.effect(()=>()=>clearInterval(lifeCollectTimer),'bili-duty: 独立人生经历候选收集')
 
@@ -8251,6 +8254,7 @@ logger:{warn:m=>log('社交意图：'+m)}
   // 生活动态仅使用可衰减的公开经历证据：视频和鱼鱼本人已确认发表的公开文字。
   // 公开发布与模型生成严格分离：生成模型不挂 B站发送工具，实际发布由受限 Python 路径执行。
   dailyDynamic=createDailyDynamic({
+    automaticSession,
     dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,accountTag:trustedLifeAccountTag(),masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     getPublicVideos:()=>lifeMemory?.publicVideoEvidence(40)||[],
     getPublicSocial:()=>lifeMemory?.publicSocialEvidence(24)||[],
@@ -8295,6 +8299,8 @@ logger:{warn:m=>log('社交意图：'+m)}
     },
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'dailyDynamic'}),
     publish:(text,limit)=>new Promise((resolve,reject)=>{
+      // Synchronous admission immediately precedes the Python launch; once launched, settle the real result.
+      if(!automaticSession.current())return resolve({status:'session-integration-paused',notAttempted:true})
       let releasePublish
       try{releasePublish=accountBinding.enterPlatformOperation()}catch(e){return reject(e)}
       const script=join(pluginDir,'lib','daily-dynamic-publish.py')
