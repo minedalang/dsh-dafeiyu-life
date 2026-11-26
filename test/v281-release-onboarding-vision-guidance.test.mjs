@@ -113,7 +113,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
 
   // Exercise the real production render function with a minimal DOM double.
   // No independent duplicate UI policy is reimplemented inside the test.
-  const begin=js.indexOf('  const renderIntegration=state=>{')
+  const begin=js.indexOf('  const integrationLabel=mode=>')
   const end=js.indexOf('  // All dependency *installation*',begin)
   assert.ok(begin>=0&&end>begin)
   const nodes=new Map()
@@ -162,6 +162,21 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('[data-tab="life"]').hidden,true,'实际模型验证失效不等于仅需确认版本')
   const foundation={...fresh,memoryFoundationReady:true,sessionIntegration:{ok:true,activeMode:'memory-foundation',requestedMode:'memory-foundation',revision:1,restartRequired:false}}
   show(foundation)
+  assert.equal(element('fs-mode-foundation').checked,true)
+  assert.equal(element('fs-mode-autonomous').checked,false)
+  assert.equal(element('fs-integration-current').dataset.state,'active')
+  assert.equal(element('fs-integration-save').disabled,true,'当前模式无需重复保存')
+  assert.equal(element('fs-platform-setup').open,false,'平台设置在独立记忆工作区默认折叠')
+  assert.equal(element('fs-platform-summary').hidden,false)
+  element('fs-platform-setup').open=true
+  show(foundation)
+  assert.equal(element('fs-platform-setup').open,true,'状态刷新不折叠用户已展开的设置')
+  element('fs-mode-foundation').checked=false;element('fs-mode-autonomous').checked=true
+  show(foundation)
+  assert.equal(element('fs-mode-autonomous').checked,true,'相同代际的状态刷新保留待保存选择')
+  assert.equal(element('fs-integration-save').disabled,false)
+  assert.match(element('fs-integration-state').textContent,/尚未保存/)
+  assert.match(element('fs-integration-current').textContent,/记忆基座/,'草稿选择不能冒充当前生效模式')
   assert.equal(element('fs-foundation-memory').hidden,false)
   assert.equal(element('fs-complete').hidden,true)
   assert.match(element('fs-summary').textContent,/记忆入口/)
@@ -170,7 +185,16 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('fs-integration-save').disabled,true)
   assert.equal(element('fs-foundation-memory').hidden,true)
   assert.match(element('fs-integration-state').textContent,/退出 DSH/)
+  assert.equal(element('fs-mode-autonomous').disabled,true)
+  assert.equal(element('fs-mode-foundation').disabled,true)
+  assert.equal(element('fs-integration-current').dataset.state,'pending')
+  show({...fresh,sessionIntegration:{ok:true,activeMode:'unknown',requestedMode:'memory-foundation',revision:0,restartRequired:false}})
+  assert.equal(element('fs-integration-current').dataset.state,'error')
+  assert.equal(element('fs-integration-save').disabled,true)
   context.mobileViewOnly=true
+  show(foundation)
+  assert.equal(element('fs-mode-foundation').disabled,true)
+  assert.equal(element('fs-integration-save').disabled,true)
   show(fresh)
   assert.equal(element('fs-complete').disabled,true,'手机端只读不可获得写入权限')
 })

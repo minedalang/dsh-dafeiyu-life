@@ -2199,27 +2199,26 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="fs-notice-actions"><button type="button" id="fs-warning-open" data-open-tab="firststart">打开快速设置 ↗</button><button type="button" id="fs-quick-ack" class="primary" hidden>我已查看本版快速设置</button><button type="button" id="fs-complete" class="primary" hidden>完成快速设置</button></div>
 </aside>
 <section id="panel-firststart" hidden>
-  <div class="fs-hero" id="fs-integration-hero"><span class="fs-pill">🐟 QUICK SETUP · 2.8.2</span><h2>快速设置 · 先完成必需项，再自由选择增强能力</h2><p>首次使用或从旧版升级时，可在此检查当前设置；已完成快速设置的用户无需反复确认。<strong>已有登录、模型、Life 和记忆不会因此清空或重置</strong>；已有健康环境无需重装。B站主依赖与 Headless 文字模型验证属于基础必需项；视频画面识别需要另行配置视觉模型并完成图片验收，<strong>视频视觉可选且默认不开启</strong>。</p></div>
-  <section class="card" id="fs-session-integration" style="margin-bottom:16px">
-    <h3>使用模式 · 自主生活 / 记忆基座</h3>
-    <p>自主生活：保留原 B站生活与自主调度。记忆基座：按需使用记忆，不自动开展生活活动，不要求登录 B站。两种方式共享同一身份与记忆。</p>
-    <label for="fs-integration-mode">选择模式（需彻底退出并重启 DSH）</label>
-    <select id="fs-integration-mode" disabled><option value="autonomous-life">自主生活模式</option><option value="memory-foundation">记忆基座模式</option></select>
-    <button id="fs-integration-save" type="button" disabled>保存模式并准备重启</button>
-    <p id="fs-integration-state" role="status">正在读取模式…</p>
+  <div class="fs-hero" id="fs-integration-hero"><span class="fs-pill">快速设置 · 使用方式</span><h2>选择大肥鱼如何陪伴你</h2><p>两种模式共享原有身份与记忆，切换不会重置登录、模型或授权。先选择使用方式，再按需完成设置。</p></div>
+  <section class="card integration-card" id="fs-session-integration" aria-labelledby="fs-integration-title">
+    <div class="integration-heading"><div><span class="integration-kicker">使用方式 / WORKSPACE</span><h2 id="fs-integration-title">自主生活与记忆基座</h2><p class="muted">同一个鱼鱼，两种使用方式。选择后需确认保存并重启 DSH。</p></div><span id="fs-integration-current" class="integration-status" data-state="loading">正在读取当前模式</span></div>
+    <fieldset id="fs-integration-mode" class="integration-choices" disabled><legend class="integration-legend">选择使用模式</legend>
+      <label class="integration-option" for="fs-mode-autonomous"><span class="integration-option-top"><span class="integration-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c4-6 11-6 15 0-4 6-11 6-15 0Z"/><path d="m18 12 4-4v8l-4-4Z"/><circle cx="8" cy="11" r=".7" fill="currentColor"/></svg></span><input id="fs-mode-autonomous" type="radio" name="fs-integration-choice" value="autonomous-life" disabled></span><strong>自主生活模式</strong><span class="integration-subtitle">让鱼鱼拥有自己的生活</span><span class="integration-benefits"><span>自主视频探索、生活计划与反思</span><span>按原授权进行社交与主动联系</span><span>保留记忆、人格及主 Session 经历桥</span></span><small>使用 B站生活需完成原登录与模型验证。</small></label>
+      <label class="integration-option" for="fs-mode-foundation"><span class="integration-option-top"><span class="integration-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 7l7 5 7-5M5 17l7-5 7 5"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="20" r="2"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="6" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/></svg></span><input id="fs-mode-foundation" type="radio" name="fs-integration-choice" value="memory-foundation" disabled></span><strong>记忆基座模式</strong><span class="integration-subtitle">让记忆与能力服务日常工作</span><span class="integration-benefits"><span>独立记录、检索和管理记忆</span><span>绑定主 Session，按需调用原有工具</span><span>不主动开展生活活动，无需 B站登录</span></span><small>平台工具仍需原有验证和权限。</small></label>
+    </fieldset>
+    <div class="integration-footer"><div><p id="fs-integration-state" role="status" aria-live="polite">正在读取模式…</p><p class="muted integration-safety">保留原有记忆、身份与权限；已开始的操作按原结果结算。</p></div><button id="fs-integration-save" type="button" class="primary" disabled>保存模式并准备重启</button></div>
     <div id="fs-foundation-memory" hidden>
-      <p>记忆基座已生效。可先绑定一个在线主 Session，再使用 dafeiyu_remember / dafeiyu_memory_recall / dafeiyu_life_recall。B站工具仍需原验证与权限。</p>
-      <button type="button" data-open-tab="home" data-open-anchor="main-session-id">绑定主 Session ↗</button>
-      <label for="fs-foundation-memory-query">按需回忆</label><input id="fs-foundation-memory-query" maxlength="180" placeholder="回忆主题">
-      <button id="fs-foundation-memory-recall" type="button">检索记忆</button>
-      <pre id="fs-foundation-memory-results" style="white-space:pre-wrap;overflow-wrap:anywhere" aria-live="polite"></pre>
-      <label for="fs-foundation-memory-text">手动记录主人事实</label><textarea id="fs-foundation-memory-text" maxlength="500" rows="3"></textarea>
-      <button id="fs-foundation-memory-add" type="button">加入记忆</button>
-      <p id="fs-foundation-model-state" role="status"></p><label><input type="checkbox" id="fs-foundation-model-enabled">启用可选文字模型记忆检索与整理</label><button type="button" id="fs-foundation-model-save">保存模型记忆选项</button><button type="button" data-open-tab="models" data-open-anchor="models-memory">配置并验证记忆模型 ↗</button>
-      <button id="fs-foundation-memory-list" type="button">查看本地记忆</button><div id="fs-foundation-memory-rows" aria-live="polite"></div>
+      <div class="foundation-heading"><div><span class="integration-kicker">MEMORY FOUNDATION</span><h3>独立记忆工作区</h3><p class="muted">本地回忆默认可用。绑定主 Session 后可显式使用 dafeiyu_remember / dafeiyu_memory_recall / dafeiyu_life_recall。</p></div><button type="button" data-open-tab="home" data-open-anchor="main-session-id">绑定主 Session ↗</button></div>
+      <div class="foundation-grid">
+        <section class="foundation-tool"><h4>01 · 按需回忆</h4><p class="muted">按主题查找以前的事实和经历。</p><label for="fs-foundation-memory-query">回忆主题</label><div class="foundation-input-row"><input id="fs-foundation-memory-query" maxlength="180" placeholder="例如：上次的学习计划"><button id="fs-foundation-memory-recall" type="button" class="primary">检索记忆</button></div><pre id="fs-foundation-memory-results" class="foundation-output" aria-live="polite"></pre></section>
+        <section class="foundation-tool"><h4>02 · 记录事实</h4><p class="muted">手动添加希望鱼鱼记住的主人事实。</p><label for="fs-foundation-memory-text">记忆内容（最多 500 字）</label><textarea id="fs-foundation-memory-text" maxlength="500" rows="3" placeholder="写下希望以后能回忆的信息…"></textarea><div class="foundation-actions"><button id="fs-foundation-memory-add" type="button" class="primary">加入记忆</button></div></section>
+        <section class="foundation-tool"><h4>03 · 记忆文字模型</h4><p id="fs-foundation-model-state" class="muted" role="status"></p><label class="foundation-toggle"><input type="checkbox" id="fs-foundation-model-enabled">启用可选文字模型记忆检索与整理</label><div class="foundation-actions"><button type="button" id="fs-foundation-model-save" class="primary">保存模型记忆选项</button><button type="button" data-open-tab="models" data-open-anchor="models-memory">配置并验证记忆模型 ↗</button></div></section>
+        <section class="foundation-tool"><h4>04 · 查看与管理</h4><p class="muted">查看本地记忆，按需删除单条记录。</p><button id="fs-foundation-memory-list" type="button">查看本地记忆</button><div id="fs-foundation-memory-rows" aria-live="polite"></div></section>
+      </div>
     </div>
   </section>
-
+  <details id="fs-platform-setup" class="integration-platform" open><summary id="fs-platform-summary" hidden><strong>B站与高级设置</strong><span>可选 · 仅在使用相应平台、模型或生活能力时需要配置</span></summary>
+  <p id="fs-platform-context" class="setting-note" hidden>记忆基座不需要以下 B站必需项；展开后可提前配置原有平台能力，不会自动开始自主生活。</p>
   <div class="fs-journey" aria-label="统一快速设置流程">
     <div class="fs-setup-overview" aria-label="设置类型说明">
       <div><strong>① 必要配置</strong><span id="fs-required-overview">正在检查 B站登录和文字模型的实际验证状态…</span></div>
@@ -2325,6 +2324,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="fs-footer"><div><strong id="fs-summary">正在检查必需配置</strong><p class="muted">首次使用请在页面顶部提示栏点击「完成快速设置」。可选功能以后随时能调整；不会删除原有记忆、凭据和历史资料。</p></div></div>
     </div>
   </div>
+</details>
 </section>
 <section id="panel-models" hidden>
 <div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>文字模型：选择后请点「保存 AI 模型设置」，再验证真实连接。视觉模型：还需要图片实测与人工认可。<strong>本地 Ollama 下拉框只用于挑选模型，不会自动切换后台；点击「启用此已认可模型」并成功回读后才生效。</strong>连接测试可能产生费用，不计入统计。</p><p><a href="#models-vision" style="font-weight:650">🎞️ 视觉模型、FFmpeg 与 Whisper 已统一收纳在「视觉识别模型」中 ↓</a></p></div></div>
@@ -3986,4 +3986,64 @@ POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世�
 #panel-life .neural-node.is-appearing{animation:neural-star-bloom .62s cubic-bezier(.16,.72,.3,1) var(--neural-stagger,0ms) both;transform-box:fill-box;transform-origin:center}
 @keyframes neural-star-bloom{from{opacity:0;transform:translateY(6px) scale(.5);filter:brightness(2.2)}65%{opacity:1;transform:translateY(-1px) scale(1.08)}to{opacity:1;transform:none;filter:none}}
 @media(prefers-reduced-motion:reduce){#panel-life-agent #life-behavior-tree .life-tree-edge.is-growing,#panel-life-agent #life-behavior-tree .life-tree-action-group.is-entering :is(.life-tree-active-branch,.life-tree-active-leaf),#panel-life-agent #life-behavior-tree .is-leaving,#panel-life-agent #life-behavior-tree .life-tree-flow-overlay,#panel-life-agent #life-timeline-list>.life-timeline-exit-ghost,#panel-life-agent .life-choice-stage.is-transitioning,#panel-life .neural-node.is-appearing{animation:none!important;transform:none!important;filter:none!important}}
+/* Management UI · shared visual system. Keep feature-specific graphs, data contracts and IDs. */
+:root{--page:#f1f5f8;--panel:#fff;--ink:#203343;--muted:#536777;--stroke:#d6e0e6;--action:#246d80;--tint:#e8f3f5;--bad:#a5343e;--ui-surface:#f7fafb;--ui-accent:#246d80;--ui-accent-ink:#fff;--ui-selected:#e5f2f4;--ui-elevation:0 3px 15px #1f405009;--ui-radius:14px;--ui-amber-bg:#fff3da;--ui-amber-ink:#80510c}
+@media(prefers-color-scheme:dark){:root{--page:#101a23;--panel:#192733;--ink:#e4edf2;--muted:#a9bdc9;--stroke:#354956;--action:#8bd1dc;--tint:#223944;--bad:#ff9da4;--ui-surface:#14222d;--ui-accent:#27768b;--ui-accent-ink:#fff;--ui-selected:#203d49;--ui-elevation:0 3px 15px #0002;--ui-amber-bg:#443720;--ui-amber-ink:#f5d294}}
+body{background:var(--page);font-family:system-ui,'Microsoft YaHei','Noto Sans CJK SC',sans-serif;font-size:14px;line-height:1.65}
+.wrap{max-width:1320px;padding:22px clamp(12px,2.5vw,32px) 140px}
+.top{background:var(--panel);border:1px solid var(--stroke);border-radius:var(--ui-radius);box-shadow:var(--ui-elevation);padding:16px 20px;gap:14px}
+.top h1{color:var(--ink);background:none;font-size:23px;line-height:1.3;letter-spacing:-.025em}
+.top .muted{font-size:12px;margin-top:5px}.top-actions{gap:8px;min-width:0}.settings-finder{min-width:0;max-width:100%}
+.life-health-banner{margin:12px 0;border-radius:12px;box-shadow:none}.health-strip-heading{gap:9px}
+/* Keep the original four top navigation groups. Compact and aligned on desktop, swipeable on mobile. */
+.tabs{position:static;display:flex;flex-direction:column;gap:3px;background:var(--panel);padding:9px 12px;border:1px solid var(--stroke);border-radius:var(--ui-radius);box-shadow:var(--ui-elevation);margin:12px 0 18px;scroll-margin-top:8px}
+.tabs .tab-cluster{display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0;width:100%;padding:3px 0;border:0}
+.tabs .tab-cluster:has(>button[hidden]):not(:has(>button:not([hidden]))){display:none}
+.tabs .tab-cluster-label{flex:0 0 105px;color:var(--muted);font-size:12px;font-weight:650;padding:4px 7px}
+.tabs button,.tabs button[data-tab]{background:transparent;color:var(--ink);border:1px solid transparent;box-shadow:none;border-radius:8px;padding:5px 10px;font-size:13px;line-height:1.5;font-weight:550;min-height:34px;white-space:nowrap}
+.tabs button:not([aria-selected="true"]):hover{background:var(--ui-surface);border-color:var(--stroke);transform:none}
+.tabs button[aria-selected="true"]{color:var(--action);background:var(--ui-selected);border-color:var(--action);font-weight:750;box-shadow:none}
+.tabs button[hidden]{display:none!important}
+@media(max-width:700px){.wrap{padding:12px 12px calc(145px + env(safe-area-inset-bottom,0px))}.top{padding:13px}.top h1{font-size:20px}.top-actions{width:100%}.top-actions .settings-finder{flex:1;min-width:0}.settings-finder input{width:100%;min-width:0}.tabs{position:sticky;top:0;z-index:20;flex-direction:row;gap:8px;overflow-x:auto;overflow-y:hidden;padding:7px;margin:10px 0 14px}.manage-return-bar:not([hidden])~.tabs{top:56px}.tabs .tab-cluster{width:auto!important;flex-wrap:nowrap!important;flex:0 0 auto;gap:4px;padding:0 8px 0 0;border-right:1px solid var(--stroke)}.tabs .tab-cluster-label{flex:0 0 auto;width:auto!important}.tabs button,.tabs button[data-tab]{padding:8px 10px;min-height:40px;font-size:12px}}
+/* Common reading rhythm for all 23 pages; preserve specialized timeline/canvas styling. */
+section[id^="panel-"]{min-width:0;scroll-margin-top:12px;overflow-wrap:anywhere}
+section[id^="panel-"] :is(.card,.settings-section,.record,.quick-config-section,.fs-step){min-width:0}
+section[id^="panel-"]>.card,section[id^="panel-"]>.settings-stack>.settings-section,section[id^="panel-"] .settings-stack>.settings-section{background:var(--panel);box-shadow:var(--ui-elevation);border:1px solid var(--stroke);border-radius:var(--ui-radius)}
+section[id^="panel-"] .settings-stack>.settings-section:nth-child(n){border-color:var(--stroke);border-left:1px solid var(--stroke)}
+.card,.settings-section{border-radius:var(--ui-radius);box-shadow:var(--ui-elevation);padding:17px 19px}
+.card h3,.settings-section h4{line-height:1.45;letter-spacing:0;font-weight:700}.settings-section h4{font-size:15px}.card h3{font-size:16px}
+.feature-intro{background:var(--panel);border:1px solid var(--stroke);border-left:4px solid var(--action);border-radius:var(--ui-radius);padding:17px 20px;box-shadow:var(--ui-elevation);margin-bottom:16px}
+.feature-intro h2{margin:0 0 5px;color:var(--ink);font-size:23px;line-height:1.35}.feature-intro p{color:var(--muted);line-height:1.65}.feature-intro .live-badge+h2{margin-top:9px}
+.grid,.diag-grid,.fields,.settings-stack{gap:14px}.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,275px),1fr))}.diag-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}.fields{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.record{background:var(--panel);border-color:var(--stroke);border-radius:10px;padding:12px 14px}.records .record{border-left-color:var(--stroke)}
+button,.button,input,select,textarea{border-radius:8px;max-width:100%}input,textarea,select{min-width:0}input:not([type=checkbox]):not([type=radio]),textarea,select{background:var(--panel);border-color:var(--stroke)}
+button,.button{font-weight:550;line-height:1.5;min-height:36px}button:not(:disabled):hover{transform:none}button.primary,.toolbar button.primary,.actions button.primary{background:var(--ui-accent);border-color:var(--ui-accent);color:var(--ui-accent-ink);font-weight:650;box-shadow:none}
+button.primary:not(:disabled):hover{filter:brightness(1.1)}button:disabled{opacity:.53;cursor:not-allowed}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--action);outline-offset:3px}
+.toolbar,.row,.actions{min-width:0}.row>*{max-width:100%}.toolbar input{min-width:min(100%,170px)}label{color:var(--ink)}input[type=radio],input[type=checkbox]{accent-color:var(--action)}
+.muted,.field-help,.setting-note{color:var(--muted)}.setting-note{background:var(--ui-surface);border-left-color:var(--stroke)}
+#message:empty{display:none}#message{min-height:0;margin:8px 0 12px;font-size:13px}
+@media(max-width:700px){section[id^="panel-"]{scroll-margin-top:65px}.card,.settings-section,.feature-intro{padding:14px}.feature-intro h2{font-size:20px}.grid,.diag-grid,.fields{gap:10px}.toolbar>*{max-width:100%;min-width:0}.row>*{flex-shrink:1}.feature-intro{overflow-wrap:anywhere}}
+@media(prefers-reduced-motion:reduce){.tabs button,.integration-option,button{transition:none!important}.is-busy:after,.spinner{animation:none!important}}
+/* Mode selector and dedicated memory workspace: actual native radios, not decorative controls. */
+#panel-firststart .fs-hero{padding:17px 21px;margin:0 0 12px;background:var(--panel);border:1px solid var(--stroke);border-radius:var(--ui-radius);box-shadow:none;color:var(--ink)}
+#panel-firststart .fs-hero h2{font-size:23px;line-height:1.35;margin:7px 0 5px;color:var(--ink)}#panel-firststart .fs-hero p{color:var(--muted);font-size:13px;line-height:1.6;margin:0}
+#panel-firststart .fs-hero .fs-pill{background:var(--tint);color:var(--action)}
+#panel-firststart #fs-session-integration{margin:0 0 16px;padding:clamp(14px,2vw,24px);background:var(--panel);border:1px solid var(--stroke);border-radius:18px;box-shadow:var(--ui-elevation)}
+.integration-heading,.foundation-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.integration-heading>div,.foundation-heading>div{min-width:0;flex:1 1 260px}
+.integration-kicker{font-size:11px;font-weight:750;letter-spacing:.09em;color:var(--action)}.integration-heading h2{font-size:22px;line-height:1.35;margin:5px 0}.integration-heading p,.foundation-heading p{margin:3px 0;color:var(--muted)}
+.integration-status{align-self:flex-start;display:inline-flex;align-items:center;gap:7px;background:var(--ui-surface);border:1px solid var(--stroke);border-radius:999px;padding:5px 10px;color:var(--muted);font-size:12px;font-weight:650;max-width:100%}.integration-status:before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto}.integration-status[data-state=active]{background:var(--ui-selected);color:var(--action);border-color:var(--stroke)}.integration-status[data-state=pending]{background:var(--ui-amber-bg);color:var(--ui-amber-ink)}.integration-status[data-state=error]{color:var(--bad)}
+.integration-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0;margin:16px 0 0;border:0;min-width:0}.integration-legend{font-size:13px;font-weight:650;color:var(--muted);padding:0 0 8px}
+.integration-option{margin:0;display:flex;flex-direction:column;gap:7px;min-width:0;padding:16px 18px;border:1px solid var(--stroke);border-radius:14px;background:var(--ui-surface);cursor:pointer;transition:background .15s,border-color .15s;line-height:1.5;font-weight:400}
+.integration-option:has(input:checked){background:var(--ui-selected);border-color:var(--action);box-shadow:inset 0 0 0 1px var(--action)}.integration-option:has(input:not(:disabled)):hover{border-color:var(--action)}.integration-option:has(input:focus-visible){outline:2px solid var(--action);outline-offset:3px}.integration-choices:disabled .integration-option{cursor:default}
+.integration-option-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.integration-option input{width:19px;height:19px;margin:0}.integration-symbol{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--panel);border:1px solid var(--stroke);color:var(--action)}.integration-symbol svg{width:23px;height:23px}
+.integration-option strong{font-size:18px;color:var(--ink)}.integration-subtitle{color:var(--muted);font-size:13px}.integration-benefits{display:grid;gap:5px;margin:6px 0;font-size:13px}.integration-benefits>span{display:flex;align-items:baseline;gap:7px}.integration-benefits>span:before{content:'✓';color:var(--action);font-weight:750;flex-shrink:0}.integration-option small{margin-top:auto;padding-top:9px;border-top:1px solid var(--stroke);font-size:12px;color:var(--muted)}
+.integration-footer{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:16px;padding-top:15px;border-top:1px solid var(--stroke)}.integration-footer>div{flex:1 1 260px;min-width:0}.integration-footer p{margin:0 0 4px}#fs-integration-state{font-size:13px;font-weight:650;line-height:1.55}.integration-safety{font-size:12px}#fs-integration-save{min-height:42px;padding:10px 17px}
+#fs-foundation-memory{margin-top:24px;padding-top:20px;border-top:1px solid var(--stroke)}#fs-foundation-memory[hidden]{display:none!important}.foundation-heading h3{font-size:20px;margin:4px 0}.foundation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:15px}.foundation-tool{min-width:0;padding:15px;border:1px solid var(--stroke);border-radius:12px;background:var(--ui-surface)}.foundation-tool h4{font-size:15px;margin:0 0 4px}.foundation-tool p{margin:0 0 10px}.foundation-tool label{margin-top:10px}.foundation-input-row{display:flex;gap:8px;flex-wrap:wrap}.foundation-input-row input{flex:1;min-width:min(100%,160px)}.foundation-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.foundation-toggle{display:flex;align-items:center;gap:8px;font-weight:500}.foundation-toggle input{width:18px;height:18px;flex:0 0 auto}.foundation-output{white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;background:var(--panel);border:1px solid var(--stroke);padding:10px;border-radius:8px;font:inherit;font-size:13px;margin:10px 0 0}.foundation-output:empty{display:none}.foundation-memory-row{background:var(--panel);padding:10px;border:1px solid var(--stroke);border-radius:8px;margin-top:8px}.foundation-memory-row p{white-space:pre-wrap;overflow-wrap:anywhere}.foundation-memory-row button{color:var(--bad);font-size:12px}
+.integration-platform{min-width:0}.integration-platform>summary{cursor:pointer;padding:14px 17px;border:1px solid var(--stroke);border-radius:12px;background:var(--panel);margin:0 0 10px}.integration-platform>summary[hidden]{display:none!important}.integration-platform>summary strong{margin-right:8px}.integration-platform>summary span{font-size:12px;color:var(--muted)}.integration-platform>.setting-note{margin-bottom:12px}
+@media(max-width:700px){#panel-firststart .fs-hero{padding:14px}#panel-firststart .fs-hero h2,.integration-heading h2{font-size:20px}.integration-choices,.foundation-grid{grid-template-columns:1fr;gap:10px}.integration-option{padding:14px}.integration-footer{gap:10px}#fs-integration-save{width:100%}.foundation-tool{padding:13px}.foundation-heading>button{width:100%}}
+
+/* Keep storage status readable at narrow widths even with the relocate action. */
+@media(max-width:640px){#panel-backup .storage-overview{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px}#panel-backup .storage-overview-copy{min-width:0}#panel-backup .storage-overview button{grid-column:2;margin:0;justify-self:start;white-space:normal}}
+/* Dark contrast for older feature-specific presets. */
+@media(prefers-color-scheme:dark){#panel-plans .life-plan-hub-top,.quota-plan-picker{background:var(--ui-surface);color:var(--ink)}#panel-plans .life-plan-hub-top p{color:var(--muted)}#panel-plans .life-plan-overview-card{--plan-accent:#88c9b6}#panel-plans .life-plan-overview-card[data-life-plan-overview="opportunity"]{--plan-accent:#a0bdf8}#panel-plans .life-plan-overview-card[data-life-plan-overview="todo"]{--plan-accent:#cfb5f1}}
 </style>
