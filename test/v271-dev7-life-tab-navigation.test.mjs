@@ -30,7 +30,7 @@ test('clicking real Life tab runs the production switchTab path and reveals its 
   const end=js.indexOf('  // Cross-page deep links',start)
   assert.ok(start>0&&end>start)
   const switchTabSource=js.slice(start,end)
-  const registration=js.match(/  document\.querySelectorAll\('\[data-tab\]'\)\.forEach\(b=>b\.addEventListener\('click',\(\)=>switchTab\(b\.dataset\.tab\)\)\);/)
+  const registration=js.match(/  document\.querySelectorAll\('\[data-tab\]'\)\.forEach\(b=>b\.addEventListener\('click',\(\)=>\{if\(!favoriteEditing\)switchTab\(b\.dataset\.tab\)\}\)\);/)
   assert.ok(registration,'production click registration must be present')
   const panels=Object.fromEntries(tabs.map(t=>['panel-'+t,{hidden:t!=='persona'}]))
   panels['management-shell']={dataset:{setupWizard:'true'}}
@@ -44,7 +44,7 @@ test('clicking real Life tab runs the production switchTab path and reveals its 
     querySelectorAll(selector){assert.equal(selector,'[data-tab]');return Object.values(buttons)}
   }
   runInNewContext([
-    "let active='persona',firstNavigation=false",
+    "let active='persona',firstNavigation=false,favoriteEditing=false",
     'const haltSandboxTimer=()=>{}',
     'const restoreWizardControls=()=>{loads.push("restore-wizard")}',
     'const message=()=>{}',
@@ -88,17 +88,18 @@ test('direct Life link accepts same registered route and is not removed by the o
 
 test('custom favorites retain one canonical route and never duplicate settings or bypass navigation guards',()=>{
   const primary=html.split('<div class="tab-cluster tab-primary">')[1].split('</div>')[0]
-  assert.deepEqual([...primary.matchAll(/data-(?:favorite-)?tab="([^"]+)"/g)].map(m=>m[1]),['home','firststart','models','life-agent','life'])
+  assert.deepEqual([...primary.matchAll(/data-(?:favorite-)?tab="([^"]+)"/g)].map(m=>m[1]),['home','firststart','models'])
   const other=html.slice(html.indexOf('<div class="tab-cluster"><span class="tab-cluster-label">🏠'),html.indexOf('</nav>',html.indexOf('<div class="tab-cluster tab-primary">')))
   for(const tab of ['models','life-agent','life'])assert.match(other,new RegExp(`data-tab="${tab}"`))
   assert.doesNotMatch(other,/data-tab="(?:home|firststart)"/)
   const start=js.indexOf('fixedFavorites=new Set('),end=js.indexOf(';',start)
   const fixed=js.slice(start,end),normalize=js.match(/const normalizeFavorites=items=>[^;]+;/)[0]
   const cleaned=runInNewContext('const '+fixed+';'+normalize+'normalizeFavorites(items)',{tabNames:tabs,items:['home','firststart','models','life','life-agent','diagnostics','unknown','backup','diagnostics',4]})
-  assert.deepEqual([...cleaned],['diagnostics','backup'])
+  assert.deepEqual([...cleaned],['life','life-agent','diagnostics','backup'])
+  assert.match(js,/remove.dataset.favoriteRemove=t/)
   assert.match(js,/localStorage\.setItem\(favoriteKey,JSON\.stringify\(customFavorites\)\)/)
   assert.match(js,/b\.hidden=!tabAvailable\(t\)/)
-  assert.match(js,/if\(tabAvailable\(link\.dataset\.favoriteTab\)\)switchTab\(link\.dataset\.favoriteTab\)/)
+  assert.match(js,/if\(link&&!favoriteEditing&&tabAvailable\(link\.dataset\.favoriteTab\)\)switchTab\(link\.dataset\.favoriteTab\)/)
   assert.match(js,/link\.dataset\.tab\|\|link\.dataset\.favoriteTab/)
   assert.match(js,/favoriteHost\.replaceChildren\(\)/)
   assert.match(js,/primaryNav\?\.addEventListener\('drop'/)

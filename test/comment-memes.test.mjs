@@ -34,11 +34,12 @@ test('评论附梗图的设置、host白名单与调度配置一致',async()=>{
     assert.deepEqual(files.value.names,[])
   } finally {rmSync(home,{recursive:true,force:true,maxRetries:5,retryDelay:30})}
 })
-test('界面和Python MCP具备完整附图控制，默认关闭',()=>{
+test('界面和Python MCP具备完整附图控制，新装开启而旧配置缺键保持关闭',()=>{
   const i=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   const c=readFileSync(new URL('../client.js',import.meta.url),'utf8')
   const m=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
-  assert.match(i,/commentMemesEnabled: false/)
+  assert.match(i,/commentMemesEnabled: true/)
+  assert.match(i,/legacyExperienceDefaults = \{[^}]*commentMemesEnabled:false/)
   assert.match(i,/BILI_COMMENT_MEMES_PER_ROUND/)
   assert.match(i,/bili_comment_meme_list/)
   assert.match(c,/评论附表情包/)

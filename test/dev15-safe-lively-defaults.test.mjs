@@ -61,10 +61,11 @@ test('2.8.0 新安装允许受限互动，动态可在独立授权后发表且�
     assert.equal(c.socialAutoSend,true,'仅可给已授权的私信推荐收件人，仍受真实选片和冷却限制')
     assert.equal(c.agentFollowEnabled,true,'新安装自主关注/取关默认允许但仍经平台门禁')
     assert.equal(c.incomingImageRecognitionEnabled,true,'新安装入站图片理解默认开启，可禁用')
+    for(const key of ['ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentSocialPublishEnabled','commentMemesEnabled','commentWatchReplies','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','lifeProactiveFriendDmEnabled','lifeNaturalDmOutreachEnabled','lifePublicInteractionEnabled'])assert.equal(c[key],true,key)
     for (const key of [
-      'ownerCommentAgentEnabled', 'ownerCommentSocialPublishEnabled', 'ownerCommentNaturalAckEnabled',
+      'ownerCommentNaturalAckEnabled',
       'emotionRecallMainEnabled',
-      'emotionRecallDmEnabled', 'visionEnabled', 'commentMemesEnabled',
+      'emotionRecallDmEnabled', 'visionEnabled',
       'dmStrangerOnce', 'mainSessionBridgeEnabled', 'ownerTodoAutoReviewEnabled',
     ]) assert.equal(c[key], false, `未经授权的默认开关: ${key}`)
   } finally { x.cleanup() }
@@ -82,6 +83,7 @@ test('历史配置即使缺少新增字段，也不被新默认偷偷打开；�
     assert.equal(c.mainSessionMemoryMaxItems, 6)
     assert.equal(c.mainSessionMemoryMaxChars, 800)
     assert.equal(c.dmWatch, false)
+    for(const key of ['ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentSocialPublishEnabled','commentMemesEnabled','commentWatchReplies','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','lifeProactiveFriendDmEnabled','lifeNaturalDmOutreachEnabled','lifePublicInteractionEnabled'])assert.equal(c[key],false,key)
     for(const key of ['autoComment','autoVideoLike','autoVideoCollect'])assert.equal(c[key],false,`旧用户缺键不自动扩大权限: ${key}`)
     c=await x.config({agentFollowEnabled:false,incomingImageRecognitionEnabled:false})
     assert.equal(c.agentFollowEnabled,false);assert.equal(c.incomingImageRecognitionEnabled,false)
@@ -101,6 +103,17 @@ test('新装可关闭自主规划和动态，身份级记忆固定开启，公�
     assert.equal(c.autonomousPlannerEnabled, false)
     assert.equal(c.dailyDynamicEnabled, false)
     assert.equal(c.dailyDynamicDraftOnly, false)
-    assert.equal(c.ownerCommentSocialPublishEnabled, false)
+    assert.equal(c.ownerCommentSocialPublishEnabled, true)
   } finally { x.cleanup() }
+})
+
+
+test('fresh defaults survive restart and explicit disable survives restart',async()=>{
+ const a=harness();let b,c;try{
+  const path=join(a.root,'bili-duty','config.json');await a.config();
+  b=harness({existing:JSON.parse(readFileSync(path,'utf8'))});
+  const fresh=await b.config();for(const key of ['commentMemesEnabled','commentWatchReplies','ownerDmAgentSyncMain','ownerCommentSocialPublishEnabled'])assert.equal(fresh[key],true,key);
+  await b.config({commentMemesEnabled:false,ownerDmAgentSyncMain:false});
+  c=harness({existing:JSON.parse(readFileSync(join(b.root,'bili-duty','config.json'),'utf8'))});const restarted=await c.config();assert.equal(restarted.commentMemesEnabled,false);assert.equal(restarted.ownerDmAgentSyncMain,false);
+ }finally{a.cleanup();b?.cleanup();c?.cleanup()}
 })

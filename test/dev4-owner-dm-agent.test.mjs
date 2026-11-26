@@ -60,13 +60,15 @@ test('主 Session 上下文严格限定选定在线会话，可非唤醒注入�
     {role:'assistant',content:[{type:'text',text:'我也很好奇星空'}]},
     {role:'user',source:{kind:'plugin:dafeiyu'},content:[{type:'text',text:'内部注入'}]},
   ]}}
-  const bridge=createMainSessionBridge({dataDir:dir,agents:{get:id=>id==='home123'?agent:null,list:()=>[agent]},getConfig:()=>({mainSessionId:'home123'}),getWatched:()=>[],getComments:()=>({rows:[]})})
+  const bridge=createMainSessionBridge({dataDir:dir,agents:{get:id=>id==='home123'?agent:null,list:()=>[agent]},getConfig:()=>({mainSessionId:'home123',ownerDmAgentSyncMain:true}),getWatched:()=>[],getComments:()=>({rows:[]})})
   const result=await bridge.ownerDmContext({turns:3})
   assert.equal(result.available,true)
   assert.equal(result.lines.length,2)
   assert.ok(result.lines.join(' ').includes('天文'))
   assert.equal(result.lines.join(' ').includes('secret'),false)
-  const injected=await bridge.injectOwnerDmExperience({type:'watch',summary:'已读取标题',bvid:bv})
+  assert.equal((await bridge.injectOwnerDmExperience({type:'watch',summary:'旧固定记录',bvid:bv})).ok,false)
+  assert.equal(bridge.ownerDmWriteReady({sessionId:'home123'}),true)
+  const injected=await bridge.injectOwnerDmExperience({type:'watch',summary:'已读取标题',bvid:bv,generatedByAI:true,sessionId:'home123'})
   assert.equal(injected.ok,true);assert.equal(calls.length,1)
   assert.equal(calls[0].source.kind,'plugin:dafeiyu-owner-dm-experience')
 }))
@@ -157,4 +159,21 @@ test('owner DM cross-turn public revisit resumes the same message once without g
  agent.primeInbox([]);await agent.processMessage(row('之前那个视频后来是什么画面？','revisit1'))
  assert.equal(calls,3);assert.equal(reads,1);assert.equal(writes,0);assert.deepEqual(sent,['这次的新画面有风筝'])
  assert.equal((await agent.processMessage(row('之前那个视频后来是什么画面？','revisit1'))).skipped,'duplicate')
+}))
+
+test('confirmed owner DM AI summary: privacy, failure, permission revocation, offline and generation boundaries',()=>withDir(async dir=>{
+ for(const scenario of ['success','malformed','revoked','offline','unknown','generation']){
+  let calls=0,sends=0,revision=0;const injected=[];const cfg=config({ownerDmAgentSyncMain:true,mainSessionId:'home123'});
+  const agent=createOwnerDmAgent({dataDir:dir,getConfig:()=>cfg,getSessionIntegration:()=>({mode:'autonomous-life',revision}),canWriteMain:()=>scenario!=='offline',invokeModel:async prompt=>{
+   calls++;if(calls===1)return JSON.stringify({action:'watch',bvid:bv});if(calls===2)return JSON.stringify({action:'reply',text:'已读取资料'});
+   assert.match(prompt,/已确认的主人私信任务结果/);assert.doesNotMatch(prompt,/PRIVATE_SENTINEL/);assert.match(prompt,new RegExp(bv));
+   if(scenario==='revoked')cfg.ownerDmAgentSyncMain=false;if(scenario==='generation')revision++;
+   return scenario==='malformed'?'not JSON':JSON.stringify({summary:'鱼鱼读取了这条视频的资料。'})
+  },executeRead:async()=>({ok:true,summary:'PRIVATE_SENTINEL'}),executeWrite:async()=>({ok:false}),send:async()=>{sends++;return {ok:scenario!=='unknown'}},writeMain:async e=>{injected.push(e);return {ok:true}},logger:{warn(){}}});agent.primeInbox([]);
+  const incoming=row('看看 '+bv+' PRIVATE_SENTINEL','sync-'+scenario);
+  assert.equal((await agent.processMessage(incoming)).ok,scenario!=='unknown');assert.equal(sends,1);assert.equal(injected.length,scenario==='success'?1:0,scenario);
+  assert.equal(calls,['offline','unknown'].includes(scenario)?2:3,scenario);
+  if(injected.length)assert.equal(injected[0].summary,'鱼鱼读取了这条视频的资料。');
+  assert.equal((await agent.processMessage(incoming)).skipped,'duplicate');
+ }
 }))

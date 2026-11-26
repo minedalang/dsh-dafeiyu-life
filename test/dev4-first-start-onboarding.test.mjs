@@ -354,3 +354,11 @@ test('独立能力代际：旧模式保守映射、待重启、关闭平台和�
   assert.throws(()=>next.requestMode({mode:'autonomous-life',expectedRevision:5,confirm:'REQUEST_SESSION_INTEGRATION_RESTART'}))
  }finally{rmSync(home,{recursive:true,force:true})}
 })
+
+test('initial social offer survives restart, never reopens after completion',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'fish-initial-social-'));try{
+ const args={stateDir:dir,credentialPath:join(dir,'bili_credential.json'),headlessSync:{hasAnyVerified:()=>true}};
+ const fresh=createFirstStart({...args,freshInstall:true});assert.equal(fresh.status().initialSocialOffer,true);
+ const restarted=createFirstStart(args);assert.equal(restarted.status().initialSocialOffer,true);writeFileSync(args.credentialPath,'test');restarted.verifyBili();assert.throws(()=>restarted.validateComplete(['bad']));restarted.complete([]);assert.equal(restarted.status().initialSocialOffer,false);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})

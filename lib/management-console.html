@@ -165,7 +165,7 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 @keyframes ui-spin{to{transform:rotate(360deg)}}
 .request-indicator[hidden],.action-toast[hidden]{display:none!important}
 .request-indicator{position:fixed;right:18px;bottom:18px;z-index:40;display:flex;align-items:center;gap:9px;padding:11px 16px;border:1px solid color-mix(in srgb,var(--ui-indigo) 40%,var(--stroke));border-radius:14px;background:var(--panel);box-shadow:0 12px 35px rgba(35,62,98,.16);font-size:13px;color:var(--action);pointer-events:none}
-.action-toast{position:fixed;left:50%;bottom:68px;transform:translateX(-50%);z-index:45;max-width:min(90vw,620px);padding:12px 16px;border:1px solid color-mix(in srgb,var(--ui-indigo) 30%,var(--stroke));border-left:4px solid var(--ui-indigo);background:var(--panel);border-radius:13px;box-shadow:0 16px 45px rgba(34,55,90,.23);overflow-wrap:anywhere;font-size:13px}
+.action-toast{pointer-events:none;position:fixed;left:50%;bottom:68px;transform:translateX(-50%);z-index:45;max-width:min(90vw,620px);padding:12px 16px;border:1px solid color-mix(in srgb,var(--ui-indigo) 30%,var(--stroke));border-left:4px solid var(--ui-indigo);background:var(--panel);border-radius:13px;box-shadow:0 16px 45px rgba(34,55,90,.23);overflow-wrap:anywhere;font-size:13px}
 .action-toast[data-tone=error]{border-left-color:var(--bad)}
 .action-feedback{border:1px solid color-mix(in srgb,var(--ui-indigo) 30%,var(--stroke));border-left:4px solid var(--ui-indigo);border-radius:12px;padding:12px 14px;background:linear-gradient(110deg,color-mix(in srgb,var(--tint) 48%,var(--panel)),var(--panel));font-size:13px;margin:0 0 15px;white-space:pre-wrap}
 .action-feedback[data-tone=pending]{border-left-color:var(--ui-amber)}
@@ -2168,15 +2168,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <button data-tab="home" aria-selected="false">Session 接入</button>
 <button data-tab="firststart" aria-selected="false">🚀 快速设置</button>
 <button type="button" data-favorite-tab="models">AI 模型</button>
-<button type="button" data-favorite-tab="life-agent">🐟 鱼鱼正在做</button>
-<button type="button" data-favorite-tab="life">🧠 鱼的记忆</button>
 <span id="management-nav-favorites" class="nav-favorites"></span>
-<button type="button" id="management-nav-customize" aria-expanded="false" aria-controls="management-nav-editor">⚙ 常用设置</button></div>
-<div id="management-nav-editor" class="nav-favorites-editor" hidden>
-  <div class="toolbar"><strong>自定义常用导航</strong><button type="button" data-favorite-action="reset">恢复默认</button><button type="button" data-favorite-action="close">完成</button></div>
-  <p class="muted">前五项固定保留（受当前功能权限限制）。可将下方原分类入口拖到常用栏，或点击添加；原入口始终保留。额外快捷方式可拖动排序，也可用左右按钮调整。设置仅保存在当前浏览器。</p>
-  <div id="management-nav-editor-items" class="nav-favorites-editor-items"></div>
-</div>
+<button type="button" id="management-nav-customize" aria-pressed="false" title="拖动分类入口到常用栏；原入口保留，× 仅移除快捷方式">⚙ 常用设置</button></div>
 <div class="tab-cluster"><span class="tab-cluster-label">🏠 生活与成长</span>
 <button data-tab="life-agent" aria-selected="false">🐟 鱼鱼正在做</button>
 <button data-tab="life" aria-selected="false">🧠 鱼的记忆</button>
@@ -2223,7 +2216,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
       <li id="fs-guide-model" data-state="waiting"><span class="guided-index" aria-hidden="true">3</span><div><strong>文字模型</strong><small id="fs-guide-model-status">待验证</small></div></li>
     </ol>
     <div id="fs-wizard-page" class="wizard-page" role="region" aria-labelledby="fs-guide-next-title"><div class="wizard-heading"><span id="fs-wizard-icon" aria-hidden="true">✦</span><span id="fs-wizard-step">步骤 1</span></div><div class="guided-action"><div><strong id="fs-guide-next-title" tabindex="-1">正在检查设置</strong><p id="fs-guide-next-detail" role="status" aria-live="polite">根据实际状态继续。</p></div><button type="button" id="fs-guide-next" class="primary" disabled>正在检测…</button></div>
-    <div id="fs-wizard-content" class="wizard-content"></div><p id="fs-wizard-feedback" role="status" aria-live="polite"></p></div><div class="wizard-footer"><button id="fs-wizard-back" type="button" hidden>上一步</button><button id="fs-wizard-continue" class="primary" type="button" hidden>继续</button><button id="fs-wizard-skip" type="button" hidden>稍后设置</button></div><div class="guided-links"><a href="#quick-life-section" id="fs-guide-life" hidden>查看生活节奏 ↗</a><button type="button" id="fs-guide-finish-later" hidden>稍后设置，完成引导</button><a href="#fs-session-integration" class="guided-alternative">只使用记忆？调整能力开关 ↗</a></div>
+    <div id="fs-wizard-content" class="wizard-content"></div><div id="fs-initial-social" class="setting-note" hidden><label class="checkline"><input id="fs-initial-social-enable" type="checkbox" checked>启用新安装推荐社交能力</label><p>允许被 @ 互动、向已授权收件人自主分享视频、与有持续双向私信习惯的人自主联系（含白名单）、对已核验公开动态自主考虑点赞与评论。鱼鱼仍自行决定，所有操作保留身份、权限和额度检查。取消勾选则不授予上述账号级权限，之后可单独设置。</p></div><p id="fs-wizard-feedback" role="status" aria-live="polite"></p></div><div class="wizard-footer"><button id="fs-wizard-back" type="button" hidden>上一步</button><button id="fs-wizard-continue" class="primary" type="button" hidden>继续</button><button id="fs-wizard-skip" type="button" hidden>稍后设置</button></div><div class="guided-links"><a href="#quick-life-section" id="fs-guide-life" hidden>查看生活节奏 ↗</a><button type="button" id="fs-guide-finish-later" hidden>稍后设置，完成引导</button><a href="#fs-session-integration" class="guided-alternative">只使用记忆？调整能力开关 ↗</a></div>
   </section>
   <details id="fs-platform-setup" class="integration-platform" open><summary id="fs-platform-summary" hidden>平台设置</summary>
   <p id="fs-platform-context" class="setting-note" hidden>记忆不需要 B站登录；平台能力在能力开关中配置。</p>
@@ -2264,7 +2257,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <p id="fs-addons-detail" class="setting-note" role="status">安装 FFmpeg 后可能需重启 DSH；Whisper 转写是否生效，请到 AI 模型页查看最近真实运行回执。</p>
       </section>
     <section class="quick-config-section fs-version-highlight" id="fs-vision-guide" aria-label="2.8.2 视频视觉模型配置引导">
-      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>视频感知 <span class="pill">推荐 · 可选</span></h4><p>选择视觉模型并验证图片；启用画面观察前需通过 FFmpeg 解码检查。语音识别按需配置。</p></div></div>
+      <div class="quick-config-title"><span class="quick-card-icon">👀</span><div><h4>视频感知 <span class="pill">推荐 · 可选</span></h4><p>先选择视觉模型并验证图片，再配置 FFmpeg 真视频解码及可选语音识别。实际视频观察仍须通过解码检查。</p></div></div>
       <p id="fs-vision-state" class="quick-current" role="status" aria-live="polite">正在读取当前视觉设置…</p>
       <div class="quick-config-actions"><button type="button" class="primary" id="fs-wizard-video">配置视频感知与语音</button></div>
     </section>
@@ -2749,7 +2742,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="main-session-binding-help" style="border:1px solid var(--stroke);border-radius:10px;padding:12px;display:grid;gap:6px"><strong>也可以在 DSH 原生界面指定主 Session</strong><p>在 DSH 中正常新建或打开会话，点击侧栏该会话的「…」菜单，选择「设为大肥鱼主 Session」。绑定后本页每4秒自动更新。</p><p class="muted">若当前 DSH 版本没有该菜单，仍可在上方选择已有在线会话，再点击下方「保存主 Session 设置」。列表仅显示当前在线且未归档的会话。如果找不到目标 Session，请在 DSH 打开该会话，返回此处点击「刷新列表」。不要求专用工作区。</p></div>
 </div>
 <div class="main-session-controls autonomous-only">
-<label class="main-session-control" for="main-session-enabled"><span class="main-session-control-copy"><strong>经历同步桥</strong><small>启用当前房间的经历同步桥</small></span><input role="switch" class="ui-toggle" id="main-session-enabled" type="checkbox"></label>
+<label class="main-session-control" for="main-session-enabled"><span class="main-session-control-copy"><strong>经历同步桥（可选）</strong><small>将鱼鱼已经确认的 B站视频、评论等经历定期同步到所选主 Session，便于继续聊天。关闭仅停止自动经历同步，不关闭独立记忆，也不影响手动回忆；默认关闭，避免自动往会话添加内容。</small></span><input role="switch" class="ui-toggle" id="main-session-enabled" type="checkbox"></label>
 <label class="main-session-control" for="main-session-auto"><span class="main-session-control-copy"><strong>自动同步新经历</strong><small>有新经历时按设定节奏汇报</small></span><input role="switch" class="ui-toggle" id="main-session-auto" type="checkbox" checked></label>
 <label class="main-session-control" for="owner-spontaneous-chat-enabled"><span class="main-session-control-copy"><strong>允许自主联系</strong><small>肥鱼可以自己决定是否找主人聊天</small></span><input role="switch" class="ui-toggle" id="owner-spontaneous-chat-enabled" type="checkbox" checked></label>
 </div></div>
@@ -3356,15 +3349,15 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="card" id="life-public-interaction-card" style="margin-top:12px">
 <h4>🌱 Life 连续探索与公开互动</h4>
 <p class="muted">主人或好友分享的动态、官方确认的转发原帖和关联视频都会成为独立的自主选择：了解外层 → 决定是否继续查看原帖、视频或作者。不是自动递归抓取，也不会将视频标题误写成已看画面。</p>
-<label class="checkline"><input role="switch" class="ui-toggle" id="life-public-interaction-enabled" type="checkbox">允许 Life 对已核验的公开动态自主考虑点赞与原创评论（默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="life-public-interaction-enabled" type="checkbox">允许 Life 对已核验的公开动态自主考虑点赞与原创评论（新安装推荐开启，须确认账号授权）</label>
 <p class="muted">这是统一的公开写入授权，不再区分“好友本人动态”与“转发第三方动态”。开启后仍须 Life 独立决定、核验真实作者与目标、遵守全局评论额度和平台读写预算，未知回执绝不重发。旧版两个专属开关不会自动升级为此授权。关闭时只读探索仍可运行。</p>
 <div class="toolbar"><button type="button" id="life-public-interaction-save" class="primary">保存统一公开互动授权</button><span id="life-public-interaction-status" class="muted">尚未读取</span></div>
 </div>
 <div class="card" id="life-friend-outreach-card" style="margin-top:12px">
 <h4>熟人自主联系 · 区分评论与私信关系</h4>
 <p class="muted">评论区熟悉仅影响自然认识，不授予主动私信资格。必须有当前账号真实、跨日、双向的私人交流记录，且独立主人授权、未拒联并通过发送门禁，才可考虑主动私信。旧版关系资料不自动升级成私信许可。</p>
-<label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="life-friend-dm-enabled">保留原有白名单主动联系授权（也须先建立双向私信关系）</label>
-<label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="life-natural-dm-enabled">允许鱼鱼向有持续双向私信习惯的人自主联系（可不在白名单；默认关闭，独立确认）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="life-friend-dm-enabled">保留原有白名单主动联系授权（新安装推荐开启，也须先建立双向私信关系）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="life-natural-dm-enabled">允许鱼鱼向有持续双向私信习惯的人自主联系（可不在白名单；新安装推荐开启，须独立确认）</label>
 <div class="toolbar"><button type="button" id="life-friend-dm-save" class="primary">保存熟人自主联系授权</button><span id="life-friend-dm-status" class="muted">尚未读取</span></div>
 </div>
 </details>
@@ -3377,10 +3370,10 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <p class="muted">主人可用自然语言连续委托搜索、观看和获授权的 B站操作；只在核验主人 UID 后启用。不向模型挂载 B站 MCP、Shell、文件工具；模型只能提议动作，每步由插件后端验证。dev.3b.32 起所有入站私信都由统一 Life 模型决定回复、沉默和只读探查；本区旧 Agent 不再抢先消费主人消息，相关字段暂保留以兼容已保存设置。</p>
 <label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-agent-enabled" type="checkbox">启用主人私信受限 Agent（新安装默认开启）</label>
 <p class="muted">新收到的主人私信已由统一 Life 私信流程处理：行动意愿使用「行为决策模型」，自然回复使用「社交互动模型」。旧 Agent 专用模型字段只为历史配置兼容保留，不再提供独立模型设置入口。</p>
-<label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-agent-read-main" type="checkbox">允许 Agent 读取已选择的在线主 Session 近期对话（默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-agent-read-main" type="checkbox">允许 Agent 读取已选择的在线主 Session 近期对话（新安装默认开启，仍须绑定在线会话）</label>
 <small class="setting-note">只读取有限的用户/助手可见文本，排除工具、系统消息和明显敏感内容；在线主 Session 不可用时仍可独立聊天。不会获得主 Session 工具权限。</small>
 <div class="fields"><div><label for="owner-dm-agent-turns">主 Session 上下文轮数（1–20）</label><input type="number" id="owner-dm-agent-turns" min="1" max="20" value="6"></div><div><label for="owner-dm-agent-chars">上下文字符上限（200–4000）</label><input type="number" id="owner-dm-agent-chars" min="200" max="4000" value="1500"></div></div>
-<label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-agent-sync-main" type="checkbox">将已确认的私信任务结果写回主 Session（默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-dm-agent-sync-main" type="checkbox">将已确认的私信任务结果写回主 Session（新安装默认开启，由 AI 生成简短摘要；失败不写回）</label>
 <small class="setting-note">仅注入简短的任务结果摘要，不发送陌生人私信正文；不会主动唤醒主 Session。</small>
 <p id="owner-dm-agent-status" class="muted">Agent 尚未启用；开启后查看执行记录。</p>
 </div>
@@ -3407,9 +3400,9 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <div class="card" id="social-owner-comment"><h4>🐳 主人公开评论 · 受限 Agent</h4>
 <p id="owner-comment-authorized-uid" class="muted">唯一授权主人 UID：读取中…</p>
 <p class="muted">从平台通知核验真实主人 UID 和当前 BV。主人可以自然地邀请大肥鱼来看视频，大肥鱼自行决定是否有话想说，不需要主人逐句审核；点赞仍要明确请求和独立授权。公开评论区不接受“指定正文发表”或“生成草稿”这类技术命令。所有公开写入都受额度、隐私校验和去重保护，不读取主 Session 私密信息。</p>
-<label class="checkline"><input role="switch" class="ui-toggle" id="owner-comment-agent-enabled" type="checkbox">启用主人评论 Agent（默认关闭；独立于普通 @ 回复）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-comment-agent-enabled" type="checkbox">启用主人评论 Agent（新安装默认开启；独立于普通 @ 回复）</label>
 <label class="checkline"><input role="switch" class="ui-toggle" id="owner-comment-like" type="checkbox">允许主人在当前视频下请求点赞</label>
-<label class="checkline"><input role="switch" class="ui-toggle" id="owner-comment-publish" type="checkbox">允许主人自然邀请后，由大肥鱼自主决定是否公开发表评论（高风险，升级后需重新授权，默认关闭）</label>
+<label class="checkline"><input role="switch" class="ui-toggle" id="owner-comment-publish" type="checkbox">允许主人自然邀请后，由大肥鱼自主决定是否公开发表评论（新安装默认开启；既有安装仍需显式授权）</label>
 <label class="checkline"><input role="switch" class="ui-toggle" id="owner-comment-ack" type="checkbox">点赞成功后自然回复一句（默认静默；自主选择不评论时的简短答复独立于此开关）</label><p class="muted">主人自然邀请后，大肥鱼即使决定不发表评论，也会在权限和回复额度允许时尝试回复原 @，说明这次想偷懒、暂无想法或资料不足；不会额外发顶层评论。</p>
 <p id="owner-comment-agent-status" class="muted">Agent 状态尚未读取。</p>
 <div class="toolbar"><button type="button" class="primary" id="owner-comment-settings-save">保存主人公开评论权限</button><button type="button" id="owner-comment-settings-reload">重新读取</button></div>
@@ -4220,7 +4213,7 @@ html{scroll-padding-top:var(--management-nav-offset,180px)}@media(max-width:700p
 /* Sticky navigation collapses only after crossing its original position. */
 #management-nav-marker{height:0;pointer-events:none}
 #management-shell{min-height:var(--management-min-scroll-height,0px)}
-html:has(.tabs[data-pinned="true"]){overflow-anchor:none}
+#management-shell{overflow-anchor:none}
 .tabs[data-pinned="true"]{padding-right:88px;max-height:40vh;overflow:auto}
 #management-nav-toggle{position:absolute;right:8px;top:9px;z-index:3;white-space:nowrap;min-height:32px;padding:5px 9px;background:var(--panel)}
 #management-nav-toggle[hidden]{display:none!important}
@@ -4235,13 +4228,21 @@ html:has(.tabs[data-pinned="true"]){overflow-anchor:none}
 @media(max-width:700px){.tabs[data-pinned="true"][data-compact="false"]{flex-wrap:wrap;overflow:auto}.tabs[data-pinned="false"]{flex-wrap:wrap;overflow:visible}.tabs[data-pinned="false"] .tab-cluster,.tabs[data-pinned="true"][data-compact="false"] .tab-cluster{flex-wrap:wrap!important;width:100%!important;white-space:normal}.tabs[data-pinned="false"] .tab-cluster-label{width:auto!important}.tabs[data-compact="true"]>.tab-primary{padding:0!important}}
 
 /* Favorite links are copies, not moved controls; the original route registry stays unique. */
-.nav-favorites{display:contents}.tabs [data-favorite-tab][aria-current="page"]{background:var(--action);color:var(--panel);border-color:var(--action)}
-.tabs [data-favorite-tab][hidden],.tabs #management-nav-editor[hidden],.tabs #management-nav-customize[hidden]{display:none!important}
-.tabs[data-compact="true"] .nav-favorites>button{flex:0 0 auto}.tabs[data-compact="true"] #management-nav-editor{display:none!important}
-.tabs #management-nav-customize{border:1px dashed var(--stroke);font-size:12px}.tabs[data-favorite-edit="true"] .tab-primary{outline:2px dashed var(--action);outline-offset:-2px}
+ .nav-favorites{display:contents}.tabs [data-favorite-tab][aria-current="page"]{background:var(--action);color:var(--panel);border-color:var(--action)}
+.tabs [data-favorite-tab][hidden],.tabs .favorite-shortcut[hidden],.tabs #management-nav-customize[hidden]{display:none!important}
+.tabs .favorite-shortcut{display:inline-flex;position:relative;flex:0 0 auto;align-items:center}.tabs[data-favorite-edit="true"] .favorite-shortcut{margin:4px 5px 4px 0}
+.tabs .favorite-remove{display:none!important;position:absolute;right:-5px;top:-5px;min-width:18px;min-height:18px;padding:0;border-radius:50%;background:var(--panel);color:var(--text);border:1px solid var(--stroke);font-size:13px;line-height:16px;z-index:2}
+.tabs[data-favorite-edit="true"] .favorite-remove{display:block!important}
+.tabs #management-nav-customize{border:1px dashed var(--stroke);font-size:12px}.tabs[data-favorite-edit="true"] .tab-primary{outline:2px dashed var(--action);outline-offset:-2px;padding-block:8px}
 .tabs[data-favorite-edit="true"] button[draggable="true"]{cursor:grab}.tabs .nav-favorite-drop{outline:2px solid var(--action);outline-offset:-2px}
-.nav-favorites-editor{width:100%;min-width:0;border:1px solid var(--stroke);border-radius:10px;padding:8px 12px;background:var(--panel)}
-.nav-favorites-editor-items{display:flex;gap:5px;flex-wrap:wrap;max-height:24vh;overflow:auto;overscroll-behavior:contain;align-content:start}.nav-favorites-editor-items>div{display:flex;align-items:center;gap:2px;border:1px solid var(--stroke);border-radius:8px;padding:2px}.nav-favorites-editor-items button{white-space:normal}
+@keyframes favoriteWiggle{0%,100%{transform:rotate(-1.5deg)}50%{transform:rotate(1.5deg)}}
+.tabs[data-favorite-edit="true"] .favorite-shortcut{animation:favoriteWiggle .22s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.tabs[data-favorite-edit="true"] .favorite-shortcut{animation:none}}
+.tabs{overscroll-behavior:auto;scroll-snap-type:none}
+.tabs[data-compact="true"]{overflow:clip;overscroll-behavior:auto;touch-action:auto}
+.tabs[data-favorite-edit="true"] button[draggable="true"]{touch-action:none}
+@media(max-width:700px){.tabs[data-favorite-edit="true"]{max-height:65vh;overflow:auto;flex-direction:column!important;flex-wrap:nowrap!important}.tabs[data-favorite-edit="true"]>.tab-cluster{flex:0 0 auto;flex-wrap:wrap!important;width:100%!important}.tabs[data-favorite-edit="true"]>.tab-primary{position:sticky;top:0;z-index:2;background:var(--panel)}}
+.tabs[data-compact="true"]>.tab-primary{overscroll-behavior:auto;touch-action:auto;overflow-y:hidden;padding:7px 5px!important}
 #management-shell[data-setup-wizard="true"] .tabs [data-favorite-tab="life"]:not([hidden]){display:inline-flex!important}
 #management-shell[data-setup-wizard="true"] .tabs .tab-cluster:not(.tab-primary){display:none!important}
 </style>
