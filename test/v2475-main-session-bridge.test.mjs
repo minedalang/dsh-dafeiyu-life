@@ -126,11 +126,11 @@ test('轻量列表不读取经历文件，宿主读取失败不伪装空会话�
   const h=sessionBindingHarness();try{assert.equal(h.bridge.sessionDirectory({strict:true}).sessions.length,1);assert.equal(existsSync(h.bridge.file),false)}finally{h.close()}
   const dir=temp();try{const bridge=createMainSessionBridge({dataDir:dir,agents:{list(){throw Error('transport')}},getConfig:baseConfig,getWatched:()=>[],getComments:()=>({rows:[]})});assert.throws(()=>bridge.sessionDirectory({strict:true}),/列表读取失败/)}finally{rmSync(dir,{recursive:true,force:true})}
 })
-function sessionPickerHarness(){
+function sessionPickerHarness(foundation=false){
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8'),start=js.indexOf("  let mainSessionSavedId="),end=js.indexOf('  const loadMainSession=',start)
   assert.ok(start>=0&&end>start);const fields=new Map(),committed=[],requests=[]
   const $=id=>{if(!fields.has(id))fields.set(id,{id,value:'',dataset:{},children:[],replaceChildren(){this.children=[];this.value=''},appendChild(row){this.children.push(row)}});return fields.get(id)}
-  const document={activeElement:null};let response;const api=runInNewContext(js.slice(start,end)+`\n({renderMainSessionDirectory,refreshMainSessionDirectory,updateMainSessionDraft,invalidate:()=>mainSessionEpoch++})`,{$,document,mobileViewOnly:false,node:(tag,label)=>({tag,label,value:''}),settingDraftTracker:{committed:field=>committed.push(field.id)},summarizeSaveDrafts(){},request:async path=>{requests.push(path);if(typeof response==='function')return response();if(response instanceof Error)throw response;return response}})
+  const document={activeElement:null};let response;const api=runInNewContext(js.slice(start,end)+`\n({renderMainSessionDirectory,refreshMainSessionDirectory,updateMainSessionDraft,invalidate:()=>mainSessionEpoch++})`,{$,document,mobileViewOnly:false,foundationWorkspace:()=>foundation,node:(tag,label)=>({tag,label,value:''}),settingDraftTracker:{committed:field=>committed.push(field.id)},summarizeSaveDrafts(){},request:async path=>{requests.push(path);if(typeof response==='function')return response();if(response instanceof Error)throw response;return response}})
   return {...api,$,document,committed,requests,respond:x=>{response=x}}
 }
 const directory=(id,rows,extra={})=>({directoryProtocol:4,archiveKnown:true,workspaces:[{id:'fish-workspace',label:'大肥鱼'}],selectedId:id,sessions:rows.map(x=>({id:x,label:x})),targetLive:rows.includes(id),nativeBindingAvailable:true,...extra})

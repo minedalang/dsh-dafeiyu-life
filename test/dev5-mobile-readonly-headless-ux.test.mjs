@@ -18,7 +18,7 @@ test('Headless 同步与真实验证清楚分开，首次设置有可见的下�
   assert.match(js,/仅同步不算完成/)
 })
 
-function journey(mobileViewOnly=false){
+function journey(mobileViewOnly=false,foundation=false){
   const elements=new Map()
   const $=id=>{
     if(!elements.has(id))elements.set(id,{dataset:{},textContent:'',hidden:false,querySelector:()=>({textContent:''})})
@@ -27,7 +27,7 @@ function journey(mobileViewOnly=false){
   const start=js.indexOf('  const renderHeadlessJourney=providers=>{')
   const end=js.indexOf("  $('headless-next-action').addEventListener",start)
   assert.ok(start>=0&&end>start)
-  const fn=runInNewContext(js.slice(start,end)+'\nrenderHeadlessJourney',{ $,mobileViewOnly })
+  const fn=runInNewContext(js.slice(start,end)+'\nrenderHeadlessJourney',{ $,mobileViewOnly,foundationWorkspace:()=>foundation })
   return {fn,$}
 }
 test('Headless 状态机：检测 → 同步 → 验证，未验证不能显示完成',()=>{
@@ -46,6 +46,7 @@ test('Headless 状态机：检测 → 同步 → 验证，未验证不能显示�
   assert.equal(app.$('headless-journey').dataset.stage,'verified')
   assert.equal(app.$('headless-stage-verify').dataset.state,'done')
   assert.equal(app.$('headless-next-action').hidden,true)
+  const base=journey(false,true);base.fn([{id:'p',models:['m'],synced:true,verifiedModels:['m']}]);assert.match(base.$('headless-next-description').textContent,/记忆模型/);assert.doesNotMatch(base.$('headless-next-description').textContent,/图片/)
 })
 test('Android 查看模式不提供验证主按钮，仍展示所需电脑端操作',()=>{
   const app=journey(true)

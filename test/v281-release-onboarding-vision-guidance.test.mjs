@@ -119,17 +119,18 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   const nodes=new Map()
   const element=id=>{
     if(!nodes.has(id))nodes.set(id,{id,hidden:false,disabled:false,dataset:{},textContent:'',className:'',title:'',attributes:{},
-      setAttribute(name,value){this.attributes[name]=String(value)}})
+      setAttribute(name,value){this.attributes[name]=String(value)},appendChild(child){child.parentElement=this},after(child){child.parentElement=null},before(child){child.parentElement=null}})
     return nodes.get(id)
   }
   const context={
-    onboarding:null,mobileViewOnly:false,tabNames:['firststart','models','home','life','social'],
+    onboarding:null,mobileViewOnly:false,firstNavigation:true,active:'firststart',tabNames:['firststart','models','home','life','social','life-agent','plans','backup'],
     $:element,document:{querySelector:selector=>element(selector)}
   }
-  const render=runInNewContext(js.slice(begin,end)+'\nrenderFirstStart',context)
+  const policy=js.slice(js.indexOf('  const workspaceView=state=>'),js.indexOf('  const skipFirstStart='));
+  const render=runInNewContext(policy+js.slice(begin,end)+'\nrenderFirstStart',context)
   const show=state=>{render(state);return element('fs-warning')}
   const old={ok:true,welcomeCompleted:true,completed:true,requiredReady:true,quickSetupSeen:false,
-    biliVerified:true,headlessVerified:true,hasCredential:true,missing:[],skipped:[]}
+    biliVerified:true,headlessVerified:true,hasCredential:true,missing:[],skipped:[],sessionIntegration:{ok:true,activeMode:'autonomous-life',requestedMode:'autonomous-life',revision:0,restartRequired:false}}
   let banner=show(old)
   assert.equal(banner.hidden,false)
   assert.equal(banner.dataset.kind,'update')
@@ -142,7 +143,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(banner.hidden,true,'老用户确认后只需关闭通知')
 
   const fresh={ok:true,welcomeCompleted:false,completed:false,requiredReady:false,quickSetupSeen:false,
-    biliVerified:false,headlessVerified:false,hasCredential:false,missing:['B站登录验证','Headless 模型同步与验证'],skipped:[]}
+    biliVerified:false,headlessVerified:false,hasCredential:false,missing:['B站登录验证','Headless 模型同步与验证'],skipped:[],sessionIntegration:old.sessionIntegration}
   banner=show(fresh)
   assert.equal(banner.dataset.kind,'setup')
   assert.equal(element('fs-quick-ack').hidden,true)
@@ -161,7 +162,13 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('fs-quick-ack').hidden,true)
   assert.equal(element('[data-tab="life"]').hidden,true,'实际模型验证失效不等于仅需确认版本')
   const foundation={...fresh,memoryFoundationReady:true,sessionIntegration:{ok:true,activeMode:'memory-foundation',requestedMode:'memory-foundation',revision:1,restartRequired:false}}
+  show({...old,...{memoryFoundationReady:true,sessionIntegration:foundation.sessionIntegration}})
+  assert.equal(element('management-shell').dataset.workspace,'foundation')
+  for(const tab of ['social','life-agent','plans'])assert.equal(element(`[data-tab="${tab}"]`).hidden,true)
+  for(const tab of ['home','models','life','backup','firststart'])assert.equal(element(`[data-tab="${tab}"]`).hidden,false)
+  assert.equal(element('life-system-health').hidden,true)
   show(foundation)
+  assert.equal(element('[data-tab="backup"]').hidden,true)
   assert.equal(element('fs-mode-foundation').checked,true)
   assert.equal(element('fs-mode-autonomous').checked,false)
   assert.equal(element('fs-integration-current').dataset.state,'active')
@@ -188,6 +195,8 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('fs-mode-autonomous').disabled,true)
   assert.equal(element('fs-mode-foundation').disabled,true)
   assert.equal(element('fs-integration-current').dataset.state,'pending')
+  assert.equal(element('management-shell').dataset.workspace,'restricted')
+  for(const tab of ['home','models','life','backup','life-agent','social'])assert.equal(element(`[data-tab="${tab}"]`).hidden,true)
   show({...fresh,sessionIntegration:{ok:true,activeMode:'unknown',requestedMode:'memory-foundation',revision:0,restartRequired:false}})
   assert.equal(element('fs-integration-current').dataset.state,'error')
   assert.equal(element('fs-integration-save').disabled,true)
