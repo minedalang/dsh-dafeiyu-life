@@ -109,7 +109,9 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.match(inside,/id="fs-required-overview"/)
   assert.doesNotMatch(js,/已完成 '\+Object\.values\(progress\)/)
   assert.match(js,/const current=await request\('\/onboarding\/status'\)/)
-  assert.match(js,/await request\('\/onboarding\/complete',\{skipped:\[\.\.\.skipFirstStart\],\.\.\.\(state.initialSocialOffer===true&&\$\('fs-initial-social-enable'\).checked\?\{initialSocial:'ENABLE_INITIAL_RECOMMENDATIONS'\}:\{\}\)\}\)/)
+  assert.match(js,/await request\('\/onboarding\/complete',\{skipped:\[\.\.\.skipFirstStart\]\}\)/)
+  assert.doesNotMatch(html,/fs-initial-social|启用新安装推荐社交能力/)
+  assert.doesNotMatch(js,/fs-initial-social|initialSocialOffer|ENABLE_INITIAL_RECOMMENDATIONS/)
 
   // Exercise the real production render function with a minimal DOM double.
   // No independent duplicate UI policy is reimplemented inside the test.

@@ -209,12 +209,12 @@ test('restored account must not convert portable old config to a new trusted soc
  assert.equal(make(dir).legacyOriginalAccount(),false,'restore restriction must persist after restart')
 }))
 
-test('fresh first UID receives recommendation grants only with explicit consent, no inherited roster',()=>home(async dir=>{
+test('fresh first UID receives only individual explicit grants, no inherited roster',()=>home(async dir=>{
  let a=createAccountBinding({dataDir:dir,verifier:async cred=>({uid:cred.dedeuserid,username:'测试鱼'})});
  a.stage(c('20002'));await a.activate({expectedUid:'20002'});a=make(dir);a.acknowledgeRestart();a.resume({expectedUid:'20002'});
  assert.equal(a.status().activeUsername,'测试鱼');
- const g=createAccountSocialGrants({dataDir:dir,accountBinding:a});assert.equal(g.canApplyInitialRecommendations(),true);
- assert.equal(g.effective(saved).commentAtEnabled,false);g.applyInitialRecommendations();assert.equal(g.canApplyInitialRecommendations(),false);
- assert.equal(g.effective(saved).lifePublicInteractionEnabled,true);assert.equal(g.effective(saved).dmWhitelist,'');assert.equal(g.effective(saved).dmStrangerAutonomyEnabled,false);assert.throws(()=>g.applyInitialRecommendations());
- const b=await switchAccount(dir,a,'30003');const next=createAccountSocialGrants({dataDir:dir,accountBinding:b});assert.equal(next.canApplyInitialRecommendations(),false);assert.equal(next.effective(saved).lifePublicInteractionEnabled,false);
+ const g=createAccountSocialGrants({dataDir:dir,accountBinding:a});assert.equal(g.applyInitialRecommendations,undefined);assert.equal(g.canApplyInitialRecommendations,undefined);
+ assert.equal(g.effective(saved).commentAtEnabled,false);assert.equal(g.effective(saved).lifePublicInteractionEnabled,false);g.saveExplicit({lifePublicInteractionEnabled:true});assert.equal(g.effective(saved).commentAtEnabled,false);
+ assert.equal(g.effective(saved).lifePublicInteractionEnabled,true);assert.equal(g.effective(saved).dmWhitelist,'');assert.equal(g.effective(saved).dmStrangerAutonomyEnabled,false);
+ const b=await switchAccount(dir,a,'30003');const next=createAccountSocialGrants({dataDir:dir,accountBinding:b});assert.equal(next.effective(saved).lifePublicInteractionEnabled,false);
 }))

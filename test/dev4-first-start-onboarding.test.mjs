@@ -355,10 +355,13 @@ test('独立能力代际：旧模式保守映射、待重启、关闭平台和�
  }finally{rmSync(home,{recursive:true,force:true})}
 })
 
-test('initial social offer survives restart, never reopens after completion',()=>{
+test('legacy initial social offer is inert; onboarding completion does not expose or activate it',()=>{
  const dir=mkdtempSync(join(tmpdir(),'fish-initial-social-'));try{
  const args={stateDir:dir,credentialPath:join(dir,'bili_credential.json'),headlessSync:{hasAnyVerified:()=>true}};
- const fresh=createFirstStart({...args,freshInstall:true});assert.equal(fresh.status().initialSocialOffer,true);
- const restarted=createFirstStart(args);assert.equal(restarted.status().initialSocialOffer,true);writeFileSync(args.credentialPath,'test');restarted.verifyBili();assert.throws(()=>restarted.validateComplete(['bad']));restarted.complete([]);assert.equal(restarted.status().initialSocialOffer,false);
+ const fresh=createFirstStart(args);assert.equal(Object.hasOwn(fresh.status(),'initialSocialOffer'),false);
+ writeFileSync(join(dir,'first-start-v1.json'),JSON.stringify({version:1,initialSocialOffer:true}));
+ const restarted=createFirstStart(args);assert.equal(Object.hasOwn(restarted.status(),'initialSocialOffer'),false);writeFileSync(args.credentialPath,'test');restarted.verifyBili();assert.throws(()=>restarted.validateComplete(['bad']));assert.equal(restarted.complete([]).completed,true);assert.equal(Object.hasOwn(restarted.status(),'initialSocialOffer'),false);
+ const source=readFileSync(new URL('../index.js',import.meta.url),'utf8');const completion=source.slice(source.indexOf("if(path.endsWith('/complete'))"),source.indexOf("return sendJson(res,404,{ok:false,error:'未知的首次设置操作'}"));
+ assert.ok(completion.includes('firstStart.complete(skipped)'));assert.doesNotMatch(completion,/initialSocial|scopedSocialGrants|saveExplicit/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 })

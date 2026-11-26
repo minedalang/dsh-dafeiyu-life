@@ -752,7 +752,7 @@ export function apply(ctx, config) {
         (typeof llm?.listProviders==='function'&&
         providerIds(llm.listProviders()).includes(id))
     }})
-  const firstStart=createFirstStart({stateDir,credentialPath:join(stateDir,'bili_credential.json'),headlessSync,freshInstall:!legacyInstallAtEntry})
+  const firstStart=createFirstStart({stateDir,credentialPath:join(stateDir,'bili_credential.json'),headlessSync})
   /**
    * uv/pip 下载缓存默认固定在插件数据目录，允许用户安全迁移缓存；
    * uv 工具环境和下载的 Python 解释器只有在用户明确选择高级重建时才切换，
@@ -11216,7 +11216,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
 
     if(req.method==='GET' && path==='/api/bili-duty/onboarding/status')
-      return sendJson(res,200,{...firstStart.status(),initialSocialOffer:firstStart.status().initialSocialOffer===true&&scopedSocialGrants.canApplyInitialRecommendations(),sessionIntegration:sessionIntegration.status(),capabilities:sessionIntegration.capabilityStatus(),localMemoryReady:localMemoryReady(),platformReady:platformReady(),memoryFoundationReady:memoryFoundation(),standaloneMemoryModelReady:standaloneMemoryModelReady(),memoryModelEnabled:cfg.mainSessionMemorySemanticEnabled===true})
+      return sendJson(res,200,{...firstStart.status(),sessionIntegration:sessionIntegration.status(),capabilities:sessionIntegration.capabilityStatus(),localMemoryReady:localMemoryReady(),platformReady:platformReady(),memoryFoundationReady:memoryFoundation(),standaloneMemoryModelReady:standaloneMemoryModelReady(),memoryModelEnabled:cfg.mainSessionMemorySemanticEnabled===true})
     if(req.method==='GET' && path==='/api/bili-duty/onboarding/capabilities')
       return sendJson(res,200,sessionIntegration.capabilityStatus())
     if(req.method==='GET' && path==='/api/bili-duty/onboarding/integration-mode')
@@ -11292,11 +11292,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(!trustedLifeAccountTag())throw Error('Life 账号尚未核验，请先完成账号确认')
           const skipped=Array.isArray(body?.skipped)?body.skipped:[]
           firstStart.validateComplete(skipped)
-          if(body?.initialSocial==='ENABLE_INITIAL_RECOMMENDATIONS'){
-            if(firstStart.status().initialSocialOffer!==true||!firstStart.status().requiredReady||!scopedSocialGrants.canApplyInitialRecommendations())throw Error('初次社交推荐授权已失效，请刷新确认；不会覆盖现有账号权限')
-            scopedSocialGrants.applyInitialRecommendations()
-            refreshCfg()
-          }
+          // Completion only unlocks the onboarding gate; social grants require their own explicit settings save.
           const updated=firstStart.complete(skipped);syncPauseState(true)
           return sendJson(res,200,updated)
         }
