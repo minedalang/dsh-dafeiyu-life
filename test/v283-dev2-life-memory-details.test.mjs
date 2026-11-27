@@ -588,7 +588,7 @@ test('actual main Session recall adapter keeps private hits out of public activa
  let epoch=1,blocked=false,recorded=0,privateHit=true,changeDuringRecall=false
  const pub=[{bvid:'BV1234567891',recallRoute:'direct'},{bvid:'BV1234567892',recallRoute:'association'}]
  const priv={bvid:BV,visibility:'private-session',route:'direct',memoryId:'e-'+'a'.repeat(18)}
- const retriever={contextualVisualRecall:async()=>{if(changeDuringRecall)epoch++;return pub},validateContextualVisualRecall:()=>true,ownerPrivateVisualRecall:({isCurrent})=>{assert.equal(isCurrent(),true);return privateHit?[priv]:[]}}
+ const retriever={contextualVisualRecall:async()=>{if(changeDuringRecall)epoch++;return pub},validateContextualVisualRecall:()=>true,offerVisualAssociation:()=>null,ownerPrivateVisualRecall:({isCurrent})=>{assert.equal(isCurrent(),true);return privateHit?[priv]:[]}}
  const adapter=new Function('trustedLifeAccountTag','accountBinding','memoryRetriever','publicVisualAssociationContext','observePublicRecall','return ({'+source+'}).getVideoAssociationRecall')(()=>A,{generation:()=>epoch,status:()=>({blocked})},retriever,publicVisualAssociationContext,()=>recorded++)
  const args={isCurrent:()=>true}
  const mixed=await adapter('朱红雨伞',args);assert.deepEqual(mixed.map(e=>e.bvid),[BV,pub[0].bvid]);assert.equal(recorded,0)

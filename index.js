@@ -5108,7 +5108,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         const scope=trustedLifeAccountTag(),retriever=memoryRetriever,epoch=accountBinding.generation()
         if(!retriever)return {ok:false,reason:'memory-not-ready',items:[]}
         const isCurrent=()=>epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&String(uid)===String(cfg.dmOwnerUid||'')&&cfg.ownerDmAgentEnabled===true
-        return retriever.ownerContextualSearch(query,{accountTag:scope,isCurrent,history,limit:6,beforeAt,onVisualRecall:rows=>{if(isCurrent())observePublicRecall(scope,rows,'owner-dm')}})
+        return retriever.ownerContextualSearch(query,{accountTag:scope,isCurrent,history,limit:6,beforeAt,onVisualRecall:rows=>{if(isCurrent())observePublicRecall(scope,rows,'owner-dm')},modelAssociation:true,onModelAssociation:({accountTag,ids,proof})=>{
+          if(accountTag!==scope||!isCurrent()||!ids.includes(proof.fromId)||!ids.includes(proof.memoryId))return false
+          const recorded=neuralActivationTracker?.recordPublicEpisodes({accountTag,ids,channel:'owner-dm',proof})===true
+          lifeManagementEvents.publish('memory-recall');return recorded
+        }})
       }
       if(action==='memory_detail'){
         if(detail){
@@ -7144,13 +7148,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const ids=lifeMemory.reflectionEvidence(rows.map(e=>e.id),{visibility:'public-event'}).filter(e=>e.stage==='clear'&&['watch','comment','social'].includes(e.kind)).map(e=>e.id)
       if((rows.length&&!ids.length)||scope.accountTag!==trustedLifeAccountTag()||scope.epoch!==accountBinding.generation())return
       const deliveredProof=proof&&ids.includes(proof.fromId)&&ids.includes(proof.memoryId)?proof:null
-      if(proof?.basis==='episode-ai-v1'&&!deliveredProof)return false
+      if(['episode-ai-v1','visual-ai-v1'].includes(proof?.basis)&&!deliveredProof)return false
       const recorded=neuralActivationTracker?.recordPublicEpisodes({accountTag:scope.accountTag,ids,channel:'main-chat',proof:deliveredProof})===true
       lifeManagementEvents.publish('memory-recall');return recorded
     },
     getVideoAssociationRecall:async (query,{isCurrent=()=>false}={})=>{
       const scope=trustedLifeAccountTag(),epoch=accountBinding.generation();if(!scope||accountBinding.status().blocked||!memoryRetriever||!isCurrent())return []
-      const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:true,recentFallback:false})
+      const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:true,recentFallback:false,modelAssociation:true})
       if(!isCurrent()||epoch!==accountBinding.generation()||scope!==trustedLifeAccountTag()||accountBinding.status().blocked||!memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows}))return []
       const projected=publicVisualAssociationContext(rows)
       const current=()=>isCurrent()&&epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked
@@ -7158,7 +7162,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!current()||!memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows}))return []
       // Never record private hits or a clipped public association path.
       if(privateRows.length)return [...privateRows,...projected.filter(e=>e.route!=='association'&&!privateRows.some(p=>p.bvid===e.bvid))].slice(0,2)
-      if(projected.length===rows.length)observePublicRecall(scope,rows,'main-chat')
+      if(projected.length===rows.length){
+        const publicAssociationCandidate=memoryRetriever.offerVisualAssociation({accountTag:scope,rows})
+        if(!current()||!memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows}))return []
+        observePublicRecall(scope,rows,'main-chat')
+        if(publicAssociationCandidate)return {rows:projected,publicAssociationCandidate,episodeRows:rows.map(e=>({id:e.memoryId}))}
+      }
       return projected
     },
     getVideoDetailRecall:({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor})=>{

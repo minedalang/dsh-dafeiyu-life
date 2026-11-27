@@ -396,3 +396,55 @@ test('actual mounted Session recall: embedding candidate without shared phrase, 
   assert.equal(modelCalls,0);assert.ok(embeddingCalls>0)
  }finally{session.stop()}
 }))
+
+
+test('actual visual Session adapter and mounted recall: model offers, live observation proof, no retrieval-only replay',()=>setup(async x=>{
+ const a=watch(21,'窗边白猫凝视远处的雨滴'),b=watch(22,'长耳兔坐在门前等待伙伴归来');x.g.recordEvents([a,b]);const [sa,sb]=x.g.reflectionEvidence([a.key,b.key]);assert.ok(sa&&sb)
+ let epoch=1,tag=A,enabled=true,selected='main',modelCalls=0,embedCalls=0
+ const config=()=>({...cfg,mainSessionId:selected,mainSessionMemoryEnabled:enabled,mainSessionMemoryEmbeddingEnabled:true})
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:config,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o),getAssociationScope:()=>({accountTag:tag,epoch}),semanticSearch:async(q,rows)=>{embedCalls++;return {ready:true,items:[{id:'episode:'+sa.id,score:.86},{id:'episode:'+sb.id,score:.40}].filter(r=>rows.some(e=>e.id===r.id))}},invokeModel:async()=>{modelCalls++;throw Error('unexpected independent model')}})
+ const file=join(x.dir,'visual-ai-history.json'),make=()=>createNeuralActivationTracker({getAccountTag:()=>tag,getEpoch:()=>epoch,now:()=>NOW,historyFile:file,getHistoryIdentity:()=> 'visual-fixture',validateImmediate:o=>retriever.validateImmediateRecall(o),validateRecall:o=>retriever.validateContextualVisualRecall(o),validatePath:o=>x.g.validateAssociationPath(o)})
+ let tracker=make(),privateHit=false
+ const code=readFileSync(new URL('../index.js',import.meta.url),'utf8'),start=code.indexOf('getVideoAssociationRecall:async (query'),end=code.indexOf('getVideoDetailRecall:',start)
+ const source=code.slice(start,end).trim().replace(/,$/,'')
+ const adapter=new Function('trustedLifeAccountTag','accountBinding','memoryRetriever','publicVisualAssociationContext','observePublicRecall','return ({'+source+'}).getVideoAssociationRecall')(()=>tag,{generation:()=>epoch,status:()=>({blocked:false})},{...retriever,ownerPrivateVisualRecall:opts=>privateHit?[{bvid:bv(5),visibility:'private-session',route:'direct'}]:retriever.ownerPrivateVisualRecall(opts)},publicVisualAssociationContext,(accountTag,rows,channel)=>tracker.record({accountTag,rows,channel}))
+ const tools=[],listeners=new Map(),agent={id:'main',sessionId:'main',session:{snapshotEvents:()=>[]},ctx:{on(n,f){listeners.set(n,f);return ()=>listeners.delete(n)},systemPrompt:{section(){return ()=>{}},context(){return ()=>{}}},tools:{register(s){tools.push(s);return ()=>{}}}}}
+ const session=createLongTermMemory({dataDir:x.dir,dshHome:x.dir,agents:{get:()=>agent,list:()=>[agent]},getConfig:config,defineTool:s=>s,getRetriever:()=>retriever,getVideoAssociationRecall:adapter,captureRecallObservation:()=>({accountTag:tag,epoch}),observeEpisodeRecall:(scope,rows,proof)=>tracker.recordPublicEpisodes({accountTag:scope.accountTag,ids:rows.map(e=>e.id),proof}),logger:{warn(){}}})
+ try{
+  session.start();const life=tools.find(t=>t.name==='dafeiyu_life_recall');const user=()=>listeners.get('agent/inbox/inserted')({message:{role:'user',content:'有没有类似的旧画面'}}),query='等待画面',recall=()=>life.execute({query,visual_query:'窗边白猫凝视远处的雨滴'}),report=(c,extra={})=>life.execute({query,association_token:c.token,association_type:'concept',association_quote_a:c.excerpts[0],association_quote_b:c.excerpts[1],association_reason:'两次画面都涉及凝望与等待的情境',...extra})
+  let r=await recall();assert.equal(r.associationCandidate,undefined);assert.equal(tracker.read(A),null)
+  user();privateHit=true;r=await recall();assert.ok(r.visualAssociations.some(e=>e.visibility==='private-session'));assert.equal(r.associationCandidate,undefined);privateHit=false
+  r=await recall();let c=r.associationCandidate;assert.ok(c,JSON.stringify(r));assert.equal(r.visualAssociations.length,2);assert.ok(r.visualAssociations.every(e=>e.route==='direct'||e.route==='exact'));assert.equal(tracker.read(A),null);assert.equal(JSON.parse(life.output.render({},r)[0].text).associationCandidate.token,c.token)
+  assert.equal((await report(c,{association_quote_b:'根本不存在的画面描述'})).ok,false);assert.equal((await report(c)).ok,false)
+  user();r=await recall();c=r.associationCandidate;assert.ok(c);assert.equal((await report(c)).associationConfirmed,true);assert.equal(tracker.read(A).basis,'visual-ai-v1');assert.equal(tracker.read(A).relationType,'concept');assert.equal(x.g.status().associations.active,0)
+  tracker=make();const saved=tracker.read(A);assert.ok(saved);assert.equal(saved.basis,'visual-ai-v1');assert.equal(tracker.recent(A).paths[0].relationType,'concept');const episodes=x.g.videoRecallGroups(x.g.semanticCandidates({domain:'main-session',limit:3200}));assert.ok(projectNeuralActivation(saved,x.g.associationActivationSteps({accountTag:A,receipt:saved,episodeRows:episodes}),episodes));assert.equal(retriever.validateImmediateRecall({...saved,relationType:'contrast'}),false)
+  user();r=await recall();epoch++;assert.equal((await report(r.associationCandidate)).ok,false);assert.equal(tracker.read(A),null)
+  user();r=await recall();const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==sb.id);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal((await report(r.associationCandidate)).ok,false);assert.equal(tracker.read(A),null);assert.equal(modelCalls,0);assert.ok(embedCalls>0)
+ }finally{session.stop()}
+}))
+
+
+test('owner DM uses the existing next-step model to confirm public visual candidates; omission, expiry and revocation are safe',()=>setup(async x=>{
+ const {createOwnerDmAgent}=await import('../lib/owner-dm-agent.mjs')
+ const a=watch(23,'小猫安静凝望窗外的雨滴'),b=watch(24,'长耳兔坐在门前期待伙伴归来');x.g.recordEvents([a,b]);const [sa,sb]=x.g.reflectionEvidence([a.key,b.key]);assert.ok(sa&&sb)
+ const owner='210228238';let epoch=1,tag=A,clock=NOW,modelCalls=0,confirmCalls=0,sends=0,mode='omit',offerToken=''
+ const config=()=>({...cfg,masterEnabled:true,dmWatch:true,dmOwnerUid:owner,ownerDmAgentEnabled:true,ownerDmReadCommandsEnabled:false,mainSessionMemoryEmbeddingEnabled:true,dmP6Enabled:false})
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:config,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o),getAssociationScope:()=>({accountTag:tag,epoch}),semanticSearch:async(q,rows)=>({ready:true,items:[{id:'episode:'+sa.id,score:.8},{id:'episode:'+sb.id,score:.4}].filter(r=>rows.some(e=>e.id===r.id))}),invokeModel:async()=>{throw Error('unexpected independent model')}})
+ const tracker=createNeuralActivationTracker({getAccountTag:()=>tag,getEpoch:()=>epoch,now:()=>clock,validateImmediate:o=>retriever.validateImmediateRecall(o),validateRecall:o=>retriever.validateContextualVisualRecall(o)})
+ const search=async({query,beforeAt})=>{const scope=tag,generation=epoch;return retriever.ownerContextualSearch(query,{accountTag:scope,isCurrent:()=>tag===scope&&epoch===generation,limit:6,beforeAt,modelAssociation:true,onVisualRecall:rows=>tracker.record({accountTag:scope,rows,channel:'owner-dm'}),onModelAssociation:({accountTag,ids,proof})=>{confirmCalls++;return tracker.recordPublicEpisodes({accountTag,ids,proof,channel:'owner-dm'})}})}
+ const agent=createOwnerDmAgent({dataDir:x.dir,getConfig:config,getAccountTag:()=>tag,getAccountEpoch:()=>epoch,now:()=>clock,recallMemory:search,executeRead:async()=>{throw Error('no platform read')},executeWrite:async()=>{throw Error('no platform write')},send:async()=>{sends++;return {ok:true}},invokeModel:async prompt=>{
+  modelCalls++;const line=prompt.split('\n').find(s=>s.startsWith('可选联想候选（两段公开历史观察'))
+  if(!line)return {action:'memory_search',queries:[a.title]}
+  const c=JSON.parse(line.slice(line.indexOf('：')+1));assert.ok(c.excerpts.every(e=>e.length>=6));assert.equal(tracker.read(A),null)
+  const association={token:mode==='wrong-token'?offerToken:c.token,relationType:'context',quoteA:c.excerpts[0],quoteB:c.excerpts[1],reason:'两段观察都是静静等待或凝视的场景'};offerToken=c.token
+  if(mode==='expire')clock+=300001
+  if(mode==='forget'){const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==sb.id);writeFileSync(x.g.file,JSON.stringify(doc))}
+  return {action:'reply',text:'我想起了两段以前的画面。',topicState:'settled',...(mode==='omit'?{}:{association})}
+ },logger:{warn(){}}});agent.primeInbox([])
+ const run=async m=>{mode=m;return agent.processMessage({incoming:true,senderUid:owner,messageId:'visual-dm-'+m,timestampMs:clock-100,text:'以前有哪些类似的画面？'})}
+ assert.equal((await run('omit')).ok,true);assert.equal(confirmCalls,0);assert.equal(tracker.read(A),null);assert.equal(modelCalls,2)
+ assert.equal((await run('wrong-token')).ok,true);assert.equal(confirmCalls,0);assert.equal(tracker.read(A),null);assert.equal(modelCalls,4)
+ assert.equal((await run('confirm')).ok,true);assert.equal(confirmCalls,1);assert.equal(modelCalls,6);assert.equal(tracker.read(A).basis,'visual-ai-v1');assert.equal(tracker.read(A).channel,'owner-dm');assert.equal(x.g.status().associations.active,0)
+ epoch++;assert.equal(tracker.read(A),null);await run('expire');assert.equal(confirmCalls,1);assert.equal(tracker.read(A),null);assert.equal(modelCalls,8)
+ const before=sends;await run('forget');assert.equal(confirmCalls,1);assert.equal(tracker.read(A),null);assert.equal(sends,before);assert.equal(modelCalls,10)
+}))
