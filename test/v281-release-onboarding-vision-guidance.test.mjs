@@ -306,9 +306,9 @@ test('dev.33 教程复用实时生活形象，导航最多两处/页、支持退
  const card=html.slice(html.indexOf('id="setup-tour"'),html.indexOf('id="setup-tour"')+1400);
  assert.match(hero,/src="\/api\/bili-duty\/life-character\.png"/);assert.match(card,/src="\/api\/bili-duty\/life-character\.png"/);
  const code=js.slice(js.indexOf('  const setupTourStops='),js.indexOf('  const selectedCapabilities='));
- const rows=runInNewContext(code.slice(0,code.indexOf('  let setupTourIndex'))+'\nsetupTourStops');
+ const rows=runInNewContext(code.slice(0,code.indexOf('  const clearSetupTourTarget='))+'\nsetupTourStops');
  assert.equal(rows.length,5);const counts=new Map();for(const [tab,id] of rows){counts.set(tab,(counts.get(tab)||0)+1);assert.ok(html.includes('id="'+id+'"'))};assert.ok([...counts.values()].every(n=>n<=2));assert.deepEqual([...counts.keys()],['life-agent','life','models','firststart']);
- assert.doesNotMatch(code,/request\(|fetch\(|persistCfg/);assert.match(code,/event.key==='Escape'/);assert.match(code,/setup-tour-replay/);assert.match(code,/switchTab\(tab\)/);
+ assert.doesNotMatch(code,/request\(|fetch\(|persistCfg/);assert.match(code,/event.key==='Escape'/);assert.match(code,/setup-tour-replay/);assert.match(code,/switchTab\(tab,setupTourNavigation\)/);assert.match(js,/if\(setupTourIndex>=0&&authority!==setupTourNavigation\)return/);assert.match(code,/management-shell'\)\.inert=true/);assert.match(code,/management-shell'\)\.inert=false/);assert.match(code,/setupTourEpoch\+\+;setupTourIndex=-1/);assert.match(code,/setupTourDemo\?\.remove\(\)/);assert.match(html,/id="fs-wizard-launch"[^>]*>打开逐步配置引导<\/button><button id="setup-tour-replay"[^>]*>重新看教程/);for(const kind of ['action','neural','health'])assert.match(html,new RegExp('data-setup-tour-demo="'+kind+'"'));assert.match(card,/跳过教程/);
 })
 
 

@@ -10,6 +10,8 @@ test('production interaction scheduler forwards targeted fast-DM polling and exp
   const block=source.slice(start,end)
   assert.match(block,/poll:async\(\{fastUid='',continuationOnly=false\}=\{\}\)=>\{/)
   assert.match(block,/dmAutoreply\.poll\(fastUid\?\{fastUid\}:continuationOnly\?\{continuationOnly:true\}:\{\}\)/)
+  assert.match(block,/pollOwner:async fastUid=>dmAutoreply\.poll\(\{fastUid,ownerPriority:true\}\)/)
+  assert.match(block,/nextOwnerUid:\(\)=>dmAutoreply\.nextOwnerUid\(\)/)
   assert.match(block,/nextFastUid:\(\)=>dmAutoreply\.nextFastUid\(\)/)
   assert.match(block,/status:\(\)=>dmAutoreply\.status\(\)/)
   assert.match(block,/if\(!fastUid&&!result\?\.error&&!result\?\.skipped\)/)

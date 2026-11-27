@@ -139,7 +139,7 @@ flowchart TB
     socialSentinel["评论回复/@/点赞计数 msgfeed/unread｜正常每 5 分钟"]
     counterCompare["账号隔离计数快照｜只存分类计数与时间戳"]
     detailsOnChange["按需读取详情｜计数增加/首次基线/30 分钟核对"]
-    activeDmSentinel["已确认活跃私信｜60 秒定向读取，空闲逐步放缓"]
+    activeDmSentinel["普通活跃私信｜60/120/180 秒定向读取；主人独立日常150秒/活跃30秒"]
   end
   autoSessionScope24["完整生活代际：通知、普通计划、反思与未开始发送门禁"]
   autoSessionScope24 -.-> dmSentinel
@@ -435,7 +435,7 @@ dmFollow -->|已核实后回执| receipts
 %% @code socialSentinel | lib/dm.mjs | export async function readInteractionUnreadCounts
 %% @code counterCompare | lib/notification-sentinel-state.mjs | export function createNotificationSentinelState
 %% @code detailsOnChange | lib/interaction-scheduler.mjs | const categories=sentinelState.pendingSocialCategories
-%% @code activeDmSentinel | lib/dm-autoreply.mjs | hasDueContinuation:()=>lifeInbox.due(1).length>0
+%% @code activeDmSentinel | lib/dm-autoreply.mjs | const nextOwnerUid=()=>
 %% @code notificationManualCheck | index.js | const result=await interactionScheduler.checkNow()
 %% @code networkPollBackoff | lib/network-poll-backoff.mjs | export function createNetworkPollBackoff
 

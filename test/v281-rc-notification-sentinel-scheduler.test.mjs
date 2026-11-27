@@ -176,3 +176,13 @@ test('在途哨兵可结算真实计数，但切走再切回不允许旧轮派�
     await s.tick();assert.ok(details>0);assert.equal(reads,1)
   }finally{s.stop();rmSync(f.dir,{recursive:true,force:true})}
 })
+
+test('owner-only discovery waits for ordinary baseline and dispatches separately without changing the five-minute sentinel',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'owner-priority-scheduler-'));let time=1_800_000_000_000,ownerReady=true,blocked=false;const calls=[];let unreadCalls=0;
+ const cfg={masterEnabled:true,dmWatch:true,dmOwnerPollEnabled:true,dmActivePollEnabled:false};
+ const dm={poll:async args=>{calls.push(args||{});return {ok:true,sent:0}},pollOwner:async fastUid=>{calls.push({fastUid,ownerPriority:true});return {ok:true,sent:0}},nextOwnerUid:()=>ownerReady?'12345':'',nextFastUid:()=>'',status:()=>({ownerPriority:{enabled:true,intervalSeconds:150,nextAt:time+150000}})};
+ const scheduler=createInteractionScheduler({dm,comments:{poll:async()=>({})},dataDir:dir,getAccountTag:()=> '0123456789abcdef',getConfig:()=>cfg,now:()=>time,readPrivateUnread:async()=>{unreadCalls++;return dmCounts()},readBudget:{status:()=>({blocked,minuteLimit:30,hourLimit:450})},logger:{error(){}}});
+ try{scheduler.start();await wait();assert.deepEqual(calls,[{}]);time+=150_000;await scheduler.tick();assert.deepEqual(calls.at(-1),{fastUid:'12345',ownerPriority:true});assert.equal(unreadCalls,1);assert.equal(scheduler.status().checks.dmOwner.lastResult,'completed');
+ blocked=true;time+=150_000;await scheduler.tick();assert.equal(calls.length,2);blocked=false;ownerReady=false;await scheduler.tick();assert.equal(unreadCalls,2);
+ }finally{scheduler.stop();rmSync(dir,{recursive:true,force:true})}
+})

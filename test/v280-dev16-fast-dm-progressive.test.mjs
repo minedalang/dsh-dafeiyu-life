@@ -185,3 +185,41 @@ test('owner no-extra opportunity returns one message without filler',async()=>mk
  const result=await agent.processMessage({incoming:true,senderUid:'123',messageId:'o2',timestampMs:t0,text:'晚安'})
  assert.equal(result.ok,true);assert.deepEqual(sent,['今晚就说到这。']);assert.equal(modelCalls,1)
 }))
+
+// The owner lane is a discovery optimization, not a second reply engine.
+test('owner priority uses 150s idle and 30s active, filters unrelated and pre-activation history, and shares seen state',async()=>mk(async dataDir=>{
+ let clock=t0,account='999',inbox=[],sent=[],reads=[]
+ const cfg={enabled:true,ownerUid:person,whitelist:[person],dmOwnerPollEnabled:true,dmOwnerPollSeconds:150,dmOwnerActivePollSeconds:30,dmActivePollEnabled:true,dmActivePollSeconds:60,dmActiveWindowSeconds:180,whitelistCooldownSeconds:0,p6Enabled:false}
+ const engine=createDmAutoReply({dataDir,getConfig:()=>cfg,selfUid:()=>account,now:()=>clock,
+   fetchIncoming:async opt=>{reads.push(opt);return inbox},send:async req=>{sent.push(req.uid);return {ok:true,receiptId:'owner-receipt-'+sent.length}},generateReply:async()=>({action:'reply',messages:['回答']}),logger:{warn(){},error(){}}})
+ await engine.poll();assert.equal(engine.nextOwnerUid(),'');clock+=149_999;assert.equal(engine.nextOwnerUid(),'');clock++;
+ assert.equal(engine.nextOwnerUid(),person);assert.equal(engine.nextFastUid(),'');
+ inbox=[{...input('old','旧历史'),timestampMs:t0-1000},{...input('fresh','主人新消息'),timestampMs:clock},{...input('other','其他联系人'),senderUid:'33445',timestampMs:clock}]
+ assert.equal((await engine.poll({fastUid:person,ownerPriority:true})).sent,1);assert.deepEqual(sent,[person]);assert.deepEqual(reads[1],{fastUid:person});assert.ok(reads.slice(2).every(r=>r.probeOnly===true&&r.forceUid===person),'pre-send safety snapshot still targets the owner');
+ assert.equal(engine.status().ownerPriority.intervalSeconds,30);cfg.dmActivePollEnabled=false;assert.equal(engine.status().ownerPriority.intervalSeconds,30,'主人活跃窗口独立于普通快速检查开关');clock+=29_999;assert.equal(engine.nextOwnerUid(),'');clock++;
+ assert.equal(engine.nextOwnerUid(),person);assert.equal(engine.nextFastUid(),'');assert.equal((await engine.poll({fastUid:person,ownerPriority:true})).sent,0);assert.equal(sent.length,1)
+ clock+=150_000;assert.equal(engine.status().ownerPriority.intervalSeconds,150);assert.equal(engine.nextOwnerUid(),person)
+ cfg.ownerUid='55667';assert.equal(engine.nextOwnerUid(),'');assert.equal((await engine.poll({fastUid:person,ownerPriority:true})).skipped,'inactive-owner-priority');
+ clock+=150_000;assert.equal(engine.nextOwnerUid(),'55667');account='888';assert.equal(engine.nextOwnerUid(),'');
+ cfg.dmOwnerPollEnabled=false;clock+=300_000;assert.equal(engine.nextOwnerUid(),'');assert.equal(engine.status().ownerPriority.enabled,false)
+}))
+
+test('owner priority cannot establish DM baseline, and protected reads defer without scanning another target',async()=>mk(async dataDir=>{
+ let clock=t0,protect=false,calls=0
+ const cfg={enabled:true,ownerUid:person,dmOwnerPollEnabled:true,dmOwnerPollSeconds:150}
+ const engine=createDmAutoReply({dataDir,getConfig:()=>cfg,selfUid:'999',now:()=>clock,fetchIncoming:async()=>{calls++;if(protect)throw Object.assign(Error('protected'),{name:'BiliReadDeferredError',retryAt:clock+300_000});return []},send:async()=>{throw Error('must not send')},logger:{warn(){},error(){}}})
+ assert.equal(engine.nextOwnerUid(),'');clock+=150_000;assert.equal(engine.nextOwnerUid(),person)
+ assert.equal((await engine.poll({fastUid:person,ownerPriority:true})).skipped,'owner-priority-scope-or-baseline');assert.equal(calls,0)
+ await engine.poll();clock+=150_000;protect=true;
+ assert.equal((await engine.poll({fastUid:person,ownerPriority:true})).skipped,'platform-read-protected');assert.equal(calls,2)
+ clock+=299_999;assert.equal(engine.nextOwnerUid(),'');clock++;assert.equal(engine.nextOwnerUid(),person)
+}))
+
+test('owner priority read cannot overtake an unseen historic stop boundary',async()=>mk(async dataDir=>{
+ let clock=t0,inbox=[],sent=0;
+ const cfg={enabled:true,ownerUid:person,whitelist:[person],dmOwnerPollEnabled:true};
+ const engine=createDmAutoReply({dataDir,getConfig:()=>cfg,selfUid:'999',now:()=>clock,fetchIncoming:async()=>inbox,send:async()=>{sent++;return {ok:true,receiptId:'unexpected'}},generateReply:async()=>({action:'reply',messages:['回答']}),logger:{warn(){},error(){}}});
+ await engine.poll();engine.status();clock+=50_000;assert.equal(engine.nextOwnerUid(),'','status must not initialize priority discovery');clock+=150_000;
+ inbox=[{...input('old-stop','不要再给我发私信'),timestampMs:t0-1000},{...input('new','新消息'),timestampMs:clock}];
+ assert.equal((await engine.poll({fastUid:person,ownerPriority:true})).skipped,'owner-history-boundary-pending');assert.equal(sent,0);
+}))
