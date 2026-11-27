@@ -545,6 +545,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code guide27 | lib/first-start.mjs | const finishGuide=
   backupBrowser27["主人本机单文件备份管理：明确确认、只删选中文件"]
 %% @code backupBrowser27 | lib/backup-rotation.mjs | export function deleteBackupInDirectory
+  autoBackupVerified27["每日业务备份：同角色当日有效文件才轮换"]
+  backupBrowser27 -.- autoBackupVerified27
+%% @code autoBackupVerified27 | lib/backup-rotation.mjs | function verifiedAutomaticFile(
   recallDiag27["真实公开回忆：本次统计、24h/20条核验路径"]
   neuralEvidence283 -.-> recallDiag27
 %% @code recallDiag27 | lib/memory-neural-projection.mjs | const diagnostic=

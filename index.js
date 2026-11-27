@@ -7971,6 +7971,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     return {ok:false,uncertain:sent?.no_retry===true||sent?.uncertain===true,
       reason:sent?.no_retry===true?'friend-send-outcome-unknown':'friend-send-not-started'}
   }
+  // Process-local provenance only; the account binding owns the generation.
+  const lifeRecallGenerations=new WeakMap()
   const autonomousPlanner=createAutonomousPlanner({
     automaticSession,
     beginDecisionTrace:({trigger,mode})=>lifeDecisionTrace.begin({trigger,mode}),
@@ -8038,13 +8040,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeEpisodeContext:()=>universalLifeEpisodes.list({limit:3}),
     getRecentLifeVideoMemory:async opts=>{
       const epoch=accountBinding.generation()
-      const rows=await (memoryRetriever?.contextualVisualRecall({...opts,associate:true})||[])
-      if(epoch!==accountBinding.generation()||opts?.accountTag!==trustedLifeAccountTag()||accountBinding.status().blocked)return []
-      // Observe only verified public memory candidates, not model adoption.
-      observePublicRecall(opts?.accountTag,rows,'life')
+      if(!memoryRetriever||!cfg.mainSessionMemoryEnabled||accountBinding.status().blocked)return null
+      const rows=await memoryRetriever.contextualVisualRecall({...opts,associate:true})
+      if(epoch!==accountBinding.generation()||opts?.accountTag!==trustedLifeAccountTag()||accountBinding.status().blocked||!cfg.mainSessionMemoryEnabled)return null
+      // Retrieval alone is not delivery. The planner reports the actual model input.
+      for(const row of rows)lifeRecallGenerations.set(row,epoch)
       return rows
     },
-    validateLifeVideoMemory:opts=>memoryRetriever?.validateContextualVisualRecall(opts)===true,
+    observeLifeVideoMemory:({accountTag,rows})=>{if(cfg.mainSessionMemoryEnabled&&!accountBinding.status().blocked&&accountTag===trustedLifeAccountTag()&&rows.every(row=>lifeRecallGenerations.get(row)===accountBinding.generation()))observePublicRecall(accountTag,rows,'life')},
+    validateLifeVideoMemory:opts=>cfg.mainSessionMemoryEnabled===true&&opts.accountTag===trustedLifeAccountTag()&&!accountBinding.status().blocked&&opts.rows.every(row=>lifeRecallGenerations.get(row)===accountBinding.generation())&&memoryRetriever?.validateContextualVisualRecall(opts)===true,
     getLifeVideoDetailRecall:opts=>lifeMemory?.recallVideoDetails({...opts,ownerSession:false,visibility:'public-event'})||{ok:false,reason:'memory-unavailable'},
     revisitVideo:({request,offeredBvids,isCurrent})=>contextualRevisit({request,offeredBvids,
       authorized:()=>isCurrent()&&cfg.autonomousPlannerEnabled===true}),
@@ -8975,11 +8979,17 @@ logger:{warn:m=>log('社交意图：'+m)}
     })
     const snapshotBusinessBackup = async () => {
       refreshCfg()
-      const socialPending=socialInteractionCoordinator?.status().pending||0
-      if(socialPending)throw Error('仍有 '+socialPending+' 条社交事件等待补偿；为避免备份恢复产生跨系统数据不一致，请先修复同步错误再备份或恢复')
-      const lifePending=lifeMemoryCoordinator?.status()?.pending||0
-      if(lifePending)throw Error('仍有 '+lifePending+' 条人生事件等待补偿；请先修复同步后备份或恢复')
+      const characterId=accountBinding.characterId(),generation=accountBinding.generation()
+      const verifySnapshotScope=()=>{
+        if(characterId!==accountBinding.characterId()||generation!==accountBinding.generation())throw Error('备份期间账号或角色发生变化，请重新操作')
+        const socialPending=socialInteractionCoordinator?.status().pending||0
+        if(socialPending)throw Error('仍有 '+socialPending+' 条社交事件等待补偿；为避免备份恢复产生跨系统数据不一致，请先修复同步错误再备份或恢复')
+        const lifePending=lifeMemoryCoordinator?.status()?.pending||0
+        if(lifePending)throw Error('仍有 '+lifePending+' 条人生事件等待补偿；请先修复同步后备份或恢复')
+      }
+      verifySnapshotScope()
       const sqlite = (await runSqlite('export')).sqlite
+      verifySnapshotScope()
       // All effective settings, including relationships, prompts and quotas.
       const effective = Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, cfg[k]]))
       return createBackup({root:stateDir,config:effective,sqlite,version:myVersion()})
@@ -8994,10 +9004,14 @@ logger:{warn:m=>log('社交意图：'+m)}
     autoBackupBusy=true
     try{
       const dir=requireBackupDirectory(cfg.backupDirectory)
-      if(hasTodaysAutomatic(dir)){pruneAutomaticBackups(dir);return}
+      const characterId=accountBinding.characterId(),generation=accountBinding.generation()
+      if(!characterId)throw Error('角色身份暂不可用，保留旧备份')
+      if(hasTodaysAutomatic(dir,new Date(),{characterId})){pruneAutomaticBackups(dir,{characterId});return}
       autoBackupState.lastAttemptAt=new Date().toISOString()
       const backup=await snapshotBusinessBackup()
-      const result=saveAutomaticBackup(dir,backup)
+      refreshCfg()
+      if(characterId!==accountBinding.characterId()||generation!==accountBinding.generation()||cfg.backupAutoEnabled!==true||dir!==requireBackupDirectory(cfg.backupDirectory))throw Error('备份期间身份或备份设置发生变化；请稍后重试')
+      const result=saveAutomaticBackup(dir,backup,{characterId})
       if(result.created){autoBackupState.lastSuccessAt=new Date().toISOString();autoBackupState.lastError='';log('每日自动业务备份完成，保留最近2天：'+result.filePath)}
     }catch(error){autoBackupState.lastError=String(error?.message||error).slice(0,180);log('每日自动备份暂未完成：'+autoBackupState.lastError)}
     finally{autoBackupBusy=false}

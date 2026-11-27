@@ -552,6 +552,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code guide27 | lib/first-start.mjs | const finishGuide=
   backupBrowser27["主人本机单文件备份管理：明确确认、只删选中文件"]
 %% @code backupBrowser27 | lib/backup-rotation.mjs | export function deleteBackupInDirectory
+  autoBackupVerified27["每日业务备份：同角色当日有效文件才轮换"]
+  backupBrowser27 -.- autoBackupVerified27
+%% @code autoBackupVerified27 | lib/backup-rotation.mjs | function verifiedAutomaticFile(
   recallDiag27["真实公开回忆：本次统计、24h/20条核验路径"]
   neuralEvidence283 -.-> recallDiag27
 %% @code recallDiag27 | lib/memory-neural-projection.mjs | const diagnostic=
@@ -846,6 +849,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 
   unifiedPublicRead27["私信/评论：原预算内展开已给出的公开经历"]
   progressiveRecall283 -.-> unifiedPublicRead27
+  lifeDelivery27["完整公开回忆投影、活体复核后观察模型输入交付尝试"]
+  progressiveRecall283 -.-> lifeDelivery27
+%% @code lifeDelivery27 | lib/autonomous-planner.mjs | if(recentVisualRecallComplete&&accountScope()===diagnosticScope)
 %% @code unifiedPublicRead27 | lib/memory-retriever.mjs | const readPublicVisualDetail=
 %% dev.27: 主人/好友公开评论主动回忆复用原检索器，主人历史评论原文仍单独查成功回执；主人及好友私信可在原按需回忆预算内展开已提供的同账号清晰公开视觉经历（可选准确毫秒范围，最多2条有界描述，读取及送出前复核），后台 Life 的原单次深层回忆支持时间范围。原创视频评论仅在公开关联完整交付模型时记录真实召回；主人/好友评论按实际交付记录来源。沿用原权限、模型路由、回合及外发门禁，不开放评论补看、不扩大私密权限、不新增观察或持久关系。非视觉通用即时联想、反思通用主动工具、社会场景完整分页与全部自动上下文观察仍待统一。
 
@@ -1183,6 +1189,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   recallDiag27["公开回忆活动与24h核验路径；遗忘失效"]
   neuralView -.-> recallDiag27
 %% @code recallDiag27 | lib/memory-neural-projection.mjs | const diagnostic=
+  observedLife27["后台 Life 交付尝试复核角色代际；非模型采用"]
+  observedLife27 -.-> recallDiag27
+%% @code observedLife27 | index.js | observeLifeVideoMemory:({accountTag,rows})
 
 %% dev.27：公开显式回忆及视觉入口观察；本地路径有界保留、重启重新核验，不备份、不产生模型调用。
 
@@ -1435,6 +1444,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
   episodeAssoc283["原创评论可参考其他视频的真实印象；不强制引用"]
   episodeAssoc283 -.->|只读思考素材| menu
 %% @code episodeAssoc283 | lib/autonomous-planner.mjs | let choice,associationSources=[],pastVideoAssociations=[]
+  episodeDelivery27["原创评论续答：完整关联输入才观察；不推断采用"]
+  episodeAssoc283 -.-> episodeDelivery27
+%% @code episodeDelivery27 | lib/autonomous-planner.mjs | continuationInput.includes(JSON.stringify(pastVideoAssociations))
 
   persistentAssoc283["模型提议关系；当前源核验，非事实或授权"]
   memory -.-> persistentAssoc283

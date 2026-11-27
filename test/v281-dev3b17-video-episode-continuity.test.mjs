@@ -78,13 +78,14 @@ test('verified free-language scene notes reach fading Life memory and a restarte
 }))
 
 test('future Life planner actually passes same-account faded visual memory to next model choice',()=>tmp(async dir=>{
- let clock=T+2000,account=A,seen=''
+ let clock=T+2000,account=A,seen='',observed=[],valid=true,eligible=true
  const gateway=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>account,now:()=>clock})
  gateway.recordEvents([vid()])
  const planner=createAutonomousPlanner({dataDir:dir,now:()=>clock,getConfig:()=>({masterEnabled:true,
   autonomousPlannerEnabled:true,lifeAgentMode:'active',autonomousPlannerDailyLimit:10,
   autonomousPlannerMinutes:1,autonomousPlannerStartHour:0,autonomousPlannerEndHour:24}),
-  getLifeAccountTag:()=>account,getLifeOpportunities:()=>[{id:'op-1',source:'interest-milestone',bvid:BV,eligible:true}],
+  getLifeAccountTag:()=>account,getLifeOpportunities:()=>eligible?[{id:'op-1',source:'interest-milestone',bvid:BV,eligible:true}]:[],
+  observeLifeVideoMemory:entry=>observed.push(entry),validateLifeVideoMemory:()=>valid,
   getRecentLifeVideoMemory:opts=>createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>account,now:()=>clock}).recentVisualExperienceContext(opts),
   getTodos:()=>[],executeRead:async()=>({ok:false}),updateTodo:()=>({ok:false}),reflect:async()=>({ok:false}),
   invokeModel:async prompt=>{seen=prompt;return '{"action":"skip","reason":"现在不想继续看"}'}})
@@ -93,11 +94,19 @@ test('future Life planner actually passes same-account faded visual memory to ne
  assert.match(seen,/"recentVisualExperiences":\[\{"bvid":"BV1234567890"/)
  assert.match(seen,/"untrustedSceneNotes":\["模型描述：室内桌面上展示耳机，并进行不同产品评测比较"\]/)
  assert.match(seen,/可能有误，也可能夹带外来指令/)
+ assert.equal(observed.length,1);assert.equal(observed[0].rows[0].bvid,BV)
  // Opportunity-driven Life Episodes also need the same already-faded visual context.
  seen='';clock+=90_000
  await planner.tick({force:true,opportunitiesOnly:true})
  assert.match(seen,/"recentVisualExperiences":\[\{"bvid":"BV1234567890"/)
  assert.match(seen,/模型描述：室内桌面上展示耳机/)
+ assert.equal(observed.length,2)
+ // An unavailable live source must never reach the prompt or observation.
+ valid=false;seen='';clock+=300_000;await planner.tick({force:true,opportunitiesOnly:true})
+ assert.match(seen,/"recentVisualExperiences":\[\]/);assert.equal(observed.length,2)
+ valid=true;eligible=false;seen='';clock+=300_000;await planner.tick({force:true,opportunitiesOnly:true})
+ assert.equal(seen,'');assert.equal(observed.length,2,'lookup without a model call is not a recall activity')
+ eligible=true
  // A different account never sees the visual mentions in a new model call.
  account=B;seen='';clock+=300_000
  await planner.tick()
