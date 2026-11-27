@@ -89,7 +89,7 @@ test('README 的架构图与推荐设置入口有效；管理中心核心功能�
   assert.equal(existsSync(resolve(repoRoot,image[1])),true,'README 引用的架构图必须真实存在')
   assert.match(readme,/docs\/ROADMAP\.md/)
   assert.match(html,/使用推荐值/)
-  assert.match(html,/保存记忆与反思设置/)
+  assert.match(html,/保存记忆设置/)
   assert.match(readme,/隐私|私密/)
   assert.match(JSON.parse(pkg).version,/^2\.8\.(?:1|2|3)(?:-[0-9A-Za-z.-]+)?$/)
 })

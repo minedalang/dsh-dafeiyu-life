@@ -32,7 +32,7 @@ test('所有容量保存须有本地 readback；原生 DSH 镜像缺失不得伪
  assert.match(script,/已核验插件配置生效（当前 DSH 无可写原生设置表单，无需同步）/)
  assert.match(script,/message\(localSaveNotice\(saved,'全部次数与额度已保存'\)\)/)
  assert.match(script,/message\(localSaveNotice\(saved,'后台评论互动设置已保存'\)\)/)
- assert.match(script,/message\(localSaveNotice\(r,'记忆与反思设置已保存'\)\)/)
+ assert.match(script,/message\(localSaveNotice\(r,'记忆设置已保存'\)\)/)
  assert.doesNotMatch(script,/已写插件配置，但同步到 DSH 失败/)
  assert.match(backend,/const stored=savedCfg\(\),effective=loadCfg\(\)/)
  assert.match(backend,/if\(mismatch.length\)throw Error/)

@@ -109,7 +109,7 @@ test('日常搜索 UI 复用现有检索路由与设置，不增加新模型字�
  assert.match(js,/searchFishMemory=async/)
  assert.match(js,/request\('\/main-session\/memory\/recall',\{query\}\)/)
  assert.match(index,/getEpisodeCandidates:\(options\)=>lifeMemory\?\.semanticCandidates\(options\)/)
- assert.match(html,/当前还记得的经历与认识/)
+ assert.match(html,/id="memory-now-title"[^>]*>此刻还记得的事/)
 })
 test('每日 AI 检索任务上限沿用持久化统计，重启不会把额度重置',async()=>{
  const dir=make(),clock={value:T},calls=[]

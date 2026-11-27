@@ -67,3 +67,19 @@ test('Embedding is optional for Life recall; neural graph search stays disabled 
   assert.doesNotMatch(ui,/\$\('main-session-history-(?:query|search)'\)\.disabled=ready!==true/)
   assert.match(index,/const exactVideoQuery=\/\^BV\[0-9A-Za-z\]\{10\}\$\//)
 })
+
+test('complete BV wins even when four unrelated embedding candidates fill the budget; no missing or faded fallback',async t=>{
+ const {createMemoryRetriever}=await import('../lib/memory-retriever.mjs')
+ const dir=mkdtempSync(join(tmpdir(),'exact-bv-'));let now=NOW,account=tag,calls=0
+ const cfg={mainSessionMemoryEnabled:true,mainSessionMemoryEmbeddingEnabled:true,mainSessionMemoryMaxItems:4,mainSessionMemoryMaxChars:200,mainSessionMemoryHalfLifeDays:15}
+ const gateway=createLifeMemoryGateway({dataDir:dir,now:()=>now,getAccountTag:()=>account,getConfig:()=>cfg,logger:{warn(){}}})
+ t.after(()=>{gateway.close();rmSync(dir,{recursive:true,force:true})})
+ const target='BV1rV1FzYEbP',others=Array.from({length:4},(_,i)=>'BV'+String(i).padStart(10,'0'))
+ gateway.recordEvents([target,...others].map((bvid,i)=>({kind:'watch',key:'video-explore:exact-'+i,bvid,title:'真实视频题目'+i,at:NOW-1000+i,accountTag:tag})))
+ const r=createMemoryRetriever({getMemories:()=>[{id:'fact',category:'stable_profile',text:'无关常驻事实'}],getConfig:()=>cfg,getEpisodes:(q,o)=>gateway.recall({query:q,...o}),getEpisodeCandidates:o=>gateway.semanticCandidates(o),groupVideoEpisodes:rows=>gateway.videoRecallGroups(rows),semanticSearch:async()=>{calls++;return {ready:true,items:gateway.semanticCandidates({domain:'main-session',role:'owner',limit:20}).filter(e=>e.bvid!==target).map(e=>({id:'episode:'+e.id,score:.99}))}}})
+ const hit=await r.retrieve(target,'chat',{includeSelf:true});assert.equal(hit.reason,'exact-bv');assert.deepEqual(hit.episodes.map(x=>x.bvid),[target]);assert.ok(hit.context.includes(target));assert.ok(hit.context.length<=200);assert.equal(hit.memories.length,0);assert.equal(calls,0)
+ assert.ok(r.localContext(target,'chat').includes(target));assert.equal((await r.ownerSearchAsync(target)).items.length,1)
+ const structured={intent:'topic_recall',queries:[target],kinds:['watch']};assert.deepEqual((await r.retrieve(structured,'chat')).episodes.map(x=>x.bvid),[target]);assert.equal((await r.ownerSearchAsync(structured)).items.length,1);assert.equal((await r.retrieve({...structured,kinds:['comment']},'chat')).episodes.length,0);assert.equal(calls,0)
+ const g0=memoryNeuralProjection({episodes:[row('a',target),row('b',others[0])],showAll:true});const other=g0.nodes.find(x=>x.bvid===others[0]);const g=memoryNeuralProjection({episodes:[row('a',target),row('b',others[0])],query:target,semanticMatchIds:[other.id],semanticScores:{[other.id]:.99}});assert.equal(g.matched,1);assert.equal(g.nodes[0].bvid,target)
+ assert.equal((await r.retrieve('BV9999999999','chat')).episodes.length,0);account='f'.repeat(16);assert.equal((await r.retrieve(target,'chat')).episodes.length,0);account=tag;now+=200*86400000;assert.equal((await r.retrieve(target,'chat')).episodes.length,0);assert.equal(calls,0)
+})

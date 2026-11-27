@@ -564,3 +564,23 @@ test('dev.30 actual Life proposal diagnostics distinguish omission, format, evid
  const run=(mode)=>{current=true;const offer=make(),token=JSON.parse(offer.prompt.slice(offer.prompt.indexOf('：')+1,offer.prompt.indexOf('。仅当')))[0].token;let code;const proposal={token,relationType:'concept',quoteA:excerpts[0],quoteB:excerpts[1],reason:'这两段记录有可解释的联系'};if(mode==='format')proposal.token='wrong';if(mode==='evidence')proposal.quoteB='伪造且不存在的观察';if(mode==='stale')current=false;settleLifeAssociation({offer,proposal,present:mode!=='omit',valid:mode!=='invalid',trace:(_type,r)=>{code=r.code}});return code}
  assert.equal(run('omit'),'ai-association-not-proposed');assert.equal(run('invalid'),'ai-association-decision-invalid');assert.equal(run('format'),'ai-association-rejected-format');assert.equal(run('evidence'),'ai-association-rejected-evidence');assert.equal(run('stale'),'ai-association-rejected-stale');assert.equal(run('confirmed'),'ai-association-confirmed');assert.equal(records,1)
 })
+
+test('ordinary owner recall strengthens only a delivered original quote in a committed current reply',()=>setup(async x=>{
+ const title='窗边的长耳兔认真凝视着缓缓落下的雨滴等待伙伴回来';const event=watch(31,title);event.title=title;x.g.recordEvents([event]);const [source]=x.g.reflectionEvidence([event.key]);assert.ok(source)
+ let epoch=1,quotes=0;const config=()=>({...cfg,mainSessionId:'main',mainSessionMemoryEnabled:true,mainSessionMemoryMaxChars:1600})
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:config,getEpisodes:(q,o)=>x.g.recall({query:q,...o})})
+ const tools=[],listeners=new Map(),prompts=[];const agent={id:'main',sessionId:'main',session:{snapshotEvents:()=>[]},ctx:{on(n,f){if(!listeners.has(n))listeners.set(n,[]);listeners.get(n).push(f);return ()=>{}},systemPrompt:{section(s){prompts.push(s);return ()=>{}},context(){return ()=>{}}},tools:{register(s){tools.push(s);return ()=>{}}}}}
+ const session=createLongTermMemory({dataDir:x.dir,dshHome:x.dir,agents:{get:()=>agent,list:()=>[agent]},getConfig:config,defineTool:s=>s,getRetriever:()=>retriever,captureRecallObservation:()=>({accountTag:A,epoch}),onOwnerRecallQuote:({scope,id,quote})=>{quotes++;return x.g.reinforceQuotedPublicEpisode({accountTag:scope.accountTag,id,quote}).updated>0},logger:{warn(){}}})
+ const emit=(n,...args)=>{for(const fn of listeners.get(n)||[])fn(...args)};let turn=0
+ const start=(text='还记得那只兔子吗')=>{turn++;const message={role:'user',content:text};emit('agent/inbox/inserted',{message});emit('agent/inbox/claimed',{message,turn})}
+ const finish=(text,aborted=false)=>{emit('session/event',agent.session,{type:'assistant/message',data:{turn,message:{role:'assistant',content:[{type:'text',text}]}}});emit('agent/turn-stopping',{turn,signal:{aborted}})}
+ try{session.start();const life=tools.find(t=>t.name==='dafeiyu_life_recall');assert.ok(life);assert.match(life.description,/visual_query.*bili_experience_recall/)
+ const recall=()=>life.execute({query:event.bvid})
+ start();assert.ok((await recall()).memories.includes(title));finish('我想起来了');assert.equal(quotes,0)
+ start(title);await recall();finish(title);assert.equal(quotes,0,'echoed user content is not adoption')
+ start();await recall();finish(title,true);assert.equal(quotes,0)
+ start();await recall();epoch++;finish(title);assert.equal(quotes,0)
+ start();await recall();finish(title);assert.equal(quotes,1);assert.equal(x.g.status().health.eventsByDay.reduce((n,r)=>n+r.reinforcedByQuote,0),1)
+ finish(title);assert.equal(quotes,1,'one use per turn')
+ }finally{session.stop()}
+}))

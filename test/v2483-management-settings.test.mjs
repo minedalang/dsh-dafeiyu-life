@@ -55,7 +55,8 @@ test('关于页作者姓名直接可点，不显示冗余访问字样',()=>{
 test('全局 UI 与人生记忆独立导航兼顾窄屏及暗色',()=>{
  assert.match(h,/\.life-jump/)
  assert.match(h,/href="#life-others"/)
- assert.match(h,/href="#life-recall-section"/)
+ assert.match(h,/id="life-recall-section"/)
+ assert.doesNotMatch(h,/href="#life-recall-section"/)
  assert.match(h,/\.interest-meter-fill/)
  assert.match(h,/@media\(prefers-color-scheme:dark\)/)
  assert.match(h,/@media\(max-width:620px\)/)

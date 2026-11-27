@@ -173,8 +173,23 @@ test('capacity trimming preserves meaningful clear experiences before routine ac
   assert.equal(status.health.capacity.used,3200)
   assert.equal(status.health.byKind.find(x=>x.key==='watch')?.count,1)
   assert.equal(status.health.byKind.find(x=>x.key==='action')?.count,3199)
+  const days=status.health.eventsByDay;assert.equal(days.reduce((n,x)=>n+x.added,0),3201);assert.equal(days.reduce((n,x)=>n+x.evicted,0),1);assert.equal(days.reduce((n,x)=>n+x.byKind.action,0),1);assert.equal(days.reduce((n,x)=>n+x.naturallyForgotten,0),0)
   const recalled=f.gateway.recall({query:anchorBvid,domain:'main-session',maxItems:4,maxChars:1200})
   assert.ok(recalled.some(row=>row.bvid===anchorBvid&&row.kind==='watch'))
  }
  finally{f.cleanup()}
+})
+
+test('health records observed transitions without inventing prior days or counting recall as adoption',()=>{
+ const f=fixture();try{
+ const before=f.gateway.status().health.eventsByDay;assert.equal(before.reduce((n,x)=>n+x.added,0),1)
+ const e={accountTag:ACCOUNT_TAG,kind:'watch',key:'watch:fresh-health',bvid:second,title:'我看到一只长耳兔在窗边耐心等待雨停下来',at:T}
+ f.gateway.recordEvents([e]);f.gateway.recordEvents([e]);const row=f.gateway.recall({query:second,domain:'main-session',role:'owner'})[0];assert.ok(row)
+ assert.equal(f.gateway.status().health.eventsByDay.reduce((n,x)=>n+x.added,0),2)
+ assert.equal(f.gateway.reinforceQuotedPublicEpisode({accountTag:ACCOUNT_TAG,id:row.id,quote:'编造的记忆正文不可用于实际采用证明'}).updated,0)
+ assert.equal(f.gateway.reinforceQuotedPublicEpisode({accountTag:ACCOUNT_TAG,id:row.id,quote:e.title}).updated,1)
+ assert.equal(f.gateway.reinforceQuotedPublicEpisode({accountTag:ACCOUNT_TAG,id:row.id,quote:e.title}).updated,0)
+ assert.equal(f.gateway.status().health.eventsByDay.reduce((n,x)=>n+x.reinforcedByQuote,0),1)
+ f.setTime(T+200*86400000);const after=f.gateway.status().health.eventsByDay;assert.ok(after.some(x=>x.naturallyForgotten>0));assert.equal(after.reduce((n,x)=>n+x.evicted,0),0)
+ }finally{f.cleanup()}
 })

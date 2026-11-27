@@ -19,7 +19,7 @@ test('人生记忆、主 Session 同步、自主待办在合并的鱼鱼此刻�
  assert.ok(section('models').includes('id="main-memory-semantic"'));assert.ok(!life.includes('id="main-memory-semantic"'));
  for(const id of ['settings-todo','owner-todo-settings-save']){assert.ok(todos.includes(`id="${id}"`),id);assert.ok(!life.includes(`id="${id}"`),id)}
  for(const id of ['home-sync-settings','settings-sync','main-session-sync-save','main-session-id'])assert.ok(home.includes(`id="${id}"`),id)
- assert.ok(life.indexOf('一段经历，怎样变成鱼鱼的记忆？')<life.indexOf('id="life-memory-settings"'))
+ assert.ok(life.indexOf('id="life-memory-settings"')<life.indexOf('一段经历，怎样变成鱼鱼的记忆？'))
  assert.match(js,/if\(saved==='settings'\)/,'旧版设置页书签应可兼容跳转');assert.match(js,/if\(tab==='todos'\)tab='plans'/)
  for(const id of ['main-memory-semantic','main-session-sync-save','owner-todo-settings-save','bili-daily-draft']){
   assert.equal((html.match(new RegExp(`id="${id}"`,'g'))||[]).length,1,id)

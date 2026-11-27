@@ -5,16 +5,15 @@ import {readFileSync} from 'node:fs'
 const src=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 const html=src('lib/management-console.html'),ui=src('lib/management-console.js')
 
-test('one shared memory search is above the graph and moves intact into fullscreen',()=>{
+test('one shared memory search is inside the graph and stays intact in fullscreen',()=>{
  const a=html.indexOf('id="memory-now-title"'),b=html.indexOf('id="neural-recall-board"'),c=html.indexOf('id="neural-memory-viewport"');
  assert.ok(a>=0&&a<b&&b<c);
- assert.ok(html.indexOf('id="life-memory-health-panel"')>a&&html.indexOf('id="life-memory-health-panel"')<b);
+ assert.ok(html.indexOf('id="life-memory-health-panel"')>html.indexOf('id="main-memory-list"'));
  assert.equal((html.match(/id="main-session-history-query"/g)||[]).length,1);
  assert.equal((html.match(/id="main-session-history-search"/g)||[]).length,1);
  assert.doesNotMatch(html,/id="neural-search-(?:input|apply)"/);
- assert.ok(html.indexOf('id="memory-shared-search-fullscreen"')>b&&html.indexOf('id="memory-shared-search-fullscreen"')<c);
- assert.match(ui,/destination=\$\(isFull\?'memory-shared-search-fullscreen':'memory-shared-search-home'\)/);
- assert.match(ui,/destination\.append\(search\)/);
+ assert.ok(html.indexOf('id="memory-shared-search"')>b&&html.indexOf('id="memory-shared-search"')<c);
+ assert.doesNotMatch(ui,/destination\.append\(search\)/);
  assert.match(ui,/neuralBoard\.requestFullscreen/);
 })
 
@@ -78,11 +77,11 @@ test('recent mode keeps only a real path, respects filters and expiry; full grap
  response={activation:{...activation,id:'new-edge',steps:[{from:'a',to:'c',associationType:'concept'}]}};await f.refreshNeuralActivation();assert.equal(reloads,1);await f.refreshNeuralActivation();assert.equal(reloads,1);assert.equal(children.length,0);
 })
 
-test('shared search moves the existing DOM object both ways without resetting its input',async()=>{
+test('shared search remains inside the board in both fullscreen states',async()=>{
  const {runInNewContext}=await import('node:vm')
  const search={value:'旧视频关键词'},home={append(el){el.parentElement=this}},full={append(el){el.parentElement=this}},button={setAttribute(){},textContent:''};search.parentElement=home
  const board={classList:{contains:()=>false}},document={fullscreenElement:null},els={'memory-shared-search':search,'memory-shared-search-home':home,'memory-shared-search-fullscreen':full}
  const code=ui.slice(ui.indexOf('  const syncNeuralFull='),ui.indexOf("  neuralFullButton.addEventListener('click'"))
  const sync=runInNewContext(code+'\nsyncNeuralFull',{neuralBoard:board,document,neuralFullButton:button,$:id=>els[id]})
- document.fullscreenElement=board;sync();assert.equal(search.parentElement,full);assert.equal(search.value,'旧视频关键词');document.fullscreenElement=null;sync();assert.equal(search.parentElement,home);assert.equal(search.value,'旧视频关键词')
+ document.fullscreenElement=board;sync();assert.equal(search.parentElement,home);assert.match(button.textContent,/退出全屏/);assert.equal(search.value,'旧视频关键词');document.fullscreenElement=null;sync();assert.equal(search.parentElement,home);assert.match(button.textContent,/全屏展开/);assert.equal(search.value,'旧视频关键词')
 })

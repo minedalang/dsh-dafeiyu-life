@@ -15,13 +15,17 @@ test('生活页不再让用户选择旧档位，历史选项只按已保存值�
  assert.match(js,/paceSelect\.value=savedPace/)
  assert.match(html,/id="life-legacy-pace-note"/)
 })
-test('新 Life 套餐只改生活和记忆反思，不含社交许可、隐私与人格原始账本',()=>{
- const code=js.slice(js.indexOf('const organicProfiles='),js.indexOf('const organicPlan='))
- for(const name of ['gentle','balanced','curious'])assert.match(code,new RegExp(name+':\\{pace:'))
- assert.doesNotMatch(code,/socialAutoSend|autoComment|autoVideoLike|autoVideoCollect|dmWhitelist|emotionRecallDmEnabled|privacy|enabled:true/)
- assert.match(js,/await proposedLifeSettings\(false\)/)
- assert.match(js,/await request\('\/config',Object\.fromEntries\(changes\)\)/)
- assert.match(html,/id="life-organic-apply"/)
+test('记忆方案使用同一后端八项预设，选择只填写草稿，不写生活配置',async()=>{
+ const {QUICK_MEMORY_PROFILES}=await import('../lib/quick-setup-options.mjs');const {runInNewContext}=await import('node:vm')
+ const fields=new Map(),el=id=>{if(!fields.has(id))fields.set(id,{id,value:'',addEventListener(n,f){this[n]=f}});return fields.get(id)}
+ const reflection=Object.fromEntries(Object.keys(QUICK_MEMORY_PROFILES.balanced).filter(k=>k.includes('Reflection')).map(k=>[k,k])),recall=Object.fromEntries(Object.keys(QUICK_MEMORY_PROFILES.balanced).filter(k=>!k.includes('Reflection')).map(k=>[k,k]))
+ const radios=['gentle','balanced','curious','custom'].map(value=>({value,addEventListener(n,f){this[n]=f}}));let chosen='',changed=0
+ const context={$:el,document:{querySelectorAll:()=>radios},recommendedFieldGroups:{reflection,recall},platformSettingsUnavailable:()=>false,mobileViewOnly:false,quickSetSelected:(_n,v)=>{chosen=v},settingDraftTracker:{capture(){},change(){changed++}},settingPanel:()=>'',summarizeSaveDrafts(){}}
+ const start=js.indexOf('  let organicProfiles='),end=js.indexOf("  $('life-v2-preview-btn')",start)
+ const init=runInNewContext(js.slice(start,end)+'\nprofiles=>{organicProfiles=profiles;describeOrganicParameters()}',context);init(QUICK_MEMORY_PROFILES)
+ for(const name of ['gentle','balanced','curious']){radios.find(r=>r.value===name).change();assert.equal(chosen,name);for(const [k,v] of Object.entries(QUICK_MEMORY_PROFILES[name]))assert.equal(Number(el(k).value),v)}
+ const key='mainSessionMemoryHalfLifeDays';el(key).value='47';el(key).input();assert.equal(chosen,'custom');assert.equal(changed,24)
+ assert.doesNotMatch(js.slice(start,end),/request\(|proposedLifeSettings|lifePace/);assert.doesNotMatch(html,/id="life-organic-apply"/)
 })
 test('管理中心全部为站内样式确认和输入，不使用系统原生对话框',()=>{
  assert.doesNotMatch(js,/(?:window\.)?\b(?:confirm|prompt|alert)\s*\(/)

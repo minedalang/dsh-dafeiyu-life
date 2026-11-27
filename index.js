@@ -3052,7 +3052,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
 
   tool({
     name: 'bili_experience_recall',
-    description: '只读检索大肥鱼自己过去已经记录的 B站经历：挑中过的视频、自己实际发出的公开评论/回复。只查本插件本地经历档案，不读取其它 DSH 会话、陌生人私信或网络。',
+    description: '只读浅层检索当前可衰减 B站经历（标题、BV、已发评论），不读取永久档案或网络。不支持按画面、动作、物体反向回忆，也不确认联想。主人主 Session 问相似动作、动物画面或以前看过类似场景时，请优先使用 dafeiyu_life_recall 的 visual_query；已知 BV 的画面细节使用 detail_bvid。',
     parameters: {
       query: { type: 'string', description: '可选关键词，如 Claude、某个 BV 号、自己说过的一小段话；留空返回最近经历' },
       limit: { type: 'number', description: '返回条数，默认 8，最大 20' },
@@ -3061,7 +3061,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const query=String(args?.query||'').trim().slice(0,120)
       const limit=Math.max(1,Math.min(20,Math.floor(Number(args?.limit)||8)))
       if (!mainSessionBridge) return {ok:false,error:'主 Session 经历档案尚未初始化，请稍后再试'}
-      return {ok:true,rows:lifeMemory?.recall({query,domain:'main-session',maxItems:limit,maxChars:3000})||[],note:'仅从当前可衰减记忆召回；永久档案不向 AI 提供查询。'}
+      return {ok:true,rows:lifeMemory?.recall({query,domain:'main-session',maxItems:limit,maxChars:3000})||[],note:'仅浅层经历；永久档案不向 AI 提供查询。若要回忆相似画面、动作、物体，请在主人主 Session 使用 dafeiyu_life_recall 的 visual_query；本工具空结果不代表没有视觉记忆。'}
     },
   })
 
@@ -7167,6 +7167,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const recorded=neuralActivationTracker?.recordPublicEpisodes({accountTag:scope.accountTag,ids,channel:'main-chat',proof:deliveredProof})===true
       lifeManagementEvents.publish('memory-recall');return recorded
     },
+    onOwnerRecallQuote:({scope,id,quote})=>{
+      if(!scope?.accountTag||scope.accountTag!==trustedLifeAccountTag()||scope.epoch!==accountBinding.generation()||accountBinding.status().blocked||cfg.mainSessionMemoryEnabled!==true)return false
+      const r=lifeMemory?.reinforceQuotedPublicEpisode({accountTag:scope.accountTag,id,quote});if(r?.updated)lifeManagementEvents.publish('memory-recall');return r?.updated>0
+    },
     getVideoAssociationRecall:async (query,{isCurrent=()=>false}={})=>{
       const scope=trustedLifeAccountTag(),epoch=accountBinding.generation();if(!scope||accountBinding.status().blocked||!memoryRetriever||!isCurrent())return []
       const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:true,recentFallback:false,modelAssociation:true})
@@ -10787,7 +10791,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           // index writes, no Bilibili request, no network probe on this page.
           let semanticMatches=[],semanticScores={},semanticWarning='',semanticReady=false
           const corpusNodeIds=new Map(corpus.map(row=>[row.corpusId,row.nodeId]))
-          if(q&&cfg.mainSessionMemoryEmbeddingEnabled===true&&embeddingIndex?.status()?.ready===true){
+          if(q&&!exactVideoQuery&&cfg.mainSessionMemoryEmbeddingEnabled===true&&embeddingIndex?.status()?.ready===true){
             try{
               const ranking=await embeddingIndex.search(q,corpus.map(row=>({id:row.corpusId,text:row.text})),{limit,minScore:.30,readOnly:true})
               if(ranking?.ready){
@@ -11690,7 +11694,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
 
     if (req.method === 'GET' && path === '/api/bili-duty/config') {
-      return sendJson(res, 200, { ok: true, config: cfg, recommendedSettings:RECOMMENDED_EXPERIENCE_SETTINGS, windows: readPeakWindows(cfg.peakWindows), home: stateDir })
+      return sendJson(res, 200, { ok: true, config: cfg, memoryProfiles:quickMemoryState(cfg).profiles, recommendedSettings:RECOMMENDED_EXPERIENCE_SETTINGS, windows: readPeakWindows(cfg.peakWindows), home: stateDir })
     }
 
     if (req.method === 'POST' && path === '/api/bili-duty/config') {

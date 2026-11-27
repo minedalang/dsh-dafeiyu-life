@@ -10,12 +10,12 @@ const j=readFileSync(new URL('../lib/management-console.js',import.meta.url),'ut
 const client=readFileSync(new URL('../client.js',import.meta.url),'utf8')
 const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
 
-test('升级后保留人生记忆独立页；记忆配置在流程图下面折叠，主 Session 同步设置随房间',()=>{
+test('升级后保留人生记忆独立页；记忆配置在顶部折叠，主 Session 同步设置随房间',()=>{
  assert.match(pkg.version,/^2\.8\.(?:1|2|3)(?:-[0-9A-Za-z.-]+)?$/)
  assert.match(h,/data-tab="life"/)
  const house=h.split('<section id="panel-home"')[1].split('<section id="panel-life"')[0]
  const life=h.split('<section id="panel-life"')[1].split('<section id="panel-diagnostics"')[0]
- assert.match(life,/一段经历，怎样变成鱼鱼的记忆？[\s\S]*id="life-memory-settings"/)
+ assert.match(life,/<details id="life-memory-settings" class="contextual-settings">[\s\S]*一段经历，怎样变成鱼鱼的记忆？/)
  assert.match(life,/id="main-memory-half-life"/)
  assert.match(house,/id="home-sync-settings"/)
  assert.doesNotMatch(house,/id="main-memory-half-life"/)
