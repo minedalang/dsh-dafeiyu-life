@@ -7,9 +7,11 @@ const agents=readFileSync(new URL('../AGENTS.md',import.meta.url),'utf8')
 const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
 
 test('README is a complete user homepage, not just this release changelog',()=>{
-  const headings=['## ✨ 鱼鱼能做什么','## 🆕 2.8.2 视频感知体验优化','## 🚀 开始使用','## 🔒 让自由有边界','## 🌱 未来规划：让生活更有故事','## ❤️ 致谢']
+  const headings=['## ✨ 鱼鱼能做什么','## 🆕 2.8.3 让经历成为记忆','## 🚀 开始使用','## 🔒 让自由有边界','## 🌱 未来规划：让生活更有故事','## ❤️ 致谢']
   let prev=-1
   for(const heading of headings){const index=readme.indexOf(heading);assert.ok(index>prev,`${heading} is missing or out of order`);prev=index}
+  const history=readFileSync(new URL('../docs/近期版本新功能.md',import.meta.url),'utf8');
+  assert.match(readme,/近期版本新功能/);assert.doesNotMatch(readme,/^## 🆕 2\.8\.2 /m);assert.ok(history.includes('## 🆕 2.8.2 视频感知体验优化'));assert.match(history,/video-perception-current\.svg/);
   assert.equal(readme.slice(readme.indexOf(headings[4])).match(/^## /gm).length,2,'future roadmap must be the final section immediately before acknowledgements')
   if(pkg.version.startsWith('2.8.3'))assert.match(readme,/\[🆕 2\.8\.3 版本亮点\]\(#-283-让经历成为记忆\)/, 'current-version navigation must link to the real heading');
   else assert.match(readme,/\[🆕 2\.8\.2 更新内容\]\(#-282-视频感知体验优化\)/, 'current-version navigation must link to the real heading')

@@ -2707,10 +2707,12 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
         <p class="backup-warning">⚠️ 恢复前请暂停自主生活。程序会检查备份，只有安全的改动才会保存；如有改动，完成后请重启 DSH。</p>
         <div class="backup-recovery-choice">
           <h4>恢复业务数据</h4>
-          <p class="muted">恢复可安全找回的设置和用户规则。与现有数据冲突的经历、权限和任务会保留原状。</p>
+          <p class="muted">恢复可安全找回的设置和用户规则。生活方案可单独勾选恢复；权限、总开关和现有经历、任务状态不会被旧备份覆盖。</p>
           <label for="backup-import-file">选择业务备份文件</label>
           <input id="backup-import-file" type="file" accept=".json,.gz,.json.gz,application/json,application/gzip" aria-label="选择大肥鱼数据备份文件">
           <p id="backup-inspect" class="muted backup-status" role="status" aria-live="polite">尚未选择文件</p>
+          <div id="backup-life-restore-option" hidden><label><input type="checkbox" id="backup-restore-life"> 同时恢复备份中的自主生活方案</label><p class="muted" id="backup-life-restore-diff"></p></div>
+          <p id="backup-life-restore-note" class="muted" role="status"></p>
           <button id="backup-restore" class="danger backup-danger-action" type="button" disabled>确认恢复</button>
         </div>
         <div class="backup-recovery-choice">
@@ -2774,8 +2776,8 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 <p class="muted autonomous-only">这里只列出当前 DSH 中活着的会话，不从硬盘猜“最近会话”。可直接新建并绑定，也可选择已有会话后保存。切换不会清空大肥鱼的身份级长期记忆。</p>
 <div class="toolbar main-session-actions"><button id="main-session-save" class="primary">保存主 Session 设置</button><button id="main-session-test">发送连接测试</button></div>
 <p id="main-session-target-status" class="muted" role="status">尚未读取</p><div class="toolbar session-mount-summary"><strong>记忆工具</strong><span id="fs-foundation-mount-state" role="status">待核验</span><button type="button" id="fs-foundation-status-refresh">刷新</button></div><p id="fs-foundation-mount-detail" class="muted"></p>      <section class="foundation-onboard" aria-labelledby="foundation-guide-title">
-        <div class="toolbar session-guide-actions"><h4 id="foundation-guide-title">Session 使用指南</h4><button type="button" class="primary" id="fs-foundation-guide-copy">复制插件使用指南</button></div>
-        <p class="muted">绑定后，将指南发给你的 Session，再试一次记忆写入与回忆。</p>
+        <div class="toolbar session-guide-actions"><h4 id="foundation-guide-title">原有 Session · 可选指南</h4><button type="button" id="fs-foundation-guide-copy">复制插件使用指南</button></div>
+        <p class="muted">正常绑定鱼鱼主 Session 并开启自动记忆上下文后，插件会挂载使用提示，无需发送指南。仅在保留原有 AI 身份、需要额外说明工具时按需复制。</p>
         <details id="fs-foundation-guide-details" class="foundation-guide-details"><summary>查看完整 Session 插件使用指南</summary><label for="fs-foundation-guide-text">以下内容可以直接发送给原 Session（不含你的私人记忆或凭据）</label><textarea id="fs-foundation-guide-text" rows="12" readonly spellcheck="false"># 大肥鱼 · Session 记忆工具使用指南
 
 我已安装大肥鱼插件，希望你继续保持现在的身份、工作方式和原有工具，在需要时使用大肥鱼作为长期记忆基座，而不是切换成大肥鱼角色。

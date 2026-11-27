@@ -55,7 +55,7 @@ import {resolveExistingDmContact} from './lib/manual-dm-contact.mjs'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
 import { randomUUID, createHash, randomBytes } from 'node:crypto'
 import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
-import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, planBusinessRestore, planPortableMemoryRepair, repairPortableMemoryDetails, createLifeMemoryBackup, inspectLifeMemoryBackup } from './lib/data-backup.mjs'
+import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, planPortableMemoryRepair, repairPortableMemoryDetails, createLifeMemoryBackup, inspectLifeMemoryBackup } from './lib/data-backup.mjs'
 import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import {listBackupFiles,inspectBackupInDirectory,deleteBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
@@ -9299,7 +9299,11 @@ logger:{warn:m=>log('社交意图：'+m)}
         const summary = validateBackup(data)
         if (action === 'restore') validateRestoreIdentity(stateDir,data)
         // Inspect must not write anything. The browser shows scope + a second confirmation.
-        if (action === 'inspect') return sendJson(res, 200, {ok:true,summary})
+        const lifeRestoreScope=()=>({characterId:accountBinding.characterId(),scopeRevision:accountBinding.generation()+':'+getSessionIntegration().revision,canResume:platformReady()&&sessionIntegration.getCapabilities()?.autonomous===true&&firstStart.status().requiredReady===true&&!accountBinding.status().blocked})
+        if (action === 'inspect') {
+          refreshCfg()
+          return sendJson(res, 200, {ok:true,summary,lifeRestore:previewBusinessLifeRestore(cfg,data,lifeRestoreScope())})
+        }
         // Unsigned v2.4.x exports require a separate, stronger owner confirmation.
         // Existing SHA-256 manifests for schema 2 remain mandatory and are never synthesized.
         if (summary.legacyUnscoped && body.confirm!=='RESTORE_LEGACY_UNSCOPED_DATA')
@@ -9312,17 +9316,25 @@ logger:{warn:m=>log('社交意图：'+m)}
         refreshCfg()
         const folder = requireBackupDirectory(cfg.backupDirectory)
         const safeguard = await snapshotBusinessBackup()
-        const plan=planBusinessRestore(safeguard,data)
+        refreshCfg()
+        const restoreLife=body.lifeRestoreConfirm==='RESTORE_LIFE_SETTINGS'
+        if((Object.hasOwn(body,'lifeRestoreConfirm')||Object.hasOwn(body,'lifeRevision'))&&(!restoreLife||!explicitManagementIntent(req)||typeof body.lifeRevision!=='string'))throw Error('恢复生活方案需要明确的主人同源确认与当前设置版本')
+        if(restoreLife&&lifeSettingsV2(cfg).revision!==lifeSettingsV2(safeguard.config).revision)throw Error('备份核对期间生活设置已变化，请重新选择文件')
+        const plan=planBusinessRestore(safeguard,data,restoreLife?{lifeRevision:body.lifeRevision,...lifeRestoreScope()}:{})
         const patch=Object.fromEntries(Object.keys(DEFAULTS).filter(k=>Object.hasOwn(plan.patch,k)).map(k=>[k,plan.patch[k]]))
-        if(!plan.names.length&&!Object.keys(patch).length)return sendJson(res,200,{ok:true,restoredFiles:0,restoredDbs:0,retainedSettings:plan.retainedSettings,retainedRecords:plan.retainedRecords,unchanged:true,restartRequired:false})
+        if(!plan.names.length&&!Object.keys(patch).length)return sendJson(res,200,{ok:true,restoredFiles:0,restoredSettings:0,restoredDbs:0,retainedSettings:plan.retainedSettings,retainedRecords:plan.retainedRecords,lifeSettings:lifeSettingsV2(cfg),unchanged:true,restartRequired:false})
         const safeguardPath = saveBackupJson(folder, safeguard, 'pre-restore')
         let restoredFiles=0,configTouched=false
         try {
           restoredFiles=restoreBackupFiles(stateDir,plan.restore,{reconcileDetails:false})
           configTouched=Object.keys(patch).length>0
+          // All configuration changes go through the same durable save/readback
+          // path as interactive Life settings; no account grants are restored.
           const host=configTouched?(await persistCfg(patch)).host:{ok:true}
           refreshCfg()
-          return sendJson(res,200,{ok:true,restoredFiles,restoredDbs:0,retainedSettings:plan.retainedSettings,retainedRecords:plan.retainedRecords,safeguardPath,hostSynced:host.ok,restartRequired:true})
+          if(Object.entries(plan.lifePlan?.patch||{}).some(([key,value])=>JSON.stringify(cfg[key])!==JSON.stringify(value)))throw Error('恢复后的设置回读不一致')
+          if(plan.lifePlan&&cfg.lifeAgentMode==='off')lifeSocialShadow.revoke()
+          return sendJson(res,200,{ok:true,restoredFiles,restoredSettings:Object.keys(patch).length,restoredDbs:0,retainedSettings:plan.retainedSettings,retainedRecords:plan.retainedRecords,lifePlanRestored:!!plan.lifePlan&&Object.keys(plan.lifePlan.patch).length>0,lifeSettings:lifeSettingsV2(cfg),safeguardPath,hostSynced:host.ok,restartRequired:true})
         } catch (restoreError) {
           const rollbackErrors=[]
           if(restoredFiles){

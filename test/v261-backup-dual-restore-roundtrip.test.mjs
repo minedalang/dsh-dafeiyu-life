@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import {
   createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup,
-  createBackup, validateBackup, restoreBackupFiles, planBusinessRestore, planPortableMemoryRepair, repairPortableMemoryDetails,
+  createBackup, validateBackup, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, planPortableMemoryRepair, repairPortableMemoryDetails,
 } from '../lib/data-backup.mjs'
 import { saveBackupJson } from '../lib/backup-directory.mjs'
 import {createLifeMemoryDetailStore} from '../lib/life-memory-details.mjs'
@@ -275,3 +275,31 @@ test('仅补回仍清晰且当前未撤销的同源缺失细节；已遗忘或�
     rmSync(join(root,'detail-protection','revocations-v1.json'));assert.equal(planPortableMemoryRepair(createLifeMemoryBackup(root),older).repairs.length,0)
   }finally{rmSync(root,{recursive:true,force:true})}
 })
+
+
+test('same-character business backup restores explicitly selected Life plan, never grants or master switch',()=>{
+ const root=temp(),old=temp(),characterId='11111111-1111-4111-8111-111111111111';
+ const identity={version:1,id:characterId,createdAt:1};
+ const scope={characterId,canResume:true,scopeRevision:'1:2'};
+ const saved={masterEnabled:true,lifeAgentMode:'active',autonomousPlannerEnabled:true,peakValley:false,autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:250,autonomousPlannerStartHour:9,autonomousPlannerEndHour:23,videoAgentMinIntervalMinutes:15,videoAgentReadTargetPerRound:8,videoAgentPickTargetPerRound:5,ownerDmActionsEnabled:true,mainSessionId:'old'};
+ const paused={...saved,lifeAgentMode:'off',autonomousPlannerEnabled:false,autonomousPlannerMinutes:60,autonomousPlannerDailyLimit:80,ownerDmActionsEnabled:false,mainSessionId:'current'};
+ try{
+  for(const dir of [root,old])put(dir,'character-identity.json',identity);
+  const incoming=JSON.parse(JSON.stringify(createBackup({root:old,config:saved}))),current=createBackup({root,config:paused});
+  const preview=previewBusinessLifeRestore(paused,incoming,scope);assert.equal(preview.available,true);assert.deepEqual(preview.changed.lifeAgentMode,{before:'off',after:'active'});
+  const conservative=planBusinessRestore(current,incoming);assert.deepEqual(conservative.patch,{});assert.ok(conservative.retainedSettingKeys.includes('lifeAgentMode'));
+  const confirmed=planBusinessRestore(current,incoming,{...scope,lifeRevision:preview.revision});
+  assert.deepEqual(confirmed.patch,{lifeAgentMode:'active',autonomousPlannerEnabled:true,autonomousPlannerMinutes:10,autonomousPlannerDailyLimit:250});
+  assert.ok(confirmed.retainedSettingKeys.includes('ownerDmActionsEnabled'));assert.ok(confirmed.retainedSettingKeys.includes('mainSessionId'));
+  const after={...paused,...confirmed.patch};assert.equal(after.masterEnabled,true);assert.equal(after.ownerDmActionsEnabled,false);assert.equal(after.mainSessionId,'current');assert.deepEqual(previewBusinessLifeRestore(after,incoming,scope).changed,{});
+  assert.throws(()=>planBusinessRestore(current,incoming,{...scope,lifeRevision:'stale'}),/已变化/);
+  assert.throws(()=>planBusinessRestore(current,incoming,{...scope,scopeRevision:'2:2',lifeRevision:preview.revision}),/已变化/);
+  assert.throws(()=>planBusinessRestore(current,incoming,{...scope,canResume:false,lifeRevision:preview.revision}),/核验/);
+  assert.equal(previewBusinessLifeRestore({...paused,masterEnabled:false},incoming,scope).available,false);
+  assert.equal(previewBusinessLifeRestore(paused,incoming,{...scope,characterId:'other'}).available,false);
+  const bad=createBackup({root:old,config:{...saved,autonomousPlannerDailyLimit:99999}});assert.equal(previewBusinessLifeRestore(paused,bad,scope).available,false);
+  const disabled=createBackup({root:old,config:{...saved,lifeAgentMode:'off',autonomousPlannerEnabled:true,masterEnabled:false}});
+  const stop=previewBusinessLifeRestore(after,disabled,{...scope,canResume:false});assert.equal(stop.available,true);assert.deepEqual(stop.patch,{lifeAgentMode:'off',autonomousPlannerEnabled:false});
+  const legacyRoot=temp();try{const legacy=createBackup({root:legacyRoot,config:saved});assert.equal(previewBusinessLifeRestore(paused,legacy,scope).available,false)}finally{rmSync(legacyRoot,{recursive:true,force:true})}
+ }finally{for(const dir of [root,old])rmSync(dir,{recursive:true,force:true})}
+});

@@ -89,7 +89,7 @@ test('2.8.1 快速设置入口定位 02B 且新版视觉卡片突出；模型开
   assert.match(js,/management-jump-cue/)
   assert.match(js,/revealTarget\(target\)/)
   assert.match(page,/prefers-reduced-motion:reduce/)
-  assert.match(read('README.md'),/2\.8\.2 重点优化/)
+  assert.match(read('docs/近期版本新功能.md'),/2\.8\.2 重点优化/)
   assert.match(read('docs\/release\/RELEASE_NOTES_v2.8.1.md'),/2\.8\.1/)
   // README must state the exact package version, including a stable release candidate.
   assert.match(read('README.md'),new RegExp(JSON.parse(read('package.json')).version.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))

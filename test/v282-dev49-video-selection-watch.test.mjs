@@ -53,7 +53,7 @@ test('video agent charter cannot pre-load subtitles, ASR, comments or raw vision
 test('README current release features natural video watching, not a separate selection step',()=>{
   const readme=read('README.md'),changelog=read('CHANGELOG.md'),packageInfo=JSON.parse(read('package.json'))
   assert.match(packageInfo.version,/^2\.8\.(?:2|3)(?:-dev\.[1-9]\d*)?$/)
-  assert.match(readme,/## 🆕 2\.8\.2 视频感知体验优化[\s\S]*优化鱼鱼看视频的行为/)
+  assert.match(read('docs/近期版本新功能.md'),/## 🆕 2\.8\.2 视频感知体验优化[\s\S]*优化鱼鱼看视频的行为/)
   assert.match(readme,/挑视频仍是一轮自主判断/)
   assert.match(changelog,/2\.8\.2-dev\.49 · 优化鱼鱼看视频的行为/)
 })
