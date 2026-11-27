@@ -95,3 +95,19 @@ test('Phase 7a action result marker requires a verified read completion, not mod
   assert.equal(events.status().timeline[0].sharedInterestRead,false)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
+
+import {runtimeControls,planRuntimeControl,isReplyDispatch} from '../lib/runtime-controls.mjs'
+import {createSocialPolicyGate} from '../lib/social-policy-gate.mjs'
+test('independent owner controls preserve schedule and grants; stale scope cannot write',()=>{
+ const cfg={...seed(),dmWatch:true,dmOwnerUid:'123',commentWatchReplies:true};const scope='1:scope'
+ const s=runtimeControls(cfg,scope,true);assert.equal(s.repliesEnabled,true);assert.equal(s.lifeEnabled,false)
+ const life=planRuntimeControl(cfg,{control:'life',enabled:true,revision:s.revision},scope,true)
+ assert.deepEqual(life,{lifeAgentMode:'active',autonomousPlannerEnabled:true,peakValley:false})
+ const next={...cfg,...life};assert.equal(next.autonomousPlannerMinutes,90);assert.equal(next.dmStrangerAutonomyEnabled,false)
+ const state=runtimeControls(next,scope,true),body={control:'replies',enabled:false,revision:state.revision}
+ assert.throws(()=>planRuntimeControl(next,body,'2:scope',true),/状态已变化/)
+ const paused={...next,...planRuntimeControl(next,body,scope,true)};assert.equal(runtimeControls(paused,scope,true).lifeEnabled,true)
+ const gate=createSocialPolicyGate({getConfig:()=>paused});assert.equal(gate.canSendDm({uid:'123',trusted:true}).allowed,false);assert.equal(gate.canSendDm({uid:'456',strangerEnabled:true}).allowed,false)
+ assert.equal(isReplyDispatch('bili_dynamic_comment_manual',{target_rpid:'123'}),true);assert.equal(isReplyDispatch('bili_dynamic_comment_manual',{}),false);assert.equal(isReplyDispatch('bili_reply',{rpid:123}),true);assert.equal(isReplyDispatch('bili_send_message_manual',{}),true);assert.equal(isReplyDispatch('bili_reply',{rpid:0,root:0}),false)
+ assert.throws(()=>planRuntimeControl(cfg,{control:'life',enabled:true,revision:runtimeControls(cfg,scope,false).revision},scope,false),/先完成/)
+})

@@ -58,7 +58,7 @@ test('model page has opt-in health diagnostic, real visual switch, right pan and
   const html=readFileSync(new URL('lib/management-console.html',root),'utf8')
   const ui=readFileSync(new URL('lib/management-console.js',root),'utf8')
   const backend=readFileSync(new URL('index.js',root),'utf8')
-  for(const id of ['vision-runtime-alert','vision-runtime-alert-open','neural-filter-experience','neural-filter-relationship','neural-filter-interest','neural-filter-fact','neural-filter-emotion'])
+  for(const id of ['vision-runtime-alert','vision-runtime-alert-open'])
     assert.match(html,new RegExp('id="'+id+'"'))
   assert.match(html,/id="models-vision-enabled"[^>]*type="checkbox"[^>]*role="switch"/)
   assert.match(ui,/checkVisionEnvironmentOnEntry\(\)/)
@@ -74,9 +74,9 @@ test('model page has opt-in health diagnostic, real visual switch, right pan and
 test('neural memory categories are only shown in interactive filters, without duplicated legend',()=>{
   const html=readFileSync(new URL('lib/management-console.html',new URL('../',import.meta.url)),'utf8')
   for(const label of ['蓝 · 生活经历','粉 · 人物互动','绿 · 后天兴趣','金 · 事实认识','紫 · 当时情绪'])
-    assert.equal(html.split(label).length-1,1,`duplicate category label: ${label}`)
-  assert.match(html,/id="neural-layout-mode"/)
-  assert.match(html,/class="neural-kind-filters"/)
+    assert.equal(html.split(label).length-1,0,`duplicate category label: ${label}`)
+  assert.doesNotMatch(html,/id="neural-layout-mode"/)
+  for(const kind of ["","experience","relationship","interest","fact","emotion"])assert.equal(html.split(`data-memory-kind="${kind}"`).length-1,1)
 })
 
 test('Ollama video observation retains Python repair and relocated-cache health alert',()=>{

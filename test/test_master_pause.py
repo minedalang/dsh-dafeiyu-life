@@ -81,3 +81,26 @@ def test_capability_generation_fails_closed(monkeypatch, tmp_path):
     caps['platform']=True;row['pending']={'capabilities':caps,'pid':123};write();assert not check(tmp_path)
     row['pending']=None;row['revision']=6;write();assert not check(tmp_path)
     monkeypatch.delenv('BILI_SESSION_INTEGRATION_REVISION');monkeypatch.delenv('BILI_SESSION_INTEGRATION_MODE');assert not check(tmp_path)
+
+
+def test_independent_reply_pause_at_final_python_send(tmp_path):
+    import asyncio
+    from contextlib import contextmanager
+    src=ast.parse((ROOT/'vendor/bilibili-mcp/mcp_server.py').read_text(encoding='utf8'))
+    module=ast.Module(body=[n for n in src.body if isinstance(n,ast.AsyncFunctionDef) and n.name=='_coordinated_send'],type_ignores=[])
+    calls=[]
+    class Claim:
+        def confirm(self, proof):pass
+    @contextmanager
+    def reserve(*args,**kwargs):yield Claim()
+    scope={'Path':Path,'_DUTY_HOME':tmp_path,'outbound_reservation':reserve}
+    exec(compile(ast.fix_missing_locations(module),'<reply-pause>','exec'),scope)
+    async def send():calls.append(1);return {'ok':True}
+    marker=tmp_path/'.bili-duty-replies-paused';marker.write_text('paused')
+    for kind,target in [('dm','123'),('comment','BV1rV1FzYEbP:12:0'),('comment','BV1rV1FzYEbP:0:12'),('dynamic-comment','dynamic-notice:1:2:3'),('dynamic-comment','dynamic:1:2:3')]:
+        try:asyncio.run(scope['_coordinated_send'](kind,target,'body',send,lambda _: 'receipt'))
+        except RuntimeError as exc:assert str(exc)=='interaction-replies-paused'
+        else:assert False,'reply must be blocked'
+    assert calls==[]
+    asyncio.run(scope['_coordinated_send']('comment','BV1rV1FzYEbP:0:0','body',send,lambda _: 'receipt'));assert len(calls)==1
+    marker.unlink();asyncio.run(scope['_coordinated_send']('dm','123','body',send,lambda _: 'receipt'));assert len(calls)==2

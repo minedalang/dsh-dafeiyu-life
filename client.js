@@ -979,7 +979,7 @@ window.__ModuleLoader__.load({
           h('div', { 'data-bd-note': '' }, '公开评论 @ 策略：'+({ai_select:'AI 选择部分好友',ai:'AI 判断是否 @ 全部好友',off:'永不 @',always:'每次 @ 全部好友'}[cfg.mentionMode]||'AI 决定')+'；在管理中心「人设与好友」里调整。'),
           h('div', { 'data-bd-sep': '' }),
           h('div', { 'data-bd-h': '' }, '详细诊断已移至管理中心'),
-          h('div', { 'data-bd-note': '' }, '今日 @ 诊断、表情包选取原因、每日报告、后台私信记录和最近评论集中在管理中心展示，避免设置页过长。'),
+          h('div', { 'data-bd-note': '' }, '今日 @ 诊断、表情包选取原因、运行日志、后台私信记录和最近评论集中在管理中心展示，避免设置页过长。'),
           h('div', { 'data-bd-row': '' },
             h('button', { 'data-bd-btn': '', onClick: () => onOpenManage() }, '打开管理中心 ↗')),
 

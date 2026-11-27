@@ -35,7 +35,7 @@ test('manage HTML and JS are served from same DSH route without extra port or pr
    assert.match(h.text,/历史严格审核记录（只读/)
    assert.match(h.text,/manage\.js/)
    assert.match(h.text,/运行诊断/)
-   assert.match(h.text,/每日报告/)
+   assert.match(h.text,/运行日志/)
    assert.match(h.text,/后台私信/)
    assert.match(h.text,/最近评论/)
    assert.match(h.text,/测试私信接口连接/)
@@ -65,7 +65,7 @@ test('manage HTML and JS are served from same DSH route without extra port or pr
    const client=await import('node:fs').then(m=>m.readFileSync(new URL('../client.js',import.meta.url),'utf8'))
    assert.match(client,/const onOpenManage = async/)
    assert.match(client,/fetch\(path, \{credentials: 'same-origin'/)
-   assert.match(client,/window\.location\.assign\(target\)/)
+   assert.match(client,/window\.location\.assign\(insideTarget\)/);assert.match(client,/insideTarget=path\+\(safeTab/);assert.match(client,/link\.href=insideTarget;link\.target='_self'/)
  }finally{fx.close()}
 })
 
@@ -129,3 +129,16 @@ test('管理中心拒绝开启旧版人工私信审批，历史旧配置只能�
   assert.equal(saved.dmApprovedTotalLimit,undefined,'已移除获批用户个人累计限额，不得继续暗中保存');
  }finally{fx.close()}
 });
+
+test('runtime controls and logs require owner intent and return actual persisted pause state',async()=>{
+ const fx=fixture();try{
+  const headers={host:'127.0.0.1:7012','x-dafeiyu-management-intent':'1'};
+  assert.equal((await fx.call('GET','runtime-controls')).code,403);
+  const before=await fx.call('GET','runtime-controls',undefined,headers);assert.equal(before.code,200);assert.equal(before.json().repliesEnabled,true);
+  const result=await fx.call('POST','runtime-controls',{control:'replies',enabled:false,revision:before.json().revision},headers);assert.equal(result.code,200,result.text);assert.equal(result.json().localVerified,true);assert.equal(result.json().repliesEnabled,false);
+  assert.equal((await fx.call('POST','runtime-controls',{control:'replies',enabled:true,revision:before.json().revision},headers)).code,409);
+  assert.equal((await fx.call('GET','runtime-controls',undefined,headers)).json().repliesEnabled,false);
+  const log=await fx.call('GET','runtime-logs?level=error&export=1',undefined,headers);assert.equal(log.code,200);assert.equal(log.json().rawIncluded,false);
+  assert.equal((await fx.call('GET','runtime-logs',undefined,{...headers,origin:'https://example.org'})).code,403);
+ }finally{fx.close()}
+})

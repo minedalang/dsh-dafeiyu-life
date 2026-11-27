@@ -673,7 +673,16 @@ async def _coordinated_relation(kind, target, cred, send):
 async def _coordinated_send(kind, target, content, send, extract_receipt):
     # The claim is made at the LAST possible point, immediately before send.
     # A timeout/exception/absent receipt is unresolved, not a retry permit.
+    # Independent interaction pause also covers already-running child MCPs.
+    # The final check is before the actual platform request, not after receipt.
+    parts = str(target).split(':')
+    reply = (kind == 'dm' or (kind == 'dynamic-comment' and (str(target).startswith('dynamic-notice:') or (len(parts) == 4 and parts[0] == 'dynamic' and parts[-1].isdigit() and int(parts[-1]) > 0)))
+             or (kind == 'comment' and len(parts) == 3 and any(x.isdigit() and int(x) > 0 for x in parts[1:])))
+    if reply and (Path(_DUTY_HOME) / '.bili-duty-replies-paused').exists():
+        raise RuntimeError('interaction-replies-paused')
     with outbound_reservation(kind, str(target), str(content), home=_DUTY_HOME) as claim:
+        if reply and (Path(_DUTY_HOME) / '.bili-duty-replies-paused').exists():
+            raise RuntimeError('interaction-replies-paused')
         raw = await send()
         receipt = extract_receipt(raw)
         if receipt:

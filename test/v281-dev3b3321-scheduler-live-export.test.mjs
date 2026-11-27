@@ -210,3 +210,13 @@ test('legacy or malformed live version remains unknown rather than inferred from
  let version;const server=createServer((_req,res)=>{res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({ok:true,schemaVersion:1,pluginVersion:version,planner:{},interaction:{}}))});server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>server.close());
  for(const input of [undefined,'secret SHOULD_NOT_EXPORT']){version=input;const {read}=await helper(t,`http://127.0.0.1:${server.address().port}/api/bili-duty/manage`);const live=read('live-status-snapshot.json');assert.equal(live.pluginVersion,null);assert.doesNotMatch(JSON.stringify(live),/SHOULD_NOT_EXPORT/);}
 })
+
+import {readRuntimeLogs} from '../lib/runtime-log-view.mjs'
+test('runtime summary reads rotated/install windows but never exports arbitrary private payload',t=>{
+ const d=mkdtempSync(join(tmpdir(),'runtime-summary-'));t.after(()=>rmSync(d,{recursive:true,force:true}))
+ writeFileSync(join(d,'duty.log.1'),'2026-11-27T15:00:00.000+08:00 error ECONNRESET SECRET_COOKIE=abc\n')
+ writeFileSync(join(d,'duty.log'),'2026-11-27T15:01:00.000+08:00 info 私人消息 secret-message\n2026-11-27T15:02:00.000+08:00 模型超时 ETIMEDOUT\n')
+ writeFileSync(join(d,'install.log'),'2026-11-27T14:00:00.000+08:00 failed ENOSPC secret-path\n')
+ writeFileSync(join(d,'config.json'),'SECRET_UNLISTED')
+ const v=readRuntimeLogs(d,{errorsOnly:true,exportAll:true});assert.equal(v.errors,3);assert.equal(v.rows.length,3);assert.equal(v.rows[0].reason,'ETIMEDOUT');assert.equal(v.rawIncluded,false);assert.doesNotMatch(JSON.stringify(v),/SECRET|secret-message|secret-path|config.json/);assert.equal(v.coverage.length,4)
+})

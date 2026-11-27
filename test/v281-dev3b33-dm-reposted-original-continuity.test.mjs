@@ -131,3 +131,20 @@ test('宿主实际读取门禁的源码契约：只读原帖且保持账号、�
   assert.match(part,/recordSharedBiliLinkDeferral\(original\.id/ )
   assert.doesNotMatch(part,/executeSharedDynamicWrite|bili_dynamic_like_life|bili_dynamic_comment_life/)
 })
+
+import {sharedVideoTargetAllowed,projectSharedVideoObservation} from '../lib/shared-video-observation.mjs'
+test('only trusted same-account inspected share permits actual video observation; metadata is not visual evidence',()=>{
+ const bvid='BV1rV1FzYEbP',row={senderUid:UID,status:'inspected',resolvedKind:'video',evidenceLevel:'video-metadata-only',bvid}
+ const input={row,uid:UID,role:'owner',scope:SCOPE,currentScope:SCOPE,enabled:true,permitted:true,offered:true}
+ assert.equal(sharedVideoTargetAllowed(input),true)
+ for(const patch of [{role:'stranger'},{uid:'1'},{currentScope:SCOPE2},{enabled:false},{permitted:false},{offered:false},{row:{...row,status:'pending'}}])assert.equal(sharedVideoTargetAllowed({...input,...patch}),false)
+ const result={ok:true,bvid,viewDepth:'standard',info:{duration:30},visual:{ok:true,status:'analyzed'},videoEvidence:{schema:'life-video-evidence/v1',bvid,verifiedContent:true,sources:[{kind:'preview_visual_analysis',status:'analyzed',timePointsMs:[0,1000]},{kind:'subtitle',status:'verified'}]},perceptionHandoff:{schema:'life-video-perception-handoff/v1',bvid,video:{source:'low-resolution-preview',frameCount:2,frameTimesMs:[0,1000],modelDescription:'实际图像观察'},speech:{source:'official-subtitles',textExcerpt:'真实字幕'}}}
+ const observed=projectSharedVideoObservation(result,bvid);assert.equal(observed.verified,true);assert.equal(observed.visualObserved,true);assert.equal(observed.speechAvailable,true);assert.equal(observed.fullPlayback,false)
+ assert.equal(projectSharedVideoObservation({...result,visual:{ok:false}},bvid).visualObserved,false)
+ assert.equal(projectSharedVideoObservation({...result,videoEvidence:{...result.videoEvidence,sources:[]}},bvid).verified,false)
+ assert.equal(projectSharedVideoObservation({...result,perceptionHandoff:{...result.perceptionHandoff,bvid:'BV1234567890'}},bvid).verified,false)
+})
+test('same DM model chooses metadata first, then a host-offered actual share observation; no unsolicited video read',async()=>{
+ const prompts=[],loads=[];const b=make({invoke:async prompt=>{prompts.push(prompt);return prompts.length===1?reply({contextRequests:['shared_link']}):prompts.length===2?reply({contextRequests:['shared_video']}):reply({reply:'采样画面是动物',messages:['采样画面是动物']})},loadRequestedContexts:async(_batch,requests)=>{loads.push(requests);return loads.length===1?[{sharedLinkContext:'{"verified":true,"watched":false}',availableContexts:['shared_video']}]:[{sharedVideoContext:'{"verified":true,"visualObserved":true,"visualDescription":"动物"}'}]}})
+ try{const result=await b.generate({kind:'dm',uid:UID,text:'看看这个视频',socialAutonomy:true,availableContexts:['shared_link']});assert.equal(result.action,'reply');assert.deepEqual(loads,[[['shared_link']],[['shared_video']]]);assert.match(prompts[1],/read_shared_video/);assert.match(prompts[2],/visualObserved/)}finally{b.stop()}
+})

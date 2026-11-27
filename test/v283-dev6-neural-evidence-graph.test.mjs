@@ -55,6 +55,7 @@ test('已有评论模型回执绑定准确事件，无额外模型调用，不�
  const batch=createInteractionBatcher({delayMs:1,invoke:async()=>{calls++;return JSON.stringify({items:[{id:'0',action:'reply',reply:'好有趣！',mood:'joyful',intensity:2}]})},getPersona:()=>'',onEmotion:o=>mood.update(o),onEmotionContext:o=>{if(o.observation)assert.equal(x.g.recordEpisodeEmotion(o.observation).ok,true)}})
  try{await batch.generate({kind:'comment',uid:'1234',bvid:bv(1),incomingRpid:'5678',text:e.text,verifiedCommentSource:true,emotionAccountTag:A});assert.equal(calls,1)
  assert.equal(proof(x).emotions.length,1);assert.equal(proof(x).emotions[0].id,eid(e.key));const p=projection(x,[],[]);assert.equal(p.emotionCount,1);assert.equal(p.nodes.find(n=>n.emotion).emotion,'joyful')
+ const filtered=memoryNeuralProjection({episodes:rows(x.g),kind:'emotion',limit:1,showAll:true,verifiedGraph:proof(x)});assert.equal(filtered.matched,1);assert.equal(filtered.nodes[0].emotion,'joyful');assert.equal(memoryNeuralProjection({episodes:rows(x.g),kind:'emotion',showAll:false,verifiedGraph:{links:[],emotions:[]}}).matched,0)
  assert.equal(x.g.recordEpisodeEmotion({accountTag:A,eventKey:e.key,mood:'sad',intensity:2,at:NOW}).duplicate,true)
  assert.equal(x.g.recordEpisodeEmotion({accountTag:A,eventKey:'social:1234:'+bv(1)+':1111',mood:'sad',intensity:2,at:NOW}).ok,false)
  assert.equal(x.g.recordEpisodeEmotion({accountTag:B,eventKey:e.key,mood:'sad',intensity:2,at:NOW}).ok,false)

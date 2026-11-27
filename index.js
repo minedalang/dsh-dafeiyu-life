@@ -6,6 +6,9 @@ import {projectLifeGrowthAttribution} from './lib/life-growth-attribution.mjs'
 import {projectLifeGrowthAudit} from './lib/life-growth-audit.mjs'
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
+import {sharedVideoTargetAllowed,projectSharedVideoObservation} from './lib/shared-video-observation.mjs'
+import {runtimeControls,planRuntimeControl,interactionRepliesAllowed,isReplyDispatch} from './lib/runtime-controls.mjs'
+import {readRuntimeLogs} from './lib/runtime-log-view.mjs'
 import {lifeSettingsV2,planLifeSettingsV2,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
 import {lifeTransitionReadiness} from './lib/life-transition-readiness.mjs'
 import {releaseAcceptanceEvidence} from './lib/release-acceptance-evidence.mjs'
@@ -401,6 +404,7 @@ export const Config = !z ? undefined : z.object({
   /** Editable fictional relationship to DeepSeek/DSH and AI personification fandom. */
   characterLore: z.string().default('').extra('volatile', true),
   /** 后台私信监听总开关：只在用户允许时回复。 */
+  interactionRepliesEnabled: z.boolean().default(true).extra('volatile', true),
   dmWatch: z.boolean().default(true).extra('volatile', true),
   /** 私信监听间隔（分钟，1–120） */
   dmWatchMinutes: z.natural().default(5).extra('volatile', true),
@@ -890,6 +894,7 @@ function reportMeta() {
     autonomousSocialAttentionDailyLimit: 288,
     biliReadMinuteLimit:30,biliReadHourLimit:450,
     masterEnabled: true,
+    interactionRepliesEnabled:true,
     dmWatch: true, dmWatchMinutes: 5, dmQuietMaxMinutes: 5, dmActivePollEnabled:true, dmActivePollSeconds:60, dmOwnerPollEnabled:true, dmOwnerPollSeconds:150, dmOwnerActivePollSeconds:30, dmDetailMaxSessions:3, dmDetailSpacingMs:1500, dmActiveWindowSeconds:180, commentReplyWatchMinutes: 2, commentAtWatchMinutes: 2, commentTopWatchMinutes: 5, dmReplyPerDay: 200, quotaPreset:'custom', dmContextMessages: 40, dmOwnerUid: 0,
     dmWhitelist: '', dmStrangerOnce: false, dmStrangerAutonomyEnabled: false, dmP6Enabled: true, dmP6MaxBubbles: 3, naturalThoughtOwnerMinutes:2, naturalThoughtIntimateMinutes:5, naturalThoughtFamiliarMinutes:10, naturalThoughtStrangerMinutes:30, naturalThoughtChancePercent:25, dmStrangerMaxReplies: 1, dmStrangerFirstFixed: false,
     dmApprovalEnabled: false, dmApprovalPhrase: '白饭🍚',
@@ -939,6 +944,7 @@ function reportMeta() {
   const clampPatch = (patch,{storedRead=false}={}) => {
     const p = { ...patch, mainSessionMemoryEnabled:true,mainSessionMemoryAutoBili:true,mainSessionReflectionAuto:true,commentPublicProfileReadEnabled:true }
     if ('masterEnabled' in p) p.masterEnabled = p.masterEnabled === true
+    if ('interactionRepliesEnabled' in p) p.interactionRepliesEnabled=p.interactionRepliesEnabled===true
     if ('lifeAgentMode' in p) p.lifeAgentMode = ['off','shadow','active'].includes(p.lifeAgentMode) ? p.lifeAgentMode : 'off'
     if ('lifeAgentSocialContextOptIn' in p) p.lifeAgentSocialContextOptIn = p.lifeAgentSocialContextOptIn === true
     if ('commentPublicProfileReadEnabled' in p) p.commentPublicProfileReadEnabled = true
@@ -1741,9 +1747,18 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   ctx.effect(()=>()=>{if(commentDynamicWakeTimer)clearTimeout(commentDynamicWakeTimer)},'bili-duty: 公开回复 Life 动态契机')
   let memeLearning = null
   const pauseFile = join(stateDir, '.bili-duty-paused')
+  const repliesPauseFile=join(stateDir,'.bili-duty-replies-paused')
+  let lastRepliesPauseState=null
+  const syncRepliesPause=(paused,force=false)=>{
+    if(!force&&lastRepliesPauseState===paused)return
+    if(paused)writeFileSync(repliesPauseFile,'paused\n','utf8')
+    else rmSync(repliesPauseFile,{force:true})
+    lastRepliesPauseState=paused
+  }
   let lastPauseState = null
   let cancelActiveDuty = () => {}
   const syncPauseState = (force = false) => {
+    syncRepliesPause(!interactionRepliesAllowed(cfg),force)
     const paused = cfg.masterEnabled !== true || !platformReady() || !integrationAvailable()
     if (!force && lastPauseState === paused) return
     // 同一目录中的 Python MCP 进程，每次对外发送前也检查这个文件。
@@ -1822,6 +1837,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       try { syncPauseState(true) } catch (error) { cfg.masterEnabled = previous; throw error }
       if (clean.masterEnabled === false) cancelActiveDuty()
     }
+    if(clean.interactionRepliesEnabled===false)syncRepliesPause(true,true)
     saveCfg(clean)
     const host = await saveCfgHost(clean)
     // 宿主写成功 ⇒ 恢复对账；失败 ⇒ 记成"本地优先"，别让界面把它们压回去
@@ -1840,6 +1856,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       JSON.stringify(stored[k])!==JSON.stringify(clean[k])||
       JSON.stringify(effective[k])!==JSON.stringify(clean[k]))
     if(mismatch.length)throw Error('插件设置回读失败，请不要认为已保存：'+mismatch.slice(0,8).join(', '))
+    if('interactionRepliesEnabled' in clean)syncRepliesPause(clean.interactionRepliesEnabled!==true,true)
     // The optional host mirror can be absent in Desktop. The local config
     // already passed an independent readback; never flood the log each save.
     return {clean,host:{...host,role:'optional-native-mirror'},localVerified:true}
@@ -1975,11 +1992,13 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       ? {...(opts||{}),timeoutMs:600000}:opts
     // Do not cancel already-admitted writes: the durable sender must settle
     // their actual receipt. Only new monitored reads are refused here.
+    const checkReplyDispatch=()=>{if(!isReplyDispatch(toolName,args))return;refreshCfg();if(!interactionRepliesAllowed(cfg))throw Error('互动回复已暂停，未向平台发送')}
+    checkReplyDispatch()
     const originalDispatch=()=>scopedDshVision
       ? (()=>{if(!currentDispatch())throw sessionIntegrationPaused();return callPluginScopedDshVision(args,opts)})()
       : monitoredReadTools.has(toolName)
-      ? biliReadBudget.guard('mcp:'+toolName,()=>{if(!currentDispatch())throw sessionIntegrationPaused();return client.call(toolName,args,callOptions)})
-      : (()=>{if(!currentDispatch())throw sessionIntegrationPaused();return client.call(toolName,args,callOptions)})()
+      ? biliReadBudget.guard('mcp:'+toolName,()=>{if(!currentDispatch())throw sessionIntegrationPaused();if(isReplyDispatch(toolName,args))checkReplyDispatch();return client.call(toolName,args,callOptions)})
+      : (()=>{if(!currentDispatch())throw sessionIntegrationPaused();checkReplyDispatch();return client.call(toolName,args,callOptions)})()
     const dispatch=()=>toolName==='bili_video_info'&&opts===undefined&&
       /^BV[0-9A-Za-z]{10}$/.test(String(args?.bvid||''))
       ? publicVideoReadCoalescer.run({scope:verifiedActionScope(),bvid:args.bvid,
@@ -2535,7 +2554,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
 
   tool({
     name:'bili_watch_video',
-    description:'当主人说“去看/看看这个视频”时调用。读取真实视频详情、字幕（如有）、热门评论与少量弹幕，完成后返回可核验的内容材料并记一条“主 Session 指定观看”经历。它不播放完整视频；没有字幕/视觉证据时必须说明看到了什么、没看到什么，不能编造画面。',
+    description:'当主人说“去看/看看这个视频”时调用；若问画面、动作、字幕或内容，请选择 standard 而非仅标题简介。读取真实视频详情、字幕（如有）、热门评论与少量弹幕，完成后返回可核验的内容材料并记一条“主 Session 指定观看”经历。它不播放完整视频；没有字幕/视觉证据时必须说明看到了什么、没看到什么，不能编造画面。',
     parameters:{bvid:{type:'string',description:'主人指定的真实 BV 号'},include_comments:{type:'boolean',description:'是否读取热门评论，默认 true'},include_danmaku:{type:'boolean',description:'是否读取少量弹幕，默认 true'},view_depth:{type:'string',description:'由鱼鱼决定理解深度：skim 略看资料（默认，不识图）；standard 正常了解（可用视觉时识图）；deep 深入探索（可用视觉时识图，并可随后按时间窗复查）。不强制选择后两项。'},visual_question:{type:'boolean',description:'旧接口兼容：主动提出视觉疑问时相当于 standard；显式 skim 优先'}},
     async execute(args={}) { return executeWatchVideo(args) }
   })
@@ -4423,7 +4442,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   }
   ctx.effect(()=>()=>{if(socialWakeTimer)clearTimeout(socialWakeTimer);if(socialTodoWakeTimer)clearTimeout(socialTodoWakeTimer)},'bili-duty: Life 社交快速通知清理')
   const socialHandoffFence=createSocialHandoffFence({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
-  const socialSendTransaction=createSocialSendTransaction({dataDir:stateDir,getAccountTag:trustedLifeAccountTag,canStart:automaticSession.current})
+  const socialSendTransaction=createSocialSendTransaction({dataDir:stateDir,getAccountTag:trustedLifeAccountTag,canStart:()=>{refreshCfg();return automaticSession.current()&&interactionRepliesAllowed(cfg)}})
   const socialDecisionOwnership=createSocialDecisionOwnership({
     handoffFence:socialHandoffFence,
     getAccountTag:trustedLifeAccountTag,getLifeAgentMode:()=>cfg.lifeAgentMode,
@@ -4511,6 +4530,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // under Life ownership. The old platform adapters and human permissions stay.
   // This never converts an unverified draft into an authorization to send.
   const lifeSocialWrite=async(channel,write)=>{
+    refreshCfg();if(!interactionRepliesAllowed(cfg))return {ok:false,no_retry:true,notAttempted:true,reason:'interaction-replies-paused'}
     // All production DM/comment writes pass the same Life-owned send lane.
     // Old code paths have no fallback when a migration is blocked.
     const expectedScope=boundLifeScope(channel)
@@ -4521,6 +4541,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const checked=socialDecisionOwnership.route({channel,requester:'life-agent',
         expectedScope,expectedGeneration:owner.generation})
       if(!checked.ok)return {ok:false,no_retry:true,reason:checked.reason,error:'社交外发前所有权已变化，未调用平台'}
+      refreshCfg();if(!interactionRepliesAllowed(cfg))return {ok:false,no_retry:true,notAttempted:true,reason:'interaction-replies-paused'}
       return await write()
     })
   }
@@ -4905,7 +4926,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const owner = Number(cfg.dmOwnerUid) || 0
     if (owner > 0) allow.add(String(owner))
     return {
-      enabled: cfg.masterEnabled === true && cfg.dmWatch === true && !accountBinding.status().blocked,
+      enabled: cfg.masterEnabled === true && interactionRepliesAllowed(cfg) && cfg.dmWatch === true && !accountBinding.status().blocked,
       strangerEnabled: cfg.dmStrangerAutonomyEnabled === true || cfg.dmStrangerOnce === true,
       legacyStrangerOnce: cfg.dmStrangerOnce === true && cfg.dmStrangerAutonomyEnabled !== true,
       p6Enabled: cfg.dmP6Enabled!==false,
@@ -4943,6 +4964,26 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     return canReadSharedLinkFromSender({senderRole,senderUid,ownerUid:String(cfg.dmOwnerUid||''),
       currentRole,dmEnabled:dm.enabled===true,strangerEnabled:dm.strangerEnabled===true,
       friendCanLearn:currentRole==='friend'&&socialPolicyGate.canLearn({uid:senderUid,kind:'dm'})===true})
+  }
+  const currentSharedVideoTarget=(input,row,scope)=>{
+    refreshCfg();const role=socialPolicyGate.actor(input.uid).role,dm=dmConfig()
+    return sharedVideoTargetAllowed({row,uid:input.uid,role,scope,currentScope:trustedLifeAccountTag(),
+      enabled:dm.enabled===true&&dm.whitelist.includes(String(input.uid))&&automaticSession.current(),
+      permitted:sharedLinkPermissionCurrent(row,scope)&&socialPortrait?.contactBoundary?.(input.uid)!=='stop',
+      offered:input.sharedVideoOffered===true&&input.kind==='dm'&&!input.privacyGuard})
+  }
+  const readSharedVideoObservation=async(input)=>{
+    const scope=trustedLifeAccountTag(),epoch=accountBinding.generation(),policy=getSessionIntegration()
+    const row=scope===input.sharedLinkScope&&input.sharedLinkId?lifeSharedBiliLinks.get(input.sharedLinkId,scope):null
+    if(!currentSharedVideoTarget(input,row,scope))return {verified:false,reason:'video-not-authorized'}
+    const current=()=>{const p=getSessionIntegration();return epoch===accountBinding.generation()&&p.mode===policy.mode&&p.revision===policy.revision&&currentSharedVideoTarget(input,lifeSharedBiliLinks.get(row.id,scope),scope)}
+    try{
+      const result=await lifeResourceScheduler.run({lane:'continuation',resources:{vision:1},waitMs:12_000},()=>withLifeVideoVisualLease(stateDir,{accountTag:scope,bvid:row.bvid},async()=>{
+        if(!current())return {ok:false,reason:'authorization-changed'}
+        return executeWatchVideo({bvid:row.bvid,record_session:false,include_comments:false,include_danmaku:false,view_depth:'standard',explorationPurpose:'shared-video-observation'})
+      }))
+      return current()?projectSharedVideoObservation(result,row.bvid):{verified:false,reason:'authorization-changed'}
+    }catch{return {verified:false,reason:'video-observation-unavailable'}}
   }
   const socialRhythm=createSocialInteractionRhythm({dataDir:accountRuntimeDir,
     getAccountUid:()=>String(dmCred(stateDir)?.dedeuserid||''),
@@ -5685,11 +5726,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           // An API-proven original is a *new choice* for the SAME Life DM
           // turn, never an automatic second network request.
           const original=proof.kind==='dynamic'?lifeSharedBiliLinks.repostedOriginalForParent(shared.id,scope):null
+          const videoOffered=proof.kind==='video'&&currentSharedVideoTarget(input,lifeSharedBiliLinks.get(shared.id,scope),scope)
           row={...row,sharedLinkContext:JSON.stringify({kind:proof.kind,evidenceLevel:receipt.evidenceLevel||'',
             title:String(proof.title||'').slice(0,100),summary:String(proof.summary||'').slice(0,420),
             authorName:String(proof.authorName||'').slice(0,50),verified:true,readOnly:true,
             watched:false,metadataOnly:proof.kind==='video',repostedOriginalAvailable:Boolean(original),originalRead:false}).slice(0,950),
-            ...(original?{availableContexts:[...(row.availableContexts||[]),'shared_original']}:{} )}
+            ...((original||videoOffered)?{availableContexts:[...(row.availableContexts||[]),...(original?['shared_original']:[]),...(videoOffered?['shared_video']:[])]}:{} )}
         }
         if(wantsOriginal){
           const input=batch[i],scope=trustedLifeAccountTag()
@@ -5719,6 +5761,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
               summary:String(proof.summary||'').slice(0,420),authorName:String(proof.authorName||'').slice(0,50),
               originalRead:true,watched:false,metadataOnly:proof.kind==='video'}).slice(0,1050)}
           }
+        }
+        if(requestedByIndex?.[i]?.includes('shared_video')&&batch[i]?.kind==='dm'){
+          const observed=await readSharedVideoObservation(batch[i]);row={...row,sharedVideoContext:JSON.stringify(observed)}
         }
         if(!wantsPerson&&!wantsHot)return row
         if(wantsHot){
@@ -5895,7 +5940,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   let dmRecoveryNetworkGate=()=>({allowed:false,retryAt:0})
   const dmAutoreply = createDmAutoReply({
     dataDir: accountRuntimeDir,
-    canProcess:automaticSession.current,
+    canProcess:()=>{refreshCfg();return automaticSession.current()&&interactionRepliesAllowed(cfg)},
     getConfig: dmConfig,
     canSendDm: args=>socialPolicyGate.canSendDm(args),
     canContinue:(uid,channel)=>socialPortrait.continuationAllowed(uid,{channel}),
@@ -6069,7 +6114,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // same-turn model may choose one; it never receives a generic URL tool.
       // Cross-turn references remain stricter: explicit follow-up + one unique
       // recent link from the same authenticated sender/account.
-      const refersBack=/(看了没|看过没|读了没|刚才.{0,12}(动态|视频|链接)|之前.{0,12}(动态|视频|链接)|那条动态|那个视频|原动态)/u.test(String(req.text||''))
+      const refersBack=/(看了没|看过没|读了没|刚才.{0,12}(动态|视频|链接)|之前.{0,12}(动态|视频|链接)|那条动态|那个视频|这个视频|这条视频|刚才.{0,12}(画面|字幕)|原动态)/u.test(String(req.text||''))
       const priorLinks=!currentLinks.length&&refersBack?
         lifeSharedBiliLinks.recentForContact({uid:req.uid,limit:2,maxAgeMs:3*86_400_000}):[]
       const prior=priorLinks.length===1?lifeSharedBiliLinks.get(priorLinks[0].id,linkScope):null
@@ -6092,18 +6137,21 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const followCandidates=dmContactFollowCandidates({enabled:cfg.dmFollowAutonomyEnabled===true&&cfg.agentFollowEnabled===true&&cfg.masterEnabled===true&&req.trigger==='incoming',
         uid:String(req.uid),role:tier,history:req.history,incomingText:String(req.text||''),
         verifiedIncoming:req.trigger==='incoming'&&String(req.messageId||'').length>0,now:Date.now(),optedOut:socialPortrait?.contactBoundary?.(req.uid)==='stop'})
-      const linkContexts=[...(sharedLinkCandidates.length?['shared_link']:[]),...(sharedOriginal?['shared_original']:[])]
+      const sharedVideoOffered=['owner','friend'].includes(tier)&&req.trigger==='incoming'&&Boolean(String(req.messageId||''))&&!req.privacyGuard
+      const sharedVideoInput={kind:'dm',uid:req.uid,sharedVideoOffered,privacyGuard:req.privacyGuard}
+      const linkContexts=[...(sharedLinkCandidates.length?['shared_link']:[]),...(sharedOriginal?['shared_original']:[]),
+        ...(linkRow&&currentSharedVideoTarget(sharedVideoInput,linkRow,linkScope)?['shared_video']:[])]
       const revisitEpoch=accountBinding.generation(),revisitPolicy=getSessionIntegration()
       const friendRevisitCurrent=()=>{
         const dm=dmConfig(),p=getSessionIntegration()
         return automaticSession.current()&&revisitEpoch===accountBinding.generation()&&p.revision===revisitPolicy.revision&&p.mode===revisitPolicy.mode&&
           trustedLifeAccountTag()===linkScope&&socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation}).ok&&
-          socialPolicyGate.actor(req.uid).role==='friend'&&dm.enabled&&dm.whitelist.includes(String(req.uid))&&socialPortrait?.contactBoundary?.(req.uid)!=='stop'
+          ['owner','friend'].includes(socialPolicyGate.actor(req.uid).role)&&dm.enabled&&dm.whitelist.includes(String(req.uid))&&socialPortrait?.contactBoundary?.(req.uid)!=='stop'
       }
       const generated=await interactionBatcher.generate({kind:'dm',role:tier,...visualReq,socialAutonomy:true,
-        ...(tier==='friend'&&req.trigger==='incoming'&&String(req.messageId||'')&&friendRevisitCurrent()?{
+        ...(['owner','friend'].includes(tier)&&req.trigger==='incoming'&&String(req.messageId||'')&&friendRevisitCurrent()?{
           revisitVideo:({request,offeredBvids,isCurrent})=>contextualRevisit({request,offeredBvids,scene:'dm',uid:String(req.uid),incomingText:req.text,authorized:()=>friendRevisitCurrent()&&isCurrent()})}:{}),
-        ...(linkContexts.length?{sharedLinkScope:linkScope,availableContexts:linkContexts,
+        ...(linkContexts.length?{sharedLinkScope:linkScope,sharedVideoOffered,availableContexts:linkContexts,
           ...(linkRow?{sharedLinkId:linkRow.id}:{}),
           ...(sharedLinkCandidates.length?{sharedLinkCandidates}:{})}:{}),
         ...(priorReadContext?{sharedLinkContext:priorReadContext}:{}),
@@ -6533,17 +6581,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },logger:{warn:m=>log('主人评论 Agent：'+m)}
   })
   const commentInteract = createCommentInteract({
-    canProcess:automaticSession.current,onUnsentLifeDecision:proof=>lifeProofSettler(proof)('not-sent'),
+    canProcess:()=>{refreshCfg();return automaticSession.current()&&interactionRepliesAllowed(cfg)},onUnsentLifeDecision:proof=>lifeProofSettler(proof)('not-sent'),
     getVerifiedFacts:verifiedFactsFor,
     dataDir: accountRuntimeDir,
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     getConfig: () => {
       refreshCfg()
       return {
-        watchReplies: cfg.masterEnabled === true && (cfg.commentWatchReplies === true || cfg.ownerCommentAgentEnabled === true),
+        watchReplies: cfg.masterEnabled === true && interactionRepliesAllowed(cfg) && (cfg.commentWatchReplies === true || cfg.ownerCommentAgentEnabled === true),
         allowGeneralReplies: cfg.commentWatchReplies === true,
         watchTop: false, // v2.4.89: disable old unprompted heat-comment polling even for legacy configs
-        watchAt: cfg.masterEnabled === true && (cfg.commentAtEnabled === true || cfg.friendAtFeedbackEnabled === true || cfg.ownerCommentAgentEnabled === true),
+        watchAt: cfg.masterEnabled === true && interactionRepliesAllowed(cfg) && (cfg.commentAtEnabled === true || cfg.friendAtFeedbackEnabled === true || cfg.ownerCommentAgentEnabled === true),
         replyAt: cfg.commentAtEnabled === true,
         p6Comment:true,p6At:true,
         p6MaxBubbles:2,
@@ -7305,7 +7353,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   lifeReflection = createLifeReflection({
     automaticSession,
     dataDir: stateDir,
-    getConfig: () => cfg,
+    getConfig:()=>{refreshCfg();return {...cfg,mainSessionReflectionAuto:cfg.lifeAgentMode==='active'&&cfg.autonomousPlannerEnabled===true&&cfg.mainSessionReflectionAuto!==false}},
     memoryGateway:lifeMemory,
     getAssociationHints:()=>neuralActivationTracker?.reflectionHints(trustedLifeAccountTag())||[],
     claimAssociationHint:(tag,hint)=>neuralActivationTracker?.claimReflectionHint(tag,hint)||null,
@@ -9060,7 +9108,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     const path = url.pathname
     // Global fail-closed gate; setup/status/management stay accessible. Never
     // unlock business APIs merely because the user can load the settings UI.
-    const setupAccess = (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || (req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot') || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
+    const setupAccess = (req.method==='GET'&&['/api/bili-duty/runtime-logs','/api/bili-duty/runtime-controls'].includes(path)) || (req.method==='POST'&&path==='/api/bili-duty/runtime-controls') || (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || (req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot') || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || (req.method==='GET' && path==='/api/bili-duty/main-session/sessions') || (req.method==='POST' && path==='/api/bili-duty/main-session/bind') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
       path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
@@ -10815,7 +10863,8 @@ logger:{warn:m=>log('社交意图：'+m)}
             kinds:['watch','comment','social'],limit:3200})||[]):[]
           const episodes=platformView?(lifeMemory?.videoRecallGroups(rawEpisodes)||rawEpisodes):[]
           const allRows=[...result.rows,...episodes.map(m=>({...m,gardenKind:'experience',gardenEvidence:'fading-life-episode'}))]
-          const pre=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true})
+          const preGraph=kind==='emotion'&&platformView?(lifeMemory?.neuralEvidenceSnapshot({accountTag:graphAccount,gardenRows:result.rows,interestEvidence:interestNeuralEvidence(stateDir,graphAccount),episodeRows:episodes})||{links:[],emotions:[]}):null
+          const pre=memoryNeuralProjection({gardenRows:result.rows,episodes,query:q,kind,limit,showAll:true,verifiedGraph:preGraph})
           const allowedIds=new Set(pre.nodes.map(m=>m.id))
           // Only CURRENT owner-visible rows become graph nodes. Retrieve the
           // canonical indexed text for a matching corpus key: the interest
@@ -11708,6 +11757,24 @@ logger:{warn:m=>log('社交意图：'+m)}
         reason:result?.ok===true?'both-channels-migrated-to-life':result?.reason||'life-migration-review-required',
         owner:result?.ok===true?'life-agent':undefined,
         platformCalls:0,modelCalls:0,permissionsChanged:false,requiresRealPlatformAcceptance:true})
+    }
+    if(path==='/api/bili-duty/runtime-logs'&&req.method==='GET'){
+      if(!explicitManagementIntent(req))return sendJson(res,403,{ok:false,error:'需要主人本机同源操作'})
+      res.setHeader?.('Cache-Control','no-store')
+      return sendJson(res,200,readRuntimeLogs(stateDir,{errorsOnly:url.searchParams.get('level')==='error',exportAll:url.searchParams.get('export')==='1'}))
+    }
+    if(path==='/api/bili-duty/runtime-controls'&&['GET','POST'].includes(req.method)){
+      if(!explicitManagementIntent(req))return sendJson(res,403,{ok:false,error:'需要主人本机同源操作'})
+      res.setHeader?.('Cache-Control','no-store')
+      const state=()=>{refreshCfg();return runtimeControls(cfg,String(accountBinding.generation())+':'+trustedLifeAccountTag(),platformReady()&&integrationAvailable()&&!accountBinding.status().blocked&&sessionIntegration.getCapabilities()?.autonomous===true&&firstStart.status().requiredReady===true)}
+      if(req.method==='GET')return sendJson(res,200,{ok:true,...state()})
+      try{
+        const body=await readBackupBody(req,2048),current=state()
+        const patch=planRuntimeControl(cfg,body,String(accountBinding.generation())+':'+trustedLifeAccountTag(),current.ready)
+        const persisted=await persistCfg(patch)
+        if(patch.lifeAgentMode==='off')lifeSocialShadow.revoke()
+        return sendJson(res,200,{ok:true,...state(),localVerified:persisted.localVerified===true})
+      }catch(e){return sendJson(res,409,{ok:false,error:String(e?.message||e).slice(0,160)})}
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/settings-v2') {
       refreshCfg()

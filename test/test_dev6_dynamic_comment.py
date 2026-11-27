@@ -49,7 +49,7 @@ def make_env(info=None, rows=None, response=None):
             def confirm(self,proof):
                 assert proof
         yield Claim()
-    env={'_DUTY_HOME':'/tmp/mock-dynamic', 'outbound_reservation':mock_outbound, '__name__':'__isolated_dynamic_test__','re':re,'os':os,'json':json,'tool':tool,
+    env={'Path':Path,'_DUTY_HOME':'/tmp/mock-dynamic', 'outbound_reservation':mock_outbound, '__name__':'__isolated_dynamic_test__','re':re,'os':os,'json':json,'tool':tool,
         'get_cred':lambda:types.SimpleNamespace(dedeuserid='12345'),
         'dynamic':types.SimpleNamespace(Dynamic=Dynamic),
         'comment':types.SimpleNamespace(Comment=Comment, get_comments=get_comments,
