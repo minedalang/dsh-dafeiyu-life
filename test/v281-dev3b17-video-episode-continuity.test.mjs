@@ -155,6 +155,9 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
       if(mode==='switch-before')account=B
       if(mode==='foreign')return '{"recallVideoBvid":"BV0987654321"}'
       if(mode==='mixed')return JSON.stringify({recallVideoBvid:BV,action:'inspect_opportunity',id:'op-1'})
+      if(mode==='exact')return JSON.stringify({recallVideoBvid:BV,startMs:7000,endMs:9000})
+      if(mode==='time-miss')return JSON.stringify({recallVideoBvid:BV,startMs:10000,endMs:12000})
+      if(mode==='invalid-time')return JSON.stringify({recallVideoBvid:BV,startMs:7000})
       return JSON.stringify({recallVideoBvid:BV})
      }
      if(mode.startsWith('revisit')&&prompts.length===2)return JSON.stringify({videoRevisit:{bvid:BV,startMs:12000,endMs:14000}})
@@ -167,7 +170,7 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
    const result=await planner.tick()
    assert.equal(executions,0)
    assert.doesNotMatch(prompts[0],/红色耳机/,'deep evidence must never enter the first prompt')
-   if(mode==='shallow'||mode==='foreign'||mode==='mixed'||mode==='switch-before'||limit===1){
+   if(mode==='shallow'||mode==='foreign'||mode==='mixed'||mode==='switch-before'||mode==='invalid-time'||limit===1){
     assert.equal(prompts.length,1);assert.equal(reads,0)
     if(mode!=='shallow')assert.equal(result.result,'invalid-decision')
    }else{
@@ -175,7 +178,8 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
     if(mode.startsWith('revisit')){assert.equal(revisits,limit>2?1:0);if(limit>2)assert.match(prompts[2],/新的局部观察/)}
     assert.ok(prompts[1].includes('"recalledVideoMemory"'))
     assert.match(prompts[1],/不得再次请求 recallVideoBvid/)
-    if(hasDetail){assert.match(prompts[1],/红色耳机/);assert.match(prompts[1],/"timeAnchorMs":\[8000,8000\]/)}
+    if(mode==='time-miss'){assert.match(prompts[1],/no-detail-in-time-range/);assert.doesNotMatch(prompts[1],/红色耳机/)}
+    else if(hasDetail){assert.match(prompts[1],/红色耳机/);assert.match(prompts[1],/"timeAnchorMs":\[8000,8000\]/)}
     else{assert.match(prompts[1],/"state":"no-detail"/);assert.doesNotMatch(prompts[1],/红色耳机/)}
     if(['repeat','switch-after','forget-after','revisit-stale'].includes(mode)||mode.startsWith('revisit')&&limit===2)assert.equal(result.result,'invalid-decision')
     else assert.equal(result.result,'voluntary-rest')
@@ -185,6 +189,7 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
  })
 }
 test('background Life first sees shallow evidence and voluntarily expands one real local deep memory',()=>progressiveScenario())
+test('Life exact time range uses existing one-read budget; missing and malformed ranges do not widen',async()=>{for(const mode of ['exact','time-miss','invalid-time'])await progressiveScenario({mode})})
 test('shallow evidence suffices: no extra model call or deep read',()=>progressiveScenario({mode:'shallow'}))
 test('missing deep attachment remains unknown; never auto-downloads or fabricates',()=>progressiveScenario({hasDetail:false}))
 test('foreign BV, mixed recall and action, and account change before read fail closed',async()=>{

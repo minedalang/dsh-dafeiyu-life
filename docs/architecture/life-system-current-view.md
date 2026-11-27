@@ -557,6 +557,11 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code recallDiag27 | lib/memory-neural-projection.mjs | const diagnostic=
 
 %% dev.27：公开显式回忆及视觉入口观察；本地路径有界保留、重启重新核验，不备份、不产生模型调用。
+
+  unifiedPublicRead27["公开评论/私信：按需精确深层回忆，同账号与活体复核"]
+  recallDiag27 -.-> unifiedPublicRead27
+%% @code unifiedPublicRead27 | lib/memory-retriever.mjs | const readPublicVisualDetail=
+%% dev.27: 主人/好友公开评论主动回忆复用原检索器，主人历史评论原文仍单独查成功回执；主人及好友私信可在原按需回忆预算内展开已提供的同账号清晰公开视觉经历（可选准确毫秒范围，最多2条有界描述，读取及送出前复核），后台 Life 的原单次深层回忆支持时间范围。原创视频评论仅在公开关联完整交付模型时记录真实召回；主人/好友评论按实际交付记录来源。沿用原权限、模型路由、回合及外发门禁，不开放评论补看、不扩大私密权限、不新增观察或持久关系。非视觉通用即时联想、反思通用主动工具、社会场景完整分页与全部自动上下文观察仍待统一。
 ```
 
 ## 二、八类候选细目
@@ -821,6 +826,11 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code ownerDmAI26 | lib/main-session-bridge.mjs | const ownerDmWriteReady=
 
 %% dev.27：公开显式回忆及视觉入口观察；本地路径有界保留、重启重新核验，不备份、不产生模型调用。
+
+  unifiedPublicRead27["私信/评论：原预算内展开已给出的公开经历"]
+  progressiveRecall283 -.-> unifiedPublicRead27
+%% @code unifiedPublicRead27 | lib/memory-retriever.mjs | const readPublicVisualDetail=
+%% dev.27: 主人/好友公开评论主动回忆复用原检索器，主人历史评论原文仍单独查成功回执；主人及好友私信可在原按需回忆预算内展开已提供的同账号清晰公开视觉经历（可选准确毫秒范围，最多2条有界描述，读取及送出前复核），后台 Life 的原单次深层回忆支持时间范围。原创视频评论仅在公开关联完整交付模型时记录真实召回；主人/好友评论按实际交付记录来源。沿用原权限、模型路由、回合及外发门禁，不开放评论补看、不扩大私密权限、不新增观察或持久关系。非视觉通用即时联想、反思通用主动工具、社会场景完整分页与全部自动上下文观察仍待统一。
 ```
 
 ## 三、可信回执与记忆闭环
@@ -1141,6 +1151,11 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code recallDiag27 | lib/memory-neural-projection.mjs | const diagnostic=
 
 %% dev.27：公开显式回忆及视觉入口观察；本地路径有界保留、重启重新核验，不备份、不产生模型调用。
+
+  unifiedPublicRead27["同账号公开深层附件选择；原证据复核，不新建记忆"]
+  recall -.-> unifiedPublicRead27
+%% @code unifiedPublicRead27 | lib/memory-retriever.mjs | const readPublicVisualDetail=
+%% dev.27: 主人/好友公开评论主动回忆复用原检索器，主人历史评论原文仍单独查成功回执；主人及好友私信可在原按需回忆预算内展开已提供的同账号清晰公开视觉经历（可选准确毫秒范围，最多2条有界描述，读取及送出前复核），后台 Life 的原单次深层回忆支持时间范围。原创视频评论仅在公开关联完整交付模型时记录真实召回；主人/好友评论按实际交付记录来源。沿用原权限、模型路由、回合及外发门禁，不开放评论补看、不扩大私密权限、不新增观察或持久关系。非视觉通用即时联想、反思通用主动工具、社会场景完整分页与全部自动上下文观察仍待统一。
 ```
 
 ## 四、统一 Life Episode 因果持续性
@@ -1422,4 +1437,9 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
 %% @code ownerDmAI26 | lib/main-session-bridge.mjs | const ownerDmWriteReady=
 
 %% dev.27：公开显式回忆及视觉入口观察；本地路径有界保留、重启重新核验，不备份、不产生模型调用。
+
+  unifiedPublicRead27["跨场景按需公开回忆：只读既有观察，非新经历"]
+  memory -.-> unifiedPublicRead27
+%% @code unifiedPublicRead27 | lib/memory-retriever.mjs | const readPublicVisualDetail=
+%% dev.27: 主人/好友公开评论主动回忆复用原检索器，主人历史评论原文仍单独查成功回执；主人及好友私信可在原按需回忆预算内展开已提供的同账号清晰公开视觉经历（可选准确毫秒范围，最多2条有界描述，读取及送出前复核），后台 Life 的原单次深层回忆支持时间范围。原创视频评论仅在公开关联完整交付模型时记录真实召回；主人/好友评论按实际交付记录来源。沿用原权限、模型路由、回合及外发门禁，不开放评论补看、不扩大私密权限、不新增观察或持久关系。非视觉通用即时联想、反思通用主动工具、社会场景完整分页与全部自动上下文观察仍待统一。
 ```

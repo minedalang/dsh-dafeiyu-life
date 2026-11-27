@@ -620,3 +620,19 @@ test('dev.25 跨进程生命周期使用真实已存公开片段，衰减和新�
   at=NOW+14*DAY;assert.equal(cue(),null);assert.equal(gap(),false)
  }finally{gateway?.close();rmSync(dir,{recursive:true,force:true})}
 })
+
+
+test('shared public deep reader selects exact parent and time, verifies live evidence and never widens to private or other BV',()=>setup(({gateway,memoryId,setAccount,setTime})=>{
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments,sourceProof:{internalToken:'test-only'}}).ok,true)
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({mainSessionMemoryEnabled:true}),getVisualExperiences:o=>gateway.recentVisualExperienceContext(o),getVideoDetails:o=>gateway.recallVideoDetails(o)})
+ const row=gateway.recentVisualExperienceContext({accountTag:A,limit:1,includeMemoryId:true})[0]
+ const args={accountTag:A,row,selection:{bvid:BV,startMs:1000,endMs:9000},isCurrent:()=>true,beforeAt:NOW+1}
+ const read=retriever.readPublicVisualDetail(args)
+ assert.equal(read.ok,true,JSON.stringify(read));assert.match(read.items[0].summary,/两个人物/);assert.match(read.items[0].summary,/1000–9000ms/);assert.equal(read.validateRecall(),true)
+ assert.equal(retriever.readPublicVisualDetail({...args,selection:{bvid:BV,startMs:10000,endMs:12000}}).reason,'no-detail-in-time-range')
+ assert.equal(retriever.readPublicVisualDetail({...args,selection:{bvid:'BV0987654321'}}).ok,false)
+ assert.equal(retriever.readPublicVisualDetail({...args,selection:{bvid:BV,ownerSession:true}}).ok,false)
+ assert.equal(retriever.readPublicVisualDetail({...args,beforeAt:NOW}).ok,false)
+ assert.equal(retriever.readPublicVisualDetail({...args,isCurrent:()=>false}).ok,false)
+ setAccount(B);assert.equal(read.validateRecall(),false);setAccount(A);setTime(NOW+20*DAY);assert.equal(read.validateRecall(),false)
+}))

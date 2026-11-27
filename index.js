@@ -5099,7 +5099,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       :{agent:'owner-dm',source:null,recent:[]},
     // Owner-private memory tools are read-only and bound to the currently
     // authenticated account. No public DM or other UID may query these copies.
-    recallMemory:async({action,uid,query,id,history=[],beforeAt=0})=>{
+    recallMemory:async({action,uid,query,id,detail,history=[],beforeAt=0})=>{
       refreshCfg()
       if(String(uid)!==String(cfg.dmOwnerUid||'')||cfg.ownerDmAgentEnabled!==true||!trustedLifeAccountTag()||accountBinding.status()?.blocked)
         return {ok:false,reason:'account-not-verified',items:[]}
@@ -5111,6 +5111,13 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         return retriever.ownerContextualSearch(query,{accountTag:scope,isCurrent,history,limit:6,beforeAt,onVisualRecall:rows=>{if(isCurrent())observePublicRecall(scope,rows,'owner-dm')}})
       }
       if(action==='memory_detail'){
+        if(detail){
+          const scope=trustedLifeAccountTag(),epoch=accountBinding.generation()
+          const isCurrent=()=>epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&String(uid)===String(cfg.dmOwnerUid||'')&&cfg.ownerDmAgentEnabled===true
+          const row=(lifeMemory?.recentVisualExperienceContext({accountTag:scope,memoryIds:[String(id||'').replace(/^episode:/,'')],limit:1})||[])[0]
+          if(!String(id||'').startsWith('episode:')||row?.memoryId!==String(id).slice(8))return {ok:false,reason:'detail-not-offered',items:[]}
+          return memoryRetriever?.readPublicVisualDetail({accountTag:scope,row,selection:detail,isCurrent,beforeAt})||{ok:false,reason:'memory-not-ready',items:[]}
+        }
         const item=memoryRetriever?.ownerDetail(id)
         return {ok:true,items:item?[item]:[]}
       }
@@ -6216,7 +6223,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   })
   socialContextAssembler=createSocialContextAssembler({
     policy:socialPolicyGate,memoryRetriever,getMemoryRetriever:()=>memoryRetriever,getAccountTag:()=>accountBinding.status().blocked?'':trustedLifeAccountTag(),
-    getAccountEpoch:()=>accountBinding.generation(),onVisualRecall:({accountTag,rows})=>observePublicRecall(accountTag,rows,'friend-dm'),
+    getAccountEpoch:()=>accountBinding.generation(),onVisualRecall:({accountTag,rows,kind,role})=>observePublicRecall(accountTag,rows,kind==='comment'?(role==='owner'?'owner-comment':'friend-comment'):'friend-dm'),
     getMeme:async(item)=>(await interactionMemeLookup.forBatch([item]))?.[0]||'',
     getPersona:batch=>buildInteractionPersona(batch),
     getIdentity:uid=>replyIdentityContext(uid),
@@ -6286,16 +6293,19 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         role:ctx.role,emotion:emotionalState.snapshot(),style:ctx.persona,
         memoryContext:ctx.memoryContext,memeContext:ctx.memeContext,privateUnderstandingContext:ctx.privateUnderstandingContext,
         relationship:ctx.relationshipContext,history:dualContextAgency.context({uid:row.uid,thread:row.thread,target:row.bvid}),
-        // Caller identity is the platform-authenticated owner; a friend cannot
-        // request owner recall. Public results contain only confirmed self-posted
-        // comments, never the owner DM's memory_search or private insights.
-        recallMemory:ctx.role==='friend'?async({queries,recallRequest})=>{
+        // Owner public-comment history and public Life recall are distinct reads.
+        // Neither route grants owner-private memory access or new actions.
+        recallMemory:['owner','friend'].includes(ctx.role)?async({queries,recallRequest})=>{
+          refreshCfg()
+          if(cfg.masterEnabled!==true||socialPolicyGate.actor(row.uid).role!==ctx.role||ctx.role==='owner'&&cfg.ownerCommentAgentEnabled!==true)return {ok:false,reason:'comment-agent-disabled',items:[]}
+          const scope=trustedLifeAccountTag(),epoch=accountBinding.generation()
+          const current=()=>epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&cfg.masterEnabled===true&&socialPolicyGate.actor(row.uid).role===ctx.role&&(ctx.role!=='owner'||cfg.ownerCommentAgentEnabled===true)
+          if(!scope||!current())return {ok:false,reason:'account-changed',items:[]}
           const read=await socialContextAssembler.message({kind:'comment',uid:row.uid,text:row.text,
-            context:ctx.context,bvid:row.bvid,incomingRpid:row.rpid,recallQueries:queries,recallRequest},
+            context:ctx.context,bvid:row.bvid,incomingRpid:row.rpid,timestampMs:row.timestampMs,recallQueries:queries,recallRequest,deferRecallObservation:true},
             {mode:'compact',requested:['memory']})
-          if(!read.ok||read.loadErrors?.length)return {ok:false,reason:'memory-read-unavailable',items:[]}
-          return {ok:true,items:[...(read.memoryContext?[{id:'social-public-memory',kind:'public-safe',
-            summary:read.memoryContext,source:'live-memory-only'}]:[]),
+          if(!read.ok||read.loadErrors?.length||!current())return {ok:false,reason:'memory-read-unavailable',items:[]}
+          return {ok:true,validateRecall:()=>current()&&(!read.validateRecall||read.validateRecall()===true),observeDelivered:items=>{if(current())read.observeDelivered?.(items)},items:[...(read.memoryContext?(read.publicRecallLines||[]).map((summary,i)=>({id:'social-public-memory:'+i,kind:'public-safe',summary,source:'live-memory-only'})):[]),
             ...(read.privateUnderstandingContext?[{id:'private-understanding',kind:'private-context-non-disclosable',
             summary:read.privateUnderstandingContext,source:'live-private-memory-only'}]:[])]}
         }:null,
@@ -6411,7 +6421,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       }
       return {ok:false,error:'不支持的评论动作'}
     },
-    sendReply:async({bvid,rpid,root,text,actorUid,kind,channel})=>{
+    sendReply:async({bvid,rpid,root,text,actorUid,kind,channel,validateRecall})=>{
+      const recallCurrent=()=>{try{return typeof validateRecall!=='function'||validateRecall()===true}catch{return false}}
+      if(!recallCurrent())return {ok:false,notAttempted:true,reason:'public-recall-changed'}
       const factCheck=outboundFactCheck(text,{uid:String(actorUid||''),channel:'comment'});
       if(!factCheck.ok)return {ok:false,error:'评论未通过统一事实核验：'+factCheck.reason};
       refreshCfg()
@@ -6448,7 +6460,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       try{
         refreshCfg()
         const liveTier=socialTier(actorUid,cfg.dmOwnerUid,cfg.friendDirectory)
-        if(cfg.masterEnabled!==true||trustedLifeAccountTag()!==expectedScope||liveTier!==tier||
+        if(!recallCurrent()||cfg.masterEnabled!==true||trustedLifeAccountTag()!==expectedScope||liveTier!==tier||
           Number(cfg.commentDailyLimit)<=0||Number(cfg.commentReplyPerDay)<=0||
           (liveTier==='owner'?(cfg.ownerCommentAgentEnabled!==true||
             (['social-skip','social-chat','social-result'].includes(kind)
@@ -6462,6 +6474,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           reason:intent?.reason||'trusted-comment-proof-invalid'}}
         const receipt=await socialSendTransaction.execute({channel:'comment',eventKey:stableKey,
           expectedScope},async()=>{
+          if(!recallCurrent())return {ok:false,notAttempted:true,reason:'public-recall-changed'}
           const r=parseMaybeJson(await call('bili_reply_manual',{
             bvid,rpid:Number(rpid),root:Number(root)||0,text,confirm:true}))
           const ack=confirmedOwnerCommentReceipt(r,'reply')
@@ -7207,6 +7220,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getEpisodeCandidates:(options)=>lifeMemory?.semanticCandidates(options)||[],
     getVisualExperiences:options=>lifeMemory?.recentVisualExperienceContext(options)||[],
     getVisualDetailCandidates:options=>lifeMemory?.visualDetailCandidates(options)||[],
+    getVideoDetails:options=>lifeMemory?.recallVideoDetails(options)||{ok:false,reason:'memory-unavailable'},
     getOwnerPrivateVisualCandidates:options=>lifeMemory?.ownerPrivateVisualCandidates(options)||[],
     getAssociations:options=>lifeMemory?.associationCandidates(options)||[],
     validateAssociationPath:options=>lifeMemory?.validateAssociationPath(options)===true,
@@ -7404,7 +7418,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         if(topic&&cfg.mainSessionMemoryEnabled&&lifeMemory)
           publicMemory=lifeMemory.recall({query:topic,domain:'bili-explore',kinds:['watch'],maxItems:2,maxChars:360,reinforce:false})||[]
       }catch{degradedStages.push('public-memory');log('Life 上下文：可回忆视频线索暂不可用')}
-      let world={},validateRecall=null
+      let world={},validateRecall=null,observeRecall=null
       try{world=projectLifeWorldEvidence({interests,episodes:publicMemory})}
       catch{degradedStages.push('public-memory');log('Life 上下文：公开记忆摘要暂不可用，使用基本人格继续')}
       // Original top-level comment only: sourceKey came from the checked
@@ -7412,12 +7426,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // a grant or a receipt. Do not query private or same-video memories.
       if(scene==='comment'&&kind==='video_comment')try{
         const target=/^video-comment:[a-f0-9]{24}:(BV[0-9A-Za-z]{10})$/.exec(String(sourceKey||''))?.[1]
-        const scope=trustedLifeAccountTag()
+        const scope=trustedLifeAccountTag(),epoch=accountBinding.generation()
         if(target&&scope&&cfg.mainSessionMemoryEnabled&&memoryRetriever){
           const cue=String(evidence?.publicVideoComment?.evidence||'').slice(0,540)
           const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[cue],limit:2,associate:true,excludeBvids:[target],recentFallback:false})
-          if(scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&rows.length){
-            validateRecall=()=>scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows})
+          if(epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&rows.length){
+            validateRecall=()=>epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows})
+            observeRecall=()=>{if(validateRecall())observePublicRecall(scope,rows,'video-comment')}
             world={...world,optionalPastVideoAssociations:publicVisualAssociationContext(rows,target)}
           }
         }
@@ -7459,7 +7474,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         catch{throw Error('life-base-identity-unavailable')}
       }
       if(!voice.trim())throw Error('life-base-identity-unavailable')
-      return {voice,world,experience,degradedStages,validateRecall}
+      return {voice,world,experience,degradedStages,validateRecall,observeRecall}
     },
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'behaviorDecision'}),
     // Completion notifications are non-executing, account-bound and de-duped

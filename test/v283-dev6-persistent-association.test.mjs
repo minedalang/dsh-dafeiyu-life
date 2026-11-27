@@ -187,7 +187,7 @@ test('main chat uses explicit visual recall only, verified receipt source stays 
  const main=code.slice(code.indexOf('getVideoAssociationRecall:async (query'),code.indexOf('getVideoDetailRecall:',code.indexOf('getVideoAssociationRecall:async (query')))
  assert.match(main,/associate:true,recentFallback:false/);assert.match(main,/!isCurrent\(\)\|\|epoch!==accountBinding\.generation\(\)/);assert.match(main,/observePublicRecall\(scope,rows,'main-chat'\)/)
  assert.match(code,/onVisualRecall:rows=>\{if\(isCurrent\(\)\)observePublicRecall\(scope,rows,'owner-dm'\)\}/)
- assert.match(code,/onVisualRecall:\(\{accountTag,rows\}\)=>observePublicRecall\(accountTag,rows,'friend-dm'\)/)
+ assert.match(code,/onVisualRecall:\(\{accountTag,rows,kind,role\}\)=>observePublicRecall\(accountTag,rows,kind==='comment'/)
 }))
 
 test('real immediate second search yields transient dashed path; no persistent edge, no forged proof, expires or revokes',()=>setup(async x=>{
@@ -324,4 +324,26 @@ test('ordinary explicit recall can deliver one existing public edge within unuse
  assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:[a.id],proof:ordinary.publicAssociationProof}),false);assert.equal(tracker.diagnostic(A).state,'rejected')
  const manual=await retriever.retrieve('雨后的城市街道','manual',{includeSelf:true});assert.equal(manual.publicAssociationProof,undefined);assert.equal(calls,1)
  const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==b.id);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal((await retriever.retrieve('雨后的城市街道','chat',{includeSelf:true})).publicAssociationProof,undefined);assert.equal(tracker.read(A),null)
+}))
+
+
+test('trusted owner/friend comment explicit public recall delivers only live public association; deferred observation needs full delivery',()=>setup(async x=>{
+ const {createSocialContextAssembler}=await import('../lib/social-context-assembler.mjs')
+ assert.equal(add(x.g,[propose(x.g,1,3,'contrast')]).added,1)
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o)})
+ let epoch=1,role='owner',calls=0
+ const tracker=createNeuralActivationTracker({getAccountTag:()=>A,getEpoch:()=>epoch,validateRecall:o=>retriever.validateContextualVisualRecall(o),validatePath:o=>x.g.validateAssociationPath(o),now:()=>NOW})
+ const policy={actor:()=>({role}),memoryScope:({kind})=>kind==='dm'?'owner-private':'public',canViewIdentity:()=>false,canViewRelationship:()=>false}
+ const assembler=createSocialContextAssembler({policy,memoryRetriever:retriever,getAccountTag:()=>A,getAccountEpoch:()=>epoch,getPrivateLifeContext:()=>'',onVisualRecall:({accountTag,rows,kind,role})=>{assert.equal(kind,'comment');calls++;tracker.record({accountTag,rows,channel:role+'-comment'})},logger:{warn(){}}})
+ const input={uid:'123456789',kind:'comment',text:'以前那次',recallQueries:[events[0].title],timestampMs:NOW+1,deferRecallObservation:true}
+ const run=extra=>assembler.message({...input,...extra},{mode:'compact',requested:['memory']})
+ for(const actor of ['owner','friend']){
+  role=actor;const result=await run({});assert.match(result.memoryContext,new RegExp(bv(3)));assert.doesNotMatch(result.memoryContext,/主人私密画面|另一个账号的作品/);assert.equal(result.validateRecall(),true)
+  const before=calls;result.observeDelivered([{kind:'public-safe',summary:bv(1)}]);assert.equal(calls,before)
+  result.observeDelivered(result.publicRecallLines.map(summary=>({kind:'public-safe',summary})));assert.equal(calls,before+1);assert.equal(tracker.read(A).channel,actor+'-comment')
+  epoch++;assert.equal(result.validateRecall(),false);result.observeDelivered(result.publicRecallLines.map(summary=>({kind:'public-safe',summary})));assert.equal(calls,before+1)
+ }
+ role='stranger';assert.equal((await run({})).observeDelivered,undefined)
+ role='owner';assert.equal((await run({privacyGuard:true})).observeDelivered,undefined)
+ const limited=await run({recallRequest:{intent:'activity_recall',time:{relative:'yesterday'},detail:{bvid:bv(1)}}});assert.ok(limited.loadErrors.length);assert.equal(limited.memoryContext,'')
 }))

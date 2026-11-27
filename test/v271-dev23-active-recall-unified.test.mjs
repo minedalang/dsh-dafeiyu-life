@@ -145,3 +145,19 @@ test('owner DM cannot send after a recalled visual source becomes invalid',()=>w
  const a=makeOwner(dir,{recallMemory:async()=>({ok:true,items:[{id:'episode:known',kind:'watch',summary:'朱红雨伞'}],validateRecall:()=>live}),invokeModel:async()=>{if(++calls===1)return {action:'memory_search',queries:['朱红雨伞']};live=false;return {action:'reply',text:'我记得那把伞'}},send:async()=>{sends++;return {ok:true}}})
  await a.processMessage(ownerMsg('那把伞呢','m-revoke'));assert.equal(sends,0)
 }))
+
+
+test('owner comment can opt into public Life recall; legacy public-comment receipts remain separate; stale model response is denied',async()=>{
+ let reads=0,ledger=0,calls=0,current=true,observed=0
+ const invoke=async()=>++calls%2===1?JSON.stringify({intent:'chat',decision:'allow',reply:'让我想想',recallQueries:['角色画面'],recallTarget:'memory',recall:{detail:{bvid:BV,startMs:1000,endMs:3000}}}):JSON.stringify({intent:'chat',decision:'allow',reply:'我记得以前看到的画面。'})
+ const args={row:{text:'你之前记得什么画面'},role:'owner',invoke,recallPublic:()=>{ledger++;return {ok:true,items:[]}},recallMemory:({recallRequest})=>{reads++;assert.deepEqual(recallRequest.detail,{bvid:BV,startMs:1000,endMs:3000});return {ok:true,items:[{id:'public',kind:'public-safe',summary:'以前看过的公开画面'}],validateRecall:()=>current,observeDelivered:items=>{assert.equal(items[0].summary,'以前看过的公开画面');observed++}}}}
+ const result=await interpretTrustedSocial(args);assert.equal(result.ok,true);assert.equal(reads,1);assert.equal(ledger,0);assert.equal(observed,1);assert.equal(result.validateRecall(),true);current=false;assert.equal(result.validateRecall(),false)
+ current=true;const stale=await interpretTrustedSocial({...args,invoke:async p=>{const value=await invoke();if(calls%2===0)current=false;return value}});assert.equal(stale.ok,false);assert.equal(stale.reason,'public-recall-changed')
+})
+test('owner detail accepts exact historical time only for previously returned memory ID',()=>withDir(async dir=>{
+ let calls=0,reads=[]
+ const agent=makeOwner(dir,{recallMemory:async args=>{reads.push(args);return {ok:true,items:[{id:'episode:known',summary:'以前看到的公开画面'}]}},invokeModel:async()=>[
+ {action:'memory_search',queries:['画面']},{action:'memory_detail',id:'episode:known',detail:{bvid:BV,startMs:1000,endMs:3000}},{action:'reply',text:'我想起来了。'}][calls++]})
+ assert.equal((await agent.processMessage(ownerMsg('之前那个画面','detail-1'))).ok,true)
+ assert.equal(reads.length,2);assert.deepEqual(reads[1].detail,{bvid:BV,startMs:1000,endMs:3000})
+}))
