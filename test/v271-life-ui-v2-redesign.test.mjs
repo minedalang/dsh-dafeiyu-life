@@ -26,7 +26,8 @@ test('Life overview has single primary navigation with technical cards collapsed
 test('memory and whitelist have illustrated, responsive cards without replacing real data IDs',()=>{
   assert.match(html,/class="life-hero life-memory-hero"/)
   assert.match(html,/class="life-memory-character" src="\/api\/bili-duty\/life-character.png"/)
-  assert.match(html,/class="memory-journey-nav"/)
+  assert.match(html,/id="memory-now-title">此刻还记得的事/)
+  assert.doesNotMatch(html,/<nav class="memory-journey-nav"/)
   assert.match(html,/id="friend-directory-editor"/)
   assert.match(html,/class="friend-directory-banner"/)
   assert.match(html,/\.friend-directory-card/)

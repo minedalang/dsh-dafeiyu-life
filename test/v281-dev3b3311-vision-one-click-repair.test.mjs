@@ -287,3 +287,22 @@ test('Windows external modelData forbids rebuilding another Low-inheriting envir
   assert.equal(existsSync(join(f.home,'.vision-env-')),false)
  }finally{f.clean()}
 })
+
+test('offline environment quarantine protects explicit interpreters, dependency bases and unrelated data; no deletion',async()=>{
+ const {inspectVisionEnvironments,quarantineVisionEnvironments}=await import('../lib/vision-environment-maintenance.mjs')
+ const f=setup(),now=1800000000000
+ try{
+  const active='.vision-env-1794883710603-ba2c0851',unused='.vision-env-1794884037756-af9fda09',base='.vision-env-1794888820105-cbab4d42-0'
+  for(const name of [active,unused,base]){mkdirSync(join(f.home,name,'Scripts'),{recursive:true});writeFileSync(join(f.home,name,'Scripts','python.exe'),'test executable');writeFileSync(join(f.home,name,'pyvenv.cfg'),'home = '+f.root+'\n')}
+  writeFileSync(join(f.home,active,'pyvenv.cfg'),'home = '+join(f.home,base)+'\n')
+  const python=join(f.home,active,'Scripts','python.exe');const cfg=join(f.home,'config.json');writeFileSync(cfg,JSON.stringify({pythonPath:python,visionPythonPath:python}));mkdirSync(join(f.home,'life-memory'));writeFileSync(join(f.home,'life-memory','episodic.json'),'unchanged')
+  const options={root:f.home,configured:python,preferred:python,selected:python,env:{},platform:'win32',now}
+  const plan=inspectVisionEnvironments(options);assert.equal(plan.available,true,plan.reason);assert.equal(plan.count,1);assert.equal(plan.entries.find(r=>r.name===active).status,'protected');assert.equal(plan.entries.find(r=>r.name===base).status,'protected');assert.equal(plan.entries.find(r=>r.name===unused).status,'candidate')
+  const offline={token:plan.token,platform:'win32',env:{},now:now+1000};assert.throws(()=>quarantineVisionEnvironments({...offline,checkStopped:()=>({ok:false})}),/仍有/);assert.ok(existsSync(join(f.home,unused)))
+  writeFileSync(cfg,JSON.stringify({pythonPath:python,visionPythonPath:python,changed:true}));assert.throws(()=>quarantineVisionEnvironments({...offline,checkStopped:()=>({ok:true})}),/已变化/);assert.ok(existsSync(join(f.home,unused)))
+  writeFileSync(cfg,JSON.stringify({pythonPath:python,visionPythonPath:python}));assert.throws(()=>quarantineVisionEnvironments({...offline,now:now+31*60_000,checkStopped:()=>({ok:true})}),/失效/)
+  const result=quarantineVisionEnvironments({...offline,checkStopped:()=>({ok:true})});assert.equal(result.ok,true,result.error);assert.equal(result.moved.length,1);assert.equal(existsSync(join(f.home,unused)),false);assert.equal(readFileSync(join(f.home,unused.replace('.vision-env-','.vision-retired-'),'Scripts','python.exe'),'utf8'),'test executable');assert.ok(existsSync(python));assert.equal(readFileSync(join(f.home,'life-memory','episodic.json'),'utf8'),'unchanged')
+  const after=inspectVisionEnvironments(options);assert.equal(after.count,0);assert.ok(after.entries.some(r=>r.status==='retired'))
+  assert.equal(inspectVisionEnvironments({...options,preferred:''}).available,false);assert.equal(inspectVisionEnvironments({...options,repairBusy:true}).available,false)
+ }finally{f.clean()}
+})

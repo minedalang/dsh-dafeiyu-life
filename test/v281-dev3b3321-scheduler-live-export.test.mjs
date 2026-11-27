@@ -133,6 +133,7 @@ test('explicit full memory export follows verified relocated core and memory par
   for(const [folder,file] of [['life-video-gallery/test','storyboard-00.jpg'],['vision-perception-captures/test','storyboard-01.JPG'],['comment-memes/test','meme.png'],['dafeiyu-scene-test','public-video.mp4']]){
    mkdirSync(join(target,folder),{recursive:true});writeFileSync(join(target,folder,file),'asset');json(join(target,folder,'manifest.json'),{evidence:'retained metadata'})
   }
+  mkdirSync(join(target,'.vision-retired-old'));writeFileSync(join(target,'.vision-retired-old','package.py'),'isolated runtime')
   mkdirSync(join(target,'.vision-env-old'));writeFileSync(join(target,'.vision-env-old','package.py'),'unused runtime')
   mkdirSync(join(target,'__pycache__'));writeFileSync(join(target,'__pycache__','test.pyc'),'cache')
   writeFileSync(join(target,'bili-duty-logs-old.zip'),'previous export')
@@ -161,7 +162,7 @@ test('explicit full memory export follows verified relocated core and memory par
  }
  assert.equal(coverage.binaryEvidence.includedByRequest,false);assert.equal(coverage.binaryEvidence.omittedFiles,5);assert.equal(coverage.binaryEvidence.omittedRawBytes,24)
  assert.deepEqual(coverage.binaryEvidence.byReason['rebuildable-embedding-vectors'],{files:1,rawBytes:4})
- assert.equal(existsSync(join(raw,'.vision-env-old/package.py')),false);assert.equal(existsSync(join(raw,'__pycache__/test.pyc')),false);assert.equal(existsSync(join(raw,'bili-duty-logs-old.zip')),false)
+ assert.equal(existsSync(join(raw,'.vision-retired-old/package.py')),false);assert.equal(existsSync(join(raw,'.vision-env-old/package.py')),false);assert.equal(existsSync(join(raw,'__pycache__/test.pyc')),false);assert.equal(existsSync(join(raw,'bili-duty-logs-old.zip')),false)
  assert.equal(existsSync(join(raw,'life-memory/example.db')),false);assert.equal(existsSync(join(out,'sqlite-snapshots/life-memory/example.db')),true)
  assert.equal(coverage.sqliteSnapshots[0].integrityCheck,'ok')
 })

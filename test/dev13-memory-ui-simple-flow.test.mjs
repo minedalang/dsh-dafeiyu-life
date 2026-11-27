@@ -13,6 +13,12 @@ test('记忆页只暴露一个常用搜索框；反思、模型诊断和旧插�
  assert.equal((life.match(/id="main-session-history-query"/g)||[]).length,1)
  assert.equal((life.match(/id="main-memory-query"/g)||[]).length,1)
  assert.match(life,/id="main-memory-query"[^>]*hidden/)
+ assert.doesNotMatch(life,/id="neural-search-input"|class="toolbar memory-primary-actions"/)
+ assert.ok(life.indexOf('id="memory-now-title"')<life.indexOf('id="life-memory-health-panel"'))
+ assert.ok(life.indexOf('id="life-memory-health-panel"')<life.indexOf('id="neural-recall-board"'))
+ assert.ok(life.indexOf('id="neural-recall-board"')<life.indexOf('id="memory-experience-section"'))
+ assert.ok(life.indexOf('id="memory-experience-section"')<life.indexOf('id="life-lessons"'))
+ assert.match(life,/id="main-memory-kind" hidden/)
  assert.match(life,/class="memory-reflection-details"/)
  assert.match(life,/class="memory-advanced-details"/)
  assert.match(life,/<details class="memory-legacy-details">/)
@@ -84,4 +90,15 @@ test('人生记忆聚焦兴趣；鱼鱼此刻展示心情和待办',()=>{
  assert.match(script,/renderTodoList\(data\)/)
  assert.match(script,/showTodoFilter\(filter\)/)
  assert.doesNotMatch(script,/btn\('现在执行'/);assert.match(script,/owner-todo-remind/)
+})
+
+test('compact experience rows preserve date precision, full text and video link; identity records are not duplicated',async()=>{
+ const {runInNewContext}=await import('node:vm')
+ function node(tag,text='',className=''){return {tag,textContent:text,className,children:[],dataset:{},appendChild(e){this.children.push(e)},append(...e){this.children.push(...e)},replaceChildren(){this.children=[]}}}
+ const els={'main-memory-kind':{value:''},'main-session-history-query':{value:''},'main-session-history':node('div'),'main-session-history-status':node('p')}
+ const start=script.indexOf('  let gardenEpisodes='),end=script.indexOf('  // dev49:',start)
+ const render=runInNewContext(script.slice(start,end)+`\n(rows,memories)=>{gardenEpisodes=rows;gardenMemories=memories;paintMemoryGarden()}`,{$:id=>els[id],node,add:(e,...items)=>items.forEach(x=>e.appendChild(x)),info:x=>node('p',x),formatLocalTime:x=>String(x),platformSettingsUnavailable:()=>false})
+ const summary='保留完整经历正文，而非仅保留摘要行的截断部分';render([{kind:'watch',stage:'clear',summary,at:Date.parse('2026-11-01'),dateOnly:true,day:'2026-11-01',bvid:'BV1Q541167Qp'}],[{id:'m1',source:'life-reflection',text:'长期认识独立显示',gardenEvidence:'identity-memory'},{id:'m2',source:'relationship-observation',gardenKind:'relationship',text:'真实互动线索',gardenEvidence:'verified-interaction-metadata'}])
+ const cards=els['main-session-history'].children;assert.equal(cards.length,2);const row=cards.find(x=>x.children[0].children[1].textContent===summary);assert.equal(row.tag,'details');assert.equal(row.children[0].children[0].dataset.stage,'clear');assert.equal(row.children[1].children[0].textContent,'2026-11-01 · 具体时刻未记录');assert.equal(row.children[1].children[1].textContent,summary);assert.equal(row.children[1].children[2].href,'https://www.bilibili.com/video/BV1Q541167Qp');assert.doesNotMatch(JSON.stringify(cards),/长期认识独立显示/)
+ els['main-memory-kind'].value='relationship';render([{kind:'watch',stage:'clear',summary}],[]);assert.doesNotMatch(JSON.stringify(els['main-session-history'].children),/保留完整经历正文/)
 })

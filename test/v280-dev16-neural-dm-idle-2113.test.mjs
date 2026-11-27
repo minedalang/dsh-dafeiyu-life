@@ -15,7 +15,8 @@ test('neural graph is masked without ready local embedding; ordinary memory sear
  assert.match(js,/syncNeuralEmbeddingMask\(localEmbeddingEnabled/);
  assert.match(js,/syncNeuralEmbeddingMask\(false,'已安装的本地模型暂时无法执行语义搜索/);
  assert.match(html,/id="main-session-history-query"/);
- assert.match(js,/\$\('neural-search-input'\)\.disabled=ready!==true/);
+ assert.match(js,/mask\.hidden=ready===true/);
+ assert.doesNotMatch(js,/\$\('main-session-history-query'\)\.disabled=ready!==true/);
 });
 test('notification sentinels replace idle full-list polling; Life technical continuation stays targeted',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'dm-neural-sentinel-'));let at=1_800_000_000_000,full=0,continuation=0,continuationDue=false

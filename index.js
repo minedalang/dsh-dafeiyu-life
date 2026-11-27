@@ -81,6 +81,7 @@ import {inspectRetainedLifeCopies} from './lib/storage-life-retained.mjs'
 import {queueLifeCleanup,queueExternalLifeCleanup,readLifeCleanupJob} from './lib/storage-life-cleanup-queue.mjs'
 import {inspectExternalLifeCopy} from './lib/storage-external-life-retired.mjs'
 import {queueModelCleanup,readCleanupJob} from './lib/storage-cleanup-queue.mjs'
+import {inspectVisionEnvironments} from './lib/vision-environment-maintenance.mjs'
 import {queueDomainMigration,readMigrationJob,assertMigrationStartupSafe} from './lib/storage-migration-queue.mjs'
 import {registerMigrationMaintenance} from './lib/storage-migration-maintenance.mjs'
 import {managementOwnerStatus,managementAuthError,explicitManagementIntent,managementPath,managementBrowserUrl,managementBrowserLanding} from './lib/management-host-auth.mjs'
@@ -9147,7 +9148,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     // Storage V2: only one explicitly scheduled large-model migration; no V1
     // partition migration, return-home, stale-copy cleanup or legacy API.
-    if ((req.method==='GET'&&path==='/api/bili-duty/storage/location')||
+    if ((req.method==='GET'&&['/api/bili-duty/storage/location','/api/bili-duty/storage/vision-environments'].includes(path))||
         (req.method==='POST'&&['/api/bili-duty/storage/check',
           '/api/bili-duty/storage/verify-model-runtime',
           '/api/bili-duty/storage/review-model-vision',
@@ -9160,6 +9161,15 @@ logger:{warn:m=>log('社交意图：'+m)}
          String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'仅允许电脑本机同源管理中心操作存储'})
       try{
+        if(req.method==='GET'&&path==='/api/bili-duty/storage/vision-environments'){
+          res.setHeader?.('Cache-Control','private, no-store')
+          const busy=visionEnvironmentRepair.status().installing===true
+          const selected=busy?'':selectHealthyVisionPython().path||''
+          const result=inspectVisionEnvironments({root:stateDir,configured:cfg.pythonPath,preferred:cfg.visionPythonPath,selected,repairBusy:busy})
+          const {token,...view}=result
+          const quote=value=>"'"+String(value).replace(/'/g,"''")+"'"
+          return sendJson(res,200,{...view,command:token?`node ${quote(join(pluginDir,'lib','vision-environment-maintenance.mjs'))} --quarantine ${quote(token)}`:''})
+        }
         if(req.method==='GET')return sendJson(res,200,{ok:true,
           currentDir:stateDir,usage:storageCategories(stateDir),
           largeDataV2:largeDataStatus(stateDir),migrationJob:readMigrationJob(stateDir),

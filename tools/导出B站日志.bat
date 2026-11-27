@@ -299,7 +299,7 @@ def collect_full():
                 except OSError as ex:
                     blocked = True
                     full_report['errors'].append({'path': prefix+rel, 'reason': type(ex).__name__})
-                excluded = name.lower() in EXCLUDED_DIRS or name.lower().startswith(('.venv', '.vision-env-', 'backup-before-reinstall')) or (exclude_memory and here == base and name in MEMORY_DIRS) or AUTH_NAME.search(name)
+                excluded = name.lower() in EXCLUDED_DIRS or name.lower().startswith(('.venv', '.vision-env-', '.vision-retired-', 'backup-before-reinstall')) or (exclude_memory and here == base and name in MEMORY_DIRS) or AUTH_NAME.search(name)
                 if blocked or excluded:
                     if excluded:
                         full_report['skipped'].append({'path': prefix+rel, 'reason': 'separate-memory-source-or-excluded-directory'})
@@ -1020,7 +1020,7 @@ if full_memory:
 else:
     for base,dirs,filenames in os.walk(root,followlinks=False):
         dirs[:]=[x for x in dirs if x.lower() not in skip_dirs and
-                 not x.lower().startswith('backup-before-reinstall') and
+                 not x.lower().startswith(('backup-before-reinstall', '.vision-env-', '.vision-retired-')) and
                  not (Path(base)/x).is_symlink()]
         for filename in filenames:
             if not filename.lower().endswith(('.sqlite','.sqlite3','.db')):continue
@@ -1440,7 +1440,7 @@ sys.exit(0)
       # Live SQLite files, WAL and SHM are NEVER copied directly. A coherent
       # Python sqlite3 backup is added below under the original archive path.
       if ($file.Name -match '(?i)\.(sqlite3?|db)(-wal|-shm|-journal)?$') { continue }
-      if (-not $isAccount -and $rel -match '(^|\\)(\.venv[^\\]*|uv-cache|uv-python|node_modules|\.git|\.hf-cache|embedding-runtime|backup-before-reinstall[^\\]*|projects)(\\|$)') { continue }
+      if (-not $isAccount -and $rel -match '(^|\\)(\.venv[^\\]*|\.vision-(?:env|retired)-[^\\]*|uv-cache|uv-python|node_modules|\.git|\.hf-cache|embedding-runtime|backup-before-reinstall[^\\]*|projects)(\\|$)') { continue }
       if (-not $isAccount -and $rel -match '(?i)(credential|cookie|token|secret|password|config)') { continue }
       $include = $isAccount -or $file.Name -match '(?i)\.log(\.\d+)?$|\.jsonl$' -or
         $rel -match '^(life-decision-traces|model-invocations|model-usage|mention-diagnostics|meme-diagnostics|read-action-executions|outbound-action-executions|life-agent-events|activity|out|reports)(\\|$)'

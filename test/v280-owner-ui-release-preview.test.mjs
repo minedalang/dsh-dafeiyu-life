@@ -5,16 +5,17 @@ import {readFileSync} from 'node:fs'
 const src=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 const html=src('lib/management-console.html'),ui=src('lib/management-console.js')
 
-test('graph search is immediately above its 3D viewport in the same field, including fullscreen',()=>{
- const a=html.indexOf('<div class="neural-recall-field">')
- const b=html.indexOf('id="neural-memory-viewport"',a)
- const fragment=html.slice(a,b)
- assert.ok(a>=0&&b>a)
- assert.match(fragment,/id="neural-search-input"/)
- assert.match(fragment,/id="neural-search-apply"/)
- assert.match(fragment,/class="neural-canvas-legend"/);assert.match(fragment,/neural-legend|neural-recall-controls/)
- assert.equal((html.match(/id="neural-search-input"/g)||[]).length,1)
- assert.match(ui,/neuralBoard\.requestFullscreen/)
+test('one shared memory search is above the graph and moves intact into fullscreen',()=>{
+ const a=html.indexOf('id="memory-now-title"'),b=html.indexOf('id="neural-recall-board"'),c=html.indexOf('id="neural-memory-viewport"');
+ assert.ok(a>=0&&a<b&&b<c);
+ assert.ok(html.indexOf('id="life-memory-health-panel"')>a&&html.indexOf('id="life-memory-health-panel"')<b);
+ assert.equal((html.match(/id="main-session-history-query"/g)||[]).length,1);
+ assert.equal((html.match(/id="main-session-history-search"/g)||[]).length,1);
+ assert.doesNotMatch(html,/id="neural-search-(?:input|apply)"/);
+ assert.ok(html.indexOf('id="memory-shared-search-fullscreen"')>b&&html.indexOf('id="memory-shared-search-fullscreen"')<c);
+ assert.match(ui,/destination=\$\(isFull\?'memory-shared-search-fullscreen':'memory-shared-search-home'\)/);
+ assert.match(ui,/destination\.append\(search\)/);
+ assert.match(ui,/neuralBoard\.requestFullscreen/);
 })
 
 test('old duplicate plan flow is gone and functional admin tools are tabs, not three stacked pages',()=>{
@@ -75,4 +76,13 @@ test('recent mode keeps only a real path, respects filters and expiry; full grap
  expiry();assert.equal(children.length,0);assert.match(status.textContent,/暂无/);response={activation:null};await f.refreshNeuralActivation();assert.equal(children.length,0);
  response={activation:{...activation,id:'instant',mode:'immediate',steps:[{from:'a',to:'b',associationType:'immediate'}]}};await f.refreshNeuralActivation();elapsed+=800;callbacks.shift()();assert.equal(children.filter(x=>x.tag==='line').length,1);assert.equal(children.find(x=>x.tag==='line').style.strokeDasharray,'7 5');assert.match(status.textContent,/即时联想（临时）/);assert.equal(reloads,0);mode='graph';f.drawRecentNeuralActivation();assert.equal(children.length,0);mode='recent';f.clearNeuralActivation();
  response={activation:{...activation,id:'new-edge',steps:[{from:'a',to:'c',associationType:'concept'}]}};await f.refreshNeuralActivation();assert.equal(reloads,1);await f.refreshNeuralActivation();assert.equal(reloads,1);assert.equal(children.length,0);
+})
+
+test('shared search moves the existing DOM object both ways without resetting its input',async()=>{
+ const {runInNewContext}=await import('node:vm')
+ const search={value:'旧视频关键词'},home={append(el){el.parentElement=this}},full={append(el){el.parentElement=this}},button={setAttribute(){},textContent:''};search.parentElement=home
+ const board={classList:{contains:()=>false}},document={fullscreenElement:null},els={'memory-shared-search':search,'memory-shared-search-home':home,'memory-shared-search-fullscreen':full}
+ const code=ui.slice(ui.indexOf('  const syncNeuralFull='),ui.indexOf("  neuralFullButton.addEventListener('click'"))
+ const sync=runInNewContext(code+'\nsyncNeuralFull',{neuralBoard:board,document,neuralFullButton:button,$:id=>els[id]})
+ document.fullscreenElement=board;sync();assert.equal(search.parentElement,full);assert.equal(search.value,'旧视频关键词');document.fullscreenElement=null;sync();assert.equal(search.parentElement,home);assert.equal(search.value,'旧视频关键词')
 })

@@ -60,6 +60,6 @@ test('owner friendly DM and memories do not expose raw errors by default',()=>{
   assert.match(html,/聊天内容的保留与清理/)
   assert.match(js,/最近一次连接有异常，详情请打开「运行诊断」/)
   assert.match(js,/过期内容可清理/)
-  assert.match(html,/memory-journey-nav/)
-  assert.match(html,/真实积累的喜好/)
+  assert.match(html,/id="memory-now-title">此刻还记得的事/)
+  assert.match(html,/根据真实入选视频积累/)
 })
