@@ -1576,6 +1576,10 @@ input.ui-toggle[type="checkbox"]:disabled{opacity:.55;cursor:not-allowed}
 #neural-deep-dialog .neural-deep-fragment-head,#life-gallery-analysis .neural-deep-fragment-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px}
 #neural-deep-dialog .neural-deep-fragment p,#life-gallery-analysis .neural-deep-fragment p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.65;margin:8px 0}
 #neural-deep-dialog .neural-deep-fragment small,#life-gallery-analysis .neural-deep-fragment small{display:block;font-size:11px;color:var(--muted)}
+
+/* Runtime log events: same page tokens as the rest of management center. */
+.runtime-log-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.runtime-log-stat{background:var(--panel);border:1px solid var(--stroke);border-radius:12px;padding:12px 15px;min-width:0}.runtime-log-stat strong{display:block;font-size:24px;line-height:1.3;font-variant-numeric:tabular-nums}.runtime-log-stat span{display:block;color:var(--muted);font-size:12px}.runtime-log-stat[data-kind="error"] strong{color:var(--bad)}.runtime-log-list{display:grid;gap:9px;min-width:0}.runtime-log-event{border:1px solid var(--stroke);border-inline-start:4px solid var(--stroke);background:var(--panel);border-radius:10px;padding:12px 15px;min-width:0;overflow-wrap:anywhere}.runtime-log-event[data-level="error"]{border-inline-start-color:var(--bad)}.runtime-log-event[data-level="warning"]{border-inline-start-color:#c18b38}.runtime-log-event[data-level="info"]{border-inline-start-color:var(--action)}.runtime-log-heading{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.runtime-log-heading strong{font-size:15px;flex:1;min-width:0}.runtime-log-level{font-size:11px;font-weight:700;letter-spacing:.035em;color:var(--muted)}.runtime-log-event[data-level="error"] .runtime-log-level{color:var(--bad)}.runtime-log-event[data-level="warning"] .runtime-log-level{color:var(--ink)}.runtime-log-detail{font-size:13px;margin:6px 0}.runtime-log-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);margin-top:5px}.runtime-log-counts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.runtime-log-counts span{border:1px solid var(--stroke);border-radius:6px;padding:3px 7px;font-size:12px}.runtime-log-history{font-size:13px;color:var(--muted);margin:10px 0 0}.runtime-log-coverage{font-size:12px;color:var(--muted);margin:8px 0 14px}.runtime-log-coverage summary{cursor:pointer}.runtime-log-coverage p{margin:5px 0}.runtime-log-empty{padding:24px 14px;text-align:center;color:var(--muted);border:1px dashed var(--stroke);border-radius:10px;background:var(--panel)}
+@media(max-width:580px){.runtime-log-stat{padding:9px 8px}.runtime-log-stat strong{font-size:21px}.runtime-log-event{padding:10px}.runtime-log-heading{gap:6px}.runtime-log-overview{gap:6px}}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -3467,9 +3471,10 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </div>
 </section>
 <section id="panel-reports" hidden>
-<div class="feature-intro"><div><h2>运行日志</h2><p>查看本机运行分类、异常来源及时间。原始正文可能包含私人内容，不在此页显示；完整诊断请使用原日志导出工具。</p></div></div>
+<div class="feature-intro"><div><h2>运行日志</h2><p>查看本机运行事件、异常原因及来源。此处仅展示可安全识别的诊断信息；完整原始日志请使用原日志导出工具。</p></div></div>
 <div class="toolbar"><label for="report-level">范围</label><select id="report-level"><option value="all">全部</option><option value="error">错误</option></select><button id="report-load" class="primary" type="button">刷新日志</button><button id="report-export" type="button">导出运行日志摘要</button></div>
-<p id="report-meta" class="muted" role="status">正在核对本机日志…</p><pre id="report-content" class="output" tabindex="0">等待读取。</pre>
+<div class="runtime-log-overview" aria-label="日志概况"><div class="runtime-log-stat"><strong id="report-matched">—</strong><span>当前筛选事件</span></div><div class="runtime-log-stat" data-kind="error"><strong id="report-errors">—</strong><span>读取范围内错误</span></div><div class="runtime-log-stat"><strong id="report-omitted">—</strong><span>列表省略事件</span></div></div>
+<p id="report-meta" class="muted" role="status">正在核对本机日志…</p><details class="runtime-log-coverage"><summary>读取范围与文件来源</summary><div id="report-coverage"></div></details><div id="report-content" class="runtime-log-list" role="region" aria-label="运行日志事件"><p class="runtime-log-empty">等待读取。</p></div>
 </section>
 <section id="panel-comments" hidden>
 <div class="feature-intro"><div><h2>💬 最近评论</h2><p>这里查看鱼鱼已经发送的公开评论。回复授权统一仍在本页保存；也可以从「社交互动」首页一键跳到对应设置。</p></div></div>

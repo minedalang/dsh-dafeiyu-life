@@ -227,3 +227,33 @@ test('dev39 timestamped errors own their continuation lines; install output grou
  writeFileSync(join(d,'install.log'),'pip download PRIVATE_TOKEN\nprogress\nERROR ECONNRESET\n');
  const v=readRuntimeLogs(d,{exportAll:true});assert.equal(v.rows.length,3);assert.equal(v.errors,2);const model=v.rows.find(r=>r.message==='模型调用失败');assert.equal(model.lineCount,3);assert.equal(model.exception,'TypeError');assert.match(model.detail,/TypeError/);const install=v.rows.find(r=>r.source==='install.log');assert.equal(install.time,null);assert.equal(install.lineCount,3);assert.equal(install.reason,'ECONNRESET');assert.doesNotMatch(JSON.stringify(v),/PRIVATE_|secret\.js|窗口记录/);
 });
+
+test('runtime severity follows event outcomes, not diagnostic zero counters or agent continuation prose',t=>{
+ const d=mkdtempSync(join(tmpdir(),'runtime-severity-'));t.after(()=>rmSync(d,{recursive:true,force:true}));
+ // Reproduce user-reported events without private titles, paths or model text.
+ writeFileSync(join(d,'duty.log'),[
+  '2026-11-27T17:01:12.583+08:00 评论互动错误：评论监听失败：快速设置还需在大肥鱼管理中心确认完成，所有业务功能暂时锁定。',
+  '2026-11-27T17:01:41.286+08:00 本地语义运行时：llama.cpp Runtime下载源失败，尝试下一个来源：https://example.invalid/PRIVATE_TOKEN · fetch failed',
+  '2026-11-27T17:01:41.287+08:00 本地语义模型安装失败：fetch failed',
+  '2026-11-27T18:14:38.073+08:00 单条笔记：新写了 5 份到 PRIVATE_PATH',
+  'Processing request of type CallToolRequest','模型总结：另有一条登记超时、状态未确认。PRIVATE_MESSAGE',
+  '2026-11-27T18:14:49.609+08:00 本轮视频工具漏斗：候选 10，详情 8，内容证据 4，视觉描述 0，工具入选 4，工具错误 0',
+  '2026-11-27T18:55:09.058+08:00 刷B站结束（life-agent，code=0）',
+  '2026-11-27T18:55:09.064+08:00 本轮视频工具漏斗：候选 11，详情 5，内容证据 1，视觉描述 0，工具入选 1，工具错误 0',
+  '2026-11-27T18:55:10.064+08:00 本轮视频工具漏斗：候选 11，详情 5，内容证据 1，视觉描述 0，工具入选 1，工具错误 2',
+  '2026-11-27T18:55:11.058+08:00 刷B站结束（life-agent，code=1）',
+  '2026-11-27T18:55:12.058+08:00 [ERROR] 模型调用失败 ECONNRESET PRIVATE_TOKEN',
+  '2026-11-27T18:55:13.058+08:00 [INFO] 模型错误 0',
+  ''
+ ].join('\n'));
+ writeFileSync(join(d,'install.log'),'Successfully installed package-error\n0 errors\nPRIVATE_PATH\n');
+ writeFileSync(join(d,'asr-install.log'),'Installing packages\nERROR: Could not install packages: ENOSPC PRIVATE_TOKEN\n');
+ const v=readRuntimeLogs(d,{exportAll:true});const at=prefix=>v.rows.find(r=>r.time?.includes(prefix));
+ assert.equal(at('18:14:38').level,'info');assert.equal(at('18:14:38').lineCount,3);
+ for(const ts of ['18:14:49','18:55:09.064']){const row=at(ts);assert.equal(row.level,'info');assert.equal(row.counts.find(c=>c.label==='工具错误').value,0)}
+ assert.equal(at('18:55:10').level,'warning');assert.equal(at('18:55:10').counts.find(c=>c.label==='工具错误').value,2);
+ assert.equal(at('18:55:09.058').level,'info');assert.equal(at('18:55:11').level,'error');assert.equal(at('18:55:12').reason,'ECONNRESET');assert.equal(at('18:55:13').level,'info');
+ assert.equal(at('17:01:12').level,'warning');assert.equal(at('17:01:41.286').retrying,true);assert.equal(at('17:01:41.287').level,'error');assert.match(at('17:01:41.287').detail,/fetch failed/);
+ assert.equal(v.rows.find(r=>r.source==='install.log').level,'info');assert.equal(v.rows.find(r=>r.source==='asr-install.log').level,'error');
+ const errors=readRuntimeLogs(d,{errorsOnly:true,exportAll:true});assert.equal(errors.errors,4);assert.equal(errors.rows.length,4);assert.ok(errors.rows.every(r=>r.level==='error'));assert.doesNotMatch(JSON.stringify(v),/PRIVATE_|example\.invalid/);
+});
