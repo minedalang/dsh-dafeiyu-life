@@ -101,3 +101,39 @@ test('dev47 延期观察原意愿进入真实 Episode 子决策，但不强制�
  const result=await planner.tick();assert.equal(result.action,'resume_episode');assert.equal(result.continuation.reason,'fish-chose-later');assert.equal(reads,0);assert.equal(pauses,1)
  assert.equal(prompts.length,2);assert.match(prompts[0],/"deferredGoal":"observe_video"/);assert.match(prompts[1],/【原自主延期意愿】/);assert.match(prompts[1],/"goal":"observe_video","bvid":"BV1abcde1234"/);assert.doesNotMatch(prompts[1],/friend-shared-bili-link:/)
 }))
+
+// Real Planner path: model chooses a public recall, then changes search or
+// chooses another action based on actual output, without a new Episode step.
+for(const scenario of ['repeat-miss','duplicate','revoked','private','scope-changed','disabled','episode-changed','unavailable','continue-read','last-budget'])test('dev48 Life public recall '+scenario,()=>inDir(async dir=>{
+ const id='0123456789abcdef01234567',bvid='BV1abcde1234',other='BV1abcde5678',prompts=[],queries=[];let valid=true,scope=TAG,active=true,observations=0,visualCalls=0,pauses=0,creatorCalls=0
+ const row={id,source:'inspected-opportunity',sourceId:'friend-shared-bili-link:'+id,status:'inspected',selectedBvid:bvid,selectedTitle:'当前公开视频',metadataAt:NOW-1000,expiresAt:NOW+60000,nextAt:NOW-1000,episodeSteps:1,episodeMaxSteps:5,visitedBvids:[bvid],deferredGoal:'observe_video'}
+ const cfg=()=>({...config(),visionEnabled:true,...(scenario==='last-budget'?{autonomousPlannerDailyLimit:2}:{})})
+ const planner=createAutonomousPlanner({dataDir:dir,getConfig:cfg,getTodos:()=>[],now:()=>NOW,getLifeAccountTag:()=>scope,
+  getLifeIntentions:()=>[row],canLifeRecallPublicVideo:()=>active&&scenario!=='disabled',validateLifeVideoMemory:()=>valid,
+  getRecentLifeVideoMemory:async opts=>{assert.equal(opts.accountTag,TAG);assert.equal(opts.recentFallback,false);queries.push(opts.queries);if(scenario==='scope-changed')scope='b'.repeat(16);if(scenario==='episode-changed')row.status='abandoned';if(scenario==='unavailable')return null;if(queries.length===2)return [];return [{bvid:other,title:'旧观察测试证据',sceneNotes:['旧场景线索'],recallRoute:'direct',...(scenario==='private'?{visibility:'private-session'}:{})}]},
+  executeCreatorSpace:async target=>{assert.equal(target,bvid);creatorCalls++;return {ok:true}},inspectLifeCreatorSpace:()=>{row.episodeSteps++;row.creatorExploredBvids=[bvid];return {ok:true}},
+  observeLifeVideoMemory:()=>{observations++},pauseLifeExploration:()=>{pauses++;return {ok:true}},canLifeObserveVideo:()=>true,executeLifeVideoObservation:async()=>{visualCalls++;return {ok:false}},
+  invokeModel:async p=>{prompts.push(p);if(prompts.length===1)return JSON.stringify({action:'resume_episode',id,reason:'继续探索'});
+    if(prompts.length===2){if(['disabled','last-budget'].includes(scenario)){assert.doesNotMatch(p.split('当前合法行动菜单：').at(-1),/"action":"recall_public_experience"/);return JSON.stringify({action:'stop',stopReasonCode:'rest'})}return JSON.stringify({action:'recall_public_experience',id,recallQueries:['旧场景']})}
+    assert.match(p,/【本次自主回忆工具回执】/);if(scenario==='unavailable'){assert.match(p,/unavailable/);assert.doesNotMatch(p,/旧观察测试证据/);return JSON.stringify({action:'stop',stopReasonCode:'later'})}assert.match(p,/旧观察测试证据/)
+    if(scenario==='continue-read')return JSON.stringify({action:'inspect_creator_space',id})
+    if(scenario==='revoked'){valid=false;return JSON.stringify({action:'observe_video',id,bvid,viewDepth:'standard'})}
+    if(prompts.length===3)return JSON.stringify({action:'recall_public_experience',id,recallQueries:[scenario==='duplicate'?'旧场景':'另一个线索']})
+    assert.match(p,/not-found/);assert.doesNotMatch(p.split('\u5f53\u524d\u5408\u6cd5\u884c\u52a8\u83dc\u5355\uff1a').at(-1),/"action":"recall_public_experience"/);return JSON.stringify({action:'stop',stopReasonCode:'later'})},
+  executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
+ const result=await planner.tick();assert.equal(result.action,'resume_episode');assert.equal(visualCalls,0);assert.equal(result.continuation.executed,scenario==='continue-read'?1:0);assert.equal(row.episodeSteps,scenario==='continue-read'?2:1)
+ if(scenario==='repeat-miss'){assert.deepEqual(queries,[['旧场景'],['另一个线索']]);assert.equal(prompts.length,4);assert.equal(pauses,1);assert.equal(observations,1);assert.equal(result.continuation.reason,'fish-chose-later')}
+ else if(scenario==='duplicate'){assert.equal(queries.length,1);assert.equal(result.continuation.reason,'public-recall-duplicate-or-budget')}
+ else if(['disabled','last-budget'].includes(scenario)){assert.equal(queries.length,0);assert.equal(pauses,1)}
+ else if(scenario==='unavailable'){assert.equal(queries.length,1);assert.equal(pauses,1);assert.equal(observations,0);assert.equal(result.continuation.reason,'fish-chose-later')}
+ else if(scenario==='continue-read'){assert.equal(queries.length,1);assert.equal(creatorCalls,1);assert.equal(observations,1);assert.equal(result.continuation.reason,'no-new-public-evidence')}
+ else{assert.equal(queries.length,1);assert.equal(pauses,0);assert.equal(result.continuation.reason,'public-recall-evidence-changed');if(scenario!=='revoked')assert.equal(prompts.length,2)}
+}))
+
+test('dev48 public recall validates offered exact episode and parameters without granting arbitrary scope',async()=>{
+ const {parseContinuationDecision}=await import('../lib/life-continuation.mjs');const id='0123456789abcdef01234567';const menu=[{action:'recall_public_experience',id}]
+ const parse=x=>parseContinuationDecision(JSON.stringify(x),menu);const base={action:'recall_public_experience',id,recallQueries:['主题']}
+ assert.equal(parse(base).action,'recall_public_experience')
+ for(const bad of [{id:'other'},{scope:'owner'},{bvid:'BV1abcde1234'},{recallQueries:['https://example.com']},{recallQueries:[]},{recallQueries:['aa','bb','cc','dd']},{recallQueries:{q:'topic'}}])assert.equal(parse({...base,...bad}).action,'stop')
+ assert.equal(parseContinuationDecision(JSON.stringify(base),[]).action,'stop')
+})

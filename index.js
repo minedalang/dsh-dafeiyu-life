@@ -8234,6 +8234,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // The planner can prioritize a real ongoing episode without granting any
     // additional tool. Model calls still use the existing daily Life budget.
     getLifeEpisodeContext:()=>universalLifeEpisodes.list({limit:3}),
+    canLifeRecallPublicVideo:()=>Boolean(memoryRetriever&&cfg.mainSessionMemoryEnabled===true&&!accountBinding.status().blocked),
     getRecentLifeVideoMemory:async opts=>{
       const epoch=accountBinding.generation()
       if(!memoryRetriever||!cfg.mainSessionMemoryEnabled||accountBinding.status().blocked)return null
