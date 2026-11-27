@@ -552,9 +552,11 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code guide27 | lib/first-start.mjs | const finishGuide=
   backupBrowser27["主人本机单文件备份管理：明确确认、只删选中文件"]
 %% @code backupBrowser27 | lib/backup-rotation.mjs | export function deleteBackupInDirectory
-  recallDiag27["真实召回诊断：本次运行状态、短期路径、无虚构"]
+  recallDiag27["真实公开回忆：本次统计、24h/20条核验路径"]
   neuralEvidence283 -.-> recallDiag27
 %% @code recallDiag27 | lib/memory-neural-projection.mjs | const diagnostic=
+
+%% dev.27：公开显式回忆及视觉入口观察；本地路径有界保留、重启重新核验，不备份、不产生模型调用。
 ```
 
 ## 二、八类候选细目
@@ -817,6 +819,8 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
   revisitTurn25 -.-> ownerDmAI26
 %% @code ownerDmAI26 | lib/owner-dm-agent.mjs | const stillAllowed=
 %% @code ownerDmAI26 | lib/main-session-bridge.mjs | const ownerDmWriteReady=
+
+%% dev.27：公开显式回忆及视觉入口观察；本地路径有界保留、重启重新核验，不备份、不产生模型调用。
 ```
 
 ## 三、可信回执与记忆闭环
@@ -1132,9 +1136,11 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code ownerDmAI26 | lib/owner-dm-agent.mjs | const stillAllowed=
 %% @code ownerDmAI26 | lib/main-session-bridge.mjs | const ownerDmWriteReady=
 
-  recallDiag27["公开召回返回后的本次运行诊断；不改变召回/遗忘"]
+  recallDiag27["公开回忆活动与24h核验路径；遗忘失效"]
   neuralView -.-> recallDiag27
 %% @code recallDiag27 | lib/memory-neural-projection.mjs | const diagnostic=
+
+%% dev.27：公开显式回忆及视觉入口观察；本地路径有界保留、重启重新核验，不备份、不产生模型调用。
 ```
 
 ## 四、统一 Life Episode 因果持续性
@@ -1414,4 +1420,6 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
   read -.-> ownerDmAI26
 %% @code ownerDmAI26 | lib/owner-dm-agent.mjs | const stillAllowed=
 %% @code ownerDmAI26 | lib/main-session-bridge.mjs | const ownerDmWriteReady=
+
+%% dev.27：公开显式回忆及视觉入口观察；本地路径有界保留、重启重新核验，不备份、不产生模型调用。
 ```

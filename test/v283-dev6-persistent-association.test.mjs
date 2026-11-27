@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createHash} from 'node:crypto'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
-import {createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
+import {createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup,allowedPath} from '../lib/data-backup.mjs'
 import {createLifeReflection,__test as reflectionTest} from '../lib/life-reflection.mjs'
 import {createMemoryRetriever,publicVisualAssociationContext} from '../lib/memory-retriever.mjs'
 import {createNeuralActivationTracker,projectNeuralActivation,memoryNeuralProjection} from '../lib/memory-neural-projection.mjs'
@@ -113,8 +113,8 @@ test('real public visual recall returns a bounded activation receipt; graph proj
  assert.equal(projected.steps.length,1);assert.equal(projected.steps[0].associationType,'contrast');assert.ok(!JSON.stringify(projected).includes(receipt.fromId));assert.ok(!JSON.stringify(projected).includes(A));assert.ok(!JSON.stringify(projected).includes(receipt.edgeIds[0]));
  const graph=memoryNeuralProjection({episodes,showAll:true,limit:10000,verifiedGraph:x.g.neuralEvidenceSnapshot({accountTag:A,episodeRows:episodes})});const step=projected.steps[0];assert.ok(graph.edges.some(e=>e.type==='association'&&e.associationType===step.associationType&&[e.from,e.to].includes(step.from)&&[e.from,e.to].includes(step.to)))
  assert.deepEqual(x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:[]}),[]);assert.equal(projectNeuralActivation(receipt,[],episodes),null)
- // After 5 minutes, account changes or forgetting, nothing can be replayed.
- clock=NOW+5*60_000;assert.equal(tracker.read(A),null);assert.equal(tracker.diagnostic(A).state,'expired');clock=NOW;assert.equal(tracker.record({accountTag:A,rows:[...rows]}),true);tag=B;assert.equal(tracker.read(B),null);assert.equal(tracker.diagnostic(B).observed,0);tag=A;assert.equal(tracker.read(A),null)
+ // After 24 hours, account changes or forgetting, nothing can be replayed.
+ clock=NOW+86400000;assert.equal(tracker.read(A),null);assert.equal(tracker.diagnostic(A).state,'expired');clock=NOW;assert.equal(tracker.record({accountTag:A,rows:[...rows]}),true);tag=B;assert.equal(tracker.read(B),null);assert.equal(tracker.diagnostic(B).observed,0);tag=A;assert.equal(tracker.read(A),null)
  assert.equal(tracker.record({accountTag:A,rows:[...rows]}),true);const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==receipt.memoryId);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal(tracker.read(A),null);assert.deepEqual(x.g.associationActivationSteps({accountTag:A,receipt,episodeRows:episodes}),[])
 }))
 
@@ -204,7 +204,7 @@ test('real immediate second search yields transient dashed path; no persistent e
  const episodes=x.g.videoRecallGroups(x.g.semanticCandidates({domain:'main-session',limit:3200}));const steps=x.g.associationActivationSteps({accountTag:A,receipt:r,episodeRows:episodes});const projected=projectNeuralActivation(r,steps,episodes);assert.equal(projected.mode,'immediate');assert.equal(projected.steps[0].associationType,'immediate');assert.doesNotMatch(JSON.stringify(projected),new RegExp(r.fingerprint+'|'+r.fromId+'|'+A))
  assert.equal(x.g.status().associations.active,0);const graph=memoryNeuralProjection({episodes,showAll:true,limit:10000,verifiedGraph:x.g.neuralEvidenceSnapshot({accountTag:A,episodeRows:episodes})});assert.ok(!graph.edges.some(e=>e.type==='association'))
  assert.deepEqual(x.g.associationActivationSteps({accountTag:A,receipt:r,episodeRows:[]}),[])
- clock+=300000;assert.equal(tracker.read(A),null);assert.equal(tracker.reflectionHints(A).length,1)
+ clock+=300000;assert.equal(tracker.read(A).id,r.id);assert.equal(tracker.reflectionHints(A).length,1);clock=NOW+86400000;assert.equal(tracker.read(A),null);clock=NOW+300000
  epoch++;assert.deepEqual(tracker.reflectionHints(A),[]);assert.equal(tracker.record({accountTag:A,rows:[...rows]}),true)
  const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==r.memoryId);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal(tracker.read(A),null);assert.deepEqual(tracker.reflectionHints(A),[])
 }))
@@ -281,4 +281,47 @@ test('ordinary reflection receives per-interaction emotion receipts and can prop
  x.g.recordEvents([a,b]);for(const e of [a,b])assert.equal(x.g.recordEpisodeEmotion({accountTag:A,eventKey:e.key,mood:'joyful',intensity:2,at:NOW}).ok,true)
  let calls=0;const life=createLifeReflection({dataDir:x.dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:x.g,now:()=>NOW,commitMemories:()=>({added:0,rows:[]}),invokeModel:async prompt=>{calls++;const rows=JSON.parse(prompt.split('<candidate_data>').at(-1).split('</candidate_data>')[0]);assert.equal(rows.length,2);assert.ok(rows.every(r=>r.associationEmotion?.mood==='joyful'));return JSON.stringify({memories:[],associations:[{type:'emotion',candidate_ids:rows.map(r=>r.id),evidence_quotes:[a.text,b.text]}]})},logger:{warn(){}}})
  life.addEvents([a,b]);const r=await life.reflect({force:true});assert.equal(r.ok,true,JSON.stringify(r));assert.equal(r.associationAdded,1);assert.equal(calls,1);assert.equal(x.g.status().associations.active,1)
+}))
+
+
+test('24h recall history is bounded, selectable, separates ordinary observations, and invalidates forgotten paths',()=>{
+ let clock=NOW,epoch=1,tag=A,live=true
+ const tracker=createNeuralActivationTracker({getAccountTag:()=>tag,getEpoch:()=>epoch,now:()=>clock,validateRecall:()=>true,validatePath:()=>live})
+ const rows=()=>[{memoryId:'seed',recallRoute:'direct'},{memoryId:'target',recallRoute:'association',associationProof:{fromId:'seed',memoryId:'target',edgeIds:['edge'],types:['concept']}}]
+ for(let i=0;i<23;i++){clock++;assert.equal(tracker.record({accountTag:A,rows:rows(),channel:'main-chat'}),true)}
+ const recent=tracker.recent(A);assert.equal(recent.paths.length,20);assert.equal(recent.activities.length,20);const selected=recent.paths.at(-1).id
+ assert.equal(tracker.read(A,selected).id,selected);assert.equal(tracker.read(A,'not-found'),null)
+ assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:['seed']}),true);assert.equal(tracker.diagnostic(A).state,'ordinary-recall');assert.equal(tracker.diagnostic(A).verified,23)
+ assert.equal(tracker.recent(A).activities[0].state,'ordinary-recall');assert.doesNotMatch(JSON.stringify(tracker.recent(A)),/seed|target|edgeIds|accountTag/)
+ live=false;assert.equal(tracker.read(A,selected),null);assert.equal(tracker.recent(A).paths.length,0);assert.ok(tracker.recent(A).activities.some(a=>a.state==='invalidated'))
+ live=true;assert.equal(tracker.record({accountTag:A,rows:rows()}),true);epoch++;assert.equal(tracker.recent(A).paths.length,0);assert.equal(tracker.recent(A).activities.length,0)
+ tag=B;assert.equal(tracker.read(A),null)
+})
+
+
+test('real recall history survives tracker restart, rechecks live evidence and refuses changed identity/epoch',()=>setup(async x=>{
+ assert.equal(add(x.g,[propose(x.g,1,3,'contrast')]).added,1)
+ let clock=NOW,epoch=1,identity='character-A';const historyFile=join(x.dir,'neural-recall-activity.json')
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(query,o)=>x.g.recall({query,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o)})
+ const make=()=>createNeuralActivationTracker({historyFile,getHistoryIdentity:()=>identity,getAccountTag:()=>A,getEpoch:()=>epoch,now:()=>clock,validateRecall:o=>retriever.validateContextualVisualRecall(o),validatePath:o=>x.g.validateAssociationPath(o),validateImmediate:o=>retriever.validateImmediateRecall(o)})
+ const rows=await retriever.contextualVisualRecall({accountTag:A,bvids:[bv(1)],limit:2,associate:true,recentFallback:false});let t=make();assert.equal(t.record({accountTag:A,rows,channel:'main-chat'}),true)
+ const saved=t.read(A);assert.equal(allowedPath('neural-recall-activity.json'),false);assert.doesNotMatch(readFileSync(historyFile,'utf8'),/雨后|纸飞机|BV000|私密/)
+ clock+=6*60_000;t=make();assert.equal(t.read(A,saved.id).id,saved.id);assert.equal(t.recent(A).paths.length,1);assert.equal(t.diagnostic(A).observed,0)
+ const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==saved.memoryId);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal(t.read(A,saved.id),null);assert.deepEqual(JSON.parse(readFileSync(historyFile,'utf8')).paths,[])
+ identity='character-B';t=make();assert.deepEqual(t.recent(A),{paths:[],activities:[]});epoch++;assert.equal(t.read(A),null)
+ // Malformed observation cache cannot be taken as a verified path or prevent memory reads.
+ writeFileSync(historyFile,'bad json');assert.equal(make().read(A),null);assert.equal(readFileSync(historyFile,'utf8'),'bad json')
+}))
+
+test('ordinary explicit recall can deliver one existing public edge within unused quota; manual search does not activate it',()=>setup(async x=>{
+ assert.equal(add(x.g,[propose(x.g,1,3,'contrast')]).added,1)
+ const a=src(x.g,1),b=src(x.g,3);let calls=0,epoch=1
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({...cfg,mainSessionMemoryMaxItems:4,mainSessionMemoryMaxChars:3000}),getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(query,o)=>x.g.recall({query,...o}).filter(e=>e.id===a.id),getAssociations:o=>{calls++;return x.g.associationCandidates(o)},validateAssociationPath:o=>x.g.validateAssociationPath(o),getAssociationScope:()=>({accountTag:A,epoch})})
+ const ordinary=await retriever.retrieve('雨后的城市街道','chat',{includeSelf:true});assert.ok(ordinary.publicAssociationProof);assert.equal(ordinary.publicAssociationProof.memoryId,b.id);assert.deepEqual(ordinary.episodeIds,[a.id,b.id]);assert.match(ordinary.context,/可选关联经历/);assert.equal(calls,1);assert.equal(ordinary.usedModel,false)
+ const tracker=createNeuralActivationTracker({getAccountTag:()=>A,now:()=>NOW,validatePath:o=>x.g.validateAssociationPath(o)})
+ assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:ordinary.episodeIds,proof:ordinary.publicAssociationProof}),true);assert.equal(tracker.read(A).memoryId,b.id)
+ assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:[]}),true);assert.equal(tracker.diagnostic(A).state,'no-hit');assert.equal(tracker.read(A).memoryId,b.id)
+ assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:[a.id],proof:ordinary.publicAssociationProof}),false);assert.equal(tracker.diagnostic(A).state,'rejected')
+ const manual=await retriever.retrieve('雨后的城市街道','manual',{includeSelf:true});assert.equal(manual.publicAssociationProof,undefined);assert.equal(calls,1)
+ const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==b.id);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal((await retriever.retrieve('雨后的城市街道','chat',{includeSelf:true})).publicAssociationProof,undefined);assert.equal(tracker.read(A),null)
 }))

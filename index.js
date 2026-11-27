@@ -7125,6 +7125,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true});if(result?.ok===false)log('主人主 Session 经历待补偿：'+String(result.lastError||result.reason||''))}
     },
     getExperienceRecall: (query,limit) => lifeMemory?.recall({query,domain:'main-session',maxItems:limit,maxChars:3000}).map(x=>({kind:x.kind,time:x.at,bvid:x.bvid,summary:x.summary}))||[],
+    captureRecallObservation:()=>{try{return {accountTag:trustedLifeAccountTag(),epoch:accountBinding.generation()}}catch{return null}},
+    observeEpisodeRecall:(scope,rows,proof)=>{
+      if(!scope?.accountTag||scope.accountTag!==trustedLifeAccountTag()||scope.epoch!==accountBinding.generation()||accountBinding.status().blocked||!lifeMemory)return
+      const ids=lifeMemory.reflectionEvidence(rows.map(e=>e.id),{visibility:'public-event'}).filter(e=>e.stage==='clear'&&['watch','comment','social'].includes(e.kind)).map(e=>e.id)
+      if((rows.length&&!ids.length)||scope.accountTag!==trustedLifeAccountTag()||scope.epoch!==accountBinding.generation())return
+      neuralActivationTracker?.recordPublicEpisodes({accountTag:scope.accountTag,ids,channel:'main-chat',proof:proof&&ids.includes(proof.fromId)&&ids.includes(proof.memoryId)?proof:null})
+      lifeManagementEvents.publish('memory-recall')
+    },
     getVideoAssociationRecall:async (query,{isCurrent=()=>false}={})=>{
       const scope=trustedLifeAccountTag(),epoch=accountBinding.generation();if(!scope||accountBinding.status().blocked||!memoryRetriever||!isCurrent())return []
       const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[query],limit:2,associate:true,recentFallback:false})
@@ -7202,6 +7210,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getOwnerPrivateVisualCandidates:options=>lifeMemory?.ownerPrivateVisualCandidates(options)||[],
     getAssociations:options=>lifeMemory?.associationCandidates(options)||[],
     validateAssociationPath:options=>lifeMemory?.validateAssociationPath(options)===true,
+    getAssociationScope:()=>({accountTag:accountBinding.status().blocked?'':trustedLifeAccountTag(),epoch:accountBinding.generation()}),
     groupVideoEpisodes:rows=>lifeMemory?.videoRecallGroups(rows)||rows,
     getPrivateInsights:(opts)=>lifeMemory?.privateInsights(opts)||[],
     getPrivateInsightCandidates:(opts)=>lifeMemory?.privateInsightCandidates(opts)||[],
@@ -7210,6 +7219,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     logger:{warn:m=>log('⚠️ '+m)},
   })
   neuralActivationTracker=createNeuralActivationTracker({
+    historyFile:join(stateDir,'neural-recall-activity.json'),getHistoryIdentity:()=>accountBinding.characterId(),
     getEpoch:()=>accountBinding.generation(),
     getAccountTag:()=>accountBinding.status().blocked?'':trustedLifeAccountTag(),
     validateRecall:opts=>memoryRetriever?.validateContextualVisualRecall(opts)===true,
@@ -10578,13 +10588,15 @@ logger:{warn:m=>log('社交意图：'+m)}
       const scope=trustedLifeAccountTag()
       if(!scope||accountBinding.status().blocked||!lifeMemory||cfg.mainSessionMemoryEnabled!==true)return sendJson(res,200,{ok:true,activation:null,reason:'unavailable'})
       try{
-        const receipt=neuralActivationTracker.read(scope)
-        if(!receipt){const diagnostic=neuralActivationTracker.diagnostic(scope);return sendJson(res,200,{ok:true,activation:null,diagnostic,reason:diagnostic.state})}
+        const selected=String(url.searchParams.get('receipt')||'');if(selected&&!/^[a-f0-9]{16}$/.test(selected))return sendJson(res,400,{ok:false,reason:'invalid-receipt'})
+        const epoch=accountBinding.generation(),{receipt,...recent}=neuralActivationTracker.snapshot(scope,selected)
+        if(scope!==trustedLifeAccountTag()||epoch!==accountBinding.generation()||accountBinding.status().blocked)return sendJson(res,409,{ok:false,reason:'account-changed'})
+        if(!receipt){const diagnostic=neuralActivationTracker.diagnostic(scope);return sendJson(res,200,{ok:true,activation:null,diagnostic,...recent,reason:selected?'selection-unavailable':diagnostic.state})}
         const episodes=lifeMemory.videoRecallGroups(lifeMemory.semanticCandidates({query:'',domain:'main-session',kinds:['watch','comment','social'],limit:3200})||[])
         const steps=lifeMemory.associationActivationSteps({accountTag:scope,receipt,episodeRows:episodes})
         const activation=receipt.mode==='immediate'&&!memoryRetriever.validateImmediateRecall(receipt)?null:projectNeuralActivation(receipt,steps,episodes)
-        if(scope!==trustedLifeAccountTag()||accountBinding.status().blocked)return sendJson(res,409,{ok:false,reason:'account-changed'})
-        return sendJson(res,200,{ok:true,activation,diagnostic:neuralActivationTracker.diagnostic(scope),reason:activation?'':'path-not-in-current-projection'})
+        if(scope!==trustedLifeAccountTag()||epoch!==accountBinding.generation()||accountBinding.status().blocked)return sendJson(res,409,{ok:false,reason:'account-changed'})
+        return sendJson(res,200,{ok:true,activation,...recent,diagnostic:neuralActivationTracker.diagnostic(scope),reason:activation?'':'path-not-in-current-projection'})
       }catch{return sendJson(res,200,{ok:true,activation:null,reason:'activation-unavailable'})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/main-session/memory/neural/deep'){

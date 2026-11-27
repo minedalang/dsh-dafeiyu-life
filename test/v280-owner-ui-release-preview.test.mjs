@@ -56,7 +56,7 @@ test('activation overlay only draws a loaded typed association path with enabled
  const draw=runInNewContext(ui.slice(a,b)+'\nneuralActivationDrawable',context)
  const step={from:'b',to:'a',associationType:'concept'};assert.equal(draw([step]),true);assert.equal(draw([{...step,associationType:'contrast'}]),false);assert.equal(draw([{...step,from:'unloaded'}]),false);assert.equal(draw([]),false)
  context.neuralAssociationEnabled=()=>false;assert.equal(draw([step]),false);context.neuralAssociationEnabled=()=>true;context.$=()=>({checked:false});assert.equal(draw([step]),false)
- assert.doesNotMatch(ui,/animateNeuralSignal/);assert.match(ui,/request\('\/main-session\/memory\/neural\/activation'\)/)
+ assert.doesNotMatch(ui,/animateNeuralSignal/);assert.match(ui,/request\('\/main-session\/memory\/neural\/activation'\+\(selected\?/)
 })
 
 
