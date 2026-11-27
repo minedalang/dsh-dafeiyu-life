@@ -5643,7 +5643,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return {ok:valid,allowedReadKinds:valid?[choice.candidateId==='read_hot_comments'?'hot_comments':'public_person']:[],reason:valid?'life-selected':'account-or-permission-changed'}
     },
     loadRequestedContexts:async(batch,requestedByIndex)=>{
-      const base=await (socialContextAssembler?.batch(batch,{mode:'compact',requestedByIndex})||Promise.resolve(batch.map(()=>({}))))
+      const base=await (socialContextAssembler?.batch(batch.map(row=>({...row,deferRecallObservation:true})),{mode:'compact',requestedByIndex})||Promise.resolve(batch.map(()=>({}))))
       return Promise.all(base.map(async(row,i)=>{
         const wantsHot=requestedByIndex?.[i]?.includes('hot_comments')
         const wantsPerson=requestedByIndex?.[i]?.includes('public_person')
@@ -6228,6 +6228,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   socialContextAssembler=createSocialContextAssembler({
     policy:socialPolicyGate,memoryRetriever,getMemoryRetriever:()=>memoryRetriever,getAccountTag:()=>accountBinding.status().blocked?'':trustedLifeAccountTag(),
     getAccountEpoch:()=>accountBinding.generation(),onVisualRecall:({accountTag,rows,kind,role})=>observePublicRecall(accountTag,rows,kind==='comment'?(role==='owner'?'owner-comment':'friend-comment'):'friend-dm'),
+    onModelAssociation:({accountTag,ids,proof,kind,role,uid})=>{
+      refreshCfg()
+      if(cfg.masterEnabled!==true||accountBinding.status().blocked||trustedLifeAccountTag()!==accountTag||socialPolicyGate.actor(uid).role!==role||
+        (kind==='dm'&&(role!=='friend'||cfg.dmWatch!==true))||(kind==='comment'&&(role==='owner'?cfg.ownerCommentAgentEnabled!==true:role!=='friend'||!(cfg.commentWatchReplies===true||cfg.commentAtEnabled===true))))return false
+      const channel=kind==='comment'?(role==='owner'?'owner-comment':'friend-comment'):'friend-dm'
+      const recorded=neuralActivationTracker?.recordPublicEpisodes({accountTag,ids,channel,proof})===true
+      if(recorded)lifeManagementEvents.publish('memory-recall')
+      return recorded
+    },
     getMeme:async(item)=>(await interactionMemeLookup.forBatch([item]))?.[0]||'',
     getPersona:batch=>buildInteractionPersona(batch),
     getIdentity:uid=>replyIdentityContext(uid),
@@ -6309,7 +6318,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
             context:ctx.context,bvid:row.bvid,incomingRpid:row.rpid,timestampMs:row.timestampMs,recallQueries:queries,recallRequest,deferRecallObservation:true},
             {mode:'compact',requested:['memory']})
           if(!read.ok||read.loadErrors?.length||!current())return {ok:false,reason:'memory-read-unavailable',items:[]}
-          return {ok:true,validateRecall:()=>current()&&(!read.validateRecall||read.validateRecall()===true),observeDelivered:items=>{if(current())read.observeDelivered?.(items)},items:[...(read.memoryContext?(read.publicRecallLines||[]).map((summary,i)=>({id:'social-public-memory:'+i,kind:'public-safe',summary,source:'live-memory-only'})):[]),
+          return {ok:true,validateRecall:()=>current()&&(!read.validateRecall||read.validateRecall()===true),observeDelivered:items=>{if(current())read.observeDelivered?.(items)},offerAssociation:lines=>current()?read.offerAssociation?.(lines):null,items:[...(read.memoryContext?(read.publicRecallLines||[]).map((summary,i)=>({id:'social-public-memory:'+i,kind:'public-safe',summary,source:'live-memory-only'})):[]),
             ...(read.privateUnderstandingContext?[{id:'private-understanding',kind:'private-context-non-disclosable',
             summary:read.privateUnderstandingContext,source:'live-private-memory-only'}]:[])]}
         }:null,

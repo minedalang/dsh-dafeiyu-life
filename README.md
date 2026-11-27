@@ -129,6 +129,36 @@ dsh plugin --profile desktop add dsh-dafeiyu-life
 
 安装或升级后，**完全退出并重新启动 DSH Desktop**，再进入 **设置 → 大肥鱼 → 管理中心**。已有用户建议在「数据备份」保存一份业务备份，不要删除旧数据目录。
 
+<details>
+<summary>安装遇到 ECONNRESET，但代理下 curl 可以访问 npm？</summary>
+
+从 GitHub 安装仍可能需要 npm 仓库解析其他插件的依赖。如果 `npm ping --registry=https://registry.npmjs.org` 在 TLS 握手前失败，而使用你的实际 HTTP 代理端口执行 `curl.exe -I -x http://127.0.0.1:7897 https://registry.npmjs.org` 成功（7897 仅为示例），先检查代理节点与分流。维护者在 Node.js 24 的一条代理线路上验证：临时限制密钥交换组为 `X25519:P-256` 后恢复访问；这不是大肥鱼依赖问题，也不能证明所有此类故障原因相同。
+
+仅在上述情况、已配置好当前终端代理时，可尝试以下 Windows PowerShell 命令（不要关闭证书校验或 DSH 供应链检查）：
+
+```powershell
+$oldOptions = $env:NODE_OPTIONS
+$oldProxyMode = $env:NODE_USE_ENV_PROXY
+$fix = (Join-Path $env:TEMP ("dsh-tls-" + [guid]::NewGuid().ToString("N") + ".cjs")).Replace('\', '/')
+try {
+    Set-Content -LiteralPath $fix -Encoding ASCII -Value "require('node:tls').DEFAULT_ECDH_CURVE='X25519:P-256';"
+    $env:NODE_OPTIONS = "--require `"$fix`""
+    $env:NODE_USE_ENV_PROXY = "1"
+    npm ping --registry=https://registry.npmjs.org --fetch-retries=0 --fetch-timeout=15000
+    if ($LASTEXITCODE -eq 0) {
+        dsh plugin --profile desktop add dsh-dafeiyu-life
+    }
+} finally {
+    $env:NODE_OPTIONS = $oldOptions
+    $env:NODE_USE_ENV_PROXY = $oldProxyMode
+    Remove-Item -LiteralPath $fix -ErrorAction SilentlyContinue
+}
+```
+
+仅临时使用，HTTPS 与证书验证保持启用，但本次连接不使用后量子混合密钥交换；若仍失败，优先更换代理节点并检查网络，不要全局设置该兼容参数。建议在没有自定义 `NODE_OPTIONS` 的新终端测试。
+
+</details>
+
 ### 2. 跟着快速设置完成初次配置
 
 1. 打开 **管理中心 → 🚀 快速设置**。新用户会进入逐页引导，按真实状态依次完成运行环境、B站登录、文字模型验证、默认模型，再独立选择主 Session，按需设置 AI 记忆检索、本地语义、视频画面、语音及生活节奏；支持稍后设置。只想使用记忆的用户可点击「退出引导」，在「能力开关」关闭 B站和自主生活，明确保存并退出重启；无需完成平台验证。

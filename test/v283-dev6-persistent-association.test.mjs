@@ -448,3 +448,55 @@ test('owner DM uses the existing next-step model to confirm public visual candid
  epoch++;assert.equal(tracker.read(A),null);await run('expire');assert.equal(confirmCalls,1);assert.equal(tracker.read(A),null);assert.equal(modelCalls,8)
  const before=sends;await run('forget');assert.equal(confirmCalls,1);assert.equal(tracker.read(A),null);assert.equal(sends,before);assert.equal(modelCalls,10)
 }))
+
+test('social model association: actual public candidate delivery, optional confirmation, scope and lifetime, no extra model calls',()=>setup(async x=>{
+ const {createSocialContextAssembler}=await import('../lib/social-context-assembler.mjs')
+ const {interpretTrustedSocial}=await import('../lib/comment-social-ai.mjs')
+ const {createInteractionBatcher}=await import('../lib/interaction-batch.mjs')
+ const a=watch(33,'白猫安静凝望窗外的雨滴'),b=watch(34,'长耳兔坐在门前期待伙伴归来');x.g.recordEvents([a,b]);const [sa,sb]=x.g.reflectionEvidence([a.key,b.key]);assert.ok(sa&&sb)
+ let epoch=1,role='friend',clock=NOW,tag=A,confirmed=0,calls=0,mode='omit',oldToken='',channel='friend-dm'
+ const config=()=>({...cfg,mainSessionMemoryEmbeddingEnabled:true})
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:config,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o),getAssociationScope:()=>({accountTag:tag,epoch}),semanticSearch:async(q,rows)=>({ready:true,items:[{id:'episode:'+sa.id,score:.8},{id:'episode:'+sb.id,score:.4}].filter(r=>rows.some(e=>e.id===r.id))}),invokeModel:async()=>{throw Error('unexpected independent model')}})
+ const tracker=createNeuralActivationTracker({getAccountTag:()=>tag,getEpoch:()=>epoch,now:()=>clock,validateImmediate:o=>retriever.validateImmediateRecall(o),validateRecall:o=>retriever.validateContextualVisualRecall(o)})
+ const policy={actor:()=>({role}),memoryScope:()=> 'public',canViewIdentity:()=>false,canViewRelationship:()=>false}
+ const assembler=createSocialContextAssembler({policy,memoryRetriever:retriever,getAccountTag:()=>tag,getAccountEpoch:()=>epoch,now:()=>clock,onVisualRecall:({accountTag,rows})=>tracker.record({accountTag,rows,channel}),onModelAssociation:({accountTag,ids,proof,kind,role:actual})=>{assert.equal(actual,role);assert.equal(channel,kind==='dm'?'friend-dm':actual+'-comment');confirmed++;return tracker.recordPublicEpisodes({accountTag,ids,proof,channel})},logger:{warn(){}}})
+ const input={uid:'90001',kind:'dm',text:'想起以前的画面吗',timestampMs:NOW+100,recallQueries:[a.title]}
+ const read=opts=>assembler.message({...input,...opts},{mode:'compact',requested:['memory']})
+ const makeProposal=c=>({token:mode==='wrong-token'?oldToken:c.token,relationType:'context',quoteA:c.excerpts[0],quoteB:mode==='forged'?'这段完全不存在的画面':c.excerpts[1],reason:'两段画面表现出静静等待与凝望的情境'})
+ const fresh=await read({});assert.equal(tracker.read(A),null,'candidate retrieval alone not a path');assert.equal(typeof fresh.offerAssociation,'function')
+ assert.equal(fresh.offerAssociation(['未实际交付的其他证据']),null)
+ assert.equal((await read({privacyGuard:true})).offerAssociation,undefined)
+ const first=fresh.offerAssociation(fresh.memoryContext.split('\n'));assert.ok(first);assert.equal(fresh.offerAssociation(fresh.memoryContext.split('\n')),null)
+ assert.equal(first.confirm({...makeProposal(first.publicData),token:'other'}),false);assert.equal(first.confirm(makeProposal(first.publicData)),false);assert.equal(confirmed,0)
+ const reply=async m=>{mode=m;let n=0;const batch=createInteractionBatcher({delayMs:0,getContextMode:()=> 'compact',getPersona:()=>'',prepareContexts:(rows,opts)=>assembler.batch(rows,opts),loadRequestedContexts:(rows,requestedByIndex)=>assembler.batch(rows.map(row=>({...row,deferRecallObservation:true})),{mode:'compact',requestedByIndex}),invoke:async p=>{
+   calls++;if(++n===1)return JSON.stringify({items:[{id:'0',action:'skip',reply:'',contextRequests:['memory'],recallQueries:[a.title]}]})
+   const line=p.split('\n').find(s=>s.startsWith('可选联想候选（按 item id'));assert.ok(line);const [c]=JSON.parse(line.slice(line.indexOf('：')+1));assert.equal(c.id,'0');assert.ok(c.excerpts.every(e=>p.includes(e)));const association=makeProposal(c);oldToken=c.token
+   if(mode==='expire')clock+=300001
+   if(mode==='role-change')role='stranger'
+   return JSON.stringify({items:[{id:'0',action:'reply',reply:'想起了以前的画面。',...(mode==='omit'?{}:{association})}]})
+ },logger:{warn(){}}});try{return await batch.generate(input)}finally{batch.stop()}}
+ assert.equal(await reply('omit'),'想起了以前的画面。');assert.equal(confirmed,0);assert.equal(tracker.read(A),null);assert.equal(calls,2)
+ await reply('wrong-token');await reply('forged');assert.equal(confirmed,0);assert.equal(tracker.read(A),null)
+ await reply('confirm');assert.equal(confirmed,1);assert.equal(tracker.read(A).basis,'visual-ai-v1');assert.equal(tracker.read(A).channel,'friend-dm');assert.equal(calls,8)
+ epoch++;await reply('expire');assert.equal(confirmed,1);assert.equal(tracker.read(A),null)
+ await assert.rejects(reply('role-change'),/evidence-changed/);role='friend';assert.equal(confirmed,1);assert.equal(calls,12)
+ // Two items of the same UID can share a model call, never a confirmation token.
+ mode='confirm';let batchCalls=0
+ const shared=createInteractionBatcher({delayMs:20,batchSize:2,getContextMode:()=> 'compact',getPersona:()=>'',prepareContexts:(rows,opts)=>assembler.batch(rows,opts),loadRequestedContexts:(rows,requestedByIndex)=>assembler.batch(rows.map(row=>({...row,deferRecallObservation:true})),{mode:'compact',requestedByIndex}),invoke:async p=>{
+  calls++;if(++batchCalls===1)return JSON.stringify({items:[0,1].map(id=>({id:String(id),action:'skip',reply:'',contextRequests:['memory'],recallQueries:[a.title]}))})
+  const line=p.split('\n').find(s=>s.startsWith('可选联想候选（按 item id'));assert.ok(line);const candidates=JSON.parse(line.slice(line.indexOf('：')+1));assert.equal(candidates.length,2);assert.notEqual(candidates[0].token,candidates[1].token)
+  return JSON.stringify({items:candidates.map((c,i)=>({id:c.id,action:'reply',reply:'想起来了。',association:{...makeProposal(c),token:candidates[1-i].token}}))})
+ },logger:{warn(){}}})
+ try{assert.deepEqual(await Promise.all([shared.generate(input),shared.generate({...input,text:'还有别的画面吗？'})]),['想起来了。','想起来了。'])}finally{shared.stop()}
+ assert.equal(batchCalls,2);assert.equal(confirmed,1);assert.equal(tracker.read(A),null)
+ const trusted=async(r,m)=>{role=r;channel=r+'-comment';mode=m;let n=0;return interpretTrustedSocial({row:{uid:'90001',bvid:bv(98),text:'以前的相似画面呢？'},role:r,invoke:async p=>{
+  calls++;if(++n===1)return JSON.stringify({intent:'chat',decision:'allow',reply:'想回忆一下。',recallTarget:'memory',recallQueries:[a.title]})
+  const line=p.split('\n').find(s=>s.startsWith('可选联想候选（已交付'));assert.ok(line,p);const c=JSON.parse(line.slice(line.indexOf('：')+1));assert.ok(c.excerpts.every(e=>p.includes(e)))
+  if(mode==='forget'){const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==sb.id);writeFileSync(x.g.file,JSON.stringify(doc))}
+  return JSON.stringify({intent:'chat',decision:'allow',reply:'我记得这两个画面。',todoDisposition:'none',...(mode==='omit'?{}:{association:makeProposal(c)})})
+ },recallMemory:async()=>{const got=await read({kind:'comment',deferRecallObservation:true});return {ok:got.ok,validateRecall:got.validateRecall,offerAssociation:got.offerAssociation,observeDelivered:got.observeDelivered,items:got.publicRecallLines.map((summary,i)=>({id:String(i),kind:'public-safe',summary}))}}})}
+ assert.equal((await trusted('owner','omit')).ok,true);assert.equal(confirmed,1)
+ assert.equal((await trusted('owner','confirm')).ok,true);assert.equal(confirmed,2);assert.equal(tracker.read(A).channel,'owner-comment')
+ assert.equal((await trusted('friend','confirm')).ok,true);assert.equal(confirmed,3);assert.equal(tracker.read(A).channel,'friend-comment')
+ epoch++;assert.equal((await trusted('friend','forget')).ok,false);assert.equal(confirmed,3);assert.equal(tracker.read(A),null);assert.equal(calls,22);assert.equal(x.g.status().associations.active,0)
+}))
