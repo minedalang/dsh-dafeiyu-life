@@ -7143,8 +7143,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!scope?.accountTag||scope.accountTag!==trustedLifeAccountTag()||scope.epoch!==accountBinding.generation()||accountBinding.status().blocked||!lifeMemory)return
       const ids=lifeMemory.reflectionEvidence(rows.map(e=>e.id),{visibility:'public-event'}).filter(e=>e.stage==='clear'&&['watch','comment','social'].includes(e.kind)).map(e=>e.id)
       if((rows.length&&!ids.length)||scope.accountTag!==trustedLifeAccountTag()||scope.epoch!==accountBinding.generation())return
-      neuralActivationTracker?.recordPublicEpisodes({accountTag:scope.accountTag,ids,channel:'main-chat',proof:proof&&ids.includes(proof.fromId)&&ids.includes(proof.memoryId)?proof:null})
-      lifeManagementEvents.publish('memory-recall')
+      const deliveredProof=proof&&ids.includes(proof.fromId)&&ids.includes(proof.memoryId)?proof:null
+      if(proof?.basis==='episode-ai-v1'&&!deliveredProof)return false
+      const recorded=neuralActivationTracker?.recordPublicEpisodes({accountTag:scope.accountTag,ids,channel:'main-chat',proof:deliveredProof})===true
+      lifeManagementEvents.publish('memory-recall');return recorded
     },
     getVideoAssociationRecall:async (query,{isCurrent=()=>false}={})=>{
       const scope=trustedLifeAccountTag(),epoch=accountBinding.generation();if(!scope||accountBinding.status().blocked||!memoryRetriever||!isCurrent())return []

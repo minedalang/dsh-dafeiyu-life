@@ -4,6 +4,7 @@ import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createHash} from 'node:crypto'
+import {createLongTermMemory} from '../lib/long-term-memory.mjs'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup,allowedPath} from '../lib/data-backup.mjs'
 import {createLifeReflection,__test as reflectionTest} from '../lib/life-reflection.mjs'
@@ -349,16 +350,49 @@ test('trusted owner/friend comment explicit public recall delivers only live pub
 }))
 
 
-test('real public text bridge: current source, delivered IDs, no durable edge, restart and forgetting',()=>setup(async x=>{
+test('public text candidates need a model proposal; old lexical receipts remain readable, new receipts survive restart and forgetting',()=>setup(async x=>{
  const a={kind:'comment',key:'text-assoc-a',bvid:bv(9),at:NOW-1000,accountTag:A,text:'做纸雕灯笼时需要反复调整折角，尤其是灯面。'}
  const b={...a,key:'text-assoc-b',bvid:bv(10),text:'做纸雕灯笼时需要反复调整折角，尤其是灯面和边缘。'}
  x.g.recordEvents([a,b,{...b,key:'text-assoc-foreign',bvid:bv(11),accountTag:B}]);const [sa,sb]=x.g.reflectionEvidence([a.key,b.key]);assert.ok(sa&&sb)
  let tag=A;const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({...cfg,mainSessionMemoryMaxItems:4,mainSessionMemoryMaxChars:3000}),getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(query,o)=>x.g.recall({query,...o}).filter(e=>e.id===sa.id),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o),getPublicEpisodeEvidence:({accountTag,ids})=>accountTag===tag?x.g.reflectionEvidence(ids):[],getAssociationScope:()=>({accountTag:tag,epoch:1})})
- const result=await retriever.retrieve('纸雕灯笼时需要反复调整折角','chat',{includeSelf:true});const proof=result.publicAssociationProof;assert.ok(proof,JSON.stringify(result));assert.equal(proof.basis,'episode-text-v1');assert.equal(proof.memoryId,sb.id);assert.deepEqual(result.episodeIds,[sa.id,sb.id]);assert.equal(retriever.validateImmediateRecall({accountTag:A,...proof}),true);assert.equal(result.usedModel,false);assert.equal(x.g.status().associations.active,0)
+ const result=await retriever.retrieve('纸雕灯笼时需要反复调整折角','chat',{includeSelf:true});const candidate=result.publicAssociationCandidate;assert.ok(candidate,JSON.stringify(result));assert.equal(result.publicAssociationProof,undefined);assert.equal(candidate.memoryId,sb.id);assert.deepEqual(result.episodeIds,[sa.id,sb.id]);assert.equal(result.usedModel,false)
+ const proposal={relationType:'concept',quoteA:'反复调整折角',quoteB:'反复调整折角',reason:'两次公开讨论都涉及纸雕工艺中的折角调整'}
+ assert.equal(retriever.confirmPublicAssociation({...candidate},proposal),null)
+ assert.equal(retriever.confirmPublicAssociation(candidate,{...proposal,quoteB:'不存在的证据原文'}),null)
+ assert.equal(retriever.confirmPublicAssociation(candidate,{...proposal,relationType:'emotion'}),null)
+ const proof=retriever.confirmPublicAssociation(candidate,proposal);assert.ok(proof);assert.equal(proof.basis,'episode-ai-v1');assert.equal(proof.relationType,'concept');assert.equal(retriever.confirmPublicAssociation(candidate,proposal),null);assert.equal(retriever.validateImmediateRecall({accountTag:A,...proof}),true);assert.equal(retriever.validateImmediateRecall({accountTag:A,...proof,relationType:'contrast'}),false);assert.equal(x.g.status().associations.active,0)
+ const legacy={mode:'immediate',basis:'episode-text-v1',fromId:sa.id,memoryId:sb.id,fingerprint:createHash('sha256').update(JSON.stringify(['episode-text-v1',A,...x.g.reflectionEvidence([sa.id,sb.id])])).digest('hex')};assert.equal(retriever.validateImmediateRecall({accountTag:A,...legacy}),true)
  const historyFile=join(x.dir,'neural-text.json');const make=()=>createNeuralActivationTracker({getAccountTag:()=>tag,now:()=>NOW,historyFile,getHistoryIdentity:()=> 'text-fixture',validateImmediate:o=>retriever.validateImmediateRecall(o)})
- let tracker=make();assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:[sa.id],proof}),false);assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:result.episodeIds,proof}),true);assert.equal(tracker.read(A).basis,'episode-text-v1');tracker=make();const saved=tracker.read(A);assert.ok(saved);assert.equal(saved.memoryId,sb.id)
+ let tracker=make();assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:result.episodeIds}),true);assert.equal(tracker.read(A),null,'retrieval alone is not a model association');assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:[sa.id],proof}),false);assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:result.episodeIds,proof:legacy}),true);assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:result.episodeIds,proof}),true);assert.equal(tracker.read(A).basis,'episode-ai-v1');tracker=make();const saved=tracker.read(A);assert.ok(saved);assert.equal(saved.memoryId,sb.id);assert.equal(saved.relationType,'concept');assert.equal(tracker.recent(A).paths.length,2);assert.ok(!readFileSync(historyFile,'utf8').includes(proposal.quoteA));assert.ok(!readFileSync(historyFile,'utf8').includes(proposal.reason))
  const episodes=x.g.videoRecallGroups(x.g.semanticCandidates({domain:'main-session',limit:3200}));const steps=x.g.associationActivationSteps({accountTag:A,receipt:saved,episodeRows:episodes});assert.equal(steps.length,1);assert.ok(projectNeuralActivation(saved,steps,episodes))
  tag=B;x.setAccount(B);assert.equal(retriever.validateImmediateRecall({accountTag:A,...proof}),false);tag=A;x.setAccount(A)
  const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==sb.id);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal(retriever.validateImmediateRecall({accountTag:A,...proof}),false);assert.equal(tracker.read(A),null)
- assert.equal((await retriever.retrieve('纸雕灯笼时需要反复调整折角','chat',{includeSelf:true})).publicAssociationProof,undefined)
+ const after=await retriever.retrieve('纸雕灯笼时需要反复调整折角','chat',{includeSelf:true});assert.equal(after.publicAssociationProof,undefined);assert.equal(after.publicAssociationCandidate,undefined)
+}))
+
+test('actual mounted Session recall: embedding candidate without shared phrase, voluntary bounded proposal, turn/account/forgetting gate',()=>setup(async x=>{
+ const a={kind:'comment',key:'ai-text-a',bvid:bv(12),at:NOW-2000,accountTag:A,text:'雨滴敲窗让我放松下来。'}
+ const b={...a,key:'ai-text-b',bvid:bv(13),at:NOW-1000,text:'阴天伴随旋律获得内心平静。'}
+ x.g.recordEvents([a,b,{...b,key:'foreign-ai-text',accountTag:B,bvid:bv(14)}]);const [sa,sb]=x.g.reflectionEvidence([a.key,b.key]);assert.ok(sa&&sb)
+ let tag=A,epoch=1,embeddingCalls=0,modelCalls=0,selected='main',enabled=true
+ const config=()=>({...cfg,mainSessionId:selected,mainSessionMemoryEnabled:enabled,mainSessionMemoryEmbeddingEnabled:true,mainSessionMemoryMaxItems:4,mainSessionMemoryMaxChars:3000})
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:config,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}).filter(e=>e.id===sa.id),getPublicEpisodeEvidence:({accountTag,ids})=>accountTag===tag?x.g.reflectionEvidence(ids):[],getAssociationScope:()=>({accountTag:tag,epoch}),semanticSearch:async(q,rows)=>{embeddingCalls++;assert.ok(rows.some(r=>r.id==='episode:'+sa.id));return {ready:true,items:[{id:'episode:'+sa.id,score:.85},{id:'episode:'+sb.id,score:.78}]}},invokeModel:async()=>{modelCalls++;throw Error('unexpected selector call')}})
+ const tracker=createNeuralActivationTracker({getAccountTag:()=>tag,getEpoch:()=>epoch,now:()=>NOW,validateImmediate:o=>retriever.validateImmediateRecall(o)})
+ const tools=[],listeners=new Map(),agent={id:'main',sessionId:'main',session:{snapshotEvents:()=>[]},ctx:{on(n,f){listeners.set(n,f);return ()=>listeners.delete(n)},systemPrompt:{section(){return ()=>{}},context(){return ()=>{}}},tools:{register(s){tools.push(s);return ()=>{}}}}}
+ const session=createLongTermMemory({dataDir:x.dir,dshHome:x.dir,agents:{get:()=>agent,list:()=>[agent]},getConfig:config,defineTool:s=>s,getRetriever:()=>retriever,captureRecallObservation:()=>({accountTag:tag,epoch}),observeEpisodeRecall:(scope,rows,proof)=>tracker.recordPublicEpisodes({accountTag:scope.accountTag,ids:rows.map(e=>e.id),proof}),logger:{warn(){}}})
+ try{
+  session.start();const life=tools.find(t=>t.name==='dafeiyu_life_recall'),ordinary=tools.find(t=>t.name==='dafeiyu_memory_recall');assert.ok(life&&ordinary)
+  const user=()=>listeners.get('agent/inbox/inserted')({message:{role:'user',content:'还记得让你平静的经历吗'}})
+  const query='雨天心情',recall=()=>life.execute({query}),report=(c,extra={})=>life.execute({query,association_token:c.token,association_type:'concept',association_quote_a:'雨滴敲窗让我放松',association_quote_b:'旋律获得内心平静',association_reason:'两次经历表达不同情境带来的安宁感',...extra})
+  assert.equal((await recall()).associationCandidate,undefined,'no genuine owner turn, no proposal token')
+  user();let r=await life.execute({query,limit:1});assert.equal(r.associationCandidate,undefined,'both experiences must be delivered');r=await recall();const c=r.associationCandidate;assert.ok(c,JSON.stringify(r));assert.deepEqual(c.excerpts,[a.text,b.text]);assert.equal(JSON.parse(life.output.render({},r)[0].text).associationCandidate.token,c.token);assert.equal(tracker.read(A),null)
+  assert.equal((await recall()).associationCandidate,undefined,'one offer per genuine turn');assert.equal((await report(c,{association_token:'wrong'})).ok,false);assert.equal((await report(c,{association_quote_b:'编造的证据内容'})).ok,false);assert.equal(tracker.read(A),null);assert.equal((await report(c)).ok,false)
+  user();r=await ordinary.execute({query});assert.ok(r.associationCandidate);assert.equal(JSON.parse(ordinary.output.render({},r)[0].text).associationCandidate.token,r.associationCandidate.token);assert.equal((await report(r.associationCandidate)).associationConfirmed,true);assert.equal(tracker.read(A).relationType,'concept');assert.equal((await report(r.associationCandidate)).ok,false);assert.equal(x.g.status().associations.active,0)
+  user();r=await recall();user();assert.equal((await report(r.associationCandidate)).ok,false,'new owner turn invalidates old offer')
+  r=await recall();epoch++;assert.equal((await report(r.associationCandidate)).ok,false,'account generation invalidates old offer');assert.equal(tracker.read(A),null)
+  user();r=await recall();listeners.get('agent/inbox/inserted')({message:{role:'user',source:{kind:'plugin:internal'},content:'后台通知'}});assert.equal((await report(r.associationCandidate)).ok,false);assert.equal((await recall()).associationCandidate,undefined)
+  user();r=await recall();enabled=false;assert.equal((await report(r.associationCandidate)).ok,false);enabled=true
+  user();r=await recall();const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==sb.id);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal((await report(r.associationCandidate)).ok,false);assert.equal(tracker.read(A),null)
+  assert.equal(modelCalls,0);assert.ok(embeddingCalls>0)
+ }finally{session.stop()}
 }))
