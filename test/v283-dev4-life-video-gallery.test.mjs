@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync,existsSync,utimesSync,symlinkSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {addLifeVideoGallery,listLifeVideoGallery,readLifeVideoGalleryImage,pruneLifeVideoGallery,pruneAllLifeVideoGalleries} from '../lib/life-video-gallery.mjs'
+import {addLifeVideoGallery,listLifeVideoGallery,recentLifeObservations,readLifeVideoGalleryImage,pruneLifeVideoGallery,pruneAllLifeVideoGalleries} from '../lib/life-video-gallery.mjs'
 const tag='a'.repeat(16),bvid='BV1pXHK6mE6z',now=1771750800000
 const jpeg=Buffer.from([0xff,0xd8,0xff,0xd9])
 test('相册仅保存真实 JPG、账号隔离、精确在12小时失效',()=>{
@@ -16,6 +16,7 @@ test('相册仅保存真实 JPG、账号隔离、精确在12小时失效',()=>{
   const saved=addLifeVideoGallery(root,{account:tag,bvid,captures,verified:true,at:now,analysis:'R1C1 [00:01]：真实模型描述。',memoryWrite:{status:'recorded',detailStatus:'recorded',privateField:'never expose'}})
   assert.equal(saved.ok,true)
   assert.equal(listLifeVideoGallery(root,tag,{now:now+1000}).length,1)
+  const projection=recentLifeObservations(root,tag,{bvid,now:now+1000});assert.equal(projection.rows.length,1);assert.equal(projection.imagesIncluded,false);assert.equal(projection.rows[0].images[0].times[0],1);assert.doesNotMatch(JSON.stringify(projection),/真实模型描述|never expose/);assert.equal(recentLifeObservations(root,'c'.repeat(16),{now:now+1000}).rows.length,0);assert.equal(recentLifeObservations(root,tag,{now:now+12*3600_000}).rows.length,0)
   assert.equal(listLifeVideoGallery(root,tag,{now:now+1000})[0].images[0].gridCols,2)
   assert.equal(listLifeVideoGallery(root,tag,{now:now+1000})[0].analysis,'R1C1 [00:01]：真实模型描述。')
   assert.equal(listLifeVideoGallery(root,tag,{now:now+1000})[0].memoryWrite.detailStatus,'recorded')

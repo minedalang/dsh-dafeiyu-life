@@ -63,7 +63,7 @@ import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import {listBackupFiles,inspectBackupInDirectory,deleteBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
 import {pruneVideoCaches,VIDEO_CACHE_RETENTION} from './lib/video-cache-retention.mjs'
-import {addLifeVideoGallery,listLifeVideoGallery,readLifeVideoGalleryImage,pruneLifeVideoGallery,LIFE_GALLERY_RETENTION_HOURS} from './lib/life-video-gallery.mjs'
+import {addLifeVideoGallery,listLifeVideoGallery,recentLifeObservations,readLifeVideoGalleryImage,pruneLifeVideoGallery,LIFE_GALLERY_RETENTION_HOURS} from './lib/life-video-gallery.mjs'
 import {planOwnerGalleryRevisit} from './lib/owner-video-revisit.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -96,7 +96,7 @@ import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
 import { createAccountBinding } from './lib/account-binding.mjs'
 import { createReadActionExecutionGate,readToolAction } from './lib/read-action-execution-gate.mjs'
 import {createLifeDecisionTrace} from './lib/life-decision-trace.mjs'
-import {createLifeWillingness,prepareLifeCommentReply} from './lib/life-willingness.mjs'
+import {createLifeWillingness,prepareLifeCommentReply,executeChosenLifeRead} from './lib/life-willingness.mjs'
 import {createLifeVideoActionBridge} from './lib/life-video-action-bridge.mjs'
 import {createModelInvocationJournal} from './lib/model-invocation-journal.mjs'
 import {createLifeContinuationWriteExecutor} from './lib/life-continuation-write.mjs'
@@ -2070,12 +2070,18 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     try { return JSON.parse(JSON.stringify(v)) } catch { return String(v) }
   }
 
+  const voluntaryMainReads=new Set(['bili_whoami','bili_dm_contact_lookup','bili_growth_recall','bili_experience_recall','bili_search','bili_home_recommendations','bili_subtitle','bili_comments','bili_status','bili_video_info','bili_comment_thread','bili_danmaku','bili_video_zones','bili_hot_videos','bili_hot_buzzwords','bili_weekly_hot','bili_rank','bili_user_info','bili_creator_relation_status','bili_user_videos','bili_favorite_lists','bili_favorite_content','bili_unread_messages','bili_received_replies','bili_dynamic_comment_context','bili_received_at_and_likes'])
   const tool = (spec) => ctx.tools.register(defineTool({
     ...spec,
     output: textOutput,
     async execute(args, exec) {
       if(!platformReady())return {ok:false,blocked:true,error:platformMessage()};
       if(!integrationAvailable())return {ok:false,blocked:true,error:'模式切换待重启或不可用'};
+      if(voluntaryMainReads.has(spec.name)){
+        const epoch=accountBinding.generation(),account=trustedLifeAccountTag(),policy=getSessionIntegration()
+        const result=await executeChosenLifeRead({chosen:true,isCurrent:()=>{const next=getSessionIntegration();return platformReady()&&integrationAvailable()&&epoch===accountBinding.generation()&&account===trustedLifeAccountTag()&&policy.revision===next.revision&&policy.mode===next.mode},read:()=>spec.execute(args,exec)})
+        return safe(result.ok?result.value:{ok:false,reason:result.reason})
+      }
       return safe(await spec.execute(args, exec))
     },
   }))
@@ -2554,7 +2560,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
 
   tool({
     name:'bili_watch_video',
-    description:'当主人说“去看/看看这个视频”时调用；若问画面、动作、字幕或内容，请选择 standard 而非仅标题简介。读取真实视频详情、字幕（如有）、热门评论与少量弹幕，完成后返回可核验的内容材料并记一条“主 Session 指定观看”经历。它不播放完整视频；没有字幕/视觉证据时必须说明看到了什么、没看到什么，不能编造画面。',
+    description:'当你自主愿意回应主人“去看/看看这个视频”的建议时调用；可以拒绝、延期或选择范围；若问画面、动作、字幕或内容，请选择 standard 而非仅标题简介。读取真实视频详情、字幕（如有）、热门评论与少量弹幕，完成后返回可核验的内容材料并记一条“主 Session 指定观看”经历。它不播放完整视频；没有字幕/视觉证据时必须说明看到了什么、没看到什么，不能编造画面。',
     parameters:{bvid:{type:'string',description:'主人指定的真实 BV 号'},include_comments:{type:'boolean',description:'是否读取热门评论，默认 true'},include_danmaku:{type:'boolean',description:'是否读取少量弹幕，默认 true'},view_depth:{type:'string',description:'由鱼鱼决定理解深度：skim 略看资料（默认，不识图）；standard 正常了解（可用视觉时识图）；deep 深入探索（可用视觉时识图，并可随后按时间窗复查）。不强制选择后两项。'},visual_question:{type:'boolean',description:'旧接口兼容：主动提出视觉疑问时相当于 standard；显式 skim 优先'}},
     async execute(args={}) { return executeWatchVideo(args) }
   })
@@ -2564,7 +2570,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // explore; the original watch pipeline still owns memory and evidence.
   tool({
     name:'bili_life_consider_video',
-    description:'给 Life 一次自主决定是否了解某条真实公开视频的机会，即使之前完全没看过也可以考虑观看。先自主决定略看或看全片缩略图；全局结果出来后才再次由 Life 决定是否深入真实局部、选择哪一个时间锚点。只读，不提供点赞评论授权。主人明确指定观看仍使用 bili_watch_video。',
+    description:'给 Life 一次自主决定是否了解某条真实公开视频的机会，即使之前完全没看过也可以考虑观看。先自主决定略看或看全片缩略图；全局结果出来后才再次由 Life 决定是否深入真实局部、选择哪一个时间锚点。只读，不提供点赞评论授权。主人明确指定观看也不是命令；自主愿意直接观看时可使用 bili_watch_video。',
     parameters:{bvid:{type:'string',description:'真实 BV，不可从模糊描述猜测'}},
     async execute(args={}){
       refreshCfg()
@@ -5182,7 +5188,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       return {ok:false,reason:'unsupported-read',items:[]}
     },
     revisitVideo:({uid,request,offeredBvids,isCurrent,incomingText})=>contextualRevisit({request,offeredBvids,scene:'dm',uid,incomingText,
-      authorized:()=>isCurrent()&&cfg.dmWatch===true&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===String(uid)}),
+      authorized:()=>isCurrent()&&cfg.dmWatch===true&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===String(uid)}),
     onTodoSuggested:async({uid,messageId,at,task})=>{
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.dmWatch!==true||cfg.ownerDmAgentEnabled!==true||cfg.ownerDmReadCommandsEnabled!==true||String(cfg.dmOwnerUid||'')!==String(uid))return {ok:false,error:'主人只读待办权限未启用'}
@@ -5642,7 +5648,19 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // Aggregate only; no user messages, UIDs, retrieved memories or model prompts.
   const interactionContextStats={since:Date.now(),fullTurns:0,compactTurns:0,expandedTurns:0,
     extraModelCalls:0,continuationFailures:0,lazyReadTurns:0,lastAt:0,lastMode:'',recent:[]};
+  const currentRecentObservations=(args={})=>{
+    refreshCfg();const scope=trustedLifeAccountTag();
+    if(!platformReady()||accountBinding.status().blocked||!scope)return {ok:false,reason:'account-not-ready',rows:[]}
+    if(args?.bvid!==undefined&&typeof args.bvid!=='string')return {ok:false,reason:'invalid-bvid',rows:[]}
+    try{return recentLifeObservations(stateDir,scope,{bvid:args?.bvid||'',limit:args?.limit})}catch{return {ok:false,reason:'gallery-not-ready',rows:[]}}
+  }
   const interactionBatcher = createInteractionBatcher({
+    requireVoluntaryReads:true,
+    captureReadScope:batch=>{const scope=trustedLifeAccountTag(),epoch=accountBinding.generation(),policy=getSessionIntegration();return ()=>{
+      refreshCfg();const next=getSessionIntegration();return automaticSession.current()&&cfg.masterEnabled===true&&!accountBinding.status().blocked&&
+        Boolean(scope)&&scope===trustedLifeAccountTag()&&epoch===accountBinding.generation()&&policy.revision===next.revision&&policy.mode===next.mode&&
+        batch.every(row=>row.kind!=='dm'||(cfg.dmWatch===true&&String(row.uid||'')&&socialPolicyGate.actor(row.uid).role===row.role))
+    }},
     getContextMode:()=>{refreshCfg();return cfg.interactionContextMode==='full'?'full':'compact'},
     onContextUsage:({mode,kind,items,requests,continued,continuationFailed,requestedKinds=[],foundKinds=[],missingKinds=[],actualLazyReads=0,at})=>{
       if(mode==='full')interactionContextStats.fullTurns+=items;
@@ -5661,6 +5679,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     prepareContexts:(batch,{mode}={})=>socialContextAssembler?.batch(batch,{mode})?.then(contexts=>
       contexts.map((row,i)=>({...row,availableContexts:[...(row.availableContexts||[]),
+        ...(batch[i]?.kind==='dm'&&batch[i]?.role==='owner'&&batch[i]?.trigger==='incoming'&&batch[i]?.messageId&&!batch[i]?.privacyGuard&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===String(batch[i].uid)&&socialPolicyGate.actor(batch[i].uid).role==='owner'?['recent_observations']:[]),
         ...(batch[i]?.kind==='comment'&&batch[i]?.verifiedCommentSource===true&&
           cfg.lifeAgentMode==='active'&&
           cfg.masterEnabled===true&&!accountBinding.status().blocked?['public_person']:[]),
@@ -5699,6 +5718,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     loadRequestedContexts:async(batch,requestedByIndex)=>{
       const base=await (socialContextAssembler?.batch(batch.map(row=>({...row,deferRecallObservation:true})),{mode:'compact',requestedByIndex})||Promise.resolve(batch.map(()=>({}))))
       return Promise.all(base.map(async(row,i)=>{
+        if(requestedByIndex?.[i]?.includes('recent_observations')){const input=batch[i];refreshCfg();if(input?.kind==='dm'&&input.role==='owner'&&input.trigger==='incoming'&&input.messageId&&!input.privacyGuard&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===String(input.uid)&&socialPolicyGate.actor(input.uid).role==='owner')row={...row,recentObservationsContext:boundedJson(currentRecentObservations({limit:3}),2200)}}
         const wantsHot=requestedByIndex?.[i]?.includes('hot_comments')
         const wantsPerson=requestedByIndex?.[i]?.includes('public_person')
         const wantsShared=requestedByIndex?.[i]?.includes('shared_link')&&batch[i]?.kind==='dm'
@@ -6148,7 +6168,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           trustedLifeAccountTag()===linkScope&&socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation}).ok&&
           ['owner','friend'].includes(socialPolicyGate.actor(req.uid).role)&&dm.enabled&&dm.whitelist.includes(String(req.uid))&&socialPortrait?.contactBoundary?.(req.uid)!=='stop'
       }
+      const ownerFactCurrent=()=>{refreshCfg();return tier==='owner'&&req.trigger==='incoming'&&Boolean(String(req.messageId||''))&&!req.privacyGuard&&friendRevisitCurrent()&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmActionsEnabled===true&&cfg.mainSessionMemoryEnabled!==false&&String(cfg.dmOwnerUid||'')===String(req.uid)}
       const generated=await interactionBatcher.generate({kind:'dm',role:tier,...visualReq,socialAutonomy:true,
+        ...(ownerFactCurrent()?{rememberOwnerFact:proposal=>longTermMemory?.rememberOwnerDmFact({proposal,sourceText:String(req.text||''),eventKey:'owner-dm:'+linkScope+':'+createHash('sha256').update(String(req.messageId)).digest('hex'),isCurrent:ownerFactCurrent})||{ok:false,reason:'memory-not-ready'}}:{}),
         ...(['owner','friend'].includes(tier)&&req.trigger==='incoming'&&String(req.messageId||'')&&friendRevisitCurrent()?{
           revisitVideo:({request,offeredBvids,isCurrent})=>contextualRevisit({request,offeredBvids,scene:'dm',uid:String(req.uid),incomingText:req.text,authorized:()=>friendRevisitCurrent()&&isCurrent()})}:{}),
         ...(linkContexts.length?{sharedLinkScope:linkScope,sharedVideoOffered,availableContexts:linkContexts,
@@ -6287,13 +6309,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     logger:{warn:(msg)=>log('评论上下文：'+msg)},
   })
   socialContextAssembler=createSocialContextAssembler({
-    policy:socialPolicyGate,memoryRetriever,getMemoryRetriever:()=>memoryRetriever,getAccountTag:()=>accountBinding.status().blocked?'':trustedLifeAccountTag(),
-    getAccountEpoch:()=>accountBinding.generation(),onVisualRecall:({accountTag,rows,kind,role})=>observePublicRecall(accountTag,rows,kind==='comment'?(role==='owner'?'owner-comment':'friend-comment'):'friend-dm'),
+    requireVoluntaryReads:true,policy:socialPolicyGate,memoryRetriever,getMemoryRetriever:()=>memoryRetriever,getAccountTag:()=>accountBinding.status().blocked?'':trustedLifeAccountTag(),
+    getAccountEpoch:()=>accountBinding.generation(),onVisualRecall:({accountTag,rows,kind,role})=>observePublicRecall(accountTag,rows,kind==='comment'?(role==='owner'?'owner-comment':'friend-comment'):(role==='owner'?'owner-dm':'friend-dm')),
     onModelAssociation:({accountTag,ids,proof,kind,role,uid})=>{
       refreshCfg()
       if(cfg.masterEnabled!==true||accountBinding.status().blocked||trustedLifeAccountTag()!==accountTag||socialPolicyGate.actor(uid).role!==role||
-        (kind==='dm'&&(role!=='friend'||cfg.dmWatch!==true))||(kind==='comment'&&(role==='owner'?cfg.ownerCommentAgentEnabled!==true:role!=='friend'||!(cfg.commentWatchReplies===true||cfg.commentAtEnabled===true))))return false
-      const channel=kind==='comment'?(role==='owner'?'owner-comment':'friend-comment'):'friend-dm'
+        (kind==='dm'&&(!['owner','friend'].includes(role)||cfg.dmWatch!==true||(role==='owner'&&cfg.ownerDmAgentEnabled!==true)))||(kind==='comment'&&(role==='owner'?cfg.ownerCommentAgentEnabled!==true:role!=='friend'||!(cfg.commentWatchReplies===true||cfg.commentAtEnabled===true))))return false
+      const channel=kind==='comment'?(role==='owner'?'owner-comment':'friend-comment'):(role==='owner'?'owner-dm':'friend-dm')
       const recorded=neuralActivationTracker?.recordPublicEpisodes({accountTag,ids,channel,proof})===true
       if(recorded)lifeManagementEvents.publish('memory-recall')
       return recorded
@@ -7173,6 +7195,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // Both main Session consumers must read the same trusted host policy.
   // Local memory admission is separate from B站 platform readiness.
   longTermMemory = createLongTermMemory({
+    getRecentObservations:currentRecentObservations,
     getSessionIntegration,
     getSessionCapabilities:sessionIntegration.getCapabilities,
     dataDir: stateDir,

@@ -7,3 +7,5 @@
 **发布验收：** [2.8.3 验收清单](release/2.8.3-release-checklist.md) · [维护者发布命令](release/2.8.3-publish-commands.md)。正式版范围说明不等于渠道已发布。
 
 **未来与历史：** [未来路线图](ROADMAP.md) · [桌宠开放平台预告](open-platform/README.md) · [历史发布与开发快照](release/README.md)。
+
+- [交互场景与工具能力指南](interaction-tools.md)（面向使用者，含实际能力和限制）

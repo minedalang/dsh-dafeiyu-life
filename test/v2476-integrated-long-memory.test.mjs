@@ -36,13 +36,13 @@ test('Claude/Anthropic 可见的长期记忆工具 schema 只有 ASCII 参数名
 test('身份级 remember 可保存、事实键自动淘汰旧值并按当前话题召回',async()=>{
   const dir=temp(),dsh=temp();const f=fakeAgent();
   try{
-    const mem=createLongTermMemory({dataDir:dir,dshHome:dsh,agents:{get:()=>f.agent,list:()=>[f.agent]},getConfig:cfg,defineTool,getRetriever:()=>({localContext:()=>"【长期记忆｜统一检索】\n"+mem.activeMemories().map(x=>x.text).join("\n")})})
+    const mem=createLongTermMemory({dataDir:dir,dshHome:dsh,agents:{get:()=>f.agent,list:()=>[f.agent]},getConfig:cfg,defineTool,getRetriever:()=>({retrieve:async()=>({context:"【长期记忆｜统一检索】\n"+mem.activeMemories().map(x=>x.text).join("\n"),reason:"local",includesSelf:true})})})
     mem.start();const tool=f.tools[0]
     let r=await tool.execute({text:'主人喜欢把大肥鱼叫白饭鱼',importance:1,tags:['主人','称呼'],fact_key:'主人.称呼'});assert.equal(r.ok,true)
     r=await tool.execute({text:'主人以后改叫我肥鱼队长',importance:1,tags:['主人','称呼'],fact_key:'主人.称呼'});assert.equal(r.ok,true)
     const rows=mem.list('主人');assert.equal(rows.length,2);assert.equal(rows.filter(x=>!x.已被取代).length,1);assert.match(rows.find(x=>!x.已被取代).text,/肥鱼队长/)
     f.handlers['agent/inbox/inserted']({message:{content:[{type:'text',text:'你还记得我平时怎么叫你吗？'}]}})
-    const injected=f.contexts[0].text();assert.match(injected,/长期记忆/);assert.match(injected,/肥鱼队长/);assert.doesNotMatch(injected,/白饭鱼/)
+    const injected=f.contexts[0].text();assert.match(injected,/dafeiyu_memory_recall/);assert.doesNotMatch(injected,/肥鱼队长|白饭鱼/);const recalled=await f.tools.find(x=>x.name==='dafeiyu_memory_recall').execute({query:'称呼'});assert.equal(recalled.ok,true);assert.match(recalled.context,/肥鱼队长/);assert.doesNotMatch(recalled.context,/白饭鱼/)
     mem.stop()
   }finally{rmSync(dir,{recursive:true,force:true});rmSync(dsh,{recursive:true,force:true})}
 })

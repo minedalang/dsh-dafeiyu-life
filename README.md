@@ -2,19 +2,21 @@
 
 > **坚持鱼的自由发展。** 我们不想把鱼鱼做成一条只会听命执行的机器鱼。她可以陪你聊天、帮你做事，也会在得到允许的 B站生活中探索、认识人、积累经历，慢慢形成自己的兴趣与表达方式。她可以接受建议，也可以说“不想”、稍后再做，或安静休息。
 
-> **当前版本源码：2.8.3-dev.38（正式版收口候选，2.8.3 尚未正式发布）。** 发布门禁见 [2.8.3 验收清单](docs/release/2.8.3-release-checklist.md)。
+> **当前版本源码：2.8.3-dev.39（正式版收口候选，2.8.3 尚未正式发布）。** 发布门禁见 [2.8.3 验收清单](docs/release/2.8.3-release-checklist.md)。
 
 🎉 **已收录 [DSHMarket 插件市场](https://dshmarket.com/zh/)**。在 DSH 的 `dshmarket` 中搜索 **`dsh-dafeiyu-life`**（大肥鱼 · DSH 生活系统）即可找到本项目。若搜索不到，请刷新市场索引并确认市场显示的实际版本。
 
 [![npm 版本](https://img.shields.io/npm/v/dsh-dafeiyu-life?label=npm)](https://www.npmjs.com/package/dsh-dafeiyu-life) [![npm 月下载](https://img.shields.io/npm/dm/dsh-dafeiyu-life)](https://www.npmjs.com/package/dsh-dafeiyu-life) [![npm 年下载](https://img.shields.io/npm/dy/dsh-dafeiyu-life)](https://www.npmjs.com/package/dsh-dafeiyu-life)
 
-[✨ 特色功能](#-鱼鱼能做什么) · [🌊 自主成长体系](#-一条鱼慢慢长成自己的样子) · [🧩 桌宠开放平台](#-桌宠开放平台开发中) · [🆕 2.8.3 版本亮点](#-283-让经历成为记忆) · [📚 近期版本新功能](docs/近期版本新功能.md) · [🚀 开始使用](#-开始使用) · [🌱 未来规划](#-未来规划让生活更有故事) · [完整更新记录（开发者）](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)
+[✨ 特色功能](#-鱼鱼能做什么) · [🌊 自主成长体系](#-一条鱼慢慢长成自己的样子) · [🧩 桌宠开放平台](#-桌宠开放平台开发中) · [🆕 2.8.3 版本亮点](#-283-让经历成为记忆) · [📚 近期版本新功能](docs/近期版本新功能.md) · [🚀 开始使用](#-开始使用) · [🌱 未来规划](#-未来规划让生活更有故事) · [交互与工具能力](docs/interaction-tools.md) · [完整更新记录（开发者）](CHANGELOG.md) · [反馈建议](https://github.com/minedalang/dsh-dafeiyu-life/issues)
 
 大肥鱼（鱼鱼）是运行于 **DeepSeek Harness（DSH）** 的开源 AI 角色生活插件。她通过真实观看、交流和回忆积累生活经历。
 
 这里的心情、人格、意愿和生活经历是 **AI 的模拟与行为机制**，并不代表真实意识。鱼鱼的自主选择始终不能代替使用者的授权，也不能绕过 B站平台规则。
 
 快速设置独立管理 B站、自主生活、主 Session 人格与自动记忆。本地回忆无需 B站登录；平台行为仍需登录、模型验证和授权。能力变更需重启。保留原有 AI 身份或需要了解记忆工具时，可阅读 [可选 Session 工具指南](docs/SESSION_INTEGRATION.md)。
+
+[Life 架构可视化图](docs/architecture/life-system-current-view.md)
 
 ## ✨ 鱼鱼能做什么
 

@@ -106,3 +106,22 @@ test('friend real social decision keeps the live evidence guard until sending',a
  {loadRequestedContexts:async()=>[{memoryContext:bvid+' 旧观察',publicVideoBvids:[bvid],validateRecall:()=>live}]})
  try{const result=await b.generate({...base,role:'friend',socialAutonomy:true,trigger:'incoming',threadKey:'dm:1234',canSkip:true,revisitVideo:async({isCurrent})=>({evidence:{description:'新的观察'},validate:isCurrent})});assert.equal(result.action,'reply');assert.deepEqual(result.messages,['这次看到风筝']);assert.equal(result.validateRevisit(),true);live=false;assert.equal(result.validateRevisit(),false);assert.equal(calls,3)}finally{b.stop()}
 })
+
+test('dev39 production voluntary policy overrides old full preference for comments; no retrieval without model choice',async()=>{
+ let reads=0,seen='';const b=make(async prompt=>(seen=prompt,answer()),{getContextMode:()=> 'full',requireVoluntaryReads:true,prepareContexts:async(_batch,{mode})=>{assert.equal(mode,'compact');return [{availableContexts:['memory']}]},loadRequestedContexts:async()=>{reads++;return [{memoryContext:'PRIVATE_HISTORY'}]}});
+ try{assert.equal(await b.generate({...base,kind:'comment'}),'自然回复');assert.equal(reads,0);assert.doesNotMatch(seen,/PRIVATE_HISTORY|只有本人的长期记忆密钥风格文本/)}finally{b.stop()}
+});
+test('dev39 actual chosen read revoked while pending cannot reach continuation',async()=>{
+ let live=true,calls=0,reads=0;const b=make(async()=>{calls++;return answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:['过去']})},{captureReadScope:()=>()=>live,loadRequestedContexts:async()=>{reads++;live=false;return [{memoryContext:'OLD_SCOPE'}]}});
+ try{await assert.rejects(b.generate(base),/scope|最终决定/);assert.equal(calls,1);assert.equal(reads,1)}finally{b.stop()}
+});
+test('dev39 owner fact write requires model decision, receipt before reply, no friend or duplicate write',async()=>{
+ const proposal={action:'skip',reply:'',ownerMemoryProposal:{quote:'以后我喜欢乌龙茶'}};let writes=0,calls=0;
+ const b=make(async prompt=>{calls++;if(calls===1){assert.match(prompt,/"ownerMemoryWriteAvailable":true/);return answer(proposal)}assert.match(prompt,/本轮真实记忆写入回执/);return answer({reply:'我记下了'})});
+ try{assert.equal(await b.generate({...base,role:'owner',rememberOwnerFact:async()=>{writes++;return {ok:true}}}),'我记下了');assert.equal(writes,1);assert.equal(calls,2)}finally{b.stop()}
+ const denied=make(async()=>answer(proposal));try{await assert.rejects(denied.generate({...base,role:'friend',rememberOwnerFact:async()=>{writes++;return {ok:true}}}));assert.equal(writes,1)}finally{denied.stop()}
+});
+test('dev39 verified owner recent-observation context offered only after explicit selection',async()=>{
+ let calls=0,reads=0;const b=make(async prompt=>{calls++;if(calls===1){assert.doesNotMatch(prompt,/OBSERVATION_123/);return answer({action:'skip',reply:'',contextRequests:['recent_observations']})}assert.match(prompt,/OBSERVATION_123/);return answer({reply:'还有缓存清单'})},{loadRequestedContexts:async(_rows,kinds)=>{reads++;assert.deepEqual(kinds,[['recent_observations']]);return [{recentObservationsContext:'OBSERVATION_123'}]}});
+ try{assert.equal(await b.generate({...base,role:'owner',availableContexts:['recent_observations']}),'还有缓存清单');assert.equal(reads,1)}finally{b.stop()}
+});

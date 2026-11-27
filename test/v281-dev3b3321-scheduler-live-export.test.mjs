@@ -220,3 +220,10 @@ test('runtime summary reads rotated/install windows but never exports arbitrary 
  writeFileSync(join(d,'config.json'),'SECRET_UNLISTED')
  const v=readRuntimeLogs(d,{errorsOnly:true,exportAll:true});assert.equal(v.errors,3);assert.equal(v.rows.length,3);assert.equal(v.rows[0].reason,'ETIMEDOUT');assert.equal(v.rawIncluded,false);assert.doesNotMatch(JSON.stringify(v),/SECRET|secret-message|secret-path|config.json/);assert.equal(v.coverage.length,4)
 })
+
+test('dev39 timestamped errors own their continuation lines; install output groups and raw secrets remain absent',t=>{
+ const d=mkdtempSync(join(tmpdir(),'runtime-event-'));t.after(()=>rmSync(d,{recursive:true,force:true}));
+ writeFileSync(join(d,'duty.log'),'2026-11-27T17:02:11.509+08:00 模型调用失败\n  TypeError: PRIVATE_MODEL_PROMPT\n    at C:/private/secret.js\n2026-11-27T17:02:12.509+08:00 [info] MCP 已就绪\n');
+ writeFileSync(join(d,'install.log'),'pip download PRIVATE_TOKEN\nprogress\nERROR ECONNRESET\n');
+ const v=readRuntimeLogs(d,{exportAll:true});assert.equal(v.rows.length,3);assert.equal(v.errors,2);const model=v.rows.find(r=>r.message==='模型调用失败');assert.equal(model.lineCount,3);assert.equal(model.exception,'TypeError');assert.match(model.detail,/TypeError/);const install=v.rows.find(r=>r.source==='install.log');assert.equal(install.time,null);assert.equal(install.lineCount,3);assert.equal(install.reason,'ECONNRESET');assert.doesNotMatch(JSON.stringify(v),/PRIVATE_|secret\.js|窗口记录/);
+});

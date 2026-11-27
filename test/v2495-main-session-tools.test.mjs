@@ -216,7 +216,7 @@ test('dev.24 协作挂载只保留显式工具，不注入人格、自动回忆�
  const home=mkdtempSync(join(tmpdir(),'dafeiyu-coop-'));let f
  try{
   f=integrationFixture(home);const old=f.tools.get('dafeiyu_remember'),oldPrompt=f.sections.get('dafeiyu-main-identity'),oldContext=f.contexts.get('dafeiyu-memory'),oldFeel=f.tools.get('dafeiyu_feel')
-  assert.equal(oldPrompt.text(),'测试人格');f.message('主人喜欢乌龙茶');assert.equal(oldContext.text(),'旧自动上下文')
+  assert.equal(oldPrompt.text(),'测试人格');f.message('主人喜欢乌龙茶');assert.match(oldContext.text(),/自主记忆/);assert.doesNotMatch(oldContext.text(),/旧自动上下文/)
   assert.equal((await old.execute({text:'主人喜欢乌龙茶',fact_key:'主人.偏好.饮料',importance:.98})).ok,true)
   const oldId=f.memory.list()[0].id,oldBytes=readFileSync(join(f.memory.storeDir,'dafeiyu.json'),'utf8')
   const before=f.counts();f.change({mode:'memory-foundation',revision:1},false)
@@ -277,7 +277,7 @@ test('统一能力独立人格和自动上下文，保留显式记忆工具',asy
   let prefs={persona:false,automaticMemory:true};f=integrationFixture(home,()=>prefs)
   assert.equal(f.sections.has('dafeiyu-main-identity'),false)
   assert.equal(f.contexts.has('dafeiyu-memory'),true)
-  f.message('主人喜欢乌龙茶');assert.equal(f.contexts.get('dafeiyu-memory').text(),'旧自动上下文')
+  f.message('主人喜欢乌龙茶');assert.match(f.contexts.get('dafeiyu-memory').text(),/自主记忆/);assert.doesNotMatch(f.contexts.get('dafeiyu-memory').text(),/旧自动上下文/)
   const old=f.tools.get('dafeiyu_remember');assert.equal((await old.execute({text:'主人喜欢乌龙茶',fact_key:'主人.偏好.饮料'})).ok,true)
   prefs={persona:true,automaticMemory:false};f.change({mode:'memory-foundation',revision:1})
   assert.equal(f.sections.has('dafeiyu-main-identity'),true);assert.equal(f.contexts.has('dafeiyu-memory'),false)
@@ -285,3 +285,12 @@ test('统一能力独立人格和自动上下文，保留显式记忆工具',asy
   assert.equal(f.memory.status().identityMounted,true);assert.equal(f.memory.status().automaticMemoryMounted,false)
  }finally{f?.memory.stop();rmSync(home,{recursive:true,force:true})}
 })
+
+test('dev39 current owner inbox exact quote writes into shared identity store once, stale scope and invented facts fail',async()=>{
+ const home=mkdtempSync(join(tmpdir(),'dafeiyu-owner-fact-'));let f;try{
+  f=integrationFixture(home);const input={sourceText:'我以后喜欢喝乌龙茶',proposal:{quote:'喜欢喝乌龙茶',fact_key:'主人.偏好.饮料',importance:.98},eventKey:'owner-dm:aaaaaaaaaaaaaaaa:event1',isCurrent:()=>true};
+  assert.equal(f.memory.rememberOwnerDmFact({...input,isCurrent:()=>false}).ok,false);assert.equal(f.memory.rememberOwnerDmFact({...input,proposal:{quote:'喜欢喝汽水'}}).ok,false);assert.equal(f.memory.rememberOwnerDmFact({...input,sourceText:'我喜欢什么？'}).ok,false);
+  assert.equal(f.memory.rememberOwnerDmFact(input).ok,true);assert.equal(f.memory.rememberOwnerDmFact(input).duplicate,true);assert.equal(f.memory.list('乌龙茶').length,1);assert.match(f.memory.list('乌龙茶')[0].sourceKey,/^owner-dm:/);
+  let done;f.retrieve(()=>new Promise(r=>done=r));const recall=f.tools.get('dafeiyu_memory_recall');const pending=recall.execute({query:'过去'});f.message('新的主人轮次');done({context:'陈旧结果',episodes:[],reason:'local'});assert.equal((await pending).ok,false);
+ }finally{f?.memory.stop();rmSync(home,{recursive:true,force:true})}
+});

@@ -353,3 +353,16 @@ test('sealed same-character business backup can enter the independent memory rep
  assert.throws(()=>memoryRepairSource(backup,{characterId:'other'}),/相同角色/);assert.throws(()=>memoryRepairSource({...backup,schema:1},{characterId}),/原始校验清单/);assert.throws(()=>memoryRepairSource({...backup,files:{...backup.files,'duty.md':'tampered'}},{characterId}),/完整性/);
  }finally{rmSync(root,{recursive:true,force:true})}
 });
+
+test('dev39 mixed group: one bad field does not disable legal siblings; exact unit IDs and old group compatibility',()=>{
+ const root=temp(),old=temp();try{
+  const before={dmOwnerPollSeconds:150,dmOwnerActivePollSeconds:30,mainSessionMemoryHalfLifeDays:30,mainSessionMemorySemanticEnabled:false};
+  const after={...before,dmOwnerPollSeconds:999,dmOwnerActivePollSeconds:45,mainSessionMemoryHalfLifeDays:45,mainSessionMemorySemanticEnabled:true};
+  const current=createBackup({root,config:before}),incoming=createBackup({root:old,config:after});
+  const scope={scopeRevision:"test:1",normalizePatch:p=>({...p,...(p.dmOwnerPollSeconds===999?{dmOwnerPollSeconds:150}:{})}),verifyGroup:()=>{throw Error('模型未核验')}};
+  const p=businessRestorePreview(current,incoming,scope),msgs=p.groups.find(g=>g.id==='messages'),mem=p.groups.find(g=>g.id==='memory');
+  assert.equal(msgs.available,true);assert.equal(mem.available,true);assert.equal(msgs.units.find(u=>u.keys.includes('dmOwnerPollSeconds')).available,false);assert.equal(mem.units.find(u=>u.keys.includes('mainSessionMemorySemanticEnabled')).available,false);
+  const opts={...scope,restoreRevision:p.revision};assert.deepEqual(planBusinessRestore(current,incoming,{...opts,selection:['messages:dmOwnerActivePollSeconds','memory:mainSessionMemoryHalfLifeDays']}).patch,{dmOwnerActivePollSeconds:45,mainSessionMemoryHalfLifeDays:45});
+  for(const selection of [['messages'],['messages:dmOwnerPollSeconds'],['memory:mainSessionMemorySemanticEnabled'],['life'],['messages:fake']])assert.throws(()=>planBusinessRestore(current,incoming,{...opts,selection}),/不可用/);
+ }finally{rmSync(root,{recursive:true,force:true});rmSync(old,{recursive:true,force:true})}
+});
