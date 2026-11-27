@@ -5099,7 +5099,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       :{agent:'owner-dm',source:null,recent:[]},
     // Owner-private memory tools are read-only and bound to the currently
     // authenticated account. No public DM or other UID may query these copies.
-    recallMemory:async({action,uid,query,id,detail,history=[],beforeAt=0})=>{
+    recallMemory:async({action,uid,query,id,detail,history=[],beforeAt=0,pageCursor=''})=>{
       refreshCfg()
       if(String(uid)!==String(cfg.dmOwnerUid||'')||cfg.ownerDmAgentEnabled!==true||!trustedLifeAccountTag()||accountBinding.status()?.blocked)
         return {ok:false,reason:'account-not-verified',items:[]}
@@ -5116,7 +5116,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           const isCurrent=()=>epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&String(uid)===String(cfg.dmOwnerUid||'')&&cfg.ownerDmAgentEnabled===true
           const row=(lifeMemory?.recentVisualExperienceContext({accountTag:scope,memoryIds:[String(id||'').replace(/^episode:/,'')],limit:1})||[])[0]
           if(!String(id||'').startsWith('episode:')||row?.memoryId!==String(id).slice(8))return {ok:false,reason:'detail-not-offered',items:[]}
-          return memoryRetriever?.readPublicVisualDetail({accountTag:scope,row,selection:detail,isCurrent,beforeAt})||{ok:false,reason:'memory-not-ready',items:[]}
+          return memoryRetriever?.readPublicVisualDetail({accountTag:scope,row,selection:detail,isCurrent,beforeAt,pageCursor})||{ok:false,reason:'memory-not-ready',items:[]}
         }
         const item=memoryRetriever?.ownerDetail(id)
         return {ok:true,items:item?[item]:[]}
@@ -7225,6 +7225,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getAssociations:options=>lifeMemory?.associationCandidates(options)||[],
     validateAssociationPath:options=>lifeMemory?.validateAssociationPath(options)===true,
     getAssociationScope:()=>({accountTag:accountBinding.status().blocked?'':trustedLifeAccountTag(),epoch:accountBinding.generation()}),
+    getPublicEpisodeEvidence:({accountTag,ids})=>accountBinding.status().blocked||accountTag!==trustedLifeAccountTag()?[]:lifeMemory?.reflectionEvidence(ids,{visibility:'public-event'})||[],
     groupVideoEpisodes:rows=>lifeMemory?.videoRecallGroups(rows)||rows,
     getPrivateInsights:(opts)=>lifeMemory?.privateInsights(opts)||[],
     getPrivateInsightCandidates:(opts)=>lifeMemory?.privateInsightCandidates(opts)||[],
@@ -7279,6 +7280,15 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getAccountTag:trustedLifeAccountTag,
     getAccountEpoch:()=>accountBinding.generation(),
     getPublicEpisodeContext:()=>lifeSubagentHandoff({agent:'reflection',episodes:universalLifeEpisodes}),
+    readPublicDetail:({accountTag,source,selection,isCurrent})=>{
+      const row=(lifeMemory?.recentVisualExperienceContext({accountTag,memoryIds:[source.id],limit:1})||[])[0]
+      return memoryRetriever?.readPublicVisualDetail({accountTag,row,selection,isCurrent})||{ok:false,reason:'memory-not-ready',items:[]}
+    },
+    onPublicDetailRecall:({accountTag,id})=>{
+      if(accountBinding.status().blocked||accountTag!==trustedLifeAccountTag())return
+      neuralActivationTracker?.recordPublicEpisodes({accountTag,ids:[id],channel:'reflection'})
+      lifeManagementEvents.publish('memory-recall')
+    },
     getPersonalityEnabled:()=>{try{return personalityEvolution?.status().enabled===true}catch{return false}},
     onPersonalityProposals:(proposals,batch)=>personalityEvolution?.applyProposals(proposals,batch),
     onPersonalityObservations:(batch)=>personalityEvolution?.observeVerifiedExploration(batch),

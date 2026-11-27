@@ -4,6 +4,7 @@ import {mkdtempSync,rmSync,existsSync,readFileSync,writeFileSync,mkdirSync,utime
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
+import {createLifeReflection} from '../lib/life-reflection.mjs'
 import {createMemoryRetriever,publicVisualAssociationContext} from '../lib/memory-retriever.mjs'
 import {createLifeMemoryBackup,restoreLifeMemoryBackup,collectBackupFiles,createBackup,restoreBackupFiles} from '../lib/data-backup.mjs'
 import {buildVideoExplorationEvent} from '../lib/video-experience.mjs'
@@ -636,3 +637,26 @@ test('shared public deep reader selects exact parent and time, verifies live evi
  assert.equal(retriever.readPublicVisualDetail({...args,isCurrent:()=>false}).ok,false)
  setAccount(B);assert.equal(read.validateRecall(),false);setAccount(A);setTime(NOW+20*DAY);assert.equal(read.validateRecall(),false)
 }))
+
+
+test('shared reader signed paging delivers each fragment once, keeps selector and rejects stale cursor',()=>setup(({gateway,memoryId,setAccount})=>{
+ const parts=Array.from({length:5},(_,i)=>({...fragments[0],fragmentId:'page-frame-'+i,sourceRef:'verified:page:'+i,timeAnchorMs:[1000+i*1000,1000+i*1000],content:'观察到窗边角色正在整理不同颜色的纸片，画面编号'+i+'。'}))
+ assert.equal(gateway.attachMemoryDetails({memoryId,accountTag:A,fragments:parts,sourceProof:{internalToken:'test-only'}}).ok,true)
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({mainSessionMemoryEnabled:true}),getVisualExperiences:o=>gateway.recentVisualExperienceContext(o),getVideoDetails:o=>gateway.recallVideoDetails(o)})
+ const row=gateway.recentVisualExperienceContext({accountTag:A,limit:1,includeMemoryId:true})[0],args={accountTag:A,row,selection:{bvid:BV,startMs:1000,endMs:9000},isCurrent:()=>true,beforeAt:NOW+1}
+ const p1=retriever.readPublicVisualDetail(args),p2=retriever.readPublicVisualDetail({...args,pageCursor:p1.nextCursor}),p3=retriever.readPublicVisualDetail({...args,pageCursor:p2.nextCursor});assert.deepEqual([p1,p2,p3].map(p=>p.items.length),[2,2,1]);assert.equal(new Set([p1,p2,p3].flatMap(p=>p.items.map(i=>i.id))).size,5);assert.equal(p3.hasMore,false);assert.equal(p3.nextCursor,undefined)
+ assert.equal(retriever.readPublicVisualDetail({...args,pageCursor:p1.nextCursor+'x'}).ok,false);assert.equal(retriever.readPublicVisualDetail({...args,selection:{bvid:BV,startMs:2000,endMs:9000},pageCursor:p1.nextCursor}).ok,false)
+ setAccount(B);assert.equal(p1.validateRecall(),false);assert.equal(retriever.readPublicVisualDetail({...args,pageCursor:p1.nextCursor}).ok,false)
+}))
+
+for(const mode of ['success','forgotten','invalid-id','repeat','ordinary'])test('reflection bounded deep recall: '+mode,async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dsh-reflect-detail-'));let clock=NOW+5000,calls=0,commits=0,observed=0;const cfg={mainSessionMemoryEnabled:true,mainSessionMemoryHalfLifeDays:15,mainSessionReflectionAuto:true,mainSessionReflectionMinCandidates:2}
+ const gateway=createLifeMemoryGateway({dataDir:dir,now:()=>clock,getAccountTag:()=>A,getConfig:()=>cfg,admitMemoryDetails:()=>true,logger:{warn(){}}})
+ try{gateway.recordEvents([event]);const id=gateway.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId;assert.equal(gateway.attachMemoryDetails({memoryId:id,accountTag:A,fragments,sourceProof:{}}).ok,true)
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getVisualExperiences:o=>gateway.recentVisualExperienceContext(o),getVideoDetails:o=>gateway.recallVideoDetails(o)})
+ let selected;const life=createLifeReflection({dataDir:dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:gateway,now:()=>clock,commitMemories:()=>{commits++;return {added:0,rows:[]}},readPublicDetail:({accountTag,source,selection,isCurrent})=>retriever.readPublicVisualDetail({accountTag,row:{memoryId:source.id,bvid:source.bvid},selection,isCurrent}),onPublicDetailRecall:({id:got})=>{assert.equal(got,id);observed++},invokeModel:async prompt=>{
+ if(++calls===1){assert.match(prompt,/recall_detail/);selected=JSON.parse(prompt.split('<candidate_data>').at(-1).split('</candidate_data>')[0])[0].id;return JSON.stringify(mode==='ordinary'?{memories:[]}:{recall_detail:{candidate_id:mode==='invalid-id'?'c-forged':selected,startMs:1000,endMs:9000}})}
+ assert.match(prompt,/<detail_data>/);assert.match(prompt,/两个人物/);assert.ok(!prompt.includes('nextCursor'));if(mode==='forgotten')clock=NOW+14*DAY;return JSON.stringify(mode==='repeat'?{recall_detail:{candidate_id:selected}}:{memories:[]})
+ },logger:{warn(){}}});life.addEvents([event]);const result=await life.reflect({force:true});const ok=['success','ordinary'].includes(mode);assert.equal(result.ok,ok,JSON.stringify(result));assert.equal(calls,['invalid-id','ordinary'].includes(mode)?1:2);assert.equal(commits,ok?1:0);assert.equal(observed,mode==='success'?1:0);if(ok)assert.equal(result.detailRecallDelivered,mode==='success'?1:0);else assert.equal(life.status().pending,1)
+ }finally{gateway.close();rmSync(dir,{recursive:true,force:true})}
+})

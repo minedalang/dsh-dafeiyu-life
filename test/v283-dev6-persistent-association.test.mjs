@@ -77,7 +77,7 @@ test('cross-batch reflection considers previously reviewed clear evidence withou
 test('historical association evidence forgotten during the second model call is not resurrected',()=>setup(async x=>{
  let calls=0;const life=createLifeReflection({dataDir:x.dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:x.g,now:()=>NOW,commitMemories:()=>({added:0,rows:[]}),invokeModel:async prompt=>{
   if(++calls===1)return JSON.stringify({memories:[]});const current=JSON.parse(prompt.split('<candidate_data>').at(-1).split('</candidate_data>')[0]),history=JSON.parse(prompt.split('<association_history>').at(-1).split('</association_history>')[0]);const old=history.find(r=>r.text.includes(events[0].title));const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.key!=='assoc-test:1');writeFileSync(x.g.file,JSON.stringify(doc));return JSON.stringify({memories:[],associations:[{type:'concept',candidate_ids:[current[0].id,old.id],evidence_quotes:[events[2].title,events[0].title]}]})
- },logger:{warn(){}}});life.addEvents(events.slice(0,2));await life.reflect({force:true});life.addEvents([events[2]]);const r=await life.reflect({force:true});assert.equal(r.ok,true);assert.equal(r.associationAdded,0);assert.equal(r.associationRejected,1);assert.equal(x.g.status().associations.active,0)
+ },logger:{warn(){}}});life.addEvents(events.slice(0,2));await life.reflect({force:true});life.addEvents([events[2]]);const r=await life.reflect({force:true});assert.equal(r.ok,false);assert.equal(r.failureCode,'reflection-validation-failed');assert.equal(life.status().pending,1);assert.equal(x.g.status().associations.active,0)
 }))
 
 test('historical candidate sample is bounded, current-account only, complete, and never uses candidate metadata',()=>setup(async x=>{
@@ -346,4 +346,19 @@ test('trusted owner/friend comment explicit public recall delivers only live pub
  role='stranger';assert.equal((await run({})).observeDelivered,undefined)
  role='owner';assert.equal((await run({privacyGuard:true})).observeDelivered,undefined)
  const limited=await run({recallRequest:{intent:'activity_recall',time:{relative:'yesterday'},detail:{bvid:bv(1)}}});assert.ok(limited.loadErrors.length);assert.equal(limited.memoryContext,'')
+}))
+
+
+test('real public text bridge: current source, delivered IDs, no durable edge, restart and forgetting',()=>setup(async x=>{
+ const a={kind:'comment',key:'text-assoc-a',bvid:bv(9),at:NOW-1000,accountTag:A,text:'做纸雕灯笼时需要反复调整折角，尤其是灯面。'}
+ const b={...a,key:'text-assoc-b',bvid:bv(10),text:'做纸雕灯笼时需要反复调整折角，尤其是灯面和边缘。'}
+ x.g.recordEvents([a,b,{...b,key:'text-assoc-foreign',bvid:bv(11),accountTag:B}]);const [sa,sb]=x.g.reflectionEvidence([a.key,b.key]);assert.ok(sa&&sb)
+ let tag=A;const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({...cfg,mainSessionMemoryMaxItems:4,mainSessionMemoryMaxChars:3000}),getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(query,o)=>x.g.recall({query,...o}).filter(e=>e.id===sa.id),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o),getPublicEpisodeEvidence:({accountTag,ids})=>accountTag===tag?x.g.reflectionEvidence(ids):[],getAssociationScope:()=>({accountTag:tag,epoch:1})})
+ const result=await retriever.retrieve('纸雕灯笼时需要反复调整折角','chat',{includeSelf:true});const proof=result.publicAssociationProof;assert.ok(proof,JSON.stringify(result));assert.equal(proof.basis,'episode-text-v1');assert.equal(proof.memoryId,sb.id);assert.deepEqual(result.episodeIds,[sa.id,sb.id]);assert.equal(retriever.validateImmediateRecall({accountTag:A,...proof}),true);assert.equal(result.usedModel,false);assert.equal(x.g.status().associations.active,0)
+ const historyFile=join(x.dir,'neural-text.json');const make=()=>createNeuralActivationTracker({getAccountTag:()=>tag,now:()=>NOW,historyFile,getHistoryIdentity:()=> 'text-fixture',validateImmediate:o=>retriever.validateImmediateRecall(o)})
+ let tracker=make();assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:[sa.id],proof}),false);assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:result.episodeIds,proof}),true);assert.equal(tracker.read(A).basis,'episode-text-v1');tracker=make();const saved=tracker.read(A);assert.ok(saved);assert.equal(saved.memoryId,sb.id)
+ const episodes=x.g.videoRecallGroups(x.g.semanticCandidates({domain:'main-session',limit:3200}));const steps=x.g.associationActivationSteps({accountTag:A,receipt:saved,episodeRows:episodes});assert.equal(steps.length,1);assert.ok(projectNeuralActivation(saved,steps,episodes))
+ tag=B;x.setAccount(B);assert.equal(retriever.validateImmediateRecall({accountTag:A,...proof}),false);tag=A;x.setAccount(A)
+ const doc=JSON.parse(readFileSync(x.g.file,'utf8'));doc.episodes=doc.episodes.filter(e=>e.id!==sb.id);writeFileSync(x.g.file,JSON.stringify(doc));assert.equal(retriever.validateImmediateRecall({accountTag:A,...proof}),false);assert.equal(tracker.read(A),null)
+ assert.equal((await retriever.retrieve('纸雕灯笼时需要反复调整折角','chat',{includeSelf:true})).publicAssociationProof,undefined)
 }))

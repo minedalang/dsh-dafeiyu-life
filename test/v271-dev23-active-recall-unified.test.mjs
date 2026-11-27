@@ -161,3 +161,10 @@ test('owner detail accepts exact historical time only for previously returned me
  assert.equal((await agent.processMessage(ownerMsg('之前那个画面','detail-1'))).ok,true)
  assert.equal(reads.length,2);assert.deepEqual(reads[1].detail,{bvid:BV,startMs:1000,endMs:3000})
 }))
+
+
+test('owner DM continues only the offered signed page within the same turn, cursor is not model-visible',()=>withDir(async dir=>{
+ let calls=0,reads=[];const steps=[{action:'memory_search',queries:['画面']},{action:'memory_detail',id:'episode:known',detail:{bvid:BV,startMs:1000,endMs:3000}},{action:'memory_detail',id:'episode:known',detailNext:true},{action:'reply',text:'我想起来了。'}]
+ const agent=makeOwner(dir,{recallMemory:async args=>{reads.push(args);if(args.action==='memory_search')return {ok:true,items:[{id:'episode:known',summary:'以前看到的公开画面'}]};return {ok:true,items:[{id:'detail:'+reads.length,summary:reads.length===2?'第一页画面':'第二页画面'}],hasMore:reads.length===2,...(reads.length===2?{nextCursor:'HOST-ONLY-CURSOR'}:{}),validateRecall:()=>true}},invokeModel:async prompt=>{assert.ok(!JSON.stringify(prompt).includes('HOST-ONLY-CURSOR'));if(calls===3)assert.match(JSON.stringify(prompt),/第二页画面/);return steps[calls++]}})
+ assert.equal((await agent.processMessage(ownerMsg('之前那个画面','detail-page'))).ok,true);assert.equal(calls,4);assert.equal(reads.length,3);assert.deepEqual(reads[1].detail,reads[2].detail);assert.equal(reads[2].pageCursor,'HOST-ONLY-CURSOR');assert.equal(reads[1].pageCursor,undefined)
+}))
