@@ -172,6 +172,15 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 .action-feedback[data-tone=success]{border-left-color:var(--ui-teal)}
 .action-feedback[data-tone=warning]{border-left-color:var(--ui-amber)}
 .action-feedback[data-tone=error]{border-left-color:var(--bad)}
+.backup-restore-dialog.action-confirm-dialog{width:min(900px,94vw);max-width:94vw;max-height:90vh;padding:20px;overflow:auto;box-sizing:border-box}
+.backup-restore-scroll{max-height:58vh;overflow:auto;padding:3px 3px 10px;overscroll-behavior:contain}
+.backup-preview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 16px}
+.backup-preview-metric,.backup-preview-group{border:1px solid var(--stroke);border-radius:12px;background:var(--panel);padding:12px;min-width:0;overflow-wrap:anywhere}
+.backup-preview-metric strong{font-size:20px;display:block;line-height:1.3}.backup-preview-metric small{display:block;color:var(--muted);font-size:11px;line-height:1.5}
+.backup-preview-group{margin:8px 0}.backup-preview-group summary{cursor:pointer;font-weight:600}.backup-preview-group label{display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:4px}.backup-preview-group input{flex:none}
+.backup-preview-delta{display:grid;grid-template-columns:minmax(110px,1fr) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:start;border-top:1px solid var(--stroke);padding:7px 0;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}.backup-preview-delta span:last-child{color:var(--ink);font-weight:600}.backup-preview-delta span:nth-child(2){color:var(--muted)}
+.backup-restore-footer{flex-wrap:wrap;align-items:center}.backup-restore-footer span{margin-right:auto;font-size:12px;color:var(--muted)}
+@media(max-width:600px){.backup-restore-dialog.action-confirm-dialog{padding:12px;max-height:94vh}.backup-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.backup-preview-delta{grid-template-columns:1fr 1fr}.backup-preview-delta span:first-child{grid-column:1/-1}.backup-restore-scroll{max-height:60vh}.backup-restore-footer span{width:100%}}
 .action-confirm-dialog{color:var(--ink);background:linear-gradient(145deg,var(--panel),var(--tint));border:1px solid color-mix(in srgb,var(--ui-indigo) 38%,var(--stroke));box-shadow:0 24px 80px rgba(16,29,54,.28);border-radius:20px;max-width:min(92vw,480px);width:100%;padding:24px;line-height:1.65}
 .action-dialog-backdrop{position:fixed;inset:0;background:rgba(17,29,48,.62);z-index:11000}.action-confirm-dialog[open]{z-index:11001}.action-confirm-dialog::backdrop{background:rgba(17,29,48,.58);backdrop-filter:blur(3px)}
 .confirm-head{display:flex;align-items:center;gap:14px}.confirm-head h3{margin:0;font-size:19px}.confirm-head p{margin:0;color:var(--muted);font-size:12px}
@@ -2707,21 +2716,19 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
         <p class="backup-warning">⚠️ 恢复前请暂停自主生活。程序会检查备份，只有安全的改动才会保存；如有改动，完成后请重启 DSH。</p>
         <div class="backup-recovery-choice">
           <h4>恢复业务数据</h4>
-          <p class="muted">恢复可安全找回的设置和用户规则。生活方案可单独勾选恢复；权限、总开关和现有经历、任务状态不会被旧备份覆盖。</p>
+          <p class="muted">先查看各设置分类的差异和记忆概况，再选择恢复。权限、总开关及现有任务不会被旧备份覆盖。</p>
           <label for="backup-import-file">选择业务备份文件</label>
           <input id="backup-import-file" type="file" accept=".json,.gz,.json.gz,application/json,application/gzip" aria-label="选择大肥鱼数据备份文件">
           <p id="backup-inspect" class="muted backup-status" role="status" aria-live="polite">尚未选择文件</p>
-          <div id="backup-life-restore-option" hidden><label><input type="checkbox" id="backup-restore-life"> 同时恢复备份中的自主生活方案</label><p class="muted" id="backup-life-restore-diff"></p></div>
-          <p id="backup-life-restore-note" class="muted" role="status"></p>
-          <button id="backup-restore" class="danger backup-danger-action" type="button" disabled>确认恢复</button>
+          <button id="backup-restore" class="backup-danger-action" type="button" disabled>预览与恢复</button>
         </div>
         <div class="backup-recovery-choice">
           <h4>恢复人生记忆</h4>
           <p class="muted">如果鱼鱼仍记得这段经历，可以补回核验通过的缺失细节。不同的历史记忆不会直接覆盖现有记忆。</p>
-          <label for="memory-backup-import-file">选择人生记忆备份文件</label>
-          <input id="memory-backup-import-file" type="file" accept=".json,application/json" aria-label="选择大肥鱼长期记忆备份文件">
+          <label for="memory-backup-import-file">选择人生记忆备份或同角色业务备份</label>
+          <input id="memory-backup-import-file" type="file" accept=".json,.gz,application/json,application/gzip" aria-label="选择大肥鱼长期记忆备份文件">
           <p id="memory-backup-inspect" class="muted backup-status" role="status" aria-live="polite">尚未选择记忆备份</p>
-          <button id="memory-backup-restore" class="danger backup-danger-action" type="button" disabled>恢复可找回的记忆</button>
+          <button id="memory-backup-restore" class="backup-danger-action" type="button" disabled>预览记忆恢复</button>
         </div>
       </div>
     </details>
@@ -3814,6 +3821,11 @@ POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世�
 </main>
 <div id="request-indicator" class="request-indicator" role="status" aria-live="polite" hidden><span class="spinner"></span><span>正在与大肥鱼通信…</span></div>
 <div id="action-toast" class="action-toast" role="status" aria-live="polite" hidden></div>
+<dialog id="backup-restore-dialog" class="action-confirm-dialog backup-restore-dialog" aria-labelledby="backup-restore-title">
+ <div class="confirm-head"><span class="confirm-sparkle">↻</span><div><h3 id="backup-restore-title">备份恢复预览</h3><p id="backup-restore-meta"></p></div></div>
+ <div class="backup-restore-scroll"><div id="backup-restore-overview"></div><div id="backup-restore-groups"></div><p id="backup-restore-caution" class="muted"></p></div>
+ <div class="confirm-footer backup-restore-footer"><span id="backup-restore-count" role="status" aria-live="polite"></span><button type="button" id="backup-restore-cancel">取消</button><button type="button" class="primary" id="backup-restore-accept" disabled>确认恢复所选</button></div>
+</dialog>
 <dialog id="action-confirm-dialog" class="action-confirm-dialog" aria-labelledby="action-confirm-title" aria-describedby="action-confirm-description">
   <div class="confirm-head"><span class="confirm-sparkle">✦</span><div><h3 id="action-confirm-title">确认操作</h3><p id="action-confirm-kicker">请确认后继续</p></div></div>
   <p id="action-confirm-description"></p>

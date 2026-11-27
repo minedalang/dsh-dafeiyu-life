@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import {
   createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup,
-  createBackup, validateBackup, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, planPortableMemoryRepair, repairPortableMemoryDetails,
+  createBackup, validateBackup, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, businessRestorePreview, backupMemoryOverview, memoryRepairSource, previewPortableMemoryRepair, planPortableMemoryRepair, repairPortableMemoryDetails,
 } from '../lib/data-backup.mjs'
 import { saveBackupJson } from '../lib/backup-directory.mjs'
 import {createLifeMemoryDetailStore} from '../lib/life-memory-details.mjs'
@@ -146,7 +146,7 @@ test('大备份：旧用户 seen.md 与专项候选可同时存在；两种恢�
     const code=readFileSync(server,'utf8')
     assert.match(code,/const readBackupBody = \(req, maxBytes\) => readJsonRequest\(req, maxBytes, \{strict:true\}\)/)
     assert.match(code,/const body = await readBackupBody\(req, 320_000_000\)/)
-    assert.match(code,/const body=await readBackupBody\(req,65_000_000\),backup=body\?\.backup/)
+    assert.match(code,/const body=await readBackupBody\(req,320_000_000\),source=body\?\.backup/)
   }finally{for(const dir of [root,dest])rmSync(dir,{recursive:true,force:true})}
 })
 
@@ -302,4 +302,54 @@ test('same-character business backup restores explicitly selected Life plan, nev
   const stop=previewBusinessLifeRestore(after,disabled,{...scope,canResume:false});assert.equal(stop.available,true);assert.deepEqual(stop.patch,{lifeAgentMode:'off',autonomousPlannerEnabled:false});
   const legacyRoot=temp();try{const legacy=createBackup({root:legacyRoot,config:saved});assert.equal(previewBusinessLifeRestore(paused,legacy,scope).available,false)}finally{rmSync(legacyRoot,{recursive:true,force:true})}
  }finally{for(const dir of [root,old])rmSync(dir,{recursive:true,force:true})}
+});
+
+
+test('classified preview and selection restore ordinary preferences, keep authorities and old records',()=>{
+ const root=temp(),old=temp(),characterId='11111111-1111-4111-8111-111111111111';
+ const identity={version:1,id:characterId,createdAt:1};
+ const scope={characterId,canResume:true,scopeRevision:'account:1',normalizePatch:p=>p,verifyGroup:()=>{throw Error('未核验')}};
+ try{
+  for(const dir of [root,old]){makeLifeFixture(dir);put(dir,'character-identity.json',identity)}
+  put(root,'duty.md','current');put(old,'duty.md','backup');
+  const before={personaPrompt:'current',mainSessionMemoryHalfLifeDays:45,dmOwnerPollSeconds:150,visionFrames:24,diagVisionEnabled:true,pluginDefaultModelProvider:'current',pluginDefaultModelId:'current',ownerDmActionsEnabled:false,mainSessionId:'current'};
+  const after={...before,personaPrompt:'backup',mainSessionMemoryHalfLifeDays:30,dmOwnerPollSeconds:120,visionFrames:12,diagVisionEnabled:false,pluginDefaultModelProvider:'old',pluginDefaultModelId:'old',ownerDmActionsEnabled:true,mainSessionId:'old'};
+  const current=createBackup({root,config:before}),incoming=createBackup({root:old,config:after});
+  const preview=businessRestorePreview(current,incoming,scope);assert.equal(preview.patches,undefined);assert.equal(preview.memory.backup.episodes.count,1);assert.equal(preview.memory.backup.episodes.lastAt,1772450000000);
+  assert.deepEqual(preview.groups.filter(g=>g.available).map(g=>g.id),['identity','memory','messages','perception','diagnostics']);
+  assert.ok(preview.groups.find(g=>g.id==='protected').rows.every(x=>x.before===undefined&&x.after===undefined));
+  const options={...scope,selection:['identity','memory','messages','perception','diagnostics'],restoreRevision:preview.revision};
+  const plan=planBusinessRestore(current,incoming,options);
+  assert.deepEqual(plan.patch,{personaPrompt:'backup',mainSessionMemoryHalfLifeDays:30,dmOwnerPollSeconds:120,visionFrames:12,diagVisionEnabled:false});
+  assert.deepEqual(plan.names,['duty.md']);restoreBackupFiles(root,plan.restore,{reconcileDetails:false});assert.equal(readFileSync(join(root,'duty.md'),'utf8'),'backup');
+  assert.ok(plan.retainedSettingKeys.includes('ownerDmActionsEnabled'));assert.ok(plan.retainedSettingKeys.includes('mainSessionId'));
+  assert.throws(()=>planBusinessRestore(current,incoming,{...options,selection:['protected']}),/不可用/);
+  assert.throws(()=>planBusinessRestore(current,incoming,{...options,selection:['textModels']}),/不可用/);
+  const verified={...scope,verifyGroup:()=>{}};const verifiedPreview=businessRestorePreview(current,incoming,verified);
+  assert.deepEqual(planBusinessRestore(current,incoming,{...verified,selection:['textModels'],restoreRevision:verifiedPreview.revision}).patch,{pluginDefaultModelProvider:'old',pluginDefaultModelId:'old'});
+  assert.throws(()=>planBusinessRestore(current,incoming,{...options,scopeRevision:'account:2'}),/已变化/);
+  const changed=createBackup({root,config:{...before,dmOwnerPollSeconds:180}});assert.throws(()=>planBusinessRestore(changed,incoming,options),/已变化/);
+  const invalid=createBackup({root:old,config:{...after,dmOwnerPollSeconds:999}});const bounded={...scope,normalizePatch:p=>({...p,...('dmOwnerPollSeconds' in p?{dmOwnerPollSeconds:150}:{})})};
+  assert.equal(businessRestorePreview(current,invalid,bounded).groups.find(g=>g.id==='messages').available,false);
+  // Schema 1 has no original integrity manifest; supported ordinary preferences still restore after explicit confirmation in the route.
+  const legacy={format:'dsh-bili-scroll-plus-backup',schema:1,files:{},config:{mainSessionMemoryHalfLifeDays:30},sqlite:{}};
+  const oldPreview=businessRestorePreview(current,legacy,scope);assert.equal(oldPreview.memory.backup.episodes,null);assert.equal(validateBackup(legacy).integrity,'legacy-unsealed');
+  assert.deepEqual(planBusinessRestore(current,legacy,{...scope,selection:['memory'],restoreRevision:oldPreview.revision}).patch,{mainSessionMemoryHalfLifeDays:30});
+ }finally{for(const dir of [root,old])rmSync(dir,{recursive:true,force:true})}
+});
+
+test('memory preview describes actual repair availability, not backed-up record count',()=>{
+ const root=temp();try{makeLifeFixture(root);const backup=createLifeMemoryBackup(root);const preview=previewPortableMemoryRepair(backup,backup,'scope:1');
+ assert.equal(preview.backup.episodes.count,1);assert.equal(preview.backup.episodes.lastAt,1772450000000);assert.equal(preview.repairable,0);
+ assert.notEqual(preview.revision,previewPortableMemoryRepair(backup,backup,'scope:2').revision);
+ assert.equal(backupMemoryOverview({}).episodes,null);assert.equal(backupMemoryOverview({}).longTerm,null);
+ }finally{rmSync(root,{recursive:true,force:true})}
+});
+
+
+test('sealed same-character business backup can enter the independent memory repair planner without widening scope',()=>{
+ const root=temp();const characterId='11111111-1111-4111-8111-111111111111';try{makeLifeFixture(root);put(root,'character-identity.json',{version:1,id:characterId,createdAt:1});const backup=createBackup({root,config:{}});
+ const source=memoryRepairSource(backup,{characterId});assert.equal(source.format,'dafeiyu-life-memory-backup');assert.equal(inspectLifeMemoryBackup(source).memory.episodes.count,1);assert.equal(previewPortableMemoryRepair(source,source).repairable,0);
+ assert.throws(()=>memoryRepairSource(backup,{characterId:'other'}),/相同角色/);assert.throws(()=>memoryRepairSource({...backup,schema:1},{characterId}),/原始校验清单/);assert.throws(()=>memoryRepairSource({...backup,files:{...backup.files,'duty.md':'tampered'}},{characterId}),/完整性/);
+ }finally{rmSync(root,{recursive:true,force:true})}
 });

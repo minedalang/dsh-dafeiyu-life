@@ -55,7 +55,7 @@ import {resolveExistingDmContact} from './lib/manual-dm-contact.mjs'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
 import { randomUUID, createHash, randomBytes } from 'node:crypto'
 import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
-import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, planPortableMemoryRepair, repairPortableMemoryDetails, createLifeMemoryBackup, inspectLifeMemoryBackup } from './lib/data-backup.mjs'
+import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, businessRestorePreview, memoryRepairSource, previewPortableMemoryRepair, planPortableMemoryRepair, repairPortableMemoryDetails, createLifeMemoryBackup, inspectLifeMemoryBackup } from './lib/data-backup.mjs'
 import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import {listBackupFiles,inspectBackupInDirectory,deleteBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
@@ -146,7 +146,7 @@ import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from './lib/video-o
 import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
 import {ensureOllamaService} from './lib/ollama-service.mjs'
 import {explainVideoVisionFailure} from './lib/video-visual-failure.mjs'
-import {probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
+import {ASR_MODELS,probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
 import {listWhisperModels,deleteWhisperModel} from './lib/whisper-model-cache.mjs'
 import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-continuity.mjs'
 import {todoParentId} from './lib/todo-lineage.mjs'
@@ -3532,22 +3532,22 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
 
   // Every independently launched Agent or fallback model MUST pass the verified
   // provider+model gate. Host-only text calls never pass through this gate.
-  function headlessSelection(task) {
+  function headlessSelection(task,c=cfg) {
     const current=ctx.get('agentDefaultModel')?.currentSelection?.() ?? {}
     if(task==='vision'){
-      const route=resolveVisionModelRoute(cfg,current)
+      const route=resolveVisionModelRoute(c,current)
       return {provider:route.provider,model:route.model}
     }
     const routes={
-      main:{provider:cfg.videoModelProvider||cfg.pluginDefaultModelProvider,model:cfg.videoModelId||cfg.pluginDefaultModelId},
-      vision:{provider:cfg.visionModelProvider||cfg.pluginDefaultModelProvider,model:cfg.visionModelId||cfg.pluginDefaultModelId},
-      memory:{provider:cfg.mainSessionMemoryModelProvider||cfg.pluginDefaultModelProvider,model:cfg.mainSessionMemoryModelId||cfg.pluginDefaultModelId},
-      reflection:{provider:cfg.mainSessionReflectionModelProvider||cfg.pluginDefaultModelProvider,model:cfg.mainSessionReflectionModelId||cfg.pluginDefaultModelId},
-      interaction:{provider:cfg.interactionModelProvider||cfg.pluginDefaultModelProvider,model:cfg.interactionModelId||cfg.pluginDefaultModelId},
-      behaviorDecision:{provider:cfg.behaviorDecisionModelProvider||cfg.interactionModelProvider||cfg.pluginDefaultModelProvider,model:cfg.behaviorDecisionModelId||cfg.interactionModelId||cfg.pluginDefaultModelId},
-      dailyDynamic:{provider:cfg.dailyDynamicModelProvider||cfg.pluginDefaultModelProvider,model:cfg.dailyDynamicModelId||cfg.pluginDefaultModelId},
-      ownerDmAgent:{provider:cfg.ownerDmAgentModelProvider||cfg.pluginDefaultModelProvider,model:cfg.ownerDmAgentModelId||cfg.pluginDefaultModelId},
-      memeRules:{provider:cfg.memeRulesModelProvider||cfg.pluginDefaultModelProvider,model:cfg.memeRulesModelId||cfg.pluginDefaultModelId},
+      main:{provider:c.videoModelProvider||c.pluginDefaultModelProvider,model:c.videoModelId||c.pluginDefaultModelId},
+      vision:{provider:c.visionModelProvider||c.pluginDefaultModelProvider,model:c.visionModelId||c.pluginDefaultModelId},
+      memory:{provider:c.mainSessionMemoryModelProvider||c.pluginDefaultModelProvider,model:c.mainSessionMemoryModelId||c.pluginDefaultModelId},
+      reflection:{provider:c.mainSessionReflectionModelProvider||c.pluginDefaultModelProvider,model:c.mainSessionReflectionModelId||c.pluginDefaultModelId},
+      interaction:{provider:c.interactionModelProvider||c.pluginDefaultModelProvider,model:c.interactionModelId||c.pluginDefaultModelId},
+      behaviorDecision:{provider:c.behaviorDecisionModelProvider||c.interactionModelProvider||c.pluginDefaultModelProvider,model:c.behaviorDecisionModelId||c.interactionModelId||c.pluginDefaultModelId},
+      dailyDynamic:{provider:c.dailyDynamicModelProvider||c.pluginDefaultModelProvider,model:c.dailyDynamicModelId||c.pluginDefaultModelId},
+      ownerDmAgent:{provider:c.ownerDmAgentModelProvider||c.pluginDefaultModelProvider,model:c.ownerDmAgentModelId||c.pluginDefaultModelId},
+      memeRules:{provider:c.memeRulesModelProvider||c.pluginDefaultModelProvider,model:c.memeRulesModelId||c.pluginDefaultModelId},
     }
     const selected=routes[task]||routes.interaction
     return {provider:String(selected.provider||current.provider||current.providerId||''),
@@ -9019,10 +9019,10 @@ logger:{warn:m=>log('社交意图：'+m)}
       return createBackup({root:stateDir,config:effective,sqlite,version:myVersion()})
     }
 
-  let autoBackupBusy=false
+  let autoBackupBusy=false,portableRestoreBusy=false
   let autoBackupState={lastAttemptAt:'',lastError:'',lastSuccessAt:''}
   const runDailyBackup=async()=>{
-    if(autoBackupBusy)return
+    if(autoBackupBusy||portableRestoreBusy)return
     refreshCfg()
     if(cfg.backupAutoEnabled!==true||!cfg.backupDirectory||!integrationAvailable()||(!platformReady()&&!localMemoryReady()))return
     autoBackupBusy=true
@@ -9251,6 +9251,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(['preview','list','auto','delete','export','restore','inspect','location'].includes(action)&&
          !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(String(req.socket?.remoteAddress||'')))
         return sendJson(res,403,{ok:false,error:'备份内容仅允许本机管理中心查看'})
+      let restoreHeld=false
       try {
         if (action === 'location') {
           const body = await readBody(req, 12_000)
@@ -9297,12 +9298,33 @@ logger:{warn:m=>log('社交意图：'+m)}
         const body = await readBackupBody(req, 320_000_000)
         const data = body?.backup
         const summary = validateBackup(data)
-        if (action === 'restore') validateRestoreIdentity(stateDir,data)
+        validateRestoreIdentity(stateDir,data)
         // Inspect must not write anything. The browser shows scope + a second confirmation.
         const lifeRestoreScope=()=>({characterId:accountBinding.characterId(),scopeRevision:accountBinding.generation()+':'+getSessionIntegration().revision,canResume:platformReady()&&sessionIntegration.getCapabilities()?.autonomous===true&&firstStart.status().requiredReady===true&&!accountBinding.status().blocked})
+        const verifyRestoreGroup=(id,patch,current)=>{
+          const next={...current,...patch}
+          if(id==='textModels'){
+            // Reuse the host's live, fingerprint-checked verification receipts.
+            // Never install a model or restore the old provider credentials.
+            if(next.visionEnabled===true&&next.visionMode==='independent_dsh'&&JSON.stringify(headlessSelection('vision',current))!==JSON.stringify(headlessSelection('vision',next)))throw Error('默认模型变化会影响现有视觉路线，请先单独完成图片验收')
+            const defaultRoute=c=>({provider:c.pluginDefaultModelProvider,model:c.pluginDefaultModelId})
+            if(JSON.stringify(defaultRoute(next))!==JSON.stringify(defaultRoute(current)))headlessSync.assertReady(defaultRoute(next))
+            for(const task of ['main','memory','reflection','interaction','behaviorDecision','dailyDynamic','ownerDmAgent','memeRules']){
+              const before=headlessSelection(task,current),after=headlessSelection(task,next)
+              if(JSON.stringify(before)!==JSON.stringify(after))headlessSync.assertReady(after)
+            }
+          }else if(id==='memory'&&patch.mainSessionMemorySemanticEnabled===true)headlessSync.assertReady(headlessSelection('memory',next))
+          else if(id==='asr'){
+            if(!ASR_MODELS.includes(next.asrModel))throw Error('备份 Whisper 型号不受支持')
+            if(next.asrModel!==current.asrModel&&current.asrModelPath)throw Error('当前采用自定义 Whisper 路径，须在依赖页核验')
+            if(next.transcribe||next.asrModel!==current.asrModel){const ready=readWhisperReadiness({stateDir,model:next.asrModel,modelPath:current.asrModelPath||'',pythonAvailable:existsSync(asrPython()),packageAvailable:hasPkg(asrDir,'faster_whisper')});if(ready.model!==next.asrModel||!ready.modelCached||!ready.environmentReady)throw Error('Whisper 模型或运行环境尚未就绪，请先在依赖页安装核验')}
+          }
+        }
         if (action === 'inspect') {
           refreshCfg()
-          return sendJson(res, 200, {ok:true,summary,lifeRestore:previewBusinessLifeRestore(cfg,data,lifeRestoreScope())})
+          const current=createBackup({root:stateDir,config:Object.fromEntries(Object.keys(DEFAULTS).map(k=>[k,cfg[k]])),sqlite:{},version:myVersion()})
+          const preview=businessRestorePreview(current,data,{...lifeRestoreScope(),normalizePatch:clampPatch,verifyGroup:verifyRestoreGroup})
+          return sendJson(res,200,{ok:true,summary,lifeRestore:preview.life,restorePreview:preview})
         }
         // Unsigned v2.4.x exports require a separate, stronger owner confirmation.
         // Existing SHA-256 manifests for schema 2 remain mandatory and are never synthesized.
@@ -9315,12 +9337,18 @@ logger:{warn:m=>log('社交意图：'+m)}
         // writing any file; only explicitly editable settings/rules may change.
         refreshCfg()
         const folder = requireBackupDirectory(cfg.backupDirectory)
+        if(portableRestoreBusy||autoBackupBusy)throw Error('另一个备份或恢复操作正在进行，请稍后重新预览')
+        portableRestoreBusy=true;restoreHeld=true
         const safeguard = await snapshotBusinessBackup()
         refreshCfg()
+        const classified=Object.hasOwn(body,'selection')||Object.hasOwn(body,'restoreRevision')
+        if(classified&&(!explicitManagementIntent(req)||!Array.isArray(body.selection)||typeof body.restoreRevision!=='string'))throw Error('分类恢复需要明确的主人同源确认与当前预览版本')
+        if(classified&&(Object.hasOwn(body,'lifeRestoreConfirm')||Object.hasOwn(body,'lifeRevision')))throw Error('不能混用两种恢复确认协议')
+        if(classified&&Object.keys(DEFAULTS).some(k=>JSON.stringify(cfg[k])!==JSON.stringify(safeguard.config[k])))throw Error('核对期间设置已变化，请重新预览')
         const restoreLife=body.lifeRestoreConfirm==='RESTORE_LIFE_SETTINGS'
         if((Object.hasOwn(body,'lifeRestoreConfirm')||Object.hasOwn(body,'lifeRevision'))&&(!restoreLife||!explicitManagementIntent(req)||typeof body.lifeRevision!=='string'))throw Error('恢复生活方案需要明确的主人同源确认与当前设置版本')
         if(restoreLife&&lifeSettingsV2(cfg).revision!==lifeSettingsV2(safeguard.config).revision)throw Error('备份核对期间生活设置已变化，请重新选择文件')
-        const plan=planBusinessRestore(safeguard,data,restoreLife?{lifeRevision:body.lifeRevision,...lifeRestoreScope()}:{})
+        const plan=planBusinessRestore(safeguard,data,classified?{selection:body.selection,restoreRevision:body.restoreRevision,...lifeRestoreScope(),normalizePatch:clampPatch,verifyGroup:verifyRestoreGroup}:restoreLife?{lifeRevision:body.lifeRevision,...lifeRestoreScope()}:{})
         const patch=Object.fromEntries(Object.keys(DEFAULTS).filter(k=>Object.hasOwn(plan.patch,k)).map(k=>[k,plan.patch[k]]))
         if(!plan.names.length&&!Object.keys(patch).length)return sendJson(res,200,{ok:true,restoredFiles:0,restoredSettings:0,restoredDbs:0,retainedSettings:plan.retainedSettings,retainedRecords:plan.retainedRecords,lifeSettings:lifeSettingsV2(cfg),unchanged:true,restartRequired:false})
         const safeguardPath = saveBackupJson(folder, safeguard, 'pre-restore')
@@ -9332,7 +9360,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           // path as interactive Life settings; no account grants are restored.
           const host=configTouched?(await persistCfg(patch)).host:{ok:true}
           refreshCfg()
-          if(Object.entries(plan.lifePlan?.patch||{}).some(([key,value])=>JSON.stringify(cfg[key])!==JSON.stringify(value)))throw Error('恢复后的设置回读不一致')
+          if(Object.entries(patch).some(([key,value])=>JSON.stringify(cfg[key])!==JSON.stringify(value)))throw Error('恢复后的设置回读不一致')
           if(plan.lifePlan&&cfg.lifeAgentMode==='off')lifeSocialShadow.revoke()
           return sendJson(res,200,{ok:true,restoredFiles,restoredSettings:Object.keys(patch).length,restoredDbs:0,retainedSettings:plan.retainedSettings,retainedRecords:plan.retainedRecords,lifePlanRestored:!!plan.lifePlan&&Object.keys(plan.lifePlan.patch).length>0,lifeSettings:lifeSettingsV2(cfg),safeguardPath,hostSynced:host.ok,restartRequired:true})
         } catch (restoreError) {
@@ -9352,7 +9380,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           }
           throw Error('恢复失败；'+(rollbackErrors.length?'部分回滚未完成，恢复前备份已保留：'+rollbackErrors.join('；'):'已尝试恢复操作前的设置与文件')+'；原始错误：'+String(restoreError?.message||restoreError).slice(0,100))
         }
-      } catch(e) {return sendJson(res,400,{ok:false,error:'数据备份操作失败：'+String(e?.message||e).slice(0,300)})}
+      } catch(e) {return sendJson(res,400,{ok:false,error:'数据备份操作失败：'+String(e?.message||e).slice(0,300)})}finally{if(restoreHeld)portableRestoreBusy=false}
     }
     if (req.method === 'GET' && path === '/api/bili-duty/status') {
       if(platformReady())try { rollSeen() } catch (e) { /* 归档失败不影响状态接口 */ }
@@ -11107,6 +11135,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')return sendJson(res,403,{ok:false,error:'拒绝来自其他网站的记忆备份请求'})
       const action=path.split('/').pop()
       if(!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(String(req.socket?.remoteAddress||'')))return sendJson(res,403,{ok:false,error:'记忆备份仅允许本机管理中心操作'})
+      let restoreHeld=false
       try{
         refreshCfg()
         if(action==='export'){
@@ -11115,17 +11144,23 @@ logger:{warn:m=>log('社交意图：'+m)}
           const backup=createLifeMemoryBackup(stateDir),filePath=saveBackupJson(folder,backup,'dafeiyu-memory')
           return sendJson(res,200,{ok:true,filePath,summary:inspectLifeMemoryBackup(backup)})
         }
-        const body=await readBackupBody(req,65_000_000),backup=body?.backup
+        const body=await readBackupBody(req,320_000_000),source=body?.backup
+        if(source?.format!=='dafeiyu-life-memory-backup')validateRestoreIdentity(stateDir,source)
+        const backup=memoryRepairSource(source,{characterId:accountBinding.characterId()})
         const summary=inspectLifeMemoryBackup(backup)
-        if(action==='inspect')return sendJson(res,200,{ok:true,summary})
+        const scope=()=>accountBinding.characterId()+':'+accountBinding.generation()+':'+getSessionIntegration().revision
+        if(action==='inspect'){const current=createLifeMemoryBackup(stateDir);return sendJson(res,200,{ok:true,summary,memoryPreview:previewPortableMemoryRepair(current,backup,scope())})}
         if(body?.confirm!=='RESTORE_DAFEIYU_MEMORY')return sendJson(res,400,{ok:false,error:'未完成记忆恢复前人工确认'})
+        if(portableRestoreBusy||autoBackupBusy)throw Error('另一个备份或恢复操作正在进行，请稍后重新预览')
+        portableRestoreBusy=true;restoreHeld=true
         const safeguard=createLifeMemoryBackup(stateDir)
+        if(Object.hasOwn(body,'restoreRevision')&&(!explicitManagementIntent(req)||body.restoreRevision!==previewPortableMemoryRepair(safeguard,backup,scope()).revision))throw Error('记忆修复候选已变化，请重新选择备份并核验')
         const plan=planPortableMemoryRepair(safeguard,backup)
         if(!plan.repairs.length)return sendJson(res,200,{ok:true,summary:{...summary,restoredFiles:0},retainedRecords:plan.retainedRecords,unchanged:true,restartRequired:false})
         const folder=requireBackupDirectory(cfg.backupDirectory),safeguardPath=saveBackupJson(folder,safeguard,'pre-memory-restore')
         const restoredFiles=repairPortableMemoryDetails(stateDir,plan)
         return sendJson(res,200,{ok:true,summary:{...summary,restoredFiles},retainedRecords:plan.retainedRecords+plan.repairs.length-restoredFiles,safeguardPath,unchanged:restoredFiles===0,restartRequired:restoredFiles>0})
-      }catch(e){return sendJson(res,400,{ok:false,error:'长期记忆备份操作失败：'+String(e?.message||e).slice(0,300)})}
+      }catch(e){return sendJson(res,400,{ok:false,error:'长期记忆备份操作失败：'+String(e?.message||e).slice(0,300)})}finally{if(restoreHeld)portableRestoreBusy=false}
     }
 
     // Sensitively scoped administrative data: never serve it to cross-site
