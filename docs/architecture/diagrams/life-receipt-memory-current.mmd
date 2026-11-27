@@ -1,3 +1,4 @@
+%% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
 %% dev.48：原 Planner Episode 子决策可选参数化公开活体视觉回忆（同次续行2次，占原决策预算）；累计内存回执复核遗忘、账号、能力及原意愿，不产生新观察、业务步骤或联系授权。
 %% dev.47：社交只读循环6轮/8次调用/每次4种；记忆不同有效参数最多3次，累计证据及原遗忘校验保留。原分享视频延期观察意愿进入同 Episode 子决策；无新权限、账本或调度。通用跨轮与主人回聊待接线。
 %% dev.45：私信同一模型自主选择原分享契机延期目标（非待办、非执行回执）；同账号同联系人及权限复核；原 planner 与原 Episode 投影方向。陌生人仅公开链接读取；不新开主动联系或通用延期。
@@ -207,6 +208,10 @@ flowchart TB
   lifeEventJournal -.-> ownerDiary
   verified -.->|经核验行为| ownerDiary
   ownerDiary -.->|只读 UI，不产生写权限| planner
+  registeredReadGuard49["只读 I/O 前后复核当前账号、会话、契机与目标；失效不入账"]
+  planner -.-> registeredReadGuard49
+  registeredReadGuard49 -.->|仅有效原读取交回专业回执核验| planner
+  %% @code registeredReadGuard49 | lib/autonomous-planner.mjs | const runEpisodeRead=async
   planner --> source
   ownerFollowup["Life talk_to_owner → 现有主 Session followup；成功只等于入队，不能当成平台发送回执"]
   planner -.->|独立同意才可选择，允许休息| ownerFollowup

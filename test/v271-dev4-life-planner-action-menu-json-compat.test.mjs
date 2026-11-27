@@ -137,3 +137,43 @@ test('dev48 public recall validates offered exact episode and parameters without
  for(const bad of [{id:'other'},{scope:'owner'},{bvid:'BV1abcde1234'},{recallQueries:['https://example.com']},{recallQueries:[]},{recallQueries:['aa','bb','cc','dd']},{recallQueries:{q:'topic'}}])assert.equal(parse({...base,...bad}).action,'stop')
  assert.equal(parseContinuationDecision(JSON.stringify(base),[]).action,'stop')
 })
+
+// Registered route names share a read gateway, not their authorization/domain.
+test('dev49 shared read registry rejects cross-scene routes, writes and revoked scopes',async()=>{
+ const {registeredLifeRead,executeRegisteredLifeRead}=await import('../lib/life-agent-read-runtime.mjs');let calls=0,current=true
+ const run=(scene,actions,read=async()=>{calls++;return {ok:true}})=>executeRegisteredLifeRead({scene,actions,isCurrent:()=>current,read})
+ assert.equal(registeredLifeRead('social','read_memory').kind,registeredLifeRead('episode','recall_public_experience').kind)
+ assert.equal(registeredLifeRead('episode','inspect_creator_space').kind,'public_person')
+ for(const [scene,actions] of [['episode',['read_owner_todos']],['social',['inspect_creator_space']],['episode',['comment_video']],['social',['read_memory','send_dm']],['episode',['inspect_creator_space','inspect_video_discussion']],['social',[]],['social',['read_memory','read_memory']],['other',['read_memory']]]){
+  assert.deepEqual(await run(scene,actions),{ok:false,reason:'life-read-not-registered'})
+ }
+ assert.equal(calls,0);assert.deepEqual(await run('social',['read_memory','read_history']),{ok:true,value:{ok:true}})
+ const changed=await run('episode',['inspect_creator_space'],async()=>{calls++;current=false;return {ok:true,private:'not delivered'}})
+ assert.deepEqual(changed,{ok:false,reason:'life-read-scope-changed'});assert.equal(calls,2)
+ assert.deepEqual(await run('episode',['inspect_creator_space']),{ok:false,reason:'life-read-scope-changed'});assert.equal(calls,2)
+})
+
+// Real Planner I/O changes the canonical scope/target in place before returning.
+// No success OR failure receipt is allowed to settle into the changed episode.
+for(const scenario of ['creator-disabled','creator-source-changed','creator-error-after-revoke','discussion-revoked','metadata-removed','home-disabled','person-revoked','creator-account-changed'])test('dev49 registered Episode read rejects stale result '+scenario,()=>inDir(async dir=>{
+ const id='0123456789abcdef01234567',personId='abcdef0123456789abcdef01',bvid='BV1abcde1234',other='BV1abcde5678',prompts=[]
+ let scope=TAG,enabled=true,homeEnabled=true,reads=0,settled=0
+ const person={id:personId,source:'public-person-observation',personKey:'public-person',eligible:true}
+ const row={id,source:scenario==='home-disabled'?'home-browse':'inspected-opportunity',sourceId:'original',status:'inspected',selectedBvid:bvid,selectedTitle:'当前公开视频',metadataAt:NOW-1000,expiresAt:NOW+60000,nextAt:NOW-1000,episodeSteps:1,episodeMaxSteps:5,visitedBvids:[bvid],videos:[{bvid:other,title:'后续视频'}],commenterPersonIds:[personId]}
+ const actions={'discussion-revoked':'inspect_video_discussion','metadata-removed':'inspect_exploration','home-disabled':'browse_home_more','person-revoked':'inspect_commenter_works'}
+ const action=actions[scenario]||'inspect_creator_space'
+ const change=()=>{reads++;switch(scenario){case 'creator-disabled':case 'creator-error-after-revoke':enabled=false;break;case 'creator-source-changed':row.sourceId='replacement';break;case 'discussion-revoked':row.discussionReadBvids=[bvid];break;case 'metadata-removed':row.videos=[];break;case 'home-disabled':homeEnabled=false;break;case 'person-revoked':person.eligible=false;break;case 'creator-account-changed':scope='b'.repeat(16);break}if(scenario==='creator-error-after-revoke')throw Error('read failed after cancellation')}
+ const settle=()=>{settled++;return {ok:true}}
+ const planner=createAutonomousPlanner({dataDir:dir,getConfig:()=>({...config(),masterEnabled:enabled,homeRecommendationsEnabled:homeEnabled}),getTodos:()=>[],now:()=>NOW,getLifeAccountTag:()=>scope,getLifeIntentions:()=>[row],getLifeOpportunities:()=>[person],
+  executeCreatorSpace:async()=>{change();return {ok:true}},inspectLifeCreatorSpace:settle,failLifeCreatorRead:settle,
+  executeVideoDiscussion:async()=>{change();return {ok:true,verified:true,bvid,count:0,comments:[]}},inspectLifeVideoDiscussion:settle,
+  executeOpportunityRead:async()=>{change();return {ok:true,bvid:other,title:'后续视频'}},completeLifeExploration:settle,failLifeExploration:settle,
+  executeLifeHomeMore:async()=>{change();return {ok:true}},recordLifeHomeMore:settle,
+  executePublicPersonPortfolio:async()=>{change();return {ok:true,personKey:'public-person'}},beginPublicPersonExploration:settle,
+  invokeModel:async p=>{prompts.push(p);if(prompts.length===1)return JSON.stringify({action:'resume_episode',id});
+    assert.match(p,/【当前注册只读能力】/);const menu=JSON.parse(p.split('当前合法行动菜单：').at(-1).split('\n')[0]);assert.ok(menu.some(x=>x.action===action));
+    return JSON.stringify({action,id,...(action==='inspect_exploration'?{bvid:other}:action==='inspect_video_discussion'?{bvid}:action==='inspect_commenter_works'?{personId}:{})})},
+  executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
+ const out=await planner.tick();assert.equal(out.action,'resume_episode');assert.equal(reads,1);assert.equal(settled,0);assert.equal(prompts.length,2);assert.equal(out.continuation.executed,0)
+ assert.equal(out.continuation.reason,scenario==='creator-account-changed'?'account-changed':'life-read-scope-changed')
+}))

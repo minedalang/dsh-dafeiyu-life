@@ -12,6 +12,13 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.49 · 社交与后台 Episode 共用只读工具注册及执行网关
+
+- 原 `life-agent-read-runtime` 统一注册社交15种只读路由和后台 Episode 六种已接线只读路由（公开回忆、视频资料、作者投稿、首页推荐、评论者投稿、公开视频讨论）；共享工具族与执行入口，场景别名仍独立，不互换授权或目标。
+- 后台模型从现行动态候选获得注册能力说明，不规定调用顺序；社交批处理和后台已选读取使用同一 `executeRegisteredLifeRead`，复用 `executeChosenLifeRead`。原预算、专业执行器与平台/记忆回执所有者不变。
+- 后台原读取前后复核账号、会话代际、Life 开关、原 Episode 标识、精确菜单目标及相关能力。异步结果失效时拒绝写入原契机成功或失败回执，也不以该失效结果触发额外续行；旧回忆仍复核遗忘。诊断只记录阻断原因，不保存私密材料。
+- 本批没有迁移视觉采样、外发、全部 Planner 入口或跨轮工作流，也未新增主动回聊权限、任务池或调度器。主 Session 原生 Agent、Video Agent 专业能力及现有社交权限继续保留。
+
 ## 2.8.3-dev.48 · 后台 Life 主动参数化公开经历回忆
 
 - 现有后台探索 Episode 新增由模型自主选择的 `recall_public_experience`，复用社交只读运行时参数防重及原公开活体视觉回忆网关；同一续行最多两次不同检索词，计入原最多四次子决策和每日额度，无固定执行顺序。

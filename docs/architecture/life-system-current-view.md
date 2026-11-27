@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
 %% dev.48：原 Planner Episode 子决策可选参数化公开活体视觉回忆（同次续行2次，占原决策预算）；累计内存回执复核遗忘、账号、能力及原意愿，不产生新观察、业务步骤或联系授权。
 %% dev.47：社交只读循环6轮/8次调用/每次4种；记忆不同有效参数最多3次，累计证据及原遗忘校验保留。原分享视频延期观察意愿进入同 Episode 子决策；无新权限、账本或调度。通用跨轮与主人回聊待接线。
 %% dev.45：私信同一模型自主选择原分享契机延期目标（非待办、非执行回执）；同账号同联系人及权限复核；原 planner 与原 Episode 投影方向。陌生人仅公开链接读取；不新开主动联系或通用延期。
@@ -306,6 +307,10 @@ flowchart TB
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   lifeEpisode --> episodeRecall["自主公开历史回忆（模型检索词／原活体 Gateway／最多2次）"] --> episodeContinuation
   %% @code episodeRecall | lib/autonomous-planner.mjs | const publicRecallRuntime=createLifeReadRuntime
+  registeredRead49["社交／后台共享只读注册执行网关：原权限与目标前后复核"]
+  episodeContinuation -.->|当前六种已注册非视觉读取| registeredRead49
+  registeredRead49 -.->|原工具真实结果| episodeContinuation
+  %% @code registeredRead49 | lib/life-agent-read-runtime.mjs | export async function executeRegisteredLifeRead
   lifeEpisode --> episodeDiscussion --> episodeContinuation
   lifeEpisode --> episodeHomeMore --> episodeContinuation
   lifeEpisode --> episodeAftercare -.->|只读／休息后再次选择，非自动外发| episodeContinuation
@@ -605,6 +610,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
 %% dev.48：原 Planner Episode 子决策可选参数化公开活体视觉回忆（同次续行2次，占原决策预算）；累计内存回执复核遗忘、账号、能力及原意愿，不产生新观察、业务步骤或联系授权。
 %% dev.47：社交只读循环6轮/8次调用/每次4种；记忆不同有效参数最多3次，累计证据及原遗忘校验保留。原分享视频延期观察意愿进入同 Episode 子决策；无新权限、账本或调度。通用跨轮与主人回聊待接线。
 %% dev.45：私信同一模型自主选择原分享契机延期目标（非待办、非执行回执）；同账号同联系人及权限复核；原 planner 与原 Episode 投影方向。陌生人仅公开链接读取；不新开主动联系或通用延期。
@@ -789,6 +795,9 @@ flowchart LR
   ownerChat --> planner
   eventRefs -.-> planner
   rest["skip：自愿休息；不能与技术失败混为一谈"]
+  registeredReadCandidate49["当前 Episode 动态合法菜单投影六种注册只读能力；非授权"]
+  planner -.-> registeredReadCandidate49
+  %% @code registeredReadCandidate49 | lib/life-agent-read-runtime.mjs | export function registeredLifeRead
   planner --> rest
   decisionProjection["决策步骤只读解释｜未提供选项≠Life拒绝"]
   planner -.-> decisionProjection
@@ -912,6 +921,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
 %% dev.48：原 Planner Episode 子决策可选参数化公开活体视觉回忆（同次续行2次，占原决策预算）；累计内存回执复核遗忘、账号、能力及原意愿，不产生新观察、业务步骤或联系授权。
 %% dev.47：社交只读循环6轮/8次调用/每次4种；记忆不同有效参数最多3次，累计证据及原遗忘校验保留。原分享视频延期观察意愿进入同 Episode 子决策；无新权限、账本或调度。通用跨轮与主人回聊待接线。
 %% dev.45：私信同一模型自主选择原分享契机延期目标（非待办、非执行回执）；同账号同联系人及权限复核；原 planner 与原 Episode 投影方向。陌生人仅公开链接读取；不新开主动联系或通用延期。
@@ -1121,6 +1131,10 @@ flowchart TB
   lifeEventJournal -.-> ownerDiary
   verified -.->|经核验行为| ownerDiary
   ownerDiary -.->|只读 UI，不产生写权限| planner
+  registeredReadGuard49["只读 I/O 前后复核当前账号、会话、契机与目标；失效不入账"]
+  planner -.-> registeredReadGuard49
+  registeredReadGuard49 -.->|仅有效原读取交回专业回执核验| planner
+  %% @code registeredReadGuard49 | lib/autonomous-planner.mjs | const runEpisodeRead=async
   planner --> source
   ownerFollowup["Life talk_to_owner → 现有主 Session followup；成功只等于入队，不能当成平台发送回执"]
   planner -.->|独立同意才可选择，允许休息| ownerFollowup
@@ -1275,6 +1289,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
 %% dev.48：原 Planner Episode 子决策可选参数化公开活体视觉回忆（同次续行2次，占原决策预算）；累计内存回执复核遗忘、账号、能力及原意愿，不产生新观察、业务步骤或联系授权。
 %% dev.47：社交只读循环6轮/8次调用/每次4种；记忆不同有效参数最多3次，累计证据及原遗忘校验保留。原分享视频延期观察意愿进入同 Episode 子决策；无新权限、账本或调度。通用跨轮与主人回聊待接线。
 %% dev.45：私信同一模型自主选择原分享契机延期目标（非待办、非执行回执）；同账号同联系人及权限复核；原 planner 与原 Episode 投影方向。陌生人仅公开链接读取；不新开主动联系或通用延期。
@@ -1476,6 +1491,10 @@ commentPublicPerson -.->|只读候选| professionalMenu
 professionalMenu -.-> commentObservation
 readRuntime46["统一只读目录、参数防重和调用预算：不授予权限"]
 readRuntime46 -.-> commentObservation
+registeredEpisodeRead49["原六种 Episode 只读路由：同社交注册/准入；原执行回执仍独立"]
+readRuntime46 -.-> registeredEpisodeRead49
+registeredEpisodeRead49 -.->|仅有效读取续行| menu
+%% @code registeredEpisodeRead49 | lib/life-agent-read-runtime.mjs | export async function executeRegisteredLifeRead
 %% @code readRuntime46 | lib/life-agent-read-runtime.mjs | export function createLifeReadRuntime
 %% @code publicStepBridge | lib/life-universal-episodes.mjs | const publicVideoState=bvid=>
 %% @code professionalMenu | lib/life-subagent-continuity.mjs | export function subagentActionMenu
