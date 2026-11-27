@@ -101,6 +101,6 @@ test('verified visual model sample timestamps are gaps, never continuous playbac
 test('production reuses the existing forgetting gateway and emits a warning for failed cross-route visual ledger writes',()=>{
  const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  assert.match(source,/getCurrentVisualMemoryEvidence:query=>lifeMemory\?\.videoEvidenceTrace\(query\)\|\|\[\]/)
- assert.match(source,/const result=lifeOpportunities\.rememberVerifiedVideoVisual\(proof,initialLifeAccountTag\)/)
+ assert.match(source,/if\(result\?\.ok!==true\)result=lifeOpportunities\.rememberVerifiedVideoVisual\(proof,initialLifeAccountTag\)/)
  assert.match(source,/if\(result\?\.ok!==true\)log\('视频视觉防重复回执未写入/)
 })

@@ -79,3 +79,8 @@ test('管理页使用生活摘要，技术回执仍留在原始诊断与事务�
  assert.match(ledger,/verifiedEvidence/) // original diagnostic evidence remains in the persistent ledger
  assert.match(timeline,/alreadyShownAsComment/)
 })
+
+test('shared link, fresh visual, cached visual and speech-only cards remain distinct',()=>{
+ const rows=buildLifeTimeline({now:T+10000,lifeDecisions:[['inspect_shared_link','shared-link-inspected'],['observe_video','shared-video-visual-observed'],['observe_video','shared-video-cached-observation'],['observe_video','shared-video-speech-read'],['observe_video','shared-video-no-evidence']].map(([action,result],i)=>({at:T+i,mode:'active',action,result}))})
+ assert.equal(rows.length,4);assert.deepEqual(new Set(rows.map(x=>x.label)),new Set(['公开分享','视频观察','视频回顾','视频文字']));assert.match(rows.find(x=>x.label==='视频文字').detail,/未核验画面/)
+})

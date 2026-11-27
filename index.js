@@ -6,7 +6,7 @@ import {projectLifeGrowthAttribution} from './lib/life-growth-attribution.mjs'
 import {projectLifeGrowthAudit} from './lib/life-growth-audit.mjs'
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
-import {sharedVideoTargetAllowed,projectSharedVideoObservation} from './lib/shared-video-observation.mjs'
+import {sharedVideoTargetAllowed,projectSharedVideoObservation,sharedLinkTurnRows} from './lib/shared-video-observation.mjs'
 import {runtimeControls,planRuntimeControl,interactionRepliesAllowed,isReplyDispatch} from './lib/runtime-controls.mjs'
 import {readRuntimeLogs} from './lib/runtime-log-view.mjs'
 import {collectManagementDiagnostics} from './lib/management-diagnostics.mjs'
@@ -2228,7 +2228,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const dryRun=args.__debugDryRun===true
     const initialAccount=videoDebugAccount()
     const initialLifeAccountTag=trustedLifeAccountTag()
-    const galleryCurrent=()=>{try{return !dryRun&&!!initialAccount&&!!initialLifeAccountTag&&initialLifeAccountTag===trustedLifeAccountTag()&&initialAccount===videoDebugAccount()&&platformReady()&&cfg.masterEnabled===true&&cfg.visionEnabled===true&&(internal.lifeChoiceVerified===true&&args.record_session===false||internal.galleryReadCurrent?.()===true)}catch{return false}}
+    const readCurrent=()=>{try{return typeof internal.readCurrent!=='function'||internal.readCurrent()===true}catch{return false}}
+    const galleryCurrent=()=>{try{return !dryRun&&!!initialAccount&&!!initialLifeAccountTag&&initialLifeAccountTag===trustedLifeAccountTag()&&initialAccount===videoDebugAccount()&&platformReady()&&cfg.masterEnabled===true&&cfg.visionEnabled===true&&readCurrent()&&(typeof internal.galleryReadCurrent==='function'?internal.galleryReadCurrent()===true:internal.lifeChoiceVerified===true&&args.record_session===false)}catch{return false}}
     const activeDebugJob=dryRun?videoDebugJob:null
     const stage=(label,step)=>{if(activeDebugJob&&videoDebugJob===activeDebugJob&&activeDebugJob.status==='running'){
       activeDebugJob.stage=label;if(Number.isInteger(step))activeDebugJob.step=step
@@ -2261,6 +2262,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     let speechAttempt={status:'not-checked',reason:''}
     stage('读取视频元数据',1)
     try{info=await call('bili_video_info',{bvid})}catch(e){return {ok:false,error:'读取视频详情失败：'+String(e?.message||e).slice(0,160)}}
+    if(!readCurrent())return {ok:false,reason:'authorization-changed'}
     metadataMs=Date.now()-watchStartedAt
     // A selected standard/deep visual read does NOT depend on whether speech
     // exists. Start it while subtitles/ASR are being fetched. The final Life
@@ -2442,7 +2444,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // record_session=false. This is NOT a main-Session watch receipt.
     // No raw third-party comments, private text or model guesses are saved.
     let memoryWrite={status:dryRun?'not-recorded-debug':parseMaybeJson(vision)?.status==='cached'?'not-recorded-cached':'not-recorded'}
-    if(!dryRun&&(!isLifeEpisodeFocus||focusIsVerifiedAndNovel)&&
+    if(!dryRun&&readCurrent()&&(!isLifeEpisodeFocus||focusIsVerifiedAndNovel)&&
        !(args.record_session===false&&parseMaybeJson(vision)?.status==='cached'))try{
       const normalized=x=>{if(typeof x!=='string')return x;try{return JSON.parse(x)}catch{return {text:x}}}
       const event=buildVideoExplorationEvent({bvid,info:normalized(info),
@@ -2452,7 +2454,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         accountTag:initialLifeAccountTag,focusReview,integratedVisualNotes,
         purpose:args.explorationPurpose||(args.record_session===false?'self-exploration':'main-session'),operationId:randomUUID(),
         autonomousSelected:internal.lifeChoiceVerified===true&&args.record_session===false})
-      if(event&&(!initialLifeAccountTag||initialLifeAccountTag===trustedLifeAccountTag())){
+      if(event&&readCurrent()&&(!initialLifeAccountTag||initialLifeAccountTag===trustedLifeAccountTag())){
         if((args.record_session!==false||internal.lifeChoiceVerified===true)&&normalized(vision)?.status==='analyzed'){
           const detail=await persistFreshVideoDetail({event,bvid,info:normalized(info),visual:normalized(vision),account:initialLifeAccountTag})
           memoryWrite={status:detail.eventStatus,detailStatus:detail.ok?'recorded':detail.pending?'pending':'not-recorded',...(detail.ok?{memoryId:detail.memoryId}:{detailReason:detail.reason||'write-failed'})}
@@ -2520,20 +2522,25 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // Share previous actual Life visual reads across Episode and non-Episode
     // entrypoints. This does NOT record metadata-only, cached diagnostic probes,
     // the user's Debug, or explicit moment rechecks as a new full observation.
-    if(!dryRun&&internal.lifeChoiceVerified===true&&args.record_session===false&&
+    if(!dryRun&&readCurrent()&&internal.lifeChoiceVerified===true&&args.record_session===false&&
       args.explorationPurpose!=='life-episode-voluntary-visual'&&
       args.explorationPurpose!=='life-voluntary-focus-read'&&
       initialAccount&&initialAccount===videoDebugAccount()&&
       initialLifeAccountTag&&initialLifeAccountTag===trustedLifeAccountTag())try{
       const proof=verifyEpisodeVideoVisual({result:lifePayload,bvid,depth:visionPlan.depth})
-      if(proof){
-        const result=lifeOpportunities.rememberVerifiedVideoVisual(proof,initialLifeAccountTag)
+      if(proof&&(!internal.sharedLinkId||lifePayload.visual?.status==='analyzed')){
+        // The DM choice and the existing Life Episode refer to the same exact
+        // verified share. Commit its fresh visual step before global dedup.
+        // No new episode, no auto continuation, no cached-as-fresh receipt.
+        const episode=internal.sharedLinkId?lifeOpportunities.intentions({limit:20}).find(x=>x.sourceId==='friend-shared-bili-link:'+internal.sharedLinkId&&x.selectedBvid===bvid):null
+        let result=episode?lifeOpportunities.recordVideoVisual(episode.id,proof,initialLifeAccountTag):null
+        if(result?.ok!==true)result=lifeOpportunities.rememberVerifiedVideoVisual(proof,initialLifeAccountTag)
         if(result?.ok!==true)log('视频视觉防重复回执未写入：'+String(result?.reason||result?.error||'unknown').slice(0,90))
       }
     }catch(e){log('视频视觉防重复回执写入失败：'+String(e?.message||e).slice(0,90))}
     // Exactly the same object is returned through the existing Life tool.
     // Its model text is transient and MUST NOT enter durable Life memory.
-    if(!dryRun&&args.record_session===false&&initialAccount&&initialAccount===videoDebugAccount()){
+    if(!dryRun&&readCurrent()&&args.record_session===false&&initialAccount&&initialAccount===videoDebugAccount()){
       const record={account:initialAccount,at:Date.now(),payload:lifePayload,images:debugImages}
       lastLifeVideoDebug=record
       const retire=setTimeout(()=>{if(lastLifeVideoDebug===record)lastLifeVideoDebug=null},videoDebugExpiry)
@@ -4989,13 +4996,21 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const row=scope===input.sharedLinkScope&&input.sharedLinkId?lifeSharedBiliLinks.get(input.sharedLinkId,scope):null
     if(!currentSharedVideoTarget(input,row,scope))return {verified:false,reason:'video-not-authorized'}
     const current=()=>{const p=getSessionIntegration();return epoch===accountBinding.generation()&&p.mode===policy.mode&&p.revision===policy.revision&&currentSharedVideoTarget(input,lifeSharedBiliLinks.get(row.id,scope),scope)}
+    let trace
+    try{trace=lifeDecisionTrace.begin({mode:'active',trigger:'shared-video-read'});trace.step('model-choice',{action:'observe_video',code:'model-accepted',origin:'social-event'});trace.step('action-start',{action:'observe_video'})}catch{}
+    let observed
     try{
       const result=await lifeResourceScheduler.run({lane:'continuation',resources:{vision:1},waitMs:12_000},()=>withLifeVideoVisualLease(stateDir,{accountTag:scope,bvid:row.bvid},async()=>{
         if(!current())return {ok:false,reason:'authorization-changed'}
-        return executeWatchVideo({bvid:row.bvid,record_session:false,include_comments:false,include_danmaku:false,view_depth:'standard',explorationPurpose:'shared-video-observation'},{galleryReadCurrent:()=>current()&&socialPolicyGate.actor(input.uid).role==='owner'})
+        return executeWatchVideo({bvid:row.bvid,record_session:false,include_comments:false,include_danmaku:false,view_depth:'standard',explorationPurpose:'shared-video-observation'},{lifeChoiceVerified:true,sharedLinkId:row.id,readCurrent:current,galleryReadCurrent:()=>current()&&socialPolicyGate.actor(input.uid).role==='owner'})
       }))
-      return current()?projectSharedVideoObservation(result,row.bvid):{verified:false,reason:'authorization-changed'}
-    }catch{return {verified:false,reason:'video-observation-unavailable'}}
+      observed=current()?projectSharedVideoObservation(result,row.bvid):{verified:false,reason:'authorization-changed'}
+    }catch{observed={verified:false,reason:'video-observation-unavailable'}}
+    const code=observed.visualObserved?(observed.visualEvidenceKind==='cached'?'shared-video-cached-observation':'shared-video-visual-observed'):observed.speechAvailable?'shared-video-speech-read':'shared-video-no-evidence'
+    try{trace?.step('execution-result',{action:'observe_video',result:observed.visualObserved?'verified':observed.speechAvailable?'speech-only':'failed',code});trace?.finish({state:'finished',action:'observe_video',result:code})}catch{}
+    if(observed.verified&&current())try{lifeAgentEvents.recordDecision({eventIds:[],action:'observe_video',result:code,targetId:row.id,mode:'active',decisionOrigin:'social'})}catch(e){log('分享视频经历记录失败：'+String(e?.message||e).slice(0,90))}
+    log('私信分享视频只读回执：'+code)
+    return observed
   }
   const socialRhythm=createSocialInteractionRhythm({dataDir:accountRuntimeDir,
     getAccountUid:()=>String(dmCred(stateDir)?.dedeuserid||''),
@@ -5758,10 +5773,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           const shared=scope===input.sharedLinkScope&&input.sharedLinkId?
             lifeSharedBiliLinks.get(input.sharedLinkId,scope):null
           if(!shared||shared.senderUid!==String(input.uid)||!sharedLinkPermissionCurrent(shared,scope)||
-             !['pending','error','deferred'].includes(shared.status)||Number(shared.nextAt||0)>Date.now()||
+             !['pending','error','deferred','inspected'].includes(shared.status)||(shared.status!=='inspected'&&Number(shared.nextAt||0)>Date.now())||
              accountBinding.status().blocked||cfg.masterEnabled!==true||cfg.dmWatch!==true){
             return {...row,sharedLinkContext:'链接目前不可读取，不能声称看过内容'}
           }
+          if(shared.status==='inspected'){
+            const original=lifeSharedBiliLinks.repostedOriginalForParent(shared.id,scope)
+            const videoOffered=currentSharedVideoTarget(input,shared,scope)
+            row={...row,sharedLinkContext:boundedJson({verified:true,readOnly:true,source:'earlier-share',kind:shared.resolvedKind,evidenceLevel:shared.evidenceLevel,title:String(shared.title||'').slice(0,100),summary:String(shared.summary||'').slice(0,420),watched:false,metadataOnly:shared.resolvedKind==='video'},950),
+              availableContexts:[...(row.availableContexts||[]),...(original?['shared_original']:[]),...(videoOffered?['shared_video']:[])]}
+          }else{
           const proof=await executeSharedBiliLinkRead(shared.id,scope)
           if(proof?.ok!==true){
             // Local budget/cooldown deferrals are not a failed platform read:
@@ -5773,6 +5794,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           }
           const receipt=recordSharedBiliLinkRead(shared.id,proof,scope)
           if(receipt?.ok!==true)return {...row,sharedLinkContext:'回执账号或链接证据不匹配，不能声称查看成功'}
+          try{lifeAgentEvents.recordDecision({eventIds:[],action:'inspect_shared_link',result:'shared-link-inspected',targetId:shared.id,mode:'active',decisionOrigin:'social'})}catch(e){log('分享链接经历记录失败：'+String(e?.message||e).slice(0,90))}
           // An API-proven original is a *new choice* for the SAME Life DM
           // turn, never an automatic second network request.
           const original=proof.kind==='dynamic'?lifeSharedBiliLinks.repostedOriginalForParent(shared.id,scope):null
@@ -5782,6 +5804,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
             authorName:String(proof.authorName||'').slice(0,50),verified:true,readOnly:true,
             watched:false,metadataOnly:proof.kind==='video',repostedOriginalAvailable:Boolean(original),originalRead:false}).slice(0,950),
             ...((original||videoOffered)?{availableContexts:[...(row.availableContexts||[]),...(original?['shared_original']:[]),...(videoOffered?['shared_video']:[])]}:{} )}
+          }
         }
         if(wantsOriginal){
           const input=batch[i],scope=trustedLifeAccountTag()
@@ -6162,22 +6185,18 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         .filter(row=>row?.senderUid===String(req.uid))
       // Current-message links are all visible as bounded, opaque choices. The
       // same-turn model may choose one; it never receives a generic URL tool.
-      // Cross-turn references remain stricter: explicit follow-up + one unique
-      // recent link from the same authenticated sender/account.
-      const refersBack=/(看了没|看过没|读了没|刚才.{0,12}(动态|视频|链接)|之前.{0,12}(动态|视频|链接)|那条动态|那个视频|这个视频|这条视频|刚才.{0,12}(画面|字幕)|原动态)/u.test(String(req.text||''))
-      const priorLinks=!currentLinks.length&&refersBack?
-        lifeSharedBiliLinks.recentForContact({uid:req.uid,limit:2,maxAgeMs:3*86_400_000}):[]
-      const prior=priorLinks.length===1?lifeSharedBiliLinks.get(priorLinks[0].id,linkScope):null
-      const linkRows=currentLinks.length?currentLinks:(prior?[prior]:[])
+      // Offer bounded same-contact history, not a keyword-derived intent.
+      // Only the model selects a link; no network read is implied by the menu.
+      const linkRows=sharedLinkTurnRows({currentLinks,allowHistory:req.trigger==='incoming'&&!!req.messageId&&!req.privacyGuard,
+        uid:req.uid,recentForContact:()=>lifeSharedBiliLinks.recentForContact({uid:req.uid,limit:2,maxAgeMs:3*86_400_000}),getLink:id=>lifeSharedBiliLinks.get(id,linkScope)})
       const permittedLinkRows=linkRows.filter(row=>sharedLinkPermissionCurrent(row,linkScope))
-      const sharedLinkCandidates=permittedLinkRows.filter(row=>['pending','error','deferred'].includes(row.status)&&
-        Number(row.nextAt||0)<=Date.now()).slice(0,2).map((row,index)=>({id:row.id,
-          label:`第${index+1}个${({short:'B站短链',dynamic:'B站动态',video:'B站视频',profile:'B站空间'}[row.kind]||'B站分享链接')}`}))
-      const linkRow=(currentLinks.length===1?permittedLinkRows[0]||null:null)||
-        (prior&&sharedLinkPermissionCurrent(prior,linkScope)?prior:null)
+      const sharedLinkCandidates=permittedLinkRows.filter(row=>row.status==='inspected'||(['pending','error','deferred'].includes(row.status)&&
+        Number(row.nextAt||0)<=Date.now())).slice(0,2).map((row,index)=>({id:row.id,
+          label:`${currentLinks.length?'本轮':'近期'}分享${index+1}：${({short:'B站短链',dynamic:'B站动态',video:'B站视频',profile:'B站空间'}[row.resolvedKind||row.kind]||'B站分享链接')}${row.title?' · '+String(row.title).slice(0,40):''}`}))
+      const linkRow=permittedLinkRows.length===1?permittedLinkRows[0]:null
       const sharedOriginal=linkRow?.status==='inspected'&&
         lifeSharedBiliLinks.repostedOriginalForParent(linkRow.id,linkScope)
-      const priorReadContext=linkRow?.status==='inspected'?JSON.stringify({
+      const priorReadContext=currentLinks.length>0&&linkRow?.status==='inspected'?JSON.stringify({
         verified:true,readOnly:true,source:'earlier-share',kind:linkRow.resolvedKind,
         evidenceLevel:linkRow.evidenceLevel||'',title:String(linkRow.title||'').slice(0,100),
         summary:String(linkRow.summary||'').slice(0,420),status:'inspected',watched:false,

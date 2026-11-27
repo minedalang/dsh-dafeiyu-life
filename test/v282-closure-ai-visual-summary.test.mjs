@@ -110,7 +110,7 @@ test('new summary is not requested on failed/non-novel focus and does not bypass
  const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const planner=readFileSync(new URL('../lib/autonomous-planner.mjs',import.meta.url),'utf8')
  assert.match(source,/if\(confirmed&&hasNewFocusFrameSample\(confirmed\.frameTimesMs/)
- assert.match(source,/if\(!dryRun&&\(!isLifeEpisodeFocus\|\|focusIsVerifiedAndNovel\)&&\s*!\(args\.record_session===false&&parseMaybeJson\(vision\)\?\.status==='cached'\)\)try/)
+ assert.match(source,/if\(!dryRun&&readCurrent\(\)&&\(!isLifeEpisodeFocus\|\|focusIsVerifiedAndNovel\)&&\s*!\(args\.record_session===false&&parseMaybeJson\(vision\)\?\.status==='cached'\)\)try/)
  assert.match(source,/trustedLifeAccountTag\(\)===initialLifeAccountTag/)
  assert.match(source,/if\(Array\.isArray\(internal\.lifeGlobalNotes\)\&\&internal\.lifeGlobalNotes\.length>0\)\{/)
  // No global notes must skip synthesis, not suppress a independently verified focus receipt.

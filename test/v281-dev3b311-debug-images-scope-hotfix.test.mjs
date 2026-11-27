@@ -136,3 +136,17 @@ test('dev22 Life may elect ordinary global vision; owner 48-frame budget applies
   assert.equal(adaptive.visualCalls[0].perception_source,'adaptive',
     'source selection remains independent from sampling budget')
 })
+
+test('shared Life observation respects explicit gallery permission and revocation after metadata',async()=>{
+ const friend=mockWatch({vision:true,dryRun:false});friend.ctx.platformReady=()=>true
+ const result=await friend.run({bvid:friend.bv,view_depth:'standard',record_session:false,include_comments:false,include_danmaku:false,explorationPurpose:'shared-video-observation'},{lifeChoiceVerified:true,readCurrent:()=>true,galleryReadCurrent:()=>false});assert.equal(result.ok,true);assert.equal(friend.visualCalls[0].capture_for_gallery,undefined)
+ const revoked=mockWatch({vision:true,dryRun:false});const denied=await revoked.run({bvid:revoked.bv,view_depth:'standard',record_session:false},{lifeChoiceVerified:true,readCurrent:()=>false});assert.equal(denied.reason,'authorization-changed');assert.equal(revoked.visualCalls.length,0)
+})
+
+test('fresh shared-video receipt is bound to the exact existing Life episode before global dedup',async()=>{
+ const m=mockWatch({vision:true,dryRun:false}),share='a'.repeat(24),writes=[]
+ const proof={ok:true,bvid:m.bv,depth:'standard',source:'low-resolution-preview',frameCount:1}
+ m.ctx.verifyEpisodeVideoVisual=()=>proof
+ m.ctx.lifeOpportunities={intentions:()=>[{id:'other',sourceId:'friend-shared-bili-link:'+'b'.repeat(24),selectedBvid:m.bv},{id:'correct',sourceId:'friend-shared-bili-link:'+share,selectedBvid:m.bv}],recordVideoVisual:(id,p,scope)=>{writes.push([id,p,scope]);return {ok:true}},rememberVerifiedVideoVisual:()=>{throw Error('should not duplicate exact episode receipt')}}
+ const result=await m.run({bvid:m.bv,view_depth:'standard',record_session:false,include_comments:false,include_danmaku:false,explorationPurpose:'shared-video-observation'},{lifeChoiceVerified:true,sharedLinkId:share,readCurrent:()=>true,galleryReadCurrent:()=>false});assert.equal(result.ok,true);assert.deepEqual(writes,[['correct',proof,'account-tag']])
+})

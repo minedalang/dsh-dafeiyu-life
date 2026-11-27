@@ -233,5 +233,6 @@ test('owner 60/30 cadence is anchored to discovery even when model work exceeds 
  assert.equal((await engine.poll({fastUid:person,ownerPriority:true})).sent,1);const row=engine.status().ownerPriority;
  assert.equal(row.lastCheckedAt,began);assert.equal(row.durationMs,45_000);assert.equal(row.activeSeconds,30);assert.equal(row.idleSeconds,60);assert.equal(row.nextAt,clock+5000);
  assert.equal(engine.nextOwnerUid(),'');clock+=4999;assert.equal(engine.nextOwnerUid(),'');clock++;assert.equal(engine.nextOwnerUid(),person);
+ const logCount=logs.filter(x=>x.includes('主人私信定向检查')).length;inbox=[];await engine.poll({fastUid:person,ownerPriority:true});assert.equal(logs.filter(x=>x.includes('主人私信定向检查')).length,logCount);assert.ok(engine.status().ownerPriority.lastCheckedAt>began);
  assert.match(logs.join('\n'),/日常 60s，活跃 30s/);assert.match(logs.join('\n'),/耗时 45000ms/);assert.doesNotMatch(logs.join('\n'),/22334|主人消息/);
 }))

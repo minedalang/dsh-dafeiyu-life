@@ -12,6 +12,11 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.44 · 分享视频跨轮感知与真实行动记录
+
+- 同账号同联系人近期分享仅作为有限模型候选，不再用固定话术判定承接；选中后复用真实公开资料回执，再由同一模型决定是否读画面。新视觉、旧视觉、仅语音分别登记；新采样可绑定原分享 Episode，尊重生活时段、权限和防重。空私信轮询日志按五分钟节流，不改轮询时钟。
+- 真实模型、Windows 和跨轮实机仍待验收；不强制执行生活契机。
+
 ## 2.8.3-dev.43 · 社交待办回执与兴趣探索候选修复
 
 - 同轮 Life 已自主接受具体公开视频时，以当前真实消息中的准确 BV 作为来源证据，修复模型引文与原消息不一致导致的误拒；不自动接受链接、不扩大写入权限。

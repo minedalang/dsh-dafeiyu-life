@@ -202,3 +202,9 @@ test('capability availability is rechecked at execution and cannot be invented b
   assert.equal(calls,0)
   assert.throws(()=>createLifeCapabilities([{id:'evil',risk:'read',available:()=>({ok:true}),execute:()=>{}}]))
 }))
+
+test('shared-link and separate video observation receipts can be journaled without fabricating a write or new wake',()=>withHome(dir=>{
+ const events=createLifeAgentEvents({stateDir:dir,getAccountTag:()=>A,now:start})
+ for(const [action,result] of [['inspect_shared_link','shared-link-inspected'],['inspect_related_content','shared-link-inspected'],['observe_video','shared-video-visual-observed'],['observe_video','shared-video-cached-observation'],['observe_video','shared-video-speech-read']])events.recordDecision({eventIds:[],action,result,targetId:'private-share-12345',mode:'active',decisionOrigin:'social'})
+ const rows=events.status().timeline;assert.equal(rows.length,5);assert.ok(rows.every(r=>r.verifiedActionKind===''&&!r.followupQueued));assert.doesNotMatch(JSON.stringify(rows),/private-share-12345/);assert.equal(events.status().pending,0)
+}))
