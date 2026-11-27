@@ -223,3 +223,15 @@ test('owner priority read cannot overtake an unseen historic stop boundary',asyn
  inbox=[{...input('old-stop','不要再给我发私信'),timestampMs:t0-1000},{...input('new','新消息'),timestampMs:clock}];
  assert.equal((await engine.poll({fastUid:person,ownerPriority:true})).skipped,'owner-history-boundary-pending');assert.equal(sent,0);
 }))
+
+test('owner 60/30 cadence is anchored to discovery even when model work exceeds interval',async()=>mk(async dataDir=>{
+ let clock=t0,inbox=[],sent=0;const logs=[];
+ const cfg={enabled:true,ownerUid:person,whitelist:[person],dmOwnerPollEnabled:true,dmOwnerPollSeconds:60,dmOwnerActivePollSeconds:30,dmActiveWindowSeconds:180,whitelistCooldownSeconds:0,p6Enabled:false};
+ const engine=createDmAutoReply({dataDir,getConfig:()=>cfg,selfUid:'999',now:()=>clock,fetchIncoming:async()=>inbox,send:async()=>{sent++;return {ok:true,receiptId:'verified-'+sent}},generateReply:async()=>{clock+=45_000;return {action:'reply',messages:['回答']}},logger:{info:x=>logs.push(x),warn(){},error(){}}});
+ await engine.poll();assert.equal(engine.nextOwnerUid(),'');clock+=59_999;assert.equal(engine.nextOwnerUid(),'');clock++;assert.equal(engine.nextOwnerUid(),person);
+ inbox=[{...input('fresh','主人消息'),timestampMs:clock}];const began=clock;
+ assert.equal((await engine.poll({fastUid:person,ownerPriority:true})).sent,1);const row=engine.status().ownerPriority;
+ assert.equal(row.lastCheckedAt,began);assert.equal(row.durationMs,45_000);assert.equal(row.activeSeconds,30);assert.equal(row.idleSeconds,60);assert.equal(row.nextAt,clock+5000);
+ assert.equal(engine.nextOwnerUid(),'');clock+=4999;assert.equal(engine.nextOwnerUid(),'');clock++;assert.equal(engine.nextOwnerUid(),person);
+ assert.match(logs.join('\n'),/日常 60s，活跃 30s/);assert.match(logs.join('\n'),/耗时 45000ms/);assert.doesNotMatch(logs.join('\n'),/22334|主人消息/);
+}))

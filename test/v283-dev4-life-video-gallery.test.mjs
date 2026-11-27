@@ -142,3 +142,12 @@ test('dev40 cached bytes and explicit host attachment are distinct; expiry, acco
  assert.equal((await prepareLifeObservationAttachment({...opts,exec:{agent:{}}})).ok,false);vision=false;assert.equal((await prepareLifeObservationAttachment(opts)).ok,false);assert.equal(saves,0);vision=true;const r=await prepareLifeObservationAttachment(opts);assert.equal(r.ok,true);assert.equal(r.deliveryConfirmed,false);assert.deepEqual(r.attachment,ref);live=false;assert.equal((await prepareLifeObservationAttachment(opts)).ok,false);assert.equal(saves,1)
  }finally{rmSync(root,{recursive:true,force:true})}
 })
+
+test('recent observation selection excludes missing image files without inventing a new observation',()=>{
+ const root=mkdtempSync(join(tmpdir(),'dsh-frame42-'));
+ try{const cid='b'.repeat(32),folder=join(root,'vision-perception-captures',cid);mkdirSync(folder,{recursive:true});writeFileSync(join(folder,'storyboard-01.jpg'),jpeg);
+ const saved=addLifeVideoGallery(root,{account:tag,bvid,verified:true,at:now,analysis:'真实旧观察说明',captures:[{id:cid,kind:'storyboard',images:[{file:'storyboard-01.jpg',times:[1,2],resolution:'fixture'}]}]});assert.equal(saved.ok,true);
+ const projection=recentLifeObservations(root,tag,{now});const file=projection.rows[0].images[0].file;assert.doesNotMatch(JSON.stringify(projection),/真实旧观察说明/);assert.equal(readLifeObservationFrame(root,tag,{id:saved.id,file,now}).receipt.previousObservationSummary,'真实旧观察说明');
+ rmSync(join(root,'life-video-gallery',tag,saved.id,file));const missing=recentLifeObservations(root,tag,{now});assert.equal(missing.rows.length,0);assert.equal(missing.reason,'no-current-observation-frames');assert.equal(readLifeObservationFrame(root,tag,{id:saved.id,file,now}).ok,false);
+ }finally{rmSync(root,{recursive:true,force:true})}
+})

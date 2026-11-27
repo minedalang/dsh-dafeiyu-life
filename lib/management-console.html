@@ -3471,8 +3471,8 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </div>
 </section>
 <section id="panel-reports" hidden>
-<div class="feature-intro"><div><h2>运行日志</h2><p>查看本机运行事件、异常原因及来源。此处仅展示可安全识别的诊断信息；完整原始日志请使用原日志导出工具。</p></div></div>
-<div class="toolbar"><label for="report-level">范围</label><select id="report-level"><option value="all">全部</option><option value="error">错误</option></select><button id="report-load" class="primary" type="button">刷新日志</button><button id="report-export" type="button">导出运行日志摘要</button></div>
+<div class="feature-intro"><div><h2>运行日志</h2><p>查看本机运行事件、异常原因及来源。此处只展示安全摘要。完整诊断包包含私密业务和记忆数据，请在本机核对后再分享。</p></div></div>
+<div class="toolbar"><label for="report-level">范围</label><select id="report-level"><option value="all">全部</option><option value="error">错误</option></select><button id="report-load" class="primary" type="button">刷新日志</button><button id="report-export" type="button">导出运行日志摘要</button><button id="report-export-full" type="button">导出完整诊断 ZIP</button></div>
 <div class="runtime-log-overview" aria-label="日志概况"><div class="runtime-log-stat"><strong id="report-matched">—</strong><span>当前筛选事件</span></div><div class="runtime-log-stat" data-kind="error"><strong id="report-errors">—</strong><span>读取范围内错误</span></div><div class="runtime-log-stat"><strong id="report-omitted">—</strong><span>列表省略事件</span></div></div>
 <p id="report-meta" class="muted" role="status">正在核对本机日志…</p><details class="runtime-log-coverage"><summary>读取范围与文件来源</summary><div id="report-coverage"></div></details><div id="report-content" class="runtime-log-list" role="region" aria-label="运行日志事件"><p class="runtime-log-empty">等待读取。</p></div>
 </section>

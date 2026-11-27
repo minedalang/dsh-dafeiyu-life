@@ -8,6 +8,7 @@ set "BILI_EXPORT_PYTHON_ARG="
 set "BILI_EXPORT_STRICT=0"
 set "BILI_EXPORT_FULL_MEMORY=0"
 set "BILI_EXPORT_BINARY_EVIDENCE=0"
+set "BILI_EXPORT_LIVE_SNAPSHOT_FILE="
 set "BILI_EXPORT_ROOT="
 :parse_args
 if "%~1"=="" goto args_done
@@ -949,26 +950,32 @@ dump('polling-and-model-budget.json',{
 # timer health from persisted config files, and NEVER call /autonomous-planner:
 # that GET route rearms the timer, masking a stopped scheduler.
 # A browser management URL is accepted only to identify an explicit loopback port.
-live_info={'requested':bool(status_url),'captured':False,'reason':'no-local-status-url-provided'}
-if status_url:
+snapshot_file=os.environ.get('BILI_EXPORT_LIVE_SNAPSHOT_FILE','')
+live_info={'requested':bool(status_url or snapshot_file),'captured':False,'reason':'no-local-status-url-provided'}
+if status_url or snapshot_file:
     try:
-        u=urlparse(status_url)
-        if (u.scheme!='http' or u.hostname not in ('localhost','127.0.0.1','::1') or
-            u.username or u.password or u.port is None or u.port<1 or u.port>65535 or
-            u.path not in ('','/','/api/bili-duty/manage','/api/bili-duty/status',
-                           '/api/bili-duty/life-agent/scheduler-snapshot')):
-            raise ValueError('Only an explicit loopback DSH management URL is allowed')
-        # Fixed-path request: do not follow redirects, query strings, or arbitrary localhost paths.
-        port=u.port
-        hostname='[::1]' if u.hostname=='::1' else u.hostname
-        safe_url=f'http://{hostname}:{port}/api/bili-duty/life-agent/scheduler-snapshot'
-        class NoRedirect(HTTPRedirectHandler):
-            def redirect_request(self, req, fp, code, msg, hdrs, newurl):
-                return None
-        opener=build_opener(ProxyHandler({}),NoRedirect())
-        with opener.open(Request(safe_url,headers={'Accept':'application/json'}),timeout=3) as resp:
-            if resp.status!=200:raise ValueError('Scheduler endpoint not ready')
-            blob=resp.read(65537)
+        if snapshot_file:
+            # Internal owner-authorized management export supplies an already
+            # projected host snapshot; the normal CLI clears this environment key.
+            with open(snapshot_file,'rb') as f: blob=f.read(65537)
+        else:
+            u=urlparse(status_url)
+            if (u.scheme!='http' or u.hostname not in ('localhost','127.0.0.1','::1') or
+                u.username or u.password or u.port is None or u.port<1 or u.port>65535 or
+                u.path not in ('','/','/api/bili-duty/manage','/api/bili-duty/status',
+                               '/api/bili-duty/life-agent/scheduler-snapshot')):
+                raise ValueError('Only an explicit loopback DSH management URL is allowed')
+            # Fixed-path request: do not follow redirects, query strings, or arbitrary localhost paths.
+            port=u.port
+            hostname='[::1]' if u.hostname=='::1' else u.hostname
+            safe_url=f'http://{hostname}:{port}/api/bili-duty/life-agent/scheduler-snapshot'
+            class NoRedirect(HTTPRedirectHandler):
+                def redirect_request(self, req, fp, code, msg, hdrs, newurl):
+                    return None
+            opener=build_opener(ProxyHandler({}),NoRedirect())
+            with opener.open(Request(safe_url,headers={'Accept':'application/json'}),timeout=3) as resp:
+                if resp.status!=200:raise ValueError('Scheduler endpoint not ready')
+                blob=resp.read(65537)
         if len(blob)>65536:raise ValueError('Scheduler response exceeds safety limit')
         d=json.loads(blob)
         if not isinstance(d,dict) or d.get('ok') is not True or d.get('schemaVersion')!=1:
@@ -998,6 +1005,8 @@ if status_url:
               'pollChecks':{k:dict(pick(v,['lastStartedAt','lastFinishedAt','enabled','polling','intervalMinutes','intervalSeconds','nextAt']),
                          lastResult=code(v.get('lastResult')) or 'unclassified')
                             for k,v in checks.items() if k in ('dm','dmFast','dmOwner','replies','mentions') and isinstance(v,dict)},
+              'ownerPriority':pick(interaction.get('ownerPriority') if isinstance(interaction.get('ownerPriority'),dict) else {},['enabled','checks','lastCheckedAt','lastFinishedAt','durationMs','idleSeconds','activeSeconds','intervalSeconds','nextAt']),
+              'captureSource':'management-local' if snapshot_file else 'loopback-http',
               'observationNote':'One read-only runtime snapshot; no timer restart, Life tick, model call or platform read.'}
         dump('live-status-snapshot.json',live)
         live_info={'requested':True,'captured':True,'reason':'ok','pluginVersion':ver,

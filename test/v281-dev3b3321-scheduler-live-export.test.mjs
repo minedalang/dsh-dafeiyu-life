@@ -5,7 +5,8 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {spawn} from 'node:child_process'
 import {createServer} from 'node:http'
-import {once} from 'node:events'
+import {once,EventEmitter} from 'node:events'
+import {collectManagementDiagnostics} from '../lib/management-diagnostics.mjs'
 import {Readable} from 'node:stream'
 import {apply} from '../index.js'
 
@@ -17,14 +18,14 @@ const end=exporter.indexOf("\n'@\n  [System.IO.File]::WriteAllText($helper",star
 assert.ok(start>0&&end>start,'Find embedded offline diagnostic helper')
 const python=exporter.slice(start+"  $pythonBody = @'\n".length,end)
 
-async function helper(t,url,{prepare=()=>{},full=false,binary=false,expected=0}={}){
+async function helper(t,url,{prepare=()=>{},full=false,binary=false,expected=0,snapshotFile=''}={}){
  const dir=mkdtempSync(join(tmpdir(),'dafeiyu-live-export-'))
  t.after(()=>rmSync(dir,{recursive:true,force:true}))
  const duty=join(dir,'duty'),out=join(dir,'out')
  mkdirSync(duty);mkdirSync(out)
  await prepare({dir,duty,out})
  const file=join(dir,'helper.py');writeFileSync(file,python)
- const child=spawn(pythonExecutable,[file,duty,out,url||''],{env:{...process.env,BILI_EXPORT_FULL_MEMORY:full?'1':'0',BILI_EXPORT_BINARY_EVIDENCE:binary?'1':'0',HTTP_PROXY:'http://127.0.0.1:1',HTTPS_PROXY:'http://127.0.0.1:1'},stdio:['ignore','ignore','pipe']})
+ const child=spawn(pythonExecutable,[file,duty,out,url||''],{env:{...process.env,BILI_EXPORT_LIVE_SNAPSHOT_FILE:snapshotFile,BILI_EXPORT_FULL_MEMORY:full?'1':'0',BILI_EXPORT_BINARY_EVIDENCE:binary?'1':'0',HTTP_PROXY:'http://127.0.0.1:1',HTTPS_PROXY:'http://127.0.0.1:1'},stdio:['ignore','ignore','pipe']})
  let stderr='';child.stderr.on('data',v=>{stderr+=v.toString()})
  const [code]=await once(child,'close')
  assert.equal(code,expected,stderr.slice(-1500))
@@ -93,9 +94,9 @@ test('runtime scheduler endpoint reports the actual timer without ensureStarted 
   logger:{info(){},warn(){}},tools:{register(){}},
   connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},
   effect:fn=>fn(),settings:{describe(){return []}}},{})
- const request=async path=>{
-  const req=Readable.from([]);req.method='GET';req.url='/api/bili-duty/'+path
-  req.headers={host:'127.0.0.1:8761',origin:'http://127.0.0.1:8761'}
+ const request=async (path,{method='GET',body,origin='http://127.0.0.1:8761'}={})=>{
+  const req=Readable.from(body===undefined?[]:[Buffer.from(JSON.stringify(body))]);req.method=method;req.url='/api/bili-duty/'+path
+  req.headers={host:'127.0.0.1:8761',origin,'content-type':'application/json'}
   let code,output
   await handler(req,{writeHead(c){code=c},end(s){output=JSON.parse(s)}})
   return {code,output}
@@ -111,6 +112,10 @@ test('runtime scheduler endpoint reports the actual timer without ensureStarted 
  assert.equal(typeof first.output.planner.schedulerPulse.stale,'boolean')
  assert.ok(!Object.hasOwn(first.output,'config'))
  assert.ok(!Object.hasOwn(first.output,'account'))
+ assert.equal((await request('runtime-diagnostics-export',{method:'POST',body:{confirmation:'EXPORT_PRIVATE_DIAGNOSTICS'},origin:'https://example.invalid'})).code,403)
+ assert.equal((await request('runtime-diagnostics-export',{method:'POST',body:{confirmation:'not-confirmed'}})).code,400)
+ if(process.platform!=='win32')assert.equal((await request('runtime-diagnostics-export',{method:'POST',body:{confirmation:'EXPORT_PRIVATE_DIAGNOSTICS'}})).code,503)
+
  const p=readFileSync(join(root,'index.js'),'utf8')
  const body=p.slice(p.indexOf("if(req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot')"),
   p.indexOf("if(req.method==='GET'&&path==='/api/bili-duty/autonomous-planner')"))
@@ -256,4 +261,15 @@ test('runtime severity follows event outcomes, not diagnostic zero counters or a
  assert.equal(at('17:01:12').level,'warning');assert.equal(at('17:01:41.286').retrying,true);assert.equal(at('17:01:41.287').level,'error');assert.match(at('17:01:41.287').detail,/fetch failed/);
  assert.equal(v.rows.find(r=>r.source==='install.log').level,'info');assert.equal(v.rows.find(r=>r.source==='asr-install.log').level,'error');
  const errors=readRuntimeLogs(d,{errorsOnly:true,exportAll:true});assert.equal(errors.errors,4);assert.equal(errors.rows.length,4);assert.ok(errors.rows.every(r=>r.level==='error'));assert.doesNotMatch(JSON.stringify(v),/PRIVATE_|example\.invalid/);
+});
+
+
+test('management exporter reuses original payload with bounded live snapshot and cleans private temporary files',async t=>{
+ const dir=mkdtempSync(join(tmpdir(),'dafeiyu-management-export-test-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));const script=join(dir,'export.bat');writeFileSync(script,exporter);let temporary;
+ const zip=Buffer.from('504b03041400000000000000210083dcefb70100000001000000010000007831504b010214001400000000000000210083dcefb7010000000100000001000000000000000000000000000000000078504b050600000000010001002f000000200000000000','hex');
+ const snapshot={ok:true,schemaVersion:1,observedAt:1800000000000,pluginVersion:'2.8.3-dev.42',interaction:{ownerPriority:{idleSeconds:60,activeSeconds:30,checks:3,secret:'PRIVATE_SNAPSHOT'}}};
+ const fake=(exe,args,opts)=>{assert.match(exe,/WindowsPowerShell/);assert.equal(opts.shell,false);assert.equal(opts.env.BILI_EXPORT_SCRIPT,script);assert.equal(opts.env.BILI_EXPORT_ROOT,dir);assert.equal(opts.env.BILI_EXPORT_FULL_MEMORY,'1');assert.equal(opts.env.BILI_EXPORT_BINARY_EVIDENCE,'0');assert.equal(opts.env.BILI_EXPORT_STATUS_URL,'');assert.match(args.at(-1),/POWERSHELL_PAYLOAD_BEGIN/);temporary=opts.env.BILI_EXPORT_DIR;assert.deepEqual(JSON.parse(readFileSync(opts.env.BILI_EXPORT_LIVE_SNAPSHOT_FILE,'utf8')),snapshot);const child=new EventEmitter();child.kill=()=>{};queueMicrotask(()=>{writeFileSync(join(temporary,'bili-duty-logs-20261127-211151-532.zip'),zip);child.emit('close',0)});return child};
+ const result=await collectManagementDiagnostics({root:dir,script,snapshot,platform:'win32',spawnProcess:fake});assert.deepEqual(result.bytes,zip);assert.equal(existsSync(temporary),false);
+ await assert.rejects(collectManagementDiagnostics({root:dir,script,snapshot,platform:'linux',spawnProcess:()=>assert.fail('unsupported platform spawned')}),/不支持/);
+ const snapshotFile=join(dir,'snapshot.json');writeFileSync(snapshotFile,JSON.stringify(snapshot));const {read}=await helper(t,'',{snapshotFile});const live=read('live-status-snapshot.json');assert.equal(live.captureSource,'management-local');assert.equal(live.ownerPriority.idleSeconds,60);assert.equal(live.ownerPriority.activeSeconds,30);assert.doesNotMatch(JSON.stringify(live),/PRIVATE_SNAPSHOT/);
 });

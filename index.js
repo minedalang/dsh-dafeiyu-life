@@ -9,6 +9,7 @@ import {projectLifeSettings} from './lib/life-settings-projection.mjs'
 import {sharedVideoTargetAllowed,projectSharedVideoObservation} from './lib/shared-video-observation.mjs'
 import {runtimeControls,planRuntimeControl,interactionRepliesAllowed,isReplyDispatch} from './lib/runtime-controls.mjs'
 import {readRuntimeLogs} from './lib/runtime-log-view.mjs'
+import {collectManagementDiagnostics} from './lib/management-diagnostics.mjs'
 import {lifeSettingsV2,planLifeSettingsV2,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
 import {lifeTransitionReadiness} from './lib/life-transition-readiness.mjs'
 import {releaseAcceptanceEvidence} from './lib/release-acceptance-evidence.mjs'
@@ -1566,7 +1567,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       :task?.type==='inspect_creator_videos'
         ?readToolAction('bili_user_videos',{uid:Number(task.uid),pn:1,ps:20,order:'pubdate'})
         :null
-    const context={source:'owner-todo',sourceId:task.id,obligationId:task.id,
+    const todoEpoch=accountBinding.generation(),todoPolicy=getSessionIntegration();
+    const context={source:'owner-todo',sourceId:task.id,obligationId:task.id,galleryReadCurrent:()=>{const p=getSessionIntegration();return todoEpoch===accountBinding.generation()&&originalEpisodeAccount===trustedLifeAccountTag()&&p.revision===todoPolicy.revision&&p.mode===todoPolicy.mode&&accountBinding.taskAllowed(task)},
       ...(['skim','standard','deep'].includes(viewDepth)?{viewDepth}:{}),
       ...(preAction?{preReservedAction:preAction}:{})}
     let result
@@ -2226,6 +2228,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const dryRun=args.__debugDryRun===true
     const initialAccount=videoDebugAccount()
     const initialLifeAccountTag=trustedLifeAccountTag()
+    const galleryCurrent=()=>{try{return !dryRun&&!!initialAccount&&!!initialLifeAccountTag&&initialLifeAccountTag===trustedLifeAccountTag()&&initialAccount===videoDebugAccount()&&platformReady()&&cfg.masterEnabled===true&&cfg.visionEnabled===true&&(internal.lifeChoiceVerified===true&&args.record_session===false||internal.galleryReadCurrent?.()===true)}catch{return false}}
     const activeDebugJob=dryRun?videoDebugJob:null
     const stage=(label,step)=>{if(activeDebugJob&&videoDebugJob===activeDebugJob&&activeDebugJob.status==='running'){
       activeDebugJob.stage=label;if(Number.isInteger(step))activeDebugJob.step=step
@@ -2294,7 +2297,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           focus_start_seconds:args.focus_start_seconds,focus_end_seconds:args.focus_end_seconds,
           network_budget_bytes:args.network_budget_bytes,frame_budget_limit:args.frame_budget_limit
         }:{}),
-        ...(dryRun?{capture_for_debug:true}:internal.lifeChoiceVerified===true&&args.record_session===false?{capture_for_gallery:true}:{})}),elapsed=>{
+        ...(dryRun?{capture_for_debug:true}:galleryCurrent()?{capture_for_gallery:true}:{})}),elapsed=>{
           visionFinishedAt=Date.now();visualReadMs=elapsed
         }).catch(e=>({ok:false,...(dryRun&&e?.code==='owner_debug_visual_timeout'?{
           status:'vision_unavailable',errorCode:'owner_debug_visual_timeout'}:{}),
@@ -2537,11 +2540,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       retire.unref?.()
     }
     // dev.4: genuine Life observation JPEG copies are display-only, scoped to
-    // the verified current account and automatically expire within 24h.
+    // the verified current account and automatically expire within 12h.
     // A gallery entry is never treated as a durable or recallable memory.
-    if(!dryRun&&internal.lifeChoiceVerified===true&&args.record_session===false&&debugImages.length&&
-       initialLifeAccountTag&&initialLifeAccountTag===trustedLifeAccountTag()&&
-       initialAccount===videoDebugAccount()){
+    if(galleryCurrent()&&debugImages.length&&parseMaybeJson(vision)?.status==='analyzed'){
       try{
         const proof=verifyEpisodeVideoVisual({result:lifePayload,bvid,depth:visionPlan.depth})
         if(proof||focusIsVerifiedAndNovel){
@@ -2551,6 +2552,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
             note:String(perceptionHandoff?.video?.modelDescription||'').slice(0,380),
             analysis:parseMaybeJson(vision)?.description,boardReceipts:parseMaybeJson(vision)?.visionBoardReceipts,memoryWrite})
           if(result.ok!==true)log('Life 视觉回放图片未保存：'+String(result.reason||'unknown'))
+          else log('Life 视觉回放：真实观察缓存已保存（12小时有效）')
         }
       }catch(error){log('Life 视觉回放图片异常：'+String(error.message||error).slice(0,100))}
     }
@@ -2563,7 +2565,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     name:'bili_watch_video',
     description:'当你自主愿意回应主人“去看/看看这个视频”的建议时调用；可以拒绝、延期或选择范围；若问画面、动作、字幕或内容，请选择 standard 而非仅标题简介。读取真实视频详情、字幕（如有）、热门评论与少量弹幕，完成后返回可核验的内容材料并记一条“主 Session 指定观看”经历。它不播放完整视频；没有字幕/视觉证据时必须说明看到了什么、没看到什么，不能编造画面。',
     parameters:{bvid:{type:'string',description:'主人指定的真实 BV 号'},include_comments:{type:'boolean',description:'是否读取热门评论，默认 true'},include_danmaku:{type:'boolean',description:'是否读取少量弹幕，默认 true'},view_depth:{type:'string',description:'由鱼鱼决定理解深度：skim 略看资料（默认，不识图）；standard 正常了解（可用视觉时识图）；deep 深入探索（可用视觉时识图，并可随后按时间窗复查）。不强制选择后两项。'},visual_question:{type:'boolean',description:'旧接口兼容：主动提出视觉疑问时相当于 standard；显式 skim 优先'}},
-    async execute(args={}) { return executeWatchVideo(args) }
+    async execute(args={},exec) {
+      const epoch=accountBinding.generation(),policy=getSessionIntegration()
+      return executeWatchVideo(args,{galleryReadCurrent:()=>{const p=getSessionIntegration();return !exec?.signal?.aborted&&epoch===accountBinding.generation()&&p.mode===policy.mode&&p.revision===policy.revision&&longTermMemory?.isBoundAgent(exec?.agent)===true}})
+    }
   })
 
   // An unfamiliar BV is an opportunity, not a command to watch. The Life
@@ -2982,7 +2987,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       return {ok:false,error:'这条待办没有主人明确授权，不执行外部写入操作'}
     if(task?.type==='watch_video'){
       const result=await executeWatchVideo({bvid,include_comments:true,include_danmaku:true,record_session:false,
-        view_depth:readActionContext.getStore()?.viewDepth||task.viewDepth,explorationPurpose:'accepted-todo'})
+        view_depth:readActionContext.getStore()?.viewDepth||task.viewDepth,explorationPurpose:'accepted-todo'},{galleryReadCurrent:readActionContext.getStore()?.sourceId===task.id&&task.id?readActionContext.getStore()?.galleryReadCurrent:null})
       return result?.ok===true?{ok:true,summary:`已读取 ${result.info?.title||bvid} 的详情、可用字幕与评论材料。`,data:result}:{ok:false,error:result?.error||'查看视频失败'}
     }
     if(task?.type==='like_video'){
@@ -4987,7 +4992,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     try{
       const result=await lifeResourceScheduler.run({lane:'continuation',resources:{vision:1},waitMs:12_000},()=>withLifeVideoVisualLease(stateDir,{accountTag:scope,bvid:row.bvid},async()=>{
         if(!current())return {ok:false,reason:'authorization-changed'}
-        return executeWatchVideo({bvid:row.bvid,record_session:false,include_comments:false,include_danmaku:false,view_depth:'standard',explorationPurpose:'shared-video-observation'})
+        return executeWatchVideo({bvid:row.bvid,record_session:false,include_comments:false,include_danmaku:false,view_depth:'standard',explorationPurpose:'shared-video-observation'},{galleryReadCurrent:()=>current()&&socialPolicyGate.actor(input.uid).role==='owner'})
       }))
       return current()?projectSharedVideoObservation(result,row.bvid):{verified:false,reason:'authorization-changed'}
     }catch{return {verified:false,reason:'video-observation-unavailable'}}
@@ -6339,6 +6344,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return {ok:false,reason:result?.status==='uncertain-no-retry'?'platform-uncertain':'not-confirmed'}
     },
     logger: {
+      info: (msg) => log(String(msg)),
       warn: (msg) => log('私信自动回复警告：' + String(msg)),
       error: (msg) => log('私信自动回复错误：' + String(msg)),
     },
@@ -9173,12 +9179,50 @@ logger:{warn:m=>log('社交意图：'+m)}
   dailyBackupStart.unref?.()
   ctx.effect(()=>()=>{clearTimeout(dailyBackupStart);clearInterval(dailyBackupTimer)},'bili-duty: 每日业务备份任务关闭')
   let storageModelVerification=null,storageModelVerificationBusy=false,storageLifeVerification=null,storageExternalLifeVerification=null
+  // Shared read-only projection: exporter and HTTP diagnostics never rearm timers.
+  const diagnosticSchedulerSnapshot=()=>{
+        const planner=autonomousPlanner.status()
+        const pulse=planner?.schedulerPulse||{}
+        const scheduler=interactionScheduler.status()
+        const observedAt=Date.now()
+        const asMs=value=>Number.isSafeInteger(value)&&value>=0?value:0
+        const safeCode=value=>/^[a-zA-Z0-9._-]{1,64}$/.test(String(value||''))?String(value):'unclassified'
+        const checks={}
+        for(const key of ['dm','dmFast','dmOwner','replies','mentions']){
+          const check=scheduler?.checks?.[key]
+          if(check&&typeof check==='object')checks[key]={
+            enabled:check.enabled===true,polling:check.polling===true,
+            lastStartedAt:asMs(check.lastStartedAt),lastFinishedAt:asMs(check.lastFinishedAt),
+            lastResult:safeCode(check.lastResult),intervalMinutes:asMs(check.intervalMinutes),
+            intervalSeconds:asMs(key==='dmOwner'?scheduler.ownerPriority?.intervalSeconds:check.intervalSeconds),nextAt:asMs(check.nextAt)}
+        }
+        const loadedVersion=myVersion()
+        return {ok:true,schemaVersion:1,observedAt,
+          pluginVersion:/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(loadedVersion)?loadedVersion:null,
+          processUptimeSeconds:Math.floor(process.uptime()),
+          planner:{running:planner.running===true,busy:planner.busy===true,
+            masterEnabled:planner.masterEnabled===true,enabled:planner.plannerEnabled===true,
+            mode:['active','shadow','off'].includes(planner.lifeAgentMode)?planner.lifeAgentMode:'unknown',
+            expected:planner.masterEnabled===true&&planner.plannerEnabled===true&&
+              ['active','shadow'].includes(planner.lifeAgentMode),
+            nextDecisionAt:asMs(planner.nextDecisionAt),
+            nextDecisionReason:safeCode(planner.nextDecisionReason),
+            dailyRuns:asMs(planner.runs),lifeRuns:asMs(planner.lifeRuns),socialRuns:asMs(planner.socialRuns),
+            modelRetryAt:asMs(planner.modelRetryAt),
+            schedulerPulse:{checks:asMs(pulse.checks),lastCheckAt:asMs(pulse.lastCheckAt),
+              lastModelTurnAt:asMs(pulse.lastModelTurnAt),lastSkipAt:asMs(pulse.lastSkipAt),
+              lastSkipReason:safeCode(pulse.lastSkipReason),lastErrorAt:asMs(pulse.lastErrorAt),
+              startCount:asMs(pulse.startCount),lastStartedAt:asMs(pulse.lastStartedAt),
+              lastStoppedAt:asMs(pulse.lastStoppedAt),stale:pulse.stale===true}},
+          interaction:{checks,ownerPriority:Object.fromEntries(Object.entries(scheduler.ownerPriority||{}).filter(([key,value])=>['enabled','checks','lastCheckedAt','lastFinishedAt','durationMs','idleSeconds','activeSeconds','intervalSeconds','nextAt'].includes(key)&&(typeof value==='boolean'||Number.isSafeInteger(value)&&value>=0)))}}
+  }
+  let diagnosticExportBusy=false
   const handle = async (req, res, url) => {
     refreshCfg()
     const path = url.pathname
     // Global fail-closed gate; setup/status/management stay accessible. Never
     // unlock business APIs merely because the user can load the settings UI.
-    const setupAccess = (req.method==='GET'&&['/api/bili-duty/runtime-logs','/api/bili-duty/runtime-controls'].includes(path)) || (req.method==='POST'&&path==='/api/bili-duty/runtime-controls') || (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || (req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot') || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
+    const setupAccess = (req.method==='GET'&&['/api/bili-duty/runtime-logs','/api/bili-duty/runtime-controls'].includes(path)) || (req.method==='POST'&&['/api/bili-duty/runtime-controls','/api/bili-duty/runtime-diagnostics-export'].includes(path)) || (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || (req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot') || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || (req.method==='GET' && path==='/api/bili-duty/main-session/sessions') || (req.method==='POST' && path==='/api/bili-duty/main-session/bind') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
       path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
@@ -10654,44 +10698,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       }catch(e){return sendJson(res,500,{ok:false,error:'模型对照失败：'+String(e?.message||e).slice(0,120)})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot'){
-      // Exporter-only diagnostic read: never call ensureStarted/tick, make a model
-      // request, or write the scheduler state while observing its health.
-      try{
-        const planner=autonomousPlanner.status()
-        const pulse=planner?.schedulerPulse||{}
-        const scheduler=interactionScheduler.status()
-        const observedAt=Date.now()
-        const asMs=value=>Number.isSafeInteger(value)&&value>=0?value:0
-        const safeCode=value=>/^[a-zA-Z0-9._-]{1,64}$/.test(String(value||''))?String(value):'unclassified'
-        const checks={}
-        for(const key of ['dm','dmFast','dmOwner','replies','mentions']){
-          const check=scheduler?.checks?.[key]
-          if(check&&typeof check==='object')checks[key]={
-            enabled:check.enabled===true,polling:check.polling===true,
-            lastStartedAt:asMs(check.lastStartedAt),lastFinishedAt:asMs(check.lastFinishedAt),
-            lastResult:safeCode(check.lastResult),intervalMinutes:asMs(check.intervalMinutes),
-            intervalSeconds:asMs(key==='dmOwner'?scheduler.ownerPriority?.intervalSeconds:check.intervalSeconds),nextAt:asMs(check.nextAt)}
-        }
-        const loadedVersion=myVersion()
-        return sendJson(res,200,{ok:true,schemaVersion:1,observedAt,
-          pluginVersion:/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(loadedVersion)?loadedVersion:null,
-          processUptimeSeconds:Math.floor(process.uptime()),
-          planner:{running:planner.running===true,busy:planner.busy===true,
-            masterEnabled:planner.masterEnabled===true,enabled:planner.plannerEnabled===true,
-            mode:['active','shadow','off'].includes(planner.lifeAgentMode)?planner.lifeAgentMode:'unknown',
-            expected:planner.masterEnabled===true&&planner.plannerEnabled===true&&
-              ['active','shadow'].includes(planner.lifeAgentMode),
-            nextDecisionAt:asMs(planner.nextDecisionAt),
-            nextDecisionReason:safeCode(planner.nextDecisionReason),
-            dailyRuns:asMs(planner.runs),lifeRuns:asMs(planner.lifeRuns),socialRuns:asMs(planner.socialRuns),
-            modelRetryAt:asMs(planner.modelRetryAt),
-            schedulerPulse:{checks:asMs(pulse.checks),lastCheckAt:asMs(pulse.lastCheckAt),
-              lastModelTurnAt:asMs(pulse.lastModelTurnAt),lastSkipAt:asMs(pulse.lastSkipAt),
-              lastSkipReason:safeCode(pulse.lastSkipReason),lastErrorAt:asMs(pulse.lastErrorAt),
-              startCount:asMs(pulse.startCount),lastStartedAt:asMs(pulse.lastStartedAt),
-              lastStoppedAt:asMs(pulse.lastStoppedAt),stale:pulse.stale===true}},
-          interaction:{checks}})
-      }catch{return sendJson(res,503,{ok:false,error:'scheduler-snapshot-unavailable'})}
+      try{return sendJson(res,200,diagnosticSchedulerSnapshot())}catch{return sendJson(res,503,{ok:false,error:'scheduler-snapshot-unavailable'})}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/autonomous-planner'){
       try{
@@ -11827,6 +11834,19 @@ logger:{warn:m=>log('社交意图：'+m)}
         reason:result?.ok===true?'both-channels-migrated-to-life':result?.reason||'life-migration-review-required',
         owner:result?.ok===true?'life-agent':undefined,
         platformCalls:0,modelCalls:0,permissionsChanged:false,requiresRealPlatformAcceptance:true})
+    }
+    if(path==='/api/bili-duty/runtime-diagnostics-export'&&req.method==='POST'){
+      if(!explicitManagementIntent(req))return sendJson(res,403,{ok:false,error:'需要主人本机同源操作'})
+      const body=await readBackupBody(req,1024)
+      if(body?.confirmation!=='EXPORT_PRIVATE_DIAGNOSTICS')return sendJson(res,400,{ok:false,error:'请确认导出含私密业务与记忆数据的完整诊断包'})
+      if(diagnosticExportBusy)return sendJson(res,409,{ok:false,error:'诊断导出正在执行'})
+      diagnosticExportBusy=true;const generation=accountBinding.generation(),scope=trustedLifeAccountTag()
+      try{
+        const result=await collectManagementDiagnostics({root:stateDir,script:join(pluginDir,'tools','导出B站日志.bat'),python:cfg.pythonPath||'',snapshot:diagnosticSchedulerSnapshot()})
+        refreshCfg();if(generation!==accountBinding.generation()||scope!==trustedLifeAccountTag())return sendJson(res,409,{ok:false,error:'导出期间账号已变化，未下载，请重试'})
+        res.writeHead(200,{'Content-Type':'application/zip','Content-Disposition':'attachment; filename="'+result.filename+'"','Content-Length':result.bytes.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});return res.end(result.bytes)
+      }catch(e){return sendJson(res,503,{ok:false,error:String(e?.message||'诊断导出失败').slice(0,140)})}
+      finally{diagnosticExportBusy=false}
     }
     if(path==='/api/bili-duty/runtime-logs'&&req.method==='GET'){
       if(!explicitManagementIntent(req))return sendJson(res,403,{ok:false,error:'需要主人本机同源操作'})
