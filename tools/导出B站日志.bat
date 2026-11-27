@@ -7,11 +7,18 @@ set "BILI_EXPORT_NO_PAUSE=0"
 set "BILI_EXPORT_PYTHON_ARG="
 set "BILI_EXPORT_STRICT=0"
 set "BILI_EXPORT_FULL_MEMORY=0"
+set "BILI_EXPORT_BINARY_EVIDENCE=0"
 set "BILI_EXPORT_ROOT="
 :parse_args
 if "%~1"=="" goto args_done
 if /I "%~1"=="--full-memory" (
   set "BILI_EXPORT_FULL_MEMORY=1"
+  shift
+  goto parse_args
+)
+if /I "%~1"=="--include-binary-evidence" (
+  set "BILI_EXPORT_FULL_MEMORY=1"
+  set "BILI_EXPORT_BINARY_EVIDENCE=1"
   shift
   goto parse_args
 )
@@ -47,12 +54,14 @@ if /I "%~1"=="--status-url" (
   goto parse_args
 )
 echo Unsupported argument: %~1
-echo Usage: %~nx0 [--strict] [--no-pause] [--full-memory] [--root "C:\path\bili-duty"] [--python "C:\path\to\python.exe"] [--status-url http://127.0.0.1:PORT/api/bili-duty/manage]
+echo Usage: %~nx0 [--strict] [--no-pause] [--full-memory] [--include-binary-evidence] [--root "C:\path\bili-duty"] [--python "C:\path\to\python.exe"] [--status-url http://127.0.0.1:PORT/api/bili-duty/manage]
 exit /b 2
 :args_done
 if "%BILI_EXPORT_NO_PAUSE%"=="0" if "%BILI_EXPORT_FULL_MEMORY%"=="0" (
   echo.
-  echo Full memory diagnostics include private memory, details, relations, vectors and raw business state.
+  echo Full memory diagnostics include private memory, details, relations, index metadata and raw business state.
+  echo Large vector binaries and gallery, capture, meme and scene media are omitted by default.
+  echo For binary evidence, run with --include-binary-evidence instead.
   echo Save locally for your own troubleshooting. Do not publish or share publicly.
   choice /C YN /N /M "Include full memory diagnostics? [Y/N]: "
   if not errorlevel 2 set "BILI_EXPORT_FULL_MEMORY=1"
@@ -114,6 +123,7 @@ from urllib.request import build_opener, ProxyHandler, Request, HTTPRedirectHand
 original_root = Path(os.path.abspath(sys.argv[1]))
 root = original_root
 full_memory = os.environ.get("BILI_EXPORT_FULL_MEMORY") == "1" or len(sys.argv) > 4 and sys.argv[4] == "1"
+include_binary = full_memory and os.environ.get("BILI_EXPORT_BINARY_EVIDENCE") == "1"
 out = Path(sys.argv[2]).resolve()
 status_url = (sys.argv[3] if len(sys.argv) > 3 else '').strip()
 out.mkdir(parents=True, exist_ok=True)
@@ -139,11 +149,31 @@ def read_json(path, limit=1500000):
 MEMORY_DIRS = {'life-memory', 'long-term-memory', 'detail-protection', 'embedding-memory-index'}
 EXCLUDED_DIRS = {'node_modules', '.git', '.cache', '.hf-cache', 'uv-cache', 'uv-python', 'uv-tools',
                  'pip-cache', 'embedding-runtime', 'projects', 'backups', 'backup', 'tmp', 'temp',
-                 'vision-cache', 'asr-transcript-cache', 'modeldata', 'pythondata', '.vision-venv'}
+                 'vision-cache', 'asr-transcript-cache', 'modeldata', 'pythondata', '.vision-venv', '__pycache__'}
 AUTH_NAME = re.compile(r'(^|[-_.])(cookies?|credentials?|secrets?|passwords?|access[-_]?token|refresh[-_]?token|api[-_]?key|auth[-_]?token|sessdata|bili_jct)([-_.]|$)', re.I)
 AUTH_KEY = re.compile(r'cookie|credential|password|secret|access.?token|refresh.?token|api.?key|authorization|sessdata|bili.?jct|(^|[_.-])token$', re.I)
 DB_FILE = re.compile(r'\.(sqlite3?|db)(-wal|-shm|-journal)?$', re.I)
 MODEL_EXTS = {'.safetensors', '.gguf', '.onnx', '.pt', '.pth', '.ckpt', '.dll', '.exe', '.so', '.pyd', '.whl', '.msi'}
+
+
+# Omit only known resource domains, not arbitrary binary files or Life detail attachments.
+# The manifest and all textual evidence stay available for recall diagnosis.
+MEDIA_EXTS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.avif', '.tif', '.tiff',
+              '.mp4', '.mkv', '.webm', '.mov', '.avi', '.m4v', '.mp3', '.wav', '.m4a', '.aac', '.flac', '.ogg', '.opus'}
+MEDIA_ROOTS = {'life-video-gallery', 'vision-perception-captures', 'comment-memes'}
+
+
+def optional_binary_reason(relative):
+    parts = relative.casefold().split('/')
+    suffix = Path(parts[-1]).suffix
+    if len(parts) > 1 and parts[0] == 'embedding-memory-index' and suffix == '.f32':
+        return 'rebuildable-embedding-vectors'
+    if len(parts) > 1 and suffix in MEDIA_EXTS:
+        if parts[0] in MEDIA_ROOTS:
+            return 'optional-' + parts[0] + '-media'
+        if re.fullmatch(r'dafeiyu-scene-[a-z0-9_-]{1,64}', parts[0]):
+            return 'optional-scene-media'
+    return None
 
 
 def linked(path):
@@ -227,7 +257,9 @@ except (OSError, ValueError, TypeError) as ex:
 
 full_paths = []
 full_report = {'requested': full_memory, 'complete': False, 'files': [], 'skipped': [], 'errors': [],
-               'coreRoot': str(root), 'memoryRoot': None, 'memorySources': {}}
+               'coreRoot': str(root), 'memoryRoot': None, 'memorySources': {},
+               'binaryEvidence': {'includedByRequest': include_binary, 'omittedFiles': 0,
+                                  'omittedRawBytes': 0, 'byReason': {}}}
 
 
 def redact_config(value):
@@ -285,6 +317,20 @@ def collect_full():
                         full_report['skipped'].append({'path': rel, 'reason': 'authentication-file'})
                         continue
                     if src.suffix.lower() in MODEL_EXTS or name.lower().endswith(('.part', '.lock')):
+                        continue
+                    if src.suffix.lower() in ('.pyc', '.pyo') or (name.lower().startswith('bili-duty-logs-') and src.suffix.lower() == '.zip'):
+                        full_report['skipped'].append({'path': rel, 'reason': 'generated-cache-or-diagnostic-archive'})
+                        continue
+                    reason = optional_binary_reason(rel)
+                    if reason and not include_binary:
+                        size = src.stat().st_size
+                        full_report['skipped'].append({'path': rel, 'reason': reason, 'bytes': size})
+                        stats = full_report['binaryEvidence']
+                        stats['omittedFiles'] += 1
+                        stats['omittedRawBytes'] += size
+                        totals = stats['byReason'].setdefault(reason, {'files': 0, 'rawBytes': 0})
+                        totals['files'] += 1
+                        totals['rawBytes'] += size
                         continue
                     if rel.casefold() in seen:
                         raise ValueError('duplicate archive path')
@@ -1422,7 +1468,8 @@ sys.exit(0)
     try {
       $writer.WriteLine('Bili-duty evidence export (updated): original logs, Life traces, receipts, and bounded diagnostic summaries in _diagnostics/.')
       $writer.WriteLine('Full memory diagnostics requested: ' + $env:BILI_EXPORT_FULL_MEMORY + '; captured: ' + $expanded)
-      $writer.WriteLine('FULL MODE: inspect _diagnostics/memory-export-coverage.json for active roots, file inventory, recall activity, missing or changed files. Memory, details, revocations, reflections and vector index are included when available. No model weights, dependency caches or old backup directories. Authentication filenames and recognized config credential keys are excluded; free text and raw logs may still contain secrets.')
+      $writer.WriteLine('FULL MODE: inspect _diagnostics/memory-export-coverage.json for active roots, file inventory, recall activity, missing or changed files. Memory, details, revocations, reflections and vector index metadata are included when available. Binary vectors and gallery/capture/meme/scene media are omitted by default; --include-binary-evidence opts in. The binaryEvidence and skipped fields list intentional omissions and raw bytes. This is diagnostic evidence, NOT a restorable backup. No model weights, dependency caches or old backup directories. Authentication filenames and recognized config credential keys are excluded; free text and raw logs may still contain secrets.')
+      $writer.WriteLine('Binary evidence requested: ' + $env:BILI_EXPORT_BINARY_EVIDENCE)
       $writer.WriteLine('NEW: life-video-launch-state.json reads root autonomous-planner.json, state.json and whitelisted config fields; live-status-snapshot.json requires a reachable running DSH and does not restart its timer.')
       $writer.WriteLine('DIAG COVERAGE: see _diagnostics/diagnostic-coverage.json; missing data means incomplete investigation, even when archive export succeeded.')
       $writer.WriteLine('PYTHON DIAGNOSTICS: video-agent-decision-timeline.json, life-comment-decision-timeline.json, natural-chat-diagnostics.json, polling-and-model-budget.json, and coherent SQLite snapshots.')
@@ -1442,6 +1489,7 @@ sys.exit(0)
     } finally { $writer.Dispose() }
   } finally { $zip.Dispose() }
   Write-Host "Archive: $dest"
+  Write-Host ('ZIP size: {0:N2} MiB' -f ((Get-Item -LiteralPath $dest).Length / 1MB))
   Write-Host "Files: $count ; failed: $($errors.Count) ; warnings: $($warnings.Count)"
   if ($coverageComplete) { Write-Host 'Diagnostics: EVIDENCE COVERAGE COMPLETE (review all sources for diagnosis).' }
   elseif ($diagCompleted) { Write-Warning 'Diagnostics: PARTIAL COVERAGE. Python summaries and available online SQLite backups saved; see diagnostic-coverage.json for missing evidence.' }

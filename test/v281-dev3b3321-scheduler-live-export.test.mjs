@@ -17,14 +17,14 @@ const end=exporter.indexOf("\n'@\n  [System.IO.File]::WriteAllText($helper",star
 assert.ok(start>0&&end>start,'Find embedded offline diagnostic helper')
 const python=exporter.slice(start+"  $pythonBody = @'\n".length,end)
 
-async function helper(t,url,{prepare=()=>{},full=false,expected=0}={}){
+async function helper(t,url,{prepare=()=>{},full=false,binary=false,expected=0}={}){
  const dir=mkdtempSync(join(tmpdir(),'dafeiyu-live-export-'))
  t.after(()=>rmSync(dir,{recursive:true,force:true}))
  const duty=join(dir,'duty'),out=join(dir,'out')
  mkdirSync(duty);mkdirSync(out)
  await prepare({dir,duty,out})
  const file=join(dir,'helper.py');writeFileSync(file,python)
- const child=spawn(pythonExecutable,[file,duty,out,url||''],{env:{...process.env,BILI_EXPORT_FULL_MEMORY:full?'1':'0',HTTP_PROXY:'http://127.0.0.1:1',HTTPS_PROXY:'http://127.0.0.1:1'},stdio:['ignore','ignore','pipe']})
+ const child=spawn(pythonExecutable,[file,duty,out,url||''],{env:{...process.env,BILI_EXPORT_FULL_MEMORY:full?'1':'0',BILI_EXPORT_BINARY_EVIDENCE:binary?'1':'0',HTTP_PROXY:'http://127.0.0.1:1',HTTPS_PROXY:'http://127.0.0.1:1'},stdio:['ignore','ignore','pipe']})
  let stderr='';child.stderr.on('data',v=>{stderr+=v.toString()})
  const [code]=await once(child,'close')
  assert.equal(code,expected,stderr.slice(-1500))
@@ -128,6 +128,13 @@ test('explicit full memory export follows verified relocated core and memory par
   json(join(mem,'long-term-memory','dafeiyu.json'),{memories:[{text:'owner-only fixture'}]})
   json(join(mem,'detail-protection','revocations-v1.json'),{revoked:['test']})
   writeFileSync(join(mem,'embedding-memory-index','vectors-test.f32'),Buffer.from([1,2,3,4]))
+  json(join(mem,'embedding-memory-index','manifest.json'),{vectorFile:'vectors-test.f32',entries:[{id:'memory'}]})
+  writeFileSync(join(mem,'life-memory','details','v1','test','evidence.jpg'),'actual memory attachment')
+  for(const [folder,file] of [['life-video-gallery/test','storyboard-00.jpg'],['vision-perception-captures/test','storyboard-01.JPG'],['comment-memes/test','meme.png'],['dafeiyu-scene-test','public-video.mp4']]){
+   mkdirSync(join(target,folder),{recursive:true});writeFileSync(join(target,folder,file),'asset');json(join(target,folder,'manifest.json'),{evidence:'retained metadata'})
+  }
+  mkdirSync(join(target,'__pycache__'));writeFileSync(join(target,'__pycache__','test.pyc'),'cache')
+  writeFileSync(join(target,'bili-duty-logs-old.zip'),'previous export')
   json(join(target,'neural-recall-activity.json'),{paths:[],activities:[{state:'no-association'}]})
   mkdirSync(join(target,'life-decision-traces','test'),{recursive:true});json(join(target,'life-decision-traces','test','trace.json'),{at:123,steps:[{type:'context-evidence',kind:'ai-visual-association',code:'ai-association-offered',provided:3},{type:'context-evidence',kind:'ai-visual-association',code:'ai-association-confirmed',observations:1}]})
   json(join(target,'config.json'),{name:'fish',apiKey:'FAKE_AUTH_SECRET',nested:{password:'FAKE_AUTH_SECRET'}})
@@ -144,9 +151,31 @@ test('explicit full memory export follows verified relocated core and memory par
  assert.equal(load('long-term-memory/dafeiyu.json').memories[0].text,'owner-only fixture');assert.equal(load('accounts/test/owner-dm-agent.json').messages[0],'private chat fixture')
  assert.equal(load('config.json').apiKey,'[credential excluded]');assert.equal(load('config.json').nested.password,'[credential excluded]');assert.equal(load('config.json').name,'fish')
  assert.equal(existsSync(join(raw,'bili_credential.json')),false);assert.equal(existsSync(join(raw,'model.gguf')),false)
- assert.deepEqual([...readFileSync(join(raw,'embedding-memory-index','vectors-test.f32'))],[1,2,3,4])
+ assert.equal(existsSync(join(raw,'embedding-memory-index','vectors-test.f32')),false)
+ assert.equal(load('embedding-memory-index/manifest.json').vectorFile,'vectors-test.f32')
+ assert.equal(readFileSync(join(raw,'life-memory/details/v1/test/evidence.jpg'),'utf8'),'actual memory attachment')
+ for(const [folder,file] of [['life-video-gallery/test','storyboard-00.jpg'],['vision-perception-captures/test','storyboard-01.JPG'],['comment-memes/test','meme.png'],['dafeiyu-scene-test','public-video.mp4']]){
+  assert.equal(existsSync(join(raw,folder,file)),false);assert.equal(load(folder+'/manifest.json').evidence,'retained metadata')
+  assert.ok(coverage.skipped.some(row=>row.path===folder+'/'+file&&row.bytes===5&&row.reason.startsWith('optional-')))
+ }
+ assert.equal(coverage.binaryEvidence.includedByRequest,false);assert.equal(coverage.binaryEvidence.omittedFiles,5);assert.equal(coverage.binaryEvidence.omittedRawBytes,24)
+ assert.deepEqual(coverage.binaryEvidence.byReason['rebuildable-embedding-vectors'],{files:1,rawBytes:4})
+ assert.equal(existsSync(join(raw,'__pycache__/test.pyc')),false);assert.equal(existsSync(join(raw,'bili-duty-logs-old.zip')),false)
  assert.equal(existsSync(join(raw,'life-memory/example.db')),false);assert.equal(existsSync(join(out,'sqlite-snapshots/life-memory/example.db')),true)
  assert.equal(coverage.sqliteSnapshots[0].integrityCheck,'ok')
+})
+
+test('binary evidence opt-in retains resource files without enabling auth or cache export',async t=>{
+ assert.match(exporter,/--include-binary-evidence" \(\n  set "BILI_EXPORT_FULL_MEMORY=1"\n  set "BILI_EXPORT_BINARY_EVIDENCE=1"/)
+ const {out,read}=await helper(t,'',{full:true,binary:true,prepare:({duty})=>{
+  for(const folder of ['life-memory','embedding-memory-index','life-video-gallery','vision-perception-captures','comment-memes','dafeiyu-scene-test','__pycache__'])mkdirSync(join(duty,folder))
+  writeFileSync(join(duty,'life-memory','episodic.json'),'{}')
+  for(const path of ['embedding-memory-index/vectors-test.f32','life-video-gallery/storyboard.jpg','vision-perception-captures/storyboard.jpg','comment-memes/meme.png','dafeiyu-scene-test/public-video.mp4','comment-memes/cookie.png','__pycache__/test.pyc','model.gguf'])writeFileSync(join(duty,path),'fixture')
+ }})
+ const raw=join(out,'_expanded-state'),coverage=read('memory-export-coverage.json')
+ assert.equal(coverage.complete,true,JSON.stringify(coverage.errors));assert.equal(coverage.binaryEvidence.includedByRequest,true);assert.equal(coverage.binaryEvidence.omittedFiles,0)
+ for(const path of ['embedding-memory-index/vectors-test.f32','life-video-gallery/storyboard.jpg','vision-perception-captures/storyboard.jpg','comment-memes/meme.png','dafeiyu-scene-test/public-video.mp4'])assert.equal(readFileSync(join(raw,path),'utf8'),'fixture')
+ for(const path of ['comment-memes/cookie.png','__pycache__/test.pyc','model.gguf'])assert.equal(existsSync(join(raw,path)),false)
 })
 
 test('full exporter never reads stale memory after split disk loss; invalid core pointer refuses old root',async t=>{
