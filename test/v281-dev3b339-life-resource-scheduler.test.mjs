@@ -137,3 +137,26 @@ test('standalone owner memory shares model slot without admitting platform resou
   assert.equal(await first,1);assert.equal(await ordinary,2);await rejected;assert.equal(ran,false)
   assert.equal(s.status().active.model,0);s.close()
 })
+
+
+test('dev50 queued old generation rejected even after returning to the same persistent Life account',async()=>{
+ let generation=1,ran=0
+ const s=createLifeResourceScheduler({getAccountTag:()=>S,getAccountGeneration:()=>generation})
+ const hold=await s.acquire({resources:{model:1}})
+ const queued=s.run({lane:'continuation',resources:{model:1}},async()=>{ran++})
+ generation=3;hold()
+ await assert.rejects(queued,e=>e.code==='life-resource-account-changed'&&e.workNotStarted===true)
+ assert.equal(ran,0);assert.equal(await s.run({resources:{model:1}},async()=>++ran),1)
+ assert.equal(s.status().active.model,0);s.close()
+})
+for(const mode of ['generation','close','standalone'])test('dev50 admission-to-callback race '+mode,async()=>{
+ let generation=1,ownerScope='owner-memory:1:1',ran=false
+ const s=createLifeResourceScheduler({getAccountTag:()=>S,getAccountGeneration:()=>generation,getOwnerMemoryScope:()=>ownerScope})
+ const work=async()=>{ran=true}
+ const task=mode==='standalone'?s.runOwnerMemory(work):s.run({resources:{model:1}},work)
+ if(mode==='generation')generation++
+ if(mode==='close')s.close()
+ if(mode==='standalone')ownerScope='owner-memory:1:2'
+ await assert.rejects(task,e=>e.workNotStarted===true&&e.code===(mode==='close'?'life-resource-closed':'life-resource-account-changed'))
+ assert.equal(ran,false);assert.equal(s.status().active.model,0);s.close()
+})

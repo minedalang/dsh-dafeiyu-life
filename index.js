@@ -704,7 +704,7 @@ export function apply(ctx, config) {
   // Life intention, Bilibili reads, or public/private sends.
   const lifeResourceScheduler=createLifeResourceScheduler({getAccountTag:()=>{
     try{return trustedLifeAccountTag()}catch{return ''}
-  },getOwnerMemoryScope:()=>{
+  },getAccountGeneration:()=>accountBinding.generation(),getOwnerMemoryScope:()=>{
     try{return standaloneMemoryModelReady()?'owner-memory:'+getSessionIntegration().revision+':'+accountBinding.generation():''}catch{return ''}
   }})
   ctx.effect(()=>()=>lifeResourceScheduler.close(),'bili-duty: Life 资源调度清理')
@@ -2261,6 +2261,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     let speechFinishedAt=0,visionFinishedAt=0
     let speechAttempt={status:'not-checked',reason:''}
     stage('读取视频元数据',1)
+    if(!readCurrent())return {ok:false,reason:'authorization-changed'}
     try{info=await call('bili_video_info',{bvid})}catch(e){return {ok:false,error:'读取视频详情失败：'+String(e?.message||e).slice(0,160)}}
     if(!readCurrent())return {ok:false,reason:'authorization-changed'}
     metadataMs=Date.now()-watchStartedAt
@@ -2315,6 +2316,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         finally{subtitleToolMs=Date.now()-subtitleToolStarted}
         if(typeof subtitle?.text==='string'&&subtitle.text.trim()){
           speechAttempt={status:'official-subtitles',reason:'subtitle-text-retrieved'}
+        }else if(!readCurrent()){
+          speechAttempt={status:'not-enabled',reason:'authorization-changed'}
         }else if(cfg.transcribe!==true){
           speechAttempt={status:'not-enabled',reason:'Whisper 自动转写开关未启用；已安装不等于授权转写'}
         }else{
@@ -2414,7 +2417,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const isLifeEpisodeFocus=internal.lifeChoiceVerified===true&&
       args.explorationPurpose==='life-episode-voluntary-focus'
     let focusIsVerifiedAndNovel=false
-    if(!dryRun&&isLifeEpisodeFocus&&internal.lifeFocusAccountTag===initialLifeAccountTag&&
+    if(!dryRun&&readCurrent()&&isLifeEpisodeFocus&&internal.lifeFocusAccountTag===initialLifeAccountTag&&
        trustedLifeAccountTag()===initialLifeAccountTag&&cfg.masterEnabled===true){
       const candidateVisual=parseMaybeJson(vision)
       const focusedEvidence=buildVideoEvidenceBundle({bvid,info:parseMaybeJson(info),visual:candidateVisual})
@@ -2429,7 +2432,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           const merged=await synthesizeFocusVisualMemory({
             overviewNotes:internal.lifeGlobalNotes,focusDescription:confirmed.description,
             invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'videoSummary'})})
-          if(merged.ok&&trustedLifeAccountTag()===initialLifeAccountTag&&cfg.masterEnabled===true){
+          if(merged.ok&&readCurrent()&&trustedLifeAccountTag()===initialLifeAccountTag&&cfg.masterEnabled===true){
             integratedVisualNotes=merged.notes
             log('Life 视觉记忆整合：新增局部证据核验后完成文字摘要（无工具调用）')
           }else if(!merged.ok)log('Life 视觉记忆整合：本次未生成摘要，沿用已有可信观察笔记')
@@ -5563,12 +5566,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
 
   async function invokeInteractionPrompt(promptText,maxChars=450,options={}){
     if(!automaticSession.current())throw sessionIntegrationPaused()
-    const start=Date.now(),expectedScope=trustedLifeAccountTag(),route=options.modelRoute||'interaction',channel=lifeSocialScope.getStore()?.channel
+    const start=Date.now(),expectedScope=trustedLifeAccountTag(),epoch=accountBinding.generation(),route=options.modelRoute||'interaction',channel=lifeSocialScope.getStore()?.channel
     const trigger=channel==='dm'?'incoming-dm':channel==='comment'?'incoming-comment':'host'
     const lane=channel==='dm'||channel==='comment'||route==='ownerDmAgent'?'social':
       route==='reflection'?'background':route==='videoSummary'?'background':route==='behaviorDecision'?'continuation':'exploration'
     try{const output=await lifeResourceScheduler.run({lane,resources:{model:1},waitMs:lane==='social'?15_000:25_000},
-      ()=>{if(!automaticSession.current())throw sessionIntegrationPaused();return invokeInteractionPromptRaw(promptText,maxChars,options)})
+      ()=>{if(!automaticSession.current()||accountBinding.generation()!==epoch||trustedLifeAccountTag()!==expectedScope)throw sessionIntegrationPaused();return invokeInteractionPromptRaw(promptText,maxChars,options)})
+      // Provider work already started: discard a stale response, without treating it as an unstarted/refundable admission.
+      if(!automaticSession.current()||accountBinding.generation()!==epoch||trustedLifeAccountTag()!==expectedScope)throw Error('life-model-result-scope-changed')
       modelInvocationJournal.record({scene:route==='videoSummary'?'video-summary':route,trigger,expectedScope,durationMs:Date.now()-start,
         provider:route==='videoSummary'?cfg.videoModelProvider||cfg.pluginDefaultModelProvider||'':
           route==='reflection'?cfg.mainSessionReflectionModelProvider||cfg.pluginDefaultModelProvider||'':
@@ -8286,7 +8291,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     // Include temporarily cooled-down intentions for duplicate-read checks;
     // they are NOT offered to the model until their scheduled time.
     getActiveLifeIntentionReservations:()=>lifeOpportunities.intentions({includeClosed:true,limit:20}),
-    getLifeAccountTag:()=>trustedLifeAccountTag(),
+    getLifeAccountTag:()=>trustedLifeAccountTag(),getLifeAccountGeneration:()=>accountBinding.generation(),
     beginLifeExploration:(id,goal,found,tag)=>lifeOpportunities.beginExploration(id,goal,found,tag),
     beginLifeVideoExploration:(id,goal,found,tag)=>lifeOpportunities.beginVideoExploration(id,goal,found,tag),
     beginInspectedOpportunity:(...args)=>lifeOpportunities.beginInspectedOpportunity(...args),
@@ -8397,14 +8402,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       ['independent_dsh','independent_local'].includes(resolvedVisionMode())&&
       lifeOpportunityAccountReady()&&!accountBinding.status().blocked},
     withLifeVisualObservationLease:(target,run)=>withLifeVideoVisualLease(stateDir,target,run),
-    executeLifeVideoObservation:async({bvid,viewDepth,accountTag,focusWindow,globalVisualNotes,previousVerifiedFocusWindows,networkBudgetBytes,frameBudgetLimit,galleryGroupId})=>{
+    executeLifeVideoObservation:async({bvid,viewDepth,accountTag,focusWindow,globalVisualNotes,previousVerifiedFocusWindows,networkBudgetBytes,frameBudgetLimit,galleryGroupId,isCurrent=()=>false})=>{
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.lifeAgentMode!=='active'||cfg.visionEnabled!==true||
          !['independent_dsh','independent_local'].includes(resolvedVisionMode())||
          !lifeOpportunityAccountReady()||trustedLifeAccountTag()!==accountTag||
          accountBinding.status().blocked)return {ok:false,reason:'life-video-vision-unavailable'}
       return lifeResourceScheduler.run({lane:'continuation',resources:{vision:1},waitMs:12_000},
-        ()=>{if(!automaticSession.current())return {ok:false,reason:'session-integration-paused'};return executeWatchVideo({bvid,record_session:false,include_comments:false,
+        ()=>{if(!automaticSession.current())return {ok:false,reason:'session-integration-paused'};if(isCurrent()!==true)return {ok:false,reason:'life-read-scope-changed'};return executeWatchVideo({bvid,record_session:false,include_comments:false,
           include_danmaku:false,view_depth:viewDepth,
           ...(focusWindow?{focus_start_seconds:focusWindow.startSeconds,
             focus_end_seconds:focusWindow.endSeconds,network_budget_bytes:networkBudgetBytes,
@@ -8413,7 +8418,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           {lifeChoiceVerified:true,
             lifeGlobalNotes:focusWindow?globalVisualNotes:undefined,
             previousVerifiedFocusWindows:focusWindow?previousVerifiedFocusWindows:undefined,
-            lifeFocusAccountTag:accountTag,lifeGalleryGroupId:galleryGroupId})}).catch(()=>({ok:false,reason:'life-vision-resource-unavailable'}))
+            lifeFocusAccountTag:accountTag,lifeGalleryGroupId:galleryGroupId,readCurrent:isCurrent})}).catch(()=>({ok:false,reason:'life-vision-resource-unavailable'}))
     },
     recordLifeVideoVisual:(id,proof,tag)=>lifeOpportunities.recordVideoVisual(id,proof,tag),
     hasVerifiedLifeVideoVisual:(bvid,tag)=>lifeOpportunities.hasVerifiedVideoVisual(bvid,tag),
