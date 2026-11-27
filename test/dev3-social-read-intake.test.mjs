@@ -223,3 +223,24 @@ test('只推荐艺人时复用原来的社交回复 AI 调用，无须追加歌�
   batcher.stop()
  }finally{rmSync(home,{recursive:true,force:true})}
 })
+
+
+test('主人分享长链接：AI 已接受的准确本轮 BV 可直接证明目标，错引文不再阻止入账',()=>withHome(home=>{
+ const todos=createOwnerTodoEngine({dataDir:home,now:()=>T})
+ const text=`鱼鱼，我给你分享一个视频。如果你感兴趣的话，看看里面实际发生了什么。 https://www.bilibili.com/video/${BV}/?trackid=example&spm_id_from=333.40164.0.0`
+ const proposal={type:'watch_video',bvid:BV,evidence:'主人推荐我去看这个视频'}
+ const run=(id,choice,extra={})=>intakeAiReadProposal({row:row(id,text),channel:'dm',todoDisposition:choice,todoTiming:'later',suggestedTodo:proposal,currentMessages:[text],decide,todos,now:()=>T,...extra})
+ assert.equal(run('defer','defer').skipped,'model-defer')
+ assert.equal(run('refuse','refuse').skipped,'model-refuse')
+ assert.equal(run('none','none').skipped,'no-proposal')
+ assert.equal(todos.list().length,0)
+ assert.equal(run('accept','accept').created,true)
+ assert.equal(run('accept','accept').duplicate,true)
+ assert.equal(todos.list()[0].bvid,BV)
+ assert.equal(todos.list()[0].acceptance.timing,'later')
+ assert.equal(run('fake','accept',{suggestedTodo:{...proposal,bvid:'BV1fake00000'}}).accepted,false)
+ assert.equal(run('other','accept',{currentMessages:['普通聊天'],row:row('other','普通聊天')}).accepted,false)
+ assert.equal(run('old','accept',{row:{...row('old',text),timestampMs:T-2*86400_000}}).skipped,'unverified-event')
+ assert.equal(run('denied','accept',{decide:()=>({decision:'deny'})}).accepted,false)
+ assert.equal(todos.list().length,1)
+}))

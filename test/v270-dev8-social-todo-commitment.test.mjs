@@ -219,3 +219,46 @@ test('私信事实冲突时仅可由模型修订；两次仍矛盾则跳过，�
   assert.equal(result,'SKIP');assert.equal(calls,2);
  }finally{batcher.stop();}
 });
+
+
+test('主人私信：接受未入账即使不说记下也必须重新交给模型，允许自主拒绝',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dev43-owner-'));const todos=createOwnerTodoEngine({dataDir:dir,now:()=>T})
+ const text=`鱼鱼，我给你分享一个视频。 https://www.bilibili.com/video/${BV}/`
+ let calls=0, attempts=0; const prompts=[]
+ const batcher=createInteractionBatcher({delayMs:1,getPersona:()=>'',invoke:async prompt=>{
+  prompts.push(prompt);calls++
+  return JSON.stringify({items:[calls===1?{id:'0',action:'reply',reply:'收到链接啦～我有空再去看看里面实际发生了什么。',todoDisposition:'accept',futureReadCommitment:true,suggestedTodo:{type:'watch_video',bvid:'BV1fake00000',evidence:'不可靠引文'}}:
+   {id:'0',action:'reply',reply:'这个我暂时还没有决定要不要看。',todoDisposition:'defer',futureReadCommitment:false}]})
+ }})
+ try{
+  const out=await batcher.generate({kind:'dm',role:'owner',trigger:'incoming',uid:UID,text,allowTodoIntake:true,onTodoProposal:p=>{
+   attempts++;return intakeAiReadProposals({row:{incoming:true,senderUid:UID,messageId:'evt',timestampMs:T,text},channel:'dm',currentMessages:[text],decide:()=>({decision:'allow'}),todos,now:()=>T,...p})
+  }})
+  assert.equal(out,'这个我暂时还没有决定要不要看。');assert.equal(calls,2);assert.equal(attempts,1);assert.equal(todos.list().length,0)
+  assert.match(prompts[1],/accepted-todo-not-persisted/)
+ }finally{batcher.stop();rmSync(dir,{recursive:true,force:true})}
+})
+
+test('主人来信的语义承诺未伴随接受回执：不根据措辞或链接自动建任务',async()=>{
+ for(const missing of [false,true]){
+  let calls=0,attempts=0
+  const batcher=createInteractionBatcher({delayMs:1,getPersona:()=>'',invoke:async()=>{
+   calls++;return JSON.stringify({items:[{id:'0',action:'reply',reply:'这件事我会放在心上，等合适的时候去了解。',todoDisposition:'none',...(missing?{}:{futureReadCommitment:true})}]})
+  }})
+  try{
+   const out=await batcher.generate({kind:'dm',role:'owner',trigger:'incoming',uid:UID,text:'这是分享而不是命令',allowTodoIntake:true,onTodoProposal:()=>{attempts++;return {ok:true,complete:false,skipped:'no-proposal'}}})
+   assert.equal(out,'SKIP');assert.equal(calls,2);assert.equal(attempts,1)
+  }finally{batcher.stop()}
+ }
+})
+
+test('主人分享链接：同一模型明确接受及准确 BV 直接保存，无第二轮投票；拒绝不自动入账',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'dev43-owner-success-'));const todos=createOwnerTodoEngine({dataDir:dir,now:()=>T});let calls=0,choice='accept'
+ const text=`分享 https://www.bilibili.com/video/${BV}/?x=1`
+ const batcher=createInteractionBatcher({delayMs:1,getPersona:()=>'',invoke:async()=>{calls++;return JSON.stringify({items:[{id:'0',action:'reply',reply:choice==='accept'?'我有空再去看看。':'这次不想看。',todoDisposition:choice,futureReadCommitment:choice==='accept',suggestedTodo:choice==='accept'?{type:'watch_video',bvid:BV,evidence:'模型概括而不是原文'}:null}]})}})
+ try{
+  const gen=id=>batcher.generate({kind:'dm',role:'owner',trigger:'incoming',uid:UID,text,allowTodoIntake:true,onTodoProposal:p=>intakeAiReadProposals({row:{incoming:true,senderUid:UID,messageId:id,timestampMs:T,text},channel:'dm',currentMessages:[text],decide:()=>({decision:'allow'}),todos,now:()=>T,...p})})
+  assert.equal(await gen('one'),'我有空再去看看。');assert.equal(calls,1);assert.equal(todos.list().length,1)
+  choice='refuse';assert.equal(await gen('two'),'这次不想看。');assert.equal(calls,2);assert.equal(todos.list().length,1)
+ }finally{batcher.stop();rmSync(dir,{recursive:true,force:true})}
+})

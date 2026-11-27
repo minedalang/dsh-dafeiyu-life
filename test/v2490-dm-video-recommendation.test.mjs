@@ -124,7 +124,7 @@ test('同一次互动 AI 调用同时生成回复和待办候选；聊天回复�
  }})
  try{
   const result=await batcher.generate({kind:'dm',uid:'1001',text:'有空听听陶喆的歌',messages:['有空听听陶喆的歌'],canReply:false,canSkip:true,allowTodoIntake:true,
-   onTodoProposal:async x=>{received=x}})
+   onTodoProposal:async x=>{received=x;return {ok:true,complete:true,created:true,createdCount:1,items:[x.suggestedTodo]}}})
   assert.equal(calls,1);assert.equal(result,'SKIP')
   assert.equal(received.todoDisposition,'accept');assert.equal(received.suggestedTodo.topic,'陶喆的歌')
   assert.match(prompt,/未来只读探索建议/);assert.match(prompt,/"currentMessages":\["有空听听陶喆的歌"\]/)

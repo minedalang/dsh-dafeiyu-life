@@ -183,3 +183,16 @@ test('same authorized Life Voice may reach the planner once without adding a sec
  assert.equal((await p.tick({force:true,opportunitiesOnly:true})).action,'skip')
  assert.equal(prompt.split('当前合法LifeVoice人格片段').length-1,1)
 }))
+
+
+test('未结束的同主题兴趣探索在阶段变化及三日冷却后仍不重复提供新搜索候选',async()=>home(async dir=>{
+ let t=BASE,stage='emerging';const {life,switchAccount}=scope(dir,{clock:()=>t,interestEvidence:()=>[{...interest,stage,at:new Date(t-3600_000).toISOString()}]})
+ const cue=life.explorationCues()[0];assert.ok(cue)
+ const start=life.beginExploration(cue.id,'我想了解更多游戏音乐',{ok:true,topic:interest.topic,videos:[{bvid:BV,title:'真实公开作品'}]})
+ assert.equal(start.ok,true)
+ stage='growing';t+=4*86400_000
+ assert.equal(life.explorationCues().length,0)
+ assert.equal(life.intentions()[0].id,start.id)
+ switchAccount(credB);assert.equal(life.explorationCues().length,1);assert.equal(life.intentions().length,0)
+ switchAccount(credA);t+=11*86400_000;assert.equal(life.explorationCues().length,1)
+}))
