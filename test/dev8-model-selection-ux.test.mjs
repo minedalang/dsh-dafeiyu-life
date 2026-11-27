@@ -44,7 +44,7 @@ function ui(wizardMounted=''){
   const snippet=js.slice(js.indexOf('  const modelRouteControls='),js.indexOf('  const loadInteractionContextUsage='))
   let feedback=''
   const controls=runInNewContext(`(()=>{${snippet}\nreturn {renderModelDropdowns,updateRouteDescription,applyDefaultModelToAllRoutes,refreshWizardVerifiedChoices}})()`,{
-    modelDefs,wizardMounted,headlessProviders:catalog,headlessCurrentCatalog:catalog,headlessDefaultModel:{provider:'claude',model:'sonnet'},mobileViewOnly:false,
+    modelDefs,wizardMounted,wizardReflectionFollowsDefault:true,headlessProviders:catalog,headlessCurrentCatalog:catalog,headlessDefaultModel:{provider:'claude',model:'sonnet'},mobileViewOnly:false,
     $,
     window:{addEventListener:()=>{}}, // The model-page scope now includes the Whisper install poll cleanup.
     document:{createElement:()=>new FakeElement()},
@@ -123,6 +123,7 @@ test('首次默认模型只显示可验证路线，选择不会批量覆盖历�
  assert.deepEqual($('models-default-model').children.map(x=>x.value),['','haiku']);
  $('models-default-model').value='haiku';$('models-default-model').trigger('change');
  assert.equal($('model-videoModelProvider').value,'legacy');assert.equal($('model-videoModelId').value,'old-video');
+ assert.equal($('model-mainSessionReflectionModelProvider').value,'claude');assert.equal($('model-mainSessionReflectionModelId').value,'haiku');
 })
 
 test('文字模型引导继续验证第二个 Provider 后保留待保存默认选择与思考等级',()=>{

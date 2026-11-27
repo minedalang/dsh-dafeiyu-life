@@ -552,7 +552,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code ownerDmAI26 | lib/owner-dm-agent.mjs | const stillAllowed=
 %% @code ownerDmAI26 | lib/main-session-bridge.mjs | const ownerDmWriteReady=
 
-  guide27["新版一次性配置复核：不覆盖既有设置"]
+  guide27["新版一次性配置复核：语义就绪；不覆盖既有设置"]
 %% @code guide27 | lib/first-start.mjs | const finishGuide=
   backupBrowser27["主人本机单文件备份管理：明确确认、只删选中文件"]
 %% @code backupBrowser27 | lib/backup-rotation.mjs | export function deleteBackupInDirectory

@@ -19,12 +19,12 @@ const recorded=(bvid=BV,uid=UID,tag=TAG,at=NOW)=>({id:'life-share:'+uid+':'+bvid
   text:'我觉得很有趣！\nhttps://www.bilibili.com/video/'+bvid})
 function record(dir,items){writeFileSync(join(dir,'social-intentions.json'),JSON.stringify({version:1,items,
  sent:items.filter(x=>x.status==='sent').map(x=>({id:x.id,uid:x.uid,at:x.sentAt,accountTag:x.accountTag}))}))}
-test('首次配置有明确推荐和跳过按钮，共用原安装 API，老用户配置不自动修改',()=>{
+test('首次配置本地语义回忆必装，其他增强仍可跳过，共用原安装 API',()=>{
  const html=data('lib/management-console.html'),js=data('lib/management-console.js'),index=data('index.js')
  for(const id of ['quick-embedding-section','quick-embedding-install','quick-embedding-status','quick-embedding-progress'])assert.match(html,new RegExp('id="'+id+'"'))
- assert.match(html,/强烈推荐 · 可选/);assert.match(html,/不开启时仍可用词法回忆/);assert.match(html,/Qwen3-Embedding-0\.6B/)
+ assert.match(html,/首次配置必需/);assert.match(html,/不开启时仍可用词法回忆/);assert.match(html,/Qwen3-Embedding-0\.6B/)
  assert.match(js,/\$\('quick-embedding-install'\)\.addEventListener\('click',\(\)=>run\(inspectOrEnableEmbedding\)\)/)
- assert.doesNotMatch(html,/id="quick-embedding-later"/);assert.match(html,/id="fs-wizard-skip"[^>]*>稍后设置/);assert.match(js,/\$\('fs-wizard-skip'\)\.addEventListener\('click',async\(\)=>\{if\(await wizardDraftSafe\(\)\)wizardAdvance\(\)/)
+ assert.doesNotMatch(html,/id="quick-embedding-later"/);assert.match(html,/id="fs-wizard-skip"[^>]*>稍后设置/);assert.match(js,/\$\('fs-wizard-skip'\)\.addEventListener\('click',async\(\)=>\{if\(wizardMounted!=='embedding'&&await wizardDraftSafe\(\)\)wizardAdvance\(\)/)
  assert.match(js,/request\('\/embedding\/install',\{\}\)/)
  assert.match(index,/path === '\/api\/bili-duty\/embedding\/status'/)
  assert.doesNotMatch(js,/\$\('quick-embedding-later'\)/)

@@ -30,7 +30,7 @@ test('管理中心不再出现重复 2.8.2 宣传弹窗，快速设置入口和�
   // back through first installation; real verification failures remain separate.
   assert.match(ui,/const needsSetup=\(state\.welcomeCompleted\?\?state\.completed\)!==true/)
   assert.match(ui,/const needsRepair=unlocked&&!ready/)
-  assert.match(ui,/switchTab\(\(needsSetup\|\|wizardOptional\)&&platformEnabled\(state\)&&!explicitTab\?'firststart':initialTab&&tabAvailable\(initialTab,state\)\?initialTab:needsSetup\|\|!platformUIReady\(state\)\?'firststart':'home'\)/)
+  assert.match(ui,/switchTab\(mustReview\?'firststart':\(needsSetup\|\|wizardOptional\)&&platformEnabled\(state\)&&!explicitTab\?'firststart':initialTab&&tabAvailable\(initialTab,state\)\?initialTab:needsSetup\|\|!platformUIReady\(state\)\?'firststart':'home'\)/)
   assert.match(ui,/const state=await loadFirstStart\(\)/)
   assert.match(ui,/if\(!state\.welcomeSeen\)await request\('\/onboarding\/welcome'/)
 })

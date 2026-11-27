@@ -27,11 +27,11 @@ test('the Life action tree and responsive two-column diary are one permanently v
  assert.match(js,/lifeTimelineFingerprint=''/)
 })
 
-test('推荐增强优先展示本地语义回忆，独立会话文案保留',()=>{
+test('必需本地语义回忆先于推荐增强，独立会话文案保留',()=>{
  const first=html.indexOf('id="quick-embedding-section"'),recommended=html.indexOf('id="fs-enhancements"')
- assert.ok(first>recommended&&first<html.indexOf('id="fs-advanced-settings"'))
+ assert.ok(first<recommended&&first<html.indexOf('id="fs-advanced-settings"'))
  assert.ok(first<html.indexOf('id="quick-life-section"'))
- assert.match(html,/强烈推荐 · 可选/)
+ assert.match(html,/首次配置必需/)
  assert.match(html,/不开启时仍可用词法回忆，但换一种说法/)
  assert.match(html,/绑定 DSH 中的聊天会话，让鱼鱼与会话共享记忆。/)
 })

@@ -263,3 +263,20 @@ test('页面展示大肥鱼原图、模型完整回复与明确的用户认可�
   assert.match(server,/state\.models\.find\(x=>x\.id===id\)\?\.verified/)
   assert.doesNotMatch(js,/testImage\?\.dataUri/)
 })
+
+
+test('dev.33 Ollama 短标签与官方命名空间同时识别 2B/4B，不接受别名或冲突摘要',async()=>{
+ let rows=[{name:'qwen3.5:2b',model:'registry.ollama.ai/library/qwen3.5:2b',digest:mockDigest},{model:'library/qwen3.5:4b',digest:mockDigest},{name:'custom/qwen3.5:2b',digest:mockDigest}]
+ const manager=createLocalVisionModelManager({fetchImpl:async url=>{assert.ok(url.endsWith('/api/tags'));return json({models:rows})}})
+ let state=await manager.list();assert.equal(state.models.find(m=>m.id==='qwen3.5-2b').installed,true);assert.equal(state.models.find(m=>m.id==='qwen3.5-4b').installed,true)
+ rows.push({name:'library/qwen3.5:2b',digest:'sha256:'+'a'.repeat(64)});state=await manager.list();assert.equal(state.models.find(m=>m.id==='qwen3.5-2b').installed,false)
+ rows=[{name:'qwen3.5:2b',model:'other/qwen3.5:2b',digest:mockDigest},{name:'qwen3.5:4b-q4_K_M',digest:mockDigest}];state=await manager.list();assert.equal(state.models.filter(m=>m.installed).length,0)
+})
+
+test('dev.33 下载流中断或取消无成功回执时不得进入图片验收',async()=>{
+ let calls=0,release;const gate=new Promise(resolve=>release=resolve)
+ const manager=createLocalVisionModelManager({logger:{warn:()=>{}},fetchImpl:async url=>{if(url.endsWith('/api/pull'))return ndjson([{status:'downloading',completed:10,total:100}]);calls++;throw Error('不应进行图片验收')}})
+ await assert.rejects(manager.start('qwen3.5-2b'),/未返回成功回执/);assert.equal(manager.progress().phase,'error');assert.equal(calls,0)
+ const cancelled=createLocalVisionModelManager({logger:{warn:()=>{}},fetchImpl:async url=>{if(url.endsWith('/api/pull')){await gate;return ndjson([{status:'success'}])}calls++;throw Error('不应进行图片验收')}})
+ const job=cancelled.start('qwen3.5-4b');assert.equal(cancelled.cancel(),true);release();await assert.rejects(job,/已取消下载/);assert.equal(cancelled.progress().phase,'cancelled');assert.equal(calls,0)
+})

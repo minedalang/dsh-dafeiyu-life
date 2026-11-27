@@ -11342,7 +11342,10 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(!explicitManagementIntent(req))return sendJson(res,403,{ok:false,error:'需要明确的主人同源操作'})
           const body=await readBody(req,2048),caps=sessionIntegration.capabilityStatus()
           if(!caps.available||caps.restartRequired)throw Error('能力配置待重启或暂不可用')
-          return sendJson(res,200,firstStart.finishGuide(body,{platform:caps.active.platform===true}))
+          refreshCfg()
+          const embedding=await embeddingRuntime.inspect()
+          const semanticReady=cfg.mainSessionMemoryEmbeddingEnabled===true&&embedding.model?.installed===true&&embedding.runtime?.installed===true&&embedding.server?.ready===true&&embeddingIndex.status().ready===true
+          return sendJson(res,200,firstStart.finishGuide(body,{platform:caps.active.platform===true,semanticReady}))
         }
         if(path.endsWith('/quick/seen'))return sendJson(res,200,firstStart.acknowledgeQuickSetup())
         if(path.endsWith('/quick/save')){

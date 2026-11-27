@@ -125,12 +125,12 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
     return nodes.get(id)
   }
   const context={
-    syncFavoriteNav:()=>{},onboarding:null,quickOptions:null,mobileViewOnly:false,firstNavigation:true,active:'firststart',tabNames:['firststart','models','home','life','social','life-agent','plans','backup'],
+    syncFavoriteNav:()=>{},onboarding:null,quickOptions:null,localEmbeddingEnabled:false,mobileViewOnly:false,firstNavigation:true,active:'firststart',tabNames:['firststart','models','home','life','social','life-agent','plans','backup'],
     $:element,document:{querySelector:selector=>element(selector)}
   }
   const policy=js.slice(js.indexOf('  const capabilityKeys='),js.indexOf('  const skipFirstStart='));
   const production=js.slice(begin,end).replace(/const mountWizardPage=stage=>\{[\s\S]*?\r?\n  \};\r?\n  const renderSetupGuide=/,'const mountWizardPage=stage=>{wizardMounted=stage};\n  const renderSetupGuide=');
-  const render=runInNewContext(policy+production+'\n({renderFirstStart,getStep:()=>wizardMounted,setDefaultDone:()=>{wizardDefaultDone=true;renderSetupGuide(onboarding)},setRuntimeReady:value=>{setupMainReady=value;renderSetupGuide(onboarding)},setQuickOptions:value=>{quickOptions=value;renderSetupGuide(onboarding)}})',context)
+  const render=runInNewContext(policy+production+'\n({renderFirstStart,getStep:()=>wizardMounted,setDefaultDone:()=>{wizardDefaultDone=true;renderSetupGuide(onboarding)},setRuntimeReady:value=>{setupMainReady=value;renderSetupGuide(onboarding)},setQuickOptions:value=>{quickOptions=value;renderSetupGuide(onboarding)},setStep:value=>{rememberWizard(value);renderSetupGuide(onboarding)}})',context)
   const show=state=>{render.renderFirstStart(state);return element('fs-warning')}
   const old={ok:true,welcomeCompleted:true,completed:true,requiredReady:true,quickSetupSeen:false,
     biliVerified:true,headlessVerified:true,hasCredential:true,missing:[],skipped:[],localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},requested:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},revision:0,restartRequired:false}}
@@ -163,11 +163,15 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(render.getStep(),'model')
   show({...fresh,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]})
   assert.equal(render.getStep(),'model','验证后保留同步与默认模型的同一实际面板')
-  assert.equal(element('fs-wizard-step').textContent,'步骤 4 / 12')
+  assert.equal(element('fs-wizard-step').textContent,'步骤 4 / 11')
   render.setDefaultDone()
   assert.equal(render.getStep(),'core')
   assert.equal(element('fs-wizard-continue').disabled,false)
   assert.equal(element('fs-guide-count').textContent,'3 / 3 必要项就绪')
+  const afterCore={...fresh,welcomeCompleted:true,completed:true,guideRequired:true,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]};
+  render.setStep('embedding');show(afterCore);assert.equal(render.getStep(),'embedding');assert.equal(element('fs-wizard-skip').hidden,true);assert.equal(element('fs-wizard-continue').disabled,true);
+  context.localEmbeddingEnabled=true;show(afterCore);assert.equal(element('fs-wizard-continue').disabled,false);assert.equal(element('fs-wizard-skip').hidden,true);
+  render.setStep('');show({...fresh,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]});
   show({...fresh,requiredReady:false,biliVerified:true,headlessVerified:true})
   assert.equal(render.getStep(),'core')
   assert.equal(element('fs-wizard-continue').disabled,true,'展示检查不能绕过服务端总准入')
@@ -287,8 +291,33 @@ test('最新完整引导使用独立版本凭据：旧查看或基础完成不�
  gate=f();assert.equal(gate.status().guideRequired,true);assert.equal(gate.isReady(),true)
  assert.throws(()=>gate.finishGuide({revision:5,confirm:'FINISH_GUIDE'}),/明确/)
  assert.throws(()=>gate.finishGuide({revision:6}),/明确/)
- gate.finishGuide({revision:6,confirm:'FINISH_GUIDE'});assert.equal(f().status().guideRequired,false);assert.equal(f().isReady(),true)
+ assert.throws(()=>gate.finishGuide({revision:6,confirm:'FINISH_GUIDE'}),/语义回忆/);assert.equal(f().status().guideRequired,true)
+ gate.finishGuide({revision:6,confirm:'FINISH_GUIDE'},{semanticReady:true});assert.equal(f().status().guideRequired,false);assert.equal(f().isReady(),true)
  const local=join(dir,'local');const l=createFirstStart({stateDir:local,credentialPath:join(local,'none'),headlessSync:{hasAnyVerified:()=>false}})
  assert.throws(()=>l.finishGuide({revision:6,confirm:'FINISH_GUIDE'}),/核验/)
- l.finishGuide({revision:6,confirm:'FINISH_GUIDE'},{platform:false});assert.equal(l.status().guideRequired,false);assert.equal(l.isReady(),false)
+ assert.throws(()=>l.finishGuide({revision:6,confirm:'FINISH_GUIDE'},{platform:false}),/语义回忆/)
+ l.finishGuide({revision:6,confirm:'FINISH_GUIDE'},{platform:false,semanticReady:true});assert.equal(l.status().guideRequired,false);assert.equal(l.isReady(),false)
+})
+
+
+test('dev.33 教程复用实时生活形象，导航最多两处/页、支持退出，且无配置或授权请求',()=>{
+ const html=read('lib/management-console.html'),js=read('lib/management-console.js');
+ const hero=html.slice(html.indexOf('FISH LIFE · 实时生活大动画'),html.indexOf('id="life-behavior-title"'));
+ const card=html.slice(html.indexOf('id="setup-tour"'),html.indexOf('id="setup-tour"')+1400);
+ assert.match(hero,/src="\/api\/bili-duty\/life-character\.png"/);assert.match(card,/src="\/api\/bili-duty\/life-character\.png"/);
+ const code=js.slice(js.indexOf('  const setupTourStops='),js.indexOf('  const selectedCapabilities='));
+ const rows=runInNewContext(code.slice(0,code.indexOf('  let setupTourIndex'))+'\nsetupTourStops');
+ assert.equal(rows.length,5);const counts=new Map();for(const [tab,id] of rows){counts.set(tab,(counts.get(tab)||0)+1);assert.ok(html.includes('id="'+id+'"'))};assert.ok([...counts.values()].every(n=>n<=2));assert.deepEqual([...counts.keys()],['life-agent','life','models','firststart']);
+ assert.doesNotMatch(code,/request\(|fetch\(|persistCfg/);assert.match(code,/event.key==='Escape'/);assert.match(code,/setup-tour-replay/);assert.match(code,/switchTab\(tab\)/);
+})
+
+
+test('dev.33 首次保存默认模型启用 AI 检索；老用户和已有专用路线保留',()=>{
+ const js=read('lib/management-console.js');const begin=js.indexOf('  const initialMemoryModelDefaults='),end=js.indexOf('  const wizardInlineButton=',begin);
+ assert.ok(begin>=0&&end>begin);const defaults=runInNewContext(js.slice(begin,end)+'\ninitialMemoryModelDefaults');
+ const plain=x=>JSON.parse(JSON.stringify(x));const fresh={lifeSetupPending:true,welcomeCompleted:false};
+ assert.deepEqual(plain(defaults(fresh,{},'p','m')),{mainSessionMemorySemanticEnabled:true,mainSessionMemoryModelProvider:'p',mainSessionMemoryModelId:'m'});
+ for(const state of [{lifeSetupPending:false,welcomeCompleted:false},{lifeSetupPending:true,welcomeCompleted:true},{}])assert.deepEqual(plain(defaults(state,{mainSessionMemorySemanticEnabled:false},'p','m')),{});
+ assert.deepEqual(plain(defaults(fresh,{mainSessionMemoryModelProvider:'existing',mainSessionMemoryModelId:'other'},'p','m')),{});
+ assert.match(js,/Object.assign\(payload,initialMemoryModelDefaults\(onboarding,current,provider,model\)\)/);
 })
