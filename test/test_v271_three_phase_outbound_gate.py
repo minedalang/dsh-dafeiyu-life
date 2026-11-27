@@ -105,4 +105,32 @@ except OutboundHeld:print('HELD')"""
         self.assertEqual(outbound_status(self.home)['unresolved'],1)
 
 
+class ObservationImageAdapterSafety(unittest.TestCase):
+    setUp=ThreePhaseOutboundSafety.setUp
+    tearDown=ThreePhaseOutboundSafety.tearDown
+    # Execute the actual production function + durable outbound transaction,
+    # substituting only the platform transport/credential and image API.
+    def test_owner_exact_jpeg_and_real_receipt(self):
+        import ast, asyncio, base64, hashlib, io, re
+        from types import SimpleNamespace
+        from PIL import Image
+        tree=ast.parse((Path(__file__).resolve().parents[1]/'vendor'/'bilibili-mcp'/'mcp_server.py').read_text(encoding='utf8'))
+        names={'bili_send_observation_image','_coordinated_send','_dm_platform_receipt'}
+        funcs=[x for x in tree.body if isinstance(x,(ast.FunctionDef,ast.AsyncFunctionDef)) and x.name in names]
+        for fn in funcs: fn.decorator_list=[]
+        buf=io.BytesIO();Image.new('RGB',(2,2),(12,34,56)).save(buf,format='JPEG');raw=buf.getvalue();digest=hashlib.sha256(raw).hexdigest();sent=[]
+        async def send_msg(**kwargs):
+            self.assertEqual(kwargs['content'],raw);self.assertEqual(kwargs['receiver_id'],556677);sent.append(kwargs);return {'msg_key':'12345678'}
+        env={'json':json,'os':os,'re':re,'Path':Path,'tempfile':tempfile,'_guard':lambda name:None,'_ALLOWED':[],
+             'get_cred':lambda:SimpleNamespace(dedeuserid='12345'),'_DUTY_HOME':self.home,'outbound_reservation':outbound_reservation,
+             'Picture':SimpleNamespace(from_file=lambda path:Path(path).read_bytes()),'session':SimpleNamespace(EventType=SimpleNamespace(PICTURE=2),send_msg=send_msg)}
+        exec(compile(ast.Module(body=funcs,type_ignores=[]),'production-observation-adapter','exec'),env)
+        invoke=lambda uid=556677,sha=digest:json.loads(asyncio.run(env['bili_send_observation_image'](uid,'12345',base64.b64encode(raw).decode(),sha)))
+        with patch.dict(os.environ,{'BILI_JS_MCP_ADAPTER':'1','BILI_OBSERVATION_OWNER_UID':'556677'}):
+            self.assertFalse(invoke(556678)['success']);self.assertFalse(invoke(sha='0'*64)['success'])
+            (self.home/'.bili-duty-replies-paused').touch();self.assertFalse(invoke()['success']);(self.home/'.bili-duty-replies-paused').unlink();self.assertEqual(len(sent),0)
+            result=invoke();self.assertTrue(result['success']);self.assertEqual(result['data']['msg_key'],'12345678');self.assertEqual(len(sent),1)
+            self.assertFalse(invoke()['success']);self.assertEqual(len(sent),1)
+
+
 if __name__=='__main__': unittest.main()

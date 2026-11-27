@@ -125,3 +125,14 @@ test('dev39 verified owner recent-observation context offered only after explici
  let calls=0,reads=0;const b=make(async prompt=>{calls++;if(calls===1){assert.doesNotMatch(prompt,/OBSERVATION_123/);return answer({action:'skip',reply:'',contextRequests:['recent_observations']})}assert.match(prompt,/OBSERVATION_123/);return answer({reply:'还有缓存清单'})},{loadRequestedContexts:async(_rows,kinds)=>{reads++;assert.deepEqual(kinds,[['recent_observations']]);return [{recentObservationsContext:'OBSERVATION_123'}]}});
  try{assert.equal(await b.generate({...base,role:'owner',availableContexts:['recent_observations']}),'还有缓存清单');assert.equal(reads,1)}finally{b.stop()}
 });
+
+test('dev40 owner chooses observation list, exact detail and separate outward image; no forged target',async()=>{
+ const id='a'.repeat(32),file='storyboard-01.jpg',digest='b'.repeat(64),marker=`[observation-image:${digest}]`;let calls=0,reads=0,shares=0,live=true
+ const b=make(async()=>{calls++;return calls===1?answer({action:'skip',reply:'',contextRequests:['recent_observations']}):calls===2?answer({action:'skip',reply:'',contextRequests:['observation_detail'],observationChoice:{id,file}}):answer({action:'reply',reply:'',shareObservation:{id,file}})}, {loadRequestedContexts:async(rows,kinds)=>{reads++;return kinds[0].includes('recent_observations')?[{recentObservationsContext:JSON.stringify({rows:[{id,images:[{file}]}]}),availableContexts:['observation_detail']}]:[{observationDetailContext:JSON.stringify({ok:true,id,file})}]}})
+ try{const r=await b.generate({...base,role:'owner',trigger:'incoming',socialAutonomy:true,threadKey:'dm:1234',availableContexts:['recent_observations'],prepareObservationShare:choice=>{shares++;assert.deepEqual(choice,{id,file});return {id,file,digest,marker,validate:()=>live}}});assert.equal(calls,3);assert.equal(reads,2);assert.equal(shares,1);assert.deepEqual(r.messages,[marker]);assert.equal(r.observationShare.digest,digest);live=false;assert.equal(r.validateRevisit(),false)}finally{b.stop()}
+})
+
+test('dev40 owner todo update uses current delivered version and exactly one receipt continuation',async()=>{
+ let calls=0,writes=0;const row={id:'task1',status:'open',updatedAt:123};const b=make(async()=>{calls++;return calls===1?answer({action:'skip',reply:'',contextRequests:['owner_todos']}):calls===2?answer({action:'skip',reply:'',ownerTodoProposal:{id:row.id,updatedAt:row.updatedAt,action:'defer',hours:2}}):answer({reply:'我先延期啦'})},{loadRequestedContexts:async()=>[{ownerTodosContext:JSON.stringify([row])}]})
+ try{const r=await b.generate({...base,role:'owner',trigger:'incoming',socialAutonomy:true,threadKey:'dm:1234',availableContexts:['owner_todos'],updateOwnerTodo:async p=>{writes++;assert.equal(p.updatedAt,123);return {ok:true,item:{id:p.id,status:'deferred'}}}});assert.equal(writes,1);assert.equal(calls,3);assert.deepEqual(r.messages,['我先延期啦'])}finally{b.stop()}
+})

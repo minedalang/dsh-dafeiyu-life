@@ -59,3 +59,9 @@ test('延期任务在计划时间前不会进入择机上下文，到期后重�
   now+=3600001;assert.equal(todos.context().length,1)
  }finally{rmSync(home,{recursive:true,force:true})}
 })
+
+import {listChosenOwnerTodos,updateChosenOwnerTodo} from '../lib/owner-todos.mjs'
+test('dev40 chosen todo controls reject another account, stale receipt and fake completion',()=>{
+ const home=mk();try{let t=Date.now();const engine=createOwnerTodoEngine({dataDir:home,now:()=>t});const one=engine.add({type:'watch_video',bvid:BV});const two=engine.add({type:'inspect_my_space'});assert.ok(one.ok&&two.ok);const allowed=row=>row.id===one.item.id;const [row]=listChosenOwnerTodos(engine,allowed);assert.equal(row.id,one.item.id);assert.equal(listChosenOwnerTodos(engine,allowed).length,1);assert.equal(updateChosenOwnerTodo(engine,allowed,{id:two.item.id,action:'dismiss'}).ok,false);assert.equal(updateChosenOwnerTodo(engine,allowed,{id:row.id,action:'done'}).ok,false);assert.equal(updateChosenOwnerTodo(engine,allowed,{id:row.id,action:'defer',updatedAt:row.updatedAt-1}).ok,false);t++;assert.equal(updateChosenOwnerTodo(engine,allowed,{id:row.id,action:'defer',updatedAt:row.updatedAt},t).ok,true)
+ }finally{rmSync(home,{recursive:true,force:true})}
+})

@@ -102,3 +102,17 @@ test('incomplete pre-send snapshot is a technical read failure, not permission t
  assert.equal(state(d).p6LastTurn.status,'technical-deferred');
  assert.equal(inbox(d).rows[0].status,'technical-deferred');
 });
+
+test('dev40 observation DM uses one verified bubble and never stores the internal marker in history',async t=>{
+ const d=dirFor(t);let normal=[],sends=0;const incoming=msg(1,T-1000),digest='a'.repeat(64),marker=`[observation-image:${digest}]`,descriptor={id:'b'.repeat(32),file:'storyboard-01.jpg',digest};let live=true,confirmed=[]
+ const e=createDmAutoReply({dataDir:d,selfUid:ME,now:()=>T,getConfig:conf,fetchIncoming:async()=>normal,
+  generateReply:async()=>({action:'reply',messages:[marker],topicState:'settled',observationShare:descriptor,validateRevisit:()=>live}),
+  send:async({text,observationShare})=>{sends++;assert.equal(text,marker);assert.deepEqual(observationShare,descriptor);return {ok:true,receiptId:'12345'}},onConfirmedMessage:async row=>confirmed.push(row.text),logger:{warn(){},error(){}}})
+ await e.poll();normal=[incoming];const r=await e.poll();assert.equal(r.sent,1);assert.equal(sends,1);assert.deepEqual(confirmed,['[已核验投递一张视频观察图片]']);assert.doesNotMatch(JSON.stringify(state(d).people[OWNER].history),/observation-image:/)
+})
+
+test('dev40 ordinary reply cannot impersonate an observation attachment',async t=>{
+ const d=dirFor(t);let normal=[],sends=0;const e=createDmAutoReply({dataDir:d,selfUid:ME,now:()=>T,getConfig:conf,fetchIncoming:async()=>normal,
+  generateReply:async()=>({action:'reply',messages:[`[observation-image:${'a'.repeat(64)}]`]}),send:async()=>{sends++;return {ok:true}},logger:{warn(){},error(){}}})
+ await e.poll();normal=[msg(1,T-1000)];await e.poll();assert.equal(sends,0)
+})

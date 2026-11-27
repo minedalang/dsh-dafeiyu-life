@@ -312,6 +312,8 @@ async def _life_video_result(grant, uid, success, comment_receipt=''):
 def tool():
     """工具白名单 + 视频 Agent 逐动作 Life 授权（发送权限本身仍在原函数校验）。"""
     def deco(fn):
+        if fn.__name__ == 'bili_send_observation_image' and (os.environ.get('BILI_JS_MCP_ADAPTER') != '1' or _ALLOWED):
+            return fn
         if _ALLOWED and fn.__name__ not in _ALLOWED:
             return fn
         if (os.environ.get('BILI_DUTY_VIDEO_PICK_FLOW') == '1' and
@@ -5388,6 +5390,53 @@ async def bili_send_message(receiver_uid: int, text: str) -> str:
         }, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+
+
+@tool()
+async def bili_send_observation_image(receiver_uid: int, sender_uid: str, image_b64: str, digest: str) -> str:
+    """Internal JS adapter only. Send one exact gallery JPEG with a real DM receipt."""
+    import base64
+    import hashlib
+    import io
+    from PIL import Image
+    denied = _guard('bili_send_observation_image')
+    if denied: return denied
+    if (os.environ.get('BILI_JS_MCP_ADAPTER') != '1' or _ALLOWED or
+        str(receiver_uid) != os.environ.get('BILI_OBSERVATION_OWNER_UID') or
+        not re.fullmatch(r'[1-9][0-9]{0,18}', str(receiver_uid))):
+        return json.dumps({'success': False, 'error': 'observation-owner-required'})
+    try:
+        cred = get_cred()
+        if str(getattr(cred,'dedeuserid','')) != sender_uid or str(receiver_uid) == sender_uid:
+            return json.dumps({'success':False,'error':'observation-account-changed'})
+        if not re.fullmatch(r'[a-f0-9]{64}',digest) or not isinstance(image_b64,str) or len(image_b64)>800000:
+            return json.dumps({'success':False,'error':'invalid-observation'})
+        raw = base64.b64decode(image_b64,validate=True)
+        if not 4 <= len(raw) <= 600000 or hashlib.sha256(raw).hexdigest()!=digest:
+            return json.dumps({'success':False,'error':'invalid-observation'})
+        with Image.open(io.BytesIO(raw)) as image:
+            if image.format!='JPEG' or image.width*image.height>16000000:
+                return json.dumps({'success':False,'error':'invalid-observation'})
+            image.verify()
+        picture_kind = getattr(session.EventType,'PICTURE',None)
+        if picture_kind is None or not callable(getattr(Picture,'from_file',None)):
+            return json.dumps({'success':False,'error':'observation-transport-unavailable'})
+        # Never accept a model-supplied path. The private temporary file is
+        # generated only from the current gallery bytes checked by the host.
+        with tempfile.TemporaryDirectory(prefix='dsh-observation-') as folder:
+            path=Path(folder)/'observation.jpg'
+            path.write_bytes(raw)
+            picture=Picture.from_file(str(path))
+            denied=_guard('bili_send_observation_image')
+            if denied: return denied
+            response=await _coordinated_send('dm',str(receiver_uid),'[observation-image:'+digest+']',
+                lambda: session.send_msg(credential=cred,receiver_id=receiver_uid,msg_type=picture_kind,content=picture),_dm_platform_receipt)
+            receipt=_dm_platform_receipt(response)
+            return json.dumps({'success':bool(receipt),'data':{'msg_key':receipt} if receipt else {},
+                'error':'' if receipt else 'observation-receipt-missing'})
+    except Exception:
+        # No image data, remote error body, local path, or credential in logs.
+        return json.dumps({'success':False,'error':'observation-send-unconfirmed'})
 
 
 # ========== Tool 22: 未读消息 ==========

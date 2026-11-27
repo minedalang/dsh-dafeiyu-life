@@ -63,7 +63,7 @@ import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import {listBackupFiles,inspectBackupInDirectory,deleteBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
 import {pruneVideoCaches,VIDEO_CACHE_RETENTION} from './lib/video-cache-retention.mjs'
-import {addLifeVideoGallery,listLifeVideoGallery,recentLifeObservations,readLifeVideoGalleryImage,pruneLifeVideoGallery,LIFE_GALLERY_RETENTION_HOURS} from './lib/life-video-gallery.mjs'
+import {addLifeVideoGallery,listLifeVideoGallery,recentLifeObservations,readLifeObservationFrame,lifeObservationShareSelection,readLifeVideoGalleryImage,pruneLifeVideoGallery,LIFE_GALLERY_RETENTION_HOURS} from './lib/life-video-gallery.mjs'
 import {planOwnerGalleryRevisit} from './lib/owner-video-revisit.mjs'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, lstatSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -110,6 +110,7 @@ import { createDmAutoReply } from './lib/dm-autoreply.mjs'
 import { extractBiliDmReceiptId } from './lib/dm-send-receipt.mjs'
 import { listRecommendationCandidates } from './lib/video-recommendations.mjs'
 import { intakeAiReadProposals } from './lib/social-todo-intake.mjs'
+import {listChosenOwnerTodos,updateChosenOwnerTodo} from './lib/owner-todos.mjs'
 import { createOwnerTodoEngine, WRITE_TODO_TYPES, READ_TODO_TYPES } from './lib/owner-todos.mjs'
 import { createAutonomousPlanner, rankAcceptedTodos } from './lib/autonomous-planner.mjs'
 import {normalizeAsrMirrors,installAsrPythonPackages,ASR_INSTALL_TIMEOUT_EXIT_CODE} from './lib/asr-install.mjs'
@@ -1925,7 +1926,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       cwd: stateDir,                     // 凭证落在家里 ✓
       // ⭐ 这个内置的 Python MCP 会往 stdout 打中文（ensure_ascii=False）；
       //    Windows 默认 GBK 的话，中文/emoji 一进管道就可能炸 ⇒ 钉死 UTF-8
-      env: uvEnv({ BILI_DUTY_HOME: stateDir, BILI_SHARED_READ_MINUTE_LIMIT:String(cfg.biliReadMinuteLimit), BILI_SHARED_READ_HOUR_LIMIT:String(cfg.biliReadHourLimit), BILI_JS_MCP_ADAPTER: '1', BILI_JS_READ_GATE_TOKEN: readAdapterToken, BILI_MCP_TOOLS: '', BILI_DYNAMIC_INBOX_REPLY_ENABLED:'1', BILI_DYNAMIC_AT_REPLY_ENABLED:'1', BILI_COMMENT_DAILY_LIMIT: String(cfg.commentDailyLimit),
+      env: uvEnv({ BILI_DUTY_HOME: stateDir, BILI_SHARED_READ_MINUTE_LIMIT:String(cfg.biliReadMinuteLimit), BILI_SHARED_READ_HOUR_LIMIT:String(cfg.biliReadHourLimit), BILI_JS_MCP_ADAPTER: '1', BILI_OBSERVATION_OWNER_UID:String(cfg.dmOwnerUid||''), BILI_JS_READ_GATE_TOKEN: readAdapterToken, BILI_MCP_TOOLS: '', BILI_DYNAMIC_INBOX_REPLY_ENABLED:'1', BILI_DYNAMIC_AT_REPLY_ENABLED:'1', BILI_COMMENT_DAILY_LIMIT: String(cfg.commentDailyLimit),
         BILI_MENTION_DIAG_ENABLED: cfg.diagMentionEnabled?'1':'0', BILI_DYNAMIC_DIAG_ENABLED: cfg.diagDynamicEnabled?'1':'0',
         BILI_VISION_DIAG_ENABLED: cfg.diagVisionEnabled?'1':'0', BILI_MEME_DIAG_ENABLED: cfg.diagMemeEnabled?'1':'0',
         BILI_SESSION_MANUAL_LIKE_ENABLED: '1', BILI_SESSION_MANUAL_ACTIONS_ENABLED: '1', BILI_SESSION_MANUAL_RELATIONS_ENABLED: '1',
@@ -1992,7 +1993,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       ? {...(opts||{}),timeoutMs:600000}:opts
     // Do not cancel already-admitted writes: the durable sender must settle
     // their actual receipt. Only new monitored reads are refused here.
-    const checkReplyDispatch=()=>{if(!isReplyDispatch(toolName,args))return;refreshCfg();if(!interactionRepliesAllowed(cfg))throw Error('互动回复已暂停，未向平台发送')}
+    const checkReplyDispatch=()=>{if(!isReplyDispatch(toolName,args))return;refreshCfg();if(!interactionRepliesAllowed(cfg))throw Error('互动回复已暂停，未向平台发送');if(toolName==='bili_send_observation_image'&&(cfg.ownerDmAgentEnabled!==true||cfg.ownerDmReadCommandsEnabled!==true||cfg.ownerDmActionsEnabled!==true||cfg.dmWatch!==true||String(args.receiver_uid)!==String(cfg.dmOwnerUid||'')||String(args.sender_uid)!==String(accountBinding.status().activeUid||'')||socialPolicyGate.actor(args.receiver_uid).role!=='owner'))throw Error('主人图片发送授权已变化')}
     checkReplyDispatch()
     const originalDispatch=()=>scopedDshVision
       ? (()=>{if(!currentDispatch())throw sessionIntegrationPaused();return callPluginScopedDshVision(args,opts)})()
@@ -5654,6 +5655,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     if(args?.bvid!==undefined&&typeof args.bvid!=='string')return {ok:false,reason:'invalid-bvid',rows:[]}
     try{return recentLifeObservations(stateDir,scope,{bvid:args?.bvid||'',limit:args?.limit})}catch{return {ok:false,reason:'gallery-not-ready',rows:[]}}
   }
+  const currentObservationFrame=(args={})=>{
+    refreshCfg();const scope=trustedLifeAccountTag();
+    if(!platformReady()||accountBinding.status().blocked||!scope)return {ok:false,reason:'account-not-ready'}
+    return readLifeObservationFrame(stateDir,scope,{id:args.id,file:args.file})
+  }
+  const boundedObservationList=projection=>{
+    const copy={...projection,rows:[]};for(const row of projection.rows||[]){const next={...row,images:[]};copy.rows.push(next);for(const image of row.images||[]){next.images.push(image);if(JSON.stringify(copy).length>2130){next.images.pop();copy.truncated=true;break}}if(!next.images.length){copy.rows.pop();copy.truncated=true;break}}
+    return JSON.stringify(copy)
+  }
+  const ownerReadCurrent=input=>{refreshCfg();return input?.kind==='dm'&&input.role==='owner'&&input.trigger==='incoming'&&Boolean(input.messageId)&&!input.privacyGuard&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===String(input.uid)&&socialPolicyGate.actor(input.uid).role==='owner'}
+  const currentOwnerTodos=()=>listChosenOwnerTodos(ownerTodos,task=>accountBinding.taskAllowed(task),{limit:12})
   const interactionBatcher = createInteractionBatcher({
     requireVoluntaryReads:true,
     captureReadScope:batch=>{const scope=trustedLifeAccountTag(),epoch=accountBinding.generation(),policy=getSessionIntegration();return ()=>{
@@ -5679,7 +5691,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     prepareContexts:(batch,{mode}={})=>socialContextAssembler?.batch(batch,{mode})?.then(contexts=>
       contexts.map((row,i)=>({...row,availableContexts:[...(row.availableContexts||[]),
-        ...(batch[i]?.kind==='dm'&&batch[i]?.role==='owner'&&batch[i]?.trigger==='incoming'&&batch[i]?.messageId&&!batch[i]?.privacyGuard&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===String(batch[i].uid)&&socialPolicyGate.actor(batch[i].uid).role==='owner'?['recent_observations']:[]),
+        ...(batch[i]?.kind==='dm'&&batch[i]?.role==='owner'&&batch[i]?.trigger==='incoming'&&batch[i]?.messageId&&!batch[i]?.privacyGuard&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===String(batch[i].uid)&&socialPolicyGate.actor(batch[i].uid).role==='owner'?['recent_observations','owner_todos']:[]),
         ...(batch[i]?.kind==='comment'&&batch[i]?.verifiedCommentSource===true&&
           cfg.lifeAgentMode==='active'&&
           cfg.masterEnabled===true&&!accountBinding.status().blocked?['public_person']:[]),
@@ -5718,7 +5730,20 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     loadRequestedContexts:async(batch,requestedByIndex)=>{
       const base=await (socialContextAssembler?.batch(batch.map(row=>({...row,deferRecallObservation:true})),{mode:'compact',requestedByIndex})||Promise.resolve(batch.map(()=>({}))))
       return Promise.all(base.map(async(row,i)=>{
-        if(requestedByIndex?.[i]?.includes('recent_observations')){const input=batch[i];refreshCfg();if(input?.kind==='dm'&&input.role==='owner'&&input.trigger==='incoming'&&input.messageId&&!input.privacyGuard&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===String(input.uid)&&socialPolicyGate.actor(input.uid).role==='owner')row={...row,recentObservationsContext:boundedJson(currentRecentObservations({limit:3}),2200)}}
+        if(requestedByIndex?.[i]?.includes('recent_observations')){const input=batch[i];refreshCfg();if(input?.kind==='dm'&&input.role==='owner'&&input.trigger==='incoming'&&input.messageId&&!input.privacyGuard&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmReadCommandsEnabled===true&&String(cfg.dmOwnerUid||'')===String(input.uid)&&socialPolicyGate.actor(input.uid).role==='owner')row={...row,recentObservationsContext:boundedObservationList(currentRecentObservations({limit:3}))}}
+        const ownerInput=batch[i],requests=requestedByIndex?.[i]||[]
+        if(ownerReadCurrent(ownerInput)){
+          if(requests.includes('owner_todos'))row={...row,ownerTodosContext:JSON.stringify(currentOwnerTodos())}
+          if(requests.includes('recent_observations')&&row.recentObservationsContext){
+            try{if(JSON.parse(row.recentObservationsContext).rows?.length)row={...row,availableContexts:[...(row.availableContexts||[]),'observation_detail']}}catch{}
+          }
+          if(requests.includes('observation_detail')){
+            let offered=false;const choice=ownerInput.observationChoice
+            try{offered=JSON.parse(ownerInput.recentObservationsContext).rows.some(r=>r.id===choice?.id&&r.images.some(x=>x.file===choice.file))}catch{}
+            const frame=offered?currentObservationFrame(choice):{ok:false,reason:'frame-not-offered'}
+            row={...row,observationDetailContext:JSON.stringify(frame.ok?{ok:true,...frame.receipt,previousDescriptions:frame.receipt.previousDescriptions.slice(0,4).map(x=>({...x,text:x.text.slice(0,120),truncated:x.truncated||x.text.length>120}))}:{ok:false,reason:frame.reason})}
+          }
+        }
         const wantsHot=requestedByIndex?.[i]?.includes('hot_comments')
         const wantsPerson=requestedByIndex?.[i]?.includes('public_person')
         const wantsShared=requestedByIndex?.[i]?.includes('shared_link')&&batch[i]?.kind==='dm'
@@ -6169,7 +6194,16 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           ['owner','friend'].includes(socialPolicyGate.actor(req.uid).role)&&dm.enabled&&dm.whitelist.includes(String(req.uid))&&socialPortrait?.contactBoundary?.(req.uid)!=='stop'
       }
       const ownerFactCurrent=()=>{refreshCfg();return tier==='owner'&&req.trigger==='incoming'&&Boolean(String(req.messageId||''))&&!req.privacyGuard&&friendRevisitCurrent()&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmActionsEnabled===true&&cfg.mainSessionMemoryEnabled!==false&&String(cfg.dmOwnerUid||'')===String(req.uid)}
+      const ownerTodoCurrent=()=>ownerReadCurrent({...req,kind:'dm',role:tier})&&friendRevisitCurrent()&&cfg.ownerDmActionsEnabled===true
       const generated=await interactionBatcher.generate({kind:'dm',role:tier,...visualReq,socialAutonomy:true,
+        ...(ownerTodoCurrent()?{prepareObservationShare:args=>{
+          const current=()=>ownerTodoCurrent()&&interactionRepliesAllowed(cfg)&&dmConfig().enabled
+          if(!current())return null
+          const selected=lifeObservationShareSelection(currentObservationFrame(args))
+          if(!selected)return null
+          return {...selected,validate:()=>current()&&lifeObservationShareSelection(currentObservationFrame(args))?.digest===selected.digest}
+        }}:{}),
+        ...(ownerTodoCurrent()?{updateOwnerTodo:proposal=>updateChosenOwnerTodo(ownerTodos,task=>ownerTodoCurrent()&&accountBinding.taskAllowed(task),proposal)}:{}),
         ...(ownerFactCurrent()?{rememberOwnerFact:proposal=>longTermMemory?.rememberOwnerDmFact({proposal,sourceText:String(req.text||''),eventKey:'owner-dm:'+linkScope+':'+createHash('sha256').update(String(req.messageId)).digest('hex'),isCurrent:ownerFactCurrent})||{ok:false,reason:'memory-not-ready'}}:{}),
         ...(['owner','friend'].includes(tier)&&req.trigger==='incoming'&&String(req.messageId||'')&&friendRevisitCurrent()?{
           revisitVideo:({request,offeredBvids,isCurrent})=>contextualRevisit({request,offeredBvids,scene:'dm',uid:String(req.uid),incomingText:req.text,authorized:()=>friendRevisitCurrent()&&isCurrent()})}:{}),
@@ -6217,7 +6251,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return extended?.ok===true?reply:''
     },
     getVerifiedFacts:verifiedFactsFor,
-    send: async ({ uid, text, eventId, socialOwnerProof, lifeWillingnessProof }) => {
+    send: async ({ uid, text, eventId, socialOwnerProof, lifeWillingnessProof, observationShare }) => {
       const settleProof=lifeProofSettler(lifeWillingnessProof)
       try{
         refreshCfg()
@@ -6233,7 +6267,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
             const guarded=await socialSendTransaction.execute({channel:'dm',
               eventKey:/^[1-9]\d{0,18}$/.test(String(uid))&&typeof eventId==='string'&&eventId.length>2
                 ?`dm:${uid}:${eventId}`:'',expectedScope:owner.scope},async()=>{
-              const result=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)})
+              let result
+              if(observationShare){
+                refreshCfg();const dm=dmConfig()
+                if(!dm.enabled||cfg.ownerDmAgentEnabled!==true||cfg.ownerDmReadCommandsEnabled!==true||cfg.ownerDmActionsEnabled!==true||String(uid)!==String(cfg.dmOwnerUid||'')||socialPolicyGate.actor(uid).role!=='owner')return {ok:false,notAttempted:true}
+                const frame=currentObservationFrame(observationShare),selected=lifeObservationShareSelection(frame)
+                if(!selected||selected.digest!==observationShare.digest||selected.marker!==text)return {ok:false,notAttempted:true}
+                result=await call('bili_send_observation_image',{receiver_uid:Number(uid),sender_uid:String(accountBinding.status().activeUid||''),image_b64:frame.bytes.toString('base64'),digest:selected.digest})
+              }else{
+                if(/\[observation-image:/i.test(String(text)))return {ok:false,notAttempted:true}
+                result=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)})
+              }
               const receiptId=result?.success===true?extractBiliDmReceiptId(result):''
               return receiptId?{ok:true,receiptId}:{ok:false}
             })
@@ -7196,6 +7240,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // Local memory admission is separate from B站 platform readiness.
   longTermMemory = createLongTermMemory({
     getRecentObservations:currentRecentObservations,
+    getObservationFrame:currentObservationFrame,
+    getAttachmentService:name=>ctx.get(name),
+    getTodoTaskAllowed:task=>accountBinding.taskAllowed(task),
     getSessionIntegration,
     getSessionCapabilities:sessionIntegration.getCapabilities,
     dataDir: stateDir,

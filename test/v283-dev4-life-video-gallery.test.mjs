@@ -129,3 +129,16 @@ test('gallery binds frame captions only to one exact verified storyboard receipt
   assert.equal(listLifeVideoGallery(root,'a'.repeat(15)+'b',{now}).length,0)
  }finally{rmSync(root,{recursive:true,force:true})}
 })
+
+import {readLifeObservationFrame,prepareLifeObservationAttachment,lifeObservationShareSelection} from '../lib/life-video-gallery.mjs'
+test('dev40 cached bytes and explicit host attachment are distinct; expiry, account and stale owner guarded',async()=>{
+ const root=mkdtempSync(join(tmpdir(),'dsh-frame40-'))
+ try{const cid='b'.repeat(32),folder=join(root,'vision-perception-captures',cid);mkdirSync(folder,{recursive:true});writeFileSync(join(folder,'storyboard-01.jpg'),jpeg)
+ const saved=addLifeVideoGallery(root,{account:tag,bvid,verified:true,at:now,captures:[{id:cid,kind:'storyboard',images:[{file:'storyboard-01.jpg',times:[1,2],resolution:'fixture'}]}]});assert.equal(saved.ok,true)
+ const file=recentLifeObservations(root,tag,{now}).rows[0].images[0].file,choice={id:saved.id,file,now}
+ const frame=readLifeObservationFrame(root,tag,choice);assert.deepEqual(frame.bytes,jpeg);assert.equal(frame.receipt.newVisualInference,false);assert.equal(readLifeObservationFrame(root,'c'.repeat(16),choice).ok,false);assert.equal(readLifeObservationFrame(root,tag,{...choice,now:now+43200000}).ok,false);assert.equal(readLifeObservationFrame(root,tag,{...choice,file:'../a.jpg'}).ok,false)
+ assert.match(lifeObservationShareSelection(frame).marker,/^\[observation-image:[a-f0-9]{64}\]$/)
+ let live=true,saves=0,vision=true;const agent={session:{requestHeader:()=>({config:{provider:'fixture',model:'vision'}})}};const ref={attachmentId:'fixture',mediaType:'image/jpeg',bytes:4,width:1,height:1};const opts={frame,agent,exec:{agent},isCurrent:()=>live,getService:n=>n==='llm'?{resolveModelInfo:async()=>({inputModalities:vision?['image']:['text']})}:{saveImages:async images=>{saves++;assert.deepEqual(images[0].data,jpeg);return [ref]}}}
+ assert.equal((await prepareLifeObservationAttachment({...opts,exec:{agent:{}}})).ok,false);vision=false;assert.equal((await prepareLifeObservationAttachment(opts)).ok,false);assert.equal(saves,0);vision=true;const r=await prepareLifeObservationAttachment(opts);assert.equal(r.ok,true);assert.equal(r.deliveryConfirmed,false);assert.deepEqual(r.attachment,ref);live=false;assert.equal((await prepareLifeObservationAttachment(opts)).ok,false);assert.equal(saves,1)
+ }finally{rmSync(root,{recursive:true,force:true})}
+})
