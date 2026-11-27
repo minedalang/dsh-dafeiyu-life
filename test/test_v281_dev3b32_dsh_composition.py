@@ -16,7 +16,7 @@ def fake(result):
 def test_dump_config_probe_cannot_be_confused_with_model_vision(tmp_path):
     good=vision._probe_headless_composition(['dsh','--profile','headless','--patch','private.yml'],tmp_path,{},
         fake(subprocess.CompletedProcess([],0,b' - id: mcp-bili-vision-readonly\n serverName: bilivision',b'')))
-    assert good=={'status':'ready','reason':'headless_patch_composed'}
+    assert good=={'status':'ready','reason':'headless_patch_composed','launchMethod':'python_subprocess'}
     missing=vision._probe_headless_composition(['dsh'],tmp_path,{},
         fake(subprocess.CompletedProcess([],0,b'headless loaded but no vision plugin',b'')))
     assert missing['reason']=='headless_vision_patch_not_composed'

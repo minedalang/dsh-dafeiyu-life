@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {readFileSync,mkdtempSync,rmSync} from 'node:fs'
+import {readFileSync,mkdtempSync,rmSync,mkdirSync,writeFileSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {effectiveModelSelection} from '../lib/model-routing.mjs'
@@ -43,9 +43,13 @@ test('完整备份包含表情包规则 JSON，但不会混入表情包素材目
  assert.equal(allowedPath('comment-meme-rules.json'),true)
  assert.equal(allowedPath('comment-memes/demo.png'),false)
  const dir=mkdtempSync(join(tmpdir(),'v2483-backup-'))
- try{const backup=createBackup({root:dir,config:{},version:'2.4.84',sqlite:{}});assert.equal(validateBackup(backup).count,0)}finally{rmSync(dir,{recursive:true,force:true})}
- assert.match(h,/包含表情包检索规则/)
- assert.match(h,/不包含表情包图片本体/)
+ try{
+  writeFileSync(join(dir,'comment-meme-rules.json'),JSON.stringify({schema:1,rules:[{id:'fixture',label:'测试',enabled:true,triggers:['测试'],targets:['测试']}]} ));mkdirSync(join(dir,'comment-memes'));writeFileSync(join(dir,'comment-memes','demo.png'),'fixture')
+  const backup=createBackup({root:dir,config:{},version:'2.4.84',sqlite:{}})
+  assert.equal(validateBackup(backup).count,1);assert.equal(validateBackup(backup).memeRules,1);assert.ok(Object.hasOwn(backup.files,'comment-meme-rules.json'));assert.ok(!Object.hasOwn(backup.files,'comment-memes/demo.png'))
+ }finally{rmSync(dir,{recursive:true,force:true})}
+ assert.match(h,/完整业务备份/)
+ assert.match(h,/表情包图片可在「表情包管理」导出/)
 })
 test('关于页作者姓名直接可点，不显示冗余访问字样',()=>{
  assert.match(client,/data-bd-author-link/)

@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  HEADLESS_DENY_TOOLS, validateHeadlessOverlayText, validateHeadlessOverlayFile,
+  HEADLESS_DENY_TOOLS, HEADLESS_EPHEMERAL_SERVICES, validateHeadlessOverlayText, validateHeadlessOverlayFile,
   writeSecureHeadlessOverlay, assertSafeHeadlessLaunch,
 } from '../lib/headless-security.mjs'
 
@@ -85,4 +85,34 @@ test('actual source auto-generates main and DM overlays and fixes automated prof
   assert.match(code,/const args = \[\.\.\.dsh\.args, '--profile', 'headless', '--patch', overlay, promptText\]/)
   assert.match(code,/assertVerifiedHeadless\(args,overlay,\{kind:homeFirst\?'home':'main',stateDir\},'main'\)/)
   assert.match(code,/assertVerifiedHeadless\(args,overlay,\{kind:summaryRoute\?'videoSummary':reflectionRoute\?'reflection':dynamicRoute\?'dailyDynamic':ownerAgentRoute\?'ownerDmAgent':behaviorRoute\?'behaviorDecision':'dm',stateDir\},modelRoute\)/)
+})
+
+
+test('every background lane disables durable host Session backends and projections',()=>{
+  const expected=['session-persistence-jsonl','session-persistence-sqlite','session-query-sqlite','session-projection-cache']
+  assert.deepEqual(HEADLESS_EPHEMERAL_SERVICES,expected)
+  for(const kind of ['main','home','behaviorDecision','dm','memory','reflection','videoSummary','dailyDynamic','ownerDmAgent','model-test','vision','vision-selftest']){
+    const text=kind==='vision-selftest'?base('vision').replace('bili_preview_vision','bili_vision_selftest').replace("BILI_VISION_CHILD: '1'","BILI_VISION_SELFTEST_ALLOWED: '1'\n          BILI_VISION_TEST_ASSET: '/app/local-vision-selftest-dafeiyu.png'"):base(kind)
+    assert.equal(validateHeadlessOverlayText(text,kind).ok,true,kind)
+    for(const id of expected){
+      const row=`- id: ${id}\n  disabled: true`
+      assert.throws(()=>validateHeadlessOverlayText(text.replace(row,''),kind),/临时 Session/)
+      assert.throws(()=>validateHeadlessOverlayText(text.replace(row,row.replace('true','false')),kind),/临时 Session/)
+      assert.throws(()=>validateHeadlessOverlayText(text+'\n'+row,kind),/临时 Session/)
+      assert.throws(()=>validateHeadlessOverlayText(row.replace('- id: ','- id:  ')+'\n'+text,kind),/临时 Session/)
+      assert.throws(()=>validateHeadlessOverlayText(text.replace(row,row+'\n  disabled: false'),kind),/临时 Session/)
+    }
+  }
+})
+
+test('background launch refuses adoption of any existing host Session',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'v2474-ephemeral-'))
+  try{
+    const out=join(dir,'headless-dm-overlay.yml')
+    writeSecureHeadlessOverlay(out,base('dm'),{kind:'dm',stateDir:dir})
+    for(const opt of [['--session-id','main-session'],['--session-id=main-session'],['--resume','main-session']]){
+      assert.throws(()=>assertSafeHeadlessLaunch(['bin.js','--profile','headless','--patch',out,...opt,'hello'],out,{kind:'dm',stateDir:dir}),/不得续用/)
+    }
+    assert.equal(assertSafeHeadlessLaunch(['bin.js','--profile','headless','--patch',out,'hello'],out,{kind:'dm',stateDir:dir}),true)
+  }finally{rmSync(dir,{recursive:true,force:true})}
 })

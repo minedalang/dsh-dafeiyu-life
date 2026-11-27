@@ -25,6 +25,28 @@ class DshImageProbeTests(unittest.TestCase):
         with self.assertRaises(ValueError):vision._validate_vision_overlay_text(text.replace('bili_vision_selftest','bili_reply'),selftest=True)
         with self.assertRaises(ValueError):vision._validate_vision_overlay_text(text.replace('local-vision-selftest-dafeiyu.png','secrets.png'),selftest=True)
 
+    def test_ephemeral_session_services_are_required_for_vision_and_selftest(self):
+        expected=('session-persistence-jsonl','session-persistence-sqlite','session-query-sqlite','session-projection-cache')
+        self.assertEqual(vision._HEADLESS_EPHEMERAL_SERVICES,expected)
+        for selftest in (True,False):
+            text=self._overlay() if selftest else self._overlay().replace('bili_vision_selftest','bili_preview_vision').replace("BILI_VISION_SELFTEST_ALLOWED: '1'","BILI_VISION_CHILD: '1'")
+            self.assertTrue(vision._validate_vision_overlay_text(text,selftest=selftest))
+            for ident in expected:
+                row=f'- id: {ident}\n  disabled: true'
+                for bad in (text.replace(row,''),text.replace(row,row.replace('true','false')),text+'\n'+row,row.replace('- id: ','- id:  ')+'\n'+text,text.replace(row,row+'\n  disabled: false')):
+                    with self.assertRaisesRegex(ValueError,'临时 Session'):
+                        vision._validate_vision_overlay_text(bad,selftest=selftest)
+
+    def test_vision_selftest_refuses_to_resume_host_session(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home=Path(temp);patch=home/'headless-vision-selftest-overlay.yml';patch.write_text(self._overlay(),encoding='utf8')
+            for flag in ('--session-id=main-session','--resume'):
+                env={'BILI_VISION_DSH_ARGV':json.dumps([sys.executable,'/app/dsh','--profile','headless','--patch',str(patch),flag])}
+                def unexpected(*args,**kwargs):
+                    self.fail('existing host Session must never be launched')
+                result=vision.describe_test_image_with_dsh(home,env=env,runner=unexpected)
+                self.assertFalse(result['ok'])
+
     def test_verified_image_receipt_required(self):
         with tempfile.TemporaryDirectory() as temp:
             home=Path(temp);patch=home/'headless-vision-selftest-overlay.yml';patch.write_text(self._overlay(),encoding='utf8')

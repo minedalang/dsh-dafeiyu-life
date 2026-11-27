@@ -185,6 +185,13 @@ _DESC = re.compile(r'(?m)^VISION_DESC:[ \t]*(.+?)[ \t]*$')
 _REVIEW_LINE = re.compile(r'(?m)^复查候选：[\[][0-9]{1,3}:[0-5][0-9]\] .{4,200}$')
 VISION_PROMPT_REVISION = 'video-vision-prompt-v3'
 
+# Mirror headless-security.mjs: the isolated child must not persist ordinary
+# Session logs or listing projections, including in its nonce-bound overlay.
+_HEADLESS_EPHEMERAL_SERVICES = (
+    'session-persistence-jsonl','session-persistence-sqlite',
+    'session-query-sqlite','session-projection-cache',
+)
+
 _HEADLESS_DENY_TOOLS = (
     'tool-bash','tool-pwsh','tool-terminal','tool-bash-persistent','tool-pwsh-persistent','tool-jobs',
     'tool-fs','tool-fs-search','tool-working-directory','tool-str-replace-editor',
@@ -196,6 +203,7 @@ _HEADLESS_DENY_TOOLS = (
     'tool-lsp','tool-workspace-dependencies','agent-instructions','session-reference',
     'file-reference-local','file-reference','tool-ptc','tool-cua','cua','tool-execute','tool-process',
     'tool-python','tool-code','tool-ripgrep',
+    *_HEADLESS_EPHEMERAL_SERVICES,
 )
 
 
@@ -223,6 +231,11 @@ def _validate_vision_overlay_text(text, *, selftest=False):
     inserted=re.findall(r'^\s{4}- id:\s*([^\s#]+)\s*$',text,re.M)
     if inserted != ['mcp-bili-vision-readonly']:
         raise ValueError('视觉安全 overlay 插入了非预期插件')
+    rows=re.split(r'(?=^- )',str(text).replace('\r',''),flags=re.M)
+    for ident in _HEADLESS_EPHEMERAL_SERVICES:
+        matching=[row for row in rows if re.fullmatch(r'- id:\s*'+re.escape(ident)+r'\s*(?:#.*)?',row.split('\n',1)[0])]
+        if len(matching)!=1 or matching[0].rstrip()!=f'- id: {ident}\n  disabled: true':
+            raise ValueError('后台临时 Session 隔离缺失或冲突：'+ident)
     states=_overlay_states(text)
     allowed=set(_HEADLESS_DENY_TOOLS)|{'credentials','authorization','deepseek-account','agent-default-model'}
     unexpected=[x for x in states if x not in allowed]
@@ -295,6 +308,8 @@ def describe_with_dsh(bvid, home, env=None, runner=None, *, focus_start=None, fo
         argv=json.loads(env.get('BILI_VISION_DSH_ARGV','[]'))
         if not isinstance(argv,list) or not 3<=len(argv)<=16 or not all(isinstance(x,str) and 0<len(x)<=3000 for x in argv):
             raise ValueError('DSH 视觉模型执行路由未配置')
+        if any(re.match(r'^--(?:session-id|resume)(?:=|$)',arg) for arg in argv):
+            raise ValueError('后台任务不得续用已有 Session')
         if not Path(argv[0]).is_absolute():
             raise ValueError('DSH 视觉模型执行路径必须是绝对路径')
         if argv.count('--patch')!=1 or argv.count('--profile')!=1:
@@ -854,6 +869,8 @@ def describe_test_image_with_dsh(home, env=None, runner=None):
         argv=json.loads(env.get('BILI_VISION_DSH_ARGV','[]'))
         if not isinstance(argv,list) or not 3<=len(argv)<=16 or not all(isinstance(x,str) and 0<len(x)<=3000 for x in argv):
             raise ValueError('DSH 识图模型运行参数不可用')
+        if any(re.match(r'^--(?:session-id|resume)(?:=|$)',arg) for arg in argv):
+            raise ValueError('后台任务不得续用已有 Session')
         if not Path(argv[0]).is_absolute() or argv.count('--patch')!=1 or argv.count('--profile')!=1:
             raise ValueError('DSH 识图模型执行路径或安全参数不正确')
         pi=argv.index('--profile');oi=argv.index('--patch')

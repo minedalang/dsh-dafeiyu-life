@@ -4310,6 +4310,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const mainOverlayAtBoot=ensureOverlay(false)
     const dmOverlayAtBoot=ensureOverlay(true)
     if (!mainOverlayAtBoot || !dmOverlayAtBoot) log('🔒 安全 overlay 初始化不完整；后台 AI 将保持停用直到问题修复')
+    else log('后台 Session：子进程 overlay 已请求关闭会话持久化和列表投影；不改普通聊天，实际宿主支持待验收')
   } catch (e) { log('🔒 安全 overlay 初始化失败：'+String(e?.message||e)) }
 
   /**
@@ -12192,7 +12193,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       ]) {
         try {
           const r=validateHeadlessOverlayFile(file,{kind,stateDir})
-          put(label,true,`${r.denied}/${r.denied} 项高危能力已关闭`,'')
+          put(label,true,`${r.denied}/${r.denied} 项隔离配置已校验（含后台 Session 存储禁用）`,'')
         } catch (e) {
           put(label,false,String(e?.message||e),'完全重启插件；仍失败时检查 bili-duty 目录权限，不要手工放宽 yml')
         }
@@ -12201,7 +12202,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         try {
           const vf=join(stateDir,'headless-vision-overlay.yml')
           const r=validateHeadlessOverlayFile(vf,{kind:'vision',stateDir})
-          put('独立视觉安全 overlay',true,`${r.denied}/${r.denied} 项高危能力已关闭，且只允许预览图片工具`,'')
+          put('独立视觉安全 overlay',true,`${r.denied}/${r.denied} 项隔离配置已校验（含后台 Session 存储禁用），且只允许预览图片工具`,'')
         } catch (e) {
           put('独立视觉安全 overlay',false,String(e?.message||e),'检查 DSH 路径后重启插件，视觉轮不会在不安全状态下降级运行')
         }
