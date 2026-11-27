@@ -89,3 +89,15 @@ test('自主延期兴趣仅作为原机会候选，模型可以休息而不执�
  assert.match(x.prompt,/"deferredGoal":"observe_video"/);const menu=JSON.parse(x.prompt.split('【本轮真正允许的动作和精确目标（这些只是候选，执行仍要后端重新核验）】\n')[1].split('\n')[0]);
  assert.deepEqual(menu.find(v=>v.action==='inspect_shared_link').ids,[id]);assert.equal(menu.some(v=>v.action==='execute_read'||v.action==='talk_to_owner'),false);
 }));
+
+
+test('dev47 延期观察原意愿进入真实 Episode 子决策，但不强制观察、不触发外发',()=>inDir(async dir=>{
+ const id='0123456789abcdef01234567',bvid='BV1abcde1234',prompts=[];let reads=0,pauses=0
+ const row={id,source:'inspected-opportunity',sourceId:'friend-shared-bili-link:'+id,status:'inspected',selectedBvid:bvid,selectedTitle:'已核验公开视频',metadataAt:NOW-1000,expiresAt:NOW+60000,nextAt:NOW-1000,episodeSteps:1,episodeMaxSteps:5,visitedBvids:[bvid],deferredGoal:'observe_video'}
+ const planner=createAutonomousPlanner({dataDir:dir,getConfig:()=>({...config(),visionEnabled:true}),getTodos:()=>[],now:()=>NOW,getLifeAccountTag:()=>TAG,
+  getLifeIntentions:()=>[row],pauseLifeExploration:(target,ms,scope)=>{assert.equal(target,id);assert.equal(ms,3600000);assert.equal(scope,TAG);pauses++;return {ok:true}},canLifeObserveVideo:()=>true,executeLifeVideoObservation:async()=>{reads++;return {ok:false}},
+  invokeModel:async p=>{prompts.push(p);return JSON.stringify(prompts.length===1?{action:'resume_episode',id,reason:'想继续之前的探索'}:{action:'stop',stopReasonCode:'later'})},
+  executeRead:async()=>{reads++;return {ok:false}},updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
+ const result=await planner.tick();assert.equal(result.action,'resume_episode');assert.equal(result.continuation.reason,'fish-chose-later');assert.equal(reads,0);assert.equal(pauses,1)
+ assert.equal(prompts.length,2);assert.match(prompts[0],/"deferredGoal":"observe_video"/);assert.match(prompts[1],/【原自主延期意愿】/);assert.match(prompts[1],/"goal":"observe_video","bvid":"BV1abcde1234"/);assert.doesNotMatch(prompts[1],/friend-shared-bili-link:/)
+}))

@@ -136,7 +136,7 @@ test('dev40 所有专业上下文都必须连接到生产提示而非测试虚�
  assert.doesNotMatch(text('lib/management-console.html'),/id="comment-public-person-read"/)
 })
 
-test('dev46 同一个 Life 社交工具循环允许评论和私信自主组合三步以上，累计证据完整且不再提供已用工具',async()=>{
+test('dev46 同一个 Life 社交工具循环允许评论和私信自主组合三步以上，累计证据完整且仅参数化记忆可再次提供',async()=>{
  for(const [kind,role] of [['comment','stranger'],['dm','owner'],['dm','friend'],['dm','stranger']]){
   const reads=[],prompts=[];let calls=0
   const plan=[['history','memory'],['meme'],['portrait'],[kind==='comment'?'hot_comments':'todo']]
@@ -152,7 +152,7 @@ test('dev46 同一个 Life 社交工具循环允许评论和私信自主组合�
    assert.equal(await b.generate({kind,role,uid:'123',text:'之前的话题',history:[{role:'user',text:'真实历史来信'}],todoProgressContext:'真实待办'}),'已经理解')
    assert.deepEqual(reads,plan);assert.equal(calls,5)
    const item=JSON.parse(prompts.at(-1).split('\n消息：').at(-1))[0]
-   assert.deepEqual(Object.keys(item.retrievalStatus),plan.flat());assert.deepEqual(item.availableContexts,[])
+   assert.deepEqual(Object.keys(item.retrievalStatus),plan.flat());assert.deepEqual(item.availableContexts,['memory'])
    assert.equal(item.memoryContext,'真实历史记忆');assert.equal(item.memeContext,'真实梗证据');assert.equal(item.portraitContext,'真实画像')
    assert.equal(item.readBudget.toolsRemaining,3)
    if(kind==='comment')assert.equal(item.hotCommentsContext,'真实热评');else assert.equal(item.todoProgressContext,'真实待办')
@@ -184,4 +184,58 @@ test('dev46 每项独立预算到达六轮后菜单清空，未终结请求不�
   prepareContexts:async()=>[{availableContexts:kinds}],loadRequestedContexts:async()=>{reads++;return [{}]},
   invoke:async prompt=>{if(calls===6){const item=JSON.parse(prompt.split('\n消息：').at(-1))[0];assert.equal(item.readBudget.roundsRemaining,0);assert.deepEqual(item.availableContexts,[])}return answer({action:'skip',reply:'',contextRequests:[kinds[calls++]],recallQueries:['旧主题']})}})
  try{await assert.rejects(b.generate({kind:'dm',role:'owner',uid:'123',text:'你好'}),/最终决定/);assert.equal(reads,6);assert.equal(calls,7)}finally{b.stop()}
+})
+
+
+test('dev47 同一轮主人/好友/陌生人/评论可自主换检索参数，累计证据与逐次回执保留',async()=>{
+ for(const [kind,role] of [['dm','owner'],['dm','friend'],['dm','stranger'],['comment','stranger']]){
+  let calls=0;const reads=[]
+  const b=createInteractionBatcher({delayMs:1,getPersona:()=>'',requireVoluntaryReads:true,logger:{warn(){}},
+   prepareContexts:async()=>[{availableContexts:['memory','history']}],
+   loadRequestedContexts:async(rows,requests)=>{assert.deepEqual(requests,[['memory']]);reads.push(rows[0].recallQueries);return [{memoryContext:['先前真实证据','第二次真实证据',''][reads.length-1]}]},
+   invoke:async prompt=>{const step=calls++
+    if(step===0)return answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:['画鸟']})
+    const item=JSON.parse(prompt.split('\n消息：').at(-1))[0]
+    assert.equal(item.readBudget.toolsRemaining,8-step)
+    assert.equal(item.readBudget.memoryReadsRemaining,3-step)
+    assert.equal(item.memoryReadHistory.length,step)
+    if(step===1)return answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:['翅膀结构']})
+    if(step===2)return answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:['另一条线索']})
+    assert.deepEqual(item.availableContexts,['history'])
+    assert.equal(item.memoryContext,'先前真实证据\n第二次真实证据')
+    assert.deepEqual(item.memoryReadHistory.map(x=>x.status),['found','found','not-found'])
+    return answer({reply:'根据真实结果聊聊',memoryDisclosure:'share'})}
+  })
+  try{assert.equal(await b.generate({kind,role,uid:'123',text:'你还记得那段经历吗'}),'根据真实结果聊聊');assert.deepEqual(reads,[['画鸟'],['翅膀结构'],['另一条线索']]);assert.equal(calls,4)}finally{b.stop()}
+ }
+})
+
+test('dev47 规范化相同检索参数、超过记忆调用预算、非法细节参数均不执行或外发',async()=>{
+ for(const [plan,expected] of [[
+  [{recallQueries:['Bird','羽毛']},{recallQueries:['羽毛',' bird ']}],1],
+  [[{recallQueries:['甲项']},{recallQueries:['乙项']},{recallQueries:['丙项']},{recallQueries:['丁项']}],3],
+  [[{recallQueries:['画鸟'],recall:{detail:{bvid:'fake'}}}],0]]){
+  let reads=0,calls=0
+  const b=createInteractionBatcher({delayMs:1,getPersona:()=>'',requireVoluntaryReads:true,logger:{warn(){}},prepareContexts:async()=>[{availableContexts:['memory']}],
+   loadRequestedContexts:async()=>{reads++;return [{memoryContext:'真实结果'}]},
+   invoke:async()=>answer({action:'skip',reply:'',contextRequests:['memory'],...plan[Math.min(calls++,plan.length-1)]})})
+  try{await assert.rejects(b.generate({kind:'dm',role:'owner',uid:'123',text:'回忆'}),/最终决定/);assert.equal(reads,expected)}finally{b.stop()}
+ }
+})
+
+test('dev47 后续读取不能覆盖首轮视觉证据遗忘保护；新结果无权恢复过期证据',async()=>{
+ let current=true,reads=0,calls=0
+ const b=createInteractionBatcher({delayMs:1,getPersona:()=>'',requireVoluntaryReads:true,logger:{warn(){}},prepareContexts:async()=>[{availableContexts:['memory']}],
+  loadRequestedContexts:async()=>{reads++;if(reads===1)return [{memoryContext:BV1+' 真实旧观察',validateRecall:()=>current,publicVideoBvids:[BV1]}];current=false;return [{memoryContext:'第二条结果',validateRecall:()=>true}]},
+  invoke:async()=>answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:[['旧观察','新观察'][calls++]]})})
+ try{await assert.rejects(b.generate({kind:'dm',role:'owner',uid:'123',text:'回忆'}),/最终决定/);assert.equal(reads,2);assert.equal(calls,2)}finally{b.stop()}
+})
+
+test('dev47 主人独立拒绝披露时，重新生成不含任一次记忆正文或查询回执',async()=>{
+ let calls=0,reads=0
+ const b=createInteractionBatcher({delayMs:1,getPersona:()=>'',requireVoluntaryReads:true,logger:{warn(){}},prepareContexts:async()=>[{availableContexts:['memory']}],
+  loadRequestedContexts:async()=>[{memoryContext:['PRIVATE_RECALL_ONE','PRIVATE_RECALL_TWO'][reads++]}],
+  invoke:async prompt=>{const step=calls++;if(step<2)return answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:[['PRIVATE_QUERY_ONE','PRIVATE_QUERY_TWO'][step]]});if(step===2){assert.match(prompt,/PRIVATE_RECALL_ONE/);assert.match(prompt,/PRIVATE_RECALL_TWO/);return answer({reply:'PRIVATE_RECALL_ONE',memoryDisclosure:'retain'})}
+   assert.doesNotMatch(prompt,/PRIVATE_RECALL_|PRIVATE_QUERY_/);return answer({reply:'这次我想自己保留'})}})
+ try{assert.equal(await b.generate({kind:'dm',role:'owner',uid:'123',text:'想聊聊吗'}),'这次我想自己保留');assert.equal(calls,4)}finally{b.stop()}
 })
