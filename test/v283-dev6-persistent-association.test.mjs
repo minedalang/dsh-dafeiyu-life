@@ -7,8 +7,11 @@ import {createHash} from 'node:crypto'
 import {createLongTermMemory} from '../lib/long-term-memory.mjs'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup,allowedPath} from '../lib/data-backup.mjs'
+import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
+import {createLifeWillingness} from '../lib/life-willingness.mjs'
+import {createLifeDecisionTrace} from '../lib/life-decision-trace.mjs'
 import {createLifeReflection,__test as reflectionTest} from '../lib/life-reflection.mjs'
-import {createMemoryRetriever,publicVisualAssociationContext} from '../lib/memory-retriever.mjs'
+import {createMemoryRetriever,publicVisualAssociationContext,offerDeliveredLifeAssociation} from '../lib/memory-retriever.mjs'
 import {createNeuralActivationTracker,projectNeuralActivation,memoryNeuralProjection} from '../lib/memory-neural-projection.mjs'
 const A='a'.repeat(16),B='b'.repeat(16),DAY=86400000,NOW=Date.parse('2026-11-25T10:00:00Z')
 const cfg={mainSessionMemoryEnabled:true,mainSessionMemoryHalfLifeDays:120,mainSessionMemoryAutoBili:true,mainSessionReflectionAuto:true,mainSessionReflectionMinCandidates:2}
@@ -499,4 +502,44 @@ test('social model association: actual public candidate delivery, optional confi
  assert.equal((await trusted('owner','confirm')).ok,true);assert.equal(confirmed,2);assert.equal(tracker.read(A).channel,'owner-comment')
  assert.equal((await trusted('friend','confirm')).ok,true);assert.equal(confirmed,3);assert.equal(tracker.read(A).channel,'friend-comment')
  epoch++;assert.equal((await trusted('friend','forget')).ok,false);assert.equal(confirmed,3);assert.equal(tracker.read(A),null);assert.equal(calls,22);assert.equal(x.g.status().associations.active,0)
+}))
+
+
+test('Life with three delivered direct or recent visual hits can confirm any pair in its existing decision, no retrieval-only association',()=>setup(async x=>{
+ const extra=[watch(21,'窗边白猫凝视远处的雨滴'),watch(22,'长耳兔坐在门前等待伙伴归来'),watch(23,'空旷车站中少年等待列车')];x.g.recordEvents(extra)
+ let clock=NOW,epoch=1,tag=A,mode='confirm',calls=0,offered=0
+ const config=()=>({...cfg,masterEnabled:true,autonomousPlannerEnabled:true,lifeAgentMode:'active',autonomousPlannerDailyLimit:50,autonomousPlannerMinutes:1,autonomousPlannerStartHour:0,autonomousPlannerEndHour:24})
+ const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:config,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociationScope:()=>({accountTag:tag,epoch}),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o),invokeModel:async()=>{throw Error('unexpected independent model')}})
+ const tracker=createNeuralActivationTracker({getAccountTag:()=>tag,getEpoch:()=>epoch,now:()=>clock,validateImmediate:o=>retriever.validateImmediateRecall(o),validateRecall:o=>retriever.validateContextualVisualRecall(o),validatePath:o=>x.g.validateAssociationPath(o)})
+ const trace=createLifeDecisionTrace({dataDir:x.dir,getAccountTag:()=>tag,now:()=>clock})
+ const rows=()=>retriever.contextualVisualRecall({accountTag:tag,bvids:extra.map(e=>e.bvid),limit:3,associate:true,modelAssociation:true,recentFallback:false})
+ const offer=opts=>offerDeliveredLifeAssociation({...opts,retriever,now:()=>clock,isCurrent:()=>tag===opts.accountTag&&retriever.validateContextualVisualRecall({accountTag:opts.accountTag,rows:opts.rows}),record:o=>tracker.recordPublicEpisodes({...o,channel:'life'})})
+ const planner=createAutonomousPlanner({dataDir:x.dir,now:()=>clock,getConfig:config,getLifeAccountTag:()=>tag,getLifeOpportunities:()=>[{id:'op-1',source:'interest-milestone',bvid:extra[0].bvid,eligible:true}],
+  getRecentLifeVideoMemory:rows,validateLifeVideoMemory:o=>retriever.validateContextualVisualRecall(o),observeLifeVideoMemory:o=>tracker.record({...o,channel:'life'}),offerLifeVideoAssociation:o=>{const result=offer(o);offered=result?.count||0;return result},getTodos:()=>[],executeRead:async()=>({ok:false}),updateTodo:()=>({ok:false}),reflect:async()=>({ok:false}),beginDecisionTrace:args=>trace.begin(args),
+  invokeModel:async prompt=>{calls++;const line=prompt.split('\n').find(l=>l.startsWith('可选联想候选（已提供'));assert.ok(line);const options=JSON.parse(line.slice(line.indexOf('：')+1,line.indexOf('。仅当')));assert.equal(options.length,3);const pair=options[2],notes=pair.bvids.map(bvid=>extra.find(e=>e.bvid===bvid).title);assert.ok(notes.every(q=>prompt.includes(q)));const association={token:pair.token,relationType:'concept',quoteA:notes[0],quoteB:mode==='fake'?'编造的不存在画面':notes[1],reason:'两段画面都可以让我理解等待与陪伴'};if(mode==='change')epoch++;return JSON.stringify({action:'skip',reason:'现在想休息',...(mode==='omit'?{}:{association})})}})
+ let result=await planner.tick({force:true});assert.equal(result.action,'skip');assert.equal(offered,3);assert.equal(calls,1);assert.equal(tracker.read(A).basis,'visual-ai-v1');assert.equal(tracker.read(A).channel,'life');assert.equal(x.g.status().associations.active,0)
+ const first=tracker.recent(A).paths.length
+ for(const m of ['omit','fake','change']){mode=m;clock+=120000;result=await planner.tick({force:true});assert.equal(result.action,'skip');if(m!=='change')assert.equal(tracker.recent(A).paths.length,first)}
+ assert.equal(tracker.read(A),null);assert.equal(calls,4)
+ // No-query recent fallback is also a candidate only after delivery, never an automatic edge.
+ const recent=await retriever.contextualVisualRecall({accountTag:A,limit:3,associate:true,modelAssociation:true});assert.ok(recent.every(e=>e.recallRoute==='recent'))
+ const projected=publicVisualAssociationContext(recent.slice(0,2),'',true)
+ assert.equal(offer({accountTag:A,rows:recent.slice(0,2),delivered:projected,allowRecent:true})?.count,1)
+ assert.equal(offer({accountTag:A,rows:recent.slice(0,2),delivered:projected.map(e=>({...e,untrustedSceneNotes:[]})),allowRecent:true}),null)
+}))
+
+test('original video willingness can confirm a delivered historical pair while declining action in the same model call',()=>setup(async x=>{
+ const extra=[watch(24,'窗边白猫凝视远处的雨滴'),watch(25,'长耳兔坐在门前等待伙伴归来')];x.g.recordEvents(extra)
+ let calls=0,clock=NOW,mode='confirm',valid=true
+ const config=()=>cfg,retriever=createMemoryRetriever({getMemories:()=>[],getConfig:config,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociationScope:()=>({accountTag:A,epoch:1})})
+ const rows=await retriever.contextualVisualRecall({accountTag:A,bvids:extra.map(e=>e.bvid),limit:2,modelAssociation:true}),delivered=publicVisualAssociationContext(rows)
+ const tracker=createNeuralActivationTracker({getAccountTag:()=>A,getEpoch:()=>1,now:()=>clock,validateImmediate:o=>retriever.validateImmediateRecall(o),validateRecall:o=>retriever.validateContextualVisualRecall(o)})
+ const guard=()=>valid&&retriever.validateContextualVisualRecall({accountTag:A,rows})
+ const actor=createLifeWillingness({dataDir:x.dir,getAccountTag:()=>A,now:()=>clock,enabled:()=>true,getContext:()=>({voice:'本人意愿',world:{optionalPastVideoAssociations:delivered},validateRecall:guard,observeRecall:()=>tracker.record({accountTag:A,rows,channel:'video-comment'}),offerRecallAssociation:()=>offerDeliveredLifeAssociation({retriever,accountTag:A,rows,delivered,now:()=>clock,isCurrent:guard,record:o=>tracker.recordPublicEpisodes({...o,channel:'video-comment'})})}),
+ invokeModel:async prompt=>{calls++;const line=prompt.split('\n').find(l=>l.startsWith('可选联想候选（已提供'));assert.ok(line);const [pair]=JSON.parse(line.slice(line.indexOf('：')+1,line.indexOf('。仅当')));const notes=pair.bvids.map(b=>extra.find(e=>e.bvid===b).title);if(mode==='stale')valid=false;return JSON.stringify({action:'skip',reason:'不想发表评论',...(mode==='omit'?{}:{association:{token:pair.token,relationType:'context',quoteA:notes[0],quoteB:notes[1],reason:'两段画面都有等待的场景氛围'}})})}})
+ const decide=()=>actor.decide({scene:'comment',trigger:'video-comment-consideration',sourceKey:'test-video-comment:'+calls,candidates:[{id:'comment_video',kind:'video_comment',label:'原创评论'}]})
+ assert.equal((await decide()).action,'skip');assert.equal(calls,1);assert.equal(tracker.read(A).channel,'video-comment');assert.equal(tracker.read(A).basis,'visual-ai-v1')
+ const count=tracker.recent(A).paths.length
+ mode='omit';clock+=1000;assert.equal((await decide()).action,'skip');assert.equal(tracker.recent(A).paths.length,count)
+ mode='stale';clock+=1000;assert.equal((await decide()).action,'skip');assert.equal(tracker.recent(A).paths.length,count);assert.equal(calls,3)
 }))

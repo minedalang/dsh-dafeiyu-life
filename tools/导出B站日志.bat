@@ -6,8 +6,22 @@ if not defined BILI_EXPORT_STATUS_URL set "BILI_EXPORT_STATUS_URL="
 set "BILI_EXPORT_NO_PAUSE=0"
 set "BILI_EXPORT_PYTHON_ARG="
 set "BILI_EXPORT_STRICT=0"
+set "BILI_EXPORT_FULL_MEMORY=0"
+set "BILI_EXPORT_ROOT="
 :parse_args
 if "%~1"=="" goto args_done
+if /I "%~1"=="--full-memory" (
+  set "BILI_EXPORT_FULL_MEMORY=1"
+  shift
+  goto parse_args
+)
+if /I "%~1"=="--root" (
+  if "%~2"=="" (echo Missing original data root after --root & exit /b 2)
+  set "BILI_EXPORT_ROOT=%~2"
+  shift
+  shift
+  goto parse_args
+)
 if /I "%~1"=="--strict" (
   set "BILI_EXPORT_STRICT=1"
   shift
@@ -33,9 +47,16 @@ if /I "%~1"=="--status-url" (
   goto parse_args
 )
 echo Unsupported argument: %~1
-echo Usage: %~nx0 [--strict] [--no-pause] [--python "C:\path\to\python.exe"] [--status-url http://127.0.0.1:PORT/api/bili-duty/manage]
+echo Usage: %~nx0 [--strict] [--no-pause] [--full-memory] [--root "C:\path\bili-duty"] [--python "C:\path\to\python.exe"] [--status-url http://127.0.0.1:PORT/api/bili-duty/manage]
 exit /b 2
 :args_done
+if "%BILI_EXPORT_NO_PAUSE%"=="0" if "%BILI_EXPORT_FULL_MEMORY%"=="0" (
+  echo.
+  echo Full memory diagnostics include private memory, details, relations, vectors and raw business state.
+  echo Save locally for your own troubleshooting. Do not publish or share publicly.
+  choice /C YN /N /M "Include full memory diagnostics? [Y/N]: "
+  if not errorlevel 2 set "BILI_EXPORT_FULL_MEMORY=1"
+)
 REM The management URL is not inferable reliably from archived on-disk data.
 REM Prompt in interactive mode; automated --no-pause needs --status-url explicitly.
 if not defined BILI_EXPORT_STATUS_URL if "%BILI_EXPORT_NO_PAUSE%"=="0" (
@@ -51,8 +72,10 @@ if "%BILI_EXPORT_NO_PAUSE%"=="0" pause
 exit /b %RESULT%
 # POWERSHELL_PAYLOAD_BEGIN
 $ErrorActionPreference = 'Stop'
-$root = Join-Path $env:USERPROFILE '.dsh\bili-duty'
-if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw "Source directory not found: $root" }
+$root = if ($env:BILI_EXPORT_ROOT) { $env:BILI_EXPORT_ROOT } elseif ($env:DSH_HOME) { Join-Path $env:DSH_HOME 'bili-duty' } else { Join-Path $env:USERPROFILE '.dsh\bili-duty' }
+$root = [IO.Path]::GetFullPath($root)
+$bootstrapPointer = Join-Path (Split-Path -Parent $root) '.bili-duty-location-v1.json'
+if (-not (Test-Path -LiteralPath $root -PathType Container) -and -not (Test-Path -LiteralPath $bootstrapPointer)) { throw "Source directory not found: $root" }
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
@@ -72,7 +95,7 @@ New-Item -ItemType Directory -Path $generated -Force | Out-Null
 try {
   $pythonBody = @'
 # Embedded standard-library helper for the standalone Windows batch exporter.
-# No network/model/platform writes. Raw private content is never included in summaries.
+# No model/platform writes. Only explicit local full-memory mode copies raw private memory; ordinary summaries remain bounded.
 import collections
 from contextlib import closing
 import datetime as dt
@@ -81,12 +104,16 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import shutil
+import stat
 import sys
 import time
 from urllib.parse import urlparse
 from urllib.request import build_opener, ProxyHandler, Request, HTTPRedirectHandler
 
-root = Path(sys.argv[1]).resolve()
+original_root = Path(os.path.abspath(sys.argv[1]))
+root = original_root
+full_memory = os.environ.get("BILI_EXPORT_FULL_MEMORY") == "1" or len(sys.argv) > 4 and sys.argv[4] == "1"
 out = Path(sys.argv[2]).resolve()
 status_url = (sys.argv[3] if len(sys.argv) > 3 else '').strip()
 out.mkdir(parents=True, exist_ok=True)
@@ -105,6 +132,217 @@ def read_json(path, limit=1500000):
         return json.loads(path.read_text(encoding='utf-8-sig'))
     except (OSError, ValueError, UnicodeError):
         return None
+
+
+# Full mode is explicit local-owner troubleshooting, not a restore or an API.
+# Resolve exactly the current roots; never fall back to stale pre-migration state.
+MEMORY_DIRS = {'life-memory', 'long-term-memory', 'detail-protection', 'embedding-memory-index'}
+EXCLUDED_DIRS = {'node_modules', '.git', '.cache', '.hf-cache', 'uv-cache', 'uv-python', 'uv-tools',
+                 'pip-cache', 'embedding-runtime', 'projects', 'backups', 'backup', 'tmp', 'temp',
+                 'vision-cache', 'asr-transcript-cache', 'modeldata', 'pythondata', '.vision-venv'}
+AUTH_NAME = re.compile(r'(^|[-_.])(cookies?|credentials?|secrets?|passwords?|access[-_]?token|refresh[-_]?token|api[-_]?key|auth[-_]?token|sessdata|bili_jct)([-_.]|$)', re.I)
+AUTH_KEY = re.compile(r'cookie|credential|password|secret|access.?token|refresh.?token|api.?key|authorization|sessdata|bili.?jct|(^|[_.-])token$', re.I)
+DB_FILE = re.compile(r'\.(sqlite3?|db)(-wal|-shm|-journal)?$', re.I)
+MODEL_EXTS = {'.safetensors', '.gguf', '.onnx', '.pt', '.pth', '.ckpt', '.dll', '.exe', '.so', '.pyd', '.whl', '.msi'}
+
+
+def linked(path):
+    st = path.lstat()
+    return stat.S_ISLNK(st.st_mode) or bool(getattr(st, 'st_file_attributes', 0) & 0x400)
+
+
+def checked_dir(value):
+    if not isinstance(value, (str, Path)) or not str(value) or str(value).startswith(('\\\\', '//')):
+        raise ValueError('non-local data path')
+    path = Path(value)
+    if not path.is_absolute() or path == Path(path.anchor):
+        raise ValueError('non-absolute data directory')
+    path = Path(os.path.abspath(path))
+    for node in (path, *path.parents):
+        if linked(node) or not node.is_dir():
+            raise ValueError('linked or missing data directory')
+    return path
+
+
+def marker_json(path, limit=4096):
+    if linked(path) or not path.is_file() or path.stat().st_size > limit:
+        raise ValueError('unsafe storage marker')
+    data = read_json(path, limit)
+    if not isinstance(data, dict):
+        raise ValueError('invalid storage marker')
+    return data
+
+
+def same_path(a, b):
+    return isinstance(a, (str, Path)) and os.path.normcase(str(a)) == os.path.normcase(str(b))
+
+
+def disjoint(a, b):
+    return a != b and a not in b.parents and b not in a.parents
+
+
+def active_core(base):
+    pointer = base.parent / '.bili-duty-location-v1.json'
+    if not os.path.lexists(pointer):
+        return checked_dir(base)
+    checked_dir(base.parent)
+    p = marker_json(pointer)
+    target = checked_dir(p.get('target'))
+    if p.get('version') != 1 or not same_path(p.get('source'), base) or not disjoint(base, target) or not p.get('nonce'):
+        raise ValueError('invalid core pointer')
+    m = marker_json(target / '.bili-duty-migration-v1.json')
+    if m.get('version') != 1 or m.get('ok') is not True or not same_path(m.get('source'), base) or not same_path(m.get('target'), target) or m.get('nonce') != p['nonce']:
+        raise ValueError('core migration marker mismatch')
+    return target
+
+
+def active_memory(core):
+    layout = core / 'storage-layout-v1.json'
+    if not os.path.lexists(layout):
+        return core
+    obj = marker_json(layout, 16384)
+    if obj.get('version') != 1 or not isinstance(obj.get('domains'), dict):
+        raise ValueError('invalid storage layout')
+    entry = obj['domains'].get('memory')
+    if entry is None:
+        return core
+    if not isinstance(entry, dict) or entry.get('mode') != 'copy' or not entry.get('nonce'):
+        raise ValueError('invalid memory pointer')
+    target = checked_dir(entry.get('target'))
+    if not disjoint(core, target):
+        raise ValueError('overlapping memory directory')
+    m = marker_json(target / '.dafeiyu-storage-domain-v1.json')
+    if m.get('version') != 1 or m.get('domain') != 'memory' or m.get('mode') != 'copy' or m.get('verified') is not True or not same_path(m.get('base'), core) or not same_path(m.get('target'), target) or m.get('nonce') != entry['nonce']:
+        raise ValueError('memory migration marker mismatch')
+    return target
+
+
+try:
+    root = active_core(original_root)
+    dump('resolved-export-root.json', {'ok': True, 'root': str(root), 'originalRoot': str(original_root)})
+except (OSError, ValueError, TypeError) as ex:
+    dump('resolved-export-root.json', {'ok': False, 'reason': str(ex)})
+    # PowerShell must not silently copy an old core as current.
+    sys.exit(2)
+
+full_paths = []
+full_report = {'requested': full_memory, 'complete': False, 'files': [], 'skipped': [], 'errors': [],
+               'coreRoot': str(root), 'memoryRoot': None, 'memorySources': {}}
+
+
+def redact_config(value):
+    if isinstance(value, dict):
+        return {k: ('[credential excluded]' if AUTH_KEY.search(k) else redact_config(v)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [redact_config(v) for v in value]
+    return value
+
+
+def collect_full():
+    try:
+        mem = active_memory(root)
+        full_report['memoryRoot'] = str(mem)
+    except (OSError, ValueError, TypeError) as ex:
+        mem = None
+        full_report['errors'].append({'path': 'memory', 'reason': str(ex)})
+    seen = set()
+
+    def visit(base, prefix='', exclude_memory=False):
+        try:
+            if linked(base) or not base.is_dir():
+                raise ValueError('unsafe directory')
+        except (OSError, ValueError) as ex:
+            full_report['errors'].append({'path': prefix or '.', 'reason': str(ex)})
+            return
+        def onerror(ex):
+            full_report['errors'].append({'path': str(ex.filename), 'reason': type(ex).__name__})
+        for parent, dirs, names in os.walk(base, followlinks=False, onerror=onerror):
+            here = Path(parent)
+            for name in dirs[:]:
+                rel = (here / name).relative_to(base).as_posix()
+                try:
+                    blocked = linked(here / name)
+                    if blocked:
+                        full_report['skipped'].append({'path': prefix+rel, 'reason': 'linked-directory'})
+                except OSError as ex:
+                    blocked = True
+                    full_report['errors'].append({'path': prefix+rel, 'reason': type(ex).__name__})
+                excluded = name.lower() in EXCLUDED_DIRS or name.lower().startswith(('.venv', 'backup-before-reinstall')) or (exclude_memory and here == base and name in MEMORY_DIRS) or AUTH_NAME.search(name)
+                if blocked or excluded:
+                    if excluded:
+                        full_report['skipped'].append({'path': prefix+rel, 'reason': 'separate-memory-source-or-excluded-directory'})
+                    dirs.remove(name)
+            for name in names:
+                src = here / name
+                rel = prefix + src.relative_to(base).as_posix()
+                if rel.split('/')[0].casefold() in ('_diagnostics', '_export_readme.txt', '_expanded-state', 'sqlite-snapshots'):
+                    continue
+                try:
+                    if linked(src) or not src.is_file():
+                        full_report['skipped'].append({'path': rel, 'reason': 'linked-or-special-file'})
+                        continue
+                    if AUTH_NAME.search(name) or name.lower().startswith('.env') or src.suffix.lower() in ('.key', '.pem', '.pfx', '.p12'):
+                        full_report['skipped'].append({'path': rel, 'reason': 'authentication-file'})
+                        continue
+                    if src.suffix.lower() in MODEL_EXTS or name.lower().endswith(('.part', '.lock')):
+                        continue
+                    if rel.casefold() in seen:
+                        raise ValueError('duplicate archive path')
+                    seen.add(rel.casefold())
+                    if DB_FILE.search(name):
+                        if name.lower().endswith(('.db', '.sqlite', '.sqlite3')):
+                            full_paths.append((src, Path(rel)))
+                        continue
+                    dest = out / '_expanded-state' / rel
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    before = src.stat()
+                    if 'config' in name.lower() and src.suffix.lower() == '.json':
+                        obj = read_json(src, 16*1024*1024)
+                        if obj is None:
+                            full_report['skipped'].append({'path': rel, 'reason': 'config-not-readable-for-credential-filter'})
+                            continue
+                        dest.write_text(json.dumps(redact_config(obj), ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
+                        capture = 'credential-key-filtered-json'
+                    else:
+                        shutil.copyfile(src, dest)
+                        capture = 'raw'
+                    after = src.stat()
+                    stable = before.st_size == after.st_size and before.st_mtime_ns == after.st_mtime_ns
+                    if not stable:
+                        full_report['errors'].append({'path': rel, 'reason': 'source-changed-during-copy'})
+                    full_report['files'].append({'path': rel, 'bytes': dest.stat().st_size, 'capture': capture, 'unchangedDuringCopy': stable})
+                except (OSError, ValueError, TypeError) as ex:
+                    full_report['errors'].append({'path': rel, 'reason': type(ex).__name__})
+                    if 'dest' in locals() and dest == out / '_expanded-state' / rel:
+                        try: dest.unlink()
+                        except OSError: pass
+    visit(root, exclude_memory=True)
+    for name in sorted(MEMORY_DIRS):
+        source = mem / name if mem is not None else None
+        present = source is not None and os.path.lexists(source)
+        full_report['memorySources'][name] = {'present': present, 'root': str(mem) if mem is not None else None}
+        if present:
+            visit(source, name+'/')
+    if mem is not None and not full_report['memorySources']['life-memory']['present']:
+        full_report['errors'].append({'path': 'life-memory', 'reason': 'not-present'})
+    # Counts refer to the archived copy, not an inferred model event.
+    raw_dir = out / '_expanded-state'
+    activity = read_json(raw_dir / 'neural-recall-activity.json', 2*1024*1024)
+    episodic = read_json(raw_dir / 'life-memory' / 'episodic.json', 64*1024*1024)
+    full_report['recallActivity'] = {'present': isinstance(activity, dict),
+        'paths': len(activity.get('paths', [])) if isinstance(activity, dict) and isinstance(activity.get('paths'), list) else None,
+        'states': dict(collections.Counter(str(x.get('state')) for x in activity.get('activities', []) if isinstance(x, dict))) if isinstance(activity, dict) and isinstance(activity.get('activities'), list) else {}}
+    full_report['episodic'] = {'present': isinstance(episodic, dict),
+        **{k: len(episodic[k]) if isinstance(episodic, dict) and isinstance(episodic.get(k), list) else None for k in ('episodes', 'associations', 'pendingVisualDetails')}}
+    for path, value in [('life-memory/episodic.json', episodic), ('neural-recall-activity.json', activity)]:
+        if (raw_dir / path).exists() and not isinstance(value, dict):
+            full_report['errors'].append({'path': path, 'reason': 'invalid-or-oversized-json'})
+    full_report['complete'] = not full_report['errors']
+    dump('memory-export-coverage.json', full_report)
+
+
+if full_memory:
+    collect_full()
 
 
 def code(value):
@@ -267,6 +505,8 @@ video_diag={'roundsRecorded':len(rounds),
 dump('video-agent-rounds.json',video_diag)
 
 trace_rows=[]
+recall_trace=collections.Counter()
+recall_totals=collections.Counter()
 video_home_offered=0
 video_home_selected=0
 comment_menu_count=0
@@ -284,6 +524,15 @@ if trace_root.is_dir():
             if v:row[k]=v
         steps=d.get('steps',[])
         if not isinstance(steps,list):steps=[]
+        for s in steps:
+            if not isinstance(s,dict) or s.get('type')!='context-evidence':continue
+            kind=s.get('kind')
+            if kind not in ('visual-association','ai-visual-association'):continue
+            label=code(s.get('code')) or 'unknown'
+            recall_trace[kind+'/'+label]+=1
+            for key in ('provided','observations'):
+                value=s.get(key)
+                if isinstance(value,int) and not isinstance(value,bool) and value>=0:recall_totals[kind+'/'+label+'/'+key]+=value
         row['stepKinds']=dict(collections.Counter(s.get('type') for s in steps
                          if isinstance(s,dict) and code(s.get('type'))))
         row['offeredVideoAgent']=any('browse_home' in (s.get('menuActions') or []) or
@@ -320,6 +569,7 @@ if trace_root.is_dir():
                         for s in steps if isinstance(s,dict) and s.get('type') in
                         ('model-choice','action-result','delegation-result','execution-result','blocked','error')][-10:]
         trace_rows.append(row)
+dump('association-diagnostics.json',{'traceFiles':len(trace_rows),'eventCounts':dict(recall_trace),'reportedTotals':dict(recall_totals),'note':'Actual trace events only; offered pairs are not confirmed paths. Missing events are not proof of no activity.'})
 trace_rows.sort(key=lambda x:x.get('at',0))
 dump('life-decision-overview.json',{
     'traceFiles':len(trace_rows),
@@ -718,16 +968,20 @@ files=[]
 # Do not traverse symlinked directories or copied backup/installer folders.
 skip_dirs={'node_modules','.git','.venv','.cache','uv-cache','uv-python',
            'embedding-runtime','projects','backups','backup','tmp','temp'}
-for base,dirs,filenames in os.walk(root,followlinks=False):
-    dirs[:]=[x for x in dirs if x.lower() not in skip_dirs and
-             not x.lower().startswith('backup-before-reinstall') and
-             not (Path(base)/x).is_symlink()]
-    for filename in filenames:
-        if not filename.lower().endswith(('.sqlite','.sqlite3','.db')):continue
-        path=Path(base)/filename
-        if not path.is_symlink():files.append(path)
-for src in sorted(set(files)):
-    relative=src.relative_to(root)
+if full_memory:
+    files = [src for src, rel in full_paths]
+    snapshot_paths = full_paths
+else:
+    for base,dirs,filenames in os.walk(root,followlinks=False):
+        dirs[:]=[x for x in dirs if x.lower() not in skip_dirs and
+                 not x.lower().startswith('backup-before-reinstall') and
+                 not (Path(base)/x).is_symlink()]
+        for filename in filenames:
+            if not filename.lower().endswith(('.sqlite','.sqlite3','.db')):continue
+            path=Path(base)/filename
+            if not path.is_symlink():files.append(path)
+    snapshot_paths = [(src, src.relative_to(root)) for src in sorted(set(files))]
+for src, relative in snapshot_paths:
     dest=(out/'sqlite-snapshots'/relative)
     dest.parent.mkdir(parents=True,exist_ok=True)
     row={'path':str(relative).replace('\\','/'),'status':'failed','integrityCheck':'not-run'}
@@ -811,6 +1065,11 @@ if not (progressive_phases or normal_progressive):partial.append('post-send-stag
 for name in ('video-actions','public-comment-quota','relationship-channels','social-relationships'):
     if db_health[name]['status']!='complete':partial.append('db-'+name+'-'+db_health[name]['status'])
 if any(row['status']!='ok' for row in manifest):partial.append('one-or-more-sqlite-snapshots-failed')
+if full_memory:
+    full_report['sqliteSnapshots'] = manifest
+    full_report['complete'] = full_report['complete'] and all(row['status']=='ok' for row in manifest)
+    dump('memory-export-coverage.json', full_report)
+    if not full_report['complete']:partial.append('full-memory-export-incomplete')
 dump('diagnostic-coverage.json',{
     'scope':'video agent launch, original main comment, natural DM/chat and progressive continuation',
     'evidenceCounts':source_counts,'criticalDatabases':db_health,
@@ -979,7 +1238,21 @@ sys.exit(0)
       $warnings.Add('Optional diagnostic helper failed: ' + $_.Exception.GetType().Name)
     }
   }
+  $resolvedFile = Join-Path $generated '_diagnostics\resolved-export-root.json'
+  $rootVerified = -not (Test-Path -LiteralPath $bootstrapPointer)
+  if (Test-Path -LiteralPath $resolvedFile -PathType Leaf) {
+    $resolved = Get-Content -LiteralPath $resolvedFile -Encoding UTF8 -Raw | ConvertFrom-Json
+    $rootVerified = ($resolved.ok -eq $true)
+    if ($rootVerified) { $root = [string]$resolved.root }
+  }
+  if (-not $rootVerified) { $errors.Add('Effective data root not verified; stale source will not be exported.'); $root = Join-Path $work 'unverified-source-not-read' }
+  $expanded = $diagCompleted -and $env:BILI_EXPORT_FULL_MEMORY -eq '1' -and (Test-Path -LiteralPath (Join-Path $generated '_diagnostics\memory-export-coverage.json'))
+  if ($env:BILI_EXPORT_FULL_MEMORY -eq '1' -and -not $expanded) {
+    $warnings.Add('Full memory diagnostics unavailable; see export-launch-health.json and use a working Python interpreter.')
+  }
   if (-not $diagCompleted) {
+    $partialExpanded = Join-Path $generated '_expanded-state'
+    if (Test-Path -LiteralPath $partialExpanded) { Remove-Item -LiteralPath $partialExpanded -Force -Recurse -ErrorAction SilentlyContinue }
     $partialSqlite = Join-Path $generated 'sqlite-snapshots'
     if (Test-Path -LiteralPath $partialSqlite) { Remove-Item -LiteralPath $partialSqlite -Force -Recurse -ErrorAction SilentlyContinue }
     # PowerShell-native diagnostics keep the crucial Life launch and comment
@@ -991,6 +1264,7 @@ sys.exit(0)
       $target = Join-Path $fallbackFolder $name
       [IO.File]::WriteAllText($target,($value | ConvertTo-Json -Depth 12),([Text.UTF8Encoding]::new($false)))
     }
+    if ($env:BILI_EXPORT_FULL_MEMORY -eq '1') { ExportSafeJson 'memory-export-coverage.json' @{requested=$true;complete=$false;errors=@('Full memory helper did not complete; partial staged data discarded.')} }
     function LoadExportJson([string]$path) {
       try {
         if (!(Test-Path -LiteralPath $path -PathType Leaf) -or (Get-Item -LiteralPath $path).Length -gt 2000000) {return $null}
@@ -1108,10 +1382,12 @@ sys.exit(0)
         $warnings.Add('Diagnostic coverage is partial. Read _diagnostics/diagnostic-coverage.json for exactly missing evidence.')
       }
     } else { $warnings.Add('Diagnostic coverage manifest missing: causal debugging completeness cannot be verified.') }
+    if ($env:BILI_EXPORT_FULL_MEMORY -eq '1' -and -not $expanded) { $coverageComplete = $false }
   } catch { $warnings.Add('Unable to read diagnostic-coverage.json; treat this export as partial.') }
   $zip = [System.IO.Compression.ZipFile]::Open($dest, [System.IO.Compression.ZipArchiveMode]::Create)
   try {
-    $files = Get-ChildItem -LiteralPath $root -Recurse -Force -File -ErrorAction SilentlyContinue -ErrorVariable +scanErrors
+    $files = @()
+    if (-not $expanded -and $rootVerified) { $files = Get-ChildItem -LiteralPath $root -Recurse -Force -File -ErrorAction SilentlyContinue -ErrorVariable +scanErrors }
     foreach ($file in $files) {
       $rel = $file.FullName.Substring($root.Length + 1)
       $isAccount = $rel -match '^accounts\\'
@@ -1135,6 +1411,7 @@ sys.exit(0)
     foreach ($file in $extra) {
       $rel = $file.FullName.Substring($generated.Length + 1).Replace('\','/')
       if ($rel.StartsWith('sqlite-snapshots/')) { $rel = $rel.Substring('sqlite-snapshots/'.Length) }
+      if ($rel.StartsWith('_expanded-state/')) { $rel = $rel.Substring('_expanded-state/'.Length) }
       try {
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file.FullName, $rel, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
         $count++
@@ -1144,6 +1421,8 @@ sys.exit(0)
     $writer = New-Object System.IO.StreamWriter($entry.Open(), [System.Text.Encoding]::UTF8)
     try {
       $writer.WriteLine('Bili-duty evidence export (updated): original logs, Life traces, receipts, and bounded diagnostic summaries in _diagnostics/.')
+      $writer.WriteLine('Full memory diagnostics requested: ' + $env:BILI_EXPORT_FULL_MEMORY + '; captured: ' + $expanded)
+      $writer.WriteLine('FULL MODE: inspect _diagnostics/memory-export-coverage.json for active roots, file inventory, recall activity, missing or changed files. Memory, details, revocations, reflections and vector index are included when available. No model weights, dependency caches or old backup directories. Authentication filenames and recognized config credential keys are excluded; free text and raw logs may still contain secrets.')
       $writer.WriteLine('NEW: life-video-launch-state.json reads root autonomous-planner.json, state.json and whitelisted config fields; live-status-snapshot.json requires a reachable running DSH and does not restart its timer.')
       $writer.WriteLine('DIAG COVERAGE: see _diagnostics/diagnostic-coverage.json; missing data means incomplete investigation, even when archive export succeeded.')
       $writer.WriteLine('PYTHON DIAGNOSTICS: video-agent-decision-timeline.json, life-comment-decision-timeline.json, natural-chat-diagnostics.json, polling-and-model-budget.json, and coherent SQLite snapshots.')

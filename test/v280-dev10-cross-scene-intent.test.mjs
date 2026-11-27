@@ -157,7 +157,7 @@ test('video queued admission does not override authorization revoked while waiti
 
 test('trusted owner comment sender uses shared sealed-proof and receipt, not only a bare platform transaction',()=>{
   const code=readFileSync(new URL('../index.js',import.meta.url),'utf8')
-  const start=code.indexOf('sendReply:async({bvid,rpid,root,text,actorUid,kind,channel})=>{',code.indexOf('const ownerCommentAgent=createOwnerCommentAgent'))
+  const start=code.indexOf('sendReply:async({bvid,rpid,root,text,actorUid,kind,channel,validateRecall})=>{',code.indexOf('const ownerCommentAgent=createOwnerCommentAgent'))
   const end=code.indexOf('},logger:{warn:m=>',start)
   const send=code.slice(start,end)
   assert.ok(start>0&&end>start)

@@ -241,7 +241,7 @@ import { mergeWatchedRows } from './lib/watched.mjs'
 import { createMainSessionBridge } from './lib/main-session-bridge.mjs'
 import { createLongTermMemory } from './lib/long-term-memory.mjs'
 import { createHostSessionIntegration,createAutomaticSessionScope,sessionIntegrationPaused } from './lib/session-integration-policy.mjs'
-import { createMemoryRetriever,publicVisualAssociationContext } from './lib/memory-retriever.mjs'
+import { createMemoryRetriever,publicVisualAssociationContext,offerDeliveredLifeAssociation } from './lib/memory-retriever.mjs'
 import {createEmbeddingRuntimeManager} from './lib/embedding-runtime-manager.mjs'
 import {createLocalVisionModelManager,getLocalVisionModel,getLocalVisionTestImage} from './lib/local-vision-model-manager.mjs'
 import {createEmbeddingMemoryIndex,visualParentIndexRows} from './lib/embedding-memory-index.mjs'
@@ -1656,6 +1656,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const observePublicRecall=(accountTag,rows,channel)=>{
     try{if(neuralActivationTracker){neuralActivationTracker.record({accountTag,rows,channel});lifeManagementEvents.publish('memory-recall')}}catch{}
   }
+  const offerLifeAssociation=({accountTag,rows,delivered,isCurrent,channel='life',allowRecent=false})=>offerDeliveredLifeAssociation({
+    retriever:memoryRetriever,accountTag,rows,delivered,allowRecent,isCurrent:()=>{
+      refreshCfg()
+      return cfg.masterEnabled===true&&cfg.mainSessionMemoryEnabled===true&&!accountBinding.status().blocked&&trustedLifeAccountTag()===accountTag&&isCurrent()===true
+    },record:({accountTag,ids,proof})=>{const recorded=neuralActivationTracker?.recordPublicEpisodes({accountTag,ids,proof,channel})===true;if(recorded)lifeManagementEvents.publish('memory-recall');return recorded}
+  })
   let lifeReflection = null
   let lifeMemoryCoordinator = null
   const admittedOwnerFocusProofs=new WeakSet()
@@ -7448,7 +7454,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         if(topic&&cfg.mainSessionMemoryEnabled&&lifeMemory)
           publicMemory=lifeMemory.recall({query:topic,domain:'bili-explore',kinds:['watch'],maxItems:2,maxChars:360,reinforce:false})||[]
       }catch{degradedStages.push('public-memory');log('Life 上下文：可回忆视频线索暂不可用')}
-      let world={},validateRecall=null,observeRecall=null
+      let world={},validateRecall=null,observeRecall=null,offerRecallAssociation=null
       try{world=projectLifeWorldEvidence({interests,episodes:publicMemory})}
       catch{degradedStages.push('public-memory');log('Life 上下文：公开记忆摘要暂不可用，使用基本人格继续')}
       // Original top-level comment only: sourceKey came from the checked
@@ -7459,11 +7465,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         const scope=trustedLifeAccountTag(),epoch=accountBinding.generation()
         if(target&&scope&&cfg.mainSessionMemoryEnabled&&memoryRetriever){
           const cue=String(evidence?.publicVideoComment?.evidence||'').slice(0,540)
-          const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[cue],limit:2,associate:true,excludeBvids:[target],recentFallback:false})
+          const rows=await memoryRetriever.contextualVisualRecall({accountTag:scope,queries:[cue],limit:2,associate:true,excludeBvids:[target],recentFallback:false,modelAssociation:true})
           if(epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&rows.length){
             validateRecall=()=>epoch===accountBinding.generation()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked&&memoryRetriever.validateContextualVisualRecall({accountTag:scope,rows})
             observeRecall=()=>{if(validateRecall())observePublicRecall(scope,rows,'video-comment')}
-            world={...world,optionalPastVideoAssociations:publicVisualAssociationContext(rows,target)}
+            const delivered=publicVisualAssociationContext(rows,target)
+            world={...world,optionalPastVideoAssociations:delivered}
+            offerRecallAssociation=()=>offerLifeAssociation({accountTag:scope,rows,delivered,isCurrent:validateRecall,channel:'video-comment'})
           }
         }
       }catch{degradedStages.push('public-memory');log('Life 上下文：公开视频联想暂不可用')}
@@ -7504,7 +7512,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         catch{throw Error('life-base-identity-unavailable')}
       }
       if(!voice.trim())throw Error('life-base-identity-unavailable')
-      return {voice,world,experience,degradedStages,validateRecall,observeRecall}
+      return {voice,world,experience,degradedStages,validateRecall,observeRecall,offerRecallAssociation}
     },
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'behaviorDecision'}),
     // Completion notifications are non-executing, account-bound and de-duped
@@ -8041,12 +8049,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getRecentLifeVideoMemory:async opts=>{
       const epoch=accountBinding.generation()
       if(!memoryRetriever||!cfg.mainSessionMemoryEnabled||accountBinding.status().blocked)return null
-      const rows=await memoryRetriever.contextualVisualRecall({...opts,associate:true})
+      const rows=await memoryRetriever.contextualVisualRecall({...opts,associate:true,modelAssociation:true})
       if(epoch!==accountBinding.generation()||opts?.accountTag!==trustedLifeAccountTag()||accountBinding.status().blocked||!cfg.mainSessionMemoryEnabled)return null
       // Retrieval alone is not delivery. The planner reports the actual model input.
       for(const row of rows)lifeRecallGenerations.set(row,epoch)
       return rows
     },
+    offerLifeVideoAssociation:({accountTag,rows,delivered,allowRecent=false})=>offerLifeAssociation({accountTag,rows,delivered,allowRecent,isCurrent:()=>cfg.autonomousPlannerEnabled===true&&cfg.lifeAgentMode!=='off'&&rows.every(row=>lifeRecallGenerations.get(row)===accountBinding.generation())&&memoryRetriever?.validateContextualVisualRecall({accountTag,rows})===true}),
     observeLifeVideoMemory:({accountTag,rows})=>{if(cfg.mainSessionMemoryEnabled&&!accountBinding.status().blocked&&accountTag===trustedLifeAccountTag()&&rows.every(row=>lifeRecallGenerations.get(row)===accountBinding.generation()))observePublicRecall(accountTag,rows,'life')},
     validateLifeVideoMemory:opts=>cfg.mainSessionMemoryEnabled===true&&opts.accountTag===trustedLifeAccountTag()&&!accountBinding.status().blocked&&opts.rows.every(row=>lifeRecallGenerations.get(row)===accountBinding.generation())&&memoryRetriever?.validateContextualVisualRecall(opts)===true,
     getLifeVideoDetailRecall:opts=>lifeMemory?.recallVideoDetails({...opts,ownerSession:false,visibility:'public-event'})||{ok:false,reason:'memory-unavailable'},
