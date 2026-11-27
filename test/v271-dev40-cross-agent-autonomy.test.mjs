@@ -88,7 +88,7 @@ test('dev40 精简评论两段真实只读取证后自主形成终结决策；�
  }finally{b.stop()}
 })
 
-test('dev40 模型第三次仍想读证据、重复读取或凭空要求人物主页时，拒绝生成外发回复',async()=>{
+test('dev40/dev46 模型重复读取或凭空要求人物主页时，拒绝生成外发回复',async()=>{
  for(const plan of [
   [{contextRequests:['history']},{contextRequests:['history']}],
   [{contextRequests:['history']},{contextRequests:['public_person']},{contextRequests:['history']}],
@@ -134,4 +134,54 @@ test('dev40 所有专业上下文都必须连接到生产提示而非测试虚�
  assert.match(text('index.js'),/readVerifiedCommenterPublicVideos\(/)
  assert.match(text('index.js'),/linkedPublicBvid:String\(req\.bvid/)
  assert.doesNotMatch(text('lib/management-console.html'),/id="comment-public-person-read"/)
+})
+
+test('dev46 同一个 Life 社交工具循环允许评论和私信自主组合三步以上，累计证据完整且不再提供已用工具',async()=>{
+ for(const [kind,role] of [['comment','stranger'],['dm','owner'],['dm','friend'],['dm','stranger']]){
+  const reads=[],prompts=[];let calls=0
+  const plan=[['history','memory'],['meme'],['portrait'],[kind==='comment'?'hot_comments':'todo']]
+  const b=createInteractionBatcher({delayMs:1,getPersona:()=>'',requireVoluntaryReads:true,logger:{warn(){}},
+   prepareContexts:async()=>[{availableContexts:plan.flat()}],
+   authorizeContextRead:async({readKinds})=>({ok:true,allowedReadKinds:readKinds}),
+   loadRequestedContexts:async(_rows,requests)=>{reads.push(requests[0]);return [{memoryContext:'真实历史记忆',memeContext:'真实梗证据',portraitContext:'真实画像',hotCommentsContext:'真实热评'}]},
+   invoke:async prompt=>{prompts.push(prompt);const step=calls++
+    if(step<plan.length)return answer({action:'skip',reply:'',contextRequests:plan[step],recallQueries:['旧主题']})
+    return answer({reply:'已经理解',memoryDisclosure:'share'})}
+  })
+  try{
+   assert.equal(await b.generate({kind,role,uid:'123',text:'之前的话题',history:[{role:'user',text:'真实历史来信'}],todoProgressContext:'真实待办'}),'已经理解')
+   assert.deepEqual(reads,plan);assert.equal(calls,5)
+   const item=JSON.parse(prompts.at(-1).split('\n消息：').at(-1))[0]
+   assert.deepEqual(Object.keys(item.retrievalStatus),plan.flat());assert.deepEqual(item.availableContexts,[])
+   assert.equal(item.memoryContext,'真实历史记忆');assert.equal(item.memeContext,'真实梗证据');assert.equal(item.portraitContext,'真实画像')
+   assert.equal(item.readBudget.toolsRemaining,3)
+   if(kind==='comment')assert.equal(item.hotCommentsContext,'真实热评');else assert.equal(item.todoProgressContext,'真实待办')
+  }finally{b.stop()}
+ }
+})
+
+test('dev46 陌生人不能借多步工具循环取得主人能力，混合未知工具整批拒绝',async()=>{
+ for(const request of [['owner_todos'],['history','arbitrary_shell']]){
+  let reads=0;const b=createInteractionBatcher({delayMs:1,getPersona:()=>'',requireVoluntaryReads:true,logger:{warn(){}},
+   prepareContexts:async()=>[{availableContexts:['history','owner_todos']}],
+   loadRequestedContexts:async()=>{reads++;return [{}]},invoke:async()=>answer({action:'skip',reply:'',contextRequests:request})})
+  try{await assert.rejects(b.generate({kind:'dm',role:'stranger',uid:'123',text:'你好'}),/最终决定/);assert.equal(reads,0)}finally{b.stop()}
+ }
+})
+
+test('dev46 多轮工具读取遇到账号代际变化立即停止，不交付失效证据',async()=>{
+ let live=true,calls=0,reads=0
+ const b=createInteractionBatcher({delayMs:1,getPersona:()=>'',requireVoluntaryReads:true,logger:{warn(){}},captureReadScope:()=>()=>live,
+  prepareContexts:async()=>[{availableContexts:['history','meme','memory']}],
+  loadRequestedContexts:async()=>{if(++reads===3)live=false;return [{memoryContext:'不能交付的旧账号数据'}]},
+  invoke:async()=>answer({action:'skip',reply:'',contextRequests:[['history','meme','memory'][calls++]],recallQueries:['旧主题']})})
+ try{await assert.rejects(b.generate({kind:'dm',role:'stranger',uid:'123',text:'你好'}),/scope|最终决定/);assert.equal(calls,3);assert.equal(reads,3)}finally{b.stop()}
+})
+
+test('dev46 每项独立预算到达六轮后菜单清空，未终结请求不执行也不外发',async()=>{
+ const kinds=['history','meme','memory','portrait','todo','recommendation','owner_todos'];let calls=0,reads=0
+ const b=createInteractionBatcher({delayMs:1,getPersona:()=>'',requireVoluntaryReads:true,logger:{warn(){}},
+  prepareContexts:async()=>[{availableContexts:kinds}],loadRequestedContexts:async()=>{reads++;return [{}]},
+  invoke:async prompt=>{if(calls===6){const item=JSON.parse(prompt.split('\n消息：').at(-1))[0];assert.equal(item.readBudget.roundsRemaining,0);assert.deepEqual(item.availableContexts,[])}return answer({action:'skip',reply:'',contextRequests:[kinds[calls++]],recallQueries:['旧主题']})}})
+ try{await assert.rejects(b.generate({kind:'dm',role:'owner',uid:'123',text:'你好'}),/最终决定/);assert.equal(reads,6);assert.equal(calls,7)}finally{b.stop()}
 })

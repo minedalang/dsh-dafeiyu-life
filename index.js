@@ -5694,11 +5694,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         batch.every(row=>row.kind!=='dm'||(cfg.dmWatch===true&&String(row.uid||'')&&socialPolicyGate.actor(row.uid).role===row.role))
     }},
     getContextMode:()=>{refreshCfg();return cfg.interactionContextMode==='full'?'full':'compact'},
-    onContextUsage:({mode,kind,items,requests,continued,continuationFailed,requestedKinds=[],foundKinds=[],missingKinds=[],actualLazyReads=0,at})=>{
+    onContextUsage:({mode,kind,items,requests,continued,continuationFailed,requestedKinds=[],foundKinds=[],missingKinds=[],actualLazyReads=0,readContinuationCalls=0,at})=>{
       if(mode==='full')interactionContextStats.fullTurns+=items;
       else interactionContextStats.compactTurns+=items;
       interactionContextStats.expandedTurns+=requests;
-      if(requests)interactionContextStats.extraModelCalls++;
+      interactionContextStats.extraModelCalls+=readContinuationCalls;
       if(continuationFailed)interactionContextStats.continuationFailures++;
       interactionContextStats.lazyReadTurns+=actualLazyReads;
       // Short-lived diagnostics: no UID, messages, prompt, memory text or model output.

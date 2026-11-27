@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.46：生产私信/评论统一只读工具目录及有界动态循环；每项6轮/8种/每次4种，累计证据保留；原账号授权、平台预算、回执和记忆边界不变。后台与宿主专业循环未迁移，通用延期与主人回聊待接线。
 %% dev.45：私信同一模型自主选择原分享契机延期目标（非待办、非执行回执）；同账号同联系人及权限复核；原 planner 与原 Episode 投影方向。陌生人仅公开链接读取；不新开主动联系或通用延期。
 %% dev.44：同账号同联系人近期分享仅作为有限模型候选，不再用固定话术判定承接；选中后复用真实公开资料回执，再由同一模型决定是否读画面。新视觉、旧视觉、仅语音分别登记；新采样可绑定原分享 Episode，尊重生活时段、权限和防重。空私信轮询日志按五分钟节流，不改轮询时钟。
 %% dev.43：社交待办由同轮模型自主选择；准确本轮 BV 可作为来源锚点，接受未入账交回模型修订，主人来信无回执回复须独立声明未来行动语义；已有未结束同主题兴趣探索不再作为新搜索候选。原意愿、账本、调度与执行权限不变。
@@ -454,8 +455,8 @@ dmFollow -->|已核实后回执| receipts
 %% @code networkPollBackoff | lib/network-poll-backoff.mjs | export function createNetworkPollBackoff
 
 %% dev.59: DM/Comment keeps one model call with Life Voice, then seals exact expression without AI.
-lifeOwnsSpeech["交互批处理中的 Life Voice｜单次模型选择回复/沉默/延期及最终表达"]
-professionalDraft["DM / Comment 专业感知｜读取真实事件和场景上下文，不替 Life 决定沉默"]
+lifeOwnsSpeech["交互批处理中的 Life Voice｜有界自主读取循环及最终回复/沉默/延期"]
+professionalDraft["DM / Comment 专业感知｜统一只读目录和实时菜单，不替 Life 决定沉默"]
 socialProofSeal["LifeWillingness｜绑定账号/收件人/线程/正文；未消费过期可释放，已消费/旧未知需离线复核"]
 lifeProofExpiry["过期未消费 proof｜先 settle(not-sent)，再清理内存记录"]
 lifeAdmissionUsed["持久 used 标记｜最终执行校验前写入"]
@@ -601,6 +602,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.46：生产私信/评论统一只读工具目录及有界动态循环；每项6轮/8种/每次4种，累计证据保留；原账号授权、平台预算、回执和记忆边界不变。后台与宿主专业循环未迁移，通用延期与主人回聊待接线。
 %% dev.45：私信同一模型自主选择原分享契机延期目标（非待办、非执行回执）；同账号同联系人及权限复核；原 planner 与原 Episode 投影方向。陌生人仅公开链接读取；不新开主动联系或通用延期。
 %% dev.44：同账号同联系人近期分享仅作为有限模型候选，不再用固定话术判定承接；选中后复用真实公开资料回执，再由同一模型决定是否读画面。新视觉、旧视觉、仅语音分别登记；新采样可绑定原分享 Episode，尊重生活时段、权限和防重。空私信轮询日志按五分钟节流，不改轮询时钟。
 %% dev.43：社交待办由同轮模型自主选择；准确本轮 BV 可作为来源锚点，接受未入账交回模型修订，主人来信无回执回复须独立声明未来行动语义；已有未结束同主题兴趣探索不再作为新搜索候选。原意愿、账本、调度与执行权限不变。
@@ -906,6 +908,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.46：生产私信/评论统一只读工具目录及有界动态循环；每项6轮/8种/每次4种，累计证据保留；原账号授权、平台预算、回执和记忆边界不变。后台与宿主专业循环未迁移，通用延期与主人回聊待接线。
 %% dev.45：私信同一模型自主选择原分享契机延期目标（非待办、非执行回执）；同账号同联系人及权限复核；原 planner 与原 Episode 投影方向。陌生人仅公开链接读取；不新开主动联系或通用延期。
 %% dev.44：同账号同联系人近期分享仅作为有限模型候选，不再用固定话术判定承接；选中后复用真实公开资料回执，再由同一模型决定是否读画面。新视觉、旧视觉、仅语音分别登记；新采样可绑定原分享 Episode，尊重生活时段、权限和防重。空私信轮询日志按五分钟节流，不改轮询时钟。
 %% dev.43：社交待办由同轮模型自主选择；准确本轮 BV 可作为来源锚点，接受未入账交回模型修订，主人来信无回执回复须独立声明未来行动语义；已有未结束同主题兴趣探索不再作为新搜索候选。原意愿、账本、调度与执行权限不变。
@@ -1267,6 +1270,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.46：生产私信/评论统一只读工具目录及有界动态循环；每项6轮/8种/每次4种，累计证据保留；原账号授权、平台预算、回执和记忆边界不变。后台与宿主专业循环未迁移，通用延期与主人回聊待接线。
 %% dev.45：私信同一模型自主选择原分享契机延期目标（非待办、非执行回执）；同账号同联系人及权限复核；原 planner 与原 Episode 投影方向。陌生人仅公开链接读取；不新开主动联系或通用延期。
 %% dev.44：同账号同联系人近期分享仅作为有限模型候选，不再用固定话术判定承接；选中后复用真实公开资料回执，再由同一模型决定是否读画面。新视觉、旧视觉、仅语音分别登记；新采样可绑定原分享 Episode，尊重生活时段、权限和防重。空私信轮询日志按五分钟节流，不改轮询时钟。
 %% dev.43：社交待办由同轮模型自主选择；准确本轮 BV 可作为来源锚点，接受未入账交回模型修订，主人来信无回执回复须独立声明未来行动语义；已有未结束同主题兴趣探索不再作为新搜索候选。原意愿、账本、调度与执行权限不变。
@@ -1458,15 +1462,18 @@ subagentFollow -.->|成功的平台关系读回才算已完成| attribution
 %% dev.40: every verified BV public action is anchored on ITS OWN step, never the whole episode.
 publicStepBridge["同 BV 公开行为因果桥：每条回执自带 BV 哈希，无跨视频串线"]
 professionalMenu["各专业 Agent 当前真实行为菜单：宿主工具/授权决定候选"]
-commentObservation["评论/私信按需观察→最多两次只读取证→再决策"]
+commentObservation["评论/私信统一只读 Agent 循环：真实菜单、6轮/8种、结果再决策"]
 commentPublicPerson["评论者公开投稿：独立授权 + 核验 UID/rpid/BV + 只读"]
 record -.-> publicStepBridge -.-> subagentHandoff
 subagentHandoff --> professionalMenu
 commentPublicPerson -.->|只读候选| professionalMenu
 professionalMenu -.-> commentObservation
+readRuntime46["统一只读能力目录和逐项预算：不授予权限"]
+readRuntime46 -.-> commentObservation
+%% @code readRuntime46 | lib/life-agent-read-runtime.mjs | export function createLifeReadRuntime
 %% @code publicStepBridge | lib/life-universal-episodes.mjs | const publicVideoState=bvid=>
 %% @code professionalMenu | lib/life-subagent-continuity.mjs | export function subagentActionMenu
-%% @code commentObservation | lib/interaction-batch.mjs | for(let pass=0;pass<3;pass++){
+%% @code commentObservation | lib/interaction-batch.mjs | for(let pass=0;pass<LIFE_READ_LIMITS.rounds;pass++){
 %% @code commentPublicPerson | lib/life-public-capabilities.mjs | export async function readVerifiedCommenterPublicVideos
 
 %% @code socialContact | lib/life-friend-initiatives.mjs | const outboundEnabled=
