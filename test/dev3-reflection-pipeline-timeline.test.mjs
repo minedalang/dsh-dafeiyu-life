@@ -157,3 +157,28 @@ test('dev.24 automatic reflection pause retains candidates and charges only the 
   policy={mode:'memory-foundation',revision:5};assert.equal((await life.reflect({force:true})).ok,true);assert.equal(commits,1)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
+
+
+test('dev.30 same-domain successful automatic reflection re-arms at most two exhausted candidates once',async()=>{
+ const dir=temp();let t=Date.parse('2026-10-31T10:00:00Z'),fail=true
+ try{
+  const life=createLife(dir,{now:()=>t,invokeModel:async()=>{if(fail)throw Error('temporary outage');return JSON.stringify({memories:[]})}})
+  life.addEvents(events(100,4))
+  for(let i=0;i<5;i++){assert.equal((await life.reflect({force:true})).ok,false);t+=3600000}
+  assert.equal(life.status().retryPaused,4)
+  fail=false;life.addEvents(events(200,2));const recovered=await life.reflect();assert.equal(recovered.ok,true);assert.equal(recovered.recoveryRearmed,2);assert.equal(life.status().retryPaused,2)
+  assert.equal(life.list('pending').filter(r=>r.recoveryRearmed===true&&r.nextRetryAt===t+12*3600000).length,2)
+  t+=12*3600000;fail=true;assert.equal((await life.reflect()).ok,false);assert.equal(life.status().retryPaused,4)
+  t+=3600000;fail=false;life.addEvents(events(300,2));assert.equal((await life.reflect()).recoveryRearmed,2)
+  assert.equal(life.list('pending').filter(r=>r.recoveryRearmed===true).length,4);assert.equal(life.status().retryPaused,2)
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('dev.30 independent public recognition requires exact clear evidence and no invented behavior',()=>{
+ const row={id:'c-recognition',kind:'watch',associationStage:'clear',evidenceCoverage:'complete',text:'我观察到雨滴沿着窗边缓慢滑落。'}
+ const proposal={candidate_ids:[row.id],kind:'recognition',insight:'我体会到安静观察也能带来细微的乐趣',behavior:'',evidence_quote:'雨滴沿着窗边缓慢滑落',retention_reason:'这种感受值得在日常观察中记住'}
+ const check=(p,r=row)=>reflectionTest.validateOutput(JSON.stringify({memories:[p]}),[r])
+ assert.equal(check(proposal).memories.length,1);assert.equal(check(proposal).memories[0].kind,'experience');assert.equal(check(proposal).memories[0].text,proposal.insight)
+ for(const p of [{...proposal,evidence_quote:'伪造的画面连续描述'},{...proposal,behavior:'以后我一定每天去看雨'},{...proposal,retention_reason:''},{...proposal,candidate_ids:[row.id,'fake']},{...proposal,kind:'experience'}])assert.equal(check(p).memories.length,0)
+ assert.equal(check(proposal,{...row,associationStage:'fuzzy'}).memories.length,0);assert.equal(check(proposal,{...row,evidenceCoverage:'partial'}).memories.length,0);assert.equal(check(proposal,{...row,kind:'private-social'}).memories.length,0)
+})

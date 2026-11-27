@@ -11,7 +11,7 @@ import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
 import {createLifeWillingness} from '../lib/life-willingness.mjs'
 import {createLifeDecisionTrace} from '../lib/life-decision-trace.mjs'
 import {createLifeReflection,__test as reflectionTest} from '../lib/life-reflection.mjs'
-import {createMemoryRetriever,publicVisualAssociationContext,offerDeliveredLifeAssociation} from '../lib/memory-retriever.mjs'
+import {createMemoryRetriever,publicVisualAssociationContext,offerDeliveredLifeAssociation,settleLifeAssociation} from '../lib/memory-retriever.mjs'
 import {createNeuralActivationTracker,projectNeuralActivation,memoryNeuralProjection} from '../lib/memory-neural-projection.mjs'
 const A='a'.repeat(16),B='b'.repeat(16),DAY=86400000,NOW=Date.parse('2026-11-25T10:00:00Z')
 const cfg={mainSessionMemoryEnabled:true,mainSessionMemoryHalfLifeDays:120,mainSessionMemoryAutoBili:true,mainSessionReflectionAuto:true,mainSessionReflectionMinCandidates:2}
@@ -267,7 +267,7 @@ test('ordinary new batch has priority over old relation-only review; source dele
 test('old relation review refuses forged evidence; new ordinary batch can exhaust the shared daily limit',()=>setup(async x=>{
  const f=await reviewedPairFixture(x,rows=>JSON.stringify({associations:[{type:'concept',candidate_ids:rows.map(r=>r.id),evidence_quotes:['从未出现的伪造文字','从未出现的伪造文字']}]}),{config:{mainSessionReflectionDailyBatches:1}})
  f.life.addEvents(events.slice(1,3));f.setTime(NOW+3600001);assert.equal((await f.life.reflect()).processed,2);f.setTime(NOW+7200002);assert.equal(f.life.status().autoReflectBlockedReason,'daily-limit');assert.equal((await f.life.reflect()).skipped,'daily-limit');assert.equal(f.counts().calls,2)
- const r=await f.life.reflect({force:true});assert.equal(r.associationRejected,1);assert.equal(x.g.status().associations.active,0)
+ const r=await f.life.reflect({force:true});assert.equal(r.associationValidationRejected,1);assert.equal(r.associationRejected,0);assert.equal(r.associationProposed,1);assert.equal(x.g.status().associations.active,0)
 }))
 
 test('ordinary public reflection retains concurrently arriving candidates and rejects changed account generation before writes',()=>setup(async x=>{
@@ -555,3 +555,12 @@ test('original video willingness can confirm a delivered historical pair while d
   x.setAccount(B);assert.equal(x.g.reinforceConfirmedPublicEpisodes({accountTag:A,ids:[a,b]}).ok,false)
   x.setAccount(A);x.setTime(NOW+DAY*600);assert.equal(x.g.reinforceConfirmedPublicEpisodes({accountTag:A,ids:[a,b]}).ok,false)
  }))
+
+
+test('dev.30 actual Life proposal diagnostics distinguish omission, format, evidence, stale and confirmation',()=>{
+ const rows=[{bvid:'BV0000000001'},{bvid:'BV0000000002'}],excerpts=['清晰的真实观察甲','清晰的真实观察乙'];let current=true,records=0
+ const retriever={offerVisualAssociation:()=>({fromId:'a',memoryId:'b',excerpts,times:[]}),confirmPublicAssociation:(_c,p)=>p.quoteB===excerpts[1]?{verified:true}:null}
+ const make=()=>offerDeliveredLifeAssociation({retriever,accountTag:A,rows,delivered:rows.map((r,i)=>({...r,untrustedSceneNotes:[excerpts[i]]})),isCurrent:()=>current,record:()=>{records++;return true}})
+ const run=(mode)=>{current=true;const offer=make(),token=JSON.parse(offer.prompt.slice(offer.prompt.indexOf('：')+1,offer.prompt.indexOf('。仅当')))[0].token;let code;const proposal={token,relationType:'concept',quoteA:excerpts[0],quoteB:excerpts[1],reason:'这两段记录有可解释的联系'};if(mode==='format')proposal.token='wrong';if(mode==='evidence')proposal.quoteB='伪造且不存在的观察';if(mode==='stale')current=false;settleLifeAssociation({offer,proposal,present:mode!=='omit',valid:mode!=='invalid',trace:(_type,r)=>{code=r.code}});return code}
+ assert.equal(run('omit'),'ai-association-not-proposed');assert.equal(run('invalid'),'ai-association-decision-invalid');assert.equal(run('format'),'ai-association-rejected-format');assert.equal(run('evidence'),'ai-association-rejected-evidence');assert.equal(run('stale'),'ai-association-rejected-stale');assert.equal(run('confirmed'),'ai-association-confirmed');assert.equal(records,1)
+})

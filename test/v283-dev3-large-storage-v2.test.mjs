@@ -248,3 +248,10 @@ test('dev.26 recovery CLI exposes read-only model preflight and refuses implicit
  const plan=spawnSync(process.execPath,cli,{encoding:'utf8',timeout:15000});assert.equal(plan.status,0,plan.stderr);assert.equal(JSON.parse(plan.stdout).changesNow,false);assert.equal(existsSync(destination),false)
  cli[1]='recover-models';const refused=spawnSync(process.execPath,cli,{encoding:'utf8',timeout:15000});assert.equal(refused.status,1);assert.match(refused.stderr,/确认仅恢复模型/);assert.equal(existsSync(destination),false)
 }))
+
+
+test('dev.30 cancelled V2 copy cleans its own staging directory without deleting retained models, runtime or historical staging',()=>fixture(({t,root,at})=>{
+ baseModels(at);const target=join(t,'D','data'),parent=dirname(target),foreign=join(parent,'.dafeiyu-large-v2-staging-historical');put(join(foreign,'keep'),'historical')
+ assert.throws(()=>migrateLargeDataOffline({root,target,confirmedStopped:true,python:'fixture-python',runtimeProbe:()=>true,checkpoint:()=>{if(readdirSync(parent).some(n=>n.startsWith('.dafeiyu-large-v2-staging-')&&n!=='.dafeiyu-large-v2-staging-historical'))throw Error('cancel owned copy')}}),/cancel owned copy/)
+ assert.deepEqual(readdirSync(parent),['.dafeiyu-large-v2-staging-historical']);assert.equal(readFileSync(join(foreign,'keep'),'utf8'),'historical');assert.equal(largeDataStatus(root).configured,false);assert.equal(readFileSync(at('life-memory','episodic.json'),'utf8'),'irreplaceable-memory');assert.equal(readFileSync(at('embedding-runtime','Qwen3-Embedding-0.6B-Q8_0.gguf'),'utf8'),'gguf-weight')
+}))

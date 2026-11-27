@@ -35,3 +35,9 @@ test('普通用户备份不暴露冷快照命令，npm 不分发旧冷快照工�
  const pkg=JSON.parse(source('package.json'));assert.ok(!pkg.files.includes('tools/dev4-cold-state-backup.mjs'));assert.ok(pkg.files.includes('!lib/cold-state-snapshot.mjs'))
  assert.match(html,/#fs-wizard-content #headless-model-sync-panel \.headless-provider-stack\{min-height:290px;max-height:720px;overflow:auto\}/)
 })
+
+
+test('dev.30 storage UI has no dedicated retired vision environment operation or API',()=>{
+ assert.doesNotMatch(html,/id="storage-vision-env(?:ironments|-)/);assert.doesNotMatch(ui,/storage-vision-env|storage\/vision-environments/);assert.doesNotMatch(host,/storage\/vision-environments/)
+ assert.match(html,/id="storage-retained-model-check"/);assert.match(html,/id="storage-large-v2-schedule"/)
+})

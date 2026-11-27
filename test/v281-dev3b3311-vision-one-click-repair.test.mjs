@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,writeFileSync,mkdirSync,existsSync,rmSync,readFileSync} from 'node:fs'
+import {mkdtempSync,writeFileSync,mkdirSync,existsSync,rmSync,readFileSync,readdirSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join,dirname} from 'node:path'
 import {createVisionEnvironmentRepair} from '../lib/vision-environment-repair.mjs'
@@ -304,5 +304,23 @@ test('offline environment quarantine protects explicit interpreters, dependency 
   const result=quarantineVisionEnvironments({...offline,checkStopped:()=>({ok:true})});assert.equal(result.ok,true,result.error);assert.equal(result.moved.length,1);assert.equal(existsSync(join(f.home,unused)),false);assert.equal(readFileSync(join(f.home,unused.replace('.vision-env-','.vision-retired-'),'Scripts','python.exe'),'utf8'),'test executable');assert.ok(existsSync(python));assert.equal(readFileSync(join(f.home,'life-memory','episodic.json'),'utf8'),'unchanged')
   const after=inspectVisionEnvironments(options);assert.equal(after.count,0);assert.ok(after.entries.some(r=>r.status==='retired'))
   assert.equal(inspectVisionEnvironments({...options,preferred:''}).available,false);assert.equal(inspectVisionEnvironments({...options,repairBusy:true}).available,false)
+ }finally{f.clean()}
+})
+
+
+test('dev.30 failed fresh repair removes only the exclusively created unpublished directory',async()=>{
+ const f=setup(),historical=join(f.home,'.vision-env-1794883710603-ba2c0851');mkdirSync(historical);writeFileSync(join(historical,'keep'),'old')
+ try{
+  const repair=createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,preferred:()=>f.base,probe:(_,{requiresMcp})=>status(!requiresMcp),run:async(_cmd,args)=>{if(args[1]==='venv')writeFileSync(join(args[3],'partial'),'new');return {ok:false,reason:'nonzero_exit'}},persist:async()=>{throw Error('never publish')}})
+  const result=await repair.run();assert.equal(result.state,'failed');assert.ok(result.removedAttempts>=1);assert.deepEqual(readdirSync(f.home).filter(x=>x.startsWith('.vision-env-')), [historical.split(/[\\/]/).at(-1)]);assert.equal(readFileSync(join(historical,'keep'),'utf8'),'old');assert.ok(existsSync(f.base))
+ }finally{f.clean()}
+})
+
+test('dev.30 timeout and uncertain publication retain the attempted runtime rather than deleting a potentially used interpreter',async()=>{
+ const f=setup();let target='',mode='timeout'
+ try{
+  const create=()=>createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,preferred:()=>f.base,probe:(p,{requiresMcp})=>status(p!==f.base||!requiresMcp),run:async(_cmd,args)=>{if(args[1]==='venv'){target=args[3];mkdirSync(join(target,'Scripts'),{recursive:true});writeFileSync(join(target,'Scripts','python.exe'),'test');if(mode==='timeout')return {ok:false,reason:'timeout'}}return {ok:true}},persist:async()=>false})
+  let r=await create().run();assert.equal(r.state,'failed');assert.equal(r.retainedAttempts,1);assert.ok(existsSync(target));const first=target
+  mode='persist';r=await create().run();assert.equal(r.reason,'vision_path_save_failed');assert.ok(existsSync(target));assert.ok(existsSync(first));assert.ok(existsSync(f.base))
  }finally{f.clean()}
 })
