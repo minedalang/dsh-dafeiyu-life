@@ -7266,6 +7266,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     validateRecall:opts=>memoryRetriever?.validateContextualVisualRecall(opts)===true,
     validatePath:opts=>lifeMemory?.validateAssociationPath(opts)===true,
     validateImmediate:opts=>memoryRetriever?.validateImmediateRecall(opts)===true,
+    onConfirmedModelAssociation:opts=>{if(cfg.mainSessionMemoryEnabled===true&&!accountBinding.status().blocked&&opts.accountTag===trustedLifeAccountTag())lifeMemory?.reinforceConfirmedPublicEpisodes(opts)},
   })
   longTermMemory.start()
   ctx.effect(() => () => longTermMemory.stop(), 'bili-duty: 内置长期记忆')

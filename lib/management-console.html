@@ -925,6 +925,7 @@ button.mobile-locked,button.mobile-locked:disabled,input.mobile-locked,select.mo
 #panel-life .neural-recall-board .muted{color:#b9c7da}
 #panel-life .neural-recall-head{display:flex;justify-content:space-between;align-items:center;gap:15px}
 #panel-life .neural-recall-head h4{font-size:21px;margin:4px 0}.neural-memory-stats{display:flex;gap:5px;flex-wrap:wrap;align-items:center;font-size:11px}.neural-memory-stats span{border:1px solid var(--line);border-radius:999px;background:var(--surface,transparent);padding:1px 8px;color:var(--ink)}
+#panel-life .memory-health-dashboard{margin:16px 0 18px;padding:16px;border:1px solid var(--stroke);border-radius:22px;background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 88%,#8ed8ff 12%),var(--panel));box-shadow:0 12px 34px rgba(19,47,68,.06)}#panel-life .memory-health-dashboard h4{margin:4px 0 6px}#panel-life .memory-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}#panel-life .memory-health-card{border:1px solid var(--stroke);border-radius:18px;padding:14px;background:var(--panel)}#panel-life .memory-health-card h5{margin:0 0 10px;font-size:14px}#panel-life .memory-health-topline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}#panel-life .memory-health-topline strong{font-size:20px}#panel-life .memory-health-topline span{font-size:12px;color:var(--muted)}#panel-life .memory-health-meter{height:12px;border-radius:999px;background:color-mix(in srgb,var(--stroke) 55%,transparent);overflow:hidden;margin:12px 0 8px}#panel-life .memory-health-meter>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#78c9c5,#90c5ff)}#panel-life .memory-health-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}#panel-life .memory-health-meta span{border:1px solid var(--stroke);border-radius:999px;padding:2px 8px;font-size:11px;color:var(--ink)}#panel-life .memory-health-bars{display:grid;gap:8px}#panel-life .memory-health-bar{display:grid;grid-template-columns:minmax(0,1fr) minmax(30px,1fr) auto;gap:10px;align-items:center;font-size:12px}#panel-life .memory-health-bar-label{color:var(--ink);overflow-wrap:anywhere}#panel-life .memory-health-bar-track{height:10px;border-radius:999px;background:color-mix(in srgb,var(--stroke) 55%,transparent);overflow:hidden}#panel-life .memory-health-bar-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8bc7ff,#76d9c7)}#panel-life .memory-health-bar-value{font-variant-numeric:tabular-nums;color:var(--muted)}#panel-life .memory-health-note{margin-top:10px}
 #panel-life .neural-counter{background:#3b3860;border:1px solid #7c77b7;padding:5px 11px;border-radius:50px;font-size:12px}
 #panel-life .neural-recall-controls{display:flex;flex-wrap:wrap;gap:16px;margin:14px 0;font-size:12px}
 #panel-life .neural-recall-controls label{display:flex;align-items:center;gap:6px;cursor:pointer}
@@ -2828,8 +2829,33 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
 </section>
 <section id="panel-life" hidden>
 <div class="life-hero life-memory-hero"><div class="life-memory-hero-copy"><span class="page-eyebrow">MEMORY GARDEN · 逐渐长大的回忆</span><div class="status-line"><span id="life-learning-status" class="live-badge">● 正在整理真实经历</span></div><h2>鱼鱼的记忆花园</h2><p class="muted">每一次真实相遇，都可能留下些小小的印象。她会记住一些，也会慢慢忘记一些。</p><button id="main-life-refresh" class="life-action life-indigo">↻ 刷新记忆</button></div><img class="life-memory-character" src="/api/bili-duty/life-character.png" alt="" loading="lazy" decoding="async" aria-hidden="true"><span class="life-memory-bubble" aria-hidden="true"></span></div>
-<nav class="memory-journey-nav" aria-label="记忆花园分区"><a href="#life-interest-section"><span>🌱</span><strong>最近兴趣</strong><small>真实积累的喜好</small></a><a href="#life-recall-section"><span>🧠</span><strong>经历与体会</strong><small>现在还能想起的事</small></a></nav>
+<nav class="memory-journey-nav" aria-label="记忆花园分区"><a href="#life-memory-health-panel"><span>🩺</span><strong>记忆健康</strong><small>容量与占用一眼看懂</small></a><a href="#life-interest-section"><span>🌱</span><strong>最近兴趣</strong><small>真实积累的喜好</small></a><a href="#life-recall-section"><span>🧠</span><strong>经历与体会</strong><small>现在还能想起的事</small></a></nav>
 <div id="life-recall-section" class="settings-section life-section memory-home">
+<section id="life-memory-health-panel" class="memory-health-dashboard" aria-labelledby="life-memory-health-title">
+  <div class="memory-health-topline"><div><span class="page-eyebrow">MEMORY HEALTH · 当前可衰减经历容量</span><h4 id="life-memory-health-title">记忆健康面板</h4><p id="memory-health-overview" class="muted" role="status" aria-live="polite">正在读取记忆容量与占用情况…</p></div><button id="memory-health-refresh" type="button">刷新面板</button></div>
+  <div class="memory-health-grid">
+    <article class="memory-health-card">
+      <h5>容量压力</h5>
+      <div class="memory-health-topline"><strong id="memory-health-capacity-headline">读取中…</strong><span id="memory-health-capacity-subline">—</span></div>
+      <div class="memory-health-meter" aria-hidden="true"><span id="memory-health-capacity-fill" style="width:0%"></span></div>
+      <div class="memory-health-meta" id="memory-health-capacity-meta"><span>读取中…</span></div>
+    </article>
+    <article class="memory-health-card">
+      <h5>阶段分布</h5>
+      <div id="memory-health-stage-bars" class="memory-health-bars" role="list"></div>
+    </article>
+    <article class="memory-health-card">
+      <h5>主要占用项</h5>
+      <div id="memory-health-occupancy-bars" class="memory-health-bars" role="list"></div>
+    </article>
+  </div>
+  <div class="memory-health-grid memory-health-extra">
+    <article class="memory-health-card"><h5>最近 7 天 · 当前仍留存</h5><div id="memory-health-trend" class="memory-health-bars"></div><small class="muted">按经历发生日统计当前副本，不是历史新增流水。</small></article>
+    <article class="memory-health-card"><h5>平台操作占用明细</h5><div id="memory-health-actions" class="memory-health-bars"></div><small class="muted">百分比以全部容量为分母；只统计未遗忘操作。</small></article>
+    <article class="memory-health-card"><h5>反思与联想</h5><p id="memory-health-reflection" class="muted" role="status">正在读取…</p><p id="memory-health-association" class="muted">正在读取…</p><a id="memory-health-reflection-link" href="#life-reflection-details">查看反思详情 / 手动整理</a></article>
+  </div>
+  <p id="memory-health-note" class="muted memory-health-note">衰减副本只来自当前仍可用于回忆的经历窗口；深层附件与永久归档不会自动绕过遗忘规则。</p>
+</section>
 <section id="neural-recall-board" class="neural-recall-board" aria-label="神经回忆场：只读的真实记忆关系">
   <div class="neural-recall-head"><div><span class="page-eyebrow">NEURAL RECALL · 立体记忆</span><h4>神经回忆场</h4><p id="neural-recall-diagnostic" class="muted" role="status">等待读取真实联想诊断（不调用模型）。</p><div id="neural-memory-stats" class="neural-memory-stats" aria-label="可衰减记忆账本统计" role="status"><span id="neural-fading-total">衰减副本 · 读取中</span><span id="neural-fading-new">今日新增 · 读取中</span><span id="neural-fading-forgot">今日遗忘 · 读取中</span></div></div><div class="neural-head-actions"><span id="neural-memory-count" class="neural-counter">等待读取</span><button id="neural-side-toggle" type="button" aria-controls="neural-recall-inspector" aria-expanded="true">收起详情</button><details class="neural-guidance"><summary>操作指南</summary><div class="neural-guidance-body"><p class="muted">证据线表示已核验来源，持久联想线表示模型已保存且仍有效的关系；搜索后青色连线对应本地向量余弦相似度，不是画面中的三维距离。</p><p class="muted neural-search-boundary">本地 Embedding 模型已连接时才进行语义检索，否则为标注清楚的关键词匹配。真实回忆仍需经过场景理解、回忆意图、权限与遗忘过滤、召回及核验；这个视图不是内部思考录像。</p></div></details></div></div>
   <details class="neural-guidance" id="neural-recall-activity"><summary>最近回忆活动</summary><p class="muted">记录实际返回的公开回忆，最多显示20条、最长24小时。重启后重新核验；普通回忆不一定经过联想检索。</p><label for="neural-replay-selection">选择联想</label><select id="neural-replay-selection" style="max-width:100%;width:100%"><option value="">最近有效联想</option></select><button type="button" id="neural-history-replay" style="margin-top:6px">回放所选联想</button><p id="neural-replay-feedback" role="status" aria-live="polite" class="muted" style="overflow-wrap:anywhere">尚未回放。</p><div id="neural-recall-activity-list" style="max-height:260px;overflow:auto;overflow-wrap:anywhere"></div></details>
@@ -3976,7 +4002,7 @@ POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世�
 #panel-life .neural-recall-board:fullscreen #neural-memory-svg,#panel-life .neural-recall-board.is-expanded #neural-memory-svg{height:100%;min-height:0;flex:none}
 #panel-life .neural-recall-board:fullscreen .neural-memory-results,#panel-life .neural-recall-board.is-expanded .neural-memory-results{flex:0 1 31%;max-height:31%}
 #panel-life .neural-recall-board.is-inspector-hidden:is(:fullscreen,.is-expanded) .neural-recall-layout{grid-template-columns:minmax(0,1fr)}
-@container(max-width:760px){#panel-life .neural-recall-layout,#panel-life .neural-recall-board:is(:fullscreen,.is-expanded) .neural-recall-layout{grid-template-columns:minmax(0,1fr)!important}#panel-life .neural-recall-side{position:absolute;z-index:9;top:0;bottom:0;right:0;width:min(340px,92%);height:100%;box-shadow:-8px 0 28px #132f4430}#panel-life .neural-recall-head h4{font-size:16px}#panel-life .neural-memory-stats{display:none}#panel-life .neural-query-toolbar label{display:none}}
+@container(max-width:760px){#panel-life .memory-health-grid{grid-template-columns:minmax(0,1fr)!important}#panel-life .neural-recall-layout,#panel-life .neural-recall-board:is(:fullscreen,.is-expanded) .neural-recall-layout{grid-template-columns:minmax(0,1fr)!important}#panel-life .neural-recall-side{position:absolute;z-index:9;top:0;bottom:0;right:0;width:min(340px,92%);height:100%;box-shadow:-8px 0 28px #132f4430}#panel-life .neural-recall-head h4{font-size:16px}#panel-life .neural-memory-stats{display:none}#panel-life .neural-query-toolbar label{display:none}}
 @media(max-width:850px){#panel-life .neural-recall-layout{grid-template-columns:minmax(0,1fr) minmax(220px,28%)!important}#panel-life .neural-recall-board.is-inspector-hidden .neural-recall-layout{grid-template-columns:minmax(0,1fr)!important}}
 /* Small/short viewports use a dismissible overlay, never sacrifice the plot. */
 #panel-life .neural-recall-head{position:relative;z-index:12;padding-bottom:7px}

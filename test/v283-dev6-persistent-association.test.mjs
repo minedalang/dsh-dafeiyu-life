@@ -76,7 +76,7 @@ test('cross-batch reflection considers previously reviewed clear evidence withou
   const history=JSON.parse(prompt.split('<association_history>').at(-1).split('</association_history>')[0]);assert.equal(history.length,2);assert.ok(history.every(h=>h.evidenceCoverage==='complete'&&h.associationTime));assert.equal(current.length,1);assert.ok(!history.some(h=>h.text.includes('另一个账号')||h.text.includes('主人私密')))
   const a=current[0],b=history.find(h=>h.text.includes(events[0].title)),c=history.find(h=>h.text.includes(events[1].title));return JSON.stringify({memories:[{candidate_ids:[b.id],insight:'我发现过去的经历很有意义',behavior:'以后我会继续观察生活细节',kind:'experience'}],trait_proposals:[{trait:'curiosity',direction:1,candidate_ids:[b.id]}],associations:[{type:'concept',candidate_ids:[a.id,b.id],evidence_quotes:[events[2].title,events[0].title]},{type:'context',candidate_ids:[b.id,c.id],evidence_quotes:[events[0].title,events[1].title]}]})
  },logger:{warn(){}}})
- life.addEvents(events.slice(0,2));assert.equal((await life.reflect({force:true})).ok,true);life.addEvents([events[2]]);const r=await life.reflect({force:true});assert.equal(r.ok,true,JSON.stringify(r));assert.equal(r.associationHistoryInput,2);assert.equal(r.modelInput,1);assert.equal(r.processed,1);assert.equal(r.associationAdded,1);assert.equal(r.qualityAccepted,0);assert.equal(calls,2);assert.deepEqual(commits,[[],[]]);assert.equal(x.g.status().associations.active,1);assert.equal(life.status().recentPublicRun.associationHistoryInput,2)
+ life.addEvents(events.slice(0,2));assert.equal((await life.reflect({force:true})).ok,true);life.addEvents([events[2]]);const r=await life.reflect({force:true});assert.equal(r.ok,true,JSON.stringify(r));assert.equal(r.associationHistoryInput,2);assert.equal(r.modelInput,1);assert.equal(r.processed,1);assert.equal(r.associationAdded,1);assert.equal(r.associationProposed,2);assert.equal(r.associationValidationRejected,1);assert.equal(life.status().associationDiagnostics.validationRejected,1);assert.equal(r.qualityAccepted,0);assert.equal(calls,2);assert.deepEqual(commits,[[],[]]);assert.equal(x.g.status().associations.active,1);assert.equal(life.status().recentPublicRun.associationHistoryInput,2)
 }))
 test('historical association evidence forgotten during the second model call is not resurrected',()=>setup(async x=>{
  let calls=0;const life=createLifeReflection({dataDir:x.dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:x.g,now:()=>NOW,commitMemories:()=>({added:0,rows:[]}),invokeModel:async prompt=>{
@@ -543,3 +543,15 @@ test('original video willingness can confirm a delivered historical pair while d
  mode='omit';clock+=1000;assert.equal((await decide()).action,'skip');assert.equal(tracker.recent(A).paths.length,count)
  mode='stale';clock+=1000;assert.equal((await decide()).action,'skip');assert.equal(tracker.recent(A).paths.length,count);assert.equal(calls,3)
 }))
+
+ test('AI-confirmed public associations alone can reinforce live parents, once per day, no cross-account or forgotten revival',()=>setup(async x=>{
+  const a=src(x.g,1).id,b=src(x.g,2).id;const calls=[];
+  const tracker=createNeuralActivationTracker({getAccountTag:()=>A,validateRecall:()=>true,validatePath:()=>false,validateImmediate:p=>p.fingerprint==='a'.repeat(64),now:()=>NOW,onConfirmedModelAssociation:o=>{calls.push(o);x.g.reinforceConfirmedPublicEpisodes(o)}})
+  assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:[a,b]}),true);assert.equal(x.g.status().health.reinforced,0)
+  const proof={mode:'immediate',basis:'episode-ai-v1',fromId:a,memoryId:b,relationType:'concept',fingerprint:'a'.repeat(64)};
+  assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:[a,b],proof:{...proof,fingerprint:'b'.repeat(64)}}),false);assert.equal(calls.length,0)
+  assert.equal(tracker.recordPublicEpisodes({accountTag:A,ids:[a,b],proof}),true);assert.equal(calls.length,1);assert.equal(x.g.status().health.reinforced,2)
+  assert.equal(x.g.reinforceConfirmedPublicEpisodes({accountTag:A,ids:[a,b]}).updated,0)
+  x.setAccount(B);assert.equal(x.g.reinforceConfirmedPublicEpisodes({accountTag:A,ids:[a,b]}).ok,false)
+  x.setAccount(A);x.setTime(NOW+DAY*600);assert.equal(x.g.reinforceConfirmedPublicEpisodes({accountTag:A,ids:[a,b]}).ok,false)
+ }))

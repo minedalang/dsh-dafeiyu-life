@@ -299,7 +299,7 @@ def collect_full():
                 except OSError as ex:
                     blocked = True
                     full_report['errors'].append({'path': prefix+rel, 'reason': type(ex).__name__})
-                excluded = name.lower() in EXCLUDED_DIRS or name.lower().startswith(('.venv', 'backup-before-reinstall')) or (exclude_memory and here == base and name in MEMORY_DIRS) or AUTH_NAME.search(name)
+                excluded = name.lower() in EXCLUDED_DIRS or name.lower().startswith(('.venv', '.vision-env-', 'backup-before-reinstall')) or (exclude_memory and here == base and name in MEMORY_DIRS) or AUTH_NAME.search(name)
                 if blocked or excluded:
                     if excluded:
                         full_report['skipped'].append({'path': prefix+rel, 'reason': 'separate-memory-source-or-excluded-directory'})

@@ -112,3 +112,69 @@ test('主 Session 主动回忆共用一次动态召回结果，不再叠加无�
   assert.doesNotMatch(JSON.stringify(result),/未计配额经历/)
  }finally{mem.stop();rmSync(dir,{recursive:true,force:true})}
 })
+
+function healthFixture(){
+ const dir=mkdtempSync(join(tmpdir(),'dsh-life-memory-health-'))
+ let time=Date.parse('2026-11-01T12:00:00Z')
+ const gateway=createLifeMemoryGateway({
+  getAccountTag:()=>ACCOUNT_TAG,
+  dataDir:dir,
+  getConfig:()=>({mainSessionMemoryEnabled:true,mainSessionMemoryHalfLifeDays:30,mainSessionMemoryThreshold:.25}),
+  now:()=>time,
+  logger:{warn(){}},
+ })
+ return {gateway,setTime:t=>{time=t},cleanup:()=>{gateway.close();rmSync(dir,{recursive:true,force:true})}}
+}
+
+test('life-memory status exposes capacity and occupancy health metrics',()=>{
+ const f=healthFixture()
+ try{
+  f.gateway.recordEvents([
+   {accountTag:ACCOUNT_TAG,kind:'watch',key:'watch:2026-11-01:BV1Q541167Qp',bvid:'BV1Q541167Qp',day:'2026-11-01',title:'清晰视频一'},
+   {accountTag:ACCOUNT_TAG,kind:'social',key:'social:123:BV1Q541167Qp:11',bvid:'BV1Q541167Qp',uid:'123',text:'你好呀',day:'2026-11-01'},
+   {accountTag:ACCOUNT_TAG,kind:'comment',key:'comment:BV1Q541167Qp:99',bvid:'BV1Q541167Qp',rpid:'99',text:'我当时写了评论',day:'2026-11-01'},
+   {accountTag:ACCOUNT_TAG,kind:'action',verified:true,action:'video_like',bvid:'BV1Q541167Qp',title:'清晰视频一',key:`life-action:${ACCOUNT_TAG}:video_like:1`,at:Date.parse('2026-11-01T12:01:00Z')}
+  ])
+  const status=f.gateway.status()
+  assert.equal(status.ok,true)
+  assert.equal(status.health.capacity.limit,3200)
+  assert.equal(status.health.capacity.used,4)
+  assert.equal(status.health.capacity.remaining,3196)
+  assert.equal(status.health.byKind.find(x=>x.key==='watch')?.count,1)
+  assert.equal(status.health.byKind.find(x=>x.key==='action')?.count,1)
+  assert.equal(status.health.byVisibility.find(x=>x.key==='public-event')?.count,4)
+  assert.ok(status.health.topOccupants.some(x=>x.key==='social-public'&&x.count===2))
+  assert.equal(status.health.topOccupants.reduce((n,r)=>n+r.count,0),status.total)
+  f.setTime(Date.parse('2027-05-01T12:00:00Z'))
+  const faded=f.gateway.status();assert.equal(faded.counts.forgotten,4);assert.equal(faded.health.topOccupants.reduce((n,r)=>n+r.count,0),4);assert.equal(faded.health.actions.length,0)
+ }
+ finally{f.cleanup()}
+})
+
+test('capacity trimming preserves meaningful clear experiences before routine actions',()=>{
+ const f=healthFixture()
+ try{
+  const anchorBvid='BV1Q541167Qp'
+  f.gateway.recordEvents([{accountTag:ACCOUNT_TAG,kind:'watch',key:`watch:2026-11-01:${anchorBvid}`,bvid:anchorBvid,day:'2026-11-01',title:'要保留的重要视频'}])
+  const actions=[]
+  for(let i=0;i<3200;i++)actions.push({
+   accountTag:ACCOUNT_TAG,
+   kind:'action',
+   verified:true,
+   action:'video_like',
+   bvid:'BV1Q541167Qg',
+   title:'日常点赞',
+   key:`life-action:${ACCOUNT_TAG}:video_like:${i}`,
+   at:Date.parse('2026-11-01T12:00:00Z')+i
+  })
+  f.gateway.recordEvents(actions)
+  const status=f.gateway.status()
+  assert.equal(status.total,3200)
+  assert.equal(status.health.capacity.used,3200)
+  assert.equal(status.health.byKind.find(x=>x.key==='watch')?.count,1)
+  assert.equal(status.health.byKind.find(x=>x.key==='action')?.count,3199)
+  const recalled=f.gateway.recall({query:anchorBvid,domain:'main-session',maxItems:4,maxChars:1200})
+  assert.ok(recalled.some(row=>row.bvid===anchorBvid&&row.kind==='watch'))
+ }
+ finally{f.cleanup()}
+})
