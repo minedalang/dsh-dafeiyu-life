@@ -4,19 +4,20 @@ import {readFileSync} from 'node:fs'
 
 const read=f=>readFileSync(new URL('../'+f,import.meta.url),'utf8')
 
-test('DSH 原生大肥鱼设置在标题下展示简洁的 2.8.2 特性',()=>{
+test('DSH 原生大肥鱼设置在标题下展示简洁的 2.8.3 特性',()=>{
   const client=read('client.js')
   const start=client.indexOf('🐳 大肥鱼 · DSH 生活系统')
   assert.ok(start>0)
-  const next=client.slice(start,start+2200)
-  for(const phrase of ['先看视频全貌，再细看喜欢的片段','看过哪些画面，有时间和记录可查','鱼鱼自己决定看几段，也可以不看','没字幕也能尝试听懂；模型更好管理'])
+  const next=client.slice(start,client.indexOf("'data-bd-feature-panel':'core'",start))
+  for(const phrase of ['分镜回放、按需补看与深层视觉记忆','神经回忆场、精确搜索与记忆健康面板','自主联想、反思与有边界的记忆强化','独立能力、模型分盘与鱼鱼配置导览','主人私信优先检查；后台临时会话隔离'])
     assert.ok(next.includes(phrase),`缺少 ${phrase}`)
   assert.match(client,/data-bd-281-intro/)
-  assert.match(client,/2\.8\.2 版本亮点/)
+  assert.match(client,/2\.8\.3 版本亮点/)
   assert.match(client,/大肥鱼的核心能力/)
   assert.match(client,/首次使用：点击打开管理中心/)
   assert.doesNotMatch(client,/aria-label':'2.8.2 特色功能'/)
   assert.match(read('README.md'),/先看全貌，再看细节/)
+  assert.match(read('README.md'),/看过哪些画面，有时间和记录可查/)
 })
 
 test('管理中心不再出现重复 2.8.2 宣传弹窗，快速设置入口和视觉引导保留',()=>{

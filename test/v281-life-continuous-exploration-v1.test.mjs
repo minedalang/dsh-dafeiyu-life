@@ -95,7 +95,9 @@ const readRoot=(store,id,author='99887766')=>store.recordRead(id,{ok:true,kind:'
   const ui=readFileSync('lib/management-console.html','utf8')
   const old=/lifeSharedDynamicLikeEnabled|lifeSharedDynamicCommentEnabled|BILI_LIFE_SHARED_DYNAMIC_LIKE_ENABLED|BILI_LIFE_SHARED_DYNAMIC_COMMENT_ENABLED/
   for(const s of [host,planner,py,ui])assert.doesNotMatch(s,old)
-  assert.match(host,/lifePublicInteractionEnabled: z\.boolean\(\)\.default\(false\)/)
+  assert.match(host,/lifePublicInteractionEnabled: z\.boolean\(\)\.default\(true\)/)
+  assert.match(host,/const legacyExperienceDefaults = \{[\s\S]*?lifePublicInteractionEnabled:false/)
+  assert.match(readFileSync('lib/account-social-grants.mjs','utf8'),/lifePublicInteractionEnabled:false/)
   assert.match(host,/confirmPublicInteraction!=='ENABLE_LIFE_PUBLIC_INTERACTION'/)
   assert.match(ui,/id="life-public-interaction-enabled"/)
   assert.match(host,/lifeWillingness\.verify\(proof,kind,payload,\{requireSealed:true\}\)/)

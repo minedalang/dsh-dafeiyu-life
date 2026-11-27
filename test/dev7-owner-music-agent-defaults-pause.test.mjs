@@ -24,13 +24,14 @@ test('主人自然推荐要由现有 AI 生成有证据的只读待办，不再�
   assert.doesNotMatch(source('index.js'),/queueOwnerDmMusicSuggestion/)
 })
 
-test('所有写权限新安装默认开放，但仍要主人在本条私信明确要求；主 Session 读取默认关闭',()=>{
+test('所有写权限新安装默认开放，但仍要主人在本条私信明确要求；旧配置缺键仍不读取主 Session',()=>{
   const index=source('index.js')
   for(const key of ['ownerDmAgentEnabled','ownerDmReadCommandsEnabled','ownerDmActionsEnabled','ownerDmLikeEnabled','ownerDmCollectEnabled','ownerDmFollowEnabled','ownerDmCommentDraftEnabled','ownerDmCommentPublishEnabled','ownerDmDynamicDraftEnabled','ownerDmDynamicPublishEnabled','ownerDmFriendMessageEnabled']){
     assert.match(index,new RegExp(key+': z\\.boolean\\(\\)\\.default\\(true\\)'))
     assert.ok(index.includes(key+':true,'),key+' in new-install defaults')
   }
-  assert.match(index,/ownerDmAgentReadMainContext: z\.boolean\(\)\.default\(false\)/)
+  assert.match(index,/ownerDmAgentReadMainContext: z\.boolean\(\)\.default\(true\)/)
+  assert.match(index,/const legacyExperienceDefaults = \{[\s\S]*?ownerDmAgentReadMainContext:false/)
   const cfg={ownerDmActionsEnabled:true,ownerDmLikeEnabled:true,ownerDmCommentPublishEnabled:true}
   assert.equal(allowAgentStep({action:'like'},'顺便聊聊天',cfg).ok,false)
   assert.equal(allowAgentStep({action:'like'},'给这个点赞',cfg).ok,true)

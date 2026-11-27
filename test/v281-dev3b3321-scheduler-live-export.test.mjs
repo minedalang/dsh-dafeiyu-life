@@ -37,11 +37,11 @@ test('live exporter requests only the fixed read-only loopback endpoint and limi
  const server=createServer((req,res)=>{
    urls.push(req.url)
    res.writeHead(200,{'content-type':'application/json'})
-   res.end(JSON.stringify({ok:true,schemaVersion:1,observedAt:1800000000000,processUptimeSeconds:123,
+   res.end(JSON.stringify({ok:true,schemaVersion:1,observedAt:1800000000000,processUptimeSeconds:123,pluginVersion:"2.8.3-dev.35",
      secret:'SHOULD_NOT_EXPORT',config:{cookie:'SHOULD_NOT_EXPORT'},
      planner:{running:false,busy:true,masterEnabled:true,enabled:true,expected:true,mode:'active',nextDecisionAt:1800000060000,
        schedulerPulse:{checks:42,lastCheckAt:1800000000000,lastModelTurnAt:1799999900000,stale:true,lastSkipReason:'outside-hours',secret:'SHOULD_NOT_EXPORT'}},
-     interaction:{checks:{dm:{polling:false,lastStartedAt:1800000000000,lastResult:'ok',uid:'SHOULD_NOT_EXPORT'}}}}))
+     interaction:{checks:{dm:{polling:false,lastStartedAt:1800000000000,lastResult:'ok',uid:'SHOULD_NOT_EXPORT'},dmOwner:{enabled:true,polling:false,intervalSeconds:30,nextAt:1800000030000,uid:'SHOULD_NOT_EXPORT'}}}}))
  })
  server.listen(0,'127.0.0.1');await once(server,'listening')
  t.after(()=>server.close())
@@ -53,6 +53,10 @@ test('live exporter requests only the fixed read-only loopback endpoint and limi
  assert.equal(availability.schedulerExpected,true)
  assert.equal(availability.schedulerStale,true)
  const live=read('live-status-snapshot.json')
+ assert.equal(live.pluginVersion,"2.8.3-dev.35")
+ assert.equal(availability.pluginVersion,live.pluginVersion)
+ assert.equal(live.pollChecks.dmOwner.intervalSeconds,30)
+ assert.equal(live.pollChecks.dmOwner.nextAt,1800000030000)
  assert.equal(live.scheduler.running,false)
  assert.equal(live.scheduler.schedulerPulse.checks,42)
  assert.deepEqual(urls,['/api/bili-duty/life-agent/scheduler-snapshot'])
@@ -99,6 +103,10 @@ test('runtime scheduler endpoint reports the actual timer without ensureStarted 
  const first=await request('life-agent/scheduler-snapshot')
  assert.equal(first.code,200)
  assert.equal(first.output.schemaVersion,1)
+ assert.equal(first.output.pluginVersion,JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version)
+ assert.equal(typeof first.output.interaction.checks.dmOwner.enabled,'boolean')
+ assert.equal(typeof first.output.interaction.checks.dmOwner.intervalSeconds,'number')
+ assert.ok(!Object.hasOwn(first.output.interaction.checks.dmOwner,'uid'))
  assert.equal(typeof first.output.planner.running,'boolean')
  assert.equal(typeof first.output.planner.schedulerPulse.stale,'boolean')
  assert.ok(!Object.hasOwn(first.output,'config'))
@@ -195,4 +203,10 @@ test('full exporter never reads stale memory after split disk loss; invalid core
 test('default summary export does not copy private memory or full config',async t=>{
  const result=await helper(t,'',{prepare:({duty})=>{mkdirSync(join(duty,'life-memory'));writeFileSync(join(duty,'life-memory','episodic.json'),JSON.stringify({episodes:['private fixture']}))}})
  assert.equal(existsSync(join(result.out,'_expanded-state')),false);assert.equal(existsSync(join(result.out,'_diagnostics/memory-export-coverage.json')),false)
+})
+
+
+test('legacy or malformed live version remains unknown rather than inferred from a package copy',async t=>{
+ let version;const server=createServer((_req,res)=>{res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({ok:true,schemaVersion:1,pluginVersion:version,planner:{},interaction:{}}))});server.listen(0,'127.0.0.1');await once(server,'listening');t.after(()=>server.close());
+ for(const input of [undefined,'secret SHOULD_NOT_EXPORT']){version=input;const {read}=await helper(t,`http://127.0.0.1:${server.address().port}/api/bili-duty/manage`);const live=read('live-status-snapshot.json');assert.equal(live.pluginVersion,null);assert.doesNotMatch(JSON.stringify(live),/SHOULD_NOT_EXPORT/);}
 })

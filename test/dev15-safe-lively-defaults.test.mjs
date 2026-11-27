@@ -4,9 +4,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
-import { apply } from '../index.js'
+import { apply, Config } from '../index.js'
 
-function harness({ existing = null } = {}) {
+function harness({ existing = null, hostRow = null } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'dsh-lively-defaults-'))
   const state = join(root, 'bili-duty')
   if (existing !== null) {
@@ -18,7 +18,7 @@ function harness({ existing = null } = {}) {
     get: k => k === 'dshHomePath' ? (...segments) => join(root, ...segments) : undefined,
     logger: { info() {}, warn() {} }, tools: { register() {} },
     connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer: { register(spec) { handler = spec.handler; return { dispose() {} } } },
-    effect: fn => fn(), settings: { describe() { return [] } },
+    effect: fn => fn(), settings: { describe() { return hostRow ? [hostRow] : [] } },
     slots: { register() {}, inject() {} },
   }
   apply(ctx, {})
@@ -117,3 +117,18 @@ test('fresh defaults survive restart and explicit disable survives restart',asyn
   c=harness({existing:JSON.parse(readFileSync(join(b.root,'bili-duty','config.json'),'utf8'))});const restarted=await c.config();assert.equal(restarted.commentMemesEnabled,false);assert.equal(restarted.ownerDmAgentSyncMain,false);
  }finally{a.cleanup();b?.cleanup();c?.cleanup()}
 })
+
+// Real effective configuration, not merely schema string parity. A Host row
+// with its schema-populated defaults cannot turn old missing grants on.
+test('schema defaults match fresh recommendations and do not replace old missing/explicit permissions', async () => {
+  const defaults = Object.fromEntries(Object.entries(Config({})).map(([key,value])=>[key,typeof value?.get==='function'?value.get():value]));
+  const keys=['commentWatchReplies','ownerCommentAgentEnabled','ownerCommentLikeEnabled','ownerCommentSocialPublishEnabled','lifeProactiveFriendDmEnabled','lifeNaturalDmOutreachEnabled','lifePublicInteractionEnabled','ownerDmAgentReadMainContext','ownerDmAgentSyncMain','commentMemesEnabled'];
+  const hostRow={value:{...defaults,perDay:50,mentionName:'大肥鱼',overlayMcp:true},user:{}};
+  const fresh=harness({hostRow}), legacy=harness({existing:{dmWatch:false,commentWatchReplies:false},hostRow});
+  try {
+    const a=await fresh.config(),b=await legacy.config();
+    for (const key of keys){assert.equal(defaults[key],true,key);assert.equal(a[key],true,key);assert.equal(b[key],false,key);}
+    const disabled=await fresh.config({commentWatchReplies:false,ownerCommentSocialPublishEnabled:false});
+    assert.equal(disabled.commentWatchReplies,false);assert.equal(disabled.ownerCommentSocialPublishEnabled,false);
+  }finally{fresh.cleanup();legacy.cleanup();}
+});

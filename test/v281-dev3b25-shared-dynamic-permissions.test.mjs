@@ -6,10 +6,12 @@ const html=readFileSync('lib/management-console.html','utf8')
 const js=readFileSync('lib/management-console.js','utf8')
 const python=readFileSync('vendor/bilibili-mcp/mcp_server.py','utf8')
 
-test('generic public interaction permission is explicit, off by default, and legacy toggles are removed',()=>{
- assert.match(index,/lifePublicInteractionEnabled:\s*z\.boolean\(\)\.default\(false\)/)
+test('fresh recommendation does not grant unverified or new accounts public interaction, and legacy toggles are removed',()=>{
+ assert.match(index,/lifePublicInteractionEnabled:\s*z\.boolean\(\)\.default\(true\)/)
  assert.match(html,/id="life-public-interaction-enabled" type="checkbox"/)
  assert.doesNotMatch(html,/id="life-public-interaction-enabled"[^>]*checked/)
+ assert.match(index,/const legacyExperienceDefaults = \{[\s\S]*?lifePublicInteractionEnabled:false/)
+ assert.match(readFileSync('lib/account-social-grants.mjs','utf8'),/lifePublicInteractionEnabled:false/)
  assert.match(index,/confirmPublicInteraction!=='ENABLE_LIFE_PUBLIC_INTERACTION'/)
  for(const old of ['lifeSharedDynamicLikeEnabled','lifeSharedDynamicCommentEnabled']){
   assert.doesNotMatch(index,new RegExp(old));assert.doesNotMatch(html,new RegExp(old));assert.doesNotMatch(js,new RegExp(old))

@@ -51,11 +51,11 @@ test('user-facing current version and debug explicitly expose per-board outcome'
  const page=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const manifest=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
- assert.match(client,/✨ 2\.8\.2 版本亮点/)
+ assert.match(client,/✨ 2\.8\.3 版本亮点/)
  assert.doesNotMatch(client,/✨ 2\.8\.1 版本亮点/)
  assert.match(page,/视觉模型逐张分镜回执/)
  assert.match(js,/分镜图 \$\{r\.index\} · 模型回执/)
- assert.ok(manifest.files.includes('docs/release/2.8.2-user-upgrade-guide.md'))
+ assert.ok(manifest.files.includes('docs/release/2.8.3-user-upgrade-guide.md'))
 })
 
 test('Life receives balanced local board information rather than only board one',async()=>{

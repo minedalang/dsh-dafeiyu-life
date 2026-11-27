@@ -101,12 +101,13 @@ test('dev.4 旧来源不伪造可信视觉凭据，未来深层详情不被当�
  }finally{s.close()}
 })
 
-test('dev.4 未来设计明确推迟，当前 2.8.2 保留真实发布门禁',()=>{
+test('未来设计明确推迟，2.8.3 现行范围与发布门禁分离',()=>{
  const roadmap=readFileSync(new URL('../docs/ROADMAP.md',import.meta.url),'utf8')
  const proposal=readFileSync(new URL('../docs/architecture/future-layered-memory-progressive-recall-proposal.md',import.meta.url),'utf8')
  assert.match(roadmap,/待单独排期（2\.8\.2 之后）/)
- assert.match(roadmap,/2\.8\.2 正式版源码已收口/)
- for(const name of ['2.9.0','通用浅层／深层回忆机制','仅静态预告页，真实 API 未实施'])assert.ok(roadmap.includes(name))
+ assert.match(roadmap,/2\.8\.3 的实际实现及未完成验收/)
+ assert.match(readFileSync(new URL('../docs/release/2.8.3-release-checklist.md',import.meta.url),'utf8'),/releaseReady:false|releaseReady:true/)
+ for(const name of ['2.9.0','通用深浅分层回忆','仅静态预告页，真实 API 未实施'])assert.ok(roadmap.includes(name))
  for(const name of ['渐进式回忆协议','清晰度','遗忘','隐私','迁移','实施阶段','2.8.2 已有的前置适配与 2.8.3 边界'])assert.ok(proposal.includes(name))
  assert.match(proposal,/深层读取适配在 dev\.2 仅提供受限内部接口，尚未接入正常 Life 聊天或自主补看/)
 })

@@ -90,12 +90,14 @@ test('public evidence is treated as untrusted and missing metadata produces no m
  assert.equal(result.skipped,true);assert.equal(result.reason,'video-context-insufficient')
 })
 
-test('new consent is a single default-off visible switch and legacy explicit publication cannot authorize it',async()=>{
+test('fresh-install recommendation is a single visible switch; legacy missing grant remains off and old publication cannot authorize it',async()=>{
  const {readFileSync}=await import('node:fs')
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
- assert.match(index,/ownerCommentSocialPublishEnabled: z\.boolean\(\)\.default\(false\)/)
+ assert.match(index,/ownerCommentSocialPublishEnabled: z\.boolean\(\)\.default\(true\)/)
+ assert.match(index,/const legacyExperienceDefaults = \{[\s\S]*?ownerCommentSocialPublishEnabled:false/)
+ assert.match(index,/scopedSocialGrants\.effective\(loadCfg\(\)\)/)
  assert.match(index,/if\(cfg\.ownerCommentSocialPublishEnabled!==true\)/)
  assert.match(index,/if\(cfg\.ownerCommentSocialPublishEnabled!==true\)/)
  assert.match(index,/beginVideoObservation\(observation,scope\)/)

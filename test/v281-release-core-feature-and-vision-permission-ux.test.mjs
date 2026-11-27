@@ -2,11 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 const read=n=>readFileSync(new URL('../'+n,import.meta.url),'utf8')
-test('DSH setting separates current 2.8.2 video highlights from persistent product features',()=>{
+test('DSH setting separates current 2.8.3 memory highlights from persistent product features',()=>{
   const code=read('client.js')
   assert.match(code,/data-bd-feature-panel':'release'/)
-  assert.match(code,/✨ 2\.8\.2 版本亮点/)
-  assert.match(code,/先看视频全貌，再细看喜欢的片段/)
+  assert.match(code,/✨ 2\.8\.3 版本亮点/)
+  assert.match(code,/分镜回放、按需补看与深层视觉记忆/)
   assert.match(code,/data-bd-feature-panel':'core'/)
   for(const x of ['可衰减的人生记忆与遗忘','关系成长与自然交流','主人授权与安全边界'])assert.ok(code.includes(x))
   assert.match(code,/data-bd-feature-panel="release"/)
@@ -31,4 +31,5 @@ test('public README has no dev branch install step',()=>{
  assert.doesNotMatch(md,/github:minedalang\/dsh-dafeiyu-life#dev/)
  assert.match(md,/2.8.2 重点优化了视频感知流程/)
  assert.match(md,/视频视觉与转写均为可选能力/)
+ assert.match(md,/先看视频全貌，再细看喜欢的片段/)
 })

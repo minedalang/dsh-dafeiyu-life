@@ -32,12 +32,12 @@ test('Host schema 与运行时默认值逐字段保持一致（不只核对记�
  assert.match(host,/personaPrompt: z\.string\(\)\.default\(DEFAULT_PERSONA_PROMPT\)/)
 })
 
-test('2.6.2 全新安装只默认启用已授权好友视频私信推荐，公开写入及额外检索模型仍关闭',()=>{
- for(const name of ['mainSessionMemorySemanticEnabled','ownerCommentSocialPublishEnabled']){
+test('2.8.3 原生默认与新装建议一致，旧用户缺键与独立授权继续保守',()=>{
+ for(const name of ['mainSessionMemorySemanticEnabled']){
   assert.match(host,new RegExp(`${name}: z\\.boolean\\(\\)\\.default\\(false\\)`),name+' schema must default off')
   assert.match(host,new RegExp(`${name}:\\s*false`),name+' runtime fallback must default off')
  }
- for(const name of ['socialOutreachEnabled','socialLifeIntentEnabled','socialAutoSend']){
+ for(const name of ['socialOutreachEnabled','socialLifeIntentEnabled','socialAutoSend','ownerCommentSocialPublishEnabled']){
   assert.match(host,new RegExp(`${name}: z\\.boolean\\(\\)\\.default\\(true\\)`),name+' schema enables bounded opt-in recipient sharing for new installs')
   assert.match(host,new RegExp(`${name}:\\s*true`),name+' new-install recommendation default should be on')
  }
@@ -50,6 +50,8 @@ test('2.6.2 全新安装只默认启用已授权好友视频私信推荐，公�
   assert.match(host,new RegExp(`${name}:\\s*true`),name+' runtime fallback must default on')
  }
  assert.match(host,/legacyInstall/)
+ assert.match(host,/const legacyExperienceDefaults = \{[\s\S]*?ownerCommentSocialPublishEnabled:false/)
+ assert.match(host,/scopedSocialGrants\.effective\(loadCfg\(\)\)/)
  assert.match(host,/dailyDynamicDraftOnly: z\.boolean\(\)\.default\(false\)/)
  assert.match(host,/mainSessionMemoryCandidates: z\.natural\(\)\.default\(48\)/)
  assert.match(host,/mainSessionMemorySearchDailyLimit: z\.natural\(\)\.default\(80\)/)

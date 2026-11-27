@@ -333,7 +333,7 @@ export const Config = !z ? undefined : z.object({
   /** 每天额外独立视觉模型调用次数（0=禁用；复用当前视频模型取帧不占此额度）。 */
   /** 用户可编辑的视觉观察/筛选策略。空值使用内置规则；权限和额度不可覆盖。 */
   visionPrompt: z.string().default('').extra('volatile', true),
-  commentMemesEnabled: z.boolean().default(false).extra('volatile', true),
+  commentMemesEnabled: z.boolean().default(true).extra('volatile', true),
   commentMemesDebug: z.boolean().default(false).extra('volatile', true),
   commentMemesPerDay: z.natural().default(2).extra('volatile', true),
   commentMemesPerRound: z.natural().default(1).extra('volatile', true),
@@ -440,7 +440,7 @@ export const Config = !z ? undefined : z.object({
   dmStrangerFirstFixed: z.boolean().default(false).extra('volatile', true), // deprecated: all enabled DM tiers now use the same AI reply call
   dmApprovalEnabled: z.boolean().default(false).extra('volatile',true), // optional strict approval mode; off by default
   dmApprovalPhrase: z.string().default('白饭🍚').extra('volatile',true),
-  commentWatchReplies: z.boolean().default(false).extra('volatile', true),
+  commentWatchReplies: z.boolean().default(true).extra('volatile', true),
   commentWatchTop: z.boolean().default(false).extra('volatile', true),
   commentAtEnabled: z.boolean().default(true).extra('volatile',true),
   socialRhythmCrossChannelMinutes: z.natural().default(30).extra('volatile',true),
@@ -449,11 +449,11 @@ export const Config = !z ? undefined : z.object({
   strangerInspirationEnabled: z.boolean().default(false).extra('volatile',true),
   socialInvitationEnabled: z.boolean().default(false).extra('volatile',true),
   socialInvitationAutoInspectEnabled: z.boolean().default(false).extra('volatile',true),
-  ownerCommentAgentEnabled: z.boolean().default(false).extra('volatile',true),
-  ownerCommentLikeEnabled: z.boolean().default(false).extra('volatile',true),
+  ownerCommentAgentEnabled: z.boolean().default(true).extra('volatile',true),
+  ownerCommentLikeEnabled: z.boolean().default(true).extra('volatile',true),
   ownerCommentDraftEnabled: z.boolean().default(false).extra('volatile',true),
   ownerCommentPublishEnabled: z.boolean().default(false).extra('volatile',true), // dev.7 legacy setting; never grants new autonomous posting
-  ownerCommentSocialPublishEnabled: z.boolean().default(false).extra('volatile',true), // dev.8 requires fresh opt-in
+  ownerCommentSocialPublishEnabled: z.boolean().default(true).extra('volatile',true), // Fresh-install recommendation; current account and explicit publish authority still required
   ownerCommentNaturalAckEnabled: z.boolean().default(false).extra('volatile',true),
   // Backward-compatible only: legacy incoming @ reply list no longer gates responses.
   commentAtMode: z.string().default('whitelist').extra('volatile',true),
@@ -468,10 +468,10 @@ export const Config = !z ? undefined : z.object({
   commentAllowGeneralTop: z.boolean().default(false).extra('volatile', true),
   commentReplyPerPoll: z.natural().default(12).extra('volatile', true),
   commentReplyPerDay: z.natural().default(1000).extra('volatile', true),
-  /** Independent, explicit opt-in for non-video, fish-elected chats with familiar consenting friends. */
-  lifeProactiveFriendDmEnabled: z.boolean().default(false).extra('volatile', true),
-  lifeNaturalDmOutreachEnabled: z.boolean().default(false).extra('volatile', true),
-  lifePublicInteractionEnabled: z.boolean().default(false).extra('volatile', true),
+  /** Fresh-install recommendation only; current account-specific explicit grants still govern outreach. */
+  lifeProactiveFriendDmEnabled: z.boolean().default(true).extra('volatile', true),
+  lifeNaturalDmOutreachEnabled: z.boolean().default(true).extra('volatile', true),
+  lifePublicInteractionEnabled: z.boolean().default(true).extra('volatile', true),
   commentOwnTopPerUser: z.natural().default(5).extra('volatile', true),
   commentOwnNestedPerUser: z.natural().default(3).extra('volatile', true),
   /** 把重要 B站经历安全同步回主人明确选择的长期 DSH Session；不扫描其它 Session 文件。 */
@@ -535,8 +535,8 @@ export const Config = !z ? undefined : z.object({
   emotionRecallStartHour: z.natural().default(9).extra('volatile',true),
   emotionRecallEndHour: z.natural().default(22).extra('volatile',true),
   ownerDmAgentEnabled: z.boolean().default(true).extra('volatile',true),
-  ownerDmAgentReadMainContext: z.boolean().default(false).extra('volatile',true),
-  ownerDmAgentSyncMain: z.boolean().default(false).extra('volatile',true),
+  ownerDmAgentReadMainContext: z.boolean().default(true).extra('volatile',true),
+  ownerDmAgentSyncMain: z.boolean().default(true).extra('volatile',true),
   ownerDmAgentContextTurns: z.natural().default(6).extra('volatile',true),
   ownerDmAgentContextChars: z.natural().default(1500).extra('volatile',true),
   ownerDmAgentModelProvider: z.string().default('').extra('volatile',true),
@@ -806,7 +806,7 @@ export function apply(ctx, config) {
   const legacySocialRecommendationDefaults={socialOutreachEnabled:false,socialLifeIntentEnabled:false,
     socialVideoRecommendationsAuthorizedV2:false,socialAutoSend:false};
   const legacyExperienceDefaults = {
-    // Explicitly saved old restrictions stay enforced; missing fields use today's default.
+    // Missing legacy keys retain the conservative legacy defaults, not fresh-install recommendations.
     autoComment:false, autoVideoLike:false, autoVideoCollect:false,
     mainSessionMemoryEnabled: false, mainSessionMemoryEmbeddingEnabled: false, autonomousPlannerEnabled: false,
     autonomousPlannerMinutes: 30, videoAgentMinIntervalMinutes: 30, videoAgentReadTargetPerRound: 5, videoAgentPickTargetPerRound: 5, autonomousPlannerDailyLimit: 24,
@@ -6881,7 +6881,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     const initialLifeMigration=ensureUnifiedLifeOwner()
     if(!initialLifeMigration.ok)log('Life 社交升级尚未安全完成，社交自动外发保持冻结：'+initialLifeMigration.reason)
     interactionScheduler.start()
-    log('大肥鱼统一互动后台已启动（私信/评论共用调度与 AI 生成队列，评论默认关闭）')
+    log(`大肥鱼 ${myVersion()} 统一互动后台已启动（私信/评论共用调度与 AI 生成队列，按当前权限运行）`)
   } catch (e) { log('统一互动后台启动失败：' + String(e?.message ?? e)) }
   ctx.effect(() => () => {interactionScheduler.stop();interactionBatcher.stop()}, 'bili-duty: Plus 统一互动')
 
@@ -10506,14 +10506,17 @@ logger:{warn:m=>log('社交意图：'+m)}
         const asMs=value=>Number.isSafeInteger(value)&&value>=0?value:0
         const safeCode=value=>/^[a-zA-Z0-9._-]{1,64}$/.test(String(value||''))?String(value):'unclassified'
         const checks={}
-        for(const key of ['dm','dmFast','replies','mentions']){
+        for(const key of ['dm','dmFast','dmOwner','replies','mentions']){
           const check=scheduler?.checks?.[key]
           if(check&&typeof check==='object')checks[key]={
-            polling:check.polling===true,
+            enabled:check.enabled===true,polling:check.polling===true,
             lastStartedAt:asMs(check.lastStartedAt),lastFinishedAt:asMs(check.lastFinishedAt),
-            lastResult:safeCode(check.lastResult),intervalMinutes:asMs(check.intervalMinutes)}
+            lastResult:safeCode(check.lastResult),intervalMinutes:asMs(check.intervalMinutes),
+            intervalSeconds:asMs(key==='dmOwner'?scheduler.ownerPriority?.intervalSeconds:check.intervalSeconds),nextAt:asMs(check.nextAt)}
         }
+        const loadedVersion=myVersion()
         return sendJson(res,200,{ok:true,schemaVersion:1,observedAt,
+          pluginVersion:/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(loadedVersion)?loadedVersion:null,
           processUptimeSeconds:Math.floor(process.uptime()),
           planner:{running:planner.running===true,busy:planner.busy===true,
             masterEnabled:planner.masterEnabled===true,enabled:planner.plannerEnabled===true,

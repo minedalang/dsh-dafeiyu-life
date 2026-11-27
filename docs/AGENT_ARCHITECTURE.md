@@ -1,3 +1,5 @@
+> 2.8.3 现行入口：[当前架构](architecture/2.8.3-current-architecture.md)。下文为历史资料。
+
 # 旧版 Agent 与记忆架构快照（当前入口已迁移）
 
 > **注意：本文件是历史示意，不再是 2.7.1 的当前系统入口。** 请读 [当前生产架构](./architecture/README.md)、[dev.7 一体化接线](./architecture/2.7.1-dev7-life-world-ui-integration.md) 和 [RC 十三项验收](./architecture/2.7.1-rc-preflight-13-questions.md)。

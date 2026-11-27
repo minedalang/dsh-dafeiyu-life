@@ -987,16 +987,20 @@ if status_url:
         safe_planner['mode']=code(p.get('mode')) or 'unknown'
         safe_planner['nextDecisionReason']=code(p.get('nextDecisionReason')) or 'unclassified'
         safe_planner['schedulerPulse']=safe_pulse
+        # Only a version reported by the live plugin is authoritative here.
+        ver=d.get('pluginVersion')
+        if not isinstance(ver,str) or len(ver)>76 or not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?',ver):ver=None
         live={'capturedAt':dt.datetime.now(dt.timezone.utc).isoformat(),
+              'pluginVersion':ver,
               'serverObservedAt':number(d.get('observedAt')),
               'serverProcessUptimeSeconds':number(d.get('processUptimeSeconds')),
               'scheduler':safe_planner,
-              'pollChecks':{k:dict(pick(v,['lastStartedAt','lastFinishedAt','polling','intervalMinutes']),
+              'pollChecks':{k:dict(pick(v,['lastStartedAt','lastFinishedAt','enabled','polling','intervalMinutes','intervalSeconds','nextAt']),
                          lastResult=code(v.get('lastResult')) or 'unclassified')
-                            for k,v in checks.items() if k in ('dm','dmFast','replies','mentions') and isinstance(v,dict)},
+                            for k,v in checks.items() if k in ('dm','dmFast','dmOwner','replies','mentions') and isinstance(v,dict)},
               'observationNote':'One read-only runtime snapshot; no timer restart, Life tick, model call or platform read.'}
         dump('live-status-snapshot.json',live)
-        live_info={'requested':True,'captured':True,'reason':'ok',
+        live_info={'requested':True,'captured':True,'reason':'ok','pluginVersion':ver,
                    'schedulerRunning':p.get('running') is True,
                    'schedulerExpected':p.get('expected') is True,
                    'schedulerStale':pulse.get('stale') is True}
