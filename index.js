@@ -6217,6 +6217,28 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           trustedLifeAccountTag()===linkScope&&socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation}).ok&&
           ['owner','friend'].includes(socialPolicyGate.actor(req.uid).role)&&dm.enabled&&dm.whitelist.includes(String(req.uid))&&socialPortrait?.contactBoundary?.(req.uid)!=='stop'
       }
+      const deferredExplorationCurrent=()=>{
+        refreshCfg();const role=socialPolicyGate.actor(req.uid).role
+        return req.trigger==='incoming'&&Boolean(String(req.messageId||''))&&!req.privacyGuard&&
+          automaticSession.current()&&revisitEpoch===accountBinding.generation()&&trustedLifeAccountTag()===linkScope&&
+          role===tier&&dmConfig().enabled&&socialPortrait?.contactBoundary?.(req.uid)!=='stop'&&
+          socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation}).ok
+      }
+      const deferredGoals=row=>{
+        if(!row||row.parentId||row.senderUid!==String(req.uid)||row.senderRole!==tier||!sharedLinkPermissionCurrent(row,linkScope))return []
+        const pending=['pending','error','deferred'].includes(row.status)
+        if(!pending&&row.status!=='inspected')return []
+        const goals=pending?['read_link']:[]
+        if(['owner','friend'].includes(tier)&&friendRevisitCurrent()&&(row.resolvedKind||row.ref.kind)==='video'&&
+          !lifeOpportunities.hasVerifiedVideoVisual(row.bvid||row.ref.bvid,linkScope)&&
+          (pending||lifeOpportunities.intentions({includeClosed:true,limit:20}).some(x=>x.sourceId==='friend-shared-bili-link:'+row.id&&
+            x.selectedBvid===row.bvid&&['ready','inspected'].includes(x.status)&&x.episodeStatus==='active'&&
+            x.episodeSteps<x.episodeMaxSteps&&!x.observedVideoBvids?.includes(row.bvid))))goals.push('observe_video')
+        return goals
+      }
+      const deferredExplorationCandidates=deferredExplorationCurrent()?permittedLinkRows.slice(0,2).flatMap(row=>{
+        const goals=deferredGoals(row);return goals.length?[{id:row.id,kind:row.resolvedKind||row.ref.kind,title:String(row.title||'').slice(0,85),goals}]:[]
+      }):[]
       const ownerFactCurrent=()=>{refreshCfg();return tier==='owner'&&req.trigger==='incoming'&&Boolean(String(req.messageId||''))&&!req.privacyGuard&&friendRevisitCurrent()&&cfg.ownerDmAgentEnabled===true&&cfg.ownerDmActionsEnabled===true&&cfg.mainSessionMemoryEnabled!==false&&String(cfg.dmOwnerUid||'')===String(req.uid)}
       const ownerTodoCurrent=()=>ownerReadCurrent({...req,kind:'dm',role:tier})&&friendRevisitCurrent()&&cfg.ownerDmActionsEnabled===true
       const generated=await interactionBatcher.generate({kind:'dm',role:tier,...visualReq,socialAutonomy:true,
@@ -6234,6 +6256,14 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         ...(linkContexts.length?{sharedLinkScope:linkScope,sharedVideoOffered,availableContexts:linkContexts,
           ...(linkRow?{sharedLinkId:linkRow.id}:{}),
           ...(sharedLinkCandidates.length?{sharedLinkCandidates}:{})}:{}),
+        ...(deferredExplorationCandidates.length?{deferredExplorationCandidates,onDeferredExploration:({id,goal})=>{
+          if(!deferredExplorationCurrent()||!deferredExplorationCandidates.some(x=>x.id===id&&x.goals.includes(goal)))return {ok:false,reason:'source-not-current'}
+          const current=lifeSharedBiliLinks.get(id,linkScope)
+          if(!deferredGoals(current).includes(goal))return {ok:false,reason:'goal-not-current'}
+          const receipt=lifeSharedBiliLinks.recordExplorationIntent(id,{uid:String(req.uid),role:tier,goal},linkScope)
+          if(receipt?.ok===true&&!receipt.duplicate)log('Life 自主延期探索已记入原生活契机：'+goal+'（未执行）')
+          return receipt
+        }}:{}),
         ...(priorReadContext?{sharedLinkContext:priorReadContext}:{}),
         lifeEpisodeContext:episodeContext,availableLifeActions:followCandidates,
         p6MaxBubbles:cfg.dmP6MaxBubbles,
@@ -8234,7 +8264,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeIntentionCues:()=>lifeOpportunities.explorationCues({limit:4}),
     getPrivateLifeAffinity:cues=>privateLifeAffinity.forCues(cues),
     getLifeIntentions:()=>prioritizeLifeContinuationCandidates(lifeOpportunities.continuations({limit:20}),
-      ref=>universalLifeEpisodes.sourceState(ref),{limit:3}),
+      ref=>universalLifeEpisodes.sourceState(ref),{limit:3}).map(x=>{
+        const match=/^friend-shared-bili-link:([a-f0-9]{24})$/.exec(x.sourceId||'')
+        if(!match||x.observedVideoBvids?.includes(x.selectedBvid)||lifeOpportunities.hasVerifiedVideoVisual(x.selectedBvid,trustedLifeAccountTag()))return x
+        const scope=trustedLifeAccountTag(),row=lifeSharedBiliLinks.get(match[1],scope)
+        return row?.status==='inspected'&&row.deferredExploration?.goal==='observe_video'&&row.bvid===x.selectedBvid&&sharedLinkPermissionCurrent(row,scope)&&socialPortrait?.contactBoundary?.(row.senderUid)!=='stop'?{...x,deferredGoal:'observe_video'}:x
+      }),
     onVerifiedRead:proof=>rememberVerifiedLifeAction(proof),
     getLifeWriteEvidence:lifeContinuationEvidence,executeLifeWrite:lifeContinuationWrite,
     onLifeSelectedDiscussion:async({bvid,comments,accountTag,sourceId})=>{

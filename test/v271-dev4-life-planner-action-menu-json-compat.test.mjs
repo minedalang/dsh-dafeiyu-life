@@ -81,3 +81,11 @@ test('an unknown target in fenced JSON is rejected with no write or tool call',(
   assert.equal(out.result,'invalid-decision');assert.equal(out.diagnosticCode,'model-target-invalid')
   assert.equal(x.reads,0);assert.equal(x.updates,0)
 }))
+
+
+test('自主延期兴趣仅作为原机会候选，模型可以休息而不执行或建立待办',()=>inDir(async dir=>{
+ const id='0123456789abcdef01234567';const x=rig(dir,{model:'{"action":"skip"}',rows:[],opportunities:()=>[{id,source:'owner-shared-bili-link',status:'pending',kind:'video',deferredGoal:'observe_video',at:new Date(NOW-5000).toISOString()}]});
+ const out=await x.planner.tick({force:true});assert.equal(out.action,'skip');assert.equal(x.calls,1);assert.equal(x.reads,0);assert.equal(x.updates,0);
+ assert.match(x.prompt,/"deferredGoal":"observe_video"/);const menu=JSON.parse(x.prompt.split('【本轮真正允许的动作和精确目标（这些只是候选，执行仍要后端重新核验）】\n')[1].split('\n')[0]);
+ assert.deepEqual(menu.find(v=>v.action==='inspect_shared_link').ids,[id]);assert.equal(menu.some(v=>v.action==='execute_read'||v.action==='talk_to_owner'),false);
+}));

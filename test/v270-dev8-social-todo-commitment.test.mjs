@@ -262,3 +262,37 @@ test('主人分享链接：同一模型明确接受及准确 BV 直接保存，�
   choice='refuse';assert.equal(await gen('two'),'这次不想看。');assert.equal(calls,2);assert.equal(todos.list().length,1)
  }finally{batcher.stop();rmSync(dir,{recursive:true,force:true})}
 })
+
+test('自主延期探索与待办分离：同模型明确选中真实候选才入账，成功自然回复，不二次投票',async()=>{
+ const id='1234567890abcdef12345678';let calls=0,writes=0,todos=0;
+ const batcher=createInteractionBatcher({delayMs:1,requireVoluntaryReads:true,getPersona:()=>'',invoke:async prompt=>{
+  calls++;assert.match(prompt,/deferredExplorationCandidates/);assert.match(prompt,new RegExp(id));
+  return JSON.stringify({items:[{id:'0',action:'reply',reply:'这题材挺勾起我的好奇心，想找个闲暇了解画面。',todoDisposition:'none',futureReadCommitment:false,deferredExploration:{id,goal:'observe_video'}}]})
+ }});
+ try{
+  const out=await batcher.generate({kind:'dm',role:'owner',trigger:'incoming',uid:UID,text:'分享一个视频',allowTodoIntake:true,
+    deferredExplorationCandidates:[{id,goals:['observe_video']}],onDeferredExploration:p=>{writes++;return {ok:true,...p}},onTodoProposal:()=>{todos++;return null}});
+  assert.match(out,/好奇心/);assert.equal(calls,1);assert.equal(writes,1);assert.equal(todos,0);
+ }finally{batcher.stop()}
+})
+
+test('延期探索失败、伪造候选、混用承诺或陌生人视觉目标：不补造回执，交回同模型修订',async()=>{
+ const id='1234567890abcdef12345678';
+ for(const kind of ['ledger-failed','fake-id','mixed-commitment','stranger-visual','scope-changed','ordinary-interest']){
+  let calls=0,writes=0,todos=0;const proposal={id:kind==='fake-id'?'abcdef1234567890abcdef12':id,goal:'observe_video'};
+  const batcher=createInteractionBatcher({delayMs:1,requireVoluntaryReads:true,getPersona:()=>'',captureReadScope:()=>()=>kind!=='scope-changed'||calls===0,invoke:async()=>{
+   calls++;
+   return JSON.stringify({items:[calls===1?{id:'0',action:'reply',reply:'想了解一下里面的画面。',todoDisposition:kind==='mixed-commitment'?'accept':'none',futureReadCommitment:kind==='mixed-commitment',...(kind==='ordinary-interest'?{}:{deferredExploration:proposal})}:{id:'0',action:'reply',reply:'现在还没有确定怎么探索。',todoDisposition:'none',futureReadCommitment:false}]})
+  }});
+  try{
+   const req={kind:'dm',role:kind==='stranger-visual'?'stranger':'owner',trigger:'incoming',uid:UID,text:'分享一个视频',allowTodoIntake:true,
+     deferredExplorationCandidates:[{id,goals:[kind==='stranger-visual'?'read_link':'observe_video']}],onDeferredExploration:()=>{writes++;return {ok:false}},onTodoProposal:()=>{todos++;return null}};
+   if(kind==='scope-changed')await assert.rejects(batcher.generate(req));else{
+    const out=await batcher.generate(req);
+    assert.equal(out,kind==='ordinary-interest'?'想了解一下里面的画面。':'现在还没有确定怎么探索。');
+    assert.equal(calls,kind==='ordinary-interest'?1:2);
+   }
+   assert.equal(writes,kind==='ledger-failed'?1:0);assert.equal(todos,kind==='ordinary-interest'?1:0);
+  }finally{batcher.stop()}
+ }
+})

@@ -54,3 +54,31 @@ test('interactions are one-shot; uncertain outcomes are not re-offered',()=>{
   assert.equal(x.api.recordInteraction(offered.ids[0],'like_shared_dynamic','verified',scope).ok,false)
  }finally{x.close()}
 })
+
+test('自愿延期探索保留在原分享契机：账号/联系人/身份/目标核验，不改变冷却或证明观察',()=>{
+ const x=setup();try{
+  const id=x.api.offerFromMessage({uid,role:'owner',text:'https://www.bilibili.com/video/BV1mzso6uEZh',messageId:'interest1'}).ids[0];
+  const apply=(goal='observe_video',u=uid,role='owner',tag=scope)=>x.api.recordExplorationIntent(id,{uid:u,role,goal},tag);
+  assert.equal(apply('observe_video','99999').ok,false);assert.equal(apply('observe_video',uid,'stranger').ok,false);
+  assert.equal(apply('observe_video',uid,'owner','fedcba9876543210').ok,false);assert.equal(apply('write').ok,false);
+  assert.equal(apply().ok,true);assert.equal(apply().duplicate,true);
+  const row=x.api.list()[0];assert.equal(row.id,id);assert.equal(row.deferredGoal,'observe_video');assert.equal(row.status,'pending');assert.equal(row.evidenceLevel,'');assert.equal('senderUid' in row,false);
+  assert.equal(x.api.recordRead(id,{ok:true,kind:'video',bvid:'BV1mzso6uEZh',title:'公开视频'},scope).ok,true);
+  assert.equal(x.api.get(id,scope).deferredExploration.goal,'observe_video');assert.equal(x.api.list()[0].deferredGoal,undefined);
+  assert.equal(x.api.get(id,scope).evidenceLevel,'video-metadata-only');assert.equal(apply('read_link').ok,false);
+  assert.equal(x.api.decide(id,'dismiss').ok,true);assert.equal(apply().ok,false);assert.equal(x.api.get(id,scope).deferredExploration,undefined);
+ }finally{x.close()}
+})
+
+test('陌生人延期仅限公开链接核验，不会从视频链接取得主人视觉权限',()=>{
+ const x=setup();try{
+  const id=x.api.offerFromMessage({uid,role:'stranger',text:'https://www.bilibili.com/video/BV1mzso6uEZh',messageId:'interest2'}).ids[0];
+  assert.equal(x.api.recordExplorationIntent(id,{uid,role:'stranger',goal:'observe_video'},scope).ok,false);
+  assert.equal(x.api.recordDeferral(id,{nextAt:Date.now()+600_000},scope).ok,true);const next=x.api.get(id,scope).nextAt;
+  assert.equal(x.api.recordExplorationIntent(id,{uid,role:'stranger',goal:'read_link'},scope).ok,true);
+  assert.equal(x.api.get(id,scope).nextAt,next);assert.equal(x.api.list().length,0);
+  x.setNow(next+1);assert.equal(x.api.list()[0].deferredGoal,'read_link');
+  assert.equal(x.api.recordRead(id,{ok:true,kind:'video',bvid:'BV1mzso6uEZh',title:'公开视频'},scope).ok,true);
+  assert.equal(x.api.get(id,scope).deferredExploration,undefined);
+ }finally{x.close()}
+})
