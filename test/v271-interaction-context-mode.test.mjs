@@ -225,3 +225,19 @@ test('dev102 stop invalidates an already running social model decision',async()=
  const b=make(async()=>{start();return new Promise(r=>release=r)})
  try{const p=b.generate(verifiedOwner);const rejected=assert.rejects(p,/life-read-scope-changed/);await started;b.stop();release(answer());await rejected}finally{b.stop()}
 })
+
+
+test('ordinary historical recall stays live across lazy reads and actual social result delivery',async()=>{
+ for(const kind of ['dm','comment']){
+  let calls=0,initial=true,latest=true
+  const b=make(async()=>++calls===1?answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:['风筝']}):answer({reply:'我还记得风筝',memoryDisclosure:'share'}),{
+   prepareContexts:async()=>[{memoryContext:'原观察',validateRecall:()=>initial,availableContexts:['memory']}],
+   loadRequestedContexts:async()=>[{memoryContext:'已核验的风筝观察',validateRecall:()=>latest}]})
+  try{
+   const r=await b.generate({...base,kind,role:'friend',trigger:'incoming',socialAutonomy:kind==='dm',lifeCommentMessages:kind==='comment',threadKey:'dm:1234',availableContexts:['memory']})
+   assert.equal(r.action,'reply');assert.equal(calls,2);assert.equal(r.validateRevisit(),true)
+   initial=false;assert.equal(r.validateRevisit(),false);initial=true;latest=false;assert.equal(r.validateRevisit(),false)
+   latest=true;b.stop();assert.equal(r.validateRevisit(),false)
+  }finally{b.stop()}
+ }
+})

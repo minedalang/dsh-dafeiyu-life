@@ -77,3 +77,12 @@ test('Life 授权复核/表达校验错误与模型生成失败分开诊断',()=
  assert.equal(calls,2)
 }));
 const dmMessage=(t)=>({senderUid:'200',messageId:'source-message-one',timestampMs:t,text:'有什么新鲜事吗？',incoming:true});
+
+
+test('public comment adapter forwards the original live memory guard and releases unattempted notification',()=>workspace(async dir=>{
+ const items=[];let live=true,sends=0;
+ const x=createCommentInteract({dataDir:dir,logger:quiet,now:()=>T,selfUid:()=> '900',getConfig:()=>({watchReplies:true,watchTop:false,watchAt:false,replyPerPoll:5,replyPerDay:50,globalDailyLimit:100,diagReplyInboxEnabled:true}),
+ getOwnComments:async()=>({top:new Set(['777']),nested:new Set()}),getNotifications:async()=>({data:{items}}),getVideos:async()=>[],getVideoContext:async()=>({usable:true,text:'核实的视频描述'}),getComments:async()=>({comments:[]}),socialTier:()=> 'stranger',
+ generateReply:async()=>({action:'reply',messages:['还记得风筝'],validateRevisit:()=>live}),send:async({validateRevisit})=>{sends++;assert.equal(validateRevisit(),true);live=false;assert.equal(validateRevisit(),false);return {ok:false,notAttempted:true,reason:'video-recall-evidence-changed'}}})
+ await x.poll();items.push(notice(200010));await x.poll();const db=await localState(dir,'comment-interact-state.json');assert.equal(sends,1);assert.equal(db.seen['comment:200010'],undefined);assert.ok(db.preflightDefers['comment:200010']>T)
+}));

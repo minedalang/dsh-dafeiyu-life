@@ -116,3 +116,23 @@ test('dev40 ordinary reply cannot impersonate an observation attachment',async t
   generateReply:async()=>({action:'reply',messages:[`[observation-image:${'a'.repeat(64)}]`]}),send:async()=>{sends++;return {ok:true}},logger:{warn(){},error(){}}})
  await e.poll();normal=[msg(1,T-1000)];await e.poll();assert.equal(sends,0)
 })
+
+
+test('ordinary recalled evidence reaches the transport adapter; forget after first verified bubble stops second',async t=>{
+ const d=dirFor(t);let normal=[],live=true;const sent=[];const old=msg(1,T-3600000)
+ const e=createDmAutoReply({dataDir:d,selfUid:ME,now:()=>T,getConfig:conf,
+  fetchIncoming:async options=>options?.probeOnly?[old]:normal,
+  generateReply:async()=>({action:'reply',messages:['first','second'],topicState:'open',validateRevisit:()=>live}),
+  send:async({text,validateRevisit})=>{assert.equal(typeof validateRevisit,'function');assert.equal(validateRevisit(),true);sent.push(text);live=false;assert.equal(validateRevisit(),false);return {ok:true,receiptId:'receipt-first'}},logger:{warn(){},error(){}}})
+ await e.poll();normal=[old];const result=await e.poll();assert.deepEqual(sent,['first']);assert.equal(result.sent,1);assert.equal(state(d).p6LastTurn.confirmed,1)
+})
+
+
+test('trusted host recall refusal before reservation releases unread work without inventing a remote attempt',async t=>{
+ const d=dirFor(t);let normal=[],sends=0;const old=msg(1,T-3600000)
+ const e=createDmAutoReply({dataDir:d,selfUid:ME,now:()=>T,getConfig:conf,
+  fetchIncoming:async options=>options?.probeOnly?[old]:normal,
+  generateReply:async()=>({action:'reply',messages:['draft'],validateRevisit:()=>true}),
+  send:async()=>{sends++;return {ok:false,notAttempted:true,reason:'video-recall-evidence-changed'}},logger:{warn(){},error(){}}})
+ await e.poll();normal=[old];const result=await e.poll();assert.equal(sends,1);assert.equal(result.sent,0);assert.equal(state(d).people[OWNER].lastInboundOutcome.status,'send-blocked');assert.deepEqual(state(d).people[OWNER].seen,[])
+})

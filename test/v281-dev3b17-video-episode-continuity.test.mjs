@@ -137,7 +137,7 @@ test('real MemoryCoordinator admission persists bounded visual mentions through 
 // the actual fading Gateway and planner, with no external media or platform.
 async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
  await tmp(async dir=>{
-  let clock=T+2000,account=A,reads=0,executions=0,revisits=0
+  let clock=T+2000,account=A,reads=0,executions=0,revisits=0,sourceChanged=false
   const prompts=[],steps=[]
   const gateway=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>account,now:()=>clock,
    getConfig:()=>({mainSessionMemoryHalfLifeDays:15}),admitMemoryDetails:()=>true})
@@ -152,7 +152,7 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
     autonomousPlannerMinutes:1,autonomousPlannerStartHour:0,autonomousPlannerEndHour:24}),
     getLifeAccountTag:()=>account,getLifeOpportunities:()=>[{id:'op-1',source:'interest-milestone',bvid:BV,eligible:true}],
     getRecentLifeVideoMemory:opts=>gateway.recentVisualExperienceContext(opts),
-    getLifeVideoDetailRecall:opts=>{if(!opts.memoryId)reads++;return gateway.recallVideoDetails(opts)},
+    getLifeVideoDetailRecall:opts=>{if(!opts.memoryId)reads++;const detail=gateway.recallVideoDetails(opts);return sourceChanged&&detail.ok?{...detail,sources:detail.sources.map(x=>({...x,source:"changed-source"}))}:detail},
     ...(mode.startsWith('revisit')?{revisitVideo:async({offeredBvids,isCurrent})=>{revisits++;assert.deepEqual(offeredBvids,[BV]);return {evidence:{ok:true,description:'新的局部观察'},validate:isCurrent}}}:{}),
     getTodos:()=>[],executeRead:async()=>{executions++;return {ok:false}},
     executeLifeVideoObservation:async()=>{executions++;return {ok:false}},updateTodo:()=>({ok:false}),reflect:async()=>({ok:false}),
@@ -173,6 +173,7 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
      if(mode==='revisit-stale'&&prompts.length===3)account=B
      if(mode==='switch-after')account=B
      if(mode==='forget-after')clock+=14*86400000
+     if(mode==='source-after')sourceChanged=true
      if(mode==='repeat')return JSON.stringify({recallVideoBvid:BV})
      return '{"action":"skip","reason":"想起来了，暂时不看"}'
     }})
@@ -192,7 +193,7 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
     else if(hasDetail){assert.match(prompts[1],/红色耳机/);assert.match(prompts[1],/"timeAnchorMs":\[8000,8000\]/)}
     else{assert.match(prompts[1],/"state":"no-detail"/);assert.doesNotMatch(prompts[1],/红色耳机/)}
     if(['switch-after','revisit-stale'].includes(mode)){assert.equal(result.result,'decision-scope-changed');assert.equal(result.diagnosticCode,'life-account-changed');assert.equal(result.ok,false)}
-    else if(mode==='forget-after'){assert.equal(result.result,'invalid-decision');assert.equal(result.diagnosticCode,'video-recall-evidence-changed')}
+    else if(['forget-after','source-after'].includes(mode)){assert.equal(result.result,'invalid-decision');assert.equal(result.diagnosticCode,'video-recall-evidence-changed')}
     else if(mode==='repeat'||mode.startsWith('revisit')&&limit===2)assert.equal(result.result,'invalid-decision')
     else assert.equal(result.result,'voluntary-rest')
     assert.ok(steps.some(s=>s.type==='quota-reserved'&&s.kind==='video-memory-recall'&&s.charged===1))
@@ -383,3 +384,6 @@ test('background Life may choose a live public partial gap through original reca
   }finally{gateway.close()}
  })
 })
+
+
+test('background deep recall rejects a changed source projection even when fragment text remains identical',()=>progressiveScenario({mode:'source-after'}))

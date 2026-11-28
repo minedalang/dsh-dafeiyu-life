@@ -137,3 +137,15 @@ test('明确本地未调用平台的拒绝不计作外发尝试，已确认气�
     assert.equal(result.status,'unknown');assert.equal(result.attempted,1)
   }
 })
+
+
+test('known local recall refusal is not a remote attempt; contradictory or frozen result stays unknown',async()=>{
+ const denied={ok:false,notAttempted:true,reason:'video-recall-evidence-changed'}
+ const first=await deliverMessageBurst({messages:['一'],send:async()=>denied})
+ assert.equal(first.status,'blocked');assert.equal(first.attempted,0)
+ const partial=await deliverMessageBurst({messages:['一','二'],send:async({index})=>index===0?{ok:true,receiptId:'r1'}:denied})
+ assert.equal(partial.status,'partial');assert.deepEqual(partial.receipts,['r1']);assert.equal(partial.attempted,1)
+ for(const extra of [{accepted:true},{no_retry:true},{receiptId:'r2'},{reason:'social-send-result-uncertain'}]){
+  const r=await deliverMessageBurst({messages:['一'],send:async()=>({...denied,...extra})});assert.equal(r.status,'unknown');assert.equal(r.attempted,1)
+ }
+})

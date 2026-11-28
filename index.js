@@ -2015,13 +2015,14 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const checkDispatchScope=()=>{if(dispatchGuard&&dispatchGuard()!==true)throw Error('原执行来源已变化，未向平台提交')};
     const checkReplyDispatch=()=>{checkDispatchScope();if(!isReplyDispatch(toolName,args))return;refreshCfg();if(!interactionRepliesAllowed(cfg))throw Error('互动回复已暂停，未向平台发送');if(toolName==='bili_send_observation_image'&&(cfg.ownerDmAgentEnabled!==true||cfg.ownerDmReadCommandsEnabled!==true||cfg.ownerDmActionsEnabled!==true||cfg.dmWatch!==true||String(args.receiver_uid)!==String(cfg.dmOwnerUid||'')||String(args.sender_uid)!==String(accountBinding.status().activeUid||'')||socialPolicyGate.actor(args.receiver_uid).role!=='owner'))throw Error('主人图片发送授权已变化')}
     checkReplyDispatch()
+    const guardedCallOptions=beforeDispatch?{...callOptions,beforeRequest:(name,payload)=>{checkReplyDispatch();return currentDispatch()&&client===mcp&&mcpKey===mcpKeyNow()&&beforeDispatch(name,payload)===true}}:callOptions
     const originalDispatch=()=>scopedNativeVision
       ? (()=>{if(!currentDispatch())throw sessionIntegrationPaused();return callPluginScopedNativeVision(args,()=>currentDispatch()&&(!dispatchGuard||dispatchGuard()===true),forwardOptions.signal)})()
       : scopedDshVision
       ? (()=>{if(!currentDispatch())throw sessionIntegrationPaused();return callPluginScopedDshVision(args,opts)})()
       : monitoredReadTools.has(toolName)
-      ? biliReadBudget.guard('mcp:'+toolName,()=>{if(!currentDispatch())throw sessionIntegrationPaused();if(isReplyDispatch(toolName,args))checkReplyDispatch();return client.call(toolName,args,callOptions)})
-      : (()=>{if(!currentDispatch())throw sessionIntegrationPaused();checkReplyDispatch();return client.call(toolName,args,beforeDispatch?{...callOptions,beforeRequest:(name,payload)=>{checkReplyDispatch();return currentDispatch()&&client===mcp&&mcpKey===mcpKeyNow()&&beforeDispatch(name,payload)===true}}:callOptions)})()
+      ? biliReadBudget.guard('mcp:'+toolName,()=>{if(!currentDispatch())throw sessionIntegrationPaused();if(isReplyDispatch(toolName,args)||dispatchGuard||beforeDispatch)checkReplyDispatch();return client.call(toolName,args,guardedCallOptions)})
+      : (()=>{if(!currentDispatch())throw sessionIntegrationPaused();checkReplyDispatch();return client.call(toolName,args,guardedCallOptions)})()
     const dispatch=()=>toolName==='bili_video_info'&&opts===undefined&&
       /^BV[0-9A-Za-z]{10}$/.test(String(args?.bvid||''))
       ? publicVideoReadCoalescer.run({scope:verifiedActionScope(),bvid:args.bvid,
@@ -6406,16 +6407,18 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         sourceKey:'dm:'+String(req.uid)+':'+String(req.messageId||''),messages:lines,targetKey:''})
       if(sealed?.ok!==true)throw Error('Life 私信表达授权不可用：'+String(sealed?.reason||'missing'))
       if(!automaticSession.current()){lifeProofSettler(sealed.proof)('not-sent');throw sessionIntegrationPaused()}
+      if(generated?.validateRevisit&&generated.validateRevisit()!==true){lifeProofSettler(sealed.proof)('not-sent');throw Error('video-recall-evidence-changed')}
       return attachSocialProof(generated,owner,sealed.proof)
       })}finally{dmPlanningPreference?.release?.()}
       } finally {stopLiveDm()}
     },
-    generateContinuation:async({uid,first,thoughtCue,recent,lifeWillingnessProof})=>{
+    generateContinuation:async({uid,first,thoughtCue,recent,lifeWillingnessProof,validateRevisit})=>{
+      const evidenceCurrent=()=>{try{return typeof validateRevisit!=='function'||validateRevisit()===true}catch{return false}}
       if(!automaticSession.current())return ''
       refreshCfg()
       if(cfg.dmP6Enabled===false||!trustedLifeAccountTag()||accountBinding.status().blocked)return ''
       const account=trustedLifeAccountTag(),epoch=accountBinding.generation(),actor=socialPolicyGate.actor(uid)?.role
-      const current=()=>{refreshCfg();return automaticSession.current()&&cfg.dmP6Enabled!==false&&cfg.masterEnabled===true&&
+      const current=()=>{refreshCfg();return evidenceCurrent()&&automaticSession.current()&&cfg.dmP6Enabled!==false&&cfg.masterEnabled===true&&
         account===trustedLifeAccountTag()&&epoch===accountBinding.generation()&&!accountBinding.status().blocked&&socialPolicyGate.actor(uid)?.role===actor}
       const expression=await executeLifeDecision({isCurrent:current,invoke:()=>invokeInteractionPrompt(dmContinuationPrompt({
         first,cue:thoughtCue,recent,persona:lifeVoiceContext({scene:'dm',uid,query:recent,maxChars:500})
@@ -6429,11 +6432,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return extended?.ok===true?reply:''
     },
     getVerifiedFacts:verifiedFactsFor,
-    send: async ({ uid, text, eventId, socialOwnerProof, lifeWillingnessProof, observationShare }) => {
+    send: async ({ uid, text, eventId, socialOwnerProof, lifeWillingnessProof, observationShare, validateRevisit }) => {
+      const evidenceCurrent=()=>{try{return typeof validateRevisit!=='function'||validateRevisit()===true}catch{return false}}
       const settleProof=lifeProofSettler(lifeWillingnessProof)
       try{
         refreshCfg()
         const owner=socialSendOwner('dm',socialOwnerProof)
+        if(!evidenceCurrent()){settleProof('not-sent');return {ok:false,notAttempted:true,reason:'video-recall-evidence-changed'}}
         if(!owner.ok){settleProof('not-sent');return {ok:false,notAttempted:true,error:'私信决策所有权检查失败：'+owner.reason}}
         const intention=lifeWillingness?.verify(lifeWillingnessProof,'dm_reply',{uid:String(uid),targetKey:'',text:String(text)})
         if(intention?.ok!==true){settleProof('not-sent');return {ok:false,notAttempted:true,no_retry:true,error:'Life 私信意愿已失效：'+(intention?.reason||'missing')}}
@@ -6442,19 +6447,22 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           return await cadenceSend({uid,channel:'dm'},async()=>{
             const checked=socialDecisionOwnership.route({channel:'dm',requester:owner.owner,expectedScope:owner.scope,expectedGeneration:owner.generation})
             if(!checked.ok){settleProof('not-sent');return {ok:false,notAttempted:true,error:'私信发送前账号或归属已变化：'+checked.reason}}
+            if(!evidenceCurrent()){settleProof('not-sent');return {ok:false,notAttempted:true,reason:'video-recall-evidence-changed'}}
             const guarded=await socialSendTransaction.execute({channel:'dm',
               eventKey:/^[1-9]\d{0,18}$/.test(String(uid))&&typeof eventId==='string'&&eventId.length>2
                 ?`dm:${uid}:${eventId}`:'',expectedScope:owner.scope},async()=>{
+              if(!evidenceCurrent())return {ok:false,notAttempted:true,reason:'video-recall-evidence-changed'}
+              const evidenceOptions=typeof validateRevisit==='function'?{isCurrent:evidenceCurrent,beforeDispatch:evidenceCurrent}:undefined
               let result
               if(observationShare){
                 refreshCfg();const dm=dmConfig()
                 if(!dm.enabled||cfg.ownerDmAgentEnabled!==true||cfg.ownerDmReadCommandsEnabled!==true||cfg.ownerDmActionsEnabled!==true||String(uid)!==String(cfg.dmOwnerUid||'')||socialPolicyGate.actor(uid).role!=='owner')return {ok:false,notAttempted:true}
                 const frame=currentObservationFrame(observationShare),selected=lifeObservationShareSelection(frame)
                 if(!selected||selected.digest!==observationShare.digest||selected.marker!==text)return {ok:false,notAttempted:true}
-                result=await call('bili_send_observation_image',{receiver_uid:Number(uid),sender_uid:String(accountBinding.status().activeUid||''),image_b64:frame.bytes.toString('base64'),digest:selected.digest})
+                result=await call('bili_send_observation_image',{receiver_uid:Number(uid),sender_uid:String(accountBinding.status().activeUid||''),image_b64:frame.bytes.toString('base64'),digest:selected.digest},evidenceOptions)
               }else{
                 if(/\[observation-image:/i.test(String(text)))return {ok:false,notAttempted:true}
-                result=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)})
+                result=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)},evidenceOptions)
               }
               const receiptId=result?.success===true?extractBiliDmReceiptId(result):''
               return receiptId?{ok:true,receiptId}:{ok:false}
@@ -7002,6 +7010,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // that *one existing model answer* into the exact bounded payload the
       // comment sender will use. Do not run another model or mint a proof for
       // an empty expression. P6 keeps its independently chosen bubble count.
+      const evidenceCurrent=()=>{try{return typeof generated?.validateRevisit!=='function'||generated.validateRevisit()===true}catch{return false}}
+      if(!evidenceCurrent())throw Error('video-recall-evidence-changed')
       const normalized=prepareLifeCommentReply(generated,{p6Enabled:false,maxBubbles:1}) // public comment: single utterance
       const lines=normalized.messages
       if(!lines.length){
@@ -7024,6 +7034,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         throw Error('Life 评论表达授权不可用：'+String(sealed?.reason||'missing'))
       }
       if(!automaticSession.current()){lifeProofSettler(sealed.proof)('not-sent');throw sessionIntegrationPaused()}
+      if(!evidenceCurrent()){lifeProofSettler(sealed.proof)('not-sent');throw Error('video-recall-evidence-changed')}
+      if(typeof generated?.validateRevisit==='function')normalized.validateRevisit=generated.validateRevisit
       return attachSocialProof(normalized,owner,sealed.proof)
       })
       } finally {stopLiveComment()}
@@ -7044,8 +7056,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         /^BV[0-9A-Za-z]{10}$/.test(String(req.bvid||''))&&
         /^[1-9]\d{0,19}$/.test(String(req.rpid||''))&&
         /^[1-9]\d{0,18}$/.test(String(req.uid||''));
+      const evidenceCurrent=()=>{try{return typeof req.validateRevisit!=='function'||req.validateRevisit()===true}catch{return false}}
+      const evidenceOptions=typeof req.validateRevisit==='function'?{isCurrent:evidenceCurrent,beforeDispatch:evidenceCurrent}:undefined
       const settleProof=lifeProofSettler(humanVerifiedRetry?null:req.lifeWillingnessProof)
       try{
+        if(!evidenceCurrent()){settleProof('not-sent');return {ok:false,notAttempted:true,reason:'video-recall-evidence-changed'}}
         const owner=humanVerifiedRetry?routedSocialOwner('comment'):socialSendOwner('comment',req.socialOwnerProof)
         if(!owner.ok){settleProof('not-sent');return {ok:false,notAttempted:true,no_retry:true,reason:owner.reason,
           error:'评论决策所有权检查失败：'+owner.reason}}
@@ -7068,12 +7083,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
               const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,
                 expectedScope:owner.scope,expectedGeneration:owner.generation})
               if(!checked.ok){settleProof('not-sent');return {ok:false,notAttempted:true,error:'动态评论发送前账号或归属已变化：'+checked.reason}}
+              if(!evidenceCurrent()){settleProof('not-sent');return {ok:false,notAttempted:true,reason:'video-recall-evidence-changed'}}
               const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
                 expectedScope:owner.scope},async()=>{
                 const r=parseMaybeJson(await call('bili_dynamic_reply_inbox',{
                   dynamic_id:String(req.dynamicId||''),target_rpid:String(req.rpid||''),
                   root:String(req.root||''),text:String(req.text||'').slice(0,130),
-                  expected_uid:String(req.uid||''),is_at:req.kind==='at'}))
+                  expected_uid:String(req.uid||''),is_at:req.kind==='at'},evidenceOptions))
                 return r?.ok===true&&String(r.dynamicId)===String(req.dynamicId)&&validCommentId(r.rpid)
                   ?{ok:true,rpid:String(r.rpid)}:{ok:false}
               })
@@ -7109,10 +7125,11 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
             const checked=socialDecisionOwnership.route({channel:'comment',requester:owner.owner,
               expectedScope:owner.scope,expectedGeneration:owner.generation})
             if(!checked.ok){settleProof('not-sent');return {ok:false,notAttempted:true,error:'评论发送前账号或归属已变化：'+checked.reason}}
-            const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
+            if(!evidenceCurrent()){settleProof('not-sent');return {ok:false,notAttempted:true,reason:'video-recall-evidence-changed'}}
+              const ack=await socialSendTransaction.execute({channel:'comment',eventKey:commentEventKey,
               expectedScope:owner.scope},async()=>{
               const r=await call('bili_reply',{bvid:req.bvid||'',aid:Number(req.aid)||0,
-                rpid:Number(req.rpid),root:Number(req.root)||0,text:String(req.text).slice(0,130)})
+                rpid:Number(req.rpid),root:Number(req.root)||0,text:String(req.text).slice(0,130)},evidenceOptions)
               return r?.success===true?{ok:true,rpid:String(r?.rpid_str||r?.rpid||'')}:{ok:false}
             })
             const receiptId=ack?.ok===true&&/^[1-9]\d{0,19}$/.test(String(ack.rpid||''))?'bili-comment:'+ack.rpid:''
