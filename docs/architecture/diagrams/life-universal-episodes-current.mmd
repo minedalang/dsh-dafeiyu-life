@@ -1,3 +1,4 @@
+%% dev.57：共同认知决策提交边界；不新增模型、权限或账本。
 %% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
@@ -350,3 +351,7 @@ attention56["下一安全决策边界协作让行；原 ID、期限、步骤不�
 menu -.-> attention56
 attention56 -.->|重新自主选择，非自动恢复| menu
 %% @code attention56 | lib/autonomous-planner.mjs | reason='social-attention-yield'
+commentObservation -.-> decisionScope57
+menu -.-> decisionScope57
+decisionScope57["共同模型提交：社交、主选择、Episode 与待办子循环"]
+%% @code decisionScope57 | lib/interaction-batch.mjs | const decide=async(text,rows)=>{

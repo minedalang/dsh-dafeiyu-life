@@ -237,7 +237,7 @@ test('original Planner offers exact exploration without main Session and may cho
    const menu=plannerActionMenu({ownerChatAvailable:true,ownerMainChatAvailable:false,ownerExplorationCandidates:[candidate]})
    assert.deepEqual(menu.find(x=>x.action==='talk_to_owner').ids,[candidate.id])
    const r=await planner.tick({force:true})
-   assert.equal(called,mode==='confirm'?1:0);assert.equal(r.result,mode==='confirm'?'owner-chat-confirmed':mode==='skip'?'voluntary-rest':'owner-chat-evidence-expired')
+   assert.equal(called,mode==='confirm'?1:0);assert.equal(r.result,mode==='confirm'?'owner-chat-confirmed':mode==='skip'?'voluntary-rest':'decision-scope-changed');if(mode==='generation-changed'){assert.equal(r.ok,false);assert.equal(r.diagnosticCode,'life-account-changed')}
   }finally{rmSync(dir,{recursive:true,force:true})}
  }
 })

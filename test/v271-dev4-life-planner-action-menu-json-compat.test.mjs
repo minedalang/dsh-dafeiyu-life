@@ -326,3 +326,17 @@ test('dev56 failed public person read suppresses only that exact candidate',()=>
   executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
  const r=await planner.tick();assert.equal(reads,1);assert.equal(settles,0);assert.equal(r.continuation.executed,0);assert.equal(prompts.length,3);assert.equal(r.continuation.reason,'fish-chose-rest')
 }))
+
+test('dev57 shared decision boundary rejects stale output or stale provider error without returning raw content',async()=>{
+ const {executeLifeDecision}=await import('../lib/life-agent-read-runtime.mjs');let live=false,calls=0
+ assert.deepEqual(await executeLifeDecision({isCurrent:()=>live,invoke:()=>{calls++}}),{ok:false,reason:'life-decision-scope-changed',started:false});assert.equal(calls,0)
+ for(const throws of [false,true]){live=true;const out=await executeLifeDecision({isCurrent:()=>live,invoke:async()=>{calls++;live=false;if(throws)throw Error('old private error');return 'old private decision'}});assert.deepEqual(out,{ok:false,reason:'life-decision-scope-changed',started:true})}
+ live=true;assert.deepEqual(await executeLifeDecision({isCurrent:()=>live,invoke:async()=>({action:'skip'})}),{ok:true,value:{action:'skip'},started:true});await assert.rejects(executeLifeDecision({isCurrent:()=>live,invoke:async()=>{throw Error('provider error')}}),/provider error/)
+})
+
+for(const scenario of ['generation','disable','mode'])test('dev57 primary model stale '+scenario+' cannot execute or record a voluntary choice',()=>inDir(async dir=>{
+ let generation=1,enabled=true,mode='active',reads=0,settled=0,decisions=0,calls=0
+ const planner=createAutonomousPlanner({dataDir:dir,now:()=>NOW,getConfig:()=>({...config(),autonomousPlannerEnabled:enabled,lifeAgentMode:mode}),getTodos:()=>[TODO],getLifeAccountTag:()=>TAG,getLifeAccountGeneration:()=>generation,
+  invokeModel:async()=>{calls++;if(scenario==='generation')generation++;if(scenario==='disable')enabled=false;if(scenario==='mode')mode='shadow';return JSON.stringify({action:'execute_read',id:TODO.id})},executeRead:async()=>{reads++;return {ok:true}},updateTodo:async()=>{reads++},reflect:async()=>({ok:true}),settleLifeEvents:()=>{settled++},recordLifeDecision:()=>{decisions++}})
+ const out=await planner.tick();assert.equal(out.ok,false);assert.equal(out.result,'decision-scope-changed');assert.equal(out.diagnosticCode,scenario==='generation'?'life-account-changed':'life-decision-scope-changed');assert.equal(calls,1);assert.equal(reads,0);assert.equal(settled,0);assert.equal(decisions,0);assert.equal(planner.status().runs,1)
+}))

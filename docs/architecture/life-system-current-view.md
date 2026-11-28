@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.57：共同认知决策提交边界；不新增模型、权限或账本。
 %% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
@@ -631,11 +632,15 @@ attention56["原认知资源：当前社交模型需求 / 公平上限；安全�
 episodeContinuation -.-> attention56
 attention56 -.->|正常 Life 重新选择原契机| selection
 %% @code attention56 | lib/life-resource-scheduler.mjs | const shouldYieldContinuation=
+episodeContinuation -.-> decisionBoundary57
+  decisionBoundary57["共同认知提交边界：调用前后核验；原各循环和调度保留"]
+  %% @code decisionBoundary57 | lib/life-agent-read-runtime.mjs | export async function executeLifeDecision
 ```
 
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.57：共同认知决策提交边界；不新增模型、权限或账本。
 %% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
@@ -961,11 +966,15 @@ selfTopic55 --> planner
 attention56["原契机保留：技术让行不是 Life 拒绝/休息；合法候选重新选择"]
 attention56 -.-> resume
 %% @code attention56 | lib/autonomous-planner.mjs | reason='social-attention-yield'
+planner -.-> candidateDecision57
+  candidateDecision57["当前账号代际、模式、活体证据及待办原子项核验"]
+  %% @code candidateDecision57 | lib/autonomous-planner.mjs | const primaryCurrent=()=>{
 ```
 
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.57：共同认知决策提交边界；不新增模型、权限或账本。
 %% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
@@ -1355,11 +1364,15 @@ failure56["未核验全局观察/讨论/评论者投稿：有限状态；屏蔽�
 registeredReadGuard49 -.-> failure56
 failure56 -.->|原作用域有效及有预算才重新思考| planner
 %% @code failure56 | lib/autonomous-planner.mjs | const reportReadFailure=
+planner -.-> liveDecision57
+liveDecision57["活体证据失效则拒绝陈旧决定；不生成经历或联想确认"]
+%% @code liveDecision57 | lib/interaction-batch.mjs | const evidenceCurrent=rows=>
 ```
 
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.57：共同认知决策提交边界；不新增模型、权限或账本。
 %% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
@@ -1712,4 +1725,8 @@ attention56["下一安全决策边界协作让行；原 ID、期限、步骤不�
 menu -.-> attention56
 attention56 -.->|重新自主选择，非自动恢复| menu
 %% @code attention56 | lib/autonomous-planner.mjs | reason='social-attention-yield'
+commentObservation -.-> decisionScope57
+menu -.-> decisionScope57
+decisionScope57["共同模型提交：社交、主选择、Episode 与待办子循环"]
+%% @code decisionScope57 | lib/interaction-batch.mjs | const decide=async(text,rows)=>{
 ```

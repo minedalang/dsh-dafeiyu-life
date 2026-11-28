@@ -181,7 +181,8 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
    assert.doesNotMatch(prompts[0],/红色耳机/,'deep evidence must never enter the first prompt')
    if(mode==='shallow'||mode==='foreign'||mode==='mixed'||mode==='switch-before'||mode==='invalid-time'||limit===1){
     assert.equal(prompts.length,1);assert.equal(reads,0)
-    if(mode!=='shallow')assert.equal(result.result,'invalid-decision')
+    if(mode==='switch-before'){assert.equal(result.result,'decision-scope-changed');assert.equal(result.diagnosticCode,'life-account-changed');assert.equal(result.ok,false)}
+    else if(mode!=='shallow')assert.equal(result.result,'invalid-decision')
    }else{
     assert.equal(prompts.length,mode.startsWith('revisit')&&limit>2?3:2)
     if(mode.startsWith('revisit')){assert.equal(revisits,limit>2?1:0);if(limit>2)assert.match(prompts[2],/新的局部观察/)}
@@ -190,7 +191,9 @@ async function progressiveScenario({mode='recall',limit=10,hasDetail=true}={}){
     if(mode==='time-miss'){assert.match(prompts[1],/no-detail-in-time-range/);assert.doesNotMatch(prompts[1],/红色耳机/)}
     else if(hasDetail){assert.match(prompts[1],/红色耳机/);assert.match(prompts[1],/"timeAnchorMs":\[8000,8000\]/)}
     else{assert.match(prompts[1],/"state":"no-detail"/);assert.doesNotMatch(prompts[1],/红色耳机/)}
-    if(['repeat','switch-after','forget-after','revisit-stale'].includes(mode)||mode.startsWith('revisit')&&limit===2)assert.equal(result.result,'invalid-decision')
+    if(['switch-after','revisit-stale'].includes(mode)){assert.equal(result.result,'decision-scope-changed');assert.equal(result.diagnosticCode,'life-account-changed');assert.equal(result.ok,false)}
+    else if(mode==='forget-after'){assert.equal(result.result,'invalid-decision');assert.equal(result.diagnosticCode,'video-recall-evidence-changed')}
+    else if(mode==='repeat'||mode.startsWith('revisit')&&limit===2)assert.equal(result.result,'invalid-decision')
     else assert.equal(result.result,'voluntary-rest')
     assert.ok(steps.some(s=>s.type==='quota-reserved'&&s.kind==='video-memory-recall'&&s.charged===1))
    }

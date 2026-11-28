@@ -228,7 +228,7 @@ test('dev47 后续读取不能覆盖首轮视觉证据遗忘保护；新结果�
  const b=createInteractionBatcher({delayMs:1,getPersona:()=>'',requireVoluntaryReads:true,logger:{warn(){}},prepareContexts:async()=>[{availableContexts:['memory']}],
   loadRequestedContexts:async()=>{reads++;if(reads===1)return [{memoryContext:BV1+' 真实旧观察',validateRecall:()=>current,publicVideoBvids:[BV1]}];current=false;return [{memoryContext:'第二条结果',validateRecall:()=>true}]},
   invoke:async()=>answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:[['旧观察','新观察'][calls++]]})})
- try{await assert.rejects(b.generate({kind:'dm',role:'owner',uid:'123',text:'回忆'}),/最终决定/);assert.equal(reads,2);assert.equal(calls,2)}finally{b.stop()}
+ try{await assert.rejects(b.generate({kind:'dm',role:'owner',uid:'123',text:'回忆'}),/video-recall-evidence-changed/);assert.equal(reads,2);assert.equal(calls,2)}finally{b.stop()}
 })
 
 test('dev47 主人独立拒绝披露时，重新生成不含任一次记忆正文或查询回执',async()=>{
@@ -238,4 +238,29 @@ test('dev47 主人独立拒绝披露时，重新生成不含任一次记忆正�
   invoke:async prompt=>{const step=calls++;if(step<2)return answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:[['PRIVATE_QUERY_ONE','PRIVATE_QUERY_TWO'][step]]});if(step===2){assert.match(prompt,/PRIVATE_RECALL_ONE/);assert.match(prompt,/PRIVATE_RECALL_TWO/);return answer({reply:'PRIVATE_RECALL_ONE',memoryDisclosure:'retain'})}
    assert.doesNotMatch(prompt,/PRIVATE_RECALL_|PRIVATE_QUERY_/);return answer({reply:'这次我想自己保留'})}})
  try{assert.equal(await b.generate({kind:'dm',role:'owner',uid:'123',text:'想聊聊吗'}),'这次我想自己保留');assert.equal(calls,4)}finally{b.stop()}
+})
+
+test('dev57 duplicate, foreign or coerced item IDs cannot select a tool or an outward draft',async()=>{
+ for(const ids of [['0','0'],['0','9'],[['0']],['00']]){
+  let reads=0;const b=createInteractionBatcher({delayMs:1,requireVoluntaryReads:true,getPersona:()=>'',logger:{warn(){}},prepareContexts:async()=>[{availableContexts:['history']}],loadRequestedContexts:async()=>{reads++;return [{}]},invoke:async()=>JSON.stringify({items:ids.map(id=>({id,action:'skip',contextRequests:['history']}))})})
+  try{await assert.rejects(b.generate({kind:'dm',role:'friend',uid:'123',text:'测试'}),/life-decision-item-id-invalid/);assert.equal(reads,0)}finally{b.stop()}
+ }
+})
+
+test('dev57 same-contact batched continuation with missing item cannot confirm a partial association',async()=>{
+ let calls=0,confirmed=0,reads=0
+ const b=createInteractionBatcher({delayMs:10,batchSize:2,requireVoluntaryReads:true,getPersona:()=>'',logger:{warn(){}},prepareContexts:async rows=>rows.map(()=>({availableContexts:['memory']})),loadRequestedContexts:async rows=>{reads+=rows.length;return rows.map(()=>({memoryContext:'真实旧印象',validateRecall:()=>true,offerAssociation:()=>({publicData:{token:'test'},confirm:()=>{confirmed++}})}))},invoke:async()=>{calls++;return JSON.stringify({items:calls===1?[0,1].map(id=>({id,action:'skip',contextRequests:['memory'],recallQueries:['旧印象']})):[{id:'0',action:'reply',reply:'回复',association:{token:'test'}}]})}})
+ try{const results=await Promise.allSettled([b.generate({kind:'dm',role:'friend',uid:'123',text:'甲'}),b.generate({kind:'dm',role:'friend',uid:'123',text:'乙'})]);assert.deepEqual(results.map(r=>r.status),['rejected','rejected']);assert.equal(calls,2);assert.equal(reads,2);assert.equal(confirmed,0)}finally{b.stop()}
+})
+
+test('dev57 expired evidence of one item blocks the shared model output for both items',async()=>{
+ let calls=0,live=true,confirmed=0
+ const b=createInteractionBatcher({delayMs:10,batchSize:2,requireVoluntaryReads:true,getPersona:()=>'',logger:{warn(){}},prepareContexts:async rows=>rows.map(()=>({availableContexts:['memory']})),loadRequestedContexts:async rows=>rows.map((_,i)=>({memoryContext:'真实旧印象',validateRecall:()=>i===0||live,offerAssociation:()=>({publicData:{token:'test'},confirm:()=>{confirmed++}})})),invoke:async()=>{calls++;if(calls===2)live=false;return JSON.stringify({items:[0,1].map(id=>calls===1?{id,action:'skip',contextRequests:['memory'],recallQueries:['旧印象']}:{id,action:'reply',reply:'回复',association:{token:'test'}})})}})
+ try{const results=await Promise.allSettled([b.generate({kind:'dm',role:'friend',uid:'123',text:'甲'}),b.generate({kind:'dm',role:'friend',uid:'123',text:'乙'})]);assert.deepEqual(results.map(r=>r.status),['rejected','rejected']);assert.ok(results.every(r=>/video-recall-evidence-changed/.test(r.reason.message)));assert.equal(calls,2);assert.equal(confirmed,0)}finally{b.stop()}
+})
+
+test('dev57 owner disclosure continuation cannot hide an unknown unfinished tool request',async()=>{
+ let calls=0
+ const b=createInteractionBatcher({delayMs:1,requireVoluntaryReads:true,getPersona:()=>'',logger:{warn(){}},prepareContexts:async()=>[{availableContexts:['memory']}],loadRequestedContexts:async()=>[{memoryContext:'私下印象'}],invoke:async()=>{calls++;return answer(calls===1?{action:'skip',contextRequests:['memory'],recallQueries:['印象']}:calls===2?{reply:'私下印象',memoryDisclosure:'retain'}:{reply:'不应发送的草稿',contextRequests:['unregistered_tool']})}})
+ try{await assert.rejects(b.generate({kind:'dm',role:'owner',uid:'123',text:'想聊聊吗'}),/最终决定/);assert.equal(calls,3)}finally{b.stop()}
 })

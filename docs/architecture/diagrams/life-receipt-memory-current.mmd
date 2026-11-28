@@ -1,3 +1,4 @@
+%% dev.57：共同认知决策提交边界；不新增模型、权限或账本。
 %% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
@@ -387,3 +388,6 @@ failure56["未核验全局观察/讨论/评论者投稿：有限状态；屏蔽�
 registeredReadGuard49 -.-> failure56
 failure56 -.->|原作用域有效及有预算才重新思考| planner
 %% @code failure56 | lib/autonomous-planner.mjs | const reportReadFailure=
+planner -.-> liveDecision57
+liveDecision57["活体证据失效则拒绝陈旧决定；不生成经历或联想确认"]
+%% @code liveDecision57 | lib/interaction-batch.mjs | const evidenceCurrent=rows=>

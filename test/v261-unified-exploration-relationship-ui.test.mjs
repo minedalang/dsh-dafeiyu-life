@@ -73,3 +73,14 @@ test('管理中心双列折叠、关系权重和不可见按钮已设置可读�
  assert.match(html,/#owner-todo-prev,#panel-life #owner-todo-next\{background:/)
  assert.match(html,/max-width:730px/)
 })
+
+for(const scenario of ['generation-model','generation-willingness','changed-child','read-return-generation'])test('dev57 child continuation '+scenario,()=>withDir(async dir=>{
+ const todos=createOwnerTodoEngine({dataDir:dir,now:()=>at});const parent=todos.add({type:'search_videos',topic:'方大同',origin,sourceKey:'social-ai-read:verified'},{source:'recommendation'}).item
+ const child=todos.add({type:'watch_video',bvid:BV[0],topic:'方大同',origin,parentTodoId:parent.id,sourceKey:`explore-watch:${parent.id}:${BV[0]}`},{source:'recommendation'}).item
+ let generation=1,calls=0,reads=0,mutations=0,willingness=0
+ const planner=createAutonomousPlanner({dataDir:dir,now:()=>at,getConfig:()=>({masterEnabled:true,autonomousPlannerEnabled:true,autonomousPlannerDailyLimit:4}),getLifeAccountTag:()=>'a'.repeat(16),getLifeAccountGeneration:()=>generation,getTodos:()=>todos.list({includeClosed:true,limit:500}),
+  invokeModel:async()=>{calls++;if(scenario==='generation-model')generation++;return JSON.stringify({action:'execute_read',id:child.id})},
+  recheckWillingness:async()=>{willingness++;if(scenario==='generation-willingness')generation++;if(scenario==='changed-child')todos.update(child.id,'dismiss');return {decision:'allow'}},
+  executeRead:async()=>{reads++;if(scenario==='read-return-generation')generation++;return {ok:false}},updateTodo:async()=>{mutations++},reflect:async()=>({ok:true})})
+ const result=await planner.considerChildren(parent.id);assert.equal(calls,1);assert.equal(reads,scenario==='read-return-generation'?1:0);assert.equal(willingness,scenario==='generation-model'?0:1);assert.equal(mutations,0);assert.equal(result.reason,scenario==='changed-child'?'child-changed':'life-decision-scope-changed')
+}))
