@@ -7,6 +7,6 @@ const root=join(dirname(fileURLToPath(import.meta.url)),'..')
 // Ensure portable backup metadata follows the actually installed release.
 test('备份元数据使用安装包实际版本号，不写死旧 2.4.80',()=>{
   const code=readFileSync(join(root,'index.js'),'utf8')
-  assert.match(code,/createBackup\(\{root:stateDir,config:effective,sqlite,version:myVersion\(\)\}\)/)
+  assert.match(code,/const args=\{root:stateDir,config:effective,sqlite,version:myVersion\(\)\}/);assert.match(code,/createBackupWithProgress\(args,progress\):createBackup\(args\)/)
   assert.doesNotMatch(code,/createBackup\(\{root:stateDir,config:effective,sqlite,version:'2\.4\.80'/)
 })

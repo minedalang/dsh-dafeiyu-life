@@ -60,7 +60,7 @@ import {resolveExistingDmContact} from './lib/manual-dm-contact.mjs'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
 import { randomUUID, createHash, randomBytes } from 'node:crypto'
 import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
-import { createBackup, validateBackup, validateRestoreIdentity, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, businessRestorePreview, memoryRepairSource, previewPortableMemoryRepair, planPortableMemoryRepair, repairPortableMemoryDetails, createLifeMemoryBackup, inspectLifeMemoryBackup } from './lib/data-backup.mjs'
+import { createBackup, createBackupWithProgress, validateBackup, validateRestoreIdentity, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, businessRestorePreview, memoryRepairSource, previewPortableMemoryRepair, planPortableMemoryRepair, repairPortableMemoryDetails, repairMissingPublicEpisodes, createLifeMemoryBackup, createLifeMemoryBackupWithProgress, inspectLifeMemoryBackup } from './lib/data-backup.mjs'
 import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import {listBackupFiles,inspectBackupInDirectory,deleteBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
@@ -9238,7 +9238,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       child.on('close', code => {if(settled)return;settled=true;try{const result=JSON.parse(stdout||'{}');if(code!==0||!result.ok)throw Error(result.error||stderr||'SQLite 工具异常');resolve(result)}catch(e){reject(e)}})
       try{child.stdin.end(data ? JSON.stringify(data):'')}catch(e){fail(e)}
     })
-    const snapshotBusinessBackup = async () => {
+    const snapshotBusinessBackup = async (progress) => {
       refreshCfg()
       const characterId=accountBinding.characterId(),generation=accountBinding.generation()
       const verifySnapshotScope=()=>{
@@ -9249,17 +9249,55 @@ logger:{warn:m=>log('社交意图：'+m)}
         if(lifePending)throw Error('仍有 '+lifePending+' 条人生事件等待补偿；请先修复同步后备份或恢复')
       }
       verifySnapshotScope()
+      if(progress)await progress('sqlite')
+      verifySnapshotScope()
       const sqlite = (await runSqlite('export')).sqlite
+      if(progress)await progress('files')
       verifySnapshotScope()
       // All effective settings, including relationships, prompts and quotas.
-      const effective = Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, cfg[k]]))
-      return createBackup({root:stateDir,config:effective,sqlite,version:myVersion()})
+      const effective = structuredClone(Object.fromEntries(Object.keys(DEFAULTS).map(k => [k, cfg[k]])))
+      const args={root:stateDir,config:effective,sqlite,version:myVersion()}
+      const backup=progress?await createBackupWithProgress(args,progress):createBackup(args)
+      verifySnapshotScope()
+      return backup
     }
 
-  let autoBackupBusy=false,portableRestoreBusy=false
+  let autoBackupBusy=false,portableRestoreBusy=false,manualBackupBusy=false
+  // Same local export endpoint, optional streaming milestones. A stage is
+  // announced before its real work; no fabricated time/byte percentages.
+  const manualBackupExport=async(req,res,kind)=>{
+    if(manualBackupBusy||autoBackupBusy||portableRestoreBusy)return sendJson(res,409,{ok:false,error:'另一个备份或恢复正在进行，请稍后刷新'})
+    const streaming=String(req.headers.accept||'').includes('application/x-ndjson')&&typeof res.write==='function'
+    let started=false
+    const emit=event=>{if(!res.destroyed&&!res.writableEnded)res.write(JSON.stringify(event)+'\n')}
+    const progress=async stage=>{if(streaming){emit({type:'progress',stage});await new Promise(resolve=>setImmediate(resolve))}}
+    manualBackupBusy=true
+    try{
+      if(streaming){res.writeHead(200,{'content-type':'application/x-ndjson; charset=utf-8','cache-control':'no-store','x-accel-buffering':'no'});started=true}
+      refreshCfg()
+      const characterId=accountBinding.characterId(),generation=accountBinding.generation(),directory=cfg.backupDirectory
+      await progress('prepare')
+      const folder=requireBackupDirectory(directory)
+      const verify=()=>{refreshCfg();if(characterId!==accountBinding.characterId()||generation!==accountBinding.generation()||directory!==cfg.backupDirectory)throw Error('备份期间角色、账号或保存目录变化，请重新操作')}
+      verify()
+      let backup,summary
+      if(kind==='business'){
+        backup=await snapshotBusinessBackup(streaming?progress:undefined);summary=validateBackup(backup)
+      }else{
+        await progress('files');verify();backup=streaming?await createLifeMemoryBackupWithProgress(stateDir,progress):createLifeMemoryBackup(stateDir);summary=inspectLifeMemoryBackup(backup)
+      }
+      await progress('publish');verify()
+      const filePath=kind==='business'?saveBackupJson(folder,backup):saveBackupJson(folder,backup,'dafeiyu-memory')
+      const result={ok:true,filePath,summary}
+      if(kind==='business')log('用户数据已备份到：'+filePath)
+      if(started){emit({type:'result',data:result});if(!res.destroyed&&!res.writableEnded)res.end();return}
+      return sendJson(res,200,result)
+    }catch(e){const error='备份未完成：'+String(e?.message||e).slice(0,300);if(started){emit({type:'error',error});if(!res.destroyed&&!res.writableEnded)res.end();return}return sendJson(res,400,{ok:false,error})}
+    finally{manualBackupBusy=false}
+  }
   let autoBackupState={lastAttemptAt:'',lastError:'',lastSuccessAt:''}
   const runDailyBackup=async()=>{
-    if(autoBackupBusy||portableRestoreBusy)return
+    if(autoBackupBusy||portableRestoreBusy||manualBackupBusy)return
     refreshCfg()
     if(cfg.backupAutoEnabled!==true||!cfg.backupDirectory||!integrationAvailable()||(!platformReady()&&!localMemoryReady()))return
     autoBackupBusy=true
@@ -9562,7 +9600,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(!explicitManagementIntent(req))return sendJson(res,403,{ok:false,error:'需要明确的主人同源操作'})
           const body=await readBody(req,4096);refreshCfg()
           if(body?.confirm!=='DELETE_BACKUP_FILE')throw Error('必须明确确认删除备份')
-          if(autoBackupBusy)throw Error('自动备份正在进行，请稍后刷新')
+          if(autoBackupBusy||manualBackupBusy||portableRestoreBusy)throw Error('备份或恢复正在进行，请稍后刷新')
           const dir=requireBackupDirectory(cfg.backupDirectory)
           if(body.directory!==dir)throw Error('备份目录已变化，请刷新后重试')
           deleteBackupInDirectory(dir,body.name,{size:body.size,createdAt:body.createdAt})
@@ -9573,20 +9611,13 @@ logger:{warn:m=>log('社交意图：'+m)}
           refreshCfg()
           return sendJson(res,200,{ok:true,...inspectBackupInDirectory(requireBackupDirectory(cfg.backupDirectory),body?.name)})
         }
-        if (action === 'export') {
-          refreshCfg()
-          const folder = requireBackupDirectory(cfg.backupDirectory)
-          const backup = await snapshotBusinessBackup()
-          const filePath = saveBackupJson(folder, backup)
-          log('用户数据已备份到：'+filePath)
-          return sendJson(res, 200, {ok:true,filePath,summary:validateBackup(backup)})
-        }
+        if (action === 'export') return await manualBackupExport(req,res,'business')
         const body = await readBackupBody(req, 320_000_000)
         const data = body?.backup
         const summary = validateBackup(data)
         validateRestoreIdentity(stateDir,data)
         // Inspect must not write anything. The browser shows scope + a second confirmation.
-        const lifeRestoreScope=()=>({characterId:accountBinding.characterId(),scopeRevision:accountBinding.generation()+':'+getSessionIntegration().revision,canResume:platformReady()&&sessionIntegration.getCapabilities()?.autonomous===true&&firstStart.status().requiredReady===true&&!accountBinding.status().blocked})
+        const lifeRestoreScope=()=>({characterId:accountBinding.characterId(),accountTag:trustedLifeAccountTag(),halfLifeDays:cfg.mainSessionMemoryHalfLifeDays,scopeRevision:accountBinding.generation()+':'+getSessionIntegration().revision,canResume:platformReady()&&sessionIntegration.getCapabilities()?.autonomous===true&&firstStart.status().requiredReady===true&&!accountBinding.status().blocked})
         const verifyRestoreGroup=(id,patch,current)=>{
           const next={...current,...patch}
           if(id==='textModels'){
@@ -9623,7 +9654,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         // writing any file; only explicitly editable settings/rules may change.
         refreshCfg()
         const folder = requireBackupDirectory(cfg.backupDirectory)
-        if(portableRestoreBusy||autoBackupBusy)throw Error('另一个备份或恢复操作正在进行，请稍后重新预览')
+        if(portableRestoreBusy||autoBackupBusy||manualBackupBusy)throw Error('另一个备份或恢复操作正在进行，请稍后重新预览')
         portableRestoreBusy=true;restoreHeld=true
         const safeguard = await snapshotBusinessBackup()
         refreshCfg()
@@ -11388,23 +11419,27 @@ logger:{warn:m=>log('社交意图：'+m)}
       let restoreHeld=false
       try{
         refreshCfg()
-        if(action==='export'){
-          // Admin-only standalone archive + fading copy + life reflections.
-          const folder=requireBackupDirectory(cfg.backupDirectory)
-          const backup=createLifeMemoryBackup(stateDir),filePath=saveBackupJson(folder,backup,'dafeiyu-memory')
-          return sendJson(res,200,{ok:true,filePath,summary:inspectLifeMemoryBackup(backup)})
-        }
+        if(action==='export')return await manualBackupExport(req,res,'memory')
         const body=await readBackupBody(req,320_000_000),source=body?.backup
         if(source?.format!=='dafeiyu-life-memory-backup')validateRestoreIdentity(stateDir,source)
         const backup=memoryRepairSource(source,{characterId:accountBinding.characterId()})
         const summary=inspectLifeMemoryBackup(backup)
         const scope=()=>accountBinding.characterId()+':'+accountBinding.generation()+':'+getSessionIntegration().revision
-        if(action==='inspect'){const current=createLifeMemoryBackup(stateDir);return sendJson(res,200,{ok:true,summary,memoryPreview:previewPortableMemoryRepair(current,backup,scope())})}
+        const repairOptions=()=>({sameCharacter:source?.format!=='dafeiyu-life-memory-backup',accountTag:trustedLifeAccountTag(),halfLifeDays:cfg.mainSessionMemoryHalfLifeDays})
+        if(action==='inspect'){const current=createLifeMemoryBackup(stateDir);return sendJson(res,200,{ok:true,summary,memoryPreview:previewPortableMemoryRepair(current,backup,scope(),repairOptions())})}
         if(body?.confirm!=='RESTORE_DAFEIYU_MEMORY')return sendJson(res,400,{ok:false,error:'未完成记忆恢复前人工确认'})
-        if(portableRestoreBusy||autoBackupBusy)throw Error('另一个备份或恢复操作正在进行，请稍后重新预览')
+        if(portableRestoreBusy||autoBackupBusy||manualBackupBusy)throw Error('另一个备份或恢复操作正在进行，请稍后重新预览')
         portableRestoreBusy=true;restoreHeld=true
         const safeguard=createLifeMemoryBackup(stateDir)
-        if(Object.hasOwn(body,'restoreRevision')&&(!explicitManagementIntent(req)||body.restoreRevision!==previewPortableMemoryRepair(safeguard,backup,scope()).revision))throw Error('记忆修复候选已变化，请重新选择备份并核验')
+        const currentPreview=previewPortableMemoryRepair(safeguard,backup,scope(),repairOptions())
+        if(Object.hasOwn(body,'restoreRevision')&&(!explicitManagementIntent(req)||body.restoreRevision!==currentPreview.revision))throw Error('记忆修复候选已变化，请重新选择备份并核验')
+        if(body.restoreMissingEpisodes===true){
+          if(!explicitManagementIntent(req)||body.restoreRevision!==currentPreview.revision||!currentPreview.missingEpisodes)throw Error('缺失经历尚未获得明确确认或修复资格已变化')
+          if((lifeMemoryCoordinator?.status()?.pending||0)||(socialInteractionCoordinator?.status()?.pending||0))throw Error('仍有业务回执等待同步，请先修复后重新预览')
+          const folder=requireBackupDirectory(cfg.backupDirectory),safeguardPath=saveBackupJson(folder,safeguard,'pre-memory-restore')
+          const restoredEpisodes=repairMissingPublicEpisodes(stateDir,backup,repairOptions(),currentPreview.revision,scope())
+          return sendJson(res,200,{ok:true,summary:{...summary,restoredFiles:0,restoredEpisodes},safeguardPath,unchanged:false,restartRequired:true})
+        }
         const plan=planPortableMemoryRepair(safeguard,backup)
         if(!plan.repairs.length)return sendJson(res,200,{ok:true,summary:{...summary,restoredFiles:0},retainedRecords:plan.retainedRecords,unchanged:true,restartRequired:false})
         const folder=requireBackupDirectory(cfg.backupDirectory),safeguardPath=saveBackupJson(folder,safeguard,'pre-memory-restore')
@@ -11980,13 +12015,13 @@ logger:{warn:m=>log('社交意图：'+m)}
     if(path==='/api/bili-duty/runtime-controls'&&['GET','POST'].includes(req.method)){
       if(!explicitManagementIntent(req))return sendJson(res,403,{ok:false,error:'需要主人本机同源操作'})
       res.setHeader?.('Cache-Control','no-store')
-      const state=()=>{refreshCfg();return runtimeControls(cfg,String(accountBinding.generation())+':'+trustedLifeAccountTag(),platformReady()&&integrationAvailable()&&!accountBinding.status().blocked&&sessionIntegration.getCapabilities()?.autonomous===true&&firstStart.status().requiredReady===true)}
+      const state=()=>{refreshCfg();return runtimeControls(cfg,String(accountBinding.generation())+':'+trustedLifeAccountTag(),platformReady()&&integrationAvailable()&&!accountBinding.status().blocked&&sessionIntegration.getCapabilities()?.autonomous===true&&firstStart.status().requiredReady===true,platformReady())}
       if(req.method==='GET')return sendJson(res,200,{ok:true,...state()})
       try{
         const body=await readBackupBody(req,2048),current=state()
-        const patch=planRuntimeControl(cfg,body,String(accountBinding.generation())+':'+trustedLifeAccountTag(),current.ready)
+        const patch=planRuntimeControl(cfg,body,String(accountBinding.generation())+':'+trustedLifeAccountTag(),current.ready,current.masterAvailable)
         const persisted=await persistCfg(patch)
-        if(patch.lifeAgentMode==='off')lifeSocialShadow.revoke()
+        if(patch.lifeAgentMode==='off'||patch.masterEnabled===false)lifeSocialShadow.revoke()
         return sendJson(res,200,{ok:true,...state(),localVerified:persisted.localVerified===true})
       }catch(e){return sendJson(res,409,{ok:false,error:String(e?.message||e).slice(0,160)})}
     }

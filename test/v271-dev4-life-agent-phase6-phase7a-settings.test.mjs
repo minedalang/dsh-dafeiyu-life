@@ -111,3 +111,14 @@ test('independent owner controls preserve schedule and grants; stale scope canno
  assert.equal(isReplyDispatch('bili_dynamic_comment_manual',{target_rpid:'123'}),true);assert.equal(isReplyDispatch('bili_dynamic_comment_manual',{}),false);assert.equal(isReplyDispatch('bili_reply',{rpid:123}),true);assert.equal(isReplyDispatch('bili_send_message_manual',{}),true);assert.equal(isReplyDispatch('bili_reply',{rpid:0,root:0}),false)
  assert.throws(()=>planRuntimeControl(cfg,{control:'life',enabled:true,revision:runtimeControls(cfg,scope,false).revision},scope,false),/先完成/)
 })
+
+
+test('master control duplicates original config authority and preserves configured life/replies while off',()=>{
+ const c={...seed(),lifeAgentMode:'active',autonomousPlannerEnabled:true,interactionRepliesEnabled:true},scope='1:scope'
+ const before=runtimeControls(c,scope,true,true),patch=planRuntimeControl(c,{control:'master',enabled:false,revision:before.revision},scope,true,true)
+ assert.deepEqual(patch,{masterEnabled:false});const off={...c,...patch},s=runtimeControls(off,scope,true,true)
+ assert.equal(s.lifeEnabled,true);assert.equal(s.lifeRunning,false);assert.equal(s.repliesEnabled,true);assert.equal(s.repliesAvailable,false)
+ assert.throws(()=>planRuntimeControl(off,{control:'master',enabled:true,revision:before.revision},scope,true,true),/变化/)
+ assert.throws(()=>planRuntimeControl(off,{control:'master',enabled:true,revision:runtimeControls(off,scope,false,false).revision},scope,false,false),/核验/)
+ assert.deepEqual(planRuntimeControl(off,{control:'master',enabled:true,revision:s.revision},scope,true,true),{masterEnabled:true})
+})

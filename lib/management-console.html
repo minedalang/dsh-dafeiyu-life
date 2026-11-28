@@ -173,7 +173,18 @@ button.is-busy:after{content:"";position:absolute;right:12px;top:calc(50% - 7px)
 .action-feedback[data-tone=warning]{border-left-color:var(--ui-amber)}
 .action-feedback[data-tone=error]{border-left-color:var(--bad)}
 .backup-restore-dialog.action-confirm-dialog{width:min(900px,94vw);max-width:94vw;max-height:90vh;padding:20px;overflow:auto;box-sizing:border-box}
-.backup-restore-scroll{max-height:58vh;overflow:auto;padding:3px 3px 10px;overscroll-behavior:contain}
+.backup-restore-dialog.action-confirm-dialog[open]{display:flex;flex-direction:column;overflow:hidden}.backup-restore-dialog .confirm-head,.backup-restore-footer{flex:none}.backup-restore-scroll{flex:1 1 auto;min-height:0;max-height:58vh;overflow:auto;padding:3px 3px 10px;overscroll-behavior:contain}
+/* Real, stage-based backup progress; an active stage has unknown byte total. */
+.backup-stage-panel{margin:12px 0;padding:12px;border:1px solid var(--stroke);border-radius:12px;background:var(--panel)}
+.backup-stage-panel[hidden],.backup-restore-notice[hidden]{display:none!important}
+.backup-stage-head{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13px;font-weight:650}
+.backup-stage-track{height:7px;border-radius:99px;background:color-mix(in srgb,var(--muted) 17%,transparent);overflow:hidden;margin:9px 0 12px}
+.backup-stage-fill{height:100%;width:0;background:#138b72;border-radius:99px;transition:width .42s cubic-bezier(.22,.8,.28,1)}
+.backup-stage-rows{display:grid;gap:7px}.backup-stage-row{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px;min-width:0}.backup-stage-row[data-state="active"]{color:var(--ink);font-weight:650}.backup-stage-row[data-state="done"]{color:var(--ink)}
+.backup-stage-dot{display:grid;place-items:center;flex:none;width:19px;height:19px;border:1px solid var(--stroke);border-radius:50%;font-size:11px}.backup-stage-row[data-state="done"] .backup-stage-dot{background:#138b72;color:#fff;border-color:#138b72}.backup-stage-row[data-state="active"] .backup-stage-dot{border:2px solid color-mix(in srgb,#138b72 28%,transparent);border-top-color:#138b72;animation:backup-stage-spin .8s linear infinite;color:transparent}.backup-stage-row[data-state="error"]{color:var(--danger,#b74b3c);font-weight:650}
+@keyframes backup-stage-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.backup-stage-fill{transition:none}.backup-stage-row[data-state="active"] .backup-stage-dot{animation:none;border-color:#138b72;color:var(--ink)}}
+.backup-restore-notice{border:1px solid #bf8b42;border-left:4px solid #bf8b42;background:color-mix(in srgb,#bf8b42 13%,var(--panel));color:var(--ink);border-radius:10px;padding:11px 13px;margin:8px 0 10px;flex:none;overflow-wrap:anywhere}.backup-restore-notice strong{display:block;font-size:15px}.backup-restore-notice p{margin:5px 0 0;font-size:12px;line-height:1.55}.backup-restore-notice[data-state="ready"]{border-color:#138b72;background:color-mix(in srgb,#138b72 10%,var(--panel))}.backup-preview-reason{border-left:3px solid #bf8b42;background:color-mix(in srgb,#bf8b42 10%,var(--panel));padding:8px 10px;border-radius:5px;color:var(--ink);font-size:12px;line-height:1.6;margin:8px 0}.backup-difference-list{margin:8px 0 12px;display:grid;gap:8px}.backup-difference-list .backup-preview-metric strong{font-size:13px}.backup-difference-list p{margin:3px 0;font-size:12px;line-height:1.5}.backup-difference-list details{font-size:12px}.backup-repair-link{margin-top:8px}.backup-restore-scroll>div>label{display:flex;align-items:flex-start;gap:8px;margin:8px 0}.backup-restore-scroll>div>label input{flex:none;margin-top:4px}.backup-preview-group[data-blocked="true"]{border-color:color-mix(in srgb,#bf8b42 55%,var(--stroke))}
 .backup-preview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 16px}
 .backup-preview-metric,.backup-preview-group{border:1px solid var(--stroke);border-radius:12px;background:var(--panel);padding:12px;min-width:0;overflow-wrap:anywhere}
 .backup-preview-metric strong{font-size:20px;display:block;line-height:1.3}.backup-preview-metric small{display:block;color:var(--muted);font-size:11px;line-height:1.5}
@@ -2172,7 +2183,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 </head>
 <body><main class="wrap" id="management-shell" data-platform="checking" data-platform-ready="false">
 <div class="manage-return-bar" hidden><a class="button mobile-back" href="/" aria-label="返回 DSH 主界面">← 返回 DSH 主界面</a><span class="muted">在 DSH 内打开时，请使用此按钮返回聊天；窗口 × 仅关闭或隐藏窗口。</span></div>
-<header class="top"><div><h1 id="workspace-title">🐳 大肥鱼 · DSH 生活系统</h1><p class="muted" id="workspace-description">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><div id="runtime-controls" role="group" aria-label="运行总控" hidden><button id="runtime-life" type="button" aria-pressed="false" disabled>自主生活 · 未知</button><button id="runtime-replies" type="button" aria-pressed="false" disabled>互动回复 · 未知</button></div><div class="settings-finder" role="search"><label for="settings-finder-input">查找设置</label><input id="settings-finder-input" type="search" placeholder="搜索设置…" autocomplete="off" aria-controls="settings-finder-results" aria-expanded="false"><div id="settings-finder-results" class="settings-finder-results" role="listbox" hidden></div></div><button id="refresh">刷新当前页</button></div></header>
+<header class="top"><div><h1 id="workspace-title">🐳 大肥鱼 · DSH 生活系统</h1><p class="muted" id="workspace-description">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><div id="runtime-controls" role="group" aria-label="运行总控" hidden><button id="runtime-master" type="button" role="switch" aria-checked="false" aria-pressed="false" disabled>🐳 大肥鱼总开关 · 未知</button><button id="runtime-life" type="button" aria-pressed="false" disabled>自主生活 · 未知</button><button id="runtime-replies" type="button" aria-pressed="false" disabled>互动回复 · 未知</button></div><div class="settings-finder" role="search"><label for="settings-finder-input">查找设置</label><input id="settings-finder-input" type="search" placeholder="搜索设置…" autocomplete="off" aria-controls="settings-finder-results" aria-expanded="false"><div id="settings-finder-results" class="settings-finder-results" role="listbox" hidden></div></div><button id="refresh">刷新当前页</button></div></header>
 <aside id="life-system-health" class="life-health-banner" role="status" aria-live="polite">
   <div class="health-strip-heading"><span class="health-indicator" aria-hidden="true"></span><strong id="life-health-title">正在核对后台监听状态</strong><span id="life-health-retry" class="health-retry"></span><button id="life-health-clear-model-backoff" type="button" hidden>取消模型退避</button><button id="life-health-clear-network-backoff" type="button" hidden>恢复网络监听</button><button id="life-health-details" type="button">查看诊断</button></div>
   <p id="life-health-detail">仅依据本机已有调度记录，不额外请求 B站。</p>
@@ -2679,7 +2690,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
       <div><strong>✨ 完整业务备份</strong><span>保存日常设置、公开经历、成长、梗知识和业务记录。不复制模型或运行环境。</span></div>
       <button id="backup-export" class="primary" type="button">立即备份</button>
     </div>
-    <p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
+    <div id="backup-export-stages" class="backup-stage-panel" hidden></div><p id="backup-progress" class="backup-status backup-result" role="status" aria-live="polite">创建后，备份文件会保存在上面设置的目录，不会触发浏览器下载。</p>
     <section class="backup-auto-section" aria-labelledby="backup-auto-heading">
       <div class="backup-auto-heading"><div><h4 id="backup-auto-heading">📆 每日自动备份</h4><p class="muted">每天保存一份业务备份，保留最近两天。手动备份和恢复前备份不会自动删除。</p></div><label class="checkline"><input role="switch" class="ui-toggle" type="checkbox" id="backup-auto-enabled" checked> 开启自动备份</label></div>
       <p id="backup-auto-status" class="muted" role="status">正在读取自动备份状态…</p>
@@ -2706,7 +2717,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
       <div class="backup-fold-body">
         <p class="muted">单独保存永久真实档案、可衰减经历、反思候选及长期认识，可能包含仅管理员可见的敏感历史。永久档案不会因此变成日常 AI 可读取的记忆。</p>
         <button id="memory-backup-export" class="backup-accent-btn" type="button">单独备份人生记忆</button>
-        <p id="memory-backup-export-status" class="muted backup-status" role="status" aria-live="polite">尚未执行专项备份</p>
+        <div id="memory-export-stages" class="backup-stage-panel" hidden></div><p id="memory-backup-export-status" class="muted backup-status" role="status" aria-live="polite">尚未执行专项备份</p>
         <div class="backup-divider"></div>
         <div class="backup-subheading">🩺 记忆健康概览</div>
         <p id="life-memory-health" class="muted" role="status" aria-live="polite">加载中…</p>
@@ -2728,7 +2739,7 @@ ollama serve # 启动 Ollama 服务</code></pre></details></div>
         </div>
         <div class="backup-recovery-choice">
           <h4>恢复人生记忆</h4>
-          <p class="muted">如果鱼鱼仍记得这段经历，可以补回核验通过的缺失细节。不同的历史记忆不会直接覆盖现有记忆。</p>
+          <p class="muted">按记录身份核对备份与当前记忆；仍清晰的同源经历可以补回核验通过的缺失附件。备份独有经历不等于可以激活的记忆，旧记忆、授权和任务不会整体覆盖当前数据。</p>
           <label for="memory-backup-import-file">选择人生记忆备份或同角色业务备份</label>
           <input id="memory-backup-import-file" type="file" accept=".json,.gz,application/json,application/gzip" aria-label="选择大肥鱼长期记忆备份文件">
           <p id="memory-backup-inspect" class="muted backup-status" role="status" aria-live="polite">尚未选择记忆备份</p>
@@ -3819,7 +3830,7 @@ POST   /api/bili-duty/pet-bridge/v1/world/observations   # 面向未来 3D 世�
 <div id="action-toast" class="action-toast" role="status" aria-live="polite" hidden></div>
 <dialog id="backup-restore-dialog" class="action-confirm-dialog backup-restore-dialog" aria-labelledby="backup-restore-title">
  <div class="confirm-head"><span class="confirm-sparkle">↻</span><div><h3 id="backup-restore-title">备份恢复预览</h3><p id="backup-restore-meta"></p></div></div>
- <div class="backup-restore-scroll"><div id="backup-restore-overview"></div><div id="backup-restore-groups"></div><p id="backup-restore-caution" class="muted"></p></div>
+ <div id="backup-restore-notice" class="backup-restore-notice" role="status" aria-live="polite" hidden></div><div class="backup-restore-scroll"><div id="backup-restore-overview"></div><div id="backup-restore-groups"></div><p id="backup-restore-caution" class="muted"></p></div>
  <div class="confirm-footer backup-restore-footer"><span id="backup-restore-count" role="status" aria-live="polite"></span><button type="button" id="backup-restore-cancel">取消</button><button type="button" class="primary" id="backup-restore-accept" disabled>确认恢复所选</button></div>
 </dialog>
 <dialog id="action-confirm-dialog" class="action-confirm-dialog" aria-labelledby="action-confirm-title" aria-describedby="action-confirm-description">

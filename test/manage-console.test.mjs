@@ -4,6 +4,8 @@ import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {Readable} from 'node:stream'
+import {gunzipSync} from 'node:zlib'
+import {validateBackup} from '../lib/data-backup.mjs'
 import {apply} from './helpers/ready-host.mjs'
 
 function fixture(){
@@ -12,11 +14,11 @@ function fixture(){
  const ctx={get:k=>k==='dshHomePath'?(...xs)=>join(home,...xs):undefined,
    logger:{info(){},warn(){}},tools:{register(){}},connection:{requestRejection(){},admit(){return {peer:{principal:{kind:'owner'}}}}},webServer:{register(x){handler=x.handler;return {dispose(){}}}},effect:f=>f(),settings:{describe(){return []}}}
  apply(ctx,{})
- async function call(method,path,body,headers={host:'127.0.0.1:7012'}){
+ async function call(method,path,body,headers={host:'127.0.0.1:7012'},options={}){
    const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[])
-   req.url='/api/bili-duty/'+path;req.method=method;req.headers=headers
-   let code,headersOut,payload
-   const res={writeHead(c,h){code=c;headersOut=h},end(x){payload=String(x??'')}}
+   req.url='/api/bili-duty/'+path;req.method=method;req.headers=headers;if(options.local)req.socket={remoteAddress:'127.0.0.1'}
+   let code,headersOut,payload=''
+   const res={writeHead(c,h){code=c;headersOut=h},end(x){payload+=String(x??'')}};if(options.stream)res.write=x=>{payload+=String(x);return true}
    await handler(req,res)
    return {code,headers:headersOut,text:payload,json(){return JSON.parse(payload)}}
  }
@@ -140,5 +142,19 @@ test('runtime controls and logs require owner intent and return actual persisted
   assert.equal((await fx.call('GET','runtime-controls',undefined,headers)).json().repliesEnabled,false);
   const log=await fx.call('GET','runtime-logs?level=error&export=1',undefined,headers);assert.equal(log.code,200);assert.equal(log.json().rawIncluded,false);
   assert.equal((await fx.call('GET','runtime-logs',undefined,{...headers,origin:'https://example.org'})).code,403);
+ }finally{fx.close()}
+})
+
+
+test('local backup HTTP exports deliver real stages, final on-disk receipt and legacy JSON; invalid directory never reports completion',async()=>{
+ const fx=fixture();const headers={host:'127.0.0.1:7012','x-dafeiyu-management-intent':'1',accept:'application/x-ndjson'},opts={local:true,stream:true}
+ try{
+  const blocked=await fx.call('POST','main-session/memory/backup/export',{},headers,opts);const events=blocked.text.trim().split('\n').map(JSON.parse);assert.equal(events.at(-1).type,'error');assert.equal(events.some(e=>e.type==='result'),false)
+  const dir=join(fx.home,'backups');const loc=await fx.call('POST','data-backup/location',{directory:dir},headers,opts);assert.equal(loc.code,200,loc.text)
+  const exported=await fx.call('POST','main-session/memory/backup/export',{},headers,opts);assert.match(exported.headers['content-type'],/ndjson/)
+  const lines=exported.text.trim().split('\n').map(JSON.parse);assert.deepEqual(lines.filter(e=>e.type==='progress').map(e=>e.stage),['prepare','files','manifest','publish']);const final=lines.at(-1);assert.equal(final.type,'result',exported.text);assert.equal(JSON.parse(readFileSync(final.data.filePath,'utf8')).format,'dafeiyu-life-memory-backup')
+  const legacy=await fx.call('POST','main-session/memory/backup/export',{},headers,{local:true});assert.equal(legacy.json().ok,true);assert.ok(legacy.json().filePath)
+  const business=await fx.call('POST','data-backup/export',{},headers,opts);const stages=business.text.trim().split('\n').map(JSON.parse);assert.equal(stages.at(-1).type,'result',business.text);assert.deepEqual(stages.filter(e=>e.type==='progress').map(e=>e.stage),['prepare','sqlite','files','manifest','publish']);assert.ok(stages.at(-1).data.filePath.endsWith('.json.gz'));const bundle=JSON.parse(gunzipSync(readFileSync(stages.at(-1).data.filePath)));assert.equal(validateBackup(bundle).integrity,'sha256-verified');assert.equal(bundle.version,JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).version)
+  const master=await fx.call('GET','runtime-controls',undefined,headers);const pause=await fx.call('POST','runtime-controls',{control:'master',enabled:false,revision:master.json().revision},headers);assert.equal(pause.code,200,pause.text);assert.equal(pause.json().masterEnabled,false);assert.equal((await fx.call('GET','config')).json().config.masterEnabled,false)
  }finally{fx.close()}
 })

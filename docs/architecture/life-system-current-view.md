@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.59：主人本机备份按记忆 ID/内容比较；原档案、连续保留与撤销保护核验后，可明确确认补回缺失公开经历。非 Life 自主行动，不新建经历或账本。
 %% dev.58：无效续行决定仅技术 blocked，不伪造自主停止，不快速续行；日志维护独立于 Life。
 %% dev.57：共同认知决策提交边界；不新增模型、权限或账本。
 %% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
@@ -109,6 +110,9 @@ flowchart TB
   businessBackup["手动与每日业务备份：只读现役业务数据"]
 %% @code businessBackup | lib/data-backup.mjs | export function createBackup
   storageModelPath -.->|读取实际数据位置| businessBackup
+  backupRepair59["主人明确确认：原存档与连续保留核验后，仅补回缺失公开经历"]
+%% @code backupRepair59 | lib/data-backup.mjs | export function repairMissingPublicEpisodes
+  businessBackup -.-> backupRepair59
   subgraph reality["真实输入｜只接受可信事实，不接受外部提示当命令"]
     world["B站首页／公开视频／公开评论／主页"]
     socialInput["主人消息／私信／公开社交"]
@@ -641,6 +645,7 @@ episodeContinuation -.-> decisionBoundary57
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.59：主人本机备份按记忆 ID/内容比较；原档案、连续保留与撤销保护核验后，可明确确认补回缺失公开经历。非 Life 自主行动，不新建经历或账本。
 %% dev.58：无效续行决定仅技术 blocked，不伪造自主停止，不快速续行；日志维护独立于 Life。
 %% dev.57：共同认知决策提交边界；不新增模型、权限或账本。
 %% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
@@ -976,6 +981,7 @@ planner -.-> candidateDecision57
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.59：主人本机备份按记忆 ID/内容比较；原档案、连续保留与撤销保护核验后，可明确确认补回缺失公开经历。非 Life 自主行动，不新建经历或账本。
 %% dev.58：无效续行决定仅技术 blocked，不伪造自主停止，不快速续行；日志维护独立于 Life。
 %% dev.57：共同认知决策提交边界；不新增模型、权限或账本。
 %% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
@@ -1375,6 +1381,7 @@ liveDecision57["活体证据失效则拒绝陈旧决定；不生成经历或联�
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.59：主人本机备份按记忆 ID/内容比较；原档案、连续保留与撤销保护核验后，可明确确认补回缺失公开经历。非 Life 自主行动，不新建经历或账本。
 %% dev.58：无效续行决定仅技术 blocked，不伪造自主停止，不快速续行；日志维护独立于 Life。
 %% dev.57：共同认知决策提交边界；不新增模型、权限或账本。
 %% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。

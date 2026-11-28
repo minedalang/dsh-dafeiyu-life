@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import {
   createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup,
-  createBackup, validateBackup, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, businessRestorePreview, backupMemoryOverview, memoryRepairSource, previewPortableMemoryRepair, planPortableMemoryRepair, repairPortableMemoryDetails,
+  createBackup, createBackupWithProgress, createLifeMemoryBackupWithProgress, backupMemoryDifferences, planMissingPublicEpisodes, repairMissingPublicEpisodes, validateBackup, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, businessRestorePreview, backupMemoryOverview, memoryRepairSource, previewPortableMemoryRepair, planPortableMemoryRepair, repairPortableMemoryDetails,
 } from '../lib/data-backup.mjs'
 import { saveBackupJson } from '../lib/backup-directory.mjs'
 import {createLifeMemoryDetailStore} from '../lib/life-memory-details.mjs'
@@ -366,3 +366,53 @@ test('dev39 mixed group: one bad field does not disable legal siblings; exact un
   for(const selection of [['messages'],['messages:dmOwnerPollSeconds'],['memory:mainSessionMemorySemanticEnabled'],['life'],['messages:fake']])assert.throws(()=>planBusinessRestore(current,incoming,{...opts,selection}),/不可用/);
  }finally{rmSync(root,{recursive:true,force:true});rmSync(old,{recursive:true,force:true})}
 });
+
+
+test('record-level diff distinguishes backup-only, live-only and changed same IDs despite newer live clock',()=>{
+ const name='life-memory/episodic.json',file=(episodes,archiveKeys=[])=>({[name]:JSON.stringify({episodes,archiveKeys})})
+ const row=(id,at,text)=>({id,at,stage:'clear',text})
+ const a=row('old',100,'历史'),b=row('common',200,'旧内容'),c=row('new',300,'当前')
+ const result=backupMemoryDifferences(file([{...b,text:'当前内容'},c],['old']),file([a,b])).episodes
+ assert.deepEqual([result.backupOnly,result.currentOnly,result.changed,result.same,result.archived],[1,1,1,0,1]);assert.equal(result.samples.find(x=>x.type==='currentOnly').currentStage,'clear');assert.equal(result.samples.find(x=>x.type==='currentOnly').backupStage,null)
+ assert.equal(JSON.stringify(result).includes('历史'),false)
+ const reordered={text:b.text,id:b.id,stage:b.stage,at:b.at};assert.equal(backupMemoryDifferences(file([reordered]),file([b])).episodes.same,1)
+})
+
+test('staged backup collectors capture files before asynchronous manifest milestone; no fabricated partial backup',async()=>{
+ const root=temp();try{makeLifeFixture(root);const stages=[];const old=createBackup({root,config:{}})
+ const backup=await createBackupWithProgress({root,config:{}},async stage=>{stages.push(stage);put(root,'life-memory/episodic.json',{version:1,episodes:[],archiveKeys:[],updatedAt:0})})
+ assert.deepEqual(stages,['manifest']);assert.equal(backup.files['life-memory/episodic.json'],old.files['life-memory/episodic.json']);assert.equal(validateBackup(backup).integrity,'sha256-verified')
+ const memory=await createLifeMemoryBackupWithProgress(root,async stage=>stages.push(stage));assert.deepEqual(stages,['manifest','manifest']);assert.equal(inspectLifeMemoryBackup(memory).memory.episodes.count,0)
+ await assert.rejects(createBackupWithProgress({root,config:{}},async()=>{throw Error('cancelled')}),/cancelled/)
+ }finally{rmSync(root,{recursive:true,force:true})}
+})
+
+import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
+
+test('owner repair only adds proven missing public experiences under original lock, never replaces newer rows',()=>{
+ const root=temp(),tag='a'.repeat(16),characterId='11111111-1111-4111-8111-111111111111',now=Date.now(),options={sameCharacter:true,accountTag:tag,now:now+5000}
+ let clock=now-3000;const gateway=createLifeMemoryGateway({dataDir:root,getAccountTag:()=>tag,now:()=>clock})
+ try{
+  put(root,'character-identity.json',{version:1,id:characterId,createdAt:1});put(root,'long-term-memory/dafeiyu.json',{version:3,memories:[],traces:[],deleted:[]});put(root,'detail-protection/revocations-v1.json',{version:1,ids:[]})
+  const event=(key,bvid)=>({kind:'watch',key,bvid,title:key,time:clock,accountTag:tag})
+  gateway.recordEvents([event('old-one','BV1pXHK6mE6z'),event('old-two','BV1pXHK6mE6y')]);const business=createBackup({root,config:{}}),incoming=memoryRepairSource(business,{characterId})
+  const epName='life-memory/episodic.json',path=join(root,epName),before=JSON.parse(readFileSync(path,'utf8')),lost=before.episodes[0]
+  clock=now-1000;gateway.recordEvents([event('new-one','BV1pXHK6mE6x')]);const live=JSON.parse(readFileSync(path,'utf8'));live.episodes=live.episodes.filter(e=>e.id!==lost.id);put(root,epName,live)
+  const current=createLifeMemoryBackup(root),preview=previewPortableMemoryRepair(current,incoming,'scope',options)
+  assert.equal(preview.missingEpisodes,1,preview.missingReason);assert.equal(preview.differences.episodes.backupOnly,1);assert.equal(preview.differences.episodes.currentOnly,1)
+  assert.equal(businessRestorePreview(createBackup({root,config:{}}),business,{characterId,accountTag:tag,now:options.now}).memory.missingEpisodes,1)
+  assert.equal(planMissingPublicEpisodes(current,incoming,{...options,sameCharacter:false}).rows.length,0)
+  assert.equal(planMissingPublicEpisodes(current,incoming,{...options,accountTag:'b'.repeat(16)}).rows.length,0)
+  assert.throws(()=>repairMissingPublicEpisodes(root,incoming,options,'stale','scope'),/资格已变化/)
+  const archive=Object.entries(current.files).find(([name])=>name.startsWith('life-memory/archive/')),archivePath=join(root,archive[0]);const archiveBytes=readFileSync(archivePath,'utf8')
+  const revoked=join(root,'detail-protection/revocations-v1.json');put(root,'detail-protection/revocations-v1.json',{version:1,ids:[lost.id]})
+  assert.equal(planMissingPublicEpisodes(createLifeMemoryBackup(root),incoming,options).rows.length,0);put(root,'detail-protection/revocations-v1.json',{version:1,ids:[]})
+  const changed=structuredClone(live);changed.healthEvents[0].evicted++;put(root,epName,changed);assert.match(planMissingPublicEpisodes(createLifeMemoryBackup(root),incoming,options).reason,/淘汰|回退/);put(root,epName,live)
+  const missingHealth=structuredClone(live);delete missingHealth.healthEvents;put(root,epName,missingHealth);assert.match(planMissingPublicEpisodes(createLifeMemoryBackup(root),incoming,options).reason,/统计/);put(root,epName,live)
+  assert.equal(planMissingPublicEpisodes(current,incoming,{...options,now:options.now+8*86400000}).rows.length,0)
+  const archiveRows=archiveBytes.split('\n').filter(Boolean).map(JSON.parse);put(root,archive[0],archiveRows.filter(e=>e.id!==lost.id).map(e=>JSON.stringify(e)).join('\n')+'\n');assert.match(planMissingPublicEpisodes(createLifeMemoryBackup(root),incoming,options).reason,/档案/);put(root,archive[0],archiveBytes)
+  assert.equal(repairMissingPublicEpisodes(root,incoming,options,preview.revision,'scope'),1)
+  const final=JSON.parse(readFileSync(path,'utf8'));assert.deepEqual(final.episodes,[...live.episodes,lost]);assert.deepEqual(final.healthEvents,live.healthEvents);assert.deepEqual(final.archiveKeys,live.archiveKeys);assert.equal(final.updatedAt,live.updatedAt);assert.equal(readFileSync(archivePath,'utf8'),archiveBytes)
+  assert.equal(previewPortableMemoryRepair(createLifeMemoryBackup(root),incoming,'scope',options).missingEpisodes,0)
+ }finally{gateway.close();rmSync(root,{recursive:true,force:true})}
+})

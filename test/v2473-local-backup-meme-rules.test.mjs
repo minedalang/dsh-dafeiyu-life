@@ -56,7 +56,7 @@ test('备份按钮只写入指定目录、无浏览器下载，预览发送编�
   const backupHandler=j.slice(j.indexOf("$('backup-export').addEventListener"),j.indexOf("$('backup-import-file').addEventListener"))
   assert.doesNotMatch(backupHandler,/Blob|createObjectURL|link\.click/)
   assert.match(backupHandler,/r\.filePath/)
-  assert.match(index,/\{ok:true,filePath,summary:validateBackup\(backup\)\}/)
+  assert.match(index,/summary=validateBackup\(backup\)/);assert.match(index,/const filePath=kind==='business'\?saveBackupJson\(folder,backup\).*\n\s*const result=\{ok:true,filePath,summary\}/)
   assert.match(j,/\/comment-meme-rules\/preview',\{query:q,rules:captureMemeRules\(\)\}/)
   assert.match(index,/const previewRules=body\?\.rules===undefined\?null:validateCommentMemeRules\(body.rules\)/)
 })

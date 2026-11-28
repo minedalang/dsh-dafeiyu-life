@@ -65,7 +65,7 @@ test('管理中心提供可配置目录及诊断正文缺失说明',()=>{
   const host=readFileSync(join(root,'index.js'),'utf8')
   assert.match(html,/backup-directory-save/)
   assert.match(js,/data-backup\/location/)
-  assert.match(host,/saveBackupJson\(folder, backup\)/)
+  assert.match(host,/const folder=requireBackupDirectory\(directory\)/);assert.match(host,/kind==='business'\?saveBackupJson\(folder,backup\):saveBackupJson\(folder,backup,'dafeiyu-memory'\)/)
   assert.match(host,/requireBackupDirectory\(cfg.backupDirectory\)/)
   assert.match(js,/旧记录无法无成本补出原文/)
   assert.match(js,/仅打开视频，无法精准跳转/)
