@@ -72,3 +72,14 @@ test('management page shows two sentinels and active DM controls without per-cat
  assert.match(js,/social-unread/)
  assert.doesNotMatch(js,/syncPollingCards|dmQuietMaxMinutes/)
 })
+
+test('dev102 Episode context and finish recheck account identity after initial scope capture',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'fish-episode-epoch-'));let change=false,calls=0
+ const a=createLifeEpisodeSessions({stateDir:dir,getAccountTag:()=>change&&++calls>1?B:A})
+ try{assert.equal(a.append({episodeId:EP1,type:'decision',action:'inspect_exploration'}).ok,true);change=true;assert.equal(a.context({episodeId:EP1}).events.length,0);calls=0;assert.equal(a.finish({episodeId:EP1}).ok,false);change=false;assert.equal(a.context({episodeId:EP1}).events.length,1)}finally{rmSync(dir,{recursive:true,force:true})}
+})
+test('dev102 Episode pruning defers while the existing ledger writer owns its lock',async()=>{
+ const {withPlannerLedgerLock}=await import('../lib/life-planner-atomic.mjs');const {utimesSync}=await import('node:fs');const dir=mkdtempSync(join(tmpdir(),'fish-episode-prune-'))
+ const a=createLifeEpisodeSessions({stateDir:dir,getAccountTag:()=>A})
+ try{assert.equal(a.append({episodeId:EP1,type:'decision',action:'inspect_exploration'}).ok,true);const file=join(dir,'life-episode-sessions',A,EP1+'.json');utimesSync(file,new Date(0),new Date(0));withPlannerLedgerLock(dir,()=>{assert.equal(a.prune(),0);assert.ok(readFileSync(file))});assert.equal(a.prune(),1)}finally{rmSync(dir,{recursive:true,force:true})}
+})

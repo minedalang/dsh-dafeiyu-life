@@ -168,3 +168,13 @@ test('owner DM continues only the offered signed page within the same turn, curs
  const agent=makeOwner(dir,{recallMemory:async args=>{reads.push(args);if(args.action==='memory_search')return {ok:true,items:[{id:'episode:known',summary:'以前看到的公开画面'}]};return {ok:true,items:[{id:'detail:'+reads.length,summary:reads.length===2?'第一页画面':'第二页画面'}],hasMore:reads.length===2,...(reads.length===2?{nextCursor:'HOST-ONLY-CURSOR'}:{}),validateRecall:()=>true}},invokeModel:async prompt=>{assert.ok(!JSON.stringify(prompt).includes('HOST-ONLY-CURSOR'));if(calls===3)assert.match(JSON.stringify(prompt),/第二页画面/);return steps[calls++]}})
  assert.equal((await agent.processMessage(ownerMsg('之前那个画面','detail-page'))).ok,true);assert.equal(calls,4);assert.equal(reads.length,3);assert.deepEqual(reads[1].detail,reads[2].detail);assert.equal(reads[2].pageCursor,'HOST-ONLY-CURSOR');assert.equal(reads[1].pageCursor,undefined)
 }))
+
+test('dev102 owner memory scope invalidation during first lookup stops further retrieval and projection',async()=>{
+ let epoch=1,reads=0,privateReads=0
+ const policy={actor:()=>({role:'owner'}),memoryScope:()=> 'owner-private',canViewIdentity:()=>false,canViewRelationship:()=>false}
+ const a=createSocialContextAssembler({policy,getAccountTag:()=> 'a',getAccountEpoch:()=>epoch,
+  memoryRetriever:{localContext:async()=>{reads++;epoch++;return 'OLD_SCOPE_SECRET'},socialContext:()=>{throw Error('wrong domain')}},
+  getPrivateLifeContext:()=>{privateReads++;return 'OTHER_SECRET'},logger:{warn(){}}})
+ const result=await a.message({uid:OWNER,kind:'dm',text:'那个呢',recallQueries:['第一组','第二组']},{requested:['memory'],mode:'compact'})
+ assert.equal(result.ok,false);assert.equal(reads,1);assert.equal(privateReads,0);assert.doesNotMatch(JSON.stringify(result),/OLD_SCOPE_SECRET|OTHER_SECRET/)
+})

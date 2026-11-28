@@ -244,3 +244,9 @@ test('确认单方表达走原提炼，不能冒充共同经历；旧账号片�
  const bad=setup({answer:({prompt})=>replyFor(prompt)})
  try{await bad.worker.observe(row);await bad.worker.markSettled({uid:'123',role:'owner'});assert.equal((await bad.worker.tick()).reason,'retry-pending');assert.equal(bad.events.length,0)}finally{bad.dispose()}
 })
+
+test('dev102 private extraction must retain original account epoch before memory commit',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'fish-private-epoch-'));let clock=1_800_000_000_000,epoch=1,records=0
+ const worker=createPrivateConversationExperiences({dataDir:dir,now:()=>clock,getAccountTag:()=>A,getAccountEpoch:()=>epoch,getConfig:()=>({mainSessionMemoryEnabled:true}),invokeModel:async prompt=>{epoch++;return replyFor(prompt,{kind:'reported',text:'对方在本次交流中提到了关于绘画的个人兴趣，我没有据此推断我们以前一起画过画。'})},recordEvents:async()=>{records++;return {ok:true}},logger:{warn(){}}})
+ try{await worker.observe({uid:'123',role:'friend',eventId:'x',text:'今天画画',at:clock});clock+=21*60_000;assert.equal((await worker.tick()).reason,'private-extraction-claim-lost');assert.equal(records,0);assert.equal(worker.status().pendingSegments,1)}finally{rmSync(dir,{recursive:true,force:true})}
+})

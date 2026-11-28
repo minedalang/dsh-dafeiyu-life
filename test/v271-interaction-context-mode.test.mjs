@@ -214,3 +214,14 @@ test('dev81 owner explicit request cannot manufacture a missing receipt or bypas
   const b=make(async()=>answer({...reply,ownerRequestedTechnicalReport:true}),{captureReadScope:()=>()=>true});try{assert.equal(await b.generate({...verifiedOwner,text:'告诉我技术回执',availableContexts:[]}),'SKIP')}finally{b.stop()}
  }
 })
+
+test('dev102 queued incoming request cannot adopt a newer account generation',async()=>{
+ let epoch=1,calls=0,prepared=0
+ const b=make(async()=>{calls++;return answer()},{captureReadScope:()=>{const e=epoch;return ()=>e===epoch},prepareContexts:async rows=>{prepared++;return rows.map(()=>({}))}})
+ try{const old=b.generate({...verifiedOwner,text:'old account'});epoch++;await assert.rejects(old,/life-read-scope-changed/);assert.equal(calls,0);assert.equal(prepared,0);assert.equal(await b.generate({...verifiedOwner,messageId:'new'}),'自然回复');assert.equal(calls,1)}finally{b.stop()}
+})
+test('dev102 stop invalidates an already running social model decision',async()=>{
+ let start,release;const started=new Promise(r=>start=r)
+ const b=make(async()=>{start();return new Promise(r=>release=r)})
+ try{const p=b.generate(verifiedOwner);const rejected=assert.rejects(p,/life-read-scope-changed/);await started;b.stop();release(answer());await rejected}finally{b.stop()}
+})
