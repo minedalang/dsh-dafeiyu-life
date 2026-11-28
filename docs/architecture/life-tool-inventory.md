@@ -205,3 +205,8 @@ Video Agent `index.js:mcpWhitelist`：基础 search（非首页模式）、watch
 ### 核对入口
 
 `lib/life-agent-read-runtime.mjs`、`lib/interaction-batch.mjs`、`index.js`（tool/readTool、mcpWhitelist、真实加载与执行）、`lib/long-term-memory.mjs`（chosenTool）、`lib/social-policy-gate.mjs`、`lib/social-context-assembler.mjs`、`lib/life-public-capabilities.mjs`、`lib/life-continuation.mjs`、`lib/autonomous-planner.mjs`、`lib/owner-dm-agent.mjs`、`lib/owner-contact-policy.mjs`、`lib/video-exploration-budget.mjs`、`vendor/bilibili-mcp/mcp_server.py`。此清单不是额外执行权来源；遇到说明与代码不一致以实际门禁及回执为准。
+
+
+### dev.78 主 Session 身份解析与呈现前置契约
+
+`bili_read_dm` 现接 `contact=owner`（原主人配置）或当前请求中的已有 UID 锚点名称（配置备注、当前账号入站昵称），原显式 UID 参数仍保留，二选一。准确匹配只定位目标，不授予披露；模糊近似仅澄清，重名、冲突及未锚定人物不读取。原 Life 私密读登记、一次性精确票据、账号代际、共享预算及外发门禁不变。真实原始主人轮次的 `work:` 只切换已接线私密读结果呈现；不启用通用工作授权或意愿跳过。正常角色投影保留真实选择与事实，技术阻断不冒充拒绝；旧详细回忆分页、联想及原内部回执保留。注册数量不变，其余工具和场景尚待接入。

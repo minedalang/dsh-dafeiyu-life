@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {resolveExistingDmContact} from '../lib/manual-dm-contact.mjs'
+import {resolveExistingDmContact,resolveSessionDmTarget,resolveAnchoredPerson} from '../lib/manual-dm-contact.mjs'
 import {readOwnedVideoLedgerForComment,explainCommentSelection} from '../lib/video-owned-ledger.mjs'
 import {apply} from './helpers/ready-host.mjs'
 
@@ -102,3 +102,27 @@ test('Life video approval gateway awaits async receipt check and fails closed be
  assert.equal((await r.json()).reason,'comment-selection-ledger-unavailable')
  assert.equal(checks,1);assert.equal(llm,0)
 })
+
+
+test('dev78 anchored DM target: bound owner, current input names, ambiguity and no fuzzy execution',()=>mk(dir=>{
+ const args=fixture(dir),base={...args,ownerUid:'67890',roster:[{uid:'54321',name:'老大'},{uid:'65432',name:'海边的猫'}]}
+ const run=(request,selectors={})=>resolveSessionDmTarget({...base,request,...selectors})
+ assert.deepEqual(run('你能看到你和主人的b站私信内容吗？',{contact:'owner'}),{ok:true,uid:'67890',basis:'bound-owner'})
+ assert.equal(run('看看老大的私信',{contact:'owner'}).ok,false)
+ assert.equal(run('看看我和你的朋友老大的私信',{contact:'owner'}).ok,false)
+ assert.equal(run('看看老大的私信',{contact:'老大'}).uid,'54321')
+ assert.equal(run('看看'+NAME+'的私信',{contact:NAME}).uid,USER)
+ assert.equal(run('请看看私信',{contact:NAME}).ok,false)
+ assert.equal(run('看看 UID '+USER+' 的私信',{talkerUid:USER}).uid,USER)
+ assert.equal(run('看看 UID '+USER+' 的私信',{talkerUid:'54321'}).ok,false)
+ assert.equal(run('看看我和你的私信',{contact:'owner',talkerUid:'67890'}).ok,false)
+ assert.equal(run('看看海边猫的私信',{contact:'海边猫'}).suggestedName,'海边的猫')
+ assert.equal(run('看看海边猫的私信',{contact:'海边猫'}).ok,false)
+ assert.equal(run('看看入站联系人乙的私信',{contact:'入站联系人乙'}).suggestedName,undefined)
+ assert.equal(run('看看'+NAME+'的私信',{contact:NAME}).basis,'account-inbound-name')
+ fixture(dir,p=>{p['88888']={...p[USER]}})
+ assert.equal(run('看看'+NAME+'的私信',{contact:NAME}).reason,'contact-ambiguous')
+ assert.equal(resolveAnchoredPerson('老大',[{uid:'54321',name:'老大',basis:'model-guess'}]).ok,false)
+ assert.equal(resolveAnchoredPerson('老大',[{uid:'54321',name:'老大',basis:'configured-name'},{uid:'12345',name:'老大',basis:'account-inbound-name'}]).reason,'contact-ambiguous')
+ assert.doesNotMatch(JSON.stringify(run('看看老大的私信',{contact:'老大'})),/private message/)
+}))

@@ -351,3 +351,16 @@ test('dev70 shared privacy turn: DM, recall, todo and gallery cannot re-vote aft
  const stale=recall.execute({query:'另一个主题'});await reading;turn(5);releaseRead();const discarded=await stale;assert.equal(discarded.ok,false);assert.doesNotMatch(JSON.stringify(discarded),/私人记忆/);blockRead=null
  assert.equal((await dm()).ok,true)
 })
+
+
+test('dev78 claimed turn presentation mode is raw and ephemeral; alternate DM selectors share one claim',()=>{
+ const home=mkdtempSync(join(tmpdir(),'dev78-mode-')),listeners=new Map()
+ const agent={id:'owner78',sessionId:'owner78',session:{snapshotEvents:()=>[]},ctx:{on(n,f){listeners.set(n,f);return ()=>listeners.delete(n)},tools:{register(){return ()=>{}}},systemPrompt:{section(){return ()=>{}},context(){return ()=>{}}}}}
+ const memory=createLongTermMemory({dataDir:home,dshHome:home,agents:{get:()=>agent,list:()=>[agent]},getConfig:()=>({mainSessionId:'owner78'}),defineTool:x=>x,logger:{warn(){}}})
+ try{memory.start();let n=0;const turn=(content,source)=>{const message={role:'user',content,...(source?{source:{kind:source}}:{})};listeners.get('agent/inbox/inserted')?.({message});listeners.get('agent/inbox/claimed')?.({message,turn:++n});return memory.capturePrivateRead(agent)}
+ const a=turn('work: 获取我和你的私信');assert.equal(a.mode,'work');assert.equal(memory.privateReadMode(),'work');assert.equal(a.claim({tool:'bili_read_dm',uid:'42',limit:10}),true);a.settle(true);assert.equal(a.claim({tool:'bili_read_dm',uid:'43',limit:3}),false)
+ const b=turn('获取老大的私信');assert.equal(a(),false);assert.equal(b.mode,'life');assert.equal(memory.privateReadMode(),'life')
+ assert.equal(turn(' work: 获取私信').mode,'life');assert.equal(turn('work: 获取私信','plugin:test'),null);assert.equal(memory.privateReadMode(),'life')
+ const c=turn('work: 获取私信');listeners.get('session/event')?.(agent.session,{type:'turn/end',data:{turn:n}});assert.equal(c(),false);assert.equal(memory.privateReadMode(),'life')
+ }finally{memory.stop();rmSync(home,{recursive:true,force:true})}
+})

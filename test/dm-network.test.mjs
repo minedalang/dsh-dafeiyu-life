@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { listSessions, fetchMsgs, readOwnerConversation } from '../lib/dm.mjs';
-import {executeMainSessionPrivateRead} from '../lib/life-agent-read-runtime.mjs';
+import {executeMainSessionPrivateRead,ownerTurnMode,projectPrivateReadForRole} from '../lib/life-agent-read-runtime.mjs';
 import {createLifeWillingness} from '../lib/life-willingness.mjs';
+import {resolveSessionDmTarget} from '../lib/manual-dm-contact.mjs';
 import {mkdtempSync,rmSync,readFileSync,readdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -117,4 +118,30 @@ test('dev70 generic private target binds tool and exact parameters, disallows al
  assert.equal((await executeMainSessionPrivateRead({willingness:actor,isCurrent:()=>true,claim:()=>true,tool:'bili_search',args:{keyword:'公开'},read})).ok,false);assert.equal(reads,1)
  const blocked=await executeMainSessionPrivateRead({willingness:{decide:async()=>({ok:true,candidateId:'private-read',proof:{}}),verify:()=>({ok:true}),receipt:()=>({ok:false})},isCurrent:()=>true,claim:()=>true,tool:'bili_received_replies',args:{},read:async()=>({error:'不应交付的正文'})})
  assert.equal(blocked.ok,false);assert.doesNotMatch(JSON.stringify(blocked),/不应交付/)
+})
+
+
+test('dev78 role presentation retains genuine choice but omits internal reason and arbitrary prose',()=>{
+ const raw={ok:false,reason:'life-private-read-declined',lifeAction:'skip',message:'内部检查',private:'secret'}
+ const view=projectPrivateReadForRole(raw);assert.equal(view.choice,'prefer-not-to-share');assert.doesNotMatch(JSON.stringify(view),/life-private-read|内部检查|secret/)
+ assert.deepEqual(projectPrivateReadForRole(raw,'work'),raw)
+ assert.equal(projectPrivateReadForRole({ok:false,reason:'life-private-read-deferred',lifeAction:'defer'}).choice,'not-now')
+ assert.equal(projectPrivateReadForRole({ok:false,reason:'life-private-read-declined',lifeAction:'blocked'}).choice,'unavailable')
+ assert.equal(projectPrivateReadForRole({ok:false,reason:'dm-read-failed',error:'401'}).choice,'unavailable')
+ assert.equal(projectPrivateReadForRole({ok:false,reason:'contact-needs-clarification',suggestedName:'老大'}).suggestedName,'老大')
+ assert.equal(projectPrivateReadForRole({ok:false,reason:'invalid-detail-selector'}).reason,'invalid-detail-selector')
+ const success={ok:true,messages:[{text:'实际正文'}]};assert.equal(projectPrivateReadForRole(success),success)
+ assert.equal(ownerTurnMode('work: 看看私信'),'work');for(const s of [' work: 看看私信','引用 work: 看看私信','work:','WORK: 查看','\nwork: 查看'])assert.equal(ownerTurnMode(s),'life')
+})
+
+
+test('dev78 resolved owner and configured alias enter the original precise willingness gate; work is not a bypass',async t=>{
+ const home=mkdtempSync(join(tmpdir(),'dev78-private-resolved-'));t.after(()=>rmSync(home,{recursive:true,force:true}));let reads=0,models=0,answer='skip',current=true,request='work: 查看我和你的私信'
+ const actor=createLifeWillingness({dataDir:home,getAccountTag:()=> 'a'.repeat(16),getContext:()=>({voice:'鱼鱼'}),invokeModel:async()=>{models++;return JSON.stringify({action:answer,candidateId:'private-read',reason:'自主选择'})}})
+ const resolve=contact=>resolveSessionDmTarget({request,contact,ownerUid:'42',accountUid:'7',runtimeDir:home,roster:[{uid:'43',name:'老大'}]})
+ const run=async contact=>{const target=resolve(contact);if(!target.ok)return target;return readOwnerConversation({talker_uid:target.uid,limit:10,confirm:true},{accountUid:'7',isCurrent:()=>current&&resolve(contact).uid===target.uid,readConversation:async uid=>{reads++;return [{fromMe:false,text:'仅在同意后读取 '+uid}]},chooseRead:({uid,limit,read})=>executeMainSessionPrivateRead({willingness:actor,isCurrent:()=>current&&resolve(contact).uid===target.uid,claim:()=>true,request,uid,limit,read})})}
+ const refusal=await run('owner');assert.equal(refusal.lifeAction,'skip');assert.equal(models,1);assert.equal(reads,0);assert.equal(projectPrivateReadForRole(refusal,ownerTurnMode(request)).reason,'life-private-read-declined')
+ request='看看老大的私信';answer='act';const result=await run('老大');assert.equal(result.ok,true);assert.equal(result.talker_uid,'43');assert.equal(reads,1)
+ request='看看陌生人的私信';assert.equal((await run('陌生人')).ok,false);assert.equal(models,2);assert.equal(reads,1)
+ current=false;request='看看我和你的私信';assert.equal((await run('owner')).ok,false);assert.equal(reads,1)
 })
