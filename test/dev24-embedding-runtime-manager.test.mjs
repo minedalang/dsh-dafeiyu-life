@@ -222,3 +222,55 @@ test('V2 native vision download uses external model directory and missing marker
     await assert.rejects(access(join(storage.visionModelDir,'qwen3.5-4b')))
   }finally{await rm(root,{recursive:true,force:true})}
 })
+
+
+test('native vision lease keeps owned process alive for multiple requests, revokes scope and cleans up',async()=>{
+  const {withLlamaVisionRuntime,LLAMA_VISION_MODELS}=await import('../lib/llama-vision-experiment.mjs')
+  const {EventEmitter}=await import('node:events')
+  let closed=0,scope,requests=[]
+  const options={binary:'/fake/llama-server',weights:'/fake/a.gguf',mmproj:'/fake/p.gguf',model:LLAMA_VISION_MODELS[0],port:12345,signal:new AbortController().signal,
+    spawnImpl:()=>{const child=new EventEmitter();child.kill=()=>{closed++;child.emit('exit',0);child.emit('close',0);return true};return child},
+    fetchImpl:async(url,opts)=>{requests.push([url,opts.headers.Authorization]);return new Response(JSON.stringify(url.endsWith('/health')?{status:'ok'}:{choices:[]}))}}
+  const answer=await withLlamaVisionRuntime(options,async lease=>{
+    scope=lease;assert.equal(closed,0);assert.equal(lease.model,'qwen3.5-2b');assert.equal(lease.signal.aborted,false)
+    await lease.request({stream:false},1000);await lease.request({stream:false},1000)
+    return 'done'
+  })
+  assert.equal(answer,'done');assert.equal(closed,1);assert.equal(scope.signal.aborted,true)
+  assert.equal(requests.length,3);assert.ok(requests.every(([url,key])=>url.startsWith('http://127.0.0.1:12345/')&&key==='Bearer '+scope.key))
+  assert.throws(()=>scope.request({},1000),/租约已结束/)
+  await assert.rejects(withLlamaVisionRuntime(options,async()=>{throw Error('consumer failed')}),/consumer failed/)
+  assert.equal(closed,2)
+})
+
+test('native production lease refuses missing assets and excludes maintenance until settled',async()=>{
+  const home=await mkdtemp(join(tmpdir(),'dsh-native-lease-'))
+  try{
+    const manager=createEmbeddingRuntimeManager({dataDir:home,platform:'linux',arch:'x64'})
+    const lease=manager.withVisionRuntime('qwen3.5-2b',()=>assert.fail('missing assets cannot reach consumer'))
+    assert.throws(()=>manager.beginEmbeddingMaintenance(),/共享运行时/)
+    assert.throws(()=>manager.runVision('install','qwen3.5-4b'),/共享运行时/)
+    await assert.rejects(lease,/视觉资源尚未安装/)
+    const release=manager.beginEmbeddingMaintenance();release()
+    assert.throws(()=>manager.withVisionRuntime('../model',()=>{}),/受管视觉模型/)
+  }finally{await rm(home,{recursive:true,force:true})}
+})
+
+test('one-shot native worker receives only its lease, checks staged scripts and closes',async()=>{
+  const {callScopedNativeVision}=await import('../lib/scoped-native-vision-read.mjs')
+  const home=await mkdtemp(join(tmpdir(),'dsh-native-worker-'))
+  try{
+    for(const [name,source] of [['mcp_server.py','../vendor/bilibili-mcp/mcp_server.py'],['preview_vision.py','../lib/preview_vision.py']])await writeFile(join(home,name),await readFile(new URL(source,import.meta.url)))
+    let current=true,started=0,stopped=0,aborted=false
+    const controller=new AbortController(),key='a'.repeat(64)
+    const runtime={withVisionRuntime:async(id,fn)=>{started++;return fn({model:id,port:12345,key,signal:controller.signal})}}
+    const opts={runtime,modelId:'qwen3.5-2b',command:'python',home,isCurrent:()=>current,args:{bvid:'BV1234567890'},makeClient:options=>{
+      assert.equal(options.env.BILI_MCP_TOOLS,'bili_preview_vision');assert.equal(options.env.BILI_JS_MCP_ADAPTER,'0');assert.equal(options.env.DSH_NATIVE_VISION_KEY,key);assert.equal(options.env.BILI_VISION_MODEL,'qwen3.5:2b')
+      return {call:async(tool,args)=>{assert.equal(tool,'bili_preview_vision');assert.deepEqual(args,opts.args);if(aborted)controller.abort();return {ok:true,status:'analyzed'}},stopAndWait:async()=>{stopped++}}
+    }}
+    assert.deepEqual(await callScopedNativeVision(opts),{ok:true,status:'analyzed'});assert.equal(stopped,1)
+    current=false;await assert.rejects(callScopedNativeVision(opts),/执行范围/);assert.equal(started,1)
+    current=true;aborted=true;await assert.rejects(callScopedNativeVision(opts));assert.equal(stopped,2)
+    await writeFile(join(home,'preview_vision.py'),'stale');await assert.rejects(callScopedNativeVision(opts),/一致性/);assert.equal(started,2)
+  }finally{await rm(home,{recursive:true,force:true})}
+})

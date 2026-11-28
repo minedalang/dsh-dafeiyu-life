@@ -142,4 +142,98 @@ class LlamaProbeTests(unittest.TestCase):
         finally:
             if child.poll() is None: child.kill();child.wait()
 
+class NativeProductionAdapterTests(unittest.TestCase):
+    def test_actual_adaptive_pipeline_uses_native_alias_and_original_evidence(self):
+        from tempfile import TemporaryDirectory
+        import adaptive_video as av
+        from test_v283_dev3_visual_board_alignment import board, fake_frames, BV
+        with TemporaryDirectory() as home, fake_llama([reply(cells())]) as (port, seen), \
+             patch.object(av, 'acquire_adaptive_frames', side_effect=lambda *a, **kw: fake_frames([board(0),board(1)])) as acquire, \
+             patch.object(pv, '_capture_actual_video_images', return_value=None):
+            session = pv.NativeVisionSession(port, 'a'*64, 'qwen3.5-2b')
+            kwargs = dict(perception_source='adaptive', enabled=True, provider='llama.cpp', model=session.model, max_frames=24)
+            denied = pv.analyze_perception(BV, home, **kwargs)
+            self.assertEqual(denied['status'], 'vision_model_unavailable')
+            acquire.assert_not_called()
+            out = pv.analyze_perception(BV, home, _native_session=session, **kwargs)
+            self.assertEqual(out['status'], 'analyzed', out)
+            self.assertEqual([r['status'] for r in out['visionBoardReceipts']], ['analyzed']*2)
+            self.assertEqual(len(seen), 2)
+            for path, key, body in seen:
+                self.assertEqual((path, key, body['model']), ('/v1/chat/completions', 'Bearer '+'a'*64, 'qwen3.5-2b'))
+                self.assertEqual(body['chat_template_kwargs'], {'enable_thinking':False})
+                self.assertEqual(len(body['messages'][0]['content']), 2)
+            self.assertEqual(pv.analyze_perception(BV, home, _native_session=session, **kwargs)['status'], 'cached')
+            self.assertEqual(pv.analyze_perception(BV, home, **kwargs)['status'], 'vision_model_unavailable')
+            # A native cache must not impersonate an Ollama observation.
+            with patch.object(pv, '_call_local_ollama', side_effect=ValueError('no answer')) as old:
+                result = pv.analyze_perception(BV, home, **dict(kwargs, provider='ollama'))
+                self.assertNotEqual(result['status'], 'cached')
+                old.assert_called()
+
+    def test_preview_pipeline_and_wrong_model_rejected_before_network(self):
+        from tempfile import TemporaryDirectory
+        from test_v281_dev3b16_preview_storyboard import fake_api, image_fetch, BV
+        with TemporaryDirectory() as home, fake_llama([reply(cells())]) as (port, seen), \
+             patch.object(pv, '_json_api', side_effect=fake_api) as api, \
+             patch.object(pv, '_safe_api_get', side_effect=image_fetch):
+            session = pv.NativeVisionSession(port, 'b'*64, 'qwen3.5-2b')
+            kwargs = dict(enabled=True, provider='llama.cpp', storyboard=True, max_frames=12, _native_session=session)
+            self.assertEqual(pv.analyze_preview(BV, home, model='qwen3.5:4b', **kwargs)['status'], 'vision_model_unavailable')
+            api.assert_not_called()
+            out = pv.analyze_preview(BV, home, model=session.model, **kwargs)
+            self.assertEqual(out['status'], 'analyzed', out)
+            self.assertEqual(len(seen), 1)
+
+    def test_native_never_accepts_truncation_reasoning_or_redirect(self):
+        for response in (reply('partial','length'), reply('',reasoning_content=cells()), (302,{})):
+            with self.subTest(response=response), fake_llama([response]) as (port, seen):
+                session = pv.NativeVisionSession(port, 'c'*64, 'qwen3.5-2b')
+                with self.assertRaises((ValueError,pv.VisionServiceError)):
+                    session.infer([{'second':2,'bytes':b'img'}], session.model)
+                self.assertEqual(len(seen), 1)
+
+    def test_native_credentials_are_not_configurable_urls(self):
+        for port,key,model in [(0,'a'*64,'qwen3.5-2b'),(1234,'http://example.com','qwen3.5-2b'),(1234,'a'*64,'../weights')]:
+            with self.assertRaises(ValueError): pv.NativeVisionSession(port,key,model)
+
+    def test_scoped_worker_requires_exact_model_and_one_tool(self):
+        import os
+        env = dict(BILI_MCP_TOOLS='bili_preview_vision', BILI_JS_MCP_ADAPTER='0', BILI_VISION_MODE='independent_local', BILI_VISION_PROVIDER='llama.cpp', DSH_NATIVE_VISION_PORT='12345', DSH_NATIVE_VISION_KEY='a'*64, DSH_NATIVE_VISION_MODEL='qwen3.5-2b', BILI_VISION_MODEL='qwen3.5:2b')
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(pv.NativeVisionSession.from_scoped_worker().model, 'qwen3.5:2b')
+        for delta in ({'BILI_MCP_TOOLS':'*'}, {'BILI_JS_MCP_ADAPTER':'1'}, {'BILI_VISION_MODEL':'qwen3.5:4b'}, {'DSH_NATIVE_VISION_KEY':''}):
+            with patch.dict(os.environ, dict(env, **delta), clear=True):
+                with self.assertRaises(ValueError): pv.NativeVisionSession.from_scoped_worker()
+
+    def test_mcp_native_route_settles_platform_read_before_inference(self):
+        import ast, asyncio, os, re
+        from tempfile import TemporaryDirectory
+        import adaptive_video as av
+        from test_v283_dev3_visual_board_alignment import board, fake_frames, BV
+        tree = ast.parse((Path(__file__).resolve().parents[1]/'vendor/bilibili-mcp/mcp_server.py').read_text(encoding='utf8'))
+        fn = next(x for x in tree.body if isinstance(x, ast.AsyncFunctionDef) and x.name=='bili_preview_vision')
+        fn.decorator_list=[]
+        active=[]; receipts=[]; attempts=[]
+        @contextmanager
+        def reserve(*args, **kwargs):
+            active.append(1)
+            try: yield lambda result: receipts.append(result)
+            finally: active.pop()
+        with TemporaryDirectory() as home, fake_llama([reply(cells())]) as (port, seen), patch.object(av, 'acquire_adaptive_frames', side_effect=lambda *a, **kw: fake_frames([board(0)])), patch.object(pv, '_capture_actual_video_images', return_value=None):
+            ns=dict(os=os,re=re,json=json,asyncio=asyncio,_guard=lambda *_:None,_DUTY_HOME=Path(home),_VISION_BVS_PER_RUN=set(),_owner_debug_stage=lambda *_:None,shared_read_budget=reserve,public_read_reservation=reserve,_record_production_vision_attempt=lambda *a:attempts.append(a))
+            exec(compile(ast.Module(body=[fn],type_ignores=[]),'mcp-test','exec'),ns)
+            env=dict(BILI_VISION_ENABLED='1',BILI_VISION_MODE='independent_local',BILI_VISION_PROVIDER='llama.cpp',BILI_VISION_MODEL='qwen3.5:2b',BILI_MCP_TOOLS='bili_preview_vision',BILI_JS_MCP_ADAPTER='0',DSH_NATIVE_VISION_PORT=str(port),DSH_NATIVE_VISION_KEY='a'*64,DSH_NATIVE_VISION_MODEL='qwen3.5-2b')
+            with patch.dict(os.environ,dict(env,DSH_NATIVE_VISION_KEY=''),clear=True):
+                out=json.loads(asyncio.run(ns['bili_preview_vision'](BV,perception_source='adaptive')))
+                self.assertEqual(out['status'],'vision_model_unavailable');self.assertEqual(receipts,[])
+            transport=pv.NativeVisionSession._transport
+            def checked(session,payload,timeout):
+                self.assertEqual(active,[]);self.assertEqual(len(receipts),1)
+                return transport(session,payload,timeout)
+            with patch.dict(os.environ,env,clear=True),patch.object(pv.NativeVisionSession,'_transport',checked):
+                out=json.loads(asyncio.run(ns['bili_preview_vision'](BV,perception_source='adaptive')))
+                self.assertEqual(out['status'],'analyzed',out);self.assertEqual(out['provider'],'llama.cpp')
+                self.assertEqual(len(seen),1);self.assertEqual(len(attempts),1)
+
 if __name__=='__main__':unittest.main()

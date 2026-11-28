@@ -1623,6 +1623,7 @@ def _record_production_vision_attempt(result, mode, model, debug=False):
                    'ok': status == 'analyzed' and bool(str(result.get('description') or '').strip()),
                    'status': status, 'mode': mode, 'model': str(model or '')[:90],
                    'errorCode': reason if reason in allowed_codes else 'unclassified'}
+        if result.get('provider') == 'llama.cpp': payload['provider'] = 'llama.cpp'
         temp = target.with_name('vision-production-last-' + str(os.getpid()) + '.tmp')
         if temp.exists() and temp.is_symlink():
             return
@@ -1667,6 +1668,12 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
         from preview_vision import analyze_perception
         mode = os.environ.get('BILI_VISION_MODE', 'separate')
         if mode == 'independent_local':
+            native_session = None
+            if os.environ.get('BILI_VISION_PROVIDER') == 'llama.cpp':
+                from preview_vision import NativeVisionSession
+                try: native_session = NativeVisionSession.from_scoped_worker()
+                except ValueError:
+                    return json.dumps({'ok':False,'status':'vision_model_unavailable','error':'内置视觉未取得匹配的专用运行时租约'},ensure_ascii=False)
             _owner_debug_stage('tool-started')
             from preview_vision import record_vision_event
             def run_local_vision():
@@ -1688,15 +1695,17 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                         read_settled = True
                         _owner_debug_stage('frames-settled')
                         _owner_debug_stage('model-running')
-                    result = analyze_perception(bvid,_DUTY_HOME,enabled=True,provider='ollama',perception_source=perception_source,
+                    result = analyze_perception(bvid,_DUTY_HOME,enabled=True,provider='llama.cpp' if native_session is not None else 'ollama',perception_source=perception_source,
                         model=os.environ.get('BILI_VISION_MODEL',''),debug=capture_for_debug is True or capture_for_gallery is True,
                         focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
-                        network_budget_bytes=budget_override,frame_budget_limit=frames_override,before_model=frames_ready)
+                        network_budget_bytes=budget_override,frame_budget_limit=frames_override,before_model=frames_ready,
+                        **({'_native_session':native_session} if native_session is not None else {}))
                     if not read_settled:receipt(result)
                     return result
             result = await asyncio.to_thread(run_local_vision)
             _owner_debug_stage('tool-finished')
             result['mode']='independent_local'
+            if native_session is not None:result['provider']='llama.cpp'
             _record_production_vision_attempt(result, 'independent_local', os.environ.get('BILI_VISION_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='adaptive_local_result' if perception_source=='adaptive' else 'independent_local_result',

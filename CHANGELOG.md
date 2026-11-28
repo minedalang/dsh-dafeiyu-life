@@ -13,6 +13,12 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.93 · 受管视觉租约与分镜适配（内部接线）
+
+- 原图自检和内部视频调用共用受管 CPU llama.cpp 生命周期；固定资产复核、临时环回端口和凭据、取消、退出确认及维护排他。
+- 单工具 Python MCP 可在可信宿主租约内使用内置模型；复用原 preview/adaptive、局部窗口、读取预算和逐格证据核验，缓存按 provider 隔离，不接受截断或仅思考内容。
+- 尚未开放用户配置、主人诊断、Life 或 Headless 生产选路；旧 Ollama/DSH 保持原路径，真实视频及 GPU 待验收。
+
 ## 2.8.3-dev.92 · 本地模型并行准备与冷恢复（第一批）
 
 - Embedding 与内置视觉独立下载，合用单一运行时安装任务；取消单方不取消另一方，识图测试、删除与导入仍排他。

@@ -1,6 +1,6 @@
 """B站播放器 videoshot 预览快照 + 独立视觉模型（安全受限）。
 
-无任意 URL / 文件路径输入；只允许固定 B站官方源与本机 Ollama。
+无任意 URL / 文件路径输入；只允许固定 B站官方源与受控本机视觉。
 视觉图像低清，仅作粗略视觉提示，不代表已看完整视频。
 """
 import argparse
@@ -582,12 +582,111 @@ class VisionServiceError(ValueError):
         self.code=code
 
 
+class NativeVisionSession:
+    """Private in-process adapter for an already-owned llama.cpp server.
+
+    No URL, token, model path or callable is a public MCP parameter. The host
+    must own the server lease; an environment variable alone cannot select it.
+    """
+    def __init__(self, port, key, model):
+        if type(port) is not int or not 1 <= port <= 65535:
+            raise ValueError('视觉运行时端口无效')
+        if not isinstance(key, str) or not re.fullmatch(r'[0-9a-f]{64}', key):
+            raise ValueError('视觉运行时凭据无效')
+        if model not in ('qwen3.5-2b', 'qwen3.5-4b'):
+            raise ValueError('内置视觉模型不在固定清单中')
+        self._port, self._key, self._alias = port, key, model
+        self.model = model.replace('-', ':', 1)
+
+    @classmethod
+    def from_scoped_worker(cls):
+        # Only the dedicated, one-tool worker is eligible. Neither MCP args
+        # nor the ordinary long-lived/Headless environment can select a lease.
+        if (os.environ.get('BILI_MCP_TOOLS') != 'bili_preview_vision' or
+                os.environ.get('BILI_JS_MCP_ADAPTER') != '0' or
+                os.environ.get('BILI_VISION_MODE') != 'independent_local' or
+                os.environ.get('BILI_VISION_PROVIDER') != 'llama.cpp'):
+            raise ValueError('内置视觉未取得专用工作进程租约')
+        try:
+            port = int(os.environ.get('DSH_NATIVE_VISION_PORT', ''))
+        except ValueError:
+            raise ValueError('内置视觉运行时端口无效') from None
+        session = cls(port, os.environ.get('DSH_NATIVE_VISION_KEY', ''), os.environ.get('DSH_NATIVE_VISION_MODEL', ''))
+        if session.model != os.environ.get('BILI_VISION_MODEL'):
+            raise ValueError('内置视觉模型与运行时租约不一致')
+        return session
+
+    def _transport(self, payload, timeout):
+        if payload['model'] != self.model:
+            raise ValueError('视觉模型与运行时租约不一致')
+        message = payload['messages'][0]
+        parts = [{'type': 'text', 'text': message['content']}]
+        parts.extend({'type': 'image_url', 'image_url': {'url': 'data:image/jpeg;base64,' + image}}
+                     for image in message['images'])
+        body = {'model': self._alias, 'stream': False,
+                'temperature': payload['options']['temperature'],
+                'max_tokens': payload['options']['num_predict'],
+                'chat_template_kwargs': {'enable_thinking': False},
+                'messages': [{'role': 'user', 'content': parts}]}
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *args, **kwargs):
+                return None
+        req = urllib.request.Request(f'http://127.0.0.1:{self._port}/v1/chat/completions',
+            json.dumps(body).encode('utf8'), headers={'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + self._key}, method='POST')
+        try:
+            with urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect()).open(req, timeout=timeout) as response:
+                raw = response.read(300_001)
+        except HTTPError as exc:
+            exc.close()
+            raise VisionServiceError('ollama_model_missing' if exc.code == 404 else 'ollama_http_error',
+                                     '内置视觉服务请求未完成') from None
+        except (URLError, TimeoutError) as exc:
+            code = 'ollama_request_timeout' if isinstance(getattr(exc, 'reason', exc), TimeoutError) else 'ollama_connection_failed'
+            raise VisionServiceError(code, '内置视觉服务连接失败或超时') from None
+        if len(raw) > 300_000:
+            raise ValueError('本地视觉模型返回内容过大')
+        try:
+            reply = json.loads(raw)
+            choices = reply['choices']
+            if not isinstance(choices, list) or len(choices) != 1:
+                raise ValueError()
+            choice = choices[0]
+            finish, content = choice['finish_reason'], choice['message']['content']
+            if not isinstance(content, str) or finish not in ('stop', 'length'):
+                raise ValueError()
+            usage = reply.get('usage') or {}
+            tokens = usage.get('completion_tokens', 0)
+            if type(tokens) is not int or tokens < 0:
+                raise ValueError()
+        except (ValueError, TypeError, KeyError, AttributeError):
+            raise ValueError('内置视觉服务未返回有效可见回答') from None
+        if finish != 'stop':
+            raise ValueError('分镜描述因生成长度限制而中断，不视为完成')
+        return json.dumps({'message': {'content': content}, 'done_reason': finish,
+            'done': True, 'eval_count': tokens}).encode('utf8')
+
+    def infer(self, frames, model, *, image_source='B站低清预览'):
+        if model != self.model:
+            raise ValueError('视觉模型与运行时租约不一致')
+        return _call_local_ollama(frames, model, image_source=image_source,
+                                  _lab_transport=self._transport, _lab_thinking='off')
+
+
+def _local_vision_infer(provider, model, native_session):
+    if provider == 'ollama' and native_session is None:
+        return _call_local_ollama
+    if provider == 'llama.cpp' and isinstance(native_session, NativeVisionSession) and native_session.model == model:
+        return native_session.infer
+    raise ValueError('本地视觉路由未取得匹配的受控运行时')
+
+
 def _call_local_ollama(frames, model, *, image_source='B站低清预览', _lab_transport=None, _lab_thinking=None):
     """Read-only fixed loopback inference; a model reply is NOT visual proof.
 
-    The explicit in-process lab seam is used only by the offline developer probe.
-    No config, MCP or production provider can select it. It must return the same
-    bounded response envelope; all observation validation below remains shared.
+    The explicit in-process transport seam is shared by the offline probe and
+    the native runtime adapter. No MCP parameter can select a callable. All
+    observation validation below remains shared.
     """
     if model not in ('qwen3.5:2b','qwen3.5:4b','openbmb/minicpm-v4.7:1b'):
         raise ValueError('本地视觉模型不在安全白名单中')
@@ -1144,7 +1243,7 @@ def _mark_cache_write_result(answer, code):
         answer['cacheSaved']=True
 
 
-def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None, storyboard=False, network_budget_bytes=None, board_tiles=None, before_model=None):
+def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None, storyboard=False, network_budget_bytes=None, board_tiles=None, before_model=None, _native_session=None):
     """返回经过长度钳制的结构化文本；debug 才保存 JPEG，缓存只存分析文字。"""
     if not BV_RE.fullmatch(str(bvid or '')):return {'ok':False,'error':'BV号格式不正确'}
     home=Path(home).resolve()
@@ -1159,8 +1258,12 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
     provider=(provider if provider is not None else os.environ.get('BILI_VISION_PROVIDER','ollama')).strip().lower()
     model=(model if model is not None else os.environ.get('BILI_VISION_MODEL','')).strip()
     if not enabled and not debug and not return_frames and not prefetch_only:return {'ok':False,'error':'视觉识图与 Debug 都未开启'}
-    if enabled and not return_frames and provider != 'ollama':
+    if enabled and not return_frames and provider not in ('ollama','llama.cpp'):
         return {'ok':False,'error':'视觉模型提供方未配置'}
+    if provider == 'llama.cpp' or _native_session is not None:
+        try: _local_vision_infer(provider,model,_native_session)
+        except ValueError: return {'ok':False,'status':'vision_model_unavailable','error':'内置视觉运行时未取得匹配租约'}
+        local_thinking='off'
     if enabled and not return_frames and not model:
         return {'ok':False,'error':'视觉模型 ID 尚未配置'}
     suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
@@ -1376,7 +1479,7 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
         if before_model is not None:before_model(answer)
         _record_vision_attempt(home)
         if storyboard:
-            description,receipts=_analyze_local_storyboards(frames,model)
+            description,receipts=_analyze_local_storyboards(frames,model,**({'_lab_infer':_native_session.infer} if provider=='llama.cpp' else {}))
             answer['visionBoardReceipts']=receipts
             if len(receipts)!=len(frames) or any(r['status']!='analyzed' for r in receipts):
                 answer.update(status='vision_incomplete',model=model,
@@ -1385,7 +1488,7 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
                 return answer
         else:
             try:
-                description=_call_local_ollama(frames,model)
+                description=_local_vision_infer(provider,model,_native_session)(frames,model)
             except Exception as e:
                 answer.update(status='vision_unavailable',error=str(e)[:240])
                 if isinstance(e,VisionServiceError):answer['errorCode']=e.code
@@ -1502,7 +1605,7 @@ def _capture_actual_video_images(home, bvid, boards, focus_images, focus, source
 
 def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled=None, debug=False,
                        max_frames=None, provider=None, model=None, board_tiles=None, return_frames=False,
-                       focus_start=None, focus_end=None, view_depth='standard', network_budget_bytes=None, frame_budget_limit=None, before_model=None):
+                       focus_start=None, focus_end=None, view_depth='standard', network_budget_bytes=None, frame_budget_limit=None, before_model=None, _native_session=None):
     """User-selected source: real bounded public video or existing videoshot fallback.
 
     The caller chooses the source, never an auto-escalation from missing subtitles.
@@ -1522,7 +1625,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
                                max_frames=chosen, provider=provider, model=model,
                                return_frames=return_frames, focus_start=focus_start,
                                focus_end=focus_end,storyboard=board,board_tiles=board_tiles,
-                               before_model=before_model)
+                               before_model=before_model,**({'_native_session':_native_session} if _native_session is not None else {}))
     if not BV_RE.fullmatch(str(bvid or '')):
         return {'ok':False,'status':'invalid_bvid','error':'BV号格式不正确'}
     try:
@@ -1536,6 +1639,9 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     if enabled is None:enabled=os.environ.get('BILI_VISION_ENABLED')=='1'
     model=(model if model is not None else os.environ.get('BILI_VISION_MODEL','')).strip()
     provider=(provider if provider is not None else os.environ.get('BILI_VISION_PROVIDER','ollama')).strip().lower()
+    if provider == 'llama.cpp' or _native_session is not None:
+        try: _local_vision_infer(provider,model,_native_session)
+        except ValueError: return {'ok':False,'status':'vision_model_unavailable','error':'内置视觉运行时未取得匹配租约'}
     suffix=('-focus-'+str(round(focus['startSeconds']*1000))+'-'+str(round(focus['endSeconds']*1000))) if focus else ''
     # A restricted follow-up may have a smaller remaining download budget.
     # Do not allow it to reuse a cache created under another quota identity.
@@ -1586,7 +1692,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
                                 provider=provider, model=model,
                                 return_frames=return_frames,focus_start=focus_start,
                                 focus_end=focus_end,storyboard=True,network_budget_bytes=network_budget_bytes,board_tiles=board_tiles,
-                                before_model=before_model)
+                                before_model=before_model,**({'_native_session':_native_session} if _native_session is not None else {}))
         preview['perception_source_requested']='adaptive'
         preview['adaptive_fallback']={'reason':exc.code,'actual_source':'videoshot',
             **({'attemptedStages':list(exc.attempted_stages)} if getattr(exc,'attempted_stages',None) else {}),
@@ -1607,7 +1713,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     result['perception_source_requested']='adaptive'
     if return_frames or not enabled:
         return result
-    if provider!='ollama' or not model:
+    if provider not in ('ollama','llama.cpp') or not model:
         return {'ok':False,'bvid':bvid,'status':'vision_model_unavailable',
                 'error':'自适应画面识图需要已配置的本地视觉模型'}
     if before_model is not None:before_model(result)
@@ -1632,7 +1738,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
         return result
     if structured:
         description,receipts=_analyze_local_storyboards(
-            frames,model,image_source=result['image_source'])
+            frames,model,image_source=result['image_source'],**({'_lab_infer':_native_session.infer} if provider=='llama.cpp' else {}))
         result['visionBoardReceipts']=receipts
         if len(receipts)!=len(frames) or any(r['status']!='analyzed' for r in receipts):
             result.update(status='vision_incomplete',
@@ -1643,7 +1749,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     else:
         # Keep the legacy single-image/non-board path for older callers.
         try:
-            result['description']=_call_local_ollama(frames,model,image_source=result['image_source'])
+            result['description']=_local_vision_infer(provider,model,_native_session)(frames,model,image_source=result['image_source'])
         except Exception as exc:
             result.update(status='vision_unavailable',error='自适应画面已解码，但本地模型未完成分析',
                 errorCode=_vision_board_error_code(exc))
@@ -1685,7 +1791,7 @@ def record_vision_event(home, bvid, status, *, source='preview', ok=False, debug
         pass  # diagnostics must never prevent the read-only vision tool
 
 
-def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None, storyboard=False, network_budget_bytes=None, board_tiles=None, before_model=None):
+def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, provider=None, model=None, return_frames=False, prefetch_only=False, focus_start=None, focus_end=None, storyboard=False, network_budget_bytes=None, board_tiles=None, before_model=None, _native_session=None):
     # The manual preview button and the actual vision tool share this receipt.
     source='manual_preview' if prefetch_only else ('video_agent_frames' if return_frames else 'vision_provider')
     with traffic_scope(home):
@@ -1694,7 +1800,7 @@ def analyze_preview(bvid, home, *, enabled=None, debug=None, max_frames=None, pr
                                      model=model,return_frames=return_frames,
                                      prefetch_only=prefetch_only,focus_start=focus_start,focus_end=focus_end,
                                      storyboard=storyboard,network_budget_bytes=network_budget_bytes,board_tiles=board_tiles,
-                                     before_model=before_model)
+                                     before_model=before_model,**({'_native_session':_native_session} if _native_session is not None else {}))
     record_vision_event(home,bvid,result.get('status') or ('preview_failed' if not result.get('ok') else 'preview_only'),
                         source=source,ok=result.get('ok'),debug_saved=bool(result.get('debug_dir')),
                         error=result.get('error') or result.get('cacheErrorCode') or '',times=result.get('times'))
