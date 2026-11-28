@@ -38,18 +38,23 @@ test('真实模拟打开模型页刷新时不会因缺失 DOM 的 checked 属性
     set id(value){this._id=value;registry.set(value,this)}get id(){return this._id}
     addEventListener(name,fn){if(this.id)listeners.set(this.id+':'+name,fn)}
     appendChild(child){child.parentElement=this;this.children.push(child);return child}
+    append(...nodes){for(const node of nodes)this.appendChild(node)}
     replaceChildren(...nodes){this.children=[];for(const node of nodes)this.appendChild(node)}
     get options(){return this.children} // HTMLSelectElement.options is live and iterable
     get selectedOptions(){return this.children.filter(x=>x.value===this.value)}
     querySelectorAll(){return []}
     querySelector(){return new Element()}
+    getBoundingClientRect(){return {top:0,height:0,width:0}}
+    getClientRects(){return []}
     setAttribute(){}
   }
-  for(const id of htmlIds){const e=new Element();e.id=id}
+  for(const id of htmlIds){const e=new Element();e.id=id;Object.assign(e.style,{setProperty(){},removeProperty(){}})}
   const document={getElementById:id=>registry.get(id)||null,createElement:()=>new Element(),querySelectorAll:()=>[],querySelector:()=>new Element(),addEventListener(){}}
   const fetchCalls=[]
-  const fetch=async(path,options={})=>{fetchCalls.push({path,options});return {ok:true,status:200,json:async()=>({ok:true,localVerified:true,config:{visionEnabled:true,visionDebug:true,visionMode:'auto',mainSessionMemoryModelId:'retriever',mainSessionReflectionModelProvider:'reflect-provider',mainSessionReflectionModelId:'reflect-model',mainSessionReflectionReasoningEffort:'high'}})}}
-  runInNewContext(script,{document,window:{addEventListener(){}},fetch,console,setTimeout,clearTimeout,confirm:()=>true,Date,URL,Blob,TextDecoder,Uint8Array}, {timeout:1500})
+  const caps={platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true}
+  const onboarding={ok:true,localMemoryReady:true,requiredReady:true,welcomeCompleted:true,completed:true,quickSetupSeen:true,welcomeSeen:true,biliVerified:true,headlessVerified:true,capabilities:{ok:true,available:true,restartRequired:false,active:caps,requested:caps}}
+  const fetch=async(path,options={})=>{fetchCalls.push({path,options});return {ok:true,status:200,json:async()=>path.endsWith('/onboarding/status')?onboarding:({ok:true,localVerified:true,config:{visionEnabled:true,visionDebug:true,visionMode:'auto',mainSessionMemoryModelId:'retriever',mainSessionReflectionModelProvider:'reflect-provider',mainSessionReflectionModelId:'reflect-model',mainSessionReflectionReasoningEffort:'high'}})}}
+  runInNewContext(script,{document,window:{addEventListener(){},scrollY:0,innerHeight:800,matchMedia:()=>({matches:false})},fetch,console,setTimeout:(fn,ms)=>{const timer=setTimeout(fn,ms);if(ms>1000)timer.unref();return timer},clearTimeout,requestAnimationFrame:fn=>setTimeout(()=>fn(Date.now()),0),cancelAnimationFrame:clearTimeout,getComputedStyle:()=>({top:"0",marginTop:"0"}),confirm:()=>true,Date,URL,Blob,TextDecoder,Uint8Array}, {timeout:1500})
   const refresh=listeners.get('models-refresh:click');assert.equal(typeof refresh,'function')
   refresh()
   await new Promise(resolve=>setTimeout(resolve,15))

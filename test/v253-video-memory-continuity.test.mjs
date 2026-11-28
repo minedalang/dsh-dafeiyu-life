@@ -85,3 +85,12 @@ test('生产入口：视频经历只写入 Life Memory 协调器并使用统一�
  assert.match(src,/lifeMemoryCoordinator\.start\(\)/)
  assert.match(src,/socialContextAssembler\?\.batch\(batch,\{mode\}\)/)
 })
+
+ test('短主题词法回退使用原实时检索证据，不需要视频问题句式',()=>withMemory(({gate,retriever})=>{
+ gate.recordEvents([explored('short-topic',BV,{info:{title:'珊瑚',description:'水下生活记录'}})])
+ const opts={role:'friend',actorUid:'101'}
+ assert.match(retriever.socialContext('珊瑚',opts),/珊瑚/)
+ assert.doesNotMatch(retriever.socialContext('珊瑚',{...opts,excludeVideoBvids:[BV]}),/珊瑚/)
+ assert.equal(retriever.socialContext('量子纠缠',opts),'')
+ assert.equal(retriever.socialContext('珊瑚',{role:'friend',actorUid:''}),'')
+}))

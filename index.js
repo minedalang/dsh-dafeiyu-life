@@ -5300,9 +5300,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       }
       if(receiptId)try{await privateConversationExperiences?.observe({uid,role:'owner',direction:'outgoing',eventId,at,text})}
       catch{log('主人私信确认表达暂存失败（不记录正文）')}
-      const event=preparePrivateSelfExperience({source:'owner-dm',role:'owner',uid,eventId,text,at,accountTag:trustedLifeAccountTag()})
-      if(event){const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
-        if(result?.ok===false)log('主人已确认私信的自主感想等待记忆补偿：'+String(result.lastError||''))}
+      // The confirmed outgoing turn already enters the same private conversation
+      // batch as the incoming evidence. Do not also derive an episode from words
+      // in the reply; the existing model decides whether it is worth remembering.
     },
     onReplyEmotion:({uid,mood,intensity})=>{
       refreshCfg()

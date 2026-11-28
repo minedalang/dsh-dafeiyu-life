@@ -102,7 +102,8 @@ test('结构化昨天回忆可把已核验行动视为真实发生的经历',()=
 test('本地模型已就绪时按钮只检查状态、不会再弹下载确认；进度完成后隐藏',()=>{
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
  assert.match(js,/const inspectOrEnableEmbedding=async/)
- assert.match(js,/if\(status\.server\?\.ready===true\)\{await renderEmbeddingStatus\(\)/)
+ assert.match(js,/if\(status\.server\?\.ready===true&&status\.enabled===true&&status\.index\?\.ready===true\)\{await renderEmbeddingStatus\(\)/)
+ assert.match(js,/if\(status\.model\?\.installed===true&&status\.runtime\?\.installed===true\)\{[\s\S]*?await request\('\/embedding\/install',\{\}\)/)
  assert.match(js,/\$\('embedding-progress'\)\.parentElement\.hidden=!busy/)
  assert.match(js,/\$\('quick-embedding-progress'\)\.hidden=!busy/)
  assert.match(js,/\$\('embedding-install'\)\.addEventListener\('click',\(\)=>run\(inspectOrEnableEmbedding\)\)/)

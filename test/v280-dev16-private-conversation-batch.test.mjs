@@ -212,3 +212,21 @@ test('dev.24 排队中的私信提炼捕获入队代际，不会借恢复后的�
   assert.equal((await s.worker.tick()).created,1);assert.equal(s.invoked(),2)
  }finally{finish();s.dispose()}
 })
+
+ test('主人确认回复由原语义提炼消费，不再独立按感想措辞写经历',async()=>{
+ const src=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ const hook=src.slice(src.indexOf('onConfirmedReply:async({uid,text,eventId,at,receiptId='),src.indexOf('onReplyEmotion:',src.indexOf('onConfirmedReply:async({uid,text,eventId,at,receiptId=')))
+ assert.ok(hook.length>0);assert.match(hook,/if\(receiptId\)try\{await privateConversationExperiences\?\.observe/)
+ assert.doesNotMatch(hook,/preparePrivateSelfExperience|recordEvents\(/)
+ const s=setup({answer:({prompt})=>replyFor(prompt,{text:'这次我们交流了新作品里的颜色与构图，鱼鱼表达了想继续了解的倾向。'})})
+ try{
+  const incoming={uid:'123',role:'owner',eventId:'owner-request',text:'这组插画让我想起春天'}
+  const outgoing={uid:'123',role:'owner',direction:'outgoing',eventId:'confirmed-reply',text:'色彩让我想再找几幅同类作品看看'}
+  await s.worker.observe(incoming);await s.worker.observe(outgoing);await s.worker.observe(outgoing)
+  assert.equal(s.events.length,0);assert.equal(s.worker.status().pendingMessages,2)
+  await s.worker.markSettled({uid:'123',role:'owner'})
+  assert.equal((await s.worker.tick()).created,1);assert.equal(s.events[0].visibility,'owner-private')
+  assert.equal(s.events[0].subjectUid,'owner');assert.equal(s.invoked(),1);assert.equal(s.events.length,1)
+  assert.equal((await s.worker.tick()).processed,0)
+ }finally{s.dispose()}
+})
