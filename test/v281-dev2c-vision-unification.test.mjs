@@ -8,11 +8,11 @@ const route={provider:'dsh-provider',model:'vision-model-1'}
 const disabled=HEADLESS_DENY_TOOLS.map(k=>`- id: ${k}\n  disabled: true\n`).join('')
 const available=['credentials','authorization','deepseek-account'].map(k=>`- id: ${k}\n  disabled: false\n`).join('')
 const overlay=(tool,selftest)=>`${disabled}${available}- insert:\n    - id: mcp-bili-vision-readonly\n      name: '@deepseek-ai/dsh-mcp-client'\n      config:\n        serverName: bilivision\n        transport: stdio\n        env:\n          BILI_MCP_TOOLS: '${tool}'\n          ${selftest?'BILI_VISION_SELFTEST_ALLOWED: \'1\'':'BILI_VISION_CHILD: \'1\''}\n          ${selftest?"BILI_VISION_TEST_ASSET: '/opt/app/local-vision-selftest-dafeiyu.png'":''}\n`
-test('前端只有两种识图方式，旧 Endpoint 的编辑项已删除',()=>{
+test('前端有三种识图方式，旧 Endpoint 的编辑项已删除',()=>{
   const html=src('lib/management-console.html'),js=src('lib/management-console.js'),client=src('client.js')
   const select=/<select id="models-vision-mode">([\s\S]*?)<\/select>/.exec(html)?.[1]
   assert.ok(select)
-  assert.deepEqual([...select.matchAll(/<option value="([^"]+)"/g)].map(m=>m[1]),['independent_dsh','independent_local'])
+  assert.deepEqual([...select.matchAll(/<option value="([^"]+)"/g)].map(m=>m[1]),['independent_native','independent_local','independent_dsh'])
   assert.doesNotMatch(js,/旧版 Endpoint|visionEndpoint/)
   assert.doesNotMatch(client,/reuse_video_model.*option/)
   for(const id of ['vision-unified-probe-panel','vision-probe-image','vision-probe-answer','vision-probe-approve','vision-probe-reject','vision-probe-verify'])assert.ok(html.includes(`id="${id}"`),id)

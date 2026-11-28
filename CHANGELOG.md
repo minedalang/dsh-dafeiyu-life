@@ -13,6 +13,12 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.94 · 内置视觉生产选路与首次引导
+
+- 内置 CPU 视觉纳入正常配置及宿主视频调用；专用租约及原分镜核验不变，Headless 仅通过本轮已选中 BV 的受管环回桥接。禁止无租约回退。
+- 首次引导只展示所选本地方式或稍后配置远程提示；切换不保存、不自动下载、不取消其他任务；明确图片人工验收后启用，保留已有配置。
+- GPU、真实视频/私信、迁移后内置视觉专项验收及 Windows full 仍待验；不自动清理旧副本。
+
 ## 2.8.3-dev.93 · 受管视觉租约与分镜适配（内部接线）
 
 - 原图自检和内部视频调用共用受管 CPU llama.cpp 生命周期；固定资产复核、临时环回端口和凭据、取消、退出确认及维护排他。

@@ -105,6 +105,7 @@ test('生产调用与通用设置不能绕过本地模式的检查',async()=>{
   const {readFileSync}=await import('node:fs')
   const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
   assert.match(source,/earlyVisionPlan\.attempt&&\s*\['independent_dsh','independent_local'\]\.includes/)
+  assert.match(source,/earlyVisionPlan\.attempt&&resolvedVisionMode\(\)==='independent_native'/)
   assert.match(source,/body\.visionLocalModel!==cfg\.visionLocalModel/)
   assert.match(source,/await localVisionModels\.review\(id,/ )
   assert.match(source,/models\.find\(x=>x\.id===id\)\?\.verified/)

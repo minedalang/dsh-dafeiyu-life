@@ -58,6 +58,7 @@ test('自主不看和略看不触发识图，正常/深入才申请工具',()=>{
  const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const watch=index.slice(index.indexOf('const executeWatchVideo = async'),index.indexOf('tool({',index.indexOf('const executeWatchVideo = async')))
  assert.match(watch,/const willInvokeVision=earlyVisionPlan\.attempt&&\s*\['independent_dsh','independent_local'\]/)
+ assert.match(watch,/earlyVisionPlan\.attempt&&resolvedVisionMode\(\)==='independent_native'/)
  assert.match(watch,/perception_source:lifeGlobalOverview\?'preview':'adaptive'/)
  const mcp=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
  assert.match(mcp,/perception_source: str = "preview"/)

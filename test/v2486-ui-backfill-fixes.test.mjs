@@ -44,6 +44,7 @@ test('真实模拟打开模型页刷新时不会因缺失 DOM 的 checked 属性
     get selectedOptions(){return this.children.filter(x=>x.value===this.value)}
     querySelectorAll(){return []}
     querySelector(){return new Element()}
+    closest(){return this.parentElement}
     getBoundingClientRect(){return {top:0,height:0,width:0}}
     getClientRects(){return []}
     setAttribute(){}

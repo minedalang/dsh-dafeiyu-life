@@ -97,7 +97,7 @@ test('内置视觉只有两款 Qwen 固定配对，拒绝 MiniCPM 与任意下�
   const manager=createEmbeddingRuntimeManager({dataDir:'/tmp/dsh-native-vision-catalog',platform:'linux',arch:'x64',fetchImpl:async()=>{throw Error('unexpected network')}})
   const state=await manager.visionStatus()
   assert.deepEqual(state.models.map(x=>x.id),['qwen3.5-2b','qwen3.5-4b'])
-  assert.equal(state.productionEnabled,false)
+  assert.equal(state.productionEnabled,true)
   assert.throws(()=>manager.runVision('install','minicpm-v4.7-1b'),/仅支持 Qwen/)
   assert.throws(()=>manager.runVision('install','https://example.invalid/model.gguf'),/仅支持 Qwen/)
   for(const model of LLAMA_VISION_MODELS)for(const asset of [model.weights,model.mmproj]){
@@ -273,4 +273,21 @@ test('one-shot native worker receives only its lease, checks staged scripts and 
     current=true;aborted=true;await assert.rejects(callScopedNativeVision(opts));assert.equal(stopped,2)
     await writeFile(join(home,'preview_vision.py'),'stale');await assert.rejects(callScopedNativeVision(opts),/一致性/);assert.equal(started,2)
   }finally{await rm(home,{recursive:true,force:true})}
+})
+
+
+test('round native host accepts only current selected BV and revokes pending scope',async()=>{
+  const {startNativeVisionRoundHost}=await import('../lib/scoped-native-vision-read.mjs')
+  let current=true,selected=true,calls=0,scope
+  const host=await startNativeVisionRoundHost({isCurrent:()=>current,isSelected:bv=>selected&&bv==='BV1234567890',observe:async(args,opts)=>{calls++;scope=opts;assert.deepEqual(args,{bvid:'BV1234567890',perception_source:'adaptive',view_depth:'deep'});return {ok:true,bvid:args.bvid}}})
+  const request=(body,token=host.env.DSH_NATIVE_ROUND_TOKEN)=>fetch('http://127.0.0.1:'+host.env.DSH_NATIVE_ROUND_PORT+'/observe',{method:'POST',headers:{authorization:'Bearer '+token},body:JSON.stringify(body)})
+  const body={bvid:'BV1234567890',view_depth:'deep'}
+  try{
+    assert.equal((await request(body,'wrong')).status,403)
+    assert.equal((await request({...body,extra:true})).status,403)
+    selected=false;assert.equal((await request(body)).status,403);selected=true
+    assert.equal((await request(body)).status,200);assert.equal(calls,1);assert.equal(scope.isCurrent(),true)
+    current=false;assert.equal((await request(body)).status,403);assert.equal(scope.isCurrent(),false)
+  }finally{await host.close()}
+  assert.equal(scope.signal.aborted,true)
 })

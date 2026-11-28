@@ -671,6 +671,8 @@ episodeContinuation -.-> decisionBoundary57
 
 %% dev.64：共享视频视觉模型按格号描述，程序绑定真实采样时间；社交视觉回执分别展示画面/语音与失败原因，未核验不写观看。
 %% dev.64：Windows Ollama 端口冲突只读诊断；模型页不启动服务，人工恢复优先官方桌面应用，不终止进程或切换地址。
+
+%% dev.94: selected native CPU provider via scoped host; existing evidence and Life boundaries retained.
 ```
 
 ## 二、八类候选细目
@@ -1032,6 +1034,8 @@ planner -.-> candidateDecision57
 
 %% dev.64：共享视频视觉模型按格号描述，程序绑定真实采样时间；社交视觉回执分别展示画面/语音与失败原因，未核验不写观看。
 %% dev.64：Windows Ollama 端口冲突只读诊断；模型页不启动服务，人工恢复优先官方桌面应用，不终止进程或切换地址。
+
+%% dev.94: selected native CPU provider via scoped host; existing evidence and Life boundaries retained.
 ```
 
 ## 三、可信回执与记忆闭环
@@ -1457,6 +1461,8 @@ liveDecision57["活体证据失效则拒绝陈旧决定；不生成经历或联�
 
 %% dev.64：共享视频视觉模型按格号描述，程序绑定真实采样时间；社交视觉回执分别展示画面/语音与失败原因，未核验不写观看。
 %% dev.64：Windows Ollama 端口冲突只读诊断；模型页不启动服务，人工恢复优先官方桌面应用，不终止进程或切换地址。
+
+%% dev.94: selected native CPU provider via scoped host; existing evidence and Life boundaries retained.
 ```
 
 ## 四、统一 Life Episode 因果持续性
@@ -1846,4 +1852,6 @@ decisionScope57["共同模型提交：社交、主选择、Episode 与待办子�
 
 %% dev.64：共享视频视觉模型按格号描述，程序绑定真实采样时间；社交视觉回执分别展示画面/语音与失败原因，未核验不写观看。
 %% dev.64：Windows Ollama 端口冲突只读诊断；模型页不启动服务，人工恢复优先官方桌面应用，不终止进程或切换地址。
+
+%% dev.94: selected native CPU provider via scoped host; existing evidence and Life boundaries retained.
 ```

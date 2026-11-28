@@ -236,4 +236,24 @@ class NativeProductionAdapterTests(unittest.TestCase):
                 self.assertEqual(out['status'],'analyzed',out);self.assertEqual(out['provider'],'llama.cpp')
                 self.assertEqual(len(seen),1);self.assertEqual(len(attempts),1)
 
+    def test_native_round_bridge_only_selected_adaptive_and_no_fallback(self):
+        import ast, asyncio, os, re
+        tree = ast.parse((Path(__file__).resolve().parents[1]/'vendor/bilibili-mcp/mcp_server.py').read_text(encoding='utf8'))
+        funcs = [x for x in tree.body if getattr(x, 'name', '') in ('bili_preview_vision','_native_round_observe')]
+        for fn in funcs: fn.decorator_list=[]
+        selected = [False]
+        ns = dict(os=os,re=re,json=json,asyncio=asyncio,_guard=lambda *_:None,_VISION_BVS_PER_RUN=set(),_selected_in_current_video_round=lambda bv:selected[0])
+        exec(compile(ast.Module(body=funcs,type_ignores=[]),'mcp-test','exec'),ns)
+        bv='BV1234567890'
+        with fake_llama([(200,{'ok':True,'bvid':bv,'status':'analyzed'})]) as (port, seen), patch.dict(os.environ,dict(BILI_VISION_ENABLED='1',BILI_VISION_MODE='independent_native',BILI_DUTY_VIDEO_PICK_FLOW='1',DSH_NATIVE_ROUND_PORT=str(port),DSH_NATIVE_ROUND_TOKEN='a'*64),clear=True):
+            invoke=lambda **kw:json.loads(asyncio.run(ns['bili_preview_vision'](bv,**kw)))
+            self.assertFalse(invoke(perception_source='adaptive')['ok']);self.assertEqual(seen,[])
+            selected[0]=True
+            self.assertFalse(invoke()['ok']);self.assertEqual(seen,[])
+            self.assertTrue(invoke(perception_source='adaptive',view_depth='deep')['ok'])
+            self.assertEqual(seen,[('/observe','Bearer '+'a'*64,{'bvid':bv,'view_depth':'deep'})])
+            with patch.dict(os.environ,{'DSH_NATIVE_ROUND_TOKEN':''}):
+                self.assertFalse(invoke(perception_source='adaptive')['ok'])
+            self.assertEqual(len(seen),1)
+
 if __name__=='__main__':unittest.main()

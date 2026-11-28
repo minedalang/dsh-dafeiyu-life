@@ -1633,6 +1633,32 @@ def _record_production_vision_attempt(result, mode, model, debug=False):
         pass
 
 
+def _native_round_observe(bvid, view_depth):
+    """Only an ephemeral loopback host, never an external provider fallback."""
+    import urllib.request
+    port = os.environ.get('DSH_NATIVE_ROUND_PORT', '')
+    token = os.environ.get('DSH_NATIVE_ROUND_TOKEN', '')
+    failed = json.dumps({'ok':False,'status':'vision_model_unavailable','error':'内置视觉未取得本轮宿主观察回执'},ensure_ascii=False)
+    if not port.isdigit() or not 0 < int(port) < 65536 or not re.fullmatch(r'[a-f0-9]{64}', token):
+        return failed
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args, **kwargs):
+            return None
+    try:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+        req = urllib.request.Request('http://127.0.0.1:'+port+'/observe',
+            data=json.dumps({'bvid':bvid,'view_depth':view_depth}).encode(),
+            headers={'Content-Type':'application/json','Authorization':'Bearer '+token},method='POST')
+        with opener.open(req, timeout=900) as response:
+            raw = response.read(2*1024*1024+1)
+        if len(raw)>2*1024*1024:return failed
+        result=json.loads(raw)
+        if not isinstance(result,dict) or type(result.get('ok')) is not bool:return failed
+        return json.dumps(result,ensure_ascii=False)
+    except Exception:
+        return failed
+
+
 @tool()
 async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focus_end_seconds: float = -1.0, perception_source: str = "preview", view_depth: str = "standard", network_budget_bytes: int = 0, frame_budget_limit: int = 0, capture_for_debug: bool = False, capture_for_gallery: bool = False):
     """鱼鱼主动选画面来源：preview官方低清，adaptive受控公开视频采样；可指定3～120秒。"""
@@ -1667,6 +1693,12 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
     try:
         from preview_vision import analyze_perception
         mode = os.environ.get('BILI_VISION_MODE', 'separate')
+        if mode == 'independent_native':
+            if (os.environ.get('BILI_DUTY_VIDEO_PICK_FLOW') == '1' and perception_source == 'adaptive'
+                and focus is None and not network_budget_bytes and not frame_budget_limit
+                and not capture_for_debug and not capture_for_gallery and _selected_in_current_video_round(bvid)):
+                return await asyncio.to_thread(_native_round_observe, bvid, view_depth)
+            return json.dumps({'ok':False,'status':'vision_model_unavailable','error':'内置视觉需由可信宿主发起专用运行时调用'},ensure_ascii=False)
         if mode == 'independent_local':
             native_session = None
             if os.environ.get('BILI_VISION_PROVIDER') == 'llama.cpp':
