@@ -109,6 +109,7 @@ import { loadCred as dmCred, listSessions as dmList, fetchMsgs as dmFetch, readP
 import { ensureUv } from './lib/uvfetch.mjs'
 import { createDmAutoReply } from './lib/dm-autoreply.mjs'
 import { extractBiliDmReceiptId } from './lib/dm-send-receipt.mjs'
+import { checkOwnerContact } from './lib/owner-contact-policy.mjs'
 import { listRecommendationCandidates } from './lib/video-recommendations.mjs'
 import { intakeAiReadProposals } from './lib/social-todo-intake.mjs'
 import {listChosenOwnerTodos,updateChosenOwnerTodo} from './lib/owner-todos.mjs'
@@ -153,7 +154,7 @@ import {ensureOllamaService} from './lib/ollama-service.mjs'
 import {explainVideoVisionFailure} from './lib/video-visual-failure.mjs'
 import {ASR_MODELS,probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
 import {listWhisperModels,deleteWhisperModel} from './lib/whisper-model-cache.mjs'
-import {liveExperienceEvidence,naturalFollowupText} from './lib/life-experience-continuity.mjs'
+import {liveExperienceEvidence,naturalFollowupText,ownerExplorationCandidate,ownerExplorationInboxCurrent,deliverOwnerExploration} from './lib/life-experience-continuity.mjs'
 import {todoParentId} from './lib/todo-lineage.mjs'
 import {verifyLifeOutbound,lifeFactsFromCompletedTodos,lifeFactsFromCreatorSnapshot,lifeFactFromReceipt} from './lib/verified-life-facts.mjs'
 import {confirmedSharePromptContext} from './lib/confirmed-video-share.mjs'
@@ -1991,11 +1992,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const client=scopedDshVision?null:await ensureMcp()
     if(scopedDshVision&&!assertSecureMcp())throw Error('DSH 视频识图 Python MCP 安全版本校验失败')
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
+    const {isCurrent:dispatchGuard,...forwardOptions}=opts||{}
     const callOptions=toolName==='bili_preview_vision'&&resolvedVisionMode()==='independent_local'
-      ? {...(opts||{}),timeoutMs:600000}:opts
+      ? {...forwardOptions,timeoutMs:600000}:dispatchGuard?forwardOptions:opts
     // Do not cancel already-admitted writes: the durable sender must settle
     // their actual receipt. Only new monitored reads are refused here.
-    const checkReplyDispatch=()=>{if(!isReplyDispatch(toolName,args))return;refreshCfg();if(!interactionRepliesAllowed(cfg))throw Error('互动回复已暂停，未向平台发送');if(toolName==='bili_send_observation_image'&&(cfg.ownerDmAgentEnabled!==true||cfg.ownerDmReadCommandsEnabled!==true||cfg.ownerDmActionsEnabled!==true||cfg.dmWatch!==true||String(args.receiver_uid)!==String(cfg.dmOwnerUid||'')||String(args.sender_uid)!==String(accountBinding.status().activeUid||'')||socialPolicyGate.actor(args.receiver_uid).role!=='owner'))throw Error('主人图片发送授权已变化')}
+    const checkReplyDispatch=()=>{if(!isReplyDispatch(toolName,args))return;if(dispatchGuard&&dispatchGuard()!==true)throw Error('原主人交流来源已变化，未向平台发送');refreshCfg();if(!interactionRepliesAllowed(cfg))throw Error('互动回复已暂停，未向平台发送');if(toolName==='bili_send_observation_image'&&(cfg.ownerDmAgentEnabled!==true||cfg.ownerDmReadCommandsEnabled!==true||cfg.ownerDmActionsEnabled!==true||cfg.dmWatch!==true||String(args.receiver_uid)!==String(cfg.dmOwnerUid||'')||String(args.sender_uid)!==String(accountBinding.status().activeUid||'')||socialPolicyGate.actor(args.receiver_uid).role!=='owner'))throw Error('主人图片发送授权已变化')}
     checkReplyDispatch()
     const originalDispatch=()=>scopedDshVision
       ? (()=>{if(!currentDispatch())throw sessionIntegrationPaused();return callPluginScopedDshVision(args,opts)})()
@@ -4571,7 +4573,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // scheduled Life replies. The original human permissions still apply;
   // this only prevents ambiguous/duplicate automatic status messages from
   // bypassing the same opaque cross-process transaction as normal DM replies.
-  const lifeDmWithReceipt=async({uid,text,eventKey})=>{
+  const lifeDmWithReceipt=async({uid,text,eventKey,isCurrent=()=>true,beforeDispatch=null})=>{
     const scope=trustedLifeAccountTag()
     if(!/^[a-f0-9]{16}$/.test(String(scope||''))||
       !/^[1-9]\d{0,18}$/.test(String(uid||''))||
@@ -4581,7 +4583,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     return lifeSocialWrite('dm',()=>socialSendTransaction.execute({
       channel:'dm',eventKey:`legacy:${uid}:${eventKey}`,expectedScope:scope
     },async()=>{
-      const result=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)})
+      if(isCurrent()!==true||beforeDispatch&&await beforeDispatch()!==true||isCurrent()!==true)return {ok:false,notAttempted:true}
+      const result=await call('bili_send_message',{receiver_uid:Number(uid),text:String(text).slice(0,450)},{isCurrent})
       const receiptId=result?.success===true?extractBiliDmReceiptId(result):''
       return receiptId?{ok:true,receiptId}:{ok:false}
     }))
@@ -5312,7 +5315,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   const readPrivateUnreadSentinel=()=>readScopedUnreadCounts(readPrivateUnreadCounts)
   const readSocialUnreadSentinel=()=>readScopedUnreadCounts(readInteractionUnreadCounts)
 
-  async function getNewDmMessages({probeOnly=false,forceUid='',fastUid=''}={}) {
+  async function getNewDmMessages({probeOnly=false,forceUid='',fastUid='',includeNonText=false}={}) {
     if(!automaticSession.current())throw sessionIntegrationPaused()
     const releaseDmRead=accountBinding.enterPlatformOperation()
     try {
@@ -5324,7 +5327,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       accountBinding.assertReady()
       const messages=await readDmDetail(cred,target,50)
       if(!Array.isArray(messages))throw new Error('私信定向复核没有返回消息数组')
-      return messages.filter(m=>m?.fromMe===false&&m.key&&Number(m.ts)>0&&String(m.text||'').trim()&&String(m.text)!=='[非文字消息]')
+      return messages.filter(m=>m?.fromMe===false&&m.key&&Number(m.ts)>0&&(includeNonText||String(m.text||'').trim()&&String(m.text)!=='[非文字消息]'))
         .map(m=>{const ts=Number(m.ts);return {senderUid:target,senderName:'',messageId:`${target}:${String(m.key).slice(0,100)}`,
           timestampMs:ts<1e11?ts*1000:ts,text:String(m.text).slice(0,4000),incoming:true,system:![1,2,7,13,14].includes(Number(m.kind)||1),
           ...(Number(m.kind)===2&&verifiedBiliImageUrl(m.imageUrl)?{imageUrl:verifiedBiliImageUrl(m.imageUrl)}:{})}})
@@ -8174,6 +8177,39 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   }
   // Process-local provenance only; the account binding owns the generation.
   const lifeRecallGenerations=new WeakMap()
+  const currentOwnerExploration=({scope,uid,shareId}={})=>{
+    refreshCfg()
+    // Conservative intersection of existing owner contact and explicit completion
+    // callback opt-ins; no new default-on permission or friend/contact expansion.
+    if(!automaticSession.current()||cfg.masterEnabled!==true||cfg.lifeAgentMode!=='active'||
+      cfg.autonomousPlannerEnabled!==true||cfg.ownerSpontaneousChatEnabled!==true||cfg.ownerDmSilenceFollowupEnabled!==true||
+      cfg.ownerTodoCompletionFollowupEnabled!==true||cfg.ownerDmAgentEnabled!==true||cfg.mainSessionMemoryEnabled!==true||
+      trustedLifeAccountTag()!==scope||String(cfg.dmOwnerUid||'')!==uid||accountBinding.status().blocked||
+      !dmConfig().enabled||!dmConfig().whitelist.includes(uid)||socialPolicyGate.actor(uid).role!=='owner'||
+      socialPortrait?.contactBoundary?.(uid)==='stop'||!checkOwnerContact({config:cfg}).eligible)return null
+    const latest=lifeSharedBiliLinks.recentForContact({uid,limit:1})[0]
+    if(latest?.id!==shareId)return null
+    const share=lifeSharedBiliLinks.get(shareId,scope)
+    if(!share||!sharedLinkPermissionCurrent(share,scope))return null
+    const candidate=ownerExplorationCandidate({uid,share,episodes:lifeOpportunities.intentions({includeClosed:true,limit:20}),
+      visualEvidence:lifeMemory?.videoEvidenceTrace({accountTag:scope,bvid:share.bvid,visualOnly:true,limit:12})||[]})
+    if(!candidate)return null
+    const memory=lifeMemory?.recentVisualExperienceContext({accountTag:scope,memoryIds:[candidate.memoryId],limit:1})?.[0]
+    if(memory?.memoryId!==candidate.memoryId||memory.bvid!==candidate.bvid)return null
+    return {...candidate,untrustedSceneNotes:(memory.sceneNotes||[]).filter(x=>typeof x==='string').slice(0,3).map(x=>x.slice(0,110))}
+  }
+  const ownerExplorationSource=(scope,id)=>scope+':dm-exploration:'+id
+  const ownerExplorationReadiness=()=>{
+    try{
+      refreshCfg()
+      const scope=trustedLifeAccountTag(),uid=String(cfg.dmOwnerUid||'')
+      const shareId=lifeSharedBiliLinks.recentForContact({uid,limit:1})[0]?.id
+      if(!shareId)return []
+      const candidate=currentOwnerExploration({scope,uid,shareId})
+      if(!candidate||mainSessionBridge?.ownerChatReadiness({sourceKey:ownerExplorationSource(scope,shareId),channel:'owner-dm'}).eligible!==true)return []
+      return [candidate]
+    }catch{return []}
+  }
   const autonomousPlanner=createAutonomousPlanner({
     automaticSession,
     beginDecisionTrace:({trigger,mode})=>lifeDecisionTrace.begin({trigger,mode}),
@@ -8221,12 +8257,49 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       const today=new Date().toLocaleDateString('en-CA')
       const idle=mainSessionBridge?.ownerChatReadiness({sourceKey:scope+':idle:'+today})||{eligible:false}
       const silence=mainSessionBridge?.mainSilenceCandidate()||{eligible:false}
-      return {...idle,eligible:idle.eligible===true||silence.eligible===true,silenceEligible:silence.eligible===true}
+      const explorations=ownerExplorationReadiness(),mainAvailable=idle.eligible===true||silence.eligible===true
+      return {...idle,eligible:mainAvailable||explorations.length>0,mainAvailable,silenceEligible:silence.eligible===true,explorations}
     },
-    runOwnerChat:async({id,reason,expectedAccount})=>{
+    runOwnerChat:async({id,reason,expectedAccount,exploration,text,expectedGeneration})=>{
       refreshCfg()
       if(cfg.masterEnabled!==true||cfg.lifeAgentMode!=='active'||cfg.ownerSpontaneousChatEnabled!==true||
          !/^[a-f0-9]{16}$/.test(expectedAccount)||trustedLifeAccountTag()!==expectedAccount)return {ok:false,reason:'account-or-permission-changed'}
+      if(exploration){
+        const uid=String(cfg.dmOwnerUid||''),scope=expectedAccount,shareId=exploration.shareId
+        if(id!==exploration.id||id!=='owner-exploration:'+shareId||!Number.isSafeInteger(Number(uid))||expectedGeneration!==accountBinding.generation())return {ok:false,reason:'owner-exploration-source-changed'}
+        const sourceKey=ownerExplorationSource(scope,shareId)
+        const current=()=>expectedGeneration===accountBinding.generation()?currentOwnerExploration({scope,uid,shareId}):null
+        const probe=()=>getNewDmMessages({probeOnly:true,forceUid:uid,includeNonText:true})
+        const fact=lifeFactFromReceipt({type:'video_visual_inspected',operation:'verified-video-visual',ok:true,
+          sourceId:sourceKey,at:exploration.observedAt,bvid:exploration.bvid,uid,scope:'owner-private',channel:'dm'})
+        return deliverOwnerExploration({candidate:exploration,scope,uid,text,getCurrent:current,
+          probe,
+          checkText:body=>!!fact&&outboundFactCheck(body,{uid,channel:'dm',extraEvents:[fact]}).ok,
+          reserve:()=>mainSessionBridge?.reserveOwnerContact({sourceKey,channel:'owner-dm'})||{ok:false},
+          settle:status=>mainSessionBridge?.settleOwnerContact({sourceKey,status}),
+          send:async(body,isCurrent)=>{
+            if(!isCurrent())return {ok:false,notAttempted:true}
+            const selected=lifeWillingness?.adoptOwnerExplorationDecision({uid,sourceKey,text:body})
+            if(selected?.ok!==true)return {ok:false,notAttempted:true}
+            const settle=lifeProofSettler(selected.proof)
+            try{
+              if(!isCurrent()||lifeWillingness.verify(selected.proof,'followup',{uid,targetKey:sourceKey,text:body}).ok!==true)return {ok:false,notAttempted:true}
+              const sent=await lifeDmWithReceipt({uid,text:body,eventKey:'owner-exploration:'+shareId,
+                isCurrent:()=>Date.now()<selected.proof.expiresAt&&isCurrent(),
+                beforeDispatch:async()=>ownerExplorationInboxCurrent({rows:await probe(),scope,uid,candidate:exploration})})
+              settle(sent?.ok===true&&sent?.receiptId?'verified':sent?.notAttempted===true?'not-sent':'uncertain',sent?.receiptId?'bili-dm:'+sent.receiptId:'')
+              return sent
+            }catch(e){settle('uncertain');throw e}
+            finally{settle('not-sent')}
+          },
+          onConfirmed:async(body,receiptId)=>{
+            ownerDmAgent.rememberConfirmedOutbound({uid,text:body,at:Date.now()})
+            lifeActionAttribution.verified({accountTag:scope,channel:'owner-dm',owner:'life',sourceRef:'intention:'+exploration.episodeId,
+              receiptId:'bili-owner-exploration:'+receiptId,action:'followup',kind:'social'})
+            const event=preparePrivateSelfExperience({source:'owner-dm',role:'owner',uid,eventId:'owner-exploration:'+shareId,text:body,at:Date.now(),accountTag:scope})
+            if(event)await lifeMemoryCoordinator.recordEvents([event],{reflect:true})
+          }})
+      }
       const e=id==='owner-idle'?{kind:'self-initiated'}:id==='owner-silence'?{kind:'owner-silence'}:
         lifeAgentEvents.peek(4).find(x=>x.id===id&&x.kind==='experience-ready')
       if(!e)return {ok:false,reason:'source-not-current'}
