@@ -13,6 +13,12 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.111 · 主 Session 图片附件无损回执
+
+- 维护者报告 dev.110 主 Session 140 秒附近真实局部补看成功；随后 `dafeiyu_observation_detail` 核验缓存图 `focus-07.jpg` 的采样时间 140.5 秒及真实字节，但 `dafeiyu_share_observation` 返回宿主 `value is not lossless JSON`。原附件成功分支写入 `receipt.previousDescriptions:undefined`，必然不能无损 JSON 往返；原挂载测试只调用 render，没有经过序列化校验。
+- 主 Session 原附件适配器在 execute 返回前直接省略旧逐格描述字段，已验证的宿主附件描述投影为原 attachmentId/mediaType/bytes/width/height 五字段普通 JSON 对象，不直接暴露宿主服务返回的未知属性或二进制；原模型图像输入能力、真实主人轮次、id/file/字节摘要、账号与缓存有效性复核、独立自愿选择、原渲染 image block 不变。保留 attachmentPrepared 与 deliveryConfirmed:false，不将准备或回执冒充客户端已显示；不自动重发、不新增视觉观察或 B站写入。旧观察窗口摘要不是单帧核验描述，缺少逐格描述时明确未知。
+- 以 dev.110 实际回放函数复现旧结果 JSON 往返不等；新结果通过，真实挂载夹具先核对无损 JSON 再渲染图像块，覆盖 host ref 含非线协议字段、精确采样、原图读取、原轮次失效、同一前置选择不得重复消费及附件准备与实际显示的区分。真实 DSH SDK/客户端不在云端环境，需本机确认图片实际可见。Windows 锁仍待新版 memory 实机复验。
+
 ## 2.8.3-dev.110 · 主 Session 补看诊断与原读取派发
 
 - 维护者报告 dev.109 原复验通过；主 Session 对 BV1Kmsbz3Ed8 的 140 秒补看返回 life-video-read-failed / focus-read-failed。此回执证明已进入原读取适配器的异常分支，而不是 Life 自主拒绝；旧异常原因被丢弃，缺少当前失败的真实运行日志，不能判定是运行时、脚本、Python、MCP、平台读取还是其他具体原因。

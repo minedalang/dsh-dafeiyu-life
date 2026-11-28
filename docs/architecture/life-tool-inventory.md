@@ -150,7 +150,7 @@ dev.53 历史共享目录共 59 个场景路由：55 读取、4 写入；当前 
 | `dafeiyu_todo_add` | 当前任务账号、原任务类型、真实参数；写入型必须当前主人消息明确预授权。 |
 | `dafeiyu_todo_update` | 原开放任务准确 ID，延期1–8760小时/放弃；运行中、未知或关闭不可改成成功。 |
 | `dafeiyu_todo_execute` | 当前账号原已存任务，写型 ownerAuthorized，原平台目标、开关、额度、真实回执。 |
-| `dafeiyu_share_observation` | 本主人真实领取轮次先选定原图 id/file，独立选择分享；宿主附件服务及当前模型能力，准备成功≠实际客户端显示。 |
+| `dafeiyu_share_observation` | 本主人真实领取轮次先选定原图 id/file，独立选择分享；宿主附件服务及当前模型能力；dev.111 原五字段附件描述与回执均为无损 JSON，原 image block 渲染；准备成功≠实际客户端显示。 |
 
 ### 社交生产结构化动作（不是自由 MCP）
 
