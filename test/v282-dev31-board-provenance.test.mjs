@@ -208,7 +208,9 @@ test('fresh incomplete sampling builds a bounded partial memory receipt without 
  assert.deepEqual(p.sampledTimesMs,times.map(t=>t*1000))
  assert.deepEqual(p.describedTimesMs,[...times.slice(0,12),161].map(t=>t*1000))
  assert.ok(p.notes.some(n=>n.includes('草地')))
- assert.deepEqual(buildFreshVideoDetails({bvid:BV,info,visual:v,event,sourceRef:'observation:'+'a'.repeat(32)}),[])
+ const parts=buildFreshVideoDetails({bvid:BV,info,visual:v,event,sourceRef:'observation:'+'a'.repeat(32)})
+ assert.ok(parts.length>0);assert.ok(parts.every(x=>x.coverage==='partial-sample'&&x.timeAnchorMs[0]===x.timeAnchorMs[1]&&p.describedTimesMs.includes(x.timeAnchorMs[0])))
+ assert.ok(parts.some(x=>x.timeAnchorMs[0]===161000&&x.content.includes('机翼')))
  assert.equal(buildVideoExplorationEvent({...args,autonomousSelected:false}).experience.partialVisualReceipt,undefined)
  assert.equal(buildVideoExplorationEvent({...args,accountTag:''}).experience.partialVisualReceipt,undefined)
  const bad=structuredClone(v);bad.visionBoardReceipts[1].times[0]=10

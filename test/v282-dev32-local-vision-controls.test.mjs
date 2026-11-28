@@ -22,7 +22,7 @@ test('local Ollama thinking settings remain independent while low-res boards sta
 test('local visual acceptance displays a single truthful status and hides the warning after approval',()=>{
   const html=load('lib/management-console.html')
   const js=load('lib/management-console.js')
-  for(const id of ['local-vision-status','local-vision-review-inline','local-vision-review-label','local-vision-review-jump','local-vision-status-tail']){
+  for(const id of ['local-vision-status','local-vision-review-inline','local-vision-review-label','local-vision-review-open','local-vision-status-tail']){
     assert.equal([...html.matchAll(new RegExp('\\bid="'+id+'"','g'))].length,1,`duplicate DOM id: ${id}`)
   }
   assert.match(html,/class="local-vision-review-inline" hidden/, 'review banner starts hidden')

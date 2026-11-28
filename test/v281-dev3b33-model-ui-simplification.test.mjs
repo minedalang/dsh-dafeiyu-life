@@ -12,12 +12,12 @@ test('Ollama 面向已安装用户，检查服务而不提供启动恢复教程'
   assert.match(js,/const checkOllama=async/)
 })
 
-test('3b33 图片验收默认只展示用户三步，真实 MCP 细节藏在可展开诊断内',()=>{
+test('3b33 图片验收移除三步卡片，真实 MCP 细节藏在可展开诊断内',()=>{
   const panel=html.slice(html.indexOf('id="vision-unified-probe-panel"'),html.indexOf('id="video-aux-dependencies"',html.indexOf('id="vision-unified-probe-panel"')))
   for(const id of ['vision-journey','vision-journey-next','vision-probe-image','vision-probe-answer','vision-probe-verify','vision-probe-approve','vision-probe-reject','vision-technical-diagnostics','vision-route-capabilities','vision-probe-stages','vision-probe-last-run','vision-probe-error']){
     assert.match(panel,new RegExp('id="'+id+'"'))
   }
-  for(const step of ['choose','test','review'])assert.match(panel,new RegExp('data-step="'+step+'"'))
+  for(const step of ['choose','test','review'])assert.doesNotMatch(panel,new RegExp('data-step="'+step+'"'))
   assert.match(panel,/<details class="visual-advanced vision-technical-diagnostics" id="vision-technical-diagnostics">/)
   assert.ok(panel.indexOf('id="vision-technical-diagnostics"')<panel.indexOf('id="vision-probe-stages"'))
   assert.match(panel,/模型实际回答/)
@@ -26,7 +26,7 @@ test('3b33 图片验收默认只展示用户三步，真实 MCP 细节藏在可�
 })
 
 test('3b33 管理页高风险维护操作/高级路径折叠，原按钮 ID 和安全回执保留',()=>{
-  for(const id of ['local-vision-install','local-vision-select','local-vision-delete','local-vision-refresh','models-ffmpeg-path-save','models-whisper-path-save','models-vision-debug','headless-sync-links']){
+  for(const id of ['local-vision-install','local-vision-select','local-vision-delete','local-vision-ensure','local-vision-disable','models-ffmpeg-path-save','models-whisper-path-save','models-vision-debug','headless-sync-links']){
     assert.match(html,new RegExp('id="'+id+'"'))
   }
   assert.match(html,/id="llama-vision-delete"/);assert.match(js,/DELETE_NATIVE_VISION_MODEL/)
@@ -66,17 +66,17 @@ test('3b33 视觉用户进度：MCP 预检不得代替回答和人工认可',()=
   const context={$:id=>elements.get(id)}
   vm.runInNewContext(code,context)
   context.updateVisionJourney({ready:true})
-  assert.deepEqual(steps.map(x=>x.dataset.state),['done','current','blocked'])
+  assert.equal(root.dataset.state,'ready')
   context.updateVisionJourney({ready:true,failed:true})
   assert.equal(root.dataset.state,'failed')
   assert.match(elements.get('vision-journey-next').textContent,/未成功/)
-  assert.equal(steps[2].dataset.state,'blocked')
+  assert.notEqual(root.dataset.state,'approved')
   context.updateVisionJourney({ready:true,reviewable:true})
-  assert.deepEqual(steps.map(x=>x.dataset.state),['done','done','current'])
+  assert.equal(root.dataset.state,'review')
   context.updateVisionJourney({ready:true,approved:true})
-  assert.deepEqual(steps.map(x=>x.dataset.state),['done','done','done'])
+  assert.equal(root.dataset.state,'approved')
   context.updateVisionJourney({local:true,ready:false})
-  assert.deepEqual(steps.map(x=>x.dataset.state),['current','blocked','blocked'])
+  assert.equal(root.dataset.state,'setup')
   assert.match(elements.get('vision-journey-next').textContent,/Ollama/)
 })
 
@@ -94,17 +94,17 @@ test('2.8.2 视觉设置：快速设置介绍新 2B，旧 1B 限历史兼容',()
 
 test('2.8.2 视觉设置：下载/图片验收/启用都是普通操作，保留明确确认的删除操作',()=>{
   const base=html.indexOf('id="local-vision-controls"')
-  const start=html.indexOf('class="local-vision-activation-flow"',base)
+  const start=html.indexOf('class="toolbar local-vision-primary-actions"',base)
   const download=html.indexOf('id="local-vision-install"',start)
   const review=html.indexOf('id="local-vision-review-open"',start)
   const enable=html.indexOf('id="local-vision-select"',start)
   const deletion=html.indexOf('id="local-vision-delete"',enable)
   assert.ok(base>=0&&start>base&&download>start&&review>download&&enable>review&&deletion>enable&&html.indexOf('id="vision-unified-probe-panel"',deletion)>deletion)
-  assert.match(html,/id="local-vision-effective" role="status" aria-live="polite"/)
+  assert.match(html,/id="local-vision-effective"[^>]*role="status" aria-live="polite"/)
   assert.match(html,/id="local-vision-selection-note" role="status" aria-live="polite"/)
   assert.match(html,/id="local-vision-model" aria-describedby="local-vision-selection-note"/)
   assert.match(js,/确认切换并开启视频观察/)
-  assert.match(js,/\$\('local-vision-refresh'\)\.addEventListener\('click',\(\)=>run\(loadLocalVisionStatus\)\)/)
+  assert.match(js,/\$\('local-vision-ensure'\)\.addEventListener\('click',\(\)=>run\(checkOllama\)\)/);assert.doesNotMatch(html,/id=\"local-vision-refresh\"/)
   assert.match(js,/await loadLocalVisionStatus\(\)\.catch/);assert.doesNotMatch(js,/\?checkOllama\(\):loadLocalVisionStatus/)
   assert.match(js,/设置尚未保存|summarizeSaveDrafts\(\)/)
   assert.match(js,/settingDraftTracker\.committed\(\$\('models-vision-mode'\)\)/)
@@ -170,4 +170,18 @@ test('2.8.2 已保存字段确认只清除自身草稿，不掩盖其他未保�
   assert.ok(!draft.drafts.get('models-save').fields.has(route))
   draft.committed(model)
   assert.equal(draft.drafts.size,0)
+})
+
+test('idle model task area hidden; active or pending review has a truthful status without zero count',()=>{
+ const start=js.indexOf('  const renderLocalModelTaskVisibility='),end=js.indexOf('  const updateLocalModelTask=',start)
+ assert.ok(start>0&&end>start)
+ const elements={'local-model-tasks':{hidden:false},'local-task-vision-review':{hidden:true},'local-model-task-count':{textContent:''}}
+ const localModelTasks=new Map(),context={$:id=>elements[id],localModelTasks,mobileViewOnly:false}
+ vm.runInNewContext(js.slice(start,end).replace('const renderLocalModelTaskVisibility=','var renderLocalModelTaskVisibility='),context)
+ context.renderLocalModelTaskVisibility();assert.equal(elements['local-model-tasks'].hidden,true)
+ localModelTasks.set('embedding',true);context.renderLocalModelTaskVisibility();assert.equal(elements['local-model-tasks'].hidden,false);assert.equal(elements['local-model-task-count'].textContent,'1 项进行中')
+ localModelTasks.set('embedding',false);elements['local-task-vision-review'].hidden=false;context.renderLocalModelTaskVisibility();assert.equal(elements['local-model-tasks'].hidden,false);assert.equal(elements['local-model-task-count'].textContent,'待图片验收')
+ context.mobileViewOnly=true;context.renderLocalModelTaskVisibility();assert.equal(elements['local-model-tasks'].hidden,true)
+ assert.match(html,/id="llama-vision-delete"/);assert.match(html,/id="llama-vision-disable"/);assert.match(html,/id="llama-vision-enable"/)
+ assert.match(js,/accepted&&visionIsLocal\(\)&&\$\('local-vision-model'\)\.value===id\)await activateLocalVision\(id\)/)
 })

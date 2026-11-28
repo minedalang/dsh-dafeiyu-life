@@ -1555,6 +1555,111 @@
       "newCheck": "assert.match(js,/推荐安装内置视觉模型；若已安装Ollama，可以使用Ollama安装视觉模型/)",
       "date": "2026-11-28",
       "reason": "The maintainer explicitly replaced the Ollama installation tutorial with the native/Ollama/remote recommendation in dev.96. Verified the old assertion fails on unchanged dev.96; mandatory semantic recall, optional vision, and shared install API assertions remain active."
+    },
+    {
+      "file": "v281-dev3b12-debug-images-agency.test.mjs",
+      "oldCheck": "assert.match(page,/id=\"local-vision-review-jump\"/)",
+      "newCheck": "assert.match(page,/id=\"local-vision-review-open\"/);assert.doesNotMatch(page,/id=\"local-vision-review-jump\"/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b13-vision-asr-memory-ui.test.mjs",
+      "oldCheck": "assert.match(html,/id=\"local-vision-review-inline\"[^>]*>\\s*<strong id=\"local-vision-review-label\">尚未人工验收<\\/strong>\\s*<button[^>]*id=\"local-vision-review-jump\"/)",
+      "newCheck": "assert.match(html,/id=\"local-vision-review-inline\"[^>]*>\\s*<strong id=\"local-vision-review-label\">尚未人工验收<\\/strong>/);assert.match(html,/id=\"local-vision-review-open\"/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b13-vision-asr-memory-ui.test.mjs",
+      "oldCheck": "assert.match(html,/\\.local-vision-review-action\\{background:#fff0f0/)",
+      "newCheck": "assert.doesNotMatch(html,/id=\"local-vision-review-jump\"/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b33-model-ui-simplification.test.mjs",
+      "oldCheck": "for(const step of ['choose','test','review'])assert.match(panel,new RegExp('data-step=\"'+step+'\"'))",
+      "newCheck": "for(const step of ['choose','test','review'])assert.doesNotMatch(panel,new RegExp('data-step=\"'+step+'\"'))",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b33-model-ui-simplification.test.mjs",
+      "oldCheck": "'local-vision-delete','local-vision-refresh','models-ffmpeg-path-save'",
+      "newCheck": "'local-vision-delete','local-vision-ensure','local-vision-disable','models-ffmpeg-path-save'",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b33-model-ui-simplification.test.mjs",
+      "oldCheck": "assert.deepEqual(steps.map(x=>x.dataset.state),['done','current','blocked'])",
+      "newCheck": "assert.equal(root.dataset.state,'ready')",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b33-model-ui-simplification.test.mjs",
+      "oldCheck": "assert.equal(steps[2].dataset.state,'blocked')",
+      "newCheck": "assert.notEqual(root.dataset.state,'approved')",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b33-model-ui-simplification.test.mjs",
+      "oldCheck": "assert.deepEqual(steps.map(x=>x.dataset.state),['done','done','current'])",
+      "newCheck": "assert.equal(root.dataset.state,'review')",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b33-model-ui-simplification.test.mjs",
+      "oldCheck": "assert.deepEqual(steps.map(x=>x.dataset.state),['done','done','done'])",
+      "newCheck": "assert.equal(root.dataset.state,'approved')",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b33-model-ui-simplification.test.mjs",
+      "oldCheck": "assert.deepEqual(steps.map(x=>x.dataset.state),['current','blocked','blocked'])",
+      "newCheck": "assert.equal(root.dataset.state,'setup')",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b33-model-ui-simplification.test.mjs",
+      "oldCheck": "const start=html.indexOf('class=\"local-vision-activation-flow\"',base)",
+      "newCheck": "const start=html.indexOf('class=\"toolbar local-vision-primary-actions\"',base)",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b33-model-ui-simplification.test.mjs",
+      "oldCheck": "assert.match(html,/id=\"local-vision-effective\" role=\"status\" aria-live=\"polite\"/)",
+      "newCheck": "assert.match(html,/id=\"local-vision-effective\"[^>]*role=\"status\" aria-live=\"polite\"/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v281-dev3b33-model-ui-simplification.test.mjs",
+      "oldCheck": "assert.match(js,/\\$\\('local-vision-refresh'\\)\\.addEventListener\\('click',\\(\\)=>run\\(loadLocalVisionStatus\\)\\)/)",
+      "newCheck": "assert.match(js,/\\$\\('local-vision-ensure'\\)\\.addEventListener\\('click',\\(\\)=>run\\(checkOllama\\)\\)/);assert.doesNotMatch(html,/id=\\\"local-vision-refresh\\\"/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v282-dev32-local-vision-controls.test.mjs",
+      "oldCheck": "'local-vision-review-label','local-vision-review-jump','local-vision-status-tail'",
+      "newCheck": "'local-vision-review-label','local-vision-review-open','local-vision-status-tail'",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly requested removal of redundant numbered steps, refresh and duplicate review controls; equivalent safety/status behavior remains covered."
+    },
+    {
+      "file": "v282-dev31-board-provenance.test.mjs",
+      "oldCheck": "assert.deepEqual(buildFreshVideoDetails({bvid:BV,info,visual:v,event,sourceRef:'observation:'+'a'.repeat(32)}),[])",
+      "newCheck": "assert.ok(parts.length>0);assert.ok(parts.every(x=>x.coverage==='partial-sample'&&x.timeAnchorMs[0]===x.timeAnchorMs[1]&&p.describedTimesMs.includes(x.timeAnchorMs[0])))",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly approved exact verified partial-sample attachment admission; full observation and unverified sample protections retained."
     }
   ]
 }

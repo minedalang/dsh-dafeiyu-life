@@ -53,7 +53,7 @@ test('actual autonomous revisit handler runs without owner job, uses lease, and 
     buildFreshVideoDetails:({sourceRef})=>[{fragmentId:'frame-1',type:'observed-scene',sourceRef,certainty:'model-observation',content:'局部画面',timeAnchorMs:[7000,7000]}],
     buildVideoExplorationEvent:({operationId,accountTag})=>({key:'video-explore:'+operationId,accountTag,experience:{}}),
     lifeMemoryCoordinator:{recordEvents:async([event],opts)=>{events++;assert.equal(event.accountTag,account);context.expectedId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18);const proof=opts.detailAdmission?.sourceProof;assert.ok(proofSet.has(proof));assert.equal(proof.memoryId,context.expectedId);assert.equal(opts.detailAdmission.fragments[0].sourceRef,proof.sourceRef);updates++;return {ok:true,detailWrite:{ok:true,shallowVersion:1,deepFragments:1}}}},
-    randomUUID,createHash,admittedOwnerFocusProofs:proofSet,lifeMemory:{videoEvidenceTrace:()=>context.validRecall?[trace]:[],partialVideoGapTrace:opts=>context.validPartial&&opts.startMs===7000&&opts.endMs===7000?[{memoryId:recallId,bvid,visibility:'public-event',partialGapAtMs:7000}]:[],recallVideoDetails:opts=>{assert.equal(opts.ownerSession,false);assert.equal(opts.visibility,'public-event');return opts.startMs===undefined?cueDetails:details}},log(){}}
+    randomUUID,createHash,admittedOwnerFocusProofs:proofSet,lifeMemory:{recordVerifiedFocusRevision:opts=>{assert.equal(opts.memoryId,recallId);assert.equal(opts.partialGapAtMs,7000);assert.ok(proofSet.has(opts.sourceProof));updates++;return {ok:true,shallowVersion:1,deepFragments:1}},videoEvidenceTrace:()=>context.validRecall?[trace]:[],partialVideoGapTrace:opts=>context.validPartial&&opts.startMs===7000&&opts.endMs===7000?[{memoryId:recallId,bvid,visibility:'public-event',partialGapAtMs:7000}]:[],recallVideoDetails:opts=>{assert.equal(opts.ownerSession,false);assert.equal(opts.visibility,'public-event');return opts.startMs===undefined?cueDetails:details}},log(){}}
   const start=server.indexOf('  const videoRevisitSpec={'),end=server.indexOf('  // Host-only adapters',start)
   try{
     const adapterStart=server.indexOf('  const persistFreshVideoDetail='),adapterEnd=server.indexOf('  const executeWatchVideo = async',adapterStart)
@@ -78,7 +78,7 @@ test('actual autonomous revisit handler runs without owner job, uses lease, and 
     context.validRecall=false;context.validPartial=true;const partialGap={...gap,recall_start_ms:7000,recall_end_ms:7000}
     choice='defer';const beforePartial=observations;assert.equal((await spec.execute(partialGap)).ok,false);assert.equal(observations,beforePartial)
     choice='act';afterVote=()=>{context.validPartial=false};assert.equal((await spec.execute(partialGap)).ok,false);assert.equal(observations,beforePartial)
-    afterVote=null;context.validPartial=true;const result=await spec.execute(partialGap);assert.equal(result.ok,true,JSON.stringify(result));assert.equal(observations,beforePartial+1);assert.equal(events,3)
+    afterVote=null;context.validPartial=true;const result=await spec.execute(partialGap);assert.equal(result.ok,true,JSON.stringify(result));assert.equal(observations,beforePartial+1);assert.equal(events,2);assert.equal(updates,3)
 
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
@@ -130,4 +130,18 @@ test('cross-channel revisit re-proves live gap before media read, and invalidate
  const options={request:{bvid,startMs:7000,endMs:7000},offeredBvids:[bvid],isCurrent:()=>true,allowRange:()=>true,readTrace:()=>[row],readDetails:()=>gap?{ok:false,reason:'no-detail-in-time-range'}:{ok:true,bvid,fragments:[fragment],totalFragments:1,hasMore:false,missingSources:missing},execute:async(args,before)=>{gap=false;assert.equal(before(),false);return {ok:false,reason:'video-recall-evidence-changed'}}}
  const declined=await runContextualVideoRevisit(options);assert.equal(declined.evidence.ok,false);assert.equal(reads,0)
  const recalled=await runContextualVideoRevisit({...options,execute:()=>{reads++;throw Error('not needed')}});assert.equal(recalled.evidence.status,'existing-historical-observations');assert.equal(recalled.validate(),true);missing=1;assert.equal(recalled.validate(),false);assert.equal(reads,0)
+})
+
+test('partial revisit may close its own exact gap after a verified append, but no foreign source or stale receipt is delivered',async()=>{
+ const {runContextualVideoRevisit}=await import('../lib/video-moment-followup.mjs')
+ const bvid='BV1234567890',memoryId='e-'+'a'.repeat(18),sourceRef='focus:'+'b'.repeat(32)
+ const row={bvid,memoryId,visibility:'public-event',partialGapAtMs:7000}
+ const fragment={memoryId,visibility:'public-event',certainty:'model-observation',coverage:'partial-sample',sourceRef,timeAnchorMs:[7000,7000],content:'实际新采样'}
+ let gap=true,parts=[],reads=0
+ const options={request:{bvid,startMs:7000,endMs:7000},offeredBvids:[bvid],isCurrent:()=>true,allowRange:()=>true,
+  readTrace:()=>gap?[row]:[],readDetails:()=>parts.length?{ok:true,bvid,fragments:parts,totalFragments:parts.length}:{ok:false,reason:'no-detail-in-time-range'},
+  execute:async(args,before,after)=>{assert.equal(before(),true);reads++;gap=false;parts=[fragment];const deepMemory={status:'updated',memoryId,sourceRef};assert.equal(after(deepMemory),true);assert.equal(after({...deepMemory,sourceRef:'focus:'+'c'.repeat(32)}),false);return {ok:true,bvid,status:'observed-new-window',review:{startMs:1000,endMs:13000,frameTimesMs:[7000],description:'新观察'},deepMemory}}}
+ const fresh=await runContextualVideoRevisit(options);assert.equal(fresh.evidence.ok,true,JSON.stringify(fresh.evidence));assert.equal(fresh.validate(),true);assert.equal(reads,1)
+ const historical=await runContextualVideoRevisit(options);assert.equal(historical.evidence.status,'existing-historical-observations');assert.equal(historical.evidence.fragments[0].coverage,'partial-sample');assert.equal(reads,1)
+ parts=[];assert.equal(fresh.validate(),false);assert.equal(historical.validate(),false)
 })

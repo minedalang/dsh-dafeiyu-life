@@ -47,7 +47,7 @@ test('实际图像通过本机受保护端点显示，不把图片正文注入 L
   assert.match(client,/videoDebugState\?\.lastLife\?\.images/)
 })
 test('未验收的本地视觉模型提供验收跳转高亮，已下载不再提供重复下载与取消按钮',()=>{
-  assert.match(page,/id="local-vision-review-jump"/)
+  assert.match(page,/id="local-vision-review-open"/);assert.doesNotMatch(page,/id="local-vision-review-jump"/)
   assert.match(client,/vision-approval-flash/)
   assert.match(client,/local-vision-install'\)\.hidden=Boolean\(model\?\.installed\)/)
   assert.match(client,/local-vision-cancel'\)\.hidden=!downloading/)

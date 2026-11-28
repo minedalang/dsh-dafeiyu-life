@@ -2246,21 +2246,26 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   }
   // Called only with fresh platform/model receipts inside verified read paths.
   // Exact event identity; no time/BV heuristic and no permanent archive fallback.
-  const persistFreshVideoDetail=async({event,bvid,info,visual,account,review=null})=>{
+  const persistFreshVideoDetail=async({event,bvid,info,visual,account,review=null,partialParent=null,readCurrent=()=>true})=>{
     refreshCfg()
-    if(!lifeMemory||!event||event.accountTag!==account||account!==trustedLifeAccountTag()||
+    if(!readCurrent()||!lifeMemory||!event||event.accountTag!==account||account!==trustedLifeAccountTag()||
        accountBinding.status().blocked||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential())
       return {ok:false,reason:'account-or-permission-changed',eventStatus:'not-recorded'}
-    const memoryId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18)
+    const memoryId=partialParent?.memoryId||'e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18)
     const sourceRef=(review?'focus:':'observation:')+createHash('sha256').update(event.key).digest('hex').slice(0,32)
     const fragments=buildFreshVideoDetails({bvid,info,visual,event,sourceRef})
     const ownerSession=event.experience?.source==='main-session'
     const proof=Object.freeze({memoryId,accountTag:account,bvid,sourceRef,fragmentCount:fragments.length,
-      visibility:ownerSession?'private-session':'public-event',at:Date.now()})
+      visibility:ownerSession?'private-session':'public-event',at:Date.now(),readCurrent})
     admittedOwnerFocusProofs.add(proof)
     try{
       // The proof is in-process only. The Gateway atomically commits the
       // parent + already admitted fragments before its separate attachment write.
+      if(partialParent){
+        if(!fragments.length||!readCurrent())return {ok:false,reason:'no-fresh-detail-evidence',eventStatus:'not-recorded'}
+        const result=lifeMemory.recordVerifiedFocusRevision({memoryId,accountTag:account,bvid,review,sourceProof:proof,sourceRef,verifiedFragments:fragments,partialGapAtMs:partialParent.partialGapAtMs})
+        return {...result,memoryId,...(result.ok?{sourceRef}:{}),eventStatus:result.ok?'recorded':result.pending?'coordination-pending':'not-recorded'}
+      }
       const stored=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true,
         ...(fragments.length?{detailAdmission:{fragments,sourceProof:proof,review,sourceRef}}:{})})
       if(!stored)throw Error('人生记忆协调器尚未就绪')
@@ -2512,8 +2517,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         purpose:args.explorationPurpose||(args.record_session===false?'self-exploration':'main-session'),operationId:randomUUID(),
         autonomousSelected:internal.lifeChoiceVerified===true&&args.record_session===false})
       if(event&&readCurrent()&&(!initialLifeAccountTag||initialLifeAccountTag===trustedLifeAccountTag())){
-        if((args.record_session!==false||internal.lifeChoiceVerified===true)&&normalized(vision)?.status==='analyzed'){
-          const detail=await persistFreshVideoDetail({event,bvid,info:normalized(info),visual:normalized(vision),account:initialLifeAccountTag})
+        if((args.record_session!==false||internal.lifeChoiceVerified===true)&&(normalized(vision)?.status==='analyzed'||event.experience?.partialVisualReceipt)){
+          const detail=await persistFreshVideoDetail({event,bvid,info:normalized(info),visual:normalized(vision),account:initialLifeAccountTag,readCurrent})
           memoryWrite={status:detail.eventStatus,detailStatus:detail.ok?'recorded':detail.pending?'pending':'not-recorded',...(detail.ok?{memoryId:detail.memoryId}:{detailReason:detail.reason||'write-failed'})}
           log('Life 深层观察附件：'+(detail.ok?'已写入 '+detail.memoryId:String(detail.reason||'write-failed')))
         }else{
@@ -2827,9 +2832,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const bvid=String(args.bvid||'').trim()
       if(!validBv(bvid))return {ok:false,reason:'invalid-bv'}
       const requestedAccount=trustedLifeAccountTag(),requestedEpoch=accountBinding.generation(),requestedPolicy=getSessionIntegration()
-      const scopeCurrent=(afterObservation=false)=>{
+      const scopeCurrent=(afterObservation=false,commit=null)=>{
         const policy=getSessionIntegration()
-        return (afterObservation?channel.afterCurrent?.()!==false:channel.current?.()!==false)&&requestedAccount===trustedLifeAccountTag()&&requestedEpoch===accountBinding.generation()&&
+        return (afterObservation?channel.afterCurrent?.(commit)!==false:channel.current?.()!==false)&&requestedAccount===trustedLifeAccountTag()&&requestedEpoch===accountBinding.generation()&&
           requestedPolicy.revision===policy.revision&&requestedPolicy.mode===policy.mode&&integrationAvailable()&&platformReady()&&!accountBinding.status().blocked
       }
       if(!requestedAccount||!scopeCurrent())return {ok:false,reason:'video-account-not-ready'}
@@ -2842,6 +2847,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           ...(lifeMemory?.partialVideoGapTrace({accountTag:requestedAccount,bvid,memoryId:recallId,startMs:args.recall_start_ms,endMs:args.recall_end_ms})||[])],
         result:readPublicDetails({startMs:args.recall_start_ms,endMs:args.recall_end_ms})})
       if(!gapStillValid())return {ok:false,reason:'recall-source-unavailable'}
+      const partialParent=gapRequested?(lifeMemory?.partialVideoGapTrace({accountTag:requestedAccount,bvid,memoryId:recallId,startMs:args.recall_start_ms,endMs:args.recall_end_ms})||[])[0]:null
       // A natural cross-turn cue comes only from live, complete public detail.
       // Re-read it after every asynchronous boundary before issuing new reads.
       const cueRequested=args.at_seconds===undefined&&typeof args.event_cue==='string'&&args.event_cue.trim()!==''
@@ -2898,14 +2904,14 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
                 event.note='自主补看一个已核实的公开视频时间窗口'
                 event.experience.focusWindow={startMs:confirmed.startMs,endMs:confirmed.endMs,
                   frames:confirmed.frameTimesMs.length,source:'decoded-public-video-focus'}
-                const result=await persistFreshVideoDetail({event,bvid,info,visual,account,review:confirmed})
+                const result=await persistFreshVideoDetail({event,bvid,info,visual,account,review:confirmed,partialParent,readCurrent:()=>scopeCurrent()&&recallStillValid()})
                 memoryState=result.eventStatus
-                deepMemory=result.ok?{status:'updated',memoryId:result.memoryId,shallowVersion:result.shallowVersion,deepFragments:result.deepFragments}:
+                deepMemory=result.ok?{status:'updated',memoryId:result.memoryId,shallowVersion:result.shallowVersion,deepFragments:result.deepFragments,...(result.sourceRef?{sourceRef:result.sourceRef}:{})}:
                   {status:result.pending?'pending':'not-updated',reason:result.reason}
               }
             }catch(e){log('Life 补看证据记账暂不可用：'+String(e?.message||e).slice(0,90))}
-            if(!scopeCurrent(true))return {ok:false,reason:'video-read-no-longer-authorized'}
-            if(focusCapture&&scopeCurrent(true))try{
+            if(!scopeCurrent(true,deepMemory))return {ok:false,reason:'video-read-no-longer-authorized'}
+            if(focusCapture&&scopeCurrent(true,deepMemory))try{
               addLifeVideoGallery(stateDir,{account,bvid,captures:[focusCapture],verified:true,
                 phase:'focus',note:String(confirmed.description||'').slice(0,380),analysis:visual?.description,boardReceipts:visual?.visionBoardReceipts,memoryWrite:{status:memoryState,detailStatus:deepMemory.status,detailReason:deepMemory.reason}})
             }catch(e){log('Life 指定时刻回放图片保存失败：'+String(e?.message||e).slice(0,100))}
@@ -7481,7 +7487,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     return index.get(uid,relationshipOptions())
   },getAccountTag:trustedLifeAccountTag,admitMemoryDetails:({episode,fragments,sourceProof})=>{
     refreshCfg()
-    if(!sourceProof||typeof sourceProof!=='object'||!admittedOwnerFocusProofs.has(sourceProof)||
+    if(!sourceProof||typeof sourceProof!=='object'||!admittedOwnerFocusProofs.has(sourceProof)||sourceProof.readCurrent?.()!==true||
        !Array.isArray(fragments)||fragments.length!==(sourceProof.fragmentCount||1)||fragments.length<1||fragments.length>48||
        episode?.id!==sourceProof.memoryId||episode?.accountTag!==sourceProof.accountTag||
        episode?.visibility!==(sourceProof.visibility||'public-event')||
@@ -11449,7 +11455,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     // Owner-managed native model preparation and explicit activation.
     if(req.method==='GET'&&path==='/api/bili-duty/llama-vision/status'){
-      try{return sendJson(res,200,{...await embeddingRuntime.visionStatus(),active:cfg.visionMode==='independent_native'?cfg.visionLocalModel:'',visionEnabled:cfg.visionEnabled===true})}
+      try{return sendJson(res,200,{...await embeddingRuntime.visionStatus(),active:cfg.visionMode==='independent_native'?cfg.visionLocalModel:'',visionEnabled:cfg.visionEnabled===true,incomingImageRecognitionEnabled:cfg.incomingImageRecognitionEnabled===true})}
       catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
     }
     if(req.method==='POST'&&['/api/bili-duty/llama-vision/install','/api/bili-duty/llama-vision/verify','/api/bili-duty/llama-vision/select','/api/bili-duty/llama-vision/cancel','/api/bili-duty/llama-vision/delete','/api/bili-duty/llama-vision/reject'].includes(path)){
@@ -11464,7 +11470,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         try{
           if(path.endsWith('/reject')){embeddingRuntime.rejectVision(id,data?.testedAt);return sendJson(res,200,{ok:true})}
           if(data?.confirm!=='DELETE_NATIVE_VISION_MODEL')throw Error('需要明确确认删除内置视觉模型')
-          if(cfg.visionMode==='independent_native'&&cfg.visionLocalModel===id)throw Error('请先切换到其他已验收视觉模型，再删除当前配置型号')
+          if(cfg.visionMode==='independent_native'&&cfg.visionLocalModel===id&&(cfg.visionEnabled===true||cfg.incomingImageRecognitionEnabled===true))throw Error('请先关闭视频观察及社交图片识别，或切换到其他已验收模型')
           await embeddingRuntime.removeVisionAssets(id);return sendJson(res,200,{ok:true,deleted:true})
         }catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
       }

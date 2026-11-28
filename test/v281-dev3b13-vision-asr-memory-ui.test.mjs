@@ -12,10 +12,10 @@ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url
 const ui=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
 const py=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta.url),'utf8')
 
-test('未人工验收文字与按钮紧邻且显著红色，仅状态可见时显示',()=>{
- assert.match(html,/id="local-vision-review-inline"[^>]*>\s*<strong id="local-vision-review-label">尚未人工验收<\/strong>\s*<button[^>]*id="local-vision-review-jump"/)
+test('未人工验收状态显著红色，统一工具栏提供唯一验收跳转',()=>{
+ assert.match(html,/id="local-vision-review-inline"[^>]*>\s*<strong id="local-vision-review-label">尚未人工验收<\/strong>/);assert.match(html,/id="local-vision-review-open"/)
  assert.match(html,/\.local-vision-review-inline strong\{color:#c62828/)
- assert.match(html,/\.local-vision-review-action\{background:#fff0f0/)
+ assert.doesNotMatch(html,/id="local-vision-review-jump"/)
  assert.match(ui,/const needsReview=state.running===true&&model\?\.installed===true&&model\?\.verified!==true/)
  assert.match(ui,/\$\('local-vision-review-inline'\)\.hidden=!needsReview/)
 })

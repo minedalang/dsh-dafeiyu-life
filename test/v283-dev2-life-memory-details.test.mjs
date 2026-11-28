@@ -660,3 +660,54 @@ for(const mode of ['success','forgotten','invalid-id','repeat','ordinary'])test(
  },logger:{warn(){}}});life.addEvents([event]);const result=await life.reflect({force:true});const ok=['success','ordinary'].includes(mode);assert.equal(result.ok,ok,JSON.stringify(result));assert.equal(calls,['invalid-id','ordinary'].includes(mode)?1:2);assert.equal(commits,ok?1:0);assert.equal(observed,mode==='success'?1:0);if(ok)assert.equal(result.detailRecallDelivered,mode==='success'?1:0);else assert.equal(life.status().pending,1);const health=life.status().detailRecallDiagnostics;assert.equal(health.offered,1);assert.equal(health.requested,mode==='ordinary'?0:1);if(mode==='success')assert.equal(gateway.status().health.reinforced,1);else assert.equal(gateway.status().health.reinforced,0)
  }finally{gateway.close();rmSync(dir,{recursive:true,force:true})}
 })
+
+// Partial sampling is an independent attachment qualification, never a full
+// visual receipt. Use the real gateway transaction and original decay store.
+test('verified partial attachment and exact gap revision stay in the same experience through restart and forgetting',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'partial-deep-'));let at=NOW+5000,account=A,gate;const changed=[],invalidated=[]
+ const open=()=>createLifeMemoryGateway({dataDir:dir,now:()=>at,getAccountTag:()=>account,getConfig:()=>({mainSessionMemoryHalfLifeDays:15}),admitMemoryDetails:({sourceProof})=>sourceProof?.internalToken==='test-only',onDetailsChanged:id=>changed.push(id),onDetailsInvalidated:ids=>invalidated.push(...ids),logger:{warn(){}}})
+ const partial={...event,key:'video-explore:partial-deep-v98',autonomousSelected:true,visualObservationState:'fresh',experience:{...event.experience,vision:false,visualReceipt:undefined,partialVisualReceipt:{source:'low-resolution-preview',sampledTimesMs:[1000,2000,3000],describedTimesMs:[1000,3000],notes:['画面可见绿色草地'],interpretation:'partial-model-observation-not-semantic-proof'}}}
+ const ref='observation:'+'a'.repeat(32),part={fragmentId:'partial-frame-1',type:'observed-scene',content:'画面可见绿色草地和白色小鸟',certainty:'model-observation',coverage:'partial-sample',observationSource:'low-resolution-preview',sourceRef:ref,timeAnchorMs:[1000,1000],uncertainties:['仅为局部采样']}
+ const proof={internalToken:'test-only'},selector={accountTag:A,bvid:BV,visibility:'public-event'}
+ try{
+  gate=open();const initial=gate.recordEvents([partial],{detailAdmission:{fragments:[part],sourceProof:proof,sourceRef:ref}});assert.equal(initial.detailWrite?.ok,true,JSON.stringify(initial));
+  const gap=gate.partialVideoGapCandidates({accountTag:A})[0],memoryId=gap.memoryId;assert.equal(gap.atMs,2000)
+  const original=gate.recallVideoDetails({...selector,memoryId});assert.equal(original.fragments[0].coverage,'partial-sample');assert.equal(original.fragments[0].observedAt,NOW)
+  assert.deepEqual(gate.videoEvidenceTrace({accountTag:A,bvid:BV,visualOnly:true}),[]);assert.deepEqual(gate.recentVisualExperienceContext({accountTag:A}),[])
+  assert.equal(gate.visualDetailCandidates({accountTag:A,ids:[memoryId]})[0].parts[0].coverage,'partial-sample')
+  assert.equal(gate.recallVideoDetails({...selector,startMs:2000,endMs:2000}).reason,'no-detail-in-time-range')
+  const review={reviewStatus:'model-observation-not-independent-semantic-proof',startMs:1000,endMs:3000,frameTimesMs:[2000],description:'画面中有一只白色小鸟飞过绿色草地'}
+  const focus='focus:'+'b'.repeat(32),next={...part,fragmentId:'partial-focus-2',sourceRef:focus,timeAnchorMs:[2000,2000],content:review.description}
+  const options={memoryId,accountTag:A,bvid:BV,review,sourceRef:focus,verifiedFragments:[next],partialGapAtMs:2000}
+  assert.equal(gate.recordVerifiedFocusRevision({...options,sourceProof:{}}).ok,false)
+  assert.equal(gate.recordVerifiedFocusRevision({...options,sourceProof:proof,verifiedFragments:[{...next,timeAnchorMs:[2000,3000]}]}).ok,false)
+  at=NOW+10000;const updated=gate.recordVerifiedFocusRevision({...options,sourceProof:proof});assert.equal(updated.ok,true,JSON.stringify(updated));assert.equal(updated.deepFragments,2)
+  assert.equal(gate.recordVerifiedFocusRevision({...options,sourceProof:proof}).ok,false)
+  assert.deepEqual(gate.partialVideoGapCandidates({accountTag:A}),[])
+  const read=gate.recallVideoDetails({...selector,memoryId,startMs:2000,endMs:2000});assert.equal(read.fragments[0].observedAt,at);assert.equal(read.fragments[0].observationSource,'decoded-public-video');assert.equal(read.fragments[0].memoryId,memoryId)
+  assert.deepEqual(gate.videoEvidenceTrace({accountTag:A,bvid:BV,visualOnly:true}),[])
+  const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({mainSessionMemoryEnabled:true}),getVisualExperiences:o=>gate.recentVisualExperienceContext(o),getVideoDetails:o=>gate.recallVideoDetails(o)})
+  const rows=await retriever.contextualVisualRecall({accountTag:A,bvids:[BV],queries:['detail'],partialDetails:true});assert.equal(rows[0].coverage,'partial-sample');assert.equal(retriever.validateContextualVisualRecall({accountTag:A,rows}),true)
+  const selection={bvid:BV,startMs:2000,endMs:2000},args={accountTag:A,row:rows[0],selection,isCurrent:()=>true}
+  assert.equal(retriever.readPublicVisualDetail({...args,beforeAt:at}).items.length,0,'new observation cannot be recalled before it happened')
+  const shared=retriever.readPublicVisualDetail({...args,beforeAt:at+1});assert.equal(shared.items.length,1);assert.ok(shared.items[0].summary.includes('2000'));assert.equal(shared.validateRecall(),true)
+  assert.ok(changed.includes(memoryId));const pack=createLifeMemoryBackup(dir)
+  gate.close();gate=open();assert.equal(gate.recallVideoDetails({...selector,memoryId}).totalFragments,2)
+  account=B;assert.equal(gate.recallVideoDetails({...selector,memoryId}).ok,false);account=A
+  at=NOW+14*DAY;assert.equal(gate.recallVideoDetails({...selector,memoryId}).ok,false);assert.ok(invalidated.includes(memoryId))
+  restoreLifeMemoryBackup(dir,pack);at=NOW+10000;assert.equal(gate.recallVideoDetails({...selector,memoryId}).ok,false);assert.equal(gate.visualDetailCandidates({accountTag:A,ids:[memoryId]}).length,0)
+ }finally{gate?.close();rmSync(dir,{recursive:true,force:true})}
+})
+
+test('partial source admission rejects invented anchors and private samples remain owner-only',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'partial-private-'));const gate=createLifeMemoryGateway({dataDir:dir,now:()=>NOW+5000,getAccountTag:()=>A,getConfig:()=>({mainSessionMemoryEnabled:true}),admitMemoryDetails:({sourceProof})=>sourceProof?.internalToken==='test-only',logger:{warn(){}}})
+ const ref='observation:'+'c'.repeat(32),p={...event,visualObservationState:'fresh',key:'video-explore:partial-private-98',experience:{...event.experience,source:'main-session',vision:false,visualReceipt:undefined,partialVisualReceipt:{source:'decoded-public-video',sampledTimesMs:[1000,2000],describedTimesMs:[1000],notes:['画面出现一只白色鸟'],interpretation:'partial-model-observation-not-semantic-proof'}}}
+ const part={fragmentId:'partial-private-frame',type:'observed-scene',sourceRef:ref,content:'画面出现一只白色鸟',certainty:'model-observation',coverage:'partial-sample',observationSource:'decoded-public-video',timeAnchorMs:[1000,1000],uncertainties:[]},sourceProof={internalToken:'test-only'}
+ try{
+  for(const [i,invalid] of [{...part,timeAnchorMs:[2000,2000]},{...part,coverage:undefined},{...part,observationSource:'low-resolution-preview'}].entries())assert.equal(gate.recordEvents([{...p,key:p.key+i}],{detailAdmission:{fragments:[invalid],sourceProof,sourceRef:ref}}).detailWrite?.ok,false)
+  const result=gate.recordEvents([p],{detailAdmission:{fragments:[part],sourceProof,sourceRef:ref}});assert.equal(result.detailWrite?.ok,true,JSON.stringify(result))
+  assert.equal(gate.recallVideoDetails({accountTag:A,bvid:BV,visibility:'public-event'}).ok,false)
+  assert.equal(gate.recallVideoDetails({accountTag:A,bvid:BV,visibility:'private-session',ownerSession:true}).fragments[0].coverage,'partial-sample')
+  assert.deepEqual(gate.visualDetailCandidates({accountTag:A}),[]);assert.equal(gate.ownerPrivateVisualCandidates({accountTag:A}).length,1);assert.deepEqual(gate.partialVideoGapCandidates({accountTag:A}),[])
+ }finally{gate.close();rmSync(dir,{recursive:true,force:true})}
+})
