@@ -2195,11 +2195,11 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <details id="local-model-tasks" class="quick-config-section"><summary>本地模型任务 · <span id="local-model-task-count">待检查</span></summary>
   <p class="muted">下载任务由服务端运行，切换配置页面不会取消。共享运行时只准备一次；最终就绪以实际检查为准。</p>
   <div><span class="local-model-task-label"><strong>语义回忆</strong> · <span id="local-task-embedding-status" role="status">待检查</span></span><progress id="local-task-embedding-progress" max="100" hidden aria-label="语义模型准备进度"></progress> <button type="button" id="local-task-embedding-cancel" disabled>取消安装</button></div>
-  <div><span class="local-model-task-label"><strong>内置视觉</strong> · <span id="local-task-vision-status" role="status">待检查</span></span><progress id="local-task-vision-progress" max="100" hidden aria-label="视觉资源准备进度"></progress> <button type="button" id="local-task-vision-cancel" disabled>取消任务</button></div>
+  <div><span class="local-model-task-label"><strong>内置视觉</strong> · <span id="local-task-vision-status" role="status">待检查</span></span><progress id="local-task-vision-progress" max="100" hidden aria-label="视觉资源准备进度"></progress> <button type="button" id="local-task-vision-cancel" disabled>取消任务</button> <button type="button" id="local-task-vision-review" hidden>去测试识图</button></div>
   <button type="button" id="local-model-task-refresh">检查任务</button>
 </details>
 <aside id="life-system-health" class="life-health-banner" role="status" aria-live="polite">
-  <div class="health-strip-heading"><span class="health-indicator" aria-hidden="true"></span><strong id="life-health-title">正在核对后台监听状态</strong><span id="life-health-retry" class="health-retry"></span><button id="life-health-clear-model-backoff" type="button" hidden>取消模型退避</button><button id="life-health-clear-network-backoff" type="button" hidden>恢复网络监听</button><button id="life-health-restore-ollama" type="button" hidden>恢复 Ollama 服务</button><button id="life-health-vision-models" type="button" hidden>检查视觉模型</button><button id="life-health-details" type="button">查看诊断</button></div>
+  <div class="health-strip-heading"><span class="health-indicator" aria-hidden="true"></span><strong id="life-health-title">正在核对后台监听状态</strong><span id="life-health-retry" class="health-retry"></span><button id="life-health-clear-model-backoff" type="button" hidden>取消模型退避</button><button id="life-health-clear-network-backoff" type="button" hidden>恢复网络监听</button><button id="life-health-restore-ollama" type="button" hidden>检查 Ollama 服务</button><button id="life-health-vision-models" type="button" hidden>检查视觉模型</button><button id="life-health-details" type="button">查看诊断</button></div>
   <p id="life-health-detail">仅依据本机已有调度记录，不额外请求 B站。</p>
   <div id="life-health-channels" class="health-channel-list" aria-label="各监听渠道状态"></div>
 </aside>
@@ -2383,7 +2383,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="toolbar" id="core-quick-links"><button type="button" data-open-tab="home">绑定 Session / 使用指南</button><button type="button" data-open-tab="life">查看与管理记忆</button><button type="button" data-open-tab="models">配置模型</button></div>
 </section>
 <section id="panel-models" hidden>
-<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择模型、保存，再完成连接验证。连接测试可能产生费用，不计入统计。</p><p class="autonomous-only"><a href="#models-vision" style="font-weight:650">🎞️ 视觉模型、FFmpeg 与 Whisper 已统一收纳在「视觉识别模型」中 ↓</a></p></div></div>
+<div class="feature-intro"><div><h2>🧠 AI 模型配置</h2><p>选择模型、保存，再完成连接验证。连接测试可能产生费用，不计入统计。</p><div class="toolbar" aria-label="AI 模型页快捷导航"><button type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">模型同步</button><button type="button" data-open-tab="models" data-open-anchor="wizard-default-model-panel">默认模型</button><button type="button" data-open-tab="models" data-open-anchor="models-vision-settings" class="autonomous-only">视觉模型</button><button type="button" data-open-tab="models" data-open-anchor="video-aux-dependencies" class="autonomous-only">语音与解码</button><button type="button" data-open-tab="models" data-open-anchor="memory-model-route">记忆模型</button></div></div></div>
 <div class="settings-stack">
 <div class="settings-section" id="headless-model-sync-panel">
 <div class="headless-panel-heading"><h4>🔐 模型同步与能力管理</h4><span id="headless-provider-summary">检测 Desktop 模型中…</span></div>
@@ -2441,11 +2441,46 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="vision-usage-permission vision-usage-video"><div class="vision-permission-copy"><strong>🎬 自主视频画面观察</strong><small>允许 Life 在视频探索时主动调用已配置的视觉模型；与「视频探索」页同步，开启不会强制观看。开关操作直接保存。</small><small class="vision-cost-warning" role="note">⚠️ 开启视频识别可能多次传入图片并产生费用！强烈建议选择经实测支持图片的 gpt-luna-6 等低成本模型，或本地 Ollama；DeepSeek 等云端模型可能较烧钱，实际价格以所选 Provider 计费为准。</small><a href="?tab=bili#bili-video-perception-plans" data-open-tab="bili" data-open-anchor="bili-video-perception-plans">查看视频探索设置 ↗</a></div><label class="vision-toggle" for="models-vision-enabled"><input id="models-vision-enabled" type="checkbox" role="switch" aria-label="允许 Life 自主观察视频画面"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span class="vision-toggle-caption">允许视频观察</span></label></div>
   <div class="vision-usage-permission"><div class="vision-permission-copy"><strong>💬 私信与评论图片／表情包识别</strong><small>独立控制社交图片理解，不受视频观察开关影响。开关操作直接保存。</small><a href="?tab=bili#bili-social-image-permission" data-open-tab="bili" data-open-anchor="bili-social-image-permission">前往视频探索页 ↗</a></div><label class="vision-toggle" for="models-incoming-image-enabled"><input id="models-incoming-image-enabled" type="checkbox" role="switch" aria-label="私信与评论图片表情包识别"><span class="vision-toggle-track" aria-hidden="true"><span class="vision-toggle-thumb"></span></span><span class="vision-toggle-caption">允许图片识别</span></label></div>
 </div>
-<div class="model-activity" id="vision-model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p id="vision-route-description" class="muted">选择内置本地视觉、Ollama 本地视觉或 DSH 远程视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><div class="fields" id="models-vision"></div>
 <div class="fields" id="vision-route-choice"><div><label for="models-vision-mode">识图方式</label><select id="models-vision-mode"><option value="independent_native">内置本地视觉（推荐）</option><option value="independent_local">Ollama 本地视觉</option><option value="independent_dsh">DSH 远程视觉模型</option></select></div>
 
 <div><details class="visual-advanced"><summary>调试选项</summary><label class="checkline"><input role="switch" class="ui-toggle" id="models-vision-debug" type="checkbox">开启视觉识图调试日志（排障用）</label></details></div></div>
+<div class="model-activity" id="vision-model-activity"><span id="models-vision-usage" class="muted">今日调用次数：读取中… · 上次调用时间：读取中…</span><button type="button" id="models-vision-test" class="model-test-button">测试连接</button><span id="models-vision-test-result" class="muted" role="status" aria-live="polite"></span></div><p id="vision-route-description" class="muted">选择内置本地视觉、Ollama 本地视觉或 DSH 远程视觉模型。鱼鱼需要看画面时才会调用；连接测试只检查能否访问模型，图片理解是否正确请用下方原图验收。</p><div id="vision-remote-help" class="setting-note">DSH 远程视觉：请在上方「模型同步与能力管理（Headless）」补充图片与思考能力并验证文字连接，再保存此处的 Provider、模型与思考设置。<button type="button" data-open-tab="models" data-open-anchor="headless-model-sync-panel">前往 Headless 同步 ↑</button></div><div class="fields" id="models-vision"></div>
 <details class="visual-advanced"><summary>高级：视频 Python 运行时（可选，适用于 Ollama 和 DSH）</summary><label for="models-vision-python-path">视觉专用 Python 完整路径（留空自动选择通过健康检查的环境）</label><input id="models-vision-python-path" type="text" autocomplete="off" spellcheck="false" placeholder="高级用法：可留空自动选择" maxlength="500" style="width:100%;max-width:640px"><p class="muted">必须能以普通权限写入临时目录及工作目录，并安装 mcp、bilibili_api、qrcode、Pillow。同时适用于本地 Ollama 与 DSH 的视频取帧／视觉 MCP；不会更改其他 Life/私信 Python。请在本组“保存”后执行验收。</p></details>
+<p id="vision-backend-advice" class="setting-note" role="status">正在检测本地视觉环境；不自动切换已有配置。</p>
+<section class="contextual-memory-group" id="llama-vision-trial" aria-label="内置本地视觉" hidden>
+<div class="video-aux-heading"><h4>内置本地视觉（llama.cpp）</h4><span id="llama-vision-active" class="pill pending">读取当前配置…</span></div>
+<p class="muted">无需安装 Ollama。复用本地语义回忆运行时，模型权重存入已配置的大型数据区。当前使用 CPU 推理；下载期间可继续配置。完成图片验收后即可启用。</p>
+<div class="fields"><div><label for="llama-vision-model">视觉模型</label><select id="llama-vision-model"><option value="qwen3.5-2b">Qwen3.5 2B · Q4_K_M</option><option value="qwen3.5-4b">Qwen3.5 4B · Q4_K_M</option></select><small class="setting-note" id="llama-vision-size">读取模型资源状态…</small></div></div>
+<details class="visual-advanced"><summary>查看模型大小与硬件建议</summary><p class="muted">2B：权重与投影约 1.95 GB，系统内存建议 8 GB 起；4B：约 3.41 GB，系统内存建议 12～16 GB 或更高。当前为 CPU 推理，另需运行时、上下文和图片处理空间。以上为经验性建议，不是最低硬件门槛。</p></details><div class="toolbar"><button type="button" id="llama-vision-install" disabled>① 下载模型</button><button type="button" id="llama-vision-verify" disabled>② 前往图片验收 ↓</button><button type="button" id="llama-vision-delete" class="danger" disabled>删除模型</button><button type="button" id="llama-vision-refresh">刷新状态</button><button type="button" id="llama-vision-cancel" disabled>取消准备任务</button></div>
+<p id="llama-vision-status" class="setting-note" role="status" aria-live="polite">正在读取模型状态…</p>
+<progress id="llama-vision-progress" max="100" style="width:100%" hidden></progress>
+
+</section>
+<p id="wizard-remote-vision-note" class="setting-note" hidden>远程视觉模型可稍后在 AI 模型页中配置。继续下一步不会更改已保存的视觉方式。</p>
+<div class="contextual-memory-group" id="local-vision-controls">
+<div class="video-aux-heading"><h4>🖥️ Ollama 本地视觉模型</h4><span id="models-local-vision-active" class="pill pending">读取当前配置…</span></div>
+<p class="muted">使用已安装并运行的 Ollama 服务。已有模型直接复用；不启动或恢复外部服务。</p>
+<details class="visual-advanced"><summary>查看模型大小与硬件建议</summary>
+<div class="setting-note" id="local-vision-hardware-guide" role="note" style="margin:10px 0;padding:13px;border-left:3px solid var(--primary,#4b94a8)">
+<strong>💻 选模型先看内存与显存（无需显卡也能运行）</strong><p id="local-vision-installed-size" class="muted">磁盘大小以 Ollama 模型清单为准；未安装的大小尚不可确认。</p>
+<p style="margin:7px 0">显存是<strong>GPU 加速建议</strong>，不是安装门槛。<strong>无独立显卡、显存不足</strong>也可以用 Ollama 的 CPU + 系统内存运行，可能更慢；有 GPU 时可能部分层卸载到系统内存。占用随量化、上下文和图片数变化，实际以 Ollama 加载情况为准。</p>
+<div class="fields" aria-label="本地模型 GPU 显存建议与 CPU 内存运行提示">
+<div><strong>Qwen3.5 2B · 中档</strong><p>建议 GPU 显存约 4～6 GB；也可 CPU 运行（系统内存建议 8 GB 起，留有余量）。</p></div>
+<div><strong>Qwen3.5 4B · 画面质量优先</strong><p>建议 GPU 显存约 6～8 GB；也可 CPU 运行（系统内存建议 12～16 GB 或更高）。</p></div>
+<div><strong>MiniCPM-V 4.7 1B · 不建议常规使用</strong><p>建议 GPU 显存约 4 GB；可 CPU 运行（系统内存建议 8 GB 起）。实测分镜描述容易遗漏细节，仅供低资源尝试。</p></div>
+</div>
+<p style="margin:5px 0 0">以上均是<strong>经验性起试建议，不是官方硬性最低配置</strong>；本机总内存和其他程序的占用也会影响能否顺利加载。</p>
+</div></details>
+<details class="visual-advanced"><summary>查看后台生效配置</summary><div class="local-vision-state-board" aria-label="本地模型后台状态与待选型号"><div><strong>后台已保存的实际配置</strong><p id="local-vision-effective" role="status" aria-live="polite">正在读取后台生效模型…</p></div><div><strong>当前下拉框选择（尚不等于启用）</strong><p id="local-vision-selection-note" role="status" aria-live="polite">请选择型号，再根据下方步骤操作。</p></div></div></details>
+<div class="fields"><div><label for="local-vision-model">视觉模型</label><select id="local-vision-model" aria-describedby="local-vision-selection-note"><option value="qwen3.5-2b">Qwen3.5 2B · 新版推荐</option><option value="qwen3.5-4b">Qwen3.5 4B · 质量优先</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B · 历史兼容（不推荐 / 不可下载）</option></select><small class="setting-note">仅切换下拉框不会保存，也不会触发「设置尚未保存」横幅。<strong>已认可模型仍需点击下方「启用」才能切换后台。</strong></small></div>
+<div><label for="local-vision-thinking">本地识图思考深度</label><select id="local-vision-thinking"><option value="off">关闭思考（推荐用于逐格识图）</option><option value="default">模型默认</option><option value="on">开启思考</option><option value="low">低（模型支持时）</option><option value="medium">中（模型支持时）</option><option value="high">高（模型支持时）</option></select><small class="setting-note" id="local-vision-thinking-support">正在检查模型支持的思考档位…</small><div class="toolbar"><button type="button" id="local-vision-thinking-save">保存本地识图思考设置</button></div></div></div>
+<p class="setting-note">此设置仅影响本机 Ollama 视频逐帧识图，不改变 DSH 模型的思考深度。思考会消耗生成预算；每张分镜独立分配宽松 Token 上限，且保留总执行时间限制。</p>
+<div class="local-vision-activation-flow" aria-label="本地模型安装、验收与启用"><div class="toolbar local-vision-primary-actions"><button type="button" id="local-vision-install" disabled>① 下载模型</button><button type="button" id="local-vision-review-open" disabled>② 前往图片验收 ↓</button><button type="button" id="local-vision-select" class="primary" disabled>③ 启用此已认可模型</button></div></div>
+<div class="local-vision-status-line"><span id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</span><span id="local-vision-review-inline" class="local-vision-review-inline" hidden><strong id="local-vision-review-label">尚未人工验收</strong><button type="button" id="local-vision-review-jump" class="life-action local-vision-review-action">前往人工验收 ↓</button></span><span id="local-vision-status-tail" class="muted"></span></div>
+<progress id="local-vision-progress" max="100" value="0" hidden></progress>
+<div class="toolbar"><button type="button" id="local-vision-ensure">检查 Ollama 服务</button><button type="button" id="local-vision-refresh">刷新状态</button><button type="button" id="local-vision-delete" class="danger">删除模型</button><button type="button" id="local-vision-cancel" hidden>取消下载</button></div>
+
+</div>
 <section class="setting-note" id="vision-unified-probe-panel" aria-label="视觉模型图片人工验收" style="margin-top:14px;border-radius:14px;padding:16px">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
     <strong>🐟 图片识别验收</strong>
@@ -2481,7 +2516,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   <div class="vision-proof-board">
     <figure class="vision-proof-image">
       <img id="vision-probe-image" src="/api/bili-duty/local-vision/selftest-image" alt="实际发送给所选模型的大肥鱼原图" width="154" height="186" style="width:154px;height:186px;object-fit:contain;background:#fff;border:1px solid #c8ced7;border-radius:10px" loading="lazy"/>
-      <figcaption class="muted">两种识图方式共用同一张原图</figcaption>
+      <figcaption class="muted">所有识图方式共用同一张原图</figcaption>
     </figure>
     <div class="vision-proof-answer">
       <p id="vision-probe-result" role="status" aria-live="polite">尚未识图</p>
@@ -2496,44 +2531,6 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   </div>
   <p class="muted">测试使用固定图片，不会发布到 B站。仅当回答与图片内容一致时，点击「识别正确，认可」。</p>
 </section>
-<p id="vision-backend-advice" class="setting-note" role="status">正在检测本地视觉环境；不自动切换已有配置。</p>
-<section class="contextual-memory-group" id="llama-vision-trial" aria-label="内置本地视觉" hidden>
-<div class="video-aux-heading"><h4>内置本地视觉（llama.cpp）</h4><span id="llama-vision-active" class="pill pending">读取当前配置…</span></div>
-<p class="muted">无需安装 Ollama。复用本地语义回忆运行时，模型权重存入已配置的大型数据区。当前使用 CPU 推理；下载期间可继续配置。完成图片验收后即可启用。</p>
-<div class="fields"><div><label for="llama-vision-model">视觉模型</label><select id="llama-vision-model"><option value="qwen3.5-2b">Qwen3.5 2B · Q4_K_M</option><option value="qwen3.5-4b">Qwen3.5 4B · Q4_K_M</option></select><small class="setting-note" id="llama-vision-size">读取模型资源状态…</small></div></div>
-<div class="toolbar"><button type="button" id="llama-vision-install" disabled>① 下载模型</button><button type="button" id="llama-vision-verify" disabled>② 图片识别测试</button><button type="button" id="llama-vision-refresh">刷新状态</button><button type="button" id="llama-vision-cancel" disabled>取消准备任务</button></div>
-<p id="llama-vision-status" class="setting-note" role="status" aria-live="polite">正在读取模型状态…</p>
-<progress id="llama-vision-progress" max="100" style="width:100%" hidden></progress>
-<details id="llama-vision-review"><summary>查看原图与实际测试回答</summary><img src="/api/bili-duty/local-vision/selftest-image" alt="大肥鱼角色识图测试原图" loading="lazy" style="display:block;max-width:180px;width:100%;height:auto;margin:12px 0"><p class="muted">由你核对内容是否与原图一致。取得文字不等于正确识图。</p><pre id="llama-vision-answer" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto">尚无测试回答。</pre><div class="toolbar"><button type="button" id="llama-vision-select" class="primary" disabled>③ 识别正确，启用此模型</button></div></details>
-</section>
-<p id="wizard-remote-vision-note" class="setting-note" hidden>远程视觉模型可稍后在 AI 模型页中配置。继续下一步不会更改已保存的视觉方式。</p>
-<div class="contextual-memory-group" id="local-vision-controls">
-<div class="video-aux-heading"><h4>🖥️ Ollama 本地视觉模型</h4><span id="models-local-vision-active" class="pill pending">读取当前配置…</span></div>
-<p class="muted">本地视觉模型负责画面观察。<strong>推荐新用户优先试 Qwen3.5 2B</strong>；Qwen3.5 4B 适合追求画面质量。旧 MiniCPM 1B 仅兼容旧安装，已不建议日常使用。仅选择 Ollama 视觉路线时才需要安装并运行 Ollama（不影响本地语义回忆）；也可以通过 DSH 配置 Ollama Provider。</p>
-<details class="visual-advanced"><summary>查看模型大小与硬件建议</summary>
-<div class="setting-note" id="local-vision-hardware-guide" role="note" style="margin:10px 0;padding:13px;border-left:3px solid var(--primary,#4b94a8)">
-<strong>💻 选模型先看内存与显存（无需显卡也能运行）</strong>
-<p style="margin:7px 0">显存是<strong>GPU 加速建议</strong>，不是安装门槛。<strong>无独立显卡、显存不足</strong>也可以用 Ollama 的 CPU + 系统内存运行，可能更慢；有 GPU 时可能部分层卸载到系统内存。占用随量化、上下文和图片数变化，实际以 Ollama 加载情况为准。</p>
-<div class="fields" aria-label="本地模型 GPU 显存建议与 CPU 内存运行提示">
-<div><strong>Qwen3.5 2B · 中档</strong><p>建议 GPU 显存约 4～6 GB；也可 CPU 运行（系统内存建议 8 GB 起，留有余量）。</p></div>
-<div><strong>Qwen3.5 4B · 画面质量优先</strong><p>建议 GPU 显存约 6～8 GB；也可 CPU 运行（系统内存建议 12～16 GB 或更高）。</p></div>
-<div><strong>MiniCPM-V 4.7 1B · 不建议常规使用</strong><p>建议 GPU 显存约 4 GB；可 CPU 运行（系统内存建议 8 GB 起）。实测分镜描述容易遗漏细节，仅供低资源尝试。</p></div>
-</div>
-<p style="margin:5px 0 0">以上均是<strong>经验性起试建议，不是官方硬性最低配置</strong>；本机总内存和其他程序的占用也会影响能否顺利加载。</p>
-</div></details>
-<div class="local-vision-install-guide"><p><strong>首次使用：</strong>如未安装 Ollama，请先<a href="https://ollama.com/download" target="_blank" rel="noopener noreferrer">下载并安装 Ollama</a>，从开始菜单启动官方 Ollama（Windows），再检查服务并下载所选模型。已在运行时无需再次启动；不要同时运行桌面 Ollama 和独立命令行服务。</p>
-<details class="visual-advanced"><summary>Windows 使用本地网络代理启动 Ollama 示例</summary><p>当前仅列举 Windows 环境下的方法：仅在下载需要代理时使用。先从托盘完全退出 Ollama，并确认没有其他 Ollama 服务；在 PowerShell 中执行下面两条命令，保持该窗口运行。下载结束后按 Ctrl+C 结束该服务，再从开始菜单启动官方 Ollama；切勿同时运行两种服务。</p><pre><code>$env:HTTPS_PROXY = "http://127.0.0.1:7890" # 7890 是常见网络代理端口，具体请以实际端口为准
-ollama serve # 启动 Ollama 服务</code></pre></details></div>
-<div class="local-vision-state-board" aria-label="本地模型后台状态与待选型号"><div><strong>后台已保存的实际配置</strong><p id="local-vision-effective" role="status" aria-live="polite">正在读取后台生效模型…</p></div><div><strong>当前下拉框选择（尚不等于启用）</strong><p id="local-vision-selection-note" role="status" aria-live="polite">请选择型号，再根据下方步骤操作。</p></div></div>
-<div class="fields"><div><label for="local-vision-model">想要使用的本地模型</label><select id="local-vision-model" aria-describedby="local-vision-selection-note"><option value="qwen3.5-2b">Qwen3.5 2B · 新版推荐</option><option value="qwen3.5-4b">Qwen3.5 4B · 质量优先</option><option value="minicpm-v4.7-1b">MiniCPM-V 4.7 1B · 历史兼容（不推荐 / 不可下载）</option></select><small class="setting-note">仅切换下拉框不会保存，也不会触发「设置尚未保存」横幅。<strong>已认可模型仍需点击下方「启用」才能切换后台。</strong></small></div>
-<div><label for="local-vision-thinking">本地识图思考深度</label><select id="local-vision-thinking"><option value="off">关闭思考（推荐用于逐格识图）</option><option value="default">模型默认</option><option value="on">开启思考</option><option value="low">低（模型支持时）</option><option value="medium">中（模型支持时）</option><option value="high">高（模型支持时）</option></select><small class="setting-note" id="local-vision-thinking-support">正在检查模型支持的思考档位…</small><div class="toolbar"><button type="button" id="local-vision-thinking-save">保存本地识图思考设置</button></div></div></div>
-<p class="setting-note">此设置仅影响本机 Ollama 视频逐帧识图，不改变 DSH 模型的思考深度。思考会消耗生成预算；每张分镜独立分配宽松 Token 上限，且保留总执行时间限制。</p>
-<div class="local-vision-activation-flow" aria-label="本地模型安装、验收与启用"><strong>配置新模型的三步</strong><div class="toolbar local-vision-primary-actions"><button type="button" id="local-vision-install" disabled>① 下载选中模型</button><button type="button" id="local-vision-review-open" disabled>② 前往图片验收 ↓</button><button type="button" id="local-vision-select" class="primary" disabled>③ 启用此已认可模型</button></div></div>
-<div class="local-vision-status-line"><span id="local-vision-status" class="muted" role="status" aria-live="polite">正在检查本机 Ollama…</span><span id="local-vision-review-inline" class="local-vision-review-inline" hidden><strong id="local-vision-review-label">尚未人工验收</strong><button type="button" id="local-vision-review-jump" class="life-action local-vision-review-action">前往人工验收 ↓</button></span><span id="local-vision-status-tail" class="muted"></span></div>
-<progress id="local-vision-progress" max="100" value="0" hidden></progress>
-<div class="toolbar"><button type="button" id="local-vision-ensure">检查并恢复 Ollama 服务</button><button type="button" id="local-vision-refresh">刷新后台状态</button><button type="button" id="local-vision-cancel" hidden>取消下载</button></div>
-<details class="visual-advanced local-vision-maintenance"><summary>高级维护：删除 Ollama 全局模型（危险操作）</summary><p class="muted">删除操作会影响使用同一 Ollama 模型库的其他程序。必须确认后才执行，普通下载、测试和启用无需展开这里。</p><div class="toolbar"><button type="button" id="local-vision-delete" class="danger">删除选中模型</button></div><p class="muted">已安装的旧 MiniCPM 1B 仍可删除，但不提供重新下载。</p></details>
-</div>
 <div class="video-aux-section" id="video-aux-dependencies" aria-label="视频感知依赖与辅助能力">
   <h4>🎞️ 视频感知 · 解码和语音能力</h4>
   <p class="muted">视频分镜、字幕和本地转写在这里集中管理。<strong>启用不代表已经运行成功</strong>；安装/转写状态只依据真实运行证据。鱼鱼仍自行选择是否观看、看多深。</p>

@@ -3,17 +3,17 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 const page=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
 const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
-test('两条视觉路线只使用一个共享图片与人工验收面板',()=>{
+test('三条视觉路线只使用一个共享图片与人工验收面板',()=>{
   for(const id of ['vision-unified-probe-panel','vision-probe-image','vision-probe-source','vision-probe-route','vision-probe-answer','vision-probe-verify','vision-probe-approve','vision-probe-reject'])
     assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id)
   for(const removed of ['dsh-vision-probe-panel','local-vision-probe-panel','dsh-vision-probe-answer','local-vision-probe-answer'])assert.doesNotMatch(page,new RegExp(removed))
   assert.match(js,/visionIsLocal\(\)/)
-  assert.match(js,/if\(visionIsLocal\(\)\)await reviewLocalVision\(true\);else await reviewDshVision\(true\)/)
+  assert.match(js,/if\(visionIsNative\(\)\)await reviewNativeVision\(true\)/);assert.match(js,/if\(visionIsLocal\(\)\)await reviewLocalVision\(true\);else await reviewDshVision\(true\)/)
   assert.match(js,/if\(visionIsLocal\(\)\)await reviewLocalVision\(false\);else await reviewDshVision\(false\)/)
 })
 test('本地识图方式禁用DSH模型填写区域而不改变保存值',()=>{
-  assert.match(js,/fields\.querySelectorAll\('input,select,textarea'\)\.forEach\(el=>\{el\.disabled=local\}\)/)
-  assert.match(js,/fields\.style\.opacity=local/)
+  assert.match(js,/fields\.querySelectorAll\('input,select,textarea'\)\.forEach\(el=>\{el\.disabled=!remote\}\)/)
+  assert.match(js,/fields\.style\.opacity=remote/)
   assert.match(js,/\$\('local-vision-controls'\)\.hidden=!local/)
   assert.match(js,/payload\.visionMode=\$\('models-vision-mode'\)\.value/)
 })

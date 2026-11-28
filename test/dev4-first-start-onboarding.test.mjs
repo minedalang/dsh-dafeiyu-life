@@ -135,7 +135,7 @@ test('管理中心与 DSH 插件页都提供醒目 First Start 入口及强制�
 })
 
 
-test('完成必需设置后 HTTP 业务路由解锁（显式模拟已验证测试夹具）',async()=>{
+test('基础设置后仍阻止 HTTP 业务，最终引导回执后才解锁（显式模拟已验证测试夹具）',async()=>{
  const home=mkdtempSync(join(tmpdir(),'fish-firststart-unlocked-'))
  let handler
  try{
@@ -152,11 +152,13 @@ test('完成必需设置后 HTTP 业务路由解锁（显式模拟已验证测�
   const credential=join(stateDir,'bili_credential.json');writeFileSync(credential,JSON.stringify({dedeuserid:'10001',sessdata:'local-fixture-session',bili_jct:'local-fixture-csrf'}))
   const gate=createFirstStart({stateDir,credentialPath:credential,headlessSync:{hasAnyVerified:()=>true}})
   gate.verifyBili();gate.markWelcome();gate.complete([])
-  const req=Readable.from([]);req.method='GET';req.url='/api/bili-duty/life-memory/status';req.headers={host:'127.0.0.1:8011'}
-  let status=0,payload=''
-  await handler(req,{writeHead(x){status=x},end(x){payload=String(x||'')}})
-  assert.equal(status,200,payload)
-  assert.notEqual(JSON.parse(payload).blocked,true)
+  const readBusiness=async()=>{const req=Readable.from([]);req.method='GET';req.url='/api/bili-duty/life-memory/status';req.headers={host:'127.0.0.1:8011'}
+    let status=0,payload='';await handler(req,{writeHead(x){status=x},end(x){payload=String(x||'')}});return {status,payload}}
+  assert.equal(gate.isReady(),false);assert.equal((await readBusiness()).status,423)
+  assert.throws(()=>gate.finishGuide({revision:6,confirm:'FINISH_GUIDE'},{semanticReady:false}),/语义回忆/)
+  assert.equal((await readBusiness()).status,423)
+  gate.finishGuide({revision:6,confirm:'FINISH_GUIDE'},{semanticReady:true})
+  const {status,payload}=await readBusiness();assert.equal(status,200,payload);assert.notEqual(JSON.parse(payload).blocked,true)
  }finally{rmSync(home,{recursive:true,force:true})}
 })
 
@@ -385,5 +387,16 @@ test('fresh Life recommendation persists across restart, without changing saved 
  restarted.finishLifeSetup();assert.equal(createFirstStart(args).status().lifeSetupPending,false)
  writeFileSync(join(home,'first-start-v1.json'),JSON.stringify({version:1,completed:true}));assert.equal(createFirstStart(args).status().lifeSetupPending,false)
  assert.equal(recommendFirstLifeSetup({pending:false,config}),false)
+ }finally{rmSync(home,{recursive:true,force:true})}
+})
+
+test('首次引导暂停跨重启保留，旧安装已完成生活推荐但未完成首导也会暂停，旧版已完成用户不重置',()=>{
+ const home=mkdtempSync(join(tmpdir(),'fish-guide-closure-'));try{
+  const credentialPath=join(home,'cred'),stateFile=join(home,'first-start-v1.json');writeFileSync(credentialPath,'fixture');const args={stateDir:home,credentialPath,headlessSync:{hasAnyVerified:()=>true}};
+  const first=createFirstStart({...args,newInstall:true});first.verifyBili();first.complete([]);first.finishLifeSetup();assert.equal(first.isReady(),false);
+  const reopened=createFirstStart(args);assert.equal(reopened.status().firstGuidePending,true);assert.equal(reopened.status().completed,true);assert.equal(reopened.isReady(),false);
+  const saved=JSON.parse(readFileSync(stateFile));delete saved.firstGuidePending;writeFileSync(stateFile,JSON.stringify(saved));assert.equal(createFirstStart(args).isReady(),false);
+  saved.completedGuideRevision=5;writeFileSync(stateFile,JSON.stringify(saved));assert.equal(createFirstStart(args).isReady(),true);
+  delete saved.completedGuideRevision;delete saved.lifeSetupPending;writeFileSync(stateFile,JSON.stringify(saved));assert.equal(createFirstStart(args).isReady(),true);
  }finally{rmSync(home,{recursive:true,force:true})}
 })

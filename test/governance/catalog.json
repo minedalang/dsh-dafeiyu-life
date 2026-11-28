@@ -1534,6 +1534,20 @@
       "newCheck": "assert.match(proposal,/深层读取适配在 dev\\.2 仅提供受限内部接口，尚未接入正常 Life 聊天或自主补看/)",
       "date": "2026-11-21",
       "reason": "Dev.2 adds a bounded, default-closed Gateway detail adapter and an offline storage bootstrap; the old statement that all deep-memory APIs are absent is no longer correct, while natural-chat use and autonomous refocus remain disabled."
+    },
+    {
+      "file": "v281-dev2b-local-vision-manager.test.mjs",
+      "oldCheck": "assert.match(page,/也可以通过 DSH 配置 Ollama Provider/)",
+      "newCheck": "assert.match(page,/查看模型大小与硬件建议/)",
+      "date": "2026-11-28",
+      "reason": "User requested a concise Ollama panel for existing installations; DSH remains available in its separate provider panel. Retain the hardware-advice coverage."
+    },
+    {
+      "file": "v281-dev2b-local-vision-manager.test.mjs",
+      "oldCheck": "assert.match(page,/模型下载|一键安装/,'Windows 指南必须有实际模型下载指引')",
+      "newCheck": "assert.match(page,/id=\"local-vision-install\"/)",
+      "date": "2026-11-28",
+      "reason": "User explicitly removed Windows proxy tutorial. Keep real download and deletion controls and current-file progress coverage."
     }
   ]
 }

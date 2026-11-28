@@ -5,18 +5,15 @@ import vm from 'node:vm'
 const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
 const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
 
-test('3b33 本地 Ollama 文案采用简短版本，代理示例按需展开',()=>{
-  assert.match(html,/本地视觉模型负责画面观察。<strong>推荐新用户优先试 Qwen3\.5 2B<\/strong>/)
-  assert.match(html,/如未安装 Ollama，请先/)
-  assert.match(html,/<details class="visual-advanced"><summary>Windows 使用本地网络代理启动 Ollama 示例<\/summary>/)
-  assert.match(html,/\$env:HTTPS_PROXY = "http:\/\/127\.0\.0\.1:7890"/)
-  assert.match(html,/ollama serve # 启动 Ollama 服务/)
-  assert.doesNotMatch(html,/下载时展示的是 Ollama 当前文件层的进度/)
-  assert.doesNotMatch(html,/无需在 DSH 中另外配置 Ollama Provider 或 API Key/)
+test('Ollama 面向已安装用户，检查服务而不提供启动恢复教程',()=>{
+  assert.match(html,/使用已安装并运行的 Ollama 服务/)
+  assert.doesNotMatch(html,/Windows 使用本地网络代理启动 Ollama 示例|检查并恢复 Ollama 服务/)
+  assert.match(html,/id="local-vision-ensure">检查 Ollama 服务/)
+  assert.match(js,/const checkOllama=async/)
 })
 
 test('3b33 图片验收默认只展示用户三步，真实 MCP 细节藏在可展开诊断内',()=>{
-  const panel=html.slice(html.indexOf('id="vision-unified-probe-panel"'),html.indexOf('id="local-vision-controls"'))
+  const panel=html.slice(html.indexOf('id="vision-unified-probe-panel"'),html.indexOf('id="video-aux-dependencies"',html.indexOf('id="vision-unified-probe-panel"')))
   for(const id of ['vision-journey','vision-journey-next','vision-probe-image','vision-probe-answer','vision-probe-verify','vision-probe-approve','vision-probe-reject','vision-technical-diagnostics','vision-route-capabilities','vision-probe-stages','vision-probe-last-run','vision-probe-error']){
     assert.match(panel,new RegExp('id="'+id+'"'))
   }
@@ -32,7 +29,7 @@ test('3b33 管理页高风险维护操作/高级路径折叠，原按钮 ID 和�
   for(const id of ['local-vision-install','local-vision-select','local-vision-delete','local-vision-refresh','models-ffmpeg-path-save','models-whisper-path-save','models-vision-debug','headless-sync-links']){
     assert.match(html,new RegExp('id="'+id+'"'))
   }
-  assert.match(html,/<details class="visual-advanced local-vision-maintenance">/)
+  assert.match(html,/id="llama-vision-delete"/);assert.match(js,/DELETE_NATIVE_VISION_MODEL/)
   assert.match(html,/FFmpeg 自定义路径（高级）/)
   assert.match(html,/Whisper 使用已有模型目录（高级）/)
   assert.match(html,/查看模型大小与硬件建议/)
@@ -95,21 +92,20 @@ test('2.8.2 视觉设置：快速设置介绍新 2B，旧 1B 限历史兼容',()
   assert.match(html,/id="fs-wizard-video"/)
 })
 
-test('2.8.2 视觉设置：下载/图片验收/启用都是普通操作，高风险删除才藏在高级区',()=>{
+test('2.8.2 视觉设置：下载/图片验收/启用都是普通操作，保留明确确认的删除操作',()=>{
   const base=html.indexOf('id="local-vision-controls"')
   const start=html.indexOf('class="local-vision-activation-flow"',base)
-  const advance=html.indexOf('<details class="visual-advanced local-vision-maintenance">',base)
   const download=html.indexOf('id="local-vision-install"',start)
   const review=html.indexOf('id="local-vision-review-open"',start)
   const enable=html.indexOf('id="local-vision-select"',start)
-  const deletion=html.indexOf('id="local-vision-delete"',advance)
-  assert.ok(base>=0&&start>base&&download>start&&review>download&&enable>review&&advance>enable&&deletion>advance)
+  const deletion=html.indexOf('id="local-vision-delete"',enable)
+  assert.ok(base>=0&&start>base&&download>start&&review>download&&enable>review&&deletion>enable&&html.indexOf('id="vision-unified-probe-panel"',deletion)>deletion)
   assert.match(html,/id="local-vision-effective" role="status" aria-live="polite"/)
   assert.match(html,/id="local-vision-selection-note" role="status" aria-live="polite"/)
   assert.match(html,/id="local-vision-model" aria-describedby="local-vision-selection-note"/)
   assert.match(js,/确认切换并开启视频观察/)
   assert.match(js,/\$\('local-vision-refresh'\)\.addEventListener\('click',\(\)=>run\(loadLocalVisionStatus\)\)/)
-  assert.match(js,/await loadLocalVisionStatus\(\)\.catch/);assert.doesNotMatch(js,/\?restoreOllama\(\):loadLocalVisionStatus/)
+  assert.match(js,/await loadLocalVisionStatus\(\)\.catch/);assert.doesNotMatch(js,/\?checkOllama\(\):loadLocalVisionStatus/)
   assert.match(js,/设置尚未保存|summarizeSaveDrafts\(\)/)
   assert.match(js,/settingDraftTracker\.committed\(\$\('models-vision-mode'\)\)/)
 })

@@ -328,3 +328,15 @@ test('native round close cancels the admitted observation and waits for its work
   try{await request;assert.equal(closed,false);assert.equal(exited,false)}finally{allowExit();await closing}
   assert.equal(closed,true);assert.equal(exited,true)
 })
+
+test('网络 AbortError 不是用户取消：固定源继续尝试，已下载残片可明确删除而不触及其他资源',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'dsh-vision-abort-fallback-'))
+ try{
+  const {LLAMA_VISION_MODELS}=await import('../lib/llama-vision-experiment.mjs'),model=LLAMA_VISION_MODELS[0],packageRoot=join(root,'package'),bundle=join(packageRoot,'vendor','embedding-runtime','linux-x64');await mkdir(bundle,{recursive:true});await writeFile(join(bundle,'llama-server'),'fixture');await writeFile(join(bundle,'dsh-runtime-manifest.json'),JSON.stringify({schema:1,version:__test.RUNTIME.version,platform:'linux-x64',sha256:__test.RUNTIME.assets['linux-x64'].sha256,binary:'llama-server'}))
+  const calls=[];let networkFailure=false;const manager=createEmbeddingRuntimeManager({dataDir:join(root,'state'),packageRoot,platform:'linux',arch:'x64',logger:{warn(){}},fetchImpl:async(url)=>{calls.push(url);if(networkFailure||calls.length===1)throw new DOMException('transport aborted','AbortError');return new Response('partial')}})
+  await assert.rejects(manager.runVision('install',model.id),/文件大小不匹配/);assert.equal(calls.length,2);assert.match(calls[0],/hf-mirror/);assert.match(calls[1],/huggingface.co/)
+  let state=await manager.visionStatus();assert.equal(state.progress.phase,'error');assert.equal(state.models[0].hasResources,true);assert.equal(state.models[0].filesPresent,false)
+  const dir=join(manager.paths.visionRoot,model.id);await writeFile(join(dir,'unrelated.txt'),'keep');await manager.removeVisionAssets(model.id);assert.equal(await readFile(join(dir,'unrelated.txt'),'utf8'),'keep');assert.equal(await readFile(join(bundle,'llama-server'),'utf8'),'fixture');state=await manager.visionStatus();assert.equal(state.models[0].hasResources,false)
+  networkFailure=true;const before=calls.length;await assert.rejects(manager.runVision('install',model.id),/transport aborted/);assert.equal(calls.length-before,4);assert.equal((await manager.visionStatus()).progress.phase,'error')
+ }finally{await rm(root,{recursive:true,force:true})}
+})

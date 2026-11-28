@@ -55,8 +55,8 @@ test('首次配置页包含独立视觉模型流程，默认不启用、不自�
 test('旧用户升级但未确认新版引导时保持后台工作；只在管理页显示提醒',()=>{
   const js=read('lib/management-console.js')
   const firstStart=read('lib/first-start.mjs')
-  assert.match(firstStart,/isReady:\(\)=>status\(\)\.completed/)
-  assert.match(js,/notice\.hidden=state\?\.ok!==true\|\|!\(needsReview\|\|needsRepair\|\|needsWelcome\)/)
+  assert.match(firstStart,/isReady:\(\)=>status\(\)\.runtimeReady/)
+  assert.match(js,/notice\.hidden=state\?\.ok!==true\|\|!\(needsReview\|\|needsRepair\|\|needsWelcome\|\|firstGuidePending\)/)
   assert.match(js,/现有后台 Life 不会因此暂停/)
 })
 
@@ -289,7 +289,7 @@ test('最新完整引导使用独立版本凭据：旧查看或基础完成不�
  const dir=mkdtempSync(join(tmpdir(),'bili-guide-6-'));t.after(()=>rmSync(dir,{recursive:true,force:true}));const cred=join(dir,'bili_credential.json');writeFileSync(cred,'fixture')
  const f=()=>createFirstStart({stateDir:dir,credentialPath:cred,headlessSync:{hasAnyVerified:()=>true}})
  let gate=f();assert.equal(gate.status().guideRequired,true);gate.verifyBili();gate.complete([]);gate.acknowledgeQuickSetup()
- gate=f();assert.equal(gate.status().guideRequired,true);assert.equal(gate.isReady(),true)
+ gate=f();assert.equal(gate.status().guideRequired,true);assert.equal(gate.isReady(),false)
  assert.throws(()=>gate.finishGuide({revision:5,confirm:'FINISH_GUIDE'}),/明确/)
  assert.throws(()=>gate.finishGuide({revision:6}),/明确/)
  assert.throws(()=>gate.finishGuide({revision:6,confirm:'FINISH_GUIDE'}),/语义回忆/);assert.equal(f().status().guideRequired,true)
@@ -308,7 +308,7 @@ test('dev.33 教程复用实时生活形象，导航最多两处/页、支持退
  assert.match(hero,/src="\/api\/bili-duty\/life-character\.png"/);assert.match(card,/src="\/api\/bili-duty\/life-character\.png"/);
  const code=js.slice(js.indexOf('  const setupTourStops='),js.indexOf('  const selectedCapabilities='));
  const rows=runInNewContext(code.slice(0,code.indexOf('  const clearSetupTourTarget='))+'\nsetupTourStops');
- assert.equal(rows.length,5);const counts=new Map();for(const [tab,id] of rows){counts.set(tab,(counts.get(tab)||0)+1);assert.ok(html.includes('id="'+id+'"'))};assert.ok([...counts.values()].every(n=>n<=2));assert.deepEqual([...counts.keys()],['life-agent','life','models','firststart']);
+ assert.equal(rows.length,6);assert.ok(rows.some(([,id])=>id==='fs-owner-uid-section'));const counts=new Map();for(const [tab,id] of rows){counts.set(tab,(counts.get(tab)||0)+1);assert.ok(html.includes('id="'+id+'"'))};assert.ok([...counts.values()].every(n=>n<=2));assert.deepEqual([...counts.keys()],['life-agent','life','models','firststart']);
  assert.doesNotMatch(code,/request\(|fetch\(|persistCfg/);assert.match(code,/event.key==='Escape'/);assert.match(code,/setup-tour-replay/);assert.match(code,/switchTab\(tab,setupTourNavigation\)/);assert.match(js,/if\(setupTourIndex>=0&&authority!==setupTourNavigation\)return/);assert.match(code,/management-shell'\)\.inert=true/);assert.match(code,/management-shell'\)\.inert=false/);assert.match(code,/setupTourEpoch\+\+;setupTourIndex=-1/);assert.match(code,/setupTourDemo\?\.remove\(\)/);assert.match(html,/id="fs-wizard-launch"[^>]*>打开逐步配置引导<\/button><button id="setup-tour-replay"[^>]*>重新看教程/);for(const kind of ['action','neural','health'])assert.match(html,new RegExp('data-setup-tour-demo="'+kind+'"'));assert.match(card,/跳过教程/);
 })
 

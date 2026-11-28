@@ -148,21 +148,21 @@ test('管理中心展示三种模型的GPU显存建议和CPU内存备选',async(
   assert.match(page,/Qwen3\.5 2B · 中档/)
   assert.match(page,/无独立显卡、显存不足/)
   assert.match(page,/CPU.*系统内存运行/)
-  assert.match(page,/HTTPS_PROXY/)
-  assert.match(page,/也可以通过 DSH 配置 Ollama Provider/)
+  assert.doesNotMatch(page,/Windows 使用本地网络代理启动 Ollama 示例/)
+  assert.match(page,/查看模型大小与硬件建议/)
   assert.match(python,/openbmb\/minicpm-v4\.7:1b/)
 })
 
 
-test('Windows 下载说明使用仅本进程代理并标明当前文件层百分比',async()=>{
+test('Ollama 去除 Windows 代理教程，保留下载操作与当前文件层百分比',async()=>{
   const {readFileSync}=await import('node:fs')
   const page=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
   const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
   const readme=readFileSync(new URL('../README.md',import.meta.url),'utf8')
-  assert.match(page,/当前仅列举 Windows 环境下的方法/)
-  assert.match(page,/\$env:HTTPS_PROXY = "http:\/\/127\.0\.0\.1:7890"/)
-  assert.match(page,/ollama serve/)
-  assert.match(page,/模型下载|一键安装/,'Windows 指南必须有实际模型下载指引')
+  assert.doesNotMatch(page,/当前仅列举 Windows 环境下的方法|HTTPS_PROXY|Windows 使用本地网络代理启动 Ollama 示例/)
+  assert.match(page,/id="local-vision-install"/)
+  assert.match(page,/id="local-vision-delete"/)
+  assert.match(page,/检查 Ollama 服务/)
   assert.match(js,/非模型总进度/)
   assert.doesNotMatch(page,/梯子/)
   assert.doesNotMatch(readme,/梯子/)

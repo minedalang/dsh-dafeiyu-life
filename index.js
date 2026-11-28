@@ -150,7 +150,7 @@ import {buildVideoPerceptionHandoff,projectVideoModelView,projectVideoTodoModelV
 import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview,diagnoseVideoFocusReceipt} from './lib/video-focus-review.mjs'
 import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from './lib/video-owner-focus-debug.mjs'
 import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
-import {ensureOllamaService,createOllamaHealthProbe,checkOllamaVideoReadiness,ollamaExecutable,ollamaDesktopExecutable} from './lib/ollama-service.mjs'
+import {createOllamaHealthProbe,checkOllamaVideoReadiness,ollamaExecutable,ollamaDesktopExecutable} from './lib/ollama-service.mjs'
 import {explainVideoVisionFailure} from './lib/video-visual-failure.mjs'
 import {ASR_MODELS,probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
 import {listWhisperModels,deleteWhisperModel} from './lib/whisper-model-cache.mjs'
@@ -680,7 +680,7 @@ export function apply(ctx, config) {
   const platformReady=()=>sessionIntegration.getCapabilities()?.platform===true&&firstStart.isReady()
   const platformMessage=()=>sessionIntegration.getCapabilities()?.platform===false?'B站平台接入已关闭；本地记忆仍可使用。':firstStart.message()
   const bridgePolicy=()=>{const p=getSessionIntegration(),c=sessionIntegration.getCapabilities();return {...p,mode:p.mode==='unavailable'?'unavailable':c?.bridge&&c?.persona&&c?.autonomous&&platformReady()?'autonomous-life':'memory-foundation'}}
-  const automaticSession=createAutomaticSessionScope(getSessionIntegration)
+  const automaticSession=createAutomaticSessionScope(()=>platformReady()?getSessionIntegration():{mode:'unavailable',revision:-1})
   const sessionChildEnv=()=>{const p=getSessionIntegration(),scoped=automaticSession.scopedRevision();return {BILI_SESSION_INTEGRATION_REVISION:String(scoped??p.revision),BILI_SESSION_INTEGRATION_MODE:scoped===undefined?p.mode:'autonomous-life'}}
   // An ephemeral proof ties nested Python MCP reads to this exact Node adapter.
   // The token is never stored on disk or sent back to the UI.
@@ -1407,7 +1407,7 @@ function reportMeta() {
     }catch(e){log('原评论回访核验未通过：'+String(e?.message||e).slice(0,90));return false}
   }
   const ownerTodoFollowup=createOwnerTodoFollowup({getSessionIntegration,runAutomatic:automaticSession.run,
-    releaseDecision:proof=>lifeWillingness?.receipt(proof,{status:'not-sent'}),dataDir:accountRuntimeDir,getConfig:()=>{refreshCfg();return {...cfg,accountTag:trustedLifeAccountTag(),masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
+    releaseDecision:proof=>lifeWillingness?.receipt(proof,{status:'not-sent'}),dataDir:accountRuntimeDir,getConfig:()=>{refreshCfg();return {...cfg,accountTag:trustedLifeAccountTag(),masterEnabled:cfg.masterEnabled===true&&platformReady()&&!accountBinding.status().blocked}},
     getTodos:()=>ownerTodos.list({includeClosed:true,limit:500}),
     getVerifiedFacts:verifiedFactsFor,
     canContact:todoFollowupContact,verifyComment:verifyTodoComment,
@@ -1759,7 +1759,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let lastPauseState = null
   let cancelActiveDuty = () => {}
   const syncPauseState = (force = false) => {
-    syncRepliesPause(!interactionRepliesAllowed(cfg),force)
+    syncRepliesPause(!platformReady()||!interactionRepliesAllowed(cfg),force)
     const paused = cfg.masterEnabled !== true || !platformReady() || !integrationAvailable()
     if (!force && lastPauseState === paused) return
     // 同一目录中的 Python MCP 进程，每次对外发送前也检查这个文件。
@@ -1821,7 +1821,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
    *    （2026-10-17 复查修：`saveCfg` + `await saveCfgHost` 这对义务原来在三个调用点各抄一遍 ——
    *      漏掉任何一处，正好就是「设置页改了没反应」那个 bug 本身 ⇒ 收成一个函数。）
    */
-  const persistCfg = async (patch) => {
+  const persistCfg = async (patch,{stageFirstGuide=false}={}) => {
     if('dmMode' in patch||'dmUid' in patch)throw Error('旧视频报告私信设置已退役，请使用独立的原创评论授权或 Life 社交设置')
     if ('peakWindows' in patch) parsePeakWindows(patch.peakWindows) // 保存错误要明说，不能悄悄清空列表
     const mergedPatch = 'friendDirectory' in patch
@@ -1830,7 +1830,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const quotaPatch=resolveQuotaPresetPatch(cfg,mergedPatch)
     const clean = clampPatch('mentionProfiles' in quotaPatch ? {...quotaPatch, mentionTargets: quotaPatch.mentionTargets ?? cfg.mentionTargets, friendDirectory: quotaPatch.friendDirectory ?? cfg.friendDirectory, mentionName: quotaPatch.mentionName ?? cfg.mentionName} : quotaPatch)
     assertLegacyVideoPatchCompatible(cfg,clean)
-    if (clean.masterEnabled===true && !platformReady())throw Error(platformMessage())
+    if (clean.masterEnabled===true && !platformReady()&&!(stageFirstGuide&&firstStart.status().completed&&firstStart.status().firstGuidePending))throw Error(platformMessage())
     if ('masterEnabled' in clean) {
       // 先同步文件，再持久化；写入失败必须报错，不能出现界面显示已暂停而 Python 仍可外发。
       const previous = cfg.masterEnabled
@@ -1857,7 +1857,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       JSON.stringify(stored[k])!==JSON.stringify(clean[k])||
       JSON.stringify(effective[k])!==JSON.stringify(clean[k]))
     if(mismatch.length)throw Error('插件设置回读失败，请不要认为已保存：'+mismatch.slice(0,8).join(', '))
-    if('interactionRepliesEnabled' in clean)syncRepliesPause(clean.interactionRepliesEnabled!==true,true)
+    if('interactionRepliesEnabled' in clean)syncRepliesPause(!platformReady()||clean.interactionRepliesEnabled!==true,true)
     // The optional host mirror can be absent in Desktop. The local config
     // already passed an independent readback; never flood the log each save.
     return {clean,host:{...host,role:'optional-native-mirror'},localVerified:true}
@@ -4543,7 +4543,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   }
   ctx.effect(()=>()=>{if(socialWakeTimer)clearTimeout(socialWakeTimer);if(socialTodoWakeTimer)clearTimeout(socialTodoWakeTimer)},'bili-duty: Life 社交快速通知清理')
   const socialHandoffFence=createSocialHandoffFence({dataDir:stateDir,getAccountTag:trustedLifeAccountTag})
-  const socialSendTransaction=createSocialSendTransaction({dataDir:stateDir,getAccountTag:trustedLifeAccountTag,canStart:()=>{refreshCfg();return automaticSession.current()&&interactionRepliesAllowed(cfg)}})
+  const socialSendTransaction=createSocialSendTransaction({dataDir:stateDir,getAccountTag:trustedLifeAccountTag,canStart:()=>{refreshCfg();return platformReady()&&automaticSession.current()&&interactionRepliesAllowed(cfg)}})
   const socialDecisionOwnership=createSocialDecisionOwnership({
     handoffFence:socialHandoffFence,
     getAccountTag:trustedLifeAccountTag,getLifeAgentMode:()=>cfg.lifeAgentMode,
@@ -5035,7 +5035,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const owner = Number(cfg.dmOwnerUid) || 0
     if (owner > 0) allow.add(String(owner))
     return {
-      enabled: cfg.masterEnabled === true && interactionRepliesAllowed(cfg) && cfg.dmWatch === true && !accountBinding.status().blocked,
+      enabled: cfg.masterEnabled === true && platformReady() && interactionRepliesAllowed(cfg) && cfg.dmWatch === true && !accountBinding.status().blocked,
       strangerEnabled: cfg.dmStrangerAutonomyEnabled === true || cfg.dmStrangerOnce === true,
       legacyStrangerOnce: cfg.dmStrangerOnce === true && cfg.dmStrangerAutonomyEnabled !== true,
       p6Enabled: cfg.dmP6Enabled!==false,
@@ -6096,7 +6096,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   let dmRecoveryNetworkGate=()=>({allowed:false,retryAt:0})
   const dmAutoreply = createDmAutoReply({
     dataDir: accountRuntimeDir,
-    canProcess:()=>{refreshCfg();return automaticSession.current()&&interactionRepliesAllowed(cfg)},
+    canProcess:()=>{refreshCfg();return platformReady()&&automaticSession.current()&&interactionRepliesAllowed(cfg)},
     getConfig: dmConfig,
     canSendDm: args=>socialPolicyGate.canSendDm(args),
     canContinue:(uid,channel)=>socialPortrait.continuationAllowed(uid,{channel}),
@@ -6783,17 +6783,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },logger:{warn:m=>log('主人评论 Agent：'+m)}
   })
   const commentInteract = createCommentInteract({
-    canProcess:()=>{refreshCfg();return automaticSession.current()&&interactionRepliesAllowed(cfg)},onUnsentLifeDecision:proof=>lifeProofSettler(proof)('not-sent'),
+    canProcess:()=>{refreshCfg();return platformReady()&&automaticSession.current()&&interactionRepliesAllowed(cfg)},onUnsentLifeDecision:proof=>lifeProofSettler(proof)('not-sent'),
     getVerifiedFacts:verifiedFactsFor,
     dataDir: accountRuntimeDir,
     selfUid: () => String(dmCred(stateDir)?.dedeuserid || ''),
     getConfig: () => {
       refreshCfg()
       return {
-        watchReplies: cfg.masterEnabled === true && interactionRepliesAllowed(cfg) && (cfg.commentWatchReplies === true || cfg.ownerCommentAgentEnabled === true),
+        watchReplies: cfg.masterEnabled === true && platformReady() && interactionRepliesAllowed(cfg) && (cfg.commentWatchReplies === true || cfg.ownerCommentAgentEnabled === true),
         allowGeneralReplies: cfg.commentWatchReplies === true,
         watchTop: false, // v2.4.89: disable old unprompted heat-comment polling even for legacy configs
-        watchAt: cfg.masterEnabled === true && interactionRepliesAllowed(cfg) && (cfg.commentAtEnabled === true || cfg.friendAtFeedbackEnabled === true || cfg.ownerCommentAgentEnabled === true),
+        watchAt: cfg.masterEnabled === true && platformReady() && interactionRepliesAllowed(cfg) && (cfg.commentAtEnabled === true || cfg.friendAtFeedbackEnabled === true || cfg.ownerCommentAgentEnabled === true),
         replyAt: cfg.commentAtEnabled === true,
         p6Comment:true,p6At:true,
         p6MaxBubbles:2,
@@ -7120,7 +7120,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     readSocialUnread:readSocialUnreadSentinel,readBudget:biliReadBudget, dmCursor:dmPollCursor,
     dataDir:accountRuntimeDir,getAccountTag:trustedLifeAccountTag,
     getSessionIntegration,runAutomatic:automaticSession.run,
-    getConfig: () => {refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
+    getConfig: () => {refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&platformReady()&&!accountBinding.status().blocked}},
     logger: {error:(msg)=>log(msg)},
   })
   // Bound before scheduler.start(): recovery cannot bypass its persisted -509
@@ -8300,7 +8300,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     automaticSession,
     shouldYieldContinuation:()=>lifeResourceScheduler.shouldYieldContinuation(),
     beginDecisionTrace:({trigger,mode})=>lifeDecisionTrace.begin({trigger,mode}),
-    dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
+    dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&platformReady()&&!accountBinding.status().blocked}},
     getTodos:(limit)=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)&&READ_TODO_TYPES.has(x.type)&&(!x.dueAt||x.dueAt<=Date.now())).slice(0,limit),
     // All accepted obligations reserve their read action, including future-due
     // ones and those outside the bounded model candidate window.
@@ -8785,7 +8785,7 @@ logger:{warn:m=>log('社交意图：'+m)}
   // 公开发布与模型生成严格分离：生成模型不挂 B站发送工具，实际发布由受限 Python 路径执行。
   dailyDynamic=createDailyDynamic({
     automaticSession,
-    dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,accountTag:trustedLifeAccountTag(),masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
+    dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,accountTag:trustedLifeAccountTag(),masterEnabled:cfg.masterEnabled===true&&platformReady()&&!accountBinding.status().blocked}},
     getPublicVideos:()=>lifeMemory?.publicVideoEvidence(40)||[],
     getPublicSocial:()=>lifeMemory?.publicSocialEvidence(24)||[],
     getEmotion:()=>emotionalState.snapshot(),
@@ -9502,11 +9502,14 @@ logger:{warn:m=>log('社交意图：'+m)}
     const setupAccess = (req.method==='GET'&&['/api/bili-duty/runtime-logs','/api/bili-duty/runtime-controls'].includes(path)) || (req.method==='POST'&&['/api/bili-duty/runtime-controls','/api/bili-duty/runtime-diagnostics-export'].includes(path)) || (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || (req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot') || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || (req.method==='GET' && path==='/api/bili-duty/main-session/sessions') || (req.method==='POST' && path==='/api/bili-duty/main-session/bind') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
-      (req.method==='GET'&&['/api/bili-duty/llama-vision/status','/api/bili-duty/local-vision/selftest-image'].includes(path)) || (req.method==='POST'&&['/api/bili-duty/llama-vision/install','/api/bili-duty/llama-vision/verify','/api/bili-duty/llama-vision/select','/api/bili-duty/llama-vision/cancel'].includes(path)) || path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
+      (req.method==='GET'&&['/api/bili-duty/llama-vision/status','/api/bili-duty/local-vision/selftest-image'].includes(path)) || (req.method==='POST'&&['/api/bili-duty/llama-vision/install','/api/bili-duty/llama-vision/verify','/api/bili-duty/llama-vision/select','/api/bili-duty/llama-vision/cancel','/api/bili-duty/llama-vision/delete','/api/bili-duty/llama-vision/reject'].includes(path)) || path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&['/api/bili-duty/video-dependencies/status','/api/bili-duty/video-dependencies/whisper/status'].includes(path)) || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/whisper/delete') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/paths') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/ffmpeg/test')
     if(req.method==='POST'&&sessionIntegration.getCapabilities()?.platform!==true&&(path.startsWith('/api/bili-duty/login/')||path==='/api/bili-duty/account/confirm'||path==='/api/bili-duty/account/resume'||path==='/api/bili-duty/onboarding/bili/verify'||path==='/api/bili-duty/onboarding/complete'))return sendJson(res,423,{ok:false,blocked:true,error:'平台接入未启用或能力配置待重启'})
+    const firstGuideSetupAccess=firstStart.status().completed&&firstStart.status().firstGuidePending&&(
+      (req.method==='GET'&&['/api/bili-duty/local-vision/status','/api/bili-duty/local-vision/thinking','/api/bili-duty/dsh-vision/status','/api/bili-duty/embedding/status','/api/bili-duty/video-dependencies/whisper/status'].includes(path))||
+      (req.method==='POST'&&['/api/bili-duty/local-vision/install','/api/bili-duty/local-vision/cancel','/api/bili-duty/local-vision/verify','/api/bili-duty/local-vision/review','/api/bili-duty/local-vision/select','/api/bili-duty/local-vision/delete','/api/bili-duty/embedding/install','/api/bili-duty/embedding/cancel','/api/bili-duty/embedding/rebuild'].includes(path)))
     const localMemoryAccess=localMemoryReady()&&((req.method==='GET'&&['/api/bili-duty/main-session/memory','/api/bili-duty/main-session/memory/garden','/api/bili-duty/main-session/memory/neural'].includes(path))||(req.method==='POST'&&['/api/bili-duty/main-session/memory/recall','/api/bili-duty/main-session/memory/add','/api/bili-duty/main-session/memory/delete','/api/bili-duty/main-session/memory/consolidate','/api/bili-duty/embedding/install','/api/bili-duty/embedding/disable','/api/bili-duty/embedding/rebuild','/api/bili-duty/embedding/cancel','/api/bili-duty/embedding/delete','/api/bili-duty/embedding/import-model'].includes(path)))
-    if(!platformReady() && !setupAccess&&!localMemoryAccess)return sendJson(res,423,{ok:false,blocked:true,error:platformMessage()})
+    if(!platformReady() && !setupAccess&&!firstGuideSetupAccess&&!localMemoryAccess)return sendJson(res,423,{ok:false,blocked:true,error:platformMessage()})
     if(!integrationAvailable()&&!setupAccess)return sendJson(res,423,{ok:false,blocked:true,error:'模式切换待重启或不可用'})
     // ⭐ 2026-10-21：每条视频一份笔记 —— **宿主拆报告**，不让模型多写一个字（零 token、不会写错）
     const notesDir = join(stateDir, 'reports')
@@ -11303,11 +11306,11 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(!explicitManagementIntent(req)||
         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
-        return sendJson(res,403,{ok:false,error:'仅允许在本机 DSH 管理中心恢复 Ollama'})
+        return sendJson(res,403,{ok:false,error:'仅允许在本机 DSH 管理中心检查 Ollama'})
       ollamaHealth.invalidate()
-      const started=await ensureOllamaService({probe:()=>localVisionModels.list()})
-      ollamaHealth.invalidate()
-      return sendJson(res,started.ok?200:409,started)
+      const state=await localVisionModels.list()
+      const probe=await ollamaHealth.inspect(cfg.visionLocalModel||'qwen3.5-2b',state)
+      return sendJson(res,200,{ok:true,running:state.running===true&&probe?.state!=='port-conflict',portConflict:probe?.state==='port-conflict',message:probe?.state==='port-conflict'?'Ollama 存在重复监听，请自行退出重复服务后检查':state.running?'Ollama 服务可访问':'Ollama 未运行，请自行启动后检查'})
     }
     const whisperStatus=()=>({
       ...readWhisperReadiness({stateDir,model:cfg.asrModel||'small',modelPath:cfg.asrModelPath||'',
@@ -11405,7 +11408,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         if(path.endsWith('/install')){
           if(entry.downloadable===false)return sendJson(res,409,{ok:false,error:'MiniCPM 1B 仅为历史兼容模型，不再提供下载；已有安装仍可使用或删除'})
           const current=await localVisionModels.list()
-          if(!current.running)return sendJson(res,409,{ok:false,error:'本机 Ollama 未启动，请先检查并恢复 Ollama 服务'})
+          if(!current.running)return sendJson(res,409,{ok:false,error:'本机 Ollama 未启动，请先自行启动 Ollama 服务，再检查'})
           const existing=current.models.find(x=>x.id===id)
           if(existing?.installed)return sendJson(res,200,{ok:true,alreadyInstalled:true,verified:existing.verified,message:'模型已安装；不重复下载，必要时仅进行图片人工验收'})
           const job=localVisionModels.start(id)
@@ -11440,7 +11443,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       try{return sendJson(res,200,{...await embeddingRuntime.visionStatus(),active:cfg.visionMode==='independent_native'?cfg.visionLocalModel:'',visionEnabled:cfg.visionEnabled===true})}
       catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
     }
-    if(req.method==='POST'&&['/api/bili-duty/llama-vision/install','/api/bili-duty/llama-vision/verify','/api/bili-duty/llama-vision/select','/api/bili-duty/llama-vision/cancel'].includes(path)){
+    if(req.method==='POST'&&['/api/bili-duty/llama-vision/install','/api/bili-duty/llama-vision/verify','/api/bili-duty/llama-vision/select','/api/bili-duty/llama-vision/cancel','/api/bili-duty/llama-vision/delete','/api/bili-duty/llama-vision/reject'].includes(path)){
       if(!explicitManagementIntent(req)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'内置视觉管理仅允许电脑端同源操作'})
       if(path.endsWith('/cancel')){
@@ -11448,6 +11451,14 @@ logger:{warn:m=>log('社交意图：'+m)}
         return sendJson(res,200,{ok:true,cancelled:embeddingRuntime.cancelVision({allowProduction:false})})
       }
       const data=await readBody(req,1024),id=String(data?.model||'')
+      if(path.endsWith('/delete')||path.endsWith('/reject')){
+        try{
+          if(path.endsWith('/reject')){embeddingRuntime.rejectVision(id,data?.testedAt);return sendJson(res,200,{ok:true})}
+          if(data?.confirm!=='DELETE_NATIVE_VISION_MODEL')throw Error('需要明确确认删除内置视觉模型')
+          if(cfg.visionMode==='independent_native'&&cfg.visionLocalModel===id)throw Error('请先切换到其他已验收视觉模型，再删除当前配置型号')
+          await embeddingRuntime.removeVisionAssets(id);return sendJson(res,200,{ok:true,deleted:true})
+        }catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
+      }
       if(path.endsWith('/select')){
         try{
           const state=await embeddingRuntime.visionStatus(),model=state.models.find(x=>x.id===id)
@@ -11457,6 +11468,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           const saved=await persistCfg({visionMode:'independent_native',visionLocalModel:id,visionEnabled:true})
           refreshCfg()
           if(!saved.localVerified||cfg.visionMode!=='independent_native'||cfg.visionLocalModel!==id||cfg.visionEnabled!==true)throw Error('内置视觉配置回读失败')
+          embeddingRuntime.markVisionApproved(id,data.testedAt)
           return sendJson(res,200,{ok:true,active:id,visionEnabled:true,localVerified:true})
         }catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
       }
@@ -11838,7 +11850,8 @@ logger:{warn:m=>log('社交意图：'+m)}
           refreshCfg()
           const embedding=await embeddingRuntime.inspect()
           const semanticReady=cfg.mainSessionMemoryEmbeddingEnabled===true&&embedding.model?.installed===true&&embedding.runtime?.installed===true&&embedding.server?.ready===true&&embeddingIndex.status().ready===true
-          return sendJson(res,200,firstStart.finishGuide(body,{platform:caps.active.platform===true,semanticReady}))
+          const finished=firstStart.finishGuide(body,{platform:caps.active.platform===true,semanticReady});syncPauseState(true)
+          return sendJson(res,200,finished)
         }
         if(path.endsWith('/quick/seen'))return sendJson(res,200,firstStart.acknowledgeQuickSetup())
         if(path.endsWith('/quick/save')){
@@ -11858,7 +11871,7 @@ logger:{warn:m=>log('社交意图：'+m)}
             const patch={...(enableMaster&&cfg.masterEnabled!==true?{masterEnabled:true}:{}),...plan.patch}
             if(body.previewOnly===true)return sendJson(res,200,{ok:true,changed:{...plan.changed,...(enableMaster&&cfg.masterEnabled!==true?{masterEnabled:{before:false,after:true}}:{})},preview:true})
             if(body.confirm!=='APPLY_QUICK_LIFE')throw Error('必须明确确认生活设置')
-            const result=Object.keys(patch).length?await persistCfg(patch):{host:{ok:true},localVerified:true}
+            const result=Object.keys(patch).length?await persistCfg(patch,{stageFirstGuide:true}):{host:{ok:true},localVerified:true}
             if(patch.lifeAgentMode==='off')lifeSocialShadow.revoke()
             if(result.localVerified===true)firstStart.finishLifeSetup()
             return sendJson(res,200,{ok:true,life:lifeSettingsV2(cfg),localVerified:result.localVerified,host:result.host})
@@ -11887,7 +11900,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(!trustedLifeAccountTag())throw Error('Life 账号尚未核验，请先完成账号确认')
           const skipped=Array.isArray(body?.skipped)?body.skipped:[]
           firstStart.validateComplete(skipped)
-          // Completion only unlocks the onboarding gate; social grants require their own explicit settings save.
+          // Foundation completion permits setup only; final guide confirmation unlocks new installation runtime.
           const updated=firstStart.complete(skipped);syncPauseState(true)
           return sendJson(res,200,updated)
         }
@@ -12049,19 +12062,25 @@ logger:{warn:m=>log('社交意图：'+m)}
         const localProbe=localId?await ollamaHealth.inspect(localId):null
         refreshCfg()
         const currentProbe=cfg.visionEnabled===true&&resolvedVisionMode()==='independent_local'&&cfg.visionLocalModel===localId?localProbe:null
+        const mode=resolvedVisionMode(), selectedModel=cfg.visionLocalModel
+        let native=null,remote=null
+        if(mode==='independent_native'){
+          try{const v=await embeddingRuntime.visionStatus();native={ready:v.runtime.installed&&v.models.some(m=>m.id===selectedModel&&m.filesPresent),busy:v.visionBusy||v.productionBusy}}catch{native={ready:false,busy:false}}
+        }else if(mode==='independent_dsh'){try{const r=dshVisionReview.status();remote={verified:r.verified===true,status:r.status}}catch{remote=null}}
+        refreshCfg()
         return sendJson(res,200,systemHealthSnapshot({planner:autonomousPlanner.status(),
         scheduler:interactionScheduler.status(),send:socialSendTransaction.inspect(),
         vision:{configured:cfg.visionEnabled===true&&(resolvedVisionMode()==='independent_local'
             ?Boolean(getLocalVisionModel(cfg.visionLocalModel))
             :resolvedVisionMode()==='independent_native'?Boolean(getLlamaVisionModel(cfg.visionLocalModel)):Boolean(cfg.visionModelId||cfg.pluginDefaultModelId)),
-          mode:resolvedVisionMode(),localProbe:currentProbe,
+          mode:resolvedVisionMode(),localProbe:currentProbe,nativeProbe:resolvedVisionMode()===mode&&cfg.visionLocalModel===selectedModel?native:null,remoteProbe:resolvedVisionMode()===mode?remote:null,
           backendModel:resolvedVisionMode()==='independent_local'?getLocalVisionModel(cfg.visionLocalModel)?.ollama||'':resolvedVisionMode()==='independent_native'?String(cfg.visionLocalModel||'').replace('-',':'):'',
           model:resolvedVisionMode()==='independent_local'?getLocalVisionModel(cfg.visionLocalModel)?.name||'未选择本地视觉模型':
             resolvedVisionMode()==='independent_native'?getLlamaVisionModel(cfg.visionLocalModel)?.name||'未选择内置视觉模型':String(cfg.visionModelId||cfg.pluginDefaultModelId||'DSH 视觉模型'),
           ...((attempt)=>attempt?{at:attempt.at,ok:attempt.ok,status:attempt.status,lastAttempt:attempt}:{})(
             readProductionVisionStatus(stateDir)||lastLifeVisionActivity)},
-        schedulerExpected:cfg.masterEnabled===true&&(cfg.dmWatch===true||cfg.commentWatchReplies===true||cfg.commentAtEnabled===true),
-        lifeExpected:cfg.masterEnabled===true&&cfg.autonomousPlannerEnabled===true&&cfg.lifeAgentMode==='active',
+        schedulerExpected:platformReady()&&cfg.masterEnabled===true&&(cfg.dmWatch===true||cfg.commentWatchReplies===true||cfg.commentAtEnabled===true),
+        lifeExpected:platformReady()&&cfg.masterEnabled===true&&cfg.autonomousPlannerEnabled===true&&cfg.lifeAgentMode==='active',
         now:Date.now()}))}
       catch{return sendJson(res,200,{ok:true,state:'unavailable',issues:[{id:'diagnostics',severity:'warning',
         title:'运行诊断暂不可用',detail:'无法读取本地状态；请查看后台日志。',code:'health-snapshot-unavailable'}]})}
