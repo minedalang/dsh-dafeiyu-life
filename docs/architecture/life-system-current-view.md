@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
 %% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
@@ -626,11 +627,16 @@ selfTopic55["自主公开主题：无旧契机也可选择；同模型隔离构�
 planner --> selfTopic55 --> registeredRead49
 selfTopic55 -.->|真实搜索回执才入原契机| lifeEpisode
 %% @code selfTopic55 | lib/life-opportunities.mjs | const beginPublicTopicExploration=
+attention56["原认知资源：当前社交模型需求 / 公平上限；安全边界让行，不伪造休息"]
+episodeContinuation -.-> attention56
+attention56 -.->|正常 Life 重新选择原契机| selection
+%% @code attention56 | lib/life-resource-scheduler.mjs | const shouldYieldContinuation=
 ```
 
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
 %% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
@@ -952,11 +958,15 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 selfTopic55["无既有契机：正常 Life 自主公开主题或休息｜同模型公开隔离构思"]
 selfTopic55 --> planner
 %% @code selfTopic55 | lib/autonomous-planner.mjs | const runPublicTopicSearch=async
+attention56["原契机保留：技术让行不是 Life 拒绝/休息；合法候选重新选择"]
+attention56 -.-> resume
+%% @code attention56 | lib/autonomous-planner.mjs | reason='social-attention-yield'
 ```
 
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
 %% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
@@ -1341,11 +1351,16 @@ selfTopic55["匹配真实公开搜索回执｜同原 Episode，入口/换主题�
 registeredReadGuard49 -.-> selfTopic55
 selfTopic55 -.-> planner
 %% @code selfTopic55 | lib/life-opportunities.mjs | const refinePublicTopicExploration=
+failure56["未核验全局观察/讨论/评论者投稿：有限状态；屏蔽本轮失败精确目标，不写经历"]
+registeredReadGuard49 -.-> failure56
+failure56 -.->|原作用域有效及有预算才重新思考| planner
+%% @code failure56 | lib/autonomous-planner.mjs | const reportReadFailure=
 ```
 
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
 %% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
@@ -1693,4 +1708,8 @@ selfTopic55["同一自生主题 Episode 可换一次主题、休息与恢复｜�
 registeredEpisodeRead49 -.-> selfTopic55
 selfTopic55 -.->|真实入口与换主题分别归属| record
 %% @code selfTopic55 | lib/life-opportunities.mjs | const publicTopicAvailable=
+attention56["下一安全决策边界协作让行；原 ID、期限、步骤不变"]
+menu -.-> attention56
+attention56 -.->|重新自主选择，非自动恢复| menu
+%% @code attention56 | lib/autonomous-planner.mjs | reason='social-attention-yield'
 ```

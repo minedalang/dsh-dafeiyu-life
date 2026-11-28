@@ -8195,6 +8195,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   }
   const autonomousPlanner=createAutonomousPlanner({
     automaticSession,
+    shouldYieldContinuation:()=>lifeResourceScheduler.shouldYieldContinuation(),
     beginDecisionTrace:({trigger,mode})=>lifeDecisionTrace.begin({trigger,mode}),
     dataDir:stateDir,getConfig:()=>{refreshCfg();return {...cfg,masterEnabled:cfg.masterEnabled===true&&!accountBinding.status().blocked}},
     getTodos:(limit)=>ownerTodos.list({limit:500,includeClosed:false}).filter(x=>accountBinding.taskAllowed(x)&&READ_TODO_TYPES.has(x.type)&&(!x.dueAt||x.dueAt<=Date.now())).slice(0,limit),

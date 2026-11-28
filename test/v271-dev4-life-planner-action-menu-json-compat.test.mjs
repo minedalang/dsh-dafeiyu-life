@@ -250,13 +250,13 @@ test('dev54 disabled state is not projected as actual emotion in initial or cont
 
 // dev.55: real planner + original opportunity ledger, no synthetic TODOs.
 const {createLifeOpportunities,normalizeLifePublicTopic}=await import('../lib/life-opportunities.mjs')
-function topicRig(dir,{answers=[],scenario='',rows=[],daily=12,mode='active'}={}){
+function topicRig(dir,{answers=[],scenario='',rows=[],daily=12,mode='active',shouldYieldContinuation=()=>false,onSearch=()=>{}}={}){
  let clock=NOW,gen=0,allowed=true;const prompts=[],reads=[],memories=[],episodes=[],updates=[]
  const life=createLifeOpportunities({stateDir:dir,getCredential:()=>({}),getAccountTag:()=>TAG,now:()=>clock})
  const planner=createAutonomousPlanner({dataDir:dir,now:()=>clock,getConfig:()=>({...config(),autonomousPlannerDailyLimit:daily,lifeAgentMode:mode}),getTodos:()=>rows,getLifeAccountTag:()=>TAG,getLifeAccountGeneration:()=>gen,
-   getLifeVoice:()=> 'PRIVATE_OUTER_MARKER',getLifeState:()=>({energy:33,mood:'curious',private:'PRIVATE_STATE_MARKER'}),getLifeIntentions:()=>life.continuations(),getActiveLifeIntentionReservations:()=>life.intentions({includeClosed:true,limit:20}),getLifeIntentionCues:()=>life.explorationCues(),
+   shouldYieldContinuation,getLifeVoice:()=> 'PRIVATE_OUTER_MARKER',getLifeState:()=>({energy:33,mood:'curious',private:'PRIVATE_STATE_MARKER'}),getLifeIntentions:()=>life.continuations(),getActiveLifeIntentionReservations:()=>life.intentions({includeClosed:true,limit:20}),getLifeIntentionCues:()=>life.explorationCues(),
    canLifeSearchPublicTopic:()=>allowed,publicTopicAvailable:(...a)=>life.publicTopicAvailable(...a),beginLifePublicTopic:(...a)=>life.beginPublicTopicExploration(...a),refineLifePublicTopic:(...a)=>life.refinePublicTopicExploration(...a),pauseLifeExploration:(...a)=>life.pauseExploration(...a),
-   executeLifePublicTopicSearch:async(topic,scope,generation,current)=>{assert.equal(scope,TAG);assert.equal(generation,gen);assert.equal(current(),true);reads.push(topic);if(scenario==='read-revoked')allowed=false;if(scenario==='read-generation')gen++;return {ok:scenario!=='api-error',topic:scenario==='mismatched'?'不匹配主题':topic,videos:(scenario==='empty'||scenario==='refine-empty'&&reads.length===2)?[]:[{bvid:reads.length===1?'BV1abcde1234':'BV1abcde5678',title:'真实公开候选'+reads.length}]}},
+   executeLifePublicTopicSearch:async(topic,scope,generation,current)=>{assert.equal(scope,TAG);assert.equal(generation,gen);assert.equal(current(),true);reads.push(topic);await onSearch();if(scenario==='read-revoked')allowed=false;if(scenario==='read-generation')gen++;return {ok:scenario!=='api-error',topic:scenario==='mismatched'?'不匹配主题':topic,videos:(scenario==='empty'||scenario==='refine-empty'&&reads.length===2)?[]:[{bvid:reads.length===1?'BV1abcde1234':'BV1abcde5678',title:'真实公开候选'+reads.length}]}},
    invokeModel:async p=>{prompts.push(p);if(scenario==='model-generation'&&prompts.length===2)gen++;const answer=answers.shift();return JSON.stringify(typeof answer==='function'?answer(life,p):answer||{action:'skip',stopReasonCode:'rest'})},
    onVerifiedRead:proof=>{memories.push(proof);return {ok:true}},onEpisodeAction:proof=>{episodes.push(proof);return {ok:true}},executeRead:async()=>({ok:false}),updateTodo:async(...a)=>{updates.push(a);return {ok:true}},reflect:async()=>({ok:false})})
  return {planner,life,prompts,reads,memories,episodes,updates,advance:ms=>{clock+=ms},clock:()=>clock,answers}
@@ -288,4 +288,41 @@ test('dev55 parameter shape, exact normalized topic and canonical receipt',()=>i
 test('dev55 failed refinement feeds real status to same model without fake step or retry',()=>inDir(async dir=>{
  const x=topicRig(dir,{scenario:'refine-empty',answers:[entryChoice,newTopic,life=>({action:'search_public_topic',id:life.continuations()[0].id}),{action:'search',topic:'新的飞行主题'},(life,p)=>{assert.match(p,/public-search-no-results/);assert.doesNotMatch(p.split('当前合法行动菜单：').at(-1),/"action":"search_public_topic"/);return later}]})
  const out=await x.planner.tick();assert.equal(out.result,'verified-search-results');assert.equal(out.continuation.reason,'fish-chose-later');assert.equal(x.reads.length,2);assert.equal(x.memories.length,1);assert.equal(x.life.intentions({includeClosed:true})[0].episodeSteps,1)
+}))
+
+// dev.56: actual resource scheduler + original planner and opportunity ledger.
+test('dev56 social attention yields an unfinished public exploration; later choice resumes same ID',()=>inDir(async dir=>{
+ const {createLifeResourceScheduler}=await import('../lib/life-resource-scheduler.mjs')
+ const resource=createLifeResourceScheduler({getAccountTag:()=>TAG});let release
+ try{
+  const x=topicRig(dir,{answers:[entryChoice,newTopic],shouldYieldContinuation:()=>resource.shouldYieldContinuation(),onSearch:async()=>{release=await resource.acquire({lane:'social',resources:{model:1}})}})
+  const first=await x.planner.tick();assert.equal(first.continuation.reason,'social-attention-yield');assert.equal(first.continuation.considered,0);assert.equal(x.prompts.length,2)
+  const row=x.life.intentions({includeClosed:true})[0];assert.equal(row.episodeSteps,1);assert.equal(x.life.continuations()[0].id,row.id);assert.ok(!x.episodes.some(e=>e.outcome==='paused'));assert.equal(x.reads.length,1)
+  release();release=null;x.advance(31*60_000);x.answers.push({action:'resume_episode',id:row.id},(life,p)=>{assert.match(p,/鸟类翅膀绘画/);assert.equal(life.continuations()[0].id,row.id);return later})
+  const second=await x.planner.tick();assert.equal(second.action,'resume_episode');assert.equal(second.continuation.reason,'fish-chose-later');assert.equal(x.life.intentions({includeClosed:true})[0].id,row.id);assert.equal(x.reads.length,1)
+ }finally{release?.();resource.close()}
+}))
+for(const scenario of ['discussion','visual','source-review'])test('dev56 current scope failure feedback or review fence '+scenario,()=>inDir(async dir=>{
+ const id='0123456789abcdef01234567',bvid='BV1abcde1234',prompts=[];let reads=0,settles=0,paused=0,review=false
+ const row={id,source:'inspected-opportunity',sourceId:'original',status:'inspected',selectedBvid:bvid,selectedTitle:'当前公开作品',metadataAt:NOW-1000,expiresAt:NOW+60000,nextAt:NOW-1000,episodeSteps:1,episodeMaxSteps:5,visitedBvids:[bvid]}
+ const action=scenario==='visual'?'observe_video':'inspect_video_discussion'
+ const planner=createAutonomousPlanner({dataDir:dir,getConfig:()=>({...config(),visionEnabled:scenario==='visual'}),getTodos:()=>[],now:()=>NOW,getLifeAccountTag:()=>TAG,getLifeIntentions:()=>[row],getLifeEpisodeSourceState:()=>review?{status:'review'}:null,
+  canLifeObserveVideo:()=>scenario==='visual',executeLifeVideoObservation:async()=>{reads++;return {ok:false,visual:{status:'not-analyzed'}}},recordLifeVideoVisual:()=>{settles++;return {ok:true}},executeVideoDiscussion:async()=>{reads++;if(scenario==='source-review')review=true;return {ok:false,private:'NO_DELIVERY'}},inspectLifeVideoDiscussion:()=>{settles++;return {ok:true}},
+  pauseLifeExploration:()=>{paused++;return {ok:true,nextAt:NOW+3600000}},
+  invokeModel:async p=>{prompts.push(p);if(prompts.length===1)return JSON.stringify({action:'resume_episode',id});if(prompts.length===2)return JSON.stringify({action,id,bvid,...(scenario==='visual'?{viewDepth:'standard'}:{})});
+    assert.match(p,/本轮工具未核验回执/);assert.match(p,scenario==='visual'?/visual-read-unverified/:/discussion-read-unverified/);assert.doesNotMatch(p,/NO_DELIVERY/);const menu=JSON.parse(p.split('当前合法行动菜单：').at(-1).split('\n')[0]);assert.ok(!menu.some(x=>x.action===action));return JSON.stringify({action:'stop',stopReasonCode:'rest'})},
+  executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
+ const r=await planner.tick();assert.equal(reads,1);assert.equal(settles,0);assert.equal(r.continuation.executed,0);assert.equal(row.episodeSteps,1)
+ if(scenario==='source-review'){assert.equal(prompts.length,2);assert.equal(paused,0);assert.equal(r.continuation.reason,'life-read-scope-changed')}else{assert.equal(prompts.length,3);assert.equal(paused,1);assert.equal(r.continuation.reason,'fish-chose-rest')}
+}))
+
+test('dev56 failed public person read suppresses only that exact candidate',()=>inDir(async dir=>{
+ const id='0123456789abcdef01234567',bvid='BV1abcde1234',a='a'.repeat(24),b='b'.repeat(24),prompts=[];let reads=0,settles=0
+ const row={id,source:'inspected-opportunity',sourceId:'original',status:'inspected',selectedBvid:bvid,selectedTitle:'当前公开作品',metadataAt:NOW-1000,expiresAt:NOW+60000,nextAt:NOW-1000,episodeSteps:1,episodeMaxSteps:5,visitedBvids:[bvid],commenterPersonIds:[a,b]}
+ const people=[{id:a,source:'public-person-observation',personKey:'person-a',eligible:true},{id:b,source:'public-person-observation',personKey:'person-b',eligible:true}]
+ const planner=createAutonomousPlanner({dataDir:dir,getConfig:config,getTodos:()=>[],now:()=>NOW,getLifeAccountTag:()=>TAG,getLifeIntentions:()=>[row],getLifeOpportunities:()=>people,
+  executePublicPersonPortfolio:async key=>{reads++;assert.equal(key,'person-a');return {ok:false}},beginPublicPersonExploration:()=>{settles++;return {ok:true}},pauseLifeExploration:()=>({ok:true,nextAt:NOW+3600000}),
+  invokeModel:async p=>{prompts.push(p);if(prompts.length===1)return JSON.stringify({action:'resume_episode',id});if(prompts.length===2)return JSON.stringify({action:'inspect_commenter_works',id,personId:a});assert.match(p,/commenter-portfolio-unverified/);const menu=JSON.parse(p.split('当前合法行动菜单：').at(-1).split('\n')[0]);assert.deepEqual(menu.find(x=>x.action==='inspect_commenter_works').personIds,[b]);return JSON.stringify({action:'stop',stopReasonCode:'rest'})},
+  executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
+ const r=await planner.tick();assert.equal(reads,1);assert.equal(settles,0);assert.equal(r.continuation.executed,0);assert.equal(prompts.length,3);assert.equal(r.continuation.reason,'fish-chose-rest')
 }))

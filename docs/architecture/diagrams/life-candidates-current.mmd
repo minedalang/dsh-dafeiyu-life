@@ -1,3 +1,4 @@
+%% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
 %% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
@@ -319,3 +320,6 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 selfTopic55["无既有契机：正常 Life 自主公开主题或休息｜同模型公开隔离构思"]
 selfTopic55 --> planner
 %% @code selfTopic55 | lib/autonomous-planner.mjs | const runPublicTopicSearch=async
+attention56["原契机保留：技术让行不是 Life 拒绝/休息；合法候选重新选择"]
+attention56 -.-> resume
+%% @code attention56 | lib/autonomous-planner.mjs | reason='social-attention-yield'

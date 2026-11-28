@@ -1,3 +1,4 @@
+%% dev.56：原资源协作式注意力让行，三种未核验读取返回有限状态；不新增账本、额度或权限。
 %% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
 %% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
@@ -619,3 +620,7 @@ selfTopic55["自主公开主题：无旧契机也可选择；同模型隔离构�
 planner --> selfTopic55 --> registeredRead49
 selfTopic55 -.->|真实搜索回执才入原契机| lifeEpisode
 %% @code selfTopic55 | lib/life-opportunities.mjs | const beginPublicTopicExploration=
+attention56["原认知资源：当前社交模型需求 / 公平上限；安全边界让行，不伪造休息"]
+episodeContinuation -.-> attention56
+attention56 -.->|正常 Life 重新选择原契机| selection
+%% @code attention56 | lib/life-resource-scheduler.mjs | const shouldYieldContinuation=

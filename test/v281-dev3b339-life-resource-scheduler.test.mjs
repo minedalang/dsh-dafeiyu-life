@@ -160,3 +160,13 @@ for(const mode of ['generation','close','standalone'])test('dev50 admission-to-c
  await assert.rejects(task,e=>e.workNotStarted===true&&e.code===(mode==='close'?'life-resource-closed':'life-resource-account-changed'))
  assert.equal(ran,false);assert.equal(s.status().active.model,0);s.close()
 })
+
+// Social attention is only a current model-resource boundary hint, not a grant.
+test('dev56 attention hint includes current queued/active social model; honors generation and burst fairness',async()=>{
+ let generation=0;const s=createLifeResourceScheduler({getAccountTag:()=>S,getAccountGeneration:()=>generation})
+ const release=await s.acquire({lane:'background',resources:{model:1}})
+ const pending=s.acquire({lane:'social',resources:{model:1}});assert.equal(s.shouldYieldContinuation(),true)
+ release();const first=await pending;assert.equal(s.shouldYieldContinuation(),true)
+ const second=s.acquire({lane:'social',resources:{model:1}});first();const hold=await second;assert.equal(s.shouldYieldContinuation(),false,'existing burst limit gives non-social request its chance')
+ generation++;assert.equal(s.shouldYieldContinuation(),false);hold();const active=await s.acquire({lane:'social',resources:{biliRead:1}});assert.equal(s.shouldYieldContinuation(),false,'poll/read alone is not a social model decision');active();s.close()
+})
