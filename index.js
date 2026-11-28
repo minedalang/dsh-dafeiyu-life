@@ -7470,8 +7470,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     }).catch(error=>log('深层向量增量更新失败：'+String(error?.message||error).slice(0,140)))
   },logger:{warn:m=>log('人生记忆：'+m)}})
   ctx.effect(()=>()=>lifeMemory?.close(),'bili-duty: 只读内存 FTS 关闭')
+  const managedModelStorage=largeDataStatus(stateDir)
   embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,rootDir:storageDataPath(stateDir,'embedding-runtime'),
-    modelDir:largeDataStatus(stateDir).embeddingModelDir||undefined,logger:{warn:m=>log('本地语义运行时：'+m)}})
+    modelDir:managedModelStorage.embeddingModelDir||undefined,visionModelDir:managedModelStorage.visionModelDir||undefined,
+    assertModelStorage:()=>{
+      const current=largeDataStatus(stateDir)
+      if(current.target!==managedModelStorage.target||current.verifiedAt!==managedModelStorage.verifiedAt)throw Error('大型模型位置已变化，请完整重启 DSH')
+    },logger:{warn:m=>log('本地语义运行时：'+m)}})
   embeddingIndex=createEmbeddingMemoryIndex({dataDir:stateDir,provider:embeddingRuntime,logger:{warn:m=>log('本地语义索引：'+m)}})
   ctx.effect(()=>()=>{embeddingRuntime?.cancelVision();embeddingRuntime?.stop()},'bili-duty: 本地 Embedding Runtime 关闭')
   personalityEvolution=createPersonalityEvolution({dataDir:stateDir,memoryGateway:lifeMemory,logger:{warn:m=>log('人格成长：'+m)}})
@@ -11387,7 +11392,8 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     // Isolated local diagnostic, never a production provider or permission change.
     if(req.method==='GET'&&path==='/api/bili-duty/llama-vision/status'){
-      return sendJson(res,200,await embeddingRuntime.visionStatus())
+      try{return sendJson(res,200,await embeddingRuntime.visionStatus())}
+      catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
     }
     if(req.method==='POST'&&['/api/bili-duty/llama-vision/install','/api/bili-duty/llama-vision/verify','/api/bili-duty/llama-vision/cancel'].includes(path)){
       if(!explicitManagementIntent(req)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
@@ -11395,7 +11401,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       if(path.endsWith('/cancel'))return sendJson(res,200,{ok:true,cancelled:embeddingRuntime.cancelVision()})
       const data=await readBody(req,1024),id=String(data?.model||'')
       // No arbitrary URL, path, model or generation options from the browser.
-      const state=await embeddingRuntime.visionStatus()
+      let state;try{state=await embeddingRuntime.visionStatus()}catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
       if(!state.supported||!state.models.some(x=>x.id===id)||state.busy)return sendJson(res,409,{ok:false,error:'不支持的模型、平台或已有视觉任务进行中'})
       let job;try{job=embeddingRuntime.runVision(path.endsWith('/install')?'install':'verify',id)}catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
       // Async job status is the only success source; a 202 is not installation/verification.

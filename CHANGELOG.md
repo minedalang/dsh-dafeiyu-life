@@ -13,6 +13,13 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.91 · 内置视觉模型接入 V2 大型数据（非生产视觉）
+
+- 固定 Qwen 2B/4B 的 GGUF 与 mmproj 纳入现有 V2 路径、预检、离线复制、回读校验及原件保留；旧 V1 和核心目录可作迁移来源。
+- 共享 llama.cpp 二进制仍留在原运行区；配置 V2 后，安装、状态及 CPU 自检统一使用目标 `vision-models`，缺盘或身份变化不回退核心目录。
+- 不迁移未完成下载、不接管外部 Ollama、不改变 Life 权限及视觉生产路由；既有 V2 目标不自动补拷贝，冷备份的模型补缺和 Windows/GPU 实验仍待验收。
+- 更新累计债务、四图及定向回归，正式发布门禁保持关闭。
+
 ## 2.8.3-dev.90 · 内置 Qwen 视觉安装及双页面 CPU 试验（非生产）
 
 - 新手引导与 AI 模型页共用内置视觉试验面板，仅开放 Qwen3.5 2B / 4B Q4_K_M 及配套 mmproj 下载与校验，不提供 MiniCPM 新安装。

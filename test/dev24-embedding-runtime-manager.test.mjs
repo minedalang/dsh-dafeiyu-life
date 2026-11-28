@@ -184,3 +184,23 @@ test('共享 Runtime 管理预约期间试验不可启动，解除后恢复',asy
   release()
   assert.equal((await manager.visionStatus()).busy,false)
 })
+
+test('V2 native vision download uses external model directory and missing marker prevents new writes',async()=>{
+  const {largeDataStatus,migrateLargeDataOffline}=await import('../lib/storage-large-data-v2.mjs')
+  const root=await mkdtemp(join(tmpdir(),'dsh-native-vision-v2-'))
+  try{
+    const dataDir=join(root,'state'),target=join(root,'external'),packageRoot=join(root,'package'),bundle=join(packageRoot,'vendor','embedding-runtime','linux-x64')
+    await mkdir(dataDir,{recursive:true});await mkdir(bundle,{recursive:true});await writeFile(join(bundle,'llama-server'),'fake-runtime')
+    await writeFile(join(bundle,'dsh-runtime-manifest.json'),JSON.stringify({schema:1,version:__test.RUNTIME.version,platform:'linux-x64',sha256:__test.RUNTIME.assets['linux-x64'].sha256,binary:'llama-server'}))
+    migrateLargeDataOffline({root:dataDir,target,confirmedStopped:true,python:'fixture',runtimeProbe:()=>true})
+    const storage=largeDataStatus(dataDir);let calls=0
+    const manager=createEmbeddingRuntimeManager({dataDir,modelDir:storage.embeddingModelDir,visionModelDir:storage.visionModelDir,assertModelStorage:()=>largeDataStatus(dataDir),packageRoot,platform:'linux',arch:'x64',fetchImpl:async()=>{calls++;return new Response('corrupt')}})
+    await assert.rejects(manager.runVision('install','qwen3.5-2b'),/文件大小不匹配/)
+    assert.equal(await readFile(join(storage.visionModelDir,'qwen3.5-2b','Qwen3.5-2B-Q4_K_M.gguf.part'),'utf8'),'corrupt')
+    const {access}=await import('node:fs/promises');await assert.rejects(access(join(dataDir,'embedding-runtime','vision-models')))
+    await rm(join(target,'.dafeiyu-large-data-v2.json'))
+    const previous=calls;await assert.rejects(manager.visionStatus(),/标记/)
+    await assert.rejects(manager.runVision('install','qwen3.5-4b'),/标记/);assert.equal(calls,previous)
+    await assert.rejects(access(join(storage.visionModelDir,'qwen3.5-4b')))
+  }finally{await rm(root,{recursive:true,force:true})}
+})
