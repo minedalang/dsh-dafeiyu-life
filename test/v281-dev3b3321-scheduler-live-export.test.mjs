@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync,existsSync} from 'node:fs'
+import {mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync,existsSync,utimesSync,symlinkSync,statSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {spawn} from 'node:child_process'
@@ -272,4 +272,45 @@ test('management exporter reuses original payload with bounded live snapshot and
  const result=await collectManagementDiagnostics({root:dir,script,snapshot,platform:'win32',spawnProcess:fake});assert.deepEqual(result.bytes,zip);assert.equal(existsSync(temporary),false);
  await assert.rejects(collectManagementDiagnostics({root:dir,script,snapshot,platform:'linux',spawnProcess:()=>assert.fail('unsupported platform spawned')}),/不支持/);
  const snapshotFile=join(dir,'snapshot.json');writeFileSync(snapshotFile,JSON.stringify(snapshot));const {read}=await helper(t,'',{snapshotFile});const live=read('live-status-snapshot.json');assert.equal(live.captureSource,'management-local');assert.equal(live.ownerPriority.idleSeconds,60);assert.equal(live.ownerPriority.activeSeconds,30);assert.doesNotMatch(JSON.stringify(live),/PRIVATE_SNAPSHOT/);
+});
+
+import {appendRuntimeLog,pruneRuntimeLogs,RUNTIME_LOG_RETENTION} from '../lib/runtime-log-retention.mjs'
+test('runtime logs expire stamped events including continuation lines and idle rotated logs',t=>{
+ const d=mkdtempSync(join(tmpdir(),'runtime-retention-'));t.after(()=>rmSync(d,{recursive:true,force:true}));const now=Date.parse('2026-11-28T12:00:00Z'),old=now-9*86400000;
+ writeFileSync(join(d,'duty.log'),'2026-11-19T12:00:00Z expired\n  expired stack\n2026-11-27T12:00:00Z recent\n  recent stack\n');utimesSync(join(d,'duty.log'),now/1000,now/1000);
+ writeFileSync(join(d,'duty.log.1'),'old');utimesSync(join(d,'duty.log.1'),old/1000,old/1000);
+ assert.equal(pruneRuntimeLogs(d,{now}).failed,0);assert.match(readFileSync(join(d,'duty.log'),'utf8'),/recent stack/);assert.doesNotMatch(readFileSync(join(d,'duty.log'),'utf8'),/expired/);assert.equal(existsSync(join(d,'duty.log.1')),false);
+ const policy=readRuntimeLogs(d).retention;assert.equal(policy.days,7);assert.equal(policy.sweepMinutes,60);
+});
+test('host log appends bound all three active streams without a video round',t=>{
+ const d=mkdtempSync(join(tmpdir(),'runtime-rotate-'));t.after(()=>rmSync(d,{recursive:true,force:true}));const cap=RUNTIME_LOG_RETENTION.maxBytes;
+ for(const name of ['duty.log','install.log','asr-install.log']){
+   assert.equal(appendRuntimeLog(d,name,'旧输出\n'+'a'.repeat(cap)),true);
+   assert.equal(appendRuntimeLog(d,name,'新输出'+'b'.repeat(512)),true);assert.ok(statSync(join(d,name)).size<=cap);assert.match(readFileSync(join(d,name),'utf8'),/新输出/);
+ }
+ assert.ok(existsSync(join(d,'duty.log.1')));assert.ok(statSync(join(d,'duty.log.1')).size<=cap);assert.equal(appendRuntimeLog(d,'seen.md','forbidden'),false);
+});
+test('diagnostic retention respects migration, all accounts, statistical horizon and business files',t=>{
+ const d=mkdtempSync(join(tmpdir(),'runtime-scopes-'));t.after(()=>rmSync(d,{recursive:true,force:true}));const now=Date.parse('2026-11-28T12:00:00Z'),old=now-50*86400000;
+ const put=(name,text='x',at=old)=>{const p=join(d,name);mkdirSync(join(p,'..'),{recursive:true});writeFileSync(p,text);utimesSync(p,at/1000,at/1000);return p};
+ const discussion=put('video-discussion-reads/2026-10-01.jsonl'),mention=put('mention-diagnostics/2026-10-01.jsonl'),meme=put('meme-diagnostics/2026-10-01.jsonl'),usage=put('model-usage/2024-10.jsonl'),recentUsage=put('model-usage/2024-12.jsonl'),trace=put('life-decision-traces/'+'a'.repeat(24)+'/12345678-1234-1234-1234-123456789abc.json'),round=put('video-round-observations/'+'b'.repeat(24)+'.jsonl'),activeRound=put('video-round-observations/'+'c'.repeat(24)+'.jsonl');
+ const journal=put('model-invocations/'+'d'.repeat(16)+'.jsonl',JSON.stringify({at:'2026-10-01T00:00:00Z'})+'\n'+JSON.stringify({at:'2026-11-27T00:00:00Z'})+'\n',now);
+ const interrupted=put('model-invocations/'+'d'.repeat(16)+'.jsonl.12345678-1234-1234-1234-123456789abc.logtmp');
+ const protectedFiles=['seen.md','memory.json','todos.json','backup/manual.zip','bili-duty-logs-manual.zip','custom.log'].map(n=>put(n));
+ assert.equal(pruneRuntimeLogs(d,{now,activeRoundId:'c'.repeat(24)}).failed,0);
+ for(const p of [discussion,meme,usage,trace,round,interrupted])assert.equal(existsSync(p),false,p);for(const p of [mention,recentUsage,activeRound,...protectedFiles])assert.equal(existsSync(p),true,p);
+ assert.doesNotMatch(readFileSync(journal,'utf8'),/2026-10-01/);assert.match(readFileSync(journal,'utf8'),/2026-11-27/);
+ put('comment-ledger-import-v1.json',JSON.stringify({version:1,completedAt:'2026-11-01T00:00:00Z'}));assert.equal(pruneRuntimeLogs(d,{now}).failed,0);assert.equal(existsSync(mention),false);
+});
+test('unsafe log paths and occupied lock cannot delete business data',t=>{
+ const d=mkdtempSync(join(tmpdir(),'runtime-log-safe-'));t.after(()=>rmSync(d,{recursive:true,force:true}));const target=join(d,'seen.md');writeFileSync(target,'keep');
+ try{symlinkSync(target,join(d,'duty.log'))}catch{t.skip('symlink unavailable');return}
+ assert.equal(appendRuntimeLog(d,'duty.log','bad'),false);assert.ok(pruneRuntimeLogs(d).failed>0);assert.equal(readFileSync(target,'utf8'),'keep');
+ writeFileSync(join(d,'.runtime-log-maintenance.lock'),JSON.stringify({pid:process.pid,token:'a'.repeat(32),at:Date.now()}));assert.equal(appendRuntimeLog(d,'install.log','busy'),false);assert.equal(existsSync(join(d,'install.log')),false);
+});
+
+test('production maintenance runs independent of video completion and all host text writers share retention',()=>{
+ const code=readFileSync(join(root,'index.js'),'utf8');const start=code.indexOf('const runRuntimeLogCleanup=()=>');assert.ok(start>0);const section=code.slice(start,code.indexOf('const runVideoCacheCleanup',start));
+ assert.match(section,/pruneRuntimeLogs\(stateDir/);assert.match(section,/runRuntimeLogCleanup\(\)\s+const runtimeLogTimer=setInterval/);assert.match(section,/clearInterval\(runtimeLogTimer\)/);assert.doesNotMatch(section,/masterEnabled|lifeAgentMode/);
+ assert.equal([...code.matchAll(/appendRuntimeLog\(stateDir,'duty\.log'/g)].length,2);assert.match(code,/appendRuntimeLog\(stateDir,'install\.log'/);assert.match(code,/appendRuntimeLog\(stateDir,'asr-install\.log'/);assert.doesNotMatch(code,/rotateLogIfBig/);
 });

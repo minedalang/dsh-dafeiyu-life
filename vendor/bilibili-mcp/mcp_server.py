@@ -18,6 +18,7 @@ import asyncio
 import json
 import base64
 import os
+import stat
 import sys
 import tempfile
 import urllib.parse
@@ -1841,7 +1842,48 @@ def _read_home(rel, cap=22000):
         return f.read(cap + 1)[-cap:]
 
 
+def _append_runtime_duty_log(text):
+    """Best effort only; same short lock as the host log writer/retention pass.
+    No rotation here: the host owns it. A busy/oversized log must not affect a
+    real platform receipt. The next host append/maintenance can rotate it."""
+    path = _DUTY_HOME / "duty.log"
+    lock = _DUTY_HOME / ".runtime-log-maintenance.lock"
+    token = uuid.uuid4().hex
+    lock_fd = None
+    try:
+        lock_fd = os.open(str(lock), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.write(lock_fd, json.dumps({"pid": os.getpid(), "token": token, "at": int(datetime.now().timestamp() * 1000)}).encode("utf-8"))
+        if path.is_symlink():
+            return
+        before = path.stat() if path.exists() else None
+        data = str(text).encode("utf-8")
+        if before and (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or before.st_size + len(data) > 2 * 1024 * 1024):
+            return
+        if len(data) > 2 * 1024 * 1024:
+            return
+        fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o600)
+        try:
+            opened = os.fstat(fd)
+            if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1 or (before and (before.st_dev != opened.st_dev or before.st_ino != opened.st_ino)):
+                return
+            os.write(fd, data)
+        finally:
+            os.close(fd)
+    except OSError:
+        pass
+    finally:
+        if lock_fd is not None:
+            os.close(lock_fd)
+            try:
+                if json.loads(lock.read_text(encoding="utf-8")).get("token") == token:
+                    lock.unlink()
+            except (OSError, ValueError):
+                pass
+
+
 def _append_home(rel, text):
+    if rel == "duty.log":
+        return _append_runtime_duty_log(text)
     path = (_DUTY_HOME / rel).resolve()
     if not path.is_relative_to(_DUTY_HOME):
         raise ValueError("禁止访问家目录以外的文件")

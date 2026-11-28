@@ -87,3 +87,28 @@ class MemeDiagnosticsTests(unittest.TestCase):
         [event] = self.events()
         self.assertEqual(event['reason'], '')
         self.assertNotIn('SECRET', (self.home / 'duty.log').read_text(encoding='utf8'))
+
+
+class RuntimeDutyLogTests(unittest.TestCase):
+    def test_python_writer_obeys_host_lock_and_size_cap(self):
+        import ast, stat, uuid
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            scope = {'_DUTY_HOME': home, 'os': os, 'json': json, 'datetime': datetime.datetime, 'stat': stat, 'uuid': uuid}
+            module = ast.Module(body=[x for x in TREE.body if isinstance(x, ast.FunctionDef) and x.name == '_append_runtime_duty_log'], type_ignores=[])
+            exec(compile(module, 'runtime-duty-log', 'exec'), scope)
+            append = scope['_append_runtime_duty_log']
+            path = home / 'duty.log'
+            lock = home / '.runtime-log-maintenance.lock'
+            append('first\n')
+            self.assertEqual(path.read_text(), 'first\n')
+            self.assertFalse(lock.exists())
+            lock.write_text('occupied')
+            append('must not append\n')
+            self.assertEqual(path.read_text(), 'first\n')
+            self.assertEqual(lock.read_text(), 'occupied')
+            lock.unlink()
+            path.write_bytes(b'x' * (2 * 1024 * 1024))
+            append('must not grow\n')
+            self.assertEqual(path.stat().st_size, 2 * 1024 * 1024)
+            self.assertFalse(lock.exists())

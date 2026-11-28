@@ -9,6 +9,7 @@ import {projectLifeSettings} from './lib/life-settings-projection.mjs'
 import {sharedVideoTargetAllowed,projectSharedVideoObservation,sharedLinkTurnRows} from './lib/shared-video-observation.mjs'
 import {runtimeControls,planRuntimeControl,interactionRepliesAllowed,isReplyDispatch} from './lib/runtime-controls.mjs'
 import {readRuntimeLogs} from './lib/runtime-log-view.mjs'
+import {appendRuntimeLog,pruneRuntimeLogs,RUNTIME_LOG_RETENTION} from './lib/runtime-log-retention.mjs'
 import {collectManagementDiagnostics} from './lib/management-diagnostics.mjs'
 import {lifeSettingsV2,planLifeSettingsV2,assertLegacyVideoPatchCompatible,assertLegacyLifeSettingsPatchCompatible} from './lib/life-settings-control.mjs'
 import {lifeTransitionReadiness} from './lib/life-transition-readiness.mjs'
@@ -138,7 +139,6 @@ import { parseOwnerDmAction, createOwnerDmActionLedger, OWNER_DM_ACTION_FLAGS } 
 import { createOwnerDmAgent } from './lib/owner-dm-agent.mjs'
 import {observedVideoFromRead,verifiedVideoObservation,unifiedLegacySocialChoice} from './lib/life-action-protocol.mjs'
 import { validateOwnerRosterUpdate } from './lib/owner-identity.mjs'
-import { formatLocalLogTimestamp } from './lib/log-time.mjs'
 import { collectLocalLifeEvents } from './lib/local-life-source.mjs'
 import {buildVideoExplorationEvent,buildFreshVideoDetails} from './lib/video-experience.mjs'
 import {synthesizeFocusVisualMemory} from './lib/video-memory-synthesis.mjs'
@@ -876,8 +876,7 @@ function reportMeta() {
   const activityFeed=createActivityFeed({dataDir:stateDir,onChange:()=>lifeManagementEvents.publish('timeline')})
   const liveLifeActivity=createLiveLifeActivity({onChange:()=>lifeManagementEvents.publish('life')})
   const log = (msg) => {
-    const line = `${formatLocalLogTimestamp()}  ${msg}`
-    try { appendFileSync(logFile, line + '\n', 'utf8') } catch { /* 日志写不进去也不致命 */ }
+    appendRuntimeLog(stateDir,'duty.log',msg)
     try { ctx.logger?.info?.(`[bili-duty] ${msg}`) } catch { /* 没有 logger 就算了 */ }
   }
 
@@ -4773,7 +4772,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       } catch { return String(buf) }
     }
     const pick = (buf) => {
-      try { appendFileSync(logFile, toText(buf), 'utf8') } catch { /* 写不进去就丢，绝不能抛 */ }
+      appendRuntimeLog(stateDir,'duty.log',toText(buf))
     }
     child.stdout?.on('data', pick)
     child.stderr?.on('data', pick)
@@ -4886,7 +4885,6 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(currentVideoCommentDiagnostics?.roundId===videoRoundReceiptId)currentVideoCommentDiagnostics=null
       stubReportIfMissing(code)   // ⭐ 没写报告就补一份占位 —— 别让使用者什么都看不到
       // v2.4.84：不再调用整轮批量收藏；仅由视频 Agent 根据已入选视频决定。
-      rotateLogIfBig()            // ⭐ 日志别无声地长（三天 797KB ⇒ 一年约 100MB）
       // ⭐ 这一轮挑了几条：从今天的报告里数（上一轮挑的还在同一份文件里 ⇒ 数出来就是全天的账）
       try {
         const st = readJson(dutyStateFile, {})
@@ -7096,7 +7094,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   let installProgress = {phase:'idle',completed:0}
   const installStage = (phase,completed) => {installProgress={phase,completed}}
   const installLogFile = join(stateDir, 'install.log')
-  const appendInstall = (s) => { try { appendFileSync(installLogFile, s, 'utf8') } catch { /* 写不进去就算了 */ } }
+  const appendInstall = (s) => { appendRuntimeLog(stateDir,'install.log',s) }
 
   let uvOk = null
   const haveUv = async () => {
@@ -7140,7 +7138,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   const asrLogFile = join(stateDir, 'asr-install.log')
   const asrPython = () => join(asrDir, process.platform === 'win32' ? 'Scripts' : 'bin',
     process.platform === 'win32' ? 'python.exe' : 'python')
-  const appendAsr = (s) => { try { appendFileSync(asrLogFile, String(s)) } catch { /* 日志写不了也不能炸 */ } }
+  const appendAsr = (s) => { appendRuntimeLog(stateDir,'asr-install.log',s) }
   // ⭐ 转写的临时目录必须由**宿主**预先建好：值班那一轮跑在沙箱里，
   //    而沙箱只允许写"该子进程启动前就已存在"的目录（2026-10-14 那一轮自己挖出来的规则）
   const asrTmp = storageDataPath(stateDir,'tmp','asr')
@@ -7202,10 +7200,6 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // v2.4.84：保留旧 HTTP 路由以便旧客户端得到明确错误；不再执行任何批量收藏。
   const favToday = async () => ({ok:false,error:'整轮批量收藏已经取消；请在「选片来源」启用大肥鱼自主收藏，之后她会逐视频判断。'})
 
-  /**
-   * ⭐ 日志轮转（2026-10-16 量出来的：`duty.log` 三天就 797 KB、没有轮转 ⇒ 一年约 100 MB ✗）
-   * 超过 2MB 就滚成 `duty.log.1`（只留一份），别让它在 C 盘上无声地长。
-   */
   /* ─────────────── 「它刷过的视频」：数据层 + 封面代理 ─────────────── */
   /** seen.md 的表格一行一条：`| 日期 | bvid | 标题 | UP | 状态 |`（跳过的也记，理由写在状态里） */
   /**
@@ -8789,15 +8783,6 @@ logger:{warn:m=>log('社交意图：'+m)}
     catch(error){log('取封面失败：'+String(error?.message||error).slice(0,180));return null}
   }
 
-  const rotateLogIfBig = (limit = 2 * 1024 * 1024) => {
-    try {
-      if (!existsSync(logFile) || statSync(logFile).size < limit) return
-      const bak = logFile + '.1'
-      try { rmSync(bak, { force: true }) } catch { /* 删不掉就算了 */ }
-      renameSync(logFile, bak)
-      appendFileSync(logFile, `${formatLocalLogTimestamp()}  日志超过 2MB，旧的滚到 duty.log.1\n`, 'utf8')
-    } catch { /* 轮转失败不该影响跑一轮 */ }
-  }
   let installingAsr = false
   let asrProgress={phase:'idle',model:null,startedAt:null,finishedAt:null,reason:null,currentBytes:null,totalBytes:null,filename:''}
   const setAsrProgress=(phase,values={})=>{asrProgress={...asrProgress,phase,...values}}
@@ -9292,6 +9277,17 @@ logger:{warn:m=>log('社交意图：'+m)}
     }catch(error){autoBackupState.lastError=String(error?.message||error).slice(0,180);log('每日自动备份暂未完成：'+autoBackupState.lastError)}
     finally{autoBackupBusy=false}
   }
+  // Independent maintenance: applies even with masterEnabled / Life off.
+  // The receipt migration above has already had a chance to finish. Only
+  // disposable diagnostics are eligible; never prune memory or business data.
+  const runRuntimeLogCleanup=()=>{
+    const result=pruneRuntimeLogs(stateDir,{activeRoundId:currentVideoCommentDiagnostics?.roundId||''})
+    if(result.failed)try{ctx.logger?.warn?.(`[bili-duty] 日志保留清理：${result.failed} 项暂不可用，下次重试`)}catch{}
+  }
+  runRuntimeLogCleanup()
+  const runtimeLogTimer=setInterval(runRuntimeLogCleanup,RUNTIME_LOG_RETENTION.interval)
+  runtimeLogTimer.unref?.()
+  ctx.effect(()=>()=>clearInterval(runtimeLogTimer),'bili-duty: 运行日志保留维护关闭')
   const runVideoCacheCleanup=()=>{
     const result=pruneVideoCaches(stateDir)
     if(result.failed||result.skipped)log('音视频缓存清理：已删除 '+result.removed+' 项，待重试 '+result.failed+' 项，安全跳过 '+result.skipped+' 项')

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import {createLifeEpisodeSessions} from '../lib/life-episode-session.mjs'
 import {createLifeOpportunities} from '../lib/life-opportunities.mjs'
 import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
 import {continuationMenu,parseContinuationDecision,continuationPrompt} from '../lib/life-continuation.mjs'
@@ -74,6 +75,11 @@ test('an invalid unoffered continuation choice remains a technical rejection rat
  assert.equal(result.continuation.executed,1)
  assert.equal(x.reads,1)
  assert.equal(x.calls,3,'no extra model call is made for explaining an invalid choice')
+ const row=x.life.continuations()[0];assert.ok(row,'original opportunity remains selectable')
+ const sessions=createLifeEpisodeSessions({stateDir:dir,getAccountTag:()=>discussionAccountTag(cred),now:()=>T})
+ const events=sessions.context({episodeId:row.id}).events
+ assert.ok(events.some(e=>e.type==='result'&&e.action==='episode_stop'&&e.outcome==='blocked'))
+ assert.ok(!events.some(e=>e.type==='decision'&&e.action==='episode_stop'))
 }))
 
 test('non-visual Life choice carries only a bounded enum when video observation was actually offered',()=>{
