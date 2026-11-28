@@ -67,7 +67,7 @@ test('production returns exactly projected handoff and read-only debug run skips
   const server=read('index.js')
   assert.match(server,/perceptionHandoff=buildVideoPerceptionHandoff/)
   assert.match(server,/return lifePayload/)
-  assert.match(server,/if\(!dryRun&&\(!isLifeEpisodeFocus\|\|focusIsVerifiedAndNovel\)&&\s*!\(args\.record_session===false&&parseMaybeJson\(vision\)\?\.status==='cached'\)\)try\{/)
+  assert.match(server,/if\(!dryRun&&readCurrent\(\)&&\(!isLifeEpisodeFocus\|\|focusIsVerifiedAndNovel\)&&\s*!\(args\.record_session===false&&parseMaybeJson\(vision\)\?\.status==='cached'\)\)try\{/)
   assert.match(server,/if\(!dryRun&&args\.record_session!==false\)/)
   assert.match(server,/__debugDryRun:true/)
   assert.match(server,/videoDebugExpiry=VIDEO_CACHE_RETENTION\.capture/)

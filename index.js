@@ -147,7 +147,7 @@ import {verifyEpisodeVideoVisual} from './lib/life-episode-video-visual.mjs'
 import {runLifeChosenVideoRead,runLifePostOverviewReview,runLifePostOverviewBatchReview,lifeFocusBatchPrompt} from './lib/life-video-read-admission.mjs'
 import {buildVideoEvidenceBundle} from './lib/video-evidence-bundle.mjs'
 import {buildVideoPerceptionTimeline} from './lib/video-perception-timeline.mjs'
-import {buildVideoPerceptionHandoff} from './lib/video-perception-handoff.mjs'
+import {buildVideoPerceptionHandoff,projectVideoModelView,projectVideoTodoModelView} from './lib/video-perception-handoff.mjs'
 import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview,diagnoseVideoFocusReceipt} from './lib/video-focus-review.mjs'
 import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from './lib/video-owner-focus-debug.mjs'
 import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
@@ -2090,9 +2090,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       if(spec.name!=='bili_read_dm'&&registeredLifeRead('main-session',spec.name)){
         const epoch=accountBinding.generation(),account=trustedLifeAccountTag(),policy=getSessionIntegration()
         const result=await executeRegisteredLifeRead({scene:'main-session',actions:[spec.name],isCurrent:()=>{const next=getSessionIntegration();return platformReady()&&integrationAvailable()&&epoch===accountBinding.generation()&&account===trustedLifeAccountTag()&&policy.revision===next.revision&&policy.mode===next.mode},read:()=>spec.execute(args,exec)})
-        return safe(result.ok?result.value:{ok:false,reason:result.reason})
+        return safe(result.ok?(['bili_watch_video','bili_life_consider_video'].includes(spec.name)?projectVideoModelView(result.value):result.value):{ok:false,reason:result.reason})
       }
-      return safe(await spec.execute(args, exec))
+      const value=await spec.execute(args, exec)
+      return safe(['bili_watch_video','bili_life_consider_video'].includes(spec.name)?projectVideoModelView(value):value)
     },
   }))
 
@@ -2611,7 +2612,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
 
   tool({
     name:'bili_watch_video',
-    description:'当你自主愿意回应主人“去看/看看这个视频”的建议时调用；可以拒绝、延期或选择范围；若问画面、动作、字幕或内容，请选择 standard 而非仅标题简介。读取真实视频详情、字幕（如有）、热门评论与少量弹幕，完成后返回可核验的内容材料并记一条“主 Session 指定观看”经历。它不播放完整视频；没有字幕/视觉证据时必须说明看到了什么、没看到什么，不能编造画面。',
+    description:'当你自主愿意回应主人“去看/看看这个视频”的建议时调用；可以拒绝、延期或选择范围；若问画面、动作、字幕或内容，请选择 standard 而非仅标题简介。读取真实视频详情、字幕（如有）、热门评论与少量弹幕，完成后返回可核验的内容材料并记一条“主 Session 指定观看”经历。它不播放完整视频；视觉正文见 perceptionHandoff.video.modelDescription 或 partialCellObservations，observationCoverage 区分采样与有描述的帧，descriptionRef 是本次结果内引用；没有字幕/视觉证据时必须说明看到了什么、没看到什么，不能编造画面。',
     parameters:{bvid:{type:'string',description:'主人指定的真实 BV 号'},include_comments:{type:'boolean',description:'是否读取热门评论，默认 true'},include_danmaku:{type:'boolean',description:'是否读取少量弹幕，默认 true'},view_depth:{type:'string',description:'由鱼鱼决定理解深度：skim 略看资料（默认，不识图）；standard 正常了解（可用视觉时识图）；deep 深入探索（可用视觉时识图，并可随后按时间窗复查）。不强制选择后两项。'},visual_question:{type:'boolean',description:'旧接口兼容：主动提出视觉疑问时相当于 standard；显式 skim 优先'}},
     async execute(args={},exec) {
       const epoch=accountBinding.generation(),policy=getSessionIntegration()
@@ -2624,7 +2625,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // explore; the original watch pipeline still owns memory and evidence.
   tool({
     name:'bili_life_consider_video',
-    description:'给 Life 一次自主决定是否了解某条真实公开视频的机会，即使之前完全没看过也可以考虑观看。先自主决定略看或看全片缩略图；全局结果出来后才再次由 Life 决定是否深入真实局部、选择哪一个时间锚点。只读，不提供点赞评论授权。主人明确指定观看也不是命令；自主愿意直接观看时可使用 bili_watch_video。',
+    description:'给 Life 一次自主决定是否了解某条真实公开视频的机会，即使之前完全没看过也可以考虑观看。先自主决定略看或看全片缩略图；全局结果出来后才再次由 Life 决定是否深入真实局部、选择哪一个时间锚点。只读，不提供点赞评论授权。视觉正文及覆盖见 perceptionHandoff.video；descriptionRef 是本次结果内引用。主人明确指定观看也不是命令；自主愿意直接观看时可使用 bili_watch_video。',
     parameters:{bvid:{type:'string',description:'真实 BV，不可从模糊描述猜测'}},
     async execute(args={}){
       refreshCfg()
@@ -7422,7 +7423,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return revisitCandidate?{...result,revisitCandidate}:result;
     },
     getTodoEngine: () => ownerTodos,
-    runTodo: (id) => runOwnerTodoWithFollowup(id),
+    runTodo: async (id) => projectVideoTodoModelView(await runOwnerTodoWithFollowup(id)),
     logger: {warn:(m)=>log('⚠️ '+m),info:(m)=>log(m)},
   })
   lifeMemory=createLifeMemoryGateway({dataDir:stateDir,getConfig:()=>cfg,getRelationship:uid=>{

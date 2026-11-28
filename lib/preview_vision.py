@@ -1314,13 +1314,13 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
             for sector in range(min(4,len(selected))):
                 left=start_time+span*sector/4
                 right=start_time+span*(sector+1)/4
-                in_sector=[x for x in signals if left<=x[0]['second']<right or (sector==3 and x[0]['second']<=right)]
+                in_sector=[x for x in signals if left<=x[0]['second'] and (x[0]['second']<right or (sector==3 and x[0]['second']<=right))]
                 if not in_sector:continue
                 center=(left+right)/2
                 best=max(in_sector,key=lambda x:(x[1],-abs(x[0]['second']-center)))
                 review_hints.append({'second':best[0]['second'],'pixel_change':round(best[1],4),
                                      'source':'python-videoshot-neighbor-diff'})
-            review_hints.sort(key=lambda x:x['second'])
+            review_hints=sorted({x['second']:x for x in review_hints}.values(),key=lambda x:x['second'])
         sampling={'strategy':('focus-videoshot-storyboard-stratified' if focus else 'videoshot-storyboard-stratified') if storyboard else
                   ('focus-window+local-thumbnail-difference' if focus else 'uniform-time+local-thumbnail-difference'),
                   'sampler_version':sampler_version,

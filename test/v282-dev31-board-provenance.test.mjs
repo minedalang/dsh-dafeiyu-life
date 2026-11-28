@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {buildVideoEvidenceBundle} from '../lib/video-evidence-bundle.mjs'
-import {buildVideoPerceptionHandoff} from '../lib/video-perception-handoff.mjs'
+import {buildVideoPerceptionHandoff,projectVideoModelView,projectVideoTodoModelView} from '../lib/video-perception-handoff.mjs'
 
 const BV='BV1234567890'
 const times=[10,25,35,40,55,65,70,80,90,115,120,131,146,161,171,176,186,201,211,231,256,281,291,311]
@@ -127,4 +127,67 @@ test('DSH and local modern full board receipts use identical evidence handoff',(
  assert.equal(h.video.boardInterpretations.length,2)
  delete v.visionBoardReceipts
  assert.equal(handoff(v).evidence.sources.some(s=>s.kind==='preview_visual_analysis'),false)
+})
+
+
+test('partial observation reports real sampling and gaps without granting complete proof',async()=>{
+ const v=make();v.status='vision_incomplete';v.error='incomplete';delete v.description
+ v.sampling={...v.sampling,sampler_version:14,tiles_per_storyboard:12}
+ const clock=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`
+ v.visionBoardReceipts[0].gridCols=4
+ v.visionBoardReceipts[0].description=times.slice(0,12).map((t,i)=>`R${Math.floor(i/4)+1}C${i%4+1} [${clock(t)}]：可见鸟。`).join('\n')
+ const missing=[4,8,12]
+ v.visionBoardReceipts[1]={index:2,status:'incomplete',times:times.slice(12),gridCols:4,
+   partialCells:times.slice(12).flatMap((t,i)=>missing.includes(i+1)?[]:[{cellIndex:i+1,time:t,description:`R${Math.floor(i/4)+1}C${i%4+1} [${clock(t)}]：局部画面。`}])}
+ const {evidence,handoff:h}=handoff(v),coverage=h.video.observationCoverage
+ assert.equal(coverage.status,'partial');assert.equal(coverage.sampleSource,'low-resolution-preview')
+ assert.equal(coverage.sampledFrameCount,24);assert.equal(coverage.describedFrameCount,21)
+ assert.deepEqual(coverage.missingFrameTimesMs,missing.map(i=>times[11+i]*1000))
+ assert.equal(coverage.completeObservation,false);assert.equal(h.video.visionStatus,'not-analyzed')
+ assert.equal(evidence.sources.some(s=>s.kind==='preview_visual_analysis'),false)
+ const {verifyEpisodeVideoVisual}=await import('../lib/life-episode-video-visual.mjs')
+ assert.equal(verifyEpisodeVideoVisual({result:{ok:true,bvid:BV,viewDepth:'deep',visual:v,videoEvidence:evidence,perceptionHandoff:h,info:{duration:324}},bvid:BV,depth:'deep'}),null)
+ const invalid=structuredClone(v);invalid.visionBoardReceipts[1].times[0]=10
+ assert.equal(handoff(invalid).handoff.video.observationCoverage.describedFrameCount,0)
+ const foreign=structuredClone(v);foreign.bvid='BV1234567891'
+ assert.equal(handoff(foreign).handoff.video.observationCoverage.sampledFrameCount,0)
+})
+
+test('model view removes repeated visual prose and raw debug without mutating internal receipt',()=>{
+ const v=make();v.sampling={...v.sampling,sampler_version:14,tiles_per_storyboard:12}
+ v.description=v.visionBoardReceipts.map(r=>`分镜图${r.index}：\n${r.description}`).join('\n\n')
+ v.visionBoardReceipts[0].debugRawAttempts=[{text:'raw-only-model-output'}]
+ const {evidence,handoff:h}=handoff(v)
+ const result={ok:true,action:'watch',bvid:BV,visual:v,videoEvidence:evidence,perceptionHandoff:h}
+ const before=structuredClone(result),projected=projectVideoModelView(result)
+ assert.deepEqual(result,before)
+ assert.equal(projected.modelView,'life-video-model-view/v1')
+ assert.equal(projected.visual.description,undefined)
+ assert.equal(projected.visual.visionBoardReceipts[0].debugRawAttempts,undefined)
+ assert.equal(projected.perceptionHandoff.video.observationCoverage.status,'complete-sampled')
+ const serialized=JSON.stringify(projected)
+ for(const r of v.visionBoardReceipts)assert.equal(serialized.split(r.description).length-1,1)
+ assert.equal(projected.perceptionHandoff.video.boardInterpretations[0].descriptionRef,'perceptionHandoff.video.modelDescription')
+ assert.equal(projected.perceptionHandoff.video.observations[0].descriptionRef,'perceptionHandoff.video.modelDescription')
+ // Legacy nonidentical aggregate and board text remain accessible once each.
+ const old=make(),legacy=handoff(old)
+ const view=projectVideoModelView({...result,visual:old,perceptionHandoff:legacy.handoff})
+ assert.equal(view.perceptionHandoff.video.boardInterpretations[0].description,old.visionBoardReceipts[0].description)
+ assert.equal(view.perceptionHandoff.video.observations[0].description,undefined)
+ assert.equal(view.perceptionHandoff.video.observations[0].descriptionRef,'perceptionHandoff.video.boardInterpretations[index=1].description')
+ const failure={ok:false,error:'unavailable'};assert.equal(projectVideoModelView(failure),failure)
+})
+
+
+test('mounted TODO watch result uses the same compact view after settlement; other TODOs unchanged',()=>{
+ const v=make(),{evidence,handoff:h}=handoff(v)
+ const task={ok:true,item:{status:'done'},result:{ok:true,data:{ok:true,action:'watch',bvid:BV,visual:v,videoEvidence:evidence,perceptionHandoff:h}}}
+ const view=projectVideoTodoModelView(task)
+ assert.equal(view.result.data.modelView,'life-video-model-view/v1')
+ assert.equal(view.result.data.visual.description,undefined)
+ assert.equal(task.result.data.visual.description,v.description)
+ assert.equal(view.item,task.item)
+ const other={ok:true,result:{ok:true,data:{ok:true,action:'like'}}};assert.equal(projectVideoTodoModelView(other),other)
+ const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ assert.match(server,/runTodo: async \(id\) => projectVideoTodoModelView\(await runOwnerTodoWithFollowup\(id\)\)/)
 })

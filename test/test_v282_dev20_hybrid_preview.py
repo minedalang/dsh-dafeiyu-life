@@ -52,7 +52,11 @@ class HybridPreview(unittest.TestCase):
         self.assertGreater(result['times'][-1]-result['times'][0],350)
         for t in sampler['review_candidates_seconds']:
             self.assertIn(t,result['times'])
+        self.assertLessEqual(len(sampler['review_candidate_hints']),4)
+        self.assertGreater(len(sampler['review_candidate_hints']),0)
+        self.assertEqual(len(sampler['review_candidates_seconds']),len(set(sampler['review_candidates_seconds'])))
         self.assertEqual(len(sampler['review_candidate_hints']),4)
+        self.assertGreaterEqual(sampler['review_candidates_seconds'][-1],337.5)
         self.assertEqual(sampler['review_candidates_seconds'],
                          [h['second'] for h in sampler['review_candidate_hints']])
         for h in sampler['review_candidate_hints']:

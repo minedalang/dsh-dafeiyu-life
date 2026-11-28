@@ -12,6 +12,13 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.74 · 视觉观察覆盖与主 Session 精简交接
+
+- 同一原视频感知回执派生 `observationCoverage`，区分采样数、模型描述数、缺口时刻、部分/完整采样；旧完整证据与写入门禁不变，不能据结构覆盖声称语义核实。
+- 主 Session 的直接观看、Life 考虑视频及观看待办结果在原执行/结算后使用同一个只读投影；已接受的视觉描述保留，重复正文改引用，移除原始模型答复；保留内部完整结果和 Debug 完整导出，不改缓存/记忆数据。
+- 管理诊断视觉分栏精简相同正文，原始回答及完整 JSON 仍可供离线解析；修复 videoshot 最后一时间分层漏左边界导致复查候选重复。无额外模型请求、采样或授权。
+- A02/A05/A08/V03 阶段推进，非所有场景统一持久事实源；专业 Python Video Agent、语音/时间轴去重、局部持久记忆、自主缺口补看和原发布债务仍开放。
+
 ## 2.8.3-dev.73 · Qwen 2B 分镜执行兼容
 
 - 根据 dev.72 同 BV、同 24 个时刻的真实 Debug：4B 批量首板成功、次板补救成功；2B 将行误分为图片，单板补救还遗漏第四列。仅 `qwen3.5:2b` 改回逐张分镜，其他本地模型保留双图优先及失败板有界补救；独立 DSH 路径不变。
