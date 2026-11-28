@@ -1592,6 +1592,12 @@ input.ui-toggle[type="checkbox"]:disabled{opacity:.55;cursor:not-allowed}
 /* Runtime log events: same page tokens as the rest of management center. */
 .runtime-log-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.runtime-log-stat{background:var(--panel);border:1px solid var(--stroke);border-radius:12px;padding:12px 15px;min-width:0}.runtime-log-stat strong{display:block;font-size:24px;line-height:1.3;font-variant-numeric:tabular-nums}.runtime-log-stat span{display:block;color:var(--muted);font-size:12px}.runtime-log-stat[data-kind="error"] strong{color:var(--bad)}.runtime-log-list{display:grid;gap:9px;min-width:0}.runtime-log-event{border:1px solid var(--stroke);border-inline-start:4px solid var(--stroke);background:var(--panel);border-radius:10px;padding:12px 15px;min-width:0;overflow-wrap:anywhere}.runtime-log-event[data-level="error"]{border-inline-start-color:var(--bad)}.runtime-log-event[data-level="warning"]{border-inline-start-color:#c18b38}.runtime-log-event[data-level="info"]{border-inline-start-color:var(--action)}.runtime-log-heading{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.runtime-log-heading strong{font-size:15px;flex:1;min-width:0}.runtime-log-level{font-size:11px;font-weight:700;letter-spacing:.035em;color:var(--muted)}.runtime-log-event[data-level="error"] .runtime-log-level{color:var(--bad)}.runtime-log-event[data-level="warning"] .runtime-log-level{color:var(--ink)}.runtime-log-detail{font-size:13px;margin:6px 0}.runtime-log-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);margin-top:5px}.runtime-log-counts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.runtime-log-counts span{border:1px solid var(--stroke);border-radius:6px;padding:3px 7px;font-size:12px}.runtime-log-history{font-size:13px;color:var(--muted);margin:10px 0 0}.runtime-log-coverage{font-size:12px;color:var(--muted);margin:8px 0 14px}.runtime-log-coverage summary{cursor:pointer}.runtime-log-coverage p{margin:5px 0}.runtime-log-empty{padding:24px 14px;text-align:center;color:var(--muted);border:1px dashed var(--stroke);border-radius:10px;background:var(--panel)}
 @media(max-width:580px){.runtime-log-stat{padding:9px 8px}.runtime-log-stat strong{font-size:21px}.runtime-log-event{padding:10px}.runtime-log-heading{gap:6px}.runtime-log-overview{gap:6px}}
+#local-model-tasks{margin:0 0 12px;padding:10px 14px;border:1px solid var(--stroke);background:var(--panel);border-radius:12px}
+#local-model-tasks summary{cursor:pointer;font-weight:600}
+#local-model-tasks>div{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--stroke)}
+#local-model-tasks .local-model-task-label{flex:1 1 260px;overflow-wrap:anywhere;min-width:0}
+#local-model-tasks progress{flex:1 1 120px;max-width:220px;accent-color:var(--action)}
+#local-model-tasks button{font-size:.85rem}
 </style>
 <script defer src="/api/bili-duty/manage.js"></script>
 <style>
@@ -2186,6 +2192,12 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
 <body><main class="wrap" id="management-shell" data-platform="checking" data-platform-ready="false">
 <div class="manage-return-bar" hidden><a class="button mobile-back" href="/" aria-label="返回 DSH 主界面">← 返回 DSH 主界面</a><span class="muted">在 DSH 内打开时，请使用此按钮返回聊天；窗口 × 仅关闭或隐藏窗口。</span></div>
 <header class="top"><div><h1 id="workspace-title">🐳 大肥鱼 · DSH 生活系统</h1><p class="muted" id="workspace-description">管理中心 · 生活成长、B站探索与社交、角色设置及数据维护</p></div><div class="top-actions"><div id="runtime-controls" role="group" aria-label="运行总控" hidden><button id="runtime-master" type="button" role="switch" aria-checked="false" aria-pressed="false" disabled>🐳 大肥鱼总开关 · 未知</button><button id="runtime-life" type="button" aria-pressed="false" disabled>自主生活 · 未知</button><button id="runtime-replies" type="button" aria-pressed="false" disabled>互动回复 · 未知</button></div><div class="settings-finder" role="search"><label for="settings-finder-input">查找设置</label><input id="settings-finder-input" type="search" placeholder="搜索设置…" autocomplete="off" aria-controls="settings-finder-results" aria-expanded="false"><div id="settings-finder-results" class="settings-finder-results" role="listbox" hidden></div></div><button id="refresh">刷新当前页</button></div></header>
+<details id="local-model-tasks" class="quick-config-section"><summary>本地模型任务 · <span id="local-model-task-count">待检查</span></summary>
+  <p class="muted">下载任务由服务端运行，切换配置页面不会取消。共享运行时只准备一次；最终就绪以实际检查为准。</p>
+  <div><span class="local-model-task-label"><strong>语义回忆</strong> · <span id="local-task-embedding-status" role="status">待检查</span></span><progress id="local-task-embedding-progress" max="100" hidden aria-label="语义模型准备进度"></progress> <button type="button" id="local-task-embedding-cancel" disabled>取消安装</button></div>
+  <div><span class="local-model-task-label"><strong>内置视觉</strong> · <span id="local-task-vision-status" role="status">待检查</span></span><progress id="local-task-vision-progress" max="100" hidden aria-label="视觉资源准备进度"></progress> <button type="button" id="local-task-vision-cancel" disabled>取消任务</button></div>
+  <button type="button" id="local-model-task-refresh">检查任务</button>
+</details>
 <aside id="life-system-health" class="life-health-banner" role="status" aria-live="polite">
   <div class="health-strip-heading"><span class="health-indicator" aria-hidden="true"></span><strong id="life-health-title">正在核对后台监听状态</strong><span id="life-health-retry" class="health-retry"></span><button id="life-health-clear-model-backoff" type="button" hidden>取消模型退避</button><button id="life-health-clear-network-backoff" type="button" hidden>恢复网络监听</button><button id="life-health-restore-ollama" type="button" hidden>恢复 Ollama 服务</button><button id="life-health-vision-models" type="button" hidden>检查视觉模型</button><button id="life-health-details" type="button">查看诊断</button></div>
   <p id="life-health-detail">仅依据本机已有调度记录，不额外请求 B站。</p>
@@ -2267,8 +2279,8 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
     <div class="toolbar setup-shortcuts"><a class="button" href="#quick-life-section">设置生活节奏 ↗</a><button type="button" data-open-tab="life">查看记忆 ↗</button></div>
     <section class="quick-config-section" id="fs-session-stage"><div class="quick-config-title"><span class="quick-card-icon">💬</span><div><h4>主 Session <span class="pill">可选</span></h4><p>绑定 DSH 中的聊天会话，让鱼鱼与会话共享记忆。</p></div></div><div class="quick-config-actions"><button type="button" id="fs-wizard-session" data-open-tab="home" data-open-anchor="main-session-binding-section">选择主 Session</button></div></section>
     <section class="quick-config-section" id="quick-embedding-section" aria-label="必需本地语义回忆安装">
-        <div class="quick-config-title"><span class="quick-card-icon">🧠</span><div><h4>本地语义回忆 <span class="pill quick-strong-recommend">首次配置必需</span></h4><p>能按语义找到不同说法所指的同一段经历。<strong>无需安装 Ollama 或 Python</strong>，点击下方按钮即可由插件安装本地模型和运行时。</p></div></div>
-        <details><summary>下载大小与记忆隐私</summary><p class="muted">下载 Qwen3-Embedding-0.6B Q8_0 模型（约 639 MB）及匹配系统的 llama.cpp CPU 运行时。全部在本机运行，原始记忆不上传。建议设备有充足磁盘空间与内存；不开启时仍可用词法回忆，但换一种说法、同义词或隐含关联的过往经历更容易漏召回；鱼鱼可能记得这件事，却无法在当前对话里准确想起。首次配置需等待模型和索引就绪；运行中仍允许词法回忆回退。</p></details>
+        <div class="quick-config-title"><span class="quick-card-icon">🧠</span><div><h4>本地语义回忆 <span class="pill quick-strong-recommend">首次配置必需</span></h4><p>能按语义找到不同说法所指的同一段经历。<strong>无需安装 Ollama 或 Python</strong>，点击下方按钮即可由插件安装本地模型和运行时。若要分盘，请先在备份与存储页预约大型数据区并完成停机迁移，然后再开始下载。</p></div></div>
+        <details><summary>下载大小与记忆隐私</summary><p class="muted">下载 Qwen3-Embedding-0.6B Q8_0 模型（约 639 MB）及匹配系统的 llama.cpp CPU 运行时。全部在本机运行，原始记忆不上传。建议设备有充足磁盘空间与内存；不开启时仍可用词法回忆，但换一种说法、同义词或隐含关联的过往经历更容易漏召回；鱼鱼可能记得这件事，却无法在当前对话里准确想起。开始安装后可继续配置视觉，最终完成引导仍需模型和索引实际就绪；运行中仍允许词法回忆回退。</p></details>
         <p class="quick-current" id="quick-embedding-status" role="status" aria-live="polite">正在检查本地模型…</p>
         <progress id="quick-embedding-progress" max="100" value="0" style="width:100%" aria-label="本地语义模型安装进度"></progress>
         <div class="quick-config-actions"><button type="button" class="primary" id="quick-embedding-install">启用并安装本地语义回忆</button></div>
@@ -2484,6 +2496,7 @@ body{background:color-mix(in srgb,var(--page) 88%,#e6f3f9)}
   </div>
   <p class="muted">测试使用固定图片，不会发布到 B站。仅当回答与图片内容一致时，点击「识别正确，认可」。</p>
 </section>
+<p id="vision-backend-advice" class="setting-note" role="status">正在检测本地视觉环境；不自动切换已有配置。</p>
 <section class="contextual-memory-group" id="llama-vision-trial" aria-label="内置本地视觉试验">
 <div class="video-aux-heading"><h4>内置本地视觉（llama.cpp · 实验）</h4><span class="pill pending">尚未接入后台观看</span></div>
 <p class="muted">无需安装 Ollama。复用插件管理的本地运行时，独立下载视觉模型和投影文件；本版仅用于 CPU 图片自检，不改变已启用的视觉方式。可跳过此试验，继续使用 Ollama 或 DSH。</p>

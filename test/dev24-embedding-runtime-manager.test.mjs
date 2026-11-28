@@ -127,20 +127,38 @@ test('视觉下载复用已有 Runtime，损坏文件不安装，Embedding 状�
   }finally{await rm(root,{recursive:true,force:true})}
 })
 
-test('视觉下载期间禁止并行 Runtime 变更，取消不会报告就绪',async()=>{
+test('Embedding 与视觉共享运行时下载；取消单方不影响另一方，维护仍排他',async()=>{
   const root=await mkdtemp(join(tmpdir(),'dsh-native-vision-cancel-'))
   try{
-    let notify;const started=new Promise(r=>notify=r)
-    const manager=createEmbeddingRuntimeManager({dataDir:root,packageRoot:join(root,'empty'),platform:'linux',arch:'x64',logger:{warn(){}},fetchImpl:async(url,{signal})=>{notify();return new Promise((_,reject)=>{if(signal.aborted)reject(signal.reason);else signal.addEventListener('abort',()=>reject(signal.reason),{once:true})})}})
-    const job=manager.runVision('install','qwen3.5-4b');await started
-    assert.equal((await manager.visionStatus()).visionBusy,true)
-    assert.throws(()=>manager.runVision('install','qwen3.5-2b'),/正在安装或测试/)
-    await assert.rejects(manager.install(),/正在维护/)
+    let notify,signal,calls=0;const started=new Promise(r=>notify=r)
+    const manager=createEmbeddingRuntimeManager({dataDir:root,packageRoot:join(root,'empty'),platform:'linux',arch:'x64',logger:{warn(){}},fetchImpl:async(url,opts)=>{calls++;signal=opts.signal;notify();return new Promise((_,reject)=>{if(signal.aborted)reject(signal.reason);else signal.addEventListener('abort',()=>reject(signal.reason),{once:true})})}})
+    const vision=manager.runVision('install','qwen3.5-4b');vision.catch(()=>{});await started
+    const embedding=manager.install();embedding.catch(()=>{});
+    // Observe both subscribers receiving the same runtime progress.
+    for(let i=0;i<100&&manager.status().progress.phase!=='downloading';i++)await new Promise(r=>setTimeout(r,10))
+    assert.equal(manager.status().progress.phase,'downloading')
+    assert.equal(calls,1);assert.equal((await manager.visionStatus()).visionBusy,true)
+    assert.throws(()=>manager.runVision('verify','qwen3.5-2b'),/正在安装或测试/)
+    assert.throws(()=>manager.beginEmbeddingMaintenance(),/正在维护/)
     await assert.rejects(manager.removeAssets(),/暂不能删除/)
-    assert.equal(manager.cancelVision(),true)
-    await assert.rejects(job)
-    assert.equal((await manager.visionStatus()).progress.phase,'cancelled')
-    assert.equal((await manager.visionStatus()).busy,false)
+    assert.equal(manager.cancelVision(),true);await assert.rejects(vision)
+    assert.equal(signal.aborted,false);assert.equal((await manager.visionStatus()).progress.phase,'cancelled')
+    assert.equal(manager.cancelInstall(),true);await assert.rejects(embedding)
+    assert.equal(signal.aborted,true);assert.equal(calls,1);assert.equal(manager.status().progress.phase,'cancelled')
+  }finally{await rm(root,{recursive:true,force:true})}
+})
+
+test('共享运行时已安装时两种权重实际并行，单项取消不影响另一下载',async()=>{
+  const root=await mkdtemp(join(tmpdir(),'dsh-model-parallel-'))
+  try{
+    const packageRoot=join(root,'package'),bundle=join(packageRoot,'vendor','embedding-runtime','linux-x64')
+    await mkdir(bundle,{recursive:true});await writeFile(join(bundle,'llama-server'),'fake-runtime')
+    await writeFile(join(bundle,'dsh-runtime-manifest.json'),JSON.stringify({schema:1,version:__test.RUNTIME.version,platform:'linux-x64',sha256:__test.RUNTIME.assets['linux-x64'].sha256,binary:'llama-server'}))
+    const signals=new Map()
+    const manager=createEmbeddingRuntimeManager({dataDir:join(root,'state'),packageRoot,platform:'linux',arch:'x64',logger:{warn(){}},fetchImpl:async(url,{signal})=>{signals.set(url.includes('Embedding')?'embedding':'vision',signal);return new Promise((_,reject)=>{if(signal.aborted)reject(signal.reason);else signal.addEventListener('abort',()=>reject(signal.reason),{once:true})})}})
+    const embedding=manager.install();embedding.catch(()=>{});const vision=manager.runVision('install','qwen3.5-2b');vision.catch(()=>{});
+    try{for(let i=0;i<150&&signals.size!==2;i++)await new Promise(r=>setTimeout(r,10));assert.equal(signals.size,2);manager.cancelInstall();await assert.rejects(embedding);assert.equal(signals.get('vision').aborted,false);assert.equal((await manager.visionStatus()).visionBusy,true)}finally{manager.cancelInstall();manager.cancelVision();await Promise.allSettled([embedding,vision])}
+    assert.equal(manager.status().progress.phase,'cancelled');assert.equal((await manager.visionStatus()).progress.phase,'cancelled')
   }finally{await rm(root,{recursive:true,force:true})}
 })
 

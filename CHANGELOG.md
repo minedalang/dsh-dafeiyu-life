@@ -13,6 +13,13 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.92 · 本地模型并行准备与冷恢复（第一批）
+
+- Embedding 与内置视觉独立下载，合用单一运行时安装任务；取消单方不取消另一方，识图测试、删除与导入仍排他。
+- 平台首次引导允许已开始的语义模型后台准备时继续视频设置；最终完成仍要求实际模型及索引就绪。管理中心共用后端进度，提示先完成 V2 分盘，检测常用 Ollama 安装位置但不切换原配置。
+- V2 模型专项冷恢复仅接纳大小、SHA-256 均符合固定清单的完整内置视觉权重/投影对；不恢复残片、运行时或其他业务数据。
+- 内置视觉仍为原图试验，生产路由、GPU 与 Windows 实机验收待完成；不声称已实现正式视觉接线。
+
 ## 2.8.3-dev.91 · 内置视觉模型接入 V2 大型数据（非生产视觉）
 
 - 固定 Qwen 2B/4B 的 GGUF 与 mmproj 纳入现有 V2 路径、预检、离线复制、回读校验及原件保留；旧 V1 和核心目录可作迁移来源。

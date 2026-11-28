@@ -8,7 +8,7 @@ import {storageDataPath,storageDomainRoot,migrateDomainOffline,storageLayoutStat
 import {inspectStorageTarget} from '../lib/storage-location.mjs'
 import {readWhisperReadiness} from '../lib/video-dependencies.mjs'
 import {createEmbeddingRuntimeManager} from '../lib/embedding-runtime-manager.mjs'
-import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,inspectModelRecovery,recoverSnapshotModels,rollbackSplitColdRestore} from '../lib/cold-state-snapshot.mjs'
+import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,inspectModelRecovery,recoverSnapshotModels,rollbackSplitColdRestore,selectModelInventory} from '../lib/cold-state-snapshot.mjs'
 import {spawnSync} from 'node:child_process'
 import {probeCoreMediaPython} from '../lib/storage-large-data-v2.mjs'
 const fixture=fn=>{const t=mkdtempSync(join(tmpdir(),'dsh-v2-')),root=join(t,'bili-duty');mkdirSync(root);try{fn({t,root,at:(...x)=>join(root,...x)})}finally{rmSync(t,{recursive:true,force:true})}}
@@ -305,3 +305,14 @@ test('V2 refuses a native vision source file link, without reading foreign data'
  assert.throws(()=>inspectLargeDataMigration({root,target:join(tmp,'target')}),/符号链接/)
  assert.equal(largeDataStatus(root).configured,false)
 }))
+
+test('dev.92 cold model-only inventory admits only complete pinned GGUF/mmproj pairs',async()=>{
+ const {LLAMA_VISION_MODELS}=await import('../lib/llama-vision-catalog.mjs');const model=LLAMA_VISION_MODELS[0];
+ const prefix='vision-models/'+model.id+'/',files=[model.weights,model.mmproj].map(a=>({path:prefix+a.file,bytes:a.bytes,sha256:a.sha256}));
+ const dirs=[{path:'vision-models'},{path:prefix.slice(0,-1)},{path:'unrelated'}];
+ const part={files:[...files,{...files[0],path:files[0].path+'.part'},{path:prefix+'unknown.gguf',bytes:1,sha256:'x'}],dirs};
+ assert.deepEqual(selectModelInventory(part),{files,dirs:dirs.slice(0,2)});
+ assert.throws(()=>selectModelInventory({files:[files[0]],dirs}),/没有可恢复/);
+ assert.throws(()=>selectModelInventory({files:[files[0],{...files[1],sha256:'0'.repeat(64)}],dirs}),/没有可恢复/);
+ assert.throws(()=>selectModelInventory({files:[files[0],{...files[1],bytes:1}],dirs}),/没有可恢复/);
+})

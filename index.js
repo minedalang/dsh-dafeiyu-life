@@ -150,7 +150,7 @@ import {buildVideoPerceptionHandoff,projectVideoModelView,projectVideoTodoModelV
 import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview,diagnoseVideoFocusReceipt} from './lib/video-focus-review.mjs'
 import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from './lib/video-owner-focus-debug.mjs'
 import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
-import {ensureOllamaService,createOllamaHealthProbe,checkOllamaVideoReadiness} from './lib/ollama-service.mjs'
+import {ensureOllamaService,createOllamaHealthProbe,checkOllamaVideoReadiness,ollamaExecutable,ollamaDesktopExecutable} from './lib/ollama-service.mjs'
 import {explainVideoVisionFailure} from './lib/video-visual-failure.mjs'
 import {ASR_MODELS,probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
 import {listWhisperModels,deleteWhisperModel} from './lib/whisper-model-cache.mjs'
@@ -7478,7 +7478,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(current.target!==managedModelStorage.target||current.verifiedAt!==managedModelStorage.verifiedAt)throw Error('大型模型位置已变化，请完整重启 DSH')
     },logger:{warn:m=>log('本地语义运行时：'+m)}})
   embeddingIndex=createEmbeddingMemoryIndex({dataDir:stateDir,provider:embeddingRuntime,logger:{warn:m=>log('本地语义索引：'+m)}})
-  ctx.effect(()=>()=>{embeddingRuntime?.cancelVision();embeddingRuntime?.stop()},'bili-duty: 本地 Embedding Runtime 关闭')
+  ctx.effect(()=>()=>{embeddingRuntime?.cancelVision();embeddingRuntime?.cancelInstall();embeddingRuntime?.stop()},'bili-duty: 本地 Embedding Runtime 关闭')
   personalityEvolution=createPersonalityEvolution({dataDir:stateDir,memoryGateway:lifeMemory,logger:{warn:m=>log('人格成长：'+m)}})
   // Only NEW installations default to growth enabled. Explicit existing off remains off.
   if(!existsSync(join(stateDir,'personality-evolution','v1.json')))try{personalityEvolution.setEnabled(true)}catch(e){log('初始化人格成长设置失败：'+String(e?.message||e))}
@@ -11345,7 +11345,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     if(req.method==='GET'&&path==='/api/bili-duty/local-vision/status'){
       const current=await localVisionModels.list()
       const localProbe=await ollamaHealth.inspect(cfg.visionLocalModel||'qwen3.5-2b',current)
-      return sendJson(res,200,{...current,portConflict:localProbe?.state==='port-conflict',active:cfg.visionMode==='independent_local'?cfg.visionLocalModel:'',visionEnabled:cfg.visionEnabled===true})
+      return sendJson(res,200,{...current,installationDetected:Boolean(current.running||ollamaExecutable()!=='ollama'||(process.platform==='win32'&&ollamaDesktopExecutable())),portConflict:localProbe?.state==='port-conflict',active:cfg.visionMode==='independent_local'?cfg.visionLocalModel:'',visionEnabled:cfg.visionEnabled===true})
     }
     if(req.method==='POST'&&['/api/bili-duty/local-vision/install','/api/bili-duty/local-vision/cancel','/api/bili-duty/local-vision/select','/api/bili-duty/local-vision/verify','/api/bili-duty/local-vision/review','/api/bili-duty/local-vision/delete'].includes(path)){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
@@ -11402,7 +11402,7 @@ logger:{warn:m=>log('社交意图：'+m)}
       const data=await readBody(req,1024),id=String(data?.model||'')
       // No arbitrary URL, path, model or generation options from the browser.
       let state;try{state=await embeddingRuntime.visionStatus()}catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
-      if(!state.supported||!state.models.some(x=>x.id===id)||state.busy)return sendJson(res,409,{ok:false,error:'不支持的模型、平台或已有视觉任务进行中'})
+      if(!state.supported||!state.models.some(x=>x.id===id)||(path.endsWith('/verify')?state.verifyBusy:state.busy))return sendJson(res,409,{ok:false,error:'不支持的模型、平台或已有视觉任务进行中'})
       let job;try{job=embeddingRuntime.runVision(path.endsWith('/install')?'install':'verify',id)}catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
       // Async job status is the only success source; a 202 is not installation/verification.
       void job.catch(error=>log('内置视觉试验未完成：'+String(error?.message||error).slice(0,130)))
@@ -11418,7 +11418,8 @@ logger:{warn:m=>log('社交意图：'+m)}
         return sendJson(res,403,{ok:false,error:'本地语义模型管理只允许电脑端管理中心同源操作'})
       let releaseMaintenance=null
       try{
-        if(['/install','/delete','/import-model'].some(action=>path.endsWith(action)))releaseMaintenance=embeddingRuntime.beginEmbeddingMaintenance()
+        if(['/delete','/import-model','/disable'].some(action=>path.endsWith(action)))releaseMaintenance=embeddingRuntime.beginEmbeddingMaintenance()
+        if(path.endsWith('/install'))releaseMaintenance=embeddingRuntime.reserveEmbeddingInstall()
         if(path.endsWith('/install')){
           const status=await embeddingRuntime.inspect()
           if(!status.supported)return sendJson(res,409,{ok:false,error:'当前操作系统和 CPU 架构暂不支持自动安装本地 Embedding Runtime'})
@@ -11432,7 +11433,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           return sendJson(res,202,{ok:true,started:true,enabled:true})
         }
         if(path.endsWith('/disable')){
-          await persistCfg({mainSessionMemoryEmbeddingEnabled:false});await embeddingRuntime.stopAndWait()
+          await persistCfg({mainSessionMemoryEmbeddingEnabled:false});await embeddingRuntime.cancelInstallAndWait();await embeddingRuntime.stopAndWait()
           return sendJson(res,200,{ok:true,enabled:false,keptModel:true,keptIndex:true})
         }
         if(path.endsWith('/cancel'))return sendJson(res,200,{ok:true,cancelled:embeddingRuntime.cancelInstall()})

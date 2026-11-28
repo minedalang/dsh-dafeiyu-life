@@ -47,6 +47,7 @@ test('真实模拟打开模型页刷新时不会因缺失 DOM 的 checked 属性
     getBoundingClientRect(){return {top:0,height:0,width:0}}
     getClientRects(){return []}
     setAttribute(){}
+    removeAttribute(){}
   }
   for(const id of htmlIds){const e=new Element();e.id=id;Object.assign(e.style,{setProperty(){},removeProperty(){}})}
   const document={getElementById:id=>registry.get(id)||null,createElement:()=>new Element(),querySelectorAll:()=>[],querySelector:()=>new Element(),addEventListener(){}}
@@ -54,7 +55,7 @@ test('真实模拟打开模型页刷新时不会因缺失 DOM 的 checked 属性
   const caps={platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true}
   const onboarding={ok:true,localMemoryReady:true,requiredReady:true,welcomeCompleted:true,completed:true,quickSetupSeen:true,welcomeSeen:true,biliVerified:true,headlessVerified:true,capabilities:{ok:true,available:true,restartRequired:false,active:caps,requested:caps}}
   const fetch=async(path,options={})=>{fetchCalls.push({path,options});return {ok:true,status:200,json:async()=>path.endsWith('/onboarding/status')?onboarding:({ok:true,localVerified:true,config:{visionEnabled:true,visionDebug:true,visionMode:'auto',mainSessionMemoryModelId:'retriever',mainSessionReflectionModelProvider:'reflect-provider',mainSessionReflectionModelId:'reflect-model',mainSessionReflectionReasoningEffort:'high'}})}}
-  runInNewContext(script,{document,window:{addEventListener(){},scrollY:0,innerHeight:800,matchMedia:()=>({matches:false})},fetch,console,setTimeout:(fn,ms)=>{const timer=setTimeout(fn,ms);if(ms>1000)timer.unref();return timer},clearTimeout,requestAnimationFrame:fn=>setTimeout(()=>fn(Date.now()),0),cancelAnimationFrame:clearTimeout,getComputedStyle:()=>({top:"0",marginTop:"0"}),confirm:()=>true,Date,URL,Blob,TextDecoder,Uint8Array}, {timeout:1500})
+  runInNewContext(script,{document,window:{addEventListener(){},scrollY:0,innerHeight:800,matchMedia:()=>({matches:false})},fetch,console,setTimeout:(fn,ms)=>{const timer=setTimeout(fn,ms);if(ms>1000)timer.unref();return timer},clearTimeout,setInterval:(fn,ms)=>{const timer=setInterval(fn,ms);timer.unref();return timer},clearInterval,requestAnimationFrame:fn=>setTimeout(()=>fn(Date.now()),0),cancelAnimationFrame:clearTimeout,getComputedStyle:()=>({top:"0",marginTop:"0"}),confirm:()=>true,Date,URL,Blob,TextDecoder,Uint8Array}, {timeout:1500})
   const refresh=listeners.get('models-refresh:click');assert.equal(typeof refresh,'function')
   refresh()
   await new Promise(resolve=>setTimeout(resolve,15))

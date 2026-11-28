@@ -130,7 +130,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   }
   const policy=js.slice(js.indexOf('  const capabilityKeys='),js.indexOf('  const skipFirstStart='));
   const production=js.slice(begin,end).replace(/const mountWizardPage=stage=>\{[\s\S]*?\r?\n  \};\r?\n  const renderSetupGuide=/,'const mountWizardPage=stage=>{wizardMounted=stage};\n  const renderSetupGuide=');
-  const render=runInNewContext(policy+production+'\n({renderFirstStart,getStep:()=>wizardMounted,setDefaultDone:()=>{wizardDefaultDone=true;renderSetupGuide(onboarding)},setRuntimeReady:value=>{setupMainReady=value;renderSetupGuide(onboarding)},setQuickOptions:value=>{quickOptions=value;renderSetupGuide(onboarding)},setStep:value=>{rememberWizard(value);renderSetupGuide(onboarding)}})',context)
+  const render=runInNewContext(policy+production+'\n({renderFirstStart,getStep:()=>wizardMounted,setDefaultDone:()=>{wizardDefaultDone=true;renderSetupGuide(onboarding)},setRuntimeReady:value=>{setupMainReady=value;renderSetupGuide(onboarding)},setQuickOptions:value=>{quickOptions=value;renderSetupGuide(onboarding)},setStep:value=>{rememberWizard(value);renderSetupGuide(onboarding)},setEmbeddingPreparing:value=>{embeddingPreparing=value;renderSetupGuide(onboarding)}})',context)
   const show=state=>{render.renderFirstStart(state);return element('fs-warning')}
   const old={ok:true,welcomeCompleted:true,completed:true,requiredReady:true,quickSetupSeen:false,
     biliVerified:true,headlessVerified:true,hasCredential:true,missing:[],skipped:[],localMemoryReady:true,capabilities:{ok:true,available:true,active:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},requested:{platform:true,autonomous:true,persona:true,automaticMemory:true,bridge:true},revision:0,restartRequired:false}}
@@ -170,6 +170,7 @@ test('顶部提示栏按三种真实用户状态展示正确动作，不让新�
   assert.equal(element('fs-guide-count').textContent,'3 / 3 必要项就绪')
   const afterCore={...fresh,welcomeCompleted:true,completed:true,guideRequired:true,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]};
   render.setStep('embedding');show(afterCore);assert.equal(render.getStep(),'embedding');assert.equal(element('fs-wizard-skip').hidden,true);assert.equal(element('fs-wizard-continue').disabled,true);
+  render.setEmbeddingPreparing(true);assert.equal(element('fs-wizard-continue').disabled,false,'允许真实后台准备期间继续');render.setEmbeddingPreparing(false);assert.equal(element('fs-wizard-continue').disabled,true,'安装停止或失败不能冒充就绪');
   context.localEmbeddingEnabled=true;show(afterCore);assert.equal(element('fs-wizard-continue').disabled,false);assert.equal(element('fs-wizard-skip').hidden,true);
   render.setStep('');show({...fresh,requiredReady:true,biliVerified:true,headlessVerified:true,missing:[]});
   show({...fresh,requiredReady:false,biliVerified:true,headlessVerified:true})
