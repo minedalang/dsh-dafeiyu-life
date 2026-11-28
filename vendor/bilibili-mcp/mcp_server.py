@@ -1720,7 +1720,8 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                         'focus_start':focus['startSeconds'] if focus else None,
                         'focus_end':focus['endSeconds'] if focus else None,'view_depth':view_depth,
                         'network_budget_bytes':budget_override,'frame_budget_limit':frames_override,
-                        'debug_capture':capture_for_debug is True or capture_for_gallery is True})
+                        'debug_capture':capture_for_debug is True or capture_for_gallery is True,
+                        'manual_debug':capture_for_debug is True})
                     try:
                         run=subprocess.run([vision_python,str(script),'--describe-stdin','--home',str(_DUTY_HOME)],
                             input=request,encoding='utf8',stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
@@ -1738,7 +1739,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                 result=await asyncio.to_thread(describe_with_dsh,bvid,_DUTY_HOME,perception_source=perception_source,
                     focus_start=focus['startSeconds'] if focus else None,focus_end=focus['endSeconds'] if focus else None,view_depth=view_depth,
                     network_budget_bytes=budget_override,frame_budget_limit=frames_override,
-                    debug_capture=capture_for_debug is True or capture_for_gallery is True)
+                    debug_capture=capture_for_debug is True or capture_for_gallery is True,manual_debug=capture_for_debug is True)
             _record_production_vision_attempt(result, 'independent_dsh', os.environ.get('BILI_VISION_DSH_MODEL', ''), capture_for_debug)
             record_vision_event(_DUTY_HOME,bvid,result.get('status','vision_error'),
                                 source='independent_dsh_result',ok=result.get('ok'),
@@ -1768,6 +1769,9 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                     if proof_path.parent == (_DUTY_HOME/'vision-proof').resolve() and re.fullmatch(r'[a-f0-9]{32}\.json',proof_path.name):
                         proof_path.write_text(json.dumps({'bvid':bvid,'times':result['times'],
                             'sampling':result.get('sampling'),'ocr':result.get('ocr'),'focus_window':focus,
+                            'boardLayouts':[{'rank':i,'tile_times':f.get('tile_times',[f['second']]),
+                                'grid_cols':f.get('grid_cols',1),'grid_rows':f.get('grid_rows',1),
+                                'tile_count':f.get('tile_count',1)} for i,f in enumerate(frames)],
                             'perception_source_requested':perception_source,'view_depth':view_depth,
                             'image_source':result.get('image_source'),
                             'adaptive_fallback':result.get('adaptive_fallback'),
@@ -1775,7 +1779,7 @@ async def bili_preview_vision(bvid: str, focus_start_seconds: float = -1.0, focu
                 except OSError: pass
             blocks = [TextContent(type='text', text=json.dumps(result,ensure_ascii=False))]
             for i,frame in enumerate(frames):
-                blocks.append(TextContent(type='text',text=f'视频分镜图 {i+1}/{len(frames)}：采样时刻 {frame.get("tile_times",[frame["second"]])} 秒（来源：{result.get("image_source")}）'))
+                blocks.append(TextContent(type='text',text=f'视频分镜图 {i+1}/{len(frames)}：采样时刻 {frame.get("tile_times",[frame["second"]])} 秒；布局 {frame.get("grid_rows",1)} 行 × {frame.get("grid_cols",1)} 列，实际 {frame.get("tile_count",1)} 格（来源：{result.get("image_source")}）'))
                 blocks.append(ImageContent(type='image', mimeType='image/jpeg',
                                            data=base64.b64encode(frame['bytes']).decode('ascii')))
             return CallToolResult(content=blocks)

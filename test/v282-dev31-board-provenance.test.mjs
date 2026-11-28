@@ -101,3 +101,30 @@ test('incomplete board carries only exact partial cells to transient handoff, ne
   const bad=structuredClone(v);mutate(bad);assert.deepEqual(handoff(bad).handoff.video.partialCellObservations,[])
  }
 })
+
+
+test('complete first board of incomplete modern batch contributes only transient exact cells',()=>{
+ const v=make();v.status='vision_incomplete';v.error='incomplete';delete v.description
+ v.sampling={...v.sampling,sampler_version:14,tiles_per_storyboard:12}
+ const clock=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`
+ v.visionBoardReceipts[0].gridCols=4
+ v.visionBoardReceipts[0].description=times.slice(0,12).map((t,i)=>`R${Math.floor(i/4)+1}C${i%4+1} [${clock(t)}]：可见鸟。`).join('\n')
+ v.visionBoardReceipts[1]={index:2,status:'incomplete',times:times.slice(12),gridCols:4}
+ const {evidence,handoff:h}=handoff(v)
+ assert.equal(evidence.sources.some(s=>s.kind==='preview_visual_analysis'),false)
+ assert.equal(h.video.partialCellObservations.length,12)
+ assert.equal(h.video.partialCellObservations[11].atMs,131000)
+ assert.equal(h.video.modelDescription,'');assert.deepEqual(h.video.observations,[])
+ const bad=structuredClone(v);bad.visionBoardReceipts[0].description=bad.visionBoardReceipts[0].description.replace('[00:10]','[00:25]')
+ assert.deepEqual(handoff(bad).handoff.video.partialCellObservations,[])
+})
+
+test('DSH and local modern full board receipts use identical evidence handoff',()=>{
+ const v=make();v.sampling={...v.sampling,sampler_version:14,tiles_per_storyboard:12}
+ v.visionBoardReceipts=v.visionBoardReceipts.map(r=>({...r,inferencePath:'dsh-independent'}))
+ const {evidence,handoff:h}=handoff(v)
+ assert.ok(evidence.sources.some(s=>s.kind==='preview_visual_analysis'))
+ assert.equal(h.video.boardInterpretations.length,2)
+ delete v.visionBoardReceipts
+ assert.equal(handoff(v).evidence.sources.some(s=>s.kind==='preview_visual_analysis'),false)
+})

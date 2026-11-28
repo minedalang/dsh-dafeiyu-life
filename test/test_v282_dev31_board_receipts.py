@@ -39,18 +39,17 @@ class PerBoardVision(unittest.TestCase):
         class Reply:
             def __enter__(self):return self
             def __exit__(self,*_):pass
-            def __init__(self,board):self.board=board
-            def read(self,n):return json.dumps({'message':{'content':f'分镜图{self.board["rank"]+1}：\n'+cells(self.board)},'done':True,'done_reason':'stop'}).encode()
+            def __init__(self,group):self.group=group
+            def read(self,n):return json.dumps({'message':{'content':'\n'.join(f'## 分镜图 {b["rank"]+1}：\n'+cells(b) for b in self.group)},'done':True,'done_reason':'stop'}).encode()
         class Opener:
             def open(self,req,timeout=None):
                 data=json.loads(req.data)
                 assert '采样时刻由程序绑定' in data['messages'][0]['content']
                 assert 'R1C1=[' not in data['messages'][0]['content']
-                assert len(data['messages'][0]['images'])==1
+                assert len(data['messages'][0]['images'])==2
                 import base64
-                jpg=base64.b64decode(data['messages'][0]['images'][0])
-                board=next(b for b in boards if b['bytes']==jpg)
-                return Reply(board)
+                group=[next(b for b in boards if b['bytes']==base64.b64decode(jpg)) for jpg in data['messages'][0]['images']]
+                return Reply(group)
         with patch('urllib.request.build_opener',return_value=Opener()):
             text,receipts=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
         self.assertEqual([r['status'] for r in receipts],['analyzed','analyzed'])
@@ -68,7 +67,7 @@ class PerBoardVision(unittest.TestCase):
         invalid=[good.splitlines()[0],good.replace('R1C2','R1C1'),good.replace('R1C2','R2C1'),
                  good.replace('看到一只鸟。','[00:14]：看到一只鸟。'),
                  good.replace('R1C1：','R1C1 [00:14]：').replace('R1C2：','R1C2 [00:10]：'),
-                 good.replace('R1C1：','R1C1 [00:10]：'),good+'\n视觉记忆摘要：R3C3 可见。']
+                 good.replace('R1C1：','R1C1 [00:11]：'),good+'\n视觉记忆摘要：R3C3 可见。']
         for raw in invalid:
             with self.subTest(raw=raw),patch.object(pv,'_call_local_ollama',return_value=raw) as work:
                 text,receipts=pv._analyze_local_storyboards([b],'qwen3.5:2b')
@@ -272,28 +271,45 @@ class PerBoardVision(unittest.TestCase):
             raise pv.VisionServiceError('ollama_connection_failed','服务连接中断')
         with patch.object(pv,'_call_local_ollama',side_effect=infer) as worker:
             _,reports=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
-        self.assertEqual(worker.call_count,1,'a broken service cannot be fixed by retrying the next board')
-        self.assertEqual([r['modelAttempts'] for r in reports],[1,0])
-        self.assertEqual(reports[1]['errorCode'],'ollama_connection_failed')
-        self.assertTrue(reports[1]['skippedAfterFailure'])
+        self.assertEqual(worker.call_count,2,'one malformed batch and one failed repair; no subsequent model call')
+        self.assertEqual([r['modelAttempts'] for r in reports],[2,1])
+        self.assertNotEqual(reports[1]['status'],'analyzed')
         self.assertEqual(reports[0]['errorCode'],'ollama_connection_failed')
 
-    def test_qwen2b_48_frames_independent_and_no_retry(self):
+    def test_qwen2b_48_frames_paired_with_only_failed_board_repaired(self):
         boards=[{'rank':i,'second':i*12,'bytes':bytes([65+i]),'tile_count':12,
                  'tile_times':list(range(i*12,i*12+12)),'grid_cols':4,'grid_rows':3} for i in range(4)]
         calls=[]
-        def infer(group,model):
-            self.assertEqual(len(group),1)
-            board=group[0];calls.append(board['rank'])
-            if board['rank']==1:return 'R1C1：游戏界面出现倒计时01:30。'
+        def cells(b):
+            if b['rank']==1:return 'R1C1：游戏界面出现倒计时01:30。'
             return '\n'.join(f'R{j//4+1}C{j%4+1}：屏幕显示12:45，提示等待10秒。' for j in range(12))
+        def infer(group,model):
+            calls.append([b['rank'] for b in group])
+            return '\n'.join(f'分镜图 {b["rank"]+1}：\n{cells(b)}' for b in group)
         with patch.object(pv,'_call_local_ollama',side_effect=infer):
             text,reports=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
-        self.assertEqual(calls,[0,1,2,3])
+        self.assertEqual(calls,[[0,1],[1],[2,3]])
         self.assertEqual([r['status'] for r in reports],['analyzed','incomplete','analyzed','analyzed'])
-        self.assertEqual([r['modelAttempts'] for r in reports],[1]*4)
+        self.assertEqual([r['modelAttempts'] for r in reports],[1,2,1,1])
         self.assertEqual(reports[1]['partialCells'][0]['time'],12)
         self.assertIn('屏幕显示12:45',text)
+
+    def test_presentation_variants_mixed_clocks_and_explicit_unknown(self):
+        b={'rank':0,'second':11,'tile_times':[11,16,22],'grid_cols':3,'grid_rows':1}
+        raw='以下是画面观察：\n## 分镜图 1：画面如下\n- **R1 C1** [00:11]：白底。\n可见黄色文字。\nR1C2：鸟类图案。\nR1C3：未识别。\n**视觉记忆摘要：**鸟类图片。'
+        with patch.object(pv,'_call_local_ollama',return_value=raw):
+            _,reports=pv._analyze_local_storyboards([b],'qwen3.5:2b')
+        r=reports[0];self.assertEqual(r['status'],'incomplete')
+        self.assertEqual(r['parseDiagnostics']['unknownCells'],1)
+        self.assertEqual(r['parseDiagnostics']['missingCellIndices'],[3])
+        self.assertEqual(len(r['partialCells']),2)
+        self.assertIn('可见黄色文字',r['partialCells'][0]['description'])
+        good=raw.replace('未识别。','树叶。')
+        with patch.object(pv,'_call_local_ollama',return_value=good):
+            _,r=pv._analyze_local_storyboards([b],'qwen3.5:4b')
+        self.assertEqual(r[0]['status'],'analyzed')
+        for bad in (good.replace('[00:11]','[00:16]'),good.replace('R1C3：','R1C2：'),good.replace('R1C3：','R9C9：')):
+            self.assertIsNone(pv._normalize_board_cells(bad,b))
 
     def test_visible_clocks_are_not_sample_anchors_but_wrong_structural_time_is(self):
         b={'rank':1,'second':207,'tile_times':[207,241],'grid_cols':2,'grid_rows':1,'tile_count':2,'bytes':b'jpeg'}
@@ -516,3 +532,14 @@ class PerBoardVision(unittest.TestCase):
         self.assertFalse(pv._local_board_time_valid('R2C2 [01:06] 在楼梯附近。',[65.4]))
 
 if __name__=='__main__':unittest.main()
+
+
+def test_raw_model_answer_only_in_isolated_owner_debug():
+    b={'rank':0,'second':11,'tile_times':[11,16],'grid_cols':2,'grid_rows':1}
+    raw='R1 C1：可见鸟类图片。\nR1 C2：未识别。'
+    for flag in ('0','1'):
+        with patch.dict(os.environ,{'DSH_OWNER_VIDEO_DEBUG_STAGE':flag}),patch.object(pv,'_owner_debug_deadline',return_value=None),patch.object(pv,'_call_local_ollama',return_value=raw):
+            _,r=pv._analyze_local_storyboards([b],'qwen3.5:2b')
+        assert ('debugRawAttempts' in r[0])==(flag=='1')
+        if flag=='1':assert r[0]['debugRawAttempts'][0]['text']==raw
+        assert r[0]['status']=='incomplete'

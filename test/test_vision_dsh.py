@@ -398,3 +398,44 @@ def test_dsh_migrated_cache_permission_failure_does_not_discard_visual_receipt(t
     assert saver.call_args.args[0].parent==tmp_path/'modelData'/'vision-cache'
     # Read-only evidence is not silently persisted to the old C-drive root.
     assert not (tmp_path/'vision-cache').exists()
+
+
+def test_dsh_multiline_final_body_and_sampled_review_candidates():
+    text='旧工具日志\nVISION_DESC: 旧回答\nVISION_DESC:\n画面中有黄色鸟。\n下一幅有绿色叶子。\n复查候选：[00:35] 画面中角色位置有变化。\n视觉记忆摘要：绿色叶子与黄色鸟的采样观察。'
+    body,candidates,summary=module._extract_final_vision_description(text)
+    assert body=='画面中有黄色鸟。\n下一幅有绿色叶子。'
+    assert len(candidates)==len(summary)==1
+    assert module._extract_final_vision_description('VISION_DESC:\n视觉记忆摘要：只有摘要没有画面观察正文。')[0]==''
+
+
+def test_dsh_real_layout_two_board_receipts_share_parser_and_cache(tmp_path):
+    env=configured(tmp_path);times=[11,16,22,28,51,57,92,120,131,166,172,189,207,241,264,282,299,317,340,357,392,398,427,432]
+    proof={'bvid':'BV1234567890','times':times,'sampling':{'sampler_version':14,'strategy':'videoshot-storyboard-stratified','storyboard_count':2,'frames_selected':24,'tiles_per_storyboard':12},
+           'boardLayouts':[{'rank':i,'tile_times':times[i*12:(i+1)*12],'grid_cols':4,'grid_rows':3,'tile_count':12} for i in range(2)]}
+    raw='VISION_DESC:\n'+'\n'.join(f'## 分镜图 {b+1}：画面如下\n'+'\n'.join(f'R{i//4+1} C{i%4+1}：可见鸟类图片和屏幕文字。' for i in range(12)) for b in range(2))
+    def runner(args,**kw):
+        Path(kw['env']['BILI_VISION_PROOF_FILE']).write_text(json.dumps(proof),encoding='utf8')
+        return SimpleNamespace(returncode=0,stdout=raw.encode(),stderr=b'')
+    with patch('preview_vision._record_vision_attempt',return_value=True):
+        out=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=runner)
+    assert out['status']=='analyzed' and out['cacheSaved']
+    assert [r['status'] for r in out['visionBoardReceipts']]==['analyzed','analyzed']
+    assert 'R1C1 [03:27]' in out['visionBoardReceipts'][1]['description']
+    with patch('preview_vision._record_vision_attempt',side_effect=AssertionError('cache should skip request')):
+        cached=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=lambda *a,**kw:1/0)
+    assert cached['status']=='cached' and cached['visionBoardReceipts']==out['visionBoardReceipts']
+    with patch('preview_vision._record_vision_attempt',return_value=True),patch('preview_vision._save_vision_cache') as save:
+        debug=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=runner,manual_debug=True)
+        assert debug['status']=='analyzed' and debug['cacheSaved'] is False
+        save.assert_not_called()
+    # An incomplete second board keeps the complete first board but must not overwrite a cache.
+    raw=raw.rsplit('R3 C4：可见鸟类图片和屏幕文字。',1)[0]+'R3 C4：未识别。'
+    with patch('preview_vision._record_vision_attempt',return_value=True),patch('preview_vision._save_vision_cache') as save:
+        incomplete=module.describe_with_dsh('BV1234567890',tmp_path,env=env,runner=runner,debug_capture=True)
+    assert incomplete['status']=='vision_incomplete' and 'description' not in incomplete
+    assert [r['status'] for r in incomplete['visionBoardReceipts']]==['analyzed','incomplete']
+    assert len(incomplete['visionBoardReceipts'][1]['partialCells'])==11
+    save.assert_not_called()
+    # A free-form overview, wrong identity or unavailable layout is never invented as a complete board.
+    for bad_proof,bad_raw in [(proof,'VISION_DESC:\n第一张分镜展示了鸟类插图。'),({**proof,'boardLayouts':[]},raw),({**proof,'times':list(reversed(times))},raw)]:
+        reports,complete=module._dsh_board_receipts(bad_proof,module._extract_final_vision_description(bad_raw)[0]);assert not complete

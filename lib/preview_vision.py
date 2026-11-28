@@ -656,6 +656,7 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
                                      'outputTokens':int(data.get('eval_count') or 0),
                                      'predictBudget':predict,'thinkingMode':mode}
         answer=data.get('message',{}).get('content','')
+        if os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE')=='1' and isinstance(answer,str):frames[0]['_debug_raw_answer']=answer
         if not isinstance(answer,str) or not answer.strip():
             if board_mode and data.get('done_reason') in ('length','max_tokens'):
                 raise ValueError('生成额度被耗尽，但没有可用画面描述（可能消耗在思考输出）；请尝试关闭思考、缩短描述或检查Ollama版本')
@@ -665,11 +666,11 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
                 raise ValueError('分镜描述因生成长度限制而中断，不视为完成')
             if not _local_board_response_complete(answer):
                 raise ValueError('分镜描述在时间条目中途截断，不视为完成')
-            if len(frames)==1:
+            if len(frames)==1 and not frames[0].get('_retain_partial_board'):
                 answer=_bind_local_board_clocks(answer,frames[0])
             if len(frames)==1 and not frames[0].get('_retain_partial_board') and not _local_board_grid_valid(answer,frames[0]):
                 raise ValueError('分镜描述未逐格覆盖，或引用了不存在的行列格，不视为完成')
-            if len(frames)==1 and not _local_board_time_valid(answer,frames[0]['tile_times']):
+            if len(frames)==1 and not frames[0].get('_retain_partial_board') and not _local_board_time_valid(answer,frames[0]['tile_times']):
                 raise ValueError('分镜描述引用了本张图片没有的时间点，不视为对齐')
         if len(answer)>16000*len(frames):raise ValueError('分镜描述超过安全文本长度上限，不视为完整')
         mark('response-validated')
@@ -713,26 +714,33 @@ def _vision_board_error_code(exc):
     return 'vision_board_unclassified'
 
 
+# Only explicit board identifiers bind a model answer to an input image.
+# Markdown decoration and harmless whitespace are presentation, not provenance.
+_BOARD_HEADER = re.compile(r'(?mi)^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?分镜图[ \t]*([1-9][0-9]?)(?:\*\*)?[ \t]*[：:](?:\*\*)?[ \t]*([^\r\n]*)$')
+_CELL_ID = re.compile(r'(?<![A-Za-z0-9])R[ \t]*(\d{1,2})[ \t]*C[ \t]*(\d{1,2})(?!\d)',re.I)
+_CELL_LINE = re.compile(r'^[ \t]*(?:[-*][ \t]+|[0-9]{1,2}[.)][ \t]+)?(?:\*\*)?R[ \t]*(\d{1,2})[ \t]*C[ \t]*(\d{1,2})(?:\*\*)?[ \t]*(?:\[([0-9]{1,3}):([0-5][0-9])\])?(?:\*\*)?(?:[ \t]*[：:][ \t]*|[ \t]+)(.*)$',re.I)
+_SUMMARY_LINE = re.compile(r'^(?:#{1,6}[ \t]*)?(?:\*\*)?视觉记忆摘要(?:\*\*)?[：:](?:\*\*)?[ \t]*(.*)$')
+_UNKNOWN_CELL = frozenset(('未完成','未识别','未观察','无描述','看不清','无法识别','无法辨认','未知'))
+
+
 def _split_storyboard_batch(response, boards):
-    """Only unambiguous, ordered, line-anchored headers separate batch receipts."""
+    """Split by explicit unique, ordered board headers; never infer by position."""
     response=_unwrap_board_fence(response)
-    headers=list(re.finditer(r'(?m)^[ \t]*(?:\*\*)?分镜图([1-9][0-9]?)[ \t]*[：:](?:\*\*)?[ \t]*$',response))
+    headers=list(_BOARD_HEADER.finditer(response))
     expected=[int(board.get('rank',i))+1 for i,board in enumerate(boards)]
     if len(headers)!=len(boards) or [int(h.group(1)) for h in headers]!=expected:
         raise ValueError('批量分镜标题缺失或重复，不能明确归属')
+    # A preamble with a cell ID is not harmless: it is an unbound observation.
+    if _CELL_ID.search(response[:headers[0].start()]):
+        raise ValueError('批量分镜标题前存在未归属格号')
     chunks=[]
     for i,h in enumerate(headers):
         end=headers[i+1].start() if i+1<len(headers) else len(response)
-        chunk=response[h.end():end].strip()
+        # Inline heading text is permitted, but never drop an inline cell.
+        chunk=(h[2]+'\n'+response[h.end():end]).strip()
         if not chunk:raise ValueError('批量分镜描述不完整')
         chunks.append(chunk)
     return chunks
-
-
-# Normalize presentation only. Never infer a missing ID or change a model's
-# explicitly supplied timestamp. Partial rows are diagnostics, not a full receipt.
-_CELL_ONLY_LINE = re.compile(r'^[ \t]*(?:[-*][ \t]+|[0-9]{1,2}[.)][ \t]+)?(?:\*\*)?R(\d{1,2})C(\d{1,2})(?:\*\*)?[ \t]*[：:][ \t]*(\S.*)$',re.I)
-_SUMMARY_LINE = re.compile(r'^视觉记忆摘要[：:][ \t]*(\S.*)$')
 
 
 def _unwrap_board_fence(answer):
@@ -742,52 +750,66 @@ def _unwrap_board_fence(answer):
     return match[1] if match else text
 
 
-def _normalize_board_cells(answer, board):
-    """Return unambiguous cell rows, or None on conflicting provenance.
+def _normalize_board_cells(answer, board, diagnostic=None):
+    """Canonicalize explicit cell IDs, not inferred ones; keep partial evidence.
 
-    Explicitly timed and untimed protocols remain separate. Unknown/duplicate
-    IDs, foreign times, extra free-form text and mixed protocols fail closed.
+    Unknown/duplicate IDs and explicit wrong timestamps fail closed. Allow
+    mixed timed/untimed rows only when every supplied timestamp is correct.
+    Presentation-only lines cannot create an observation. Diagnostics contain
+    counts and fixed reason codes, never model prose.
     """
-    if not isinstance(answer,str) or len(answer)>16000:return None
+    def reject(reason):
+        if diagnostic is not None:diagnostic['reason']=reason
+        return None
+    if not isinstance(answer,str) or len(answer)>16000:return reject('invalid-length')
     answer=_unwrap_board_fence(answer)
     times=list(board.get('tile_times') or [])
     cols=int(board.get('grid_cols') or 4)
-    if not times or cols<1 or not _local_board_time_valid(answer,times):return None
-    heading=re.match(r'^(?:\*\*)?分镜图([1-9][0-9]?)[ \t]*[：:](?:\*\*)?[ \t]*\r?\n',answer)
-    if heading:
-        if int(heading[1])!=int(board.get('rank',0))+1:return None
-        answer=answer[heading.end():]
-    rows={}
-    summary=None
-    protocol=None
-    for row,col in re.findall(r'(?<![A-Za-z0-9])R(\d{1,2})C(\d{1,2})(?!\d)',answer,re.I):
+    if diagnostic is not None:diagnostic.update(expectedCells=len(times),parsedCells=0,unknownCells=0)
+    if not times or cols<1 or not _local_board_time_valid(answer,times):return reject('sample-time-mismatch')
+    headers=list(_BOARD_HEADER.finditer(answer))
+    if headers:
+        if len(headers)!=1 or int(headers[0][1])!=int(board.get('rank',0))+1 or _CELL_ID.search(answer[:headers[0].start()]):return reject('board-identity-mismatch')
+        h=headers[0];answer=h[2]+'\n'+answer[h.end():]
+    for row,col in _CELL_ID.findall(answer):
         r,c=int(row),int(col)
-        if r<1 or not 1<=c<=cols or (r-1)*cols+c>len(times):return None
+        if r<1 or not 1<=c<=cols or (r-1)*cols+c>len(times):return reject('unknown-cell-id')
+    # Keep structured rows separate from optional preamble and summary.
+    raw_rows={};summary=None;current=None
     for line in answer.splitlines():
         line=line.strip()
         if not line:continue
         match=_SUMMARY_LINE.fullmatch(line)
-        if match and summary is None and rows:
-            summary='视觉记忆摘要：'+match[1]
-            continue
-        if summary is not None:return None
-        timed=_BOARD_OBSERVATION_LINE.fullmatch(line)
-        cell=_CELL_ONLY_LINE.fullmatch(line) if not timed else None
-        if not (timed or cell):return None
-        m=timed or cell
-        row,col=int(m[1]),int(m[2])
-        idx=(row-1)*cols+col-1
-        if row<1 or not 1<=col<=cols or not 0<=idx<len(times) or idx in rows:return None
-        mode='timed' if timed else 'cell'
-        if protocol is not None and protocol!=mode:return None
-        protocol=mode
-        if timed and int(timed[3])*60+int(timed[4])!=int(float(times[idx])):return None
-        body=(timed[5] if timed else cell[3]).strip()
-        if not timed and re.match(r'^(?:\[[0-9]{1,3}:[0-5][0-9]\]|[0-9]{1,5}(?:\.[0-9]+)?\s*秒)\s*[：:]',body):return None
-        if not body or body.rstrip('。.!！') in ('未完成','未识别','未观察','无描述'):return None
-        rows[idx]=f'R{row}C{col} [{_board_clock(times[idx])}]：{body}'
+        if match:
+            if summary is not None or not raw_rows:return reject('unexpected-summary')
+            summary=match[1];current=None;continue
+        m=_CELL_LINE.fullmatch(line)
+        if m:
+            if summary is not None:return reject('cell-after-summary')
+            row,col=int(m[1]),int(m[2]);idx=(row-1)*cols+col-1
+            if row<1 or not 1<=col<=cols or not 0<=idx<len(times) or idx in raw_rows:return reject('duplicate-or-unknown-cell')
+            if m[3] is not None and int(m[3])*60+int(m[4])!=int(float(times[idx])):return reject('sample-time-mismatch')
+            body=m[5].strip()
+            # Never reinterpret an explicit but malformed time as visual prose.
+            if re.match(r'^(?:\[\d{1,3}:\d{1,2}\]|[0-9]{1,5}(?:\.[0-9]+)?\s*秒)\s*[：:]',body):return reject('sample-time-mismatch')
+            raw_rows[idx]=[body];current=idx;continue
+        # A malformed cell header must not be absorbed as prose by a previous row.
+        if re.match(r'^(?:[-*#0-9.)]+[ \t]*)*(?:\*\*)?R[ \t]*\d',line,re.I) or re.match(r'^(?:#{1,6}\s*)?(?:\*\*)?分镜图\s*\d',line):return reject('ambiguous-structure')
+        if summary is not None:
+            summary+=' '+line
+        elif current is not None:
+            raw_rows[current].append(line)
+        elif _CELL_ID.search(line):return reject('unbound-cell-id')
+        # Other leading text is a preamble, not evidence.
+    rows={};unknown=0
+    for idx,parts in raw_rows.items():
+        body=' '.join(part for part in parts if part).strip()
+        if not body or body.rstrip('。.!！；; ') in _UNKNOWN_CELL:
+            unknown+=1;continue
+        rows[idx]=f'R{idx//cols+1}C{idx%cols+1} [{_board_clock(times[idx])}]：{body}'
+    if diagnostic is not None:diagnostic.update(parsedCells=len(rows),unknownCells=unknown,reason='complete' if len(rows)==len(times) else 'missing-or-unknown-cells',missingCellIndices=[i+1 for i in range(len(times)) if i not in rows])
     if not rows:return None
-    return rows,summary
+    return rows,('视觉记忆摘要：'+summary.strip() if summary and summary.strip() else None)
 
 
 def _bind_local_board_clocks(answer, board):
@@ -822,6 +844,26 @@ def _local_board_cell_times_valid(answer, board):
     return True
 
 
+def _parse_board_receipt(description,board):
+    """Common receipt parser for Ollama, DSH and offline replay."""
+    diagnostic={'expectedCells':len(board.get('tile_times') or [])}
+    if not _local_board_response_complete(description):
+        diagnostic['reason']='truncated'
+        return {},diagnostic,'vision_board_truncated'
+    normalized=_normalize_board_cells(description,board,diagnostic)
+    if normalized is None:
+        return {},diagnostic,('vision_board_time_mismatch' if diagnostic.get('reason')=='sample-time-mismatch' else 'vision_board_grid_mismatch')
+    rows,summary=normalized
+    times=board.get('tile_times') or []
+    if len(rows)!=len(times):
+        partial=[{'cellIndex':i+1,'time':times[i],'description':rows[i]} for i in sorted(rows)]
+        return {'partialCells':partial},diagnostic,'vision_board_grid_mismatch'
+    canonical='\n'.join([rows[i] for i in sorted(rows)]+([summary] if summary else []))
+    if not _local_board_cell_times_valid(canonical,board):
+        return {},diagnostic,'vision_board_time_mismatch'
+    return {'status':'analyzed','description':canonical},diagnostic,None
+
+
 def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
     """Verify each sampled board; selectively recover malformed replies without relaxing proof."""
     deadline=time.monotonic()+540
@@ -840,32 +882,25 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
         board=frames[idx]
         receipt=reports[idx]
         if model_receipt:receipt.update(model_receipt)
-        try:
-            description=_bind_local_board_clocks(description,board)
-            if not _local_board_response_complete(description):
-                raise ValueError('分镜描述不完整')
-            if not _local_board_time_valid(description,receipt['times']):
-                raise ValueError('分镜描述引用未采样时间点')
-            if not _local_board_grid_valid(description,board):
-                raise ValueError('分镜描述未逐格覆盖或引用了不存在的行列')
-            if not _local_board_cell_times_valid(description,board):
-                raise ValueError('逐格时间码与实际采样时间点不匹配')
-            if _normalize_board_cells(description,board) is None:
-                raise ValueError('分镜格号或结构存在歧义')
-            receipt.update(status='analyzed',description=description,inferencePath=path)
+        parsed,diagnostic,error_code=_parse_board_receipt(description,board)
+        if error_code is None or len(parsed.get('partialCells',[]))>=len(receipt.get('partialCells',[])):
+            receipt['parseDiagnostics']=diagnostic
+        if error_code is None:
+            receipt.update(parsed,inferencePath=path)
             receipt.pop('partialCells',None)
             receipt.pop('error',None)
             receipt.pop('errorCode',None)
             _owner_debug_ollama('board-verified',attempt)
-        except ValueError as exc:
-            partial=_partial_board_cells(description,board)
+        else:
+            partial=parsed.get('partialCells',[])
             if len(partial)>len(receipt.get('partialCells',[])):
                 receipt['partialCells']=partial
-            fail(idx,exc,attempt)
+            fail(idx,VisionServiceError(error_code,'分镜解析未完成'),attempt)
 
     def fail(idx,exc,attempt=0):
         receipt=reports[idx]
         receipt['errorCode']=_vision_board_error_code(exc)
+        if not receipt.get('parseDiagnostics'):receipt['parseDiagnostics']={'expectedCells':len(receipt['times']),'reason':receipt['errorCode']}
         _owner_debug_ollama('board-invalid',attempt,receipt['errorCode'])
         # Safe, fixed descriptions only: never serialize exception content or
         # a model reply in diagnostic error fields.
@@ -892,11 +927,13 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
     terminal_codes=frozenset(('ollama_request_timeout','ollama_service_offline',
         'ollama_model_missing','ollama_connection_failed','ollama_http_error'))
     terminal_error=None
-    # Qwen3.5 2B has repeatedly failed multi-image structure in real 24-frame
-    # observations. Bind one request to one board for this model across ALL
-    # callers. Other models keep their bounded paired optimization. No retry
-    # of an individual board; the same deadline and per-request caps apply.
-    batch_size=1 if model=='qwen3.5:2b' else 2
+    def debug_raw(idx,answer,indices,path):
+        if os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE')!='1' or not isinstance(answer,str):return
+        reports[idx].setdefault('debugRawAttempts',[]).append({'path':path,'boardIndices':indices,
+            'text':answer[:32000],'truncated':len(answer)>32000})
+    # Shared paired strategy for all models. A bounded single-board repair
+    # follows only malformed/incomplete batches; no model-name inference.
+    batch_size=2
     for start in range(0,len(frames),batch_size):
         if terminal_error is not None:
             for i in range(start,min(start+batch_size,len(frames))):
@@ -911,10 +948,12 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
             try:
                 combined=(_call_local_ollama(current,model,image_source=image_source)
                           if image_source!="B站低清预览" else _call_local_ollama(current,model))
+                debug_raw(start,current[0].pop('_debug_raw_answer',combined),list(range(start+1,start+len(batch)+1)),'paired')
                 chunks=_split_storyboard_batch(combined,batch)
                 for offset,chunk in enumerate(chunks):
                     validate(start+offset,chunk,'paired',current[0].get('_model_receipt'),current[0].get('_debug_attempt_id',0))
             except Exception as exc:
+                debug_raw(start,current[0].pop('_debug_raw_answer',None),list(range(start+1,start+len(batch)+1)),'paired')
                 for i in range(start,start+len(batch)):
                     if reports[i]['status']!='analyzed':fail(i,exc,current[0].get('_debug_attempt_id',0))
                 if isinstance(exc,VisionServiceError) and exc.code in terminal_codes:
@@ -938,8 +977,10 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
             try:
                 text=(_call_local_ollama([current],model,image_source=image_source)
                       if image_source!="B站低清预览" else _call_local_ollama([current],model))
+                debug_raw(i,current.pop('_debug_raw_answer',text),[i+1],'single-recovery' if len(batch)>1 else 'single')
                 validate(i,text,'single-recovery' if len(batch)>1 else 'single',current.get('_model_receipt'),current.get('_debug_attempt_id',0))
             except Exception as exc:
+                debug_raw(i,current.pop('_debug_raw_answer',None),[i+1],'single-recovery' if len(batch)>1 else 'single')
                 fail(i,exc,current.get('_debug_attempt_id',0))
                 if isinstance(exc,VisionServiceError) and exc.code in terminal_codes:
                     terminal_error=exc
@@ -1346,7 +1387,7 @@ def _analyze_preview_core(bvid, home, *, enabled=None, debug=None, max_frames=No
         if debug and os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE') == '1':
             return answer
         code=_save_vision_cache(cache,{'model':model,'provider':provider,'frames_limit':max_frames,'board_tiles':board_tiles,'local_thinking':local_thinking,'sampler_version':sampler_version,'times':answer['times'],'sampling':sampling,'focus_window':focus,'network_budget_override':network_budget_bytes,'description':description,
-            'visionBoardReceipts':answer.get('visionBoardReceipts',[])})
+            'visionBoardReceipts':[{k:v for k,v in r.items() if k!='debugRawAttempts'} for r in answer.get('visionBoardReceipts',[])]})
         _mark_cache_write_result(answer,code)
         return answer
     except Exception as e:
@@ -1604,7 +1645,7 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     if debug and os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE') == '1':
         return result
     record={'model':model,'provider':provider,'frames_limit':max_frames,
-            'vision_receipt_version':1,'visionBoardReceipts':result.get('visionBoardReceipts',[]),
+            'vision_receipt_version':1,'visionBoardReceipts':[{k:v for k,v in r.items() if k!='debugRawAttempts'} for r in result.get('visionBoardReceipts',[])],
             'sampler_version':8,'view_depth':view_depth,'times':result['times'],'description':result['description'],
             'sampling':result['sampling'],'ocr':result.get('ocr'),'focus_window':focus,
             'image_source':result['image_source'],'network_budget_override':network_budget_bytes,
