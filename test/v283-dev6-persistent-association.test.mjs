@@ -232,9 +232,9 @@ test('immediate recall prioritizes a live reviewed endpoint in existing reflecti
 async function reviewedPairFixture(x,decide,{config={},clock=NOW}={}){
  const other=watch(6,'雨后的城市街道与路灯倒影');x.g.recordEvents([other])
  const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getEpisodeCandidates:o=>x.g.semanticCandidates(o),getEpisodes:(q,o)=>x.g.recall({query:q,...o}),getVisualExperiences:o=>x.g.recentVisualExperienceContext(o),getVisualDetailCandidates:o=>x.g.visualDetailCandidates(o),getAssociations:o=>x.g.associationCandidates(o),validateAssociationPath:o=>x.g.validateAssociationPath(o)})
- let at=clock,epoch=0,tag=A,calls=0,insights=0,moods=0,traits=0
+ let at=clock,epoch=0,hostEpoch=0,tag=A,calls=0,insights=0,moods=0,traits=0
  const settings={...cfg,...config},tracker=createNeuralActivationTracker({getAccountTag:()=>tag,getEpoch:()=>epoch,validateRecall:o=>retriever.validateContextualVisualRecall(o),validateImmediate:o=>retriever.validateImmediateRecall(o),now:()=>at})
- const life=createLifeReflection({dataDir:x.dir,getConfig:()=>settings,getAccountTag:()=>tag,memoryGateway:x.g,now:()=>at,commitMemories:()=>{insights++;return {added:0,rows:[]}},onEmotion:()=>{moods++},getPersonalityEnabled:()=>true,onPersonalityObservations:()=>{traits++},getAssociationHints:()=>tracker.reflectionHints(tag),claimAssociationHint:(t,h)=>tracker.claimReflectionHint(t,h),validateAssociationClaim:c=>tracker.validateReflectionClaim(c),invokeModel:async prompt=>{calls++;if(!prompt.includes('【旧记忆联想评估】'))return JSON.stringify({memories:[]});const rows=JSON.parse(prompt.split('<association_history>')[1].split('</association_history>')[0]);assert.equal(rows.length,2);return decide(rows,{switchAwayAndBack:()=>{epoch+=2},settings,life})},logger:{warn(){}}})
+ const life=createLifeReflection({dataDir:x.dir,getConfig:()=>settings,getAccountTag:()=>tag,getAccountEpoch:()=>hostEpoch,memoryGateway:x.g,now:()=>at,commitMemories:()=>{insights++;return {added:0,rows:[]}},onEmotion:()=>{moods++},getPersonalityEnabled:()=>true,onPersonalityObservations:()=>{traits++},getAssociationHints:()=>tracker.reflectionHints(tag),claimAssociationHint:(t,h)=>tracker.claimReflectionHint(t,h),validateAssociationClaim:c=>tracker.validateReflectionClaim(c),invokeModel:async prompt=>{calls++;if(!prompt.includes('【旧记忆联想评估】'))return JSON.stringify({memories:[]});const rows=JSON.parse(prompt.split('<association_history>')[1].split('</association_history>')[0]);assert.equal(rows.length,2);return decide(rows,{switchAwayAndBack:()=>{epoch+=2},changeHostEpoch:()=>{hostEpoch+=2},settings,life})},logger:{warn(){}}})
  life.addEvents([events[0],other]);assert.equal((await life.reflect({force:true})).ok,true)
  const recall=async()=>{const rows=await retriever.contextualVisualRecall({accountTag:A,bvids:[bv(1)],limit:2,associate:true,recentFallback:false});assert.equal(rows[1]?.bvid,bv(6));return tracker.record({accountTag:A,rows})}
  assert.equal(await recall(),true)
@@ -583,4 +583,9 @@ test('ordinary owner recall strengthens only a delivered original quote in a com
  start();await recall();finish(title);assert.equal(quotes,1);assert.equal(x.g.status().health.eventsByDay.reduce((n,r)=>n+r.reinforcedByQuote,0),1)
  finish(title);assert.equal(quotes,1,'one use per turn')
  }finally{session.stop()}
+}))
+
+
+test('dev99 old relation discards stale malformed model response on host epoch change independently of tracker',()=>setup(async x=>{
+ const f=await reviewedPairFixture(x,(_rows,ctx)=>{ctx.changeHostEpoch();return 'invalid stale response'});const r=await f.life.reflect({force:true});assert.equal(r.skipped,'association-source-changed');assert.equal(x.g.status().associations.active,0);assert.equal(f.life.status().failedRunsToday,0);assert.deepEqual(f.counts(),{calls:2,insights:1,moods:0,traits:1})
 }))

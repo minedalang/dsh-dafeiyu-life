@@ -75,3 +75,11 @@ test('dev80 production DM registration passes work authority only from claimed t
  assert.match(body,/resolve\(\)\.uid===target\.uid/)
  assert.match(body,/dmFetch\(cred,uid,limit,\{readBudget:biliReadBudget\}\)/)
 })
+
+
+test('dev99 real registrations refuse unbound manual sends and cancelled registered reads without I/O',async()=>{
+ const x=setup();try{const by=Object.fromEntries(x.registered.map(t=>[t.name,t]));const exec={agent:{id:'not-bound'}}
+ for(const [name,args] of [['bili_video_collect_manual',{bvid:BV,folder_title:'旅行'}],['bili_follow_creator_manual',{bvid:BV}],['bili_unfollow_creator_manual',{uid:123}]]){const r=await by[name].execute({...args,confirm:true},exec);assert.equal(r.ok,false,name);assert.equal(r.needsConfirmation,true,name);assert.match(r.error,/真实主人会话/)}
+ const ac=new AbortController();ac.abort();const r=await by.bili_search.execute({keyword:'test'},{...exec,signal:ac.signal});assert.equal(r.ok,false);assert.equal(r.reason,'life-read-scope-changed')
+ }finally{rmSync(x.home,{recursive:true,force:true})}
+})

@@ -340,3 +340,11 @@ for(const scenario of ['generation','disable','mode'])test('dev57 primary model 
   invokeModel:async()=>{calls++;if(scenario==='generation')generation++;if(scenario==='disable')enabled=false;if(scenario==='mode')mode='shadow';return JSON.stringify({action:'execute_read',id:TODO.id})},executeRead:async()=>{reads++;return {ok:true}},updateTodo:async()=>{reads++},reflect:async()=>({ok:true}),settleLifeEvents:()=>{settled++},recordLifeDecision:()=>{decisions++}})
  const out=await planner.tick();assert.equal(out.ok,false);assert.equal(out.result,'decision-scope-changed');assert.equal(out.diagnosticCode,scenario==='generation'?'life-account-changed':'life-decision-scope-changed');assert.equal(calls,1);assert.equal(reads,0);assert.equal(settled,0);assert.equal(decisions,0);assert.equal(planner.status().runs,1)
 }))
+
+
+test('dev99 shared registered read suppresses stale errors but preserves live failures',async()=>{
+ const {executeRegisteredLifeRead}=await import('../lib/life-agent-read-runtime.mjs');let current=true
+ const run=read=>executeRegisteredLifeRead({scene:'main-session',actions:['bili_search'],isCurrent:()=>current,read})
+ await assert.rejects(run(async()=>{throw Error('live failure')}),/live failure/)
+ assert.deepEqual(await run(async()=>{current=false;throw Error('old private provider error')}),{ok:false,reason:'life-read-scope-changed'})
+})

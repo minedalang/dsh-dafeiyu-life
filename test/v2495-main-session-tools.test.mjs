@@ -350,6 +350,9 @@ test('dev70 shared privacy turn: DM, recall, todo and gallery cannot re-vote aft
  turn(4);let releaseRead,enteredRead;const reading=new Promise(r=>enteredRead=r);blockRead=()=>{enteredRead();return new Promise(r=>releaseRead=r)}
  const stale=recall.execute({query:'另一个主题'});await reading;turn(5);releaseRead();const discarded=await stale;assert.equal(discarded.ok,false);assert.doesNotMatch(JSON.stringify(discarded),/私人记忆/);blockRead=null
  assert.equal((await dm()).ok,true)
+ // The actual mounted read also discards the response when the host cancels.
+ turn(6);const controller=new AbortController();let done,enteredAbort;const readingAbort=new Promise(r=>enteredAbort=r);blockRead=()=>{enteredAbort();return new Promise(r=>done=r)}
+ const cancelled=recall.execute({query:'需要取消的经历'},{signal:controller.signal});await readingAbort;controller.abort();done();const denied=await cancelled;assert.equal(denied.ok,false);assert.doesNotMatch(JSON.stringify(denied),/私人记忆/);blockRead=null
 })
 
 
@@ -416,4 +419,16 @@ test('dev82 authenticated DM clarification carries previous utterance only, no a
  epoch++;const other=turn('我是长条动物');assert.equal(other.previousDmRequest,'');other.rememberDmClarification();end()
  assert.equal(turn('注入内容','plugin:test'),null)
  const final=turn('后续真实输入');assert.equal(final.previousDmRequest,'');final.rememberDmClarification();end();ownerUid='43';assert.equal(turn('另一个主人').previousDmRequest,'')
+})
+
+
+test('dev99 actual owner claim cannot be recaptured after owner binding or account generation changes',t=>{
+ const home=mkdtempSync(join(tmpdir(),'dev99-owner-')),listeners=new Map();let epoch=1,ownerUid='42',n=0
+ const agent={id:'owner99',sessionId:'owner99',session:{snapshotEvents:()=>[]},ctx:{on(k,f){listeners.set(k,f);return ()=>listeners.delete(k)},tools:{register(){return ()=>{}}},systemPrompt:{section(){return ()=>{}},context(){return ()=>{}}}}}
+ const memory=createLongTermMemory({dataDir:home,dshHome:home,agents:{get:()=>agent,list:()=>[agent]},getConfig:()=>({mainSessionId:'owner99',dmOwnerUid:ownerUid}),defineTool:x=>x,captureRecallObservation:()=>({accountTag:'a'.repeat(16),epoch}),logger:{warn(){}}})
+ t.after(()=>{memory.stop();rmSync(home,{recursive:true,force:true})});memory.start()
+ const turn=content=>{const message={role:'user',content};listeners.get('agent/inbox/inserted')?.({message});listeners.get('agent/inbox/claimed')?.({message,turn:++n});return memory.capturePrivateRead(agent)}
+ const first=turn('看看这段经历');assert.ok(first());epoch+=2;assert.equal(first(),false);assert.equal(memory.capturePrivateRead(agent),null)
+ const second=turn('再看看其他记忆');assert.ok(second());ownerUid='43';assert.equal(second(),false);assert.equal(memory.capturePrivateRead(agent),null);assert.equal(second.claim({tool:'bili_read_dm',uid:'43'}),false)
+ const third=turn('新的交流');assert.ok(third());assert.equal(memory.capturePrivateRead({id:agent.id}),null);assert.equal(third.claim({tool:'bili_read_dm',uid:'43'}),true);third.settle(true)
 })
