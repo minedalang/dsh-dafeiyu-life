@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,rmSync} from 'node:fs'
+import {mkdtempSync,rmSync,readFileSync} from 'node:fs'
+import {runInNewContext} from 'node:vm'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createLifeSharedBiliLinks} from '../lib/life-shared-bili-links.mjs'
@@ -132,7 +133,7 @@ test('宿主实际读取门禁的源码契约：只读原帖且保持账号、�
   assert.doesNotMatch(part,/executeSharedDynamicWrite|bili_dynamic_like_life|bili_dynamic_comment_life/)
 })
 
-import {sharedVideoTargetAllowed,projectSharedVideoObservation,sharedLinkTurnRows} from '../lib/shared-video-observation.mjs'
+import {sharedVideoTargetAllowed,projectSharedVideoObservation,sharedVideoReadFailure,sharedLinkTurnRows} from '../lib/shared-video-observation.mjs'
 test('only trusted same-account inspected share permits actual video observation; metadata is not visual evidence',()=>{
  const bvid='BV1rV1FzYEbP',row={senderUid:UID,status:'inspected',resolvedKind:'video',evidenceLevel:'video-metadata-only',bvid}
  const input={row,uid:UID,role:'owner',scope:SCOPE,currentScope:SCOPE,enabled:true,permitted:true,offered:true}
@@ -176,4 +177,56 @@ test('owner shared video returns precise safe vision failure alongside real spee
  assert.equal(projectSharedVideoObservation(result,'BV1234567890').visualFailure,undefined)
  let prompts=[],reads=0;const b=make({invoke:async prompt=>{prompts.push(prompt);return prompts.length===1?reply({contextRequests:['shared_video']}):reply({reply:'时间码未通过，只有字幕',messages:['时间码未通过，只有字幕']})},loadRequestedContexts:async()=>{reads++;return [{sharedVideoContext:JSON.stringify(observed)}]}})
  try{const r=await b.generate({kind:'dm',uid:UID,role:'owner',text:'看看画面',socialAutonomy:true,availableContexts:['shared_video']});assert.equal(r.action,'reply');assert.equal(reads,1);assert.match(prompts[1],/vision_board_time_mismatch/);assert.match(prompts[1],/真实字幕/);assert.doesNotMatch(prompts[1],/private model raw/)}finally{b.stop()}
+})
+
+
+test('shared observation distinguishes preflight, tool failure and rejected final evidence without claiming a watch',()=>{
+ const bvid='BV1rV1FzYEbP',result={ok:true,bvid,viewDepth:'standard',info:{duration:30},
+  videoEvidence:{schema:'life-video-evidence/v1',bvid,verifiedContent:true,sources:[{kind:'subtitle',status:'verified'}]},
+  perceptionHandoff:{schema:'life-video-perception-handoff/v1',bvid,speech:{source:'official-subtitles',textExcerpt:'真实字幕'}}}
+ for(const [patch,status,stage] of [
+  [{visionDecision:'vision-disabled',visual:{status:'未启用视觉'}},'vision-not-ready','preflight'],
+  [{visual:{ok:false,status:'vision_model_unavailable'}},'vision-not-ready','preflight'],
+  [{visual:{ok:false,error:'PRIVATE RAW EXCEPTION'}},'visual-read-failed','read'],
+  [{visual:{ok:true,status:'analyzed',description:'UNVERIFIED MODEL TEXT'}},'visual-read-unverified','evidence'],
+  [{visual:{ok:true,status:'cached'}},'visual-read-unverified','evidence'],
+  [{visual:{ok:false,status:'no_images_confirmed'}},'visual-read-unverified','evidence']]){
+  const observed=projectSharedVideoObservation({...result,...patch},bvid)
+  assert.equal(observed.visualObserved,false);assert.equal(observed.speechAvailable,true)
+  assert.equal(observed.visualFailure.status,status);assert.equal(observed.visualFailure.stage,stage)
+  assert.equal(observed.visualDescription,undefined);assert.doesNotMatch(JSON.stringify(observed),/PRIVATE RAW|UNVERIFIED MODEL/)
+ }
+ for(const [reason,status] of [['video-visual-busy','life-vision-resource-unavailable'],['resource-deferred','life-vision-resource-unavailable'],['authorization-changed','authorization-changed'],['PRIVATE RAW EXCEPTION','visual-read-failed']]){
+  const observed=sharedVideoReadFailure(reason)
+  assert.equal(observed.verified,false);assert.equal(observed.visualObserved,false);assert.equal(observed.speechAvailable,false)
+  assert.equal(observed.visualFailure.status,status);assert.doesNotMatch(JSON.stringify(observed),/PRIVATE RAW/)
+ }
+})
+
+// Exercise the actual host dispatch/trace path, not only its projection helper.
+test('production shared video dispatch settles failed lease and revoked account without exposing results',async()=>{
+ const source=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ const start=source.indexOf('  const readSharedVideoObservation=async(input)=>{')
+ const stop=source.indexOf('  const socialRhythm=',start)
+ assert.ok(start>=0&&stop>start)
+ for(const scenario of ['busy','revoked','throw','success']){
+  const bvid='BV1rV1FzYEbP',row={id:'a'.repeat(24),bvid},steps=[];let generation=1,calls=0,finished=null
+  const verified={ok:true,bvid,viewDepth:'standard',info:{duration:30},visual:{ok:true,status:'analyzed'},
+   videoEvidence:{schema:'life-video-evidence/v1',bvid,verifiedContent:true,sources:[{kind:'preview_visual_analysis',status:'analyzed',timePointsMs:[0,1000]}]},
+   perceptionHandoff:{schema:'life-video-perception-handoff/v1',bvid,video:{source:'low-resolution-preview',frameCount:2,frameTimesMs:[0,1000],modelDescription:'ACTUAL VERIFIED FRAME'}}}
+  const ctx={trustedLifeAccountTag:()=>SCOPE,accountBinding:{generation:()=>generation},getSessionIntegration:()=>({mode:'active',revision:1}),
+   lifeSharedBiliLinks:{get:()=>row},currentSharedVideoTarget:()=>true,stateDir:'/not-used',
+   lifeDecisionTrace:{begin:()=>({step:(type,fields)=>steps.push({type,...fields}),finish:r=>{finished=r}})},
+   lifeResourceScheduler:{run:async(_opts,fn)=>{if(scenario==='throw')throw Error('PRIVATE RAW');return fn()}},
+   withLifeVideoVisualLease:async(_dir,_target,fn)=>scenario==='busy'?{ok:false,reason:'video-visual-busy'}:fn(),
+   executeWatchVideo:async()=>{calls++;if(scenario==='revoked')generation++;return verified},
+   projectSharedVideoObservation,sharedVideoReadFailure,sharedLinkReadDeferral:()=>({code:'resource-deferred'}),
+   lifeAgentEvents:{recordDecision:()=>{}},log:()=>{}}
+  runInNewContext(source.slice(start,stop)+'\nglobalThis.run=readSharedVideoObservation',ctx)
+  const observed=await ctx.run({uid:UID,sharedLinkScope:SCOPE,sharedLinkId:row.id})
+  const receipt=steps.find(x=>x.type==='execution-result');assert.ok(receipt);assert.equal(finished.state,'finished')
+  assert.equal(calls,['busy','throw'].includes(scenario)?0:1)
+  if(scenario==='success'){assert.equal(observed.visualObserved,true);assert.equal(receipt.result,'verified')}
+  else{assert.equal(observed.visualObserved,false);assert.equal(receipt.result,'failed');assert.equal(receipt.visualStatus,scenario==='revoked'?'authorization-changed':'life-vision-resource-unavailable');assert.doesNotMatch(JSON.stringify(observed),/ACTUAL VERIFIED FRAME|PRIVATE RAW/)}
+ }
 })

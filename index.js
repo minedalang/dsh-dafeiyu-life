@@ -6,7 +6,7 @@ import {projectLifeGrowthAttribution} from './lib/life-growth-attribution.mjs'
 import {projectLifeGrowthAudit} from './lib/life-growth-audit.mjs'
 import { judgeVideoHeat } from './lib/video-heat.mjs'
 import {projectLifeSettings} from './lib/life-settings-projection.mjs'
-import {sharedVideoTargetAllowed,projectSharedVideoObservation,sharedLinkTurnRows} from './lib/shared-video-observation.mjs'
+import {sharedVideoTargetAllowed,projectSharedVideoObservation,sharedVideoReadFailure,sharedLinkTurnRows} from './lib/shared-video-observation.mjs'
 import {runtimeControls,planRuntimeControl,interactionRepliesAllowed,isReplyDispatch} from './lib/runtime-controls.mjs'
 import {readRuntimeLogs} from './lib/runtime-log-view.mjs'
 import {appendRuntimeLog,pruneRuntimeLogs,RUNTIME_LOG_RETENTION} from './lib/runtime-log-retention.mjs'
@@ -5040,8 +5040,16 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         if(!current())return {ok:false,reason:'authorization-changed'}
         return executeWatchVideo({bvid:row.bvid,record_session:false,include_comments:false,include_danmaku:false,view_depth:'standard',explorationPurpose:'shared-video-observation'},{lifeChoiceVerified:true,sharedLinkId:row.id,readCurrent:current,galleryReadCurrent:()=>current()&&socialPolicyGate.actor(input.uid).role==='owner'})
       }))
-      observed=current()?projectSharedVideoObservation(result,row.bvid):{verified:false,reason:'authorization-changed'}
-    }catch{observed={verified:false,reason:'video-observation-unavailable'}}
+      if(!current())observed=sharedVideoReadFailure('authorization-changed')
+      else if(result?.ok!==true)observed=sharedVideoReadFailure(result?.reason)
+      else{
+        observed=projectSharedVideoObservation(result,row.bvid)
+        if(!observed.verified&&!observed.visualFailure)observed=sharedVideoReadFailure('video-read-unavailable')
+      }
+    }catch(e){
+      let valid=false;try{valid=current()}catch{}
+      observed=sharedVideoReadFailure(valid?sharedLinkReadDeferral(e)?.code:'authorization-changed')
+    }
     const code=observed.visualObserved?(observed.visualEvidenceKind==='cached'?'shared-video-cached-observation':'shared-video-visual-observed'):observed.speechAvailable?'shared-video-speech-read':'shared-video-no-evidence'
     try{
       const failure=observed.visualFailure

@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {runInNewContext} from 'node:vm'
+import {explainVideoVisionFailure} from '../lib/video-visual-failure.mjs'
 
 // Execute the actual production function body against fully mocked, read-only
 // tool receipts. A text-only / regex assertion cannot detect a block-scoped
@@ -21,7 +22,7 @@ function mockWatch({vision=true,dryRun=true}={}){
   const ctx={
     cfg:{masterEnabled:true,visionEnabled:vision,transcribe:false},
     videoDebugJob:currentJob,videoDebugExpiry:1800000,lastLifeVideoDebug:null,stateDir:'/tmp/stub',
-    lastLifeVisionActivity:null,readProductionVisionStatus:()=>null,
+    lastLifeVisionActivity:null,readProductionVisionStatus:()=>null,explainVideoVisionFailure,
     videoDebugAccount:()=> 'owner',trustedLifeAccountTag:()=> 'account-tag',refreshCfg:()=>{},
     hasCredential:()=>true,validBv:x=>x===bv,
     call:async(name,args)=>{
