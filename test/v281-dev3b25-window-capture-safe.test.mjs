@@ -11,6 +11,16 @@ test('window trace records only visible console PID/process/class/visibility wit
  assert.doesNotMatch(script,/GetWindowText/);assert.doesNotMatch(script,/CommandLine/);assert.doesNotMatch(script,/GetCommandLine/)
 })
 
+test('window trace records bounded Ollama endpoint and startup classifications without raw startup commands',()=>{
+ assert.match(script,/ollama-endpoints\.json/)
+ assert.match(script,/Get-NetTCPConnection -State Listen.*LocalPort -eq 11434/)
+ assert.match(script,/127\.0\.0\.1','\[::1\]'/)
+ assert.match(script,/\$request\.Proxy = \$null; \$request\.AllowAutoRedirect = \$false/)
+ assert.match(script,/Win32_StartupCommand/)
+ assert.match(script,/StartupKinds=\$startup/)
+ assert.doesNotMatch(script,/StartupKinds=\$cmd|GetResponseStream/)
+})
+
 test('long capture keeps early Q export and avoids Ctrl+C cancellation',()=>{
  assert.match(script,/Console\]::KeyAvailable/);assert.match(script,/KeyChar -eq 'q'/i)
  assert.match(script,/manual-q/);assert.match(script,/console-window-events\.csv/)

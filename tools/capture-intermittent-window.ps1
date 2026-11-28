@@ -21,6 +21,44 @@ $windowSeen = @{}
 $lastWindowScan = [DateTime]::MinValue
 $windowScanIntervalMs = 40
 $windowTypeReady = $false
+# Read-only snapshots distinguish a live IPv4 API from IPv6-only or stale
+# listeners. No API body, startup command, environment or path is exported.
+function Get-OllamaSnapshot {
+  $listeners = @(); $listenerState = 'unavailable'
+  try {
+    $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop | Where-Object { $_.LocalPort -eq 11434 } | ForEach-Object {
+      $kind = switch ($_.LocalAddress) { '127.0.0.1' {'ipv4-loopback'} '0.0.0.0' {'ipv4-any'} '::1' {'ipv6-loopback'} '::' {'ipv6-any'} default {'other-address'} }
+      [pscustomobject]@{ AddressKind=$kind; PID=[int]$_.OwningProcess }
+    })
+    $listenerState = 'read'
+  } catch { }
+  $apis = @(foreach ($target in @('127.0.0.1','[::1]')) {
+    $state = 'unavailable'; $response = $null
+    try {
+      $request = [System.Net.HttpWebRequest]::Create(('http://{0}:11434/api/version' -f $target))
+      $request.Proxy = $null; $request.AllowAutoRedirect = $false; $request.Timeout = 1500; $request.ReadWriteTimeout = 1500
+      $response = $request.GetResponse()
+      if ([int]$response.StatusCode -eq 200) { $state = 'http-200' } else { $state = 'other-http' }
+    } catch [System.Net.WebException] {
+      if ($_.Exception.Response) { $state = 'http-error'; $_.Exception.Response.Close() }
+    } catch { } finally { if ($response) { $response.Close() } }
+    [pscustomobject]@{ Target=$target; State=$state }
+  })
+  $startup = @(); $startupState = 'unavailable'
+  try {
+    $startup = @(Get-CimInstance -ClassName Win32_StartupCommand -ErrorAction Stop | ForEach-Object {
+      $cmd = [string]$_.Command
+      if ($cmd -match '(?i)ollama(?: app)?\.exe|\bollama\s+serve\b') {
+        if ($cmd -match '(?i)ollama app\.exe') { 'desktop-app' }
+        elseif ($cmd -match '(?i)\bserve\b') { 'cli-serve' }
+        else { 'ollama-other' }
+      }
+    })
+    $startupState = 'read'
+  } catch { }
+  [pscustomobject]@{ At=(Get-Date).ToString('o'); ListenerState=$listenerState; Listeners=$listeners; Api=$apis; StartupState=$startupState; StartupKinds=$startup }
+}
+$ollamaBefore = Get-OllamaSnapshot
 try {
   # Snapshot existing processes so an already-running parent PID can be named.
   # Only process name, PID and parent PID are collected; no command line or path.
@@ -206,6 +244,8 @@ public static class DafeiyuConsoleWindowEnum {
   if ($registered) { Unregister-Event -SourceIdentifier $source -ErrorAction SilentlyContinue }
 }
 try {
+  $ollamaAfter = Get-OllamaSnapshot
+  @{ Before=$ollamaBefore; After=$ollamaAfter; Note='HTTP 200 is endpoint reachability, not verified model inference. Startup scan is limited to Win32_StartupCommand; snapshots can miss transient listeners.' } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $work 'ollama-endpoints.json') -Encoding UTF8
   $snapshotCsv = Join-Path $work 'process-snapshot.csv'
   if ($processSnapshot.Count -gt 0) {
     foreach ($row in $processSnapshot) {

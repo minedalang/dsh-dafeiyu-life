@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs'
 import {runInNewContext} from 'node:vm'
 import {explainVideoVisionFailure} from '../lib/video-visual-failure.mjs'
 import {diagnoseVideoFocusReceipt} from '../lib/video-focus-review.mjs'
+import {checkOllamaVideoReadiness} from '../lib/ollama-service.mjs'
 
 const read=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 const host=read('index.js')
@@ -67,6 +68,27 @@ test('real server video-debug run route rejects offline Ollama before starting a
   assert.equal(result.value.code,'ollama_service_offline')
   assert.equal(ctx.videoDebugWorkInFlight,false)
   assert.equal(ctx.videoDebugJob,undefined)
+  ctx.checkVideoDebugOllama=async()=>({code:'ollama-port-conflict',error:'multiple listeners'})
+  const conflict=await ctx.go()
+  assert.equal(conflict.status,409);assert.equal(conflict.value.code,'ollama-port-conflict')
+  assert.equal(ctx.videoDebugWorkInFlight,false);assert.equal(ctx.videoDebugJob,undefined)
+})
+
+test('dev.65 manual video preflight refuses known duplicate listeners before model-list side effects',async()=>{
+  let calls=0
+  const base={modelId:'qwen3.5-2b',list:async()=>{calls++;return {running:true,models:[{id:'qwen3.5-2b',installed:true}]}}}
+  const listeners=pids=>({available:true,pids})
+  assert.equal((await checkOllamaVideoReadiness({...base,inspect:async()=>listeners([1,2])})).code,'ollama-port-conflict')
+  assert.equal(calls,0)
+  let checks=0
+  assert.equal((await checkOllamaVideoReadiness({...base,inspect:async()=>listeners(++checks===1?[1]:[1,2])})).code,'ollama-port-conflict')
+  assert.equal(calls,1)
+  assert.equal(await checkOllamaVideoReadiness({...base,inspect:async()=>listeners([1])}),null)
+  assert.equal(await checkOllamaVideoReadiness({...base,inspect:async()=>null}),null)
+  const offline=await checkOllamaVideoReadiness({...base,inspect:async()=>listeners([1]),list:async()=>({running:false})})
+  assert.equal(offline.code,'ollama_service_offline');assert.match(offline.error,/已有监听进程.*127\.0\.0\.1/)
+  const missing=await checkOllamaVideoReadiness({...base,inspect:async()=>listeners([1]),list:async()=>({running:true,models:[]})})
+  assert.equal(missing.code,'ollama_model_missing')
 })
 
 test('management diagnosis shows Ollama outage as service failure, not failed Life evidence review',()=>{
@@ -79,6 +101,6 @@ test('management diagnosis shows Ollama outage as service failure, not failed Li
   assert.doesNotMatch(ui,/模型可能已返回文字，但证据验证器未接受为可靠视觉观察/)
   const routeStart=host.indexOf("      const checkVideoDebugOllama=async()=>{")
   assert.ok(routeStart>0)
-  assert.match(host.slice(routeStart,routeStart+750),/await localVisionModels\.list\(\)/)
+  assert.match(host.slice(routeStart,routeStart+750),/checkOllamaVideoReadiness\(\{modelId:[\s\S]*?list:\(\)=>localVisionModels\.list\(\)/)
   assert.match(host,/visionFailure=explainVideoVisionFailure\(result\?\.visual\)/)
 })

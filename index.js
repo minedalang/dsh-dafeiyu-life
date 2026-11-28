@@ -151,7 +151,7 @@ import {buildVideoPerceptionHandoff} from './lib/video-perception-handoff.mjs'
 import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview,diagnoseVideoFocusReceipt} from './lib/video-focus-review.mjs'
 import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from './lib/video-owner-focus-debug.mjs'
 import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
-import {ensureOllamaService,createOllamaHealthProbe} from './lib/ollama-service.mjs'
+import {ensureOllamaService,createOllamaHealthProbe,checkOllamaVideoReadiness} from './lib/ollama-service.mjs'
 import {explainVideoVisionFailure} from './lib/video-visual-failure.mjs'
 import {ASR_MODELS,probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
 import {listWhisperModels,deleteWhisperModel} from './lib/whisper-model-cache.mjs'
@@ -10003,12 +10003,8 @@ logger:{warn:m=>log('社交意图：'+m)}
       }
       const checkVideoDebugOllama=async()=>{
         if(cfg.visionEnabled!==true||resolvedVisionMode()!=='independent_local')return null
-        const service=await localVisionModels.list()
-        if(!service.running)return {code:'ollama_service_offline',error:'本地 Ollama 服务未启动。请先在「视觉模型管理」中恢复 Ollama，再开始视频感知验收。'}
-        const selected=getLocalVisionModel(cfg.visionLocalModel)
-        if(!selected||!service.models?.some(x=>x.id===selected.id&&x.installed))
-          return {code:'ollama_model_missing',error:'Ollama 已运行，但所选视觉模型未安装。请先在「视觉模型管理」中安装并测试。'}
-        return null
+        return checkOllamaVideoReadiness({modelId:getLocalVisionModel(cfg.visionLocalModel)?.id,
+          list:()=>localVisionModels.list()})
       }
       if(req.method==='POST'&&path.endsWith('/video-perception-debug/focus')){
         if(videoDebugWorkInFlight)return sendJson(res,409,{ok:false,error:'上一轮视频处理尚未完成，请勿重复启动'})
