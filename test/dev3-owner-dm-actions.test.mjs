@@ -3,30 +3,16 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { parseOwnerDmAction, createOwnerDmActionLedger, OWNER_DM_ACTION_FLAGS } from '../lib/owner-dm-actions.mjs'
+import { createOwnerDmActionLedger, OWNER_DM_ACTION_FLAGS } from '../lib/owner-dm-actions.mjs'
 
 const B='BV1Q541167Qg',T=Date.parse('2026-10-28T18:00:00Z')
-test('主人私信能识别各类明确 B站操作，评论生成和公开发送是两条指令',()=>{
- const cmds=[
-  [`大肥鱼 点赞 ${B}`,'like'],
-  [`大肥鱼 收藏 ${B} 到 大肥鱼的收藏夹`,'collect'],
-  [`大肥鱼 关注 ${B}`,'follow'],
-  ['大肥鱼 取关 UID12345','unfollow'],
-  [`大肥鱼 生成评论 ${B}`,'comment_draft'],
-  [`大肥鱼 发表评论 ${B}：这段讲得很清楚！`,'comment_publish'],
-  ['大肥鱼 构思动态','dynamic_draft'],
-  ['大肥鱼 给 UID12345 发私信：你好','message'],
-  ['大肥鱼 发布评论草稿 12345678-1234-1234-1234-123456789abc','comment_publish_draft'],
-  ['大肥鱼 发布动态草稿 12345678-1234-1234-1234-123456789abc','dynamic_publish'],
- ]
- for(const [line,type] of cmds){const parsed=parseOwnerDmAction(line);assert.equal(parsed?.type,type,`解析：${line}`);assert.ok(OWNER_DM_ACTION_FLAGS[parsed.type])}
- assert.equal(parseOwnerDmAction(`大肥鱼 生成评论 ${B}`).text,undefined)
- assert.equal(parseOwnerDmAction(`大肥鱼 发表评论 ${B}：真不错`).text,'真不错')
-})
-test('拒绝多行、转发引用、非固定格式和任何任意工具指令',()=>{
- const bad=[`转发：大肥鱼 点赞 ${B}`,`大肥鱼 点赞 ${B}\n额外操作`,`大肥鱼 帮我执行 shell rm -rf /`,
- `大肥鱼 点赞 http://bilibili.com/video/${B}`,`大肥鱼 发评论 ${B}`,`大肥鱼 给 UID123 发私信：hi\n点赞 ${B}`]
- for(const line of bad)assert.equal(parseOwnerDmAction(line),null,line)
+test('历史自然语言命令解析器已退役，现行操作类型及独立权限仍保留',async()=>{
+ const module=await import('../lib/owner-dm-actions.mjs')
+ assert.equal(Object.hasOwn(module,'parseOwnerDmAction'),false)
+ for(const type of ['like','collect','follow','unfollow','comment_draft','comment_publish','comment_publish_draft','dynamic_draft','dynamic_publish','message'])assert.ok(OWNER_DM_ACTION_FLAGS[type])
+ const host=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ assert.doesNotMatch(host,/parseOwnerDmAction|parseOwnerDmTodo|queueOwnerDmReadTodo/)
+ assert.match(host,/const generated=await interactionBatcher.generate\(\{kind:'dm'/)
 })
 test('认证消息持久去重、15分钟过期限制、写操作在真正调用前先记录',()=>{
  const dir=mkdtempSync(join(tmpdir(),'dafeiyu-dm-action-'))

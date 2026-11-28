@@ -13,6 +13,12 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.87 · 历史主人命令解析退役与范围锁定
+
+- 清除无生产调用的主人 DM 固定只读命令与写操作文字解析器，保留原模型提案、授权、操作账本及草稿事务。
+- 迁移历史命令测试至现行社交模型拒绝、来源、提案、now/later、重复和真实执行回执；不新增自然语言固定规则。
+- 维护者确认开放人格兼容与运行契约解耦留到 2.9.x 及以后，2.8.3 继续原统一 Agent、感知和记忆收口；不关闭原债务。
+
 ## 2.8.3-dev.86 · 自主回忆工具与私密经历提炼贯通
 
 - 原主人私信模型自主选择 recent_actions 后才读取近期已核验行动；取消固定话题预读和查询扩展，保留原只读菜单、账号、证据和后续回复核验。

@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'nod
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { relatedPairs, createEmotionRecall } from '../lib/emotion-recall.mjs'
-import { parseOwnerDmTodo, queueOwnerDmReadTodo } from '../lib/owner-dm-commands.mjs'
+import { intakeAiReadProposal } from '../lib/social-todo-intake.mjs'
 import { createOwnerTodoEngine } from '../lib/owner-todos.mjs'
 import { createMainSessionBridge } from '../lib/main-session-bridge.mjs'
 import { HEADLESS_DENY_TOOLS, writeSecureHeadlessOverlay, assertSafeHeadlessLaunch } from '../lib/headless-security.mjs'
@@ -31,24 +31,24 @@ test('dev.3 历史记录超过 20 条可实际检索，仍限制在本地已记�
   assert.equal(b.recall('不存在的敏感会话内容',100).length,0)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
-test('dev.3 主人“看/现在看”进入立即执行列表；“有空看看”只入队；伪指令不执行',async()=>{
+test('现行社交模型选择现在或稍后；未同意及虚假来源不入账，真实执行仍独立确认',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'dev3-owner-'))
  try{
-  const todos=createOwnerTodoEngine({dataDir:dir})
-  assert.equal(parseOwnerDmTodo('大肥鱼 立马看 '+BV1).immediate,true)
-  assert.equal(parseOwnerDmTodo('大肥鱼 有空看看 '+BV1).immediate,false)
-  const msgs=[
-    {incoming:true,senderUid:'123',messageId:'a1',timestampMs:T,text:'大肥鱼 现在看 '+BV1},
-    {incoming:true,senderUid:'123',messageId:'a2',timestampMs:T,text:'大肥鱼 有空看看 '+BV2},
-    {incoming:true,senderUid:'999',messageId:'a3',timestampMs:T,text:'大肥鱼 现在看 '+BV2},
-    {incoming:true,senderUid:'123',messageId:'a4',timestampMs:T,text:'大肥鱼 点赞 '+BV2},
-  ]
-  const queued=queueOwnerDmReadTodo({messages:msgs,ownerUid:'123',enabled:true,todos,now:()=>T})
-  assert.equal(queued.added,2);assert.equal(queued.immediate.length,1)
+  const todos=createOwnerTodoEngine({dataDir:dir,now:()=>T})
+  const propose=(bvid,messageId,timing,disposition='accept',incoming=true)=>{
+   const text='想和你分享 '+bvid
+   return intakeAiReadProposal({row:{incoming,senderUid:'123',messageId,timestampMs:T,text},channel:'dm',todoDisposition:disposition,todoTiming:timing,suggestedTodo:{type:'watch_video',bvid,evidence:bvid},currentMessages:[text],decide:()=>({decision:'allow'}),todos,now:()=>T})
+  }
+  assert.equal(propose(BV1,'denied','now','refuse').skipped,'model-refuse')
+  assert.equal(propose(BV2,'fake','now','accept',false).skipped,'unverified-event')
+  const immediate=propose(BV1,'a1','now'),later=propose(BV2,'a2','later')
+  assert.equal(immediate.created,true);assert.equal(later.created,true)
+  assert.equal(immediate.item.acceptance.timing,'now');assert.equal(later.item.acceptance.timing,'later')
   let calls=0
-  const r=await todos.run(queued.immediate[0].id,async item=>{calls++;assert.equal(item.type,'watch_video');return {ok:true,summary:'实际已读取公开视频信息'}})
-  assert.equal(r.ok,true);assert.equal(calls,1);assert.equal(todos.list({includeClosed:true}).find(x=>x.id===queued.immediate[0].id).status,'done')
-  assert.equal(queueOwnerDmReadTodo({messages:msgs,ownerUid:'123',enabled:true,todos,now:()=>T}).immediate.length,0)
+  const r=await todos.run(immediate.item.id,async item=>{calls++;assert.equal(item.type,'watch_video');return {ok:true,summary:'实际已读取公开视频信息'}})
+  assert.equal(r.ok,true);assert.equal(calls,1);assert.equal(todos.list({includeClosed:true}).find(x=>x.id===immediate.item.id).status,'done')
+  assert.equal(todos.list().find(x=>x.id===later.item.id).status,'open')
+  assert.equal(propose(BV1,'a1','now').created,false)
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 test('dev.3 动态创作模型使用独立无工具 overlay，和反思/私信分离',()=>{
