@@ -219,7 +219,7 @@ test('owner priority read cannot overtake an unseen historic stop boundary',asyn
  let clock=t0,inbox=[],sent=0;
  const cfg={enabled:true,ownerUid:person,whitelist:[person],dmOwnerPollEnabled:true};
  const engine=createDmAutoReply({dataDir,getConfig:()=>cfg,selfUid:'999',now:()=>clock,fetchIncoming:async()=>inbox,send:async()=>{sent++;return {ok:true,receiptId:'unexpected'}},generateReply:async()=>({action:'reply',messages:['回答']}),logger:{warn(){},error(){}}});
- await engine.poll();engine.status();clock+=50_000;assert.equal(engine.nextOwnerUid(),'','status must not initialize priority discovery');clock+=150_000;
+ await engine.poll();assert.equal(engine.status().ownerPriority.idleSeconds,60);assert.equal(engine.status().ownerPriority.activeSeconds,30);clock+=50_000;assert.equal(engine.nextOwnerUid(),'','status must not initialize priority discovery');clock+=59_999;assert.equal(engine.nextOwnerUid(),'');clock++;
  inbox=[{...input('old-stop','不要再给我发私信'),timestampMs:t0-1000},{...input('new','新消息'),timestampMs:clock}];
  assert.equal((await engine.poll({fastUid:person,ownerPriority:true})).skipped,'owner-history-boundary-pending');assert.equal(sent,0);
 }))
@@ -234,5 +234,5 @@ test('owner 60/30 cadence is anchored to discovery even when model work exceeds 
  assert.equal(row.lastCheckedAt,began);assert.equal(row.durationMs,45_000);assert.equal(row.activeSeconds,30);assert.equal(row.idleSeconds,60);assert.equal(row.nextAt,clock+5000);
  assert.equal(engine.nextOwnerUid(),'');clock+=4999;assert.equal(engine.nextOwnerUid(),'');clock++;assert.equal(engine.nextOwnerUid(),person);
  const logCount=logs.filter(x=>x.includes('主人私信定向检查')).length;inbox=[];await engine.poll({fastUid:person,ownerPriority:true});assert.equal(logs.filter(x=>x.includes('主人私信定向检查')).length,logCount);assert.ok(engine.status().ownerPriority.lastCheckedAt>began);
- assert.match(logs.join('\n'),/日常 60s，活跃 30s/);assert.match(logs.join('\n'),/耗时 45000ms/);assert.doesNotMatch(logs.join('\n'),/22334|主人消息/);
+ assert.match(logs.join('\n'),/日常 60s，活跃 30s/);assert.match(logs.join('\n'),/耗时 45000ms/);const timestamp=logs.join('\n').match(/下次最早 ([^，]+)，当前间隔/);assert.ok(timestamp);const local=timestamp[1];assert.match(local,/[+-]\d{2}:\d{2}$/);assert.equal(new Date(local).getTime(),row.nextAt);assert.doesNotMatch(logs.join('\n'),/22334|主人消息/);
 }))

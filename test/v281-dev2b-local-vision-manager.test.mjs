@@ -283,10 +283,15 @@ test('dev.33 下载流中断或取消无成功回执时不得进入图片验收'
 
 import {createOllamaHealthProbe} from '../lib/ollama-service.mjs'
 test('management probe coalesces, expires and invalidates without inference or automatic startup',async()=>{
- let clock=1000,calls=0,release;const probe=createOllamaHealthProbe({now:()=>clock,list:()=>{calls++;return new Promise(r=>release=r)}})
+ let clock=1000,calls=0,release;const probe=createOllamaHealthProbe({inspectListeners:async()=>null,now:()=>clock,list:()=>{calls++;return new Promise(r=>release=r)}})
  const a=probe.inspect('one'),b=probe.inspect('one');await Promise.resolve();assert.equal(calls,1);release({running:false});assert.equal((await a).state,'unavailable');assert.equal((await b).state,'unavailable');assert.equal((await probe.inspect('one')).state,'unavailable');assert.equal(calls,1)
  clock+=20001;const c=probe.inspect('one');await Promise.resolve();release({running:true,models:[{id:'one',installed:true,verified:true}]});assert.equal((await c).state,'ready');assert.equal(calls,2)
  probe.invalidate();const d=probe.inspect('one');await Promise.resolve();probe.invalidate();release({running:true,models:[]});assert.equal(await d,null)
  const e=probe.inspect('one');await Promise.resolve();release({running:true,models:[]});assert.equal((await e).state,'model-missing')
- const bad=createOllamaHealthProbe({list:()=>{throw Error('secret')}});assert.equal((await bad.inspect('one')).state,'unavailable')
+ const bad=createOllamaHealthProbe({inspectListeners:async()=>null,list:()=>{throw Error('secret')}});assert.equal((await bad.inspect('one')).state,'unavailable')
+})
+
+test('dual listeners override a ready Ollama model without starting or switching service',async()=>{
+ const probe=createOllamaHealthProbe({list:async()=>({running:true,models:[{id:'one',installed:true,verified:true}]}),inspectListeners:async()=>({available:true,pids:[1,2]})})
+ assert.equal((await probe.inspect('one')).state,'port-conflict')
 })

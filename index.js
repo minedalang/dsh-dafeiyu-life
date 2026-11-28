@@ -416,7 +416,7 @@ export const Config = !z ? undefined : z.object({
   dmActivePollEnabled: z.boolean().default(true).extra('volatile', true),
   dmActivePollSeconds: z.natural().default(60).extra('volatile', true),
   dmOwnerPollEnabled: z.boolean().default(true).extra('volatile', true),
-  dmOwnerPollSeconds: z.natural().default(150).extra('volatile', true),
+  dmOwnerPollSeconds: z.natural().default(60).extra('volatile', true),
   dmOwnerActivePollSeconds: z.natural().default(30).extra('volatile', true),
   dmDetailMaxSessions: z.natural().default(3).extra('volatile', true),
   dmDetailSpacingMs: z.natural().default(1500).extra('volatile', true),
@@ -898,7 +898,7 @@ function reportMeta() {
     biliReadMinuteLimit:30,biliReadHourLimit:450,
     masterEnabled: true,
     interactionRepliesEnabled:true,
-    dmWatch: true, dmWatchMinutes: 5, dmQuietMaxMinutes: 5, dmActivePollEnabled:true, dmActivePollSeconds:60, dmOwnerPollEnabled:true, dmOwnerPollSeconds:150, dmOwnerActivePollSeconds:30, dmDetailMaxSessions:3, dmDetailSpacingMs:1500, dmActiveWindowSeconds:180, commentReplyWatchMinutes: 2, commentAtWatchMinutes: 2, commentTopWatchMinutes: 5, dmReplyPerDay: 200, quotaPreset:'custom', dmContextMessages: 40, dmOwnerUid: 0,
+    dmWatch: true, dmWatchMinutes: 5, dmQuietMaxMinutes: 5, dmActivePollEnabled:true, dmActivePollSeconds:60, dmOwnerPollEnabled:true, dmOwnerPollSeconds:60, dmOwnerActivePollSeconds:30, dmDetailMaxSessions:3, dmDetailSpacingMs:1500, dmActiveWindowSeconds:180, commentReplyWatchMinutes: 2, commentAtWatchMinutes: 2, commentTopWatchMinutes: 5, dmReplyPerDay: 200, quotaPreset:'custom', dmContextMessages: 40, dmOwnerUid: 0,
     dmWhitelist: '', dmStrangerOnce: false, dmStrangerAutonomyEnabled: false, dmP6Enabled: true, dmP6MaxBubbles: 3, naturalThoughtOwnerMinutes:2, naturalThoughtIntimateMinutes:5, naturalThoughtFamiliarMinutes:10, naturalThoughtStrangerMinutes:30, naturalThoughtChancePercent:25, dmStrangerMaxReplies: 1, dmStrangerFirstFixed: false,
     dmApprovalEnabled: false, dmApprovalPhrase: '白饭🍚',
     pluginDefaultModelProvider: '', pluginDefaultModelId: '', pluginDefaultModelReasoningEffort: 'medium', videoModelProvider: '', videoModelId: '', videoReasoningEffort: '', behaviorDecisionModelProvider: '', behaviorDecisionModelId: '', behaviorDecisionReasoningEffort: '', interactionModelProvider: '', interactionModelId: '', interactionReasoningEffort: '', interactionContextMode: 'compact', memeRulesModelProvider:'', memeRulesModelId:'', memeRulesReasoningEffort:'', memeRulesPrompt:'',
@@ -5022,7 +5022,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       observed=current()?projectSharedVideoObservation(result,row.bvid):{verified:false,reason:'authorization-changed'}
     }catch{observed={verified:false,reason:'video-observation-unavailable'}}
     const code=observed.visualObserved?(observed.visualEvidenceKind==='cached'?'shared-video-cached-observation':'shared-video-visual-observed'):observed.speechAvailable?'shared-video-speech-read':'shared-video-no-evidence'
-    try{trace?.step('execution-result',{action:'observe_video',result:observed.visualObserved?'verified':observed.speechAvailable?'speech-only':'failed',code});trace?.finish({state:'finished',action:'observe_video',result:code})}catch{}
+    try{
+      const failure=observed.visualFailure
+      trace?.step('execution-result',{action:'observe_video',result:observed.visualObserved?'verified':observed.speechAvailable?'speech-only':'failed',code,
+        ...(!observed.visualObserved?{visualStatus:failure?.status||'visual-read-unverified',visionFailureCode:failure?.code,visionBoardsTotal:failure?.boardsTotal,visionBoardsFailed:failure?.boardsFailed}: {})})
+      trace?.finish({state:'finished',action:'observe_video',result:code})
+    }catch{}
     if(observed.verified&&current())try{lifeAgentEvents.recordDecision({eventIds:[],action:'observe_video',result:code,targetId:row.id,mode:'active',decisionOrigin:'social'})}catch(e){log('分享视频经历记录失败：'+String(e?.message||e).slice(0,90))}
     log('私信分享视频只读回执：'+code)
     return observed
@@ -11202,9 +11207,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site'||
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
         return sendJson(res,403,{ok:false,error:'仅允许在本机 DSH 管理中心恢复 Ollama'})
-      const running=await localVisionModels.list()
       ollamaHealth.invalidate()
-      if(running.running)return sendJson(res,200,{ok:true,alreadyRunning:true,message:'Ollama 本地服务已经运行，无需再次启动'})
       const started=await ensureOllamaService({probe:()=>localVisionModels.list()})
       ollamaHealth.invalidate()
       return sendJson(res,started.ok?200:409,started)
@@ -11289,7 +11292,8 @@ logger:{warn:m=>log('社交意图：'+m)}
     }
     if(req.method==='GET'&&path==='/api/bili-duty/local-vision/status'){
       const current=await localVisionModels.list()
-      return sendJson(res,200,{...current,active:cfg.visionMode==='independent_local'?cfg.visionLocalModel:'',visionEnabled:cfg.visionEnabled===true})
+      const localProbe=await ollamaHealth.inspect(cfg.visionLocalModel||'qwen3.5-2b',current)
+      return sendJson(res,200,{...current,portConflict:localProbe?.state==='port-conflict',active:cfg.visionMode==='independent_local'?cfg.visionLocalModel:'',visionEnabled:cfg.visionEnabled===true})
     }
     if(req.method==='POST'&&['/api/bili-duty/local-vision/install','/api/bili-duty/local-vision/cancel','/api/bili-duty/local-vision/select','/api/bili-duty/local-vision/verify','/api/bili-duty/local-vision/review','/api/bili-duty/local-vision/delete'].includes(path)){
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')

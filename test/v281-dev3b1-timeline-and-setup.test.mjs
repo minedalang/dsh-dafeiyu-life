@@ -44,7 +44,7 @@ test('timeline clamps captions, caps anchors, ignores invalid and unverified vis
 test('native Ollama recovery is opt-in by local mode, without PowerShell or shell input',async()=>{
  let online=false
  const calls=[]
- const launched=await ensureOllamaService({probe:async()=>({running:online}),executable:'ollama',waitFor:async()=>{online=true},spawn:(cmd,args,options)=>{
+ const launched=await ensureOllamaService({platform:'linux',probe:async()=>({running:online}),executable:'ollama',waitFor:async()=>{online=true},spawn:(cmd,args,options)=>{
    calls.push({cmd,args,options});const child=new EventEmitter();child.unref=()=>{};
    queueMicrotask(()=>child.emit('spawn'));return child
  }})

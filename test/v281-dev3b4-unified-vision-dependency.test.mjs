@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {EventEmitter} from 'node:events'
 import {createLocalVisionModelManager} from '../lib/local-vision-model-manager.mjs'
-import {ensureOllamaService,ollamaExecutable} from '../lib/ollama-service.mjs'
+import {ensureOllamaService,ollamaExecutable,parseOllamaListeners,inspectOllamaListeners} from '../lib/ollama-service.mjs'
 import {ffmpegInstallCommand} from '../lib/video-dependencies.mjs'
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8')
 const sha=d=>'sha256:'+d.repeat(64)
@@ -37,7 +37,7 @@ test('UI: single unified visual panel with FFmpeg and Whisper; comment memes bel
  assert.match(js,/local-vision-install'\)\.hidden=Boolean\(model\?\.installed\)/)
  assert.match(js,/local-vision-cancel'\)\.hidden=!downloading/)
  assert.match(js,/\$\('local-vision-ensure'\)\.addEventListener\('click',\(\)=>run\(restoreOllama\)\)/)
- assert.match(js,/await \(!wizard&&visionIsLocal\(\)&&c\.visionEnabled===true\?restoreOllama\(\):loadLocalVisionStatus\(\)\)\.catch/)
+ assert.match(js,/await loadLocalVisionStatus\(\)\.catch/);assert.doesNotMatch(js,/\?restoreOllama\(\):loadLocalVisionStatus/)
 })
 
 test('artificially interrupted Ollama service does not erase approval; restart restores same digest, never changed digest',async()=>{
@@ -76,9 +76,9 @@ test('artificially interrupted Ollama service does not erase approval; restart r
 test('native Ollama startup is owner-triggered and never invokes shell/PowerShell or downloads',async()=>{
  let active=false,launches=0
  const probe=async()=>({running:active})
- const noLaunch=await ensureOllamaService({probe:async()=>({running:true}),spawn:()=>{throw Error('should not run')}})
+ const noLaunch=await ensureOllamaService({platform:'linux',probe:async()=>({running:true}),spawn:()=>{throw Error('should not run')}})
  assert.equal(noLaunch.alreadyRunning,true)
- const started=await ensureOllamaService({probe,waitFor:async()=>{active=true},executable:'ollama',spawn:(bin,args,options)=>{
+ const started=await ensureOllamaService({platform:'linux',probe,waitFor:async()=>{active=true},executable:'ollama',spawn:(bin,args,options)=>{
    launches++;assert.equal(bin,'ollama');assert.deepEqual(args,['serve']);assert.equal(options.shell,false)
    assert.equal(options.detached,true)
    const ch=new EventEmitter();ch.unref=()=>{}
@@ -99,4 +99,23 @@ test('cross-platform FFmpeg installer commands fixed, Linux without polkit expla
  assert.match(fallback.error,/pkexec/)
  assert.match(read('index.js'),/video-dependencies\/ffmpeg\/install/)
  assert.match(read('lib/management-console.html'),/40 MB～1 GB/)
+})
+
+
+test('Windows Ollama recovery uses official desktop app and does not start competing service',async()=>{
+ const dual='TCP 127.0.0.1:11434 0.0.0.0:0 LISTENING 31712\nTCP [::]:11434 [::]:0 LISTENING 37652\nTCP 127.0.0.1:9893 0.0.0.0:0 LISTENING 5548\nTCP 127.0.0.1:11434 127.0.0.1:54321 ESTABLISHED 31712'
+ assert.deepEqual(parseOllamaListeners(dual),[31712,37652])
+ assert.deepEqual(parseOllamaListeners('TCP 127.0.0.1:11434 0.0.0.0:0 LISTENING 9\nTCP [::]:11434 [::]:0 LISTENING 9'),[9])
+ const inspection=await inspectOllamaListeners({platform:'win32',run:async(cmd,args,opts)=>{assert.match(cmd,/netstat\.exe$/i);assert.deepEqual(args,['-ano']);assert.equal(opts.windowsHide,true);assert.equal(opts.shell,false);return {stdout:dual}}})
+ assert.deepEqual(inspection.pids,[31712,37652])
+ let online=false,calls=0
+ const base={platform:'win32',probe:async()=>({running:online}),desktopExecutable:'official ollama app.exe',inspect:async()=>({available:true,pids:[]}),isBusy:async()=>false,waitFor:async()=>{online=true},spawn:(cmd,args,opts)=>{calls++;assert.equal(cmd,'official ollama app.exe');assert.deepEqual(args,[]);assert.equal(opts.windowsHide,true);assert.equal(opts.shell,false);const child=new EventEmitter();child.unref=()=>{};queueMicrotask(()=>child.emit('spawn'));return child}}
+ assert.equal((await ensureOllamaService({...base,inspect:async()=>inspection})).code,'ollama-port-conflict')
+ online=true;assert.equal((await ensureOllamaService({...base,inspect:async()=>inspection})).code,'ollama-port-conflict')
+ assert.equal((await ensureOllamaService({...base,inspect:async()=>({available:true,pids:[9]})})).alreadyRunning,true)
+ online=false
+ for(const opt of [{isBusy:async()=>true},{inspect:async()=>({available:false,pids:[]})},{inspect:async()=>({available:true,pids:[9]})},{desktopExecutable:null}])assert.equal((await ensureOllamaService({...base,...opt})).ok,false)
+ assert.equal(calls,0)
+ const [a,b]=await Promise.all([ensureOllamaService(base),ensureOllamaService(base)])
+ assert.equal(a.ok,true);assert.equal(b.ok,true);assert.equal(calls,1)
 })

@@ -31,6 +31,62 @@ class PerBoardVision(unittest.TestCase):
                                         enabled=True, model='openbmb/minicpm-v4.7:1b',debug=True)
             return output, worker.call_args_list
 
+    def test_host_binds_exact_cells_to_fractional_sample_clocks(self):
+        boards=[{'rank':j,'second':6010.4+j*13,'tile_count':12,'bytes':b'jpeg',
+                 'tile_times':[6010.4+j*13+i for i in range(12)],'grid_cols':4,'grid_rows':3} for j in range(2)]
+        def cells(b):
+            return '\n'.join(f'- **R{i//4+1}C{i%4+1}**：不同格子的可见画面。' for i in range(12))+'\n视觉记忆摘要：只归纳可见场景。'
+        class Reply:
+            def __enter__(self):return self
+            def __exit__(self,*_):pass
+            def read(self,n):return json.dumps({'message':{'content':'\n'.join(f'分镜图{b["rank"]+1}：\n{cells(b)}' for b in boards)},'done':True,'done_reason':'stop'}).encode()
+        class Opener:
+            def open(self,req,timeout=None):
+                data=json.loads(req.data)
+                assert '采样时刻由程序绑定' in data['messages'][0]['content']
+                assert 'R1C1=[' not in data['messages'][0]['content']
+                assert len(data['messages'][0]['images'])==2
+                return Reply()
+        with patch('urllib.request.build_opener',return_value=Opener()):
+            text,receipts=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
+        self.assertEqual([r['status'] for r in receipts],['analyzed','analyzed'])
+        self.assertEqual([r['modelAttempts'] for r in receipts],[1,1])
+        for b,r in zip(boards,receipts):
+            self.assertEqual(r['times'],b['tile_times'])
+            self.assertTrue(pv._local_board_cell_times_valid(r['description'],b))
+        self.assertIn('R1C1 [100:10]',text)
+        self.assertIn('R1C1 [100:23]',text)
+
+    def test_cell_only_reply_cannot_relabel_bad_or_missing_observations(self):
+        b={'second':10,'tile_times':[10.4,14.8],'grid_cols':2,'grid_rows':1,'tile_count':2,'bytes':b'jpeg'}
+        good='R1C1：看到一只鸟。\nR1C2：看到羽毛。'
+        self.assertTrue(pv._local_board_cell_times_valid(pv._bind_local_board_clocks(good,b),b))
+        invalid=[good.splitlines()[0],good.replace('R1C2','R1C1'),good.replace('R1C2','R2C1'),
+                 '\n'.join(reversed(good.splitlines())),good.replace('看到一只鸟。','[00:14]：看到一只鸟。'),
+                 good.replace('R1C1：','R1C1 [00:14]：').replace('R1C2：','R1C2 [00:10]：'),
+                 good.replace('R1C1：','R1C1 [00:10]：'),good+'\n视觉记忆摘要：R3C3 可见。']
+        for raw in invalid:
+            with self.subTest(raw=raw),patch.object(pv,'_call_local_ollama',return_value=raw) as work:
+                text,receipts=pv._analyze_local_storyboards([b],'qwen3.5:2b')
+                self.assertEqual(text,'')
+                self.assertEqual(receipts[0]['status'],'incomplete')
+                self.assertEqual(work.call_count,1)
+                self.assertNotIn('description',receipts[0])
+
+    def test_single_cell_only_reply_uses_real_ollama_parser_without_extra_call(self):
+        b={'second':10,'tile_times':[10.4,14.8],'grid_cols':2,'grid_rows':1,'tile_count':2,'bytes':b'jpeg'}
+        class Reply:
+            def __enter__(self):return self
+            def __exit__(self,*_):pass
+            def read(self,n):return json.dumps({'message':{'content':'R1C1：看到树叶。\nR1C2：看到羽毛。'},'done':True,'done_reason':'stop'}).encode()
+        class Opener:
+            def open(self,req,timeout=None):return Reply()
+        with patch('urllib.request.build_opener',return_value=Opener()) as model:
+            _,receipts=pv._analyze_local_storyboards([b],'qwen3.5:2b')
+        self.assertEqual(model.call_count,1)
+        self.assertEqual(receipts[0]['status'],'analyzed')
+        self.assertIn('[00:14]',receipts[0]['description'])
+
     def test_summary_citing_a_real_cell_does_not_invalidate_complete_grid(self):
         board={'second':10,'tile_times':list(range(10,22)),'grid_cols':4,'grid_rows':3}
         answer=self.render_board(board)+'\n视觉记忆摘要：R1C1 与 R3C4 显示相似场景。'
@@ -375,15 +431,16 @@ class PerBoardVision(unittest.TestCase):
                 reqdata=json.loads(req.data)
                 message=reqdata['messages'][0]
                 selfOuter.assertEqual(len(message['images']),1)
-                selfOuter.assertIn('R1C4=[00:40]',message['content'])
-                selfOuter.assertIn('R2C2=[01:05]',message['content'])
+                selfOuter.assertIn('R1C1 R1C2 R1C3 R1C4 R2C1 R2C2',message['content'])
+                selfOuter.assertNotIn('R2C2=[01:05]',message['content'])
                 selfOuter.assertGreaterEqual(reqdata['options']['num_predict'],1200)
                 return Reply()
         selfOuter=self
         board={'second':10,'bytes':b'fakeimage','tile_count':12,'tile_times':[10,25,35,40,55,65,70,80,90,115,120,131],'rank':0}
         with patch('urllib.request.build_opener',return_value=Opener()):
             answer=pv._call_local_ollama([board],'qwen3.5:4b')
-        self.assertIn('01:05',answer)
+        self.assertIn('R2C2 [01:05]',answer)
+        self.assertTrue(pv._local_board_cell_times_valid(answer,board))
 
     def test_floored_grid_timestamp_matches_fractional_source_index(self):
         self.assertTrue(pv._local_board_time_valid('R2C2 [01:05] 在楼梯附近。',[65.4]))

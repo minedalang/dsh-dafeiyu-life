@@ -109,7 +109,7 @@ def _audio_duration(src):
     try:
         result = subprocess.run([ffprobe, '-v', 'error', '-show_entries',
             'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', src],
-            capture_output=True, text=True, timeout=12)
+            stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=12, **_hidden_windows_child())
         value = float(result.stdout.strip()) if result.returncode == 0 else 0
         return value if math.isfinite(value) and 3 <= value <= 4 * 3600 else None
     except (OSError, subprocess.SubprocessError, ValueError):
@@ -148,7 +148,7 @@ def _sample_audio_windows(src, tmp, tag):
             result = subprocess.run([ffmpeg, '-hide_banner', '-loglevel', 'error',
                 '-nostdin', '-ss', str(start), '-i', src, '-t', str(length),
                 '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', '-y', out],
-                capture_output=True, timeout=35, **_hidden_windows_child())
+                stdin=subprocess.DEVNULL, capture_output=True, timeout=35, **_hidden_windows_child())
             if result.returncode != 0 or not os.path.isfile(out) or os.path.getsize(out) < 512:
                 return None
             samples.append((out, start, length))
@@ -160,7 +160,13 @@ def _sample_audio_windows(src, tmp, tag):
 def _hidden_windows_child():
     if os.name != 'nt':
         return {}
-    return {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+    options={'creationflags': getattr(subprocess, 'DETACHED_PROCESS', 0) or getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
+    if hasattr(subprocess, 'STARTUPINFO'):
+        startup=subprocess.STARTUPINFO()
+        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startup.wShowWindow=0
+        options['startupinfo']=startup
+    return options
 
 
 def _offset_segments(segments, offset):

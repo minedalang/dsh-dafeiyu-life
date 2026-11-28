@@ -7,14 +7,16 @@ both the source and the per-frame timestamp.
 import csv
 from io import BytesIO, StringIO
 import math
+import os
 from pathlib import Path
 import shutil
 import subprocess
 from PIL import Image, ImageEnhance, ImageOps
 
 def _hidden_windows_child():
-    options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
-    if hasattr(subprocess, 'STARTUPINFO'):
+    options = {'creationflags': (getattr(subprocess, 'DETACHED_PROCESS', 0)
+                                or getattr(subprocess, 'CREATE_NO_WINDOW', 0)) if os.name == 'nt' else 0}
+    if os.name == 'nt' and hasattr(subprocess, 'STARTUPINFO'):
         startup = subprocess.STARTUPINFO()
         startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = 0  # SW_HIDE
@@ -54,7 +56,7 @@ def extract_frame_ocr(moments, *, executable=None, runner=subprocess.run, langua
         return {'engine': 'unavailable', 'segments': [], 'attempted': 0}
     if languages is None:
         try:
-            langs = runner([executable, '--list-langs'], capture_output=True, text=True,
+            langs = runner([executable, '--list-langs'], stdin=subprocess.DEVNULL, capture_output=True, text=True,
                            timeout=3, check=False,
                            **_hidden_windows_child())
             available = set(langs.stdout.split()) | set(langs.stderr.split())

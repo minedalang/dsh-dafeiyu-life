@@ -83,3 +83,15 @@ test('offline Ollama failure is explicit at actual visual start, not parent time
  const run={at:100,state:'finished',steps:[event('action-start',{action:'inspect_exploration'},101),event('action-result',{action:'inspect_exploration',result:'verified-metadata'},102),event('action-start',{action:'observe_video'},120),event('blocked',{action:'observe_video',code:'visual-read-unverified',visualStatus:'vision_incomplete',visionFailureCode:'ollama_service_offline',visionBoardsTotal:2,visionBoardsFailed:2},132),event('action-start',{action:'inspect_video_discussion'},135),event('blocked',{code:'account-changed'},140)]}
  const r=describe(run);assert.equal(r.at,120);assert.equal(r.success,false);assert.equal(r.settled,true);assert.match(r.result,/Ollama 未启动.*分镜完成 0\/2/);assert.doesNotMatch(r.result,/账号已切换/)
 })
+
+test('social visual execution receipt explicitly distinguishes speech-only, fresh, cached and failed attempts',()=>{
+ const run=(result,code,extra={})=>({at:100,state:'finished',steps:[event('action-start',{action:'observe_video'},120),event('execution-result',{action:'observe_video',result,code,...extra},140)]})
+ const speech=describe(run('speech-only','shared-video-speech-read',{visualStatus:'vision_incomplete',visionFailureCode:'vision_board_time_mismatch',visionBoardsTotal:2,visionBoardsFailed:1}))
+ assert.equal(speech.success,false);assert.equal(speech.settled,true);assert.match(speech.result,/分镜时间码不匹配.*分镜完成 1\/2.*仅取得字幕或转写/)
+ assert.match(describe(run('speech-only','shared-video-speech-read')).result,/仅取得字幕或转写/)
+ assert.equal(describe(run('verified','shared-video-visual-observed')).success,true)
+ assert.match(describe(run('verified','shared-video-cached-observation')).result,/复用已有观察/)
+ assert.equal(describe(run('failed','shared-video-visual-observed')).success,false)
+ assert.equal(describe(run('verified','shared-video-no-evidence')).success,false)
+ assert.equal(describe(run('verified','unrelated')).success,false)
+})

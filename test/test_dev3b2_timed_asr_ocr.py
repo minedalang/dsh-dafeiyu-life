@@ -100,6 +100,37 @@ class TimedMediaTests(unittest.TestCase):
             self.assertFalse(denied['ok'])
             self.assertNotIn('private token',json.dumps(denied))
 
+    def test_offline_ocr_and_audio_probe_use_detached_hidden_children(self):
+        class Startup:
+            dwFlags=0
+            wShowWindow=1
+        import subprocess
+        for module in (fo,asr):
+            with patch.object(module.os,'name','nt'),patch.object(subprocess,'DETACHED_PROCESS',8,create=True), \
+                 patch.object(subprocess,'STARTUPINFO',Startup,create=True),patch.object(subprocess,'STARTF_USESHOWWINDOW',1,create=True):
+                flags=module._hidden_windows_child()
+            self.assertEqual(flags['creationflags'],8)
+            self.assertEqual(flags['startupinfo'].wShowWindow,0)
+            self.assertTrue(flags['startupinfo'].dwFlags&1)
+        with patch.object(asr.shutil,'which',return_value='ffprobe'),patch.object(asr,'_hidden_windows_child',return_value={'creationflags':0}), \
+             patch.object(asr.subprocess,'run',return_value=types.SimpleNamespace(returncode=0,stdout='600')) as run:
+            self.assertEqual(asr._audio_duration('local.wav'),600)
+            self.assertEqual(run.call_args.kwargs['stdin'],subprocess.DEVNULL)
+            self.assertEqual(run.call_args.kwargs['creationflags'],0)
+        with tempfile.TemporaryDirectory() as folder:
+            exe=Path(folder)/'tesseract.exe';exe.write_bytes(b'x')
+            def runner(command,**kwargs):
+                self.assertEqual(kwargs['creationflags'],0)
+                if '--list-langs' in command:
+                    self.assertEqual(kwargs['stdin'],subprocess.DEVNULL)
+                    return types.SimpleNamespace(returncode=0,stdout='eng',stderr='')
+                self.assertIn('input',kwargs)
+                return types.SimpleNamespace(returncode=0,stdout=b'')
+            with patch.object(fo,'_hidden_windows_child',return_value={'creationflags':0}) as hide:
+                out=fo.extract_frame_ocr([{'second':1.,'image':Image.new('RGB',(16,8))}],executable=str(exe),runner=runner)
+            self.assertEqual(out['attempted'],1)
+            self.assertEqual(hide.call_count,2)
+
     def test_ocr_requires_actual_local_executable_and_confident_text(self):
         images=[{'second':float(i),'image':Image.new('RGB',(16,8),'white')} for i in range(48)]
         self.assertEqual(fo.extract_frame_ocr(images,executable='/untrusted/not-here')['segments'],[])

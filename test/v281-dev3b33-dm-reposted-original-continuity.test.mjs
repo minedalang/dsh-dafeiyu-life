@@ -162,3 +162,18 @@ test('the model can select a prior share for a natural follow-up, or ignore the 
  const b=make({invoke:async()=>++calls===1?reply({contextRequests:['shared_link'],sharedLinkChoiceId:ids[1]}):calls===2?reply({contextRequests:['shared_video']}):reply({reply:'看到可信画面',messages:['看到可信画面']}),loadRequestedContexts:async(batch,req)=>{seen.push([batch[0].sharedLinkId,req[0][0]]);return req[0][0]==='shared_link'?[{sharedLinkContext:'{"verified":true,"watched":false}',availableContexts:['shared_video']}]:[{sharedVideoContext:'{"verified":true,"visualObserved":true,"visualEvidenceKind":"cached"}'}]}})
  try{const input={kind:'dm',uid:UID,role:'owner',text:'能看到视频画面吗',availableContexts:['shared_link'],sharedLinkCandidates:ids.map(id=>({id,label:'近期分享'})),socialAutonomy:true};assert.equal((await b.generate(input)).action,'reply');assert.deepEqual(seen,[[ids[1],'shared_link'],[ids[1],'shared_video']]);const count=seen.length;await b.generate({...input,text:'晚安'});assert.equal(seen.length,count)}finally{b.stop()}
 })
+
+test('owner shared video returns precise safe vision failure alongside real speech, and feeds it to same model',async()=>{
+ const bvid='BV1rV1FzYEbP',result={ok:true,bvid,viewDepth:'standard',info:{duration:30},
+  visual:{ok:false,status:'vision_incomplete',visionBoardReceipts:[{status:'analyzed'},{status:'incomplete',errorCode:'vision_board_time_mismatch',error:'private model raw'}]},
+  videoEvidence:{schema:'life-video-evidence/v1',bvid,verifiedContent:true,sources:[{kind:'subtitle',status:'verified'}]},
+  perceptionHandoff:{schema:'life-video-perception-handoff/v1',bvid,speech:{source:'official-subtitles',textExcerpt:'真实字幕'}}}
+ const observed=projectSharedVideoObservation(result,bvid)
+ assert.equal(observed.verified,true);assert.equal(observed.visualObserved,false);assert.equal(observed.speechAvailable,true)
+ assert.equal(observed.visualFailure.code,'vision_board_time_mismatch');assert.equal(observed.visualFailure.boardsTotal,2);assert.equal(observed.visualFailure.boardsFailed,1)
+ assert.equal(observed.visualDescription,undefined);assert.doesNotMatch(JSON.stringify(observed),/private model raw/)
+ assert.equal(projectSharedVideoObservation({...result,visual:{...result.visual,visionBoardReceipts:[{status:'incomplete',errorCode:'untrusted-raw'}]}},bvid).visualFailure.code,'vision_incomplete')
+ assert.equal(projectSharedVideoObservation(result,'BV1234567890').visualFailure,undefined)
+ let prompts=[],reads=0;const b=make({invoke:async prompt=>{prompts.push(prompt);return prompts.length===1?reply({contextRequests:['shared_video']}):reply({reply:'时间码未通过，只有字幕',messages:['时间码未通过，只有字幕']})},loadRequestedContexts:async()=>{reads++;return [{sharedVideoContext:JSON.stringify(observed)}]}})
+ try{const r=await b.generate({kind:'dm',uid:UID,role:'owner',text:'看看画面',socialAutonomy:true,availableContexts:['shared_video']});assert.equal(r.action,'reply');assert.equal(reads,1);assert.match(prompts[1],/vision_board_time_mismatch/);assert.match(prompts[1],/真实字幕/);assert.doesNotMatch(prompts[1],/private model raw/)}finally{b.stop()}
+})
