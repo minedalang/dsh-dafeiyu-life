@@ -295,3 +295,10 @@ test('dual listeners override a ready Ollama model without starting or switching
  const probe=createOllamaHealthProbe({list:async()=>({running:true,models:[{id:'one',installed:true,verified:true}]}),inspectListeners:async()=>({available:true,pids:[1,2]})})
  assert.equal((await probe.inspect('one')).state,'port-conflict')
 })
+
+
+test('model list probe distinguishes refusal from unknown failure without revoking approval',async()=>{
+ let outcome='refused'
+ const manager=createLocalVisionModelManager({fetchImpl:async()=>{if(outcome==='ready')return json({models:[]});if(outcome==='refused')throw new TypeError('fetch failed',{cause:{code:'ECONNREFUSED'}});throw new DOMException('timeout','TimeoutError')}})
+ assert.equal((await manager.list()).serviceStatus,'connection-refused');outcome='timeout';assert.equal((await manager.list()).serviceStatus,'unconfirmed');outcome='ready';assert.equal((await manager.list()).serviceStatus,'ready')
+})

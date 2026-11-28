@@ -302,3 +302,15 @@ test('dev40 mounted observation tools require actual claimed owner turn and nati
  try{memory.start();const share=tools.get('dafeiyu_share_observation'),read=tools.get('dafeiyu_observation_detail');assert.ok(share&&read);const args={id,file};assert.equal((await share.execute(args,{agent})).ok,false);assert.equal((await read.execute(args)).ok,true);assert.equal(saves,0);const message={role:'user',content:'愿意分享一张分镜吗？'};listeners.get('agent/inbox/inserted')?.({message});listeners.get('agent/inbox/claimed')?.({message,turn:1});assert.equal((await share.execute(args,{agent})).reason,'frame-read-required');assert.equal((await read.execute(args)).ok,true);modelImage=false;assert.equal((await share.execute(args,{agent})).ok,false);modelImage=true;assert.equal((await read.execute(args)).ok,true);const result=await share.execute(args,{agent});assert.equal(result.ok,true);assert.equal(result.deliveryConfirmed,false);assert.equal(saves,1);assert.deepEqual(share.output.render(args,result)[1],{type:'image',attachment:ref});frameLive=false;assert.equal((await share.execute(args,{agent})).ok,false);assert.equal(saves,1)
  }finally{memory.stop();rmSync(home,{recursive:true,force:true})}
 })
+
+
+test('private DM read binds exact UID to a claimed owner turn and invalidates on turn end or new input',()=>{
+ const home=mkdtempSync(join(tmpdir(),'dm-owner-turn-'));const listeners=new Map(),agent={id:'dm-owner',sessionId:'dm-owner',session:{snapshotEvents:()=>[]},ctx:{on(n,f){listeners.set(n,f);return ()=>listeners.delete(n)},tools:{register(){return ()=>{}}},systemPrompt:{section(){return ()=>{}},context(){return ()=>{}}}}}
+ let selected='dm-owner';const memory=createLongTermMemory({dataDir:home,dshHome:home,agents:{get:id=>id==='dm-owner'?agent:null,list:()=>[agent]},getConfig:()=>({mainSessionId:selected,mainSessionMemoryEnabled:false}),defineTool:x=>x,logger:{warn(){}}})
+ try{memory.start();assert.equal(memory.captureDmRead(undefined,'42'),null);assert.equal(memory.captureDmRead(agent,'42'),null)
+ const message={role:'user',content:'查看 UID 42 的私信'};listeners.get('agent/inbox/inserted')?.({message});assert.equal(memory.captureDmRead(agent,'42'),null);listeners.get('agent/inbox/claimed')?.({message,turn:1});const guard=memory.captureDmRead(agent,'42');assert.equal(typeof guard,'function');assert.equal(guard(),true);assert.equal(memory.captureDmRead(agent,'2'),null);assert.equal(memory.captureDmRead({},'42'),null)
+ listeners.get('session/event')?.(agent.session,{type:'turn/end',data:{turn:1}});assert.equal(guard(),false);assert.equal(memory.captureDmRead(agent,'42'),null)
+ const injected={role:'user',content:'查看 UID 42 的私信',source:{kind:'plugin:test'}};listeners.get('agent/inbox/inserted')?.({message:injected});listeners.get('agent/inbox/claimed')?.({message:injected,turn:2});assert.equal(memory.captureDmRead(agent,'42'),null)
+ listeners.get('agent/inbox/inserted')?.({message});listeners.get('agent/inbox/claimed')?.({message,turn:3});const next=memory.captureDmRead(agent,'42');assert.equal(next(),true);selected='different';assert.equal(next(),false)
+ }finally{memory.stop();rmSync(home,{recursive:true,force:true})}
+})

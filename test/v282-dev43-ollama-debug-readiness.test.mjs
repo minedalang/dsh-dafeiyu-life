@@ -96,11 +96,24 @@ test('management diagnosis shows Ollama outage as service failure, not failed Li
   assert.match(html,/id="video-debug-service-status"/)
   assert.match(ui,/checkVideoDebugService\(\{force:true\}\)/)
   assert.match(ui,/await requireVideoDebugService\(\)/)
-  assert.match(ui,/本地 Ollama 未启动，视频识图未开始/)
+  assert.match(ui,/本地 Ollama 模型清单暂不可用，视频识图未开始/)
   assert.match(ui,/不是 Life 拒绝观看，也不是证据校验器拒绝有效回答/)
   assert.doesNotMatch(ui,/模型可能已返回文字，但证据验证器未接受为可靠视觉观察/)
   const routeStart=host.indexOf("      const checkVideoDebugOllama=async()=>{")
   assert.ok(routeStart>0)
   assert.match(host.slice(routeStart,routeStart+750),/checkOllamaVideoReadiness\(\{modelId:[\s\S]*?list:\(\)=>localVisionModels\.list\(\)/)
   assert.match(host,/visionFailure=explainVideoVisionFailure\(result\?\.visual\)/)
+})
+
+
+test('transient model list failure gets one bounded recheck without starting a service',async()=>{
+  let calls=0,waits=0
+  const base={modelId:'qwen3.5-2b',inspect:async()=>({available:true,pids:[1]}),waitFor:async()=>{waits++},list:async()=>++calls===1?{running:false,serviceStatus:'unconfirmed'}:{running:true,models:[{id:'qwen3.5-2b',installed:true}]}}
+  assert.equal(await checkOllamaVideoReadiness(base),null);assert.equal(calls,2);assert.equal(waits,1)
+  calls=0;waits=0
+  const absent=await checkOllamaVideoReadiness({...base,inspect:async()=>({available:true,pids:[]}),list:async()=>{calls++;return {running:false,serviceStatus:'connection-refused'}}})
+  assert.equal(absent.code,'ollama_service_offline');assert.equal(calls,1);assert.equal(waits,0)
+  let inspections=0;calls=0
+  const conflict=await checkOllamaVideoReadiness({...base,inspect:async()=>({available:true,pids:++inspections>=3?[1,2]:[1]})})
+  assert.equal(conflict.code,'ollama-port-conflict');assert.equal(calls,1)
 })
