@@ -961,3 +961,15 @@ test('dev.63 pending recovery blocks independent maintenance and relocated/neste
  assert.throws(()=>migrateDomainOffline({root:core,domain:'memory',target:join(snapshot,'new-target'),confirmedStopped:true}),/禁止激活/)
  assert.equal(existsSync(join(snapshot,'new-target')),false);assert.equal(maintain('verify-full',{snapshot}).ok,true)
 }))
+
+test('cold restore keeps business rollback protection but never replays old model preparation intent from the copied core',async()=>{
+ const {createModelPreparationIntent}=await import('../lib/model-preparation-intent.mjs')
+ fixture(({t,root,path})=>{
+  put(path('character-identity.json'),JSON.stringify({id:'11111111-1111-1111-1111-111111111111'}));put(path('private-business.json'),'unchanged')
+  const intent=createModelPreparationIntent({dataDir:root,scope:'same'}),token=intent.claim('vision','qwen3.5-2b');intent.finish('vision',token,true)
+  const snapshot=join(t,'snapshot');splitBackup(root,snapshot);assert.equal(intent.cancelPending('vision'),true)
+  assert.equal(splitRestore(root,snapshot).restored,true);assert.equal(createModelPreparationIntent({dataDir:root,scope:'same'}).pending('vision'),null)
+  assert.equal(readFileSync(path('private-business.json'),'utf8'),'unchanged')
+  put(path('private-business.json'),'newer');assert.throws(()=>splitRestore(root,snapshot),/不能安全回退/)
+ })
+})

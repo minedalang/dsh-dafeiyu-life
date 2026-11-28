@@ -7505,12 +7505,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   const managedModelStorage=largeDataStatus(stateDir)
   embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,rootDir:storageDataPath(stateDir,'embedding-runtime'),
     modelDir:managedModelStorage.embeddingModelDir||undefined,visionModelDir:managedModelStorage.visionModelDir||undefined,
+    resumeScope:[managedModelStorage.target||'',managedModelStorage.verifiedAt||''],
     assertModelStorage:()=>{
       const current=largeDataStatus(stateDir)
       if(current.target!==managedModelStorage.target||current.verifiedAt!==managedModelStorage.verifiedAt)throw Error('大型模型位置已变化，请完整重启 DSH')
     },logger:{warn:m=>log('本地语义运行时：'+m)}})
   embeddingIndex=createEmbeddingMemoryIndex({dataDir:stateDir,provider:embeddingRuntime,logger:{warn:m=>log('本地语义索引：'+m)}})
-  ctx.effect(()=>()=>{embeddingRuntime?.cancelVision();embeddingRuntime?.cancelInstall();embeddingRuntime?.stop()},'bili-duty: 本地 Embedding Runtime 关闭')
+  ctx.effect(()=>()=>{void embeddingRuntime?.shutdown().catch(error=>log('本地模型关闭失败：'+String(error?.message||error).slice(0,140)))},'bili-duty: 本地 Embedding Runtime 关闭')
   personalityEvolution=createPersonalityEvolution({dataDir:stateDir,memoryGateway:lifeMemory,logger:{warn:m=>log('人格成长：'+m)}})
   // Only NEW installations default to growth enabled. Explicit existing off remains off.
   if(!existsSync(join(stateDir,'personality-evolution','v1.json')))try{personalityEvolution.setEnabled(true)}catch(e){log('初始化人格成长设置失败：'+String(e?.message||e))}
@@ -7547,13 +7548,21 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   })
   longTermMemory.start()
   ctx.effect(() => () => longTermMemory.stop(), 'bili-duty: 内置长期记忆')
-  // Optional local semantic recall is strictly opt-in. Startup never downloads
-  // hundreds of megabytes silently; it only starts already-installed assets.
+  // Resume only a prior explicitly requested preparation in the same storage scope.
+  // Ordinary startup still does not initiate new downloads or approve a visual model.
   void (async()=>{
     await embeddingIndex.initialize()
-    if(cfg.mainSessionMemoryEmbeddingEnabled!==true)return
+    refreshCfg()
+    const enabled=cfg.mainSessionMemoryEmbeddingEnabled===true
+    let resumed=null
+    try{if(enabled)resumed=embeddingRuntime.resumeInstall();else embeddingRuntime.cancelInstall()}catch(error){log('语义模型准备恢复失败：'+String(error?.message||error).slice(0,140))}
+    const startup=enabled?(resumed||embeddingRuntime.start()):null
+    const resumeVision=()=>{try{const vision=embeddingRuntime.resumeVisionInstall();if(vision)void vision.catch(error=>log('视觉模型准备恢复失败：'+String(error?.message||error).slice(0,140)))}catch(error){log('视觉模型准备恢复失败：'+String(error?.message||error).slice(0,140))}}
+    if(!enabled||resumed)resumeVision();else void startup.then(resumeVision,resumeVision)
+    if(!enabled)return
     try{
-      await embeddingRuntime.start()
+      await startup
+      if(cfg.mainSessionMemoryEmbeddingEnabled!==true)return
       const result=await embeddingIndex.sync(memoryRetriever.embeddingCorpus())
       if(result?.ok)log(`本地语义回忆已就绪：${result.indexed} 条索引，新增向量 ${result.embedded} 条`)
       else log('本地语义索引同步失败：'+String(result?.error||'未知错误').slice(0,160))

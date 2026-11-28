@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.97：原模型管理器恢复此前明确启动的固定资产准备，绑定目录/分盘身份；跨渠道原精确缺口在实际读取前再证，已有详情优先；Life 意愿、深层准入、权限和调度不变。
 %% dev.93：内部受管视觉租约与单工具 MCP 复用原证据链；用户生产选路、Life 和 Headless 尚未开放。
 %% dev.92：Embedding/内置视觉权重独立安装，运行时 single-flight，模型专项冷恢复完整固定资产对；生产视觉及 Life 主线接线不变。
 %% dev.91：内置 Qwen GGUF/mmproj 复用 V2 大型模型区；运行时、生产视觉、Life 候选、授权、回执、Episode 不变。
@@ -679,6 +680,7 @@ episodeContinuation -.-> decisionBoundary57
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.97：原模型管理器恢复此前明确启动的固定资产准备，绑定目录/分盘身份；跨渠道原精确缺口在实际读取前再证，已有详情优先；Life 意愿、深层准入、权限和调度不变。
 %% dev.93：内部受管视觉租约与单工具 MCP 复用原证据链；用户生产选路、Life 和 Headless 尚未开放。
 %% dev.92：Embedding/内置视觉权重独立安装，运行时 single-flight，模型专项冷恢复完整固定资产对；生产视觉及 Life 主线接线不变。
 %% dev.91：内置 Qwen GGUF/mmproj 复用 V2 大型模型区；运行时、生产视觉、Life 候选、授权、回执、Episode 不变。
@@ -1043,6 +1045,7 @@ planner -.-> candidateDecision57
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.97：原模型管理器恢复此前明确启动的固定资产准备，绑定目录/分盘身份；跨渠道原精确缺口在实际读取前再证，已有详情优先；Life 意愿、深层准入、权限和调度不变。
 %% dev.93：内部受管视觉租约与单工具 MCP 复用原证据链；用户生产选路、Life 和 Headless 尚未开放。
 %% dev.92：Embedding/内置视觉权重独立安装，运行时 single-flight，模型专项冷恢复完整固定资产对；生产视觉及 Life 主线接线不变。
 %% dev.91：内置 Qwen GGUF/mmproj 复用 V2 大型模型区；运行时、生产视觉、Life 候选、授权、回执、Episode 不变。
@@ -1471,6 +1474,7 @@ liveDecision57["活体证据失效则拒绝陈旧决定；不生成经历或联�
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.97：原模型管理器恢复此前明确启动的固定资产准备，绑定目录/分盘身份；跨渠道原精确缺口在实际读取前再证，已有详情优先；Life 意愿、深层准入、权限和调度不变。
 %% dev.93：内部受管视觉租约与单工具 MCP 复用原证据链；用户生产选路、Life 和 Headless 尚未开放。
 %% dev.92：Embedding/内置视觉权重独立安装，运行时 single-flight，模型专项冷恢复完整固定资产对；生产视觉及 Life 主线接线不变。
 %% dev.91：内置 Qwen GGUF/mmproj 复用 V2 大型模型区；运行时、生产视觉、Life 候选、授权、回执、Episode 不变。

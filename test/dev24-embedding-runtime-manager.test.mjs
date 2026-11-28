@@ -217,7 +217,7 @@ test('V2 native vision download uses external model directory and missing marker
     assert.equal(await readFile(join(storage.visionModelDir,'qwen3.5-2b','Qwen3.5-2B-Q4_K_M.gguf.part'),'utf8'),'corrupt')
     const {access}=await import('node:fs/promises');await assert.rejects(access(join(dataDir,'embedding-runtime','vision-models')))
     await rm(join(target,'.dafeiyu-large-data-v2.json'))
-    const previous=calls;await assert.rejects(manager.visionStatus(),/标记/)
+    const previous=calls;await assert.rejects(manager.visionStatus(),/标记/);await assert.rejects(manager.inspect(),/标记/)
     await assert.rejects(manager.runVision('install','qwen3.5-4b'),/标记/);assert.equal(calls,previous)
     await assert.rejects(access(join(storage.visionModelDir,'qwen3.5-4b')))
   }finally{await rm(root,{recursive:true,force:true})}
@@ -338,5 +338,92 @@ test('网络 AbortError 不是用户取消：固定源继续尝试，已下载�
   let state=await manager.visionStatus();assert.equal(state.progress.phase,'error');assert.equal(state.models[0].hasResources,true);assert.equal(state.models[0].filesPresent,false)
   const dir=join(manager.paths.visionRoot,model.id);await writeFile(join(dir,'unrelated.txt'),'keep');await manager.removeVisionAssets(model.id);assert.equal(await readFile(join(dir,'unrelated.txt'),'utf8'),'keep');assert.equal(await readFile(join(bundle,'llama-server'),'utf8'),'fixture');state=await manager.visionStatus();assert.equal(state.models[0].hasResources,false)
   networkFailure=true;const before=calls.length;await assert.rejects(manager.runVision('install',model.id),/transport aborted/);assert.equal(calls.length-before,4);assert.equal((await manager.visionStatus()).progress.phase,'error')
+ }finally{await rm(root,{recursive:true,force:true})}
+})
+
+async function preparationFixture(root,fetchImpl,scope='same'){
+ const packageRoot=join(root,'package'),dataDir=join(root,'state'),bundle=join(packageRoot,'vendor','embedding-runtime','linux-x64')
+ await mkdir(bundle,{recursive:true});await mkdir(dataDir,{recursive:true});await writeFile(join(bundle,'llama-server'),'fixture')
+ await writeFile(join(bundle,'dsh-runtime-manifest.json'),JSON.stringify({schema:1,version:__test.RUNTIME.version,platform:'linux-x64',sha256:__test.RUNTIME.assets['linux-x64'].sha256,binary:'llama-server'}))
+ return createEmbeddingRuntimeManager({dataDir,packageRoot,platform:'linux',arch:'x64',resumeScope:scope,logger:{warn(){}},fetchImpl})
+}
+function blockingPreparation(){
+ const calls=[];let wake
+ const fetchImpl=(url,{signal,headers})=>new Promise((resolve,reject)=>{
+  calls.push({url,headers});wake?.();if(signal.aborted)return reject(signal.reason)
+  signal.addEventListener('abort',()=>reject(signal.reason),{once:true})
+ })
+ return {calls,fetchImpl,async until(n){while(calls.length<n)await new Promise(resolve=>{wake=resolve})}}
+}
+test('两种已明确启动的模型准备停机后可独立恢复；恢复不等于启用或图片验收',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'dsh-preparation-restart-'))
+ try{
+  const first=blockingPreparation(),a=await preparationFixture(root,first.fetchImpl)
+  assert.equal(a.resumeInstall(),null);assert.equal(a.resumeVisionInstall(),null);assert.equal(first.calls.length,0)
+  const e=a.install(),v=a.runVision('install','qwen3.5-2b');const settled=Promise.allSettled([e,v]);await first.until(2);await a.shutdown();await settled
+  assert.equal(JSON.parse(await readFile(join(root,'state','model-preparation-vision.json'),'utf8')).pid,null)
+  const second=blockingPreparation(),b=await preparationFixture(root,second.fetchImpl)
+  const resumed=[b.resumeInstall(),b.resumeVisionInstall()];assert.ok(resumed.every(Boolean));const done=Promise.allSettled(resumed);await second.until(2)
+  assert.ok(second.calls.some(c=>c.url.includes('Embedding')));assert.ok(second.calls.some(c=>c.url.includes('Qwen3.5-2B')))
+  assert.equal((await b.visionStatus()).models[0].result,null);assert.equal(b.status().server.ready,false)
+  b.cancelInstall();b.cancelVision();await done;await b.shutdown()
+  const c=await preparationFixture(root,()=>{throw Error('unexpected network')});assert.equal(c.resumeInstall(),null);assert.equal(c.resumeVisionInstall(),null)
+ }finally{await rm(root,{recursive:true,force:true})}
+})
+test('明确取消后紧接停机不会留下可恢复意图；普通失败不制造每次开机的重试循环',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'dsh-preparation-cancel-'))
+ try{
+  const first=blockingPreparation(),a=await preparationFixture(root,first.fetchImpl)
+  const v=a.runVision('install','qwen3.5-4b'),done=Promise.allSettled([v]);await first.until(1);a.cancelVision();await a.shutdown();await done
+  const b=await preparationFixture(root,async()=>new Response('failure',{status:403}));assert.equal(b.resumeVisionInstall(),null)
+  await assert.rejects(b.runVision('install','qwen3.5-4b'),/HTTP 403/)
+  const c=await preparationFixture(root,()=>{throw Error('unexpected network')});assert.equal(c.resumeVisionInstall(),null)
+ }finally{await rm(root,{recursive:true,force:true})}
+})
+test('重启意图绑定目录物理身份与分盘世代；活进程不被第二管理器抢占',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'dsh-preparation-scope-'))
+ try{
+  const first=blockingPreparation(),a=await preparationFixture(root,first.fetchImpl)
+  const v=a.runVision('install','qwen3.5-2b'),done=Promise.allSettled([v]);await first.until(1)
+  const peer=await preparationFixture(root,()=>{throw Error('unexpected network')});assert.equal(peer.resumeVisionInstall(),null);assert.throws(()=>peer.runVision('install','qwen3.5-2b'),/另一进程/)
+  await a.shutdown();await done
+  const changed=await preparationFixture(root,()=>{throw Error('unexpected network')},'changed-storage');assert.equal(changed.resumeVisionInstall(),null)
+  const {rename,cp}=await import('node:fs/promises');await rename(join(root,'state'),join(root,'old-state'));await cp(join(root,'old-state'),join(root,'state'),{recursive:true})
+  const restored=await preparationFixture(root,()=>{throw Error('unexpected network')});assert.equal(restored.resumeVisionInstall(),null)
+ }finally{await rm(root,{recursive:true,force:true})}
+})
+test('真正的退出进程遗留意图可由同一目录接续，不从任意残片或旧文件猜测任务',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'dsh-preparation-dead-owner-'))
+ try{
+  const {execFileSync}=await import('node:child_process'),{createModelPreparationIntent}=await import('../lib/model-preparation-intent.mjs')
+  const source=new URL('../lib/model-preparation-intent.mjs',import.meta.url).href
+  execFileSync(process.execPath,['--input-type=module','-e',`import {createModelPreparationIntent} from ${JSON.stringify(source)};createModelPreparationIntent({dataDir:${JSON.stringify(root)},scope:'same'}).claim('vision','qwen3.5-2b')`])
+  const ledger=createModelPreparationIntent({dataDir:root,scope:'same'});assert.equal(ledger.pending('vision'),'qwen3.5-2b')
+  const token=ledger.claim('vision','qwen3.5-2b',{resume:true});ledger.cancelActive('vision',token);ledger.finish('vision',token,true);assert.equal(ledger.pending('vision'),null)
+ }finally{await rm(root,{recursive:true,force:true})}
+})
+test('HTTP 206 续传拒绝错误偏移、总大小和短片段；保留合法残片供下一来源',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'dsh-preparation-range-'))
+ try{
+  const {LLAMA_VISION_MODELS}=await import('../lib/llama-vision-experiment.mjs'),model=LLAMA_VISION_MODELS[0],calls=[]
+  let range=`bytes 1-2/${model.weights.bytes}`
+  const a=await preparationFixture(root,async(url,opts)=>{calls.push(opts.headers.Range);return new Response('ab',{status:206,headers:{'content-range':range,'content-length':'2'}})})
+  const folder=join(a.paths.visionRoot,model.id);await mkdir(folder,{recursive:true});const part=join(folder,model.weights.file+'.part');await writeFile(part,'abc')
+  await assert.rejects(a.runVision('install',model.id),/响应范围不匹配/);assert.equal(await readFile(part,'utf8'),'abc');assert.deepEqual(calls,['bytes=3-','bytes=3-'])
+  range=`bytes 3-4/${model.weights.bytes+1}`;await assert.rejects(a.runVision('install',model.id),/响应范围不匹配/);assert.equal(await readFile(part,'utf8'),'abc')
+  range=`bytes 3-4/${model.weights.bytes}`;await assert.rejects(a.runVision('install',model.id),/响应范围不匹配/);assert.equal(await readFile(part,'utf8'),'abcab')
+  assert.equal((await a.visionStatus()).models[0].filesPresent,false)
+ }finally{await rm(root,{recursive:true,force:true})}
+})
+test('等待网络响应期间目标残片被替换成符号链接，拒绝写入及发布',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'dsh-preparation-link-'))
+ try{
+  const {LLAMA_VISION_MODELS}=await import('../lib/llama-vision-experiment.mjs'),{symlink}=await import('node:fs/promises'),model=LLAMA_VISION_MODELS[0],outside=join(root,'outside');await writeFile(outside,'keep')
+  const probe=join(root,'link-probe');try{await symlink(outside,probe,'file');await rm(probe)}catch(e){if(['EPERM','EACCES'].includes(e.code)){t.skip('当前系统不允许创建文件符号链接');return}throw e}
+  let a,changed=false; a=await preparationFixture(root,async()=>{
+   if(!changed){changed=true;await symlink(outside,join(a.paths.visionRoot,model.id,model.weights.file+'.part'),'file')}
+   return new Response('malicious')
+  })
+  await assert.rejects(a.runVision('install',model.id),/非普通模型文件/);assert.equal(await readFile(outside,'utf8'),'keep')
  }finally{await rm(root,{recursive:true,force:true})}
 })

@@ -25,7 +25,7 @@ test('首次配置本地语义回忆必装，其他增强仍可跳过，共用�
  const quick=html.slice(html.indexOf('id="quick-embedding-section"'),html.indexOf('id="fs-enhancements"'));
  assert.match(quick,/无需安装 Ollama 或 Python/);assert.match(quick,/llama\.cpp CPU 运行时/);
  assert.match(js,/无需安装 Ollama 或 Python。插件将下载/);
- assert.match(html,/如未安装 Ollama，请先<a href="https:\/\/ollama\.com\/download"/);
+ assert.match(js,/推荐安装内置视觉模型；若已安装Ollama，可以使用Ollama安装视觉模型/);assert.match(js,/若要使用远程视觉模型，可稍后在AI模型页中配置/);
  assert.match(html,/首次配置必需/);assert.match(html,/不开启时仍可用词法回忆/);assert.match(html,/Qwen3-Embedding-0\.6B/)
  assert.match(js,/\$\('quick-embedding-install'\)\.addEventListener\('click',\(\)=>run\(inspectOrEnableEmbedding\)\)/)
  assert.doesNotMatch(html,/id="quick-embedding-later"/);assert.match(html,/id="fs-wizard-skip"[^>]*>稍后设置/);assert.match(js,/\$\('fs-wizard-skip'\)\.addEventListener\('click',async\(\)=>\{if\(wizardMounted!=='embedding'&&await wizardDraftSafe\(\)\)wizardAdvance\(\)/)

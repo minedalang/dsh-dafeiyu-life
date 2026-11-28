@@ -1548,6 +1548,13 @@
       "newCheck": "assert.match(page,/id=\"local-vision-install\"/)",
       "date": "2026-11-28",
       "reason": "User explicitly removed Windows proxy tutorial. Keep real download and deletion controls and current-file progress coverage."
+    },
+    {
+      "file": "dev29-embedding-share-handoff.test.mjs",
+      "oldCheck": "assert.match(html,/如未安装 Ollama，请先<a href=\"https:\\/\\/ollama\\.com\\/download\"/)",
+      "newCheck": "assert.match(js,/推荐安装内置视觉模型；若已安装Ollama，可以使用Ollama安装视觉模型/)",
+      "date": "2026-11-28",
+      "reason": "The maintainer explicitly replaced the Ollama installation tutorial with the native/Ollama/remote recommendation in dev.96. Verified the old assertion fails on unchanged dev.96; mandatory semantic recall, optional vision, and shared install API assertions remain active."
     }
   ]
 }

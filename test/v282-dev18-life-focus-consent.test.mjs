@@ -122,3 +122,12 @@ test('contextual exact partial gap uses range-bound original trace, never a shif
  assert.equal((await runContextualVideoRevisit({...opts,request:{bvid,startMs:8000,endMs:8000}})).evidence.ok,false)
  live=false;assert.equal(result.validate(),false);assert.equal((await runContextualVideoRevisit({...opts,request:{bvid,startMs:7000,endMs:7000}})).evidence.ok,false);assert.equal(reads,1)
 })
+
+test('cross-channel revisit re-proves live gap before media read, and invalidates changed coverage without inventing new observations',async()=>{
+ const {runContextualVideoRevisit}=await import('../lib/video-moment-followup.mjs')
+ const bvid='BV1234567890',memoryId='e-'+'a'.repeat(18),row={bvid,memoryId,visibility:'public-event',partialGapAtMs:7000},fragment={memoryId,visibility:'public-event',certainty:'model-observation',content:'真实历史观察',timeAnchorMs:[7000,7000]}
+ let gap=true,missing=0,reads=0
+ const options={request:{bvid,startMs:7000,endMs:7000},offeredBvids:[bvid],isCurrent:()=>true,allowRange:()=>true,readTrace:()=>[row],readDetails:()=>gap?{ok:false,reason:'no-detail-in-time-range'}:{ok:true,bvid,fragments:[fragment],totalFragments:1,hasMore:false,missingSources:missing},execute:async(args,before)=>{gap=false;assert.equal(before(),false);return {ok:false,reason:'video-recall-evidence-changed'}}}
+ const declined=await runContextualVideoRevisit(options);assert.equal(declined.evidence.ok,false);assert.equal(reads,0)
+ const recalled=await runContextualVideoRevisit({...options,execute:()=>{reads++;throw Error('not needed')}});assert.equal(recalled.evidence.status,'existing-historical-observations');assert.equal(recalled.validate(),true);missing=1;assert.equal(recalled.validate(),false);assert.equal(reads,0)
+})
