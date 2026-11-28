@@ -191,3 +191,28 @@ test('mounted TODO watch result uses the same compact view after settlement; oth
  const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  assert.match(server,/runTodo: async \(id\) => projectVideoTodoModelView\(await runOwnerTodoWithFollowup\(id\)\)/)
 })
+
+
+test('fresh incomplete sampling builds a bounded partial memory receipt without full visual authority',async()=>{
+ const {buildVideoExplorationEvent,buildFreshVideoDetails}=await import('../lib/video-experience.mjs')
+ const v=make();v.status='vision_incomplete';v.error='incomplete';delete v.description
+ v.sampling={...v.sampling,sampler_version:14,tiles_per_storyboard:12}
+ const clock=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`
+ v.visionBoardReceipts[0]={...v.visionBoardReceipts[0],gridCols:4,description:times.slice(0,12).map((t,i)=>`R${Math.floor(i/4)+1}C${i%4+1} [${clock(t)}]：画面可见绿色草地和小鸟。`).join('\n')}
+ v.visionBoardReceipts[1]={index:2,status:'incomplete',times:times.slice(12),gridCols:4,partialCells:[{cellIndex:2,time:161,description:'R1C2 [02:41]：画面可见宽阔的机翼。'}]}
+ const info={bvid:BV,title:'测试视频',duration:324},args={bvid:BV,info,visual:v,source:'bili-life',autonomousSelected:true,accountTag:'a'.repeat(16),operationId:'partial-test-001'}
+ const event=buildVideoExplorationEvent(args)
+ assert.equal(event.experience.vision,false)
+ assert.equal(event.experience.visualReceipt,undefined)
+ const p=event.experience.partialVisualReceipt
+ assert.deepEqual(p.sampledTimesMs,times.map(t=>t*1000))
+ assert.deepEqual(p.describedTimesMs,[...times.slice(0,12),161].map(t=>t*1000))
+ assert.ok(p.notes.some(n=>n.includes('草地')))
+ assert.deepEqual(buildFreshVideoDetails({bvid:BV,info,visual:v,event,sourceRef:'observation:'+'a'.repeat(32)}),[])
+ assert.equal(buildVideoExplorationEvent({...args,autonomousSelected:false}).experience.partialVisualReceipt,undefined)
+ assert.equal(buildVideoExplorationEvent({...args,accountTag:''}).experience.partialVisualReceipt,undefined)
+ const bad=structuredClone(v);bad.visionBoardReceipts[1].times[0]=10
+ assert.equal(buildVideoExplorationEvent({...args,visual:bad}).experience.partialVisualReceipt,undefined)
+ const cached={...v,status:'cached'}
+ assert.equal(buildVideoExplorationEvent({...args,visual:cached}).experience.partialVisualReceipt,undefined)
+})

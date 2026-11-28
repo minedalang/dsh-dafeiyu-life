@@ -2823,7 +2823,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const gapRequested=recallId!==undefined||args.recall_start_ms!==undefined||args.recall_end_ms!==undefined
       const gapStillValid=()=>!gapRequested||validateVideoRecallGap({bvid,memoryId:recallId,startMs:args.recall_start_ms,endMs:args.recall_end_ms,
         atSeconds:args.at_seconds,afterSeconds:args.after_seconds,eventCue:args.event_cue,
-        trace:lifeMemory?.videoEvidenceTrace({accountTag:requestedAccount,bvid,memoryId:recallId,visualOnly:true,limit:1,ownerSession:false}),
+        trace:[...(lifeMemory?.videoEvidenceTrace({accountTag:requestedAccount,bvid,memoryId:recallId,visualOnly:true,limit:1,ownerSession:false})||[]),
+          ...(lifeMemory?.partialVideoGapTrace({accountTag:requestedAccount,bvid,memoryId:recallId,startMs:args.recall_start_ms,endMs:args.recall_end_ms})||[])],
         result:readPublicDetails({startMs:args.recall_start_ms,endMs:args.recall_end_ms})})
       if(!gapStillValid())return {ok:false,reason:'recall-source-unavailable'}
       // A natural cross-turn cue comes only from live, complete public detail.
@@ -7416,7 +7417,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       if(!accountTag||accountBinding.status().blocked||!lifeMemory)return {ok:false,reason:'memory-not-ready'}
       const result=lifeMemory.recallVideoDetails({bvid,memoryId,startMs,endMs,firstObservation,order,maxBytes,cursor,accountTag,ownerSession:true});
       if(result.ok!==false||!['no-detail','no-detail-in-time-range'].includes(result.reason)||firstObservation||cursor||!Number.isSafeInteger(startMs)||!Number.isSafeInteger(endMs)||endMs-startMs>12000||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential())return result;
-      const trace=lifeMemory.videoEvidenceTrace({bvid,memoryId,accountTag,visualOnly:true,limit:1,ownerSession:false});
+      const trace=[...lifeMemory.videoEvidenceTrace({bvid,memoryId,accountTag,visualOnly:true,limit:1,ownerSession:false}),
+        ...lifeMemory.partialVideoGapTrace({bvid,memoryId,accountTag,startMs,endMs})];
       if(accountTag!==trustedLifeAccountTag()||accountBinding.status().blocked)return {ok:false,reason:'account-changed'};
       const publicGap=lifeMemory.recallVideoDetails({bvid,accountTag,ownerSession:false,visibility:'public-event',startMs,endMs,maxBytes:4096});
       const revisitCandidate=proposeVideoRecallFollowup({result:publicGap,bvid,startMs,endMs,firstObservation,cursor,trace});

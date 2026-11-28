@@ -5,7 +5,7 @@ const server=readFileSync(new URL('../index.js',import.meta.url),'utf8')
 const focus=readFileSync(new URL('../lib/video-focus-review.mjs',import.meta.url),'utf8')
 const admission=readFileSync(new URL('../lib/life-video-read-admission.mjs',import.meta.url),'utf8')
 const watch=server.slice(server.indexOf('const executeWatchVideo = async'),server.indexOf("name:'bili_life_consider_video'"))
-const revisit=server.slice(server.indexOf("name:'bili_video_revisit_moment'"),server.indexOf("name:'bili_video_revisit_moment'")+6500)
+const revisit=server.slice(server.indexOf("name:'bili_video_revisit_moment'"),server.indexOf("  // Host-only adapters",server.indexOf("name:'bili_video_revisit_moment'")))
 
 test('overview uncertainty is only a suggestion, never an automatic focus read',()=>{
   assert.ok(watch.length>1500)
@@ -53,7 +53,7 @@ test('actual autonomous revisit handler runs without owner job, uses lease, and 
     buildFreshVideoDetails:({sourceRef})=>[{fragmentId:'frame-1',type:'observed-scene',sourceRef,certainty:'model-observation',content:'局部画面',timeAnchorMs:[7000,7000]}],
     buildVideoExplorationEvent:({operationId,accountTag})=>({key:'video-explore:'+operationId,accountTag,experience:{}}),
     lifeMemoryCoordinator:{recordEvents:async([event],opts)=>{events++;assert.equal(event.accountTag,account);context.expectedId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18);const proof=opts.detailAdmission?.sourceProof;assert.ok(proofSet.has(proof));assert.equal(proof.memoryId,context.expectedId);assert.equal(opts.detailAdmission.fragments[0].sourceRef,proof.sourceRef);updates++;return {ok:true,detailWrite:{ok:true,shallowVersion:1,deepFragments:1}}}},
-    randomUUID,createHash,admittedOwnerFocusProofs:proofSet,lifeMemory:{videoEvidenceTrace:()=>context.validRecall?[trace]:[],recallVideoDetails:opts=>{assert.equal(opts.ownerSession,false);assert.equal(opts.visibility,'public-event');return opts.startMs===undefined?cueDetails:details}},log(){}}
+    randomUUID,createHash,admittedOwnerFocusProofs:proofSet,lifeMemory:{videoEvidenceTrace:()=>context.validRecall?[trace]:[],partialVideoGapTrace:opts=>context.validPartial&&opts.startMs===7000&&opts.endMs===7000?[{memoryId:recallId,bvid,visibility:'public-event',partialGapAtMs:7000}]:[],recallVideoDetails:opts=>{assert.equal(opts.ownerSession,false);assert.equal(opts.visibility,'public-event');return opts.startMs===undefined?cueDetails:details}},log(){}}
   const start=server.indexOf('  const videoRevisitSpec={'),end=server.indexOf('  // Host-only adapters',start)
   try{
     const adapterStart=server.indexOf('  const persistFreshVideoDetail='),adapterEnd=server.indexOf('  const executeWatchVideo = async',adapterStart)
@@ -75,6 +75,10 @@ test('actual autonomous revisit handler runs without owner job, uses lease, and 
     assert.equal((await spec.execute({bvid,event_cue:'红色风筝'})).ok,false);assert.equal(observations,3);afterVote=null;
     cueDetails={ok:true,bvid,hasMore:false,missingSources:0,totalFragments:1,fragments:[part]};
     afterVisual=()=>epoch++;assert.equal((await spec.execute({bvid,event_cue:'红色风筝'})).ok,false);assert.equal(events,2);afterVisual=null;
+    context.validRecall=false;context.validPartial=true;const partialGap={...gap,recall_start_ms:7000,recall_end_ms:7000}
+    choice='defer';const beforePartial=observations;assert.equal((await spec.execute(partialGap)).ok,false);assert.equal(observations,beforePartial)
+    choice='act';afterVote=()=>{context.validPartial=false};assert.equal((await spec.execute(partialGap)).ok,false);assert.equal(observations,beforePartial)
+    afterVote=null;context.validPartial=true;const result=await spec.execute(partialGap);assert.equal(result.ok,true,JSON.stringify(result));assert.equal(observations,beforePartial+1);assert.equal(events,3)
 
   }finally{rmSync(dir,{recursive:true,force:true})}
 })

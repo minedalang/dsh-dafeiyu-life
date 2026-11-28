@@ -12,6 +12,12 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.75 · 局部视觉浅层记忆与精确缺口候选
+
+- 复用真实分镜/格号/时间来源核验，为当前账号新鲜部分观察构造有限浅层记忆（最多4条安全短笔记及采样/描述时刻）；原 Gateway 保存、自然衰减、容量管理及撤销保护，不写完整视觉证明、深层附件或永久档案正文。仅原受控主 Session 或已获 Life 选择的 JS 公共观看路径；Debug、缓存、无账号或未经选择的公共读取不新增局部记忆。
+- 主 Session 原 `dafeiyu_life_recall` 对当前清晰公开经历的精确缺失时刻，在原深层证据优先的条件下可返回原 `bili_video_revisit_moment` 候选；重新通过 Life 意愿并复核账号、来源、时刻及原视觉租约。其他当前局部描述已覆盖该时刻则不发该候选。非自动任务、非对外写入许可，私密观察不进入公开缺口路径。
+- A02/A05/A08/V01/V02/V03 部分推进；未完成逐格深层附件、后台/私信跨轮自主缺口选择、Python 专业 Agent 持久回执整合、全场景事实源及原债务。未改推理策略、调度和网络预算。
+
 ## 2.8.3-dev.74 · 视觉观察覆盖与主 Session 精简交接
 
 - 同一原视频感知回执派生 `observationCoverage`，区分采样数、模型描述数、缺口时刻、部分/完整采样；旧完整证据与写入门禁不变，不能据结构覆盖声称语义核实。
