@@ -89,7 +89,7 @@ test('dev.24 stale planner model result after autonomous-life → memory-foundat
  const entered=new Promise(r=>started=r),model=new Promise(r=>release=r)
  try{
   const todo=createOwnerTodoEngine({dataDir:dir,now:()=>now});const row=todo.add({type:'watch_video',bvid:BV}).item
-  const p=createAutonomousPlanner({automaticSession:createAutomaticSessionScope(()=>policy),dataDir:dir,now:()=>now,getConfig:()=>cfg,getTodos:()=>todo.context(8),
+  const p=createAutonomousPlanner({automaticSession:createAutomaticSessionScope(()=>policy),dataDir:dir,now:()=>now,getConfig:()=>cfg,getTodos:()=>todo.list({limit:8}),
    invokeModel:async()=>{calls++;if(calls===1){started();return model}return JSON.stringify({action:'dismiss',id:row.id})},executeRead:()=>{throw Error('must not execute')},updateTodo:(...a)=>{updates++;return todo.update(...a)},reflect:()=>{}})
   const work=p.tick();await entered;policy={mode:'memory-foundation',revision:1};policy={mode:'autonomous-life',revision:2};release(JSON.stringify({action:'dismiss',id:row.id}))
   const paused=await work;assert.equal(paused.skipped,'session-integration-paused');assert.equal(paused.modelCalled,true)

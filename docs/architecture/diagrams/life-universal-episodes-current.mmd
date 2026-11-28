@@ -1,3 +1,4 @@
+%% dev.107：原 Planner 首轮与深层回忆/补看续步共用共享循环；原待办版本在持久领取锁内复核，失败回执不覆盖新版本。
 %% dev.106：反思首轮、注册回忆及续步由共享循环驱动；普通活体回忆贯穿原私信/评论发送及后台原决定，不扩大授权或重试。
 %% dev.105：反思既有公开深层读取复用共享驱动；深层撤销写入复用持久锁。
 %% dev.104：原目标与精确候选复核；已核验入口先入账再续行，原权限和预算不变。
@@ -390,7 +391,7 @@ menu -.-> decisionScope57
 decisionScope57["共同模型提交：社交、主选择、Episode 与待办子循环"]
 %% @code decisionScope57 | lib/interaction-batch.mjs | const decisionEffect=
 menu -.-> sharedCycle103
-sharedCycle103["社交及 Episode 连续模型与注册读共享驱动；原公开目标延续；入口回执先于续行；原写事务独立"]
+sharedCycle103["社交、Episode、反思及 Planner 连续模型与注册读共享驱动；原公开目标延续；入口回执先于续行；原写事务独立"]
 sharedCycle103 --> decisionScope57
 %% @code sharedCycle103 | lib/life-agent-read-runtime.mjs | export async function runLifeToolCycle
 

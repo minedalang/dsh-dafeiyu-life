@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.107：原 Planner 首轮与深层回忆/补看续步共用共享循环；原待办版本在持久领取锁内复核，失败回执不覆盖新版本。
 %% dev.106：反思首轮、注册回忆及续步由共享循环驱动；普通活体回忆贯穿原私信/评论发送及后台原决定，不扩大授权或重试。
 %% dev.105：反思既有公开深层读取复用共享驱动；深层撤销写入复用持久锁。
 %% dev.104：原目标与精确候选复核；已核验入口先入账再续行，原权限和预算不变。
@@ -678,7 +679,7 @@ attention56 -.->|正常 Life 重新选择原契机| selection
 episodeContinuation -.-> decisionBoundary57
   decisionBoundary57["共同认知提交边界：调用前后核验"]
   episodeContinuation -.-> sharedCycle103
-  sharedCycle103["共享工具循环：社交与 Episode 原场景驱动"]
+  sharedCycle103["共享工具循环：社交、Episode、反思及 Planner 原场景驱动"]
   episodeContinuation -.->|原目标、先入账再续行| sharedCycle103
   sharedCycle103 --> decisionBoundary57
   sharedCycle103 --> registeredRead49
@@ -697,6 +698,7 @@ episodeContinuation -.-> decisionBoundary57
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.107：原 Planner 首轮与深层回忆/补看续步共用共享循环；原待办版本在持久领取锁内复核，失败回执不覆盖新版本。
 %% dev.106：反思首轮、注册回忆及续步由共享循环驱动；普通活体回忆贯穿原私信/评论发送及后台原决定，不扩大授权或重试。
 %% dev.105：反思既有公开深层读取复用共享驱动；深层撤销写入复用持久锁。
 %% dev.104：原目标与精确候选复核；已核验入口先入账再续行，原权限和预算不变。
@@ -1060,7 +1062,7 @@ attention56 -.-> resume
 planner -.-> candidateDecision57
   candidateDecision57["当前账号代际、模式、活体证据及待办原子项核验"]
   planner -.-> sharedCycle103
-  sharedCycle103["Episode 连续选择与注册读取共享驱动；原公开目标及候选复核；原菜单不变"]
+  sharedCycle103["Episode 与 Planner 连续选择及注册读取共享驱动；原公开目标及候选复核；原菜单不变"]
   %% @code sharedCycle103 | lib/life-agent-read-runtime.mjs | export async function runLifeToolCycle
   %% @code candidateDecision57 | lib/autonomous-planner.mjs | const primaryCurrent=()=>{
 
@@ -1076,6 +1078,7 @@ planner -.-> candidateDecision57
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.107：原 Planner 首轮与深层回忆/补看续步共用共享循环；原待办版本在持久领取锁内复核，失败回执不覆盖新版本。
 %% dev.106：反思首轮、注册回忆及续步由共享循环驱动；普通活体回忆贯穿原私信/评论发送及后台原决定，不扩大授权或重试。
 %% dev.105：反思既有公开深层读取复用共享驱动；深层撤销写入复用持久锁。
 %% dev.104：原目标与精确候选复核；已核验入口先入账再续行，原权限和预算不变。
@@ -1502,7 +1505,7 @@ failure56 -.->|原作用域有效及有预算才重新思考| planner
 %% @code failure56 | lib/autonomous-planner.mjs | const reportReadFailure=
 planner -.-> liveDecision57
 liveDecision57["活体证据失效则拒绝陈旧决定；不生成经历或联想确认"]
-sharedCycle103["共享循环交回原场景结果；顶层读取/联想失效不提交旧回执；入口回执先于续行"]
+sharedCycle103["共享循环交回原场景结果；原待办版本及读取活体复核；入口回执先于续行"]
 planner -.-> sharedCycle103 --> liveDecision57
 %% @code sharedCycle103 | lib/life-agent-read-runtime.mjs | export async function runLifeToolCycle
 %% @code liveDecision57 | lib/interaction-batch.mjs | const evidenceCurrent=rows=>
@@ -1519,6 +1522,7 @@ planner -.-> sharedCycle103 --> liveDecision57
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.107：原 Planner 首轮与深层回忆/补看续步共用共享循环；原待办版本在持久领取锁内复核，失败回执不覆盖新版本。
 %% dev.106：反思首轮、注册回忆及续步由共享循环驱动；普通活体回忆贯穿原私信/评论发送及后台原决定，不扩大授权或重试。
 %% dev.105：反思既有公开深层读取复用共享驱动；深层撤销写入复用持久锁。
 %% dev.104：原目标与精确候选复核；已核验入口先入账再续行，原权限和预算不变。
@@ -1911,7 +1915,7 @@ menu -.-> decisionScope57
 decisionScope57["共同模型提交：社交、主选择、Episode 与待办子循环"]
 %% @code decisionScope57 | lib/interaction-batch.mjs | const decisionEffect=
 menu -.-> sharedCycle103
-sharedCycle103["社交及 Episode 连续模型与注册读共享驱动；原公开目标延续；入口回执先于续行；原写事务独立"]
+sharedCycle103["社交、Episode、反思及 Planner 连续模型与注册读共享驱动；原公开目标延续；入口回执先于续行；原写事务独立"]
 sharedCycle103 --> decisionScope57
 %% @code sharedCycle103 | lib/life-agent-read-runtime.mjs | export async function runLifeToolCycle
 

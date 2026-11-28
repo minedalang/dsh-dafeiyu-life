@@ -1,3 +1,4 @@
+%% dev.107：原 Planner 首轮与深层回忆/补看续步共用共享循环；原待办版本在持久领取锁内复核，失败回执不覆盖新版本。
 %% dev.106：反思首轮、注册回忆及续步由共享循环驱动；普通活体回忆贯穿原私信/评论发送及后台原决定，不扩大授权或重试。
 %% dev.105：反思既有公开深层读取复用共享驱动；深层撤销写入复用持久锁。
 %% dev.104：原目标与精确候选复核；已核验入口先入账再续行，原权限和预算不变。
@@ -671,7 +672,7 @@ attention56 -.->|正常 Life 重新选择原契机| selection
 episodeContinuation -.-> decisionBoundary57
   decisionBoundary57["共同认知提交边界：调用前后核验"]
   episodeContinuation -.-> sharedCycle103
-  sharedCycle103["共享工具循环：社交与 Episode 原场景驱动"]
+  sharedCycle103["共享工具循环：社交、Episode、反思及 Planner 原场景驱动"]
   episodeContinuation -.->|原目标、先入账再续行| sharedCycle103
   sharedCycle103 --> decisionBoundary57
   sharedCycle103 --> registeredRead49

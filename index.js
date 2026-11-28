@@ -1570,7 +1570,7 @@ function reportMeta() {
       finally{settleProof('not-sent')}
     },
 logger:{warn:m=>log('统一待办回访：'+m)}})
-  const runOwnerTodoWithFollowup=async(id,{initiator='owner',viewDepth}={})=>{
+  const runOwnerTodoWithFollowup=async(id,{initiator='owner',viewDepth,guard}={})=>{
     accountBinding.assertReady()
     const originalEpisodeAccount=trustedLifeAccountTag()
     const task=ownerTodos.list({includeClosed:true,limit:500}).find(x=>x.id===id)
@@ -1590,7 +1590,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       ...(preAction?{preReservedAction:preAction}:{})}
     let result
     try{
-      const execute=()=>readActionContext.run(context,()=>ownerTodos.run(id,executeOwnerTodo))
+      const exactTask=JSON.stringify(task)
+      const execute=()=>readActionContext.run(context,()=>ownerTodos.run(id,executeOwnerTodo,{guard:row=>context.galleryReadCurrent()&&JSON.stringify(row)===exactTask&&(typeof guard!=='function'||guard(row)===true)}))
       result=preAction?await readActionGate.run({...preAction,source:'owner-todo',sourceId:task.id,obligationId:task.id},execute):await execute()
     }catch(e){if(e?.code==='reservation-held')return {ok:false,blocked:true,error:'同一只读动作已有其它入口执行或待核查，未开始本次待办执行'};throw e}
     if(result?.ok===true&&['watch_video','search_videos'].includes(task?.type))try{ownerTodoFollowup.queue(task,result.result)}catch(e){log('待办完成后回访入队失败：'+String(e?.message||e).slice(0,100))}
@@ -8665,10 +8666,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     hasVerifiedLifeVideoVisual:(bvid,tag)=>lifeOpportunities.hasVerifiedVideoVisual(bvid,tag),
     recheckWillingness:task=>dualContextAgency.assessReadExecution({task}),
     invokeModel:(prompt,maxChars)=>invokeInteractionPrompt(prompt,maxChars,{modelRoute:'behaviorDecision'}),
-    executeRead:(id,{viewDepth}={})=>{
+    executeRead:(id,{viewDepth,guard}={})=>{
       const current=ownerTodos.list({includeClosed:true,limit:500}).find(x=>x.id===id)
       if(!current||WRITE_TODO_TYPES.has(current.type))return {ok:false,error:'自主调度不允许写入型待办'}
-      return runOwnerTodoWithFollowup(id,{initiator:'life',viewDepth})
+      return runOwnerTodoWithFollowup(id,{initiator:'life',viewDepth,guard})
     },
     updateTodo:(id,action,opts)=>ownerTodos.update(id,action,opts),
     reflectionStatus:()=>lifeReflection.status(),reflect:()=>lifeReflection.reflect({force:false,origin:'life'}),

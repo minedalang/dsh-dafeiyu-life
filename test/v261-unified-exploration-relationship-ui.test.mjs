@@ -84,3 +84,23 @@ for(const scenario of ['generation-model','generation-willingness','changed-chil
   executeRead:async()=>{reads++;if(scenario==='read-return-generation')generation++;return {ok:false}},updateTodo:async()=>{mutations++},reflect:async()=>({ok:true})})
  const result=await planner.considerChildren(parent.id);assert.equal(calls,1);assert.equal(reads,scenario==='read-return-generation'?1:0);assert.equal(willingness,scenario==='generation-model'?0:1);assert.equal(mutations,0);assert.equal(result.reason,scenario==='changed-child'?'child-changed':'life-decision-scope-changed')
 }))
+
+for(const scenario of ['model-edit','admission-edit','late-failure','ordinary-failure'])test('dev107 child original version '+scenario,()=>withDir(async dir=>{
+ const todos=createOwnerTodoEngine({dataDir:dir,now:()=>at}),parent=todos.add({type:'search_videos',topic:'音乐',origin,sourceKey:'social-ai-read:verified'},{source:'recommendation'}).item
+ const child=todos.add({type:'watch_video',bvid:BV[0],topic:'音乐',origin,parentTodoId:parent.id,sourceKey:`explore-watch:${parent.id}:${BV[0]}`},{source:'recommendation'}).item
+ let calls=0,executed=0,willingness=0
+ const planner=createAutonomousPlanner({dataDir:dir,now:()=>at,getConfig:()=>({masterEnabled:true,autonomousPlannerEnabled:true,autonomousPlannerDailyLimit:4}),getLifeAccountTag:()=>'a'.repeat(16),getTodos:()=>todos.list({includeClosed:true,limit:500}),
+  invokeModel:async()=>{calls++;if(scenario==='model-edit')todos.update(child.id,'defer',{dueAt:at+60000,note:'主人新安排'});return JSON.stringify({action:'execute_read',id:child.id})},
+  recheckWillingness:()=>{willingness++;return {decision:'allow'}},executeRead:async(id,{guard})=>{
+   if(scenario==='admission-edit')todos.update(id,'defer',{dueAt:at+60000,note:'主人新安排'})
+   const r=await todos.run(id,async()=>{executed++;return {ok:false,error:'fixture failed'}},{guard})
+   if(scenario==='late-failure')todos.update(id,'dismiss')
+   return r
+  },updateTodo:(...args)=>todos.update(...args),reflect:async()=>({ok:true})})
+ const result=await planner.considerChildren(parent.id),live=todos.list({includeClosed:true}).find(x=>x.id===child.id)
+ assert.equal(calls,1);assert.equal(executed,scenario.endsWith('failure')?1:0)
+ if(scenario.endsWith('edit')){assert.equal(result.reason,'child-changed');assert.equal(live.note,'主人新安排');assert.equal(live.attempts,0)}
+ if(scenario==='model-edit')assert.equal(willingness,0)
+ if(scenario==='late-failure')assert.equal(live.status,'dismissed')
+ if(scenario==='ordinary-failure')assert.equal(live.status,'deferred')
+}))

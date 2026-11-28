@@ -80,3 +80,16 @@ test('已授权写待办只承认原 running 尝试和原精确参数，撤销�
   assert.equal(e.isCurrentAttempt(attempt),false)
  }finally{rmSync(home,{recursive:true,force:true})}
 })
+
+test('dev107 persisted admission checks exact offered row under original lock',async()=>{
+ const home=mk();try{
+  const a=createOwnerTodoEngine({dataDir:home}),b=createOwnerTodoEngine({dataDir:home})
+  const task=a.add({type:'watch_video',bvid:BV}).item,version=JSON.stringify(task);let executed=0
+  b.update(task.id,'defer',{note:'新安排',dueAt:Date.now()+60000})
+  const r=await a.run(task.id,async()=>{executed++;return {ok:true}},{guard:row=>JSON.stringify(row)===version})
+  assert.equal(r.stale,true);assert.equal(executed,0);assert.equal(a.list()[0].attempts,0);assert.equal(a.list()[0].note,'新安排')
+  const next=a.add({type:'inspect_my_space'}).item
+  assert.equal((await a.run(next.id,async()=>{executed++;return {ok:true}},{guard:row=>JSON.stringify(row)===JSON.stringify(next)})).ok,true)
+  assert.equal(executed,1)
+ }finally{rmSync(home,{recursive:true,force:true})}
+})

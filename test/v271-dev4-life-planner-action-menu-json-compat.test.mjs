@@ -388,3 +388,14 @@ test('reflection uses the registered existing deep recall only, suppressing stal
  }})
  assert.deepEqual(result,{ok:false,reason:'life-read-scope-changed'});assert.equal(calls,1)
 })
+
+test('dev107 planner registered recall and revisit stay scene scoped',async()=>{
+ const {registeredLifeReads,runLifeToolCycle}=await import('../lib/life-agent-read-runtime.mjs')
+ assert.deepEqual(registeredLifeReads('planner').map(x=>x.action),['recall_detail','revisit_video'])
+ let ran=0,live=true
+ const result=await runLifeToolCycle({scene:'planner',steps:async function*(){
+  const read=yield {kind:'read',actions:['recall_detail'],isCurrent:()=>live,read:async()=>{ran++;live=false;return {ok:true}}}
+  return read
+ }})
+ assert.equal(ran,1);assert.equal(result.ok,false)
+})

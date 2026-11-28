@@ -1807,6 +1807,20 @@
       "newCheck": "assert.deepEqual(loads,['restore-wizard','runtime-controls','life-agent'],'runtime control and Life loaders must be invoked')",
       "date": "2026-11-28",
       "reason": "Production switchTab now invokes runtime controls; supply isolated dependency and verify it actually runs."
+    },
+    {
+      "file": "v271-dev37-life-action-attribution.test.mjs",
+      "oldCheck": "assert.match(idx,/runOwnerTodoWithFollowup\\(id,\\{initiator:'life',viewDepth\\}\\)/)",
+      "newCheck": "assert.match(idx,/runOwnerTodoWithFollowup\\(id,\\{initiator:'life',viewDepth,guard\\}\\)/)",
+      "date": "2026-11-28",
+      "reason": "Existing verified read and view depth wiring retained; now requires the precise original task guard through admission."
+    },
+    {
+      "file": "v281-dev3a2-autonomous-video-depth.test.mjs",
+      "oldCheck": "assert.match(planner,/executeRead\\(fresh.id,\\{viewDepth:outcome.viewDepth\\}\\)/)",
+      "newCheck": "assert.match(planner,/executeRead\\(fresh.id,\\{viewDepth:outcome.viewDepth,guard:selectedCurrent\\}\\)/)",
+      "date": "2026-11-28",
+      "reason": "Existing verified read and view depth wiring retained; now requires the precise original task guard through admission."
     }
   ]
 }
