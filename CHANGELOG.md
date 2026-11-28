@@ -12,6 +12,12 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.73 · Qwen 2B 分镜执行兼容
+
+- 根据 dev.72 同 BV、同 24 个时刻的真实 Debug：4B 批量首板成功、次板补救成功；2B 将行误分为图片，单板补救还遗漏第四列。仅 `qwen3.5:2b` 改回逐张分镜，其他本地模型保留双图优先及失败板有界补救；独立 DSH 路径不变。
+- 共用 dev.72 解析器、原始 Debug、局部回执、时限与服务失败停止机制不变。不降低采样帧数，不扩大完整观看/记忆门禁；单板仍可能缺格。
+- A05/V03 原台账继续跟踪；描述冗余、部分状态、复查候选去重与真实同图对照未在本批关闭。
+
 ## 2.8.3-dev.72 · 统一视觉分镜解析与证据交接
 
 - 本地三款白名单模型恢复共用双图批次；只对未完成板作一次有界补救，保留服务失败停止、总时限与真实采样门禁。

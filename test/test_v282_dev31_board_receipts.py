@@ -51,7 +51,7 @@ class PerBoardVision(unittest.TestCase):
                 group=[next(b for b in boards if b['bytes']==base64.b64decode(jpg)) for jpg in data['messages'][0]['images']]
                 return Reply(group)
         with patch('urllib.request.build_opener',return_value=Opener()):
-            text,receipts=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
+            text,receipts=pv._analyze_local_storyboards(boards,'qwen3.5:4b')
         self.assertEqual([r['status'] for r in receipts],['analyzed','analyzed'])
         self.assertEqual([r['modelAttempts'] for r in receipts],[1,1])
         for b,r in zip(boards,receipts):
@@ -270,13 +270,13 @@ class PerBoardVision(unittest.TestCase):
             if len(frames)==2:raise ValueError('批量分镜标题缺失或重复')
             raise pv.VisionServiceError('ollama_connection_failed','服务连接中断')
         with patch.object(pv,'_call_local_ollama',side_effect=infer) as worker:
-            _,reports=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
+            _,reports=pv._analyze_local_storyboards(boards,'qwen3.5:4b')
         self.assertEqual(worker.call_count,2,'one malformed batch and one failed repair; no subsequent model call')
         self.assertEqual([r['modelAttempts'] for r in reports],[2,1])
         self.assertNotEqual(reports[1]['status'],'analyzed')
         self.assertEqual(reports[0]['errorCode'],'ollama_connection_failed')
 
-    def test_qwen2b_48_frames_paired_with_only_failed_board_repaired(self):
+    def test_qwen4b_48_frames_paired_with_only_failed_board_repaired(self):
         boards=[{'rank':i,'second':i*12,'bytes':bytes([65+i]),'tile_count':12,
                  'tile_times':list(range(i*12,i*12+12)),'grid_cols':4,'grid_rows':3} for i in range(4)]
         calls=[]
@@ -287,12 +287,50 @@ class PerBoardVision(unittest.TestCase):
             calls.append([b['rank'] for b in group])
             return '\n'.join(f'分镜图 {b["rank"]+1}：\n{cells(b)}' for b in group)
         with patch.object(pv,'_call_local_ollama',side_effect=infer):
-            text,reports=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
+            text,reports=pv._analyze_local_storyboards(boards,'qwen3.5:4b')
         self.assertEqual(calls,[[0,1],[1],[2,3]])
         self.assertEqual([r['status'] for r in reports],['analyzed','incomplete','analyzed','analyzed'])
         self.assertEqual([r['modelAttempts'] for r in reports],[1,2,1,1])
         self.assertEqual(reports[1]['partialCells'][0]['time'],12)
         self.assertIn('屏幕显示12:45',text)
+
+    def test_qwen2b_one_image_per_request_keeps_partial_and_real_times(self):
+        for count in (1,2,4):
+            with self.subTest(count=count):
+                boards=[{'rank':i,'second':i*12,'bytes':bytes([65+i]),'tile_count':12,
+                         'tile_times':list(range(i*12,i*12+12)),'grid_cols':4,'grid_rows':3} for i in range(count)]
+                calls=[]
+                def infer(group,model):
+                    self.assertEqual(model,'qwen3.5:2b')
+                    self.assertEqual(len(group),1)
+                    b=group[0];calls.append(b['rank'])
+                    # The real 2B debug reply omitted column 4 of every row.
+                    return '\n'.join(f'R{j//4+1}C{j%4+1}：画面可见文字12:20。'
+                                     for j in range(12) if b['rank']!=1 or j%4!=3)
+                with patch.object(pv,'_call_local_ollama',side_effect=infer):
+                    _,reports=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
+                self.assertEqual(calls,list(range(count)))
+                self.assertEqual([r['modelAttempts'] for r in reports],[1]*count)
+                self.assertEqual(reports[0]['inferencePath'],'single')
+                self.assertEqual(reports[0]['status'],'analyzed')
+                if count>1:
+                    self.assertEqual(reports[1]['status'],'incomplete')
+                    self.assertEqual(reports[1]['parseDiagnostics']['missingCellIndices'],[4,8,12])
+                    self.assertEqual(len(reports[1]['partialCells']),9)
+                    self.assertEqual(reports[1]['partialCells'][0]['time'],12)
+
+    def test_qwen2b_transport_failure_never_calls_remaining_boards(self):
+        boards=[{'rank':i,'second':i*12,'bytes':b'fake-jpeg','tile_count':12,
+                 'tile_times':list(range(i*12,i*12+12)),'grid_cols':4,'grid_rows':3} for i in range(4)]
+        error=pv.VisionServiceError('ollama_request_timeout','本地模型请求超时')
+        with patch.object(pv,'_call_local_ollama',side_effect=error) as worker:
+            text,reports=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
+        self.assertEqual(worker.call_count,1)
+        self.assertEqual(len(worker.call_args.args[0]),1)
+        self.assertEqual(text,'')
+        self.assertEqual([r['modelAttempts'] for r in reports],[1,0,0,0])
+        self.assertTrue(all(r['errorCode']=='ollama_request_timeout' for r in reports))
+        self.assertTrue(all(r.get('skippedAfterFailure') for r in reports[1:]))
 
     def test_presentation_variants_mixed_clocks_and_explicit_unknown(self):
         b={'rank':0,'second':11,'tile_times':[11,16,22],'grid_cols':3,'grid_rows':1}

@@ -931,9 +931,10 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
         if os.environ.get('DSH_OWNER_VIDEO_DEBUG_STAGE')!='1' or not isinstance(answer,str):return
         reports[idx].setdefault('debugRawAttempts',[]).append({'path':path,'boardIndices':indices,
             'text':answer[:32000],'truncated':len(answer)>32000})
-    # Shared paired strategy for all models. A bounded single-board repair
-    # follows only malformed/incomplete batches; no model-name inference.
-    batch_size=2
+    # dev.72 real Debug: Qwen3.5 2B confused rows with separate images.
+    # Use one board per call for this exact allowlisted model; other models
+    # keep paired inference and bounded repair. All use the same parser.
+    batch_size=1 if model=='qwen3.5:2b' else 2
     for start in range(0,len(frames),batch_size):
         if terminal_error is not None:
             for i in range(start,min(start+batch_size,len(frames))):
