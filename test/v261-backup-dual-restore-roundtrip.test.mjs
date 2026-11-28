@@ -2,16 +2,20 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { PassThrough } from 'node:stream'
 import { createServer, request as httpRequest } from 'node:http'
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, linkSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import {
   createLifeMemoryBackup, inspectLifeMemoryBackup, restoreLifeMemoryBackup,
-  createBackup, createBackupWithProgress, createLifeMemoryBackupWithProgress, backupMemoryDifferences, planMissingPublicEpisodes, repairMissingPublicEpisodes, validateBackup, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, businessRestorePreview, backupMemoryOverview, memoryRepairSource, previewPortableMemoryRepair, planPortableMemoryRepair, repairPortableMemoryDetails,
+  createBackup, createBackupWithProgress, createLifeMemoryBackupWithProgress, backupMemoryDifferences, planMissingPublicEpisodes, repairMissingPublicEpisodes, validateBackup, restoreBackupFiles, restorePortableSettingsFiles, planBusinessRestore, previewBusinessLifeRestore, businessRestorePreview, backupMemoryOverview, memoryRepairSource, previewPortableMemoryRepair, planPortableMemoryRepair, repairPortableMemoryDetails,
 } from '../lib/data-backup.mjs'
 import { saveBackupJson } from '../lib/backup-directory.mjs'
+import {inspectPortableRescueSource,createPortableRescue,verifyPortableRescue} from '../lib/portable-backup-rescue.mjs'
+import {assertColdRestoreClear,OFFLINE_RESCUE_MARKER,coldRestoreFencePath} from '../lib/cold-restore-fence.mjs'
+import {withDurableFileLock} from '../lib/durable-file-lock.mjs'
+import {spawnSync} from 'node:child_process'
 import {createLifeMemoryDetailStore} from '../lib/life-memory-details.mjs'
 import { readJsonRequest } from '../lib/http-json-body.mjs'
 
@@ -417,8 +421,92 @@ test('owner repair only adds proven missing public experiences under original lo
   const missingHealth=structuredClone(live);delete missingHealth.healthEvents;put(root,epName,missingHealth);assert.match(planMissingPublicEpisodes(createLifeMemoryBackup(root),incoming,options).reason,/统计/);put(root,epName,live)
   assert.equal(planMissingPublicEpisodes(current,incoming,{...options,now:options.now+8*86400000}).rows.length,0)
   const archiveRows=archiveBytes.split('\n').filter(Boolean).map(JSON.parse);put(root,archive[0],archiveRows.filter(e=>e.id!==lost.id).map(e=>JSON.stringify(e)).join('\n')+'\n');assert.match(planMissingPublicEpisodes(createLifeMemoryBackup(root),incoming,options).reason,/档案/);put(root,archive[0],archiveBytes)
+  // The original archive identity alone cannot attest to arbitrary body text.
+  const modify=(bundle,name,content)=>{const out=structuredClone(bundle);out.files[name]=typeof content==='string'?content:JSON.stringify(content);out.hashes[name]=sha(out.files[name]);return out}
+  const falsified=JSON.parse(incoming.files[epName]);falsified.episodes[0].text='并未真实发生的经历内容';const forged=modify(incoming,epName,falsified)
+  assert.match(planMissingPublicEpisodes(current,forged,options).reason,/正文/);assert.equal(previewPortableMemoryRepair(current,forged,'scope',options).missingEpisodes,0)
+  const sameIdWrongBirth=modify(incoming,'character-identity.json',{version:1,id:characterId,createdAt:2});assert.throws(()=>previewPortableMemoryRepair(current,sameIdWrongBirth,'scope',options),/角色身份/)
+  const fork=archiveRows.map(row=>row.id===lost.id?row:{...row,event:{...row.event,title:'独立分支'}})
+  const forkedLive=modify(current,archive[0],fork.map(row=>JSON.stringify(row)).join('\n')+'\n')
+  assert.match(planMissingPublicEpisodes(forkedLive,incoming,options).reason,/连续延伸/)
+  assert.ok(archiveRows.every(row=>/^[a-f0-9]{64}$/.test(row.originalPublicWatchSha256)))
+  // Legacy metadata-only archives can still attest to their exact original row.
+  const legacyArchive=bundle=>modify(bundle,archive[0],bundle.files[archive[0]].split('\n').filter(Boolean).map(line=>{const row=JSON.parse(line);delete row.originalPublicWatchSha256;return JSON.stringify(row)}).join('\n')+'\n')
+  assert.equal(planMissingPublicEpisodes(legacyArchive(current),legacyArchive(incoming),options).rows.length,1)
+  assert.equal(planMissingPublicEpisodes(legacyArchive(current),legacyArchive(forged),options).rows.length,0)
+  // Backed-up recall state is not an original receipt; do not extend memory life.
+  const reinforced=JSON.parse(incoming.files[epName]);reinforced.episodes[0].reinforceCount=1;assert.equal(planMissingPublicEpisodes(current,modify(incoming,epName,reinforced),options).rows.length,0)
+
   assert.equal(repairMissingPublicEpisodes(root,incoming,options,preview.revision,'scope'),1)
   const final=JSON.parse(readFileSync(path,'utf8'));assert.deepEqual(final.episodes,[...live.episodes,lost]);assert.deepEqual(final.healthEvents,live.healthEvents);assert.deepEqual(final.archiveKeys,live.archiveKeys);assert.equal(final.updatedAt,live.updatedAt);assert.equal(readFileSync(archivePath,'utf8'),archiveBytes)
   assert.equal(previewPortableMemoryRepair(createLifeMemoryBackup(root),incoming,'scope',options).missingEpisodes,0)
  }finally{gateway.close();rmSync(root,{recursive:true,force:true})}
+})
+
+
+test('new public visual receipt carries only original fading-row digest; old stripped scene notes cannot be fabricated during repair',()=>{
+ const root=temp(),tag='a'.repeat(16),characterId='11111111-1111-4111-8111-111111111111',now=Date.now(),options={sameCharacter:true,accountTag:tag,now:now+2000}
+ let clock=now-4000;const gateway=createLifeMemoryGateway({dataDir:root,getAccountTag:()=>tag,now:()=>clock})
+ try{
+  put(root,'character-identity.json',{version:1,id:characterId,createdAt:1});put(root,'detail-protection/revocations-v1.json',{version:1,ids:[]})
+  const ev={kind:'watch',key:'video-explore:original-visual',bvid:'BV1pXHK6mE6z',title:'原始视觉经历',time:clock,accountTag:tag,experience:{metadata:true,vision:true,evidenceSchema:'life-video-evidence/v1',visualReceipt:{source:'decoded-public-video',frameCount:2,firstAtMs:100,lastAtMs:1000},visualSceneNotes:['画面中可见一只蓝色杯子放在木桌上'],visualNotesMethod:'vision-model-same-call'}}
+  gateway.recordEvents([ev]);const incoming=createLifeMemoryBackup(root),name='life-memory/episodic.json',archive=Object.keys(incoming.files).find(x=>x.startsWith('life-memory/archive/')),lost=JSON.parse(incoming.files[name]).episodes[0]
+  assert.match(lost.text,/蓝色杯子/);assert.doesNotMatch(incoming.files[archive],/蓝色杯子/);assert.match(incoming.files[archive],/originalPublicWatchSha256/)
+  clock=now-1000;gateway.recordEvents([{kind:'watch',key:'new-metadata',bvid:'BV1pXHK6mE6y',title:'新经历',time:clock,accountTag:tag}]);const live=JSON.parse(readFileSync(join(root,name),'utf8'));live.episodes=live.episodes.filter(e=>e.id!==lost.id);put(root,name,live)
+  const current=createLifeMemoryBackup(root);assert.equal(planMissingPublicEpisodes(current,incoming,options).rows.length,1)
+  const stripProof=bundle=>{const copy=structuredClone(bundle);copy.files[archive]=copy.files[archive].split('\n').filter(Boolean).map(line=>{const row=JSON.parse(line);delete row.originalPublicWatchSha256;return JSON.stringify(row)}).join('\n')+'\n';copy.hashes[archive]=sha(copy.files[archive]);return copy}
+  assert.equal(planMissingPublicEpisodes(stripProof(current),stripProof(incoming),options).rows.length,0)
+  const tampered=structuredClone(incoming),doc=JSON.parse(tampered.files[name]);doc.episodes[0].visualMemo.sceneNotes=['另外一段虚构的画面内容'];tampered.files[name]=JSON.stringify(doc);tampered.hashes[name]=sha(tampered.files[name]);assert.equal(planMissingPublicEpisodes(current,tampered,options).rows.length,0)
+ }finally{gateway.close();rmSync(root,{recursive:true,force:true})}
+})
+
+test('live restore boundary only permits editable files; original cold fence also blocks detail repair',()=>{
+ const root=temp(),old=temp()
+ try{
+  put(root,'duty.md','现役规则');put(old,'duty.md','旧规则');put(old,'owner-todos.json',{version:1,items:[]})
+  const backup=createBackup({root:old,config:{}});assert.throws(()=>restorePortableSettingsFiles(root,backup),/在线恢复只允许/);assert.equal(readFileSync(join(root,'duty.md'),'utf8'),'现役规则');assert.equal(existsSync(join(root,'owner-todos.json')),false)
+  const plan=planBusinessRestore(createBackup({root,config:{}}),backup);put(root,'duty.md','并发修改');assert.throws(()=>restorePortableSettingsFiles(root,plan.restore,{expected:plan.rollback}),/规则文件已变化/);assert.equal(readFileSync(join(root,'duty.md'),'utf8'),'并发修改');put(root,'duty.md','现役规则');assert.equal(restorePortableSettingsFiles(root,plan.restore,{expected:plan.rollback}),1);assert.equal(readFileSync(join(root,'duty.md'),'utf8'),'旧规则')
+  put(root,OFFLINE_RESCUE_MARKER,{version:1});assert.throws(()=>restorePortableSettingsFiles(root,plan.rollback),/隔离救援/);assert.throws(()=>repairPortableMemoryDetails(root,{repairs:[]}),/隔离救援/)
+  rmSync(join(root,OFFLINE_RESCUE_MARKER));writeFileSync(coldRestoreFencePath(root),'{}');assert.throws(()=>restorePortableSettingsFiles(root,plan.rollback),/冷恢复事务/)
+ }finally{rmSync(coldRestoreFencePath(root),{force:true});for(const dir of [root,old])rmSync(dir,{recursive:true,force:true})}
+})
+
+test('deep attachment repair serializes against the original fading-memory lock',()=>{
+ const root=temp()
+ try{
+  const ep={id:'e-'+'a'.repeat(18),kind:'watch',stage:'clear',visibility:'public-event',accountTag:'a'.repeat(16),at:1772450000000,bvid:'BV1pXHK6mE6z',text:'原始画面'}
+  put(root,'life-memory/episodic.json',{version:1,episodes:[ep],archiveKeys:[],updatedAt:ep.at});put(root,'detail-protection/revocations-v1.json',{version:1,ids:[]})
+  const store=createLifeMemoryDetailStore({dataDir:root});store.write({episode:ep,verified:true,fragments:[{fragmentId:'frame-001',type:'observed-scene',certainty:'model-observation',sourceRef:'receipt-0001',timeAnchorMs:[0,1000],content:'实际观察'}]})
+  const older=createLifeMemoryBackup(root),file=join(root,'life-memory','details','v1',ep.accountTag,ep.id+'.json');rmSync(file)
+  const plan=planPortableMemoryRepair(createLifeMemoryBackup(root),older)
+  withDurableFileLock(join(root,'life-memory','episodic.json.lock'),()=>{assert.throws(()=>repairPortableMemoryDetails(root,plan),/durable_ledger_busy/);assert.equal(existsSync(file),false)})
+  assert.equal(repairPortableMemoryDetails(root,plan),1)
+ }finally{rmSync(root,{recursive:true,force:true})}
+})
+
+test('portable rescue extracts validated business and memory packages into non-activatable objects, verifies on disk, never changes the live root',()=>{
+ const home=temp(),root=join(home,'live'),folder=join(home,'backups'),dest=join(home,'isolated-business'),memDest=join(home,'isolated-memory');mkdirSync(root);mkdirSync(folder)
+ try{
+  makeLifeFixture(root);put(root,'character-identity.json',{version:1,id:'11111111-1111-4111-8111-111111111111',createdAt:1});put(root,'duty.md','原规则');put(root,'owner-todos.json',{version:1,items:[]})
+  const backup=createBackup({root,config:{personaPrompt:'鱼鱼'},sqlite:{'meme-memory.sqlite3':Buffer.from('SQLite fixture').toString('base64')}}),source=saveBackupJson(folder,backup)
+  const before=readFileSync(join(root,'life-memory/episodic.json'),'utf8'),summary=inspectPortableRescueSource(source);assert.equal(summary.files,Object.keys(backup.files).length);assert.equal(summary.databases,1);assert.equal(summary.activationAllowed,false)
+  const args={source,destination:dest,liveRoot:root,confirm:'EXTRACT_PORTABLE_BACKUP_OFFLINE_ONLY'}
+  assert.throws(()=>createPortableRescue({...args,confirm:''}),/明确确认/);assert.throws(()=>createPortableRescue({...args,destination:join(root,'rescue')}),/重叠/);assert.equal(existsSync(dest),false)
+  const result=createPortableRescue(args);assert.equal(result.activationAllowed,false);assert.equal(result.historyProven,false);assert.deepEqual(verifyPortableRescue(dest),result)
+  assert.equal(readFileSync(join(root,'life-memory/episodic.json'),'utf8'),before);assert.equal(existsSync(join(dest,'character-identity.json')),false);assert.throws(()=>assertColdRestoreClear(dest),/隔离救援/);assert.throws(()=>createPortableRescue(args),/EEXIST/)
+  const manifest=JSON.parse(readFileSync(join(dest,'manifest.json'),'utf8'));const ep=manifest.entries.find(row=>row.name==='life-memory/episodic.json');assert.equal(readFileSync(join(dest,'objects',ep.sha256),'utf8'),backup.files[ep.name]);const db=manifest.entries.find(row=>row.kind==='sqlite-base64');assert.equal(readFileSync(join(dest,'objects',db.sha256),'utf8'),backup.sqlite[db.name])
+  const mem=saveBackupJson(folder,createLifeMemoryBackup(root),'dafeiyu-memory');const cli=spawnSync(process.execPath,['tools/portable-backup-rescue.mjs','extract','--source',mem,'--root',root,'--to',memDest,'--confirm',args.confirm],{encoding:'utf8'});assert.equal(cli.status,0,cli.stderr);assert.equal(JSON.parse(cli.stdout).databases,0);assert.equal(verifyPortableRescue(memDest).sourceFormat,'dafeiyu-life-memory-backup')
+  writeFileSync(join(dest,'objects',ep.sha256),'tampered');assert.throws(()=>verifyPortableRescue(dest),/校验失败|超过上限/)
+  const tampered=structuredClone(backup);tampered.files['duty.md']='篡改';const bad=join(folder,'bad.json');writeFileSync(bad,JSON.stringify(tampered));assert.throws(()=>createPortableRescue({...args,source:bad,destination:join(home,'bad')}),/完整性校验失败/);assert.equal(existsSync(join(home,'bad')),false)
+  const incomplete=join(home,'incomplete');mkdirSync(incomplete);put(incomplete,OFFLINE_RESCUE_MARKER,{version:1,format:'dafeiyu-portable-rescue/v1',status:'preparing',activationAllowed:false});assert.throws(()=>assertColdRestoreClear(incomplete),/隔离救援/);assert.throws(()=>verifyPortableRescue(incomplete))
+ }finally{rmSync(home,{recursive:true,force:true})}
+})
+
+
+test('portable export refuses linked allowed files and malformed archive directory instead of omitting them',()=>{
+ const root=temp()
+ try{
+  put(root,'outside.txt','other data');linkSync(join(root,'outside.txt'),join(root,'duty.md'));assert.throws(()=>createBackup({root,config:{}}),/备份文件存在链接/);rmSync(join(root,'duty.md'));
+  put(root,'life-memory/archive','not a directory');assert.throws(()=>createLifeMemoryBackup(root),/备份目录存在链接或非目录/)
+ }finally{rmSync(root,{recursive:true,force:true})}
 })

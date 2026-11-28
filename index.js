@@ -60,7 +60,7 @@ import {resolveExistingDmContact} from './lib/manual-dm-contact.mjs'
 import { makeSafeDshLaunch } from './lib/dsh-launcher.mjs'
 import { randomUUID, createHash, randomBytes } from 'node:crypto'
 import {mcpIntegrity,repairReviewedMcp} from './lib/mcp-reviewed-repair.mjs'
-import { createBackup, createBackupWithProgress, validateBackup, validateRestoreIdentity, restoreBackupFiles, planBusinessRestore, previewBusinessLifeRestore, businessRestorePreview, memoryRepairSource, previewPortableMemoryRepair, planPortableMemoryRepair, repairPortableMemoryDetails, repairMissingPublicEpisodes, createLifeMemoryBackup, createLifeMemoryBackupWithProgress, inspectLifeMemoryBackup } from './lib/data-backup.mjs'
+import { createBackup, createBackupWithProgress, validateBackup, validateRestoreIdentity, restorePortableSettingsFiles, planBusinessRestore, previewBusinessLifeRestore, businessRestorePreview, memoryRepairSource, previewPortableMemoryRepair, planPortableMemoryRepair, repairPortableMemoryDetails, repairMissingPublicEpisodes, createLifeMemoryBackup, createLifeMemoryBackupWithProgress, inspectLifeMemoryBackup } from './lib/data-backup.mjs'
 import { readJsonRequest } from './lib/http-json-body.mjs'
 import { requireBackupDirectory, saveBackupJson } from './lib/backup-directory.mjs'
 import {listBackupFiles,inspectBackupInDirectory,deleteBackupInDirectory,hasTodaysAutomatic,saveAutomaticBackup,pruneAutomaticBackups} from './lib/backup-rotation.mjs'
@@ -9682,7 +9682,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         const safeguardPath = saveBackupJson(folder, safeguard, 'pre-restore')
         let restoredFiles=0,configTouched=false
         try {
-          restoredFiles=restoreBackupFiles(stateDir,plan.restore,{reconcileDetails:false})
+          restoredFiles=restorePortableSettingsFiles(stateDir,plan.restore,{expected:plan.rollback})
           configTouched=Object.keys(patch).length>0
           // All configuration changes go through the same durable save/readback
           // path as interactive Life settings; no account grants are restored.
@@ -9695,7 +9695,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           const rollbackErrors=[]
           if(restoredFiles){
             try{
-              restoreBackupFiles(stateDir,plan.rollback,{reconcileDetails:false})
+              restorePortableSettingsFiles(stateDir,plan.rollback,{expected:plan.restore})
               for(const name of plan.names)if(!Object.hasOwn(plan.rollback.files,name)){
                 const file=storageDataPath(stateDir,...name.split('/'))
                 if(existsSync(file)&&lstatSync(file).isFile()&&!lstatSync(file).isSymbolicLink())rmSync(file)
