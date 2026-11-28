@@ -233,3 +233,47 @@ test('dev53 episode writer does not convert an already-dispatched receipt into s
  const result=await execute({action:'like_video',id:ID,bvid:BV,reason:'确实欣赏这个视频的创作方式'},scope)
  assert.equal(result.status,'uncertain');assert.equal(writes,1)
 })
+
+
+test('dev.63 writer rechecks original decision evidence during its own asynchronous admission, without a second vote',async()=>{
+ let current=true,writes=0,cancels=0,marks=0
+ const execute=createLifeContinuationWriteExecutor({hasVerifiedVisual:()=>true,getConfig:()=>cfg,getAccountTag:()=>scope,getAccountUid:()=> '1234',getIntention:()=>selected,
+  getPublicEvidence:async()=>evidence,markSelected:()=>{marks++;return {ok:true}},prepareIntent:async(_p,{isCurrent})=>{current=false;assert.equal(isCurrent(),false);return {ok:true,ticket:'test-ticket'}},cancelIntent:()=>{cancels++},runWriter:()=>{writes++;return {ok:true,status:'verified'}},now:()=>T})
+ const result=await execute({action:'like_video',id:ID,bvid:BV,reason:'确实欣赏这个公开作品的创作方式'},scope,{decisionCurrent:()=>current})
+ assert.equal(result.code,'authorization-changed-after-queue');assert.equal(result.attempted,false);assert.equal(marks,1);assert.equal(writes,0);assert.equal(cancels,1)
+})
+
+test('dev.63 planner cancels queued bundle if delivered recall is forgotten before ledger start',()=>home(async dir=>{
+ let valid=true,prepared=0,cancelled=0,begun=0,writes=0
+ const recalled=[{bvid:OTHER,title:'皮影戏舞台',sceneNotes:['光线投射出角色轮廓。'],recallRoute:'direct'}]
+ const execute=async()=>{writes++;return {ok:true,status:'verified'}}
+ execute.prepareBundle=async(_actions,_scope,{decisionCurrent})=>{prepared++;assert.equal(decisionCurrent(),true);valid=false;assert.equal(decisionCurrent(),false);return {ok:true,proof:{kind:'video_bundle'}}}
+ execute.cancelBundle=()=>{cancelled++}
+ const x=makeLife(dir,[
+  life=>({action:'begin_exploration',id:life.explorationCues()[0].id,goal:'想了解真实公开作品'}),
+  life=>({action:'inspect_exploration',id:life.continuations()[0].id,bvid:BV}),
+  life=>({action:'write_bundle',id:life.continuations()[0].id,bvid:BV,actions:[{action:'like_video',reason:'很欣赏这个公开作品的创作方向'},{action:'collect_video',reason:'想以后继续欣赏这个公开作品',folderTitle:'游戏音乐'}]})],undefined,{
+   executeLifeWrite:execute,getRecentLifeVideoMemory:async()=>recalled,validateLifeVideoMemory:()=>valid,
+   startLifeWriteBundle:()=>{begun++;return {ok:true,bundleId:'test'}},recordLifeWriteBundleChild:()=>{throw Error('must not settle')}
+ })
+ const r=await x.planner.tick();assert.equal(r.continuation.reason,'bundle-decision-scope-changed');assert.equal(prepared,1);assert.equal(cancelled,1);assert.equal(begun,0);assert.equal(writes,0)
+ assert.equal(x.life.status().intentions[0].writeBundle??null,null)
+}))
+
+
+test('dev.63 original verified bundle child survives forgetting; no second child or new model vote',()=>home(async dir=>{
+ let valid=true,prepared=0,cancelled=0,writes=0,x
+ const recalled=[{bvid:OTHER,title:'皮影戏舞台',sceneNotes:['光线投射出角色轮廓。'],recallRoute:'direct'}]
+ const execute=async(_action,_scope,{decisionCurrent})=>{assert.equal(decisionCurrent(),true);writes++;valid=false;return {ok:true,status:'verified'}}
+ execute.prepareBundle=async(_actions,_scope,{decisionCurrent})=>{prepared++;assert.equal(decisionCurrent(),true);return {ok:true,proof:{kind:'video_bundle'}}}
+ execute.cancelBundle=()=>{cancelled++}
+ x=makeLife(dir,[
+  life=>({action:'begin_exploration',id:life.explorationCues()[0].id,goal:'想了解真实公开作品'}),
+  life=>({action:'inspect_exploration',id:life.continuations()[0].id,bvid:BV}),
+  life=>({action:'write_bundle',id:life.continuations()[0].id,bvid:BV,actions:[{action:'like_video',reason:'很欣赏这个公开作品的创作方向'},{action:'collect_video',reason:'想以后继续欣赏这个公开作品',folderTitle:'游戏音乐'}]})],undefined,{
+   executeLifeWrite:execute,getRecentLifeVideoMemory:async()=>recalled,validateLifeVideoMemory:()=>valid,
+   startLifeWriteBundle:(...args)=>x.life.startWriteBundle(...args),recordLifeWriteBundleChild:(...args)=>x.life.recordWriteBundleChild(...args)
+ })
+ const r=await x.planner.tick();assert.equal(r.continuation.reason,'bundle-decision-scope-changed');assert.equal(prepared,1);assert.equal(cancelled,1);assert.equal(writes,1);assert.equal(x.calls,3)
+ const entry=x.life.status().intentions[0];assert.equal(entry.writeBundle,null);assert.equal(entry.receipt,'verified-partial-bundle');assert.deepEqual(entry.writeOutcomes.map(x=>[x.action,x.status]),[['like_video','verified']])
+}))

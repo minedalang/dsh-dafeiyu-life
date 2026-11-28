@@ -206,8 +206,11 @@ test('dev.26 model recovery on a healthy old disk stages and switches only new t
 }))
 test('dev.26 second stop check fails before publishing model route; preserves old pointer, stage and existing models',()=>recoveryFixture(({root,at,old,destination,args})=>{
  let checks=0;const route=readFileSync(at('storage-large-data-v2.json'))
- assert.throws(()=>recoverSnapshotModels({...args,checkStopped:()=>({ok:++checks===1})}),/已保留原路由/)
- assert.deepEqual(readFileSync(at('storage-large-data-v2.json')),route);assert.equal(largeDataStatus(root).target,old);assert.equal(existsSync(destination),false);assert.equal(existsSync(coldRestoreFencePath(root)),false)
+ assert.throws(()=>recoverSnapshotModels({...args,checkStopped:()=>({ok:++checks===1})}),/保持冻结/)
+ assert.deepEqual(readFileSync(at('storage-large-data-v2.json')),route);assert.equal(largeDataStatus(root).target,old);assert.equal(existsSync(destination),false);assert.equal(existsSync(coldRestoreFencePath(root)),true)
+ assert.throws(()=>stateDirOf({get:()=>()=>root}),/禁止启动/)
+ assert.equal(rollbackSplitColdRestore({root,stoppedConfirmed:true,confirm:'ROLLBACK_FULL_DSH_STATE',checkStopped:stopped}).rolledBack,true)
+ assert.equal(existsSync(coldRestoreFencePath(root)),false)
  assert.ok(readdirSync(dirname(destination)).some(n=>n.startsWith('new-model.cold-stage-')))
 }))
 test('dev.26 process exit during new model staging blocks host startup; rollback handles a published pointer without deleting either model copy',()=>recoveryFixture(({t,root,at,old,destination,args})=>{
@@ -238,8 +241,10 @@ test('dev.26 model-only recovery excludes incomplete HF payload and retains miss
  put(join(old,'whisper','.hf-cache','hub','models--test','blobs','unfinished.incomplete'),'partial')
  const second=snapshot+'-second';createSplitColdSnapshot({root,destination:second,stoppedConfirmed:true,checkStopped:stopped})
  rmSync(old,{recursive:true});const plan=inspectModelRecovery({...args,snapshot:second});assert.equal(plan.files,3)
- let checks=0;assert.throws(()=>recoverSnapshotModels({...args,snapshot:second,checkStopped:()=>({ok:++checks===1})}),/已保留原路由/)
+ let checks=0;assert.throws(()=>recoverSnapshotModels({...args,snapshot:second,checkStopped:()=>({ok:++checks===1})}),/保持冻结/)
  assert.equal(JSON.parse(readFileSync(at('storage-large-data-v2.json'),'utf8')).target,old);assert.equal(existsSync(old),false);assert.throws(()=>largeDataStatus(root),/目录不存在/)
+ assert.equal(existsSync(coldRestoreFencePath(root)),true)
+ assert.equal(rollbackSplitColdRestore({root,stoppedConfirmed:true,confirm:'ROLLBACK_FULL_DSH_STATE',checkStopped:stopped}).rolledBack,true)
  assert.equal(recoverSnapshotModels({...args,snapshot:second}).restored,true);assert.equal(existsSync(join(destination,'whisper','.hf-cache','hub','models--test','blobs','unfinished.incomplete')),false)
 }))
 
@@ -254,4 +259,18 @@ test('dev.30 cancelled V2 copy cleans its own staging directory without deleting
  baseModels(at);const target=join(t,'D','data'),parent=dirname(target),foreign=join(parent,'.dafeiyu-large-v2-staging-historical');put(join(foreign,'keep'),'historical')
  assert.throws(()=>migrateLargeDataOffline({root,target,confirmedStopped:true,python:'fixture-python',runtimeProbe:()=>true,checkpoint:()=>{if(readdirSync(parent).some(n=>n.startsWith('.dafeiyu-large-v2-staging-')&&n!=='.dafeiyu-large-v2-staging-historical'))throw Error('cancel owned copy')}}),/cancel owned copy/)
  assert.deepEqual(readdirSync(parent),['.dafeiyu-large-v2-staging-historical']);assert.equal(readFileSync(join(foreign,'keep'),'utf8'),'historical');assert.equal(largeDataStatus(root).configured,false);assert.equal(readFileSync(at('life-memory','episodic.json'),'utf8'),'irreplaceable-memory');assert.equal(readFileSync(at('embedding-runtime','Qwen3-Embedding-0.6B-Q8_0.gguf'),'utf8'),'gguf-weight')
+}))
+
+
+test('dev.63 model rebind loses stop proof after route publication; preserve both directories and freeze until explicit rollback',()=>recoveryFixture(({root,at,old,destination,args})=>{
+ const route=readFileSync(at('storage-large-data-v2.json'));let scans=0
+ assert.throws(()=>recoverSnapshotModels({...args,checkStopped:()=>({ok:++scans<4})}),/保持冻结/)
+ assert.equal(largeDataStatus(root).target,destination);assert.ok(existsSync(old));assert.ok(existsSync(destination));assert.ok(existsSync(coldRestoreFencePath(root)))
+ assert.throws(()=>stateDirOf({get:()=>()=>root}),/禁止启动/)
+ assert.throws(()=>migrate(root,join(dirname(destination),'another-target')),/冷恢复事务/)
+ let checks=0
+ assert.throws(()=>rollbackSplitColdRestore({root,stoppedConfirmed:true,confirm:'ROLLBACK_FULL_DSH_STATE',checkStopped:()=>({ok:++checks<3})}),/仍有/)
+ assert.equal(largeDataStatus(root).target,destination);assert.ok(existsSync(coldRestoreFencePath(root)))
+ assert.equal(rollbackSplitColdRestore({root,stoppedConfirmed:true,confirm:'ROLLBACK_FULL_DSH_STATE',checkStopped:stopped}).rolledBack,true)
+ assert.deepEqual(readFileSync(at('storage-large-data-v2.json')),route);assert.ok(existsSync(destination));assert.ok(existsSync(old));assert.equal(existsSync(coldRestoreFencePath(root)),false)
 }))

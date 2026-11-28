@@ -1,4 +1,4 @@
-# dev.62 · 同一现役角色的本机停机维护
+# dev.63 · 同一现役角色的本机停机维护
 
 本入口是显式人工维护，不是 Life 工具、日常业务备份或 HTTP 恢复接口。复用 dev.26 的分盘引擎和原启动、账号复核保护；旧宽泛 CLI 仍不随包分发。日常恢复继续使用现有便携业务/记忆增量修复。
 
@@ -56,6 +56,18 @@ node tools/cold-maintenance.mjs rollback-full --root "$root" --stopped --confirm
 第二条只适用于仍有未结恢复事务且原件可核验时；不是已完成恢复后的历史撤销按钮。恢复前原件不会自动清理。空间估计不是预留，全部暂存和原件可能占较大空间。恢复/回滚过程再次核验停机，失效时保持冻结，不强行重试。
 
 如仅 V2 模型区丢失，当前业务仍完整，可按 `plan-model-recovery --root ... --snapshot ... --to ...` 和 `recover-models ... --stopped --confirm RECOVER_DSH_MODELS_ONLY` 恢复已知模型文件到全新位置，不导入历史业务或执行程序。无封存且核心/记忆损坏时只能使用 `plan-disaster-rescue --snapshot ... --to ...`、`rescue-disaster ... --stopped --confirm RESCUE_DSH_OFFLINE_ONLY`、`verify-rescue --to ...` 进行隔离救援；不激活。便携包仍使用 portable-backup-rescue.mjs。以上只接受新版有隔离标记的冷快照，旧宽泛 CLI 留在源码供历史维护。
+
+## 历史差异与未结事务（dev.63）
+
+`plan-recovery` 在角色与拓扑可核验时返回 `protectedComparisons`：逐分区分别列出受保护文件、目录的 identical/currentOnly/snapshotOnly/changed 数量。已知可重建缓存按原策略排除。数量不等于可恢复记忆条数，不含正文、文件路径或哈希；读不到或拓扑异常时不保证有报告。`protected-business-different` 时不能 restore-full。
+
+已隔离救援目录可继续只读对照：
+
+```powershell
+node tools/cold-maintenance.mjs plan-rescue-merge --to "$rescue"
+```
+
+输出仅供核对，已知撤销并集统计不证明全部不可回退事实齐全（complete:false）；不修改现役或救援数据，不激活或生成合并授权。未结事务与封存均阻断原引导及迁移路径的离线写操作；隔离救援及其子路径不作迁移目标。模型重绑定在发布和回退前后复核停机与事务/路由，失去证明时不得自动解除冻结。重新停机后使用原 rollback-full 入口核验并回退。现有门禁不是 OS 全局互斥锁，不能替代实际停机与独占维护。
 
 ## 尚未完成
 

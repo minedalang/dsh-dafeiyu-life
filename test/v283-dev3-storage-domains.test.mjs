@@ -11,7 +11,7 @@ import {readWhisperReadiness} from '../lib/video-dependencies.mjs'
 import {listWhisperModels} from '../lib/whisper-model-cache.mjs'
 import {collectBackupFiles,createBackup,restoreBackupFiles,createLifeMemoryBackup,restoreLifeMemoryBackup} from '../lib/data-backup.mjs'
 import {createColdSnapshot,createSplitColdSnapshot,verifySplitColdSnapshot,restoreSplitColdSnapshot,rollbackSplitColdRestore,inspectSplitColdSnapshot,restoreColdSnapshot,inspectDisasterRescue,createDisasterRescue,verifyDisasterRescue,planDisasterReconciliation,sealSplitColdSnapshot,inspectSealedRecovery,recoverSealedSnapshot,releaseSealedSnapshot,planColdRecovery} from '../lib/cold-state-snapshot.mjs'
-import {coldRestoreFencePath,coldCheckpointPath} from '../lib/cold-restore-fence.mjs'
+import {coldRestoreFencePath,coldCheckpointPath,assertColdRestoreClear,assertCheckpointAncestorsClear} from '../lib/cold-restore-fence.mjs'
 import {stateDirOf} from '../lib/state.mjs'
 import {runColdMaintenance} from '../lib/cold-maintenance.mjs'
 const fixture=fn=>{const t=mkdtempSync(join(tmpdir(),'dafeiyu-dev3-')),root=join(t,'bili-duty');mkdirSync(root);try{fn({t,root,path:(...x)=>join(root,...x)})}finally{rmSync(t,{recursive:true,force:true})}}
@@ -929,4 +929,35 @@ test('dev.62 loss of stop proof after external switch freezes instead of moving 
  assert.throws(()=>runColdMaintenance('rollback-full',{root,stoppedConfirmed:true,confirm:'ROLLBACK_FULL_DSH_STATE'},{checkStopped:()=>({ok:false})}),/仍有 DSH/)
  assert.equal(maintain('rollback-full',{root,stoppedConfirmed:true,confirm:'ROLLBACK_FULL_DSH_STATE'}).rolledBack,true)
  assert.equal(readFileSync(join(model,...rel),'utf8'),'damaged');assert.equal(stateDirOf({get:()=>()=>root}),root)
+}))
+
+
+test('dev.63 protected history preflight counts exact changed/current-only/snapshot-only files without leaking paths',()=>fixture(({t,root,path})=>{
+ seedCheckpoint(root,path);const snapshot=join(t,'snapshot'),rel=['.hf-cache','hub','models--fixture','snapshots','r1','model.bin']
+ put(path(...rel),'weight');put(path('removed-history'),'old');maintain('backup-full',newSnapshotArgs(root,snapshot));put(path(...rel),'damaged')
+ assert.equal(maintain('plan-recovery',{root,snapshot}).nextAction,'restore-full')
+ rmSync(path('removed-history'));put(path('new-private-entry'),'secret');put(path('owner-todos.json'),'new completed')
+ const plan=maintain('plan-recovery',{root,snapshot});assert.equal(plan.nextAction,'plan-disaster-rescue');assert.equal(plan.reason,'protected-business-different');assert.equal(plan.historicalActivationAllowed,false)
+ const row=plan.protectedComparisons.find(x=>x.id==='core');assert.equal(row.identical,false);assert.equal(row.files.changed,1);assert.equal(row.files.currentOnly,1);assert.equal(row.files.snapshotOnly,1)
+ assert.doesNotMatch(JSON.stringify(plan),/new-private-entry|removed-history|owner-todos|secret/)
+ assert.throws(()=>maintain('restore-full',recoverArgs(root,snapshot,{confirm:'RESTORE_FULL_DSH_STATE'})),/不能安全回退/)
+ assert.equal(readFileSync(path('new-private-entry'),'utf8'),'secret');assert.equal(readFileSync(path(...rel),'utf8'),'damaged')
+ const destination=join(t,'rescue');maintain('rescue-disaster',{snapshot,destination,stoppedConfirmed:true,confirm:'RESCUE_DSH_OFFLINE_ONLY'})
+ const review=maintain('plan-rescue-merge',{destination});assert.equal(review.mergeAllowed,false);assert.equal(review.activationAllowed,false);assert.equal(review.changesNow,false);assert.equal(review.deepRevocations.complete,false)
+ assert.doesNotMatch(JSON.stringify(review),/new-private-entry|owner-todos|secret/)
+}))
+
+test('dev.63 pending recovery blocks independent maintenance and relocated/nested mutation routes',()=>fixture(({t,root,path})=>{
+ seedCheckpoint(root,path);const core=join(t,'external','core');migrateStorageOffline({source:root,target:core,confirmedStopped:true})
+ put(coldRestoreFencePath(root),'{}')
+ assert.throws(()=>assertColdRestoreClear(core),/冷恢复事务/)
+ assert.throws(()=>assertCheckpointAncestorsClear(join(core,'accounts','123')),/冷恢复事务/)
+ assert.throws(()=>migrateDomainOffline({root:core,domain:'memory',target:join(t,'new-memory'),confirmedStopped:true}),/冷恢复事务/)
+ assert.throws(()=>rollbackDomainOffline({root:core,domain:'memory',confirmedStopped:true}),/冷恢复事务/)
+ assert.throws(()=>migrateStorageOffline({source:root,target:join(t,'new-core'),confirmedStopped:true}),/冷恢复事务/)
+ assert.equal(existsSync(join(t,'new-memory')),false);assert.equal(existsSync(join(t,'new-core')),false)
+ rmSync(coldRestoreFencePath(root));assert.equal(stateDirOf({get:()=>()=>root}),core)
+ const snapshot=join(t,'snapshot');maintain('backup-full',newSnapshotArgs(core,snapshot))
+ assert.throws(()=>migrateDomainOffline({root:core,domain:'memory',target:join(snapshot,'new-target'),confirmedStopped:true}),/禁止激活/)
+ assert.equal(existsSync(join(snapshot,'new-target')),false);assert.equal(maintain('verify-full',{snapshot}).ok,true)
 }))

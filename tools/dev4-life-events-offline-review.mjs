@@ -2,7 +2,7 @@
 /** Offline review of anonymous Life event outcomes. No platform/model access.
  * The only mutating operation closes a reviewed event WITHOUT re-execution.
  */
-import {assertCheckpointClear} from '../lib/cold-restore-fence.mjs'
+import {assertColdRestoreClear} from '../lib/cold-restore-fence.mjs'
 import {createLifeAgentEvents} from '../lib/life-agent-events.mjs'
 import {existsSync,lstatSync} from 'node:fs'
 const argv=process.argv.slice(2)
@@ -17,7 +17,7 @@ if(!stateDir||!/^[a-f0-9]{16}$/.test(String(tag||''))||inspect===close||close&&(
   try{
     const st=existsSync(stateDir)?lstatSync(stateDir):null
     if(!st?.isDirectory()||st.isSymbolicLink())throw Error('unsafe-or-missing-data-directory')
-    if(close)assertCheckpointClear(stateDir)
+    if(close)assertColdRestoreClear(stateDir)
     const store=createLifeAgentEvents({stateDir,getAccountTag:()=>tag})
     const result=inspect?{ok:true,mode:'inspect',review:store.inspectReviewOffline()}:
       {mode:'close-without-replay',...store.closeReviewOffline(id,{confirmedAllStopped:true})}
