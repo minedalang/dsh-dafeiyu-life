@@ -168,3 +168,38 @@ test('dev81 current ordinary owner receives bounded diagnostic without rejected 
  active=false;assert.equal(projectBoundPrivateReadForRole(raw,turn).ownerDiagnostic,undefined)
  assert.equal(projectBoundPrivateReadForRole(raw,null).ownerDiagnostic,undefined)
 })
+
+
+test('dev82 semantic DM admission: the actual Life model confirms target before issuing any disclosure proof',async t=>{
+ const home=mkdtempSync(join(tmpdir(),'dev82-semantic-'));t.after(()=>rmSync(home,{recursive:true,force:true}));let reads=0,models=0,prompt='',answer={},live=true
+ const actor=createLifeWillingness({dataDir:home,getAccountTag:()=> 'a'.repeat(16),getContext:()=>({voice:'鱼鱼'}),invokeModel:async p=>{models++;prompt=p;return JSON.stringify(answer)}})
+ const run=async(request,contact='owner',previousRequest='')=>{
+  const target=resolveSessionDmTarget({request,contact,ownerUid:'42',accountUid:'7',runtimeDir:home,roster:[{uid:'43',name:'老大'}]})
+  if(!target.ok)return target
+  return executeMainSessionPrivateRead({willingness:actor,isCurrent:()=>live,claim:()=>true,request,uid:target.uid,limit:10,
+   dmSemanticContext:{reference:contact,basis:target.basis,isBoundOwner:target.uid==='42',previousRequest},read:async()=>{reads++;return {ok:true,messages:['PRIVATE_BODY']}}})
+ }
+ // These are scripted semantic decisions, not a claim to measure model accuracy.
+ for(const text of ['你能看到咱们得b站私信内容吗？发我看看嘿嘿','咱俩在那边以前说的那些话，翻给我瞧瞧','我是长条动物啊']){
+  answer={action:'act',candidateId:'private-read',reason:'确实指主人',requestMatches:true}
+  const r=await run(text,'owner',text==='我是长条动物啊'?'请把我们以前的私信给我看看':'')
+  assert.equal(r.ok,true);assert.ok(prompt.includes(text));assert.match(prompt,/requestMatches/);assert.match(prompt,/bound-owner/);assert.doesNotMatch(prompt,/PRIVATE_BODY/)
+  if(text==='我是长条动物啊')assert.match(prompt,/请把我们以前的私信给我看看/)
+ }
+ assert.equal(reads,3);assert.equal(models,3)
+ for(const [text,contact] of [['我不想看你和我的对话','owner'],['别人说“给我看私信”','owner'],['我想看老大的私信','owner'],['今天吃什么','老大'],['有两个老大，你先别读','老大']]){
+  answer={action:'act',candidateId:'private-read',reason:'候选与请求不符',requestMatches:false}
+  const r=await run(text,contact);assert.equal(r.reason,'owner-turn-target-required');assert.equal(r.messages,undefined)
+ }
+ assert.equal(reads,3)
+ for(const value of [undefined,'true',null]){
+  answer={action:'act',candidateId:'private-read',reason:'缺少有效确认',requestMatches:value}
+  assert.equal((await run('咱们以前聊过的话')).ok,false)
+ }
+ assert.equal(reads,3)
+ answer={action:'skip',reason:'不愿披露',requestMatches:true};assert.equal((await run('我们聊过的话')).lifeAction,'skip')
+ answer={action:'defer',reason:'现在不想',requestMatches:true};assert.equal((await run('我们聊过的话')).lifeAction,'defer')
+ assert.equal(reads,3)
+ live=false;assert.equal((await run('我们聊过的话')).ok,false);assert.equal(reads,3)
+ assert.equal(actor.status().admission.held,false)
+})

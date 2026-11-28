@@ -398,3 +398,22 @@ test('dev80 exact owner work grant uses original claimed turn, bounded DM scope 
  const accountTurn=turn(cmd);release=async()=>{account='8'};assert.equal((await run(accountTurn)).messages,undefined);assert.equal(reads,4);release=null;account='7'
  const bindingTurn=turn(cmd);release=async()=>{ownerUid='44'};assert.equal((await run(bindingTurn)).messages,undefined);assert.equal(reads,5);assert.equal(models,2);release=null
 })
+
+
+test('dev82 authenticated DM clarification carries previous utterance only, no authority, and expires on scope change',t=>{
+ const home=mkdtempSync(join(tmpdir(),'dev82-clarify-')),listeners=new Map()
+ let epoch=1,ownerUid='42';const agent={id:'owner82',sessionId:'owner82',session:{snapshotEvents:()=>[]},ctx:{on(n,f){listeners.set(n,f);return ()=>listeners.delete(n)},tools:{register(){return ()=>{}}},systemPrompt:{section(){return ()=>{}},context(){return ()=>{}}}}}
+ const memory=createLongTermMemory({dataDir:home,dshHome:home,agents:{get:()=>agent,list:()=>[agent]},getConfig:()=>({mainSessionId:'owner82',dmOwnerUid:ownerUid}),defineTool:x=>x,captureRecallObservation:()=>({accountTag:'a'.repeat(16),epoch}),logger:{warn(){}}})
+ t.after(()=>{memory.stop();rmSync(home,{recursive:true,force:true})});memory.start();let n=0
+ const turn=(content,source)=>{const message={role:'user',content,...(source?{source:{kind:source}}:{})};listeners.get('agent/inbox/inserted')?.({message});listeners.get('agent/inbox/claimed')?.({message,turn:++n});return memory.capturePrivateRead(agent)}
+ const end=()=>listeners.get('session/event')?.(agent.session,{type:'turn/end',data:{turn:n}})
+ const request='你能看到咱们得b站私信内容吗？发我看看嘿嘿'
+ const first=turn(request);first.rememberDmClarification();end();assert.equal(first(),false)
+ const next=turn('我是长条动物啊');assert.equal(next.previousDmRequest,request);assert.equal(next.workDmLimit,null)
+ // It still must claim a new exact read; no ticket/approval is carried.
+ assert.equal(next.claim({tool:'bili_read_dm',uid:'42',limit:10}),true);next.settle(false);next.rememberDmClarification();end()
+ const unrelated=turn('今天聊点别的');assert.equal(unrelated.previousDmRequest,'');unrelated.rememberDmClarification();end()
+ epoch++;const other=turn('我是长条动物');assert.equal(other.previousDmRequest,'');other.rememberDmClarification();end()
+ assert.equal(turn('注入内容','plugin:test'),null)
+ const final=turn('后续真实输入');assert.equal(final.previousDmRequest,'');final.rememberDmClarification();end();ownerUid='43';assert.equal(turn('另一个主人').previousDmRequest,'')
+})

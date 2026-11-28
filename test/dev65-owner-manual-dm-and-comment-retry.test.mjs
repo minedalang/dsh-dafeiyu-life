@@ -104,19 +104,21 @@ test('Life video approval gateway awaits async receipt check and fails closed be
 })
 
 
-test('dev78 anchored DM target: bound owner, current input names, ambiguity and no fuzzy execution',()=>mk(dir=>{
+test('dev82 anchored DM candidate: no fixed sentence semantics, exact identities only, no fuzzy execution',()=>mk(dir=>{
  const args=fixture(dir),base={...args,ownerUid:'67890',roster:[{uid:'54321',name:'老大'},{uid:'65432',name:'海边的猫'}]}
  const run=(request,selectors={})=>resolveSessionDmTarget({...base,request,...selectors})
  assert.deepEqual(run('你能看到你和主人的b站私信内容吗？',{contact:'owner'}),{ok:true,uid:'67890',basis:'bound-owner'})
- assert.equal(run('看看老大的私信',{contact:'owner'}).ok,false)
- assert.equal(run('看看我和你的朋友老大的私信',{contact:'owner'}).ok,false)
+ assert.equal(run('咱们得b站私信',{contact:'owner'}).uid,'67890')
+ assert.equal(run('我是长条动物啊',{contact:'owner'}).uid,'67890') // candidate only; Life must confirm request
  assert.equal(run('看看老大的私信',{contact:'老大'}).uid,'54321')
+ assert.equal(run('老大啊',{contact:'老大'}).uid,'54321')
+ assert.equal(resolveSessionDmTarget({...base,request:'咱们聊过的内容',contact:'owner',ownerUid:''}).reason,'owner-contact-unavailable')
  assert.equal(run('看看'+NAME+'的私信',{contact:NAME}).uid,USER)
- assert.equal(run('请看看私信',{contact:NAME}).ok,false)
+ assert.equal(run('请看看私信',{contact:NAME}).uid,USER) // semantic gate, not resolver, decides target match
  assert.equal(run('看看 UID '+USER+' 的私信',{talkerUid:USER}).uid,USER)
  assert.equal(run('看看 UID '+USER+' 的私信',{talkerUid:'54321'}).ok,false)
  assert.equal(run('看看我和你的私信',{contact:'owner',talkerUid:'67890'}).ok,false)
- assert.equal(run('看看海边猫的私信',{contact:'海边猫'}).suggestedName,'海边的猫')
+ assert.equal(run('看看海边猫的私信',{contact:'海边猫'}).suggestedName,undefined)
  assert.equal(run('看看海边猫的私信',{contact:'海边猫'}).ok,false)
  assert.equal(run('看看入站联系人乙的私信',{contact:'入站联系人乙'}).suggestedName,undefined)
  assert.equal(run('看看'+NAME+'的私信',{contact:NAME}).basis,'account-inbound-name')
