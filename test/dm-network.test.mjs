@@ -156,3 +156,15 @@ test('dev79 only the still-current original host work turn receives raw private 
  const throwing=Object.assign(()=>{throw Error('stale')},{mode:'work'});assert.equal(projectBoundPrivateReadForRole(raw,throwing).choice,'unavailable')
  const life=Object.assign(()=>true,{mode:'life'});assert.equal(projectBoundPrivateReadForRole(raw,life).choice,'prefer-not-to-share')
 })
+
+
+test('dev81 current ordinary owner receives bounded diagnostic without rejected body; stale and unverified do not',()=>{
+ const raw={ok:false,reason:'life-private-read-declined',lifeAction:'skip',message:'PRIVATE_DEV81_ERROR',body:'PRIVATE_DEV81_BODY',cookie:'SECRET_DEV81'}
+ let active=true;const turn=Object.assign(()=>active,{mode:'life'})
+ const view=projectBoundPrivateReadForRole(raw,turn)
+ assert.deepEqual(view.ownerDiagnostic,{status:'not-completed',reason:'life-private-read-declined',lifeAction:'skip'})
+ assert.doesNotMatch(JSON.stringify(view),/PRIVATE_DEV81|SECRET_DEV81/)
+ assert.equal(projectBoundPrivateReadForRole({...raw,reason:'ARBITRARY_SECRET'},turn).ownerDiagnostic.reason,'unclassified')
+ active=false;assert.equal(projectBoundPrivateReadForRole(raw,turn).ownerDiagnostic,undefined)
+ assert.equal(projectBoundPrivateReadForRole(raw,null).ownerDiagnostic,undefined)
+})

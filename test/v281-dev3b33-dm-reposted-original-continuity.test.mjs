@@ -175,8 +175,8 @@ test('owner shared video returns precise safe vision failure alongside real spee
  assert.equal(observed.visualDescription,undefined);assert.doesNotMatch(JSON.stringify(observed),/private model raw/)
  assert.equal(projectSharedVideoObservation({...result,visual:{...result.visual,visionBoardReceipts:[{status:'incomplete',errorCode:'untrusted-raw'}]}},bvid).visualFailure.code,'vision_incomplete')
  assert.equal(projectSharedVideoObservation(result,'BV1234567890').visualFailure,undefined)
- let prompts=[],reads=0;const b=make({invoke:async prompt=>{prompts.push(prompt);return prompts.length===1?reply({contextRequests:['shared_video']}):reply({reply:'时间码未通过，只有字幕',messages:['时间码未通过，只有字幕']})},loadRequestedContexts:async()=>{reads++;return [{sharedVideoContext:JSON.stringify(observed)}]}})
- try{const r=await b.generate({kind:'dm',uid:UID,role:'owner',text:'看看画面',socialAutonomy:true,availableContexts:['shared_video']});assert.equal(r.action,'reply');assert.equal(reads,1);assert.match(prompts[1],/vision_board_time_mismatch/);assert.match(prompts[1],/真实字幕/);assert.doesNotMatch(prompts[1],/private model raw/)}finally{b.stop()}
+ let prompts=[],reads=0;const b=make({invoke:async prompt=>{prompts.push(prompt);return prompts.length===1?reply({contextRequests:['shared_video']}):reply({reply:'画面没有看完整，只看到了字幕',messages:['画面没有看完整，只看到了字幕']})},captureReadScope:()=>()=>true,loadRequestedContexts:async()=>{reads++;return [{sharedVideoContext:JSON.stringify(observed)}]}})
+ try{const r=await b.generate({kind:'dm',uid:UID,role:'owner',trigger:'incoming',messageId:'owner-read-1',text:'看看画面',socialAutonomy:true,availableContexts:['shared_video']});assert.equal(r.action,'reply');assert.equal(reads,1);assert.match(prompts[1],/vision_board_time_mismatch/);assert.match(prompts[1],/真实字幕/);assert.doesNotMatch(prompts[1],/private model raw/)}finally{b.stop()}
 })
 
 

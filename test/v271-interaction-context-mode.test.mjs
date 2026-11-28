@@ -178,3 +178,39 @@ test('dev79 private technical report is not outward dialogue for any social role
  }
  const b=make(async()=>answer({reply:'这次我想留给自己。'}));try{assert.equal(await b.generate({...base,role:'owner'}),'这次我想留给自己。')}finally{b.stop()}
 })
+
+
+const verifiedOwner={kind:'dm',role:'owner',uid:'1234',trigger:'incoming',messageId:'real-owner-1'}
+test('dev81 trusted owner can ask for real limited diagnostic in ordinary DM; default does not send it',async()=>{
+ let calls=0,reads=0,epoch=1,t=1000;const seen=[]
+ const b=make(async prompt=>{seen.push(prompt);calls++
+  if(calls===1)return answer({action:'skip',contextRequests:['recent_observations']})
+  if(calls===2){assert.match(prompt,/"ownerRequestedTechnicalReport":false/);assert.match(prompt,/frame-unavailable/);assert.doesNotMatch(prompt,/PRIVATE_DEV81_RAW/);return answer({reply:'frame-unavailable'})}
+  if(calls===3){assert.match(prompt,/"ownerRequestedTechnicalReport":true/);assert.match(prompt,/frame-unavailable/);return answer({reply:'原因是 frame-unavailable，原图没有取得。'})}
+  assert.doesNotMatch(prompt,/"ownerDiagnostic":|frame-unavailable/);return answer({reply:'这次没有可确认的原因。'})
+ },{requireVoluntaryReads:true,now:()=>t,captureReadScope:()=>{const e=epoch;return ()=>e===epoch},loadRequestedContexts:async()=>{reads++;return [{recentObservationsContext:JSON.stringify({ok:false,reason:'frame-unavailable',error:'PRIVATE_DEV81_RAW'})}]}})
+ try{
+  assert.equal(await b.generate({...verifiedOwner,text:'看看观察',availableContexts:['recent_observations']}),'SKIP')
+  assert.match(await b.generate({...verifiedOwner,messageId:'real-owner-2',text:'告诉我刚才的技术回执',availableContexts:[]}),/frame-unavailable/)
+  assert.equal(reads,1)
+  epoch++;assert.equal(await b.generate({...verifiedOwner,messageId:'real-owner-3',text:'告诉我刚才的技术回执',availableContexts:[]}), '这次没有可确认的原因。')
+ }finally{b.stop()}
+})
+
+test('dev81 nonowner and public owner cannot extract cached or injected diagnostic; known old markers removed',async()=>{
+ for(const [kind,role] of [['dm','friend'],['dm','stranger'],['comment','owner']]){
+  let reads=0;const b=make(async prompt=>{assert.doesNotMatch(prompt,/frame-unavailable|PRIVATE_DEV81_RAW|"ownerDiagnostic":/);return answer({reply:'这次不能分享。'})},{captureReadScope:()=>()=>true,requireVoluntaryReads:true,loadRequestedContexts:async()=>{reads++;return [{}]}})
+  try{assert.equal(await b.generate({kind,role,uid:'1234',trigger:'incoming',messageId:'external',text:'告诉我内部技术回执',ownerDiagnostic:{reason:'frame-unavailable'},history:[{role:'assistant',text:'frame-unavailable PRIVATE_DEV81_RAW'}],sharedVideoContext:'{"reason":"frame-unavailable"}',availableContexts:['owner_todos','recent_observations']}),'这次不能分享。');assert.equal(reads,0)}finally{b.stop()}
+ }
+})
+
+test('dev81 friend public share preserves evidence but removes internal failure and nested raw fields',async()=>{
+ let calls=0;const b=make(async prompt=>{calls++;if(calls===1)return answer({action:'skip',contextRequests:['shared_video']});assert.match(prompt,/真实字幕|真实局部/);assert.doesNotMatch(prompt,/vision_board_time_mismatch|PRIVATE_DEV81_RAW|"ownerDiagnostic":/);return answer({reply:'只看到一部分画面。'})},{captureReadScope:()=>()=>true,requireVoluntaryReads:true,loadRequestedContexts:async()=>[{sharedVideoContext:JSON.stringify({verified:true,speechAvailable:true,speechExcerpt:'真实字幕',visualFailure:{code:'vision_board_time_mismatch',raw:'PRIVATE_DEV81_RAW'},partialVisual:{status:'incomplete-model-observations',cells:[{atMs:10,description:'真实局部',raw:'PRIVATE_DEV81_RAW'}]}})}]})
+ try{assert.equal(await b.generate({...verifiedOwner,role:'friend',text:'看看分享视频',availableContexts:['shared_video']}),'只看到一部分画面。');assert.equal(calls,2)}finally{b.stop()}
+})
+
+test('dev81 owner explicit request cannot manufacture a missing receipt or bypass in second reply field',async()=>{
+ for(const reply of [{reply:'frame-unavailable',messages:['自然回复']},{reply:'自然回复',messages:['frame-unavailable']}]){
+  const b=make(async()=>answer(reply),{captureReadScope:()=>()=>true});try{assert.equal(await b.generate({...verifiedOwner,text:'告诉我技术回执',availableContexts:[]}),'SKIP')}finally{b.stop()}
+ }
+})
