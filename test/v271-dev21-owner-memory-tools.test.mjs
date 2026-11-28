@@ -5,8 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createOwnerDmAgent} from '../lib/owner-dm-agent.mjs'
 import {createMemoryRetriever} from '../lib/memory-retriever.mjs'
-import {ownerRecallQuestion,expandOwnerRecallQueries,groundedOwnerAnswer} from '../lib/owner-recall-tools.mjs'
-import {isOwnerActivityQuestion} from '../lib/owner-recent-life.mjs'
+import {groundedOwnerAnswer} from '../lib/owner-recall-tools.mjs'
 const owner='12345',now=Date.parse('2026-11-07T16:30:00Z')
 const run=async fn=>{const dir=mkdtempSync(join(tmpdir(),'dev21-owner-memory-'));try{return await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
 const msg=(text,id='one')=>({incoming:true,senderUid:owner,messageId:id,timestampMs:now-100,text})
@@ -19,20 +18,17 @@ const factory=(dir,overrides={})=>{
   send:async()=>({ok:true}),...overrides})
  a.primeInbox([]);return a
 }
-test('主人提问包含夸过、妙评与指代，能主动检索个人记忆而不是平台热搜',()=>{
- for(const q of ['你之前夸过谁？','你今天发的妙评呢','刚才说的那句是什么','你记得我们聊过什么吗'])assert.equal(ownerRecallQuestion(q),true,q)
- assert.equal(ownerRecallQuestion('请搜索全站热门视频'),false)
- assert.equal(ownerRecallQuestion('妙评',[{role:'user',text:'你今天回复了谁'}]),true)
- assert.equal(expandOwnerRecallQueries('你之前夸过谁？').length,2)
- assert.equal(isOwnerActivityQuestion('你之前夸过谁？'),true)
- assert.equal(isOwnerActivityQuestion('那句',[{role:'user',text:'你之前夸过谁？'}]),true)
+test('原始回忆词与模型提供的多个查询分别原样检索，不猜测意图',()=>{
+ const seen=[];const r=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({}),getEpisodes:q=>{seen.push(q);return []}})
+ r.ownerSearch('你之前夸过谁？');assert.deepEqual(seen,['你之前夸过谁？'])
+ seen.length=0;r.ownerSearch(['评论','夸奖']);assert.deepEqual(seen,['评论','夸奖'])
 })
 test('主 Session 记忆开关关闭也可进行经主人私信权限核验的私有只读检索',()=>{
  const retriever=createMemoryRetriever({getConfig:()=>({mainSessionMemoryEnabled:false}),
   getMemories:()=>[{id:'legacy-1',text:'鱼鱼之前回复评论时夸奖过桌宠非常有脾气',importance:.8,tags:['评论']}],
   getEpisodes:()=>[{id:'episode-1',summary:'鱼鱼回复过一条有关桌宠的评论',kind:'social',stage:'clear',at:new Date(now).toISOString()}]})
  assert.equal(retriever.localContext('评论'),'')
- const found=retriever.ownerSearch('我之前有什么妙评',{limit:6})
+ const found=retriever.ownerSearch(['我之前有什么妙评','评论 夸奖'],{limit:6})
  assert.equal(found.ok,true)
  assert.ok(found.items.some(x=>x.id==='memory:legacy-1'))
  assert.ok(found.items.some(x=>x.id==='episode:episode-1'))
@@ -76,10 +72,10 @@ test('没有证据时自然回答，不会反复自责或索要 BV 号',()=>run(
 test('局部事实错误允许同一模型纠正，保留正常表达而非替换成程序模板',()=>run(async dir=>{
  let calls=0,sent=''
  const agent=factory(dir,{getRecentActivity:()=>activity,
-  invokeModel:async()=>++calls===1?{action:'reply',text:'我完整看完了那条视频，夸的是桌宠。'}:{action:'reply',text:'哈哈，我倒是回过一句“嫌完还是乖乖待在屏幕上”，这句我自己还挺喜欢。'},
+  invokeModel:async()=>++calls===1?{action:'recent_actions'}:calls===2?{action:'reply',text:'我完整看完了那条视频，夸的是桌宠。'}:{action:'reply',text:'哈哈，我倒是回过一句“嫌完还是乖乖待在屏幕上”，这句我自己还挺喜欢。'},
   send:async x=>{sent=x.text;return {ok:true}}})
  const result=await agent.processMessage(msg('你发过什么妙评？','fix1'))
- assert.equal(result.ok,true);assert.equal(calls,2)
+ assert.equal(result.ok,true);assert.equal(calls,3)
  assert.match(sent,/哈哈/);assert.doesNotMatch(sent,/看完|没有依据|抱歉/)
 }))
 test('旧 owner DM 状态仍可读取，未新增不兼容持久字段',()=>run(async dir=>{

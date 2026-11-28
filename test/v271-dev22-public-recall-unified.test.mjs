@@ -6,7 +6,6 @@ import {tmpdir} from 'node:os'
 import {searchVerifiedPublicComments} from '../lib/recent-comments.mjs'
 import {interpretTrustedSocial,buildTrustedSocialPrompt} from '../lib/comment-social-ai.mjs'
 import {createOwnerDmAgent} from '../lib/owner-dm-agent.mjs'
-import {ownerRecallQuestion} from '../lib/owner-recall-tools.mjs'
 
 const BV='BV1SqHK6oE2i',OTHER='BV1234567890',owner='210228238'
 const now=Date.parse('2026-11-07T19:00:00Z')
@@ -103,9 +102,7 @@ test('主人私信模型可按需查跨日公开评论，不能由只读回忆�
  assert.equal(r.ok,true);assert.equal(read,1);assert.match(sent,/星星落海/)
  assert.equal(count,2)
 }))
-test('回忆语义门禁不再把普通吃饭闲聊当作主人记忆搜索',()=>{
- assert.equal(ownerRecallQuestion('我们晚上吃点什么？'),false)
- assert.equal(ownerRecallQuestion('你之前那句妙评是什么？'),true)
+test('原模型回忆菜单仅在主人权限下提供',()=>{
  assert.match(buildTrustedSocialPrompt({role:'owner'}),/recallQueries/)
  assert.doesNotMatch(buildTrustedSocialPrompt({role:'friend'}),/宿主会查当前账号/)
 })

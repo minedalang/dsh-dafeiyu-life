@@ -216,7 +216,7 @@ test('dev.24 排队中的私信提炼捕获入队代际，不会借恢复后的�
  test('主人确认回复由原语义提炼消费，不再独立按感想措辞写经历',async()=>{
  const src=readFileSync(new URL('../index.js',import.meta.url),'utf8')
  const hook=src.slice(src.indexOf('onConfirmedReply:async({uid,text,eventId,at,receiptId='),src.indexOf('onReplyEmotion:',src.indexOf('onConfirmedReply:async({uid,text,eventId,at,receiptId=')))
- assert.ok(hook.length>0);assert.match(hook,/if\(receiptId\)try\{await privateConversationExperiences\?\.observe/)
+ assert.ok(hook.length>0);assert.match(hook,/if\(scope\)try\{await privateConversationExperiences\?\.observe/)
  assert.doesNotMatch(hook,/preparePrivateSelfExperience|recordEvents\(/)
  const s=setup({answer:({prompt})=>replyFor(prompt,{text:'这次我们交流了新作品里的颜色与构图，鱼鱼表达了想继续了解的倾向。'})})
  try{
@@ -229,4 +229,18 @@ test('dev.24 排队中的私信提炼捕获入队代际，不会借恢复后的�
   assert.equal(s.events[0].subjectUid,'owner');assert.equal(s.invoked(),1);assert.equal(s.events.length,1)
   assert.equal((await s.worker.tick()).processed,0)
  }finally{s.dispose()}
+})
+
+test('确认单方表达走原提炼，不能冒充共同经历；旧账号片段不可串号',async()=>{
+ const row={uid:'123',role:'owner',direction:'outgoing',eventId:'bili-dm:example',text:'那两幅画的颜色差异让我想继续了解',expectedAccountTag:A}
+ const s=setup({answer:({prompt})=>replyFor(prompt,{kind:'reported',text:'我这次主动表达了对两幅作品色彩差异的兴趣，尚不知道对方的看法。'})})
+ try{
+  s.scope(B);assert.notEqual((await s.worker.observe(row)).ok,true);assert.equal(s.worker.status().pendingMessages,0)
+  s.scope(A);assert.equal((await s.worker.observe(row)).ok,true);assert.equal((await s.worker.observe(row)).duplicate,true)
+  await s.worker.markSettled({uid:'123',role:'owner'});assert.equal((await s.worker.tick()).created,1)
+  assert.equal(s.events[0].accountTag,A);assert.equal(s.events[0].visibility,'owner-private');assert.equal(s.invoked(),1)
+  assert.doesNotMatch(readFileSync(s.worker.file,'utf8'),/那两幅画的颜色差异/)
+ }finally{s.dispose()}
+ const bad=setup({answer:({prompt})=>replyFor(prompt)})
+ try{await bad.worker.observe(row);await bad.worker.markSettled({uid:'123',role:'owner'});assert.equal((await bad.worker.tick()).reason,'retry-pending');assert.equal(bad.events.length,0)}finally{bad.dispose()}
 })

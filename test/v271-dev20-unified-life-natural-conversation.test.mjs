@@ -4,20 +4,18 @@ import {mkdtempSync,rmSync,readFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createOwnerDmAgent} from '../lib/owner-dm-agent.mjs'
-import {isOwnerActivityQuestion,ownerRecentLifeSnapshot} from '../lib/owner-recent-life.mjs'
+import {ownerRecentLifeSnapshot} from '../lib/owner-recent-life.mjs'
 import {createSocialInteractionRhythm} from '../lib/social-interaction-rhythm.mjs'
 import {quickSocialPlan,quickRevision} from '../lib/quick-setup-options.mjs'
 import {createSocialIntentEngine} from '../lib/social-intentions.mjs'
 import {verifyOutboundVideoLinks} from '../lib/outbound-video-link-evidence.mjs'
 const BV='BV1xx411c7mD'
 const withDir=async(fn)=>{const p=mkdtempSync(join(tmpdir(),'dev20-life-'));try{return await fn(p)}finally{rmSync(p,{recursive:true,force:true})}}
-test('主人问自己今天的视频与妙评，或追问“妙评”，均识别为自身经历',()=>{
- assert.equal(isOwnerActivityQuestion('今天有什么好玩的评论和视频吗'),true)
- assert.equal(isOwnerActivityQuestion('我意思是你发的或者看过的视频'),true)
- assert.equal(isOwnerActivityQuestion('有吗 有秒评吗',[{role:'user',text:'今天有什么好玩的评论和视频吗'}]),true)
- assert.equal(isOwnerActivityQuestion('妙评',[{role:'user',text:'你今天发过什么评论'}]),true)
- assert.equal(isOwnerActivityQuestion('请搜索B站全站热门视频'),false)
-})
+test('日常回复不触发近期活动读取，原模型决定是否使用能力',()=>withDir(async dir=>{
+ let reads=0
+ const a=createOwnerDmAgent({dataDir:dir,getConfig:()=>({masterEnabled:true,dmWatch:true,dmOwnerUid:'123',ownerDmAgentEnabled:true}),getRecentActivity:()=>{reads++;return {available:false}},invokeModel:async()=>({action:'reply',text:'我们继续聊天吧。'}),executeRead:async()=>{throw Error('unexpected read')},executeWrite:async()=>{throw Error('unexpected write')},send:async()=>({ok:true})})
+ a.primeInbox([]);assert.equal((await a.processMessage({incoming:true,senderUid:'123',messageId:'normal',timestampMs:Date.now(),text:'今天有什么好玩的评论和视频吗？'})).ok,true);assert.equal(reads,0)
+}))
 test('自身经历必须是当前核验账号的数据；只凭入选不能称看完，外发评论只能说明有发送回执',()=>{
  const rows={watched:[{bvid:BV,day:'2026-11-07',picked:true,title:'今天的有趣视频'},
   {bvid:'BV18m411W7P9',day:'2026-11-07',picked:false,title:'没选中'}],
@@ -40,15 +38,15 @@ test('切换账号时不能把旧账号同日视频和评论说成新账号经�
  assert.deepEqual(data.comments.map(c=>c.text),['新账号评论'])
 })
 test('主人私信模型会收到自己的公开经历；不能让最新平台热搜覆盖自身记录',()=>withDir(async dir=>{
- let prompt='',sendText='',searches=0
+ let prompt='',sendText='',searches=0,models=0,reads=0
  const agent=createOwnerDmAgent({dataDir:dir,getConfig:()=>({masterEnabled:true,dmWatch:true,dmOwnerUid:'123',ownerDmAgentEnabled:true,ownerDmReadCommandsEnabled:true}),
-  getRecentActivity:()=>({available:true,day:'2026-11-07',videos:[{bvid:BV,title:'好玩的视频'}],
-    comments:[{kind:'原创顶层评论',text:'这个梗居然还有反转',bvid:BV}]}),
-  invokeModel:async p=>{prompt=p;return JSON.stringify({action:'reply',text:'我今天确实留了句评论：“这个梗居然还有反转”。视频也挑中过一条，不过我可没说看完啦。'})},
+  getRecentActivity:()=>{reads++;return {available:true,day:'2026-11-07',videos:[{bvid:BV,title:'好玩的视频'}],
+    comments:[{kind:'原创顶层评论',text:'这个梗居然还有反转',bvid:BV}]}},
+  invokeModel:async p=>{prompt=p;if(++models===1){assert.doesNotMatch(p,/这个梗居然还有反转/);return {action:'recent_actions'}}return JSON.stringify({action:'reply',text:'我今天确实留了句评论：“这个梗居然还有反转”。视频也挑中过一条，不过我可没说看完啦。'})},
   executeRead:async()=>{searches++;return {ok:true}},executeWrite:async()=>({ok:true}),send:async x=>{sendText=x.text;return {ok:true}}})
  agent.primeInbox([])
  const result=await agent.processMessage({incoming:true,senderUid:'123',messageId:'new-01',timestampMs:Date.now(),text:'今天有什么好玩的评论和视频吗'})
- assert.equal(result.ok,true);assert.equal(searches,0)
+ assert.equal(result.ok,true);assert.equal(searches,0);assert.equal(reads,1);assert.equal(models,2)
  assert.match(prompt,/这个梗居然还有反转/)
  assert.match(prompt,/不要用平台热门搜索替代/)
  assert.match(sendText,/今天确实留了句评论/)

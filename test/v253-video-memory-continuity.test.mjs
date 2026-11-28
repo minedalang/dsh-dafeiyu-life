@@ -36,8 +36,9 @@ test('2.5.3: B站 @ 邀请后的公开探索写进衰减副本，可被其他观
  assert.ok(readFileSync(join(dir,'life-memory','archive','2026-10.jsonl'),'utf8').includes('video-explore:unique-operation-1'))
 }))
 
-test('2.5.3: “这个视频”在没有明确其他标题时才使用当前平台核实 BV',()=>{
- assert.equal(videoRecallQueries('你以前看过这个视频吗',{currentBvid:BV})[0],BV)
+test('2.5.3: 指代不再由词表猜测当前 BV，精确标识仍可检索',()=>{
+ assert.deepEqual(videoRecallQueries('你以前看过这个视频吗',{currentBvid:BV}),['你以前看过这个视频吗'])
+ assert.deepEqual(videoRecallQueries(BV),[BV])
  assert.equal(videoRecallQueries('之前看过那个《小鱼吃鱼》视频吗',{currentBvid:BV})[0],'小鱼吃鱼')
  assert.equal(videoRecallQueries('看过 BV0987654321 吗',{currentBvid:BV})[0],OTHER)
  assert.ok(!videoRecallQueries('你以前看过那个《小鱼吃鱼》视频吗',{currentBvid:BV}).includes(BV))

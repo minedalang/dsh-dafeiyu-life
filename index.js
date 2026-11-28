@@ -188,7 +188,7 @@ import {lifeVideoGate} from './lib/life-pace-policy.mjs'
 import {createLifeActionAttribution} from './lib/life-action-attribution.mjs'
 import {createLifeActionRecords} from './lib/life-action-records.mjs'
 import {eligibleLifeEpisodeSources,prioritizeLifeContinuationCandidates} from './lib/life-episode-entrypoints.mjs'
-import {preparePrivateSelfExperience,preparePrivateLifeEvent,preparePrivateImageObservation} from './lib/life-private-policy.mjs'
+import {preparePrivateLifeEvent,preparePrivateImageObservation} from './lib/life-private-policy.mjs'
 import {createPrivateConversationExperiences} from './lib/private-conversation-experiences.mjs'
 import { createMemoryConsolidator } from './lib/memory-consolidation.mjs'
 import { createOwnerCommentAgent } from './lib/owner-comment-agent.mjs'
@@ -199,7 +199,7 @@ import {currentAccountRelationshipView} from './lib/account-memory-boundary.mjs'
 import {createSocialRelationshipChannels} from './lib/social-relationship-channels.mjs'
 import {publicCommentFamiliarity} from './lib/public-comment-familiarity.mjs'
 import { buildLifeTimeline, groupLifeTimeline } from './lib/life-timeline.mjs'
-import {isOwnerActivityQuestion,ownerRecentLifeSnapshot} from './lib/owner-recent-life.mjs'
+import {ownerRecentLifeSnapshot} from './lib/owner-recent-life.mjs'
 import { videoCommentReadiness,videoCommentGateCode,classifyVideoCommentRound } from './lib/video-comment-readiness.mjs'
 import {retireVideoReportConfig} from './lib/legacy-video-report-retirement.mjs'
 import { createDmVideoRecommendationContext } from './lib/dm-video-recommendation.mjs'
@@ -1470,7 +1470,7 @@ function reportMeta() {
       if(parsed.decision!=='reply')lifeWillingness?.receipt(lifeChoice.proof,{status:'not-sent'})
       return {...parsed,familiar,lifeWillingnessProof:parsed.decision==='reply'?lifeChoice.proof:null}
     },
-    onSent:async({uid,channel,text,social,sentRpid,sentReceiptId,commentBvid,commentRoot,eventId,taskId,at})=>{
+    onSent:async({uid,channel,text,social,sentRpid,sentReceiptId,commentBvid,commentRoot,eventId,taskId,at,accountTag,accountEpoch})=>{
       // This hook only runs AFTER a platform-confirmed receipt. It never sends.
       // Only a canonical platform identifier may create a verified Episode
       // step, and the source is the original accepted TODO, not a second
@@ -1490,9 +1490,8 @@ function reportMeta() {
         if(String(cfg.dmOwnerUid||'')!==String(uid))return // 主人身份切换后禁止向新的私密域投影旧会话
         const stored=ownerDmAgent.rememberConfirmedOutbound({uid,text,at})
         if(stored?.ok!==true)log('回访已发送，主人短期对话未能归档到当前 UID')
-        const event=preparePrivateSelfExperience({source:'owner-dm',role:'owner',uid,
-          eventId:'confirmed-followup:'+at,text,at})
-        if(event)await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})
+        if(sentReceiptId&&accountTag===scope&&accountEpoch===accountBinding.generation()&&!accountBinding.status().blocked)
+          await privateConversationExperiences?.observe({uid,role:'owner',direction:'outgoing',eventId:'bili-dm:'+sentReceiptId,text,at,expectedAccountTag:accountTag})
       }else if(channel==='comment'&&/^BV[0-9A-Za-z]{10}$/.test(String(commentBvid||''))&&/^[1-9]\d+$/.test(String(sentRpid||''))){
         await lifeMemoryCoordinator?.recordEvents([{
           kind:'comment',key:'todo-followup-comment:'+commentBvid+':'+sentRpid,bvid:commentBvid,
@@ -1540,6 +1539,7 @@ function reportMeta() {
           settleProof('not-sent');return {ok:false,no_retry:true,reason:'missing-stable-social-source'}
         }
         const sourceHash=createHash('sha256').update('todo-followup-v1\0'+eventId).digest('hex')
+        const accountTag=trustedLifeAccountTag(),accountEpoch=accountBinding.generation()
         const result=await lifeDmWithReceipt({uid,text,eventKey:`todo-followup:${sourceHash}`})
         const receiptId=result?.ok===true&&result?.rpid?'bili-followup-comment:'+result.rpid:
           result?.ok===true&&result?.receiptId?'bili-followup-dm:'+result.receiptId:''
@@ -1547,7 +1547,7 @@ function reportMeta() {
         if(result?.ok!==true&&result?.no_retry===true&&taskId)
           lifeActionAttribution.unknown({accountTag:trustedLifeAccountTag(),channel:'todo-followup',owner:'life',
             sourceRef:'todo:'+taskId,receiptId:'followup-unknown:'+eventId,action:'followup',kind:'social'})
-        return {ok:result?.ok===true,no_retry:result?.no_retry===true,receiptId:result?.receiptId,
+        return {ok:result?.ok===true,no_retry:result?.no_retry===true,receiptId:result?.receiptId,accountTag,accountEpoch,
           notAttempted:result?.notAttempted===true,reason:result?.reason,accepted:result?.accepted,rpid:result?.rpid,rpid_str:result?.rpid_str,attempted:result?.attempted,sent:result?.sent}
       }catch(e){settleProof('uncertain');throw e}
       finally{settleProof('not-sent')}
@@ -5235,11 +5235,10 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       const result=await addIncomingPictureObservation({uid,imageUrls,sourceMessageIds,privateDmImage:true})
       return {observations:Array.isArray(result.observations)?result.observations:[]}
     },
-    getRecentActivity:({uid,text,history})=>{
+    getRecentActivity:({uid})=>{
       // Only the authenticated owner of the currently verified B站 account may
       // ask for this account's recent PUBLIC activity. No third-party DM data.
       if(String(uid)!==String(cfg.dmOwnerUid||'')||!trustedLifeAccountTag())return {available:false,reason:'account-not-verified'}
-      if(!isOwnerActivityQuestion(text,history))return {available:false,reason:'unrelated'}
       const binding=accountBinding.status()
       if(binding.blocked)return {available:false,reason:'account-not-ready'}
       return ownerRecentLifeSnapshot({watched:parseSeenTable(),comments:recentComments(stateDir,
@@ -5297,9 +5296,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         const scope=trustedLifeAccountTag()
         if(scope)lifeActionAttribution.verified({accountTag:scope,channel:'owner-dm',owner:'owner',
           sourceRef:'owner-dm-conversation:'+String(uid),receiptId:'bili-owner-dm:'+receiptId,action:'owner_dm_reply',kind:'social'})
+        if(scope)try{await privateConversationExperiences?.observe({uid,role:'owner',direction:'outgoing',eventId,at,text,expectedAccountTag:scope})}
+        catch{log('主人私信确认表达暂存失败（不记录正文）')}
       }
-      if(receiptId)try{await privateConversationExperiences?.observe({uid,role:'owner',direction:'outgoing',eventId,at,text})}
-      catch{log('主人私信确认表达暂存失败（不记录正文）')}
       // The confirmed outgoing turn already enters the same private conversation
       // batch as the incoming evidence. Do not also derive an episode from words
       // in the reply; the existing model decides whether it is worth remembering.
@@ -8348,8 +8347,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
             ownerDmAgent.rememberConfirmedOutbound({uid,text:body,at:Date.now()})
             lifeActionAttribution.verified({accountTag:scope,channel:'owner-dm',owner:'life',sourceRef:'intention:'+exploration.episodeId,
               receiptId:'bili-owner-exploration:'+receiptId,action:'followup',kind:'social'})
-            const event=preparePrivateSelfExperience({source:'owner-dm',role:'owner',uid,eventId:'owner-exploration:'+shareId,text:body,at:Date.now(),accountTag:scope})
-            if(event)await lifeMemoryCoordinator.recordEvents([event],{reflect:true})
+            if(receiptId&&current()&&scope===trustedLifeAccountTag()&&!accountBinding.status().blocked)
+              await privateConversationExperiences?.observe({uid,role:'owner',direction:'outgoing',eventId:'bili-dm:'+receiptId,text:body,at:Date.now(),expectedAccountTag:scope})
           }})
       }
       const e=id==='owner-idle'?{kind:'self-initiated'}:id==='owner-silence'?{kind:'owner-silence'}:

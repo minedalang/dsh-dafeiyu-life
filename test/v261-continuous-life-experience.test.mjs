@@ -6,7 +6,7 @@ import {join} from 'node:path'
 import {createLifeMemoryGateway} from '../lib/life-memory-gateway.mjs'
 import {buildVideoExplorationEvent} from '../lib/video-experience.mjs'
 import {naturalFollowupText,liveExperienceEvidence} from '../lib/life-experience-continuity.mjs'
-import {preparePrivateSelfExperience,preparePrivateLifeEvent} from '../lib/life-private-policy.mjs'
+import {preparePrivateLifeEvent} from '../lib/life-private-policy.mjs'
 import {createOwnerTodoFollowup} from '../lib/owner-todo-followup.mjs'
 import {createOwnerDmAgent} from '../lib/owner-dm-agent.mjs'
 
@@ -87,13 +87,10 @@ test('回访正文必须由自主决策产生，缺失时不套固定报告；�
  assert.equal(ack,0);assert.equal((await g.tick()).skipped,'empty')
 }))
 
-test('确认过的个人感想与用户纠错进入低敏私密衰减经历，而非原始对话转录',()=>{
- const thought=preparePrivateSelfExperience({source:'owner-dm',role:'owner',uid,eventId:'confirmed-followup:abc',text:'我挺好奇这个到底是不是本人演唱',at:T})
- assert.equal(thought.kind,'private-social');assert.match(thought.text,/好奇/)
- assert.doesNotMatch(JSON.stringify(thought),/孙燕姿|不是本人演唱|123456789/)
+test('现行私密纠错证据仍进入低敏经历，保留原主题门禁',()=>{
  const correction=preparePrivateLifeEvent({source:'owner-dm',role:'owner',uid,eventId:'msg-evidence',text:'不对，这个AI翻唱不是本人唱的',at:T})
  assert.ok(correction);assert.match(correction.text,/纠正|理解错误/)
- assert.equal(preparePrivateSelfExperience({source:'owner-dm',role:'owner',uid,eventId:'sensitive',text:'我好奇你的密码是什么',at:T}),null)
+ assert.equal(preparePrivateLifeEvent({source:'owner-dm',role:'owner',uid,eventId:'sensitive',text:'我好奇你的密码是什么',at:T}),null)
 })
 
 test('主人日常私信确认发出后，个人感想进入统一回调；发送失败绝不投影',()=>withDir(async dir=>{

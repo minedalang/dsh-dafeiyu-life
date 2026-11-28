@@ -130,7 +130,7 @@ test('跨会话主人回忆经过原 MemoryRetriever：上次推荐的 Deepseek 
   const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>({mainSessionMemoryEnabled:true}),
    getEpisodes:(query,options)=>life.recall({query,...options}),
    getEpisodeCandidates:options=>life.semanticCandidates(options)})
-  const response=await retriever.ownerSearchAsync('上次你给我推荐的那个 Deepseek 视频',{limit:6})
+  const response=await retriever.ownerSearchAsync(['上次你给我推荐的那个 Deepseek 视频','Deepseek'],{limit:6})
   assert.equal(response.ok,true);assert.ok(response.items.some(x=>x.summary.includes('Deepseek')&&x.summary.includes(BV)))
   assert.ok(retriever.embeddingCorpus().some(x=>x.text.includes('Deepseek')),'语义候选中应有行动记忆')
   life.close()
