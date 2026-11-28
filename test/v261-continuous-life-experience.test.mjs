@@ -125,3 +125,9 @@ test('模型调用期间到达的平台确认回访不会被旧私信状态覆�
  const saved=JSON.parse(readFileSync(join(dir,'owner-dm-agent.json'),'utf8'))
  assert.ok(saved.history.some(x=>x.source==='confirmed-followup'&&x.text.includes('谁演唱')))
 }))
+
+test('回访按原渠道选择 Gateway，公开评论不借用私信读取域',()=>{
+ const domains=[],gateway={recall:x=>{domains.push(x.domain);assert.deepEqual(x.kinds,['watch']);return []}}
+ for(const channel of ['dm','comment'])liveExperienceEvidence({gateway,uid,role:'owner',topic:'公开视频',channel})
+ assert.deepEqual(domains,['bili-dm','bili-life'])
+})

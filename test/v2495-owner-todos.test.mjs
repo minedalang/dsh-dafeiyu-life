@@ -65,3 +65,18 @@ test('dev40 chosen todo controls reject another account, stale receipt and fake 
  const home=mk();try{let t=Date.now();const engine=createOwnerTodoEngine({dataDir:home,now:()=>t});const one=engine.add({type:'watch_video',bvid:BV});const two=engine.add({type:'inspect_my_space'});assert.ok(one.ok&&two.ok);const allowed=row=>row.id===one.item.id;const [row]=listChosenOwnerTodos(engine,allowed);assert.equal(row.id,one.item.id);assert.equal(listChosenOwnerTodos(engine,allowed).length,1);assert.equal(updateChosenOwnerTodo(engine,allowed,{id:two.item.id,action:'dismiss'}).ok,false);assert.equal(updateChosenOwnerTodo(engine,allowed,{id:row.id,action:'done'}).ok,false);assert.equal(updateChosenOwnerTodo(engine,allowed,{id:row.id,action:'defer',updatedAt:row.updatedAt-1}).ok,false);t++;assert.equal(updateChosenOwnerTodo(engine,allowed,{id:row.id,action:'defer',updatedAt:row.updatedAt},t).ok,true)
  }finally{rmSync(home,{recursive:true,force:true})}
 })
+
+test('已授权写待办只承认原 running 尝试和原精确参数，撤销后不能派发',()=>{
+ const home=mk();try{
+  const e=createOwnerTodoEngine({dataDir:home})
+  const task=e.add({type:'comment_video',bvid:BV,text:'原正文',ownerAuthorized:true}).item
+  const attempt=e.begin(task.id).item
+  assert.equal(e.isCurrentAttempt(attempt),true)
+  assert.equal(e.isCurrentAttempt({...attempt,text:'替换正文'}),false)
+  assert.equal(e.isCurrentAttempt({...attempt,bvid:'BV1abc234567'}),false)
+  assert.equal(e.isCurrentAttempt({...attempt,attemptId:'stale'}),false)
+  assert.equal(e.isCurrentAttempt({...attempt,ownerAuthorized:false}),false)
+  assert.equal(e.update(task.id,'dismiss').ok,true)
+  assert.equal(e.isCurrentAttempt(attempt),false)
+ }finally{rmSync(home,{recursive:true,force:true})}
+})

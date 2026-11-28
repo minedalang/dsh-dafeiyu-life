@@ -100,3 +100,24 @@ test('鱼鱼有权延期或拒绝回访，任务成功不代表必须发送',()=
   assert.equal(attempts,0)
 }))
 const DAY=86400000
+
+for(const changed of ['account','owner','evidence','source','contact'])test('回访派发前 '+changed+' 失效不发送并释放原意愿',()=>space(async dir=>{
+ let cfg={...conf(),accountTag:'a',accountEpoch:1},live=true,sends=0,released=0
+ const proof={id:'one'},original=task('A','dm')
+ const file=join(dir,'owner-todo-followups.json')
+ const f=createOwnerTodoFollowup({dataDir:dir,getConfig:()=>cfg,now:()=>T,hourOf:()=>12,
+  chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。',lifeWillingnessProof:proof,validateEvidence:()=>live}),
+  canContact:()=>{if(changed==='account')cfg={...cfg,accountEpoch:2};if(changed==='owner')cfg={...cfg,dmOwnerUid:'777'};if(changed==='evidence')live=false;
+   if(changed==='source'){const d=JSON.parse(readFileSync(file,'utf8'));d.items[0].uid=UID2;writeFileSync(file,JSON.stringify(d))}
+   return changed==='contact'?{blocked:true}:true},
+  releaseDecision:p=>{assert.equal(p,proof);released++},send:()=>{sends++;return {ok:true}}})
+ f.queue(original,{ok:true});await f.tick();assert.equal(sends,0);assert.equal(released,1)
+}))
+test('已提交回访换号仍结算真实旧回执，不向新账号投影或重复发送',()=>space(async dir=>{
+ let cfg={...conf(),accountTag:'a',accountEpoch:1},sends=0,projected=0
+ const f=createOwnerTodoFollowup({dataDir:dir,getConfig:()=>cfg,now:()=>T,hourOf:()=>12,
+  chooseReply:()=>({decision:'reply',text:'我发现了一些相关公开视频资料，还有几处细节想慢慢弄清楚。'}),
+  send:({isCurrent})=>{assert.equal(isCurrent(),true);sends++;cfg={...cfg,accountEpoch:2};assert.equal(isCurrent(),false);return {ok:true}},onSent:()=>projected++})
+ f.queue(task('A','dm'),{ok:true});assert.equal((await f.tick()).status,'sent');assert.equal(projected,0)
+ assert.equal((await f.tick()).skipped,'empty');assert.equal(sends,1)
+}))
