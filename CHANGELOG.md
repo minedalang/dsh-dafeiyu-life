@@ -13,6 +13,11 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.89 · llama.cpp 视觉独立技术验证（未开放生产）
+
+- 新增维护者离线视觉验证工具：显式指定已下载的 llama-server、GGUF 权重及配套 mmproj，独立环回进程，复用现有分镜提示、批次及真实格号/时间解析；可与 Ollama 使用相同合成样本对照。
+- 仅验证传输和解析接口，未变更生产 provider、默认模型、安装/存储、授权、记忆或调度；真实三模型、GPU、资源隔离与 Windows 验收仍为后续接线门禁，不宣传已内置视觉。
+
 ## 2.8.3-dev.88 · 本地模型依赖引导与神经回忆场语义检索
 
 - 快速设置、确认安装、记忆设置及视觉引导明确区分插件管理的 llama.cpp Embedding 和可选 Ollama 视觉；不改变安装/授权。

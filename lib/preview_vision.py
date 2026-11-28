@@ -582,8 +582,13 @@ class VisionServiceError(ValueError):
         self.code=code
 
 
-def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
-    """Read-only fixed loopback inference; a model reply is NOT visual proof."""
+def _call_local_ollama(frames, model, *, image_source='B站低清预览', _lab_transport=None, _lab_thinking=None):
+    """Read-only fixed loopback inference; a model reply is NOT visual proof.
+
+    The explicit in-process lab seam is used only by the offline developer probe.
+    No config, MCP or production provider can select it. It must return the same
+    bounded response envelope; all observation validation below remains shared.
+    """
     if model not in ('qwen3.5:2b','qwen3.5:4b','openbmb/minicpm-v4.7:1b'):
         raise ValueError('本地视觉模型不在安全白名单中')
     if not frames or len(frames)>4:
@@ -604,7 +609,7 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
                  '每张之前单独写一行“分镜图N：”（N为上面给出的编号），'
                  '然后只写属于该图片的逐格描述和本张视觉记忆摘要。'
                  '不能将两张的格号或摘要混在一起。')
-    mode=_local_thinking_mode()
+    mode=_local_thinking_mode(_lab_thinking)
     # A multi-image request needs a budget for every tile, not only the
     # largest single JPEG. Never treat a partial batch as a complete receipt.
     tiles=sum(len(f.get('tile_times') or []) for f in frames) if board_mode else 1
@@ -645,8 +650,11 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
         _owner_debug_ollama(event,attempt,code,round((time.monotonic()-started)*1000))
     mark('request-start')
     try:
-        with urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect()).open(req,timeout=timeout_seconds) as response:
-            raw=response.read(300_001)
+        if _lab_transport is None:
+            with urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect()).open(req,timeout=timeout_seconds) as response:
+                raw=response.read(300_001)
+        else:
+            raw=_lab_transport(payload,timeout_seconds)
         mark('http-received')
         if len(raw)>300_000: raise ValueError('本地视觉模型返回内容过大')
         data=json.loads(raw)
@@ -864,8 +872,9 @@ def _parse_board_receipt(description,board):
     return {'status':'analyzed','description':canonical},diagnostic,None
 
 
-def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
+def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览",_lab_infer=None):
     """Verify each sampled board; selectively recover malformed replies without relaxing proof."""
+    infer=_call_local_ollama if _lab_infer is None else _lab_infer
     deadline=time.monotonic()+540
     owner_deadline=_owner_debug_deadline()
     if owner_deadline is not None:
@@ -947,8 +956,8 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
             for i in range(start,start+len(batch)):
                 reports[i]['modelAttempts']+=1
             try:
-                combined=(_call_local_ollama(current,model,image_source=image_source)
-                          if image_source!="B站低清预览" else _call_local_ollama(current,model))
+                combined=(infer(current,model,image_source=image_source)
+                          if image_source!="B站低清预览" else infer(current,model))
                 debug_raw(start,current[0].pop('_debug_raw_answer',combined),list(range(start+1,start+len(batch)+1)),'paired')
                 chunks=_split_storyboard_batch(combined,batch)
                 for offset,chunk in enumerate(chunks):
@@ -976,8 +985,8 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
             current={**frames[i],'_inference_timeout_seconds':min(140,remaining),'_retain_partial_board':True}
             reports[i]['modelAttempts']+=1
             try:
-                text=(_call_local_ollama([current],model,image_source=image_source)
-                      if image_source!="B站低清预览" else _call_local_ollama([current],model))
+                text=(infer([current],model,image_source=image_source)
+                      if image_source!="B站低清预览" else infer([current],model))
                 debug_raw(i,current.pop('_debug_raw_answer',text),[i+1],'single-recovery' if len(batch)>1 else 'single')
                 validate(i,text,'single-recovery' if len(batch)>1 else 'single',current.get('_model_receipt'),current.get('_debug_attempt_id',0))
             except Exception as exc:

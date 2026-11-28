@@ -7,6 +7,8 @@ from datetime import datetime
 from pathlib import Path
 import re
 import sys
+import stat
+import uuid
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
@@ -14,13 +16,13 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=ROOT/'vendor/bilibili-mcp/mcp_server.py'
 parsed=ast.parse(SOURCE.read_text(encoding='utf8'))
-names={'_record_mention_event','_public_no_mention_reason','_append_home','_valid_bv'}
+names={'_record_mention_event','_public_no_mention_reason','_append_home','_append_runtime_duty_log','_valid_bv'}
 nodes=[n for n in parsed.body if isinstance(n,ast.FunctionDef) and n.name in names]
 
 class DiagnosticSwitchTests(unittest.TestCase):
  def setUp(self):
   self.temp=TemporaryDirectory();self.base=Path(self.temp.name)
-  self.scope={'datetime':datetime,'json':json,'os':os,'sys':sys,'re':re,'Path':Path,'_DUTY_HOME':self.base,'_BV_PATTERN':re.compile(r'^BV[0-9A-Za-z]{10}$')}
+  self.scope={'datetime':datetime,'json':json,'os':os,'sys':sys,'stat':stat,'uuid':uuid,'re':re,'Path':Path,'_DUTY_HOME':self.base,'_BV_PATTERN':re.compile(r'^BV[0-9A-Za-z]{10}$')}
   exec(compile(ast.Module(body=nodes,type_ignores=[]),str(SOURCE),'exec'),self.scope)
   self.f=self.scope['_record_mention_event']
   self.diag={'reason':'ai_declined','mode':'ai','selected_count':0,'configured_count':1}
