@@ -25,6 +25,11 @@ test('v2.4.94 主 Session 注册完整的只读视频工具与受限手动互动
     for(const name of ['bili_watch_video','bili_video_info','bili_comment_thread','bili_danmaku','bili_hot_videos','bili_rank','bili_user_info','bili_user_videos','bili_favorite_lists','bili_favorite_content','bili_unread_messages','bili_read_dm','bili_received_replies','bili_received_at_and_likes','bili_video_like','bili_video_collect_manual','bili_follow_creator_manual','bili_unfollow_creator_manual','bili_comment_manual','bili_send_message_manual']) assert.ok(names.has(name),`缺少工具 ${name}`)
     const privateRead=x.registered.find(t=>t.name==='bili_read_dm')
     const denied=await privateRead.execute({talker_uid:'42',confirm:true});assert.equal(denied.ok,false);assert.equal(denied.messages,undefined)
+    // Actual global registrations must not expose private account data to an unbound caller.
+    for(const name of ['bili_dm_contact_lookup','bili_experience_recall','bili_home_recommendations','bili_creator_relation_status','bili_favorite_lists','bili_favorite_content','bili_unread_messages','bili_received_replies','bili_received_at_and_likes']){
+      const spec=x.registered.find(t=>t.name===name);assert.ok(spec,name)
+      const result=await spec.execute({}, {agent:{id:'other'}});assert.equal(result.ok,false,name);assert.equal(result.reason,'life-private-read-unavailable',name)
+    }
     const watch=x.registered.find(t=>t.name==='bili_watch_video')
     assert.equal((await watch.execute({bvid:'bad'})).ok,false)
     assert.ok(x.registered.some(t=>t.name==='bili_video_like'))

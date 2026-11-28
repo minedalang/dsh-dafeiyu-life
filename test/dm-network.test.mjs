@@ -98,3 +98,23 @@ test('切换账号撤销私信读取，原只读意愿安全释放，不将旧�
  const denied=await executeMainSessionPrivateRead({willingness:{decide:async()=>({ok:true,candidateId:'private-read',proof:{}}),verify:()=>({ok:true}),receipt:()=>({ok:false})},isCurrent:()=>true,claim:()=>true,uid:'42',limit:10,read:async()=>({ok:true,messages:['不应交付']})})
  assert.equal(denied.ok,false);assert.equal(denied.messages,undefined)
 })
+
+// Generic disclosure retains the same exact, process-local, one-use proof as DM.
+test('dev70 generic private target binds tool and exact parameters, disallows aliases and unregistered targets',async t=>{
+ const {registeredLifeTool}=await import('../lib/life-agent-read-runtime.mjs')
+ const home=mkdtempSync(join(tmpdir(),'generic-private-proof-'));t.after(()=>rmSync(home,{recursive:true,force:true}))
+ const actor=createLifeWillingness({dataDir:home,getAccountTag:()=> 'a'.repeat(16),getContext:()=>({voice:'鱼鱼'}),invokeModel:async()=>JSON.stringify({action:'act',candidateId:'private-read',reason:'愿意'})})
+ assert.equal(registeredLifeTool('main-session','bili_read_dm').disclosure,'private');assert.equal(registeredLifeTool('main-session','bili_search').disclosure,undefined);assert.equal(registeredLifeTool('social','bili_read_dm'),null)
+ const target={tool:'dafeiyu_life_recall',args:{query:'视频细节',detail_start_ms:0,detail_end_ms:20000}}
+ const choice=await actor.decide({scene:'main',trigger:'main-session-private-read',sourceKey:'private:exact',isCurrent:()=>true,candidates:[{id:'private-read',kind:'session_private_read',label:'同意读取具体回忆'}],evidence:{sessionPrivateRead:target}},{queueIfBusy:true})
+ assert.equal(choice.ok,true)
+ for(const changed of [{...target,args:{...target.args,detail_end_ms:30000}},{...target,tool:'dafeiyu_memory_recall'},{...target,tool:'bili_search'}])assert.equal(actor.verify(choice.proof,'session_private_read',changed).ok,false)
+ assert.equal(actor.verify(choice.proof,'session_private_read',{tool:target.tool,args:{detail_end_ms:20000,query:'视频细节',detail_start_ms:0}}).ok,true)
+ assert.equal(actor.verify(choice.proof,'session_private_read',target).ok,false);actor.receipt(choice.proof,{status:'verified'})
+ let reads=0;const read=async args=>{reads++;assert.deepEqual(args,{media_id:123,page:2});return {medias:['原接口未带 ok 字段的正常返回']}}
+ const result=await executeMainSessionPrivateRead({willingness:actor,isCurrent:()=>true,claim:()=>true,tool:'bili_favorite_content',args:{page:2,media_id:123},read})
+ assert.equal(result.medias.length,1);assert.equal(reads,1)
+ assert.equal((await executeMainSessionPrivateRead({willingness:actor,isCurrent:()=>true,claim:()=>true,tool:'bili_search',args:{keyword:'公开'},read})).ok,false);assert.equal(reads,1)
+ const blocked=await executeMainSessionPrivateRead({willingness:{decide:async()=>({ok:true,candidateId:'private-read',proof:{}}),verify:()=>({ok:true}),receipt:()=>({ok:false})},isCurrent:()=>true,claim:()=>true,tool:'bili_received_replies',args:{},read:async()=>({error:'不应交付的正文'})})
+ assert.equal(blocked.ok,false);assert.doesNotMatch(JSON.stringify(blocked),/不应交付/)
+})

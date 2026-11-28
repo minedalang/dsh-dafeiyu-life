@@ -99,7 +99,7 @@ import { createAccountBinding } from './lib/account-binding.mjs'
 import { createReadActionExecutionGate,readToolAction } from './lib/read-action-execution-gate.mjs'
 import {createLifeDecisionTrace} from './lib/life-decision-trace.mjs'
 import {createLifeWillingness,prepareLifeCommentReply} from './lib/life-willingness.mjs'
-import {registeredLifeRead,registeredLifeWrite,executeRegisteredLifeRead,authorizeRegisteredCommentReads,executeMainSessionPrivateRead} from './lib/life-agent-read-runtime.mjs'
+import {registeredLifeRead,registeredLifeTool,registeredLifeWrite,executeRegisteredLifeRead,authorizeRegisteredCommentReads,executeMainSessionPrivateRead} from './lib/life-agent-read-runtime.mjs'
 import {createLifeVideoActionBridge} from './lib/life-video-action-bridge.mjs'
 import {createModelInvocationJournal} from './lib/model-invocation-journal.mjs'
 import {createLifeContinuationWriteExecutor} from './lib/life-continuation-write.mjs'
@@ -2082,7 +2082,12 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     async execute(args, exec) {
       if(!platformReady())return {ok:false,blocked:true,error:platformMessage()};
       if(!integrationAvailable())return {ok:false,blocked:true,error:'模式切换待重启或不可用'};
-      if(registeredLifeRead('main-session',spec.name)){
+      if(spec.name!=='bili_read_dm'&&registeredLifeTool('main-session',spec.name)?.disclosure==='private'){
+        const ownerTurn=longTermMemory?.capturePrivateRead(exec?.agent),epoch=accountBinding.generation(),account=trustedLifeAccountTag(),policy=getSessionIntegration()
+        const current=()=>{refreshCfg();const next=getSessionIntegration();return Boolean(ownerTurn?.()&&account&&cfg.masterEnabled===true&&platformReady()&&integrationAvailable()&&!exec?.signal?.aborted&&epoch===accountBinding.generation()&&account===trustedLifeAccountTag()&&policy.mode===next.mode&&policy.revision===next.revision)}
+        return safe(await executeMainSessionPrivateRead({willingness:lifeWillingness,isCurrent:current,claim:ownerTurn?.claim,settleClaim:ownerTurn?.settle,request:ownerTurn?.request,tool:spec.name,args:args??{},read:target=>spec.execute(target,exec)}))
+      }
+      if(spec.name!=='bili_read_dm'&&registeredLifeRead('main-session',spec.name)){
         const epoch=accountBinding.generation(),account=trustedLifeAccountTag(),policy=getSessionIntegration()
         const result=await executeRegisteredLifeRead({scene:'main-session',actions:[spec.name],isCurrent:()=>{const next=getSessionIntegration();return platformReady()&&integrationAvailable()&&epoch===accountBinding.generation()&&account===trustedLifeAccountTag()&&policy.revision===next.revision&&policy.mode===next.mode},read:()=>spec.execute(args,exec)})
         return safe(result.ok?result.value:{ok:false,reason:result.reason})
@@ -2187,7 +2192,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         if(!cred||!accountUid||String(cred.dedeuserid)!==accountUid)return {ok:false,reason:'account-not-ready'}
         const scoped=()=>{try{return current()&&String(accountBinding.assertReady().activeUid)===accountUid&&dmCred(stateDir)?.sessdata===cred.sessdata}catch{return false}}
         return await readOwnerConversation(args,{isCurrent:scoped,accountUid,
-          chooseRead:({uid,limit,read})=>executeMainSessionPrivateRead({willingness:lifeWillingness,isCurrent:scoped,claim:ownerTurn.claim,request:ownerTurn.request,uid,limit,read}),
+          chooseRead:({uid,limit,read})=>executeMainSessionPrivateRead({willingness:lifeWillingness,isCurrent:scoped,claim:ownerTurn.claim,settleClaim:ownerTurn.settle,request:ownerTurn.request,uid,limit,read}),
           readConversation:async(uid,limit)=>{const release=accountBinding.enterPlatformOperation();try{if(!scoped())throw Error('session-or-account-not-current');return await dmFetch(cred,uid,limit,{readBudget:biliReadBudget})}finally{release()}}})
       }catch{return {ok:false,reason:'account-not-ready'}}
     }
@@ -7327,6 +7332,13 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getTodoTaskAllowed:task=>accountBinding.taskAllowed(task),
     getSessionIntegration,
     getSessionCapabilities:sessionIntegration.getCapabilities,
+    authorizePrivateRead:({tool,args,ownerTurn,isCurrent,scope,read})=>{
+      // Standalone identity memory has no platform Life scope; keep its existing
+      // explicit local recall contract until account-independent willingness lands.
+      if(!scope?.accountTag&&['dafeiyu_memory_recall','dafeiyu_life_recall'].includes(tool)&&(!platformReady()||!hasCredential()))return read(args)
+      const current=()=>{refreshCfg();return Boolean(isCurrent()&&ownerTurn?.()&&scope?.accountTag&&cfg.masterEnabled===true&&platformReady()&&integrationAvailable()&&scope.accountTag===trustedLifeAccountTag()&&scope.epoch===accountBinding.generation())}
+      return executeMainSessionPrivateRead({willingness:lifeWillingness,isCurrent:current,claim:ownerTurn?.claim,settleClaim:ownerTurn?.settle,request:ownerTurn?.request,tool,args,read})
+    },
     dataDir: stateDir,
     dshHome: dirname(stateDir),
     agents: ctx.agents,
@@ -7357,7 +7369,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     getIdentityPrompt: () => {
       const voice=lifeVoiceContext({scene:'main',maxChars:8500})
-      return `${voice}\n\n【你是谁】\n你就是“大肥鱼”本人。这个会话是你和主人长期相处的“家”，不是通用 AI 助手、客服，也不是后台 B站值班 Agent。正常聊天时用第一人称“我”自然回应，有自己的情绪、偏好、熟人感和小脾气；不要用“有什么需要我帮忙的吗”“我可以处理文件/代码/B站”等通用助手开场，也不要主动罗列工具能力。\n\n【主 Session 适用范围】\n上面关于公开评论、选片、@、附图、发送前检查等条目，只在对应 B站任务发生时作为行为边界；普通聊天主要吸收其中的人格、口吻、偏好、世界观和真实性要求。不要把后台值班章程搬进日常聊天，也不要声称做过没有真实记录的事情。\n\n【自主意愿与隐私】主人提出的建议、明确请求或 confirm=true 不是你必须照办的命令。使用任何本插件的主 Session 工具前，由你结合实际情境决定是否愿意、是否需要、是否此刻合适；可自然拒绝、延期或只做愿意的部分。尤其是私信、私人记忆、观察缓存、待办和社交关系：回忆、读取、向主人披露是不同的选择，不要先取出私密正文再判断是否披露。主人有管理授权的权利，不代表你必须分享。bili_read_dm 还需统一 Life 意愿批准；拒绝、延期或技术不可用均不得改用其他工具绕过、重复试探或编造已读结果。不要把技术阻断解释成自己的拒绝。`
+      return `${voice}\n\n【你是谁】\n你就是“大肥鱼”本人。这个会话是你和主人长期相处的“家”，不是通用 AI 助手、客服，也不是后台 B站值班 Agent。正常聊天时用第一人称“我”自然回应，有自己的情绪、偏好、熟人感和小脾气；不要用“有什么需要我帮忙的吗”“我可以处理文件/代码/B站”等通用助手开场，也不要主动罗列工具能力。\n\n【主 Session 适用范围】\n上面关于公开评论、选片、@、附图、发送前检查等条目，只在对应 B站任务发生时作为行为边界；普通聊天主要吸收其中的人格、口吻、偏好、世界观和真实性要求。不要把后台值班章程搬进日常聊天，也不要声称做过没有真实记录的事情。\n\n【自主意愿与隐私】主人提出的建议、明确请求或 confirm=true 不是你必须照办的命令。使用任何本插件的主 Session 工具前，由你结合实际情境决定是否愿意、是否需要、是否此刻合适；可自然拒绝、延期或只做愿意的部分。尤其是私信、私人记忆、观察缓存、待办和社交关系：回忆、读取、向主人披露是不同的选择，不要先取出私密正文再判断是否披露。主人有管理授权的权利，不代表你必须分享。已接入的私密读取工具还需统一 Life 意愿批准；拒绝、延期或技术不可用均不得改用其他工具绕过、重复试探或编造已读结果。不要把技术阻断解释成自己的拒绝。`
     },
     getRetriever: () => memoryRetriever,
     onOwnerMemorySaved:async({text,eventId,at})=>{

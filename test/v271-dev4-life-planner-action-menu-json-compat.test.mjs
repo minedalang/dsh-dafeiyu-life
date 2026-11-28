@@ -182,7 +182,7 @@ for(const scenario of ['creator-disabled','creator-source-changed','creator-erro
 // adapters share the registry and scope fence, not social or write authority.
 test('dev52 main read inventory and gateway isolate scene, writes and stale scope',async()=>{
  const {registeredLifeRead,registeredLifeReads,executeRegisteredLifeRead}=await import('../lib/life-agent-read-runtime.mjs')
- assert.deepEqual(['social','episode','main-session'].map(s=>registeredLifeReads(s).length),[15,9,31])
+ assert.deepEqual(['social','episode','main-session'].map(s=>registeredLifeReads(s).length),[15,9,32])
  for(const scene of ['social','episode','main-session'])assert.equal(new Set(registeredLifeReads(scene).map(x=>x.action)).size,registeredLifeReads(scene).length)
  let current=true,calls=0
  const run=(actions,read=async()=>{calls++;return {verified:true}})=>executeRegisteredLifeRead({scene:'main-session',actions,isCurrent:()=>current,read})
@@ -197,7 +197,7 @@ test('dev52 main read inventory and gateway isolate scene, writes and stale scop
 
 test('dev53 registry groups shared semantics without granting aliases or autonomous writes in social/main scenes',async()=>{
  const {registeredLifeTool,registeredLifeTools,registeredLifeWrite,registeredLifeRead,executeRegisteredLifeWrite}=await import('../lib/life-agent-read-runtime.mjs')
- assert.deepEqual(['social','episode','main-session'].map(s=>registeredLifeTools(s).length),[15,13,31])
+ assert.deepEqual(['social','episode','main-session'].map(s=>registeredLifeTools(s).length),[15,13,32])
  for(const [social,episode,main] of [['read_memory','recall_public_experience','dafeiyu_life_recall'],['read_video','inspect_exploration','bili_video_info'],['read_hot_comments','inspect_video_discussion','bili_comments'],['read_public_person','inspect_creator_space','bili_user_videos']]){
    assert.equal(registeredLifeTool('social',social).capability,registeredLifeTool('episode',episode).capability)
    assert.equal(registeredLifeTool('social',social).capability,registeredLifeTool('main-session',main).capability)

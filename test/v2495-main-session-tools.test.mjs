@@ -314,3 +314,40 @@ test('private DM read binds exact UID to a claimed owner turn and invalidates on
  listeners.get('agent/inbox/inserted')?.({message});listeners.get('agent/inbox/claimed')?.({message,turn:3});const next=memory.captureDmRead(agent,'42');assert.equal(next(),true);assert.equal(next.claim(),true);selected='different';assert.equal(next(),false)
  }finally{memory.stop();rmSync(home,{recursive:true,force:true})}
 })
+
+// Original mounted tool adapters, original Life engine and a fake model only.
+test('dev70 shared privacy turn: DM, recall, todo and gallery cannot re-vote after refusal; next owner turn can choose',async t=>{
+ const {executeMainSessionPrivateRead}=await import('../lib/life-agent-read-runtime.mjs')
+ const {createLifeWillingness}=await import('../lib/life-willingness.mjs')
+ const home=mkdtempSync(join(tmpdir(),'shared-private-turn-')),listeners=new Map(),tools=new Map()
+ const agent={id:'private-main',sessionId:'private-main',session:{snapshotEvents:()=>[]},ctx:{on(n,f){listeners.set(n,f);return ()=>listeners.delete(n)},tools:{register(s){tools.set(s.name,s);return ()=>tools.delete(s.name)}},systemPrompt:{section(){return ()=>{}},context(){return ()=>{}}}}}
+ let answer='skip',models=0,reads=0,prompt='',scope='a'.repeat(16),epoch=1,blockModel=null,blockRead=null
+ const actor=createLifeWillingness({dataDir:home,getAccountTag:()=>scope,getContext:()=>({voice:'鱼鱼自主选择'}),invokeModel:async p=>{models++;prompt=p;if(blockModel)await blockModel();return JSON.stringify({action:answer,candidateId:'private-read',reason:'自主选择'})}})
+ const run=({tool,args,ownerTurn,isCurrent=()=>true,read,uid,limit})=>{
+  const origin=scope,gen=epoch
+  return executeMainSessionPrivateRead({willingness:actor,isCurrent:()=>Boolean(ownerTurn?.()&&isCurrent()&&scope===origin&&epoch===gen),claim:ownerTurn?.claim,settleClaim:ownerTurn?.settle,request:ownerTurn?.request,tool,args,read,uid,limit})
+ }
+ const memory=createLongTermMemory({dataDir:home,dshHome:home,agents:{get:()=>agent},getConfig:()=>({mainSessionId:'private-main'}),defineTool:x=>x,captureRecallObservation:()=>({accountTag:scope,epoch}),authorizePrivateRead:run,
+  getRetriever:()=>({retrieve:async()=>{reads++;if(blockRead)await blockRead();return {context:'仅在明确同意后交付的私人记忆',ids:[],episodeIds:[],episodes:[]}}}),getRecentObservations:()=>{reads++;return {ok:true,observations:['真实观察']}},logger:{warn(){}}})
+ t.after(()=>{memory.stop();rmSync(home,{recursive:true,force:true})});memory.start()
+ const turn=(id,text='愿意告诉我 UID 42 的私信和你的经历吗？')=>{const message={role:'user',content:text};listeners.get('agent/inbox/inserted')?.({message});listeners.get('agent/inbox/claimed')?.({message,turn:id})}
+ const recall=tools.get('dafeiyu_memory_recall'),life=tools.get('dafeiyu_life_recall'),gallery=tools.get('dafeiyu_recent_observations'),todo=tools.get('dafeiyu_todo_list')
+ const dm=()=>run({tool:'bili_read_dm',uid:'42',limit:10,ownerTurn:memory.captureDmRead(agent,'42'),read:async()=>{reads++;return {ok:true,messages:['私信正文']}}})
+ assert.equal((await recall.execute({query:'经历'})).ok,false);assert.equal(models,0);assert.equal(reads,0)
+ turn(1);const refused=await dm();assert.equal(refused.lifeAction,'skip');assert.equal(reads,0)
+ for(const [tool,args] of [[recall,{query:'经历'}],[life,{query:'相同话题'}],[gallery,{}],[todo,{}]]){const result=await tool.execute(args);assert.equal(result.ok,false);assert.equal(result.reason,'life-private-read-already-considered')}
+ assert.equal(models,1);assert.equal(reads,0)
+ assert.match(recall.output.render({},refused)[0].text,/life-private-read-declined/)
+ // A local refusal also blocks the global DM route, not just the reverse.
+ turn(2);assert.equal((await recall.execute({query:'经历'})).lifeAction,'skip');assert.equal((await dm()).reason,'life-private-read-already-considered');assert.equal(reads,0)
+ // Parallel disclosure is refused before model execution; a successful prior
+ // disclosure permits an independently chosen different target in the same turn.
+ turn(3);answer='act';let releaseModel,entered;const started=new Promise(r=>entered=r);blockModel=()=>{entered();return new Promise(r=>releaseModel=r)}
+ const pending=recall.execute({query:'经历'});await started;const before=models;assert.equal((await dm()).reason,'life-private-read-already-considered');assert.equal(models,before);releaseModel();assert.match((await pending).context,/私人记忆/);blockModel=null
+ assert.match(prompt,/准确披露目标/);assert.match(prompt,/dafeiyu_memory_recall/);assert.doesNotMatch(prompt,/仅在明确同意后交付的私人记忆/)
+ assert.equal((await recall.execute({query:'经历'})).ok,false);assert.equal((await dm()).ok,true);assert.equal((await gallery.execute({})).ok,true)
+ // The real mounted wrapper loses old results when an owner turn changes while reading.
+ turn(4);let releaseRead,enteredRead;const reading=new Promise(r=>enteredRead=r);blockRead=()=>{enteredRead();return new Promise(r=>releaseRead=r)}
+ const stale=recall.execute({query:'另一个主题'});await reading;turn(5);releaseRead();const discarded=await stale;assert.equal(discarded.ok,false);assert.doesNotMatch(JSON.stringify(discarded),/私人记忆/);blockRead=null
+ assert.equal((await dm()).ok,true)
+})
