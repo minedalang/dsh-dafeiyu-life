@@ -13,6 +13,13 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.95 · 内置视觉迁移验收、下载恢复与轮次收尾
+
+- V2 模型实测从当前已认证目标调用受管内置视觉原图自检，沿用人工确认；旧回执、错盘、配置变化或运行任务冲突不通过，仍不授权旧副本清理。
+- 完整固定资产下载残片可在下一次安装时本地 SHA-256 校验后发布；取消或校验失败不替换已有文件，响应流及时收尾。
+- 专业视频轮次撤销后等待已接纳的观察退出；内置视觉故障诊断与脱敏导出按实际 provider 区分，不建议恢复 Ollama。
+- 复核 A06/A07、V03 遗留边界并更新台账；未扩展角色权限或局部深层附件准入。GPU、实机模型及 Windows full 待验。
+
 ## 2.8.3-dev.94 · 内置视觉生产选路与首次引导
 
 - 内置 CPU 视觉纳入正常配置及宿主视频调用；专用租约及原分镜核验不变，Headless 仅通过本轮已选中 BV 的受管环回桥接。禁止无租约回退。

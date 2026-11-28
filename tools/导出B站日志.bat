@@ -432,7 +432,7 @@ def vision_config_diag(config):
     local_id = config.get('visionLocalModel')
     allowed_local = ('qwen3.5-2b', 'qwen3.5-4b', 'minicpm-v4.7-1b')
     return {'present': True, 'enabled': config.get('visionEnabled') is True,
-            'mode': mode if mode in ('independent_local','independent_dsh') else 'unknown',
+            'mode': mode if mode in ('independent_local','independent_dsh','independent_native') else 'unknown',
             'localModel': local_id if local_id in allowed_local else 'unset_or_unsupported'}
 
 snapshot = {'sources': {'configFilePresent': (root/'config.json').is_file(),
@@ -489,6 +489,9 @@ if isinstance(vision, dict) and vision.get('version') == 1:
         vision_status = {'present': True, 'at': at, 'ok': vision['ok'],
                          'status': vision['status'], 'mode': vision['mode'],
                          'errorCode': vision.get('errorCode') if vision.get('errorCode') in allowed_error else 'unknown'}
+        if vision['mode'] == 'independent_local' and vision.get('provider') == 'llama.cpp':
+            vision_status['provider'] = 'llama.cpp'
+            vision_status['mode'] = 'independent_native'
 dump('visual-model-last-run.json', vision_status)
 
 video_job=read_json(root/'video-perception-debug-last-run.json',limit=2048)

@@ -79,7 +79,7 @@ import {originalStateDir,storageLocationStatus,inspectStorageTarget,storageCateg
 import {storageDataPath,storageDomainRoot,storagePythonRuntimeRoot,storageLayoutStatus,inspectDomainMigration,inspectDomainReturnHome,storageDomainsUsage,storageMigrationGroups} from './lib/storage-layout.mjs'
 import {largeDataStatus,inspectLargeDataMigration} from './lib/storage-large-data-v2.mjs'
 import {inspectRetainedModelCopies} from './lib/storage-maintenance.mjs'
-import {verifyRelocatedModelRuntime} from './lib/storage-model-runtime-check.mjs'
+import {verifyRelocatedModelRuntime,nativeMigrationReviewEvidence} from './lib/storage-model-runtime-check.mjs'
 import {verifyPythonCachePaths} from './lib/storage-python-cache-check.mjs'
 import {verifyRelocatedLifeMemory} from './lib/storage-life-runtime-check.mjs'
 import {inspectRetainedLifeCopies} from './lib/storage-life-retained.mjs'
@@ -9451,6 +9451,11 @@ logger:{warn:m=>log('社交意图：'+m)}
   dailyBackupStart.unref?.()
   ctx.effect(()=>()=>{clearTimeout(dailyBackupStart);clearInterval(dailyBackupTimer)},'bili-duty: 每日业务备份任务关闭')
   let storageModelVerification=null,storageModelVerificationBusy=false,storageLifeVerification=null,storageExternalLifeVerification=null
+  const storageModelVerificationKey=()=>{
+    refreshCfg();const storage=largeDataStatus(stateDir)
+    return JSON.stringify([storage.target,storage.verifiedAt,cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,
+      cfg.visionMode,cfg.visionLocalModel,cfg.visionLocalThinking,headlessSelection('vision',cfg),cfg.pythonPath])
+  }
   // Shared read-only projection: exporter and HTTP diagnostics never rearm timers.
   const diagnosticSchedulerSnapshot=()=>{
         const planner=autonomousPlanner.status()
@@ -9630,7 +9635,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           if(storageModelVerificationBusy)throw Error('模型运行实测已经在进行，请勿重复启动')
           storageModelVerificationBusy=true;storageModelVerification=null
           try{
-            const configBefore=JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])
+            const configBefore=storageModelVerificationKey()
             const selectedVisionRuntime=selectHealthyVisionPython({fresh:true})
             const result=await verifyRelocatedModelRuntime({root:stateDir,asrPython:asrPython(),
               visionPython:productionVisionPython({mode:resolvedVisionMode(),mainPython:cfg.pythonPath,
@@ -9640,34 +9645,42 @@ logger:{warn:m=>log('社交意图：'+m)}
               visionEnabled:cfg.visionEnabled===true,visionMode:resolvedVisionMode(),
               visionDshReview:dshVisionReview,visionLocalModels:localVisionModels,
               visionLocalModel:cfg.visionLocalModel||'',visionThinking:cfg.visionLocalThinking||'off'})
-            if(configBefore!==JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel]))
+            if(configBefore!==storageModelVerificationKey())
               throw Error('实测期间模型配置改变，结果作废，请重新验证')
             const ticket=randomUUID()
             storageModelVerification={ticket,at:Date.now(),target:result.target,ready:false,
               checks:result.checks,configKey:configBefore}
             const vision=result.checks.vision
             const evidence=vision.pendingReview?(vision.mode==='independent_dsh'?dshVisionReview.status():
+              vision.mode==='independent_native'?await nativeMigrationReviewEvidence({root:stateDir,runtime:embeddingRuntime,model:vision.model,reviewId:vision.reviewId}):
               localVisionModels.reviewEvidence(vision.model)):null
+            if(configBefore!==storageModelVerificationKey()){storageModelVerification=null;throw Error('实测期间模型配置改变，结果作废，请重新验证')}
             return sendJson(res,200,{...result,ticket,cleanupEligible:false,
               review:vision.pendingReview?{reviewId:vision.reviewId,answer:String(evidence?.answer||''),mode:vision.mode}:null})
           }finally{storageModelVerificationBusy=false}
         }
         if(path==='/api/bili-duty/storage/review-model-vision'){
-          if(!storageModelVerification||body?.ticket!==storageModelVerification.ticket||
+          if(storageModelVerificationBusy||!storageModelVerification||body?.ticket!==storageModelVerification.ticket||
              Date.now()-storageModelVerification.at>10*60_000||
-             JSON.stringify([cfg.asrModel,cfg.asrModelPath,cfg.visionEnabled,cfg.visionMode,cfg.visionLocalModel])!==storageModelVerification.configKey)
+             storageModelVerificationKey()!==storageModelVerification.configKey)
             throw Error('实测凭据已过期或配置已变化，请重新验证')
           const vision=storageModelVerification.checks.vision
           if(!vision.pendingReview||body?.accepted!==true&&body?.accepted!==false)
             throw Error('没有待确认的真实图片识别结果')
-          const reply=vision.mode==='independent_dsh'
-            ?dshVisionReview.review({reviewId:vision.reviewId,accepted:body.accepted})
-            :await localVisionModels.review(vision.model,{reviewId:vision.reviewId,accepted:body.accepted})
-          vision.ok=reply.verified===true;vision.pendingReview=false
-          vision.reason=vision.ok?'本人已确认图片识别正确':'图片识别未被认可'
-          const ready=Object.values(storageModelVerification.checks).every(x=>x.ok===true)
-          storageModelVerification.ready=ready
-          return sendJson(res,200,{ok:true,ready,cleanupEligible:false,checks:storageModelVerification.checks})
+          storageModelVerificationBusy=true
+          try{
+            const reply=vision.mode==='independent_dsh'
+              ?dshVisionReview.review({reviewId:vision.reviewId,accepted:body.accepted})
+              :vision.mode==='independent_native'
+                ?(await nativeMigrationReviewEvidence({root:stateDir,runtime:embeddingRuntime,model:vision.model,reviewId:vision.reviewId}),{verified:body.accepted===true})
+                :await localVisionModels.review(vision.model,{reviewId:vision.reviewId,accepted:body.accepted})
+            if(storageModelVerificationKey()!==storageModelVerification.configKey){storageModelVerification=null;throw Error('实测期间模型配置改变，结果作废，请重新验证')}
+            vision.ok=reply.verified===true;vision.pendingReview=false
+            vision.reason=vision.ok?'本人已确认图片识别正确':'图片识别未被认可'
+            const ready=Object.values(storageModelVerification.checks).every(x=>x.ok===true)
+            storageModelVerification.ready=ready
+            return sendJson(res,200,{ok:true,ready,cleanupEligible:false,checks:storageModelVerification.checks})
+          }finally{storageModelVerificationBusy=false}
         }
       }catch(error){return sendJson(res,400,{ok:false,error:String(error?.message||error).slice(0,180)})}
     }

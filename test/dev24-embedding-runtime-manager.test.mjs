@@ -291,3 +291,40 @@ test('round native host accepts only current selected BV and revokes pending sco
   }finally{await host.close()}
   assert.equal(scope.signal.aborted,true)
 })
+
+test('complete fixed-hash partial survives restart, invalid or cancelled data cannot replace an existing model',async()=>{
+  const {createHash}=await import('node:crypto')
+  const home=await mkdtemp(join(tmpdir(),'dsh-completed-part-')),target=join(home,'asset'),part=target+'.part'
+  const bytes=Buffer.from('verified fixture'),sha256=createHash('sha256').update(bytes).digest('hex')
+  const options={expectedBytes:bytes.length,sha256}
+  try{
+    await writeFile(target,'old');await writeFile(part,Buffer.alloc(bytes.length))
+    assert.equal(await __test.recoverCompletedPart(part,target,options),null)
+    assert.equal(await readFile(target,'utf8'),'old')
+    await writeFile(part,bytes)
+    const abort=new AbortController();abort.abort()
+    await assert.rejects(__test.recoverCompletedPart(part,target,{...options,signal:abort.signal}))
+    assert.deepEqual(await readFile(part),bytes)
+    let checks=0
+    await assert.rejects(__test.recoverCompletedPart(part,target,{...options,assertModelStorage:()=>{if(++checks===2)throw Error('target lost')}}),/target lost/)
+    assert.equal(await readFile(target,'utf8'),'old')
+    assert.deepEqual(await __test.recoverCompletedPart(part,target,options),{bytes:bytes.length,sha256})
+    assert.deepEqual(await readFile(target),bytes)
+    await assert.rejects(readFile(part),/ENOENT/)
+  }finally{await rm(home,{recursive:true,force:true})}
+})
+
+test('native round close cancels the admitted observation and waits for its worker cleanup',async()=>{
+  const {startNativeVisionRoundHost}=await import('../lib/scoped-native-vision-read.mjs')
+  let entered,allowExit,exited=false,closed=false
+  const started=new Promise(r=>entered=r),cleanup=new Promise(r=>allowExit=r)
+  const host=await startNativeVisionRoundHost({isCurrent:()=>true,isSelected:()=>true,observe:async(_args,{signal,isCurrent})=>{
+    entered();await new Promise(r=>signal.addEventListener('abort',r,{once:true}));assert.equal(isCurrent(),false)
+    await cleanup;exited=true;return {ok:false}
+  }})
+  const request=fetch('http://127.0.0.1:'+host.env.DSH_NATIVE_ROUND_PORT+'/observe',{method:'POST',headers:{authorization:'Bearer '+host.env.DSH_NATIVE_ROUND_TOKEN},body:JSON.stringify({bvid:'BV1234567890',view_depth:'deep'})}).catch(()=>null)
+  await started
+  const closing=host.close().then(()=>{closed=true})
+  try{await request;assert.equal(closed,false);assert.equal(exited,false)}finally{allowExit();await closing}
+  assert.equal(closed,true);assert.equal(exited,true)
+})

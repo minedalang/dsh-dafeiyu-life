@@ -137,3 +137,28 @@ test('all spawned video runtimes prioritize the migrated storage route over inhe
  assert.match(code,/env:visionEnv\(\{\.\.\.dsh\.env,BILI_DUTY_HOME:stateDir\}\)/)
 })
 function requireSource(name){return readFileSync(new URL('../'+name,import.meta.url),'utf8')}
+
+test('V2 native migration verifier uses a fresh fixed-model test and does not accept old, busy or wrong-disk evidence',()=>run(async({root,tmp})=>{
+ const {nativeMigrationReviewEvidence}=await import('../lib/storage-model-runtime-check.mjs')
+ const target=join(tmp,'v2','data')
+ migrateLargeDataOffline({root,target,legacy:storageLayoutStatus(root),confirmedStopped:true,python:process.execPath,runtimeProbe:()=>true})
+ const storage=largeDataStatus(root),id='qwen3.5-2b'
+ let runs=0,result={testedAt:'old',answer:'old image',finishReason:'stop'},busy=false
+ const runtime={paths:{root:join(root,'embedding-runtime'),modelRoot:storage.embeddingModelDir,visionRoot:storage.visionModelDir},
+  status:()=>({server:{ready:true}}),embedQuery:async()=>new Float32Array(1024),
+  runVision:async(action,model)=>{assert.equal(action,'verify');assert.equal(model,id);runs++;result={testedAt:'new',answer:'new image',finishReason:'stop'};return result},
+  visionStatus:async()=>({busy,runtime:{installed:true},models:[{id,filesPresent:true,result}]})}
+ const opts={root,embeddingRuntime:runtime,visionEnabled:true,visionMode:'independent_native',visionLocalModel:id,visionPipelineProbe:async()=>({ok:true})}
+ const wrong=await verifyRelocatedModelRuntime({...opts,embeddingRuntime:{...runtime,paths:{...runtime.paths,visionRoot:join(root,'embedding-runtime','vision-models')}}})
+ assert.equal(wrong.checks.vision.ok,false);assert.equal(runs,0)
+ const blocked=await verifyRelocatedModelRuntime({...opts,visionPipelineProbe:async()=>({ok:false})})
+ assert.equal(blocked.checks.vision.ok,false);assert.equal(runs,0)
+ const verified=await verifyRelocatedModelRuntime(opts)
+ assert.equal(runs,1);assert.equal(verified.checks.vision.pendingReview,true);assert.equal(verified.checks.vision.reviewId,'new');assert.equal(verified.ready,false)
+ const review={root,runtime,model:id,reviewId:'new'}
+ assert.equal((await nativeMigrationReviewEvidence(review)).answer,'new image')
+ await assert.rejects(nativeMigrationReviewEvidence({...review,reviewId:'old'}),/失效/)
+ busy=true;await assert.rejects(nativeMigrationReviewEvidence(review),/失效/);busy=false
+ result={...result,finishReason:'length'};await assert.rejects(nativeMigrationReviewEvidence(review),/失效/)
+ rmSync(join(target,'.dafeiyu-large-data-v2.json'));await assert.rejects(nativeMigrationReviewEvidence(review),/标记/)
+}))

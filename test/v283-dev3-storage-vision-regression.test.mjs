@@ -138,3 +138,12 @@ test('incomplete production vision replaces stale success, live probe warns befo
  assert.equal(systemHealthSnapshot({now:at,vision:{...common,configured:false,localProbe:{at,state:'unavailable'}}}).issues.some(i=>i.id==='vision'),false)
  }finally{rmSync(folder,{recursive:true,force:true})}
 })
+
+test('native production transport failure is not an Ollama service alert; diagnostic export preserves provider',()=>{
+ const at=Date.now(),lastAttempt={mode:'independent_local',provider:'llama.cpp',model:'qwen3.5:2b',errorCode:'ollama_connection_failed'}
+ const snapshot=systemHealthSnapshot({now:at,vision:{configured:true,mode:'independent_native',backendModel:'qwen3.5:2b',at,ok:false,lastAttempt}})
+ const channel=snapshot.channels.find(c=>c.id==='video-vision')
+ assert.equal(channel.state,'failed');assert.match(channel.detail,/内置视觉服务连接失败/);assert.doesNotMatch(channel.detail,/Ollama/)
+ assert.equal(snapshot.issues.find(i=>i.id==='vision').canRestoreOllama,false)
+ const bat=source('tools/导出B站日志.bat');assert.match(bat,/mode in \('independent_local','independent_dsh','independent_native'\)/);assert.match(bat,/vision_status\['provider'\] = 'llama.cpp'/)
+})
