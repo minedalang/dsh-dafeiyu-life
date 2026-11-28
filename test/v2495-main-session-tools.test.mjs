@@ -364,3 +364,37 @@ test('dev78 claimed turn presentation mode is raw and ephemeral; alternate DM se
  const c=turn('work: 获取私信');listeners.get('session/event')?.(agent.session,{type:'turn/end',data:{turn:n}});assert.equal(c(),false);assert.equal(memory.privateReadMode(),'life')
  }finally{memory.stop();rmSync(home,{recursive:true,force:true})}
 })
+
+
+test('dev80 exact owner work grant uses original claimed turn, bounded DM scope and read settlement',async t=>{
+ const {executeMainSessionPrivateRead,ownerWorkDmLimit}=await import('../lib/life-agent-read-runtime.mjs')
+ const {readOwnerConversation}=await import('../lib/dm.mjs')
+ const {resolveSessionDmTarget}=await import('../lib/manual-dm-contact.mjs')
+ const home=mkdtempSync(join(tmpdir(),'dev80-work-')),listeners=new Map()
+ const agent={id:'owner80',sessionId:'owner80',session:{snapshotEvents:()=>[]},ctx:{on(n,f){listeners.set(n,f);return ()=>listeners.delete(n)},tools:{register(){return ()=>{}}},systemPrompt:{section(){return ()=>{}},context(){return ()=>{}}}}}
+ let models=0,reads=0,ownerUid='42',account='7',live=true,release=null
+ const willingness={decide:async()=>{models++;return {ok:false,voluntary:true,action:'skip'}},verify:()=>{throw Error('not a Life proof')},receipt:()=>{throw Error('not a Life receipt')}}
+ const memory=createLongTermMemory({dataDir:home,dshHome:home,agents:{get:()=>agent,list:()=>[agent]},getConfig:()=>({mainSessionId:'owner80'}),defineTool:x=>x,logger:{warn(){}}})
+ t.after(()=>{memory.stop();rmSync(home,{recursive:true,force:true})});memory.start();let n=0
+ const turn=(content,source)=>{const message={role:'user',content,...(source?{source:{kind:source}}:{})};listeners.get('agent/inbox/inserted')?.({message});listeners.get('agent/inbox/claimed')?.({message,turn:++n});return memory.capturePrivateRead(agent)}
+ const run=async(ownerTurn,{contact='owner',limit=10,confirm=true}={})=>{
+   if(!ownerTurn)return {ok:false}
+   const resolve=()=>resolveSessionDmTarget({request:ownerTurn.request,contact,ownerUid,accountUid:account,runtimeDir:home,roster:[{uid:'43',name:'老大'}]})
+   const target=resolve();if(!target.ok)return target;const original=account
+   const current=()=>live&&ownerTurn()&&original===account&&resolve().uid===target.uid
+   return readOwnerConversation({talker_uid:target.uid,limit,confirm},{accountUid:account,isCurrent:current,readConversation:async(uid,count)=>{reads++;if(release)await release();return [{text:`scope ${uid} ${count}`}]},chooseRead:({uid,limit,read})=>executeMainSessionPrivateRead({willingness,isCurrent:current,claim:ownerTurn.claim,settleClaim:ownerTurn.settle,request:ownerTurn.request,ownerTurn,boundOwnerUid:target.basis==='bound-owner'?target.uid:'',uid,limit,read})})
+ }
+ const cmd='work: 读取我和你的B站私信'
+ for(const bad of [' work: 读取我和你的B站私信','work: 读取老大的私信','work: 读取我和你的B站私信最近21条','work: 读取我和你的B站私信\n并发送','work: 不要读取我和你的B站私信','work: 读取我和你的B站私信和老大的私信'])assert.equal(ownerWorkDmLimit(bad),null,bad)
+ const first=turn(cmd);assert.equal(first.workDmLimit,10);assert.equal(first.claim({tool:'dafeiyu_memory_recall',args:{query:'x'}}),false)
+ const result=await run(first);assert.equal(result.authorization,'owner-work-explicit');assert.equal(result.messages[0].text,'scope 42 10');assert.equal(models,0);assert.equal(reads,1);assert.equal((await run(first)).ok,false)
+ const wrong=turn(cmd+'最近5条');assert.equal((await run(wrong)).reason,'owner-work-scope-mismatch');assert.equal((await run(wrong,{limit:5})).ok,false);assert.equal(reads,1)
+ const exact=turn(cmd+'最近5条');assert.equal((await run(exact,{limit:5,confirm:false})).ok,false);assert.equal((await run(exact,{limit:5})).messages[0].text,'scope 42 5');assert.equal(reads,2);assert.equal(models,0)
+ const ordinary=turn('读取我和你的B站私信');assert.equal((await run(ordinary)).lifeAction,'skip');assert.equal(models,1)
+ const third=turn('work: 读取老大的私信');assert.equal((await run(third,{contact:'老大'})).lifeAction,'skip');assert.equal(models,2);assert.equal(reads,2)
+ assert.equal(turn(cmd,'plugin:test'),null);assert.equal((await run(null)).ok,false)
+ const stale=turn(cmd);let entered,finish;const started=new Promise(r=>entered=r);release=()=>{entered();return new Promise(r=>finish=r)}
+ const pending=run(stale);await started;turn('普通聊天');finish();assert.equal((await pending).ok,false);assert.equal(reads,3);release=null
+ const accountTurn=turn(cmd);release=async()=>{account='8'};assert.equal((await run(accountTurn)).messages,undefined);assert.equal(reads,4);release=null;account='7'
+ const bindingTurn=turn(cmd);release=async()=>{ownerUid='44'};assert.equal((await run(bindingTurn)).messages,undefined);assert.equal(reads,5);assert.equal(models,2);release=null
+})

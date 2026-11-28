@@ -64,3 +64,14 @@ test('主 Session 手动动作不会被加入 headless Agent 的 MCP 白名单',
   assert.match(js,/bili_session_watch_mark/)
   assert.match(readFileSync(new URL('../lib/data-backup.mjs',import.meta.url),'utf8'),/session-watch-history\.json/) // historical manual receipts remain archived, never grant current-account selection
 })
+
+
+test('dev80 production DM registration passes work authority only from claimed turn and resolved owner',()=>{
+ const js=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ const body=js.slice(js.indexOf("tool({name:'bili_read_dm'"),js.indexOf("readTool({name:'bili_received_replies'"))
+ assert.match(body,/longTermMemory\?\.capturePrivateRead\(exec\?\.agent\)/)
+ assert.match(body,/args\.confirm!==true/)
+ assert.match(body,/ownerTurn,boundOwnerUid:target\.basis==='bound-owner'\?target\.uid:''/)
+ assert.match(body,/resolve\(\)\.uid===target\.uid/)
+ assert.match(body,/dmFetch\(cred,uid,limit,\{readBudget:biliReadBudget\}\)/)
+})

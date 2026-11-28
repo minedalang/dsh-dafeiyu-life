@@ -9,6 +9,9 @@ test('2.8.3 release and video-perception optimization are clear in README, DSH s
   for (const value of ['视频观察方式：先了解全貌','选择看得多细','选择上限 · 非强制观看'])assert.ok(html.includes(value),value);
   for (const value of ['先看全貌，再看细节','看几段，由鱼鱼自己决定','看过什么，有迹可循'])assert.ok(history.includes(value),value);
   for (const value of ['多候选视频探索与分镜核验','可回溯的真实观察经历','Life 自主多选与随时停止'])assert.ok(!client.includes(value),value);
+  for(const name of ['README.md','docs/release/RELEASE_NOTES_v2.8.3.md','CHANGELOG.md','package.json']){
+    const value=read(name);assert.match(value,/统一 (?:Life )?Agent/);assert.match(value,/技术回执/)
+  }
   assert.ok(doc.length<12000, 'README is a short product homepage, not a full technical protocol');
   assert.ok(history.includes('2.8.2 重点优化了视频感知流程'));assert.doesNotMatch(doc,/^## 🆕 2\.8\.2 /m)
   assert.match(read('docs/release/RELEASE_NOTES_v2.8.2.md'),/本次重点\*\*优化视频感知流程\*\*/)
