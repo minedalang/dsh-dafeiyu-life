@@ -76,3 +76,12 @@ test('emotion relation needs two independent live same-mood comment receipts and
  assert.equal(projection(x,[],[]).associationTypes.emotion,1);x.reopen();assert.equal(projection(x,[],[]).associationTypes.emotion,1)
  const doc=JSON.parse(readFileSync(x.g.file,'utf8'));delete doc.episodes.find(e=>e.key===b.key).emotionObservation;writeFileSync(x.g.file,JSON.stringify(doc));const p=projection(x,[],[]);assert.equal(p.associationTypes.emotion,0);assert.equal(p.associationTypes.concept,1)
 }))
+
+test('局部覆盖只来自准确当前清晰公开代表经历，不转移旧缺口、私密或他号数据',()=>setup(x=>{
+ const event=(id,at,tag=A,source='bili-life')=>({...selected(1,at,tag),key:'video-explore:'+id,autonomousSelected:true,experience:{source,metadata:true,vision:false,evidenceSchema:'life-video-evidence/v1',partialVisualReceipt:{source:'low-resolution-preview',sampledTimesMs:[1000,2000,3000],describedTimesMs:[1000,3000],notes:['局部画面'],interpretation:'partial-model-observation-not-semantic-proof'}}})
+ x.g.recordEvents([event('public',NOW-1000),{...event('other',NOW-1000,B),bvid:bv(2)},{...event('private',NOW-500,A,'main-session'),bvid:bv(3)}]);
+ let p=projection(x,[],[]);const covered=p.nodes.filter(n=>n.partialCoverage);assert.equal(covered.length,1);assert.equal(covered[0].bvid,bv(1));assert.deepEqual(covered[0].partialCoverage,{sampledCount:3,describedCount:2,missingTimesMs:[2000]});assert.ok(!Object.hasOwn(covered[0].partialCoverage,'id'))
+ x.g.recordEvents([{...selected(1,NOW),key:'new-representative'}]);p=projection(x,[],[]);assert.ok(!p.nodes.some(n=>n.partialCoverage),'旧局部不能冒充新代表');
+ x.account(B);assert.ok(!projection(x,[],[]).nodes.some(n=>n.partialCoverage),'原账号证据不能继续交付');
+ x.account(A);x.clock(NOW+500*DAY);assert.ok(!projection(x,[],[]).nodes.some(n=>n.partialCoverage),'遗忘后无覆盖数据')
+}))

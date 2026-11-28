@@ -107,3 +107,14 @@ test('管理页具备可全屏的交互三维记忆空间、明确颜色图例�
  assert.match(html,/life-health-clear-network-backoff/)
  assert.match(js,/interaction-backoff\/clear-network/)
 })
+
+test('搜索聚焦分页保留全部命中且只展开真实可见的直接关系',async()=>{
+ const {runInNewContext}=await import('node:vm');const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
+ const project=runInNewContext(js.slice(js.indexOf('  const neuralFocusSlice='),js.indexOf('  const renderNeuralFocus='))+'\nneuralFocusSlice')
+ const nodes=Array.from({length:350},(_,i)=>({id:'n'+i,matched:i<345,relevanceScore:i}));const edges=Array.from({length:10},(_,i)=>({from:'n344',to:'n'+i,type:'source'}));edges.push({from:'n344',to:'n349',type:'association'},{from:'n344',to:'missing',type:'source'},{from:'n1',to:'n2',type:'source'})
+ const first=project(nodes,edges,0,'n344',e=>e.type==='source');assert.equal(first.total,345);assert.equal(first.pages,44);assert.equal(first.hits.length,8);assert.equal(first.hits[0].id,'n344');assert.equal(first.related.length,6);assert.equal(first.relatedTotal,10)
+ const last=project(nodes,edges,999,'n344',()=>true);assert.equal(last.page,43);assert.equal(last.hits.length,1);assert.equal(last.hits[0].id,'n0');assert.equal(last.relatedTotal,11)
+ const filtered=project(nodes.filter(n=>n.id!=='n0'),edges,0,'n344',e=>e.type==='source');assert.equal(filtered.relatedTotal,9)
+ assert.equal(project(nodes,edges,-1,'missing',()=>true).relatedTotal,0);assert.equal(project([],edges,1,'n344',()=>true).total,0);assert.equal(nodes[0].id,'n0','不改变原始节点顺序')
+ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8');assert.match(html,/option value="focus">聚焦阅读/);assert.match(js,/if\(q\)\$\('neural-view-mode'\)\.value='focus'/);assert.match(js,/if\(neuralFocusMode\(\)\)\{neuralViewport\.classList\.remove\('is-canvas'\)/)
+})
