@@ -375,3 +375,16 @@ test('dev103 shared tool cycle sends a live adapter failure to the original cont
  }})
  assert.equal(calls,2);assert.deepEqual(result,{ok:false,reason:'life-decision-scope-changed',started:false})
 })
+
+
+test('reflection uses the registered existing deep recall only, suppressing stale asynchronous detail results',async()=>{
+ const {runLifeToolCycle,registeredLifeTools}=await import('../lib/life-agent-read-runtime.mjs')
+ assert.deepEqual(registeredLifeTools('reflection').map(x=>[x.action,x.risk]),[['recall_detail','read']])
+ let current=true,calls=0
+ const result=await runLifeToolCycle({scene:'reflection',steps:async function*(){
+  const denied=yield {kind:'read',actions:['inspect_creator_space'],isCurrent:()=>current,read:()=>{calls++;return 'forbidden'}}
+  assert.equal(denied.ok,false);assert.equal(calls,0)
+  return yield {kind:'read',actions:['recall_detail'],isCurrent:()=>current,read:async()=>{calls++;current=false;return 'stale private detail'}}
+ }})
+ assert.deepEqual(result,{ok:false,reason:'life-read-scope-changed'});assert.equal(calls,1)
+})

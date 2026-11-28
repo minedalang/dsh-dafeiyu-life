@@ -49,7 +49,9 @@ test('a legacy damaged title is not presented as a verified Chinese video title'
 test('Fish Life is the only animated fish and the one live status container',()=>{
  const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8')
  const js=readFileSync(new URL('../lib/management-console.js',import.meta.url),'utf8')
- const panel=html.slice(html.indexOf('<section id="panel-life-agent"'),html.indexOf('<div class="life-now-timeline"'))
+ const start=html.indexOf('<section id="panel-life-agent"'),end=html.indexOf('<div class="life-now-timeline life-behavior-timeline"',start)
+ assert.ok(start>=0&&end>start,'exact Life panel boundaries')
+ const panel=html.slice(start,end)
  assert.ok(panel.length>0)
  for(const id of ['life-now-title','life-now-detail','life-now-time','life-integration-refresh']){
   assert.equal((panel.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id)

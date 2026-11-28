@@ -46,6 +46,7 @@ test('clicking real Life tab runs the production switchTab path and reveals its 
   runInNewContext([
     "let active='persona',firstNavigation=false,favoriteEditing=false",
     'const haltSandboxTimer=()=>{}',
+    'const loadRuntimeControls=()=>{loads.push("runtime-controls");return Promise.resolve()}',
     'const restoreWizardControls=()=>{loads.push("restore-wizard")}',
     'const message=()=>{}',
     'const settingDrafts=new Map()',
@@ -64,7 +65,7 @@ test('clicking real Life tab runs the production switchTab path and reveals its 
   assert.equal(panels['panel-persona'].hidden,true,'previous page must become hidden')
   assert.equal(buttons['life-agent'].attributes['aria-selected'],'true')
   assert.equal(panels['management-shell'].dataset.setupWizard,'false')
-  assert.deepEqual(loads,['restore-wizard','life-agent'],'Life loader must be invoked')
+  assert.deepEqual(loads,['restore-wizard','runtime-controls','life-agent'],'runtime control and Life loaders must be invoked')
   assert.ok(urls.at(-1).includes('tab=life-agent'),'deep link must preserve Life tab')
   buttons.life.click()
   assert.equal(panels['panel-life-agent'].hidden,true)

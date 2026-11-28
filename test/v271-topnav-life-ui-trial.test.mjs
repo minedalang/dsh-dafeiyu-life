@@ -25,7 +25,9 @@ test('角色来自本地素材，同源静态资源明确纳入首次设置访�
   assert.deepEqual(image.subarray(0,8),Buffer.from([137,80,78,71,13,10,26,10]));
   // dev.63 removes the redundant animated fish in Fish Life; keep the one
   // hero character and the separate existing character preview elsewhere.
-  assert.equal((html.match(/src="\/api\/bili-duty\/life-character\.png"/g)||[]).length,2);
+  assert.equal((html.match(/src="\/api\/bili-duty\/life-character\.png"/g)||[]).length,3);
+  const tour=html.slice(html.indexOf('<aside id="setup-tour"'),html.indexOf('</aside>',html.indexOf('<aside id="setup-tour"')));
+  assert.equal((tour.match(/src="\/api\/bili-duty\/life-character\.png"/g)||[]).length,1,'third image belongs only to the approved tutorial');
   assert.match(server,/path==='\/api\/bili-duty\/life-character\.png'/);
   assert.match(server,/join\(pluginDir,'lib','assets','deepseek-girl-front\.png'\)/);
   assert.match(server,/'content-type':'image\/png'/);

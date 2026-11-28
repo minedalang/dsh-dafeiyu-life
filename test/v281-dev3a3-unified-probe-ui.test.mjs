@@ -8,7 +8,7 @@ test('三条视觉路线只使用一个共享图片与人工验收面板',()=>{
     assert.equal((page.match(new RegExp('id="'+id+'"','g'))||[]).length,1,id)
   for(const removed of ['dsh-vision-probe-panel','local-vision-probe-panel','dsh-vision-probe-answer','local-vision-probe-answer'])assert.doesNotMatch(page,new RegExp(removed))
   assert.match(js,/visionIsLocal\(\)/)
-  assert.match(js,/if\(visionIsNative\(\)\)await reviewNativeVision\(true\)/);assert.match(js,/if\(visionIsLocal\(\)\)await reviewLocalVision\(true\);else await reviewDshVision\(true\)/)
+  assert.match(js,/if\(visionIsNative\(\)\)\{[^\r\n]+throw Error\([^\r\n]+;await reviewNativeVision\(true\)\}else if\(visionIsLocal\(\)\)await reviewLocalVision\(true,record\);else await reviewDshVision\(true\)/)
   assert.match(js,/if\(visionIsLocal\(\)\)await reviewLocalVision\(false\);else await reviewDshVision\(false\)/)
 })
 test('本地识图方式禁用DSH模型填写区域而不改变保存值',()=>{

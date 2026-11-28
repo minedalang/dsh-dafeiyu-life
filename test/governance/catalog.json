@@ -1723,6 +1723,90 @@
       "newCheck": "assert.match(prompts[1],/\"saved\":false,\"partial\":false,\"createdCount\":0,\"duplicateCount\":0,\"fact\":\"尚未确认全部保存\"/)",
       "date": "2026-11-28",
       "reason": "dev.101/102 baseline reproducibly fails obsolete internal-code prompt assertion. Existing role privacy projection uses verified structured persistence facts; preserve no saved commitment, no duplicate TODO and model voluntary revision, and assert internal error code is absent."
+    },
+    {
+      "file": "bugfix-title-only-owner-exploration.test.mjs",
+      "oldCheck": "assert.match(index,/executeWatchVideo\\(\\{bvid,include_comments:true,include_danmaku:true,record_session:false,\\s*view_depth:[^\\r\\n]+,explorationPurpose:'accepted-todo'\\}\\)/)",
+      "newCheck": "assert.match(index,/executeWatchVideo\\(\\{bvid,include_comments:true,include_danmaku:true,record_session:false,\\s*view_depth:[^\\r\\n]+,explorationPurpose:'accepted-todo'\\},\\{galleryReadCurrent:/)",
+      "date": "2026-11-28",
+      "reason": "Existing accepted todo forwards a scoped gallery guard as second argument; record_session:false remains required."
+    },
+    {
+      "file": "dev2-emotion-dynamic-help.test.mjs",
+      "oldCheck": "const controls=[...home.matchAll(/<input\\b[^>]*\\bid=\"(main-memory-[^\"]+|main-reflection-[^\"]+)\"[^>]*>/g)]",
+      "newCheck": "const controls=[...home.matchAll(/(?:<input\\b[^>]*\\bid=\"(main-memory-[^\"]+|main-reflection-[^\"]+)\"[^>]*>|<select\\b[^>]*\\bid=\"(main-memory-[^\"]+|main-reflection-[^\"]+)\"[^>]*><\\/select>)/g)]",
+      "date": "2026-11-28",
+      "reason": "Provider/model fields are select controls; audit all remaining inputs and selects, retain minimum and help text."
+    },
+    {
+      "file": "master-switch.test.mjs",
+      "oldCheck": "assert.match(index,/enabled: cfg\\.masterEnabled === true && cfg\\.dmWatch/)",
+      "newCheck": "assert.match(index,/enabled: cfg\\.masterEnabled === true && platformReady\\(\\) && interactionRepliesAllowed\\(cfg\\) && cfg\\.dmWatch/)",
+      "date": "2026-11-28",
+      "reason": "dev.96 added required platform and interaction guards; master gate retained."
+    },
+    {
+      "file": "master-switch.test.mjs",
+      "oldCheck": "assert.match(index,/watchReplies: cfg\\.masterEnabled === true && \\(cfg\\.commentWatchReplies === true \\|\\| cfg\\.ownerCommentAgentEnabled === true\\)/)",
+      "newCheck": "assert.match(index,/watchReplies: cfg\\.masterEnabled === true && platformReady\\(\\) && interactionRepliesAllowed\\(cfg\\) && \\(cfg\\.commentWatchReplies === true \\|\\| cfg\\.ownerCommentAgentEnabled === true\\)/)",
+      "date": "2026-11-28",
+      "reason": "dev.96 added required platform and interaction guards; master gate retained."
+    },
+    {
+      "file": "split-interactions.test.mjs",
+      "oldCheck": "assert.match(index,/rpid: 0,\\s*root: 0,/)",
+      "newCheck": "assert.match(index,/rpid:\\s*0,\\s*root:\\s*0,/)",
+      "date": "2026-11-28",
+      "reason": "Same top-level zero rpid/root semantics with compact syntax."
+    },
+    {
+      "file": "v2473-local-backup-meme-rules.test.mjs",
+      "oldCheck": "assert.match(index,/const filePath=kind==='business'\\?saveBackupJson\\(folder,backup\\).*\\n\\s*const result=\\{ok:true,filePath,summary\\}/)",
+      "newCheck": "assert.match(index,/const filePath=kind==='business'\\?saveBackupJson\\(folder,backup\\).*\\r?\\n\\s*const result=\\{ok:true,filePath,summary\\}/)",
+      "date": "2026-11-28",
+      "reason": "Identical backup path and result check on LF/CRLF."
+    },
+    {
+      "file": "v271-dev63-windows-title-and-single-life-scene.test.mjs",
+      "oldCheck": "const panel=html.slice(html.indexOf('<section id=\"panel-life-agent\"'),html.indexOf('<div class=\"life-now-timeline\"'))",
+      "newCheck": "const start=html.indexOf('<section id=\"panel-life-agent\"'),end=html.indexOf('<div class=\"life-now-timeline life-behavior-timeline\"',start)",
+      "date": "2026-11-28",
+      "reason": "Timeline now has two CSS classes; old indexOf returned -1 and included separate tutorial image."
+    },
+    {
+      "file": "v271-topnav-life-ui-trial.test.mjs",
+      "oldCheck": "assert.equal((html.match(/src=\"\\/api\\/bili-duty\\/life-character\\.png\"/g)||[]).length,2);",
+      "newCheck": "assert.equal((html.match(/src=\"\\/api\\/bili-duty\\/life-character\\.png\"/g)||[]).length,3);",
+      "date": "2026-11-28",
+      "reason": "Approved onboarding tour adds its own local illustration; exact separate scope, live hero remains single."
+    },
+    {
+      "file": "v271-dev71-life-proof-settlement-contract.test.mjs",
+      "oldCheck": "assert.match(willingness,/admission\\.settle\\(p\\.scope,p\\.admissionToken,\\{verified:false,reason:'unused-expired'\\}\\)/)",
+      "newCheck": "assert.match(willingness,/if\\(\\(!started\\|\\|p\\.sealedPrivateRead\\)&&p\\.admissionToken\\)\\{\\s*try\\{admission\\.settle\\(p\\.scope,p\\.admissionToken,\\{verified:false,reason:started\\?'not-sent':'unused-expired'\\}\\)\\}/)",
+      "date": "2026-11-28",
+      "reason": "Existing private read and sealed social consumption split settlement; unused proof still explicitly settled; no widening."
+    },
+    {
+      "file": "v281-dev3a3-unified-probe-ui.test.mjs",
+      "oldCheck": "assert.match(js,/if\\(visionIsNative\\(\\)\\)await reviewNativeVision\\(true\\)/);assert.match(js,/if\\(visionIsLocal\\(\\)\\)await reviewLocalVision\\(true\\);else await reviewDshVision\\(true\\)/)",
+      "newCheck": "assert.match(js,/if\\(visionIsNative\\(\\)\\)\\{[^\\r\\n]+throw Error\\([^\\r\\n]+;await reviewNativeVision\\(true\\)\\}else if\\(visionIsLocal\\(\\)\\)await reviewLocalVision\\(true,record\\);else await reviewDshVision\\(true\\)/)",
+      "date": "2026-11-28",
+      "reason": "Shared panel now rechecks native test identity and binds local approval record; preserve three dispatch branches."
+    },
+    {
+      "file": "v281-dev3b3312-visual-ui-and-repair.test.mjs",
+      "oldCheck": "assert.match(ui,/\\$\\('vision-python-auto-repair'\\)\\.hidden=false/)",
+      "newCheck": "assert.match(ui,/\\$\\('vision-python-auto-repair'\\)\\.hidden=native/);assert.match(ui,/native=visionIsNative\\(\\)/)",
+      "date": "2026-11-28",
+      "reason": "Repair visible for Ollama/DSH only, native route has separate runtime."
+    },
+    {
+      "file": "v271-dev7-life-tab-navigation.test.mjs",
+      "oldCheck": "assert.deepEqual(loads,['restore-wizard','life-agent'],'Life loader must be invoked')",
+      "newCheck": "assert.deepEqual(loads,['restore-wizard','runtime-controls','life-agent'],'runtime control and Life loaders must be invoked')",
+      "date": "2026-11-28",
+      "reason": "Production switchTab now invokes runtime controls; supply isolated dependency and verify it actually runs."
     }
   ]
 }

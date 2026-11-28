@@ -83,7 +83,7 @@ test('Ollama video observation retains Python repair and relocated-cache health 
   const root=new URL('../',import.meta.url)
   const ui=readFileSync(new URL('lib/management-console.js',root),'utf8')
   const index=readFileSync(new URL('index.js',root),'utf8')
-  assert.match(ui,/\$\('vision-python-auto-repair'\)\.hidden=false/)
+  assert.match(ui,/\$\('vision-python-auto-repair'\)\.hidden=native/);assert.match(ui,/native=visionIsNative\(\)/)
   assert.doesNotMatch(ui,/if\(visionIsLocal\(\)\)throw Error\('当前为 Ollama/)
   assert.match(ui,/local Ollama model still needs the same Python frame worker/)
   assert.match(ui,/result\.stage/)

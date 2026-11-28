@@ -16,7 +16,7 @@ test('Life 准入记录区分已批准但未消费与已经消费的证明',()=>
 test('过期且未执行的本地证明先结算，再从内存表移除',()=>{
   const willingness=read('../lib/life-willingness.mjs')
   assert.match(willingness,/const started=p\.executionStarted===true/)
-  assert.match(willingness,/admission\.settle\(p\.scope,p\.admissionToken,\{verified:false,reason:'unused-expired'\}\)/)
+  assert.match(willingness,/if\(\(!started\|\|p\.sealedPrivateRead\)&&p\.admissionToken\)\{\s*try\{admission\.settle\(p\.scope,p\.admissionToken,\{verified:false,reason:started\?'not-sent':'unused-expired'\}\)\}/)
   assert.match(willingness,/options\?\.markUsed!==false/)
 })
 

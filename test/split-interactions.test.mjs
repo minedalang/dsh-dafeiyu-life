@@ -43,7 +43,7 @@ test('旧回复设置不会恢复：配置、UI 与提示词均不再开启跑�
     assert.doesNotMatch(client,/replyToComments|replyPerRound|每轮最多回几条/)
     const index=readFileSync(new URL('../index.js',import.meta.url),'utf8')
     assert.match(index,/BILI_DUTY_TOP_LEVEL_ONLY/)
-    assert.match(index,/rpid: 0,\s*root: 0,/)
+    assert.match(index,/rpid:\s*0,\s*root:\s*0,/)
     assert.match(index,/commentWatchReplies/)
     const security=readFileSync(new URL('../lib/headless-security.mjs',import.meta.url),'utf8')
     assert.match(security,/HEADLESS_DENY_TOOLS/)

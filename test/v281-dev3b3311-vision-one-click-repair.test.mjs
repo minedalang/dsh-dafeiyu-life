@@ -319,7 +319,7 @@ test('dev.30 failed fresh repair removes only the exclusively created unpublishe
 test('dev.30 timeout and uncertain publication retain the attempted runtime rather than deleting a potentially used interpreter',async()=>{
  const f=setup();let target='',mode='timeout'
  try{
-  const create=()=>createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,preferred:()=>f.base,probe:(p,{requiresMcp})=>status(p!==f.base||!requiresMcp),run:async(_cmd,args)=>{if(args[1]==='venv'){target=args[3];mkdirSync(join(target,'Scripts'),{recursive:true});writeFileSync(join(target,'Scripts','python.exe'),'test');if(mode==='timeout')return {ok:false,reason:'timeout'}}return {ok:true}},persist:async()=>false})
+  const create=()=>createVisionEnvironmentRepair({platform:'win32',home:f.home,requirementsFile:f.req,preferred:()=>f.base,probe:(p,{requiresMcp})=>status(p===f.base?!requiresMcp:!!target&&p===join(target,'Scripts','python.exe')),run:async(_cmd,args)=>{if(args[1]==='venv'){target=args[3];mkdirSync(join(target,'Scripts'),{recursive:true});writeFileSync(join(target,'Scripts','python.exe'),'test');if(mode==='timeout')return {ok:false,reason:'timeout'}}return {ok:true}},persist:async()=>false})
   let r=await create().run();assert.equal(r.state,'failed');assert.equal(r.retainedAttempts,1);assert.ok(existsSync(target));const first=target
   mode='persist';r=await create().run();assert.equal(r.reason,'vision_path_save_failed');assert.ok(existsSync(target));assert.ok(existsSync(first));assert.ok(existsSync(f.base))
  }finally{f.clean()}

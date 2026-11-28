@@ -649,15 +649,15 @@ test('shared reader signed paging delivers each fragment once, keeps selector an
  setAccount(B);assert.equal(p1.validateRecall(),false);assert.equal(retriever.readPublicVisualDetail({...args,pageCursor:p1.nextCursor}).ok,false)
 }))
 
-for(const mode of ['success','forgotten','invalid-id','repeat','ordinary'])test('reflection bounded deep recall: '+mode,async()=>{
+for(const mode of ['success','forgotten','forgotten-during-read','invalid-id','repeat','ordinary'])test('reflection bounded deep recall: '+mode,async()=>{
  const dir=mkdtempSync(join(tmpdir(),'dsh-reflect-detail-'));let clock=NOW+5000,calls=0,commits=0,observed=0;const cfg={mainSessionMemoryEnabled:true,mainSessionMemoryHalfLifeDays:15,mainSessionReflectionAuto:true,mainSessionReflectionMinCandidates:2}
  const gateway=createLifeMemoryGateway({dataDir:dir,now:()=>clock,getAccountTag:()=>A,getConfig:()=>cfg,admitMemoryDetails:()=>true,logger:{warn(){}}})
  try{gateway.recordEvents([event]);const id=gateway.videoEvidenceTrace({accountTag:A,bvid:BV})[0].memoryId;assert.equal(gateway.attachMemoryDetails({memoryId:id,accountTag:A,fragments,sourceProof:{}}).ok,true)
  const retriever=createMemoryRetriever({getMemories:()=>[],getConfig:()=>cfg,getVisualExperiences:o=>gateway.recentVisualExperienceContext(o),getVideoDetails:o=>gateway.recallVideoDetails(o)})
- let selected;const life=createLifeReflection({dataDir:dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:gateway,now:()=>clock,commitMemories:()=>{commits++;return {added:0,rows:[]}},readPublicDetail:({accountTag,source,selection,isCurrent})=>retriever.readPublicVisualDetail({accountTag,row:{memoryId:source.id,bvid:source.bvid},selection,isCurrent}),onPublicDetailRecall:({id:got})=>{assert.equal(got,id);observed++;assert.equal(gateway.reinforceConfirmedPublicDetail({accountTag:A,id}).updated,1);assert.equal(gateway.reinforceConfirmedPublicDetail({accountTag:A,id}).updated,0);assert.equal(gateway.reinforceConfirmedPublicDetail({accountTag:'b'.repeat(16),id}).ok,false)},invokeModel:async prompt=>{
+ let selected;const life=createLifeReflection({dataDir:dir,getConfig:()=>cfg,getAccountTag:()=>A,memoryGateway:gateway,now:()=>clock,commitMemories:()=>{commits++;return {added:0,rows:[]}},readPublicDetail:async({accountTag,source,selection,isCurrent})=>{const result=retriever.readPublicVisualDetail({accountTag,row:{memoryId:source.id,bvid:source.bvid},selection,isCurrent});if(mode==='forgotten-during-read'){clock=NOW+14*DAY;gateway.status()}return result},onPublicDetailRecall:({id:got})=>{assert.equal(got,id);observed++;assert.equal(gateway.reinforceConfirmedPublicDetail({accountTag:A,id}).updated,1);assert.equal(gateway.reinforceConfirmedPublicDetail({accountTag:A,id}).updated,0);assert.equal(gateway.reinforceConfirmedPublicDetail({accountTag:'b'.repeat(16),id}).ok,false)},invokeModel:async prompt=>{
  if(++calls===1){assert.match(prompt,/recall_detail/);selected=JSON.parse(prompt.split('<candidate_data>').at(-1).split('</candidate_data>')[0])[0].id;return JSON.stringify(mode==='ordinary'?{memories:[]}:{recall_detail:{candidate_id:mode==='invalid-id'?'c-forged':selected,startMs:1000,endMs:9000}})}
  assert.match(prompt,/<detail_data>/);assert.match(prompt,/两个人物/);assert.ok(!prompt.includes('nextCursor'));if(mode==='forgotten')clock=NOW+14*DAY;return JSON.stringify(mode==='repeat'?{recall_detail:{candidate_id:selected}}:{memories:[]})
- },logger:{warn(){}}});life.addEvents([event]);const result=await life.reflect({force:true});const ok=['success','ordinary'].includes(mode);assert.equal(result.ok,ok,JSON.stringify(result));assert.equal(calls,['invalid-id','ordinary'].includes(mode)?1:2);assert.equal(commits,ok?1:0);assert.equal(observed,mode==='success'?1:0);if(ok)assert.equal(result.detailRecallDelivered,mode==='success'?1:0);else assert.equal(life.status().pending,1);const health=life.status().detailRecallDiagnostics;assert.equal(health.offered,1);assert.equal(health.requested,mode==='ordinary'?0:1);if(mode==='success')assert.equal(gateway.status().health.reinforced,1);else assert.equal(gateway.status().health.reinforced,0)
+ },logger:{warn(){}}});life.addEvents([event]);const result=await life.reflect({force:true});const ok=['success','ordinary'].includes(mode);assert.equal(result.ok,ok,JSON.stringify(result));assert.equal(calls,['invalid-id','ordinary','forgotten-during-read'].includes(mode)?1:2);assert.equal(commits,ok?1:0);assert.equal(observed,mode==='success'?1:0);if(ok)assert.equal(result.detailRecallDelivered,mode==='success'?1:0);else assert.equal(life.status().pending,1);const health=life.status().detailRecallDiagnostics;assert.equal(health.offered,1);assert.equal(health.requested,mode==='ordinary'?0:1);if(mode==='success')assert.equal(gateway.status().health.reinforced,1);else assert.equal(gateway.status().health.reinforced,0)
  }finally{gateway.close();rmSync(dir,{recursive:true,force:true})}
 })
 
@@ -710,4 +710,18 @@ test('partial source admission rejects invented anchors and private samples rema
   assert.equal(gate.recallVideoDetails({accountTag:A,bvid:BV,visibility:'private-session',ownerSession:true}).fragments[0].coverage,'partial-sample')
   assert.deepEqual(gate.visualDetailCandidates({accountTag:A}),[]);assert.equal(gate.ownerPrivateVisualCandidates({accountTag:A}).length,1);assert.deepEqual(gate.partialVideoGapCandidates({accountTag:A}),[])
  }finally{gate.close();rmSync(dir,{recursive:true,force:true})}
+})
+
+
+test('detail revocations preserve the union across independent stores and reject a busy revocation writer',async()=>{
+ const {createLifeMemoryDetailStore}=await import('../lib/life-memory-details.mjs')
+ const {withDurableFileLock}=await import('../lib/durable-file-lock.mjs')
+ const dir=mkdtempSync(join(tmpdir(),'detail-revocation-lock-'))
+ const first='e-'+'1'.repeat(18),second='e-'+'2'.repeat(18)
+ try{
+  const a=createLifeMemoryDetailStore({dataDir:dir}),b=createLifeMemoryDetailStore({dataDir:dir})
+  a.purge([first]);const lock=join(dir,'detail-protection','revocations-v1.json.lock')
+  withDurableFileLock(lock,()=>{assert.throws(()=>b.purge([second]),error=>error.code==='LEDGER_BUSY');assert.equal(a.isRevoked(first),true);assert.equal(a.isRevoked(second),false)})
+  b.purge([second]);assert.deepEqual([...a.revokedIds()].sort(),[first,second]);assert.deepEqual([...b.revokedIds()].sort(),[first,second]);assert.equal(existsSync(lock),false)
+ }finally{rmSync(dir,{recursive:true,force:true})}
 })

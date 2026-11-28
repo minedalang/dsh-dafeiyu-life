@@ -3,6 +3,8 @@ import ast
 import json
 import re
 import sys
+import stat
+import uuid
 import tempfile
 import unittest
 from datetime import datetime
@@ -12,7 +14,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 source = (ROOT / 'vendor/bilibili-mcp/mcp_server.py').read_text(encoding='utf8')
 parsed = ast.parse(source)
-names = {'_record_mention_event', '_record_comment_in_ledger', '_comment_result', '_append_home', '_read_home', '_valid_bv', '_safe_line', '_public_no_mention_reason'}
+names = {'_record_mention_event', '_record_comment_in_ledger', '_comment_result', '_append_home', '_read_home', '_valid_bv', '_safe_line', '_public_no_mention_reason', '_append_runtime_duty_log'}
 code = compile(ast.Module(body=[node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name in names],type_ignores=[]), '<mention_history>', 'exec')
 
 class MentionHistoryTests(unittest.TestCase):
@@ -20,7 +22,7 @@ class MentionHistoryTests(unittest.TestCase):
         self.dir = tempfile.TemporaryDirectory()
         self.home = Path(self.dir.name)
         self.scope = {'datetime':datetime,'json':json,'os':__import__('os'),'sys':sys, 'Path':Path,'re':re,
-                      '_DUTY_HOME':self.home,'_BV_PATTERN':re.compile(r'^BV[0-9A-Za-z]{10}$')}
+                      'stat':stat,'uuid':uuid,'_DUTY_HOME':self.home,'_BV_PATTERN':re.compile(r'^BV[0-9A-Za-z]{10}$')}
         exec(code, self.scope)
         self.diag = {'reason':'ai_declined','mode':'ai_select','selected_count':0,'configured_count':2}
         self.bvid = 'BV1pXHK6mE6z'

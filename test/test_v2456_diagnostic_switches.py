@@ -54,7 +54,9 @@ class DiagnosticSwitchTests(unittest.TestCase):
   self.assertIn('@诊断',(self.base/'duty.log').read_text('utf8'))
  def test_vision_log_switch_leaves_analyzer_call_alone(self):
   spec=importlib.util.spec_from_file_location('pv_v2456',ROOT/'lib/preview_vision.py')
-  mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
+  mod=importlib.util.module_from_spec(spec)
+  with patch.object(sys,'path',[str(ROOT/'lib'),*sys.path]):
+   spec.loader.exec_module(mod)
   with patch.dict(os.environ,{'BILI_VISION_DIAG_ENABLED':'0'}):
    mod.record_vision_event(self.base,'BV1pXHK6mE6z','frames_ready')
   self.assertFalse((self.base/'vision-events').exists())
