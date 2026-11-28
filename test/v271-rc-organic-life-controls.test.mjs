@@ -77,7 +77,7 @@ async function withExperience(fn){
  try{personality.setEnabled(true);return await fn({dir,clock,memory,personality})}finally{memory.close();rmSync(dir,{recursive:true,force:true})}
 }
 const event=(i,day=0)=>({kind:'social',accountTag:ACCOUNT,key:`social:${20000+i}:BV1234567890:${30000+i}`,bvid:'BV1234567890',actorUid:String(20000+i),text:'鱼鱼，能不能多聊聊这个话题，我真的想知道一些细节？',socialTier:'stranger',at:NOW-day*DAY})
-test('证实的真实评论回复才形成表达、耐心或边界的弱观察，去重且不能泄漏正文',()=>withExperience(({dir,memory,personality})=>{
+test('真实评论回复仅形成接触观察，措辞不能自动推断表达、耐心或边界，去重且不能泄漏正文',()=>withExperience(({dir,memory,personality})=>{
  const cases=[
   {reply:'我觉得这个观点挺有趣，不过我更倾向于自己的理解。',trait:'assertiveness'},
   {reply:'我理解你的问题，因为要考虑前面提到的背景，比如数据来源、实际场景和上下文，所以不能只凭一句话判断。',trait:'patience'},
@@ -89,14 +89,15 @@ test('证实的真实评论回复才形成表达、耐心或边界的弱观察�
   const x=cases[i],e=ev[i];assert.equal(memory.recordSocialReply({actorUid:e.actorUid,bvid:e.bvid,incomingRpid:e.key.split(':').at(-1),text:x.reply}).ok,true)
  }
  const rows=ev.map(e=>({key:e.key,kind:'social'}))
- assert.equal(personality.observeVerifiedExploration(rows).observed,6)
- for(const x of cases){const t=personality.status().traits.find(t=>t.id===x.trait);assert.equal(t.evidenceCount,1);assert.equal(t.stage,'observed')}
- assert.equal(personality.status().timeline.filter(row=>row.source==='verified-reply').length,3,'confirmed reply provenance must survive reload')
+ assert.equal(personality.observeVerifiedExploration(rows).observed,3)
+ for(const x of cases){const t=personality.status().traits.find(t=>t.id===x.trait);assert.equal(t.evidenceCount,0);assert.equal(t.stage,'seed')}
+ assert.equal(personality.status().timeline.filter(row=>row.source==='verified-reply').length,0)
+ assert.equal(personality.status().traits.find(t=>t.id==='social_openness').evidenceCount,3)
  assert.equal(personality.observeVerifiedExploration(rows).observed,0)
  const raw=readFileSync(join(dir,'personality-evolution/v1.json'),'utf8')
  for(const x of cases)assert.ok(!raw.includes(x.reply))
  for(const e of ev)assert.ok(!raw.includes(e.actorUid))
- assert.doesNotMatch(personality.context({scene:'dm'}),/表达不同意见|耐心倾听|社交边界/,'每项只有一次弱观察，不应直接改变相应表达风格')
+ assert.doesNotMatch(personality.context({scene:'dm'}),/表达不同意见|耐心倾听|社交边界/,'无模型反思不应直接改变相应表达风格')
 }))
 test('没有回执、未解决的发送和遗忘经历不能被统计为表达成长',()=>withExperience(({clock,memory,personality})=>{
  const e=event(40,1);memory.recordEvents([e])

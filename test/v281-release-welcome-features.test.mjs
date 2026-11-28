@@ -9,7 +9,7 @@ test('DSH 原生大肥鱼设置在标题下展示简洁的 2.8.3 特性',()=>{
   const start=client.indexOf('🐳 大肥鱼 · DSH 生活系统')
   assert.ok(start>0)
   const next=client.slice(start,client.indexOf("'data-bd-feature-panel':'core'",start))
-  for(const phrase of ['统一 Agent：自主选择、工具、证据与记忆协同','多渠道自然表达与私密技术回执分离','分镜回放、按需补看与深层视觉记忆','神经回忆场、精确搜索与记忆健康面板','自主联想、反思与有边界的记忆强化','独立能力、模型分盘与鱼鱼配置导览','主人私信优先检查；后台临时会话隔离'])
+  for(const phrase of ['统一 Agent：自主选择、工具、证据与记忆协同','多渠道自然表达与私密技术回执分离','自然语义优先：减少固定词表判断（逐步迁移）','分镜回放、按需补看与深层视觉记忆','神经回忆场、精确搜索与记忆健康面板','自主联想、反思与有边界的记忆强化','独立能力、模型分盘与鱼鱼配置导览','主人私信优先检查；后台临时会话隔离'])
     assert.ok(next.includes(phrase),`缺少 ${phrase}`)
   assert.match(client,/data-bd-281-intro/)
   assert.match(client,/2\.8\.3 版本亮点/)

@@ -915,6 +915,7 @@ window.__ModuleLoader__.load({
             h('div',{'data-bd-281-intro':''},
               h('span',null,'🐟 统一 Agent：自主选择、工具、证据与记忆协同'),
               h('span',null,'💬 多渠道自然表达与私密技术回执分离'),
+              h('span',null,'🌱 自然语义优先：减少固定词表判断（逐步迁移）'),
               h('span',null,'🎬 分镜回放、按需补看与深层视觉记忆'),
               h('span',null,'🧠 神经回忆场、精确搜索与记忆健康面板'),
               h('span',null,'🐟 自主联想、反思与有边界的记忆强化'),

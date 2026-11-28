@@ -12,7 +12,7 @@ const episodes=[
   {id:'ep-owner',summary:'鱼鱼曾和主人聊过小猫的名字',kind:'social',stage:'clear',at:'2026-10-05T00:00:00.000Z'},
   {id:'ep-friend',summary:'鱼鱼与 UID 123 的私信共同经历',kind:'private-social',stage:'clear',at:'2026-10-06T00:00:00.000Z'},
   {id:'ep-other',summary:'UID 456 的私人经历不可访问',kind:'private-social',stage:'clear',at:'2026-10-07T00:00:00.000Z'},
-  {id:'ep-watch',summary:'鱼鱼记得一条公开视频中的猫咪',kind:'watch',stage:'clear',at:'2026-10-08T00:00:00.000Z'},
+  {id:'ep-watch',bvid:'BV1234567890',summary:'鱼鱼记得一条公开视频中的猫咪',kind:'watch',stage:'clear',at:'2026-10-08T00:00:00.000Z'},
 ]
 function createFixture({onSemantic=()=>{},getMemories=()=>baseMemories}={}){
  const calls=[]
@@ -68,6 +68,17 @@ test('普通社交语义候选不包含私有记忆，只检索公开记忆和�
  assert.ok(observed.includes('episode:ep-owner'))
  assert.equal(observed.includes('memory:m-private'),false)
  assert.equal(observed.includes('episode:ep-friend'),false)
+})
+
+test('短自然主题的语义视频命中不受词表门禁，仍按当前作用域和排除项过滤',async()=>{
+ const {retriever,calls}=createFixture()
+ const result=await retriever.socialContextAsync('猫咪',{actorUid:'123',role:'friend',maxItems:6})
+ assert.match(result,/公开视频经历/)
+ assert.match(result,/鱼鱼记得一条公开视频中的猫咪/)
+ assert.doesNotMatch(result,/私人经历|私信共同经历/)
+ assert.ok(calls.some(x=>x.domain==='bili-life'&&x.actorUid==='123'&&x.ids?.includes('ep-watch')))
+ const excluded=await retriever.socialContextAsync('猫咪',{actorUid:'123',role:'friend',maxItems:6,excludeVideoBvids:['BV1234567890']})
+ assert.doesNotMatch(excluded,/鱼鱼记得一条公开视频中的猫咪/)
 })
 
 test('好友私信私有回忆按当前 UID 隔离，不能召回另一 UID 的私信',async()=>{
