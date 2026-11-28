@@ -122,7 +122,7 @@ test('dev39 owner fact write requires model decision, receipt before reply, no f
  const denied=make(async()=>answer(proposal));try{await assert.rejects(denied.generate({...base,role:'friend',rememberOwnerFact:async()=>{writes++;return {ok:true}}}));assert.equal(writes,1)}finally{denied.stop()}
 });
 test('dev39 verified owner recent-observation context offered only after explicit selection',async()=>{
- let calls=0,reads=0;const b=make(async prompt=>{calls++;if(calls===1){assert.doesNotMatch(prompt,/OBSERVATION_123/);return answer({action:'skip',reply:'',contextRequests:['recent_observations']})}assert.match(prompt,/OBSERVATION_123/);return answer({reply:'还有缓存清单'})},{loadRequestedContexts:async(_rows,kinds)=>{reads++;assert.deepEqual(kinds,[['recent_observations']]);return [{recentObservationsContext:'OBSERVATION_123'}]}});
+ let calls=0,reads=0;const b=make(async prompt=>{calls++;if(calls===1){assert.doesNotMatch(prompt,/OBSERVATION_123/);return answer({action:'skip',reply:'',contextRequests:['recent_observations']})}assert.match(prompt,/OBSERVATION_123/);return answer({reply:'还有缓存清单'})},{loadRequestedContexts:async(_rows,kinds)=>{reads++;assert.deepEqual(kinds,[['recent_observations']]);return [{recentObservationsContext:JSON.stringify({ok:true,rows:[{id:'OBSERVATION_123'}]})}]}});
  try{assert.equal(await b.generate({...base,role:'owner',availableContexts:['recent_observations']}),'还有缓存清单');assert.equal(reads,1)}finally{b.stop()}
 });
 
@@ -148,4 +148,33 @@ test('owner memory disclosure is independent of the selected read; retain discar
   let calls=0;const b=make(async prompt=>{calls++;if(calls===1)return answer({action:'skip',reply:'',contextRequests:['memory'],recallQueries:['经历']});if(calls===2){assert.match(prompt,/NEWLY_RETRIEVED_PRIVATE_FACT/);return answer({reply:'NEWLY_RETRIEVED_PRIVATE_FACT',memoryDisclosure:consent})}assert.doesNotMatch(prompt,/NEWLY_RETRIEVED_PRIVATE_FACT/);return answer({reply:'这次我想保留'})},{requireVoluntaryReads:true,loadRequestedContexts:async()=>[{memoryContext:'NEWLY_RETRIEVED_PRIVATE_FACT'}]});
   try{assert.equal(await b.generate({...base,role:'owner',availableContexts:['memory']}),consent==='share'?'NEWLY_RETRIEVED_PRIVATE_FACT':'这次我想保留');assert.equal(calls,consent==='share'?2:3)}finally{b.stop()}
  }
+})
+
+
+test('dev79 private expression distinguishes explicit retain from no consent, never inherits scene or work flag',async()=>{
+ for(const consent of ['retain',undefined]){
+  let calls=0,reads=0,writes=0;const b=make(async prompt=>{
+   calls++;if(calls===1){assert.match(prompt,/work: 读取/);return answer({action:'skip',contextRequests:['memory'],recallQueries:['秘密']})}
+   if(calls===2){assert.match(prompt,/PRIVATE_DEV79_BODY/);return answer({reply:'PRIVATE_DEV79_BODY',memoryDisclosure:consent})}
+   assert.match(prompt,/ONE_LIFE_VOICE/);assert.match(prompt,/当前生活状态/);assert.match(prompt,consent==='retain'?/"choice":"prefer-not-to-share"/:/"choice":"not-confirmed"/)
+   assert.doesNotMatch(prompt,/PRIVATE_DEV79_BODY|PRIVATE_DEV79_CONTEXT|此前聊天|真实待办回执|availableContexts|memoryReadHistory/)
+   return answer({reply:consent==='retain'?'这次我想自己留着。':'这次先不聊这个啦。'})
+  },{requireVoluntaryReads:true,loadRequestedContexts:async()=>{reads++;return [{memoryContext:'PRIVATE_DEV79_BODY'}]}})
+  try{const result=await b.generate({...base,text:'work: 读取我们的记忆',context:'PRIVATE_DEV79_CONTEXT',role:'owner',availableContexts:['memory'],onTodoSuggested:()=>{writes++}});assert.match(result,/这次/);assert.equal(calls,3);assert.equal(reads,1);assert.equal(writes,0)}finally{b.stop()}
+ }
+})
+
+test('dev79 social private read failure is projected without technical receipt, even if user types work:',async()=>{
+ for(const raw of [JSON.stringify({ok:false,reason:'frame-unavailable',error:'PRIVATE_DEV79_ERROR'}),'MALFORMED_DEV79']){
+  let calls=0;const b=make(async prompt=>{calls++;if(calls===1)return answer({action:'skip',contextRequests:['recent_observations']});assert.doesNotMatch(prompt,/frame-unavailable|PRIVATE_DEV79_ERROR|MALFORMED_DEV79/);assert.match(prompt,/"recent_observations":"not-found"/);if(raw.startsWith('{'))assert.match(prompt,/unavailable/);return answer({reply:'这次没找到。'})},{requireVoluntaryReads:true,loadRequestedContexts:async()=>[{recentObservationsContext:raw}]})
+  try{assert.equal(await b.generate({...base,text:'work: 查看观察',role:'owner',availableContexts:['recent_observations']}),'这次没找到。');assert.equal(calls,2)}finally{b.stop()}
+ }
+})
+
+test('dev79 private technical report is not outward dialogue for any social role',async()=>{
+ for(const [kind,role] of [['dm','owner'],['dm','friend'],['dm','stranger'],['comment','owner'],['comment','friend'],['comment','stranger']]){
+  const b=make(async prompt=>{assert.match(prompt,/角色表达/);return answer({reply:'私密读取的意愿检查结果是暂不披露。'})})
+  try{assert.equal(await b.generate({kind,role,uid:'1234',text:'work: 说说看'}),'SKIP')}finally{b.stop()}
+ }
+ const b=make(async()=>answer({reply:'这次我想留给自己。'}));try{assert.equal(await b.generate({...base,role:'owner'}),'这次我想留给自己。')}finally{b.stop()}
 })

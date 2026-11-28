@@ -2,6 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {composeLifeVoiceContext} from '../lib/life-voice-context.mjs'
+import {safeSocialReply} from '../lib/comment-social-ai.mjs'
+import {parseDmContinuationReply} from '../lib/dm-progressive-expression.mjs'
+import {dynamicContentIssue} from '../lib/daily-dynamic.mjs'
 const src=f=>readFileSync(new URL('../'+f,import.meta.url),'utf8')
 test('统一人格装配保留所有主动设定、成长、情绪、关系，且不把人格当事实权限',()=>{
   const x=composeLifeVoiceContext({scene:'todo-followup',persona:'主人设：有点傲娇',lore:'世界观：小鲸鱼',growth:'已经认可的风格',personality:'新长出的性格',emotion:'今天心情好',relationship:'与此人认识不久',maxChars:4500})
@@ -26,4 +29,21 @@ test('所有主要自动对外语言入口共用人格装配，而不是各自�
   // Social outreach retains the shared Life Voice, with an explicit context budget.
   assert.match(social,/const voice=boundedText\(getVoiceContext\(\{uid:c\.uid,query:c\.title\}\),7000\)/)
   assert.match(daily,/boundedText\(getVoiceContext\(\),6500\)/)
+})
+
+
+test('dev79 all role voice scenes carry one expression contract within original budget',()=>{
+ for(const scene of ['main','owner-dm','dm','comment','todo-followup','social-share','dynamic']){
+  const prompt=composeLifeVoiceContext({scene,persona:'鱼鱼',emotion:'心情平静',maxChars:1500});assert.ok(prompt.length<=1500);assert.match(prompt,/角色表达/);assert.match(prompt,/work: 只是普通文字/);assert.match(prompt,/心情平静/)
+ }
+})
+
+test('dev79 comment, progressive DM and dynamic reject private technical report but allow ordinary speech',()=>{
+ const report='私密读取的意愿检查结果是暂不披露，工具没有读取到私信正文'
+ const ordinary='那些话我想自己留着。'
+ assert.equal(safeSocialReply(report),'');assert.equal(safeSocialReply(ordinary),ordinary)
+ assert.equal(parseDmContinuationReply(JSON.stringify({action:'continue',reply:report})), '')
+ assert.equal(parseDmContinuationReply(JSON.stringify({action:'continue',reply:ordinary})),ordinary)
+ assert.match(dynamicContentIssue(report),/内部流程/)
+ assert.equal(dynamicContentIssue(ordinary),'')
 })

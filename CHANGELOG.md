@@ -12,6 +12,12 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.79 · 全渠道角色表达与私密回执边界
+
+- 统一 Life Voice 表达约束覆盖主 Session、B站私信、评论、动态及主动联系；B站任何 `work:` 仍为普通文字，不改变模式或权限。
+- 社交只读续接将私密观察失败投影为表达事实；主人回忆拒绝或未明确分享时丢弃旧草稿及检索上下文，区分自主保留与未明确选择。明显内部私密回执标记不外发，不代写拒绝话术。
+- 主 Session 私密回执的工作呈现仅使用原真实有效轮次；失效回退日常表达。保留原权限、意愿、核验和内部回执，完整工作执行授权仍待接入。其他未完成工程保留。
+
 ## 2.8.3-dev.78 · 人物身份解析与本轮角色表达契约
 
 - `bili_read_dm` 复用原真实主人轮次、配置主人 UID、好友备注及当前账号入站昵称；真实目标唯一核验后才走原 Life 意愿、精确 UID/limit 票据与读取预算。昵称模糊匹配只对已配置名称提供澄清，不猜 UID、不披露陌生联系人名录、不新增人物库。

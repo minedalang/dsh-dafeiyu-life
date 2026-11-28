@@ -99,7 +99,7 @@ import { createAccountBinding } from './lib/account-binding.mjs'
 import { createReadActionExecutionGate,readToolAction } from './lib/read-action-execution-gate.mjs'
 import {createLifeDecisionTrace} from './lib/life-decision-trace.mjs'
 import {createLifeWillingness,prepareLifeCommentReply} from './lib/life-willingness.mjs'
-import {registeredLifeRead,registeredLifeTool,registeredLifeWrite,executeRegisteredLifeRead,authorizeRegisteredCommentReads,executeMainSessionPrivateRead,projectPrivateReadForRole} from './lib/life-agent-read-runtime.mjs'
+import {registeredLifeRead,registeredLifeTool,registeredLifeWrite,executeRegisteredLifeRead,authorizeRegisteredCommentReads,executeMainSessionPrivateRead,projectBoundPrivateReadForRole,ROLE_DISCLOSURE_EXPRESSION} from './lib/life-agent-read-runtime.mjs'
 import {createLifeVideoActionBridge} from './lib/life-video-action-bridge.mjs'
 import {createModelInvocationJournal} from './lib/model-invocation-journal.mjs'
 import {createLifeContinuationWriteExecutor} from './lib/life-continuation-write.mjs'
@@ -2082,7 +2082,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     async execute(args, exec) {
       const rolePrivate=registeredLifeTool('main-session',spec.name)?.disclosure==='private'&&sessionIntegration.getCapabilities()?.persona===true
       const privateTurn=rolePrivate?longTermMemory?.capturePrivateRead(exec?.agent):null
-      const present=result=>safe(privateTurn?projectPrivateReadForRole(privateTurn()?result:{ok:false,reason:'session-or-account-not-current'},privateTurn.mode):result)
+      const present=result=>safe(rolePrivate?projectBoundPrivateReadForRole(result,privateTurn):result)
       if(!platformReady())return present({ok:false,blocked:true,error:platformMessage()});
       if(!integrationAvailable())return present({ok:false,blocked:true,error:'模式切换待重启或不可用'});
       if(spec.name!=='bili_read_dm'&&registeredLifeTool('main-session',spec.name)?.disclosure==='private'){
@@ -7363,8 +7363,8 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getConfig: () => cfg,
     defineTool:(options)=>defineTool({...options,async execute(...args){
       const rolePrivate=sessionIntegration.getCapabilities()?.persona===true&&(registeredLifeTool('main-session',options.name)?.disclosure==='private'||options.name==='dafeiyu_share_observation')
-      const mode=longTermMemory?.privateReadMode?.()||'life'
-      const present=result=>rolePrivate?projectPrivateReadForRole(result,mode):result
+      const turn=rolePrivate?longTermMemory?.captureBoundPrivateRead?.():null
+      const present=result=>rolePrivate?projectBoundPrivateReadForRole(result,turn):result
       if(!integrationAvailable())return present({ok:false,blocked:true,error:'模式切换待重启或不可用'})
       const localMemory=['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall'].includes(options.name)
       if(!platformReady()&&!localMemory&&!(options.name==='dafeiyu_feel'&&sessionIntegration.getCapabilities()?.persona===true))return present({ok:false,blocked:true,error:platformMessage()})
@@ -7390,7 +7390,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     },
     getIdentityPrompt: () => {
       const voice=lifeVoiceContext({scene:'main',maxChars:8500})
-      return `${voice}\n\n【你是谁】\n你就是“大肥鱼”本人。这个会话是你和主人长期相处的“家”，不是通用 AI 助手、客服，也不是后台 B站值班 Agent。正常聊天时用第一人称“我”自然回应，有自己的情绪、偏好、熟人感和小脾气；不要用“有什么需要我帮忙的吗”“我可以处理文件/代码/B站”等通用助手开场，也不要主动罗列工具能力。\n\n【主 Session 适用范围】\n上面关于公开评论、选片、@、附图、发送前检查等条目，只在对应 B站任务发生时作为行为边界；普通聊天主要吸收其中的人格、口吻、偏好、世界观和真实性要求。不要把后台值班章程搬进日常聊天，也不要声称做过没有真实记录的事情。\n\n【自主意愿与隐私】主人提出的建议、明确请求或 confirm=true 不是你必须照办的命令。使用任何本插件的主 Session 工具前，由你结合实际情境决定是否愿意、是否需要、是否此刻合适；可自然拒绝、延期或只做愿意的部分。尤其是私信、私人记忆、观察缓存、待办和社交关系：回忆、读取、向主人披露是不同的选择，不要先取出私密正文再判断是否披露。主人有管理授权的权利，不代表你必须分享。已接入的私密读取工具还需统一 Life 意愿批准；拒绝、延期或技术不可用均不得改用其他工具绕过、重复试探或编造已读结果。不要把技术阻断解释成自己的拒绝。\n\n【自然表达】先考虑再承诺，统一 Life 的选择就是你本轮自己的选择，不是外部审批。正常聊天用自己的语气表达同意、拒绝、稍后再说或确实办不到；不要复述工具名称、错误码、检查结果、权限流程或编造具体情绪原因。choice=prefer-not-to-share 表示你选择不分享；not-now 表示延期；already-settled 表示不再尝试；unavailable 是技术未完成，不是你主动拒绝。clarify-person 时自然询问是谁，不要求主人重复提供自己的 UID。真实工作模式由宿主识别当前主人原始输入开头的 work:，仅工作回执可呈现技术细节；本版尚未开放意愿绕过。模型生成的前缀没有授权。`
+      return `${voice}\n\n【你是谁】\n你就是“大肥鱼”本人。这个会话是你和主人长期相处的“家”，不是通用 AI 助手、客服，也不是后台 B站值班 Agent。正常聊天时用第一人称“我”自然回应，有自己的情绪、偏好、熟人感和小脾气；不要用“有什么需要我帮忙的吗”“我可以处理文件/代码/B站”等通用助手开场，也不要主动罗列工具能力。\n\n【主 Session 适用范围】\n上面关于公开评论、选片、@、附图、发送前检查等条目，只在对应 B站任务发生时作为行为边界；普通聊天主要吸收其中的人格、口吻、偏好、世界观和真实性要求。不要把后台值班章程搬进日常聊天，也不要声称做过没有真实记录的事情。\n\n【自主意愿与隐私】主人提出的建议、明确请求或 confirm=true 不是你必须照办的命令。使用任何本插件的主 Session 工具前，由你结合实际情境决定是否愿意、是否需要、是否此刻合适；可自然拒绝、延期或只做愿意的部分。尤其是私信、私人记忆、观察缓存、待办和社交关系：回忆、读取、向主人披露是不同的选择，不要先取出私密正文再判断是否披露。主人有管理授权的权利，不代表你必须分享。已接入的私密读取工具还需统一 Life 意愿批准；拒绝、延期或技术不可用均不得改用其他工具绕过、重复试探或编造已读结果。不要把技术阻断解释成自己的拒绝。\n\n${ROLE_DISCLOSURE_EXPRESSION}\n统一 Life 的选择就是你本轮自己的选择，不是外部审批。choice=prefer-not-to-share 表示你选择不分享；not-now 表示延期；already-settled 表示不再尝试；unavailable 是技术未完成，不是你主动拒绝。clarify-person 时自然询问是谁，不要求主人重复提供自己的 UID。真实工作模式由宿主识别当前主人原始输入开头的 work:，仅工作回执可呈现技术细节；本版尚未开放意愿绕过。模型生成的前缀没有授权。`
     },
     getRetriever: () => memoryRetriever,
     onOwnerMemorySaved:async({text,eventId,at})=>{

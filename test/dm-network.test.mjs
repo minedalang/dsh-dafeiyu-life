@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { listSessions, fetchMsgs, readOwnerConversation } from '../lib/dm.mjs';
-import {executeMainSessionPrivateRead,ownerTurnMode,projectPrivateReadForRole} from '../lib/life-agent-read-runtime.mjs';
+import {executeMainSessionPrivateRead,ownerTurnMode,projectPrivateReadForRole,projectBoundPrivateReadForRole} from '../lib/life-agent-read-runtime.mjs';
 import {createLifeWillingness} from '../lib/life-willingness.mjs';
 import {resolveSessionDmTarget} from '../lib/manual-dm-contact.mjs';
 import {mkdtempSync,rmSync,readFileSync,readdirSync} from 'node:fs';
@@ -144,4 +144,15 @@ test('dev78 resolved owner and configured alias enter the original precise willi
  request='看看老大的私信';answer='act';const result=await run('老大');assert.equal(result.ok,true);assert.equal(result.talker_uid,'43');assert.equal(reads,1)
  request='看看陌生人的私信';assert.equal((await run('陌生人')).ok,false);assert.equal(models,2);assert.equal(reads,1)
  current=false;request='看看我和你的私信';assert.equal((await run('owner')).ok,false);assert.equal(reads,1)
+})
+
+
+test('dev79 only the still-current original host work turn receives raw private receipt',()=>{
+ const raw={ok:false,reason:'life-private-read-declined',lifeAction:'skip',message:'PRIVATE_DEV79_INTERNAL'}
+ let live=true;const turn=Object.assign(()=>live,{mode:'work'})
+ assert.equal(projectBoundPrivateReadForRole(raw,turn),raw)
+ live=false;const stale=projectBoundPrivateReadForRole(raw,turn);assert.equal(stale.choice,'unavailable');assert.doesNotMatch(JSON.stringify(stale),/PRIVATE_DEV79_INTERNAL|life-private-read/)
+ const missing=projectBoundPrivateReadForRole(raw,null);assert.equal(missing.choice,'prefer-not-to-share');assert.doesNotMatch(JSON.stringify(missing),/PRIVATE_DEV79_INTERNAL/)
+ const throwing=Object.assign(()=>{throw Error('stale')},{mode:'work'});assert.equal(projectBoundPrivateReadForRole(raw,throwing).choice,'unavailable')
+ const life=Object.assign(()=>true,{mode:'life'});assert.equal(projectBoundPrivateReadForRole(raw,life).choice,'prefer-not-to-share')
 })

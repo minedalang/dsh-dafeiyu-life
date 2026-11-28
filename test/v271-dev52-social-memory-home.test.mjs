@@ -56,7 +56,7 @@ test('project homepage is user-facing and dev updates are not prepended',()=>{
  assert.match(doc,/2\.8\.0/)
  assert.match(doc,/神经回忆场/)
  assert.doesNotMatch(doc,/生活脉络/)
- assert.match(policy,/README 是用户首页，不是开发版本日志/)
+ assert.match(policy,/README 是用户首页/);assert.match(policy,/不得将候选冒充已发布正式版/);assert.match(policy,/不把旧版亮点继续堆在首页/)
  assert.ok(doc.length<10000,`README is ${doc.length} chars`)
  assert.doesNotMatch(doc.slice(0,300),/历史开发预览/)
 })
