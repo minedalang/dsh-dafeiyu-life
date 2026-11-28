@@ -395,10 +395,16 @@ test('owner repair only adds proven missing public experiences under original lo
  try{
   put(root,'character-identity.json',{version:1,id:characterId,createdAt:1});put(root,'long-term-memory/dafeiyu.json',{version:3,memories:[],traces:[],deleted:[]});put(root,'detail-protection/revocations-v1.json',{version:1,ids:[]})
   const event=(key,bvid)=>({kind:'watch',key,bvid,title:key,time:clock,accountTag:tag})
-  gateway.recordEvents([event('old-one','BV1pXHK6mE6z'),event('old-two','BV1pXHK6mE6y')]);const business=createBackup({root,config:{}}),incoming=memoryRepairSource(business,{characterId})
+  gateway.recordEvents([event('old-one','BV1pXHK6mE6z'),event('old-two','BV1pXHK6mE6y')]);const business=createBackup({root,config:{}}),incoming=memoryRepairSource(business,{characterId}),standalone=createLifeMemoryBackup(root)
   const epName='life-memory/episodic.json',path=join(root,epName),before=JSON.parse(readFileSync(path,'utf8')),lost=before.episodes[0]
   clock=now-1000;gateway.recordEvents([event('new-one','BV1pXHK6mE6x')]);const live=JSON.parse(readFileSync(path,'utf8'));live.episodes=live.episodes.filter(e=>e.id!==lost.id);put(root,epName,live)
   const current=createLifeMemoryBackup(root),preview=previewPortableMemoryRepair(current,incoming,'scope',options)
+  assert.equal(inspectLifeMemoryBackup(standalone).characterBound,true)
+  assert.equal(previewPortableMemoryRepair(current,memoryRepairSource(standalone,{characterId}),'scope',options).missingEpisodes,1)
+  assert.equal(preview.continuity.identity,'same-character');assert.equal(preview.continuity.historyProven,false);assert.equal(preview.continuity.fullRestore.available,false)
+  assert.throws(()=>memoryRepairSource(standalone,{characterId:'22222222-2222-4222-8222-222222222222'}),/角色身份/)
+  const legacy=structuredClone(standalone);delete legacy.files['character-identity.json'];delete legacy.hashes['character-identity.json'];assert.equal(previewPortableMemoryRepair(current,legacy,'scope',options).missingEpisodes,0)
+  const tampered=structuredClone(standalone);tampered.files['character-identity.json']='{}';assert.throws(()=>inspectLifeMemoryBackup(tampered),/篡改/)
   assert.equal(preview.missingEpisodes,1,preview.missingReason);assert.equal(preview.differences.episodes.backupOnly,1);assert.equal(preview.differences.episodes.currentOnly,1)
   assert.equal(businessRestorePreview(createBackup({root,config:{}}),business,{characterId,accountTag:tag,now:options.now}).memory.missingEpisodes,1)
   assert.equal(planMissingPublicEpisodes(current,incoming,{...options,sameCharacter:false}).rows.length,0)

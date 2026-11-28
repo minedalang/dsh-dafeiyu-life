@@ -280,3 +280,13 @@ test('dev.33 下载流中断或取消无成功回执时不得进入图片验收'
  const cancelled=createLocalVisionModelManager({logger:{warn:()=>{}},fetchImpl:async url=>{if(url.endsWith('/api/pull')){await gate;return ndjson([{status:'success'}])}calls++;throw Error('不应进行图片验收')}})
  const job=cancelled.start('qwen3.5-4b');assert.equal(cancelled.cancel(),true);release();await assert.rejects(job,/已取消下载/);assert.equal(cancelled.progress().phase,'cancelled');assert.equal(calls,0)
 })
+
+import {createOllamaHealthProbe} from '../lib/ollama-service.mjs'
+test('management probe coalesces, expires and invalidates without inference or automatic startup',async()=>{
+ let clock=1000,calls=0,release;const probe=createOllamaHealthProbe({now:()=>clock,list:()=>{calls++;return new Promise(r=>release=r)}})
+ const a=probe.inspect('one'),b=probe.inspect('one');await Promise.resolve();assert.equal(calls,1);release({running:false});assert.equal((await a).state,'unavailable');assert.equal((await b).state,'unavailable');assert.equal((await probe.inspect('one')).state,'unavailable');assert.equal(calls,1)
+ clock+=20001;const c=probe.inspect('one');await Promise.resolve();release({running:true,models:[{id:'one',installed:true,verified:true}]});assert.equal((await c).state,'ready');assert.equal(calls,2)
+ probe.invalidate();const d=probe.inspect('one');await Promise.resolve();probe.invalidate();release({running:true,models:[]});assert.equal(await d,null)
+ const e=probe.inspect('one');await Promise.resolve();release({running:true,models:[]});assert.equal((await e).state,'model-missing')
+ const bad=createOllamaHealthProbe({list:()=>{throw Error('secret')}});assert.equal((await bad.inspect('one')).state,'unavailable')
+})

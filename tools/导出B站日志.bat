@@ -474,7 +474,7 @@ dump('life-video-launch-state.json', snapshot)
 vision = read_json(root/'vision-production-last.json', limit=2048)
 vision_status = {'present': False}
 if isinstance(vision, dict) and vision.get('version') == 1:
-    allowed_status = ('analyzed','vision_unavailable','timeout','subagent_error',
+    allowed_status = ('analyzed','vision_incomplete','vision_unavailable','timeout','subagent_error',
                       'no_vision_result','empty_result','no_images_confirmed')
     allowed_mode = ('independent_local','independent_dsh')
     allowed_error = ('ollama_service_offline','ollama_model_missing','ollama_http_error',

@@ -54,7 +54,7 @@ test('视觉生产状态只接受固定字段与合法结果，不执行识图',
 
  }finally{rmSync(d,{recursive:true,force:true})}
  assert.match(py, /if debug or not isinstance\(result, dict\):/)
- assert.match(py,/if status not in \('analyzed', 'vision_unavailable'/)
+ assert.match(py,/if status not in \('analyzed', 'vision_incomplete', 'vision_unavailable'/)
 })
 
 // This is a separate security assertion: a Windows user without SeCreateSymbolicLinkPrivilege

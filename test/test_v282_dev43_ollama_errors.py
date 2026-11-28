@@ -41,4 +41,21 @@ class OllamaFailureTests(unittest.TestCase):
         self.assertEqual(reports[0]['status'],'incomplete')
         self.assertNotIn('description',reports[0])
 
+    def test_incomplete_production_attempt_overwrites_old_success_but_debug_and_cache_do_not(self):
+        import ast, json, os, tempfile
+        tree=ast.parse((ROOT/'vendor'/'bilibili-mcp'/'mcp_server.py').read_text(encoding='utf8'))
+        fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='_record_production_vision_attempt')
+        with tempfile.TemporaryDirectory() as d:
+            home=Path(d); scope={'_DUTY_HOME':home,'os':os,'json':json}
+            exec(compile(ast.Module(body=[fn],type_ignores=[]),'production-writer','exec'),scope)
+            write=scope[fn.name]; target=home/'vision-production-last.json'
+            write({'status':'analyzed','description':'old secret'},'independent_local','qwen3.5:4b')
+            self.assertTrue(json.loads(target.read_text())['ok'])
+            result={'status':'vision_incomplete','description':'private frame','visionBoardReceipts':[{'status':'incomplete','errorCode':'ollama_service_offline'}]}
+            write(result,'independent_local','qwen3.5:4b'); raw=target.read_text(); row=json.loads(raw)
+            self.assertFalse(row['ok']); self.assertEqual(row['errorCode'],'ollama_service_offline'); self.assertNotIn('private frame',raw)
+            write({'status':'analyzed','description':'debug'},'independent_local','other',debug=True)
+            write({'status':'cached','description':'cache'},'independent_local','other')
+            self.assertEqual(target.read_text(),raw)
+
 if __name__=='__main__':unittest.main()

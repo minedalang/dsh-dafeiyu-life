@@ -151,7 +151,7 @@ import {buildVideoPerceptionHandoff} from './lib/video-perception-handoff.mjs'
 import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusReview,diagnoseVideoFocusReceipt} from './lib/video-focus-review.mjs'
 import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from './lib/video-owner-focus-debug.mjs'
 import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
-import {ensureOllamaService} from './lib/ollama-service.mjs'
+import {ensureOllamaService,createOllamaHealthProbe} from './lib/ollama-service.mjs'
 import {explainVideoVisionFailure} from './lib/video-visual-failure.mjs'
 import {ASR_MODELS,probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
 import {listWhisperModels,deleteWhisperModel} from './lib/whisper-model-cache.mjs'
@@ -1688,6 +1688,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   let embeddingRuntime = null
   let embeddingIndex = null
   const localVisionModels=createLocalVisionModelManager({stateDir,logger:{warn:m=>log('本地视觉模型：'+m)}})
+  const ollamaHealth=createOllamaHealthProbe({list:()=>localVisionModels.list()})
   let personalityEvolution = null
   const personalityContext=(scene,maxChars)=>{
     try{
@@ -2182,6 +2183,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   // for 30 minutes; JPEG snapshots are isolated, short-lived local diagnostics only.
   let lastLifeVideoDebug=null,videoDebugJob=null,videoDebugWorkInFlight=false
   let lastLifeVisionActivity=null // in-process operational metadata, no BV/visual text/UID
+  let lastVisionWarning={code:'',at:0}
   const videoDebugExpiry=VIDEO_CACHE_RETENTION.capture
   const videoDebugAccount=()=>String(accountBinding.accountUid()||'')
   const safeVideoDebugCapture=(value,bvid)=>{
@@ -2398,8 +2400,17 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     // The Python MCP worker stores a durable receipt ONLY when a real production
     // vision model was invoked. Never turn a cached observation or owner Debug
     // into a fresh green model-health signal.
-    if(!dryRun&&['analyzed','vision_unavailable','timeout','subagent_error','no_vision_result','empty_result','no_images_confirmed'].includes(parsedVisual?.status)){
+    if(!dryRun&&['analyzed','vision_incomplete','vision_unavailable','timeout','subagent_error','no_vision_result','empty_result','no_images_confirmed'].includes(parsedVisual?.status)){
       lastLifeVisionActivity=readProductionVisionStatus(stateDir)||lastLifeVisionActivity;
+      const failure=explainVideoVisionFailure(parsedVisual)
+      if(failure&&(/^(?:ollama_|vision_board_)/.test(failure.code)||failure.code==='vision_incomplete')){
+        // Invalidate the cached readiness so the next visible health check can detect a mid-run outage.
+        ollamaHealth.invalidate()
+        const now=Date.now()
+        if(lastVisionWarning.code!==failure.code||now-lastVisionWarning.at>=300_000){
+          lastVisionWarning={code:failure.code,at:now};log('⚠️ 视频画面未通过核验：'+failure.code+(failure.code==='ollama_service_offline'?'；Ollama 本地服务不可用，请启动 Ollama 或在管理中心恢复服务。':'；请查看管理中心视觉状态。'))
+        }
+      }
     }
     const preliminary=buildVideoEvidenceBundle({bvid,info:parsedInfo,subtitle:parseMaybeJson(subtitle),
       visual:parsedVisual,comments:parseMaybeJson(comments),danmaku:parseMaybeJson(danmaku)})
@@ -11192,8 +11203,10 @@ logger:{warn:m=>log('社交意图：'+m)}
         !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip))
         return sendJson(res,403,{ok:false,error:'仅允许在本机 DSH 管理中心恢复 Ollama'})
       const running=await localVisionModels.list()
+      ollamaHealth.invalidate()
       if(running.running)return sendJson(res,200,{ok:true,alreadyRunning:true,message:'Ollama 本地服务已经运行，无需再次启动'})
       const started=await ensureOllamaService({probe:()=>localVisionModels.list()})
+      ollamaHealth.invalidate()
       return sendJson(res,started.ok?200:409,started)
     }
     const whisperStatus=()=>({
@@ -11425,7 +11438,7 @@ logger:{warn:m=>log('社交意图：'+m)}
         const backup=memoryRepairSource(source,{characterId:accountBinding.characterId()})
         const summary=inspectLifeMemoryBackup(backup)
         const scope=()=>accountBinding.characterId()+':'+accountBinding.generation()+':'+getSessionIntegration().revision
-        const repairOptions=()=>({sameCharacter:source?.format!=='dafeiyu-life-memory-backup',accountTag:trustedLifeAccountTag(),halfLifeDays:cfg.mainSessionMemoryHalfLifeDays})
+        const repairOptions=()=>({sameCharacter:JSON.parse(backup.files['character-identity.json']||'null')?.id===accountBinding.characterId(),accountTag:trustedLifeAccountTag(),halfLifeDays:cfg.mainSessionMemoryHalfLifeDays})
         if(action==='inspect'){const current=createLifeMemoryBackup(stateDir);return sendJson(res,200,{ok:true,summary,memoryPreview:previewPortableMemoryRepair(current,backup,scope(),repairOptions())})}
         if(body?.confirm!=='RESTORE_DAFEIYU_MEMORY')return sendJson(res,400,{ok:false,error:'未完成记忆恢复前人工确认'})
         if(portableRestoreBusy||autoBackupBusy||manualBackupBusy)throw Error('另一个备份或恢复操作正在进行，请稍后重新预览')
@@ -11892,13 +11905,19 @@ logger:{warn:m=>log('社交意图：'+m)}
       return sendJson(res,result?.ok===true?200:409,result)
     }
     if (req.method === 'GET' && path === '/api/bili-duty/life-agent/system-health') {
-      // Local snapshots only: no additional model/network calls or account identifiers.
-      try{return sendJson(res,200,systemHealthSnapshot({planner:autonomousPlanner.status(),
+      // Local snapshots plus a coalesced fixed-loopback Ollama tags check only; no inference/B站.
+      try{
+        refreshCfg()
+        const localId=cfg.visionEnabled===true&&resolvedVisionMode()==='independent_local'?getLocalVisionModel(cfg.visionLocalModel)?.id:''
+        const localProbe=localId?await ollamaHealth.inspect(localId):null
+        refreshCfg()
+        const currentProbe=cfg.visionEnabled===true&&resolvedVisionMode()==='independent_local'&&cfg.visionLocalModel===localId?localProbe:null
+        return sendJson(res,200,systemHealthSnapshot({planner:autonomousPlanner.status(),
         scheduler:interactionScheduler.status(),send:socialSendTransaction.inspect(),
         vision:{configured:cfg.visionEnabled===true&&(resolvedVisionMode()==='independent_local'
             ?Boolean(getLocalVisionModel(cfg.visionLocalModel))
             :Boolean(cfg.visionModelId||cfg.pluginDefaultModelId)),
-          mode:resolvedVisionMode(),
+          mode:resolvedVisionMode(),localProbe:currentProbe,
           backendModel:resolvedVisionMode()==='independent_local'?getLocalVisionModel(cfg.visionLocalModel)?.ollama||'':'',
           model:resolvedVisionMode()==='independent_local'?getLocalVisionModel(cfg.visionLocalModel)?.name||'未选择本地视觉模型':
             String(cfg.visionModelId||cfg.pluginDefaultModelId||'DSH 视觉模型'),

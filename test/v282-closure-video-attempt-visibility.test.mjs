@@ -78,3 +78,8 @@ test('Only bounded anonymized board counts survive the trace journal sanitizer',
     assert.equal(shown.success,false)
   }finally{rmSync(home,{recursive:true,force:true})}
 })
+
+test('offline Ollama failure is explicit at actual visual start, not parent time or later unrelated failure',()=>{
+ const run={at:100,state:'finished',steps:[event('action-start',{action:'inspect_exploration'},101),event('action-result',{action:'inspect_exploration',result:'verified-metadata'},102),event('action-start',{action:'observe_video'},120),event('blocked',{action:'observe_video',code:'visual-read-unverified',visualStatus:'vision_incomplete',visionFailureCode:'ollama_service_offline',visionBoardsTotal:2,visionBoardsFailed:2},132),event('action-start',{action:'inspect_video_discussion'},135),event('blocked',{code:'account-changed'},140)]}
+ const r=describe(run);assert.equal(r.at,120);assert.equal(r.success,false);assert.equal(r.settled,true);assert.match(r.result,/Ollama 未启动.*分镜完成 0\/2/);assert.doesNotMatch(r.result,/账号已切换/)
+})

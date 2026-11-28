@@ -1588,7 +1588,7 @@ def _fetch_preview_frames_reserved(bvid, focus_start=None, focus_end=None, perce
 _VISION_FRAMES_SERVED = {}  # 单轮内实际经 MCP 返回图片的 BV 时间点；不含图片正文
 
 def _record_production_vision_attempt(result, mode, model, debug=False):
-    """Only actual model attempts from normal workers, never owner Debug runs.
+    """Only real production vision attempts from normal workers, never owner Debug runs.
 
     Operational receipt is restricted to outcome, fixed execution mode, model ID
     and UTC timestamp. No BV, user ID, model response, prompt or image content.
@@ -1596,7 +1596,7 @@ def _record_production_vision_attempt(result, mode, model, debug=False):
     if debug or not isinstance(result, dict):
         return
     status = str(result.get('status') or '')
-    if status not in ('analyzed', 'vision_unavailable', 'timeout', 'subagent_error',
+    if status not in ('analyzed', 'vision_incomplete', 'vision_unavailable', 'timeout', 'subagent_error',
                       'no_vision_result', 'empty_result', 'no_images_confirmed'):
         return  # Cached observation is not a fresh invocation of the model.
     if mode not in ('independent_local', 'independent_dsh'):
