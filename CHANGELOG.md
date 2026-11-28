@@ -12,6 +12,12 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.54 · 生活决策连续性与自主延期
+
+- 原 Planner 的入口与每次 Episode 子决策提供真实当前模拟情绪状态；刷新角色兴趣及 Life Voice，不将状态关闭/读取失败伪装成默认情绪。状态为软线索，不改变候选、权限、预算或记忆写入；不传历史情绪原因、私密材料。普通续行不新增自动历史读取，保留既有同 BV 补看记忆提示与自主检索；公开回忆投影拒绝显式私密记录。
+- 原 `stop/skip` 增加可选整数 `resumeAfterMinutes`（15–360，旧输出默认60）；在同一契机的原休息账本落地，以实际 `nextAt` 投影原 Episode，不虚构暂停成功。不新增闹钟、任务、唤醒承诺或授权。
+- [自由生活目标与兼容性验收](docs/architecture/2.8.3-current-architecture.md#自由生活的目标形态与验收)：保留人格/兴趣/情绪/活体记忆及原事实归属，工具只是能力，不把生活收敛成任务完成率。通用自主目标、跨轮恢复及全局认知仍待接线；真实长程行为待验收。
+
 ## 2.8.3-dev.53 · 共享视频写入注册与真实回执归属
 
 - 原共享工具目录新增四种后台既有写路由，和只读路由区分 risk；归并常用读取的能力语义标识但不互换场景授权。原菜单、权限标志与 Python 适配器取用同一写入注册定义。

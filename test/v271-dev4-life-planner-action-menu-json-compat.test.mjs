@@ -218,3 +218,32 @@ test('dev53 registry groups shared semantics without granting aliases or autonom
  assert.deepEqual(await run('episode','like_video'),{ok:true,status:'verified'},'already-dispatched result must settle even when authorization changes')
  assert.equal((await run('episode','like_video')).attempted,false);assert.equal(calls,1)
 })
+
+// The same role gets fresh life context even before any focus menu exists.
+// Explicit memory reads remain optional; changing mood is not an action gate.
+test('dev54 ordinary Episode uses fresh state and interests on each choice without automatic historical expansion',()=>inDir(async dir=>{
+ const id='0123456789abcdef01234567',bvid='BV1abcde1234',other='BV1abcde5678',prompts=[],worldReads=[]
+ let state={ok:true,enabled:true,mood:'curious',energy:62,sociality:49,curiosity:81,history:[{preview:'private-emotion-cause'}]},topic='第一份兴趣',reads=0,pauses=0
+ const row={id,source:'inspected-opportunity',sourceId:'friend-shared-bili-link:'+id,status:'inspected',selectedBvid:bvid,selectedTitle:'当前公开视频',metadataAt:NOW-1000,expiresAt:NOW+60000,nextAt:NOW-1000,episodeSteps:1,episodeMaxSteps:5,visitedBvids:[bvid]}
+ const planner=createAutonomousPlanner({dataDir:dir,getConfig:()=>({...config(),visionEnabled:false}),getTodos:()=>[],now:()=>NOW,getLifeAccountTag:()=>TAG,
+  getLifeIntentions:()=>[row],getLifeState:()=>state,getLifeWorldEvidence:opts=>{worldReads.push(opts.includeMemories);return {interests:[{topic,stage:'growing'}],episodes:[{kind:'watch',stage:'clear',bvid:other,summary:'unrequested-history-marker'}]}},
+  getLifeVoice:()=> '同一角色人格',canLifeRecallPublicVideo:()=>true,validateLifeVideoMemory:()=>true,
+  getRecentLifeVideoMemory:async opts=>{if(opts.recentFallback!==false)return [];reads++;state={...state,mood:'tired',energy:9,curiosity:17};topic='更新后的兴趣';return [{bvid:other,title:'模型自主选择的旧观察',sceneNotes:['真实旧观察'],recallRoute:'direct'}]},
+  observeLifeVideoMemory:()=>{},pauseLifeExploration:()=>{pauses++;return {ok:true}},
+  invokeModel:async p=>{prompts.push(p);assert.doesNotMatch(p,/private-emotion-cause/);if(prompts.length===1)return JSON.stringify({action:'resume_episode',id});
+    assert.doesNotMatch(p,/unrequested-history-marker/);assert.match(p,/同一角色人格/);
+    if(prompts.length===2){assert.match(p,/第一份兴趣/);assert.match(p,/"energy":62/);assert.match(p,/"sociality":49/);return JSON.stringify({action:'recall_public_experience',id,recallQueries:['旧场景']})}
+    assert.match(p,/更新后的兴趣/);assert.match(p,/"energy":9/);assert.match(p,/模型自主选择的旧观察/);return JSON.stringify({action:'stop',stopReasonCode:'rest'})},
+  executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
+ const result=await planner.tick();assert.equal(result.action,'resume_episode');assert.equal(result.continuation.reason,'fish-chose-rest');assert.equal(pauses,1);assert.equal(reads,1);assert.equal(row.episodeSteps,1);assert.deepEqual(worldReads,[undefined,false,false]);assert.equal(prompts.length,3)
+}))
+
+test('dev54 disabled state is not projected as actual emotion in initial or continuation decision',()=>inDir(async dir=>{
+ const id='0123456789abcdef01234567',bvid='BV1abcde1234',prompts=[];let reads=0
+ const row={id,source:'inspected-opportunity',sourceId:'friend-shared-bili-link:'+id,status:'inspected',selectedBvid:bvid,selectedTitle:'当前视频',metadataAt:NOW-1000,expiresAt:NOW+60000,nextAt:NOW-1000,episodeSteps:1,episodeMaxSteps:5,visitedBvids:[bvid]}
+ const planner=createAutonomousPlanner({dataDir:dir,getConfig:config,getTodos:()=>[],now:()=>NOW,getLifeAccountTag:()=>TAG,getLifeIntentions:()=>[row],getLifeState:()=>({enabled:false,energy:1,mood:'sad'}),
+  canLifeObserveVideo:()=>false,executeCreatorSpace:async()=>{reads++;return {ok:true}},inspectLifeCreatorSpace:()=>{row.episodeSteps++;row.creatorExploredBvids=[bvid];return {ok:true}},
+  invokeModel:async p=>{prompts.push(p);assert.match(p,/"lifeState":\{"status":"disabled"\}/);assert.doesNotMatch(p,/"energy":1|"mood":"sad"/);return JSON.stringify({action:prompts.length===1?'resume_episode':'inspect_creator_space',id})},
+  executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
+ const result=await planner.tick();assert.equal(result.action,'resume_episode');assert.equal(reads,1);assert.equal(row.episodeSteps,2);assert.equal(prompts.length,2)
+}))

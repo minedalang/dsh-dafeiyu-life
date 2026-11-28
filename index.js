@@ -8205,7 +8205,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     getLifeState:()=>emotionalState.snapshot(),
     getSubagentEpisodeContext:(agent,sourceRef='')=>lifeSubagentHandoff({agent,episodes:universalLifeEpisodes,sourceRef}),
     getLifeVoice:()=>lifeVoiceContext({scene:'main',maxChars:1900}),
-    getLifeWorldEvidence:({query=''})=>{
+    getLifeWorldEvidence:({query='',includeMemories=true})=>{
       // Public read-only memory gateway, after its current forgetting and
       // domain-privacy gates; never query DM/private-social here.
       const interests=selectionInterests(stateDir,Date.now(),4,cfg.coreInterestTopics)
@@ -8213,7 +8213,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // A memory backend failure must not erase independent interest signals.
       const memoryQuery=query||interests[0]?.topic||''
       let episodes=[]
-      if(memoryQuery&&cfg.mainSessionMemoryEnabled===true&&lifeMemory){
+      if(includeMemories===true&&memoryQuery&&cfg.mainSessionMemoryEnabled===true&&lifeMemory){
         try{episodes=lifeMemory.recall({query:memoryQuery,domain:'bili-explore',
           kinds:['watch'],maxItems:2,maxChars:420,reinforce:false})}catch{}
       }

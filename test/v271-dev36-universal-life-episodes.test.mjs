@@ -87,7 +87,7 @@ test('video child verified step + a fresh Life resume choice carries 3–5 linke
   {action:'inspect_exploration',id:first.id,bvid:BV},
   {action:'inspect_creator_space',id:first.id},
   {action:'inspect_exploration',id:first.id,bvid:BV2},
-  {action:'stop'}]
+  {action:'stop',stopReasonCode:'rest',resumeAfterMinutes:35}]
  const planner=createAutonomousPlanner({dataDir:dir,now:()=>time,getConfig:()=>config,getTodos:()=>[],
   getLifeAccountTag:()=>scope,getLifeEpisodeContext:()=>context.list(),isLifeEpisodeDue:()=>context.due({eligibleSources:life.continuations().map(x=>'intention:'+x.id)}),
   getLifeEpisodeSourceState:ref=>context.sourceState(ref),
@@ -114,6 +114,8 @@ test('video child verified step + a fresh Life resume choice carries 3–5 linke
  assert.match(prompts[0],/recentLifeEpisodes/)
  const e=context.list()[0]
  assert.equal(e.steps,4);assert.equal(e.status,'paused')
+ assert.equal(e.nextAt,time+35*60_000)
+ assert.equal(life.intentions({includeClosed:true}).find(x=>x.id===first.id).nextAt,e.nextAt)
  assert.deepEqual(e.history.filter(x=>x.outcome==='verified').map(x=>x.action),[
   'browse_home','inspect_exploration','inspect_creator_space','inspect_exploration'])
  assert.equal(result.continuation.reason,'fish-chose-rest')

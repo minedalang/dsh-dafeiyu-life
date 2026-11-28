@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync,readFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {projectLifeWorldEvidence,projectLifeIntegrationStatus} from '../lib/life-system-integration.mjs'
+import {projectLifeWorldEvidence,projectLifeIntegrationStatus,projectLifeDecisionState} from '../lib/life-system-integration.mjs'
 import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
 import {createLifeAgentEvents} from '../lib/life-agent-events.mjs'
 import {lifeSettingsV2} from '../lib/life-settings-control.mjs'
@@ -17,6 +17,7 @@ test('public world projection keeps only eligible interests and still-clear veri
   {topic:'美食',stage:'core'},{topic:'旧话题',stage:'unknown'},...Array.from({length:12},(_,i)=>({topic:'兴趣'+i,stage:'emerging'}))]
  const episodes=[{kind:'private-social',stage:'clear',bvid:BVID,summary:'别人的私信'},
   {kind:'watch',stage:'forgotten',bvid:BVID,summary:'已遗忘的长篇'},
+  {kind:'watch',stage:'clear',visibility:'private-session',bvid:BVID,summary:'私下观看的内容'},
   {kind:'watch',stage:'fuzzy',bvid:BVID,summary:'已模糊不可传的正文'},
   {kind:'watch',stage:'clear',bvid:'bad-uid',summary:'无可信 BV'},
   {kind:'watch',stage:'clear',bvid:BVID,summary:'公开音乐 元数据'},
@@ -30,7 +31,7 @@ test('public world projection keeps only eligible interests and still-clear veri
  assert.equal(x.relatedPublicMemories.length,2)
  assert.deepEqual(x.relatedPublicMemories.map(row=>row.bvid),[BVID,'BV1xx411c7mD'])
  assert.ok(x.relatedPublicMemories.every(row=>row.evidence.includes('metadata')))
- assert.doesNotMatch(JSON.stringify(x),/别人的私信|已遗忘|已模糊|hidden|bad-uid|第三条|同 BV 重复/)
+ assert.doesNotMatch(JSON.stringify(x),/别人的私信|私下观看的内容|已遗忘|已模糊|hidden|bad-uid|第三条|同 BV 重复/)
  assert.deepEqual({interests,episodes},snapshot)
 })
 
@@ -119,4 +120,13 @@ test('dev.7 still preserves previously saved legacy V2 values without implicit m
  assert.equal(lifeSettingsV2(c).pace,'legacy-natural')
  assert.equal(c.autonomousPlannerMinutes,60)
  assert.equal(c.autonomousPlannerDailyLimit,12)
+})
+
+test('dev54 decision state projects actual current role values, not private history or fabricated defaults',()=>{
+ const raw={ok:true,enabled:true,mood:'curious',energy:32,curiosity:70.4,sociality:21,valence:-6,intensity:51,history:[{preview:'secret-private-chat'}]}
+ assert.deepEqual(projectLifeDecisionState(raw),{status:'current',energy:32,curiosity:70,sociality:21,valence:-6,intensity:51,mood:'curious'})
+ assert.deepEqual(projectLifeDecisionState({...raw,enabled:false}),{status:'disabled'})
+ assert.deepEqual(projectLifeDecisionState({...raw,ok:false}),{status:'unavailable'})
+ assert.deepEqual(projectLifeDecisionState({}),{status:'unavailable'})
+ assert.deepEqual(projectLifeDecisionState({energy:120,valence:-150,curiosity:null,mood:'private'}),{status:'current',energy:100,valence:-100})
 })
