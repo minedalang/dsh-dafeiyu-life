@@ -32,21 +32,25 @@ class PerBoardVision(unittest.TestCase):
             return output, worker.call_args_list
 
     def test_host_binds_exact_cells_to_fractional_sample_clocks(self):
-        boards=[{'rank':j,'second':6010.4+j*13,'tile_count':12,'bytes':b'jpeg',
+        boards=[{'rank':j,'second':6010.4+j*13,'tile_count':12,'bytes':bytes([65+j]),
                  'tile_times':[6010.4+j*13+i for i in range(12)],'grid_cols':4,'grid_rows':3} for j in range(2)]
         def cells(b):
             return '\n'.join(f'- **R{i//4+1}C{i%4+1}**：不同格子的可见画面。' for i in range(12))+'\n视觉记忆摘要：只归纳可见场景。'
         class Reply:
             def __enter__(self):return self
             def __exit__(self,*_):pass
-            def read(self,n):return json.dumps({'message':{'content':'\n'.join(f'分镜图{b["rank"]+1}：\n{cells(b)}' for b in boards)},'done':True,'done_reason':'stop'}).encode()
+            def __init__(self,board):self.board=board
+            def read(self,n):return json.dumps({'message':{'content':f'分镜图{self.board["rank"]+1}：\n'+cells(self.board)},'done':True,'done_reason':'stop'}).encode()
         class Opener:
             def open(self,req,timeout=None):
                 data=json.loads(req.data)
                 assert '采样时刻由程序绑定' in data['messages'][0]['content']
                 assert 'R1C1=[' not in data['messages'][0]['content']
-                assert len(data['messages'][0]['images'])==2
-                return Reply()
+                assert len(data['messages'][0]['images'])==1
+                import base64
+                jpg=base64.b64decode(data['messages'][0]['images'][0])
+                board=next(b for b in boards if b['bytes']==jpg)
+                return Reply(board)
         with patch('urllib.request.build_opener',return_value=Opener()):
             text,receipts=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
         self.assertEqual([r['status'] for r in receipts],['analyzed','analyzed'])
@@ -268,10 +272,39 @@ class PerBoardVision(unittest.TestCase):
             raise pv.VisionServiceError('ollama_connection_failed','服务连接中断')
         with patch.object(pv,'_call_local_ollama',side_effect=infer) as worker:
             _,reports=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
-        self.assertEqual(worker.call_count,2,'a broken service cannot be fixed by retrying the next board')
-        self.assertEqual([r['modelAttempts'] for r in reports],[2,1])
-        self.assertEqual(reports[1]['errorCode'],'vision_board_unsegmented')
+        self.assertEqual(worker.call_count,1,'a broken service cannot be fixed by retrying the next board')
+        self.assertEqual([r['modelAttempts'] for r in reports],[1,0])
+        self.assertEqual(reports[1]['errorCode'],'ollama_connection_failed')
+        self.assertTrue(reports[1]['skippedAfterFailure'])
         self.assertEqual(reports[0]['errorCode'],'ollama_connection_failed')
+
+    def test_qwen2b_48_frames_independent_and_no_retry(self):
+        boards=[{'rank':i,'second':i*12,'bytes':bytes([65+i]),'tile_count':12,
+                 'tile_times':list(range(i*12,i*12+12)),'grid_cols':4,'grid_rows':3} for i in range(4)]
+        calls=[]
+        def infer(group,model):
+            self.assertEqual(len(group),1)
+            board=group[0];calls.append(board['rank'])
+            if board['rank']==1:return 'R1C1：游戏界面出现倒计时01:30。'
+            return '\n'.join(f'R{j//4+1}C{j%4+1}：屏幕显示12:45，提示等待10秒。' for j in range(12))
+        with patch.object(pv,'_call_local_ollama',side_effect=infer):
+            text,reports=pv._analyze_local_storyboards(boards,'qwen3.5:2b')
+        self.assertEqual(calls,[0,1,2,3])
+        self.assertEqual([r['status'] for r in reports],['analyzed','incomplete','analyzed','analyzed'])
+        self.assertEqual([r['modelAttempts'] for r in reports],[1]*4)
+        self.assertEqual(reports[1]['partialCells'][0]['time'],12)
+        self.assertIn('屏幕显示12:45',text)
+
+    def test_visible_clocks_are_not_sample_anchors_but_wrong_structural_time_is(self):
+        b={'rank':1,'second':207,'tile_times':[207,241],'grid_cols':2,'grid_rows':1,'tile_count':2,'bytes':b'jpeg'}
+        good='分镜图2：\nR1C1：画面时钟12:45。\nR1C2：屏幕提示等待10秒。\n视觉记忆摘要：出现01:30的倒计时。'
+        for raw,expected in [(good,True),(good.replace('分镜图2','分镜图1'),False),
+                             (good.replace('R1C1：','R1C1 [00:11]：'),False),
+                             ('R1C1 [04:01]：画面。\nR1C2 [03:27]：画面。',False),
+                             ('R1C1 [03:27]：时钟12:45。\nR1C2 [04:01]：等待10秒。',True)]:
+            with self.subTest(raw=raw),patch.object(pv,'_call_local_ollama',return_value=raw):
+                _,rows=pv._analyze_local_storyboards([b],'qwen3.5:2b')
+                self.assertEqual(rows[0]['status']=='analyzed',expected)
 
     def test_cached_thumbnail_novelty_matches_legacy_greedy_choice(self):
         rng=random.Random(2048)

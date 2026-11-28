@@ -60,7 +60,7 @@ class VisualBoardAlignmentTests(unittest.TestCase):
             out=pv.analyze_perception(BV,folder,perception_source='adaptive',
                     enabled=True,provider='ollama',model='qwen3.5:2b',max_frames=24)
             self.assertEqual(out['status'],'analyzed',out)
-            self.assertEqual(calls,[[0,1]])
+            self.assertEqual(calls,[[0],[1]])
             self.assertEqual([r['status'] for r in out['visionBoardReceipts']],['analyzed']*2)
             self.assertTrue(out.get('cacheSaved'))
             with patch.object(av,'acquire_adaptive_frames',side_effect=AssertionError('should use new verified cache')):
@@ -72,10 +72,9 @@ class VisualBoardAlignmentTests(unittest.TestCase):
     def test_real_decoded_partial_response_never_cached_or_marked_seen(self):
         boards=[board(0),board(1)]
         def inference(group,model,**_):
-            if len(group)==2:
-                return '分镜图1：\n'+observed(boards[0])+\
-                       '\n分镜图2：\nR1C1 [00:30]：只完成一个格子。'
-            return 'R1C1 [00:30]：仍然只完成一格。'
+            self.assertEqual(len(group),1)
+            if group[0]['rank']==0:return observed(group[0])
+            return 'R1C1 [00:30]：只完成一个格子。'
         with TemporaryDirectory() as folder, \
              patch.object(av,'acquire_adaptive_frames',return_value=fake_frames(boards)), \
              patch.object(pv,'_call_local_ollama',side_effect=inference) as work, \

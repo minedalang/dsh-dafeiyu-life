@@ -84,3 +84,12 @@ test('shared link, fresh visual, cached visual and speech-only cards remain dist
  const rows=buildLifeTimeline({now:T+10000,lifeDecisions:[['inspect_shared_link','shared-link-inspected'],['observe_video','shared-video-visual-observed'],['observe_video','shared-video-cached-observation'],['observe_video','shared-video-speech-read'],['observe_video','shared-video-no-evidence']].map(([action,result],i)=>({at:T+i,mode:'active',action,result}))})
  assert.equal(rows.length,4);assert.deepEqual(new Set(rows.map(x=>x.label)),new Set(['公开分享','视频观察','视频回顾','视频文字']));assert.match(rows.find(x=>x.label==='视频文字').detail,/未核验画面/)
 })
+
+
+test('only a verified fresh shared observation exposes its own gallery reference in the diary',()=>{
+ const ref='c'.repeat(32),base={at:T,mode:'active',action:'observe_video',visualGalleryId:ref}
+ const rows=buildLifeTimeline({now:T+10000,lifeDecisions:[{...base,result:'shared-video-visual-observed'},{...base,at:T+1,result:'shared-video-cached-observation'},{...base,at:T+2,result:'shared-video-speech-read'},{...base,at:T+3,result:'shared-video-visual-observed',failed:true}]})
+ assert.equal(rows.filter(r=>r.visualGalleryId).length,1)
+ assert.equal(rows.find(r=>r.label==='视频观察').visualGalleryId,ref)
+ assert.equal(rows.find(r=>r.label==='视频回顾').visualGalleryId,undefined)
+})

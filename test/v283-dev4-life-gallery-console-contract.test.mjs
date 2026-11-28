@@ -181,3 +181,19 @@ test('gallery frame zoom uses exact selected cell text and keeps full visual res
  assert.match(js,/条带＝多格或区间合并描述（非连续观看）/)
  assert.equal((server.match(/boardReceipts:(?:parseMaybeJson\(vision\)|visual)\?\.visionBoardReceipts/g)||[]).length,4)
 })
+
+
+test('shared action uses exact gallery ID and never falls back to a nearby observation',()=>{
+ const start=js.indexOf('  const galleryForTimelineButton=')
+ const end=js.indexOf('  const refreshGalleryTimelineActions=',start)
+ const wanted='a'.repeat(32),other='b'.repeat(32),bv='BV1234567890'
+ const ctx={lifeGalleryRecords:[{id:other,bvid:bv,at:Date.now()},{id:wanted,bvid:bv,at:Date.now()-1000}],galleryForAction:()=>{throw Error('must not fall back')}}
+ runInNewContext(js.slice(start,end)+'globalThis.find=galleryForTimelineButton',ctx)
+ assert.equal(ctx.find({dataset:{galleryId:wanted,bvid:bv,observedAt:'200'}}).id,wanted)
+ ctx.lifeGalleryRecords[1].at=Date.now()-12*3600_000
+ assert.equal(ctx.find({dataset:{galleryId:wanted,bvid:bv,observedAt:'200'}}),null)
+ ctx.lifeGalleryRecords=[ctx.lifeGalleryRecords[0]]
+ assert.equal(ctx.find({dataset:{galleryId:wanted,bvid:bv,observedAt:'200'}}),null)
+ assert.match(server,/onGallerySaved:id=>\{sharedGalleryId=id\}/)
+ assert.match(server,/visualGalleryId:code==='shared-video-visual-observed'&&socialPolicyGate.actor\(input.uid\).role==='owner'\?sharedGalleryId/)
+})

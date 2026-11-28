@@ -476,16 +476,16 @@ def _local_board_time_valid(answer, allowed):
     This does NOT verify the semantic scene assigned to that timestamp.
     """
     allowed=[float(t) for t in allowed]
-    for minute,second in re.findall(r'(?<![\d:])([0-9]{1,3}):([0-5][0-9])(?!\d)',answer):
-        at=int(minute)*60+int(second)
+    # Only structural sample anchors count, not clocks, countdowns or durations
+    # visible in the scene description. The exact cell-to-time binding is
+    # independently checked by _local_board_cell_times_valid.
+    for match in _board_observation_lines(answer):
+        at=int(match[3])*60+int(match[4])
         if not any(int(t)==at for t in allowed):return False
-    for value in re.findall(r'(?<![\d.])([0-9]{1,5}(?:\.[0-9])?)\s*秒',answer):
+    # Legacy explicit leading seconds anchors (not prose containing seconds).
+    for value in re.findall(r'(?m)^\s*(?:[0-9]+[.)]\s*)?([0-9]{1,5}(?:\.[0-9]+)?)\s*秒\s*[：:]',answer):
         at=float(value)
-        # Explicit decimals are exact source times; integer seconds may be
-        # the abbreviated clock label printed in the montage.
-        valid=(any(abs(t-at)<=0.11 for t in allowed) if '.' in value else
-               any(int(t)==int(at) for t in allowed))
-        if not valid:return False
+        if not (any(abs(t-at)<=0.11 for t in allowed) if '.' in value else any(int(t)==int(at) for t in allowed)):return False
     return True
 
 
@@ -753,6 +753,10 @@ def _normalize_board_cells(answer, board):
     times=list(board.get('tile_times') or [])
     cols=int(board.get('grid_cols') or 4)
     if not times or cols<1 or not _local_board_time_valid(answer,times):return None
+    heading=re.match(r'^(?:\*\*)?分镜图([1-9][0-9]?)[ \t]*[：:](?:\*\*)?[ \t]*\r?\n',answer)
+    if heading:
+        if int(heading[1])!=int(board.get('rank',0))+1:return None
+        answer=answer[heading.end():]
     rows={}
     summary=None
     protocol=None
@@ -779,10 +783,10 @@ def _normalize_board_cells(answer, board):
         protocol=mode
         if timed and int(timed[3])*60+int(timed[4])!=int(float(times[idx])):return None
         body=(timed[5] if timed else cell[3]).strip()
-        if not timed and not _local_board_time_valid(body,[]):return None
+        if not timed and re.match(r'^(?:\[[0-9]{1,3}:[0-5][0-9]\]|[0-9]{1,5}(?:\.[0-9]+)?\s*秒)\s*[：:]',body):return None
         if not body or body.rstrip('。.!！') in ('未完成','未识别','未观察','无描述'):return None
         rows[idx]=f'R{row}C{col} [{_board_clock(times[idx])}]：{body}'
-    if not rows or (protocol=='cell' and not _local_board_time_valid(answer,[])):return None
+    if not rows:return None
     return rows,summary
 
 
@@ -846,6 +850,8 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
                 raise ValueError('分镜描述未逐格覆盖或引用了不存在的行列')
             if not _local_board_cell_times_valid(description,board):
                 raise ValueError('逐格时间码与实际采样时间点不匹配')
+            if _normalize_board_cells(description,board) is None:
+                raise ValueError('分镜格号或结构存在歧义')
             receipt.update(status='analyzed',description=description,inferencePath=path)
             receipt.pop('partialCells',None)
             receipt.pop('error',None)
@@ -886,15 +892,18 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
     terminal_codes=frozenset(('ollama_request_timeout','ollama_service_offline',
         'ollama_model_missing','ollama_connection_failed','ollama_http_error'))
     terminal_error=None
-    # Batch at most two images: a large 48-frame overview forms two separate
-    # bounded batches. The provider/model, account and sample gate are unchanged.
-    for start in range(0,len(frames),2):
+    # Qwen3.5 2B has repeatedly failed multi-image structure in real 24-frame
+    # observations. Bind one request to one board for this model across ALL
+    # callers. Other models keep their bounded paired optimization. No retry
+    # of an individual board; the same deadline and per-request caps apply.
+    batch_size=1 if model=='qwen3.5:2b' else 2
+    for start in range(0,len(frames),batch_size):
         if terminal_error is not None:
-            for i in range(start,min(start+2,len(frames))):
+            for i in range(start,min(start+batch_size,len(frames))):
                 fail(i,terminal_error)
                 reports[i]['skippedAfterFailure']=True
             continue
-        batch=frames[start:start+2]
+        batch=frames[start:start+batch_size]
         if len(batch)>1 and deadline-time.monotonic()>=4:
             current=[{**b,'_inference_timeout_seconds':min(140,deadline-time.monotonic())} for b in batch]
             for i in range(start,start+len(batch)):

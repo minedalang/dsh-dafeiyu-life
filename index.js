@@ -2600,7 +2600,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
             note:String(perceptionHandoff?.video?.modelDescription||'').slice(0,380),
             analysis:parseMaybeJson(vision)?.description,boardReceipts:parseMaybeJson(vision)?.visionBoardReceipts,memoryWrite})
           if(result.ok!==true)log('Life 视觉回放图片未保存：'+String(result.reason||'unknown'))
-          else log('Life 视觉回放：真实观察缓存已保存（12小时有效）')
+          else{log('Life 视觉回放：真实观察缓存已保存（12小时有效）');internal.onGallerySaved?.(result.id)}
         }
       }catch(error){log('Life 视觉回放图片异常：'+String(error.message||error).slice(0,100))}
     }
@@ -5039,11 +5039,11 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const current=()=>{const p=getSessionIntegration();return epoch===accountBinding.generation()&&p.mode===policy.mode&&p.revision===policy.revision&&currentSharedVideoTarget(input,lifeSharedBiliLinks.get(row.id,scope),scope)}
     let trace
     try{trace=lifeDecisionTrace.begin({mode:'active',trigger:'shared-video-read'});trace.step('model-choice',{action:'observe_video',code:'model-accepted',origin:'social-event'});trace.step('action-start',{action:'observe_video'})}catch{}
-    let observed
+    let observed,sharedGalleryId=''
     try{
       const result=await lifeResourceScheduler.run({lane:'continuation',resources:{vision:1},waitMs:12_000},()=>withLifeVideoVisualLease(stateDir,{accountTag:scope,bvid:row.bvid},async()=>{
         if(!current())return {ok:false,reason:'authorization-changed'}
-        return executeWatchVideo({bvid:row.bvid,record_session:false,include_comments:false,include_danmaku:false,view_depth:'standard',explorationPurpose:'shared-video-observation'},{lifeChoiceVerified:true,sharedLinkId:row.id,readCurrent:current,galleryReadCurrent:()=>current()&&socialPolicyGate.actor(input.uid).role==='owner'})
+        return executeWatchVideo({bvid:row.bvid,record_session:false,include_comments:false,include_danmaku:false,view_depth:'standard',explorationPurpose:'shared-video-observation'},{lifeChoiceVerified:true,sharedLinkId:row.id,readCurrent:current,galleryReadCurrent:()=>current()&&socialPolicyGate.actor(input.uid).role==='owner',onGallerySaved:id=>{sharedGalleryId=id}})
       }))
       if(!current())observed=sharedVideoReadFailure('authorization-changed')
       else if(result?.ok!==true)observed=sharedVideoReadFailure(result?.reason)
@@ -5062,7 +5062,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         ...(!observed.visualObserved?{visualStatus:failure?.status||'visual-read-unverified',visionFailureCode:failure?.code,visionBoardsTotal:failure?.boardsTotal,visionBoardsFailed:failure?.boardsFailed}: {})})
       trace?.finish({state:'finished',action:'observe_video',result:code})
     }catch{}
-    if(observed.verified&&current())try{lifeAgentEvents.recordDecision({eventIds:[],action:'observe_video',result:code,targetId:row.id,mode:'active',decisionOrigin:'social'})}catch(e){log('分享视频经历记录失败：'+String(e?.message||e).slice(0,90))}
+    if(observed.verified&&current())try{lifeAgentEvents.recordDecision({eventIds:[],action:'observe_video',result:code,targetId:row.id,mode:'active',decisionOrigin:'social',visualGalleryId:code==='shared-video-visual-observed'&&socialPolicyGate.actor(input.uid).role==='owner'?sharedGalleryId:''})}catch(e){log('分享视频经历记录失败：'+String(e?.message||e).slice(0,90))}
     log('私信分享视频只读回执：'+code)
     return observed
   }

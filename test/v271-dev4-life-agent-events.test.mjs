@@ -208,3 +208,15 @@ test('shared-link and separate video observation receipts can be journaled witho
  for(const [action,result] of [['inspect_shared_link','shared-link-inspected'],['inspect_related_content','shared-link-inspected'],['observe_video','shared-video-visual-observed'],['observe_video','shared-video-cached-observation'],['observe_video','shared-video-speech-read']])events.recordDecision({eventIds:[],action,result,targetId:'private-share-12345',mode:'active',decisionOrigin:'social'})
  const rows=events.status().timeline;assert.equal(rows.length,5);assert.ok(rows.every(r=>r.verifiedActionKind===''&&!r.followupQueued));assert.doesNotMatch(JSON.stringify(rows),/private-share-12345/);assert.equal(events.status().pending,0)
 }))
+
+
+test('only a fresh successful shared-video decision retains the exact opaque gallery reference, scoped to the same account',()=>withHome(dir=>{
+ let account=A;const events=createLifeAgentEvents({stateDir:dir,getAccountTag:()=>account,now:start})
+ const galleryId='c'.repeat(32)
+ for(const [result,mode,failed,id] of [['shared-video-visual-observed','active',false,galleryId],['shared-video-cached-observation','active',false,galleryId],['shared-video-speech-read','active',false,galleryId],['shared-video-visual-observed','shadow',false,galleryId],['shared-video-visual-observed','active',true,galleryId],['shared-video-visual-observed','active',false,'private-invalid']])
+  events.recordDecision({action:'observe_video',result,mode,failed,visualGalleryId:id})
+ const rows=events.status().timeline.filter(r=>r.visualGalleryId)
+ assert.equal(rows.length,1);assert.equal(rows[0].visualGalleryId,galleryId)
+ account=B;assert.equal(events.status().timeline.length,0)
+ account=A;assert.equal(events.status().timeline.filter(r=>r.visualGalleryId).length,1)
+}))
