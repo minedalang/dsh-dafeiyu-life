@@ -10,6 +10,23 @@ dev.56 注册数量不变：原 Episode 在社交模型需要资源时可在安�
 
 dev.66：另有独立主人私密读取 `bili_read_dm`（不进入共享注册）：当前绑定且已领取的真实主人轮次、主人原消息含准确 UID、confirm=true、账号与会话复核、原 DM 请求预算；最多20条，不写记忆或发送。无 DSH GO 实机验证。
 
+## dev.68 主 Session 全工具自主意愿审计（增量，尚未全收口）
+
+源码注册入口：`index.js` 的 `tool` / `readTool`（全局 B站工具）与 `lib/long-term-memory.mjs` 的 `chosenTool`（已绑定主 Session 工具）。以下为静态注册分类，不等于当前宿主实际可用清单；有些能力按模式和配置挂载。原则为主人请求不等于 Life 同意。普通角色选择可由统一主体在宿主原轮中表达，但不能把 `confirm` 当作批准；需要明确票据的敏感披露和写入需绑定原实际动作。已有复合 Life 执行不得再次持锁投票。
+
+| 分类 | 工具 | 当前门禁 / 尚需完善 |
+|---|---|---|
+| 私信正文披露 | `bili_read_dm` | dev.68 已接原统一意愿引擎；真实轮次、精确 UID/limit、一次批准，拒绝/延期/错误不取正文。 |
+| 私人账户及社交信息 | `bili_whoami`, `bili_dm_contact_lookup`, `bili_creator_relation_status`, `bili_favorite_lists`, `bili_favorite_content`, `bili_unread_messages`, `bili_received_replies`, `bili_received_at_and_likes`, `bili_home_recommendations`, `bili_status` | 原读取范围/账号保护与宿主模型选择；尚无同等披露硬门禁，按私有/公开目标细分。 |
+| 私人回忆与观察/意愿清单 | `bili_growth_recall`, `bili_experience_recall`, `dafeiyu_memory_recall`, `dafeiyu_life_recall`, `dafeiyu_todo_list`, `dafeiyu_recent_observations`, `dafeiyu_observation_detail`, `dafeiyu_share_observation` | 原读域、活体证据、已绑定会话、附件前置检查保留；需统一明确披露意愿（含仅记忆/无B站账号场景），不把工具结果可见当成内部回忆；拒绝不允许旁路。 |
+| 公开普通读取 | `bili_video_info`, `bili_comment_thread`, `bili_danmaku`, `bili_video_zones`, `bili_hot_videos`, `bili_hot_buzzwords`, `bili_weekly_hot`, `bili_rank`, `bili_user_info`, `bili_user_videos`, `bili_dynamic_comment_context`, `bili_search`, `bili_subtitle`, `bili_comments` | 当前宿主工具选择与原读取网关；需确认真实 Life 主体归属，不按工具可用强制执行。 |
+| 外部写入 | `bili_video_like`, `bili_video_collect_manual`, `bili_follow_creator_manual`, `bili_unfollow_creator_manual`, `bili_comment_manual`, `bili_dynamic_comment_manual`, `bili_send_message_manual`, `bili_reply_existing_dm_manual`, `bili_reply` | 原明确确认、额度、授权与执行保护；逐项补齐真实主人来源和精确 Life 意愿绑定，不能用 confirm=true 替代。 |
+| 复合行动 | `bili_watch_video`, `bili_life_consider_video`, `bili_video_revisit_moment`, `bili_run`, `dafeiyu_todo_execute` | 部分已有 Life 意愿（consider/revisit），逐路径核对原意愿和执行，不在持锁期间重新请求同一引擎。 |
+| 角色内部选择 | `dafeiyu_chat_burst`, `dafeiyu_remember`, `dafeiyu_todo_add`, `dafeiyu_todo_update`, `dafeiyu_feel` | 原主 Session 当前模型选择与原事务校验；需核对真实主体、原请求、意愿/事实区别及历史固定规则，不强迫记忆或待办。 |
+| 主人管理委托 | `bili_login_start`, `bili_login_poll`, `bili_setup`, `bili_config` | 区分角色代办与主人直接管理权，禁止把凭据/密钥当作可披露的角色隐私；不让 Life 否决主人停机、撤权或管理自己数据。保持原宿主设置与恢复边界。 |
+
+本批未将以上未完成项伪装为已有硬门禁；全工具统一收口仍为正式版验收要求。现有共享注册数量未改变。
+
 ## 0. dev.53 共享注册新增的四个既有写入路由
 
 共享目录共 59 个场景路由：55 读取、4 写入。下表不代表开放给其他场景。`registeredLifeTool` 提供 risk 与 capability；相同 capability 仅为语义族，不授权互换适配器或私密目标。仍以当前合法菜单为准。
