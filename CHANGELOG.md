@@ -13,6 +13,12 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.90 · 内置 Qwen 视觉安装及双页面 CPU 试验（非生产）
+
+- 新手引导与 AI 模型页共用内置视觉试验面板，仅开放 Qwen3.5 2B / 4B Q4_K_M 及配套 mmproj 下载与校验，不提供 MiniCPM 新安装。
+- 复用既有 llama.cpp 管理器、下载与哈希校验，独立 CPU 视觉进程及真实固定图自检；可取消、人工核对回答，不把安装或文本返回当作视觉启用。
+- 原 Ollama / DSH 生产后端、用户选择和 Life 回执不变。GPU、真实分镜及生产接线仍待验证。
+
 ## 2.8.3-dev.89 · llama.cpp 视觉独立技术验证（未开放生产）
 
 - 新增维护者离线视觉验证工具：显式指定已下载的 llama-server、GGUF 权重及配套 mmproj，独立环回进程，复用现有分镜提示、批次及真实格号/时间解析；可与 Ollama 使用相同合成样本对照。

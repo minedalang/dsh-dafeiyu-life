@@ -91,3 +91,96 @@ test('模型离线导入失败会清理临时文件且不安装无效模型',asy
     await assert.rejects(access(manager.paths.modelPath+'.import.part'))
   }finally{await rm(root,{recursive:true,force:true})}
 })
+
+test('内置视觉只有两款 Qwen 固定配对，拒绝 MiniCPM 与任意下载输入',async()=>{
+  const {LLAMA_VISION_MODELS,llamaVisionAssetUrl}=await import('../lib/llama-vision-experiment.mjs')
+  const manager=createEmbeddingRuntimeManager({dataDir:'/tmp/dsh-native-vision-catalog',platform:'linux',arch:'x64',fetchImpl:async()=>{throw Error('unexpected network')}})
+  const state=await manager.visionStatus()
+  assert.deepEqual(state.models.map(x=>x.id),['qwen3.5-2b','qwen3.5-4b'])
+  assert.equal(state.productionEnabled,false)
+  assert.throws(()=>manager.runVision('install','minicpm-v4.7-1b'),/仅支持 Qwen/)
+  assert.throws(()=>manager.runVision('install','https://example.invalid/model.gguf'),/仅支持 Qwen/)
+  for(const model of LLAMA_VISION_MODELS)for(const asset of [model.weights,model.mmproj]){
+    assert.equal(asset.sha256.length,64)
+    assert.ok(asset.bytes>0)
+    assert.equal(new URL(llamaVisionAssetUrl(model,asset)).hostname,'huggingface.co')
+    assert.ok(llamaVisionAssetUrl(model,asset).includes('/resolve/'+model.revision+'/'))
+  }
+})
+
+test('视觉下载复用已有 Runtime，损坏文件不安装，Embedding 状态与文件保持',async()=>{
+  const root=await mkdtemp(join(tmpdir(),'dsh-native-vision-download-'))
+  try{
+    const dataDir=join(root,'state'),packageRoot=join(root,'package'),bundle=join(packageRoot,'vendor','embedding-runtime','linux-x64')
+    await mkdir(bundle,{recursive:true});await writeFile(join(bundle,'llama-server'),'fake-runtime')
+    await writeFile(join(bundle,'dsh-runtime-manifest.json'),JSON.stringify({schema:1,version:__test.RUNTIME.version,platform:'linux-x64',sha256:__test.RUNTIME.assets['linux-x64'].sha256,binary:'llama-server'}))
+    const requests=[]
+    const manager=createEmbeddingRuntimeManager({dataDir,packageRoot,platform:'linux',arch:'x64',logger:{warn(){}},fetchImpl:async(url,opts)=>{requests.push(url);return new Response('corrupt')}})
+    await assert.rejects(manager.runVision('install','qwen3.5-2b'),/文件大小不匹配/)
+    const state=await manager.visionStatus()
+    assert.equal(state.progress.phase,'error');assert.equal(state.models[0].filesPresent,false);assert.equal(state.models[0].result,null)
+    assert.ok(requests.length>0&&requests.every(url=>url.includes('Qwen3.5-2B-GGUF')))
+    assert.equal(manager.status().progress.phase,'missing')
+    assert.equal((await manager.inspect()).model.installed,false)
+    assert.equal(await readFile(join(bundle,'llama-server'),'utf8'),'fake-runtime')
+    await assert.rejects(manager.runVision('verify','qwen3.5-2b'),/尚未安装/)
+  }finally{await rm(root,{recursive:true,force:true})}
+})
+
+test('视觉下载期间禁止并行 Runtime 变更，取消不会报告就绪',async()=>{
+  const root=await mkdtemp(join(tmpdir(),'dsh-native-vision-cancel-'))
+  try{
+    let notify;const started=new Promise(r=>notify=r)
+    const manager=createEmbeddingRuntimeManager({dataDir:root,packageRoot:join(root,'empty'),platform:'linux',arch:'x64',logger:{warn(){}},fetchImpl:async(url,{signal})=>{notify();return new Promise((_,reject)=>{if(signal.aborted)reject(signal.reason);else signal.addEventListener('abort',()=>reject(signal.reason),{once:true})})}})
+    const job=manager.runVision('install','qwen3.5-4b');await started
+    assert.equal((await manager.visionStatus()).visionBusy,true)
+    assert.throws(()=>manager.runVision('install','qwen3.5-2b'),/正在安装或测试/)
+    await assert.rejects(manager.install(),/正在维护/)
+    await assert.rejects(manager.removeAssets(),/暂不能删除/)
+    assert.equal(manager.cancelVision(),true)
+    await assert.rejects(job)
+    assert.equal((await manager.visionStatus()).progress.phase,'cancelled')
+    assert.equal((await manager.visionStatus()).busy,false)
+  }finally{await rm(root,{recursive:true,force:true})}
+})
+
+test('内置视觉原图走真实环回 HTTP，严格区分可见回答与思考/截断，并回收自己的进程',async()=>{
+  const {runLlamaVisionImageTest,LLAMA_VISION_MODELS}=await import('../lib/llama-vision-experiment.mjs')
+  const {getLocalVisionTestImage,LOCAL_VISION_TEST_PROMPT}=await import('../lib/local-vision-model-manager.mjs')
+  const {createServer}=await import('node:http');const {EventEmitter}=await import('node:events')
+  let reply,expectedKey,requestBody,closed=0,authHeaders=[]
+  const server=createServer(async(req,res)=>{
+    authHeaders.push(req.headers.authorization)
+    res.setHeader('Content-Type','application/json')
+    if(req.url==='/health'){res.end(JSON.stringify({status:'ok'}));return}
+    const chunks=[];for await(const chunk of req)chunks.push(chunk)
+    requestBody=JSON.parse(Buffer.concat(chunks));res.end(JSON.stringify({choices:[reply]}))
+  })
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve))
+  try{
+    const invoke=()=>runLlamaVisionImageTest({binary:'/fake/llama-server',weights:'/fake/a.gguf',mmproj:'/fake/p.gguf',model:LLAMA_VISION_MODELS[0],port:server.address().port,signal:new AbortController().signal,fetchImpl:fetch,spawnImpl:(file,args,opts)=>{
+      assert.equal(opts.shell,false);assert.equal(args[args.indexOf('--host')+1],'127.0.0.1');assert.equal(args[args.indexOf('--n-gpu-layers')+1],'0')
+      expectedKey='Bearer '+args[args.indexOf('--api-key')+1]
+      const child=new EventEmitter();child.kill=()=>{closed++;child.emit('exit',0);child.emit('close',0);return true};return child
+    }})
+    reply={finish_reason:'stop',message:{content:'模拟原图描述',reasoning_content:'不应成为回答'}}
+    assert.deepEqual(await invoke(),{answer:'模拟原图描述',finishReason:'stop'})
+    assert.equal(authHeaders.at(-1),expectedKey)
+    assert.equal(requestBody.messages[0].content[0].text,LOCAL_VISION_TEST_PROMPT)
+    assert.deepEqual(Buffer.from(requestBody.messages[0].content[1].image_url.url.split(',')[1],'base64'),getLocalVisionTestImage())
+    assert.equal(requestBody.chat_template_kwargs.enable_thinking,false)
+    reply={finish_reason:'length',message:{content:'截断'}};await assert.rejects(invoke(),/未取得完整/)
+    reply={finish_reason:'stop',message:{reasoning_content:'只有思考'}};await assert.rejects(invoke(),/未取得完整/)
+    assert.equal(closed,3)
+  }finally{await new Promise(resolve=>server.close(resolve))}
+})
+
+test('共享 Runtime 管理预约期间试验不可启动，解除后恢复',async()=>{
+  const manager=createEmbeddingRuntimeManager({dataDir:'/tmp/dsh-native-vision-reservation',platform:'linux',arch:'x64'})
+  const release=manager.beginEmbeddingMaintenance()
+  assert.equal((await manager.visionStatus()).busy,true)
+  assert.throws(()=>manager.runVision('install','qwen3.5-2b'),/共享运行时/)
+  assert.throws(()=>manager.beginEmbeddingMaintenance(),/共享运行时/)
+  release()
+  assert.equal((await manager.visionStatus()).busy,false)
+})

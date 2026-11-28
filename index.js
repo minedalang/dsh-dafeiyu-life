@@ -7473,7 +7473,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   embeddingRuntime=createEmbeddingRuntimeManager({dataDir:stateDir,rootDir:storageDataPath(stateDir,'embedding-runtime'),
     modelDir:largeDataStatus(stateDir).embeddingModelDir||undefined,logger:{warn:m=>log('本地语义运行时：'+m)}})
   embeddingIndex=createEmbeddingMemoryIndex({dataDir:stateDir,provider:embeddingRuntime,logger:{warn:m=>log('本地语义索引：'+m)}})
-  ctx.effect(()=>()=>embeddingRuntime?.stop(),'bili-duty: 本地 Embedding Runtime 关闭')
+  ctx.effect(()=>()=>{embeddingRuntime?.cancelVision();embeddingRuntime?.stop()},'bili-duty: 本地 Embedding Runtime 关闭')
   personalityEvolution=createPersonalityEvolution({dataDir:stateDir,memoryGateway:lifeMemory,logger:{warn:m=>log('人格成长：'+m)}})
   // Only NEW installations default to growth enabled. Explicit existing off remains off.
   if(!existsSync(join(stateDir,'personality-evolution','v1.json')))try{personalityEvolution.setEnabled(true)}catch(e){log('初始化人格成长设置失败：'+String(e?.message||e))}
@@ -9460,7 +9460,7 @@ logger:{warn:m=>log('社交意图：'+m)}
     const setupAccess = (req.method==='GET'&&['/api/bili-duty/runtime-logs','/api/bili-duty/runtime-controls'].includes(path)) || (req.method==='POST'&&['/api/bili-duty/runtime-controls','/api/bili-duty/runtime-diagnostics-export'].includes(path)) || (req.method==='GET' && path==='/api/bili-duty/activity-feed') || path==='/api/bili-duty/status' || (req.method==='GET'&&path==='/api/bili-duty/life-agent/scheduler-snapshot') || path==='/api/bili-duty/config' || path==='/api/bili-duty/onboarding/status' ||
       path.startsWith('/api/bili-duty/onboarding/') || path.startsWith('/api/bili-duty/headless-model/') ||
       path.startsWith('/api/bili-duty/login/') || path.startsWith('/api/bili-duty/account/') || (req.method==='GET' && path==='/api/bili-duty/main-session') || (req.method==='GET' && path==='/api/bili-duty/main-session/sessions') || (req.method==='POST' && path==='/api/bili-duty/main-session/bind') || path==='/api/bili-duty/manage' || path==='/api/bili-duty/manage.js' || path==='/api/bili-duty/life-character.png' || (req.method==='GET' && path==='/api/bili-duty/embedding/status') ||
-      path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
+      (req.method==='GET'&&['/api/bili-duty/llama-vision/status','/api/bili-duty/local-vision/selftest-image'].includes(path)) || (req.method==='POST'&&['/api/bili-duty/llama-vision/install','/api/bili-duty/llama-vision/verify','/api/bili-duty/llama-vision/cancel'].includes(path)) || path==='/api/bili-duty/dsh-vision/repair' || path==='/api/bili-duty/install' || path==='/api/bili-duty/install/status' || path==='/api/bili-duty/install-asr' || path==='/api/bili-duty/video-dependencies/ffmpeg/install' || path==='/api/bili-duty/local-vision/ensure' || path==='/api/bili-duty/open' ||
       path==='/api/bili-duty/diagnose' || path==='/api/bili-duty/selfcheck' || path==='/api/bili-duty/check' || path==='/api/bili-duty/mcp-integrity' || (req.method==='GET'&&['/api/bili-duty/video-dependencies/status','/api/bili-duty/video-dependencies/whisper/status'].includes(path)) || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/whisper/delete') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/paths') || (req.method==='POST'&&path==='/api/bili-duty/video-dependencies/ffmpeg/test')
     if(req.method==='POST'&&sessionIntegration.getCapabilities()?.platform!==true&&(path.startsWith('/api/bili-duty/login/')||path==='/api/bili-duty/account/confirm'||path==='/api/bili-duty/account/resume'||path==='/api/bili-duty/onboarding/bili/verify'||path==='/api/bili-duty/onboarding/complete'))return sendJson(res,423,{ok:false,blocked:true,error:'平台接入未启用或能力配置待重启'})
     const localMemoryAccess=localMemoryReady()&&((req.method==='GET'&&['/api/bili-duty/main-session/memory','/api/bili-duty/main-session/memory/garden','/api/bili-duty/main-session/memory/neural'].includes(path))||(req.method==='POST'&&['/api/bili-duty/main-session/memory/recall','/api/bili-duty/main-session/memory/add','/api/bili-duty/main-session/memory/delete','/api/bili-duty/main-session/memory/consolidate','/api/bili-duty/embedding/install','/api/bili-duty/embedding/disable','/api/bili-duty/embedding/rebuild','/api/bili-duty/embedding/cancel','/api/bili-duty/embedding/delete','/api/bili-duty/embedding/import-model'].includes(path)))
@@ -11385,6 +11385,23 @@ logger:{warn:m=>log('社交意图：'+m)}
         }
       }catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,200)})}
     }
+    // Isolated local diagnostic, never a production provider or permission change.
+    if(req.method==='GET'&&path==='/api/bili-duty/llama-vision/status'){
+      return sendJson(res,200,await embeddingRuntime.visionStatus())
+    }
+    if(req.method==='POST'&&['/api/bili-duty/llama-vision/install','/api/bili-duty/llama-vision/verify','/api/bili-duty/llama-vision/cancel'].includes(path)){
+      if(!explicitManagementIntent(req)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
+        return sendJson(res,403,{ok:false,error:'内置视觉试验仅允许电脑端同源操作'})
+      if(path.endsWith('/cancel'))return sendJson(res,200,{ok:true,cancelled:embeddingRuntime.cancelVision()})
+      const data=await readBody(req,1024),id=String(data?.model||'')
+      // No arbitrary URL, path, model or generation options from the browser.
+      const state=await embeddingRuntime.visionStatus()
+      if(!state.supported||!state.models.some(x=>x.id===id)||state.busy)return sendJson(res,409,{ok:false,error:'不支持的模型、平台或已有视觉任务进行中'})
+      let job;try{job=embeddingRuntime.runVision(path.endsWith('/install')?'install':'verify',id)}catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
+      // Async job status is the only success source; a 202 is not installation/verification.
+      void job.catch(error=>log('内置视觉试验未完成：'+String(error?.message||error).slice(0,130)))
+      return sendJson(res,202,{ok:true,started:true,model:id})
+    }
     if (req.method === 'GET' && path === '/api/bili-duty/embedding/status') {
       try{return sendJson(res,200,{...await embeddingRuntime.inspect(),enabled:cfg.mainSessionMemoryEmbeddingEnabled===true,index:embeddingIndex.status()})}
       catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,180)})}
@@ -11393,7 +11410,9 @@ logger:{warn:m=>log('社交意图：'+m)}
       const origin=String(req.headers.origin||''),host=String(req.headers.host||'')
       if(!explicitManagementIntent(req)||String(req.headers['sec-fetch-site']||'').toLowerCase()==='cross-site')
         return sendJson(res,403,{ok:false,error:'本地语义模型管理只允许电脑端管理中心同源操作'})
+      let releaseMaintenance=null
       try{
+        if(['/install','/delete','/import-model'].some(action=>path.endsWith(action)))releaseMaintenance=embeddingRuntime.beginEmbeddingMaintenance()
         if(path.endsWith('/install')){
           const status=await embeddingRuntime.inspect()
           if(!status.supported)return sendJson(res,409,{ok:false,error:'当前操作系统和 CPU 架构暂不支持自动安装本地 Embedding Runtime'})
@@ -11438,7 +11457,7 @@ logger:{warn:m=>log('社交意图：'+m)}
           }).catch(error=>log('导入模型后的 Runtime 启动失败：'+String(error?.message||error).slice(0,180)))
           return sendJson(res,202,{ok:true,started:true,importedBytes:imported.bytes})
         }
-      }catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,220)})}
+      }catch(error){return sendJson(res,409,{ok:false,error:String(error?.message||error).slice(0,220)})}finally{releaseMaintenance?.()}
     }
 
     if (req.method === 'GET' && path === '/api/bili-duty/main-session/memory') {
