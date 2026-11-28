@@ -1716,6 +1716,13 @@
       "newCheck": "assert.ok(py.includes('mention_names=[],sync_to_dynamic=False'))",
       "date": "2026-11-28",
       "reason": "Maintainer approved exact owner action and body binding. Manual comments cannot add mentions, images or dynamic writes; original autonomous and Python diagnostic safeguards remain."
+    },
+    {
+      "file": "v270-dev8-social-todo-commitment.test.mjs",
+      "oldCheck": "assert.match(prompts[1],/accepted-todo-not-persisted/)",
+      "newCheck": "assert.match(prompts[1],/\"saved\":false,\"partial\":false,\"createdCount\":0,\"duplicateCount\":0,\"fact\":\"尚未确认全部保存\"/)",
+      "date": "2026-11-28",
+      "reason": "dev.101/102 baseline reproducibly fails obsolete internal-code prompt assertion. Existing role privacy projection uses verified structured persistence facts; preserve no saved commitment, no duplicate TODO and model voluntary revision, and assert internal error code is absent."
     }
   ]
 }

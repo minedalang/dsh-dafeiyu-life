@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.103：社交与 Episode 共享原模型及注册读取循环；原参数、预算、写入事务、宿主循环和权限不变；活体联想贯穿派发。
 %% dev.102：社交入队原领取贯穿读取及共同提交；私密提炼绑定原领取；Episode 读取、终结、清理与原写锁及续接有效域协调；不新增授权。
 %% dev.101：原六类已授权写待办在实际派发前复核 running 尝试/参数/代际；自主回访与续聊共用提交边界，活体证据和原渠道复核；已提交真实回执结算，失效不投影新域。
 %% dev.100：原真实主 Session 领取写 claim 独立，Life 同次语义确认精确委托及意愿，MCP 初始化后一次性消费，原发送器结算；旧顶层评论纯文字，原自主与待办事务不重投票；其他渠道仍待接线。
@@ -672,7 +673,12 @@ episodeContinuation -.-> attention56
 attention56 -.->|正常 Life 重新选择原契机| selection
 %% @code attention56 | lib/life-resource-scheduler.mjs | const shouldYieldContinuation=
 episodeContinuation -.-> decisionBoundary57
-  decisionBoundary57["共同认知提交边界：调用前后核验；原各循环和调度保留"]
+  decisionBoundary57["共同认知提交边界：调用前后核验"]
+  episodeContinuation -.-> sharedCycle103
+  sharedCycle103["共享工具循环：社交与 Episode 原场景驱动"]
+  sharedCycle103 --> decisionBoundary57
+  sharedCycle103 --> registeredRead49
+  %% @code sharedCycle103 | lib/life-agent-read-runtime.mjs | export async function runLifeToolCycle
   %% @code decisionBoundary57 | lib/life-agent-read-runtime.mjs | export async function executeLifeDecision
 
 %% dev.64：共享视频视觉模型按格号描述，程序绑定真实采样时间；社交视觉回执分别展示画面/语音与失败原因，未核验不写观看。
@@ -685,6 +691,7 @@ episodeContinuation -.-> decisionBoundary57
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.103：社交与 Episode 共享原模型及注册读取循环；原参数、预算、写入事务、宿主循环和权限不变；活体联想贯穿派发。
 %% dev.102：社交入队原领取贯穿读取及共同提交；私密提炼绑定原领取；Episode 读取、终结、清理与原写锁及续接有效域协调；不新增授权。
 %% dev.101：原六类已授权写待办在实际派发前复核 running 尝试/参数/代际；自主回访与续聊共用提交边界，活体证据和原渠道复核；已提交真实回执结算，失效不投影新域。
 %% dev.100：原真实主 Session 领取写 claim 独立，Life 同次语义确认精确委托及意愿，MCP 初始化后一次性消费，原发送器结算；旧顶层评论纯文字，原自主与待办事务不重投票；其他渠道仍待接线。
@@ -1043,6 +1050,9 @@ attention56 -.-> resume
 %% @code attention56 | lib/autonomous-planner.mjs | reason='social-attention-yield'
 planner -.-> candidateDecision57
   candidateDecision57["当前账号代际、模式、活体证据及待办原子项核验"]
+  planner -.-> sharedCycle103
+  sharedCycle103["Episode 连续选择与注册读取共享驱动；原菜单不变"]
+  %% @code sharedCycle103 | lib/life-agent-read-runtime.mjs | export async function runLifeToolCycle
   %% @code candidateDecision57 | lib/autonomous-planner.mjs | const primaryCurrent=()=>{
 
 %% dev.64：共享视频视觉模型按格号描述，程序绑定真实采样时间；社交视觉回执分别展示画面/语音与失败原因，未核验不写观看。
@@ -1055,6 +1065,7 @@ planner -.-> candidateDecision57
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.103：社交与 Episode 共享原模型及注册读取循环；原参数、预算、写入事务、宿主循环和权限不变；活体联想贯穿派发。
 %% dev.102：社交入队原领取贯穿读取及共同提交；私密提炼绑定原领取；Episode 读取、终结、清理与原写锁及续接有效域协调；不新增授权。
 %% dev.101：原六类已授权写待办在实际派发前复核 running 尝试/参数/代际；自主回访与续聊共用提交边界，活体证据和原渠道复核；已提交真实回执结算，失效不投影新域。
 %% dev.100：原真实主 Session 领取写 claim 独立，Life 同次语义确认精确委托及意愿，MCP 初始化后一次性消费，原发送器结算；旧顶层评论纯文字，原自主与待办事务不重投票；其他渠道仍待接线。
@@ -1477,6 +1488,9 @@ failure56 -.->|原作用域有效及有预算才重新思考| planner
 %% @code failure56 | lib/autonomous-planner.mjs | const reportReadFailure=
 planner -.-> liveDecision57
 liveDecision57["活体证据失效则拒绝陈旧决定；不生成经历或联想确认"]
+sharedCycle103["共享循环交回原场景结果；读取期间联想失效不提交旧回执"]
+planner -.-> sharedCycle103 --> liveDecision57
+%% @code sharedCycle103 | lib/life-agent-read-runtime.mjs | export async function runLifeToolCycle
 %% @code liveDecision57 | lib/interaction-batch.mjs | const evidenceCurrent=rows=>
 
 %% dev.64：共享视频视觉模型按格号描述，程序绑定真实采样时间；社交视觉回执分别展示画面/语音与失败原因，未核验不写观看。
@@ -1489,6 +1503,7 @@ liveDecision57["活体证据失效则拒绝陈旧决定；不生成经历或联�
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.103：社交与 Episode 共享原模型及注册读取循环；原参数、预算、写入事务、宿主循环和权限不变；活体联想贯穿派发。
 %% dev.102：社交入队原领取贯穿读取及共同提交；私密提炼绑定原领取；Episode 读取、终结、清理与原写锁及续接有效域协调；不新增授权。
 %% dev.101：原六类已授权写待办在实际派发前复核 running 尝试/参数/代际；自主回访与续聊共用提交边界，活体证据和原渠道复核；已提交真实回执结算，失效不投影新域。
 %% dev.100：原真实主 Session 领取写 claim 独立，Life 同次语义确认精确委托及意愿，MCP 初始化后一次性消费，原发送器结算；旧顶层评论纯文字，原自主与待办事务不重投票；其他渠道仍待接线。
@@ -1875,7 +1890,11 @@ attention56 -.->|重新自主选择，非自动恢复| menu
 commentObservation -.-> decisionScope57
 menu -.-> decisionScope57
 decisionScope57["共同模型提交：社交、主选择、Episode 与待办子循环"]
-%% @code decisionScope57 | lib/interaction-batch.mjs | const decide=async(text,rows)=>{
+%% @code decisionScope57 | lib/interaction-batch.mjs | const decisionEffect=
+menu -.-> sharedCycle103
+sharedCycle103["社交及 Episode 连续模型与注册读共享驱动；原写事务独立"]
+sharedCycle103 --> decisionScope57
+%% @code sharedCycle103 | lib/life-agent-read-runtime.mjs | export async function runLifeToolCycle
 
 %% dev.64：共享视频视觉模型按格号描述，程序绑定真实采样时间；社交视觉回执分别展示画面/语音与失败原因，未核验不写观看。
 %% dev.64：Windows Ollama 端口冲突只读诊断；模型页不启动服务，人工恢复优先官方桌面应用，不终止进程或切换地址。

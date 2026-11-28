@@ -235,7 +235,8 @@ test('主人私信：接受未入账即使不说记下也必须重新交给模�
    attempts++;return intakeAiReadProposals({row:{incoming:true,senderUid:UID,messageId:'evt',timestampMs:T,text},channel:'dm',currentMessages:[text],decide:()=>({decision:'allow'}),todos,now:()=>T,...p})
   }})
   assert.equal(out,'这个我暂时还没有决定要不要看。');assert.equal(calls,2);assert.equal(attempts,1);assert.equal(todos.list().length,0)
-  assert.match(prompts[1],/accepted-todo-not-persisted/)
+  assert.match(prompts[1],/"saved":false,"partial":false,"createdCount":0,"duplicateCount":0,"fact":"尚未确认全部保存"/)
+  assert.doesNotMatch(prompts[1],/accepted-todo-not-persisted/)
  }finally{batcher.stop();rmSync(dir,{recursive:true,force:true})}
 })
 

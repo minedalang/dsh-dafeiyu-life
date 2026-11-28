@@ -348,3 +348,30 @@ test('dev99 shared registered read suppresses stale errors but preserves live fa
  await assert.rejects(run(async()=>{throw Error('live failure')}),/live failure/)
  assert.deepEqual(await run(async()=>{current=false;throw Error('old private provider error')}),{ok:false,reason:'life-read-scope-changed'})
 })
+
+
+test('dev103 shared tool cycle delivers registered reads to the next model in order without granting aliases',async()=>{
+ const {runLifeToolCycle}=await import('../lib/life-agent-read-runtime.mjs')
+ for(const [scene,action,foreign] of [['social','read_memory','recall_public_experience'],['episode','recall_public_experience','read_memory']]){
+  const calls=[];const out=await runLifeToolCycle({scene,steps:async function*(){
+   const choice=yield {kind:'decision',isCurrent:()=>true,invoke:async()=>{calls.push('choose');return action}}
+   const blocked=yield {kind:'read',actions:[foreign],isCurrent:()=>true,read:()=>{throw Error('must not execute foreign action')}}
+   assert.equal(blocked.reason,'life-read-not-registered')
+   const read=yield {kind:'read',actions:[choice.value],isCurrent:()=>true,read:async()=>{calls.push('read');return {fact:'verified source'}}}
+   return yield {kind:'decision',isCurrent:()=>true,invoke:async()=>{calls.push('continue');assert.equal(read.value.fact,'verified source');return 'stop'}}
+  }})
+  assert.deepEqual(calls,['choose','read','continue']);assert.equal(out.value,'stop')
+ }
+})
+
+test('dev103 shared tool cycle sends a live adapter failure to the original continuation and never returns stale evidence',async()=>{
+ const {runLifeToolCycle}=await import('../lib/life-agent-read-runtime.mjs');let live=true,calls=0
+ const result=await runLifeToolCycle({scene:'episode',steps:async function*(execute){
+  try{yield {kind:'read',actions:['inspect_creator_space'],isCurrent:()=>live,read:async()=>{calls++;throw Error('current adapter failure')}};assert.fail('expected original error')}
+  catch(error){assert.match(error.message,/current adapter failure/)}
+  const read=await execute({kind:'read',actions:['inspect_video_discussion'],isCurrent:()=>live,read:async()=>{calls++;live=false;return {private:'old evidence'}}})
+  assert.deepEqual(read,{ok:false,reason:'life-read-scope-changed'})
+  return yield {kind:'decision',isCurrent:()=>live,invoke:async()=>{calls++;return 'must not run'}}
+ }})
+ assert.equal(calls,2);assert.deepEqual(result,{ok:false,reason:'life-decision-scope-changed',started:false})
+})

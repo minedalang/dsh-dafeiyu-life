@@ -277,3 +277,19 @@ test('dev.63 original verified bundle child survives forgetting; no second child
  const r=await x.planner.tick();assert.equal(r.continuation.reason,'bundle-decision-scope-changed');assert.equal(prepared,1);assert.equal(cancelled,1);assert.equal(writes,1);assert.equal(x.calls,3)
  const entry=x.life.status().intentions[0];assert.equal(entry.writeBundle,null);assert.equal(entry.receipt,'verified-partial-bundle');assert.deepEqual(entry.writeOutcomes.map(x=>[x.action,x.status]),[['like_video','verified']])
 }))
+
+
+test('dev103 Episode selected read cannot commit if a delivered visual association is forgotten during I/O',()=>home(async dir=>{
+ let valid=true,reads=0,settled=0,seen=''
+ const recalled=[{bvid:OTHER,title:'皮影戏舞台',sceneNotes:['光线投射出角色轮廓。'],recallRoute:'direct'}]
+ const x=makeLife(dir,[
+  life=>({action:'begin_exploration',id:life.explorationCues()[0].id,goal:'想了解真实公开作品'}),
+  life=>({action:'inspect_exploration',id:life.continuations()[0].id,bvid:BV}),
+  (life,prompt)=>{seen=prompt;return {action:'inspect_creator_space',id:life.continuations()[0].id}}],undefined,{
+   getRecentLifeVideoMemory:async()=>recalled,validateLifeVideoMemory:()=>valid,
+   executeCreatorSpace:async()=>{reads++;valid=false;return {ok:true,bvid:BV,videos:[{bvid:OTHER,title:'公开投稿'}]}},
+   inspectLifeCreatorSpace:()=>{settled++;return {ok:true}},failLifeCreatorRead:()=>{settled++;return {ok:true}}
+ })
+ const result=await x.planner.tick();assert.match(seen,/皮影戏舞台/);assert.equal(reads,1);assert.equal(settled,0)
+ assert.equal(result.continuation.reason,'video-recall-evidence-changed');assert.equal(result.continuation.executed,1);assert.equal(x.calls,3);assert.equal(x.writes,0)
+}))
