@@ -1,3 +1,4 @@
+%% dev.104：原目标与精确候选复核；已核验入口先入账再续行，原权限和预算不变。
 %% dev.103：社交与 Episode 共享原模型及注册读取循环；原参数、预算、写入事务、宿主循环和权限不变；活体联想贯穿派发。
 %% dev.102：社交入队原领取贯穿读取及共同提交；私密提炼绑定原领取；Episode 读取、终结、清理与原写锁及续接有效域协调；不新增授权。
 %% dev.101：原六类已授权写待办在实际派发前复核 running 尝试/参数/代际；自主回访与续聊共用提交边界，活体证据和原渠道复核；已提交真实回执结算，失效不投影新域。
@@ -669,6 +670,7 @@ episodeContinuation -.-> decisionBoundary57
   decisionBoundary57["共同认知提交边界：调用前后核验"]
   episodeContinuation -.-> sharedCycle103
   sharedCycle103["共享工具循环：社交与 Episode 原场景驱动"]
+  episodeContinuation -.->|原目标、先入账再续行| sharedCycle103
   sharedCycle103 --> decisionBoundary57
   sharedCycle103 --> registeredRead49
   %% @code sharedCycle103 | lib/life-agent-read-runtime.mjs | export async function runLifeToolCycle

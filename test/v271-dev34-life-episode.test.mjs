@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync,readFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import {createUniversalLifeEpisodes} from '../lib/life-universal-episodes.mjs'
 import {createLifeOpportunities} from '../lib/life-opportunities.mjs'
 import {createAutonomousPlanner} from '../lib/autonomous-planner.mjs'
 import {continuationMenu} from '../lib/life-continuation.mjs'
@@ -171,4 +172,37 @@ test('video-round completion returns exact homepage BV matches transiently but p
  const episode=life.beginHomeExploration(round.id,picked.filter(x=>finish.homePickedBvids.includes(x.bvid)),scope)
  assert.equal(episode.ok,true)
  assert.deepEqual(life.continuations().find(x=>x.id===episode.id).videos.map(x=>x.bvid),[BV])
+}))
+
+
+test('dev104 public interest first receipt precedes voluntary pause, original goal survives a later tick',()=>home(async dir=>{
+ let now=T,calls=0;const prompts=[],life=makeLife(dir,()=>now),episodes=createUniversalLifeEpisodes({stateDir:dir,getAccountTag:()=>scope,now:()=>now})
+ const goal='想了解电影配乐如何表达不同情绪'
+ const planner=createAutonomousPlanner({dataDir:dir,now:()=>now,getConfig:()=>active,getLifeAccountTag:()=>scope,
+  getTodos:()=>[],getAcceptedActionReservations:()=>[],getLifeOpportunities:()=>[],getLifeIntentionCues:()=>life.explorationCues(),getLifeIntentions:()=>life.continuations(),
+  getActiveLifeIntentionReservations:()=>life.intentions({includeClosed:true,limit:20}),getLifeEpisodeSourceState:ref=>episodes.sourceState(ref),onEpisodeAction:x=>episodes.record(x),
+  beginLifeExploration:(...a)=>life.beginExploration(...a),pauseLifeExploration:(...a)=>life.pauseExploration(...a),
+  executeLifeSearch:async topic=>({ok:true,topic,videos:[{bvid:BV,title:'公开配乐候选'}]}),
+  invokeModel:async prompt=>{prompts.push(prompt);const i=calls++;return JSON.stringify(i===0?{action:'begin_exploration',id:life.explorationCues()[0].id,goal}:i===2?{action:'resume_episode',id:life.continuations()[0].id}:{action:'stop',stopReasonCode:'later',resumeAfterMinutes:15})},
+  executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false}),getLifeEvents:()=>[],getLifeEventStatus:()=>({pending:0,videoStartsToday:0,lastVideoAt:0})})
+ const first=await planner.tick();assert.equal(first.result,'verified-search-results');assert.equal(first.continuation.reason,'fish-chose-later')
+ const row=life.intentions({includeClosed:true})[0],state=episodes.sourceState('intention:'+row.id)
+ assert.equal(state.status,'paused');assert.deepEqual(state.history.map(x=>x.action),['begin_exploration','episode_rest'])
+ assert.match(prompts[1],/想了解电影配乐如何表达不同情绪/);assert.match(prompts[1],/公开配乐候选/)
+ now=row.nextAt+1;const resumed=await planner.tick();assert.equal(resumed.action,'resume_episode');assert.match(prompts[3],/想了解电影配乐如何表达不同情绪/)
+ assert.equal(life.intentions({includeClosed:true}).length,1);assert.equal(episodes.sourceState('intention:'+row.id).status,'paused')
+}))
+
+test('dev104 top-level metadata read cannot commit after original Episode paused or account generation changed',()=>home(async dir=>{
+ for(const scenario of ['pause','generation']){
+  const sub=join(dir,scenario),life=makeLife(sub);let generation=0,commits=0
+  const seed=life.beginHomeExploration(ROUND,picked,scope);assert.equal(seed.ok,true)
+  const planner=createAutonomousPlanner({dataDir:sub,now:()=>T,getConfig:()=>active,getLifeAccountTag:()=>scope,getLifeAccountGeneration:()=>generation,
+   getTodos:()=>[],getAcceptedActionReservations:()=>[],getLifeOpportunities:()=>[],getLifeIntentionCues:()=>[],getLifeIntentions:()=>life.continuations(),getActiveLifeIntentionReservations:()=>life.intentions({includeClosed:true}),
+   invokeModel:async()=>JSON.stringify({action:'inspect_exploration',id:seed.id,bvid:BV,reason:'核实公开作品'}),
+   executeOpportunityRead:async bvid=>{if(scenario==='pause')assert.equal(life.pauseExploration(seed.id,3600000,scope).ok,true);else generation++;return {ok:true,bvid,title:'迟到的元数据'}},
+   completeLifeExploration:(...a)=>{commits++;return life.completeExploration(...a)},onEpisodeAction:()=>{throw Error('不得提交旧回执')},
+   executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
+  const r=await planner.tick();assert.equal(r.result,'decision-scope-changed');assert.equal(commits,0);assert.equal(life.intentions({includeClosed:true})[0].episodeSteps,1)
+ }
 }))
