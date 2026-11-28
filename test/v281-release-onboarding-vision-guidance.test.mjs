@@ -274,14 +274,16 @@ test('新用户完成按钮先实时读取必需项，缺失时定位且不发�
 })
 
 
-test('记忆基座 Session 指南与正式文档一致，复制仅本地且保留移动端只读',()=>{
-  const html=read('lib/management-console.html'),js=read('lib/management-console.js'),doc=read('docs/SESSION_INTEGRATION.md');
-  const text=html.match(/<textarea id="fs-foundation-guide-text"[^>]*readonly[^>]*>([\s\S]*?)<\/textarea>/)?.[1].replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
-  assert.equal(text?.replace(/\r\n/g,'\n'),doc.replace(/\r\n/g,'\n').match(/```text\n([\s\S]*?)\n```/)?.[1]);
-  for(const name of ['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall'])assert.ok(text.includes(name)&&read('lib/long-term-memory.mjs').includes("name:'"+name+"'"));
-  const copy=js.slice(js.indexOf("$('fs-foundation-guide-copy').addEventListener"),js.indexOf('const renderSessionMount='));
-  assert.match(copy,/navigator\.clipboard\.writeText\(guide\.value\)/);assert.match(copy,/guide\.select\(\)/);assert.doesNotMatch(copy,/request\(|fetch\(/);
-  assert.match(js,/mobileReadOnlySelector=.*#fs-foundation-guide-copy/);assert.match(js,/#fs-foundation-guide-text\[readonly\]/);
+test('2.8.3 不展示其他人设记忆基座教程；原 Session 挂载状态及移动端保护保留',()=>{
+  const html=read('lib/management-console.html'),js=read('lib/management-console.js'),doc=read('docs/SESSION_INTEGRATION.md'),readme=read('README.md');
+  assert.doesNotMatch(html,/fs-foundation-guide-copy|fs-foundation-guide-text|作为长期记忆基座/);
+  assert.doesNotMatch(js,/fs-foundation-guide-copy|fs-foundation-guide-text/);
+  assert.doesNotMatch(readme,/SESSION_INTEGRATION\.md|主人分享的视频延期观察后|这里的心情、人格、意愿和生活经历|快速设置独立管理 B站/);
+  assert.match(doc,/延期至 2\.9 以后/);
+  for(const name of ['dafeiyu_remember','dafeiyu_memory_recall','dafeiyu_life_recall'])assert.ok(doc.includes(name)&&read('lib/long-term-memory.mjs').includes("name:'"+name+"'"));
+  assert.match(html,/id="fs-foundation-mount-state"/);assert.match(html,/id="main-session-save"/);
+  assert.match(js,/mobileReadOnlySelector=.*#fs-foundation-status-refresh/);
+  assert.match(js,/const refreshSessionMount=async/);assert.match(js,/request\('\/main-session\/memory\?limit=1'\)/);
 })
 
 

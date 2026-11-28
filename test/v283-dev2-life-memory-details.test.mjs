@@ -330,7 +330,7 @@ test('owner-only visual details use the same store, exclude public recall, survi
 }))
 
 
-test('deep attachment lock reclaims a proven dead PID but refuses live and legacy locks',()=>setup(({dir,gateway,memoryId})=>{
+test('deep attachment lock reclaims a proven dead PID but refuses live and legacy locks',t=>setup(({dir,gateway,memoryId})=>{
  const proof={internalToken:'test-only'}
  const args={memoryId,accountTag:A,fragments,sourceProof:proof}
  assert.equal(gateway.attachMemoryDetails(args).ok,true)
@@ -339,7 +339,25 @@ test('deep attachment lock reclaims a proven dead PID but refuses live and legac
  const old=new Date(Date.now()-120000)
  const claim=pid=>{writeFileSync(lock,JSON.stringify({pid,token:'a'.repeat(32),at:+old}));utimesSync(lock,old,old)}
  claim(process.pid);assert.equal(gateway.attachMemoryDetails(args).ok,false);assert.equal(existsSync(lock),true);rmSync(lock)
- claim(dead);assert.equal(gateway.attachMemoryDetails(args).ok,true);assert.equal(existsSync(lock),false)
+ // An exited child is not automatically a proven absent PID (Windows may
+ // still report a process handle or permission failure, and PIDs can be reused).
+ let probe='alive';try{process.kill(dead,0)}catch(error){probe=String(error?.code||'unknown')}
+ t.diagnostic('exited child PID probe: '+probe)
+ claim(dead);const actual=gateway.attachMemoryDetails(args)
+ assert.equal(actual.ok,probe==='ESRCH',JSON.stringify({probe,reason:actual.reason,error:actual.error}))
+ assert.equal(existsSync(lock),probe!=='ESRCH')
+ if(existsSync(lock))rmSync(lock)
+ // Independently verify both required production outcomes with the real
+ // Gateway and filesystem, mocking only the queried child PID signal probe.
+ const realKill=process.kill
+ for(const code of ['EPERM','ESRCH']){
+   const mock=t.mock.method(process,'kill',(pid,signal)=>{if(pid===dead&&signal===0){const e=Error(code);e.code=code;throw e}return realKill.call(process,pid,signal)})
+   try{
+     claim(dead)
+     if(code==='ESRCH'){assert.equal(gateway.attachMemoryDetails(args).ok,true);assert.equal(existsSync(lock),false)}
+     else{assert.equal(gateway.attachMemoryDetails(args).ok,false);assert.equal(existsSync(lock),true);rmSync(lock)}
+   }finally{mock.mock.restore()}
+ }
  mkdirSync(lock);assert.equal(gateway.attachMemoryDetails(args).ok,false);assert.equal(existsSync(lock),true)
 }))
 

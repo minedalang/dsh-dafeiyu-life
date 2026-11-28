@@ -1821,6 +1821,27 @@
       "newCheck": "assert.match(planner,/executeRead\\(fresh.id,\\{viewDepth:outcome.viewDepth,guard:selectedCurrent\\}\\)/)",
       "date": "2026-11-28",
       "reason": "Existing verified read and view depth wiring retained; now requires the precise original task guard through admission."
+    },
+    {
+      "file": "v281-release-onboarding-vision-guidance.test.mjs",
+      "oldCheck": "test('记忆基座 Session 指南与正式文档一致，复制仅本地且保留移动端只读',()=>{",
+      "newCheck": "test('2.8.3 不展示其他人设记忆基座教程；原 Session 挂载状态及移动端保护保留',()=>{",
+      "date": "2026-11-28",
+      "reason": "Maintainer explicitly defers other-persona memory foundation guide until 2.9; preserve mount status, original tools and mobile protection."
+    },
+    {
+      "file": "v283-dev2-life-memory-details.test.mjs",
+      "oldCheck": "claim(dead);assert.equal(gateway.attachMemoryDetails(args).ok,true);assert.equal(existsSync(lock),false)",
+      "newCheck": "assert.equal(actual.ok,probe==='ESRCH',JSON.stringify({probe,reason:actual.reason,error:actual.error}))",
+      "date": "2026-11-28",
+      "reason": "Windows exited child PID is not proof of ESRCH; real probe checked and deterministic ESRCH and EPERM cases independently exercise production Gateway and lock."
+    },
+    {
+      "file": "v282-dev23-life-semantic-focus.test.mjs",
+      "oldCheck": "assert.match(readme,/按需开启视频视觉[\\s\\S]*DSH 或 Ollama[\\s\\S]*不想配置视频视觉也可以使用/);",
+      "newCheck": "assert.match(readme,/按需开启视频视觉[\\s\\S]*内置视觉（推荐）[\\s\\S]*Ollama 本地视觉[\\s\\S]*远程视觉[\\s\\S]*不想配置视频视觉也可以使用/);",
+      "date": "2026-11-28",
+      "reason": "Approved native vision is the recommended option since dev.94; retain optional vision and exact sampling/cost warnings."
     }
   ]
 }

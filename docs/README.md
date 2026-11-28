@@ -1,6 +1,6 @@
 # 大肥鱼 · 文档导航（2.8.3）
 
-**开始使用：** [项目 README](../README.md) · [近期版本新功能](近期版本新功能.md) · [2.8.3 使用与升级指南](release/2.8.3-user-upgrade-guide.md) · [2.8.3 正式版功能说明](release/RELEASE_NOTES_v2.8.3.md) · [主 Session 使用指南](SESSION_INTEGRATION.md)。
+**开始使用：** [项目 README](../README.md) · [近期版本新功能](近期版本新功能.md) · [2.8.3 使用与升级指南](release/2.8.3-user-upgrade-guide.md) · [2.8.3 正式版功能说明](release/RELEASE_NOTES_v2.8.3.md)。
 
 **现行设计：** [2.8.3 当前架构](architecture/2.8.3-current-architecture.md) · [Life Memory 技术说明](LIFE_MEMORY_2_TECHNICAL.md) · [Life 自动生成架构图](architecture/life-system-current-view.md) · [技术架构总索引](architecture/README.md)。
 

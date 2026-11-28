@@ -214,13 +214,13 @@ test('same-Episode visual observation is untrusted bounded data, not a prompt or
 
 // Exercise the production Planner menu and registered execution, rather than
 // calling an isolated gateway with artificial permission tokens.
-for(const mode of ['decision-replaced','decision-stop-replaced','generation','vision-revoked','target-replaced','focus-revoked','valid-focus'])test('dev50 visual / decision fencing '+mode,()=>home(async dir=>{
- const id='a'.repeat(24),prompts=[];let enabled=true,generation=1,visualReads=0,settled=0,pauses=0
+for(const mode of ['decision-replaced','decision-stop-replaced','generation','vision-revoked','target-replaced','focus-revoked','valid-focus','focus-grid-failure'])test('dev50 visual / decision fencing '+mode,()=>home(async dir=>{
+ const id='a'.repeat(24),prompts=[];let enabled=true,generation=1,visualReads=0,settled=0,pauses=0;const trace=[]
  const row={id,source:'inspected-opportunity',sourceId:'original',status:'inspected',selectedBvid:BV,selectedTitle:'真实视频',metadataAt:NOW-1000,expiresAt:NOW+60000,nextAt:NOW-1000,episodeSteps:1,episodeMaxSteps:5,observedVideoBvids:[],visitedBvids:[BV]}
- const planner=createAutonomousPlanner({dataDir:dir,now:()=>NOW,getConfig:()=>({...config,visionEnabled:enabled,visionFrames:24}),getLifeAccountTag:()=>account,getLifeAccountGeneration:()=>generation,getTodos:()=>[],getLifeIntentions:()=>[row],getActiveLifeIntentionReservations:()=>[row],canLifeObserveVideo:()=>enabled,
+ const planner=createAutonomousPlanner({dataDir:dir,now:()=>NOW,getConfig:()=>({...config,visionEnabled:enabled,visionFrames:24}),getLifeAccountTag:()=>account,getLifeAccountGeneration:()=>generation,getTodos:()=>[],getLifeIntentions:()=>[row],getActiveLifeIntentionReservations:()=>[row],canLifeObserveVideo:()=>enabled,beginDecisionTrace:()=>({step:(type,fields)=>trace.push({type,...fields}),finish(){}}),
   recordLifeVideoVisual:()=>{settled++;row.observedVideoBvids=[BV];row.episodeSteps++;return {ok:true}},hasVerifiedLifeVideoVisual:()=>row.observedVideoBvids.includes(BV),pauseLifeExploration:()=>{pauses++;return {ok:true}},
   executeLifeVideoObservation:async args=>{visualReads++;assert.equal(args.isCurrent(),true)
-    if(args.focusWindow){if(mode==='focus-revoked'){enabled=false;assert.equal(args.isCurrent(),false)}
+    if(args.focusWindow){if(mode==='focus-grid-failure'&&visualReads===3)return {ok:false,bvid:BV,visual:{status:'vision_incomplete',errorCode:'vision_board_grid_mismatch',visionBoardReceipts:[{status:'incomplete',errorCode:'vision_board_grid_mismatch',modelAttempts:1,description:'PRIVATE MODEL TEXT'}],sampling:{storyboard_count:1}}};if(mode==='focus-revoked'){enabled=false;assert.equal(args.isCurrent(),false)}
       // The valid fixture supplies a deliberate new decoded timestamp within
       // the exact planned window, not another old preview timestamp.
       const start=args.focusWindow.startSeconds,end=args.focusWindow.endSeconds
@@ -231,20 +231,23 @@ for(const mode of ['decision-replaced','decision-stop-replaced','generation','vi
     if(mode==='vision-revoked')enabled=false
     if(mode==='target-replaced')row.sourceId='replacement'
     if(['generation','vision-revoked','target-replaced'].includes(mode))assert.equal(args.isCurrent(),false)
-    return validVisual(BV,'standard')},
+    const overview=validVisual(BV,'standard')
+    if(mode==='focus-grid-failure'){overview.visual.times=[5,70];overview.visual.sampling.review_candidates_seconds=[5,70];overview.videoEvidence.sources.forEach(x=>x.timePointsMs=[5000,70000]);overview.perceptionHandoff.video.frameTimesMs=[5000,70000]}
+    return overview},
   invokeModel:async p=>{prompts.push(p);if(prompts.length===1)return JSON.stringify({action:'resume_episode',id})
     if(prompts.length===2){assert.match(p,/【当前注册只读能力】/);assert.match(p,/"action":"observe_video"/)
       if(mode==='decision-replaced'||mode==='decision-stop-replaced')row.sourceId='replacement'
       return JSON.stringify(mode==='decision-stop-replaced'?{action:'stop',stopReasonCode:'later'}:{action:'observe_video',id,bvid:BV,viewDepth:'standard'})}
-    if(prompts.length===3&&['focus-revoked','valid-focus'].includes(mode)){
+    if(prompts.length===3&&['focus-revoked','valid-focus','focus-grid-failure'].includes(mode)){
       const menu=JSON.parse(p.split('当前合法行动菜单：').at(-1).split('\n')[0]);const tool=menu.find(x=>x.action==='focus_video');assert.ok(tool,'verified overview should offer focus')
       assert.match(p,/video_focus/)
-      return JSON.stringify({action:'focus_video',id,bvid:BV,focusTargets:[{atSeconds:tool.candidates[0].atSeconds,durationSeconds:5}]})
+      return JSON.stringify({action:'focus_video',id,bvid:BV,focusTargets:tool.candidates.slice(0,mode==='focus-grid-failure'?2:1).map(c=>({atSeconds:c.atSeconds,durationSeconds:5}))})
     }
     return JSON.stringify({action:'stop',stopReasonCode:'later'})},executeRead:async()=>({ok:false}),updateTodo:()=>({ok:false}),reflect:async()=>({ok:false})})
  const result=await planner.tick();assert.equal(result.action,'resume_episode')
  if(['decision-replaced','decision-stop-replaced'].includes(mode)){assert.equal(visualReads,0);assert.equal(settled,0);assert.equal(pauses,0);assert.equal(result.continuation.reason,'life-read-scope-changed')}
  else if(mode==='focus-revoked'){assert.equal(visualReads,2);assert.equal(settled,1);assert.equal(result.continuation.executed,1);assert.equal(result.continuation.reason,'life-read-scope-changed')}
+ else if(mode==='focus-grid-failure'){assert.equal(visualReads,3);assert.equal(settled,1);assert.equal(result.continuation.executed,2);assert.equal(result.continuation.reason,'focus-evidence-unverified');const failure=trace.find(x=>x.type==='blocked'&&x.action==='focus_video');assert.equal(failure.visionFailureCode,'vision_board_grid_mismatch');assert.equal(failure.visionBoardsTotal,1);assert.equal(failure.visionBoardsFailed,1);assert.doesNotMatch(JSON.stringify(failure),/PRIVATE MODEL TEXT/);assert.equal(trace.filter(x=>x.type==='action-result'&&x.action==='focus_video').length,1)}
  else if(mode==='valid-focus'){assert.equal(visualReads,2);assert.equal(settled,1);assert.equal(result.continuation.executed,2,JSON.stringify(result));assert.equal(pauses,1)}
  else {assert.equal(visualReads,1);assert.equal(settled,0);assert.equal(result.continuation.executed,0);assert.equal(result.continuation.reason,mode==='generation'?'account-changed':'life-read-scope-changed')}
 }))

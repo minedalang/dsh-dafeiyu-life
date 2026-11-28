@@ -95,3 +95,20 @@ test('social visual execution receipt explicitly distinguishes speech-only, fres
  assert.equal(describe(run('verified','shared-video-no-evidence')).success,false)
  assert.equal(describe(run('verified','unrelated')).success,false)
 })
+
+test('local grid mismatch after a verified window retains exact last failure and anonymized counts',()=>{
+ const home=mkdtempSync(join(tmpdir(),'vision-focus-attempt-'))
+ try{
+   const journal=createLifeDecisionTrace({dataDir:home,getAccountTag:()=> 'a'.repeat(16)})
+   const row=journal.begin({mode:'active'})
+   row.step('action-start',{action:'focus_video'})
+   row.step('action-result',{action:'focus_video',result:'focused-visual-read-verified'})
+   row.step('action-start',{action:'focus_video'})
+   row.step('blocked',{action:'focus_video',code:'focus-evidence-unverified',visualStatus:'vision_incomplete',visionFailureCode:'vision_board_grid_mismatch',visionBoardsTotal:1,visionBoardsFailed:1,modelDescription:'PRIVATE MODEL TEXT'})
+   row.finish({state:'finished',result:'verified-search-results'})
+   const latest=journal.list().runs[0],r=describe(latest)
+   assert.equal(r.success,false);assert.match(r.result,/分镜格号缺失或错误.*分镜完成 0\/1/)
+   assert.equal(latest.steps.filter(s=>s.type==='action-result'&&s.action==='focus_video').length,1)
+   assert.doesNotMatch(JSON.stringify(latest),/PRIVATE MODEL TEXT/)
+ }finally{rmSync(home,{recursive:true,force:true})}
+})
