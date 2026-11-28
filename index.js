@@ -97,7 +97,8 @@ import { loginStart, loginPoll, renderQrPng } from './lib/login.mjs'
 import { createAccountBinding } from './lib/account-binding.mjs'
 import { createReadActionExecutionGate,readToolAction } from './lib/read-action-execution-gate.mjs'
 import {createLifeDecisionTrace} from './lib/life-decision-trace.mjs'
-import {createLifeWillingness,prepareLifeCommentReply,executeChosenLifeRead} from './lib/life-willingness.mjs'
+import {createLifeWillingness,prepareLifeCommentReply} from './lib/life-willingness.mjs'
+import {registeredLifeRead,executeRegisteredLifeRead,authorizeRegisteredCommentReads} from './lib/life-agent-read-runtime.mjs'
 import {createLifeVideoActionBridge} from './lib/life-video-action-bridge.mjs'
 import {createModelInvocationJournal} from './lib/model-invocation-journal.mjs'
 import {createLifeContinuationWriteExecutor} from './lib/life-continuation-write.mjs'
@@ -2075,16 +2076,15 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     try { return JSON.parse(JSON.stringify(v)) } catch { return String(v) }
   }
 
-  const voluntaryMainReads=new Set(['bili_whoami','bili_dm_contact_lookup','bili_growth_recall','bili_experience_recall','bili_search','bili_home_recommendations','bili_subtitle','bili_comments','bili_status','bili_video_info','bili_comment_thread','bili_danmaku','bili_video_zones','bili_hot_videos','bili_hot_buzzwords','bili_weekly_hot','bili_rank','bili_user_info','bili_creator_relation_status','bili_user_videos','bili_favorite_lists','bili_favorite_content','bili_unread_messages','bili_received_replies','bili_dynamic_comment_context','bili_received_at_and_likes'])
   const tool = (spec) => ctx.tools.register(defineTool({
     ...spec,
     output: textOutput,
     async execute(args, exec) {
       if(!platformReady())return {ok:false,blocked:true,error:platformMessage()};
       if(!integrationAvailable())return {ok:false,blocked:true,error:'模式切换待重启或不可用'};
-      if(voluntaryMainReads.has(spec.name)){
+      if(registeredLifeRead('main-session',spec.name)){
         const epoch=accountBinding.generation(),account=trustedLifeAccountTag(),policy=getSessionIntegration()
-        const result=await executeChosenLifeRead({chosen:true,isCurrent:()=>{const next=getSessionIntegration();return platformReady()&&integrationAvailable()&&epoch===accountBinding.generation()&&account===trustedLifeAccountTag()&&policy.revision===next.revision&&policy.mode===next.mode},read:()=>spec.execute(args,exec)})
+        const result=await executeRegisteredLifeRead({scene:'main-session',actions:[spec.name],isCurrent:()=>{const next=getSessionIntegration();return platformReady()&&integrationAvailable()&&epoch===accountBinding.generation()&&account===trustedLifeAccountTag()&&policy.revision===next.revision&&policy.mode===next.mode},read:()=>spec.execute(args,exec)})
         return safe(result.ok?result.value:{ok:false,reason:result.reason})
       }
       return safe(await spec.execute(args, exec))
@@ -5726,34 +5726,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           ...(batch[i]?.kind==='comment'&&batch[i]?.verifiedCommentSource===true&&
             cfg.masterEnabled===true&&cfg.lifeAgentMode==='active'&&
             !accountBinding.status().blocked?['hot_comments']:[])]}))),
-    authorizeContextRead:async({row,readKinds})=>{
+    authorizeContextRead:({row,readKinds})=>{
       refreshCfg()
-      if(row?.kind!=='comment'||row?.verifiedCommentSource!==true||
-        cfg.masterEnabled!==true||cfg.lifeAgentMode!=='active'||
-        accountBinding.status().blocked||
-        !/^[a-f0-9]{16}$/.test(String(trustedLifeAccountTag()||''))||
-        !Array.isArray(readKinds)||
-        !readKinds.some(k=>['public_person','hot_comments'].includes(k)))return {ok:false,reason:'not-offered'}
-      const bvid=String(row.bvid||''),rpid=String(row.incomingRpid||row.rpid||'')
-      if(!/^BV[0-9A-Za-z]{10}$/.test(bvid)||!/^[1-9]\d{0,19}$/.test(rpid))return {ok:false,reason:'invalid-source'}
-      const before=trustedLifeAccountTag(),uid=String(accountBinding.status().activeUid||'')
-      // Propose only a capability bound to the current verified public comment.
-      // No model-supplied UID, private text or unverified target is used as authority.
-      const offerings=[
-        ...(readKinds.includes('hot_comments')?[{id:'read_hot_comments',kind:'social_read',label:'可选查看原 BV 其他公开热门评论'}]:[]),
-        ...(readKinds.includes('public_person')?
-          [{id:'read_public_person',kind:'social_read',label:'可选查看这位已核验评论者的公开投稿标题与 BV'}]:[])]
-      if(!offerings.length)return {ok:false,reason:'read-permission-disabled'}
-      const choice=await lifeWillingness?.decide({trigger:'comment-context',scene:'comment',uid:String(row.uid||''),
-        sourceKey:'comment-read:'+createHash('sha256').update(bvid+':'+rpid+':'+offerings.map(x=>x.id).join(',')).digest('hex'),
-        candidates:offerings,
-        evidence:{publicComment:true,availableReadKinds:offerings.map(x=>x.id)}},{queueIfBusy:true})
-      if(choice?.ok!==true||!offerings.some(x=>x.id===choice.candidateId))return {ok:false,reason:choice?.reason||'life-declined'}
-      const valid=trustedLifeAccountTag()===before&&String(accountBinding.status().activeUid||'')===uid&&
-        cfg.lifeAgentMode==='active'
-      // This is a READ willingness. Never pass its proof as a write grant.
-      if(choice.proof)lifeWillingness.receipt(choice.proof,{status:valid?'delegated':'not-sent'})
-      return {ok:valid,allowedReadKinds:valid?[choice.candidateId==='read_hot_comments'?'hot_comments':'public_person']:[],reason:valid?'life-selected':'account-or-permission-changed'}
+      return authorizeRegisteredCommentReads({row,readKinds,accountTag:trustedLifeAccountTag(),
+        accountUid:String(accountBinding.status().activeUid||''),enabled:cfg.masterEnabled===true&&cfg.lifeAgentMode==='active'&&!accountBinding.status().blocked})
     },
     loadRequestedContexts:async(batch,requestedByIndex)=>{
       const base=await (socialContextAssembler?.batch(batch.map(row=>({...row,deferRecallObservation:true})),{mode:'compact',requestedByIndex})||Promise.resolve(batch.map(()=>({}))))
@@ -5847,28 +5823,32 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
           const observed=await readSharedVideoObservation(batch[i]);row={...row,sharedVideoContext:JSON.stringify(observed)}
         }
         if(!wantsPerson&&!wantsHot)return row
+        const commentEpoch=accountBinding.generation(),commentScope=trustedLifeAccountTag()
+        const commentReadCurrent=kind=>{
+          refreshCfg();return commentEpoch===accountBinding.generation()&&commentScope===trustedLifeAccountTag()&&
+            authorizeRegisteredCommentReads({row:batch[i],readKinds:[kind],accountTag:commentScope,
+              accountUid:String(accountBinding.status().activeUid||''),enabled:cfg.masterEnabled===true&&cfg.lifeAgentMode==='active'&&!accountBinding.status().blocked}).ok
+        }
         if(wantsHot){
           const before=trustedLifeAccountTag(),uid=String(accountBinding.status().activeUid||'')
-          if(!/^[a-f0-9]{16}$/.test(String(before||''))||!/^BV[0-9A-Za-z]{10}$/.test(String(batch[i]?.bvid||''))||
+          if(!commentReadCurrent('hot_comments')||! /^[a-f0-9]{16}$/.test(String(before||''))||!/^BV[0-9A-Za-z]{10}$/.test(String(batch[i]?.bvid||''))||
             batch[i]?.verifiedCommentSource!==true||accountBinding.status().blocked)
             return {...row,loadErrors:[...(row.loadErrors||[]),'hot_comments']}
           const hot=await videoContext.forHotComments(batch[i].bvid)
-          if(!hot?.ok||trustedLifeAccountTag()!==before||String(accountBinding.status().activeUid||'')!==uid)
+          if(!hot?.ok||!commentReadCurrent('hot_comments')||trustedLifeAccountTag()!==before||String(accountBinding.status().activeUid||'')!==uid)
             return {...row,loadErrors:[...(row.loadErrors||[]),'hot_comments']}
           row={...row,hotCommentsContext:String(hot.text||'').slice(0,1300)}
         }
         if(!wantsPerson)return row
         refreshCfg()
         const input=batch[i],tag=trustedLifeAccountTag(),activeUid=String(accountBinding.status().activeUid||'')
-        const enabled=cfg.masterEnabled===true&&cfg.lifeAgentMode==='active'&&
-          !accountBinding.status().blocked&&
-          input?.kind==='comment'&&input?.verifiedCommentSource===true&&input.privacyGuard!==true
+        const enabled=commentReadCurrent('public_person')
         const result=await readVerifiedCommenterPublicVideos({enabled,bvid:input.bvid,
           rpid:String(input.incomingRpid||''),uid:String(input.uid||''),accountUid:activeUid,
           getAccountUid:()=>String(accountBinding.status().activeUid||''),accountTag:tag,
           getAccountTag:trustedLifeAccountTag,
           readVideos:async uid=>parseMaybeJson(await call('bili_user_videos',{uid:Number(uid),pn:1,ps:8,order:'pubdate'}))})
-        if(result.ok!==true)return {...row,loadErrors:[...(row.loadErrors||[]),'public_person']}
+        if(result.ok!==true||!commentReadCurrent('public_person'))return {...row,loadErrors:[...(row.loadErrors||[]),'public_person']}
         if(trustedLifeAccountTag()===tag&&String(accountBinding.status().activeUid||'')===activeUid)
           try{lifeSharedBiliLinks.offerVerifiedPublicVideos({accountUid:activeUid,
             origin:'commenter-portfolio',videos:result.videos})}catch{}

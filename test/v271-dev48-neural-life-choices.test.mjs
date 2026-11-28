@@ -117,3 +117,20 @@ test('管理页的图谱与故障提示使用真实接口和可访问元素；�
  assert.match(index,/memoryNeuralProjection/);assert.match(index,/authorizeContextRead/)
  assert.match(index,/commentPublicProfileReadEnabled:true/)
 })
+
+// The production authorization helper checks sources, not a second model vote.
+test('dev52 comment model can choose both public reads under exact live source gates',async()=>{
+ const {authorizeRegisteredCommentReads}=await import('../lib/life-agent-read-runtime.mjs')
+ const auth=(row=input,extra={})=>authorizeRegisteredCommentReads({row,readKinds:['hot_comments','public_person'],enabled:true,accountTag:'a'.repeat(16),accountUid:'999',...extra})
+ assert.deepEqual(auth().allowedReadKinds,['hot_comments','public_person'])
+ for(const row of [{...input,verifiedCommentSource:false},{...input,privacyGuard:true},{...input,kind:'dm'},{...input,bvid:'invented'},{...input,incomingRpid:'bad'}])assert.equal(auth(row).ok,false)
+ for(const extra of [{enabled:false},{accountTag:''},{accountUid:''},{readKinds:['owner_todos','shared_video']}])assert.equal(auth(input,extra).ok,false)
+ assert.deepEqual(auth({...input,uid:'999'}).allowedReadKinds,['hot_comments'])
+ let model=0,reads=0
+ const b=createInteractionBatcher({delayMs:1,getContextMode:()=> 'compact',getPersona:()=>'',logger:{warn(){}},
+  prepareContexts:async()=>[{availableContexts:['hot_comments','public_person']}],
+  authorizeContextRead:({row,readKinds})=>auth(row,{readKinds}),
+  loadRequestedContexts:async(_rows,kinds)=>{reads++;assert.deepEqual(kinds,[['hot_comments','public_person']]);return [{hotCommentsContext:'公开讨论',publicPersonContext:'真实投稿'}]},
+  invoke:async p=>{model++;if(model===1)return answer({contextRequests:['hot_comments','public_person']});assert.match(p,/公开讨论/);assert.match(p,/真实投稿/);return answer({reply:'了解了'})}})
+ try{assert.equal(await b.generate(input),'了解了');assert.equal(reads,1);assert.equal(model,2)}finally{b.stop()}
+})

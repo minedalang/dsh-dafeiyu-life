@@ -12,6 +12,11 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.52 · 主 Session 只读注册与评论单次意愿
+
+- dev.52：主 Session 31 个原只读入口（26 个 B站/宿主及5个记忆/待办/观察工具）与社交15、后台 Episode 8共用注册及执行网关；仍由原适配器及绑定范围核验。评论模型选中的热评及评论者投稿不再经过第二次意愿投票，分别复核真实入站来源、当前账号、active、隐私及原平台预算。不扩大任何写入、私密披露或主动联系权限。注册路由不是独立能力数量，宿主循环仍独立。
+- 增补[工具、场景与权限清单](docs/architecture/life-tool-inventory.md)，区分生产路由、宿主工具、MCP 定义及历史入口。
+
 ## 2.8.3-dev.51 · 主人分享探索后的自主回聊与原意愿封装
 
 - 原 Planner 的 `talk_to_owner` 可选同账号、同主人、24 小时内原分享的延期观察意愿：严格原 Episode 已核验采样、仍清晰公开活体视觉证据，不能以元数据、历史缓存或他人分享代替。提供有界、带不可信标记的画面记忆与来源；模型自由决定是否联系及自然表达，不新增模型投票、待办或通知。

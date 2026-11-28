@@ -177,3 +177,19 @@ for(const scenario of ['creator-disabled','creator-source-changed','creator-erro
  const out=await planner.tick();assert.equal(out.action,'resume_episode');assert.equal(reads,1);assert.equal(settled,0);assert.equal(prompts.length,2);assert.equal(out.continuation.executed,0)
  assert.equal(out.continuation.reason,scenario==='creator-account-changed'?'account-changed':'life-read-scope-changed')
 }))
+
+// dev.52: the native host still owns the main Session loop; its actual read
+// adapters share the registry and scope fence, not social or write authority.
+test('dev52 main read inventory and gateway isolate scene, writes and stale scope',async()=>{
+ const {registeredLifeRead,registeredLifeReads,executeRegisteredLifeRead}=await import('../lib/life-agent-read-runtime.mjs')
+ assert.deepEqual(['social','episode','main-session'].map(s=>registeredLifeReads(s).length),[15,8,31])
+ for(const scene of ['social','episode','main-session'])assert.equal(new Set(registeredLifeReads(scene).map(x=>x.action)).size,registeredLifeReads(scene).length)
+ let current=true,calls=0
+ const run=(actions,read=async()=>{calls++;return {verified:true}})=>executeRegisteredLifeRead({scene:'main-session',actions,isCurrent:()=>current,read})
+ for(const action of ['read_memory','observe_video','bili_reply','bili_video_like','dafeiyu_share_observation','dafeiyu_remember','bili_watch_video','dafeiyu_todo_execute'])assert.equal((await run([action])).reason,'life-read-not-registered')
+ assert.equal((await run(['bili_search','bili_comments'])).reason,'life-read-not-registered');assert.equal(calls,0)
+ assert.deepEqual(await run(['bili_search']),{ok:true,value:{verified:true}})
+ assert.equal((await run(['dafeiyu_life_recall'],async()=>{calls++;current=false;return {private:'not delivered'}})).reason,'life-read-scope-changed')
+ assert.equal((await run(['dafeiyu_todo_list'])).reason,'life-read-scope-changed');assert.equal(calls,2)
+ assert.equal(registeredLifeRead('episode','bili_search'),null)
+})

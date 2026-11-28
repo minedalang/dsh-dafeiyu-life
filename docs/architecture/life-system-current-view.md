@@ -5,6 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
+%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -309,7 +310,7 @@ flowchart TB
   %% @code visualLease | lib/life-planner-atomic.mjs | export async function withLifeVideoVisualLease
   lifeEpisode --> episodeRecall["自主公开历史回忆（模型检索词／原活体 Gateway／最多2次）"] --> episodeContinuation
   %% @code episodeRecall | lib/autonomous-planner.mjs | const publicRecallRuntime=createLifeReadRuntime
-  registeredRead49["社交／后台共享只读注册执行网关：原权限与目标前后复核"]
+  registeredRead49["主 Session／社交／后台共享只读注册执行网关：原权限与目标前后复核"]
   episodeContinuation -.->|当前八种已注册读取（含全局观察及片段补看）| registeredRead49
   registeredRead49 -.->|原工具真实结果| episodeContinuation
   %% @code registeredRead49 | lib/life-agent-read-runtime.mjs | export async function executeRegisteredLifeRead
@@ -619,6 +620,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
+%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -806,7 +808,7 @@ flowchart LR
   ownerChat --> planner
   eventRefs -.-> planner
   rest["skip：自愿休息；不能与技术失败混为一谈"]
-  registeredReadCandidate49["当前 Episode 动态合法菜单投影六种注册只读能力；非授权"]
+  registeredReadCandidate49["当前 Episode 动态合法菜单投影八种注册只读能力；非授权"]
   planner -.-> registeredReadCandidate49
   %% @code registeredReadCandidate49 | lib/life-agent-read-runtime.mjs | export function registeredLifeRead
   planner --> rest
@@ -938,6 +940,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
+%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -1315,6 +1318,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
+%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -1519,7 +1523,7 @@ commentPublicPerson -.->|只读候选| professionalMenu
 professionalMenu -.-> commentObservation
 readRuntime46["统一只读目录、参数防重和调用预算：不授予权限"]
 readRuntime46 -.-> commentObservation
-registeredEpisodeRead49["原六种 Episode 只读路由：同社交注册/准入；原执行回执仍独立"]
+registeredEpisodeRead49["八种 Episode 只读路由：同社交及主 Session 注册/准入；原执行回执仍独立"]
 readRuntime46 -.-> registeredEpisodeRead49
 registeredEpisodeRead49 -.->|仅有效读取续行| menu
 %% @code registeredEpisodeRead49 | lib/life-agent-read-runtime.mjs | export async function executeRegisteredLifeRead

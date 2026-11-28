@@ -1,3 +1,4 @@
+%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -185,7 +186,7 @@ flowchart LR
   ownerChat --> planner
   eventRefs -.-> planner
   rest["skip：自愿休息；不能与技术失败混为一谈"]
-  registeredReadCandidate49["当前 Episode 动态合法菜单投影六种注册只读能力；非授权"]
+  registeredReadCandidate49["当前 Episode 动态合法菜单投影八种注册只读能力；非授权"]
   planner -.-> registeredReadCandidate49
   %% @code registeredReadCandidate49 | lib/life-agent-read-runtime.mjs | export function registeredLifeRead
   planner --> rest
