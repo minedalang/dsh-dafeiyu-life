@@ -359,3 +359,27 @@ test('older than 128 parents and a late fragment absent from overview are retrie
 }))
 
 test('planner cross-turn revisit resumes original menu, charges continuation, and rejects account change',async()=>{await progressiveScenario({mode:'revisit'});await progressiveScenario({mode:'revisit-stale'});await progressiveScenario({mode:'revisit',limit:2})})
+
+
+test('background Life may choose a live public partial gap through original recall/revisit, never forced or shifted',async()=>{
+ for(const mode of ['choose','rest','shift','forget','foreign'])await tmp(async dir=>{
+  let clock=T+2000,reads=0,revisits=0;const prompts=[]
+  const gateway=createLifeMemoryGateway({dataDir:dir,getAccountTag:()=>A,now:()=>clock,getConfig:()=>({mainSessionMemoryHalfLifeDays:15})})
+  try{
+   const base=vid(),event={...base,experience:{...base.experience,vision:false,visualReceipt:undefined,partialVisualReceipt:{source:'low-resolution-preview',sampledTimesMs:[2000,8000,15000],describedTimesMs:[2000,15000],notes:['部分画面'],interpretation:'partial-model-observation-not-semantic-proof'}}}
+   assert.equal(gateway.recordEvents([event]).added,1)
+   const gap=gateway.partialVideoGapCandidates({accountTag:A})[0];assert.equal(gap.atMs,8000)
+   const planner=createAutonomousPlanner({dataDir:dir,now:()=>clock,getConfig:()=>({masterEnabled:true,visionEnabled:true,autonomousPlannerEnabled:true,lifeAgentMode:'active',autonomousPlannerDailyLimit:10,autonomousPlannerMinutes:1,autonomousPlannerStartHour:0,autonomousPlannerEndHour:24}),
+    getLifeAccountTag:()=>A,getLifeOpportunities:()=>[],getRecentLifeVideoMemory:()=>[],getLifePartialVideoGaps:opts=>gateway.partialVideoGapCandidates(opts),
+    getLifeVideoDetailRecall:opts=>{reads++;return gateway.recallVideoDetails(opts)},revisitVideo:async({request,partialGap,isCurrent})=>{revisits++;assert.deepEqual(request,{bvid:BV,startMs:8000,endMs:8000});assert.equal(partialGap.memoryId,gap.memoryId);return {evidence:{ok:true,description:'新的局部观察'},validate:isCurrent}},
+    getTodos:()=>[],executeRead:async()=>({ok:false}),updateTodo:()=>({ok:false}),reflect:async()=>({ok:false}),invokeModel:async prompt=>{prompts.push(prompt)
+      if(prompts.length===1){if(mode==='rest')return '{"action":"skip"}';return JSON.stringify({recallVideoBvid:mode==='foreign'?'BV0987654321':BV,startMs:8000,endMs:8000})}
+      if(prompts.length===2){if(mode==='forget')clock+=14*86400000;return JSON.stringify({videoRevisit:{bvid:BV,startMs:mode==='shift'?9000:8000,endMs:mode==='shift'?9000:8000}})}
+      return '{"action":"skip"}'}})
+   const r=await planner.tick();assert.match(prompts[0],/partialVisualGaps/);assert.ok(!prompts[0].includes(gap.memoryId))
+   assert.equal(revisits,mode==='choose'?1:0);assert.equal(reads,['rest','foreign'].includes(mode)?0:1)
+   assert.equal(prompts.length,mode==='choose'?3:['rest','foreign'].includes(mode)?1:2)
+   assert.equal(r.result,['choose','rest'].includes(mode)?'voluntary-rest':'invalid-decision')
+  }finally{gateway.close()}
+ })
+})

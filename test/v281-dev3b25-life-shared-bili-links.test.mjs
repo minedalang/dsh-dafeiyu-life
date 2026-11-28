@@ -82,3 +82,28 @@ test('陌生人延期仅限公开链接核验，不会从视频链接取得主�
   assert.equal(x.api.get(id,scope).deferredExploration,undefined);
  }finally{x.close()}
 })
+
+
+test('same share retains real visual receipt as history, not an undecided candidate or a new TODO',()=>{
+ const x=setup();try{
+  const bvid='BV1mzso6uEZh',id=x.api.offerFromMessage({uid,role:'owner',text:'https://www.bilibili.com/video/'+bvid,messageId:'watch'}).ids[0]
+  x.api.recordRead(id,{ok:true,kind:'video',bvid,title:'哈哈哈'},scope)
+  x.api.recordExplorationIntent(id,{uid,role:'owner',goal:'observe_video'},scope)
+  const result={ok:true,bvid,viewDepth:'standard',info:{duration:30},visual:{ok:true,status:'analyzed'},videoEvidence:{schema:'life-video-evidence/v1',bvid,verifiedContent:true,sources:[{kind:'preview_visual_analysis',status:'analyzed',timePointsMs:[0,1000]},{kind:'subtitle',status:'verified'}]},perceptionHandoff:{schema:'life-video-perception-handoff/v1',bvid,video:{source:'low-resolution-preview',frameCount:2,frameTimesMs:[0,1000],modelDescription:'实际图像观察'},speech:{source:'official-subtitles',textExcerpt:'真实字幕'}}}
+  const apply=(r=result,u=uid,role='owner',tag=scope)=>x.api.recordVideoObservation(id,{uid:u,role,result:r},tag)
+  assert.equal(apply(result,'99999').ok,false);assert.equal(apply(result,uid,'friend').ok,false);assert.equal(apply(result,uid,'owner','f'.repeat(16)).ok,false)
+  assert.equal(apply({...result,bvid:'BV1234567890'}).ok,false)
+  const speech={...result,visual:{ok:false},videoEvidence:{...result.videoEvidence,sources:[{kind:'subtitle',status:'verified'}]}}
+  assert.equal(apply(speech).observation.kind,'speech-only');assert.equal(x.api.list().length,1)
+  assert.equal(apply().observation.kind,'fresh');assert.equal(x.api.list().length,0)
+  assert.equal(x.api.history()[0].videoObservation.frameCount,2);assert.equal(x.api.history()[0].eligible,false)
+  assert.equal(x.api.get(id,scope).deferredExploration,undefined)
+  assert.equal(x.api.recentForContact({uid})[0].id,id)
+  assert.equal(apply(speech).duplicate,true);assert.equal(x.api.history()[0].videoObservation.kind,'fresh')
+  assert.equal(x.api.decide(id,'defer').ok,false)
+  assert.equal(x.api.recordExplorationIntent(id,{uid,role:'owner',goal:'observe_video'},scope).ok,false)
+  assert.doesNotMatch(JSON.stringify(x.api.history()),/实际图像观察|真实字幕|senderUid/)
+  const next=x.api.offerFromMessage({uid,role:'owner',text:'https://www.bilibili.com/video/'+bvid,messageId:'new-share'}).ids[0]
+  assert.notEqual(next,id);assert.equal(x.api.list()[0].id,next);assert.equal(x.api.list()[0].videoObservation,undefined)
+ }finally{x.close()}
+})

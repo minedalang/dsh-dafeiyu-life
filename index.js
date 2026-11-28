@@ -2905,7 +2905,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   tool({...videoRevisitSpec,execute:args=>videoRevisitSpec.execute(args)})
   // Host-only adapters for the original in-flight DM/Planner turn. Model JSON
   // is just a request; channel, identity and generation are captured here.
-  const contextualRevisit=({request,offeredBvids,scene='main',uid='',incomingText='',authorized})=>{
+  const contextualRevisit=({request,offeredBvids,scene='main',uid='',incomingText='',partialGap=null,authorized})=>{
     const account=trustedLifeAccountTag(),epoch=accountBinding.generation(),policy=getSessionIntegration()
     const isCurrent=()=>{
       refreshCfg();const p=getSessionIntegration()
@@ -2916,7 +2916,14 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     return runContextualVideoRevisit({request,offeredBvids,isCurrent,
       allowRange:({startMs,endMs})=>scene==='main'||hasExplicitVideoTime(incomingText,startMs,endMs),
       readDetails:opts=>lifeMemory?.recallVideoDetails({...opts,accountTag:account,visibility:'public-event',ownerSession:false,maxBytes:8192}),
-      readTrace:opts=>lifeMemory?.videoEvidenceTrace({...opts,accountTag:account,ownerSession:false,visualOnly:true,limit:6})||[],
+      readTrace:opts=>{
+        if(partialGap&&opts.bvid===partialGap.bvid&&opts.startMs===partialGap.atMs&&opts.endMs===partialGap.atMs){
+          if(opts.memoryId&&opts.memoryId!==partialGap.memoryId)return []
+          return lifeMemory?.partialVideoGapTrace({...opts,memoryId:partialGap.memoryId,accountTag:account})||[]
+        }
+        return [...(lifeMemory?.partialVideoGapTrace({...opts,accountTag:account})||[]),
+          ...(lifeMemory?.videoEvidenceTrace({bvid:opts.bvid,memoryId:opts.memoryId,accountTag:account,ownerSession:false,visualOnly:true,limit:6})||[])]
+      },
       execute:(args,current,afterCurrent)=>videoRevisitSpec.execute(args,{current,afterCurrent,scene,uid})})
   }
 
@@ -5051,6 +5058,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       else if(result?.ok!==true)observed=sharedVideoReadFailure(result?.reason)
       else{
         observed=projectSharedVideoObservation(result,row.bvid)
+        if(current())try{lifeSharedBiliLinks.recordVideoObservation(row.id,{uid:String(input.uid),role:socialPolicyGate.actor(input.uid).role,result},scope)}catch(e){log('分享观察状态写入失败：'+String(e?.message||e).slice(0,90))}
         if(!observed.verified&&!observed.visualFailure)observed=sharedVideoReadFailure('video-read-unavailable')
       }
     }catch(e){
@@ -8363,8 +8371,9 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     offerLifeVideoAssociation:({accountTag,rows,delivered,allowRecent=false})=>offerLifeAssociation({accountTag,rows,delivered,allowRecent,isCurrent:()=>cfg.autonomousPlannerEnabled===true&&cfg.lifeAgentMode!=='off'&&rows.every(row=>lifeRecallGenerations.get(row)===accountBinding.generation())&&memoryRetriever?.validateContextualVisualRecall({accountTag,rows})===true}),
     observeLifeVideoMemory:({accountTag,rows})=>{if(cfg.mainSessionMemoryEnabled&&!accountBinding.status().blocked&&accountTag===trustedLifeAccountTag()&&rows.every(row=>lifeRecallGenerations.get(row)===accountBinding.generation()))observePublicRecall(accountTag,rows,'life')},
     validateLifeVideoMemory:opts=>cfg.mainSessionMemoryEnabled===true&&opts.accountTag===trustedLifeAccountTag()&&!accountBinding.status().blocked&&opts.rows.every(row=>lifeRecallGenerations.get(row)===accountBinding.generation())&&memoryRetriever?.validateContextualVisualRecall(opts)===true,
+    getLifePartialVideoGaps:opts=>cfg.mainSessionMemoryEnabled===true&&cfg.visionEnabled===true&&!accountBinding.status().blocked&&opts.accountTag===trustedLifeAccountTag()?lifeMemory?.partialVideoGapCandidates(opts)||[]:[],
     getLifeVideoDetailRecall:opts=>lifeMemory?.recallVideoDetails({...opts,ownerSession:false,visibility:'public-event'})||{ok:false,reason:'memory-unavailable'},
-    revisitVideo:({request,offeredBvids,isCurrent})=>contextualRevisit({request,offeredBvids,
+    revisitVideo:({request,offeredBvids,isCurrent,partialGap})=>contextualRevisit({request,offeredBvids,partialGap,
       authorized:()=>isCurrent()&&cfg.autonomousPlannerEnabled===true}),
     // Video is not a mandatory Episode first step. For early, *optional*
     // reconsideration, match the SAME original source for an existing active

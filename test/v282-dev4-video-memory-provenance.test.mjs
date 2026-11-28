@@ -133,6 +133,8 @@ test('partial memory survives restart in existing fading row; exact public gap o
   const sel={accountTag:A,bvid:BV,memoryId:id,startMs:2000,endMs:2000}
   const trace=reloaded.partialVideoGapTrace(sel),result=reloaded.recallVideoDetails({...sel,visibility:'public-event'})
   assert.equal(trace.length,1);assert.equal(result.reason,'no-detail')
+  assert.deepEqual(reloaded.partialVideoGapCandidates({accountTag:A}).map(({bvid,memoryId,atMs})=>({bvid,memoryId,atMs})),[{bvid:BV,memoryId:id,atMs:2000}])
+  assert.deepEqual(reloaded.partialVideoGapCandidates({accountTag:B}),[])
   const candidate=proposeVideoRecallFollowup({bvid:BV,startMs:2000,endMs:2000,trace,result})
   assert.equal(candidate.args.at_seconds,2);assert.equal(candidate.args.recall_memory_id,id)
   assert.equal(validateVideoRecallGap({bvid:BV,memoryId:id,startMs:2000,endMs:2000,atSeconds:2,trace,result}),true)
@@ -142,8 +144,9 @@ test('partial memory survives restart in existing fading row; exact public gap o
   reloaded.recordEvents([privateEvent]);assert.deepEqual(reloaded.partialVideoGapTrace({...sel,bvid:OTHER,memoryId:''}),[])
   const other={...event,key:'video-explore:partial-second',experience:{...event.experience,partialVisualReceipt:{...event.experience.partialVisualReceipt,describedTimesMs:[2000]}}}
   reloaded.recordEvents([other]);assert.deepEqual(reloaded.partialVideoGapTrace(sel),[])
+  assert.ok(reloaded.partialVideoGapCandidates({accountTag:A}).every(x=>x.bvid===BV&&x.atMs!==2000))
   reloaded.close();reloaded=null
-  s.setNow(start+14*DAY);assert.deepEqual(s.gateway.partialVideoGapTrace(sel),[])
+  s.setNow(start+14*DAY);assert.deepEqual(s.gateway.partialVideoGapTrace(sel),[]);assert.deepEqual(s.gateway.partialVideoGapCandidates({accountTag:A}),[])
   assert.equal(JSON.parse(readFileSync(path,'utf8')).episodes.find(e=>e.id===id).partialVisualMemo,undefined)
   writeFileSync(path,snapshot,'utf8') // simulate restoring the older shallow snapshot only
   s.setNow(start);assert.deepEqual(s.gateway.partialVideoGapTrace(sel),[])

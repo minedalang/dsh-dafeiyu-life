@@ -63,3 +63,14 @@ test('owner friendly DM and memories do not expose raw errors by default',()=>{
   assert.match(html,/id="memory-now-title">此刻还记得的事/)
   assert.match(html,/根据真实入选视频积累/)
 })
+
+
+test('shared observation history is separate from independent selection curiosity and accepted todos',()=>{
+ const segment=js.slice(js.indexOf('const renderUnifiedLifePlans='),js.indexOf('const renderUnifiedLifePlans=')+6500)
+ assert.match(segment,/selection-curiosity.*public-person-observation.*cue/)
+ assert.match(segment,/来自自主选片或观察的好奇线索/)
+ assert.match(segment,/sharedBiliLinksHistory/)
+ assert.match(segment,/已复用核验画面.*已观察采样画面.*部分视觉观察.*已读取字幕或转写/)
+ assert.match(segment,/不代表完整播放/)
+ assert.match(segment,/不会自动生成补看任务/)
+})

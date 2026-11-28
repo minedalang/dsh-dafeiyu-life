@@ -109,3 +109,16 @@ test('DM explicit time only uses incoming absolute video notation, not guessed r
  assert.equal(hasExplicitVideoTime('红色风筝飞起来后过了8秒',6000,9000),false)
  assert.equal(hasExplicitVideoTime('上次的视频后来发生了什么',6000,9000),false)
 })
+
+
+test('contextual exact partial gap uses range-bound original trace, never a shifted moment or missing source',async()=>{
+ const {runContextualVideoRevisit}=await import('../lib/video-moment-followup.mjs')
+ const bvid='BV1234567890',memoryId='e-'+'a'.repeat(18);let live=true,reads=0
+ const opts={offeredBvids:[bvid],isCurrent:()=>true,allowRange:()=>true,readDetails:()=>({ok:false,reason:'no-detail'}),
+  readTrace:({startMs,endMs,memoryId:id})=>live&&startMs===7000&&endMs===7000&&(!id||id===memoryId)?[{bvid,memoryId,visibility:'public-event',partialGapAtMs:7000}]:[],
+  execute:async(args,before,after)=>{reads++;assert.equal(args.recall_memory_id,memoryId);assert.equal(before(),true);assert.equal(after(),true);return {ok:true,bvid,status:'observed-new-window',review:{startMs:1000,endMs:13000,frameTimesMs:[7000],description:'新观察'},deepMemory:{status:'not-recorded'}}}}
+ const result=await runContextualVideoRevisit({...opts,request:{bvid,startMs:7000,endMs:7000}})
+ assert.equal(result.evidence.ok,true);assert.equal(result.validate(),true);assert.equal(reads,1)
+ assert.equal((await runContextualVideoRevisit({...opts,request:{bvid,startMs:8000,endMs:8000}})).evidence.ok,false)
+ live=false;assert.equal(result.validate(),false);assert.equal((await runContextualVideoRevisit({...opts,request:{bvid,startMs:7000,endMs:7000}})).evidence.ok,false);assert.equal(reads,1)
+})
