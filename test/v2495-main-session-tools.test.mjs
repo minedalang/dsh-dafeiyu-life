@@ -31,6 +31,15 @@ test('选定主 Session 即使关闭身份长期记忆，也能回忆真实经�
   const byName=Object.fromEntries(tools.map(x=>[x.name,x]))
   for(const name of ['dafeiyu_life_recall','dafeiyu_todo_list','dafeiyu_todo_add','dafeiyu_todo_update','dafeiyu_todo_execute'])assert.ok(byName[name],`缺少主 Session 工具 ${name}`)
   const recall=await byName.dafeiyu_life_recall.execute({query:'猫咪'})
+  const wire={association_quote_a:'',association_quote_b:'',association_reason:'',association_token:'',association_type:'',detail_budget_bytes:4096,detail_bvid:'',detail_cursor:'',detail_end_ms:0,detail_first_observation:false,detail_memory_id:'',detail_order:'',detail_start_ms:0,limit:8,query:BV,visual_query:''}
+  const exact=await byName.dafeiyu_life_recall.execute(wire);assert.equal(exact.ok,true);assert.equal(exact.experiences[0].bvid,BV);assert.equal(exact.fragments,undefined)
+  const title=await byName.dafeiyu_life_recall.execute({...wire,query:'猫咪 '+BV,detail_budget_bytes:0});assert.equal(title.ok,true);assert.equal(title.experiences[0].bvid,BV)
+  const point=await byName.dafeiyu_life_recall.execute({...wire,detail_bvid:BV});assert.equal(point.ok,true);assert.equal(point.startMs,0);assert.equal(point.endMs,0)
+  const visual=await byName.dafeiyu_life_recall.execute({...wire,visual_query:'朱红雨伞'});assert.equal(visual.visualAssociations[0].bvid,BV)
+  assert.equal((await byName.dafeiyu_life_recall.execute({...wire,association_type:'concept'})).reason,'invalid-association-request')
+  assert.equal((await byName.dafeiyu_life_recall.execute({...wire,detail_end_ms:20000})).reason,'invalid-detail-target')
+  assert.equal((await byName.dafeiyu_life_recall.execute({...wire,detail_bvid:BV,detail_budget_bytes:0})).reason,'invalid-detail-selector')
+
   assert.equal(recall.ok,true);assert.equal(recall.experiences[0].bvid,BV);assert.match(recall.experiences[0].summary,/猫咪/)
   const deep=await byName.dafeiyu_life_recall.execute({query:'具体画面',detail_bvid:BV,detail_memory_id:'e-'+'a'.repeat(18)})
   assert.equal(deep.ok,true);assert.equal(deep.fragments[0].content,'真实保存的片段')
@@ -346,6 +355,12 @@ test('dev70 shared privacy turn: DM, recall, todo and gallery cannot re-vote aft
  const pending=recall.execute({query:'经历'});await started;const before=models;assert.equal((await dm()).reason,'life-private-read-already-considered');assert.equal(models,before);releaseModel();assert.match((await pending).context,/私人记忆/);blockModel=null
  assert.match(prompt,/准确披露目标/);assert.match(prompt,/dafeiyu_memory_recall/);assert.doesNotMatch(prompt,/仅在明确同意后交付的私人记忆/)
  assert.equal((await recall.execute({query:'经历'})).ok,false);assert.equal((await dm()).ok,true);assert.equal((await gallery.execute({})).ok,true)
+ // Real shared willingness gate: materialized defaults are normalized before the claim.
+ turn(300,'你记得这个视频吗？');const wire={query:BV,limit:8,association_token:'',association_type:'',association_quote_a:'',association_quote_b:'',association_reason:'',detail_bvid:'',detail_memory_id:'',detail_start_ms:0,detail_end_ms:0,detail_first_observation:false,detail_cursor:'',detail_order:'',detail_budget_bytes:4096,visual_query:''}
+ const countBefore=models,readsBefore=reads;const actual=await life.execute(wire);assert.equal(actual.ok,true);assert.match(actual.memories,/私人记忆/);assert.equal(models,countBefore+1);assert.equal(reads,readsBefore+1)
+ assert.doesNotMatch(prompt,/association_token|detail_budget_bytes|detail_start_ms/)
+ const duplicate=await life.execute({query:BV,limit:8});assert.equal(duplicate.ok,false);assert.equal(reads,readsBefore+1)
+
  // The real mounted wrapper loses old results when an owner turn changes while reading.
  turn(4);let releaseRead,enteredRead;const reading=new Promise(r=>enteredRead=r);blockRead=()=>{enteredRead();return new Promise(r=>releaseRead=r)}
  const stale=recall.execute({query:'另一个主题'});await reading;turn(5);releaseRead();const discarded=await stale;assert.equal(discarded.ok,false);assert.doesNotMatch(JSON.stringify(discarded),/私人记忆/);blockRead=null

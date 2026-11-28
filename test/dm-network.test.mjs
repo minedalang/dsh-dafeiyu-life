@@ -165,6 +165,8 @@ test('dev81 current ordinary owner receives bounded diagnostic without rejected 
  assert.deepEqual(view.ownerDiagnostic,{status:'not-completed',reason:'life-private-read-declined',lifeAction:'skip'})
  assert.doesNotMatch(JSON.stringify(view),/PRIVATE_DEV81|SECRET_DEV81/)
  assert.equal(projectBoundPrivateReadForRole({...raw,reason:'ARBITRARY_SECRET'},turn).ownerDiagnostic.reason,'unclassified')
+ const invalid=projectBoundPrivateReadForRole({ok:false,reason:'invalid-association-request'},turn);assert.equal(invalid.choice,'unavailable');assert.deepEqual(invalid.ownerDiagnostic,{status:'not-completed',reason:'invalid-association-request'});
+ for(const reason of ['invalid-detail-target','invalid-detail-selector'])assert.equal(projectBoundPrivateReadForRole({ok:false,reason},turn).ownerDiagnostic.reason,reason)
  active=false;assert.equal(projectBoundPrivateReadForRole(raw,turn).ownerDiagnostic,undefined)
  assert.equal(projectBoundPrivateReadForRole(raw,null).ownerDiagnostic,undefined)
 })

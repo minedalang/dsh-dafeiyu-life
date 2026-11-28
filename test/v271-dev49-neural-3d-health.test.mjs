@@ -116,5 +116,5 @@ test('搜索聚焦分页保留全部命中且只展开真实可见的直接关�
  const last=project(nodes,edges,999,'n344',()=>true);assert.equal(last.page,43);assert.equal(last.hits.length,1);assert.equal(last.hits[0].id,'n0');assert.equal(last.relatedTotal,11)
  const filtered=project(nodes.filter(n=>n.id!=='n0'),edges,0,'n344',e=>e.type==='source');assert.equal(filtered.relatedTotal,9)
  assert.equal(project(nodes,edges,-1,'missing',()=>true).relatedTotal,0);assert.equal(project([],edges,1,'n344',()=>true).total,0);assert.equal(nodes[0].id,'n0','不改变原始节点顺序')
- const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8');assert.match(html,/option value="focus">聚焦阅读/);assert.match(js,/if\(q\)\$\('neural-view-mode'\)\.value='focus'/);assert.match(js,/if\(neuralFocusMode\(\)\)\{neuralViewport\.classList\.remove\('is-canvas'\)/)
+ const html=readFileSync(new URL('../lib/management-console.html',import.meta.url),'utf8');assert.match(html,/option value="focus">聚焦阅读/);assert.match(html,/option value="search">搜索命中/);assert.match(js,/if\(q\)\$\('neural-view-mode'\)\.value='search'/);assert.match(js,/\['search','graph'\]\.includes\(\$\('neural-view-mode'\)\.value\)/);assert.match(js,/if\(neuralFocusMode\(\)\)\{neuralViewport\.classList\.remove\('is-canvas'\)/)
 })

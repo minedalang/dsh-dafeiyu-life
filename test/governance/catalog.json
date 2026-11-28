@@ -1842,6 +1842,13 @@
       "newCheck": "assert.match(readme,/按需开启视频视觉[\\s\\S]*内置视觉（推荐）[\\s\\S]*Ollama 本地视觉[\\s\\S]*远程视觉[\\s\\S]*不想配置视频视觉也可以使用/);",
       "date": "2026-11-28",
       "reason": "Approved native vision is the recommended option since dev.94; retain optional vision and exact sampling/cost warnings."
+    },
+    {
+      "file": "v271-dev49-neural-3d-health.test.mjs",
+      "oldCheck": "assert.match(js,/if\\(q\\)\\$\\('neural-view-mode'\\)\\.value='focus'/);",
+      "newCheck": "assert.match(js,/if\\(q\\)\\$\\('neural-view-mode'\\)\\.value='search'/);",
+      "date": "2026-11-28",
+      "reason": "Maintainer requests 3D memory points on search; explicit focus view remains and its pagination tests are preserved."
     }
   ]
 }
