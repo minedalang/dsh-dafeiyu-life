@@ -22,7 +22,6 @@ lib/tmp/**
 /README-交付说明.md
 /README-#U*.md
 
-# Historical cold-snapshot maintenance only; not a user feature.
-/lib/cold-state-snapshot.mjs
+# Retired broad cold-snapshot CLI and historical documentation (not shipped).
 /tools/dev4-cold-state-backup.mjs
 /docs/architecture/2.8.3-dev26-split-cold-backup.md

@@ -1,3 +1,4 @@
+%% dev.62：本机明确停机维护复用原分盘完整快照、封存检查点、同状态修复及事务回滚引擎。新版快照根及子路径、事务暂存/保留目录不可启动；原路径封存恢复只补缺失分区，现存分区必须一致。恢复和回滚重新核验停机，失效保持冻结；成功仍须原账号复核。普通历史业务覆盖、无封存灾难激活和跨设备独占仍拒绝。无新 Life 工具、调度、记忆或权限。
 %% dev.61：缺失公开经历须匹配原档案的原始内容指纹或可重建的原始投影，备份档案共享部分须为当前历史前缀；角色 UUID 与创建时间均核验。在线规则恢复独立白名单及预览后文件复核，附件修复复用原记忆锁。新增仅离线隔离救援，不激活角色、不恢复旧授权或账本。旧视觉正文、强化记录缺乏原始证据时仍阻止修复；完整覆盖与跨设备独占未实现。
 %% dev.60：视觉不完整回执仅技术失败；Ollama 本机低频健康提醒，人工恢复不等于观看；新专项记忆备份角色身份及原证据核验，历史覆盖／迁移未开放。
 %% dev.59：主人本机备份按记忆 ID/内容比较；原档案、连续保留与撤销保护核验后，可明确确认补回缺失公开经历。非 Life 自主行动，不新建经历或账本。
@@ -100,7 +101,10 @@ flowchart TB
   storageModelPath["Whisper / Embedding / Python / 影音缓存路径经过分区身份核验"]
   %% @code storageModelPath | lib/storage-layout.mjs | export function storageDataPath
   video -.->|取帧/转写资源的生效路径| storageModelPath
-  coldRestoreFence["历史未结维护：禁止直接启动"]
+  coldRestoreFence["停机封存／未结事务／隔离快照：禁止启动"]
+  coldMaintenance62["人工本机停机维护：完整快照、封存补缺、同状态修复与回滚"]
+%% @code coldMaintenance62 | lib/cold-maintenance.mjs | export function runColdMaintenance
+  coldMaintenance62 -.-> coldRestoreFence
 %% @code coldRestoreFence | lib/cold-restore-fence.mjs | export function assertColdRestoreClear
   businessBackup["手动与每日业务备份：只读现役业务数据"]
 %% @code businessBackup | lib/data-backup.mjs | export function createBackup
