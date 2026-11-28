@@ -185,3 +185,51 @@ test('dev.24 continuation writer rechecks mode after queued intent and still set
  const blocked=await auto.dispatch(()=>run(action,scope));assert.equal(blocked.status,'blocked');assert.equal(blocked.attempted,false);assert.equal(writes,0);assert.equal(cancelled,1)
  changeAt='writer';const confirmed=await auto.dispatch(()=>run(action,scope));assert.equal(confirmed.status,'verified');assert.equal(writes,1);assert.equal(cancelled,2)
 })
+
+
+test('dev53 write gateway rejects account generation, replaced intent, lost visual evidence and zero quota during admission',async()=>{
+ for(const change of ['generation','intention','visual','quota']){
+   let generation=1,visual=true,writes=0,cancelled=0,settings={...cfg},entry={...selected,selectedTitle:evidence.title}
+   const execute=createLifeContinuationWriteExecutor({hasVerifiedVisual:()=>visual,getConfig:()=>settings,getAccountTag:()=>scope,
+     getAccountUid:()=> '1234',getAccountGeneration:()=>generation,getIntention:()=>entry,getPublicEvidence:async()=>evidence,
+     markSelected:async()=>({ok:true}),prepareIntent:async(_args,{isCurrent})=>{
+       assert.equal(isCurrent(),true)
+       if(change==='generation')generation+=2
+       if(change==='intention')entry.metadataAt+=1
+       if(change==='visual')visual=false
+       if(change==='quota')settings.autoVideoLikeDailyLimit=0
+       assert.equal(isCurrent(),false)
+       return {ok:true,ticket:'test-ticket'}
+     },cancelIntent:()=>{cancelled++},runWriter:async()=>{writes++;return {ok:true,status:'verified'}},now:()=>T})
+   const result=await execute({action:'like_video',id:ID,bvid:BV,reason:'确实欣赏这个视频的创作方式'},scope)
+   assert.equal(result.status,'blocked',change);assert.equal(result.attempted,false,change);assert.equal(writes,0,change);assert.equal(cancelled,1,change)
+ }
+})
+
+test('dev53 bundle admission cancels stale proof and only executes the current registered child',async()=>{
+ let generation=1,writes=0,cancels=0,change=true,entry={...selected,selectedTitle:evidence.title}
+ const proof={kind:'video_bundle',id:'proof'},like={action:'like_video',id:ID,bvid:BV,reason:'确实欣赏这个视频的创作方式'},collect={action:'collect_video',id:ID,bvid:BV,reason:'以后还想继续欣赏这个作品',folderTitle:'公开作品'}
+ const execute=createLifeContinuationWriteExecutor({hasVerifiedVisual:()=>true,getConfig:()=>cfg,getAccountTag:()=>scope,
+   getAccountUid:()=> '1234',getAccountGeneration:()=>generation,getIntention:()=>entry,getPublicEvidence:async()=>evidence,
+   markSelected:async()=>({ok:true}),prepareBundleIntent:async()=>{if(change)generation+=2;return {ok:true,proof}},
+   cancelBundleIntent:(p,first)=>{assert.equal(p,proof);assert.equal(first.action,like.action);cancels++},
+   prepareIntent:async()=>({ok:true,ticket:'child-ticket'}),cancelIntent:()=>{},
+   runWriter:async()=>{writes++;return {ok:true,status:'verified'}},now:()=>T})
+ assert.equal((await execute.prepareBundle([like,collect],scope)).code,'authorization-changed-after-queue');assert.equal(cancels,1)
+ change=false;assert.equal((await execute.prepareBundle([like,collect],scope)).proof,proof)
+ entry={...entry,writeBundle:{id:'bundle',next:0,actions:[like.action,collect.action]}}
+ assert.equal((await execute(collect,scope,{bundleProof:proof})).code,'invalid-write-proposal');assert.equal(writes,0)
+ assert.equal((await execute(like,scope,{bundleProof:proof})).status,'verified');assert.equal(writes,1)
+ entry.writeBundle.next=1
+ assert.equal((await execute(collect,scope,{bundleProof:proof,alreadySelected:true})).status,'verified');assert.equal(writes,2)
+})
+
+test('dev53 episode writer does not convert an already-dispatched receipt into success in a new account generation',async()=>{
+ let generation=1,writes=0
+ const execute=createLifeContinuationWriteExecutor({hasVerifiedVisual:()=>true,getConfig:()=>cfg,getAccountTag:()=>scope,
+   getAccountUid:()=> '1234',getAccountGeneration:()=>generation,getIntention:()=>selected,getPublicEvidence:async()=>evidence,
+   markSelected:()=>({ok:true}),prepareIntent:()=>({ok:true,ticket:'test-ticket'}),cancelIntent:()=>{},
+   runWriter:async(_args,options)=>{assert.equal(options.accountGeneration,1);writes++;generation+=2;return {ok:true,status:'verified'}},now:()=>T})
+ const result=await execute({action:'like_video',id:ID,bvid:BV,reason:'确实欣赏这个视频的创作方式'},scope)
+ assert.equal(result.status,'uncertain');assert.equal(writes,1)
+})

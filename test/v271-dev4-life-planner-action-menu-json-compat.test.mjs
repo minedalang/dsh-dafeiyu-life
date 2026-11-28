@@ -193,3 +193,28 @@ test('dev52 main read inventory and gateway isolate scene, writes and stale scop
  assert.equal((await run(['dafeiyu_todo_list'])).reason,'life-read-scope-changed');assert.equal(calls,2)
  assert.equal(registeredLifeRead('episode','bili_search'),null)
 })
+
+
+test('dev53 registry groups shared semantics without granting aliases or autonomous writes in social/main scenes',async()=>{
+ const {registeredLifeTool,registeredLifeTools,registeredLifeWrite,registeredLifeRead,executeRegisteredLifeWrite}=await import('../lib/life-agent-read-runtime.mjs')
+ assert.deepEqual(['social','episode','main-session'].map(s=>registeredLifeTools(s).length),[15,12,31])
+ for(const [social,episode,main] of [['read_memory','recall_public_experience','dafeiyu_life_recall'],['read_video','inspect_exploration','bili_video_info'],['read_hot_comments','inspect_video_discussion','bili_comments'],['read_public_person','inspect_creator_space','bili_user_videos']]){
+   assert.equal(registeredLifeTool('social',social).capability,registeredLifeTool('episode',episode).capability)
+   assert.equal(registeredLifeTool('social',social).capability,registeredLifeTool('main-session',main).capability)
+   assert.equal(registeredLifeTool('social',main),null)
+ }
+ const names=['like_video','collect_video','follow_creator','comment_video']
+ assert.deepEqual(registeredLifeTools('episode').filter(x=>x.risk==='write').map(x=>x.action),names)
+ for(const action of names){
+   assert.equal(registeredLifeRead('episode',action),null)
+   assert.equal(registeredLifeWrite('main-session',action),null)
+   assert.equal(registeredLifeWrite('social',action),null)
+ }
+ let calls=0,current=true
+ const run=(scene,action,isCurrent=()=>current)=>executeRegisteredLifeWrite({scene,action,isCurrent,write:async()=>{calls++;current=false;return {ok:true,status:'verified'}}})
+ assert.equal((await run('social','like_video')).code,'life-write-not-registered')
+ assert.equal((await run('episode','observe_video')).code,'life-write-not-registered')
+ assert.equal((await run('episode','like_video',()=>{throw Error('guard failed')})).attempted,false)
+ assert.deepEqual(await run('episode','like_video'),{ok:true,status:'verified'},'already-dispatched result must settle even when authorization changes')
+ assert.equal((await run('episode','like_video')).attempted,false);assert.equal(calls,1)
+})

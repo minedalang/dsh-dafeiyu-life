@@ -5,7 +5,7 @@
 ## 一、系统全景
 
 ```mermaid
-%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
+%% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -331,6 +331,10 @@ flowchart TB
     commentAdmission["唯一 Life 意愿 proof：账号／轮次／BV／最终正文绑定，一次消费；不二次考虑"]
     socialWrite["私信/评论/分享 → 关系与渠道授权 → 原社交发送事务"]
   end
+  registeredWrite53["共享目录四种 Episode 写入｜原授权、代际与一次性票据"]
+  episodeContinuation -.-> registeredWrite53
+  registeredWrite53 -.->|原写入适配器| videoWrite
+  %% @code registeredWrite53 | lib/life-agent-read-runtime.mjs | export async function executeRegisteredLifeWrite
   menuGuard -.->|仅合规候选/委派；不直接写平台| videoWrite
   home -.->|已选片后可自主考虑；不强制发言| commentReview
   commentReview -.->|Life 独立决定的唯一表达意愿| commentAdmission
@@ -620,7 +624,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 二、八类候选细目
 
 ```mermaid
-%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
+%% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -808,7 +812,7 @@ flowchart LR
   ownerChat --> planner
   eventRefs -.-> planner
   rest["skip：自愿休息；不能与技术失败混为一谈"]
-  registeredReadCandidate49["当前 Episode 动态合法菜单投影八种注册只读能力；非授权"]
+  registeredReadCandidate49["当前 Episode 动态合法菜单投影八种注册只读、四种写入；非授权"]
   planner -.-> registeredReadCandidate49
   %% @code registeredReadCandidate49 | lib/life-agent-read-runtime.mjs | export function registeredLifeRead
   planner --> rest
@@ -940,7 +944,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 三、可信回执与记忆闭环
 
 ```mermaid
-%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
+%% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -1028,6 +1032,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 %% @code planner | lib/autonomous-planner.mjs | export function plannerActionMenu
 %% @code bridge | index.js | const rememberVerifiedLifeAction
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
+%% dev.53：已消费写票据的原回执仍结算；账户代际不同不投影为新经历，已验证票据保留准确 Episode。
 flowchart TB
   %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
   dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
@@ -1220,6 +1225,9 @@ dmFollowReceipt -.->|只有成功回执| verified
 
 %% @code dmQualify | lib/social-policy-gate.mjs | const canInitiateDm=
 
+  writeReceipt53["写入真实回执｜一次性票据绑定原 Episode；账号代际复核"]
+  writeReceipt53 -.->|仅已核验回执| verified
+  %% @code writeReceipt53 | lib/life-video-action-bridge.mjs | function registerTrustedIntent
   videoReadHandoff["自选 Life 视频读取完成→当前账号原意愿账本，下一模型自愿考虑互动"]
   videoReadHandoff -.->|仅当前 BV/标题和完成回执，非写权限| planner
 %% @code videoReadHandoff | lib/autonomous-planner.mjs | registerCompletedVideoRead(fresh,result,scopeBefore)
@@ -1318,7 +1326,7 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| planne
 ## 四、统一 Life Episode 因果持续性
 
 ```mermaid
-%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
+%% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -1524,6 +1532,10 @@ professionalMenu -.-> commentObservation
 readRuntime46["统一只读目录、参数防重和调用预算：不授予权限"]
 readRuntime46 -.-> commentObservation
 registeredEpisodeRead49["八种 Episode 只读路由：同社交及主 Session 注册/准入；原执行回执仍独立"]
+registeredEpisodeWrite53["四种 Episode 写入注册；原意愿与写入事务、真实回执绑定原 Episode"]
+readRuntime46 -.-> registeredEpisodeWrite53
+registeredEpisodeWrite53 -.->|按当前合法菜单选择| menu
+%% @code registeredEpisodeWrite53 | lib/life-agent-read-runtime.mjs | export function registeredLifeWrite
 readRuntime46 -.-> registeredEpisodeRead49
 registeredEpisodeRead49 -.->|仅有效读取续行| menu
 %% @code registeredEpisodeRead49 | lib/life-agent-read-runtime.mjs | export async function executeRegisteredLifeRead

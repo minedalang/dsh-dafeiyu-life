@@ -1,4 +1,4 @@
-%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
+%% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -86,6 +86,7 @@
 %% @code planner | lib/autonomous-planner.mjs | export function plannerActionMenu
 %% @code bridge | index.js | const rememberVerifiedLifeAction
 %% @code unknown | lib/life-continuation-write.mjs | status:'uncertain'
+%% dev.53：已消费写票据的原回执仍结算；账户代际不同不投影为新经历，已验证票据保留准确 Episode。
 flowchart TB
   %% dev.6: owner-selected limited video focus; not autonomous Life or platform write.
   dev6OwnerFrame["主人选定真实帧或秒数：只读有限补看"]
@@ -278,6 +279,9 @@ dmFollowReceipt -.->|只有成功回执| verified
 
 %% @code dmQualify | lib/social-policy-gate.mjs | const canInitiateDm=
 
+  writeReceipt53["写入真实回执｜一次性票据绑定原 Episode；账号代际复核"]
+  writeReceipt53 -.->|仅已核验回执| verified
+  %% @code writeReceipt53 | lib/life-video-action-bridge.mjs | function registerTrustedIntent
   videoReadHandoff["自选 Life 视频读取完成→当前账号原意愿账本，下一模型自愿考虑互动"]
   videoReadHandoff -.->|仅当前 BV/标题和完成回执，非写权限| planner
 %% @code videoReadHandoff | lib/autonomous-planner.mjs | registerCompletedVideoRead(fresh,result,scopeBefore)

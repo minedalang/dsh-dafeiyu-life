@@ -17,11 +17,12 @@ const cfg={masterEnabled:true,autonomousPlannerEnabled:true,lifeAgentMode:'activ
  autoVideoCollect:true,agentFollowEnabled:true}
 const temp=fn=>{const dir=mkdtempSync(join(tmpdir(),'life-unified-'));return Promise.resolve().then(()=>fn(dir)).finally(()=>rmSync(dir,{recursive:true,force:true}))}
 async function harness(t,dir){
- let tag=ACCOUNT,uid=U,choices=0
+ let tag=ACCOUNT,uid=U,choices=0,generation=1,verified=[]
  const will=createLifeWillingness({dataDir:dir,getAccountTag:()=>tag,
    getContext:()=>({voice:'鱼鱼本人'}),invokeModel:async()=>{choices++;throw Error('must not decide twice')},
    beginTrace:()=>({step(){},finish(){}})})
- const bridge=createLifeVideoActionBridge({getAccountUid:()=>uid,getAccountTag:()=>tag,
+ const bridge=createLifeVideoActionBridge({getAccountUid:()=>uid,getAccountTag:()=>tag,getAccountGeneration:()=>generation,
+   onVerifiedAction:async row=>{verified.push(row);return {ok:true}},
    choose:async()=>{choices++;throw Error('second willingness forbidden')},
    verify:(...args)=>will.verify(...args),receipt:(...args)=>will.receipt(...args),
    verifyPlatformState:async({scope,target,receiptId})=>scope===tag&&target===BV&&receiptId==='12345678'})
@@ -29,15 +30,15 @@ async function harness(t,dir){
  const post=async(route,body)=>{const env=bridge.env();const response=await fetch(env.BILI_LIFE_ACTION_URL+route,{
    method:'POST',headers:{authorization:'Bearer '+env.BILI_LIFE_ACTION_TOKEN,'content-type':'application/json'},
    body:JSON.stringify(body)});return {status:response.status,...await response.json()}}
- const create=(action,body='')=>{
+ const create=(action,body='',options={})=>{
    const kind={comment_video:'video_comment',like_video:'video_like',collect_video:'video_collect',follow_creator:'video_follow'}[action]
    const choice=will.adoptVideoDecision({sourceKey:'life-episode:'+action+':'+cryptoRandom(),kind,target:BV,commentText:body})
    assert.equal(choice.ok,true,choice.reason)
-   const registration=bridge.registerTrustedIntent({proof:choice.proof,kind,target:BV,commentText:body,scope:tag,uid})
+   const registration=bridge.registerTrustedIntent({proof:choice.proof,kind,target:BV,commentText:body,scope:tag,uid,...options})
    assert.equal(registration.ok,true,registration.code)
    return {choice,registration}
  }
- return {will,bridge,post,create,choices:()=>choices,setTag:v=>tag=v}
+ return {will,bridge,post,create,choices:()=>choices,setTag:v=>tag=v,nextGeneration:()=>generation+=2,verified}
 }
 let unique=0;const cryptoRandom=()=>String(++unique)
 test('Life Episode comment uses exact one-shot proof and no second model or video round ID',t=>temp(async dir=>{
@@ -85,10 +86,10 @@ test('one original Life decision reaches the same execution gateway and writer w
    getAccountUid:()=>U,getIntention:()=>entry,getPublicEvidence:async()=>({ok:true,bvid:BV,
    title:'真实公开视频',description:'确实核验过的一些公开视频资料',commentReady:true}),
    markSelected:async()=>({ok:true}),
-   prepareIntent:({kind,target,commentText,sourceKey},{scope,uid})=>{
+   prepareIntent:({kind,target,commentText,sourceKey},{scope,uid,episodeId,isCurrent})=>{
      const choice=h.will.adoptVideoDecision({kind,target,commentText,sourceKey})
      if(!choice.ok)return choice
-     return h.bridge.registerTrustedIntent({proof:choice.proof,kind,target,commentText,scope,uid})
+     return h.bridge.registerTrustedIntent({proof:choice.proof,kind,target,commentText,scope,uid,episodeId,isCurrent})
    },cancelIntent:ticket=>h.bridge.cancelTrustedIntent(ticket),
    runWriter:async({action,bvid,text},{intentTicket})=>{
      invocations++;observedTicket=intentTicket
@@ -101,6 +102,7 @@ test('one original Life decision reaches the same execution gateway and writer w
  const result=await execute({action:'comment_video',id:ID,bvid:BV,reason,text:comment},ACCOUNT)
  assert.equal(result.status,'verified');assert.equal(invocations,1)
  assert.match(observedTicket,/^[0-9a-f-]{36}$/)
+ assert.equal(h.verified[0]?.episodeId,ID)
  assert.equal(h.choices(),0)
 }))
 test('owner DM and social immediate video reads use one canonical observation journal with scope + evidence checks',()=>temp(async dir=>{
@@ -152,4 +154,36 @@ test('unified host routes have no remaining production emotion-score voter or in
  assert.match(invited,/beginVideoObservation\(observation,scope\)/)
  assert.doesNotMatch(invited,/decideOwnerSocialComment\(|runOwnerDmPublishComment\(/)
  assert.match(code,/decideAgency:\(\{uid,messageId,text,intent,target\}\)=>dualContextAgency.recordAI/)
+})
+
+
+test('dev53 loopback consumes only live registered ticket and binds verified receipt to exact Episode',t=>temp(async dir=>{
+ const h=await harness(t,dir)
+ let current=true
+ const make=()=>h.create('comment_video',comment,{episodeId:ID,isCurrent:()=>current}).registration
+ const request=ticket=>({uid:U,tool:'bili_reply',target:BV,topLevel:true,commentText:comment,intentTicket:ticket})
+ const first=make();current=false
+ assert.equal((await h.post('/life-action',request(first.ticket))).ok,false)
+ assert.equal(h.bridge.status().registeredIntents,0);assert.equal(h.verified.length,0)
+ current=true
+ const second=make();h.nextGeneration()
+ assert.equal((await h.post('/life-action',request(second.ticket))).ok,false)
+ assert.equal(h.bridge.status().registeredIntents,0)
+ const third=make(),grant=await h.post('/life-action',request(third.ticket))
+ assert.equal(grant.ok,true);current=false
+ // Once a grant was issued, revocation of the Episode cannot erase the actual platform receipt.
+ const result=await h.post('/life-action-result',{uid:U,grant:grant.grant,ok:true,receiptId:'12345678'})
+ assert.equal(result.status,'verified');assert.equal(h.verified.length,1);assert.equal(h.verified[0].episodeId,ID)
+ current=true
+ const fourth=make(),oldGrant=await h.post('/life-action',request(fourth.ticket))
+ assert.equal(oldGrant.ok,true);h.nextGeneration()
+ const stale=await h.post('/life-action-result',{uid:U,grant:oldGrant.grant,ok:true,receiptId:'12345678'})
+ assert.equal(stale.status,'accepted-unverified');assert.equal(h.verified.length,1);assert.equal(h.choices(),0)
+}))
+
+
+test('production video bridge receives the trusted account generation provider',()=>{
+ const code=readFileSync(new URL('../index.js',import.meta.url),'utf8')
+ const bridge=code.slice(code.indexOf('lifeVideoActionBridge=createLifeVideoActionBridge({'),code.indexOf('onVerifiedAction:({kind,target,scope,sourceId,at,episodeId})=>'))
+ assert.match(bridge,/getAccountGeneration:\(\)=>accountBinding\.generation\(\)/)
 })

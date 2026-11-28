@@ -1,4 +1,4 @@
-%% dev.52：主 Session 31、社交15、Episode 8共享只读注册与执行；评论读取不重复意愿投票，真实来源和原权限不变。
+%% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
 %% dev.50：后台全局观察与片段补看进入同一读取网关；原决策、执行及视觉写入准入复核原契机与账号代际；原资源槽不新增调度器。
 %% dev.49：社交15种只读路由与后台 Episode 六种非视觉读取共用注册和执行网关；读取前后复核账号、会话、原契机和精确候选；失效不入账；原预算/回执/授权不变。
@@ -204,6 +204,10 @@ professionalMenu -.-> commentObservation
 readRuntime46["统一只读目录、参数防重和调用预算：不授予权限"]
 readRuntime46 -.-> commentObservation
 registeredEpisodeRead49["八种 Episode 只读路由：同社交及主 Session 注册/准入；原执行回执仍独立"]
+registeredEpisodeWrite53["四种 Episode 写入注册；原意愿与写入事务、真实回执绑定原 Episode"]
+readRuntime46 -.-> registeredEpisodeWrite53
+registeredEpisodeWrite53 -.->|按当前合法菜单选择| menu
+%% @code registeredEpisodeWrite53 | lib/life-agent-read-runtime.mjs | export function registeredLifeWrite
 readRuntime46 -.-> registeredEpisodeRead49
 registeredEpisodeRead49 -.->|仅有效读取续行| menu
 %% @code registeredEpisodeRead49 | lib/life-agent-read-runtime.mjs | export async function executeRegisteredLifeRead

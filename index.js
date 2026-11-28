@@ -98,7 +98,7 @@ import { createAccountBinding } from './lib/account-binding.mjs'
 import { createReadActionExecutionGate,readToolAction } from './lib/read-action-execution-gate.mjs'
 import {createLifeDecisionTrace} from './lib/life-decision-trace.mjs'
 import {createLifeWillingness,prepareLifeCommentReply} from './lib/life-willingness.mjs'
-import {registeredLifeRead,executeRegisteredLifeRead,authorizeRegisteredCommentReads} from './lib/life-agent-read-runtime.mjs'
+import {registeredLifeRead,registeredLifeWrite,executeRegisteredLifeRead,authorizeRegisteredCommentReads} from './lib/life-agent-read-runtime.mjs'
 import {createLifeVideoActionBridge} from './lib/life-video-action-bridge.mjs'
 import {createModelInvocationJournal} from './lib/model-invocation-journal.mjs'
 import {createLifeContinuationWriteExecutor} from './lib/life-continuation-write.mjs'
@@ -7730,12 +7730,12 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   })
   lifeVideoActionBridge=createLifeVideoActionBridge({
     getAccountUid:()=>{try{const status=accountBinding.status();return status.blocked?'':status.activeUid}catch{return ''}},
-    getAccountTag:trustedLifeAccountTag,
+    getAccountTag:trustedLifeAccountTag,getAccountGeneration:()=>accountBinding.generation(),
     enabled:()=>{refreshCfg();return cfg.masterEnabled===true&&platformReady()&&!accountBinding.status().blocked},
     choose:params=>lifeWillingness.decide(params,{queueIfBusy:true}),
     verify:(proof,kind,payload,options)=>lifeWillingness.verify(proof,kind,payload,options),
     receipt:(proof,result)=>lifeWillingness.receipt(proof,result),
-    onVerifiedAction:({kind,target,scope,sourceId,at})=>{
+    onVerifiedAction:({kind,target,scope,sourceId,at,episodeId})=>{
       if(scope!==trustedLifeAccountTag())return {ok:false,reason:'account-changed'}
       const picked=/^BV[0-9A-Za-z]{10}$/.test(String(target||''))
         ?parseSeenTable().find(v=>v.picked===true&&v.bvid===target):null
@@ -7744,7 +7744,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // mere picked video caused a comment or that all video writes belong to
       // the most recent unrelated episode.
       try{const active=lifeOpportunities.continuations({limit:20}).find(x=>x.selectedBvid===target)
-        const ref=active?'intention:'+active.id:'verified-video:'+target
+        const ref=episodeId?'intention:'+episodeId:active?'intention:'+active.id:'verified-video:'+target
         lifeActionAttribution.verified({accountTag:scope,owner:'life',channel:'video-agent',
           sourceRef:ref,receiptId:'verified-video:'+sourceId,action:kind,kind:'video',publicBvid:picked?.bvid||target})
       }catch(e){log('视频写入 Episode 上下文未登记：'+String(e?.message||e).slice(0,70))}
@@ -8022,11 +8022,10 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   // A separate, short-lived Python process invokes the SAME autonomous MCP
   // Python function, using a fresh Life approval bridge token per action. It
   // cannot invoke any owner-manual or social-adapter tool.
-  const lifeContinuationPythonWrite=(proposal,{scope,accountUid,intentTicket})=>new Promise(resolve=>{
-    const current=()=>trustedLifeAccountTag()===scope&&
+  const lifeContinuationPythonWrite=(proposal,{scope,accountUid,accountGeneration,intentTicket})=>new Promise(resolve=>{
+    const current=()=>trustedLifeAccountTag()===scope&&accountBinding.generation()===accountGeneration&&
       String(accountBinding.status().activeUid||'')===accountUid&&!accountBinding.status().blocked
-    const action=proposal.action,tool={like_video:'bili_video_like',collect_video:'bili_video_collect',
-      follow_creator:'bili_follow_creator',comment_video:'bili_reply'}[action]
+    const action=proposal.action,tool=registeredLifeWrite('episode',action)?.executorTool
     if(!automaticSession.current()||!tool||!current()||lifeVideoActionBridge?.status().ready!==true||!/^[-a-f0-9]{36}$/i.test(String(intentTicket||'')))return resolve({ok:false,status:'unavailable',attempted:false})
     const bridge=lifeVideoActionBridge.env()
     if(!bridge.BILI_LIFE_ACTION_URL||!bridge.BILI_LIFE_ACTION_TOKEN)return resolve({ok:false,status:'unavailable',attempted:false})
@@ -8071,6 +8070,7 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
   const lifeContinuationWrite=createLifeContinuationWriteExecutor({
     canStart:automaticSession.current,
     getConfig:()=>{refreshCfg();return cfg},getAccountTag:trustedLifeAccountTag,
+    getAccountGeneration:()=>accountBinding.generation(),
     getAccountUid:()=>accountBinding.status().blocked?'':String(accountBinding.status().activeUid||''),
     getIntention:id=>lifeOpportunities.continuations({limit:20}).find(x=>x.id===id),
     hasVerifiedVisual:(bvid,scope)=>lifeOpportunities.hasVerifiedVideoVisual(bvid,scope),
@@ -8083,22 +8083,25 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       return result?.ok===true?{ok:true}:{ok:false}
     },runWriter:lifeContinuationPythonWrite,
     cancelBundleIntent:(proof,firstChild)=>lifeWillingness.receipt(proof,{status:'not-sent',
-      kind:firstChild?({like_video:'video_like',collect_video:'video_collect',follow_creator:'video_follow',comment_video:'video_comment'})[firstChild.action]:''}),
-    prepareBundleIntent:async({sourceKey,actions},{scope,uid})=>{
-      if(scope!==trustedLifeAccountTag()||String(accountBinding.status().activeUid||'')!==uid)
+      kind:firstChild?registeredLifeWrite('episode',firstChild.action)?.kind||'':''}),
+    prepareBundleIntent:async({sourceKey,actions},{scope,uid,isCurrent})=>{
+      if(isCurrent()!==true||scope!==trustedLifeAccountTag()||String(accountBinding.status().activeUid||'')!==uid)
         return {ok:false,code:'account-changed'}
       return lifeWillingness.adoptVideoBundleDecisionQueued({sourceKey,actions})
     },
-    prepareIntent:async({sourceKey,kind,target,commentText,bundleProof},{scope,uid})=>{
-      if(scope!==trustedLifeAccountTag()||String(accountBinding.status().activeUid||'')!==uid)
+    prepareIntent:async({sourceKey,kind,target,commentText,bundleProof},{scope,uid,episodeId,isCurrent})=>{
+      const policy=automaticSession.capture()
+      // The loopback HTTP handler runs outside the Planner's AsyncLocalStorage.
+      const current=()=>automaticSession.isCurrent(policy)&&isCurrent()===true&&scope===trustedLifeAccountTag()&&String(accountBinding.status().activeUid||'')===uid
+      if(!current())
         return {ok:false,code:'account-changed'}
       const choice=bundleProof?{ok:true,proof:bundleProof}:await lifeWillingness.adoptVideoDecisionQueued({sourceKey,kind,target,commentText})
       if(choice?.ok!==true)return choice
-      if(scope!==trustedLifeAccountTag()||String(accountBinding.status().activeUid||'')!==uid){
+      if(!current()){
         lifeWillingness.receipt(choice.proof,{status:'not-sent'});return {ok:false,code:'account-changed'}
       }
       const ticket=lifeVideoActionBridge.registerTrustedIntent({proof:choice.proof,
-        kind,target,commentText,scope,uid})
+        kind,target,commentText,scope,uid,episodeId,isCurrent:current})
       if(ticket?.ok!==true)lifeWillingness.receipt(choice.proof,{status:'not-sent'})
       return ticket
     },cancelIntent:ticket=>lifeVideoActionBridge.cancelTrustedIntent(ticket),
