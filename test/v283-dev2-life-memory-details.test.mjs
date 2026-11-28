@@ -9,7 +9,7 @@ import {createMemoryRetriever,publicVisualAssociationContext} from '../lib/memor
 import {createLifeMemoryBackup,restoreLifeMemoryBackup,collectBackupFiles,createBackup,restoreBackupFiles} from '../lib/data-backup.mjs'
 import {buildVideoExplorationEvent} from '../lib/video-experience.mjs'
 import {createLifeMemoryCoordinator} from '../lib/life-memory-coordinator.mjs'
-import {execFile,execFileSync} from 'node:child_process'
+import {execFile,execFileSync,spawnSync} from 'node:child_process'
 import {promisify} from 'node:util'
 const A='aaaaaaaaaaaaaaaa',B='bbbbbbbbbbbbbbbb',BV='BV1234567890'
 const NOW=Date.parse('2026-11-18T12:00:00Z'),DAY=86_400_000
@@ -335,7 +335,10 @@ test('deep attachment lock reclaims a proven dead PID but refuses live and legac
  const args={memoryId,accountTag:A,fragments,sourceProof:proof}
  assert.equal(gateway.attachMemoryDetails(args).ok,true)
  const lock=join(dir,'life-memory','details','v1',A,memoryId+'.json.lock')
- const dead=Number(execFileSync(process.execPath,['-e','console.log(process.pid)'],{encoding:'utf8'}).trim())
+ const child=spawnSync(process.execPath,['-e','process.exit(0)'],{stdio:'ignore',windowsHide:true})
+ assert.equal(child.error,undefined);assert.equal(child.status,0)
+ const dead=child.pid
+ assert.ok(Number.isSafeInteger(dead)&&dead>0&&dead!==process.pid,'spawnSync must return a real child PID')
  const old=new Date(Date.now()-120000)
  const claim=pid=>{writeFileSync(lock,JSON.stringify({pid,token:'a'.repeat(32),at:+old}));utimesSync(lock,old,old)}
  claim(process.pid);assert.equal(gateway.attachMemoryDetails(args).ok,false);assert.equal(existsSync(lock),true);rmSync(lock)

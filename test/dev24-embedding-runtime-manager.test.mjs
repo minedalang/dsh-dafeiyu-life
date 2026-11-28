@@ -427,3 +427,25 @@ test('等待网络响应期间目标残片被替换成符号链接，拒绝写�
   await assert.rejects(a.runVision('install',model.id),/非普通模型文件/);assert.equal(await readFile(outside,'utf8'),'keep')
  }finally{await rm(root,{recursive:true,force:true})}
 })
+
+
+test('dev110 native vision checks original scope at MCP request and preserves only trusted stage',async()=>{
+ const {callScopedNativeVision}=await import('../lib/scoped-native-vision-read.mjs')
+ const {VideoReadFailure,videoReadDiagnostic}=await import('../lib/video-visual-failure.mjs')
+ const home=await mkdtemp(join(tmpdir(),'dsh-native-dispatch-'))
+ try{
+  for(const [name,source] of [['mcp_server.py','../vendor/bilibili-mcp/mcp_server.py'],['preview_vision.py','../lib/preview_vision.py']])await writeFile(join(home,name),await readFile(new URL(source,import.meta.url)))
+  let current=true,calls=0,stopped=0,mode='scope'
+  const runtime={withVisionRuntime:async(id,fn)=>fn({model:id,port:12345,key:'a'.repeat(64),signal:new AbortController().signal})}
+  const opts={runtime,modelId:'qwen3.5-2b',command:'python',home,isCurrent:()=>current,makeClient:()=>({call:async(_name,_args,options)=>{
+    if(mode==='scope')current=false
+    assert.equal(options.beforeRequest(),true);calls++
+    if(mode==='error')throw Error('SECRET provider response')
+    return {ok:true,status:'analyzed'}
+  },stopAndWait:async()=>{stopped++}})}
+  await assert.rejects(callScopedNativeVision(opts),e=>videoReadDiagnostic(e).code==='vision-scope-changed');assert.equal(calls,0);assert.equal(stopped,1)
+  current=true;mode='error';await assert.rejects(callScopedNativeVision(opts),e=>videoReadDiagnostic(e).code==='vision-worker-failed'&&!e.message.includes('SECRET'));assert.equal(calls,1);assert.equal(stopped,2)
+  mode='success';assert.equal((await callScopedNativeVision(opts)).ok,true);assert.equal(calls,2);assert.equal(stopped,3)
+  await assert.rejects(callScopedNativeVision({...opts,runtime:{withVisionRuntime(){throw new VideoReadFailure('vision-native-runtime-busy','busy')}}}),e=>videoReadDiagnostic(e).code==='vision-native-runtime-busy')
+ }finally{await rm(home,{recursive:true,force:true})}
+})

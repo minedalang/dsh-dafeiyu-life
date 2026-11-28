@@ -133,3 +133,33 @@ test('MCP 可执行文件不存在时立即拒绝而非等待请求超时',async
     assert.equal(client.running,false)
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
+
+
+test('dev110 DSH scoped worker rechecks original scope after startup before request and closes both owners',async()=>{
+ const {videoReadDiagnostic}=await import('../lib/video-visual-failure.mjs')
+ let current=true,calls=0,closed=0,stopped=0
+ const opts={command:'python',script:'mcp_server.py',home:'C:/home',env,args,isCurrent:()=>current,
+  startHost:async()=>({env:{BILI_VISION_HOST_TOKEN:'a'.repeat(64),BILI_VISION_HOST_PORT:'1278'},close:async()=>{closed++}}),
+  makeClient:()=>({call:async(_name,_args,options)=>{current=false;assert.equal(options.beforeRequest(),true);calls++;return {ok:true}},stop:()=>{stopped++}})}
+ await assert.rejects(callScopedDshVision(opts),e=>videoReadDiagnostic(e).code==='vision-scope-changed')
+ assert.equal(calls,0);assert.equal(closed,1);assert.equal(stopped,1)
+})
+
+
+test('dev110 visual diagnostic uses real MCP transport stage and suppresses provider raw text',async()=>{
+ const {videoReadDiagnostic,videoWorkerFailure}=await import('../lib/video-visual-failure.mjs')
+ const {mkdtempSync,writeFileSync,rmSync}=await import('node:fs')
+ const {tmpdir}=await import('node:os');const {join}=await import('node:path')
+ const dir=mkdtempSync(join(tmpdir(),'dafeiyu-mcp-stage-'))
+ const fake=join(dir,'mock.mjs')
+ writeFileSync(fake,String.raw`let buffer='';process.stdin.setEncoding('utf8');process.stdin.on('data',chunk=>{buffer+=chunk;let p;while((p=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,p);buffer=buffer.slice(p+1);if(!line)continue;const q=JSON.parse(line);if(q.id===undefined)continue;if(q.method==='initialize')console.log(JSON.stringify({jsonrpc:'2.0',id:q.id,result:{capabilities:{},serverInfo:{name:'test'}}}));else if(q.params.arguments.kind==='rpc')console.log(JSON.stringify({jsonrpc:'2.0',id:q.id,error:{code:-32000,message:'SECRET RPC output'}}));else if(q.params.arguments.kind==='tool')console.log(JSON.stringify({jsonrpc:'2.0',id:q.id,result:{isError:true,content:[{type:'text',text:'SECRET tool output'}]}}));else if(q.params.arguments.kind==='close')process.exit(1)}})`)
+ try{
+  const missing=new McpClient({command:join(dir,'missing-python-executable'),cwd:dir});try{await assert.rejects(missing.call('bili_preview_vision'),e=>videoReadDiagnostic(videoWorkerFailure(e,'safe')).code==='vision-worker-spawn-failed')}finally{await missing.stopAndWait()}
+  for(const [kind,code] of [['rpc','vision-worker-rpc-error'],['tool','vision-worker-tool-error'],['timeout','vision-worker-request-timeout'],['close','vision-worker-closed']]){
+   const client=new McpClient({command:process.execPath,args:[fake],cwd:dir})
+   try{await assert.rejects(client.call('bili_preview_vision',{kind},{timeoutMs:kind==='timeout'?35:5000}),e=>{
+    const err=videoWorkerFailure(e,'safe');assert.equal(err.message,'safe');assert.equal(videoReadDiagnostic(err).code,code);assert.doesNotMatch(JSON.stringify(videoReadDiagnostic(err)),/SECRET/);return true
+   })}finally{await client.stopAndWait()}
+  }
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})

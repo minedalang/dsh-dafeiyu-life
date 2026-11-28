@@ -151,7 +151,7 @@ import {planVideoFocusReview,planGlobalPreviewFocusCandidates,verifyVideoFocusRe
 import {verifiedOwnerFocusAnchors,planOwnerFocusDebugWindow} from './lib/video-owner-focus-debug.mjs'
 import {videoExplorationTier} from './lib/video-exploration-budget.mjs'
 import {createOllamaHealthProbe,checkOllamaVideoReadiness,ollamaExecutable,ollamaDesktopExecutable} from './lib/ollama-service.mjs'
-import {explainVideoVisionFailure} from './lib/video-visual-failure.mjs'
+import {explainVideoVisionFailure,VideoReadFailure,videoReadDiagnostic,videoWorkerFailure} from './lib/video-visual-failure.mjs'
 import {ASR_MODELS,probeFFmpeg,testFFmpegDecode,readWhisperReadiness,openFFmpegInstaller,ffmpegInstallStatus,validateFFmpegSelection,inspectWhisperModelDirectory} from './lib/video-dependencies.mjs'
 import {listWhisperModels,deleteWhisperModel} from './lib/whisper-model-cache.mjs'
 import {privacyTechnicalReport,EXTERNAL_PRIVACY_POLICY} from './lib/interaction-privacy.mjs'
@@ -1999,14 +1999,14 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       let check
       try{check=await probeVisionPythonAsync(cfg.pythonPath||'',{home:stateDir,env:visionEnv(),requiresMcp:true,timeoutMs:5000})}
       catch{check={ok:false,reason:'vision_temp_unavailable'}}
-      if(!check.ok)throw Error('视频实际 MCP Python 未通过外迁目录读写/依赖检查（'+
+      if(!check.ok)throw new VideoReadFailure('vision-local-python-unavailable','视频实际 MCP Python 未通过外迁目录读写/依赖检查（'+
         String(check.reason||'runtime_execution_failed')+' / '+String(check.stage||'unknown')+
         '）；已阻止本轮取帧，等待可信宿主运行时修复')
     }
     if(!currentDispatch())throw sessionIntegrationPaused()
     const scopedNativeVision=toolName==='bili_preview_vision'&&cfg.visionEnabled===true&&resolvedVisionMode()==='independent_native'
     const client=scopedDshVision||scopedNativeVision?null:await ensureMcp()
-    if((scopedDshVision||scopedNativeVision)&&!assertSecureMcp())throw Error('DSH 视频识图 Python MCP 安全版本校验失败')
+    if((scopedDshVision||scopedNativeVision)&&!assertSecureMcp())throw new VideoReadFailure('vision-script-untrusted','DSH 视频识图 Python MCP 安全版本校验失败')
     if(toolName!=='bili_check_credential')accountBinding.assertReady()
     const {isCurrent:dispatchGuard,beforeDispatch,...forwardOptions}=opts||{}
     const callOptions=toolName==='bili_preview_vision'&&resolvedVisionMode()==='independent_local'
@@ -2016,14 +2016,19 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     const checkDispatchScope=()=>{if(dispatchGuard&&dispatchGuard()!==true)throw Error('原执行来源已变化，未向平台提交')};
     const checkReplyDispatch=()=>{checkDispatchScope();if(!isReplyDispatch(toolName,args))return;refreshCfg();if(!interactionRepliesAllowed(cfg))throw Error('互动回复已暂停，未向平台发送');if(toolName==='bili_send_observation_image'&&(cfg.ownerDmAgentEnabled!==true||cfg.ownerDmReadCommandsEnabled!==true||cfg.ownerDmActionsEnabled!==true||cfg.dmWatch!==true||String(args.receiver_uid)!==String(cfg.dmOwnerUid||'')||String(args.sender_uid)!==String(accountBinding.status().activeUid||'')||socialPolicyGate.actor(args.receiver_uid).role!=='owner'))throw Error('主人图片发送授权已变化')}
     checkReplyDispatch()
-    const guardedCallOptions=beforeDispatch?{...callOptions,beforeRequest:(name,payload)=>{checkReplyDispatch();return currentDispatch()&&client===mcp&&mcpKey===mcpKeyNow()&&beforeDispatch(name,payload)===true}}:callOptions
+    const guardedCallOptions=beforeDispatch?{...callOptions,beforeRequest:(name,payload)=>{checkReplyDispatch();return currentDispatch()&&client===mcp&&mcpKey===mcpKeyNow()&&beforeDispatch(name,payload)===true}}:toolName==='bili_preview_vision'&&dispatchGuard?{...callOptions,beforeRequest:()=>{if(!currentDispatch()||dispatchGuard()!==true)throw new VideoReadFailure('vision-scope-changed','原视觉读取范围已失效');return true}}:callOptions
+    const callCurrentClient=()=>{
+      const pending=client.call(toolName,args,guardedCallOptions)
+      if(toolName!=='bili_preview_vision'||!dispatchGuard)return pending
+      return pending.catch(error=>{throw videoWorkerFailure(error,'本地视觉 Python 未取得有效回执')})
+    }
     const originalDispatch=()=>scopedNativeVision
       ? (()=>{if(!currentDispatch())throw sessionIntegrationPaused();return callPluginScopedNativeVision(args,()=>currentDispatch()&&(!dispatchGuard||dispatchGuard()===true),forwardOptions.signal)})()
       : scopedDshVision
       ? (()=>{if(!currentDispatch())throw sessionIntegrationPaused();return callPluginScopedDshVision(args,opts)})()
       : monitoredReadTools.has(toolName)
       ? biliReadBudget.guard('mcp:'+toolName,()=>{if(!currentDispatch())throw sessionIntegrationPaused();if(isReplyDispatch(toolName,args)||dispatchGuard||beforeDispatch)checkReplyDispatch();return client.call(toolName,args,guardedCallOptions)})
-      : (()=>{if(!currentDispatch())throw sessionIntegrationPaused();checkReplyDispatch();return client.call(toolName,args,guardedCallOptions)})()
+      : (()=>{if(!currentDispatch())throw sessionIntegrationPaused();checkReplyDispatch();return callCurrentClient()})()
     const dispatch=()=>toolName==='bili_video_info'&&opts===undefined&&
       /^BV[0-9A-Za-z]{10}$/.test(String(args?.bvid||''))
       ? publicVideoReadCoalescer.run({scope:verifiedActionScope(),bvid:args.bvid,
@@ -2922,8 +2927,8 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
             const stopVideoObserve=liveLifeActivity.start('video-observe',account,{maxAgeMs:8*60_000,bvid})
             try{visual=parseMaybeJson(await call('bili_preview_vision',{bvid,perception_source:'adaptive',
               view_depth:'deep',focus_start_seconds:plan.startSeconds,focus_end_seconds:plan.endSeconds,
-              network_budget_bytes:budget,capture_for_gallery:true}))}
-            catch(e){return {ok:false,reason:'focus-read-failed',error:String(e?.message||e).slice(0,160)}}
+              network_budget_bytes:budget,capture_for_gallery:true},{isCurrent:()=>{refreshCfg();return cfg.masterEnabled===true&&cfg.visionEnabled===true&&hasCredential()&&recallStillValid()},signal:channel.signal}))}
+            catch(e){const readDiagnostic=videoReadDiagnostic(e);log('Life 局部复查未取得回执：'+readDiagnostic.code+' / '+readDiagnostic.stage);return {ok:false,reason:'focus-read-failed',readDiagnostic}}
             finally{stopVideoObserve()}
             refreshCfg()
             if(account!==requestedAccount||!scopeCurrent()||cfg.masterEnabled!==true||cfg.visionEnabled!==true||!hasCredential()||!['independent_dsh','independent_local','independent_native'].includes(resolvedVisionMode()))return {ok:false,reason:'video-read-no-longer-authorized'}
@@ -2932,8 +2937,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
             if(visual&&typeof visual==='object')delete visual.debugCapture
             const evidence=buildVideoEvidenceBundle({bvid,info,visual})
             const confirmed=verifyVideoFocusReview({bvid,plan:{...plan,networkBudgetBytes:budget},result:visual,evidence})
-            if(!confirmed)return {ok:false,reason:'focus-receipt-unverified',
-              error:String(visual?.error||visual?.status||'未取得可信复查结果').slice(0,130)}
+            if(!confirmed){const failure=explainVideoVisionFailure(visual);if(failure)log('Life 局部复查证据未通过：'+failure.code);return {ok:false,reason:(!channel.scene||channel.scene==='main')&&failure?failure.code:'focus-receipt-unverified'}}
             if(visual.status==='cached')return {ok:true,bvid,source:'decoded-public-video-focus',status:'reused-cached-window',review:confirmed,experienceState:'not-recorded-cached',noExternalActions:true}
             // Store bounded model observations under the exact new episode. Raw
             // answers and image bytes are not permanent memory; do not guess a
@@ -2965,7 +2969,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
         }})
     }
   }
-  tool({...videoRevisitSpec,execute:args=>videoRevisitSpec.execute(args)})
+  tool({...videoRevisitSpec,execute:(args,exec)=>videoRevisitSpec.execute(args,{current:()=>!exec?.signal?.aborted,afterCurrent:()=>!exec?.signal?.aborted,signal:exec?.signal})})
   // Host-only adapters for the original in-flight DM/Planner turn. Model JSON
   // is just a request; channel, identity and generation are captured here.
   const contextualRevisit=({request,offeredBvids,scene='main',uid='',incomingText='',partialGap=null,authorized})=>{
@@ -4107,9 +4111,9 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       return dispatchCurrent()===true&&account&&trustedLifeAccountTag()===account&&!accountBinding.status().blocked&&
         cfg.masterEnabled===true&&cfg.visionEnabled===true&&resolvedVisionMode()==='independent_native'&&cfg.visionLocalModel===modelId
     }
-    if(!getLlamaVisionModel(modelId)||!current())throw Error('内置视觉模型或当前账号执行范围不可用')
+    if(!getLlamaVisionModel(modelId)||!current())throw new VideoReadFailure('vision-native-model-unavailable','内置视觉模型或当前账号执行范围不可用')
     const runtime=selectHealthyVisionPython()
-    if(!runtime.ok||!runtime.path)throw Error('内置视觉 Python 环境不可用')
+    if(!runtime.ok||!runtime.path)throw new VideoReadFailure('vision-python-unavailable','内置视觉 Python 环境不可用')
     const env=visionEnv({BILI_SHARED_READ_MINUTE_LIMIT:String(cfg.biliReadMinuteLimit),
       BILI_SHARED_READ_HOUR_LIMIT:String(cfg.biliReadHourLimit),
       BILI_VISION_PROMPT_B64:Buffer.from(visionObservationFocus(cfg.visionPrompt),'utf8').toString('base64'),
@@ -4118,21 +4122,22 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
     return callScopedNativeVision({runtime:embeddingRuntime,modelId,command:runtime.path,home:stateDir,env,args,isCurrent:current,signal})
   }
   const callPluginScopedDshVision=async(args={},opts={})=>{
-    const account=trustedLifeAccountTag()
-    if(!account||accountBinding.status().blocked)throw Error('DSH 视觉识图账号尚未验证')
+    const account=trustedLifeAccountTag(),epoch=accountBinding.generation(),policy=getSessionIntegration()
+    const currentScope=()=>{refreshCfg();const p=getSessionIntegration();return !opts?.signal?.aborted&&account===trustedLifeAccountTag()&&epoch===accountBinding.generation()&&p.mode===policy.mode&&p.revision===policy.revision&&automaticSession.current()&&!accountBinding.status().blocked&&cfg.masterEnabled===true&&cfg.visionEnabled===true&&resolvedVisionMode()==='independent_dsh'&&(!opts?.isCurrent||opts.isCurrent()===true)}
+    if(!account||!currentScope())throw new VideoReadFailure('vision-scope-changed','DSH 视觉识图账号尚未验证')
     const runtime=selectHealthyVisionPython()
-    if(!runtime.ok||!runtime.path)throw Error('DSH 视觉 Python 环境不可用：'+String(runtime.reason||'unknown').slice(0,70))
+    if(!runtime.ok||!runtime.path)throw new VideoReadFailure('vision-python-unavailable','DSH 视觉 Python 环境不可用：'+String(runtime.reason||'unknown').slice(0,70))
     const dsh=resolveDsh()
-    if(dsh.missing||dsh.shell)throw Error('DSH 视觉模型执行路由不可用：未找到可信 CLI')
+    if(dsh.missing||dsh.shell)throw new VideoReadFailure('vision-dsh-route-unavailable','DSH 视觉模型执行路由不可用：未找到可信 CLI')
     if(process.platform==='win32'&&(dsh.source!=='desktop-native'||
       dsh.args?.[0]!=='--expose-internals'||!dsh.args?.[1]))
-      throw Error('DSH 视频视觉必须使用可信 Desktop Host CLI，不能回退 Python Bridge')
+      throw new VideoReadFailure('vision-dsh-route-unavailable','DSH 视频视觉必须使用可信 Desktop Host CLI，不能回退 Python Bridge')
     const overlay=ensureVisionOverlay()
-    if(!overlay)throw Error('DSH 视觉安全 overlay 未建立；请检查视觉环境')
+    if(!overlay)throw new VideoReadFailure('vision-dsh-route-unavailable','DSH 视觉安全 overlay 未建立；请检查视觉环境')
     const visionArgs=[...dsh.args,'--profile','headless','--patch',overlay]
     assertVerifiedHeadless(visionArgs,overlay,{kind:'vision',stateDir},'vision')
     const current=resolveVisionModelRoute(cfg,ctx.get('agentDefaultModel')?.currentSelection?.()||{})
-    if(!current.complete)throw Error('DSH 视觉模型 Provider / 模型路由未完整配置')
+    if(!current.complete)throw new VideoReadFailure('vision-dsh-route-unavailable','DSH 视觉模型 Provider / 模型路由未完整配置')
     // Preserve the normal Python MCP's public-read reservation, shared B站
     // minute/hour budget, platform account separation and prompt-proof checks.
     const env=visionEnv({
@@ -4153,7 +4158,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
       BILI_VISION_DIAG_ENABLED:cfg.diagVisionEnabled?'1':'0',
     })
     return callScopedDshVision({command:runtime.path,script:join(stateDir,'mcp_server.py'),
-      home:stateDir,env,args,
+      home:stateDir,env,args,isCurrent:currentScope,
       timeoutMs:Math.min(250000,Math.max(230000,Number(opts?.timeoutMs)||240000)),
       startHost:async()=>{
         if(process.platform!=='win32')return null
@@ -4161,8 +4166,7 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           home:stateDir,exe:dsh.command,cli:dsh.args[1],baseOverlay:overlay,
           workdir:process.cwd(),env:visionEnv({...dsh.env,BILI_DUTY_HOME:stateDir}),
           visualInstruction:visionObservationFocus(cfg.visionPrompt),
-          allowRequest:()=>trustedLifeAccountTag()===account&&!accountBinding.status().blocked&&
-            cfg.visionEnabled===true&&resolvedVisionMode()==='independent_dsh',
+          allowRequest:currentScope,
         })
       },
     })

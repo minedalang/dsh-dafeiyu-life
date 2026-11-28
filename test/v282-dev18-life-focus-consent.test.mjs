@@ -32,11 +32,12 @@ test('actual autonomous revisit handler runs without owner job, uses lease, and 
   const {runInNewContext}=await import('node:vm')
   const {randomUUID,createHash}=await import('node:crypto')
   const {runLifeChosenVideoRead}=await import('../lib/life-video-read-admission.mjs')
+  const {VideoReadFailure,videoReadDiagnostic,explainVideoVisionFailure}=await import('../lib/video-visual-failure.mjs')
   const {planVideoMomentFollowup,resolveLiveVideoCue,validateVideoRecallGap}=await import('../lib/video-moment-followup.mjs')
   const {withLifeVideoVisualLease}=await import('../lib/life-planner-atomic.mjs')
   const {mkdtempSync,rmSync}=await import('node:fs');const {tmpdir}=await import('node:os');const {join}=await import('node:path')
   const dir=mkdtempSync(join(tmpdir(),'life-revisit-actual-')),account='a'.repeat(16),bvid='BV1234567890'
-  let spec,visualStatus='analyzed',observations=0,events=0,updates=0,choice='act',activeAccount=account,receipt,epoch=1,revision=1,metadata=0,afterVote=null,afterMetadata=null,afterVisual=null
+  let spec,visualStatus='analyzed',observations=0,events=0,updates=0,choice='act',activeAccount=account,receipt,epoch=1,revision=1,metadata=0,afterVote=null,afterMetadata=null,afterVisual=null,visualError=null,focusVerified=true
   const recallId='e-'+'a'.repeat(18),trace={memoryId:recallId,bvid,visibility:'public-event',visual:{source:'decoded-public-video'},sources:['visual-model-observation']}
   const gap={bvid,at_seconds:7,recall_memory_id:recallId,recall_start_ms:6000,recall_end_ms:8000}
   const part={memoryId:recallId,visibility:'public-event',certainty:'model-observation',sourceRef:'verified:sample',fragmentId:'frame-1',content:'画面中有一只红色风筝',timeAnchorMs:[7000,7000]}
@@ -45,11 +46,11 @@ test('actual autonomous revisit handler runs without owner job, uses lease, and 
   const context={tool:x=>{spec=x},cfg:{masterEnabled:true,visionEnabled:true,visionFrames:12},refreshCfg(){},hasCredential:()=>true,
     resolvedVisionMode:()=> 'independent_local',validBv:()=>true,accountBinding:{status:()=>({blocked:false}),generation:()=>epoch},trustedLifeAccountTag:()=>activeAccount,
     getSessionIntegration:()=>({mode:'autonomous-life',revision}),integrationAvailable:()=>true,platformReady:()=>true,
-    parseMaybeJson:x=>x,call:async(name)=>{if(name==='bili_video_info'){metadata++;afterMetadata?.();return {duration:60}}observations++;afterVisual?.();return {status:visualStatus}},
+    parseMaybeJson:x=>x,call:async(name,args,opts)=>{if(name==='bili_video_info'){metadata++;afterMetadata?.();return {duration:60}}assert.equal(opts.isCurrent(),true);observations++;afterVisual?.();if(visualError)throw visualError;return {status:visualStatus,errorCode:'vision_board_grid_mismatch'}},videoReadDiagnostic,explainVideoVisionFailure,
     planVideoMomentFollowup,resolveLiveVideoCue,validateVideoRecallGap,runLifeChosenVideoRead,withLifeVideoVisualLease,stateDir:dir,
     lifeWillingness:{decide:async()=>{afterVote?.();return choice==='act'?{ok:true,candidateId:'focus-read',proof:{}}:{ok:false,reason:'life-deferred'}},verify:()=>({ok:true}),receipt:(_p,r)=>{receipt=r.status}},
     liveLifeActivity:{start:()=>()=>{}},safeVideoDebugCapture:()=>null,buildVideoEvidenceBundle:()=>({}),
-    verifyVideoFocusReview:()=>({startMs:1000,endMs:13000,frameTimesMs:[7000],description:'局部画面'}),
+    verifyVideoFocusReview:()=>focusVerified?({startMs:1000,endMs:13000,frameTimesMs:[7000],description:'局部画面'}):null,
     buildFreshVideoDetails:({sourceRef})=>[{fragmentId:'frame-1',type:'observed-scene',sourceRef,certainty:'model-observation',content:'局部画面',timeAnchorMs:[7000,7000]}],
     buildVideoExplorationEvent:({operationId,accountTag})=>({key:'video-explore:'+operationId,accountTag,experience:{}}),
     lifeMemoryCoordinator:{recordEvents:async([event],opts)=>{events++;assert.equal(event.accountTag,account);context.expectedId='e-'+createHash('sha256').update(event.key).digest('hex').slice(0,18);const proof=opts.detailAdmission?.sourceProof;assert.ok(proofSet.has(proof));assert.equal(proof.memoryId,context.expectedId);assert.equal(opts.detailAdmission.fragments[0].sourceRef,proof.sourceRef);updates++;return {ok:true,detailWrite:{ok:true,shallowVersion:1,deepFragments:1}}}},
@@ -79,6 +80,13 @@ test('actual autonomous revisit handler runs without owner job, uses lease, and 
     choice='defer';const beforePartial=observations;assert.equal((await spec.execute(partialGap)).ok,false);assert.equal(observations,beforePartial)
     choice='act';afterVote=()=>{context.validPartial=false};assert.equal((await spec.execute(partialGap)).ok,false);assert.equal(observations,beforePartial)
     afterVote=null;context.validPartial=true;const result=await spec.execute(partialGap);assert.equal(result.ok,true,JSON.stringify(result));assert.equal(observations,beforePartial+1);assert.equal(events,2);assert.equal(updates,3)
+    // The same actual handler reports only the trusted stage, never the raw error.
+    visualError=new VideoReadFailure('vision-native-runtime-busy','PRIVATE secret path')
+    const failed=await spec.execute({bvid,at_seconds:7});assert.equal(failed.reason,'life-video-read-failed');assert.equal(failed.readStatus,'focus-read-failed');assert.deepEqual(failed.readDiagnostic,{code:'vision-native-runtime-busy',stage:'runtime'});assert.doesNotMatch(JSON.stringify(failed),/PRIVATE/);assert.equal(receipt,'failed');assert.equal(events,2)
+    const dm=await runLifeChosenVideoRead({willingness:context.lifeWillingness,getAccountTag:()=>account,bvid,mode:'revisit',scene:'dm',uid:'123',read:async()=>({ok:false,reason:'focus-read-failed',readDiagnostic:videoReadDiagnostic(visualError)})});assert.equal(dm.readDiagnostic,undefined);assert.equal(receipt,'failed')
+    visualError=Error('PRIVATE raw provider');const unknown=await spec.execute({bvid,at_seconds:7});assert.equal(unknown.readDiagnostic.code,'vision-dispatch-unavailable');assert.doesNotMatch(JSON.stringify(unknown),/PRIVATE/)
+    visualError=null;visualStatus='vision_incomplete';focusVerified=false;const mismatch=await spec.execute({bvid,at_seconds:7});assert.equal(mismatch.readStatus,'vision_board_grid_mismatch');assert.equal(events,2);assert.equal(receipt,'failed')
+    const beforeCancel=observations;const cancelled=await spec.execute({bvid,at_seconds:7},{signal:{aborted:true}});assert.equal(cancelled.ok,false);assert.equal(observations,beforeCancel)
 
   }finally{rmSync(dir,{recursive:true,force:true})}
 })
