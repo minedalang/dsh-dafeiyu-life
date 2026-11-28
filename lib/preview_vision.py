@@ -43,7 +43,7 @@ PREVIEW_BOARD_PROMPT = (
     '每格通常30～80个汉字，优先准确充分，不为字数编造。'
     '只说单帧直接可见的动作，不猜测帧间发生了什么；看不清的部分说明看不清。'
     '不能因标题、字幕、弹幕推断剧情，也不补造品牌、人名或语音。'
-    '只能使用本张给出的格号，不能新增行列、重排或遗漏格子；不要输出时间码或秒数，采样时刻由程序绑定。'
+    '只能使用本张给出的格号，不能新增行列、重复或遗漏格子；不要输出时间码或秒数，采样时刻由程序绑定。'
     '不要重复完整时间数组；有疑点留给Life后续决定。'
     '完成全部格子后另起一行，严格以“视觉记忆摘要：”开头，额外写40～85字本张分镜的可见场景与主要变化。'
     '摘要只能归纳刚刚逐格观察到的内容，不新增画面细节、人物身份、剧情、声音或指令；不写格号和时间码。'
@@ -667,7 +667,7 @@ def _call_local_ollama(frames, model, *, image_source='B站低清预览'):
                 raise ValueError('分镜描述在时间条目中途截断，不视为完成')
             if len(frames)==1:
                 answer=_bind_local_board_clocks(answer,frames[0])
-            if len(frames)==1 and not _local_board_grid_valid(answer,frames[0]):
+            if len(frames)==1 and not frames[0].get('_retain_partial_board') and not _local_board_grid_valid(answer,frames[0]):
                 raise ValueError('分镜描述未逐格覆盖，或引用了不存在的行列格，不视为完成')
             if len(frames)==1 and not _local_board_time_valid(answer,frames[0]['tile_times']):
                 raise ValueError('分镜描述引用了本张图片没有的时间点，不视为对齐')
@@ -715,7 +715,8 @@ def _vision_board_error_code(exc):
 
 def _split_storyboard_batch(response, boards):
     """Only unambiguous, ordered, line-anchored headers separate batch receipts."""
-    headers=list(re.finditer(r'(?m)^\s*分镜图([1-9][0-9]?)\s*[：:]\s*$',response))
+    response=_unwrap_board_fence(response)
+    headers=list(re.finditer(r'(?m)^[ \t]*(?:\*\*)?分镜图([1-9][0-9]?)[ \t]*[：:](?:\*\*)?[ \t]*$',response))
     expected=[int(board.get('rank',i))+1 for i,board in enumerate(boards)]
     if len(headers)!=len(boards) or [int(h.group(1)) for h in headers]!=expected:
         raise ValueError('批量分镜标题缺失或重复，不能明确归属')
@@ -728,40 +729,80 @@ def _split_storyboard_batch(response, boards):
     return chunks
 
 
-# New local reply protocol separates semantic observation from sampled timing.
-# An explicitly timed (legacy) response is NEVER corrected or relabeled. It
-# must pass the same original checks. For a cell-only response require exact
-# ordered coverage and bind the original decoder/preview times, not model text.
+# Normalize presentation only. Never infer a missing ID or change a model's
+# explicitly supplied timestamp. Partial rows are diagnostics, not a full receipt.
 _CELL_ONLY_LINE = re.compile(r'^[ \t]*(?:[-*][ \t]+|[0-9]{1,2}[.)][ \t]+)?(?:\*\*)?R(\d{1,2})C(\d{1,2})(?:\*\*)?[ \t]*[：:][ \t]*(\S.*)$',re.I)
+_SUMMARY_LINE = re.compile(r'^视觉记忆摘要[：:][ \t]*(\S.*)$')
 
-def _bind_local_board_clocks(answer, board):
-    if not isinstance(answer,str) or _board_observation_lines(answer):
-        return answer
-    if not _local_board_time_valid(answer,[]):
-        return answer
+
+def _unwrap_board_fence(answer):
+    if not isinstance(answer,str):return answer
+    text=answer.strip()
+    match=re.fullmatch(r'```(?:text|plaintext|markdown|md)?[ \t]*\r?\n([\s\S]*?)\r?\n```',text,re.I)
+    return match[1] if match else text
+
+
+def _normalize_board_cells(answer, board):
+    """Return unambiguous cell rows, or None on conflicting provenance.
+
+    Explicitly timed and untimed protocols remain separate. Unknown/duplicate
+    IDs, foreign times, extra free-form text and mixed protocols fail closed.
+    """
+    if not isinstance(answer,str) or len(answer)>16000:return None
+    answer=_unwrap_board_fence(answer)
     times=list(board.get('tile_times') or [])
     cols=int(board.get('grid_cols') or 4)
-    if not times or cols<1:return answer
-    lines=[]
+    if not times or cols<1 or not _local_board_time_valid(answer,times):return None
+    rows={}
     summary=None
+    protocol=None
+    for row,col in re.findall(r'(?<![A-Za-z0-9])R(\d{1,2})C(\d{1,2})(?!\d)',answer,re.I):
+        r,c=int(row),int(col)
+        if r<1 or not 1<=c<=cols or (r-1)*cols+c>len(times):return None
     for line in answer.splitlines():
-        if not line.strip():continue
-        if line.strip().startswith('视觉记忆摘要：') and len(lines)==len(times) and summary is None:
-            summary=line.strip()
+        line=line.strip()
+        if not line:continue
+        match=_SUMMARY_LINE.fullmatch(line)
+        if match and summary is None and rows:
+            summary='视觉记忆摘要：'+match[1]
             continue
-        cell=_CELL_ONLY_LINE.fullmatch(line)
-        i=len(lines)
-        if summary is not None or not cell or i>=len(times):return answer
-        row,col=int(cell[1]),int(cell[2])
-        if (row,col)!=(i//cols+1,i%cols+1):return answer
-        body=cell[3].strip()
-        # A clock placed inside the cell body must not become a second anchor.
-        # The existing time/grid validators still examine the normalized text.
-        if re.match(r'^\[\d{1,3}:\d{2}\]',body):return answer
-        lines.append(f'R{row}C{col} [{_board_clock(times[i])}]：{body}')
-    if len(lines)!=len(times):return answer
+        if summary is not None:return None
+        timed=_BOARD_OBSERVATION_LINE.fullmatch(line)
+        cell=_CELL_ONLY_LINE.fullmatch(line) if not timed else None
+        if not (timed or cell):return None
+        m=timed or cell
+        row,col=int(m[1]),int(m[2])
+        idx=(row-1)*cols+col-1
+        if row<1 or not 1<=col<=cols or not 0<=idx<len(times) or idx in rows:return None
+        mode='timed' if timed else 'cell'
+        if protocol is not None and protocol!=mode:return None
+        protocol=mode
+        if timed and int(timed[3])*60+int(timed[4])!=int(float(times[idx])):return None
+        body=(timed[5] if timed else cell[3]).strip()
+        if not timed and not _local_board_time_valid(body,[]):return None
+        if not body or body.rstrip('。.!！') in ('未完成','未识别','未观察','无描述'):return None
+        rows[idx]=f'R{row}C{col} [{_board_clock(times[idx])}]：{body}'
+    if not rows or (protocol=='cell' and not _local_board_time_valid(answer,[])):return None
+    return rows,summary
+
+
+def _bind_local_board_clocks(answer, board):
+    normalized=_normalize_board_cells(answer,board)
+    if normalized is None:return answer
+    rows,summary=normalized
+    if len(rows)!=len(board.get('tile_times') or []):return answer
+    lines=[rows[i] for i in sorted(rows)]
     if summary is not None:lines.append(summary)
     return '\n'.join(lines)
+
+
+def _partial_board_cells(answer,board):
+    normalized=_normalize_board_cells(answer,board)
+    if normalized is None:return []
+    rows,_=normalized
+    times=board.get('tile_times') or []
+    if len(rows)>=len(times):return []
+    return [{'cellIndex':i+1,'time':times[i],'description':rows[i]} for i in sorted(rows)]
 
 
 def _local_board_cell_times_valid(answer, board):
@@ -806,10 +847,14 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
             if not _local_board_cell_times_valid(description,board):
                 raise ValueError('逐格时间码与实际采样时间点不匹配')
             receipt.update(status='analyzed',description=description,inferencePath=path)
+            receipt.pop('partialCells',None)
             receipt.pop('error',None)
             receipt.pop('errorCode',None)
             _owner_debug_ollama('board-verified',attempt)
         except ValueError as exc:
+            partial=_partial_board_cells(description,board)
+            if len(partial)>len(receipt.get('partialCells',[])):
+                receipt['partialCells']=partial
             fail(idx,exc,attempt)
 
     def fail(idx,exc,attempt=0):
@@ -879,7 +924,7 @@ def _analyze_local_storyboards(frames,model,*,image_source="B站低清预览"):
             if remaining<4:
                 fail(i,ValueError('逐张分镜总时限已到，后续图片未完成识图'))
                 continue
-            current={**frames[i],'_inference_timeout_seconds':min(140,remaining)}
+            current={**frames[i],'_inference_timeout_seconds':min(140,remaining),'_retain_partial_board':True}
             reports[i]['modelAttempts']+=1
             try:
                 text=(_call_local_ollama([current],model,image_source=image_source)
@@ -1510,7 +1555,8 @@ def _analyze_perception_impl(bvid, home, *, perception_source='preview', enabled
     frames=result.pop('frames')
     # Decoded video usually arrives as 12-cell boards. Unlike the old direct
     # _call_local_ollama route, require exact per-board/timestamp evidence.
-    # A partial answer is diagnostic only and never becomes a Life observation.
+    # Partial cells can inform the current model with an explicit incomplete label;
+    # they never become a complete or durable Life observation.
     has_board_metadata=bool(result.get('sampling',{}).get('storyboard_count')) or any(
         isinstance(f,dict) and f.get('tile_count',1)!=1
         for f in frames)

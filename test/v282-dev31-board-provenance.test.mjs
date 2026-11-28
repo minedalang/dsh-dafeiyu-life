@@ -88,3 +88,16 @@ test('v14 paired-image results still require exact per-board proof at the Node e
  swapped.visionBoardReceipts[1].times[0]=10
  assert.equal(handoff(swapped).evidence.sources.some(s=>s.kind==='preview_visual_analysis'),false)
 })
+
+test('incomplete board carries only exact partial cells to transient handoff, never full evidence',()=>{
+ const v=make();v.status='vision_incomplete';v.error='incomplete';delete v.description
+ v.sampling={...v.sampling,sampler_version:14,tiles_per_storyboard:12}
+ v.visionBoardReceipts[1]={index:2,status:'incomplete',times:times.slice(12),gridCols:4,partialCells:[{cellIndex:2,time:161,description:'R1C2 [02:41]：机翼。'}]}
+ const {evidence,handoff:h}=handoff(v)
+ assert.equal(evidence.sources.some(s=>s.kind==='preview_visual_analysis'),false)
+ assert.equal(h.video.modelDescription,'');assert.deepEqual(h.video.observations,[])
+ assert.deepEqual(h.video.partialCellObservations,[{boardIndex:2,cellIndex:2,atMs:161000,description:'机翼。',status:'partial-model-generated-unverified'}])
+ for(const mutate of [x=>x.visionBoardReceipts[1].partialCells[0].time=146,x=>x.visionBoardReceipts[1].partialCells[0].description='R1C1 [02:41]：机翼。',x=>x.visionBoardReceipts[1].times[0]=10,x=>x.sampling.strategy='unknown',x=>x.visionBoardReceipts[1].partialCells.push({...x.visionBoardReceipts[1].partialCells[0]})]){
+  const bad=structuredClone(v);mutate(bad);assert.deepEqual(handoff(bad).handoff.video.partialCellObservations,[])
+ }
+})

@@ -230,3 +230,13 @@ test('production shared video dispatch settles failed lease and revoked account 
   else{assert.equal(observed.visualObserved,false);assert.equal(receipt.result,'failed');assert.equal(receipt.visualStatus,scenario==='revoked'?'authorization-changed':'life-vision-resource-unavailable');assert.doesNotMatch(JSON.stringify(observed),/ACTUAL VERIFIED FRAME|PRIVATE RAW/)}
  }
 })
+
+test('partial observations return to same social decision without promoting a watch',()=>{
+ const bvid='BV1rV1FzYEbP',result={ok:true,bvid,viewDepth:'standard',visual:{status:'vision_incomplete'},
+  videoEvidence:{schema:'life-video-evidence/v1',bvid,sources:[]},
+  perceptionHandoff:{schema:'life-video-perception-handoff/v1',bvid,video:{partialCellObservations:[{atMs:1000,description:'可见鸟。',status:'partial-model-generated-unverified'}]}}}
+ const row=projectSharedVideoObservation(result,bvid)
+ assert.equal(row.verified,false);assert.equal(row.visualObserved,false);assert.equal(row.partialVisual.fullReceipt,false)
+ assert.deepEqual(row.partialVisual.cells,[{atMs:1000,description:'可见鸟。'}]);assert.equal(row.visualDescription,undefined)
+ assert.equal(projectSharedVideoObservation({...result,visual:{status:'vision_unavailable'}},bvid).partialVisual,undefined)
+})

@@ -62,7 +62,7 @@ class PerBoardVision(unittest.TestCase):
         good='R1C1：看到一只鸟。\nR1C2：看到羽毛。'
         self.assertTrue(pv._local_board_cell_times_valid(pv._bind_local_board_clocks(good,b),b))
         invalid=[good.splitlines()[0],good.replace('R1C2','R1C1'),good.replace('R1C2','R2C1'),
-                 '\n'.join(reversed(good.splitlines())),good.replace('看到一只鸟。','[00:14]：看到一只鸟。'),
+                 good.replace('看到一只鸟。','[00:14]：看到一只鸟。'),
                  good.replace('R1C1：','R1C1 [00:14]：').replace('R1C2：','R1C2 [00:10]：'),
                  good.replace('R1C1：','R1C1 [00:10]：'),good+'\n视觉记忆摘要：R3C3 可见。']
         for raw in invalid:
@@ -72,6 +72,41 @@ class PerBoardVision(unittest.TestCase):
                 self.assertEqual(receipts[0]['status'],'incomplete')
                 self.assertEqual(work.call_count,1)
                 self.assertNotIn('description',receipts[0])
+
+    def test_fenced_reordered_cells_and_ascii_summary_bind_without_retry(self):
+        b={'second':10,'tile_times':[10.4,14.8],'grid_cols':2,'grid_rows':1,'tile_count':2,'bytes':b'jpeg'}
+        raw='```markdown\nR1C2：看到羽毛。\nR1C1：看到一只鸟。\n视觉记忆摘要: 画面中有鸟。\n```'
+        with patch.object(pv,'_call_local_ollama',return_value=raw) as work:
+            text,receipts=pv._analyze_local_storyboards([b],'qwen3.5:2b')
+        self.assertEqual(work.call_count,1)
+        self.assertEqual(receipts[0]['status'],'analyzed')
+        self.assertIn('R1C1 [00:10]：看到一只鸟。\nR1C2 [00:14]：看到羽毛。',text)
+        self.assertIn('视觉记忆摘要：画面中有鸟。',text)
+
+    def test_partial_cells_retained_without_complete_receipt_or_guessing(self):
+        b={'second':10,'tile_times':[10.4,14.8],'grid_cols':2,'grid_rows':1,'tile_count':2,'bytes':b'jpeg'}
+        class Reply:
+            def __enter__(self):return self
+            def __exit__(self,*_):pass
+            def read(self,n):return json.dumps({'message':{'content':'R1C2：看到羽毛。'},'done':True,'done_reason':'stop'}).encode()
+        class Opener:
+            def open(self,req,timeout=None):return Reply()
+        with patch('urllib.request.build_opener',return_value=Opener()) as work:
+            text,receipts=pv._analyze_local_storyboards([b],'qwen3.5:2b')
+        self.assertEqual(work.call_count,1)
+        self.assertEqual(text,'')
+        self.assertEqual(receipts[0]['status'],'incomplete')
+        self.assertNotIn('description',receipts[0])
+        self.assertEqual(receipts[0]['partialCells'],[{'cellIndex':2,'time':14.8,'description':'R1C2 [00:14]：看到羽毛。'}])
+        for raw in ('R1C2 [00:10]：鸟。','R1C2：鸟。\nR1C2：树。','R2C1：鸟。','R1C1：鸟。\nR1C2 [00:14]：羽毛。','R1C2：未完成'):
+            self.assertEqual(pv._partial_board_cells(raw,b),[],raw)
+
+    def test_fenced_batch_keeps_explicit_board_identity(self):
+        boards=[{'rank':0},{'rank':1}]
+        raw='```text\n**分镜图1：**\nR1C1：鸟。\n**分镜图2：**\nR1C1：树。\n```'
+        self.assertEqual(pv._split_storyboard_batch(raw,boards),['R1C1：鸟。','R1C1：树。'])
+        with self.assertRaises(ValueError):
+            pv._split_storyboard_batch(raw.replace('分镜图2','分镜图1'),boards)
 
     def test_single_cell_only_reply_uses_real_ollama_parser_without_extra_call(self):
         b={'second':10,'tile_times':[10.4,14.8],'grid_cols':2,'grid_rows':1,'tile_count':2,'bytes':b'jpeg'}
