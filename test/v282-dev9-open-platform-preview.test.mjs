@@ -48,7 +48,7 @@ test('README showcases the long-term ecosystem with real local SVG assets and co
     assert.match(svg,/<title\b/)
     assert.match(svg,/<desc\b/)
   }
-  assert.match(readme,/社区做的桌宠/)
+  assert.match(readme,/社区桌宠/)
   assert.ok(manifest.files.includes('docs/open-platform'),'npm package must ship developer preview docs linked by README')
   assert.match(readme,/3D 房间/)
   assert.match(readme,/尚不能连接实际桌宠或第三方客户端/)
@@ -63,5 +63,5 @@ test('developer version identity is synchronized',()=>{
   assert.equal(lock.version,manifest.version)
   assert.equal(lock.packages[''].version,manifest.version)
   assert.ok(readme.includes('当前版本源码：'+manifest.version))
-  assert.ok(read('CHANGELOG.md').startsWith(manifest.version==='2.8.2'?'## [2.8.2] ·':'## '+manifest.version+' ·'))
+  assert.ok(read('CHANGELOG.md').split(/\r?\n/).some(line=>line.startsWith(manifest.version==='2.8.2'?'## [2.8.2] ·':'## '+manifest.version+' ·')))
 })

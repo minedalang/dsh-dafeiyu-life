@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {memoryNeuralProjection,neuralProjectionKey} from '../lib/memory-neural-projection.mjs';
 import {buildLifeTimeline} from '../lib/life-timeline.mjs';
 const read=f=>readFileSync(new URL('../'+f,import.meta.url),'utf8');
-test('模糊 trace 不参与搜索，食物查询不会命中无关视频兴趣汇总',()=>{
+test('模糊 trace 不参与搜索，语义候选不由饮食词表二次否决，类别仍保持真实',()=>{
  const trace={id:'trace',text:'我隐约记得曾在评论区与人交流过',stage:'trace',gardenKind:'experience',gardenEvidence:'fading-life-episode'};
  const interest={id:'interest',text:'大肥鱼在最近90天对游戏有17条自主选看线索',gardenKind:'interest',gardenEvidence:'selected-video-trend',tags:['游戏']};
  const food={id:'food',text:'大肥鱼喜欢吃水果',gardenKind:'fact',gardenEvidence:'identity-memory'};
@@ -12,8 +12,21 @@ test('模糊 trace 不参与搜索，食物查询不会命中无关视频兴趣�
    semanticMatchIds:[neuralProjectionKey(trace),neuralProjectionKey(interest),neuralProjectionKey(food)],
    semanticScores:{[neuralProjectionKey(trace)]:.98,[neuralProjectionKey(interest)]:.93,[neuralProjectionKey(food)]:.81}});
  assert.equal(p.nodes.find(x=>x.id===neuralProjectionKey(trace)).matched,false);
- assert.equal(p.nodes.find(x=>x.id===neuralProjectionKey(interest)).matched,false);
+ assert.equal(p.nodes.find(x=>x.id===neuralProjectionKey(interest)).matched,true);
+ assert.equal(p.nodes.find(x=>x.id===neuralProjectionKey(interest)).source,'selected-video-trend');
+ assert.equal(p.nodes.find(x=>x.id===neuralProjectionKey(interest)).kind,'interest');
+ assert.equal(p.nodes.find(x=>x.id===neuralProjectionKey(interest)).similarity,.93);
  assert.equal(p.nodes.find(x=>x.id===neuralProjectionKey(food)).matched,true);
+});
+test('语义关联不依赖主题关键词或笼统兴趣措辞，未命中不伪造相似度',()=>{
+ const rows=[{id:'interest-a',text:'近期自主选看有关茶道的作品',gardenKind:'interest',gardenEvidence:'selected-video-trend',tags:['茶道']},{id:'interest-b',text:'近期自主选看有关天文的作品',gardenKind:'interest',gardenEvidence:'selected-video-trend',tags:['天文']}];
+ for(const q of ['喜欢吃什么','最近有什么兴趣','那种热气腾腾的东西']){
+  const a=neuralProjectionKey(rows[0]),b=neuralProjectionKey(rows[1]);
+  const p=memoryNeuralProjection({gardenRows:rows,query:q,showAll:true,semanticMatchIds:[a],semanticScores:{[a]:.82}});
+  assert.equal(p.nodes.find(x=>x.id===a).similarity,.82);
+  assert.equal(p.nodes.find(x=>x.id===b).similarity,undefined);
+ }
+ const host=read('index.js');assert.doesNotMatch(host,/const foodIntent=|const foodTopic=/);
 });
 test('搜索结果按综合相关性排序，完整词组优先',()=>{
  const a={id:'A',text:'我曾在评论区讨论过游戏',gardenKind:'experience'};

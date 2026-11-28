@@ -22,6 +22,10 @@ function record(dir,items){writeFileSync(join(dir,'social-intentions.json'),JSON
 test('首次配置本地语义回忆必装，其他增强仍可跳过，共用原安装 API',()=>{
  const html=data('lib/management-console.html'),js=data('lib/management-console.js'),index=data('index.js')
  for(const id of ['quick-embedding-section','quick-embedding-install','quick-embedding-status','quick-embedding-progress'])assert.match(html,new RegExp('id="'+id+'"'))
+ const quick=html.slice(html.indexOf('id="quick-embedding-section"'),html.indexOf('id="fs-enhancements"'));
+ assert.match(quick,/无需安装 Ollama 或 Python/);assert.match(quick,/llama\.cpp CPU 运行时/);
+ assert.match(js,/无需安装 Ollama 或 Python。插件将下载/);
+ assert.match(html,/如未安装 Ollama，请先<a href="https:\/\/ollama\.com\/download"/);
  assert.match(html,/首次配置必需/);assert.match(html,/不开启时仍可用词法回忆/);assert.match(html,/Qwen3-Embedding-0\.6B/)
  assert.match(js,/\$\('quick-embedding-install'\)\.addEventListener\('click',\(\)=>run\(inspectOrEnableEmbedding\)\)/)
  assert.doesNotMatch(html,/id="quick-embedding-later"/);assert.match(html,/id="fs-wizard-skip"[^>]*>稍后设置/);assert.match(js,/\$\('fs-wizard-skip'\)\.addEventListener\('click',async\(\)=>\{if\(wizardMounted!=='embedding'&&await wizardDraftSafe\(\)\)wizardAdvance\(\)/)

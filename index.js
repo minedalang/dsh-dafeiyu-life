@@ -11173,15 +11173,9 @@ logger:{warn:m=>log('社交意图：'+m)}
           // display label; hashing the display text made ALL those vectors
           // appear missing even when the local model was ready.
           const indexedText=new Map(platformView?memoryRetriever.embeddingCorpus({includeVisualDetails:false}).map(row=>[row.id,row.text]):result.rows.map(row=>['memory:'+String(row.id),row.text]))
-          const foodIntent=/(?:喜欢吃|爱吃|想吃|吃什么|吃的|美食|食物|口味|零食|水果|饭菜|好吃)/i.test(q)
-          const foodTopic=/(?:美食|食物|饮食|口味|零食|水果|蔬菜|饭|菜|甜点|饮料|肉|蛋|鱼|米|面|早餐|午餐|晚餐|小吃|烹饪|做饭)/i
           const corpus=allRows.filter(m=>{
             if(!allowedIds.has(neuralProjectionKey(m)))return false
             if(m.gardenEvidence==='fading-life-episode'&&m.stage==='trace')return false
-            if(foodIntent&&m.gardenEvidence==='selected-video-trend'){
-              const topic=String(Array.isArray(m.tags)?m.tags[0]||'':m.topic||'')
-              if(!topic||(!foodTopic.test(topic)&&!q.toLocaleLowerCase().includes(topic.toLocaleLowerCase())))return false
-            }
             return true
           }).map(m=>{
             const corpusId=m.gardenEvidence==='fading-life-episode'?'episode:'+String(m.id):

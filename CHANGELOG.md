@@ -13,6 +13,11 @@
 
 [现行技术架构](docs/architecture/2.8.3-current-architecture.md) · [Life 四图与调用边界](docs/architecture/life-system-current-view.md) · [记忆技术说明](docs/LIFE_MEMORY_2_TECHNICAL.md) · [正式发布门禁](docs/release/2.8.3-release-checklist.md)
 
+## 2.8.3-dev.88 · 本地模型依赖引导与神经回忆场语义检索
+
+- 快速设置、确认安装、记忆设置及视觉引导明确区分插件管理的 llama.cpp Embedding 和可选 Ollama 视觉；不改变安装/授权。
+- 移除神经回忆场向量候选与投影的饮食话题、泛兴趣词表门禁，保留真实分数、类别、账号、遗忘与精确 BV 边界。语义命中只表示相关候选，不是事实确认。
+
 ## 2.8.3-dev.87 · 历史主人命令解析退役与范围锁定
 
 - 清除无生产调用的主人 DM 固定只读命令与写操作文字解析器，保留原模型提案、授权、操作账本及草稿事务。
