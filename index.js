@@ -37,7 +37,7 @@ import { growthSuggestionPrompt, parseGrowthSuggestion, growthSuggestionIssue } 
 import {readVideoDiscussionDiagnostics,discussionAccountTag} from './lib/video-discussion-diagnostics.mjs'
 import {currentLifeAccountScope} from './lib/account-life-scope.mjs'
 import {createAccountSocialGrants} from './lib/account-social-grants.mjs'
-import {createLifeOpportunities} from './lib/life-opportunities.mjs'
+import {createLifeOpportunities,normalizeLifePublicTopic} from './lib/life-opportunities.mjs'
 import {withLifeVideoVisualLease} from './lib/life-planner-atomic.mjs'
 import {createLifeSharedBiliLinks} from './lib/life-shared-bili-links.mjs'
 import {canReadSharedLinkFromSender} from './lib/life-shared-link-policy.mjs'
@@ -8359,6 +8359,17 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
     failLifeCreatorRead:(id,tag)=>lifeOpportunities.failCreatorRead(id,tag),
     pauseLifeExploration:(id,delay,tag)=>lifeOpportunities.pauseExploration(id,delay,tag),
     abandonLifeExploration:(id,reason,tag)=>lifeOpportunities.abandonExploration(id,reason,tag),
+    canLifeSearchPublicTopic:()=>{refreshCfg();return cfg.masterEnabled===true&&cfg.autonomousPlannerEnabled===true&&cfg.lifeAgentMode==='active'&&platformReady()&&automaticSession.current()&&lifeOpportunityAccountReady()&&!!trustedLifeAccountTag()},
+    publicTopicAvailable:(topic,tag)=>lifeOpportunities.publicTopicAvailable(topic,tag),
+    beginLifePublicTopic:(topic,result,tag)=>lifeOpportunities.beginPublicTopicExploration(topic,result,tag),
+    refineLifePublicTopic:(id,topic,result,tag)=>lifeOpportunities.refinePublicTopicExploration(id,topic,result,tag),
+    executeLifePublicTopicSearch:async(topic,tag,generation,isCurrent)=>readActionContext.run({source:'life-planner'},async()=>{
+      const current=()=>{refreshCfg();return typeof isCurrent==='function'&&isCurrent()===true&&platformReady()&&automaticSession.current()&&cfg.masterEnabled===true&&cfg.autonomousPlannerEnabled===true&&cfg.lifeAgentMode==='active'&&lifeOpportunityAccountReady()&&tag===trustedLifeAccountTag()&&generation===accountBinding.generation()}
+      if(!current()||!topic||normalizeLifePublicTopic(topic)!==topic)return {ok:false}
+      const data=parseMaybeJson(await call('bili_search',{keyword:topic,num:10,order:'totalrank'}))
+      if(!current()||!data||data.ok===false||data.keyword!==topic||!Array.isArray(data.videos)||(data.code!==undefined&&data.code!==0))return {ok:false}
+      return {ok:true,topic,videos:selectSearchVideos(data,{limit:5})}
+    }),
     executeLifeSearch:async(topic)=>readActionContext.run({source:'life-planner'},async()=>{
       // The query comes solely from current-account verified LifeInterests,
       // never from the model's free-form goal or untrusted comment contents.

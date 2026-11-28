@@ -1,3 +1,4 @@
+%% dev.55：自主公开主题及同一原 Episode 换主题；原账号、预算、记忆与写许可保持。
 %% dev.54：原入口及每次 Episode 决策刷新当前 Life Voice/兴趣/模拟状态；仅原补看提示读取历史；模型可选延期15–360分钟，原暂停账本及实际 nextAt 投影。状态不是权限或固定行为。
 %% dev.53：54 个共享读取路由、4 个 Episode 写入路由；写入原门禁、代际和一次性凭据消费复核、准确原 Episode 回执。
 %% dev.51：原主人延期观察分享/原 Episode/活体证据派生可选回聊，复用原联系及意愿、平台事务，非自动通知。
@@ -204,7 +205,7 @@ commentPublicPerson -.->|只读候选| professionalMenu
 professionalMenu -.-> commentObservation
 readRuntime46["统一只读目录、参数防重和调用预算：不授予权限"]
 readRuntime46 -.-> commentObservation
-registeredEpisodeRead49["八种 Episode 只读路由：同社交及主 Session 注册/准入；原执行回执仍独立"]
+registeredEpisodeRead49["九种 Episode 只读路由：同社交及主 Session 注册/准入；原执行回执仍独立"]
 registeredEpisodeWrite53["四种 Episode 写入注册；原意愿与写入事务、真实回执绑定原 Episode"]
 readRuntime46 -.-> registeredEpisodeWrite53
 registeredEpisodeWrite53 -.->|按当前合法菜单选择| menu
@@ -339,3 +340,8 @@ contextDelivery282 -.->|仅向当前 Life 模型说明缺失，非授权| menu
   ownerExplore51 -.->|原 Episode，平台确认才投影| socialReceipt
 %% @code ownerExplore51 | lib/life-experience-continuity.mjs | export function ownerExplorationCandidate
 %% @code ownerExplore51 | lib/life-willingness.mjs | function adoptOwnerExplorationDecision
+
+selfTopic55["同一自生主题 Episode 可换一次主题、休息与恢复｜不增加独立账本"]
+registeredEpisodeRead49 -.-> selfTopic55
+selfTopic55 -.->|真实入口与换主题分别归属| record
+%% @code selfTopic55 | lib/life-opportunities.mjs | const publicTopicAvailable=

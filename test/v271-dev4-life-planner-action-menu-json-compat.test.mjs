@@ -182,7 +182,7 @@ for(const scenario of ['creator-disabled','creator-source-changed','creator-erro
 // adapters share the registry and scope fence, not social or write authority.
 test('dev52 main read inventory and gateway isolate scene, writes and stale scope',async()=>{
  const {registeredLifeRead,registeredLifeReads,executeRegisteredLifeRead}=await import('../lib/life-agent-read-runtime.mjs')
- assert.deepEqual(['social','episode','main-session'].map(s=>registeredLifeReads(s).length),[15,8,31])
+ assert.deepEqual(['social','episode','main-session'].map(s=>registeredLifeReads(s).length),[15,9,31])
  for(const scene of ['social','episode','main-session'])assert.equal(new Set(registeredLifeReads(scene).map(x=>x.action)).size,registeredLifeReads(scene).length)
  let current=true,calls=0
  const run=(actions,read=async()=>{calls++;return {verified:true}})=>executeRegisteredLifeRead({scene:'main-session',actions,isCurrent:()=>current,read})
@@ -197,7 +197,7 @@ test('dev52 main read inventory and gateway isolate scene, writes and stale scop
 
 test('dev53 registry groups shared semantics without granting aliases or autonomous writes in social/main scenes',async()=>{
  const {registeredLifeTool,registeredLifeTools,registeredLifeWrite,registeredLifeRead,executeRegisteredLifeWrite}=await import('../lib/life-agent-read-runtime.mjs')
- assert.deepEqual(['social','episode','main-session'].map(s=>registeredLifeTools(s).length),[15,12,31])
+ assert.deepEqual(['social','episode','main-session'].map(s=>registeredLifeTools(s).length),[15,13,31])
  for(const [social,episode,main] of [['read_memory','recall_public_experience','dafeiyu_life_recall'],['read_video','inspect_exploration','bili_video_info'],['read_hot_comments','inspect_video_discussion','bili_comments'],['read_public_person','inspect_creator_space','bili_user_videos']]){
    assert.equal(registeredLifeTool('social',social).capability,registeredLifeTool('episode',episode).capability)
    assert.equal(registeredLifeTool('social',social).capability,registeredLifeTool('main-session',main).capability)
@@ -246,4 +246,46 @@ test('dev54 disabled state is not projected as actual emotion in initial or cont
   invokeModel:async p=>{prompts.push(p);assert.match(p,/"lifeState":\{"status":"disabled"\}/);assert.doesNotMatch(p,/"energy":1|"mood":"sad"/);return JSON.stringify({action:prompts.length===1?'resume_episode':'inspect_creator_space',id})},
   executeRead:async()=>({ok:false}),updateTodo:async()=>({ok:false}),reflect:async()=>({ok:false})})
  const result=await planner.tick();assert.equal(result.action,'resume_episode');assert.equal(reads,1);assert.equal(row.episodeSteps,2);assert.equal(prompts.length,2)
+}))
+
+// dev.55: real planner + original opportunity ledger, no synthetic TODOs.
+const {createLifeOpportunities,normalizeLifePublicTopic}=await import('../lib/life-opportunities.mjs')
+function topicRig(dir,{answers=[],scenario='',rows=[],daily=12,mode='active'}={}){
+ let clock=NOW,gen=0,allowed=true;const prompts=[],reads=[],memories=[],episodes=[],updates=[]
+ const life=createLifeOpportunities({stateDir:dir,getCredential:()=>({}),getAccountTag:()=>TAG,now:()=>clock})
+ const planner=createAutonomousPlanner({dataDir:dir,now:()=>clock,getConfig:()=>({...config(),autonomousPlannerDailyLimit:daily,lifeAgentMode:mode}),getTodos:()=>rows,getLifeAccountTag:()=>TAG,getLifeAccountGeneration:()=>gen,
+   getLifeVoice:()=> 'PRIVATE_OUTER_MARKER',getLifeState:()=>({energy:33,mood:'curious',private:'PRIVATE_STATE_MARKER'}),getLifeIntentions:()=>life.continuations(),getActiveLifeIntentionReservations:()=>life.intentions({includeClosed:true,limit:20}),getLifeIntentionCues:()=>life.explorationCues(),
+   canLifeSearchPublicTopic:()=>allowed,publicTopicAvailable:(...a)=>life.publicTopicAvailable(...a),beginLifePublicTopic:(...a)=>life.beginPublicTopicExploration(...a),refineLifePublicTopic:(...a)=>life.refinePublicTopicExploration(...a),pauseLifeExploration:(...a)=>life.pauseExploration(...a),
+   executeLifePublicTopicSearch:async(topic,scope,generation,current)=>{assert.equal(scope,TAG);assert.equal(generation,gen);assert.equal(current(),true);reads.push(topic);if(scenario==='read-revoked')allowed=false;if(scenario==='read-generation')gen++;return {ok:scenario!=='api-error',topic:scenario==='mismatched'?'不匹配主题':topic,videos:(scenario==='empty'||scenario==='refine-empty'&&reads.length===2)?[]:[{bvid:reads.length===1?'BV1abcde1234':'BV1abcde5678',title:'真实公开候选'+reads.length}]}},
+   invokeModel:async p=>{prompts.push(p);if(scenario==='model-generation'&&prompts.length===2)gen++;const answer=answers.shift();return JSON.stringify(typeof answer==='function'?answer(life,p):answer||{action:'skip',stopReasonCode:'rest'})},
+   onVerifiedRead:proof=>{memories.push(proof);return {ok:true}},onEpisodeAction:proof=>{episodes.push(proof);return {ok:true}},executeRead:async()=>({ok:false}),updateTodo:async(...a)=>{updates.push(a);return {ok:true}},reflect:async()=>({ok:false})})
+ return {planner,life,prompts,reads,memories,episodes,updates,advance:ms=>{clock+=ms},clock:()=>clock,answers}
+}
+const entryChoice={action:'search_public_topic'},newTopic={action:'search',topic:'鸟类翅膀绘画'},later={action:'stop',stopReasonCode:'later',resumeAfterMinutes:35}
+test('dev55 no existing cue: original ledger search, refine, postpone and resume with both public topics',()=>inDir(async dir=>{
+ const x=topicRig(dir,{answers:[entryChoice,newTopic,(life,p)=>{assert.match(p,/鸟类翅膀绘画/);return {action:'search_public_topic',id:life.continuations()[0].id}}, {action:'search',topic:'鸟类飞行结构'},later]})
+ const out=await x.planner.tick();assert.equal(out.action,'search_public_topic',JSON.stringify(out));assert.equal(out.result,'verified-search-results',JSON.stringify(out));assert.deepEqual(x.reads,['鸟类翅膀绘画','鸟类飞行结构']);assert.equal(x.updates.length,0)
+ const rows=x.life.intentions({includeClosed:true});assert.equal(rows.length,1);const row=rows[0];assert.equal(x.episodes[0].sourceRef,"intention:"+row.id);assert.deepEqual(row.publicSearchTopics,x.reads);assert.equal(row.episodeSteps,2);assert.equal(row.nextAt,NOW+35*60_000);assert.equal(x.life.continuations().length,0)
+ const isolated=x.prompts.filter(p=>p.includes('【Life 公开主题独立上下文】'));assert.equal(isolated.length,2);for(const p of isolated){assert.doesNotMatch(p,/PRIVATE_|真实公开候选/);assert.match(p,/"energy":33/)}assert.match(x.prompts.at(-1),/鸟类飞行结构/);assert.equal(x.memories.length,2);assert.notEqual(x.memories[0].sourceId,x.memories[1].sourceId);assert.equal(x.episodes.filter(p=>p.action==='search_public_topic').length,2)
+ const evidence=x.life.timelineEvidence({});assert.deepEqual(evidence.filter(e=>e.action==='search').map(e=>[e.sourceTopic,e.searchPhase,e.relatedVideos[0].bvid]),[['鸟类翅膀绘画','entry','BV1abcde1234'],['鸟类飞行结构','refine','BV1abcde5678']]);
+ x.advance(36*60_000);x.answers.push({action:'resume_episode',id:row.id},(life,p)=>{assert.match(p,/鸟类翅膀绘画/);assert.match(p,/鸟类飞行结构/);assert.doesNotMatch(p.split('当前合法行动菜单：').at(-1),/"action":"search_public_topic"/);return later});const resumed=await x.planner.tick();assert.equal(resumed.action,'resume_episode',JSON.stringify(resumed));assert.equal(x.life.intentions({includeClosed:true})[0].id,row.id);assert.equal(x.reads.length,2)
+}))
+for(const scenario of ['stop','invalid','outer-injection','model-generation','read-generation','read-revoked','api-error','mismatched','empty','accepted','duplicate','budget','shadow','manual','skip'])test('dev55 public topic guard '+scenario,()=>inDir(async dir=>{
+ const rows=scenario==='accepted'?[{id:'todo-promise',type:'search_videos',topic:'鸟类翅膀绘画',status:'deferred',title:'已接受待办',createdAt:NOW-1000,nextAt:NOW+3600000}]:[]
+ const answers=[scenario==='outer-injection'?{...entryChoice,topic:'私信'}:scenario==='skip'?{action:'skip',stopReasonCode:'rest'}:entryChoice,scenario==='stop'?{action:'stop'}:scenario==='invalid'?{action:'search',topic:'https://example.com'}:newTopic,later]
+ const x=topicRig(dir,{scenario,answers,rows,daily:scenario==='budget'?1:12,mode:scenario==='shadow'?'shadow':'active'})
+ if(scenario==='duplicate'){assert.equal(x.life.beginPublicTopicExploration(newTopic.topic,{ok:true,topic:newTopic.topic,videos:[{bvid:'BV1abcde1234',title:'已在进行的探索'}]},TAG).ok,true)}
+ await x.planner.tick(scenario==='manual'?{force:true}:{});assert.equal(x.reads.length,['read-generation','read-revoked','api-error','mismatched','empty'].includes(scenario)?1:0,JSON.stringify({scenario,prompts:x.prompts.map(p=>p.slice(0,70))}));assert.equal(x.memories.length,0);assert.equal(x.episodes.length,0);assert.equal(x.life.intentions({includeClosed:true}).length,scenario==='duplicate'?1:0);assert.equal(x.updates.length,0)
+}))
+test('dev55 parameter shape, exact normalized topic and canonical receipt',()=>inDir(async dir=>{
+ for(const t of ['密码','私信内容','BV1abcde1234','UID 12345','abc123456','https://example.com','foo@example.com','a\nb','1'])assert.equal(normalizeLifePublicTopic(t),'',t)
+ assert.equal(normalizeLifePublicTopic('  Ｃ++  绘画 '),'C++ 绘画')
+ const x=topicRig(dir),topic='C++ 绘画',found={ok:true,topic,videos:[{bvid:'BV1abcde1234',title:'作品'}]}
+ assert.equal(x.life.beginPublicTopicExploration(topic,{...found,topic:'错误'},TAG).ok,false)
+ const first=x.life.beginPublicTopicExploration(topic,found,TAG);assert.equal(first.ok,true);assert.equal(x.life.publicTopicAvailable('ｃ++ 绘画',TAG),false);assert.equal(x.life.refinePublicTopicExploration(first.id,topic,found,TAG).ok,false);assert.equal(x.life.refinePublicTopicExploration(first.id,'新的主题',{...found,topic:'新的主题'},'b'.repeat(16)).ok,false)
+}))
+
+test('dev55 failed refinement feeds real status to same model without fake step or retry',()=>inDir(async dir=>{
+ const x=topicRig(dir,{scenario:'refine-empty',answers:[entryChoice,newTopic,life=>({action:'search_public_topic',id:life.continuations()[0].id}),{action:'search',topic:'新的飞行主题'},(life,p)=>{assert.match(p,/public-search-no-results/);assert.doesNotMatch(p.split('当前合法行动菜单：').at(-1),/"action":"search_public_topic"/);return later}]})
+ const out=await x.planner.tick();assert.equal(out.result,'verified-search-results');assert.equal(out.continuation.reason,'fish-chose-later');assert.equal(x.reads.length,2);assert.equal(x.memories.length,1);assert.equal(x.life.intentions({includeClosed:true})[0].episodeSteps,1)
 }))
