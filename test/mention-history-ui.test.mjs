@@ -23,6 +23,6 @@ test('tool no longer returns verbose AI-facing mention decision, but preserves r
 })
 
 test('host preserves AI intent for diagnostics while target selection remains validated',()=>{
-  assert.ok(server.includes('should_mention: args.should_mention === true'))
-  assert.ok(server.includes('mention_names: choice.targets.map(t=>t.name)'))
+  assert.ok(server.includes('args.should_mention===true||args.mention_names'))
+  assert.ok(py.includes('mention_names=[],sync_to_dynamic=False'))
 })

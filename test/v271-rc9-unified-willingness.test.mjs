@@ -157,3 +157,47 @@ test('统一意愿模型接收受信任的结构化 Episode/关系证据，但�
   assert.equal(calls,1);assert.match(prompt,/皮影舞台/);assert.match(prompt,/朱红雨伞/);assert.match(prompt,/禁止把别的视频画面当作当前画面/)
   assert.equal(result.ok,false);assert.equal(result.reason,'video-recall-evidence-changed');assert.equal(result.proof,null)
  })
+
+
+const manualBV='BV1abcde1234',manualBody='独立的精确正文',manualArgs={bvid:manualBV,text:manualBody,rpid:0,root:0,confirm:true}
+const ownerTool='bili_reply_manual'
+const ownerDecision=(action='act',requestMatches=true)=>JSON.stringify({action,...(action==='act'?{candidateId:'owner-write'}:{}),reason:'独立决定',requestMatches})
+function manualTurn(){let live=true,busy=false,closed=false;const keys=new Set();return Object.assign(()=>live,{writeRequest:'给 '+manualBV+' 评论：'+manualBody,claimWrite(key){if(!live||busy||closed||keys.has(key))return false;keys.add(key);busy=true;return true},settleWrite(ok){busy=false;if(!ok)closed=true},revoke(){live=false}})}
+async function runManual(x,turn,dispatch,args=manualArgs,tool=ownerTool){const {executeMainSessionOwnerWrite}=await import('../lib/life-agent-read-runtime.mjs');return executeMainSessionOwnerWrite({willingness:x.actor,ownerTurn:turn,isCurrent:turn,tool,args,dispatch})}
+const goodManualReceipt=()=>({ok:true,bvid:manualBV,receipt:{success:true,rpid_str:'123'}})
+test('dev100 exact owner write uses one Life decision, consumes at real dispatch, and does not replay',async t=>{
+ const x=fixture(t,{response:p=>{assert.ok(p.includes(manualBody));assert.ok(p.includes('独立判断主人本轮'));return ownerDecision()}}),turn=manualTurn();let sends=0
+ const dispatch=async(tool,args,{beforeDispatch})=>{assert.equal(beforeDispatch(tool,{...args,text:'changed'}),false);assert.equal(beforeDispatch(tool,{...args,bvid:'BV1abcde9999'}),false);assert.equal(beforeDispatch(tool,args),true);assert.equal(beforeDispatch(tool,args),false);sends++;return goodManualReceipt()}
+ assert.equal((await runManual(x,turn,dispatch)).ok,true);assert.equal((await runManual(x,turn,dispatch)).ok,false);assert.equal(sends,1);assert.equal(x.calls(),1)
+ assert.doesNotMatch(JSON.stringify(x.trace.list()),/独立的精确正文|BV1abcde1234/)
+})
+test('dev100 mismatch, malformed decision, voluntary refusal or defer never dispatch',async t=>{
+ for(const response of [()=>ownerDecision('act',false),()=>JSON.stringify({action:'act',candidateId:'owner-write',reason:'yes'}),()=>ownerDecision('skip'),()=>ownerDecision('defer')]){
+  const x=fixture(t,{response}),turn=manualTurn();let sends=0
+  const result=await runManual(x,turn,()=>{sends++});assert.equal(result.ok,false);assert.equal(sends,0);assert.equal(x.calls(),1)
+ }
+})
+test('dev100 revoked scope before dispatch or while the model decides cannot send',async t=>{
+ const turn=manualTurn(),x=fixture(t,{response:()=>{turn.revoke();return ownerDecision()}});let sends=0
+ assert.equal((await runManual(x,turn,()=>{sends++})).ok,false);assert.equal(sends,0)
+ const turn2=manualTurn(),y=fixture(t,{response:()=>ownerDecision()})
+ const result=await runManual(y,turn2,async(tool,args,{beforeDispatch})=>{turn2.revoke();assert.equal(beforeDispatch(tool,args),false);return goodManualReceipt()});assert.equal(result.ok,false)
+})
+test('dev100 unknown or mismatched receipt is not success; dispatched old account settles without replay',async t=>{
+ for(const receipt of [{ok:true,bvid:'BV1abcde9999',receipt:{success:true}},null]){
+  const x=fixture(t,{response:()=>ownerDecision()}),turn=manualTurn();let sends=0
+  const dispatch=async(tool,args,{beforeDispatch})=>{assert.ok(beforeDispatch(tool,args));sends++;return receipt}
+  const result=await runManual(x,turn,dispatch);assert.equal(result.ok,false);assert.equal(result.no_retry,true);assert.equal((await runManual(x,turn,dispatch)).ok,false);assert.equal(sends,1)
+ }
+ const x=fixture(t,{response:()=>ownerDecision()}),turn=manualTurn()
+ const r=await runManual(x,turn,async(tool,args,{beforeDispatch})=>{assert.ok(beforeDispatch(tool,args));turn.revoke();x.changeTag(B);return goodManualReceipt()});assert.equal(r.ok,false);assert.equal(r.receiptStatus,'verified');assert.equal(r.no_retry,true);assert.equal(r.bvid,undefined)
+})
+test('dev100 only exact manual payload shapes and no arbitrary/autonomous sender',async()=>{
+ const {exactSessionOwnerWrite,sessionOwnerWriteKey}=await import('../lib/life-action-protocol.mjs')
+ const examples={bili_video_like_manual:{bvid:manualBV,reason:'a'},bili_video_collect_manual:{bvid:manualBV,folder_title:'原收藏夹',create_folder:false,reason:'a',confirm:true},bili_follow_creator_manual:{bvid:manualBV,reason:'a',confirm:true},bili_unfollow_creator_manual:{uid:123,reason:'a',confirm:true},bili_reply_manual:manualArgs,bili_dynamic_comment_manual:{dynamic_id:'1234567890123456789',target_rpid:'12',root:'12',text:'yes',confirm:true},bili_send_message_manual:{receiver_uid:42,text:'hi',confirm:true},bili_reply_existing_dm_manual:{receiver_uid:'42',receiver_name:'朋友',source_message_id:'inbound123',text:'hi',confirm:true}}
+ for(const [tool,args] of Object.entries(examples)){const value={tool,args};assert.deepEqual(exactSessionOwnerWrite(value),value);assert.equal(exactSessionOwnerWrite({tool,args:{...args,extra:true}}),null);assert.ok(sessionOwnerWriteKey(value))}
+ assert.equal(exactSessionOwnerWrite({tool:'bili_reply',args:manualArgs}),null)
+ assert.equal(exactSessionOwnerWrite({tool:ownerTool,args:{...manualArgs,text:' padded '}}),null)
+ assert.equal(exactSessionOwnerWrite({tool:ownerTool,args:{...manualArgs,rpid:'0'}}),null)
+ assert.equal(sessionOwnerWriteKey({tool:'bili_video_like_manual',args:examples.bili_video_like_manual}),sessionOwnerWriteKey({tool:'bili_video_like_manual',args:{...examples.bili_video_like_manual,reason:'changed'}}))
+})

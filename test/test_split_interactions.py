@@ -14,7 +14,7 @@ def only_function():
     node.decorator_list=[]
     code=compile(ast.fix_missing_locations(ast.Module(body=[node],type_ignores=[])),str(FILE),'exec')
     def get_cred(): raise RuntimeError('credential path reached')
-    scope={'os':os,'json':json,'_guard':lambda _: '', 'get_cred':get_cred}
+    scope={'os':os,'json':json,'_guard':lambda _: '', 'get_cred':get_cred, '_MANUAL_COMMENT_EXACT':__import__('contextvars').ContextVar('manual',default=None)}
     exec(code,scope)
     return scope['bili_reply']
 

@@ -64,3 +64,29 @@ class ManualActionLedgerTests(unittest.TestCase):
         self.assertIn('自主关注未满 7 天，不允许取关',SOURCE)
 
 if __name__=='__main__': unittest.main()
+
+
+class ExactManualCommentTests(unittest.IsolatedAsyncioTestCase):
+    async def test_manual_sender_context_blocks_body_rewrite_and_resets(self):
+        import asyncio
+        from contextvars import ContextVar
+        from types import SimpleNamespace
+        tree=ast.parse(SOURCE)
+        nodes=[n for n in tree.body if isinstance(n,ast.AsyncFunctionDef) and n.name in {'bili_reply','bili_reply_manual'}]
+        for node in nodes:node.decorator_list=[]
+        exact=ContextVar('exact',default=None);effects=[];settled=[]
+        class Video:
+            def __init__(self,**kwargs):pass
+            async def get_info(self):return {'aid':123}
+        def quota():effects.append('quota');raise AssertionError('rewritten text must never enter quota/send')
+        scope={'os':os,'json':json,'_MANUAL_COMMENT_EXACT':exact,'_guard':lambda _: '',
+               '_valid_bv':lambda v:v,'get_cred':lambda:SimpleNamespace(dedeuserid='123'),
+               'video':SimpleNamespace(Video=Video),'_mention_settings':lambda *_:('off',[{'name':'朋友','uid':'42'}]),
+               '_decorate_comment':lambda text,*_:(text.replace('@朋友','').strip(),False),
+               '_comment_quota_preflight':quota,
+               '_claim_session_manual_action':lambda *_:{'ok':True,'body_hash':'hash','day':'today'},
+               '_finish_session_manual_action':lambda *args:settled.append(args)}
+        exec(compile(ast.fix_missing_locations(ast.Module(body=nodes,type_ignores=[])),'<exact-sender>','exec'),scope)
+        with patch.dict(os.environ,{'BILI_SESSION_MANUAL_ACTIONS_ENABLED':'1'}):
+            result=json.loads(await scope['bili_reply_manual']('BV1abcde1234','原样 @朋友 正文',confirm=True))
+        self.assertFalse(result['ok']);self.assertIn('正文',result['error']);self.assertEqual(effects,[]);self.assertIsNone(exact.get());self.assertEqual(len(settled),1)

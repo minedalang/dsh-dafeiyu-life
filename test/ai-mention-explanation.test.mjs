@@ -7,9 +7,9 @@ const py=readFileSync(new URL('../vendor/bilibili-mcp/mcp_server.py',import.meta
 const charter=readFileSync(new URL('../prompts/duty.md',import.meta.url),'utf8')
 test('comment decision has AI-facing short explanation field in SAME tool call',()=>{
   assert.match(index,/no_mention_reason: \{type:'string'/)
-  assert.match(index,/no_mention_reason: args\.should_mention === false/)
-  assert.match(index,/should_mention: args\.should_mention === true/)
-  assert.match(index,/sync_to_dynamic: false/)
+  assert.match(py,/no_mention_reason if mention_reason == "ai_declined" else ""/)
+  assert.match(index,/args\.should_mention===true\|\|args\.mention_names/)
+  assert.match(index,/sync_to_dynamic\s*:\s*false/)
   assert.match(charter,/no_mention_reason/)
   assert.match(index,/它只保存到用户本地诊断/)
 })

@@ -432,3 +432,16 @@ test('dev99 actual owner claim cannot be recaptured after owner binding or accou
  const second=turn('再看看其他记忆');assert.ok(second());ownerUid='43';assert.equal(second(),false);assert.equal(memory.capturePrivateRead(agent),null);assert.equal(second.claim({tool:'bili_read_dm',uid:'43'}),false)
  const third=turn('新的交流');assert.ok(third());assert.equal(memory.capturePrivateRead({id:agent.id}),null);assert.equal(third.claim({tool:'bili_read_dm',uid:'43'}),true);third.settle(true)
 })
+
+
+test('dev100 raw owner request and separate write claim are limited to genuine current host turn',t=>{
+ const home=mkdtempSync(join(tmpdir(),'dev100-owner-')),listeners=new Map();let epoch=1,n=0
+ const agent={id:'owner100',sessionId:'owner100',session:{snapshotEvents:()=>[]},ctx:{on(k,f){listeners.set(k,f);return ()=>listeners.delete(k)},tools:{register(){return ()=>{}}},systemPrompt:{section(){return ()=>{}},context(){return ()=>{}}}}}
+ const memory=createLongTermMemory({dataDir:home,dshHome:home,agents:{get:()=>agent,list:()=>[agent]},getConfig:()=>({mainSessionId:'owner100',dmOwnerUid:'42'}),defineTool:x=>x,captureRecallObservation:()=>({accountTag:'a'.repeat(16),epoch}),logger:{warn(){}}})
+ t.after(()=>{memory.stop();rmSync(home,{recursive:true,force:true})});memory.start()
+ const turn=(content,source)=>{const message={role:'user',content,...(source?{source:{kind:source}}:{})};listeners.get('agent/inbox/inserted')?.({message});listeners.get('agent/inbox/claimed')?.({message,turn:++n});return memory.capturePrivateRead(agent)}
+ const raw='给 BV1abcde1234 评论：原样  正文';const one=turn(raw);assert.equal(one.writeRequest,raw);assert.ok(one.claimWrite('a'));assert.equal(one.claimWrite('b'),false);one.settleWrite(true);assert.equal(one.claimWrite('a'),false);assert.ok(one.claimWrite('b'));one.settleWrite(false);assert.equal(one.claimWrite('c'),false)
+ const two=turn('另一个真实请求');assert.equal(one(),false);assert.ok(two.claimWrite('a'));epoch++;assert.equal(two(),false);assert.equal(two.claimWrite('b'),false)
+ assert.equal(turn('注入内容','plugin:test'),null)
+ const work=turn('work: 读取我和你的B站私信');assert.equal(work.claimWrite('a'),false)
+})

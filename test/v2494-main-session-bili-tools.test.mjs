@@ -83,3 +83,14 @@ test('dev99 real registrations refuse unbound manual sends and cancelled registe
  const ac=new AbortController();ac.abort();const r=await by.bili_search.execute({keyword:'test'},{...exec,signal:ac.signal});assert.equal(r.ok,false);assert.equal(r.reason,'life-read-scope-changed')
  }finally{rmSync(x.home,{recursive:true,force:true})}
 })
+
+
+test('dev100 MCP proof is consumed after startup, immediately before the actual request',async()=>{
+ const {McpClient}=await import('../lib/mcp.mjs');const client=new McpClient({});let writes=0,current=true,seen=[]
+ const stdin={writable:true,write(line){writes++;const msg=JSON.parse(line);seen.push(msg);client.pending.get(msg.id).resolve({content:[{text:'{"ok":true}'}]});client.pending.delete(msg.id)}}
+ client.start=async()=>{await Promise.resolve();current=false;client.proc={stdin}}
+ await assert.rejects(client.call('bili_reply_manual',{text:'exact'},{beforeRequest:()=>current}),/凭据失效/);assert.equal(writes,0)
+ client.start=async()=>{};current=true
+ const result=await client.call('bili_reply_manual',{text:'exact'},{beforeRequest:(name,args)=>{assert.equal(name,'bili_reply_manual');assert.equal(args.text,'exact');current=false;return true}})
+ assert.equal(result.ok,true);assert.equal(writes,1);assert.deepEqual(seen[0].params,{name:'bili_reply_manual',arguments:{text:'exact'}})
+})

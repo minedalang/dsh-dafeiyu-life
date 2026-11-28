@@ -1660,6 +1660,62 @@
       "newCheck": "assert.ok(parts.length>0);assert.ok(parts.every(x=>x.coverage==='partial-sample'&&x.timeAnchorMs[0]===x.timeAnchorMs[1]&&p.describedTimesMs.includes(x.timeAnchorMs[0])))",
       "date": "2026-11-28",
       "reason": "Maintainer explicitly approved exact verified partial-sample attachment admission; full observation and unverified sample protections retained."
+    },
+    {
+      "file": "dynamic-ai-decision.test.mjs",
+      "oldCheck": "assert.match(index,/sync_to_dynamic: false/)",
+      "newCheck": "assert.match(index,/sync_to_dynamic\\s*:\\s*false/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer approved exact owner action and body binding. Manual comments cannot add mentions, images or dynamic writes; original autonomous and Python diagnostic safeguards remain."
+    },
+    {
+      "file": "dynamic-ai-decision.test.mjs",
+      "oldCheck": "assert.match(index,/dynamic_daily_limit: cfg\\.dynamicDailyLimit/)",
+      "newCheck": "assert.match(index,/BILI_DYNAMIC_DAILY_LIMIT/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer approved exact owner action and body binding. Manual comments cannot add mentions, images or dynamic writes; original autonomous and Python diagnostic safeguards remain."
+    },
+    {
+      "file": "dynamic-ai-decision.test.mjs",
+      "oldCheck": "assert.match(index,/sync_dynamic_ai_decision: args\\.sync_to_dynamic === true/)",
+      "newCheck": "assert.match(index,/args\\.sync_to_dynamic===true\\)return \\{ok:false,blocked:true/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer approved exact owner action and body binding. Manual comments cannot add mentions, images or dynamic writes; original autonomous and Python diagnostic safeguards remain."
+    },
+    {
+      "file": "ai-mention-explanation.test.mjs",
+      "oldCheck": "assert.match(index,/no_mention_reason: args\\.should_mention === false/)",
+      "newCheck": "assert.match(py,/no_mention_reason if mention_reason == \"ai_declined\" else \"\"/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer approved exact owner action and body binding. Manual comments cannot add mentions, images or dynamic writes; original autonomous and Python diagnostic safeguards remain."
+    },
+    {
+      "file": "ai-mention-explanation.test.mjs",
+      "oldCheck": "assert.match(index,/should_mention: args\\.should_mention === true/)",
+      "newCheck": "assert.match(index,/args\\.should_mention===true\\|\\|args\\.mention_names/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer approved exact owner action and body binding. Manual comments cannot add mentions, images or dynamic writes; original autonomous and Python diagnostic safeguards remain."
+    },
+    {
+      "file": "ai-mention-explanation.test.mjs",
+      "oldCheck": "assert.match(index,/sync_to_dynamic: false/)",
+      "newCheck": "assert.match(index,/sync_to_dynamic\\s*:\\s*false/)",
+      "date": "2026-11-28",
+      "reason": "Maintainer approved exact owner action and body binding. Manual comments cannot add mentions, images or dynamic writes; original autonomous and Python diagnostic safeguards remain."
+    },
+    {
+      "file": "mention-history-ui.test.mjs",
+      "oldCheck": "assert.ok(server.includes('should_mention: args.should_mention === true'))",
+      "newCheck": "assert.ok(server.includes('args.should_mention===true||args.mention_names'))",
+      "date": "2026-11-28",
+      "reason": "Maintainer approved exact owner action and body binding. Manual comments cannot add mentions, images or dynamic writes; original autonomous and Python diagnostic safeguards remain."
+    },
+    {
+      "file": "mention-history-ui.test.mjs",
+      "oldCheck": "assert.ok(server.includes('mention_names: choice.targets.map(t=>t.name)'))",
+      "newCheck": "assert.ok(py.includes('mention_names=[],sync_to_dynamic=False'))",
+      "date": "2026-11-28",
+      "reason": "Maintainer approved exact owner action and body binding. Manual comments cannot add mentions, images or dynamic writes; original autonomous and Python diagnostic safeguards remain."
     }
   ]
 }

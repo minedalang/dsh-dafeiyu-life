@@ -31,6 +31,7 @@ import subprocess
 import sqlite3
 import uuid
 from contextlib import closing
+from contextvars import ContextVar
 import hashlib
 import hmac
 import inspect
@@ -3027,7 +3028,9 @@ async def bili_video_collect_manual(bvid: str, folder_title: str, create_folder:
         else:
             data=await favorite_list.get_video_favorite_list(int(uid),credential=cred)
             items=(data or {}).get('list') or []
-            match=next((x for x in items if str(x.get('title') or '').strip()==raw_title and int(x.get('id') or 0)>0),None)
+            matches=[x for x in items if str(x.get('title') or '').strip()==raw_title and int(x.get('id') or 0)>0]
+            if len(matches)>1: raise ValueError('收藏夹名称不唯一，未收藏；请先处理重名收藏夹')
+            match=matches[0] if matches else None
             if not match:
                 return json.dumps({'ok':False,'folder_not_found':True,'error':'没有找到同名收藏夹；可先查询收藏夹列表，或明确要求新建大肥鱼私有收藏夹。','available_folders':[str(x.get('title') or '')[:60] for x in items[:30]]},ensure_ascii=False)
             fid=int(match['id']);title=str(match.get('title') or raw_title);created=False
@@ -3508,6 +3511,9 @@ async def bili_dynamic_comment_manual(dynamic_id: str, text: str, target_rpid: s
     except Exception as exc:return json.dumps({'ok':False,'error':str(exc)[:180]},ensure_ascii=False)
 
 
+_MANUAL_COMMENT_EXACT = ContextVar('manual_comment_exact', default=None)
+
+
 @tool()
 async def bili_reply_manual(bvid: str, text: str, rpid: int = 0, root: int = 0, confirm: bool = False) -> str:
     """主 Session 中主人明确要求的单条评论或回复；默认不 @、不同步动态，重复请求防重。"""
@@ -3525,7 +3531,11 @@ async def bili_reply_manual(bvid: str, text: str, rpid: int = 0, root: int = 0, 
         claim=_claim_session_manual_action(uid,'comment',target,body,max(0,min(1000,int(os.environ.get('BILI_COMMENT_DAILY_LIMIT','1000')))))
         if not claim.get('ok'): return json.dumps(claim,ensure_ascii=False)
         try:
-            raw=await bili_reply(bvid=bv,text=body,rpid=target_rpid,root=root_id,should_mention=False,mention_position='end',mention_mode='off',mention_targets=[],mention_names=[],sync_to_dynamic=False,sync_dynamic_ai_decision=False)
+            token=_MANUAL_COMMENT_EXACT.set(body)
+            try:
+                raw=await bili_reply(bvid=bv,text=body,rpid=target_rpid,root=root_id,should_mention=False,mention_position='end',mention_mode='off',mention_targets=[],mention_names=[],sync_to_dynamic=False,sync_dynamic_ai_decision=False)
+            finally:
+                _MANUAL_COMMENT_EXACT.reset(token)
             try: result=json.loads(raw) if isinstance(raw,str) else raw
             except Exception: result={'success':False,'error':str(raw)[:160]}
             if isinstance(result,dict) and result.get('success') is True:
@@ -4762,6 +4772,9 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0, aid: in
     # For an autonomous video comment Life reviewed this exact draft. Keep the
     # expected text in process memory; no second model decision at send time.
     life_approved_comment_text = text if (os.environ.get('BILI_DUTY_LIFE_ROUND_ID') or os.environ.get('BILI_LIFE_PREAPPROVED_TICKET')) else None
+    manual_exact = _MANUAL_COMMENT_EXACT.get()
+    if manual_exact is not None:
+        life_approved_comment_text = manual_exact
     if life_approved_comment_text is not None and (sync_to_dynamic or should_mention or meme_image_name):
         return json.dumps({'success':False,'blocked':True,'error':'Life 原创评论不允许顺带动态同步、@ 好友或附图；请只发送已批准的文字'},ensure_ascii=False)
     verified_recipient = None
