@@ -176,7 +176,6 @@ import { createEmotionalState } from './lib/emotional-state.mjs'
 import {visionDecision} from './lib/video-vision-policy.mjs'
 import {beginVideoObservationRead} from './lib/video-observation-read.mjs'
 import {ownerDebugLocalVision,ownerDebugTimeoutMessage,ownerDebugOllamaSummary} from './lib/owner-video-debug-local-vision.mjs'
-import { createConversationLifeFeedback } from './lib/conversation-life-feedback.mjs'
 import { createDualContextAgency, classifyBiliOwnerRequest, agencyDeclineMessage } from './lib/dual-context-agency.mjs'
 import { createSocialCognition } from './lib/social-cognition.mjs'
 import { createSocialPolicyGate } from './lib/social-policy-gate.mjs'
@@ -1593,10 +1592,6 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
   }
   try{if(accountBinding.generation()===1)ownerTodos.syncRecommendations(readJson(join(stateDir,'video-recommendations.json'),{})?.entries||[],{requireAccepted:true})}catch(e){log('启动时同步视频推荐待办失败：'+String(e?.message||e).slice(0,100))}
   const emotionalState = createEmotionalState({dataDir:stateDir,isEnabled:()=>cfg.emotionSystemEnabled!==false})
-  // dev.4: authenticated chat signals can gently affect the same fading life state.
-  const conversationLifeFeedback=createConversationLifeFeedback({dataDir:stateDir,
-    isEnabled:()=>cfg.masterEnabled===true&&cfg.emotionSystemEnabled!==false,
-    onEmotion:signal=>emotionalState.update(signal)})
   // dev.9: outside the main Session, an authenticated owner request is still a request.
   const dualContextAgency = createDualContextAgency({dataDir:stateDir,getEmotion:()=>emotionalState.snapshot(),
     getRelationship:(uid)=>{
@@ -5327,8 +5322,6 @@ logger:{warn:m=>log('统一待办回访：'+m)}})
           catch(e){log('主人分享链接登记为 Life 契机失败：'+String(e?.message||e).slice(0,100))}
         }
       }
-      try{conversationLifeFeedback.observe({source:'dm',role:'owner',uid,eventId,text,at})}
-      catch(e){log('主人私信情绪反馈失败：'+String(e?.message||e).slice(0,100))}
       // Preserve real, ordered DM turns temporarily. A later low-frequency AI
       // extraction (rather than keyword filters per incoming line) projects
       // only reviewed summaries into the EXISTING fading Life memory.
@@ -6167,8 +6160,6 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
         try{offerPrivateBiliLinkToLife({uid,role,text,messageId,at:Number(time)||Date.now()})}
         catch(e){log('私信分享的 B站链接未进入 Life 契机：'+String(e?.message||e).slice(0,100))}
       }
-      if(['owner','friend'].includes(role))try{conversationLifeFeedback.observe({source:'dm',role,uid,eventId:messageId,text,at:time})}
-      catch(e){log('私信生活情绪反馈失败：'+String(e?.message||e).slice(0,100))}
       const cognition=socialCognition.prepareObservation({uid,text,source:'dm',eventId:messageId,timestampMs:time})
       if(['friend','stranger'].includes(role)&&!accountBinding.status().blocked)try{socialPortrait.observe({uid,text,source:'dm',eventId:messageId,at:time})}
       catch(e){log('私信好友交流画像未更新：'+String(e?.message||e).slice(0,110))}
@@ -7386,8 +7377,6 @@ ${persona ? '你在这个场景下的角色人格与表达方式（真实性和�
       // real user inbox, never from generated assistant content or a headless agent.
       refreshCfg()
       if(!platformReady()||getSessionIntegration().mode!=='autonomous-life'||cfg.masterEnabled!==true||String(cfg.mainSessionId||'').replace(/^session-/,'')!==sessionId)return
-      try{conversationLifeFeedback.observe({source:'main-session',role:'owner',sessionId,eventId,text,at})}
-      catch(e){log('主 Session 情绪反馈失败：'+String(e?.message||e).slice(0,100))}
       if(cfg.mainSessionMemoryEnabled!==true)return
       const event=preparePrivateLifeEvent({source:'owner-session',role:'owner',eventId:eventId||'chat:'+sessionId+':'+createHash('sha256').update(sessionId+'|'+new Date(at).toISOString().slice(0,10)+'|'+text).digest('hex').slice(0,32),text,at,validated:true,accountTag:trustedLifeAccountTag()})
       if(event)try{const result=await lifeMemoryCoordinator?.recordEvents([event],{reflect:true})

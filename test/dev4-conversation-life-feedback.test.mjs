@@ -3,46 +3,33 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createConversationLifeFeedback, classifyConversationSignal } from '../lib/conversation-life-feedback.mjs'
 import { createEmotionalState } from '../lib/emotional-state.mjs'
 import { createLongTermMemory } from '../lib/long-term-memory.mjs'
 import { createSocialContextAssembler } from '../lib/social-context-assembler.mjs'
 import { createInteractionBatcher } from '../lib/interaction-batch.mjs'
 const home=()=>mkdtempSync(join(tmpdir(),'dafeiyu-dev4-conversation-'))
-const run=(fn)=>{const dir=home();try{return fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
+const run=async(fn)=>{const dir=home();try{return await fn(dir)}finally{rmSync(dir,{recursive:true,force:true})}}
 
-test('dev.4 only explicit safe exchange signals move fish emotion; never mirror user sorrow',()=>run(dir=>{
+test('dev.83 social mood comes only from existing model output, not incoming wording',async()=>{
+ const choices=[{text:'鱼鱼谢谢你，真棒！',mood:'neutral',intensity:0},
+  {text:'这段居然还有后续诶',mood:'curious',intensity:1},
+  {text:'他引用了“我今天很难过”',mood:'neutral',intensity:0},
+  {text:'刚才的事情让我很高兴',mood:'calm',intensity:2}]
+ const seen=[],updates=[]
+ const batch=createInteractionBatcher({delayMs:1,getPersona:()=>'',invoke:async prompt=>{
+  const x=choices[seen.length];seen.push(prompt);return JSON.stringify({items:[{id:'0',action:'reply',reply:'自然交流',mood:x.mood,intensity:x.intensity}]})},onEmotion:x=>updates.push(x)})
+ try{for(const x of choices)assert.equal(await batch.generate({kind:'dm',uid:'123456',text:x.text}),'自然交流')
+  assert.equal(seen.length,choices.length)
+  assert.deepEqual(updates,[{mood:'curious',intensity:1,source:'dm'},{mood:'calm',intensity:2,source:'dm'}])
+ }finally{batch.stop()}
+})
+
+test('dev.83 historical emotional state remains readable; no new conversation keyword ledger',()=>run(dir=>{
  const emotion=createEmotionalState({dataDir:dir})
- const feedback=createConversationLifeFeedback({dataDir:dir,onEmotion:x=>emotion.update(x)})
- const message={source:'main-session',role:'owner',sessionId:'main-room',eventId:'turn-1',text:'鱼鱼谢谢你，今天帮到我了'}
- assert.equal(feedback.observe(message).observed,true)
- assert.equal(emotion.snapshot().mood,'warm')
- assert.equal(feedback.observe(message).skipped,'duplicate')
- assert.equal(feedback.observe({...message,eventId:'turn-2',text:'密码是123456'}).skipped,'no-safe-signal')
- assert.equal(feedback.observe({...message,eventId:'turn-3',text:'我今天有点难过'}).observed,true)
- assert.equal(emotion.snapshot().mood,'warm')
- assert.equal(feedback.observe({...message,eventId:'turn-4',text:'鱼鱼，你真棒！'}).mood,'joyful')
- const file=readFileSync(join(dir,'life-memory/conversation-feedback.json'),'utf8')
- assert.doesNotMatch(file,/鱼鱼|密码|123456|main-room|turn-1|今天/)
- const newInstance=createConversationLifeFeedback({dataDir:dir,onEmotion:x=>emotion.update(x)})
- assert.equal(newInstance.observe(message).skipped,'duplicate')
- assert.equal(emotion.snapshot().history.filter(x=>x.source==='main-session').length,3)
-}))
-
-test('dev.4 rejected DM, invalid UID, disabled system and stale messages cannot write feedback',()=>run(dir=>{
- let calls=0
- const f=createConversationLifeFeedback({dataDir:dir,onEmotion:()=>{calls++;return {ok:true}}})
- const row={source:'dm',role:'friend',uid:'123456',eventId:'msg1',text:'谢谢鱼鱼！'}
- assert.equal(f.observe({...row,role:'stranger'}).skipped,'untrusted-source')
- assert.equal(f.observe({...row,uid:'0'}).skipped,'invalid-uid')
- assert.equal(f.observe({...row,at:Date.now()-4*86400_000}).skipped,'stale-event')
- assert.equal(f.observe({...row,source:'main-session'}).skipped,'untrusted-source')
- assert.equal(f.observe(row).observed,true)
- assert.equal(f.observe(row).skipped,'duplicate')
- assert.equal(calls,1)
- const disabled=createConversationLifeFeedback({dataDir:dir,isEnabled:()=>false,onEmotion:()=>{calls++}})
- assert.equal(disabled.observe({...row,eventId:'msg2'}).skipped,'disabled')
- assert.equal(calls,1)
+ emotion.update({mood:'warm',intensity:1,source:'main-session'})
+ assert.equal(createEmotionalState({dataDir:dir}).snapshot().mood,'warm')
+ assert.ok(!readdirSync(join(dir,'life-memory')).includes('conversation-feedback.json'))
+ assert.doesNotMatch(readFileSync(join(dir,'life-memory/emotional-state.json'),'utf8'),/鱼鱼|main-room|turn-1/)
 }))
 
 test('dev.4 natural friend DM obtains isolated state context, but public comment does not',async()=>{
@@ -68,17 +55,17 @@ test('dev.4 selected main Session observes verified owner inbox and unmounts cle
  m.stop();assert.equal(handlers.size,0)
 }))
 
-test('dev.4 static production wiring covers main, owner DM and friend DM, with no second model round',()=>{
+test('dev.83 production has no incoming keyword emotion writer; existing model paths remain',()=>{
  const fs=(path)=>readFileSync(new URL(path,import.meta.url),'utf8')
  const index=fs('../index.js')
  assert.match(index,/onOwnerMessage:async\(/)
- assert.match(index,/conversationLifeFeedback\.observe\(\{source:'main-session'/)
- assert.match(index,/conversationLifeFeedback\.observe\(\{source:'dm',role:'owner'/)
- assert.match(index,/conversationLifeFeedback\.observe\(\{source:'dm',role,uid/)
+ assert.doesNotMatch(index,/conversationLifeFeedback|conversation-life-feedback/)
+ assert.match(index,/onOwnerEmotion:/)
+ assert.match(index,/onReplyEmotion:/)
+ assert.match(index,/onEmotion:/)
  assert.match(index,/getLifeStateContext:/)
  const batch=fs('../lib/interaction-batch.mjs')
- // Life state remains present, but semantic context is bounded rather than raw-prefix truncated.
- assert.match(batch,/lifeStateContext:(?:excerpt|boundedText)\(x\.lifeStateContext,780\)/)
+ assert.match(batch,/lifeStateContext:excerpt\(roleTextView\(x,x\.lifeStateContext\),780\)/)
 })
 
 test('dev.4 main Session optional mood tool needs a genuine new user turn, is bounded and renderable',async()=>run(async dir=>{
@@ -97,6 +84,7 @@ test('dev.4 main Session optional mood tool needs a genuine new user turn, is bo
  inbox({message:{id:'internal',role:'user',source:{kind:'plugin:dafeiyu-owner-dm-experience'},content:'鱼鱼谢谢你'}})
  assert.equal((await feel.execute({mood:'warm',intensity:1})).ok,false)
  inbox({message:{id:'real1',role:'user',content:'鱼鱼谢谢你'}})
+ assert.equal(observed.filter(x=>x.mood).length,0)
  assert.equal((await feel.execute({mood:'sad',intensity:3})).ok,false)
  assert.equal((await feel.execute({mood:'warm',intensity:1})).ok,true)
  assert.equal((await feel.execute({mood:'joyful',intensity:1})).ok,false)

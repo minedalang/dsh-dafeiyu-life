@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {validateOwnerAiTodo,parseExplicitOwnerReadSuggestion} from '../lib/owner-ai-todo.mjs'
+import {validateOwnerAiTodo} from '../lib/owner-ai-todo.mjs'
 import {createOwnerDmAgent} from '../lib/owner-dm-agent.mjs'
 import {createOwnerTodoEngine} from '../lib/owner-todos.mjs'
 const T=Date.parse('2026-11-02T10:00:00Z'),OWNER='210228238'
@@ -14,11 +14,9 @@ const agentArgs=(dir,invokeModel,decideAgency=()=>({decision:'allow'}))=>({
  onTodoSuggested:async({uid,messageId,at,task})=>createOwnerTodoEngine({dataDir:dir,now:()=>T}).add({...task,origin:{kind:'owner-dm',uid,messageId,at,quotedText:''},sourceKey:`owner-ai:${uid}:${messageId}`},{source:'owner'})
 })
 const row=(text,id,at=T-1000)=>({incoming:true,senderUid:OWNER,messageId:`${OWNER}:${id}`,timestampMs:at,text})
-test('主人自然建议不依赖歌手名字写死，也不能把聊天、否定或引用当任务',()=>{
- for(const s of ['你有空听听孙燕姿的歌','推荐你有时候听听孙燕姿的歌','推荐你有时候听听孙燕姿的歌 好听的要死','有空了解一下银河系','鱼鱼，等有空时去了解一下周杰伦','肥鱼 有空听听陶喆的喝\n歌'])
-  assert.equal(parseExplicitOwnerReadSuggestion(s)?.type,'search_videos',s)
- for(const s of ['我听过孙燕姿','不要去听孙燕姿的歌','转发：推荐你听周杰伦','你有空帮我查密码','听听这首'])
-  assert.equal(parseExplicitOwnerReadSuggestion(s),null,s)
+test('原证据安全校验保留：否定、引用、虚构主题不能变为待办',()=>{
+ for(const text of ['不要去听孙燕姿的歌','转发：推荐你听孙燕姿的歌','我听过孙燕姿'])
+  assert.equal(validateOwnerAiTodo({type:'search_videos',topic:'孙燕姿的歌',evidence:text},text),null)
 })
 test('同一主人跨轮提出提议时允许受限指代；不允许借模型和其他 UID 的话造任务',()=>{
  const task={type:'search_videos',topic:'孙燕姿 歌曲',evidence:'那首歌有空了解一下',contextEvidence:'我喜欢孙燕姿的歌'}
@@ -29,7 +27,7 @@ test('同一主人跨轮提出提议时允许受限指代；不允许借模型�
 })
 test('主人明确接受自然提议时用原模型一次调用入队，重复轮询不重复',()=>withDir(async d=>{
  let calls=0
- const agent=createOwnerDmAgent(agentArgs(d,async()=>{calls++;return JSON.stringify({action:'reply',text:'这个我有兴趣，改天看看。',todoDisposition:'accept'})}))
+ const agent=createOwnerDmAgent(agentArgs(d,async()=>{calls++;return JSON.stringify({action:'reply',text:'这个我有兴趣，改天看看。',todoDisposition:'accept',suggestedTodo:{type:'search_videos',topic:'孙燕姿的歌',evidence:'你有空听听孙燕姿的歌'}})}))
  agent.primeInbox([])
  assert.equal((await agent.processMessage(row('你有空听听孙燕姿的歌','one'))).ok,true)
  const rows=createOwnerTodoEngine({dataDir:d,now:()=>T}).list()
@@ -56,11 +54,11 @@ test('同一人后续指代能建任务，但其他人的旧内容不能提供�
  await agent.processMessage(row('那首歌有空了解一下','b'))
  assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list().length,1)
 }))
-test('模型明确愿意接受但证据格式不准确时只从当前真实原话恢复，不凭幻觉添加',()=>withDir(async d=>{
+test('模型明确接受但虚构主题时不能由程序猜出替代任务',()=>withDir(async d=>{
  const agent=createOwnerDmAgent(agentArgs(d,async()=>JSON.stringify({action:'reply',text:'我想试试',todoDisposition:'accept',suggestedTodo:{type:'search_videos',topic:'虚构主题',evidence:'不存在的原话'}})))
  agent.primeInbox([])
  await agent.processMessage(row('推荐你有时候听听孙燕姿的歌','fallback'))
- assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list()[0]?.topic,'孙燕姿的歌')
+ assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list().length,0)
 }))
 
 test('即使带合法的 suggestedTodo，模型明确延期或拒绝仍不可入队',()=>withDir(async d=>{
@@ -93,11 +91,11 @@ test('截图场景：分两条输入的陶喆建议与更正应被视作一个�
   assert.equal(todos[0].topic,'陶喆的歌')
   assert.equal(agent.status().recent.at(-1)?.todoIntake,'saved')
 }))
-test('截图场景：模型明确接受但漏了 suggestedTodo 时保守修复拆字，只使用当前消息',()=>withDir(async d=>{
+test('模型漏了 suggestedTodo 不再从错字句式猜出待办',()=>withDir(async d=>{
   const agent=createOwnerDmAgent(agentArgs(d,async()=>({action:'reply',text:'想找找看',todoDisposition:'accept'})))
   agent.primeInbox([])
   await agent.processMessage(row('肥鱼 有空听听陶喆的喝\n歌','one'))
-  assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list()[0]?.topic,'陶喆的歌')
+  assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list().length,0)
 }))
 test('模型明确拒绝时即使同时返回建议字段也不得入库',()=>withDir(async d=>{
   const agent=createOwnerDmAgent(agentArgs(d,async()=>({action:'reply',text:'这次先不啦',todoDisposition:'refuse',suggestedTodo:{type:'search_videos',topic:'陶喆的歌',evidence:'有空听听陶喆的歌'}})))
@@ -111,10 +109,8 @@ test('受限回退不把模型虚构主题或历史话语当当前授权',()=>wi
   agent.primeInbox([])
   await agent.processMessage(row('有空听听陶喆的歌','one'))
   const tasks=createOwnerTodoEngine({dataDir:d,now:()=>T}).list()
-  // If the model gave a wrong subject, do NOT accept it. The independent
-  // fallback may only reconstruct the authentic current owner topic.
-  assert.equal(tasks.length,1)
-  assert.equal(tasks[0].topic,'陶喆的歌')
+  // Do not create a substitute task from a fixed natural-language parser.
+  assert.equal(tasks.length,0)
 }))
 
 test('模型没有决定接受时，即使原话可被静态提取也不强制生成待办',()=>withDir(async d=>{
@@ -141,13 +137,13 @@ test('当前主人私信的只读待办权限关闭时，即使模型 accept 也
   assert.equal(agent.status().recent.at(-1).todoIntake,'read-permission-off')
 }))
 
-test('老模型只口头明确表达将来要去找时，仍须核实原话并重新经过自主意愿',()=>withDir(async d=>{
+test('老模型只口头表达意愿不再由正则转换成待办',()=>withDir(async d=>{
   let choices=0
   const agent=createOwnerDmAgent(agentArgs(d,async()=>({action:'reply',text:'好呀，等有空我去找陶喆的歌听听。还没听过的话我就不瞎夸哦～'}),()=>{choices++;return {decision:'allow'}}))
   agent.primeInbox([])
   await agent.processMessage(row('肥鱼 有空听听陶喆的喝\n歌','one'))
-  assert.equal(choices,1)
-  assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list()[0]?.topic,'陶喆的歌')
+  assert.equal(choices,0)
+  assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list().length,0)
 }))
 test('未承诺或明确不愿意时不得根据口头聊天和用户提议强制入队',()=>withDir(async d=>{
   const messages=['好呀，听说陶喆的歌挺有意思。','有空我可以看看，但现在先不决定。','我不打算去找陶喆的歌。']
@@ -183,4 +179,22 @@ test('主人只推荐艺人但鱼鱼明确拒绝时，不将建议强制入队',
  agent.primeInbox([])
  await agent.processMessage(row('推荐你听方大同','artist-declined'))
  assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list().length,0)
+}))
+
+test('自然表达不含旧触发词也可见原待办能力；模型无提案不自动建任务',()=>withDir(async d=>{
+ let calls=0
+ const agent=createOwnerDmAgent(agentArgs(d,async prompt=>{calls++;assert.match(prompt,/suggestedTodo/);return {action:'reply',text:'好奇归好奇，先聊聊天。',todoDisposition:'none'}}))
+ agent.primeInbox([])
+ await agent.processMessage(row('方大同的声音很值得一品呢','natural'))
+ assert.equal(calls,1)
+ assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list().length,0)
+}))
+
+test('旧提示触发词未出现时，模型仍可提出有真实证据的自然建议',()=>withDir(async d=>{
+ const text='我建议试试方大同的歌';let calls=0
+ const agent=createOwnerDmAgent(agentArgs(d,async prompt=>{calls++;assert.match(prompt,/suggestedTodo/);return {action:'reply',text:'这位歌手我有些好奇。',todoDisposition:'accept',suggestedTodo:{type:'search_videos',topic:'方大同的歌',evidence:text}}}))
+ agent.primeInbox([])
+ await agent.processMessage(row(text,'natural-accept'))
+ assert.equal(calls,1)
+ assert.equal(createOwnerTodoEngine({dataDir:d,now:()=>T}).list()[0]?.topic,'方大同的歌')
 }))
